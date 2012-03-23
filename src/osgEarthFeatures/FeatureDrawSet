@@ -31,24 +31,50 @@ namespace osgEarth { namespace Features
     class OSGEARTHFEATURES_EXPORT FeatureDrawSet
     {     
     public: // types
-        typedef osg::Geometry::PrimitiveSetList            PrimitiveSetList;
-        typedef std::map<osg::Drawable*, PrimitiveSetList> PrimitiveSetGroups;
-        typedef std::vector<osg::Node*>                    NodeVector;
+        typedef osg::Geometry::PrimitiveSetList                        PrimitiveSets;
+        typedef std::pair< osg::ref_ptr<osg::Drawable>, PrimitiveSets> DrawableSlice;
+        typedef std::vector<DrawableSlice>                             DrawableSlices;
+        typedef std::vector< osg::ref_ptr<osg::Node> >                 Nodes;
 
     public:
-        NodeVector& nodes() { return _nodes; }
-        const NodeVector& nodes() const { return _nodes; }
+        FeatureDrawSet();
+        virtual ~FeatureDrawSet() { }
 
-        PrimitiveSetGroups& primSetGroups() { return _primSetGroups; }
-        const PrimitiveSetGroups& primSetGroups() const { return _primSetGroups; }
+        /** Nodes comprising this draw set */
+        Nodes& nodes() { return _nodes; }
+        const Nodes& nodes() const { return _nodes; }
 
-        bool empty() const { return _nodes.empty() && _primSetGroups.empty(); }
+        /** Drawable/primitive-set-list pairs comprising this draw set */
+        DrawableSlices& slices() { return _slices; }
+        const DrawableSlices& slices() const { return _slices; }
+
+        /** Gets the primitive sets list associated with a drawable, creating the entry as necessary */
+        PrimitiveSets& getOrCreateSlice(osg::Drawable* d);
+
+        /** Gets a slice, given a drawable; or slices().end() if not found. */
+        DrawableSlices::iterator slice(osg::Drawable* d);
+        DrawableSlices::const_iterator slice(osg::Drawable* d) const;
+
+        /** Whether the draw set is empty */
+        bool empty() const { return _nodes.empty() && _slices.empty(); }
+
+        /** Sets the visibility of the draw set. */
+        void setVisible( bool value );
+
+        /** Clears out this draw set */
+        void clear();
         
+        //todo
         osg::Node* createCopy();
 
     private:
-        NodeVector         _nodes;
-        PrimitiveSetGroups _primSetGroups;
+        Nodes          _nodes;
+        DrawableSlices _slices;
+
+        typedef std::vector<unsigned> Masks;
+
+        bool            _visible;
+        Masks           _invisibleMasks;
     };
 
 } } // namespace osgEarth::Features

@@ -184,9 +184,11 @@ FeatureHighlightCallback::onHit( FeatureSourceIndexNode* index, FeatureID fid, c
         osg::Group* group = new osg::Group();
         osg::Geode* geode = 0L;
 
-        for( FeatureDrawSet::PrimitiveSetGroups::iterator d = drawSet.primSetGroups().begin(); d != drawSet.primSetGroups().end(); ++d )
+        for( FeatureDrawSet::DrawableSlices::iterator d = drawSet.slices().begin(); d != drawSet.slices().end(); ++d )
         {
-            osg::Geometry* featureGeom = d->first->asGeometry();
+            FeatureDrawSet::DrawableSlice& slice = *d;
+            osg::Geometry* featureGeom = slice.first->asGeometry();
+
             osg::Geometry* highlightGeom = new osg::Geometry( *featureGeom, osg::CopyOp::SHALLOW_COPY );
             osg::Vec4Array* highlightColor = new osg::Vec4Array(1);
             (*highlightColor)[0] = osg::Vec4f(0,1,1,0.5);
@@ -212,7 +214,7 @@ FeatureHighlightCallback::onHit( FeatureSourceIndexNode* index, FeatureID fid, c
             }
         }
 
-        for( FeatureDrawSet::NodeVector::iterator n = drawSet.nodes().begin(); n != drawSet.nodes().end(); ++n )
+        for( FeatureDrawSet::Nodes::iterator n = drawSet.nodes().begin(); n != drawSet.nodes().end(); ++n )
         {
             group->addChild( *n );
             if ( !container )
@@ -257,9 +259,9 @@ FeatureHighlightCallback::onMiss( const EventArgs& args )
 void
 FeatureHighlightCallback::clear()
 {
-    for( SelectionSet::iterator i = _selections.begin(); i != _selections.end(); ++i )
+    for( SelectionSet::const_iterator i = _selections.begin(); i != _selections.end(); ++i )
     {
-        Selection& selection = *i;
+        const Selection& selection = *i;
         osg::ref_ptr<osg::Group> safeGroup = selection._group.get();
         if ( safeGroup.valid() && safeGroup->getNumParents() > 0 )
         {

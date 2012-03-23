@@ -75,7 +75,7 @@ FeatureSourceIndexNode::Collect::apply( osg::Geode& geode )
                     if ( fid )
                     {
                         FeatureDrawSet& drawSet = _index[*fid];
-                        drawSet.primSetGroups()[geom].push_back( pset );
+                        drawSet.getOrCreateSlice(geom).push_back(pset);
                         _psets++;
                     }
                 }
@@ -121,8 +121,8 @@ FeatureSourceIndexNode::tagPrimitiveSets(osg::Drawable* drawable, FeatureID fid)
 
     RefFeatureID* rfid = 0L;
 
-    FeatureDrawSet::PrimitiveSetList& plist = geom->getPrimitiveSetList();
-    for( FeatureDrawSet::PrimitiveSetList::iterator p = plist.begin(); p != plist.end(); ++p )
+    osg::Geometry::PrimitiveSetList& plist = geom->getPrimitiveSetList();
+    for( osg::Geometry::PrimitiveSetList::iterator p = plist.begin(); p != plist.end(); ++p )
     {
         if ( !rfid )
             rfid = new RefFeatureID(fid);
@@ -163,16 +163,16 @@ FeatureSourceIndexNode::getFID(osg::Drawable* drawable, int primIndex, FeatureID
     for( FeatureIDDrawSetMap::const_iterator i = _drawSets.begin(); i != _drawSets.end(); ++i )
     {
         const FeatureDrawSet& drawSet = i->second;
-        FeatureDrawSet::PrimitiveSetGroups::const_iterator d = drawSet.primSetGroups().find(drawable);
-        if ( d != drawSet.primSetGroups().end() )
+        FeatureDrawSet::DrawableSlices::const_iterator d = drawSet.slice(drawable);
+        if ( d != drawSet.slices().end() )
         {
             const osg::Geometry* geom = drawable->asGeometry();
             if ( geom )
             {
-                const FeatureDrawSet::PrimitiveSetList& geomPrimSets = geom->getPrimitiveSetList();
+                const osg::Geometry::PrimitiveSetList& geomPrimSets = geom->getPrimitiveSetList();
 
                 unsigned encounteredPrims = 0;
-                for( FeatureDrawSet::PrimitiveSetList::const_iterator p = geomPrimSets.begin(); p != geomPrimSets.end(); ++p )
+                for( osg::Geometry::PrimitiveSetList::const_iterator p = geomPrimSets.begin(); p != geomPrimSets.end(); ++p )
                 {
                     const osg::PrimitiveSet* pset = p->get();
                     unsigned numPrims = pset->getNumPrimitives();

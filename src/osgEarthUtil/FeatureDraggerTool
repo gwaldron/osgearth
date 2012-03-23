@@ -22,6 +22,7 @@
 
 #include <osgEarthUtil/Common>
 #include <osgEarthUtil/FeatureQueryTool>
+#include <osgEarthFeatures/FeatureDrawSet>
 #include <osgEarth/MapNode>
 #include <osgEarth/Draggers>
 #include <osgGA/GUIEventHandler>
@@ -46,6 +47,9 @@ namespace osgEarth { namespace Util
             MapNode*          mapNode,
             FeatureQueryTool* queryTool );
 
+        /** Cancels a drag in process */
+        void cancel();
+
 
     public: // GUIEventHandler
 
@@ -55,15 +59,28 @@ namespace osgEarth { namespace Util
     public: // FeatureQueryTool::Callback
 
         virtual void onHit( FeatureSourceIndexNode* index, FeatureID fid, const EventArgs& args );
-
         virtual void onMiss( const EventArgs& args );
 
+    protected:
+
+        /**
+         * Alters the appearance of the dragged model. Override this method to provide a
+         * custom appearance.
+         */
+        virtual osg::Node* configureDragger( osg::Node* node ) const;
+
+        /**
+         * Alters the appearance of the "ghost" model. Override this method to provide a
+         * custom appearance.
+         */
+        virtual osg::Node* configureGhost( osg::Node* node ) const;
 
     protected:
-        MapNode*                _mapNode;
-        osg::ref_ptr<osg::MatrixTransform> _dragger;
-        double _verticalOffset;
-        osg::Vec3d _lastMouseWorld;
+        MapNode*                           _mapNode;
+        FeatureDrawSet                     _drawSet;
+        osg::ref_ptr<osg::MatrixTransform> _dragXform;
+        osg::ref_ptr<osg::Node>            _ghostModel;
+        double                             _verticalOffset;
     };
 
 } } // namespace osgEarthUtil

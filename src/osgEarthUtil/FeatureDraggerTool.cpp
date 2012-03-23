@@ -19,6 +19,7 @@
 
 #include <osgEarthUtil/FeatureDraggerTool>
 #include <osgEarth/ECEF>
+#include <osgEarth/Registry>
 #include <osgViewer/View>
 
 #define LC "[FeatureDraggerTool] "
@@ -47,123 +48,40 @@ namespace
     }
 
 
-    // Extracts the geometry from a draw set, and re-centers it around the world
-    // centroid and puts it in the output node. out_local2world is a matrix that
-    // will place it exactly where it was originally in world coordinates.
-    void extractLocalizedCopy(FeatureDrawSet&          ds,
-                              const osg::Vec3d&        anchorPointWorld,
-                              const SpatialReference*  mapSRS,
-                              osg::ref_ptr<osg::Node>& out_node,
-                              osg::Matrixd&            out_local2world)
-    {
-        osg::Group* group = 0L;
-
-#if 0 // figure out nodes later. we'll need to discard transforms here, or collect geodes or something.
-        for( NodeVector::iterator n = ds._nodes.begin(); n != ds._nodes.end(); ++n )
-        {
-            osg::Node* node = *n;
-            osg::Node* nodeCopy = osg::clone(node, osg::CopyOp::SHALLOW_COPY);
-            osg::Matrix local2world = osg::computeLocalToWorld( node->getParentalNodePaths()[0] );
-            if ( !local2world.isIdentity() )
-            {
-                osg::MatrixTransform* xform = new osg::MatrixTransform(local2world);
-                xform->addChild( nodeCopy );
-                group->addChild( xform );
-            }
-            else
-            {
-                group->addChild( nodeCopy );
-            }
-        }
-#endif
-
-        // a geode that will hold the cloned drawables
-        osg::Geode* geode = 0L;
-
-        // stores the reference frame of each cloned drawable.
-        std::vector<osg::Matrixd> local2worlds;
-
-        // clone each of the drawables and place the clones under the new geode.
-        for( FeatureDrawSet::PrimitiveSetGroups::iterator p = ds.primSetGroups().begin(); p != ds.primSetGroups().end(); ++p )
-        {
-            osg::Drawable* d = p->first;
-            const FeatureDrawSet::PrimitiveSetList& psets = p->second;
-            if ( psets.size() > 0 )
-            {
-                osg::Geometry* featureGeom = d->asGeometry();
-                osg::NodePath parentNodePath = featureGeom->getParent(0)->getParentalNodePaths()[0];
-
-                if ( !geode )
-                {
-                    geode = new osg::Geode();
-                }
-
-                // make a shallow copy; we want to share arrays for now.
-                osg::Geometry* clonedGeom = new osg::Geometry( *featureGeom, osg::CopyOp::SHALLOW_COPY );
-                clonedGeom->setStateSet(accumulateStateSet( clonedGeom->getOrCreateStateSet(), parentNodePath ));
-
-                // replace the primset list with the subset found in the draw set.
-                clonedGeom->setPrimitiveSetList( psets );
-
-                // add it to the geode.
-                geode->addDrawable( clonedGeom );
-
-                // store the local2world transform for this drawable:
-                local2worlds.push_back( osg::computeLocalToWorld(parentNodePath) );
-            }
-        }
-
-        // next, find a center point.
-        if ( geode )
-        {
-            // use the first l2w as the anchor point. In all likelihood a single feature will
-            // exist under a single localizer anyway.
-            const osg::Matrixd& local2world = local2worlds[0];
-
-            // figure out the centroid of the selected feature, and then shift the verts
-            // to be relative to this new anchor point. We do this by transforming them into
-            // work coords and then back into local coords.
-            osg::Matrixd local2worldAtAnchorPoint = ECEF::createLocalToWorld( anchorPointWorld );
-
-            // take the inverse, as this will be the new localizer.
-            osg::Matrixd world2localAtAnchorPoint;
-            world2localAtAnchorPoint.invert( local2worldAtAnchorPoint );
-
-            // for each drawable, shift its verticies so they are relative to the new centroid
-            // instead of being relative to the original reference frame.
-            for( unsigned i=0; i<geode->getNumDrawables(); ++i )
-            {
-                osg::Geometry*     geom        = geode->getDrawable(i)->asGeometry();
-                const osg::Matrix& local2world = local2worlds[i];
-
-                osg::Vec3Array* newVerts = static_cast<osg::Vec3Array*>(
-                    osg::clone( geom->getVertexArray(), osg::CopyOp::DEEP_COPY_ARRAYS ) );
-
-                for( osg::Vec3Array::iterator v = newVerts->begin(); v != newVerts->end(); ++v )
-                {
-                    osg::Vec3d vert         = *v;                           // single->double precision first
-                    osg::Vec3d vertWorld    = vert * local2world;           // bring out to world coords
-                    osg::Vec3d vertNewLocal = vertWorld * world2localAtAnchorPoint;  // back into the new local coords.
-                    *v = vertNewLocal;
-                }
-
-                geom->setVertexArray( newVerts );
-            }
-
-            out_node        = geode;
-            out_local2world = local2worldAtAnchorPoint;
-        }
-    }
-
-
     struct CustomQueryPredicate : public FeatureQueryTool::InputPredicate
     {
         bool accept( const osgGA::GUIEventAdapter& ea )
         {
             return
                 ea.getEventType() == ea.PUSH &&
-                (ea.getModKeyMask() & ea.MODKEY_SHIFT) != 0;
+                (ea.getButtonMask() & ea.LEFT_MOUSE_BUTTON) != 0 &&
+                (ea.getModKeyMask() & ea.MODKEY_SHIFT)      != 0;
         }
+    };
+
+
+    struct ColorReplacer : public osg::NodeVisitor 
+    {
+        osg::ref_ptr<osg::Vec4Array> _colors;
+        ColorReplacer(const osg::Vec4f& color) : osg::NodeVisitor(osg::NodeVisitor::TRAVERSE_ALL_CHILDREN)
+        {
+            _colors = new osg::Vec4Array(1);
+            (*_colors.get())[0] = color;
+        }
+
+        void apply(osg::Geode& geode) 
+        {
+            for( unsigned i=0; i<geode.getNumDrawables(); ++i )
+            {
+                osg::Geometry* g = geode.getDrawable(i)->asGeometry();
+                if ( g )
+                {
+                    g->setColorArray( _colors );
+                    g->setColorBinding( osg::Geometry::BIND_OVERALL );
+                }
+            }
+            traverse( geode );
+        };
     };
 }
 
@@ -189,46 +107,70 @@ FeatureDraggerTool::onHit( FeatureSourceIndexNode* index, FeatureID fid, const E
 {
     //OE_TEST << LC << "onHit" << std::endl;
 
-    // delete an existing dragger first.
-    if ( _dragger.valid() )
-    {
-        _dragger->getParent(0)->removeChild(_dragger.get());
-        _dragger = 0L;
-    }
+    // cancel any existing drag first, just to be safe
+    cancel();
 
     // extract the "selected" feature model from the scene graph.
-    FeatureDrawSet& drawSet = index->getDrawSet( fid );
-    if ( !drawSet.empty() )
+    _drawSet = index->getDrawSet( fid );
+    if ( !_drawSet.empty() )
     {
-        // grab the point under the mouse and use this as the anchor.
-        osg::Vec3d mouseWorld;
-        _mapNode->getTerrain()->getWorldCoordsUnderMouse(args._aa->asView(), args._ea->getX(), args._ea->getY(), mouseWorld);
+        // grab the point on the ground under the hit point and use that as the anchor.
+        osg::Vec3d anchorWorld;
+        anchorWorld = args._worldPoint;
+
+        // calculate the vertical offset of the mouse's hit point from the ground
+        GeoPoint hitMap;
+        hitMap.fromWorld( _mapNode->getMapSRS(), args._worldPoint );
+        double hae;
+        _verticalOffset = 0.0;
+        if (_mapNode->getTerrain()->getHeight( hitMap.x(), hitMap.y(), 0L, &hae ))
+            _verticalOffset = hitMap.z() - hae;
+
+        // NOTE: the above technique works, but has the annoying effect of "snapping" the
+        // building to the mouse/terrain point on the first movement of the mouse...
 
         // extract the "hit" feature from its draw set into a new draggable node.
         osg::ref_ptr<osg::Node> node;
-        osg::Matrixd            local2world;
-        extractLocalizedCopy( drawSet, mouseWorld, _mapNode->getMapSRS(), node, local2world );
 
-        if ( node.valid() )
+        // create a copy of the drawset's geometry for dragging:
+        osg::Node* dragModel = _drawSet.createCopy();
+        if ( dragModel )
         {
-            _dragger = new osg::MatrixTransform( local2world );
-            _dragger->addChild( node.get() );
+            // set up the dragged model's appearance:
+            configureDragger( dragModel );
+
+            // create a SECOND copy of the drawset's geometry that will act as the "ghost" model -- 
+            // it will sit in its original position to "remind" the user of where the drag started.
+            _ghostModel = _drawSet.createCopy();
+            configureGhost( _ghostModel.get() );
+            _mapNode->addChild( _ghostModel.get() );
+
+            // create a transform that moves the feature from world coords to the local coordinate
+            // system around the mouse. This will allow us to move the feature without messing around
+            // with its relatively-positioned verts.
+            GeoPoint anchorMap;
+            anchorMap.fromWorld( _mapNode->getMapSRS(), anchorWorld );
+
+            osg::Matrixd world2local_anchor;
+            anchorMap.createWorldToLocal( world2local_anchor );
+
+            osg::MatrixTransform* world2local_xform = new osg::MatrixTransform(world2local_anchor);
+            world2local_xform->addChild( dragModel );
+
+            // next, create the positioner matrix that goes from the local coordinates to mouse
+            // world coords. This is the matrix that will change as the user drags the mouse.
+            // It just starts out as the inverse of the matrix we just created.
+            osg::Matrixd local2world_anchor;
+            local2world_anchor.invert( world2local_anchor );
+
+            _dragXform = new osg::MatrixTransform( local2world_anchor );
+            _dragXform->addChild( world2local_xform );
 
             // stick it somewhere.
-            _mapNode->addChild( _dragger.get() );
+            _mapNode->addChild( _dragXform.get() );
 
-            //OE_TEST << LC << "Added dragger!" << std::endl;
-
-            //store the HAT so we can apply it as a vertical offset while dragging......
-            GeoPoint mapPoint;
-            mapPoint.fromWorld( _mapNode->getMapSRS(), local2world.getTrans() );
-
-            double hae;
-            _mapNode->getTerrain()->getHeight( mapPoint.x(), mapPoint.y(), 0L, &hae );
-
-            _verticalOffset = mapPoint.z() - hae;
-
-            _lastMouseWorld = mouseWorld;
+            // hide the original draw set.
+            _drawSet.setVisible( false );
         }
     }
 }
@@ -237,13 +179,7 @@ FeatureDraggerTool::onHit( FeatureSourceIndexNode* index, FeatureID fid, const E
 void 
 FeatureDraggerTool::onMiss( const EventArgs& args )
 {
-    //OE_TEST << LC << "onMiss" << std::endl;
-
-    if ( _dragger.valid() )
-    {
-        _dragger->getParent(0)->removeChild( _dragger.get() );
-        _dragger = 0L;
-    }
+    cancel();
 }
 
 
@@ -252,7 +188,7 @@ FeatureDraggerTool::handle( const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAd
 {
     bool handled = false;
 
-    if ( _dragger.valid() )
+    if ( _dragXform.valid() )
     {
         if ( ea.getEventType() == ea.DRAG )
         {
@@ -268,23 +204,83 @@ FeatureDraggerTool::handle( const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAd
 
                 osg::Matrixd local2world;
                 _mapNode->getMapSRS()->createLocalToWorld(mouseMap.vec3d(), local2world);
-                _dragger->setMatrix( local2world );
+                _dragXform->setMatrix( local2world );
                 aa.requestRedraw();
                 return true;
             }
         }
+
         else if ( ea.getEventType() == ea.RELEASE )
         {
-            //OE_TEST << LC << "RELEASE" << std::endl;
-            if ( _dragger.valid() )
-            {
-                _dragger->getParent(0)->removeChild(_dragger.get());
-                _dragger = 0L;
-                aa.requestRedraw();
-            }
-            handled = false; // let others release as well
+            cancel();
+            aa.requestRedraw();
+            handled = true;
+        }
+            
+        else if ( ea.getEventType() != ea.FRAME )
+        {
+            // capture and supress further events if drag is in progress.
+            handled = true;
         }
     }
 
     return handled;
+}
+
+
+void
+FeatureDraggerTool::cancel()
+{
+    if ( _dragXform.valid() )
+    {
+        if ( _dragXform->getNumParents() > 0 )
+            _dragXform->getParent(0)->removeChild(_dragXform.get());
+        _dragXform = 0L;
+    }
+
+    if ( _ghostModel.valid() )
+    {
+        if ( _ghostModel->getNumParents() > 0 )
+            _ghostModel->getParent(0)->removeChild(_ghostModel.get());
+        _ghostModel = 0L;
+    }
+
+    _drawSet.setVisible( true );
+    _drawSet.clear();
+}
+
+
+osg::Node*
+FeatureDraggerTool::configureDragger( osg::Node* node ) const
+{
+    return node;
+}
+
+
+osg::Node*
+FeatureDraggerTool::configureGhost( osg::Node* node ) const
+{
+    osg::StateSet* s = node->getOrCreateStateSet();
+
+    // note: everything here must be OVERRIDE so we override the default state of the ghost model.
+
+    s->setRenderBinDetails( 10, "DepthSortedBin", osg::StateSet::USE_RENDERBIN_DETAILS );
+    s->setMode( GL_BLEND,    osg::StateAttribute::ON  | osg::StateAttribute::OVERRIDE );
+    s->setMode( GL_LIGHTING, osg::StateAttribute::OFF | osg::StateAttribute::OVERRIDE );
+
+    // turn off texturing:
+    for( int ii = 0; ii < Registry::instance()->getCapabilities().getMaxFFPTextureUnits(); ++ii )
+    {
+        s->setTextureMode( ii, GL_TEXTURE_2D, osg::StateAttribute::OFF | osg::StateAttribute::OVERRIDE );
+        s->setTextureMode( ii, GL_TEXTURE_3D, osg::StateAttribute::OFF | osg::StateAttribute::OVERRIDE );
+        //sset->setTextureMode( ii, GL_TEXTURE_RECTANGLE, osg::StateAttribute::OFF | osg::StateAttribute::OVERRIDE );
+        //sset->setTextureMode( ii, GL_TEXTURE_CUBE_MAP, osg::StateAttribute::OFF | osg::StateAttribute::OVERRIDE );
+    }
+
+    // make it a nice transparent color
+    // careful, the ghost is a "shallow copy" of the original, so don't go modifying any buffer objects!
+    // (replacing them is OK though.)
+    node->accept( ColorReplacer(osg::Vec4f(0.5f, 0.5f, 1.0f, 0.35f)) );
+
+    return node;
 }

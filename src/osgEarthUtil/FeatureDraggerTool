@@ -23,8 +23,11 @@
 #include <osgEarthUtil/Common>
 #include <osgEarthUtil/FeatureQueryTool>
 #include <osgEarthFeatures/FeatureDrawSet>
+#include <osgEarthAnnotation/CircleNode>
+#include <osgEarthAnnotation/AnnotationEditing>
 #include <osgEarth/MapNode>
 #include <osgEarth/Draggers>
+#include <osgEarth/Units>
 #include <osgGA/GUIEventHandler>
 #include <osg/View>
 #include <osg/MatrixTransform>
@@ -32,6 +35,7 @@
 namespace osgEarth { namespace Util
 {
     using namespace osgEarth;
+    using namespace osgEarth::Annotation;
 
     /**
      * Tool that let you select a feature and drag it around.
@@ -50,6 +54,16 @@ namespace osgEarth { namespace Util
         /** Cancels a drag in process */
         void cancel();
 
+        /**
+         * Sets the position of the dragger
+         */
+        void setPosition( const GeoPoint& pos );
+
+        /**
+         * Sets the rotation of the dragger
+         */
+        void setRotation( const Angle& angle );
+
 
     public: // GUIEventHandler
 
@@ -60,6 +74,10 @@ namespace osgEarth { namespace Util
 
         virtual void onHit( FeatureSourceIndexNode* index, FeatureID fid, const EventArgs& args );
         virtual void onMiss( const EventArgs& args );
+
+    public: // internal
+
+        void syncToDraggers();
 
     protected:
 
@@ -81,6 +99,9 @@ namespace osgEarth { namespace Util
         osg::ref_ptr<osg::MatrixTransform> _dragXform;
         osg::ref_ptr<osg::Node>            _ghostModel;
         double                             _verticalOffset;
+        osg::ref_ptr<CircleNode>           _circle;
+        osg::ref_ptr<CircleNodeEditor>     _circleEditor;
+        osg::ref_ptr<osg::Group>           _workGroup;
     };
 
 } } // namespace osgEarthUtil

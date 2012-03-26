@@ -115,6 +115,34 @@ Terrain::getHeight(double     mapX,
     return false;
 }
 
+
+bool
+Terrain::getHeight(const SpatialReference* srs,
+                   double                  x, 
+                   double                  y, 
+                   double*                 out_hamsl,
+                   double*                 out_hae,
+                   osg::Node*              patch ) const
+{
+    if ( srs )
+    {
+        if ( srs->isHorizEquivalentTo(_profile->getSRS()) )
+        {
+            return getHeight(x, y, out_hamsl, out_hae, patch);
+        }
+        else
+        {
+            double mapX, mapY;
+            if ( srs->transform2D(x, y, _profile->getSRS(), mapX, mapY) )
+            {
+                return getHeight(mapX, mapY, out_hamsl, out_hae, patch);
+            }
+        }
+    }
+    return false;
+}
+
+
 bool
 Terrain::getWorldCoordsUnderMouse(osg::View* view, float x, float y, osg::Vec3d& out_coords ) const
 {

@@ -47,6 +47,10 @@ namespace osgEarth { namespace Annotation {
 
         virtual void updateDraggers();
 
+        Dragger* getPositionDragger() { return _dragger; }
+
+        void setPosition( const GeoPoint& pos );
+
     protected:
         osg::ref_ptr< LocalizedNode > _node;
         Dragger* _dragger;
@@ -66,7 +70,11 @@ namespace osgEarth { namespace Annotation {
 
         void computeBearing();
 
+        void setBearing( const Angle& value );
+
         virtual void updateDraggers();
+
+        Dragger* getRadiusDragger() { return _radiusDragger; }
 
         double _bearing;
 

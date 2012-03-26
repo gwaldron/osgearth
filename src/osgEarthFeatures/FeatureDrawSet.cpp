@@ -205,6 +205,10 @@ FeatureDrawSet::createCopy()
                 xform->addChild( geode );
                 group->addChild( xform );
             }
+            else
+            {
+                group->addChild( geode );
+            }
         }
     }
 

@@ -18,9 +18,12 @@
  */
 
 #include <osgEarthUtil/FeatureDraggerTool>
+#include <osgEarthAnnotation/CircleNode>
+#include <osgEarthAnnotation/AnnotationEditing>
 #include <osgEarth/ECEF>
 #include <osgEarth/Registry>
 #include <osgViewer/View>
+#include <osg/Depth>
 
 #define LC "[FeatureDraggerTool] "
 
@@ -28,6 +31,7 @@
 
 using namespace osgEarth;
 using namespace osgEarth::Util;
+using namespace osgEarth::Annotation;
 
 //-----------------------------------------------------------------------
 
@@ -48,6 +52,8 @@ namespace
     }
 
 
+    // input predicate for the query tool that specifies what action
+    // should trigger a drag.
     struct CustomQueryPredicate : public FeatureQueryTool::InputPredicate
     {
         bool accept( const osgGA::GUIEventAdapter& ea )
@@ -60,6 +66,8 @@ namespace
     };
 
 
+    // visits a scene graph and replaces the color array on each Geometry with
+    // a specified overall color.
     struct ColorReplacer : public osg::NodeVisitor 
     {
         osg::ref_ptr<osg::Vec4Array> _colors;
@@ -82,6 +90,20 @@ namespace
             }
             traverse( geode );
         };
+    };
+
+    
+    // Dragger callback to simply hooks back into the DraggerTool.
+    struct DraggerCallback : public Dragger::PositionChangedCallback
+    {
+        DraggerCallback( FeatureDraggerTool* tool ) : _tool(tool) { }
+
+        void onPositionChanged(const Dragger* sender, const osgEarth::GeoPoint& pos)
+        {
+            _tool->syncToDraggers();
+        }
+
+        FeatureDraggerTool* _tool;
     };
 }
 
@@ -126,9 +148,6 @@ FeatureDraggerTool::onHit( FeatureSourceIndexNode* index, FeatureID fid, const E
         if (_mapNode->getTerrain()->getHeight( hitMap.x(), hitMap.y(), 0L, &hae ))
             _verticalOffset = hitMap.z() - hae;
 
-        // NOTE: the above technique works, but has the annoying effect of "snapping" the
-        // building to the mouse/terrain point on the first movement of the mouse...
-
         // extract the "hit" feature from its draw set into a new draggable node.
         osg::ref_ptr<osg::Node> node;
 
@@ -136,6 +155,20 @@ FeatureDraggerTool::onHit( FeatureSourceIndexNode* index, FeatureID fid, const E
         osg::Node* dragModel = _drawSet.createCopy();
         if ( dragModel )
         {
+            _workGroup = new osg::Group();
+            _mapNode->addChild( _workGroup.get() );
+
+            anchorWorld = dragModel->getBound().center();
+            
+            // calculate the vertical offset of the anchor point from the ground
+            GeoPoint anchorMap;
+            anchorMap.fromWorld( _mapNode->getMapSRS(), anchorWorld );
+            anchorMap.z() = 0;
+            anchorMap.altitudeMode() = AltitudeMode::RELATIVE_TO_TERRAIN;
+            anchorMap.transformZ( AltitudeMode::ABSOLUTE, _mapNode->getTerrain() );
+
+            anchorMap.toWorld( anchorWorld );
+
             // set up the dragged model's appearance:
             configureDragger( dragModel );
 
@@ -143,14 +176,10 @@ FeatureDraggerTool::onHit( FeatureSourceIndexNode* index, FeatureID fid, const E
             // it will sit in its original position to "remind" the user of where the drag started.
             _ghostModel = _drawSet.createCopy();
             configureGhost( _ghostModel.get() );
-            _mapNode->addChild( _ghostModel.get() );
 
             // create a transform that moves the feature from world coords to the local coordinate
             // system around the mouse. This will allow us to move the feature without messing around
             // with its relatively-positioned verts.
-            GeoPoint anchorMap;
-            anchorMap.fromWorld( _mapNode->getMapSRS(), anchorWorld );
-
             osg::Matrixd world2local_anchor;
             anchorMap.createWorldToLocal( world2local_anchor );
 
@@ -166,11 +195,28 @@ FeatureDraggerTool::onHit( FeatureSourceIndexNode* index, FeatureID fid, const E
             _dragXform = new osg::MatrixTransform( local2world_anchor );
             _dragXform->addChild( world2local_xform );
 
-            // stick it somewhere.
-            _mapNode->addChild( _dragXform.get() );
-
             // hide the original draw set.
             _drawSet.setVisible( false );
+
+            // make a circle annotation that we will use to edit the feature's position and rotation:
+            Style circleStyle;
+            circleStyle.getOrCreate<PolygonSymbol>()->fill()->color() = Color(Color::Yellow, 0.25);
+            circleStyle.getOrCreate<LineSymbol>()->stroke()->color() = Color::White;
+            const osg::BoundingSphere& bs = dragModel->getBound();
+            _circle = new CircleNode( _mapNode, anchorMap, Distance(bs.radius()*1.5), circleStyle, false );
+            _circle->getOrCreateStateSet()->setAttributeAndModes( new osg::Depth(osg::Depth::ALWAYS,0,1,false) );
+
+            _circleEditor = new CircleNodeEditor( _circle.get() );
+            _circleEditor->getPositionDragger()->addPositionChangedCallback( new DraggerCallback(this) );
+            _circleEditor->getRadiusDragger()->addPositionChangedCallback( new DraggerCallback(this) );
+            _circleEditor->getOrCreateStateSet()->setAttributeAndModes( new osg::Depth(osg::Depth::ALWAYS,0,1,false) );
+
+            // micro-manage the render order to get things just right:
+            _workGroup->getOrCreateStateSet()->setRenderBinDetails( 15, "TraversalOrderBin" );
+            _workGroup->addChild( _circle.get() );
+            _workGroup->addChild( _dragXform.get() );
+            _workGroup->addChild( _ghostModel.get() );
+            _workGroup->addChild( _circleEditor.get() );
         }
     }
 }
@@ -190,36 +236,10 @@ FeatureDraggerTool::handle( const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAd
 
     if ( _dragXform.valid() )
     {
-        if ( ea.getEventType() == ea.DRAG )
-        {
-            //OE_TEST << LC << "DRAG" << std::endl;
-
-            // get the position under the mouse, and use that as the anchor point for dragging.
-            osg::Vec3d mouseWorld;
-            if (_mapNode->getTerrain()->getWorldCoordsUnderMouse(aa.asView(), ea.getX(), ea.getY(), mouseWorld) )
-            {
-                GeoPoint mouseMap;
-                _mapNode->getMap()->worldPointToMapPoint(mouseWorld, mouseMap);
-                mouseMap.z() += _verticalOffset;
-
-                osg::Matrixd local2world;
-                _mapNode->getMapSRS()->createLocalToWorld(mouseMap.vec3d(), local2world);
-                _dragXform->setMatrix( local2world );
-                aa.requestRedraw();
-                return true;
-            }
-        }
-
-        else if ( ea.getEventType() == ea.RELEASE )
+        if ( ea.getEventType() == ea.KEYDOWN && ea.getKey() == ea.KEY_Escape )
         {
             cancel();
             aa.requestRedraw();
-            handled = true;
-        }
-            
-        else if ( ea.getEventType() != ea.FRAME )
-        {
-            // capture and supress further events if drag is in progress.
             handled = true;
         }
     }
@@ -229,21 +249,70 @@ FeatureDraggerTool::handle( const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAd
 
 
 void
+FeatureDraggerTool::setPosition( const GeoPoint& pos )
+{
+    if ( _circleEditor.valid() )
+    {
+        _circleEditor->setPosition( pos );
+        syncToDraggers();
+    }
+}
+
+
+void
+FeatureDraggerTool::setRotation( const Angle& rot )
+{
+    if ( _circleEditor.valid() )
+    {
+        _circleEditor->setBearing( rot );
+        syncToDraggers();
+    }
+}
+
+
+void
+FeatureDraggerTool::syncToDraggers()
+{
+    // position the feature based on the circle annotation's draggers:
+    GeoPoint pos = _circleEditor->getPositionDragger()->getPosition();
+    GeoPoint rad = _circleEditor->getRadiusDragger()->getPosition();
+
+    pos.makeGeographic();
+    rad.makeGeographic();
+
+    double bearing = GeoMath::bearing( 
+        osg::DegreesToRadians(pos.y()), osg::DegreesToRadians(pos.x()),
+        osg::DegreesToRadians(rad.y()), osg::DegreesToRadians(rad.x()) );
+
+    osg::Matrixd local2world;
+    pos.createLocalToWorld( local2world );
+
+    // rotate the building:
+    osg::Quat rot( osg::PI_2-bearing, osg::Vec3d(0,0,1) );
+    local2world.preMultRotate( rot );
+
+    // move the building:
+    _dragXform->setMatrix(local2world);
+
+    // only show the ghost when the ghost and dragger are sufficiently separated.
+    _ghostModel->setNodeMask( _dragXform->getBound().intersects( _ghostModel->getBound() ) ? 0 : ~0 );
+}
+
+
+void
 FeatureDraggerTool::cancel()
 {
-    if ( _dragXform.valid() )
+    if ( _workGroup.valid() )
     {
-        if ( _dragXform->getNumParents() > 0 )
-            _dragXform->getParent(0)->removeChild(_dragXform.get());
-        _dragXform = 0L;
+        if ( _workGroup->getNumParents() > 0 )
+            _workGroup->getParent(0)->removeChild(_workGroup.get());
+        _workGroup = 0L;
     }
 
-    if ( _ghostModel.valid() )
-    {
-        if ( _ghostModel->getNumParents() > 0 )
-            _ghostModel->getParent(0)->removeChild(_ghostModel.get());
-        _ghostModel = 0L;
-    }
+    _dragXform = 0L;
+    _ghostModel = 0L;
+    _circle = 0L;
+    _circleEditor = 0L;
 
     _drawSet.setVisible( true );
     _drawSet.clear();
@@ -253,6 +322,7 @@ FeatureDraggerTool::cancel()
 osg::Node*
 FeatureDraggerTool::configureDragger( osg::Node* node ) const
 {
+    //nop
     return node;
 }
 
@@ -264,7 +334,7 @@ FeatureDraggerTool::configureGhost( osg::Node* node ) const
 
     // note: everything here must be OVERRIDE so we override the default state of the ghost model.
 
-    s->setRenderBinDetails( 10, "DepthSortedBin", osg::StateSet::USE_RENDERBIN_DETAILS );
+    //s->setRenderBinDetails( 10, "DepthSortedBin", osg::StateSet::USE_RENDERBIN_DETAILS );
     s->setMode( GL_BLEND,    osg::StateAttribute::ON  | osg::StateAttribute::OVERRIDE );
     s->setMode( GL_LIGHTING, osg::StateAttribute::OFF | osg::StateAttribute::OVERRIDE );
 

@@ -17,7 +17,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 
-#include <osgEarthUtil/FeatureDraggerTool>
+#include <osgEarthUtil/FeatureManipTool>
 #include <osgEarthAnnotation/CircleNode>
 #include <osgEarthAnnotation/AnnotationEditing>
 #include <osgEarth/ECEF>
@@ -25,7 +25,7 @@
 #include <osgViewer/View>
 #include <osg/Depth>
 
-#define LC "[FeatureDraggerTool] "
+#define LC "[FeatureManipTool] "
 
 #define OE_TEST OE_INFO
 
@@ -96,36 +96,32 @@ namespace
     // Dragger callback to simply hooks back into the DraggerTool.
     struct DraggerCallback : public Dragger::PositionChangedCallback
     {
-        DraggerCallback( FeatureDraggerTool* tool ) : _tool(tool) { }
+        DraggerCallback( FeatureManipTool* tool ) : _tool(tool) { }
 
         void onPositionChanged(const Dragger* sender, const osgEarth::GeoPoint& pos)
         {
             _tool->syncToDraggers();
         }
 
-        FeatureDraggerTool* _tool;
+        FeatureManipTool* _tool;
     };
 }
 
 //-----------------------------------------------------------------------
 
-FeatureDraggerTool::FeatureDraggerTool(MapNode*          mapNode,
-                                       FeatureQueryTool* queryTool ) :
-_mapNode( mapNode )
+FeatureManipTool::FeatureManipTool(MapNode* mapNode) :
+FeatureQueryTool( mapNode )
 {
-    if ( queryTool )
-    {
-        // install this object as a query callback so we will receive messages.
-        queryTool->addCallback( this );
+    // install this object as a query callback so we will receive messages.
+    this->addCallback( this );
 
-        // a custom input predicate so we can be dragging
-        queryTool->setInputPredicate( new CustomQueryPredicate );
-    }
+    // a custom input predicate that triggers manip mode
+    this->setInputPredicate( new CustomQueryPredicate );
 }
 
 
 void 
-FeatureDraggerTool::onHit( FeatureSourceIndexNode* index, FeatureID fid, const EventArgs& args )
+FeatureManipTool::onHit( FeatureSourceIndexNode* index, FeatureID fid, const EventArgs& args )
 {
     //OE_TEST << LC << "onHit" << std::endl;
 
@@ -152,13 +148,13 @@ FeatureDraggerTool::onHit( FeatureSourceIndexNode* index, FeatureID fid, const E
         osg::ref_ptr<osg::Node> node;
 
         // create a copy of the drawset's geometry for dragging:
-        osg::Node* dragModel = _drawSet.createCopy();
-        if ( dragModel )
+        osg::Node* manipModel = _drawSet.createCopy();
+        if ( manipModel )
         {
             _workGroup = new osg::Group();
             _mapNode->addChild( _workGroup.get() );
 
-            anchorWorld = dragModel->getBound().center();
+            anchorWorld = manipModel->getBound().center();
             
             // calculate the vertical offset of the anchor point from the ground
             GeoPoint anchorMap;
@@ -170,7 +166,7 @@ FeatureDraggerTool::onHit( FeatureSourceIndexNode* index, FeatureID fid, const E
             anchorMap.toWorld( anchorWorld );
 
             // set up the dragged model's appearance:
-            configureDragger( dragModel );
+            configureManip( manipModel );
 
             // create a SECOND copy of the drawset's geometry that will act as the "ghost" model -- 
             // it will sit in its original position to "remind" the user of where the drag started.
@@ -184,7 +180,7 @@ FeatureDraggerTool::onHit( FeatureSourceIndexNode* index, FeatureID fid, const E
             anchorMap.createWorldToLocal( world2local_anchor );
 
             osg::MatrixTransform* world2local_xform = new osg::MatrixTransform(world2local_anchor);
-            world2local_xform->addChild( dragModel );
+            world2local_xform->addChild( manipModel );
 
             // next, create the positioner matrix that goes from the local coordinates to mouse
             // world coords. This is the matrix that will change as the user drags the mouse.
@@ -192,8 +188,8 @@ FeatureDraggerTool::onHit( FeatureSourceIndexNode* index, FeatureID fid, const E
             osg::Matrixd local2world_anchor;
             local2world_anchor.invert( world2local_anchor );
 
-            _dragXform = new osg::MatrixTransform( local2world_anchor );
-            _dragXform->addChild( world2local_xform );
+            _manipModel = new osg::MatrixTransform( local2world_anchor );
+            _manipModel->addChild( world2local_xform );
 
             // hide the original draw set.
             _drawSet.setVisible( false );
@@ -202,7 +198,7 @@ FeatureDraggerTool::onHit( FeatureSourceIndexNode* index, FeatureID fid, const E
             Style circleStyle;
             circleStyle.getOrCreate<PolygonSymbol>()->fill()->color() = Color(Color::Yellow, 0.25);
             circleStyle.getOrCreate<LineSymbol>()->stroke()->color() = Color::White;
-            const osg::BoundingSphere& bs = dragModel->getBound();
+            const osg::BoundingSphere& bs = manipModel->getBound();
             _circle = new CircleNode( _mapNode, anchorMap, Distance(bs.radius()*1.5), circleStyle, false );
             _circle->getOrCreateStateSet()->setAttributeAndModes( new osg::Depth(osg::Depth::ALWAYS,0,1,false) );
 
@@ -214,7 +210,7 @@ FeatureDraggerTool::onHit( FeatureSourceIndexNode* index, FeatureID fid, const E
             // micro-manage the render order to get things just right:
             _workGroup->getOrCreateStateSet()->setRenderBinDetails( 15, "TraversalOrderBin" );
             _workGroup->addChild( _circle.get() );
-            _workGroup->addChild( _dragXform.get() );
+            _workGroup->addChild( _manipModel.get() );
             _workGroup->addChild( _ghostModel.get() );
             _workGroup->addChild( _circleEditor.get() );
         }
@@ -223,33 +219,14 @@ FeatureDraggerTool::onHit( FeatureSourceIndexNode* index, FeatureID fid, const E
 
 
 void 
-FeatureDraggerTool::onMiss( const EventArgs& args )
+FeatureManipTool::onMiss( const EventArgs& args )
 {
     cancel();
 }
 
 
-bool
-FeatureDraggerTool::handle( const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& aa )
-{
-    bool handled = false;
-
-    if ( _dragXform.valid() )
-    {
-        if ( ea.getEventType() == ea.KEYDOWN && ea.getKey() == ea.KEY_Escape )
-        {
-            cancel();
-            aa.requestRedraw();
-            handled = true;
-        }
-    }
-
-    return handled;
-}
-
-
 void
-FeatureDraggerTool::setPosition( const GeoPoint& pos )
+FeatureManipTool::setPosition( const GeoPoint& pos )
 {
     if ( _circleEditor.valid() )
     {
@@ -260,7 +237,7 @@ FeatureDraggerTool::setPosition( const GeoPoint& pos )
 
 
 void
-FeatureDraggerTool::setRotation( const Angle& rot )
+FeatureManipTool::setRotation( const Angle& rot )
 {
     if ( _circleEditor.valid() )
     {
@@ -271,7 +248,7 @@ FeatureDraggerTool::setRotation( const Angle& rot )
 
 
 void
-FeatureDraggerTool::syncToDraggers()
+FeatureManipTool::syncToDraggers()
 {
     // position the feature based on the circle annotation's draggers:
     GeoPoint pos = _circleEditor->getPositionDragger()->getPosition();
@@ -287,20 +264,20 @@ FeatureDraggerTool::syncToDraggers()
     osg::Matrixd local2world;
     pos.createLocalToWorld( local2world );
 
-    // rotate the building:
+    // rotate the feature:
     osg::Quat rot( osg::PI_2-bearing, osg::Vec3d(0,0,1) );
     local2world.preMultRotate( rot );
 
-    // move the building:
-    _dragXform->setMatrix(local2world);
+    // move the feature:
+    _manipModel->setMatrix(local2world);
 
     // only show the ghost when the ghost and dragger are sufficiently separated.
-    _ghostModel->setNodeMask( _dragXform->getBound().intersects( _ghostModel->getBound() ) ? 0 : ~0 );
+    _ghostModel->setNodeMask( _manipModel->getBound().intersects( _ghostModel->getBound() ) ? 0 : ~0 );
 }
 
 
 void
-FeatureDraggerTool::cancel()
+FeatureManipTool::cancel()
 {
     if ( _workGroup.valid() )
     {
@@ -309,7 +286,7 @@ FeatureDraggerTool::cancel()
         _workGroup = 0L;
     }
 
-    _dragXform = 0L;
+    _manipModel = 0L;
     _ghostModel = 0L;
     _circle = 0L;
     _circleEditor = 0L;
@@ -320,7 +297,7 @@ FeatureDraggerTool::cancel()
 
 
 osg::Node*
-FeatureDraggerTool::configureDragger( osg::Node* node ) const
+FeatureManipTool::configureManip( osg::Node* node ) const
 {
     //nop
     return node;
@@ -328,7 +305,7 @@ FeatureDraggerTool::configureDragger( osg::Node* node ) const
 
 
 osg::Node*
-FeatureDraggerTool::configureGhost( osg::Node* node ) const
+FeatureManipTool::configureGhost( osg::Node* node ) const
 {
     osg::StateSet* s = node->getOrCreateStateSet();
 

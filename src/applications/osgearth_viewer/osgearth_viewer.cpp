@@ -46,7 +46,7 @@
 #include <osgEarthUtil/FeatureQueryTool>
 
 // testing
-#include <osgEarthUtil/FeatureDraggerTool>
+#include <osgEarthUtil/FeatureManipTool>
 
 #define LC "[viewer] "
 
@@ -483,14 +483,18 @@ main(int argc, char** argv)
     // Feature query tool setup:
     VBox* featureQueryContainer = ControlCanvas::get(&viewer, false)->addControl( new VBox() );
     featureQueryContainer->setHorizAlign( Control::ALIGN_RIGHT );
+#if 0
     FeatureQueryTool* queryTool = new FeatureQueryTool(mapNode);
 //    queryTool->addCallback( new FeatureHighlightCallback() );
 //    queryTool->addCallback( new FeatureReadoutCallback(featureQueryContainer) );
     viewer.addEventHandler( queryTool );
+#endif
 
     // Feature dragger
-    FeatureDraggerTool* draggerTool = new FeatureDraggerTool(mapNode, queryTool);
-    viewer.addEventHandler( draggerTool );
+    FeatureManipTool* manipTool = new FeatureManipTool(mapNode);
+    viewer.addEventHandler( manipTool );
+
+    manipTool->addCallback( new FeatureReadoutCallback(featureQueryContainer) );
 
     return viewer.run();
 }

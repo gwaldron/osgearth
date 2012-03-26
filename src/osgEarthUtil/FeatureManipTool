@@ -40,19 +40,14 @@ namespace osgEarth { namespace Util
     /**
      * Tool that let you select a feature and drag it around.
      */
-    class OSGEARTHUTIL_EXPORT FeatureDraggerTool : public osgGA::GUIEventHandler, 
-                                                   public FeatureQueryTool::Callback
+    class OSGEARTHUTIL_EXPORT FeatureManipTool : public FeatureQueryTool,
+                                                 public FeatureQueryTool::Callback
     {
     public:
         /**
          * Constructs a new feature dragger tool.
          */
-        FeatureDraggerTool(
-            MapNode*          mapNode,
-            FeatureQueryTool* queryTool );
-
-        /** Cancels a drag in process */
-        void cancel();
+        FeatureManipTool( MapNode* mapNode );
 
         /**
          * Sets the position of the dragger
@@ -64,16 +59,17 @@ namespace osgEarth { namespace Util
          */
         void setRotation( const Angle& angle );
 
-
-    public: // GUIEventHandler
-
-        virtual bool handle( const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& aa );
+        /**
+         * Cancels a manipulation in progress
+         */
+        void cancel();
 
 
     public: // FeatureQueryTool::Callback
 
         virtual void onHit( FeatureSourceIndexNode* index, FeatureID fid, const EventArgs& args );
         virtual void onMiss( const EventArgs& args );
+
 
     public: // internal
 
@@ -82,10 +78,10 @@ namespace osgEarth { namespace Util
     protected:
 
         /**
-         * Alters the appearance of the dragged model. Override this method to provide a
+         * Alters the appearance of the "manipulated" model. Override this method to provide a
          * custom appearance.
          */
-        virtual osg::Node* configureDragger( osg::Node* node ) const;
+        virtual osg::Node* configureManip( osg::Node* node ) const;
 
         /**
          * Alters the appearance of the "ghost" model. Override this method to provide a
@@ -94,9 +90,8 @@ namespace osgEarth { namespace Util
         virtual osg::Node* configureGhost( osg::Node* node ) const;
 
     protected:
-        MapNode*                           _mapNode;
         FeatureDrawSet                     _drawSet;
-        osg::ref_ptr<osg::MatrixTransform> _dragXform;
+        osg::ref_ptr<osg::MatrixTransform> _manipModel;
         osg::ref_ptr<osg::Node>            _ghostModel;
         double                             _verticalOffset;
         osg::ref_ptr<CircleNode>           _circle;

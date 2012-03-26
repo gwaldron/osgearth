@@ -21,6 +21,7 @@
 #define OSGEARTHFEATURES_FEATURE_SOURCE_INDEX_NODE_H 1
 
 #include <osgEarthFeatures/Common>
+#include <osgEarthFeatures/FeatureDrawSet>
 #include <osgEarthFeatures/FeatureSource>
 #include <osg/Group>
 #include <osg/Drawable>
@@ -32,7 +33,7 @@ namespace osgEarth { namespace Features
      */
     class FeatureSourceIndex
     {
-    public:
+    public: // tagging functions
         virtual void tagPrimitiveSets( osg::Drawable* drawable, FeatureID fid ) const =0;
         virtual void tagNode( osg::Node* node, FeatureID fid ) const =0;
     };
@@ -49,30 +50,7 @@ namespace osgEarth { namespace Features
          */
 		FeatureSourceIndexNode(FeatureSource* featureSource);
 
-
-    public:       
-        typedef osg::Geometry::PrimitiveSetList            PrimitiveSetList;
-        typedef std::map<osg::Drawable*, PrimitiveSetList> PrimitiveSetGroups;
-        typedef std::vector<osg::Node*>                    NodeVector;
-
-        /**
-         * Contains a catalog of nodes and/or primitive set groups that comprise
-         * a single Feature in the scene.
-         */
-        struct FeatureDrawSet
-        {
-            NodeVector         nodes;
-            PrimitiveSetGroups primSetGroups;
-
-            bool empty() const { return nodes.empty() && primSetGroups.empty(); }
-        };
-
-
-	public:
-        /**
-         * The feature source tied to this node 
-         */
-        FeatureSource* getFeatureSource() { return _featureSource.get(); }
+    public: // FeatureSourceIndex
 
         /**
          * Tags all the primitive sets in a Drawable with the specified FeatureID.
@@ -83,6 +61,13 @@ namespace osgEarth { namespace Features
          * Tags a node with the specified FeatureID.
          */
         void tagNode( osg::Node* node, FeatureID fid ) const;
+
+
+	public:
+        /**
+         * The feature source tied to this node 
+         */
+        FeatureSource* getFeatureSource() { return _featureSource.get(); }
 
         /**
          * Traverses this node's subgraph and rebuilds the feature index based on

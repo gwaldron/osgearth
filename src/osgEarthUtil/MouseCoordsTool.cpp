@@ -74,7 +74,7 @@ _label    ( label ),
 _formatter( formatter )
 {
     if ( !formatter )
-        _formatter = new LatLongFormatter();
+        _formatter = new LatLongFormatter( LatLongFormatter::FORMAT_DECIMAL_DEGREES );
 }
 
 void

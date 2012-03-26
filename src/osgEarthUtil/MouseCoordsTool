@@ -87,7 +87,7 @@ namespace osgEarth { namespace Util
     class OSGEARTHUTIL_EXPORT MouseCoordsLabelCallback : public MouseCoordsTool::Callback
     {
     public:
-        MouseCoordsLabelCallback( LabelControl* label, Formatter* formatter );
+        MouseCoordsLabelCallback( LabelControl* label, Formatter* formatter =0L );
 
         virtual void set( const GeoPoint& coords, osg::View* view, MapNode* mapNode );
         virtual void reset( osg::View* view, MapNode* mapNode );

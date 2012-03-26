@@ -17,6 +17,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 #include <osgEarthFeatures/FeatureSourceIndexNode>
+#include <osg/MatrixTransform>
 #include <algorithm>
 
 using namespace osgEarth;
@@ -45,7 +46,7 @@ FeatureSourceIndexNode::Collect::apply( osg::Node& node )
     if ( fid )
     {
         FeatureDrawSet& drawSet = _index[*fid];
-        drawSet.nodes.push_back( &node );
+        drawSet.nodes().push_back( &node );
     }
     traverse(node);
 }
@@ -57,7 +58,7 @@ FeatureSourceIndexNode::Collect::apply( osg::Geode& geode )
     if ( fid )
     {
         FeatureDrawSet& drawSet = _index[*fid];
-        drawSet.nodes.push_back( &geode );
+        drawSet.nodes().push_back( &geode );
     }
     else
     {
@@ -74,7 +75,7 @@ FeatureSourceIndexNode::Collect::apply( osg::Geode& geode )
                     if ( fid )
                     {
                         FeatureDrawSet& drawSet = _index[*fid];
-                        drawSet.primSetGroups[geom].push_back( pset );
+                        drawSet.getOrCreateSlice(geom).push_back(pset);
                         _psets++;
                     }
                 }
@@ -120,8 +121,8 @@ FeatureSourceIndexNode::tagPrimitiveSets(osg::Drawable* drawable, FeatureID fid)
 
     RefFeatureID* rfid = 0L;
 
-    PrimitiveSetList& plist = geom->getPrimitiveSetList();
-    for( PrimitiveSetList::iterator p = plist.begin(); p != plist.end(); ++p )
+    osg::Geometry::PrimitiveSetList& plist = geom->getPrimitiveSetList();
+    for( osg::Geometry::PrimitiveSetList::iterator p = plist.begin(); p != plist.end(); ++p )
     {
         if ( !rfid )
             rfid = new RefFeatureID(fid);
@@ -162,16 +163,16 @@ FeatureSourceIndexNode::getFID(osg::Drawable* drawable, int primIndex, FeatureID
     for( FeatureIDDrawSetMap::const_iterator i = _drawSets.begin(); i != _drawSets.end(); ++i )
     {
         const FeatureDrawSet& drawSet = i->second;
-        PrimitiveSetGroups::const_iterator d = drawSet.primSetGroups.find(drawable);
-        if ( d != drawSet.primSetGroups.end() )
+        FeatureDrawSet::DrawableSlices::const_iterator d = drawSet.slice(drawable);
+        if ( d != drawSet.slices().end() )
         {
             const osg::Geometry* geom = drawable->asGeometry();
             if ( geom )
             {
-                const PrimitiveSetList& geomPrimSets = geom->getPrimitiveSetList();
+                const osg::Geometry::PrimitiveSetList& geomPrimSets = geom->getPrimitiveSetList();
 
                 unsigned encounteredPrims = 0;
-                for( PrimitiveSetList::const_iterator p = geomPrimSets.begin(); p != geomPrimSets.end(); ++p )
+                for( osg::Geometry::PrimitiveSetList::const_iterator p = geomPrimSets.begin(); p != geomPrimSets.end(); ++p )
                 {
                     const osg::PrimitiveSet* pset = p->get();
                     unsigned numPrims = pset->getNumPrimitives();
@@ -212,7 +213,7 @@ FeatureSourceIndexNode::getFID(osg::Drawable* drawable, int primIndex, FeatureID
 
 
 
-FeatureSourceIndexNode::FeatureDrawSet&
+FeatureDrawSet&
 FeatureSourceIndexNode::getDrawSet(const FeatureID& fid )
 {
     static FeatureDrawSet s_empty;

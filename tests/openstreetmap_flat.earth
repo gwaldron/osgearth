@@ -16,9 +16,6 @@ invert the Y tile index.
     <options>
         <profile>global-mercator</profile>
         <lighting>false</lighting>
-        <terrain>
-            <loading_policy mode="preemptive"/>
-        </terrain>
     </options>
     
     <image name="OSM on Mapnik" driver="tms">

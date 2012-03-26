@@ -235,13 +235,12 @@ int main(int argc, char** argv)
     s_root = new osg::Group;
     s_root->addChild( s_mapNode.get() );
 
-    Session* session = new Session(s_mapNode->getMap(), styleSheet);
+    Session* session = new Session(s_mapNode->getMap(), styleSheet, s_source.get());
 
     FeatureModelGraph* graph = new FeatureModelGraph( 
-        s_source.get(), 
+        session,
         FeatureModelSourceOptions(), 
-        new GeomFeatureNodeFactory(),
-        session );
+        new GeomFeatureNodeFactory() );
 
     graph->getOrCreateStateSet()->setMode(GL_LIGHTING, osg::StateAttribute::OFF);
     graph->getOrCreateStateSet()->setMode(GL_DEPTH_TEST, osg::StateAttribute::OFF);

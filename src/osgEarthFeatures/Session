@@ -34,6 +34,7 @@ namespace osgEarth { namespace Features
     using namespace osgEarth::Symbology;
 
 	class FeatureSource;
+
     /**
      * Session is a state object that exists throughout the life of one or more related
      * feature compilations.
@@ -53,7 +54,7 @@ namespace osgEarth { namespace Features
         /**
          * Constructs a new Session that is tied to a map
          */
-        Session( const Map* map, StyleSheet* styles =0L, const osgDB::Options* dbOptions =0L );
+        Session( const Map* map, StyleSheet* styles =0L, FeatureSource* source =0L, const osgDB::Options* dbOptions =0L );
 		virtual ~Session();
 
         /**
@@ -77,9 +78,7 @@ namespace osgEarth { namespace Features
         StyleSheet* styles() const { return _styles.get(); }
 
         /** Gets the current feature source */
-		FeatureSource * getFeatureSource() const;
-        /** Sets the current feature source */
-		void setFeatureSource(FeatureSource * source);
+		FeatureSource* getFeatureSource() const;
 
         /** The I/O options for operations within this session */
         const osgDB::Options* getDBOptions() const;
@@ -130,8 +129,8 @@ namespace osgEarth { namespace Features
         MapInfo                            _mapInfo;
         osg::ref_ptr<StyleSheet>           _styles;
         osg::ref_ptr<const osgDB::Options> _dbOptions;
-        osg::ref_ptr<ScriptEngine>     _styleScriptEngine;
-        osg::ref_ptr<FeatureSource>    _featureSource;
+        osg::ref_ptr<ScriptEngine>         _styleScriptEngine;
+        osg::ref_ptr<FeatureSource>        _featureSource;
     };
 
 } }

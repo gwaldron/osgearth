@@ -35,10 +35,11 @@ using namespace osgEarth::Features;
 
 //---------------------------------------------------------------------------
 
-Session::Session( const Map* map, StyleSheet* styles, const osgDB::Options* dbOptions ) :
+Session::Session( const Map* map, StyleSheet* styles, FeatureSource* source, const osgDB::Options* dbOptions ) :
 osg::Referenced( true ),
 _map           ( map ),
 _mapInfo       ( map ),
+_featureSource ( source ),
 _dbOptions     ( dbOptions )
 {
     if ( styles )
@@ -91,14 +92,9 @@ Session::getScriptEngine() const
 {
   return _styleScriptEngine.get();
 }
-FeatureSource *
+
+FeatureSource*
 Session::getFeatureSource() const 
 { 
 	return _featureSource.get(); 
-}
-
-void 
-Session::setFeatureSource(FeatureSource * source)
-{ 
-	_featureSource = source;
 }

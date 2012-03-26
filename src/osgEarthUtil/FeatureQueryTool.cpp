@@ -58,7 +58,7 @@ FeatureQueryTool::handle( const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdap
 
     if ( _inputPredicate.valid() )
     {
-        attempt = _inputPredicate->test(ea);
+        attempt = _inputPredicate->accept(ea);
     }
     else
     {
@@ -87,6 +87,7 @@ FeatureQueryTool::handle( const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdap
             FeatureSourceIndexNode* closestIndex    = 0L;
             FeatureID               closestFID;
             double                  closestDistance = DBL_MAX;
+            osg::Vec3d              closestWorldPt;
 
             for(Picker::Hits::iterator hit = hits.begin(); hit != hits.end(); ++hit )
             {
@@ -99,6 +100,7 @@ FeatureQueryTool::handle( const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdap
                         closestIndex    = index;
                         closestFID      = fid;
                         closestDistance = hit->distance;
+                        closestWorldPt  = hit->matrix.valid() ? hit->localIntersectionPoint * (*hit->matrix.get()) : hit->localIntersectionPoint;
                     }
                 }
             }
@@ -110,9 +112,20 @@ FeatureQueryTool::handle( const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdap
                 Callback::EventArgs args;
                 args._ea = &ea;
                 args._aa = &aa;
+                args._worldPoint = closestWorldPt;
 
-                for( Callbacks::iterator i = _callbacks.begin(); i != _callbacks.end(); ++i )
-                    i->get()->onHit( closestIndex, closestFID, args );
+                for( Callbacks::iterator i = _callbacks.begin(); i != _callbacks.end(); )
+                {
+                    if ( i->valid() )
+                    {
+                        i->get()->onHit( closestIndex, closestFID, args );
+                        ++i;
+                    }
+                    else
+                    {
+                        i = _callbacks.erase( i );
+                    }
+                }
 
                 handled = true;
             }
@@ -126,8 +139,18 @@ FeatureQueryTool::handle( const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdap
             args._ea = &ea;
             args._aa = &aa;
 
-            for( Callbacks::iterator i = _callbacks.begin(); i != _callbacks.end(); ++i )
-                i->get()->onMiss( args );
+            for( Callbacks::iterator i = _callbacks.begin(); i != _callbacks.end(); )
+            {
+                if ( i->valid() )
+                {
+                    i->get()->onMiss( args );
+                    ++i;
+                }
+                else
+                {
+                    i = _callbacks.erase( i );
+                }
+            }
         }
 
         _mouseDown = false;
@@ -154,16 +177,18 @@ FeatureHighlightCallback::onHit( FeatureSourceIndexNode* index, FeatureID fid, c
 {
     clear();
 
-    FeatureSourceIndexNode::FeatureDrawSet& drawSet = index->getDrawSet(fid);
+    FeatureDrawSet& drawSet = index->getDrawSet(fid);
     if ( !drawSet.empty() )
     {
         osg::Group* container = 0L;
         osg::Group* group = new osg::Group();
         osg::Geode* geode = 0L;
 
-        for( FeatureSourceIndexNode::PrimitiveSetGroups::iterator d = drawSet.primSetGroups.begin(); d != drawSet.primSetGroups.end(); ++d )
+        for( FeatureDrawSet::DrawableSlices::iterator d = drawSet.slices().begin(); d != drawSet.slices().end(); ++d )
         {
-            osg::Geometry* featureGeom = d->first->asGeometry();
+            FeatureDrawSet::DrawableSlice& slice = *d;
+            osg::Geometry* featureGeom = slice.first->asGeometry();
+
             osg::Geometry* highlightGeom = new osg::Geometry( *featureGeom, osg::CopyOp::SHALLOW_COPY );
             osg::Vec4Array* highlightColor = new osg::Vec4Array(1);
             (*highlightColor)[0] = osg::Vec4f(0,1,1,0.5);
@@ -189,7 +214,7 @@ FeatureHighlightCallback::onHit( FeatureSourceIndexNode* index, FeatureID fid, c
             }
         }
 
-        for( FeatureSourceIndexNode::NodeVector::iterator n = drawSet.nodes.begin(); n != drawSet.nodes.end(); ++n )
+        for( FeatureDrawSet::Nodes::iterator n = drawSet.nodes().begin(); n != drawSet.nodes().end(); ++n )
         {
             group->addChild( *n );
             if ( !container )

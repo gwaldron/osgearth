@@ -21,6 +21,8 @@
 #define OSGEARTH_CULLING_UTILS_H 1
 
 #include <osgEarth/Common>
+#include <osg/NodeCallback>
+#include <osg/Vec3d>
 
 namespace osgEarth
 {

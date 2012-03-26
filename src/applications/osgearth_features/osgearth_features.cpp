@@ -23,6 +23,7 @@
 #include <osgViewer/ViewerEventHandlers>
 #include <osgEarth/Map>
 #include <osgEarth/MapNode>
+#include <osgEarthUtil/ExampleResources>
 #include <osgEarthUtil/EarthManipulator>
 #include <osgEarthUtil/AutoClipPlaneHandler>
 
@@ -43,13 +44,32 @@ using namespace osgEarth::Drivers;
 using namespace osgEarth::Symbology;
 using namespace osgEarth::Util;
 
+int usage( const std::string& app )
+{
+    OE_NOTICE "\n" << app << "\n"
+        << "    --rasterize           : draw features as rasterized image tiles \n"
+        << "    --overlay             : draw features as projection texture \n"
+        << "    --stencil             : draw features using the stencil buffer \n"
+        << "    --mem                 : load features from memory \n"
+        << "    --labels              : add feature labels \n"
+        << "\n"
+        << ExampleMapNodeHelper().usage();
+
+    return -1;
+}
+
 //
 // NOTE: run this sample from the repo/tests directory.
 //
 int main(int argc, char** argv)
 {
     osg::ArgumentParser arguments(&argc,argv);
-    osg::DisplaySettings::instance()->setMinimumNumStencilBits( 8 );
+
+    if ( arguments.read("--help") )
+        return usage( argv[0] );
+
+    if ( arguments.read("--stencil") )
+        osg::DisplaySettings::instance()->setMinimumNumStencilBits( 8 );
 
     bool useRaster  = arguments.read("--rasterize");
     bool useOverlay = arguments.read("--overlay");
@@ -103,6 +123,12 @@ int main(int argc, char** argv)
     MapNodeOptions mapNodeOptions;
     mapNodeOptions.enableLighting() = false;
     MapNode* mapNode = new MapNode( map, mapNodeOptions );
+
+    osg::Group* root = new osg::Group();
+    root->addChild( mapNode );
+
+    // Process cmdline args
+    ExampleMapNodeHelper().parse(mapNode, arguments, &viewer, root);
    
     if (useStencil)
     {
@@ -161,7 +187,7 @@ int main(int argc, char** argv)
         map->addModelLayer( new ModelLayer("labels", geomOptions) );
     }
 
-    viewer.setSceneData( mapNode );
+    viewer.setSceneData( root );
     viewer.setCameraManipulator( new EarthManipulator() );
 
     if ( !useStencil )

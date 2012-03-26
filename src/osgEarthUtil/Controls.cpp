@@ -1910,7 +1910,7 @@ namespace osgEarth { namespace Util { namespace Controls
             // must save the manipulator matrix b/c calling setSceneData causes
             // the view to call home() on the manipulator.
             osg::Matrixd savedMatrix;
-            osgGA::MatrixManipulator* manip = view2->getCameraManipulator();
+            osgGA::CameraManipulator* manip = view2->getCameraManipulator();
             if ( manip )
                 savedMatrix = manip->getMatrix();
 

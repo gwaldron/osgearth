@@ -20,6 +20,7 @@
 #define OSGEARTH_CONFIG_H 1
 
 #include <osgEarth/Common>
+#include <osgEarth/optional>
 #include <osgEarth/StringUtils>
 #include <osg/Object>
 #include <osg/Version>

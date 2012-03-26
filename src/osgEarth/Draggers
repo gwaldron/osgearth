@@ -25,6 +25,7 @@
 
 #include <osg/MatrixTransform>
 #include <osg/ShapeDrawable>
+#include <osgGA/GUIEventHandler>
 
 namespace osgEarth
 {

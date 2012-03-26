@@ -23,7 +23,9 @@
 #include <OpenThreads/Condition>
 #include <OpenThreads/Mutex>
 #include <OpenThreads/ReentrantMutex>
+#include <osg/ref_ptr>
 #include <set>
+#include <map>
 
 #define USE_CUSTOM_READ_WRITE_LOCK 1
 //#ifdef _DEBUG

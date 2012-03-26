@@ -22,6 +22,7 @@
 
 #include <osgEarth/Export>
 #include <osg/Notify>
+#include <string>
 
 namespace osgEarth
 {

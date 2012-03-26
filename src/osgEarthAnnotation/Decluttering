@@ -22,6 +22,7 @@
 #include <osgEarthAnnotation/Common>
 #include <osgEarth/Config>
 #include <osg/Drawable>
+#include <osgUtil/RenderLeaf>
 #include <limits.h>
 
 /**

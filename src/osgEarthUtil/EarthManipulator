@@ -24,6 +24,7 @@
 #include <osgEarth/Viewpoint>
 #include <osgEarth/MapNode>
 #include <osg/Timer>
+#include <osgGA/CameraManipulator>
 #include <map>
 #include <list>
 #include <utility>
@@ -39,7 +40,7 @@ namespace osgEarth { namespace Util
      * and navigation parameters. Create one or more of these and call 
      * applySettings() to "program" the manipulator at runtime.
      */
-    class OSGEARTHUTIL_EXPORT EarthManipulator : public osgGA::MatrixManipulator
+    class OSGEARTHUTIL_EXPORT EarthManipulator : public osgGA::CameraManipulator
     {
     public:
 
@@ -638,6 +639,7 @@ namespace osgEarth { namespace Util
         virtual osg::Node* getNode();
 
         // Move the camera to the default position.
+        virtual void home(double /*unused*/);
         virtual void home(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& us);
         
         // Start/restart the manipulator.
@@ -754,9 +756,9 @@ namespace osgEarth { namespace Util
         //osg::ref_ptr<osg::Node> _node;
         osg::observer_ptr<osg::Node> _node;
         osg::observer_ptr<osg::CoordinateSystemNode> _csn;
-#ifdef USE_OBSERVER_NODE_PATH
+//#ifdef USE_OBSERVER_NODE_PATH
         osg::ObserverNodePath _csnObserverPath;
-#endif
+//#endif
         osg::NodePath _csnPath;
 
         osg::ref_ptr<const osgEarth::SpatialReference> _cached_srs;

@@ -327,7 +327,8 @@ FeatureManipTool::configureGhost( osg::Node* node ) const
     // make it a nice transparent color
     // careful, the ghost is a "shallow copy" of the original, so don't go modifying any buffer objects!
     // (replacing them is OK though.)
-    node->accept( ColorReplacer(osg::Vec4f(0.5f, 0.5f, 1.0f, 0.35f)) );
+    ColorReplacer replacer(osg::Vec4f(0.5f, 0.5f, 1.0f, 0.35f));
+    node->accept( replacer );
 
     return node;
 }

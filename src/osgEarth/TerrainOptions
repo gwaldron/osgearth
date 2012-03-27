@@ -21,7 +21,8 @@
 
 #include <osgEarth/Common>
 #include <osgEarth/Config>
-#include <osgEarth/HeightFieldUtils>
+#include <osgEarth/GeoCommon>
+#include <osg/Texture>
 
 namespace osgEarth
 {

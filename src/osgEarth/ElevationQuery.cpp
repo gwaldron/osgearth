@@ -1,7 +1,6 @@
 #include <osgEarth/ElevationQuery>
 #include <osgEarth/Locators>
-#include <osgTerrain/TerrainTile>
-#include <osgTerrain/GeometryTechnique>
+#include <osgEarth/HeightFieldUtils>
 #include <osgUtil/IntersectionVisitor>
 #include <osgUtil/LineSegmentIntersector>
 
@@ -262,7 +261,6 @@ ElevationQuery::getElevationImpl(const GeoPoint& point,
         }
     }
 
-    //osg::ref_ptr<osgTerrain::TerrainTile> tile;
     osg::ref_ptr<osg::HeightField> tile;
 
     // get the tilekey corresponding to the tile we need:

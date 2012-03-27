@@ -23,7 +23,7 @@
 #include <osgEarth/Config>
 #include <osgEarth/Cache>
 #include <osgEarth/CachePolicy>
-#include <osgEarth/HeightFieldUtils>
+#include <osgEarth/GeoCommon>
 #include <osgEarth/HTTPClient>
 #include <osgEarth/Profile>
 #include <osgEarth/TerrainOptions>

@@ -1,5 +1,6 @@
 #include <osgEarthUtil/ElevationManager>
 #include <osgEarth/Locators>
+#include <osgEarth/HeightFieldUtils>
 #include <osgTerrain/TerrainTile>
 #include <osgTerrain/GeometryTechnique>
 #include <osgUtil/IntersectionVisitor>

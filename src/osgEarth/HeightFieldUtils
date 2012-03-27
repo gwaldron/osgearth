@@ -20,6 +20,7 @@
 #define OSGEARTH_HEIGHTFIELDUTILS_H
 
 #include <osgEarth/Common>
+#include <osgEarth/GeoData>
 #include <osg/Shape>
 #include <osg/CoordinateSystemNode>
 #include <osg/ClusterCullingCallback>
@@ -27,33 +28,6 @@
 
 namespace osgEarth
 {
-#define NO_DATA_VALUE -FLT_MAX
-
-    class GeoExtent;
-    class Geoid;
-
-    /**
-     * Heightfield interpolation methods.
-     */
-    enum OSGEARTH_EXPORT ElevationInterpolation
-    {
-        INTERP_AVERAGE,
-        INTERP_NEAREST,
-        INTERP_BILINEAR,
-        INTERP_TRIANGULATE        
-    };
-
-    /**
-     * Heightfield stack sampling policy
-     */
-    enum OSGEARTH_EXPORT ElevationSamplePolicy
-    {
-        SAMPLE_FIRST_VALID,
-        SAMPLE_HIGHEST,
-        SAMPLE_LOWEST,
-        SAMPLE_AVERAGE
-    };
-
     class OSGEARTH_EXPORT HeightFieldUtils
     {
     public:

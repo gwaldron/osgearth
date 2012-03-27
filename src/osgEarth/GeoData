@@ -20,34 +20,18 @@
 #define OSGEARTH_GEODATA_H 1
 
 #include <osgEarth/Common>
+#include <osgEarth/GeoCommon>
 #include <osgEarth/Bounds>
 #include <osgEarth/SpatialReference>
-#include <osgEarth/HeightFieldUtils>
 #include <osgEarth/Units>
 
 #include <osg/Referenced>
 #include <osg/Image>
 #include <osg/Shape>
-#include <osgTerrain/Locator>
-
-#undef ABSOLUTE
 
 namespace osgEarth
 {
     class Terrain;
-
-    /**
-     * Indicates how to interpret a Z coordinate.
-     */
-    namespace AltitudeMode
-    { 
-        enum Enum
-        {
-            ABSOLUTE,            // Z value is the absolute height above MSL/HAE.
-            RELATIVE_TO_TERRAIN  // Z value is the height above the terrain elevation.
-        };
-    }
-    typedef AltitudeMode::Enum AltitudeModeEnum;
 
     /**
      * A georeferenced 3D point.
@@ -245,15 +229,6 @@ namespace osgEarth
         double xMax() const { return east(); }
         double yMin() const { return south(); }
         double yMax() const { return north(); }
-
-        //double xMin() const { return _xmin-_xoffset; }
-        //double& xMin() { return _xmin; }
-        //double yMin() const { return _ymin; }
-        //double& yMin() { return _ymin; }
-        //double xMax() const { return _xmax-_xoffset; }
-        //double& xMax() { return _xmax; }
-        //double yMax() const { return _ymax; }
-        //double& yMax() { return _ymax; }
 
         double width() const;
         double height() const;
@@ -578,8 +553,7 @@ namespace osgEarth
 
     protected:
         osg::ref_ptr<osg::HeightField> _heightField;
-        GeoExtent _extent;
-        //osg::ref_ptr<const VerticalSpatialReference> _vsrs;
+        GeoExtent                      _extent;
     };
 
 	typedef std::vector<GeoHeightField> GeoHeightFieldVector;

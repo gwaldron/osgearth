@@ -18,6 +18,7 @@
  */
 #include <osgEarth/ElevationLayer>
 #include <osgEarth/VerticalDatum>
+#include <osgEarth/HeightFieldUtils>
 #include <osg/Version>
 
 using namespace osgEarth;

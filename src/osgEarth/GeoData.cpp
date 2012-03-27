@@ -19,6 +19,7 @@
 
 #include <osgEarth/GeoData>
 #include <osgEarth/ImageUtils>
+#include <osgEarth/HeightFieldUtils>
 #include <osgEarth/Registry>
 #include <osgEarth/Cube>
 #include <osgEarth/VerticalDatum>

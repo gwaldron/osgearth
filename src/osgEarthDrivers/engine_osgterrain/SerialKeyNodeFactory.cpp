@@ -21,6 +21,7 @@
 #include "FileLocationCallback"
 #include "LODFactorCallback"
 #include <osgEarth/Registry>
+#include <osgEarth/HeightFieldUtils>
 #include <osg/PagedLOD>
 #include <osg/CullStack>
 #include <osg/Uniform>

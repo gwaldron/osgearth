@@ -18,6 +18,7 @@
  */
 
 #include <osgEarth/Geoid>
+#include <osgEarth/HeightFieldUtils>
 
 #define LC "[Geoid] "
 

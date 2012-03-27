@@ -19,6 +19,7 @@
 #include <osgEarth/Map>
 #include <osgEarth/Registry>
 #include <osgEarth/TileSource>
+#include <osgEarth/HeightFieldUtils>
 #include <osgEarth/URI>
 #include <iterator>
 

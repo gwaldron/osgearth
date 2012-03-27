@@ -22,7 +22,6 @@
 #include <osgEarth/Common>
 #include <osgEarth/Units>
 #include <osgEarth/VerticalDatum>
-#include <osg/Referenced>
 #include <osg/CoordinateSystemNode>
 #include <osg/Vec3>
 #include <OpenThreads/ReentrantMutex>
@@ -30,13 +29,12 @@
 namespace osgEarth
 {
     //Definitions for the mercator extent
-    const double MERC_MINX = -20037508.342798; //-2.00375e+007;
-    const double MERC_MINY = -20037508.342798; //2.00375e+007;
-    const double MERC_MAXX =  20037508.342798;  //2.00375e+007;
-    const double MERC_MAXY =  20037508.342798; //2.00375e+007;
+    const double MERC_MINX = -20037508.342798;
+    const double MERC_MINY = -20037508.342798;
+    const double MERC_MAXX =  20037508.342798;
+    const double MERC_MAXY =  20037508.342798;
     const double MERC_WIDTH = MERC_MAXX - MERC_MINX;
     const double MERC_HEIGHT = MERC_MAXY - MERC_MINY;
-
 
     class OSGEARTH_EXPORT GeoLocator;
 

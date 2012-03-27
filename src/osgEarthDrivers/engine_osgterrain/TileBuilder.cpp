@@ -20,6 +20,7 @@
 #include "TransparentLayer"
 #include <osgEarth/ImageUtils>
 #include <osgEarth/TaskService>
+#include <osgEarth/HeightFieldUtils>
 
 using namespace osgEarth;
 using namespace OpenThreads;

@@ -117,6 +117,11 @@ _node(node)
     copyOptions();
 }
 
+ModelLayer::~ModelLayer()
+{
+    OE_DEBUG << "~ModelLayer" << std::endl;
+}
+
 void
 ModelLayer::copyOptions()
 {

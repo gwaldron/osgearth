@@ -38,6 +38,8 @@ using namespace osgEarth::Symbology;
 
 #undef USE_PROXY_NODE_FOR_TESTING
 
+#define OE_TEST OE_NULL
+
 //---------------------------------------------------------------------------
 
 // pseudo-loader for paging in feature tiles for a FeatureModelGraph.
@@ -111,6 +113,7 @@ struct osgEarthFeatureModelPseudoLoader : public osgDB::ReaderWriter
         Threading::ScopedWriteLock lock( _fmgMutex );
         UID key = ++_uid;
         _fmgRegistry[key] = graph;
+        OE_TEST << LC << "Registered FMG " << key << std::endl;
         return key;
     }
 
@@ -118,6 +121,7 @@ struct osgEarthFeatureModelPseudoLoader : public osgDB::ReaderWriter
     {
         Threading::ScopedWriteLock lock( _fmgMutex );
         _fmgRegistry.erase( uid );
+        OE_TEST << LC << "UNregistered FMG " << uid << std::endl;
     }
 
     static FeatureModelGraph* getGraph( UID uid ) 

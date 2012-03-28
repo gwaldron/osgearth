@@ -173,6 +173,9 @@ FeatureModelSource::createNode( ProgressCallback* progress )
     if ( !_factory.valid() )
         return 0L;
 
+    if ( !_map.valid() )
+        return 0L;
+
     if ( !_features.valid() || !_features->getFeatureProfile() )
     {
         OE_WARN << LC << "Invalid feature source" << std::endl;

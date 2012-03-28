@@ -202,7 +202,7 @@ namespace osgEarth { namespace Features
 
         virtual const FeatureModelSourceOptions& getFeatureModelOptions() const { return _options; }
 
-        const osgEarth::Map* getMap() const { return _map.get(); }
+        const Map* getMap() const { return _map.get(); }
 
         /** Creates an implementation-specific data object to be passed to buildNodeForStyle */
         virtual osg::Referenced* createBuildData() { return NULL; }     
@@ -222,7 +222,7 @@ namespace osgEarth { namespace Features
         virtual ~FeatureModelSource() { }
 
         osg::ref_ptr<FeatureSource>        _features;
-        osg::ref_ptr<const Map>            _map;
+        osg::observer_ptr<const Map>       _map;
         const FeatureModelSourceOptions    _options;
         osg::ref_ptr<FeatureNodeFactory>   _factory;
         osg::ref_ptr<const osgDB::Options> _dbOptions;

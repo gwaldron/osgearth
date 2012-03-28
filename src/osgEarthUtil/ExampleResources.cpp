@@ -326,7 +326,7 @@ namespace
                 std::string name = trim(data->getName());
                 if ( name.empty() ) name = "<unnamed>";
                 LabelControl* label = new LabelControl( name, 14.0f );
-                unsigned relDepth = osg::clampAbove(3u, this->getNodePath().size());
+                unsigned relDepth = osg::clampAbove(3u, (unsigned int)this->getNodePath().size());
                 label->setMargin(Gutter(0,0,0,(relDepth-3)*20));
                 if ( data->getViewpoint() )
                 {

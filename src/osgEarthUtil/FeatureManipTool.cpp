@@ -105,6 +105,35 @@ namespace
 
         FeatureManipTool* _tool;
     };
+
+    // updates the verts in a subgraph based on a pair of re-positioning transforms.
+    struct VertexMover : public osg::NodeVisitor
+    {
+        VertexMover(const osg::Matrixd& l2w_orig, const osg::Matrix&  w2l_new)
+            : _local2world0(l2w_orig), _world2local1(w2l_new), osg::NodeVisitor(osg::NodeVisitor::TRAVERSE_ALL_CHILDREN) { }
+
+        void apply(osg::Geode& geode)
+        {
+            for( unsigned i=0; i<geode.getNumDrawables(); ++i )
+            {
+                osg::Geometry* g = geode.getDrawable(i)->asGeometry();
+                if ( g )
+                {
+                    osg::Vec3Array* verts = dynamic_cast<osg::Vec3Array*>( g->getVertexArray() );
+                    for( osg::Vec3Array::iterator i = verts->begin(); i != verts->end(); ++i )
+                    {
+                        osg::Vec3d vert3d = *i;
+                        osg::Vec3d vertWorld0 = vert3d * _local2world0;
+                        osg::Vec3d vertLocal1 = vertWorld0 * _world2local1;
+                        *i = vertLocal1;
+                    }
+                }
+            }
+            traverse( geode );
+        }
+
+        osg::Matrix _local2world0, _world2local1;
+    };
 }
 
 //-----------------------------------------------------------------------
@@ -225,6 +254,22 @@ FeatureManipTool::onMiss( const EventArgs& args )
 }
 
 
+bool 
+FeatureManipTool::handle( const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& aa )
+{
+    bool handled = FeatureQueryTool::handle( ea, aa );
+    if ( !handled )
+    {
+        if ( _workGroup.valid() && ea.getEventType() == ea.KEYDOWN && ea.getKey() == ea.KEY_C )
+        {
+            commit();
+            handled = true;
+        }
+    }
+    return handled;
+}
+
+
 void
 FeatureManipTool::setPosition( const GeoPoint& pos )
 {
@@ -286,13 +331,55 @@ FeatureManipTool::cancel()
         _workGroup = 0L;
     }
 
-    _manipModel = 0L;
-    _ghostModel = 0L;
-    _circle = 0L;
+    _manipModel   = 0L;
+    _ghostModel   = 0L;
+    _circle       = 0L;
     _circleEditor = 0L;
 
     _drawSet.setVisible( true );
     _drawSet.clear();
+}
+
+
+void
+FeatureManipTool::commit()
+{
+    if ( _workGroup.valid() )
+    {
+        // extract the manipulation matricies:
+        osg::MatrixTransform* xform1 = _manipModel.get();
+        osg::MatrixTransform* xform2 = dynamic_cast<osg::MatrixTransform*>( _manipModel->getChild(0) );
+
+        const osg::Matrixd& world2local_anchor = xform2->getMatrix();
+        const osg::Matrix&  local2world_move   = xform1->getMatrix();
+
+        // go through the draw set and update the verts based on the new location
+        for( FeatureDrawSet::DrawableSlices::iterator s = _drawSet.slices().begin(); s != _drawSet.slices().end(); ++s )
+        {
+            const FeatureDrawSet::DrawableSlice& slice = *s;
+            
+            // collection a set of indicies in the slice:
+            std::set<unsigned> indexSet;
+            _drawSet.collectPrimitiveIndexSet( slice, indexSet );
+
+            // need the inverse of our original L2W so we can reposition the verts:
+            osg::Matrixd world2local;
+            world2local.invert( slice.local2world );
+
+            // recalculate the verts in their local reference frame:
+            osg::Vec3Array* verts = dynamic_cast<osg::Vec3Array*>( slice.drawable->asGeometry()->getVertexArray() );
+            for( std::set<unsigned>::iterator i = indexSet.begin(); i != indexSet.end(); ++i )
+            {
+                osg::Vec3d vert3d = (*verts)[*i];
+                osg::Vec3d vertWorld = (((vert3d * slice.local2world) * world2local_anchor) * local2world_move);
+                osg::Vec3d vertLocalNew = vertWorld * world2local;
+                (*verts)[*i] = vertLocalNew;
+            }
+            verts->dirty();
+        }
+    }
+
+    cancel();
 }
 
 

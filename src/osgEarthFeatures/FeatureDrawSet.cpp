@@ -17,8 +17,10 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 #include <osgEarthFeatures/FeatureDrawSet>
+#include <osgEarth/LineFunctor>
 #include <osg/Geode>
 #include <osg/MatrixTransform>
+#include <osg/NodeVisitor>
 
 using namespace osgEarth;
 using namespace osgEarth::Features;
@@ -59,14 +61,17 @@ FeatureDrawSet::getOrCreateSlice(osg::Drawable* d)
 {
     for( DrawableSlices::iterator i = _slices.begin(); i != _slices.end(); ++i )
     {
-        if ( i->first.get() == d )
+        if ( i->drawable.get() == d )
         {
-            return i->second;
+            return i->primSets;
         }
     }
 
-    _slices.push_back( DrawableSlice(d, PrimitiveSets()) );
-    return _slices.back().second;
+    _slices.push_back( DrawableSlice() );
+    _slices.back().drawable = d;
+    if ( d && d->getNumParents() > 0 )
+        _slices.back().local2world = osg::computeLocalToWorld( d->getParent(0)->getParentalNodePaths()[0] );
+    return _slices.back().primSets;
 }
 
 FeatureDrawSet::DrawableSlices::iterator 
@@ -74,7 +79,7 @@ FeatureDrawSet::slice(osg::Drawable* d)
 {
     for( DrawableSlices::iterator i = _slices.begin(); i != _slices.end(); ++i )
     {
-        if ( i->first.get() == d )
+        if ( i->drawable.get() == d )
         {
             return i;
         }
@@ -87,7 +92,7 @@ FeatureDrawSet::slice(osg::Drawable* d) const
 {
     for( DrawableSlices::const_iterator i = _slices.begin(); i != _slices.end(); ++i )
     {
-        if ( i->first.get() == d )
+        if ( i->drawable.get() == d )
         {
             return i;
         }
@@ -111,8 +116,8 @@ FeatureDrawSet::setVisible( bool visible )
         for( unsigned i=0; i < _slices.size(); ++i )
         {
             DrawableSlice& slice = _slices[i];
-            osg::Geometry* geom = slice.first->asGeometry();
-            for( PrimitiveSets::iterator p = slice.second.begin(); p != slice.second.end(); ++p )
+            osg::Geometry* geom = slice.drawable->asGeometry();
+            for( PrimitiveSets::iterator p = slice.primSets.begin(); p != slice.primSets.end(); ++p )
                 geom->removePrimitiveSet( geom->getPrimitiveSetIndex(p->get()) );
         }
     }
@@ -128,8 +133,8 @@ FeatureDrawSet::setVisible( bool visible )
         for( unsigned i=0; i < _slices.size(); ++i )
         {
             DrawableSlice& slice = _slices[i];
-            osg::Geometry* geom = slice.first->asGeometry();
-            for( PrimitiveSets::iterator p = slice.second.begin(); p != slice.second.end(); ++p )
+            osg::Geometry* geom = slice.drawable->asGeometry();
+            for( PrimitiveSets::iterator p = slice.primSets.begin(); p != slice.primSets.end(); ++p )
                 geom->addPrimitiveSet( p->get() );
         }
     }
@@ -175,9 +180,9 @@ FeatureDrawSet::createCopy()
     {
         DrawableSlice& slice = *p;
 
-        osg::Drawable* d = slice.first.get();
+        osg::Drawable* d = slice.drawable.get();
 
-        const PrimitiveSets& psets = slice.second;
+        const PrimitiveSets& psets = slice.primSets;
         if ( psets.size() > 0 )
         {        
             osg::Geometry* featureGeom = d->asGeometry();
@@ -214,3 +219,35 @@ FeatureDrawSet::createCopy()
 
     return group;
 }
+
+
+namespace
+{
+    struct IndexCollector
+    {
+        void operator()(GLuint i) {
+            _set->insert( unsigned(i) );
+        }
+        void operator()(GLushort i) { 
+            _set->insert( unsigned(i) );
+        }
+        void operator()(GLubyte i) { 
+            _set->insert( unsigned(i) );
+        }
+
+        std::set<unsigned>* _set;
+    };
+}
+
+
+void
+FeatureDrawSet::collectPrimitiveIndexSet( const DrawableSlice& slice, std::set<unsigned>& output ) const
+{
+    for( PrimitiveSets::const_iterator p = slice.primSets.begin(); p != slice.primSets.end(); ++p )
+    {
+        SimpleIndexFunctor<IndexCollector> f;
+        f._set = &output;
+        p->get()->accept( f );
+    }
+}
+

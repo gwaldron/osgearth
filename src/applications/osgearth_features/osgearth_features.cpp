@@ -126,9 +126,11 @@ int main(int argc, char** argv)
 
     osg::Group* root = new osg::Group();
     root->addChild( mapNode );
+    viewer.setSceneData( root );
+    viewer.setCameraManipulator( new EarthManipulator() );
 
     // Process cmdline args
-    ExampleMapNodeHelper().parse(mapNode, arguments, &viewer, root);
+    ExampleMapNodeHelper().parse(mapNode, arguments, &viewer, root, new LabelControl("Features Demo"));
    
     if (useStencil)
     {
@@ -187,9 +189,6 @@ int main(int argc, char** argv)
         map->addModelLayer( new ModelLayer("labels", geomOptions) );
     }
 
-    viewer.setSceneData( root );
-    viewer.setCameraManipulator( new EarthManipulator() );
-
     if ( !useStencil )
         viewer.getCamera()->addCullCallback( new osgEarth::Util::AutoClipPlaneCullCallback(mapNode) );
 
@@ -197,8 +196,6 @@ int main(int argc, char** argv)
     viewer.addEventHandler(new osgViewer::StatsHandler());
     viewer.addEventHandler(new osgViewer::WindowSizeHandler());
     viewer.addEventHandler(new osgGA::StateSetManipulator(viewer.getCamera()->getOrCreateStateSet()));
-
-    osgDB::writeNodeFile( *mapNode, "out.earth" );
 
     return viewer.run();
 }

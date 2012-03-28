@@ -360,9 +360,10 @@ AnnotationGraphControlFactory::create(osg::Node*       graph,
 #undef  LC
 #define LC "[ExampleMapNodeHelper] "
 
-osg::Node*
+osg::Group*
 ExampleMapNodeHelper::load(osg::ArgumentParser& args,
-                           osgViewer::View*     view) const
+                           osgViewer::View*     view,
+                           Control*             userControl ) const
 {
     // read in the Earth file:
     osg::Node* node = osgDB::readNodeFiles( args );
@@ -384,17 +385,17 @@ ExampleMapNodeHelper::load(osg::ArgumentParser& args,
 
     root->addChild( mapNode.get() );
 
-    parse( mapNode.get(), args, view, root );
+    parse( mapNode.get(), args, view, root, userControl );
     return root;
 }
-
 
 
 void
 ExampleMapNodeHelper::parse(MapNode*             mapNode,
                             osg::ArgumentParser& args,
                             osgViewer::View*     view,
-                            osg::Group*          root ) const
+                            osg::Group*          root,
+                            Control*             userControl ) const
 {
     if ( !root )
         root = mapNode;
@@ -415,13 +416,18 @@ ExampleMapNodeHelper::parse(MapNode*             mapNode,
     // install a canvas for any UI controls we plan to create:
     ControlCanvas* canvas = ControlCanvas::get(view, false);
 
-    Container* llContainer = canvas->addControl( new VBox() );
-    llContainer->setBackColor( Color(Color::Black, 0.8) );
-    llContainer->setHorizAlign( Control::ALIGN_LEFT );
-    llContainer->setVertAlign( Control::ALIGN_BOTTOM );
+    Container* mainContainer = canvas->addControl( new VBox() );
+    mainContainer->setBackColor( Color(Color::Black, 0.8) );
+    mainContainer->setHorizAlign( Control::ALIGN_LEFT );
+    mainContainer->setVertAlign( Control::ALIGN_BOTTOM );
+
+    // install the user control:
+    if ( userControl )
+        mainContainer->addControl( userControl );
 
     // look for external data in the map node:
     const Config& externals = mapNode->externalConfig();
+
     const Config& skyConf         = externals.child("sky");
     const Config& oceanConf       = externals.child("ocean");
     const Config& annoConf        = externals.child("annotations");
@@ -451,7 +457,7 @@ ExampleMapNodeHelper::parse(MapNode*             mapNode,
         {
             Control* c = ViewpointControlFactory().create(viewpoints, view);
             if ( c )
-                llContainer->addControl( c );
+                mainContainer->addControl( c );
         }
     }
 
@@ -465,7 +471,7 @@ ExampleMapNodeHelper::parse(MapNode*             mapNode,
         root->addChild( sky );
         Control* c = SkyControlFactory().create(sky, view);
         if ( c )
-            llContainer->addControl( c );
+            mainContainer->addControl( c );
     }
 
     // Adding an ocean model:
@@ -477,7 +483,7 @@ ExampleMapNodeHelper::parse(MapNode*             mapNode,
             root->addChild( ocean );
             Control* c = OceanControlFactory().create(ocean, view);
             if ( c )
-                llContainer->addControl(c);
+                mainContainer->addControl(c);
         }
     }
 

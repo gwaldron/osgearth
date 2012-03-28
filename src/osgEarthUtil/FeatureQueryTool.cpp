@@ -187,14 +187,14 @@ FeatureHighlightCallback::onHit( FeatureSourceIndexNode* index, FeatureID fid, c
         for( FeatureDrawSet::DrawableSlices::iterator d = drawSet.slices().begin(); d != drawSet.slices().end(); ++d )
         {
             FeatureDrawSet::DrawableSlice& slice = *d;
-            osg::Geometry* featureGeom = slice.first->asGeometry();
+            osg::Geometry* featureGeom = slice.drawable->asGeometry();
 
             osg::Geometry* highlightGeom = new osg::Geometry( *featureGeom, osg::CopyOp::SHALLOW_COPY );
             osg::Vec4Array* highlightColor = new osg::Vec4Array(1);
             (*highlightColor)[0] = osg::Vec4f(0,1,1,0.5);
             highlightGeom->setColorArray(highlightColor);
             highlightGeom->setColorBinding(osg::Geometry::BIND_OVERALL);
-            highlightGeom->setPrimitiveSetList( d->second );
+            highlightGeom->setPrimitiveSetList( d->primSets );
 
             if ( !geode )
             {

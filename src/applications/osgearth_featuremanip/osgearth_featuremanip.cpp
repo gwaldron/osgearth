@@ -18,127 +18,99 @@
 */
 
 #include <osg/Notify>
-
 #include <osgGA/StateSetManipulator>
 #include <osgGA/GUIEventHandler>
 #include <osgViewer/Viewer>
 #include <osgViewer/ViewerEventHandlers>
-
 #include <osgEarth/MapNode>
-#include <osgEarth/Viewpoint>
-
 #include <osgEarthUtil/EarthManipulator>
-#include <osgEarthUtil/AutoClipPlaneHandler>
+#include <osgEarthUtil/ExampleResources>
 #include <osgEarthUtil/Controls>
-#include <osgEarthUtil/SkyNode>
-#include <osgEarthUtil/LatLongFormatter>
-#include <osgEarthUtil/MouseCoordsTool>
+
 #include <osgEarthUtil/FeatureManipTool>
 
-#define LC "[featuremanip] "
+#define LC "[feature_manip] "
 
 using namespace osgEarth::Util;
 using namespace osgEarth::Util::Controls;
-using namespace osgEarth::Symbology;
 
-int
-usage( const std::string& msg )
+//------------------------------------------------------------------------
+
+static FeatureManipTool* s_manipTool;
+
+static VBox* s_state_normal;
+static VBox* s_state_active;
+
+
+struct ToggleUIStateCallback : public FeatureManipTool::Callback
 {
-    OE_NOTICE << msg << std::endl;
-    OE_NOTICE << std::endl;
-    OE_NOTICE << "USAGE: osgearth_featuremanip [options] file.earth" << std::endl;
+    // called when a valid feature is found under the mouse coords
+    virtual void onHit( FeatureSourceIndexNode* index, FeatureID fid, const EventArgs& args )
+    {
+        s_state_active->setVisible( true );
+    }
+
+    // called when no feature is found under the mouse coords
+    virtual void onMiss( const EventArgs& args )
+    {
+        s_state_active->setVisible( false );
+    }
+};
+
+
+struct OnCancel : public ControlEventHandler
+{
+    void onClick( Control* control )
+    {
+        s_manipTool->cancel();
+        s_state_active->setVisible( false );
+    }
+};
+
+
+struct OnSave : public ControlEventHandler
+{
+    void onClick( Control* saveButton )
+    {
+        s_manipTool->commit();
+        s_state_active->setVisible( false );
+    }
+};
+
+
+Control*
+createUI()
+{
+    VBox* vbox = new VBox();
+    vbox->addControl( new LabelControl("Feature Manipulator Demo", Color::Yellow) );
+
+    s_state_normal = vbox->addControl(new VBox());
+    s_state_normal->addControl( new LabelControl("Shift-click on a feature to enter edit mode.") );
     
-    return -1;
-}
+    s_state_active = vbox->addControl(new VBox());
+    s_state_active->setVisible( false );
+    s_state_active->addControl( new LabelControl("Drag the handles to position or rotation the feature.") );
+    
+    HBox* buttons = s_state_active->addControl(new HBox());
+    
+    LabelControl* cancel = buttons->addControl(new LabelControl("cancel"));
+    cancel->setBackColor(Color(Color::White,0.5));
+    cancel->setActiveColor(Color::Blue);
+    cancel->addEventHandler(new OnCancel());
+    cancel->setPadding( 5.0f );
+    cancel->setVertFill( true );
 
-static EarthManipulator* s_manip         =0L;
-static Control*          s_controlPanel  =0L;
-static Container*        s_readout       =0L;
-static SkyNode*          s_sky           =0L;
+    LabelControl* save = buttons->addControl(new LabelControl("save"));
+    save->setBackColor(Color(Color::White,0.5));
+    save->setActiveColor(Color::Blue);
+    save->addEventHandler(new OnSave());
+    save->setPadding( 5.0f );
+    save->setMargin(Control::SIDE_LEFT, 20.0f);
+    save->setVertFill( true );
 
-
-struct ClickViewpointHandler : public ControlEventHandler
-{
-    ClickViewpointHandler( const Viewpoint& vp ) : _vp(vp) { }
-    Viewpoint _vp;
-    virtual void onClick( class Control* control ) {
-        s_manip->setViewpoint( _vp, 4.5 );
-    }
-};
-
-
-void
-createControls( osgViewer::View* view, std::vector<Viewpoint>& viewpoints )
-{
-    ControlCanvas* canvas = ControlCanvas::get(view, false);
-
-    // instructions.
-    VBox* help = canvas->addControl(new VBox());
-    help->setBackColor(0,0,0,0.8);
-    help->setChildSpacing( 8 );
-    help->setPadding( 10 );
-    help->setVertAlign( Control::ALIGN_TOP );
-    help->addControl( new LabelControl("Feature Manipulation Demo", 16.0f, Color::Yellow) );
-    help->addControl( new LabelControl("- Shift-click a feature to manipulate;") );
-    help->addControl( new LabelControl("- Drag or rotate using the handles.") );
-
-    // list of viewpoints.
-    if ( viewpoints.size() > 0 )
-    {
-        Grid* grid = canvas->addControl(new Grid());
-        grid->setVertAlign( Control::ALIGN_BOTTOM );
-        grid->setBackColor(0,0,0,0.8);
-        grid->setChildSpacing( 0 );
-        grid->setPadding( 10 );
-        grid->setAbsorbEvents( true );
-        grid->setChildVertAlign( Control::ALIGN_CENTER );
-
-        for( unsigned i=0; i<viewpoints.size(); ++i )
-        {
-            const Viewpoint& vp = viewpoints[i];
-            Control* num = new LabelControl( Stringify() << (i+1), 16.0f, osg::Vec4f(1,1,0,1));
-            num->setPadding( 4 );
-            grid->setControl( 0, i, num );
-
-            Control* vpc = new LabelControl(vp.getName().empty() ? "<no name>" : vp.getName(), 16.0f);
-            vpc->setPadding( 4 );
-            vpc->setHorizFill( true );
-            vpc->setActiveColor( Color::Blue );
-            vpc->addEventHandler( new ClickViewpointHandler(vp) );
-            grid->setControl( 1, i, vpc );
-        }
-    }
-
-    // feature attributes readout.
-    s_readout = canvas->addControl(new VBox());
-    s_readout->setHorizAlign( Control::ALIGN_RIGHT );
-}
-
-
-/**
- * Handler that dumps the current viewpoint out to the console.
- */
-struct ViewpointHandler : public osgGA::GUIEventHandler
-{
-    ViewpointHandler( const std::vector<Viewpoint>& viewpoints )
-        : _viewpoints( viewpoints ) { }
-
-    bool handle( const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& aa )
-    {
-        if ( ea.getEventType() == ea.KEYDOWN )
-        {
-            int index = (int)ea.getKey() - (int)'1';
-            if ( index >= 0 && index < (int)_viewpoints.size() )
-            {
-                s_manip->setViewpoint( _viewpoints[index], 4.5 );
-            }
-            aa.requestRedraw();
-        }
-        return false;
-    }
-
-    std::vector<Viewpoint> _viewpoints;
-};
+    vbox->setMargin( Control::SIDE_BOTTOM, 15.0f );
+    return vbox;
+} 
 
 //------------------------------------------------------------------------
 
@@ -146,78 +118,52 @@ int
 main(int argc, char** argv)
 {
     osg::ArgumentParser arguments(&argc,argv);
-    osg::DisplaySettings::instance()->setMinimumNumStencilBits( 8 );
+    if ( arguments.read("--stencil") )
+        osg::DisplaySettings::instance()->setMinimumNumStencilBits( 8 );
+
+    // create a viewer:
     osgViewer::Viewer viewer(arguments);
 
-    bool dontUseAutoClip = arguments.read( "--noautoclip" );
-    bool useSky          = arguments.read( "--sky" );
-    bool useOcean        = arguments.read( "--ocean" );
+    // install our default manipulator (do this before calling Loader)
+    viewer.setCameraManipulator( new EarthManipulator() );
 
-    // load the .earth file from the command line.
-    osg::Node* earthNode = osgDB::readNodeFiles( arguments );
-    if (!earthNode)
-        return usage( "Unable to load earth model." );
-    
-    // install our  manipulator:
-    s_manip = new EarthManipulator();
-    viewer.setCameraManipulator( s_manip );
-
-    osg::Group* root = new osg::Group();
-    root->addChild( earthNode );
-
-    // a root canvas for any control we create.
-    root->addChild( ControlCanvas::get( &viewer ) );
-
-
-    osgEarth::MapNode* mapNode = osgEarth::MapNode::findMapNode( earthNode );
-    if ( mapNode )
+    // load an earth file, and support all or our example command-line options
+    // and earth file <external> tags
+    osg::Group* root = ExampleMapNodeHelper().load( arguments, &viewer, createUI() );
+    if ( root )
     {
-        // look for external data:
-        const Config& externals = mapNode->externalConfig();
+        viewer.setSceneData( root );
 
-        // read in viewpoints, if any
-        std::vector<Viewpoint> viewpoints;
-        const ConfigSet children = externals.children("viewpoint");
-        if ( children.size() > 0 )
+        // configure the near/far so we don't clip things that are up close
+        viewer.getCamera()->setNearFarRatio(0.00002);
+
+        // osgEarth benefits from pre-compilation of GL objects in the pager. In newer versions of
+        // OSG, this activates OSG's IncrementalCompileOpeartion in order to avoid frame breaks.
+        viewer.getDatabasePager()->setDoPreCompile( true );
+
+        // add some stock OSG handlers:
+        viewer.addEventHandler(new osgViewer::StatsHandler());
+        viewer.addEventHandler(new osgViewer::WindowSizeHandler());
+        viewer.addEventHandler(new osgViewer::ThreadingHandler());
+        viewer.addEventHandler(new osgViewer::LODScaleHandler());
+        viewer.addEventHandler(new osgGA::StateSetManipulator(viewer.getCamera()->getOrCreateStateSet()));
+
+        MapNode* mapNode = MapNode::findMapNode( root );
+        if ( mapNode )
         {
-            for( ConfigSet::const_iterator i = children.begin(); i != children.end(); ++i )
-                viewpoints.push_back( Viewpoint(*i) );
+            // install the Feature Manipulation tool.
+            s_manipTool = new FeatureManipTool( mapNode );
+            viewer.addEventHandler( s_manipTool );
+
+            s_manipTool->addCallback( new ToggleUIStateCallback() );
         }
-        viewer.addEventHandler( new ViewpointHandler(viewpoints) );
 
-        // Add a control panel to the scene
-        createControls(&viewer, viewpoints);
+        return viewer.run();
     }
-    
-    // readout for coordinates under the mouse   
-    LabelControl* mouseCoords = new LabelControl();
-    mouseCoords->setHorizAlign( Control::ALIGN_RIGHT );
-    mouseCoords->setVertAlign( Control::ALIGN_BOTTOM );
-    ControlCanvas::get(&viewer, false)->addControl(mouseCoords);
-
-    MouseCoordsTool* mcTool = new MouseCoordsTool( mapNode );
-    mcTool->addCallback( new MouseCoordsLabelCallback(mouseCoords) );
-    viewer.addEventHandler( mcTool );
-
-    // osgEarth benefits from pre-compilation of GL objects in the pager. In newer versions of
-    // OSG, this activates OSG's IncrementalCompileOpeartion in order to avoid frame breaks.
-    viewer.getDatabasePager()->setDoPreCompile( true );
-
-    viewer.setSceneData( root );
-
-    // add some stock OSG handlers:
-    viewer.addEventHandler(new osgViewer::StatsHandler());
-    viewer.addEventHandler(new osgViewer::WindowSizeHandler());
-    viewer.addEventHandler(new osgViewer::ThreadingHandler());
-    viewer.addEventHandler(new osgViewer::LODScaleHandler());
-    viewer.addEventHandler(new osgGA::StateSetManipulator(viewer.getCamera()->getOrCreateStateSet()));
-
-    // Feature manipulator
-    FeatureManipTool* manipTool = new FeatureManipTool(mapNode);
-    viewer.addEventHandler( manipTool );
-
-    // Feature readout as well
-    manipTool->addCallback( new FeatureReadoutCallback(s_readout) );
-
-    return viewer.run();
+    else
+    {
+        OE_NOTICE 
+            << "\nUsage: " << argv[0] << " file.earth" << std::endl
+            << ExampleMapNodeHelper().usage() << std::endl;
+    }
 }

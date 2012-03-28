@@ -21,6 +21,7 @@
 
 #include <osgEarthFeatures/Common>
 #include <osg/Geometry>
+#include <set>
 
 namespace osgEarth { namespace Features
 {
@@ -32,7 +33,12 @@ namespace osgEarth { namespace Features
     {     
     public: // types
         typedef osg::Geometry::PrimitiveSetList                        PrimitiveSets;
-        typedef std::pair< osg::ref_ptr<osg::Drawable>, PrimitiveSets> DrawableSlice;
+        struct DrawableSlice {
+            osg::ref_ptr<osg::Drawable> drawable;
+            PrimitiveSets               primSets;
+            osg::Matrixd                local2world;
+        };
+        //typedef std::pair< osg::ref_ptr<osg::Drawable>, PrimitiveSets> DrawableSlice;
         typedef std::vector<DrawableSlice>                             DrawableSlices;
         typedef std::vector< osg::ref_ptr<osg::Node> >                 Nodes;
 
@@ -63,8 +69,11 @@ namespace osgEarth { namespace Features
 
         /** Clears out this draw set */
         void clear();
+
+        /** Collects a set containing primitive indicies used in a slice. */
+        void collectPrimitiveIndexSet( const DrawableSlice& slice, std::set<unsigned>& output ) const;
         
-        //todo
+        /** Creates a shallow copy of the draw set under its own scene graph */
         osg::Node* createCopy();
 
     private:

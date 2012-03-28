@@ -50,9 +50,10 @@ namespace osgEarth { namespace Util
          * Loads a map file and processes all the built-in example command line
          * arguemnts and XML externals.
          */
-        osg::Node* load(
+        osg::Group* load(
             osg::ArgumentParser& args, 
-            osgViewer::View*     view) const;
+            osgViewer::View*     view,
+            Control*             userControl =0L ) const;
 
         /**
          * Takes an existing map node and processes all the built-in example command
@@ -62,7 +63,8 @@ namespace osgEarth { namespace Util
             MapNode*             mapNode,
             osg::ArgumentParser& args,
             osgViewer::View*     view,
-            osg::Group*          parentGroup =0L ) const;
+            osg::Group*          parentGroup =0L,
+            Control*             userControl =0L) const;
 
         std::string usage() const;
     };

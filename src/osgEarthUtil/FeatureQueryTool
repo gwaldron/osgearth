@@ -55,10 +55,10 @@ namespace osgEarth { namespace Util
             };
 
             // called when a valid feature is found under the mouse coords
-            virtual void onHit( FeatureSourceIndexNode* index, FeatureID fid, const EventArgs& args ) =0;
+            virtual void onHit( FeatureSourceIndexNode* index, FeatureID fid, const EventArgs& args ) { }
 
             // called when no feature is found under the mouse coords
-            virtual void onMiss( const EventArgs& args ) =0;
+            virtual void onMiss( const EventArgs& args ) { }
         };
 
         /**

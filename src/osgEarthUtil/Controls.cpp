@@ -267,6 +267,36 @@ Control::setMargin( const Gutter& value ) {
 }
 
 void
+Control::setMargin( Side side, float value ) {
+    switch(side) {
+        case SIDE_TOP:
+            if ( _margin.top() != value ) {
+                _margin.top() = value;
+                dirty();
+            }
+            break;
+        case SIDE_BOTTOM:
+            if ( _margin.bottom() != value ) {
+                _margin.bottom() = value;
+                dirty();
+            }
+            break;
+        case SIDE_LEFT:
+            if ( _margin.left() != value ) {
+                _margin.left() = value;
+                dirty();
+            }
+            break;
+        case SIDE_RIGHT:
+            if ( _margin.right() != value ) {
+                _margin.right() = value;
+                dirty();
+            }
+            break;
+    }
+}
+
+void
 Control::setPadding( const Gutter& value )
 {
     if ( value != _padding ) {
@@ -281,6 +311,36 @@ Control::setPadding( float value ) {
     if ( g != _padding ) {
         _padding = g;
         dirty();
+    }
+}
+
+void
+Control::setPadding( Side side, float value ) {
+    switch(side) {
+        case SIDE_TOP:
+            if ( _padding.top() != value ) {
+                _padding.top() = value;
+                dirty();
+            }
+            break;
+        case SIDE_BOTTOM:
+            if ( _padding.bottom() != value ) {
+                _padding.bottom() = value;
+                dirty();
+            }
+            break;
+        case SIDE_LEFT:
+            if ( _padding.left() != value ) {
+                _padding.left() = value;
+                dirty();
+            }
+            break;
+        case SIDE_RIGHT:
+            if ( _padding.right() != value ) {
+                _padding.right() = value;
+                dirty();
+            }
+            break;
     }
 }
 
@@ -536,10 +596,10 @@ struct LabelText : public osgText::Text
 };
 
 LabelControl::LabelControl(const std::string& text,
-                           float fontSize,
-                           const osg::Vec4f& foreColor):
-_text(text),
-_fontSize(fontSize),
+                           float              fontSize,
+                           const osg::Vec4f&  foreColor):
+_text    ( text ),
+_fontSize( fontSize ),
 _encoding( osgText::String::ENCODING_UNDEFINED )
 {    
     setFont( Registry::instance()->getDefaultFont() );    
@@ -548,9 +608,10 @@ _encoding( osgText::String::ENCODING_UNDEFINED )
 }
 
 LabelControl::LabelControl(const std::string& text,
-                           const osg::Vec4f& foreColor):
-_text( text ),
-_fontSize( 18.0f ),
+                           const osg::Vec4f&  foreColor,
+                           float              fontSize ):
+_text    ( text ),
+_fontSize( fontSize ),
 _encoding( osgText::String::ENCODING_UNDEFINED )
 {    	
     setFont( Registry::instance()->getDefaultFont() );   

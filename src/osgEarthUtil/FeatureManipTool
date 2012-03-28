@@ -64,11 +64,21 @@ namespace osgEarth { namespace Util
          */
         void cancel();
 
+        /**
+         * Commits a manipulation in progress, buring in the new verts.
+         */
+        void commit();
+
 
     public: // FeatureQueryTool::Callback
 
         virtual void onHit( FeatureSourceIndexNode* index, FeatureID fid, const EventArgs& args );
         virtual void onMiss( const EventArgs& args );
+
+
+    public: // GUIEventHandler
+
+        virtual bool handle( const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& aa );
 
 
     public: // internal

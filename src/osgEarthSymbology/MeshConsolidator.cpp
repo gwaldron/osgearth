@@ -78,6 +78,23 @@ namespace
             return copy<FROM,osg::DrawElementsUInt>( src, offset );
     }
 
+    osg::PrimitiveSet* convertDAtoDE( osg::DrawArrays* da, unsigned numVerts, unsigned offset )
+    {
+        osg::DrawElements* de = 0L;
+        if ( numVerts < 0x100 )
+            de = new osg::DrawElementsUByte( da->getMode() );
+        else if ( numVerts < 0x10000 )
+            de = new osg::DrawElementsUShort( da->getMode() );
+        else
+            de = new osg::DrawElementsUInt( da->getMode() );
+
+        de->reserveElements( da->getCount() );
+        for( GLsizei i=0; i<da->getCount(); ++i )
+            de->addElement( offset + da->getFirst() + i );
+
+        return de;
+    }
+
     bool canOptimize( osg::Geometry& geom )
     {
         osg::Array* vertexArray = geom.getVertexArray();
@@ -384,7 +401,7 @@ MeshConsolidator::run( osg::Geode& geode )
 					else if ( dynamic_cast<osg::DrawElementsUInt*>(pset) )
 						newpset = remake( static_cast<osg::DrawElementsUInt*>(pset), numVerts, offset );
 					else if ( dynamic_cast<osg::DrawArrays*>(pset) )
-						newpset = new osg::DrawArrays( pset->getMode(), offset, geomVerts->size() );
+                        newpset = convertDAtoDE( static_cast<osg::DrawArrays*>(pset), numVerts, offset );
 
 					if ( newpset )
 					{

@@ -2183,7 +2183,7 @@ ControlNodeBin::draw( const ControlContext& context, bool newContext, int bin )
               const osg::Vec2f& size = control->renderSize();
 
               // calculate the rendering offset based on alignment:
-              float x, y;
+              float x = 0.f, y = 0.f;
 
               if ( node->anchorPoint().isSet() )
               {

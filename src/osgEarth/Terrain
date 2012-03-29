@@ -52,7 +52,7 @@ namespace osgEarth
         
     public:
         TerrainCallbackContext(Terrain* terrain, osg::Referenced* cd)
-            : _terrain(terrain), _cd(cd), _remove(false) { }
+            : _remove(false), _cd(cd), _terrain(terrain) { }
 
     protected:
         bool _remove;

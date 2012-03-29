@@ -283,4 +283,4 @@ void SphereDragger::updateColor()
     {
         _shapeDrawable->setColor( _color );
     }
-}  
+}

@@ -56,11 +56,14 @@ namespace osgEarth
     public:
         Config() : _emptyConfig(0L) { }
 
-        Config( const std::string& key ) : _key(key), _emptyConfig(0L) { }
+        Config( const std::string& key )
+            : _key(key), _emptyConfig(0L) { }
 
-        Config( const std::string& key, const std::string& value ) : _key( key ), _defaultValue( value ), _emptyConfig(0L) { }
+        Config( const std::string& key, const std::string& value ) 
+            : _key( key ), _defaultValue( value ), _emptyConfig(0L) { }
 
-        Config( const Config& rhs ) : _key(rhs._key), _defaultValue(rhs._defaultValue), _children(rhs._children), _refMap(rhs._refMap), _referrer(rhs._referrer), _emptyConfig(0L) { }
+        Config( const Config& rhs ) 
+            : _key(rhs._key), _defaultValue(rhs._defaultValue), _children(rhs._children), _referrer(rhs._referrer), _emptyConfig(0L), _refMap(rhs._refMap) { }
 
         ~Config() { if ( _emptyConfig ) delete _emptyConfig; }
 
@@ -468,6 +471,8 @@ namespace osgEarth
             : _conf( conf ) { }
         ConfigOptions( const ConfigOptions& rhs )
             : _conf( rhs.getConfig() ) { }
+
+        virtual ~ConfigOptions() { }
         
         const std::string& referrer() const { return _conf.referrer(); }
 

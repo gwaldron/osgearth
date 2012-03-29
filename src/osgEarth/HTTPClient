@@ -42,6 +42,8 @@ namespace osgEarth
         ProxySettings( const Config& conf =Config() );
         ProxySettings( const std::string& host, int port );
 
+        virtual ~ProxySettings() { }
+
         std::string& hostName() { return _hostName; }
         const std::string& hostName() const { return _hostName; }
 

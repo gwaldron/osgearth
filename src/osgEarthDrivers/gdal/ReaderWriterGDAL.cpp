@@ -1163,11 +1163,11 @@ public:
                         for (unsigned int r = 0; r < tileSize; ++r)
                         {
                             double geoY = ymin + (dy * (double)r); 
-                            *(image->data(c,r) + 0) = getInterpolatedValue(bandRed,  geoX,geoY,false); 
-                            *(image->data(c,r) + 1) = getInterpolatedValue(bandGreen,geoX,geoY,false); 
-                            *(image->data(c,r) + 2) = getInterpolatedValue(bandBlue, geoX,geoY,false); 
+                            *(image->data(c,r) + 0) = (unsigned char)getInterpolatedValue(bandRed,  geoX,geoY,false); 
+                            *(image->data(c,r) + 1) = (unsigned char)getInterpolatedValue(bandGreen,geoX,geoY,false); 
+                            *(image->data(c,r) + 2) = (unsigned char)getInterpolatedValue(bandBlue, geoX,geoY,false); 
                             if (bandAlpha != NULL) 
-                                *(image->data(c,r) + 3) = getInterpolatedValue(bandAlpha,geoX, geoY, false); 
+                                *(image->data(c,r) + 3) = (unsigned char)getInterpolatedValue(bandAlpha,geoX, geoY, false); 
                             else 
                                 *(image->data(c,r) + 3) = 255; 
                         }
@@ -1229,11 +1229,11 @@ public:
                             double geoY   = ymin + (dy * (double)r); 
                             float  color = getInterpolatedValue(bandGray,geoX,geoY,false); 
 
-                            *(image->data(c,r) + 0) = color; 
-                            *(image->data(c,r) + 1) = color; 
-                            *(image->data(c,r) + 2) = color; 
+                            *(image->data(c,r) + 0) = (unsigned char)color; 
+                            *(image->data(c,r) + 1) = (unsigned char)color; 
+                            *(image->data(c,r) + 2) = (unsigned char)color; 
                             if (bandAlpha != NULL) 
-                                *(image->data(c,r) + 3) = getInterpolatedValue(bandAlpha,geoX,geoY,false); 
+                                *(image->data(c,r) + 3) = (unsigned char)getInterpolatedValue(bandAlpha,geoX,geoY,false); 
                             else 
                                 *(image->data(c,r) + 3) = 255; 
                         }

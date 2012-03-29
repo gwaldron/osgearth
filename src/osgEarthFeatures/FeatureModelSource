@@ -22,7 +22,6 @@
 
 #include <osgEarthFeatures/Common>
 #include <osgEarthFeatures/FeatureSource>
-#include <osgEarthFeatures/FeatureGridder>
 #include <osgEarthFeatures/FeatureDisplayLayout>
 #include <osgEarthFeatures/GeometryCompiler>
 #include <osgEarthSymbology/Style>
@@ -79,10 +78,11 @@ namespace osgEarth { namespace Features
 
     public: // deprecated
 
+#if 0
         /** @deprecated - use levels() instead */
         optional<GriddingPolicy>& gridding() { return _gridding; }
         const optional<GriddingPolicy>& gridding() const { return _gridding; }
-
+#endif
         /** @deprecated - use the ConvertTypeFilter instead */
         optional<Symbology::Geometry::Type>& geometryTypeOverride() { return _geomTypeOverride; }
         const optional<Symbology::Geometry::Type>& geometryTypeOverride() const { return _geomTypeOverride; }
@@ -120,7 +120,7 @@ namespace osgEarth { namespace Features
         osg::ref_ptr<FeatureSource>     _featureSource;
 
         /** @deprecated */
-        optional<GriddingPolicy>        _gridding;
+        //optional<GriddingPolicy>        _gridding;
         optional<Geometry::Type>        _geomTypeOverride;
     };
 

@@ -27,7 +27,6 @@
 #include <osgEarthFeatures/ResampleFilter>
 #include <osgEarthFeatures/ConvertTypeFilter>
 #include <osgEarthFeatures/ExtrudeGeometryFilter>
-#include <osgEarthFeatures/FeatureGridder>
 #include <osgEarthSymbology/StencilVolumeNode>
 #include <osgEarthSymbology/Style>
 #include <osg/Notify>

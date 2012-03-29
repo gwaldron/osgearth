@@ -380,6 +380,12 @@ ExampleMapNodeHelper::load(osg::ArgumentParser& args,
         return 0L;
     }
 
+    // warn about not having an earth manip
+    if ( 0L == dynamic_cast<EarthManipulator*>(view->getCameraManipulator()) )
+    {
+        OE_WARN << LC << "Helper used before installing an EarthManipulator" << std::endl;
+    }
+
     // a root node to hold everything:
     osg::Group* root = new osg::Group();
 

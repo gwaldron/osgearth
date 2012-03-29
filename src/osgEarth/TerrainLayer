@@ -316,12 +316,12 @@ namespace osgEarth
 
             CacheBinMetadata( const CacheBinMetadata& rhs ) :
                 _empty        ( rhs._empty ),
+                _cacheBinId   ( rhs._cacheBinId ),
                 _sourceName   ( rhs._sourceName ),
                 _sourceDriver ( rhs._sourceDriver ),
                 _maxDataLevel ( rhs._maxDataLevel ),
                 _sourceProfile( rhs._sourceProfile ),
-                _cacheProfile ( rhs._cacheProfile ),
-                _cacheBinId   ( rhs._cacheBinId ) { }
+                _cacheProfile ( rhs._cacheProfile ) { }
 
             CacheBinMetadata( const Config& conf )
             {

@@ -35,6 +35,8 @@ namespace osgEarth { namespace Symbology
     {
     public:
         Symbol( const Config& conf =Config() );
+        
+        virtual ~Symbol() { }
 
         const URIContext& uriContext() const { return _uriContext; }
 
@@ -68,6 +70,8 @@ namespace osgEarth { namespace Symbology
         Stroke();
         Stroke( float r, float g, float b, float a );
         Stroke( const Config& conf ) { mergeConfig(conf); }
+
+        virtual ~Stroke() { }
 
         /** Line color. */
         osg::Vec4f& color() { return _color; }
@@ -112,6 +116,8 @@ namespace osgEarth { namespace Symbology
         Fill();
         Fill( float r, float g, float b, float a );
         Fill( const Config& conf ) { mergeConfig(conf); }
+
+        virtual ~Fill() { }
 
         osg::Vec4f& color() { return _color; }
         const osg::Vec4f& color() const { return _color; }

@@ -120,17 +120,6 @@ namespace osgEarth
             double                         desiredResolution = 0.0 );
 
         /**
-         * Sets the technique to use for height determination. See the Technique
-         * enum in this class. The default is TECHNIQUE_PARAMETRIC.
-        void setTechnique( Technique technique );
-
-        /**
-         * Gets the technique to use for height determination. See the Technique
-         * enum in this class.
-         */
-        //Technique getTechnique() const;
-
-        /**
          * Sets the maximum cache size for elevation tiles.
          */
         void setMaxTilesToCache( int value );

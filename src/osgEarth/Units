@@ -86,7 +86,7 @@ namespace osgEarth
         }
 
         static double convert( const Units& from, const Units& to, double input ) {
-            double output;
+            double output = input;
             convert( from, to, input, output );
             return output;
         }

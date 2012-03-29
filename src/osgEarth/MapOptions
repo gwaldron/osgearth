@@ -45,11 +45,11 @@ namespace osgEarth
 
     public:
         MapOptions( const ConfigOptions& options =ConfigOptions() )
-            : ConfigOptions( options ),
-              _cstype      ( CSTYPE_GEOCENTRIC ),
-              _referenceURI(""),
-              _cachePolicy ( CachePolicy()),
-              _elevationInterpolation(INTERP_BILINEAR)
+            : ConfigOptions          ( options ),
+              _cachePolicy           ( CachePolicy()),
+              _cstype                ( CSTYPE_GEOCENTRIC ),
+              _referenceURI          ( "" ),
+              _elevationInterpolation( INTERP_BILINEAR )
         {
             fromConfig(_conf);
         }

@@ -24,9 +24,6 @@ invert the Y tile index.
     
     <options>
         <lighting>false</lighting>
-        <terrain>
-            <loading_policy mode="parallel"/>
-        </terrain>
         <cache_policy usage="no_cache"/>
     </options>
     

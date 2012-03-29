@@ -53,14 +53,19 @@ namespace osgEarth { namespace QtGui
         ViewVector& getViews() {
             return _views; }
 
-    protected:
-        Action() : _canceled(false), _checkpoint(true) { }
-        Action(ViewVector& views) : _views(views), _canceled(false), _checkpoint(true) { }
+        virtual ~Action() { }
 
+    protected:
+        Action() 
+            : _canceled(false), _checkpoint(true) { }
+
+        Action(ViewVector& views) 
+            : _views(views), _canceled(false), _checkpoint(true) { }
+
+        ViewVector  _views;
+        bool        _canceled;
+        bool        _checkpoint;
         std::string _message;
-        bool _canceled;
-        bool _checkpoint;
-        ViewVector _views;
     };
 
     class OSGEARTHQT_EXPORT ReversibleAction : public Action

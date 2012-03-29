@@ -92,7 +92,7 @@ namespace osgEarth { namespace QtGui
     struct TerrainProfileMouseHandler : public osgGA::GUIEventHandler
     {
       TerrainProfileMouseHandler(osgEarth::MapNode* mapNode, osg::Group* root, TerrainProfileWidget* profileWidget)
-        : _mapNode(mapNode), _root(root), _profileWidget(profileWidget), _mouseDown(false), _capturing(false), _startValid(false)
+        : _mapNode(mapNode), _root(root), _profileWidget(profileWidget), _capturing(false), _startValid(false), _mouseDown(false)
       {
         //Define a style for the line
         osgEarth::Symbology::LineSymbol* ls = _lineStyle.getOrCreateSymbol<osgEarth::Symbology::LineSymbol>();

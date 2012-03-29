@@ -55,6 +55,7 @@ namespace osgEarth
     public:
         LoadingPolicy( const Config& conf =Config() );
         LoadingPolicy( const Mode& mode );
+        virtual ~LoadingPolicy() { }
 
     public: // Configrable
         virtual Config getConfig() const;

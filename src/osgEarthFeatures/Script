@@ -24,6 +24,7 @@
 #include <osg/ref_ptr>
 #include <list>
 #include <map>
+#include <stdlib.h>
 
 namespace osgEarth { namespace Features
 {

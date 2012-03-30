@@ -225,7 +225,6 @@ void TerrainProfileGraph::redrawGraph()
   {
     double minElevation, maxElevation;
     profile.getElevationRanges( minElevation, maxElevation );
-
     _totalDistance = profile.getTotalDistance();
 
     int mag = (int)pow(10.0, (double)((int)log10(maxElevation - minElevation)));
@@ -237,10 +236,13 @@ void TerrainProfileGraph::redrawGraph()
 
     drawAxes(_graphMinY, _graphMaxY, scale, _totalDistance, _graphField);
 
+    double lastX = _graphField.x();
+    double lastY = (1.0 - ((profile.getElevation(0) - _graphMinY) / graphRangeY)) * _graphField.height() + _graphField.y();
+
     QPolygonF graphPoly;
     graphPoly << QPointF(_graphField.x(), _graphField.y() + _graphField.height());
+    graphPoly << QPointF(lastX, lastY);
 
-    double lastX = 0.0, lastY = 0.0;
     for (unsigned int i = 0; i < profile.getNumElevations(); i++)
     {
       double distance = profile.getDistance( i );
@@ -251,13 +253,9 @@ void TerrainProfileGraph::redrawGraph()
 
       graphPoly << QPointF(x, y);
 
-      if (i > 0)
-      {
-        QLineF line(lastX, lastY, x, y);
-        _graphLines.push_back(line);
-
-        _scene->addLine(line, _linePen)->setZValue(GRAPH_Z);
-      }
+      QLineF line(lastX, lastY, x, y);
+      _graphLines.push_back(line);
+      _scene->addLine(line, _linePen)->setZValue(GRAPH_Z);
 
       lastX = x;
       lastY = y;

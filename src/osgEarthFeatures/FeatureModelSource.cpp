@@ -39,7 +39,8 @@ _geomTypeOverride  ( Geometry::TYPE_UNKNOWN ),
 _lit               ( true ),
 _maxGranularity_deg( 1.0 ),
 _mergeGeometry     ( false ),
-_clusterCulling    ( true )
+_clusterCulling    ( true ),
+_featureIndexing   ( true )
 {
     fromConfig( _conf );
 }
@@ -55,14 +56,15 @@ FeatureModelSourceOptions::fromConfig( const Config& conf )
     conf.getObjIfSet( "styles",       _styles );
     conf.getObjIfSet( "layout",       _layout );
     conf.getObjIfSet( "paging",       _layout ); // backwards compat.. to be deprecated
-    conf.getObjIfSet( "gridding",     _gridding ); // to be deprecated
+    //conf.getObjIfSet( "gridding",     _gridding ); // to be deprecated
     conf.getObjIfSet( "feature_name", _featureNameExpr );
     conf.getObjIfSet( "cache_policy", _cachePolicy );
 
-    conf.getIfSet( "lighting", _lit );
-    conf.getIfSet( "max_granularity", _maxGranularity_deg );
-    conf.getIfSet( "merge_geometry",  _mergeGeometry );
-    conf.getIfSet( "cluster_culling", _clusterCulling );
+    conf.getIfSet( "lighting",         _lit );
+    conf.getIfSet( "max_granularity",  _maxGranularity_deg );
+    conf.getIfSet( "merge_geometry",   _mergeGeometry );
+    conf.getIfSet( "cluster_culling",  _clusterCulling );
+    conf.getIfSet( "feature_indexing", _featureIndexing );
 
     std::string gt = conf.value( "geometry_type" );
     if ( gt == "line" || gt == "lines" || gt == "linestring" )
@@ -84,15 +86,16 @@ FeatureModelSourceOptions::getConfig() const
         conf.addNonSerializable("feature_source", _featureSource.get());
     }
     //conf.updateObjIfSet( "feature_source", _featureSource);
-    conf.updateObjIfSet( "gridding",     _gridding ); // to be deprecated
+    //conf.updateObjIfSet( "gridding",     _gridding ); // to be deprecated
     conf.updateObjIfSet( "styles",       _styles );
     conf.updateObjIfSet( "layout",       _layout );
     conf.updateObjIfSet( "cache_policy", _cachePolicy );
 
-    conf.updateIfSet( "lighting", _lit );
-    conf.updateIfSet( "max_granularity", _maxGranularity_deg );
-    conf.updateIfSet( "merge_geometry",  _mergeGeometry );
-    conf.updateIfSet( "cluster_culling", _clusterCulling );
+    conf.updateIfSet( "lighting",         _lit );
+    conf.updateIfSet( "max_granularity",  _maxGranularity_deg );
+    conf.updateIfSet( "merge_geometry",   _mergeGeometry );
+    conf.updateIfSet( "cluster_culling",  _clusterCulling );
+    conf.updateIfSet( "feature_indexing", _featureIndexing );
 
 
     if ( _geomTypeOverride.isSet() ) {
@@ -170,6 +173,9 @@ FeatureModelSource::createNode( ProgressCallback* progress )
     if ( !_factory.valid() )
         return 0L;
 
+    if ( !_map.valid() )
+        return 0L;
+
     if ( !_features.valid() || !_features->getFeatureProfile() )
     {
         OE_WARN << LC << "Invalid feature source" << std::endl;
@@ -179,13 +185,13 @@ FeatureModelSource::createNode( ProgressCallback* progress )
     Session* session = new Session( 
         _map.get(), 
         _options.styles().get(),
+        _features.get(),
         _dbOptions.get() );
 
     FeatureModelGraph* graph = new FeatureModelGraph( 
-        _features.get(), 
+        session,
         _options, 
-        _factory.get(),
-        session );
+        _factory.get() );
 
     return graph;
 }

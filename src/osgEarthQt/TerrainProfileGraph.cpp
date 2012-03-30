@@ -240,7 +240,7 @@ void TerrainProfileGraph::redrawGraph()
     QPolygonF graphPoly;
     graphPoly << QPointF(_graphField.x(), _graphField.y() + _graphField.height());
 
-    double lastX, lastY;
+    double lastX = 0.0, lastY = 0.0;
     for (unsigned int i = 0; i < profile.getNumElevations(); i++)
     {
       double distance = profile.getDistance( i );
@@ -299,7 +299,7 @@ void TerrainProfileGraph::drawAxes(double yMin, double yMax, double yScale, doub
   int yOffset = (int)xMaxText->boundingRect().height() + textSpacing;
   int xAxisY = _graphHeight - yOffset;
 
-  out_field.setCoords(xOffset, fontHalfHeight, _graphWidth, xAxisY);
+  out_field.setCoords(xOffset, (int)fontHalfHeight, _graphWidth, xAxisY);
 
 
   // Draw background rectangle

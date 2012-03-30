@@ -18,6 +18,7 @@
  */
 #include <osgEarth/ShaderUtils>
 #include <osgEarth/Registry>
+#include <osgUtil/CullVisitor>
 #include <list>
 
 using namespace osgEarth;

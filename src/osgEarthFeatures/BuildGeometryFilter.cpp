@@ -17,6 +17,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 #include <osgEarthFeatures/BuildGeometryFilter>
+#include <osgEarthFeatures/FeatureSourceIndexNode>
 #include <osgEarthSymbology/TextSymbol>
 #include <osgEarthSymbology/PointSymbol>
 #include <osgEarthSymbology/LineSymbol>
@@ -32,7 +33,6 @@
 #include <osg/Depth>
 #include <osg/PolygonOffset>
 #include <osg/MatrixTransform>
-#include <osg/ClusterCullingCallback>
 #include <osgText/Text>
 #include <osgUtil/Tessellator>
 #include <osgUtil/Optimizer>
@@ -110,6 +110,10 @@ BuildGeometryFilter::process( FeatureList& features, const FilterContext& contex
         {
             Geometry* part = parts.next();
 
+            // skip empty geometry
+            if ( part->size() == 0 )
+                continue;
+
             const Style& myStyle = input->style().isSet() ? *input->style() : _style;
 
             bool  setLinePropsHere   = input->style().isSet(); // otherwise it will be set globally, we assume
@@ -160,30 +164,11 @@ BuildGeometryFilter::process( FeatureList& features, const FilterContext& contex
                 renderType = part->getType();
             }
 
-#if 0
-            if ((polySymbol != 0L) ||
-                (polySymbol == 0L && lineSymbol == 0L && part->getType() == Geometry::TYPE_POLYGON))
-            {
-                renderType = Geometry::TYPE_POLYGON;
-            }
-
-            else if (
-                (lineSymbol != 0L && polySymbol == 0L && !part->isLinear()))
-            {
-                renderType = Geometry::TYPE_RING;
-            }
-
-            else if (
-                (lineSymbol != 0L && polySymbol == 0L && part->isLinear()))
-            {
-                renderType = part->getType();
-            }
-
-            else
-            {
-                renderType = part->getType();
-            }
-#endif
+            // validate the geometry:
+            if ( renderType == Geometry::TYPE_POLYGON && part->size() < 3 )
+                continue;
+            else if ( (renderType == Geometry::TYPE_LINESTRING || renderType == Geometry::TYPE_RING) && part->size() < 2 )
+                continue;
 
             // resolve the color:
             osg::Vec4f primaryColor =
@@ -236,6 +221,9 @@ BuildGeometryFilter::process( FeatureList& features, const FilterContext& contex
             osgGeom->setColorArray( colors );
             osgGeom->setColorBinding( osg::Geometry::BIND_PER_VERTEX );
 
+            // add the part to the geode.
+            //_featureNode->addDrawable(osgGeom, input->getFID());
+
             // subdivide the mesh if necessary to conform to an ECEF globe:
             if ( makeECEF && renderType != Geometry::TYPE_POINTSET )
             {
@@ -257,6 +245,10 @@ BuildGeometryFilter::process( FeatureList& features, const FilterContext& contex
             }
 
             _geode->addDrawable( osgGeom );
+
+            // record the geometry's primitive set(s) in the index:
+            if ( context.featureIndex() )
+                context.featureIndex()->tagPrimitiveSets( osgGeom, input->getFID() );
 
             // build secondary geometry, if necessary (polygon outlines)
             if ( renderType == Geometry::TYPE_POLYGON && lineSymbol )
@@ -292,6 +284,12 @@ BuildGeometryFilter::process( FeatureList& features, const FilterContext& contex
                 applyLineAndPointSymbology( outline->getOrCreateStateSet(), lineSymbol, 0L );
 
                 _geode->addDrawable( outline );
+
+                //_featureNode->addDrawable( outline, input->getFID() );
+
+                // Mark each primitive set with its feature ID.
+                if ( context.featureIndex() )
+                    context.featureIndex()->tagPrimitiveSets( outline, input->getFID() );
             }
 
         }
@@ -333,6 +331,8 @@ BuildGeometryFilter::buildPolygon(Geometry*               ring,
                 osgGeom->addPrimitiveSet( new osg::DrawArrays( GL_LINE_LOOP, offset, hole->size() ) );
                 offset += hole->size();
             }
+
+            _geode->addDrawable( osgGeom );
         }
     }
     osgGeom->setVertexArray( allPoints );
@@ -383,6 +383,7 @@ BuildGeometryFilter::push( FeatureList& input, FilterContext& context )
                     new osg::Point( *pointSymbol->size() ), osg::StateAttribute::ON );
         }
 
+        // apply the delocalization matrix for no-jitter
         result = delocalize( _geode.release() );
     }
     else

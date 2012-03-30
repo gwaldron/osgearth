@@ -46,8 +46,6 @@ namespace osgEarth { namespace Features
         /**
          * Constructs a new model graph.
          *
-         * @param source
-         *      Source from which to read feature data
          * @param options
          *      Model source options
          * @param factory
@@ -55,11 +53,10 @@ namespace osgEarth { namespace Features
          * @param session
          *      Session under which to create elements in this graph
          */
-        FeatureModelGraph( 
-            FeatureSource*                   source,
+        FeatureModelGraph(
+            Session*                         session,
             const FeatureModelSourceOptions& options,
-            FeatureNodeFactory*              factory,
-            Session*                         session );
+            FeatureNodeFactory*              factory );
 
         /**
          * Loads and returns a subnode. Used internally for paging.
@@ -82,11 +79,11 @@ namespace osgEarth { namespace Features
 
         osg::Group* build( const FeatureLevel& level, const GeoExtent& extent, const TileKey* key);
 
-        osg::Group* build( const Style& baseStyle, const Query& baseQuery, const GeoExtent& extent );
+        osg::Group* build( const Style& baseStyle, const Query& baseQuery, const GeoExtent& extent, FeatureSourceIndex* index);
 
     private:
         
-        osg::Group* createNodeForStyle(const Style& style, const Query& query);
+        osg::Group* createNodeForStyle(const Style& style, const Query& query, FeatureSourceIndex* index);
        
         osg::BoundingSphered getBoundInWorldCoords( const GeoExtent& extent, const MapFrame* mapf ) const;
 
@@ -98,7 +95,7 @@ namespace osgEarth { namespace Features
 
     private:
         FeatureModelSourceOptions        _options;
-        osg::ref_ptr<FeatureSource>      _source;
+        //osg::ref_ptr<FeatureSource>      _source;
         osg::ref_ptr<FeatureNodeFactory> _factory;
         osg::ref_ptr<Session>            _session;
         UID                              _uid;

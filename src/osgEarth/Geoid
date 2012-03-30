@@ -20,8 +20,8 @@
 #define OSGEARTH_GEOID_H 1
 
 #include <osgEarth/Common>
+#include <osgEarth/GeoCommon>
 #include <osgEarth/Bounds>
-#include <osgEarth/HeightFieldUtils>
 #include <osgEarth/Units>
 #include <osg/Referenced>
 

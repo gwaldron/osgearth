@@ -40,6 +40,7 @@ SET(LIB_PUBLIC_HEADERS
     ElevationQuery
     Export
     FileUtils
+    GeoCommon
     GeoData
     Geoid
     GeoMath
@@ -67,6 +68,7 @@ SET(LIB_PUBLIC_HEADERS
     ModelSource
     NodeUtils
 	Notify
+	optional
 	OverlayDecorator
 	Pickers
     Profile
@@ -188,6 +190,7 @@ ADD_LIBRARY(${LIB_NAME} SHARED
     TileFactory.cpp
     TileKey.cpp
     TileSource.cpp
+    ThreadingUtils.cpp
     Units.cpp
     URI.cpp
     Utils.cpp

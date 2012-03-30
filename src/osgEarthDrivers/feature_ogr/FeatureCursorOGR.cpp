@@ -28,22 +28,23 @@ using namespace osgEarth;
 using namespace osgEarth::Features;
 
 
-FeatureCursorOGR::FeatureCursorOGR(OGRDataSourceH dsHandle,
-                                   OGRLayerH layerHandle,
-                                   const FeatureProfile* profile,
-                                   const Symbology::Query& query,
+FeatureCursorOGR::FeatureCursorOGR(OGRDataSourceH           dsHandle,
+                                   OGRLayerH                layerHandle,
+                                   const FeatureSource*     source,
+                                   const FeatureProfile*    profile,
+                                   const Symbology::Query&  query,
                                    const FeatureFilterList& filters ) :
-_dsHandle( dsHandle ),
-_layerHandle( layerHandle ),
-_resultSetHandle( 0L ),
-_spatialFilter( 0L ),
-_query( query ),
-_chunkSize( 500 ),
+_source           ( source ),
+_dsHandle         ( dsHandle ),
+_layerHandle      ( layerHandle ),
+_resultSetHandle  ( 0L ),
+_spatialFilter    ( 0L ),
+_query            ( query ),
+_chunkSize        ( 500 ),
 _nextHandleToQueue( 0L ),
-_profile( profile ),
-_filters( filters )
+_profile          ( profile ),
+_filters          ( filters )
 {
-    //_resultSetHandle = _layerHandle;
     {
         OGR_SCOPED_LOCK;
 
@@ -171,32 +172,32 @@ FeatureCursorOGR::readChunk()
 
     if ( _nextHandleToQueue )
     {
-        Feature* f = OgrUtils::createFeature( _nextHandleToQueue, _profile->getSRS() );
-        if ( f ) 
+        osg::ref_ptr<Feature> f = OgrUtils::createFeature( _nextHandleToQueue, _profile->getSRS() );
+        if ( f.valid() && !_source->isBlacklisted(f->getFID()) )
         {
             _queue.push( f );
             
             if ( _filters.size() > 0 )
-                preProcessList.push_back( f );
+                preProcessList.push_back( f.release() );
         }
         OGR_F_Destroy( _nextHandleToQueue );
         _nextHandleToQueue = 0L;
     }
 
-    int handlesToQueue = _chunkSize - _queue.size();
+    unsigned handlesToQueue = _chunkSize - _queue.size();
 
-    for( int i=0; i<handlesToQueue; i++ )
+    for( unsigned i=0; i<handlesToQueue; i++ )
     {
         OGRFeatureH handle = OGR_L_GetNextFeature( _resultSetHandle );
         if ( handle )
         {
-            Feature* f = OgrUtils::createFeature( handle, _profile->getSRS() );
-            if ( f ) 
+            osg::ref_ptr<Feature> f = OgrUtils::createFeature( handle, _profile->getSRS() );
+            if ( f.valid() && !_source->isBlacklisted(f->getFID()) )
             {
                 _queue.push( f );
 
                 if ( _filters.size() > 0 )
-                    preProcessList.push_back( f );
+                    preProcessList.push_back( f.release() );
             }
             OGR_F_Destroy( handle );
         }

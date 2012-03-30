@@ -35,6 +35,7 @@ namespace osgEarth { namespace Features
     using namespace osgEarth::Symbology;
     class Session;
     class FeatureProfile;
+    class FeatureSourceIndex;
 
     /**
      * Context within which a chain of filters is executed.
@@ -45,7 +46,8 @@ namespace osgEarth { namespace Features
         FilterContext(
             Session*              session       =0L,
             const FeatureProfile* profile       =0L,
-            const GeoExtent&      workingExtent =GeoExtent::INVALID );
+            const GeoExtent&      workingExtent =GeoExtent::INVALID,
+            FeatureSourceIndex*   index         =0L);
 
         FilterContext( const FilterContext& rhs );
 
@@ -54,6 +56,12 @@ namespace osgEarth { namespace Features
          * don't assign one.
          */
         void setResourceCache( ResourceCache* value ) { _resourceCache = value; }
+
+        /**
+         * Sets the feature index that the filter chain should populate
+         */
+        void setFeatureIndex( FeatureSourceIndex* value ) { _index = value; }
+
 
     public: // properties
 
@@ -79,6 +87,12 @@ namespace osgEarth { namespace Features
          */
         optional<GeoExtent>& extent() { return _extent; }
         const optional<GeoExtent>& extent() const { return _extent; }
+
+        /**
+         * The feature index
+         */
+        FeatureSourceIndex* featureIndex() { return _index; }
+        const FeatureSourceIndex* featureIndex() const { return _index; }
 
         /**
          * Whether this context has a non-identity reference frame
@@ -159,6 +173,7 @@ namespace osgEarth { namespace Features
         osg::Matrixd                       _inverseReferenceFrame;
         OptimizerHints                     _optimizerHints;
         osg::ref_ptr<ResourceCache>        _resourceCache;
+        FeatureSourceIndex*                _index;
     };
 
 } } // namespace osgEarth::Features

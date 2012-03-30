@@ -62,7 +62,7 @@ namespace
                     unsigned outc = unsigned( (inputLon-origin.x())/colStep );
                     unsigned outr = unsigned( (inputLat-origin.y())/rowStep );
 
-                    Linear h( double(s_egm96grid[r*cols+c]), Units::CENTIMETERS );
+                    Linear h( (double)s_egm96grid[r*cols+c], Units::CENTIMETERS );
                     hf->setHeight( outc, outr, float(h.as(Units::METERS)) );
                 }
             }

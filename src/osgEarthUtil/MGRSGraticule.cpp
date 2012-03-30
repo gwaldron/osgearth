@@ -129,7 +129,7 @@ MGRSGraticule::buildSQIDTiles( const std::string& gzd )
         textSym = _options->primaryStyle()->getOrCreate<TextSymbol>();
 
     AltitudeSymbol* alt = _options->secondaryStyle()->get<AltitudeSymbol>();
-    double h = 0.0; //alt ? alt->verticalOffset()->eval() : 5000.0;
+    double h = 0.0;
 
     TextSymbolizer ts( textSym );
     MGRSFormatter mgrs(MGRSFormatter::PRECISION_100000M);
@@ -157,38 +157,39 @@ MGRSGraticule::buildSQIDTiles( const std::string& gzd )
         const SpatialReference* utm = SpatialReference::create(
             Stringify() << "+proj=utm +zone=" << zone << " +north +units=m" );
 
-        // a UTM extent that encompasses the tile extent:
-        GeoExtent extentUTM = extent.transform( utm );
-
-        // find the southern boundary of the first full SQID tile in the GZD tile.
-        double southSQIDBoundary = extentUTM.yMin();
-        double remainder = fmod( southSQIDBoundary, 100000.0 );
-        if ( remainder > 0.0 )
-            southSQIDBoundary += (100000.0 - remainder);
-
-        // Record the UTM extent of each SQID cell in this tile.
-        // Go from the south boundary northwards:
-        for( double y = southSQIDBoundary; y < extentUTM.yMax(); y += 100000.0 )
-        {
-            // start at the central meridian (500K) and go west:
-            for( double x = 500000.0; x > extentUTM.xMin(); x -= 100000.0 )
-            {
-                sqidExtents.push_back( GeoExtent(utm, x-100000.0, y, x, y+100000.0) );
-            }
-
-            // then start at the central meridian and go east:
-            for( double x = 500000.0; x < extentUTM.xMax(); x += 100000.0 )
-            {
-                sqidExtents.push_back( GeoExtent(utm, x, y, x+100000.0, y+100000.0) );
-            }
-        }
-
         // transform the four corners of the tile to UTM.
         osg::Vec3d gzdUtmSW, gzdUtmSE, gzdUtmNW, gzdUtmNE;
         extent.getSRS()->transform( osg::Vec3d(extent.xMin(),extent.yMin(),h), utm, gzdUtmSW );
         extent.getSRS()->transform( osg::Vec3d(extent.xMin(),extent.yMax(),h), utm, gzdUtmNW );
         extent.getSRS()->transform( osg::Vec3d(extent.xMax(),extent.yMin(),h), utm, gzdUtmSE );
         extent.getSRS()->transform( osg::Vec3d(extent.xMax(),extent.yMax(),h), utm, gzdUtmNE );
+
+        // find the southern boundary of the first full SQID tile in the GZD tile.
+        double southSQIDBoundary = gzdUtmSW.y(); //extentUTM.yMin();
+        double remainder = fmod( southSQIDBoundary, 100000.0 );
+        if ( remainder > 0.0 )
+            southSQIDBoundary += (100000.0 - remainder);
+
+        // find the min/max X for this cell in UTM:
+        double xmin = extent.yMin() >= 0.0 ? gzdUtmSW.x() : gzdUtmNW.x();
+        double xmax = extent.yMin() >= 0.0 ? gzdUtmSE.x() : gzdUtmNE.x();
+
+        // Record the UTM extent of each SQID cell in this tile.
+        // Go from the south boundary northwards:
+        for( double y = southSQIDBoundary; y < gzdUtmNW.y(); y += 100000.0 )
+        {
+            // start at the central meridian (500K) and go west:
+            for( double x = 500000.0; x > xmin; x -= 100000.0 )
+            {
+                sqidExtents.push_back( GeoExtent(utm, x-100000.0, y, x, y+100000.0) );
+            }
+
+            // then start at the central meridian and go east:
+            for( double x = 500000.0; x < xmax; x += 100000.0 )
+            {
+                sqidExtents.push_back( GeoExtent(utm, x, y, x+100000.0, y+100000.0) );
+            }
+        }
 
         for( std::vector<GeoExtent>::iterator i = sqidExtents.begin(); i != sqidExtents.end(); ++i )
         {

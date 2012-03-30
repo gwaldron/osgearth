@@ -21,7 +21,8 @@
 
 #include <osgEarth/Common>
 #include <osgEarth/Config>
-#include <osgEarth/HeightFieldUtils>
+#include <osgEarth/GeoCommon>
+#include <osg/Texture>
 
 namespace osgEarth
 {
@@ -54,6 +55,7 @@ namespace osgEarth
     public:
         LoadingPolicy( const Config& conf =Config() );
         LoadingPolicy( const Mode& mode );
+        virtual ~LoadingPolicy() { }
 
     public: // Configrable
         virtual Config getConfig() const;

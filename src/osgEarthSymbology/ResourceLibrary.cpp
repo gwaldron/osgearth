@@ -163,12 +163,14 @@ ResourceLibrary::removeResource( Resource* resource )
     }
 }
 
+
+static Threading::Mutex s_initMutex;
+
 void
 ResourceLibrary::initialize( const osgDB::Options* dbOptions )
 {
     if ( !_initialized )
     {
-        static Threading::Mutex s_initMutex;
         Threading::ScopedMutexLock exclusive(s_initMutex);
         if ( !_initialized )
         {

@@ -31,6 +31,9 @@ namespace osgEarth { namespace Features
 {
     using namespace osgEarth;
     using namespace osgEarth::Symbology;
+    
+    class FeatureSourceIndex;
+
 
     /**
      * Extrudes footprint geometry into 3D geometry
@@ -77,6 +80,7 @@ namespace osgEarth { namespace Features
         void setFeatureNameExpr( const StringExpression& expr ) { _featureNameExpr = expr; }
         const StringExpression& getFeatureNameExpr() const { return _featureNameExpr; }
 
+
     protected:
 
         // a set of geodes indexed by stateset pointer, for pre-sorting geodes based on 
@@ -110,12 +114,14 @@ namespace osgEarth { namespace Features
         void reset( const FilterContext& context );
         
         void addDrawable( 
-            osg::Drawable*     drawable, 
-            osg::StateSet*     stateSet, 
-            const std::string& name );
+            osg::Drawable*      drawable, 
+            osg::StateSet*      stateSet, 
+            const std::string&  name,
+            FeatureID           fid,
+            FeatureSourceIndex* index);
         
         bool process( 
-            FeatureList&    input,
+            FeatureList&     input,
             FilterContext&   context );
 
         bool extrudeGeometry(

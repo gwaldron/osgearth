@@ -25,13 +25,13 @@ SET(LIB_PUBLIC_HEADERS
     Feature
     FeatureCursor
     FeatureDisplayLayout
+    FeatureDrawSet
     FeatureGeometryIndex
-    FeatureGridder
 	FeatureListSource
     FeatureModelGraph
     FeatureModelSource
-    #FeatureNode
     FeatureSource
+    FeatureSourceIndexNode
     FeatureTileSource
     Filter
     FilterContext
@@ -68,13 +68,13 @@ ADD_LIBRARY(${LIB_NAME} SHARED
     Feature.cpp
     FeatureCursor.cpp
     FeatureDisplayLayout.cpp
+    FeatureDrawSet.cpp
     FeatureGeometryIndex.cpp
-    FeatureGridder.cpp
 	FeatureListSource.cpp
     FeatureModelGraph.cpp
     FeatureModelSource.cpp
-    #FeatureNode.cpp
     FeatureSource.cpp
+    FeatureSourceIndexNode.cpp
     FeatureTileSource.cpp
     Filter.cpp
     FilterContext.cpp

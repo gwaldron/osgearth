@@ -196,23 +196,23 @@ static short s_actionOptionTypes[] = { 1, 1, 0, 0, 1, 1 }; // 0=bool, 1=double
 //------------------------------------------------------------------------
 
 EarthManipulator::Settings::Settings() :
-_single_axis_rotation( false ),
-_throwing( false ),
+_single_axis_rotation   ( false ),
+_throwing               ( false ),
 _lock_azim_while_panning( true ),
-_mouse_sens( 1.0 ),
-_keyboard_sens( 1.0 ),
-_scroll_sens( 1.0 ),
-_min_pitch( -89.9 ),
-_max_pitch( -10.0 ),
-_max_x_offset( 0.0 ),
-_max_y_offset( 0.0 ),
-_min_distance( 0.001 ),
-_max_distance( DBL_MAX ),
-_tether_mode( TETHER_CENTER ),
-_arc_viewpoints( false ),
-_auto_vp_duration( false ),
-_min_vp_duration_s( 3.0 ),
-_max_vp_duration_s( 8.0 )
+_mouse_sens             ( 1.0 ),
+_keyboard_sens          ( 1.0 ),
+_scroll_sens            ( 1.0 ),
+_min_pitch              ( -89.9 ),
+_max_pitch              ( -10.0 ),
+_max_x_offset           ( 0.0 ),
+_max_y_offset           ( 0.0 ),
+_min_distance           ( 0.001 ),
+_max_distance           ( DBL_MAX ),
+_tether_mode            ( TETHER_CENTER ),
+_arc_viewpoints         ( true ),
+_auto_vp_duration       ( false ),
+_min_vp_duration_s      ( 3.0 ),
+_max_vp_duration_s      ( 8.0 )
 {
     //NOP
 }
@@ -400,7 +400,7 @@ EarthManipulator::Settings::setAutoViewpointDurationLimits( double minSeconds, d
 
 
 EarthManipulator::EarthManipulator() :
-osgGA::MatrixManipulator(),
+osgGA::CameraManipulator(),
 _last_action      ( ACTION_NULL ),
 _frame_count      ( 0 )
 {
@@ -409,6 +409,7 @@ _frame_count      ( 0 )
 }
 
 EarthManipulator::EarthManipulator( const EarthManipulator& rhs ) :
+osgGA::CameraManipulator( rhs ),
 _thrown( rhs._thrown ),
 _distance( rhs._distance ),
 _offset_x( rhs._offset_x ),
@@ -1099,11 +1100,15 @@ EarthManipulator::intersect(const osg::Vec3d& start, const osg::Vec3d& end, osg:
 }
 
 void
-EarthManipulator::home(const osgGA::GUIEventAdapter& ,osgGA::GUIActionAdapter& us)
+EarthManipulator::home(double unused)
 {
     handleAction( ACTION_HOME, 0, 0, 0 );
-    //if (getAutoComputeHomePosition()) computeHomePosition();
-    //setByLookAt(_homeEye, _homeCenter, _homeUp);
+}
+
+void
+EarthManipulator::home(const osgGA::GUIEventAdapter& ,osgGA::GUIActionAdapter& us)
+{
+    home( 0.0 );
     us.requestRedraw();
 }
 
@@ -2052,15 +2057,12 @@ EarthManipulator::handlePointAction( const Action& action, float mx, float my, o
             case ACTION_GOTO:
                 Viewpoint here = getViewpoint();
 
-                if ( getSRS() && _is_geocentric )
-                {
-                    double lat_r, lon_r, h;
-                    getSRS()->getEllipsoid()->convertXYZToLatLongHeight(
-                        point.x(), point.y(), point.z(),
-                        lat_r, lon_r, h );
-                    point.set( osg::RadiansToDegrees(lon_r), osg::RadiansToDegrees(lat_r), h );
-                }
-                here.setFocalPoint( point );
+                if ( !here.getSRS() )
+                    return false;
+
+                osg::Vec3d pointVP;
+                here.getSRS()->transformFromWorld(point, pointVP);
+                here.setFocalPoint( pointVP );
 
                 double duration_s = action.getDoubleOption(OPTION_DURATION, 1.0);
                 double range_factor = action.getDoubleOption(OPTION_GOTO_RANGE_FACTOR, 1.0);

@@ -59,11 +59,11 @@ _ignoreAlt         ( false )
 void
 GeometryCompilerOptions::fromConfig( const Config& conf )
 {
-    conf.getIfSet   ( "max_granularity", _maxGranularity_deg );
-    conf.getIfSet   ( "merge_geometry",  _mergeGeometry );
-    conf.getIfSet   ( "clustering",      _clustering );
-    conf.getObjIfSet( "feature_name",    _featureNameExpr );
-    conf.getIfSet   ( "ignore_altitude", _ignoreAlt );
+    conf.getIfSet   ( "max_granularity",  _maxGranularity_deg );
+    conf.getIfSet   ( "merge_geometry",   _mergeGeometry );
+    conf.getIfSet   ( "clustering",       _clustering );
+    conf.getObjIfSet( "feature_name",     _featureNameExpr );
+    conf.getIfSet   ( "ignore_altitude",  _ignoreAlt );
     conf.getIfSet   ( "geo_interpolation", "great_circle", _geoInterp, GEOINTERP_GREAT_CIRCLE );
     conf.getIfSet   ( "geo_interpolation", "rhumb_line",   _geoInterp, GEOINTERP_RHUMB_LINE );
 }
@@ -72,11 +72,11 @@ Config
 GeometryCompilerOptions::getConfig() const
 {
     Config conf = ConfigOptions::getConfig();
-    conf.addIfSet   ( "max_granularity", _maxGranularity_deg );
-    conf.addIfSet   ( "merge_geometry",  _mergeGeometry );
-    conf.addIfSet   ( "clustering",      _clustering );
-    conf.addObjIfSet( "feature_name",    _featureNameExpr );
-    conf.addIfSet   ( "ignore_altitude", _ignoreAlt );
+    conf.addIfSet   ( "max_granularity",  _maxGranularity_deg );
+    conf.addIfSet   ( "merge_geometry",   _mergeGeometry );
+    conf.addIfSet   ( "clustering",       _clustering );
+    conf.addObjIfSet( "feature_name",     _featureNameExpr );
+    conf.addIfSet   ( "ignore_altitude",  _ignoreAlt );
     conf.addIfSet   ( "geo_interpolation", "great_circle", _geoInterp, GEOINTERP_GREAT_CIRCLE );
     conf.addIfSet   ( "geo_interpolation", "rhumb_line",   _geoInterp, GEOINTERP_RHUMB_LINE );
     return conf;

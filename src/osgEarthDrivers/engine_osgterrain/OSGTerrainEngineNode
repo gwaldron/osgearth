@@ -75,7 +75,7 @@ public:
     public:
         ElevationChangedCallback( OSGTerrainEngineNode* terrain );
 
-       virtual void onEnabledChanged( TerrainLayer* layer );
+       virtual void onVisibleChanged( TerrainLayer* layer );
 
         OSGTerrainEngineNode* _terrain;
         friend class OSGTerrainEngineNode;

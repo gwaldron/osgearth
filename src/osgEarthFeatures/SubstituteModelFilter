@@ -65,10 +65,6 @@ namespace osgEarth { namespace Features
         void setMergeGeometry( bool value ) { _merge = value; }
         bool getMergeGeometry() const { return _merge; }
 
-        /** The matrix with which to transform each model instance after placement. */
-        //void setModelMatrix( const osg::Matrixd& value ) { _modelMatrix = value; }
-        //const osg::Matrixd& getModelMatrix() const { return _modelMatrix; }
-
         void setFeatureNameExpr( const StringExpression& expr ) { _featureNameExpr = expr; }
         const StringExpression& getFeatureNameExpr() const { return _featureNameExpr; }
 

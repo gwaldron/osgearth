@@ -23,7 +23,9 @@
 #include <OpenThreads/Condition>
 #include <OpenThreads/Mutex>
 #include <OpenThreads/ReentrantMutex>
+#include <osg/ref_ptr>
 #include <set>
+#include <map>
 
 #define USE_CUSTOM_READ_WRITE_LOCK 1
 //#ifdef _DEBUG
@@ -35,6 +37,14 @@ namespace osgEarth { namespace Threading
     typedef OpenThreads::Mutex Mutex;
     typedef OpenThreads::ScopedLock<OpenThreads::Mutex> ScopedMutexLock;
     typedef OpenThreads::Thread Thread;
+
+    /**
+     * Gets the unique ID of the running thread. Use this instead of
+     * OpenThreads::Thread::CurrentThread, which only works reliably on
+     * threads created with the OpenThreads framework
+     */
+    extern OSGEARTH_EXPORT unsigned getCurrentThreadId();
+
 
 #ifdef USE_CUSTOM_READ_WRITE_LOCK
 
@@ -156,7 +166,7 @@ namespace osgEarth { namespace Threading
     class ReadWriteMutex
     {
 #if TRACE_THREADS
-        typedef std::set<OpenThreads::Thread*> TracedThreads;
+        typedef std::set<unsigned> TracedThreads;
         TracedThreads _trace;
         OpenThreads::Mutex _traceMutex;
 #endif
@@ -175,7 +185,7 @@ namespace osgEarth { namespace Threading
 #ifdef TRACE_THREADS
             {
                 OpenThreads::ScopedLock<OpenThreads::Mutex> ttLock(_traceMutex);
-                if( _trace.find(OpenThreads::Thread::CurrentThread()) != _trace.end() )
+                if( _trace.find(getCurrentThreadId()) != _trace.end() )
                     OE_WARN << "TRACE: tried to double-lock" << std::endl;
             }
 #endif
@@ -192,7 +202,7 @@ namespace osgEarth { namespace Threading
 #ifdef TRACE_THREADS
             {
                 OpenThreads::ScopedLock<OpenThreads::Mutex> ttLock(_traceMutex);
-                _trace.insert(OpenThreads::Thread::CurrentThread());
+                _trace.insert(getCurrentThreadId());
             }
 #endif
         }
@@ -204,7 +214,7 @@ namespace osgEarth { namespace Threading
 #ifdef TRACE_THREADS
             {
                 OpenThreads::ScopedLock<OpenThreads::Mutex> ttLock(_traceMutex);
-                _trace.erase(OpenThreads::Thread::CurrentThread());
+                _trace.erase(getCurrentThreadId());
             }
 #endif
         }
@@ -214,7 +224,7 @@ namespace osgEarth { namespace Threading
 #ifdef TRACE_THREADS
             {
                 OpenThreads::ScopedLock<OpenThreads::Mutex> ttLock(_traceMutex);
-                if( _trace.find(OpenThreads::Thread::CurrentThread()) != _trace.end() )
+                if( _trace.find(getCurrentThreadId()) != _trace.end() )
                     OE_WARN << "TRACE: tried to double-lock" << std::endl;
             }
 #endif
@@ -226,7 +236,7 @@ namespace osgEarth { namespace Threading
 #ifdef TRACE_THREADS
             {
                 OpenThreads::ScopedLock<OpenThreads::Mutex> ttLock(_traceMutex);
-                _trace.insert(OpenThreads::Thread::CurrentThread());
+                _trace.insert(getCurrentThreadId());
             }
 #endif
         }
@@ -238,7 +248,7 @@ namespace osgEarth { namespace Threading
 #ifdef TRACE_THREADS
             {
                 OpenThreads::ScopedLock<OpenThreads::Mutex> ttLock(_traceMutex);
-                _trace.erase(OpenThreads::Thread::CurrentThread());
+                _trace.erase(getCurrentThreadId());
             }
 #endif
         }
@@ -261,11 +271,11 @@ namespace osgEarth { namespace Threading
         }
 
     private:
-        int _readerCount;
-        OpenThreads::Mutex _lockWriterMutex;
-        OpenThreads::Mutex _readerCountMutex;
-        Event _noWriterEvent;
-        Event _noReadersEvent;
+        int    _readerCount;
+        Mutex  _lockWriterMutex;
+        Mutex  _readerCountMutex;
+        Event  _noWriterEvent;
+        Event  _noReadersEvent;
     };
 
 
@@ -299,15 +309,15 @@ namespace osgEarth { namespace Threading
     {
         T& get() {
             ScopedMutexLock lock(_mutex);
-            return _data[OpenThreads::Thread::CurrentThread()];
+            return _data[getCurrentThreadId()];
         }
         const T& get() const {
             ScopedMutexLock lock(_mutex);
-            return _data[OpenThreads::Thread::CurrentThread()];
+            return _data[getCurrentThreadId()];
         }
     private:
-        std::map<OpenThreads::Thread*,T> _data;
-        OpenThreads::Mutex               _mutex;
+        std::map<unsigned,T> _data;
+        Mutex                _mutex;
     };
 
     /** Template for thread safe per-object data storage */

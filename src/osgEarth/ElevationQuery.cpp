@@ -1,7 +1,6 @@
 #include <osgEarth/ElevationQuery>
 #include <osgEarth/Locators>
-#include <osgTerrain/TerrainTile>
-#include <osgTerrain/GeometryTechnique>
+#include <osgEarth/HeightFieldUtils>
 #include <osgUtil/IntersectionVisitor>
 #include <osgUtil/LineSegmentIntersector>
 
@@ -134,20 +133,6 @@ ElevationQuery::getMaxLevel( double x, double y, const SpatialReference* srs ) c
     return maxLevel;
 }
 
-#if 0
-ElevationQuery::Technique
-ElevationQuery::getTechnique() const
-{
-    return _technique;
-}
-#endif
-
-//void
-//ElevationQuery::setTechnique( ElevationQuery::Technique technique )
-//{
-//    _technique = technique;
-//}
-
 void
 ElevationQuery::setMaxTilesToCache( int value )
 {
@@ -262,7 +247,6 @@ ElevationQuery::getElevationImpl(const GeoPoint& point,
         }
     }
 
-    //osg::ref_ptr<osgTerrain::TerrainTile> tile;
     osg::ref_ptr<osg::HeightField> tile;
 
     // get the tilekey corresponding to the tile we need:

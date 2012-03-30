@@ -96,6 +96,7 @@ SkinResource::createStateSet( osg::Image* image ) const
         stateSet = new osg::StateSet();
 
         osg::Texture* tex = new osg::Texture2D( image );
+        tex->setResizeNonPowerOfTwoHint(false);
         tex->setWrap( osg::Texture::WRAP_S, osg::Texture::REPEAT );
         tex->setWrap( osg::Texture::WRAP_T, osg::Texture::REPEAT );
         stateSet->setTextureAttributeAndModes( 0, tex, osg::StateAttribute::ON );

@@ -159,6 +159,11 @@ namespace osgEarth { namespace Util { namespace Controls
     class OSGEARTHUTIL_EXPORT Control : public osg::Referenced
     {
     public:
+        enum Side
+        {
+            SIDE_TOP, SIDE_BOTTOM, SIDE_LEFT, SIDE_RIGHT
+        };
+
         enum Alignment
         {
             ALIGN_NONE, ALIGN_LEFT, ALIGN_CENTER, ALIGN_RIGHT, ALIGN_TOP, ALIGN_BOTTOM
@@ -195,11 +200,13 @@ namespace osgEarth { namespace Util { namespace Controls
         void setSize( float w, float h );
 
         void setMargin( const Gutter& value );
+        void setMargin( Side side, float value );
         const Gutter& margin() const { return _margin; }
 
         // space between container and its content
         void setPadding( const Gutter& value );
         void setPadding( float globalValue );
+        void setPadding( Side side, float value );
         const Gutter& padding() const { return _padding; }
 
         void setVertAlign( const Alignment& value );
@@ -307,7 +314,8 @@ namespace osgEarth { namespace Util { namespace Controls
 
         LabelControl(
             const std::string& value,
-            const osg::Vec4f&  foreColor );
+            const osg::Vec4f&  foreColor,
+            float              fontSize  =18.0f );
 
         void setText( const std::string& value );
         const std::string& text() const { return _text; }

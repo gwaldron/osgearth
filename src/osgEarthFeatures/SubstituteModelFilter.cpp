@@ -17,6 +17,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 #include <osgEarthFeatures/SubstituteModelFilter>
+#include <osgEarthFeatures/FeatureSourceIndexNode>
 #include <osgEarthSymbology/MeshConsolidator>
 #include <osgEarth/HTTPClient>
 #include <osgEarth/ECEF>
@@ -166,10 +167,12 @@ SubstituteModelFilter::process(const FeatureList&           features,
 
                     osg::MatrixTransform* xform = new osg::MatrixTransform();
                     xform->setMatrix( mat );
-
+                    xform->setDataVariance( osg::Object::STATIC );
                     xform->addChild( model.get() );
-
                     attachPoint->addChild( xform );
+
+                    if ( context.featureIndex() )
+                        context.featureIndex()->tagNode( xform, input->getFID() );
 
                     // name the feature if necessary
                     if ( !_featureNameExpr.empty() )
@@ -191,123 +194,128 @@ SubstituteModelFilter::process(const FeatureList&           features,
 
 struct ClusterVisitor : public osg::NodeVisitor
 {
-        ClusterVisitor( const FeatureList& features, const MarkerSymbol* symbol, FeaturesToNodeFilter* f2n, FilterContext& cx )
-            : _features   ( features ),
-              _symbol     ( symbol ),
-              //_modelMatrix( modelMatrix ),
-              _f2n        ( f2n ),
-              _cx         ( cx ),
-              osg::NodeVisitor( osg::NodeVisitor::TRAVERSE_ALL_CHILDREN )
+    ClusterVisitor( const FeatureList& features, const MarkerSymbol* symbol, FeaturesToNodeFilter* f2n, FilterContext& cx )
+        : _features   ( features ),
+          _symbol     ( symbol ),
+          _f2n        ( f2n ),
+          _cx         ( cx ),
+          osg::NodeVisitor( osg::NodeVisitor::TRAVERSE_ALL_CHILDREN )
+    {
+        //nop
+    }
+
+    void apply( osg::Geode& geode )
+    {
+        bool makeECEF = _cx.getSession()->getMapInfo().isGeocentric();
+        const SpatialReference* srs = _cx.profile()->getSRS();
+
+        NumericExpression scaleEx = *_symbol->scale();
+        osg::Matrixd scaleMatrix;
+
+        // save the geode's drawables..
+        osg::Geode::DrawableList old_drawables = geode.getDrawableList();
+
+        //OE_DEBUG << "ClusterVisitor geode " << &geode << " featureNode=" << _featureNode << " drawables=" << old_drawables.size() << std::endl;
+
+        // ..and clear out the drawables list.
+        geode.removeDrawables( 0, geode.getNumDrawables() );
+
+#if 0
+        // ... and remove all drawables from the feature node
+        for( osg::Geode::DrawableList::iterator i = old_drawables.begin(); i != old_drawables.end(); i++ )
+            _featureNode->removeDrawable(i->get());
+#endif
+
+        // foreach each drawable that was originally in the geode...
+        for( osg::Geode::DrawableList::iterator i = old_drawables.begin(); i != old_drawables.end(); i++ )
         {
-            //nop
-        }
+            osg::Geometry* originalDrawable = dynamic_cast<osg::Geometry*>( i->get() );
+            if ( !originalDrawable )
+                continue;
 
-        void apply( osg::Geode& geode )
-        {
-            bool makeECEF = _cx.getSession()->getMapInfo().isGeocentric();
-            const SpatialReference* srs = _cx.profile()->getSRS();
-
-            NumericExpression scaleEx = *_symbol->scale();
-            osg::Matrixd scaleMatrix;
-
-            // save the geode's drawables..
-            osg::Geode::DrawableList old_drawables = geode.getDrawableList();
-
-            // ..and clear out the drawables list.
-            geode.removeDrawables( 0, geode.getNumDrawables() );
-
-            // foreach each drawable that was originally in the geode...
-            for( osg::Geode::DrawableList::iterator i = old_drawables.begin(); i != old_drawables.end(); i++ )
+            // go through the list of input features...
+            for( FeatureList::const_iterator j = _features.begin(); j != _features.end(); j++ )
             {
-                osg::Geometry* originalDrawable = dynamic_cast<osg::Geometry*>( i->get() );
-                if ( !originalDrawable )
-                    continue;
+                const Feature* feature = j->get();
 
-                // go through the list of input features...
-                for( FeatureList::const_iterator j = _features.begin(); j != _features.end(); j++ )
+                if ( _symbol->scale().isSet() )
                 {
-                    const Feature* feature = j->get();
+                    double scale = feature->eval( scaleEx, &_cx );
+                    scaleMatrix.makeScale( scale, scale, scale );
+                }
 
-                    if ( _symbol->scale().isSet() )
+                osg::Matrixd rotationMatrix;
+                if ( _symbol->orientation().isSet() )
+                {
+                    osg::Vec3d hpr = *_symbol->orientation();
+                    //Rotation in HPR
+                    //Apply the rotation            
+                    rotationMatrix.makeRotate( 
+                        osg::DegreesToRadians(hpr.y()), osg::Vec3(1,0,0),
+                        osg::DegreesToRadians(hpr.x()), osg::Vec3(0,0,1),
+                        osg::DegreesToRadians(hpr.z()), osg::Vec3(0,1,0) );            
+                }
+
+
+                ConstGeometryIterator gi( feature->getGeometry(), false );
+                while( gi.hasMore() )
+                {
+                    const Geometry* geom = gi.next();
+
+                    for( Geometry::const_iterator k = geom->begin(); k != geom->end(); ++k )
                     {
-                        double scale = feature->eval( scaleEx, &_cx );
-                        scaleMatrix.makeScale( scale, scale, scale );
-                    }
+                        osg::Vec3d   point = *k;
+                        osg::Matrixd mat;
 
-                    osg::Matrixd rotationMatrix;
-                    if ( _symbol->orientation().isSet() )
-                    {
-                        osg::Vec3d hpr = *_symbol->orientation();
-                        //Rotation in HPR
-                        //Apply the rotation            
-                        rotationMatrix.makeRotate( 
-                            osg::DegreesToRadians(hpr.y()), osg::Vec3(1,0,0),
-                            osg::DegreesToRadians(hpr.x()), osg::Vec3(0,0,1),
-                            osg::DegreesToRadians(hpr.z()), osg::Vec3(0,1,0) );            
-                    }
-
-
-                    ConstGeometryIterator gi( feature->getGeometry(), false );
-                    while( gi.hasMore() )
-                    {
-                        const Geometry* geom = gi.next();
-
-                        for( Geometry::const_iterator k = geom->begin(); k != geom->end(); ++k )
+                        if ( makeECEF )
                         {
-                            osg::Vec3d   point = *k;
-                            osg::Matrixd mat;
-
-                            if ( makeECEF )
-                            {
-                                osg::Matrixd rotation;
-                                ECEF::transformAndGetRotationMatrix( point, srs, point, rotation );
-                                mat = rotationMatrix * rotation * scaleMatrix * osg::Matrixd::translate(point) * _f2n->world2local();
-                            }
-                            else
-                            {
-                                mat = rotationMatrix * scaleMatrix * osg::Matrixd::translate(point) * _f2n->world2local();
-                            }
-
-                            // clone the source drawable once for each input feature.
-                            osg::ref_ptr<osg::Geometry> newDrawable = osg::clone( 
-                                originalDrawable, 
-                                osg::CopyOp::DEEP_COPY_ARRAYS | osg::CopyOp::DEEP_COPY_PRIMITIVES );
-
-                            osg::Vec3Array* verts = dynamic_cast<osg::Vec3Array*>( newDrawable->getVertexArray() );
-                            if ( verts )
-                            {
-                                for( osg::Vec3Array::iterator v = verts->begin(); v != verts->end(); ++v )
-                                {
-                                    (*v).set( (*v) * mat );
-                                }
-                                
-                                // add the new cloned, translated drawable back to the geode.
-                                geode.addDrawable( newDrawable.get() );
-                            }
+                            osg::Matrixd rotation;
+                            ECEF::transformAndGetRotationMatrix( point, srs, point, rotation );
+                            mat = rotationMatrix * rotation * scaleMatrix * osg::Matrixd::translate(point) * _f2n->world2local();
+                        }
+                        else
+                        {
+                            mat = rotationMatrix * scaleMatrix * osg::Matrixd::translate(point) * _f2n->world2local();
                         }
 
+                        // clone the source drawable once for each input feature.
+                        osg::ref_ptr<osg::Geometry> newDrawable = osg::clone( 
+                            originalDrawable, 
+                            osg::CopyOp::DEEP_COPY_ARRAYS | osg::CopyOp::DEEP_COPY_PRIMITIVES );
+
+                        osg::Vec3Array* verts = dynamic_cast<osg::Vec3Array*>( newDrawable->getVertexArray() );
+                        if ( verts )
+                        {
+                            for( osg::Vec3Array::iterator v = verts->begin(); v != verts->end(); ++v )
+                            {
+                                (*v).set( (*v) * mat );
+                            }
+
+                            // add the new cloned, translated drawable back to the geode.
+                            geode.addDrawable( newDrawable.get() );
+
+                            if ( _cx.featureIndex() )
+                                _cx.featureIndex()->tagPrimitiveSets( newDrawable.get(), feature->getFID() );
+                        }
                     }
+
                 }
             }
-
-            geode.dirtyBound();
-
-            MeshConsolidator::run( geode );
-
-            // merge the geometry. Not sure this is necessary
-            osgUtil::Optimizer opt;
-            opt.optimize( &geode, osgUtil::Optimizer::MERGE_GEOMETRY | osgUtil::Optimizer::SHARE_DUPLICATE_STATE );
-            
-            osg::NodeVisitor::apply( geode );
         }
 
-    private:
-        const FeatureList&    _features;
-        FilterContext         _cx;
-        const MarkerSymbol*   _symbol;
-        //osg::Matrixd          _modelMatrix;
-        FeaturesToNodeFilter* _f2n;
-    };
+        geode.dirtyBound();
+
+        MeshConsolidator::run( geode );
+
+        osg::NodeVisitor::apply( geode );
+    }
+
+private:
+    const FeatureList&      _features;
+    FilterContext&          _cx;
+    const MarkerSymbol*     _symbol;
+    FeaturesToNodeFilter*   _f2n;
+};
 
 
 typedef std::map< osg::Node*, FeatureList > MarkerToFeatures;
@@ -363,7 +371,7 @@ SubstituteModelFilter::cluster(const FeatureList&           features,
         }
     }
 
-    //For each model, cluster the features that use that marker
+    // For each model, cluster the features that use that marker
     for (MarkerToFeatures::iterator i = markerToFeatures.begin(); i != markerToFeatures.end(); ++i)
     {
         osg::Node* prototype = i->first;

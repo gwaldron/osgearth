@@ -21,7 +21,7 @@
 
 #include <osgEarth/Common>
 #include <osgEarth/TileSource>
-#include <osgEarth/HeightFieldUtils>
+#include <osgEarth/GeoCommon>
 
 namespace osgEarth { namespace Drivers
 {

@@ -26,6 +26,8 @@
 
 namespace osgEarth
 {
+    class OSGEARTH_EXPORT GeoExtent;
+
     /** 
      * Reference information for vertical (height) information.
      */

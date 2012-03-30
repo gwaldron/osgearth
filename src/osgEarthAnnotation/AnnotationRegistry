@@ -72,8 +72,10 @@ namespace osgEarth { namespace Annotation
     // internal: interface class for an object that creates annotation node from a Config
     // (used by OSGEARTH_REGISTER_ANNOTATION macro)
     class AnnotationFactory {
-    public: 
+    public:
         virtual AnnotationNode* create(MapNode* mapNode, const Config& conf) const =0;
+
+        virtual ~AnnotationFactory() { }
     };
 
     // internal: proxy class used by the registraion macro

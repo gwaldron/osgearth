@@ -61,7 +61,6 @@ namespace osgEarth { namespace Features
         optional<bool>& ignoreAltitudeSymbol() { return _ignoreAlt; }
         const optional<bool>& ignoreAltitudeSymbol() const { return _ignoreAlt; }
 
-
         //todo: merge this with geoInterp()
         optional<osgEarth::Features::ResampleFilter::ResampleMode>& resampleMode() { return _resampleMode;}
         const optional<osgEarth::Features::ResampleFilter::ResampleMode>& resampleMode() const { return _resampleMode;}

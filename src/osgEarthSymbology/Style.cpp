@@ -468,7 +468,7 @@ StyleSheet::mergeConfig( const Config& conf )
             {
                 Config blockConf( styleConf );
                 blockConf.value() = *i;
-                OE_INFO << LC << "Style block = " << blockConf.toJSON() << std::endl;
+                //OE_INFO << LC << "Style block = " << blockConf.toJSON() << std::endl;
                 Style style( blockConf );
                 _styles[ style.getName() ] = style;
             }

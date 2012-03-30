@@ -64,6 +64,13 @@ LocalizedNodeEditor::updateDraggers()
     _dragger->setPosition( _node->getPosition(), false );
 }
 
+void
+LocalizedNodeEditor::setPosition(const GeoPoint& pos)
+{
+    _node->setPosition( pos );
+    updateDraggers();
+}
+
 
 /**********************************************************************/
 
@@ -115,6 +122,14 @@ _bearing( osg::DegreesToRadians( 90.0 ) )
 
 CircleNodeEditor::~CircleNodeEditor()
 {
+    //nop
+}
+
+void
+CircleNodeEditor::setBearing( const Angle& bearing )
+{
+    _bearing = bearing.as(Units::RADIANS);
+    updateDraggers();
 }
 
 void

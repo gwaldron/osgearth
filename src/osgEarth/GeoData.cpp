@@ -19,6 +19,7 @@
 
 #include <osgEarth/GeoData>
 #include <osgEarth/ImageUtils>
+#include <osgEarth/HeightFieldUtils>
 #include <osgEarth/Registry>
 #include <osgEarth/Cube>
 #include <osgEarth/VerticalDatum>
@@ -260,18 +261,11 @@ GeoPoint::transformZ(const AltitudeModeEnum& altMode, const Terrain* terrain, do
 
     if ( !terrain ) return false;
 
-    // convert to geographic is necessary and sample the MSL height under the point.
+    // convert to geographic if necessary and sample the MSL height under the point.
     double out_hamsl;
-    if ( _srs->isGeographic() )
+    if ( !terrain->getHeight(_srs.get(), x(), y(), &out_hamsl) )
     {
-        if ( !terrain->getHeight( x(), y(), &out_hamsl ) )
-            return false;
-    }
-    else
-    {
-        GeoPoint( _srs->getGeographicSRS(), *this );
-        if ( !terrain->getHeight( x(), y(), &out_hamsl ) )
-            return false;
+        return false;
     }
 
     // convert the Z value as appropriate.
@@ -308,7 +302,7 @@ GeoPoint::toWorld( osg::Vec3d& out_world ) const
     if ( !isValid() ) return false;
     if ( _altMode != AltitudeMode::ABSOLUTE )
     {
-        OE_WARN << LC << "Illegal: called GeoPoint::toWorld with AltitudeMode = RELATIVE_TO_TERRAIN" << std::endl;
+        OE_WARN << LC << "ILLEGAL: called GeoPoint::toWorld with AltitudeMode = RELATIVE_TO_TERRAIN" << std::endl;
         return false;
     }
     return _srs->transformToWorld( _p, out_world );
@@ -335,7 +329,7 @@ GeoPoint::createLocalToWorld( osg::Matrixd& out_l2w ) const
     if ( !isValid() ) return false;
     if ( _altMode != AltitudeMode::ABSOLUTE )
     {
-        OE_WARN << LC << "Illegal: called GeoPoint::createLocal2World with AltitudeMode = RELATIVE_TO_TERRAIN" << std::endl;
+        OE_WARN << LC << "ILLEGAL: called GeoPoint::createLocal2World with AltitudeMode = RELATIVE_TO_TERRAIN" << std::endl;
         return false;
     }
     return _srs->createLocalToWorld( _p, out_l2w );
@@ -347,7 +341,7 @@ GeoPoint::createWorldToLocal( osg::Matrixd& out_w2l ) const
     if ( !isValid() ) return false;
     if ( _altMode != AltitudeMode::ABSOLUTE )
     {
-        OE_WARN << LC << "Illegal: called GeoPoint::createLocal2World with AltitudeMode = RELATIVE_TO_TERRAIN" << std::endl;
+        OE_WARN << LC << "ILLEGAL: called GeoPoint::createLocal2World with AltitudeMode = RELATIVE_TO_TERRAIN" << std::endl;
         return false;
     }
     return _srs->createWorldToLocal( _p, out_w2l );
@@ -871,7 +865,7 @@ GeoExtent::toString() const
     if ( !isValid() )
         buf << "INVALID";
     else
-        buf << "SW=" << west() << "," << south() << " NE=" << east() << "," << north();
+        buf << std::fixed << std::setprecision(4) << "SW=" << west() << "," << south() << " NE=" << east() << "," << north();
 
     buf << ", SRS=" << _srs->getName();
 

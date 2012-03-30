@@ -131,6 +131,8 @@ namespace osgEarth
          */
         ModelLayer(const std::string& name, osg::Node* node);
 
+        virtual ~ModelLayer();
+
     public:
         /** 
          * Gets the name of this model layer

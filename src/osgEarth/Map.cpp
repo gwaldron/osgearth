@@ -19,6 +19,7 @@
 #include <osgEarth/Map>
 #include <osgEarth/Registry>
 #include <osgEarth/TileSource>
+#include <osgEarth/HeightFieldUtils>
 #include <osgEarth/URI>
 #include <iterator>
 
@@ -94,6 +95,11 @@ _dataModelRevision( 0 )
     
     // store the top-level referrer context in the options
     URIContext( _mapOptions.referrer() ).store( _dbOptions );
+}
+
+Map::~Map()
+{
+    OE_DEBUG << "~Map" << std::endl;
 }
 
 bool
@@ -1372,7 +1378,18 @@ _maskLayers          ( src._maskLayers )
 bool
 MapFrame::sync()
 {
-    return _map->sync( *this );
+    if ( _map.valid() )
+    {
+        return _map->sync( *this );
+    }
+    else
+    {
+        _imageLayers.clear();
+        _elevationLayers.clear();
+        _modelLayers.clear();
+        _maskLayers.clear();
+        return false;
+    }
 }
 
 bool
@@ -1384,6 +1401,8 @@ MapFrame::getHeightField(const TileKey&                  key,
                          ElevationSamplePolicy           samplePolicy,
                          ProgressCallback*               progress) const
 {
+    if ( !_map.valid() ) return false;
+
     return s_getHeightField( 
         key, 
         _elevationLayers,

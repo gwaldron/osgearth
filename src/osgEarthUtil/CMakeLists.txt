@@ -16,7 +16,10 @@ SET(LIB_PUBLIC_HEADERS
     ClampCallback
     EarthManipulator
     ElevationManager
+    ExampleResources
     Export
+    FeatureManipTool
+    FeatureQueryTool
     Formatter
     GeodeticGraticule
     LatLongFormatter
@@ -25,7 +28,7 @@ SET(LIB_PUBLIC_HEADERS
     MGRSFormatter
     MGRSGraticule
     MouseCoordsTool
-    #NearFarGroup	
+    #NearFarGroup
     ObjectPlacer
     ObjectLocator
     #OceanSurfaceNode
@@ -47,6 +50,9 @@ SET(LIB_COMMON_FILES
     Controls.cpp
     EarthManipulator.cpp	
     ElevationManager.cpp
+    ExampleResources.cpp
+    FeatureManipTool.cpp
+    FeatureQueryTool.cpp
     GeodeticGraticule.cpp
     LatLongFormatter.cpp
     LineOfSight.cpp

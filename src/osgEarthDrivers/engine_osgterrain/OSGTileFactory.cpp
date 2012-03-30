@@ -527,6 +527,7 @@ OSGTileFactory::createPopulatedTile(const MapFrame&  mapf,
                                     bool             fallback, 
                                     bool&            validData )
 {
+    OE_NOTICE << "createPopulatedtile" << std::endl;
     const MapInfo& mapInfo = mapf.getMapInfo();
     bool isPlateCarre = !mapInfo.isGeocentric() && mapInfo.isGeographicSRS();
 
@@ -730,18 +731,25 @@ OSGTileFactory::createPopulatedTile(const MapFrame&  mapf,
     }
 
     osg::BoundingSphere bs = tile->getBound();
-    double max_range = 1e10;
+    double maxRange = 1e10;
     double radius = bs.radius();
-
-#if 1
-    double min_range = radius * _terrainOptions.minTileRangeFactor().get();
-    //osg::LOD::RangeMode mode = osg::LOD::DISTANCE_FROM_EYE_POINT;
-#else
-    double width = key.getExtent().width();	
-    if (min_units_per_pixel == DBL_MAX) min_units_per_pixel = width/256.0;
-    double min_range = (width / min_units_per_pixel) * _terrainOptions.getMinTileRangeFactor(); 
-    //osg::LOD::RangeMode mode = osg::LOD::PIXEL_SIZE_ON_SCREEN;
+#if 0
+    //Compute the min range based on the actual bounds of the tile.  This can break down if you have very high resolution
+    //data with elevation variations and you can run out of memory b/c the elevation change is greater than the actual size of the tile so you end up
+    //inifinitely subdividing (or at least until you run out of data or memory)
+    double minRange = bs.radius() * _terrainOptions.minTileRangeFactor().value();
+#else        
+    //double origMinRange = bs.radius() * _options.minTileRangeFactor().value();        
+    //Compute the min range based on the 2D size of the tile
+    GeoExtent extent = tile->getKey().getExtent();        
+    GeoPoint lowerLeft(extent.getSRS(), extent.xMin(), extent.yMin());
+    GeoPoint upperRight(extent.getSRS(), extent.xMax(), extent.yMax());
+    osg::Vec3d ll, ur;
+    lowerLeft.toWorld( ll );
+    upperRight.toWorld( ur );
+    double minRange = (ur - ll).length() / 2.0 * _terrainOptions.minTileRangeFactor().value();        
 #endif
+
 
 
     // a skirt hides cracks when transitioning between LODs:
@@ -778,7 +786,7 @@ OSGTileFactory::createPopulatedTile(const MapFrame&  mapf,
         // create a PLOD so we can keep subdividing:
         osg::PagedLOD* plod = new osg::PagedLOD();
         plod->setCenter( bs.center() );
-        plod->addChild( tile, min_range, max_range );
+        plod->addChild( tile, minRange, maxRange );
 
         std::string filename = createURI( _engineId, key ); //map->getId(), key );
 
@@ -787,7 +795,7 @@ OSGTileFactory::createPopulatedTile(const MapFrame&  mapf,
         if (!isBlacklisted && key.getLevelOfDetail() < (unsigned int)getTerrainOptions().maxLOD().value() && validData )
         {
             plod->setFileName( 1, filename  );
-            plod->setRange( 1, 0.0, min_range );
+            plod->setRange( 1, 0.0, minRange );
         }
         else
         {

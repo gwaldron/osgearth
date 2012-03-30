@@ -85,15 +85,15 @@ namespace osgEarth
 
         /** Construct a successful result */
         ReadResult( osg::Object* result )
-            : _result(result), _code(RESULT_OK) { }
+            : _code(RESULT_OK), _result(result) { }
 
         /** Construct a successful result with metadata */
         ReadResult( osg::Object* result, const Config& meta )
-            : _result(result), _meta(meta), _code(RESULT_OK) { }
+            : _code(RESULT_OK), _result(result), _meta(meta) { }
 
         /** Copy construct */
         ReadResult( const ReadResult& rhs )
-            : _result(rhs._result.get()), _meta(rhs._meta), _code(rhs._code) { }
+            : _code(rhs._code), _result(rhs._result.get()), _meta(rhs._meta) { }
 
         /** Whether the read operation succeeded */
         bool succeeded() const { return _code == RESULT_OK && _result.valid(); }

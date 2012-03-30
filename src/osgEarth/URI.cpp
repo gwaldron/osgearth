@@ -274,7 +274,7 @@ namespace
     {
         bool callbackRequestsCaching( URIReadCallback* cb ) const { return !cb || ((cb->cachingSupport() & URIReadCallback::CACHE_OBJECTS) != 0); }
         osgDB::ReaderWriter::ReadResult fromCallback( URIReadCallback* cb, const std::string& uri, const osgDB::Options* opt ) { return cb->readObject(uri, opt); }
-        ReadResult fromCache( CacheBin* bin, const std::string& uri, double maxAge ) { return bin->readObject(uri, maxAge); }
+        ReadResult fromCache( CacheBin* bin, const std::string& key, double maxAge ) { return bin->readObject(key, maxAge); }
         ReadResult fromHTTP( const std::string& uri, const osgDB::Options* opt, ProgressCallback* p ) { return HTTPClient::readObject(uri, opt, p); }
         ReadResult fromFile( const std::string& uri, const osgDB::Options* opt ) { return ReadResult(osgDB::readObjectFile(uri, opt)); }
     };
@@ -283,7 +283,7 @@ namespace
     {
         bool callbackRequestsCaching( URIReadCallback* cb ) const { return !cb || ((cb->cachingSupport() & URIReadCallback::CACHE_NODES) != 0); }
         osgDB::ReaderWriter::ReadResult fromCallback( URIReadCallback* cb, const std::string& uri, const osgDB::Options* opt ) { return cb->readNode(uri, opt); }
-        ReadResult fromCache( CacheBin* bin, const std::string& uri, double maxAge ) { return bin->readObject(uri, maxAge); }
+        ReadResult fromCache( CacheBin* bin, const std::string& key, double maxAge ) { return bin->readObject(key, maxAge); }
         ReadResult fromHTTP( const std::string& uri, const osgDB::Options* opt, ProgressCallback* p ) { return HTTPClient::readNode(uri, opt, p); }
         ReadResult fromFile( const std::string& uri, const osgDB::Options* opt ) { return ReadResult(osgDB::readNodeFile(uri, opt)); }
     };
@@ -292,7 +292,7 @@ namespace
     {
         bool callbackRequestsCaching( URIReadCallback* cb ) const { return !cb || ((cb->cachingSupport() & URIReadCallback::CACHE_IMAGES) != 0); }
         osgDB::ReaderWriter::ReadResult fromCallback( URIReadCallback* cb, const std::string& uri, const osgDB::Options* opt ) { return cb->readImage(uri, opt); }
-        ReadResult fromCache( CacheBin* bin, const std::string& uri, double maxAge ) { return bin->readImage(uri, maxAge); }
+        ReadResult fromCache( CacheBin* bin, const std::string& key, double maxAge ) { return bin->readImage(key, maxAge); }
         ReadResult fromHTTP( const std::string& uri, const osgDB::Options* opt, ProgressCallback* p ) { return HTTPClient::readImage(uri, opt, p); }
         ReadResult fromFile( const std::string& uri, const osgDB::Options* opt ) { return ReadResult(osgDB::readImageFile(uri, opt)); }
     };
@@ -301,7 +301,7 @@ namespace
     {
         bool callbackRequestsCaching( URIReadCallback* cb ) const { return !cb || ((cb->cachingSupport() & URIReadCallback::CACHE_STRINGS) != 0); }
         osgDB::ReaderWriter::ReadResult fromCallback( URIReadCallback* cb, const std::string& uri, const osgDB::Options* opt ) { return cb->readString(uri, opt); }
-        ReadResult fromCache( CacheBin* bin, const std::string& uri, double maxAge ) { return bin->readString(uri, maxAge); }
+        ReadResult fromCache( CacheBin* bin, const std::string& key, double maxAge ) { return bin->readString(key, maxAge); }
         ReadResult fromHTTP( const std::string& uri, const osgDB::Options* opt, ProgressCallback* p ) { return HTTPClient::readString(uri, opt, p); }
         ReadResult fromFile( const std::string& uri, const osgDB::Options* opt ) { return readStringFile(uri, opt); }
     };
@@ -369,7 +369,7 @@ namespace
             // first try to go to the cache if there is one:
             if ( bin && cp.isCacheReadable() )
             {
-                result = reader.fromCache( bin, uri.full(), *cp.maxAge() );
+                result = reader.fromCache( bin, uri.cacheKey(), *cp.maxAge() );
             }
 
             // not in the cache, so proceed to read it from the network.
@@ -402,7 +402,7 @@ namespace
                 // write the result to the cache if possible:
                 if ( result.succeeded() && bin && cp.isCacheWriteable() )
                 {
-                    bin->write( uri.full(), result.getObject(), result.metadata() );
+                    bin->write( uri.cacheKey(), result.getObject(), result.metadata() );
                 }
             }
         }

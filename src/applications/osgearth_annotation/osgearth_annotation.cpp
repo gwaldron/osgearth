@@ -371,7 +371,7 @@ main(int argc, char** argv)
     viewer.setCameraManipulator( new EarthManipulator() );
     viewer.setSceneData( root );
 
-    viewer.getCamera()->addCullCallback( new AutoClipPlaneCullCallback(mapNode->getMap()) );
+    viewer.getCamera()->addCullCallback( new AutoClipPlaneCullCallback(mapNode) );
     viewer.getDatabasePager()->setDoPreCompile( true );
     viewer.addEventHandler(new osgViewer::StatsHandler());
     viewer.addEventHandler(new osgViewer::WindowSizeHandler());

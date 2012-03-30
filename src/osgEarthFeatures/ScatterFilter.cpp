@@ -73,7 +73,7 @@ ScatterFilter::polyScatter(const Geometry*         input,
         }
 
         double zMin = 0.0;
-        unsigned numInstancesInBoundingRect = areaSqKm * (double)osg::clampAbove( 0.1f, _density );
+        unsigned numInstancesInBoundingRect = (unsigned)(areaSqKm * (double)osg::clampAbove( 0.1f, _density ));
         if ( numInstancesInBoundingRect == 0 )
             continue;
 
@@ -164,7 +164,7 @@ ScatterFilter::lineScatter(const Geometry*         input,
                 seglen_m = seglen_native;
             }
 
-            unsigned numInstances = (seglen_m*0.001) * instPerKm;
+            unsigned numInstances = (unsigned)((seglen_m*0.001) * instPerKm);
             if ( numInstances > 0 )
             {            
                 // a unit vector for scattering points along the segment

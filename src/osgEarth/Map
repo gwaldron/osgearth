@@ -409,7 +409,7 @@ namespace osgEarth
 
     protected:
 
-        ~Map() { }
+        virtual ~Map();
 
     private:
 
@@ -556,7 +556,8 @@ namespace osgEarth
 
     private:
         bool _initialized;
-        osg::ref_ptr<const Map> _map;
+        osg::observer_ptr<const Map> _map;
+        //osg::ref_ptr<const Map> _map;
         std::string _name;
         MapInfo _mapInfo;
         Map::ModelParts _parts;

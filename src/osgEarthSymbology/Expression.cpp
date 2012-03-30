@@ -443,6 +443,18 @@ StringExpression::set( const Variable& var, const std::string& value )
     }
 }
 
+void
+StringExpression::set( const std::string& varName, const std::string& value )
+{
+    for( Variables::const_iterator v = _vars.begin(); v != _vars.end(); ++v )
+    {
+        if ( v->first == varName )
+        {
+            set( *v, value );
+        }
+    }
+}
+
 const std::string&
 StringExpression::eval() const
 {

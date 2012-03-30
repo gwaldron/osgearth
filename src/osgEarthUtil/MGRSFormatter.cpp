@@ -172,8 +172,8 @@ MGRSFormatter::transform( const GeoPoint& input, MGRSCoord& out ) const
         sqid[0] = UPS_COL_ALPHABET[ (UPS_COL_ALPHABET_SIZE+sqXOffset) % UPS_COL_ALPHABET_SIZE ];
         sqid[1] = UPS_ROW_ALPHABET[alphaOffset + sqYOffset];
 
-        x = upsCoord.x() - (100000.0*(double)sqXOffset);
-        y = upsCoord.y() - (100000.0*(double)sqYOffset);
+        x = (unsigned)(upsCoord.x() - (100000.0*(double)sqXOffset));
+        y = (unsigned)(upsCoord.y() - (100000.0*(double)sqYOffset));
     }
 
     else // UTM
@@ -212,7 +212,7 @@ MGRSFormatter::transform( const GeoPoint& input, MGRSCoord& out ) const
         unsigned indexOffset = (4 + sqMeridianOffset);
         sqid[0] = UTM_COL_ALPHABET[xSetOffset + indexOffset];
         double xWest = 500000.0 + (100000.0*(double)sqMeridianOffset);
-        x = utmCoord.x() - xWest;
+        x = (unsigned)(utmCoord.x() - xWest);
 
         // find the vertical SQID offset (100KM increments) from the equator:
         unsigned ySetOffset = 5 * (zone % 2); //(set % 2);
@@ -221,7 +221,7 @@ MGRSFormatter::transform( const GeoPoint& input, MGRSCoord& out ) const
         if ( _useAL )
             absOffset += 10;
         sqid[1] = UTM_ROW_ALPHABET[absOffset % UTM_ROW_ALPHABET_SIZE];
-        y = utmCoord.y() - (100000.0*(double)sqEquatorOffset);
+        y = (unsigned)(utmCoord.y() - (100000.0*(double)sqEquatorOffset));
     }
 
     if ( (unsigned)_precision > PRECISION_1M )

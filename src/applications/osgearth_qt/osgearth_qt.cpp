@@ -251,13 +251,13 @@ main(int argc, char** argv)
       osgEarth::QtGui::CompositeViewerWidget* viewerWidget = new osgEarth::QtGui::CompositeViewerWidget(root);
 
       osgViewer::View* primary = viewerWidget->createViewWidget(root);
-      primary->getCamera()->addCullCallback(new osgEarth::Util::AutoClipPlaneCullCallback(mapNode->getMap()));
+      primary->getCamera()->addCullCallback(new osgEarth::Util::AutoClipPlaneCullCallback(mapNode));
       views.push_back(primary);
 
       for (int i=0; i < numViews - 1; i++)
       {
         osgViewer::View* view = viewerWidget->createViewWidget(root, primary);
-        view->getCamera()->addCullCallback(new osgEarth::Util::AutoClipPlaneCullCallback(mapNode->getMap()));
+        view->getCamera()->addCullCallback(new osgEarth::Util::AutoClipPlaneCullCallback(mapNode));
         views.push_back(view);
       }
 
@@ -270,7 +270,7 @@ main(int argc, char** argv)
     {
       osgEarth::QtGui::ViewerWidget* viewerWidget = new osgEarth::QtGui::ViewerWidget(root);
       viewerWidget->setGeometry(50, 50, 1024, 768);
-      viewerWidget->getCamera()->addCullCallback(new osgEarth::Util::AutoClipPlaneCullCallback(mapNode->getMap()));
+      viewerWidget->getCamera()->addCullCallback(new osgEarth::Util::AutoClipPlaneCullCallback(mapNode));
       appWin.setViewerWidget(viewerWidget);
       views.push_back(viewerWidget);
 

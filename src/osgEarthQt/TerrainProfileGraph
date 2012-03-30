@@ -38,6 +38,12 @@
 
 namespace osgEarth { namespace QtGui
 {
+    struct TerrainProfilePositionCallback : public osg::Referenced
+    {
+      virtual void updatePosition(double lat, double lon, const std::string& text) { }
+    };
+
+
     class TerrainGraphChangedCallback : public QObject, public osgEarth::Util::TerrainProfileCalculator::ChangedCallback
     {
     Q_OBJECT
@@ -56,12 +62,13 @@ namespace osgEarth { namespace QtGui
       void graphChanged();
     };
 
+
     class OSGEARTHQT_EXPORT TerrainProfileGraph : public QGraphicsView
     {
     Q_OBJECT
 
     public:
-      TerrainProfileGraph(osgEarth::Util::TerrainProfileCalculator* calculator);
+      TerrainProfileGraph(osgEarth::Util::TerrainProfileCalculator* calculator, TerrainProfilePositionCallback* callback=0L);
       ~TerrainProfileGraph();
 
       void setBackgroundColor(const QColor& color);
@@ -100,6 +107,7 @@ namespace osgEarth { namespace QtGui
 
     private:
       osg::ref_ptr<osgEarth::Util::TerrainProfileCalculator> _calculator;
+      osg::ref_ptr<TerrainProfilePositionCallback> _positionCallback;
       osg::ref_ptr<TerrainGraphChangedCallback> _graphChangedCallback;
       QGraphicsScene* _scene;
       QList<QLineF> _graphLines;

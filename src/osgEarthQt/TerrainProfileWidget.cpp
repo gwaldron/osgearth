@@ -22,10 +22,13 @@
 #include <osgEarthQt/TerrainProfileGraph>
 
 #include <osgEarth/Map>
+#include <osgEarthAnnotation/AnnotationNode>
+#include <osgEarthAnnotation/PlaceNode>
 #include <osgEarthUtil/TerrainProfile>
 
 #include <QAction>
 #include <QFrame>
+#include <QGLWidget>
 #include <QHBoxLayout>
 #include <QPushButton>
 #include <QToolBar>
@@ -79,8 +82,39 @@ void TerrainProfileWidget::initialize()
   vStack->addWidget(buttonToolbar);
 
   // create graph widget
-  _graph = new TerrainProfileGraph(_calculator);
+  _graph = new TerrainProfileGraph(_calculator, this);
   vStack->addWidget(_graph);
+
+  // define a style for the line
+  osgEarth::Symbology::LineSymbol* ls = _lineStyle.getOrCreateSymbol<osgEarth::Symbology::LineSymbol>();
+  ls->stroke()->color() = osgEarth::Symbology::Color::White;
+  ls->stroke()->width() = 2.0f;
+  ls->tessellation() = 20;
+  _lineStyle.getOrCreate<osgEarth::Symbology::AltitudeSymbol>()->clamping() = osgEarth::Symbology::AltitudeSymbol::CLAMP_TO_TERRAIN;
+
+  // load marker image
+  QImage image(":/images/marker.png"); 
+  QImage glImage = QGLWidget::convertToGLFormat(image); 
+
+  unsigned char* data = new unsigned char[glImage.byteCount()];
+	for(int i=0; i<glImage.byteCount(); i++)
+	{
+		data[i] = glImage.bits()[i];
+	}
+
+  _markerImage = new osg::Image(); 
+  _markerImage->setImage(glImage.width(), 
+                         glImage.height(), 
+                         1, 
+                         4, 
+                         GL_RGBA, 
+                         GL_UNSIGNED_BYTE, 
+                         data, 
+                         osg::Image::USE_NEW_DELETE, 
+                         1); 
+
+  // setup placemark style
+  _placeStyle.getOrCreate<AltitudeSymbol>()->clamping() = AltitudeSymbol::CLAMP_TO_TERRAIN;
 }
 
 void TerrainProfileWidget::setActiveView(osgViewer::View* view)
@@ -114,15 +148,33 @@ void TerrainProfileWidget::removeViews()
 void TerrainProfileWidget::hideEvent(QHideEvent* e)
 {
   ((TerrainProfileMouseHandler*)_guiHandler.get())->setCapturing(false);
+
+  if (_lineNode.valid())
+    _root->removeChild(_lineNode.get());
+
+  if (_markerNode.valid())
+    _root->removeChild(_markerNode.get());
 }
 
 void TerrainProfileWidget::showEvent(QShowEvent* e)
 {
   ((TerrainProfileMouseHandler*)_guiHandler.get())->setCapturing(_captureAction->isChecked());
+
+  if (_lineNode.valid())
+    _root->addChild(_lineNode.get());
+
+  if (_markerNode.valid())
+    _root->addChild(_markerNode);
 }
 
 void TerrainProfileWidget::setStartEnd(const GeoPoint& start, const GeoPoint& end)
 {
+  if (_markerNode.valid())
+  {
+    _root->removeChild(_markerNode);
+    _markerNode = 0L;
+  }
+
   _profileStack.clear();
   _calculator->setStartEnd(start, end);
 }
@@ -133,6 +185,30 @@ void TerrainProfileWidget::onChanged(const osgEarth::Util::TerrainProfileCalcula
     _profileStack.push_back(StartEndPair(_calculator->getStart(), _calculator->getEnd()));
 
   _undoZoomAction->setEnabled(_profileStack.size() > 1);
+
+  drawProfileLine();
+}
+
+void TerrainProfileWidget::updatePosition(double lat, double lon, const std::string& text)
+{
+  if (!_markerNode.valid())
+  {
+    _markerNode = new osgEarth::Annotation::PlaceNode(
+        _mapNode.get(),
+        GeoPoint(_mapNode->getMapSRS(), lon, lat, 0, osgEarth::AltitudeMode::RELATIVE_TO_TERRAIN),
+        _markerImage,
+        text,
+        _placeStyle);
+
+    _markerNode->setDynamic(true);
+
+    _root->addChild(_markerNode);
+  }
+  else
+  {
+    _markerNode->setPosition(GeoPoint(_mapNode->getMapSRS(), lon, lat, 0, osgEarth::AltitudeMode::RELATIVE_TO_TERRAIN));
+    _markerNode->setText(text);
+  }
 }
 
 void TerrainProfileWidget::onCaptureToggled(bool checked)
@@ -144,4 +220,26 @@ void TerrainProfileWidget::onUndoZoom()
 {
   _profileStack.pop_back();
   _calculator->setStartEnd(_profileStack.back().start, _profileStack.back().end);
+}
+
+void TerrainProfileWidget::drawProfileLine()
+{
+  osgEarth::Symbology::LineString* line = new osgEarth::Symbology::LineString();
+  line->push_back( _calculator->getStart().vec3d() );
+  line->push_back( _calculator->getEnd().vec3d() );
+
+  osgEarth::Features::Feature* feature = new osgEarth::Features::Feature(line, _mapNode->getMapSRS());
+  feature->geoInterp() = osgEarth::GEOINTERP_GREAT_CIRCLE;    
+  feature->style() = _lineStyle;
+
+  if (!_lineNode.valid())
+  {
+    _lineNode = new osgEarth::Annotation::FeatureNode( _mapNode, feature );
+    _lineNode->getOrCreateStateSet()->setMode(GL_LIGHTING, osg::StateAttribute::OFF);
+    _root->addChild( _lineNode.get() );
+  }
+  else
+  {
+    _lineNode->setFeature(feature);
+  }
 }

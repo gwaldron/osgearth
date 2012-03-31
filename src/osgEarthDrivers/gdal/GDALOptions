@@ -22,6 +22,7 @@
 #include <osgEarth/Common>
 #include <osgEarth/TileSource>
 #include <osgEarth/GeoCommon>
+#include <osgEarth/URI>
 
 namespace osgEarth { namespace Drivers
 {

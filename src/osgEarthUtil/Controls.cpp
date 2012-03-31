@@ -412,9 +412,11 @@ Control::setActiveColor( const osg::Vec4f& value ) {
 }
 
 void
-Control::addEventHandler( ControlEventHandler* handler )
+Control::addEventHandler( ControlEventHandler* handler, bool fire )
 {
     _eventHandlers.push_back( handler );
+    if ( fire )
+        fireValueChanged( handler );
 }
 
 bool
@@ -588,12 +590,40 @@ Control::handle( const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& aa, 
 
 // ---------------------------------------------------------------------------
 
-// override osg Text to get at some of the internal properties
-struct LabelText : public osgText::Text
+namespace
 {
-    const osg::BoundingBox& getTextBB() const { return _textBB; }
-    const osg::Matrix& getATMatrix(int contextID) const { return _autoTransformCache[contextID]._matrix; }
-};
+    // override osg Text to get at some of the internal properties
+    struct LabelText : public osgText::Text
+    {
+        const osg::BoundingBox& getTextBB() const { return _textBB; }
+        const osg::Matrix& getATMatrix(int contextID) const { return _autoTransformCache[contextID]._matrix; }
+    };
+
+    // writes a value to a label
+    struct ValueLabelHandler : public ControlEventHandler
+    {
+        osg::observer_ptr<LabelControl> _label;
+        ValueLabelHandler( LabelControl* label ) : _label(label) { }
+        void onValueChanged( class Control* control, bool value ) { 
+            if ( _label.valid() ) _label->setText( Stringify() << value ); }
+        void onValueChanged( class Control* control, double value ) {
+            if ( _label.valid() ) _label->setText( Stringify() << std::setprecision(16) << value ); }
+        void onValueChanged( class Control* control, float value ) {
+            if ( _label.valid() ) _label->setText( Stringify() << value ); }
+        void onValueChanged( class Control* control, int value ) {
+            if ( _label.valid() ) _label->setText( Stringify() << value ); }
+        void onValueChanged( class Control* control, const osg::Vec3f& value ) {
+            if ( _label.valid() ) _label->setText( Stringify() << std::setprecision(8) << value.x() << ", " << value.y() << ", " << value.z() ); }
+        void onValueChanged( class Control* control, const osg::Vec2f& value ) {
+            if ( _label.valid() ) _label->setText( Stringify() << std::setprecision(8) << value.x() << ", " << value.y() ); }
+        void onValueChanged( class Control* control, const osg::Vec3d& value ) {
+            if ( _label.valid() ) _label->setText( Stringify() << std::setprecision(16) << value.x() << ", " << value.y() << ", " << value.z() ); }
+        void onValueChanged( class Control* control, const osg::Vec2d& value ) {
+            if ( _label.valid() ) _label->setText( Stringify() << std::setprecision(16) << value.x() << ", " << value.y() ); }
+        void onValueChanged( class Control* control, const std::string& value ) {
+            if ( _label.valid() ) _label->setText( value ); }
+    };
+}
 
 LabelControl::LabelControl(const std::string& text,
                            float              fontSize,
@@ -617,8 +647,36 @@ _encoding( osgText::String::ENCODING_UNDEFINED )
     setFont( Registry::instance()->getDefaultFont() );   
     setForeColor( foreColor );
     setBackColor( osg::Vec4f(0,0,0,0) );
-    
 }
+
+LabelControl::LabelControl(Control*           valueControl,
+                           float              fontSize,
+                           const osg::Vec4f&  foreColor):
+_fontSize( fontSize ),
+_encoding( osgText::String::ENCODING_UNDEFINED )
+{
+    setFont( Registry::instance()->getDefaultFont() );    
+    setForeColor( foreColor );
+    setBackColor( osg::Vec4f(0,0,0,0) );
+
+    if ( valueControl )
+        valueControl->addEventHandler( new ValueLabelHandler(this), true );
+}
+
+LabelControl::LabelControl(Control*           valueControl,
+                           const osg::Vec4f&  foreColor,
+                           float              fontSize ):
+_fontSize( fontSize ),
+_encoding( osgText::String::ENCODING_UNDEFINED )
+{    	
+    setFont( Registry::instance()->getDefaultFont() );   
+    setForeColor( foreColor );
+    setBackColor( osg::Vec4f(0,0,0,0) );
+
+    if ( valueControl )
+        valueControl->addEventHandler( new ValueLabelHandler(this), true );
+}
+
 
 void
 LabelControl::setText( const std::string& value )
@@ -941,11 +999,18 @@ _value(value)
 }
 
 void
-HSliderControl::fireValueChanged()
+HSliderControl::fireValueChanged( ControlEventHandler* oneHandler )
 {
-    for( ControlEventHandlerList::const_iterator i = _eventHandlers.begin(); i != _eventHandlers.end(); ++i )
+    if ( oneHandler )
     {
-        i->get()->onValueChanged( this, _value );
+        oneHandler->onValueChanged( this, _value );
+    }
+    else
+    {
+        for( ControlEventHandlerList::const_iterator i = _eventHandlers.begin(); i != _eventHandlers.end(); ++i )
+        {
+            i->get()->onValueChanged( this, _value );
+        }
     }
 }
 
@@ -1078,11 +1143,18 @@ _value( value )
 }
 
 void
-CheckBoxControl::fireValueChanged()
+CheckBoxControl::fireValueChanged( ControlEventHandler* oneHandler )
 {
-    for( ControlEventHandlerList::const_iterator i = _eventHandlers.begin(); i != _eventHandlers.end(); ++i )
+    if ( oneHandler )
     {
-        i->get()->onValueChanged( this, _value );
+        oneHandler->onValueChanged( this, _value );
+    }
+    else
+    {
+        for( ControlEventHandlerList::const_iterator i = _eventHandlers.begin(); i != _eventHandlers.end(); ++i )
+        {
+            i->get()->onValueChanged( this, _value );
+        }
     }
 }
 

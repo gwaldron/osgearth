@@ -1030,6 +1030,9 @@ namespace
         }
 
         // Generate a heightfield for each elevation layer.
+
+        unsigned defElevSize = 8;
+
         for( ElevationLayerVector::const_iterator i = elevLayers.begin(); i != elevLayers.end(); i++ )
         {
             ElevationLayer* layer = i->get();
@@ -1071,7 +1074,7 @@ namespace
         {
             if ( fallback )
             {
-                out_result = HeightFieldUtils::createReferenceHeightField( keyToUse.getExtent(), 8, 8 );
+                out_result = HeightFieldUtils::createReferenceHeightField( keyToUse.getExtent(), defElevSize, defElevSize );
                 if ( out_isFallback )
                     *out_isFallback = true;
                 return true;

@@ -29,6 +29,8 @@
 #include <list>
 #include <utility>
 
+#define USE_OBSERVER_NODE_PATH 1
+
 namespace osgEarth { namespace Util
 {
     using namespace osgEarth;
@@ -756,9 +758,9 @@ namespace osgEarth { namespace Util
         //osg::ref_ptr<osg::Node> _node;
         osg::observer_ptr<osg::Node> _node;
         osg::observer_ptr<osg::CoordinateSystemNode> _csn;
-//#ifdef USE_OBSERVER_NODE_PATH
+#ifdef USE_OBSERVER_NODE_PATH
         osg::ObserverNodePath _csnObserverPath;
-//#endif
+#endif
         osg::NodePath _csnPath;
 
         osg::ref_ptr<const osgEarth::SpatialReference> _cached_srs;

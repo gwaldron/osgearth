@@ -255,8 +255,8 @@ ExtrudeGeometryFilter::extrudeGeometry(const Geometry*         input,
     osg::Vec2Array* roofTexcoords = 0L;
     float           roofRotation  = 0.0f;
     Bounds          roofBounds;
-    float           sinR, cosR;
-    double          roofTexSpanX, roofTexSpanY;
+    float           sinR = 0.0f, cosR = 0.0f;
+    double          roofTexSpanX = 0.0, roofTexSpanY = 0.0;
     osg::ref_ptr<const SpatialReference> roofProjSRS;
 
     if ( roof )

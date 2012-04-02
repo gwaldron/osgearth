@@ -33,6 +33,8 @@ struct KML_Object
 
     virtual void build( const Config& conf, KMLContext& cx, osg::Node* working );
 
+    virtual ~KML_Object() { }
+
 protected:
 
     AnnotationData* getOrCreateAnnotationData( osg::Node* node );

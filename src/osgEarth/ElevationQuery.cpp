@@ -133,20 +133,6 @@ ElevationQuery::getMaxLevel( double x, double y, const SpatialReference* srs ) c
     return maxLevel;
 }
 
-#if 0
-ElevationQuery::Technique
-ElevationQuery::getTechnique() const
-{
-    return _technique;
-}
-#endif
-
-//void
-//ElevationQuery::setTechnique( ElevationQuery::Technique technique )
-//{
-//    _technique = technique;
-//}
-
 void
 ElevationQuery::setMaxTilesToCache( int value )
 {

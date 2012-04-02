@@ -26,6 +26,7 @@
 
 #include <osgEarth/Map>
 #include <osgEarthAnnotation/FeatureNode>
+#include <osgEarthAnnotation/PlaceNode>
 #include <osgEarthFeatures/Feature>
 
 #include <QFrame>
@@ -36,7 +37,7 @@
 
 namespace osgEarth { namespace QtGui
 {
-    class OSGEARTHQT_EXPORT TerrainProfileWidget : public QFrame, public osgEarth::Util::TerrainProfileCalculator::ChangedCallback  
+    class OSGEARTHQT_EXPORT TerrainProfileWidget : public QFrame, public osgEarth::Util::TerrainProfileCalculator::ChangedCallback, public TerrainProfilePositionCallback
     {
     Q_OBJECT
 
@@ -51,6 +52,8 @@ namespace osgEarth { namespace QtGui
       void setStartEnd(const GeoPoint& start, const GeoPoint& end);
 
       void onChanged(const osgEarth::Util::TerrainProfileCalculator* sender);
+
+      void updatePosition(double lat, double lon, const std::string& text);
 
     private slots:
       void onCaptureToggled(bool checked);
@@ -77,6 +80,8 @@ namespace osgEarth { namespace QtGui
         }
       };
 
+      void drawProfileLine();
+
       osg::ref_ptr<osg::Group>                                _root;
       osg::ref_ptr<osgEarth::MapNode>                         _mapNode;
       ViewVector                                              _views;
@@ -86,13 +91,18 @@ namespace osgEarth { namespace QtGui
       QAction*                                                _undoZoomAction;
       osg::ref_ptr<osgGA::GUIEventHandler>                    _guiHandler;
       std::vector<StartEndPair>                               _profileStack;
+      osg::ref_ptr<osgEarth::Annotation::FeatureNode>         _lineNode;
+      osgEarth::Symbology::Style                              _lineStyle;
+      osg::ref_ptr<osgEarth::Annotation::PlaceNode>           _markerNode;
+      osg::ref_ptr<osg::Image>                                _markerImage;
+      osgEarth::Symbology::Style                              _placeStyle;
     };
 
 
     struct TerrainProfileMouseHandler : public osgGA::GUIEventHandler
     {
       TerrainProfileMouseHandler(osgEarth::MapNode* mapNode, osg::Group* root, TerrainProfileWidget* profileWidget)
-        : _mapNode(mapNode), _root(root), _profileWidget(profileWidget), _mouseDown(false), _capturing(false), _startValid(false)
+        : _mapNode(mapNode), _root(root), _profileWidget(profileWidget), _capturing(false), _startValid(false), _mouseDown(false)
       {
         //Define a style for the line
         osgEarth::Symbology::LineSymbol* ls = _lineStyle.getOrCreateSymbol<osgEarth::Symbology::LineSymbol>();

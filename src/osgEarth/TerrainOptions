@@ -55,6 +55,7 @@ namespace osgEarth
     public:
         LoadingPolicy( const Config& conf =Config() );
         LoadingPolicy( const Mode& mode );
+        virtual ~LoadingPolicy() { }
 
     public: // Configrable
         virtual Config getConfig() const;
@@ -203,7 +204,10 @@ namespace osgEarth
         const optional<CompositingTechnique>& compositingTechnique() const { return _compositingTech; }
 
         /**
-         * The maximum level of detail to which the terrain should subdivide.
+         * The maximum level of detail to which the terrain should subdivide. If you leave this
+         * unset, the terrain will subdivide until the map layers stop providing data (default
+         * behavior). If you set a value, the terrain will subdivide to the specified LOD regardless
+         * of data availability.
          */
         optional<int>& maxLOD() { return _maxLOD; }
         const optional<int>& maxLOD() const { return _maxLOD; }
@@ -231,7 +235,6 @@ namespace osgEarth
          */
         optional<osg::Texture::FilterMode> magFilter() { return _magFilter;}
         const optional<osg::Texture::FilterMode> magFilter() const { return _magFilter;}
-
             
         /**
          * Whether to enable blending

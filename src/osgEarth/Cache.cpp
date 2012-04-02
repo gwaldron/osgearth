@@ -32,8 +32,8 @@ using namespace osgEarth::Threading;
 //------------------------------------------------------------------------
 
 Cache::Cache( const CacheOptions& options ) :
-_options( options ),
-_ok     ( true )
+_ok     ( true ),
+_options( options )
 {
     //nop
 }

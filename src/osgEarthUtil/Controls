@@ -247,7 +247,7 @@ namespace osgEarth { namespace Util { namespace Controls
         void setAbsorbEvents( bool value ) { _absorbEvents = value; }
         bool getAbsorbEvents() const { return _absorbEvents; }
 
-        void addEventHandler( ControlEventHandler* handler );
+        void addEventHandler( ControlEventHandler* handler, bool fire =false );
 
     public:
         
@@ -285,6 +285,8 @@ namespace osgEarth { namespace Util { namespace Controls
 
         ControlEventHandlerList _eventHandlers;
 
+        virtual void fireValueChanged( ControlEventHandler* handler =0L ) { }
+
     private:
         osgEarth::optional<float> _x, _y, _width, _height;
         bool _hfill, _vfill;
@@ -316,6 +318,16 @@ namespace osgEarth { namespace Util { namespace Controls
             const std::string& value,
             const osg::Vec4f&  foreColor,
             float              fontSize  =18.0f );
+
+        LabelControl(
+            Control*            valueControl,
+            const osg::Vec4f&   foreColor,
+            float               fontSize =18.0f );
+
+        LabelControl(
+            Control*            valueControl,
+            float               fontSize =18.0f,
+            const osg::Vec4f&   fontColor =osg::Vec4f(1,1,1,1) );
 
         void setText( const std::string& value );
         const std::string& text() const { return _text; }
@@ -402,7 +414,7 @@ namespace osgEarth { namespace Util { namespace Controls
     protected:
         virtual bool handle( const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& aa, ControlContext& cx );
 
-        void fireValueChanged();
+        virtual void fireValueChanged( ControlEventHandler* one =0L );
 
     private:
         float _min, _max, _value;
@@ -426,7 +438,7 @@ namespace osgEarth { namespace Util { namespace Controls
     protected:
         virtual bool handle( const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& aa, ControlContext& cx );
 
-        void fireValueChanged();
+        virtual void fireValueChanged( ControlEventHandler* one =0L );
 
     private:
         bool _value;

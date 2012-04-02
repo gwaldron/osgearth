@@ -190,6 +190,7 @@ ADD_LIBRARY(${LIB_NAME} SHARED
     TileFactory.cpp
     TileKey.cpp
     TileSource.cpp
+    ThreadingUtils.cpp
     Units.cpp
     URI.cpp
     Utils.cpp

@@ -125,7 +125,7 @@ void CompositeViewerWidget::layoutWidgets()
       viewCount++;
   }
   
-  int cols = ceil(sqrt((float)viewCount));
+  int cols = (int)(ceil(sqrt((float)viewCount)));
   int col = 0, row = 0;
 
   for (osgViewer::ViewerBase::Windows::iterator it = windows.begin(); it != windows.end(); ++it)

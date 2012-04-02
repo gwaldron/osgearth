@@ -20,7 +20,6 @@
 #include <osgEarthQt/DataManager>
 #include <osgEarthQt/GuiActions>
 
-#include <osgEarth/Map>
 #include <osgEarthUtil/TerrainProfile>
 
 #include <QGraphicsLineItem>
@@ -74,8 +73,8 @@ const int TerrainProfileGraph::GRAPH_Z = 20;
 const int TerrainProfileGraph::OVERLAY_Z = 30;
 
 
-TerrainProfileGraph::TerrainProfileGraph(osgEarth::Util::TerrainProfileCalculator* calculator)
-  : QGraphicsView(), _calculator(calculator), _graphFont(tr("Helvetica,Verdana,Arial"), 8),
+TerrainProfileGraph::TerrainProfileGraph(osgEarth::Util::TerrainProfileCalculator* calculator, TerrainProfilePositionCallback* callback)
+  : QGraphicsView(), _calculator(calculator), _positionCallback(callback), _graphFont(tr("Helvetica,Verdana,Arial"), 8),
     _backgroundColor(128, 128, 128), _fieldColor(204, 204, 204), _axesColor(255, 255, 255), 
     _graphColor(0, 128, 0), _graphFillColor(128, 255, 128, 192), _graphField(0, 0, 0, 0),
     _totalDistance(0.0), _graphMinY(0), _graphMaxY(0), _graphWidth(500), _graphHeight(309),
@@ -180,15 +179,25 @@ void TerrainProfileGraph::mouseReleaseEvent(QMouseEvent* e)
     double startDistanceFactor = ((zoomStart - _graphField.x()) / (double)_graphField.width());
     double endDistanceFactor = ((zoomEnd - _graphField.x()) / (double)_graphField.width());
 
-    GeoPoint newStart(_calculator->getStart().getSRS(),
-                      (_calculator->getEnd().x() - _calculator->getStart().x()) * startDistanceFactor + _calculator->getStart().x(),
-                      (_calculator->getEnd().y() - _calculator->getStart().y()) * startDistanceFactor + _calculator->getStart().y(),
-                      0.0);
+    osg::Vec3d worldStart, worldEnd;
+    _calculator->getStart().toWorld(worldStart);
+    _calculator->getEnd().toWorld(worldEnd);
 
-    GeoPoint newEnd(_calculator->getStart().getSRS(),
-                    (_calculator->getEnd().x() - _calculator->getStart().x()) * endDistanceFactor + _calculator->getStart().x(),
-                    (_calculator->getEnd().y() - _calculator->getStart().y()) * endDistanceFactor + _calculator->getStart().y(),
-                    0.0);
+    double newStartWorldX = (worldEnd.x() - worldStart.x()) * startDistanceFactor + worldStart.x();
+    double newStartWorldY = (worldEnd.y() - worldStart.y()) * startDistanceFactor + worldStart.y();
+    double newStartWorldZ = (worldEnd.z() - worldStart.z()) * startDistanceFactor + worldStart.z();
+
+    GeoPoint newStart;
+    newStart.fromWorld(_calculator->getStart().getSRS(), osg::Vec3d(newStartWorldX, newStartWorldY, newStartWorldZ));
+    newStart.z() = 0.0;
+
+    double newEndWorldX = (worldEnd.x() - worldStart.x()) * endDistanceFactor + worldStart.x();
+    double newEndWorldY = (worldEnd.y() - worldStart.y()) * endDistanceFactor + worldStart.y();
+    double newEndtWorldZ = (worldEnd.z() - worldStart.z()) * endDistanceFactor + worldStart.z();
+
+    GeoPoint newEnd;
+    newEnd.fromWorld(_calculator->getStart().getSRS(), osg::Vec3d(newEndWorldX, newEndWorldY, newEndtWorldZ));
+    newEnd.z() = 0.0;
 
     if (osg::absolute(newEnd.x() - newStart.x()) > 0.001 || osg::absolute(newEnd.y() - newStart.y()) > 0.001)
     {
@@ -216,7 +225,6 @@ void TerrainProfileGraph::redrawGraph()
   {
     double minElevation, maxElevation;
     profile.getElevationRanges( minElevation, maxElevation );
-
     _totalDistance = profile.getTotalDistance();
 
     int mag = (int)pow(10.0, (double)((int)log10(maxElevation - minElevation)));
@@ -228,10 +236,13 @@ void TerrainProfileGraph::redrawGraph()
 
     drawAxes(_graphMinY, _graphMaxY, scale, _totalDistance, _graphField);
 
+    double lastX = _graphField.x();
+    double lastY = (1.0 - ((profile.getElevation(0) - _graphMinY) / graphRangeY)) * _graphField.height() + _graphField.y();
+
     QPolygonF graphPoly;
     graphPoly << QPointF(_graphField.x(), _graphField.y() + _graphField.height());
+    graphPoly << QPointF(lastX, lastY);
 
-    double lastX, lastY;
     for (unsigned int i = 0; i < profile.getNumElevations(); i++)
     {
       double distance = profile.getDistance( i );
@@ -242,13 +253,9 @@ void TerrainProfileGraph::redrawGraph()
 
       graphPoly << QPointF(x, y);
 
-      if (i > 0)
-      {
-        QLineF line(lastX, lastY, x, y);
-        _graphLines.push_back(line);
-
-        _scene->addLine(line, _linePen)->setZValue(GRAPH_Z);
-      }
+      QLineF line(lastX, lastY, x, y);
+      _graphLines.push_back(line);
+      _scene->addLine(line, _linePen)->setZValue(GRAPH_Z);
 
       lastX = x;
       lastY = y;
@@ -290,7 +297,7 @@ void TerrainProfileGraph::drawAxes(double yMin, double yMax, double yScale, doub
   int yOffset = (int)xMaxText->boundingRect().height() + textSpacing;
   int xAxisY = _graphHeight - yOffset;
 
-  out_field.setCoords(xOffset, fontHalfHeight, _graphWidth, xAxisY);
+  out_field.setCoords(xOffset, (int)fontHalfHeight, _graphWidth, xAxisY);
 
 
   // Draw background rectangle
@@ -408,6 +415,25 @@ void TerrainProfileGraph::drawHoverCursor(const QPointF& position)
     hoverTextBackground->setParentItem(_hoverLine);
 
     hoverText->setParentItem(_hoverLine);
+
+    // Update callback
+    if (_positionCallback.valid())
+    {
+      double distanceFactor = ((xPos - _graphField.x()) / (double)_graphField.width());
+
+      osg::Vec3d worldStart, worldEnd;
+      _calculator->getStart().toWorld(worldStart);
+      _calculator->getEnd().toWorld(worldEnd);
+
+      double worldX = (worldEnd.x() - worldStart.x()) * distanceFactor + worldStart.x();
+      double worldY = (worldEnd.y() - worldStart.y()) * distanceFactor + worldStart.y();
+      double worldZ = (worldEnd.z() - worldStart.z()) * distanceFactor + worldStart.z();
+
+      GeoPoint mapPos;
+      mapPos.fromWorld(_calculator->getStart().getSRS(), osg::Vec3d(worldX, worldY, worldZ));
+
+      _positionCallback->updatePosition(mapPos.y(), mapPos.x(), hoverText->text().toStdString());
+    }
   }
   else
   {

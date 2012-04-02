@@ -164,6 +164,15 @@ namespace osgEarth
         /** Returns a copy of this URI with the suffix appended */
         URI append( const std::string& suffix ) const;
 
+        /** String used for keying the cache */
+        const std::string& cacheKey() const { return !_cacheKey.empty() ? _cacheKey : _fullURI; }
+
+
+    public:
+
+        /** Sets a cache key. By default the cache key is the full URI, but you can override that. */
+        void setCacheKey( const std::string& key ) { _cacheKey = key; }
+
 
     public: // read methods return a ReadResult object
 
@@ -228,6 +237,7 @@ namespace osgEarth
     protected:
         std::string _baseURI;
         std::string _fullURI;
+        std::string _cacheKey;
         URIContext  _context;
     };
 

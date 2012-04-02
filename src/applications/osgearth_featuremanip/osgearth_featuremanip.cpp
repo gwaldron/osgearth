@@ -41,8 +41,8 @@ static FeatureManipTool* s_manipTool;
 static VBox* s_state_normal;
 static VBox* s_state_active;
 
-
-struct ToggleUIStateCallback : public FeatureManipTool::Callback
+// Callback to toggle the visibility of the save/cancel buttons based on tool state
+struct ToggleUIStateCallback : public FeatureQueryTool::Callback
 {
     // called when a valid feature is found under the mouse coords
     virtual void onHit( FeatureSourceIndexNode* index, FeatureID fid, const EventArgs& args )
@@ -58,6 +58,7 @@ struct ToggleUIStateCallback : public FeatureManipTool::Callback
 };
 
 
+// Cancels the manipulation when user clicks "cancel"
 struct OnCancel : public ControlEventHandler
 {
     void onClick( Control* control )
@@ -68,6 +69,7 @@ struct OnCancel : public ControlEventHandler
 };
 
 
+// Commits the manipulation when user clicks "save"
 struct OnSave : public ControlEventHandler
 {
     void onClick( Control* saveButton )
@@ -78,6 +80,7 @@ struct OnSave : public ControlEventHandler
 };
 
 
+// creaes a simple user interface for the manip demo
 Control*
 createUI()
 {
@@ -121,10 +124,10 @@ main(int argc, char** argv)
     if ( arguments.read("--stencil") )
         osg::DisplaySettings::instance()->setMinimumNumStencilBits( 8 );
 
-    // create a viewer:
+    // a basic OSG viewer
     osgViewer::Viewer viewer(arguments);
 
-    // install our default manipulator (do this before calling Loader)
+    // install our default manipulator (do this before using ExampleMapNodeHelper)
     viewer.setCameraManipulator( new EarthManipulator() );
 
     // load an earth file, and support all or our example command-line options

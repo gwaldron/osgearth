@@ -27,7 +27,6 @@ SET(LIB_PUBLIC_HEADERS
     FeatureDisplayLayout
     FeatureDrawSet
     FeatureGeometryIndex
-    FeatureGridder
 	FeatureListSource
     FeatureModelGraph
     FeatureModelSource
@@ -71,7 +70,6 @@ ADD_LIBRARY(${LIB_NAME} SHARED
     FeatureDisplayLayout.cpp
     FeatureDrawSet.cpp
     FeatureGeometryIndex.cpp
-    FeatureGridder.cpp
 	FeatureListSource.cpp
     FeatureModelGraph.cpp
     FeatureModelSource.cpp

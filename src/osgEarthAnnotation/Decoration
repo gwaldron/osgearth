@@ -64,7 +64,7 @@ namespace osgEarth { namespace Annotation
          */
         DecorationInstaller( const std::string& name, Decoration* tech )
             : osg::NodeVisitor(osg::NodeVisitor::TRAVERSE_ALL_CHILDREN),
-              _name(name), _tech(tech) { }
+              _tech(tech), _name(name) { }
 
         /**
          * Constructor - for using a callback to assign a decorator to each
@@ -72,15 +72,15 @@ namespace osgEarth { namespace Annotation
          */
         DecorationInstaller( const std::string& name, Callback* callback )
             : osg::NodeVisitor(osg::NodeVisitor::TRAVERSE_ALL_CHILDREN),
-              _name(name), _callback(callback) { }
+              _callback(callback), _name(name) { }
 
     public:
         virtual void apply(osg::Node& node);
 
     public:
         osg::ref_ptr<Decoration> _tech;
-        osg::ref_ptr<Callback>  _callback;
-        std::string             _name;
+        osg::ref_ptr<Callback>   _callback;
+        std::string              _name;
     };
 
     //-----------------------------------------------------------------------

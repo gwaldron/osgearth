@@ -38,6 +38,8 @@ using namespace osgEarth::Symbology;
 
 #undef USE_PROXY_NODE_FOR_TESTING
 
+#define OE_TEST OE_NULL
+
 //---------------------------------------------------------------------------
 
 // pseudo-loader for paging in feature tiles for a FeatureModelGraph.
@@ -111,6 +113,7 @@ struct osgEarthFeatureModelPseudoLoader : public osgDB::ReaderWriter
         Threading::ScopedWriteLock lock( _fmgMutex );
         UID key = ++_uid;
         _fmgRegistry[key] = graph;
+        OE_TEST << LC << "Registered FMG " << key << std::endl;
         return key;
     }
 
@@ -118,6 +121,7 @@ struct osgEarthFeatureModelPseudoLoader : public osgDB::ReaderWriter
     {
         Threading::ScopedWriteLock lock( _fmgMutex );
         _fmgRegistry.erase( uid );
+        OE_TEST << LC << "UNregistered FMG " << uid << std::endl;
     }
 
     static FeatureModelGraph* getGraph( UID uid ) 
@@ -319,7 +323,7 @@ FeatureModelGraph::load( unsigned lod, unsigned tileX, unsigned tileY, const std
         osg::Group* geometry =0L;
         const FeatureProfile* featureProfile = _session->getFeatureSource()->getFeatureProfile();
 
-        if ( lod >= featureProfile->getFirstLevel() )
+        if ( (int)lod >= featureProfile->getFirstLevel() )
         {
             // The extent of this tile:
             GeoExtent tileExtent = s_getTileExtent( lod, tileX, tileY, _usableFeatureExtent );
@@ -343,7 +347,7 @@ FeatureModelGraph::load( unsigned lod, unsigned tileX, unsigned tileY, const std
             result = geometry;
         }
 
-        if ( lod < featureProfile->getMaxLevel() )
+        if ( (int)lod < featureProfile->getMaxLevel() )
         {
             // see if there are any more levels. If so, build some pagedlods to bring the
             // next level in.
@@ -363,7 +367,7 @@ FeatureModelGraph::load( unsigned lod, unsigned tileX, unsigned tileY, const std
                 //}
 
                 // only build sub-pagedlods if we are expecting subtiles at some point:
-                if ( geometry != 0L || lod < featureProfile->getFirstLevel() )
+                if ( geometry != 0L || (int)lod < featureProfile->getFirstLevel() )
                 {
                     MapFrame mapf = _session->createMapFrame();
                     buildSubTilePagedLODs( lod, tileX, tileY, &mapf, group.get() );
@@ -388,7 +392,7 @@ FeatureModelGraph::load( unsigned lod, unsigned tileX, unsigned tileY, const std
         result = build( all, GeoExtent::INVALID, 0 );
     }
 
-    else if ( lod < _lodmap.size() )
+    else if ( (int)lod < _lodmap.size() )
     {
         // This path computes the SG for a model graph with explicity-defined levels of
         // detail. We already calculated the LOD level map in setupPaging(). If the

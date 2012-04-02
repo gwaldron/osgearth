@@ -16,18 +16,23 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
-#ifndef OSGEARTH_DRIVER_KML_KML_ROOT
-#define OSGEARTH_DRIVER_KML_KML_ROOT 1
+#include <osgEarth/ThreadingUtils>
 
-#include "KML_Object"
+#ifdef _WIN32
+    extern "C" unsigned long __stdcall GetCurrentThreadId();
+#else
+#   include <sys/syscall.h>
+#endif
 
-struct KML_Root
+using namespace osgEarth::Threading;
+
+//------------------------------------------------------------------------
+
+unsigned osgEarth::Threading::getCurrentThreadId()
 {
-    virtual void scan( const Config& conf, KMLContext& cx );
-    virtual void scan2( const Config& conf, KMLContext& cx );
-    virtual void build( const Config& conf, KMLContext& cx );
-
-    virtual ~KML_Root() { }
-};
-
-#endif // OSGEARTH_DRIVER_KML_KML_SCHEMA
+#ifdef _WIN32
+        return (unsigned)::GetCurrentThreadId();
+#else
+        return (unsigned)::syscall(SYS_gettid);
+#endif
+}

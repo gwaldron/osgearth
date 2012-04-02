@@ -64,7 +64,7 @@ namespace
             if ( vi == 0.0f )      { vr = v,  vg = v3, vb = v1; }
             else if ( vi == 1.0f ) { vr = v2, vg = v,  vb = v1; }
             else if ( vi == 2.0f ) { vr = v1, vg = v,  vb = v3; }
-            else if ( vi == 3.0f ) { vr = v1, vb = v2, vb = v; }
+            else if ( vi == 3.0f ) { vr = v1, vg = v2, vb = v; }
             else if ( vi == 4.0f ) { vr = v3, vg = v1, vb = v; }
             else                   { vr = v,  vg = v1, vb = v2; }
             c.set( vr, vg, vb, c.a() );

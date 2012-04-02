@@ -36,6 +36,8 @@ namespace osgEarth { namespace Features
     public: // tagging functions
         virtual void tagPrimitiveSets( osg::Drawable* drawable, FeatureID fid ) const =0;
         virtual void tagNode( osg::Node* node, FeatureID fid ) const =0;
+
+        virtual ~FeatureSourceIndex() { }
     };
 
     /**

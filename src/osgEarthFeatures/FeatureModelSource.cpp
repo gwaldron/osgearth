@@ -56,7 +56,7 @@ FeatureModelSourceOptions::fromConfig( const Config& conf )
     conf.getObjIfSet( "styles",       _styles );
     conf.getObjIfSet( "layout",       _layout );
     conf.getObjIfSet( "paging",       _layout ); // backwards compat.. to be deprecated
-    conf.getObjIfSet( "gridding",     _gridding ); // to be deprecated
+    //conf.getObjIfSet( "gridding",     _gridding ); // to be deprecated
     conf.getObjIfSet( "feature_name", _featureNameExpr );
     conf.getObjIfSet( "cache_policy", _cachePolicy );
 
@@ -86,7 +86,7 @@ FeatureModelSourceOptions::getConfig() const
         conf.addNonSerializable("feature_source", _featureSource.get());
     }
     //conf.updateObjIfSet( "feature_source", _featureSource);
-    conf.updateObjIfSet( "gridding",     _gridding ); // to be deprecated
+    //conf.updateObjIfSet( "gridding",     _gridding ); // to be deprecated
     conf.updateObjIfSet( "styles",       _styles );
     conf.updateObjIfSet( "layout",       _layout );
     conf.updateObjIfSet( "cache_policy", _cachePolicy );
@@ -171,6 +171,9 @@ FeatureModelSource::createNode( ProgressCallback* progress )
         _factory = createFeatureNodeFactory();
 
     if ( !_factory.valid() )
+        return 0L;
+
+    if ( !_map.valid() )
         return 0L;
 
     if ( !_features.valid() || !_features->getFeatureProfile() )

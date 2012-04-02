@@ -113,6 +113,9 @@ namespace osgEarth { namespace Symbology
         /** Set the value of a variable. */
         void set( const Variable& var, const std::string& value );
 
+        /** Set the value of a names variable if it exists */
+        void set( const std::string& varName, const std::string& value );
+
         /** Evaluate the expression. */
         const std::string& eval() const;
 

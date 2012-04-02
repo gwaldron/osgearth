@@ -35,6 +35,8 @@ namespace osgEarth { namespace Symbology
     public:
         Query( const Config& conf =Config() );
 
+        virtual ~Query() { }
+
     public: // properties
 
         /** Sets the geospatial extent bounding this query. */

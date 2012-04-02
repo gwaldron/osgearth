@@ -27,7 +27,7 @@
 
 #define LC "[FeatureManipTool] "
 
-#define OE_TEST OE_INFO
+#define OE_TEST OE_NULL
 
 using namespace osgEarth;
 using namespace osgEarth::Util;

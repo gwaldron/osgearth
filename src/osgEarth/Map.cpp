@@ -97,6 +97,11 @@ _dataModelRevision( 0 )
     URIContext( _mapOptions.referrer() ).store( _dbOptions );
 }
 
+Map::~Map()
+{
+    OE_DEBUG << "~Map" << std::endl;
+}
+
 bool
 Map::isGeocentric() const
 {
@@ -1025,6 +1030,9 @@ namespace
         }
 
         // Generate a heightfield for each elevation layer.
+
+        unsigned defElevSize = 8;
+
         for( ElevationLayerVector::const_iterator i = elevLayers.begin(); i != elevLayers.end(); i++ )
         {
             ElevationLayer* layer = i->get();
@@ -1066,7 +1074,7 @@ namespace
         {
             if ( fallback )
             {
-                out_result = HeightFieldUtils::createReferenceHeightField( keyToUse.getExtent(), 8, 8 );
+                out_result = HeightFieldUtils::createReferenceHeightField( keyToUse.getExtent(), defElevSize, defElevSize );
                 if ( out_isFallback )
                     *out_isFallback = true;
                 return true;
@@ -1373,7 +1381,18 @@ _maskLayers          ( src._maskLayers )
 bool
 MapFrame::sync()
 {
-    return _map->sync( *this );
+    if ( _map.valid() )
+    {
+        return _map->sync( *this );
+    }
+    else
+    {
+        _imageLayers.clear();
+        _elevationLayers.clear();
+        _modelLayers.clear();
+        _maskLayers.clear();
+        return false;
+    }
 }
 
 bool
@@ -1385,6 +1404,8 @@ MapFrame::getHeightField(const TileKey&                  key,
                          ElevationSamplePolicy           samplePolicy,
                          ProgressCallback*               progress) const
 {
+    if ( !_map.valid() ) return false;
+
     return s_getHeightField( 
         key, 
         _elevationLayers,

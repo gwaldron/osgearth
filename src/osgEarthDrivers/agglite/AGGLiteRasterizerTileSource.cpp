@@ -290,7 +290,7 @@ public:
                         c = line->stroke()->color();
                 }
 
-                a = 127+(c.a()*255)/2; // scale alpha up
+                a = (unsigned int)(127+(c.a()*255)/2); // scale alpha up
                 fgColor = agg::rgba8( (unsigned int)(c.r()*255), (unsigned int)(c.g()*255), (unsigned int)(c.b()*255), a );
 
                 ras.filling_rule( agg::fill_even_odd );

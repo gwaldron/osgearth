@@ -68,6 +68,10 @@ public:
 
 		// Attempt to read the tile map parameters from a TMS TileMap XML tile on the server:
         _tileMap = TMS::TileMapReaderWriter::read( tmsURI.full(), 0L );
+        if (!_tileMap.valid())
+        {
+            OE_NOTICE << "Failed to read tilemap from " << tmsURI.full() << std::endl;
+        }
 
 
 		//Take the override profile if one is given

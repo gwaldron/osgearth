@@ -376,18 +376,6 @@ namespace osgEarth { namespace Util
             bool getSingleAxisRotation() const { return _single_axis_rotation; }
 
             /**
-             * Setting this to True lets motion continue when the user releases the mouse button
-             * while still dragging. Default = false.
-             */
-            void setThrowingEnabled( bool value ) { _throwing = value; }
-
-            /**
-             * Gets whether to allow motion to continue when the user releases the mouse button 
-             * while still dragging the mouse.
-             */
-            bool getThrowingEnabled() const { return _throwing; }
-
-            /**
              * Sets whether to lock in a camera heading when performing panning operations (i.e.,
              * changing the focal point).
              */
@@ -464,7 +452,6 @@ namespace osgEarth { namespace Util
             friend class EarthManipulator;
 
             typedef std::pair<InputSpec,Action> ActionBinding;
-            //typedef std::vector<ActionBinding> ActionBindings;
             typedef std::map<InputSpec,Action> ActionBindings;
 
             // Gets the action bound to the provided input specification, or NullAction if there is
@@ -478,7 +465,6 @@ namespace osgEarth { namespace Util
 
             ActionBindings _bindings;
             bool _single_axis_rotation;
-            bool _throwing;
             bool _lock_azim_while_panning;
             double _mouse_sens;
             double _keyboard_sens;

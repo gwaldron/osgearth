@@ -197,7 +197,6 @@ static short s_actionOptionTypes[] = { 1, 1, 0, 0, 1, 1 }; // 0=bool, 1=double
 
 EarthManipulator::Settings::Settings() :
 _single_axis_rotation   ( false ),
-_throwing               ( false ),
 _lock_azim_while_panning( true ),
 _mouse_sens             ( 1.0 ),
 _keyboard_sens          ( 1.0 ),
@@ -220,7 +219,6 @@ _max_vp_duration_s      ( 8.0 )
 EarthManipulator::Settings::Settings( const EarthManipulator::Settings& rhs ) :
 _bindings( rhs._bindings ),
 _single_axis_rotation( rhs._single_axis_rotation ),
-_throwing( rhs._throwing ),
 _lock_azim_while_panning( rhs._lock_azim_while_panning ),
 _mouse_sens( rhs._mouse_sens ),
 _keyboard_sens( rhs._keyboard_sens ),
@@ -483,7 +481,7 @@ EarthManipulator::configureDefaultSettings()
     _settings->bindMouseDoubleClick( ACTION_GOTO, osgGA::GUIEventAdapter::RIGHT_MOUSE_BUTTON, 0L, options );
     _settings->bindMouseDoubleClick( ACTION_GOTO, osgGA::GUIEventAdapter::LEFT_MOUSE_BUTTON, osgGA::GUIEventAdapter::MODKEY_CTRL, options );
 
-    _settings->setThrowingEnabled( false );
+    //_settings->setThrowingEnabled( false );
     _settings->setLockAzimuthWhilePanning( true );
 }
 
@@ -1296,6 +1294,7 @@ EarthManipulator::handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapt
             }
             else
             {
+#if 0 // disabled - not implemented
                 // check for a mouse-throw continuation:
                 if ( _settings->getThrowingEnabled() && isMouseMoving() )
                 {
@@ -1307,7 +1306,9 @@ EarthManipulator::handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapt
                         _thrown = true;
                     }
                 }
-                else if ( isMouseClick( &ea ) )
+                else 
+#endif
+                if ( isMouseClick( &ea ) )
                 {
                     addMouseEvent( ea );
                     if ( _mouse_down_event )

@@ -770,18 +770,21 @@ namespace
     {
         osgDB::ReaderWriter* reader = 0L;
 
-        // try to look up a reader by mime-type first:
-        std::string mimeType = response.getMimeType();
-        if ( !mimeType.empty() )
+        // try extension first:
+        std::string ext = osgDB::getFileExtension( url );
+        if ( !ext.empty() )
         {
-            reader = osgDB::Registry::instance()->getReaderWriterForMimeType(mimeType);
+            reader = osgDB::Registry::instance()->getReaderWriterForExtension( ext );
         }
 
         if ( !reader )
         {
-            // Try to find a reader by file extension.
-            std::string ext = osgDB::getFileExtension( url );
-            reader = osgDB::Registry::instance()->getReaderWriterForExtension( ext );
+            // try to look up a reader by mime-type first:
+            std::string mimeType = response.getMimeType();
+            if ( !mimeType.empty() )
+            {
+                reader = osgDB::Registry::instance()->getReaderWriterForMimeType(mimeType);
+            }
         }
 
         return reader;

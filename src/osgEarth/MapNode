@@ -118,8 +118,10 @@ namespace osgEarth
          *
          * @param graph
          *      Node graph in which to search for a MapNode
+         * @param travMask
+         *      Traversal mask to apply while searching
          */
-        static MapNode* findMapNode( osg::Node* graph );   
+        static MapNode* findMapNode( osg::Node* graph, unsigned travMask =~0 );  
 
         /**
          * Returns true if the realized terrain model is geocentric, false if

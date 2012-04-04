@@ -386,9 +386,9 @@ MapNode::getMapNodeOptions() const
 }
 
 MapNode*
-MapNode::findMapNode( osg::Node* graph )
+MapNode::findMapNode( osg::Node* graph, unsigned travmask )
 {
-    return findTopMostNodeOfType<MapNode>( graph );
+    return findRelativeNodeOfType<MapNode>( graph, travmask );
 }
 
 bool

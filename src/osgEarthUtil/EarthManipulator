@@ -22,7 +22,7 @@
 #include <osgEarthUtil/Common>
 #include <osgEarth/Common>
 #include <osgEarth/Viewpoint>
-#include <osgEarth/MapNode>
+#include <osgEarth/GeoData>
 #include <osg/Timer>
 #include <osgGA/CameraManipulator>
 #include <map>
@@ -507,7 +507,6 @@ namespace osgEarth { namespace Util
          * Sets the camera position, optionally moving it there over time.
          */
         virtual void setViewpoint( const Viewpoint& vp, double duration_s =0.0 );
-
         
         /**
          * Cancels a viewpoint transition if one is in progress
@@ -732,7 +731,17 @@ namespace osgEarth { namespace Util
 
         bool established();
 
-        osg::CoordinateFrame getMyCoordinateFrame( const osg::Vec3d& position ) const;
+        // sets the new center (focal) point and recalculates it's L2W matrix.
+        void setCenter( const osg::Vec3d& center );
+
+        // creates a "local-to-world" transform relative to the input point.
+        bool createLocalCoordFrame( const osg::Vec3d& worldPos, osg::CoordinateFrame& out_frame ) const;
+
+    public:
+            
+        void recalculateCenter() { recalculateCenter(_centerLocalToWorld); }
+
+        const GeoPoint& centerMap() const { return _centerMap; }
 
     private:
         // makeshift "stack" of the last 2 incoming events.
@@ -741,7 +750,6 @@ namespace osgEarth { namespace Util
 
         osg::ref_ptr<const osgGA::GUIEventAdapter> _mouse_down_event;
 
-        //osg::ref_ptr<osg::Node> _node;
         osg::observer_ptr<osg::Node> _node;
         osg::observer_ptr<osg::CoordinateSystemNode> _csn;
 #ifdef USE_OBSERVER_NODE_PATH
@@ -761,11 +769,18 @@ namespace osgEarth { namespace Util
         double                  _delta_t;
         double                  _t_factor;
         bool                    _thrown;
+
         // The world coordinate of the Viewpoint focal point.
         osg::Vec3d              _center;
+        GeoPoint               _centerMap;
+
+        // local2world matrix for the center point.
+        osg::CoordinateFrame    _centerLocalToWorld;
+
         // The rotation (heading and pitch) of the camera in the
         // earth-local frame.
         osg::Quat               _rotation;
+
         // The rotation that makes the camera look down on the focal
         // point on the earth. This is equivalent to a rotation by
         // latitude, longitude.

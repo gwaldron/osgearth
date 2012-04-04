@@ -20,6 +20,7 @@
 #include <typeinfo>
 
 #include <osg/Notify>
+#include <osgDB/ReadFile>
 #include <osgGA/GUIEventHandler>
 #include <osgViewer/Viewer>
 #include <osgEarthUtil/EarthManipulator>

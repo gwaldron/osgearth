@@ -26,6 +26,7 @@
  * to add functionality.
  */
 #include <osg/Notify>
+#include <osgDB/ReadFile>
 #include <osgGA/StateSetManipulator>
 #include <osgViewer/Viewer>
 #include <osgViewer/ViewerEventHandlers>

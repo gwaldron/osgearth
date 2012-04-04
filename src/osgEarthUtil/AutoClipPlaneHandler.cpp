@@ -29,7 +29,7 @@ namespace
     {
         double _minNear, _maxFar, _nearFarRatio;
 
-        CustomProjClamper() : _minNear( -DBL_MAX ), _maxFar( DBL_MAX ), _nearFarRatio( 0.0005 ) { }
+        CustomProjClamper() : _minNear( -DBL_MAX ), _maxFar( DBL_MAX ), _nearFarRatio( 0.00015 ) { }
 
         // NOTE: this code is just copied from CullVisitor. I could not find a way to simply 
         // call into it from a custom callback..
@@ -192,54 +192,6 @@ _autoFarPlaneClamping( true )
     }
 }
 
-#if 0
-
-void
-AutoClipPlaneCullCallback::operator()( osg::Node* node, osg::NodeVisitor* nv )
-{
-    if ( !_active )
-        return;
-
-    osgUtil::CullVisitor* cv = dynamic_cast<osgUtil::CullVisitor*>( nv );
-    if ( !cv )
-        return;
-
-    osg::Camera* cam = cv->getCurrentCamera();
-
-    cam->setComputeNearFarMode( osg::CullSettings::DO_NOT_COMPUTE_NEAR_FAR );
-
-    osg::Vec3d eye, center, up;
-    cam->getViewMatrixAsLookAt( eye, center, up );
-
-    double d = eye.length();
-    double d2 = d*d;
-
-    if ( d2 > _rp2 )
-    {
-        double fovy, ar, znear, zfar, finalZfar;
-        cam->getProjectionMatrixAsPerspective( fovy, ar, znear, finalZfar );
-
-        // far clip at the horizon:
-        zfar = sqrt( d2 - _rp2 );
-
-        if (_autoFarPlaneClamping)
-        {
-            finalZfar = zfar;
-        }
-
-        double nfr = _minNearFarRatio + _maxNearFarRatio * ((d-_rp)/d);
-        znear = osg::clampAbove( zfar * nfr, 1.0 );
-
-        cam->setProjectionMatrixAsPerspective( fovy, ar, znear, finalZfar );
-
-        //OE_NOTICE << fixed
-        //    << "near=" << znear << ", far=" << zfar << std::endl;
-    }
-
-    traverse(node, nv);
-}
-
-#else
 
 void
 AutoClipPlaneCullCallback::operator()( osg::Node* node, osg::NodeVisitor* nv )
@@ -309,7 +261,7 @@ AutoClipPlaneCullCallback::operator()( osg::Node* node, osg::NodeVisitor* nv )
             {
                 double n, f, a, v;
                 cv->getProjectionMatrix()->getPerspective(v, a, n, f);
-                OE_INFO << std::fixed << "near = " << n << ", far = " << f << ", ratio = " << n/f << std::endl;
+                OE_INFO << std::setprecision(16) << "near = " << n << ", far = " << f << ", ratio = " << n/f << std::endl;
             }
 #endif
         }
@@ -317,4 +269,4 @@ AutoClipPlaneCullCallback::operator()( osg::Node* node, osg::NodeVisitor* nv )
     traverse( node, nv );
 }
 
-#endif
+

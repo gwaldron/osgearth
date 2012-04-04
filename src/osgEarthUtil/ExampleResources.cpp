@@ -34,6 +34,9 @@
 
 #define KML_PUSHPIN_URL "http://demo.pelicanmapping.com/icons/pushpin_yellow.png"
 
+#define VP_DURATION 4.5 // time to fly to a viewpoint
+
+
 using namespace osgEarth;
 using namespace osgEarth::Util;
 using namespace osgEarth::Util::Controls;
@@ -57,7 +60,7 @@ namespace
         virtual void onClick( class Control* control )
         {
             if ( _manip )
-                _manip->setViewpoint( _vp, 4.5 );
+                _manip->setViewpoint( _vp, VP_DURATION );
         }
     };
 
@@ -95,7 +98,7 @@ namespace
                 int index = (int)ea.getKey() - (int)'1';
                 if ( index >= 0 && index < (int)_viewpoints.size() )
                 {
-                    _manip->setViewpoint( _viewpoints[index], 4.5 );
+                    _manip->setViewpoint( _viewpoints[index], VP_DURATION );
                 }
                 else if ( ea.getKey() == 'v' )
                 {

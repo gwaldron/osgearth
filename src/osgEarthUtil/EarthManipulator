@@ -704,8 +704,9 @@ namespace osgEarth { namespace Util
         // movements.
         bool serviceTask();
 
-        void recalculateLocalPitchAndAzimuth();
-		double getAzimuth() const;
+        //void recalculateLocalPitchAndAzimuth();
+        void getLocalEulerAngles( double* out_azim, double* out_pitch =0L ) const;
+
 
         void recalculateCenter( const osg::CoordinateFrame& frame );
 
@@ -762,6 +763,7 @@ namespace osgEarth { namespace Util
         bool _srs_lookup_failed;
 
         osg::observer_ptr<osg::Node> _tether_node;
+        Viewpoint               _pre_tether_vp;
 
         double                  _time_s_last_frame;
         double                  _time_s_now;
@@ -772,7 +774,7 @@ namespace osgEarth { namespace Util
 
         // The world coordinate of the Viewpoint focal point.
         osg::Vec3d              _center;
-        GeoPoint               _centerMap;
+        GeoPoint                _centerMap;
 
         // local2world matrix for the center point.
         osg::CoordinateFrame    _centerLocalToWorld;
@@ -791,8 +793,8 @@ namespace osgEarth { namespace Util
         osg::Vec3d              _previousUp;
         osg::ref_ptr<Task>      _task;
         osg::Timer_t            _time_last_frame;
-        double                  _local_pitch;
-        double                  _local_azim;
+        //double                  _local_pitch;
+        //double                  _local_azim;
 
         bool                    _continuous;
         double                  _continuous_dx;

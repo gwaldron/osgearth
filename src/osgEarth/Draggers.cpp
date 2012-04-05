@@ -133,12 +133,14 @@ bool Dragger::handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& 
         if ( picker.pick( ea.getX(), ea.getY(), hits ) )
         {
             _dragging = true;
+            aa.requestRedraw();
             return true;
         }
     }
     else if (ea.getEventType() == osgGA::GUIEventAdapter::RELEASE)
     {
         _dragging = false;
+        aa.requestRedraw();
     }
     else if (ea.getEventType() == osgGA::GUIEventAdapter::DRAG)
     {
@@ -150,6 +152,7 @@ bool Dragger::handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& 
                 GeoPoint mapPoint;
                 _mapNode->getMap()->worldPointToMapPoint(world, mapPoint);
                 setPosition( mapPoint );
+                aa.requestRedraw();
                 return true;
             }
         }
@@ -166,7 +169,8 @@ bool Dragger::handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& 
         else
         {
             setHover( false );
-        }
+        }        
+        aa.requestRedraw();
     }
     return false;
 }

@@ -77,7 +77,8 @@ _pendingGeometryUpdate(false),
 _optimizeTriangleOrientation(true),
 _texCompositor( compositor ),
 _frontGeodeInstalled( false ),
-_debug( false )
+_debug( false ),
+_compileMutex( Mutex::MUTEX_RECURSIVE )
 {
     this->setThreadSafeRefUnref(true);
 }
@@ -93,7 +94,8 @@ _optimizeTriangleOrientation( rhs._optimizeTriangleOrientation ),
 _texCompositor( rhs._texCompositor.get() ),
 _frontGeodeInstalled( rhs._frontGeodeInstalled ),
 _debug( rhs._debug ),
-_parentTile( rhs._parentTile )
+_parentTile( rhs._parentTile ),
+_compileMutex( Mutex::MUTEX_RECURSIVE )
 {
     //NOP
 }

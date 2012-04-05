@@ -1,0 +1,105 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+ * Copyright 2008-2010 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+#ifndef OSGEARTH_CONTOUR_IMAGE_LAYER
+#define OSGEARTH_CONTOUR_IMAGE_LAYER
+
+#include <osg/TransferFunction>
+
+#include <osgEarth/Map>
+#include <osgEarth/ImageLayer>
+
+/**
+ * @class ContourImageLayer
+ * @brief An image layer is showing by coloring the terrain its contour respectively its height.
+ *
+ * The coloring is determined by a user defined 1D transfer function that converts the height into a color.
+ *
+ * @remark The image is not cached.
+ */
+
+namespace osgEarth
+{
+	class ContourImageLayer : public ImageLayer
+	{
+	public:
+		/// Constructs a contour layer
+		/** @param map              Map providing the terrain.
+		 *  @param options          Image options.
+		 *  @param transferFunction Function for mapping the terrain's height into a color.
+		 *  @sa setTransferFunction
+		 */
+		ContourImageLayer(Map* map, ImageLayerOptions const& options, osg::TransferFunction1D* transferFunction=NULL);
+
+	/** @name Overloading methods from ImageLayer
+	  * @{ */
+
+		virtual void initTileSource();
+
+		virtual bool isKeyValid( TileKey const& key ) const;
+
+		/// Checks if the image is in the cache
+		/** @return Always returns true but the image is produced on-the-fly.
+		 */
+		virtual bool isCached( TileKey const& key ) const;
+
+		/// Creates the contour image
+		/** @return A contour image is returned if the map's pointer is valid and a transfer function has been set,
+		 *          otherwise osgEarth::GeomImage::INVALID is returned.
+		 */
+		virtual GeoImage createImage( TileKey const& key, ProgressCallback* progress, bool forceFallback );
+
+	/** @} */
+	/** @name Transfer function handling
+	  * @{ */
+	  
+		/// Returns the currently used transfer function
+		/** @return A pointer to currently used transfer function is returned. 
+		 */
+		osg::TransferFunction1D* getTransferFunction(void) const
+		{
+			return _transferFunction;
+		}
+
+		/// Sets the transfer function that is used to determine the height dependent contour iamge
+		/**
+		 * If a transfer function exists an image can be created that shows the terrain's contour. The height of the terrain
+		 * is represented by a color.
+		 *
+		 * The color is determined by using the transfer function. The transfer function stores for certain heights a color.
+		 * The more cells, respectively levels, it has the smoother the color interpolation is. The color is determined by
+		 * the height value only and is not influenced by an eventually set height (vertical) scaling by the map engine.
+		 *
+		 * @note The transfer function has to be set before the layer is attached to a map.
+		 *
+		 * @sa osg::TransferFunction1D, osgTerrain::ContourLayer
+		 */
+		void setTransferFunction(osg::TransferFunction1D* transferFunction)
+		{
+			_transferFunction = transferFunction;
+		}
+
+	/** @} */
+	private:
+		osg::observer_ptr<osgEarth::Map> _map; ///< Map determining the terrain
+
+		osg::ref_ptr<osg::TransferFunction1D> _transferFunction; ///< Function for mapping height data into colors
+	};
+}
+
+#endif // OSGEARTH_CONTOUR_IMAGE_LAYER

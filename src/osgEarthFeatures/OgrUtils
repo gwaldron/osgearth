@@ -269,7 +269,7 @@ struct OgrUtils
         int numAttrs = OGR_F_GetFieldCount(handle); 
         for (int i = 0; i < numAttrs; ++i) 
         { 
-            void* field_handle_ref = OGR_F_GetFieldDefnRef( handle, i ); 
+            OGRFieldDefnH field_handle_ref = OGR_F_GetFieldDefnRef( handle, i ); 
 
             // get the field name and convert to lower case:
             const char* field_name = OGR_Fld_GetNameRef( field_handle_ref ); 

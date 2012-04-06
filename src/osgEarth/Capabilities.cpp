@@ -153,6 +153,7 @@ _supportsDepthPackedStencilBuffer( false )
         glGetIntegerv( GL_DEPTH_BITS, &_depthBits );
         OE_INFO << LC << "  Depth buffer bits = " << _depthBits << std::endl;
 
+#if !(defined(OSG_GLES1_AVAILABLE) || defined(OSG_GLES2_AVAILABLE))
         // Use the texture-proxy method to determine the maximum texture size 
         glGetIntegerv( GL_MAX_TEXTURE_SIZE, &_maxTextureSize );
         for( int s = _maxTextureSize; s > 2; s >>= 1 )
@@ -166,6 +167,7 @@ _supportsDepthPackedStencilBuffer( false )
                 break;
             }
         }
+#endif
         OE_INFO << LC << "  Max texture size = " << _maxTextureSize << std::endl;
 
         glGetIntegerv( GL_MAX_LIGHTS, &_maxLights );

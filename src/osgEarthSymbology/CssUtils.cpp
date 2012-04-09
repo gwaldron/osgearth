@@ -59,6 +59,10 @@ CssUtils::readConfig( const std::string& css, const std::string& referrer, Confi
     {
         temp = "default { " + css + " }";
     }
+    else if ( css.size() > 0 && css[0] == '{' )
+    {
+        temp = "default " + css;
+    }
 
     // tokenize the CSS into a config object..
     Config conf( "css" );

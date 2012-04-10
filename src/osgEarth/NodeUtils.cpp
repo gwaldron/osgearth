@@ -281,7 +281,7 @@ RemoveEmptyGroupsVisitor::apply( osg::Group& group )
             osg::Group* child = group.getChild(i)->asGroup();
             if ( child )
             {
-                if (child->className() == "Group"         &&
+                if (child->className() == std::string("Group") &&
                     child->getStateSet() == 0L            &&
                     child->getCullCallback() == 0L        &&
                     child->getUpdateCallback() == 0L      &&

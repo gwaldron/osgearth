@@ -123,6 +123,8 @@ LatLongFormatter::format( const Angular& angle, int precision, const AngularForm
                 buf << d << " " << m << " " << sf;
         }
         break;
+		case FORMAT_DEFAULT:
+		default: break;
     }
 
     result = buf.str();

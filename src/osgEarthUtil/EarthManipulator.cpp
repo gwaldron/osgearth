@@ -1351,6 +1351,7 @@ EarthManipulator::handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapt
                 aa.requestRedraw();
             handled = true;
             break;
+        default: break;
     }
 
     // if a new task was started, request continuous updates.
@@ -1940,6 +1941,7 @@ EarthManipulator::handleMovementAction( const ActionType& type, double dx, doubl
 {
     switch( type )
     {
+    default:break;
     case ACTION_PAN:
         pan( dx, dy );
         break;
@@ -1979,6 +1981,7 @@ EarthManipulator::handlePointAction( const Action& action, float mx, float my, o
         switch( action._type )
         {
             case ACTION_GOTO:
+            {
                 Viewpoint here = getViewpoint();
 
                 if ( !here.getSRS() )
@@ -1994,7 +1997,10 @@ EarthManipulator::handlePointAction( const Action& action, float mx, float my, o
                 here.setRange( here.getRange() * range_factor );
 
                 setViewpoint( here, duration_s );
-                break;
+            }
+            break;
+            default:
+            break;
         }
     }
     return true;
@@ -2077,6 +2083,7 @@ EarthManipulator::handleKeyboardAction( const Action& action, double duration )
     case DIR_RIGHT: dx = -1; break;
     case DIR_UP:    dy = -1; break;
     case DIR_DOWN:  dy =  1; break;
+    default: break;
     }
 
     dx *= _settings->getKeyboardSensitivity();
@@ -2100,6 +2107,7 @@ EarthManipulator::handleScrollAction( const Action& action, double duration )
     case DIR_RIGHT: dx = -1; break;
     case DIR_UP:    dy = -1; break;
     case DIR_DOWN:  dy =  1; break;
+    default: break;
     }
 
     dx *= scrollFactor * _settings->getScrollSensitivity();

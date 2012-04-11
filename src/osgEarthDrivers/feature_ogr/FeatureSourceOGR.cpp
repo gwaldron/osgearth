@@ -379,6 +379,7 @@ public:
                     case OFTString:
                         OGR_F_SetFieldString( feature_handle, field_index, a->second.getString().c_str() );
                         break;
+                    default:break;
                     }
                 }
             }

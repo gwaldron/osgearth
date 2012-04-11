@@ -541,6 +541,10 @@ OSGTerrainEngineNode::onMapModelChanged( const MapModelChange& change )
         case MapModelChange::MOVE_ELEVATION_LAYER:
             moveElevationLayer( change.getFirstIndex(), change.getSecondIndex() );
             break;
+        case MapModelChange::ADD_MODEL_LAYER:
+        case MapModelChange::REMOVE_MODEL_LAYER:
+        case MapModelChange::MOVE_MODEL_LAYER:
+        default: break;
         }
     }
 

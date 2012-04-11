@@ -45,7 +45,7 @@ namespace
 {
     // ControlNodeBin shaders.
 
-    char* s_controlVertexShader =
+    const char* s_controlVertexShader =
         "void main() \n"
         "{ \n"
         "    gl_Position = gl_ModelViewProjectionMatrix * gl_Vertex; \n"
@@ -53,7 +53,7 @@ namespace
         "    gl_FrontColor = gl_Color; \n"
         "} \n";
 
-    char* s_imageControlFragmentShader =
+    const char* s_imageControlFragmentShader =
         "uniform sampler2D tex0; \n"
         "uniform float visibleTime; \n"
         "uniform float osg_FrameTime; \n"
@@ -64,7 +64,7 @@ namespace
         "    gl_FragColor = vec4(texel.rgb, texel.a * opacity); \n"
         "} \n";
 
-    char* s_labelControlFragmentShader =
+    const char* s_labelControlFragmentShader =
         "uniform sampler2D tex0; \n"
         "uniform float visibleTime; \n"
         "uniform float osg_FrameTime; \n"

@@ -1176,6 +1176,8 @@ JSSpatialReference::PropertyCallback(v8::Local<v8::String> name, const v8::Acces
     return v8::Boolean::New(srs->isProjected());
   if (prop == "mercator")
     return v8::Boolean::New(srs->isMercator());
+  if (prop == "sphericalMercator")
+    return v8::Boolean::New(srs->isSphericalMercator());
   if (prop == "northPolar")
     return v8::Boolean::New(srs->isNorthPolar());
   if (prop == "southPolar")

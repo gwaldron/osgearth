@@ -34,7 +34,7 @@ using namespace osgEarth;
 
 // took this out, see issue #79
 //#define USE_CUSTOM_MERCATOR_TRANSFORM 1
-#undef USE_CUSTOM_MERCATOR_TRANSFORM
+//#undef USE_CUSTOM_MERCATOR_TRANSFORM
 
 //------------------------------------------------------------------------
 
@@ -74,8 +74,7 @@ namespace
     
 
     // http://en.wikipedia.org/wiki/Mercator_projection#Mathematics_of_the_projection
-    //bool mercatorToGeographic( double* x, double* y, double* z, int numPoints )
-    bool mercatorToGeographic( std::vector<osg::Vec3d>& points )
+    bool sphericalMercatorToGeographic( std::vector<osg::Vec3d>& points )
     {
         for( unsigned i=0; i<points.size(); ++i )
         {
@@ -89,7 +88,7 @@ namespace
     }
 
     // http://en.wikipedia.org/wiki/Mercator_projection#Mathematics_of_the_projection
-    bool geographicToMercator( std::vector<osg::Vec3d>& points )
+    bool geographicToSphericalMercator( std::vector<osg::Vec3d>& points )
     {
         for( unsigned i=0; i<points.size(); ++i )
         {
@@ -216,7 +215,7 @@ SpatialReference::create( const Key& key, bool useCache )
     {
         // note the use of nadgrids=@null (see http://proj.maptools.org/faq.html)
         srs = createFromPROJ4(
-            "+proj=merc +a=6378137 +b=6378137 +lon_0=0 +k=1 +x_0=0 +y_0=0 +nadgrids=@null +units=m +no_defs",
+            "+proj=merc +a=6378137 +b=6378137 +lat_ts=0.0 +lon_0=0.0 +x_0=0.0 +y_0=0 +k=1.0 +units=m +nadgrids=@null +wktext +no_defs",
             "Spherical Mercator" );
     }
 
@@ -364,7 +363,8 @@ _is_cube        ( false ),
 _is_contiguous  ( false ),
 _is_user_defined( false ),
 _is_ltp         ( false ),
-_is_plate_carre ( false )
+_is_plate_carre ( false ),
+_is_spherical_mercator( false )
 {
     // nop
 }
@@ -512,6 +512,7 @@ SpatialReference::_isEquivalentTo( const SpatialReference* rhs, bool considerVDa
 
     if (isGeographic()  != rhs->isGeographic()  ||
         isMercator()    != rhs->isMercator()    ||
+        isSphericalMercator() != rhs->isSphericalMercator() ||
         isNorthPolar()  != rhs->isNorthPolar()  ||
         isSouthPolar()  != rhs->isSouthPolar()  ||
         isContiguous()  != rhs->isContiguous()  ||
@@ -676,6 +677,14 @@ SpatialReference::isMercator() const
     if ( !_initialized )
         const_cast<SpatialReference*>(this)->init();
     return _is_mercator;
+}
+
+bool
+SpatialReference::isSphericalMercator() const
+{
+    if ( !_initialized )
+        const_cast<SpatialReference*>(this)->init();
+    return _is_spherical_mercator;
 }
 
 bool 
@@ -877,38 +886,28 @@ SpatialReference::transform(std::vector<osg::Vec3d>& points,
     // trivial equivalency:
     if ( isEquivalentTo(outputSRS) )
         return true;
-
-    // if the ellipsoids differ, do an ECEF transformation; this will automatically
-    // take care of vertical datums as well
-    if ( _ellipsoidId != outputSRS->_ellipsoidId )
-    {
-        transformToECEF(points);
-        outputSRS->transformFromECEF(points);
-        return true;
-    }
-
-    // do the pre-transformation pass:
-    preTransform( points );
     
     bool success = false;
 
-#ifdef USE_CUSTOM_MERCATOR_TRANSFORM
+    // do the pre-transformation pass:
+    preTransform( points );
 
-    if ( isGeographic() && outputSRS->isMercator() )
+    // Spherical Mercator is a special case transformation, because we want to bypass
+    // any normal horizontal datum conversion. In other words we ignore the ellipsoid
+    // of the other SRS and just do a straight spherical conversion.
+    if ( isGeographic() && outputSRS->isSphericalMercator() )
     {
         transformZ( points, outputSRS, true );
-        success = geographicToMercator( points );
+        success = geographicToSphericalMercator( points );
         return success;
     }
 
-    else if ( isMercator() && outputSRS->isGeographic() )
+    else if ( isSphericalMercator() && outputSRS->isGeographic() )
     {
-        success = mercatorToGeographic( points );
+        success = sphericalMercatorToGeographic( points );
         transformZ( points, outputSRS, true );
         return success;
     }
-
-#endif // USE_CUSTOM_MERCATOR_TRANSFORM
 
 
     // if the points are starting as geographic, do the Z's first to avoid an unneccesary
@@ -934,10 +933,25 @@ SpatialReference::transform(std::vector<osg::Vec3d>& points,
 
     if ( success )
     {
-        for( unsigned i=0; i<count; i++ )
+        if ( isProjected() && outputSRS->isGeographic() )
         {
-            points[i].x() = x[i];
-            points[i].y() = y[i];
+            // special case: when going from projected to geographic, clamp the 
+            // points to the maximum geographic extent. Sometimes the conversion from
+            // a global/projected SRS (like mercator) will result in *slightly* invalid
+            // geographic points (like long=180.000003), so this addresses that issue.
+            for( unsigned i=0; i<count; i++ )
+            {
+                points[i].x() = osg::clampBetween( x[i], -180.0, 180.0 );
+                points[i].y() = osg::clampBetween( y[i],  -90.0,  90.0 );
+            }
+        }
+        else
+        {
+            for( unsigned i=0; i<count; i++ )
+            {
+                points[i].x() = x[i];
+                points[i].y() = y[i];
+            }
         }
     }
 
@@ -1235,16 +1249,16 @@ SpatialReference::transformExtentToMBR(const SpatialReference* to_srs,
     // Transform all points and take the maximum bounding rectangle the resulting points
     std::vector<osg::Vec3d> v;
     v.push_back( osg::Vec3d(in_out_xmin, in_out_ymin, 0) ); // ll
-    v.push_back( osg::Vec3d(in_out_xmin, in_out_ymax, 0) ); // lr
+    v.push_back( osg::Vec3d(in_out_xmin, in_out_ymax, 0) ); // ul
     v.push_back( osg::Vec3d(in_out_xmax, in_out_ymax, 0) ); // ur
-    v.push_back( osg::Vec3d(in_out_xmax, in_out_ymin, 0) ); // ul
+    v.push_back( osg::Vec3d(in_out_xmax, in_out_ymin, 0) ); // lr
 
     if ( transform(v, to_srs) )
     {
-        in_out_xmin = std::min( v[0].x(), v[3].x() );
-        in_out_xmax = std::max( v[1].x(), v[2].x() );
-        in_out_ymin = std::min( v[0].y(), v[1].y() );
-        in_out_ymax = std::max( v[2].y(), v[3].y() );
+        in_out_xmin = std::min( v[0].x(), v[1].x() );
+        in_out_xmax = std::max( v[2].x(), v[3].x() );
+        in_out_ymin = std::min( v[0].y(), v[3].y() );
+        in_out_ymax = std::max( v[1].y(), v[2].y() );
         return true;
     }
 
@@ -1339,6 +1353,9 @@ SpatialReference::_init()
 
     // check for the Mercator projection:
     _is_mercator = !proj.empty() && proj.find("mercator")==0;
+
+    // check for spherical mercator (a special case)
+    _is_spherical_mercator = _is_mercator && osg::equivalent(semi_major_axis, semi_minor_axis);
 
     // check for the Polar projection:
     if ( !proj.empty() && proj.find("polar_stereographic") != std::string::npos )

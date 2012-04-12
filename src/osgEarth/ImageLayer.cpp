@@ -656,10 +656,12 @@ ImageLayer::assembleImageFromTileSource(const TileKey&    key,
             // If the key is geographic and the mosaic is mercator, we need to get the mercator
             // extents to determine if we need to add the border or not
             // (TODO: this might be OBE due to the elimination of the Mercator fast-path -gw)
-            if (key.getExtent().getSRS()->isGeographic() && mosaic.getSRS()->isMercator())
+            if (key.getExtent().getSRS()->isGeographic() && mosaic.getSRS()->isSphericalMercator())
             {
-                keyExtent = osgEarth::Registry::instance()->getGlobalMercatorProfile()->clampAndTransformExtent( 
-                    key.getExtent( ));
+                //keyExtent = osgEarth::Registry::instance()->getGlobalMercatorProfile()->clampAndTransformExtent( 
+                //    key.getExtent());
+                keyExtent = osgEarth::Registry::instance()->getSphericalMercatorProfile()->clampAndTransformExtent( 
+                    key.getExtent());
             }
 
             // Use an epsilon to only add the border if it is significant enough.

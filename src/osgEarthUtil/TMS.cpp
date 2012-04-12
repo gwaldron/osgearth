@@ -184,26 +184,26 @@ TileMap::createProfile() const
 {
     osg::ref_ptr< SpatialReference > spatialReference =  osgEarth::SpatialReference::create(_srs);
     
-    if (spatialReference->isMercator())
+    if (spatialReference->isSphericalMercator())
     {
         //HACK:  Some TMS sources, most notably TileCache, use a global mercator extent that is very slightly different than
         //       the automatically computed mercator bounds which can cause rendering issues due to the some texture coordinates
         //       crossing the dateline.  If the incoming bounds are nearly the same as our definion of global mercator, just use our definition.
         double eps = 0.01;
-        osg::ref_ptr< const Profile > merc = osgEarth::Registry::instance()->getGlobalMercatorProfile();
+        osg::ref_ptr< const Profile > merc = osgEarth::Registry::instance()->getSphericalMercatorProfile();
         if (_numTilesWide == 1 && _numTilesHigh == 1 &&
             osg::equivalent(merc->getExtent().xMin(), _minX, eps) && 
             osg::equivalent(merc->getExtent().yMin(), _minY, eps) &&
             osg::equivalent(merc->getExtent().xMax(), _maxX, eps) &&
             osg::equivalent(merc->getExtent().yMax(), _maxY, eps))
         {            
-            return osgEarth::Registry::instance()->getGlobalMercatorProfile();
+            return osgEarth::Registry::instance()->getSphericalMercatorProfile();
         }
     }
 
 
     if (_profile_type == Profile::TYPE_GEODETIC) return osgEarth::Registry::instance()->getGlobalGeodeticProfile();
-    if (_profile_type == Profile::TYPE_MERCATOR) return osgEarth::Registry::instance()->getGlobalMercatorProfile();
+    if (_profile_type == Profile::TYPE_MERCATOR) return osgEarth::Registry::instance()->getSphericalMercatorProfile();
     
 
     return Profile::create(
@@ -286,7 +286,7 @@ TileMap::intersectsKey(const TileKey& tilekey)
 
     bool inter = intersects(_minX, _minY, _maxX, _maxY, keyMin.x(), keyMin.y(), keyMax.x(), keyMax.y() ); //keyMinX, keyMinY, keyMaxX, keyMaxY);
 
-    if (!inter && tilekey.getProfile()->getSRS()->isMercator())
+    if (!inter && tilekey.getProfile()->getSRS()->isSphericalMercator())
     {
         tilekey.getProfile()->getSRS()->transform(keyMin, tilekey.getProfile()->getSRS()->getGeographicSRS(), keyMin );
         tilekey.getProfile()->getSRS()->transform(keyMax, tilekey.getProfile()->getSRS()->getGeographicSRS(), keyMax );
@@ -324,7 +324,7 @@ TileMap::generateTileSets(unsigned int numLevels)
 
 std::string getHorizSRSString(const osgEarth::SpatialReference* srs)
 {
-    if (srs->isMercator())
+    if (srs->isSphericalMercator())
     {
         return "EPSG:900913";
     }

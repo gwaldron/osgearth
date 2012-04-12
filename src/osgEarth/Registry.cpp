@@ -193,6 +193,8 @@ Registry::getGlobalGeodeticProfile() const
 const Profile*
 Registry::getGlobalMercatorProfile() const
 {
+    return getSphericalMercatorProfile();
+#if 0
     if ( !_global_mercator_profile.valid() )
     {
         GDAL_SCOPED_LOCK;
@@ -211,6 +213,7 @@ Registry::getGlobalMercatorProfile() const
         }
     }
     return _global_mercator_profile.get();
+#endif
 }
 
 
@@ -230,7 +233,7 @@ Registry::getSphericalMercatorProfile() const
             //srs->getGeographicSRS()->transform2D( 180.0, 0.0, srs, e, dummy );
             //const_cast<Registry*>(this)->_global_mercator_profile = Profile::create(
             //    srs, -e, -e, e, e, 1, 1 );
-            const_cast<Registry*>(this)->_global_mercator_profile = Profile::create(
+            const_cast<Registry*>(this)->_spherical_mercator_profile = Profile::create(
                 srs, MERC_MINX, MERC_MINY, MERC_MAXX, MERC_MAXY, 1, 1 );
         }
     }
@@ -259,6 +262,8 @@ Registry::getNamedProfile( const std::string& name ) const
         return getGlobalGeodeticProfile();
     else if ( name == STR_GLOBAL_MERCATOR )
         return getGlobalMercatorProfile();
+    else if ( name == STR_SPHERICAL_MERCATOR )
+        return getSphericalMercatorProfile();
     else if ( name == STR_CUBE )
         return getCubeProfile();
     else

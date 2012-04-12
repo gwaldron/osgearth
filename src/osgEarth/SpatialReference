@@ -29,10 +29,10 @@
 namespace osgEarth
 {
     //Definitions for the mercator extent
-    const double MERC_MINX = -20037508.342798;
-    const double MERC_MINY = -20037508.342798;
-    const double MERC_MAXX =  20037508.342798;
-    const double MERC_MAXY =  20037508.342798;
+    const double MERC_MINX = -20037508.34278925;
+    const double MERC_MINY = -20037508.34278925;
+    const double MERC_MAXX =  20037508.34278925;
+    const double MERC_MAXY =  20037508.34278925;
     const double MERC_WIDTH = MERC_MAXX - MERC_MINX;
     const double MERC_HEIGHT = MERC_MAXY - MERC_MINY;
 
@@ -99,7 +99,7 @@ namespace osgEarth
             double&                 out_y ) const;
 
 
-    public: // ECEF transformations.
+    public: // World transformations.
 
         /**
          * Transforms a point from this SRS into "world" coordinates. This normalizes
@@ -108,7 +108,7 @@ namespace osgEarth
          */
         bool transformToWorld(
             const osg::Vec3d& input,
-            osg::Vec3d&       out_world ) const;
+            osg::Vec3d&       out_world ) const;        
 
         /**
          * Transforms a point from the "world" coordinate system into this spatial
@@ -126,6 +126,7 @@ namespace osgEarth
             const osg::Vec3d& world,
             osg::Vec3d&       out_local,
             double*           out_geodeticZ =0L ) const;
+
 
 
     public:  // ECEF transformations.
@@ -202,6 +203,9 @@ namespace osgEarth
 
         /** Tests whether this SRS represents a Mercator projection. */
         bool isMercator() const;
+
+        /** Tests whether this SRS represents a Spherical Mercator pseudo-projection. */
+        bool isSphericalMercator() const;
 
         /** Tests whether this SRS represents a polar sterographic projection. */
         bool isNorthPolar() const;
@@ -329,6 +333,7 @@ namespace osgEarth
         bool _owns_handle;
         bool _is_geographic;
         bool _is_mercator;
+        bool _is_spherical_mercator;
         bool _is_north_polar, _is_south_polar;
         bool _is_cube;
         bool _is_contiguous;

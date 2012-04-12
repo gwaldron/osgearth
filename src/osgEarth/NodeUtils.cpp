@@ -25,6 +25,7 @@
 #include <osg/KdTree>
 #include <osg/TriangleFunctor>
 #include <vector>
+#include <string>
 
 using namespace osgEarth;
 
@@ -281,7 +282,7 @@ RemoveEmptyGroupsVisitor::apply( osg::Group& group )
             osg::Group* child = group.getChild(i)->asGroup();
             if ( child )
             {
-                if (child->className() == "Group"         &&
+                if (::strcmp(child->className(), "Group") == 0 &&
                     child->getStateSet() == 0L            &&
                     child->getCullCallback() == 0L        &&
                     child->getUpdateCallback() == 0L      &&

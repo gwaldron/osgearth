@@ -8,7 +8,7 @@ TIP: set your OSG_NUM_HTTP_DATABASE_THREADS to 4 or more!
 <map name="MapQuest OpenStreetMap" type="geocentric" version="2">
  
     <image name="mapquest_osm" driver="xyz">
-        <url>http://otile[1234].mqcdn.com/tiles/1.0.0/osm/{z}/{x}/{y}.png</url>
+        <url>http://otile[1234].mqcdn.com/tiles/1.0.0/osm/{z}/{x}/{y}.jpg</url>
         <profile>global-mercator</profile>
     </image>
     

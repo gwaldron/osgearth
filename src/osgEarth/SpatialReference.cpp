@@ -895,7 +895,6 @@ SpatialReference::transform(std::vector<osg::Vec3d>& points,
     // do the pre-transformation pass:
     preTransform( points );
 
-#if 0
     // Spherical Mercator is a special case transformation, because we want to bypass
     // any normal horizontal datum conversion. In other words we ignore the ellipsoid
     // of the other SRS and just do a straight spherical conversion.
@@ -912,7 +911,6 @@ SpatialReference::transform(std::vector<osg::Vec3d>& points,
         transformZ( points, outputSRS, true );
         return success;
     }
-#endif
 
     // if the points are starting as geographic, do the Z's first to avoid an unneccesary
     // transformation in the case of differing vdatums.

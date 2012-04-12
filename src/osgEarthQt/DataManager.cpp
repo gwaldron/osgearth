@@ -266,6 +266,7 @@ void DataManager::onMapChanged(const osgEarth::MapModelChange& change)
     change.getImageLayer()->removeCallback(_imageCallback); break;
   case MapModelChange::REMOVE_MODEL_LAYER:
     change.getModelLayer()->removeCallback(_modelCallback); break;
+  default: break;
   }
 
   onMapChanged();

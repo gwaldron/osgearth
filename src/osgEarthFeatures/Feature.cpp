@@ -95,6 +95,7 @@ AttributeValue::getString() const
         case ATTRTYPE_DOUBLE: return osgEarth::toString(second.doubleValue);
         case ATTRTYPE_INT:    return osgEarth::toString(second.intValue);
         case ATTRTYPE_BOOL:   return osgEarth::toString(second.boolValue);
+        case ATTRTYPE_UNSPECIFIED: break;
     }
     return EMPTY_STRING;
 }
@@ -107,6 +108,7 @@ AttributeValue::getDouble( double defaultValue ) const
         case ATTRTYPE_DOUBLE: return second.doubleValue;
         case ATTRTYPE_INT:    return (double)second.intValue;
         case ATTRTYPE_BOOL:   return second.boolValue? 1.0 : 0.0;
+        case ATTRTYPE_UNSPECIFIED: break;
     }
     return defaultValue;
 }
@@ -119,6 +121,7 @@ AttributeValue::getInt( int defaultValue ) const
         case ATTRTYPE_DOUBLE: return (int)second.doubleValue;
         case ATTRTYPE_INT:    return second.intValue;
         case ATTRTYPE_BOOL:   return second.boolValue? 1 : 0;
+        case ATTRTYPE_UNSPECIFIED: break;
     }
     return defaultValue;
 }
@@ -131,6 +134,7 @@ AttributeValue::getBool( bool defaultValue ) const
         case ATTRTYPE_DOUBLE: return second.doubleValue != 0.0;
         case ATTRTYPE_INT:    return second.intValue != 0;
         case ATTRTYPE_BOOL:   return second.boolValue;
+        case ATTRTYPE_UNSPECIFIED: break;
     }
     return defaultValue;
 }

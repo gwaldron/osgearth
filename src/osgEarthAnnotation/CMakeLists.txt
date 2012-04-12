@@ -10,6 +10,7 @@ set(HEADER_PATH ${OSGEARTH_SOURCE_DIR}/include/${LIB_NAME})
 
 set(LIB_PUBLIC_HEADERS  
     AnnotationSettings
+    AnnotationEditing
     AnnotationData
     AnnotationNode
     AnnotationRegistry
@@ -24,6 +25,7 @@ set(LIB_PUBLIC_HEADERS
     LocalGeometryNode
     HighlightDecoration
     ImageOverlay
+    ImageOverlayEditor
     LabelNode
     LocalizedNode
     OrthoNode
@@ -34,6 +36,7 @@ set(LIB_PUBLIC_HEADERS
 )
 
 set(LIB_COMMON_FILES
+    AnnotationEditing.cpp
     AnnotationSettings.cpp
     AnnotationData.cpp
     AnnotationNode.cpp
@@ -47,6 +50,7 @@ set(LIB_COMMON_FILES
     LocalGeometryNode.cpp
     HighlightDecoration.cpp
     ImageOverlay.cpp
+    ImageOverlayEditor.cpp
     LabelNode.cpp
     LocalizedNode.cpp
 	RectangleNode.cpp

@@ -215,7 +215,7 @@ SpatialReference::create( const Key& key, bool useCache )
     {
         // note the use of nadgrids=@null (see http://proj.maptools.org/faq.html)
         srs = createFromPROJ4(
-            "+proj=merc +a=6378137 +b=6378137 +lat_ts=0.0 +lon_0=0.0 +x_0=0.0 +y_0=0 +k=1.0 +units=m +nadgrids=@null +wktext +no_defs",
+            "+proj=merc +a=6378137 +b=6378137 +lat_ts=0.0 +lon_0=0.0 +x_0=0.0 +y_0=0 +k=1.0 +units=m +nadgrids=@null +towgs84=0,0,0,0,0,0,0 +wktext +no_defs",
             "Spherical Mercator" );
     }
 
@@ -561,6 +561,9 @@ SpatialReference::getGeographicSRS() const
     if ( _is_geographic )
         return this;
 
+    if ( _is_spherical_mercator )
+        return create("wgs84");
+
     if ( !_geo_srs.valid() )
     {
         GDAL_SCOPED_LOCK;
@@ -892,6 +895,7 @@ SpatialReference::transform(std::vector<osg::Vec3d>& points,
     // do the pre-transformation pass:
     preTransform( points );
 
+#if 0
     // Spherical Mercator is a special case transformation, because we want to bypass
     // any normal horizontal datum conversion. In other words we ignore the ellipsoid
     // of the other SRS and just do a straight spherical conversion.
@@ -908,7 +912,7 @@ SpatialReference::transform(std::vector<osg::Vec3d>& points,
         transformZ( points, outputSRS, true );
         return success;
     }
-
+#endif
 
     // if the points are starting as geographic, do the Z's first to avoid an unneccesary
     // transformation in the case of differing vdatums.

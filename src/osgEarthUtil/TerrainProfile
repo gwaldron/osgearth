@@ -110,7 +110,7 @@ namespace osgEarth { namespace Util {
             virtual void onChanged(const TerrainProfileCalculator* sender) {};
         };
 
-        typedef std::list< osg::ref_ptr<ChangedCallback> > ChangedCallbackList;
+        typedef std::list< osg::observer_ptr<ChangedCallback> > ChangedCallbackList;
 
 
         /**

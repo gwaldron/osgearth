@@ -178,9 +178,11 @@ void TerrainProfileCalculator::recompute()
         {
             _profile.addElevation( slice.getDistanceHeightIntersections()[i].first, slice.getDistanceHeightIntersections()[i].second);
         }
+
         for( ChangedCallbackList::iterator i = _changedCallbacks.begin(); i != _changedCallbacks.end(); i++ )
         {
-            i->get()->onChanged(this);
+            if ( i->get() )
+                i->get()->onChanged(this);
         }
     }
 }

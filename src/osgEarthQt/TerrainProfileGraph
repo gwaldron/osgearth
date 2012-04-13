@@ -38,38 +38,27 @@
 
 namespace osgEarth { namespace QtGui
 {
+    using namespace osgEarth::Util;
+
+
     struct TerrainProfilePositionCallback : public osg::Referenced
     {
       virtual void updatePosition(double lat, double lon, const std::string& text) { }
     };
 
 
-    class TerrainGraphChangedCallback : public QObject, public osgEarth::Util::TerrainProfileCalculator::ChangedCallback
-    {
-    Q_OBJECT
-
-    public:
-      TerrainGraphChangedCallback()
-      {
-      }
-
-      void onChanged(const osgEarth::Util::TerrainProfileCalculator* sender)
-      {
-        emit graphChanged();
-      }
-
-    signals:
-      void graphChanged();
-    };
-
-
+    /** 
+     * Graphics widget that displays the results of an osgEarth::Util::TerrainProfile
+     * calculation.
+     */
     class OSGEARTHQT_EXPORT TerrainProfileGraph : public QGraphicsView
     {
     Q_OBJECT
 
     public:
       TerrainProfileGraph(osgEarth::Util::TerrainProfileCalculator* calculator, TerrainProfilePositionCallback* callback=0L);
-      ~TerrainProfileGraph();
+
+      virtual ~TerrainProfileGraph();
 
       void setBackgroundColor(const QColor& color);
       const QColor& getBackgroundColor() { return _backgroundColor; }
@@ -85,6 +74,11 @@ namespace osgEarth { namespace QtGui
 
       void setGraphFillColor(const QColor& color);
       const QColor& getGraphFillColor() { return _graphFillColor; }
+
+      void notifyTerrainGraphChanged() { emit onNotifyTerrainGraphChanged(); }
+
+    signals:
+      void onNotifyTerrainGraphChanged();
 
     protected:
       static const int FIELD_Z;
@@ -103,12 +97,12 @@ namespace osgEarth { namespace QtGui
       void drawSelectionBox(double position);
 
     private slots:
-      void onGraphChanged();
+      void onTerrainGraphChanged();
 
     private:
       osg::ref_ptr<osgEarth::Util::TerrainProfileCalculator> _calculator;
       osg::ref_ptr<TerrainProfilePositionCallback> _positionCallback;
-      osg::ref_ptr<TerrainGraphChangedCallback> _graphChangedCallback;
+      osg::ref_ptr<TerrainProfileCalculator::ChangedCallback> _graphChangedCallback;
       QGraphicsScene* _scene;
       QList<QLineF> _graphLines;
       QGraphicsLineItem* _hoverLine;

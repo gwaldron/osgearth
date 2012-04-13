@@ -32,19 +32,41 @@ namespace osgEarth { namespace QtGui
 {
     using namespace osgEarth;
 
-    class OSGEARTHQT_EXPORT ViewerWidget : public osgQt::GLWidget, public osgViewer::Viewer
+    /**
+     * Qt widget that encapsulates an osgViewer::Viewer.
+     */
+    class OSGEARTHQT_EXPORT ViewerWidget : public osgQt::GLWidget
     {
     public:
-      ViewerWidget(osg::Node* scene=0L);
+        /**
+         * Constructs a new ViewerWidget, creating an underlying viewer.
+         * @param[in ] scene Scene graph to attach to the viewer (optional)
+         */
+        ViewerWidget(osg::Node* scene=0L);
+
+        /**
+         * Constructs a new ViewerWidget, attaching an existing viewer.
+         * @param[in ] viewer Viewer to attach to this widget. The widget will install
+         *             a new camera in the viewer.
+         */
+        ViewerWidget(osgViewer::Viewer* viewer);
+
+        /**
+         * Access the underlying viewer.
+         */
+        osgViewer::Viewer* getViewer() { return _viewer.get(); }
+
 
     protected:
-      ~ViewerWidget() { }
+        virtual ~ViewerWidget();
 
-      QTimer _timer;
+        QTimer _timer;
 
-      void initialize();
-      osg::Camera* createCamera();
-      void paintEvent(QPaintEvent *);
+        void createViewer();
+        osg::Camera* configureCamera( osg::Camera* );
+        void paintEvent(QPaintEvent *);
+
+        osg::ref_ptr<osgViewer::Viewer> _viewer;
     };
 } }
 

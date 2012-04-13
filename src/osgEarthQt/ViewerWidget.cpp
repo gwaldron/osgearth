@@ -35,26 +35,71 @@ using namespace osgEarth::QtGui;
 
 ViewerWidget::ViewerWidget(osg::Node* scene)
 {
-  initialize();
+    // create a new viewer
+    createViewer();
 
-  if (scene) setSceneData(scene);
+    // attach the scene graph provided by the user
+    if (scene)
+        _viewer->setSceneData(scene);
 
-  connect(&_timer, SIGNAL(timeout()), this, SLOT(update()));
-  _timer.start(15);
+    // start the frame timer.
+    connect(&_timer, SIGNAL(timeout()), this, SLOT(update()));
+    _timer.start(15);
 }
 
-void ViewerWidget::initialize()
+ViewerWidget::ViewerWidget(osgViewer::Viewer* viewer) :
+_viewer( viewer )
 {
-  setThreadingModel(osgViewer::Viewer::DrawThreadPerContext);
-  setCamera(createCamera());
-  setCameraManipulator(new osgEarth::Util::EarthManipulator());
+    if ( !_viewer.valid() )
+    {
+        // create a viewer if the user passed in NULL
+        createViewer();
+    }
 
-  addEventHandler(new osgViewer::StatsHandler());
-  addEventHandler(new osgGA::StateSetManipulator());
-  addEventHandler(new osgViewer::ThreadingHandler());
+    else
+    {
+        // Reconfigure the viewer's camera (if necessary) so it runs off a GraphicsWindowQt.
+        osg::Camera* camera = _viewer->getCamera();
+        if ( !camera )
+        {
+            _viewer->setCamera( configureCamera(new osg::Camera()) );
+        }
+        else if ( 0L == dynamic_cast<osgQt::GraphicsWindowQt*>(camera->getGraphicsContext()) )
+        {
+            _viewer->setCamera( configureCamera(camera) );
+        }
+    }
 }
 
-osg::Camera* ViewerWidget::createCamera()
+ViewerWidget::~ViewerWidget()
+{
+    _timer.stop();
+    if ( _viewer.valid() )
+    {
+        _viewer->stopThreading();
+        _viewer = 0L;
+    }
+
+    OE_DEBUG << "ViewerWidget::DTOR" << std::endl;
+}
+
+void ViewerWidget::createViewer()
+{     
+    _viewer = new osgViewer::Viewer();
+
+    _viewer->setThreadingModel(osgViewer::Viewer::DrawThreadPerContext);
+    _viewer->setCamera( configureCamera(new osg::Camera()) );
+    _viewer->setCameraManipulator(new osgEarth::Util::EarthManipulator());
+
+    _viewer->addEventHandler(new osgViewer::StatsHandler());
+    _viewer->addEventHandler(new osgGA::StateSetManipulator());
+    _viewer->addEventHandler(new osgViewer::ThreadingHandler());
+
+    _viewer->setKeyEventSetsDone(0);
+    _viewer->setQuitEventSetsDone(false);
+}
+
+osg::Camera* ViewerWidget::configureCamera( osg::Camera* camera )
 {
   osg::DisplaySettings* ds = osg::DisplaySettings::instance().get();
   osg::ref_ptr<osg::GraphicsContext::Traits> traits = new osg::GraphicsContext::Traits(ds);
@@ -87,20 +132,21 @@ osg::Camera* ViewerWidget::createCamera()
   //  }
   //}
   
-  osg::ref_ptr<osg::Camera> camera = new osg::Camera;
+  //osg::ref_ptr<osg::Camera> camera = new osg::Camera;
   camera->setGraphicsContext( new osgQt::GraphicsWindowQt(traits.get()) );
 
   //camera->setClearColor( osg::Vec4(0.0, 0.0, 0.0, 1.0) );
   camera->setViewport(new osg::Viewport(0, 0, traits->width, traits->height));
   camera->setProjectionMatrixAsPerspective(30.0f, static_cast<double>(traits->width)/static_cast<double>(traits->height), 1.0f, 10000.0f );
   
-  return camera.release();
+  return camera;
 }
       
 void ViewerWidget::paintEvent(QPaintEvent* e)
 {
-    if ( getRunFrameScheme() == CONTINUOUS || checkNeedToDoFrame() )
+    if (_viewer->getRunFrameScheme() == osgViewer::ViewerBase::CONTINUOUS || 
+        _viewer->checkNeedToDoFrame() )
     {
-        frame();
+        _viewer->frame();
     }
 }

@@ -244,7 +244,7 @@ Terrain::fireTileAdded( const TileKey& key, osg::Node* node )
         bool keep = true;
         osg::ref_ptr<osg::Referenced> clientData_safe = rec._clientData.get();
 
-        // if the client data has gone away, disarcd the callback.
+        // if the client data has gone away, discard the callback.
         if ( rec._hasClientData && !clientData_safe.valid() )
         {
             keep = false;

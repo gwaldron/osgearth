@@ -38,6 +38,7 @@
 
 
 using namespace osgEarth;
+using namespace osgEarth::Util;
 using namespace osgEarth::QtGui;
 
 //---------------------------------------------------------------------------
@@ -63,6 +64,15 @@ namespace
 
     QColor _backgroundColor;
   };
+
+
+
+    struct TerrainGraphChangedShim : public TerrainProfileCalculator::ChangedCallback
+    {
+        TerrainGraphChangedShim( TerrainProfileGraph* graph ) : _graph( graph ) { }
+        void onChanged(const TerrainProfileCalculator* ) { _graph->notifyTerrainGraphChanged(); }
+        TerrainProfileGraph* _graph;
+    };
 }
 
 //---------------------------------------------------------------------------
@@ -73,7 +83,7 @@ const int TerrainProfileGraph::GRAPH_Z = 20;
 const int TerrainProfileGraph::OVERLAY_Z = 30;
 
 
-TerrainProfileGraph::TerrainProfileGraph(osgEarth::Util::TerrainProfileCalculator* calculator, TerrainProfilePositionCallback* callback)
+TerrainProfileGraph::TerrainProfileGraph(TerrainProfileCalculator* calculator, TerrainProfilePositionCallback* callback)
   : QGraphicsView(), _calculator(calculator), _positionCallback(callback), _graphFont(tr("Helvetica,Verdana,Arial"), 8),
     _backgroundColor(128, 128, 128), _fieldColor(204, 204, 204), _axesColor(255, 255, 255), 
     _graphColor(0, 128, 0), _graphFillColor(128, 255, 128, 192), _graphField(0, 0, 0, 0),
@@ -99,16 +109,18 @@ TerrainProfileGraph::TerrainProfileGraph(osgEarth::Util::TerrainProfileCalculato
   
   redrawGraph();
 
-  _graphChangedCallback = new TerrainGraphChangedCallback();
-  connect(_graphChangedCallback, SIGNAL(graphChanged()), this, SLOT(onGraphChanged()), Qt::QueuedConnection);
+  _graphChangedCallback = new TerrainGraphChangedShim(this);
+  connect(this, SIGNAL(onNotifyTerrainGraphChanged()), this, SLOT(onTerrainGraphChanged()), Qt::QueuedConnection);
+  //connect(_graphChangedCallback, SIGNAL(graphChanged()), this, SLOT(onGraphChanged()), Qt::QueuedConnection);
   if (_calculator.valid())
     _calculator->addChangedCallback(_graphChangedCallback);
 }
 
 TerrainProfileGraph::~TerrainProfileGraph()
 {
-  if (_calculator.valid())
-    _calculator->removeChangedCallback(_graphChangedCallback);
+    // removed: unnecessary now, since the callback is an observer list
+  //if (_calculator.valid())
+  //  _calculator->removeChangedCallback(_graphChangedCallback);
 }
 
 void TerrainProfileGraph::setBackgroundColor(const QColor& color)
@@ -474,7 +486,7 @@ void TerrainProfileGraph::drawSelectionBox(double position)
   }
 }
 
-void TerrainProfileGraph::onGraphChanged()
+void TerrainProfileGraph::onTerrainGraphChanged()
 {
   redrawGraph();
 }

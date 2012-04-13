@@ -46,7 +46,7 @@ namespace osgEarth
     public:
         MapOptions( const ConfigOptions& options =ConfigOptions() )
             : ConfigOptions          ( options ),
-              _cachePolicy           ( CachePolicy()),
+              _cachePolicy           ( CachePolicy::INHERIT ),
               _cstype                ( CSTYPE_GEOCENTRIC ),
               _referenceURI          ( "" ),
               _elevationInterpolation( INTERP_BILINEAR )
@@ -57,8 +57,8 @@ namespace osgEarth
         /**
          * Human-readable name of the map.
          */
-        optional<std::string> name() { return _name; }
-        const optional<std::string> name() const { return _name; }
+        optional<std::string>& name() { return _name; }
+        const optional<std::string>& name() const { return _name; }
 
         /**
          * The coordinate system type of the map (default is CSTYPE_GEOCENTRIC)

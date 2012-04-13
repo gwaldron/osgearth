@@ -62,6 +62,18 @@ namespace osgEarth { namespace Util
         unsigned getMaxLevel() const { return _maxLevel; }
 
         /**
+         * Whether to overwrite files that already exist in the repo
+         * default = false
+         */
+        void setOverwrite( bool value ) { _overwrite = value; }
+        bool getOverwrite() const { return _overwrite; }
+
+        /**
+         * Bounding box to package
+         */
+        void addExtent( const GeoExtent& value );
+
+        /**
          * Result structure for method calls
          */
         struct Result {
@@ -108,13 +120,17 @@ namespace osgEarth { namespace Util
             const std::string&   extension,
             unsigned&            out_maxLevel );
 
+        bool shouldPackageKey( 
+            const TileKey&     key ) const;
+
     protected:
 
         bool                        _verbose;
         bool                        _abortOnError;
+        bool                        _overwrite;
         unsigned                    _maxLevel;
+        std::vector<GeoExtent>      _extents;
         osg::ref_ptr<const Profile> _outProfile;
-
     };
 
 } } // namespace osgEarth::Util

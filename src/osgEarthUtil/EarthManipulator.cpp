@@ -2461,7 +2461,7 @@ EarthManipulator::drag(double dx, double dy, osg::View* theView)
         const osg::Vec3d endDrag = calcTangentPoint(
             zero, earthOrigin, radiusEquator, winpt);
         worldEndDrag = endDrag * viewMatInv;
-        OE_INFO << "tangent: " << worldEndDrag << "\n";
+        //OE_INFO << "tangent: " << worldEndDrag << "\n";
     }
 
 #if 0

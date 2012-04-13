@@ -45,8 +45,11 @@ namespace osgEarth
         static CachePolicy CACHE_ONLY;
 
     public:
-        /** constructs a default caching policy. */
-        CachePolicy( const Usage& usage, double maxAgeSeconds =DBL_MAX );
+        /** constructs a caching policy. */
+        CachePolicy( const Usage& usage );
+
+        /** constructs a caching policy. */
+        CachePolicy( const Usage& usage, double maxAgeSeconds );
 
         /** constructs a CachePolicy from a config options */
         CachePolicy( const Config& conf =Config() );

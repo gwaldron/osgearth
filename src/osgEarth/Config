@@ -491,6 +491,8 @@ namespace osgEarth
 
         virtual Config getConfig() const { return _conf; }
 
+        virtual Config getConfig( bool isolate ) const { return isolate ? newConfig() : _conf; }
+
         Config newConfig() const { Config c; c.setReferrer(referrer()); return c; }
 
         bool empty() const { return _conf.empty(); }
@@ -517,6 +519,11 @@ namespace osgEarth
     public:
         virtual Config getConfig() const {
             Config conf = ConfigOptions::getConfig();
+            conf.set("driver", _driver);
+            return conf;
+        }
+        virtual Config getConfig( bool isolate ) const {
+            Config conf = ConfigOptions::getConfig( isolate );
             conf.set("driver", _driver);
             return conf;
         }

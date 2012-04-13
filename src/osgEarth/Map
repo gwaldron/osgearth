@@ -119,9 +119,14 @@ namespace osgEarth
 
     public:
         /**
-         * Gets the optons with which this map was created.
+         * Gets the options governing this map.
          */
         const MapOptions& getMapOptions() const { return _mapOptions; }
+
+        /**
+         * Gets the options with which this map was initially created.
+         */
+        const MapOptions& getInitialMapOptions() const { return _initMapOptions; }
 
         /**
          * Gets the map's master profile. This value may not be available until 
@@ -414,6 +419,7 @@ namespace osgEarth
     private:
 
         MapOptions _mapOptions;
+        const MapOptions _initMapOptions;
         std::string _name;
         ImageLayerVector _imageLayers;
         ElevationLayerVector _elevationLayers;

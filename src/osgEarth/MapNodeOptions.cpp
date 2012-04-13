@@ -57,6 +57,19 @@ _terrainOptions      ( 0L )
     setTerrainOptions( to );
 }
 
+MapNodeOptions::MapNodeOptions( const MapNodeOptions& rhs ) :
+_proxySettings       ( ProxySettings() ),
+_cacheOnly           ( false ),
+_enableLighting      ( true ),
+_overlayVertexWarping( false ),
+_overlayBlending     ( true ),
+_overlayTextureSize  ( 4096 ),
+_overlayMipMapping   ( false ),
+_terrainOptions      ( 0L )
+{
+    mergeConfig( rhs.getConfig() );
+}
+
 
 MapNodeOptions::~MapNodeOptions()
 {

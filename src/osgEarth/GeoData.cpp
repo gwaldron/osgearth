@@ -882,7 +882,7 @@ GeoExtent::toString() const
     if ( !isValid() )
         buf << "INVALID";
     else
-        buf << std::fixed << std::setprecision(4) << "SW=" << west() << "," << south() << " NE=" << east() << "," << north();
+        buf << std::setprecision(12) << "SW=" << west() << "," << south() << " NE=" << east() << "," << north();
 
     buf << ", SRS=" << _srs->getName();
 
@@ -1155,7 +1155,6 @@ reprojectImage(osg::Image* srcImage, const std::string srcWKT, double srcMinX, d
                const std::string destWKT, double destMinX, double destMinY, double destMaxX, double destMaxY,
                int width = 0, int height = 0)
 {
-    //OE_NOTICE << "Reprojecting..." << std::endl;
     GDAL_SCOPED_LOCK;
 	osg::Timer_t start = osg::Timer::instance()->tick();
 

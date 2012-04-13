@@ -53,7 +53,7 @@ namespace osgEarth
     /**
      * Configuration options for a tile source driver.
      */
-    class TileSourceOptions : public DriverConfigOptions // no export; header only
+    class OSGEARTH_EXPORT TileSourceOptions : public DriverConfigOptions // no export; header only
     {
     public:
         
@@ -79,59 +79,22 @@ namespace osgEarth
         const optional<int>& L2CacheSize() const { return _L2CacheSize; }
 
     public:
-        TileSourceOptions( const ConfigOptions& options =ConfigOptions() )
-            : DriverConfigOptions( options ),
-              _tileSize( 256 ),
-              _noDataValue( (float)SHRT_MIN ),
-              _noDataMinValue( -32000.0f ),
-              _noDataMaxValue(  32000.0f ),
-              _L2CacheSize( 16 )
-        { 
-            fromConfig( _conf );
-        }
+        TileSourceOptions( const ConfigOptions& options =ConfigOptions() );
 
     public:
-        virtual Config getConfig() const {
-            Config conf = DriverConfigOptions::getConfig();
-            conf.updateIfSet( "tile_size", _tileSize );
-            conf.updateIfSet( "nodata_value", _noDataValue );
-            conf.updateIfSet( "nodata_min", _noDataMinValue );
-            conf.updateIfSet( "nodata_max", _noDataMaxValue );
-            conf.updateIfSet( "blacklist_filename", _blacklistFilename);
-            conf.updateIfSet( "l2_cache_size", _L2CacheSize );
-            conf.updateObjIfSet( "profile", _profileOptions );
-            return conf;
-        }
+        virtual Config getConfig() const;
 
     protected:
-        virtual void mergeConfig( const Config& conf ) {
-            DriverConfigOptions::mergeConfig( conf );
-            fromConfig( conf );
-        }
+        virtual void mergeConfig( const Config& conf );
 
     private:
-        void fromConfig( const Config& conf ) {
-            conf.getIfSet( "tile_size", _tileSize );
-            conf.getIfSet( "nodata_value", _noDataValue );
-            conf.getIfSet( "nodata_min", _noDataMinValue );
-            conf.getIfSet( "nodata_max", _noDataMaxValue );
-            conf.getIfSet( "blacklist_filename", _blacklistFilename);
-            conf.getIfSet( "l2_cache_size", _L2CacheSize );
-            conf.getObjIfSet( "profile", _profileOptions );
+        void fromConfig( const Config& conf );
 
-            // special handling of default tile size:
-            if ( !tileSize().isSet() )
-                conf.getIfSet( "default_tile_size", _tileSize );
-            // remove it now so it does not get serialized
-            _conf.remove( "default_tile_size" );
-        }
-
-        optional<int> _tileSize;
-        optional<float> _noDataValue, _noDataMinValue, _noDataMaxValue;
+        optional<int>            _tileSize;
+        optional<float>          _noDataValue, _noDataMinValue, _noDataMaxValue;
         optional<ProfileOptions> _profileOptions;
-        optional<std::string> _blacklistFilename;
-        optional<int> _L2CacheSize;
-        //optional<bool> _enableL2Cache;
+        optional<std::string>    _blacklistFilename;
+        optional<int>            _L2CacheSize;
     };
 
     typedef std::vector<TileSourceOptions> TileSourceOptionsVector;

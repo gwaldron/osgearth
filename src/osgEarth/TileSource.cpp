@@ -139,7 +139,74 @@ TileBlacklist::write(std::ostream &output) const
     }
 }
 
+
 //------------------------------------------------------------------------
+
+
+TileSourceOptions::TileSourceOptions( const ConfigOptions& options ) :
+DriverConfigOptions( options ),
+_tileSize          ( 256 ),
+_noDataValue       ( (float)SHRT_MIN ),
+_noDataMinValue    ( -32000.0f ),
+_noDataMaxValue    (  32000.0f ),
+_L2CacheSize       ( 16 )
+{ 
+    fromConfig( _conf );
+}
+
+
+Config 
+TileSourceOptions::getConfig() const
+{
+    Config conf = DriverConfigOptions::getConfig();
+    conf.updateIfSet( "tile_size", _tileSize );
+    conf.updateIfSet( "nodata_value", _noDataValue );
+    conf.updateIfSet( "nodata_min", _noDataMinValue );
+    conf.updateIfSet( "nodata_max", _noDataMaxValue );
+    conf.updateIfSet( "blacklist_filename", _blacklistFilename);
+    conf.updateIfSet( "l2_cache_size", _L2CacheSize );
+    conf.updateObjIfSet( "profile", _profileOptions );
+    return conf;
+}
+
+
+void
+TileSourceOptions::mergeConfig( const Config& conf )
+{
+    DriverConfigOptions::mergeConfig( conf );
+    fromConfig( conf );
+}
+
+
+void
+TileSourceOptions::fromConfig( const Config& conf )
+{
+    conf.getIfSet( "tile_size", _tileSize );
+    conf.getIfSet( "nodata_value", _noDataValue );
+    conf.getIfSet( "nodata_min", _noDataMinValue );
+    conf.getIfSet( "nodata_max", _noDataMaxValue );
+    conf.getIfSet( "blacklist_filename", _blacklistFilename);
+    conf.getIfSet( "l2_cache_size", _L2CacheSize );
+    conf.getObjIfSet( "profile", _profileOptions );
+
+    // special handling of default tile size:
+    if ( !tileSize().isSet() )
+    {
+        optional<int> defaultTileSize;
+        conf.getIfSet( "default_tile_size", defaultTileSize );
+        if ( defaultTileSize.isSet() )
+        {
+            _tileSize.init(*defaultTileSize);
+        }
+    }
+
+    // remove it now so it does not get serialized
+    _conf.remove( "default_tile_size" );
+}
+
+
+//------------------------------------------------------------------------
+
 
 TileSource::TileSource( const TileSourceOptions& options ) :
 _options( options )

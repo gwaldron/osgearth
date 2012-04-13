@@ -290,11 +290,29 @@ namespace
 
     struct ReadImage
     {
-        bool callbackRequestsCaching( URIReadCallback* cb ) const { return !cb || ((cb->cachingSupport() & URIReadCallback::CACHE_IMAGES) != 0); }
-        osgDB::ReaderWriter::ReadResult fromCallback( URIReadCallback* cb, const std::string& uri, const osgDB::Options* opt ) { return cb->readImage(uri, opt); }
-        ReadResult fromCache( CacheBin* bin, const std::string& key, double maxAge ) { return bin->readImage(key, maxAge); }
-        ReadResult fromHTTP( const std::string& uri, const osgDB::Options* opt, ProgressCallback* p ) { return HTTPClient::readImage(uri, opt, p); }
-        ReadResult fromFile( const std::string& uri, const osgDB::Options* opt ) { return ReadResult(osgDB::readImageFile(uri, opt)); }
+        bool callbackRequestsCaching( URIReadCallback* cb ) const { 
+            return !cb || ((cb->cachingSupport() & URIReadCallback::CACHE_IMAGES) != 0); 
+        }
+        osgDB::ReaderWriter::ReadResult fromCallback( URIReadCallback* cb, const std::string& uri, const osgDB::Options* opt ) { 
+            osgDB::ReaderWriter::ReadResult r = cb->readImage(uri, opt);
+            if ( r.getImage() ) r.getImage()->setFileName(uri);
+            return r;
+        }                
+        ReadResult fromCache( CacheBin* bin, const std::string& key, double maxAge ) { 
+            ReadResult r = bin->readImage(key, maxAge);
+            if ( r.getImage() ) r.getImage()->setFileName( key );
+            return r;
+        }
+        ReadResult fromHTTP( const std::string& uri, const osgDB::Options* opt, ProgressCallback* p ) { 
+            ReadResult r = HTTPClient::readImage(uri, opt, p);
+            if ( r.getImage() ) r.getImage()->setFileName( uri );
+            return r;
+        }
+        ReadResult fromFile( const std::string& uri, const osgDB::Options* opt ) { 
+            ReadResult r = ReadResult(osgDB::readImageFile(uri, opt));
+            if ( r.getImage() ) r.getImage()->setFileName( uri );
+            return r;
+        }
     };
 
     struct ReadString

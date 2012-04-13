@@ -29,6 +29,13 @@ CachePolicy CachePolicy::CACHE_ONLY( CachePolicy::USAGE_CACHE_ONLY );
 
 //------------------------------------------------------------------------
 
+CachePolicy::CachePolicy( const Usage& usage ) :
+_usage( usage ),
+_maxAge( DBL_MAX )
+{
+    _usage = usage;
+}
+
 CachePolicy::CachePolicy( const Usage& usage, double maxAge ) :
 _usage( usage ),
 _maxAge( maxAge )

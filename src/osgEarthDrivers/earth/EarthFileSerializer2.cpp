@@ -155,7 +155,7 @@ EarthFileSerializer2::serialize( MapNode* input ) const
     MapFrame mapf( map, Map::ENTIRE_MODEL );
 
     // the map and node options:
-    Config optionsConf = map->getMapOptions().getConfig();
+    Config optionsConf = map->getInitialMapOptions().getConfig();
     optionsConf.merge( input->getMapNodeOptions().getConfig() );
     mapConf.add( "options", optionsConf );
 

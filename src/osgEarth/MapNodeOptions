@@ -38,6 +38,7 @@ namespace osgEarth
     public:
         MapNodeOptions( const Config& conf =Config() );
         MapNodeOptions( const TerrainOptions& terrainOpts );
+        MapNodeOptions( const MapNodeOptions& rhs );
         virtual ~MapNodeOptions();
 
         /** 

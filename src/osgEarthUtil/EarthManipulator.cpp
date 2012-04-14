@@ -400,9 +400,10 @@ _frame_count      ( 0 )
 EarthManipulator::EarthManipulator( const EarthManipulator& rhs ) :
 osgGA::CameraManipulator( rhs ),
 _last_action            ( ACTION_NULL ),
-_frame_count            ( 0 )
+_frame_count            ( 0 ),
+_settings               ( new Settings(*rhs.getSettings()) )
 {
-    //nop
+    reinitialize();
 }
 
 

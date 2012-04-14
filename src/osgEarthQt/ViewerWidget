@@ -24,7 +24,7 @@
 #include <osgEarth/Map>
 
 #include <osgQt/GraphicsWindowQt>
-#include <osgViewer/Viewer>
+#include <osgViewer/ViewerBase>
 
 #include <QtCore/QTimer>
 
@@ -49,12 +49,22 @@ namespace osgEarth { namespace QtGui
          * @param[in ] viewer Viewer to attach to this widget. The widget will install
          *             a new camera in the viewer.
          */
-        ViewerWidget(osgViewer::Viewer* viewer);
+        ViewerWidget(osgViewer::ViewerBase* viewer);
 
         /**
          * Access the underlying viewer.
          */
-        osgViewer::Viewer* getViewer() { return _viewer.get(); }
+        osgViewer::ViewerBase* getViewer() { return _viewer.get(); }
+
+        /**
+         * Populates the incoming vector with the views comprising this viewer.
+         */
+        template<typename T>
+        void getViews( T& views ) const {
+            osgViewer::ViewerBase::Views temp;
+            _viewer->getViews(temp);
+            views.insert(views.end(), temp.begin(), temp.end());
+        }
 
 
     protected:
@@ -63,10 +73,12 @@ namespace osgEarth { namespace QtGui
         QTimer _timer;
 
         void createViewer();
-        osg::Camera* configureCamera( osg::Camera* );
-        void paintEvent(QPaintEvent *);
+        void reconfigure( osgViewer::View* );
+        void installFrameTimer();
+        void paintEvent( QPaintEvent* );
 
-        osg::ref_ptr<osgViewer::Viewer> _viewer;
+        osg::ref_ptr<osgViewer::ViewerBase> _viewer;
+        osg::ref_ptr<osg::GraphicsContext>  _gc;
     };
 } }
 

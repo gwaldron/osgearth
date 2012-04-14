@@ -175,8 +175,9 @@ void TerrainProfileWidget::removeViews()
 
 void TerrainProfileWidget::refreshViews()
 {
-  for (ViewVector::iterator it = _views.begin(); it != _views.end(); ++it)
-      it->get()->requestRedraw();
+    // to support ON_DEMAND rendering.
+    for (ViewVector::iterator it = _views.begin(); it != _views.end(); ++it)
+        it->get()->requestRedraw();
 }
 
 void TerrainProfileWidget::hideEvent(QHideEvent* e)

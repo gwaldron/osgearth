@@ -35,19 +35,20 @@ using namespace osgEarth::QtGui;
 
 ViewerWidget::ViewerWidget(osg::Node* scene)
 {
-    // create a new viewer
+    // create a new viewer (a simple osgViewer::Viewer)
     createViewer();
 
     // attach the scene graph provided by the user
     if (scene)
-        _viewer->setSceneData(scene);
+    {
+        dynamic_cast<osgViewer::Viewer*>(_viewer.get())->setSceneData( scene );
+    }
 
-    // start the frame timer.
-    connect(&_timer, SIGNAL(timeout()), this, SLOT(update()));
-    _timer.start(15);
+    // start up the paint event timer.
+    installFrameTimer();
 }
 
-ViewerWidget::ViewerWidget(osgViewer::Viewer* viewer) :
+ViewerWidget::ViewerWidget(osgViewer::ViewerBase* viewer) :
 _viewer( viewer )
 {
     if ( !_viewer.valid() )
@@ -58,17 +59,21 @@ _viewer( viewer )
 
     else
     {
-        // Reconfigure the viewer's camera (if necessary) so it runs off a GraphicsWindowQt.
-        osg::Camera* camera = _viewer->getCamera();
-        if ( !camera )
+        // reconfigure all the viewer's views to use a Qt graphics context.
+        osgViewer::ViewerBase::Views views;
+        getViews( views );
+        for( osgViewer::ViewerBase::Views::iterator v = views.begin(); v != views.end(); ++v )
         {
-            _viewer->setCamera( configureCamera(new osg::Camera()) );
+            reconfigure( *v );
         }
-        else if ( 0L == dynamic_cast<osgQt::GraphicsWindowQt*>(camera->getGraphicsContext()) )
-        {
-            _viewer->setCamera( configureCamera(camera) );
-        }
+
+        // disable event setting on the viewer.
+        viewer->setKeyEventSetsDone(0);
+        viewer->setQuitEventSetsDone(false);
     }
+
+    // start up the paint event timer.
+    installFrameTimer();
 }
 
 ViewerWidget::~ViewerWidget()
@@ -83,64 +88,68 @@ ViewerWidget::~ViewerWidget()
     OE_DEBUG << "ViewerWidget::DTOR" << std::endl;
 }
 
+
+void ViewerWidget::installFrameTimer()
+{    
+    // start the frame timer.
+    connect(&_timer, SIGNAL(timeout()), this, SLOT(update()));
+    _timer.start(15);
+}
+
+
 void ViewerWidget::createViewer()
-{     
-    _viewer = new osgViewer::Viewer();
-
-    _viewer->setThreadingModel(osgViewer::Viewer::DrawThreadPerContext);
-    _viewer->setCamera( configureCamera(new osg::Camera()) );
-    _viewer->setCameraManipulator(new osgEarth::Util::EarthManipulator());
-
-    _viewer->addEventHandler(new osgViewer::StatsHandler());
-    _viewer->addEventHandler(new osgGA::StateSetManipulator());
-    _viewer->addEventHandler(new osgViewer::ThreadingHandler());
-
-    _viewer->setKeyEventSetsDone(0);
-    _viewer->setQuitEventSetsDone(false);
-}
-
-osg::Camera* ViewerWidget::configureCamera( osg::Camera* camera )
 {
-  osg::DisplaySettings* ds = osg::DisplaySettings::instance().get();
-  osg::ref_ptr<osg::GraphicsContext::Traits> traits = new osg::GraphicsContext::Traits(ds);
+    // creates a simple basic viewer.
+    osgViewer::Viewer* viewer = new osgViewer::Viewer();
 
-  traits->readDISPLAY();
-  if (traits->displayNum<0) traits->displayNum = 0;
+    viewer->setThreadingModel(osgViewer::Viewer::DrawThreadPerContext);
+    viewer->setCameraManipulator(new osgEarth::Util::EarthManipulator());
 
-  traits->windowName = "osgEarthViewerQt";
-  traits->windowDecoration = false;
-  traits->x = x();
-  traits->y = y();
-  traits->width = width();
-  traits->height = height();
-  traits->doubleBuffer = true;
-  traits->inheritedWindowData = new osgQt::GraphicsWindowQt::WindowData(this);
-  //traits->alpha = ds->getMinimumNumAlphaBits();
-  //traits->stencil = ds->getMinimumNumStencilBits();
-  //traits->sampleBuffers = ds->getMultiSamples();
-  //traits->samples = ds->getNumMultiSamples();
+    viewer->addEventHandler(new osgViewer::StatsHandler());
+    viewer->addEventHandler(new osgGA::StateSetManipulator());
+    viewer->addEventHandler(new osgViewer::ThreadingHandler());
 
-  //if (ds->getStereo())
-  //{
-  //  switch(ds->getStereoMode())
-  //  {
-  //  case(osg::DisplaySettings::QUAD_BUFFER): traits->quadBufferStereo = true; break;
-  //  case(osg::DisplaySettings::VERTICAL_INTERLACE):
-  //  case(osg::DisplaySettings::CHECKERBOARD):
-  //  case(osg::DisplaySettings::HORIZONTAL_INTERLACE): traits->stencil = 8; break;
-  //  default: break;
-  //  }
-  //}
-  
-  //osg::ref_ptr<osg::Camera> camera = new osg::Camera;
-  camera->setGraphicsContext( new osgQt::GraphicsWindowQt(traits.get()) );
+    viewer->setKeyEventSetsDone(0);
+    viewer->setQuitEventSetsDone(false);
 
-  //camera->setClearColor( osg::Vec4(0.0, 0.0, 0.0, 1.0) );
-  camera->setViewport(new osg::Viewport(0, 0, traits->width, traits->height));
-  camera->setProjectionMatrixAsPerspective(30.0f, static_cast<double>(traits->width)/static_cast<double>(traits->height), 1.0f, 10000.0f );
-  
-  return camera;
+    reconfigure( viewer );
+
+    _viewer = viewer;
 }
+
+void ViewerWidget::reconfigure( osgViewer::View* view )
+{
+    if ( !_gc.valid() )
+    {
+        // create the Qt graphics context if necessary; it will be shared across all views.
+        osg::DisplaySettings* ds = osg::DisplaySettings::instance().get();
+        osg::ref_ptr<osg::GraphicsContext::Traits> traits = new osg::GraphicsContext::Traits(ds);
+
+        traits->readDISPLAY();
+        if (traits->displayNum<0) traits->displayNum = 0;
+
+        traits->windowName = "osgEarthViewerQt";
+        traits->windowDecoration = false;
+        traits->x = x();
+        traits->y = y();
+        traits->width = width();
+        traits->height = height();
+        traits->doubleBuffer = true;
+        traits->inheritedWindowData = new osgQt::GraphicsWindowQt::WindowData(this);
+
+        _gc = new osgQt::GraphicsWindowQt( traits.get() );
+    }
+
+    // reconfigure this view's camera to use the Qt GC if necessary.
+    osg::Camera* camera = view->getCamera();
+    if ( camera->getGraphicsContext() != _gc.get() )
+    {
+        camera->setGraphicsContext( _gc.get() );
+        camera->setViewport(new osg::Viewport(0, 0, _gc->getTraits()->width, _gc->getTraits()->height));
+        camera->setProjectionMatrixAsPerspective(30.0f, static_cast<double>(_gc->getTraits()->width)/static_cast<double>(_gc->getTraits()->height), 1.0f, 10000.0f );
+    }
+}
+
       
 void ViewerWidget::paintEvent(QPaintEvent* e)
 {

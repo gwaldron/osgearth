@@ -36,6 +36,7 @@
 #include <osgEarthUtil/AnnotationEvents>
 #include <osgEarthUtil/AutoClipPlaneHandler>
 #include <osgEarthUtil/SkyNode>
+#include <osgEarthUtil/EarthManipulator>
 #include <osgEarthDrivers/ocean_surface/OceanSurface>
 
 #include <QAction>
@@ -214,6 +215,8 @@ main(int argc, char** argv)
 
     bool trackData = arguments.read("--tracks");
 
+    bool testUseExistingViewer = arguments.read("--use-existing");
+
 
     // load the .earth file from the command line.
     osg::Node* earthNode = osgDB::readNodeFiles( arguments );
@@ -261,18 +264,42 @@ main(int argc, char** argv)
         views.push_back(view);
       }
 
-      viewerWidget->setGeometry(50, 50, 1024, 768);
+      //viewerWidget->setGeometry(50, 50, 1024, 768);
       appWin.setViewerWidget(viewerWidget, views);
 
       viewer = viewerWidget;
     }
+
     else
     {
-      osgEarth::QtGui::ViewerWidget* viewerWidget = new osgEarth::QtGui::ViewerWidget(root);
-      viewerWidget->setGeometry(50, 50, 1024, 768);
-      viewerWidget->getViewer()->getCamera()->addCullCallback(new osgEarth::Util::AutoClipPlaneCullCallback(mapNode));
+        osgEarth::QtGui::ViewerWidget* viewerWidget = 0L;
+
+        if ( testUseExistingViewer )
+        {
+            // tests: create a pre-existing viewer and install that in the widget.
+            osgViewer::Viewer* v = new osgViewer::Viewer();
+            v->setSceneData(root);
+            v->setThreadingModel(osgViewer::Viewer::DrawThreadPerContext);
+            v->setCameraManipulator(new osgEarth::Util::EarthManipulator());
+            viewerWidget = new osgEarth::QtGui::ViewerWidget(v);
+        }
+
+        else
+        {
+            // tests: implicity creating a viewer.
+            viewerWidget = new osgEarth::QtGui::ViewerWidget( root );
+        }
+
+      //osgEarth::QtGui::ViewerWidget* viewerWidget = new osgEarth::QtGui::ViewerWidget(root);
+      //viewerWidget->setGeometry(50, 50, 1024, 768);
+
+      viewerWidget->getViews( views );
+
+      for(osgEarth::QtGui::ViewVector::iterator i = views.begin(); i != views.end(); ++i )
+      {
+          i->get()->getCamera()->addCullCallback(new osgEarth::Util::AutoClipPlaneCullCallback(mapNode));
+      }
       appWin.setViewerWidget(viewerWidget);
-      views.push_back(viewerWidget->getViewer());
 
       if (mapNode.valid())
       {
@@ -286,7 +313,9 @@ main(int argc, char** argv)
           double hours = skyConf.value("hours", 12.0);
           s_sky = new osgEarth::Util::SkyNode(mapNode->getMap());
           s_sky->setDateTime(2011, 3, 6, hours);
-          s_sky->attach(viewerWidget->getViewer());
+          for(osgEarth::QtGui::ViewVector::iterator i = views.begin(); i != views.end(); ++i )
+              s_sky->attach( *i );
+          //s_sky->attach(viewerWidget->getViewer());
           root->addChild(s_sky);
 
           // Ocean surface.
@@ -394,7 +423,7 @@ main(int argc, char** argv)
       }
     }
 
-    appWin.setGeometry(100, 100, 800, 600);
+    appWin.setGeometry(100, 100, 1280, 800);
     appWin.show();
 
     return app.exec();

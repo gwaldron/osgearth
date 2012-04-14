@@ -54,7 +54,7 @@ public:
         _viewerWidget = viewerWidget;
 
         _views.clear();
-        _views.push_back(_viewerWidget->getViewer());
+        _viewerWidget->getViews( _views );
     }
 
     void setViewerWidget(osgEarth::QtGui::CompositeViewerWidget* viewerWidget, const osgEarth::QtGui::ViewVector& views)
@@ -139,8 +139,8 @@ protected:
     {
         if (_viewerWidget)
         {
-            _viewerWidget->getViewer()->setSceneData(0);
-            _viewerWidget->getViewer()->frame();
+            //_viewerWidget->getViewer()->setSceneData(0);
+            //_viewerWidget->getViewer()->frame();
             _viewerWidget->getViewer()->setDone(true);
         }
 

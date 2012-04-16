@@ -112,12 +112,12 @@ namespace osgEarth { namespace Annotation
 
     private:
         osg::observer_ptr<const SpatialReference> _mapSRS;
-        osg::AutoTransform*   _autoxform;
-        osg::MatrixTransform* _matxform;
-        osg::Group*           _attachPoint;
-        bool                  _horizonCulling;
-        GeoPoint              _mapPosition;
-        osg::Vec3d            _localOffset;
+        osg::AutoTransform*            _autoxform;
+        osg::MatrixTransform*          _matxform;
+        osg::Group*                    _attachPoint;
+        bool                           _horizonCulling;
+        GeoPoint                       _mapPosition;
+        osg::Vec3d                     _localOffset;
 
         void init();
 

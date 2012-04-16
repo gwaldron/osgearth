@@ -99,6 +99,8 @@ namespace osgEarth { namespace Annotation
         struct OrthoNodeAutoTransform : public osg::AutoTransform
         {
             void acceptCullNoTraverse( osg::CullStack* cs );
+
+            bool okToIntersect() const { return !_firstTimeToInitEyePoint; }
         };
 
         // some geometry creation utilities

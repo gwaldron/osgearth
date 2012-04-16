@@ -182,10 +182,10 @@ OrthoNode( mapNode, GeoPoint::INVALID )
     conf.getObjIfSet( "style",  _style );
     conf.getIfSet   ( "text",   _text );
 
+    init();
+
     if ( conf.hasChild("position") )
         setPosition( GeoPoint(conf.child("position")) );
-
-    init();
 }
 
 Config

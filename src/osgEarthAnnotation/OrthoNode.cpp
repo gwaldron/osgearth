@@ -147,7 +147,10 @@ OrthoNode::traverse( osg::NodeVisitor& nv )
         nv.getVisitorType() == osg::NodeVisitor::NODE_VISITOR &&
         dynamic_cast<osgUtil::IntersectionVisitor*>( &nv ) )
     {
-        _autoxform->accept( nv );
+        if ( static_cast<AnnotationUtils::OrthoNodeAutoTransform*>(_autoxform)->okToIntersect() )
+        {
+            _autoxform->accept( nv );
+        }
     }
 
     else

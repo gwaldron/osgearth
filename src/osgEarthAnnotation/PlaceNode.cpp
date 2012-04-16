@@ -192,10 +192,10 @@ OrthoNode( mapNode, GeoPoint::INVALID )
             _image->setFileName( imageURI->base() );
     }
 
+    init();
+
     if ( conf.hasChild("position") )
         setPosition( GeoPoint(conf.child("position")) );
-
-    init();
 }
 
 Config

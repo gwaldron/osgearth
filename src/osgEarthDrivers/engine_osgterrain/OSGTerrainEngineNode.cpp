@@ -559,7 +559,7 @@ OSGTerrainEngineNode::onMapModelChanged( const MapModelChange& change )
 void
 OSGTerrainEngineNode::addImageLayer( ImageLayer* layerAdded )
 {
-    if ( !layerAdded || !layerAdded->getTileSource() )
+    if ( !layerAdded )
         return;
 
     if (!_isStreaming)
@@ -757,7 +757,7 @@ OSGTerrainEngineNode::updateElevation( Tile* tile )
 void
 OSGTerrainEngineNode::addElevationLayer( ElevationLayer* layer )
 {
-    if ( !layer || !layer->getTileSource() )
+    if ( !layer )
         return;
 
     layer->addCallback( _elevationCallback.get() );

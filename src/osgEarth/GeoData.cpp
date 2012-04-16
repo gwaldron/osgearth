@@ -239,13 +239,15 @@ GeoPoint::transform(const SpatialReference* outSRS) const
         if ( _altMode == AltitudeMode::ABSOLUTE )
         {
             if ( _srs->transform(_p, outSRS, out) )
-                return GeoPoint(outSRS, out);
+                return GeoPoint(outSRS, out, AltitudeMode::ABSOLUTE);
         }
         else // if ( _altMode == AltitudeMode::RELATIVE_TO_TERRAIN )
         {
-            out.z() = _p.z();
             if ( _srs->transform2D(_p.x(), _p.y(), outSRS, out.x(), out.y()) )
-                return GeoPoint(outSRS, out);
+            {
+                out.z() = _p.z();
+                return GeoPoint(outSRS, out, AltitudeMode::RELATIVE_TO_TERRAIN);
+            }
         }
     }
     return GeoPoint::INVALID;

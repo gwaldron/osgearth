@@ -85,6 +85,8 @@ private:
     unzFile        _uf;
     void*          _buf;
     unsigned       _bufsize;
+
+    bool isAcceptable(const std::string& filename, const osgDB::Options* options) const;
 };
 
 

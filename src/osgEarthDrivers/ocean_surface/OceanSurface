@@ -22,6 +22,7 @@
 #include <osgEarth/MapNode>
 #include <osgEarth/ImageLayer>
 #include <osgEarth/URI>
+#include <osgEarth/Registry>
 #include <osgEarthSymbology/Color>
 #include <osg/Node>
 #include <osg/Image>
@@ -158,7 +159,7 @@ namespace osgEarth { namespace Drivers
             osg::ref_ptr<MapNode> safeMapNode = _mapNode.get();
             if ( safeMapNode.valid() )
             {
-                osg::ref_ptr<osgDB::Options> o = new osgDB::Options();
+                osg::ref_ptr<osgDB::Options> o = Registry::instance()->cloneOrCreateOptions(); //new osgDB::Options();
                 o->setPluginData( "mapNode", (void*)_mapNode.get() );
                 o->setPluginData( "options", (void*)&_options );
                 osgDB::ReaderWriter::ReadResult r = osgDB::readNodeFile( ".osgearth_ocean_surface", o.get() );

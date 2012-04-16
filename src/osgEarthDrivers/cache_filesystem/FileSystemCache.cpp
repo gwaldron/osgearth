@@ -22,6 +22,7 @@
 #include <osgEarth/ThreadingUtils>
 #include <osgEarth/XmlUtils>
 #include <osgEarth/URI>
+#include <osgEarth/Registry>
 #include <osgDB/FileUtils>
 #include <osgDB/FileNameUtils>
 #include <fstream>
@@ -199,7 +200,8 @@ namespace
         {
             _rw = osgDB::Registry::instance()->getReaderWriterForExtension( "osgb" );
 #ifdef OSGEARTH_HAVE_ZLIB
-            _rwOptions = new osgDB::ReaderWriter::Options( "Compressor=zlib" );
+            _rwOptions = Registry::instance()->cloneOrCreateOptions();
+            _rwOptions->setOptionString( "Compressor=zlib" );
 #endif
         }
     }

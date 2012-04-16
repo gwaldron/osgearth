@@ -179,7 +179,7 @@ public:
 			}
 #endif
 			
-            osg::ref_ptr<osgDB::ReaderWriter::Options> localOptions = new osgDB::ReaderWriter::Options;
+            osg::ref_ptr<osgDB::Options> localOptions = Registry::instance()->cloneOrCreateOptions();
             localOptions->setPluginData("osgearth_vpb Plugin",(void*)(1));
 
             ReadResult rc = _url.readNode( localOptions.get(), CachePolicy::NO_CACHE );
@@ -374,7 +374,7 @@ public:
             return; //return 0;
         }        
 
-        osg::ref_ptr<osgDB::ReaderWriter::Options> localOptions = new osgDB::ReaderWriter::Options;
+        osg::ref_ptr<osgDB::Options> localOptions = Registry::instance()->cloneOrCreateOptions();
         localOptions->setPluginData("osgearth_vpb Plugin",(void*)(1));
 
 

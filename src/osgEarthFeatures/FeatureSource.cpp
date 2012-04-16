@@ -20,6 +20,7 @@
 #include <osgEarthFeatures/ResampleFilter>
 #include <osgEarthFeatures/BufferFilter>
 #include <osgEarthFeatures/ConvertTypeFilter>
+#include <osgEarth/Registry>
 #include <osg/Notify>
 #include <osgDB/ReadFile>
 #include <OpenThreads/ScopedLock>
@@ -222,7 +223,7 @@ FeatureSourceFactory::create( const FeatureSourceOptions& options )
     {
         std::string driverExt = std::string(".osgearth_feature_") + options.getDriver();
 
-        osg::ref_ptr<osgDB::ReaderWriter::Options> rwopts = new osgDB::ReaderWriter::Options();
+        osg::ref_ptr<osgDB::Options> rwopts = Registry::instance()->cloneOrCreateOptions();
         rwopts->setPluginData( FEATURE_SOURCE_OPTIONS_TAG, (void*)&options );
 
         featureSource = dynamic_cast<FeatureSource*>( osgDB::readObjectFile( driverExt, rwopts.get() ) );

@@ -121,10 +121,10 @@ namespace osgEarth { namespace Annotation
 
         friend class Decoration;
         
-        // copy constructor
         virtual void reclamp( const TileKey& key, osg::Node* tile, const Terrain* terrain );
 
             
+        // copy constructor
         LocalizedNode(const LocalizedNode& rhs, const osg::CopyOp& op=osg::CopyOp::DEEP_COPY_ALL) { }
 
         bool updateTransforms(const GeoPoint& absPt, osg::Node* patch =0L);

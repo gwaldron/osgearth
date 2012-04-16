@@ -88,7 +88,11 @@ public:
         osg::ref_ptr<osg::Node> result;
 
         // required if the model includes local refs, like PagedLOD or ProxyNode:
-        osg::ref_ptr<osgDB::Options> localOptions = _dbOptions.get() ? new osgDB::Options(*_dbOptions.get()) : new osgDB::Options();
+        osg::ref_ptr<osgDB::Options> localOptions = 
+            Registry::instance()->cloneOrCreateOptions( _dbOptions.get() );
+            //_dbOptions.get() ? 
+            //new osgDB::Options(*_dbOptions.get()) : new osgDB::Options();
+
         localOptions->getDatabasePathList().push_back( osgDB::getFilePath(_options.url()->full()) );
 
         result = _options.url()->getNode( localOptions.get(), CachePolicy::INHERIT, progress );

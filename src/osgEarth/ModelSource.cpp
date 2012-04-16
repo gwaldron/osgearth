@@ -17,6 +17,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 #include <osgEarth/ModelSource>
+#include <osgEarth/Registry>
 #include <osg/Notify>
 #include <osgDB/ReadFile>
 #include <OpenThreads/ScopedLock>
@@ -77,7 +78,7 @@ ModelSourceFactory::create( const ModelSourceOptions& options )
     {
         std::string driverExt = std::string(".osgearth_model_") + options.getDriver();
 
-        osg::ref_ptr<osgDB::ReaderWriter::Options> rwopts = new osgDB::ReaderWriter::Options();
+        osg::ref_ptr<osgDB::Options> rwopts = Registry::instance()->cloneOrCreateOptions();
         rwopts->setPluginData( MODEL_SOURCE_OPTIONS_TAG, (void*)&options );
 
         modelSource = dynamic_cast<ModelSource*>( osgDB::readObjectFile( driverExt, rwopts.get() ) );

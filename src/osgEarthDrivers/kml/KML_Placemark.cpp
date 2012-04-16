@@ -24,8 +24,10 @@
 #include <osgEarthAnnotation/PlaceNode>
 #include <osgEarthAnnotation/LabelNode>
 #include <osgEarthAnnotation/Decluttering>
+#include <osgEarthAnnotation/LocalGeometryNode>
 
 #include <osg/Depth>
+#include <osgDB/WriteFile>
 
 using namespace osgEarth::Features;
 using namespace osgEarth::Annotation;
@@ -50,8 +52,18 @@ KML_Placemark::build( const Config& conf, KMLContext& cx )
     }
 
     // KML's default altitude mode is clampToGround.
-    if ( style.get<AltitudeSymbol>() == 0L )
-        style.getOrCreate<AltitudeSymbol>()->clamping() = AltitudeSymbol::CLAMP_TO_TERRAIN;
+    AltitudeModeEnum altMode = AltitudeMode::RELATIVE_TO_TERRAIN;
+
+    AltitudeSymbol* altSym = style.get<AltitudeSymbol>();
+    if ( !altSym )
+    {
+        altSym = style.getOrCreate<AltitudeSymbol>();
+        altSym->clamping() = AltitudeSymbol::CLAMP_RELATIVE_TO_TERRAIN;
+    }
+    else if ( !altSym->clamping().isSetTo(AltitudeSymbol::CLAMP_RELATIVE_TO_TERRAIN) )
+    {
+        altMode = AltitudeMode::ABSOLUTE;
+    }
 
     // parse the geometry. the placemark must have geometry to be valid.
     KML_Geometry geometry;
@@ -61,8 +73,8 @@ KML_Placemark::build( const Config& conf, KMLContext& cx )
     {
         Geometry* geom = geometry._geom.get();
 
-        GeoPoint position(cx._srs.get(), geom->getBounds().center());
-        //osg::Vec3d position = geom->getBounds().center();
+        GeoPoint position(cx._srs.get(), geom->getBounds().center(), altMode);
+
         bool isPoly = geom->getComponentType() == Geometry::TYPE_POLYGON;
         bool isPoint = geom->getComponentType() == Geometry::TYPE_POINTSET;
 
@@ -74,7 +86,7 @@ KML_Placemark::build( const Config& conf, KMLContext& cx )
         MarkerSymbol* marker = style.get<MarkerSymbol>();    
         if ( marker && marker->url().isSet() )
         {
-            markerURI = URI( marker->url()->expr(), marker->url()->uriContext() );
+            markerURI = URI( marker->url()->eval(), marker->url()->uriContext() );
             ReadResult result = marker->isModel() == true? markerURI.readNode() : markerURI.readImage();
             markerImage = result.getImage();
             markerModel = result.getNode();
@@ -90,14 +102,30 @@ KML_Placemark::build( const Config& conf, KMLContext& cx )
             conf.hasValue("description") ? conf.value("description") :
             "Unnamed";  
 
-        FeatureNode*    fNode = 0L;
+        AnnotationNode* fNode = 0L;
         AnnotationNode* pNode = 0L;
 
         // place a 3D model:
         if ( markerModel.valid() )
         {
-            Feature* feature = new Feature(geometry._geom.get(), cx._srs.get(), style);
-            fNode = new FeatureNode( cx._mapNode, feature, false );
+            LocalGeometryNode* lg = new LocalGeometryNode(cx._mapNode, markerModel.get(), style, false);
+            lg->setPosition( position );
+            if ( marker )
+            {
+                if ( marker->scale().isSet() )
+                {
+                    float scale = marker->scale()->eval();
+                    lg->setScale( osg::Vec3f(scale,scale,scale) );
+                }
+                if ( marker->orientation().isSet() )
+                {
+                   // lg->setRotation( );
+                }
+            }
+
+            fNode = lg;
+            //Feature* feature = new Feature(geometry._geom.get(), cx._srs.get(), style);
+            //fNode = new FeatureNode( cx._mapNode, feature, false );
         }
 
         // Place node (icon + text) or Label node (text only)

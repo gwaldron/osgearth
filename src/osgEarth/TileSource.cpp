@@ -471,7 +471,7 @@ TileSourceFactory::create( const TileSourceOptions& options )
         return 0L;
     }
 
-    osg::ref_ptr<osgDB::ReaderWriter::Options> rwopt = new osgDB::ReaderWriter::Options();
+    osg::ref_ptr<osgDB::Options> rwopt = Registry::instance()->cloneOrCreateOptions();
     rwopt->setPluginData( TILESOURCEOPTIONS_TAG, (void*)&options );
 
     std::string driverExt = std::string( ".osgearth_" ) + driver;

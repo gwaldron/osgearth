@@ -32,6 +32,8 @@
 
 #include <osgEarthDrivers/kml/KML>
 
+#include <osgDB/FileNameUtilS>
+
 #define KML_PUSHPIN_URL "http://demo.pelicanmapping.com/icons/pushpin_yellow.png"
 
 #define VP_DURATION 4.5 // time to fly to a viewpoint
@@ -369,7 +371,17 @@ ExampleMapNodeHelper::load(osg::ArgumentParser& args,
                            Control*             userControl ) const
 {
     // read in the Earth file:
-    osg::Node* node = osgDB::readNodeFiles( args );
+    osg::Node* node = 0L;
+    for( int i=0; i<args.argc(); ++i )
+    {
+        if ( osgDB::getLowerCaseFileExtension(args[i]) == "earth" )
+        {
+            node = osgDB::readNodeFile( args[i] );
+            args.remove(i);
+            break;
+        }
+    }
+
     if ( !node )
     {
         OE_WARN << LC << "Unable to load an earth file from the command line." << std::endl;

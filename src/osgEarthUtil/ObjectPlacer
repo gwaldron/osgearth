@@ -59,6 +59,8 @@ namespace osgEarth { namespace Util
             bool clamp        =false,
             int  maxLevel     =20);
 
+        virtual ~ObjectPlacer() { }
+
         /**
          * @deprecated Please use Annotation::GeometryNode instead.
          *

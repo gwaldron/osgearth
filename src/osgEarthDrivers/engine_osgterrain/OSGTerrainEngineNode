@@ -40,7 +40,7 @@ class OSGTerrainEngineNode : public TerrainEngineNode
 public:
     OSGTerrainEngineNode();
     META_Node(osgEarth,OSGTerrainEngineNode);
-    ~OSGTerrainEngineNode();
+    virtual ~OSGTerrainEngineNode();
 
 public:
     osg::Node* createNode(const TileKey& key);

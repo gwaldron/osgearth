@@ -40,6 +40,9 @@ namespace osgEarth { namespace Symbology
         /** Constructs a new skin resource. */
         SkinResource( const Config& conf =Config() );
 
+        /** dtor */
+        virtual ~SkinResource() { }
+
         /**
          * Creates a new StateSet containing a Texture based on this Skin.
          */
@@ -113,6 +116,9 @@ namespace osgEarth { namespace Symbology
     {
     public:
         SkinSymbol( const Config& conf =Config() );
+
+        /** dtor */
+        virtual ~SkinSymbol() { }
 
     public: // query parameters
 

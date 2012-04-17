@@ -38,6 +38,9 @@ namespace osgEarth { namespace Drivers
             fromConfig( _conf );
         }
 
+        /** dtor */
+        virtual ~OSGTerrainOptions() { }
+
     public:
         optional<float>& heightFieldSkirtRatio() { return _skirtRatio; }
         const optional<float>& heightFieldSkirtRatio() const { return _skirtRatio; }

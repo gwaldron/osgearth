@@ -194,6 +194,9 @@ namespace osgEarth { namespace Util
             // copy ctor
             Settings( const Settings& rhs );
 
+            /** dtor */
+            virtual ~Settings() { }
+
             /**
              * Assigns behavior to the action of dragging the mouse while depressing one or
              * more mouse buttons and modifier keys.

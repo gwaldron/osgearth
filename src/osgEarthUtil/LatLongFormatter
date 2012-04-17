@@ -56,6 +56,9 @@ namespace osgEarth { namespace Util
             const AngularFormat& defaultFormat =FORMAT_DECIMAL_DEGREES,
             unsigned             optionsMask   =0u );
 
+        /** dtor */
+        virtual ~LatLongFormatter() { }
+
         /**
          * Sets the output precision for decimal numbers  (default is 5)
          */

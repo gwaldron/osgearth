@@ -54,6 +54,8 @@ namespace osgEarth { namespace Drivers
             fromConfig( _conf );
         }
 
+        virtual ~WFSFeatureOptions() { }
+
     public:
         Config getConfig() const {
             Config conf = FeatureSourceOptions::getConfig();

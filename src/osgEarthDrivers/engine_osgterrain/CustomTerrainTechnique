@@ -44,6 +44,9 @@ protected:
 
     TerrainTechnique( const TerrainTechnique& rhs, const osg::CopyOp& op ) : _tile(0L) { }
 
+    /** dtor */
+    virtual ~TerrainTechnique() { }
+
     Tile* _tile;
 
     friend class Tile;
@@ -68,6 +71,9 @@ protected:
 
     CustomTerrainTechnique( const CustomTerrainTechnique& rhs, const osg::CopyOp& op )
         : TerrainTechnique( rhs, op ) { }
+
+    /** dtor */
+    virtual ~CustomTerrainTechnique() { }
 };
 
 #endif // OSGEARTH_ENGINE_OSGTERRAIN_EXTENDED_TERRAIN_TECHNIQUE

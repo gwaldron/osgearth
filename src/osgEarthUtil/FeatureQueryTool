@@ -84,6 +84,9 @@ namespace osgEarth { namespace Util
             MapNode*  mapNode,
             Callback* callbackToAdd =0L );
 
+        /** dtor */
+        virtual ~FeatureQueryTool() { }
+
         /**
          * Adds a feature query callback.
          */
@@ -138,6 +141,9 @@ namespace osgEarth { namespace Util
         };
         typedef std::set<Selection> SelectionSet;
         SelectionSet _selections;
+
+        /** dtor */
+        virtual ~FeatureHighlightCallback() { }
     };
 
 
@@ -159,6 +165,9 @@ namespace osgEarth { namespace Util
     protected:
         void clear();
         Controls::Grid* _grid;
+
+        /** dtor */
+        virtual ~FeatureReadoutCallback() { }
     };
 
 

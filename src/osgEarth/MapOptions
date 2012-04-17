@@ -54,6 +54,9 @@ namespace osgEarth
             fromConfig(_conf);
         }
 
+        /** dtor */
+        virtual ~MapOptions() { }
+
         /**
          * Human-readable name of the map.
          */

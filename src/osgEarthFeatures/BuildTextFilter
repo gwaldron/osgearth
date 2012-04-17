@@ -39,6 +39,8 @@ namespace osgEarth { namespace Features
     public:
         BuildTextFilter( const Style& style =Style() );
 
+        virtual ~BuildTextFilter() { }
+
         /** The style to apply to feature geometry */
         const Style& getStyle() { return _style; }
         void setStyle(const Style& s) { _style = s; }

@@ -81,6 +81,9 @@ namespace osgEarth { namespace Util
             const SpatialReference* refSRS    =0L,
             unsigned                options   =0);
 
+        /** dtor */
+        virtual ~MGRSFormatter() { }
+
         /**
          * Transforms input coords into MGRS.
          */

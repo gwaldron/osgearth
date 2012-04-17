@@ -46,6 +46,9 @@ namespace osgEarth { namespace Util
 		*/
         ClampCallback(osg::Node* terrainNode = NULL);
 
+        /** dtor */
+        virtual ~ClampCallback() { }
+
         /**
          *Sets the terrain node to clamp against
          */

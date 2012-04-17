@@ -72,6 +72,9 @@ namespace osgEarth
     protected:
         Revisioned() : _revision(0), _alwaysDirty(false) { }
 
+        /** dtor */
+        virtual ~Revisioned() { }
+
         /** Marks this object as always being dirty (i.e. inSyncWith() will always return false) */
         void setAlwaysDirty( bool value ) {
             _alwaysDirty = value;

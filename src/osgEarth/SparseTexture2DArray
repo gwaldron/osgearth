@@ -43,6 +43,10 @@ namespace osgEarth
 
         META_StateAttribute( osgEarth, SparseTexture2DArray, TEXTURE );
 
+        /** dtor */
+        virtual ~SparseTexture2DArray() { }
+
+
     public:
         virtual void computeInternalFormat() const;
 

@@ -42,6 +42,8 @@ namespace osgEarth { namespace Drivers
             fromConfig( _conf );
         }
 
+        virtual ~FeatureGeomModelOptions() { }
+
     public:
         Config getConfig() const {
             Config conf = FeatureModelSourceOptions::getConfig();

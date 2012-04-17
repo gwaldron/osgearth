@@ -47,6 +47,8 @@ namespace osgEarth { namespace Features
             unsigned                numPartitions =20,
             GeoInterpolation        defaultInterp =GEOINTERP_GREAT_CIRCLE );
 
+        virtual ~TessellateOperator() { }
+
         void setNumPartitions( unsigned value ) { _numPartitions = value; }
 
         void setDefaultGeoInterp( GeoInterpolation value ) { _defaultInterp = value; }

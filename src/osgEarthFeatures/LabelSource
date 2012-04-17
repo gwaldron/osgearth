@@ -42,6 +42,8 @@ namespace osgEarth { namespace Features
         {
             fromConfig(_conf);
         }
+        
+        virtual ~LabelSourceOptions() { }
 
     public:
         virtual Config getConfig() const;

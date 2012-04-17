@@ -35,6 +35,8 @@ namespace osgEarth { namespace Features
     public:
         FeatureListSource();
 
+        virtual ~FeatureListSource() { }
+
         virtual FeatureCursor* createFeatureCursor( const Symbology::Query& query );
 
         virtual bool isWritable() const { return true; }

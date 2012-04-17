@@ -46,6 +46,8 @@ namespace osgEarth { namespace Features
          */
         OptimizerHints( const OptimizerHints& rhs );
 
+        virtual ~OptimizerHints() { }
+
         /**
          * Adds optimizer options that the general optimizer should use.
          */

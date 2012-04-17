@@ -58,6 +58,8 @@ namespace osgEarth { namespace Drivers
             fromConfig( _conf );
         }
 
+        virtual ~FeatureStencilModelOptions() { }
+
     public:
         Config getConfig() const {
             Config conf = FeatureModelSourceOptions::getConfig();

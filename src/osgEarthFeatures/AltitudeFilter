@@ -36,6 +36,8 @@ namespace osgEarth { namespace Features
     public:
         /** Constructs a new clamping filter */     
         AltitudeFilter();
+        
+        virtual ~AltitudeFilter() { }
 
     public: // properties
 

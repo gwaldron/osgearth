@@ -54,6 +54,9 @@ namespace osgEarth
         /** constructs a CachePolicy from a config options */
         CachePolicy( const Config& conf =Config() );
 
+        /** dtor */
+        virtual ~CachePolicy() { }
+
         /** Gets the usage policy */
         optional<Usage>& usage() { return _usage; }
         const optional<Usage>& usage() const { return _usage; }

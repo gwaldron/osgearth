@@ -111,7 +111,7 @@ public:
 
 protected:
 
-    ~StreamingTile();
+    virtual ~StreamingTile();
 
 private:
 

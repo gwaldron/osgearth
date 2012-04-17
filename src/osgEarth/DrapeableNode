@@ -37,6 +37,9 @@ namespace osgEarth
          */
         DrapeableNode( MapNode* mapNode, bool draped =true );
 
+        /** dtor */
+        virtual ~DrapeableNode() { }
+
         /**
          * Whether to drape the node content on the mapnode terrain.
          */

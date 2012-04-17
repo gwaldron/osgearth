@@ -43,6 +43,8 @@ namespace osgEarth { namespace Features
     public:        
         FeatureProfile( const GeoExtent& extent );
 
+        virtual ~FeatureProfile() { }
+
         /** Gets the spatial extents of the features in this profile. */
         const GeoExtent& getExtent() const {
             return _extent; }
@@ -107,6 +109,8 @@ namespace osgEarth { namespace Features
     {
     public:
         RefFeatureID( FeatureID fid ) : _fid(fid) { }
+        virtual ~RefFeatureID() { }
+
         operator FeatureID () const { return _fid; }
     protected:
         FeatureID _fid;
@@ -126,6 +130,8 @@ namespace osgEarth { namespace Features
 
         /** Copy contructor */
         Feature( const Feature& rhs, const osg::CopyOp& copyop =osg::CopyOp::DEEP_COPY_ALL );
+
+        virtual ~Feature() { }
 
         META_Object( osgEarthFeatures, Feature );
 

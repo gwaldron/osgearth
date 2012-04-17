@@ -80,6 +80,9 @@ namespace osgEarth
         /** copy constructor. */
         HTTPRequest( const HTTPRequest& rhs );
 
+        /** dtor */
+        virtual ~HTTPRequest() { }
+
         /** Adds an HTTP parameter to the request query string. */
         void addParameter( const std::string& name, const std::string& value );
         void addParameter( const std::string& name, int value );
@@ -118,6 +121,9 @@ namespace osgEarth
 
         /** Copy constructor */
         HTTPResponse( const HTTPResponse& rhs );
+
+        /** dtor */
+        virtual ~HTTPResponse() { }
 
         /** Gets the HTTP response code (Code) in this response */
         unsigned getCode() const;
@@ -257,7 +263,7 @@ namespace osgEarth
 
     private:
         HTTPClient();
-        ~HTTPClient();
+        virtual ~HTTPClient();
 
         void readOptions( const osgDB::ReaderWriter::Options* options, std::string &proxy_host, std::string &proxy_port ) const;
 

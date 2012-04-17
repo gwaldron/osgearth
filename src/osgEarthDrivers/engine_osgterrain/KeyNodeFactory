@@ -37,6 +37,9 @@ public:
 
 protected:
     KeyNodeFactory();
+
+    /** dtor */
+    virtual ~KeyNodeFactory() { }
 };
 
 #endif // OSGEARTH_ENGINE_QUAD_TILE_NODE

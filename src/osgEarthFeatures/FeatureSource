@@ -67,6 +67,7 @@ namespace osgEarth { namespace Features
 
     public:
         FeatureSourceOptions( const ConfigOptions& options =ConfigOptions() );
+        virtual ~FeatureSourceOptions() { }
         virtual Config getConfig() const;
 
     protected:

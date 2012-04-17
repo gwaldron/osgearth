@@ -37,6 +37,9 @@ namespace osgEarth
         DPLineSegmentIntersector(const osg::Vec3d& start, const osg::Vec3d& end)
             : osgUtil::LineSegmentIntersector(start, end) { }
 
+        /** dtor */
+        virtual ~DPLineSegmentIntersector() { }
+
     public: // overrides
         
         virtual osgUtil::Intersector* clone(osgUtil::IntersectionVisitor& iv);

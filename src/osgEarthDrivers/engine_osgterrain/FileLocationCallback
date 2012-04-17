@@ -37,6 +37,9 @@ class FileLocationCallback : public osgDB::FileLocationCallback
 public:
     FileLocationCallback() { }
 
+    /** dtor */
+    virtual ~FileLocationCallback() { }
+
     virtual Location fileLocation(const std::string& filename, const osgDB::Options* options)
     {
         Location result = REMOTE_FILE;
@@ -65,21 +68,6 @@ public:
                     break;
                 }
             }
-            
-            /*
-            if (result == LOCAL_FILE)
-            {
-                OE_NOTICE << filename << " is local" << std::endl;
-            }
-            else
-            {
-                OE_NOTICE << filename << " is remote" << std::endl;
-            } 
-            */
-            //if ( engine->getTileFactory()->areChildrenCached( engine->getMap(), mapKey ) )
-            //{
-            //    result = LOCAL_FILE;
-            //}
         }
 
         return result;

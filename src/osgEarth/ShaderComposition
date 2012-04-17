@@ -93,6 +93,9 @@ namespace osgEarth
          *    void osgearth_frag_applyLighting( inout vec4 color ); 
          */
         virtual osg::Shader* createDefaultLightingFragmentShader() const;
+
+        /** dtor */
+        virtual ~ShaderFactory() { }
     };
 
     /**
@@ -128,6 +131,9 @@ namespace osgEarth
                         const osg::CopyOp& copyop=osg::CopyOp::SHALLOW_COPY );
 
         META_StateAttribute( osgEarth, VirtualProgram, Type( PROGRAM ) )
+
+        /** dtor */
+        virtual ~VirtualProgram() { }
 
         /** return -1 if *this < *rhs, 0 if *this==*rhs, 1 if *this>*rhs.*/
         virtual int compare(const StateAttribute& sa) const

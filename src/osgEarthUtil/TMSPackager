@@ -41,6 +41,9 @@ namespace osgEarth { namespace Util
          */
         TMSPackager( const Profile* outProfile );
 
+        /** dtor */
+        virtual ~TMSPackager() { }
+
         /**
          * Whether to dump out progress messages 
          * default = false

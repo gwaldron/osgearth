@@ -46,6 +46,7 @@ namespace osgEarth { namespace Features
 
     public:
         CropFilter( Method method =METHOD_CENTROID );
+        virtual ~CropFilter() { }
 
         optional<Method>& method() { return _method; }
         const optional<Method>& method() const { return _method; }

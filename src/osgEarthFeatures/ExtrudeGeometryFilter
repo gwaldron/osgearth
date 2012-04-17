@@ -51,6 +51,8 @@ namespace osgEarth { namespace Features
         /** Constructs a new filter that will extrude footprints */
         ExtrudeGeometryFilter();
 
+        virtual ~ExtrudeGeometryFilter() { }
+
         /**
          * Sets the style that will govern the geometry generation.
          */

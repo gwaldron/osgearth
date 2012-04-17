@@ -74,6 +74,9 @@ namespace osgEarth { namespace Util
          */
         ElevationManager( Map* map );
 
+        /** dtor */
+        virtual ~ElevationManager() { }
+
         /**
          * Gets the terrain elevation at a point, given a terrain resolution.
          *

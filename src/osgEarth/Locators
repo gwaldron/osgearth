@@ -43,6 +43,9 @@ namespace osgEarth
         /** Construct a locator that crops to a display extent. */
         GeoLocator( const osgTerrain::Locator& prototype, const GeoExtent& dataExtent, const GeoExtent& displayExtent );
 
+        /** dtor */
+        virtual ~GeoLocator() { }
+
         static GeoLocator* createForKey( const class TileKey& key, const class MapInfo& mapInfo );
         static GeoLocator* createForExtent( const GeoExtent& extent, const class MapInfo& mapInfo);
 

@@ -35,6 +35,9 @@ namespace osgEarth { namespace Symbology
     protected:
         Resource( const Config& config =Config() );
 
+        /** dtor */
+        virtual ~Resource() { }
+
     public: // properties
 
         /** Readable name of the resource. */

@@ -55,6 +55,8 @@ namespace osgEarth { namespace Features
 
         FeatureTileSourceOptions( const ConfigOptions& rhs =ConfigOptions() );
 
+        virtual ~FeatureTileSourceOptions() { }
+
     public:
         virtual Config getConfig() const;
 

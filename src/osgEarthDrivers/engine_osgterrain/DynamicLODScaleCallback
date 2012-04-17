@@ -33,6 +33,9 @@ struct DynamicLODScaleCallback : public osg::NodeCallback
 {
     DynamicLODScaleCallback( float fallOff ) : _fallOff(fallOff) { }
 
+    /** dtor */
+    virtual ~DynamicLODScaleCallback() { }
+
     void operator()( osg::Node* node, osg::NodeVisitor* nv )
     {
         osg::CullStack* cs = dynamic_cast<osg::CullStack*>(nv);

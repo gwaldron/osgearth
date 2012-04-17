@@ -65,7 +65,7 @@ namespace osgEarth
         Config( const Config& rhs ) 
             : _key(rhs._key), _defaultValue(rhs._defaultValue), _children(rhs._children), _referrer(rhs._referrer), _emptyConfig(0L), _refMap(rhs._refMap) { }
 
-        ~Config() { if ( _emptyConfig ) delete _emptyConfig; }
+        virtual ~Config() { if ( _emptyConfig ) delete _emptyConfig; }
 
         /** Context for resolving relative URIs that occur in this Config */
         void setReferrer( const std::string& value );
@@ -343,10 +343,6 @@ namespace osgEarth
             return false;
         }
 
-        //std::string toString( int indent =0 ) const;
-
-        //std::string toHashString() const;
-
         /** support for conveying non-serializable objects in a Config (in memory only) */
 
         typedef std::map<std::string, osg::ref_ptr<osg::Referenced> > RefMap;
@@ -451,13 +447,7 @@ namespace osgEarth
     template<> inline
     void Config::update<double>( const std::string& key, const double& value ) {
         update( key, Stringify() << std::setprecision(16) << value );
-        //update( key, Stringify() << std::fixed << std::setprecision(16) << value );
     }
-
-    //template<> inline
-    //void Config::add<Stringify>( const std::string& key, const Stringify& value ) {
-    //    add( key, (std::string)value );
-    //}
 
     //--------------------------------------------------------------------
 
@@ -511,6 +501,9 @@ namespace osgEarth
     public:
         DriverConfigOptions( const ConfigOptions& rhs =ConfigOptions() )
             : ConfigOptions( rhs ) { fromConfig( _conf ); }
+
+        /** dtor */
+        virtual ~DriverConfigOptions() { }
 
         /** Gets or sets the name of the driver to load */
         void setDriver( const std::string& value ) { _driver = value; }

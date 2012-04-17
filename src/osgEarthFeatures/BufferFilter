@@ -55,6 +55,8 @@ namespace osgEarth { namespace Features
         BufferFilter();
         BufferFilter( const BufferFilter& rhs );
 
+        virtual ~BufferFilter() { }
+
     public:
         // how far to buffer; positive to dialate, negative to erode
         optional<double>& distance() { return _distance; }

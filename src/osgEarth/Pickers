@@ -59,6 +59,9 @@ namespace osgEarth
             float            buffer        =5.0f,
             Limit            limit         =LIMIT_ONE);
 
+        /** dtor */
+        virtual ~Picker() { }
+
         /**
          * Picks geometry under the specified viewport coordinates. The results
          * are stores in "results". You can typically get the mouseX and mouseY

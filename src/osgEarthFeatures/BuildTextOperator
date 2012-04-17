@@ -35,6 +35,7 @@ namespace osgEarth { namespace Features
     {
     public:
         BuildTextOperator(bool hideClutter=false) : _hideClutter(hideClutter) { };
+        virtual ~BuildTextOperator() { }
     public:
         osg::Node* operator()(
             const FeatureList& features, 

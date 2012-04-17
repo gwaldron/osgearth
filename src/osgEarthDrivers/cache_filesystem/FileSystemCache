@@ -39,6 +39,9 @@ namespace osgEarth { namespace Drivers
             fromConfig( _conf ); 
         }
 
+        /** dtor */
+        virtual ~FileSystemCacheOptions() { }
+
     public:
         /** Root path of the cache folder */
         optional<std::string>& rootPath() { return _path; }

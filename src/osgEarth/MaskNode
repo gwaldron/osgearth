@@ -31,6 +31,9 @@ namespace osgEarth
         MaskNode( const MaskNode& rhs, const osg::CopyOp& op =osg::CopyOp::DEEP_COPY_ALL );
 
         META_Node(osgEarth, MaskNode);
+
+        /** dtor */
+        virtual ~MaskNode() { }
     };
 }
 

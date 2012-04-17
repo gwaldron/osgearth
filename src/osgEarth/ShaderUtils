@@ -35,7 +35,7 @@ namespace osgEarth
     {
     public:
         UpdateLightingUniformsHelper( bool useUpdateTraversal =false );
-        ~UpdateLightingUniformsHelper();
+        virtual ~UpdateLightingUniformsHelper();
 
         void cullTraverse( osg::Node* node, osg::NodeVisitor* nv );
         void updateTraverse( osg::Node* node );
@@ -73,6 +73,9 @@ namespace osgEarth
             osg::StateSet*     stateSet,
             unsigned           size =1 );
 
+        /** dtor */
+        virtual ~ArrayUniform() { }
+
         void attach(
             const std::string& name,
             osg::Uniform::Type type,
@@ -80,11 +83,6 @@ namespace osgEarth
             unsigned           size =1 );
 
         void detach();
-
-        // ArrayUniform( osg::Uniform::Type type, const std::string& name, int size );
-
-        /** creates an array uniform helper from an existing stateset */
-        //ArrayUniform( osg::StateSet* from, const std::string& name );
 
         void setElement( unsigned index, int value );
         void setElement( unsigned index, unsigned value );

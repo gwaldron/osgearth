@@ -44,6 +44,8 @@ namespace osgEarth { namespace Features
     {
     public:
         virtual FilterContext push( FeatureList& input, FilterContext& context ) =0;
+
+        virtual ~FeatureFilter() { }
     };
 
     typedef std::list< osg::ref_ptr<FeatureFilter> > FeatureFilterList;
@@ -72,6 +74,8 @@ namespace osgEarth { namespace Features
     public:
         const osg::Matrixd& local2world() const { return _local2world; }
         const osg::Matrixd& world2local() const { return _world2local; }
+        
+        virtual ~FeaturesToNodeFilter() { }
         
     protected:
 

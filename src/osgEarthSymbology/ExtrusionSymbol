@@ -51,6 +51,9 @@ namespace osgEarth { namespace Symbology
     public:
         ExtrusionSymbol( const Config& conf =Config() );
 
+        /** dtor */
+        virtual ~ExtrusionSymbol() { }
+
         /** Height to which to extrude geometry above the footprint (for HEIGHT_REFERENCE_Z)
             or above MSL (for HEIGHT_REFERENCE_MSL) */
         optional<float>& height() { return _height; }

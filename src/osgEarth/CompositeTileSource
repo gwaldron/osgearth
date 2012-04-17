@@ -33,6 +33,9 @@ namespace osgEarth
     public:
         CompositeTileSourceOptions( const TileSourceOptions& options =TileSourceOptions() );
 
+        /** dtor */
+        virtual ~CompositeTileSourceOptions() { }
+
         /** Add a tile source by using its configuration options */
         void add( const TileSourceOptions& options );
 
@@ -77,6 +80,9 @@ namespace osgEarth
     public:
         /** Constructs a new composite tile source */
         CompositeTileSource( const TileSourceOptions& options =TileSourceOptions() );
+
+        /** dtor */
+        virtual ~CompositeTileSource() { }
 
     public: // TileSource overrides
         

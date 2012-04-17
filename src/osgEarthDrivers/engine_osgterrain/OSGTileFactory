@@ -53,6 +53,9 @@ public:
         const MapFrame&          cull_thread_mapf,
         const OSGTerrainOptions& props =OSGTerrainOptions() );
 
+    /** dtor */
+    virtual ~OSGTileFactory() { }
+
 public:
     /**
     * Creates a node graph containing four tiles that correspond to the four

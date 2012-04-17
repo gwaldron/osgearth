@@ -77,6 +77,8 @@ namespace osgEarth { namespace Symbology
         virtual void mergeConfig( const Config& conf );
 
     protected:
+        virtual ~AltitudeSymbol() { }
+
         optional<Clamping>           _clamping;
         optional<float>              _clampingResolution;
         optional<NumericExpression>  _verticalOffset;

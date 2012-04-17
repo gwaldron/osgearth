@@ -37,6 +37,9 @@ public:
      */
     ElevationProxyImageLayer( Map* sourceMap, const ImageLayerOptions& options );
 
+    /** dtor */
+    virtual ~ElevationProxyImageLayer() { }
+
 public: // ImageLayer
 
     virtual void initTileSource();

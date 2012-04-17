@@ -48,6 +48,8 @@ namespace osgEarth { namespace Features
      */
     Script( const std::string& code="", const std::string& language="javascript", const std::string& name="" ) 
         : _name(name), _language(language), _code(code) { }
+
+    virtual ~Script() { }
     
     /**
      * Sets the name of this script.

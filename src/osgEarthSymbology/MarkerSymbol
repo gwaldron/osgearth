@@ -56,6 +56,9 @@ namespace osgEarth { namespace Symbology
     public:
         MarkerSymbol( const Config& conf =Config() );
 
+        /** dtor */
+        virtual ~MarkerSymbol() { }
+
         /** URI of the model to use for substitution. */
         optional<StringExpression>& url() { return _url; }
         const optional<StringExpression>& url() const { return _url; }     

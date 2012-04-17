@@ -56,6 +56,9 @@ namespace osgEarth { namespace Util { namespace TMS
     public:
         TileFormat();
 
+        /** dtor */
+        virtual ~TileFormat() { }
+
         /**
         *Gets the width of a tile
         */
@@ -111,6 +114,9 @@ namespace osgEarth { namespace Util { namespace TMS
     public:
         TileSet();
 
+        /** dtor */
+        virtual ~TileSet() { }
+
         /**
         *Gets the reference link for this TileSet.
         */
@@ -154,6 +160,9 @@ namespace osgEarth { namespace Util { namespace TMS
     {
     public:
         TileMap();
+
+        /** dtor */
+        virtual ~TileMap() { }
 
         /**
         *Gets the tile map service for this TileMap
@@ -428,6 +437,9 @@ namespace osgEarth { namespace Util { namespace TMS
     private:
         TileMapReaderWriter();
         TileMapReaderWriter(const TileMapReaderWriter &tmr);
+
+        /** dtor */
+        virtual ~TileMapReaderWriter() { }
     };
 
 } } } // namespace osgEarth::Util::TMS

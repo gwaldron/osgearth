@@ -33,6 +33,9 @@ class CustomColorLayer
 public:
     CustomColorLayer() { }
 
+    /** dtor */
+    virtual ~CustomColorLayer() { }
+
     CustomColorLayer(
         const osgEarth::ImageLayer* imageLayer,
         osg::Image* image,
@@ -106,6 +109,9 @@ class CustomElevLayer
 {
 public:
     CustomElevLayer() { }
+
+    /** dtor */
+    virtual ~CustomElevLayer() { }
 
     CustomElevLayer( osgTerrain::HeightFieldLayer* hfLayer, bool fallbackData =false )
         : _hfLayer(hfLayer), _fallbackData(fallbackData) { }

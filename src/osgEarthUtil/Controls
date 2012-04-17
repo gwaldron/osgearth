@@ -148,6 +148,9 @@ namespace osgEarth { namespace Util { namespace Controls
         virtual void onValueChanged( class Control* control, const osg::Vec2d& value ) { }
         virtual void onValueChanged( class Control* control, const std::string& value ) { }
         virtual void onValueChanged( class Control* control, void* value ) { }
+        
+        /** dtor */
+        virtual ~ControlEventHandler() { }
     };
 
     typedef std::list< osg::ref_ptr<ControlEventHandler> > ControlEventHandlerList;
@@ -178,6 +181,9 @@ namespace osgEarth { namespace Util { namespace Controls
         Control();
 
         Control( const Alignment& halign, const Alignment& valign, const Gutter& padding );
+
+        /** dtor */
+        virtual ~Control() { }
 
         void setX( float value );
         const osgEarth::optional<float>& x() const { return _x; }
@@ -329,6 +335,9 @@ namespace osgEarth { namespace Util { namespace Controls
             float               fontSize =18.0f,
             const osg::Vec4f&   fontColor =osg::Vec4f(1,1,1,1) );
 
+        /** dtor */
+        virtual ~LabelControl() { }
+
         void setText( const std::string& value );
         const std::string& text() const { return _text; }
 
@@ -346,7 +355,6 @@ namespace osgEarth { namespace Util { namespace Controls
 
     public: // Control
         virtual void calcSize( const ControlContext& context, osg::Vec2f& out_size );
-        //virtual void calcPos ( const ControlContext& context, const osg::Vec2f& cursor, const osg::Vec2f& parentSize );
         virtual void draw    ( const ControlContext& context, DrawableList& out_drawables );
 
     private:
@@ -366,6 +374,9 @@ namespace osgEarth { namespace Util { namespace Controls
     {
     public:
         ImageControl( osg::Image* image =0L );
+
+        /** dtor */
+        virtual ~ImageControl() { }
 
         void setImage( osg::Image* image );
         osg::Image* getImage() const { return _image.get(); }
@@ -398,6 +409,9 @@ namespace osgEarth { namespace Util { namespace Controls
     public:
         HSliderControl( float min = 0.0f, float max = 100.0f, float value = 50.0f, ControlEventHandler* handler =0L );
 
+        /** dtor */
+        virtual ~HSliderControl() { }
+
         void setMin( float min, bool notify =true );
         float getMin() const { return _min; }
 
@@ -429,6 +443,9 @@ namespace osgEarth { namespace Util { namespace Controls
         CheckBoxControl( bool checked =false );
         CheckBoxControl( bool checked, ControlEventHandler* callback );
 
+        /** dtor */
+        virtual ~CheckBoxControl() { }
+
         void setValue( bool value );
         bool getValue() const { return _value; }
 
@@ -455,6 +472,9 @@ namespace osgEarth { namespace Util { namespace Controls
     public:
         Frame();
 
+        /** dtor */
+        virtual ~Frame() { }
+
     public: // Control
         virtual void calcPos ( const ControlContext& context, const osg::Vec2f& cursor, const osg::Vec2f& parentSize );
         virtual void draw( const ControlContext& context, DrawableList& drawables );
@@ -467,6 +487,9 @@ namespace osgEarth { namespace Util { namespace Controls
     {
     public:
         RoundedFrame();
+
+        /** dtor */
+        virtual ~RoundedFrame() { }
 
     public:
         virtual void draw( const ControlContext& cx, DrawableList& drawables );
@@ -482,6 +505,9 @@ namespace osgEarth { namespace Util { namespace Controls
     public:
         Container();
         Container( const Alignment& halign, const Alignment& valign, const Gutter& padding, float spacing );
+
+        /** dtor */
+        virtual ~Container() { }
 
         // the Frame connected to this container. can be NULL for no frame.
         void setFrame( Frame* frame );
@@ -550,6 +576,9 @@ namespace osgEarth { namespace Util { namespace Controls
         VBox();
         VBox( const Alignment& halign, const Alignment& valign, const Gutter& padding, float spacing );
 
+        /** dtor */
+        virtual ~VBox() { }
+
     public: // Container
         virtual const ControlList& children() const { return _controls; }
         virtual void clearControls();
@@ -575,6 +604,9 @@ namespace osgEarth { namespace Util { namespace Controls
     public:
         HBox();
         HBox( const Alignment& halign, const Alignment& valign, const Gutter& padding, float spacing );
+
+        /** dtor */
+        virtual ~HBox() { }
 
     public: // Container
         virtual const ControlList& children() const { return _controls; }
@@ -602,6 +634,9 @@ namespace osgEarth { namespace Util { namespace Controls
         Grid();
 
         Grid( const Alignment& halign, const Alignment& valign, const Gutter& padding, float spacing );
+
+        /** dtor */
+        virtual ~Grid() { }
 
         template<typename T>
         T* setControl( int col, int row, T* control ) {
@@ -654,6 +689,9 @@ namespace osgEarth { namespace Util { namespace Controls
         /** Constructs a new control node with an embedded control. */
         ControlNode( Control* control, float priority =0.0f );
 
+        /** dtor */
+        virtual ~ControlNode() { }
+
         /** The control encaspulated in this node */
         Control* getControl() const { return _control.get(); }
 
@@ -703,6 +741,9 @@ namespace osgEarth { namespace Util { namespace Controls
     {
     public:
         ControlNodeBin();
+
+        /** dtor */
+        virtual ~ControlNodeBin() { }
 
         /** Registers a control node with this bin. */
         void addNode( ControlNode* node );

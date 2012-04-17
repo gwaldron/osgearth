@@ -34,6 +34,9 @@ namespace osgEarth { namespace Util
     public:
         virtual std::string format( const GeoPoint& mapCoords ) const =0;
         std::string operator()(const GeoPoint& p) const { return format(p); }
+
+        /** dtor */
+        virtual ~Formatter() { }
     };
 
 } } // namespace osgEarth::Util

@@ -34,6 +34,9 @@ namespace osgEarth { namespace Util
     public:
         MGRSGraticuleOptions( const Config& conf =Config() );
 
+        /** dtor */
+        virtual ~MGRSGraticuleOptions() { }
+
         /** Symbology for SQID lines and text */
         optional<Style>& secondaryStyle() { return _secondaryStyle; }
         const optional<Style>& secondaryStyle() const { return _secondaryStyle; }
@@ -72,6 +75,9 @@ namespace osgEarth { namespace Util
          */
         MGRSGraticule( MapNode* mapNode );
         MGRSGraticule( MapNode* mapNode, const MGRSGraticuleOptions& options);
+
+        /** dtor */
+        virtual ~MGRSGraticule() { }
 
         /** 
          * Applies a new set of options. The graticule will be rebuilt if necessary.

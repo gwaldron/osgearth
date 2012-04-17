@@ -54,6 +54,9 @@ namespace osgEarth
         TerrainCallbackContext(Terrain* terrain, osg::Referenced* cd)
             : _remove(false), _cd(cd), _terrain(terrain) { }
 
+        /** dtor */
+        virtual ~TerrainCallbackContext() { }
+
     protected:
         bool _remove;
         osg::Referenced* _cd;
@@ -82,6 +85,9 @@ namespace osgEarth
             const TileKey&          key, 
             osg::Node*              tile, 
             TerrainCallbackContext& context) =0;
+
+        /** dtor */
+        virtual ~TerrainCallback() { }
     };
 
 
@@ -208,6 +214,9 @@ namespace osgEarth
         void notifyTileAdded( const TileKey& key, osg::Node* tile );
         // fires the onTileAdded callback (internal)
         void fireTileAdded( const TileKey& key, osg::Node* tile );
+
+        /** dtor */
+        virtual ~Terrain() { }
 
     private:
         Terrain( osg::Node* graph, const Profile* profile, bool geocentric );

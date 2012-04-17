@@ -31,6 +31,9 @@ class OceanCompositor : public TextureCompositorTechnique
 public:
     OceanCompositor() { }
 
+    /** dtor */
+    virtual ~OceanCompositor() { }
+
     virtual bool requiresUnitTextureSpace() const { return true; }
 
     virtual bool usesShaderComposition() const { return true; }

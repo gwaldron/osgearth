@@ -36,6 +36,9 @@ namespace osgEarth { namespace Symbology
     public:
         PolygonSymbol( const Config& conf =Config() );
 
+        /** dtor */
+        virtual ~PolygonSymbol() { }
+
         /** Polygon fill properties. */
         optional<Fill>& fill() { return _fill; }
         const optional<Fill>& fill() const { return _fill; }

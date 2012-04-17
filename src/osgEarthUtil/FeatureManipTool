@@ -49,6 +49,9 @@ namespace osgEarth { namespace Util
          */
         FeatureManipTool( MapNode* mapNode );
 
+        /** dtor */
+        virtual ~FeatureManipTool() { }
+
         /**
          * Sets the position of the dragger
          */

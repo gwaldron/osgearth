@@ -124,6 +124,9 @@ namespace osgEarth
          */
         Viewpoint( const Viewpoint& rhs );
 
+        /** dtor */
+        virtual ~Viewpoint() { }
+
     public:
 
         /**

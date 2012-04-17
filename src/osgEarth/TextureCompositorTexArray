@@ -34,6 +34,9 @@ namespace osgEarth
     {
     public:
         TextureCompositorTexArray( const TerrainOptions& options );
+
+        /** dtor */
+        virtual ~TextureCompositorTexArray() { }
         
         static bool isSupported();
 

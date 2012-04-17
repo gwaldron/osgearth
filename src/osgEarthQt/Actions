@@ -53,14 +53,14 @@ namespace osgEarth { namespace QtGui
         ViewVector& getViews() {
             return _views; }
 
-        virtual ~Action() { }
-
     protected:
         Action() 
             : _canceled(false), _checkpoint(true) { }
 
         Action(ViewVector& views) 
             : _views(views), _canceled(false), _checkpoint(true) { }
+
+        virtual ~Action() { }
 
         ViewVector  _views;
         bool        _canceled;
@@ -79,19 +79,9 @@ namespace osgEarth { namespace QtGui
     protected:
         ReversibleAction() : Action() { _checkpoint = true; }
         ReversibleAction(ViewVector& views) : Action(views) { _checkpoint = true; }
+
+        virtual ~ReversibleAction() { }
     };
-
-    //class OSGEARTHQT_EXPORT ActionContext
-    //{
-    //public:
-    //    ActionContext( void* sender ) : _sender(sender) { }
-
-    //public:
-    //    void* getSender() { return _sender; }
-
-    //protected:
-    //    void* _sender;
-    //};
 
     class OSGEARTHQT_EXPORT ActionCallback : public osg::Referenced
     {
@@ -99,7 +89,8 @@ namespace osgEarth { namespace QtGui
         virtual void operator()( void* sender, Action* action ) { }
 
     protected:
-        ActionCallback() { };
+        ActionCallback() { }
+        virtual ~ActionCallback() { }
     };
 
     class OSGEARTHQT_EXPORT ActionManager
@@ -113,6 +104,8 @@ namespace osgEarth { namespace QtGui
         virtual bool canUndo() const =0;
         virtual void clearUndoActions() =0;
         virtual ReversibleAction* getNextUndoAction() const =0;
+
+        virtual ~ActionManager() { }
     };
 
 } }

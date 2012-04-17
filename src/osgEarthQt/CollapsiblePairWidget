@@ -37,6 +37,7 @@ namespace osgEarth { namespace QtGui
     public:
       CollapsiblePairWidget();
       CollapsiblePairWidget(const QString& primaryTitle, QWidget* primaryWidget, const QString& secondaryTitle, QWidget* secondaryWidget);
+      virtual ~CollapsiblePairWidget() { }
 
       void setPrimaryVisible(bool visible) { _primaryGroup->setVisible(visible); }
       void setSecondaryVisible(bool visible) { _secondaryGroup->setVisible(visible); }

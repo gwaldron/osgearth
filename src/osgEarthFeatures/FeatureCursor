@@ -41,6 +41,8 @@ namespace osgEarth { namespace Features
 
     public:
         void fill( FeatureList& output );
+
+        virtual ~FeatureCursor() { }
     };
 
     /**
@@ -51,6 +53,9 @@ namespace osgEarth { namespace Features
     {
     public:
         FeatureListCursor( const FeatureList& input, bool cloneFeatures =false );
+        
+        virtual ~FeatureListCursor() { }
+
         virtual bool hasMore() const;
         virtual Feature* nextFeature();
 
@@ -68,6 +73,7 @@ namespace osgEarth { namespace Features
     public:
         GeometryFeatureCursor( Symbology::Geometry* geom );
         GeometryFeatureCursor( Symbology::Geometry* geom, const FeatureProfile* fp, const FeatureFilterList& filters );
+        virtual ~GeometryFeatureCursor() { }
         virtual bool hasMore() const;
         virtual Feature* nextFeature();
     protected:

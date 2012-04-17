@@ -81,6 +81,9 @@ namespace osgEarth
     public:
         TileSourceOptions( const ConfigOptions& options =ConfigOptions() );
 
+        /** dtor */
+        virtual ~TileSourceOptions() { }
+
     public:
         virtual Config getConfig() const;
 
@@ -109,6 +112,9 @@ namespace osgEarth
          *Creates a new TileBlacklist
          */
         TileBlacklist();
+
+        /** dtor */
+        virtual ~TileBlacklist() { }
 
         /**
          *Adds the given tile to the blacklist
@@ -325,8 +331,7 @@ namespace osgEarth
          * The returned object is new and is the responsibility of the caller.
 		 */
 		virtual osg::Image* createImage( 
-            const TileKey&        key, 
-            //const osgDB::Options* options,
+            const TileKey&        key,
             ProgressCallback*     progress ) = 0;
 
         /**
@@ -334,8 +339,7 @@ namespace osgEarth
          * The returned object is new and is the responsibility of the caller.
          */
         virtual osg::HeightField* createHeightField( 
-            const TileKey&        key, 
-            //const osgDB::Options* dbOptions,
+            const TileKey&        key,
             ProgressCallback*     progress );
 
 		/**

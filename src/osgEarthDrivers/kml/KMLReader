@@ -35,6 +35,9 @@ public:
     /** Initialized a KML reader that will work with the provided map node */
     KMLReader( MapNode* mapNode, const KMLOptions* options );
 
+    /** dtor */
+    virtual ~KMLReader() { }
+
     /** Reads KML from a stream and returns a node */
     osg::Node* read( std::istream& in, const URIContext& context );
 

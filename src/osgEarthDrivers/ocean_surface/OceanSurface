@@ -60,12 +60,6 @@ namespace osgEarth { namespace Drivers
         optional<Color>& baseColor() { return _baseColor; }
         const optional<Color>& baseColor() const { return _baseColor; }
 
-#if 0
-        /** Intensity texture to use for the ocean surface alpha. */
-        osg::ref_ptr<osg::Image>& alphaImage() { return _alphaImage; }
-        const osg::ref_ptr<osg::Image>& alphaImage() const { return _alphaImage; }
-#endif
-
         /** URI of the intensity texture to use for the ocean surface alpha. */
         optional<URI>& textureURI() { return _textureURI; }
         const optional<URI>& textureURI() const { return _textureURI; }
@@ -81,6 +75,9 @@ namespace osgEarth { namespace Drivers
         {
             mergeConfig( _conf );
         }
+
+        /** dtor */
+        virtual ~OceanSurfaceOptions() { }
 
     public:
         Config getConfig() const {
@@ -137,6 +134,9 @@ namespace osgEarth { namespace Drivers
             if ( node )
                 this->addChild( node );
         }
+
+        /** dtor */
+        virtual ~OceanSurfaceNode() { }
 
         /**
          * Options controlling the look and behavior of the ocean

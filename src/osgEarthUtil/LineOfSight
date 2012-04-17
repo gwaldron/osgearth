@@ -54,6 +54,9 @@ namespace osgEarth { namespace Util
     {
     public:
         virtual void onChanged() {};
+
+        /** dtor */
+        virtual ~ChangedCallback() { }
     };
 
     typedef std::list< osg::ref_ptr<ChangedCallback> > ChangedCallbackList;
@@ -72,7 +75,7 @@ namespace osgEarth { namespace Util
          */
         LineOfSightNode( osgEarth::MapNode* mapNode );
 
-        ~LineOfSightNode();
+        virtual ~LineOfSightNode();
 
         /**
          *Constructs and new LineOfSightNode
@@ -259,6 +262,10 @@ namespace osgEarth { namespace Util
     {
     public:
         LineOfSightTether(osg::Node* startNode, osg::Node* endNode);
+
+        /** dtor */
+        virtual ~LineOfSightTether() { }
+
         virtual void operator()(osg::Node* node, osg::NodeVisitor* nv);  
 
         osg::Node* startNode() { return _startNode.get(); }
@@ -285,7 +292,7 @@ namespace osgEarth { namespace Util
          */
         RadialLineOfSightNode( MapNode* mapNode );
 
-        ~RadialLineOfSightNode();
+        virtual ~RadialLineOfSightNode();
 
         /**
          * Gets the MapNode this RadialLineOfSightNode is operating on
@@ -443,6 +450,7 @@ namespace osgEarth { namespace Util
     {
     public:
         RadialLineOfSightTether(osg::Node* node);
+        virtual ~RadialLineOfSightTether() { }
         virtual void operator()(osg::Node* node, osg::NodeVisitor* nv);  
 
         osg::Node* node() { return _node.get(); }
@@ -467,7 +475,7 @@ namespace osgEarth { namespace Util
          */
         LineOfSightEditor(LineOfSightNode* los);    
         
-        ~LineOfSightEditor();    
+        virtual ~LineOfSightEditor();    
 
         /**
          *Updates the position of the draggers to represent the actual location of the LineOfSightNode.
@@ -493,8 +501,7 @@ namespace osgEarth { namespace Util
          *        The RadialLineOfSightNode to edit
          */
         RadialLineOfSightEditor(RadialLineOfSightNode* los);    
-        ~RadialLineOfSightEditor();
-
+        virtual ~RadialLineOfSightEditor();
 
          /**
          *Updates the position of the dragger to represent the actual location of the RadialLineOfSightNode.

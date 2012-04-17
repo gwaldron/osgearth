@@ -43,6 +43,8 @@ namespace osgEarth { namespace Features
     public:
         ScatterFilter();
 
+        virtual ~ScatterFilter() { }
+
         /** Approximate instances per sqkm. */
         void setDensity( float value ) { _density = value; }
         float getDensity() const { return _density; }

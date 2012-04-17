@@ -48,6 +48,9 @@ namespace osgEarth { namespace Util
          */
         ObjectLocator(ObjectLocator* parent, unsigned int compsToInherit =COMP_ALL );
 
+        /** dtor */
+        virtual ~ObjectLocator() { }
+
         /**
          * Sets the absolute OR relative positioning of this locator (depending on whether
          * this locator has a parent). Units conform to this Locator's SRS.

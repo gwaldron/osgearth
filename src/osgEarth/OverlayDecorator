@@ -47,6 +47,9 @@ namespace osgEarth
     public:
         OverlayDecorator();
 
+        /** dtor */
+        virtual ~OverlayDecorator() { }
+
         /**
          * The scene graph to be sampled an overlaid on the terrain.
          */

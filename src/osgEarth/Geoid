@@ -37,6 +37,9 @@ namespace osgEarth
     public:
         Geoid();
 
+        /** dtor */
+        virtual ~Geoid() { }
+
         /** Gets the readable name of this geoid. */
         void setName( const std::string& value );
         const std::string& getName() const { return _name; }

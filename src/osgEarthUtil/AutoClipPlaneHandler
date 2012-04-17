@@ -51,6 +51,8 @@ namespace osgEarth { namespace Util
          */
         AutoClipPlaneCullCallback( MapNode* mapNode =0L );
 
+        virtual ~AutoClipPlaneCullCallback() { }
+
         /**
          * Sets the minimum near/far ratio to use for this camera. The minimum ratio takes
          * effect when the camera HAE hits zero.

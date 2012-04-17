@@ -43,6 +43,9 @@ namespace osgEarth { namespace Symbology
          */
         GeometryFactory( const SpatialReference* srs =0L );
 
+        /** dtor */
+        virtual ~GeometryFactory() { }
+
         /**
          * Creates a circle geometry.
          * @param center Center point (must be in map SRS if a map was provided in ctor)

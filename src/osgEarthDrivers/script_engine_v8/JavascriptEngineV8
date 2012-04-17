@@ -36,7 +36,7 @@
   {
   public:
     JavascriptEngineV8(const ScriptEngineOptions& options =ScriptEngineOptions());
-    ~JavascriptEngineV8();
+    virtual ~JavascriptEngineV8();
 
     bool supported(std::string lang) { return osgEarth::toLower(lang).compare("javascript") == 0; }
     bool supported(Script* script) { return script && supported(script->getLanguage()); }

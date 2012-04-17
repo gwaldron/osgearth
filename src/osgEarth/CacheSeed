@@ -38,6 +38,9 @@ namespace osgEarth
           _maxLevel(12),
           _bounds(-180, -90, 180, 90) { }
 
+        /** dtor */
+        virtual ~CacheSeed() { }
+
         /**
         * Sets the minimum level to seed to
         */

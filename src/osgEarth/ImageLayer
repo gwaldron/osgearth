@@ -43,6 +43,9 @@ namespace osgEarth
          */         
         ImageLayerOptions( const std::string& name, const TileSourceOptions& driverOpt =TileSourceOptions() );
 
+        /** dtor */
+        virtual ~ImageLayerOptions() { }
+
 
     public: // properties
 
@@ -106,7 +109,8 @@ namespace osgEarth
      */
     struct ImageLayerCallback : public TerrainLayerCallback
     {
-        virtual void onOpacityChanged( class ImageLayer* layer ) { }        
+        virtual void onOpacityChanged( class ImageLayer* layer ) { }  
+        virtual ~ImageLayerCallback() { }
     };
 
     typedef void (ImageLayerCallback::*ImageLayerCallbackMethodPtr)(ImageLayer* layer);
@@ -123,6 +127,9 @@ namespace osgEarth
     {
     public:
         ImageLayerTileProcessor( const ImageLayerOptions& options =ImageLayerOptions() );
+
+        /** dtor */
+        virtual ~ImageLayerTileProcessor() { }
 
         void init( const ImageLayerOptions& options, const osgDB::Options* dbOptions, bool layerInTargetProfile );
 
@@ -157,6 +164,9 @@ namespace osgEarth
          * Constructs a new image layer with a custom TileSource.
          */
         ImageLayer( const ImageLayerOptions& options, TileSource* tileSource );
+
+        /** dtor */
+        virtual ~ImageLayer() { }
 
     public:
         /**

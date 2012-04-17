@@ -35,6 +35,8 @@ namespace osgEarth { namespace Features
     {
     public:
         GeometryCompilerOptions( const ConfigOptions& conf =ConfigOptions() );
+        
+        virtual ~GeometryCompilerOptions() { }
 
     public:
         /** Maximum span of a generated edge, in degrees. Applicable to geocentric maps only */
@@ -98,6 +100,8 @@ namespace osgEarth { namespace Features
 
         /** Constructs a new compiler with preconfigured options. */
         GeometryCompiler( const GeometryCompilerOptions& options );
+        
+        virtual ~GeometryCompiler() { }
         
         /** Access the options read-only */
         const GeometryCompilerOptions& options() const { return _options; }

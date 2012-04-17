@@ -54,6 +54,9 @@ namespace osgEarth { namespace Symbology
          */
         StencilVolumeNode( const StencilVolumeNode& rhs, const osg::CopyOp& op =osg::CopyOp::DEEP_COPY_ALL );
 
+        /** dtor */
+        virtual ~StencilVolumeNode() { }
+
         META_Node(osgEarth::Symbology,StencilVolumeNode);
         
         //override

@@ -40,6 +40,9 @@ namespace osgEarth
         /** Constructs new elevation layer options, given the underlying driver options. */
         ElevationLayerOptions( const std::string& name, const TileSourceOptions& driverOptions );
 
+        /** dtor */
+        virtual ~ElevationLayerOptions() { }
+
     public:
         virtual Config getConfig( bool isolate =false ) const;
         virtual void mergeConfig( const Config& conf );
@@ -89,6 +92,9 @@ namespace osgEarth
          * TileSource instance created by the user.
          */
         ElevationLayer( const ElevationLayerOptions& options, TileSource* tileSource );
+
+        /** dtor */
+        virtual ~ElevationLayer() { }
 
         /** Gets the initialization options with which the layer was created. */
         const ElevationLayerOptions& getElevationLayerOptions() const { return _runtimeOptions; }

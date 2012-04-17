@@ -56,6 +56,9 @@ namespace osgEarth
          */
         Random( const Random& rhs );
 
+        /** dtor */
+        virtual ~Random() { }
+
         /**
          * Resets the PRNG to its initial state (initial seed).
          */

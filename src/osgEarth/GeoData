@@ -80,6 +80,9 @@ namespace osgEarth
          */
         GeoPoint( const Config& conf, const SpatialReference* srs =0L );
 
+        /** dtor */
+        virtual ~GeoPoint() { }
+
         /**
          * Sets the SRS and coords 
          */
@@ -213,6 +216,9 @@ namespace osgEarth
 
         /** create from Bounds object */
         GeoExtent( const SpatialReference* srs, const Bounds& bounds );
+
+        /** dtor */
+        virtual ~GeoExtent() { }
 
         bool operator == ( const GeoExtent& rhs ) const;
         bool operator != ( const GeoExtent& rhs ) const;
@@ -360,6 +366,9 @@ namespace osgEarth
     public:
         DataExtent(const GeoExtent& extent, unsigned int minLevel, unsigned int maxLevel);
 
+        /** dtor */
+        virtual ~DataExtent() { }
+
         /** The minimum LOD of the extent */
         unsigned int getMinLevel() const;
 
@@ -387,6 +396,9 @@ namespace osgEarth
          * Constructs a new goereferenced image.
          */
         GeoImage( osg::Image* image, const GeoExtent& extent );
+
+        /** dtor */
+        virtual ~GeoImage() { }
 
         static GeoImage INVALID;
 
@@ -492,6 +504,9 @@ namespace osgEarth
         GeoHeightField(
             osg::HeightField* heightField,
             const GeoExtent&  extent );
+
+        /** dtor */
+        virtual ~GeoHeightField() { }
 
         static GeoHeightField INVALID;
 

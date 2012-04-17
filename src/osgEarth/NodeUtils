@@ -66,6 +66,10 @@ namespace osgEarth
     {
     public:
         PrimitiveSetTypeCounter();
+
+        /** dtor */
+        virtual ~PrimitiveSetTypeCounter() { }
+
         void apply(class osg::Geode&);
 
         unsigned _point;
@@ -82,6 +86,7 @@ namespace osgEarth
     {
     public:
         ViewVisitor() : osg::NodeVisitor(osg::NodeVisitor::TRAVERSE_PARENTS) { }
+        virtual ~ViewVisitor() { }
         void apply(osg::Camera& cam) {
             osg::View* view = cam.getView();
             if ( view ) this->operator()( view );

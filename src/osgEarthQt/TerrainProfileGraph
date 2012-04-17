@@ -44,6 +44,7 @@ namespace osgEarth { namespace QtGui
     struct TerrainProfilePositionCallback : public osg::Referenced
     {
       virtual void updatePosition(double lat, double lon, const std::string& text) { }
+      virtual ~TerrainProfilePositionCallback() { }
     };
 
 

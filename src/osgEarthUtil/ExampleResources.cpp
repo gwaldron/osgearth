@@ -32,7 +32,7 @@
 
 #include <osgEarthDrivers/kml/KML>
 
-#include <osgDB/FileNameUtilS>
+#include <osgDB/FileNameUtils>
 
 #define KML_PUSHPIN_URL "http://demo.pelicanmapping.com/icons/pushpin_yellow.png"
 

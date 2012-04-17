@@ -47,6 +47,8 @@ namespace osgEarth { namespace Annotation
         
         ImageOverlay(MapNode* mapNode, osg::Image* image = NULL);
 
+        virtual ~ImageOverlay() { }
+
         void setCorners(const osg::Vec2d& lowerLeft, const osg::Vec2d& lowerRight, 
                         const osg::Vec2d& upperLeft, const osg::Vec2d& upperRight);
 

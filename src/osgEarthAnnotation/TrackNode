@@ -108,6 +108,8 @@ namespace osgEarth { namespace Annotation
             osg::Image*                 image,
             const TrackNodeFieldSchema& fieldSchema );
 
+        virtual ~TrackNode() { }
+
         /** 
          * Sets the value of one of the field labels.
          * @param name  Field name as identified in the field schema.

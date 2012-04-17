@@ -68,6 +68,8 @@ namespace osgEarth { namespace Annotation
             const SpatialReference* mapSRS, 
             const GeoPoint&         position );
 
+        virtual ~OrthoNode() { }
+
         /**
          * Attaches a child node to the transforms. Use this instead of addChild.
          */

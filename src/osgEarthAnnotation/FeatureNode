@@ -46,6 +46,8 @@ namespace osgEarth { namespace Annotation
             bool     draped   =false, 
             const GeometryCompilerOptions& options = GeometryCompilerOptions() );
 
+        virtual ~FeatureNode() { }
+
         void setFeature( Feature* feature );
 
         void init();

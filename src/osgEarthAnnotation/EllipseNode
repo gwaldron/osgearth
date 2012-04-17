@@ -60,6 +60,8 @@ namespace osgEarth { namespace Annotation
             bool                    draped      =true,
             unsigned                numSegments =0 );
 
+        virtual ~EllipseNode() { }
+
         /**
          * Gets the major radius
          */

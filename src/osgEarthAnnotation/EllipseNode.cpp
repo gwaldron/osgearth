@@ -194,10 +194,10 @@ _numSegments ( 0 )
     conf.getIfSet   ( "draped", _draped );
     conf.getIfSet   ( "num_segments", _numSegments );
 
+    rebuild();
+
     if ( conf.hasChild("position") )
         setPosition( GeoPoint(conf.child("position")) );
-
-    rebuild();
 }
 
 Config

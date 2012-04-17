@@ -18,15 +18,21 @@
 */
 #include <osgEarthAnnotation/ImageOverlay>
 #include <osgEarthSymbology/MeshSubdivider>
+#include <osgEarthFeatures/MeshClamper>
+#include <osgEarthFeatures/Feature>
 #include <osgEarth/NodeUtils>
+#include <osgEarth/DrapeableNode>
 #include <osg/Geode>
 #include <osg/ShapeDrawable>
 #include <osg/Texture2D>
 #include <osg/io_utils>
 #include <algorithm>
 
+#define LC "[ImageOverlay] "
+
 using namespace osgEarth;
 using namespace osgEarth::Annotation;
+using namespace osgEarth::Features;
 using namespace osgEarth::Symbology;
 
 /***************************************************************************/
@@ -36,15 +42,15 @@ void clampLatitude(osg::Vec2d& l)
     l.y() = osg::clampBetween( l.y(), -90.0, 90.0);
 }
 
-ImageOverlay::ImageOverlay(MapNode* mapNode, osg::Image* image):
-DrapeableNode(mapNode, true),
-_lowerLeft(10,10),
-_lowerRight(20, 10),
-_upperRight(20,20),
-_upperLeft(10, 20),
-_image(image),
-_dirty(false),
-_alpha(1.0f)
+ImageOverlay::ImageOverlay(MapNode* mapNode, osg::Image* image) :
+AnnotationNode(mapNode),
+_lowerLeft    (10, 10),
+_lowerRight   (20, 10),
+_upperRight   (20, 20),
+_upperLeft    (10, 20),
+_image        (image),
+_dirty        (false),
+_alpha        (1.0f)
 {        
     postCTOR();
 }
@@ -54,7 +60,10 @@ ImageOverlay::postCTOR()
 {
     _geode = new osg::Geode;
 
-    addChild( _geode );
+    // place the geometry under a drapeable node so it will project onto the terrain    
+    DrapeableNode* d = new DrapeableNode(_mapNode.get());
+    this->addChild( d );
+    d->addChild( _geode );
 
     init();    
     ADJUST_UPDATE_TRAV_COUNT( this, 1 );
@@ -67,26 +76,29 @@ ImageOverlay::init()
 
     double height = 0;
     osg::Geometry* geometry = new osg::Geometry();
-    osg::Vec3d ll;
     const osg::EllipsoidModel* ellipsoid = getMapNode()->getMapSRS()->getEllipsoid();
-    ellipsoid->convertLatLongHeightToXYZ(osg::DegreesToRadians(_lowerLeft.y()), osg::DegreesToRadians(_lowerLeft.x()), height, ll.x(), ll.y(), ll.z());
 
-    osg::Vec3d lr;
-    ellipsoid->convertLatLongHeightToXYZ(osg::DegreesToRadians(_lowerRight.y()), osg::DegreesToRadians(_lowerRight.x()), height, lr.x(), lr.y(), lr.z());
+    const SpatialReference* mapSRS = getMapNode()->getMapSRS();
 
-    osg::Vec3d ur;
-    ellipsoid->convertLatLongHeightToXYZ(osg::DegreesToRadians(_upperRight.y()), osg::DegreesToRadians(_upperRight.x()), height, ur.x(), ur.y(), ur.z());
+    // calculate a bounding polytope in world space (for mesh clamping):
+    osg::ref_ptr<Feature> f = new Feature( new Polygon(), mapSRS->getGeodeticSRS() );
+    Geometry* g = f->getGeometry();
+    g->push_back( osg::Vec3d(_lowerLeft.x(),  _lowerLeft.y(), 0) );
+    g->push_back( osg::Vec3d(_lowerRight.x(), _lowerRight.y(), 0) );
+    g->push_back( osg::Vec3d(_upperRight.x(), _upperRight.y(), 0) );
+    g->push_back( osg::Vec3d(_upperLeft.x(),  _upperLeft.y(),  0) );
+    _boundingPolytope = f->getWorldBoundingPolytope();
 
-    osg::Vec3d ul;
-    ellipsoid->convertLatLongHeightToXYZ(osg::DegreesToRadians(_upperLeft.y()), osg::DegreesToRadians(_upperLeft.x()), height, ul.x(), ul.y(), ul.z());
+    // next, convert to world coords and create the geometry:
+    osg::Vec3Array* verts = new osg::Vec3Array();
+    verts->reserve(4);
+    for( Geometry::iterator i = g->begin(); i != g->end(); ++i )
+    {
+        osg::Vec3d world;
+        mapSRS->transformToWorld( *i, world );
+        verts->push_back( world );
+    }
 
-
-    osg::Vec3Array* verts = new osg::Vec3Array(4);
-    (*verts)[0] = ll;
-    (*verts)[1] = lr;
-    (*verts)[2] = ur;
-    (*verts)[3] = ul;
-    
     geometry->setVertexArray( verts );
 
     osg::Vec4Array* colors = new osg::Vec4Array(1);
@@ -127,6 +139,14 @@ ImageOverlay::init()
     _geometry = geometry;
 
     _dirty = false;
+    
+    // Set the annotation up for auto-clamping. We always need to auto-clamp a draped image
+    // so that the mesh roughly conforms with the surface, otherwise the draping routine
+    // might clip it.
+    Style style;
+    style.getOrCreate<AltitudeSymbol>()->clamping() = AltitudeSymbol::CLAMP_RELATIVE_TO_TERRAIN;
+    applyStyle( style );
+    clampMesh( _mapNode->getTerrain()->getGraph() );
 }
 
 osg::Image*
@@ -415,7 +435,7 @@ ImageOverlay::traverse(osg::NodeVisitor &nv)
     {
         init();        
     }
-    DrapeableNode::traverse(nv);
+    AnnotationNode::traverse(nv);
 }
 
 void ImageOverlay::dirty()
@@ -446,4 +466,39 @@ ImageOverlay::removeCallback( ImageOverlayCallback* cb )
     {
         _callbacks.erase( i );
     }    
+}
+
+
+void
+ImageOverlay::reclamp( const TileKey& key, osg::Node* tile, const Terrain* )
+{
+    if ( _boundingPolytope.contains( tile->getBound() ) ) // intersects, actually
+    {
+        clampMesh( tile );
+        OE_DEBUG << LC << "Clamped overlay mesh, tile radius = " << tile->getBound().radius() << std::endl;
+    }
+}
+
+void
+ImageOverlay::clampMesh( osg::Node* terrainModel )
+{
+    double scale  = 1.0;
+    double offset = 0.0;
+    bool   relative = false;
+
+    if (_altitude.valid())
+    {
+        if ( _altitude->verticalScale().isSet() )
+            scale = _altitude->verticalScale()->eval();
+
+        if ( _altitude->verticalOffset().isSet() )
+            offset = _altitude->verticalOffset()->eval();
+
+        relative = _altitude->clamping() == AltitudeSymbol::CLAMP_RELATIVE_TO_TERRAIN;
+    }
+
+    MeshClamper clamper( terrainModel, _mapNode->getMapSRS(), _mapNode->isGeocentric(), relative, scale, offset );
+    this->accept( clamper );
+
+    this->dirtyBound();
 }

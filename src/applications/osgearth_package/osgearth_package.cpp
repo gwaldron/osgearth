@@ -133,11 +133,15 @@ makeTMS( osg::ArgumentParser& args )
     std::string outEarth;
     args.read("--out-earth", outEarth);
 
-    // restrict packaging to user-specified bounds.
-    Bounds bounds;
+    std::vector< Bounds > bounds;
+    // restrict packaging to user-specified bounds.    
     double xmin=DBL_MAX, ymin=DBL_MAX, xmax=DBL_MIN, ymax=DBL_MIN;
-    if (args.read("--bounds", xmin, ymin, xmax, ymax ))
-        bounds.xMin() = xmin, bounds.yMin() = ymin, bounds.xMax() = xmax, bounds.yMax() = ymax;
+    while (args.read("--bounds", xmin, ymin, xmax, ymax ))
+    {        
+        Bounds b;
+        b.xMin() = xmin, b.yMin() = ymin, b.xMax() = xmax, b.yMax() = ymax;
+        bounds.push_back( b );
+    }
 
     // max level to which to generate
     unsigned maxLevel = ~0;
@@ -164,8 +168,15 @@ makeTMS( osg::ArgumentParser& args )
     if ( maxLevel != ~0 )
         packager.setMaxLevel( maxLevel );
 
-    if ( bounds.isValid() )
-        packager.addExtent( GeoExtent(map->getProfile()->getSRS(), bounds) );    
+    if (bounds.size() > 0)
+    {
+        for (unsigned int i = 0; i < bounds.size(); ++i)
+        {
+            Bounds b = bounds[i];            
+            if ( b.isValid() )
+                packager.addExtent( GeoExtent(map->getProfile()->getSRS(), b) );    
+        }
+    }    
 
     
     // new map for an output earth file if necessary.

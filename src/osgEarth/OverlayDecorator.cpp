@@ -32,6 +32,9 @@
 
 #define LC "[OverlayDecorator] "
 
+//#define OE_TEST if (_dumpRequested) OE_INFO << std::setprecision(9)
+#define OE_TEST OE_NULL
+
 using namespace osgEarth;
 
 //---------------------------------------------------------------------------
@@ -270,7 +273,8 @@ _warp         ( 1.0f ),
 _visualizeWarp( false ),
 _mipmapping   ( false ),
 _rttBlending  ( true ),
-_updatePending( false )
+_updatePending( false ),
+_dumpRequested( false )
 {
     // nop
 }
@@ -754,6 +758,8 @@ OverlayDecorator::cull( osgUtil::CullVisitor* cv, OverlayDecorator::PerViewData&
     // distance to the horizon, projected into the RTT camera's tangent plane.
     double horizonDistanceInRTTPlane;
 
+    OE_TEST << LC << "------- OD CULL ------------------------" << std::endl;
+
     if ( _isGeocentric )
     {
         double lat, lon;
@@ -773,6 +779,8 @@ OverlayDecorator::cull( osgUtil::CullVisitor* cv, OverlayDecorator::PerViewData&
         // data beyond the visible horizon.
         double pitchAngleOfHorizon_rad = acos( horizonDistance/eyeLen );
         horizonDistanceInRTTPlane = horizonDistance * sin( pitchAngleOfHorizon_rad );
+
+        OE_TEST << LC << "RTT distance to horizon: " << horizonDistanceInRTTPlane << std::endl;
     }
     else // projected map
     {
@@ -815,8 +823,8 @@ OverlayDecorator::cull( osgUtil::CullVisitor* cv, OverlayDecorator::PerViewData&
     cv->setCalculatedNearPlane( FLT_MAX );
     cv->setCalculatedFarPlane( -FLT_MAX );
 
-    // cull the subgraph here. This doubles as the subgraph's official cull traversal
-    // and a gathering of its clip planes.
+    // cull the subgraph (i.e. the terrain) here. This doubles as the subgraph's official 
+    // cull traversal and a gathering of its clip planes.
     cv->pushStateSet( pvd._subgraphStateSet.get() );
     osg::Group::traverse( *cv );
     cv->popStateSet();
@@ -831,7 +839,7 @@ OverlayDecorator::cull( osgUtil::CullVisitor* cv, OverlayDecorator::PerViewData&
     double zFar  = cv->getCalculatedFarPlane();
     cv->clampProjectionMatrix( projMatrix, zNear, zFar );
 
-    //OE_NOTICE << std::fixed << "zNear = " << zNear << ", zFar = " << zFar << std::endl;
+    OE_TEST << LC << "Subgraph clamp: zNear = " << zNear << ", zFar = " << zFar << std::endl;
 
     if ( _isGeocentric )
     {
@@ -842,6 +850,8 @@ OverlayDecorator::cull( osgUtil::CullVisitor* cv, OverlayDecorator::PerViewData&
             zFar = zNear + maxDistance;
 
         cv->clampProjectionMatrix( projMatrix, zNear, zFar );
+
+        OE_TEST << LC << "Horizon clamp: zNear = " << zNear << ", zFar = " << zFar << std::endl;
     }
 
     // restore the clip planes in the cull visitor, now that we have our subgraph
@@ -850,7 +860,6 @@ OverlayDecorator::cull( osgUtil::CullVisitor* cv, OverlayDecorator::PerViewData&
     cv->setCalculatedFarPlane( osg::maximum(zSavedFar, zFar) );
        
     // contruct the polyhedron representing the viewing frustum.
-    //osgShadow::ConvexPolyhedron frustumPH;
     MyConvexPolyhedron frustumPH;
     frustumPH.setToUnitFrustum( true, true );
     osg::Matrixd MVP = *cv->getModelViewMatrix() * projMatrix;
@@ -866,7 +875,15 @@ OverlayDecorator::cull( osgUtil::CullVisitor* cv, OverlayDecorator::PerViewData&
     osg::BoundingBox visibleOverlayBBox;
     CoarsePolytopeIntersector cpi( frustumPH, cv, visibleOverlayBBox );
     _overlayGraph->accept( cpi );
+
+    // adjust the bounding box to account for "flat" geometry. The Bbox must have 
+    // 3D volume or it won't intersect properly with the frustum PH.
+    visibleOverlayBBox.expandBy( osg::BoundingSphere(visibleOverlayBBox.center(), 1.0) );
     visiblePH.setToBoundingBox( visibleOverlayBBox );
+
+    osgShadow::ConvexPolyhedron visiblePHBeforeCut;
+    if ( _dumpRequested )
+        visiblePHBeforeCut = visiblePH;
 
     // this intersects the viewing frustum with the subgraph's bounding box, basically giving us
     // a "minimal" polyhedron containing all potentially visible geometry. (It can't be truly 
@@ -902,12 +919,15 @@ OverlayDecorator::cull( osgUtil::CullVisitor* cv, OverlayDecorator::PerViewData&
         pvd._rttViewMatrix = osg::Matrixd::lookAt( bc, osg::Vec3d(0,0,0), osg::Vec3d(0,0,1) );
         pvd._rttProjMatrix = osg::Matrixd::ortho( -eMax, eMax, -eMax, eMax, -eyeLen, bc.length() );
 
-        //OE_INFO << std::fixed << std::setprecision(1)
-        //    << "eMax = " << eMax
-        //    << ", bc = " << bc.x() << ", " << bc.y() << ", " << bc.z()
-        //    << ", eye = " << eye.x() << ", " << eye.y() << ", " << eye.z()
-        //    << ", eyeLen = " << eyeLen
-        //    << std::endl;
+        OE_TEST << LC 
+            << "1/2 RTT ortho span: " << eMax << ", near=" << -eyeLen << ", far=" << bc.length() << std::endl;
+
+        OE_TEST << LC
+            << "eMax = " << eMax
+            << ", bc = " << bc.x() << ", " << bc.y() << ", " << bc.z()
+            << ", eye = " << eye.x() << ", " << eye.y() << ", " << eye.z()
+            << ", eyeLen = " << eyeLen
+            << std::endl;
     }
     else
     {
@@ -951,24 +971,43 @@ OverlayDecorator::cull( osgUtil::CullVisitor* cv, OverlayDecorator::PerViewData&
 #endif
     }
 
-#if 0
-    if ( s_frame++ % 100 == 0 )
+    if ( _dumpRequested )
     {
+#if 0
+        // RTT frustum:
         osgShadow::ConvexPolyhedron rttPH;
         rttPH.setToUnitFrustum( true, true );
-        osg::Matrixd MVP = _rttViewMatrix * _rttProjMatrix;
+        osg::Matrixd MVP = pvd._rttViewMatrix * pvd._rttProjMatrix;
         osg::Matrixd inverseMVP;
         inverseMVP.invert(MVP);
         rttPH.transform( inverseMVP, MVP );
         rttPH.dumpGeometry();
-    }
+#endif
+
+#if 1
+        // camera frustum:
+        MyConvexPolyhedron frustumPH;
+        frustumPH.setToUnitFrustum( true, true );
+        osg::Matrixd MVP = *cv->getModelViewMatrix() * projMatrix;
+        osg::Matrixd inverseMVP;
+        inverseMVP.invert(MVP);
+        frustumPH.transform( inverseMVP, MVP );
+        frustumPH.dumpGeometry();
 #endif
 
 #if 0
-    // projector matrices are the same as for the RTT camera. Tim was right.
-    _projectorViewMatrix = _rttViewMatrix;
-    _projectorProjMatrix = _rttProjMatrix;
+        // visible PH or overlay:
+        visiblePHBeforeCut.dumpGeometry();
 #endif
+
+#if 0
+        // visible overlay Polyherdron AFTER frustum intersection:
+        visiblePH.dumpGeometry();
+#endif
+
+        _dump = osgDB::readNodeFile("convexpolyhedron.osg");
+        _dumpRequested = false;
+    }
 }
 
 OverlayDecorator::PerViewData&
@@ -1109,3 +1148,40 @@ OverlayDecorator::checkNeedsUpdate( OverlayDecorator::PerViewData& pvd )
         pvd._rttCamera->getViewMatrix()       != pvd._rttViewMatrix ||
         pvd._rttCamera->getProjectionMatrix() != pvd._rttProjMatrix;
 }
+
+
+//----------------------------------------------------------------------------
+
+#if 0
+namespace
+{
+    // don't delete this.
+    // it's not used by osgEarth, but you can copy this code into a viewer app and
+    // use it to visualize the various polyhedra created by the overlay decorator.
+    // see the end of OverlayDecorator::cull for the dump types.
+    struct PHDumper : public osgGA::GUIEventHandler {
+        MapNode* _mapNode;
+        osg::Group* _group;
+        PHDumper(MapNode* mapNode) : _mapNode(mapNode) {
+            _group = new osg::Group();
+            _mapNode->addChild( _group );
+        }
+        bool handle( const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& aa ) {
+            if ( ea.getEventType() == ea.KEYDOWN && ea.getKey() == ea.KEY_R ) {
+                _mapNode->getOverlayDecorator()->requestDump();
+                aa.requestRedraw();
+            }
+            else if ( ea.getEventType() == ea.FRAME ) {
+                osg::Node* dump = _mapNode->getOverlayDecorator()->getDump();
+                if ( dump ) {
+                    dump->getOrCreateStateSet()->setMode(GL_DEPTH_TEST, 1 | osg::StateAttribute::OVERRIDE);
+                    _group->removeChildren(0, _group->getNumChildren());
+                    _group->addChild( dump );
+                    aa.requestRedraw();
+                }
+            }
+            return false;
+        }
+    };
+}
+#endif

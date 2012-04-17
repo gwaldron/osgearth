@@ -213,9 +213,6 @@ MapNode::init()
     // TODO: not sure why we call this here
     _map->setGlobalOptions( local_options.get() );
 
-    // overlays:
-    _pendingOverlayAutoSetTextureUnit = true;
-
     // load and attach the terrain engine, but don't initialize it until we need it
     const TerrainOptions& terrainOptions = _mapNodeOptions.getTerrainOptions();
 

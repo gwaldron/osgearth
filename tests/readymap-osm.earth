@@ -13,15 +13,15 @@ http://readymap.org
 -->
 <map name="readymap.org" type="geocentric" version="2">
 
-    <image name="ReadyMap.org - Imagery" driver="tms">
+    <image name="readymap_imagery" driver="tms">
         <url>http://readymap.org/readymap/tiles/1.0.0/7/</url>
     </image>
 
-    <image name="ReadyMap.org - Street Map" driver="tms">
+    <image name="readymap_streets" driver="tms">
         <url>http://readymap.org/readymap/tiles/1.0.0/35/</url>
     </image>
         
-    <elevation name="ReadyMap.org - Elevation" driver="tms">
+    <elevation name="readymap_elevation" driver="tms">
         <url>http://readymap.org/readymap/tiles/1.0.0/9/</url>
     </elevation>
     

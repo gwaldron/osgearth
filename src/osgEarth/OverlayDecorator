@@ -28,6 +28,7 @@
 #include <osg/Texture2D>
 #include <osg/TexGenNode>
 #include <osg/Uniform>
+#include <osgGA/GUIEventHandler>
 #include <osgUtil/CullVisitor>
 
 namespace osgEarth
@@ -103,11 +104,7 @@ namespace osgEarth
 
     private:
         osg::ref_ptr<osg::Node>       _overlayGraph;
-        //osg::ref_ptr<osg::Camera>     _rttCamera;
-        //osg::ref_ptr<osg::Texture2D>  _projTexture;
-        //osg::ref_ptr<osg::Uniform>    _texGenUniform;
         osg::ref_ptr<osg::Uniform>    _warpUniform;
-        //osg::ref_ptr<osg::StateSet>   _subgraphStateSet;
         optional<int>                 _explicitTextureUnit;
         optional<int>                 _textureUnit;
         optional<int>                 _textureSize;
@@ -121,10 +118,6 @@ namespace osgEarth
         bool                          _mipmapping;
         bool                          _rttBlending;
         bool                          _updatePending;
-        //osg::Matrixd                  _rttViewMatrix;
-        //osg::Matrixd                  _rttProjMatrix;
-        //osg::Matrixd                  _projectorViewMatrix;
-        //osg::Matrixd                  _projectorProjMatrix;
 
         osg::ref_ptr<const osg::EllipsoidModel> _ellipsoid;
         osg::ref_ptr<osgEarth::VirtualProgram>  _vp;
@@ -160,6 +153,12 @@ namespace osgEarth
             InternalNodeVisitor(const osg::NodeVisitor::TraversalMode& mode) : 
                 osg::NodeVisitor(mode) { }
         };
+
+        //debugging:
+        void requestDump() { _dumpRequested = true; }
+        osg::Node* getDump() { osg::Node* r = _dump.release(); _dump = 0L; return r; }
+        osg::ref_ptr<osg::Node> _dump;
+        bool _dumpRequested;
     };
 
 } // namespace osgEarth

@@ -1,0 +1,90 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+ * Copyright 2008-2010 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+#ifndef OSGEARTHQT_ANNOTATIONDIALOGS_H
+#define OSGEARTHQT_ANNOTATIONDIALOGS_H 1
+
+#include <osgEarthQt/Common>
+
+#include <osgEarthAnnotation/PlaceNode>
+
+#include <QCheckBox>
+#include <QDialog>
+#include <QLineEdit>
+#include <QPushButton>
+#include <QVBoxLayout>
+
+
+namespace osgEarth { namespace QtGui
+{
+  class BaseAnnotationDialog : public QDialog
+  {
+    Q_OBJECT
+      
+  public:
+    BaseAnnotationDialog(QWidget* parent = 0, Qt::WindowFlags f = 0);
+
+    std::string getName() { return _nameEdit ? _nameEdit->text().toStdString() : ""; }
+    std::string getDescription() { return _descriptionEdit ? _descriptionEdit->text().toStdString() : ""; }
+    virtual osgEarth::Annotation::AnnotationNode* getAnnotation() = 0;
+
+    virtual void mapClick(const osgEarth::GeoPoint& point) { };
+
+  protected:
+    void initDefaultUi();
+
+    QLineEdit* _nameEdit;
+    QLineEdit* _descriptionEdit;
+    QVBoxLayout* _customLayout;
+    QPushButton* _okButton;
+  };
+
+  class OSGEARTHQT_EXPORT AddMarkerDialog : public BaseAnnotationDialog
+  {
+    Q_OBJECT
+
+  public:
+    AddMarkerDialog(osg::Group* root, osgEarth::MapNode* mapNode, QWidget* parent = 0, Qt::WindowFlags f = 0);
+
+    osgEarth::Annotation::AnnotationNode* getAnnotation();
+    void mapClick(const osgEarth::GeoPoint& point);
+
+  public slots:
+    void accept();
+    void reject();
+
+  private slots:
+    void onNameCheckStateChanged(int state);
+    void onNameTextChanged(const QString& text);
+
+  protected:
+    void closeEvent(QCloseEvent* event);
+
+    void initialize();
+    void cleanupNodes();
+
+    osg::ref_ptr<osg::Group> _root;
+    osg::ref_ptr<osgEarth::MapNode> _mapNode;
+    QCheckBox* _nameCheckbox;
+    osg::ref_ptr<osg::Image> _markerImage;
+    osgEarth::Symbology::Style _placeStyle;
+    osg::ref_ptr<osgEarth::Annotation::PlaceNode> _placeNode;
+  };
+} }
+
+#endif // OSGEARTHQT_ANNOTATIONDIALOGS_H

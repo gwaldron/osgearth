@@ -17,6 +17,7 @@
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
 
+#include <osgEarthQt/AnnotationToolbar>
 #include <osgEarthQt/Common>
 #include <osgEarthQt/CompositeViewerWidget>
 #include <osgEarthQt/DataManager>
@@ -52,6 +53,8 @@ class DemoMainWindow : public QMainWindow
 
       _views.clear();
       _views.push_back(_viewer);
+
+      _annotationToolbar->setActiveView(_viewer);
     }
 
     void setViewerWidget(osgEarth::QtGui::CompositeViewerWidget* viewer, const osgEarth::QtGui::ViewVector& views)
@@ -61,6 +64,8 @@ class DemoMainWindow : public QMainWindow
 
       _views.clear();
       _views.insert(_views.end(), views.begin(), views.end());
+
+      _annotationToolbar->setActiveViews(_views);
     }
 
     void setTerrainProfileWidget(osgEarth::QtGui::TerrainProfileWidget* widget)
@@ -187,6 +192,10 @@ class DemoMainWindow : public QMainWindow
 	    _fileToolbar->addAction(_addAnnotationAction);
       _fileToolbar->addSeparator();
       _fileToolbar->addAction(_terrainProfileAction);
+
+
+      _annotationToolbar = new osgEarth::QtGui::AnnotationToolbar(_annoRoot, _mapNode, _manager, this);
+      addToolBar(_annotationToolbar);
     }
 	
     osg::ref_ptr<osgEarth::QtGui::DataManager> _manager;
@@ -201,5 +210,6 @@ class DemoMainWindow : public QMainWindow
 		QAction *_addAnnotationAction;
     QAction *_terrainProfileAction;
 		QToolBar *_fileToolbar;
+    osgEarth::QtGui::AnnotationToolbar *_annotationToolbar;
     QDockWidget *_terrainProfileDock;
 };

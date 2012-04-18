@@ -1,0 +1,191 @@
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+* Copyright 2008-2010 Pelican Mapping
+* http://osgearth.org
+*
+* osgEarth is free software; you can redistribute it and/or modify
+* it under the terms of the GNU Lesser General Public License as published by
+* the Free Software Foundation; either version 2 of the License, or
+* (at your option) any later version.
+*
+* This program is distributed in the hope that it will be useful,
+* but WITHOUT ANY WARRANTY; without even the implied warranty of
+* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+* GNU Lesser General Public License for more details.
+*
+* You should have received a copy of the GNU Lesser General Public License
+* along with this program.  If not, see <http://www.gnu.org/licenses/>
+*/
+#include <osgEarthQt/AnnotationToolbar>
+
+#include <osgEarthQt/AnnotationDialogs>
+#include <osgEarthQt/Common>
+#include <osgEarthQt/DataManager>
+
+#include <QAction>
+#include <QToolBar>
+
+using namespace osgEarth;
+using namespace osgEarth::QtGui;
+
+
+//---------------------------------------------------------------------------
+
+AnnotationToolbar::AnnotationToolbar(osg::Group* root, osgEarth::MapNode* mapNode, DataManager* dm, QWidget* parent)
+: QToolBar(tr("_annotation_toolbar"), parent), _root(root), _mapNode(mapNode), _manager(dm)
+{
+  if (_mapNode.valid())
+    _guiHandler = new AnnotationToolbarMouseHandler(this, _mapNode.get());
+
+  initialize();
+}
+
+void
+AnnotationToolbar::initialize()
+{
+  //setObjectName(tr("ANNOTATION_TOOLBAR"));
+	setIconSize(QSize(24, 24));
+
+  createDefaultActions();
+}
+
+void
+AnnotationToolbar::createDefaultActions()
+{
+  QObject* actionParent = parent();
+  if (!actionParent)
+    actionParent = this;
+
+  _addMarker = new QAction(QIcon(":/images/add_marker_bg.png"), tr(""), actionParent);
+  _addMarker->setToolTip(tr("Add a marker"));
+  connect(_addMarker, SIGNAL(triggered()), this, SLOT(addMarkerAnnotation()));
+  addAction(_addMarker);
+
+  _addLine = new QAction(QIcon(":/images/draw_line_bg.png"), tr(""), actionParent);
+  _addLine->setToolTip(tr("Draw a line"));
+  connect(_addLine, SIGNAL(triggered()), this, SLOT(addLineAnnotation()));
+  addAction(_addLine);
+
+  _addPoly = new QAction(QIcon(":/images/draw_poly_bg.png"), tr(""), actionParent);
+  _addPoly->setToolTip(tr("Draw a polygon"));
+  connect(_addPoly, SIGNAL(triggered()), this, SLOT(addPolyAnnotation()));
+  addAction(_addPoly);
+
+  _addCircle = new QAction(QIcon(":/images/draw_circle_bg.png"), tr(""), actionParent);
+  _addCircle->setToolTip(tr("Draw a circle"));
+  connect(_addCircle, SIGNAL(triggered()), this, SLOT(addCircleAnnotation()));
+  addAction(_addCircle);
+}
+
+void AnnotationToolbar::setActiveView(osgViewer::View* view)
+{
+  removeViews();
+  addView(view);
+}
+
+void AnnotationToolbar::setActiveViews(const ViewVector& views)
+{
+  removeViews();
+
+  for (ViewVector::const_iterator it = views.begin(); it != views.end(); ++it)
+    addView(*it);
+}
+
+void AnnotationToolbar::addView(osgViewer::View* view)
+{
+  view->addEventHandler(_guiHandler.get());
+  _views.push_back(view);
+}
+
+void AnnotationToolbar::removeViews()
+{
+  for (ViewVector::iterator it = _views.begin(); it != _views.end(); ++it)
+    (*it)->removeEventHandler(_guiHandler.get());
+
+  _views.clear();
+}
+
+void AnnotationToolbar::mapClick(const osgEarth::GeoPoint& point)
+{
+  if (!_activeDialog.isNull())
+    _activeDialog->mapClick(point);
+}
+
+void
+AnnotationToolbar::addMarkerAnnotation()
+{
+  _activeDialog = new osgEarth::QtGui::AddMarkerDialog(_root, _mapNode);
+
+  this->setEnabled(false);
+
+  connect(_activeDialog, SIGNAL(finished(int)), this, SLOT(onAddFinished(int)));
+
+  _activeDialog->setWindowTitle(tr("New marker"));
+  _activeDialog->setWindowFlags(Qt::Tool | Qt::WindowTitleHint | Qt::CustomizeWindowHint| Qt::WindowStaysOnTopHint);
+  _activeDialog->setAttribute(Qt::WA_DeleteOnClose);
+  _activeDialog->show();
+}
+
+void
+AnnotationToolbar::addLineAnnotation()
+{
+  //_activeDialog = new osgEarth::QtGui::AddLineDialog(_root, _mapNode);
+
+  //this->setEnabled(false);
+
+  //connect(_activeDialog, SIGNAL(finished(int)), this, SLOT(onAddFinished(int)));
+
+  //_activeDialog->setWindowTitle(tr("New line"));
+  //_activeDialog->setWindowFlags(Qt::Tool | Qt::WindowTitleHint | Qt::CustomizeWindowHint| Qt::WindowStaysOnTopHint);
+  //_activeDialog->setAttribute(Qt::WA_DeleteOnClose);
+  //_activeDialog->show();
+}
+
+void
+AnnotationToolbar::addPolyAnnotation()
+{
+  //_activeDialog = new osgEarth::QtGui::AddPolygonDialog(_root, _mapNode);
+
+  //this->setEnabled(false);
+
+  //connect(_activeDialog, SIGNAL(finished(int)), this, SLOT(onAddFinished(int)));
+
+  //_activeDialog->setWindowTitle(tr("New polygon"));
+  //_activeDialog->setWindowFlags(Qt::Tool | Qt::WindowTitleHint | Qt::CustomizeWindowHint| Qt::WindowStaysOnTopHint);
+  //_activeDialog->setAttribute(Qt::WA_DeleteOnClose);
+  //_activeDialog->show();
+}
+
+void
+AnnotationToolbar::addCircleAnnotation()
+{
+  //_activeDialog = new osgEarth::QtGui::AddCircleDialog(_root, _mapNode);
+
+  //this->setEnabled(false);
+
+  //connect(_activeDialog, SIGNAL(finished(int)), this, SLOT(onAddFinished(int)));
+
+  //_activeDialog->setWindowTitle(tr("New circle"));
+  //_activeDialog->setWindowFlags(Qt::Tool | Qt::WindowTitleHint | Qt::CustomizeWindowHint| Qt::WindowStaysOnTopHint);
+  //_activeDialog->setAttribute(Qt::WA_DeleteOnClose);
+  //_activeDialog->show();
+}
+
+void AnnotationToolbar::onAddFinished(int result)
+{
+  this->setEnabled(true);
+
+  if (result == QDialog::Accepted)
+  {
+    if (_root.valid())
+    {
+      osgEarth::Annotation::AnnotationNode* annotation = _activeDialog->getAnnotation();
+      if (annotation)
+      {
+        if (_manager.valid())
+          _manager->addAnnotation(annotation, _root);
+        else
+          _root->addChild(annotation);
+      }
+    }
+  }
+}

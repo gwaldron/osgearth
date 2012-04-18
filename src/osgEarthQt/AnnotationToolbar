@@ -1,0 +1,135 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+ * Copyright 2008-2010 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+#ifndef OSGEARTHQT_ANNOTATIONTOOLBAR_H
+#define OSGEARTHQT_ANNOTATIONTOOLBAR_H 1
+
+#include <osgEarthQt/AnnotationDialogs>
+#include <osgEarthQt/Common>
+#include <osgEarthQt/DataManager>
+
+#include <QAction>
+#include <QPointer>
+#include <QToolBar>
+
+
+namespace osgEarth { namespace QtGui
+{
+  struct AnnotationToolbarMouseHandler;
+
+  class OSGEARTHQT_EXPORT AnnotationToolbar : public QToolBar
+  {
+    Q_OBJECT
+
+  public:
+    AnnotationToolbar(osg::Group* root, osgEarth::MapNode* mapNode, DataManager* dm=0L, QWidget* parent=0L);
+
+    void setActiveView(osgViewer::View* view);
+    void setActiveViews(const ViewVector& views);
+
+  signals:
+    void annotationCreated(osgEarth::Annotation::AnnotationNode* annotation);
+
+  protected slots:
+    void addMarkerAnnotation();
+    void addLineAnnotation();
+    void addPolyAnnotation();
+    void addCircleAnnotation();
+
+    void onAddFinished(int result);
+
+  protected:
+    void initialize();
+    void createDefaultActions();
+    void addView(osgViewer::View* view);
+    void removeViews();
+    void mapClick(const osgEarth::GeoPoint& point);
+
+    osg::ref_ptr<osgGA::GUIEventHandler>  _guiHandler;
+    osg::ref_ptr<osg::Group>              _root;
+    osg::ref_ptr<osgEarth::MapNode>       _mapNode;
+    osg::ref_ptr<DataManager>             _manager;
+    ViewVector                            _views;
+
+    QAction* _addMarker;
+    QAction* _addLine;
+    QAction* _addPoly;
+    QAction* _addCircle;
+
+    QPointer<BaseAnnotationDialog>  _activeDialog;
+    //osgEarth::QtGui::AddMarkerDialog* _markerDialog;
+
+    friend struct AnnotationToolbarMouseHandler;
+  };
+
+  struct AnnotationToolbarMouseHandler : public osgGA::GUIEventHandler
+    {
+      AnnotationToolbarMouseHandler(AnnotationToolbar* toolbar, osgEarth::MapNode* mapNode)
+        : _toolbar(toolbar), _mapNode(mapNode), _mouseDown(false)
+      {
+      }
+
+      bool handle( const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& aa )
+      {
+        osgViewer::View* view = static_cast<osgViewer::View*>(aa.asView());
+
+        if ( ea.getEventType() == osgGA::GUIEventAdapter::PUSH )
+        {
+          if (ea.getButton() == osgGA::GUIEventAdapter::LEFT_MOUSE_BUTTON)
+          {
+            _mouseDown = true;
+            _xDown = ea.getX();
+            _yDown = ea.getY();
+          }
+        }
+        else if (ea.getEventType() == osgGA::GUIEventAdapter::RELEASE)
+        {
+          if (ea.getButton() == osgGA::GUIEventAdapter::LEFT_MOUSE_BUTTON)
+          {
+            if (_mouseDown && _xDown == ea.getX() && _yDown == ea.getY())
+            {
+              osgUtil::LineSegmentIntersector::Intersections results;
+              if ( view->computeIntersections( _xDown, _yDown, results ) )
+              {
+                // find the first hit under the mouse:
+                osgUtil::LineSegmentIntersector::Intersection first = *(results.begin());
+                osg::Vec3d point = first.getWorldIntersectPoint();
+
+                osgEarth::GeoPoint outPoint;
+                _mapNode->getMap()->worldPointToMapPoint(point, outPoint);
+
+                _toolbar->mapClick(outPoint);
+              }
+            }
+
+            _mouseDown = false;
+          }
+        }
+
+        return false;
+      }
+
+      AnnotationToolbar*      _toolbar;
+      osg::ref_ptr<MapNode>  _mapNode;
+
+      bool _mouseDown;
+      float _xDown, _yDown;
+    };
+} }
+
+#endif // OSGEARTHQT_ANNOTATIONTOOLBAR_H

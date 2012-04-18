@@ -290,6 +290,17 @@ TMSPackager::package(ImageLayer*        layer,
     if ( extension.empty() && testImage.valid() )
     {
         extension = toLower( osgDB::getFileExtension( testImage.getImage()->getFileName() ) );
+        if ( extension.empty() )
+        {
+            if ( ImageUtils::hasAlphaChannel(testImage.getImage()) )
+            {
+                extension = "png";
+            }
+            else
+            {
+                extension = "jpg";
+            }
+        }
     }
 
     // compute a mime type
@@ -300,8 +311,9 @@ TMSPackager::package(ImageLayer*        layer,
         mimeType = "image/jpeg";
     else if ( extension == "tif" || extension == "tiff" )
         mimeType = "image/tiff";
-    else
-        return Result( Stringify() << "Unable to determine mime-type for extension \"" << extension << "\"" );
+    else {
+        OE_WARN << LC << "Unable to determine mime-type for extension \"" << extension << "\"" << std::endl;
+    }
 
     if ( _verbose )
     {

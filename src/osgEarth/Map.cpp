@@ -1339,9 +1339,11 @@ MapInfo::toMapPoint( const GeoPoint& input, GeoPoint& output ) const
 bool
 MapInfo::toWorldPoint( const GeoPoint& input, osg::Vec3d& output ) const
 {
-    return input.isValid() ?
-        input.getSRS()->transformToWorld(input.vec3d(), output) :
-        false;
+    if (!input.isValid()) return false;
+    //Transform the incoming point to the map's SRS
+    GeoPoint mapPoint;
+    toMapPoint(input, mapPoint );
+    return mapPoint.toWorld( output );
 }
 
 bool

@@ -48,6 +48,8 @@ StencilVolumeNode::createFullScreenQuad( const osg::Vec4f& color )
 {
     // make a full screen quad:
     osg::Geometry* quad = new osg::Geometry();
+    quad->setUseVertexBufferObjects(true);
+
     osg::Vec3Array* verts = new osg::Vec3Array(4);
     (*verts)[0].set( 0, 1, 0 );
     (*verts)[1].set( 0, 0, 0 );

@@ -188,7 +188,8 @@ MultiPassTerrainTechnique::createGeometryPrototype(osgTerrain::Locator* masterLo
 {  
     osgTerrain::Layer* elevationLayer = _tile->getElevationLayer();
 
-    osg::Geometry* geometry = new osg::Geometry;
+    osg::Geometry* geometry = new osg::Geometry();
+    geometry->setUseVertexBufferObjects(true);
 
 	unsigned int numRows = 20;
     unsigned int numColumns = 20;

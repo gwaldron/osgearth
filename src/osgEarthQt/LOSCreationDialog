@@ -48,6 +48,8 @@ namespace osgEarth { namespace QtGui
     {
       // draw a line from ground to location
       _lineGeometry = new osg::Geometry;
+      _lineGeometry->setUseVertexBufferObjects(true);
+
       _lineVerts = new osg::Vec3Array();
       _lineVerts->reserve(2);
       _lineGeometry->setVertexArray( _lineVerts );

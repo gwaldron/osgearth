@@ -178,6 +178,7 @@ BuildGeometryFilter::process( FeatureList& features, const FilterContext& contex
                 osg::Vec4f(1,1,1,1);
             
             osg::Geometry* osgGeom = new osg::Geometry();
+            osgGeom->setUseVertexBufferObjects(true);
 
             if ( _featureNameExpr.isSet() )
             {
@@ -213,6 +214,9 @@ BuildGeometryFilter::process( FeatureList& features, const FilterContext& contex
                     osgGeom->setInitialBound( osg::BoundingBox(center-osg::Vec3(.5,.5,.5), center+osg::Vec3(.5,.5,.5)) );
                 }
             }
+
+            if (allPoints->getVertexBufferObject())
+                allPoints->getVertexBufferObject()->setUsage(GL_STATIC_DRAW_ARB);
 
             // assign the primary color:
             osg::Vec4Array* colors = new osg::Vec4Array( allPoints->size() );
@@ -256,9 +260,13 @@ BuildGeometryFilter::process( FeatureList& features, const FilterContext& contex
                 // polygon offset on the poly so the outline doesn't z-fight
                 osgGeom->getOrCreateStateSet()->setAttributeAndModes( new osg::PolygonOffset(1,1), 1 );
 
-                osg::Geometry*  outline = new osg::Geometry();
+                osg::Geometry* outline = new osg::Geometry();
+                outline->setUseVertexBufferObjects(true);
 
                 buildPolygon(part, featureSRS, mapSRS, makeECEF, false, outline);
+
+                if ( outline->getVertexArray()->getVertexBufferObject() )
+                    outline->getVertexArray()->getVertexBufferObject()->setUsage(GL_STATIC_DRAW_ARB);
 
                 osg::Vec4Array* outlineColors = new osg::Vec4Array();
                 outline->setColorArray(outlineColors);

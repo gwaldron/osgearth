@@ -166,6 +166,9 @@ LocalizedNode::updateTransforms( const GeoPoint& p, osg::Node* patch )
                 osg::Matrix::translate(absPos) );
         }
     }
+    
+
+    dirtyBound();
 
     return true;
 }

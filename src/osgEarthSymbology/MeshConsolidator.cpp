@@ -228,6 +228,8 @@ MeshConsolidator::run( osg::Geode& geode )
 
 	osg::Geometry::AttributeBinding newColorsBinding;
 	osg::Geometry::AttributeBinding newNormalsBinding;
+    bool useVBOs = false;
+    GLenum usage = GL_STATIC_DRAW_ARB;
 
 	// first, triangulate all the geometries and count all the components:
 	for( unsigned i=0; i<geode.getNumDrawables(); ++i )
@@ -237,6 +239,14 @@ MeshConsolidator::run( osg::Geode& geode )
 		{
             if ( !canOptimize(*geom) )
                 continue;
+
+            if ( geom->getUseVertexBufferObjects() )
+            {
+                useVBOs = true;
+                osg::BufferObject* bo = geom->getVertexArray()->getVertexBufferObject();
+                if ( bo )
+                    usage = bo->getUsage();
+            }
 
 			// optimize it into triangles first:
 			MeshConsolidator::run( *geom );
@@ -418,8 +428,11 @@ MeshConsolidator::run( osg::Geode& geode )
 
 	// assemble the new geometry.
 	osg::Geometry* newGeom = new osg::Geometry();
+    newGeom->setUseVertexBufferObjects( useVBOs );
 
 	newGeom->setVertexArray( newVerts );
+    if ( useVBOs && newVerts->getVertexBufferObject() )
+        newVerts->getVertexBufferObject()->setUsage( usage );
 
 	if ( newColors )
 	{

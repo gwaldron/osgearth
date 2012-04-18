@@ -134,6 +134,7 @@ namespace
         double hae = outerRadius - ellipsoid->getRadiusEquator();
 
         osg::Geometry* geom = new osg::Geometry();
+        geom->setUseVertexBufferObjects(true);
 
         int latSegments = 100;
         int lonSegments = 2 * latSegments;
@@ -183,6 +184,7 @@ namespace
         float deltaAngle = 360.0/(float)segments;
 
         osg::Geometry* geom = new osg::Geometry();
+        geom->setUseVertexBufferObjects(true);
 
         osg::Vec3Array* verts = new osg::Vec3Array();
         verts->reserve( 1 + segments );
@@ -1080,6 +1082,8 @@ SkyNode::buildStarGeometry(const std::vector<StarData>& stars)
   }
 
   osg::Geometry* geometry = new osg::Geometry;
+  geometry->setUseVertexBufferObjects(true);
+
   geometry->setVertexArray( coords );
   geometry->setColorArray( colors );
   geometry->setColorBinding(osg::Geometry::BIND_PER_VERTEX);

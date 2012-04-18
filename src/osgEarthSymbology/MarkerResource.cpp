@@ -40,6 +40,7 @@ namespace
         float height = image->t();
 
         osg::Geometry* geometry = new osg::Geometry;
+        geometry->setUseVertexBufferObjects(true);
 
         osg::Vec3Array* verts = new osg::Vec3Array(4);
         (*verts)[0] = osg::Vec3(-width/2.0f, -height/2.0, 0.0f);

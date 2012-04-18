@@ -531,6 +531,7 @@ Control::draw(const ControlContext& cx, DrawableList& out )
             float vph = cx._vp->height(); // - padding().bottom();
 
             _geom = new osg::Geometry();
+            _geom->setUseVertexBufferObjects(true);
 
             float rx = _renderPos.x() - padding().left();
             float ry = _renderPos.y() - padding().top();
@@ -895,6 +896,7 @@ ImageControl::draw( const ControlContext& cx, DrawableList& out )
     {
         //TODO: this is not precisely correct..images get deformed slightly..
         osg::Geometry* g = new osg::Geometry();
+        g->setUseVertexBufferObjects(true);
 
         float rx = osg::round( _renderPos.x() );
         float ry = osg::round( _renderPos.y() );
@@ -1073,6 +1075,7 @@ HSliderControl::draw( const ControlContext& cx, DrawableList& out )
     if ( visible() == true )
     {
         osg::ref_ptr<osg::Geometry> g = new osg::Geometry();
+        g->setUseVertexBufferObjects(true);
 
         float rx = osg::round( _renderPos.x() );
         float ry = osg::round( _renderPos.y() );
@@ -1177,6 +1180,7 @@ CheckBoxControl::draw( const ControlContext& cx, DrawableList& out )
     if ( visible() == true )
     {
         osg::Geometry* g = new osg::Geometry();
+        g->setUseVertexBufferObjects(true);
 
         float rx = osg::round( _renderPos.x() );
         float ry = osg::round( _renderPos.y() );

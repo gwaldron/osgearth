@@ -332,6 +332,9 @@ SinglePassTerrainTechnique::applyTileUpdates()
                         else
                         {
                             frontGeom->setVertexArray( backVerts );
+                            if ( backVerts->getVertexBufferObject() )
+                                backVerts->getVertexBufferObject()->setUsage(GL_STATIC_DRAW_ARB);
+
                             frontGeom->setTexCoordArray( 0, backGeom->getTexCoordArray( 0 ) ); // TODO: un-hard-code
                             if ( backGeom->getNormalArray() )
                                 frontGeom->setNormalArray( backGeom->getNormalArray() );
@@ -587,6 +590,7 @@ SinglePassTerrainTechnique::createGeometry( const TileFrame& tilef )
     // traversal - which could access the buffer without a mutex
 
     osg::Geometry* surface = new osg::Geometry();
+
     surface->setThreadSafeRefUnref(true); // TODO: probably unnecessary.
     surface->setDataVariance( osg::Object::DYNAMIC );
     surface->setUseDisplayList(false);
@@ -685,6 +689,9 @@ SinglePassTerrainTechnique::createGeometry( const TileFrame& tilef )
 
       ss_verts = new osg::Vec3Array();
       stitching_skirts->setVertexArray(ss_verts);
+
+      if ( ss_verts->getVertexBufferObject() )
+          ss_verts->getVertexBufferObject()->setUsage(GL_STATIC_DRAW_ARB);
     }
 
 
@@ -717,6 +724,9 @@ SinglePassTerrainTechnique::createGeometry( const TileFrame& tilef )
     osg::ref_ptr<osg::Vec3Array> surfaceVerts = new osg::Vec3Array;
     surfaceVerts->reserve( numVerticesInSurface );
     surface->setVertexArray( surfaceVerts.get() );
+
+    if ( surfaceVerts->getVertexBufferObject() )
+        surfaceVerts->getVertexBufferObject()->setUsage(GL_STATIC_DRAW_ARB);
 
     // allocate and assign normals
     osg::ref_ptr<osg::Vec3Array> normals = new osg::Vec3Array();
@@ -1371,6 +1381,9 @@ SinglePassTerrainTechnique::createGeometry( const TileFrame& tilef )
         osg::Vec3Array* maskConstraint = new osg::Vec3Array();
         dc->setVertexArray(maskConstraint);
 
+        if ( maskConstraint->getVertexBufferObject() )
+            maskConstraint->getVertexBufferObject()->setUsage(GL_STATIC_DRAW_ARB);
+
         //Crop the mask to the stitching poly (for case where mask crosses tile edge)
         osg::ref_ptr<osgEarth::Symbology::Geometry> maskCrop;
         maskPoly->crop(maskSkirtPoly.get(), maskCrop);
@@ -1517,6 +1530,8 @@ SinglePassTerrainTechnique::createGeometry( const TileFrame& tilef )
         osg::Vec3Array* stitch_verts = new osg::Vec3Array();
         stitch_verts->reserve(trig->getInputPointArray()->size());
         stitch_geom->setVertexArray(stitch_verts);
+        if ( stitch_verts->getVertexBufferObject() )
+            stitch_verts->getVertexBufferObject()->setUsage(GL_STATIC_DRAW_ARB);
         osg::Vec3Array* stitch_norms = new osg::Vec3Array(trig->getInputPointArray()->size());
         stitch_geom->setNormalArray( stitch_norms );
         stitch_geom->setNormalBinding( osg::Geometry::BIND_PER_VERTEX );
@@ -1756,6 +1771,9 @@ SinglePassTerrainTechnique::createGeometry( const TileFrame& tilef )
         }
 
         skirt->setVertexArray( skirtVerts );
+        if ( skirtVerts->getVertexBufferObject() )
+            skirtVerts->getVertexBufferObject()->setUsage(GL_STATIC_DRAW_ARB);
+
         skirt->setNormalArray( skirtNormals );
         skirt->setNormalBinding( osg::Geometry::BIND_PER_VERTEX );
 

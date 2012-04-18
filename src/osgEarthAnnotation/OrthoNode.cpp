@@ -159,6 +159,12 @@ OrthoNode::traverse( osg::NodeVisitor& nv )
     }
 }
 
+osg::BoundingSphere
+OrthoNode::computeBound() const
+{
+    return osg::BoundingSphere(_matxform->getMatrix().getTrans(), 1000.0);
+}
+
 bool
 OrthoNode::setPosition( const osg::Vec3d& position )
 {
@@ -224,6 +230,8 @@ OrthoNode::updateTransforms( const GeoPoint& p, osg::Node* patch )
         _autoxform->setPosition( absPos );
         _matxform->setMatrix( osg::Matrix::translate(absPos) );
     }
+
+    dirtyBound();
     return true;
 }
 

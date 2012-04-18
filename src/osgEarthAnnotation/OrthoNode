@@ -109,6 +109,8 @@ namespace osgEarth { namespace Annotation
 
         virtual void traverse( osg::NodeVisitor& nv );
 
+        virtual osg::BoundingSphere computeBound() const;
+
     protected:
         const SpatialReference* getMapSRS() { return _mapSRS.get(); }
 

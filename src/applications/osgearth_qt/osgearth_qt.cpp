@@ -349,7 +349,7 @@ main(int argc, char** argv)
 
         TrackNodeFieldSchema schema;
         createTrackSchema(schema);
-        dataManager->addAnnotation(createTrack(schema, image, "Plane 1", mapNode.get(), osg::Vec3d(-121.463, 46.3548, 1348.71), 10000, 24, trackSims), s_annoGroup);
+        dataManager->addAnnotation(createTrack(schema, image, "Plane 1", mapNode.get(), osg::Vec3d(-121.463, 46.3548, 1500.71), 10000, 24, trackSims), s_annoGroup);
         dataManager->addAnnotation(createTrack(schema, image, "Plane 2", mapNode.get(), osg::Vec3d(-121.656, 46.0935, 4133.06), 10000, 8, trackSims), s_annoGroup);
         dataManager->addAnnotation(createTrack(schema, image, "Plane 3", mapNode.get(), osg::Vec3d(-121.321, 46.2589, 1390.09), 10000, 12, trackSims), s_annoGroup);
 

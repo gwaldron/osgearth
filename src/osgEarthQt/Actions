@@ -26,6 +26,10 @@ namespace osgEarth { namespace QtGui
 {
     class DataManager;
 
+    /**
+     * Base class for an Action, which is a (potentially reversible) operation
+     * handled by the ActionManager.
+     */
     class OSGEARTHQT_EXPORT Action : public osg::Referenced
     {
     public:
@@ -68,6 +72,9 @@ namespace osgEarth { namespace QtGui
         std::string _message;
     };
 
+    /**
+     * An action that can be undone.
+     */
     class OSGEARTHQT_EXPORT ReversibleAction : public Action
     {
     public:
@@ -83,6 +90,9 @@ namespace osgEarth { namespace QtGui
         virtual ~ReversibleAction() { }
     };
 
+    /**
+     * Callback that fires before or after the ActionManager runs an Action.
+     */
     class OSGEARTHQT_EXPORT ActionCallback : public osg::Referenced
     {
     public:
@@ -93,6 +103,10 @@ namespace osgEarth { namespace QtGui
         virtual ~ActionCallback() { }
     };
 
+    /**
+     * Interface for an Action Manager, an object that can run Actions, fire callbacks,
+     * and maintain an undo stack.
+     */
     class OSGEARTHQT_EXPORT ActionManager
     {
     public:

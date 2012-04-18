@@ -48,7 +48,7 @@ namespace osgEarth { namespace QtGui
     private slots:
       void onMapChanged();
       void onSelectionChanged(/*const AnnotationVector& selection*/);
-	    void onItemDoubleClicked(QListWidgetItem* item);
+      void onItemDoubleClicked(QListWidgetItem* item);
       void onItemChanged(QListWidgetItem* item);
       void onListSelectionChanged();
 

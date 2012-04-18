@@ -57,7 +57,7 @@ namespace osgEarth { namespace QtGui
         osgViewer::ViewerBase* getViewer() { return _viewer.get(); }
 
         /**
-         * Populates the incoming vector with the views comprising this viewer.
+         * Populates the incoming collection with the views comprising this viewer.
          */
         template<typename T>
         void getViews( T& views ) const {

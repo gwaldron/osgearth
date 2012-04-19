@@ -73,9 +73,13 @@ namespace
         }
     };
 
+    struct MyComputeBoundsVisitor : public osg::ComputeBoundsVisitor, public OverlayDecorator::InternalNodeVisitor
+    {
+    };
+
     /**
      * Visits a scene graph (in our case, the overlay graph) and calculates a
-     * geometry bounding box that intersects the provided polytope (which in out case is the
+     * geometry bounding box that intersects the provided polytope (which in our case is the
      * view frustum).
      *
      * It's called "Coarse" because it does not traverse to the Drawable level, just to
@@ -867,18 +871,16 @@ OverlayDecorator::cull( osgUtil::CullVisitor* cv, OverlayDecorator::PerViewData&
     inverseMVP.invert(MVP);
     frustumPH.transform( inverseMVP, MVP );
 
-    // make a polyhedron representing the viewing frustum of the overlay, and cut it to
-    // intersect the viewing frustum:
-    osgShadow::ConvexPolyhedron visiblePH;
-
-    // get the bounds of the overlay graph model. 
+    // take the bounds of the overlay graph:
     osg::BoundingBox visibleOverlayBBox;
-    CoarsePolytopeIntersector cpi( frustumPH, cv, visibleOverlayBBox );
-    _overlayGraph->accept( cpi );
+    visibleOverlayBBox.expandBy( _overlayGraph->getBound() );
 
     // adjust the bounding box to account for "flat" geometry. The Bbox must have 
     // 3D volume or it won't intersect properly with the frustum PH.
     visibleOverlayBBox.expandBy( osg::BoundingSphere(visibleOverlayBBox.center(), 1.0) );
+
+    // make a polyhedron representing the bounding box of the overlay.
+    osgShadow::ConvexPolyhedron visiblePH;
     visiblePH.setToBoundingBox( visibleOverlayBBox );
 
     osgShadow::ConvexPolyhedron visiblePHBeforeCut;
@@ -973,39 +975,51 @@ OverlayDecorator::cull( osgUtil::CullVisitor* cv, OverlayDecorator::PerViewData&
 
     if ( _dumpRequested )
     {
-#if 0
-        // RTT frustum:
-        osgShadow::ConvexPolyhedron rttPH;
-        rttPH.setToUnitFrustum( true, true );
-        osg::Matrixd MVP = pvd._rttViewMatrix * pvd._rttProjMatrix;
-        osg::Matrixd inverseMVP;
-        inverseMVP.invert(MVP);
-        rttPH.transform( inverseMVP, MVP );
-        rttPH.dumpGeometry();
-#endif
+        static const char* fn = "convexpolyhedron.osg";
 
-#if 1
         // camera frustum:
-        MyConvexPolyhedron frustumPH;
-        frustumPH.setToUnitFrustum( true, true );
-        osg::Matrixd MVP = *cv->getModelViewMatrix() * projMatrix;
-        osg::Matrixd inverseMVP;
-        inverseMVP.invert(MVP);
-        frustumPH.transform( inverseMVP, MVP );
-        frustumPH.dumpGeometry();
-#endif
+        {
+            MyConvexPolyhedron frustumPH;
+            frustumPH.setToUnitFrustum( true, true );
+            osg::Matrixd MVP = *cv->getModelViewMatrix() * projMatrix;
+            osg::Matrixd inverseMVP;
+            inverseMVP.invert(MVP);
+            frustumPH.transform( inverseMVP, MVP );
+            frustumPH.dumpGeometry(0,0,0,fn);
+        }
+        osg::Node* camNode = osgDB::readNodeFile(fn);
+        camNode->setName("camera");
 
-#if 0
         // visible PH or overlay:
-        visiblePHBeforeCut.dumpGeometry();
-#endif
+        visiblePHBeforeCut.dumpGeometry(0,0,0,fn,osg::Vec4(0,1,1,1),osg::Vec4(0,1,1,.25));
+        osg::Node* overlay = osgDB::readNodeFile(fn);
+        overlay->setName("overlay");
 
-#if 0
         // visible overlay Polyherdron AFTER frustum intersection:
-        visiblePH.dumpGeometry();
-#endif
+        visiblePH.dumpGeometry(0,0,0,fn,osg::Vec4(1,.5,1,1),osg::Vec4(1,.5,0,.25));
+        osg::Node* intersection = osgDB::readNodeFile(fn);
+        intersection->setName("intersection");
 
-        _dump = osgDB::readNodeFile("convexpolyhedron.osg");
+        // RTT frustum:
+        {
+            osgShadow::ConvexPolyhedron rttPH;
+            rttPH.setToUnitFrustum( true, true );
+            osg::Matrixd MVP = pvd._rttViewMatrix * pvd._rttProjMatrix;
+            osg::Matrixd inverseMVP;
+            inverseMVP.invert(MVP);
+            rttPH.transform( inverseMVP, MVP );
+            rttPH.dumpGeometry(0,0,0,fn,osg::Vec4(1,1,0,1),osg::Vec4(1,1,0,0.25));
+        }
+        osg::Node* rttNode = osgDB::readNodeFile(fn);
+        rttNode->setName("rtt");
+
+        osg::Group* g = new osg::Group();
+        g->addChild(camNode);
+        g->addChild(overlay);
+        g->addChild(intersection);
+        g->addChild(rttNode);
+
+        _dump = g;
         _dumpRequested = false;
     }
 }
@@ -1153,6 +1167,7 @@ OverlayDecorator::checkNeedsUpdate( OverlayDecorator::PerViewData& pvd )
 //----------------------------------------------------------------------------
 
 #if 0
+#include <osgEarth/OverlayDecorator>
 namespace
 {
     // don't delete this.

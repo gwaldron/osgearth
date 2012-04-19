@@ -1987,7 +1987,17 @@ namespace osgEarth { namespace Util { namespace Controls
                         ControlContext cx;
                         cx._view = aa.asView();
                         cx._vp = new osg::Viewport( 0, 0, vp->width(), vp->height() );
-                        cx._viewContextID = aa.asView()->getCamera()->getGraphicsContext()->getState()->getContextID();
+                        
+                        osg::View* view = aa.asView();
+                        osg::GraphicsContext* gc = view->getCamera()->getGraphicsContext();
+                        if ( !gc && view->getNumSlaves() > 0 )
+                            gc = view->getSlave(0)._camera->getGraphicsContext();
+
+                        if ( gc )
+                            cx._viewContextID = gc->getState()->getContextID();
+                        else
+                            cx._viewContextID = ~0u;
+
                         _cs->setControlContext( cx );
 
                         _width  = (int)vp->width();

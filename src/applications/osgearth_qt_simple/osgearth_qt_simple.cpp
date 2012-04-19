@@ -18,6 +18,7 @@
 */
 
 #include <osg/Notify>
+#include <osgViewer/CompositeViewer>
 #include <osgEarthUtil/ExampleResources>
 #include <osgEarthUtil/EarthManipulator>
 #include <osgEarthQt/ViewerWidget>
@@ -53,13 +54,15 @@ main(int argc, char** argv)
     if ( arguments.read("--stencil") )
         osg::DisplaySettings::instance()->setMinimumNumStencilBits(8);
 
+
     osgViewer::Viewer viewer(arguments);
     viewer.setCameraManipulator( new EarthManipulator() );
 
+    // load an earth file
     osg::Node* node = MapNodeHelper().load(arguments, &viewer);
     if ( !node )
         return usage( "Failed to load earth file." );
-        
+
     viewer.setSceneData( node );
 
 

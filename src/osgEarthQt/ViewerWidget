@@ -47,7 +47,9 @@ namespace osgEarth { namespace QtGui
         /**
          * Constructs a new ViewerWidget, attaching an existing viewer.
          * @param[in ] viewer Viewer to attach to this widget. The widget will install
-         *             a new camera in the viewer.
+         *             a new camera in the viewer. (NOTE: this widget does not take
+         *             ownership of the Viewer. You are still respsonsile for its
+         *             destruction)
          */
         ViewerWidget(osgViewer::ViewerBase* viewer);
 
@@ -66,9 +68,9 @@ namespace osgEarth { namespace QtGui
             views.insert(views.end(), temp.begin(), temp.end());
         }
 
+        virtual ~ViewerWidget();
 
     protected:
-        virtual ~ViewerWidget();
 
         QTimer _timer;
 
@@ -77,8 +79,8 @@ namespace osgEarth { namespace QtGui
         void installFrameTimer();
         void paintEvent( QPaintEvent* );
 
-        osg::ref_ptr<osgViewer::ViewerBase> _viewer;
-        osg::ref_ptr<osg::GraphicsContext>  _gc;
+        osg::observer_ptr<osgViewer::ViewerBase> _viewer;
+        osg::ref_ptr<osg::GraphicsContext>       _gc;
     };
 } }
 

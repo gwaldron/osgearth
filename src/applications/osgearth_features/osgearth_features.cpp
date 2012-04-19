@@ -53,7 +53,7 @@ int usage( const std::string& app )
         << "    --mem                 : load features from memory \n"
         << "    --labels              : add feature labels \n"
         << "\n"
-        << ExampleMapNodeHelper().usage();
+        << MapNodeHelper().usage();
 
     return -1;
 }
@@ -130,7 +130,7 @@ int main(int argc, char** argv)
     viewer.setCameraManipulator( new EarthManipulator() );
 
     // Process cmdline args
-    ExampleMapNodeHelper().parse(mapNode, arguments, &viewer, root, new LabelControl("Features Demo"));
+    MapNodeHelper().parse(mapNode, arguments, &viewer, root, new LabelControl("Features Demo"));
    
     if (useStencil)
     {

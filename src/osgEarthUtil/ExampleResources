@@ -43,7 +43,7 @@ namespace osgEarth { namespace Util
      * Parses a set of built-in example arguments. Any Controls created by parsing
      * command-line parameters will appear in the lower-left corner of the display.
      */
-    class OSGEARTHUTIL_EXPORT ExampleMapNodeHelper
+    class OSGEARTHUTIL_EXPORT MapNodeHelper
     {
     public:
         /**
@@ -66,6 +66,15 @@ namespace osgEarth { namespace Util
             osg::Group*          parentGroup =0L,
             Control*             userControl =0L) const;
 
+        /**
+         * Configures a view with a stock set of event handlers that are useful
+         * for demos, and performs some other common view configuation for osgEarth.
+         */
+        void configureView( osgViewer::View* view ) const;
+
+        /**
+         * Returns a usage string
+         */
         std::string usage() const;
     };
 

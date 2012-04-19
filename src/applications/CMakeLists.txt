@@ -58,6 +58,7 @@ ADD_SUBDIRECTORY(osgearth_featuremanip)
 
 IF (QT4_FOUND AND NOT ANDROID AND OSGEARTH_USE_QT)
     ADD_SUBDIRECTORY(osgearth_qt)
+    ADD_SUBDIRECTORY(osgearth_qt_simple)
 ENDIF()
 
 #ADD_SUBDIRECTORY(osgearth_test_srs)

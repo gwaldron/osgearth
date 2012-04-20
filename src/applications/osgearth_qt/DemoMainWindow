@@ -18,7 +18,7 @@
 */
 
 #include <osgEarthQt/Common>
-#include <osgEarthQt/CompositeViewerWidget>
+#include <osgEarthQt/MultiViewerWidget>
 #include <osgEarthQt/DataManager>
 #include <osgEarthQt/MapCatalogWidget>
 #include <osgEarthQt/TerrainProfileWidget>
@@ -57,7 +57,7 @@ public:
         _viewerWidget->getViews( _views );
     }
 
-    void setViewerWidget(osgEarth::QtGui::CompositeViewerWidget* viewerWidget, const osgEarth::QtGui::ViewVector& views)
+    void setViewerWidget(osgEarth::QtGui::MultiViewerWidget* viewerWidget, const osgEarth::QtGui::ViewVector& views)
     {
         setCentralWidget(viewerWidget);
         _compositeViewerWidget = viewerWidget;
@@ -197,9 +197,9 @@ private:
     osg::ref_ptr<osg::Group> _annoRoot;
     osg::ref_ptr<osgEarth::ImageLayer> _testLayer;
     osgEarth::QtGui::ViewerWidget* _viewerWidget;
-    osgEarth::QtGui::CompositeViewerWidget* _compositeViewerWidget;
+    osgEarth::QtGui::MultiViewerWidget* _compositeViewerWidget;
     //osg::ref_ptr<osgEarth::QtGui::ViewerWidget> _viewerWidget;
-    //osg::ref_ptr<osgEarth::QtGui::CompositeViewerWidget> _compositeViewerWidget;
+    //osg::ref_ptr<osgEarth::QtGui::MultiViewerWidget> _compositeViewerWidget;
     osgEarth::QtGui::ViewVector _views;
     bool _layerAdded;
     QAction *_addRemoveLayerAction;

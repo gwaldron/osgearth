@@ -16,7 +16,7 @@
 * You should have received a copy of the GNU Lesser General Public License
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
-#include <osgEarthQt/CompositeViewerWidget>
+#include <osgEarthQt/MultiViewerWidget>
 
 #include <osgEarthUtil/EarthManipulator>
 
@@ -33,7 +33,7 @@ using namespace osgEarth;
 using namespace osgEarth::QtGui;
 
 
-CompositeViewerWidget::CompositeViewerWidget(osg::Node* scene)
+MultiViewerWidget::MultiViewerWidget(osg::Node* scene)
 {
   initialize();
 
@@ -41,12 +41,12 @@ CompositeViewerWidget::CompositeViewerWidget(osg::Node* scene)
   _timer.start(15);
 }
 
-void CompositeViewerWidget::initialize()
+void MultiViewerWidget::initialize()
 {
   setThreadingModel(osgViewer::Viewer::SingleThreaded);
 }
 
-osgViewer::View* CompositeViewerWidget::createViewWidget(osg::Node* scene, osgViewer::View* shared)
+osgViewer::View* MultiViewerWidget::createViewWidget(osg::Node* scene, osgViewer::View* shared)
 {
   osgViewer::View* view = new osgViewer::View();
   view->setCamera(createCamera(0, 0, 100, 100, (shared ? shared->getCamera()->getGraphicsContext() : 0L)));
@@ -66,7 +66,7 @@ osgViewer::View* CompositeViewerWidget::createViewWidget(osg::Node* scene, osgVi
   return view;
 }
 
-osg::Camera* CompositeViewerWidget::createCamera(int x, int y, int width, int height, osg::GraphicsContext* shared)
+osg::Camera* MultiViewerWidget::createCamera(int x, int y, int width, int height, osg::GraphicsContext* shared)
 {
   osg::DisplaySettings* ds = osg::DisplaySettings::instance().get();
   osg::ref_ptr<osg::GraphicsContext::Traits> traits = new osg::GraphicsContext::Traits(ds);
@@ -110,7 +110,7 @@ osg::Camera* CompositeViewerWidget::createCamera(int x, int y, int width, int he
   return camera.release();
 }
 
-void CompositeViewerWidget::layoutWidgets()
+void MultiViewerWidget::layoutWidgets()
 {
   QGridLayout* grid = new QGridLayout;
 
@@ -149,7 +149,7 @@ void CompositeViewerWidget::layoutWidgets()
 }
 
 
-void CompositeViewerWidget::paintEvent(QPaintEvent* e)
+void MultiViewerWidget::paintEvent(QPaintEvent* e)
 {
     if ( getRunFrameScheme() == CONTINUOUS || checkNeedToDoFrame() )
     {

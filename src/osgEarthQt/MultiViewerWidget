@@ -33,11 +33,14 @@ namespace osgEarth { namespace QtGui
 {
     using namespace osgEarth;
 
-    class OSGEARTHQT_EXPORT CompositeViewerWidget : public QWidget, public osgViewer::CompositeViewer
+    /**
+     * A widget that uses a CompositeViewer and puts each View in its own panel of a layout 
+     */
+    class OSGEARTHQT_EXPORT MultiViewerWidget : public QWidget, public osgViewer::CompositeViewer
     {
     public:
-      CompositeViewerWidget(osg::Node* scene=0L);
-      virtual ~CompositeViewerWidget() { }
+      MultiViewerWidget(osg::Node* scene=0L);
+      virtual ~MultiViewerWidget() { }
 
       osgViewer::View* createViewWidget(osg::Node* scene=0L, osgViewer::View* shared=0L);
       virtual void layoutWidgets();

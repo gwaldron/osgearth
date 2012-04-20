@@ -26,7 +26,7 @@
 #include <osgEarthAnnotation/ScaleDecoration>
 #include <osgEarthAnnotation/TrackNode>
 #include <osgEarthQt/ViewerWidget>
-#include <osgEarthQt/CompositeViewerWidget>
+#include <osgEarthQt/MultiViewerWidget>
 #include <osgEarthQt/LayerManagerWidget>
 #include <osgEarthQt/MapCatalogWidget>
 #include <osgEarthQt/DataManager>
@@ -71,7 +71,7 @@ usage( const std::string& msg )
     OE_NOTICE << msg << std::endl;
     OE_NOTICE << std::endl;
     OE_NOTICE << "USAGE: osgearth_qt [options] file.earth" << std::endl;
-    OE_NOTICE << "   --composite n           : use a composite viewer with n initial views" << std::endl;
+    OE_NOTICE << "   --multi n               : use a multi-pane viewer with n initial views" << std::endl;
     OE_NOTICE << "   --stylesheet filename   : optional Qt stylesheet" << std::endl;
     OE_NOTICE << "   --run-on-demand         : use the OSG ON_DEMAND frame scheme" << std::endl;
     OE_NOTICE << "   --tracks                : create some moving track data" << std::endl;
@@ -205,7 +205,7 @@ main(int argc, char** argv)
     osg::DisplaySettings::instance()->setMinimumNumStencilBits(8);
 
     std::string compNum;
-    bool composite = arguments.read("--composite", compNum);
+    bool composite = arguments.read("--multi", compNum);
     int numViews = composite ? osgEarth::as<int>(compNum, 4) : 1;
 
     std::string stylesheet;
@@ -251,7 +251,7 @@ main(int argc, char** argv)
     // create viewer widget
     if (composite)
     {
-      osgEarth::QtGui::CompositeViewerWidget* viewerWidget = new osgEarth::QtGui::CompositeViewerWidget(root);
+      osgEarth::QtGui::MultiViewerWidget* viewerWidget = new osgEarth::QtGui::MultiViewerWidget(root);
 
       osgViewer::View* primary = viewerWidget->createViewWidget(root);
       primary->getCamera()->addCullCallback(new osgEarth::Util::AutoClipPlaneCullCallback(mapNode));

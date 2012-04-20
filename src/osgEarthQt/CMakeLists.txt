@@ -48,13 +48,13 @@ SET(LIB_PUBLIC_HEADERS
     AnnotationListWidget
     CollapsiblePairWidget
     Common
-    CompositeViewerWidget
     DataManager
     GuiActions
     LayerManagerWidget
     LOSControlWidget
     LOSCreationDialog
     MapCatalogWidget
+    MultiViewerWidget
     TerrainProfileGraph
     TerrainProfileWidget
     ViewerWidget
@@ -71,12 +71,12 @@ ADD_LIBRARY(${LIB_NAME} SHARED
     ${LIB_MOC_SRCS}
     AnnotationListWidget.cpp
     CollapsiblePairWidget.cpp
-    CompositeViewerWidget.cpp
     DataManager.cpp
     LayerManagerWidget.cpp
     LOSControlWidget.cpp
     LOSCreationDialog.cpp
     MapCatalogWidget.cpp
+    MultiViewerWidget.cpp
     TerrainProfileGraph.cpp
     TerrainProfileWidget.cpp
     ViewerWidget.cpp

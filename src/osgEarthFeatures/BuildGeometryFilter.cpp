@@ -218,16 +218,6 @@ BuildGeometryFilter::process( FeatureList& features, const FilterContext& contex
             if (allPoints->getVertexBufferObject())
                 allPoints->getVertexBufferObject()->setUsage(GL_STATIC_DRAW_ARB);
 
-            // assign the primary color:
-            osg::Vec4Array* colors = new osg::Vec4Array( allPoints->size() );
-            for(unsigned c=0; c<colors->size(); ++c)
-                (*colors)[c] = primaryColor;
-            osgGeom->setColorArray( colors );
-            osgGeom->setColorBinding( osg::Geometry::BIND_PER_VERTEX );
-
-            // add the part to the geode.
-            //_featureNode->addDrawable(osgGeom, input->getFID());
-
             // subdivide the mesh if necessary to conform to an ECEF globe:
             if ( makeECEF && renderType != Geometry::TYPE_POINTSET )
             {
@@ -247,6 +237,13 @@ BuildGeometryFilter::process( FeatureList& features, const FilterContext& contex
                         ms.run( *osgGeom, threshold, *_geoInterp );
                 }
             }
+
+            // assign the primary color:
+            osg::Vec4Array* colors = new osg::Vec4Array( osgGeom->getVertexArray()->getNumElements() ); //allPoints->size() );
+            for(unsigned c=0; c<colors->size(); ++c)
+                (*colors)[c] = primaryColor;
+            osgGeom->setColorArray( colors );
+            osgGeom->setColorBinding( osg::Geometry::BIND_PER_VERTEX );
 
             _geode->addDrawable( osgGeom );
 

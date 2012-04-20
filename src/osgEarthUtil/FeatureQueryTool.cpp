@@ -293,6 +293,11 @@ FeatureReadoutCallback::onHit( FeatureSourceIndexNode* index, FeatureID fid, con
         if ( f )
         {
             unsigned r=0;
+
+            _grid->setControl( 0, r, new LabelControl("FID", Color::Red) );
+            _grid->setControl( 1, r, new LabelControl(Stringify()<<fid, Color::White) );
+            ++r;
+
             const AttributeTable& attrs = f->getAttrs();
             for( AttributeTable::const_iterator i = attrs.begin(); i != attrs.end(); ++i, ++r )
             {

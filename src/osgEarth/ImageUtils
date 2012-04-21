@@ -151,6 +151,12 @@ namespace osgEarth
         static osg::Image* createEmptyImage();
 
         /**
+         * Tests an image to see whether it's "empty", i.e. completely transparent,
+         * within an alpha threshold.
+         */
+        static bool isEmptyImage(const osg::Image* image, float alphaThreshold =0.01);
+
+        /**
          * Returns true if it is possible to convert the image to the specified 
          * format/datatype specification.
          */

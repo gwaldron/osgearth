@@ -232,7 +232,7 @@ namespace
             // project the vert onto the camera plane:
             double signedDist = plane.distance( point );
             point += (-plane.getNormal() * signedDist);
-
+            
             // then calculate the 2D distance to the camera:
             double sqrDist2D = (cam-point).length2();
             if ( sqrDist2D > maxSqrDist2D )
@@ -1140,17 +1140,7 @@ OverlayDecorator::traverse( osg::NodeVisitor& nv )
     }
     else
     {
-        //osgUtil::CullVisitor* cv = 0L;
-        //if ( isCull )
-        //    cv = dynamic_cast<osgUtil::CullVisitor*>( &nv );
-
-        //if ( cv )
-        //    cv->pushStateSet( _subgraphStateSet.get() );
-
         osg::Group::traverse( nv );
-
-        //if ( cv )
-        //    cv->popStateSet();
     }
 }
 
@@ -1162,41 +1152,3 @@ OverlayDecorator::checkNeedsUpdate( OverlayDecorator::PerViewData& pvd )
         pvd._rttCamera->getViewMatrix()       != pvd._rttViewMatrix ||
         pvd._rttCamera->getProjectionMatrix() != pvd._rttProjMatrix;
 }
-
-
-//----------------------------------------------------------------------------
-
-#if 0
-#include <osgEarth/OverlayDecorator>
-namespace
-{
-    // don't delete this.
-    // it's not used by osgEarth, but you can copy this code into a viewer app and
-    // use it to visualize the various polyhedra created by the overlay decorator.
-    // see the end of OverlayDecorator::cull for the dump types.
-    struct PHDumper : public osgGA::GUIEventHandler {
-        MapNode* _mapNode;
-        osg::Group* _group;
-        PHDumper(MapNode* mapNode) : _mapNode(mapNode) {
-            _group = new osg::Group();
-            _mapNode->addChild( _group );
-        }
-        bool handle( const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& aa ) {
-            if ( ea.getEventType() == ea.KEYDOWN && ea.getKey() == ea.KEY_R ) {
-                _mapNode->getOverlayDecorator()->requestDump();
-                aa.requestRedraw();
-            }
-            else if ( ea.getEventType() == ea.FRAME ) {
-                osg::Node* dump = _mapNode->getOverlayDecorator()->getDump();
-                if ( dump ) {
-                    dump->getOrCreateStateSet()->setMode(GL_DEPTH_TEST, 1 | osg::StateAttribute::OVERRIDE);
-                    _group->removeChildren(0, _group->getNumChildren());
-                    _group->addChild( dump );
-                    aa.requestRedraw();
-                }
-            }
-            return false;
-        }
-    };
-}
-#endif

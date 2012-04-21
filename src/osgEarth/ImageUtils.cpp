@@ -397,6 +397,25 @@ ImageUtils::createEmptyImage()
 }
 
 bool
+ImageUtils::isEmptyImage(const osg::Image* image, float alphaThreshold)
+{
+    if ( !hasAlphaChannel(image) )
+        return false;
+
+    PixelReader read(image);
+    for(unsigned t=0; t<image->t(); ++t) 
+    {
+        for(unsigned s=0; s<image->s(); ++s)
+        {
+            osg::Vec4 color = read(s, t);
+            if ( color.a() > alphaThreshold )
+                return false;
+        }
+    }
+    return true;    
+}
+
+bool
 ImageUtils::canConvert( const osg::Image* image, GLenum pixelFormat, GLenum dataType )
 {
     if ( !image ) return false;

@@ -31,11 +31,12 @@ using namespace osgEarth;
 
 
 TMSPackager::TMSPackager(const Profile* outProfile) :
-_outProfile  ( outProfile ),
-_maxLevel    ( 5 ),
-_verbose     ( false ),
-_overwrite   ( false ),
-_abortOnError( true )
+_outProfile         ( outProfile ),
+_maxLevel           ( 5 ),
+_verbose            ( false ),
+_overwrite          ( false ),
+_keepEmptyImageTiles( false ),
+_abortOnError       ( true )
 {
     //nop
 }
@@ -96,28 +97,39 @@ TMSPackager::packageImageTile(ImageLayer*          layer,
             GeoImage image = layer->createImage( key );
             if ( image.valid() )
             {
-                // convert to RGB if necessary
-                osg::ref_ptr<osg::Image> final = image.getImage();
-                if ( extension == "jpg" && final->getPixelFormat() != GL_RGB )
-                    final = ImageUtils::convertToRGB8( image.getImage() );
-
-                // dump it to disk
-                osgDB::makeDirectoryForFile( path );
-                tileOK = osgDB::writeImageFile( *final.get(), path );
-
-                if ( _verbose )
+                // check for empty:
+                if ( !_keepEmptyImageTiles && ImageUtils::isEmptyImage(image.getImage()) )
                 {
-                    if ( tileOK ) {
-                        OE_NOTICE << LC << "Wrote tile " << key.str() << " (" << key.getExtent().toString() << ")" << std::endl;
-                    }
-                    else {
-                        OE_NOTICE << LC << "Error write tile " << key.str() << std::endl;
+                    if ( _verbose )
+                    {
+                        OE_NOTICE << LC << "Skipping empty tile " << key.str() << std::endl;
                     }
                 }
-
-                if ( _abortOnError && !tileOK )
+                else
                 {
-                    return Result( Stringify() << "Aborting, write failed for tile " << key.str() );
+                    // convert to RGB if necessary
+                    osg::ref_ptr<osg::Image> final = image.getImage();
+                    if ( extension == "jpg" && final->getPixelFormat() != GL_RGB )
+                        final = ImageUtils::convertToRGB8( image.getImage() );
+
+                    // dump it to disk
+                    osgDB::makeDirectoryForFile( path );
+                    tileOK = osgDB::writeImageFile( *final.get(), path );
+
+                    if ( _verbose )
+                    {
+                        if ( tileOK ) {
+                            OE_NOTICE << LC << "Wrote tile " << key.str() << " (" << key.getExtent().toString() << ")" << std::endl;
+                        }
+                        else {
+                            OE_NOTICE << LC << "Error write tile " << key.str() << std::endl;
+                        }
+                    }
+
+                    if ( _abortOnError && !tileOK )
+                    {
+                        return Result( Stringify() << "Aborting, write failed for tile " << key.str() );
+                    }
                 }
             }
         }
@@ -139,10 +151,11 @@ TMSPackager::packageImageTile(ImageLayer*          layer,
         unsigned lod = key.getLevelOfDetail();
         const ImageLayerOptions& options = layer->getImageLayerOptions();
 
+        unsigned layerMaxLevel = (options.maxLevel().isSet()? *options.maxLevel() : 99);
+        unsigned maxLevel = std::min(_maxLevel, layerMaxLevel);
         bool subdivide =
             (options.minLevel().isSet() && lod < *options.minLevel()) ||
-            (tileOK && lod+1 < _maxLevel) ||
-            (tileOK && (!options.maxLevel().isSet() || lod+1 < *options.maxLevel()));
+            (tileOK && lod+1 < maxLevel);
 
         // subdivide if necessary:
         if ( subdivide )
@@ -232,10 +245,11 @@ TMSPackager::packageElevationTile(ElevationLayer*      layer,
         unsigned lod = key.getLevelOfDetail();
         const ElevationLayerOptions& options = layer->getElevationLayerOptions();
 
+        unsigned layerMaxLevel = (options.maxLevel().isSet()? *options.maxLevel() : 99);
+        unsigned maxLevel = std::min(_maxLevel, layerMaxLevel);
         bool subdivide =
             (options.minLevel().isSet() && lod < *options.minLevel()) ||
-            (tileOK && lod+1 < _maxLevel) ||
-            (tileOK && (!options.maxLevel().isSet() || lod+1 < *options.maxLevel()));
+            (tileOK && lod+1 < maxLevel);
 
         // subdivide if necessary:
         if ( subdivide )

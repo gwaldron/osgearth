@@ -659,13 +659,14 @@ SpatialReference::createTransMercFromLongitude( const Angular& lon ) const
 }
 
 const SpatialReference*
-SpatialReference::createUTMFromLongitude( const Angular& lon ) const
+SpatialReference::createUTMFromLonLat( const Angular& lon, const Angular& lat ) const
 {
     // note. UTM is up to 10% faster than TMERC for the same meridian.
     unsigned zone = 1 + (unsigned)floor((lon.as(Units::DEGREES)+180.0)/6.0);
     std::string datum = getDatumName();
     std::string horiz = Stringify()
         << "+proj=utm +zone=" << zone
+        << (lat.as(Units::DEGREES) < 0 ? " +south" : "")
         << " +datum=" << (!datum.empty() ? "wgs84" : datum);
     return create( horiz, getVertInitString() );
 }

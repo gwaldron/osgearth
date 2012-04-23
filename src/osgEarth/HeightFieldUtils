@@ -111,7 +111,7 @@ namespace osgEarth
          * Cluster cullers are for geocentric maps only, and therefore requires
          * the ellipsoid model.
          */
-        static osg::ClusterCullingCallback* createClusterCullingCallback(
+        static osg::NodeCallback* createClusterCullingCallback(
             osg::HeightField*    grid, 
             osg::EllipsoidModel* em, 
             float verticalScale =1.0f );

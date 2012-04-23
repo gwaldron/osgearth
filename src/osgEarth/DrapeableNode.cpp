@@ -18,7 +18,7 @@
  */
 
 #include <osgEarth/DrapeableNode>
-#include <osgEarth/Utils>
+#include <osgEarth/CullingUtils>
 #include <osgEarth/NodeUtils>
 #include <osgUtil/IntersectionVisitor>
 

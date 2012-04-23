@@ -203,7 +203,7 @@ _arc_viewpoints         ( true ),
 _auto_vp_duration       ( false ),
 _min_vp_duration_s      ( 3.0 ),
 _max_vp_duration_s      ( 8.0 ),
-_camProjType            ( PROJECTION_PERSPECTIVE )
+_camProjType            ( PROJ_PERSPECTIVE )
 {
     //NOP
 }
@@ -388,7 +388,7 @@ EarthManipulator::Settings::setAutoViewpointDurationLimits( double minSeconds, d
 }
 
 void
-EarthManipulator::Settings::setCameraProjectionType(const EarthManipulator::ProjectionType& value)
+EarthManipulator::Settings::setCameraProjection(const EarthManipulator::CameraProjection& value)
 {
     _camProjType = value;
 }
@@ -1162,30 +1162,40 @@ EarthManipulator::updateCamera( osg::Camera* eventCamera )
     {
         const osg::Matrixd& proj = _viewCamera->getProjectionMatrix();
         bool isOrtho = ( proj(3,3) == 1. ) && ( proj(2,3) == 0. ) && ( proj(1,3) == 0. ) && ( proj(0,3) == 0.);
-        bool shouldBePersp = _settings->getCameraProjectionType() == PROJECTION_PERSPECTIVE;
+        CameraProjection type = _settings->getCameraProjection();
 
-        if ( isOrtho && shouldBePersp )
+        if ( type == PROJ_PERSPECTIVE )
         {
-            // need to switch from ortho to perspective
-            _viewCamera->setProjectionMatrixAsPerspective(_vfov, vp->width()/vp->height(), 1.0f, 10000.0f );
+            if ( isOrtho )
+            {
+                // need to switch from ortho to perspective
+                OE_INFO << LC << "Switching to PERSPECTIVE" << std::endl;
+
+                _viewCamera->setProjectionMatrixAsPerspective(_vfov, vp->width()/vp->height(), 1.0f, 10000.0f );
+                if ( _savedCNFMode.isSet() )
+                    _viewCamera->setComputeNearFarMode( *_savedCNFMode );
+            }
         }
-        else if ( isOrtho || !shouldBePersp )
+        else if ( type == PROJ_ORTHOGRAPHIC )
         {
-            // need to update the ortho projection matrix because we've either (a) just switched
-            // from perspective to ortho, or (b) changed the _distance and need to simulate "zoom"
-            // by adjusting the proj matrix (something you only need to do in ortho mode)
+            if ( !isOrtho )
+            {
+                // need to switch from perspective to ortho, so cache the VFOV of the perspective
+                // camera -- we'll need it in ortho mode to create a proper frustum.
+                OE_INFO << LC << "Switching to ORTHO" << std::endl;
+
+                double ar, zn, zf; // not used
+                _viewCamera->getProjectionMatrixAsPerspective(_vfov, ar, zn, zf);
+                _tanHalfVFOV = tan(0.5*(double)osg::DegreesToRadians(_vfov));
+                _savedCNFMode = _viewCamera->getComputeNearFarMode();
+                _viewCamera->setComputeNearFarMode( osg::CullSettings::DO_NOT_COMPUTE_NEAR_FAR );
+            }
+
+            // need to update the ortho projection matrix to reflect the camera distance.
             double ar = vp->width()/vp->height();
             double y = _distance * _tanHalfVFOV;
             double x = y * ar;
-            _viewCamera->setProjectionMatrixAsOrtho(-x, x, -y, y, 1.0f, 10000.0f);
-        }
-        else if ( !isOrtho && !shouldBePersp )
-        {
-            // need to switch from perspective to ortho, so cache the VFOV of the perspective
-            // camera -- we'll need it in ortho mode to create a proper frustum.
-            double ar, zn, zf; // not used
-            _viewCamera->getProjectionMatrixAsPerspective(_vfov, ar, zn, zf);
-            _tanHalfVFOV = tan(0.5*(double)osg::DegreesToRadians(_vfov));
+            _viewCamera->setProjectionMatrixAsOrtho(-x, x, -y, y, -1e6, 1e8);
         }
     }
 }

@@ -579,7 +579,7 @@ MapNodeHelper::parse(MapNode*             mapNode,
         EarthManipulator* manip = dynamic_cast<EarthManipulator*>(view->getCameraManipulator());
         if ( manip )
         {
-            manip->getSettings()->setCameraProjectionType( EarthManipulator::PROJECTION_ORTHOGRAPHIC );
+            manip->getSettings()->setCameraProjection( EarthManipulator::PROJ_ORTHOGRAPHIC );
         }
     }
 

@@ -22,7 +22,7 @@
 #include <osgEarthAnnotation/Decluttering>
 #include <osgEarthSymbology/Color>
 #include <osgEarth/ThreadingUtils>
-#include <osgEarth/Utils>
+#include <osgEarth/CullingUtils>
 #include <osgEarth/MapNode>
 #include <osgText/Text>
 #include <osg/ComputeBoundsVisitor>

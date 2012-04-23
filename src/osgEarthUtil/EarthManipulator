@@ -103,10 +103,10 @@ namespace osgEarth { namespace Util
 		};
 
         /** Camera projection matrix type **/
-        enum ProjectionType
+        enum CameraProjection
         {
-            PROJECTION_PERSPECTIVE,
-            PROJECTION_ORTHOGRAPHIC
+            PROJ_PERSPECTIVE,
+            PROJ_ORTHOGRAPHIC
         };
 
         struct OSGEARTHUTIL_EXPORT ActionOption {
@@ -458,8 +458,8 @@ namespace osgEarth { namespace Util
             }
 
             /** The camera projection matrix type */
-            void setCameraProjectionType( const ProjectionType& value );
-            const ProjectionType& getCameraProjectionType() const { return _camProjType; }
+            void setCameraProjection( const CameraProjection& value );
+            const CameraProjection& getCameraProjection() const { return _camProjType; }
 
         private:
 
@@ -497,7 +497,7 @@ namespace osgEarth { namespace Util
             bool _auto_vp_duration;
             double _min_vp_duration_s, _max_vp_duration_s;
 
-            ProjectionType _camProjType;
+            CameraProjection _camProjType;
         };
 
     public:
@@ -847,6 +847,7 @@ namespace osgEarth { namespace Util
         osg::observer_ptr<osg::Camera> _viewCamera;
         double _vfov;
         double _tanHalfVFOV;
+        optional<osg::CullSettings::ComputeNearFarMode> _savedCNFMode;
         
         struct CameraPostUpdateCallback : public osg::NodeCallback {
             CameraPostUpdateCallback(EarthManipulator* m) : _m(m) { }

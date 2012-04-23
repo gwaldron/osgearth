@@ -153,10 +153,10 @@ namespace
         {
             if (ea.getEventType() == ea.KEYDOWN && ea.getKey() == _key)
             {
-                if ( _manip->getSettings()->getCameraProjectionType() == EarthManipulator::PROJECTION_PERSPECTIVE )
-                    _manip->getSettings()->setCameraProjectionType( EarthManipulator::PROJECTION_ORTHOGRAPHIC );
+                if ( _manip->getSettings()->getCameraProjection() == EarthManipulator::PROJ_PERSPECTIVE )
+                    _manip->getSettings()->setCameraProjection( EarthManipulator::PROJ_ORTHOGRAPHIC );
                 else
-                    _manip->getSettings()->setCameraProjectionType( EarthManipulator::PROJECTION_PERSPECTIVE );
+                    _manip->getSettings()->setCameraProjection( EarthManipulator::PROJ_PERSPECTIVE );
                 aa.requestRedraw();
                 return true;
             }

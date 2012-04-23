@@ -20,10 +20,6 @@
 #include <osgEarthFeatures/FeatureModelGraph>
 #include <osgEarth/SpatialReference>
 #include <osg/Notify>
-#include <osg/Timer>
-#include <osg/LOD>
-#include <osg/ClusterCullingCallback>
-#include <osgUtil/Optimizer>
 
 using namespace osgEarth;
 using namespace osgEarth::Features;

@@ -21,7 +21,6 @@
 #include <osgEarthSymbology/MeshSubdivider>
 #include <osgEarthSymbology/MeshConsolidator>
 #include <osgEarth/ECEF>
-#include <osg/ClusterCullingCallback>
 #include <osg/Geode>
 #include <osg/Geometry>
 #include <osg/MatrixTransform>

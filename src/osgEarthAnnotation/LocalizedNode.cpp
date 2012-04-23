@@ -19,7 +19,7 @@
 
 #include <osgEarthAnnotation/LocalizedNode>
 #include <osgEarthAnnotation/Decluttering>
-#include <osgEarth/Utils>
+#include <osgEarth/CullingUtils>
 #include <osgEarth/MapNode>
 #include <osg/AutoTransform>
 #include <osg/MatrixTransform>

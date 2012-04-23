@@ -44,7 +44,7 @@ namespace
         {
             for( unsigned i=0; i<de->getNumIndices(); ++i )
             {
-                DE::value_type index = de->getElement(i);
+                typename DE::value_type index = de->getElement(i);
                 if ( index > maxIndex )
                 {
                     OE_WARN << "MAXIMUM Index exceeded in DrawElements" << std::endl;

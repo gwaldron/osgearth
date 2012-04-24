@@ -205,15 +205,11 @@ FeatureEditor::init()
     //Create a dragger for each point
     for (unsigned int i = 0; i < _feature->getGeometry()->size(); i++)
     {
-        osg::Matrixd matrix;
-        double lat = (*_feature->getGeometry())[i].y();
-        double lon = (*_feature->getGeometry())[i].x();
-        _mapNode->getMap()->getProfile()->getSRS()->getEllipsoid()->computeLocalToWorldTransformFromLatLongHeight(osg::DegreesToRadians(lat), osg::DegreesToRadians(lon), 0, matrix);    
-
         SphereDragger* dragger = new SphereDragger( _mapNode );
         dragger->setColor( _color );
         dragger->setPickColor( _pickColor );
         dragger->setSize( _size );
+        dragger->setPosition(GeoPoint(_feature->getSRS(),  (*_feature->getGeometry())[i].x(),  (*_feature->getGeometry())[i].y()));
         dragger->addPositionChangedCallback(new MoveFeatureDraggerCallback(_feature.get(), _source.get(), i) );
 
         addChild(dragger);        

@@ -77,9 +77,6 @@ to extruded buildings.
     
     <options>
         <lighting>false</lighting>
-        <terrain>
-            <sample_ratio>0.5</sample_ratio>
-        </terrain>
     </options> 
     
     <external>

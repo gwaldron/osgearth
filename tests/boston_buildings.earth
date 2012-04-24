@@ -86,9 +86,6 @@ osgearth_viewer boston_buildings.earth --kml ../data/BostonBuildings.kmz to see 
     
     <options>
         <lighting>false</lighting>
-        <terrain>
-            <sample_ratio>0.5</sample_ratio>
-        </terrain>
     </options> 
     
     <external>

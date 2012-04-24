@@ -23,6 +23,7 @@
 #include <osgEarth/GeoMath>
 #include <osgEarth/Units>
 #include <osgEarth/StringUtils>
+#include <osgEarthUtil/ExampleResources>
 #include <osgEarthUtil/EarthManipulator>
 #include <osgEarthUtil/MGRSFormatter>
 #include <osgEarthUtil/Controls>
@@ -35,9 +36,6 @@
 #include <osgViewer/Viewer>
 #include <osgViewer/ViewerEventHandlers>
 #include <osgGA/StateSetManipulator>
-#include <osg/CoordinateSystemNode>
-#include <osg/Program>
-#include <osg/BlendFunc>
 
 using namespace osgEarth;
 using namespace osgEarth::Util;
@@ -113,6 +111,7 @@ struct TrackSim : public osg::Referenced
 };
 typedef std::list< osg::ref_ptr<TrackSim> > TrackSims;
 
+
 /** Update operation that runs the simulators. */
 struct TrackSimUpdate : public osg::Operation
 {
@@ -127,6 +126,7 @@ struct TrackSimUpdate : public osg::Operation
 
     TrackSims& _sims;
 };
+
 
 /**
  * Creates a field schema that we'll later use as a labeling template for
@@ -157,6 +157,7 @@ createFieldSchema( TrackNodeFieldSchema& schema )
     numberSymbol->alignment() = TextSymbol::ALIGN_RIGHT_CENTER;
     schema[FIELD_NUMBER] = TrackNodeField(numberSymbol, false);
 }
+
 
 /** Builds a bunch of tracks. */
 void
@@ -201,6 +202,7 @@ createTrackNodes( MapNode* mapNode, osg::Group* parent, const TrackNodeFieldSche
         sims.push_back( sim );
     }
 }
+
 
 /** creates some UI controls for adjusting the decluttering parameters. */
 void
@@ -280,6 +282,7 @@ createControls( osgViewer::View* view )
         0.0, 2.0, *g_dcOptions.outAnimationTime(), new ChangeFloatOption(g_dcOptions.outAnimationTime(), deactLabel) ) );
 }
 
+
 /**
  * Main application.
  * Creates some simulated track data and runs the simulation.
@@ -289,16 +292,22 @@ main(int argc, char** argv)
 {
     osg::ArgumentParser arguments(&argc,argv);
 
+    // initialize a viewer.
+    osgViewer::Viewer viewer( arguments );
+    viewer.setCameraManipulator( new EarthManipulator );
+
     // load a map from an earth file.
-    MapNode* mapNode = MapNode::load( arguments );
+    osg::Node* earth = MapNodeHelper().load(arguments, &viewer);
+    MapNode* mapNode = MapNode::findMapNode(earth);
     if ( !mapNode )
-        return usage( "Missing required .earth file" );
+        return usage("Missing required .earth file" );
 
     // count on the cmd line?
     arguments.read("--count", g_numTracks);
     
     osg::Group* root = new osg::Group();
-    root->addChild( mapNode );
+    root->addChild( earth );
+    viewer.setSceneData( root );
 
     // build a track field schema.
     TrackNodeFieldSchema schema;
@@ -323,13 +332,9 @@ main(int argc, char** argv)
     g_dcOptions.sortByPriority()   = true;
     Decluttering::setOptions( g_dcOptions );
 
-    // initialize a viewer.
-    osgViewer::Viewer viewer( arguments );
-    viewer.setCameraManipulator( new EarthManipulator );
-    viewer.setSceneData( root );
-
     // attach the simulator to the viewer.
     viewer.addUpdateOperation( new TrackSimUpdate(trackSims) );
+    viewer.setRunFrameScheme( viewer.CONTINUOUS );
 
     // configure a UI for controlling the demo
     createControls( &viewer );
@@ -337,14 +342,6 @@ main(int argc, char** argv)
     // osgEarth benefits from pre-compilation of GL objects in the pager. In newer versions of
     // OSG, this activates OSG's IncrementalCompileOpeartion in order to avoid frame breaks.
     viewer.getDatabasePager()->setDoPreCompile( true );
-
-    // add some stock OSG handlers:
-    viewer.addEventHandler(new osgViewer::StatsHandler());
-    viewer.addEventHandler(new osgViewer::WindowSizeHandler());
-    viewer.addEventHandler(new osgViewer::ThreadingHandler());
-    viewer.addEventHandler(new osgViewer::LODScaleHandler());
-    viewer.addEventHandler(new osgGA::StateSetManipulator(viewer.getCamera()->getOrCreateStateSet()));
-    viewer.addEventHandler(new osgViewer::HelpHandler(arguments.getApplicationUsage()));
 
     viewer.run();
 }

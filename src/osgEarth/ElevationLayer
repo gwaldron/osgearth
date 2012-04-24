@@ -44,7 +44,8 @@ namespace osgEarth
         virtual ~ElevationLayerOptions() { }
 
     public:
-        virtual Config getConfig( bool isolate =false ) const;
+        virtual Config getConfig() const { return getConfig(false); }
+        virtual Config getConfig( bool isolate ) const;
         virtual void mergeConfig( const Config& conf );
         
     private:

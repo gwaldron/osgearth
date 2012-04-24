@@ -74,6 +74,11 @@ Config::mutable_child( const std::string& childName )
 void
 Config::merge( const Config& rhs ) 
 {
+    // remove any matching keys first; this will allow the addition of multi-key values
+    for( ConfigSet::const_iterator c = rhs._children.begin(); c != rhs._children.end(); ++c )
+        remove( c->key() );
+
+    // add in the new values.
     for( ConfigSet::const_iterator c = rhs._children.begin(); c != rhs._children.end(); ++c )
         add( *c );
 }

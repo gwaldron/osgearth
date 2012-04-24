@@ -390,7 +390,11 @@ TMSPackager::package(ElevationLayer*    layer,
     }
 
     // fetch one tile to see what the tile size will be
-    GeoHeightField testHF = layer->createHeightField( rootKeys[0] );
+    GeoHeightField testHF;
+    for( std::vector<TileKey>::iterator i = rootKeys.begin(); i != rootKeys.end() && !testHF.valid(); ++i )
+    {
+        testHF = layer->createHeightField( *i );
+    }
     if ( !testHF.valid() )
         return Result( "Unable to determine heightfield size" );
 

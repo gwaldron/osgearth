@@ -54,6 +54,13 @@ namespace osgEarth
         static osg::NodeCallback* create( osg::Node* node, const osg::Vec3d& ecefControlPoint );
 
         /**
+         * Same as above, but uses another method to compute the parameters. There should only
+         * be one, but we need to investigate to see which is the better algorithm. Keeping this
+         * for now since it works with the feature setup..
+         */
+        static osg::NodeCallback* create2( osg::Node* node, const osg::Vec3d& ecefControlPoint );
+
+        /**
          * Creates a cluster culling callback and installs it on the node. If the node is
          * a transform, it will create a group above the transform and install the callback
          * on that group instead.

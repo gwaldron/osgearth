@@ -473,15 +473,6 @@ HeightFieldUtils::createClusterCullingCallback( osg::HeightField* grid, osg::Ell
         min_dot_product,
         max_cluster_culling_radius);
 
-#if 0
-    osg::ClusterCullingCallback* ccc = new osg::ClusterCullingCallback;
-
-    ccc->set(center_position + transformed_center_normal*max_cluster_culling_height ,
-        transformed_center_normal, 
-        min_dot_product,
-        max_cluster_culling_radius);
-#endif
-
     return ccc;
 }
 

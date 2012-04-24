@@ -20,24 +20,12 @@
 #define OSGEARTH_NODE_UTILS_H 1
 
 #include <osgEarth/Common>
-#include <osg/ClusterCullingCallback>
 #include <osg/View>
 #include <osgGA/GUIActionAdapter>
 #include <osgUtil/LineSegmentIntersector>
 
 namespace osgEarth
 {
-    /**
-     * Given a geocentric subgraph and a center point, generate a suitable
-     * cluster culling callback.
-     */
-    struct OSGEARTH_EXPORT ClusterCullerFactory
-    {
-        static osg::ClusterCullingCallback* create( 
-            osg::Node*        node, 
-            const osg::Vec3d& centerGeocentric );
-    };
-
     /**
      * Visitor that looks for empty group nodes and removes them from the 
      * scene graph. (Note, if the entry node is an empty group, it will

@@ -221,7 +221,7 @@ namespace
 //------------------------------------------------------------------------
 
 void
-MeshConsolidator::run( osg::Geometry& geom )
+MeshConsolidator::convertToTriangles( osg::Geometry& geom )
 {
     if ( !canOptimize(geom) )
         return;
@@ -483,10 +483,12 @@ void
 MeshConsolidator::run( osg::Geode& geode )
 {
     bool useVBOs = false;
-
-    // convert all to triangles:
-    osgUtil::IndexMeshVisitor mesher;
-    geode.accept(mesher);
+    
+    // NOTE: we'd rather use the IndexMeshVisitor instead of our own code here,
+    // but the IMV does not preserve the user data attached to the primitive sets.
+    // We need that since it holds the feature index information.
+    //osgUtil::IndexMeshVisitor mesher;
+    //geode.accept(mesher);
 
     // trivial bailout:
     if ( geode.getNumDrawables() <= 1 )
@@ -507,6 +509,9 @@ MeshConsolidator::run( osg::Geode& geode )
         {
             if ( canOptimize(*geom) )
             {
+                // convert all primitives to triangles.
+                convertToTriangles( *geom );
+
                 // NOTE!! tex/attrib array counts much already be equal.
                 if ( texCoordArrayUnits.size() == 0 )
                 {

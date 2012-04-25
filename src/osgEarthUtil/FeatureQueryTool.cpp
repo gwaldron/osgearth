@@ -184,6 +184,8 @@ FeatureHighlightCallback::onHit( FeatureSourceIndexNode* index, FeatureID fid, c
         osg::Group* group = new osg::Group();
         osg::Geode* geode = 0L;
 
+        OE_NOTICE << "Slices = " << drawSet.slices().size() << std::endl;
+
         for( FeatureDrawSet::DrawableSlices::iterator d = drawSet.slices().begin(); d != drawSet.slices().end(); ++d )
         {
             FeatureDrawSet::DrawableSlice& slice = *d;

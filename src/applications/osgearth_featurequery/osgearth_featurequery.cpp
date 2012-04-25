@@ -92,6 +92,7 @@ main(int argc, char** argv)
             readout->setHorizAlign( Control::ALIGN_RIGHT );
             readout->setBackColor( Color(Color::Black,0.8) );
             tool->addCallback( new FeatureReadoutCallback(readout) );
+            tool->addCallback( new FeatureHighlightCallback() );
         }
 
         return viewer.run();

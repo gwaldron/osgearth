@@ -1962,13 +1962,13 @@ SinglePassTerrainTechnique::createGeometry( const TileFrame& tilef )
 
   
 
-    MeshConsolidator::run( *surface );
+    MeshConsolidator::convertToTriangles( *surface );
 
     if ( skirt )
-        MeshConsolidator::run( *skirt );
+        MeshConsolidator::convertToTriangles( *skirt );
 
     for (MaskRecordVector::iterator mr = masks.begin(); mr != masks.end(); ++mr)
-        MeshConsolidator::run( *((*mr)._geom) );
+        MeshConsolidator::convertToTriangles( *((*mr)._geom) );
     
    
     if (osgDB::Registry::instance()->getBuildKdTreesHint()==osgDB::ReaderWriter::Options::BUILD_KDTREES &&

@@ -179,9 +179,13 @@ OSGTerrainEngineNode::preInitialize( const Map* map, const TerrainOptions& optio
 
         if ( numThreads > 0 )
         {
-            OE_INFO << LC << "Requesting " << numThreads << " database pager threads in STANDARD mode" << std::endl;
+            // NOTE: this doesn't work. the pager gets created before we ever get here.
+            numThreads = osg::maximum(numThreads, 2);
+            int numHttpThreads = osg::clampBetween( numThreads/2, 1, numThreads-1 );
+
+            //OE_INFO << LC << "Requesting pager threads in STANDARD mode: local=" << numThreads << ", http=" << numHttpThreads << std::endl;
             osg::DisplaySettings::instance()->setNumOfDatabaseThreadsHint( numThreads );
-            //osg::DisplaySettings::instance()->setNumOfHttpDatabaseThreadsHint( numThreads );
+            osg::DisplaySettings::instance()->setNumOfHttpDatabaseThreadsHint( numHttpThreads );
         }
     }
 }
@@ -380,7 +384,11 @@ OSGTerrainEngineNode::onMapInfoEstablished( const MapInfo& mapInfo )
                 num = (unsigned)(*_terrainOptions.loadingPolicy()->numLoadingThreadsPerCore() * OpenThreads::GetNumberOfProcessors());
             }
         }
-        _tileService = new TaskService( "TileBuilder", num );
+
+        if ( mode == LoadingPolicy::MODE_PARALLEL )
+        {
+            _tileService = new TaskService( "TileBuilder", num );
+        }
 
         // initialize the tile builder
         _tileBuilder = new TileBuilder( getMap(), _terrainOptions, _tileService.get() );

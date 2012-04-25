@@ -179,7 +179,7 @@ namespace osgEarth
      * probably be renamed. It analyzes the URI and decides whether to make an  HTTP request
      * or to read from disk.
      */
-    class OSGEARTH_EXPORT HTTPClient : public osg::Referenced
+    class OSGEARTH_EXPORT HTTPClient // : public osg::Referenced
     {
     public:
         /**
@@ -261,9 +261,11 @@ namespace osgEarth
                                  const osgDB::Options* options  =0L,
                                  ProgressCallback*     progress =0L );
 
-    private:
+    public:
         HTTPClient();
         virtual ~HTTPClient();
+
+    private:
 
         void readOptions( const osgDB::ReaderWriter::Options* options, std::string &proxy_host, std::string &proxy_port ) const;
 

@@ -30,6 +30,9 @@ using namespace osgEarth::Threading;
 
 unsigned osgEarth::Threading::getCurrentThreadId()
 {
+ /*   OpenThreads::Thread* t = OpenThreads::Thread::CurrentThread();
+    return t ? t->getThreadId() : 0u;*/
+
 #ifdef _WIN32
         return (unsigned)::GetCurrentThreadId();
 #else

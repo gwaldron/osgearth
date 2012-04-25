@@ -244,6 +244,15 @@ namespace osgEarth
          */
         optional<bool>& enableBlending() { return _enableBlending; }
         const optional<bool>& enableBlending() const { return _enableBlending; }
+
+        /**
+         * Whether to enable the "fast path" for spherical Mercator image layers
+         * Default = true. If enabled, Mercator image tiles will be rendered on a
+         * geocentric map with no reprojection. The trade-off is higher texture
+         * memory usage and NPOT texture usage.
+         */
+        optional<bool>& enableMercatorFastPath() { return _mercatorFastPath; }
+        const optional<bool>& enableMercatorFastPath() const { return _mercatorFastPath; }
    
     public:
         virtual Config getConfig() const;
@@ -272,6 +281,7 @@ namespace osgEarth
         optional<bool>  _enableMipmapping;
         optional<bool> _clusterCulling;
         optional<bool> _enableBlending;
+        optional<bool> _mercatorFastPath;
         optional<osg::Texture::FilterMode> _magFilter;
         optional<osg::Texture::FilterMode> _minFilter;
         optional<ElevationInterpolation> _elevationInterpolation;

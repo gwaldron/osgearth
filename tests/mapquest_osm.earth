@@ -10,7 +10,6 @@ TIP: set your OSG_NUM_HTTP_DATABASE_THREADS to 4 or more!
     <image name="mapquest_osm" driver="xyz">
         <url>http://otile[1234].mqcdn.com/tiles/1.0.0/osm/{z}/{x}/{y}.jpg</url>
         <profile>global-mercator</profile>
-        <lod_blending>true</lod_blending>
     </image>
     
     <options>

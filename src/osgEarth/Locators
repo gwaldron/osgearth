@@ -53,9 +53,9 @@ namespace osgEarth
         const GeoExtent& getDataExtent() const;
 
         /** Clones the current locator, applying a new display (i.e. crop) extent. */
-        virtual GeoLocator* cloneAndCrop( const osgTerrain::Locator& prototype, const GeoExtent& displayExtent ) const;
+        //virtual GeoLocator* cloneAndCrop( const osgTerrain::Locator& prototype, const GeoExtent& displayExtent ) const;
 
-        virtual GeoLocator* getGeographicFromGeocentric( ) const;
+        virtual GeoLocator* getGeographicFromGeocentric() const;
 
         virtual bool isEquivalentTo( const GeoLocator& rhs ) const;
         
@@ -82,18 +82,22 @@ namespace osgEarth
     class OSGEARTH_EXPORT MercatorLocator : public GeoLocator
     {
     public:
+        MercatorLocator( const GeoExtent& dataExtent );
+
         MercatorLocator( const osgTerrain::Locator& prototype, const GeoExtent& dataExtent );
 
         //virtual bool convertLocalToModel(const osg::Vec3d& local, osg::Vec3d& model) const;
         virtual bool convertModelToLocal(const osg::Vec3d& world, osg::Vec3d& local) const;
         
         /** Clones the current locator, applying a new display (i.e. crop) extent. */
-        virtual GeoLocator* cloneAndCrop( const osgTerrain::Locator& prototype, const GeoExtent& displayExtent );
+        //virtual GeoLocator* cloneAndCrop( const osgTerrain::Locator& prototype, const GeoExtent& displayExtent );
 
-        virtual GeoLocator* getGeographicFromGeocentric( );
+        virtual GeoLocator* getGeographicFromGeocentric() const;
 
     private:
         GeoExtent _geoDataExtent;
+
+        void postInit();
     };
 }
 

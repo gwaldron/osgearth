@@ -429,7 +429,7 @@ SinglePassTerrainTechnique::createGeoImage( const CustomColorLayer& colorLayer,
             layerLocator = layerLocator->getGeographicFromGeocentric();
 
         const GeoExtent& imageExtent = layerLocator->getDataExtent();
-        image = GeoImage( colorLayer.getImage(), imageExtent ); //const_cast<osg::Image*>(colorLayer.getImage()), imageExtent );
+        image = GeoImage( colorLayer.getImage(), imageExtent );
         return true;
     }
     return false;

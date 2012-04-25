@@ -62,6 +62,7 @@ namespace osgEarth
     {
     public:
         ImageMosaic();
+        virtual ~ImageMosaic();
 
         osg::Image* createImage();
 
@@ -75,7 +76,6 @@ namespace osgEarth
 
     protected:
 
-        virtual ~ImageMosaic();
         TileImageList _images;
     };
 }

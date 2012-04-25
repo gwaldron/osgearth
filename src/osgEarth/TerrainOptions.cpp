@@ -102,6 +102,7 @@ _lodTransitionTimeSeconds( 0.5f ),
 _enableMipmapping( true ),
 _clusterCulling( true ),
 _enableBlending( false ),
+_mercatorFastPath( true ),
 _minFilter( osg::Texture::LINEAR_MIPMAP_LINEAR ),
 _magFilter( osg::Texture::LINEAR)
 {
@@ -127,6 +128,7 @@ TerrainOptions::getConfig() const
     conf.updateIfSet( "mipmapping", _enableMipmapping );
     conf.updateIfSet( "cluster_culling", _clusterCulling );
     conf.updateIfSet( "blending", _enableBlending );
+    conf.updateIfSet( "mercator_fast_path", _mercatorFastPath );
 
     conf.updateIfSet( "compositor", "auto",             _compositingTech, COMPOSITING_AUTO );
     conf.updateIfSet( "compositor", "texture_array",    _compositingTech, COMPOSITING_TEXTURE_ARRAY );
@@ -167,6 +169,7 @@ TerrainOptions::fromConfig( const Config& conf )
     conf.getIfSet( "mipmapping", _enableMipmapping );
     conf.getIfSet( "cluster_culling", _clusterCulling );
     conf.getIfSet( "blending", _enableBlending );
+    conf.getIfSet( "mercator_fast_path", _mercatorFastPath );
 
     conf.getIfSet( "compositor", "auto",             _compositingTech, COMPOSITING_AUTO );
     conf.getIfSet( "compositor", "texture_array",    _compositingTech, COMPOSITING_TEXTURE_ARRAY );

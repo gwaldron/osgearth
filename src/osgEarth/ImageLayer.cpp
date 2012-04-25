@@ -313,6 +313,7 @@ ImageLayer::initPreCacheOp()
     _preCacheOp = op;
 }
 
+
 CacheBin*
 ImageLayer::getCacheBin( const Profile* profile )
 {
@@ -322,8 +323,69 @@ ImageLayer::getCacheBin( const Profile* profile )
     return TerrainLayer::getCacheBin( profile, binId );
 }
 
+
 GeoImage
 ImageLayer::createImage( const TileKey& key, ProgressCallback* progress, bool forceFallback )
+{
+    return createImageInKeyProfile( key, progress, forceFallback );
+}
+
+
+GeoImage
+ImageLayer::createImageInNativeProfile( const TileKey& key, ProgressCallback* progress, bool forceFallback )
+{
+    const Profile* nativeProfile = getProfile();
+    if ( !nativeProfile )
+    {
+        OE_WARN << LC << "Could not establish the profile for Layer \"" << getName() << "\"" << std::endl;
+        return GeoImage::INVALID;
+    }
+
+    if ( key.getProfile()->isEquivalentTo(nativeProfile) )
+    {
+        // requested profile matches native profile, move along.
+        return createImageInKeyProfile( key, progress, forceFallback );
+    }
+    else
+    {
+        // find the intersection of keys.
+        std::vector<TileKey> nativeKeys;
+        nativeProfile->getIntersectingTiles(key.getExtent(), nativeKeys);
+        
+        // build a mosaic of the images from the native profile keys:
+        ImageMosaic mosaic;
+        for( std::vector<TileKey>::iterator k = nativeKeys.begin(); k != nativeKeys.end(); ++k )
+        {
+            GeoImage image = createImageInKeyProfile( *k, progress, forceFallback );
+            if ( image.valid() )
+            {
+                mosaic.getImages().push_back( TileImage(image.getImage(), *k) );
+            }
+        }
+
+        // bail out if we got nothing.
+        if ( mosaic.getImages().size() == 0 )
+            return GeoImage::INVALID;
+
+        // assemble new GeoImage from the mosaic.
+        double rxmin, rymin, rxmax, rymax;
+        mosaic.getExtents( rxmin, rymin, rxmax, rymax );
+
+        GeoImage result( 
+            mosaic.createImage(), 
+            GeoExtent( nativeProfile->getSRS(), rxmin, rymin, rxmax, rymax ) );
+
+        // calculate a tigher extent that matches the original input key:
+        GeoExtent tightExtent = nativeProfile->clampAndTransformExtent( key.getExtent() );
+
+        // a non-exact crop is critical here to avoid resampling the data
+        return result.crop( tightExtent, false );
+    }
+}
+
+
+GeoImage
+ImageLayer::createImageInKeyProfile( const TileKey& key, ProgressCallback* progress, bool forceFallback )
 {
     GeoImage result;
 
@@ -335,6 +397,8 @@ ImageLayer::createImage( const TileKey& key, ProgressCallback* progress, bool fo
 
     OE_DEBUG << LC << "Layer \"" << getName() << "\" create image for \"" << key.str() << "\"" << std::endl;
 
+
+    // locate the cache bin for the target profile for this layer:
     CacheBin* cacheBin = getCacheBin( key.getProfile() );
 
     // validate that we have either a valid tile source, or we're cache-only.
@@ -374,8 +438,6 @@ ImageLayer::createImage( const TileKey& key, ProgressCallback* progress, bool fo
     }
 
     // Get an image from the underlying TileSource.
-    //osg::Image* image = createImageFromTileSource( key, progress, forceFallback );
-    //result = GeoImage( image, key.getExtent() );
     result = createImageFromTileSource( key, progress, forceFallback );
 
     // Normalize the image if necessary
@@ -397,7 +459,7 @@ ImageLayer::createImage( const TileKey& key, ProgressCallback* progress, bool fo
 }
 
 
-//osg::Image*
+
 GeoImage
 ImageLayer::createImageFromTileSource(const TileKey&    key,
                                       ProgressCallback* progress,
@@ -436,15 +498,6 @@ ImageLayer::createImageFromTileSource(const TileKey&    key,
         OE_DEBUG << LC << "createImageFromTileSource: hasDataAtLOD(" << key.str() << ") == false" << std::endl;
         return GeoImage::INVALID;
     }
-
-#if 0
-    // Return an empty image if there's no data in the requested extent
-    // (even though the LOD is valid)
-    if ( !source->hasDataInExtent( key.getExtent() ) )
-    {
-        return ImageUtils::createEmptyImage();
-    }
-#endif
 
     if ( !source->hasDataInExtent( key.getExtent() ) )
     {
@@ -506,9 +559,9 @@ ImageLayer::createImageFromTileSource(const TileKey&    key,
     return GeoImage(result.get(), finalKey.getExtent());
 }
 
-//osg::Image*
+
 GeoImage
-ImageLayer::assembleImageFromTileSource(const TileKey&    key, 
+ImageLayer::assembleImageFromTileSource(const TileKey&    key,
                                         ProgressCallback* progress,
                                         bool              forceFallback )
 {
@@ -658,8 +711,6 @@ ImageLayer::assembleImageFromTileSource(const TileKey&    key,
             // (TODO: this might be OBE due to the elimination of the Mercator fast-path -gw)
             if (key.getExtent().getSRS()->isGeographic() && mosaic.getSRS()->isSphericalMercator())
             {
-                //keyExtent = osgEarth::Registry::instance()->getGlobalMercatorProfile()->clampAndTransformExtent( 
-                //    key.getExtent());
                 keyExtent = osgEarth::Registry::instance()->getSphericalMercatorProfile()->clampAndTransformExtent( 
                     key.getExtent());
             }

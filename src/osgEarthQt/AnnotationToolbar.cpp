@@ -33,9 +33,6 @@ using namespace osgEarth::QtGui;
 AnnotationToolbar::AnnotationToolbar(osg::Group* root, osgEarth::MapNode* mapNode, DataManager* dm, QWidget* parent)
 : QToolBar(tr("_annotation_toolbar"), parent), _root(root), _mapNode(mapNode), _manager(dm)
 {
-  if (_mapNode.valid())
-    _guiHandler = new AnnotationToolbarMouseHandler(this, _mapNode.get());
-
   initialize();
 }
 
@@ -60,10 +57,10 @@ AnnotationToolbar::createDefaultActions()
   connect(_addMarker, SIGNAL(triggered()), this, SLOT(addMarkerAnnotation()));
   addAction(_addMarker);
 
-  _addLine = new QAction(QIcon(":/images/draw_line_bg.png"), tr(""), actionParent);
-  _addLine->setToolTip(tr("Draw a line"));
-  connect(_addLine, SIGNAL(triggered()), this, SLOT(addLineAnnotation()));
-  addAction(_addLine);
+  _addPath = new QAction(QIcon(":/images/draw_line_bg.png"), tr(""), actionParent);
+  _addPath->setToolTip(tr("Draw a path"));
+  connect(_addPath, SIGNAL(triggered()), this, SLOT(addPathAnnotation()));
+  addAction(_addPath);
 
   _addPoly = new QAction(QIcon(":/images/draw_poly_bg.png"), tr(""), actionParent);
   _addPoly->setToolTip(tr("Draw a polygon"));
@@ -92,28 +89,18 @@ void AnnotationToolbar::setActiveViews(const ViewVector& views)
 
 void AnnotationToolbar::addView(osgViewer::View* view)
 {
-  view->addEventHandler(_guiHandler.get());
   _views.push_back(view);
 }
 
 void AnnotationToolbar::removeViews()
 {
-  for (ViewVector::iterator it = _views.begin(); it != _views.end(); ++it)
-    (*it)->removeEventHandler(_guiHandler.get());
-
   _views.clear();
-}
-
-void AnnotationToolbar::mapClick(const osgEarth::GeoPoint& point)
-{
-  if (!_activeDialog.isNull())
-    _activeDialog->mapClick(point);
 }
 
 void
 AnnotationToolbar::addMarkerAnnotation()
 {
-  _activeDialog = new osgEarth::QtGui::AddMarkerDialog(_root, _mapNode);
+  _activeDialog = new osgEarth::QtGui::AddMarkerDialog(_root, _mapNode, _views);
 
   this->setEnabled(false);
 
@@ -126,18 +113,18 @@ AnnotationToolbar::addMarkerAnnotation()
 }
 
 void
-AnnotationToolbar::addLineAnnotation()
+AnnotationToolbar::addPathAnnotation()
 {
-  //_activeDialog = new osgEarth::QtGui::AddLineDialog(_root, _mapNode);
+  _activeDialog = new osgEarth::QtGui::AddPathDialog(_root, _mapNode, _views);
 
-  //this->setEnabled(false);
+  this->setEnabled(false);
 
-  //connect(_activeDialog, SIGNAL(finished(int)), this, SLOT(onAddFinished(int)));
+  connect(_activeDialog, SIGNAL(finished(int)), this, SLOT(onAddFinished(int)));
 
-  //_activeDialog->setWindowTitle(tr("New line"));
-  //_activeDialog->setWindowFlags(Qt::Tool | Qt::WindowTitleHint | Qt::CustomizeWindowHint| Qt::WindowStaysOnTopHint);
-  //_activeDialog->setAttribute(Qt::WA_DeleteOnClose);
-  //_activeDialog->show();
+  _activeDialog->setWindowTitle(tr("New path"));
+  _activeDialog->setWindowFlags(Qt::Tool | Qt::WindowTitleHint | Qt::CustomizeWindowHint| Qt::WindowStaysOnTopHint);
+  _activeDialog->setAttribute(Qt::WA_DeleteOnClose);
+  _activeDialog->show();
 }
 
 void

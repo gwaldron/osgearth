@@ -33,7 +33,7 @@
 
 namespace osgEarth { namespace QtGui 
 {
-    class LOSIntersectingDragger : public osgEarth::SphereDragger
+  class LOSIntersectingDragger : public osgEarth::SphereDragger
   {
   public:
       LOSIntersectingDragger(osgEarth::MapNode* mapNode):

@@ -30,8 +30,6 @@
 
 namespace osgEarth { namespace QtGui
 {
-  struct AnnotationToolbarMouseHandler;
-
   class OSGEARTHQT_EXPORT AnnotationToolbar : public QToolBar
   {
     Q_OBJECT
@@ -47,7 +45,7 @@ namespace osgEarth { namespace QtGui
 
   protected slots:
     void addMarkerAnnotation();
-    void addLineAnnotation();
+    void addPathAnnotation();
     void addPolyAnnotation();
     void addCircleAnnotation();
 
@@ -58,78 +56,19 @@ namespace osgEarth { namespace QtGui
     void createDefaultActions();
     void addView(osgViewer::View* view);
     void removeViews();
-    void mapClick(const osgEarth::GeoPoint& point);
 
-    osg::ref_ptr<osgGA::GUIEventHandler>  _guiHandler;
     osg::ref_ptr<osg::Group>              _root;
     osg::ref_ptr<osgEarth::MapNode>       _mapNode;
     osg::ref_ptr<DataManager>             _manager;
     ViewVector                            _views;
 
     QAction* _addMarker;
-    QAction* _addLine;
+    QAction* _addPath;
     QAction* _addPoly;
     QAction* _addCircle;
 
     QPointer<BaseAnnotationDialog>  _activeDialog;
-    //osgEarth::QtGui::AddMarkerDialog* _markerDialog;
-
-    friend struct AnnotationToolbarMouseHandler;
   };
-
-  struct AnnotationToolbarMouseHandler : public osgGA::GUIEventHandler
-    {
-      AnnotationToolbarMouseHandler(AnnotationToolbar* toolbar, osgEarth::MapNode* mapNode)
-        : _toolbar(toolbar), _mapNode(mapNode), _mouseDown(false)
-      {
-      }
-
-      bool handle( const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& aa )
-      {
-        osgViewer::View* view = static_cast<osgViewer::View*>(aa.asView());
-
-        if ( ea.getEventType() == osgGA::GUIEventAdapter::PUSH )
-        {
-          if (ea.getButton() == osgGA::GUIEventAdapter::LEFT_MOUSE_BUTTON)
-          {
-            _mouseDown = true;
-            _xDown = ea.getX();
-            _yDown = ea.getY();
-          }
-        }
-        else if (ea.getEventType() == osgGA::GUIEventAdapter::RELEASE)
-        {
-          if (ea.getButton() == osgGA::GUIEventAdapter::LEFT_MOUSE_BUTTON)
-          {
-            if (_mouseDown && _xDown == ea.getX() && _yDown == ea.getY())
-            {
-              osgUtil::LineSegmentIntersector::Intersections results;
-              if ( view->computeIntersections( _xDown, _yDown, results ) )
-              {
-                // find the first hit under the mouse:
-                osgUtil::LineSegmentIntersector::Intersection first = *(results.begin());
-                osg::Vec3d point = first.getWorldIntersectPoint();
-
-                osgEarth::GeoPoint outPoint;
-                _mapNode->getMap()->worldPointToMapPoint(point, outPoint);
-
-                _toolbar->mapClick(outPoint);
-              }
-            }
-
-            _mouseDown = false;
-          }
-        }
-
-        return false;
-      }
-
-      AnnotationToolbar*      _toolbar;
-      osg::ref_ptr<MapNode>  _mapNode;
-
-      bool _mouseDown;
-      float _xDown, _yDown;
-    };
 } }
 
 #endif // OSGEARTHQT_ANNOTATIONTOOLBAR_H

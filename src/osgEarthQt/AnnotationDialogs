@@ -21,7 +21,11 @@
 
 #include <osgEarthQt/Common>
 
+#include <osgEarth/Draggers>
+#include <osgEarthAnnotation/FeatureNode>
 #include <osgEarthAnnotation/PlaceNode>
+#include <osgEarthFeatures/Feature>
+#include <osgEarthSymbology/Geometry>
 
 #include <QCheckBox>
 #include <QDialog>
@@ -37,31 +41,37 @@ namespace osgEarth { namespace QtGui
     Q_OBJECT
       
   public:
-    BaseAnnotationDialog(QWidget* parent = 0, Qt::WindowFlags f = 0);
+    BaseAnnotationDialog(osgEarth::MapNode* mapNode, const ViewVector& views, QWidget* parent = 0, Qt::WindowFlags f = 0);
 
     std::string getName() { return _nameEdit ? _nameEdit->text().toStdString() : ""; }
     std::string getDescription() { return _descriptionEdit ? _descriptionEdit->text().toStdString() : ""; }
     virtual osgEarth::Annotation::AnnotationNode* getAnnotation() = 0;
 
-    virtual void mapClick(const osgEarth::GeoPoint& point) { };
+    virtual void mapClick(const osgEarth::GeoPoint& point, int button) { };
 
   protected:
     void initDefaultUi();
 
+    osg::ref_ptr<osgEarth::MapNode> _mapNode;
+    ViewVector _views;
     QLineEdit* _nameEdit;
     QLineEdit* _descriptionEdit;
     QVBoxLayout* _customLayout;
     QPushButton* _okButton;
   };
 
+  //---------------------------------------------------------------------------
+
+  struct AddMarkerMouseHandler;
   class OSGEARTHQT_EXPORT AddMarkerDialog : public BaseAnnotationDialog
   {
     Q_OBJECT
 
   public:
-    AddMarkerDialog(osg::Group* root, osgEarth::MapNode* mapNode, QWidget* parent = 0, Qt::WindowFlags f = 0);
+    AddMarkerDialog(osg::Group* root, osgEarth::MapNode* mapNode, const ViewVector& views, QWidget* parent = 0, Qt::WindowFlags f = 0);
 
-    osgEarth::Annotation::AnnotationNode* getAnnotation();
+    osgEarth::Annotation::AnnotationNode* getAnnotation() { return _placeNode.get(); }
+
     void mapClick(const osgEarth::GeoPoint& point);
 
   public slots:
@@ -76,14 +86,248 @@ namespace osgEarth { namespace QtGui
     void closeEvent(QCloseEvent* event);
 
     void initialize();
-    void cleanupNodes();
+    void clearDisplay();
 
     osg::ref_ptr<osg::Group> _root;
-    osg::ref_ptr<osgEarth::MapNode> _mapNode;
+    osg::ref_ptr<osgGA::GUIEventHandler>  _guiHandler;
     QCheckBox* _nameCheckbox;
     osg::ref_ptr<osg::Image> _markerImage;
     osgEarth::Symbology::Style _placeStyle;
     osg::ref_ptr<osgEarth::Annotation::PlaceNode> _placeNode;
+
+    friend struct AddMarkerMouseHandler;
+  };
+
+  struct AddMarkerMouseHandler : public osgGA::GUIEventHandler
+  {
+    AddMarkerMouseHandler(AddMarkerDialog* dialog, osgEarth::MapNode* mapNode)
+      : _dialog(dialog), _mapNode(mapNode), _mouseDown(-1)
+    {
+    }
+
+    bool handle( const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& aa )
+    {
+      osgViewer::View* view = static_cast<osgViewer::View*>(aa.asView());
+
+      if (ea.getButton() == osgGA::GUIEventAdapter::LEFT_MOUSE_BUTTON)
+      {
+        if (ea.getEventType() == osgGA::GUIEventAdapter::PUSH)
+        {
+          _mouseDown = true;
+          _xDown = ea.getX();
+          _yDown = ea.getY();
+        }
+        else if (ea.getEventType() == osgGA::GUIEventAdapter::RELEASE && _mouseDown)
+        {
+          if (_xDown == ea.getX() && _yDown == ea.getY())
+          {
+            osgUtil::LineSegmentIntersector::Intersections results;
+            if ( view->computeIntersections( _xDown, _yDown, results ) )
+            {
+              // find the first hit under the mouse:
+              osgUtil::LineSegmentIntersector::Intersection first = *(results.begin());
+              osg::Vec3d point = first.getWorldIntersectPoint();
+
+              osgEarth::GeoPoint outPoint;
+              _mapNode->getMap()->worldPointToMapPoint(point, outPoint);
+
+              osg::ref_ptr<osg::Node> lastNode = first.nodePath.back();
+              _dialog->mapClick(outPoint);
+            }
+          }
+
+          _mouseDown = false;
+        }
+      }
+
+      return false;
+    }
+
+    AddMarkerDialog*      _dialog;
+    osg::ref_ptr<MapNode>  _mapNode;
+
+    bool _mouseDown;
+    float _xDown, _yDown;
+  };
+
+  //---------------------------------------------------------------------------
+
+  struct AddPathMouseHandler;
+  struct PointDraggerCallback;
+  class OSGEARTHQT_EXPORT AddPathDialog : public BaseAnnotationDialog
+  {
+    Q_OBJECT
+
+  public:
+    AddPathDialog(osg::Group* root, osgEarth::MapNode* mapNode, const ViewVector& views, QWidget* parent = 0, Qt::WindowFlags f = 0);
+
+    osgEarth::Annotation::AnnotationNode* getAnnotation() { return _pathNode.get(); }
+
+    void mapClick(const osgEarth::GeoPoint& point, int button);
+    void addPoint(const osgEarth::GeoPoint& point);
+
+  public slots:
+    void accept();
+    void reject();
+
+  private slots:
+    void onDrapeCheckStateChanged(int state);
+    void onColorButtonClicked();
+
+  protected:
+    void closeEvent(QCloseEvent* event);
+
+    void initialize();
+    void refreshFeatureNode();
+    void createPointDragger(int index, const osgEarth::GeoPoint& point);
+    void movePoint(int index, const osgEarth::GeoPoint& position);
+    void clearDisplay();
+
+    osg::ref_ptr<osg::Group> _root;
+    osg::Group* _draggers;
+    osg::ref_ptr<AddPathMouseHandler>  _guiHandler;
+    QCheckBox* _drapeCheckbox;
+    QPushButton* _colorButton;
+    osg::Vec4f _pathColor;
+    osg::ref_ptr<osgEarth::Symbology::LineString> _pathLine;
+    osg::ref_ptr<osgEarth::Features::Feature> _pathFeature;
+    osg::ref_ptr<osgEarth::Annotation::FeatureNode> _pathNode;
+
+    friend struct AddPathMouseHandler;
+    friend struct PointDraggerCallback;
+  };
+
+  struct AddPathMouseHandler : public osgGA::GUIEventHandler
+  {
+    AddPathMouseHandler(AddPathDialog* dialog, osgEarth::MapNode* mapNode, osg::Group* root)
+      : _dialog(dialog), _mapNode(mapNode), _root(root), _mouseDown(-1), _lastPoint(-500.0, 0.0, 0.0)
+    {
+      //Define a style for the line
+      osgEarth::Symbology::LineSymbol* ls = _lineStyle.getOrCreateSymbol<osgEarth::Symbology::LineSymbol>();
+      ls->stroke()->color() = osgEarth::Symbology::Color::White;
+      ls->stroke()->width() = 2.0f;
+      ls->stroke()->stipple() = 0x0F0F;
+      ls->tessellation() = 20;
+      _lineStyle.getOrCreate<osgEarth::Symbology::AltitudeSymbol>()->clamping() = osgEarth::Symbology::AltitudeSymbol::CLAMP_TO_TERRAIN;
+    }
+
+    bool handle( const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& aa )
+    {
+      osgViewer::View* view = static_cast<osgViewer::View*>(aa.asView());
+
+      if ( ea.getEventType() == osgGA::GUIEventAdapter::PUSH  && _mouseDown == -1)
+      {
+        _mouseDown = ea.getButton();
+        _xDown = ea.getX();
+        _yDown = ea.getY();
+      }
+      else if (ea.getEventType() == osgGA::GUIEventAdapter::MOVE && _lastPoint.x() != -500.0)
+      {
+        osg::Vec3d world;
+        if (_mapNode->getTerrain()->getWorldCoordsUnderMouse(aa.asView(), ea.getX(), ea.getY(), world))
+        {
+          osgEarth::GeoPoint mapPoint;
+          _mapNode->getMap()->worldPointToMapPoint(world, mapPoint);
+          _currentPoint = mapPoint.vec3d();
+
+          updateDisplay();
+        }
+      }
+      else if (ea.getEventType() == osgGA::GUIEventAdapter::RELEASE)
+      {
+        if (ea.getButton() == _mouseDown)
+        {
+          if (_xDown == ea.getX() && _yDown == ea.getY())
+          {
+            osg::Vec3d world;
+            if (_mapNode->getTerrain()->getWorldCoordsUnderMouse(aa.asView(), ea.getX(), ea.getY(), world))
+            {
+              osgEarth::GeoPoint mapPoint;
+              _mapNode->getMap()->worldPointToMapPoint( world, mapPoint );
+              _currentPoint = mapPoint.vec3d();
+              _lastPoint = mapPoint.vec3d();
+              
+              _dialog->mapClick(mapPoint, _mouseDown);
+
+              updateDisplay();
+            }
+          }
+
+          _mouseDown = -1;
+        }
+      }
+      else if (ea.getEventType() == osgGA::GUIEventAdapter::DOUBLECLICK)
+      {
+        QMetaObject::invokeMethod(_dialog, "accept", Qt::QueuedConnection);
+        return true;
+      }
+
+      return false;
+    }
+
+    void clearDisplay()
+    {
+      _lastPoint.x() = -500.0;
+
+      if (_featureNode.valid() && _root.valid())
+      {
+        _root->removeChild( _featureNode.get() );
+        _featureNode = 0L;
+      }
+    }
+
+    void updateDisplay()
+    {
+      if (_root.valid() && _lastPoint.x() != -500.0)
+      {
+        osgEarth::Symbology::LineString* line = new osgEarth::Symbology::LineString();
+        line->push_back( _lastPoint );
+        line->push_back( _currentPoint );
+
+        osgEarth::Features::Feature* feature = new osgEarth::Features::Feature(line, _mapNode->getMapSRS());
+        feature->geoInterp() = osgEarth::GEOINTERP_GREAT_CIRCLE;    
+        feature->style() = _lineStyle;
+
+        if (!_featureNode.valid())
+        {
+          _featureNode = new osgEarth::Annotation::FeatureNode( _mapNode, feature );
+          _featureNode->getOrCreateStateSet()->setMode(GL_LIGHTING, osg::StateAttribute::OFF);
+          _root->addChild( _featureNode.get() );
+        }
+        else
+        {
+          _featureNode->setFeature(feature);
+        }
+      }
+    }
+
+
+    AddPathDialog* _dialog;
+    osg::ref_ptr<MapNode>  _mapNode;
+    osg::ref_ptr<osg::Group> _root;
+    osg::ref_ptr<osgEarth::Annotation::FeatureNode> _featureNode;
+    osgEarth::Symbology::Style _lineStyle;
+
+    int _mouseDown;
+    float _xDown, _yDown;
+    osg::Vec3d _lastPoint;
+    osg::Vec3d _currentPoint;
+  };
+
+  struct PointDraggerCallback : public osgEarth::Dragger::PositionChangedCallback
+  {
+    PointDraggerCallback(int index, AddPathDialog* dialog)
+      : _index(index), _dialog(dialog)
+    {
+    }
+
+    void onPositionChanged(const Dragger* sender, const osgEarth::GeoPoint& position)
+    {
+      _dialog->movePoint(_index, position);
+    }
+
+    int _index;
+    AddPathDialog* _dialog;
   };
 } }
 

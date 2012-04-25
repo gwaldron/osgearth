@@ -19,10 +19,16 @@
 #include <osgEarthQt/AnnotationDialogs>
 #include <osgEarthQt/Common>
 
+#include <osgEarth/Draggers>
+#include <osgEarth/Pickers>
 #include <osgEarthAnnotation/AnnotationData>
+#include <osgEarthAnnotation/FeatureNode>
 #include <osgEarthAnnotation/PlaceNode>
+#include <osgEarthSymbology/Geometry>
 
 #include <QCheckBox>
+#include <QColor>
+#include <QColorDialog>
 #include <QDialog>
 #include <QGLWidget>
 #include <QHBoxLayout>
@@ -35,12 +41,15 @@
 using namespace osgEarth;
 using namespace osgEarth::QtGui;
 
+
 //---------------------------------------------------------------------------
 
-BaseAnnotationDialog::BaseAnnotationDialog(QWidget* parent, Qt::WindowFlags f)
-: QDialog(parent, f)
+BaseAnnotationDialog::BaseAnnotationDialog(osgEarth::MapNode* mapNode, const ViewVector& views, QWidget* parent, Qt::WindowFlags f)
+: QDialog(parent, f), _mapNode(mapNode), _views(views.size())
 {
   initDefaultUi();
+
+  std::copy(views.begin(), views.end(), _views.begin());
 }
 
 void BaseAnnotationDialog::initDefaultUi()
@@ -93,15 +102,24 @@ void BaseAnnotationDialog::initDefaultUi()
 
 //---------------------------------------------------------------------------
 
-AddMarkerDialog::AddMarkerDialog(osg::Group* root, osgEarth::MapNode* mapNode, QWidget* parent, Qt::WindowFlags f)
-: BaseAnnotationDialog(parent, f), _root(root), _mapNode(mapNode)
+AddMarkerDialog::AddMarkerDialog(osg::Group* root, osgEarth::MapNode* mapNode, const ViewVector& views, QWidget* parent, Qt::WindowFlags f)
+: BaseAnnotationDialog(mapNode, views, parent, f), _root(root)
 {
   initialize();
+
+  if (_mapNode.valid() && _views.size() > 0)
+  {
+    _guiHandler = new AddMarkerMouseHandler(this, _mapNode.get());
+    for (ViewVector::const_iterator it = views.begin(); it != views.end(); ++it)
+      (*it)->addEventHandler(_guiHandler.get());
+  }
 }
 
 void AddMarkerDialog::initialize()
 {
   _okButton->setEnabled(false);
+
+  _nameEdit->setText(tr("New Marker"));
 
   // add name display checkbox to the dialog
   _nameCheckbox = new QCheckBox(tr("Display name"));
@@ -137,15 +155,14 @@ void AddMarkerDialog::initialize()
   connect(_nameEdit, SIGNAL(textChanged(const QString&)), this, SLOT(onNameTextChanged(const QString&)));
 }
 
-void AddMarkerDialog::cleanupNodes()
+void AddMarkerDialog::clearDisplay()
 {
   if (_root.valid())
     _root->removeChild(_placeNode);
-}
 
-osgEarth::Annotation::AnnotationNode* AddMarkerDialog::getAnnotation()
-{
-  return _placeNode.get();
+  if (_guiHandler.valid())
+    for (ViewVector::const_iterator it = _views.begin(); it != _views.end(); ++it)
+      (*it)->removeEventHandler(_guiHandler.get());
 }
 
 void AddMarkerDialog::mapClick(const osgEarth::GeoPoint& point)
@@ -163,7 +180,7 @@ void AddMarkerDialog::mapClick(const osgEarth::GeoPoint& point)
 
 void AddMarkerDialog::accept()
 {
-  cleanupNodes();
+  clearDisplay();
 
   if (_placeNode.valid())
   {
@@ -179,13 +196,13 @@ void AddMarkerDialog::accept()
 
 void AddMarkerDialog::reject()
 {
-  cleanupNodes();
+  clearDisplay();
   QDialog::reject();
 }
 
 void AddMarkerDialog::closeEvent(QCloseEvent* event)
 {
-  cleanupNodes();
+  clearDisplay();
   QDialog::closeEvent(event);
 }
 
@@ -203,3 +220,176 @@ void AddMarkerDialog::onNameTextChanged(const QString& text)
 }
 
 //---------------------------------------------------------------------------
+
+AddPathDialog::AddPathDialog(osg::Group* root, osgEarth::MapNode* mapNode, const ViewVector& views, QWidget* parent, Qt::WindowFlags f)
+: BaseAnnotationDialog(mapNode, views, parent, f), _root(root), _draggers(0L), _pathColor(Color::White)
+{
+  initialize();
+
+  if (_mapNode.valid() && _views.size() > 0)
+  {
+    _guiHandler = new AddPathMouseHandler(this, _mapNode.get(), _root);
+    for (ViewVector::const_iterator it = views.begin(); it != views.end(); ++it)
+      (*it)->addEventHandler(_guiHandler.get());
+  }
+}
+
+void AddPathDialog::initialize()
+{
+  _okButton->setEnabled(false);
+
+  _nameEdit->setText(tr("New Path"));
+
+  // add color selection button
+  _colorButton = new QPushButton(tr("Line Color"));
+  _colorButton->setStyleSheet("QPushButton { color: black; background-color: white }");
+  _customLayout->addWidget(_colorButton);
+
+  // add name display checkbox to the dialog
+  _drapeCheckbox = new QCheckBox(tr("Clamp to terrain"));
+  _drapeCheckbox->setCheckState(Qt::Checked);
+  _customLayout->addWidget(_drapeCheckbox);
+
+  // wire up UI events
+  connect(_drapeCheckbox, SIGNAL(stateChanged(int)), this, SLOT(onDrapeCheckStateChanged(int)));
+  connect(_colorButton, SIGNAL(clicked()), this, SLOT(onColorButtonClicked()));
+}
+
+void AddPathDialog::clearDisplay()
+{
+  if (_root.valid())
+  {
+    _root->removeChild(_pathNode);
+    _root->removeChild(_draggers);
+  }
+
+  if (_guiHandler.valid())
+  {
+    for (ViewVector::const_iterator it = _views.begin(); it != _views.end(); ++it)
+      (*it)->removeEventHandler(_guiHandler.get());
+
+    _guiHandler->clearDisplay();
+  }
+}
+
+void AddPathDialog::mapClick(const osgEarth::GeoPoint& point, int button)
+{
+  if (button == osgGA::GUIEventAdapter::LEFT_MOUSE_BUTTON)
+  {
+    addPoint(point);
+  }
+}
+
+void AddPathDialog::refreshFeatureNode()
+{
+  if (_pathNode.valid())  
+  {
+    _pathFeature->style()->getOrCreate<LineSymbol>()->stroke()->color() = _pathColor;
+    _pathFeature->style()->getOrCreate<AltitudeSymbol>()->clamping() = _drapeCheckbox->checkState() == Qt::Checked ? AltitudeSymbol::CLAMP_TO_TERRAIN : AltitudeSymbol::CLAMP_ABSOLUTE;
+    _pathNode->setFeature(_pathFeature);
+  }
+}
+
+void AddPathDialog::createPointDragger(int index, const osgEarth::GeoPoint& point)
+{
+  osgEarth::SphereDragger* sd = new osgEarth::SphereDragger(_mapNode);
+  sd->setSize(4.0f);
+  sd->setColor(Color::Magenta);
+  sd->setPickColor(Color::Green);
+  sd->setPosition(point);
+  PointDraggerCallback* callback = new PointDraggerCallback(index, this);
+  sd->addPositionChangedCallback(callback);
+
+  if (!_draggers)
+  {
+    _draggers = new osg::Group();
+    _root->addChild(_draggers);
+  }
+
+  _draggers->addChild(sd);
+}
+
+void AddPathDialog::movePoint(int index, const osgEarth::GeoPoint& position)
+{
+  (*_pathLine.get())[index] = position.vec3d();
+  refreshFeatureNode();
+}
+
+void AddPathDialog::addPoint(const osgEarth::GeoPoint& point)
+{
+  if (!_pathLine.valid())
+    _pathLine = new osgEarth::Symbology::LineString();
+
+  _pathLine->push_back(point.vec3d());
+
+  if (!_pathNode.valid() && _pathLine->size() > 1)
+  {
+    osgEarth::Symbology::Style pathStyle;
+    pathStyle.getOrCreate<LineSymbol>()->stroke()->color() = Color::White;
+    pathStyle.getOrCreate<LineSymbol>()->stroke()->width() = 2.0f;
+    pathStyle.getOrCreate<LineSymbol>()->tessellation() = 20;
+    pathStyle.getOrCreate<AltitudeSymbol>()->clamping() = AltitudeSymbol::CLAMP_TO_TERRAIN;
+
+    _pathFeature = new osgEarth::Features::Feature(_pathLine, _mapNode->getMapSRS(), pathStyle);
+    //_pathFeature->geoInterp() = GEOINTERP_GREAT_CIRCLE;
+
+    _pathNode = new osgEarth::Annotation::FeatureNode(_mapNode, _pathFeature);
+    _root->addChild(_pathNode);
+
+    _okButton->setEnabled(true);
+  }
+
+  refreshFeatureNode();
+  createPointDragger(_pathLine->size() - 1, point);
+}
+
+void AddPathDialog::accept()
+{
+  clearDisplay();
+
+  if (_pathNode.valid())
+  {
+    osgEarth::Annotation::AnnotationData* annoData = new osgEarth::Annotation::AnnotationData();
+    annoData->setName(getName());
+    annoData->setDescription(getDescription());
+    //annoData->setViewpoint(osgEarth::Viewpoint(_pathNode->getPosition().vec3d(), 0.0, -90.0, 1e5, _pathNode->getPosition().getSRS()));
+
+    _pathNode->setAnnotationData(annoData);
+  }
+
+  QDialog::accept();
+}
+
+void AddPathDialog::reject()
+{
+  clearDisplay();
+  QDialog::reject();
+}
+
+void AddPathDialog::closeEvent(QCloseEvent* event)
+{
+  clearDisplay();
+  QDialog::closeEvent(event);
+}
+
+void AddPathDialog::onDrapeCheckStateChanged(int state)
+{
+  refreshFeatureNode();
+}
+
+void AddPathDialog::onColorButtonClicked()
+{
+  QColor color = QColorDialog::getColor(QColor::fromRgba(_pathColor.asRGBA()), this);
+  if (color.isValid())
+  {
+    _pathColor = osgEarth::Symbology::Color(color.redF(), color.greenF(), color.blueF());
+    refreshFeatureNode();
+
+    int invR = 255 - color.red();
+    int invG = 255 - color.green();
+    int invB = 255 - color.blue();
+    QColor invColor(invR, invG, invB);
+
+    _colorButton->setStyleSheet("QPushButton { color: " + invColor.name() + "; background-color: " + color.name() + " }");
+  }
+}

@@ -247,9 +247,13 @@ MapNode::init()
     else
         OE_WARN << "FAILED to create a terrain engine for this map" << std::endl;
 
-    // make a group for the model layers:
+    // make a group for the model layers.
+    // NOTE: for now, we are going to nullify any shader programs that occur above the model
+    // group, since it does not YET support shader composition. Programs defined INSIDE a
+    // model layer will still work OK though.
     _models = new osg::Group();
     _models->setName( "osgEarth::MapNode.modelsGroup" );
+    _models->getOrCreateStateSet()->setAttributeAndModes( new osg::Program(), osg::StateAttribute::OFF );
     addChild( _models.get() );
 
     // make a group for overlay model layers:

@@ -83,7 +83,15 @@ struct MyAnnoEventHandler : public AnnotationEventHandler
 
     virtual void onClick( AnnotationNode* node, const EventArgs& details )
     {        
-        OE_NOTICE << "Thanks for clicking this annotation" << std::endl;
+		PlaceNode* place = dynamic_cast<PlaceNode*>(node);
+		if (place == NULL)
+		{
+			OE_NOTICE << "Thanks for clicking this annotation" << std::endl;
+		}
+		else
+		{
+			OE_NOTICE << "Thanks for clicking the PlaceNode: " << place->getText() << std::endl;
+		}
     }
 };
 

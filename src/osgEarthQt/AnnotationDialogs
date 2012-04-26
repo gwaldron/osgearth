@@ -36,6 +36,8 @@
 
 namespace osgEarth { namespace QtGui
 {
+  struct AddPointsMouseHandler;
+  struct PointDraggerCallback;
   class BaseAnnotationDialog : public QDialog
   {
     Q_OBJECT
@@ -47,10 +49,13 @@ namespace osgEarth { namespace QtGui
     std::string getDescription() { return _descriptionEdit ? _descriptionEdit->text().toStdString() : ""; }
     virtual osgEarth::Annotation::AnnotationNode* getAnnotation() = 0;
 
-    virtual void mapClick(const osgEarth::GeoPoint& point, int button) { };
+    virtual void mapMouseClick(const osgEarth::GeoPoint& point, int button) { };
+    virtual void mapMouseMove(const osgEarth::GeoPoint& point) { };
 
   protected:
     void initDefaultUi();
+
+    virtual void movePoint(int index, const osgEarth::GeoPoint& position) { };
 
     osg::ref_ptr<osgEarth::MapNode> _mapNode;
     ViewVector _views;
@@ -58,6 +63,9 @@ namespace osgEarth { namespace QtGui
     QLineEdit* _descriptionEdit;
     QVBoxLayout* _customLayout;
     QPushButton* _okButton;
+
+    friend struct AddPointsMouseHandler;
+    friend struct PointDraggerCallback;
   };
 
   //---------------------------------------------------------------------------
@@ -72,7 +80,7 @@ namespace osgEarth { namespace QtGui
 
     osgEarth::Annotation::AnnotationNode* getAnnotation() { return _placeNode.get(); }
 
-    void mapClick(const osgEarth::GeoPoint& point);
+    void mapMouseClick(const osgEarth::GeoPoint& point);
 
   public slots:
     void accept();
@@ -132,7 +140,7 @@ namespace osgEarth { namespace QtGui
               _mapNode->getMap()->worldPointToMapPoint(point, outPoint);
 
               osg::ref_ptr<osg::Node> lastNode = first.nodePath.back();
-              _dialog->mapClick(outPoint);
+              _dialog->mapMouseClick(outPoint);
             }
           }
 
@@ -152,8 +160,6 @@ namespace osgEarth { namespace QtGui
 
   //---------------------------------------------------------------------------
 
-  struct AddPathMouseHandler;
-  struct PointDraggerCallback;
   class OSGEARTHQT_EXPORT AddPathDialog : public BaseAnnotationDialog
   {
     Q_OBJECT
@@ -163,7 +169,7 @@ namespace osgEarth { namespace QtGui
 
     osgEarth::Annotation::AnnotationNode* getAnnotation() { return _pathNode.get(); }
 
-    void mapClick(const osgEarth::GeoPoint& point, int button);
+    void mapMouseClick(const osgEarth::GeoPoint& point, int button);
     void addPoint(const osgEarth::GeoPoint& point);
 
   public slots:
@@ -172,7 +178,7 @@ namespace osgEarth { namespace QtGui
 
   private slots:
     void onDrapeCheckStateChanged(int state);
-    void onColorButtonClicked();
+    void onLineColorButtonClicked();
 
   protected:
     void closeEvent(QCloseEvent* event);
@@ -185,21 +191,67 @@ namespace osgEarth { namespace QtGui
 
     osg::ref_ptr<osg::Group> _root;
     osg::Group* _draggers;
-    osg::ref_ptr<AddPathMouseHandler>  _guiHandler;
+    osg::ref_ptr<AddPointsMouseHandler>  _guiHandler;
     QCheckBox* _drapeCheckbox;
-    QPushButton* _colorButton;
+    QPushButton* _lineColorButton;
     osg::Vec4f _pathColor;
     osg::ref_ptr<osgEarth::Symbology::LineString> _pathLine;
     osg::ref_ptr<osgEarth::Features::Feature> _pathFeature;
     osg::ref_ptr<osgEarth::Annotation::FeatureNode> _pathNode;
-
-    friend struct AddPathMouseHandler;
-    friend struct PointDraggerCallback;
   };
 
-  struct AddPathMouseHandler : public osgGA::GUIEventHandler
+  //---------------------------------------------------------------------------
+
+  class OSGEARTHQT_EXPORT AddPolygonDialog : public BaseAnnotationDialog
   {
-    AddPathMouseHandler(AddPathDialog* dialog, osgEarth::MapNode* mapNode, osg::Group* root)
+    Q_OBJECT
+
+  public:
+    AddPolygonDialog(osg::Group* root, osgEarth::MapNode* mapNode, const ViewVector& views, QWidget* parent = 0, Qt::WindowFlags f = 0);
+
+    osgEarth::Annotation::AnnotationNode* getAnnotation() { return _polyNode.get(); }
+
+    void mapMouseClick(const osgEarth::GeoPoint& point, int button);
+    void mapMouseMove(const osgEarth::GeoPoint& point);
+    void addPoint(const osgEarth::GeoPoint& point);
+
+  public slots:
+    void accept();
+    void reject();
+
+  private slots:
+    void onDrapeCheckStateChanged(int state);
+    void onLineColorButtonClicked();
+    void onFillColorButtonClicked();
+
+  protected:
+    void closeEvent(QCloseEvent* event);
+
+    void initialize();
+    void refreshFeatureNode(bool geometryOnly=false);
+    void createPointDragger(int index, const osgEarth::GeoPoint& point);
+    void movePoint(int index, const osgEarth::GeoPoint& position);
+    void clearDisplay();
+
+    osg::ref_ptr<osg::Group> _root;
+    osg::Group* _draggers;
+    osg::ref_ptr<AddPointsMouseHandler>  _guiHandler;
+    QCheckBox* _drapeCheckbox;
+    QPushButton* _lineColorButton;
+    QPushButton* _fillColorButton;
+    osg::Vec4f _pathColor;
+    osg::Vec4f _fillColor;
+    osg::Vec3d _mousePoint;
+    osg::ref_ptr<osgEarth::Symbology::Polygon> _polygon;
+    osg::ref_ptr<osgEarth::Features::Feature> _polyFeature;
+    osg::ref_ptr<osgEarth::Annotation::FeatureNode> _polyNode;
+  };
+
+  //---------------------------------------------------------------------------
+
+  struct AddPointsMouseHandler : public osgGA::GUIEventHandler
+  {
+    AddPointsMouseHandler(BaseAnnotationDialog* dialog, osgEarth::MapNode* mapNode, osg::Group* root)
       : _dialog(dialog), _mapNode(mapNode), _root(root), _mouseDown(-1), _lastPoint(-500.0, 0.0, 0.0)
     {
       //Define a style for the line
@@ -228,8 +280,10 @@ namespace osgEarth { namespace QtGui
         {
           osgEarth::GeoPoint mapPoint;
           _mapNode->getMap()->worldPointToMapPoint(world, mapPoint);
-          _currentPoint = mapPoint.vec3d();
 
+          _dialog->mapMouseMove(mapPoint);
+
+          _currentPoint = mapPoint.vec3d();
           updateDisplay();
         }
       }
@@ -247,7 +301,7 @@ namespace osgEarth { namespace QtGui
               _currentPoint = mapPoint.vec3d();
               _lastPoint = mapPoint.vec3d();
               
-              _dialog->mapClick(mapPoint, _mouseDown);
+              _dialog->mapMouseClick(mapPoint, _mouseDown);
 
               updateDisplay();
             }
@@ -302,7 +356,7 @@ namespace osgEarth { namespace QtGui
     }
 
 
-    AddPathDialog* _dialog;
+    BaseAnnotationDialog* _dialog;
     osg::ref_ptr<MapNode>  _mapNode;
     osg::ref_ptr<osg::Group> _root;
     osg::ref_ptr<osgEarth::Annotation::FeatureNode> _featureNode;
@@ -316,7 +370,7 @@ namespace osgEarth { namespace QtGui
 
   struct PointDraggerCallback : public osgEarth::Dragger::PositionChangedCallback
   {
-    PointDraggerCallback(int index, AddPathDialog* dialog)
+    PointDraggerCallback(int index, BaseAnnotationDialog* dialog)
       : _index(index), _dialog(dialog)
     {
     }
@@ -327,7 +381,7 @@ namespace osgEarth { namespace QtGui
     }
 
     int _index;
-    AddPathDialog* _dialog;
+    BaseAnnotationDialog* _dialog;
   };
 } }
 

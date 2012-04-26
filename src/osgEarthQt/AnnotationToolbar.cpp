@@ -130,16 +130,16 @@ AnnotationToolbar::addPathAnnotation()
 void
 AnnotationToolbar::addPolyAnnotation()
 {
-  //_activeDialog = new osgEarth::QtGui::AddPolygonDialog(_root, _mapNode);
+  _activeDialog = new osgEarth::QtGui::AddPolygonDialog(_root, _mapNode, _views);
 
-  //this->setEnabled(false);
+  this->setEnabled(false);
 
-  //connect(_activeDialog, SIGNAL(finished(int)), this, SLOT(onAddFinished(int)));
+  connect(_activeDialog, SIGNAL(finished(int)), this, SLOT(onAddFinished(int)));
 
-  //_activeDialog->setWindowTitle(tr("New polygon"));
-  //_activeDialog->setWindowFlags(Qt::Tool | Qt::WindowTitleHint | Qt::CustomizeWindowHint| Qt::WindowStaysOnTopHint);
-  //_activeDialog->setAttribute(Qt::WA_DeleteOnClose);
-  //_activeDialog->show();
+  _activeDialog->setWindowTitle(tr("New polygon"));
+  _activeDialog->setWindowFlags(Qt::Tool | Qt::WindowTitleHint | Qt::CustomizeWindowHint| Qt::WindowStaysOnTopHint);
+  _activeDialog->setAttribute(Qt::WA_DeleteOnClose);
+  _activeDialog->show();
 }
 
 void

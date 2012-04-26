@@ -42,6 +42,9 @@ using namespace osgEarth;
 using namespace osgEarth::QtGui;
 
 
+#define ANNOTATION_PATH_WIDTH 4.0f
+
+
 //---------------------------------------------------------------------------
 
 BaseAnnotationDialog::BaseAnnotationDialog(osgEarth::MapNode* mapNode, const ViewVector& views, QWidget* parent, Qt::WindowFlags f)
@@ -165,7 +168,7 @@ void AddMarkerDialog::clearDisplay()
       (*it)->removeEventHandler(_guiHandler.get());
 }
 
-void AddMarkerDialog::mapClick(const osgEarth::GeoPoint& point)
+void AddMarkerDialog::mapMouseClick(const osgEarth::GeoPoint& point)
 {
   if (_placeNode.valid() && _root.valid())
     _root->removeChild(_placeNode);
@@ -228,7 +231,7 @@ AddPathDialog::AddPathDialog(osg::Group* root, osgEarth::MapNode* mapNode, const
 
   if (_mapNode.valid() && _views.size() > 0)
   {
-    _guiHandler = new AddPathMouseHandler(this, _mapNode.get(), _root);
+    _guiHandler = new AddPointsMouseHandler(this, _mapNode.get(), _root);
     for (ViewVector::const_iterator it = views.begin(); it != views.end(); ++it)
       (*it)->addEventHandler(_guiHandler.get());
   }
@@ -240,10 +243,10 @@ void AddPathDialog::initialize()
 
   _nameEdit->setText(tr("New Path"));
 
-  // add color selection button
-  _colorButton = new QPushButton(tr("Line Color"));
-  _colorButton->setStyleSheet("QPushButton { color: black; background-color: white }");
-  _customLayout->addWidget(_colorButton);
+  // add path color selection button
+  _lineColorButton = new QPushButton(tr("Path Color"));
+  _lineColorButton->setStyleSheet("QPushButton { color: black; background-color: white }");
+  _customLayout->addWidget(_lineColorButton);
 
   // add name display checkbox to the dialog
   _drapeCheckbox = new QCheckBox(tr("Clamp to terrain"));
@@ -252,7 +255,7 @@ void AddPathDialog::initialize()
 
   // wire up UI events
   connect(_drapeCheckbox, SIGNAL(stateChanged(int)), this, SLOT(onDrapeCheckStateChanged(int)));
-  connect(_colorButton, SIGNAL(clicked()), this, SLOT(onColorButtonClicked()));
+  connect(_lineColorButton, SIGNAL(clicked()), this, SLOT(onLineColorButtonClicked()));
 }
 
 void AddPathDialog::clearDisplay()
@@ -272,7 +275,7 @@ void AddPathDialog::clearDisplay()
   }
 }
 
-void AddPathDialog::mapClick(const osgEarth::GeoPoint& point, int button)
+void AddPathDialog::mapMouseClick(const osgEarth::GeoPoint& point, int button)
 {
   if (button == osgGA::GUIEventAdapter::LEFT_MOUSE_BUTTON)
   {
@@ -377,7 +380,7 @@ void AddPathDialog::onDrapeCheckStateChanged(int state)
   refreshFeatureNode();
 }
 
-void AddPathDialog::onColorButtonClicked()
+void AddPathDialog::onLineColorButtonClicked()
 {
   QColor color = QColorDialog::getColor(QColor::fromRgba(_pathColor.asRGBA()), this);
   if (color.isValid())
@@ -390,6 +393,252 @@ void AddPathDialog::onColorButtonClicked()
     int invB = 255 - color.blue();
     QColor invColor(invR, invG, invB);
 
-    _colorButton->setStyleSheet("QPushButton { color: " + invColor.name() + "; background-color: " + color.name() + " }");
+    _lineColorButton->setStyleSheet("QPushButton { color: " + invColor.name() + "; background-color: " + color.name() + " }");
+  }
+}
+
+
+//---------------------------------------------------------------------------
+
+AddPolygonDialog::AddPolygonDialog(osg::Group* root, osgEarth::MapNode* mapNode, const ViewVector& views, QWidget* parent, Qt::WindowFlags f)
+: BaseAnnotationDialog(mapNode, views, parent, f), _root(root), _draggers(0L), _pathColor(Color(Color::White, 0.0)), _fillColor(Color(Color::Black, 0.5))
+{
+  _polygon = new osgEarth::Symbology::Polygon();
+  _polygon->push_back(osg::Vec3d(0.0, 0.0, 0.0));
+
+  initialize();
+
+  if (_mapNode.valid() && _views.size() > 0)
+  {
+    _guiHandler = new AddPointsMouseHandler(this, _mapNode.get(), _root);
+    for (ViewVector::const_iterator it = views.begin(); it != views.end(); ++it)
+      (*it)->addEventHandler(_guiHandler.get());
+  }
+}
+
+void AddPolygonDialog::initialize()
+{
+  _okButton->setEnabled(false);
+
+  _nameEdit->setText(tr("New Polygon"));
+
+  // add line color selection button
+  _lineColorButton = new QPushButton(tr("Line Color"));
+  _lineColorButton->setStyleSheet("QPushButton { color: black }");
+  _customLayout->addWidget(_lineColorButton);
+
+  // add fill color selection button
+  _fillColorButton = new QPushButton(tr("Fill Color"));
+  _fillColorButton->setStyleSheet("QPushButton { color: white; background-color: black }");
+  _customLayout->addWidget(_fillColorButton);
+
+  // add name display checkbox to the dialog
+  _drapeCheckbox = new QCheckBox(tr("Clamp to terrain"));
+  _drapeCheckbox->setCheckState(Qt::Checked);
+  _customLayout->addWidget(_drapeCheckbox);
+
+  // wire up UI events
+  connect(_drapeCheckbox, SIGNAL(stateChanged(int)), this, SLOT(onDrapeCheckStateChanged(int)));
+  connect(_lineColorButton, SIGNAL(clicked()), this, SLOT(onLineColorButtonClicked()));
+  connect(_fillColorButton, SIGNAL(clicked()), this, SLOT(onFillColorButtonClicked()));
+}
+
+void AddPolygonDialog::clearDisplay()
+{
+  if (_root.valid())
+  {
+    _root->removeChild(_polyNode);
+    _root->removeChild(_draggers);
+  }
+
+  if (_guiHandler.valid())
+  {
+    for (ViewVector::const_iterator it = _views.begin(); it != _views.end(); ++it)
+      (*it)->removeEventHandler(_guiHandler.get());
+
+    _guiHandler->clearDisplay();
+  }
+}
+
+void AddPolygonDialog::mapMouseClick(const osgEarth::GeoPoint& point, int button)
+{
+  if (button == osgGA::GUIEventAdapter::LEFT_MOUSE_BUTTON)
+  {
+    addPoint(point);
+  }
+}
+
+void AddPolygonDialog::mapMouseMove(const osgEarth::GeoPoint& point)
+{
+  _polygon->back().set(point.vec3d());
+  refreshFeatureNode(true);
+}
+
+void AddPolygonDialog::refreshFeatureNode(bool geometryOnly)
+{
+  if (_polyNode.valid())  
+  {
+    if (!geometryOnly)
+    {
+      if (_pathColor.a() == 0.0)
+      {
+        _polyFeature->style()->getOrCreate<LineSymbol>()->stroke()->color() = _fillColor;
+        _polyFeature->style()->getOrCreate<LineSymbol>()->stroke()->width() = 0.0;
+      }
+      else
+      {
+        _polyFeature->style()->getOrCreate<LineSymbol>()->stroke()->color() = _pathColor;
+        _polyFeature->style()->getOrCreate<LineSymbol>()->stroke()->width() = ANNOTATION_PATH_WIDTH;
+      }
+      
+
+      _polyFeature->style()->getOrCreate<PolygonSymbol>()->fill()->color() = _fillColor;
+      //_polyFeature->style()->getOrCreate<AltitudeSymbol>()->clamping() = _drapeCheckbox->checkState() == Qt::Checked ? AltitudeSymbol::CLAMP_TO_TERRAIN : AltitudeSymbol::CLAMP_ABSOLUTE;
+    }
+
+    _polyNode->setFeature(_polyFeature);
+  }
+}
+
+void AddPolygonDialog::createPointDragger(int index, const osgEarth::GeoPoint& point)
+{
+  osgEarth::SphereDragger* sd = new osgEarth::SphereDragger(_mapNode);
+  sd->setSize(4.0f);
+  sd->setColor(Color::Magenta);
+  sd->setPickColor(Color::Green);
+  sd->setPosition(point);
+  PointDraggerCallback* callback = new PointDraggerCallback(index, this);
+  sd->addPositionChangedCallback(callback);
+
+  if (!_draggers)
+  {
+    _draggers = new osg::Group();
+    _root->addChild(_draggers);
+  }
+
+  _draggers->addChild(sd);
+}
+
+void AddPolygonDialog::movePoint(int index, const osgEarth::GeoPoint& position)
+{
+  (*_polygon.get())[index] = position.vec3d();
+  refreshFeatureNode();
+}
+
+void AddPolygonDialog::addPoint(const osgEarth::GeoPoint& point)
+{
+  _polygon->insert(_polygon->end() - 1, point.vec3d());
+  //_polygon->push_back(point.vec3d());
+
+  if (!_polyNode.valid() && _polygon->size() > 2)
+  {
+    osgEarth::Symbology::Style polyStyle;
+    polyStyle.getOrCreate<LineSymbol>()->stroke()->color() = _pathColor;
+    polyStyle.getOrCreate<LineSymbol>()->stroke()->width() = ANNOTATION_PATH_WIDTH;
+    polyStyle.getOrCreate<LineSymbol>()->tessellation() = 20;
+    polyStyle.getOrCreate<PolygonSymbol>()->fill()->color() = _fillColor;
+    polyStyle.getOrCreate<AltitudeSymbol>()->clamping() = AltitudeSymbol::CLAMP_TO_TERRAIN;
+
+    _polyFeature = new osgEarth::Features::Feature(_polygon, _mapNode->getMapSRS(), polyStyle);
+
+    _polyNode = new osgEarth::Annotation::FeatureNode(_mapNode, _polyFeature, _drapeCheckbox->checkState() == Qt::Checked);
+    _root->addChild(_polyNode);
+
+    _okButton->setEnabled(true);
+  }
+
+  refreshFeatureNode();
+  createPointDragger(_polygon->size() - 1, point);
+}
+
+void AddPolygonDialog::accept()
+{
+  clearDisplay();
+
+  if (_polyNode.valid())
+  {
+    //Remove active cursor point
+    _polygon->pop_back();
+    refreshFeatureNode(true);
+
+    //Create AnnotationData object for this annotation
+    osgEarth::Annotation::AnnotationData* annoData = new osgEarth::Annotation::AnnotationData();
+    annoData->setName(getName());
+    annoData->setDescription(getDescription());
+    //annoData->setViewpoint(osgEarth::Viewpoint(_pathNode->getPosition().vec3d(), 0.0, -90.0, 1e5, _pathNode->getPosition().getSRS()));
+
+    _polyNode->setAnnotationData(annoData);
+  }
+
+  QDialog::accept();
+}
+
+void AddPolygonDialog::reject()
+{
+  clearDisplay();
+  QDialog::reject();
+}
+
+void AddPolygonDialog::closeEvent(QCloseEvent* event)
+{
+  clearDisplay();
+  QDialog::closeEvent(event);
+}
+
+void AddPolygonDialog::onDrapeCheckStateChanged(int state)
+{
+  if (_polyNode.valid())
+  {
+    _root->removeChild(_polyNode);
+    _polyNode = new osgEarth::Annotation::FeatureNode(_mapNode, _polyFeature, _drapeCheckbox->checkState() == Qt::Checked);
+    _root->addChild(_polyNode);
+  }
+}
+
+void AddPolygonDialog::onLineColorButtonClicked()
+{
+  QColor color = QColorDialog::getColor(QColor::fromRgbF(_pathColor.r(), _pathColor.g(), _pathColor.b(), _pathColor.a()), this, tr("Select outline color..."), QColorDialog::ShowAlphaChannel);
+  if (color.isValid())
+  {
+    _pathColor = osgEarth::Symbology::Color(color.redF(), color.greenF(), color.blueF(), color.alphaF());
+    refreshFeatureNode();
+
+    if (color.alpha() == 0)
+    {
+      _lineColorButton->setStyleSheet("QPushButton { color: black; }");
+    }
+    else
+    {
+      int invR = 255 - color.red();
+      int invG = 255 - color.green();
+      int invB = 255 - color.blue();
+      QColor invColor(invR, invG, invB);
+
+      _lineColorButton->setStyleSheet("QPushButton { color: " + invColor.name() + "; background-color: " + color.name() + " }");
+    }
+  }
+}
+
+void AddPolygonDialog::onFillColorButtonClicked()
+{
+  QColor color = QColorDialog::getColor(QColor::fromRgbF(_fillColor.r(), _fillColor.g(), _fillColor.b(), _fillColor.a()), this, tr("Select fill color..."), QColorDialog::ShowAlphaChannel);
+  if (color.isValid())
+  {
+    _fillColor = osgEarth::Symbology::Color(color.redF(), color.greenF(), color.blueF(), color.alphaF());
+    refreshFeatureNode();
+
+    if (color.alpha() == 0)
+    {
+      _fillColorButton->setStyleSheet("QPushButton { color: black; }");
+    }
+    else
+    {
+      int invR = 255 - color.red();
+      int invG = 255 - color.green();
+      int invB = 255 - color.blue();
+      QColor invColor(invR, invG, invB);
+
+      _fillColorButton->setStyleSheet("QPushButton { color: " + invColor.name() + "; background-color: " + color.name() + " }");
+    }
   }
 }

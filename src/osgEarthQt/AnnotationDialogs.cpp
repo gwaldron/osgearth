@@ -112,7 +112,7 @@ AddMarkerDialog::AddMarkerDialog(osg::Group* root, osgEarth::MapNode* mapNode, c
 
   if (_mapNode.valid() && _views.size() > 0)
   {
-    _guiHandler = new AddMarkerMouseHandler(this, _mapNode.get());
+    _guiHandler = new AddPointsMouseHandler(this, _mapNode.get(), 0L, false);
     for (ViewVector::const_iterator it = views.begin(); it != views.end(); ++it)
       (*it)->addEventHandler(_guiHandler.get());
   }
@@ -168,17 +168,20 @@ void AddMarkerDialog::clearDisplay()
       (*it)->removeEventHandler(_guiHandler.get());
 }
 
-void AddMarkerDialog::mapMouseClick(const osgEarth::GeoPoint& point)
+void AddMarkerDialog::mapMouseClick(const osgEarth::GeoPoint& point, int button)
 {
-  if (_placeNode.valid() && _root.valid())
-    _root->removeChild(_placeNode);
+  if (button == osgGA::GUIEventAdapter::LEFT_MOUSE_BUTTON)
+  {
+    if (_placeNode.valid() && _root.valid())
+      _root->removeChild(_placeNode);
 
-  _placeNode = new osgEarth::Annotation::PlaceNode(_mapNode, point, _markerImage, _nameCheckbox->checkState() == Qt::Checked ? getName() : "", _placeStyle);
+    _placeNode = new osgEarth::Annotation::PlaceNode(_mapNode, point, _markerImage, _nameCheckbox->checkState() == Qt::Checked ? getName() : "", _placeStyle);
 
-  if (_root.valid())
-    _root->addChild(_placeNode);
+    if (_root.valid())
+      _root->addChild(_placeNode);
 
-  _okButton->setEnabled(true);
+    _okButton->setEnabled(true);
+  }
 }
 
 void AddMarkerDialog::accept()

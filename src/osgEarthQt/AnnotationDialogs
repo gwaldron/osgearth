@@ -70,7 +70,6 @@ namespace osgEarth { namespace QtGui
 
   //---------------------------------------------------------------------------
 
-  struct AddMarkerMouseHandler;
   class OSGEARTHQT_EXPORT AddMarkerDialog : public BaseAnnotationDialog
   {
     Q_OBJECT
@@ -80,7 +79,7 @@ namespace osgEarth { namespace QtGui
 
     osgEarth::Annotation::AnnotationNode* getAnnotation() { return _placeNode.get(); }
 
-    void mapMouseClick(const osgEarth::GeoPoint& point);
+    void mapMouseClick(const osgEarth::GeoPoint& point, int button);
 
   public slots:
     void accept();
@@ -102,60 +101,6 @@ namespace osgEarth { namespace QtGui
     osg::ref_ptr<osg::Image> _markerImage;
     osgEarth::Symbology::Style _placeStyle;
     osg::ref_ptr<osgEarth::Annotation::PlaceNode> _placeNode;
-
-    friend struct AddMarkerMouseHandler;
-  };
-
-  struct AddMarkerMouseHandler : public osgGA::GUIEventHandler
-  {
-    AddMarkerMouseHandler(AddMarkerDialog* dialog, osgEarth::MapNode* mapNode)
-      : _dialog(dialog), _mapNode(mapNode), _mouseDown(-1)
-    {
-    }
-
-    bool handle( const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& aa )
-    {
-      osgViewer::View* view = static_cast<osgViewer::View*>(aa.asView());
-
-      if (ea.getButton() == osgGA::GUIEventAdapter::LEFT_MOUSE_BUTTON)
-      {
-        if (ea.getEventType() == osgGA::GUIEventAdapter::PUSH)
-        {
-          _mouseDown = true;
-          _xDown = ea.getX();
-          _yDown = ea.getY();
-        }
-        else if (ea.getEventType() == osgGA::GUIEventAdapter::RELEASE && _mouseDown)
-        {
-          if (_xDown == ea.getX() && _yDown == ea.getY())
-          {
-            osgUtil::LineSegmentIntersector::Intersections results;
-            if ( view->computeIntersections( _xDown, _yDown, results ) )
-            {
-              // find the first hit under the mouse:
-              osgUtil::LineSegmentIntersector::Intersection first = *(results.begin());
-              osg::Vec3d point = first.getWorldIntersectPoint();
-
-              osgEarth::GeoPoint outPoint;
-              _mapNode->getMap()->worldPointToMapPoint(point, outPoint);
-
-              osg::ref_ptr<osg::Node> lastNode = first.nodePath.back();
-              _dialog->mapMouseClick(outPoint);
-            }
-          }
-
-          _mouseDown = false;
-        }
-      }
-
-      return false;
-    }
-
-    AddMarkerDialog*      _dialog;
-    osg::ref_ptr<MapNode>  _mapNode;
-
-    bool _mouseDown;
-    float _xDown, _yDown;
   };
 
   //---------------------------------------------------------------------------
@@ -251,16 +196,19 @@ namespace osgEarth { namespace QtGui
 
   struct AddPointsMouseHandler : public osgGA::GUIEventHandler
   {
-    AddPointsMouseHandler(BaseAnnotationDialog* dialog, osgEarth::MapNode* mapNode, osg::Group* root)
-      : _dialog(dialog), _mapNode(mapNode), _root(root), _mouseDown(-1), _lastPoint(-500.0, 0.0, 0.0)
+    AddPointsMouseHandler(BaseAnnotationDialog* dialog, osgEarth::MapNode* mapNode, osg::Group* root, bool drawLead=true)
+      : _dialog(dialog), _mapNode(mapNode), _root(root), _drawLead(drawLead), _mouseDown(-1), _lastPoint(-500.0, 0.0, 0.0)
     {
-      //Define a style for the line
-      osgEarth::Symbology::LineSymbol* ls = _lineStyle.getOrCreateSymbol<osgEarth::Symbology::LineSymbol>();
-      ls->stroke()->color() = osgEarth::Symbology::Color::White;
-      ls->stroke()->width() = 2.0f;
-      ls->stroke()->stipple() = 0x0F0F;
-      ls->tessellation() = 20;
-      _lineStyle.getOrCreate<osgEarth::Symbology::AltitudeSymbol>()->clamping() = osgEarth::Symbology::AltitudeSymbol::CLAMP_TO_TERRAIN;
+      if (_drawLead)
+      {
+        //Define a style for the lead line
+        osgEarth::Symbology::LineSymbol* ls = _lineStyle.getOrCreateSymbol<osgEarth::Symbology::LineSymbol>();
+        ls->stroke()->color() = osgEarth::Symbology::Color::White;
+        ls->stroke()->width() = 2.0f;
+        ls->stroke()->stipple() = 0x0F0F;
+        ls->tessellation() = 20;
+        _lineStyle.getOrCreate<osgEarth::Symbology::AltitudeSymbol>()->clamping() = osgEarth::Symbology::AltitudeSymbol::CLAMP_TO_TERRAIN;
+      }
     }
 
     bool handle( const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& aa )
@@ -332,7 +280,7 @@ namespace osgEarth { namespace QtGui
 
     void updateDisplay()
     {
-      if (_root.valid() && _lastPoint.x() != -500.0)
+      if (_drawLead && _root.valid() && _lastPoint.x() != -500.0)
       {
         osgEarth::Symbology::LineString* line = new osgEarth::Symbology::LineString();
         line->push_back( _lastPoint );
@@ -362,6 +310,7 @@ namespace osgEarth { namespace QtGui
     osg::ref_ptr<osgEarth::Annotation::FeatureNode> _featureNode;
     osgEarth::Symbology::Style _lineStyle;
 
+    bool _drawLead;
     int _mouseDown;
     float _xDown, _yDown;
     osg::Vec3d _lastPoint;

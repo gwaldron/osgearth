@@ -1190,12 +1190,19 @@ EarthManipulator::updateCamera( osg::Camera* eventCamera )
                 _savedCNFMode = _viewCamera->getComputeNearFarMode();
                 _viewCamera->setComputeNearFarMode( osg::CullSettings::DO_NOT_COMPUTE_NEAR_FAR );
             }
+            
+            double pitch;
+            getLocalEulerAngles(0L, &pitch);
 
             // need to update the ortho projection matrix to reflect the camera distance.
             double ar = vp->width()/vp->height();
             double y = _distance * _tanHalfVFOV;
             double x = y * ar;
-            _viewCamera->setProjectionMatrixAsOrtho(-x, x, -y, y, -1e6, 1e8);
+            double f = std::max(x,y);
+            double znear = -f * 5.0;
+            double zfar  =  f * (5.0 + 10.0 * sin(pitch+osg::PI_2));
+
+            _viewCamera->setProjectionMatrixAsOrtho(-x, x, -y, y, znear, zfar);
         }
     }
 }

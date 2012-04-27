@@ -119,6 +119,11 @@ namespace osgEarth { namespace Annotation
          */
         void setStyle( const Style& style );
 
+        /**
+         * Gets draped property
+         */
+        bool isDraped() const { return _draped; }
+
     public:
 
         EllipseNode(MapNode* mapNode, const Config& conf);

@@ -6,5 +6,13 @@
         <file>images/crosshair.png</file>
         <file>images/undo.png</file>
         <file>images/marker.png</file>
+        <file>images/add_marker.png</file>
+        <file>images/add_marker_bg.png</file>
+        <file>images/draw_circle.png</file>
+        <file>images/draw_circle_bg.png</file>
+        <file>images/draw_line.png</file>
+        <file>images/draw_line_bg.png</file>
+        <file>images/draw_poly.png</file>
+        <file>images/draw_poly_bg.png</file>
     </qresource>
 </RCC>

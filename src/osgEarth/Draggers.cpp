@@ -209,6 +209,7 @@ _size( 5.0f )
     osg::Sphere* shape = new osg::Sphere(osg::Vec3(0,0,0), 1.0f);   
     osg::Geode* geode = new osg::Geode();
     _shapeDrawable = new osg::ShapeDrawable( shape );    
+    _shapeDrawable->setDataVariance( osg::Object::DYNAMIC );
     geode->addDrawable( _shapeDrawable );          
 
     geode->getOrCreateStateSet()->setMode(GL_DEPTH_TEST, osg::StateAttribute::OFF);

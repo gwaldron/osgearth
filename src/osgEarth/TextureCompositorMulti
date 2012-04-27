@@ -33,6 +33,9 @@ namespace osgEarth
     public:
         TextureCompositorMultiTexture( bool useGPU, const TerrainOptions& options );
 
+        /** dtor */
+        virtual ~TextureCompositorMultiTexture() { }
+
         static bool isSupported( bool useGPU );
 
     public:

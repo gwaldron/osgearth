@@ -99,6 +99,8 @@ namespace osgEarth { namespace Annotation
         struct OrthoNodeAutoTransform : public osg::AutoTransform
         {
             void acceptCullNoTraverse( osg::CullStack* cs );
+
+            bool okToIntersect() const { return !_firstTimeToInitEyePoint; }
         };
 
         // some geometry creation utilities
@@ -133,6 +135,10 @@ namespace osgEarth { namespace Annotation
          * @param maxAngle Maximum angle between verts (controls tessellation)
          */
         static osg::Node* createEllipsoid( float xr, float yr, float zr, const osg::Vec4& color, float maxAngle =15.0f );
+
+
+    private:
+        AnnotationUtils() { }
     };
 
 } } // namespace osgEarth::Annotation

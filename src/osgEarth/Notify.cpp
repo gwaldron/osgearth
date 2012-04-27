@@ -38,6 +38,7 @@ using namespace osgEarth;
 #include <iostream>
 #include <fstream>
 #include <cctype>
+#include <iomanip>
 
 using namespace std;
 
@@ -146,8 +147,11 @@ osgEarth::notify(const osg::NotifySeverity severity)
 
     if (severity<=osgearth_g_NotifyLevel)
     {
-        if (severity<=osg::WARN) return std::cerr;
-        else return std::cout;
+        std::ostream* out = severity <= osg::WARN ? &std::cerr : &std::cout;
+        (*out) << std::setprecision(8);
+        return *out;
+        //if (severity<=osg::WARN) return std::cerr;
+        //else return std::cout;
     }
     return s_NotifyNulStream;
 }

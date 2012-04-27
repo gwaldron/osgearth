@@ -60,6 +60,9 @@ namespace osgEarth
     public:
         TextureLayout();
 
+        /** dtor */
+        virtual ~TextureLayout() { }
+
         /**
          * Gets a texture slot corresponding to the layer UID. There may be more than one,
          * the "which" parameter allows you to select one in particular. You can also limit
@@ -153,6 +156,9 @@ namespace osgEarth
          * Constructs a new compositor.
          */
         TextureCompositor( const TerrainOptions& options );
+
+        /** dtor */
+        virtual ~TextureCompositor() { }
 
         /**
          * Sets a custom technique to use.

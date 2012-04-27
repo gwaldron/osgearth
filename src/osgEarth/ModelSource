@@ -43,6 +43,9 @@ namespace osgEarth
               _renderOrder( 11 ),
               _depthTestEnabled( true ) { fromConfig(_conf); }
 
+        /** dtor */
+        virtual ~ModelSourceOptions() { }
+
     public: // properties
 
         /** minimum camera range at which the data is visible */
@@ -84,6 +87,9 @@ namespace osgEarth
     public:        
         ModelSource( const ModelSourceOptions& options =ModelSourceOptions() );
 
+        /** dtor */
+        virtual ~ModelSource() { }
+
         /**
          * Subclass implements this method to create the mode node.
          */
@@ -105,9 +111,6 @@ namespace osgEarth
 
         const ModelSourceOptions& getOptions() const {
             return _options; }
-
-    protected:
-        virtual ~ModelSource() { }
 
     private:
         const ModelSourceOptions _options;

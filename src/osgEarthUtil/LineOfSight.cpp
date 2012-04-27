@@ -343,6 +343,8 @@ LineOfSightNode::draw(bool backgroundThread)
     if (_start != _end)
     {
         osg::Geometry* geometry = new osg::Geometry;
+        geometry->setUseVertexBufferObjects(true);
+
         osg::Vec3Array* verts = new osg::Vec3Array();
         verts->reserve(4);
         geometry->setVertexArray( verts );
@@ -766,6 +768,8 @@ RadialLineOfSightNode::compute_line(osg::Node* node, bool backgroundThread)
     double delta = osg::PI * 2.0 / (double)_numSpokes;
     
     osg::Geometry* geometry = new osg::Geometry;
+    geometry->setUseVertexBufferObjects(true);
+
     osg::Vec3Array* verts = new osg::Vec3Array();
     verts->reserve(_numSpokes * 5);
     geometry->setVertexArray( verts );
@@ -911,6 +915,8 @@ RadialLineOfSightNode::compute_fill(osg::Node* node, bool backgroundThread)
     double delta = osg::PI * 2.0 / (double)_numSpokes;
     
     osg::Geometry* geometry = new osg::Geometry;
+    geometry->setUseVertexBufferObjects(true);
+
     osg::Vec3Array* verts = new osg::Vec3Array();
     verts->reserve(_numSpokes * 2);
     geometry->setVertexArray( verts );

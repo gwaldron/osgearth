@@ -52,6 +52,9 @@ namespace osgEarth { namespace Features
          */
 		FeatureSourceIndexNode(FeatureSource* featureSource);
 
+        virtual ~FeatureSourceIndexNode() { }
+
+
     public: // FeatureSourceIndex
 
         /**

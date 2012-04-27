@@ -145,6 +145,12 @@ namespace osgEarth
         void removeTerrainDecorator( osg::Group* decorator );
 
         /**
+         * Gets the overlay decorator in this mapnode. Usually you do not need to
+         * access this directly. Instead install a DrapeableNode in the scene graph.
+         */
+        OverlayDecorator* getOverlayDecorator() { return _overlayDecorator.get(); }
+
+        /**
          * Accesses the group containing anything that will be "draped" on the terrain
          * via the OverlayDecorator.
          */
@@ -209,9 +215,6 @@ namespace osgEarth
         ModelLayerNodeMap _modelLayerNodes;
         osg::Group* _maskLayerNode;
 
-        osg::ref_ptr< osgSim::OverlayNode > _pendingOverlayNode;
-        bool _pendingOverlayAutoSetTextureUnit;
-
         unsigned _lastNumBlacklistedFilenames;
 
         osg::ref_ptr<TerrainEngineNode> _terrainEngine;
@@ -224,10 +227,6 @@ namespace osgEarth
         void onModelLayerAdded( ModelLayer*, unsigned int );
         void onModelLayerRemoved( ModelLayer* );
 		void onModelLayerMoved( ModelLayer* layer, unsigned int oldIndex, unsigned int newIndex );
-#if 0
-        void onMaskLayerAdded( MaskLayer* );
-        void onMaskLayerRemoved( MaskLayer* );
-#endif
 
     public:
         void onModelLayerOverlayChanged( ModelLayer* layer );

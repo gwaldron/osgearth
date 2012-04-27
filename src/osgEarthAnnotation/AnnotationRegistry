@@ -54,6 +54,8 @@ namespace osgEarth { namespace Annotation
          */
         void add( const std::string& key, class AnnotationFactory* factory );
 
+        virtual ~AnnotationRegistry() { }
+
     private:
         AnnotationRegistry() { }
         typedef std::map<std::string, class AnnotationFactory*> FactoryMap;

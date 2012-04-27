@@ -26,6 +26,10 @@ namespace osgEarth { namespace QtGui
 {
     class DataManager;
 
+    /**
+     * Base class for an Action, which is a (potentially reversible) operation
+     * handled by the ActionManager.
+     */
     class OSGEARTHQT_EXPORT Action : public osg::Referenced
     {
     public:
@@ -53,8 +57,6 @@ namespace osgEarth { namespace QtGui
         ViewVector& getViews() {
             return _views; }
 
-        virtual ~Action() { }
-
     protected:
         Action() 
             : _canceled(false), _checkpoint(true) { }
@@ -62,12 +64,17 @@ namespace osgEarth { namespace QtGui
         Action(ViewVector& views) 
             : _views(views), _canceled(false), _checkpoint(true) { }
 
+        virtual ~Action() { }
+
         ViewVector  _views;
         bool        _canceled;
         bool        _checkpoint;
         std::string _message;
     };
 
+    /**
+     * An action that can be undone.
+     */
     class OSGEARTHQT_EXPORT ReversibleAction : public Action
     {
     public:
@@ -79,29 +86,27 @@ namespace osgEarth { namespace QtGui
     protected:
         ReversibleAction() : Action() { _checkpoint = true; }
         ReversibleAction(ViewVector& views) : Action(views) { _checkpoint = true; }
+
+        virtual ~ReversibleAction() { }
     };
 
-    //class OSGEARTHQT_EXPORT ActionContext
-    //{
-    //public:
-    //    ActionContext( void* sender ) : _sender(sender) { }
-
-    //public:
-    //    void* getSender() { return _sender; }
-
-    //protected:
-    //    void* _sender;
-    //};
-
+    /**
+     * Callback that fires before or after the ActionManager runs an Action.
+     */
     class OSGEARTHQT_EXPORT ActionCallback : public osg::Referenced
     {
     public:
         virtual void operator()( void* sender, Action* action ) { }
 
     protected:
-        ActionCallback() { };
+        ActionCallback() { }
+        virtual ~ActionCallback() { }
     };
 
+    /**
+     * Interface for an Action Manager, an object that can run Actions, fire callbacks,
+     * and maintain an undo stack.
+     */
     class OSGEARTHQT_EXPORT ActionManager
     {
     public:
@@ -113,6 +118,8 @@ namespace osgEarth { namespace QtGui
         virtual bool canUndo() const =0;
         virtual void clearUndoActions() =0;
         virtual ReversibleAction* getNextUndoAction() const =0;
+
+        virtual ~ActionManager() { }
     };
 
 } }

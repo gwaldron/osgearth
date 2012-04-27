@@ -87,6 +87,9 @@ namespace osgEarth
     protected:
         Capabilities();
 
+        /** dtor */
+        virtual ~Capabilities() { }
+
     private:
         int  _maxFFPTextureUnits;
         int  _maxGPUTextureUnits;

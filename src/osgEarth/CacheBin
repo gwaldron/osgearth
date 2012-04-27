@@ -41,6 +41,9 @@ namespace osgEarth
          */
         CacheBin( const std::string& binID ) : _binID(binID) { }
 
+        /** dtor */
+        virtual ~CacheBin() { }
+
         /**
          * The identifier (unique withing a Cache) of this bin.
          */

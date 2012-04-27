@@ -267,16 +267,30 @@ static optional<ProxySettings>     _proxySettings;
 static std::string                 _userAgent = USER_AGENT;
 
 
+struct HTTPClientContainer
+{
+    HTTPClientContainer() : instance(0L) { }
+    HTTPClient* instance;
+};
+
 HTTPClient&
 HTTPClient::getClient()
 {
-    static Threading::PerThread< osg::ref_ptr<HTTPClient> > s_clientPerThread;
+    // this strange setup works around some strange issues caused to 
+    // HTTPClient instances getting prematurely destructed. Have not figured that
+    // one out yet.
+    static Threading::PerThread<HTTPClientContainer> s_clientPerThread;
 
-    osg::ref_ptr<HTTPClient>& client = s_clientPerThread.get();
-    if ( !client.valid() )
-        client = new HTTPClient();
+    HTTPClientContainer& client = s_clientPerThread.get();
+    if ( client.instance == 0L )
+        client.instance = new HTTPClient();
+    return *client.instance;
 
-    return *client.get();
+    //osg::ref_ptr<HTTPClient>& client = s_clientPerThread.get();
+    //if ( !client.valid() )
+    //    client = new HTTPClient();
+
+    //return *client.get();
 }
 
 HTTPClient::HTTPClient()

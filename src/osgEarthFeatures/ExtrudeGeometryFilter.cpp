@@ -21,7 +21,6 @@
 #include <osgEarthSymbology/MeshSubdivider>
 #include <osgEarthSymbology/MeshConsolidator>
 #include <osgEarth/ECEF>
-#include <osg/ClusterCullingCallback>
 #include <osg/Geode>
 #include <osg/Geometry>
 #include <osg/MatrixTransform>
@@ -296,7 +295,7 @@ ExtrudeGeometryFilter::extrudeGeometry(const Geometry*         input,
             if ( srs && srs->isGeographic() )
             {
                 osg::Vec2d geogCenter = roofBounds.center2d();
-                roofProjSRS = srs->createUTMFromLongitude( Angular(geogCenter.x()) );
+                roofProjSRS = srs->createUTMFromLonLat( Angular(geogCenter.x()), Angular(geogCenter.y()) );
                 roofBounds.transform( srs, roofProjSRS.get() );
                 osg::ref_ptr<Geometry> projectedInput = input->clone();
                 srs->transform( projectedInput->asVector(), roofProjSRS.get() );

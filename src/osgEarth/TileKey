@@ -63,6 +63,9 @@ namespace osgEarth
 
         TileKey( const TileKey& rhs );
 
+        /** dtor */
+        virtual ~TileKey() { }
+
         bool operator == (const TileKey& rhs) const {
             return valid() && rhs.valid() && _lod==rhs._lod && _x==rhs._x && _y==rhs._y;
         }

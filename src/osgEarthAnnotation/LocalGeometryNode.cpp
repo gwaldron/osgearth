@@ -44,6 +44,7 @@ _draped      ( draped )
     init();
 }
 
+
 LocalGeometryNode::LocalGeometryNode(MapNode*     mapNode,
                                      osg::Node*   content,
                                      const Style& style,

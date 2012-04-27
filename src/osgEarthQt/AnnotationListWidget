@@ -43,6 +43,7 @@ namespace osgEarth { namespace QtGui
 
     public:
       AnnotationListWidget(DataManager* dm);
+      virtual ~AnnotationListWidget() { }
 
       void setActiveView(osgViewer::View* view);
       void setActiveViews(const ViewVector& views);
@@ -50,7 +51,7 @@ namespace osgEarth { namespace QtGui
     private slots:
       void onMapChanged();
       void onSelectionChanged(/*const AnnotationVector& selection*/);
-	    void onItemDoubleClicked(QListWidgetItem* item);
+      void onItemDoubleClicked(QListWidgetItem* item);
       void onItemChanged(QListWidgetItem* item);
       void onListSelectionChanged();
       void onRemoveSelected();

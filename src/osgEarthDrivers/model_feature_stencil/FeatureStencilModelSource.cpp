@@ -61,12 +61,17 @@ namespace
     {
         // make a full screen quad:
         osg::Geometry* quad = new osg::Geometry();
+        quad->setUseVertexBufferObjects(true);
+
         osg::Vec3Array* verts = new osg::Vec3Array(4);
         (*verts)[0].set( 0, 1, 0 );
         (*verts)[1].set( 0, 0, 0 );
         (*verts)[2].set( 1, 0, 0 );
         (*verts)[3].set( 1, 1, 0 );
         quad->setVertexArray( verts );
+        if ( verts->getVertexBufferObject() )
+            verts->getVertexBufferObject()->setUsage(GL_STATIC_DRAW_ARB);
+
         quad->addPrimitiveSet( new osg::DrawArrays( osg::PrimitiveSet::QUADS, 0, 4 ) );
         osg::Vec4Array* colors = new osg::Vec4Array(1);
         (*colors)[0] = color;

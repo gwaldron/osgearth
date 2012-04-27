@@ -45,6 +45,8 @@ namespace osgEarth { namespace Util
         virtual void onHoverEnter( AnnotationNode* node, const EventArgs& details ) { }
 
         virtual void onHoverLeave( AnnotationNode* node, const EventArgs& details ) { }
+
+        virtual ~AnnotationEventHandler() { }
     };
 
     /**
@@ -73,6 +75,9 @@ namespace osgEarth { namespace Util
         virtual void operator()( osg::Node* node, osg::NodeVisitor* nv );
 
     protected:
+
+        virtual ~AnnotationEventCallback() { }
+
         AnnotationEventHandler::EventArgs _args;
         bool  _mouseDown;
         bool _hoverEnabled;

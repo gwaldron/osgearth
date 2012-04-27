@@ -178,6 +178,7 @@ BuildGeometryFilter::process( FeatureList& features, const FilterContext& contex
                 osg::Vec4f(1,1,1,1);
             
             osg::Geometry* osgGeom = new osg::Geometry();
+            osgGeom->setUseVertexBufferObjects(true);
 
             if ( _featureNameExpr.isSet() )
             {
@@ -214,15 +215,8 @@ BuildGeometryFilter::process( FeatureList& features, const FilterContext& contex
                 }
             }
 
-            // assign the primary color:
-            osg::Vec4Array* colors = new osg::Vec4Array( allPoints->size() );
-            for(unsigned c=0; c<colors->size(); ++c)
-                (*colors)[c] = primaryColor;
-            osgGeom->setColorArray( colors );
-            osgGeom->setColorBinding( osg::Geometry::BIND_PER_VERTEX );
-
-            // add the part to the geode.
-            //_featureNode->addDrawable(osgGeom, input->getFID());
+            if (allPoints->getVertexBufferObject())
+                allPoints->getVertexBufferObject()->setUsage(GL_STATIC_DRAW_ARB);
 
             // subdivide the mesh if necessary to conform to an ECEF globe:
             if ( makeECEF && renderType != Geometry::TYPE_POINTSET )
@@ -244,6 +238,13 @@ BuildGeometryFilter::process( FeatureList& features, const FilterContext& contex
                 }
             }
 
+            // assign the primary color:
+            osg::Vec4Array* colors = new osg::Vec4Array( osgGeom->getVertexArray()->getNumElements() ); //allPoints->size() );
+            for(unsigned c=0; c<colors->size(); ++c)
+                (*colors)[c] = primaryColor;
+            osgGeom->setColorArray( colors );
+            osgGeom->setColorBinding( osg::Geometry::BIND_PER_VERTEX );
+
             _geode->addDrawable( osgGeom );
 
             // record the geometry's primitive set(s) in the index:
@@ -256,9 +257,13 @@ BuildGeometryFilter::process( FeatureList& features, const FilterContext& contex
                 // polygon offset on the poly so the outline doesn't z-fight
                 osgGeom->getOrCreateStateSet()->setAttributeAndModes( new osg::PolygonOffset(1,1), 1 );
 
-                osg::Geometry*  outline = new osg::Geometry();
+                osg::Geometry* outline = new osg::Geometry();
+                outline->setUseVertexBufferObjects(true);
 
                 buildPolygon(part, featureSRS, mapSRS, makeECEF, false, outline);
+
+                if ( outline->getVertexArray()->getVertexBufferObject() )
+                    outline->getVertexArray()->getVertexBufferObject()->setUsage(GL_STATIC_DRAW_ARB);
 
                 osg::Vec4Array* outlineColors = new osg::Vec4Array();
                 outline->setColorArray(outlineColors);

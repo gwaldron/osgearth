@@ -18,6 +18,7 @@
  */
 #include "KML_NetworkLink"
 #include <osgEarth/GeoMath>
+#include <osgEarth/Registry>
 #include <osg/PagedLOD>
 #include <osg/ProxyNode>
 #include <osg/Version>
@@ -31,17 +32,7 @@ KML_NetworkLink::build( const Config& conf, KMLContext& cx )
     std::string name = conf.value("name");
 
     // parse the link:
-    Config linkConf = conf.child("link");
-    if ( linkConf.empty() )
-    {
-        // "url" seems to be acceptable as well
-        linkConf = conf.child("url");
-        if ( linkConf.empty() )
-            return;
-    }
-    std::string href = linkConf.value("href");
-    if ( href.empty() )
-        return;
+    std::string href = KMLUtils::parseLink(conf);
 
     // "open" determines whether to load it immediately
     bool open = conf.value<bool>("open", false);
@@ -94,7 +85,7 @@ KML_NetworkLink::build( const Config& conf, KMLContext& cx )
         plod->setCenter( lodCenter );
         plod->setRadius( d );
 #if OSG_MIN_VERSION_REQUIRED(3,0,0)
-        osgDB::Options* options = new osgDB::Options();
+        osgDB::Options* options = Registry::instance()->cloneOrCreateOptions();
         options->setPluginData( "osgEarth::MapNode", cx._mapNode );
         plod->setDatabaseOptions( options );
 #endif
@@ -111,7 +102,7 @@ KML_NetworkLink::build( const Config& conf, KMLContext& cx )
         osg::ProxyNode* proxy = new osg::ProxyNode();
         proxy->setFileName( 0, href );                
 #if OSG_MIN_VERSION_REQUIRED(3,0,0)
-        osgDB::Options* options = new osgDB::Options();
+        osgDB::Options* options = Registry::instance()->cloneOrCreateOptions();
         options->setPluginData( "osgEarth::MapNode", cx._mapNode );
         proxy->setDatabaseOptions( options );
 #endif

@@ -43,6 +43,8 @@ namespace osgEarth { namespace Features
         ResampleFilter();
         ResampleFilter( double minLength, double maxLength );
 
+        virtual ~ResampleFilter() { }
+
     public:
 
         optional<double>& minLength() { return _minLen; }

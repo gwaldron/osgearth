@@ -65,7 +65,6 @@ This example demonstrates the use of scripting to style features.
 
             <style type="text/css">              
                 cities {
-                   text-provider: overlay;
                    text-content:  getName() + " (" + [code] + ")";
                    text-priority: [pop_cntry];
                    text-halo:     #3f3f7f;

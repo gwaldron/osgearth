@@ -45,6 +45,8 @@ namespace osgEarth { namespace Util
 
             // called when no map coords are found under the mouse
             virtual void reset( osg::View* view, MapNode* mapNode ) =0;
+
+            virtual ~Callback() { }
         };
 
     public:
@@ -62,6 +64,8 @@ namespace osgEarth { namespace Util
          *     for the readout.
          */
         MouseCoordsTool( MapNode* mapNode, LabelControl* label =0L, Formatter* formatter =0L );
+
+        virtual ~MouseCoordsTool() { }
 
         /**
          * Adds a readout callback.
@@ -88,6 +92,8 @@ namespace osgEarth { namespace Util
     {
     public:
         MouseCoordsLabelCallback( LabelControl* label, Formatter* formatter =0L );
+
+        virtual ~MouseCoordsLabelCallback() { }
 
         virtual void set( const GeoPoint& coords, osg::View* view, MapNode* mapNode );
         virtual void reset( osg::View* view, MapNode* mapNode );

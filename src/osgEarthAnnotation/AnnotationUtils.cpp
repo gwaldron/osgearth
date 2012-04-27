@@ -165,17 +165,21 @@ AnnotationUtils::createImageGeometry(osg::Image*       image,
 
     // set up the geoset.
     osg::Geometry* geom = new osg::Geometry();
+    geom->setUseVertexBufferObjects(true);
+    
     geom->setStateSet(dstate);
 
     float x0 = (float)pixelOffset.x() - image->s()/2.0;
     float y0 = (float)pixelOffset.y() - image->t()/2.0;
 
-    osg::Vec3Array* coords = new osg::Vec3Array(4);
-    (*coords)[0].set( x0, y0, 0 );
-    (*coords)[1].set( x0 + image->s(), y0, 0 );
-    (*coords)[2].set( x0 + image->s(), y0 + image->t(), 0 );
-    (*coords)[3].set( x0, y0 + image->t(), 0 );
-    geom->setVertexArray(coords);
+    osg::Vec3Array* verts = new osg::Vec3Array(4);
+    (*verts)[0].set( x0, y0, 0 );
+    (*verts)[1].set( x0 + image->s(), y0, 0 );
+    (*verts)[2].set( x0 + image->s(), y0 + image->t(), 0 );
+    (*verts)[3].set( x0, y0 + image->t(), 0 );
+    geom->setVertexArray(verts);
+    if ( verts->getVertexBufferObject() )
+        verts->getVertexBufferObject()->setUsage(GL_STATIC_DRAW_ARB);
 
     osg::Vec2Array* tcoords = new osg::Vec2Array(4);
     (*tcoords)[0].set(0, 0);
@@ -391,6 +395,7 @@ osg::Node*
 AnnotationUtils::createSphere( float r, const osg::Vec4& color, float maxAngle )
 {
     osg::Geometry* geom = new osg::Geometry();
+    geom->setUseVertexBufferObjects(true);
 
     osg::Vec3Array* v = new osg::Vec3Array();
     v->reserve(6);
@@ -401,6 +406,8 @@ AnnotationUtils::createSphere( float r, const osg::Vec4& color, float maxAngle )
     v->push_back( osg::Vec3(0,r,0) ); // back
     v->push_back( osg::Vec3(0,-r,0) ); // front
     geom->setVertexArray(v);
+    if ( v->getVertexBufferObject() )
+       v->getVertexBufferObject()->setUsage(GL_STATIC_DRAW_ARB);
 
     osg::DrawElementsUByte* b = new osg::DrawElementsUByte(GL_TRIANGLES);
     b->reserve(24);
@@ -443,6 +450,7 @@ osg::Node*
 AnnotationUtils::createHemisphere( float r, const osg::Vec4& color, float maxAngle )
 {
     osg::Geometry* geom = new osg::Geometry();
+    geom->setUseVertexBufferObjects(true);
 
     osg::Vec3Array* v = new osg::Vec3Array();
     v->reserve(5);
@@ -452,6 +460,8 @@ AnnotationUtils::createHemisphere( float r, const osg::Vec4& color, float maxAng
     v->push_back( osg::Vec3(0,r,0) ); // back
     v->push_back( osg::Vec3(0,-r,0) ); // front
     geom->setVertexArray(v);
+    if ( v->getVertexBufferObject() )
+       v->getVertexBufferObject()->setUsage(GL_STATIC_DRAW_ARB);
 
     osg::DrawElementsUByte* b = new osg::DrawElementsUByte(GL_TRIANGLES);
     b->reserve(24);
@@ -490,6 +500,7 @@ osg::Node*
 AnnotationUtils::createEllipsoid( float xr, float yr, float zr, const osg::Vec4& color, float maxAngle )
 {
     osg::Geometry* geom = new osg::Geometry();
+    geom->setUseVertexBufferObjects(true);
 
     osg::Vec3Array* v = new osg::Vec3Array();
     v->reserve(6);
@@ -500,6 +511,8 @@ AnnotationUtils::createEllipsoid( float xr, float yr, float zr, const osg::Vec4&
     v->push_back( osg::Vec3(0, yr,0) ); // back
     v->push_back( osg::Vec3(0,-yr,0) ); // front
     geom->setVertexArray(v);
+    if ( v->getVertexBufferObject() )
+        v->getVertexBufferObject()->setUsage(GL_STATIC_DRAW_ARB);
 
     osg::DrawElementsUByte* b = new osg::DrawElementsUByte(GL_TRIANGLES);
     b->reserve(24);
@@ -531,6 +544,7 @@ osg::Node*
 AnnotationUtils::createFullScreenQuad( const osg::Vec4& color )
 {
     osg::Geometry* geom = new osg::Geometry();
+    geom->setUseVertexBufferObjects(true);
 
     osg::Vec3Array* v = new osg::Vec3Array();
     v->reserve(4);
@@ -539,6 +553,8 @@ AnnotationUtils::createFullScreenQuad( const osg::Vec4& color )
     v->push_back( osg::Vec3(1,1,0) );
     v->push_back( osg::Vec3(0,1,0) );
     geom->setVertexArray(v);
+    if ( v->getVertexBufferObject() )
+        v->getVertexBufferObject()->setUsage(GL_STATIC_DRAW_ARB);
 
     osg::DrawElementsUByte* b = new osg::DrawElementsUByte(GL_TRIANGLES);
     b->reserve(6);
@@ -575,6 +591,7 @@ osg::Drawable*
 AnnotationUtils::create2DQuad( const osg::BoundingBox& box, float padding, const osg::Vec4& color )
 {
     osg::Geometry* geom = new osg::Geometry();
+    geom->setUseVertexBufferObjects(true);
 
     osg::Vec3Array* v = new osg::Vec3Array();
     v->reserve(4);
@@ -583,6 +600,8 @@ AnnotationUtils::create2DQuad( const osg::BoundingBox& box, float padding, const
     v->push_back( osg::Vec3(box.xMax()+padding, box.yMax()+padding, 0) );
     v->push_back( osg::Vec3(box.xMin()-padding, box.yMax()+padding, 0) );
     geom->setVertexArray(v);
+    if ( v->getVertexBufferObject() )
+        v->getVertexBufferObject()->setUsage(GL_STATIC_DRAW_ARB);
 
     osg::DrawElementsUByte* b = new osg::DrawElementsUByte(GL_TRIANGLES);
     b->reserve(6);
@@ -608,6 +627,7 @@ osg::Drawable*
 AnnotationUtils::create2DOutline( const osg::BoundingBox& box, float padding, const osg::Vec4& color )
 {
     osg::Geometry* geom = new osg::Geometry();
+    geom->setUseVertexBufferObjects(true);
 
     osg::Vec3Array* v = new osg::Vec3Array();
     v->reserve(4);
@@ -616,6 +636,8 @@ AnnotationUtils::create2DOutline( const osg::BoundingBox& box, float padding, co
     v->push_back( osg::Vec3(box.xMax()+padding, box.yMax()+padding, 0) );
     v->push_back( osg::Vec3(box.xMin()-padding, box.yMax()+padding, 0) );
     geom->setVertexArray(v);
+    if ( v->getVertexBufferObject() )
+        v->getVertexBufferObject()->setUsage(GL_STATIC_DRAW_ARB);
 
     osg::DrawElementsUByte* b = new osg::DrawElementsUByte(GL_LINE_LOOP);
     b->reserve(4);

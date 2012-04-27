@@ -45,6 +45,9 @@ namespace osgEarth { namespace Drivers
             fromConfig( _conf );
         }
 
+        /** dtor */
+        virtual ~TileServiceOptions() { }
+
     public:
         Config getConfig() const {
             Config conf = TileSourceOptions::getConfig();

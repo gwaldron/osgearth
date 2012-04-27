@@ -32,6 +32,9 @@ namespace osgEarth { namespace Symbology
     public:
         PointSymbol( const Config& conf =Config() );
 
+        /** dtor */
+        virtual ~PointSymbol() { }
+
         /** Point fill properties. */
         optional<Fill>& fill() { return _fill; }
         const optional<Fill>& fill() const { return _fill; }

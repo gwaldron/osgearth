@@ -67,6 +67,9 @@ public:
         const OSGTerrainOptions& terrainOptions,
         TaskService*             service );
 
+    /** dtor */
+    virtual ~TileBuilder() { }
+
     void createTile(
         const TileKey&      key,
         bool                parallelize,

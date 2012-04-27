@@ -50,6 +50,8 @@ namespace osgEarth { namespace Drivers
             fromConfig( _conf );
         }
 
+        virtual ~SimpleModelOptions() { }
+
     public:
         Config getConfig() const {
             Config conf = ModelSourceOptions::getConfig();

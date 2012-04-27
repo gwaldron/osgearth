@@ -18,11 +18,7 @@
 */
 
 #include <osg/Notify>
-#include <osgGA/StateSetManipulator>
-#include <osgGA/GUIEventHandler>
 #include <osgViewer/Viewer>
-#include <osgViewer/ViewerEventHandlers>
-#include <osgEarth/MapNode>
 #include <osgEarthUtil/EarthManipulator>
 #include <osgEarthUtil/ExampleResources>
 
@@ -42,12 +38,12 @@ main(int argc, char** argv)
     // create a viewer:
     osgViewer::Viewer viewer(arguments);
 
-    // install our default manipulator (do this before calling Loader)
+    // install our default manipulator (do this before calling load)
     viewer.setCameraManipulator( new EarthManipulator() );
 
     // load an earth file, and support all or our example command-line options
     // and earth file <external> tags
-    osg::Node* node = ExampleMapNodeHelper().load( arguments, &viewer );
+    osg::Node* node = MapNodeHelper().load( arguments, &viewer );
     if ( node )
     {
         viewer.setSceneData( node );
@@ -59,19 +55,12 @@ main(int argc, char** argv)
         // OSG, this activates OSG's IncrementalCompileOpeartion in order to avoid frame breaks.
         viewer.getDatabasePager()->setDoPreCompile( true );
 
-        // add some stock OSG handlers:
-        viewer.addEventHandler(new osgViewer::StatsHandler());
-        viewer.addEventHandler(new osgViewer::WindowSizeHandler());
-        viewer.addEventHandler(new osgViewer::ThreadingHandler());
-        viewer.addEventHandler(new osgViewer::LODScaleHandler());
-        viewer.addEventHandler(new osgGA::StateSetManipulator(viewer.getCamera()->getOrCreateStateSet()));
-
         return viewer.run();
     }
     else
     {
         OE_NOTICE 
             << "\nUsage: " << argv[0] << " file.earth" << std::endl
-            << ExampleMapNodeHelper().usage() << std::endl;
+            << MapNodeHelper().usage() << std::endl;
     }
 }

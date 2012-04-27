@@ -47,6 +47,8 @@ namespace osgEarth { namespace Drivers
             fromConfig( _conf );
         }
 
+        virtual ~FeatureMaskOptions() { }
+
     public:
         Config getConfig() const {
             Config conf = MaskSourceOptions::getConfig();

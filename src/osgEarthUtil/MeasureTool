@@ -40,13 +40,14 @@ namespace osgEarth { namespace Util
         {
         public:
             virtual void onDistanceChanged(MeasureToolHandler* sender, double distance) {}
+            virtual ~MeasureToolEventHandler() { }
         };
 
         typedef std::list< osg::ref_ptr< MeasureToolEventHandler > > MeasureToolEventHandlerList;
 
 
         MeasureToolHandler( osg::Group* group, MapNode* mapNode );        
-        ~MeasureToolHandler();
+        virtual ~MeasureToolHandler();
 
         bool handle( const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& aa );        
 

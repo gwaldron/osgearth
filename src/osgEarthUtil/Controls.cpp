@@ -531,6 +531,7 @@ Control::draw(const ControlContext& cx, DrawableList& out )
             float vph = cx._vp->height(); // - padding().bottom();
 
             _geom = new osg::Geometry();
+            _geom->setUseVertexBufferObjects(true);
 
             float rx = _renderPos.x() - padding().left();
             float ry = _renderPos.y() - padding().top();
@@ -895,6 +896,7 @@ ImageControl::draw( const ControlContext& cx, DrawableList& out )
     {
         //TODO: this is not precisely correct..images get deformed slightly..
         osg::Geometry* g = new osg::Geometry();
+        g->setUseVertexBufferObjects(true);
 
         float rx = osg::round( _renderPos.x() );
         float ry = osg::round( _renderPos.y() );
@@ -1073,6 +1075,7 @@ HSliderControl::draw( const ControlContext& cx, DrawableList& out )
     if ( visible() == true )
     {
         osg::ref_ptr<osg::Geometry> g = new osg::Geometry();
+        g->setUseVertexBufferObjects(true);
 
         float rx = osg::round( _renderPos.x() );
         float ry = osg::round( _renderPos.y() );
@@ -1177,6 +1180,7 @@ CheckBoxControl::draw( const ControlContext& cx, DrawableList& out )
     if ( visible() == true )
     {
         osg::Geometry* g = new osg::Geometry();
+        g->setUseVertexBufferObjects(true);
 
         float rx = osg::round( _renderPos.x() );
         float ry = osg::round( _renderPos.y() );
@@ -1983,7 +1987,17 @@ namespace osgEarth { namespace Util { namespace Controls
                         ControlContext cx;
                         cx._view = aa.asView();
                         cx._vp = new osg::Viewport( 0, 0, vp->width(), vp->height() );
-                        cx._viewContextID = aa.asView()->getCamera()->getGraphicsContext()->getState()->getContextID();
+                        
+                        osg::View* view = aa.asView();
+                        osg::GraphicsContext* gc = view->getCamera()->getGraphicsContext();
+                        if ( !gc && view->getNumSlaves() > 0 )
+                            gc = view->getSlave(0)._camera->getGraphicsContext();
+
+                        if ( gc )
+                            cx._viewContextID = gc->getState()->getContextID();
+                        else
+                            cx._viewContextID = ~0u;
+
                         _cs->setControlContext( cx );
 
                         _width  = (int)vp->width();

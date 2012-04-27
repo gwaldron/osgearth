@@ -36,6 +36,9 @@ namespace osgEarth
         Bounds();
         Bounds(double xmin, double ymin, double xmax, double ymax );
 
+        /** dtor */
+        virtual ~Bounds() { }
+
         double width() const;
         double height() const;
         double depth() const;

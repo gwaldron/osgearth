@@ -57,6 +57,8 @@ namespace osgEarth { namespace Features
         /** Construct a new sub-model filter that will operate on the given style */
         SubstituteModelFilter( const Style& style =Style() );
 
+        virtual ~SubstituteModelFilter() { }
+
         /** Whether to cluster all the model instances into a single geode. Default is false. */
         void setClustering( bool value ) { _cluster = value; }
         bool getClustering() const { return _cluster; }

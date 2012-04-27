@@ -40,6 +40,9 @@ namespace osgEarth
         MaskSourceOptions( const ConfigOptions& options =ConfigOptions() ) :
               DriverConfigOptions( options ) { fromConfig(_conf); }
 
+        /** dtor */
+        virtual ~MaskSourceOptions() { }
+
     public: // properties
 
     public:
@@ -59,6 +62,9 @@ namespace osgEarth
     {
     public:        
         MaskSource( const MaskSourceOptions& options =MaskSourceOptions() );
+
+        /** dtor */
+        virtual ~MaskSource() { }
 
         /**
          * Subclass implements this method to create the boundary geometry.

@@ -35,7 +35,33 @@
 #include <QVBoxLayout>
 
 using namespace osgEarth;
+using namespace osgEarth::Util;
 using namespace osgEarth::QtGui;
+
+
+//---------------------------------------------------------------------------
+
+
+namespace
+{
+    // Shim to connect the profile calc to the widget
+    struct ProfileChangedShim : public TerrainProfileCalculator::ChangedCallback
+    {
+        ProfileChangedShim(TerrainProfileWidget* widget) : _widget(widget) { }
+        void onChanged(const TerrainProfileCalculator* ) { _widget->notifyTerrainProfileChanged(); }
+        TerrainProfileWidget* _widget;
+    };
+
+    // Shim to connect the position detector to the widget
+    struct UpdatePositionShim : public TerrainProfilePositionCallback
+    {
+        UpdatePositionShim(TerrainProfileWidget* widget) : _widget(widget) { }
+        void updatePosition(double lat, double lon, const std::string& text) {
+            _widget->updatePosition(lat, lon, text);
+        }
+        TerrainProfileWidget* _widget;
+    };
+}
 
 
 //---------------------------------------------------------------------------
@@ -48,7 +74,9 @@ TerrainProfileWidget::TerrainProfileWidget(osg::Group* root, osgEarth::MapNode* 
 
   initialize();
 
-  _calculator->addChangedCallback(this);
+  // listen for profile changes and marshall to the UI thread to update the graph.
+  _calculator->addChangedCallback( new ProfileChangedShim(this) );
+  connect( this, SIGNAL(onNotifyTerrainProfileChanged()), this, SLOT(onTerrainProfileChanged()), Qt::QueuedConnection );
 }
 
 TerrainProfileWidget::~TerrainProfileWidget()
@@ -82,7 +110,7 @@ void TerrainProfileWidget::initialize()
   vStack->addWidget(buttonToolbar);
 
   // create graph widget
-  _graph = new TerrainProfileGraph(_calculator, this);
+  _graph = new TerrainProfileGraph(_calculator, new UpdatePositionShim(this));
   vStack->addWidget(_graph);
 
   // define a style for the line
@@ -145,6 +173,13 @@ void TerrainProfileWidget::removeViews()
   _views.clear();
 }
 
+void TerrainProfileWidget::refreshViews()
+{
+    // to support ON_DEMAND rendering.
+    for (ViewVector::iterator it = _views.begin(); it != _views.end(); ++it)
+        it->get()->requestRedraw();
+}
+
 void TerrainProfileWidget::hideEvent(QHideEvent* e)
 {
   ((TerrainProfileMouseHandler*)_guiHandler.get())->setCapturing(false);
@@ -154,6 +189,8 @@ void TerrainProfileWidget::hideEvent(QHideEvent* e)
 
   if (_markerNode.valid())
     _root->removeChild(_markerNode.get());
+  
+  refreshViews();
 }
 
 void TerrainProfileWidget::showEvent(QShowEvent* e)
@@ -165,6 +202,8 @@ void TerrainProfileWidget::showEvent(QShowEvent* e)
 
   if (_markerNode.valid())
     _root->addChild(_markerNode);
+  
+  refreshViews();
 }
 
 void TerrainProfileWidget::setStartEnd(const GeoPoint& start, const GeoPoint& end)
@@ -179,7 +218,7 @@ void TerrainProfileWidget::setStartEnd(const GeoPoint& start, const GeoPoint& en
   _calculator->setStartEnd(start, end);
 }
 
-void TerrainProfileWidget::onChanged(const osgEarth::Util::TerrainProfileCalculator* sender)
+void TerrainProfileWidget::onTerrainProfileChanged()
 {
   if (_profileStack.size() == 0 || (_profileStack.back().start != _calculator->getStart() || _profileStack.back().end != _calculator->getEnd()))
     _profileStack.push_back(StartEndPair(_calculator->getStart(), _calculator->getEnd()));
@@ -209,6 +248,8 @@ void TerrainProfileWidget::updatePosition(double lat, double lon, const std::str
     _markerNode->setPosition(GeoPoint(_mapNode->getMapSRS(), lon, lat, 0, osgEarth::AltitudeMode::RELATIVE_TO_TERRAIN));
     _markerNode->setText(text);
   }
+
+  refreshViews();
 }
 
 void TerrainProfileWidget::onCaptureToggled(bool checked)
@@ -242,4 +283,6 @@ void TerrainProfileWidget::drawProfileLine()
   {
     _lineNode->setFeature(feature);
   }
+
+  refreshViews();
 }

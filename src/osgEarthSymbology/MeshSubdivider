@@ -45,7 +45,6 @@ namespace osgEarth { namespace Symbology
 
         /**
          * Sets the maximum number elements in each generated primitive set.
-         * This class will break up the resulting geometry if requested.
          */
         void setMaxElementsPerEBO( unsigned int value ) {
             _maxElementsPerEBO = value; }

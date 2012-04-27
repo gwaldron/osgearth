@@ -46,6 +46,12 @@ struct BuildColorLayer
         GeoImage geoImage;
         bool isFallbackData = false;
 
+        bool useMercatorFastPath =
+            _opt->enableMercatorFastPath() != false &&
+            _mapInfo->isGeocentric()                &&
+            _layer->getProfile()                    &&
+            _layer->getProfile()->getSRS()->isSphericalMercator();
+
         // fetch the image from the layer, falling back on parent keys utils we are 
         // able to find one that works.
 
@@ -54,24 +60,17 @@ struct BuildColorLayer
         TileKey imageKey( _key );
         while( !geoImage.valid() && imageKey.valid() && _layer->isKeyValid(imageKey) )
         {
-            geoImage = _layer->createImage( imageKey, 0L, autoFallback ); // TODO: include a progress callback?
+            if ( useMercatorFastPath )
+                geoImage = _layer->createImageInNativeProfile( imageKey, 0L, autoFallback );
+            else
+                geoImage = _layer->createImage( imageKey, 0L, autoFallback );
+
             if ( !geoImage.valid() )
             {
                 imageKey = imageKey.createParentKey();
                 isFallbackData = true;
             }
         }
-
-#if 0
-        bool autoFallback = _key.getLevelOfDetail() == 1;
-
-        geoImage = _layer->createImage( _key, 0L, autoFallback );
-        if ( !geoImage.valid() && !autoFallback )
-        {
-            geoImage = _layer->createImage( _key, 0L, true );
-            isFallbackData = true;
-        }
-#endif
 
         GeoLocator* locator = 0L;
 
@@ -84,7 +83,10 @@ struct BuildColorLayer
         }
         else
         {
-            locator = GeoLocator::createForExtent(geoImage.getExtent(), *_mapInfo);                                                                                       
+            if ( useMercatorFastPath )
+                locator = new MercatorLocator(geoImage.getExtent());
+            else
+                locator = GeoLocator::createForExtent(geoImage.getExtent(), *_mapInfo);
         }
         // add the color layer to the repo.
         _repo->add( CustomColorLayer(

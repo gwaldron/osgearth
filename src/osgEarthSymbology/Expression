@@ -51,6 +51,9 @@ namespace osgEarth { namespace Symbology
         /** Copy ctor. */
         NumericExpression( const NumericExpression& rhs );
 
+        /** dtor */
+        virtual ~NumericExpression() { }
+
         /** Access the expression variables. */
         const Variables& variables() const { return _vars; }
 
@@ -106,6 +109,9 @@ namespace osgEarth { namespace Symbology
 
         /** Copy ctor. */
         StringExpression( const StringExpression& rhs );
+
+        /** dtor */
+        virtual ~StringExpression() { }
 
         /** Access the expression variables. */
         const Variables& variables() const { return _vars; }

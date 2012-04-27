@@ -515,7 +515,7 @@ TerrainLayer::initTileSource()
         // set up the URI options.
         if ( !_dbOptions.valid() )
         {
-            _dbOptions = new osgDB::Options();       
+            _dbOptions = Registry::instance()->cloneOrCreateOptions();
             if ( _cache.valid() ) _cache->store( _dbOptions.get() );
             URIContext( _runtimeOptions->referrer() ).store( _dbOptions.get() );
         }

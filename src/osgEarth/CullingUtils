@@ -22,10 +22,27 @@
 
 #include <osgEarth/Common>
 #include <osg/NodeCallback>
+#include <osg/ClusterCullingCallback>
+#include <osg/CoordinateSystemNode>
 #include <osg/Vec3d>
+#include <osg/Vec3>
 
 namespace osgEarth
-{
+{    
+    /**
+     * A customized CCC that works correctly under an RTT camera and also with 
+     * an orthographic projection matrix.
+     */
+    class SuperClusterCullingCallback : public osg::ClusterCullingCallback
+    {
+    public:
+        bool cull(osg::NodeVisitor* nv, osg::Drawable* , osg::State*) const;
+    };
+
+
+    /**
+     * Utility functions for creating cluster cullers
+     */
     class OSGEARTH_EXPORT ClusterCullingFactory
     {
     public:
@@ -37,12 +54,60 @@ namespace osgEarth
         static osg::NodeCallback* create( osg::Node* node, const osg::Vec3d& ecefControlPoint );
 
         /**
+         * Same as above, but uses another method to compute the parameters. There should only
+         * be one, but we need to investigate to see which is the better algorithm. Keeping this
+         * for now since it works with the feature setup..
+         */
+        static osg::NodeCallback* create2( osg::Node* node, const osg::Vec3d& ecefControlPoint );
+
+        /**
          * Creates a cluster culling callback and installs it on the node. If the node is
          * a transform, it will create a group above the transform and install the callback
          * on that group instead.
          */
         static osg::Node* createAndInstall( osg::Node* node, const osg::Vec3d& ecefControlPoint );
+
+        /**
+         * Creates a cluster culling callback with the standard parameters.
+         */
+        static osg::NodeCallback* create(const osg::Vec3& controlPoint, const osg::Vec3& normal, float deviation, float radius);
     };
+
+    
+    /**
+     * A simple culling-plane callback (a simpler version of ClusterCullingCallback)
+     */
+    struct OSGEARTH_EXPORT CullNodeByNormal : public osg::NodeCallback {
+        osg::Vec3d _normal;
+        CullNodeByNormal( const osg::Vec3d& normal );
+        void operator()(osg::Node* node, osg::NodeVisitor* nv);
+    };
+
+    struct CullDrawableByNormal : public osg::Drawable::CullCallback {
+        osg::Vec3d _normal;
+        CullDrawableByNormal( const osg::Vec3d& normal ) : _normal(normal) { }
+        bool cull(osg::NodeVisitor* nv, osg::Drawable* drawable, osg::State* state) const {
+            return nv && nv->getEyePoint() * _normal <= 0;
+        }
+    };
+
+    struct OSGEARTH_EXPORT CullNodeByHorizon : public osg::NodeCallback {
+        osg::Vec3d _world;
+        double _r, _r2;
+        CullNodeByHorizon( const osg::Vec3d& world, const osg::EllipsoidModel* model );
+        void operator()(osg::Node* node, osg::NodeVisitor* nv );
+    };
+
+    struct OSGEARTH_EXPORT CullNodeByFrameNumber : public osg::NodeCallback {
+        unsigned _frame;
+        CullNodeByFrameNumber() : _frame(0) { }
+        void operator()( osg::Node* node, osg::NodeVisitor* nv ) {
+            if ( nv->getFrameStamp()->getFrameNumber() - _frame <= 1 )
+                traverse(node, nv);
+        }
+    };
+
+
 }
 
 #endif // OSGEARTH_CULLING_UTILS_H

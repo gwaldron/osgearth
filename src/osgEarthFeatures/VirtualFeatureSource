@@ -37,6 +37,8 @@ namespace osgEarth { namespace Features
     struct OSGEARTHFEATURES_EXPORT FeaturePredicate : public osg::Referenced
     {
         virtual bool acceptFeature( Feature* f ) const =0;
+
+        virtual ~FeaturePredicate() { }
     };
 
     // internal class
@@ -54,6 +56,8 @@ namespace osgEarth { namespace Features
     public:
         /** Construct a new virtual feature source */
         VirtualFeatureSource() { }
+
+        virtual ~VirtualFeatureSource() { }
 
         /**
          * Adds a feature source/predicate mapping. This FeatureSource will draw

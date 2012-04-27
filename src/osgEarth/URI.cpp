@@ -238,7 +238,8 @@ namespace
 
                 osgDB::Archive* archive = result.getArchive();
 
-                osg::ref_ptr<osgDB::ReaderWriter::Options> options = opt ? opt->cloneOptions() : new osgDB::Options();
+                osg::ref_ptr<osgDB::ReaderWriter::Options> options = opt ? opt->cloneOptions() : 
+                    Registry::instance()->cloneOrCreateOptions();
 
                 options->setDatabasePath(archiveName);
 

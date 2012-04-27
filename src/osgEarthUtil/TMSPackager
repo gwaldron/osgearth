@@ -41,6 +41,9 @@ namespace osgEarth { namespace Util
          */
         TMSPackager( const Profile* outProfile );
 
+        /** dtor */
+        virtual ~TMSPackager() { }
+
         /**
          * Whether to dump out progress messages 
          * default = false
@@ -67,6 +70,15 @@ namespace osgEarth { namespace Util
          */
         void setOverwrite( bool value ) { _overwrite = value; }
         bool getOverwrite() const { return _overwrite; }
+
+        /**
+         * Whether to package empty image tiles. An empty tile is a tile
+         * that is fully transparent. By default, the packager discards
+         * them and does not subdivide past them.
+         * default = false
+         */
+        void setKeepEmptyImageTiles( bool value ) { _keepEmptyImageTiles = value; }
+        bool getKeepEmptyImageTiles() const { return _keepEmptyImageTiles; }
 
         /**
          * Bounding box to package
@@ -128,6 +140,7 @@ namespace osgEarth { namespace Util
         bool                        _verbose;
         bool                        _abortOnError;
         bool                        _overwrite;
+        bool                        _keepEmptyImageTiles;
         unsigned                    _maxLevel;
         std::vector<GeoExtent>      _extents;
         osg::ref_ptr<const Profile> _outProfile;

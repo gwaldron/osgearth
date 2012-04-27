@@ -40,6 +40,8 @@ namespace osgEarth { namespace Features
         TransformFilter( const osg::Matrixd& xform );
         TransformFilter( const SpatialReference* outputSRS );
 
+        virtual ~TransformFilter() { }
+
         /** Transform matrix to apply to each point. If there's is also an SRS conversion,
             the matrix will be applied first. */
         void setMatrix( const osg::Matrixd& mat ) { _mat = mat; }

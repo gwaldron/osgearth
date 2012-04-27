@@ -195,6 +195,9 @@ namespace osgEarth { namespace Symbology
         void push_back(double x, double y, double z) { 
             osgEarth::MixinVector<osg::Vec3d,osg::Referenced>::push_back(osg::Vec3d(x,y,z)); }
 
+        /** dtor */
+        virtual ~Geometry() { }
+
     protected:
         Geometry( int capacity =0 );
         Geometry( const Geometry& rhs );
@@ -214,6 +217,9 @@ namespace osgEarth { namespace Symbology
         PointSet( const Vec3dVector* toCopy ) : Geometry( toCopy ) { }
         PointSet( const PointSet& rhs );
 
+        /** dtor */
+        virtual ~PointSet() { }
+
     public:
         virtual Type getType() const { return Geometry::TYPE_POINTSET; }
     };
@@ -227,6 +233,9 @@ namespace osgEarth { namespace Symbology
         LineString( int capacity =0 ) : Geometry( capacity ) { }
         LineString( const LineString& rhs );
         LineString( const Vec3dVector* toCopy );
+
+        /** dtor */
+        virtual ~LineString() { }
 
         double getLength() const;
         bool getSegment(double length, osg::Vec3d& start, osg::Vec3d& end);
@@ -247,6 +256,9 @@ namespace osgEarth { namespace Symbology
         Ring( int capacity =0 ) : Geometry( capacity ) { }
         Ring( const Ring& ring );
         Ring( const Vec3dVector* toCopy );
+
+        /** dtor */
+        virtual ~Ring() { }
 
         // override
         virtual Geometry* cloneAs( const Geometry::Type& newType ) const;
@@ -281,6 +293,9 @@ namespace osgEarth { namespace Symbology
         Polygon( int capacity =0 ) : Ring( capacity ) { }
         Polygon( const Polygon& rhs );
         Polygon( const Vec3dVector* toCopy );
+
+        /** dtor */
+        virtual ~Polygon() { }
         
     public:
         virtual Type getType() const { return Geometry::TYPE_POLYGON; }
@@ -310,6 +325,9 @@ namespace osgEarth { namespace Symbology
         MultiGeometry() { }
         MultiGeometry( const GeometryCollection& parts );
         MultiGeometry( const MultiGeometry& rhs );
+
+        /** dtor */
+        virtual ~MultiGeometry() { }
 
     public:
         virtual Type getType() const { return Geometry::TYPE_MULTI; }        

@@ -40,6 +40,9 @@ namespace osgEarth { namespace Util
         SkyNode( Map* map, const std::string& starFile="", float minStarMagnitude=-1.0f );
         SkyNode( Map* map, float minStarMagnitude );
 
+        /** dtor */
+        virtual ~SkyNode() { }
+
         /** Attached this sky node to a view (placing a sky light). */
         void attach( osg::View* view, int lightNum =0 );
 

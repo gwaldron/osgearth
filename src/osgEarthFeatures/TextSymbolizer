@@ -39,6 +39,8 @@ namespace osgEarth { namespace Features
     public:
         TextSymbolizer( const TextSymbol* symbol );
 
+        virtual ~TextSymbolizer() { }
+
         /**
          * Creates a drawable for the specified string.
          */

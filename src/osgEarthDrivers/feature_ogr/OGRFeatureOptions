@@ -61,6 +61,8 @@ namespace osgEarth { namespace Drivers
             fromConfig( _conf );
         }
 
+        virtual ~OGRFeatureOptions() { }
+
     public:
         Config getConfig() const {
             Config conf = FeatureSourceOptions::getConfig();

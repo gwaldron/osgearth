@@ -124,6 +124,9 @@ namespace osgEarth
          */
         DepthOffsetGroup();
 
+        /** dtor */
+        virtual ~DepthOffsetGroup() { }
+
         /**
          * Sets a minimum depth offset range (in scene units, e.g. meters)
          * This is the minimim simulated depth offset that will be applied to 

@@ -32,6 +32,7 @@ namespace osgEarth { namespace Annotation
     {
     public:
         Decoration() { }
+        virtual ~Decoration() { }
 
         virtual bool isShareable() const { return false; }
         virtual Decoration* clone() const =0;
@@ -74,6 +75,9 @@ namespace osgEarth { namespace Annotation
             : osg::NodeVisitor(osg::NodeVisitor::TRAVERSE_ALL_CHILDREN),
               _callback(callback), _name(name) { }
 
+
+        virtual ~DecorationInstaller() { }
+
     public:
         virtual void apply(osg::Node& node);
 
@@ -94,6 +98,8 @@ namespace osgEarth { namespace Annotation
     {
     public:
         InjectionDecoration( osg::Group* group =0L );
+        virtual ~InjectionDecoration() { }
+
         virtual Decoration* clone() const { return new InjectionDecoration(osg::clone(_injectionGroup.get(), osg::CopyOp::DEEP_COPY_ALL)); }
 
         virtual bool apply(class AnnotationNode& node, bool enable);

@@ -150,6 +150,10 @@ KMZArchive::readToBuffer( const std::string& fileInZip, std::ostream& iobuf ) co
     // help from:
     // http://bytes.com/topic/c/answers/764381-reading-contents-zip-files
 
+
+    //OE_INFO << LC << "Attempting to read \"" << fileInZip << "\" from \"" << _archiveURI.base() << "\"" << std::endl;
+
+
     int err = UNZ_OK;
     unz_file_info file_info;
     char filename_inzip[2048];
@@ -248,61 +252,83 @@ KMZArchive::readToBuffer( const std::string& fileInZip, std::ostream& iobuf ) co
     return true;
 }
 
+bool
+KMZArchive::isAcceptable(const std::string& filename, const osgDB::Options* options) const
+{
+    if (!options ||
+        options->getDatabasePathList().size() == 0 ||
+        options->getDatabasePathList()[0] != _archiveURI.full() )
+    {
+        //OE_INFO << "Rejected: " << filename << std::endl;
+        return false;
+    }
+    return true;
+}
+
 osgDB::ReaderWriter::ReadResult
 KMZArchive::readImage(const std::string& filename, const osgDB::Options* options) const
 {
-    osgDB::ReaderWriter* rw = osgDB::Registry::instance()->getReaderWriterForExtension(
-        osgDB::getLowerCaseFileExtension( filename ) );
-    if ( rw )
+    if ( isAcceptable(filename, options) )
     {
-        std::stringstream iobuf;
-        if ( readToBuffer( filename, iobuf ) )
+        osgDB::ReaderWriter* rw = osgDB::Registry::instance()->getReaderWriterForExtension(
+            osgDB::getLowerCaseFileExtension( filename ) );
+        if ( rw )
         {
-            osg::ref_ptr<osgDB::Options> myOptions = Registry::instance()->cloneOrCreateOptions(options);
-            URIContext(*_archiveURI).add(filename).store( myOptions.get() );
-            return rw->readImage( iobuf, options );
+            std::stringstream iobuf;
+            if ( readToBuffer( filename, iobuf ) )
+            {
+                osg::ref_ptr<osgDB::Options> myOptions = Registry::instance()->cloneOrCreateOptions(options);
+                URIContext(*_archiveURI).add(filename).store( myOptions.get() );
+                return rw->readImage( iobuf, options );
+            }
+            else return ReadResult::ERROR_IN_READING_FILE;
         }
-        else return ReadResult::ERROR_IN_READING_FILE;
     }
-    else return ReadResult::FILE_NOT_HANDLED;
+    return ReadResult::FILE_NOT_HANDLED;
 }
 
 osgDB::ReaderWriter::ReadResult
 KMZArchive::readNode(const std::string& filename, const osgDB::Options* options) const
 {
-    osgDB::ReaderWriter* rw = osgDB::Registry::instance()->getReaderWriterForExtension(
-        osgDB::getLowerCaseFileExtension( filename ) );
-    if ( rw )
+    if ( isAcceptable(filename, options) )
     {
-        std::stringstream iobuf;
-        if ( readToBuffer( filename, iobuf ) )
+        osgDB::ReaderWriter* rw = osgDB::Registry::instance()->getReaderWriterForExtension(
+            osgDB::getLowerCaseFileExtension( filename ) );
+        if ( rw )
         {
-            osg::ref_ptr<osgDB::Options> myOptions = Registry::instance()->cloneOrCreateOptions(options);
-            URIContext(*_archiveURI).add(filename).store( myOptions.get() );
-            return rw->readNode( iobuf, options );
+            std::stringstream iobuf;
+            if ( readToBuffer( filename, iobuf ) )
+            {
+                osg::ref_ptr<osgDB::Options> myOptions = Registry::instance()->cloneOrCreateOptions(options);
+                URIContext(*_archiveURI).add(filename).store( myOptions.get() );
+                return rw->readNode( iobuf, options );
+            }
+            else return ReadResult::ERROR_IN_READING_FILE;
         }
-        else return ReadResult::ERROR_IN_READING_FILE;
     }
-    else return ReadResult::FILE_NOT_HANDLED;
+    return ReadResult::FILE_NOT_HANDLED;
 }
 
 osgDB::ReaderWriter::ReadResult
 KMZArchive::readObject(const std::string& filename, const osgDB::Options* options) const
 {
-    osgDB::ReaderWriter* rw = osgDB::Registry::instance()->getReaderWriterForExtension(
-        osgDB::getLowerCaseFileExtension( filename ) );
-    if ( rw )
+    if ( isAcceptable(filename, options) )
     {
-        std::stringstream iobuf;
-        if ( readToBuffer( filename, iobuf ) )
+        osgDB::ReaderWriter* rw = osgDB::Registry::instance()->getReaderWriterForExtension(
+            osgDB::getLowerCaseFileExtension( filename ) );
+        if ( rw )
         {
-            osg::ref_ptr<osgDB::Options> myOptions = Registry::instance()->cloneOrCreateOptions(options);
-            URIContext(*_archiveURI).add(filename).store( myOptions.get() );
-            return rw->readObject( iobuf, myOptions.get() );
+            std::stringstream iobuf;
+            if ( readToBuffer( filename, iobuf ) )
+            {
+                osg::ref_ptr<osgDB::Options> myOptions = Registry::instance()->cloneOrCreateOptions(options);
+                URIContext(*_archiveURI).add(filename).store( myOptions.get() );
+                return rw->readObject( iobuf, myOptions.get() );
+            }
+            else return ReadResult::ERROR_IN_READING_FILE;
         }
-        else return ReadResult::ERROR_IN_READING_FILE;
     }
-    else return ReadResult::FILE_NOT_HANDLED;
+    return ReadResult::FILE_NOT_HANDLED;
 }
 
 #endif // SUPPORT_KMZ

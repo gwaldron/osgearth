@@ -311,10 +311,10 @@ namespace osgEarth { namespace Threading
             ScopedMutexLock lock(_mutex);
             return _data[getCurrentThreadId()];
         }
-        const T& get() const {
-            ScopedMutexLock lock(_mutex);
-            return _data[getCurrentThreadId()];
-        }
+        //const T& get() const {
+        //    ScopedMutexLock lock(_mutex);
+        //    return _data[getCurrentThreadId()];
+        //}
     private:
         std::map<unsigned,T> _data;
         Mutex                _mutex;

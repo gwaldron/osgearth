@@ -71,6 +71,7 @@ namespace
             "1-6 : fly to preset viewpoints \n"
             "shift-right-mouse: locked panning\n"
             "u : toggle azimuth locking\n"
+            "c : toggle perspective/ortho\n"
             "h : toggle this help\n";
 
         VBox* v = new VBox();
@@ -139,7 +140,37 @@ namespace
 
         char _key;
         osg::ref_ptr<EarthManipulator> _manip;
+    };
 
+    struct ToggleProjectionHandler : public osgGA::GUIEventHandler
+    {
+        ToggleProjectionHandler(char key, EarthManipulator* manip)
+            : _key(key), _manip(manip)
+        {
+        }
+
+        bool handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& aa)
+        {
+            if (ea.getEventType() == ea.KEYDOWN && ea.getKey() == _key)
+            {
+                if ( _manip->getSettings()->getCameraProjection() == EarthManipulator::PROJ_PERSPECTIVE )
+                    _manip->getSettings()->setCameraProjection( EarthManipulator::PROJ_ORTHOGRAPHIC );
+                else
+                    _manip->getSettings()->setCameraProjection( EarthManipulator::PROJ_PERSPECTIVE );
+                aa.requestRedraw();
+                return true;
+            }
+            return false;
+        }
+
+        void getUsage(osg::ApplicationUsage& usage) const
+        {
+            using namespace std;
+            usage.addKeyboardMouseBinding(string(1, _key), string("Toggle projection type"));
+        }
+
+        char _key;
+        osg::ref_ptr<EarthManipulator> _manip;
     };
 
 }
@@ -194,7 +225,7 @@ int main(int argc, char** argv)
     
     viewer.addEventHandler(new FlyToViewpointHandler( manip ));
     viewer.addEventHandler(new LockAzimuthHandler('u', manip));
-
+    viewer.addEventHandler(new ToggleProjectionHandler('c', manip));
 
     // add some stock OSG handlers:
     viewer.addEventHandler(new osgViewer::StatsHandler());

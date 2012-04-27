@@ -39,11 +39,15 @@ namespace osgEarth
         {
         public:
             virtual void onPositionChanged(const Dragger* sender, const osgEarth::GeoPoint& position) {};
+            virtual ~PositionChangedCallback() { }
         };
 
         typedef std::list< osg::ref_ptr<PositionChangedCallback> > PositionChangedCallbackList;
 
         Dragger( osgEarth::MapNode* mapNode);
+
+        /** dtor */
+        virtual ~Dragger() { }
 
         bool getDragging() const;
 
@@ -83,6 +87,9 @@ namespace osgEarth
     {
     public:
         SphereDragger(osgEarth::MapNode* mapNode);
+
+        /** dtor */
+        virtual ~SphereDragger() { }
 
         const osg::Vec4f& getColor() const;
 

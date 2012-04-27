@@ -20,6 +20,7 @@
 #include <osgEarth/HeightFieldUtils>
 #include <osgEarth/GeoData>
 #include <osgEarth/Geoid>
+#include <osgEarth/CullingUtils>
 #include <osg/Notify>
 
 using namespace osgEarth;
@@ -389,7 +390,7 @@ HeightFieldUtils::resolveInvalidHeights(osg::HeightField* grid,
     }
 }
 
-osg::ClusterCullingCallback*
+osg::NodeCallback*
 HeightFieldUtils::createClusterCullingCallback( osg::HeightField* grid, osg::EllipsoidModel* et, float verticalScale )
 {
     //This code is a very slightly modified version of the DestinationTile::createClusterCullingCallback in VirtualPlanetBuilder.
@@ -466,9 +467,8 @@ HeightFieldUtils::createClusterCullingCallback( osg::HeightField* grid, osg::Ell
         }
     }    
 
-    osg::ClusterCullingCallback* ccc = new osg::ClusterCullingCallback;
-
-    ccc->set(center_position + transformed_center_normal*max_cluster_culling_height ,
+    osg::NodeCallback* ccc = ClusterCullingFactory::create(
+        center_position + transformed_center_normal*max_cluster_culling_height ,
         transformed_center_normal, 
         min_dot_product,
         max_cluster_culling_radius);

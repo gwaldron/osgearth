@@ -302,43 +302,4 @@ AnnotationNode::applyStyle( const Style& style, bool noClampHint )
         _altitude = style.get<AltitudeSymbol>();
         setAutoClamp( true );
     }
-
-#if 0
-    if ( _autoClamp )
-    bool wantAutoClamp = false;
-    bool wantDepthAdjustment = false;
-    
-    if ( !noClampHint && supportsAutoClamping(style) )
-    {
-        const AltitudeSymbol* alt = style.get<AltitudeSymbol>();
-
-        if (alt->clamping() == AltitudeSymbol::CLAMP_TO_TERRAIN || 
-            alt->clamping() == AltitudeSymbol::CLAMP_RELATIVE_TO_TERRAIN )
-        {
-            // continuous clamping: automatically re-clamp whenever a new terrain tile
-            // appears under the geometry
-            if ( AnnotationSettings::getContinuousClamping() )
-            {
-                wantAutoClamp = true;
-                _altitude = alt;
-            }
-
-            // depth adjustment: twiddle the Z buffering to help rid clamped line
-            // geometry of its z-fighting tendencies
-            if ( AnnotationSettings::getApplyDepthOffsetToClampedLines() )
-            {
-                // verify that the geometry if polygon-less:
-                PrimitiveSetTypeCounter counter;
-                this->accept(counter);
-                if ( counter._polygon == 0 && (counter._line > 0 || counter._point > 0) )
-                {
-                    wantDepthAdjustment = true;
-                }
-            }
-        }
-    }
-
-    setAutoClamp( wantAutoClamp );
-    setDepthAdjustment( wantDepthAdjustment );
-#endif
 }

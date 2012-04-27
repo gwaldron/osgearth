@@ -40,6 +40,9 @@ namespace osgEarth
         ProfileOptions( const ConfigOptions& options =ConfigOptions() );
         ProfileOptions( const std::string& namedProfile );
 
+        /** dtor */
+        virtual ~ProfileOptions() { }
+
         /** Returns true if this configuration is well-defined and usable */
         bool defined() const;
 
@@ -278,6 +281,9 @@ namespace osgEarth
             double geoxmin, double geoymin, double geoxmax, double geoymax,
             unsigned int x_tiles_at_lod0 =0,
             unsigned int y_tiles_at_lod0 =0 );
+
+        /** dtor */
+        virtual ~Profile() { }
         
 
         virtual void addIntersectingTiles(

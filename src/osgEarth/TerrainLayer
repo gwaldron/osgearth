@@ -40,6 +40,9 @@ namespace osgEarth
         TerrainLayerOptions( const ConfigOptions& options =ConfigOptions() );
         TerrainLayerOptions( const std::string& name, const TileSourceOptions& driverOptions );
 
+        /** dtor */
+        virtual ~TerrainLayerOptions() { }
+
         /**
          * The readable name of the layer.
          */
@@ -194,6 +197,7 @@ namespace osgEarth
     struct TerrainLayerCallback : public osg::Referenced
     {
         virtual void onVisibleChanged( class TerrainLayer* layer ) { }
+        virtual ~TerrainLayerCallback() { }
     };
 
     typedef void (TerrainLayerCallback::*TerrainLayerCallbackMethodPtr)(TerrainLayer* layer);

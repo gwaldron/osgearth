@@ -102,6 +102,13 @@ namespace osgEarth { namespace Util
 			TETHER_CENTER_AND_HEADING   // The camera will follow the node and only follow heading rotation
 		};
 
+        /** Camera projection matrix type **/
+        enum CameraProjection
+        {
+            PROJ_PERSPECTIVE,
+            PROJ_ORTHOGRAPHIC
+        };
+
         struct OSGEARTHUTIL_EXPORT ActionOption {
             ActionOption() { }
             ActionOption( int option, bool value ) : _option(option), _bool_value(value) { }
@@ -193,6 +200,9 @@ namespace osgEarth { namespace Util
 
             // copy ctor
             Settings( const Settings& rhs );
+
+            /** dtor */
+            virtual ~Settings() { }
 
             /**
              * Assigns behavior to the action of dragging the mouse while depressing one or
@@ -447,6 +457,10 @@ namespace osgEarth { namespace Util
                 out_maxSeconds = _max_vp_duration_s;
             }
 
+            /** The camera projection matrix type */
+            void setCameraProjection( const CameraProjection& value );
+            const CameraProjection& getCameraProjection() const { return _camProjType; }
+
         private:
 
             friend class EarthManipulator;
@@ -482,6 +496,8 @@ namespace osgEarth { namespace Util
             bool _arc_viewpoints;
             bool _auto_vp_duration;
             double _min_vp_duration_s, _max_vp_duration_s;
+
+            CameraProjection _camProjType;
         };
 
     public:
@@ -829,6 +845,9 @@ namespace osgEarth { namespace Util
         Action _last_action;
         // to support updating the camera after the update traversal (e.g., for tethering)
         osg::observer_ptr<osg::Camera> _viewCamera;
+        double _vfov;
+        double _tanHalfVFOV;
+        optional<osg::CullSettings::ComputeNearFarMode> _savedCNFMode;
         
         struct CameraPostUpdateCallback : public osg::NodeCallback {
             CameraPostUpdateCallback(EarthManipulator* m) : _m(m) { }

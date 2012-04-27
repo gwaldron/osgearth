@@ -40,6 +40,8 @@ namespace osgEarth { namespace Features
     public:
         BuildGeometryFilter( const Style& style =Style() );
 
+        virtual ~BuildGeometryFilter() { }
+
         /** Pushes a list of features through the filter. */
         osg::Node* push( FeatureList& input, FilterContext& context );
 

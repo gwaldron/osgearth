@@ -19,10 +19,12 @@
 
 #include <osgEarthAnnotation/LocalizedNode>
 #include <osgEarthAnnotation/Decluttering>
-#include <osgEarth/Utils>
+#include <osgEarth/CullingUtils>
 #include <osgEarth/MapNode>
 #include <osg/AutoTransform>
 #include <osg/MatrixTransform>
+
+#define LC "[LocalizedNode] "
 
 using namespace osgEarth;
 using namespace osgEarth::Annotation;
@@ -118,6 +120,9 @@ LocalizedNode::updateTransforms( const GeoPoint& p, osg::Node* patch )
         if ( !makeAbsolute(absPos, patch) )
             return false;
 
+        OE_DEBUG << LC << "Update transforms for position: " << absPos.x() << ", " << absPos.y() << ", " << absPos.z()
+            << std::endl;
+
         osg::Matrixd local2world;
         absPos.createLocalToWorld( local2world );
         
@@ -161,6 +166,9 @@ LocalizedNode::updateTransforms( const GeoPoint& p, osg::Node* patch )
                 osg::Matrix::translate(absPos) );
         }
     }
+    
+
+    dirtyBound();
 
     return true;
 }

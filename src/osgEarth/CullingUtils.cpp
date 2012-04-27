@@ -21,11 +21,180 @@
 #include <osg/ClusterCullingCallback>
 #include <osg/PrimitiveSet>
 #include <osg/Geode>
+#include <osg/TemplatePrimitiveFunctor>
+#include <osgUtil/CullVisitor>
 
 using namespace osgEarth;
 
 namespace
 {
+    struct ComputeMaxNormalLength
+    {
+        void set( const osg::Vec3& normalECEF, const osg::Matrixd& local2world, float* maxNormalLen )
+        {
+            _normal       = normalECEF;
+            _local2world  = local2world;
+            _maxNormalLen = maxNormalLen;
+        }
+
+        void operator()( const osg::Vec3 &v1, bool)
+        {         
+            compute( v1 );
+        }
+
+        void operator()( const osg::Vec3 &v1, const osg::Vec3 &v2, bool)
+        {         
+            compute( v1 );
+            compute( v2 );
+        }
+
+        void operator()( const osg::Vec3 &v1, const osg::Vec3 &v2, const osg::Vec3& v3, bool)
+        {         
+            compute( v1 );
+            compute( v2 );
+            compute( v3 );
+        }
+
+        void operator()( const osg::Vec3 &v1, const osg::Vec3 &v2, const osg::Vec3& v3, const osg::Vec3& v4, bool)
+        {         
+            compute( v1 );
+            compute( v2 );
+            compute( v3 );
+            compute( v4 );
+        }
+
+        void compute( const osg::Vec3& v )
+        {
+            osg::Vec3d vworld = v * _local2world;
+            double vlen = vworld.length();
+            vworld.normalize();
+
+            // the dot product of the 2 vecs is the cos of the angle between them;
+            // mult that be the vector length to get the new normal length.
+            float normalLen = fabs(_normal * vworld) * vlen;
+
+            if ( normalLen < *_maxNormalLen )
+                *_maxNormalLen = normalLen;
+        }
+
+        osg::Vec3 _normal;
+        osg::Matrixd _local2world;
+        float*    _maxNormalLen;
+    };
+
+    struct ComputeMaxRadius2
+    {
+        void set( const osg::Vec3& center, float* maxRadius2 )
+        {
+            _center = center;
+            _maxRadius2 = maxRadius2;
+        }
+
+        void operator()( const osg::Vec3 &v1, bool )
+        {            
+            compute( v1 );
+        }
+
+        void operator()( const osg::Vec3 &v1, const osg::Vec3 &v2, bool )
+        {            
+            compute( v1 );
+            compute( v2 );
+        }
+
+        void operator()( const osg::Vec3 &v1, const osg::Vec3 &v2, const osg::Vec3 &v3, bool )
+        {            
+            compute( v1 );
+            compute( v2 );
+            compute( v3 );
+        }        
+
+        void operator()( const osg::Vec3 &v1, const osg::Vec3 &v2, const osg::Vec3 &v3, const osg::Vec3& v4, bool )
+        {            
+            compute( v1 );
+            compute( v2 );
+            compute( v3 );
+            compute( v4 );
+        }
+
+        void compute( const osg::Vec3& v )
+        {
+            float dist = (v - _center).length2();
+            if ( dist > *_maxRadius2 )
+                *_maxRadius2 = dist;
+        }
+
+
+
+        osg::Vec3 _center;
+        float*    _maxRadius2;
+    };
+
+    struct ComputeVisitor : public osg::NodeVisitor
+    {
+        ComputeVisitor()
+            : osg::NodeVisitor(osg::NodeVisitor::TRAVERSE_ALL_CHILDREN), 
+              _maxRadius2(0.0f) { }
+
+        void run( osg::Node* node, const osg::Vec3d& centerECEF )
+        {
+            _centerECEF = centerECEF;
+            _normalECEF = _centerECEF;
+            _normalECEF.normalize();
+            _maxNormalLen = _centerECEF.length();
+
+            _pass = 1;
+            node->accept( *this );
+
+            _centerECEF = _normalECEF * _maxNormalLen;
+
+            _pass = 2;
+            node->accept( *this );
+        }
+
+        void apply( osg::Geode& geode )
+        {            
+            if ( _pass == 1 )
+            {
+                osg::Matrixd local2world;
+                if ( !_matrixStack.empty() )
+                    local2world = _matrixStack.back();
+
+                osg::TemplatePrimitiveFunctor<ComputeMaxNormalLength> pass1;
+                pass1.set( _normalECEF, local2world, &_maxNormalLen );
+
+                for( unsigned i=0; i<geode.getNumDrawables(); ++i )
+                    geode.getDrawable(i)->accept( pass1 );
+            }
+
+            else // if ( _pass == 2 )
+            {
+                osg::Vec3d center = _matrixStack.empty() ? _centerECEF : _centerECEF * osg::Matrixd::inverse(_matrixStack.back());
+
+                osg::TemplatePrimitiveFunctor<ComputeMaxRadius2> pass2;
+                pass2.set( center, &_maxRadius2 );
+                for( unsigned i=0; i<geode.getNumDrawables(); ++i )
+                    geode.getDrawable(i)->accept( pass2 );
+            }
+        }
+
+        void apply( osg::Transform& xform )
+        {
+            osg::Matrixd matrix;
+            if (!_matrixStack.empty()) matrix = _matrixStack.back();
+            xform.computeLocalToWorldMatrix( matrix, this );
+            _matrixStack.push_back( matrix );
+            traverse(xform);
+            _matrixStack.pop_back();
+        }
+        
+        unsigned   _pass;
+        osg::Vec3d _centerECEF;
+        osg::Vec3f _normalECEF;
+        float      _maxNormalLen;
+        float      _maxRadius2;
+        std::vector<osg::Matrixd> _matrixStack;
+    };
+
     /** 
      * Line functor that computes the minimum deviation from a world normal, based on 
      * line normals in world space.
@@ -111,50 +280,61 @@ namespace
         double _maxOffset, _maxRadius, _minDeviation;
         osg::Vec3d _ecefControl, _ecefNormal;
     };
-    
-    /**
-     * A customized CCC that works correctly under an RTT camera. The built-in one
-     * called getEyePoint() instead of getViewPoint() and therefore isn't compatible
-     * with osg::Camera::ABSOLUTE_RF_INHERIT_VIEWPOINT mode.
-     *
-     * Note: this is fixed in newer versions of OSG, but let's keep it around -gw
-     */
-    struct MyClusterCullingCallback : public osg::ClusterCullingCallback
-    {
-        bool cull(osg::NodeVisitor* nv, osg::Drawable* , osg::State*) const
-        {
-            osg::CullSettings* cs = dynamic_cast<osg::CullSettings*>(nv);
-            if (cs && !(cs->getCullingMode() & osg::CullSettings::CLUSTER_CULLING))
-            {
-                return false;
-            }
-
-            if (_deviation<=-1.0f)
-            {
-                return false;
-            }
-
-            osg::Vec3d eye_cp = nv->getViewPoint() - _controlPoint;
-            float radius = (float)eye_cp.length();
-
-            if (radius<_radius)
-            {
-                return false;
-            }
-
-            float deviation = (eye_cp * _normal)/radius;
-
-            return deviation < _deviation;
-        }
-    };
 }
 
+
 //----------------------------------------------------------------------------
+
+
+bool 
+SuperClusterCullingCallback::cull(osg::NodeVisitor* nv, osg::Drawable* , osg::State*) const
+{
+    osgUtil::CullVisitor* cv = dynamic_cast<osgUtil::CullVisitor*>(nv);
+
+    // quick bail if cluster culling is disabled:
+    if ( cv && !(cv->getCullingMode() & osg::CullSettings::CLUSTER_CULLING) )
+        return false;
+
+    // quick bail is the deviation is maxed out
+    if ( _deviation <= -1.0f )
+        return false;
+
+    // accept if we're within the culling radius
+    osg::Vec3d eye_cp = nv->getViewPoint() - _controlPoint;
+    float radius = (float)eye_cp.length();
+    if (radius < _radius)
+        return false;
+
+    // handle perspective and orthographic projections differently.
+    const osg::Matrixd& proj = *cv->getProjectionMatrix();
+    bool isOrtho = ( proj(3,3) == 1. ) && ( proj(2,3) == 0. ) && ( proj(1,3) == 0. ) && ( proj(0,3) == 0.);
+
+    if ( isOrtho )
+    {
+        // For an ortho camera, use the reverse look vector instead of the eye->controlpoint
+        // vector for the deviation test. Transform the local reverse-look vector (always 0,0,1)
+        // into world space and dot them. (Use 3x3 since we're xforming a vector, not a point)
+        osg::Vec3d revLookWorld = osg::Matrix::transform3x3( *cv->getModelViewMatrix(), osg::Vec3d(0,0,1) );
+        revLookWorld.normalize();
+        float deviation = revLookWorld * _normal;
+        return deviation < _deviation;
+    }
+
+    else // isPerspective
+    {
+        float deviation = (eye_cp * _normal)/radius;
+        return deviation < _deviation;
+    }
+}
+
+
+//----------------------------------------------------------------------------
+
 
 osg::NodeCallback*
 ClusterCullingFactory::create( osg::Node* node, const osg::Vec3d& ecefControlPoint )
 {
-    MyClusterCullingCallback* ccc = 0L;
+    SuperClusterCullingCallback* ccc = 0L;
     if ( node )
     { 
         ComputeClusterCullingParams pass( ecefControlPoint );
@@ -167,10 +347,38 @@ ClusterCullingFactory::create( osg::Node* node, const osg::Vec3d& ecefControlPoi
         float angle = acosf(pass._minDeviation)+osg::PI*0.5f;
         float deviation = angle < osg::PI ? cosf(angle) : -1.0f;
 
-        ccc = new MyClusterCullingCallback();
+        ccc = new SuperClusterCullingCallback();
 
         // note: getBound()->radius() should really be a computed max radius..todo.
         ccc->set( ecefControlPoint, ecefNormal, deviation, node->getBound().radius() );
+    }
+    return ccc;
+}
+
+osg::NodeCallback*
+ClusterCullingFactory::create2( osg::Node* node, const osg::Vec3d& centerECEF )
+{
+    // Cluster culling computer. This works in two passes.
+    //
+    // It starts with a control point provided by the caller. I the first pass it computes
+    // a new control point that is along the same geocentric normal but at a lower Z. This 
+    // corresponds to the lowest Z of a vertex with respect to that normal. This means we
+    // can always use a "deviation" of 0 -- and it gets around the problem of the control
+    // point being higher than a vertex and corrupting the deviation.
+    //
+    // In the second pass, we compute the radius based on the new control point.
+    //
+    // NOTE: This is based on code developed separately from the method used in create()
+    // above. We need to sort out which is the better approach and consolidate!
+
+    osg::ClusterCullingCallback* ccc = 0L;
+    if ( node )
+    {
+        ComputeVisitor cv;
+        cv.run( node, centerECEF );
+
+        ccc = new SuperClusterCullingCallback();
+        ccc->set( cv._centerECEF, cv._normalECEF, 0.0f, sqrt(cv._maxRadius2) );
     }
     return ccc;
 }
@@ -191,4 +399,101 @@ ClusterCullingFactory::createAndInstall( osg::Node* node, const osg::Vec3d& ecef
         node->addCullCallback( cb );
     }
     return node;
+}
+
+osg::NodeCallback*
+ClusterCullingFactory::create(const osg::Vec3& controlPoint,
+                              const osg::Vec3& normal,
+                              float deviation,
+                              float radius)
+{
+    SuperClusterCullingCallback* ccc = new SuperClusterCullingCallback();
+    ccc->set(controlPoint, normal, deviation, radius);
+    return ccc;
+}
+
+
+//------------------------------------------------------------------------
+
+CullNodeByHorizon::CullNodeByHorizon( const osg::Vec3d& world, const osg::EllipsoidModel* model ) :
+_world(world),
+_r(model->getRadiusPolar()),
+_r2(model->getRadiusPolar() * model->getRadiusPolar())
+{
+    //nop
+}
+
+void
+CullNodeByHorizon::operator()(osg::Node* node, osg::NodeVisitor* nv)
+{
+    if ( nv )
+    {
+        osgUtil::CullVisitor* cv = static_cast<osgUtil::CullVisitor*>( nv );
+
+        // get the viewpoint. It will be relative to the current reference location (world).
+        osg::Matrix l2w = osg::computeLocalToWorld( nv->getNodePath(), true );
+        osg::Vec3d vp  = cv->getViewPoint() * l2w;
+
+        // same quadrant:
+        if ( vp * _world >= 0.0 )
+        {
+            double d2 = vp.length2();
+            double horiz2 = d2 - _r2;
+            double dist2 = (_world-vp).length2();
+            if ( dist2 < horiz2 )
+            {
+                traverse(node, nv);
+            }
+        }
+
+        // different quadrants:
+        else
+        {
+            // there's a horizon between them; now see if the thing is visible.
+            // find the triangle formed by the viewpoint, the target point, and 
+            // the center of the earth.
+            double a = (_world-vp).length();
+            double b = _world.length();
+            double c = vp.length();
+
+            // Heron's formula for triangle area:
+            double s = 0.5*(a+b+c);
+            double area = 0.25*sqrt( s*(s-a)*(s-b)*(s-c) );
+
+            // Get the triangle's height:
+            double h = (2*area)/a;
+
+            if ( h >= _r )
+            {
+                traverse(node, nv);
+            }
+        }
+    }
+}
+
+//------------------------------------------------------------------------
+
+CullNodeByNormal::CullNodeByNormal( const osg::Vec3d& normal )
+{
+    _normal = normal;
+    //_normal.normalize();
+}
+
+void
+CullNodeByNormal::operator()(osg::Node* node, osg::NodeVisitor* nv)
+{
+    osg::Vec3d eye, center, up;
+    osgUtil::CullVisitor* cv = static_cast<osgUtil::CullVisitor*>( nv );
+
+    cv->getCurrentCamera()->getViewMatrixAsLookAt(eye,center,up);
+
+    eye.normalize();
+    osg::Vec3d normal = _normal;
+    normal.normalize();
+
+    double dotProduct = eye * normal;
+    if ( dotProduct > 0.0 )
+    {
+        traverse(node, nv);
+    }
 }

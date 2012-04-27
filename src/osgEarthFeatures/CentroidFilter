@@ -35,6 +35,7 @@ namespace osgEarth { namespace Features
     {
     public:
         CentroidFilter();
+        virtual ~CentroidFilter() { }
 
     public:
         virtual FilterContext push( FeatureList& input, FilterContext& context );

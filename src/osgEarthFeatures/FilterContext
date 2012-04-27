@@ -50,6 +50,8 @@ namespace osgEarth { namespace Features
             FeatureSourceIndex*   index         =0L);
 
         FilterContext( const FilterContext& rhs );
+        
+        virtual ~FilterContext() { }
 
         /**
          * Assigns a resource cache to use. One is created automatically if you

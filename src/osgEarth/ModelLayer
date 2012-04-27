@@ -41,6 +41,9 @@ namespace osgEarth
 
         ModelLayerOptions( const std::string& name, const ModelSourceOptions& driverOptions =ModelSourceOptions() );
 
+        /** dtor */
+        virtual ~ModelLayerOptions() { }
+
         /**
          * The readable name of the layer.
          */
@@ -101,6 +104,7 @@ namespace osgEarth
     {
         virtual void onVisibleChanged( class ModelLayer* layer ) { }
         virtual void onOverlayChanged( class ModelLayer* layer ) { }
+        virtual ~ModelLayerCallback() { }
     };
 
     typedef void (ModelLayerCallback::*ModelLayerCallbackMethodPtr)(ModelLayer* layer);

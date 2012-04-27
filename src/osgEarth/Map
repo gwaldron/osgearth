@@ -100,6 +100,9 @@ namespace osgEarth
 
         virtual void onMaskLayerAdded( MaskLayer* mask ) { }
         virtual void onMaskLayerRemoved( MaskLayer* mask ) { }
+
+        /** dtor */
+        virtual ~MapCallback() { }
     };
 
     typedef std::list< osg::ref_ptr<MapCallback> > MapCallbackList;
@@ -379,7 +382,7 @@ namespace osgEarth
         bool toMapPoint( const GeoPoint& input, GeoPoint& output ) const;
 
         /**
-         * Convenience function to convert a point (in map coordinates) to world-space (XYZ) coordinates.
+         * Convenience function to convert a point to world-space (XYZ) coordinates.
          */
         bool toWorldPoint( const GeoPoint& input, osg::Vec3d& output ) const;
 
@@ -462,6 +465,9 @@ namespace osgEarth
               _isCube( rhs._isCube ),
               _elevationInterpolation( rhs._elevationInterpolation )
              { }              
+
+        /** dtor */
+        virtual ~MapInfo() { }
         
         const Profile* getProfile() const { return _profile.get(); }
         const SpatialReference* getSRS() const { return _profile->getSRS(); }
@@ -503,6 +509,9 @@ namespace osgEarth
          * A copy constructor with a new name (no sync happens)
          */
         MapFrame( const MapFrame& frame, const std::string& name ="" );
+
+        /** dtor */
+        virtual ~MapFrame() { }
 
         /**
          * Synchronizes this frame with the source map model (only if necessary). Returns

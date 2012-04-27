@@ -86,7 +86,7 @@ namespace osgEarth { namespace QtGui
       void annotationRemoved(osgEarth::Annotation::AnnotationNode* annotation);
 
     protected:
-      ~DataManager() { }
+      virtual ~DataManager() { }
 
       void initialize();
       void onMapChanged();

@@ -98,6 +98,8 @@ namespace osgEarth { namespace Annotation
             MapNode*      mapNode,
             const Config& conf);
 
+        virtual ~LabelNode() { }
+
         /**
          * Sets the text content.
          */

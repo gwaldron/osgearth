@@ -197,9 +197,9 @@ MapNode::init()
 
     // establish global driver options. These are OSG reader-writer options that
     // will make their way to any read* calls down the pipe
-    const osgDB::ReaderWriter::Options* global_options = _map->getGlobalOptions();
-    osg::ref_ptr<osgDB::ReaderWriter::Options> local_options = global_options ? 
-        new osgDB::ReaderWriter::Options( *global_options ) :
+    const osgDB::Options* global_options = _map->getGlobalOptions();
+    osg::ref_ptr<osgDB::Options> local_options = global_options ? 
+        Registry::instance()->cloneOrCreateOptions( global_options ) :
         NULL;
 
     if ( local_options.valid() )
@@ -212,9 +212,6 @@ MapNode::init()
 
     // TODO: not sure why we call this here
     _map->setGlobalOptions( local_options.get() );
-
-    // overlays:
-    _pendingOverlayAutoSetTextureUnit = true;
 
     // load and attach the terrain engine, but don't initialize it until we need it
     const TerrainOptions& terrainOptions = _mapNodeOptions.getTerrainOptions();
@@ -250,9 +247,13 @@ MapNode::init()
     else
         OE_WARN << "FAILED to create a terrain engine for this map" << std::endl;
 
-    // make a group for the model layers:
+    // make a group for the model layers.
+    // NOTE: for now, we are going to nullify any shader programs that occur above the model
+    // group, since it does not YET support shader composition. Programs defined INSIDE a
+    // model layer will still work OK though.
     _models = new osg::Group();
     _models->setName( "osgEarth::MapNode.modelsGroup" );
+    _models->getOrCreateStateSet()->setAttributeAndModes( new osg::Program(), osg::StateAttribute::OFF );
     addChild( _models.get() );
 
     // make a group for overlay model layers:

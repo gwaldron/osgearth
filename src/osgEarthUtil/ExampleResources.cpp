@@ -22,6 +22,7 @@
 #include <osgEarthUtil/LatLongFormatter>
 #include <osgEarthUtil/MGRSFormatter>
 #include <osgEarthUtil/MouseCoordsTool>
+#include <osgEarthUtil/AutoClipPlaneHandler>
 
 #include <osgEarthAnnotation/AnnotationData>
 #include <osgEarthAnnotation/AnnotationRegistry>
@@ -31,6 +32,10 @@
 #include <osgEarth/StringUtils>
 
 #include <osgEarthDrivers/kml/KML>
+
+#include <osgGA/StateSetManipulator>
+#include <osgViewer/ViewerEventHandlers>
+#include <osgDB/FileNameUtils>
 
 #define KML_PUSHPIN_URL "http://demo.pelicanmapping.com/icons/pushpin_yellow.png"
 
@@ -361,15 +366,25 @@ AnnotationGraphControlFactory::create(osg::Node*       graph,
 //------------------------------------------------------------------------
 
 #undef  LC
-#define LC "[ExampleMapNodeHelper] "
+#define LC "[MapNodeHelper] "
 
 osg::Group*
-ExampleMapNodeHelper::load(osg::ArgumentParser& args,
-                           osgViewer::View*     view,
-                           Control*             userControl ) const
+MapNodeHelper::load(osg::ArgumentParser& args,
+                    osgViewer::View*     view,
+                    Control*             userControl ) const
 {
     // read in the Earth file:
-    osg::Node* node = osgDB::readNodeFiles( args );
+    osg::Node* node = 0L;
+    for( int i=0; i<args.argc(); ++i )
+    {
+        if ( osgDB::getLowerCaseFileExtension(args[i]) == "earth" )
+        {
+            node = osgDB::readNodeFile( args[i] );
+            args.remove(i);
+            break;
+        }
+    }
+
     if ( !node )
     {
         OE_WARN << LC << "Unable to load an earth file from the command line." << std::endl;
@@ -384,27 +399,32 @@ ExampleMapNodeHelper::load(osg::ArgumentParser& args,
     }
 
     // warn about not having an earth manip
-    if ( 0L == dynamic_cast<EarthManipulator*>(view->getCameraManipulator()) )
+    EarthManipulator* manip = dynamic_cast<EarthManipulator*>(view->getCameraManipulator());
+    if ( manip == 0L )
     {
         OE_WARN << LC << "Helper used before installing an EarthManipulator" << std::endl;
     }
 
     // a root node to hold everything:
     osg::Group* root = new osg::Group();
-
     root->addChild( mapNode.get() );
 
+    // configures the viewer with some stock goodies
+    configureView( view );
+
+    // parses common cmdline arguments.
     parse( mapNode.get(), args, view, root, userControl );
+
     return root;
 }
 
 
 void
-ExampleMapNodeHelper::parse(MapNode*             mapNode,
-                            osg::ArgumentParser& args,
-                            osgViewer::View*     view,
-                            osg::Group*          root,
-                            Control*             userControl ) const
+MapNodeHelper::parse(MapNode*             mapNode,
+                     osg::ArgumentParser& args,
+                     osgViewer::View*     view,
+                     osg::Group*          root,
+                     Control*             userControl ) const
 {
     if ( !root )
         root = mapNode;
@@ -413,11 +433,12 @@ ExampleMapNodeHelper::parse(MapNode*             mapNode,
 
     bool useSky        = args.read("--sky");
     bool useOcean      = args.read("--ocean");
-
     bool useMGRS       = args.read("--mgrs");
     bool useDMS        = args.read("--dms");
     bool useDD         = args.read("--dd");
     bool useCoords     = args.read("--coords") || useMGRS || useDMS || useDD;
+    bool useOrtho      = args.read("--ortho");
+    bool useAutoClip   = args.read("--autoclip");
 
     std::string kmlFile;
     args.read( "--kml", kmlFile );
@@ -554,12 +575,44 @@ ExampleMapNodeHelper::parse(MapNode*             mapNode,
         canvas->addControl( readout );
     }
 
+    // Configure for an ortho camera:
+    if ( useOrtho )
+    {
+        EarthManipulator* manip = dynamic_cast<EarthManipulator*>(view->getCameraManipulator());
+        if ( manip )
+        {
+            manip->getSettings()->setCameraProjection( EarthManipulator::PROJ_ORTHOGRAPHIC );
+        }
+    }
+
+    // Install an auto clip plane clamper
+    if ( useAutoClip )
+    {
+        view->getCamera()->addCullCallback( new AutoClipPlaneCullCallback(mapNode) );
+    }
+
     root->addChild( canvas );
 }
 
 
+void
+MapNodeHelper::configureView( osgViewer::View* view ) const
+{
+    // add some stock OSG handlers:
+    view->addEventHandler(new osgViewer::StatsHandler());
+    view->addEventHandler(new osgViewer::WindowSizeHandler());
+    view->addEventHandler(new osgViewer::ThreadingHandler());
+    view->addEventHandler(new osgViewer::LODScaleHandler());
+    view->addEventHandler(new osgGA::StateSetManipulator(view->getCamera()->getOrCreateStateSet()));
+
+    // osgEarth benefits from pre-compilation of GL objects in the pager. In newer versions of
+    // OSG, this activates OSG's IncrementalCompileOpeartion in order to avoid frame breaks.
+    view->getDatabasePager()->setDoPreCompile( true );
+}
+
+
 std::string
-ExampleMapNodeHelper::usage() const
+MapNodeHelper::usage() const
 {
     return Stringify()
         << "    --sky                : add a sky model\n"
@@ -568,5 +621,7 @@ ExampleMapNodeHelper::usage() const
         << "    --coords             : display map coords under mouse\n"
         << "    --dms                : dispay deg/min/sec coords under mouse\n"
         << "    --dd                 : display decimal degrees coords under mouse\n"
-        << "    --mgrs               : show MGRS coords under mouse\n";
+        << "    --mgrs               : show MGRS coords under mouse\n"
+        << "    --ortho              : use an orthographic camera\n"
+        << "    --autoclip           : installs an auto-clip plane callback\n";
 }

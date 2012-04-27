@@ -26,7 +26,7 @@
 #include <osgEarthAnnotation/ScaleDecoration>
 #include <osgEarthAnnotation/TrackNode>
 #include <osgEarthQt/ViewerWidget>
-#include <osgEarthQt/CompositeViewerWidget>
+#include <osgEarthQt/MultiViewerWidget>
 #include <osgEarthQt/LayerManagerWidget>
 #include <osgEarthQt/MapCatalogWidget>
 #include <osgEarthQt/DataManager>
@@ -36,6 +36,7 @@
 #include <osgEarthUtil/AnnotationEvents>
 #include <osgEarthUtil/AutoClipPlaneHandler>
 #include <osgEarthUtil/SkyNode>
+#include <osgEarthUtil/EarthManipulator>
 #include <osgEarthDrivers/ocean_surface/OceanSurface>
 
 #include <QAction>
@@ -70,7 +71,7 @@ usage( const std::string& msg )
     OE_NOTICE << msg << std::endl;
     OE_NOTICE << std::endl;
     OE_NOTICE << "USAGE: osgearth_qt [options] file.earth" << std::endl;
-    OE_NOTICE << "   --composite n           : use a composite viewer with n initial views" << std::endl;
+    OE_NOTICE << "   --multi n               : use a multi-pane viewer with n initial views" << std::endl;
     OE_NOTICE << "   --stylesheet filename   : optional Qt stylesheet" << std::endl;
     OE_NOTICE << "   --run-on-demand         : use the OSG ON_DEMAND frame scheme" << std::endl;
     OE_NOTICE << "   --tracks                : create some moving track data" << std::endl;
@@ -204,7 +205,7 @@ main(int argc, char** argv)
     osg::DisplaySettings::instance()->setMinimumNumStencilBits(8);
 
     std::string compNum;
-    bool composite = arguments.read("--composite", compNum);
+    bool composite = arguments.read("--multi", compNum);
     int numViews = composite ? osgEarth::as<int>(compNum, 4) : 1;
 
     std::string stylesheet;
@@ -213,6 +214,8 @@ main(int argc, char** argv)
     bool on_demand = arguments.read("--run-on-demand");
 
     bool trackData = arguments.read("--tracks");
+
+    bool testUseExistingViewer = arguments.read("--use-existing");
 
 
     // load the .earth file from the command line.
@@ -243,12 +246,12 @@ main(int argc, char** argv)
     s_annoGroup->addEventCallback(cb);
     
     osgEarth::QtGui::ViewVector views;
-    osgViewer::ViewerBase* viewer;
+    osg::ref_ptr<osgViewer::ViewerBase> viewer;
 
     // create viewer widget
     if (composite)
     {
-      osgEarth::QtGui::CompositeViewerWidget* viewerWidget = new osgEarth::QtGui::CompositeViewerWidget(root);
+      osgEarth::QtGui::MultiViewerWidget* viewerWidget = new osgEarth::QtGui::MultiViewerWidget(root);
 
       osgViewer::View* primary = viewerWidget->createViewWidget(root);
       primary->getCamera()->addCullCallback(new osgEarth::Util::AutoClipPlaneCullCallback(mapNode));
@@ -261,18 +264,42 @@ main(int argc, char** argv)
         views.push_back(view);
       }
 
-      viewerWidget->setGeometry(50, 50, 1024, 768);
+      //viewerWidget->setGeometry(50, 50, 1024, 768);
       appWin.setViewerWidget(viewerWidget, views);
 
       viewer = viewerWidget;
     }
+
     else
     {
-      osgEarth::QtGui::ViewerWidget* viewerWidget = new osgEarth::QtGui::ViewerWidget(root);
-      viewerWidget->setGeometry(50, 50, 1024, 768);
-      viewerWidget->getCamera()->addCullCallback(new osgEarth::Util::AutoClipPlaneCullCallback(mapNode));
+        osgEarth::QtGui::ViewerWidget* viewerWidget = 0L;
+
+        if ( testUseExistingViewer )
+        {
+            // tests: create a pre-existing viewer and install that in the widget.
+            osgViewer::Viewer* v = new osgViewer::Viewer();
+            v->setSceneData(root);
+            v->setThreadingModel(osgViewer::Viewer::DrawThreadPerContext);
+            v->setCameraManipulator(new osgEarth::Util::EarthManipulator());
+            viewerWidget = new osgEarth::QtGui::ViewerWidget(v);
+        }
+
+        else
+        {
+            // tests: implicity creating a viewer.
+            viewerWidget = new osgEarth::QtGui::ViewerWidget( root );
+        }
+
+      //osgEarth::QtGui::ViewerWidget* viewerWidget = new osgEarth::QtGui::ViewerWidget(root);
+      //viewerWidget->setGeometry(50, 50, 1024, 768);
+
+      viewerWidget->getViews( views );
+
+      for(osgEarth::QtGui::ViewVector::iterator i = views.begin(); i != views.end(); ++i )
+      {
+          i->get()->getCamera()->addCullCallback(new osgEarth::Util::AutoClipPlaneCullCallback(mapNode));
+      }
       appWin.setViewerWidget(viewerWidget);
-      views.push_back(viewerWidget);
 
       if (mapNode.valid())
       {
@@ -286,7 +313,9 @@ main(int argc, char** argv)
           double hours = skyConf.value("hours", 12.0);
           s_sky = new osgEarth::Util::SkyNode(mapNode->getMap());
           s_sky->setDateTime(2011, 3, 6, hours);
-          s_sky->attach(viewerWidget);
+          for(osgEarth::QtGui::ViewVector::iterator i = views.begin(); i != views.end(); ++i )
+              s_sky->attach( *i );
+          //s_sky->attach(viewerWidget->getViewer());
           root->addChild(s_sky);
 
           // Ocean surface.
@@ -299,7 +328,7 @@ main(int argc, char** argv)
         }
       }
 
-      viewer = viewerWidget;
+      viewer = viewerWidget->getViewer();
     }
 
     // activate "on demand" rendering if requested:
@@ -320,7 +349,7 @@ main(int argc, char** argv)
 
         TrackNodeFieldSchema schema;
         createTrackSchema(schema);
-        dataManager->addAnnotation(createTrack(schema, image, "Plane 1", mapNode.get(), osg::Vec3d(-121.463, 46.3548, 1348.71), 10000, 24, trackSims), s_annoGroup);
+        dataManager->addAnnotation(createTrack(schema, image, "Plane 1", mapNode.get(), osg::Vec3d(-121.463, 46.3548, 1500.71), 10000, 24, trackSims), s_annoGroup);
         dataManager->addAnnotation(createTrack(schema, image, "Plane 2", mapNode.get(), osg::Vec3d(-121.656, 46.0935, 4133.06), 10000, 8, trackSims), s_annoGroup);
         dataManager->addAnnotation(createTrack(schema, image, "Plane 3", mapNode.get(), osg::Vec3d(-121.321, 46.2589, 1390.09), 10000, 12, trackSims), s_annoGroup);
 
@@ -334,8 +363,8 @@ main(int argc, char** argv)
     osgEarth::QtGui::MapCatalogWidget* layerCatalog = new osgEarth::QtGui::MapCatalogWidget(dataManager.get(), osgEarth::QtGui::MapCatalogWidget::ALL_LAYERS);
     layerCatalog->setActiveViews(views);
     layerCatalog->setHideEmptyGroups(true);
-	  catalogDock->setWidget(layerCatalog);
-	  appWin.addDockWidget(Qt::LeftDockWidgetArea, catalogDock);
+    catalogDock->setWidget(layerCatalog);
+    appWin.addDockWidget(Qt::LeftDockWidgetArea, catalogDock);
 
 
     // create and dock an annotation list widget
@@ -344,7 +373,7 @@ main(int argc, char** argv)
     osgEarth::QtGui::AnnotationListWidget* annoList = new osgEarth::QtGui::AnnotationListWidget(dataManager.get());
     annoList->setActiveViews(views);
     annoDock->setWidget(annoList);
-	  appWin.addDockWidget(Qt::LeftDockWidgetArea, annoDock);
+    appWin.addDockWidget(Qt::LeftDockWidgetArea, annoDock);
 
 
     // create a second catalog widget for viewpoints
@@ -352,8 +381,8 @@ main(int argc, char** argv)
     vpDock->setAllowedAreas(Qt::LeftDockWidgetArea | Qt::RightDockWidgetArea);
     osgEarth::QtGui::MapCatalogWidget* vpCatalog = new osgEarth::QtGui::MapCatalogWidget(dataManager.get(), osgEarth::QtGui::MapCatalogWidget::VIEWPOINTS);
     vpCatalog->setActiveViews(views);
-	  vpDock->setWidget(vpCatalog);
-	  appWin.addDockWidget(Qt::LeftDockWidgetArea, vpDock);
+    vpDock->setWidget(vpCatalog);
+    appWin.addDockWidget(Qt::LeftDockWidgetArea, vpDock);
 
 
     // create layer manager widget and add as a docked widget on the right
@@ -361,8 +390,8 @@ main(int argc, char** argv)
     layersDock->setAllowedAreas(Qt::LeftDockWidgetArea | Qt::RightDockWidgetArea);
     osgEarth::QtGui::LayerManagerWidget* layerManager = new osgEarth::QtGui::LayerManagerWidget(dataManager.get(), osgEarth::QtGui::LayerManagerWidget::IMAGE_LAYERS);
     layerManager->setActiveViews(views);
-	  layersDock->setWidget(layerManager);
-	  appWin.addDockWidget(Qt::RightDockWidgetArea, layersDock);
+    layersDock->setWidget(layerManager);
+    appWin.addDockWidget(Qt::RightDockWidgetArea, layersDock);
 
 
     // create and dock a LOSControlWidget
@@ -370,8 +399,8 @@ main(int argc, char** argv)
     losDock->setAllowedAreas(Qt::LeftDockWidgetArea | Qt::RightDockWidgetArea);
     osgEarth::QtGui::LOSControlWidget* losControl = new osgEarth::QtGui::LOSControlWidget(root, mapNode.get(), dataManager.get());
     losControl->setActiveViews(views);
-	  losDock->setWidget(losControl);
-	  appWin.addDockWidget(Qt::RightDockWidgetArea, losDock);
+    losDock->setWidget(losControl);
+    appWin.addDockWidget(Qt::RightDockWidgetArea, losDock);
 
     // create terrain profile widget
     osgEarth::QtGui::TerrainProfileWidget* terrainProfiler = new osgEarth::QtGui::TerrainProfileWidget(root, mapNode.get());
@@ -394,7 +423,7 @@ main(int argc, char** argv)
       }
     }
 
-    appWin.setGeometry(100, 100, 800, 600);
+    appWin.setGeometry(100, 100, 1280, 800);
     appWin.show();
 
     return app.exec();

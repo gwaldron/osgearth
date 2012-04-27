@@ -51,12 +51,15 @@ namespace osgEarth { namespace Drivers
 
     public:
         WCSOptions( const TileSourceOptions& opt =TileSourceOptions() ) :
-              TileSourceOptions( opt ),
+          TileSourceOptions( opt ),
               _elevationUnit( "m" )
           {
               setDriver( "wcs" );
               fromConfig( _conf );
           }
+
+        /** dtor */
+        virtual ~WCSOptions() { }
 
     public:
         Config getConfig() const {

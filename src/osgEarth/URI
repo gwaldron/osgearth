@@ -61,6 +61,9 @@ namespace osgEarth
         /** Copy constructor. */
         URIContext( const URIContext& rhs ) : _referrer(rhs._referrer) { }
 
+        /** dtor */
+        virtual ~URIContext() { }
+
         /** Serializes this context to an Options structure. This is useful when passing context information
             to an osgDB::ReaderWriter that takes a stream as input -- the stream is anonymous, therefore this
             is the preferred way to communicate the context information. */
@@ -140,6 +143,9 @@ namespace osgEarth
          * Constructs a new URI from a string.
          */
         URI( const char* location );
+
+        /** dtor */
+        virtual ~URI() { }
 
     public:
 

@@ -39,6 +39,9 @@ namespace osgEarth { namespace Util
     public:
         GeodeticGraticuleOptions( const Config& conf =Config() );
 
+        /** dtor */
+        virtual ~GeodeticGraticuleOptions() { }
+
     public:
         struct Level 
         {
@@ -121,6 +124,9 @@ namespace osgEarth { namespace Util
          */
         GeodeticGraticule( MapNode* mapNode );
         GeodeticGraticule( MapNode* mapNode, const GeodeticGraticuleOptions& options);
+
+        /** dtor */
+        virtual ~GeodeticGraticule() { }
 
         /** 
          * Applies a new set of options. The graticule will be rebuilt if necessary.

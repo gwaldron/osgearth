@@ -105,7 +105,7 @@ SerialKeyNodeFactory::addTile(Tile* tile, bool tileHasRealData, bool tileHasLodB
         plod->setUserData( new MapNode::TileRangeData(minRange, maxRange) );
 
 #if USE_FILELOCATIONCALLBACK
-        osgDB::Options* options = new osgDB::Options;
+        osgDB::Options* options = Registry::instance()->cloneOrCreateOptions();
         options->setFileLocationCallback( new FileLocationCallback() );
         plod->setDatabaseOptions( options );
 

@@ -19,7 +19,7 @@
 #include <osgEarthFeatures/LabelSource>
 #include <osgEarthSymbology/Expression>
 #include <osgEarthUtil/Controls>
-#include <osgEarth/Utils>
+#include <osgEarth/CullingUtils>
 #include <osgEarth/ECEF>
 #include <osg/ClusterCullingCallback>
 #include <osg/MatrixTransform>

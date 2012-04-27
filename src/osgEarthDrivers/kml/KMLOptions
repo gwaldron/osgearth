@@ -54,8 +54,9 @@ namespace osgEarth { namespace Drivers
         const osg::ref_ptr<osg::Group> iconAndLabelGroup() const { return _iconAndLabelGroup; }
 
     public:
-        KMLOptions() :
-          _declutter( true ) { }
+        KMLOptions() : _declutter( true ) { }
+
+        virtual ~KMLOptions() { }
 
     protected:
         optional<URI>            _defaultIconURI;

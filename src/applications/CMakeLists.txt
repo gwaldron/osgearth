@@ -55,9 +55,12 @@ ADD_SUBDIRECTORY(osgearth_city)
 ADD_SUBDIRECTORY(osgearth_package)
 ADD_SUBDIRECTORY(osgearth_graticule)
 ADD_SUBDIRECTORY(osgearth_featuremanip)
+ADD_SUBDIRECTORY(osgearth_featurequery)
+ADD_SUBDIRECTORY(osgearth_overlayviewer)
 
 IF (QT4_FOUND AND NOT ANDROID AND OSGEARTH_USE_QT)
     ADD_SUBDIRECTORY(osgearth_qt)
+    ADD_SUBDIRECTORY(osgearth_qt_simple)
 ENDIF()
 
 #ADD_SUBDIRECTORY(osgearth_test_srs)

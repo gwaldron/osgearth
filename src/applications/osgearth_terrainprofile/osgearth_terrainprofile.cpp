@@ -141,9 +141,13 @@ public:
         addChild( createBackground( _graphWidth, _graphHeight, _backcolor));
 
         osg::Geometry* geom = new osg::Geometry;
+        geom->setUseVertexBufferObjects(true);
+
         osg::Vec3Array* verts = new osg::Vec3Array();
         verts->reserve( _profile.getNumElevations() );
         geom->setVertexArray( verts );
+        if ( verts->getVertexBufferObject() )
+            verts->getVertexBufferObject()->setUsage(GL_STATIC_DRAW_ARB);
 
         osg::Vec4Array* colors = new osg::Vec4Array();
         colors->push_back( _color );
@@ -196,6 +200,8 @@ public:
     {
         //Create a background quad
         osg::Geometry* geometry = new osg::Geometry();
+        geometry->setUseVertexBufferObjects(true);
+
         osg::Vec3Array* verts = new osg::Vec3Array();
         verts->reserve( 4 );
         verts->push_back( osg::Vec3(0,0,0));
@@ -203,6 +209,8 @@ public:
         verts->push_back( osg::Vec3(width,height,0));
         verts->push_back( osg::Vec3(0,height,0));
         geometry->setVertexArray( verts );
+        if ( verts->getVertexBufferObject() )
+            verts->getVertexBufferObject()->setUsage(GL_STATIC_DRAW_ARB);
 
         osg::Vec4Array* colors = new osg::Vec4Array();
         colors->push_back( backgroundColor );

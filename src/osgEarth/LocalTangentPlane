@@ -36,6 +36,9 @@ namespace osgEarth
     public:
         TangentPlaneSpatialReference(void* handle, const osg::Vec3d& originLLA);
 
+        /** dtor */
+        virtual ~TangentPlaneSpatialReference() { }
+
         // CUBE is a projected coordinate system.
         virtual bool isGeographic() const { return false; }
         virtual bool isProjected() const { return true; }

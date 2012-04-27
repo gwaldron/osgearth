@@ -69,14 +69,16 @@ CompositeTileSourceOptions::add( TileSource* source, const ImageLayerOptions& op
 Config 
 CompositeTileSourceOptions::getConfig() const
 {
-    Config conf = TileSourceOptions::getConfig();
+    Config conf = TileSourceOptions::newConfig();
+
+    Config thisConf;
 
     for( ComponentVector::const_iterator i = _components.begin(); i != _components.end(); ++i )
     {
         if ( i->_imageLayerOptions.isSet() )
-            conf.add( "image", i->_imageLayerOptions->getConfig() );
+            thisConf.add( "image", i->_imageLayerOptions->getConfig() );
         else if ( i->_tileSourceOptions.isSet() )
-            conf.add( "image", i->_tileSourceOptions->getConfig() );
+            thisConf.add( "image", i->_tileSourceOptions->getConfig() );
     }
 
     return conf;

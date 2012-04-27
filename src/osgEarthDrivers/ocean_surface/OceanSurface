@@ -22,6 +22,7 @@
 #include <osgEarth/MapNode>
 #include <osgEarth/ImageLayer>
 #include <osgEarth/URI>
+#include <osgEarth/Registry>
 #include <osgEarthSymbology/Color>
 #include <osg/Node>
 #include <osg/Image>
@@ -59,12 +60,6 @@ namespace osgEarth { namespace Drivers
         optional<Color>& baseColor() { return _baseColor; }
         const optional<Color>& baseColor() const { return _baseColor; }
 
-#if 0
-        /** Intensity texture to use for the ocean surface alpha. */
-        osg::ref_ptr<osg::Image>& alphaImage() { return _alphaImage; }
-        const osg::ref_ptr<osg::Image>& alphaImage() const { return _alphaImage; }
-#endif
-
         /** URI of the intensity texture to use for the ocean surface alpha. */
         optional<URI>& textureURI() { return _textureURI; }
         const optional<URI>& textureURI() const { return _textureURI; }
@@ -80,6 +75,9 @@ namespace osgEarth { namespace Drivers
         {
             mergeConfig( _conf );
         }
+
+        /** dtor */
+        virtual ~OceanSurfaceOptions() { }
 
     public:
         Config getConfig() const {
@@ -137,6 +135,9 @@ namespace osgEarth { namespace Drivers
                 this->addChild( node );
         }
 
+        /** dtor */
+        virtual ~OceanSurfaceNode() { }
+
         /**
          * Options controlling the look and behavior of the ocean
          */         
@@ -158,7 +159,7 @@ namespace osgEarth { namespace Drivers
             osg::ref_ptr<MapNode> safeMapNode = _mapNode.get();
             if ( safeMapNode.valid() )
             {
-                osg::ref_ptr<osgDB::Options> o = new osgDB::Options();
+                osg::ref_ptr<osgDB::Options> o = Registry::instance()->cloneOrCreateOptions(); //new osgDB::Options();
                 o->setPluginData( "mapNode", (void*)_mapNode.get() );
                 o->setPluginData( "options", (void*)&_options );
                 osgDB::ReaderWriter::ReadResult r = osgDB::readNodeFile( ".osgearth_ocean_surface", o.get() );

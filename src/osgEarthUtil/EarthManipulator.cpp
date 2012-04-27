@@ -202,7 +202,8 @@ _tether_mode            ( TETHER_CENTER ),
 _arc_viewpoints         ( true ),
 _auto_vp_duration       ( false ),
 _min_vp_duration_s      ( 3.0 ),
-_max_vp_duration_s      ( 8.0 )
+_max_vp_duration_s      ( 8.0 ),
+_camProjType            ( PROJ_PERSPECTIVE )
 {
     //NOP
 }
@@ -224,7 +225,8 @@ _tether_mode( rhs._tether_mode ),
 _arc_viewpoints( rhs._arc_viewpoints ),
 _auto_vp_duration( rhs._auto_vp_duration ),
 _min_vp_duration_s( rhs._min_vp_duration_s ),
-_max_vp_duration_s( rhs._max_vp_duration_s )
+_max_vp_duration_s( rhs._max_vp_duration_s ),
+_camProjType( rhs._camProjType )
 {
     //NOP
 }
@@ -385,6 +387,12 @@ EarthManipulator::Settings::setAutoViewpointDurationLimits( double minSeconds, d
     _max_vp_duration_s = osg::clampAbove( maxSeconds, _min_vp_duration_s );
 }
 
+void
+EarthManipulator::Settings::setCameraProjection(const EarthManipulator::CameraProjection& value)
+{
+    _camProjType = value;
+}
+
 /************************************************************************/
 
 
@@ -400,9 +408,10 @@ _frame_count      ( 0 )
 EarthManipulator::EarthManipulator( const EarthManipulator& rhs ) :
 osgGA::CameraManipulator( rhs ),
 _last_action            ( ACTION_NULL ),
-_frame_count            ( 0 )
+_frame_count            ( 0 ),
+_settings               ( new Settings(*rhs.getSettings()) )
 {
-    //nop
+    reinitialize();
 }
 
 
@@ -511,6 +520,8 @@ EarthManipulator::reinitialize()
     _has_pending_viewpoint = false;
     _lastPointOnEarth.set(0.0, 0.0, 0.0);
     _arc_height = 0.0;
+    _vfov = 30.0;
+    _tanHalfVFOV = tan(0.5*osg::DegreesToRadians(_vfov));
 }
 
 bool
@@ -537,17 +548,6 @@ EarthManipulator::established()
 
         // find a CSN node - if there is one, we want to attach the manip to that
         _csn = findRelativeNodeOfType<osg::CoordinateSystemNode>( safeNode.get(), 0x01 );
-        
-#if 0
-        // check the kids, then the parents.
-        // the traversal mask is set to 0x01 so that we can "hide" a CSN from this manipulator
-        // by clearing bit 0 of its node mask.
-        osg::ref_ptr<osg::CoordinateSystemNode> csn = 
-            osgEarth::findTopMostNodeOfType<osg::CoordinateSystemNode>( safeNode.get(), 0x01 );
-
-        if ( !csn.valid() )
-            csn = osgEarth::findFirstParentOfType<osg::CoordinateSystemNode>( safeNode.get(), 0x01 );
-#endif
 
         if ( _csn.valid() )
         {
@@ -639,6 +639,8 @@ EarthManipulator::setNode(osg::Node* node)
     {
         _node = node;
         _csn = 0L;
+        _viewCamera = 0L;
+
 #ifdef USE_OBSERVER_NODE_PATH
         _csnObserverPath.clearNodePath();
 #endif
@@ -1030,6 +1032,7 @@ EarthManipulator::setTetherNode( osg::Node* node )
     _tether_node = node;
 }
 
+
 osg::Node*
 EarthManipulator::getTetherNode() const
 {
@@ -1115,6 +1118,7 @@ EarthManipulator::resetMouse( osgGA::GUIActionAdapter& aa )
     _lastPointOnEarth.set(0.0, 0.0, 0.0);
 }
 
+
 // this method will automatically install or uninstall the camera post-update callback 
 // depending on whether there's a tether node.
 //
@@ -1151,7 +1155,58 @@ EarthManipulator::updateCamera( osg::Camera* eventCamera )
         _viewCamera->removeUpdateCallback( _cameraUpdateCB.get() );
         _cameraUpdateCB = 0L;
     }
+
+    // update the projection matrix if necessary
+    osg::Viewport* vp = _viewCamera->getViewport();
+    if ( vp )
+    {
+        const osg::Matrixd& proj = _viewCamera->getProjectionMatrix();
+        bool isOrtho = ( proj(3,3) == 1. ) && ( proj(2,3) == 0. ) && ( proj(1,3) == 0. ) && ( proj(0,3) == 0.);
+        CameraProjection type = _settings->getCameraProjection();
+
+        if ( type == PROJ_PERSPECTIVE )
+        {
+            if ( isOrtho )
+            {
+                // need to switch from ortho to perspective
+                OE_INFO << LC << "Switching to PERSPECTIVE" << std::endl;
+
+                _viewCamera->setProjectionMatrixAsPerspective(_vfov, vp->width()/vp->height(), 1.0f, 10000.0f );
+                if ( _savedCNFMode.isSet() )
+                    _viewCamera->setComputeNearFarMode( *_savedCNFMode );
+            }
+        }
+        else if ( type == PROJ_ORTHOGRAPHIC )
+        {
+            if ( !isOrtho )
+            {
+                // need to switch from perspective to ortho, so cache the VFOV of the perspective
+                // camera -- we'll need it in ortho mode to create a proper frustum.
+                OE_INFO << LC << "Switching to ORTHO" << std::endl;
+
+                double ar, zn, zf; // not used
+                _viewCamera->getProjectionMatrixAsPerspective(_vfov, ar, zn, zf);
+                _tanHalfVFOV = tan(0.5*(double)osg::DegreesToRadians(_vfov));
+                _savedCNFMode = _viewCamera->getComputeNearFarMode();
+                _viewCamera->setComputeNearFarMode( osg::CullSettings::DO_NOT_COMPUTE_NEAR_FAR );
+            }
+            
+            double pitch;
+            getLocalEulerAngles(0L, &pitch);
+
+            // need to update the ortho projection matrix to reflect the camera distance.
+            double ar = vp->width()/vp->height();
+            double y = _distance * _tanHalfVFOV;
+            double x = y * ar;
+            double f = std::max(x,y);
+            double znear = -f * 5.0;
+            double zfar  =  f * (5.0 + 10.0 * sin(pitch+osg::PI_2));
+
+            _viewCamera->setProjectionMatrixAsOrtho(-x, x, -y, y, znear, zfar);
+        }
+    }
 }
+
 
 bool
 EarthManipulator::handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& aa)

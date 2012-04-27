@@ -38,6 +38,8 @@ namespace osgEarth { namespace Features
       ScriptEngineOptions( const ConfigOptions& options =ConfigOptions() ) : 
         DriverConfigOptions( options ) { fromConfig(_conf); }
 
+    virtual ~ScriptEngineOptions() { }
+
   public: // properties
 
       /** optional script source */
@@ -62,6 +64,8 @@ namespace osgEarth { namespace Features
   {
   public:
     ScriptEngine(const ScriptEngineOptions& options =ScriptEngineOptions()) : _script(options.script()) {}
+
+    virtual ~ScriptEngine() { }
 
     virtual bool supported(std::string lang) =0;
     virtual bool supported(Script* script) =0;

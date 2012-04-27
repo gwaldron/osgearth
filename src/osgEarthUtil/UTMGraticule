@@ -39,6 +39,10 @@ namespace osgEarth { namespace Util
     public:
         UTMGraticuleOptions( const Config& conf =Config() );
 
+        /** dtor */
+        virtual ~UTMGraticuleOptions() { }
+
+
     public:
 
         /** Default style for grid lines and text */
@@ -83,6 +87,9 @@ namespace osgEarth { namespace Util
          */
         UTMGraticule( MapNode* mapNode );
         UTMGraticule( MapNode* mapNode, const UTMGraticuleOptions& options);
+
+        /** dtor */
+        virtual ~UTMGraticule() { }
 
         /** 
          * Applies a new set of options. The graticule will be rebuilt if necessary.

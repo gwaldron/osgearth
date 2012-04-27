@@ -202,6 +202,9 @@ _pickColor(1.0f, 1.0f, 0.0f, 1.0f),
 _color(0.0f, 1.0f, 0.0f, 1.0f),
 _size( 5.0f )
 {
+    //Disable culling
+    setCullingActive( false );
+
     //Build the handle
     osg::Sphere* shape = new osg::Sphere(osg::Vec3(0,0,0), 1.0f);   
     osg::Geode* geode = new osg::Geode();

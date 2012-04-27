@@ -20,6 +20,7 @@
 #define OSGEARTH_DRIVER_KML_COMMON 1
 
 #include <osgEarth/Common>
+#include <osgEarth/Config>
 #include <osgEarth/URI>
 #include <osgEarth/MapNode>
 #include <osgEarth/SpatialReference>
@@ -67,6 +68,32 @@ struct KMLContext
     Style                                 _activeStyle;
     std::stack<osg::ref_ptr<osg::Group> > _groupStack;
     osg::ref_ptr<const SpatialReference>  _srs;
+};
+
+struct KMLUtils
+{
+    // parse KML's many variants on a URL link.
+    static std::string parseLink( const Config& conf )
+    {
+        Config link = conf.child("link");
+        if ( !link.empty() )
+        {
+            if ( link.hasValue("href") )
+                return link.value("href");
+            else if ( link.hasValue("url") )
+                return link.value("url");
+            else
+                return link.value();
+        }
+        else
+        {
+            link = conf.child("url");
+            if ( link.hasValue("href") )
+                return link.value("href");
+            else
+                return link.value();
+        }
+    }
 };
 
 

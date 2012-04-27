@@ -64,6 +64,9 @@ namespace osgEarth { namespace Annotation
             const Config&     conf );
 
 
+        virtual ~CircleNode() { }
+
+
         /**
          * Gets the radius
          */

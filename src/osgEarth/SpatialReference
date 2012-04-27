@@ -290,7 +290,7 @@ namespace osgEarth
         /** Creates a UTM (universal transverse mercator) projection in the UTM zone
             containing the specified longitude. NOTE: this is slightly faster than using
             basic tmerc (transverse mercator) above. */
-        const SpatialReference* createUTMFromLongitude( const Angular& lon ) const;
+        const SpatialReference* createUTMFromLonLat( const Angular& lon, const Angular& lat ) const;
 
         /** Creates a copy of this SRS, but flags the new SRS so that it will operate in
             Plate Carre mode for the purposes of world coordinate conversion. The SRS is

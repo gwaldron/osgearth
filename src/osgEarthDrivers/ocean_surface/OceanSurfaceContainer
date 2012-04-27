@@ -35,6 +35,9 @@ class OceanSurfaceContainer : public osg::Group
 public:
     OceanSurfaceContainer( MapNode* mapNode, const OceanSurfaceOptions& options );
 
+    /** dtor */
+    virtual ~OceanSurfaceContainer() { }
+
     void apply( const OceanSurfaceOptions& options );
 
 public: // osg::Node

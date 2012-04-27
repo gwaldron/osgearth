@@ -71,6 +71,7 @@ namespace osgEarth { namespace QtGui
       void onEditFinished(int result);
 
     protected:
+      virtual ~LOSControlWidget() { }
       friend struct LOSControlMouseHandler;
 
       void initialize();

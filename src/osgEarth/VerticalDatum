@@ -119,6 +119,9 @@ namespace osgEarth
         /** Creates a simple ellipsoidal VSRS. */
         VerticalDatum( const Units& units );
 
+        /** dtor */
+        virtual ~VerticalDatum() { }
+
     protected:
         // required by META_Object, but not used.
         VerticalDatum() { }

@@ -127,12 +127,12 @@ main(int argc, char** argv)
     // a basic OSG viewer
     osgViewer::Viewer viewer(arguments);
 
-    // install our default manipulator (do this before using ExampleMapNodeHelper)
+    // install our default manipulator (do this before using MapNodeHelper)
     viewer.setCameraManipulator( new EarthManipulator() );
 
     // load an earth file, and support all or our example command-line options
     // and earth file <external> tags
-    osg::Group* root = ExampleMapNodeHelper().load( arguments, &viewer, createUI() );
+    osg::Group* root = MapNodeHelper().load( arguments, &viewer, createUI() );
     if ( root )
     {
         viewer.setSceneData( root );
@@ -167,6 +167,6 @@ main(int argc, char** argv)
     {
         OE_NOTICE 
             << "\nUsage: " << argv[0] << " file.earth" << std::endl
-            << ExampleMapNodeHelper().usage() << std::endl;
+            << MapNodeHelper().usage() << std::endl;
     }
 }

@@ -41,6 +41,9 @@ namespace osgEarth
         */
         TileImage(osg::Image* image, const TileKey& key);
 
+        /** dtor */
+        virtual ~TileImage() { }
+
         /**
         *Gets a reference to the Image held by this GeoImage
         */
@@ -59,6 +62,7 @@ namespace osgEarth
     {
     public:
         ImageMosaic();
+        virtual ~ImageMosaic();
 
         osg::Image* createImage();
 
@@ -72,7 +76,6 @@ namespace osgEarth
 
     protected:
 
-        ~ImageMosaic();
         TileImageList _images;
     };
 }

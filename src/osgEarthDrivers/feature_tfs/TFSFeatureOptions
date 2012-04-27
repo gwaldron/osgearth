@@ -43,6 +43,8 @@ namespace osgEarth { namespace Drivers
             fromConfig( _conf );
         }
 
+        virtual ~TFSFeatureOptions() { }
+
     public:
         Config getConfig() const {
             Config conf = FeatureSourceOptions::getConfig();

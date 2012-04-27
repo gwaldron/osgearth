@@ -68,6 +68,8 @@ namespace osgEarth { namespace Annotation
             MapNode*      mapNode,
             const Config& conf);
 
+        virtual ~PlaceNode() { }
+
         /**
          * Image to use for the icon
          */

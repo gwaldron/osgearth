@@ -64,6 +64,7 @@ namespace osgEarth { namespace Annotation
             const Style&      style,
             bool              draped      =true );
 
+        virtual ~RectangleNode() { }
 
         /**
          * Gets the width of this rectangle

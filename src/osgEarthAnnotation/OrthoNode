@@ -68,6 +68,8 @@ namespace osgEarth { namespace Annotation
             const SpatialReference* mapSRS, 
             const GeoPoint&         position );
 
+        virtual ~OrthoNode() { }
+
         /**
          * Attaches a child node to the transforms. Use this instead of addChild.
          */
@@ -107,17 +109,19 @@ namespace osgEarth { namespace Annotation
 
         virtual void traverse( osg::NodeVisitor& nv );
 
+        virtual osg::BoundingSphere computeBound() const;
+
     protected:
         const SpatialReference* getMapSRS() { return _mapSRS.get(); }
 
     private:
         osg::observer_ptr<const SpatialReference> _mapSRS;
-        osg::AutoTransform*   _autoxform;
-        osg::MatrixTransform* _matxform;
-        osg::Group*           _attachPoint;
-        bool                  _horizonCulling;
-        GeoPoint              _mapPosition;
-        osg::Vec3d            _localOffset;
+        osg::AutoTransform*            _autoxform;
+        osg::MatrixTransform*          _matxform;
+        osg::Group*                    _attachPoint;
+        bool                           _horizonCulling;
+        GeoPoint                       _mapPosition;
+        osg::Vec3d                     _localOffset;
 
         void init();
 

@@ -40,6 +40,9 @@ namespace osgEarth
         StringObject();
         StringObject( const StringObject& rhs, const osg::CopyOp& op ) : osg::Object(rhs, op), _str(rhs._str) { }
         StringObject( const std::string& in ) : osg::Object(), _str(in) { }
+
+        /** dtor */
+        virtual ~StringObject() { }
         META_Object( osgEarth, StringObject );
 
         void setString( const std::string& value ) { _str = value; }
@@ -94,6 +97,9 @@ namespace osgEarth
         /** Copy construct */
         ReadResult( const ReadResult& rhs )
             : _code(rhs._code), _result(rhs._result.get()), _meta(rhs._meta) { }
+
+        /** dtor */
+        virtual ~ReadResult() { }
 
         /** Whether the read operation succeeded */
         bool succeeded() const { return _code == RESULT_OK && _result.valid(); }
@@ -212,6 +218,9 @@ namespace osgEarth
     protected:
 
         URIReadCallback() { }
+
+        /** dtor */
+        virtual ~URIReadCallback() { }
     };
 
 }

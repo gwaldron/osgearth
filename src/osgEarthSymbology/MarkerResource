@@ -42,6 +42,9 @@ namespace osgEarth { namespace Symbology
         /** Constructs a new marker resource. */
         MarkerResource( const Config& conf =Config() );
 
+        /** dtor */
+        virtual ~MarkerResource() { }
+
         /**
          * Creates a new Node representing the marker.
          */

@@ -60,6 +60,8 @@ namespace osgEarth { namespace Features
             double                  scale         =1.0,
             double                  offset        =0.0 );
 
+        virtual ~MeshClamper() { }
+
         osg::Node* getTerrainPatch() const { return _terrainPatch.get(); }
 
         const SpatialReference* getTerrainSRS() const { return _terrainSRS.get(); }

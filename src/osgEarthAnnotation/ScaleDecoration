@@ -36,6 +36,8 @@ namespace osgEarth { namespace Annotation
             InjectionDecoration(new osg::MatrixTransform(osg::Matrix::scale(factor,factor,factor))),
             _factor(factor) { }
 
+        virtual ~ScaleDecoration() { }
+
         virtual Decoration* clone() const { return new ScaleDecoration(_factor); }
 
     protected:

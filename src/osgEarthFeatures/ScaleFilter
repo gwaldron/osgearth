@@ -38,6 +38,8 @@ namespace osgEarth { namespace Features
         ScaleFilter();
         ScaleFilter( double scale );
 
+        virtual ~ScaleFilter() { }
+
         double scale() const { return _scale; }
         double& scale() { return _scale; }
 

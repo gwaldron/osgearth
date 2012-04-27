@@ -17,8 +17,11 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 #include <osgEarthUtil/AutoClipPlaneHandler>
+#include <osgEarth/Notify>
 #include <osgEarth/Registry>
 #include <osgEarth/Utils>
+
+#define LC "[AutoClip] "
 
 using namespace osgEarth::Util;
 using namespace osgEarth;
@@ -69,7 +72,7 @@ namespace
                 projection(2,2)=-2.0f/(desired_zfar-desired_znear);
                 projection(3,2)=-(desired_zfar+desired_znear)/(desired_zfar-desired_znear);
 
-                // OSG_INFO << "Orthographic matrix after clamping "<<projection<<std::endl;
+                //OE_INFO << "Orthographic matrix after clamping, near=" << desired_znear << ", far=" << desired_zfar << std::endl;
             }
             else
             {
@@ -208,6 +211,7 @@ AutoClipPlaneCullCallback::operator()( osg::Node* node, osg::NodeVisitor* nv )
             {
                 clamper = new CustomProjClamper();
                 cam->setClampProjectionMatrixCallback( clamper.get() );
+                OE_INFO << LC << "Installed custom projeciton matrix clamper" << std::endl;
             }
             else
             {

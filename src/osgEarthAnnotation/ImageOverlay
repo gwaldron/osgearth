@@ -19,9 +19,8 @@
 #ifndef OSGEARTH_ANNO_IMAGE_OVERLAY_H
 #define OSGEARTH_ANNO_IMAGE_OVERLAY_H
 
-#include <osgEarthAnnotation/Common>
+#include <osgEarthAnnotation/AnnotationNode>
 #include <osgEarth/GeoData>
-#include <osgEarth/DrapeableNode>
 #include <osgEarth/Units>
 
 #include <osg/Group>
@@ -32,9 +31,10 @@ namespace osgEarth { namespace Annotation
 {
     using namespace osgEarth;
 
-    class OSGEARTHANNO_EXPORT ImageOverlay : public DrapeableNode
+    class OSGEARTHANNO_EXPORT ImageOverlay : public AnnotationNode
     {
-    public:    
+    public:
+        META_AnnotationNode(osgEarthAnnotation, ImageOverlay);
         
         enum ControlPoint
         {
@@ -46,6 +46,8 @@ namespace osgEarth { namespace Annotation
         };
         
         ImageOverlay(MapNode* mapNode, osg::Image* image = NULL);
+
+        virtual ~ImageOverlay() { }
 
         void setCorners(const osg::Vec2d& lowerLeft, const osg::Vec2d& lowerRight, 
                         const osg::Vec2d& upperLeft, const osg::Vec2d& upperRight);
@@ -71,6 +73,7 @@ namespace osgEarth { namespace Annotation
         struct ImageOverlayCallback : public osg::Referenced
         {
             virtual void onOverlayChanged() {};
+            virtual ~ImageOverlayCallback() { }
         };
 
         typedef std::list< osg::ref_ptr<ImageOverlayCallback> > CallbackList;
@@ -95,19 +98,31 @@ namespace osgEarth { namespace Annotation
         float getAlpha() const;
         void setAlpha(float alpha);
 
-        virtual void traverse(osg::NodeVisitor& nv);
-
         void dirty();
+
+    public: // AnnotationNode
+        
+        virtual void reclamp( const TileKey& key, osg::Node* tile, const Terrain* );
+
+    public: // osg::Node
+
+        virtual void traverse(osg::NodeVisitor& nv);
+        
     private:
         void fireCallback(ImageOverlay::ControlPoint point, const osg::Vec2d& location);
 
         void postCTOR();
         void init();
         void clampLatitudes();
+
+        void clampMesh( osg::Node* terrainModel );
+
+
         osg::Vec2d _lowerLeft;
         osg::Vec2d _lowerRight;
         osg::Vec2d _upperRight;
         osg::Vec2d _upperLeft;
+        osg::Polytope _boundingPolytope;
         osg::ref_ptr< osg::Image > _image;
         bool _dirty;
         OpenThreads::Mutex _mutex;
@@ -115,6 +130,9 @@ namespace osgEarth { namespace Annotation
         osg::Geometry* _geometry;
         float _alpha;
         CallbackList _callbacks;
+
+        ImageOverlay() { }
+        ImageOverlay(const ImageOverlay&, const osg::CopyOp&) { }
     };
 
 } } // namespace osgEarth::Annotation

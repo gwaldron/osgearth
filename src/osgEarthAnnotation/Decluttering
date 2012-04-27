@@ -52,6 +52,7 @@ namespace osgEarth { namespace Annotation
     struct DeclutterSortFunctor : public osg::Referenced
     {
         virtual bool operator() ( const osgUtil::RenderLeaf* lhs, const osgUtil::RenderLeaf* rhs ) const =0;
+        virtual ~DeclutterSortFunctor() { }
     };
 
     /**
@@ -61,6 +62,7 @@ namespace osgEarth { namespace Annotation
     struct OSGEARTHANNO_EXPORT DeclutterByPriority : public DeclutterSortFunctor
     {
         virtual bool operator()(const osgUtil::RenderLeaf* lhs, const osgUtil::RenderLeaf* rhs ) const;
+        virtual ~DeclutterByPriority() { }
     };
 
     /**
@@ -78,6 +80,8 @@ namespace osgEarth { namespace Annotation
         {
             fromConfig(conf);
         }
+
+        virtual ~DeclutteringOptions() { }
 
         /** Alpha value of a fully-occluded object */
         optional<float>& minAnimationAlpha() { return _minAnimAlpha; }

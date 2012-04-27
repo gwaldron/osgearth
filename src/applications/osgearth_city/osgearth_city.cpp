@@ -20,8 +20,8 @@
 #include <osgGA/GUIEventHandler>
 #include <osgGA/StateSetManipulator>
 #include <osgViewer/Viewer>
-#include <osgViewer/ViewerEventHandlers>
 #include <osgEarth/MapNode>
+#include <osgEarthUtil/ExampleResources>
 #include <osgEarthUtil/EarthManipulator>
 #include <osgEarthUtil/AutoClipPlaneHandler>
 #include <osgEarthUtil/SkyNode>
@@ -122,27 +122,17 @@ main(int argc, char** argv)
 
     MapNode* mapNode = new MapNode( map );
     root->addChild( mapNode );
-
-    // add a sky model:
-    SkyNode* sky = new SkyNode( map );
-    sky->setDateTime( 2011, 10, 15, 20.0 );
-    sky->attach( &viewer );
-    root->addChild( sky );    
+    
+    // Process cmdline args
+    MapNodeHelper helper;
+    helper.configureView( &viewer );
+    helper.parse(mapNode, arguments, &viewer, root, new LabelControl("City Demo"));
 
     // zoom to a good startup position
     manip->setViewpoint( Viewpoint(-71.0763, 42.34425, 0, 24.261, -21.6, 3450.0), 5.0 );
 
-
     viewer.getDatabasePager()->setDoPreCompile( true );
     viewer.getCamera()->addCullCallback( new AutoClipPlaneCullCallback(mapNode) );
-
-    // add some stock OSG handlers:
-    viewer.addEventHandler(new osgViewer::StatsHandler());
-    viewer.addEventHandler(new osgViewer::WindowSizeHandler());
-    viewer.addEventHandler(new osgViewer::ThreadingHandler());
-    viewer.addEventHandler(new osgViewer::LODScaleHandler());
-    viewer.addEventHandler(new osgGA::StateSetManipulator(viewer.getCamera()->getOrCreateStateSet()));
-    viewer.addEventHandler(new osgViewer::HelpHandler(arguments.getApplicationUsage()));
 
     return viewer.run();
 }

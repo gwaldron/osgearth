@@ -37,6 +37,9 @@ namespace osgEarth { namespace Symbology
     public:
         LineSymbol(const Config& conf =Config());
 
+        /** dtor */
+        virtual ~LineSymbol() { }
+
         /** Line stroking parameters */
         optional<Stroke>& stroke() { return _stroke; }
         const optional<Stroke>& stroke() const { return _stroke; }

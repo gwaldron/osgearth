@@ -486,7 +486,7 @@ OSGTileFactory::createPlaceholderTile(const MapFrame&   mapf,
     }
 
 #if 0 //USE_FILELOCATIONCALLBACK
-    osgDB::Options* options = new osgDB::Options;
+    osgDB::Options* options = Registry::instance()->cloneOrCreateOptions();
     options->setFileLocationCallback( new FileLocationCallback);
     plod->setDatabaseOptions( options );
 #endif
@@ -803,7 +803,7 @@ OSGTileFactory::createPopulatedTile(const MapFrame&  mapf,
         }
 
 #if USE_FILELOCATIONCALLBACK
-        osgDB::Options* options = new osgDB::Options;
+        osgDB::Options* options = Registry::instance()->cloneOrCreateOptions();
         options->setFileLocationCallback( new FileLocationCallback() );
         plod->setDatabaseOptions( options );
 #endif

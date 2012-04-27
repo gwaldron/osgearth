@@ -43,6 +43,9 @@ namespace osgEarth
     public:
         TaskRequest( float priority =0.0f );
 
+        /** dtor */
+        virtual ~TaskRequest() { }
+
         // the actual task code
         virtual void operator()( ProgressCallback* progress ) =0;
 

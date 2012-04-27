@@ -64,6 +64,8 @@ namespace osgEarth { namespace Symbology
          */
         Color( const std::string& html, Format format =RGBA );
 
+        virtual ~Color() { }
+
         /** Encode the color at an HTML color string (e.g., "#FF004F78") */
         std::string toHTML( Format format =RGBA ) const;
 

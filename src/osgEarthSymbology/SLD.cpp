@@ -282,10 +282,10 @@ SLDReader::readStyleFromCSSParams( const Config& conf, Style& sc )
         else if ( match(key, "altitude-clamping") )
         {
             if (!altitude) altitude = sc.getOrCreateSymbol<AltitudeSymbol>();
-            if      ( match(key, "none") )     altitude->clamping() = AltitudeSymbol::CLAMP_NONE;
-            else if ( match(key, "terrain") )  altitude->clamping() = AltitudeSymbol::CLAMP_TO_TERRAIN;
-            else if ( match(key, "absolute") ) altitude->clamping() = AltitudeSymbol::CLAMP_ABSOLUTE;
-            else if ( match(key, "relative") ) altitude->clamping() = AltitudeSymbol::CLAMP_RELATIVE_TO_TERRAIN;
+            if      ( match(value, "none") )     altitude->clamping() = AltitudeSymbol::CLAMP_NONE;
+            else if ( match(value, "terrain") )  altitude->clamping() = AltitudeSymbol::CLAMP_TO_TERRAIN;
+            else if ( match(value, "absolute") ) altitude->clamping() = AltitudeSymbol::CLAMP_ABSOLUTE;
+            else if ( match(value, "relative") ) altitude->clamping() = AltitudeSymbol::CLAMP_RELATIVE_TO_TERRAIN;
         }
         else if ( match(key, "altitude-resolution") )
         {

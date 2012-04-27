@@ -43,7 +43,7 @@ namespace osgEarth { namespace Annotation
 
     protected:
 
-        ~ImageOverlayEditor();
+        virtual ~ImageOverlayEditor();
         void addDragger( ImageOverlay::ControlPoint controlPoint );
 
         osg::ref_ptr< ImageOverlay > _overlay;

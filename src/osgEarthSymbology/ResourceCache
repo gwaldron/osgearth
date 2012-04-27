@@ -49,6 +49,9 @@ namespace osgEarth { namespace Symbology
             const osgDB::Options* dbOptions,
             bool                  threadSafe =false );
 
+        /** dtor */
+        virtual ~ResourceCache() { }
+
         /**
          * Fetches the StateSet implementation corresponding to a Skin.
          */

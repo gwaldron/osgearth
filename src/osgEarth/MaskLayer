@@ -40,6 +40,9 @@ namespace osgEarth
 
         MaskLayerOptions( const std::string& name, const MaskSourceOptions& driverOptions =MaskSourceOptions() );
 
+        /** dtor */
+        virtual ~MaskLayerOptions() { }
+
         /**
          * The readable name of the layer.
          */
@@ -85,6 +88,9 @@ namespace osgEarth
          * Constructs a new mask layer with a user-provided mask source.
          */
         MaskLayer(const MaskLayerOptions& options, MaskSource* source );
+
+        /** dtor */
+        virtual ~MaskLayer() { }
 
         /**
          * Access the underlying mask source.

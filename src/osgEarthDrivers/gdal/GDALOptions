@@ -58,6 +58,8 @@ namespace osgEarth { namespace Drivers
             fromConfig( _conf );
         }
 
+        virtual ~GDALOptions() { }
+
     protected:
 
         Config getConfig() const

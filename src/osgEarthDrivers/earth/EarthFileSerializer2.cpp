@@ -163,9 +163,10 @@ EarthFileSerializer2::serialize( MapNode* input ) const
     for( ImageLayerVector::const_iterator i = mapf.imageLayers().begin(); i != mapf.imageLayers().end(); ++i )
     {
         ImageLayer* layer = i->get();
-        Config layerConf = layer->getInitialOptions().getConfig(); //ImageLayerOptions().getConfig();
+        Config layerConf = layer->getInitialOptions().getConfig();
         layerConf.set("name", layer->getName());
         layerConf.set("driver", layer->getInitialOptions().driver()->getDriver());
+        layerConf.remove("default_tile_size");
         mapConf.add( "image", layerConf );
     }
 
@@ -175,13 +176,14 @@ EarthFileSerializer2::serialize( MapNode* input ) const
         Config layerConf = layer->getInitialOptions().getConfig();
         layerConf.set("name", layer->getName());
         layerConf.set("driver", layer->getInitialOptions().driver()->getDriver());
+        layerConf.remove("default_tile_size");
         mapConf.add( "elevation", layerConf );
     }
 
     for( ModelLayerVector::const_iterator i = mapf.modelLayers().begin(); i != mapf.modelLayers().end(); ++i )
     {
         ModelLayer* layer = i->get();
-        Config layerConf = layer->getModelLayerOptions().getConfig(); //layer->getDriverConfig();
+        Config layerConf = layer->getModelLayerOptions().getConfig();
         layerConf.set("name", layer->getName());
         layerConf.set("driver", layer->getModelLayerOptions().driver()->getDriver());
         mapConf.add( "model", layerConf );

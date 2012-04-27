@@ -70,6 +70,9 @@ public:
 
     META_Object( osgEarth, SinglePassTerrainTechnique );
 
+    /** dtor */
+    virtual ~SinglePassTerrainTechnique();
+
 public: /* overrides */
 
     virtual void init();
@@ -129,8 +132,6 @@ protected:
     void calculateSampling( unsigned int& out_rows, unsigned int& out_cols, double& out_i, double& out_j );
 
 private:
-
-    virtual ~SinglePassTerrainTechnique();
     bool _debug;
 
     OpenThreads::Mutex _compileMutex;

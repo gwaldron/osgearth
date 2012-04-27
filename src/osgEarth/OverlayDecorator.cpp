@@ -23,6 +23,8 @@
 #include <osg/Texture2D>
 #include <osg/TexEnv>
 #include <osg/BlendFunc>
+#include <osg/ShapeDrawable>
+#include <osg/AutoTransform>
 #include <osg/ComputeBoundsVisitor>
 #include <osgGA/EventVisitor>
 #include <osgShadow/ConvexPolyhedron>
@@ -1013,11 +1015,20 @@ OverlayDecorator::cull( osgUtil::CullVisitor* cv, OverlayDecorator::PerViewData&
         osg::Node* rttNode = osgDB::readNodeFile(fn);
         rttNode->setName("rtt");
 
+        // EyePoint
+        osg::Geode* dsg = new osg::Geode();
+        dsg->addDrawable( new osg::ShapeDrawable(new osg::Box(osg::Vec3f(0,0,0), 10.0f)));
+        osg::AutoTransform* dsgmt = new osg::AutoTransform();
+        dsgmt->setPosition( osg::Vec3d(0,0,0) * osg::Matrix::inverse(*cv->getModelViewMatrix()) );
+        dsgmt->setAutoScaleToScreen(true);
+        dsgmt->addChild( dsg );
+
         osg::Group* g = new osg::Group();
         g->addChild(camNode);
         g->addChild(overlay);
         g->addChild(intersection);
         g->addChild(rttNode);
+        g->addChild(dsgmt);
 
         _dump = g;
         _dumpRequested = false;

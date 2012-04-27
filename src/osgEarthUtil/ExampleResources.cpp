@@ -22,6 +22,7 @@
 #include <osgEarthUtil/LatLongFormatter>
 #include <osgEarthUtil/MGRSFormatter>
 #include <osgEarthUtil/MouseCoordsTool>
+#include <osgEarthUtil/AutoClipPlaneHandler>
 
 #include <osgEarthAnnotation/AnnotationData>
 #include <osgEarthAnnotation/AnnotationRegistry>
@@ -437,6 +438,7 @@ MapNodeHelper::parse(MapNode*             mapNode,
     bool useDD         = args.read("--dd");
     bool useCoords     = args.read("--coords") || useMGRS || useDMS || useDD;
     bool useOrtho      = args.read("--ortho");
+    bool useAutoClip   = args.read("--autoclip");
 
     std::string kmlFile;
     args.read( "--kml", kmlFile );
@@ -583,6 +585,12 @@ MapNodeHelper::parse(MapNode*             mapNode,
         }
     }
 
+    // Install an auto clip plane clamper
+    if ( useAutoClip )
+    {
+        view->getCamera()->addCullCallback( new AutoClipPlaneCullCallback(mapNode) );
+    }
+
     root->addChild( canvas );
 }
 
@@ -614,5 +622,6 @@ MapNodeHelper::usage() const
         << "    --dms                : dispay deg/min/sec coords under mouse\n"
         << "    --dd                 : display decimal degrees coords under mouse\n"
         << "    --mgrs               : show MGRS coords under mouse\n"
-        << "    --ortho              : use an orthographic camera\n";
+        << "    --ortho              : use an orthographic camera\n"
+        << "    --autoclip           : installs an auto-clip plane callback\n";
 }

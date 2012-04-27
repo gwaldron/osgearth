@@ -123,6 +123,8 @@ PlaceNode::setText( const std::string& text )
         return;
     }
 
+    _text = text;
+
     const osg::Geode::DrawableList& list = _geode->getDrawableList();
     for( osg::Geode::DrawableList::const_iterator i = list.begin(); i != list.end(); ++i )
     {

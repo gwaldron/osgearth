@@ -44,7 +44,7 @@ using namespace osgEarth;
 using namespace osgEarth::QtGui;
 
 
-#define ANNOTATION_PATH_WIDTH 4.0f
+#define ANNOTATION_PATH_WIDTH 12.0f
 
 
 //---------------------------------------------------------------------------
@@ -107,10 +107,29 @@ void BaseAnnotationDialog::initDefaultUi()
 
 //---------------------------------------------------------------------------
 
-AddMarkerDialog::AddMarkerDialog(osg::Group* root, osgEarth::MapNode* mapNode, const ViewVector& views, QWidget* parent, Qt::WindowFlags f)
-: BaseAnnotationDialog(mapNode, views, parent, f), _root(root)
+AddMarkerDialog::AddMarkerDialog(osg::Group* root, osgEarth::MapNode* mapNode, const ViewVector& views, osgEarth::Annotation::PlaceNode* marker, QWidget* parent, Qt::WindowFlags f)
+: BaseAnnotationDialog(mapNode, views, parent, f), _root(root), _altName("")
 {
   initialize();
+
+  if (marker)
+  {
+    osgEarth::Annotation::AnnotationData* data = marker->getAnnotationData();
+    
+    //Get marker text/name
+    _nameEdit->setText(marker->getText().length() > 0 ? tr(marker->getText().c_str()) : (data ? tr(data->getName().c_str()) : tr("")));
+    if (marker->getText().length() > 0 && data && data->getName().length() > 0 && marker->getText() != data->getName())
+      _altName = data->getName();
+
+    //Get marker description
+    _descriptionEdit->setText(data ? tr(data->getDescription().c_str()) : tr(""));
+
+    //Set marker checkbox
+    _nameCheckbox->setChecked(marker->getText().length() > 0);
+
+    //Simulate map click to create placemark
+    mapMouseClick(marker->getPosition(), osgGA::GUIEventAdapter::LEFT_MOUSE_BUTTON);
+  }
 
   if (_mapNode.valid() && _views.size() > 0)
   {
@@ -193,7 +212,7 @@ void AddMarkerDialog::accept()
   if (_placeNode.valid())
   {
     osgEarth::Annotation::AnnotationData* annoData = new osgEarth::Annotation::AnnotationData();
-    annoData->setName(getName());
+    annoData->setName(_altName.length() > 0 ? _altName : getName());
     annoData->setDescription(getDescription());
     annoData->setViewpoint(osgEarth::Viewpoint(_placeNode->getPosition().vec3d(), 0.0, -90.0, 1e5, _placeNode->getPosition().getSRS()));
     _placeNode->setAnnotationData(annoData);
@@ -740,23 +759,21 @@ void AddEllipseDialog::addEllipse(const osgEarth::GeoPoint& position, const Line
 
 void AddEllipseDialog::refreshFeatureNode(bool geometryOnly)
 {
-  if (_ellipseNode.valid())  
+  if (_pathColor.a() == 0.0)
   {
-    if (_pathColor.a() == 0.0)
-    {
-      _ellipseStyle.getOrCreate<LineSymbol>()->stroke()->color() = _fillColor;
-      _ellipseStyle.getOrCreate<LineSymbol>()->stroke()->width() = 0.0;
-    }
-    else
-    {
-      _ellipseStyle.getOrCreate<LineSymbol>()->stroke()->color() = _pathColor;
-      _ellipseStyle.getOrCreate<LineSymbol>()->stroke()->width() = ANNOTATION_PATH_WIDTH;
-    }
-
-    _ellipseStyle.getOrCreate<PolygonSymbol>()->fill()->color() = _fillColor;
-
-    addEllipse(_ellipseNode->getPosition(), _ellipseNode->getRadiusMajor(), _ellipseNode->getRadiusMinor(), _ellipseNode->getRotationAngle());
+    _ellipseStyle.getOrCreate<LineSymbol>()->stroke()->color() = _fillColor;
+    _ellipseStyle.getOrCreate<LineSymbol>()->stroke()->width() = 0.0;
   }
+  else
+  {
+    _ellipseStyle.getOrCreate<LineSymbol>()->stroke()->color() = _pathColor;
+    _ellipseStyle.getOrCreate<LineSymbol>()->stroke()->width() = ANNOTATION_PATH_WIDTH;
+  }
+
+  _ellipseStyle.getOrCreate<PolygonSymbol>()->fill()->color() = _fillColor;
+
+  if (_ellipseNode.valid())  
+    addEllipse(_ellipseNode->getPosition(), _ellipseNode->getRadiusMajor(), _ellipseNode->getRadiusMinor(), _ellipseNode->getRotationAngle());
 }
 
 void AddEllipseDialog::accept()

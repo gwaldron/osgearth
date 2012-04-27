@@ -25,19 +25,14 @@ using namespace osgEarth::QtGui;
 using namespace osgEarth::Annotation;
 
 
-DataManager::DataManager(osgEarth::Map* map) : _map(map), _maxUndoStackSize( 128 )
+DataManager::DataManager(osgEarth::MapNode* mapNode) : _mapNode(mapNode), _maxUndoStackSize( 128 )
 {
-  initialize();
-}
-
-DataManager::DataManager(osgEarth::MapNode* mapNode) : _maxUndoStackSize( 128 )
-{
-  if (mapNode)
+  if (_mapNode)
   {
-    _map = mapNode->getMap();
+    _map = _mapNode->getMap();
 
     //Look for viewpoints in the MapNode externals
-    const Config& externals = mapNode->externalConfig();
+    const Config& externals = _mapNode->externalConfig();
     const ConfigSet children = externals.children("viewpoint");
     if (children.size() > 0)
     {
@@ -97,7 +92,7 @@ void DataManager::addAnnotation(osgEarth::Annotation::AnnotationNode* annotation
   }
 }
 
-void DataManager::removeAnnotaton(osgEarth::Annotation::AnnotationNode* annotation, osg::Group* parent)
+void DataManager::removeAnnotation(osgEarth::Annotation::AnnotationNode* annotation, osg::Group* parent)
 {
   if (!annotation)
     return;

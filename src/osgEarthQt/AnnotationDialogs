@@ -78,7 +78,7 @@ namespace osgEarth { namespace QtGui
     Q_OBJECT
 
   public:
-    AddMarkerDialog(osg::Group* root, osgEarth::MapNode* mapNode, const ViewVector& views, QWidget* parent = 0, Qt::WindowFlags f = 0);
+    AddMarkerDialog(osg::Group* root, osgEarth::MapNode* mapNode, const ViewVector& views, osgEarth::Annotation::PlaceNode* marker=0, QWidget* parent = 0, Qt::WindowFlags f = 0);
 
     osgEarth::Annotation::AnnotationNode* getAnnotation() { return _placeNode.get(); }
 
@@ -104,6 +104,7 @@ namespace osgEarth { namespace QtGui
     osg::ref_ptr<osg::Image> _markerImage;
     osgEarth::Symbology::Style _placeStyle;
     osg::ref_ptr<osgEarth::Annotation::PlaceNode> _placeNode;
+    std::string _altName;
   };
 
   //---------------------------------------------------------------------------

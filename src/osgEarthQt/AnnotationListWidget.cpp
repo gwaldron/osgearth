@@ -344,8 +344,7 @@ void AnnotationListWidget::onEditSelected()
         osgEarth::Annotation::EllipseNode* ellipse = dynamic_cast<osgEarth::Annotation::EllipseNode*>(annoItem->annotation());
         if (ellipse)
         {
-          //TODO:
-          //_activeDialog = new osgEarth::QtGui::AddEllipseDialog(placeNode->getParent(0), _manager->MapNode(), _views, ellipse);
+          _activeDialog = new osgEarth::QtGui::AddEllipseDialog(ellipse->getParent(0), _manager->MapNode(), _views, ellipse);
         }
       }
     }

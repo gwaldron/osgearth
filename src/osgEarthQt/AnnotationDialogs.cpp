@@ -757,16 +757,57 @@ void AddPolygonDialog::onFillColorButtonClicked()
 
 //---------------------------------------------------------------------------
 
-AddEllipseDialog::AddEllipseDialog(osg::Group* root, osgEarth::MapNode* mapNode, const ViewVector& views, QWidget* parent, Qt::WindowFlags f)
+AddEllipseDialog::AddEllipseDialog(osg::Group* root, osgEarth::MapNode* mapNode, const ViewVector& views, osgEarth::Annotation::EllipseNode* ellipse, QWidget* parent, Qt::WindowFlags f)
 : BaseAnnotationDialog(mapNode, views, parent, f), _root(root), _pathColor(Color(Color::White, 0.0)), _fillColor(Color(Color::Black, 0.5))
 {
   initialize();
 
-  if (_mapNode.valid() && _views.size() > 0)
+  if (ellipse)
   {
-    _guiHandler = new AddEllipseMouseHandler(this, _mapNode.get(), _root);
-    for (ViewVector::const_iterator it = views.begin(); it != views.end(); ++it)
-      (*it)->addEventHandler(_guiHandler.get());
+    osgEarth::Annotation::AnnotationData* data = ellipse->getAnnotationData();
+    
+    //Get ellipse name
+    _nameEdit->setText(data ? tr(data->getName().c_str()) : tr(""));
+
+    //Get ellipse description
+    _descriptionEdit->setText(data ? tr(data->getDescription().c_str()) : tr(""));
+
+    //Get path color
+    const osgEarth::Symbology::LineSymbol* lineSymbol = ellipse->getStyle().get<LineSymbol>();
+    if (lineSymbol)
+    {
+      if (lineSymbol->stroke()->width() != 0.0)
+      {
+        _pathColor = lineSymbol->stroke()->color();
+        updateButtonColorStyle(_lineColorButton, QColor::fromRgbF(_pathColor.r(), _pathColor.g(), _pathColor.b(), _pathColor.a()));
+      }
+    }
+
+    //Get fill color
+    const osgEarth::Symbology::PolygonSymbol* polySymbol = ellipse->getStyle().get<PolygonSymbol>();
+    if (polySymbol)
+    {
+      _fillColor = polySymbol->fill()->color();
+      updateButtonColorStyle(_fillColorButton, QColor::fromRgbF(_fillColor.r(), _fillColor.g(), _fillColor.b(), _fillColor.a()));
+    }
+
+    //Get draping
+    _drapeCheckbox->setChecked(ellipse->isDraped());
+
+    //Call refreshFeatureNode to update _ellipseStyle
+    refreshFeatureNode();
+
+    //Add the ellipse
+    addEllipse(ellipse->getPosition(), ellipse->getRadiusMajor(), ellipse->getRadiusMinor(), ellipse->getRotationAngle());
+  }
+  else
+  {
+    if (_mapNode.valid() && _views.size() > 0)
+    {
+      _guiHandler = new AddEllipseMouseHandler(this, _mapNode.get(), _root);
+      for (ViewVector::const_iterator it = views.begin(); it != views.end(); ++it)
+        (*it)->addEventHandler(_guiHandler.get());
+    }
   }
 }
 
@@ -840,7 +881,8 @@ void AddEllipseDialog::addEllipse(const osgEarth::GeoPoint& position, const Line
   _editor = new osgEarth::Annotation::EllipseNodeEditor(_ellipseNode);
   _root->addChild(_editor);
 
-  _guiHandler->setCapturing(false);
+  if (_guiHandler.valid())
+    _guiHandler->setCapturing(false);
 
   _okButton->setEnabled(true);
 }

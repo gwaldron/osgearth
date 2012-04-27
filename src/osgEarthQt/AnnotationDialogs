@@ -206,7 +206,7 @@ namespace osgEarth { namespace QtGui
     Q_OBJECT
 
   public:
-    AddEllipseDialog(osg::Group* root, osgEarth::MapNode* mapNode, const ViewVector& views, QWidget* parent = 0, Qt::WindowFlags f = 0);
+    AddEllipseDialog(osg::Group* root, osgEarth::MapNode* mapNode, const ViewVector& views, osgEarth::Annotation::EllipseNode* ellipse=0, QWidget* parent = 0, Qt::WindowFlags f = 0);
 
     osgEarth::Annotation::AnnotationNode* getAnnotation() { return _ellipseNode.get(); }
 

@@ -57,6 +57,7 @@ namespace osgEarth { namespace QtGui
 
   protected:
     void initDefaultUi();
+    void updateButtonColorStyle(QPushButton* button, const QColor& color);
 
     virtual void movePoint(int index, const osgEarth::GeoPoint& position) { };
 
@@ -137,7 +138,6 @@ namespace osgEarth { namespace QtGui
     void createPointDragger(int index, const osgEarth::GeoPoint& point);
     void movePoint(int index, const osgEarth::GeoPoint& position);
     void clearDisplay();
-    void updateButtonColor(const QColor& color);
 
     osg::ref_ptr<osg::Group> _root;
     osg::Group* _draggers;
@@ -157,7 +157,7 @@ namespace osgEarth { namespace QtGui
     Q_OBJECT
 
   public:
-    AddPolygonDialog(osg::Group* root, osgEarth::MapNode* mapNode, const ViewVector& views, QWidget* parent = 0, Qt::WindowFlags f = 0);
+    AddPolygonDialog(osg::Group* root, osgEarth::MapNode* mapNode, const ViewVector& views, osgEarth::Annotation::FeatureNode* polygon=0L, QWidget* parent = 0, Qt::WindowFlags f = 0);
 
     osgEarth::Annotation::AnnotationNode* getAnnotation() { return _polyNode.get(); }
 
@@ -195,6 +195,7 @@ namespace osgEarth { namespace QtGui
     osg::ref_ptr<osgEarth::Symbology::Polygon> _polygon;
     osg::ref_ptr<osgEarth::Features::Feature> _polyFeature;
     osg::ref_ptr<osgEarth::Annotation::FeatureNode> _polyNode;
+    bool _editOnly;
   };
 
   //---------------------------------------------------------------------------

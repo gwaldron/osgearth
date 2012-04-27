@@ -49,6 +49,8 @@ namespace osgEarth { namespace Annotation
         void setFeature( Feature* feature );
         const Feature* getFeature() const { return _feature.get(); }
 
+        bool isDraped() const { return _draped; }
+
         void init();
 
     public: // AnnotationNode

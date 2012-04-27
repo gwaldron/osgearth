@@ -331,8 +331,21 @@ void AnnotationListWidget::onEditSelected()
           }
           else
           {
-            //TODO: add support for other annotation types
+            const osgEarth::Symbology::Polygon* polygon = dynamic_cast<const osgEarth::Symbology::Polygon*>(feat->getGeometry());
+            if (polygon)
+            {
+              _activeDialog = new osgEarth::QtGui::AddPolygonDialog(featureNode->getParent(0), _manager->MapNode(), _views, featureNode);
+            }
           }
+        }
+      }
+      else
+      {
+        osgEarth::Annotation::EllipseNode* ellipse = dynamic_cast<osgEarth::Annotation::EllipseNode*>(annoItem->annotation());
+        if (ellipse)
+        {
+          //TODO:
+          //_activeDialog = new osgEarth::QtGui::AddEllipseDialog(placeNode->getParent(0), _manager->MapNode(), _views, ellipse);
         }
       }
     }

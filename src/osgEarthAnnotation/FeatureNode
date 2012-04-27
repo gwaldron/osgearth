@@ -47,6 +47,7 @@ namespace osgEarth { namespace Annotation
             const GeometryCompilerOptions& options = GeometryCompilerOptions() );
 
         void setFeature( Feature* feature );
+        const Feature* getFeature() const { return _feature.get(); }
 
         void init();
 

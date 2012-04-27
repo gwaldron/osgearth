@@ -318,7 +318,23 @@ void AnnotationListWidget::onEditSelected()
     }
     else
     {
-      //TODO: add support for other annotation types
+      osgEarth::Annotation::FeatureNode* featureNode = dynamic_cast<osgEarth::Annotation::FeatureNode*>(annoItem->annotation());
+      if (featureNode)
+      {
+        const osgEarth::Features::Feature* feat = featureNode->getFeature();
+        if (feat)
+        {
+          const osgEarth::Symbology::LineString* pathLine = dynamic_cast<const osgEarth::Symbology::LineString*>(feat->getGeometry());
+          if (pathLine)
+          {
+            _activeDialog = new osgEarth::QtGui::AddPathDialog(featureNode->getParent(0), _manager->MapNode(), _views, featureNode);
+          }
+          else
+          {
+            //TODO: add support for other annotation types
+          }
+        }
+      }
     }
 
     if (!_activeDialog.isNull())

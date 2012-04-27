@@ -248,10 +248,46 @@ void AddMarkerDialog::onNameTextChanged(const QString& text)
 
 //---------------------------------------------------------------------------
 
-AddPathDialog::AddPathDialog(osg::Group* root, osgEarth::MapNode* mapNode, const ViewVector& views, QWidget* parent, Qt::WindowFlags f)
+AddPathDialog::AddPathDialog(osg::Group* root, osgEarth::MapNode* mapNode, const ViewVector& views, osgEarth::Annotation::FeatureNode* path, QWidget* parent, Qt::WindowFlags f)
 : BaseAnnotationDialog(mapNode, views, parent, f), _root(root), _draggers(0L), _pathColor(Color::White)
 {
   initialize();
+
+  if (path)
+  {
+    osgEarth::Annotation::AnnotationData* data = path->getAnnotationData();
+    
+    //Get path name
+    _nameEdit->setText(data ? tr(data->getName().c_str()) : tr(""));
+
+    //Get path description
+    _descriptionEdit->setText(data ? tr(data->getDescription().c_str()) : tr(""));
+
+    const osgEarth::Features::Feature* feat = path->getFeature();
+    if (feat)
+    {
+      //Get path color
+      const osgEarth::Symbology::LineSymbol* lineSymbol = feat->style()->get<LineSymbol>();
+      if (lineSymbol)
+      {
+        _pathColor = lineSymbol->stroke()->color();
+        updateButtonColor(QColor::fromRgbF(_pathColor.r(), _pathColor.g(), _pathColor.b(), _pathColor.a()));
+      }
+
+      //Get path clamping
+      const osgEarth::Symbology::AltitudeSymbol* altSymbol = feat->style()->get<AltitudeSymbol>();
+      if (altSymbol)
+        _drapeCheckbox->setChecked(altSymbol->clamping() == AltitudeSymbol::CLAMP_TO_TERRAIN);
+
+      //Get path points
+      const osgEarth::Symbology::LineString* pathLine = dynamic_cast<const osgEarth::Symbology::LineString*>(feat->getGeometry());
+      if (pathLine)
+      {
+        for (osgEarth::Symbology::LineString::const_iterator it = pathLine->begin(); it != pathLine->end(); ++it)
+          addPoint(osgEarth::GeoPoint(_mapNode->getMapSRS(), (*it).x(), (*it).y(), (*it).z()));
+      }
+    }
+  }
 
   if (_mapNode.valid() && _views.size() > 0)
   {
@@ -297,6 +333,16 @@ void AddPathDialog::clearDisplay()
 
     _guiHandler->clearDisplay();
   }
+}
+
+void AddPathDialog::updateButtonColor(const QColor& color)
+{
+  int invR = 255 - color.red();
+  int invG = 255 - color.green();
+  int invB = 255 - color.blue();
+  QColor invColor(invR, invG, invB);
+
+  _lineColorButton->setStyleSheet("QPushButton { color: " + invColor.name() + "; background-color: " + color.name() + " }");
 }
 
 void AddPathDialog::mapMouseClick(const osgEarth::GeoPoint& point, int button)
@@ -406,18 +452,13 @@ void AddPathDialog::onDrapeCheckStateChanged(int state)
 
 void AddPathDialog::onLineColorButtonClicked()
 {
-  QColor color = QColorDialog::getColor(QColor::fromRgba(_pathColor.asRGBA()), this);
+  QColor color = QColorDialog::getColor(QColor::fromRgbF(_pathColor.r(), _pathColor.g(), _pathColor.b(), _pathColor.a()), this);
   if (color.isValid())
   {
     _pathColor = osgEarth::Symbology::Color(color.redF(), color.greenF(), color.blueF());
     refreshFeatureNode();
 
-    int invR = 255 - color.red();
-    int invG = 255 - color.green();
-    int invB = 255 - color.blue();
-    QColor invColor(invR, invG, invB);
-
-    _lineColorButton->setStyleSheet("QPushButton { color: " + invColor.name() + "; background-color: " + color.name() + " }");
+    updateButtonColor(color);
   }
 }
 

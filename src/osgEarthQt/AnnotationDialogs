@@ -114,7 +114,7 @@ namespace osgEarth { namespace QtGui
     Q_OBJECT
 
   public:
-    AddPathDialog(osg::Group* root, osgEarth::MapNode* mapNode, const ViewVector& views, QWidget* parent = 0, Qt::WindowFlags f = 0);
+    AddPathDialog(osg::Group* root, osgEarth::MapNode* mapNode, const ViewVector& views, osgEarth::Annotation::FeatureNode* path=0L, QWidget* parent = 0, Qt::WindowFlags f = 0);
 
     osgEarth::Annotation::AnnotationNode* getAnnotation() { return _pathNode.get(); }
 
@@ -137,6 +137,7 @@ namespace osgEarth { namespace QtGui
     void createPointDragger(int index, const osgEarth::GeoPoint& point);
     void movePoint(int index, const osgEarth::GeoPoint& position);
     void clearDisplay();
+    void updateButtonColor(const QColor& color);
 
     osg::ref_ptr<osg::Group> _root;
     osg::Group* _draggers;

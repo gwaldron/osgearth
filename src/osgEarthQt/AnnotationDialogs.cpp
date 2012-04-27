@@ -22,6 +22,8 @@
 #include <osgEarth/Draggers>
 #include <osgEarth/Pickers>
 #include <osgEarthAnnotation/AnnotationData>
+#include <osgEarthAnnotation/AnnotationEditing>
+#include <osgEarthAnnotation/EllipseNode>
 #include <osgEarthAnnotation/FeatureNode>
 #include <osgEarthAnnotation/PlaceNode>
 #include <osgEarthSymbology/Geometry>
@@ -436,7 +438,7 @@ void AddPolygonDialog::initialize()
   _customLayout->addWidget(_fillColorButton);
 
   // add name display checkbox to the dialog
-  _drapeCheckbox = new QCheckBox(tr("Clamp to terrain"));
+  _drapeCheckbox = new QCheckBox(tr("Drape on terrain"));
   _drapeCheckbox->setCheckState(Qt::Checked);
   _customLayout->addWidget(_drapeCheckbox);
 
@@ -623,6 +625,201 @@ void AddPolygonDialog::onLineColorButtonClicked()
 }
 
 void AddPolygonDialog::onFillColorButtonClicked()
+{
+  QColor color = QColorDialog::getColor(QColor::fromRgbF(_fillColor.r(), _fillColor.g(), _fillColor.b(), _fillColor.a()), this, tr("Select fill color..."), QColorDialog::ShowAlphaChannel);
+  if (color.isValid())
+  {
+    _fillColor = osgEarth::Symbology::Color(color.redF(), color.greenF(), color.blueF(), color.alphaF());
+    refreshFeatureNode();
+
+    if (color.alpha() == 0)
+    {
+      _fillColorButton->setStyleSheet("QPushButton { color: black; }");
+    }
+    else
+    {
+      int invR = 255 - color.red();
+      int invG = 255 - color.green();
+      int invB = 255 - color.blue();
+      QColor invColor(invR, invG, invB);
+
+      _fillColorButton->setStyleSheet("QPushButton { color: " + invColor.name() + "; background-color: " + color.name() + " }");
+    }
+  }
+}
+
+//---------------------------------------------------------------------------
+
+AddEllipseDialog::AddEllipseDialog(osg::Group* root, osgEarth::MapNode* mapNode, const ViewVector& views, QWidget* parent, Qt::WindowFlags f)
+: BaseAnnotationDialog(mapNode, views, parent, f), _root(root), _pathColor(Color(Color::White, 0.0)), _fillColor(Color(Color::Black, 0.5))
+{
+  initialize();
+
+  if (_mapNode.valid() && _views.size() > 0)
+  {
+    _guiHandler = new AddEllipseMouseHandler(this, _mapNode.get(), _root);
+    for (ViewVector::const_iterator it = views.begin(); it != views.end(); ++it)
+      (*it)->addEventHandler(_guiHandler.get());
+  }
+}
+
+void AddEllipseDialog::initialize()
+{
+  //Define the default ellipse style
+  _ellipseStyle.getOrCreate<LineSymbol>()->stroke()->color() = _fillColor;
+  _ellipseStyle.getOrCreate<LineSymbol>()->stroke()->width() = 0.0;
+  _ellipseStyle.getOrCreate<PolygonSymbol>()->fill()->color() = _fillColor;
+  _ellipseStyle.getOrCreate<osgEarth::Symbology::AltitudeSymbol>()->clamping() = osgEarth::Symbology::AltitudeSymbol::CLAMP_TO_TERRAIN;
+
+  //Set _okButton disabled until an ellipse is drawn
+  _okButton->setEnabled(false);
+
+  _nameEdit->setText(tr("New Ellipse"));
+
+  // add line color selection button
+  _lineColorButton = new QPushButton(tr("Line Color"));
+  _lineColorButton->setStyleSheet("QPushButton { color: black }");
+  _customLayout->addWidget(_lineColorButton);
+
+  // add fill color selection button
+  _fillColorButton = new QPushButton(tr("Fill Color"));
+  _fillColorButton->setStyleSheet("QPushButton { color: white; background-color: black }");
+  _customLayout->addWidget(_fillColorButton);
+
+  // add name display checkbox to the dialog
+  _drapeCheckbox = new QCheckBox(tr("Drape on terrain"));
+  _drapeCheckbox->setCheckState(Qt::Checked);
+  _customLayout->addWidget(_drapeCheckbox);
+
+  // wire up UI events
+  connect(_drapeCheckbox, SIGNAL(stateChanged(int)), this, SLOT(onDrapeCheckStateChanged(int)));
+  connect(_lineColorButton, SIGNAL(clicked()), this, SLOT(onLineColorButtonClicked()));
+  connect(_fillColorButton, SIGNAL(clicked()), this, SLOT(onFillColorButtonClicked()));
+}
+
+void AddEllipseDialog::clearDisplay()
+{
+  if (_root.valid())
+  {
+    _root->removeChild(_ellipseNode);
+    _root->removeChild(_editor);
+  }
+
+  removeGuiHandlers();
+}
+
+void AddEllipseDialog::removeGuiHandlers()
+{
+  if (_guiHandler.valid())
+  {
+    for (ViewVector::const_iterator it = _views.begin(); it != _views.end(); ++it)
+      (*it)->removeEventHandler(_guiHandler.get());
+
+    _guiHandler = 0L;
+  }
+}
+
+void AddEllipseDialog::addEllipse(const osgEarth::GeoPoint& position, const Linear& radiusMajor, const Linear& radiusMinor, const Angular& rotationAngle)
+{
+  if (_ellipseNode.valid())
+  {
+    _root->removeChild(_ellipseNode);
+    _root->removeChild(_editor);
+  }
+
+  _ellipseNode = new osgEarth::Annotation::EllipseNode(_mapNode, position, radiusMajor, radiusMinor, rotationAngle, _ellipseStyle, _drapeCheckbox->checkState() == Qt::Checked);
+  _root->addChild(_ellipseNode);
+  
+  _editor = new osgEarth::Annotation::EllipseNodeEditor(_ellipseNode);
+  _root->addChild(_editor);
+
+  _guiHandler->setCapturing(false);
+
+  _okButton->setEnabled(true);
+}
+
+void AddEllipseDialog::refreshFeatureNode(bool geometryOnly)
+{
+  if (_ellipseNode.valid())  
+  {
+    if (_pathColor.a() == 0.0)
+    {
+      _ellipseStyle.getOrCreate<LineSymbol>()->stroke()->color() = _fillColor;
+      _ellipseStyle.getOrCreate<LineSymbol>()->stroke()->width() = 0.0;
+    }
+    else
+    {
+      _ellipseStyle.getOrCreate<LineSymbol>()->stroke()->color() = _pathColor;
+      _ellipseStyle.getOrCreate<LineSymbol>()->stroke()->width() = ANNOTATION_PATH_WIDTH;
+    }
+
+    _ellipseStyle.getOrCreate<PolygonSymbol>()->fill()->color() = _fillColor;
+
+    addEllipse(_ellipseNode->getPosition(), _ellipseNode->getRadiusMajor(), _ellipseNode->getRadiusMinor(), _ellipseNode->getRotationAngle());
+  }
+}
+
+void AddEllipseDialog::accept()
+{
+  clearDisplay();
+
+  if (_ellipseNode.valid())
+  {
+    //Create AnnotationData object for this annotation
+    osgEarth::Annotation::AnnotationData* annoData = new osgEarth::Annotation::AnnotationData();
+    annoData->setName(getName());
+    annoData->setDescription(getDescription());
+    annoData->setViewpoint(osgEarth::Viewpoint(_ellipseNode->getPosition().vec3d(), 0.0, -90.0, 1e5, _ellipseNode->getPosition().getSRS()));
+
+    _ellipseNode->setAnnotationData(annoData);
+  }
+
+  QDialog::accept();
+}
+
+void AddEllipseDialog::reject()
+{
+  clearDisplay();
+  QDialog::reject();
+}
+
+void AddEllipseDialog::closeEvent(QCloseEvent* event)
+{
+  clearDisplay();
+  QDialog::closeEvent(event);
+}
+
+void AddEllipseDialog::onDrapeCheckStateChanged(int state)
+{
+  if (_ellipseNode.valid())
+    addEllipse(_ellipseNode->getPosition(), _ellipseNode->getRadiusMajor(), _ellipseNode->getRadiusMinor(), _ellipseNode->getRotationAngle());
+}
+
+void AddEllipseDialog::onLineColorButtonClicked()
+{
+  QColor color = QColorDialog::getColor(QColor::fromRgbF(_pathColor.r(), _pathColor.g(), _pathColor.b(), _pathColor.a()), this, tr("Select outline color..."), QColorDialog::ShowAlphaChannel);
+  if (color.isValid())
+  {
+    _pathColor = osgEarth::Symbology::Color(color.redF(), color.greenF(), color.blueF(), color.alphaF());
+    refreshFeatureNode();
+
+    if (color.alpha() == 0)
+    {
+      _lineColorButton->setStyleSheet("QPushButton { color: black; }");
+    }
+    else
+    {
+      int invR = 255 - color.red();
+      int invG = 255 - color.green();
+      int invB = 255 - color.blue();
+      QColor invColor(invR, invG, invB);
+
+      _lineColorButton->setStyleSheet("QPushButton { color: " + invColor.name() + "; background-color: " + color.name() + " }");
+    }
+  }
+}
+
+void AddEllipseDialog::onFillColorButtonClicked()
 {
   QColor color = QColorDialog::getColor(QColor::fromRgbF(_fillColor.r(), _fillColor.g(), _fillColor.b(), _fillColor.a()), this, tr("Select fill color..."), QColorDialog::ShowAlphaChannel);
   if (color.isValid())

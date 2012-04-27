@@ -67,10 +67,10 @@ AnnotationToolbar::createDefaultActions()
   connect(_addPoly, SIGNAL(triggered()), this, SLOT(addPolyAnnotation()));
   addAction(_addPoly);
 
-  _addCircle = new QAction(QIcon(":/images/draw_circle_bg.png"), tr(""), actionParent);
-  _addCircle->setToolTip(tr("Draw a circle"));
-  connect(_addCircle, SIGNAL(triggered()), this, SLOT(addCircleAnnotation()));
-  addAction(_addCircle);
+  _addEllipse = new QAction(QIcon(":/images/draw_circle_bg.png"), tr(""), actionParent);
+  _addEllipse->setToolTip(tr("Draw an ellipse"));
+  connect(_addEllipse, SIGNAL(triggered()), this, SLOT(addEllipseAnnotation()));
+  addAction(_addEllipse);
 }
 
 void AnnotationToolbar::setActiveView(osgViewer::View* view)
@@ -143,18 +143,18 @@ AnnotationToolbar::addPolyAnnotation()
 }
 
 void
-AnnotationToolbar::addCircleAnnotation()
+AnnotationToolbar::addEllipseAnnotation()
 {
-  //_activeDialog = new osgEarth::QtGui::AddCircleDialog(_root, _mapNode);
+  _activeDialog = new osgEarth::QtGui::AddEllipseDialog(_root, _mapNode, _views);
 
-  //this->setEnabled(false);
+  this->setEnabled(false);
 
-  //connect(_activeDialog, SIGNAL(finished(int)), this, SLOT(onAddFinished(int)));
+  connect(_activeDialog, SIGNAL(finished(int)), this, SLOT(onAddFinished(int)));
 
-  //_activeDialog->setWindowTitle(tr("New circle"));
-  //_activeDialog->setWindowFlags(Qt::Tool | Qt::WindowTitleHint | Qt::CustomizeWindowHint| Qt::WindowStaysOnTopHint);
-  //_activeDialog->setAttribute(Qt::WA_DeleteOnClose);
-  //_activeDialog->show();
+  _activeDialog->setWindowTitle(tr("New ellipse"));
+  _activeDialog->setWindowFlags(Qt::Tool | Qt::WindowTitleHint | Qt::CustomizeWindowHint| Qt::WindowStaysOnTopHint);
+  _activeDialog->setAttribute(Qt::WA_DeleteOnClose);
+  _activeDialog->show();
 }
 
 void AnnotationToolbar::onAddFinished(int result)

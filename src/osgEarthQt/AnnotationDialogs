@@ -22,6 +22,9 @@
 #include <osgEarthQt/Common>
 
 #include <osgEarth/Draggers>
+#include <osgEarth/GeoMath>
+#include <osgEarthAnnotation/AnnotationEditing>
+#include <osgEarthAnnotation/EllipseNode>
 #include <osgEarthAnnotation/FeatureNode>
 #include <osgEarthAnnotation/PlaceNode>
 #include <osgEarthFeatures/Feature>
@@ -194,6 +197,51 @@ namespace osgEarth { namespace QtGui
 
   //---------------------------------------------------------------------------
 
+  struct AddEllipseMouseHandler;
+  class OSGEARTHQT_EXPORT AddEllipseDialog : public BaseAnnotationDialog
+  {
+    Q_OBJECT
+
+  public:
+    AddEllipseDialog(osg::Group* root, osgEarth::MapNode* mapNode, const ViewVector& views, QWidget* parent = 0, Qt::WindowFlags f = 0);
+
+    osgEarth::Annotation::AnnotationNode* getAnnotation() { return _ellipseNode.get(); }
+
+    void addEllipse(const osgEarth::GeoPoint& position, const Linear& radiusMajor, const Linear& radiusMinor, const Angular& rotationAngle);
+
+  public slots:
+    void accept();
+    void reject();
+
+  private slots:
+    void onDrapeCheckStateChanged(int state);
+    void onLineColorButtonClicked();
+    void onFillColorButtonClicked();
+
+  protected:
+    void closeEvent(QCloseEvent* event);
+
+    void initialize();
+    void refreshFeatureNode(bool geometryOnly=false);
+    void clearDisplay();
+    void removeGuiHandlers();
+
+    osg::ref_ptr<osg::Group> _root;
+    osg::ref_ptr<AddEllipseMouseHandler>  _guiHandler;
+    osg::ref_ptr<osgEarth::Annotation::EllipseNodeEditor> _editor;
+    QCheckBox* _drapeCheckbox;
+    QPushButton* _lineColorButton;
+    QPushButton* _fillColorButton;
+    osg::Vec4f _pathColor;
+    osg::Vec4f _fillColor;
+    osg::ref_ptr<osgEarth::Annotation::EllipseNode> _ellipseNode;
+    osgEarth::Symbology::Style _ellipseStyle;
+
+    friend struct AddEllipseMouseHandler;
+  }; 
+
+  //---------------------------------------------------------------------------
+
   struct AddPointsMouseHandler : public osgGA::GUIEventHandler
   {
     AddPointsMouseHandler(BaseAnnotationDialog* dialog, osgEarth::MapNode* mapNode, osg::Group* root, bool drawLead=true)
@@ -332,6 +380,141 @@ namespace osgEarth { namespace QtGui
     int _index;
     BaseAnnotationDialog* _dialog;
   };
+
+  //---------------------------------------------------------------------------
+
+  struct AddEllipseMouseHandler : public osgGA::GUIEventHandler
+  {
+    AddEllipseMouseHandler(AddEllipseDialog* dialog, osgEarth::MapNode* mapNode, osg::Group* root)
+      : _dialog(dialog), _mapNode(mapNode), _root(root), _mouseDown(false), _capturing(true), _rotationAngle(0, osgEarth::Units::DEGREES)
+    {
+      //Define a style for the ellipse outline
+      _ellipseStyle.getOrCreate<LineSymbol>()->stroke()->color() = Color(Color::White, 0.75);
+      _ellipseStyle.getOrCreate<LineSymbol>()->stroke()->stipple() = 0x0F0F;
+      _ellipseStyle.getOrCreate<LineSymbol>()->stroke()->width() = 2.0;
+      _ellipseStyle.getOrCreate<osgEarth::Symbology::AltitudeSymbol>()->clamping() = osgEarth::Symbology::AltitudeSymbol::CLAMP_TO_TERRAIN;
+    }
+
+    void setCapturing(bool capturing)
+    {
+      _capturing = capturing;
+    }
+
+    bool handle( const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& aa )
+    {
+      if (!_capturing)
+        return false;
+
+      osgViewer::View* view = static_cast<osgViewer::View*>(aa.asView());
+
+      if (ea.getEventType() == osgGA::GUIEventAdapter::PUSH && ea.getButton() == osgGA::GUIEventAdapter::LEFT_MOUSE_BUTTON)
+      {
+        _mouseDown = true;
+        _xDown = _xCurr = ea.getX();
+        _yDown = _yCurr = ea.getY();
+      }
+      else if (ea.getEventType() == osgGA::GUIEventAdapter::DRAG && _mouseDown)
+      {
+        _xCurr = ea.getX();
+        _yCurr = ea.getY();
+        
+        updateValues(aa.asView());
+        updateDisplay();
+
+        return true;
+      }
+      else if (ea.getEventType() == osgGA::GUIEventAdapter::RELEASE && ea.getButton() == osgGA::GUIEventAdapter::LEFT_MOUSE_BUTTON && _mouseDown)
+      {
+        _xCurr = ea.getX();
+        _yCurr = ea.getY();
+
+        updateValues(aa.asView());
+
+        _mouseDown = false;
+        updateDisplay();
+
+        if (_xCurr != _xDown && _yCurr != _yDown)  
+          _dialog->addEllipse(_position, _radiusMajor, _radiusMinor, _rotationAngle);
+
+        return true;
+      }
+
+      return false;
+    }
+
+    void updateValues(osg::View* view)
+    {
+      float xMax = osg::maximum(_xDown, _xCurr);
+      float xMin = osg::minimum(_xDown, _xCurr);
+      float xMid = (xMax + xMin) / 2.0;
+      float yMax = osg::maximum(_yDown, _yCurr);
+      float yMin = osg::minimum(_yDown, _yCurr);
+      float yMid = (yMax + yMin) / 2.0;
+
+      osg::Vec3d world;
+      if (_mapNode->getTerrain()->getWorldCoordsUnderMouse(view, xMid, yMid, world))
+        _mapNode->getMap()->worldPointToMapPoint(world, _position);
+
+      double xRad = 0.0;
+      if (_mapNode->getTerrain()->getWorldCoordsUnderMouse(view, xMax, yMid, world))
+      {
+        osgEarth::GeoPoint mapPoint;
+        _mapNode->getMap()->worldPointToMapPoint(world, mapPoint);
+
+        xRad = GeoMath::distance(_position.vec3d(), mapPoint.vec3d(), _position.getSRS());
+      }
+
+      double yRad = 0.0;
+      if (_mapNode->getTerrain()->getWorldCoordsUnderMouse(view, xMid, yMax, world))
+      {
+        osgEarth::GeoPoint mapPoint;
+        _mapNode->getMap()->worldPointToMapPoint(world, mapPoint);
+
+        yRad = GeoMath::distance(_position.vec3d(), mapPoint.vec3d(), _position.getSRS());
+      }
+
+      if (xRad > yRad)
+      {
+        _radiusMajor.set(xRad, osgEarth::Units::METERS);
+        _radiusMinor.set(yRad, osgEarth::Units::METERS);
+        _rotationAngle.set(90.0, osgEarth::Units::DEGREES);
+      }
+      else
+      {
+        _radiusMajor.set(yRad, osgEarth::Units::METERS);
+        _radiusMinor.set(xRad, osgEarth::Units::METERS);
+        _rotationAngle.set(0.0, osgEarth::Units::DEGREES);
+      }
+    }
+
+    void updateDisplay()
+    {
+      if (_ellipseNode.valid())
+        _root->removeChild(_ellipseNode);
+
+      if (_root.valid() && _mouseDown)
+      {
+        _ellipseNode = new osgEarth::Annotation::EllipseNode(_mapNode, _position, _radiusMajor, _radiusMinor, _rotationAngle, _ellipseStyle, false);
+        _root->addChild(_ellipseNode);
+      }
+    }
+
+
+    AddEllipseDialog* _dialog;
+    osg::ref_ptr<MapNode>  _mapNode;
+    osg::ref_ptr<osg::Group> _root;
+    osg::ref_ptr<osgEarth::Annotation::EllipseNode> _ellipseNode;
+    osgEarth::Symbology::Style _ellipseStyle;
+    osgEarth::GeoPoint _position;
+    osgEarth::Linear _radiusMajor;
+    osgEarth::Linear _radiusMinor;
+    osgEarth::Angular _rotationAngle;
+
+    bool _capturing;
+    bool _mouseDown;
+    float _xDown, _yDown, _xCurr, _yCurr;
+  };
+
 } }
 
 #endif // OSGEARTHQT_ANNOTATIONDIALOGS_H

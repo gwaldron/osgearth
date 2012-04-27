@@ -47,7 +47,7 @@ namespace osgEarth { namespace QtGui
     void addMarkerAnnotation();
     void addPathAnnotation();
     void addPolyAnnotation();
-    void addCircleAnnotation();
+    void addEllipseAnnotation();
 
     void onAddFinished(int result);
 
@@ -65,7 +65,7 @@ namespace osgEarth { namespace QtGui
     QAction* _addMarker;
     QAction* _addPath;
     QAction* _addPoly;
-    QAction* _addCircle;
+    QAction* _addEllipse;
 
     QPointer<BaseAnnotationDialog>  _activeDialog;
   };

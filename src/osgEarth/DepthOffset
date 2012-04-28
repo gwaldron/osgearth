@@ -40,11 +40,6 @@
 * of your geometry, so it's wise to use a higher offset for geometry with longer 
 * segments when in a round-earth situation. The automatic setting (the default) analyzes
 * the subgraph and picks a decent value, but you can always override this is you like.
-*
-* Caveat: for higher offsets, the near clip plane will come into effect when you get too
-* close. There's probably a fix but I haven't figured it out yet. This isn't usually an
-* issue, since geometry with long segments is typically something meant to be viewed
-* from far away (like a country boundary for example).
 */
 namespace osgEarth
 {

@@ -46,7 +46,7 @@ namespace osgEarth { namespace Annotation
     /**
      * Base class for all annotation node types.
      */
-    class OSGEARTHANNO_EXPORT AnnotationNode : public osg::Switch
+    class OSGEARTHANNO_EXPORT AnnotationNode : public osg::Group
     {
     public:
         META_AnnotationNode(osgEarthAnnotation, AnnotationNode);

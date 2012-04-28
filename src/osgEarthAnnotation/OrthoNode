@@ -116,6 +116,8 @@ namespace osgEarth { namespace Annotation
 
     private:
         osg::observer_ptr<const SpatialReference> _mapSRS;
+        osg::Switch*                   _switch;
+        osg::Group*                    _oq;
         osg::AutoTransform*            _autoxform;
         osg::MatrixTransform*          _matxform;
         osg::Group*                    _attachPoint;

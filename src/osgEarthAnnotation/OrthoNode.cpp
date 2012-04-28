@@ -27,9 +27,86 @@
 #include <osgText/Text>
 #include <osg/ComputeBoundsVisitor>
 #include <osgUtil/IntersectionVisitor>
+#include <osg/OcclusionQueryNode>
+#include <osg/Point>
+#include <osg/Depth>
 
 using namespace osgEarth;
 using namespace osgEarth::Annotation;
+
+//------------------------------------------------------------------------
+
+namespace
+{
+    struct OrthoOQNode : public osg::OcclusionQueryNode
+    {
+        OrthoOQNode( const std::string& name ) 
+        {
+            setName( name );
+            setVisibilityThreshold(0);
+            setQueryFrameCount(0);
+            setDebugDisplay(true);
+            setCullingActive(false);
+        }
+
+        virtual osg::BoundingSphere computeBound() const
+        {
+            {
+                // Need to make this routine thread-safe. Typically called by the update
+                //   Visitor, or just after the update traversal, but could be called by
+                //   an application thread or by a non-osgViewer application.
+                Threading::ScopedMutexLock lock( _computeBoundMutex );
+
+                // This is the logical place to put this code, but the method is const. Cast
+                //   away constness to compute the bounding box and modify the query geometry.
+                OrthoOQNode* nonConstThis = const_cast<OrthoOQNode*>( this );
+
+#if 1
+                osg::ref_ptr<osg::Vec3Array> v = new osg::Vec3Array(1);
+                (*v)[0].set( _xform->getMatrix().getTrans() );
+
+#else
+                osg::BoundingSphere bs(_xform->getMatrix().getTrans(), 0.5);
+                osg::BoundingBox bb;
+                bb.expandBy(bs);
+
+                osg::ref_ptr<osg::Vec3Array> v = new osg::Vec3Array;
+                v->resize( 8 );
+                (*v)[0] = osg::Vec3( bb._min.x(), bb._min.y(), bb._min.z() );
+                (*v)[1] = osg::Vec3( bb._max.x(), bb._min.y(), bb._min.z() );
+                (*v)[2] = osg::Vec3( bb._max.x(), bb._min.y(), bb._max.z() );
+                (*v)[3] = osg::Vec3( bb._min.x(), bb._min.y(), bb._max.z() );
+                (*v)[4] = osg::Vec3( bb._max.x(), bb._max.y(), bb._min.z() );
+                (*v)[5] = osg::Vec3( bb._min.x(), bb._max.y(), bb._min.z() );
+                (*v)[6] = osg::Vec3( bb._min.x(), bb._max.y(), bb._max.z() );
+                (*v)[7] = osg::Vec3( bb._max.x(), bb._max.y(), bb._max.z() );
+#endif
+
+                osg::Geometry* geom = static_cast< osg::Geometry* >( nonConstThis->_queryGeode->getDrawable( 0 ) );
+                geom->setVertexArray( v.get() );
+                geom->getPrimitiveSetList().clear();
+                geom->addPrimitiveSet( new osg::DrawArrays(GL_POINTS,0,1) );
+                nonConstThis->getQueryStateSet()->setAttributeAndModes(new osg::Point(15), 1);
+                nonConstThis->getQueryStateSet()->setBinNumber(INT_MAX);
+
+                geom = static_cast< osg::Geometry* >( nonConstThis->_debugGeode->getDrawable( 0 ) );
+                geom->setVertexArray( v.get() );
+                geom->getPrimitiveSetList().clear();
+                geom->addPrimitiveSet( new osg::DrawArrays(GL_POINTS,0,1) );
+                nonConstThis->getDebugStateSet()->setAttributeAndModes(new osg::Point(15), 1);
+                osg::Depth* d = new osg::Depth( osg::Depth::LEQUAL, 0.f, 1.f, false );
+                nonConstThis->getDebugStateSet()->setAttributeAndModes( d, osg::StateAttribute::ON | osg::StateAttribute::PROTECTED);
+                (*dynamic_cast<osg::Vec4Array*>(geom->getColorArray()))[0].set(1,0,0,1);
+            }
+
+            return Group::computeBound();
+        }
+
+        osg::MatrixTransform* _xform;
+    };
+}
+
+//------------------------------------------------------------------------
 
 
 OrthoNode::OrthoNode(MapNode*        mapNode,
@@ -86,18 +163,30 @@ _horizonCulling( false )
 void
 OrthoNode::init()
 {
+    _switch = new osg::Switch();
+
+    OrthoOQNode* oq = new OrthoOQNode("");
+    oq->setQueriesEnabled(true);
+
+    oq->addChild( _switch );
+    this->addChild( oq );
+
     _autoxform = new AnnotationUtils::OrthoNodeAutoTransform();
     _autoxform->setAutoRotateMode( osg::AutoTransform::ROTATE_TO_SCREEN );
     _autoxform->setAutoScaleToScreen( true );
     _autoxform->setCullingActive( false ); // for the first pass
-    this->addChild( _autoxform );
+    _switch->addChild( _autoxform );
 
     _matxform = new osg::MatrixTransform();
-    this->addChild( _matxform );
+    _switch->addChild( _matxform );
 
-    this->setSingleChildOn( 0 );
+    oq->_xform = _matxform;
+    _oq = oq;
+
+    _switch->setSingleChildOn( 0 );
 
     _attachPoint = new osg::Group();
+
     _autoxform->addChild( _attachPoint );
     _matxform->addChild( _attachPoint );
 
@@ -116,20 +205,22 @@ OrthoNode::traverse( osg::NodeVisitor& nv )
         // make sure that we're NOT using the AutoTransform if this node is in the decluttering bin;
         // the decluttering bin automatically manages screen space transformation.
         bool declutter = cv->getCurrentRenderBin()->getName() == OSGEARTH_DECLUTTER_BIN;
-        if ( declutter && getValue(0) == 1 )
+        if ( declutter && _switch->getValue(0) == 1 )
         {
-            this->setSingleChildOn( 1 );
+            _switch->setSingleChildOn( 1 );
         }
-        else if ( !declutter && getValue(0) == 0 )
+        else if ( !declutter && _switch->getValue(0) == 0 )
         {
-            this->setSingleChildOn( 0 );
+            _switch->setSingleChildOn( 0 );
         }
 
         // If decluttering is enabled, update the auto-transform but not its children.
         // This is necessary to support picking/selection. An optimization would be to
         // disable this pass when picking is not in use
         if ( declutter )
+        {
             static_cast<AnnotationUtils::OrthoNodeAutoTransform*>(_autoxform)->acceptCullNoTraverse( cv );
+        }
 
         // turn off small feature culling
         cv->setSmallFeatureCullingPixelSize(0.0f);
@@ -218,7 +309,6 @@ OrthoNode::updateTransforms( const GeoPoint& p, osg::Node* patch )
         // update the xforms:
         _autoxform->setPosition( local2world.getTrans() );
         _matxform->setMatrix( local2world );
-        
 
         CullNodeByHorizon* culler = dynamic_cast<CullNodeByHorizon*>(this->getCullCallback());
         if ( culler )

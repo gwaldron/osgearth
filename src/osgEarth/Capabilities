@@ -84,6 +84,9 @@ namespace osgEarth
         /** whether the GPU supports DEPTH_PACKED_STENCIL buffer */
         bool supportsDepthPackedStencilBuffer() const { return _supportsDepthPackedStencilBuffer; }
 
+        /** whether the GPU supporst occlusion query */
+        bool supportsOcclusionQuery() const { return _supportsOcclusionQuery; }
+
     protected:
         Capabilities();
 
@@ -108,6 +111,7 @@ namespace osgEarth
         bool _supportsTexture2DLod;
         bool _supportsMipmappedTextureUpdates;
         bool _supportsDepthPackedStencilBuffer;
+        bool _supportsOcclusionQuery;
         std::string _vendor;
         std::string _renderer;
         std::string _version;

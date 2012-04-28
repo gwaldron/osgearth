@@ -121,6 +121,10 @@ LabelNode::init()
     osg::StateSet* stateSet = _geode->getOrCreateStateSet();
     stateSet->setAttributeAndModes( new osg::Depth(osg::Depth::ALWAYS, 0, 1, false), 1 );
 
+    //osg::Group* oq = new OrthoOQNode("OrthoNode");
+    //oq->addChild( _geode );
+    //getAttachPoint()->addChild( oq );
+
     getAttachPoint()->addChild( _geode );
 
     applyStyle( _style );

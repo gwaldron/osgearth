@@ -1,20 +1,12 @@
 <!--
-osgEarth Sample - ReadyMap.ORG Server - http://readymap.org
-
-ReadyMap.ORG provides free global base map data for osgEarth developers!
-This tiled, worldwide dataset of imagery, elevation, and street map data
-is a great base map that provides global context for your own local datasets.
-It works "out of the box" with osgEarth applications.
-
-**** NOTICE ****
-YOU ARE RESPONSIBLE for abiding by the TERMS AND CONDITIONS outlined at:
-http://readymap.org
-
+osgEarth Sample - Annotations
 -->
-<map name="readymap.org" type="flat" version="2">
+<map name="readymap.org" type="projected" version="2">
 
-    <image name="ReadyMap.org - Imagery" driver="tms">
-        <url>http://readymap.org/readymap/tiles/1.0.0/7/</url>
+    <image name="mapquest_osm" driver="xyz">
+        <url>http://otile[1234].mqcdn.com/tiles/1.0.0/osm/{z}/{x}/{y}.jpg</url>
+        <profile>global-mercator</profile>
+        <cache_policy usage="no_cache"/>
     </image>
         
     <elevation name="ReadyMap.org - Elevation" driver="tms">
@@ -22,12 +14,11 @@ http://readymap.org
     </elevation>
     
     <options>
-        <profile>global-mercator</profile>
         <terrain>
             <lighting>false</lighting>
             <sample_ratio>0.125</sample_ratio>
         </terrain>
-        <cache_policy usage="no_cache"/>
+        <!-- <cache_policy usage="cache_only"/> -->
     </options>
     
     <external>
@@ -40,6 +31,7 @@ http://readymap.org
                 <style type="text/css">
                     text-align: center_center;
                     text-size:  20;
+                    text-halo:  #000000;
                 </style>
             </label>
             
@@ -58,18 +50,23 @@ http://readymap.org
                 <position lat="32.73" long="-119.0"/>
                 <radius_major value="50" units="km"/>
                 <radius_minor value="20" units="km"/>
-                <style type="text/css">fill: #ff7f00bf;</style>
+                <style type="text/css">
+                    fill:             #ff7f008f;
+                    stroke:           #ff0000ff;
+                    extrusion-height: 5000;
+                </style>
             </ellipse>
             
             <rectangle>
                 <position lat="32.2" long="-118" alt="1000"/>
                 <width value="50" units="nm"/>
                 <height value="25" units="nm"/>
-                <style type="text/css"> stroke: #ff7f7f; stroke-width: 2; </style>
+                <style type="text/css"> stroke: #00ffff; stroke-width: 2; </style>
             </rectangle>
 
             <feature>
-                <geometry srs="wgs84">
+                <srs>wgs84</srs>
+                <geometry>
                     LINESTRING(-120.37 34.039, -120.09 33.96, -119.75 34, -118.43 33.37, -118.48 32.88)
                 </geometry>
                 <style type="text/css">

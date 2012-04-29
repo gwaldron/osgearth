@@ -20,6 +20,7 @@
 #include <osgEarth/NodeUtils>
 #include <osgEarth/Registry>
 #include <osgEarth/TextureCompositor>
+#include <osgEarth/ShaderComposition>
 #include <osg/Texture2D>
 #include <osg/TexEnv>
 #include <osg/BlendFunc>
@@ -43,172 +44,6 @@ using namespace osgEarth;
 
 namespace
 {
-    /**
-     * Extends ConvexPolyhedron to add bounds tests.
-     */
-    class MyConvexPolyhedron : public osgShadow::ConvexPolyhedron
-    {
-    public:       
-        bool intersects(const osg::BoundingSphere& bs) const
-        {
-            for( Faces::const_iterator i = _faces.begin(); i != _faces.end(); ++i )
-            {
-                osg::Plane up = i->plane;
-                up.makeUnitLength();
-                if ( up.distance( bs.center() ) < -bs.radius() )
-                    return false;
-            }
-            return true;
-        }
-
-        bool intersects(const osg::BoundingBox& box) const
-        {
-            for( Faces::const_iterator i = _faces.begin(); i != _faces.end(); ++i )
-            {
-                osg::Plane up = i->plane;
-                up.makeUnitLength();
-
-                if ( up.intersect(box) < 0 )
-                    return false;
-            }
-            return true;
-        }
-    };
-
-    struct MyComputeBoundsVisitor : public osg::ComputeBoundsVisitor, public OverlayDecorator::InternalNodeVisitor
-    {
-    };
-
-    /**
-     * Visits a scene graph (in our case, the overlay graph) and calculates a
-     * geometry bounding box that intersects the provided polytope (which in our case is the
-     * view frustum).
-     *
-     * It's called "Coarse" because it does not traverse to the Drawable level, just to
-     * the Geode bounding sphere level.
-     */
-    struct CoarsePolytopeIntersector : public OverlayDecorator::InternalNodeVisitor
-    {
-        CoarsePolytopeIntersector(
-            const MyConvexPolyhedron& polytope,
-            osg::NodeVisitor*         proxyNV,
-            osg::BoundingBox&         out_bbox) :
-
-        OverlayDecorator::InternalNodeVisitor(osg::NodeVisitor::TRAVERSE_ACTIVE_CHILDREN),
-            _bbox    (out_bbox),
-            _original( polytope ),
-            _proxyNV ( proxyNV ),
-            _coarse  ( false )
-        {
-            _polytopeStack.push( polytope );
-            _matrixStack.push( osg::Matrix::identity() );
-        }
-
-        // override from NodeVisitor to support LOD processing
-        virtual float getDistanceToViewPoint(const osg::Vec3& pos, bool useLODScale) const
-        {
-            return _proxyNV->getDistanceToViewPoint(pos, useLODScale);
-        }
-
-        void apply( osg::Node& node )
-        {
-            const osg::BoundingSphere& bs = node.getBound();
-            if ( _polytopeStack.top().intersects( bs ) )
-            {
-                traverse( node );
-            }
-        }
-
-        void apply( osg::Geode& node )
-        {
-            const osg::BoundingSphere& bs = node.getBound();
-
-            if ( _polytopeStack.top().intersects( bs ) )
-            {
-                if ( _coarse )
-                {
-                    osg::BoundingSphere bsphere = bs;
-
-                    osg::BoundingSphere::vec_type xdash = bsphere._center;
-                    xdash.x() += bsphere._radius;
-                    xdash = xdash*_matrixStack.top();
-
-                    osg::BoundingSphere::vec_type ydash = bsphere._center;
-                    ydash.y() += bsphere._radius;
-                    ydash = ydash*_matrixStack.top();
-
-                    osg::BoundingSphere::vec_type zdash = bsphere._center;
-                    zdash.z() += bsphere._radius;
-                    zdash = zdash*_matrixStack.top();
-
-                    bsphere._center = bsphere._center*_matrixStack.top();
-
-                    xdash -= bsphere._center;
-                    osg::BoundingSphere::value_type len_xdash = xdash.length();
-
-                    ydash -= bsphere._center;
-                    osg::BoundingSphere::value_type len_ydash = ydash.length();
-
-                    zdash -= bsphere._center;
-                    osg::BoundingSphere::value_type len_zdash = zdash.length();
-
-                    bsphere._radius = len_xdash;
-                    if (bsphere._radius<len_ydash) bsphere._radius = len_ydash;
-                    if (bsphere._radius<len_zdash) bsphere._radius = len_zdash;
-
-                    _bbox.expandBy(bsphere);
-                }
-                else
-                {
-                    for( unsigned i=0; i < node.getNumDrawables(); ++i )
-                    {
-                        applyDrawable( node.getDrawable(i) );
-                    }
-                }
-            }
-        }
-
-        void applyDrawable( osg::Drawable* drawable )
-        {
-            const osg::BoundingBox& box = drawable->getBound();
-
-            if ( _polytopeStack.top().intersects( box ) )
-            {
-                // apply an eplison to avoid a bbox with a zero dimension
-                static float e = 0.001;
-
-                osg::Vec3d b0 = osg::Vec3(box.xMin(), box.yMin(), box.zMin()) * _matrixStack.top();
-                osg::Vec3d b1 = osg::Vec3(box.xMax(), box.yMax(), box.zMax()) * _matrixStack.top();
-                  
-                _bbox.expandBy( std::min(b0.x(),b1.x())-e, std::min(b0.y(),b1.y())-e, std::min(b0.z(),b1.z())-e );
-                _bbox.expandBy( std::max(b0.x(),b1.x())+e, std::max(b0.y(),b1.y())+e, std::max(b0.z(),b1.z())+e );
-            }
-        }
-
-        void apply( osg::Transform& transform )
-        {
-            osg::Matrixd matrix;
-            if ( !_matrixStack.empty() ) matrix = _matrixStack.top();
-            transform.computeLocalToWorldMatrix( matrix, this );
-
-            _matrixStack.push( matrix );
-            _polytopeStack.push( _original );
-            _polytopeStack.top().transform( osg::Matrixd::inverse( matrix ), matrix );
-
-            traverse(transform);
-
-            _matrixStack.pop();
-            _polytopeStack.pop();
-        }
-
-        osg::BoundingBox& _bbox;
-        osg::NodeVisitor* _proxyNV;
-        MyConvexPolyhedron _original;
-        std::stack<MyConvexPolyhedron> _polytopeStack;
-        std::stack<osg::Matrixd> _matrixStack;
-        bool _coarse;
-    };
-
     /**
      * This method takes a set of verts and finds the nearest and farthest distances from
      * the points to the camera. It does this calculation in the plane defined by the
@@ -274,9 +109,6 @@ OverlayDecorator::OverlayDecorator() :
 _textureUnit  ( 1 ),
 _textureSize  ( 1024 ),
 _useShaders   ( false ),
-_useWarping   ( false ),
-_warp         ( 1.0f ),
-_visualizeWarp( false ),
 _mipmapping   ( false ),
 _rttBlending  ( true ),
 _updatePending( false ),
@@ -406,7 +238,6 @@ OverlayDecorator::initializePerViewData( PerViewData& pvd )
     {            
         // set up the shaders
         initSubgraphShaders( pvd );
-        initRTTShaders( pvd );
     }
     else
     {
@@ -414,85 +245,6 @@ OverlayDecorator::initializePerViewData( PerViewData& pvd )
         pvd._texGenNode = new osg::TexGenNode();
         pvd._texGenNode->setTexGen( new osg::TexGen() );
     }
-}
-
-void
-OverlayDecorator::initRTTShaders( PerViewData& pvd )
-{
-    //nop - don't need these now that warping is not used anymore
-#if 0
-    osg::StateSet* set = pvd._rttCamera->getOrCreateStateSet();
-
-    //TODO: convert this to VP so the overlay graph can use shadercomp too.
-    osg::Program* program = new osg::Program();
-    program->setName( "OverlayDecorator RTT shader" );
-    set->setAttributeAndModes( program, osg::StateAttribute::ON );
-
-    std::stringstream buf;
-    buf << "#version 110 \n";
-
-    if ( _useWarping )
-    {
-        buf << "uniform float warp; \n"
-
-            // because the built-in pow() is busted
-            << "float mypow( in float x, in float y ) \n"
-            << "{ \n"
-            << "    return x/(x+y-y*x); \n"
-            << "} \n"
-
-            << "vec4 warpVertex( in vec4 src ) \n"
-            << "{ \n"
-            //      normalize to [-1..1], then take the absolute values since we
-            //      want to apply the warping in [0..1] on each side of zero:
-            << "    vec2 srct = vec2( abs(src.x)/src.w, abs(src.y)/src.w ); \n"
-            << "    vec2 sign = vec2( src.x > 0.0 ? 1.0 : -1.0, src.y > 0.0 ? 1.0 : -1.0 ); \n"
-
-            //      apply the deformation using a "deceleration" curve:
-            << "    vec2 srcp = vec2( 1.0-mypow(1.0-srct.x,warp), 1.0-mypow(1.0-srct.y,warp) ); \n"
-
-            //      re-apply the sign. no need to un-normalize, just use w=1 instead
-            << "    return vec4( sign.x*srcp.x, sign.y*srcp.y, src.z/src.w, 1.0 ); \n"
-            << "} \n"
-
-            << "void main() \n"
-            << "{ \n"
-            << "    gl_Position = warpVertex( gl_ModelViewProjectionMatrix * gl_Vertex ); \n"
-            << "    gl_FrontColor = gl_Color; \n"
-            << "    gl_TexCoord[0] = gl_MultiTexCoord0;\n"
-            << "} \n";
-    }
-
-    else // no vertex warping
-    {
-        buf << "void main() \n"
-            << "{ \n"
-            << "    gl_Position = gl_ModelViewProjectionMatrix * gl_Vertex; \n"
-            << "    gl_FrontColor = gl_Color; \n"
-            << "    gl_TexCoord[0] = gl_MultiTexCoord0;\n"
-            << "} \n";
-    }
-
-    std::string vertSource;
-    vertSource = buf.str();
-    program->addShader( new osg::Shader( osg::Shader::VERTEX, vertSource ) );
-
-    std::stringstream fragBuf;
-    fragBuf    << "#version 110 \n"
-               << "uniform sampler2D texture_0; \n"
-               << "void main() \n"
-               << "{\n"                              
-               << "    vec4 tex = texture2D(texture_0, gl_TexCoord[0].xy);\n"
-               << "    vec3 mixed_color = mix(gl_Color.rgb, tex.rgb, tex.a);\n"
-               << "    gl_FragColor = vec4(mixed_color, gl_Color.a); \n"
-               << "}\n";
-    
-    std::string fragSource;
-    fragSource = fragBuf.str();
-    
-    program->addShader( new osg::Shader( osg::Shader::FRAGMENT, fragSource ) );
-    set->addUniform(new osg::Uniform("texture_0",0));
-#endif
 }
 
 void
@@ -529,45 +281,11 @@ OverlayDecorator::initSubgraphShaders( PerViewData& pvd )
     // fragment shader - subgraph
     buf.str("");
     buf << "#version 110 \n"
-        << "uniform sampler2D osgearth_overlay_ProjTex; \n";
-
-    if ( _useWarping )
-    {
-        buf << "uniform float warp; \n"
-
-            // because the built-in pow() is busted
-            << "float mypow( in float x, in float y ) \n"
-            << "{ \n"
-            << "    return x/(x+y-y*x); \n"
-            << "} \n"
-
-            << "vec2 warpTexCoord( in vec2 src ) \n"
-            << "{ \n"
-            //      incoming tex coord is [0..1], so we scale to [-1..1]
-            << "    vec2 srcn = vec2( src.x*2.0 - 1.0, src.y*2.0 - 1.0 ); \n" 
-
-            //      we want to work in the [0..1] space on each side of 0, so can the abs
-            //      and store the signs for later:
-            << "    vec2 srct = vec2( abs(srcn.x), abs(srcn.y) ); \n"
-            << "    vec2 sign = vec2( srcn.x > 0.0 ? 1.0 : -1.0, srcn.y > 0.0 ? 1.0 : -1.0 ); \n"
-
-            //      apply the deformation using a deceleration curve:
-            << "    vec2 srcp = vec2( 1.0-mypow(1.0-srct.x,warp), 1.0-mypow(1.0-srct.y,warp) ); \n"
-
-            //      reapply the sign, and scale back to [0..1]:
-            << "    vec2 srcr = vec2( sign.x*srcp.x, sign.y*srcp.y ); \n"
-            << "    return vec2( 0.5*(srcr.x + 1.0), 0.5*(srcr.y + 1.0) ); \n"
-            << "} \n";
-    }
-
-    buf << "void osgearth_overlay_fragment( inout vec4 color ) \n"
+        << "uniform sampler2D osgearth_overlay_ProjTex; \n"
+        << "void osgearth_overlay_fragment( inout vec4 color ) \n"
         << "{ \n"
-        << "    vec2 texCoord = gl_TexCoord["<< *_textureUnit << "].xy / gl_TexCoord["<< *_textureUnit << "].q; \n";
-
-    if ( _useWarping && !_visualizeWarp )
-        buf  << "    texCoord = warpTexCoord( texCoord ); \n";
-
-    buf << "    vec4 texel = texture2D(osgearth_overlay_ProjTex, texCoord); \n"  
+        << "    vec2 texCoord = gl_TexCoord["<< *_textureUnit << "].xy / gl_TexCoord["<< *_textureUnit << "].q; \n"
+        << "    vec4 texel = texture2D(osgearth_overlay_ProjTex, texCoord); \n"  
         << "    color = vec4( mix( color.rgb, texel.rgb, texel.a ), color.a); \n"
         << "} \n";
 
@@ -653,19 +371,6 @@ OverlayDecorator::setMipMapping( bool value )
 }
 
 void
-OverlayDecorator::setVertexWarping( bool value )
-{
-    if ( value != _useWarping )
-    {
-        _useWarping = value;
-        //reinit();
-        
-        if ( _useWarping )
-            OE_INFO << LC << "Vertex warping " << (value?"enabled":"disabled")<< std::endl;
-    }
-}
-
-void
 OverlayDecorator::setOverlayBlending( bool value )
 {
     if ( value != _rttBlending )
@@ -744,8 +449,6 @@ OverlayDecorator::updateRTTCameras()
         if ( pvd._texGenUniform.valid() )
         {
             pvd._texGenUniform->set( MVPT );
-            //if ( _useWarping )
-            //    _warpUniform->set( _warp );
         }
         else
         {
@@ -878,7 +581,7 @@ OverlayDecorator::cull( osgUtil::CullVisitor* cv, OverlayDecorator::PerViewData&
     }
        
     // contruct the polyhedron representing the viewing frustum.
-    MyConvexPolyhedron frustumPH;
+    osgShadow::ConvexPolyhedron frustumPH;
     frustumPH.setToUnitFrustum( true, true );
     osg::Matrixd MVP = *cv->getModelViewMatrix() * projMatrix;
     osg::Matrixd inverseMVP;
@@ -957,43 +660,13 @@ OverlayDecorator::cull( osgUtil::CullVisitor* cv, OverlayDecorator::PerViewData&
 
     //OE_NOTICE << LC << "EMIN = " << eMin << ", EMAX = " << eMax << std::endl;
 
-    if ( _useWarping )
-    {
-        // calculate the warping paramaters. This uses shaders to warp the verts and
-        // tex coords to favor data closer to the camera when necessary.
-
-    #define WARP_LIMIT 3.0
-
-        double pitchStrength = ( camLookVec * rttLookVec ); // eye pitch relative to rtt pitch
-        double devStrength = 1.0 - (pitchStrength*pitchStrength);
-        double haslStrength = 1.0 - osg::clampBetween( hasl/1e6, 0.0, 1.0 );
-
-        _warp = 1.0 + devStrength * haslStrength * WARP_LIMIT;
-
-        if ( _visualizeWarp )
-            _warp = 4.0;
-
-#if 0
-        OE_INFO << LC << std::fixed
-            << "hasl=" << hasl
-            << ", eMin=" << eMin
-            << ", eMax=" << eMax
-            << ", eyeLen=" << eyeLen
-            //<< ", ratio=" << ratio
-            //<< ", dev=" << devStrength
-            //<< ", has=" << haeStrength
-            << ", warp=" << _warp
-            << std::endl;
-#endif
-    }
-
     if ( _dumpRequested )
     {
         static const char* fn = "convexpolyhedron.osg";
 
         // camera frustum:
         {
-            MyConvexPolyhedron frustumPH;
+            osgShadow::ConvexPolyhedron frustumPH;
             frustumPH.setToUnitFrustum( true, true );
             osg::Matrixd MVP = *cv->getModelViewMatrix() * projMatrix;
             osg::Matrixd inverseMVP;

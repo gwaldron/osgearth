@@ -17,6 +17,8 @@
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
 #include <osgEarthUtil/TerrainProfile>
+#include <osgEarth/MapNode>
+#include <osgEarth/TerrainEngineNode>
 #include <osgEarth/GeoMath>
 
 using namespace osgEarth;

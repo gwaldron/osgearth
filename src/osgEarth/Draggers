@@ -21,14 +21,14 @@
 
 #include <osgEarth/Common>
 #include <osgEarth/GeoData>
-#include <osgEarth/MapNode>
-
 #include <osg/MatrixTransform>
 #include <osg/ShapeDrawable>
 #include <osgGA/GUIEventHandler>
 
 namespace osgEarth
 {
+    class MapNode;
+
     class OSGEARTH_EXPORT Dragger : public osg::MatrixTransform
     {
     public:
@@ -44,7 +44,7 @@ namespace osgEarth
 
         typedef std::list< osg::ref_ptr<PositionChangedCallback> > PositionChangedCallbackList;
 
-        Dragger( osgEarth::MapNode* mapNode);
+        Dragger( MapNode* mapNode);
 
         /** dtor */
         virtual ~Dragger() { }
@@ -75,7 +75,7 @@ namespace osgEarth
         virtual bool handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& aa);
         void setHover( bool hovered);
 
-        osg::ref_ptr< osgEarth::MapNode > _mapNode;
+        osg::observer_ptr< MapNode > _mapNode;
         osgEarth::GeoPoint _position;
         bool _dragging;
         bool _hovered;
@@ -86,7 +86,7 @@ namespace osgEarth
     class OSGEARTH_EXPORT SphereDragger : public Dragger
     {
     public:
-        SphereDragger(osgEarth::MapNode* mapNode);
+        SphereDragger(MapNode* mapNode);
 
         /** dtor */
         virtual ~SphereDragger() { }

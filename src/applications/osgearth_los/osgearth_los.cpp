@@ -61,7 +61,7 @@ osg::AnimationPath* createAnimationPath( MapNode* mapNode, const osg::Vec3& cent
     osg::Vec3d firstPosition;
     osg::Quat firstRotation;
 
-    for (unsigned int i = 0; i < numSamples; i++)
+    for (int i = 0; i < numSamples; i++)
     {
         double angle = delta * (double)i;
         osg::Quat quat(angle, up );

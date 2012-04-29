@@ -62,12 +62,6 @@ namespace osgEarth
         const optional<bool>& enableLighting() const { return _enableLighting; } 
 
         /**
-         * Whether to enable overlay vertex warping. See OverlayDecorator
-         */
-        optional<bool>& overlayVertexWarping() { return _overlayVertexWarping; }
-        const optional<bool>& overlayVertexWarping() const { return _overlayVertexWarping; }
-
-        /**
          * Whether to enable blending on the overlay decorator subgraph. See OverlayDecorator
          */
         optional<bool>& overlayBlending() { return _overlayBlending; }

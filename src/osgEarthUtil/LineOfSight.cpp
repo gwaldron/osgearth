@@ -17,6 +17,7 @@
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
 #include <osgEarthUtil/LineOfSight>
+#include <osgEarth/TerrainEngineNode>
 #include <osgSim/LineOfSight>
 #include <osgUtil/IntersectionVisitor>
 #include <osgUtil/LineSegmentIntersector>
@@ -786,7 +787,7 @@ RadialLineOfSightNode::compute_line(osg::Node* node, bool backgroundThread)
     osgSim::LineOfSight los;
     los.setDatabaseCacheReadCallback(0);
 
-    for (unsigned int i = 0; i < _numSpokes; i++)
+    for (int i = 0; i < _numSpokes; i++)
     {
         double angle = delta * (double)i;
         osg::Quat quat(angle, up );
@@ -797,7 +798,7 @@ RadialLineOfSightNode::compute_line(osg::Node* node, bool backgroundThread)
 
     los.computeIntersections(node);
 
-    for (unsigned int i = 0; i < _numSpokes; i++)
+    for (int i = 0; i < _numSpokes; i++)
     {
         osg::Vec3d start = los.getStartPoint(i);
         osg::Vec3d end = los.getEndPoint(i);
@@ -930,7 +931,7 @@ RadialLineOfSightNode::compute_fill(osg::Node* node, bool backgroundThread)
     osgSim::LineOfSight los;
     los.setDatabaseCacheReadCallback(0);
 
-    for (unsigned int i = 0; i < _numSpokes; i++)
+    for (int i = 0; i < _numSpokes; i++)
     {
         double angle = delta * (double)i;
         osg::Quat quat(angle, up );
@@ -941,7 +942,7 @@ RadialLineOfSightNode::compute_fill(osg::Node* node, bool backgroundThread)
 
     los.computeIntersections(node);
 
-    for (unsigned int i = 0; i < _numSpokes; i++)
+    for (int i = 0; i < _numSpokes; i++)
     {
         //Get the current hit
         osg::Vec3d currEnd = los.getEndPoint(i);

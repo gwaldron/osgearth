@@ -19,6 +19,9 @@
 
 #include <osgEarthUtil/MouseCoordsTool>
 #include <osgEarthUtil/LatLongFormatter>
+#include <osgEarth/MapNode>
+#include <osgEarth/Terrain>
+#include <osgEarth/TerrainEngineNode>
 #include <osgViewer/View>
 
 using namespace osgEarth;

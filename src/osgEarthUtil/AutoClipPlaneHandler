@@ -20,12 +20,15 @@
 #define OSGEARTHUTIL_AUTOCLIPPLANEHANDLER_H
 
 #include <osgEarthUtil/Common>
-#include <osgEarth/MapNode>
 #include <osgEarth/ThreadingUtils>
 #include <osgEarth/Utils>
 #include <osgGA/GUIEventHandler>
 #include <osgGA/EventVisitor>
 #include <osg/Camera>
+
+namespace osgEarth {
+    class MapNode;
+}
 
 namespace osgEarth { namespace Util
 {
@@ -90,7 +93,7 @@ namespace osgEarth { namespace Util
         double _haeThreshold;
         double _rp2, _rp;
         bool   _autoFarPlaneClamping;
-        osg::ref_ptr<MapNode> _mapNode;
+        osg::observer_ptr<MapNode> _mapNode;
         Threading::PerObjectMap< osg::Camera*, osg::ref_ptr<osg::CullSettings::ClampProjectionMatrixCallback> > _clampers;
     };
 

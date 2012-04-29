@@ -23,14 +23,13 @@
 #include <osgEarth/Common>
 #include <osgEarth/Map>
 #include <osgEarth/MapNodeOptions>
-#include <osgEarth/OverlayDecorator>
-#include <osgEarth/TerrainEngineNode>
 #include <osgEarth/SpatialReference>
-#include <osg/CoordinateSystemNode>
-#include <osgSim/OverlayNode>
 
 namespace osgEarth
 {
+    class OverlayDecorator;
+    class TerrainEngineNode;
+
     /**
      * OSG Node that forms the root of an osgEarth map. This node is a "view" component
      * that renders data from a "Map" data model.
@@ -38,20 +37,6 @@ namespace osgEarth
     class OSGEARTH_EXPORT MapNode : public osg::Group
     {
     public:
-
-        class TileRangeData : public osg::Referenced
-        {
-        public:
-            TileRangeData(double minRange, double maxRange):
-              _minRange( minRange ),
-              _maxRange( maxRange )
-            {
-            }
-
-            double _minRange;
-            double _maxRange;
-        };
-
         /**
          * Creates an empty map node.
          */
@@ -148,7 +133,7 @@ namespace osgEarth
          * Gets the overlay decorator in this mapnode. Usually you do not need to
          * access this directly. Instead install a DrapeableNode in the scene graph.
          */
-        OverlayDecorator* getOverlayDecorator() { return _overlayDecorator.get(); }
+        OverlayDecorator* getOverlayDecorator() { return _overlayDecorator; }
 
         /**
          * Accesses the group containing anything that will be "draped" on the terrain
@@ -202,25 +187,22 @@ namespace osgEarth
 
     private:
 
-        unsigned int _id;
-        osg::ref_ptr<Map> _map;
+        unsigned int               _id;
+        osg::ref_ptr<Map>          _map;
         osg::ref_ptr< osg::Group > _models;
         osg::ref_ptr< osg::Group > _overlayModels;
-        osg::ref_ptr< OverlayDecorator > _overlayDecorator;
-        MapNodeOptions _mapNodeOptions;
-        Config _externalConf;
+        OverlayDecorator*          _overlayDecorator;
+        MapNodeOptions             _mapNodeOptions;
+        Config                     _externalConf;
 
         // keep track of nodes created by model layers
         typedef std::map<ModelLayer*,osg::Node*> ModelLayerNodeMap;
-        ModelLayerNodeMap _modelLayerNodes;
-        osg::Group* _maskLayerNode;
-
-        unsigned _lastNumBlacklistedFilenames;
-
-        osg::ref_ptr<TerrainEngineNode> _terrainEngine;
-        bool _terrainEngineInitialized;
-
-        osg::ref_ptr<osg::Group> _terrainEngineContainer;
+        ModelLayerNodeMap        _modelLayerNodes;
+        osg::Group*              _maskLayerNode;
+        unsigned                 _lastNumBlacklistedFilenames;
+        TerrainEngineNode*       _terrainEngine;
+        bool                     _terrainEngineInitialized;
+        osg::Group*              _terrainEngineContainer;
 
     public: // MapCallback proxy
 
@@ -230,6 +212,13 @@ namespace osgEarth
 
     public:
         void onModelLayerOverlayChanged( ModelLayer* layer );
+
+    public:
+        struct TileRangeData : public osg::Referenced {
+            TileRangeData(double minRange, double maxRange) : _minRange( minRange ), _maxRange( maxRange ) { }
+            double _minRange;
+            double _maxRange;
+        };
 
     private:
 

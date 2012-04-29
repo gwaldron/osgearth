@@ -20,7 +20,7 @@
 #define OSGEARTH_TASK_SERVICE 1
 
 #include <osgEarth/Common>
-#include <osgEarth/HTTPClient>
+#include <osgEarth/Progress>
 #include <osgEarth/ThreadingUtils>
 #include <osg/Referenced>
 #include <osg/Timer>

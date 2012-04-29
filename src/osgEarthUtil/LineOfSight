@@ -21,6 +21,7 @@
 
 #include <osgEarthUtil/Common>
 #include <osgEarth/MapNode>
+#include <osgEarth/Terrain>
 #include <osgEarth/GeoData>
 #include <osgEarth/Draggers>
 

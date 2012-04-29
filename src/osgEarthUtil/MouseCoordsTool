@@ -23,9 +23,12 @@
 #include <osgEarthUtil/Common>
 #include <osgEarthUtil/Controls>
 #include <osgEarthUtil/Formatter>
-#include <osgEarth/MapNode>
 
 #include <osgGA/GUIEventHandler>
+
+namespace osgEarth {
+    class MapNode;
+}
 
 namespace osgEarth { namespace Util
 {

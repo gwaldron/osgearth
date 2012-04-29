@@ -20,6 +20,7 @@
 #include <osgEarthSymbology/MeshSubdivider>
 #include <osgEarthFeatures/MeshClamper>
 #include <osgEarthFeatures/Feature>
+#include <osgEarth/MapNode>
 #include <osgEarth/NodeUtils>
 #include <osgEarth/DrapeableNode>
 #include <osg/Geode>

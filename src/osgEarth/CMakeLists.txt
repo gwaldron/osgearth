@@ -89,7 +89,6 @@ SET(LIB_PUBLIC_HEADERS
     TextureCompositor
     TextureCompositorMulti
     TextureCompositorTexArray
-    TileFactory
     TileKey
     TileSource
     ThreadingUtils
@@ -187,7 +186,6 @@ ADD_LIBRARY(${LIB_NAME} SHARED
     TextureCompositor.cpp
     TextureCompositorMulti.cpp
     TextureCompositorTexArray.cpp
-    TileFactory.cpp
     TileKey.cpp
     TileSource.cpp
     ThreadingUtils.cpp

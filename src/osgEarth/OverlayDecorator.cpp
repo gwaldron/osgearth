@@ -302,7 +302,7 @@ OverlayDecorator::initializeForOverlayGraph()
         }
 
         // otherwise, automatically allocate a texture unit if necessary:
-        else if ( !_textureUnit.isSet() && _useShaders )
+        else if ( !_textureUnit.isSet() ) //&& _useShaders )
         {
             int texUnit;
             if ( _engine->getTextureCompositor()->reserveTextureImageUnit( texUnit ) )
@@ -402,19 +402,25 @@ OverlayDecorator::initializePerViewData( PerViewData& pvd )
     pvd._subgraphStateSet->setTextureMode( *_textureUnit, GL_TEXTURE_GEN_Q, osg::StateAttribute::ON );
     pvd._subgraphStateSet->setTextureAttributeAndModes( *_textureUnit, projTexture, osg::StateAttribute::ON );
     
-    // set up the shaders
     if ( _useShaders )
     {            
-        initSubgraphShaders( pvd ); //._subgraphStateSet.get() );
-        initRTTShaders( pvd ); //._rttCamera->getOrCreateStateSet() );
-        //_warpUniform = this->getOrCreateStateSet()->getOrCreateUniform( "warp", osg::Uniform::FLOAT );
-        //_warpUniform->set( 1.0f );
+        // set up the shaders
+        initSubgraphShaders( pvd );
+        initRTTShaders( pvd );
+    }
+    else
+    {
+        // FFP path:
+        pvd._texGenNode = new osg::TexGenNode();
+        pvd._texGenNode->setTexGen( new osg::TexGen() );
     }
 }
 
 void
 OverlayDecorator::initRTTShaders( PerViewData& pvd )
 {
+    //nop - don't need these now that warping is not used anymore
+#if 0
     osg::StateSet* set = pvd._rttCamera->getOrCreateStateSet();
 
     //TODO: convert this to VP so the overlay graph can use shadercomp too.
@@ -486,6 +492,7 @@ OverlayDecorator::initRTTShaders( PerViewData& pvd )
     
     program->addShader( new osg::Shader( osg::Shader::FRAGMENT, fragSource ) );
     set->addUniform(new osg::Uniform("texture_0",0));
+#endif
 }
 
 void
@@ -732,12 +739,17 @@ OverlayDecorator::updateRTTCameras()
         pvd._rttCamera->setViewMatrix( pvd._rttViewMatrix );
         pvd._rttCamera->setProjectionMatrix( pvd._rttProjMatrix );
 
+        osg::Matrix MVPT = pvd._rttViewMatrix * pvd._rttProjMatrix * normalizeMatrix;
+
         if ( pvd._texGenUniform.valid() )
         {
-            osg::Matrix MVPT = pvd._rttViewMatrix * pvd._rttProjMatrix * normalizeMatrix;
             pvd._texGenUniform->set( MVPT );
             //if ( _useWarping )
             //    _warpUniform->set( _warp );
+        }
+        else
+        {
+            pvd._texGenNode->getTexGen()->setPlanesFromMatrix( MVPT );
         }
     }
 }
@@ -847,6 +859,11 @@ OverlayDecorator::cull( osgUtil::CullVisitor* cv, OverlayDecorator::PerViewData&
 
     OE_TEST << LC << "Subgraph clamp: zNear = " << zNear << ", zFar = " << zFar << std::endl;
 
+    // restore the clip planes in the cull visitor, now that we have our subgraph
+    // projection matrix.
+    cv->setCalculatedNearPlane( osg::minimum(zSavedNear, zNear) );
+    cv->setCalculatedFarPlane( osg::maximum(zSavedFar, zFar) );
+
     if ( _isGeocentric )
     {
         // in geocentric mode, clamp the far clip plane to the horizon.
@@ -859,11 +876,6 @@ OverlayDecorator::cull( osgUtil::CullVisitor* cv, OverlayDecorator::PerViewData&
 
         OE_TEST << LC << "Horizon clamp: zNear = " << zNear << ", zFar = " << zFar << std::endl;
     }
-
-    // restore the clip planes in the cull visitor, now that we have our subgraph
-    // projection matrix.
-    cv->setCalculatedNearPlane( osg::minimum(zSavedNear, zNear) );
-    cv->setCalculatedFarPlane( osg::maximum(zSavedFar, zFar) );
        
     // contruct the polyhedron representing the viewing frustum.
     MyConvexPolyhedron frustumPH;
@@ -1082,6 +1094,10 @@ OverlayDecorator::traverse( osg::NodeVisitor& nv )
             if ( cv->getCurrentCamera() )
             {
                 PerViewData& pvd = getPerViewData( cv->getCurrentCamera()->getView() );
+
+                if ( pvd._texGenNode.valid() ) // FFP only
+                    pvd._texGenNode->accept( nv );
+
                 cull( cv, pvd );
                 pvd._rttCamera->accept( nv );
             }

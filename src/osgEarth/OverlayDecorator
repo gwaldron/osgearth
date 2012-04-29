@@ -128,11 +128,12 @@ namespace osgEarth
         
         struct PerViewData
         {
-            osg::ref_ptr<osg::Camera>   _rttCamera;
-            osg::ref_ptr<osg::Uniform>  _texGenUniform;
-            osg::Matrixd                _rttViewMatrix;
-            osg::Matrixd                _rttProjMatrix;
-            osg::ref_ptr<osg::StateSet> _subgraphStateSet;
+            osg::ref_ptr<osg::Camera>     _rttCamera;
+            osg::ref_ptr<osg::Uniform>    _texGenUniform;
+            osg::ref_ptr<osg::TexGenNode> _texGenNode;
+            osg::Matrixd                  _rttViewMatrix;
+            osg::Matrixd                  _rttProjMatrix;
+            osg::ref_ptr<osg::StateSet>   _subgraphStateSet;
         };
 
         typedef std::map<osg::View*, PerViewData> PerViewDataMap;

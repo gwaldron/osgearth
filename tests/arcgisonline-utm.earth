@@ -1,0 +1,36 @@
+<!--
+osgEarth Sample
+
+This example shows how to pull map tiles from an ESRI ArcGIS Server.
+
+Please note that use of ESRI's free maps is subject to certain restrictions:
+http://resources.esri.com/arcgisonlineservices/index.cfm?fa=content
+-->
+
+<map name="ESRI ArcGIS Online UTM" type="projected" version="2">
+    
+    <options>
+        <!--Specify the profile to use since we want to reproject to UTM-->        
+        <profile srs="+proj=utm +zone=17 +ellps=GRS80 +datum=NAD83 +units=m +no_defs" 
+                 xmin="560725.500" ymin="4385762.500" 
+                 xmax="573866.500" ymax="4400705.500"/>
+                 
+        <lighting>false</lighting>
+    </options>
+        
+    <image name="arcgis-world-imagery" driver="arcgis">
+        <url>http://services.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer</url>
+		<nodata_image>http://services.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/100/0/0.jpeg</nodata_image>
+    </image>
+      
+    <image name="arcgis-transportation" driver="arcgis">
+        <url>http://services.arcgisonline.com/ArcGIS/rest/services/Reference/World_Transportation/MapServer</url>
+    </image>
+    
+    <options>
+        <lighting>false</lighting>
+        <terrain>
+            <min_tile_range_factor>9</min_tile_range_factor>
+        </terrain>
+    </options>
+</map>

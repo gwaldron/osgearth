@@ -17,6 +17,7 @@
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
 
+#include <osgEarthQt/AnnotationToolbar>
 #include <osgEarthQt/Common>
 #include <osgEarthQt/MultiViewerWidget>
 #include <osgEarthQt/DataManager>
@@ -55,6 +56,8 @@ public:
 
         _views.clear();
         _viewerWidget->getViews( _views );
+
+        _annotationToolbar->setActiveViews(_views);
     }
 
     void setViewerWidget(osgEarth::QtGui::MultiViewerWidget* viewerWidget, const osgEarth::QtGui::ViewVector& views)
@@ -64,6 +67,8 @@ public:
 
         _views.clear();
         _views.insert(_views.end(), views.begin(), views.end());
+
+        _annotationToolbar->setActiveViews(_views);
     }
 
     void setTerrainProfileWidget(osgEarth::QtGui::TerrainProfileWidget* widget)
@@ -190,6 +195,9 @@ private:
         _fileToolbar->addAction(_addAnnotationAction);
         _fileToolbar->addSeparator();
         _fileToolbar->addAction(_terrainProfileAction);
+
+        _annotationToolbar = new osgEarth::QtGui::AnnotationToolbar(_annoRoot, _mapNode, _manager);
+        addToolBar(_annotationToolbar);
     }
 	
     osg::ref_ptr<osgEarth::QtGui::DataManager> _manager;
@@ -200,6 +208,7 @@ private:
     osgEarth::QtGui::MultiViewerWidget* _compositeViewerWidget;
     //osg::ref_ptr<osgEarth::QtGui::ViewerWidget> _viewerWidget;
     //osg::ref_ptr<osgEarth::QtGui::MultiViewerWidget> _compositeViewerWidget;
+    osgEarth::QtGui::AnnotationToolbar* _annotationToolbar;
     osgEarth::QtGui::ViewVector _views;
     bool _layerAdded;
     QAction *_addRemoveLayerAction;

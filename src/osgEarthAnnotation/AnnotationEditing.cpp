@@ -180,7 +180,7 @@ CircleNodeEditor::updateDraggers()
             osg::RadiansToDegrees(lon),
             osg::RadiansToDegrees(lat),
             location.z(),
-            AltitudeMode::ABSOLUTE );
+            ALTMODE_ABSOLUTE );
 
         _radiusDragger->setPosition( draggerLocation, false );
     }

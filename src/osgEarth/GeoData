@@ -47,7 +47,7 @@ namespace osgEarth
             double x = 0.0,
             double y = 0.0,
             double z = 0.0,
-            const AltitudeModeEnum& mode =AltitudeMode::ABSOLUTE );
+            const AltitudeMode& mode =ALTMODE_ABSOLUTE );
 
         /**
          * Constructs a geopoint.
@@ -55,7 +55,7 @@ namespace osgEarth
         GeoPoint(
             const SpatialReference* srs,
             const osg::Vec3d&       xyz,
-            const AltitudeModeEnum& mode =AltitudeMode::ABSOLUTE );
+            const AltitudeMode&     mode =ALTMODE_ABSOLUTE );
 
         /**
          * Constructs a new GeoPoint by transforming an existing GeoPoint into
@@ -89,14 +89,14 @@ namespace osgEarth
         void set(
             const SpatialReference* srs,
             const osg::Vec3d&       xyz,
-            const AltitudeModeEnum& mode =AltitudeMode::ABSOLUTE );
+            const AltitudeMode&     mode =ALTMODE_ABSOLUTE );
 
         void set(
             const SpatialReference* srs,
             double                  x    =0.0,
             double                  y    =0.0,
             double                  z    =0.0,
-            const AltitudeModeEnum& mode =AltitudeMode::ABSOLUTE );
+            const AltitudeMode&     mode =ALTMODE_ABSOLUTE );
 
         // component getter/setters
 
@@ -117,8 +117,8 @@ namespace osgEarth
 
         const SpatialReference* getSRS() const { return _srs.get(); }
 
-        AltitudeModeEnum& altitudeMode() { return _altMode; }
-        const AltitudeModeEnum& altitudeMode() const { return _altMode; }
+        AltitudeMode& altitudeMode() { return _altMode; }
+        const AltitudeMode& altitudeMode() const { return _altMode; }
 
         /**
          * Returns a copy of this geopoint transformed into another SRS.
@@ -133,22 +133,22 @@ namespace osgEarth
         /**
          * Transforms this geopoint's Z coordinate (in place)
          */
-        bool transformZ(const AltitudeModeEnum& altMode, const Terrain* );
+        bool transformZ(const AltitudeMode& altMode, const Terrain* );
 
         /**
          * Transforms and returns the geopoints Z coordinate.
          */
-        bool transformZ(const AltitudeModeEnum& altMode, const Terrain*, double& out_z) const;
+        bool transformZ(const AltitudeMode& altMode, const Terrain*, double& out_z) const;
 
         /**
          * Transforms this geopoint's Z to be absolute w.r.t. the vertical datum
          */
-        bool makeAbsolute(const Terrain* t) { return transformZ(AltitudeMode::ABSOLUTE, t); }
+        bool makeAbsolute(const Terrain* t) { return transformZ(ALTMODE_ABSOLUTE, t); }
 
         /**
          * Transforms this geopoint's Z to be terrain-relative.
          */
-        bool makeRelative(const Terrain* t) { return transformZ(AltitudeMode::RELATIVE_TO_TERRAIN, t); }
+        bool makeRelative(const Terrain* t) { return transformZ(ALTMODE_RELATIVE, t); }
 
         /**
          * Transforms this GeoPoint to geographic (lat/long) coords in place.
@@ -189,7 +189,7 @@ namespace osgEarth
     protected:
         osg::ref_ptr<const SpatialReference> _srs;
         osg::Vec3d       _p;
-        AltitudeModeEnum _altMode;
+        AltitudeMode _altMode;
     };
 
     /**

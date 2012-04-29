@@ -89,8 +89,8 @@ _clearNeeded( false ),
 _goodColor(0.0f, 1.0f, 0.0f, 1.0f),
 _badColor(1.0f, 0.0f, 0.0f, 1.0f),
 _displayMode( MODE_SPLIT ),
-_startAltitudeMode( AltitudeMode::ABSOLUTE ),
-_endAltitudeMode( AltitudeMode::ABSOLUTE ),
+_startAltitudeMode( ALTMODE_ABSOLUTE ),
+_endAltitudeMode( ALTMODE_ABSOLUTE ),
 _terrainOnly( false )
 {
     compute(getNode());
@@ -109,8 +109,8 @@ _clearNeeded( false ),
 _goodColor(0.0f, 1.0f, 0.0f, 1.0f),
 _badColor(1.0f, 0.0f, 0.0f, 1.0f),
 _displayMode( MODE_SPLIT ),
-_startAltitudeMode( AltitudeMode::ABSOLUTE ),
-_endAltitudeMode( AltitudeMode::ABSOLUTE ),
+_startAltitudeMode( ALTMODE_ABSOLUTE ),
+_endAltitudeMode( ALTMODE_ABSOLUTE ),
 _terrainOnly( false )
 {
     compute(getNode());    
@@ -207,20 +207,20 @@ LineOfSightNode::getHasLOS() const
     return _hasLOS;
 }
 
-AltitudeModeEnum
+AltitudeMode
 LineOfSightNode::getStartAltitudeMode() const
 {
     return _startAltitudeMode;
 }
 
-AltitudeModeEnum
+AltitudeMode
 LineOfSightNode::getEndAltitudeMode() const
 {
     return _endAltitudeMode;
 }
 
 void
-LineOfSightNode::setStartAltitudeMode( AltitudeModeEnum mode )
+LineOfSightNode::setStartAltitudeMode( AltitudeMode mode )
 {
     if (_startAltitudeMode != mode)
     {
@@ -230,7 +230,7 @@ LineOfSightNode::setStartAltitudeMode( AltitudeModeEnum mode )
 }
 
 void
-LineOfSightNode::setEndAltitudeMode( AltitudeModeEnum mode )
+LineOfSightNode::setEndAltitudeMode( AltitudeMode mode )
 {
     if (_endAltitudeMode != mode)
     {
@@ -257,12 +257,12 @@ LineOfSightNode::removeChangedCallback( ChangedCallback* callback )
 
 
 bool
-LineOfSightNode::computeLOS( osgEarth::MapNode* mapNode, const osg::Vec3d& start, const osg::Vec3d& end, AltitudeModeEnum altitudeMode, osg::Vec3d& hit )
+LineOfSightNode::computeLOS( osgEarth::MapNode* mapNode, const osg::Vec3d& start, const osg::Vec3d& end, AltitudeMode altitudeMode, osg::Vec3d& hit )
 {
     const SpatialReference* mapSRS = mapNode->getMapSRS();
 
     osg::Vec3d startWorld, endWorld;
-    if (altitudeMode == AltitudeMode::ABSOLUTE)
+    if (altitudeMode == ALTMODE_ABSOLUTE)
     {
         mapNode->getMap()->toWorldPoint( GeoPoint(mapSRS, start), startWorld );
         mapNode->getMap()->toWorldPoint( GeoPoint(mapSRS, end), endWorld );
@@ -299,12 +299,12 @@ LineOfSightNode::compute(osg::Node* node, bool backgroundThread)
       const SpatialReference* mapSRS = _mapNode->getMapSRS();
 
       //Computes the LOS and redraws the scene
-      if (_startAltitudeMode == AltitudeMode::ABSOLUTE)
+      if (_startAltitudeMode == ALTMODE_ABSOLUTE)
           _mapNode->getMap()->toWorldPoint( GeoPoint(mapSRS,_start), _startWorld );
       else
           getRelativeWorld(_start.x(), _start.y(), _start.z(), _mapNode.get(), _startWorld);
 
-      if (_endAltitudeMode == AltitudeMode::ABSOLUTE)
+      if (_endAltitudeMode == ALTMODE_ABSOLUTE)
           _mapNode->getMap()->toWorldPoint( GeoPoint(mapSRS,_end), _endWorld );
       else
           getRelativeWorld(_end.x(), _end.y(), _end.z(), _mapNode.get(), _endWorld);
@@ -594,7 +594,7 @@ _goodColor(0.0f, 1.0f, 0.0f, 1.0f),
 _badColor(1.0f, 0.0f, 0.0f, 1.0f),
 _outlineColor( 1.0f, 1.0f, 1.0f, 1.0f),
 _displayMode( MODE_SPLIT ),
-_altitudeMode( AltitudeMode::ABSOLUTE ),
+_altitudeMode( ALTMODE_ABSOLUTE ),
 _fill(false),
 _terrainOnly( false )
 {
@@ -680,14 +680,14 @@ RadialLineOfSightNode::setCenter(const osg::Vec3d& center)
     }
 }
 
-AltitudeModeEnum
+AltitudeMode
 RadialLineOfSightNode::getAltitudeMode() const
 {
     return _altitudeMode;
 }
 
 void
-RadialLineOfSightNode::setAltitudeMode( AltitudeModeEnum mode )
+RadialLineOfSightNode::setAltitudeMode( AltitudeMode mode )
 {
     if (_altitudeMode != mode)
     {
@@ -749,7 +749,7 @@ void
 RadialLineOfSightNode::compute_line(osg::Node* node, bool backgroundThread)
 {    
     //Get the center point in geocentric    
-    if (_altitudeMode == AltitudeMode::ABSOLUTE)
+    if (_altitudeMode == ALTMODE_ABSOLUTE)
     {
         GeoPoint center(_mapNode->getMapSRS(),_center);
         _mapNode->getMap()->toWorldPoint( center, _centerWorld );
@@ -896,7 +896,7 @@ void
 RadialLineOfSightNode::compute_fill(osg::Node* node, bool backgroundThread)
 {    
     //Get the center point in geocentric    
-    if (_altitudeMode == AltitudeMode::ABSOLUTE)
+    if (_altitudeMode == ALTMODE_ABSOLUTE)
     {
         GeoPoint centerMap(_mapNode->getMapSRS(), _center);
         _mapNode->getMap()->toWorldPoint( centerMap, _centerWorld );
@@ -1215,7 +1215,7 @@ public:
       virtual void onPositionChanged(const Dragger* sender, const osgEarth::GeoPoint& position)
       {   
           GeoPoint location(position);
-          if ((_start ? _los->getStartAltitudeMode() : _los->getEndAltitudeMode()) == AltitudeMode::RELATIVE_TO_TERRAIN)
+          if ((_start ? _los->getStartAltitudeMode() : _los->getEndAltitudeMode()) == ALTMODE_RELATIVE)
           {
               double z = _start ? _los->getStart().z() : _los->getEnd().z();
               location.z() = z;              
@@ -1326,7 +1326,7 @@ public:
       virtual void onPositionChanged(const Dragger* sender, const osgEarth::GeoPoint& position)
       {
           GeoPoint location(position);
-          if (_los->getAltitudeMode() == AltitudeMode::RELATIVE_TO_TERRAIN)
+          if (_los->getAltitudeMode() == ALTMODE_RELATIVE)
           {
               double z = _los->getCenter().z();
               location.z() = z;

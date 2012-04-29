@@ -403,9 +403,9 @@ ImageUtils::isEmptyImage(const osg::Image* image, float alphaThreshold)
         return false;
 
     PixelReader read(image);
-    for(unsigned t=0; t<image->t(); ++t) 
+    for(unsigned t=0; t<(unsigned)image->t(); ++t) 
     {
-        for(unsigned s=0; s<image->s(); ++s)
+        for(unsigned s=0; s<(unsigned)image->s(); ++s)
         {
             osg::Vec4 color = read(s, t);
             if ( color.a() > alphaThreshold )

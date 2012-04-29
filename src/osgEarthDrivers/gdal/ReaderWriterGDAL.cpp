@@ -1157,10 +1157,10 @@ public:
                 else
                 {
                     //Sample each point exactly
-                    for (unsigned int c = 0; c < tileSize; ++c)
+                    for (unsigned int c = 0; c < (unsigned int)tileSize; ++c)
                     {
                         double geoX = xmin + (dx * (double)c); 
-                        for (unsigned int r = 0; r < tileSize; ++r)
+                        for (unsigned int r = 0; r < (unsigned int)tileSize; ++r)
                         {
                             double geoY = ymin + (dy * (double)r); 
                             *(image->data(c,r) + 0) = (unsigned char)getInterpolatedValue(bandRed,  geoX,geoY,false); 

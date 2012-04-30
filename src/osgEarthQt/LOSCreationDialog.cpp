@@ -807,19 +807,19 @@ void LOSCreationDialog::onRadMapButtonClicked(bool checked)
 
 void LOSCreationDialog::onP1FindNodeButtonClicked(bool checked)
 {
-  if (_ui.p1NodeCombo->currentIndex() >= 0 && _annotations.size() > _ui.p1NodeCombo->currentIndex())
+  if (_ui.p1NodeCombo->currentIndex() >= 0 && (int)_annotations.size() > _ui.p1NodeCombo->currentIndex())
     centerMapOnNode(_annotations[_ui.p1NodeCombo->currentIndex()]);
 }
 
 void LOSCreationDialog::onP2FindNodeButtonClicked(bool checked)
 {
-  if (_ui.p2NodeCombo->currentIndex() >= 0 && _annotations.size() > _ui.p2NodeCombo->currentIndex())
+  if (_ui.p2NodeCombo->currentIndex() >= 0 && (int)_annotations.size() > _ui.p2NodeCombo->currentIndex())
     centerMapOnNode(_annotations[_ui.p2NodeCombo->currentIndex()]);
 }
 
 void LOSCreationDialog::onRadFindNodeButtonClicked(bool checked)
 {
-  if (_ui.radNodeCombo->currentIndex() >= 0 && _annotations.size() > _ui.radNodeCombo->currentIndex())
+  if (_ui.radNodeCombo->currentIndex() >= 0 && (int)_annotations.size() > _ui.radNodeCombo->currentIndex())
     centerMapOnNode(_annotations[_ui.radNodeCombo->currentIndex()]);
 }
 

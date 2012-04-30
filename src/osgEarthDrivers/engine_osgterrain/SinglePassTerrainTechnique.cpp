@@ -1779,7 +1779,7 @@ SinglePassTerrainTechnique::createGeometry( const TileFrame& tilef )
 
         //Add a primative set for each continuous skirt strip
         skirtBreaks.push_back(skirtVerts->size());
-        for (unsigned p=1; p < skirtBreaks.size(); p++)
+        for (int p=1; p < (int)skirtBreaks.size(); p++)
           skirt->addPrimitiveSet( new osg::DrawArrays( GL_TRIANGLE_STRIP, skirtBreaks[p-1], skirtBreaks[p] - skirtBreaks[p-1] ) );
     }
     

@@ -353,7 +353,7 @@ StringExpression::init()
     bool inQuotes = false;
     int inVar = 0;
     int startPos = 0;
-    for (int i=0; i < _src.length(); i++)
+    for (int i=0; i < (int)_src.length(); i++)
     {
       if (_src[i] == '"')
       {

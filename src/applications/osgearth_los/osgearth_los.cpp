@@ -61,7 +61,7 @@ osg::AnimationPath* createAnimationPath( MapNode* mapNode, const osg::Vec3& cent
     osg::Vec3d firstPosition;
     osg::Quat firstRotation;
 
-    for (int i = 0; i < numSamples; i++)
+    for (unsigned int i = 0; i < (unsigned int)numSamples; i++)
     {
         double angle = delta * (double)i;
         osg::Quat quat(angle, up );
@@ -171,7 +171,7 @@ main(int argc, char** argv)
 
 
     //Load a plane model.  
-    osg::ref_ptr< osg::Node >  plane = osgDB::readNodeFile("cessna.osg.5,5,5.scale");
+    osg::ref_ptr< osg::Node >  plane = osgDB::readNodeFile("../data/cessna.osg.5,5,5.scale");
 
     //Create 2 moving planes
     osg::Node* plane1 = createPlane(plane, mapNode, osg::Vec3d(-121.656, 46.0935, 4133.06), 5000, 20);

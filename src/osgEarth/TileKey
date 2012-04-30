@@ -22,11 +22,8 @@
 
 #include <osgEarth/Common>
 #include <osgEarth/Profile>
-#include <osg/Referenced>
-#include <osg/Image>
-#include <osg/Shape>
+#include <osg/ref_ptr>
 #include <osg/Version>
-#include <osgDB/ReaderWriter>
 #include <osgTerrain/TerrainTile>
 #include <string>
 

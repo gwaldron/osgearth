@@ -189,8 +189,8 @@ FeatureManipTool::onHit( FeatureSourceIndexNode* index, FeatureID fid, const Eve
             GeoPoint anchorMap;
             anchorMap.fromWorld( _mapNode->getMapSRS(), anchorWorld );
             anchorMap.z() = 0;
-            anchorMap.altitudeMode() = AltitudeMode::RELATIVE_TO_TERRAIN;
-            anchorMap.transformZ( AltitudeMode::ABSOLUTE, _mapNode->getTerrain() );
+            anchorMap.altitudeMode() = ALTMODE_RELATIVE;
+            anchorMap.transformZ( ALTMODE_ABSOLUTE, _mapNode->getTerrain() );
 
             anchorMap.toWorld( anchorWorld );
 

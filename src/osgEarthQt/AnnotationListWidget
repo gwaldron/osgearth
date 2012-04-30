@@ -20,13 +20,16 @@
 #define OSGEARTHQT_ANNOTATIONLISTWIDGET_H 1
 
 #include <osgEarthQt/Actions>
+#include <osgEarthQt/AnnotationDialogs>
 #include <osgEarthQt/CollapsiblePairWidget>
 #include <osgEarthQt/Common>
 #include <osgEarthQt/DataManager>
 
+#include <QAction>
 #include <QFrame>
 #include <QLabel>
 #include <QListWidget>
+#include <QPointer>
 #include <QScrollArea>
 #include <QWidget>
 
@@ -51,6 +54,9 @@ namespace osgEarth { namespace QtGui
       void onItemDoubleClicked(QListWidgetItem* item);
       void onItemChanged(QListWidgetItem* item);
       void onListSelectionChanged();
+      void onRemoveSelected();
+      void onEditSelected();
+      void onAddFinished(int result);
 
     protected:
       friend class AnnotationListActionCallbackProxy;
@@ -65,6 +71,12 @@ namespace osgEarth { namespace QtGui
       QLabel*       _priorityField;
       QLabel*       _viewpointField;
       QLabel*       _descriptionField;
+      QAction*      _removeAction;
+      QAction*      _editAction;
+
+      QPointer<BaseAnnotationDialog>  _activeDialog;
+      osg::ref_ptr<osgEarth::Annotation::AnnotationNode> _activeAnnotation;
+      osg::ref_ptr<osg::Group> _activeRoot;
 
       osg::ref_ptr<DataManager>  _manager;
       ViewVector                 _views;

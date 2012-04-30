@@ -52,7 +52,7 @@ KML_Placemark::build( const Config& conf, KMLContext& cx )
     }
 
     // KML's default altitude mode is clampToGround.
-    AltitudeModeEnum altMode = AltitudeMode::RELATIVE_TO_TERRAIN;
+    AltitudeMode altMode = ALTMODE_RELATIVE;
 
     AltitudeSymbol* altSym = style.get<AltitudeSymbol>();
     if ( !altSym )
@@ -62,7 +62,7 @@ KML_Placemark::build( const Config& conf, KMLContext& cx )
     }
     else if ( !altSym->clamping().isSetTo(AltitudeSymbol::CLAMP_RELATIVE_TO_TERRAIN) )
     {
-        altMode = AltitudeMode::ABSOLUTE;
+        altMode = ALTMODE_ABSOLUTE;
     }
 
     // parse the geometry. the placemark must have geometry to be valid.

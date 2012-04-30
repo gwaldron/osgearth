@@ -17,6 +17,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 #include <osgEarthUtil/AutoClipPlaneHandler>
+#include <osgEarth/MapNode>
+#include <osgEarth/Terrain>
 #include <osgEarth/Notify>
 #include <osgEarth/Registry>
 #include <osgEarth/Utils>

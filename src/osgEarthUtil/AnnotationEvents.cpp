@@ -72,12 +72,15 @@ AnnotationEventCallback::operator()( osg::Node* node, osg::NodeVisitor* nv )
             Picker::Hits hits;
             if ( picker.pick( _args.x, _args.y, hits ) )
             {
+                std::set<AnnotationNode*> fired; // prevent multiple hits on the same instance
+
                 for( Picker::Hits::const_iterator h = hits.begin(); h != hits.end(); ++h )
                 {
                     AnnotationNode* anno = picker.getNode<AnnotationNode>( *h );
-                    if ( anno )
+                    if ( anno && fired.find(anno) == fired.end() )
                     {
                         fireEvent( &AnnotationEventHandler::onClick, anno );
+                        fired.insert( anno );
                         //break;
                     }
                 }

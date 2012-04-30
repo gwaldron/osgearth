@@ -21,15 +21,13 @@
 
 #include <osgEarth/Common>
 #include <osgEarth/TileKey>
-#include <osgEarth/SpatialReference>
 #include <osgEarth/ThreadingUtils>
-#include <osgEarth/Viewpoint>
-#include <osgEarth/Units>
 #include <osg/OperationThread>
 
 namespace osgEarth
 {
     class Terrain;
+    class SpatialReference;
 
     /**
      * This object is passed to terrain callbacks to provide context information

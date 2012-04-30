@@ -31,7 +31,6 @@
 #include <osgEarth/Revisioning>
 #include <osgEarth/ThreadingUtils>
 #include <osgDB/ReaderWriter>
-#include <osg/TransferFunction>
 
 namespace osgEarth
 {    

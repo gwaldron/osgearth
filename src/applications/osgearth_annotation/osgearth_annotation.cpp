@@ -23,6 +23,7 @@
 #include <osgEarthUtil/EarthManipulator>
 #include <osgEarthUtil/AnnotationEvents>
 #include <osgEarthUtil/AutoClipPlaneHandler>
+#include <osgEarthUtil/ExampleResources>
 
 #include <osgEarthAnnotation/AnnotationEditing>
 #include <osgEarthAnnotation/AnnotationRegistry>
@@ -83,7 +84,15 @@ struct MyAnnoEventHandler : public AnnotationEventHandler
 
     virtual void onClick( AnnotationNode* node, const EventArgs& details )
     {        
-        OE_NOTICE << "Thanks for clicking this annotation" << std::endl;
+		PlaceNode* place = dynamic_cast<PlaceNode*>(node);
+		if (place == NULL)
+		{
+			OE_NOTICE << "Thanks for clicking this annotation" << std::endl;
+		}
+		else
+		{
+			OE_NOTICE << "Thanks for clicking the PlaceNode: " << place->getText() << std::endl;
+		}
     }
 };
 
@@ -116,7 +125,11 @@ main(int argc, char** argv)
 
     // try to load an earth file.
     osg::ArgumentParser arguments(&argc,argv);
-    osg::Node* node = osgDB::readNodeFiles( arguments );
+
+    osgViewer::Viewer viewer(arguments);
+
+    // load an earth file and parse demo arguments
+    osg::Node* node = MapNodeHelper().load(arguments, &viewer);
     if ( !node )
         return usage(argv);
 
@@ -126,8 +139,6 @@ main(int argc, char** argv)
         return usage(argv);
 
     root->addChild( mapNode );
-
-    osgViewer::Viewer viewer(arguments);
 
 
     // Group to hold all our annotation elements.
@@ -261,7 +272,7 @@ main(int argc, char** argv)
         circleStyle.getOrCreate<PolygonSymbol>()->fill()->color() = Color(Color::Cyan, 0.5);
         CircleNode* circle = new CircleNode(
             mapNode, 
-            GeoPoint(geoSRS, -90.25, 29.98, 1000., AltitudeMode::RELATIVE_TO_TERRAIN),
+            GeoPoint(geoSRS, -90.25, 29.98, 1000., ALTMODE_RELATIVE),
             Linear(300, Units::KILOMETERS ),
             circleStyle,
             false );
@@ -278,7 +289,7 @@ main(int argc, char** argv)
         ellipseStyle.getOrCreate<PolygonSymbol>()->fill()->color() = Color(Color::Orange, 0.75);
         EllipseNode* ellipse = new EllipseNode(
             mapNode, 
-            GeoPoint(geoSRS, -80.28, 25.82, 0.0, AltitudeMode::RELATIVE_TO_TERRAIN),
+            GeoPoint(geoSRS, -80.28, 25.82, 0.0, ALTMODE_RELATIVE),
             Linear(500, Units::MILES),
             Linear(100, Units::MILES),
             Angular(0, Units::DEGREES),

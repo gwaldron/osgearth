@@ -17,7 +17,8 @@
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
 #include <osgEarth/Draggers>
-
+#include <osgEarth/MapNode>
+#include <osgEarth/Terrain>
 #include <osgEarth/Pickers>
 
 #include <osg/AutoTransform>
@@ -124,6 +125,7 @@ bool Dragger::handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& 
 
     osgViewer::View* view = dynamic_cast<osgViewer::View*>(&aa);
     if (!view) return false;
+    if (!_mapNode.valid()) return false;
 
     if (ea.getEventType() == osgGA::GUIEventAdapter::PUSH)
     {
@@ -202,10 +204,14 @@ _pickColor(1.0f, 1.0f, 0.0f, 1.0f),
 _color(0.0f, 1.0f, 0.0f, 1.0f),
 _size( 5.0f )
 {
+    //Disable culling
+    setCullingActive( false );
+
     //Build the handle
     osg::Sphere* shape = new osg::Sphere(osg::Vec3(0,0,0), 1.0f);   
     osg::Geode* geode = new osg::Geode();
     _shapeDrawable = new osg::ShapeDrawable( shape );    
+    _shapeDrawable->setDataVariance( osg::Object::DYNAMIC );
     geode->addDrawable( _shapeDrawable );          
 
     geode->getOrCreateStateSet()->setMode(GL_DEPTH_TEST, osg::StateAttribute::OFF);

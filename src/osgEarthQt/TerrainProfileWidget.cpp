@@ -234,7 +234,7 @@ void TerrainProfileWidget::updatePosition(double lat, double lon, const std::str
   {
     _markerNode = new osgEarth::Annotation::PlaceNode(
         _mapNode.get(),
-        GeoPoint(_mapNode->getMapSRS(), lon, lat, 0, osgEarth::AltitudeMode::RELATIVE_TO_TERRAIN),
+        GeoPoint(_mapNode->getMapSRS(), lon, lat, 0, osgEarth::ALTMODE_RELATIVE),
         _markerImage,
         text,
         _placeStyle);
@@ -245,7 +245,7 @@ void TerrainProfileWidget::updatePosition(double lat, double lon, const std::str
   }
   else
   {
-    _markerNode->setPosition(GeoPoint(_mapNode->getMapSRS(), lon, lat, 0, osgEarth::AltitudeMode::RELATIVE_TO_TERRAIN));
+    _markerNode->setPosition(GeoPoint(_mapNode->getMapSRS(), lon, lat, 0, osgEarth::ALTMODE_RELATIVE));
     _markerNode->setText(text);
   }
 

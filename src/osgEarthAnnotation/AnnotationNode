@@ -128,7 +128,7 @@ namespace osgEarth { namespace Annotation
 
         bool supportsAutoClamping( const Style& style ) const;
         
-        void configureForAltitudeMode( const AltitudeModeEnum& mode );
+        void configureForAltitudeMode( const AltitudeMode& mode );
 
         // Apply general style information. You can pass "noClamp=true" as a hint
         // that no clamping logic is necessary

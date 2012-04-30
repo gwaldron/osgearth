@@ -22,12 +22,12 @@
 #include <osgEarth/Common>
 #include <osgEarth/Config>
 #include <osgEarth/TileSource>
-#include <osgEarth/Profile>
 #include <osgEarth/TerrainLayer>
-#include <osgEarth/ThreadingUtils>
 
 namespace osgEarth
 {
+    class Profile;
+
     /**
      * Initialization options for an image layer.
      */

@@ -1,15 +1,5 @@
 <!--
-osgEarth Sample - ReadyMap.ORG Server - http://readymap.org
-
-ReadyMap.ORG provides free global base map data for osgEarth developers!
-This tiled, worldwide dataset of imagery, elevation, and street map data
-is a great base map that provides global context for your own local datasets.
-It works "out of the box" with osgEarth applications.
-
-**** NOTICE ****
-YOU ARE RESPONSIBLE for abiding by the TERMS AND CONDITIONS outlined at:
-http://readymap.org
-
+osgEarth Sample - Annotations
 -->
 <map name="readymap.org" type="geocentric" version="2">
 
@@ -57,14 +47,18 @@ http://readymap.org
                 <position lat="32.73" long="-119.0"/>
                 <radius_major value="50" units="km"/>
                 <radius_minor value="20" units="km"/>
-                <style type="text/css">fill: #ff7f00bf;</style>
+                <style type="text/css">
+                    fill:             #ff7f008f;
+                    stroke:           #ff0000ff;
+                    extrusion-height: 5000;
+                </style>
             </ellipse>
             
             <rectangle>
                 <position lat="32.2" long="-118" alt="1000"/>
                 <width value="50" units="nm"/>
                 <height value="25" units="nm"/>
-                <style type="text/css"> stroke: #ff7f7f; stroke-width: 2; </style>
+                <style type="text/css"> stroke: #00ffff; stroke-width: 2; </style>
             </rectangle>
 
             <feature>

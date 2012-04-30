@@ -20,9 +20,13 @@
 #define OSGEARTHUTIL_TERRAINPROFILE
 
 #include <osgEarthUtil/Common>
-#include <osgEarth/MapNode>
+#include <osgEarth/Terrain>
 #include <osgSim/ElevationSlice>
 
+namespace osgEarth {     
+    class MapNode;
+}
+    
 namespace osgEarth { namespace Util {
 
     /**

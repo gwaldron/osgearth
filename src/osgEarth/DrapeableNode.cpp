@@ -19,6 +19,8 @@
 
 #include <osgEarth/DrapeableNode>
 #include <osgEarth/CullingUtils>
+#include <osgEarth/OverlayDecorator>
+#include <osgEarth/MapNode>
 #include <osgEarth/NodeUtils>
 #include <osgUtil/IntersectionVisitor>
 
@@ -71,15 +73,18 @@ DrapeableNode::applyChanges()
 {
     _draped = _newDraped;
 
-    if ( _draped && _overlayProxyContainer->getNumParents() == 0 )
+    if ( _mapNode.valid() )
     {
-        _mapNode->getOverlayGroup()->addChild( _overlayProxyContainer.get() );
-        _mapNode->updateOverlayGraph();
-    }
-    else if ( !_draped && _overlayProxyContainer->getNumParents() > 0 )
-    {
-        _mapNode->getOverlayGroup()->removeChild( _overlayProxyContainer.get() );
-        _mapNode->updateOverlayGraph();
+        if ( _draped && _overlayProxyContainer->getNumParents() == 0 )
+        {
+            _mapNode->getOverlayGroup()->addChild( _overlayProxyContainer.get() );
+            _mapNode->updateOverlayGraph();
+        }
+        else if ( !_draped && _overlayProxyContainer->getNumParents() > 0 )
+        {
+            _mapNode->getOverlayGroup()->removeChild( _overlayProxyContainer.get() );
+            _mapNode->updateOverlayGraph();
+        }
     }
 }
 

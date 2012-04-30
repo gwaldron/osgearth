@@ -205,8 +205,8 @@ CompositeTileSource::createImage(const TileKey&        key,
             }
 
             // check that this source is within the level bounds:
-            if (minLevel > key.getLevelOfDetail() ||
-                maxLevel < key.getLevelOfDetail() )
+            if (minLevel > (int)key.getLevelOfDetail() ||
+                maxLevel < (int)key.getLevelOfDetail() )
             {
                 continue;
             }

@@ -22,11 +22,11 @@
 #include <osgEarth/Common>
 #include <osgEarth/Revisioning>
 #include <osgEarth/ThreadingUtils>
-#include <string>
-#include <map>
 #include <osg/Shader>
 #include <osg/Program>
 #include <osg/StateAttribute>
+#include <string>
+#include <map>
 
 namespace osgEarth
 {        

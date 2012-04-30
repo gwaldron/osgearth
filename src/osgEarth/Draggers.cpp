@@ -17,7 +17,8 @@
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
 #include <osgEarth/Draggers>
-
+#include <osgEarth/MapNode>
+#include <osgEarth/Terrain>
 #include <osgEarth/Pickers>
 
 #include <osg/AutoTransform>
@@ -124,6 +125,7 @@ bool Dragger::handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& 
 
     osgViewer::View* view = dynamic_cast<osgViewer::View*>(&aa);
     if (!view) return false;
+    if (!_mapNode.valid()) return false;
 
     if (ea.getEventType() == osgGA::GUIEventAdapter::PUSH)
     {

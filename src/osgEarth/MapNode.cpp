@@ -22,11 +22,13 @@
 #include <osgEarth/Registry>
 #include <osgEarth/ShaderComposition>
 #include <osgEarth/OverlayDecorator>
+#include <osgEarth/TerrainEngineNode>
 #include <osgEarth/TextureCompositor>
 #include <osgEarth/URI>
 #include <osgEarth/DrapeableNode>
 #include <osg/ArgumentParser>
 #include <osg/PagedLOD>
+#include <osgSim/OverlayNode>
 
 using namespace osgEarth;
 
@@ -176,6 +178,11 @@ MapNode::init()
     // Protect the MapNode from the Optimizer
     setDataVariance(osg::Object::DYNAMIC);
 
+    // initialize 0Ls
+    _terrainEngine          = 0L;
+    _terrainEngineContainer = 0L;
+    _overlayDecorator       = 0L;
+
     setName( "osgEarth::MapNode" );
 
     // Since we have global uniforms in the stateset, mark it dynamic so it is immune to
@@ -224,7 +231,7 @@ MapNode::init()
     // an optimizer from collapsing the empty group node.
     _terrainEngineContainer = new osg::Group();
     _terrainEngineContainer->setDataVariance( osg::Object::DYNAMIC );
-    this->addChild( _terrainEngineContainer.get() );
+    this->addChild( _terrainEngineContainer );
 
     // initialize terrain-level lighting:
     if ( terrainOptions.enableLighting().isSet() )
@@ -234,18 +241,19 @@ MapNode::init()
             osg::StateAttribute::OFF | osg::StateAttribute::PROTECTED );
     }
 
-    if ( _terrainEngine.valid() )
+    if ( _terrainEngine )
     {
         // inform the terrain engine of the map information now so that it can properly
         // initialize it's CoordinateSystemNode. This is necessary in order to support
         // manipulators and to set up the texture compositor prior to frame-loop 
         // initialization.
         _terrainEngine->preInitialize( _map.get(), terrainOptions );
-
-        _terrainEngineContainer->addChild( _terrainEngine.get() );
+        _terrainEngineContainer->addChild( _terrainEngine );
     }
     else
+    {
         OE_WARN << "FAILED to create a terrain engine for this map" << std::endl;
+    }
 
     // make a group for the model layers.
     // NOTE: for now, we are going to nullify any shader programs that occur above the model
@@ -262,15 +270,14 @@ MapNode::init()
 
     // a decorator for overlay models:
     _overlayDecorator = new OverlayDecorator();
-    if ( _mapNodeOptions.overlayVertexWarping().isSet() )
-        _overlayDecorator->setVertexWarping( *_mapNodeOptions.overlayVertexWarping() );
     if ( _mapNodeOptions.overlayBlending().isSet() )
         _overlayDecorator->setOverlayBlending( *_mapNodeOptions.overlayBlending() );
     if ( _mapNodeOptions.overlayTextureSize().isSet() )
         _overlayDecorator->setTextureSize( *_mapNodeOptions.overlayTextureSize() );
     if ( _mapNodeOptions.overlayMipMapping().isSet() )
         _overlayDecorator->setMipMapping( *_mapNodeOptions.overlayMipMapping() );
-    addTerrainDecorator( _overlayDecorator.get() );
+
+    addTerrainDecorator( _overlayDecorator );
 
     // install any pre-existing model layers:
     ModelLayerVector modelLayers;
@@ -286,8 +293,6 @@ MapNode::init()
     _map->addMapCallback( _mapCallback.get()  );
 
     osg::StateSet* ss = getOrCreateStateSet();
-	//ss->setAttributeAndModes( new osg::CullFace() ); //, osg::StateAttribute::ON);
-    //ss->setAttributeAndModes( new osg::PolygonOffset( -1, -1 ) );
 
     if ( _mapNodeOptions.enableLighting().isSet() )
     {
@@ -355,20 +360,20 @@ MapNode::getTerrain()
 TerrainEngineNode*
 MapNode::getTerrainEngine() const
 {
-    if ( !_terrainEngineInitialized && _terrainEngine.valid() )
+    if ( !_terrainEngineInitialized && _terrainEngine )
     {
         _terrainEngine->postInitialize( _map.get(), getMapNodeOptions().getTerrainOptions() );
         MapNode* me = const_cast< MapNode* >(this);
         me->_terrainEngineInitialized = true;
         me->dirtyBound();
     }
-    return _terrainEngine.get();
+    return _terrainEngine;
 }
 
 void
 MapNode::setCompositorTechnique( TextureCompositorTechnique* tech )
 {
-    if ( _terrainEngine.valid() )
+    if ( _terrainEngine )
     {
         _terrainEngine->getTextureCompositor()->setTechnique( tech );
     }
@@ -534,29 +539,29 @@ struct MaskNodeFinder : public osg::NodeVisitor {
 void
 MapNode::addTerrainDecorator(osg::Group* decorator)
 {    
-    if ( _terrainEngine.valid() )
+    if ( _terrainEngine )
     {
-        decorator->addChild( _terrainEngine.get() );
-        _terrainEngine->getParent(0)->replaceChild( _terrainEngine.get(), decorator );
+        decorator->addChild( _terrainEngine );
+        _terrainEngine->getParent(0)->replaceChild( _terrainEngine, decorator );
         dirtyBound();
 
         TerrainDecorator* td = dynamic_cast<TerrainDecorator*>( decorator );
         if ( td )
-            td->onInstall( _terrainEngine.get() );
+            td->onInstall( _terrainEngine );
     }
 }
 
 void
 MapNode::removeTerrainDecorator(osg::Group* decorator)
 {
-    if ( _terrainEngine.valid() )
+    if ( _terrainEngine )
     {
         TerrainDecorator* td = dynamic_cast<TerrainDecorator*>( decorator );
         if ( td )
-            td->onUninstall( _terrainEngine.get() );
+            td->onUninstall( _terrainEngine );
 
-        osg::Node* child = _terrainEngine.get();
-        for( osg::Group* g = child->getParent(0); g != _terrainEngineContainer.get(); )
+        osg::ref_ptr<osg::Node> child = _terrainEngine;
+        for( osg::Group* g = child->getParent(0); g != _terrainEngineContainer; )
         {
             if ( g == decorator )
             {

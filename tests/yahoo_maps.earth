@@ -14,15 +14,7 @@ the provider's terms of service when using their data.
     </image>
     
     <options>
-        <terrain>
-            <loading_policy mode="sequential"/>
-            <compositor>multitexture_gpu</compositor>
-        </terrain>
         <lighting>false</lighting>
-		
-		<cache driver="tms">
-		  <path>yahoo_cache</path>
-		</cache>		
     </options>
    
 </map>

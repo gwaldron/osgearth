@@ -20,10 +20,6 @@
 #ifndef OSGEARTH_ELEVATION_TERRAIN_LAYER_H
 #define OSGEARTH_ELEVATION_TERRAIN_LAYER_H 1
 
-#include <osgEarth/Common>
-#include <osgEarth/Config>
-#include <osgEarth/Profile>
-#include <osgEarth/TileSource>
 #include <osgEarth/TerrainLayer>
 
 namespace osgEarth

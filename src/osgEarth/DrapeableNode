@@ -21,10 +21,13 @@
 #define OSGEARTH_DRAPEABLE_NODE_H 1
 
 #include <osgEarth/Common>
-#include <osgEarth/MapNode>
+#include <osg/Group>
+#include <osg/observer_ptr>
 
 namespace osgEarth
 {
+    class MapNode;
+
     /**
      * Base class for a graph that can be "draped" on the MapNode terrain
      * using the overlay decorator.

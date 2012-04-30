@@ -20,19 +20,18 @@
 #define OSGEARTH_OVERLAY_DECORATOR
 
 #include <osgEarth/Common>
-#include <osgEarth/ShaderComposition>
-#include <osgEarth/TerrainEngineNode>
 #include <osgEarth/ThreadingUtils>
+#include <osgEarth/TerrainEngineNode>
 #include <osg/Camera>
 #include <osg/CoordinateSystemNode>
-#include <osg/Texture2D>
 #include <osg/TexGenNode>
 #include <osg/Uniform>
-#include <osgGA/GUIEventHandler>
 #include <osgUtil/CullVisitor>
 
 namespace osgEarth
 {
+    class TerrainEngineNode;
+
     /**
      * Projects an overlay scene graph onto the main model.
      *
@@ -82,14 +81,6 @@ namespace osgEarth
         bool getMipMapping() const { return _mipmapping; }
 
         /**
-         * Whether to employ overlay warping. Warping can help increase the apparent
-         * resolution of the overlay image. But it can cause artifacts when you zoom
-         * in very close. Default = true
-         */
-        void setVertexWarping( bool value );
-        bool getVertexWarping() const { return _warping; }
-
-        /**
          * Whether to enable blending on the RTT camera graph. Default = true. You might
          * want to disable this is you are draping polygons that cover a very large area
          * and curve around the globe; sometimes they suffer from tessellation artifacts
@@ -112,10 +103,6 @@ namespace osgEarth
         optional<int>                 _textureUnit;
         optional<int>                 _textureSize;
         bool                          _useShaders;
-        bool                          _useWarping;
-        float                         _warp;
-        bool                          _warping;
-        bool                          _visualizeWarp;
         bool                          _isGeocentric;
         double                        _maxProjectedMapExtent;
         bool                          _mipmapping;
@@ -123,16 +110,16 @@ namespace osgEarth
         bool                          _updatePending;
 
         osg::ref_ptr<const osg::EllipsoidModel> _ellipsoid;
-        osg::ref_ptr<osgEarth::VirtualProgram>  _vp;
-        osg::ref_ptr<TerrainEngineNode>         _engine;
+        osg::observer_ptr<TerrainEngineNode>    _engine;
         
         struct PerViewData
         {
-            osg::ref_ptr<osg::Camera>   _rttCamera;
-            osg::ref_ptr<osg::Uniform>  _texGenUniform;
-            osg::Matrixd                _rttViewMatrix;
-            osg::Matrixd                _rttProjMatrix;
-            osg::ref_ptr<osg::StateSet> _subgraphStateSet;
+            osg::ref_ptr<osg::Camera>     _rttCamera;
+            osg::ref_ptr<osg::Uniform>    _texGenUniform;
+            osg::ref_ptr<osg::TexGenNode> _texGenNode;
+            osg::Matrixd                  _rttViewMatrix;
+            osg::Matrixd                  _rttProjMatrix;
+            osg::ref_ptr<osg::StateSet>   _subgraphStateSet;
         };
 
         typedef std::map<osg::View*, PerViewData> PerViewDataMap;
@@ -141,12 +128,11 @@ namespace osgEarth
 
 
     private:
-        void updateRTTCameras(); //( PerViewData& pvd ); //osg::NodeVisitor& nv );
+        void updateRTTCameras();
         void cull( osgUtil::CullVisitor* cv, PerViewData& pvd );
         void initializeForOverlayGraph();
         void initializePerViewData( PerViewData& );
         void initSubgraphShaders( PerViewData& );
-        void initRTTShaders( PerViewData& );
         bool checkNeedsUpdate( PerViewData& );
         PerViewData& getPerViewData( osg::View* key );
 

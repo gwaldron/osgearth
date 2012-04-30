@@ -23,6 +23,7 @@
 #include <osgViewer/Viewer>
 #include <osgViewer/ViewerEventHandlers>
 #include <osgEarth/MapNode>
+#include <osgEarth/Terrain>
 #include <osgEarth/XmlUtils>
 #include <osgEarth/Viewpoint>
 #include <osgEarthUtil/EarthManipulator>

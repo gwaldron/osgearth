@@ -40,11 +40,11 @@ namespace osgEarth { namespace Util
             int   modkeys;   // see osgGA::GUIEventAdapter::ModKeyMask
         };
 
-        virtual void onClick( AnnotationNode* node, const EventArgs& details ) { }
+        virtual void onClick( AnnotationNode* /*node*/, const EventArgs& /*details*/ ) { }
 
-        virtual void onHoverEnter( AnnotationNode* node, const EventArgs& details ) { }
+        virtual void onHoverEnter( AnnotationNode* /*node*/, const EventArgs& /*details*/ ) { }
 
-        virtual void onHoverLeave( AnnotationNode* node, const EventArgs& details ) { }
+        virtual void onHoverLeave( AnnotationNode* /*node*/, const EventArgs& /*details*/ ) { }
 
         virtual ~AnnotationEventHandler() { }
     };

@@ -196,7 +196,7 @@ namespace osgEarth
      */
     struct TerrainLayerCallback : public osg::Referenced
     {
-        virtual void onVisibleChanged( class TerrainLayer* layer ) { }
+        virtual void onVisibleChanged( class TerrainLayer* /*layer*/ ) { }
         virtual ~TerrainLayerCallback() { }
     };
 

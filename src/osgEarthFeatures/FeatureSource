@@ -129,7 +129,7 @@ namespace osgEarth { namespace Features
          * Deletes the feature with the given FID
          * @return True on success; false on failure or if the source is read-only
          */
-        virtual bool deleteFeature(FeatureID fid) { return false; }
+        virtual bool deleteFeature(FeatureID /*fid*/) { return false; }
 
         /**
          * Gets the number of features in this FeatureSource
@@ -143,7 +143,7 @@ namespace osgEarth { namespace Features
          * @return
          *     The Feature with the given FID or NULL if not found.
          */
-        virtual Feature* getFeature( FeatureID fid ) { return 0L; }
+        virtual Feature* getFeature( FeatureID /*fid*/ ) { return 0L; }
 
         /**
          * Gets the FeatureSchema for this FeatureSource. If the schema doesn't
@@ -156,7 +156,7 @@ namespace osgEarth { namespace Features
          * @return
          *     True if the feature was inserted, false if not
          */
-        virtual bool insertFeature(Feature* feature) { return false; }
+        virtual bool insertFeature(Feature* /*feature*/) { return false; }
 
         /**
          * Gets the Geometry type of the FeatureSource
@@ -220,7 +220,7 @@ namespace osgEarth { namespace Features
 		/**
 		 * Initialize the FeatureSource.
 		 */
-        virtual void initialize( const osgDB::Options* dbOptions =0L ) { }
+        virtual void initialize( const osgDB::Options* dbOptions =0L ) { dbOptions; }
 
     protected:
 

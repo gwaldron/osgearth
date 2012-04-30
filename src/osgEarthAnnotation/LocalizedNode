@@ -127,7 +127,7 @@ namespace osgEarth { namespace Annotation
 
             
         // copy constructor
-        LocalizedNode(const LocalizedNode& rhs, const osg::CopyOp& op=osg::CopyOp::DEEP_COPY_ALL) { }
+        LocalizedNode(const LocalizedNode& /*rhs*/, const osg::CopyOp& op=osg::CopyOp::DEEP_COPY_ALL) { op; }
 
         bool updateTransforms(const GeoPoint& absPt, osg::Node* patch =0L);
         

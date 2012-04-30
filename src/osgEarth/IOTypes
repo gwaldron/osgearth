@@ -196,23 +196,23 @@ namespace osgEarth
     public:
 
         /** Override the readObject() implementation */
-        virtual osgDB::ReaderWriter::ReadResult readObject( const std::string& uri, const osgDB::Options* options ) {
+        virtual osgDB::ReaderWriter::ReadResult readObject( const std::string& /*uri*/, const osgDB::Options* /*options*/ ) {
             return osgDB::ReaderWriter::ReadResult::NOT_IMPLEMENTED; }
 
         /** Override the readNode() implementation */
-        virtual osgDB::ReaderWriter::ReadResult readNode( const std::string& uri, const osgDB::Options* options ) {
+        virtual osgDB::ReaderWriter::ReadResult readNode( const std::string& /*uri*/, const osgDB::Options* /*options*/ ) {
             return osgDB::ReaderWriter::ReadResult::NOT_IMPLEMENTED; }
 
         /** Override the readImage() implementation */
-        virtual osgDB::ReaderWriter::ReadResult readImage( const std::string& uri, const osgDB::Options* options ) {
+        virtual osgDB::ReaderWriter::ReadResult readImage( const std::string& /*uri*/, const osgDB::Options* /*options*/ ) {
             return osgDB::ReaderWriter::ReadResult::NOT_IMPLEMENTED; }
 
         /** Override the readString() implementation */
-        virtual osgDB::ReaderWriter::ReadResult readString( const std::string& uri, const osgDB::Options* options ) {
+        virtual osgDB::ReaderWriter::ReadResult readString( const std::string& /*uri*/, const osgDB::Options* /*options*/ ) {
             return osgDB::ReaderWriter::ReadResult::NOT_IMPLEMENTED; }
 
         /** Override the readConfig() implementation */
-        virtual osgDB::ReaderWriter::ReadResult readConfig( const std::string& uri, const osgDB::Options* options ) {
+        virtual osgDB::ReaderWriter::ReadResult readConfig( const std::string& /*uri*/, const osgDB::Options* /*options*/ ) {
             return osgDB::ReaderWriter::ReadResult::NOT_IMPLEMENTED; }
 
     protected:

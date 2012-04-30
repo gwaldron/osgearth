@@ -155,12 +155,12 @@ namespace osgEarth { namespace Annotation
         AnnotationNode( MapNode* mapNode =0L );
 
         // hidden copy ctor
-        AnnotationNode(const AnnotationNode& rhs, const osg::CopyOp& op=osg::CopyOp::DEEP_COPY_ALL) { }
+        AnnotationNode(const AnnotationNode& /*rhs*/, const osg::CopyOp& op=osg::CopyOp::DEEP_COPY_ALL) { op; }
 
 
     public: // internal methods; do not call directly
 
-        virtual void reclamp( const TileKey& key, osg::Node* tile, const Terrain* terrain ) { }
+        virtual void reclamp( const TileKey& /*key*/, osg::Node* /*tile*/, const Terrain* /*terrain*/ ) { }
 
         virtual ~AnnotationNode();
     };

@@ -102,7 +102,7 @@ namespace osgEarth
         /**
          * Writes custom metadata to the cache.
          */
-        virtual bool writeMetadata( const Config& meta ) { return false; }
+        virtual bool writeMetadata( const Config& /*meta*/ ) { return false; }
 
         /**
          * Purges all entries in the cache bin.

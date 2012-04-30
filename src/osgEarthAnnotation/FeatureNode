@@ -71,7 +71,7 @@ namespace osgEarth { namespace Annotation
         osg::Group*                 _attachPoint;
 
         FeatureNode() { }
-        FeatureNode(const FeatureNode& rhs, const osg::CopyOp& op) { }
+        FeatureNode(const FeatureNode& /*rhs*/, const osg::CopyOp& /*op*/) { }
         
         virtual void reclamp( const TileKey& key, osg::Node* tile, const Terrain* );
         

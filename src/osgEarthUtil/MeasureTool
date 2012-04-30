@@ -39,7 +39,7 @@ namespace osgEarth { namespace Util
         class MeasureToolEventHandler : public osg::Referenced
         {
         public:
-            virtual void onDistanceChanged(MeasureToolHandler* sender, double distance) {}
+            virtual void onDistanceChanged(MeasureToolHandler* /*sender*/, double /*distance*/) {}
             virtual ~MeasureToolEventHandler() { }
         };
 

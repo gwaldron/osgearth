@@ -128,7 +128,7 @@ private:
     double     _tileCreationTime;
     bool       _isStreaming;
 
-    OSGTerrainEngineNode( const OSGTerrainEngineNode& rhs, const osg::CopyOp& op =osg::CopyOp::DEEP_COPY_ALL ) { }
+    OSGTerrainEngineNode( const OSGTerrainEngineNode& /*rhs*/, const osg::CopyOp& op =osg::CopyOp::DEEP_COPY_ALL ) { op; }
 };
 
 #endif // OSGEARTH_ENGINE_OSGTERRAIN_ENGINE_NODE_H

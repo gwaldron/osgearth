@@ -81,24 +81,24 @@ namespace osgEarth
      */
     struct OSGEARTH_EXPORT MapCallback : public osg::Referenced
     {
-        virtual void onMapInfoEstablished( const MapInfo& mapInfo ) { } 
+        virtual void onMapInfoEstablished( const MapInfo& /*mapInfo*/ ) { } 
 
         virtual void onMapModelChanged( const MapModelChange& change );
 
-        virtual void onImageLayerAdded( ImageLayer* layer, unsigned int index ) { }
-        virtual void onImageLayerRemoved( ImageLayer* layer, unsigned int index ) { }
-        virtual void onImageLayerMoved( ImageLayer* layer, unsigned int oldIndex, unsigned int newIndex ) { }
+        virtual void onImageLayerAdded( ImageLayer* /*layer*/, unsigned int /*index*/ ) { }
+        virtual void onImageLayerRemoved( ImageLayer* /*layer*/, unsigned int /*index*/ ) { }
+        virtual void onImageLayerMoved( ImageLayer* /*layer*/, unsigned int /*oldIndex*/, unsigned int /*newIndex*/ ) { }
 
-        virtual void onElevationLayerAdded( ElevationLayer* layer, unsigned int index ) { }
-        virtual void onElevationLayerRemoved( ElevationLayer* layer, unsigned int index ) { }
-        virtual void onElevationLayerMoved( ElevationLayer* layer, unsigned int oldIndex, unsigned int newIndex ) { }
+        virtual void onElevationLayerAdded( ElevationLayer* /*layer*/, unsigned int /*index*/ ) { }
+        virtual void onElevationLayerRemoved( ElevationLayer* /*layer*/, unsigned int /*index*/ ) { }
+        virtual void onElevationLayerMoved( ElevationLayer* /*layer*/, unsigned int /*oldIndex*/, unsigned int /*newIndex*/ ) { }
 
-        virtual void onModelLayerAdded( ModelLayer* layer, unsigned int index ) { }
-        virtual void onModelLayerRemoved( ModelLayer* layer ) { }
-        virtual void onModelLayerMoved( ModelLayer* layer, unsigned int oldIndex, unsigned int newIndex ) { }
+        virtual void onModelLayerAdded( ModelLayer* /*layer*/, unsigned int /*index*/ ) { }
+        virtual void onModelLayerRemoved( ModelLayer* /*layer*/ ) { }
+        virtual void onModelLayerMoved( ModelLayer* /*layer*/, unsigned int /*oldIndex*/, unsigned int /*newIndex*/ ) { }
 
-        virtual void onMaskLayerAdded( MaskLayer* mask ) { }
-        virtual void onMaskLayerRemoved( MaskLayer* mask ) { }
+        virtual void onMaskLayerAdded( MaskLayer* /*mask*/ ) { }
+        virtual void onMaskLayerRemoved( MaskLayer* /*mask*/ ) { }
 
         /** dtor */
         virtual ~MapCallback() { }

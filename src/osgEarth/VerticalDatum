@@ -125,7 +125,7 @@ namespace osgEarth
     protected:
         // required by META_Object, but not used.
         VerticalDatum() { }
-        VerticalDatum(const VerticalDatum& rhs, const osg::CopyOp& op) { }
+        VerticalDatum(const VerticalDatum& /*rhs*/, const osg::CopyOp& /*op*/) { }
 
         std::string         _name;
         std::string         _initString;

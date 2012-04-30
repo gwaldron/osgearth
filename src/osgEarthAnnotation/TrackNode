@@ -150,7 +150,7 @@ namespace osgEarth { namespace Annotation
     private:
         // required by META_Node, but this object is not cloneable
         TrackNode() { }
-        TrackNode(const TrackNode& rhs, const osg::CopyOp& op =osg::CopyOp::DEEP_COPY_ALL) { }
+        TrackNode(const TrackNode& /*rhs*/, const osg::CopyOp& op =osg::CopyOp::DEEP_COPY_ALL) { op; }
 
     };
 

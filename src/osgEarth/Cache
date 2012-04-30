@@ -53,7 +53,7 @@ namespace osgEarth
         }
 
     private:
-        void fromConfig( const Config& conf ) {
+        void fromConfig( const Config& /*conf*/ ) {
             //nop
         }
     };
@@ -101,7 +101,7 @@ namespace osgEarth
          * @param binID Name of the new bin
          * @param rw    Read/write driver that will handle serialization for the bin
          */
-        virtual CacheBin* addBin( const std::string& binID ) { return 0L; }
+        virtual CacheBin* addBin( const std::string& /*binID*/ ) { return 0L; }
 
         /**
          * Removes a cache bin from the cache.

@@ -129,7 +129,7 @@ namespace osgEarth
 
     // template specialization for string
     template<> inline std::string
-    as<std::string>( const std::string& str, const std::string& default_value )
+    as<std::string>( const std::string& str, const std::string& /*default_value*/ )
     {
         return str;
     }

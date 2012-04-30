@@ -61,7 +61,6 @@ namespace osgEarth { namespace Features
         virtual const FeatureProfile* createFeatureProfile();
 
         FeatureList _features;
-        osg::ref_ptr< FeatureProfile > _profile;
     };
 
 } } // namespace osgEarth::Features

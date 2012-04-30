@@ -23,6 +23,7 @@
 #include <osgEarthUtil/EarthManipulator>
 #include <osgEarthUtil/AnnotationEvents>
 #include <osgEarthUtil/AutoClipPlaneHandler>
+#include <osgEarthUtil/ExampleResources>
 
 #include <osgEarthAnnotation/AnnotationEditing>
 #include <osgEarthAnnotation/AnnotationRegistry>
@@ -124,7 +125,11 @@ main(int argc, char** argv)
 
     // try to load an earth file.
     osg::ArgumentParser arguments(&argc,argv);
-    osg::Node* node = osgDB::readNodeFiles( arguments );
+
+    osgViewer::Viewer viewer(arguments);
+
+    // load an earth file and parse demo arguments
+    osg::Node* node = MapNodeHelper().load(arguments, &viewer);
     if ( !node )
         return usage(argv);
 
@@ -134,8 +139,6 @@ main(int argc, char** argv)
         return usage(argv);
 
     root->addChild( mapNode );
-
-    osgViewer::Viewer viewer(arguments);
 
 
     // Group to hold all our annotation elements.

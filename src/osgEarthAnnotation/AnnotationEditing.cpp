@@ -64,7 +64,7 @@ LocalizedNodeEditor::updateDraggers()
     GeoPoint pos = _node->getPosition();
     pos.makeAbsolute( _node->getMapNode()->getTerrain() );
 
-    _dragger->setPosition( pos, false ); //_node->getPosition(), false );
+    _dragger->setPosition( pos, false );
 }
 
 void

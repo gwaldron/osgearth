@@ -114,7 +114,7 @@ public:
                     osg::Timer_t start = osg::Timer::instance()->tick();
                     engineNode->getTerrain()->notifyTileAdded(key, node.get());
                     osg::Timer_t end = osg::Timer::instance()->tick();
-                    OE_DEBUG << "Took " << osg::Timer::instance()->delta_m(start, end) << "ms to fire terrain callbacks" << std::endl;
+                    //OE_DEBUG << "Took " << osg::Timer::instance()->delta_m(start, end) << "ms to fire terrain callbacks" << std::endl;
                 }
 
                 return ReadResult( node.get(), ReadResult::FILE_LOADED );

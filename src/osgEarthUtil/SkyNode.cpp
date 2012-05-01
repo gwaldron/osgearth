@@ -24,6 +24,7 @@
 #include <osgEarth/MapNode>
 #include <osgEarth/Utils>
 #include <osgEarth/Registry>
+#include <osgEarth/Capabilities>
 
 #include <osg/MatrixTransform>
 #include <osg/ShapeDrawable>

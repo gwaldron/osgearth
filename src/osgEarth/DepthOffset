@@ -21,7 +21,6 @@
 #define OSGEARTH_DEPTH_ADJUSTMENT_H 1
 
 #include <osgEarth/Common>
-#include <osg/BoundingSphere>
 #include <osg/Group>
 #include <osg/Program>
 #include <osg/Uniform>

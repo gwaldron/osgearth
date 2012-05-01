@@ -21,6 +21,7 @@
 #include <osgEarth/Registry>
 #include <osgEarth/TextureCompositor>
 #include <osgEarth/ShaderComposition>
+#include <osgEarth/Capabilities>
 #include <osg/Texture2D>
 #include <osg/TexEnv>
 #include <osg/BlendFunc>

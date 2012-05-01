@@ -18,6 +18,7 @@
  */
 #include <osgEarth/ShaderUtils>
 #include <osgEarth/Registry>
+#include <osgEarth/Capabilities>
 #include <osgUtil/CullVisitor>
 #include <list>
 
@@ -60,9 +61,9 @@ namespace
 
 UpdateLightingUniformsHelper::UpdateLightingUniformsHelper( bool useUpdateTrav ) :
 _lightingEnabled( true ),
-_dirty( true ),
-_applied( false ),
-_useUpdateTrav( useUpdateTrav )
+_dirty          ( true ),
+_applied        ( false ),
+_useUpdateTrav  ( useUpdateTrav )
 {
     _maxLights = Registry::instance()->getCapabilities().getMaxLights();
 

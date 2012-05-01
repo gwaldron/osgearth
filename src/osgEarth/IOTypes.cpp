@@ -39,6 +39,13 @@ osg::Object()
 
 //------------------------------------------------------------------------
 
+URIReadCallback::URIReadCallback()
+{
+    //nop
+}
+
+//------------------------------------------------------------------------
+
 /**
  * Registerd "StringObject" with OSG's serialization framework. Basically
  * that means that StringObject instances can be read/written to an .osgb

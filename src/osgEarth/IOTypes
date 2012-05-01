@@ -172,7 +172,7 @@ namespace osgEarth
      * If the corresponding callback method returns NOT_IMPLEMENTED, URI will
      * fall back on its default mechanism.
      */
-    class URIReadCallback : public osg::Referenced
+    class OSGEARTH_EXPORT URIReadCallback : public osg::Referenced
     {
     public:
         enum CachingSupport
@@ -217,7 +217,7 @@ namespace osgEarth
 
     protected:
 
-        URIReadCallback() { }
+        URIReadCallback();
 
         /** dtor */
         virtual ~URIReadCallback() { }

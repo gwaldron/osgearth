@@ -22,6 +22,7 @@
 #include <osgEarth/LineFunctor>
 #include <osgEarth/Registry>
 #include <osgEarth/NodeUtils>
+#include <osgEarth/Capabilities>
 
 #include <osg/Geode>
 #include <osg/Geometry>

@@ -22,6 +22,7 @@
 #include <osgEarthAnnotation/AnnotationEditing>
 #include <osgEarth/ECEF>
 #include <osgEarth/Registry>
+#include <osgEarth/Capabilities>
 #include <osgViewer/View>
 #include <osg/Depth>
 

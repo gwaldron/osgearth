@@ -23,6 +23,7 @@
 #include <osg/ApplicationUsage>
 #include <osgEarth/Version>
 #include <osgEarth/Registry>
+#include <osgEarth/Capabilities>
 
 using namespace std;
 

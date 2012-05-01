@@ -72,7 +72,11 @@ namespace osgEarth { namespace Features
         /**
          * The ratio of visibility range to feature tile radius. Default is 15.
          * Increase this to produce more, smaller tiles at a given visibility
-         * range; decrease this to procide fewer, larger tiles.
+         * range; decrease this to produce fewer, larger tiles.
+         *
+         * For example, for factor=15, at a visibility range of (say) 120,000m
+         * the system will attempt to create tiles that are approximately
+         * 8,000m in radius. (120,000 / 15 = 8,000).
          */
         optional<float>& tileSizeFactor() { return _tileSizeFactor; }
         const optional<float>& tileSizeFactor() const { return _tileSizeFactor; }

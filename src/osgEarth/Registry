@@ -22,13 +22,10 @@
 
 #include <osgEarth/Common>
 #include <osgEarth/CachePolicy>
-#include <osgEarth/Capabilities>
-#include <osgEarth/Profile>
-#include <osgEarth/TaskService>
-#include <osgEarth/IOTypes>
 #include <osgEarth/Units>
 #include <OpenThreads/ReentrantMutex>
 #include <OpenThreads/ScopedLock>
+#include <osgEarth/ThreadingUtils>
 #include <osg/Referenced>
 #include <osgDB/ReaderWriter>
 #include <osgText/Font>
@@ -40,7 +37,11 @@
 namespace osgEarth
 {    
     class Cache;
+    class Capabilities;
+    class Profile;
     class ShaderFactory;
+    class TaskServiceManager;
+    class URIReadCallback;
 
     /**
      * Application-wide global repository.
@@ -131,12 +132,12 @@ namespace osgEarth
         /**
          * Sets a global read callback for URI objects.
          */
-        void setURIReadCallback( URIReadCallback* callback ) { _uriReadCallback = callback; }
+        void setURIReadCallback( URIReadCallback* callback );
 
         /**
          * Gets the global read callback for URI objects.
          */
-        URIReadCallback* getURIReadCallback() const { return _uriReadCallback.get(); }
+        URIReadCallback* getURIReadCallback() const;
 
         /**
          * Gets the default set of osgDB::Options to use.
@@ -170,8 +171,7 @@ namespace osgEarth
         osg::ref_ptr<const Profile> _spherical_mercator_profile;
         osg::ref_ptr<const Profile> _cube_profile;
 
-        Threading::ReadWriteMutex _regMutex;
-        //OpenThreads::Mutex _regMutex;        
+        Threading::ReadWriteMutex _regMutex;  
         int _numGdalMutexGets;
         
         typedef std::map< std::string, std::string> MimeTypeExtensionMap;
@@ -184,8 +184,6 @@ namespace osgEarth
         typedef std::set<std::string> StringSet;
         StringSet _blacklistedFilenames;
         Threading::ReadWriteMutex _blacklistMutex;
-
-        //osg::ref_ptr<const VerticalSpatialReference> _defaultVSRS;
 
         osg::ref_ptr<ShaderFactory> _shaderLib;
 

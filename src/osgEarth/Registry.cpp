@@ -17,8 +17,11 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 #include <osgEarth/Registry>
+#include <osgEarth/Capabilities>
 #include <osgEarth/Cube>
 #include <osgEarth/ShaderComposition>
+#include <osgEarth/TaskService>
+#include <osgEarth/IOTypes>
 #include <osgEarthDrivers/cache_filesystem/FileSystemCache>
 #include <osg/Notify>
 #include <osg/Version>
@@ -374,6 +377,18 @@ Registry::setShaderFactory( ShaderFactory* lib )
 {
     if ( lib != 0L && lib != _shaderLib.get() )
         _shaderLib = lib;
+}
+        
+void
+Registry::setURIReadCallback( URIReadCallback* callback ) 
+{ 
+    _uriReadCallback = callback;
+}
+
+URIReadCallback*
+Registry::getURIReadCallback() const
+{
+    return _uriReadCallback.get(); 
 }
 
 void

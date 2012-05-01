@@ -85,6 +85,11 @@ osgEarth Sample - Annotations
                 </style>
             </local_geometry>
             
+            <model>
+                <url>../data/red_flag.osg.18000.scale</url>
+                <position lat="33" long="-117.75" hat="0"/>
+            </model>
+            
         </annotations>
         
     </external>

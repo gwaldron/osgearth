@@ -14,9 +14,5 @@ The heightfield is draped with the NASA Blue Marble imagery.
   <heightfield name="pelican srtm" driver="tms">
     <url>http://demo.pelicanmapping.com/rmweb/data/srtm30_plus_tms/tms.xml</url>
   </heightfield>
-  
-  <options>
-    <cache_policy usage="cache_only"/>
-  </options>
-  
+
 </map>

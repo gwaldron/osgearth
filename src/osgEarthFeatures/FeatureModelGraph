@@ -34,11 +34,10 @@ namespace osgEarth { namespace Features
     using namespace osgEarth::Symbology;
 
     /**
-     * A graph that gets its contents from a FeatureNodeFactory. This class will
-     * handle all the internals of selecting features, gridding feature data if
-     * required, and sorting features based on style. Then for each cell and each
-     * style, it will invoke the FeatureNodeFactory to create the actual data for
-     * each set.
+     * A scene graph that renders feature data.
+     * This class will handle all the internals of selecting features, gridding feature
+     * data if required, and sorting features based on style. Then for each cell and each
+     * style, it will invoke the FeatureNodeFactory to create the actual data for each set.
      */
     class OSGEARTHFEATURES_EXPORT FeatureModelGraph : public osg::Group
     {
@@ -63,16 +62,28 @@ namespace osgEarth { namespace Features
          */
         osg::Node* load( unsigned lod, unsigned tileX, unsigned tileY, const std::string& uri );
 
+        /**
+         * Style sheet associated with this feature graph.
+         */
         StyleSheet* getStyles() { return _session->styles(); }
 
+        /**
+         * Sets the style sheet to use to render features 
+         */
         void setStyles( StyleSheet* styles );
 
+        /**
+         * Mark the feature graph dirty and in need of regeneration 
+         */
         void dirty();
 
+
+    public: // osg::Node
 
         virtual void traverse(osg::NodeVisitor& nv);
 
     protected:
+
         virtual ~FeatureModelGraph();
 
         void setupPaging();
@@ -95,7 +106,6 @@ namespace osgEarth { namespace Features
 
     private:
         FeatureModelSourceOptions        _options;
-        //osg::ref_ptr<FeatureSource>      _source;
         osg::ref_ptr<FeatureNodeFactory> _factory;
         osg::ref_ptr<Session>            _session;
         UID                              _uid;

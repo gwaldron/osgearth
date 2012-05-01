@@ -29,6 +29,10 @@ namespace osgEarth { namespace Drivers
     using namespace osgEarth;
     using namespace osgEarth::Symbology;
 
+    /**
+     * Options for the KML loader. You can pass an instance of this class
+     * to KML::load()
+     */
     class KMLOptions // NO EXPORT; header only
     {
     public:

@@ -46,6 +46,9 @@ namespace osgEarth { namespace Drivers
         optional<std::string>& outputFormat() { return _outputFormat; }
         const optional<std::string>& outputFormat() const { return _outputFormat; }
 
+        optional<bool>& disableTiling() { return _disableTiling; }
+        const optional<bool>& disableTiling() const { return _disableTiling;}
+
 
 
     public:
@@ -64,6 +67,7 @@ namespace osgEarth { namespace Drivers
             conf.updateIfSet( "typename", _typename );
             conf.updateIfSet( "outputformat", _outputFormat);
             conf.updateIfSet( "maxfeatures", _maxFeatures );
+            conf.updateIfSet( "disable_tiling", _disableTiling );
             return conf;
         }
 
@@ -80,6 +84,7 @@ namespace osgEarth { namespace Drivers
             conf.getIfSet( "typename", _typename);
             conf.getIfSet( "outputformat", _outputFormat );
             conf.getIfSet( "maxfeatures", _maxFeatures );
+            conf.getIfSet( "disable_tiling", _disableTiling);
         }
 
         optional<URI>         _url;        
@@ -87,6 +92,7 @@ namespace osgEarth { namespace Drivers
         optional<Config>      _geometryProfileConf;
         optional<std::string> _outputFormat;
         optional<unsigned>    _maxFeatures;            
+        optional<bool>    _disableTiling;            
     };
 
 } } // namespace osgEarth::Drivers

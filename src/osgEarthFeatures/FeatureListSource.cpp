@@ -23,7 +23,6 @@ using namespace osgEarth::Features;
 FeatureListSource::FeatureListSource():
 FeatureSource()
 {
-    _profile = new FeatureProfile(GeoExtent(osgEarth::SpatialReference::create("epsg:4326"), -180, -90, 180, 90));
 }
 
 FeatureCursor*
@@ -43,12 +42,31 @@ FeatureListSource::createFeatureCursor( const Symbology::Query& query )
 const FeatureProfile*
 FeatureListSource::createFeatureProfile()
 {    
-    return _profile.get();
+    //Return a default profile if we have no features
+    if (_features.empty())
+        return new FeatureProfile(GeoExtent(osgEarth::SpatialReference::create("epsg:4326"), -180, -90, 180, 90));
+
+    //Get the SRS of the first feature
+    const SpatialReference* srs = _features.front()->getSRS();
+
+    osgEarth::Bounds bounds;
+    //Compute the extent of the features
+    for (FeatureList::iterator itr = _features.begin(); itr != _features.end(); ++itr)
+    {
+        Feature* feature = itr->get();
+        if (feature->getGeometry())
+        {
+            bounds.expandBy( feature->getGeometry()->getBounds() );
+        }        
+    }
+
+    return new FeatureProfile( GeoExtent( srs, bounds ) );
 }
 
 bool
 FeatureListSource::deleteFeature(FeatureID fid)
 {
+    dirtyFeatureProfile();
     for (FeatureList::iterator itr = _features.begin(); itr != _features.end(); ++itr) 
     {
         if (itr->get()->getFID() == fid)
@@ -76,6 +94,7 @@ FeatureListSource::getFeature( FeatureID fid )
 
 bool FeatureListSource::insertFeature(Feature* feature)
 {
+    dirtyFeatureProfile();
     _features.push_back( feature );
     dirty();
     return true;

@@ -245,6 +245,9 @@ namespace osgEarth { namespace Features
         /** The Cache passed in via the dbOptions */
         Cache* getCache() const { return _cache.get(); }    
 
+        /** Dirties the feature profile */
+        void dirtyFeatureProfile() { _featureProfile = 0;}
+
     private:
         const FeatureSourceOptions         _options;
         osg::ref_ptr<const FeatureProfile> _featureProfile;

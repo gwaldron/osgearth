@@ -147,11 +147,15 @@ OrthoNode::init()
     _switch = new osg::Switch();
 
     // install it, but deactivate it until we can get it to work.
+#if 0
     OrthoOQNode* oq = new OrthoOQNode("");
     oq->setQueriesEnabled(false);
+#else
+    _oq = new osg::Group();
+#endif
 
-    oq->addChild( _switch );
-    this->addChild( oq );
+    _oq->addChild( _switch );
+    this->addChild( _oq );
 
     _autoxform = new AnnotationUtils::OrthoNodeAutoTransform();
     _autoxform->setAutoRotateMode( osg::AutoTransform::ROTATE_TO_SCREEN );
@@ -162,8 +166,8 @@ OrthoNode::init()
     _matxform = new osg::MatrixTransform();
     _switch->addChild( _matxform );
 
-    oq->_xform = _matxform;
-    _oq = oq;
+    //oq->_xform = _matxform;
+    //_oq = oq;
 
     _switch->setSingleChildOn( 0 );
 

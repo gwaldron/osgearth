@@ -43,8 +43,7 @@ namespace
         OrthoOQNode( const std::string& name ) 
         {
             setName( name );
-            setVisibilityThreshold(0);
-            setQueryFrameCount(0);
+            setVisibilityThreshold(1);
             setDebugDisplay(true);
             setCullingActive(false);
         }
@@ -61,26 +60,8 @@ namespace
                 //   away constness to compute the bounding box and modify the query geometry.
                 OrthoOQNode* nonConstThis = const_cast<OrthoOQNode*>( this );
 
-#if 1
                 osg::ref_ptr<osg::Vec3Array> v = new osg::Vec3Array(1);
                 (*v)[0].set( _xform->getMatrix().getTrans() );
-
-#else
-                osg::BoundingSphere bs(_xform->getMatrix().getTrans(), 0.5);
-                osg::BoundingBox bb;
-                bb.expandBy(bs);
-
-                osg::ref_ptr<osg::Vec3Array> v = new osg::Vec3Array;
-                v->resize( 8 );
-                (*v)[0] = osg::Vec3( bb._min.x(), bb._min.y(), bb._min.z() );
-                (*v)[1] = osg::Vec3( bb._max.x(), bb._min.y(), bb._min.z() );
-                (*v)[2] = osg::Vec3( bb._max.x(), bb._min.y(), bb._max.z() );
-                (*v)[3] = osg::Vec3( bb._min.x(), bb._min.y(), bb._max.z() );
-                (*v)[4] = osg::Vec3( bb._max.x(), bb._max.y(), bb._min.z() );
-                (*v)[5] = osg::Vec3( bb._min.x(), bb._max.y(), bb._min.z() );
-                (*v)[6] = osg::Vec3( bb._min.x(), bb._max.y(), bb._max.z() );
-                (*v)[7] = osg::Vec3( bb._max.x(), bb._max.y(), bb._max.z() );
-#endif
 
                 osg::Geometry* geom = static_cast< osg::Geometry* >( nonConstThis->_queryGeode->getDrawable( 0 ) );
                 geom->setVertexArray( v.get() );
@@ -165,8 +146,9 @@ OrthoNode::init()
 {
     _switch = new osg::Switch();
 
+    // install it, but deactivate it until we can get it to work.
     OrthoOQNode* oq = new OrthoOQNode("");
-    oq->setQueriesEnabled(true);
+    oq->setQueriesEnabled(false);
 
     oq->addChild( _switch );
     this->addChild( oq );

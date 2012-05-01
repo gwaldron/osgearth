@@ -1,5 +1,5 @@
 osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-Copyright 2008-2010 Pelican Mapping
+Copyright 2008-2012 Pelican Mapping
 
 http://osgearth.org
 git://github.com/gwaldron/osgearth

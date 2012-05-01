@@ -104,7 +104,7 @@ namespace osgEarth { namespace Annotation
 
     private:
         CircleNode() { }
-        CircleNode(const CircleNode& rhs, const osg::CopyOp& op) { }
+        CircleNode(const CircleNode& /*rhs*/, const osg::CopyOp& /*op*/) { }
 
         void rebuild();
 

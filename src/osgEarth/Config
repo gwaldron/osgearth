@@ -488,7 +488,7 @@ namespace osgEarth
         bool empty() const { return _conf.empty(); }
 
     protected:
-        virtual void mergeConfig( const Config& conf ) { }
+        virtual void mergeConfig( const Config& /*conf*/ ) { }
 
         Config _conf;
     };

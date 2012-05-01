@@ -38,7 +38,7 @@ namespace osgEarth
         struct PositionChangedCallback : public osg::Referenced
         {
         public:
-            virtual void onPositionChanged(const Dragger* sender, const osgEarth::GeoPoint& position) {};
+            virtual void onPositionChanged(const Dragger* /*sender*/, const osgEarth::GeoPoint& /*position*/) {};
             virtual ~PositionChangedCallback() { }
         };
 

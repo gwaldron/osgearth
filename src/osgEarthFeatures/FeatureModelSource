@@ -150,8 +150,8 @@ namespace osgEarth { namespace Features
          * a custom implementation.
          */
         virtual osg::Group* getOrCreateStyleGroup(
-            const Style& style,
-            Session*     session ) { return new osg::Group(); }
+            const Style& /*style*/,
+            Session*     /*session*/ ) { return new osg::Group(); }
     };
 
     class OSGEARTHFEATURES_EXPORT GeomFeatureNodeFactory : public FeatureNodeFactory

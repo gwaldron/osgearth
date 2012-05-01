@@ -126,27 +126,27 @@ namespace osgEarth { namespace Features
          * @return true if the rendering succeeded, false if the out_image did not change.
          */
         virtual bool renderFeaturesForStyle(
-            const Style&       style,
-            const FeatureList& features,
-            osg::Referenced*   buildData,
-            const GeoExtent&   imageExtent,
-            osg::Image*        out_image ) { return false; }            
+            const Style&       /*style*/,
+            const FeatureList& /*features*/,
+            osg::Referenced*   /*buildData*/,
+            const GeoExtent&   /*imageExtent*/,
+            osg::Image*        /*out_image*/ ) { return false; }            
             
         /**
          * Optional implementation hook to pre-process an image tile before any calls to 
          * renderFeaturesForStyle().
          */
         virtual bool preProcess(
-            osg::Image* image,
-            osg::Referenced* buildData ) { return true; }
+            osg::Image* /*image*/,
+            osg::Referenced* /*buildData*/ ) { return true; }
             
         /**
          * Optional implementation hook to post-process an image tile after all calls to 
          * renderFeaturesForStyle() are complete.
          */
         virtual bool postProcess(
-            osg::Image* image,
-            osg::Referenced* buildData ) { return true; }
+            osg::Image* /*image*/,
+            osg::Referenced* /*buildData*/ ) { return true; }
 
     public:
 

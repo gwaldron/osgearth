@@ -112,7 +112,7 @@ namespace osgEarth { namespace Annotation
 
         // required by META_Node, but this object is not cloneable
         PlaceNode() { }
-        PlaceNode(const PlaceNode& rhs, const osg::CopyOp& op =osg::CopyOp::DEEP_COPY_ALL) { }
+        PlaceNode(const PlaceNode& /*rhs*/, const osg::CopyOp& op =osg::CopyOp::DEEP_COPY_ALL) { op; }
     };
 
 } } // namespace osgEarth::Annotation

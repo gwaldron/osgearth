@@ -24,6 +24,7 @@
 #include <fstream>
 #include <stdio.h>
 
+#include <osgEarth/HTTPClient>
 #include <osgEarth/TileSource>
 #include <osgEarth/ImageToHeightFieldConverter>
 #include <osgEarth/Registry>

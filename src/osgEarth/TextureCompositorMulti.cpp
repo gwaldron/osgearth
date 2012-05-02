@@ -392,6 +392,9 @@ TextureCompositorMultiTexture::updateMasterStateSet(osg::StateSet*       stateSe
 
     else
     {
+        // Forcably disable shaders
+        stateSet->setAttributeAndModes( new osg::Program(), osg::StateAttribute::OFF | osg::StateAttribute::PROTECTED );
+
         // Validate against the maximum number of textures available in FFP mode.
         if ( maxUnits > Registry::instance()->getCapabilities().getMaxFFPTextureUnits() )
         {

@@ -2472,6 +2472,9 @@ ControlCanvas::init( osgViewer::View* view, bool registerCanvas )
     ss->setRenderBinMode( osg::StateSet::USE_RENDERBIN_DETAILS );
     ss->setBinName( OSGEARTH_CONTROLS_BIN );
 
+    // keeps the control bin shaders from "leaking out" into the scene graph :/
+    ss->setAttributeAndModes( new osg::Program(), osg::StateAttribute::OFF | osg::StateAttribute::PROTECTED );
+
     _controlNodeBin = new ControlNodeBin();
     this->addChild( _controlNodeBin->getControlGroup() );
 

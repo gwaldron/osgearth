@@ -411,13 +411,14 @@ MapNodeHelper::load(osg::ArgumentParser& args,
 
     // a root node to hold everything:
     osg::Group* root = new osg::Group();
+    
     root->addChild( mapNode.get() );
-
-    // configures the viewer with some stock goodies
-    configureView( view );
 
     // parses common cmdline arguments.
     parse( mapNode.get(), args, view, root, userControl );
+
+    // configures the viewer with some stock goodies
+    configureView( view );
 
     return root;
 }

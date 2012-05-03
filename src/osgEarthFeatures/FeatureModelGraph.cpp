@@ -189,6 +189,13 @@ _pendingUpdate( false )
     const Profile* mapProfile = session->getMapInfo().getProfile();
     const FeatureProfile* featureProfile = session->getFeatureSource()->getFeatureProfile();
 
+    // Bail out if the feature profile is bad
+    if ( !featureProfile || !featureProfile->getSRS() )
+    {
+        // warn or allow?
+        return;
+    }
+
     // the part of the feature extent that will fit on the map (in map coords):
     _usableMapExtent = mapProfile->clampAndTransformExtent( 
         featureProfile->getExtent(), 

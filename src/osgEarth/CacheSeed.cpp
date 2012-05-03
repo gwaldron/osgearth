@@ -46,12 +46,14 @@ void CacheSeed::seed( Map* map )
     std::vector<TileKey> keys;
     map->getProfile()->getRootKeys(keys);
 
+    GeoExtent extent;
     //Set the default bounds to the entire profile if the user didn't override the bounds
     if (_bounds.xMin() == 0 && _bounds.yMin() == 0 &&
         _bounds.xMax() == 0 && _bounds.yMax() == 0)
     {
         const GeoExtent& mapEx =  map->getProfile()->getExtent();
         _bounds = Bounds( mapEx.xMin(), mapEx.yMin(), mapEx.xMax(), mapEx.yMax() );
+        extent = GeoExtent( map->getProfile()->getSRS(), _bounds );        
     }
 
     bool hasCaches = false;
@@ -144,8 +146,13 @@ void CacheSeed::seed( Map* map )
     osg::Timer_t startTime = osg::Timer::instance()->tick();
     //Estimate the number of tiles
     _total = 0;
+
+    double boundsArea = _bounds.area2d();
+
     for (unsigned int level = _minLevel; level <= _maxLevel; level++)
     {
+        double coverageRatio = 0.0;
+
         TileKey ll = map->getProfile()->createTileKey(_bounds.xMin(), _bounds.yMin(), level);
         TileKey ur = map->getProfile()->createTileKey(_bounds.xMax(), _bounds.yMax(), level);
 
@@ -162,6 +169,24 @@ void CacheSeed::seed( Map* map )
             {
                 if (src->hasDataAtLOD( level ))
                 {
+                    //Compute the percent coverage of this dataset
+                    if (src->getDataExtents().size() > 0)
+                    {
+                        double cov = 0.0;
+                        for (unsigned int i = 0; i < src->getDataExtents().size(); i++)
+                        {
+                            GeoExtent b = src->getDataExtents()[i].transform( extent.getSRS());
+                            GeoExtent intersection = b.intersectionSameSRS( extent );
+                            double coverage = intersection.area() / boundsArea;
+                            cov += coverage; //Assumes the extents aren't overlapping                            
+                        }
+                        if (coverageRatio < cov) coverageRatio = cov;
+                    }
+                    else
+                    {
+                        //We have no way of knowing how much coverage we have
+                        coverageRatio = 1.0;
+                    }
                     hasData = true;
                     break;
                 }
@@ -175,15 +200,41 @@ void CacheSeed::seed( Map* map )
             {
                 if (src->hasDataAtLOD( level ))
                 {
+                    //Compute the percent coverage of this dataset
+                    if (src->getDataExtents().size() > 0)
+                    {
+                        double cov = 0.0;
+                        for (unsigned int i = 0; i < src->getDataExtents().size(); i++)
+                        {
+                            GeoExtent b = src->getDataExtents()[i].transform( extent.getSRS());
+                            GeoExtent intersection = b.intersectionSameSRS( extent );
+                            double coverage = intersection.area() / boundsArea;
+                            cov += coverage; //Assumes the extents aren't overlapping                            
+                        }
+                        if (coverageRatio < cov) coverageRatio = cov;
+                    }
+                    else
+                    {
+                        //We have no way of knowing how much coverage we have
+                        coverageRatio = 1.0;
+                    }
                     hasData = true;
                     break;
                 }
             }
         }
 
+        //Adjust the coverage ratio by a fudge factor to try to keep it from being too small,
+        //tiles are either processed or not and the ratio is exact so will cover tiles partially
+        //and potentially be too small
+        double adjust = 4.0;
+        coverageRatio = osg::clampBetween(coverageRatio * adjust, 0.0, 1.0);
+
+        //OE_NOTICE << level <<  " CoverageRatio = " << coverageRatio << std::endl;
+
         if (hasData)
         {
-            _total += tilesAtLevel;
+            _total += (int)ceil(coverageRatio * (double)tilesAtLevel );
         }
     }
     osg::Timer_t endTime = osg::Timer::instance()->tick();

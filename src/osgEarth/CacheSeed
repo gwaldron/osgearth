@@ -33,10 +33,7 @@ namespace osgEarth
     class OSGEARTH_EXPORT CacheSeed
     {
     public:
-        CacheSeed():
-          _minLevel(0),
-          _maxLevel(12),
-          _bounds(-180, -90, 180, 90) { }
+        CacheSeed();
 
         /** dtor */
         virtual ~CacheSeed() { }
@@ -87,8 +84,14 @@ namespace osgEarth
         void seed( Map* map );
 
     protected:
+
+        void incrementCompleted( unsigned int total ) const;
+
         unsigned int _minLevel;
         unsigned int _maxLevel;
+
+        unsigned int _total;
+        unsigned int _completed;
         Bounds _bounds;
         osg::ref_ptr<ProgressCallback> _progress;
 

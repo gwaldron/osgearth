@@ -835,10 +835,6 @@ public:
             _warpedDS->GetGeoTransform(_geotransform);
         }
 
-        OE_NOTICE << "Geo transform ";
-        for (unsigned int i = 0; i < 6; i++) std::cout << _geotransform[i] << ", ";
-        std::cout << std::endl;
-
         GDALInvGeoTransform(_geotransform, _invtransform);
 
         double minX, minY, maxX, maxY;
@@ -875,7 +871,7 @@ public:
             pixelToGeo(_warpedDS->GetRasterXSize(), 0.0, maxX, maxY);
         }
 
-        OE_NOTICE << LC << "Geo extents: " << minX << ", " << minY << " -> " << maxX << ", " << maxY << std::endl;
+        OE_DEBUG << LC << "Geo extents: " << minX << ", " << minY << " -> " << maxX << ", " << maxY << std::endl;
 
         if ( !profile )
         {
@@ -918,7 +914,7 @@ public:
                 }
             }
 
-            OE_NOTICE << LC << "Max Data Level: " << _maxDataLevel << std::endl;
+            OE_INFO << LC << "Max Data Level: " << _maxDataLevel << std::endl;
         }
 
         osg::ref_ptr< SpatialReference > srs = SpatialReference::create( warpedSRSWKT );
@@ -927,15 +923,6 @@ public:
         GeoExtent profile_extent = _extents.transform( profile->getSRS() );
 
         getDataExtents().push_back( DataExtent(profile_extent, 0, _maxDataLevel) );
-
-        if (srs->isEquivalentTo( profile->getSRS()))
-        {
-            OE_NOTICE << "SRS equivalent" << std::endl;
-        }
-
-        OE_NOTICE << LC << "source srs " << warpedSRSWKT << std::endl;
-        
-        OE_NOTICE << LC << "Data Extents: " << profile_extent.toString() << std::endl;
 
 		//Set the profile
 		setProfile( profile );

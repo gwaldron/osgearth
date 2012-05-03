@@ -751,6 +751,15 @@ public:
             }
         }
 
+        //Get the initial geotransform
+        _srcDS->GetGeoTransform(_geotransform);
+        
+        bool hasGCP = _srcDS->GetGCPCount() > 0 && _srcDS->GetGCPProjection();
+        bool isRotated = _geotransform[2] != 0.0 || _geotransform[4];
+        if (hasGCP) OE_DEBUG << LC << uri.full() << " has GCP georeferencing" << std::endl;
+        if (isRotated) OE_DEBUG << LC << uri.full() << " is rotated " << std::endl;
+        bool requiresReprojection = hasGCP || isRotated;        
+
         const Profile* profile = NULL;
 
         if ( overrideProfile )
@@ -773,9 +782,11 @@ public:
 
         std::string warpedSRSWKT;
 
-        if ( profile && !profile->getSRS()->isEquivalentTo( src_srs.get() ) )
+        if ( requiresReprojection || (profile && !profile->getSRS()->isEquivalentTo( src_srs.get() )) )
         {
-            if ( profile->getSRS()->isGeographic() && (src_srs->isNorthPolar() || src_srs->isSouthPolar()) )
+            std::string destWKT = profile ? profile->getSRS()->getWKT() : src_srs->getWKT();
+
+            if ( profile && profile->getSRS()->isGeographic() && (src_srs->isNorthPolar() || src_srs->isSouthPolar()) )
             {
                 _warpedDS = (GDALDataset*)GDALAutoCreateWarpedVRTforPolarStereographic(
                     _srcDS,
@@ -786,22 +797,20 @@ public:
                     NULL);
             }
             else
-            {
+            {                
                 _warpedDS = (GDALDataset*)GDALAutoCreateWarpedVRT(
                     _srcDS,
                     src_srs->getWKT().c_str(),
-                    profile->getSRS()->getWKT().c_str(),
+                    destWKT.c_str(),
                     GRA_NearestNeighbour,
                     5.0,
-                    NULL);
+                    0);
             }
 
             if ( _warpedDS )
             {
                 warpedSRSWKT = _warpedDS->GetProjectionRef();
             }
-
-            //GDALAutoCreateWarpedVRT(srcDS, src_wkt.c_str(), t_srs.c_str(), GRA_NearestNeighbour, 5.0, NULL);
         }
         else
         {
@@ -826,7 +835,13 @@ public:
             _warpedDS->GetGeoTransform(_geotransform);
         }
 
+        OE_NOTICE << "Geo transform ";
+        for (unsigned int i = 0; i < 6; i++) std::cout << _geotransform[i] << ", ";
+        std::cout << std::endl;
+
         GDALInvGeoTransform(_geotransform, _invtransform);
+
+        double minX, minY, maxX, maxY;
 
 
         //Compute the extents
@@ -840,34 +855,33 @@ public:
             pixelToGeo(_warpedDS->GetRasterXSize(), _warpedDS->GetRasterYSize(), lr_lon, lr_lat);
             pixelToGeo(_warpedDS->GetRasterXSize(), 0.0, ur_lon, ur_lat);
 
-            _extentsMin.x() = osg::minimum( ll_lon, osg::minimum( ul_lon, osg::minimum( ur_lon, lr_lon ) ) );
-            _extentsMax.x() = osg::maximum( ll_lon, osg::maximum( ul_lon, osg::maximum( ur_lon, lr_lon ) ) );
+            minX = osg::minimum( ll_lon, osg::minimum( ul_lon, osg::minimum( ur_lon, lr_lon ) ) );
+            maxX = osg::maximum( ll_lon, osg::maximum( ul_lon, osg::maximum( ur_lon, lr_lon ) ) );
             
             if ( src_srs->isNorthPolar() )
             {
-                _extentsMin.y() = osg::minimum( ll_lat, osg::minimum( ul_lat, osg::minimum( ur_lat, lr_lat ) ) );
-                _extentsMax.y() = 90.0;
+                minY = osg::minimum( ll_lat, osg::minimum( ul_lat, osg::minimum( ur_lat, lr_lat ) ) );
+                maxY = 90.0;
             }
             else
             {
-                _extentsMin.y() = -90.0;
-                _extentsMax.y() = osg::maximum( ll_lat, osg::maximum( ul_lat, osg::maximum( ur_lat, lr_lat ) ) );
+                minY = -90.0;
+                maxY = osg::maximum( ll_lat, osg::maximum( ul_lat, osg::maximum( ur_lat, lr_lat ) ) );
             }
         }
         else
         {
-            pixelToGeo(0.0, _warpedDS->GetRasterYSize(), _extentsMin.x(), _extentsMin.y());
-            pixelToGeo(_warpedDS->GetRasterXSize(), 0.0, _extentsMax.x(), _extentsMax.y());
+            pixelToGeo(0.0, _warpedDS->GetRasterYSize(), minX, minY);
+            pixelToGeo(_warpedDS->GetRasterXSize(), 0.0, maxX, maxY);
         }
 
-        OE_INFO << LC << "Geo extents: " << _extentsMin.x() << ", " << _extentsMin.y() << " => " << _extentsMax.x() << ", " << _extentsMax.y() << std::endl;
+        OE_NOTICE << LC << "Geo extents: " << minX << ", " << minY << " -> " << maxX << ", " << maxY << std::endl;
 
         if ( !profile )
         {
             profile = Profile::create( 
                 warpedSRSWKT,
-                //_warpedDS->GetProjectionRef(),
-                _extentsMin.x(), _extentsMin.y(), _extentsMax.x(), _extentsMax.y() );
+                minX, minY, maxX, maxY);
 
             OE_INFO << LC << "" << uri.full() << " is projected, SRS = " 
                 << warpedSRSWKT << std::endl;
@@ -875,8 +889,8 @@ public:
         }
 
         //Compute the min and max data levels
-        double resolutionX = (_extentsMax.x() - _extentsMin.x()) / (double)_warpedDS->GetRasterXSize();
-        double resolutionY = (_extentsMax.y() - _extentsMin.y()) / (double)_warpedDS->GetRasterYSize();
+        double resolutionX = (maxX - minX) / (double)_warpedDS->GetRasterXSize();
+        double resolutionY = (maxY - minY) / (double)_warpedDS->GetRasterYSize();
 
 		double maxResolution = osg::minimum(resolutionX, resolutionY);
 
@@ -904,18 +918,24 @@ public:
                 }
             }
 
-            OE_INFO << LC << "Max Data Level: " << _maxDataLevel << std::endl;
+            OE_NOTICE << LC << "Max Data Level: " << _maxDataLevel << std::endl;
         }
 
+        osg::ref_ptr< SpatialReference > srs = SpatialReference::create( warpedSRSWKT );
         // record the data extent in profile space:
-        GeoExtent local_extent(
-            SpatialReference::create( warpedSRSWKT ), //_warpedDS->GetProjectionRef() ),
-            _extentsMin.x(), _extentsMin.y(), _extentsMax.x(), _extentsMax.y() );
-        GeoExtent profile_extent = local_extent.transform( profile->getSRS() );
+        _extents = GeoExtent( srs, minX, minY, maxX, maxY);
+        GeoExtent profile_extent = _extents.transform( profile->getSRS() );
 
         getDataExtents().push_back( DataExtent(profile_extent, 0, _maxDataLevel) );
+
+        if (srs->isEquivalentTo( profile->getSRS()))
+        {
+            OE_NOTICE << "SRS equivalent" << std::endl;
+        }
+
+        OE_NOTICE << LC << "source srs " << warpedSRSWKT << std::endl;
         
-        OE_INFO << LC << "Data Extents: " << profile_extent.toString() << std::endl;
+        OE_NOTICE << LC << "Data Extents: " << profile_extent.toString() << std::endl;
 
 		//Set the profile
 		setProfile( profile );
@@ -1289,6 +1309,10 @@ public:
                 return NULL;
             }
         }
+        else
+        {
+            OE_NOTICE << LC << key.str() << " does not intersect " << _options.url()->full() << std::endl;
+        }
 
         // Moved this logic up into ImageLayer::createImageWrapper.
         ////Create a transparent image if we don't have an image
@@ -1509,11 +1533,7 @@ public:
 
     bool intersects(const TileKey& key)
     {
-        //Get the native extents of the tile
-        double xmin, ymin, xmax, ymax;
-        key.getExtent().getBounds(xmin, ymin, xmax, ymax);
-
-        return ! ( xmin >= _extentsMax.x() || xmax <= _extentsMin.x() || ymin >= _extentsMax.y() || ymax <= _extentsMin.y() );        
+        return key.getExtent().intersects( _extents );
     }
 
 
@@ -1524,8 +1544,7 @@ private:
     double       _geotransform[6];
     double       _invtransform[6];
 
-    osg::Vec2d _extentsMin;
-    osg::Vec2d _extentsMax;
+    GeoExtent _extents;
 
     const GDALOptions _options;
 

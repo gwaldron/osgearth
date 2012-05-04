@@ -3,6 +3,9 @@ MapQuest - Open Aerial Map
 LOD 1-12 worldwide; 12+ US-only.
 http://developer.mapquest.com/web/products/open/map
 
+NOTE: You are responsible for abiding by the provider's terms of service:
+http://developer.mapquest.com/web/info/terms-of-use
+
 TIP: set your OSG_NUM_HTTP_DATABASE_THREADS to 4 or more!
 -->
 

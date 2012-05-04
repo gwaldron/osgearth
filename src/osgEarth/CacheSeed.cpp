@@ -28,8 +28,7 @@ using namespace OpenThreads;
 
 CacheSeed::CacheSeed():
           _minLevel(0),
-          _maxLevel(12),
-          _bounds(-180, -90, 180, 90),
+          _maxLevel(12),          
           _total(0),
           _completed(0)
           {
@@ -46,14 +45,10 @@ void CacheSeed::seed( Map* map )
     std::vector<TileKey> keys;
     map->getProfile()->getRootKeys(keys);
 
-    GeoExtent extent;
-    //Set the default bounds to the entire profile if the user didn't override the bounds
-    if (_bounds.xMin() == 0 && _bounds.yMin() == 0 &&
-        _bounds.xMax() == 0 && _bounds.yMax() == 0)
+    //Add the map's entire extent if we don't have one specified.
+    if (_extents.empty())
     {
-        const GeoExtent& mapEx =  map->getProfile()->getExtent();
-        _bounds = Bounds( mapEx.xMin(), mapEx.yMin(), mapEx.xMax(), mapEx.yMax() );
-        extent = GeoExtent( map->getProfile()->getSRS(), _bounds );        
+        addExtent( map->getProfile()->getExtent() );
     }
 
     bool hasCaches = false;
@@ -145,102 +140,125 @@ void CacheSeed::seed( Map* map )
 
     osg::Timer_t startTime = osg::Timer::instance()->tick();
     //Estimate the number of tiles
-    _total = 0;
-
-    double boundsArea = _bounds.area2d();
+    _total = 0;    
 
     for (unsigned int level = _minLevel; level <= _maxLevel; level++)
     {
         double coverageRatio = 0.0;
 
-        TileKey ll = map->getProfile()->createTileKey(_bounds.xMin(), _bounds.yMin(), level);
-        TileKey ur = map->getProfile()->createTileKey(_bounds.xMax(), _bounds.yMax(), level);
-
-        int tilesWide = ur.getTileX() - ll.getTileX() + 1;
-        int tilesHigh = ll.getTileY() - ur.getTileY() + 1;
-        int tilesAtLevel = tilesWide * tilesHigh;
-
-        bool hasData = false;
-
-        for (ImageLayerVector::const_iterator itr = mapf.imageLayers().begin(); itr != mapf.imageLayers().end(); itr++)
+        if (_extents.empty())
         {
-            TileSource* src = itr->get()->getTileSource();
-            if (src)
+            unsigned int wide, high;
+            map->getProfile()->getNumTiles( level, wide, high );
+            _total += (wide * high);
+        }
+        else
+        {
+            for (std::vector< GeoExtent >::const_iterator itr = _extents.begin(); itr != _extents.end(); itr++)
             {
-                if (src->hasDataAtLOD( level ))
+                const GeoExtent& extent = *itr;
+                double boundsArea = extent.area();
+
+                TileKey ll = map->getProfile()->createTileKey(extent.xMin(), extent.yMin(), level);
+                TileKey ur = map->getProfile()->createTileKey(extent.xMax(), extent.yMax(), level);
+
+                int tilesWide = ur.getTileX() - ll.getTileX() + 1;
+                int tilesHigh = ll.getTileY() - ur.getTileY() + 1;
+                int tilesAtLevel = tilesWide * tilesHigh;
+                //OE_NOTICE << "Tiles at level " << level << "=" << tilesAtLevel << std::endl;
+
+                bool hasData = false;
+
+                for (ImageLayerVector::const_iterator itr = mapf.imageLayers().begin(); itr != mapf.imageLayers().end(); itr++)
                 {
-                    //Compute the percent coverage of this dataset
-                    if (src->getDataExtents().size() > 0)
+                    TileSource* src = itr->get()->getTileSource();
+                    if (src)
                     {
-                        double cov = 0.0;
-                        for (unsigned int i = 0; i < src->getDataExtents().size(); i++)
+                        if (src->hasDataAtLOD( level ))
                         {
-                            GeoExtent b = src->getDataExtents()[i].transform( extent.getSRS());
-                            GeoExtent intersection = b.intersectionSameSRS( extent );
-                            double coverage = intersection.area() / boundsArea;
-                            cov += coverage; //Assumes the extents aren't overlapping                            
+                            //Compute the percent coverage of this dataset on the current extent
+                            if (src->getDataExtents().size() > 0)
+                            {
+                                double cov = 0.0;
+                                for (unsigned int j = 0; j < src->getDataExtents().size(); j++)
+                                {
+                                    GeoExtent b = src->getDataExtents()[j].transform( extent.getSRS());
+                                    GeoExtent intersection = b.intersectionSameSRS( extent );
+                                    if (intersection.isValid())
+                                    {
+                                        double coverage = intersection.area() / boundsArea;
+                                        cov += coverage; //Assumes the extents aren't overlapping                            
+                                    }
+                                }
+                                if (coverageRatio < cov) coverageRatio = cov;
+                            }
+                            else
+                            {
+                                //We have no way of knowing how much coverage we have
+                                coverageRatio = 1.0;
+                            }
+                            hasData = true;
+                            break;
                         }
-                        if (coverageRatio < cov) coverageRatio = cov;
                     }
-                    else
+                }
+
+                for (ElevationLayerVector::const_iterator itr = mapf.elevationLayers().begin(); itr != mapf.elevationLayers().end(); itr++)
+                {
+                    TileSource* src = itr->get()->getTileSource();
+                    if (src)
                     {
-                        //We have no way of knowing how much coverage we have
-                        coverageRatio = 1.0;
+                        if (src->hasDataAtLOD( level ))
+                        {
+                            //Compute the percent coverage of this dataset on the current extent
+                            if (src->getDataExtents().size() > 0)
+                            {
+                                double cov = 0.0;
+                                for (unsigned int j = 0; j < src->getDataExtents().size(); j++)
+                                {
+                                    GeoExtent b = src->getDataExtents()[j].transform( extent.getSRS());
+                                    GeoExtent intersection = b.intersectionSameSRS( extent );
+                                    if (intersection.isValid())
+                                    {
+                                        double coverage = intersection.area() / boundsArea;
+                                        cov += coverage; //Assumes the extents aren't overlapping                            
+                                    }
+                                }
+                                if (coverageRatio < cov) coverageRatio = cov;
+                            }
+                            else
+                            {
+                                //We have no way of knowing how much coverage we have
+                                coverageRatio = 1.0;
+                            }
+                            hasData = true;
+                            break;
+                        }
                     }
-                    hasData = true;
-                    break;
+                }
+
+                //Adjust the coverage ratio by a fudge factor to try to keep it from being too small,
+                //tiles are either processed or not and the ratio is exact so will cover tiles partially
+                //and potentially be too small
+                double adjust = 4.0;
+                coverageRatio = osg::clampBetween(coverageRatio * adjust, 0.0, 1.0);
+
+                //OE_NOTICE << level <<  " CoverageRatio = " << coverageRatio << std::endl;
+
+                if (hasData)
+                {
+                    _total += (int)ceil(coverageRatio * (double)tilesAtLevel );
                 }
             }
-        }
-
-        for (ElevationLayerVector::const_iterator itr = mapf.elevationLayers().begin(); itr != mapf.elevationLayers().end(); itr++)
-        {
-            TileSource* src = itr->get()->getTileSource();
-            if (src)
-            {
-                if (src->hasDataAtLOD( level ))
-                {
-                    //Compute the percent coverage of this dataset
-                    if (src->getDataExtents().size() > 0)
-                    {
-                        double cov = 0.0;
-                        for (unsigned int i = 0; i < src->getDataExtents().size(); i++)
-                        {
-                            GeoExtent b = src->getDataExtents()[i].transform( extent.getSRS());
-                            GeoExtent intersection = b.intersectionSameSRS( extent );
-                            double coverage = intersection.area() / boundsArea;
-                            cov += coverage; //Assumes the extents aren't overlapping                            
-                        }
-                        if (coverageRatio < cov) coverageRatio = cov;
-                    }
-                    else
-                    {
-                        //We have no way of knowing how much coverage we have
-                        coverageRatio = 1.0;
-                    }
-                    hasData = true;
-                    break;
-                }
-            }
-        }
-
-        //Adjust the coverage ratio by a fudge factor to try to keep it from being too small,
-        //tiles are either processed or not and the ratio is exact so will cover tiles partially
-        //and potentially be too small
-        double adjust = 4.0;
-        coverageRatio = osg::clampBetween(coverageRatio * adjust, 0.0, 1.0);
-
-        //OE_NOTICE << level <<  " CoverageRatio = " << coverageRatio << std::endl;
-
-        if (hasData)
-        {
-            _total += (int)ceil(coverageRatio * (double)tilesAtLevel );
         }
     }
+
+    //Adjust the # of tiles again to be bigger than computed to avoid giving false hope
+    _total *= 2;
     osg::Timer_t endTime = osg::Timer::instance()->tick();
     //OE_NOTICE << "Counted tiles in " << osg::Timer::instance()->delta_s(startTime, endTime) << " s" << std::endl;
 
-    OE_NOTICE << "Total tiles=" << _total << std::endl;
+    OE_INFO << "Processing ~" << _total << " tiles" << std::endl;
 
     for (unsigned int i = 0; i < keys.size(); ++i)
     {
@@ -287,12 +305,28 @@ CacheSeed::processKey(const MapFrame& mapf, const TileKey& key ) const
         TileKey k0 = key.createChildKey(0);
         TileKey k1 = key.createChildKey(1);
         TileKey k2 = key.createChildKey(2);
-        TileKey k3 = key.createChildKey(3);        
+        TileKey k3 = key.createChildKey(3); 
+
+        bool intersectsKey = false;
+        if (_extents.empty()) intersectsKey = true;
+        else
+        {
+            for (unsigned int i = 0; i < _extents.size(); ++i)
+            {
+                if (_extents[i].intersects( k0.getExtent() ) ||
+                    _extents[i].intersects( k1.getExtent() ) ||
+                    _extents[i].intersects( k2.getExtent() ) ||
+                    _extents[i].intersects( k3.getExtent() ))
+                {
+                    intersectsKey = true;
+                }
+
+            }
+        }
 
         //Check to see if the bounds intersects ANY of the tile's children.  If it does, then process all of the children
         //for this level
-        if (_bounds.intersects( k0.getExtent().bounds() ) || _bounds.intersects(k1.getExtent().bounds()) ||
-            _bounds.intersects( k2.getExtent().bounds() ) || _bounds.intersects(k3.getExtent().bounds()) )
+        if (intersectsKey)
         {
             processKey(mapf, k0);
             processKey(mapf, k1);
@@ -327,4 +361,10 @@ CacheSeed::cacheTile(const MapFrame& mapf, const TileKey& key ) const
     }
 
     return gotData;
+}
+
+void
+CacheSeed::addExtent( const GeoExtent& value)
+{
+    _extents.push_back( value );
 }

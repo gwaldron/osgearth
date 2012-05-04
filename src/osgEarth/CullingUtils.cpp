@@ -23,6 +23,8 @@
 #include <osg/Geode>
 #include <osg/TemplatePrimitiveFunctor>
 #include <osgUtil/CullVisitor>
+#include <osgUtil/IntersectionVisitor>
+#include <osgUtil/LineSegmentIntersector>
 
 using namespace osgEarth;
 
@@ -495,5 +497,82 @@ CullNodeByNormal::operator()(osg::Node* node, osg::NodeVisitor* nv)
     if ( dotProduct > 0.0 )
     {
         traverse(node, nv);
+    }
+}
+
+
+//------------------------------------------------------------------------
+OcclusionCullingCallback::OcclusionCullingCallback(const osg::Vec3d& world, osg::Node* node):
+_world(world),
+_node( node ),
+_visible( true ),
+_maxRange(200000),
+_maxRange2(_maxRange * _maxRange)
+{
+}
+
+const osg::Vec3d& OcclusionCullingCallback::getWorld() const
+{
+    return _world;
+}
+
+void OcclusionCullingCallback::setWorld( const osg::Vec3d& world)
+{
+    _world = world;
+}
+
+double OcclusionCullingCallback::getMaxRange() const
+{
+    return _maxRange;
+}
+
+void OcclusionCullingCallback::setMaxRange( double maxRange)
+{
+    _maxRange = maxRange;
+    _maxRange2 = maxRange * maxRange;
+}
+
+void OcclusionCullingCallback::operator()(osg::Node* node, osg::NodeVisitor* nv)
+{
+    if (nv->getVisitorType() == osg::NodeVisitor::CULL_VISITOR)
+    {
+        osg::Vec3d eye, center, up;
+        osgUtil::CullVisitor* cv = static_cast<osgUtil::CullVisitor*>( nv );
+
+        cv->getCurrentCamera()->getViewMatrixAsLookAt(eye,center,up);
+
+        if (_prevEye != eye || _prevWorld != _world)
+        {
+            double range = (eye-_world).length2();
+            //Only do the intersection if we are close enough for it to matter
+            if (range <= _maxRange2 && _node.valid())
+            {
+                //Compute the intersection from the eye to the world point
+                osg::Vec3d start = eye;
+                osg::Vec3d end = _world;
+                osgUtil::LineSegmentIntersector* i = new osgUtil::LineSegmentIntersector( start, end );
+                osgUtil::IntersectionVisitor iv;            
+                iv.setIntersector( i );
+                _node->accept( iv );
+                osgUtil::LineSegmentIntersector::Intersections& results = i->getIntersections();
+                _visible = results.empty();
+            }
+            else
+            {
+                _visible = true;
+            }
+
+            _prevEye = eye;
+            _prevWorld = _world;
+        }
+
+        if (_visible)
+        {
+            traverse(node, nv );
+        }
+    }
+    else
+    {
+        traverse( node, nv );
     }
 }

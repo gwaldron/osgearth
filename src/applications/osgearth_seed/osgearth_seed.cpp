@@ -76,7 +76,7 @@ usage( const std::string& msg )
         << "    --seed file.earth                   ; Seeds the cache in a .earth file"  << std::endl
         << "        [--min-level level]             ; Lowest LOD level to seed (default=0)" << std::endl
         << "        [--max-level level]             ; Highest LOD level to seed (defaut=highest available)" << std::endl
-        << "        [--bounds xmin ymin xmax ymax]  ; Geospatial bounding box to seed" << std::endl
+        << "        [--bounds xmin ymin xmax ymax]* ; Geospatial bounding box to seed (in map coordinates; default=entire map)" << std::endl
         << "        [--cache-path path]             ; Overrides the cache path in the .earth file" << std::endl
         << "        [--cache-type type]             ; Overrides the cache type in the .earth file" << std::endl
         << std::endl
@@ -107,10 +107,16 @@ seed( osg::ArgumentParser& args )
     unsigned int maxLevel = 5;
     while (args.read("--max-level", maxLevel));
     
-    //Read the bounds
-    Bounds bounds(0, 0, 0, 0);
-    while (args.read("--bounds", bounds.xMin(), bounds.yMin(), bounds.xMax(), bounds.yMax()));
-    while (args.read("-b", bounds.xMin(), bounds.yMin(), bounds.xMax(), bounds.yMax()));
+
+    std::vector< Bounds > bounds;
+    // restrict packaging to user-specified bounds.    
+    double xmin=DBL_MAX, ymin=DBL_MAX, xmax=DBL_MIN, ymax=DBL_MIN;
+    while (args.read("--bounds", xmin, ymin, xmax, ymax ))
+    {        
+        Bounds b;
+        b.xMin() = xmin, b.yMin() = ymin, b.xMax() = xmax, b.yMax() = ymax;
+        bounds.push_back( b );
+    }    
 
     //Read the cache override directory
     std::string cachePath;
@@ -134,7 +140,13 @@ seed( osg::ArgumentParser& args )
     CacheSeed seeder;
     seeder.setMinLevel( minLevel );
     seeder.setMaxLevel( maxLevel );
-    seeder.setBounds( bounds );
+
+    for (unsigned int i = 0; i < bounds.size(); i++)
+    {
+        GeoExtent extent(mapNode->getMapSRS(), bounds[i]);
+        OE_DEBUG << "Adding extent " << extent.toString() << std::endl;
+        seeder.addExtent( extent );
+    }    
     if (verbose)
     {
         seeder.setProgressCallback(new ConsoleProgressCallback);

@@ -153,7 +153,11 @@ AnnotationNode::makeAbsolute( GeoPoint& mapPoint, osg::Node* patch ) const
         _altitude->clamping() == AltitudeSymbol::CLAMP_RELATIVE_TO_TERRAIN) )
     {
         mapPoint.altitudeMode() = ALTMODE_RELATIVE;
-        mapPoint.z() = 0.0;
+        //If we're clamping to the terrain
+        if (_altitude->clamping() == AltitudeSymbol::CLAMP_TO_TERRAIN)
+        {
+            mapPoint.z() = 0.0;
+        }
     }
 
     // if the point's already absolute and we're not clamping it, nop.

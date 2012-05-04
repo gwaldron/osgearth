@@ -107,6 +107,28 @@ namespace osgEarth
         }
     };
 
+    /**
+     * Simple occlusion culling callback that does a ray interseciton between the eyepoint
+     * and a world point and doesn't draw if there are intersections with the node.
+     */
+    struct OSGEARTH_EXPORT OcclusionCullingCallback : public osg::NodeCallback {
+        OcclusionCullingCallback( const osg::Vec3d& world, osg::Node* node);
+
+        const osg::Vec3d& getWorld() const;
+        void setWorld( const osg::Vec3d& world);
+        double getMaxRange() const;
+        void setMaxRange( double maxRange);
+        void operator()(osg::Node* node, osg::NodeVisitor* nv);
+
+        osg::ref_ptr< osg::Node > _node;
+        osg::Vec3d _world;
+        osg::Vec3d _prevWorld;
+        osg::Vec3d _prevEye;
+        bool _visible;
+        double _maxRange;
+        double _maxRange2;
+    };
+
 
 }
 

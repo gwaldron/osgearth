@@ -77,6 +77,7 @@ void Dragger::setPosition( const GeoPoint& position, bool fireEvents)
 void Dragger::updateTransform()
 {
     osg::Matrixd matrix;
+    _position.makeAbsolute( _mapNode->getTerrain() );
     _position.createLocalToWorld( matrix );
     setMatrix( matrix );
 }

@@ -113,6 +113,9 @@ namespace osgEarth { namespace Symbology
         /** dtor */
         virtual ~StringExpression() { }
 
+        /** Set the infix expr. */
+        void set( const std::string& infix );
+
         /** Access the expression variables. */
         const Variables& variables() const { return _vars; }
 

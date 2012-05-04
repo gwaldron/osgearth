@@ -152,7 +152,7 @@ public:
     {
         LabelNode* labelNode = new LabelNode(
             context.getSession()->getMapInfo().getProfile()->getSRS(),
-            GeoPoint(feature->getSRS(), feature->getGeometry()->getBounds().center()),
+            GeoPoint(feature->getSRS(), feature->getGeometry()->getBounds().center(), ALTMODE_ABSOLUTE),
             value,
             text );
 

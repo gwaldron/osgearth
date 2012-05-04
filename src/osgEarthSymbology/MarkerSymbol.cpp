@@ -17,6 +17,9 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 #include <osgEarthSymbology/MarkerSymbol>
+#include <osgEarth/ThreadingUtils>
+#include <osgEarth/Registry>
+#include <osgDB/Options>
 
 using namespace osgEarth;
 using namespace osgEarth::Symbology;
@@ -67,3 +70,16 @@ MarkerSymbol::mergeConfig( const Config& conf )
     _node = conf.getNonSerializable<osg::Node>( "MarkerSymbol::node" );
 }
 
+osg::Image*
+MarkerSymbol::getImage() const
+{
+    static Threading::Mutex s_mutex;
+    if ( !_image.valid() && _url.isSet() )
+    {
+        Threading::ScopedMutexLock lock(s_mutex);
+        osg::ref_ptr<osgDB::Options> dbOptions = Registry::instance()->cloneOrCreateOptions();
+        dbOptions->setObjectCacheHint( osgDB::Options::CACHE_IMAGES );
+        _image = URI(_url->eval(), _url->uriContext()).getImage( dbOptions.get() );
+    }
+    return _image.get();
+}

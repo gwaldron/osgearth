@@ -126,9 +126,9 @@ _occlusionCulling       ( false )
 OrthoNode::OrthoNode(const SpatialReference* mapSRS,
                      const GeoPoint&         position ) :
 
-_mapSRS        ( mapSRS ),
-_horizonCulling( false ),
-_occlusionCulling       ( false )
+_mapSRS          ( mapSRS ),
+_horizonCulling  ( false ),
+_occlusionCulling( false )
 {
     init();
     if ( _mapSRS.valid() && _mapSRS->isGeographic() && !_mapSRS->isPlateCarre() )
@@ -139,15 +139,15 @@ _occlusionCulling       ( false )
 }
 
 OrthoNode::OrthoNode() :
-_mapSRS        ( 0L ),
-_horizonCulling( false ),
+_mapSRS          ( 0L ),
+_horizonCulling  ( false ),
 _occlusionCulling( false )
 {
     init();
 }
 
 //#define TRY_OQ 1
-#undef TRY_OQ;
+#undef TRY_OQ
 
 void
 OrthoNode::init()

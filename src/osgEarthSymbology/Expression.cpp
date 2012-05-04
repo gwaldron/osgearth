@@ -328,6 +328,14 @@ _uriContext( rhs._uriContext )
     //nop
 }
 
+void
+StringExpression::set( const std::string& expr )
+{
+    _src = expr;
+    _dirty = true;
+    init();
+}
+
 StringExpression::StringExpression( const Config& conf )
 {
     mergeConfig( conf );

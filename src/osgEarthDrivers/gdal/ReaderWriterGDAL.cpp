@@ -703,11 +703,32 @@ public:
             }
         }
         else
-        {
+        {            
             //If we couldn't build a VRT, just try opening the file directly
             //Open the dataset
             _srcDS = (GDALDataset*)GDALOpen( files[0].c_str(), GA_ReadOnly );
-            if ( !_srcDS )
+
+            if (_srcDS)
+            {
+
+                char **subDatasets = _srcDS->GetMetadata( "SUBDATASETS");
+                int numSubDatasets = CSLCount( subDatasets );
+                //OE_NOTICE << "There are " << numSubDatasets << " in this file " << std::endl;
+
+                if (numSubDatasets > 0)
+                {            
+                    int subDataset = _options.subDataSet().isSet() ? *_options.subDataSet() : 1;
+                    if (subDataset < 1 || subDataset > numSubDatasets) subDataset = 1;
+                    std::stringstream buf;
+                    buf << "SUBDATASET_" << subDataset << "_NAME";
+                    char *pszSubdatasetName = CPLStrdup( CSLFetchNameValue( subDatasets, buf.str().c_str() ) );
+                    GDALClose( _srcDS );
+                    _srcDS = (GDALDataset*)GDALOpen( pszSubdatasetName, GA_ReadOnly ) ;
+                    CPLFree( pszSubdatasetName );
+                }
+            }
+
+            if (!_srcDS)
             {
                 OE_WARN << LC << "Failed to open dataset " << files[0] << std::endl;
                 return;

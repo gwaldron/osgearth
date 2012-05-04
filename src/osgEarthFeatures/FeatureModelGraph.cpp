@@ -102,8 +102,8 @@ struct osgEarthFeatureModelPseudoLoader : public osgDB::ReaderWriter
         unsigned lod, x, y;
         sscanf( uri.c_str(), "%u.%d_%d_%d.%*s", &uid, &lod, &x, &y );
 
-        FeatureModelGraph* graph = getGraph(uid);
-        if ( graph )
+        osg::ref_ptr<FeatureModelGraph> graph = getGraph(uid);
+        if ( graph.valid() )
             return ReadResult( graph->load( lod, x, y, uri ) );
         else
             return ReadResult::ERROR_IN_READING_FILE;
@@ -188,6 +188,13 @@ _pendingUpdate( false )
     // Calculate the usable extent (in both feature and map coordinates) and bounds.
     const Profile* mapProfile = session->getMapInfo().getProfile();
     const FeatureProfile* featureProfile = session->getFeatureSource()->getFeatureProfile();
+
+    // Bail out if the feature profile is bad
+    if ( !featureProfile || !featureProfile->getSRS() )
+    {
+        // warn or allow?
+        return;
+    }
 
     // the part of the feature extent that will fit on the map (in map coords):
     _usableMapExtent = mapProfile->clampAndTransformExtent( 

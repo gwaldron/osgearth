@@ -62,22 +62,16 @@ _defaultFont     ( 0L )
     _taskServiceManager = new TaskServiceManager();
 
     // activate KMZ support
-    osgDB::Registry::instance()->addFileExtensionAlias( "kmz", "kml" );
     osgDB::Registry::instance()->addArchiveExtension  ( "kmz" );    
+    osgDB::Registry::instance()->addFileExtensionAlias( "kmz", "kml" );
 
-#if OSG_MIN_VERSION_REQUIRED(3,0,0)
     osgDB::Registry::instance()->addMimeTypeExtensionMapping( "application/vnd.google-earth.kml+xml", "kml" );
     osgDB::Registry::instance()->addMimeTypeExtensionMapping( "application/vnd.google-earth.kmz",     "kmz" );
-    //osgDB::Registry::instance()->addMimeTypeExtensionMapping( "text/xml",                             "xml" );
-    //osgDB::Registry::instance()->addMimeTypeExtensionMapping( "application/json",                     "json" );
-    //osgDB::Registry::instance()->addMimeTypeExtensionMapping( "text/json",                            "json" );
-    //osgDB::Registry::instance()->addMimeTypeExtensionMapping( "text/x-json",                          "json" );
     osgDB::Registry::instance()->addMimeTypeExtensionMapping( "text/plain",                           "osgb" );
     osgDB::Registry::instance()->addMimeTypeExtensionMapping( "text/xml",                             "osgb" );
     osgDB::Registry::instance()->addMimeTypeExtensionMapping( "application/json",                     "osgb" );
     osgDB::Registry::instance()->addMimeTypeExtensionMapping( "text/json",                            "osgb" );
     osgDB::Registry::instance()->addMimeTypeExtensionMapping( "text/x-json",                          "osgb" );
-#endif
     
     // pre-load OSG's ZIP plugin so that we can use it in URIs
     std::string zipLib = osgDB::Registry::instance()->createLibraryNameForExtension( "zip" );

@@ -23,6 +23,7 @@
 #include <osgEarth/URI>
 #include <osgEarth/Registry>
 #include <osgDB/ReaderWriter>
+#include <osgDB/FileNameUtils>
 #include "KMLOptions"
 
 namespace osgEarth { namespace Drivers {
@@ -49,7 +50,13 @@ namespace osgEarth { namespace Drivers {
             options->setPluginData( "osgEarth::MapNode", mapNode );
             options->setPluginData( "osgEarth::KMLOptions", (void*)&kmlOptions );
 
-            return uri.readNode( options.get() ).releaseNode();
+            // for a KMZ archive over HTTP, we need to go through OSG's archive management system
+            if ( osgDB::containsServerAddress(uri.full()) && osgDB::getLowerCaseFileExtension(uri.full()) == "kmz" )
+            {
+                return osgDB::readNodeFile( uri.full() + "/.kml", options.get() );
+            }
+
+            return uri.getNode( options.get(), CachePolicy::NO_CACHE );
         }
     };
 

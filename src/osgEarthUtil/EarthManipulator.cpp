@@ -203,7 +203,8 @@ _arc_viewpoints         ( true ),
 _auto_vp_duration       ( false ),
 _min_vp_duration_s      ( 3.0 ),
 _max_vp_duration_s      ( 8.0 ),
-_camProjType            ( PROJ_PERSPECTIVE )
+_camProjType            ( PROJ_PERSPECTIVE ),
+_orthoFrustOffsets      ( 0, 0 )
 {
     //NOP
 }
@@ -226,7 +227,8 @@ _arc_viewpoints( rhs._arc_viewpoints ),
 _auto_vp_duration( rhs._auto_vp_duration ),
 _min_vp_duration_s( rhs._min_vp_duration_s ),
 _max_vp_duration_s( rhs._max_vp_duration_s ),
-_camProjType( rhs._camProjType )
+_camProjType( rhs._camProjType ),
+_orthoFrustOffsets( rhs._orthoFrustOffsets )
 {
     //NOP
 }
@@ -391,6 +393,12 @@ void
 EarthManipulator::Settings::setCameraProjection(const EarthManipulator::CameraProjection& value)
 {
     _camProjType = value;
+}
+
+void
+EarthManipulator::Settings::setOrthoCameraFrustumOffsets( const osg::Vec2s& value )
+{
+    _orthoFrustOffsets = value;
 }
 
 /************************************************************************/
@@ -1202,7 +1210,19 @@ EarthManipulator::updateCamera( osg::Camera* eventCamera )
             double znear = -f * 5.0;
             double zfar  =  f * (5.0 + 10.0 * sin(pitch+osg::PI_2));
 
-            _viewCamera->setProjectionMatrixAsOrtho(-x, x, -y, y, znear, zfar);
+            // assemble the projection matrix:
+            osg::Matrixd orthoMatrix;
+
+            // apply the offsets:
+            double px = 0.0, py = 0.0;
+            const osg::Vec2s& pixelOffsets = _settings->getOrthoCameraFrustumOffsets();
+            if ( pixelOffsets.x() != 0 || pixelOffsets.y() != 0 )
+            {
+                px = (2.0*x*(double)pixelOffsets.x()) / (double)vp->width();
+                py = (2.0*y*(double)pixelOffsets.y()) / (double)vp->height();
+            }
+
+            _viewCamera->setProjectionMatrixAsOrtho( px-x, px+x, py-y, py+y, znear, zfar );
         }
     }
 }

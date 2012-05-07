@@ -461,6 +461,10 @@ namespace osgEarth { namespace Util
             void setCameraProjection( const CameraProjection& value );
             const CameraProjection& getCameraProjection() const { return _camProjType; }
 
+            /** Frustum offset (in pixels) in orthographic camera mode */
+            void setOrthoCameraFrustumOffsets( const osg::Vec2s& offsets );
+            const osg::Vec2s& getOrthoCameraFrustumOffsets() const { return _orthoFrustOffsets; }
+
         private:
 
             friend class EarthManipulator;
@@ -498,6 +502,7 @@ namespace osgEarth { namespace Util
             double _min_vp_duration_s, _max_vp_duration_s;
 
             CameraProjection _camProjType;
+            osg::Vec2s _orthoFrustOffsets;
         };
 
     public:

@@ -64,6 +64,10 @@ KMLReader::read( const Config& conf )
     cx._options = _options;
     cx._srs = SpatialReference::create( "wgs84", "egm96" );
 
+    KMLOptions blankOptions;
+    if ( cx._options == 0L )
+        cx._options = &blankOptions;
+
     if ( cx._options->iconAndLabelGroup().valid() && cx._options->declutter() == true )
     {
         Decluttering::setEnabled( cx._options->iconAndLabelGroup()->getOrCreateStateSet(), true );

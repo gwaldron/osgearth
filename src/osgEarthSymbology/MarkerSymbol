@@ -95,7 +95,7 @@ namespace osgEarth { namespace Symbology
 
         /** Explicit image to use for 2D icon placemet */
         void setImage( osg::Image* image ) { _image = image; }
-        osg::Image* getImage() const;
+        osg::Image* getImage( unsigned maxSize =INT_MAX ) const;
 
         /** Explicit model to use for model placement */
         void setModel( osg::Node* node ) { _node = node; }

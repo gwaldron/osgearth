@@ -19,7 +19,7 @@
 #include "KML_PolyStyle"
 
 void
-KML_PolyStyle::scan( const Config& conf, Style& style )
+KML_PolyStyle::scan( const Config& conf, Style& style, KMLContext& cx )
 {
     if ( !conf.empty() )
     {

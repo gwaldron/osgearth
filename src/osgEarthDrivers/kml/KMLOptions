@@ -49,6 +49,14 @@ namespace osgEarth { namespace Drivers
         osg::ref_ptr<TextSymbol>& defaultTextSymbol() { return _defaultTextSymbol; }
         const osg::ref_ptr<TextSymbol>& defaultTextSymbol() const { return _defaultTextSymbol; }
 
+        /** Default base scale to apply to marker Icons. */
+        optional<float>& iconBaseScale() { return _iconBaseScale; }
+        const optional<float>& iconBaseScale() const { return _iconBaseScale; }
+
+        /** Maximum size (either dimension) of placemarks icons */
+        optional<unsigned>& iconMaxSize() { return _iconMaxSize; }
+        const optional<unsigned>& iconMaxSize() const { return _iconMaxSize; }
+
         /** Automatically assign KML icons and labels to a decluttering bin */
         optional<bool>& declutter() { return _declutter; }
         const optional<bool>& declutter() const { return _declutter; }
@@ -58,7 +66,7 @@ namespace osgEarth { namespace Drivers
         const osg::ref_ptr<osg::Group> iconAndLabelGroup() const { return _iconAndLabelGroup; }
 
     public:
-        KMLOptions() : _declutter( true ) { }
+        KMLOptions() : _declutter( true ), _iconBaseScale( 1.0f ), _iconMaxSize(32) { }
 
         virtual ~KMLOptions() { }
 
@@ -67,6 +75,8 @@ namespace osgEarth { namespace Drivers
         osg::ref_ptr<osg::Image> _defaultIconImage;
         osg::ref_ptr<TextSymbol> _defaultTextSymbol;
         optional<bool>           _declutter;
+        optional<float>          _iconBaseScale;
+        optional<unsigned>       _iconMaxSize;
         osg::ref_ptr<osg::Group> _iconAndLabelGroup;
     };
 

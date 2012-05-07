@@ -19,7 +19,7 @@
 #include "KML_LineStyle"
 
 void 
-KML_LineStyle::scan( const Config& conf, Style& style )
+KML_LineStyle::scan( const Config& conf, Style& style, KMLContext& cx )
 {
     if ( !conf.empty() )
     {

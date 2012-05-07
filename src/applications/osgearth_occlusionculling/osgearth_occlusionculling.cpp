@@ -71,6 +71,10 @@ main(int argc, char** argv)
 
     bool declutter = false;
     if (arguments.read("--declutter")) declutter = true;
+    
+    // initialize the viewer:    
+    viewer.setCameraManipulator( new EarthManipulator() );
+
 
     // load an earth file and parse demo arguments
     osg::Node* node = MapNodeHelper().load(arguments, &viewer);
@@ -82,7 +86,7 @@ main(int argc, char** argv)
     if ( !mapNode )
         return usage(argv);
 
-    root->addChild( mapNode );
+    root->addChild( node );
    
     // Make a group for 2D items, and activate the decluttering engine. Decluttering
     // will migitate overlap between elements that occupy the same screen real estate.
@@ -127,8 +131,6 @@ main(int argc, char** argv)
         }    
     }
 
-    // initialize the viewer:    
-    viewer.setCameraManipulator( new EarthManipulator() );
     viewer.setSceneData( root );
 
     viewer.getCamera()->addCullCallback( new AutoClipPlaneCullCallback(mapNode) );

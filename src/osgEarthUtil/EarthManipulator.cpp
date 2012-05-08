@@ -1239,8 +1239,8 @@ EarthManipulator::updateCamera( osg::Camera* eventCamera )
             const osg::Vec2s& p = _settings->getCameraFrustumOffsets();
             if ( p.x() != 0 || p.y() != 0 )
             {
-                px = (2.0*x*(double)p.x()) / (double)vp->width();
-                py = (2.0*y*(double)p.y()) / (double)vp->height();
+                px = (2.0*x*(double)-p.x()) / (double)vp->width();
+                py = (2.0*y*(double)-p.y()) / (double)vp->height();
             }
 
             _viewCamera->setProjectionMatrixAsOrtho( px-x, px+x, py-y, py+y, znear, zfar );

@@ -59,7 +59,9 @@ public:
             return 0L;
 
         osg::Group* group = new osg::Group();
-        Decluttering::setEnabled( group->getOrCreateStateSet(), true );
+
+        Decluttering::setEnabled( group->getOrCreateStateSet(), *text->declutter() );
+
         if ( text->priority().isSet() )
         {
             DeclutteringOptions dco = Decluttering::getOptions();

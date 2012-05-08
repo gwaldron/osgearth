@@ -106,6 +106,10 @@ namespace osgEarth { namespace Symbology
         optional<bool>& removeDuplicateLabels() { return _removeDuplicateLabels; }
         const optional<bool>& removeDuplicateLabels() const { return _removeDuplicateLabels; }
 
+        /** Whether to enable decluttering on the text, if applicable */
+        optional<bool>& declutter() { return _declutter; }
+        const optional<bool>& declutter() const { return _declutter; }
+
         /** Label generation provider to use */
         optional<std::string>& provider() { return _provider; }
         const optional<std::string>& provider() const { return _provider; }
@@ -130,6 +134,7 @@ namespace osgEarth { namespace Symbology
         optional<std::string>       _provider;
 		optional<Encoding>          _encoding;
         optional<Alignment>         _alignment;
+        optional<bool>              _declutter;
     };
 
 } } // namespace osgEarth::Symbology

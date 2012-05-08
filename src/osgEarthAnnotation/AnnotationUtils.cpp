@@ -18,6 +18,7 @@
 */
 
 #include <osgEarthAnnotation/AnnotationUtils>
+#include <osgEarthAnnotation/Decluttering>
 #include <osgEarthSymbology/Color>
 #include <osgEarthSymbology/MeshSubdivider>
 #include <osgEarth/ThreadingUtils>
@@ -131,7 +132,14 @@ AnnotationUtils::createTextDrawable(const std::string& text,
     // going to do decluttering at a higher level
     osg::StateSet* stateSet = t->getOrCreateStateSet();
 
-    stateSet->setRenderBinToInherit();
+    if ( symbol && symbol->declutter().isSet() )
+    {
+        Decluttering::setEnabled( stateSet, *symbol->declutter() );
+    }
+    else
+    {
+        stateSet->setRenderBinToInherit();
+    }
 
     // add the static "isText=true" uniform; this is a hint for the annotation shaders
     // if they get installed.

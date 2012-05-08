@@ -60,7 +60,10 @@ public:
 
         osg::Group* group = new osg::Group();
 
-        Decluttering::setEnabled( group->getOrCreateStateSet(), *text->declutter() );
+        if ( text->declutter().isSet() )
+        {
+            Decluttering::setEnabled( group->getOrCreateStateSet(), *text->declutter() );
+        }
 
         if ( text->priority().isSet() )
         {

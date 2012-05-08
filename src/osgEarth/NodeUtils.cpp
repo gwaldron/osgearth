@@ -295,3 +295,49 @@ namespace
 
     };
 }
+
+//----------------------------------------------------------------------------
+
+#undef  LC
+#define LC "[ObserverGroup] "
+
+ObserverGroup::ObserverGroup()
+{
+    ADJUST_EVENT_TRAV_COUNT(this, 1);
+}
+
+void
+ObserverGroup::traverse( osg::NodeVisitor& nv )
+{
+    if ( nv.getVisitorType() == nv.EVENT_VISITOR )
+    {
+        // check for orphans:
+        for(osg::NodeList::iterator itr = _children.begin(); itr != _children.end(); ++itr )
+        {
+            if ( (*itr)->referenceCount() == 1 )
+            {
+                // found one, queue an update traversal so we can safely delete it.
+                // (it's probably safe to just delete it here, but anyway)
+                if ( _orphans.insert(itr->get()).second == true )
+                {
+                    ADJUST_UPDATE_TRAV_COUNT( this, 1 );
+                }
+            }
+        }
+    }
+
+    else if ( nv.getVisitorType() == nv.UPDATE_VISITOR && _orphans.size() > 0 )
+    {
+        // delete orphans:
+        for( std::set<osg::Node*>::iterator i = _orphans.begin(); i != _orphans.end(); ++i )
+        {
+            this->removeChild( *i );
+            ADJUST_UPDATE_TRAV_COUNT( this, -1 );
+        }
+
+        OE_DEBUG << LC << _orphans.size() << " orphaned children removed." << std::endl;
+        _orphans.clear();
+    }
+
+    osg::Group::traverse( nv );
+}

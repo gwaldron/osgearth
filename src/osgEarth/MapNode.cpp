@@ -265,7 +265,7 @@ MapNode::init()
     addChild( _models.get() );
 
     // make a group for overlay model layers:
-    _overlayModels = new osg::Group();
+    _overlayModels = new ObserverGroup(); //osg::Group();
     _overlayModels->setName( "osgEarth::MapNode.overlayModelsGroup" );
 
     // a decorator for overlay models:
@@ -433,19 +433,12 @@ MapNode::onModelLayerAdded( ModelLayer* layer, unsigned int index )
             {
                 if ( layer->getOverlay() )
                 {
-#if 0
-                    _overlayModels->addChild( node );
-                    updateOverlayGraph();
-#else
                     DrapeableNode* draper = new DrapeableNode( this );
                     draper->addChild( node );
-                    _models->insertChild( index, draper );
-#endif
+                    node = draper;
                 }
-                else
-                {
-                    _models->insertChild( index, node );
-                }
+
+                _models->insertChild( index, node );
             }
 
             ModelSource* ms = layer->getModelSource();
@@ -481,15 +474,8 @@ MapNode::onModelLayerRemoved( ModelLayer* layer )
             }
             else
             {
-                if ( layer->getModelLayerOptions().overlay() == true )
-                {
-                    _overlayModels->removeChild( node );
-                    updateOverlayGraph();
-                }
-                else
-                {
-                    _models->removeChild( node );
-                }
+                _models->removeChild( node );
+                updateOverlayGraph();
             }
             
             _modelLayerNodes.erase( i );
@@ -508,16 +494,16 @@ MapNode::onModelLayerMoved( ModelLayer* layer, unsigned int oldIndex, unsigned i
         ModelLayerNodeMap::iterator i = _modelLayerNodes.find( layer );
         if ( i != _modelLayerNodes.end() )
         {
-            osg::Node* node = i->second;
+            osg::ref_ptr<osg::Node> node = i->second;
             
-            if ( dynamic_cast<osgSim::OverlayNode*>( node ) )
+            //if ( dynamic_cast<osgSim::OverlayNode*>( node ) )
+            //{
+            //    // treat overlay node as a special case
+            //}
+            //else
             {
-                // treat overlay node as a special case
-            }
-            else
-            {
-                _models->removeChild( node );
-                _models->insertChild( newIndex, node );
+                _models->removeChild( node.get() );
+                _models->insertChild( newIndex, node.get() );
             }
         }
         
@@ -598,17 +584,33 @@ MapNode::traverse( osg::NodeVisitor& nv )
 void
 MapNode::onModelLayerOverlayChanged( ModelLayer* layer )
 {
-    OE_NOTICE << "Overlay changed to "  << layer->getOverlay() << std::endl;
-    osg::ref_ptr< osg::Group > origParent = layer->getOverlay() ? _models.get() : _overlayModels.get();
-    osg::ref_ptr< osg::Group > newParent  = layer->getOverlay() ? _overlayModels.get() : _models.get();
-
-    osg::ref_ptr< osg::Node > node = layer->getOrCreateNode();
-    if (node.valid())
+    osg::ref_ptr<osg::Node> node = _modelLayerNodes[ layer ];
+    if ( node.get() )
     {
-        //Remove it from the original parent and add it to the new parent
-        origParent->removeChild( node.get() );
-        newParent->addChild( node.get() );
+        DrapeableNode* draper = dynamic_cast<DrapeableNode*>(node.get());
+        if ( !draper && layer->getOverlay() )
+        {
+            draper = new DrapeableNode(this);
+            draper->addChild( node.get() );
+            _models->replaceChild( node.get(), draper );
+        }
+        else
+        {
+            draper->setDraped( layer->getOverlay() );
+        }
     }
+
+    //OE_NOTICE << "Overlay changed to "  << layer->getOverlay() << std::endl;
+    //osg::ref_ptr< osg::Group > origParent = layer->getOverlay() ? _models.get() : _overlayModels.get();
+    //osg::ref_ptr< osg::Group > newParent  = layer->getOverlay() ? _overlayModels.get() : _models.get();
+
+    //osg::ref_ptr< osg::Node > node = layer->getOrCreateNode();
+    //if (node.valid())
+    //{
+    //    //Remove it from the original parent and add it to the new parent
+    //    origParent->removeChild( node.get() );
+    //    newParent->addChild( node.get() );
+    //}
 
     updateOverlayGraph();
 }

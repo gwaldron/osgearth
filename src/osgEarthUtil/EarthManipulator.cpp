@@ -187,7 +187,7 @@ static short s_actionOptionTypes[] = { 1, 1, 0, 0, 1, 1 }; // 0=bool, 1=double
 //------------------------------------------------------------------------
 
 EarthManipulator::Settings::Settings() :
-Revisioned              (),
+Revisioned<osg::Referenced>(),
 _single_axis_rotation   ( false ),
 _lock_azim_while_panning( true ),
 _mouse_sens             ( 1.0 ),
@@ -211,7 +211,7 @@ _camFrustOffsets        ( 0, 0 )
 }
 
 EarthManipulator::Settings::Settings( const EarthManipulator::Settings& rhs ) :
-Revisioned( rhs ),
+Revisioned<osg::Referenced>(),
 _bindings( rhs._bindings ),
 _single_axis_rotation( rhs._single_axis_rotation ),
 _lock_azim_while_panning( rhs._lock_azim_while_panning ),

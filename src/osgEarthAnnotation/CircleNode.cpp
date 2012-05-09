@@ -101,36 +101,27 @@ CircleNode::rebuild()
     clearDecoration();
 
     //Remove all children from this node
-    removeChildren( 0, getNumChildren() );
+    //removeChildren( 0, getNumChildren() );
+    if ( getRoot()->getNumParents() == 0 )
+    {
+        this->addChild( getRoot() );
+    }
 
     //Remove all children from the attach point
-    getAttachPoint()->removeChildren( 0, getAttachPoint()->getNumChildren() );
+    getChildAttachPoint()->removeChildren( 0, getChildAttachPoint()->getNumChildren() );
 
     // construct a local-origin circle.
     GeometryFactory factory;
     Geometry* geom = factory.createCircle(osg::Vec3d(0,0,0), _radius, _numSegments);
     if ( geom )
     {
-        //const SpatialReference* featureSRS = mapNode->getMapSRS()->createTangentPlaneSRS(position);
-
         GeometryCompiler compiler;
         osg::ref_ptr<Feature> feature = new Feature(geom, 0L); //todo: consider the SRS
         osg::Node* node = compiler.compile( feature.get(), _style, FilterContext(0L) );
         if ( node )
         {           
-            getAttachPoint()->addChild( node );
-
-            if ( _draped )
-            {
-                DrapeableNode* drapeable = new DrapeableNode( _mapNode.get(), true );
-                drapeable->addChild( getAttachPoint() );
-                this->addChild( drapeable );
-            }
-
-            else
-            {
-                this->addChild( getAttachPoint() );
-            }
+            getChildAttachPoint()->addChild( node );
+            getDrapeable()->setDraped( _draped );
         }
 
         applyStyle( _style, _draped );

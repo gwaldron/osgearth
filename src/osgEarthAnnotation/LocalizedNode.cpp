@@ -56,6 +56,9 @@ _scale         ( 1.0f, 1.0f, 1.0f )
     {
         setHorizonCulling( true );
     }
+
+    _draper = new DrapeableNode( mapNode, false );
+    _draper->addChild( _xform.get() );
     
     setPosition( position );
 }

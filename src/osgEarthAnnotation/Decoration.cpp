@@ -76,7 +76,7 @@ _injectionGroup( group )
 bool
 InjectionDecoration::apply(AnnotationNode& node, bool enable)
 {
-    bool success = apply( node.getAttachPoint(), enable );
+    bool success = apply( node.getChildAttachPoint(), enable );
     return success ? true : Decoration::apply(node, enable);
 }
 

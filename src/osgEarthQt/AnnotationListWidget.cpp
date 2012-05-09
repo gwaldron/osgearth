@@ -353,10 +353,6 @@ void AnnotationListWidget::onEditSelected()
     {
       this->setEnabled(false);
 
-      _activeAnnotation = annoItem->annotation();
-      _activeRoot = annoItem->annotation()->getParent(0);
-      _manager->removeAnnotation(annoItem->annotation());
-
       connect(_activeDialog, SIGNAL(finished(int)), this, SLOT(onAddFinished(int)));
 
       _activeDialog->setWindowTitle(tr("Edit annotation"));
@@ -372,15 +368,5 @@ void AnnotationListWidget::onAddFinished(int result)
   this->setEnabled(true);
 
   if (result == QDialog::Accepted)
-  {
-    osgEarth::Annotation::AnnotationNode* annotation = _activeDialog->getAnnotation();
-    if (annotation && _activeRoot.valid() && _manager.valid())
-      _manager->addAnnotation(annotation, _activeRoot);
-  }
-  else if (_activeAnnotation.valid() && _activeRoot.valid() && _manager.valid())
-  {
-    _manager->addAnnotation(_activeAnnotation, _activeRoot);
-  }
-
-  _activeAnnotation = 0L;
+    refresh();
 }

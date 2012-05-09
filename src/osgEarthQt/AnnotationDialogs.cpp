@@ -128,7 +128,7 @@ void BaseAnnotationDialog::updateButtonColorStyle(QPushButton* button, const QCo
 //---------------------------------------------------------------------------
 
 AddMarkerDialog::AddMarkerDialog(osg::Group* root, osgEarth::MapNode* mapNode, const ViewVector& views, osgEarth::Annotation::PlaceNode* marker, QWidget* parent, Qt::WindowFlags f)
-: BaseAnnotationDialog(mapNode, views, parent, f), _root(root), _altName("")
+: BaseAnnotationDialog(mapNode, views, parent, f), _root(root), _altName(""), _editing(marker ? true : false), _inPosition(marker ? marker->getPosition() : osgEarth::GeoPoint()), _inNameSet(false)
 {
   initialize();
 
@@ -137,18 +137,20 @@ AddMarkerDialog::AddMarkerDialog(osg::Group* root, osgEarth::MapNode* mapNode, c
     osgEarth::Annotation::AnnotationData* data = marker->getAnnotationData();
     
     //Get marker text/name
-    _nameEdit->setText(marker->getText().length() > 0 ? tr(marker->getText().c_str()) : (data ? tr(data->getName().c_str()) : tr("")));
+    _inName = marker->getText().length() > 0 ? marker->getText() : (data ? data->getName() : "");
+    _nameEdit->setText(tr(_inName.c_str()));
     if (marker->getText().length() > 0 && data && data->getName().length() > 0 && marker->getText() != data->getName())
       _altName = data->getName();
 
     //Get marker description
-    _descriptionEdit->setText(data ? tr(data->getDescription().c_str()) : tr(""));
+    _inDescription = data ? data->getDescription() : "";
+    _descriptionEdit->setText(tr(_inDescription.c_str()));
 
     //Set marker checkbox
-    _nameCheckbox->setChecked(marker->getText().length() > 0);
+    _inNameSet = marker->getText().length() > 0;
+    _nameCheckbox->setChecked(_inNameSet);
 
-    //Simulate map click to create placemark
-    mapMouseClick(marker->getPosition(), osgGA::GUIEventAdapter::LEFT_MOUSE_BUTTON);
+    _placeNode = marker;
   }
 
   if (_mapNode.valid() && _views.size() > 0)
@@ -161,7 +163,7 @@ AddMarkerDialog::AddMarkerDialog(osg::Group* root, osgEarth::MapNode* mapNode, c
 
 void AddMarkerDialog::initialize()
 {
-  _okButton->setEnabled(false);
+  _okButton->setEnabled(_editing);
 
   _nameEdit->setText(tr("New Marker"));
 
@@ -201,7 +203,7 @@ void AddMarkerDialog::initialize()
 
 void AddMarkerDialog::clearDisplay()
 {
-  if (_root.valid())
+  if (!_editing && _root.valid())
     _root->removeChild(_placeNode);
 
   if (_guiHandler.valid())
@@ -209,17 +211,37 @@ void AddMarkerDialog::clearDisplay()
       (*it)->removeEventHandler(_guiHandler.get());
 }
 
+void AddMarkerDialog::resetValues()
+{
+  _nameEdit->setText(_inNameSet ? tr(_inName.c_str()) : "");
+  _descriptionEdit->setText(tr(_inDescription.c_str()));
+
+  if (_editing)
+  {
+    _placeNode->setPosition(_inPosition);
+  }
+  else
+  {
+    if (_root.valid())
+      _root->removeChild(_placeNode);
+  }
+}
+
 void AddMarkerDialog::mapMouseClick(const osgEarth::GeoPoint& point, int button)
 {
   if (button == osgGA::GUIEventAdapter::LEFT_MOUSE_BUTTON)
   {
-    if (_placeNode.valid() && _root.valid())
-      _root->removeChild(_placeNode);
+    if (!_placeNode.valid() && _root.valid())
+    {
+      _placeNode = new osgEarth::Annotation::PlaceNode(_mapNode, point, _markerImage, _nameCheckbox->checkState() == Qt::Checked ? getName() : "", _placeStyle);
 
-    _placeNode = new osgEarth::Annotation::PlaceNode(_mapNode, point, _markerImage, _nameCheckbox->checkState() == Qt::Checked ? getName() : "", _placeStyle);
-
-    if (_root.valid())
-      _root->addChild(_placeNode);
+      if (_root.valid())
+        _root->addChild(_placeNode);
+    }
+    else
+    {
+      _placeNode->setPosition(point);
+    }
 
     _okButton->setEnabled(true);
   }
@@ -243,6 +265,7 @@ void AddMarkerDialog::accept()
 
 void AddMarkerDialog::reject()
 {
+  resetValues();
   clearDisplay();
   QDialog::reject();
 }
@@ -269,7 +292,7 @@ void AddMarkerDialog::onNameTextChanged(const QString& text)
 //---------------------------------------------------------------------------
 
 AddPathDialog::AddPathDialog(osg::Group* root, osgEarth::MapNode* mapNode, const ViewVector& views, osgEarth::Annotation::FeatureNode* path, QWidget* parent, Qt::WindowFlags f)
-: BaseAnnotationDialog(mapNode, views, parent, f), _root(root), _draggers(0L), _pathColor(Color::White)
+: BaseAnnotationDialog(mapNode, views, parent, f), _root(root), _draggers(0L), _pathColor(Color::White), _editing(path ? true : false)
 {
   initialize();
 
@@ -279,14 +302,20 @@ AddPathDialog::AddPathDialog(osg::Group* root, osgEarth::MapNode* mapNode, const
     osgEarth::Annotation::AnnotationData* data = path->getAnnotationData();
     
     //Get path name
-    _nameEdit->setText(data ? tr(data->getName().c_str()) : tr(""));
+    _inName = data ? data->getName() : "";
+    _nameEdit->setText(tr(_inName.c_str()));
 
     //Get path description
-    _descriptionEdit->setText(data ? tr(data->getDescription().c_str()) : tr(""));
+    _inDescription = data ? data->getDescription() : "";
+    _descriptionEdit->setText(tr(_inDescription.c_str()));
+
+    _pathNode = path;
 
     const osgEarth::Features::Feature* feat = path->getFeature();
     if (feat)
     {
+      _inFeature = const_cast<osgEarth::Features::Feature*>(feat);
+
       //Get path color
       const osgEarth::Symbology::LineSymbol* lineSymbol = feat->style()->get<LineSymbol>();
       if (lineSymbol)
@@ -343,7 +372,9 @@ void AddPathDialog::clearDisplay()
 {
   if (_root.valid())
   {
-    _root->removeChild(_pathNode);
+    if (!_editing)
+      _root->removeChild(_pathNode);
+
     _root->removeChild(_draggers);
   }
 
@@ -353,6 +384,26 @@ void AddPathDialog::clearDisplay()
       (*it)->removeEventHandler(_guiHandler.get());
 
     _guiHandler->clearDisplay();
+  }
+}
+
+void AddPathDialog::resetValues()
+{
+  _nameEdit->setText(tr(_inName.c_str()));
+  _descriptionEdit->setText(tr(_inDescription.c_str()));
+
+  if (_inFeature.valid())
+  {
+    _pathNode->setFeature(_inFeature);
+  }
+  else
+  {
+    if (_root.valid())
+    {
+      _root->removeChild(_pathNode);
+      _pathNode = 0L;
+      _pathLine = 0L;
+    }
   }
 }
 
@@ -366,7 +417,7 @@ void AddPathDialog::mapMouseClick(const osgEarth::GeoPoint& point, int button)
 
 void AddPathDialog::refreshFeatureNode()
 {
-  if (_pathNode.valid())  
+  if (_pathNode.valid() && _pathFeature.valid())  
   {
     _pathFeature->style()->getOrCreate<LineSymbol>()->stroke()->color() = _pathColor;
     _pathFeature->style()->getOrCreate<AltitudeSymbol>()->clamping() = _drapeCheckbox->checkState() == Qt::Checked ? AltitudeSymbol::CLAMP_TO_TERRAIN : AltitudeSymbol::CLAMP_ABSOLUTE;
@@ -406,7 +457,7 @@ void AddPathDialog::addPoint(const osgEarth::GeoPoint& point)
 
   _pathLine->push_back(point.vec3d());
 
-  if (!_pathNode.valid() && _pathLine->size() > 1)
+  if (!_pathFeature.valid() && _pathLine->size() > 1)
   {
     osgEarth::Symbology::Style pathStyle;
     pathStyle.getOrCreate<LineSymbol>()->stroke()->color() = Color::White;
@@ -417,8 +468,11 @@ void AddPathDialog::addPoint(const osgEarth::GeoPoint& point)
     _pathFeature = new osgEarth::Features::Feature(_pathLine, _mapNode->getMapSRS(), pathStyle);
     //_pathFeature->geoInterp() = GEOINTERP_GREAT_CIRCLE;
 
-    _pathNode = new osgEarth::Annotation::FeatureNode(_mapNode, _pathFeature);
-    _root->addChild(_pathNode);
+    if (!_pathNode.valid())
+    {
+      _pathNode = new osgEarth::Annotation::FeatureNode(_mapNode, _pathFeature);
+      _root->addChild(_pathNode);
+    }
 
     _okButton->setEnabled(true);
   }
@@ -446,6 +500,7 @@ void AddPathDialog::accept()
 
 void AddPathDialog::reject()
 {
+  resetValues();
   clearDisplay();
   QDialog::reject();
 }
@@ -477,7 +532,7 @@ void AddPathDialog::onLineColorButtonClicked()
 //---------------------------------------------------------------------------
 
 AddPolygonDialog::AddPolygonDialog(osg::Group* root, osgEarth::MapNode* mapNode, const ViewVector& views, osgEarth::Annotation::FeatureNode* polygon, QWidget* parent, Qt::WindowFlags f)
-: BaseAnnotationDialog(mapNode, views, parent, f), _root(root), _draggers(0L), _pathColor(Color(Color::White, 0.0)), _fillColor(Color(Color::Black, 0.5)), _editOnly(false)
+: BaseAnnotationDialog(mapNode, views, parent, f), _root(root), _draggers(0L), _pathColor(Color(Color::White, 0.0)), _fillColor(Color(Color::Black, 0.5)), _editing(polygon ? true : false)
 {
   _polygon = new osgEarth::Symbology::Polygon();
   
@@ -486,19 +541,23 @@ AddPolygonDialog::AddPolygonDialog(osg::Group* root, osgEarth::MapNode* mapNode,
   //If editing an existing polygon
   if (polygon)
   {
-    _editOnly = true;
-
     osgEarth::Annotation::AnnotationData* data = polygon->getAnnotationData();
-    
+
     //Get path name
-    _nameEdit->setText(data ? tr(data->getName().c_str()) : tr(""));
+    _inName = data ? data->getName() : "";
+    _nameEdit->setText(tr(_inName.c_str()));
 
     //Get path description
-    _descriptionEdit->setText(data ? tr(data->getDescription().c_str()) : tr(""));
+    _inDescription = data ? data->getDescription() : "";
+    _descriptionEdit->setText(tr(_inDescription.c_str()));
+
+    _polyNode = polygon;
 
     const osgEarth::Features::Feature* feat = polygon->getFeature();
     if (feat)
     {
+      _inFeature = const_cast<osgEarth::Features::Feature*>(feat);
+
       //Get path color
       const osgEarth::Symbology::LineSymbol* lineSymbol = feat->style()->get<LineSymbol>();
       if (lineSymbol)
@@ -578,7 +637,9 @@ void AddPolygonDialog::clearDisplay()
 {
   if (_root.valid())
   {
-    _root->removeChild(_polyNode);
+    if (!_editing)
+      _root->removeChild(_polyNode);
+
     _root->removeChild(_draggers);
   }
 
@@ -588,6 +649,26 @@ void AddPolygonDialog::clearDisplay()
       (*it)->removeEventHandler(_guiHandler.get());
 
     _guiHandler->clearDisplay();
+  }
+}
+
+void AddPolygonDialog::resetValues()
+{
+  _nameEdit->setText(tr(_inName.c_str()));
+  _descriptionEdit->setText(tr(_inDescription.c_str()));
+
+  if (_inFeature.valid())
+  {
+    _polyNode->setFeature(_inFeature);
+  }
+  else
+  {
+    if (_root.valid())
+    {
+      _root->removeChild(_polyNode);
+      _polyNode = 0L;
+      _polygon = 0L;
+    }
   }
 }
 
@@ -607,7 +688,7 @@ void AddPolygonDialog::mapMouseMove(const osgEarth::GeoPoint& point)
 
 void AddPolygonDialog::refreshFeatureNode(bool geometryOnly)
 {
-  if (_polyNode.valid())  
+  if (_polyNode.valid() && _polyFeature.valid())  
   {
     if (!geometryOnly)
     {
@@ -658,12 +739,12 @@ void AddPolygonDialog::movePoint(int index, const osgEarth::GeoPoint& position)
 
 void AddPolygonDialog::addPoint(const osgEarth::GeoPoint& point)
 {
-  if (_editOnly)
+  if (_editing)
     _polygon->push_back(point.vec3d());
   else
     _polygon->insert(_polygon->end() - 1, point.vec3d());
 
-  if (!_polyNode.valid() && _polygon->size() > 2)
+  if (!_polyFeature.valid() && _polygon->size() > 2)
   {
     osgEarth::Symbology::Style polyStyle;
     polyStyle.getOrCreate<LineSymbol>()->stroke()->color() = _pathColor;
@@ -674,8 +755,11 @@ void AddPolygonDialog::addPoint(const osgEarth::GeoPoint& point)
 
     _polyFeature = new osgEarth::Features::Feature(_polygon, _mapNode->getMapSRS(), polyStyle);
 
-    _polyNode = new osgEarth::Annotation::FeatureNode(_mapNode, _polyFeature, _drapeCheckbox->checkState() == Qt::Checked);
-    _root->addChild(_polyNode);
+    if (!_polyNode.valid())
+    {
+      _polyNode = new osgEarth::Annotation::FeatureNode(_mapNode, _polyFeature, _drapeCheckbox->checkState() == Qt::Checked);
+      _root->addChild(_polyNode);
+    }
 
     _okButton->setEnabled(true);
   }
@@ -691,7 +775,7 @@ void AddPolygonDialog::accept()
   if (_polyNode.valid())
   {
     //Remove active cursor point
-    if (!_editOnly)
+    if (!_editing)
     {
       _polygon->pop_back();
       refreshFeatureNode(true);
@@ -711,6 +795,7 @@ void AddPolygonDialog::accept()
 
 void AddPolygonDialog::reject()
 {
+  resetValues();
   clearDisplay();
   QDialog::reject();
 }
@@ -758,19 +843,29 @@ void AddPolygonDialog::onFillColorButtonClicked()
 //---------------------------------------------------------------------------
 
 AddEllipseDialog::AddEllipseDialog(osg::Group* root, osgEarth::MapNode* mapNode, const ViewVector& views, osgEarth::Annotation::EllipseNode* ellipse, QWidget* parent, Qt::WindowFlags f)
-: BaseAnnotationDialog(mapNode, views, parent, f), _root(root), _pathColor(Color(Color::White, 0.0)), _fillColor(Color(Color::Black, 0.5))
+: BaseAnnotationDialog(mapNode, views, parent, f), _root(root), _pathColor(Color(Color::White, 0.0)), _fillColor(Color(Color::Black, 0.5)),
+_editing(ellipse ? true : false), _inStyle(ellipse ? ellipse->getStyle() : osgEarth::Symbology::Style())
 {
   initialize();
 
   if (ellipse)
   {
     osgEarth::Annotation::AnnotationData* data = ellipse->getAnnotationData();
-    
-    //Get ellipse name
-    _nameEdit->setText(data ? tr(data->getName().c_str()) : tr(""));
 
-    //Get ellipse description
-    _descriptionEdit->setText(data ? tr(data->getDescription().c_str()) : tr(""));
+    //Get path name
+    _inName = data ? data->getName() : "";
+    _nameEdit->setText(tr(_inName.c_str()));
+
+    //Get path description
+    _inDescription = data ? data->getDescription() : "";
+    _descriptionEdit->setText(tr(_inDescription.c_str()));
+
+    _inPosition = ellipse->getPosition();
+    _inRadiusMajor = ellipse->getRadiusMajor();
+    _inRadiusMinor = ellipse->getRadiusMinor();
+    _inRotationAngle = ellipse->getRotationAngle();
+
+    _ellipseNode = ellipse;
 
     //Get path color
     const osgEarth::Symbology::LineSymbol* lineSymbol = ellipse->getStyle().get<LineSymbol>();
@@ -849,11 +944,27 @@ void AddEllipseDialog::clearDisplay()
 {
   if (_root.valid())
   {
-    _root->removeChild(_ellipseNode);
+    if (!_editing)
+      _root->removeChild(_ellipseNode);
+
     _root->removeChild(_editor);
   }
 
   removeGuiHandlers();
+}
+
+void AddEllipseDialog::resetValues()
+{
+  _nameEdit->setText(tr(_inName.c_str()));
+  _descriptionEdit->setText(tr(_inDescription.c_str()));
+
+  if (_editing && _ellipseNode.valid())
+  {
+    _ellipseNode->setPosition(_inPosition);
+    _ellipseNode->setRadii(_inRadiusMajor, _inRadiusMinor);
+    _ellipseNode->setRotationAngle(_inRotationAngle);
+    _ellipseNode->setStyle(_inStyle);
+  }
 }
 
 void AddEllipseDialog::removeGuiHandlers()
@@ -869,17 +980,23 @@ void AddEllipseDialog::removeGuiHandlers()
 
 void AddEllipseDialog::addEllipse(const osgEarth::GeoPoint& position, const Linear& radiusMajor, const Linear& radiusMinor, const Angular& rotationAngle)
 {
-  if (_ellipseNode.valid())
+  if (!_ellipseNode.valid())
   {
-    _root->removeChild(_ellipseNode);
-    _root->removeChild(_editor);
+    _ellipseNode = new osgEarth::Annotation::EllipseNode(_mapNode, position, radiusMajor, radiusMinor, rotationAngle, _ellipseStyle, _drapeCheckbox->checkState() == Qt::Checked);
+    _root->addChild(_ellipseNode);
+  }
+  else
+  {
+    _ellipseNode->setPosition(position);
+    _ellipseNode->setRadii(radiusMajor, radiusMinor);
+    _ellipseNode->setRotationAngle(rotationAngle);
   }
 
-  _ellipseNode = new osgEarth::Annotation::EllipseNode(_mapNode, position, radiusMajor, radiusMinor, rotationAngle, _ellipseStyle, _drapeCheckbox->checkState() == Qt::Checked);
-  _root->addChild(_ellipseNode);
-  
-  _editor = new osgEarth::Annotation::EllipseNodeEditor(_ellipseNode);
-  _root->addChild(_editor);
+  if (!_editor.valid())
+  {
+    _editor = new osgEarth::Annotation::EllipseNodeEditor(_ellipseNode);
+    _root->addChild(_editor);
+  }
 
   if (_guiHandler.valid())
     _guiHandler->setCapturing(false);
@@ -902,8 +1019,8 @@ void AddEllipseDialog::refreshFeatureNode(bool geometryOnly)
 
   _ellipseStyle.getOrCreate<PolygonSymbol>()->fill()->color() = _fillColor;
 
-  if (_ellipseNode.valid())  
-    addEllipse(_ellipseNode->getPosition(), _ellipseNode->getRadiusMajor(), _ellipseNode->getRadiusMinor(), _ellipseNode->getRotationAngle());
+  if (_ellipseNode.valid())
+    _ellipseNode->setStyle(_ellipseStyle);
 }
 
 void AddEllipseDialog::accept()
@@ -926,6 +1043,7 @@ void AddEllipseDialog::accept()
 
 void AddEllipseDialog::reject()
 {
+  resetValues();
   clearDisplay();
   QDialog::reject();
 }

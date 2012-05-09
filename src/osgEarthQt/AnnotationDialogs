@@ -98,6 +98,7 @@ namespace osgEarth { namespace QtGui
 
     void initialize();
     void clearDisplay();
+    void resetValues();
 
     osg::ref_ptr<osg::Group> _root;
     osg::ref_ptr<osgGA::GUIEventHandler>  _guiHandler;
@@ -106,6 +107,11 @@ namespace osgEarth { namespace QtGui
     osgEarth::Symbology::Style _placeStyle;
     osg::ref_ptr<osgEarth::Annotation::PlaceNode> _placeNode;
     std::string _altName;
+    bool _editing;
+    osgEarth::GeoPoint _inPosition;
+    std::string _inName;
+    std::string _inDescription;
+    bool _inNameSet;
   };
 
   //---------------------------------------------------------------------------
@@ -138,6 +144,7 @@ namespace osgEarth { namespace QtGui
     void createPointDragger(int index, const osgEarth::GeoPoint& point);
     void movePoint(int index, const osgEarth::GeoPoint& position);
     void clearDisplay();
+    void resetValues();
 
     osg::ref_ptr<osg::Group> _root;
     osg::Group* _draggers;
@@ -148,6 +155,10 @@ namespace osgEarth { namespace QtGui
     osg::ref_ptr<osgEarth::Symbology::LineString> _pathLine;
     osg::ref_ptr<osgEarth::Features::Feature> _pathFeature;
     osg::ref_ptr<osgEarth::Annotation::FeatureNode> _pathNode;
+    bool _editing;
+    osg::ref_ptr<osgEarth::Features::Feature> _inFeature;
+    std::string _inName;
+    std::string _inDescription;
   };
 
   //---------------------------------------------------------------------------
@@ -182,6 +193,7 @@ namespace osgEarth { namespace QtGui
     void createPointDragger(int index, const osgEarth::GeoPoint& point);
     void movePoint(int index, const osgEarth::GeoPoint& position);
     void clearDisplay();
+    void resetValues();
 
     osg::ref_ptr<osg::Group> _root;
     osg::Group* _draggers;
@@ -195,7 +207,10 @@ namespace osgEarth { namespace QtGui
     osg::ref_ptr<osgEarth::Symbology::Polygon> _polygon;
     osg::ref_ptr<osgEarth::Features::Feature> _polyFeature;
     osg::ref_ptr<osgEarth::Annotation::FeatureNode> _polyNode;
-    bool _editOnly;
+    bool _editing;
+    osg::ref_ptr<osgEarth::Features::Feature> _inFeature;
+    std::string _inName;
+    std::string _inDescription;
   };
 
   //---------------------------------------------------------------------------
@@ -227,6 +242,7 @@ namespace osgEarth { namespace QtGui
     void initialize();
     void refreshFeatureNode(bool geometryOnly=false);
     void clearDisplay();
+    void resetValues();
     void removeGuiHandlers();
 
     osg::ref_ptr<osg::Group> _root;
@@ -239,6 +255,14 @@ namespace osgEarth { namespace QtGui
     osg::Vec4f _fillColor;
     osg::ref_ptr<osgEarth::Annotation::EllipseNode> _ellipseNode;
     osgEarth::Symbology::Style _ellipseStyle;
+    bool _editing;
+    osgEarth::Symbology::Style _inStyle;
+    std::string _inName;
+    std::string _inDescription;
+    osgEarth::GeoPoint _inPosition;
+    Linear _inRadiusMajor;
+    Linear _inRadiusMinor;
+    Angular _inRotationAngle;
 
     friend struct AddEllipseMouseHandler;
   }; 

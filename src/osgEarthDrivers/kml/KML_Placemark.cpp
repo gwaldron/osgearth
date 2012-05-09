@@ -83,18 +83,24 @@ KML_Placemark::build( const Config& conf, KMLContext& cx )
         osg::ref_ptr<osg::Image> markerImage;
         osg::ref_ptr<osg::Node>  markerModel;
 
-        MarkerSymbol* marker = style.get<MarkerSymbol>();    
+        MarkerSymbol* marker = style.get<MarkerSymbol>();
+
         if ( marker && marker->url().isSet() )
         {
-            markerURI = URI( marker->url()->eval(), marker->url()->uriContext() );
-            ReadResult result = marker->isModel() == true? markerURI.readNode() : markerURI.readImage();
-            markerImage = result.getImage();
-            markerModel = result.getNode();
+            if ( marker->isModel() == false )
+            {
+                markerImage = marker->getImage( *cx._options->iconMaxSize() );
+            }
+            else
+            {
+                markerURI = URI( marker->url()->eval(), marker->url()->uriContext() );
+                markerModel = markerURI.getNode();
 
-            // We can't leave the marker symbol in the style, or the GeometryCompiler will
-            // think we want to do Point-model substitution. So remove it. A bit of a hack
-            if ( marker )
-                style.removeSymbol(marker);
+                // We can't leave the marker symbol in the style, or the GeometryCompiler will
+                // think we want to do Point-model substitution. So remove it. A bit of a hack
+                if ( marker )
+                    style.removeSymbol(marker);
+            }
         }
 
         std::string text = 
@@ -154,7 +160,10 @@ KML_Placemark::build( const Config& conf, KMLContext& cx )
         if ( geometry._geom->getTotalPointCount() > 1 )
         {
             const ExtrusionSymbol* ex = style.get<ExtrusionSymbol>();
-            const AltitudeSymbol* alt = style.get<AltitudeSymbol>();        
+            const AltitudeSymbol* alt = style.get<AltitudeSymbol>();    
+
+            if ( style.get<MarkerSymbol>() )
+                style.removeSymbol(style.get<MarkerSymbol>());
 
             bool draped =
                 isPoly   && 

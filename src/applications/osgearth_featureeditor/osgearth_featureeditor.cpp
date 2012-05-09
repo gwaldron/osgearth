@@ -185,7 +185,6 @@ StyleSheet* buildStyleSheet( const osg::Vec4 &color, float width )
     return styleSheet;
 }
 
-
 //
 // NOTE: run this sample from the repo/tests directory.
 //
@@ -221,14 +220,15 @@ int main(int argc, char** argv)
     // vectors as lines, configure the line symbolizer:
     StyleSheet* styleSheet = buildStyleSheet( Color::Yellow, 2.0f );
 
-    s_source = new FeatureListSource();
+    // create a feature list source with the map extents as the default extent.
+    s_source = new FeatureListSource( s_mapNode->getMap()->getProfile()->getExtent() );
 
     LineString* line = new LineString();
     line->push_back( osg::Vec3d(-60, 20, 0) );
     line->push_back( osg::Vec3d(-120, 20, 0) );
     line->push_back( osg::Vec3d(-120, 60, 0) );
     line->push_back( osg::Vec3d(-60, 60, 0) );
-    Feature *feature = new Feature(line, s_mapNode->getMapSRS(), Style(), s_fid++);
+    Feature* feature = new Feature(line, s_mapNode->getMapSRS(), Style(), s_fid++);
     s_source->insertFeature( feature );
     s_activeFeature = feature;
   

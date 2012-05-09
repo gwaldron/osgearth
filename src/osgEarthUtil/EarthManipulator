@@ -23,6 +23,7 @@
 #include <osgEarth/Common>
 #include <osgEarth/Viewpoint>
 #include <osgEarth/GeoData>
+#include <osgEarth/Revisioning>
 #include <osg/Timer>
 #include <osgGA/CameraManipulator>
 #include <map>
@@ -192,7 +193,7 @@ namespace osgEarth { namespace Util
 
     public:
 
-        class OSGEARTHUTIL_EXPORT Settings : public osg::Referenced
+        class OSGEARTHUTIL_EXPORT Settings : public Revisioned<osg::Referenced>
         {
         public:
             // construct with default settings
@@ -461,6 +462,10 @@ namespace osgEarth { namespace Util
             void setCameraProjection( const CameraProjection& value );
             const CameraProjection& getCameraProjection() const { return _camProjType; }
 
+            /** Frustum offset (in pixels) */
+            void setCameraFrustumOffsets( const osg::Vec2s& offsets );
+            const osg::Vec2s& getCameraFrustumOffsets() const { return _camFrustOffsets; }
+
         private:
 
             friend class EarthManipulator;
@@ -498,6 +503,7 @@ namespace osgEarth { namespace Util
             double _min_vp_duration_s, _max_vp_duration_s;
 
             CameraProjection _camProjType;
+            osg::Vec2s _camFrustOffsets;
         };
 
     public:
@@ -843,11 +849,13 @@ namespace osgEarth { namespace Util
         double _homeViewpointDuration;
 
         Action _last_action;
+
         // to support updating the camera after the update traversal (e.g., for tethering)
         osg::observer_ptr<osg::Camera> _viewCamera;
         double _vfov;
         double _tanHalfVFOV;
         optional<osg::CullSettings::ComputeNearFarMode> _savedCNFMode;
+        Revision _viewCameraSettingsMonitor;
         
         struct CameraPostUpdateCallback : public osg::NodeCallback {
             CameraPostUpdateCallback(EarthManipulator* m) : _m(m) { }

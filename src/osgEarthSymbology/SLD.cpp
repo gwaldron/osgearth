@@ -216,6 +216,11 @@ SLDReader::readStyleFromCSSParams( const Config& conf, Style& sc )
 			else if (match(value, "ascii"))  text->encoding() = TextSymbol::ENCODING_ASCII;
 			else text->encoding() = TextSymbol::ENCODING_ASCII;
 		}
+        else if ( match(key, "text-declutter") )
+        {
+            if (!text) text = sc.getOrCreate<TextSymbol>();
+            text->declutter() = as<bool>(value, true);
+        }
 
         // ..... MarkerSymbol .....
 

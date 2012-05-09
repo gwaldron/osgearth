@@ -95,7 +95,7 @@ namespace osgEarth { namespace Symbology
 
         /** Explicit image to use for 2D icon placemet */
         void setImage( osg::Image* image ) { _image = image; }
-        osg::Image* getImage() const { return _image.get(); }
+        osg::Image* getImage( unsigned maxSize =INT_MAX ) const;
 
         /** Explicit model to use for model placement */
         void setModel( osg::Node* node ) { _node = node; }
@@ -114,9 +114,9 @@ namespace osgEarth { namespace Symbology
         optional<float>              _density;
         optional<unsigned>           _randomSeed;
         optional<bool>               _isModelHint;
-
-        osg::ref_ptr<osg::Image>     _image;
         osg::ref_ptr<osg::Node>      _node;
+
+        mutable osg::ref_ptr<osg::Image> _image;
     };
 
 } } // namespace osgEarth::Symbology

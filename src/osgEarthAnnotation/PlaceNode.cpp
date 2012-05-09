@@ -23,6 +23,7 @@
 #include <osgEarthFeatures/BuildTextFilter>
 #include <osgEarthFeatures/LabelSource>
 #include <osgEarth/Utils>
+#include <osgEarth/Registry>
 #include <osg/Depth>
 
 #define LC "[PlaceNode] "
@@ -41,6 +42,19 @@ PlaceNode::PlaceNode(MapNode*           mapNode,
 
 OrthoNode( mapNode, position ),
 _image  ( image ),
+_text   ( text ),
+_style  ( style ),
+_geode  ( 0L )
+{
+    init();
+}
+
+PlaceNode::PlaceNode(MapNode*           mapNode,
+                     const GeoPoint&    position,
+                     const std::string& text,
+                     const Style&       style ) :
+
+OrthoNode( mapNode, position ),
 _text   ( text ),
 _style  ( style ),
 _geode  ( 0L )
@@ -70,6 +84,11 @@ PlaceNode::init()
     _geode = new osg::Geode();
 
     osg::Drawable* text = 0L;
+
+    if ( !_image.valid() && _style.getSymbol<MarkerSymbol>() )
+    {
+        _image = _style.getSymbol<MarkerSymbol>()->getImage();
+    }
 
     if ( _image.get() )
     {

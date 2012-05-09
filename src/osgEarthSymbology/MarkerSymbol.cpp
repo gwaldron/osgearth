@@ -17,6 +17,10 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 #include <osgEarthSymbology/MarkerSymbol>
+#include <osgEarth/ThreadingUtils>
+#include <osgEarth/Registry>
+#include <osgEarth/ImageUtils>
+#include <osgDB/Options>
 
 using namespace osgEarth;
 using namespace osgEarth::Symbology;
@@ -67,3 +71,38 @@ MarkerSymbol::mergeConfig( const Config& conf )
     _node = conf.getNonSerializable<osg::Node>( "MarkerSymbol::node" );
 }
 
+osg::Image*
+MarkerSymbol::getImage( unsigned maxSize ) const
+{
+    static Threading::Mutex s_mutex;
+    if ( !_image.valid() && _url.isSet() )
+    {
+        Threading::ScopedMutexLock lock(s_mutex);
+        if ( !_image.valid() )
+        {
+            osg::ref_ptr<osgDB::Options> dbOptions = Registry::instance()->cloneOrCreateOptions();
+            dbOptions->setObjectCacheHint( osgDB::Options::CACHE_IMAGES );
+            _image = URI(_url->eval(), _url->uriContext()).getImage( dbOptions.get() );
+            if ( _image.valid() && (maxSize < _image->s() || maxSize < _image->t()) )
+            {
+                unsigned new_s, new_t;
+
+                if ( _image->s() >= _image->t() ) {
+                    new_s = maxSize;
+                    float ratio = (float)new_s/(float)_image->s();
+                    new_t = (unsigned)((float)_image->t() * ratio);
+                }
+                else {
+                    new_t = maxSize;
+                    float ratio = (float)new_t/(float)_image->t();
+                    new_s = (unsigned)((float)_image->s() * ratio);
+                }
+                    
+                osg::ref_ptr<osg::Image> result;
+                ImageUtils::resizeImage( _image.get(), new_s, new_t, result );
+                _image = result.get();
+            }
+        }
+    }
+    return _image.get();
+}

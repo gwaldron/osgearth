@@ -851,5 +851,6 @@ OverlayDecorator::checkNeedsUpdate( OverlayDecorator::PerViewData& pvd )
 {
     return
         pvd._rttCamera->getViewMatrix()       != pvd._rttViewMatrix ||
-        pvd._rttCamera->getProjectionMatrix() != pvd._rttProjMatrix;
+        pvd._rttCamera->getProjectionMatrix() != pvd._rttProjMatrix ||
+        (_overlayGraph.valid() && _overlayGraph->getNumChildrenRequiringUpdateTraversal() > 0);
 }

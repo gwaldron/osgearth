@@ -23,6 +23,8 @@
 #include <osg/View>
 #include <osgGA/GUIActionAdapter>
 #include <osgUtil/LineSegmentIntersector>
+#include <osgEarth/ThreadingUtils>
+#include <set>
 
 namespace osgEarth
 {
@@ -189,6 +191,18 @@ namespace osgEarth
             result = findTopMostNodeOfType<T>( node, traversalMask );
         return result;
     }
+
+    /**
+     * OSG Group that keeps its children as observer_ptrs instead of ref_ptrs, and
+     * removes them when they deref.
+     */
+    class OSGEARTH_EXPORT ObserverGroup : public osg::Group
+    {
+    public:
+        ObserverGroup();
+        void traverse( osg::NodeVisitor& nv );
+        std::set<osg::Node*> _orphans;
+    };
 
     /**
      * Adjusts a node's update traversal count by a delta.

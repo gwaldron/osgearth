@@ -23,6 +23,14 @@ using namespace osgEarth::Features;
 FeatureListSource::FeatureListSource():
 FeatureSource()
 {
+    //nop
+}
+
+FeatureListSource::FeatureListSource(const GeoExtent& defaultExtent ) :
+FeatureSource (),
+_defaultExtent( defaultExtent )
+{
+    //nop
 }
 
 FeatureCursor*
@@ -42,25 +50,30 @@ FeatureListSource::createFeatureCursor( const Symbology::Query& query )
 const FeatureProfile*
 FeatureListSource::createFeatureProfile()
 {    
-    //Return a default profile if we have no features
-    if (_features.empty())
-        return new FeatureProfile(GeoExtent(osgEarth::SpatialReference::create("epsg:4326"), -180, -90, 180, 90));
+    const SpatialReference* srs = 0L;
+    osgEarth::Bounds        bounds;
 
-    //Get the SRS of the first feature
-    const SpatialReference* srs = _features.front()->getSRS();
-
-    osgEarth::Bounds bounds;
-    //Compute the extent of the features
-    for (FeatureList::iterator itr = _features.begin(); itr != _features.end(); ++itr)
+    if ( !_features.empty() )
     {
-        Feature* feature = itr->get();
-        if (feature->getGeometry())
+        // Get the SRS of the first feature
+        srs = _features.front()->getSRS();
+
+        // Compute the extent of the features
+        for (FeatureList::iterator itr = _features.begin(); itr != _features.end(); ++itr)
         {
-            bounds.expandBy( feature->getGeometry()->getBounds() );
-        }        
+            Feature* feature = itr->get();
+            if (feature->getGeometry())
+            {
+                bounds.expandBy( feature->getGeometry()->getBounds() );
+            }        
+        }
     }
 
-    return new FeatureProfile( GeoExtent( srs, bounds ) );
+    // return the new profile, or a default extent if the profile could not be computed.
+    if ( srs && bounds.isValid() )
+        return new FeatureProfile( GeoExtent(srs, bounds) );
+    else
+        return new FeatureProfile( _defaultExtent );
 }
 
 bool

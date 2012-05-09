@@ -187,6 +187,7 @@ static short s_actionOptionTypes[] = { 1, 1, 0, 0, 1, 1 }; // 0=bool, 1=double
 //------------------------------------------------------------------------
 
 EarthManipulator::Settings::Settings() :
+Revisioned<osg::Referenced>(),
 _single_axis_rotation   ( false ),
 _lock_azim_while_panning( true ),
 _mouse_sens             ( 1.0 ),
@@ -203,12 +204,14 @@ _arc_viewpoints         ( true ),
 _auto_vp_duration       ( false ),
 _min_vp_duration_s      ( 3.0 ),
 _max_vp_duration_s      ( 8.0 ),
-_camProjType            ( PROJ_PERSPECTIVE )
+_camProjType            ( PROJ_PERSPECTIVE ),
+_camFrustOffsets        ( 0, 0 )
 {
     //NOP
 }
 
 EarthManipulator::Settings::Settings( const EarthManipulator::Settings& rhs ) :
+Revisioned<osg::Referenced>(),
 _bindings( rhs._bindings ),
 _single_axis_rotation( rhs._single_axis_rotation ),
 _lock_azim_while_panning( rhs._lock_azim_while_panning ),
@@ -226,7 +229,8 @@ _arc_viewpoints( rhs._arc_viewpoints ),
 _auto_vp_duration( rhs._auto_vp_duration ),
 _min_vp_duration_s( rhs._min_vp_duration_s ),
 _max_vp_duration_s( rhs._max_vp_duration_s ),
-_camProjType( rhs._camProjType )
+_camProjType( rhs._camProjType ),
+_camFrustOffsets( rhs._camFrustOffsets )
 {
     //NOP
 }
@@ -278,9 +282,8 @@ EarthManipulator::Settings::bind( const InputSpec& spec, const Action& action )
     expandSpec( spec, specs );
     for( InputSpecs::const_iterator i = specs.begin(); i != specs.end(); i++ )
     {
-        _bindings[*i] = action; //ActionBinding(*i, action);
+        _bindings[*i] = action;
     }
-        //_bindings.push_back( ActionBinding( *i, action ) );
 }
 
 void
@@ -341,10 +344,6 @@ EarthManipulator::Settings::getAction(int event_type, int input_mask, int modkey
     InputSpec spec( event_type, input_mask, modkey_mask & ~osgGA::GUIEventAdapter::MODKEY_NUM_LOCK & ~osgGA::GUIEventAdapter::MODKEY_CAPS_LOCK);
     ActionBindings::const_iterator i = _bindings.find(spec);
     return i != _bindings.end() ? i->second : NullAction;
-    //for( ActionBindings::const_iterator i = _bindings.begin(); i != _bindings.end(); i++ )
-    //    if ( i->first == spec )
-    //        return i->second;
-    //return NullAction;
 }
 
 void
@@ -352,6 +351,7 @@ EarthManipulator::Settings::setMinMaxPitch( double min_pitch, double max_pitch )
 {
     _min_pitch = osg::clampBetween( min_pitch, -89.9, 89.0 );
     _max_pitch = osg::clampBetween( max_pitch, min_pitch, 89.0 );
+    dirty();
 }
 
 void
@@ -359,6 +359,7 @@ EarthManipulator::Settings::setMaxOffset(double max_x_offset, double max_y_offse
 {
 	_max_x_offset = max_x_offset;
 	_max_y_offset = max_y_offset;
+    dirty();
 }
 
 void
@@ -366,18 +367,21 @@ EarthManipulator::Settings::setMinMaxDistance( double min_distance, double max_d
 {
 	_min_distance = min_distance;
 	_max_distance = max_distance;
+    dirty();
 }
 
 void
 EarthManipulator::Settings::setArcViewpointTransitions( bool value )
 {
     _arc_viewpoints = value;
+    dirty();
 }
 
 void
 EarthManipulator::Settings::setAutoViewpointDurationEnabled( bool value )
 {
     _auto_vp_duration = value;
+    dirty();
 }
 
 void
@@ -385,12 +389,21 @@ EarthManipulator::Settings::setAutoViewpointDurationLimits( double minSeconds, d
 {
     _min_vp_duration_s = osg::clampAbove( minSeconds, 0.0 );
     _max_vp_duration_s = osg::clampAbove( maxSeconds, _min_vp_duration_s );
+    dirty();
 }
 
 void
 EarthManipulator::Settings::setCameraProjection(const EarthManipulator::CameraProjection& value)
 {
     _camProjType = value;
+    dirty();
+}
+
+void
+EarthManipulator::Settings::setCameraFrustumOffsets( const osg::Vec2s& value )
+{
+    _camFrustOffsets = value;
+    dirty();
 }
 
 /************************************************************************/
@@ -1156,6 +1169,9 @@ EarthManipulator::updateCamera( osg::Camera* eventCamera )
         _cameraUpdateCB = 0L;
     }
 
+    // check whether a settings change requires an update:
+    bool settingsChanged = _settings->outOfSyncWith(_viewCameraSettingsMonitor);
+
     // update the projection matrix if necessary
     osg::Viewport* vp = _viewCamera->getViewport();
     if ( vp )
@@ -1166,14 +1182,27 @@ EarthManipulator::updateCamera( osg::Camera* eventCamera )
 
         if ( type == PROJ_PERSPECTIVE )
         {
-            if ( isOrtho )
+            if ( isOrtho || settingsChanged )
             {
                 // need to switch from ortho to perspective
-                OE_INFO << LC << "Switching to PERSPECTIVE" << std::endl;
+                if ( isOrtho )
+                    OE_INFO << LC << "Switching to PERSPECTIVE" << std::endl;
 
-                _viewCamera->setProjectionMatrixAsPerspective(_vfov, vp->width()/vp->height(), 1.0f, 10000.0f );
+                const osg::Vec2s& p = _settings->getCameraFrustumOffsets();
+                double px = 2.0*(((vp->width()/2)+p.x())/vp->width())-1.0;
+                double py = 2.0*(((vp->height()/2)+p.y())/vp->height())-1.0;
+
+                osg::Matrix projMatrix;
+                projMatrix.makePerspective(_vfov, vp->width()/vp->height(), 1.0f, 10000.0f);
+                projMatrix.postMult( osg::Matrix::translate(px, py, 0.0) );
+
+                _viewCamera->setProjectionMatrix( projMatrix );
+
                 if ( _savedCNFMode.isSet() )
+                {
                     _viewCamera->setComputeNearFarMode( *_savedCNFMode );
+                    _savedCNFMode.unset();
+                }
             }
         }
         else if ( type == PROJ_ORTHOGRAPHIC )
@@ -1202,9 +1231,23 @@ EarthManipulator::updateCamera( osg::Camera* eventCamera )
             double znear = -f * 5.0;
             double zfar  =  f * (5.0 + 10.0 * sin(pitch+osg::PI_2));
 
-            _viewCamera->setProjectionMatrixAsOrtho(-x, x, -y, y, znear, zfar);
+            // assemble the projection matrix:
+            osg::Matrixd orthoMatrix;
+
+            // apply the offsets:
+            double px = 0.0, py = 0.0;
+            const osg::Vec2s& p = _settings->getCameraFrustumOffsets();
+            if ( p.x() != 0 || p.y() != 0 )
+            {
+                px = (2.0*x*(double)-p.x()) / (double)vp->width();
+                py = (2.0*y*(double)-p.y()) / (double)vp->height();
+            }
+
+            _viewCamera->setProjectionMatrixAsOrtho( px-x, px+x, py-y, py+y, znear, zfar );
         }
     }
+
+    _settings->sync( _viewCameraSettingsMonitor );
 }
 
 

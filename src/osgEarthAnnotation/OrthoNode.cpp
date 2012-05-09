@@ -126,9 +126,9 @@ _occlusionCulling       ( false )
 OrthoNode::OrthoNode(const SpatialReference* mapSRS,
                      const GeoPoint&         position ) :
 
-_mapSRS        ( mapSRS ),
-_horizonCulling( false ),
-_occlusionCulling       ( false )
+_mapSRS          ( mapSRS ),
+_horizonCulling  ( false ),
+_occlusionCulling( false )
 {
     init();
     if ( _mapSRS.valid() && _mapSRS->isGeographic() && !_mapSRS->isPlateCarre() )
@@ -139,12 +139,15 @@ _occlusionCulling       ( false )
 }
 
 OrthoNode::OrthoNode() :
-_mapSRS        ( 0L ),
-_horizonCulling( false ),
+_mapSRS          ( 0L ),
+_horizonCulling  ( false ),
 _occlusionCulling( false )
 {
     init();
 }
+
+//#define TRY_OQ 1
+#undef TRY_OQ
 
 void
 OrthoNode::init()
@@ -152,9 +155,10 @@ OrthoNode::init()
     _switch = new osg::Switch();
 
     // install it, but deactivate it until we can get it to work.
-#if 0
+#ifdef TRY_OQ
     OrthoOQNode* oq = new OrthoOQNode("");
-    oq->setQueriesEnabled(false);
+    oq->setQueriesEnabled(true);
+    _oq = oq;
 #else
     _oq = new osg::Group();
 #endif
@@ -171,8 +175,9 @@ OrthoNode::init()
     _matxform = new osg::MatrixTransform();
     _switch->addChild( _matxform );
 
-    //oq->_xform = _matxform;
-    //_oq = oq;
+#ifdef TRY_OQ
+    oq->_xform = _matxform;
+#endif
 
     _switch->setSingleChildOn( 0 );
 

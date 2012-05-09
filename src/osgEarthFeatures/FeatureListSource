@@ -33,7 +33,17 @@ namespace osgEarth { namespace Features
     class OSGEARTHFEATURES_EXPORT FeatureListSource : public osgEarth::Features::FeatureSource
     {
     public:
+        /**
+         * Constructs an empty feature list source.
+         */
         FeatureListSource();
+
+        /**
+         * Constructs a feature list source with a default extent. The source can use
+         * this default extent to report a valid feature profile in the event that the
+         * list is empty.
+         */
+        FeatureListSource(const GeoExtent& defaultExtent );
 
         virtual ~FeatureListSource() { }
 
@@ -61,6 +71,7 @@ namespace osgEarth { namespace Features
         virtual const FeatureProfile* createFeatureProfile();
 
         FeatureList _features;
+        GeoExtent   _defaultExtent;
     };
 
 } } // namespace osgEarth::Features

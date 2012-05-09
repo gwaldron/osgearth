@@ -190,7 +190,7 @@ _pendingUpdate( false )
     const FeatureProfile* featureProfile = session->getFeatureSource()->getFeatureProfile();
 
     // Bail out if the feature profile is bad
-    if ( !featureProfile || !featureProfile->getSRS() )
+    if ( !featureProfile || !featureProfile->getExtent().isValid() )
     {
         // warn or allow?
         return;

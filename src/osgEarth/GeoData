@@ -47,7 +47,7 @@ namespace osgEarth
             double x = 0.0,
             double y = 0.0,
             double z = 0.0,
-            const AltitudeMode& mode =ALTMODE_ABSOLUTE );
+            const AltitudeMode& mode =ALTMODE_RELATIVE );
 
         /**
          * Constructs a geopoint.
@@ -89,14 +89,14 @@ namespace osgEarth
         void set(
             const SpatialReference* srs,
             const osg::Vec3d&       xyz,
-            const AltitudeMode&     mode =ALTMODE_ABSOLUTE );
+            const AltitudeMode&     mode =ALTMODE_RELATIVE );
 
         void set(
             const SpatialReference* srs,
             double                  x    =0.0,
             double                  y    =0.0,
             double                  z    =0.0,
-            const AltitudeMode&     mode =ALTMODE_ABSOLUTE );
+            const AltitudeMode&     mode =ALTMODE_RELATIVE );
 
         // component getter/setters
 

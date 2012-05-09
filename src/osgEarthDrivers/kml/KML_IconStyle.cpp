@@ -19,7 +19,7 @@
 #include "KML_IconStyle"
 
 void
-KML_IconStyle::scan( const Config& conf, Style& style )
+KML_IconStyle::scan( const Config& conf, Style& style, KMLContext& cx )
 {
     if ( !conf.empty() )
     {
@@ -36,9 +36,14 @@ KML_IconStyle::scan( const Config& conf, Style& style )
             marker->url()->setURIContext( URIContext(conf.referrer()) );
         }
 
+        float finalScale = *cx._options->iconBaseScale();
+
         optional<float> scale;
         conf.getIfSet( "scale", scale );
         if ( scale.isSet() )
-            marker->scale() = NumericExpression( *scale );
+            finalScale *= scale.value();
+
+        if ( finalScale != 1.0f )
+            marker->scale() = NumericExpression( finalScale );
     }
 }

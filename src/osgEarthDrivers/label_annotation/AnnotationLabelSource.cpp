@@ -59,7 +59,12 @@ public:
             return 0L;
 
         osg::Group* group = new osg::Group();
-        Decluttering::setEnabled( group->getOrCreateStateSet(), true );
+
+        if ( text->declutter().isSet() )
+        {
+            Decluttering::setEnabled( group->getOrCreateStateSet(), *text->declutter() );
+        }
+
         if ( text->priority().isSet() )
         {
             DeclutteringOptions dco = Decluttering::getOptions();
@@ -152,7 +157,7 @@ public:
     {
         LabelNode* labelNode = new LabelNode(
             context.getSession()->getMapInfo().getProfile()->getSRS(),
-            GeoPoint(feature->getSRS(), feature->getGeometry()->getBounds().center()),
+            GeoPoint(feature->getSRS(), feature->getGeometry()->getBounds().center(), ALTMODE_ABSOLUTE),
             value,
             text );
 

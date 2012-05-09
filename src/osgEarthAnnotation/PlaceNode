@@ -51,6 +51,17 @@ namespace osgEarth { namespace Annotation
             const Style&       style =Style() );
 
         /**
+         * Constructs a new place node. You can specify an icon marker by
+         * adding a MarkerSymbol to the Style.
+         */
+        PlaceNode(
+            MapNode*           mapNode,
+            const GeoPoint&    position,
+            const std::string& labelText,
+            const Style&       style =Style() );
+
+
+        /**
          * Constructs a new place node.
          */
         PlaceNode(

@@ -34,10 +34,10 @@ using namespace osgEarth;
 
 /**********************************************************/
 Dragger::Dragger( MapNode* mapNode):
-_mapNode( mapNode ),
-_position( mapNode->getMapSRS(), 0,0,0),
+_mapNode ( mapNode ),
+_position( mapNode->getMapSRS(), 0, 0, 0, ALTMODE_RELATIVE ),
 _dragging(false),
-_hovered(false)
+_hovered (false)
 {
     setNumChildrenRequiringEventTraversal( 1 );
 }
@@ -59,10 +59,16 @@ const GeoPoint& Dragger::getPosition() const
 
 void Dragger::setPosition( const GeoPoint& position, bool fireEvents)
 {
-    if (_position != position)
+    GeoPoint absPosition = position;
+    absPosition.makeAbsolute( _mapNode->getTerrain() );
+
+    if (_position != absPosition)
     {
-        _position = position;
-        updateTransform();
+        _position = absPosition;
+
+        osg::Matrixd matrix;
+        _position.createLocalToWorld( matrix );
+        setMatrix( matrix );
 
         if (fireEvents)
         {
@@ -72,14 +78,6 @@ void Dragger::setPosition( const GeoPoint& position, bool fireEvents)
             }
         }
     }
-}
-
-void Dragger::updateTransform()
-{
-    osg::Matrixd matrix;
-    _position.makeAbsolute( _mapNode->getTerrain() );
-    _position.createLocalToWorld( matrix );
-    setMatrix( matrix );
 }
 
 void Dragger::enter()
@@ -153,8 +151,8 @@ bool Dragger::handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& 
             if ( _mapNode->getTerrain()->getWorldCoordsUnderMouse(view, ea.getX(), ea.getY(), world) )
             {
                 GeoPoint mapPoint;
-                _mapNode->getMap()->worldPointToMapPoint(world, mapPoint);
-                setPosition( mapPoint );
+                if ( _mapNode->getMap()->worldPointToMapPoint(world, mapPoint) )
+                    setPosition( mapPoint );
                 aa.requestRedraw();
                 return true;
             }

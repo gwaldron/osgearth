@@ -65,7 +65,7 @@ namespace osgEarth { namespace Annotation
         virtual bool setPosition( const GeoPoint& p );
 
         /** Sets the position (in map coordinates) */
-        virtual bool setPosition( const osg::Vec3d& p );
+        //virtual bool setPosition( const osg::Vec3d& p );
 
         /** Gets the node position (in map coords) */
         virtual GeoPoint getPosition() const;

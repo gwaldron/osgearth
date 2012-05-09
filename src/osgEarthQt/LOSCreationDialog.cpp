@@ -475,7 +475,7 @@ void LOSCreationDialog::updatePoint(LOSPoint point)
       else
         _p1Dragger->setHeightAboveTerrain(0.0);
 
-      updateDragger(_p1Dragger, GeoPoint(_mapNode->getMapSRS(), _ui.p1LonBox->value(), _ui.p1LatBox->value(), _p1BaseAlt));
+      updateDragger(_p1Dragger, GeoPoint(_mapNode->getMapSRS(), _ui.p1LonBox->value(), _ui.p1LatBox->value(), _p1BaseAlt, ALTMODE_RELATIVE));
       break;
     case P2P_END:
       if (_ui.p2pRelativeCheckBox->checkState() == Qt::Checked)
@@ -483,7 +483,7 @@ void LOSCreationDialog::updatePoint(LOSPoint point)
       else
         _p2Dragger->setHeightAboveTerrain(0.0);
 
-      updateDragger(_p2Dragger, GeoPoint(_mapNode->getMapSRS(), _ui.p2LonBox->value(), _ui.p2LatBox->value(), _p2BaseAlt));
+      updateDragger(_p2Dragger, GeoPoint(_mapNode->getMapSRS(), _ui.p2LonBox->value(), _ui.p2LatBox->value(), _p2BaseAlt, ALTMODE_RELATIVE));
       break;
     case RADIAL_CENTER:
       if (_ui.radRelativeCheckBox->checkState() == Qt::Checked)
@@ -491,7 +491,7 @@ void LOSCreationDialog::updatePoint(LOSPoint point)
       else
         _radDragger->setHeightAboveTerrain(0.0);
 
-      updateDragger(_radDragger, GeoPoint(_mapNode->getMapSRS(), _ui.radLonBox->value(), _ui.radLatBox->value(), _radBaseAlt));
+      updateDragger(_radDragger, GeoPoint(_mapNode->getMapSRS(), _ui.radLonBox->value(), _ui.radLatBox->value(), _radBaseAlt, ALTMODE_RELATIVE));
       break;
   }
 }

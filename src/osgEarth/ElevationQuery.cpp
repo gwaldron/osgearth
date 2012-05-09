@@ -178,7 +178,8 @@ ElevationQuery::getElevations(std::vector<osg::Vec3d>& points,
     {
         double elevation;
         double z = (*i).z();
-        if ( getElevationImpl( GeoPoint(pointsSRS, *i), elevation, desiredResolution ) )
+        GeoPoint p(pointsSRS, *i, ALTMODE_ABSOLUTE);
+        if ( getElevationImpl( p, elevation, desiredResolution ) )
         {
             (*i).z() = ignoreZ ? elevation : elevation + z;
         }
@@ -196,7 +197,9 @@ ElevationQuery::getElevations(const std::vector<osg::Vec3d>& points,
     for( osg::Vec3dArray::const_iterator i = points.begin(); i != points.end(); ++i )
     {
         double elevation;
-        if ( getElevationImpl( GeoPoint(pointsSRS,*i), elevation, desiredResolution ) )
+        GeoPoint p(pointsSRS, *i, ALTMODE_ABSOLUTE);
+
+        if ( getElevationImpl(p, elevation, desiredResolution) )
         {
             out_elevations.push_back( elevation );
         }

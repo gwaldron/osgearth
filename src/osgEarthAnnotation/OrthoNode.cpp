@@ -107,22 +107,6 @@ _occlusionCulling       ( false )
     setPosition( position );
 }
 
-OrthoNode::OrthoNode(MapNode*          mapNode,
-                     const osg::Vec3d& position ) :
-
-PositionedAnnotationNode( mapNode ),
-_mapSRS                 ( mapNode ? mapNode->getMapSRS() : 0L ),
-_horizonCulling         ( false ),
-_occlusionCulling       ( false )
-{
-    init();
-    if ( mapNode && mapNode->isGeocentric() )
-    {
-        setHorizonCulling( true );
-    }
-    setPosition( GeoPoint(_mapSRS.get(), position) );
-}
-
 OrthoNode::OrthoNode(const SpatialReference* mapSRS,
                      const GeoPoint&         position ) :
 
@@ -252,11 +236,11 @@ OrthoNode::computeBound() const
     return osg::BoundingSphere(_matxform->getMatrix().getTrans(), 1000.0);
 }
 
-bool
-OrthoNode::setPosition( const osg::Vec3d& position )
-{
-    return setPosition( GeoPoint(_mapSRS.get(), position) );
-}
+//bool
+//OrthoNode::setPosition( const osg::Vec3d& position )
+//{
+//    return setPosition( GeoPoint(_mapSRS.get(), position) );
+//}
 
 bool
 OrthoNode::setPosition( const GeoPoint& position )

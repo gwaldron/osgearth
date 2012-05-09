@@ -117,11 +117,11 @@ struct MyAnnoEventHandler : public AnnotationEventHandler
 
 struct TrackSim : public osg::Referenced
 {
-  TrackSim(TrackNode* track, const osg::Vec3d center, float radius, double time, osgEarth::MapNode* mapNode)
+  TrackSim(TrackNode* track, const osg::Vec3d& center, float radius, double time, osgEarth::MapNode* mapNode)
     : _track(track), _mapNode(mapNode), _radius(radius), _time(time)
   {
     //Get the center point in geocentric
-    GeoPoint centerMap(mapNode->getMapSRS(), center);
+    GeoPoint centerMap(mapNode->getMapSRS(), center, ALTMODE_ABSOLUTE);
     mapNode->getMap()->toWorldPoint( centerMap, _center );
 
     _up = _center;
@@ -173,7 +173,7 @@ struct TrackSimUpdate : public osg::Operation
 
 TrackNode* createTrack(TrackNodeFieldSchema& schema, osg::Image* image, const std::string& name, MapNode* mapNode, const osg::Vec3d& center, double radius, double time, TrackSimVector& trackSims)
 {
-  TrackNode* track = new TrackNode(mapNode, center, image, schema);
+  TrackNode* track = new TrackNode(mapNode, GeoPoint(mapNode->getMapSRS(),center,ALTMODE_ABSOLUTE), image, schema);
   track->setFieldValue(TRACK_FIELD_NAME, name);
 
   AnnotationData* data = new AnnotationData();

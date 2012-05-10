@@ -100,7 +100,13 @@ public:
 
         if (_options.location().isSet())
         {
-            GeoPoint geoPoint(_map->getProfile()->getSRS(), (*_options.location()).x(), (*_options.location()).y(), (*_options.location()).z());
+            GeoPoint geoPoint(
+                _map->getProfile()->getSRS(), 
+                (*_options.location()).x(), 
+                (*_options.location()).y(), 
+                (*_options.location()).z(),
+                ALTMODE_ABSOLUTE );
+
             OE_NOTICE << "Read location " << geoPoint.vec3d() << std::endl;
             
             osg::Matrixd matrix;

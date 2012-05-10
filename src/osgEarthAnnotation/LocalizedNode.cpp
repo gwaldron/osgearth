@@ -71,11 +71,11 @@ LocalizedNode::traverse( osg::NodeVisitor& nv )
     AnnotationNode::traverse( nv );
 }
 
-bool
-LocalizedNode::setPosition( const osg::Vec3d& position )
-{
-    return setPosition( GeoPoint(_mapSRS.get(), position) );
-}
+//bool
+//LocalizedNode::setPosition( const osg::Vec3d& position )
+//{
+//    return setPosition( GeoPoint(_mapSRS.get(), position, ALTMODE_ABSOLUTE) );
+//}
 
 bool
 LocalizedNode::setPosition( const GeoPoint& pos )

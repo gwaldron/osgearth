@@ -304,19 +304,19 @@ RectangleNode::getCorner( Corner corner ) const
 
     if (corner == CORNER_LOWER_LEFT)
     {
-        return GeoPoint(center.getSRS(), osg::RadiansToDegrees(westLon), osg::RadiansToDegrees(southLat), 0);
+        return GeoPoint(center.getSRS(), osg::RadiansToDegrees(westLon), osg::RadiansToDegrees(southLat), 0, ALTMODE_RELATIVE);
     }
     else if (corner == CORNER_LOWER_RIGHT)
     {
-        return GeoPoint(center.getSRS(), osg::RadiansToDegrees(eastLon), osg::RadiansToDegrees(southLat), 0);
+        return GeoPoint(center.getSRS(), osg::RadiansToDegrees(eastLon), osg::RadiansToDegrees(southLat), 0, ALTMODE_RELATIVE);
     }
     else if (corner == CORNER_UPPER_LEFT)
     {
-        return GeoPoint(center.getSRS(), osg::RadiansToDegrees(westLon), osg::RadiansToDegrees(northLat), 0);
+        return GeoPoint(center.getSRS(), osg::RadiansToDegrees(westLon), osg::RadiansToDegrees(northLat), 0, ALTMODE_RELATIVE);
     }
     else if (corner == CORNER_UPPER_RIGHT)
     {
-        return GeoPoint(center.getSRS(), osg::RadiansToDegrees(eastLon), osg::RadiansToDegrees(northLat), 0);
+        return GeoPoint(center.getSRS(), osg::RadiansToDegrees(eastLon), osg::RadiansToDegrees(northLat), 0, ALTMODE_RELATIVE);
     }
     return GeoPoint();
 }

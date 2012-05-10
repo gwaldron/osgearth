@@ -44,7 +44,7 @@ osg::AnimationPath* createAnimationPath( MapNode* mapNode, const osg::Vec3& cent
     double delta = osg::PI * 2.0 / (double)numSamples;
 
     //Get the center point in geocentric
-    GeoPoint centerMap(mapNode->getMapSRS(), center);
+    GeoPoint centerMap(mapNode->getMapSRS(), center, ALTMODE_ABSOLUTE);
     osg::Vec3d centerWorld;
     mapNode->getMap()->toWorldPoint( centerMap, centerWorld );
 

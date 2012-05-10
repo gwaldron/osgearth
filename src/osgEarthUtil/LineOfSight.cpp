@@ -264,8 +264,8 @@ LineOfSightNode::computeLOS( osgEarth::MapNode* mapNode, const osg::Vec3d& start
     osg::Vec3d startWorld, endWorld;
     if (altitudeMode == ALTMODE_ABSOLUTE)
     {
-        mapNode->getMap()->toWorldPoint( GeoPoint(mapSRS, start), startWorld );
-        mapNode->getMap()->toWorldPoint( GeoPoint(mapSRS, end), endWorld );
+        mapNode->getMap()->toWorldPoint( GeoPoint(mapSRS, start, ALTMODE_ABSOLUTE), startWorld );
+        mapNode->getMap()->toWorldPoint( GeoPoint(mapSRS, end,   ALTMODE_ABSOLUTE), endWorld );
     }
     else
     {
@@ -300,12 +300,12 @@ LineOfSightNode::compute(osg::Node* node, bool backgroundThread)
 
       //Computes the LOS and redraws the scene
       if (_startAltitudeMode == ALTMODE_ABSOLUTE)
-          _mapNode->getMap()->toWorldPoint( GeoPoint(mapSRS,_start), _startWorld );
+          _mapNode->getMap()->toWorldPoint( GeoPoint(mapSRS,_start,ALTMODE_ABSOLUTE), _startWorld );
       else
           getRelativeWorld(_start.x(), _start.y(), _start.z(), _mapNode.get(), _startWorld);
 
       if (_endAltitudeMode == ALTMODE_ABSOLUTE)
-          _mapNode->getMap()->toWorldPoint( GeoPoint(mapSRS,_end), _endWorld );
+          _mapNode->getMap()->toWorldPoint( GeoPoint(mapSRS,_end,ALTMODE_ABSOLUTE), _endWorld );
       else
           getRelativeWorld(_end.x(), _end.y(), _end.z(), _mapNode.get(), _endWorld);
       
@@ -751,7 +751,7 @@ RadialLineOfSightNode::compute_line(osg::Node* node, bool backgroundThread)
     //Get the center point in geocentric    
     if (_altitudeMode == ALTMODE_ABSOLUTE)
     {
-        GeoPoint center(_mapNode->getMapSRS(),_center);
+        GeoPoint center(_mapNode->getMapSRS(),_center,ALTMODE_ABSOLUTE);
         _mapNode->getMap()->toWorldPoint( center, _centerWorld );
     }
     else
@@ -898,7 +898,7 @@ RadialLineOfSightNode::compute_fill(osg::Node* node, bool backgroundThread)
     //Get the center point in geocentric    
     if (_altitudeMode == ALTMODE_ABSOLUTE)
     {
-        GeoPoint centerMap(_mapNode->getMapSRS(), _center);
+        GeoPoint centerMap(_mapNode->getMapSRS(), _center, ALTMODE_ABSOLUTE);
         _mapNode->getMap()->toWorldPoint( centerMap, _centerWorld );
     }
     else

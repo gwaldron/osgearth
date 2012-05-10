@@ -56,16 +56,6 @@ namespace osgEarth { namespace Annotation
             const TextSymbol*       symbol );
 
         /**
-         * Constructs a label node from an x,y
-         */
-        LabelNode(
-            MapNode*                mapNode,
-            double                  x,
-            double                  y,
-            const std::string&      text,
-            const Style&            style =Style() );
-
-        /**
          * Constructs a label node that is positioned relative to a map
          * point (referneced by the spatial reference)
          */
@@ -83,13 +73,6 @@ namespace osgEarth { namespace Annotation
         LabelNode(
             const std::string& text   ="",
             const Style&       style =Style() );
-
-        /**
-         * Constructs an empty label node 
-         */
-        LabelNode(
-            MapNode*          mapNode,
-            const TextSymbol* symbol );
 
         /**
          * Deserializes a label

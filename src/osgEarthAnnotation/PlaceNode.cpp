@@ -62,22 +62,6 @@ _geode  ( 0L )
     init();
 }
 
-PlaceNode::PlaceNode(MapNode*           mapNode,
-                     double             x,
-                     double             y,
-                     osg::Image*        image,
-                     const std::string& text,
-                     const Style&       style ) :
-
-OrthoNode( mapNode, osg::Vec3d(x, y, 0) ),
-_image   ( image ),
-_text    ( text ),
-_style   ( style ),
-_geode   ( 0L )
-{
-    init();
-}
-
 void
 PlaceNode::init()
 {

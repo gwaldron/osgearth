@@ -96,7 +96,9 @@ struct TrackSim : public osg::Referenced
         GeoPoint geo(
             _track->getMapNode()->getMapSRS(),
             osg::RadiansToDegrees(pos.x()),
-            osg::RadiansToDegrees(pos.y()) );
+            osg::RadiansToDegrees(pos.y()),
+            10000.0,
+            ALTMODE_ABSOLUTE);
 
         // update the position label.
         _track->setPosition(geo);

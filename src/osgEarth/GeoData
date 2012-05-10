@@ -39,23 +39,34 @@ namespace osgEarth
     class OSGEARTH_EXPORT GeoPoint
     {
     public:
+
         /**
          * Constructs a GeoPoint.
          */
         GeoPoint(
             const SpatialReference* srs,
-            double x = 0.0,
-            double y = 0.0,
-            double z = 0.0,
-            const AltitudeMode& mode =ALTMODE_RELATIVE );
+            double x,
+            double y,
+            double z,
+            const AltitudeMode& mode );
 
         /**
-         * Constructs a geopoint.
+         * Constructs a GeoPoint with X and Y coordinates. The Z defaults
+         * to zero with an ALTMODE_RELATIVE altitude mode (i.e., 0 meters
+         * above the terrain).
+         */
+        GeoPoint(
+            const SpatialReference* srs,
+            double x,
+            double y );
+
+        /**
+         * Constructs a GeoPoint from a vec3.
          */
         GeoPoint(
             const SpatialReference* srs,
             const osg::Vec3d&       xyz,
-            const AltitudeMode&     mode =ALTMODE_ABSOLUTE );
+            const AltitudeMode&     mode );
 
         /**
          * Constructs a new GeoPoint by transforming an existing GeoPoint into
@@ -89,14 +100,14 @@ namespace osgEarth
         void set(
             const SpatialReference* srs,
             const osg::Vec3d&       xyz,
-            const AltitudeMode&     mode =ALTMODE_RELATIVE );
+            const AltitudeMode&     mode );
 
         void set(
             const SpatialReference* srs,
-            double                  x    =0.0,
-            double                  y    =0.0,
-            double                  z    =0.0,
-            const AltitudeMode&     mode =ALTMODE_RELATIVE );
+            double                  x,
+            double                  y,
+            double                  z,
+            const AltitudeMode&     mode );
 
         // component getter/setters
 

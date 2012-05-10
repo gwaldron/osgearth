@@ -182,7 +182,7 @@ namespace osgEarth { namespace Annotation
          * Sets the map position of the node, in map coordinates.
          * Returns true upon success.
          */
-        virtual bool setPosition( const osg::Vec3d& pos ) =0;
+        //virtual bool setPosition( const osg::Vec3d& pos ) =0;
 
         /**
          * Gets the position (in map coordinates) of the node

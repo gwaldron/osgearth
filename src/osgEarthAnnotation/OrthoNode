@@ -54,15 +54,6 @@ namespace osgEarth { namespace Annotation
             const GeoPoint& position );
 
         /**
-         * Constructs an ortho node that resides at an absolute map position
-         * @param mapNode  MapNode used to reference the ortho node
-         * @param position Starting position (in map coordinates)
-         */
-        OrthoNode(
-            MapNode*          mapNode,
-            const osg::Vec3d& position );
-
-        /**
          * Constructs an ortho node that resides at an absolute position on the map
          */
         OrthoNode(
@@ -83,7 +74,7 @@ namespace osgEarth { namespace Annotation
         virtual bool setPosition( const GeoPoint& pos );
 
         /** Sets the node position (in map coords) */
-        virtual bool setPosition( const osg::Vec3d& pos );
+        //virtual bool setPosition( const osg::Vec3d& pos );
 
         /** Gets the position (in map coordinates) of the node */
         virtual GeoPoint getPosition() const;

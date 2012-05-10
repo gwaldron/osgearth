@@ -251,7 +251,7 @@ MGRSGraticule::buildSQIDTiles( const std::string& gzd )
                 sqidLocal = sqidTextECEF * world2local;
 
                 MGRSCoord mgrsCoord;
-                if ( mgrs.transform( GeoPoint(extent.getSRS(),sqidTextMap), mgrsCoord) )
+                if ( mgrs.transform( GeoPoint(extent.getSRS(),sqidTextMap,ALTMODE_ABSOLUTE), mgrsCoord) )
                 {
                     textSym->size() = utmWidth/3.0;        
                     osgText::Text* d = ts.create( mgrsCoord.sqid );
@@ -319,7 +319,7 @@ MGRSGraticule::buildSQIDTiles( const std::string& gzd )
                         osg::Vec3d sqidLocal = sqidTextECEF * world2local;
 
                         MGRSCoord mgrsCoord;
-                        if ( mgrs.transform( GeoPoint(extent.getSRS(),sqidTextMap), mgrsCoord) )
+                        if ( mgrs.transform( GeoPoint(extent.getSRS(),sqidTextMap,ALTMODE_ABSOLUTE), mgrsCoord) )
                         {
                             textSym->size() = 33000.0;
                             osgText::Text* d = ts.create( mgrsCoord.sqid );
@@ -374,7 +374,7 @@ MGRSGraticule::buildSQIDTiles( const std::string& gzd )
                         osg::Vec3d sqidLocal = sqidTextECEF * world2local;
 
                         MGRSCoord mgrsCoord;
-                        if ( mgrs.transform( GeoPoint(extent.getSRS(),sqidTextMap), mgrsCoord) )
+                        if ( mgrs.transform( GeoPoint(extent.getSRS(),sqidTextMap,ALTMODE_ABSOLUTE), mgrsCoord) )
                         {
                             textSym->size() = 33000.0;
                             osgText::Text* d = ts.create( mgrsCoord.sqid );
@@ -442,7 +442,7 @@ MGRSGraticule::buildSQIDTiles( const std::string& gzd )
                         osg::Vec3d sqidLocal = sqidTextECEF * world2local;
 
                         MGRSCoord mgrsCoord;
-                        if ( mgrs.transform( GeoPoint(extent.getSRS(),sqidTextMap), mgrsCoord) )
+                        if ( mgrs.transform( GeoPoint(extent.getSRS(),sqidTextMap,ALTMODE_ABSOLUTE), mgrsCoord) )
                         {
                             textSym->size() = 33000.0;
                             osgText::Text* d = ts.create( mgrsCoord.sqid );
@@ -497,7 +497,7 @@ MGRSGraticule::buildSQIDTiles( const std::string& gzd )
                         osg::Vec3d sqidLocal = sqidTextECEF * world2local;
 
                         MGRSCoord mgrsCoord;
-                        if ( mgrs.transform( GeoPoint(extent.getSRS(),sqidTextMap), mgrsCoord) )
+                        if ( mgrs.transform( GeoPoint(extent.getSRS(),sqidTextMap,ALTMODE_ABSOLUTE), mgrsCoord) )
                         {
                             textSym->size() = 33000.0;
                             osgText::Text* d = ts.create( mgrsCoord.sqid );

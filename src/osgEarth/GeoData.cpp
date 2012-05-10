@@ -88,6 +88,16 @@ GeoPoint GeoPoint::INVALID;
 
 GeoPoint::GeoPoint(const SpatialReference* srs,
                    double x,
+                   double y ) :
+_srs    ( srs ),
+_p      ( x, y, 0.0 ),
+_altMode( ALTMODE_RELATIVE )
+{
+    //nop
+}
+
+GeoPoint::GeoPoint(const SpatialReference* srs,
+                   double x,
                    double y,
                    double z,
                    const AltitudeMode& altMode) :
@@ -100,7 +110,7 @@ _altMode( altMode )
 
 GeoPoint::GeoPoint(const SpatialReference* srs,
                    const osg::Vec3d&       xyz,
-                   const AltitudeMode& altMode) :
+                   const AltitudeMode&     altMode) :
 _srs(srs),
 _p  (xyz),
 _altMode( altMode )
@@ -209,7 +219,7 @@ GeoPoint::getConfig() const
 void
 GeoPoint::set(const SpatialReference* srs,
               const osg::Vec3d&       xyz,
-              const AltitudeMode& altMode)
+              const AltitudeMode&     altMode)
 {
     _srs = srs;
     _p   = xyz;
@@ -221,7 +231,7 @@ GeoPoint::set(const SpatialReference* srs,
               double                  x,
               double                  y,
               double                  z,
-              const AltitudeMode& altMode)
+              const AltitudeMode&     altMode)
 {
     _srs = srs;
     _p.set(x, y, z);

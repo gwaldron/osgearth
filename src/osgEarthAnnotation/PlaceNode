@@ -60,18 +60,6 @@ namespace osgEarth { namespace Annotation
             const std::string& labelText,
             const Style&       style =Style() );
 
-
-        /**
-         * Constructs a new place node.
-         */
-        PlaceNode(
-            MapNode*           mapNode,
-            double             x,
-            double             y,
-            osg::Image*        iconImage,
-            const std::string& labelText,
-            const Style&       style =Style() );
-
         /**
          * Deserializes a place node
          */

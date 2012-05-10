@@ -1352,7 +1352,7 @@ MapInfo::worldPointToMapPoint( const osg::Vec3d& input, GeoPoint& output ) const
     osg::Vec3d temp;
     bool ok = _profile->getSRS()->transformFromWorld(input, temp);
     if ( ok )
-        output.set(_profile->getSRS(), temp);
+        output.set(_profile->getSRS(), temp, ALTMODE_ABSOLUTE);
     return ok;
 }
 

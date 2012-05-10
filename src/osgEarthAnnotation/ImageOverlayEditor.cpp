@@ -103,6 +103,6 @@ ImageOverlayEditor::updateDraggers()
         Dragger* dragger = itr->second.get();
         //Get the location of the control point
         osg::Vec2d location = getOverlay()->getControlPoint( itr->first );
-        dragger->setPosition( GeoPoint( _overlay->getMapNode()->getMapSRS(), location.x(), location.y()));
+        dragger->setPosition( GeoPoint( _overlay->getMapNode()->getMapSRS(), location.x(), location.y()), false );
     }
 }

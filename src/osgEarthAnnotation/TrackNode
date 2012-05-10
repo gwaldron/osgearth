@@ -102,11 +102,11 @@ namespace osgEarth { namespace Annotation
          * @param image       Icon image to use
          * @param fieldSchema Schema for track label fields
          */
-        TrackNode(
-            MapNode*                    mapNode,
-            const osg::Vec3d&           positionInMapCoords,
-            osg::Image*                 image,
-            const TrackNodeFieldSchema& fieldSchema );
+        //TrackNode(
+        //    MapNode*                    mapNode,
+        //    const osg::Vec3d&           positionInMapCoords,
+        //    osg::Image*                 image,
+        //    const TrackNodeFieldSchema& fieldSchema );
 
         virtual ~TrackNode() { }
 

@@ -334,7 +334,7 @@ AddPathDialog::AddPathDialog(osg::Group* root, osgEarth::MapNode* mapNode, const
       if (pathLine)
       {
         for (osgEarth::Symbology::LineString::const_iterator it = pathLine->begin(); it != pathLine->end(); ++it)
-          addPoint(osgEarth::GeoPoint(_mapNode->getMapSRS(), (*it).x(), (*it).y(), (*it).z()));
+          addPoint(osgEarth::GeoPoint(_mapNode->getMapSRS(), (*it).x(), (*it).y(), (*it).z(), ALTMODE_RELATIVE));
       }
     }
   }
@@ -585,7 +585,7 @@ AddPolygonDialog::AddPolygonDialog(osg::Group* root, osgEarth::MapNode* mapNode,
       if (polyGeom)
       {
         for (osgEarth::Symbology::LineString::const_iterator it = polyGeom->begin(); it != polyGeom->end(); ++it)
-          addPoint(osgEarth::GeoPoint(_mapNode->getMapSRS(), (*it).x(), (*it).y(), (*it).z()));
+          addPoint(osgEarth::GeoPoint(_mapNode->getMapSRS(), (*it).x(), (*it).y(), (*it).z(), ALTMODE_RELATIVE));
       }
     }
   }

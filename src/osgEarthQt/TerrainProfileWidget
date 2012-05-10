@@ -168,8 +168,8 @@ namespace osgEarth { namespace QtGui
                     _end = mapPoint.vec3d();
                     _startValid = false;
 
-                    _profileWidget->setStartEnd(GeoPoint(_mapNode->getMapSRS(), _start.x(), _start.y(), 0),
-                                                GeoPoint(_mapNode->getMapSRS(), _end.x(), _end.y(), 0));
+                    _profileWidget->setStartEnd(GeoPoint(_mapNode->getMapSRS(), _start.x(), _start.y()),
+                                                GeoPoint(_mapNode->getMapSRS(), _end.x(), _end.y()));
                   }
 
                   updateDisplay();

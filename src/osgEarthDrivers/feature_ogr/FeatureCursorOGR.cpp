@@ -22,6 +22,8 @@
 #include <osgEarth/Registry>
 #include <algorithm>
 
+#define LC "[FeatureCursorOGR] "
+
 #define OGR_SCOPED_LOCK GDAL_SCOPED_LOCK
 
 using namespace osgEarth;
@@ -105,6 +107,7 @@ _filters          ( filters )
         }
 
 
+        OE_DEBUG << LC << "SQL: " << expr << std::endl;
         _resultSetHandle = OGR_DS_ExecuteSQL( _dsHandle, expr.c_str(), _spatialFilter, 0L );
 
         if ( _resultSetHandle )

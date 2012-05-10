@@ -20,6 +20,7 @@
 #define OSGEARTH_ANNO_LOCALIZED_NODE_H 1
 
 #include <osgEarthAnnotation/AnnotationNode>
+#include <osgEarth/DrapeableNode>
 #include <osgEarth/GeoData>
 #include <osg/Transform>
 
@@ -64,9 +65,6 @@ namespace osgEarth { namespace Annotation
         /** Sets the node position */
         virtual bool setPosition( const GeoPoint& p );
 
-        /** Sets the position (in map coordinates) */
-        //virtual bool setPosition( const osg::Vec3d& p );
-
         /** Gets the node position (in map coords) */
         virtual GeoPoint getPosition() const;
 
@@ -107,13 +105,18 @@ namespace osgEarth { namespace Annotation
 
         const osg::Vec3f& getScale() const { return _scale; }
 
-        virtual osg::Group* getAttachPoint() { return _xform.get(); }
+        virtual osg::Group* getRoot() { return _draper.get(); }
+
+        virtual osg::Group* getChildAttachPoint() { return _xform.get(); }
 
         virtual osg::Transform* getTransform() { return _xform.get(); }
+
+        virtual DrapeableNode* getDrapeable() { return _draper.get(); }
 
     protected:
         osg::observer_ptr<const SpatialReference> _mapSRS;
         osg::ref_ptr<osg::Transform> _xform;
+        osg::ref_ptr<DrapeableNode> _draper;
         bool _horizonCulling;
         bool _autoTransform;
         GeoPoint _mapPosition;

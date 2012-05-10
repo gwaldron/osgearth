@@ -66,7 +66,7 @@ namespace osgEarth { namespace Annotation
         /** 
          * Gets the attach point for children of this node
          */
-        virtual osg::Group* getAttachPoint();
+        virtual osg::Group* getChildAttachPoint();
 
         /**
          * Gets the MapNode that this AnnotationNode is attached to

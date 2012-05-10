@@ -267,7 +267,7 @@ AnnotationNode::hasDecoration( const std::string& name ) const
 }
 
 osg::Group*
-AnnotationNode::getAttachPoint()
+AnnotationNode::getChildAttachPoint()
 {
     osg::Transform* t = osgEarth::findTopMostNodeOfType<osg::Transform>(this);
     return t ? (osg::Group*)t : (osg::Group*)this;

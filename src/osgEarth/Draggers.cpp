@@ -32,6 +32,15 @@
 
 using namespace osgEarth;
 
+struct ClampDraggerCallback : public TerrainCallback
+{
+    void onTileAdded( const TileKey& key, osg::Node* tile, TerrainCallbackContext& context )
+    {
+        Dragger* dragger = static_cast<Dragger*>(context.getClientData());
+        dragger->reclamp( key, tile, context.getTerrain() );
+    }
+};
+
 /**********************************************************/
 Dragger::Dragger( MapNode* mapNode):
 _mapNode( mapNode ),
@@ -40,6 +49,13 @@ _dragging(false),
 _hovered(false)
 {
     setNumChildrenRequiringEventTraversal( 1 );
+
+    _mapNode->getTerrain()->addTerrainCallback( new ClampDraggerCallback(), this ); 
+}
+
+Dragger::~Dragger()
+{
+    _mapNode->getTerrain()->removeTerrainCallbacksWithClientData(this);
 }
 
 bool Dragger::getDragging() const
@@ -74,11 +90,22 @@ void Dragger::setPosition( const GeoPoint& position, bool fireEvents)
     }
 }
 
-void Dragger::updateTransform()
+void Dragger::updateTransform(osg::Node* patch)
 {
     osg::Matrixd matrix;
-    _position.makeAbsolute( _mapNode->getTerrain() );
-    _position.createLocalToWorld( matrix );
+    GeoPoint mapPoint;
+    _mapNode->getMap()->toMapPoint( _position, mapPoint );
+    //Get the height
+    if (_position.altitudeMode() == ALTMODE_RELATIVE)
+    {
+        double hamsl;
+        if (_mapNode->getTerrain()->getHeight(mapPoint.x(), mapPoint.y(), &hamsl, 0L, patch))
+        {
+            mapPoint.z() += hamsl;
+        }
+        mapPoint.altitudeMode() = ALTMODE_ABSOLUTE;
+    }            
+    mapPoint.createLocalToWorld( matrix );
     setMatrix( matrix );
 }
 
@@ -152,8 +179,17 @@ bool Dragger::handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& 
             osg::Vec3d world;
             if ( _mapNode->getTerrain()->getWorldCoordsUnderMouse(view, ea.getX(), ea.getY(), world) )
             {
+                //Get the absolute mapPoint that they've drug it to.
                 GeoPoint mapPoint;
                 _mapNode->getMap()->worldPointToMapPoint(world, mapPoint);
+
+                //If the current position is relative, we need to convert the absolute world point to relative.
+                //If the point is absolute then just emit the absolute point.
+                if (_position.altitudeMode() == ALTMODE_RELATIVE)
+                {
+                    mapPoint.alt() = _position.alt();
+                    mapPoint.altitudeMode() = ALTMODE_RELATIVE;
+                }
                 setPosition( mapPoint );
                 aa.requestRedraw();
                 return true;
@@ -192,6 +228,17 @@ void Dragger::setHover( bool hovered)
         {
             enter();
         }
+    }
+}
+
+void Dragger::reclamp( const TileKey& key, osg::Node* tile, const Terrain* terrain )
+{    
+    GeoPoint p;
+    _position.transform( key.getExtent().getSRS(), p );
+    // first verify that the control position intersects the tile:
+    if ( key.getExtent().contains( p.x(), p.y() ) )
+    {
+        updateTransform( tile );
     }
 }
 

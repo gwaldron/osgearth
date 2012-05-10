@@ -21,6 +21,7 @@
 
 #include <osgEarth/Common>
 #include <osgEarth/GeoData>
+#include <osgEarth/TileKey>
 #include <osg/MatrixTransform>
 #include <osg/ShapeDrawable>
 #include <osgGA/GUIEventHandler>
@@ -47,7 +48,7 @@ namespace osgEarth
         Dragger( MapNode* mapNode);
 
         /** dtor */
-        virtual ~Dragger() { }
+        virtual ~Dragger();
 
         bool getDragging() const;
 
@@ -58,7 +59,7 @@ namespace osgEarth
         void setPosition( const osgEarth::GeoPoint& position, bool fireEvents=true);
 
 
-        void updateTransform();
+        void updateTransform(osg::Node* patch = 0);
 
         virtual void enter();
 
@@ -69,6 +70,8 @@ namespace osgEarth
         void removePositionChangedCallback( PositionChangedCallback* callback );
 
         virtual void traverse(osg::NodeVisitor& nv);        
+
+        virtual void reclamp( const TileKey& key, osg::Node* tile, const Terrain* terrain );
 
 
     protected:

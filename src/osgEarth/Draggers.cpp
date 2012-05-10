@@ -44,7 +44,7 @@ struct ClampDraggerCallback : public TerrainCallback
 /**********************************************************/
 Dragger::Dragger( MapNode* mapNode):
 _mapNode( mapNode ),
-_position( mapNode->getMapSRS(), 0,0,0),
+_position( mapNode->getMapSRS(), 0,0,0, ALTMODE_RELATIVE),
 _dragging(false),
 _hovered(false)
 {

@@ -32,6 +32,9 @@ _source( source ),
 _mapSRS( mapSRS ),
 _mouseDown( false ),
 _firstMove( false ),
+_secondMove( false ),
+_moveOption( POLYLINE_ONLY ),
+_moveModKeyMask( 0 ),
 _mouseButton( osgGA::GUIEventAdapter::LEFT_MOUSE_BUTTON ),
 _intersectionMask( 0xffffffff )
 {
@@ -50,7 +53,7 @@ AddPointHandler::getMouseButton() const
 }
 
 bool
-AddPointHandler::addPoint( float x, float y, osgViewer::View* view )
+AddPointHandler::addPoint( float x, float y, osgViewer::View* view, bool modifyLast )
 {
     osgUtil::LineSegmentIntersector::Intersections results;
     if ( view->computeIntersections( x, y, results, _intersectionMask ) )
@@ -66,8 +69,12 @@ AddPointHandler::addPoint( float x, float y, osgViewer::View* view )
         double lat_deg = osg::RadiansToDegrees( lat_rad );
         double lon_deg = osg::RadiansToDegrees( lon_rad );
 
-        if (_feature.valid())            
+        if (_feature.valid())
         {
+            if (modifyLast)
+			{
+                _feature->getGeometry()->pop_back();
+			}
             _feature->getGeometry()->push_back( osg::Vec3d(lon_deg, lat_deg, alt) );
             _source->dirty();
         }
@@ -86,7 +93,8 @@ AddPointHandler::handle( const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapt
         {
             _mouseDown = true;
             _firstMove = true;
-            return addPoint( ea.getX(), ea.getY(), view );
+            _secondMove = false;
+            return addPoint( ea.getX(), ea.getY(), view, false );
         }
     }
     else if (ea.getEventType() == osgGA::GUIEventAdapter::RELEASE)
@@ -98,11 +106,40 @@ AddPointHandler::handle( const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapt
     }
     else if (ea.getEventType() == osgGA::GUIEventAdapter::MOVE || ea.getEventType() == osgGA::GUIEventAdapter::DRAG)
     {
-        if (_mouseDown)
+        if ((_moveOption != NONE) && _mouseDown)
         {
             if (!_firstMove)
             {
-                return addPoint( ea.getX(), ea.getY(), view );
+                bool modifyLast = false;
+                switch (_moveOption)
+                {
+                case POLYLINE_ONLY:
+                    // nothing to do, drop through
+                case NONE:
+                default:
+                    // should not get here
+                    break;
+                case LINE_ONLY:
+                    modifyLast = _secondMove;
+                    break;
+                case LINE_DURING_MODKEY:
+                    modifyLast = _secondMove;
+                    if (_moveModKeyMask != 0)
+                    {
+                        modifyLast &= ((ea.getModKeyMask() & _moveModKeyMask) == _moveModKeyMask);
+                    }
+                    break;
+                case POLY_DURING_MODKEY:
+                    modifyLast = _secondMove;
+                    if (_moveModKeyMask != 0)
+                    {
+                        modifyLast &= ((ea.getModKeyMask() & _moveModKeyMask) == _moveModKeyMask);
+                    }
+                    modifyLast = !modifyLast; // do just the opposite of LINE_DURING_MODKEY
+                    break;
+                }
+                _secondMove = true; // would be used the next time
+				return addPoint( ea.getX(), ea.getY(), view,  modifyLast );
             }
             _firstMove = false;
         }
@@ -179,7 +216,7 @@ FeatureEditor::setColor( const osg::Vec4f& color )
         _color = color;
         init();
     }
-}        
+}
 
 float
 FeatureEditor::getSize() const
@@ -212,6 +249,6 @@ FeatureEditor::init()
         dragger->setPosition(GeoPoint(_feature->getSRS(), (*_feature->getGeometry())[i].x(), (*_feature->getGeometry())[i].y(), (*_feature->getGeometry())[i].z(), ALTMODE_ABSOLUTE));
         dragger->addPositionChangedCallback(new MoveFeatureDraggerCallback(_feature.get(), _source.get(), i) );
 
-        addChild(dragger);        
+        addChild(dragger);
     }
-}        
+}

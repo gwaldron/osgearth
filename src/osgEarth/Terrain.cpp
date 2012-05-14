@@ -40,16 +40,17 @@ namespace
     struct OnTileAddedOperation : public BaseOp
     {
         TileKey _key;
-        osg::observer_ptr<osg::Node> _node;
+        osg::ref_ptr<osg::Node> _node;
 
         OnTileAddedOperation(const TileKey& key, osg::Node* node, Terrain* terrain)
             : BaseOp(terrain), _key(key), _node(node) { }
 
         void operator()(osg::Object*)
         {
-            osg::ref_ptr<osg::Node> node_safe = _node.get();
-            if ( node_safe.valid() && _terrain.valid() )
-                _terrain->fireTileAdded( _key, node_safe.get() );
+            if ( _node.valid() && _node->referenceCount() > 1 && _terrain.valid() )
+            {
+                _terrain->fireTileAdded( _key, _node.get() );
+            }
         }
     };
 }

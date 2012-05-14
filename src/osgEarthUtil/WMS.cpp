@@ -176,7 +176,7 @@ WMSCapabilitiesReader::read( const std::string &location, const osgDB::ReaderWri
 #define ATTR_MAXY              "maxy"
 
 #define ATTR_EASTLON           "eastboundlongitude"
-#define ATTR_WESTLON           "eastboundlongitude"
+#define ATTR_WESTLON           "westboundlongitude"
 #define ATTR_NORTHLAT          "northboundlatitude"
 #define ATTR_SOUTHLAT          "southboundlatitude"
 
@@ -234,9 +234,9 @@ readLayers(XmlElement* e, WMSLayer* parentLayer, WMSLayer::LayerList& layers)
             if (e_gbb.valid())
             {
                 double minX, minY, maxX, maxY;
-                minX = as<double>(e_gbb->getSubElementText( ATTR_EASTLON ), 0);
+                minX = as<double>(e_gbb->getSubElementText( ATTR_WESTLON ), 0);
                 minY = as<double>(e_gbb->getSubElementText( ATTR_SOUTHLAT ), 0);
-                maxX = as<double>(e_gbb->getSubElementText( ATTR_WESTLON ), 0);
+                maxX = as<double>(e_gbb->getSubElementText( ATTR_EASTLON ), 0);
                 maxY = as<double>(e_gbb->getSubElementText( ATTR_NORTHLAT ), 0);
                 layer->setLatLonExtents(minX, minY, maxX, maxY);
             }

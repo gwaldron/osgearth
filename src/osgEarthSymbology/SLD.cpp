@@ -258,6 +258,19 @@ SLDReader::readStyleFromCSSParams( const Config& conf, Style& sc )
             if (!marker) marker = sc.getOrCreateSymbol<MarkerSymbol>();
             marker->scale() = NumericExpression(value);
         }
+        else if ( match(key, "marker-icon-align") )
+        {
+            if (!marker) marker = sc.getOrCreate<MarkerSymbol>();
+            if      ( match(value, "left-top") ) marker->alignment() = MarkerSymbol::ALIGN_LEFT_TOP;
+            else if ( match(value, "left-center") ) marker->alignment() = MarkerSymbol::ALIGN_LEFT_CENTER;
+            else if ( match(value, "left-bottom") ) marker->alignment() = MarkerSymbol::ALIGN_LEFT_BOTTOM;
+            else if ( match(value, "center-top")  ) marker->alignment() = MarkerSymbol::ALIGN_CENTER_TOP;
+            else if ( match(value, "center-center") ) marker->alignment() = MarkerSymbol::ALIGN_CENTER_CENTER;
+            else if ( match(value, "center-bottom") ) marker->alignment() = MarkerSymbol::ALIGN_CENTER_BOTTOM;
+            else if ( match(value, "right-top") ) marker->alignment() = MarkerSymbol::ALIGN_RIGHT_TOP;
+            else if ( match(value, "right-center") ) marker->alignment() = MarkerSymbol::ALIGN_RIGHT_CENTER;
+            else if ( match(value, "right-bottom") ) marker->alignment() = MarkerSymbol::ALIGN_RIGHT_BOTTOM;
+        }
 
         // ..... ExtrusionSymbol .....
                 

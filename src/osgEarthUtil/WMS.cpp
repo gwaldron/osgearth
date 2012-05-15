@@ -168,13 +168,17 @@ WMSCapabilitiesReader::read( const std::string &location, const osgDB::ReaderWri
 #define ELEM_SRS "srs"
 #define ELEM_CRS "crs"
 #define ELEM_LATLONBOUNDINGBOX "latlonboundingbox"
+#define ELEM_GEOGRAPHICBOUNDINGBOX "ex_geographicboundingbox"
 #define ELEM_BOUNDINGBOX "boundingbox"
 #define ATTR_MINX              "minx"
 #define ATTR_MINY              "miny"
 #define ATTR_MAXX              "maxx"
 #define ATTR_MAXY              "maxy"
 
-
+#define ATTR_EASTLON           "eastboundlongitude"
+#define ATTR_WESTLON           "westboundlongitude"
+#define ATTR_NORTHLAT          "northboundlatitude"
+#define ATTR_SOUTHLAT          "southboundlatitude"
 
 static void
 readLayers(XmlElement* e, WMSLayer* parentLayer, WMSLayer::LayerList& layers)
@@ -224,6 +228,18 @@ readLayers(XmlElement* e, WMSLayer* parentLayer, WMSLayer::LayerList& layers)
             maxX = as<double>(e_bb->getAttr( ATTR_MAXX ), 0);
             maxY = as<double>(e_bb->getAttr( ATTR_MAXY ), 0);
             layer->setLatLonExtents(minX, minY, maxX, maxY);
+        }
+        else {
+            osg::ref_ptr<XmlElement> e_gbb = e_layer->getSubElement( ELEM_GEOGRAPHICBOUNDINGBOX );
+            if (e_gbb.valid())
+            {
+                double minX, minY, maxX, maxY;
+                minX = as<double>(e_gbb->getSubElementText( ATTR_WESTLON ), 0);
+                minY = as<double>(e_gbb->getSubElementText( ATTR_SOUTHLAT ), 0);
+                maxX = as<double>(e_gbb->getSubElementText( ATTR_EASTLON ), 0);
+                maxY = as<double>(e_gbb->getSubElementText( ATTR_NORTHLAT ), 0);
+                layer->setLatLonExtents(minX, minY, maxX, maxY);
+            }
         }
 
         e_bb = e_layer->getSubElement( ELEM_BOUNDINGBOX );

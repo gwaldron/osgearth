@@ -27,33 +27,6 @@
 using namespace osgEarth;
 using namespace osgEarth::Util;
 
-//------------------------------------------------------------------------
-
-struct GW : public osgGA::GUIEventHandler {
-    GW(Map* m):_m(m){}
-    bool handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& aa) {
-        if ( ea.getEventType() == ea.KEYDOWN && ea.getKey() == 'r' ) {
-            _m->removeModelLayer(_m->getModelLayerAt(0));
-            return true;
-        }
-        if ( ea.getEventType() == ea.KEYDOWN && ea.getKey() == '[' ) {
-            _m->getModelLayerAt(0)->setOverlay( !_m->getModelLayerAt(0)->getOverlay() );
-            return true;
-        }
-        if ( ea.getEventType() == ea.KEYDOWN && ea.getKey() == 'w') {
-            dynamic_cast<EarthManipulator*>(dynamic_cast<osgViewer::View*>(aa.asView())->getCameraManipulator())->getSettings()->setCameraFrustumOffsets( osg::Vec2s(0,0) );
-            return true;
-        }
-        if ( ea.getEventType() == ea.KEYDOWN && ea.getKey() == 'e') {
-            dynamic_cast<EarthManipulator*>(dynamic_cast<osgViewer::View*>(aa.asView())->getCameraManipulator())->getSettings()->setCameraFrustumOffsets( osg::Vec2s(250,0) );
-            return true;
-        }
-        
-        return false;
-    }
-    Map* _m;
-};
-
 int
 main(int argc, char** argv)
 {
@@ -81,11 +54,7 @@ main(int argc, char** argv)
         // OSG, this activates OSG's IncrementalCompileOpeartion in order to avoid frame breaks.
         viewer.getDatabasePager()->setDoPreCompile( true );
 
-        viewer.addEventHandler( new GW(MapNode::findMapNode(node)->getMap()));
-
-        dynamic_cast<EarthManipulator*>(viewer.getCameraManipulator())->getSettings()->setMinMaxPitch(-90,0);
-        dynamic_cast<EarthManipulator*>(viewer.getCameraManipulator())->getSettings()->setCameraFrustumOffsets( osg::Vec2s(-250,0) );
-        return viewer.run();
+        viewer.run();
     }
     else
     {

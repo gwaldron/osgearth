@@ -180,7 +180,6 @@ namespace
                 {
                     double s = (lon + 180) / 360.0;
                     double t = (lat + 90.0) / 180.0;
-                    //OE_NOTICE << "Pushing back " << s << ", " << t << std::endl;
                     texCoords->push_back( osg::Vec2(s, t ) );
                 }
 

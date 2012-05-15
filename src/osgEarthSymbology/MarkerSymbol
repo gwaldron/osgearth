@@ -20,6 +20,8 @@
 #ifndef OSGEARTHSYMBOLOGY_MODEL_SYMBOL_H
 #define OSGEARTHSYMBOLOGY_MODEL_SYMBOL_H 1
 
+#include <climits>
+
 #include <osgEarth/Common>
 #include <osgEarthSymbology/Symbol>
 #include <osgEarthSymbology/Expression>

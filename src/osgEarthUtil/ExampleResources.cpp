@@ -181,7 +181,11 @@ namespace
 {
     struct SkySliderHandler : public ControlEventHandler
     {
-        SkySliderHandler(SkyNode* sky) : _sky(sky) { }
+        SkySliderHandler(SkyNode* sky) : _sky(sky) 
+        {
+            //Set the default time
+            _sky->setDateTime( 2011, 3, 6, 18.0f );
+        }
 
         SkyNode* _sky;
 

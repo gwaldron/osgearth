@@ -81,6 +81,9 @@ public:
         friend class OSGTerrainEngineNode;
     };
 
+protected:
+	virtual void onVerticalScaleChanged();
+
 private:
     void init();
     void syncMapModel();

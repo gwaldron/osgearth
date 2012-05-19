@@ -829,7 +829,13 @@ SinglePassTerrainTechnique::createGeometry( const TileFrame& tilef )
     }
 
     osg::ref_ptr<osg::FloatArray> elevations = new osg::FloatArray;
-    if (elevations.valid()) elevations->reserve(numVerticesInSurface);        
+    if (elevations.valid()) elevations->reserve(numVerticesInSurface);    
+
+	osg::ref_ptr<osg::FloatArray> heights = new osg::FloatArray;
+	if (heights.valid()) heights->reserve(numVerticesInSurface);
+	surface->setVertexAttribArray(5, heights);
+	surface->setVertexAttribBinding(5, osg::Geometry::BIND_PER_VERTEX);
+	surface->setVertexAttribNormalize(5, false);
 
     // allocate and assign color
     osg::ref_ptr<osg::Vec4Array> colors = new osg::Vec4Array(1);
@@ -891,6 +897,8 @@ SinglePassTerrainTechnique::createGeometry( const TileFrame& tilef )
 
                 //(*surfaceVerts)[k] = model - centerModel;
                 (*surfaceVerts).push_back(model - _centerModel);
+
+				(*heights).push_back(ndc.z());
 
                 if ( _texCompositor->requiresUnitTextureSpace() )
                 {

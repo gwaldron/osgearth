@@ -72,7 +72,12 @@ public:
 
         // localize it since we might override them:
         _formatToUse = _options.format().value();
-        _srsToUse = _options.srs().value();
+        _srsToUse = _options.wmsVersion().value() == "1.3.0" ? _options.crs().value() : _options.srs().value();
+        if (_srsToUse.empty())
+        {
+            //If they didn't specify a CRS, see if they specified an SRS and try to use that
+            _srsToUse = _options.srs().value();
+        }
     }
 
     /** override */
@@ -124,17 +129,18 @@ public:
 
         // first the mandatory keys:
         buf
-            << std::fixed << _options.url()->full() << sep
-            << "SERVICE=WMS"
+            << std::fixed << _options.url()->full() << sep            
             << "&VERSION=" << _options.wmsVersion().value()
             << "&REQUEST=GetMap"
             << "&LAYERS=" << _options.layers().value()
             << "&FORMAT=" << ( wmsFormatToUse.empty() ? std::string("image/") + _formatToUse : wmsFormatToUse )
             << "&STYLES=" << _options.style().value()
-            << "&SRS=" << _srsToUse
+            << (_options.wmsVersion().value() == "1.3.0" ? "&CRS=" : "&SRS=") << _srsToUse            
             << "&WIDTH="<< _options.tileSize().value()
             << "&HEIGHT="<< _options.tileSize().value()
             << "&BBOX=%lf,%lf,%lf,%lf";
+
+        
 
         // then the optional keys:
         if ( _options.transparent().isSet() )
@@ -143,6 +149,8 @@ public:
 
 		_prototype = "";
         _prototype = buf.str();
+
+        //OE_NOTICE << "Prototype " << _prototype << std::endl;
 
         osg::ref_ptr<SpatialReference> wms_srs = SpatialReference::create( _srsToUse );
 
@@ -249,7 +257,7 @@ public:
         }
 
         //TODO: won't need this for OSG 2.9+, b/c of mime-type support
-        _prototype = _prototype + std::string("&.") + _formatToUse;
+        //_prototype = _prototype + std::string("&.") + _formatToUse;
 
         // populate the data metadata:
         // TODO

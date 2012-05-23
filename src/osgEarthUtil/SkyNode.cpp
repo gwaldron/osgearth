@@ -449,9 +449,22 @@ namespace
             OE_NOTICE << "RA=" << radiansToHoursMinutesSeconds( RA ) << ", decl=" << formatter->format(Angular(Dec, Units::RADIANS ) ) << std::endl;
             */
 
+            // finally, adjust for the time of day (rotation of the earth)
+            double time_r = hoursUTC/24.0; // 0..1            
+            double moon_r = RA/TWO_PI; // convert to 0..1
+
+            // rotational difference between UTC and current time
+            double diff_r = moon_r - time_r;
+            double diff_lon = TWO_PI * diff_r;
+
+            // apparent moon longitude.
+            double app_moon_lon = RA - diff_lon + osg::PI;
+            nrad2(app_moon_lon);
+
+
             osg::Vec3 pos = osg::Vec3(0,rg,0) * 
                 osg::Matrix::rotate( Dec, 1, 0, 0 ) * 
-                osg::Matrix::rotate( RA, 0, 0, 1 );
+                osg::Matrix::rotate( RA - app_moon_lon, 0, 0, 1 );
             
             //OE_NOTICE << "Moon position is " << pos.x() << ", " << pos.y() << ", " << pos.z() << std::endl;
             
@@ -739,6 +752,21 @@ namespace
     }
 }
 
+
+//---------------------------------------------------------------------------
+
+osg::Vec3d DefaultEphemerisProvider::getSunPosition( int year, int month, int date, double hoursUTC )
+{
+    Sun sun;
+    return sun.getPosition( year, month, date, hoursUTC );
+}
+
+osg::Vec3d DefaultEphemerisProvider::getMoonPosition( int year, int month, int date, double hoursUTC )
+{
+    Moon moon;
+    return moon.getPosition( year, month, date, hoursUTC );        
+}
+
 //---------------------------------------------------------------------------
 
 SkyNode::SkyNode( Map* map, const std::string& starFile, float minStarMagnitude ) : 
@@ -756,6 +784,8 @@ _minStarMagnitude(minStarMagnitude)
 void
 SkyNode::initialize( Map *map, const std::string& starFile )
 {
+    _ephemerisProvider = new DefaultEphemerisProvider();
+
     // intialize the default settings:
     _defaultPerViewData._lightPos.set( osg::Vec3f(0.0f, 1.0f, 0.0f) );
     _defaultPerViewData._light = new osg::Light( 0 );  
@@ -826,6 +856,25 @@ SkyNode::traverse( osg::NodeVisitor& nv )
     }
 }
 
+EphemerisProvider* SkyNode::getEphemerisProvider() const
+{
+    return _ephemerisProvider;
+}
+
+void SkyNode::setEphemerisProvider(EphemerisProvider* ephemerisProvider )
+{
+    if (_ephemerisProvider != ephemerisProvider)
+    {
+        _ephemerisProvider = ephemerisProvider;
+
+        //Update the positions of the planets
+        for( PerViewDataMap::iterator i = _perViewData.begin(); i != _perViewData.end(); ++i )
+        {
+            setDateTime(i->second._year, i->second._month, i->second._date, i->second._hoursUTC, i->first);
+        }
+    }
+}
+
 void
 SkyNode::attach( osg::View* view, int lightNum )
 {
@@ -852,11 +901,6 @@ SkyNode::attach( osg::View* view, int lightNum )
     data._cullContainer->addChild( data._sunXform.get() );
 
     data._moonXform = new osg::MatrixTransform();
-    /*data._moonMatrix = osg::Matrixd::translate(
-        _sunDistance * -data._lightPos.x(),
-        _sunDistance * -data._lightPos.y(),
-        _sunDistance * -data._lightPos.z() );
-        */
     data._moonXform->setMatrix( data._moonMatrix );
     data._moonXform->addChild( _moon.get() );
     data._cullContainer->addChild( data._moonXform.get() );
@@ -1002,16 +1046,22 @@ SkyNode::setDateTime( int year, int month, int date, double hoursUTC, osg::View*
 {
     if ( _ellipsoidModel.valid() )
     {
-        // position the sun:
-        Sun sun;
-        osg::Vec3d pos = sun.getPosition( year, month, date, hoursUTC );
-        pos.normalize();
-        setSunPosition( pos, view );
+        osg::Vec3d sunPosition;
+        osg::Vec3d moonPosition;
 
-        //Position of the moon
-        Moon moon;
-        pos = moon.getPosition( year, month, date, hoursUTC );        
-        setMoonPosition( pos, view );        
+        if (_ephemerisProvider)
+        {
+            sunPosition = _ephemerisProvider->getSunPosition( year, month, date, hoursUTC );
+            moonPosition = _ephemerisProvider->getMoonPosition( year, month, date, hoursUTC );
+        }
+        else
+        {
+            OE_NOTICE << "You must provide an EphemerisProvider" << std::endl;
+        }
+
+        sunPosition.normalize();
+        setSunPosition( sunPosition, view );
+        setMoonPosition( moonPosition, view );       
 
         // position the stars:
         double time_r = hoursUTC/24.0; // 0..1
@@ -1025,6 +1075,10 @@ SkyNode::setDateTime( int year, int month, int date, double hoursUTC, osg::View*
             {
                 i->second._starsMatrix = starsMatrix;
                 i->second._starsXform->setMatrix( starsMatrix );
+                i->second._year = year;
+                i->second._month = month;
+                i->second._date = date;
+                i->second._hoursUTC = hoursUTC;
             }
         }
         else if ( _perViewData.find(view) != _perViewData.end() )
@@ -1032,6 +1086,10 @@ SkyNode::setDateTime( int year, int month, int date, double hoursUTC, osg::View*
             PerViewData& data = _perViewData[view];
             data._starsMatrix = starsMatrix;
             data._starsXform->setMatrix( starsMatrix );
+            data._year = year;
+            data._month = month;
+            data._date = date;
+            data._hoursUTC = hoursUTC;
         }
     }
 }

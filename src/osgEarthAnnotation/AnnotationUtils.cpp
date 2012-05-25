@@ -153,7 +153,8 @@ AnnotationUtils::createTextDrawable(const std::string& text,
 osg::Geometry*
 AnnotationUtils::createImageGeometry(osg::Image*       image,
                                      const osg::Vec2s& pixelOffset,
-                                     unsigned          textureUnit )
+                                     unsigned          textureUnit,
+                                     double            heading)
 {
     if ( !image )
         return 0L;
@@ -185,6 +186,16 @@ AnnotationUtils::createImageGeometry(osg::Image*       image,
     (*verts)[1].set( x0 + image->s(), y0, 0 );
     (*verts)[2].set( x0 + image->s(), y0 + image->t(), 0 );
     (*verts)[3].set( x0, y0 + image->t(), 0 );
+
+    if (heading != 0.0)
+    {
+        osg::Matrixd rot;
+        rot.makeRotate( heading, 0.0, 0.0, 1.0);
+        for (unsigned int i = 0; i < 4; i++)
+        {
+            (*verts)[i] = rot * (*verts)[i];
+        }
+    }
     geom->setVertexArray(verts);
     if ( verts->getVertexBufferObject() )
         verts->getVertexBufferObject()->setUsage(GL_STATIC_DRAW_ARB);

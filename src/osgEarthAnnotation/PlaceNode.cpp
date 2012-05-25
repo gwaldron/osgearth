@@ -118,7 +118,16 @@ PlaceNode::init()
                 break;
             }
         }
-        osg::Geometry* imageGeom = AnnotationUtils::createImageGeometry( _image.get(), offset );
+
+        double heading = 0.0;
+        if ( marker->orientation().isSet() )
+        {
+            //Just get the heading
+            heading = osg::DegreesToRadians(marker->orientation().value().x());
+        }
+        //We must actually rotate the geometry itself and not use a MatrixTransform b/c the 
+        //decluttering doesn't respect Transforms above the drawable.
+        osg::Geometry* imageGeom = AnnotationUtils::createImageGeometry( _image.get(), offset, 0, heading );
         if ( imageGeom )
             _geode->addDrawable( imageGeom );
 

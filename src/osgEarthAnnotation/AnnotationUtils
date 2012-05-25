@@ -60,7 +60,8 @@ namespace osgEarth { namespace Annotation
         static osg::Geometry* createImageGeometry(
             osg::Image*       image,
             const osg::Vec2s& pixelOffsets,
-            unsigned          textureUnit       =0 );
+            unsigned          textureUnit       =0,
+            double            heading = 0.0);
 
         /**
          * Creates a fading uniform that the decluttering engine can use

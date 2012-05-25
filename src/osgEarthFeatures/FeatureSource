@@ -222,6 +222,9 @@ namespace osgEarth { namespace Features
 		 */
         virtual void initialize( const osgDB::Options* dbOptions =0L ) { }
 
+        /** Dirties the feature profile */
+        void dirtyFeatureProfile() { _featureProfile = 0;}
+
     protected:
 
         /**
@@ -243,10 +246,7 @@ namespace osgEarth { namespace Features
         const URIContext& uriContext() const { return _uriContext; }
 
         /** The Cache passed in via the dbOptions */
-        Cache* getCache() const { return _cache.get(); }    
-
-        /** Dirties the feature profile */
-        void dirtyFeatureProfile() { _featureProfile = 0;}
+        Cache* getCache() const { return _cache.get(); }            
 
     private:
         const FeatureSourceOptions         _options;

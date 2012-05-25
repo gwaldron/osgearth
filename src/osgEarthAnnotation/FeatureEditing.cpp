@@ -60,15 +60,15 @@ AddPointHandler::addPoint( float x, float y, osgViewer::View* view )
         osg::Vec3d point = first.getWorldIntersectPoint();
 
         // transform it to map coordinates:
-        double lat_rad, lon_rad, dummy;
-        _mapSRS->getEllipsoid()->convertXYZToLatLongHeight( point.x(), point.y(), point.z(), lat_rad, lon_rad, dummy );
+        double lat_rad, lon_rad, alt;
+        _mapSRS->getEllipsoid()->convertXYZToLatLongHeight( point.x(), point.y(), point.z(), lat_rad, lon_rad, alt );
 
         double lat_deg = osg::RadiansToDegrees( lat_rad );
         double lon_deg = osg::RadiansToDegrees( lon_rad );
 
         if (_feature.valid())            
         {
-            _feature->getGeometry()->push_back( osg::Vec3d(lon_deg, lat_deg, 0) );
+            _feature->getGeometry()->push_back( osg::Vec3d(lon_deg, lat_deg, alt) );
             _source->dirty();
         }
         return true;
@@ -125,7 +125,7 @@ public:
 
       virtual void onPositionChanged(const Dragger* sender, const osgEarth::GeoPoint& position)
       {
-          (*_feature->getGeometry())[_point] = osg::Vec3d(position.x(), position.y(), 0);
+          (*_feature->getGeometry())[_point] = osg::Vec3d(position.x(), position.y(), position.z());
           _source->dirty();
       }
 
@@ -209,7 +209,7 @@ FeatureEditor::init()
         dragger->setColor( _color );
         dragger->setPickColor( _pickColor );
         dragger->setSize( _size );
-        dragger->setPosition(GeoPoint(_feature->getSRS(),  (*_feature->getGeometry())[i].x(),  (*_feature->getGeometry())[i].y()));
+        dragger->setPosition(GeoPoint(_feature->getSRS(), (*_feature->getGeometry())[i].x(), (*_feature->getGeometry())[i].y(), (*_feature->getGeometry())[i].z(), ALTMODE_ABSOLUTE));
         dragger->addPositionChangedCallback(new MoveFeatureDraggerCallback(_feature.get(), _source.get(), i) );
 
         addChild(dragger);        

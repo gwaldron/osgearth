@@ -103,10 +103,7 @@ KML_Placemark::build( const Config& conf, KMLContext& cx )
             }
         }
 
-        std::string text = 
-            conf.hasValue("name") ? conf.value("name") :
-            conf.hasValue("description") ? conf.value("description") :
-            "Unnamed";  
+        std::string text = conf.hasValue("name") ? conf.value("name") : "";
 
         AnnotationNode* fNode = 0L;
         AnnotationNode* pNode = 0L;

@@ -60,13 +60,28 @@ namespace osgEarth { namespace Annotation {
         void setIntersectionMask( osg::Node::NodeMask intersectionMask ) { _intersectionMask = intersectionMask; }
         osg::Node::NodeMask getIntersectionMask() const { return _intersectionMask;}
 
+        /**
+         * Set option to allow adding points during move (default) or not
+         */
+        enum MoveOption
+        {
+            POLYLINE_ONLY,      // default, polylines
+            NONE,               // much the same as LINE_ONLY, but does not display lines
+            LINE_ONLY,          // straight lines only
+            LINE_DURING_MODKEY, // if no modKeyMask is passed in, same as POLYLINE_ONLY. If modKeyMask is pressed, LINES_ONLY.
+            POLY_DURING_MODKEY, // if no modKeyMask is passed in, same as LINE_ONLY. If modKeyMask is pressed, POLYLINE_ONLY.
+        };
+        void setMoveOption(const MoveOption option, const int modKeyMask = 0) { _moveOption = option; _moveModKeyMask = modKeyMask; }
 
     private:
-        bool addPoint( float x, float y, osgViewer::View* view );
+        bool addPoint( float x, float y, osgViewer::View* view, bool modifyLast );
 
         osgGA::GUIEventAdapter::MouseButtonMask _mouseButton;
         bool _mouseDown;
         bool _firstMove;
+        bool _secondMove;
+        MoveOption _moveOption;
+        int _moveModKeyMask;
         osg::ref_ptr< osgEarth::Features::FeatureListSource > _source;
         osg::ref_ptr< osgEarth::Features::Feature > _feature;
         osg::ref_ptr<const SpatialReference> _mapSRS;

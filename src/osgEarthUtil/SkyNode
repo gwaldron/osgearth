@@ -98,6 +98,10 @@ namespace osgEarth { namespace Util
         void setAmbientBrightness( float value, osg::View* view =0L );
         float getAmbientBrightness( osg::View* view =0L ) const;
 
+        /** Whether the moon is visible */
+        void setMoonVisible( bool value, osg::View* view =0L );
+        bool getMoonVisible( osg::View* view =0L ) const;
+
         /** Whether the stars are visible */
         void setStarsVisible( bool value, osg::View* view =0L );
         bool getStarsVisible( osg::View* view =0L ) const;
@@ -141,6 +145,7 @@ namespace osgEarth { namespace Util
             osg::Matrixd                       _moonMatrix;            
             osg::Matrixd                       _starsMatrix;
             bool                               _starsVisible;
+            bool                               _moonVisible;
 
             // only available in per-view structures..not default
             osg::ref_ptr<osg::Group>           _cullContainer;

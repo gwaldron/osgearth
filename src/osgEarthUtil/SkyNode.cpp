@@ -794,6 +794,7 @@ SkyNode::initialize( Map *map, const std::string& starFile )
     _defaultPerViewData._light->setDiffuse( osg::Vec4(1,1,1,1) );
     _defaultPerViewData._light->setSpecular( osg::Vec4(0,0,0,1) );
     _defaultPerViewData._starsVisible = true;
+    _defaultPerViewData._moonVisible = true;
     
     // set up the uniform that conveys the normalized light position in world space
     _defaultPerViewData._lightPosUniform = new osg::Uniform( osg::Uniform::FLOAT_VEC3, "atmos_v3LightPos" );
@@ -904,6 +905,7 @@ SkyNode::attach( osg::View* view, int lightNum )
     data._moonXform->setMatrix( data._moonMatrix );
     data._moonXform->addChild( _moon.get() );
     data._cullContainer->addChild( data._moonXform.get() );
+    data._moonVisible = true;
 
 
     data._starsXform = new osg::MatrixTransform();
@@ -1113,6 +1115,25 @@ SkyNode::setStarsVisible( bool value, osg::View* view )
     }
 }
 
+void
+SkyNode::setMoonVisible( bool value, osg::View* view )
+{
+    if ( !view )
+    {
+        _defaultPerViewData._moonVisible = value;
+        for( PerViewDataMap::iterator i = _perViewData.begin(); i != _perViewData.end(); ++i )
+        {
+            i->second._moonVisible = value;
+            i->second._moonXform->setNodeMask( value ? ~0 : 0 );
+        }
+    }
+    else if ( _perViewData.find(view) != _perViewData.end() )
+    {
+        _perViewData[view]._moonVisible = value;
+        _perViewData[view]._moonXform->setNodeMask( value ? ~0 : 0 );
+    }
+}
+
 bool
 SkyNode::getStarsVisible( osg::View* view ) const
 {
@@ -1125,6 +1146,21 @@ SkyNode::getStarsVisible( osg::View* view ) const
     else
     {
         return i->second._starsVisible;
+    }
+}
+
+bool
+SkyNode::getMoonVisible( osg::View* view ) const
+{
+    PerViewDataMap::const_iterator i = _perViewData.find(view);
+
+    if ( !view || i == _perViewData.end() )
+    {
+        return _defaultPerViewData._moonVisible;
+    }
+    else
+    {
+        return i->second._moonVisible;
     }
 }
 

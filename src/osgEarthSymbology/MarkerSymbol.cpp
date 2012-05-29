@@ -106,7 +106,7 @@ MarkerSymbol::getImage( unsigned maxSize ) const
             osg::ref_ptr<osgDB::Options> dbOptions = Registry::instance()->cloneOrCreateOptions();
             dbOptions->setObjectCacheHint( osgDB::Options::CACHE_IMAGES );
             _image = URI(_url->eval(), _url->uriContext()).getImage( dbOptions.get() );
-            if ( _image.valid() && (maxSize < _image->s() || maxSize < _image->t()) )
+            if ( _image.valid() && (maxSize < (unsigned int)_image->s() || maxSize < (unsigned int)_image->t()) )
             {
                 unsigned new_s, new_t;
 

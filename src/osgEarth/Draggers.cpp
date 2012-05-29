@@ -55,7 +55,11 @@ _hovered(false)
 
 Dragger::~Dragger()
 {
-    _mapNode->getTerrain()->removeTerrainCallbacksWithClientData(this);
+    osg::ref_ptr< MapNode > mapNode = _mapNode;
+    if (mapNode.valid())
+    {
+        mapNode->getTerrain()->removeTerrainCallbacksWithClientData(this);
+    }
 }
 
 bool Dragger::getDragging() const

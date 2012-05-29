@@ -36,6 +36,14 @@ KML_IconStyle::scan( const Config& conf, Style& style, KMLContext& cx )
             marker->url()->setURIContext( URIContext(conf.referrer()) );
         }
 
+        optional<float> heading;
+        conf.getIfSet( "heading", heading );
+        if ( heading.isSet() )
+        {
+            osg::Vec3f orient(heading.value(), 0.0, 0.0);
+            marker->orientation() = orient;
+        }
+
         float finalScale = *cx._options->iconBaseScale();
 
         optional<float> scale;

@@ -91,7 +91,10 @@ namespace osgEarth { namespace Util
         /** Attached this sky node to a view (placing a sky light). */
         void attach( osg::View* view, int lightNum =0 );
        
-        /** Sets the sun's position based on a julian date. */
+        /** Gets the date time for the sky position  */
+        void getDateTime( int &year, int &month, int &date, double &hoursUTC, osg::View* view=0L );
+
+        /** Sets the sky's position based on a julian date. */
         void setDateTime( int year, int month, int date, double hoursUTC, osg::View* view =0L );
 
         /** The minimum brightness for non-sunlit areas. */

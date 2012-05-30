@@ -18,6 +18,7 @@
 */
 
 #include <osg/Notify>
+#include <osg/io_utils>
 #include <osgGA/StateSetManipulator>
 #include <osgGA/GUIEventHandler>
 #include <osgViewer/Viewer>
@@ -28,18 +29,10 @@
 #include <osgEarthUtil/Controls>
 #include <osgEarth/Utils>
 
-#include <osg/ImageStream>
-#include <osgDB/FileNameUtils>
 #include <osg/Version>
 #include <osgEarth/Version>
 
-#include <osgEarthAnnotation/ImageOverlay>
-#if OSG_MIN_VERSION_REQUIRED(2,9,6)
-#include <osgEarthAnnotation/ImageOverlayEditor>
-#endif
-
 using namespace osgEarth;
-using namespace osgEarth::Annotation;
 using namespace osgEarth::Util;
 using namespace osgEarth::Util::Controls;
 
@@ -66,131 +59,38 @@ createControlPanel( osgViewer::View* view )
 
 struct AdjustHandler: public ControlEventHandler
 {
-    AdjustHandler( ImageOverlay* overlay ) : _overlay(overlay) { }
-    void onValueChanged( Control* control, float value ) {
-        _overlay->setAlpha( value );
-    }
-    osg::Vec3f _adust;
-    ImageOverlay* _overlay;
-};
+    AdjustHandler( ImageLayer* layer, unsigned int index) :
+        _layer(layer),
+        _index(index)
+        { }
 
-struct ResetHandler : public ControlEventHandler
-{
-    ResetHandler( ImageLayer* layer ) :  _layer(layer) { }
-    void onClick( Control* control) {
-        //_overlay->setNodeMask( value ? ~0 : 0 );
-        OE_NOTICE << "Resetting HSL" << std::endl;
+    void onValueChanged( Control* control, float value ) {
+        osg::Vec3f hsl = _layer->getHSLAdjust();        
+        float adj = value - 50.0f;
+        adj /= 50.0;
+
+        //Get the current value
+        hsl._v[ _index] = adj;
+        OE_NOTICE << "Setting HSL to " << hsl << std::endl;
+        _layer->setHSLAdjust( hsl );
     }
+
+    unsigned int _index;
     ImageLayer* _layer;
 };
-
-
-
-struct EditHandler : public ControlEventHandler
-{
-    EditHandler( ImageOverlay* overlay, osgViewer::Viewer* viewer, osg::Node* editor) :
-      _overlay(overlay),
-      _viewer(viewer),
-      _editor(editor){ }
-
-    void onClick( Control* control, int mouseButtonMask ) {        
-#if OSG_MIN_VERSION_REQUIRED(2,9,6)
-        if (_editor->getNodeMask() != ~0)
-        {
-            static_cast<LabelControl*>(control)->setText( "Finish" );
-            _editor->setNodeMask(~0);
-        }
-        else
-        {
-            static_cast<LabelControl*>(control)->setText( "Edit" );
-            _editor->setNodeMask(0);
-        }
-
-#else
-        OE_NOTICE << "Use OSG 2.9.6 or greater to use editing" << std::endl;
-#endif
-    }
-    ImageOverlay* _overlay;
-    osgViewer::Viewer* _viewer;
-    osg::Node* _editor;
-};
-
-struct ChangeImageHandler : public ControlEventHandler
-{
-    ChangeImageHandler( osg::Image* image, ImageOverlay* overlay, ImageControl* preview) :
-      _image(image),
-      _overlay(overlay),
-      _preview(preview){ }
-
-    void onClick( Control* control, int mouseButtonMask ) {
-        _overlay->setImage( _image.get() );
-        _preview->setImage( _image.get() );
-    }
-    ImageOverlay* _overlay;
-    osg::ref_ptr< osg::Image > _image;
-    osg::ref_ptr< ImageControl> _preview;
-};
-
-struct UpdateLabelCallback : public ImageOverlay::ImageOverlayCallback
-{
-    UpdateLabelCallback(LabelControl* label, ImageOverlay* overlay, ImageOverlay::ControlPoint controlPoint):
-      _label(label),
-      _overlay(overlay),
-      _controlPoint(controlPoint)
-    {
-
-    }
-
-    virtual void onOverlayChanged()
-    {
-        osg::Vec2d location = _overlay->getControlPoint( _controlPoint );
-        std::stringstream ss;
-        ss << location.y() << ", " << location.x();
-        std::string str;
-        str = ss.str();
-        _label->setText( str );
-    }
-    
-
-    osg::ref_ptr< LabelControl > _label;
-    osg::ref_ptr< ImageOverlay > _overlay;
-    ImageOverlay::ControlPoint _controlPoint;
-};
-
-
 
 int
 main(int argc, char** argv)
 {
     osg::ArgumentParser arguments(&argc,argv);
-    osg::DisplaySettings::instance()->setMinimumNumStencilBits( 8 );
-
-
-    std::vector< std::string > imageFiles;
-    std::vector< Bounds > imageBounds;
-
-    //Read in the image files
-    std::string filename;
-    Bounds bounds;
-    while (arguments.read("--image", filename, bounds.xMin(), bounds.yMin(), bounds.xMax(), bounds.yMax()))
-    {
-        imageFiles.push_back( filename );
-        imageBounds.push_back( bounds );
-    }
-
-    if (imageFiles.empty())
-    {
-      imageFiles.push_back("../data/osgearth.gif");
-      imageBounds.push_back( Bounds(-100, 30, -90, 40) );
-    }
- 
-
-    bool moveVert = arguments.read("--vert");
-
+        
     // load the .earth file from the command line.
     osg::Node* earthNode = osgDB::readNodeFiles( arguments );
     if (!earthNode)
-        return usage( "Unable to load earth model." );
+    {
+        OE_NOTICE << "Unable to load earth model." << std::endl;
+        return 1;
+    }
 
     osgViewer::Viewer viewer(arguments);
     
@@ -207,73 +107,51 @@ main(int argc, char** argv)
     
     osgEarth::MapNode* mapNode = osgEarth::MapNode::findMapNode( earthNode );
     if ( mapNode )
-    {
-
-        for (unsigned int i = 0; i < imageFiles.size(); i++)
+    {   
+        if (mapNode->getMap()->getNumImageLayers() == 0)
         {
-            std::string imageFile = imageFiles[i];
-            //Read the image file and play it if it's a movie
-            osg::Image* image = osgDB::readImageFile(imageFile);
-            if (image)
-            {
-                osg::ImageStream* is = dynamic_cast<osg::ImageStream*>(image);
-                if (is)
-                {
-                    is->play();
-                }
-            }
+            OE_NOTICE << "Please provide a map with at least one image layer" << std::endl;
+            return 1;
+        }
+        //
+        ImageLayer* layer = mapNode->getMap()->getImageLayerAt( mapNode->getMap()->getNumImageLayers()-1);
 
-            //Create a new ImageOverlay and set it's bounds
-            //ImageOverlay* overlay = new ImageOverlay(mapNode->getMap()->getProfile()->getSRS()->getEllipsoid(), image);        
-            ImageOverlay* overlay = new ImageOverlay(mapNode);
-            overlay->setImage( image );
-            overlay->setBounds(imageBounds[i]);
+        //H
+        LabelControl* hLabel = new LabelControl( "H" );      
+        hLabel->setVertAlign( Control::ALIGN_CENTER );
+        s_layerBox->setControl( 0, 0, hLabel );
 
-            root->addChild( overlay );
+        HSliderControl* hAdjust = new HSliderControl( 0.0f, 100.0f, 50.0f );
+        hAdjust->setWidth( 125 );
+        hAdjust->setHeight( 12 );
+        hAdjust->setVertAlign( Control::ALIGN_CENTER );
+        hAdjust->addEventHandler( new AdjustHandler( layer, 0 ));
+        s_layerBox->setControl( 1, 0, hAdjust );
 
+        //S
+        LabelControl* sLabel = new LabelControl( "S" );      
+        sLabel->setVertAlign( Control::ALIGN_CENTER );
+        s_layerBox->setControl( 0, 1, sLabel );
+        
+        HSliderControl* sAdjust = new HSliderControl( 0.0f, 100.0f, 50.0f );
+        sAdjust->setWidth( 125 );
+        sAdjust->setHeight( 12 );
+        sAdjust->setVertAlign( Control::ALIGN_CENTER );
+        sAdjust->addEventHandler( new AdjustHandler( layer, 1) );
+        s_layerBox->setControl( 1, 1, sAdjust );
 
-            //Create a new ImageOverlayEditor and set it's node mask to 0 to hide it initially
-#if OSG_MIN_VERSION_REQUIRED(2,9,6)
-            osg::Node* editor = new ImageOverlayEditor( overlay);
-#else
-            //Just make an empty group for pre-2.9.6
-            osg::Node* editor = new osg::Group;
-#endif
-            editor->setNodeMask( 0 );
-            root->addChild( editor );      
-            
-            // Add an image preview
-            ImageControl* imageCon = new ImageControl( image );
-            imageCon->setSize( 64, 64 );
-            imageCon->setVertAlign( Control::ALIGN_CENTER );
-            s_layerBox->setControl( 0, i, imageCon );            
+        //L
+        LabelControl* lLabel = new LabelControl( "L" );      
+        lLabel->setVertAlign( Control::ALIGN_CENTER );
+        s_layerBox->setControl( 0, 2, lLabel );
+        
+        HSliderControl* lAdjust = new HSliderControl( 0.0f, 100.0f, 50.0f );
+        lAdjust->setWidth( 125 );
+        lAdjust->setHeight( 12 );
+        lAdjust->setVertAlign( Control::ALIGN_CENTER );
+        lAdjust->addEventHandler( new AdjustHandler( layer, 2) );
+        s_layerBox->setControl( 1, 2, lAdjust );
 
-
-            //Add some controls        
-            CheckBoxControl* enabled = new CheckBoxControl( true );
-            enabled->addEventHandler( new EnabledHandler(overlay) );
-            enabled->setVertAlign( Control::ALIGN_CENTER );
-            s_layerBox->setControl( 1, i, enabled );
-
-            //The overlay name
-            LabelControl* name = new LabelControl( osgDB::getSimpleFileName( imageFile) );      
-            name->setVertAlign( Control::ALIGN_CENTER );
-            s_layerBox->setControl( 2, i, name );
-
-            // an opacity slider
-            HSliderControl* opacity = new HSliderControl( 0.0f, 1.0f, overlay->getAlpha() );
-            opacity->setWidth( 125 );
-            opacity->setHeight( 12 );
-            opacity->setVertAlign( Control::ALIGN_CENTER );
-            opacity->addEventHandler( new OpacityHandler(overlay) );
-            s_layerBox->setControl( 3, i, opacity );
-
-            // Add a text label:
-            LabelControl* edit = new LabelControl( "Edit" );        
-            edit->setVertAlign( Control::ALIGN_CENTER );
-            edit->addEventHandler(new EditHandler(overlay, &viewer, editor));
-            s_layerBox->setControl(4, i, edit );
-        }        
     }
 
     // osgEarth benefits from pre-compilation of GL objects in the pager. In newer versions of

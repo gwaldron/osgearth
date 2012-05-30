@@ -85,6 +85,12 @@ namespace osgEarth
         optional<bool>& lodBlending() { return _lodBlending; }
         const optional<bool>& lodBlending() const { return _lodBlending; }
 
+        /**
+         * The HSL adjustment for this layer
+         */
+        optional<osg::Vec3f>& hslAdjust() { return _hslAdjust; }
+        const optional<osg::Vec3f>& hslAdjust() const { return _hslAdjust; }
+
     public:
 
         virtual Config getConfig() const { return getConfig(false); }
@@ -101,6 +107,7 @@ namespace osgEarth
 		optional<osg::Vec4ub> _transparentColor;
 	    optional<std::string> _noDataImageFilename;
         optional<bool> _lodBlending;
+        optional<osg::Vec3f> _hslAdjust;
     };
 
     //--------------------------------------------------------------------
@@ -111,6 +118,7 @@ namespace osgEarth
     struct ImageLayerCallback : public TerrainLayerCallback
     {
         virtual void onOpacityChanged( class ImageLayer* layer ) { }  
+        virtual void onHSLChanged( class ImageLayer* layer ) {}
         virtual ~ImageLayerCallback() { }
     };
 
@@ -194,6 +202,10 @@ namespace osgEarth
         void setOpacity( float opacity );
 
         float getOpacity() const { return *_runtimeOptions.opacity(); }
+
+
+        void setHSLAdjust( const osg::Vec3f& hsl );
+        const osg::Vec3f& getHSLAdjust() const { return *_runtimeOptions.hslAdjust(); }
         
         void disableLODBlending();
         bool isLODBlendingEnabled() const { return *_runtimeOptions.lodBlending(); }

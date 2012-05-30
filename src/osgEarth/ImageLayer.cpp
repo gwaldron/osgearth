@@ -57,6 +57,7 @@ ImageLayerOptions::setDefaults()
 {
     _opacity.init( 1.0f );
     _transparentColor.init( osg::Vec4ub(0,0,0,0) );
+    _hslAdjust.init( osg::Vec3(0,0,0));
     _minRange.init( -FLT_MAX );
     _maxRange.init( FLT_MAX );
     _lodBlending.init( false );

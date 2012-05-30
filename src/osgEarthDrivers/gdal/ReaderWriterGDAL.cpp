@@ -625,7 +625,7 @@ public:
     {             
         GDAL_SCOPED_LOCK;
 
-        if (_warpedDS != _srcDS)
+        if ((_warpedDS != _srcDS) && (_warpedDS != 0L))
         {
             GDALClose( _warpedDS );
         }

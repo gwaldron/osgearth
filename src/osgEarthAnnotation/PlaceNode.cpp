@@ -119,12 +119,14 @@ PlaceNode::init()
             }
         }
 
+        // Apply a rotation to the marker if requested:
         double heading = 0.0;
-        if ( marker->orientation().isSet() )
+        if ( marker && marker->orientation().isSet() )
         {
             //Just get the heading
             heading = osg::DegreesToRadians(marker->orientation().value().x());
         }
+
         //We must actually rotate the geometry itself and not use a MatrixTransform b/c the 
         //decluttering doesn't respect Transforms above the drawable.
         osg::Geometry* imageGeom = AnnotationUtils::createImageGeometry( _image.get(), offset, 0, heading );

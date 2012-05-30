@@ -183,15 +183,16 @@ namespace
     {
         SkySliderHandler(SkyNode* sky) : _sky(sky) 
         {
-            //Set the default time
-            _sky->setDateTime( 2011, 3, 6, 18.0f );
         }
 
         SkyNode* _sky;
 
         virtual void onValueChanged( class Control* control, float value )
         {
-            _sky->setDateTime( 2011, 3, 6, value );
+            int year, month, date;
+            double h;
+            _sky->getDateTime( year, month, date, h);
+            _sky->setDateTime( year, month, date, value );
         }
     };
 }
@@ -207,7 +208,11 @@ SkyControlFactory::create(SkyNode*         sky,
 
     skyBox->addControl( new LabelControl("Time: ", 16) );
 
-    HSliderControl* skySlider = skyBox->addControl(new HSliderControl( 0.0f, 24.0f, 18.0f ));
+    int year, month, date;
+    double h;
+    sky->getDateTime( year, month, date, h);    
+
+    HSliderControl* skySlider = skyBox->addControl(new HSliderControl( 0.0f, 24.0f, h ));
     skySlider->setBackColor( Color::Gray );
     skySlider->setHeight( 12 );
     skySlider->setHorizFill( true, 200 );

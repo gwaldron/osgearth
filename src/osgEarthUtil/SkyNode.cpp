@@ -819,6 +819,9 @@ SkyNode::initialize( Map *map, const std::string& starFile )
     }
 
     makeStars(starFile);
+
+    //Set a default time
+    setDateTime( 2011, 3, 6, 18 );
 }
 
 osg::BoundingSphere
@@ -902,19 +905,19 @@ SkyNode::attach( osg::View* view, int lightNum )
     data._cullContainer->addChild( data._sunXform.get() );
 
     data._moonXform = new osg::MatrixTransform();
+    data._moonMatrix = _defaultPerViewData._moonMatrix;
     data._moonXform->setMatrix( data._moonMatrix );
     data._moonXform->addChild( _moon.get() );
     data._cullContainer->addChild( data._moonXform.get() );
-    data._moonVisible = true;
-
-
+    data._moonVisible = _defaultPerViewData._moonVisible;
+    
     data._starsXform = new osg::MatrixTransform();
     data._starsMatrix = _defaultPerViewData._starsMatrix;
     data._starsXform->setMatrix( _defaultPerViewData._starsMatrix );
     data._starsXform->addChild( _stars.get() );
     data._cullContainer->addChild( data._starsXform.get() );
 
-    data._starsVisible = true;
+    data._starsVisible = _defaultPerViewData._starsVisible;
 
     data._cullContainer->addChild( _atmosphere.get() );
     data._lightPosUniform = osg::clone( _defaultPerViewData._lightPosUniform.get() );
@@ -926,6 +929,11 @@ SkyNode::attach( osg::View* view, int lightNum )
     view->setLightingMode( osg::View::SKY_LIGHT );
     view->setLight( data._light.get() );
     view->getCamera()->setClearColor( osg::Vec4(0,0,0,1) );
+
+    data._year = _defaultPerViewData._year;
+    data._month = _defaultPerViewData._month;
+    data._date = _defaultPerViewData._date;
+    data._hoursUTC = _defaultPerViewData._hoursUTC;
 }
 
 void
@@ -1035,17 +1043,35 @@ SkyNode::setMoonPosition( PerViewData& data, const osg::Vec3d& pos )
 {
     if ( data._moonXform.valid() )
     {
-        data._moonXform->setMatrix( osg::Matrix::translate( 
-            pos.x(), 
-            pos.y(),
-            pos.z() ) );
+        data._moonMatrix = osg::Matrixd::translate( pos.x(), pos.y(), pos.z() );
+        data._moonXform->setMatrix( data._moonMatrix );
     }
 }
 
 
 void
+SkyNode::getDateTime( int &year, int &month, int &date, double &hoursUTC, osg::View* view )
+{    
+    PerViewData& data = _defaultPerViewData;
+    if ( view )
+    {
+        if ( _perViewData.find(view) != _perViewData.end() )
+        {
+            data = _perViewData[view];
+        }
+    }
+
+    year = data._year;
+    month = data._month;
+    date = data._date;
+    hoursUTC = data._hoursUTC;        
+}
+
+
+
+void
 SkyNode::setDateTime( int year, int month, int date, double hoursUTC, osg::View* view )
-{
+{    
     if ( _ellipsoidModel.valid() )
     {
         osg::Vec3d sunPosition;
@@ -1073,6 +1099,11 @@ SkyNode::setDateTime( int year, int month, int date, double hoursUTC, osg::View*
         if ( !view )
         {
             _defaultPerViewData._starsMatrix = starsMatrix;
+            _defaultPerViewData._year = year;
+            _defaultPerViewData._month = month;
+            _defaultPerViewData._date = date;
+            _defaultPerViewData._hoursUTC = hoursUTC;
+
             for( PerViewDataMap::iterator i = _perViewData.begin(); i != _perViewData.end(); ++i )
             {
                 i->second._starsMatrix = starsMatrix;

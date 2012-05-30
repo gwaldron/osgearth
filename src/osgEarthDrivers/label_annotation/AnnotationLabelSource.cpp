@@ -54,12 +54,16 @@ public:
         const Style&         style,
         const FilterContext& context )
     {
-        const TextSymbol* text = style.get<TextSymbol>();
-        if ( !text )
+        if ( style.get<TextSymbol>() == 0L )
             return 0L;
+
+        // copy the style so we can (potentially) modify the text symbol.
+        Style styleCopy = style;
+        TextSymbol* text = styleCopy.get<TextSymbol>();
 
         osg::Group* group = new osg::Group();
 
+        // check for decluttering
         if ( text->declutter().isSet() )
         {
             Decluttering::setEnabled( group->getOrCreateStateSet(), *text->declutter() );

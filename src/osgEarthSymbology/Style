@@ -79,9 +79,9 @@ namespace osgEarth { namespace Symbology
         void addSymbol(Symbol* symbol);
         void add(Symbol* symbol) { addSymbol(symbol); }
 
-		/** Remove a symbol from the collection */
-		bool removeSymbol (Symbol* symbol);
-		
+        /** Remove a symbol from the collection */
+        bool removeSymbol (Symbol* symbol);
+
         /** Gets a typed symbol from the style (the first one found). */
         template<typename T>
         T* getSymbol()

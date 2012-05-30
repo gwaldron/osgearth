@@ -597,11 +597,16 @@ Decluttering::setEnabled( osg::StateSet* stateSet, bool enabled, int binNum )
             }
 
             stateSet->setRenderBinDetails( binNum, OSGEARTH_DECLUTTER_BIN );
+
+            // disable renderbin nesting b/c it is incompatible with decluttering for
+            // what should be obvious reasons
+            stateSet->setNestRenderBins( false );
         }
         else
         {
             stateSet->removeAttribute( osg::StateAttribute::PROGRAM );
             stateSet->setRenderBinToInherit();
+            stateSet->setNestRenderBins( true );
         }
     }
 }

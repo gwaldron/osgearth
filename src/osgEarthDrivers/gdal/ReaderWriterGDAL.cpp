@@ -625,12 +625,12 @@ public:
     {             
         GDAL_SCOPED_LOCK;
 
-        if (_warpedDS && _warpedDS != _srcDS)
+        if (_warpedDS && (_warpedDS != _srcDS))
         {
             GDALClose( _warpedDS );
         }
 
-        //Close the dataset if it exists
+        //Close the datasets if it exists
         if (_srcDS)
         {     
             GDALClose(_srcDS);

@@ -130,7 +130,9 @@ AnnotationUtils::createTextDrawable(const std::string& text,
 
     // this disables the default rendering bin set by osgText::Font. Necessary if we're
     // going to do decluttering at a higher level
-    osg::StateSet* stateSet = t->getOrCreateStateSet();
+    osg::StateSet* stateSet = new osg::StateSet();
+    t->setStateSet( stateSet );
+    //osg::StateSet* stateSet = t->getOrCreateStateSet();
 
     if ( symbol && symbol->declutter().isSet() )
     {

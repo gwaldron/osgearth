@@ -21,6 +21,7 @@
 #define OSGEARTH_REVISIONING_H 1
 
 #include <osgEarth/Common>
+#include <OpenThreads/Atomic>
 
 namespace osgEarth
 {
@@ -84,6 +85,22 @@ namespace osgEarth
         Revision _revision;
         bool _alwaysDirty;
     };
+
+
+    template<typename T>
+    struct SimpleMutable
+    {
+        SimpleMutable() : _dirty(1) { }
+        SimpleMutable(const T& value) : _value(value), _dirty(1) { }
+        operator const T&() const { return _value; }
+        SimpleMutable& operator = (const T& value) { _value = value; _dirty.exchange(1); return *this; }
+        bool changed(bool reset=true) const { unsigned r = reset? _dirty.exchange(0) : (unsigned)_dirty; return r==1; }
+        void clean() { _dirty.exchange(0); }
+    private:
+        T                           _value;
+        mutable OpenThreads::Atomic _dirty;
+    };
+
 }
 
 #endif // OSGEARTH_REVISIONING_H

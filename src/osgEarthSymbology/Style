@@ -33,7 +33,6 @@
 #include <osgEarthSymbology/ResourceLibrary>
 
 #include <osgEarth/Config>
-#include <osgEarth/Revisioning>
 #include <osg/Object>
 #include <vector>
 

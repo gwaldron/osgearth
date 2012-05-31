@@ -31,6 +31,10 @@ using namespace osgEarth;
 using namespace osgEarth::Drivers;
 using namespace osgEarth::Threading;
 
+#ifndef _WIN32
+#   include <unistd.h>
+#endif
+
 namespace
 {
     /** 

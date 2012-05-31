@@ -97,7 +97,7 @@ namespace osgEarth { namespace Util
          * @param range
          *        Range in meters
          */
-        static osg::Vec3d SkyNode::getPositionFromRADecl( double ra, double decl, double range );
+        static osg::Vec3d getPositionFromRADecl( double ra, double decl, double range );
 
     public:
 

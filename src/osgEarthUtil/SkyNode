@@ -80,13 +80,26 @@ namespace osgEarth { namespace Util
         virtual ~SkyNode() { }
 
 
-       
-
+      
+    public:
         /**
          * Gets/Sets the EphemerisProvider
          */
         EphemerisProvider* getEphemerisProvider() const;
         void setEphemerisProvider(EphemerisProvider* ephemerisProvider );
+
+        /**
+         * Gets a position from the right ascension, declination and range
+         * @param ra
+         *        Right ascension in radians
+         * @param decl
+         *        Declination in radians
+         * @param range
+         *        Range in meters
+         */
+        static osg::Vec3d SkyNode::getPositionFromRADecl( double ra, double decl, double range );
+
+    public:
 
         /** Attached this sky node to a view (placing a sky light). */
         void attach( osg::View* view, int lightNum =0 );

@@ -443,12 +443,7 @@ namespace
 
             //Just use the average distance from the earth            
             double rg = 6378137.0 + 384400000.0;
-            //OE_NOTICE << "Range = " << rg << " RA=" << osg::RadiansToDegrees(RA) << " Dec=" << osg::RadiansToDegrees(Dec) << std::endl;            
-            /*
-            osg::ref_ptr<LatLongFormatter> formatter = new LatLongFormatter(LatLongFormatter::FORMAT_DEGREES_MINUTES_SECONDS);            
-            OE_NOTICE << "RA=" << radiansToHoursMinutesSeconds( RA ) << ", decl=" << formatter->format(Angular(Dec, Units::RADIANS ) ) << std::endl;
-            */
-
+            
             // finally, adjust for the time of day (rotation of the earth)
             double time_r = hoursUTC/24.0; // 0..1            
             double moon_r = RA/TWO_PI; // convert to 0..1
@@ -457,18 +452,13 @@ namespace
             double diff_r = moon_r - time_r;
             double diff_lon = TWO_PI * diff_r;
 
-            // apparent moon longitude.
-            double app_moon_lon = RA - diff_lon + osg::PI;
-            nrad2(app_moon_lon);
+            RA -= diff_lon;
+
+            nrad2(RA);
+
+            return SkyNode::getPositionFromRADecl( RA, Dec, rg );
 
 
-            osg::Vec3 pos = osg::Vec3(0,rg,0) * 
-                osg::Matrix::rotate( Dec, 1, 0, 0 ) * 
-                osg::Matrix::rotate( RA - app_moon_lon, 0, 0, 1 );
-            
-            //OE_NOTICE << "Moon position is " << pos.x() << ", " << pos.y() << ", " << pos.z() << std::endl;
-            
-            return pos;
         }
     };
 }
@@ -1436,10 +1426,8 @@ SkyNode::buildStarGeometry(const std::vector<StarData>& stars)
   std::vector<StarData>::const_iterator p;
   for( p = stars.begin(); p != stars.end(); p++ )
   {
-    osg::Vec3 v = osg::Vec3(0,_starRadius,0) * 
-      osg::Matrix::rotate( p->declination, 1, 0, 0 ) * 
-      osg::Matrix::rotate( p->right_ascension, 0, 0, 1 );
-
+    
+    osg::Vec3d v = getPositionFromRADecl( p->right_ascension, p->declination, _starRadius );
     coords->push_back( v );
 
     if ( p->magnitude < minMag ) minMag = p->magnitude;
@@ -1529,4 +1517,12 @@ SkyNode::parseStarFile(const std::string& starFile, std::vector<StarData>& out_s
   in.close();
 
   return true;
+}
+
+osg::Vec3d
+SkyNode::getPositionFromRADecl( double ra, double decl, double range )
+{
+    return osg::Vec3(0,range,0) * 
+           osg::Matrix::rotate( decl, 1, 0, 0 ) * 
+           osg::Matrix::rotate( ra - osg::PI_2, 0, 0, 1 );
 }

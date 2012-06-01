@@ -36,17 +36,8 @@ namespace osgEarth
         /** dtor */
         virtual ~CompositeTileSourceOptions() { }
 
-        /** Add a tile source by using its configuration options */
-        void add( const TileSourceOptions& options );
-
-        /** Add an existing TileSource instance (note: not serializable) */
-        void add( TileSource* source );
-
         /** Add a component described by an image layer configuration. */
         void add( const ImageLayerOptions& options );
-
-        /** Add a component consisting of a TileSource instance and an imagelayer configuration. (not serializable) */
-        void add( TileSource* source, const ImageLayerOptions& options );
 
     public:
         virtual Config getConfig() const;
@@ -58,9 +49,8 @@ namespace osgEarth
         void fromConfig( const Config& conf );
 
         struct Component {
-            optional<TileSourceOptions>         _tileSourceOptions;
-            optional<osg::ref_ptr<TileSource> > _tileSourceInstance;
-            optional<ImageLayerOptions>         _imageLayerOptions;
+            optional<ImageLayerOptions> _imageLayerOptions;
+            osg::ref_ptr<TileSource>    _tileSourceInstance;
         };
 
         typedef std::vector<Component> ComponentVector;
@@ -84,10 +74,29 @@ namespace osgEarth
         /** dtor */
         virtual ~CompositeTileSource() { }
 
+        /**
+         * Adds a pre-existing tile source instance to the composite. 
+         * Note: You can only add tile sources BEFORE the tile source is initialized,
+         * i.e., before you add it to the map.
+         * Returns true upon success; false if the composite tile source is already
+         * initialized.
+         */
+        bool add( TileSource* tileSource );
+        
+        /**
+         * Adds a pre-existing tile source instance to the composite along with
+         * image layer options.
+         * Note: You can only add tile sources BEFORE the tile source is initialized,
+         * i.e., before you add it to the map.
+         * Returns true upon success; false if the composite tile source is already
+         * initialized.
+         */
+        bool add( TileSource* tileSource, const ImageLayerOptions& options );
+
     public: // TileSource overrides
         
-		/** Creates a new image for the given key */
-		virtual osg::Image* createImage( 
+        /** Creates a new image for the given key */
+        virtual osg::Image* createImage( 
             const TileKey&        key,
             ProgressCallback*     progress =0 );
 
@@ -95,7 +104,7 @@ namespace osgEarth
         virtual bool isDynamic() const { return _dynamic; }
         
         /** Initializes the tile source */
-		virtual void initialize( 
+        virtual void initialize( 
             const osgDB::Options* dbOptions,
             const Profile*        overrideProfile );
 

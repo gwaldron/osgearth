@@ -165,9 +165,12 @@ Profile::create(const std::string& srsInitString,
                 unsigned int numTilesWideAtLod0,
                 unsigned int numTilesHighAtLod0)
 {
-    const Profile* named = osgEarth::Registry::instance()->getNamedProfile( srsInitString );
-    if ( named )
-        return const_cast<Profile*>( named );
+    if ( vsrsInitString.empty() && numTilesWideAtLod0 == 0 && numTilesHighAtLod0 == 0 )
+    {
+        const Profile* named = osgEarth::Registry::instance()->getNamedProfile( srsInitString );
+        if ( named )
+            return const_cast<Profile*>( named );
+    }
 
     osg::ref_ptr<const SpatialReference> srs = SpatialReference::create( srsInitString, vsrsInitString );
 

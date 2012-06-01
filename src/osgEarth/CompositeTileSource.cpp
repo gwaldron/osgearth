@@ -18,6 +18,7 @@
  */
 #include <osgEarth/CompositeTileSource>
 #include <osgEarth/ImageUtils>
+#include <osgEarth/StringUtils>
 #include <osgDB/FileNameUtils>
 
 #define LC "[CompositeTileSource] "
@@ -33,21 +34,21 @@ TileSourceOptions( options )
     fromConfig( _conf );
 }
 
-void
-CompositeTileSourceOptions::add( const TileSourceOptions& options )
-{
-    Component c;
-    c._tileSourceOptions = options;
-    _components.push_back( c );
-}
-
-void
-CompositeTileSourceOptions::add( TileSource* source )
-{
-    Component c;
-    c._tileSourceInstance = source;
-    _components.push_back( c );
-}
+//void
+//CompositeTileSourceOptions::add( const TileSourceOptions& options )
+//{
+//    Component c;
+//    c._tileSourceOptions = options;
+//    _components.push_back( c );
+//}
+//
+//void
+//CompositeTileSourceOptions::add( TileSource* source )
+//{
+//    Component c;
+//    c._tileSourceInstance = source;
+//    _components.push_back( c );
+//}
 
 void
 CompositeTileSourceOptions::add( const ImageLayerOptions& options )
@@ -57,14 +58,14 @@ CompositeTileSourceOptions::add( const ImageLayerOptions& options )
     _components.push_back( c );
 }
 
-void
-CompositeTileSourceOptions::add( TileSource* source, const ImageLayerOptions& options )
-{
-    Component c;
-    c._tileSourceInstance = source;
-    c._imageLayerOptions = options;
-    _components.push_back( c );
-}
+//void
+//CompositeTileSourceOptions::add( TileSource* source, const ImageLayerOptions& options )
+//{
+//    Component c;
+//    c._tileSourceInstance = source;
+//    c._imageLayerOptions = options;
+//    _components.push_back( c );
+//}
 
 Config 
 CompositeTileSourceOptions::getConfig() const
@@ -73,12 +74,14 @@ CompositeTileSourceOptions::getConfig() const
 
     Config thisConf;
 
+    int count = 0;
+
     for( ComponentVector::const_iterator i = _components.begin(); i != _components.end(); ++i )
     {
         if ( i->_imageLayerOptions.isSet() )
             thisConf.add( "image", i->_imageLayerOptions->getConfig() );
-        else if ( i->_tileSourceOptions.isSet() )
-            thisConf.add( "image", i->_tileSourceOptions->getConfig() );
+        //else if ( i->_tileSourceOptions.isSet() )
+        //    thisConf.add( "image", i->_tileSourceOptions->getConfig() );
     }
 
     return conf;
@@ -134,15 +137,16 @@ _options    ( options ),
 _initialized( false ),
 _dynamic    ( false )
 {
+#if 0
     for(CompositeTileSourceOptions::ComponentVector::iterator i = _options._components.begin(); 
         i != _options._components.end(); )
 
     {
-        if ( i->_imageLayerOptions.isSet() )
-        {
-            if ( i->_imageLayerOptions->driver().isSet() )
-                i->_tileSourceOptions = i->_imageLayerOptions->driver().value();
-        }
+        //if ( i->_imageLayerOptions.isSet() )
+        //{
+        //    if ( i->_imageLayerOptions->driver().isSet() )
+        //        i->_tileSourceOptions = i->_imageLayerOptions->driver().value();
+        //}
 
         if ( i->_tileSourceOptions.isSet() )
         {
@@ -163,11 +167,12 @@ _dynamic    ( false )
             ++i;
         }
     }
+#endif
 }
 
 osg::Image*
-CompositeTileSource::createImage(const TileKey&        key,
-                                 ProgressCallback*     progress )
+CompositeTileSource::createImage(const TileKey&    key,
+                                 ProgressCallback* progress )
 {
     ImageMixVector images;
     images.reserve( _options._components.size() );
@@ -179,10 +184,9 @@ CompositeTileSource::createImage(const TileKey&        key,
         if ( progress && progress->isCanceled() )
             return 0L;
 
-        TileSource* source = i->_tileSourceInstance->get();
+        TileSource* source = i->_tileSourceInstance.get();
         if ( source )
         {
-
             //TODO:  This duplicates code in ImageLayer::isKeyValid.  Maybe should move that to TileSource::isKeyValid instead
             int minLevel = 0;
             int maxLevel = INT_MAX;
@@ -282,6 +286,42 @@ CompositeTileSource::createImage(const TileKey&        key,
     }
 }
 
+bool
+CompositeTileSource::add( TileSource* ts )
+{
+    if ( _initialized )
+    {
+        OE_WARN << LC << "Illegal: cannot add a tile source after initialization" << std::endl;
+        return false;
+    }
+
+    if ( !ts )
+    {
+        OE_WARN << LC << "Illegal: tried to add a NULL tile source" << std::endl;
+        return false;
+    }
+
+    CompositeTileSourceOptions::Component comp;
+    comp._tileSourceInstance = ts;
+    _options._components.push_back( comp );
+
+    return true;
+}
+
+bool
+CompositeTileSource::add( TileSource* ts, const ImageLayerOptions& options )
+{
+    if ( add(ts) )
+    {
+        _options._components.back()._imageLayerOptions = options;
+        return true;
+    }
+    else
+    {
+        return false;
+    }
+}
+
 void
 CompositeTileSource::initialize(const osgDB::Options* dbOptions, 
                                 const Profile*        overrideProfile )
@@ -290,42 +330,64 @@ CompositeTileSource::initialize(const osgDB::Options* dbOptions,
     osg::ref_ptr<const Profile> profile = overrideProfile;
 
     for(CompositeTileSourceOptions::ComponentVector::iterator i = _options._components.begin();
-        i != _options._components.end();
-        ++i)
+        i != _options._components.end(); )
     {
-        TileSource* source = i->_tileSourceInstance->get(); //.get();
-        if ( source )
+        if ( i->_imageLayerOptions.isSet() )
         {
-            osg::ref_ptr<const Profile> localOverrideProfile = overrideProfile;
-
-            const TileSourceOptions& opt = source->getOptions();
-            if ( opt.profile().isSet() )
-                localOverrideProfile = Profile::create( opt.profile().value() );
-
-            source->initialize( dbOptions, localOverrideProfile.get() );
-
-            if ( !profile.valid() )
+            if ( !i->_tileSourceInstance.valid() )
             {
-                // assume the profile of the first source to be the overall profile.
-                profile = source->getProfile();
-            }
-            else if ( !profile->isEquivalentTo( source->getProfile() ) )
-            {
-                // if sub-sources have different profiles, print a warning because this is
-                // not supported!
-                OE_WARN << LC << "Components with differing profiles are not supported. " 
-                    << "Visual anomalies may result." << std::endl;
-            }
+                i->_tileSourceInstance = TileSourceFactory::create( i->_imageLayerOptions->driver().value() );
             
-            _dynamic = _dynamic || source->isDynamic();
-
-            // gather extents
-            const DataExtentList& extents = source->getDataExtents();
-            for( DataExtentList::const_iterator j = extents.begin(); j != extents.end(); ++j )
-            {
-                getDataExtents().push_back( *j );
+                if ( !i->_tileSourceInstance.valid() )
+                {
+                    OE_WARN << LC << "Could not find a TileSource for driver [" << i->_imageLayerOptions->driver()->getDriver() << "]" << std::endl;
+                }
             }
         }
+
+        if ( !i->_tileSourceInstance.valid() )
+        {
+            OE_WARN << LC << "A component has no valid TileSource ... removing." << std::endl;
+            i = _options._components.erase( i );
+        }
+        else
+        {
+            TileSource* source = i->_tileSourceInstance.get();
+            if ( source )
+            {
+                osg::ref_ptr<const Profile> localOverrideProfile = overrideProfile;
+
+                const TileSourceOptions& opt = source->getOptions();
+                if ( opt.profile().isSet() )
+                    localOverrideProfile = Profile::create( opt.profile().value() );
+
+                source->initialize( dbOptions, localOverrideProfile.get() );
+
+                if ( !profile.valid() )
+                {
+                    // assume the profile of the first source to be the overall profile.
+                    profile = source->getProfile();
+                }
+                else if ( !profile->isEquivalentTo( source->getProfile() ) )
+                {
+                    // if sub-sources have different profiles, print a warning because this is
+                    // not supported!
+                    OE_WARN << LC << "Components with differing profiles are not supported. " 
+                        << "Visual anomalies may result." << std::endl;
+                }
+                
+                _dynamic = _dynamic || source->isDynamic();
+
+                // gather extents
+                const DataExtentList& extents = source->getDataExtents();
+                for( DataExtentList::const_iterator j = extents.begin(); j != extents.end(); ++j )
+                {
+                    getDataExtents().push_back( *j );
+                }
+            }
+        }
+
+        ++i;
     }
 
     setProfile( profile.get() );

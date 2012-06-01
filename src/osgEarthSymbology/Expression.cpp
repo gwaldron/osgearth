@@ -345,8 +345,9 @@ StringExpression::StringExpression( const Config& conf )
 void
 StringExpression::mergeConfig( const Config& conf )
 {
-    _src = conf.value();
-    _dirty = true;
+    _src        = conf.value();
+    _uriContext = conf.referrer();
+    _dirty      = true;
 }
 
 Config

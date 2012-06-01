@@ -923,30 +923,33 @@ OSGTerrainEngineNode::updateTextureCombining()
     }
 }
 
-class UpdateElevationVisitor : public osg::NodeVisitor
+namespace
 {
-public:
-    UpdateElevationVisitor():
-      osg::NodeVisitor(osg::NodeVisitor::TRAVERSE_ALL_CHILDREN)
-      {}
+    class UpdateElevationVisitor : public osg::NodeVisitor
+    {
+    public:
+        UpdateElevationVisitor():
+          osg::NodeVisitor(osg::NodeVisitor::TRAVERSE_ALL_CHILDREN)
+          {}
 
-	  void apply(osg::Node& node)
-      {
-		  Tile* tile = dynamic_cast<Tile*>(&node);
-		  if (tile)
-		  {
-			  tile->applyImmediateTileUpdate(TileUpdate::UPDATE_ELEVATION);			  
-		  }
-          
-          traverse(node);          
-      }
-};
+          void apply(osg::Node& node)
+          {
+              Tile* tile = dynamic_cast<Tile*>(&node);
+              if (tile)
+              {
+                  tile->applyImmediateTileUpdate(TileUpdate::UPDATE_ELEVATION);
+              }
+
+              traverse(node);
+          }
+    };
+}
 
 void
 OSGTerrainEngineNode::onVerticalScaleChanged()
 {
-	_terrain->setVerticalScale(getVerticalScale());
+    _terrain->setVerticalScale(getVerticalScale());
 
-	UpdateElevationVisitor visitor;
-	this->accept(visitor);
+    UpdateElevationVisitor visitor;
+    this->accept(visitor);
 }

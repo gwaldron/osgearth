@@ -309,14 +309,14 @@ TerrainLayer::getMaxDataLevel() const
     }
 
     //Try the TileSource
-	TileSource* ts = getTileSource();
-	if ( ts )
-	{
-		return ts->getMaxDataLevel();
-	}
+    TileSource* ts = getTileSource();
+    if ( ts )
+    {
+        return ts->getMaxDataLevel();
+    }
 
     //Just default
-	return 20;
+    return 20;
 }
 
 unsigned
@@ -497,21 +497,21 @@ TerrainLayer::initTileSource()
 
     // next check for an override-profile. The profile usually comes from the
     // TileSource itself, but you have the option of overriding:
-	osg::ref_ptr<const Profile> overrideProfile;
-	if ( _runtimeOptions->profile().isSet() )
-	{
-		overrideProfile = Profile::create( *_runtimeOptions->profile() );
+    osg::ref_ptr<const Profile> overrideProfile;
+    if ( _runtimeOptions->profile().isSet() )
+    {
+        overrideProfile = Profile::create( *_runtimeOptions->profile() );
 
         if ( overrideProfile.valid() )
         {
             OE_INFO << LC << "Layer " << getName() << " overrides profile to "
                 << overrideProfile->toString() << std::endl;
         }
-	}
+    }
 
     // Initialize the profile with the context information:
-	if ( _tileSource.valid() )
-	{
+    if ( _tileSource.valid() )
+    {
         // set up the URI options.
         if ( !_dbOptions.valid() )
         {
@@ -521,25 +521,25 @@ TerrainLayer::initTileSource()
         }
 
         // intialize the tile source
-		_tileSource->initialize( _dbOptions.get(), overrideProfile.get() );
+        _tileSource->initialize( _dbOptions.get(), overrideProfile.get() );
 
-		if ( _tileSource->isOK() )
-		{
-			_tileSize = _tileSource->getPixelsPerTile();
-		}
-		else
-		{
-	        OE_WARN << "Could not initialize TileSource for layer " << getName() << std::endl;
+        if ( _tileSource->isOK() )
+        {
+            _tileSize = _tileSource->getPixelsPerTile();
+        }
+        else
+        {
+            OE_WARN << "Could not initialize TileSource for layer " << getName() << std::endl;
             _tileSource = NULL;
-		}
-	}
+        }
+    }
 
     // Set the profile from the TileSource if possible:
     if ( _tileSource.valid() )
     {
         _profile = _tileSource->getProfile();
     }
-    
+
     // Otherwise, force cache-only mode (since there is no tilesource). The layer will try to 
     // establish a profile from the metadata in the cache instead.
     else if (_cache.valid())
@@ -554,14 +554,14 @@ TerrainLayer::initTileSource()
 bool
 TerrainLayer::isKeyValid(const TileKey& key) const
 {
-	if (!key.valid()) return false;
+    if (!key.valid()) return false;
 
     // Check to see if explicit levels of detail are set
     if ( _runtimeOptions->minLevel().isSet() && (int)key.getLevelOfDetail() < _runtimeOptions->minLevel().value() )
         return false;
-	if ( _runtimeOptions->maxLevel().isSet() && (int)key.getLevelOfDetail() > _runtimeOptions->maxLevel().value() ) 
+    if ( _runtimeOptions->maxLevel().isSet() && (int)key.getLevelOfDetail() > _runtimeOptions->maxLevel().value() ) 
         return false;
-    
+
     // Check to see if levels of detail based on resolution are set
     if ( getProfile() )
     {

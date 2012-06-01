@@ -138,6 +138,8 @@ VirtualProgram::apply( osg::State & state ) const
     if( _shaderMap.empty() ) // Virtual Program works as normal Program
         return Program::apply( state );
 
+	osg::Program::AttribBindingList attribs;
+
     // first, find and collect all the VirtualProgram attributes:
     ShaderMap shaderMap;
     const StateHack::AttributeVec* av = StateHack::GetAttributeVec( state, this );
@@ -153,6 +155,9 @@ VirtualProgram::apply( osg::State & state ) const
                 {
                     shaderMap[ i->first ] = i->second;
                 }
+
+				const osg::Program::AttribBindingList& abl = vp->getAttribBindingList();
+				attribs.insert(abl.begin(), abl.end());
             }
         }
     }
@@ -197,6 +202,12 @@ VirtualProgram::apply( osg::State & state ) const
 
             // Create a new program and add all our shaders.
             program = new osg::Program();
+
+			//const osg::Program::AttribBindingList &abl = getAttribBindingList();
+			for( osg::Program::AttribBindingList::const_iterator attribute = attribs.begin(); attribute != attribs.end(); ++attribute )
+			{
+				program->addBindAttribLocation( attribute->first, attribute->second );
+			}
 
 #if !MERGE_SHADERS
             for( ShaderList::iterator i = sl.begin(); i != sl.end(); ++i )

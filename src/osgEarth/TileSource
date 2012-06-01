@@ -197,10 +197,10 @@ namespace osgEarth
         const DataExtentList& getDataExtents() const { return _dataExtents; }
         DataExtentList& getDataExtents() { return _dataExtents; }
 
-	    /**
-    	 * Creates an image for the given TileKey. The TileKey's profile must match
+        /**
+         * Creates an image for the given TileKey. The TileKey's profile must match
          * the profile of the TileSource.
-		 */
+         */
         virtual osg::Image* createImage(
             const TileKey&        key,
             ImageOperation*       op        =0L,
@@ -229,21 +229,21 @@ namespace osgEarth
          */
         virtual const Profile* getProfile() const;
 
-		/**
-		 * Gets the nodata elevation value
-		 */
+        /**
+         * Gets the nodata elevation value
+         */
         virtual float getNoDataValue() {
             return _options.noDataValue().value(); }
 
-		/**
-		 * Gets the nodata min value
-		 */
+        /**
+         * Gets the nodata min value
+         */
         virtual float getNoDataMinValue() {
             return _options.noDataMinValue().value(); }
 
-		/**
-		 * Gets the nodata max value
-		 */
+        /**
+         * Gets the nodata max value
+         */
         virtual float getNoDataMaxValue() {
             return _options.noDataMaxValue().value(); }
 
@@ -300,12 +300,12 @@ namespace osgEarth
          */
         virtual bool isDynamic() const { return false; }
 
-		/**
-		 * Initializes the TileSource.
+        /**
+         * Initializes the TileSource.
          *
          * This is the initialize() function called by the osgEarth engine. You can define it in 
          * the implementation class to do initial startup of the TileSource.
-		 */
+         */
         virtual void initialize( 
             const osgDB::Options* dbOptions       =0L,
             const Profile*        overrideProfile =0L ) =0;
@@ -326,11 +326,11 @@ namespace osgEarth
 
         virtual ~TileSource();
 
-		/**
-		 * Creates an image for the given TileKey.
+        /**
+         * Creates an image for the given TileKey.
          * The returned object is new and is the responsibility of the caller.
-		 */
-		virtual osg::Image* createImage( 
+         */
+        virtual osg::Image* createImage( 
             const TileKey&        key,
             ProgressCallback*     progress ) = 0;
 
@@ -342,10 +342,10 @@ namespace osgEarth
             const TileKey&        key,
             ProgressCallback*     progress );
 
-		/**
-		 * Called by subclasses to initialize their profile
-		 */
-		void setProfile( const Profile* profile );
+        /**
+         * Called by subclasses to initialize their profile
+         */
+        void setProfile( const Profile* profile );
 
     private:
 
@@ -359,7 +359,7 @@ namespace osgEarth
         osg::ref_ptr< TileBlacklist > _blacklist;
         std::string _blacklistFilename;
 
-		osg::ref_ptr<MemCache> _memCache;
+        osg::ref_ptr<MemCache> _memCache;
 
         DataExtentList _dataExtents;
     };
@@ -383,7 +383,7 @@ namespace osgEarth
      */
     class OSGEARTH_EXPORT TileSourceFactory
     {   
-	public:
+    public:
         static TileSource* create( const TileSourceOptions& options );
     };
 }

@@ -60,6 +60,15 @@ namespace osgEarth
         /** the GLSL version */
         float getGLSLVersion() const { return _GLSLversion; }
 
+        /** the GPU vendor */
+        const std::string& getVendor() const { return _vendor;}
+
+        /** the GPU renderer */
+        const std::string& getRenderer() const { return _renderer;}
+
+        /** the GPU driver version */
+        const std::string& getVersion() const { return _version;}
+
         /** whether the GPU supports texture arrays */
         bool supportsTextureArrays() const { return _supportsTextureArrays; }
 
@@ -86,6 +95,8 @@ namespace osgEarth
 
         /** whether the GPU supporst occlusion query */
         bool supportsOcclusionQuery() const { return _supportsOcclusionQuery; }
+
+
 
     protected:
         Capabilities();

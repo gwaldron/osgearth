@@ -922,3 +922,34 @@ OSGTerrainEngineNode::updateTextureCombining()
         _texCompositor->updateMasterStateSet( terrainStateSet ); //, numImageLayers );
     }
 }
+
+namespace
+{
+    class UpdateElevationVisitor : public osg::NodeVisitor
+    {
+    public:
+        UpdateElevationVisitor():
+          osg::NodeVisitor(osg::NodeVisitor::TRAVERSE_ALL_CHILDREN)
+          {}
+
+          void apply(osg::Node& node)
+          {
+              Tile* tile = dynamic_cast<Tile*>(&node);
+              if (tile)
+              {
+                  tile->applyImmediateTileUpdate(TileUpdate::UPDATE_ELEVATION);
+              }
+
+              traverse(node);
+          }
+    };
+}
+
+void
+OSGTerrainEngineNode::onVerticalScaleChanged()
+{
+    _terrain->setVerticalScale(getVerticalScale());
+
+    UpdateElevationVisitor visitor;
+    this->accept(visitor);
+}

@@ -481,6 +481,16 @@ TileSourceFactory::create( const TileSourceOptions& options )
         OE_WARN << "WARNING: Failed to load TileSource driver for \"" << driver << "\"" << std::endl;
     }
 
+    // apply an Override Profile if provided.
+    if ( result && options.profile().isSet() )
+    {
+        const Profile* profile = Profile::create(*options.profile());
+        if ( profile )
+        {
+            result->setProfile( profile );
+        }
+    }
+
     return result;
 }
 

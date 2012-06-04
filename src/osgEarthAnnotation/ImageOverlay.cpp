@@ -61,13 +61,20 @@ ImageOverlay::postCTOR()
 {
     _geode = new osg::Geode;
 
+    _transform = new osg::MatrixTransform;
+    _transform->addChild( _geode );
+
     // place the geometry under a drapeable node so it will project onto the terrain    
     DrapeableNode* d = new DrapeableNode(_mapNode.get());
-    this->addChild( d );
-    d->addChild( _geode );
+    addChild( d );
 
+    d->addChild( _transform );
+
+    
     init();    
     ADJUST_UPDATE_TRAV_COUNT( this, 1 );
+
+    getOrCreateStateSet()->setMode(GL_DEPTH_TEST, osg::StateAttribute::OFF);
 }
 
 void
@@ -81,7 +88,7 @@ ImageOverlay::init()
 
     const osg::EllipsoidModel* ellipsoid = getMapNode()->getMapSRS()->getEllipsoid();
 
-    const SpatialReference* mapSRS = getMapNode()->getMapSRS();
+    const SpatialReference* mapSRS = getMapNode()->getMapSRS();    
 
     // calculate a bounding polytope in world space (for mesh clamping):
     osg::ref_ptr<Feature> f = new Feature( new Polygon(), mapSRS->getGeodeticSRS() );
@@ -95,12 +102,22 @@ ImageOverlay::init()
     // next, convert to world coords and create the geometry:
     osg::Vec3Array* verts = new osg::Vec3Array();
     verts->reserve(4);
+    osg::Vec3d anchor;
     for( Geometry::iterator i = g->begin(); i != g->end(); ++i )
-    {
-        osg::Vec3d world;
-        mapSRS->transformToWorld( *i, world );
-        verts->push_back( world );
+    {        
+        osg::Vec3d map, world;        
+        f->getSRS()->transform( *i, mapSRS, map);                
+        mapSRS->transformToWorld( map, world );
+        if (i == g->begin())
+        {
+            anchor = world;
+        }
+        verts->push_back( world - anchor );
     }
+    
+    _transform->setMatrix( osg::Matrixd::translate( anchor ) );
+
+
 
     geometry->setVertexArray( verts );
     if ( verts->getVertexBufferObject() )
@@ -133,8 +150,9 @@ ImageOverlay::init()
     (*texcoords)[2].set(1.0f,flip ? 0.0 : 1.0f);
     (*texcoords)[3].set(0.0f,flip ? 0.0 : 1.0f);
     geometry->setTexCoordArray(0, texcoords);
+
         
-    MeshSubdivider ms;
+    MeshSubdivider ms(osg::Matrixd::inverse(_transform->getMatrix()), _transform->getMatrix());
     ms.run(*geometry, osg::DegreesToRadians(5.0), GEOINTERP_RHUMB_LINE);
 
     _geode->removeDrawables(0, _geode->getNumDrawables() );
@@ -152,6 +170,18 @@ ImageOverlay::init()
     style.getOrCreate<AltitudeSymbol>()->clamping() = AltitudeSymbol::CLAMP_RELATIVE_TO_TERRAIN;
     applyStyle( style );
     clampMesh( _mapNode->getTerrain()->getGraph() );
+}
+
+bool
+ImageOverlay::getDraped() const
+{
+    return static_cast< const DrapeableNode *>( getChild(0))->getDraped();
+}
+
+void
+ImageOverlay::setDraped( bool draped )
+{
+    static_cast< DrapeableNode *>( getChild(0))->setDraped( draped );
 }
 
 osg::Image*

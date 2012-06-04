@@ -26,6 +26,7 @@
 #include <osg/Group>
 #include <osg/Geometry>
 #include <osg/Image>
+#include <osg/MatrixTransform>
 
 namespace osgEarth { namespace Annotation
 {
@@ -100,6 +101,9 @@ namespace osgEarth { namespace Annotation
 
         void dirty();
 
+        bool getDraped() const;
+        void setDraped( bool draped );
+
     public: // AnnotationNode
         
         virtual void reclamp( const TileKey& key, osg::Node* tile, const Terrain* );
@@ -127,6 +131,7 @@ namespace osgEarth { namespace Annotation
         bool _dirty;
         OpenThreads::Mutex _mutex;
         osg::Geode* _geode;
+        osg::MatrixTransform* _transform;
         osg::Geometry* _geometry;
         float _alpha;
         CallbackList _callbacks;

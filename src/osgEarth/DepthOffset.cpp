@@ -276,85 +276,70 @@ DepthOffsetUtils::prepareGraph( osg::Node* graph )
     }
 }
 
+namespace
+{
+    static osg::ref_ptr<osg::Uniform> s_isTextUniform;
+    static Threading::Mutex           s_isTextUniformMutex;
+}
+
 osg::Uniform*
 DepthOffsetUtils::getIsTextUniform()
 {
-    static osg::ref_ptr<osg::Uniform> s_uniform;
-    static Threading::Mutex           s_mutex;
-
-    if ( !s_uniform.valid() )
+    if ( !s_isTextUniform.valid() )
     {
-        Threading::ScopedMutexLock exclusive(s_mutex);
-        if ( !s_uniform.valid() )
+        Threading::ScopedMutexLock exclusive(s_isTextUniformMutex);
+        if ( !s_isTextUniform.valid() )
         {
-            s_uniform = new osg::Uniform(osg::Uniform::BOOL, IS_TEXT_UNIFORM);
-            s_uniform->set( true );
+            s_isTextUniform = new osg::Uniform(osg::Uniform::BOOL, IS_TEXT_UNIFORM);
+            s_isTextUniform->set( true );
         }
     }
-    return s_uniform.get();
+    return s_isTextUniform.get();
+}
+
+namespace
+{    
+    static osg::ref_ptr<osg::Uniform> s_isNotTextUniform;
+    static Threading::Mutex           s_isNotTextUniformMutex;
 }
 
 osg::Uniform*
 DepthOffsetUtils::getIsNotTextUniform()
 {
-    static osg::ref_ptr<osg::Uniform> s_uniform;
-    static Threading::Mutex           s_mutex;
-
-    if ( !s_uniform.valid() )
+    if ( !s_isNotTextUniform.valid() )
     {
-        Threading::ScopedMutexLock exclusive(s_mutex);
-        if ( !s_uniform.valid() )
+        Threading::ScopedMutexLock exclusive(s_isNotTextUniformMutex);
+        if ( !s_isNotTextUniform.valid() )
         {
-            s_uniform = new osg::Uniform(osg::Uniform::BOOL, IS_TEXT_UNIFORM);
-            s_uniform->set( false );
+            s_isNotTextUniform = new osg::Uniform(osg::Uniform::BOOL, IS_TEXT_UNIFORM);
+            s_isNotTextUniform->set( false );
         }
     }
-    return s_uniform.get();
+    return s_isNotTextUniform.get();
+}
+
+namespace
+{
+    static osg::ref_ptr<osg::Program> s_depthOffsetProgram;
+    static Threading::Mutex           s_depthOffsetProgramMutex;
 }
 
 osg::Program*
 DepthOffsetUtils::getOrCreateProgram()
 {
-    static osg::ref_ptr<osg::Program> s_singleton;
-    static Threading::Mutex           s_mutex;
-
-    if ( !s_singleton.valid() )
+    if ( !s_depthOffsetProgram.valid() )
     {
-        Threading::ScopedMutexLock exclusive(s_mutex);
-        if ( !s_singleton.valid() )
+        Threading::ScopedMutexLock exclusive(s_depthOffsetProgramMutex);
+        if ( !s_depthOffsetProgram.valid() )
         {
-            s_singleton = new osg::Program();
-            s_singleton->addShader( new osg::Shader(osg::Shader::VERTEX, createVertexShader("")) );
-            s_singleton->addShader( new osg::Shader(osg::Shader::FRAGMENT, createFragmentShader("")) );
+            s_depthOffsetProgram = new osg::Program();
+            s_depthOffsetProgram->addShader( new osg::Shader(osg::Shader::VERTEX, createVertexShader("")) );
+            s_depthOffsetProgram->addShader( new osg::Shader(osg::Shader::FRAGMENT, createFragmentShader("")) );
         }
     }
 
-    return s_singleton.get();
+    return s_depthOffsetProgram.get();
 }
-
-#if 0
-osg::Program*
-DepthOffsetUtils::getOrCreateProgram( float staticDepthOffset )
-{
-    static std::map<float, osg::ref_ptr<osg::Program> > s_programs;
-    static Threading::Mutex                             s_mutex;
-
-    Threading::ScopedMutexLock exclusive(s_mutex);
-    std::map<float, osg::ref_ptr<osg::Program> >::iterator i = s_programs.find(staticDepthOffset);
-    if ( i != s_programs.end() )
-    {
-        return i->second.get();
-    }
-    else
-    {
-        osg::Program* p = new osg::Program();
-        p->addShader( new osg::Shader(osg::Shader::VERTEX, createVertexShader("", staticDepthOffset)));
-        p->addShader( new osg::Shader(osg::Shader::FRAGMENT, createFragmentShader("")) );
-        s_programs[staticDepthOffset] = p;
-        return p;
-    }
-}
-#endif
 
 std::string
 DepthOffsetUtils::createVertexFunction( const std::string& funcName )

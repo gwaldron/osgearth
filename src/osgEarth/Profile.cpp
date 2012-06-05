@@ -595,6 +595,13 @@ Profile::addIntersectingTiles(const GeoExtent& key_ext, std::vector<TileKey>& ou
     unsigned int numWide, numHigh;
     getNumTiles(destLOD, numWide, numHigh);
 
+    // bail out if the tiles are out of bounds.
+    if ( tileMinX >= (int)numWide || tileMinY >= (int)numHigh ||
+         tileMaxX < 0 || tileMaxY < 0 )
+    {
+        return;
+    }
+
     tileMinX = osg::clampBetween(tileMinX, 0, (int)numWide-1);
     tileMaxX = osg::clampBetween(tileMaxX, 0, (int)numWide-1);
     tileMinY = osg::clampBetween(tileMinY, 0, (int)numHigh-1);

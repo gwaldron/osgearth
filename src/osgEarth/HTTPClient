@@ -50,10 +50,10 @@ namespace osgEarth
         int& port() { return _port; }
         const int& port() const { return _port; }
 
-		std::string& userName() { return _userName; }
+        std::string& userName() { return _userName; }
         const std::string& userName() const { return _userName; }
 
-		std::string& password() { return _password; }
+        std::string& password() { return _password; }
         const std::string& password() const { return _password; }
 
     public:
@@ -63,8 +63,8 @@ namespace osgEarth
     protected:
         std::string _hostName;
         int _port;
-		std::string _userName;
-		std::string _password;
+        std::string _userName;
+        std::string _password;
     };
 
 
@@ -197,15 +197,15 @@ namespace osgEarth
 
         /** Gest the user-agent string that all HTTP requests will use.
             TODO: This should probably move into the Registry */
-		static const std::string& getUserAgent();
+        static const std::string& getUserAgent();
 
         /** Sets a user-agent string to use in all HTTP requests.
             TODO: This should probably move into the Registry */
-		static void setUserAgent(const std::string& userAgent);
+        static void setUserAgent(const std::string& userAgent);
 
         /** Sets up proxy info to use in all HTTP requests.
             TODO: This should probably move into the Registry */
-		static void setProxySettings( const ProxySettings &proxySettings );
+        static void setProxySettings( const ProxySettings &proxySettings );
 
 
     public:
@@ -306,6 +306,10 @@ namespace osgEarth
         void*       _curl_handle;
         std::string _previousPassword;
         long        _previousHttpAuthentication;
+        bool        _initialized;
+
+        void initialize() const;
+        void initializeImpl();
 
 
         static HTTPClient& getClient();

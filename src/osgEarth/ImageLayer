@@ -49,9 +49,9 @@ namespace osgEarth
 
     public: // properties
 
-		/**
-		 * The initial opacity of this layer
-		 */
+        /**
+         * The initial opacity of this layer
+         */
         optional<float>& opacity() { return _opacity; }
         const optional<float>& opacity() const { return _opacity; }
 
@@ -67,16 +67,16 @@ namespace osgEarth
         optional<float>& maxVisibleRange() { return _maxRange; }
         const optional<float>& maxVisibleRange() const { return _maxRange; }
 
-		/**
-		 * Gets or sets the nodata image for this MapLayer
-		 */
+        /**
+         * Gets or sets the nodata image for this MapLayer
+         */
         optional<std::string>& noDataImageFilename() { return _noDataImageFilename; }
         const optional<std::string>& noDataImageFilename() const { return _noDataImageFilename; }
 
-		/**
-		 * Gets the transparent color of this TileSource
-		 */
-		optional<osg::Vec4ub>& transparentColor() { return _transparentColor; }
+        /**
+         * Gets the transparent color of this TileSource
+         */
+        optional<osg::Vec4ub>& transparentColor() { return _transparentColor; }
         const optional<osg::Vec4ub>& transparentColor() const { return _transparentColor; }
         
         /**
@@ -95,11 +95,11 @@ namespace osgEarth
         void fromConfig( const Config& conf );
         void setDefaults();
 
-		optional<float>  _opacity;
+        optional<float>  _opacity;
         optional<float>  _minRange;
         optional<float>  _maxRange;
-		optional<osg::Vec4ub> _transparentColor;
-	    optional<std::string> _noDataImageFilename;
+        optional<osg::Vec4ub> _transparentColor;
+        optional<std::string> _noDataImageFilename;
         optional<bool> _lodBlending;
     };
 
@@ -200,17 +200,17 @@ namespace osgEarth
 
     public: // methods
 
-		/**
-		 * Creates a GeoImage from this layer corresponding to the provided key. The
+        /**
+         * Creates a GeoImage from this layer corresponding to the provided key. The
          * image is in the profile of the key and will be reprojected, mosaiced and
          * cropped automatically.
-		 */
-		virtual GeoImage createImage( const TileKey& key, ProgressCallback* progress = 0, bool forceFallback =false);
+         */
+        virtual GeoImage createImage( const TileKey& key, ProgressCallback* progress = 0, bool forceFallback =false);
 
         /**
          * Creates an image that is in the image layer's native profile.
          */
-        GeoImage createImageInNativeProfile(const TileKey& key, ProgressCallback* progress, bool forceFallback);
+        GeoImage createImageInNativeProfile(const TileKey& key, ProgressCallback* progress, bool forceFallback, bool& out_isFallback);
 
     public: // TerrainLayer override
 
@@ -219,16 +219,16 @@ namespace osgEarth
     protected:
 
         // Creates an image that's in the same profile as the provided key.
-        GeoImage createImageInKeyProfile(const TileKey& key, ProgressCallback* progress, bool forceFallback);
+        GeoImage createImageInKeyProfile(const TileKey& key, ProgressCallback* progress, bool forceFallback, bool& out_isFallback);
 
         // Fetches an image from the underlying TileSource whose data matches that of the
         // key extent.
-        GeoImage createImageFromTileSource(const TileKey& key, ProgressCallback* progress, bool forceFallback);
+        GeoImage createImageFromTileSource(const TileKey& key, ProgressCallback* progress, bool forceFallback, bool& out_isFallback);
 
         // Fetches multiple images from the TileSource; mosaics/reprojects/crops as necessary, and
         // returns a single tile. This is called by createImageFromTileSource() if the key profile
         // doesn't match the layer profile.
-        GeoImage assembleImageFromTileSource(const TileKey& key, ProgressCallback* progress, bool forceFallback);
+        GeoImage assembleImageFromTileSource(const TileKey& key, ProgressCallback* progress, bool forceFallback, bool& out_isFallback);
 
 
         virtual void initTileSource();

@@ -61,9 +61,18 @@ struct BuildColorLayer
         while( !geoImage.valid() && imageKey.valid() && _layer->isKeyValid(imageKey) )
         {
             if ( useMercatorFastPath )
-                geoImage = _layer->createImageInNativeProfile( imageKey, 0L, autoFallback );
+            {
+                bool mercFallbackData = false;
+                geoImage = _layer->createImageInNativeProfile( imageKey, 0L, autoFallback, mercFallbackData );
+                if ( geoImage.valid() && mercFallbackData )
+                {
+                    isFallbackData = true;
+                }
+            }
             else
+            {
                 geoImage = _layer->createImage( imageKey, 0L, autoFallback );
+            }
 
             if ( !geoImage.valid() )
             {

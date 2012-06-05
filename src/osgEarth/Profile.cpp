@@ -187,15 +187,15 @@ Profile::create(const std::string& srsInitString,
         osg::Vec3d point(180.0, 0.0, 0.0);
         srs->getGeographicSRS()->transform(point, srs.get(), point);
         double e = point.x();
-        //GDAL_SCOPED_LOCK;
-        //double e, dummy;
-        //srs->getGeographicSRS()->transform2D( 180.0, 0.0, srs.get(), e, dummy );
         return Profile::create( srs.get(), -e, -e, e, e, numTilesWideAtLod0, numTilesHighAtLod0 );
+    }
+    else if ( srs.valid() )
+    {
+        OE_WARN << LC << "Failed to create profile; you must provide extents with a projected SRS." << std::endl;
     }
     else
     {
-        OE_WARN << LC << "Failed to create profile; SRS spec requires addition information: \"" << srsInitString << 
-            std::endl;
+        OE_WARN << LC << "Failed to create profile; unrecognized SRS: \"" << srsInitString << "\"" << std::endl;
     }
 
     return NULL;

@@ -254,12 +254,12 @@ namespace
                 buf << "            texel = texture2D(" << makeSamplerName(slot) << ", gl_TexCoord["<< slot <<"].st); \n";
             }
             
-            buf << "            float opacity =  texel.a * osgearth_ImageLayerOpacity[" << i << "];\n"
-                << "            color3 = mix(color3, texel.rgb, opacity * atten_max * atten_min); \n"               
+            buf << "            float opacity =  texel.a * osgearth_ImageLayerOpacity[" << i << "];\n"                
+                << "            vec3 layerColor = texel.rgb;\n"                
                 << "            vec3 hsl = osgearth_ImageLayerHSL[" << i <<  "];\n"
                 << "            if (hsl.x != 0.0 || hsl.y != 0.0 || hsl.z != 0.0) {\n"                
                 << "                float h, s, l;\n"
-                << "                RGB_2_HSL( color3.r, color3.g, color3.b, h, s, l);\n"
+                << "                RGB_2_HSL( layerColor.r, layerColor.g, layerColor.b, h, s, l);\n"
                 << "                h += hsl.x;\n"
                 << "                s += hsl.y;\n"
                 << "                l += hsl.z;\n"
@@ -273,11 +273,11 @@ namespace
 
                 << "                float r, g, b;\n"
                 << "                HSL_2_RGB( h, s, l, r, g, b);\n"
-                << "                color3.r = r;\n"
-                << "                color3.g = g;\n"
-                << "                color3.b = b;\n"
+                << "                layerColor.r = r;\n"
+                << "                layerColor.g = g;\n"
+                << "                layerColor.b = b;\n"
                 << "            }\n"
-
+                << "            color3 = mix(color3, layerColor, opacity * atten_max * atten_min); \n"               
                 << "            if (opacity > maxOpacity) {\n"
                 << "              maxOpacity = opacity;\n"
                 << "            }\n"                

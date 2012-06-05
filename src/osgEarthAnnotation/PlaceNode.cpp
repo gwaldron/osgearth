@@ -158,6 +158,7 @@ PlaceNode::init()
     applyStyle( _style );
 }
 
+#if 0 // TODO
 void
 PlaceNode::setIconImage( osg::Image* image )
 {
@@ -167,6 +168,7 @@ PlaceNode::setIconImage( osg::Image* image )
         return;
     }
 }
+#endif
 
 void
 PlaceNode::setText( const std::string& text )
@@ -191,6 +193,7 @@ PlaceNode::setText( const std::string& text )
     }
 }
 
+#if 0 // TODO
 void
 PlaceNode::setStyle( const Style& style )
 {
@@ -200,6 +203,7 @@ PlaceNode::setStyle( const Style& style )
         return;
     }
 }
+#endif
 
 void
 PlaceNode::setAnnotationData( AnnotationData* data )

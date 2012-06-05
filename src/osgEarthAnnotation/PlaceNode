@@ -72,7 +72,6 @@ namespace osgEarth { namespace Annotation
         /**
          * Image to use for the icon
          */
-        void setIconImage( osg::Image* image );
         osg::Image* getIconImage() const { return _image.get(); }
 
         /**
@@ -84,7 +83,6 @@ namespace osgEarth { namespace Annotation
         /**
          * Style (for text)
          */
-        void setStyle( const Style& style );
         const Style& getStyle() const { return _style; }
 
 

@@ -51,6 +51,11 @@ KML_Placemark::build( const Config& conf, KMLContext& cx )
         style = cx._activeStyle;
     }
 
+    // parse the geometry. the placemark must have geometry to be valid. The 
+    // geometry parse may optionally specify an altitude mode as well.
+    KML_Geometry geometry;
+    geometry.build(conf, cx, style);
+
     // KML's default altitude mode is clampToGround.
     AltitudeMode altMode = ALTMODE_RELATIVE;
 
@@ -64,10 +69,6 @@ KML_Placemark::build( const Config& conf, KMLContext& cx )
     {
         altMode = ALTMODE_ABSOLUTE;
     }
-
-    // parse the geometry. the placemark must have geometry to be valid.
-    KML_Geometry geometry;
-    geometry.build(conf, cx, style);
     
     if ( geometry._geom.valid() && geometry._geom->getTotalPointCount() > 0 )
     {

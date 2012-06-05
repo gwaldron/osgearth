@@ -71,7 +71,7 @@ struct AdjustHandler: public ControlEventHandler
 
         //Get the current value
         hsl._v[ _index] = adj;
-        OE_NOTICE << "Setting HSL to " << hsl << std::endl;
+        OE_NOTICE << "Setting HSL adjustment to " << hsl << std::endl;
         _layer->setHSLAdjust( hsl );
     }
 

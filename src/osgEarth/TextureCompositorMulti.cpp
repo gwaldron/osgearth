@@ -107,6 +107,7 @@ namespace
         }
 
         buf << "uniform float osgearth_ImageLayerOpacity[" << maxSlots << "]; \n"
+            << "uniform vec3 osgearth_ImageLayerHSL[" << maxSlots << "]; \n"
             //The enabled array is a fixed size.  Make sure this corresponds EXCATLY to the size definition in TerrainEngineNode.cpp
             << "uniform bool  osgearth_ImageLayerVisible[" << MAX_IMAGE_LAYERS << "]; \n"
             << "uniform float osgearth_ImageLayerRange[" << 2 * maxSlots << "]; \n"
@@ -123,6 +124,85 @@ namespace
                 buf << "uniform sampler2D " << makeSamplerName(i) << ";\n";
             }
         }
+
+
+        buf << "void RGB_2_HSL(in float r, in float g, in float b, out float h, out float s, out float l)\n"
+        << "{            \n"
+        << "        float var_Min = min( r, min(g, b) );    //Min. value of RGB\n"
+        << "        float var_Max = max( r, max(g, b) );    //Max. value of RGB\n"
+        << "        float del_Max = var_Max - var_Min;      //Delta RGB value\n"
+        << "\n"
+        << "        l = ( var_Max + var_Min ) / 2.0;\n"
+        << "\n"
+        << "        if ( del_Max == 0.0 )                     //This is a gray, no chroma...\n"
+        << "        {\n"
+        << "            h = 0.0;                                //HSL results from 0 to 1\n"
+        << "            s = 0.0;\n"
+        << "        }\n"
+        << "        else                                    //Chromatic data...\n"
+        << "        {\n"
+        << "            if ( l < 0.5 ) s = del_Max / ( var_Max + var_Min );\n"
+        << "            else           s = del_Max / ( 2.0 - var_Max - var_Min );\n"
+        << "\n"
+        << "            float del_R = ( ( ( var_Max - r ) / 6.0 ) + ( del_Max / 2.0 ) ) / del_Max;\n"
+        << "            float del_G = ( ( ( var_Max - g ) / 6.0 ) + ( del_Max / 2.0 ) ) / del_Max;\n"
+        << "            float del_B = ( ( ( var_Max - b ) / 6.0 ) + ( del_Max / 2.0 ) ) / del_Max;\n"
+        << "            if      ( r == var_Max ) h = del_B - del_G;\n"
+        << "            else if ( g == var_Max ) h = ( 1.0 / 3.0 ) + del_R - del_B;\n"
+        << "            else if ( b == var_Max ) h = ( 2.0 / 3.0 ) + del_G - del_R;\n"
+        << "            if ( h < 0.0 ) h += 1.0;\n"
+        << "            if ( h > 1.0 ) h -= 1.0;\n"
+        << "        }\n"
+        << "}\n"
+        << "\n";
+
+
+        buf << "float Hue_2_RGB(float v1, float v2, float vH )\n"
+            << "{\n"
+            << "float ret;\n"
+            << "if ( vH < 0.0 )\n"
+            << "vH += 1.0;\n"
+            << "if ( vH > 1.0 )\n"
+            << "vH -= 1.0;\n"
+            << "if ( ( 6.0 * vH ) < 1.0 )\n"
+            << "ret = ( v1 + ( v2 - v1 ) * 6.0 * vH );\n"
+            << "else if ( ( 2.0 * vH ) < 1.0 )\n"
+            << "ret = ( v2 );\n"
+            << "else if ( ( 3.0 * vH ) < 2.0 )\n"
+            << "ret = ( v1 + ( v2 - v1 ) * ( ( 2.0 / 3.0 ) - vH ) * 6.0 );\n"
+            << "else\n"
+            << "ret = v1;\n"
+            << "return ret;\n"
+            << "}\n";
+
+        buf << "void HSL_2_RGB(in float h, in float s, in float l, out float r, out float g, out float b)\n"
+            << "{\n"
+            << "  float var_2, var_1;\n"
+            << "  if (s == 0.0)\n"
+            << "  {\n"
+            << "    r = l;\n"
+            << "    g = l;\n"
+            << "    b = l;\n"
+            << "  }\n"
+            << "  else\n"
+            << "  {\n"
+            << "    if ( l < 0.5 )\n"
+            << "    {\n"
+            << "      var_2 = l * ( 1.0 + s );\n"
+            << "    }\n"
+            << "    else\n"
+            << "    {\n"
+            << "      var_2 = ( l + s ) - ( s * l );\n"
+            << "    }\n"
+
+            << "    var_1 = 2.0 * l - var_2;\n"
+
+            << "    r = Hue_2_RGB( var_1, var_2, h + ( 1.0 / 3.0 ) );\n"
+            << "    g = Hue_2_RGB( var_1, var_2, h );\n"
+            << "    b = Hue_2_RGB( var_1, var_2, h - ( 1.0 / 3.0 ) );\n"
+            << "  }\n"
+            << "}\n";
+               
 
         buf << "void osgearth_frag_applyTexturing( inout vec4 color ) \n"
             << "{ \n"
@@ -175,7 +255,29 @@ namespace
             }
             
             buf << "            float opacity =  texel.a * osgearth_ImageLayerOpacity[" << i << "];\n"
-                << "            color3 = mix(color3, texel.rgb, opacity * atten_max * atten_min); \n"
+                << "            color3 = mix(color3, texel.rgb, opacity * atten_max * atten_min); \n"               
+                << "            vec3 hsl = osgearth_ImageLayerHSL[" << i <<  "];\n"
+                << "            if (hsl.x != 0.0 || hsl.y != 0.0 || hsl.z != 0.0) {\n"                
+                << "                float h, s, l;\n"
+                << "                RGB_2_HSL( color3.r, color3.g, color3.b, h, s, l);\n"
+                << "                h += hsl.x;\n"
+                << "                s += hsl.y;\n"
+                << "                l += hsl.z;\n"
+
+                // clamp H,S and L to [0..1]
+
+                << "                h = clamp(h, 0.0, 1.0);\n"
+                << "                s = clamp(s, 0.0, 1.0);\n"
+                << "                l = clamp(l, 0.0, 1.0);\n"
+
+
+                << "                float r, g, b;\n"
+                << "                HSL_2_RGB( h, s, l, r, g, b);\n"
+                << "                color3.r = r;\n"
+                << "                color3.g = g;\n"
+                << "                color3.b = b;\n"
+                << "            }\n"
+
                 << "            if (opacity > maxOpacity) {\n"
                 << "              maxOpacity = opacity;\n"
                 << "            }\n"                

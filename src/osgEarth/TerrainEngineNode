@@ -122,10 +122,12 @@ namespace osgEarth
 
             void onVisibleChanged( TerrainLayer* layer );
             void onOpacityChanged( ImageLayer* layer );
+            void onHSLChanged( ImageLayer* layer );
 
             ArrayUniform _layerOpacityUniform;
             ArrayUniform _layerVisibleUniform;
             ArrayUniform _layerRangeUniform;
+            ArrayUniform _layerHSLUniform;
 
         private:
             MapFrame           _mapf;

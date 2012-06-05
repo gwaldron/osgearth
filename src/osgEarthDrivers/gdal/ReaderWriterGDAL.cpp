@@ -736,8 +736,9 @@ public:
         }
 
         //Create a spatial reference for the source.
-        const char* srcProj = _srcDS->GetProjectionRef();
-        if ( srcProj != 0L && overrideProfile != 0L )
+        std::string srcProj = _srcDS->GetProjectionRef();
+        //const char* srcProj = _srcDS->GetProjectionRef();
+        if ( !srcProj.empty() && overrideProfile != 0L )
         {
             OE_WARN << LC << "WARNING, overriding profile of a source that already defines its own SRS (" 
                 << this->getName() << ")" << std::endl;
@@ -748,7 +749,7 @@ public:
         {
             src_srs = overrideProfile->getSRS();
         }
-        else if ( srcProj )
+        else if ( !srcProj.empty() )
         {
             src_srs = SpatialReference::create( srcProj );
         }

@@ -54,8 +54,8 @@ ProxySettings::mergeConfig( const Config& conf )
 {
     _hostName = conf.value<std::string>( "host", "" );
     _port = conf.value<int>( "port", 8080 );
-	_userName = conf.value<std::string>( "username", "" );
-	_password = conf.value<std::string>( "password", "" );
+    _userName = conf.value<std::string>( "username", "" );
+    _password = conf.value<std::string>( "password", "" );
 }
 
 Config
@@ -64,8 +64,8 @@ ProxySettings::getConfig() const
     Config conf( "proxy" );
     conf.add( "host", _hostName );
     conf.add( "port", toString(_port) );
-	conf.add( "username", _userName);
-	conf.add( "password", _password);
+    conf.add( "username", _userName);
+    conf.add( "password", _password);
 
     return conf;
 }
@@ -134,7 +134,7 @@ HTTPRequest::addParameter( const std::string& name, int value )
 {
     std::stringstream buf;
     buf << value;
-	 std::string bufStr;
+     std::string bufStr;
     bufStr = buf.str();
     _parameters[name] = bufStr;
 }
@@ -144,7 +144,7 @@ HTTPRequest::addParameter( const std::string& name, double value )
 {
     std::stringstream buf;
     buf << value;
-	 std::string bufStr;
+     std::string bufStr;
     bufStr = buf.str();
     _parameters[name] = bufStr;
 }
@@ -171,8 +171,8 @@ HTTPRequest::getURL() const
             buf << ( i == _parameters.begin() && _url.find( "?" ) == std::string::npos? "?" : "&" );
             buf << i->first << "=" << i->second;
         }
-		 std::string bufStr;
-		 bufStr = buf.str();
+         std::string bufStr;
+         bufStr = buf.str();
         return bufStr;
     }
 }
@@ -232,8 +232,8 @@ HTTPResponse::getPartStream( unsigned int n ) const {
 
 std::string
 HTTPResponse::getPartAsString( unsigned int n ) const {
-	 std::string streamStr;
-	 streamStr = _parts[n]->_stream.str();
+     std::string streamStr;
+     streamStr = _parts[n]->_stream.str();
     return streamStr;
 }
 
@@ -266,48 +266,50 @@ HTTPResponse::getHeadersAsConfig() const
 static optional<ProxySettings>     _proxySettings;
 static std::string                 _userAgent = USER_AGENT;
 
-
-struct HTTPClientContainer
+namespace
 {
-    HTTPClientContainer() : instance(0L) { }
-    HTTPClient* instance;
-};
+    // per-thread client map (must be global scope)
+    static Threading::PerThread<HTTPClient> s_clientPerThread;
+}
 
 HTTPClient&
 HTTPClient::getClient()
 {
-    // this strange setup works around some strange issues caused to 
-    // HTTPClient instances getting prematurely destructed. Have not figured that
-    // one out yet.
-    static Threading::PerThread<HTTPClientContainer> s_clientPerThread;
-
-    HTTPClientContainer& client = s_clientPerThread.get();
-    if ( client.instance == 0L )
-        client.instance = new HTTPClient();
-    return *client.instance;
-
-    //osg::ref_ptr<HTTPClient>& client = s_clientPerThread.get();
-    //if ( !client.valid() )
-    //    client = new HTTPClient();
-
-    //return *client.get();
+    return s_clientPerThread.get();
 }
 
-HTTPClient::HTTPClient()
+HTTPClient::HTTPClient() :
+_initialized( false ),
+_curl_handle( 0L )
+{
+    //nop
+    //do no CURL calls here.
+}
+
+void
+HTTPClient::initialize() const
+{
+    if ( !_initialized )
+    {
+        const_cast<HTTPClient*>(this)->initializeImpl();
+    }
+}
+
+void
+HTTPClient::initializeImpl()
 {
     _previousHttpAuthentication = 0;
     _curl_handle = curl_easy_init();
 
-
-	//Get the user agent
-	std::string userAgent = _userAgent;
-	const char* userAgentEnv = getenv("OSGEARTH_USERAGENT");
+    //Get the user agent
+    std::string userAgent = _userAgent;
+    const char* userAgentEnv = getenv("OSGEARTH_USERAGENT");
     if (userAgentEnv)
     {
-		userAgent = std::string(userAgentEnv);        
+        userAgent = std::string(userAgentEnv);
     }
 
-	OE_DEBUG << LC << "HTTPClient setting userAgent=" << userAgent << std::endl;
+    OE_DEBUG << LC << "HTTPClient setting userAgent=" << userAgent << std::endl;
 
     curl_easy_setopt( _curl_handle, CURLOPT_USERAGENT, userAgent.c_str() );
     curl_easy_setopt( _curl_handle, CURLOPT_WRITEFUNCTION, osgEarth::StreamObjectReadCallback );
@@ -316,6 +318,8 @@ HTTPClient::HTTPClient()
     curl_easy_setopt( _curl_handle, CURLOPT_PROGRESSFUNCTION, &CurlProgressCallback);
     curl_easy_setopt( _curl_handle, CURLOPT_NOPROGRESS, (void*)0 ); //FALSE);
     //curl_easy_setopt( _curl_handle, CURLOPT_TIMEOUT, 1L );
+
+    _initialized = true;
 }
 
 HTTPClient::~HTTPClient()
@@ -325,19 +329,19 @@ HTTPClient::~HTTPClient()
 }
 
 void
-HTTPClient::setProxySettings( const ProxySettings &proxySettings )
+HTTPClient::setProxySettings( const ProxySettings& proxySettings )
 {
-	_proxySettings = proxySettings;
+    _proxySettings = proxySettings;
 }
 
 const std::string& HTTPClient::getUserAgent()
 {
-	return _userAgent;
+    return _userAgent;
 }
 
 void  HTTPClient::setUserAgent(const std::string& userAgent)
 {
-	_userAgent = userAgent;
+    _userAgent = userAgent;
 }
 
 void
@@ -363,32 +367,34 @@ HTTPClient::readOptions(const osgDB::Options* options, std::string& proxy_host, 
     }
 }
 
-// from: http://www.rosettacode.org/wiki/Tokenizing_A_String#C.2B.2B
-static std::vector<std::string> 
-tokenize_str(const std::string & str, const std::string & delims=", \t")
+namespace
 {
-  using namespace std;
-  // Skip delims at beginning, find start of first token
-  string::size_type lastPos = str.find_first_not_of(delims, 0);
-  // Find next delimiter @ end of token
-  string::size_type pos     = str.find_first_of(delims, lastPos);
-
-  // output vector
-  vector<string> tokens;
-
-  while (string::npos != pos || string::npos != lastPos)
+    // from: http://www.rosettacode.org/wiki/Tokenizing_A_String#C.2B.2B
+    std::vector<std::string> 
+    tokenize_str(const std::string & str, const std::string & delims=", \t")
     {
-      // Found a token, add it to the vector.
-      tokens.push_back(str.substr(lastPos, pos - lastPos));
-      // Skip delims.  Note the "not_of". this is beginning of token
-      lastPos = str.find_first_not_of(delims, pos);
-      // Find next delimiter at end of token.
-      pos     = str.find_first_of(delims, lastPos);
+      using namespace std;
+      // Skip delims at beginning, find start of first token
+      string::size_type lastPos = str.find_first_not_of(delims, 0);
+      // Find next delimiter @ end of token
+      string::size_type pos     = str.find_first_of(delims, lastPos);
+
+      // output vector
+      vector<string> tokens;
+
+      while (string::npos != pos || string::npos != lastPos)
+        {
+          // Found a token, add it to the vector.
+          tokens.push_back(str.substr(lastPos, pos - lastPos));
+          // Skip delims.  Note the "not_of". this is beginning of token
+          lastPos = str.find_first_not_of(delims, pos);
+          // Find next delimiter at end of token.
+          pos     = str.find_first_of(delims, lastPos);
+        }
+
+      return tokens;
     }
-
-  return tokens;
 }
-
 
 void
 HTTPClient::decodeMultipartStream(const std::string&   boundary,
@@ -533,6 +539,8 @@ HTTPClient::download(const std::string& uri,
 HTTPResponse
 HTTPClient::doGet( const HTTPRequest& request, const osgDB::Options* options, ProgressCallback* callback) const
 {
+    initialize();
+
     OE_DEBUG << LC << "doGet " << request.getURL() << std::endl;
 
     const osgDB::AuthenticationMap* authenticationMap = (options && options->getAuthenticationMap()) ? 
@@ -542,48 +550,48 @@ HTTPClient::doGet( const HTTPRequest& request, const osgDB::Options* options, Pr
     std::string proxy_host;
     std::string proxy_port = "8080";
 
-	std::string proxy_auth;
+    std::string proxy_auth;
 
     //TODO: don't do all this proxy setup on every GET. Just do it once per client, or only when 
     // the proxy information changes.
 
-	//Try to get the proxy settings from the global settings
-	if (_proxySettings.isSet())
-	{
-		proxy_host = _proxySettings.get().hostName();
-		std::stringstream buf;
-		buf << _proxySettings.get().port();
-		proxy_port = buf.str();
+    //Try to get the proxy settings from the global settings
+    if (_proxySettings.isSet())
+    {
+        proxy_host = _proxySettings.get().hostName();
+        std::stringstream buf;
+        buf << _proxySettings.get().port();
+        proxy_port = buf.str();
 
-		std::string proxy_username = _proxySettings.get().userName();
-		std::string proxy_password = _proxySettings.get().password();
-		if (!proxy_username.empty() && !proxy_password.empty())
-		{
+        std::string proxy_username = _proxySettings.get().userName();
+        std::string proxy_password = _proxySettings.get().password();
+        if (!proxy_username.empty() && !proxy_password.empty())
+        {
             proxy_auth = proxy_username + std::string(":") + proxy_password;
-		}
-	}
+        }
+    }
 
-	//Try to get the proxy settings from the local options that are passed in.
+    //Try to get the proxy settings from the local options that are passed in.
     readOptions( options, proxy_host, proxy_port );
 
-	//Try to get the proxy settings from the environment variable
+    //Try to get the proxy settings from the environment variable
     const char* proxyEnvAddress = getenv("OSG_CURL_PROXY");
     if (proxyEnvAddress) //Env Proxy Settings
     {
-		proxy_host = std::string(proxyEnvAddress);
+        proxy_host = std::string(proxyEnvAddress);
 
         const char* proxyEnvPort = getenv("OSG_CURL_PROXYPORT"); //Searching Proxy Port on Env
-		if (proxyEnvPort)
-		{
-			proxy_port = std::string( proxyEnvPort );
-		}
+        if (proxyEnvPort)
+        {
+            proxy_port = std::string( proxyEnvPort );
+        }
     }
 
-	const char* proxyEnvAuth = getenv("OSGEARTH_CURL_PROXYAUTH");	
-	if (proxyEnvAuth)
-	{
-		proxy_auth = std::string(proxyEnvAuth);
-	}
+    const char* proxyEnvAuth = getenv("OSGEARTH_CURL_PROXYAUTH");	
+    if (proxyEnvAuth)
+    {
+        proxy_auth = std::string(proxyEnvAuth);
+    }
 
     // Set up proxy server:
     std::string proxy_addr;
@@ -591,42 +599,42 @@ HTTPClient::doGet( const HTTPRequest& request, const osgDB::Options* options, Pr
     {
         std::stringstream buf;
         buf << proxy_host << ":" << proxy_port;
-		std::string bufStr;
-		bufStr = buf.str();
+        std::string bufStr;
+        bufStr = buf.str();
         proxy_addr = bufStr;
     
         OE_DEBUG << LC << "setting proxy: " << proxy_addr << std::endl;
-		//curl_easy_setopt( _curl_handle, CURLOPT_HTTPPROXYTUNNEL, 1 ); 
+        //curl_easy_setopt( _curl_handle, CURLOPT_HTTPPROXYTUNNEL, 1 ); 
         curl_easy_setopt( _curl_handle, CURLOPT_PROXY, proxy_addr.c_str() );
 
-		//Setup the proxy authentication if setup
-		if (!proxy_auth.empty())
-		{
-			OE_DEBUG << LC << "Setting up proxy authentication " << proxy_auth << std::endl;
-			curl_easy_setopt( _curl_handle, CURLOPT_PROXYUSERPWD, proxy_auth.c_str());
-		}
+        //Setup the proxy authentication if setup
+        if (!proxy_auth.empty())
+        {
+            OE_DEBUG << LC << "Setting up proxy authentication " << proxy_auth << std::endl;
+            curl_easy_setopt( _curl_handle, CURLOPT_PROXYUSERPWD, proxy_auth.c_str());
+        }
     }
 
     const osgDB::AuthenticationDetails* details = authenticationMap ?
         authenticationMap->getAuthenticationDetails(request.getURL()) :
         0;
 
-        if (details)
-        {
-            const std::string colon(":");
-            std::string password(details->username + colon + details->password);
-            curl_easy_setopt(_curl_handle, CURLOPT_USERPWD, password.c_str());
-            const_cast<HTTPClient*>(this)->_previousPassword = password;
+    if (details)
+    {
+        const std::string colon(":");
+        std::string password(details->username + colon + details->password);
+        curl_easy_setopt(_curl_handle, CURLOPT_USERPWD, password.c_str());
+        const_cast<HTTPClient*>(this)->_previousPassword = password;
 
-            // use for https.
-            // curl_easy_setopt(_curl, CURLOPT_KEYPASSWD, password.c_str());
+        // use for https.
+        // curl_easy_setopt(_curl, CURLOPT_KEYPASSWD, password.c_str());
 
 #if LIBCURL_VERSION_NUM >= 0x070a07
-            if (details->httpAuthentication != _previousHttpAuthentication)
-            { 
-                curl_easy_setopt(_curl_handle, CURLOPT_HTTPAUTH, details->httpAuthentication); 
-                const_cast<HTTPClient*>(this)->_previousHttpAuthentication = details->httpAuthentication;
-            }
+        if (details->httpAuthentication != _previousHttpAuthentication)
+        { 
+            curl_easy_setopt(_curl_handle, CURLOPT_HTTPAUTH, details->httpAuthentication); 
+            const_cast<HTTPClient*>(this)->_previousHttpAuthentication = details->httpAuthentication;
+        }
 #endif
     }
     else
@@ -671,16 +679,16 @@ HTTPClient::doGet( const HTTPRequest& request, const osgDB::Options* options, Pr
     curl_easy_setopt( _curl_handle, CURLOPT_SSL_VERIFYPEER, (void*)0 );
 
     long response_code = 0L;
-	if (!proxy_addr.empty())
-	{
-		long connect_code = 0L;
+    if (!proxy_addr.empty())
+    {
+        long connect_code = 0L;
         curl_easy_getinfo( _curl_handle, CURLINFO_HTTP_CONNECTCODE, &connect_code );
-		OE_DEBUG << LC << "proxy connect code " << connect_code << std::endl;
-	}
-	
+        OE_DEBUG << LC << "proxy connect code " << connect_code << std::endl;
+    }
+    
     curl_easy_getinfo( _curl_handle, CURLINFO_RESPONSE_CODE, &response_code );     
 
-	//OE_DEBUG << LC << "got response, code = " << response_code << std::endl;
+    //OE_DEBUG << LC << "got response, code = " << response_code << std::endl;
 
     HTTPResponse response( response_code );
    
@@ -748,6 +756,8 @@ HTTPClient::doGet( const std::string& url, const osgDB::Options* options, Progre
 bool
 HTTPClient::doDownload(const std::string& url, const std::string& filename)
 {
+    initialize();
+
     // download the data
     HTTPResponse response = this->doGet( HTTPRequest(url) );
 
@@ -810,6 +820,8 @@ HTTPClient::doReadImage(const std::string&    location,
                         const osgDB::Options* options,
                         ProgressCallback*     callback)
 {
+    initialize();
+
     ReadResult result;
 
     HTTPResponse response = this->doGet(location, options, callback);
@@ -872,6 +884,8 @@ HTTPClient::doReadNode(const std::string&    location,
                        const osgDB::Options* options,
                        ProgressCallback*     callback)
 {
+    initialize();
+
     ReadResult result;
 
     HTTPResponse response = this->doGet(location, options, callback);
@@ -930,6 +944,8 @@ HTTPClient::doReadObject(const std::string&    location,
                          const osgDB::Options* options,
                          ProgressCallback*     callback)
 {
+    initialize();
+
     ReadResult result;
 
     HTTPResponse response = this->doGet(location, options, callback);
@@ -989,6 +1005,8 @@ HTTPClient::doReadString(const std::string&    location,
                          const osgDB::Options* options,
                          ProgressCallback*     callback )
 {
+    initialize();
+
     ReadResult result;
 
     HTTPResponse response = this->doGet( location, options, callback );

@@ -172,6 +172,17 @@ _mapNodeOptions( options )
     init();
 }
 
+MapNode::MapNode( Map* map, const MapNodeOptions& options, bool autoInit ) :
+_map( map? map : new Map() ),
+_mapNodeOptions( options )
+{
+    if ( autoInit )
+    {
+        init();
+    }
+}
+
+
 void
 MapNode::init()
 {

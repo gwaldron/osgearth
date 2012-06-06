@@ -243,6 +243,16 @@ SpatialReference::create( const Key& key, bool useCache )
             "WGS84" );
     }
 
+    // WGS84 Plate Carre:
+    else if (horiz == "plate-carre")
+    {
+        srs = createFromPROJ4(
+            "+proj=longlat +ellps=WGS84 +datum=WGS84 +no_defs",
+            "WGS84" );
+
+        srs->_is_plate_carre = true;
+    }
+
     // custom srs for the unified cube
     else if ( horiz == "unified-cube" )
     {

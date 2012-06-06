@@ -179,7 +179,7 @@ makeTMS( osg::ArgumentParser& args )
         {
             Bounds b = bounds[i];            
             if ( b.isValid() )
-                packager.addExtent( GeoExtent(map->getProfile()->getSRS(), b) );    
+                packager.addExtent( GeoExtent(map->getProfile()->getSRS(), b) );
         }
     }    
 
@@ -189,9 +189,11 @@ makeTMS( osg::ArgumentParser& args )
     if ( !outEarth.empty() )
     {
         // copy the options from the source map first
-        outMap = new Map( map->getInitialMapOptions() );
+        outMap = new Map(map->getInitialMapOptions());
     }
 
+    // establish the output path of the earth file, if applicable:
+    std::string outEarthFile = osgDB::concatPaths(rootFolder, osgDB::getSimpleFileName(outEarth));
 
     // package any image layers that are enabled:
     ImageLayerVector imageLayers;
@@ -222,7 +224,9 @@ makeTMS( osg::ArgumentParser& args )
                 {
                     // new TMS driver info:
                     TMSOptions tms;
-                    tms.url() = osgDB::concatPaths(layerFolder, "tms.xml");
+                    tms.url() = URI(
+                        osgDB::concatPaths(layerFolder, "tms.xml"),
+                        outEarthFile );
 
                     ImageLayerOptions layerOptions( layer->getName(), tms );
                     layerOptions.mergeConfig( layer->getInitialOptions().getConfig(true) );
@@ -271,7 +275,9 @@ makeTMS( osg::ArgumentParser& args )
                 {
                     // new TMS driver info:
                     TMSOptions tms;
-                    tms.url() = osgDB::concatPaths(layerFolder, "tms.xml");
+                    tms.url() = URI(
+                        osgDB::concatPaths(layerFolder, "tms.xml"),
+                        outEarthFile );
 
                     ElevationLayerOptions layerOptions( layer->getName(), tms );
                     layerOptions.mergeConfig( layer->getInitialOptions().getConfig(true) );
@@ -294,16 +300,15 @@ makeTMS( osg::ArgumentParser& args )
     // Finally, write an earth file if requested:
     if ( outMap.valid() )
     {
-        const MapNodeOptions& outNodeOptions = mapNode->getMapNodeOptions();
+        MapNodeOptions outNodeOptions = mapNode->getMapNodeOptions();
         osg::ref_ptr<MapNode> outMapNode = new MapNode(outMap.get(), outNodeOptions);
-        std::string outPath = osgDB::concatPaths(rootFolder, osgDB::getSimpleFileName(outEarth));
-        if ( !osgDB::writeNodeFile(*outMapNode.get(), outPath) )
+        if ( !osgDB::writeNodeFile(*outMapNode.get(), outEarthFile) )
         {
-            OE_WARN << LC << "Error writing earth file to \"" << outPath << "\"" << std::endl;
+            OE_WARN << LC << "Error writing earth file to \"" << outEarthFile << "\"" << std::endl;
         }
         else if ( verbose )
         {
-            OE_NOTICE << LC << "Wrote earth file to \"" << outPath << "\"" << std::endl;
+            OE_NOTICE << LC << "Wrote earth file to \"" << outEarthFile << "\"" << std::endl;
         }
     }
 

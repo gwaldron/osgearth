@@ -38,6 +38,12 @@ namespace osgEarth
     {
     public:
         /**
+         * Attempts to load a MapNOde from a ".earth" file in the arguments list
+         */
+        static MapNode* load( class osg::ArgumentParser& arguments );
+
+    public:
+        /**
          * Creates an empty map node.
          */
         MapNode();
@@ -67,13 +73,6 @@ namespace osgEarth
          *      Tile creation and rendering properties
          */
         MapNode( Map* map, const MapNodeOptions& options );
-
-        /**
-         * Attempts to load a MapNOde from a ".earth" file in the arguments list
-         */
-        static MapNode* load( class osg::ArgumentParser& arguments );        
-
-
 
     public:
 
@@ -174,6 +173,15 @@ namespace osgEarth
          */
         void setCompositorTechnique( class TextureCompositorTechnique* tech );
 
+    public: // special purpose
+
+        /**
+         * Constructs a mapnode, optionally specifying whether th intialize the
+         * data sources in the map. Typically you would only use this CTOR if you are
+         * strictly using the MapNode for serialization.
+         */
+        MapNode( Map* map, const MapNodeOptions& options, bool initMap );
+
 
     public: //override osg::Node
 
@@ -223,7 +231,7 @@ namespace osgEarth
     private:
 
         osg::ref_ptr< ModelLayerCallback > _modelLayerCallback;
-        osg::ref_ptr< MapCallback > _mapCallback;        
+        osg::ref_ptr< MapCallback > _mapCallback;
     
         void init();
     };

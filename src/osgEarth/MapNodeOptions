@@ -81,7 +81,7 @@ namespace osgEarth
          * terrain surface).
          */
         const TerrainOptions& getTerrainOptions() const;
-        void setTerrainOptions( const TerrainOptions& options );     
+        void setTerrainOptions( const TerrainOptions& options );
     
     public:
         virtual Config getConfig() const;

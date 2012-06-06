@@ -201,11 +201,22 @@ TileMap::createProfile() const
         }
     }
 
+    else if ( 
+        spatialReference->isGeographic()  && 
+        !spatialReference->isPlateCarre() &&
+        osg::equivalent(_minX, -180.) &&
+        osg::equivalent(_maxX,  180.) &&
+        osg::equivalent(_minY,  -90.) &&
+        osg::equivalent(_maxY,   90.) )
+    {
+        return osgEarth::Registry::instance()->getGlobalGeodeticProfile();
+    }
+    else if ( _profile_type == Profile::TYPE_MERCATOR )
+    {
+        return osgEarth::Registry::instance()->getSphericalMercatorProfile();
+    }    
 
-    if (_profile_type == Profile::TYPE_GEODETIC) return osgEarth::Registry::instance()->getGlobalGeodeticProfile();
-    if (_profile_type == Profile::TYPE_MERCATOR) return osgEarth::Registry::instance()->getSphericalMercatorProfile();
-    
-
+    // everything else is a "LOCAL" profile.
     return Profile::create(
         _srs,
         _minX, _minY, _maxX, _maxY,
@@ -534,124 +545,6 @@ TileMapReaderWriter::read( const Config& conf )
 
     return tileMap;
 }
-
-#if 0
-TileMap*
-TileMapReaderWriter::read(std::istream &in)
-{
-    osg::ref_ptr<TileMap> tileMap = new TileMap;
-
-    osg::ref_ptr<XmlDocument> doc = XmlDocument::load( in );
-    if (!doc.valid())
-    {
-        OE_DEBUG << LC << "Failed to load TileMap " << std::endl;
-        return 0;
-    }
-   
-    //Get the root TileMap element
-    osg::ref_ptr<XmlElement> e_tile_map = doc->getSubElement( ELEM_TILEMAP );
-    if (!e_tile_map.valid())
-    {
-        OE_WARN << LC << "Could not find root TileMap element " << std::endl;
-        return 0;
-    }
-
-    tileMap->setVersion( e_tile_map->getAttr( ATTR_VERSION ) );
-    tileMap->setTileMapService( e_tile_map->getAttr( ATTR_TILEMAPSERVICE ) );
-
-    tileMap->setTitle( e_tile_map->getSubElementText(ELEM_TITLE) );
-    tileMap->setAbstract( e_tile_map->getSubElementText(ELEM_ABSTRACT) );
-    tileMap->setSRS( e_tile_map->getSubElementText(ELEM_SRS) );
-    tileMap->setVerticalSRS( e_tile_map->getSubElementText(ELEM_VERTICAL_SRS) );
-
-    //Read the bounding box
-    osg::ref_ptr<XmlElement> e_bounding_box = e_tile_map->getSubElement(ELEM_BOUNDINGBOX);
-    if (e_bounding_box.valid())
-    {
-        double minX = as<double>(e_bounding_box->getAttr( ATTR_MINX ), 0.0);
-        double minY = as<double>(e_bounding_box->getAttr( ATTR_MINY ), 0.0);
-        double maxX = as<double>(e_bounding_box->getAttr( ATTR_MAXX ), 0.0);
-        double maxY = as<double>(e_bounding_box->getAttr( ATTR_MAXY ), 0.0);
-        tileMap->setExtents( minX, minY, maxX, maxY);
-    }
-
-    //Read the origin
-    osg::ref_ptr<XmlElement> e_origin = e_tile_map->getSubElement(ELEM_ORIGIN);
-    if (e_origin.valid())
-    {
-        tileMap->setOriginX( as<double>(e_origin->getAttr( ATTR_X ), 0.0) );
-        tileMap->setOriginY( as<double>(e_origin->getAttr( ATTR_Y ), 0.0) );
-    }
-
-    //Read the tile format
-    osg::ref_ptr<XmlElement> e_tile_format = e_tile_map->getSubElement(ELEM_TILE_FORMAT);
-    if (e_tile_format.valid())
-    {
-        tileMap->getFormat().setExtension( e_tile_format->getAttr( ATTR_EXTENSION ) );
-        tileMap->getFormat().setMimeType( e_tile_format->getAttr( ATTR_MIME_TYPE) );
-        tileMap->getFormat().setWidth( as<unsigned int>(e_tile_format->getAttr( ATTR_WIDTH ), 0) );
-        tileMap->getFormat().setHeight( as<unsigned int>(e_tile_format->getAttr( ATTR_HEIGHT ), 0) );
-    }
-
-    //Read the tilesets
-    osg::ref_ptr<XmlElement> e_tile_sets = e_tile_map->getSubElement(ELEM_TILESETS);
-    if (e_tile_sets.valid())
-    {
-        //Read the profile
-        std::string profile = e_tile_sets->getAttr( ATTR_PROFILE );
-        if (profile == "global-geodetic") tileMap->setProfileType( Profile::TYPE_GEODETIC );
-        else if (profile == "global-mercator") tileMap->setProfileType( Profile::TYPE_MERCATOR );
-        else if (profile == "local") tileMap->setProfileType( Profile::TYPE_LOCAL );
-        else tileMap->setProfileType( Profile::TYPE_UNKNOWN );
-
-        //Read each TileSet
-        XmlNodeList tile_sets = e_tile_sets->getSubElements( ELEM_TILESET );
-        for( XmlNodeList::const_iterator i = tile_sets.begin(); i != tile_sets.end(); i++ )
-        {
-            osg::ref_ptr<XmlElement> e_tile_set = static_cast<XmlElement*>( i->get() );
-            TileSet tileset;
-            tileset.setHref( e_tile_set->getAttr( ATTR_HREF ) );
-            tileset.setOrder( as<unsigned int>(e_tile_set->getAttr( ATTR_ORDER ), -1) );
-            tileset.setUnitsPerPixel( as<double>(e_tile_set->getAttr( ATTR_UNITSPERPIXEL ), 0.0 ) );
-            tileMap->getTileSets().push_back(tileset);
-        }
-    }
-
-    //Try to compute the profile based on the SRS if there was no PROFILE tag given
-    if (tileMap->getProfileType() == Profile::TYPE_UNKNOWN && !tileMap->getSRS().empty())
-    {
-        tileMap->setProfileType( Profile::getProfileTypeFromSRS(tileMap->getSRS()) );
-    }
-
-    tileMap->computeMinMaxLevel();
-    tileMap->computeNumTiles();
-
-    //Read the data areas
-    osg::ref_ptr<XmlElement> e_data_extents = e_tile_map->getSubElement(ELEM_DATA_EXTENTS);
-    if (e_data_extents.valid())
-    {
-        osg::ref_ptr< const osgEarth::Profile > profile = tileMap->createProfile();
-        OE_DEBUG << LC << "Found DataExtents " << std::endl;
-        XmlNodeList data_extents = e_data_extents->getSubElements( ELEM_DATA_EXTENT );
-        for( XmlNodeList::const_iterator i = data_extents.begin(); i != data_extents.end(); i++ )
-        {
-            osg::ref_ptr<XmlElement> e_data_extent = static_cast<XmlElement*>( i->get() );
-            double minX = as<double>(e_data_extent->getAttr( ATTR_MINX ), 0.0);
-            double minY = as<double>(e_data_extent->getAttr( ATTR_MINY ), 0.0);
-            double maxX = as<double>(e_data_extent->getAttr( ATTR_MAXX ), 0.0);
-            double maxY = as<double>(e_data_extent->getAttr( ATTR_MAXY ), 0.0);
-            //unsigned int minLevel = as<unsigned int>(e_data_extent->getAttr( ATTR_MIN_LEVEL ), 0);
-            unsigned int maxLevel = as<unsigned int>(e_data_extent->getAttr( ATTR_MAX_LEVEL ), 0);            
-
-            //OE_DEBUG << LC << "Read area " << minX << ", " << minY << ", " << maxX << ", " << maxY << ", minlevel=" << minLevel << " maxlevel=" << maxLevel << std::endl;
-            tileMap->getDataExtents().push_back( DataExtent(GeoExtent(profile->getSRS(), minX, minY, maxX, maxY), 0, maxLevel));
-        }
-    }
-
-
-    return tileMap.release();
-}
-#endif
 
 static XmlDocument*
 tileMapToXmlDocument(const TileMap* tileMap)

@@ -353,7 +353,9 @@ StringExpression::mergeConfig( const Config& conf )
 Config
 StringExpression::getConfig() const
 {
-    return Config( "string_expression", _src );
+    Config conf( "string_expression", _src );
+    conf.setReferrer( uriContext().referrer() );
+    return conf;
 }
 
 void

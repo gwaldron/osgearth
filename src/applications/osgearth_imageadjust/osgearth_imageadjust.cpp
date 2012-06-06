@@ -65,14 +65,24 @@ struct AdjustHandler: public ControlEventHandler
         { }
 
     void onValueChanged( Control* control, float value ) {
-        osg::Vec3f hsl = _layer->getHSLAdjust();        
         float adj = value - 50.0f;
         adj /= 50.0;
 
-        //Get the current value
-        hsl._v[ _index] = adj;
-        OE_NOTICE << "Setting HSL adjustment to " << hsl << std::endl;
-        _layer->setHSLAdjust( hsl );
+		if (_index < 3) {
+            osg::Vec3f hsl = _layer->getHSLAdjust();        
+
+            //Get the current value
+            hsl._v[ _index] = adj;
+            OE_NOTICE << "Setting HSL adjustment to " << hsl << std::endl;
+            _layer->setHSLAdjust( hsl );
+		} else {
+            osg::Vec3f bcg = _layer->getBCGAdjust();
+
+            //Get the current value
+            bcg._v[ _index - 3 ] = adj;
+            OE_NOTICE << "Setting BCG adjustment to " << bcg << std::endl;
+            _layer->setBCGAdjust( bcg );
+		}
     }
 
     unsigned int _index;
@@ -151,6 +161,42 @@ main(int argc, char** argv)
         lAdjust->setVertAlign( Control::ALIGN_CENTER );
         lAdjust->addEventHandler( new AdjustHandler( layer, 2) );
         s_layerBox->setControl( 1, 2, lAdjust );
+
+        //B
+        LabelControl* bLabel = new LabelControl( "B" );
+        bLabel->setVertAlign( Control::ALIGN_CENTER );
+        s_layerBox->setControl( 0, 3, bLabel );
+
+        HSliderControl* bAdjust = new HSliderControl( 0.0f, 100.0f, 50.0f );
+        bAdjust->setWidth( 125 );
+        bAdjust->setHeight( 12 );
+        bAdjust->setVertAlign( Control::ALIGN_CENTER );
+        bAdjust->addEventHandler( new AdjustHandler( layer, 3 ));
+        s_layerBox->setControl( 1, 3, bAdjust );
+
+        //C
+        LabelControl* cLabel = new LabelControl( "C" );
+        cLabel->setVertAlign( Control::ALIGN_CENTER );
+        s_layerBox->setControl( 0, 4, cLabel );
+
+        HSliderControl* cAdjust = new HSliderControl( 0.0f, 100.0f, 50.0f );
+        cAdjust->setWidth( 125 );
+        cAdjust->setHeight( 12 );
+        cAdjust->setVertAlign( Control::ALIGN_CENTER );
+        cAdjust->addEventHandler( new AdjustHandler( layer, 4) );
+        s_layerBox->setControl( 1, 4, cAdjust );
+
+        //G
+        LabelControl* gLabel = new LabelControl( "G" );
+        gLabel->setVertAlign( Control::ALIGN_CENTER );
+        s_layerBox->setControl( 0, 5, gLabel );
+
+        HSliderControl* gAdjust = new HSliderControl( 0.0f, 100.0f, 50.0f );
+        gAdjust->setWidth( 125 );
+        gAdjust->setHeight( 12 );
+        gAdjust->setVertAlign( Control::ALIGN_CENTER );
+        gAdjust->addEventHandler( new AdjustHandler( layer, 5) );
+        s_layerBox->setControl( 1, 5, gAdjust );
 
     }
 

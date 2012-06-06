@@ -91,6 +91,12 @@ namespace osgEarth
         optional<osg::Vec3f>& hslAdjust() { return _hslAdjust; }
         const optional<osg::Vec3f>& hslAdjust() const { return _hslAdjust; }
 
+        /**
+         * The BCG adjustment for this layer
+         */
+        optional<osg::Vec3f>& bcgAdjust() { return _bcgAdjust; }
+        const optional<osg::Vec3f>& bcgAdjust() const { return _bcgAdjust; }
+
     public:
 
         virtual Config getConfig() const { return getConfig(false); }
@@ -108,6 +114,7 @@ namespace osgEarth
         optional<std::string> _noDataImageFilename;
         optional<bool> _lodBlending;
         optional<osg::Vec3f> _hslAdjust;
+        optional<osg::Vec3f> _bcgAdjust;
     };
 
     //--------------------------------------------------------------------
@@ -119,6 +126,7 @@ namespace osgEarth
     {
         virtual void onOpacityChanged( class ImageLayer* layer ) { }  
         virtual void onHSLChanged( class ImageLayer* layer ) {}
+        virtual void onBCGChanged( class ImageLayer* layer ) {}
         virtual ~ImageLayerCallback() { }
     };
 
@@ -207,6 +215,9 @@ namespace osgEarth
         void setHSLAdjust( const osg::Vec3f& hsl );
         const osg::Vec3f& getHSLAdjust() const { return *_runtimeOptions.hslAdjust(); }
         
+        void setBCGAdjust( const osg::Vec3f& bcg );
+        const osg::Vec3f& getBCGAdjust() const { return *_runtimeOptions.bcgAdjust(); }
+
         void disableLODBlending();
         bool isLODBlendingEnabled() const { return *_runtimeOptions.lodBlending(); }
 

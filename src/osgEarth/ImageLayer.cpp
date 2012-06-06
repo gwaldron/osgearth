@@ -58,6 +58,7 @@ ImageLayerOptions::setDefaults()
     _opacity.init( 1.0f );
     _transparentColor.init( osg::Vec4ub(0,0,0,0) );
     _hslAdjust.init( osg::Vec3(0,0,0));
+    _bcgAdjust.init( osg::Vec3(0,0,0));
     _minRange.init( -FLT_MAX );
     _maxRange.init( FLT_MAX );
     _lodBlending.init( false );
@@ -79,6 +80,7 @@ ImageLayerOptions::fromConfig( const Config& conf )
     conf.getIfSet( "max_range", _maxRange );
     conf.getIfSet( "lod_blending", _lodBlending );
     conf.getIfSet( "hsl_adjust", _hslAdjust );
+    conf.getIfSet( "bcg_adjust", _bcgAdjust );
 
     if ( conf.hasValue( "transparent_color" ) )
         _transparentColor = stringToColor( conf.value( "transparent_color" ), osg::Vec4ub(0,0,0,0));	    
@@ -95,6 +97,7 @@ ImageLayerOptions::getConfig( bool isolate ) const
     conf.updateIfSet( "max_range", _maxRange );
     conf.updateIfSet( "lod_blending", _lodBlending );
     conf.updateIfSet( "hsl_adjust", _hslAdjust );
+    conf.updateIfSet( "bcg_adjust", _bcgAdjust );
 
     if (_transparentColor.isSet())
         conf.update("transparent_color", colorToString( _transparentColor.value()));
@@ -282,6 +285,14 @@ ImageLayer::setHSLAdjust( const osg::Vec3f& hsl )
     _runtimeOptions.hslAdjust() = hsl;
     fireCallback( &ImageLayerCallback::onHSLChanged );
     OE_NOTICE << "Setting HSL to " << hsl.x() << ", " << hsl.y() << ", " << hsl.z()  << std::endl;
+}
+
+void
+ImageLayer::setBCGAdjust( const osg::Vec3f& bcg )
+{
+    _runtimeOptions.bcgAdjust() = bcg;
+    fireCallback( &ImageLayerCallback::onBCGChanged );
+    OE_NOTICE << "Setting BCG to " << bcg.x() << ", " << bcg.y() << ", " << bcg.z()  << std::endl;
 }
 
 void 

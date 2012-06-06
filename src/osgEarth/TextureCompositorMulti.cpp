@@ -108,6 +108,7 @@ namespace
 
         buf << "uniform float osgearth_ImageLayerOpacity[" << maxSlots << "]; \n"
             << "uniform vec3 osgearth_ImageLayerHSL[" << maxSlots << "]; \n"
+            << "uniform vec3 osgearth_ImageLayerBCG[" << maxSlots << "]; \n"
             //The enabled array is a fixed size.  Make sure this corresponds EXCATLY to the size definition in TerrainEngineNode.cpp
             << "uniform bool  osgearth_ImageLayerVisible[" << MAX_IMAGE_LAYERS << "]; \n"
             << "uniform float osgearth_ImageLayerRange[" << 2 * maxSlots << "]; \n"
@@ -276,6 +277,21 @@ namespace
                 << "                layerColor.r = r;\n"
                 << "                layerColor.g = g;\n"
                 << "                layerColor.b = b;\n"
+                << "            }\n"
+                << "            vec3 bcg = osgearth_ImageLayerBCG[" << i <<  "];\n"
+				<< "            if (bcg.x != 0.0 || bcg.y != 0.0 || bcg.z != 0.0) {\n"
+                // apply brightness
+                << "                layerColor.rgb += bcg.x;\n"
+                // apply contrast
+				<< "                layerColor.rgb = ((layerColor.rgb - 0.5) * ((bcg.y * 50.0) + 50.0) / 50.0) + 0.5;\n"
+                // apply gamma
+                << "                layerColor.r = pow(layerColor.r, (50.0 / ((bcg.z * 50.0) + 50.0)));\n"
+                << "                layerColor.g = pow(layerColor.g, (50.0 / ((bcg.z * 50.0) + 50.0)));\n"
+                << "                layerColor.b = pow(layerColor.b, (50.0 / ((bcg.z * 50.0) + 50.0)));\n"
+                // make sure values are within range
+                << "                layerColor.r = clamp(layerColor.r, 0.0, 1.0);\n"
+                << "                layerColor.g = clamp(layerColor.g, 0.0, 1.0);\n"
+                << "                layerColor.b = clamp(layerColor.b, 0.0, 1.0);\n"
                 << "            }\n"
                 << "            color3 = mix(color3, layerColor, opacity * atten_max * atten_min); \n"               
                 << "            if (opacity > maxOpacity) {\n"

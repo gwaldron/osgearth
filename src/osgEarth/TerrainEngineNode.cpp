@@ -120,6 +120,23 @@ TerrainEngineNode::ImageLayerController::onHSLChanged( ImageLayer* layer )
     _engine->dirty();
 }
 
+// this handler adjusts the uniform set when a terrain layer's "bcg" value changes
+void
+TerrainEngineNode::ImageLayerController::onBCGChanged( ImageLayer* layer )
+{
+    if ( !Registry::instance()->getCapabilities().supportsGLSL() )
+        return;
+
+    _mapf.sync();
+    int layerNum = _mapf.indexOf( layer );
+    if ( layerNum >= 0 )
+        _layerBCGUniform.setElement( layerNum, layer->getBCGAdjust() );
+    else
+        OE_WARN << LC << "Odd, onBCGChanged did not find layer" << std::endl;
+
+    _engine->dirty();
+}
+
 
 //------------------------------------------------------------------------
 
@@ -323,6 +340,7 @@ TerrainEngineNode::updateImageUniforms()
     _imageLayerController->_layerOpacityUniform.detach();
     _imageLayerController->_layerRangeUniform.detach();
     _imageLayerController->_layerHSLUniform.detach();
+    _imageLayerController->_layerBCGUniform.detach();
     
     if ( mapf.imageLayers().size() > 0 )
     {
@@ -334,6 +352,7 @@ TerrainEngineNode::updateImageUniforms()
         _imageLayerController->_layerOpacityUniform.attach( "osgearth_ImageLayerOpacity", osg::Uniform::FLOAT, stateSet, mapf.imageLayers().size() );
         _imageLayerController->_layerRangeUniform.attach  ( "osgearth_ImageLayerRange",   osg::Uniform::FLOAT, stateSet, 2 * mapf.imageLayers().size() );
         _imageLayerController->_layerHSLUniform.attach( "osgearth_ImageLayerHSL",     osg::Uniform::FLOAT_VEC3, stateSet, mapf.imageLayers().size() );
+        _imageLayerController->_layerBCGUniform.attach( "osgearth_ImageLayerBCG",     osg::Uniform::FLOAT_VEC3, stateSet, mapf.imageLayers().size() );
 
         for( ImageLayerVector::const_iterator i = mapf.imageLayers().begin(); i != mapf.imageLayers().end(); ++i )
         {
@@ -343,6 +362,7 @@ TerrainEngineNode::updateImageUniforms()
             _imageLayerController->_layerVisibleUniform.setElement( index, layer->getVisible() );
             _imageLayerController->_layerOpacityUniform.setElement( index, layer->getOpacity() );
             _imageLayerController->_layerHSLUniform.setElement( index, layer->getHSLAdjust() );
+            _imageLayerController->_layerBCGUniform.setElement( index, layer->getBCGAdjust() );
             _imageLayerController->_layerRangeUniform.setElement( (2*index), layer->getImageLayerOptions().minVisibleRange().value() );
             _imageLayerController->_layerRangeUniform.setElement( (2*index)+1, layer->getImageLayerOptions().maxVisibleRange().value() );
         }

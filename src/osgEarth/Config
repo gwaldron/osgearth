@@ -69,6 +69,7 @@ namespace osgEarth
 
         /** Context for resolving relative URIs that occur in this Config */
         void setReferrer( const std::string& value );
+        void inheritReferrer( const std::string& value );
         const std::string& referrer() const { return _referrer; }
 
         bool fromXML( std::istream& in );
@@ -161,12 +162,14 @@ namespace osgEarth
         template<typename T>
         void add( const std::string& key, const T& value ) {
             _children.push_back( Config(key, Stringify() << value) );
-            _children.back().setReferrer( _referrer );
+            //_children.back().setReferrer( _referrer );
+            _children.back().inheritReferrer( _referrer );
         }
 
         void add( const Config& conf ) {
             _children.push_back( conf );
-            _children.back().setReferrer( _referrer );
+            //_children.back().setReferrer( _referrer );
+            _children.back().inheritReferrer( _referrer );
         }
 
         void add( const std::string& key, const Config& conf ) {
@@ -255,6 +258,10 @@ namespace osgEarth
             if ( r.empty() && _key == key )
                 r = _defaultValue;
             return r;
+        }
+
+        const std::string referrer( const std::string& key ) const {
+            return child(key).referrer();
         }
 
         // populates a primitive value.
@@ -409,7 +416,8 @@ namespace osgEarth
     template<> inline
     void Config::add<std::string>( const std::string& key, const std::string& value ) {
         _children.push_back( Config( key, value ) );
-        _children.back().setReferrer( _referrer );
+        //_children.back().setReferrer( _referrer );
+        _children.back().inheritReferrer( _referrer );
     }
 
     template<> inline

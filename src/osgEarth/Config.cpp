@@ -38,6 +38,19 @@ Config::setReferrer( const std::string& referrer )
     }
 }
 
+void
+Config::inheritReferrer( const std::string& referrer )
+{
+    if ( _referrer.empty() || !osgEarth::isRelativePath(referrer) )
+    {
+        setReferrer( referrer );
+    }
+    else if ( !referrer.empty() )
+    {
+        setReferrer( osgDB::concatPaths(_referrer, referrer) );
+    }
+}
+
 bool
 Config::fromXML( std::istream& in )
 {

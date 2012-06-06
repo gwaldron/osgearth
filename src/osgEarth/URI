@@ -255,7 +255,9 @@ namespace osgEarth
     template <> inline
     void Config::addIfSet<URI>( const std::string& key, const optional<URI>& opt ) {
         if ( opt.isSet() ) {
-            add( Config(key, opt->base()) );
+            Config conf(key, opt->base());
+            conf.setReferrer(opt->context().referrer());
+            add( conf );
         }
     }
 
@@ -263,14 +265,16 @@ namespace osgEarth
     void Config::updateIfSet<URI>( const std::string& key, const optional<URI>& opt ) {
         if ( opt.isSet() ) {
             remove(key);
-            add( Config(key, opt->base()) );
+            Config conf(key, opt->base());
+            conf.setReferrer(opt->context().referrer());
+            add( conf );
         }
     }
 
     template<> inline
     bool Config::getIfSet<URI>( const std::string& key, optional<URI>& output ) const {
-        if ( hasValue( key ) ) {
-            output = URI( value(key), _referrer );
+        if ( hasValue(key) ) {
+            output = URI( value(key), referrer(key) );
             return true;
         }
         else

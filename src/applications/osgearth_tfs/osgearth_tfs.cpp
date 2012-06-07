@@ -139,7 +139,7 @@ class AddFeatureVisitor : public FeatureTileVisitor
 public:
     AddFeatureVisitor( Feature* feature, int maxFeatures, int firstLevel, int maxLevel):
       _feature( feature ),
-      _maxFeatures( maxFeatures ),
+      _maxFeatures( maxFeatures ),      
       _maxLevel( maxLevel ),
       _firstLevel( firstLevel ),
       _added(false),
@@ -152,14 +152,14 @@ public:
     {
         //If the node contains the feature, and it doesn't contain the max number of features add it.  If it's already full then 
         //split it.
-        //TODO:  Does just doing a centroid check actually make sense here?
         if (tile->containsCentroid( _feature ) )
         {
-            if (tile->getKey().getLevelOfDetail() >= _firstLevel && (tile->getFeatures().size() < _maxFeatures || tile->getKey().getLevelOfDetail() == _maxLevel))
+            if (tile->getKey().getLevelOfDetail() >= _firstLevel && 
+               (tile->getFeatures().size() < _maxFeatures || tile->getKey().getLevelOfDetail() == _maxLevel))
             {
                 tile->getFeatures().push_back( _feature.get() );
                 //OE_NOTICE << "Adding feature to tile " << tile->getKey().str() << " which now has " << tile->getFeatures().size() << " features" << std::endl;
-                //TODO:  Commit if we're full
+                //TODO:  Go ahead and write the tile to disk if it's full
                 _added = true;
                 _levelAdded = tile->getKey().getLevelOfDetail();
             }
@@ -178,6 +178,8 @@ public:
     int _maxFeatures;
     int _firstLevel;
     int _maxLevel;
+
+
 
     osg::ref_ptr< Feature > _feature;
 };
@@ -273,7 +275,7 @@ public:
 
             buf << osgDB::concatPaths( _dest, _layer ) << "/" << tile->getKey().getLevelOfDetail() << "/" << x << "/" << y << ".json";
             std::string filename = buf.str();
-            //OE_NOTICE << "Writing " << tile->getFeatures().size() << " to " << filename << std::endl;
+            OE_NOTICE << "Writing " << tile->getFeatures().size() << " features to " << filename << std::endl;
             
             if ( !osgDB::fileExists( osgDB::getFilePath(filename) ) )
                 osgDB::makeDirectoryForFile( filename );
@@ -376,7 +378,8 @@ usage( const std::string& msg )
         << "    --destination                     ; The destination directory" << std::endl
         << "    --layer                           ; The name of the layer" << std::endl
         << "    --description                     ; The abstract/description of the layer" << std::endl
-        << "    --query                           ; The query to run on the feature source, specific to the feature source" << std::endl
+        << "    --expression                      ; The expression to run on the feature source, specific to the feature source" << std::endl
+        << "    --orderby                         ; Sort the features, if not already included in the expression" << std::endl
         << std::endl;
 
     return -1;
@@ -398,10 +401,10 @@ int main(int argc, char** argv)
     while (arguments.read("--firstlevel", firstLevel));
 
     //The max level
-    unsigned int maxLevel = 8;
+    unsigned int maxLevel = 6;
     while (arguments.read("--maxlevel", maxLevel));
 
-    unsigned int maxFeatures = 500;
+    unsigned int maxFeatures = 300;
     while (arguments.read("--maxfeatures", maxFeatures));    
 
     //The destination directory
@@ -417,7 +420,10 @@ int main(int argc, char** argv)
     while (arguments.read("--description", description));
 
     std::string queryExpression = "";
-    while (arguments.read("--query", queryExpression));
+    while (arguments.read("--expression", queryExpression));
+
+    std::string queryOrderBy = "";
+    while (arguments.read("--orderby", queryOrderBy));
     
     std::string filename;
 
@@ -461,6 +467,8 @@ int main(int argc, char** argv)
               << "  Destination=" << destination << std::endl
               << "  Layer=" << layer << std::endl
               << "  Description=" << description << std::endl
+              << "  Expression=" << queryExpression << std::endl
+              << "  OrderBy=" << queryOrderBy << std::endl
               << std::endl;
 
 
@@ -468,6 +476,11 @@ int main(int argc, char** argv)
     if (!queryExpression.empty())
     {
         query.expression() = queryExpression;
+    }
+
+    if (!queryOrderBy.empty())
+    {
+        query.orderby() = queryOrderBy;
     }
 
     osg::Timer_t startTime = osg::Timer::instance()->tick();

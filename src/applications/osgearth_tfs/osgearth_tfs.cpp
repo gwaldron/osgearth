@@ -184,16 +184,6 @@ public:
     osg::ref_ptr< Feature > _feature;
 };
 
-void printAllFeatures(FeatureSource* features, const Query& query)
-{
-    osg::ref_ptr< FeatureCursor > cursor = features->createFeatureCursor(query);
-    while (cursor.valid() && cursor->hasMore())
-    {
-        osg::ref_ptr< Feature > feature = cursor->nextFeature();        
-        OE_NOTICE << feature.get()->getGeoJSON() << std::endl;
-    }
-}
-
 class WriteFeaturesVisitor : public FeatureTileVisitor
 {
 public:
@@ -217,7 +207,7 @@ public:
 
             buf << osgDB::concatPaths( _dest, _layer ) << "/" << tile->getKey().getLevelOfDetail() << "/" << x << "/" << y << ".json";
             std::string filename = buf.str();
-            OE_NOTICE << "Writing " << tile->getFeatures().size() << " features to " << filename << std::endl;
+            //OE_NOTICE << "Writing " << tile->getFeatures().size() << " features to " << filename << std::endl;
             
             if ( !osgDB::fileExists( osgDB::getFilePath(filename) ) )
                 osgDB::makeDirectoryForFile( filename );
@@ -427,7 +417,6 @@ int main(int argc, char** argv)
 
     osg::Timer_t startTime = osg::Timer::instance()->tick();
     buildTFS( features.get(), firstLevel, maxLevel, maxFeatures, destination, layer, description, query);
-    //printAllFeatures( features.get(), query );
     osg::Timer_t endTime = osg::Timer::instance()->tick();
     OE_NOTICE << "Completed in " << osg::Timer::instance()->delta_s( startTime, endTime ) << " s " << std::endl;
 

@@ -103,22 +103,13 @@ TerrainEngineNode::ImageLayerController::onOpacityChanged( ImageLayer* layer )
     _engine->dirty();
 }
 
-// this handler adjusts the uniform set when a terrain layer's "hsl" value changes
 void
-TerrainEngineNode::ImageLayerController::onHSLChanged( ImageLayer* layer )
+TerrainEngineNode::ImageLayerController::onColorFiltersChanged( ImageLayer* layer )
 {
-    if ( !Registry::instance()->getCapabilities().supportsGLSL() )
-        return;
-
-    _mapf.sync();
-    int layerNum = _mapf.indexOf( layer );
-    if ( layerNum >= 0 )
-        _layerHSLUniform.setElement( layerNum, layer->getHSLAdjust() );
-    else
-        OE_WARN << LC << "Odd, onHSLChanged did not find layer" << std::endl;
-
+    _engine->updateTextureCombining();
     _engine->dirty();
 }
+
 
 
 //------------------------------------------------------------------------
@@ -322,7 +313,6 @@ TerrainEngineNode::updateImageUniforms()
     _imageLayerController->_layerVisibleUniform.detach();
     _imageLayerController->_layerOpacityUniform.detach();
     _imageLayerController->_layerRangeUniform.detach();
-    _imageLayerController->_layerHSLUniform.detach();
     
     if ( mapf.imageLayers().size() > 0 )
     {
@@ -333,7 +323,6 @@ TerrainEngineNode::updateImageUniforms()
         _imageLayerController->_layerVisibleUniform.attach( "osgearth_ImageLayerVisible", osg::Uniform::BOOL,  stateSet, MAX_IMAGE_LAYERS );
         _imageLayerController->_layerOpacityUniform.attach( "osgearth_ImageLayerOpacity", osg::Uniform::FLOAT, stateSet, mapf.imageLayers().size() );
         _imageLayerController->_layerRangeUniform.attach  ( "osgearth_ImageLayerRange",   osg::Uniform::FLOAT, stateSet, 2 * mapf.imageLayers().size() );
-        _imageLayerController->_layerHSLUniform.attach( "osgearth_ImageLayerHSL",     osg::Uniform::FLOAT_VEC3, stateSet, mapf.imageLayers().size() );
 
         for( ImageLayerVector::const_iterator i = mapf.imageLayers().begin(); i != mapf.imageLayers().end(); ++i )
         {
@@ -342,7 +331,6 @@ TerrainEngineNode::updateImageUniforms()
 
             _imageLayerController->_layerVisibleUniform.setElement( index, layer->getVisible() );
             _imageLayerController->_layerOpacityUniform.setElement( index, layer->getOpacity() );
-            _imageLayerController->_layerHSLUniform.setElement( index, layer->getHSLAdjust() );
             _imageLayerController->_layerRangeUniform.setElement( (2*index), layer->getImageLayerOptions().minVisibleRange().value() );
             _imageLayerController->_layerRangeUniform.setElement( (2*index)+1, layer->getImageLayerOptions().maxVisibleRange().value() );
         }

@@ -277,11 +277,21 @@ ImageLayer::setOpacity( float value )
 }
 
 void
-ImageLayer::setHSLAdjust( const osg::Vec3f& hsl )
+ImageLayer::addColorFilter( ColorFilter* filter )
 {
-    _runtimeOptions.hslAdjust() = hsl;
-    fireCallback( &ImageLayerCallback::onHSLChanged );
-    OE_NOTICE << "Setting HSL to " << hsl.x() << ", " << hsl.y() << ", " << hsl.z()  << std::endl;
+    _colorFilters.push_back( filter );
+    fireCallback( &ImageLayerCallback::onColorFiltersChanged );
+}
+
+void
+ImageLayer::removeColorFilter( ColorFilter* filter )
+{
+    ColorFilterChain::iterator i = std::find(_colorFilters.begin(), _colorFilters.end(), filter);
+    if ( i != _colorFilters.end() )
+    {
+        _colorFilters.erase( i );
+        fireCallback( &ImageLayerCallback::onColorFiltersChanged );
+    }
 }
 
 void 

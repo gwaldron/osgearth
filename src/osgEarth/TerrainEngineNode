@@ -113,6 +113,7 @@ namespace osgEarth
         void onMapInfoEstablished( const MapInfo& mapInfo ); // not virtual!
         void onMapModelChanged( const MapModelChange& change );
         void updateImageUniforms();
+        virtual void updateTextureCombining() { }
 
     private:
         
@@ -122,12 +123,11 @@ namespace osgEarth
 
             void onVisibleChanged( TerrainLayer* layer );
             void onOpacityChanged( ImageLayer* layer );
-            void onHSLChanged( ImageLayer* layer );
+            void onColorFiltersChanged( ImageLayer* layer );
 
             ArrayUniform _layerOpacityUniform;
             ArrayUniform _layerVisibleUniform;
             ArrayUniform _layerRangeUniform;
-            ArrayUniform _layerHSLUniform;
 
         private:
             MapFrame           _mapf;

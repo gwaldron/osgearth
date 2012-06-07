@@ -22,6 +22,7 @@
 #include <osgEarth/Common>
 #include <osgEarth/Revisioning>
 #include <osgEarth/ThreadingUtils>
+#include <osgEarth/ColorFilter>
 #include <osg/Shader>
 #include <osg/Program>
 #include <osg/StateAttribute>
@@ -93,6 +94,11 @@ namespace osgEarth
          *    void osgearth_frag_applyLighting( inout vec4 color ); 
          */
         virtual osg::Shader* createDefaultLightingFragmentShader() const;
+
+        /**
+         * Builds a shader that executes an image filter chain.
+         */
+        virtual osg::Shader* createColorFilterChainFragmentShader( const std::string& function, const ColorFilterChain& chain ) const;
 
         /** dtor */
         virtual ~ShaderFactory() { }

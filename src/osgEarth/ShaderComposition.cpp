@@ -536,6 +536,39 @@ ShaderFactory::createDefaultLightingFragmentShader() const
     return new osg::Shader( osg::Shader::FRAGMENT, s_PerVertexLighting_FragmentShaderSource );
 }
 
+
+osg::Shader*
+ShaderFactory::createColorFilterChainFragmentShader( const std::string& function, const ColorFilterChain& chain ) const
+{
+    std::stringstream buf;
+    buf << "#version 110 \n";
+
+    // write out the shader function prototypes:
+    for( ColorFilterChain::const_iterator i = chain.begin(); i != chain.end(); ++i )
+    {
+        ColorFilter* filter = i->get();
+        buf << "void " << filter->getEntryPointFunctionName() << "(in int slot, inout vec4 color);\n";
+    }
+
+    // write out the main function:
+    buf << "void " << function << "(in int slot, inout vec4 color) \n"
+        << "{ \n";
+
+    // write out the function calls. if there are none, it's a NOP.
+    for( ColorFilterChain::const_iterator i = chain.begin(); i != chain.end(); ++i )
+    {
+        ColorFilter* filter = i->get();
+        buf << "    " << filter->getEntryPointFunctionName() << "(slot, color);\n";
+    }
+        
+    buf << "} \n";
+
+    std::string bufstr;
+    bufstr = buf.str();
+    return new osg::Shader(osg::Shader::FRAGMENT, bufstr);
+}
+
+
 //--------------------------------------------------------------------------
 
 #if 0

@@ -902,6 +902,10 @@ OSGTerrainEngineNode::updateTextureCombining()
             // These components reside in the CustomTerrain's stateset, and override the components
             // installed in the VP on the engine-node's stateset in installShaders().
 
+            VirtualProgram* vp = new VirtualProgram();
+            terrainStateSet->setAttributeAndModes( vp, osg::StateAttribute::ON );
+
+#if 0
             VirtualProgram* vp = dynamic_cast<VirtualProgram*>( terrainStateSet->getAttribute(osg::StateAttribute::PROGRAM) );
             if ( !vp )
             {
@@ -909,10 +913,29 @@ OSGTerrainEngineNode::updateTextureCombining()
                 vp = new VirtualProgram();
                 terrainStateSet->setAttributeAndModes( vp, osg::StateAttribute::ON );
             }
+#endif
+            
 
             // first, update the default shader components based on the new layer count:
             const ShaderFactory* sf = Registry::instance()->getShaderFactory();
             vp->setShader( "osgearth_vert_setupTexturing",  sf->createDefaultTextureVertexShader( numImageLayers ) );
+            
+            // second, install the per-layer color filter functions.
+            for( int i=0; i<numImageLayers; ++i )
+            {
+                std::string layerFilterFunc = Stringify() << "osgearth_runColorFilters_" << i;
+                const ColorFilterChain& chain = _update_mapf->getImageLayerAt(i)->getColorFilters();
+
+                // install the wrapper function that calls all the filters in turn:
+                vp->setShader( layerFilterFunc, sf->createColorFilterChainFragmentShader(layerFilterFunc, chain) );
+
+                // install each of the filter entry points:
+                for( ColorFilterChain::const_iterator j = chain.begin(); j != chain.end(); ++j )
+                {
+                    const ColorFilter* filter = j->get();
+                    filter->install( terrainStateSet );
+                }
+            }
 
             // not this one, because the compositor always generates a new one.
             //vp->setShader( "osgearth_frag_applyTexturing",  lib.createDefaultTextureFragmentShader( numImageLayers ) );

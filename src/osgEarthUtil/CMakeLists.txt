@@ -22,6 +22,7 @@ SET(LIB_PUBLIC_HEADERS
     FeatureQueryTool
     Formatter
     GeodeticGraticule
+    HSLColorFilter
     LatLongFormatter
     LineOfSight
     MeasureTool
@@ -54,6 +55,7 @@ SET(LIB_COMMON_FILES
     FeatureManipTool.cpp
     FeatureQueryTool.cpp
     GeodeticGraticule.cpp
+    HSLColorFilter.cpp
     LatLongFormatter.cpp
     LineOfSight.cpp
     MeasureTool.cpp

@@ -17,153 +17,172 @@
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
 
-#include <osg/Notify>
-#include <osg/io_utils>
-#include <osgGA/StateSetManipulator>
-#include <osgGA/GUIEventHandler>
 #include <osgViewer/Viewer>
-#include <osgViewer/ViewerEventHandlers>
 #include <osgEarth/MapNode>
+#include <osgEarthUtil/ExampleResources>
 #include <osgEarthUtil/EarthManipulator>
-#include <osgEarthUtil/AutoClipPlaneHandler>
 #include <osgEarthUtil/Controls>
-#include <osgEarth/Utils>
-
-#include <osg/Version>
-#include <osgEarth/Version>
+#include <osgEarthUtil/HSLColorFilter>
 
 using namespace osgEarth;
 using namespace osgEarth::Util;
 using namespace osgEarth::Util::Controls;
 
-static Grid* s_layerBox = NULL;
+static HSliderControl* s_hAdjust;
+static HSliderControl* s_sAdjust;
+static HSliderControl* s_lAdjust;
 
-osg::Node*
-createControlPanel( osgViewer::View* view )
+
+
+struct SetHSL: public ControlEventHandler
 {
-    ControlCanvas* canvas = ControlCanvas::get( view );
+    SetHSL(HSLColorFilter* filter, unsigned index) :
+        _filter(filter), _index(index)
+        { }
 
+    void onValueChanged( Control* control, float value )
+    {
+        osg::Vec3f hsl = _filter->getHSLOffset();
+        hsl[_index] = value;
+        _filter->setHSLOffset( hsl );
+    }
+
+    HSLColorFilter* _filter;
+    unsigned        _index;
+};
+
+
+
+struct ResetHSL : public ControlEventHandler
+{
+    ResetHSL(HSLColorFilter* filter, HSliderControl* h, HSliderControl* s, HSliderControl* l) 
+        : _filter(filter), _h(h), _s(s), _l(l) { }
+
+    void onClick( Control* control )
+    {
+        _h->setValue( 0.0, false );
+        _s->setValue( 0.0, false );
+        _l->setValue( 0.0, false );
+        _filter->setHSLOffset( osg::Vec3(0,0,0) );
+    }
+
+    HSLColorFilter* _filter;
+    HSliderControl* _h;
+    HSliderControl* _s;
+    HSliderControl* _l;
+};
+
+
+Container*
+createControlPanel(osgViewer::View* view)
+{
+    ControlCanvas* canvas = ControlCanvas::get( view, true );
+    VBox* vbox = canvas->addControl(new VBox());
+    vbox->setChildSpacing(10);
+    return vbox;
+}
+
+
+void
+addHSLControls(HSLColorFilter* filter, Container* container, unsigned i)
+{
     // the outer container:
-    s_layerBox = new Grid();
+    Grid* s_layerBox = container->addControl(new Grid());
     s_layerBox->setBackColor(0,0,0,0.5);
     s_layerBox->setMargin( 10 );
     s_layerBox->setPadding( 10 );
     s_layerBox->setChildSpacing( 10 );
     s_layerBox->setChildVertAlign( Control::ALIGN_CENTER );
     s_layerBox->setAbsorbEvents( true );
-    s_layerBox->setVertAlign( Control::ALIGN_BOTTOM );
+    s_layerBox->setVertAlign( Control::ALIGN_TOP );
 
-    canvas->addControl( s_layerBox );    
-    return canvas;
+    // Title:
+    s_layerBox->setControl( 0, 0, new LabelControl(Stringify()<<"Layer "<<i, Color::Yellow) );
+    
+    // Hue:
+    LabelControl* hLabel = new LabelControl( "Hue" );      
+    hLabel->setVertAlign( Control::ALIGN_CENTER );
+    s_layerBox->setControl( 0, 1, hLabel );
+
+    HSliderControl* hAdjust = new HSliderControl( -1.0f, 1.0f, 0.0f );
+    hAdjust->setWidth( 125 );
+    hAdjust->setHeight( 12 );
+    hAdjust->setVertAlign( Control::ALIGN_CENTER );
+    hAdjust->addEventHandler( new SetHSL(filter, 0) );
+    s_layerBox->setControl( 1, 1, hAdjust );
+
+    // Saturation:
+    LabelControl* sLabel = new LabelControl( "Saturation" );      
+    sLabel->setVertAlign( Control::ALIGN_CENTER );
+    s_layerBox->setControl( 0, 2, sLabel );
+
+    HSliderControl* sAdjust = new HSliderControl( -1.0f, 1.0f, 0.0f );
+    sAdjust->setWidth( 125 );
+    sAdjust->setHeight( 12 );
+    sAdjust->setVertAlign( Control::ALIGN_CENTER );
+    sAdjust->addEventHandler( new SetHSL(filter, 1) );
+    s_layerBox->setControl( 1, 2, sAdjust );
+
+    // Lightness
+    LabelControl* lLabel = new LabelControl( "Lightness" );      
+    lLabel->setVertAlign( Control::ALIGN_CENTER );
+    s_layerBox->setControl( 0, 3, lLabel );
+
+    HSliderControl* lAdjust = new HSliderControl( -1.0f, 1.0f, 0.0f );
+    lAdjust->setWidth( 125 );
+    lAdjust->setHeight( 12 );
+    lAdjust->setVertAlign( Control::ALIGN_CENTER );
+    lAdjust->addEventHandler( new SetHSL(filter, 2) );
+    s_layerBox->setControl( 1, 3, lAdjust );
+
+    // Reset button
+    LabelControl* resetButton = new LabelControl( "Reset" );
+    resetButton->setBackColor( Color::Gray );
+    resetButton->setActiveColor( Color::Blue );
+    resetButton->addEventHandler( new ResetHSL(filter, hAdjust, sAdjust, lAdjust) );
+    s_layerBox->setControl( 1, 4, resetButton );
 }
 
-struct AdjustHandler: public ControlEventHandler
-{
-    AdjustHandler( ImageLayer* layer, unsigned int index) :
-        _layer(layer),
-        _index(index)
-        { }
-
-    void onValueChanged( Control* control, float value ) {
-        osg::Vec3f hsl = _layer->getHSLAdjust();        
-        float adj = value - 50.0f;
-        adj /= 50.0;
-
-        //Get the current value
-        hsl._v[ _index] = adj;
-        OE_NOTICE << "Setting HSL adjustment to " << hsl << std::endl;
-        _layer->setHSLAdjust( hsl );
-    }
-
-    unsigned int _index;
-    ImageLayer* _layer;
-};
 
 int
 main(int argc, char** argv)
 {
     osg::ArgumentParser arguments(&argc,argv);
-        
-    // load the .earth file from the command line.
-    osg::Node* earthNode = osgDB::readNodeFiles( arguments );
-    if (!earthNode)
-    {
-        OE_NOTICE << "Unable to load earth model." << std::endl;
-        return 1;
-    }
-
     osgViewer::Viewer viewer(arguments);
-    
-    EarthManipulator* manip = new EarthManipulator();
-    viewer.setCameraManipulator( manip );
+    viewer.setCameraManipulator( new EarthManipulator() );
 
-    osg::Group* root = new osg::Group();
-    root->addChild( earthNode );
+    // load an earth file
+    osg::Node* node = MapNodeHelper().load(arguments, &viewer);
+    if ( !node )
+        return -1;
+
+    viewer.setSceneData( node );
+
 
     //Create the control panel
-    root->addChild( createControlPanel(&viewer) );
-
-    viewer.setSceneData( root );
+    Container* box = createControlPanel(&viewer);
     
-    osgEarth::MapNode* mapNode = osgEarth::MapNode::findMapNode( earthNode );
-    if ( mapNode )
+    osgEarth::MapNode* mapNode = osgEarth::MapNode::findMapNode( node );
+    if ( node )
     {   
         if (mapNode->getMap()->getNumImageLayers() == 0)
         {
             OE_NOTICE << "Please provide a map with at least one image layer" << std::endl;
             return 1;
         }
-        //
-        ImageLayer* layer = mapNode->getMap()->getImageLayerAt( mapNode->getMap()->getNumImageLayers()-1);
 
-        //H
-        LabelControl* hLabel = new LabelControl( "H" );      
-        hLabel->setVertAlign( Control::ALIGN_CENTER );
-        s_layerBox->setControl( 0, 0, hLabel );
+        // attach color filter to each layer.
+        unsigned numLayers = mapNode->getMap()->getNumImageLayers();
+        for( unsigned i=0; i<numLayers; ++i )
+        {
+            ImageLayer* layer = mapNode->getMap()->getImageLayerAt( i );
 
-        HSliderControl* hAdjust = new HSliderControl( 0.0f, 100.0f, 50.0f );
-        hAdjust->setWidth( 125 );
-        hAdjust->setHeight( 12 );
-        hAdjust->setVertAlign( Control::ALIGN_CENTER );
-        hAdjust->addEventHandler( new AdjustHandler( layer, 0 ));
-        s_layerBox->setControl( 1, 0, hAdjust );
-
-        //S
-        LabelControl* sLabel = new LabelControl( "S" );      
-        sLabel->setVertAlign( Control::ALIGN_CENTER );
-        s_layerBox->setControl( 0, 1, sLabel );
-        
-        HSliderControl* sAdjust = new HSliderControl( 0.0f, 100.0f, 50.0f );
-        sAdjust->setWidth( 125 );
-        sAdjust->setHeight( 12 );
-        sAdjust->setVertAlign( Control::ALIGN_CENTER );
-        sAdjust->addEventHandler( new AdjustHandler( layer, 1) );
-        s_layerBox->setControl( 1, 1, sAdjust );
-
-        //L
-        LabelControl* lLabel = new LabelControl( "L" );      
-        lLabel->setVertAlign( Control::ALIGN_CENTER );
-        s_layerBox->setControl( 0, 2, lLabel );
-        
-        HSliderControl* lAdjust = new HSliderControl( 0.0f, 100.0f, 50.0f );
-        lAdjust->setWidth( 125 );
-        lAdjust->setHeight( 12 );
-        lAdjust->setVertAlign( Control::ALIGN_CENTER );
-        lAdjust->addEventHandler( new AdjustHandler( layer, 2) );
-        s_layerBox->setControl( 1, 2, lAdjust );
-
+            HSLColorFilter* filter = new HSLColorFilter();
+            layer->addColorFilter( filter );
+            addHSLControls( filter, box, i );
+        }
     }
-
-    // osgEarth benefits from pre-compilation of GL objects in the pager. In newer versions of
-    // OSG, this activates OSG's IncrementalCompileOpeartion in order to avoid frame breaks.
-    viewer.getDatabasePager()->setDoPreCompile( true );
-
-    // add some stock OSG handlers:
-    viewer.addEventHandler(new osgViewer::StatsHandler());
-    viewer.addEventHandler(new osgViewer::WindowSizeHandler());    
-    viewer.addEventHandler(new osgViewer::LODScaleHandler());
-    viewer.addEventHandler(new osgGA::StateSetManipulator(viewer.getCamera()->getOrCreateStateSet()));
-    viewer.addEventHandler(new osgViewer::HelpHandler(arguments.getApplicationUsage()));
+    
 
     return viewer.run();
 }

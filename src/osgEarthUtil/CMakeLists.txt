@@ -36,7 +36,8 @@ SET(LIB_PUBLIC_HEADERS
     SpatialData
     StarData
 	TerrainProfile
-    TMS
+	TFS
+    TMS	
     TMSPackager
     UTMGraticule
     WFS
@@ -67,6 +68,7 @@ SET(LIB_COMMON_FILES
     SpatialData.cpp
     SkyNode.cpp
 	TerrainProfile.cpp
+	TFS.cpp
     TMS.cpp
     TMSPackager.cpp
     UTMGraticule.cpp

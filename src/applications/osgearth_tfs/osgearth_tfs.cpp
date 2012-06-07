@@ -22,9 +22,12 @@
 #include <osgDB/FileNameUtils>
 #include <osgDB/FileUtils>
 #include <osgEarth/XmlUtils>
+#include <osgEarthUtil/TFS>
 
 #include <osgEarthDrivers/feature_ogr/OGRFeatureOptions>
 
+using namespace osgEarth;
+using namespace osgEarth::Util;
 using namespace osgEarth::Features;
 using namespace osgEarth::Drivers;
 using namespace osgEarth::Symbology;
@@ -35,148 +38,6 @@ using namespace osgEarth::Symbology;
 typedef std::pair< FeatureID, double> FeatureValue;
 
 typedef std::list< FeatureValue > FeatureValueList;
-
-
-
-struct TFSLayer
-{
-    std::string _title;
-    std::string _abstract;
-    osgEarth::GeoExtent _extent;
-    unsigned int _maxLevel;
-    unsigned int _firstLevel;
-};
-
-class TFSReaderWriter
-{
-public:
-    static bool read(const URI& uri, const osgDB::ReaderWriter::Options* options, TFSLayer &layer);
-    static bool read( std::istream &in, TFSLayer &layer);
-
-    static void write(const TFSLayer &layer, const std::string& location);
-    static void write(const TFSLayer &layer, std::ostream& output);
-
-};
-
-bool
-TFSReaderWriter::read(const URI& uri, const osgDB::ReaderWriter::Options *options, TFSLayer &layer)
-{
-    osgEarth::ReadResult result = uri.readString();
-    if (result.succeeded())
-    {
-        std::string str = result.getString();
-        std::stringstream in( str.c_str()  );
-        return read( in, layer);
-    }    
-    return false;
-}
-
-bool
-TFSReaderWriter::read( std::istream &in, TFSLayer &layer)
-{
-    osg::ref_ptr< XmlDocument > doc = XmlDocument::load( in );
-    if (!doc.valid()) return false;
-
-    osg::ref_ptr<XmlElement> e_layer = doc->getSubElement( "layer" );
-    if (!e_layer.valid()) return false;
-
-    layer._title      = e_layer->getSubElementText("title");
-    layer._abstract   = e_layer->getSubElementText("abstract");    
-    layer._firstLevel   = as<unsigned int>(e_layer->getSubElementText("firstlevel"), 0);
-    layer._maxLevel = as<unsigned int>(e_layer->getSubElementText("maxlevel"), 0);
-
-
-     //Read the bounding box
-    osg::ref_ptr<XmlElement> e_bounding_box = e_layer->getSubElement("boundingbox");
-    if (e_bounding_box.valid())
-    {
-        double minX = as<double>(e_bounding_box->getAttr( "minx" ), 0.0);
-        double minY = as<double>(e_bounding_box->getAttr( "miny" ), 0.0);
-        double maxX = as<double>(e_bounding_box->getAttr( "maxx" ), 0.0);
-        double maxY = as<double>(e_bounding_box->getAttr( "maxy" ), 0.0);
-        layer._extent = GeoExtent(SpatialReference::create( "epsg:4326" ), minX, minY, maxX, maxY);
-    }
-
-
-    return true;
-}
-
-
-static XmlDocument*
-tfsToXmlDocument(const TFSLayer &layer)
-{
-    //Create the root XML document
-    osg::ref_ptr<XmlDocument> doc = new XmlDocument();
-    doc->setName( "Layer" );
-        
-    doc->addSubElement( "Title", layer._title );
-    doc->addSubElement( "Abstract", layer._abstract );
-    doc->addSubElement( "MaxLevel", toString<unsigned int>(layer._maxLevel ));
-    doc->addSubElement( "FirstLevel", toString<unsigned int>(layer._firstLevel ));
-    
-    osg::ref_ptr<XmlElement> e_bounding_box = new XmlElement( "BoundingBox" );
-    e_bounding_box->getAttrs()["minx"] = toString(layer._extent.xMin());
-    e_bounding_box->getAttrs()["miny"] = toString(layer._extent.yMin());
-    e_bounding_box->getAttrs()["maxx"] = toString(layer._extent.xMax());
-    e_bounding_box->getAttrs()["maxy"] = toString(layer._extent.yMax());
-    doc->getChildren().push_back(e_bounding_box.get() );
-    
-    return doc.release();
-}
-
-void
-TFSReaderWriter::write(const TFSLayer &layer, const std::string &location)
-{
-    std::string path = osgDB::getFilePath(location);
-    if (!osgDB::fileExists(path) && !osgDB::makeDirectory(path))
-    {
-        OE_WARN << "Couldn't create path " << std::endl;
-    }
-    std::ofstream out(location.c_str());
-    write(layer, out);
-}
-
-void
-TFSReaderWriter::write(const TFSLayer &layer, std::ostream &output)
-{
-    osg::ref_ptr<XmlDocument> doc = tfsToXmlDocument(layer);    
-    doc->store(output);
-}
-
-
-
-
-
-
-
-
-
-
-
-
-bool compare_featurevalue (FeatureValue &a, FeatureValue& b)
-{
-    if (a.second < b.second) return true;
-    if (a.second > b.second) return false;
-    if (a.first < b.first) return true;  
-    return false;
-}
-
-class Index
-{
-public:
-    void insert(FeatureID id, double value)
-    {
-        values.push_back( FeatureValue( id, value ) );
-    }   
-
-    void finalize()
-    {
-        values.sort(compare_featurevalue);
-    }
-
-    FeatureValueList values;    
-};
 
 class FeatureTileVisitor;
 class FeatureTile;
@@ -215,21 +76,7 @@ public:
                 {
                     return true;
                 }
-                /*else
-                {   
-                    OE_NOTICE << "Key = " << _key.str() << " Centroid " << centroid.x() << ", " << centroid.y() << " " << std::endl;
-                    OE_NOTICE << "Extents " << _key.getExtent().toString() << std::endl;
-
-                }*/
             }
-            else
-            {
-                OE_NOTICE << "Invalid feature bounds" << std::endl;
-            }
-        }
-        else
-        {
-            OE_NOTICE << "Bad geometry" << std::endl;
         }
         return false;
     }
@@ -259,11 +106,6 @@ public:
         }
     }
 
-    void commit()
-    {
-        //Maybe not necessary since we have the feature list
-    }
-
     FeatureList& getFeatures()
     {
         return _features;
@@ -281,7 +123,6 @@ class FeatureTileVisitor : public osg::Referenced
 public:
     virtual void traverse(FeatureTile* tile)
     {
-        OE_NOTICE << "Busted..." << std::endl;
         tile->traverse( this );
     }
 };
@@ -347,12 +188,14 @@ std::string featureToJSON( Feature * feature )
 {
     std::stringstream buf;
 
+    std::string geometry = GeometryUtils::geometryToGeoJSON( feature->getGeometry() );
+    
     buf << "{\"type\" : \"Feature\", " 
         << "\"id\": " << feature->getFID() << ","
-        << "\"geometry\": " << GeometryUtils::geometryToGeoJSON( feature->getGeometry() ) << ",";
+        << "\"geometry\": " << geometry << ",";
     
     //Write out all the properties
-    buf << "\"properties\": {";
+    buf << "\"properties\": {";    
     if (feature->getAttrs().size() > 0)
     {
         AttributeTable::const_iterator last_attr = feature->getAttrs().end();
@@ -366,7 +209,7 @@ std::string featureToJSON( Feature * feature )
                 buf << ",";
             }
         }
-    }    
+    } 
     buf << "}"; //End of properties
     buf << "}";
 
@@ -397,54 +240,15 @@ std::string featuresToJson( FeatureList& features)
 
 }
 
-void printAllFeatures(FeatureSource* features)
+void printAllFeatures(FeatureSource* features, const Query& query)
 {
-    osg::ref_ptr< FeatureCursor > cursor = features->createFeatureCursor();
+    osg::ref_ptr< FeatureCursor > cursor = features->createFeatureCursor(query);
     while (cursor.valid() && cursor->hasMore())
     {
-        osg::ref_ptr< Feature > feature = cursor->nextFeature();
-        //printFeature( feature.get() );
+        osg::ref_ptr< Feature > feature = cursor->nextFeature();        
         OE_NOTICE << featureToJSON( feature.get() ) << std::endl;
     }
 }
-
-void buildIndex(FeatureSource* features)
-{
-    Index index;
-    osg::ref_ptr< FeatureCursor > cursor = features->createFeatureCursor();
-    OE_NOTICE << "Building index..." << std::endl;
-    int count = 0;    
-    while (cursor.valid() && cursor->hasMore())
-    {
-        count++;
-        osg::ref_ptr< Feature > feature = cursor->nextFeature();
-        double value = feature->getDouble("hgt");
-        index.insert( feature->getFID(), value );
-        //OE_NOTICE << "Inserted " << feature->getFID() << " val=" << value << std::endl;
-    }
-    OE_NOTICE << "Inserted " << count << " items, finalizing" << std::endl;
-    index.finalize();
-    OE_NOTICE << "Done building index..." << std::endl;
-
-    for (FeatureValueList::iterator i = index.values.begin(); i != index.values.end(); i++)
-    {
-        osg::ref_ptr< Feature > feature = features->getFeature( i->first );
-        if (feature)
-        {
-        OE_NOTICE << "Got feature " << feature->getFID() << " with value " << i->second << std::endl;
-        OE_NOTICE << featureToJSON( feature ) << std::endl;
-        }
-        else
-        {
-            OE_NOTICE << "Error, couldn't get feature " << i->first << std::endl;
-        }
-    }
-}
-
-class TFSMeta
-{
-    std::string _title;
-};
 
 class WriteFeaturesVisitor : public FeatureTileVisitor
 {
@@ -458,7 +262,7 @@ public:
 
     virtual void traverse( FeatureTile* tile)
     {
-        //if (tile->getFeatures().size() > 0)
+        if (tile->getFeatures().size() > 0)
         {   
             std::string contents = featuresToJson( tile->getFeatures() );
             std::stringstream buf;
@@ -492,7 +296,8 @@ public:
 
 void buildTFS(FeatureSource* features, int firstLevel, int maxLevel, int maxFeatures, 
                                        const std::string& dest, const std::string& layername,
-                                       const std::string& description)
+                                       const std::string& description,
+                                       const Query& query )
 {        
     const GeoExtent &extent = features->getFeatureProfile()->getExtent();
     osg::ref_ptr< const osgEarth::Profile > profile = osgEarth::Profile::create(extent.getSRS(), extent.xMin(), extent.yMin(), extent.xMax(), extent.yMax(), 1, 1);
@@ -503,46 +308,53 @@ void buildTFS(FeatureSource* features, int firstLevel, int maxLevel, int maxFeat
 
     osg::ref_ptr< FeatureTile > root = new FeatureTile( rootKey );
     //Loop through all the features and try to insert them into the quadtree
-    osg::ref_ptr< FeatureCursor > cursor = features->createFeatureCursor();
+    osg::ref_ptr< FeatureCursor > cursor = features->createFeatureCursor( query );
     int added = 0;
     int failed = 0;
+    int skipped = 0;
     int highestLevel = 0;
     
     while (cursor.valid() && cursor->hasMore())
     {        
         osg::ref_ptr< Feature > feature = cursor->nextFeature();
-        double x = feature->getGeometry()->getBounds().center().x();
-        double y = feature->getGeometry()->getBounds().center().y();
 
-       
-        AddFeatureVisitor v(feature.get(), maxFeatures, firstLevel, maxLevel);
-        root->accept( &v );
-        if (!v._added)
+        if (feature->getGeometry() && feature->getGeometry()->getBounds().valid() && feature->getGeometry()->size() > 0)
         {
-            OE_NOTICE << std::endl;
-            failed++;
+
+            AddFeatureVisitor v(feature.get(), maxFeatures, firstLevel, maxLevel);
+            root->accept( &v );
+            if (!v._added)
+            {
+                OE_NOTICE << "Failed to add feature " << feature->getFID() << std::endl;
+                failed++;
+            }
+            else
+            {
+                if (highestLevel < v._levelAdded)
+                {
+                    highestLevel = v._levelAdded;
+                }
+                added++;
+            }   
         }
         else
         {
-            if (highestLevel < v._levelAdded)
-            {
-                highestLevel = v._levelAdded;
-            }
-            added++;
-        }        
+            OE_NOTICE << "Skipping feature " << feature->getFID() << " with null or invalid geometry" << std::endl;
+            skipped++;
+        }
     }   
-    OE_NOTICE << "Added " << added << " Failed " << failed << std::endl;
+    OE_NOTICE << "Added=" << added << "Skipped=" << skipped << " Failed=" << failed << std::endl;
 
     WriteFeaturesVisitor write(dest, layername);
     root->accept( &write );
 
     //Write out the meta doc
     TFSLayer layer;
-    layer._title = layername;
-    layer._abstract = description;
-    layer._firstLevel = firstLevel;
-    layer._maxLevel = highestLevel;
-    layer._extent = profile->getExtent();
+    layer.setTitle( layername );
+    layer.setAbstract( description );
+    layer.setFirstLevel( firstLevel );
+    layer.setMaxLevel( highestLevel );
+    layer.setExtent( profile->getExtent() );
     TFSReaderWriter::write( layer, osgDB::concatPaths(dest, layername) + "/tfs.xml");
 }
 
@@ -564,6 +376,7 @@ usage( const std::string& msg )
         << "    --destination                     ; The destination directory" << std::endl
         << "    --layer                           ; The name of the layer" << std::endl
         << "    --description                     ; The abstract/description of the layer" << std::endl
+        << "    --query                           ; The query to run on the feature source, specific to the feature source" << std::endl
         << std::endl;
 
     return -1;
@@ -603,6 +416,9 @@ int main(int argc, char** argv)
     std::string description = "";
     while (arguments.read("--description", description));
 
+    std::string queryExpression = "";
+    while (arguments.read("--query", queryExpression));
+    
     std::string filename;
 
     //Get the first argument that is not an option
@@ -618,11 +434,6 @@ int main(int argc, char** argv)
     {
         return usage( "Please provide a filename" );
     }
-
-
-    
-
-
 
     //Open the feature source
     OGRFeatureOptions featureOpt;
@@ -653,11 +464,17 @@ int main(int argc, char** argv)
               << std::endl;
 
 
+    Query query;
+    if (!queryExpression.empty())
+    {
+        query.expression() = queryExpression;
+    }
 
     osg::Timer_t startTime = osg::Timer::instance()->tick();
-    buildTFS( features.get(), firstLevel, maxLevel, maxFeatures, destination, layer, description);
+    buildTFS( features.get(), firstLevel, maxLevel, maxFeatures, destination, layer, description, query);
+    //printAllFeatures( features.get(), query );
     osg::Timer_t endTime = osg::Timer::instance()->tick();
-    OE_NOTICE << "Completed in " << osg::Timer::instance()->delta_s( startTime, endTime ) << std::endl;
+    OE_NOTICE << "Completed in " << osg::Timer::instance()->delta_s( startTime, endTime ) << " s " << std::endl;
 
     return 0;
 }

@@ -866,6 +866,13 @@ OSGTerrainEngineNode::traverse( osg::NodeVisitor& nv )
 namespace
 {
 
+osgShadow::ViewDependentShadowMap*
+getTechniqueAsVdsm(osgShadow::ShadowedScene* sscene)
+{
+    osgShadow::ShadowTechnique* st = sscene->getShadowTechnique();
+    return dynamic_cast<osgShadow::ViewDependentShadowMap*>(st);
+}
+
 // Some shadow techniques have different interfaces
 bool setShadowUnit(osgShadow::ShadowedScene* sscene, int unit)
 {
@@ -877,12 +884,13 @@ bool setShadowUnit(osgShadow::ShadowedScene* sscene, int unit)
         if (ssm)
         {
             ssm->setShadowTextureUnit( unit );
+            ssm->setShadowTextureCoordIndex( unit );
             return true;
         }
         else
         {
             osgShadow::ViewDependentShadowMap* vdsm
-                = dynamic_cast<osgShadow::ViewDependentShadowMap*>(st);
+                = getTechniqueAsVdsm(sscene);
             if (vdsm)
             {
                 sscene->getShadowSettings()
@@ -919,7 +927,7 @@ OSGTerrainEngineNode::installShaders()
              && (sscene = findFirstParentOfType<osgShadow::ShadowedScene>(this)))
         {
             sf->setDoShadows(true);
-            shadowTextureUnit = Registry::instance()->getCapabilities().getMaxGPUTextureUnits() - 1;
+            _texCompositor->reserveTextureImageUnit(shadowTextureUnit);
             sf->setShadowTextureUnit(shadowTextureUnit);
             setShadowUnit(sscene, shadowTextureUnit);
         }
@@ -932,6 +940,12 @@ OSGTerrainEngineNode::installShaders()
         vp->setShader( "osgearth_frag_applyTexturing",  sf->createDefaultTextureFragmentShader( numLayers ) );
 
         getOrCreateStateSet()->setAttributeAndModes( vp, osg::StateAttribute::ON );
+        // Hack to work around shadow map name differences
+        if (getTechniqueAsVdsm(sscene))
+            getOrCreateStateSet()
+                ->getOrCreateUniform("shadowTexture", osg::Uniform::SAMPLER_2D)
+                ->set(shadowTextureUnit);
+            
     }
 }
 

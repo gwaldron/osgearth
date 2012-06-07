@@ -357,10 +357,10 @@ ShaderFactory::createVertexShaderMain( const FunctionLocationMap& functions ) co
     if (_doShadows)
     {
         int stu = _shadowTextureUnit;
-        buf << "    gl_TexCoord[" << stu << "].s = dot( position4, gl_EyePlaneS[" << stu <<"]; \n";
-        buf << "    gl_TexCoord[" << stu << "].t = dot( position4, gl_EyePlaneT[" << stu <<"]; \n";
-        buf << "    gl_TexCoord[" << stu << "].p = dot( position4, gl_EyePlaneR[" << stu <<"]; \n";
-        buf << "    gl_TexCoord[" << stu << "].q = dot( position4, gl_EyePlaneQ[" << stu <<"]; \n";
+        buf << "    gl_TexCoord[" << stu << "].s = dot( position4, gl_EyePlaneS[" << stu <<"]); \n";
+        buf << "    gl_TexCoord[" << stu << "].t = dot( position4, gl_EyePlaneT[" << stu <<"]); \n";
+        buf << "    gl_TexCoord[" << stu << "].p = dot( position4, gl_EyePlaneR[" << stu <<"]); \n";
+        buf << "    gl_TexCoord[" << stu << "].q = dot( position4, gl_EyePlaneQ[" << stu <<"]); \n";
     }
 
     buf << "} \n";

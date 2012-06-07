@@ -353,6 +353,16 @@ ShaderFactory::createVertexShaderMain( const FunctionLocationMap& functions ) co
         for( OrderedFunctionMap::const_iterator i = postLighting->begin(); i != postLighting->end(); ++i )
             buf << "    " << i->second << "(); \n";
 
+    // Simulate TexGen for shadows
+    if (_doShadows)
+    {
+        int stu = _shadowTextureUnit;
+        buf << "    gl_TexCoord[" << stu << "].s = dot( position4, gl_EyePlaneS[" << stu <<"]; \n";
+        buf << "    gl_TexCoord[" << stu << "].t = dot( position4, gl_EyePlaneT[" << stu <<"]; \n";
+        buf << "    gl_TexCoord[" << stu << "].p = dot( position4, gl_EyePlaneR[" << stu <<"]; \n";
+        buf << "    gl_TexCoord[" << stu << "].q = dot( position4, gl_EyePlaneQ[" << stu <<"]; \n";
+    }
+
     buf << "} \n";
 
     std::string str;
@@ -447,7 +457,7 @@ ShaderFactory::createDefaultTextureVertexShader( int numTexCoordSets ) const
     {
         buf << "    gl_TexCoord["<< i <<"] = gl_MultiTexCoord"<< i << "; \n";
     }
-        
+
     buf << "} \n";
 
     std::string str;
@@ -493,8 +503,11 @@ ShaderFactory::createDefaultTextureFragmentShader( int numTexImageUnits ) const
 osg::Shader*
 ShaderFactory::createDefaultLightingVertexShader() const
 {
-    static char s_PerVertexLighting_VertexShaderSource[] = 
-        "#version 110 \n"
+    std::stringstream buf;
+    buf << "#version 110 \n";
+    if (_doShadows)
+        buf << "varying vec4 colorAmbientEmissive;\n";
+    buf <<
         "void osgearth_vert_setupLighting()                                         \n"
         "{                                                                          \n"
         "    vec3 normal = normalize( gl_NormalMatrix * gl_Normal );                \n"
@@ -506,7 +519,12 @@ ShaderFactory::createDefaultLightingVertexShader() const
         "    gl_FrontColor = gl_FrontLightModelProduct.sceneColor +                 \n"
         "                    gl_FrontLightProduct[0].ambient +                      \n"
         "                    gl_FrontLightProduct[0].diffuse * NdotL;               \n"
-        "                                                                           \n"
+        "                                                                           \n";
+    if (_doShadows)
+        buf <<
+            "    colorAmbientEmissive = gl_FrontLightModelProduct.sceneColor\n"
+            "                    + gl_FrontLightProduct[0].ambient;\n";
+    buf <<
         "    gl_FrontSecondaryColor = vec4(0.0);                                    \n"
         "                                                                           \n"
         "    if ( NdotL * NdotHV > 0.0 )                                            \n"
@@ -516,8 +534,7 @@ ShaderFactory::createDefaultLightingVertexShader() const
         "    gl_BackColor = gl_FrontColor;                                          \n"
         "    gl_BackSecondaryColor = gl_FrontSecondaryColor;                        \n"
         "}                                                                          \n";
-
-    return new osg::Shader( osg::Shader::VERTEX, s_PerVertexLighting_VertexShaderSource );
+    return new osg::Shader( osg::Shader::VERTEX, buf.str() );
 }
 
 
@@ -532,8 +549,22 @@ ShaderFactory::createDefaultLightingFragmentShader() const
         "    color = color * gl_Color + gl_SecondaryColor;                          \n"
         "    color.a = alpha;                                                       \n"
         "}                                                                          \n";
-
-    return new osg::Shader( osg::Shader::FRAGMENT, s_PerVertexLighting_FragmentShaderSource );
+    if (!_doShadows)
+        return new osg::Shader( osg::Shader::FRAGMENT, s_PerVertexLighting_FragmentShaderSource );
+    std::stringstream buf;
+    buf <<
+        "#version 110 \n"
+        "uniform sampler2DShadow shadowTexture;\n"
+        "varying vec4 colorAmbientEmissive;\n\n"
+        "void osgearth_frag_applyLighting( inout vec4 color )                       \n"
+        "{                                                                          \n"
+        "    float alpha = color.a;                                                 \n"
+        "    float shadowFac = shadow2DProj( shadowTexture, gl_TexCoord[" << _shadowTextureUnit << "]).r;\n"
+        "    vec4 diffuseLight = mix(colorAmbientEmissive, gl_Color, shadowFac);   \n"
+        "    color = color * diffuseLight + gl_SecondaryColor * shadowFac;          \n"
+        "    color.a = alpha;                                                       \n"
+        "}                                                                          \n";
+    return new osg::Shader( osg::Shader::FRAGMENT, buf.str() );
 }
 
 //--------------------------------------------------------------------------

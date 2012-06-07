@@ -94,8 +94,17 @@ namespace osgEarth
          */
         virtual osg::Shader* createDefaultLightingFragmentShader() const;
 
+        ShaderFactory() : _doShadows(false), _shadowTextureUnit(-1) {}
         /** dtor */
         virtual ~ShaderFactory() { }
+        
+        bool getDoShadows() { return _doShadows; }
+        void setDoShadows(bool doShadows) { _doShadows = doShadows; }
+        int getShadowTextureUnit() { return _shadowTextureUnit; }
+        void setShadowTextureUnit(int shadowTextureUnit) { _shadowTextureUnit = shadowTextureUnit; }
+    protected:
+        bool _doShadows;
+        int _shadowTextureUnit;
     };
 
     /**

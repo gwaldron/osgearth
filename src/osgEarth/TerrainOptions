@@ -219,8 +219,13 @@ namespace osgEarth
          * Whether to explicity enable or disable GL lighting on the map node.
          */
         optional<bool>& enableLighting() { return _enableLighting; }
-        const optional<bool>& enableLighting() const { return _enableLighting; }  
-    
+        const optional<bool>& enableLighting() const { return _enableLighting; }
+
+        /**
+         * Whether to enable shadow map from osgShadows.
+         */
+        optional<bool>& enableShadows() { return _enableShadows; }
+        const optional<bool>& enableShadows() const { return _enableShadows; }
         /**
          * Whether to enable mipmaping and mipmap generation on textures
          */
@@ -275,6 +280,7 @@ namespace osgEarth
         optional<CompositingTechnique> _compositingTech;
         optional<int> _maxLOD;
         optional<bool> _enableLighting;
+        optional<bool> _enableShadows;
         optional<float> _attenuationDistance;
         optional<bool> _lodBlending;
         optional<float> _lodTransitionTimeSeconds;

@@ -184,71 +184,13 @@ public:
     osg::ref_ptr< Feature > _feature;
 };
 
-
-
-std::string featureToJSON( Feature * feature )
-{
-    std::stringstream buf;
-
-    std::string geometry = GeometryUtils::geometryToGeoJSON( feature->getGeometry() );
-    
-    buf << "{\"type\" : \"Feature\", " 
-        << "\"id\": " << feature->getFID() << ","
-        << "\"geometry\": " << geometry << ",";
-    
-    //Write out all the properties
-    buf << "\"properties\": {";    
-    if (feature->getAttrs().size() > 0)
-    {
-        AttributeTable::const_iterator last_attr = feature->getAttrs().end();
-        last_attr--;
-
-        for (AttributeTable::const_iterator itr = feature->getAttrs().begin(); itr != feature->getAttrs().end(); ++itr)
-        {
-            buf << "\"" << itr->first << "\": \"" << itr->second.getString() << "\"";
-            if (itr != last_attr)
-            {
-                buf << ",";
-            }
-        }
-    } 
-    buf << "}"; //End of properties
-    buf << "}";
-
-    return buf.str();
-}
-
-std::string featuresToJson( FeatureList& features)
-{
-    std::stringstream buf;
-
-    buf << "{\"type\": \"FeatureCollection\", \"features\": [";
-
-    FeatureList::iterator last = features.end();
-    last--;
-
-    for (FeatureList::iterator i = features.begin(); i != features.end(); i++)
-    {
-        buf << featureToJSON( i->get() );
-        if (i != last)
-        {
-            buf << ",";
-        }
-    }
-
-    buf << "]}";
-
-    return buf.str();
-
-}
-
 void printAllFeatures(FeatureSource* features, const Query& query)
 {
     osg::ref_ptr< FeatureCursor > cursor = features->createFeatureCursor(query);
     while (cursor.valid() && cursor->hasMore())
     {
         osg::ref_ptr< Feature > feature = cursor->nextFeature();        
-        OE_NOTICE << featureToJSON( feature.get() ) << std::endl;
+        OE_NOTICE << feature.get()->getGeoJSON() << std::endl;
     }
 }
 
@@ -266,7 +208,7 @@ public:
     {
         if (tile->getFeatures().size() > 0)
         {   
-            std::string contents = featuresToJson( tile->getFeatures() );
+            std::string contents = Feature::featuresToGeoJSON( tile->getFeatures() );
             std::stringstream buf;
             int x =  tile->getKey().getTileX();
             unsigned int numRows, numCols;

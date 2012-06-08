@@ -22,7 +22,7 @@
 
 #include <osgEarthFeatures/Common>
 #include <osgEarthFeatures/ScriptEngine>
-#include <osgEarthSymbology/Style>
+#include <osgEarthSymbology/StyleSheet>
 #include <osgEarth/ThreadingUtils>
 #include <osgEarth/Cache>
 #include <osgEarth/CachePolicy>
@@ -33,7 +33,7 @@ namespace osgEarth { namespace Features
     using namespace osgEarth;
     using namespace osgEarth::Symbology;
 
-	class FeatureSource;
+    class FeatureSource;
 
     /**
      * Session is a state object that exists throughout the life of one or more related
@@ -55,7 +55,7 @@ namespace osgEarth { namespace Features
          * Constructs a new Session that is tied to a map
          */
         Session( const Map* map, StyleSheet* styles =0L, FeatureSource* source =0L, const osgDB::Options* dbOptions =0L );
-		virtual ~Session();
+        virtual ~Session();
 
         /**
          * URI Context for relative path resolution.
@@ -78,7 +78,7 @@ namespace osgEarth { namespace Features
         StyleSheet* styles() const { return _styles.get(); }
 
         /** Gets the current feature source */
-		FeatureSource* getFeatureSource() const;
+        FeatureSource* getFeatureSource() const;
 
         /** The I/O options for operations within this session */
         const osgDB::Options* getDBOptions() const;

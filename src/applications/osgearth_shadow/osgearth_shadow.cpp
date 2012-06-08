@@ -23,10 +23,6 @@
 #include <osg/MatrixTransform>
 #include <osg/Geometry>
 
-#include <osgGA/TrackballManipulator>
-#include <osgGA/FlightManipulator>
-#include <osgGA/DriveManipulator>
-#include <osgGA/KeySwitchMatrixManipulator>
 #include <osgGA/AnimationPathManipulator>
 #include <osgGA/TerrainManipulator>
 #include <osgGA/AnimationPathManipulator>
@@ -52,6 +48,12 @@
 
 #include <osg/io_utils>
 #include <iostream>
+
+#include <osgEarthUtil/EarthManipulator>
+#include <osgEarthUtil/ExampleResources>
+
+using namespace osgEarth;
+using namespace osgEarth::Util;
 
 class ChangeFOVHandler : public osgGA::GUIEventHandler
 {
@@ -258,45 +260,10 @@ int main(int argc, char** argv)
     while (arguments.read("--noUpdate")) updateLightPosition = false;
 
     // set up the camera manipulators.
-    {
-        osg::ref_ptr<osgGA::KeySwitchMatrixManipulator> keyswitchManipulator = new osgGA::KeySwitchMatrixManipulator;
-
-        keyswitchManipulator->addMatrixManipulator( '1', "Trackball", new osgGA::TrackballManipulator() );
-        keyswitchManipulator->addMatrixManipulator( '2', "Flight", new osgGA::FlightManipulator() );
-        keyswitchManipulator->addMatrixManipulator( '3', "Drive", new osgGA::DriveManipulator() );
-        keyswitchManipulator->addMatrixManipulator( '4', "Terrain", new osgGA::TerrainManipulator() );
-
-        std::string pathfile;
-        char keyForAnimationPath = '5';
-        while (arguments.read("-p",pathfile))
-        {
-            osgGA::AnimationPathManipulator* apm = new osgGA::AnimationPathManipulator(pathfile);
-            if (apm || !apm->valid())
-            {
-                unsigned int num = keyswitchManipulator->getNumMatrixManipulators();
-                keyswitchManipulator->addMatrixManipulator( keyForAnimationPath, "Path", apm );
-                keyswitchManipulator->selectMatrixManipulator(num);
-                ++keyForAnimationPath;
-            }
-        }
-
-        viewer.setCameraManipulator( keyswitchManipulator.get() );
-    }
-
-    // add the state manipulator
-    viewer.addEventHandler( new osgGA::StateSetManipulator(viewer.getCamera()->getOrCreateStateSet()) );
-
-    // add stats
-    viewer.addEventHandler( new osgViewer::StatsHandler() );
+    viewer.setCameraManipulator(new EarthManipulator);
 
     // add the record camera path handler
     viewer.addEventHandler(new osgViewer::RecordCameraPathHandler);
-
-    // add the window size toggle handler
-    viewer.addEventHandler(new osgViewer::WindowSizeHandler);
-
-    // add the threading handler
-    viewer.addEventHandler( new osgViewer::ThreadingHandler() );
 
     osg::ref_ptr<osgShadow::ShadowedScene> shadowedScene = new osgShadow::ShadowedScene;
 
@@ -466,15 +433,33 @@ int main(int argc, char** argv)
 
     OSG_INFO<<"shadowedScene->getShadowTechnique()="<<shadowedScene->getShadowTechnique()<<std::endl;
 
-    osg::ref_ptr<osg::Node> model = osgDB::readNodeFiles(arguments);
-    if (model.valid())
+    osg::ref_ptr<osg::Group> root = shadowedScene;
+    osg::ref_ptr<osg::Group> model = MapNodeHelper().load(arguments, &viewer);
+    if (!model.valid())
     {
-        model->setNodeMask(CastsShadowTraversalMask | ReceivesShadowTraversalMask);
+        OE_NOTICE
+            << "\nUsage: " << argv[0] << " file.earth" << std::endl
+            << MapNodeHelper().usage() << std::endl;
+        exit(1);
     }
-    else
+    // The ControlCanvas is a camera and doesn't play nicely with the
+    // shadow traversal. Also, it shouldn't be shadowed, and the
+    // ReceivesShadowTraversalMask doesn't really prevent that. So,
+    // take the canvas out of the shadowed scene.
+    for (int i = 0; i < model->getNumChildren(); ++i)
     {
-        // model = createTestModel(arguments);
+        osg::ref_ptr<Controls::ControlCanvas> canvas
+            = dynamic_cast<Controls::ControlCanvas*>(model->getChild(i));
+        if (canvas.valid())
+        {
+            root = new osg::Group;
+            root->addChild(shadowedScene);
+            model->removeChild(i);
+            root->addChild(canvas.get());
+            break;
+        }
     }
+    model->setNodeMask(CastsShadowTraversalMask | ReceivesShadowTraversalMask);
 
     // get the bounds of the model.
     osg::ComputeBoundsVisitor cbbv;
@@ -518,7 +503,7 @@ int main(int argc, char** argv)
     shadowedScene->addChild(model.get());
     shadowedScene->addChild(ls.get());
 
-    viewer.setSceneData(shadowedScene.get());
+    viewer.setSceneData(root.get());
 
     osg::ref_ptr< DumpShadowVolumesHandler > dumpShadowVolumes = new DumpShadowVolumesHandler;
 

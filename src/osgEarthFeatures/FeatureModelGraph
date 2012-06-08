@@ -102,10 +102,21 @@ namespace osgEarth { namespace Features
 
     private:
         
-        osg::Group* createNodeForStyle(
+        osg::Group* createStyleGroup(
             const Style&        style, 
             const Query&        query, 
             FeatureSourceIndex* index);
+
+        osg::Group* createStyleGroup(
+            const Style&         style, 
+            FeatureList&         workingSet, 
+            const FilterContext& contextPrototype);
+
+        void buildStyleGroups(
+            const StyleSelector* selector,
+            const Query&         baseQuery,
+            FeatureSourceIndex*  index,
+            osg::Group*          parent);
 
         void queryAndSortIntoStyleGroups(
             const Style&            baseStyle,
@@ -113,11 +124,6 @@ namespace osgEarth { namespace Features
             const StringExpression& styleExpr,
             FeatureSourceIndex*     index,
             osg::Group*             parent);
-
-        osg::Group* createStyleGroup(
-            const Style&         style, 
-            FeatureList&         workingSet, 
-            const FilterContext& contextPrototype);
        
         osg::BoundingSphered getBoundInWorldCoords( 
             const GeoExtent& extent, 

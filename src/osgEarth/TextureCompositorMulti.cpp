@@ -39,7 +39,7 @@ namespace
 {
     static std::string makeSamplerName(int slot)
     {
-        return Stringify() << "tex" << slot;
+        return Stringify() << "osgearth_tex" << slot;
     }
 
     static osg::Shader*

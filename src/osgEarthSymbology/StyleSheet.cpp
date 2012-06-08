@@ -84,6 +84,19 @@ StyleSheet::getStyle( const std::string& name, bool fallBackOnDefault ) const
     }
 }
 
+const StyleSelector*
+StyleSheet::getSelector( const std::string& name ) const
+{
+    for(StyleSelectorList::const_iterator i = _selectors.begin(); i != _selectors.end(); ++i )
+    {
+        if ( i->name() == name )
+        {
+            return &(*i);
+        }
+    }
+    return 0L;
+}
+
 Style*
 StyleSheet::getDefaultStyle()
 {

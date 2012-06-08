@@ -111,6 +111,12 @@ Style::combineWith( const Style& rhs ) const
 }
 
 void
+Style::fromCSS( const std::string& css )
+{
+    SLDReader::readStyleFromCSSParams( css, *this );
+}
+
+void
 Style::mergeConfig( const Config& conf )
 {
     if ( _name.empty() )

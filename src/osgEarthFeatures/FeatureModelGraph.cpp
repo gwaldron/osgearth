@@ -547,11 +547,31 @@ FeatureModelGraph::buildLevel( const FeatureLevel& level, const GeoExtent& exten
     if ( key )
         query.tileKey() = *key;
 
-    // now, go through any level-based selectors.
-    const StyleSelectorVector& levelSelectors = level.selectors();
-    
-    // if there are none, just build once with the default style and query.
-    if ( levelSelectors.size() == 0 )
+    // does the level have a style name set?
+    if ( level.styleName().isSet() )
+    {
+        osg::Node* node = 0L;
+        const Style* style = _session->styles()->getStyle( *level.styleName(), false );
+        if ( style )
+        {
+            // found a specific style to use.
+            node = createStyleGroup( *style, query, index );
+            if ( node )
+                group->addChild( node );
+        }
+        else
+        {
+            const StyleSelector* selector = _session->styles()->getSelector( *level.styleName() );
+            if ( selector )
+            {
+                buildStyleGroups( selector, query, index, group.get() );
+                //node = buildWithSelector( selector, query, extent, index );
+                //node = build( selector, query, extent, index );
+            }
+        }
+    }
+
+    else
     {
         // attempt to glean the style from the feature source name:
         const Style style = *_session->styles()->getStyle( 
@@ -560,28 +580,6 @@ FeatureModelGraph::buildLevel( const FeatureLevel& level, const GeoExtent& exten
         osg::Node* node = build( style, query, extent, index );
         if ( node )
             group->addChild( node );
-    }
-
-    // otherwise, go through and build style groups, one per selector. The selector points to the 
-    // style to use and the query necessary to pick features for that style. Any features not
-    // "selected" are discarded.
-    else
-    {
-        for( StyleSelectorVector::const_iterator i = levelSelectors.begin(); i != levelSelectors.end(); ++i )
-        {
-            const StyleSelector& selector = *i;
-
-            // fetch the selector's style:
-            const Style* selectorStyle = _session->styles()->getStyle( selector.getSelectedStyleName() );
-
-            // combine the selector's query, if it has one:
-            Query selectorQuery = 
-                selector.query().isSet() ? query.combineWith( *selector.query() ) : query;
-
-            osg::Node* node = build( *selectorStyle, selectorQuery, extent, index );
-            if ( node )
-                group->addChild( node );
-        }
     }
 
     if ( group->getNumChildren() > 0 )
@@ -629,6 +627,7 @@ FeatureModelGraph::buildLevel( const FeatureLevel& level, const GeoExtent& exten
         return 0L;
     }
 }
+
 
 osg::Group*
 FeatureModelGraph::build(const Style&        baseStyle, 
@@ -721,7 +720,7 @@ FeatureModelGraph::build(const Style&        baseStyle,
                     Query combinedQuery = baseQuery.combineWith( *sel.query() );
 
                     // then create the node.
-                    osg::Group* styleGroup = createNodeForStyle( combinedStyle, combinedQuery, index );
+                    osg::Group* styleGroup = createStyleGroup( combinedStyle, combinedQuery, index );
 
                     if ( styleGroup && !group->containsNode(styleGroup) )
                         group->addChild( styleGroup );
@@ -738,7 +737,7 @@ FeatureModelGraph::build(const Style&        baseStyle,
             if ( baseStyle.empty() )
                 combinedStyle = *styles->getDefaultStyle();
 
-            osg::Group* styleGroup = createNodeForStyle( combinedStyle, baseQuery, index );
+            osg::Group* styleGroup = createStyleGroup( combinedStyle, baseQuery, index );
 
             if ( styleGroup && !group->containsNode(styleGroup) )
                 group->addChild( styleGroup );
@@ -746,6 +745,46 @@ FeatureModelGraph::build(const Style&        baseStyle,
     }
 
     return group->getNumChildren() > 0 ? group.release() : 0L;
+}
+
+
+/**
+ * Builds a collection of style groups by processing a StyleSelector.
+ */
+void
+FeatureModelGraph::buildStyleGroups(const StyleSelector* selector,
+                                    const Query&         baseQuery,
+                                    FeatureSourceIndex*  index,
+                                    osg::Group*          parent)
+{
+    // if the selector uses an expression to select the style name, then we must perform the
+    // query and then SORT the features into style groups.
+    if ( selector->styleExpression().isSet() )
+    {
+        // merge the selector's query into the existing query
+        Query combinedQuery = baseQuery.combineWith( *selector->query() );
+
+        // query, sort, and add each style group to the parent:
+        queryAndSortIntoStyleGroups( Style(), combinedQuery, *selector->styleExpression(), index, parent );
+    }
+
+    // otherwise, all feature returned by this query will have the same style:
+    else
+    {
+        // combine the selection style with the incoming base style:
+        const Style* selectedStyle = _session->styles()->getStyle(selector->getSelectedStyleName());
+        Style style;
+        if ( selectedStyle )
+            style = *selectedStyle;
+
+        // .. and merge it's query into the existing query
+        Query combinedQuery = baseQuery.combineWith( *selector->query() );
+
+        // then create the node.
+        osg::Node* node = createStyleGroup( style, combinedQuery, index );
+        if ( node && !parent->containsNode(node) )
+            parent->addChild( node );
+    }
 }
 
 
@@ -786,20 +825,35 @@ FeatureModelGraph::queryAndSortIntoStyleGroups(const Style&            baseStyle
         osg::ref_ptr<Feature> feature = cursor->nextFeature();
         if ( feature.valid() )
         {
-            const std::string& styleName = feature->eval( styleExprCopy, &context );
-            styleBins[styleName].push_back( feature.get() );
+            const std::string& styleString = feature->eval( styleExprCopy, &context );
+            styleBins[styleString].push_back( feature.get() );
         }
     }
 
     // next create a style group per bin.
     for( std::map<std::string,FeatureList>::iterator i = styleBins.begin(); i != styleBins.end(); ++i )
     {
-        const std::string& styleName = i->first;
-        FeatureList&       workingSet = i->second;
+        const std::string& styleString = i->first;
+        FeatureList&       workingSet  = i->second;
 
-        // look up the style and combine it with the bas style:
-        const Style* selectedStyle = _session->styles()->getStyle(styleName);
-        Style combinedStyle = selectedStyle ? baseStyle.combineWith(*selectedStyle) : baseStyle;
+        // resolve the style:
+        Style combinedStyle;
+
+        // if the style string begins with an open bracket, it's an inline style definition.
+        if ( styleString.length() > 0 && styleString.at(0) == '{' )
+        {
+            Config conf( "style", styleString );
+            conf.set( "type", "text/css" );
+            Style inlineStyle( conf );            
+            combinedStyle = baseStyle.combineWith( inlineStyle );
+        }
+
+        // otherwise, look up the style in the stylesheet:
+        else
+        {
+            const Style* selectedStyle = _session->styles()->getStyle(styleString);
+            combinedStyle = selectedStyle ? baseStyle.combineWith(*selectedStyle) : baseStyle;
+        }
 
         // create the node and add it.
         osg::Group* styleGroup = createStyleGroup(combinedStyle, workingSet, context);
@@ -859,9 +913,9 @@ FeatureModelGraph::createStyleGroup(const Style&         style,
 
 
 osg::Group*
-FeatureModelGraph::createNodeForStyle(const Style&        style, 
-                                      const Query&        query, 
-                                      FeatureSourceIndex* index)
+FeatureModelGraph::createStyleGroup(const Style&        style, 
+                                    const Query&        query, 
+                                    FeatureSourceIndex* index)
 {
     osg::Group* styleGroup = 0L;
 
@@ -887,51 +941,13 @@ FeatureModelGraph::createNodeForStyle(const Style&        style,
         FeatureList workingSet;
         cursor->fill( workingSet );
 
-        CropFilter crop( 
-            _options.layout().isSet() && _options.layout()->cropFeatures() == true ? 
-            CropFilter::METHOD_CROPPING : CropFilter::METHOD_CENTROID );
-        context = crop.push( workingSet, context );
-
-        // next, if the usable extent is less than the full extent (i.e. we had to clamp the feature
-        // extent to fit on the map), calculate the extent of the features in this tile and 
-        // crop to the map extent if necessary. (Note, if cropFeatures was set to true, this is
-        // already done)
-        if ( _featureExtentClamped && _options.layout().isSet() && _options.layout()->cropFeatures() == false )
-        {
-            context.extent() = _usableFeatureExtent;
-            CropFilter crop2( CropFilter::METHOD_CROPPING );
-            context = crop2.push( workingSet, context );
-        }
-
-        if ( workingSet.size() > 0 )
-        {
-            // next ask the implementation to construct OSG geometry for the cell features.
-            osg::ref_ptr<osg::Node> node;
-
-            osg::ref_ptr<FeatureCursor> newCursor = new FeatureListCursor(workingSet);
-
-            if ( _factory->createOrUpdateNode( newCursor.get(), style, context, node ) )
-            {
-                if ( !styleGroup )
-                    styleGroup = _factory->getOrCreateStyleGroup( style, _session.get() );
-
-                // if it returned a node, add it. (it doesn't necessarily have to)
-                if ( node.valid() )
-                    styleGroup->addChild( node.get() );
-            }
-        }
-
-        CacheStats stats = context.resourceCache()->getSkinStats();
-        OE_DEBUG << LC << "Resource Cache skins: "
-            << " num=" << stats._entries << ", max=" << stats._maxEntries
-            << ", queries=" << stats._queries << ", hits=" << (100.0f*stats._hitRatio) << "%"
-            << std::endl;
-
+        styleGroup = createStyleGroup(style, workingSet, context);
     }
 
 
     return styleGroup;
 }
+
 
 void
 FeatureModelGraph::traverse(osg::NodeVisitor& nv)

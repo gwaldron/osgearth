@@ -72,6 +72,7 @@ namespace osgEarth { namespace Symbology
         /** Selectors pick a style from the sheet based on some criteria. */
         StyleSelectorList& selectors() { return _selectors; }
         const StyleSelectorList& selectors() const { return _selectors; }
+        const StyleSelector* getSelector( const std::string& name ) const;
 
         /** Adds a resource library. */
         void addResourceLibrary( ResourceLibrary* library );

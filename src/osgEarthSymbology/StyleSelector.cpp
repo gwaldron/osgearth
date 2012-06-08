@@ -40,10 +40,10 @@ void
 StyleSelector::mergeConfig( const Config& conf )
 {
     _name = conf.value( "name" );
-    conf.getIfSet   ( "style",        _styleName ); // backwards compatibility
-    conf.getIfSet   ( "class",        _styleName );
-    conf.getObjIfSet( "style_expr",   _styleExpression );  // backwards compatability
-    conf.getObjIfSet( "class_expr",   _styleExpression );
+    conf.getIfSet   ( "style",        _styleName );
+    conf.getIfSet   ( "class",        _styleName ); // alias
+    conf.getObjIfSet( "style_expr",   _styleExpression ); 
+    conf.getObjIfSet( "class_expr",   _styleExpression ); // alias
     conf.getObjIfSet( "query",        _query );
 }
 
@@ -52,8 +52,8 @@ StyleSelector::getConfig() const
 {
     Config conf( "selector" );
     conf.add        ( "name",         _name );
-    conf.addIfSet   ( "class",        _styleName );
-    conf.addObjIfSet( "class_expr",   _styleExpression );
+    conf.addIfSet   ( "style",        _styleName );
+    conf.addObjIfSet( "style_expr",   _styleExpression );
     conf.addObjIfSet( "query",        _query );
     return conf;
 }

@@ -32,56 +32,36 @@ _maxRange( FLT_MAX )
     fromConfig( conf );
 }
 
-FeatureLevel::FeatureLevel( float minRange, float maxRange ) :
-_minRange( minRange ),
-_maxRange( maxRange )
+FeatureLevel::FeatureLevel( float minRange, float maxRange )
 {
-    //nop
+    _minRange = minRange;
+    _maxRange = maxRange;
 }
 
-FeatureLevel::FeatureLevel( float minRange, float maxRange, const StyleSelector& oneSelector ) :
-_minRange( minRange ),
-_maxRange( maxRange )
+FeatureLevel::FeatureLevel( float minRange, float maxRange, const std::string& styleName )
 {
-    _selectors.push_back( oneSelector );
+    _minRange = minRange;
+    _maxRange = maxRange;
+    _styleName = styleName;
 }
 
 void
 FeatureLevel::fromConfig( const Config& conf )
 {
-    if ( conf.hasValue( "min_range" ) )
-        _minRange = conf.value( "min_range", 0.0f );
-    if ( conf.hasValue( "max_range" ) )
-        _maxRange = conf.value( "max_range", FLT_MAX );
-    
-    conf.getIfSet( "lod", _lod );
-
-    const ConfigSet selectorsConf = conf.children( "selector" );
-    for( ConfigSet::const_iterator i = selectorsConf.begin(); i != selectorsConf.end(); ++i )
-    {
-        _selectors.push_back( StyleSelector(*i) );
-    }
+    conf.getIfSet( "min_range", _minRange );
+    conf.getIfSet( "max_range", _maxRange );
+    conf.getIfSet( "style",     _styleName ); 
+    conf.getIfSet( "class",     _styleName ); // alias
 }
 
 Config
 FeatureLevel::getConfig() const
 {
     Config conf( "level" );
-    conf.add( "min_range", toString(_minRange) );
-    conf.add( "max_range", toString(_maxRange) );
-    conf.addIfSet( "lod", _lod );
-
-    for( StyleSelectorVector::const_iterator i = _selectors.begin(); i != _selectors.end(); ++i )
-    {
-        conf.add( (*i).getConfig() );
-    }
-
+    conf.addIfSet( "min_range", _minRange );
+    conf.addIfSet( "max_range", _maxRange );
+    conf.addIfSet( "style",     _styleName );
     return conf;
-}
-
-void FeatureLevel::addStyleSelector(const StyleSelector& selector)
-{
-	_selectors.push_back( StyleSelector(selector) );
 }
 
 //------------------------------------------------------------------------

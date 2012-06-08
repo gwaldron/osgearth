@@ -544,7 +544,8 @@ int main(int argc, char** argv)
 
     osg::ref_ptr<LightAnimationHandler> lightAnimationHandler = updateLightPosition ? new LightAnimationHandler : 0;
     if (lightAnimationHandler) viewer.addEventHandler(lightAnimationHandler.get());
-
+    viewer.addEventHandler(new osgViewer::ScreenCaptureHandler);
+    viewer.addEventHandler(new osgViewer::HelpHandler(arguments.getApplicationUsage()));
 
     // osgDB::writeNodeFile(*group,"test.osgt");
 

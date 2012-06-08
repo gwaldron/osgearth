@@ -96,7 +96,6 @@ _loadingPolicy( LoadingPolicy() ),
 _compositingTech( COMPOSITING_AUTO ),
 _maxLOD( 23 ),
 _enableLighting( false ),
-_enableShadows( true ),
 _attenuationDistance( 1000000 ),
 _lodBlending( false ),
 _lodTransitionTimeSeconds( 0.5f ),
@@ -124,7 +123,6 @@ TerrainOptions::getConfig() const
     conf.updateIfSet( "combine_layers", _combineLayers );
     conf.updateIfSet( "max_lod", _maxLOD );
     conf.updateIfSet( "lighting", _enableLighting );
-    conf.updateIfSet( "shadows", _enableShadows );
     conf.updateIfSet( "attenuation_distance", _attenuationDistance );
     conf.updateIfSet( "lod_transition_time", _lodTransitionTimeSeconds );
     conf.updateIfSet( "mipmapping", _enableMipmapping );
@@ -166,7 +164,6 @@ TerrainOptions::fromConfig( const Config& conf )
     conf.getIfSet( "combine_layers", _combineLayers );
     conf.getIfSet( "max_lod", _maxLOD );
     conf.getIfSet( "lighting", _enableLighting );
-    conf.getIfSet( "shadows", _enableShadows );
     conf.getIfSet( "attenuation_distance", _attenuationDistance );
     conf.getIfSet( "lod_transition_time", _lodTransitionTimeSeconds );
     conf.getIfSet( "mipmapping", _enableMipmapping );

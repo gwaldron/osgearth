@@ -26,17 +26,12 @@
 #include "TransparentLayer"
 
 #include <osgEarth/ImageUtils>
-#include <osgEarth/NodeUtils>
 #include <osgEarth/Registry>
 #include <osgEarth/ShaderComposition>
-#include <osgEarth/Capabilities>
 #include <osg/TexEnv>
 #include <osg/TexEnvCombine>
 #include <osg/PagedLOD>
 #include <osg/Timer>
-#include <osgShadow/ShadowedScene>
-#include <osgShadow/StandardShadowMap>
-#include <osgShadow/ViewDependentShadowMap>
 
 #define LC "[OSGTerrainEngine] "
 
@@ -863,47 +858,6 @@ OSGTerrainEngineNode::traverse( osg::NodeVisitor& nv )
     TerrainEngineNode::traverse( nv );
 }
 
-namespace
-{
-
-osgShadow::ViewDependentShadowMap*
-getTechniqueAsVdsm(osgShadow::ShadowedScene* sscene)
-{
-    osgShadow::ShadowTechnique* st = sscene->getShadowTechnique();
-    return dynamic_cast<osgShadow::ViewDependentShadowMap*>(st);
-}
-
-// Some shadow techniques have different interfaces
-bool setShadowUnit(osgShadow::ShadowedScene* sscene, int unit)
-{
-    osgShadow::ShadowTechnique* st = sscene->getShadowTechnique();
-    if (st)
-    {
-        osgShadow::StandardShadowMap* ssm
-            = dynamic_cast<osgShadow::StandardShadowMap*>(st);
-        if (ssm)
-        {
-            ssm->setShadowTextureUnit( unit );
-            ssm->setShadowTextureCoordIndex( unit );
-            return true;
-        }
-        else
-        {
-            osgShadow::ViewDependentShadowMap* vdsm
-                = getTechniqueAsVdsm(sscene);
-            if (vdsm)
-            {
-                sscene->getShadowSettings()
-                    ->setBaseShadowTextureUnit( unit );
-                return true;
-            }
-        }
-    }
-    return false;
-}
-
-}
-
 void
 OSGTerrainEngineNode::installShaders()
 {
@@ -914,23 +868,14 @@ OSGTerrainEngineNode::installShaders()
 
     if ( _texCompositor.valid() && _texCompositor->usesShaderComposition() )
     {
-        ShaderFactory* sf = Registry::instance()->getShaderFactory();
+        const ShaderFactory* sf = Registry::instance()->getShaderFactory();
 
         int numLayers = osg::maximum( 1, (int)_update_mapf->imageLayers().size() );
 
         VirtualProgram* vp = new VirtualProgram();
 
         // note. this stuff should probably happen automatically in VirtualProgram. gw
-        int shadowTextureUnit = -1;
-        osgShadow::ShadowedScene* sscene = 0;
-        if ( _terrainOptions.enableShadows().value()
-             && (sscene = findFirstParentOfType<osgShadow::ShadowedScene>(this)))
-        {
-            sf->setDoShadows(true);
-            _texCompositor->reserveTextureImageUnit(shadowTextureUnit);
-            sf->setShadowTextureUnit(shadowTextureUnit);
-            setShadowUnit(sscene, shadowTextureUnit);
-        }
+
         //vp->setShader( "osgearth_vert_main",     sf->createVertexShaderMain() ); // happens in VirtualProgram now
         vp->setShader( "osgearth_vert_setupLighting", sf->createDefaultLightingVertexShader() );
         vp->setShader( "osgearth_vert_setupTexturing",  sf->createDefaultTextureVertexShader( numLayers ) );
@@ -940,12 +885,6 @@ OSGTerrainEngineNode::installShaders()
         vp->setShader( "osgearth_frag_applyTexturing",  sf->createDefaultTextureFragmentShader( numLayers ) );
 
         getOrCreateStateSet()->setAttributeAndModes( vp, osg::StateAttribute::ON );
-        // Hack to work around shadow map name differences
-        if (getTechniqueAsVdsm(sscene))
-            getOrCreateStateSet()
-                ->getOrCreateUniform("shadowTexture", osg::Uniform::SAMPLER_2D)
-                ->set(shadowTextureUnit);
-            
     }
 }
 
@@ -973,8 +912,7 @@ OSGTerrainEngineNode::updateTextureCombining()
 
             // first, update the default shader components based on the new layer count:
             const ShaderFactory* sf = Registry::instance()->getShaderFactory();
-            vp->setShader( "osgearth_vert_setupTexturing",
-                           sf->createDefaultTextureVertexShader( numImageLayers ) );
+            vp->setShader( "osgearth_vert_setupTexturing",  sf->createDefaultTextureVertexShader( numImageLayers ) );
 
             // not this one, because the compositor always generates a new one.
             //vp->setShader( "osgearth_frag_applyTexturing",  lib.createDefaultTextureFragmentShader( numImageLayers ) );

@@ -21,7 +21,11 @@
 #include <osgEarth/StringUtils>
 #include <osgEarth/HTTPClient>
 #include <osg/Notify>
+#ifdef WITH_EXTERNAL_TINYXML
+#include <tinyxml.h>
+#else
 #include "tinyxml.h"
+#endif
 #include <algorithm>
 #include <sstream>
 #include <iomanip>

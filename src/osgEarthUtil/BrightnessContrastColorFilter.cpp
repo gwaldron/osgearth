@@ -16,7 +16,7 @@
 * You should have received a copy of the GNU Lesser General Public License
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 *
-* Original author: Thomas Lerman (ThomasL@ImSAR.com)
+* Original author: Thomas Lerman
 */
 #include <osgEarthUtil/BrightnessContrastColorFilter>
 #include <osgEarth/ShaderComposition>

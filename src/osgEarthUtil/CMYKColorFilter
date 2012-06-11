@@ -16,7 +16,7 @@
 * You should have received a copy of the GNU Lesser General Public License
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 *
-* Original author: Thomas Lerman (ThomasL@ImSAR.com)
+* Original author: Thomas Lerman
 */
 #ifndef OSGEARTHUTIL_CMYK_COLOR_FILTER
 #define OSGEARTHUTIL_CMYK_COLOR_FILTER

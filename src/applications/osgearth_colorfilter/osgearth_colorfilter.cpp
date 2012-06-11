@@ -499,7 +499,7 @@ namespace GAMMA
         gLabel->setVertAlign( Control::ALIGN_CENTER );
         s_layerBox->setControl( 0, 1, gLabel );
 
-        HSliderControl* gAdjust = new HSliderControl( 0.1f, 2.0f, 1.0f, new GAMMA::Set(filter) );
+        HSliderControl* gAdjust = new HSliderControl( 0.1f, 3.0f, 1.0f, new GAMMA::Set(filter) );
         gAdjust->setWidth( 125 );
         gAdjust->setHeight( 12 );
         gAdjust->setVertAlign( Control::ALIGN_CENTER );

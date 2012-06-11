@@ -56,7 +56,7 @@ ADD_SUBDIRECTORY(osgearth_featuremanip)
 ADD_SUBDIRECTORY(osgearth_featurequery)
 ADD_SUBDIRECTORY(osgearth_overlayviewer)
 ADD_SUBDIRECTORY(osgearth_occlusionculling)
-ADD_SUBDIRECTORY(osgearth_imageadjust)
+ADD_SUBDIRECTORY(osgearth_colorfilter)
 
 IF (QT4_FOUND AND NOT ANDROID AND OSGEARTH_USE_QT)
     ADD_SUBDIRECTORY(osgearth_qt)

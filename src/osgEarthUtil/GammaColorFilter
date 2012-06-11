@@ -28,7 +28,7 @@
 namespace osgEarth { namespace Util
 {
     /**
-    * Color filter that adjust the brightness/contrast of a texel.
+    * Color filter that applies gamma correction to the pixel data
     */
     class OSGEARTHUTIL_EXPORT GammaColorFilter : public osgEarth::ColorFilter
     {
@@ -37,10 +37,11 @@ namespace osgEarth { namespace Util
         virtual ~GammaColorFilter(void) { }
 
         /**
-         * the Gamma value
+         * The gamma value to correct for.
          */
         void setGamma(float gamma);
         void setGamma(const osg::Vec3f& gamma);
+
         osg::Vec3f getGamma(void) const;
 
     public: // ColorFilter

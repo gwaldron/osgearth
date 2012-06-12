@@ -33,6 +33,8 @@ using namespace osgEarth::Util;
 class FeatureTileVisitor;
 class FeatureTile;
 
+typedef std::list< osgEarth::Features::FeatureID > FeatureIDList;
+
 class FeatureTile : public osg::Referenced
 {
 public:
@@ -79,13 +81,14 @@ public:
           }
       }
 
-      FeatureList& getFeatures()
+      FeatureIDList& getFeatures()
       {
           return _features;
       }
 
-private:
-    FeatureList _features;
+
+private:    
+    FeatureIDList _features;
     TileKey _key;   
     osg::ref_ptr<FeatureTile> _children[4];
     bool _isSplit;
@@ -149,7 +152,8 @@ public:
 
                       if (!features.empty() && clone->getGeometry() && clone->getGeometry()->size() > 0)
                       {
-                          tile->getFeatures().push_back( clone );
+                          //tile->getFeatures().push_back( clone );
+                          tile->getFeatures().push_back( clone->getFID() );
                           _added = true;
                           _levelAdded = tile->getKey().getLevelOfDetail();
                           _numAdded++;                   
@@ -192,9 +196,11 @@ public:
 class WriteFeaturesVisitor : public FeatureTileVisitor
 {
 public:
-    WriteFeaturesVisitor(const std::string& dest, const std::string &layer):
+    WriteFeaturesVisitor(FeatureSource* features, const std::string& dest, const std::string &layer, CropFilter::Method cropMethod):
       _dest( dest ),
-          _layer( layer )
+          _layer( layer ),
+          _features( features ),
+          _cropMethod( cropMethod )
       {
 
       }
@@ -203,7 +209,36 @@ public:
       {
           if (tile->getFeatures().size() > 0)
           {   
-              std::string contents = Feature::featuresToGeoJSON( tile->getFeatures() );
+              osg::ref_ptr< osgEarth::SpatialReference > wgs84 = osgEarth::SpatialReference::create("epsg:4326");
+              //Actually load up the features
+              FeatureList features;
+              for (FeatureIDList::const_iterator i = tile->getFeatures().begin(); i != tile->getFeatures().end(); i++)
+              {
+                  Feature* f = _features->getFeature( *i );                  
+
+                  if (f)
+                  {
+                      //Reproject the feature to WGS84 if it's not already
+                      if (!f->getSRS()->isEquivalentTo( wgs84 ) )
+                      {
+                          f->getSRS()->transform(f->getGeometry()->asVector(), wgs84 );
+                      }
+
+                      features.push_back( f );
+                  }
+                  else
+                  {
+                      OE_NOTICE << "couldn't get feature " << *i << std::endl;
+                  }
+              }
+
+              //Need to do the cropping again since these are brand new features coming from the feature source.
+              CropFilter cropFilter(_cropMethod);
+              FilterContext context(0);
+              context.extent() = tile->getExtent();
+              cropFilter.push( features, context );
+
+              std::string contents = Feature::featuresToGeoJSON( features );
               std::stringstream buf;
               int x =  tile->getKey().getTileX();
               unsigned int numRows, numCols;
@@ -212,7 +247,7 @@ public:
 
               buf << osgDB::concatPaths( _dest, _layer ) << "/" << tile->getKey().getLevelOfDetail() << "/" << x << "/" << y << ".json";
               std::string filename = buf.str();
-              //OE_NOTICE << "Writing " << tile->getFeatures().size() << " features to " << filename << std::endl;
+              //OE_NOTICE << "Writing " << features.size() << " features to " << filename << std::endl;
 
               if ( !osgDB::fileExists( osgDB::getFilePath(filename) ) )
                   osgDB::makeDirectoryForFile( filename );
@@ -229,8 +264,10 @@ public:
           tile->traverse( this );        
       }
 
+      osg::ref_ptr< FeatureSource > _features;
       std::string _dest;
       std::string _layer;
+      CropFilter::Method _cropMethod;
 };
 
 
@@ -304,7 +341,7 @@ void
     }   
     OE_NOTICE << "Added=" << added << "Skipped=" << skipped << " Failed=" << failed << std::endl;
 
-    WriteFeaturesVisitor write(destination, layername);
+    WriteFeaturesVisitor write(features, destination, layername, _method);
     root->accept( &write );
 
     //Write out the meta doc

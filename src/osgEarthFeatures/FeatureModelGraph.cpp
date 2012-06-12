@@ -565,8 +565,6 @@ FeatureModelGraph::buildLevel( const FeatureLevel& level, const GeoExtent& exten
             if ( selector )
             {
                 buildStyleGroups( selector, query, index, group.get() );
-                //node = buildWithSelector( selector, query, extent, index );
-                //node = build( selector, query, extent, index );
             }
         }
     }
@@ -630,7 +628,7 @@ FeatureModelGraph::buildLevel( const FeatureLevel& level, const GeoExtent& exten
 
 
 osg::Group*
-FeatureModelGraph::build(const Style&        baseStyle, 
+FeatureModelGraph::build(const Style&        defaultStyle, 
                          const Query&        baseQuery, 
                          const GeoExtent&    workingExtent,
                          FeatureSourceIndex* index)
@@ -706,7 +704,7 @@ FeatureModelGraph::build(const Style&        baseStyle,
                     Query combinedQuery = baseQuery.combineWith( *sel.query() );
 
                     // query, sort, and add each style group to th parent:
-                    queryAndSortIntoStyleGroups( baseStyle, combinedQuery, *sel.styleExpression(), index, group );
+                    queryAndSortIntoStyleGroups( combinedQuery, *sel.styleExpression(), index, group );
                 }
 
                 // otherwise, all feature returned by this query will have the same style:
@@ -714,7 +712,7 @@ FeatureModelGraph::build(const Style&        baseStyle,
                 {
                     // combine the selection style with the incoming base style:
                     Style selectedStyle = *styles->getStyle( sel.getSelectedStyleName() );
-                    Style combinedStyle = baseStyle.combineWith( selectedStyle );
+                    Style combinedStyle = defaultStyle.combineWith( selectedStyle );
 
                     // .. and merge it's query into the existing query
                     Query combinedQuery = baseQuery.combineWith( *sel.query() );
@@ -731,10 +729,10 @@ FeatureModelGraph::build(const Style&        baseStyle,
         // if no selectors are present, render all the features with a single style.
         else
         {
-            Style combinedStyle = baseStyle;
+            Style combinedStyle = defaultStyle;
 
             // if there's no base style defined, choose a "default" style from the stylesheet.
-            if ( baseStyle.empty() )
+            if ( defaultStyle.empty() )
                 combinedStyle = *styles->getDefaultStyle();
 
             osg::Group* styleGroup = createStyleGroup( combinedStyle, baseQuery, index );
@@ -765,7 +763,7 @@ FeatureModelGraph::buildStyleGroups(const StyleSelector* selector,
         Query combinedQuery = baseQuery.combineWith( *selector->query() );
 
         // query, sort, and add each style group to the parent:
-        queryAndSortIntoStyleGroups( Style(), combinedQuery, *selector->styleExpression(), index, parent );
+        queryAndSortIntoStyleGroups( combinedQuery, *selector->styleExpression(), index, parent );
     }
 
     // otherwise, all feature returned by this query will have the same style:
@@ -796,8 +794,7 @@ FeatureModelGraph::buildStyleGroups(const StyleSelector* selector,
  * Adds the resulting style groups to the provided parent.
  */
 void
-FeatureModelGraph::queryAndSortIntoStyleGroups(const Style&            baseStyle,
-                                               const Query&            query,
+FeatureModelGraph::queryAndSortIntoStyleGroups(const Query&            query,
                                                const StringExpression& styleExpr,
                                                FeatureSourceIndex*     index,
                                                osg::Group*             parent)
@@ -844,15 +841,15 @@ FeatureModelGraph::queryAndSortIntoStyleGroups(const Style&            baseStyle
         {
             Config conf( "style", styleString );
             conf.set( "type", "text/css" );
-            Style inlineStyle( conf );            
-            combinedStyle = baseStyle.combineWith( inlineStyle );
+            combinedStyle = Style(conf);
         }
 
         // otherwise, look up the style in the stylesheet:
         else
         {
             const Style* selectedStyle = _session->styles()->getStyle(styleString);
-            combinedStyle = selectedStyle ? baseStyle.combineWith(*selectedStyle) : baseStyle;
+            if ( selectedStyle )
+                combinedStyle = *selectedStyle;
         }
 
         // create the node and add it.

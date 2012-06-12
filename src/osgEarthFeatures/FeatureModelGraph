@@ -119,7 +119,6 @@ namespace osgEarth { namespace Features
             osg::Group*          parent);
 
         void queryAndSortIntoStyleGroups(
-            const Style&            baseStyle,
             const Query&            query,
             const StringExpression& styleExpr,
             FeatureSourceIndex*     index,

@@ -17,7 +17,9 @@
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
 #include <osgEarthAnnotation/ImageOverlay>
+#include <osgEarthAnnotation/AnnotationRegistry>
 #include <osgEarthSymbology/MeshSubdivider>
+#include <osgEarthFeatures/GeometryUtils>
 #include <osgEarthFeatures/MeshClamper>
 #include <osgEarthFeatures/Feature>
 #include <osgEarth/MapNode>
@@ -36,12 +38,88 @@ using namespace osgEarth::Annotation;
 using namespace osgEarth::Features;
 using namespace osgEarth::Symbology;
 
-/***************************************************************************/
 
-void clampLatitude(osg::Vec2d& l)
+//---------------------------------------------------------------------------
+
+namespace
 {
-    l.y() = osg::clampBetween( l.y(), -90.0, 90.0);
+    void clampLatitude(osg::Vec2d& l)
+    {
+        l.y() = osg::clampBetween( l.y(), -90.0, 90.0);
+    }
 }
+
+//---------------------------------------------------------------------------
+
+OSGEARTH_REGISTER_ANNOTATION( imageoverlay, osgEarth::Annotation::ImageOverlay );
+
+ImageOverlay::ImageOverlay(MapNode* mapNode, const Config& conf) :
+AnnotationNode(mapNode)
+{
+    conf.getIfSet( "url",   _imageURI );
+    if ( _imageURI.isSet() )
+    {
+        setImage( _imageURI->getImage() );
+    }
+
+    conf.getIfSet( "alpha", _alpha );
+    
+    osg::ref_ptr<Geometry> geom;
+    if ( conf.hasChild("geometry") )
+    {
+        Config geomconf = conf.child("geometry");
+        geom = GeometryUtils::geometryFromWKT( geomconf.value() );
+        
+        if ( !geom.valid() || geom->size() < 4 )
+        {
+            OE_WARN << LC << "Config is missing required 'geometry' element, or not enough points (need 4)" << std::endl;
+        }
+        else
+        {
+            _lowerLeft.set ( (*geom)[0].x(), (*geom)[0].y() );
+            _lowerRight.set( (*geom)[1].x(), (*geom)[1].y() );
+            _upperRight.set( (*geom)[2].x(), (*geom)[2].y() );
+            _upperLeft.set ( (*geom)[3].x(), (*geom)[3].y() );
+        }
+    }
+
+    postCTOR();
+}
+
+Config
+ImageOverlay::getConfig() const
+{
+    Config conf("imageoverlay");
+    conf.set("name",  getName());
+
+    if ( _imageURI.isSet() )
+    {
+        conf.addIfSet("url", _imageURI );
+    }
+    else if ( _image.valid() && !_image->getFileName().empty() )
+    {
+        optional<URI> temp;
+        temp = URI(_image->getFileName());
+        conf.addIfSet("url", temp);
+    }
+
+    conf.addIfSet("alpha", _alpha);
+
+    osg::ref_ptr<Geometry> g = new Polygon();
+    g->push_back( osg::Vec3d(_lowerLeft.x(),  _lowerLeft.y(), 0) );
+    g->push_back( osg::Vec3d(_lowerRight.x(), _lowerRight.y(), 0) );
+    g->push_back( osg::Vec3d(_upperRight.x(), _upperRight.y(), 0) );
+    g->push_back( osg::Vec3d(_upperLeft.x(),  _upperLeft.y(),  0) );
+
+    Config geomConf("geometry");
+    geomConf.value() = GeometryUtils::geometryToWKT( g.get() );
+    conf.add( geomConf );
+
+    return conf;
+}
+
+//---------------------------------------------------------------------------
+
 
 ImageOverlay::ImageOverlay(MapNode* mapNode, osg::Image* image) :
 AnnotationNode(mapNode),
@@ -124,7 +202,7 @@ ImageOverlay::init()
         verts->getVertexBufferObject()->setUsage(GL_STATIC_DRAW_ARB);
 
     osg::Vec4Array* colors = new osg::Vec4Array(1);
-    (*colors)[0] = osg::Vec4(1,1,1,_alpha);
+    (*colors)[0] = osg::Vec4(1,1,1,*_alpha);
 
     geometry->setColorArray( colors );
     geometry->setColorBinding( osg::Geometry::BIND_OVERALL );
@@ -202,13 +280,13 @@ void ImageOverlay::setImage( osg::Image* image )
 float
 ImageOverlay::getAlpha() const
 {
-    return _alpha;
+    return *_alpha;
 }
 
 void
 ImageOverlay::setAlpha(float alpha)
 {
-    if (_alpha != alpha)
+    if (*_alpha != alpha)
     {
         _alpha = osg::clampBetween(alpha, 0.0f, 1.0f);
         dirty();

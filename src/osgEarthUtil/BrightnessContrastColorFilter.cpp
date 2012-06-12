@@ -39,6 +39,7 @@ namespace
         "void __ENTRY_POINT__(in int slot, inout vec4 color)\n"
         "{\n"
         "    color.rgb = ((color.rgb - 0.5) * __UNIFORM_NAME__.y + 0.5) * __UNIFORM_NAME__.x; \n"
+        "    color.rgb = clamp(color.rgb, 0.0, 1.0); \n"
         "}\n";
 }
 

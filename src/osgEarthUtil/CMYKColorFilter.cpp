@@ -44,28 +44,12 @@ namespace
         "   color.rgb -= __UNIFORM_NAME__.w; \n"
         "   color.rgb = clamp(color.rgb, 0.0, 1.0); \n"
         "}\n";
-
-#if 0
-        // apply cyan (negative direction of red)
-        "	color.r -= __UNIFORM_NAME__.x;\n"
-        // apply magenta (negative direction of green)
-        "	color.g -= __UNIFORM_NAME__.y;\n"
-        // apply yellow (negative direction of blue)
-        "	color.b -= __UNIFORM_NAME__.z;\n"
-        // apply black (negative direction of white, applies to all colors)
-        "	color.rgb -= __UNIFORM_NAME__.w;\n"
-        // clamp colors to [0..1]
-        "	color.r = clamp(color.r, 0.0, 1.0);\n"
-        "	color.g = clamp(color.g, 0.0, 1.0);\n"
-        "	color.b = clamp(color.b, 0.0, 1.0);\n"
-        "}\n";
-#endif
 }
 
 //---------------------------------------------------------------------------
 
 #define FUNCTION_PREFIX "osgearthutil_cmykColorFilter_"
-#define UNIFORM_PREFIX "osgearthutil_u_cmyk_"
+#define UNIFORM_PREFIX  "osgearthutil_u_cmyk_"
 
 //---------------------------------------------------------------------------
 

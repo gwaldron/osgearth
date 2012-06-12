@@ -38,17 +38,8 @@ namespace
 
         "void __ENTRY_POINT__(in int slot, inout vec4 color)\n"
         "{\n"
-        // apply red
-        "	color.r += __UNIFORM_NAME__.x;\n"
-        // apply green
-        "	color.g += __UNIFORM_NAME__.y;\n"
-        // apply blue
-        "	color.b += __UNIFORM_NAME__.z;\n"
-        // clamp colors to [0..1]
-        "	color.r = clamp(color.r, 0.0, 1.0);\n"
-        "	color.g = clamp(color.g, 0.0, 1.0);\n"
-        "	color.b = clamp(color.b, 0.0, 1.0);\n"
-        "}\n";
+        "    color.rgb = clamp(color.rgb + __UNIFORM_NAME__.rgb, 0.0, 1.0); \n"
+        "} \n";
 }
 
 //---------------------------------------------------------------------------

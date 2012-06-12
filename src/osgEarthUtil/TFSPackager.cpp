@@ -222,6 +222,7 @@ public:
                       if (!f->getSRS()->isEquivalentTo( wgs84 ) )
                       {
                           f->getSRS()->transform(f->getGeometry()->asVector(), wgs84 );
+                          f->setSRS( wgs84 );
                       }
 
                       features.push_back( f );
@@ -312,6 +313,7 @@ void
         if (!feature->getSRS()->isEquivalentTo( wgs84 ) )
         {
             feature->getSRS()->transform(feature->getGeometry()->asVector(), wgs84 );
+            feature->setSRS( wgs84 );
         }
 
         if (feature->getGeometry() && feature->getGeometry()->getBounds().valid() && feature->getGeometry()->size() > 0)
@@ -331,6 +333,7 @@ void
                     highestLevel = v._levelAdded;
                 }
                 added++;
+                OE_DEBUG << "Added " << added << std::endl;
             }   
         }
         else

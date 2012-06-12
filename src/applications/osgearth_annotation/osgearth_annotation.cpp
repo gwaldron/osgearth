@@ -84,15 +84,15 @@ struct MyAnnoEventHandler : public AnnotationEventHandler
 
     virtual void onClick( AnnotationNode* node, const EventArgs& details )
     {        
-		PlaceNode* place = dynamic_cast<PlaceNode*>(node);
-		if (place == NULL)
-		{
-			OE_NOTICE << "Thanks for clicking this annotation" << std::endl;
-		}
-		else
-		{
-			OE_NOTICE << "Thanks for clicking the PlaceNode: " << place->getText() << std::endl;
-		}
+        PlaceNode* place = dynamic_cast<PlaceNode*>(node);
+        if (place == NULL)
+        {
+            OE_NOTICE << "Thanks for clicking this annotation" << std::endl;
+        }
+        else
+        {
+            OE_NOTICE << "Thanks for clicking the PlaceNode: " << place->getText() << std::endl;
+        }
     }
 };
 
@@ -197,6 +197,11 @@ main(int argc, char** argv)
         labelGroup->addChild( new PlaceNode(mapNode, GeoPoint(geoSRS, -90.25, 29.98), "New Orleans"   , pin));
         labelGroup->addChild( new PlaceNode(mapNode, GeoPoint(geoSRS, -80.28, 25.82), "Miami"         , pin));
         labelGroup->addChild( new PlaceNode(mapNode, GeoPoint(geoSRS,-117.17, 32.72), "San Diego"     , pin));
+
+        // test with an LOD, just for kicks:
+        osg::LOD* lod = new osg::LOD();
+        lod->addChild( new PlaceNode(mapNode, GeoPoint(geoSRS, 14.68, 50.0), "Prague", pin), 0.0, 1e6);
+        labelGroup->addChild( lod );
     }
 
     //--------------------------------------------------------------------

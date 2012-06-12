@@ -19,6 +19,7 @@
 #include <osgEarthFeatures/Feature>
 #include <osgEarth/StringUtils>
 #include <osgEarthFeatures/GeometryUtils>
+#include <osgEarth/JsonUtils>
 #include <algorithm>
 
 using namespace osgEarth;
@@ -487,35 +488,31 @@ Feature::getWorldBoundingPolytope() const
 std::string
 Feature::getGeoJSON()
 {
-    std::stringstream buf;
-
     std::string geometry = GeometryUtils::geometryToGeoJSON( getGeometry() );
 
-    buf << "{\"type\" : \"Feature\", " 
-        << "\"id\": " << getFID() << ","
-        << "\"geometry\": " << geometry << ",";
+    Json::Value root(Json::objectValue);
+    root["type"] = "Feature";
+    root["id"] = (unsigned int)getFID(); //TODO:  Update JSON to use unsigned longs
+    
+    Json::Reader reader;
+    Json::Value geometryValue( Json::objectValue );
+    if ( reader.parse( geometry, geometryValue ) )
+    {
+        root["geometry"] = geometryValue;
+    }
 
-    //Write out all the properties
-    buf << "\"properties\": {";    
+    //Write out all the properties         
+    Json::Value props(Json::objectValue);    
     if (getAttrs().size() > 0)
     {
-        AttributeTable::const_iterator last_attr = getAttrs().end();
-        last_attr--;
 
         for (AttributeTable::const_iterator itr = getAttrs().begin(); itr != getAttrs().end(); ++itr)
-        {
-            buf << "\"" << itr->first << "\": \"" << itr->second.getString() << "\"";
-            if (itr != last_attr)
-            {
-                buf << ",";
-            }
-        }
+            props[itr->first] = itr->second.getString();
     } 
-    buf << "}"; //End of properties
-    buf << "}";
 
-    std::string result = buf.str();
-    return result;
+    root["properties"] = props;
+    return Json::FastWriter().write( root );
+    //return Json::StyledWriter().write( root );
 }
 
 std::string Feature::featuresToGeoJSON( FeatureList& features)

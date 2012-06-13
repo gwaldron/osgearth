@@ -580,9 +580,8 @@ EarthManipulator::established()
 
                     _has_pending_viewpoint = false;
                 }
-
                 //If we have a CoordinateSystemNode and it has an ellipsoid model
-                if ( _csn->getEllipsoidModel() )
+                else if ( _csn->getEllipsoidModel() )
                 {
                     setHomeViewpoint( 
                         Viewpoint(osg::Vec3d(-90,0,0), 0, -89,

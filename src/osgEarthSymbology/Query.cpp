@@ -34,6 +34,8 @@ Query::mergeConfig( const Config& conf )
             if ( !conf.getIfSet( "sql", _expression ) )
                 conf.getIfSet( "expression", _expression );
 
+    conf.getIfSet("orderby", _orderby);
+
     Config b = conf.child( "extent" );
     if( !b.empty() )
     {
@@ -50,6 +52,7 @@ Query::getConfig() const
 {
     Config conf( "query" );
     conf.addIfSet( "expr", _expression );
+    conf.addIfSet( "orderby", _orderby);
     if ( _bounds.isSet() ) {
         Config bc( "extent" );
         bc.add( "xmin", toString(_bounds->xMin()) );

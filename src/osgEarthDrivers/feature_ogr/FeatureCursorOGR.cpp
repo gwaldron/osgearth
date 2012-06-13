@@ -91,6 +91,25 @@ _filters          ( filters )
             expr = buf.str();
         }
 
+        //Include the order by clause if it's set
+        if (query.orderby().isSet())
+        {                     
+            std::string orderby = query.orderby().value();
+            
+            std::string temp = orderby;
+            std::transform( temp.begin(), temp.end(), temp.begin(), ::tolower );
+
+            if ( temp.find( "order by" ) != 0 )
+            {                
+                std::stringstream buf;
+                buf << "ORDER BY " << orderby;                
+                std::string bufStr;
+                bufStr = buf.str();
+                orderby = buf.str();
+            }
+            expr += (" " + orderby );
+        }
+
         // if there's a spatial extent in the query, build the spatial filter:
         if ( query.bounds().isSet() )
         {

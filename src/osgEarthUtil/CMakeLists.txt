@@ -35,6 +35,8 @@ SET(HEADERS_ROOT
     SpatialData
     StarData
     TerrainProfile
+	TFS
+	TFSPackager
     TMS
     TMSPackager
     UTMGraticule
@@ -67,6 +69,8 @@ SET(SOURCES_ROOT
     SpatialData.cpp
     SkyNode.cpp
     TerrainProfile.cpp
+	TFS.cpp
+	TFSPackager.cpp
     TMS.cpp
     TMSPackager.cpp
     UTMGraticule.cpp

@@ -35,6 +35,8 @@ SET(HEADERS_ROOT
     SpatialData
     StarData
     TerrainProfile
+	TFS
+	TFSPackager
     TMS
     TMSPackager
     UTMGraticule
@@ -67,6 +69,8 @@ SET(SOURCES_ROOT
     SpatialData.cpp
     SkyNode.cpp
     TerrainProfile.cpp
+	TFS.cpp
+	TFSPackager.cpp
     TMS.cpp
     TMSPackager.cpp
     UTMGraticule.cpp
@@ -82,6 +86,7 @@ SET(HEADERS_COLORFILTER
     GammaColorFilter
     HSLColorFilter
     RGBColorFilter
+	ChromaKeyColorFilter
 )
 SOURCE_GROUP( Headers\\ColorFilters FILES ${HEADERS_COLORFILTER} )
 
@@ -92,6 +97,7 @@ SET(SOURCES_COLORFILTER
     GammaColorFilter.cpp
     HSLColorFilter.cpp
     RGBColorFilter.cpp
+	ChromaKeyColorFilter.cpp
 )
 SOURCE_GROUP( Sources\\ColorFilters FILES ${SOURCES_COLORFILTER} )
 

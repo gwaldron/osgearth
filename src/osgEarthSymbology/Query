@@ -47,6 +47,10 @@ namespace osgEarth { namespace Symbology
         optional<std::string>& expression() { return _expression; }
         const optional<std::string>& expression() const { return _expression; }
 
+        /** Sets a driver-specific orderby expression. */
+        optional<std::string>& orderby() { return _orderby; }
+        const optional<std::string>& orderby() const { return _orderby; }
+
         /** Sets a driver-specific query expression. */
         optional<osgEarth::TileKey>& tileKey() { return _tileKey; }
         const optional<osgEarth::TileKey>& tileKey() const { return _tileKey; }
@@ -65,6 +69,7 @@ namespace osgEarth { namespace Symbology
     protected:
         optional<Bounds> _bounds;
         optional<std::string> _expression;
+        optional<std::string> _orderby;
         optional<osgEarth::TileKey> _tileKey;
     };
 

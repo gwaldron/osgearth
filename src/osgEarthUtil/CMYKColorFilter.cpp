@@ -38,11 +38,10 @@ namespace
 
         "void __ENTRY_POINT__(in int slot, inout vec4 color)\n"
         "{\n"
-        // apply cmy (negative of rgb):
-        "   color.rgb -= __UNIFORM_NAME__.xyz; \n"
-        // apply black (applies to all colors):
-        "   color.rgb -= __UNIFORM_NAME__.w; \n"
-        "   color.rgb = clamp(color.rgb, 0.0, 1.0); \n"
+        "    if ((__UNIFORM_NAME__.x != 0.0) || (__UNIFORM_NAME__.y != 0.0) || (__UNIFORM_NAME__.z != 0.0) || (__UNIFORM_NAME__.w != 0.0))\n"
+        "    {\n"
+        "        color.rgb = clamp(color.rgb - __UNIFORM_NAME__.xyz - __UNIFORM_NAME__.w, 0.0, 1.0); \n"
+        "    }\n"
         "}\n";
 }
 
@@ -62,67 +61,28 @@ CMYKColorFilter::CMYKColorFilter(void)
     m_cmyk->set(osg::Vec4f(0.0f, 0.0f, 0.0f, 0.0f));
 }
 
-// CMY (without the K): http://forums.adobe.com/thread/428899
-void CMYKColorFilter::setCMYOffset(const osg::Vec3f& value)
+void CMYKColorFilter::setCMYKOffset(const osg::Vec4f& cmyk)
 {
-    osg::Vec4f cmyk;
-    // find the minimum of all values
-    cmyk[3] = 1.0;
-    if (value[0] < cmyk[3])
-    {
-        cmyk[3] = value[0];
-    }
-    if (value[1] < cmyk[3])
-    {
-        cmyk[3] = value[1];
-    }
-    if (value[2] < cmyk[3])
-    {
-        cmyk[3] = value[2];
-    }
-
-    if (cmyk[3] == 1.0)
-    {	// black
-        cmyk[0] = cmyk[1] = cmyk[2] = 0.0;
-    }
-    else
-    {
-        cmyk[0] = (value[0] - cmyk[3]) / (1.0 - cmyk[3]);
-        cmyk[1] = (value[1] - cmyk[3]) / (1.0 - cmyk[3]);
-        cmyk[2] = (value[2] - cmyk[3]) / (1.0 - cmyk[3]);
-    }
-
-    setCMYKOffset(cmyk);
-}
-
-osg::Vec3f CMYKColorFilter::getCMYOffset(void) const
-{
-    osg::Vec4f cmyk = getCMYKOffset();
-    osg::Vec3f cmy;
-
-    if (cmyk[3] == 1.0)
-    {
-        cmy[0] = cmy[1] = cmy[2] = 1.0;
-    }
-    else
-    {
-        cmy[0] = (cmyk[0] * (1.0 - cmyk[3])) + cmyk[3];
-        cmy[1] = (cmyk[1] * (1.0 - cmyk[3])) + cmyk[3];
-        cmy[2] = (cmyk[2] * (1.0 - cmyk[3])) + cmyk[3];
-    }
-    return (cmy);
-}
-
-void CMYKColorFilter::setCMYKOffset(const osg::Vec4f& value)
-{
-    m_cmyk->set(value);
+    m_cmyk->set(cmyk);
 }
 
 osg::Vec4f CMYKColorFilter::getCMYKOffset(void) const
 {
-    osg::Vec4f value;
-    m_cmyk->get(value);
-    return (value);
+    osg::Vec4f cmyk;
+    m_cmyk->get(cmyk);
+    return (cmyk);
+}
+
+void CMYKColorFilter::setRGBWOffset(const osg::Vec4f& rgbw)
+{
+    m_cmyk->set(-rgbw);
+}
+
+osg::Vec4f CMYKColorFilter::getRGBWOffset(void) const
+{
+    osg::Vec4f cmyk;
+    m_cmyk->get(cmyk);
+    return (-cmyk);
 }
 
 std::string CMYKColorFilter::getEntryPointFunctionName(void) const

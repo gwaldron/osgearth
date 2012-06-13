@@ -37,16 +37,16 @@ namespace osgEarth { namespace Util
         virtual ~CMYKColorFilter(void) { }
 
         /**
-        * The cyan/magenta/yellow offset, each component is [-1..1] (no change is at 0)
-        */
-        void setCMYOffset(const osg::Vec3f& cmy);
-        osg::Vec3f getCMYOffset(void) const;
-
-        /**
         * The cyan/magenta/yellow/black offset, each component is [-1..1] (no change is at 0)
         */
         void setCMYKOffset(const osg::Vec4f& cmyk);
         osg::Vec4f getCMYKOffset(void) const;
+
+        /**
+        * The red/green/blue/white offset, each component is [-1..1] (no change is at 0)
+        */
+        void setRGBWOffset(const osg::Vec4f& rgbw);
+        osg::Vec4f getRGBWOffset(void) const;
 
     public: // ColorFilter
         virtual std::string getEntryPointFunctionName(void) const;

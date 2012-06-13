@@ -39,15 +39,9 @@ is randomized, but it is randomized exactly the same way each time.
              
         <layout>
             <crop_features>true</crop_features>
-            <level max_range="10000">
-                <selector class="parks-1"/>
-            </level>            
-            <level max_range="5000">
-                <selector class="parks-2"/>
-            </level>       
-            <level max_range="1500">
-                <selector class="parks-3"/>
-            </level>
+            <level max_range="10000" style="parks-1"/>
+            <level max_range="5000"  style="parks-2"/>
+            <level max_range="1500"  style="parks-3"/>
         </layout>
              
         <styles>
@@ -56,7 +50,7 @@ is randomized, but it is randomized exactly the same way each time.
                    marker:              "../data/tree.ive";
                    marker-placement:    random;
                    marker-density:      1000;
-                   marker-scale:        2;
+                   marker-scale:        1.7;
                    altitude-clamping:   terrain;
                 }            
                 parks-2 {
@@ -71,16 +65,10 @@ is randomized, but it is randomized exactly the same way each time.
                    marker:              "../data/tree.ive";
                    marker-placement:    random;
                    marker-density:      1000;
-                   marker-scale:        2;
+                   marker-scale:        2.3;
                    altitude-clamping:   terrain;
                    marker-random-seed:  2;
-                }           
-                parks-outline {
-                   fill:                #00ff007f;
-                   altitude-offset:     25;
-                   altitide-clamping:   terrain;
-                }
-                
+                }                
             </style>
         </styles>        
     </model>

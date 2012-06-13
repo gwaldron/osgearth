@@ -37,17 +37,26 @@ namespace osgEarth { namespace Features
     class OSGEARTHFEATURES_EXPORT FeatureLevel
     {
     public:
+        /** Constructs a feature level from serialized data */
         FeatureLevel( const Config& config );
+
+        /** Constructs a feature level with range information */
         FeatureLevel( float minRange, float maxRange );
-        FeatureLevel( float minRange, float maxRange, const StyleSelector& oneSelector );
+
+        /** Constructs a feature level with range information and a style class */
+        FeatureLevel( float minRange, float maxRange, const std::string& styleName );
+
+        /** Minimum and aximum display ranges for this level */
+        float minRange() const { return *_minRange; }
+        float maxRange() const { return *_maxRange; }
+
+        /** Style class (or style selector) name associated with this level (optional) */
+        optional<std::string>& styleName() { return _styleName; }
+        const optional<std::string>& styleName() const { return _styleName; }
+
+
         virtual ~FeatureLevel() { }
 
-        float minRange() const { return _minRange; }
-        float maxRange() const { return _maxRange; }
-
-        const StyleSelectorVector& selectors() const { return _selectors; }
-
-        void addStyleSelector(const StyleSelector& selector);
 
     public:
         Config getConfig() const;
@@ -55,9 +64,9 @@ namespace osgEarth { namespace Features
     protected:
         void fromConfig( const Config& conf );
 
-        float               _minRange, _maxRange;
-        StyleSelectorVector _selectors;
-        optional<unsigned>  _lod;
+        optional<float>       _minRange;
+        optional<float>       _maxRange;
+        optional<std::string> _styleName;
     };
 
     /**

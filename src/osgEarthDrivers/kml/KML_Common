@@ -25,6 +25,7 @@
 #include <osgEarth/MapNode>
 #include <osgEarth/SpatialReference>
 #include <osgEarthSymbology/Style>
+#include <osgEarthSymbology/StyleSheet>
 #include "KMLOptions"
 
 #define LC "[KML] "

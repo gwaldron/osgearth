@@ -90,6 +90,15 @@ osgEarth Sample - Annotations
                 <position lat="33" long="-117.75" hat="0"/>
             </model>
             
+            <imageoverlay>
+                <url>../data/fractal.png</url>
+                <alpha>1.0</alpha>
+                <geometry>POLYGON((-81 26, -80.5 26, -80.5 26.5, -81 26.5))</geometry>
+            </imageoverlay>
+            <label text="image overlay">
+                <position lat="26" long="-81" />
+            </label>
+            
         </annotations>
         
     </external>

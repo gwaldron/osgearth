@@ -38,6 +38,8 @@ SET(LIB_PUBLIC_HEADERS
     Skins
     StencilVolumeNode
     Style
+    StyleSelector
+    StyleSheet
     SLD
     Symbol
     Tags
@@ -70,6 +72,8 @@ ADD_LIBRARY(${LIB_NAME} SHARED
     Skins.cpp
     StencilVolumeNode.cpp
     Style.cpp
+    StyleSelector.cpp
+    StyleSheet.cpp
     SLD.cpp
     Symbol.cpp
     TextSymbol.cpp

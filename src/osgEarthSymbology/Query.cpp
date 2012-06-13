@@ -91,18 +91,26 @@ Query::combineWith( const Query& rhs ) const
         merged.expression() = *_expression;
     }
 
-    // merge the bounds:
-    if ( bounds().isSet() && rhs.bounds().isSet() )
+    // tilekey overrides bounds:
+    if ( _tileKey.isSet() )
     {
-        merged.bounds() = bounds()->intersectionWith( *rhs.bounds() );
+        merged.tileKey() = *_tileKey;
     }
-    else if ( bounds().isSet() )
+    else
     {
-        merged.bounds() = *bounds();
-    }
-    else if ( rhs.bounds().isSet() )
-    {
-        merged.bounds() = *rhs.bounds();
+        // merge the bounds:
+        if ( bounds().isSet() && rhs.bounds().isSet() )
+        {
+            merged.bounds() = bounds()->intersectionWith( *rhs.bounds() );
+        }
+        else if ( bounds().isSet() )
+        {
+            merged.bounds() = *bounds();
+        }
+        else if ( rhs.bounds().isSet() )
+        {
+            merged.bounds() = *rhs.bounds();
+        }
     }
 
     return merged;

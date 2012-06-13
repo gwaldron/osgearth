@@ -88,15 +88,45 @@ namespace osgEarth { namespace Features
 
         void setupPaging();
 
-        osg::Group* build( const FeatureLevel& level, const GeoExtent& extent, const TileKey* key);
+        osg::Group* buildLevel( 
+            const FeatureLevel& level, 
+            const GeoExtent&    extent, 
+            const TileKey*      key);
 
-        osg::Group* build( const Style& baseStyle, const Query& baseQuery, const GeoExtent& extent, FeatureSourceIndex* index);
+        osg::Group* build( 
+            const Style&        baseStyle, 
+            const Query&        baseQuery, 
+            const GeoExtent&    extent, 
+            FeatureSourceIndex* index);
+
 
     private:
         
-        osg::Group* createNodeForStyle(const Style& style, const Query& query, FeatureSourceIndex* index);
+        osg::Group* createStyleGroup(
+            const Style&        style, 
+            const Query&        query, 
+            FeatureSourceIndex* index);
+
+        osg::Group* createStyleGroup(
+            const Style&         style, 
+            FeatureList&         workingSet, 
+            const FilterContext& contextPrototype);
+
+        void buildStyleGroups(
+            const StyleSelector* selector,
+            const Query&         baseQuery,
+            FeatureSourceIndex*  index,
+            osg::Group*          parent);
+
+        void queryAndSortIntoStyleGroups(
+            const Query&            query,
+            const StringExpression& styleExpr,
+            FeatureSourceIndex*     index,
+            osg::Group*             parent);
        
-        osg::BoundingSphered getBoundInWorldCoords( const GeoExtent& extent, const MapFrame* mapf ) const;
+        osg::BoundingSphered getBoundInWorldCoords( 
+            const GeoExtent& extent, 
+            const MapFrame*  mapf ) const;
 
         void buildSubTilePagedLODs(
             unsigned lod, unsigned tileX, unsigned tileY,

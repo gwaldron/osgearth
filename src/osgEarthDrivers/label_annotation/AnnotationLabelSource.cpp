@@ -94,7 +94,7 @@ public:
                 Feature* feature = i->get();
                 if ( feature && feature->getGeometry() )
                 {
-                    const std::string& value = feature->eval( contentExpr );
+                    const std::string& value = feature->eval( contentExpr, &context );
                     if ( !value.empty() )
                     {
                         double area = feature->getGeometry()->getBounds().area2d();

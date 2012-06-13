@@ -22,6 +22,7 @@
 #include <osgEarthAnnotation/AnnotationNode>
 #include <osgEarth/GeoData>
 #include <osgEarth/Units>
+#include <osgEarth/URI>
 
 #include <osg/Group>
 #include <osg/Geometry>
@@ -47,6 +48,11 @@ namespace osgEarth { namespace Annotation
         };
         
         ImageOverlay(MapNode* mapNode, osg::Image* image = NULL);
+
+        /**
+         * Construcs an image overlay annotation from a serialized representation
+         */
+        ImageOverlay(MapNode* mapNode, const Config& conf);
 
         virtual ~ImageOverlay() { }
 
@@ -103,6 +109,9 @@ namespace osgEarth { namespace Annotation
 
         bool getDraped() const;
         void setDraped( bool draped );
+        
+        /** Serialize the contents of this node */
+        Config getConfig() const;
 
     public: // AnnotationNode
         
@@ -133,8 +142,11 @@ namespace osgEarth { namespace Annotation
         osg::Geode* _geode;
         osg::MatrixTransform* _transform;
         osg::Geometry* _geometry;
-        float _alpha;
+        //float _alpha;
         CallbackList _callbacks;
+
+        optional<URI>   _imageURI;
+        optional<float> _alpha;
 
         ImageOverlay() { }
         ImageOverlay(const ImageOverlay&, const osg::CopyOp&) { }

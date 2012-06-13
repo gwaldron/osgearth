@@ -8,7 +8,7 @@ SET(LIB_NAME osgEarthUtil)
 
 SET(HEADER_PATH ${OSGEARTH_SOURCE_DIR}/include/${LIB_NAME})
 
-SET(LIB_PUBLIC_HEADERS  
+SET(HEADERS_ROOT
     AnnotationEvents
     AutoClipPlaneHandler
     Common
@@ -22,68 +22,98 @@ SET(LIB_PUBLIC_HEADERS
     FeatureQueryTool
     Formatter
     GeodeticGraticule
-    HSLColorFilter
+    #HSLColorFilter
     LatLongFormatter
     LineOfSight
     MeasureTool
     MGRSFormatter
     MGRSGraticule
     MouseCoordsTool
-    #NearFarGroup
     ObjectPlacer
     ObjectLocator
-    #OceanSurfaceNode
     SkyNode
     SpatialData
     StarData
-	TerrainProfile
-	TFS
-	TFSPackager
-    TMS	
+    TerrainProfile
+    TMS
     TMSPackager
     UTMGraticule
     WFS
     WMS
 )
+SOURCE_GROUP( Headers FILES ${HEADERS_ROOT} )
 
-SET(LIB_COMMON_FILES
+
+SET(SOURCES_ROOT
     AnnotationEvents.cpp
     AutoClipPlaneHandler.cpp
     ClampCallback.cpp
     Controls.cpp
-    EarthManipulator.cpp	
+    EarthManipulator.cpp
     ElevationManager.cpp
     ExampleResources.cpp
     FeatureManipTool.cpp
     FeatureQueryTool.cpp
     GeodeticGraticule.cpp
-    HSLColorFilter.cpp
+    #HSLColorFilter.cpp
     LatLongFormatter.cpp
     LineOfSight.cpp
     MeasureTool.cpp
     MGRSFormatter.cpp
     MGRSGraticule.cpp
     MouseCoordsTool.cpp
-    #NearFarGroup.cpp
     ObjectPlacer.cpp
     ObjectLocator.cpp
-    #OceanSurfaceNode.cpp
     SpatialData.cpp
     SkyNode.cpp
-	TerrainProfile.cpp
-	TFS.cpp
-	TFSPackager.cpp
+    TerrainProfile.cpp
     TMS.cpp
     TMSPackager.cpp
     UTMGraticule.cpp
     WFS.cpp
     WMS.cpp
 )
+SOURCE_GROUP( Sources FILES ${SOURCES_ROOT} )
+
+
+SET(HEADERS_COLORFILTER
+    BrightnessContrastColorFilter
+    CMYKColorFilter
+    GammaColorFilter
+    HSLColorFilter
+    RGBColorFilter
+)
+SOURCE_GROUP( Headers\\ColorFilters FILES ${HEADERS_COLORFILTER} )
+
+
+SET(SOURCES_COLORFILTER
+    BrightnessContrastColorFilter.cpp
+    CMYKColorFilter.cpp
+    GammaColorFilter.cpp
+    HSLColorFilter.cpp
+    RGBColorFilter.cpp
+)
+SOURCE_GROUP( Sources\\ColorFilters FILES ${SOURCES_COLORFILTER} )
+
+
+SET(LIB_PUBLIC_HEADERS
+    ${HEADERS_ROOT}
+    ${HEADERS_COLORFILTER}
+)
+
+SET(LIB_COMMON_FILES 
+    ${SOURCES_ROOT} ${SOURCES_COLORFILTER}
+)
 
 ADD_LIBRARY(${LIB_NAME} SHARED
-    ${LIB_PUBLIC_HEADERS}  
-	${LIB_COMMON_FILES}
+    ${LIB_PUBLIC_HEADERS}
+    ${LIB_COMMON_FILES}
 )
+
+# Setting this tells ModuleInstall not to set source groups (since we're doing it here)
+SET(USE_CUSTOM_SOURCE_GROUPS 1)
+
+
 
 INCLUDE_DIRECTORIES(${OSG_INCLUDE_DIR} ${OSGEARTH_SOURCE_DIR})
 

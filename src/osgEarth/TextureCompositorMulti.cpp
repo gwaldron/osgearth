@@ -39,7 +39,7 @@ namespace
 {
     static std::string makeSamplerName(int slot)
     {
-        return Stringify() << "tex" << slot;
+        return Stringify() << "osgearth_tex" << slot;
     }
 
     static osg::Shader*
@@ -396,8 +396,8 @@ TextureCompositorMultiTexture::updateMasterStateSet(osg::StateSet*       stateSe
         }
         else
         {
-            vp->removeShader( "osgearth_frag_applyTexturing", osg::Shader::FRAGMENT );
-            vp->removeShader( "osgearth_vert_setupTexturing", osg::Shader::VERTEX );
+            vp->removeShader( "osgearth_frag_applyTexturing" );
+            vp->removeShader( "osgearth_vert_setupTexturing" );
         }
     }
 

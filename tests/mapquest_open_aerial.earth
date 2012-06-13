@@ -14,11 +14,12 @@ TIP: set your OSG_NUM_HTTP_DATABASE_THREADS to 4 or more!
     <image name="mapquest_open_aerial" driver="xyz">
         <url>http://oatile[1234].mqcdn.com/naip/{z}/{x}/{y}.jpg</url>
         <profile>spherical-mercator</profile>
+        <cache_policy usage="no_cache"/>
+        <nodata_image>http://oatile3.mqcdn.com/naip/18/49761/99026.jpg</nodata_image>
     </image>
     
     <options>
         <lighting>false</lighting>
-        <cache_policy usage="no_cache"/>
         <terrain>
             <min_tile_range_factor>9</min_tile_range_factor>
         </terrain>

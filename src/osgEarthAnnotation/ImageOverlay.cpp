@@ -24,6 +24,7 @@
 #include <osgEarthFeatures/Feature>
 #include <osgEarth/MapNode>
 #include <osgEarth/NodeUtils>
+#include <osgEarth/ImageUtils>
 #include <osgEarth/DrapeableNode>
 #include <osg/Geode>
 #include <osg/ShapeDrawable>
@@ -54,7 +55,16 @@ namespace
 OSGEARTH_REGISTER_ANNOTATION( imageoverlay, osgEarth::Annotation::ImageOverlay );
 
 ImageOverlay::ImageOverlay(MapNode* mapNode, const Config& conf) :
-AnnotationNode(mapNode)
+AnnotationNode(mapNode),
+_lowerLeft    (10, 10),
+_lowerRight   (20, 10),
+_upperRight   (20, 20),
+_upperLeft    (10, 20),
+_dirty        (false),
+_alpha        (1.0f),
+_minFilter    (osg::Texture::LINEAR_MIPMAP_LINEAR),
+_magFilter    (osg::Texture::LINEAR),
+_texture      (0)
 {
     conf.getIfSet( "url",   _imageURI );
     if ( _imageURI.isSet() )
@@ -82,6 +92,21 @@ AnnotationNode(mapNode)
             _upperLeft.set ( (*geom)[3].x(), (*geom)[3].y() );
         }
     }
+
+
+    //Load the filter settings
+    conf.getIfSet("mag_filter","LINEAR",                _magFilter,osg::Texture::LINEAR);
+    conf.getIfSet("mag_filter","LINEAR_MIPMAP_LINEAR",  _magFilter,osg::Texture::LINEAR_MIPMAP_LINEAR);
+    conf.getIfSet("mag_filter","LINEAR_MIPMAP_NEAREST", _magFilter,osg::Texture::LINEAR_MIPMAP_NEAREST);
+    conf.getIfSet("mag_filter","NEAREST",               _magFilter,osg::Texture::NEAREST);
+    conf.getIfSet("mag_filter","NEAREST_MIPMAP_LINEAR", _magFilter,osg::Texture::NEAREST_MIPMAP_LINEAR);
+    conf.getIfSet("mag_filter","NEAREST_MIPMAP_NEAREST",_magFilter,osg::Texture::NEAREST_MIPMAP_NEAREST);
+    conf.getIfSet("min_filter","LINEAR",                _minFilter,osg::Texture::LINEAR);
+    conf.getIfSet("min_filter","LINEAR_MIPMAP_LINEAR",  _minFilter,osg::Texture::LINEAR_MIPMAP_LINEAR);
+    conf.getIfSet("min_filter","LINEAR_MIPMAP_NEAREST", _minFilter,osg::Texture::LINEAR_MIPMAP_NEAREST);
+    conf.getIfSet("min_filter","NEAREST",               _minFilter,osg::Texture::NEAREST);
+    conf.getIfSet("min_filter","NEAREST_MIPMAP_LINEAR", _minFilter,osg::Texture::NEAREST_MIPMAP_LINEAR);
+    conf.getIfSet("min_filter","NEAREST_MIPMAP_NEAREST",_minFilter,osg::Texture::NEAREST_MIPMAP_NEAREST);
 
     postCTOR();
 }
@@ -115,6 +140,20 @@ ImageOverlay::getConfig() const
     geomConf.value() = GeometryUtils::geometryToWKT( g.get() );
     conf.add( geomConf );
 
+    //Save the filter settings
+	conf.updateIfSet("mag_filter","LINEAR",                _magFilter,osg::Texture::LINEAR);
+    conf.updateIfSet("mag_filter","LINEAR_MIPMAP_LINEAR",  _magFilter,osg::Texture::LINEAR_MIPMAP_LINEAR);
+    conf.updateIfSet("mag_filter","LINEAR_MIPMAP_NEAREST", _magFilter,osg::Texture::LINEAR_MIPMAP_NEAREST);
+    conf.updateIfSet("mag_filter","NEAREST",               _magFilter,osg::Texture::NEAREST);
+    conf.updateIfSet("mag_filter","NEAREST_MIPMAP_LINEAR", _magFilter,osg::Texture::NEAREST_MIPMAP_LINEAR);
+    conf.updateIfSet("mag_filter","NEAREST_MIPMAP_NEAREST",_magFilter,osg::Texture::NEAREST_MIPMAP_NEAREST);
+    conf.updateIfSet("min_filter","LINEAR",                _minFilter,osg::Texture::LINEAR);
+    conf.updateIfSet("min_filter","LINEAR_MIPMAP_LINEAR",  _minFilter,osg::Texture::LINEAR_MIPMAP_LINEAR);
+    conf.updateIfSet("min_filter","LINEAR_MIPMAP_NEAREST", _minFilter,osg::Texture::LINEAR_MIPMAP_NEAREST);
+    conf.updateIfSet("min_filter","NEAREST",               _minFilter,osg::Texture::NEAREST);
+    conf.updateIfSet("min_filter","NEAREST_MIPMAP_LINEAR", _minFilter,osg::Texture::NEAREST_MIPMAP_LINEAR);
+    conf.updateIfSet("min_filter","NEAREST_MIPMAP_NEAREST",_minFilter,osg::Texture::NEAREST_MIPMAP_NEAREST);
+
     return conf;
 }
 
@@ -129,7 +168,10 @@ _upperRight   (20, 20),
 _upperLeft    (10, 20),
 _image        (image),
 _dirty        (false),
-_alpha        (1.0f)
+_alpha        (1.0f),
+_minFilter    (osg::Texture::LINEAR_MIPMAP_LINEAR),
+_magFilter    (osg::Texture::LINEAR),
+_texture      (0)
 {        
     postCTOR();
 }
@@ -216,9 +258,10 @@ ImageOverlay::init()
     if (_image.valid())
     {
         //Create the texture
-        osg::Texture2D* texture = new osg::Texture2D(_image.get());
-        texture->setResizeNonPowerOfTwoHint(false);
-        _geode->getOrCreateStateSet()->setTextureAttributeAndModes(0, texture, osg::StateAttribute::ON);    
+        _texture = new osg::Texture2D(_image.get());        
+        _texture->setResizeNonPowerOfTwoHint(false);
+        updateFilters();
+        _geode->getOrCreateStateSet()->setTextureAttributeAndModes(0, _texture, osg::StateAttribute::ON);    
         flip = _image->getOrigin()==osg::Image::TOP_LEFT;
     }
 
@@ -274,6 +317,67 @@ void ImageOverlay::setImage( osg::Image* image )
     {
         _image = image;
         dirty();        
+    }
+}
+
+osg::Texture::FilterMode
+    ImageOverlay::getMinFilter() const
+{
+    return *_minFilter;
+}
+
+void
+ImageOverlay::setMinFilter( osg::Texture::FilterMode filter )
+{
+    _minFilter = filter;
+    updateFilters();
+}
+
+osg::Texture::FilterMode
+    ImageOverlay::getMagFilter() const
+{
+    return *_magFilter;
+}
+
+void
+ImageOverlay::setMagFilter( osg::Texture::FilterMode filter )
+{
+    _magFilter = filter; 
+    updateFilters();
+}
+
+void
+ImageOverlay::updateFilters()
+{
+    if (_texture)
+    {
+        _texture->setFilter(osg::Texture::MAG_FILTER, *_magFilter);
+
+        
+        if (ImageUtils::isPowerOfTwo( _image ) && !(!_image->isMipmap() && ImageUtils::isCompressed(_image)))
+        {
+            _texture->setFilter(osg::Texture::MIN_FILTER, *_minFilter);
+        }
+        else
+        {
+            if (*_minFilter == osg::Texture2D::NEAREST_MIPMAP_LINEAR || 
+                *_minFilter == osg::Texture2D::NEAREST_MIPMAP_NEAREST)
+            {
+                _texture->setFilter(osg::Texture::MIN_FILTER, osg::Texture2D::NEAREST);
+            }
+            else if (*_minFilter == osg::Texture2D::LINEAR_MIPMAP_LINEAR || 
+                     *_minFilter == osg::Texture2D::LINEAR_MIPMAP_NEAREST)
+            {
+                _texture->setFilter(osg::Texture::MIN_FILTER, osg::Texture2D::LINEAR);
+            }
+            else
+            {
+                _texture->setFilter(osg::Texture::MIN_FILTER, *_minFilter);
+            }
+        }        
+        
+        _texture->setFilter(osg::Texture::MAG_FILTER, *_magFilter);
+
     }
 }
 

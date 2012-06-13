@@ -27,7 +27,7 @@
 #include <osgEarthUtil/GammaColorFilter>
 #include <osgEarthUtil/HSLColorFilter>
 #include <osgEarthUtil/RGBColorFilter>
-#include <osgEarthUtil/TransparentColorFilter>
+#include <osgEarthUtil/ChromaKeyColorFilter>
 
 using namespace osgEarth;
 using namespace osgEarth::Util;
@@ -516,11 +516,11 @@ namespace GAMMA
     }
 }
 
-namespace TRANSCOLOR
+namespace CHROMAKEY
 {
     struct SetColor: public ControlEventHandler
     {
-        SetColor(TransparentColorFilter* filter, unsigned index) :
+        SetColor(ChromaKeyColorFilter* filter, unsigned index) :
             _filter(filter), _index(index)
             { }
 
@@ -531,13 +531,13 @@ namespace TRANSCOLOR
             _filter->setColor( color );
         }
 
-        TransparentColorFilter* _filter;
+        ChromaKeyColorFilter* _filter;
         unsigned        _index;
     };
 
     struct SetDistance: public ControlEventHandler
     {
-        SetDistance(TransparentColorFilter* filter) :
+        SetDistance(ChromaKeyColorFilter* filter) :
             _filter(filter)
             { }
 
@@ -546,7 +546,7 @@ namespace TRANSCOLOR
             _filter->setDistance( value );
         }
 
-        TransparentColorFilter* _filter;
+        ChromaKeyColorFilter* _filter;
     };
 
 
@@ -572,7 +572,7 @@ namespace TRANSCOLOR
 
 
     void
-    addControls(TransparentColorFilter* filter, Container* container, unsigned i)
+    addControls(ChromaKeyColorFilter* filter, Container* container, unsigned i)
     {
         // the outer container:
         Grid* s_layerBox = container->addControl(new Grid());
@@ -592,7 +592,7 @@ namespace TRANSCOLOR
         rLabel->setVertAlign( Control::ALIGN_CENTER );
         s_layerBox->setControl( 0, 1, rLabel );
 
-        HSliderControl* rAdjust = new HSliderControl( -1.0f, 1.0f, 0.0f, new TRANSCOLOR::SetColor(filter,0) );
+        HSliderControl* rAdjust = new HSliderControl( -1.0f, 1.0f, 0.0f, new CHROMAKEY::SetColor(filter,0) );
         rAdjust->setWidth( 125 );
         rAdjust->setHeight( 12 );
         rAdjust->setVertAlign( Control::ALIGN_CENTER );
@@ -604,7 +604,7 @@ namespace TRANSCOLOR
         gLabel->setVertAlign( Control::ALIGN_CENTER );
         s_layerBox->setControl( 0, 2, gLabel );
 
-        HSliderControl* gAdjust = new HSliderControl( -1.0f, 1.0f, 0.0f, new TRANSCOLOR::SetColor(filter,1) );
+        HSliderControl* gAdjust = new HSliderControl( -1.0f, 1.0f, 0.0f, new CHROMAKEY::SetColor(filter,1) );
         gAdjust->setWidth( 125 );
         gAdjust->setHeight( 12 );
         gAdjust->setVertAlign( Control::ALIGN_CENTER );
@@ -616,7 +616,7 @@ namespace TRANSCOLOR
         bLabel->setVertAlign( Control::ALIGN_CENTER );
         s_layerBox->setControl( 0, 3, bLabel );
 
-        HSliderControl* bAdjust = new HSliderControl( -1.0f, 1.0f, 0.0f, new TRANSCOLOR::SetColor(filter,2) );
+        HSliderControl* bAdjust = new HSliderControl( -1.0f, 1.0f, 0.0f, new CHROMAKEY::SetColor(filter,2) );
         bAdjust->setWidth( 125 );
         bAdjust->setHeight( 12 );
         bAdjust->setVertAlign( Control::ALIGN_CENTER );
@@ -628,7 +628,7 @@ namespace TRANSCOLOR
         distLabel->setVertAlign( Control::ALIGN_CENTER );
         s_layerBox->setControl( 0, 4, distLabel );
 
-        HSliderControl* distAdjust = new HSliderControl( 0.0f, 1.0f, 0.0f, new TRANSCOLOR::SetDistance(filter) );
+        HSliderControl* distAdjust = new HSliderControl( 0.0f, 1.0f, 0.0f, new CHROMAKEY::SetDistance(filter) );
         distAdjust->setWidth( 125 );
         distAdjust->setHeight( 12 );
         distAdjust->setVertAlign( Control::ALIGN_CENTER );
@@ -651,12 +651,12 @@ bool usage( const std::string& msg )
     OE_WARN << std::endl
         << msg << "\n\n"
         << "osgearth_colorfilter <earth_file> \n"
-        << "            [--hsl]      Use the HSL (hue/saturation/lightness) filter\n"
-        << "            [--rgb]      Use the RGB (red/green/blue/alpha) filter\n"
-        << "            [--cmyk]     Use the CMYK (cyan/magenta/yellow/black) filter\n"
-        << "            [--bc]       Use the Brightness/Contract filter\n"
-        << "            [--gamma]    Use the Gamma filter\n"
-        << "            [--transparent-color]    Use the transparent color filter\n"
+        << "            [--hsl]        Use the HSL (hue/saturation/lightness) filter\n"
+        << "            [--rgb]        Use the RGB (red/green/blue/alpha) filter\n"
+        << "            [--cmyk]       Use the CMYK (cyan/magenta/yellow/black) filter\n"
+        << "            [--bc]         Use the Brightness/Contract filter\n"
+        << "            [--gamma]      Use the Gamma filter\n"
+        << "            [--chromakey]  Use the chromakey filter\n"
         << std::endl;
     return -1;
 }
@@ -673,9 +673,9 @@ main(int argc, char** argv)
     bool useCMYK  = arguments.read("--cmyk");
     bool useBC    = arguments.read("--bc");
     bool useGamma = arguments.read("--gamma");
-    bool useTransColor = arguments.read("--transparent-color");
+    bool useChromaKey = arguments.read("--chromakey");
 
-    if ( !useHSL && !useRGB && !useCMYK && !useBC && !useGamma && !useTransColor )
+    if ( !useHSL && !useRGB && !useCMYK && !useBC && !useGamma && !useChromaKey )
     {
         return usage( "Please select one of the filter options!" );
     }
@@ -736,11 +736,11 @@ main(int argc, char** argv)
                 layer->addColorFilter( filter );
                 GAMMA::addControls( filter, box, i );
             }
-            else if ( useTransColor )
+            else if ( useChromaKey )
             {
-                TransparentColorFilter* filter = new TransparentColorFilter();
+                ChromaKeyColorFilter* filter = new ChromaKeyColorFilter();
                 layer->addColorFilter( filter );
-                TRANSCOLOR::addControls( filter, box , i );
+                CHROMAKEY::addControls( filter, box , i );
             }
         }
     }

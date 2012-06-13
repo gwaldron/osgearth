@@ -16,8 +16,8 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
-#ifndef OSGEARTHUTIL_TRANSPARENT_COLOR_FILTER
-#define OSGEARTHUTIL_TRANSPARENT_COLOR_FILTER
+#ifndef OSGEARTHUTIL_CHROMAKEY_COLOR_FILTER
+#define OSGEARTHUTIL_CHROMAKEY_COLOR_FILTER
 
 #include <osgEarthUtil/Common>
 #include <osgEarth/ColorFilter>
@@ -26,13 +26,13 @@
 namespace osgEarth { namespace Util
 {
     /**
-    * Color filter that makes a color transprent
+    * Color filter that makes a color transparent.
     */
-    class OSGEARTHUTIL_EXPORT TransparentColorFilter : public osgEarth::ColorFilter
+    class OSGEARTHUTIL_EXPORT ChromaKeyColorFilter : public osgEarth::ColorFilter
     {
     public:
-        TransparentColorFilter(void);
-        virtual ~TransparentColorFilter(void) { }
+        ChromaKeyColorFilter(void);
+        virtual ~ChromaKeyColorFilter(void) { }
 
         /**
          * The color to make transparent, each component is [0..1]
@@ -58,4 +58,4 @@ namespace osgEarth { namespace Util
 
 } } // namespace osgEarth::Util
 
-#endif // OSGEARTHUTIL_GAMMA_COLOR_FILTER
+#endif // OSGEARTHUTIL_CHROMAKEY_COLOR_FILTER

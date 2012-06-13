@@ -16,7 +16,7 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
-#include <osgEarthUtil/TransparentColorFilter>
+#include <osgEarthUtil/ChromaKeyColorFilter>
 #include <osgEarth/ShaderComposition>
 #include <osgEarth/StringUtils>
 #include <osgEarth/ThreadingUtils>
@@ -48,13 +48,13 @@ namespace
 
 //---------------------------------------------------------------------------
 
-#define FUNCTION_PREFIX "osgearthutil_transparentColorFilter_"
-#define COLOR_UNIFORM_PREFIX  "osgearthutil_u_transparentcolor_color_"
-#define DISTANCE_UNIFORM_PREFIX  "osgearthutil_u_transparentcolor_distance_"
+#define FUNCTION_PREFIX "osgearthutil_chromakeyColorFilter_"
+#define COLOR_UNIFORM_PREFIX  "osgearthutil_u_chromakey_color_"
+#define DISTANCE_UNIFORM_PREFIX  "osgearthutil_u_chromakey_distance_"
 
 //---------------------------------------------------------------------------
 
-TransparentColorFilter::TransparentColorFilter(void)
+ChromaKeyColorFilter::ChromaKeyColorFilter(void)
 {
     // Generate a unique name for this filter's uniform. This is necessary
     // so that each layer can have a unique uniform and entry point.
@@ -66,24 +66,24 @@ TransparentColorFilter::TransparentColorFilter(void)
     _distance->set( 0.0f );
 }
 
-void TransparentColorFilter::setColor(const osg::Vec3f& color)
+void ChromaKeyColorFilter::setColor(const osg::Vec3f& color)
 {
     _color->set( color );
 }
 
-osg::Vec3f TransparentColorFilter::getColor() const
+osg::Vec3f ChromaKeyColorFilter::getColor() const
 {
     osg::Vec3f value;
     _color->get( value );
     return value;
 }
 
-void TransparentColorFilter::setDistance(float distance)
+void ChromaKeyColorFilter::setDistance(float distance)
 {
     _distance->set( distance );
 }
 
-float TransparentColorFilter::getDistance() const
+float ChromaKeyColorFilter::getDistance() const
 {
     float value;
     _distance->get( value );
@@ -92,12 +92,12 @@ float TransparentColorFilter::getDistance() const
 
 
 
-std::string TransparentColorFilter::getEntryPointFunctionName(void) const
+std::string ChromaKeyColorFilter::getEntryPointFunctionName(void) const
 {
     return (osgEarth::Stringify() << FUNCTION_PREFIX << _instanceId);
 }
 
-void TransparentColorFilter::install(osg::StateSet* stateSet) const
+void ChromaKeyColorFilter::install(osg::StateSet* stateSet) const
 {
     // safe: will not add twice.
     stateSet->addUniform(_color.get());

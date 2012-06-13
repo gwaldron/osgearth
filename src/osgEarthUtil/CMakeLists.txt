@@ -86,7 +86,7 @@ SET(HEADERS_COLORFILTER
     GammaColorFilter
     HSLColorFilter
     RGBColorFilter
-	TransparentColorFilter
+	ChromaKeyColorFilter
 )
 SOURCE_GROUP( Headers\\ColorFilters FILES ${HEADERS_COLORFILTER} )
 
@@ -97,7 +97,7 @@ SET(SOURCES_COLORFILTER
     GammaColorFilter.cpp
     HSLColorFilter.cpp
     RGBColorFilter.cpp
-	TransparentColorFilter.cpp
+	ChromaKeyColorFilter.cpp
 )
 SOURCE_GROUP( Sources\\ColorFilters FILES ${SOURCES_COLORFILTER} )
 

@@ -38,8 +38,11 @@ namespace
 
         "void __ENTRY_POINT__(in int slot, inout vec4 color)\n"
         "{\n"
-        "    color.rgb = clamp(color.rgb + __UNIFORM_NAME__.rgb, 0.0, 1.0); \n"
-        "} \n";
+		"    if ((__UNIFORM_NAME__.r != 0.0) || (__UNIFORM_NAME__.g != 0.0) || (__UNIFORM_NAME__.b != 0.0))\n"
+        "    {\n"
+        "        color.rgb = clamp(color.rgb + __UNIFORM_NAME__.rgb, 0.0, 1.0);\n"
+		"    }\n"
+        "}\n";
 }
 
 //---------------------------------------------------------------------------
@@ -58,16 +61,28 @@ RGBColorFilter::RGBColorFilter(void)
     m_rgb->set(osg::Vec3f(0.0f, 0.0f, 0.0f));
 }
 
-void RGBColorFilter::setRGBOffset(const osg::Vec3f& value)
+void RGBColorFilter::setRGBOffset(const osg::Vec3f& rgb)
 {
-    m_rgb->set(value);
+    m_rgb->set(rgb);
 }
 
 osg::Vec3f RGBColorFilter::getRGBOffset(void) const
 {
-    osg::Vec3f value;
-    m_rgb->get(value);
-    return (value);
+    osg::Vec3f rgb;
+    m_rgb->get(rgb);
+    return (rgb);
+}
+
+void RGBColorFilter::setCMYOffset(const osg::Vec3f& cmy)
+{
+    m_rgb->set(-cmy);
+}
+
+osg::Vec3f RGBColorFilter::getCMYOffset(void) const
+{
+    osg::Vec3f rgb;
+    m_rgb->get(rgb);
+    return (-rgb);
 }
 
 std::string RGBColorFilter::getEntryPointFunctionName(void) const

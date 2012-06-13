@@ -42,6 +42,12 @@ namespace osgEarth { namespace Util
         void setRGBOffset(const osg::Vec3f& rgb);
         osg::Vec3f getRGBOffset(void) const;
 
+        /**
+        * The cyan/magenta/yellow offset, each component is [-1..1] (no change is at 0)
+        */
+        void setCMYOffset(const osg::Vec3f& cmy);
+        osg::Vec3f getCMYOffset(void) const;
+
     public: // ColorFilter
         virtual std::string getEntryPointFunctionName(void) const;
         virtual void install(osg::StateSet* stateSet) const;

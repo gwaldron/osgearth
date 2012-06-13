@@ -25,6 +25,8 @@
 
 namespace osgEarth { namespace Util
 {
+    using namespace osgEarth;
+
     /**
     * Color filter that makes a color transparent.
     */
@@ -32,6 +34,7 @@ namespace osgEarth { namespace Util
     {
     public:
         ChromaKeyColorFilter(void);
+        ChromaKeyColorFilter(const Config& conf);
         virtual ~ChromaKeyColorFilter(void) { }
 
         /**
@@ -49,11 +52,14 @@ namespace osgEarth { namespace Util
     public: // ColorFilter
         virtual std::string getEntryPointFunctionName(void) const;
         virtual void install(osg::StateSet* stateSet) const;
+        virtual Config getConfig() const;
 
     protected:
         unsigned int _instanceId;
         osg::ref_ptr<osg::Uniform> _color;
         osg::ref_ptr<osg::Uniform> _distance;
+
+        void init();
     };
 
 } } // namespace osgEarth::Util

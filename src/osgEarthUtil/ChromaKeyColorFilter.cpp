@@ -39,9 +39,10 @@ namespace
 
         "void __ENTRY_POINT__(in int slot, inout vec4 color)\n"
         "{ \n"
-        "    vec3 trans_color = __COLOR_UNIFORM_NAME__;\n"
-        "    float dist = distance(trans_color, color.rgb);\n"
-        "    if (dist <= __DISTANCE_UNIFORM_NAME__) color.a = 0.0;\n"        
+        "    float dist = distance(color.rgb, __COLOR_UNIFORM_NAME__); \n"
+        "    if (dist <= __DISTANCE_UNIFORM_NAME__) color.a = 0.0;\n"
+        // feathering:
+        //"    if (dist <= __DISTANCE_UNIFORM_NAME__) color.a = (dist/__DISTANCE_UNIFORM_NAME__); \n" 
         "} \n";
 }
 
@@ -55,6 +56,11 @@ namespace
 //---------------------------------------------------------------------------
 
 ChromaKeyColorFilter::ChromaKeyColorFilter(void)
+{
+    init();
+}
+
+void ChromaKeyColorFilter::init()
 {
     // Generate a unique name for this filter's uniform. This is necessary
     // so that each layer can have a unique uniform and entry point.
@@ -117,4 +123,41 @@ void ChromaKeyColorFilter::install(osg::StateSet* stateSet) const
         osg::Shader* main = new osg::Shader(osg::Shader::FRAGMENT, code);
         vp->setShader(entryPoint, main);
     }
+}
+
+
+
+//---------------------------------------------------------------------------
+
+OSGEARTH_REGISTER_COLORFILTER( chroma_key, osgEarth::Util::ChromaKeyColorFilter );
+
+
+ChromaKeyColorFilter::ChromaKeyColorFilter(const Config& conf)
+{
+    init();
+
+    osg::Vec3f val;
+    val[0] = conf.value("r", 0.0);
+    val[1] = conf.value("g", 0.0);
+    val[2] = conf.value("b", 0.0);
+    setColor( val );
+
+    float distance = 0.0f;
+    distance = conf.value("distance", 0.0f);
+    setDistance( distance );
+}
+
+Config
+ChromaKeyColorFilter::getConfig() const
+{
+    osg::Vec3f val = getColor();
+    Config conf("rgb");
+    conf.add( "r", val[0] );
+    conf.add( "g", val[1] );
+    conf.add( "b", val[2] );
+
+    if ( getDistance() != 0.0f )
+        conf.add( "distance", getDistance() );
+
+    return conf;
 }

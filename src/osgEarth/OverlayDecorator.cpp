@@ -46,6 +46,66 @@ using namespace osgEarth;
 namespace
 {
     /**
+     * Visits a scene graph (in our case, the overlay graph) and calculates a
+     * geometry bounding box that intersects the provided polytope (which in out case is the
+     * view frustum).
+     */
+    struct ComputeBoundsWithinPolytope : public OverlayDecorator::InternalNodeVisitor
+    {
+        ComputeBoundsWithinPolytope(const osg::Polytope& polytope, osg::BoundingSphere& out_bs)
+            : InternalNodeVisitor(),
+              _bs      ( out_bs ),
+              _original( polytope )
+        {
+            _polytopeStack.push( polytope );
+            _local2worldStack.push( osg::Matrix::identity() );
+        }
+
+        void apply( osg::Node& node )
+        {
+            const osg::BoundingSphere& bs = node.getBound();
+            if ( _polytopeStack.top().contains(bs) )
+            {
+                traverse( node );
+            }
+        }
+
+        void apply( osg::Geode& node )
+        {
+            const osg::BoundingSphere& bs = node.getBound();
+
+            if ( _polytopeStack.top().contains(bs) )
+            {
+                _bs.expandBy( osg::BoundingSphere(
+                    bs.center() * _local2worldStack.top(),
+                    bs.radius() ) );
+            }
+        }
+
+        void apply( osg::Transform& transform )
+        {
+            osg::Matrixd local2world;
+            transform.computeLocalToWorldMatrix( local2world, this );
+
+            _local2worldStack.push( local2world );
+
+            _polytopeStack.push( _original );
+            _polytopeStack.top().transformProvidingInverse( local2world );
+            
+            traverse(transform);
+
+            _local2worldStack.pop();
+            _polytopeStack.pop();
+        }
+
+        osg::BoundingSphere&      _bs;
+        osg::Polytope             _original;
+        std::stack<osg::Polytope> _polytopeStack;
+        std::stack<osg::Matrixd>  _local2worldStack;
+    };
+
+
+    /**
      * This method takes a set of verts and finds the nearest and farthest distances from
      * the points to the camera. It does this calculation in the plane defined by the
      * look vector.
@@ -583,23 +643,26 @@ OverlayDecorator::cull( osgUtil::CullVisitor* cv, OverlayDecorator::PerViewData&
        
     // contruct the polyhedron representing the viewing frustum.
     osgShadow::ConvexPolyhedron frustumPH;
+    //MyConvexPolyhedron frustumPH;
     frustumPH.setToUnitFrustum( true, true );
     osg::Matrixd MVP = *cv->getModelViewMatrix() * projMatrix;
     osg::Matrixd inverseMVP;
     inverseMVP.invert(MVP);
     frustumPH.transform( inverseMVP, MVP );
 
-    // take the bounds of the overlay graph:
-    osg::BoundingBox visibleOverlayBBox;
-    visibleOverlayBBox.expandBy( _overlayGraph->getBound() );
-
-    // adjust the bounding box to account for "flat" geometry. The Bbox must have 
-    // 3D volume or it won't intersect properly with the frustum PH.
-    visibleOverlayBBox.expandBy( osg::BoundingSphere(visibleOverlayBBox.center(), 1.0) );
-
+    // take the bounds of the overlay graph, constrained to the view frustum:
+    osg::BoundingSphere visibleOverlayBS;
+    osg::Polytope frustumPT;
+    frustumPH.getPolytope( frustumPT );
+    ComputeBoundsWithinPolytope cbwp( frustumPT, visibleOverlayBS );
+    _overlayGraph->accept( cbwp );
+    
     // make a polyhedron representing the bounding box of the overlay.
     osgShadow::ConvexPolyhedron visiblePH;
+    osg::BoundingBox visibleOverlayBBox;
+    visibleOverlayBBox.expandBy( visibleOverlayBS );
     visiblePH.setToBoundingBox( visibleOverlayBBox );
+
 
     osgShadow::ConvexPolyhedron visiblePHBeforeCut;
     if ( _dumpRequested )

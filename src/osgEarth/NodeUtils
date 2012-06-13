@@ -200,7 +200,7 @@ namespace osgEarth
     {
     public:
         ObserverGroup();
-        void traverse( osg::NodeVisitor& nv );
+        virtual void traverse( osg::NodeVisitor& nv );
         std::set<osg::Node*> _orphans;
     };
 

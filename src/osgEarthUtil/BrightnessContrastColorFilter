@@ -33,8 +33,9 @@ namespace osgEarth { namespace Util
     class OSGEARTHUTIL_EXPORT BrightnessContrastColorFilter : public osgEarth::ColorFilter
     {
     public:
-        BrightnessContrastColorFilter(void);
-        virtual ~BrightnessContrastColorFilter(void) { }
+        BrightnessContrastColorFilter();
+        BrightnessContrastColorFilter(const Config& conf);
+        virtual ~BrightnessContrastColorFilter() { }
 
         /**
         * The brightness and contrast as percentages of the incoming pixel value.
@@ -48,10 +49,13 @@ namespace osgEarth { namespace Util
     public: // ColorFilter
         virtual std::string getEntryPointFunctionName(void) const;
         virtual void install(osg::StateSet* stateSet) const;
+        virtual Config getConfig() const;
 
     protected:
         unsigned                   m_instanceId;
         osg::ref_ptr<osg::Uniform> m_bc;
+
+        void init();
     };
 
 } } // namespace osgEarth::Util

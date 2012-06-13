@@ -160,6 +160,13 @@ namespace
 
 HSLColorFilter::HSLColorFilter()
 {
+    init();
+}
+
+
+void
+HSLColorFilter::init()
+{
     // Generate a unique name for this filter's uniform. This is necessary
     // so that each layer can have a unique uniform and entry point.
     _instanceId = (++s_uniformNameGen)-1;
@@ -225,4 +232,31 @@ HSLColorFilter::install( osg::StateSet* stateSet ) const
         //main->setName(entryPoint);
         vp->setShader(entryPoint, main);
     }
+}
+
+//---------------------------------------------------------------------------
+
+OSGEARTH_REGISTER_COLORFILTER( hsl, osgEarth::Util::HSLColorFilter );
+
+
+HSLColorFilter::HSLColorFilter(const Config& conf)
+{
+    init();
+
+    osg::Vec3f hsl;
+    hsl[0] = conf.value("h", 0.0);
+    hsl[1] = conf.value("s", 0.0);
+    hsl[2] = conf.value("l", 0.0);
+    setHSLOffset( hsl );
+}
+
+Config
+HSLColorFilter::getConfig() const
+{
+    osg::Vec3f hsl = getHSLOffset();
+    Config conf("hsl");
+    conf.add( "h", hsl[0] );
+    conf.add( "s", hsl[1] );
+    conf.add( "l", hsl[2] );
+    return conf;
 }

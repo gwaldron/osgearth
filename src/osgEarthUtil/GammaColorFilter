@@ -33,8 +33,9 @@ namespace osgEarth { namespace Util
     class OSGEARTHUTIL_EXPORT GammaColorFilter : public osgEarth::ColorFilter
     {
     public:
-        GammaColorFilter(void);
-        virtual ~GammaColorFilter(void) { }
+        GammaColorFilter();
+        GammaColorFilter(const Config& conf);
+        virtual ~GammaColorFilter() { }
 
         /**
          * The gamma value to correct for.
@@ -47,10 +48,13 @@ namespace osgEarth { namespace Util
     public: // ColorFilter
         virtual std::string getEntryPointFunctionName(void) const;
         virtual void install(osg::StateSet* stateSet) const;
+        virtual Config getConfig() const;
 
     protected:
         unsigned m_instanceId;
         osg::ref_ptr<osg::Uniform> m_gamma;
+
+        void init();
     };
 
 } } // namespace osgEarth::Util

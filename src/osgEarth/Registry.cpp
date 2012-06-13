@@ -22,6 +22,7 @@
 #include <osgEarth/ShaderComposition>
 #include <osgEarth/TaskService>
 #include <osgEarth/IOTypes>
+#include <osgEarth/ColorFilter>
 #include <osgEarthDrivers/cache_filesystem/FileSystemCache>
 #include <osg/Notify>
 #include <osg/Version>
@@ -60,6 +61,9 @@ _defaultFont     ( 0L )
 
     _shaderLib = new ShaderFactory();
     _taskServiceManager = new TaskServiceManager();
+
+    // create a color filter reg
+    _colorFilterReg = new ColorFilterRegistry();
 
     // activate KMZ support
     osgDB::Registry::instance()->addArchiveExtension  ( "kmz" );    
@@ -134,7 +138,7 @@ _defaultFont     ( 0L )
 
 Registry::~Registry()
 {
-    //nop
+    delete _colorFilterReg;
 }
 
 Registry* 

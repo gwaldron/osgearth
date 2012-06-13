@@ -51,6 +51,11 @@ namespace
 
 RGBColorFilter::RGBColorFilter(void)
 {
+    init();
+}
+
+void RGBColorFilter::init()
+{
     // Generate a unique name for this filter's uniform. This is necessary
     // so that each layer can have a unique uniform and entry point.
     m_instanceId = (++s_uniformNameGen) - 1;
@@ -94,4 +99,32 @@ void RGBColorFilter::install(osg::StateSet* stateSet) const
         //main->setName(entryPoint);
         vp->setShader(entryPoint, main);
     }
+}
+
+
+//---------------------------------------------------------------------------
+
+OSGEARTH_REGISTER_COLORFILTER( rgb, osgEarth::Util::RGBColorFilter );
+
+
+RGBColorFilter::RGBColorFilter(const Config& conf)
+{
+    init();
+
+    osg::Vec3f val;
+    val[0] = conf.value("r", 0.0);
+    val[1] = conf.value("g", 0.0);
+    val[2] = conf.value("b", 0.0);
+    setRGBOffset( val );
+}
+
+Config
+RGBColorFilter::getConfig() const
+{
+    osg::Vec3f val = getRGBOffset();
+    Config conf("rgb");
+    conf.add( "r", val[0] );
+    conf.add( "g", val[1] );
+    conf.add( "b", val[2] );
+    return conf;
 }

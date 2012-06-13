@@ -129,6 +129,7 @@ ADD_LIBRARY(${LIB_NAME} SHARED
     CachePolicy.cpp
     CacheSeed.cpp
     Capabilities.cpp
+    ColorFilter.cpp
     CompositeTileSource.cpp
     Config.cpp
     Cube.cpp

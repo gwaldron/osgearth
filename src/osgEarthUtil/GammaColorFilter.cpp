@@ -51,6 +51,11 @@ namespace
 
 GammaColorFilter::GammaColorFilter(void)
 {
+    init();
+}
+
+void GammaColorFilter::init()
+{
     // Generate a unique name for this filter's uniform. This is necessary
     // so that each layer can have a unique uniform and entry point.
     m_instanceId = (++s_uniformNameGen) - 1;
@@ -99,4 +104,47 @@ void GammaColorFilter::install(osg::StateSet* stateSet) const
         //main->setName(entryPoint);
         vp->setShader(entryPoint, main);
     }
+}
+
+
+//---------------------------------------------------------------------------
+
+OSGEARTH_REGISTER_COLORFILTER( gamma, osgEarth::Util::GammaColorFilter );
+
+
+GammaColorFilter::GammaColorFilter(const Config& conf)
+{
+    init();
+
+    if ( conf.hasValue("rgb") )
+    {
+        float rgb = conf.value("rgb", 1.0f);
+        setGamma( osg::Vec3f(rgb, rgb, rgb) );
+    }
+    else
+    {
+        osg::Vec3f rgb;
+        rgb[0] = conf.value("r", 1.0f);
+        rgb[1] = conf.value("g", 1.0f);
+        rgb[2] = conf.value("b", 1.0f);
+        setGamma( rgb );
+    }
+}
+
+Config
+GammaColorFilter::getConfig() const
+{
+    Config conf("gamma");
+    osg::Vec3f rgb = getGamma();
+    if ( rgb[0] == rgb[1] && rgb[1] == rgb[2] )
+    {
+        conf.add("rgb", rgb[0]);
+    }
+    else
+    {
+        conf.add("r", rgb[0]);
+        conf.add("g", rgb[1]);
+        conf.add("b", rgb[2]);
+    }
+    return conf;
 }

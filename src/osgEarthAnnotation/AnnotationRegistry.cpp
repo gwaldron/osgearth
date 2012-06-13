@@ -61,11 +61,16 @@ namespace
 
 //-------------------------------------------------------------------
 
+namespace
+{
+    // must be in global scope for thread-safety
+    static AnnotationRegistry* s_singleton =0L;
+    static Threading::Mutex    s_singletonMutex;
+}
+
 AnnotationRegistry*
 AnnotationRegistry::instance()
 {
-    static AnnotationRegistry* s_singleton =0L;
-    static Threading::Mutex    s_singletonMutex;
     if ( !s_singleton )
     {
         Threading::ScopedMutexLock lock(s_singletonMutex);

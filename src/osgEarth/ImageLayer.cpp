@@ -17,6 +17,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 #include <osgEarth/ImageLayer>
+#include <osgEarth/ColorFilter>
 #include <osgEarth/TileSource>
 #include <osgEarth/ImageMosaic>
 #include <osgEarth/ImageUtils>
@@ -57,7 +58,6 @@ ImageLayerOptions::setDefaults()
 {
     _opacity.init( 1.0f );
     _transparentColor.init( osg::Vec4ub(0,0,0,0) );
-    _hslAdjust.init( osg::Vec3(0,0,0));
     _minRange.init( -FLT_MAX );
     _maxRange.init( FLT_MAX );
     _lodBlending.init( false );
@@ -78,10 +78,15 @@ ImageLayerOptions::fromConfig( const Config& conf )
     conf.getIfSet( "min_range", _minRange );
     conf.getIfSet( "max_range", _maxRange );
     conf.getIfSet( "lod_blending", _lodBlending );
-    conf.getIfSet( "hsl_adjust", _hslAdjust );
 
     if ( conf.hasValue( "transparent_color" ) )
-        _transparentColor = stringToColor( conf.value( "transparent_color" ), osg::Vec4ub(0,0,0,0));	    
+        _transparentColor = stringToColor( conf.value( "transparent_color" ), osg::Vec4ub(0,0,0,0));
+
+    if ( conf.hasChild("color_filters") )
+    {
+        _colorFilters.clear();
+        ColorFilterRegistry::instance()->readChain( conf.child("color_filters"), _colorFilters );
+    }
 }
 
 Config
@@ -94,10 +99,18 @@ ImageLayerOptions::getConfig( bool isolate ) const
     conf.updateIfSet( "min_range", _minRange );
     conf.updateIfSet( "max_range", _maxRange );
     conf.updateIfSet( "lod_blending", _lodBlending );
-    conf.updateIfSet( "hsl_adjust", _hslAdjust );
 
     if (_transparentColor.isSet())
         conf.update("transparent_color", colorToString( _transparentColor.value()));
+
+    if ( _colorFilters.size() > 0 )
+    {
+        Config filtersConf("color_filters");
+        if ( ColorFilterRegistry::instance()->writeChain( _colorFilters, filtersConf ) )
+        {
+            conf.add( filtersConf );
+        }
+    }
     
     return conf;
 }
@@ -232,7 +245,7 @@ _runtimeOptions( options )
 void
 ImageLayer::init()
 {
-    //nop
+    //NOP.
 }
 
 void
@@ -279,19 +292,26 @@ ImageLayer::setOpacity( float value )
 void
 ImageLayer::addColorFilter( ColorFilter* filter )
 {
-    _colorFilters.push_back( filter );
+    _runtimeOptions.colorFilters().push_back( filter );
     fireCallback( &ImageLayerCallback::onColorFiltersChanged );
 }
 
 void
 ImageLayer::removeColorFilter( ColorFilter* filter )
 {
-    ColorFilterChain::iterator i = std::find(_colorFilters.begin(), _colorFilters.end(), filter);
-    if ( i != _colorFilters.end() )
+    ColorFilterChain& filters = _runtimeOptions.colorFilters();
+    ColorFilterChain::iterator i = std::find(filters.begin(), filters.end(), filter);
+    if ( i != filters.end() )
     {
-        _colorFilters.erase( i );
+        filters.erase( i );
         fireCallback( &ImageLayerCallback::onColorFiltersChanged );
     }
+}
+
+const ColorFilterChain&
+ImageLayer::getColorFilters() const
+{
+    return _runtimeOptions.colorFilters();
 }
 
 void 

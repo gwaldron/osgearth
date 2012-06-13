@@ -52,6 +52,11 @@ namespace
 
 BrightnessContrastColorFilter::BrightnessContrastColorFilter(void)
 {
+    init();
+}
+
+void BrightnessContrastColorFilter::init()
+{
     // Generate a unique name for this filter's uniform. This is necessary
     // so that each layer can have a unique uniform and entry point.
     m_instanceId = (++s_uniformNameGen) - 1;
@@ -95,4 +100,29 @@ void BrightnessContrastColorFilter::install(osg::StateSet* stateSet) const
         //main->setName(entryPoint);
         vp->setShader(entryPoint, main);
     }
+}
+
+//---------------------------------------------------------------------------
+
+OSGEARTH_REGISTER_COLORFILTER( brightness_contrast, osgEarth::Util::BrightnessContrastColorFilter );
+
+
+BrightnessContrastColorFilter::BrightnessContrastColorFilter(const Config& conf)
+{
+    init();
+
+    osg::Vec2f val;
+    val[0] = conf.value("b", 1.0);
+    val[1] = conf.value("c", 1.0);
+    setBrightnessContrast( val );
+}
+
+Config
+BrightnessContrastColorFilter::getConfig() const
+{
+    osg::Vec2f val = getBrightnessContrast();
+    Config conf("brightness_contrast");
+    conf.add( "b", val[0] );
+    conf.add( "c", val[1] );
+    return conf;
 }

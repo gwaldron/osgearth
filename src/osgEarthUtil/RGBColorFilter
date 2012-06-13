@@ -33,8 +33,9 @@ namespace osgEarth { namespace Util
     class OSGEARTHUTIL_EXPORT RGBColorFilter : public osgEarth::ColorFilter
     {
     public:
-        RGBColorFilter(void);
-        virtual ~RGBColorFilter(void) { }
+        RGBColorFilter();
+        RGBColorFilter(const Config& conf);
+        virtual ~RGBColorFilter() { }
 
         /**
         * The red/green/blue offset, each component is [-1..1] (no change is at 0)
@@ -45,10 +46,13 @@ namespace osgEarth { namespace Util
     public: // ColorFilter
         virtual std::string getEntryPointFunctionName(void) const;
         virtual void install(osg::StateSet* stateSet) const;
+        virtual Config getConfig() const;
 
     protected:
         unsigned m_instanceId;
         osg::ref_ptr<osg::Uniform> m_rgb;
+
+        void init();
     };
 
 } } // namespace osgEarth::Util

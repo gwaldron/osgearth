@@ -55,12 +55,19 @@ namespace
 
 CMYKColorFilter::CMYKColorFilter(void)
 {
+    init();
+}
+
+void
+CMYKColorFilter::init()
+{
     // Generate a unique name for this filter's uniform. This is necessary
     // so that each layer can have a unique uniform and entry point.
     m_instanceId = (++s_uniformNameGen) - 1;
     m_cmyk = new osg::Uniform(osg::Uniform::FLOAT_VEC4, (osgEarth::Stringify() << UNIFORM_PREFIX << m_instanceId));
     m_cmyk->set(osg::Vec4f(0.0f, 0.0f, 0.0f, 0.0f));
 }
+
 
 // CMY (without the K): http://forums.adobe.com/thread/428899
 void CMYKColorFilter::setCMYOffset(const osg::Vec3f& value)
@@ -149,4 +156,34 @@ void CMYKColorFilter::install(osg::StateSet* stateSet) const
         //main->setName(entryPoint);
         vp->setShader(entryPoint, main);
     }
+}
+
+
+//---------------------------------------------------------------------------
+
+OSGEARTH_REGISTER_COLORFILTER( cmyk, osgEarth::Util::CMYKColorFilter );
+
+
+CMYKColorFilter::CMYKColorFilter(const Config& conf)
+{
+    init();
+
+    osg::Vec4f val;
+    val[0] = conf.value("c", 0.0);
+    val[1] = conf.value("m", 0.0);
+    val[2] = conf.value("y", 0.0);
+    val[3] = conf.value("k", 0.0);
+    setCMYKOffset( val );
+}
+
+Config
+CMYKColorFilter::getConfig() const
+{
+    osg::Vec4f val = getCMYKOffset();
+    Config conf("cmyk");
+    conf.add( "c", val[0] );
+    conf.add( "m", val[1] );
+    conf.add( "y", val[2] );
+    conf.add( "k", val[3] );
+    return conf;
 }

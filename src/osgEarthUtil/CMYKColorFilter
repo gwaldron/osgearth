@@ -33,8 +33,9 @@ namespace osgEarth { namespace Util
     class OSGEARTHUTIL_EXPORT CMYKColorFilter : public osgEarth::ColorFilter
     {
     public:
-        CMYKColorFilter(void);
-        virtual ~CMYKColorFilter(void) { }
+        CMYKColorFilter();
+        CMYKColorFilter(const Config& conf);
+        virtual ~CMYKColorFilter() { }
 
         /**
         * The cyan/magenta/yellow offset, each component is [-1..1] (no change is at 0)
@@ -51,10 +52,13 @@ namespace osgEarth { namespace Util
     public: // ColorFilter
         virtual std::string getEntryPointFunctionName(void) const;
         virtual void install(osg::StateSet* stateSet) const;
+        virtual Config getConfig() const;
 
     protected:
         unsigned m_instanceId;
         osg::ref_ptr<osg::Uniform> m_cmyk;
+
+        void init();
     };
 
 } } // namespace osgEarth::Util

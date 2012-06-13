@@ -86,6 +86,12 @@ namespace osgEarth
         optional<bool>& lodBlending() { return _lodBlending; }
         const optional<bool>& lodBlending() const { return _lodBlending; }
 
+        /**
+         * Filters attached to this layer.
+         */
+        ColorFilterChain& colorFilters() { return _colorFilters; }
+        const ColorFilterChain& colorFilters() const { return _colorFilters; }
+
     public:
 
         virtual Config getConfig() const { return getConfig(false); }
@@ -102,7 +108,7 @@ namespace osgEarth
         optional<osg::Vec4ub> _transparentColor;
         optional<std::string> _noDataImageFilename;
         optional<bool> _lodBlending;
-        optional<osg::Vec3f> _hslAdjust;
+        ColorFilterChain _colorFilters;
     };
 
     //--------------------------------------------------------------------
@@ -114,7 +120,6 @@ namespace osgEarth
     {
         virtual void onOpacityChanged( class ImageLayer* layer ) { }
         virtual void onColorFiltersChanged( class ImageLayer* layer ) { }
-        virtual void onHSLChanged( class ImageLayer* layer ) {}
         virtual ~ImageLayerCallback() { }
     };
 
@@ -203,7 +208,7 @@ namespace osgEarth
         /** 
          * Access the image filter chain
          */
-        const ColorFilterChain& getColorFilters() const { return _colorFilters; }
+        const ColorFilterChain& getColorFilters() const;
 
 
     public: // runtime properties
@@ -259,8 +264,6 @@ namespace osgEarth
 
         osg::ref_ptr<TileSource::ImageOperation> _preCacheOp;
 
-        ColorFilterChain _colorFilters;
-        
         void initPreCacheOp();
 
         ImageLayerCallbackList _callbacks;

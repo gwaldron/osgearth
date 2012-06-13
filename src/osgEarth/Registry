@@ -42,6 +42,7 @@ namespace osgEarth
     class ShaderFactory;
     class TaskServiceManager;
     class URIReadCallback;
+    class ColorFilterRegistry;
 
     /**
      * Application-wide global repository.
@@ -157,6 +158,11 @@ namespace osgEarth
 
         const Units* getUnits(const std::string& name) const;
 
+        /**
+         * Access to the color filter registry
+         */
+        ColorFilterRegistry* getColorFilterRegistry();
+
     protected:
         virtual ~Registry();
         Registry();
@@ -178,7 +184,7 @@ namespace osgEarth
         // maps mime-types to extensions.
         MimeTypeExtensionMap _mimeTypeExtMap;
 
-		osg::ref_ptr<Cache> _cache;
+        osg::ref_ptr<Cache> _cache;
         CachePolicy         _defaultCachePolicy;
 
         typedef std::set<std::string> StringSet;
@@ -202,6 +208,8 @@ namespace osgEarth
 
         typedef std::vector<const Units*> UnitsVector;
         UnitsVector _unitsVector;
+
+        ColorFilterRegistry* _colorFilterReg;
     };
 }
 

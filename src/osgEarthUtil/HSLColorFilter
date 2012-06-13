@@ -34,6 +34,7 @@ namespace osgEarth { namespace Util
     {
     public:
         HSLColorFilter();
+        HSLColorFilter(const Config& conf);
 
         virtual ~HSLColorFilter() { }
 
@@ -49,10 +50,14 @@ namespace osgEarth { namespace Util
 
         virtual void install( osg::StateSet* stateSet ) const;
 
+        virtual Config getConfig() const;
+
     protected:
 
         unsigned                   _instanceId;
         osg::ref_ptr<osg::Uniform> _hsl;
+
+        void init();
     };
 
 } } // namespace osgEarth::Util

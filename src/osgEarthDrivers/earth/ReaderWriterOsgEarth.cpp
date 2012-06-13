@@ -27,15 +27,37 @@
 #include <osgDB/Registry>
 #include <string>
 #include <sstream>
+#include <osgEarthUtil/Common>
 
 using namespace osgEarth;
 
 #define LC "[ReaderWriterEarth] "
 
+// Macros to determine the filename for dependent libs.
+#define Q2(x) #x
+#define Q(x)  Q2(x)
+
+#if defined(_DEBUG) && defined(OSGEARTH_DEBUG_POSTFIX)
+#    define LIBNAME_UTIL "osgEarthUtil" ## Q(OSGEARTH_DEBUG_POSTFIX)
+#elif defined(OSGEARTH_RELEASE_POSTFIX)
+#    define LIBNAME_UTIL "osgEarthUtil" ## Q(OSGEARTH_RELEASE_POSTFIX)
+#else
+#    define LIBNAME_UTIL "osgEarthUtil"
+#endif
+
+
+
 class ReaderWriterEarth : public osgDB::ReaderWriter
 {
     public:
-        ReaderWriterEarth() {}
+        ReaderWriterEarth()
+        {
+            // force the loading of other osgEarth libraries that might be needed to 
+            // deserialize an earth file. 
+            // osgEarthUtil: contains ColorFilter implementations
+            OE_DEBUG << LC << "Forced load: " << LIBNAME_UTIL << std::endl;
+            osgDB::Registry::instance()->loadLibrary( LIBNAME_UTIL );
+        }
 
         virtual const char* className()
         {

@@ -226,9 +226,9 @@ TerrainLayer::setCache( Cache* cache )
                 hashConf.remove( "cacheid" );
 
                 cacheId = Stringify() << std::hex << osgEarth::hashString(hashConf.toJSON());
-            }
 
-            _runtimeOptions->cacheId() = cacheId;
+                _runtimeOptions->cacheId().init( cacheId ); // set as default value
+            }
         }
     }
 

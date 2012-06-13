@@ -97,6 +97,12 @@ namespace osgEarth { namespace Annotation
         osg::Image* getImage() const;
         void setImage( osg::Image* image );
 
+        osg::Texture::FilterMode getMinFilter() const;
+        void setMinFilter( osg::Texture::FilterMode filter );
+
+        osg::Texture::FilterMode getMagFilter() const;
+        void setMagFilter( osg::Texture::FilterMode filter );
+
         void setNorth(double value_deg);
         void setSouth(double value_deg);
         void setEast(double value_deg);
@@ -130,23 +136,29 @@ namespace osgEarth { namespace Annotation
 
         void clampMesh( osg::Node* terrainModel );
 
+        void updateFilters();
+
 
         osg::Vec2d _lowerLeft;
         osg::Vec2d _lowerRight;
         osg::Vec2d _upperRight;
         osg::Vec2d _upperLeft;
-        osg::Polytope _boundingPolytope;
+        osg::Polytope _boundingPolytope;        
         osg::ref_ptr< osg::Image > _image;
         bool _dirty;
         OpenThreads::Mutex _mutex;
         osg::Geode* _geode;
         osg::MatrixTransform* _transform;
         osg::Geometry* _geometry;
+        osg::Texture* _texture;
+
         //float _alpha;
         CallbackList _callbacks;
 
         optional<URI>   _imageURI;
         optional<float> _alpha;
+        optional<osg::Texture::FilterMode> _minFilter;
+        optional<osg::Texture::FilterMode> _magFilter;
 
         ImageOverlay() { }
         ImageOverlay(const ImageOverlay&, const osg::CopyOp&) { }

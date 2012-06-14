@@ -135,8 +135,8 @@ public:
           {
               //If the node contains the feature, and it doesn't contain the max number of features add it.  If it's already full then 
               //split it.
-              if (tile->getKey().getLevelOfDetail() >= _firstLevel && 
-                  (tile->getFeatures().size() < _maxFeatures || tile->getKey().getLevelOfDetail() == _maxLevel || tile->getKey().getLevelOfDetail() == _levelAdded))
+              if (tile->getKey().getLevelOfDetail() >= (unsigned int)_firstLevel && 
+                  (tile->getFeatures().size() < (unsigned int)_maxFeatures || tile->getKey().getLevelOfDetail() == _maxLevel || tile->getKey().getLevelOfDetail() == _levelAdded))
               {
                   if (_levelAdded < 0 || _levelAdded == tile->getKey().getLevelOfDetail())
                   {

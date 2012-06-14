@@ -87,6 +87,7 @@ namespace osgEarth { namespace Annotation
          * Sets the text content.
          */
         void setText( const std::string& text );
+        const std::string& text() const { return _text; }
 
 
     public: // OrthoNode override

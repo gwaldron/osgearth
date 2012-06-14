@@ -29,6 +29,7 @@
 
 #include <osgEarth/MapNode>
 #include <osgEarth/NodeUtils>
+#include <osgEarth/Notify>
 #include <osgEarth/ShaderComposition>
 #include <osgEarth/TerrainEngineNode>
 #include <osgEarth/TextureCompositor>
@@ -92,6 +93,19 @@ bool setUpShadows(osgShadow::ShadowedScene* sscene, osg::Group* root)
     int su = -1;
     if (!compositor->reserveTextureImageUnit(su))
         return false;
+    osgShadow::ViewDependentShadowMap* vdsm = getTechniqueAsVdsm(sscene);
+    int su1 = -1;
+    if (vdsm && sscene->getShadowSettings()->getNumShadowMapsPerLight() == 2)
+    {
+        if (!compositor->reserveTextureImageUnit(su1) || su1 != su + 1)
+        {
+            OE_FATAL << LC << "couldn't get contiguous shadows for split vdsm\n";
+            sscene->getShadowSettings()->setNumShadowMapsPerLight(1);
+            if (su1 != -1)
+                compositor->releaseTextureImageUnit(su1);
+            su1 = -1;
+        }
+    }
     std::stringstream buf;
     buf << "varying vec4 colorAmbientEmissive;\n";
     buf << "void osgearth_setupShadowCoords()\n";
@@ -101,6 +115,13 @@ bool setUpShadows(osgShadow::ShadowedScene* sscene, osg::Group* root)
     buf << "    gl_TexCoord[" << su << "].t = dot( position4, gl_EyePlaneT[" << su <<"]);\n";
     buf << "    gl_TexCoord[" << su << "].p = dot( position4, gl_EyePlaneR[" << su <<"]);\n";
     buf << "    gl_TexCoord[" << su << "].q = dot( position4, gl_EyePlaneQ[" << su <<"]);\n";
+    if (su1 >= 0)
+    {
+        buf << "    gl_TexCoord[" << su1 << "].s = dot( position4, gl_EyePlaneS[" << su1 <<"]);\n";
+        buf << "    gl_TexCoord[" << su1 << "].t = dot( position4, gl_EyePlaneT[" << su1 <<"]);\n";
+        buf << "    gl_TexCoord[" << su1 << "].p = dot( position4, gl_EyePlaneR[" << su1 <<"]);\n";
+        buf << "    gl_TexCoord[" << su1 << "].q = dot( position4, gl_EyePlaneQ[" << su1 <<"]);\n";
+    }
     buf << "    colorAmbientEmissive = gl_FrontLightModelProduct.sceneColor\n";
     buf << "                    + gl_FrontLightProduct[0].ambient;\n";
     buf << "}\n";
@@ -116,13 +137,25 @@ bool setUpShadows(osgShadow::ShadowedScene* sscene, osg::Group* root)
     std::stringstream buf2;
     buf2 <<
         "#version 110 \n"
-        "uniform sampler2DShadow shadowTexture;\n"
+        "uniform sampler2DShadow shadowTexture;\n";
+    if (su1 >= 0)
+    {
+        // bound by vdsm
+        buf2 << "uniform sampler2DShadow shadowTexture1;\n";
+    }
+    buf2 <<
         "varying vec4 colorAmbientEmissive;\n\n"
         "void osgearth_frag_applyLighting( inout vec4 color )\n"
         "{\n"
         "    float alpha = color.a;\n"
         "    float shadowFac = shadow2DProj( shadowTexture, gl_TexCoord["
-         << su << "]).r;\n"
+            << su << "]).r;\n";
+    if (su1 > 0)
+    {
+        buf2 << "    shadowFac *= shadow2DProj( shadowTexture1,"
+            " gl_TexCoord[" << su1 << "]).r;\n";
+    }
+    buf2 <<
         "    vec4 diffuseLight = mix(colorAmbientEmissive, gl_Color, shadowFac);\n"
         "    color = color * diffuseLight + gl_SecondaryColor * shadowFac;\n"
         "    color.a = alpha;\n"

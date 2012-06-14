@@ -243,6 +243,10 @@ int main(int argc, char** argv)
 
     osg::Vec4 lightpos(0.0,0.0,1,0.0);
     bool spotlight = false;
+    bool skyNode = false;
+    if (arguments.find("--sky") != -1)
+        skyNode = true;
+    // These will be ignored if there is a sky node.
     while (arguments.read("--positionalLight")) { lightpos.set(0.5,0.5,1.5,1.0); }
     while (arguments.read("--directionalLight")) { lightpos.set(0.0,0.0,1,0.0); }
     while (arguments.read("--spotLight")) { lightpos.set(0.5,0.5,1.5,1.0); spotlight = true; }
@@ -258,7 +262,7 @@ int main(int argc, char** argv)
     while (arguments.read("--castsShadowMask", CastsShadowTraversalMask ));
     while (arguments.read("--receivesShadowMask", ReceivesShadowTraversalMask ));
 
-    bool updateLightPosition = true;
+    bool updateLightPosition = !skyNode;
     while (arguments.read("--noUpdate")) updateLightPosition = false;
 
     // set up the camera manipulators.
@@ -463,48 +467,52 @@ int main(int argc, char** argv)
         }
     }
     model->setNodeMask(CastsShadowTraversalMask | ReceivesShadowTraversalMask);
-
-    // get the bounds of the model.
-    osg::ComputeBoundsVisitor cbbv;
-    model->accept(cbbv);
-    osg::BoundingBox bb = cbbv.getBoundingBox();
-
-    if (lightpos.w()==1.0 && !keepLightPos)
+    osg::ref_ptr<osg::LightSource> ls;
+    osg::BoundingBox bb;
+    if (!skyNode)
     {
-        lightpos.x() = bb.xMin()+(bb.xMax()-bb.xMin())*lightpos.x();
-        lightpos.y() = bb.yMin()+(bb.yMax()-bb.yMin())*lightpos.y();
-        lightpos.z() = bb.zMin()+(bb.zMax()-bb.zMin())*lightpos.z();
+        // get the bounds of the model.
+        osg::ComputeBoundsVisitor cbbv;
+        model->accept(cbbv);
+        bb = cbbv.getBoundingBox();
+
+        if (lightpos.w()==1.0 && !keepLightPos)
+        {
+            lightpos.x() = bb.xMin()+(bb.xMax()-bb.xMin())*lightpos.x();
+            lightpos.y() = bb.yMin()+(bb.yMax()-bb.yMin())*lightpos.y();
+            lightpos.z() = bb.zMin()+(bb.zMax()-bb.zMin())*lightpos.z();
+        }
+
+        ls = new osg::LightSource;
+        ls->getLight()->setPosition(lightpos);
+
+        if (spotlight)
+        {
+            osg::Vec3 center = spotLookat;
+            osg::Vec3 lightdir = center - osg::Vec3(lightpos.x(), lightpos.y(), lightpos.z());
+            lightdir.normalize();
+            ls->getLight()->setDirection(lightdir);
+            ls->getLight()->setSpotCutoff(25.0f);
+
+            //set the LightSource, only for checking, there is only 1 light in the scene
+            osgShadow::ShadowMap* shadowMap = dynamic_cast<osgShadow::ShadowMap*>(shadowedScene->getShadowTechnique());
+            if( shadowMap ) shadowMap->setLight(ls.get());
+        }
+
+        if ( arguments.read("--coloured-light"))
+        {
+            ls->getLight()->setAmbient(osg::Vec4(1.0,0.0,0.0,1.0));
+            ls->getLight()->setDiffuse(osg::Vec4(0.0,1.0,0.0,1.0));
+        }
+        else
+        {
+            ls->getLight()->setAmbient(osg::Vec4(0.2,0.2,0.2,1.0));
+            ls->getLight()->setDiffuse(osg::Vec4(0.8,0.8,0.8,1.0));
+        }
     }
-
-    osg::ref_ptr<osg::LightSource> ls = new osg::LightSource;
-    ls->getLight()->setPosition(lightpos);
-
-    if (spotlight)
-    {
-        osg::Vec3 center = spotLookat;
-        osg::Vec3 lightdir = center - osg::Vec3(lightpos.x(), lightpos.y(), lightpos.z());
-        lightdir.normalize();
-        ls->getLight()->setDirection(lightdir);
-        ls->getLight()->setSpotCutoff(25.0f);
-
-        //set the LightSource, only for checking, there is only 1 light in the scene
-        osgShadow::ShadowMap* shadowMap = dynamic_cast<osgShadow::ShadowMap*>(shadowedScene->getShadowTechnique());
-        if( shadowMap ) shadowMap->setLight(ls.get());
-    }
-
-    if ( arguments.read("--coloured-light"))
-    {
-        ls->getLight()->setAmbient(osg::Vec4(1.0,0.0,0.0,1.0));
-        ls->getLight()->setDiffuse(osg::Vec4(0.0,1.0,0.0,1.0));
-    }
-    else
-    {
-        ls->getLight()->setAmbient(osg::Vec4(0.2,0.2,0.2,1.0));
-        ls->getLight()->setDiffuse(osg::Vec4(0.8,0.8,0.8,1.0));
-    }
-
     shadowedScene->addChild(model.get());
-    shadowedScene->addChild(ls.get());
+    if (ls.valid())
+        shadowedScene->addChild(ls.get());
 
     viewer.setSceneData(root.get());
 

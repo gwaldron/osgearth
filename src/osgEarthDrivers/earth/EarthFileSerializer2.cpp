@@ -164,7 +164,7 @@ EarthFileSerializer2::serialize( MapNode* input ) const
     {
         ImageLayer* layer = i->get();
         //Config layerConf = layer->getInitialOptions().getConfig();
-        Config layerConf = layer->getImageLayerOptions().getConfig(true);
+        Config layerConf = layer->getImageLayerOptions().getConfig();
         layerConf.set("name", layer->getName());
         layerConf.set("driver", layer->getInitialOptions().driver()->getDriver());
         layerConf.remove("default_tile_size");
@@ -175,7 +175,7 @@ EarthFileSerializer2::serialize( MapNode* input ) const
     {
         ElevationLayer* layer = i->get();
         //Config layerConf = layer->getInitialOptions().getConfig();
-        Config layerConf = layer->getElevationLayerOptions().getConfig(true);
+        Config layerConf = layer->getElevationLayerOptions().getConfig();
         layerConf.set("name", layer->getName());
         layerConf.set("driver", layer->getInitialOptions().driver()->getDriver());
         layerConf.remove("default_tile_size");

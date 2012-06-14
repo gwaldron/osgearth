@@ -38,7 +38,7 @@ typedef std::list< osgEarth::Features::FeatureID > FeatureIDList;
 class FeatureTile : public osg::Referenced
 {
 public:
-    FeatureTile( TileKey& key ):
+    FeatureTile( const TileKey& key ):
       _key( key ),
           _isSplit( false )
       {        
@@ -61,7 +61,7 @@ public:
           if (!_isSplit)
           {
               for (unsigned int i = 0; i < 4; ++i)
-              {                
+              {  
                   _children[i] = new FeatureTile(_key.createChildKey( i ) );
               }
               _isSplit = true;

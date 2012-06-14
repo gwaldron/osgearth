@@ -41,7 +41,7 @@ _title("layer")
 bool
 TFSReaderWriter::read(const URI& uri, const osgDB::ReaderWriter::Options *options, TFSLayer &layer)
 {
-    osgEarth::ReadResult result = uri.readString();
+    osgEarth::ReadResult result = uri.readString(options);
     if (result.succeeded())
     {
         std::string str = result.getString();

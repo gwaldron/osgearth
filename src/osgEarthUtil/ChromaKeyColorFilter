@@ -44,7 +44,8 @@ namespace osgEarth { namespace Util
         osg::Vec3f getColor() const;
 
         /**
-         * The linear distance [0..1] to search for "similar" colors to make transparent.
+         * The linear distance to search for "similar" colors to make transparent.
+         * Currently this is doing a simple 3D distance comparison to find similar colors.
          */
         void setDistance( float distance );
         float getDistance() const;

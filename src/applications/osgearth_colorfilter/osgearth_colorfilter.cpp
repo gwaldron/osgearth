@@ -592,7 +592,7 @@ namespace CHROMAKEY
         rLabel->setVertAlign( Control::ALIGN_CENTER );
         s_layerBox->setControl( 0, 1, rLabel );
 
-        HSliderControl* rAdjust = new HSliderControl( -1.0f, 1.0f, 0.0f, new CHROMAKEY::SetColor(filter,0) );
+        HSliderControl* rAdjust = new HSliderControl( 0.0f, 1.0f, 0.0f, new CHROMAKEY::SetColor(filter,0) );
         rAdjust->setWidth( 125 );
         rAdjust->setHeight( 12 );
         rAdjust->setVertAlign( Control::ALIGN_CENTER );
@@ -604,7 +604,7 @@ namespace CHROMAKEY
         gLabel->setVertAlign( Control::ALIGN_CENTER );
         s_layerBox->setControl( 0, 2, gLabel );
 
-        HSliderControl* gAdjust = new HSliderControl( -1.0f, 1.0f, 0.0f, new CHROMAKEY::SetColor(filter,1) );
+        HSliderControl* gAdjust = new HSliderControl( 0.0f, 1.0f, 0.0f, new CHROMAKEY::SetColor(filter,1) );
         gAdjust->setWidth( 125 );
         gAdjust->setHeight( 12 );
         gAdjust->setVertAlign( Control::ALIGN_CENTER );
@@ -616,7 +616,7 @@ namespace CHROMAKEY
         bLabel->setVertAlign( Control::ALIGN_CENTER );
         s_layerBox->setControl( 0, 3, bLabel );
 
-        HSliderControl* bAdjust = new HSliderControl( -1.0f, 1.0f, 0.0f, new CHROMAKEY::SetColor(filter,2) );
+        HSliderControl* bAdjust = new HSliderControl( 0.0f, 1.0f, 0.0f, new CHROMAKEY::SetColor(filter,2) );
         bAdjust->setWidth( 125 );
         bAdjust->setHeight( 12 );
         bAdjust->setVertAlign( Control::ALIGN_CENTER );
@@ -628,7 +628,7 @@ namespace CHROMAKEY
         distLabel->setVertAlign( Control::ALIGN_CENTER );
         s_layerBox->setControl( 0, 4, distLabel );
 
-        HSliderControl* distAdjust = new HSliderControl( 0.0f, 1.0f, 0.0f, new CHROMAKEY::SetDistance(filter) );
+        HSliderControl* distAdjust = new HSliderControl( 0.0f, 2.0f, 0.0f, new CHROMAKEY::SetDistance(filter) );
         distAdjust->setWidth( 125 );
         distAdjust->setHeight( 12 );
         distAdjust->setVertAlign( Control::ALIGN_CENTER );

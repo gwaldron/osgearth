@@ -25,7 +25,7 @@
 #include <osgEarth/MapNode>
 
 namespace osgEarth { namespace Annotation
-{	
+{
     using namespace osgEarth;
     using namespace osgEarth::Symbology;
 
@@ -89,13 +89,17 @@ namespace osgEarth { namespace Annotation
         void setText( const std::string& text );
         const std::string& text() const { return _text; }
 
+        /**
+         * Gets the text style.
+         */
+        const Style style() const { return _style; }
 
     public: // OrthoNode override
 
         virtual void setAnnotationData( AnnotationData* data );
 
         virtual void setDynamic( bool value );
-        
+
         virtual Config getConfig() const;
 
     protected:

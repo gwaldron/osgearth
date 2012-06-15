@@ -41,16 +41,17 @@ usage( const std::string& msg )
         << std::endl
         << "USAGE: osgearth_tfs [options] filename" << std::endl
         << std::endl
-        << "    --firstlevel                      ; The first level where features will be added to the quadtree" << std::endl
-        << "    --maxlevel                        ; The maximum level of the feature quadtree" << std::endl
-        << "    --maxfeatures                     ; The maximum number of features per tile" << std::endl
-        << "    --destination                     ; The destination directory" << std::endl
-        << "    --layer                           ; The name of the layer" << std::endl
-        << "    --description                     ; The abstract/description of the layer" << std::endl
-        << "    --expression                      ; The expression to run on the feature source, specific to the feature source" << std::endl
-        << "    --orderby                         ; Sort the features, if not already included in the expression" << std::endl
-        << "    --crop                            ; Crops features instead of doing a centroid check.  Features can be added to multiple tiles when cropping is enabled" << std::endl
-        << "    --destsrs                         ; The destination SRS string in any format osgEarth can understand (wkt, proj4, epsg).  If none is specified the source data SRS will be used" << std::endl
+        << "    filename           ; Shapefile (or other feature source data file)" << std::endl
+        << "    --first-level      ; The first level where features will be added to the quadtree" << std::endl
+        << "    --max-level        ; The maximum level of the feature quadtree" << std::endl
+        << "    --max-features     ; The maximum number of features per tile" << std::endl
+        << "    --out              ; The destination directory" << std::endl
+        << "    --layer            ; The name of the layer in the feature source (blank to pick the first layer)" << std::endl
+        << "    --description      ; The abstract/description of the layer" << std::endl
+        << "    --expression       ; The expression to run on the feature source, specific to the feature source" << std::endl
+        << "    --order-by         ; Sort the features, if not already included in the expression. Append DESC for descending order!" << std::endl
+        << "    --crop             ; Crops features instead of doing a centroid check.  Features can be added to multiple tiles when cropping is enabled" << std::endl
+        << "    --dest-srs         ;The destination SRS string in any format osgEarth can understand (wkt, proj4, epsg).  If none is specified the source data SRS will be used" << std::endl
         << std::endl;
 
     return -1;
@@ -69,18 +70,18 @@ int main(int argc, char** argv)
     
     //The first level
     unsigned int firstLevel = 0;
-    while (arguments.read("--firstlevel", firstLevel));
+    while (arguments.read("--first-level", firstLevel));
 
     //The max level
     unsigned int maxLevel = 6;
-    while (arguments.read("--maxlevel", maxLevel));
+    while (arguments.read("--max-level", maxLevel));
 
     unsigned int maxFeatures = 300;
-    while (arguments.read("--maxfeatures", maxFeatures));    
+    while (arguments.read("--max-features", maxFeatures));    
 
     //The destination directory
     std::string destination = "out";
-    while (arguments.read("--destination", destination));
+    while (arguments.read("--out", destination));
 
     //The name of the layer
     std::string layer = "layer";
@@ -94,7 +95,7 @@ int main(int argc, char** argv)
     while (arguments.read("--expression", queryExpression));
 
     std::string queryOrderBy = "";
-    while (arguments.read("--orderby", queryOrderBy));
+    while (arguments.read("--order-by", queryOrderBy));
 
     CropFilter::Method cropMethod = CropFilter::METHOD_CENTROID;
     if (arguments.read("--crop"))
@@ -103,7 +104,7 @@ int main(int argc, char** argv)
     }
 
     std::string destSRS;
-    while(arguments.read("--destsrs", destSRS));
+    while(arguments.read("--dest-srs", destSRS));
     
     std::string filename;
 

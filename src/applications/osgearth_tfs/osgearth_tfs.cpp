@@ -46,8 +46,8 @@ usage( const std::string& msg )
         << "    --max-level        ; The maximum level of the feature quadtree" << std::endl
         << "    --max-features     ; The maximum number of features per tile" << std::endl
         << "    --out              ; The destination directory" << std::endl
-        << "    --layer            ; The name of the layer in the feature source (blank to pick the first layer)" << std::endl
-        << "    --description      ; The abstract/description of the layer" << std::endl
+        << "    --layer            ; The name of the layer to be written to the metadata document" << std::endl
+        << "    --description      ; The abstract/description of the layer to be written to the metadata document" << std::endl
         << "    --expression       ; The expression to run on the feature source, specific to the feature source" << std::endl
         << "    --order-by         ; Sort the features, if not already included in the expression. Append DESC for descending order!" << std::endl
         << "    --crop             ; Crops features instead of doing a centroid check.  Features can be added to multiple tiles when cropping is enabled" << std::endl

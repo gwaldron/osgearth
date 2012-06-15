@@ -196,9 +196,8 @@ public:
 class WriteFeaturesVisitor : public FeatureTileVisitor
 {
 public:
-    WriteFeaturesVisitor(FeatureSource* features, const std::string& dest, const std::string &layer, CropFilter::Method cropMethod, const SpatialReference* srs):
+    WriteFeaturesVisitor(FeatureSource* features, const std::string& dest, CropFilter::Method cropMethod, const SpatialReference* srs):
       _dest( dest ),
-          _layer( layer ),
           _features( features ),
           _cropMethod( cropMethod ),
           _srs( srs )
@@ -246,7 +245,7 @@ public:
               tile->getKey().getProfile()->getNumTiles(tile->getKey().getLevelOfDetail(), numCols, numRows);
               int y  = numRows - tile->getKey().getTileY() - 1;
 
-              buf << osgDB::concatPaths( _dest, _layer ) << "/" << tile->getKey().getLevelOfDetail() << "/" << x << "/" << y << ".json";
+              buf << _dest << "/" << tile->getKey().getLevelOfDetail() << "/" << x << "/" << y << ".json";
               std::string filename = buf.str();
               //OE_NOTICE << "Writing " << features.size() << " features to " << filename << std::endl;
 
@@ -266,8 +265,7 @@ public:
       }
 
       osg::ref_ptr< FeatureSource > _features;
-      std::string _dest;
-      std::string _layer;
+      std::string _dest;      
       CropFilter::Method _cropMethod;
       osg::ref_ptr< const SpatialReference > _srs;
 };
@@ -354,7 +352,7 @@ void
     }   
     OE_NOTICE << "Added=" << added << "Skipped=" << skipped << " Failed=" << failed << std::endl;
 
-    WriteFeaturesVisitor write(features, destination, layername, _method, _srs);
+    WriteFeaturesVisitor write(features, destination, _method, _srs);
     root->accept( &write );
 
     //Write out the meta doc
@@ -365,7 +363,7 @@ void
     layer.setMaxLevel( highestLevel );
     layer.setExtent( profile->getExtent() );
     layer.setSRS( _srs.get() );
-    TFSReaderWriter::write( layer, osgDB::concatPaths(destination, layername) + "/tfs.xml");
+    TFSReaderWriter::write( layer, osgDB::concatPaths( destination, "tfs.xml"));
 
 }
 

@@ -172,7 +172,7 @@ namespace osgEarth
         /**
          * Gets a shader by its ID.
          */
-        osg::Shader* getShader( const std::string& shaderID );
+        osg::Shader* getShader( const std::string& shaderID ) const;
 
         /** 
          * Adds a shader to this VP's shader table.
@@ -189,23 +189,26 @@ namespace osgEarth
 
 
     protected:
-        typedef std::vector< osg::ref_ptr< osg::Shader > > ShaderVector;
+        typedef std::vector< osg::ref_ptr<osg::Shader> > ShaderVector;
         typedef std::pair< osg::ref_ptr<osg::Shader>, osg::StateAttribute::OverrideValue > ShaderEntry;
         typedef std::map< std::string, ShaderEntry >       ShaderMap;
-        typedef std::map< ShaderList, osg::ref_ptr<osg::Program> > ProgramMap;
+        typedef std::map< ShaderVector, osg::ref_ptr<osg::Program> > ProgramMap;
 
-        mutable ProgramMap                   _programMap;
-        ShaderMap                            _shaderMap;
-        unsigned int                         _mask;
+        ProgramMap                   _programCache;
+        ShaderMap                    _shaderMap;
+        unsigned int                 _mask;
 
         ShaderComp::FunctionLocationMap _functions;
         ShaderComp::FunctionLocationMap _accumulatedFunctions;
 
         Threading::Mutex _functionsMutex;
 
+        mutable Threading::ReadWriteMutex _programCacheMutex;
+
         bool hasLocalFunctions() const;
         void refreshAccumulatedFunctions( const osg::State& state );
         void addToAccumulatedMap(ShaderMap& accumShaderMap, const std::string& shaderID, const ShaderEntry& newEntry) const;
+        osg::Program* buildProgram( osg::State& state, ShaderMap& accumShaderMap );
 
 
     public:

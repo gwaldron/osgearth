@@ -323,10 +323,9 @@ OverlayDecorator::initSubgraphShaders( PerViewData& pvd )
     // the texture projection matrix uniform.
     pvd._texGenUniform = set->getOrCreateUniform( "osgearth_overlay_TexGenMatrix", osg::Uniform::FLOAT_MAT4 );
 
-    std::stringstream buf;
-
     // vertex shader - subgraph
-    buf << "#version 110 \n"
+    std::string vertexSource = Stringify()
+        << "#version 110 \n"
         << "uniform mat4 osgearth_overlay_TexGenMatrix; \n"
         << "uniform mat4 osg_ViewMatrixInverse; \n"
 
@@ -335,13 +334,11 @@ OverlayDecorator::initSubgraphShaders( PerViewData& pvd )
         << "    gl_TexCoord["<< *_textureUnit << "] = osgearth_overlay_TexGenMatrix * osg_ViewMatrixInverse * gl_ModelViewMatrix * gl_Vertex; \n"
         << "} \n";
 
-    std::string vertexSource;
-    vertexSource = buf.str();
     vp->setFunction( "osgearth_overlay_vertex", vertexSource, ShaderComp::LOCATION_VERTEX_POST_LIGHTING );
 
     // fragment shader - subgraph
-    buf.str("");
-    buf << "#version 110 \n"
+    std::string fragmentSource = Stringify()
+        << "#version 110 \n"
         << "uniform sampler2D osgearth_overlay_ProjTex; \n"
         << "void osgearth_overlay_fragment( inout vec4 color ) \n"
         << "{ \n"
@@ -350,8 +347,6 @@ OverlayDecorator::initSubgraphShaders( PerViewData& pvd )
         << "    color = vec4( mix( color.rgb, texel.rgb, texel.a ), color.a); \n"
         << "} \n";
 
-    std::string fragmentSource;
-    fragmentSource = buf.str();
     vp->setFunction( "osgearth_overlay_fragment", fragmentSource, ShaderComp::LOCATION_FRAGMENT_PRE_LIGHTING );
 }
 

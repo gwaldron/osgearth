@@ -851,6 +851,9 @@ OSGTerrainEngineNode::traverse( osg::NodeVisitor& nv )
         {
             // update the cull-thread map frame if necessary. (We don't need to sync the
             // update_mapf becuase that happens in response to a map callback.)
+
+            // TODO: address the fact that this can happen from multiple threads.
+            // Really we need a _cull_mapf PER view. -gw
             _cull_mapf->sync();
         }
     }

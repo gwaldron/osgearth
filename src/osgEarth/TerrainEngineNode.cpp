@@ -361,6 +361,11 @@ TerrainEngineNode::validateTerrainOptions( TerrainOptions& options )
     }
 }
 
+namespace
+{
+    Threading::Mutex s_opqlock;
+}
+
 void
 TerrainEngineNode::traverse( osg::NodeVisitor& nv )
 {
@@ -369,7 +374,6 @@ TerrainEngineNode::traverse( osg::NodeVisitor& nv )
         // see if we need to set up the Terrain object with an update ops queue.
         if ( !_terrainInterface->_updateOperationQueue.valid() )
         {
-            static Threading::Mutex s_opqlock;
             Threading::ScopedMutexLock lock(s_opqlock);
             if ( !_terrainInterface->_updateOperationQueue.valid() ) // double check pattern
             {

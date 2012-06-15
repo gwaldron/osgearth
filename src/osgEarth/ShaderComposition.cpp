@@ -83,9 +83,9 @@ _functions  ( rhs._functions )
 
 
 osg::Shader*
-VirtualProgram::getShader( const std::string& shaderID )
+VirtualProgram::getShader( const std::string& shaderID ) const
 {
-    ShaderMap::iterator i = _shaderMap.find(shaderID);
+    ShaderMap::const_iterator i = _shaderMap.find(shaderID);
     return i != _shaderMap.end() ? i->second.first.get() : 0L;
 }
 
@@ -167,6 +167,93 @@ VirtualProgram::addToAccumulatedMap(ShaderMap&         accumShaderMap,
 }
 
 
+osg::Program*
+VirtualProgram::buildProgram( osg::State& state, ShaderMap& accumShaderMap )
+{
+    // build a new set of accumulated functions, to support the creation of main()
+    refreshAccumulatedFunctions( state );
+
+    // No matching program in the cache; make it.
+    ShaderFactory* sf = osgEarth::Registry::instance()->getShaderFactory();
+
+    osg::Shader* old_vert_main = getShader( "osgearth_vert_main" );
+    osg::ref_ptr<osg::Shader> vert_main = sf->createVertexShaderMain( _accumulatedFunctions );
+    setShader( "osgearth_vert_main", vert_main.get() );
+    addToAccumulatedMap( accumShaderMap, "osgearth_vert_main", ShaderEntry(vert_main.get(), osg::StateAttribute::ON) );
+
+    osg::Shader* old_frag_main = getShader( "osgearth_frag_main" );
+    osg::ref_ptr<osg::Shader> frag_main = sf->createFragmentShaderMain( _accumulatedFunctions );
+    setShader( "osgearth_frag_main", frag_main );
+    addToAccumulatedMap( accumShaderMap, "osgearth_frag_main", ShaderEntry(frag_main.get(), osg::StateAttribute::ON) );
+
+    // rebuild the shader list now that we've changed the shader map.
+    ShaderVector vec;
+    for( ShaderMap::iterator i = accumShaderMap.begin(); i != accumShaderMap.end(); ++i )
+    {
+        vec.push_back( i->second.first.get() );
+    }
+
+    // Create a new program and add all our shaders.
+    osg::Program* program = new osg::Program();
+    for( ShaderVector::iterator i = vec.begin(); i != vec.end(); ++i )
+    {
+        program->addShader( i->get() );
+    }
+
+    // Since we replaced the "mains", we have to go through the cache and update all its
+    // entries to point at the new mains instead of the old ones.
+    if ( old_vert_main || old_frag_main )
+    {
+        ProgramMap newProgramCache;
+
+        for( ProgramMap::iterator m = _programCache.begin(); m != _programCache.end(); ++m )
+        {
+            const ShaderVector& original = m->first;
+
+            // build a new cache key:
+            ShaderVector newKey;
+
+            for( ShaderVector::const_iterator i = original.begin(); i != original.end(); ++i )
+            {
+                if ( i->get() == old_vert_main )
+                    newKey.push_back( vert_main.get() );
+                else if ( i->get() == old_frag_main )
+                    newKey.push_back( frag_main.get() );
+                else
+                    newKey.push_back( i->get() );
+            }
+
+            osg::Program* p = m->second.get();
+            for( unsigned n = 0; n < p->getNumShaders(); --n )
+            {
+                osg::Shader* s = p->getShader(n);
+                if ( s == old_vert_main )
+                {
+                    p->removeShader( s );
+                    p->addShader( vert_main.get() );
+                    --n;
+                }
+                else if ( s == old_frag_main )
+                {
+                    p->removeShader( s );
+                    p->addShader( frag_main.get() );
+                    --n;
+                }
+            }
+
+            newProgramCache[newKey] = p;
+        }
+
+        _programCache = newProgramCache;
+    }
+
+    // finally, put own new program in the cache.
+    _programCache[ vec ] = program;
+
+    return program;
+}
+
+
 void
 VirtualProgram::apply( osg::State & state ) const
 {
@@ -216,46 +303,34 @@ VirtualProgram::apply( osg::State & state ) const
 
         // see if there's already a program associated with this list:
         osg::Program* program = 0L;
-        ProgramMap::iterator p = _programMap.find( vec );
-        if ( p != _programMap.end() )
+
+        // look up the program:
         {
-            // Already have a matching program; use it.
-            program = p->second.get();
+            Threading::ScopedReadLock shared( _programCacheMutex );
+
+            ProgramMap::const_iterator p = _programCache.find( vec );
+            if ( p != _programCache.end() )
+            {
+                program = p->second.get();
+            }
         }
-        else
+
+        // if not found, lock and build it:
+        if ( !program )
         {
-            // No matching program in the cache; make it.
-            ShaderFactory* sf = osgEarth::Registry::instance()->getShaderFactory();
+            Threading::ScopedWriteLock exclusive( _programCacheMutex );
 
-            VirtualProgram* nonConstThis = const_cast<VirtualProgram*>(this);
-
-            // build a new set of accumulated functions, to support the creation of main()
-            nonConstThis->refreshAccumulatedFunctions( state );
-                
-            osg::ref_ptr<osg::Shader> vert_main = sf->createVertexShaderMain( _accumulatedFunctions );
-            nonConstThis->setShader( "osgearth_vert_main", vert_main.get() );
-            addToAccumulatedMap( accumShaderMap, "osgearth_vert_main", ShaderEntry(vert_main.get(), osg::StateAttribute::ON) );
-
-            osg::ref_ptr<osg::Shader> frag_main = sf->createFragmentShaderMain( _accumulatedFunctions );
-            nonConstThis->setShader( "osgearth_frag_main", frag_main );
-            addToAccumulatedMap( accumShaderMap, "osgearth_frag_main", ShaderEntry(frag_main.get(), osg::StateAttribute::ON) );
-            
-            // rebuild the shader list now that we've changed the shader map.
-            vec.clear();
-            for( ShaderMap::iterator i = accumShaderMap.begin(); i != accumShaderMap.end(); ++i )
+            // look again in case of contention:
+            ProgramMap::const_iterator p = _programCache.find( vec );
+            if ( p != _programCache.end() )
             {
-                vec.push_back( i->second.first.get() );
+                program = p->second.get();
             }
-
-            // Create a new program and add all our shaders.
-            program = new osg::Program();
-            for( ShaderVector::iterator i = vec.begin(); i != vec.end(); ++i )
+            else
             {
-                program->addShader( i->get() );
+                VirtualProgram* nc = const_cast<VirtualProgram*>(this);
+                program = nc->buildProgram( state, accumShaderMap );
             }
-
-            // finally, cache the program so we only regenerate it when it changes.
-            _programMap[ vec ] = program;
         }
 
         // finally, apply the program attribute.
@@ -280,7 +355,8 @@ VirtualProgram::refreshAccumulatedFunctions( const osg::State& state )
     // This method searches the state's attribute stack and accumulates all 
     // the user functions (including those in this program).
 
-    Threading::ScopedMutexLock lock( _functionsMutex );
+    // mutex no longer required since this method is called safely
+    //Threading::ScopedMutexLock lock( _functionsMutex );
 
     _accumulatedFunctions.clear();
 

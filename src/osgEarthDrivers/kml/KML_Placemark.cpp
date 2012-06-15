@@ -83,8 +83,16 @@ KML_Placemark::build( const Config& conf, KMLContext& cx )
         osg::ref_ptr<osg::Image> markerImage;
         osg::ref_ptr<osg::Node>  markerModel;
 
-        MarkerSymbol* marker = style.get<MarkerSymbol>();    
-        if ( marker && marker->url().isSet() )
+        MarkerSymbol* marker = style.get<MarkerSymbol>();
+		
+		//Add Scale, Rotate
+		float markerScale = marker->scale()->eval();
+		optional<osg::Vec3f> markerRotate = marker->orientation();
+		// Heading only
+		osg::Quat markerQuat(osg::DegreesToRadians(markerRotate->x()),osg::Vec3d(0.0, 0.0, 1.0));
+		// end Add
+
+		if ( marker && marker->url().isSet() )
         {
             markerURI = URI( marker->url()->eval(), marker->url()->uriContext() );
             ReadResult result = marker->isModel() == true? markerURI.readNode() : markerURI.readImage();
@@ -93,8 +101,12 @@ KML_Placemark::build( const Config& conf, KMLContext& cx )
 
             // We can't leave the marker symbol in the style, or the GeometryCompiler will
             // think we want to do Point-model substitution. So remove it. A bit of a hack
-            if ( marker )
+			if ( marker )
+			{
                 style.removeSymbol(marker);
+                // without this, debug version has exception
+                marker=0x0;
+			}
         }
 
         std::string text = 
@@ -110,20 +122,25 @@ KML_Placemark::build( const Config& conf, KMLContext& cx )
         {
             LocalGeometryNode* lg = new LocalGeometryNode(cx._mapNode, markerModel.get(), style, false);
             lg->setPosition( position );
-            if ( marker )
-            {
-                if ( marker->scale().isSet() )
-                {
-                    float scale = marker->scale()->eval();
-                    lg->setScale( osg::Vec3f(scale,scale,scale) );
-                }
-                if ( marker->orientation().isSet() )
-                {
-                   // lg->setRotation( );
-                }
-            }
-
-            fNode = lg;
+			//Add Scale, Rotate
+			lg->setScale( osg::Vec3f(markerScale,markerScale,markerScale) );
+			lg->setLocalRotation(markerQuat);
+// This code won't work, because marker was deleted.
+//             if ( marker )
+//             {
+//                 if ( marker->scale().isSet() )
+//                 {
+//                     float scale = marker->scale()->eval();
+//                     lg->setScale( osg::Vec3f(scale,scale,scale) );
+//                 }
+//                 if ( marker->orientation().isSet() )
+//                 {
+//                    // lg->setRotation( );
+//                 }
+//             }
+// 
+            // end Add
+			fNode = lg;
             //Feature* feature = new Feature(geometry._geom.get(), cx._srs.get(), style);
             //fNode = new FeatureNode( cx._mapNode, feature, false );
         }

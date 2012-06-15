@@ -150,7 +150,7 @@ public:
                       cropFilter.push( features, context );
 
 
-                      if (!features.empty() && clone->getGeometry() && clone->getGeometry()->size() > 0)
+                      if (!features.empty() && clone->getGeometry() && clone->getGeometry()->isValid())
                       {
                           //tile->getFeatures().push_back( clone );
                           tile->getFeatures().push_back( clone->getFID() );
@@ -324,7 +324,7 @@ void
             feature->setSRS( _srs );
         }
 
-        if (feature->getGeometry() && feature->getGeometry()->getBounds().valid() && feature->getGeometry()->size() > 0)
+        if (feature->getGeometry() && feature->getGeometry()->getBounds().valid() && feature->getGeometry()->isValid())
         {
 
             AddFeatureVisitor v(feature.get(), _maxFeatures, _firstLevel, _maxLevel, _method);
@@ -350,7 +350,7 @@ void
             skipped++;
         }
     }   
-    OE_NOTICE << "Added=" << added << "Skipped=" << skipped << " Failed=" << failed << std::endl;
+    OE_NOTICE << "Added=" << added << " Skipped=" << skipped << " Failed=" << failed << std::endl;
 
     WriteFeaturesVisitor write(features, destination, _method, _srs);
     root->accept( &write );

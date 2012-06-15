@@ -60,12 +60,16 @@ namespace osgEarth { namespace Util
         unsigned int getFirstLevel() const { return _firstLevel;}
         void setFirstLevel(unsigned int value) { _firstLevel = value;}
 
+        const SpatialReference* getSRS() const { return _srs;}
+        void setSRS( const SpatialReference* srs ) { _srs = srs;}
+
     private:
         std::string _title;
         std::string _abstract;
         osgEarth::GeoExtent _extent;
         unsigned int _maxLevel;
         unsigned int _firstLevel;
+        osg::ref_ptr< const osgEarth::SpatialReference > _srs;
     };
 
     class OSGEARTHUTIL_EXPORT TFSReaderWriter

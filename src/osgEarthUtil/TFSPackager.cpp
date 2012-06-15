@@ -150,7 +150,7 @@ public:
                       cropFilter.push( features, context );
 
 
-                      if (!features.empty() && clone->getGeometry() && clone->getGeometry()->size() > 0)
+                      if (!features.empty() && clone->getGeometry() && clone->getGeometry()->isValid())
                       {
                           //tile->getFeatures().push_back( clone );
                           tile->getFeatures().push_back( clone->getFID() );
@@ -196,11 +196,11 @@ public:
 class WriteFeaturesVisitor : public FeatureTileVisitor
 {
 public:
-    WriteFeaturesVisitor(FeatureSource* features, const std::string& dest, const std::string &layer, CropFilter::Method cropMethod):
+    WriteFeaturesVisitor(FeatureSource* features, const std::string& dest, CropFilter::Method cropMethod, const SpatialReference* srs):
       _dest( dest ),
-          _layer( layer ),
           _features( features ),
-          _cropMethod( cropMethod )
+          _cropMethod( cropMethod ),
+          _srs( srs )
       {
 
       }
@@ -208,8 +208,7 @@ public:
       virtual void traverse( FeatureTile* tile)
       {
           if (tile->getFeatures().size() > 0)
-          {   
-              osg::ref_ptr< osgEarth::SpatialReference > wgs84 = osgEarth::SpatialReference::create("epsg:4326");
+          {                 
               //Actually load up the features
               FeatureList features;
               for (FeatureIDList::const_iterator i = tile->getFeatures().begin(); i != tile->getFeatures().end(); i++)
@@ -218,11 +217,11 @@ public:
 
                   if (f)
                   {
-                      //Reproject the feature to WGS84 if it's not already
-                      if (!f->getSRS()->isEquivalentTo( wgs84 ) )
+                      //Reproject the feature to the dest SRS if it's not already
+                      if (!f->getSRS()->isEquivalentTo( _srs ) )
                       {
-                          f->getSRS()->transform(f->getGeometry()->asVector(), wgs84 );
-                          f->setSRS( wgs84 );
+                          f->getSRS()->transform(f->getGeometry()->asVector(), _srs );
+                          f->setSRS( _srs );
                       }
 
                       features.push_back( f );
@@ -246,7 +245,7 @@ public:
               tile->getKey().getProfile()->getNumTiles(tile->getKey().getLevelOfDetail(), numCols, numRows);
               int y  = numRows - tile->getKey().getTileY() - 1;
 
-              buf << osgDB::concatPaths( _dest, _layer ) << "/" << tile->getKey().getLevelOfDetail() << "/" << x << "/" << y << ".json";
+              buf << _dest << "/" << tile->getKey().getLevelOfDetail() << "/" << x << "/" << y << ".json";
               std::string filename = buf.str();
               //OE_NOTICE << "Writing " << features.size() << " features to " << filename << std::endl;
 
@@ -266,9 +265,9 @@ public:
       }
 
       osg::ref_ptr< FeatureSource > _features;
-      std::string _dest;
-      std::string _layer;
+      std::string _dest;      
       CropFilter::Method _cropMethod;
+      osg::ref_ptr< const SpatialReference > _srs;
 };
 
 
@@ -285,11 +284,20 @@ _firstLevel( 0 ),
 
 void
     TFSPackager::package( FeatureSource* features, const std::string& destination, const std::string& layername, const std::string& description )
-{
-    osg::ref_ptr< osgEarth::SpatialReference > wgs84 = osgEarth::SpatialReference::create("epsg:4326");
+{   
+    if (!_destSRSString.empty())
+    {
+        _srs = SpatialReference::create( _destSRSString );
+    }
+
+    //Get the destination SRS from the feature source if it's not already set
+    if (!_srs.valid())
+    {
+        _srs = features->getFeatureProfile()->getSRS();
+    }
 
     //Transform to lat/lon extents
-    GeoExtent extent = features->getFeatureProfile()->getExtent().transform( wgs84.get() );
+    GeoExtent extent = features->getFeatureProfile()->getExtent().transform( _srs.get() );
 
     osg::ref_ptr< const osgEarth::Profile > profile = osgEarth::Profile::create(extent.getSRS(), extent.xMin(), extent.yMin(), extent.xMax(), extent.yMax(), 1, 1);
 
@@ -309,14 +317,14 @@ void
     {        
         osg::ref_ptr< Feature > feature = cursor->nextFeature();
 
-        //Reproject the feature to WGS84 if it's not already
-        if (!feature->getSRS()->isEquivalentTo( wgs84 ) )
+        //Reproject the feature to the dest SRS if it's not already
+        if (!feature->getSRS()->isEquivalentTo( _srs ) )
         {
-            feature->getSRS()->transform(feature->getGeometry()->asVector(), wgs84 );
-            feature->setSRS( wgs84 );
+            feature->getSRS()->transform(feature->getGeometry()->asVector(), _srs );
+            feature->setSRS( _srs );
         }
 
-        if (feature->getGeometry() && feature->getGeometry()->getBounds().valid() && feature->getGeometry()->size() > 0)
+        if (feature->getGeometry() && feature->getGeometry()->getBounds().valid() && feature->getGeometry()->isValid())
         {
 
             AddFeatureVisitor v(feature.get(), _maxFeatures, _firstLevel, _maxLevel, _method);
@@ -342,9 +350,9 @@ void
             skipped++;
         }
     }   
-    OE_NOTICE << "Added=" << added << "Skipped=" << skipped << " Failed=" << failed << std::endl;
+    OE_NOTICE << "Added=" << added << " Skipped=" << skipped << " Failed=" << failed << std::endl;
 
-    WriteFeaturesVisitor write(features, destination, layername, _method);
+    WriteFeaturesVisitor write(features, destination, _method, _srs);
     root->accept( &write );
 
     //Write out the meta doc
@@ -354,7 +362,8 @@ void
     layer.setFirstLevel( _firstLevel );
     layer.setMaxLevel( highestLevel );
     layer.setExtent( profile->getExtent() );
-    TFSReaderWriter::write( layer, osgDB::concatPaths(destination, layername) + "/tfs.xml");
+    layer.setSRS( _srs.get() );
+    TFSReaderWriter::write( layer, osgDB::concatPaths( destination, "tfs.xml"));
 
 }
 

@@ -46,11 +46,12 @@ usage( const std::string& msg )
         << "    --max-level        ; The maximum level of the feature quadtree" << std::endl
         << "    --max-features     ; The maximum number of features per tile" << std::endl
         << "    --out              ; The destination directory" << std::endl
-        << "    --layer            ; The name of the layer in the feature source (blank to pick the first layer)" << std::endl
-        << "    --description      ; The abstract/description of the layer" << std::endl
+        << "    --layer            ; The name of the layer to be written to the metadata document" << std::endl
+        << "    --description      ; The abstract/description of the layer to be written to the metadata document" << std::endl
         << "    --expression       ; The expression to run on the feature source, specific to the feature source" << std::endl
         << "    --order-by         ; Sort the features, if not already included in the expression. Append DESC for descending order!" << std::endl
         << "    --crop             ; Crops features instead of doing a centroid check.  Features can be added to multiple tiles when cropping is enabled" << std::endl
+        << "    --dest-srs         ;The destination SRS string in any format osgEarth can understand (wkt, proj4, epsg).  If none is specified the source data SRS will be used" << std::endl
         << std::endl;
 
     return -1;
@@ -101,6 +102,9 @@ int main(int argc, char** argv)
     {
         cropMethod = CropFilter::METHOD_CROPPING;
     }
+
+    std::string destSRS;
+    while(arguments.read("--dest-srs", destSRS));
     
     std::string filename;
 
@@ -149,6 +153,7 @@ int main(int argc, char** argv)
               << "  Expression=" << queryExpression << std::endl
               << "  OrderBy=" << queryOrderBy << std::endl
               << "  Method= " << method << std::endl
+              << "  DestSRS= " << destSRS << std::endl
               << std::endl;
 
 
@@ -171,6 +176,7 @@ int main(int argc, char** argv)
     packager.setMaxFeatures( maxFeatures );
     packager.setQuery( query );
     packager.setMethod( cropMethod );    
+    packager.setDestSRS( destSRS );
     packager.package( features, destination, layer, description );
     osg::Timer_t endTime = osg::Timer::instance()->tick();
     OE_NOTICE << "Completed in " << osg::Timer::instance()->delta_s( startTime, endTime ) << " s " << std::endl;

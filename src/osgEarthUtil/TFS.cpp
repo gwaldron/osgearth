@@ -32,7 +32,8 @@ using namespace std;
 TFSLayer::TFSLayer():
 _firstLevel(0),
 _maxLevel(8),
-_title("layer")
+_title("layer"),
+_srs( SpatialReference::create("EPSG:4326") )
 {
 }
 
@@ -65,6 +66,15 @@ TFSReaderWriter::read( std::istream &in, TFSLayer &layer)
     layer.setFirstLevel( as<unsigned int>(e_layer->getSubElementText("firstlevel"), 0) );
     layer.setMaxLevel( as<unsigned int>(e_layer->getSubElementText("maxlevel"), 0) );
 
+    std::string srsString = e_layer->getSubElementText("srs");
+    if (!srsString.empty())
+    {
+        const SpatialReference* srs = SpatialReference::create( srsString );
+        if (srs)
+        {
+            layer.setSRS( srs );
+        }
+    }
 
      //Read the bounding box
     osg::ref_ptr<XmlElement> e_bounding_box = e_layer->getSubElement("boundingbox");
@@ -74,9 +84,8 @@ TFSReaderWriter::read( std::istream &in, TFSLayer &layer)
         double minY = as<double>(e_bounding_box->getAttr( "miny" ), 0.0);
         double maxX = as<double>(e_bounding_box->getAttr( "maxx" ), 0.0);
         double maxY = as<double>(e_bounding_box->getAttr( "maxy" ), 0.0);
-        layer.setExtent( GeoExtent(SpatialReference::create( "epsg:4326" ), minX, minY, maxX, maxY) );
-    }
-
+        layer.setExtent( GeoExtent( layer.getSRS(), minX, minY, maxX, maxY) );
+    }    
 
     return true;
 }
@@ -100,6 +109,8 @@ tfsToXmlDocument(const TFSLayer &layer)
     e_bounding_box->getAttrs()["maxx"] = toString(layer.getExtent().xMax());
     e_bounding_box->getAttrs()["maxy"] = toString(layer.getExtent().yMax());
     doc->getChildren().push_back(e_bounding_box.get() );
+
+    doc->addSubElement( "SRS", layer.getSRS()->getHorizInitString() );
     
     return doc.release();
 }

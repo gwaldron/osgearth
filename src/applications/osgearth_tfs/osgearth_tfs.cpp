@@ -50,6 +50,7 @@ usage( const std::string& msg )
         << "    --expression                      ; The expression to run on the feature source, specific to the feature source" << std::endl
         << "    --orderby                         ; Sort the features, if not already included in the expression" << std::endl
         << "    --crop                            ; Crops features instead of doing a centroid check.  Features can be added to multiple tiles when cropping is enabled" << std::endl
+        << "    --destsrs                         ; The destination SRS string in any format osgEarth can understand (wkt, proj4, epsg).  If none is specified the source data SRS will be used" << std::endl
         << std::endl;
 
     return -1;
@@ -100,6 +101,9 @@ int main(int argc, char** argv)
     {
         cropMethod = CropFilter::METHOD_CROPPING;
     }
+
+    std::string destSRS;
+    while(arguments.read("--destsrs", destSRS));
     
     std::string filename;
 
@@ -148,6 +152,7 @@ int main(int argc, char** argv)
               << "  Expression=" << queryExpression << std::endl
               << "  OrderBy=" << queryOrderBy << std::endl
               << "  Method= " << method << std::endl
+              << "  DestSRS= " << destSRS << std::endl
               << std::endl;
 
 
@@ -170,6 +175,7 @@ int main(int argc, char** argv)
     packager.setMaxFeatures( maxFeatures );
     packager.setQuery( query );
     packager.setMethod( cropMethod );    
+    packager.setDestSRS( destSRS );
     packager.package( features, destination, layer, description );
     osg::Timer_t endTime = osg::Timer::instance()->tick();
     OE_NOTICE << "Completed in " << osg::Timer::instance()->delta_s( startTime, endTime ) << " s " << std::endl;

@@ -130,6 +130,8 @@ public:
       {        
           if (_added && _cropMethod != CropFilter::METHOD_CROPPING) return;
 
+          bool traverse = true;
+
           GeoExtent featureExtent(_feature->getSRS(), _feature->getGeometry()->getBounds());
           if (featureExtent.intersects( tile->getExtent()))
           {
@@ -157,10 +159,11 @@ public:
                           _added = true;
                           _levelAdded = tile->getKey().getLevelOfDetail();
                           _numAdded++;                   
+                          traverse = false;
                       }
                   }
 
-                  if (_cropMethod == CropFilter::METHOD_CROPPING)
+                  if (traverse || _cropMethod == CropFilter::METHOD_CROPPING)
                   {
                       tile->traverse( this );
                   }

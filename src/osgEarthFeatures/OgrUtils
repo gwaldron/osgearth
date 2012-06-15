@@ -205,7 +205,16 @@ struct OgrUtils
                 requestedType = wkbLinearRing;
                 break;            
             case Geometry::TYPE_UNKNOWN: break;
-            case Geometry::TYPE_MULTI: break;
+            case Geometry::TYPE_MULTI: 
+                {
+                    osgEarth::Symbology::MultiGeometry* multi = dynamic_cast<MultiGeometry*>(geometry);
+                    osgEarth::Symbology::Geometry::Type componentType = multi->getComponentType();
+                    requestedType = componentType == Geometry::TYPE_POLYGON ? wkbMultiPolygon : 
+                                    componentType == Geometry::TYPE_POINTSET ? wkbMultiPoint :
+                                    componentType == Geometry::TYPE_LINESTRING ? wkbMultiLineString :
+                                    wkbNone;                    
+                }
+                break;
             }
         }
 
@@ -226,21 +235,27 @@ struct OgrUtils
             shape_type == wkbMultiPoint25D? wkbPoint25D :
             wkbNone;
 
+        //OE_NOTICE << "shape_type = " << shape_type << " part_type=" << part_type << std::endl;
+
 
         osgEarth::Symbology::MultiGeometry* multi = dynamic_cast<MultiGeometry*>(geometry);
 
         if ( multi )
         {
-            OGRGeometryH group_handle = OGR_G_CreateGeometry( requestedType );
+            OGRGeometryH group_handle = OGR_G_CreateGeometry( shape_type );
             for (GeometryCollection::iterator itr = multi->getComponents().begin(); itr != multi->getComponents().end(); ++itr)
             {
-                OGRGeometryH shape_handle = encodeShape( itr->get(), shape_type, part_type );
+                //OE_NOTICE << "Adding feature " << itr->get()->getType() << std::endl;
+                //We're dealing with a MultiGeometry as the parent, so we just want to encode the underlying part type
+                OGRGeometryH shape_handle = encodeShape( itr->get(), part_type, part_type );
                 if ( shape_handle )
                 {
-                    if ( OGR_G_AddGeometryDirectly( group_handle, shape_handle ) != OGRERR_NONE )
+                    OGRErr error = OGR_G_AddGeometryDirectly( group_handle, shape_handle );
+                    if ( error != OGRERR_NONE )
                     {
-                        OE_WARN << "OGR_G_AddGeometryDirectly failed!" << std::endl;
-                    }
+                        OE_WARN << "OGR_G_AddGeometryDirectly failed! " << error << std::endl;
+                        OE_WARN << "shape_type = " << shape_type << " part_type=" << part_type << std::endl;
+                    }                    
                 }
             }
 

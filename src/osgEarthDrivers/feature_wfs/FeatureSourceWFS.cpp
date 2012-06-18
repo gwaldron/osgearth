@@ -345,6 +345,23 @@ public:
             OE_DEBUG << LC << "Read " << features.size() << " features" << std::endl;
         }
 
+        //If we have any filters, process them here before the cursor is created
+        if (!_options.filters().empty())
+        {
+            // preprocess the features using the filter list:
+            if ( features.size() > 0 )
+            {
+                FilterContext cx;
+                cx.profile() = getFeatureProfile();
+
+                for( FeatureFilterList::const_iterator i = _options.filters().begin(); i != _options.filters().end(); ++i )
+                {
+                    FeatureFilter* filter = i->get();
+                    cx = filter->push( features, cx );
+                }
+            }
+        }
+
         //result = new FeatureListCursor(features);
         result = dataOK ? new FeatureListCursor( features ) : 0L;
 

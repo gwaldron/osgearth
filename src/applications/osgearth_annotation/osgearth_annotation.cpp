@@ -128,6 +128,8 @@ main(int argc, char** argv)
 
     osgViewer::Viewer viewer(arguments);
 
+    viewer.setCameraManipulator( new EarthManipulator() );
+
     // load an earth file and parse demo arguments
     osg::Node* node = MapNodeHelper().load(arguments, &viewer);
     if ( !node )
@@ -380,8 +382,7 @@ main(int argc, char** argv)
 
     //--------------------------------------------------------------------
 
-    // initialize the viewer:    
-    viewer.setCameraManipulator( new EarthManipulator() );
+    // initialize the viewer:        
     viewer.setSceneData( root );
 
     viewer.getCamera()->addCullCallback( new AutoClipPlaneCullCallback(mapNode) );

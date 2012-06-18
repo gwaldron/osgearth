@@ -914,14 +914,14 @@ SpatialReference::transform(std::vector<osg::Vec3d>& points,
     // any normal horizontal datum conversion. In other words we ignore the ellipsoid
     // of the other SRS and just do a straight spherical conversion.
     if ( isGeographic() && outputSRS->isSphericalMercator() )
-    {
+    {        
         transformZ( points, outputSRS, true );
         success = geographicToSphericalMercator( points );
         return success;
     }
 
     else if ( isSphericalMercator() && outputSRS->isGeographic() )
-    {
+    {     
         success = sphericalMercatorToGeographic( points );
         transformZ( points, outputSRS, true );
         return success;
@@ -1263,6 +1263,8 @@ SpatialReference::transformExtentToMBR(const SpatialReference* to_srs,
     if ( !_initialized )
         const_cast<SpatialReference*>(this)->init();
 
+    //Original code that checks the 4 corners of the bounds and translates them
+#if 0
     // Transform all points and take the maximum bounding rectangle the resulting points
     std::vector<osg::Vec3d> v;
     v.push_back( osg::Vec3d(in_out_xmin, in_out_ymin, 0) ); // ll
@@ -1278,6 +1280,73 @@ SpatialReference::transformExtentToMBR(const SpatialReference* to_srs,
         in_out_ymax = std::max( v[1].y(), v[2].y() );
         return true;
     }
+#else
+    // Transform all points and take the maximum bounding rectangle the resulting points
+    std::vector<osg::Vec3d> v;
+
+    double height = in_out_ymax - in_out_ymin;
+    double width = in_out_xmax - in_out_xmin;
+    v.push_back( osg::Vec3d(in_out_xmin, in_out_ymin, 0) ); // ll    
+    v.push_back( osg::Vec3d(in_out_xmin, in_out_ymax, 0) ); // ul
+    v.push_back( osg::Vec3d(in_out_xmax, in_out_ymax, 0) ); // ur
+    v.push_back( osg::Vec3d(in_out_xmax, in_out_ymin, 0) ); // lr
+
+    //We also sample along the edges of the bounding box and include them in the 
+    //MBR computation in case you are dealing with a projection that will cause the edges
+    //of the bounding box to be expanded.  This was first noticed when dealing with converting
+    //Hotline Oblique Mercator to WGS84
+   
+    //Sample the edges
+    unsigned int numSamples = 5;    
+    double dWidth  = width / (numSamples - 1 );
+    double dHeight = height / (numSamples - 1 );
+    
+    //Left edge
+    for (unsigned int i = 0; i < numSamples; i++)
+    {
+        v.push_back( osg::Vec3d(in_out_xmin, in_out_ymin + dHeight * (double)i, 0) );
+    }
+
+    //Right edge
+    for (unsigned int i = 0; i < numSamples; i++)
+    {
+        v.push_back( osg::Vec3d(in_out_xmax, in_out_ymin + dHeight * (double)i, 0) );
+    }
+
+    //Top edge
+    for (unsigned int i = 0; i < numSamples; i++)
+    {
+        v.push_back( osg::Vec3d(in_out_xmin + dWidth * (double)i, in_out_ymax, 0) );
+    }
+
+    //Bottom edge
+    for (unsigned int i = 0; i < numSamples; i++)
+    {
+        v.push_back( osg::Vec3d(in_out_xmin + dWidth * (double)i, in_out_ymin, 0) );
+    }
+    
+    
+    
+    if ( transform(v, to_srs) )
+    {
+        in_out_xmin = DBL_MAX;
+        in_out_ymin = DBL_MAX;
+        in_out_xmax = -DBL_MAX;
+        in_out_ymax = -DBL_MAX;
+
+        for (unsigned int i = 0; i < v.size(); i++)
+        {
+            in_out_xmin = std::min( v[i].x(), in_out_xmin );
+            in_out_ymin = std::min( v[i].y(), in_out_ymin );
+            in_out_xmax = std::max( v[i].x(), in_out_xmax );
+            in_out_ymax = std::max( v[i].y(), in_out_ymax );
+        }
+
+        return true;
+    }
+
+   
+#endif
 
     return false;
 }

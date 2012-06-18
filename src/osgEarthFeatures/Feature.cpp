@@ -538,3 +538,22 @@ std::string Feature::featuresToGeoJSON( FeatureList& features)
     return buf.str();
 
 }
+
+void Feature::transform( const SpatialReference* srs )
+{
+    if (!getGeometry())
+    {
+        return;
+    }
+
+    if (getSRS()->isEquivalentTo( srs )) return;
+
+    // iterate over the feature geometry.
+    GeometryIterator iter( getGeometry() );
+    while( iter.hasMore() )
+    {
+        Geometry* geom = iter.next();
+        getSRS()->transform( geom->asVector(), srs );
+    }
+    setSRS( srs );
+}

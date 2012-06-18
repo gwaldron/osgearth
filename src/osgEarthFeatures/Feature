@@ -207,6 +207,12 @@ namespace osgEarth { namespace Features
         /** Gets a FeatureList as a GeoJSON FeatureCollection */
         static std::string featuresToGeoJSON( FeatureList& features);
 
+    public:
+        /**
+         * Transforms this Feature to the given SpatialReference
+         */
+        void transform( const SpatialReference* srs );
+
     protected:
 
         Feature( FeatureID fid =0L );

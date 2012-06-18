@@ -223,10 +223,8 @@ public:
                       //Reproject the feature to the dest SRS if it's not already
                       if (!f->getSRS()->isEquivalentTo( _srs ) )
                       {
-                          f->getSRS()->transform(f->getGeometry()->asVector(), _srs );
-                          f->setSRS( _srs );
+                          f->transform( _srs );
                       }
-
                       features.push_back( f );
                   }
                   else
@@ -323,8 +321,7 @@ void
         //Reproject the feature to the dest SRS if it's not already
         if (!feature->getSRS()->isEquivalentTo( _srs ) )
         {
-            feature->getSRS()->transform(feature->getGeometry()->asVector(), _srs );
-            feature->setSRS( _srs );
+            feature->transform( _srs );
         }
 
         if (feature->getGeometry() && feature->getGeometry()->getBounds().valid() && feature->getGeometry()->isValid())

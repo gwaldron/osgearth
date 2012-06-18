@@ -62,9 +62,6 @@ _defaultFont     ( 0L )
     _shaderLib = new ShaderFactory();
     _taskServiceManager = new TaskServiceManager();
 
-    // create a color filter reg
-    _colorFilterReg = new ColorFilterRegistry();
-
     // activate KMZ support
     osgDB::Registry::instance()->addArchiveExtension  ( "kmz" );    
     osgDB::Registry::instance()->addFileExtensionAlias( "kmz", "kml" );
@@ -138,7 +135,7 @@ _defaultFont     ( 0L )
 
 Registry::~Registry()
 {
-    delete _colorFilterReg;
+    //nop
 }
 
 Registry* 

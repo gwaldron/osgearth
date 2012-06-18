@@ -158,11 +158,6 @@ namespace osgEarth
 
         const Units* getUnits(const std::string& name) const;
 
-        /**
-         * Access to the color filter registry
-         */
-        ColorFilterRegistry* getColorFilterRegistry();
-
     protected:
         virtual ~Registry();
         Registry();
@@ -208,8 +203,6 @@ namespace osgEarth
 
         typedef std::vector<const Units*> UnitsVector;
         UnitsVector _unitsVector;
-
-        ColorFilterRegistry* _colorFilterReg;
     };
 }
 

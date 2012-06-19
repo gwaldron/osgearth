@@ -25,61 +25,91 @@
 using namespace osgEarth;
 using namespace osgEarth::Util;
 
-class LineOfSightNodeTerrainChangedCallback : public osgEarth::TerrainCallback
+namespace
 {
-public:
-    LineOfSightNodeTerrainChangedCallback( LineOfSightNode* los ):
-      _los(los)
+    class TerrainChangedCallback : public osgEarth::TerrainCallback
     {
+    public:
+        TerrainChangedCallback( LinearLineOfSightNode* los ):
+          _los(los)
+        {
+        }
+
+        virtual void onTileAdded(const osgEarth::TileKey& tileKey, osg::Node* terrain, TerrainCallbackContext&)
+        {
+            _los->terrainChanged( tileKey, terrain );
+        }
+
+    private:
+        LinearLineOfSightNode* _los;
+    }; 
+
+
+    bool getRelativeWorld(double x, double y, double relativeHeight, MapNode* mapNode, osg::Vec3d& world )
+    {
+        GeoPoint mapPoint(mapNode->getMapSRS(), x, y);
+        osg::Vec3d pos;
+        mapNode->getMap()->toWorldPoint(mapPoint, pos);
+
+        osg::Vec3d up(0,0,1);
+        const osg::EllipsoidModel* em = mapNode->getMap()->getProfile()->getSRS()->getEllipsoid();
+        if (em)
+        {
+            up = em->computeLocalUpVector( world.x(), world.y(), world.z());
+        }    
+        up.normalize();
+
+        double segOffset = 50000;
+
+        osg::Vec3d start = pos + (up * segOffset);
+        osg::Vec3d end = pos - (up * segOffset);
+        
+        osgUtil::LineSegmentIntersector* i = new osgUtil::LineSegmentIntersector( start, end );
+        
+        osgUtil::IntersectionVisitor iv;    
+        iv.setIntersector( i );
+        mapNode->getTerrainEngine()->accept( iv );
+
+        osgUtil::LineSegmentIntersector::Intersections& results = i->getIntersections();
+        if ( !results.empty() )
+        {
+            const osgUtil::LineSegmentIntersector::Intersection& result = *results.begin();
+            world = result.getWorldIntersectPoint();
+            world += up * relativeHeight;
+            return true;
+        }
+        return false;    
     }
 
-    virtual void onTileAdded(const osgEarth::TileKey& tileKey, osg::Node* terrain, TerrainCallbackContext&)
+
+    osg::Vec3d getNodeCenter(osg::Node* node)
     {
-        _los->terrainChanged( tileKey, terrain );
+        osg::NodePathList nodePaths = node->getParentalNodePaths();
+        if ( nodePaths.empty() )
+            return node->getBound().center();
+
+        osg::NodePath path = nodePaths[0];
+
+        osg::Matrixd localToWorld = osg::computeLocalToWorld( path );
+        osg::Vec3d center = osg::Vec3d(0,0,0) * localToWorld;
+
+        // if the tether node is a MT, we are set. If it's not, we need to get the
+        // local bound and add its translation to the localToWorld. We cannot just use
+        // the bounds directly because they are single precision (unless you built OSG
+        // with double-precision bounding spheres, which you probably did not :)
+        if ( !dynamic_cast<osg::MatrixTransform*>( node ) )
+        {
+            const osg::BoundingSphere& bs = node->getBound();
+            center += bs.center();
+        }   
+        return center;
     }
-
-private:
-    LineOfSightNode* _los;
-}; 
-
-static bool getRelativeWorld(double x, double y, double relativeHeight, MapNode* mapNode, osg::Vec3d& world )
-{
-    GeoPoint mapPoint(mapNode->getMapSRS(), x, y);
-    osg::Vec3d pos;
-    mapNode->getMap()->toWorldPoint(mapPoint, pos);
-
-    osg::Vec3d up(0,0,1);
-    const osg::EllipsoidModel* em = mapNode->getMap()->getProfile()->getSRS()->getEllipsoid();
-    if (em)
-    {
-        up = em->computeLocalUpVector( world.x(), world.y(), world.z());
-    }    
-    up.normalize();
-
-    double segOffset = 50000;
-
-    osg::Vec3d start = pos + (up * segOffset);
-    osg::Vec3d end = pos - (up * segOffset);
-    
-    osgUtil::LineSegmentIntersector* i = new osgUtil::LineSegmentIntersector( start, end );
-    
-    osgUtil::IntersectionVisitor iv;    
-    iv.setIntersector( i );
-    mapNode->getTerrainEngine()->accept( iv );
-
-    osgUtil::LineSegmentIntersector::Intersections& results = i->getIntersections();
-    if ( !results.empty() )
-    {
-        const osgUtil::LineSegmentIntersector::Intersection& result = *results.begin();
-        world = result.getWorldIntersectPoint();
-        world += up * relativeHeight;
-        return true;
-    }
-    return false;    
 }
 
+//------------------------------------------------------------------------
 
-LineOfSightNode::LineOfSightNode(osgEarth::MapNode *mapNode):
+
+LinearLineOfSightNode::LinearLineOfSightNode(osgEarth::MapNode *mapNode):
 _mapNode(mapNode),
 _start(0,0,0),
 _end(0,0,0),
@@ -99,7 +129,9 @@ _terrainOnly( false )
 }
 
 
-LineOfSightNode::LineOfSightNode(osgEarth::MapNode *mapNode, const osg::Vec3d& start, const osg::Vec3d& end):
+LinearLineOfSightNode::LinearLineOfSightNode(osgEarth::MapNode* mapNode, 
+                                                         const osg::Vec3d& start, 
+                                                         const osg::Vec3d& end):
 _mapNode(mapNode),
 _start(start),
 _end(end),
@@ -120,20 +152,20 @@ _terrainOnly( false )
 
 
 void
-LineOfSightNode::subscribeToTerrain()
+LinearLineOfSightNode::subscribeToTerrain()
 {
-    _terrainChangedCallback = new LineOfSightNodeTerrainChangedCallback( this );
+    _terrainChangedCallback = new TerrainChangedCallback( this );
     _mapNode->getTerrain()->addTerrainCallback( _terrainChangedCallback.get() );        
 }
 
-LineOfSightNode::~LineOfSightNode()
+LinearLineOfSightNode::~LinearLineOfSightNode()
 {
     //Unsubscribe to the terrain callback
     _mapNode->getTerrain()->removeTerrainCallback( _terrainChangedCallback.get() );
 }
 
 void
-LineOfSightNode::terrainChanged( const osgEarth::TileKey& tileKey, osg::Node* terrain )
+LinearLineOfSightNode::terrainChanged( const osgEarth::TileKey& tileKey, osg::Node* terrain )
 {
     OE_DEBUG << "LineOfSightNode::terrainChanged" << std::endl;
     //Make a temporary group that contains both the old MapNode as well as the new incoming terrain.
@@ -146,13 +178,13 @@ LineOfSightNode::terrainChanged( const osgEarth::TileKey& tileKey, osg::Node* te
 }
 
 const osg::Vec3d&
-LineOfSightNode::getStart() const
+LinearLineOfSightNode::getStart() const
 {
     return _start;
 }
 
 void
-LineOfSightNode::setStart(const osg::Vec3d& start)
+LinearLineOfSightNode::setStart(const osg::Vec3d& start)
 {
     if (_start != start)
     {
@@ -162,13 +194,13 @@ LineOfSightNode::setStart(const osg::Vec3d& start)
 }
 
 const osg::Vec3d&
-LineOfSightNode::getEnd() const
+LinearLineOfSightNode::getEnd() const
 {
     return _end;
 }
 
 void
-LineOfSightNode::setEnd(const osg::Vec3d& end)
+LinearLineOfSightNode::setEnd(const osg::Vec3d& end)
 {
     if (_end != end)
     {
@@ -178,49 +210,49 @@ LineOfSightNode::setEnd(const osg::Vec3d& end)
 }
 
 const osg::Vec3d&
-LineOfSightNode::getStartWorld() const
+LinearLineOfSightNode::getStartWorld() const
 {
     return _startWorld;
 }
 
 const osg::Vec3d&
-LineOfSightNode::getEndWorld() const
+LinearLineOfSightNode::getEndWorld() const
 {
     return _endWorld;
 }
 
 const osg::Vec3d&
-LineOfSightNode::getHitWorld() const
+LinearLineOfSightNode::getHitWorld() const
 {
     return _hitWorld;
 }
 
 const osg::Vec3d&
-LineOfSightNode::getHit() const
+LinearLineOfSightNode::getHit() const
 {
     return _hit;
 }
 
 bool
-LineOfSightNode::getHasLOS() const
+LinearLineOfSightNode::getHasLOS() const
 {
     return _hasLOS;
 }
 
 AltitudeMode
-LineOfSightNode::getStartAltitudeMode() const
+LinearLineOfSightNode::getStartAltitudeMode() const
 {
     return _startAltitudeMode;
 }
 
 AltitudeMode
-LineOfSightNode::getEndAltitudeMode() const
+LinearLineOfSightNode::getEndAltitudeMode() const
 {
     return _endAltitudeMode;
 }
 
 void
-LineOfSightNode::setStartAltitudeMode( AltitudeMode mode )
+LinearLineOfSightNode::setStartAltitudeMode( AltitudeMode mode )
 {
     if (_startAltitudeMode != mode)
     {
@@ -230,7 +262,7 @@ LineOfSightNode::setStartAltitudeMode( AltitudeMode mode )
 }
 
 void
-LineOfSightNode::setEndAltitudeMode( AltitudeMode mode )
+LinearLineOfSightNode::setEndAltitudeMode( AltitudeMode mode )
 {
     if (_endAltitudeMode != mode)
     {
@@ -240,13 +272,13 @@ LineOfSightNode::setEndAltitudeMode( AltitudeMode mode )
 }
 
 void
-LineOfSightNode::addChangedCallback( ChangedCallback* callback )
+LinearLineOfSightNode::addChangedCallback( ChangedCallback* callback )
 {
     _changedCallbacks.push_back( callback );
 }
 
 void
-LineOfSightNode::removeChangedCallback( ChangedCallback* callback )
+LinearLineOfSightNode::removeChangedCallback( ChangedCallback* callback )
 {
     ChangedCallbackList::iterator i = std::find( _changedCallbacks.begin(), _changedCallbacks.end(), callback);
     if (i != _changedCallbacks.end())
@@ -257,7 +289,7 @@ LineOfSightNode::removeChangedCallback( ChangedCallback* callback )
 
 
 bool
-LineOfSightNode::computeLOS( osgEarth::MapNode* mapNode, const osg::Vec3d& start, const osg::Vec3d& end, AltitudeMode altitudeMode, osg::Vec3d& hit )
+LinearLineOfSightNode::computeLOS( osgEarth::MapNode* mapNode, const osg::Vec3d& start, const osg::Vec3d& end, AltitudeMode altitudeMode, osg::Vec3d& hit )
 {
     const SpatialReference* mapSRS = mapNode->getMapSRS();
 
@@ -292,7 +324,7 @@ LineOfSightNode::computeLOS( osgEarth::MapNode* mapNode, const osg::Vec3d& start
 
 
 void
-LineOfSightNode::compute(osg::Node* node, bool backgroundThread)
+LinearLineOfSightNode::compute(osg::Node* node, bool backgroundThread)
 {
     if (_start != _end)
     {
@@ -337,7 +369,7 @@ LineOfSightNode::compute(osg::Node* node, bool backgroundThread)
 }
 
 void
-LineOfSightNode::draw(bool backgroundThread)
+LinearLineOfSightNode::draw(bool backgroundThread)
 {
     osg::MatrixTransform* mt = 0L;
 
@@ -415,7 +447,7 @@ LineOfSightNode::draw(bool backgroundThread)
 }
 
 void
-LineOfSightNode::setGoodColor( const osg::Vec4f &color )
+LinearLineOfSightNode::setGoodColor( const osg::Vec4f &color )
 {
     if (_goodColor != color)
     {
@@ -425,13 +457,13 @@ LineOfSightNode::setGoodColor( const osg::Vec4f &color )
 }
 
 const osg::Vec4f&
-LineOfSightNode::getGoodColor() const
+LinearLineOfSightNode::getGoodColor() const
 {
     return _goodColor;
 }
 
 void
-LineOfSightNode::setBadColor( const osg::Vec4f &color )
+LinearLineOfSightNode::setBadColor( const osg::Vec4f &color )
 {
     if (_badColor != color)
     {
@@ -441,19 +473,19 @@ LineOfSightNode::setBadColor( const osg::Vec4f &color )
 }
 
 const osg::Vec4f&
-LineOfSightNode::getBadColor() const
+LinearLineOfSightNode::getBadColor() const
 {
     return _badColor;
 }
 
 LOSDisplayMode
-LineOfSightNode::getDisplayMode() const
+LinearLineOfSightNode::getDisplayMode() const
 {
     return _displayMode;
 }
 
 void
-LineOfSightNode::setDisplayMode( LOSDisplayMode displayMode )
+LinearLineOfSightNode::setDisplayMode( LOSDisplayMode displayMode )
 {
     if (_displayMode != displayMode)
     {
@@ -463,13 +495,13 @@ LineOfSightNode::setDisplayMode( LOSDisplayMode displayMode )
 }
 
 bool
-LineOfSightNode::getTerrainOnly() const
+LinearLineOfSightNode::getTerrainOnly() const
 {
     return _terrainOnly;
 }
 
 void
-LineOfSightNode::setTerrainOnly( bool terrainOnly )
+LinearLineOfSightNode::setTerrainOnly( bool terrainOnly )
 {
     if (_terrainOnly != terrainOnly)
     {
@@ -479,38 +511,14 @@ LineOfSightNode::setTerrainOnly( bool terrainOnly )
 }
 
 osg::Node*
-LineOfSightNode::getNode()
+LinearLineOfSightNode::getNode()
 {
     if (_terrainOnly) return _mapNode->getTerrainEngine();
     return _mapNode.get();
 }
 
-
-osg::Vec3d getNodeCenter(osg::Node* node)
-{
-    osg::NodePathList nodePaths = node->getParentalNodePaths();
-    if ( nodePaths.empty() )
-        return node->getBound().center();
-
-    osg::NodePath path = nodePaths[0];
-
-    osg::Matrixd localToWorld = osg::computeLocalToWorld( path );
-    osg::Vec3d center = osg::Vec3d(0,0,0) * localToWorld;
-
-    // if the tether node is a MT, we are set. If it's not, we need to get the
-    // local bound and add its translation to the localToWorld. We cannot just use
-    // the bounds directly because they are single precision (unless you built OSG
-    // with double-precision bounding spheres, which you probably did not :)
-    if ( !dynamic_cast<osg::MatrixTransform*>( node ) )
-    {
-        const osg::BoundingSphere& bs = node->getBound();
-        center += bs.center();
-    }   
-    return center;
-}
-
 void
-LineOfSightNode::traverse(osg::NodeVisitor& nv)
+LinearLineOfSightNode::traverse(osg::NodeVisitor& nv)
 {
     if (nv.getVisitorType() == osg::NodeVisitor::UPDATE_VISITOR)
     {
@@ -540,7 +548,7 @@ LineOfSightTether::operator()(osg::Node* node, osg::NodeVisitor* nv)
 {
     if (nv->getVisitorType() == osg::NodeVisitor::UPDATE_VISITOR)
     {
-        LineOfSightNode* los = static_cast<LineOfSightNode*>(node);
+        LinearLineOfSightNode* los = static_cast<LinearLineOfSightNode*>(node);
 
         if (_startNode.valid())
         {
@@ -1206,7 +1214,7 @@ RadialLineOfSightTether::operator()(osg::Node* node, osg::NodeVisitor* nv)
 class LOSDraggerCallback : public Dragger::PositionChangedCallback
 {
 public:
-    LOSDraggerCallback(LineOfSightNode* los, bool start):
+    LOSDraggerCallback(LinearLineOfSightNode* los, bool start):
       _los(los),
       _start(start)
       {      
@@ -1232,29 +1240,32 @@ public:
       }
 
       
-      LineOfSightNode* _los;
+      LinearLineOfSightNode* _los;
       bool _start;
 };
 
 /**********************************************************************/
 
-struct LOSUpdateDraggersCallback : public ChangedCallback
+namespace
 {
-public:
-    LOSUpdateDraggersCallback( LineOfSightEditor * editor ):
-      _editor( editor )
+    struct LOSUpdateDraggersCallback : public ChangedCallback
     {
+    public:
+        LOSUpdateDraggersCallback( LinearLineOfSightEditor * editor ):
+          _editor( editor )
+        {
 
-    }
-    virtual void onChanged()
-    {
-        _editor->updateDraggers();
-    }
+        }
+        virtual void onChanged()
+        {
+            _editor->updateDraggers();
+        }
 
-    LineOfSightEditor *_editor;
-};
+        LinearLineOfSightEditor *_editor;
+    };
+}
 
-LineOfSightEditor::LineOfSightEditor(LineOfSightNode* los):
+LinearLineOfSightEditor::LinearLineOfSightEditor(LinearLineOfSightNode* los):
 _los(los)
 {
 
@@ -1275,13 +1286,13 @@ _los(los)
     updateDraggers();
 }
 
-LineOfSightEditor::~LineOfSightEditor()
+LinearLineOfSightEditor::~LinearLineOfSightEditor()
 {
     _los->removeChangedCallback( _callback.get() );
 }
 
 void
-LineOfSightEditor::updateDraggers()
+LinearLineOfSightEditor::updateDraggers()
 {
     osg::Vec3d start = _los->getStartWorld();           
     GeoPoint startMap;
@@ -1298,21 +1309,24 @@ LineOfSightEditor::updateDraggers()
 
 /*****************************************************************************/
 
-struct RadialUpdateDraggersCallback : public ChangedCallback
+namespace
 {
-public:
-    RadialUpdateDraggersCallback( RadialLineOfSightEditor * editor ):
-      _editor( editor )
+    struct RadialUpdateDraggersCallback : public ChangedCallback
     {
+    public:
+        RadialUpdateDraggersCallback( RadialLineOfSightEditor * editor ):
+          _editor( editor )
+        {
 
-    }
-    virtual void onChanged()
-    {
-        _editor->updateDraggers();
-    }
+        }
+        virtual void onChanged()
+        {
+            _editor->updateDraggers();
+        }
 
-    RadialLineOfSightEditor *_editor;
-};
+        RadialLineOfSightEditor *_editor;
+    };
+}
 
 
 class RadialLOSDraggerCallback : public Dragger::PositionChangedCallback

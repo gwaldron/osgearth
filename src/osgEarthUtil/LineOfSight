@@ -42,15 +42,6 @@ namespace osgEarth { namespace Util
         MODE_SINGLE        
     };
 
-    /**
-     * The altitude mode of the locations
-     */
-    //enum AltitudeMode
-    //{
-    //    ALTITUDE_ABSOLUTE,
-    //    ALTITUDE_RELATIVE
-    //};
-
     struct ChangedCallback : public osg::Referenced
     {
     public:
@@ -66,28 +57,28 @@ namespace osgEarth { namespace Util
     /**
      * A Node that can be used to display point to point line of sight calculations
      */
-    class OSGEARTHUTIL_EXPORT LineOfSightNode: public osg::Group
+    class OSGEARTHUTIL_EXPORT LinearLineOfSightNode: public osg::Group
     {
     public:
         /**
-         *Constructs and new LineOfSightNode
+         *Constructs and new LinearLineOfSightNode
          *@param mapNode
-         *       The MapNode that this LineOfSightNode will be operating on
+         *       The MapNode that this LinearLineOfSightNode will be operating on
          */
-        LineOfSightNode( osgEarth::MapNode* mapNode );
+        LinearLineOfSightNode( osgEarth::MapNode* mapNode );
 
-        virtual ~LineOfSightNode();
+        virtual ~LinearLineOfSightNode();
 
         /**
-         *Constructs and new LineOfSightNode
+         *Constructs and new LinearLineOfSightNode
          *@param mapNode
-         *       The MapNode that this LineOfSightNode will be operating on
+         *       The MapNode that this LinearLineOfSightNode will be operating on
          *@param start
          *       The start point
          *@param end
          *       The end point
          */
-        LineOfSightNode( osgEarth::MapNode* mapNode, const osg::Vec3d& start, const osg::Vec3d& end );
+        LinearLineOfSightNode( osgEarth::MapNode* mapNode, const osg::Vec3d& start, const osg::Vec3d& end );
 
         /**
          * Get the start point
@@ -466,7 +457,7 @@ namespace osgEarth { namespace Util
      * An editor node that allows you to move the start and end points
      * of the LineOfSightNode
      */
-    class OSGEARTHUTIL_EXPORT LineOfSightEditor : public osg::Group
+    class OSGEARTHUTIL_EXPORT LinearLineOfSightEditor : public osg::Group
     {
     public:
         /**
@@ -474,9 +465,9 @@ namespace osgEarth { namespace Util
          * @param los
          *        The LineOfSightNode to edit
          */
-        LineOfSightEditor(LineOfSightNode* los);    
+        LinearLineOfSightEditor(LinearLineOfSightNode* los);    
         
-        virtual ~LineOfSightEditor();    
+        virtual ~LinearLineOfSightEditor();    
 
         /**
          *Updates the position of the draggers to represent the actual location of the LineOfSightNode.
@@ -485,7 +476,7 @@ namespace osgEarth { namespace Util
          */
         void updateDraggers();
     private:
-        osg::ref_ptr< LineOfSightNode > _los;
+        osg::ref_ptr< LinearLineOfSightNode > _los;
         Dragger* _startDragger;
         Dragger* _endDragger;
         osg::ref_ptr< ChangedCallback > _callback;

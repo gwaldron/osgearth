@@ -125,24 +125,24 @@ main(int argc, char** argv)
     viewer.getCamera()->addCullCallback( new AutoClipPlaneCullCallback(mapNode));
 
     //Create a point to point LineOfSightNode.
-    LineOfSightNode* los = new LineOfSightNode( mapNode, osg::Vec3d(-121.665, 46.0878, 1258.00), osg::Vec3d(-121.488, 46.2054, 3620.11));
+    LinearLineOfSightNode* los = new LinearLineOfSightNode( mapNode, osg::Vec3d(-121.665, 46.0878, 1258.00), osg::Vec3d(-121.488, 46.2054, 3620.11));
     root->addChild( los );
     los->getOrCreateStateSet()->setMode(GL_DEPTH_TEST, osg::StateAttribute::OFF);
 
     
     //Create an editor for the point to point line of sight that allows you to drag the beginning and end points around.
     //This is just one way that you could manipulator the LineOfSightNode.
-    LineOfSightEditor* p2peditor = new LineOfSightEditor( los );
+    LinearLineOfSightEditor* p2peditor = new LinearLineOfSightEditor( los );
     root->addChild( p2peditor );
 
     //Create a relative point to point LineOfSightNode.
-    LineOfSightNode* relativeLOS = new LineOfSightNode( mapNode, osg::Vec3d(-121.2, 46.1, 10), osg::Vec3d(-121.488, 46.2054, 10));
+    LinearLineOfSightNode* relativeLOS = new LinearLineOfSightNode( mapNode, osg::Vec3d(-121.2, 46.1, 10), osg::Vec3d(-121.488, 46.2054, 10));
     relativeLOS->setStartAltitudeMode( ALTMODE_RELATIVE );
     relativeLOS->setEndAltitudeMode( ALTMODE_RELATIVE );
     root->addChild( relativeLOS );
     relativeLOS->getOrCreateStateSet()->setMode(GL_DEPTH_TEST, osg::StateAttribute::OFF);
 
-    LineOfSightEditor* relEditor = new LineOfSightEditor( relativeLOS );
+    LinearLineOfSightEditor* relEditor = new LinearLineOfSightEditor( relativeLOS );
     root->addChild( relEditor );
     
     //Create a RadialLineOfSightNode that allows you to do a 360 degree line of sight analysis.
@@ -181,7 +181,7 @@ main(int argc, char** argv)
 
     //Create a LineOfSightNode that will use a LineOfSightTether callback to monitor
     //the two plane's positions and recompute the LOS when they move
-    LineOfSightNode* tetheredLOS = new LineOfSightNode( mapNode);
+    LinearLineOfSightNode* tetheredLOS = new LinearLineOfSightNode( mapNode);
     tetheredLOS->getOrCreateStateSet()->setMode(GL_DEPTH_TEST, osg::StateAttribute::OFF);
     root->addChild( tetheredLOS );
     tetheredLOS->setUpdateCallback( new LineOfSightTether( plane1, plane2 ) );

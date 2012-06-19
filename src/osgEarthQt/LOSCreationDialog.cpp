@@ -171,7 +171,7 @@ void LOSCreationDialog::initUi(const std::string& name, osg::Group* los)
 
 
   // Create los nodes and initialize
-  _p2p = new osgEarth::Util::LineOfSightNode(_mapNode.get());
+  _p2p = new osgEarth::Util::LinearLineOfSightNode(_mapNode.get());
   _radial = new osgEarth::Util::RadialLineOfSightNode(_mapNode.get());
 
   // simulate type change to force UI update
@@ -185,7 +185,7 @@ void LOSCreationDialog::initUi(const std::string& name, osg::Group* los)
   // If an los node was passed in, initialize components accordingly
   if (los)
   {
-    osgEarth::Util::LineOfSightNode* p2pNode = dynamic_cast<osgEarth::Util::LineOfSightNode*>(los);
+    osgEarth::Util::LinearLineOfSightNode* p2pNode = dynamic_cast<osgEarth::Util::LinearLineOfSightNode*>(los);
     if (p2pNode)
     {
       _ui.typeTabs->setCurrentIndex(0);

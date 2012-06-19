@@ -273,7 +273,7 @@ void LOSControlWidget::onItemSelectionChanged()
       _removeAction->setEnabled(true);
       _editAction->setEnabled(true);
 
-      osgEarth::Util::LineOfSightNode* p2pNode = dynamic_cast<osgEarth::Util::LineOfSightNode*>(losItem->los());
+      osgEarth::Util::LinearLineOfSightNode* p2pNode = dynamic_cast<osgEarth::Util::LinearLineOfSightNode*>(losItem->los());
       if (p2pNode)
       {
         _typeField->setText("Point-to-Point");

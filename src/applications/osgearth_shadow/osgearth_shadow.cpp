@@ -39,7 +39,9 @@
 #include <osgShadow/ParallelSplitShadowMap>
 #include <osgShadow/LightSpacePerspectiveShadowMap>
 #include <osgShadow/StandardShadowMap>
+#ifdef HAS_VDSM
 #include <osgShadow/ViewDependentShadowMap>
+#endif
 
 #include <osgUtil/Optimizer>
 
@@ -354,6 +356,7 @@ int main(int argc, char** argv)
         osg::ref_ptr<osgShadow::SoftShadowMap> sm = new osgShadow::SoftShadowMap;
         shadowedScene->setShadowTechnique(sm.get());
     }
+#ifdef HAS_VDSM
     else if( arguments.read("--vdsm") )
     {
         osgShadow::ShadowSettings* settings = new osgShadow::ShadowSettings;
@@ -383,6 +386,7 @@ int main(int argc, char** argv)
         osg::ref_ptr<osgShadow::ViewDependentShadowMap> vdsm = new osgShadow::ViewDependentShadowMap;
         shadowedScene->setShadowTechnique(vdsm.get());
     }
+#endif
     else if ( arguments.read("--lispsm") )
     {
         if( arguments.read( "--ViewBounds" ) )

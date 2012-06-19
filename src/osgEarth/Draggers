@@ -29,6 +29,7 @@
 namespace osgEarth
 {
     class MapNode;
+    class Terrain;
 
     class OSGEARTH_EXPORT Dragger : public osg::MatrixTransform
     {

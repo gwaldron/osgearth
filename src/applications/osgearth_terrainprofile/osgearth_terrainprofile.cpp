@@ -261,7 +261,8 @@ public:
               if ( _mapNode->getTerrain()->getWorldCoordsUnderMouse( aa.asView(), ea.getX(), ea.getY(), world ))
               {
                   GeoPoint mapPoint;
-                  _mapNode->getMap()->worldPointToMapPoint( world, mapPoint );
+                  mapPoint.fromWorld( _mapNode->getMapSRS(), world );
+                  //_mapNode->getMap()->worldPointToMapPoint( world, mapPoint );
 
                   if (!_startValid)
                   {

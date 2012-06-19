@@ -66,25 +66,32 @@ _geocentric( geocentric )
 }
 
 bool
-Terrain::getHeight(double     mapX, 
-                   double     mapY, 
-                   double*    out_hamsl,
-                   double*    out_hae,
-                   osg::Node* patch ) const
+Terrain::getHeight(osg::Node*              patch,
+                   const SpatialReference* srs,
+                   double                  x, 
+                   double                  y, 
+                   double*                 out_hamsl,
+                   double*                 out_hae    ) const
 {
     if ( !_graph.valid() && !patch )
         return 0L;
 
+    // convert to map coordinates:
+    if ( srs && !srs->isHorizEquivalentTo(getSRS()) )
+    {
+        srs->transform2D(x, y, getSRS(), x, y);
+    }
+
     // trivially reject a point that lies outside the terrain:
-    if ( !getProfile()->getExtent().contains(mapX, mapY) )
+    if ( !getProfile()->getExtent().contains(x, y) )
         return 0L;
 
     const osg::EllipsoidModel* em = getSRS()->getEllipsoid();
     double r = std::min( em->getRadiusEquator(), em->getRadiusPolar() );
 
     // calculate the endpoints for an intersection test:
-    osg::Vec3d start(mapX, mapY, r);
-    osg::Vec3d end  (mapX, mapY, -r);
+    osg::Vec3d start(x, y, r);
+    osg::Vec3d end  (x, y, -r);
 
     if ( isGeocentric() )
     {
@@ -120,27 +127,11 @@ Terrain::getHeight(double     mapX,
 bool
 Terrain::getHeight(const SpatialReference* srs,
                    double                  x, 
-                   double                  y, 
+                   double                  y,
                    double*                 out_hamsl,
-                   double*                 out_hae,
-                   osg::Node*              patch ) const
+                   double*                 out_hae ) const
 {
-    if ( srs )
-    {
-        if ( srs->isHorizEquivalentTo(_profile->getSRS()) )
-        {
-            return getHeight(x, y, out_hamsl, out_hae, patch);
-        }
-        else
-        {
-            double mapX, mapY;
-            if ( srs->transform2D(x, y, _profile->getSRS(), mapX, mapY) )
-            {
-                return getHeight(mapX, mapY, out_hamsl, out_hae, patch);
-            }
-        }
-    }
-    return false;
+    return getHeight( (osg::Node*)0L, srs, x, y, out_hamsl, out_hae );
 }
 
 
@@ -264,5 +255,40 @@ Terrain::fireTileAdded( const TileKey& key, osg::Node* node )
             ++i;
         else
             i = _callbacks.erase( i );
+    }
+}
+
+
+//---------------------------------------------------------------------------
+
+#undef  LC
+#define LC "[TerrainPatch] "
+
+TerrainPatch::TerrainPatch(osg::Node* patch, const Terrain* terrain) :
+_patch  ( patch ),
+_terrain( terrain )
+{
+    //nop
+    if ( patch == 0L || terrain == 0L )
+    {
+        OE_WARN << "ILLEGAL: Created a TerrainPatch with a NULL parameter" << std::endl;
+    }
+}
+
+
+bool
+TerrainPatch::getHeight(const SpatialReference* srs,
+                        double                  x, 
+                        double                  y,
+                        double*                 out_hamsl,
+                        double*                 out_hae ) const
+{
+    if ( _terrain && _patch )
+    {
+        return _terrain->getHeight( _patch.get(), srs, x, y, out_hamsl, out_hae );
+    }
+    else
+    {
+        return false;
     }
 }

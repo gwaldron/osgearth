@@ -137,6 +137,11 @@ namespace osgEarth
         const Profile* getProfile() const;
 
         /**
+         * Gets the SRS of the map's profile (convenience)
+         */
+        const SpatialReference* getSRS() const { return _profile.valid() ? _profile->getSRS() : 0L; }
+
+        /**
          * Copies references of the map image layers into the output list.
          * This method is thread safe. It returns the map revision that was
          * in effect when the data was copied.
@@ -352,15 +357,15 @@ namespace osgEarth
             ElevationSamplePolicy           samplePolicy   =SAMPLE_FIRST_VALID,
             ProgressCallback*               progress       =0L)  const;
 
-		/**
-		 * Sets the Cache for this Map. Set to NULL for no cache.
-		 */
-		void setCache( Cache* cache );
+        /**
+         * Sets the Cache for this Map. Set to NULL for no cache.
+         */
+        void setCache( Cache* cache );
 
-		/**
-		 * Gets the Cache for this Map
-		 */
-		Cache* getCache() const;
+        /**
+         * Gets the Cache for this Map
+         */
+        Cache* getCache() const;
 
         /**
          * Gets the revision # of the map. The revision # changes every time
@@ -374,21 +379,6 @@ namespace osgEarth
          * geocentric.
          */
         bool isGeocentric() const;
-
-        /**
-         * Convenience function to convert an arbitrary point to map coordinates.
-         */
-        bool toMapPoint( const GeoPoint& input, GeoPoint& output ) const;
-
-        /**
-         * Convenience function to convert a point to world-space (XYZ) coordinates.
-         */
-        bool toWorldPoint( const GeoPoint& input, osg::Vec3d& output ) const;
-
-        /**
-         * Convenience function to convert a world-space (XYZ) point to map coordinates.
-         */
-        bool worldPointToMapPoint( const osg::Vec3d& input, GeoPoint& output ) const;
 
         /**
          * Synronizes a map frame to the current revision of the map's data model.
@@ -432,7 +422,7 @@ namespace osgEarth
         Threading::ReadWriteMutex _mapDataMutex;
         osg::ref_ptr<const Profile> _profile;
         osg::ref_ptr<const Profile> _profileNoVDatum;
-		osg::ref_ptr<Cache> _cache;
+        osg::ref_ptr<Cache> _cache;
         Revision _dataModelRevision;
         osg::ref_ptr<osgDB::Options> _dbOptions;
 
@@ -450,20 +440,9 @@ namespace osgEarth
     class OSGEARTH_EXPORT MapInfo
     {
     public:
-        MapInfo( const Map* map )
-            : _profile( map->getProfile() ),
-              _isGeocentric( map->isGeocentric() ),
-              _isCube( map->getMapOptions().coordSysType() == MapOptions::CSTYPE_GEOCENTRIC_CUBE ),
-              _elevationInterpolation( *map->getMapOptions().elevationInterpolation())
-        { 
-        }
+        MapInfo( const Map* map );
 
-        MapInfo( const MapInfo& rhs )
-            : _profile( rhs._profile ),
-              _isGeocentric( rhs._isGeocentric ),
-              _isCube( rhs._isCube ),
-              _elevationInterpolation( rhs._elevationInterpolation )
-             { }              
+        MapInfo( const MapInfo& rhs );
 
         /** dtor */
         virtual ~MapInfo() { }
@@ -473,16 +452,12 @@ namespace osgEarth
 
         bool isGeocentric() const { return _isGeocentric; }
         bool isCube() const { return _isCube; }
-        bool isPlateCarre() const { return _profile->getSRS()->isPlateCarre(); } //!_isGeocentric && isGeographicSRS(); }
+        bool isPlateCarre() const { return _profile->getSRS()->isPlateCarre(); }
 
         bool isProjectedSRS() const { return !isGeographicSRS(); }
         bool isGeographicSRS() const { return _profile->getSRS()->isGeographic(); }        
 
         ElevationInterpolation getElevationInterpolation() const { return _elevationInterpolation;}
-        
-        bool toMapPoint( const GeoPoint& input, GeoPoint& output ) const;
-        bool toWorldPoint( const GeoPoint& input, osg::Vec3d& output ) const;
-        bool worldPointToMapPoint( const osg::Vec3d& input, GeoPoint& output ) const;
 
     private:
         osg::ref_ptr<const Profile> _profile;

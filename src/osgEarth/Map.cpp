@@ -1310,51 +1310,25 @@ Map::sync( MapFrame& frame ) const
     return result;
 }
 
-bool
-Map::toMapPoint( const GeoPoint& input, GeoPoint& output ) const
-{
-    return MapInfo(this).toMapPoint(input, output);
-}
-
-bool
-Map::toWorldPoint( const GeoPoint& input, osg::Vec3d& output ) const
-{
-    return MapInfo(this).toWorldPoint(input, output);
-}
-
-bool
-Map::worldPointToMapPoint( const osg::Vec3d& input, GeoPoint& output ) const
-{
-    return MapInfo(this).worldPointToMapPoint(input, output);
-}
-
 //------------------------------------------------------------------------
 
-bool
-MapInfo::toMapPoint( const GeoPoint& input, GeoPoint& output ) const
-{
-    return input.isValid() ? input.transform(_profile->getSRS(), output) : false;
+MapInfo::MapInfo( const Map* map ) :
+_profile( map->getProfile() ),
+_isGeocentric( map->isGeocentric() ),
+_isCube( map->getMapOptions().coordSysType() == MapOptions::CSTYPE_GEOCENTRIC_CUBE ),
+_elevationInterpolation( *map->getMapOptions().elevationInterpolation())
+{ 
+    //nop
 }
 
-bool
-MapInfo::toWorldPoint( const GeoPoint& input, osg::Vec3d& output ) const
+MapInfo::MapInfo( const MapInfo& rhs ) :
+_profile( rhs._profile ),
+_isGeocentric( rhs._isGeocentric ),
+_isCube( rhs._isCube ),
+_elevationInterpolation( rhs._elevationInterpolation )
 {
-    if (!input.isValid()) return false;
-    //Transform the incoming point to the map's SRS
-    GeoPoint mapPoint;
-    toMapPoint(input, mapPoint );
-    return mapPoint.toWorld( output );
-}
-
-bool
-MapInfo::worldPointToMapPoint( const osg::Vec3d& input, GeoPoint& output ) const
-{
-    osg::Vec3d temp;
-    bool ok = _profile->getSRS()->transformFromWorld(input, temp);
-    if ( ok )
-        output.set(_profile->getSRS(), temp, ALTMODE_ABSOLUTE);
-    return ok;
-}
+    //nop
+}              
 
 //------------------------------------------------------------------------
 

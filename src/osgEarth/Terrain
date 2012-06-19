@@ -89,6 +89,18 @@ namespace osgEarth
     };
 
 
+    class /*interface-only*/ TerrainHeightProvider
+    {
+    public:
+        virtual bool getHeight(
+            const SpatialReference* srs,
+            double                  x,
+            double                  y,
+            double*                 out_heightAboveMSL,
+            double*                 out_heightAboveEllipsoid =0L) const =0;
+    };
+
+
     /**
      * Services for interacting with the live terrain graph. This differs from
      * the Map model; Map represents the parametric data backing the terrain, 
@@ -97,7 +109,7 @@ namespace osgEarth
      * All returned map coordinate values are in the units conveyed in the
      * spatial reference at getSRS().
      */
-    class OSGEARTH_EXPORT Terrain : public osg::Referenced
+    class OSGEARTH_EXPORT Terrain : public osg::Referenced, public TerrainHeightProvider
     {
     public:
         /**
@@ -120,37 +132,36 @@ namespace osgEarth
     public: // Intersection Utilities
 
         /**
-         * Intersects the terrain at the map location x, y and returns the height data.
+         * Intersects the terrain at the location x, y and returns the height data.
          *
-         * @param mapX, mapY
-         *      Map coordinates at which to query the height
+         * @param srs
+         *      Spatial reference system of (x,y) coordinates
+         * @param x, y
+         *      Coordinates at which to query the height
          * @param out_heightAboveMSL
          *      The resulting relative height goes here. The height is relative to MSL
          *      (mean sea level) as expressed by the map's vertical datum.
          * @param out_heightAboveEllipsoid
          *      The resulting geodetic height goes here. The height is relative to the
          *      geodetic ellipsoid expressed by the map's SRS.
-         * @param patch (optional)
-         *      If you want to query just a specific terrain path, instead of the entire
-         *      terrain, specify it here.
-         */
-        bool getHeight(
-            double     mapX,
-            double     mapY,
-            double*    out_heightAboveMSL,
-            double*    out_heightAboveEllipsoid =0L,
-            osg::Node* patch                    =0L) const;
-        
-        /**
-         * Same as above, but you pass in an SRS describing the x,y coords.
          */
         bool getHeight(
             const SpatialReference* srs,
             double                  x,
             double                  y,
             double*                 out_heightAboveMSL,
-            double*                 out_heightAboveEllipsoid =0L,
-            osg::Node*              patch                    =0L) const;
+            double*                 out_heightAboveEllipsoid =0L) const;
+
+        /**
+         * Save as above, but specify a subgraph patch.
+         */
+        bool getHeight(
+            osg::Node*              patch,
+            const SpatialReference* srs,
+            double                  x,
+            double                  y,
+            double*                 out_heightAboveMSL,
+            double*                 out_heightAboveEllipsoid =0L) const;
 
         /**
          * Returns the world coordinates under the mouse.
@@ -230,8 +241,35 @@ namespace osgEarth
         bool                         _geocentric;
 
         osg::observer_ptr<osg::OperationQueue> _updateOperationQueue;
-
     };
+
+
+    /**
+     * A TerrainPatch is a standalone subset of terrain that you can use for 
+     * height queries. The intention is that this be used for a "disconnected"
+     * terrain tile, i.e. one that is not in the scene graph yet -- making it
+     * MT-safe.
+     */
+     class OSGEARTH_EXPORT TerrainPatch : public TerrainHeightProvider
+   {
+   public:
+       TerrainPatch( osg::Node* patch, const Terrain* terrain );
+
+       /**
+        * Queries the elevation under the specified point. This method is
+        * identical to calling Terrain::getHeight with the specified patch.
+        */
+      bool getHeight(
+          const SpatialReference* srs,
+          double                  x,
+          double                  y,
+          double*                 out_heightAboveMSL,
+          double*                 out_heightAboveEllipsoid =0L) const;
+
+   protected:
+       osg::ref_ptr<osg::Node>     _patch;
+       osg::ref_ptr<const Terrain> _terrain;
+   };
 }
 
 #endif // OSGEARTH_COMPOSITING_H

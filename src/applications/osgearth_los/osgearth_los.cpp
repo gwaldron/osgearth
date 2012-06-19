@@ -26,8 +26,10 @@
 #include <osgEarth/XmlUtils>
 #include <osgEarthUtil/EarthManipulator>
 #include <osgEarthUtil/AutoClipPlaneHandler>
-#include <osgEarthUtil/LineOfSight>
+#include <osgEarthUtil/LinearLineOfSight>
+#include <osgEarthUtil/RadialLineOfSight>
 #include <osg/io_utils>
+#include <osg/MatrixTransform>
 
 using namespace osgEarth;
 using namespace osgEarth::Util;
@@ -44,9 +46,12 @@ osg::AnimationPath* createAnimationPath( MapNode* mapNode, const osg::Vec3& cent
     double delta = osg::PI * 2.0 / (double)numSamples;
 
     //Get the center point in geocentric
-    GeoPoint centerMap(mapNode->getMapSRS(), center, ALTMODE_ABSOLUTE);
     osg::Vec3d centerWorld;
-    mapNode->getMap()->toWorldPoint( centerMap, centerWorld );
+    
+    GeoPoint centerMap(mapNode->getMapSRS(), center, ALTMODE_ABSOLUTE);
+    centerMap.toWorld( centerWorld, mapNode->getTerrain() );
+    
+    //mapNode->getMap()->toWorldPoint( centerMap, centerWorld );
 
     osg::Vec3d up = centerWorld;
     up.normalize();

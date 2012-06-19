@@ -122,7 +122,8 @@ struct TrackSim : public osg::Referenced
   {
     //Get the center point in geocentric
     GeoPoint centerMap(mapNode->getMapSRS(), center, ALTMODE_ABSOLUTE);
-    mapNode->getMap()->toWorldPoint( centerMap, _center );
+    centerMap.toWorld( _center, mapNode->getTerrain() );
+    //mapNode->getMap()->toWorldPoint( centerMap, _center );
 
     _up = _center;
     _up.normalize();
@@ -141,7 +142,8 @@ struct TrackSim : public osg::Referenced
     osg::Vec3d end = _center + spoke;
 
     GeoPoint mapPos;
-    _mapNode->getMap()->worldPointToMapPoint(end, mapPos);
+    mapPos.fromWorld( _mapNode->getMapSRS(), end );
+    //_mapNode->getMap()->worldPointToMapPoint(end, mapPos);
 
     _track->setPosition(mapPos);
   }

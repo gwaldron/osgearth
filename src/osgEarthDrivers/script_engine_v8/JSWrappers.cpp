@@ -832,8 +832,15 @@ JSMapInfo::ToMapCallback(const v8::Arguments& args)
       osgEarth::SpatialReference* srs = V8Util::UnwrapObject<osgEarth::SpatialReference>(obj1);
 
       osg::Vec3d* out = new osg::Vec3d();
-      if (mapInfo->toMapPoint(*input, srs, *out))
-        return JSVec3d::WrapVec3d(out, true);
+
+      GeoPoint mapPoint;
+      mapPoint.fromWorld( srs, *input );
+      out->set( mapPoint.x(), mapPoint.y(), mapPoint.z() );
+
+      return JSVec3d::WrapVec3d(out, true);
+
+      //if (mapInfo->toMapPoint(*input, srs, *out))
+      //  return JSVec3d::WrapVec3d(out, true);
 
       delete out;
     }

@@ -302,7 +302,8 @@ namespace osgEarth { namespace QtGui
         if (_mapNode->getTerrain()->getWorldCoordsUnderMouse(aa.asView(), ea.getX(), ea.getY(), world))
         {
           osgEarth::GeoPoint mapPoint;
-          _mapNode->getMap()->worldPointToMapPoint(world, mapPoint);
+          mapPoint.fromWorld( _mapNode->getMapSRS(), world );
+          //_mapNode->getMap()->worldPointToMapPoint(world, mapPoint);
 
           _dialog->mapMouseMove(mapPoint);
 
@@ -320,7 +321,8 @@ namespace osgEarth { namespace QtGui
             if (_mapNode->getTerrain()->getWorldCoordsUnderMouse(aa.asView(), ea.getX(), ea.getY(), world))
             {
               osgEarth::GeoPoint mapPoint;
-              _mapNode->getMap()->worldPointToMapPoint( world, mapPoint );
+              mapPoint.fromWorld( _mapNode->getMapSRS(), world );
+              //_mapNode->getMap()->worldPointToMapPoint( world, mapPoint );
               _currentPoint = mapPoint.vec3d();
               _lastPoint = mapPoint.vec3d();
               
@@ -480,13 +482,17 @@ namespace osgEarth { namespace QtGui
 
       osg::Vec3d world;
       if (_mapNode->getTerrain()->getWorldCoordsUnderMouse(view, xMid, yMid, world))
-        _mapNode->getMap()->worldPointToMapPoint(world, _position);
+      {
+          _position.fromWorld( _mapNode->getMapSRS(), world );
+        //_mapNode->getMap()->worldPointToMapPoint(world, _position);
+      }
 
       double xRad = 0.0;
       if (_mapNode->getTerrain()->getWorldCoordsUnderMouse(view, xMax, yMid, world))
       {
         osgEarth::GeoPoint mapPoint;
-        _mapNode->getMap()->worldPointToMapPoint(world, mapPoint);
+        mapPoint.fromWorld( _mapNode->getMapSRS(), world );
+        //_mapNode->getMap()->worldPointToMapPoint(world, mapPoint);
 
         xRad = GeoMath::distance(_position.vec3d(), mapPoint.vec3d(), _position.getSRS());
       }
@@ -495,7 +501,8 @@ namespace osgEarth { namespace QtGui
       if (_mapNode->getTerrain()->getWorldCoordsUnderMouse(view, xMid, yMax, world))
       {
         osgEarth::GeoPoint mapPoint;
-        _mapNode->getMap()->worldPointToMapPoint(world, mapPoint);
+        mapPoint.fromWorld( _mapNode->getMapSRS(), world );
+        //_mapNode->getMap()->worldPointToMapPoint(world, mapPoint);
 
         yRad = GeoMath::distance(_position.vec3d(), mapPoint.vec3d(), _position.getSRS());
       }

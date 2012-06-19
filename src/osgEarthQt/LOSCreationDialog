@@ -25,7 +25,8 @@
 #include <osgEarthQt/DataManager>
 
 #include <osgEarth/Draggers>
-#include <osgEarthUtil/LineOfSight>
+#include <osgEarthUtil/LinearLineOfSight>
+#include <osgEarthUtil/RadialLineOfSight>
 
 #include <osg/AutoTransform>
 

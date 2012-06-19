@@ -172,7 +172,7 @@ AnnotationNode::makeAbsolute( GeoPoint& mapPoint, osg::Node* patch ) const
     {
         // find the terrain height at the map point:
         double hamsl;
-        if (mapNode_safe->getTerrain()->getHeight(mapPoint.x(), mapPoint.y(), &hamsl, 0L, patch))
+        if (mapNode_safe->getTerrain()->getHeight(patch, mapPoint.getSRS(), mapPoint.x(), mapPoint.y(), &hamsl, 0L))
         {
             // apply any scale/offset in the symbology:
             if ( _altitude.valid() )

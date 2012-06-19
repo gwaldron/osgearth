@@ -128,7 +128,8 @@ namespace
                   center += bs.center();
 
                 GeoPoint output;
-                _map->worldPointToMapPoint(center, output);
+                output.fromWorld( _map->getSRS(), center );
+                //_map->worldPointToMapPoint(center, output);
 
                 //TODO: make a better range calculation
                 return new SetViewpointAction(osgEarth::Viewpoint(output.vec3d(), 0.0, -90.0, bs.radius() * 4.0), views);
@@ -186,7 +187,8 @@ namespace
           osg::Vec3d center = _annotation->getBound().center();
 
           GeoPoint output;
-          _map->worldPointToMapPoint(center, output);
+          output.fromWorld( _map->getSRS(), center );
+          //_map->worldPointToMapPoint(center, output);
 
           return new SetViewpointAction(osgEarth::Viewpoint(output.vec3d(), 0.0, -90.0, 1e5), views);
         }

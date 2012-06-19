@@ -28,6 +28,7 @@
 namespace osgEarth
 {
     class OverlayDecorator;
+    class Terrain;
     class TerrainEngineNode;
 
     /**

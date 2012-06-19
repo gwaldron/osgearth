@@ -97,18 +97,25 @@ void Dragger::setPosition( const GeoPoint& position, bool fireEvents)
 void Dragger::updateTransform(osg::Node* patch)
 {
     osg::Matrixd matrix;
-    GeoPoint mapPoint;
-    _mapNode->getMap()->toMapPoint( _position, mapPoint );
+
+
+    GeoPoint mapPoint( _position );
+    mapPoint.makeAbsolute( _mapNode->getTerrain() );
+    //mapPoint.fromWorld( _mapNode->getMapSRS(), _position );
+    
+#if 0
     //Get the height
     if (_position.altitudeMode() == ALTMODE_RELATIVE)
     {
         double hamsl;
-        if (_mapNode->getTerrain()->getHeight(mapPoint.x(), mapPoint.y(), &hamsl, 0L, patch))
+        if (_mapNode->getTerrain()->getHeight(patch, mapPoint.getSRS(), mapPoint.x(), mapPoint.y(), &hamsl, 0L))
         {
             mapPoint.z() += hamsl;
         }
         mapPoint.altitudeMode() = ALTMODE_ABSOLUTE;
     }            
+#endif
+
     mapPoint.createLocalToWorld( matrix );
     setMatrix( matrix );
 }
@@ -185,7 +192,8 @@ bool Dragger::handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& 
             {
                 //Get the absolute mapPoint that they've drug it to.
                 GeoPoint mapPoint;
-                _mapNode->getMap()->worldPointToMapPoint(world, mapPoint);
+                mapPoint.fromWorld( _mapNode->getMapSRS(), world );
+                //_mapNode->getMap()->worldPointToMapPoint(world, mapPoint);
 
                 //If the current position is relative, we need to convert the absolute world point to relative.
                 //If the point is absolute then just emit the absolute point.

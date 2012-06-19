@@ -55,7 +55,8 @@ MouseCoordsTool::handle( const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapt
         if ( _mapNode->getTerrain()->getWorldCoordsUnderMouse( aa.asView(), ea.getX(), ea.getY(), world ))
         {
             GeoPoint map;
-            _mapNode->getMap()->worldPointToMapPoint( world, map );
+            map.fromWorld( _mapNode->getMapSRS(), world );
+            //_mapNode->getMap()->worldPointToMapPoint( world, map );
 
             for( Callbacks::iterator i = _callbacks.begin(); i != _callbacks.end(); ++i )
                 i->get()->set( map, aa.asView(), _mapNode );

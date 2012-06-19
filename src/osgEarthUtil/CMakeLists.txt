@@ -22,21 +22,22 @@ SET(HEADERS_ROOT
     FeatureQueryTool
     Formatter
     GeodeticGraticule
-    #HSLColorFilter
     LatLongFormatter
     LineOfSight
+    LinearLineOfSight
     MeasureTool
     MGRSFormatter
     MGRSGraticule
     MouseCoordsTool
     ObjectPlacer
     ObjectLocator
+    RadialLineOfSight
     SkyNode
     SpatialData
     StarData
     TerrainProfile
-	TFS
-	TFSPackager
+    TFS
+    TFSPackager
     TMS
     TMSPackager
     UTMGraticule
@@ -57,20 +58,20 @@ SET(SOURCES_ROOT
     FeatureManipTool.cpp
     FeatureQueryTool.cpp
     GeodeticGraticule.cpp
-    #HSLColorFilter.cpp
     LatLongFormatter.cpp
-    LineOfSight.cpp
+    LinearLineOfSight.cpp
     MeasureTool.cpp
     MGRSFormatter.cpp
     MGRSGraticule.cpp
     MouseCoordsTool.cpp
     ObjectPlacer.cpp
     ObjectLocator.cpp
+    RadialLineOfSight.cpp
     SpatialData.cpp
     SkyNode.cpp
     TerrainProfile.cpp
-	TFS.cpp
-	TFSPackager.cpp
+    TFS.cpp
+    TFSPackager.cpp
     TMS.cpp
     TMSPackager.cpp
     UTMGraticule.cpp
@@ -86,7 +87,7 @@ SET(HEADERS_COLORFILTER
     GammaColorFilter
     HSLColorFilter
     RGBColorFilter
-	ChromaKeyColorFilter
+    ChromaKeyColorFilter
 )
 SOURCE_GROUP( Headers\\ColorFilters FILES ${HEADERS_COLORFILTER} )
 
@@ -97,7 +98,7 @@ SET(SOURCES_COLORFILTER
     GammaColorFilter.cpp
     HSLColorFilter.cpp
     RGBColorFilter.cpp
-	ChromaKeyColorFilter.cpp
+    ChromaKeyColorFilter.cpp
 )
 SOURCE_GROUP( Sources\\ColorFilters FILES ${SOURCES_COLORFILTER} )
 

@@ -171,7 +171,7 @@ FeatureManipTool::onHit( FeatureSourceIndexNode* index, FeatureID fid, const Eve
         hitMap.fromWorld( _mapNode->getMapSRS(), args._worldPoint );
         double hae;
         _verticalOffset = 0.0;
-        if (_mapNode->getTerrain()->getHeight( hitMap.x(), hitMap.y(), 0L, &hae ))
+        if (_mapNode->getTerrain()->getHeight( hitMap.getSRS(), hitMap.x(), hitMap.y(), 0L, &hae ))
             _verticalOffset = hitMap.z() - hae;
 
         // extract the "hit" feature from its draw set into a new draggable node.

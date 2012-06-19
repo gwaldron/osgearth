@@ -31,7 +31,7 @@
 
 namespace osgEarth
 {
-    class Terrain;
+    class TerrainHeightProvider;
 
     /**
      * A georeferenced 3D point.
@@ -144,22 +144,22 @@ namespace osgEarth
         /**
          * Transforms this geopoint's Z coordinate (in place)
          */
-        bool transformZ(const AltitudeMode& altMode, const Terrain* );
+        bool transformZ(const AltitudeMode& altMode, const TerrainHeightProvider* t );
 
         /**
          * Transforms and returns the geopoints Z coordinate.
          */
-        bool transformZ(const AltitudeMode& altMode, const Terrain*, double& out_z) const;
+        bool transformZ(const AltitudeMode& altMode, const TerrainHeightProvider* t, double& out_z) const;
 
         /**
          * Transforms this geopoint's Z to be absolute w.r.t. the vertical datum
          */
-        bool makeAbsolute(const Terrain* t) { return transformZ(ALTMODE_ABSOLUTE, t); }
+        bool makeAbsolute(const TerrainHeightProvider* t) { return transformZ(ALTMODE_ABSOLUTE, t); }
 
         /**
          * Transforms this geopoint's Z to be terrain-relative.
          */
-        bool makeRelative(const Terrain* t) { return transformZ(ALTMODE_RELATIVE, t); }
+        bool makeRelative(const TerrainHeightProvider* t) { return transformZ(ALTMODE_RELATIVE, t); }
 
         /**
          * Transforms this GeoPoint to geographic (lat/long) coords in place.
@@ -167,9 +167,19 @@ namespace osgEarth
         bool makeGeographic();
 
         /**
-         * Outputs world coordinates corresponding to this point
+         * Outputs world coordinates corresponding to this point. If the point
+         * is ALTMODE_RELATIVE, this will fail because there's no way to resolve
+         * the actual Z coordinate. Use the variant of toWorld that takes a
+         * Terrain* instead.
          */
         bool toWorld( osg::Vec3d& out_world ) const;
+
+        /**
+         * Outputs world coordinates corresponding to this point, passing in a Terrain
+         * object that will be used if the point needs to be converted to absolute
+         * altitude
+         */
+        bool toWorld( osg::Vec3d& out_world, const TerrainHeightProvider* terrain ) const;
 
         /**
          * Converts world coordinates into a geopoint

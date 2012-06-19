@@ -95,7 +95,8 @@ _texCompositor( rhs._texCompositor.get() ),
 _frontGeodeInstalled( rhs._frontGeodeInstalled ),
 _debug( rhs._debug ),
 _parentTile( rhs._parentTile ),
-_compileMutex( Mutex::MUTEX_RECURSIVE )
+_compileMutex( Mutex::MUTEX_RECURSIVE ),
+_clearDataAfterCompile( rhs._clearDataAfterCompile )
 {
     //NOP
 }
@@ -134,6 +135,11 @@ SinglePassTerrainTechnique::init()
 {
     compile( TileUpdate(TileUpdate::UPDATE_ALL), 0L );
     applyTileUpdates();
+
+    if (_clearDataAfterCompile)
+    {        
+        _tile->clear();
+    }
 }
 
 void

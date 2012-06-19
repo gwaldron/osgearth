@@ -97,6 +97,17 @@ struct BuildColorLayer
             else
                 locator = GeoLocator::createForExtent(geoImage.getExtent(), *_mapInfo);
         }
+
+        bool isStreaming = _opt->loadingPolicy()->mode() == LoadingPolicy::MODE_PREEMPTIVE || _opt->loadingPolicy()->mode() == LoadingPolicy::MODE_SEQUENTIAL;
+
+        if (geoImage.getImage() && isStreaming)
+        {
+            // protected against multi threaded access. This is a requirement in sequential/preemptive mode, 
+            // for example. This used to be in TextureCompositorTexArray::prepareImage.
+            // TODO: review whether this affects performance.    
+            geoImage.getImage()->setDataVariance( osg::Object::DYNAMIC );
+        }
+
         // add the color layer to the repo.
         _repo->add( CustomColorLayer(
             _layer,

@@ -454,6 +454,9 @@ MapNodeHelper::parse(MapNode*             mapNode,
     bool useOrtho      = args.read("--ortho");
     bool useAutoClip   = args.read("--autoclip");
 
+    float ambientBrightness = 0.4f;
+    args.read("--ambientBrightness", ambientBrightness);
+
     std::string kmlFile;
     args.read( "--kml", kmlFile );
 
@@ -510,6 +513,7 @@ MapNodeHelper::parse(MapNode*             mapNode,
     {
         double hours = skyConf.value( "hours", 12.0 );
         SkyNode* sky = new SkyNode( mapNode->getMap() );
+        sky->setAmbientBrightness( ambientBrightness );
         sky->setDateTime( 2011, 3, 6, hours );
         sky->attach( view );
         root->addChild( sky );

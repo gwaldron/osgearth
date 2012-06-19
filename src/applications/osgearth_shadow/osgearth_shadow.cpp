@@ -53,6 +53,7 @@
 #include <osgEarthUtil/EarthManipulator>
 #include <osgEarthUtil/ExampleResources>
 #include <osgEarthUtil/ShadowUtils>
+#include <osgEarth/NodeUtils>
 
 using namespace osgEarth;
 using namespace osgEarth::Util;
@@ -448,6 +449,7 @@ int main(int argc, char** argv)
             << MapNodeHelper().usage() << std::endl;
         exit(1);
     }
+
     setUpShadows(shadowedScene, model);
     // The ControlCanvas is a camera and doesn't play nicely with the
     // shadow traversal. Also, it shouldn't be shadowed, and the

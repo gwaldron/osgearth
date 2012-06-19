@@ -50,6 +50,14 @@ namespace osgEarth { namespace Drivers
         optional<bool>& interpolateImagery() { return _interpolateImagery;}
         const optional<bool>& interpolateImagery() const { return _interpolateImagery;}
 
+        /**
+         The "warp profile" is a way to tell the GDAL driver to keep the original SRS and geotransform of the source data
+         but use a Warped VRT to make the data appear to conform to the given profile.  This is useful for merging multiple 
+         files that may be in different projections using the composite driver.
+        */
+        optional<ProfileOptions>& warpProfile() { return _warpProfile; }
+        const optional<ProfileOptions>& warpProfile() const { return _warpProfile; }
+
     public: // ctors
 
         GDALOptions( const TileSourceOptions& options =TileSourceOptions() ) :
@@ -81,6 +89,8 @@ namespace osgEarth { namespace Drivers
             conf.updateIfSet( "subdataset", _subDataSet);
 
             conf.updateIfSet( "interp_imagery", _interpolateImagery);
+
+            conf.updateObjIfSet( "warp_profile", _warpProfile );
             return conf;
         }
 
@@ -100,6 +110,8 @@ namespace osgEarth { namespace Drivers
             conf.getIfSet( "subdataset", _subDataSet);
 
             conf.getIfSet("interp_imagery", _interpolateImagery);
+
+            conf.getObjIfSet( "warp_profile", _warpProfile );
         }
 
         optional<URI>                    _url;
@@ -108,6 +120,7 @@ namespace osgEarth { namespace Drivers
         optional<bool>                   _interpolateImagery;
         optional<unsigned int>           _maxDataLevel;
         optional<unsigned int>           _subDataSet;
+        optional<ProfileOptions>         _warpProfile;
     };
 
 } } // namespace osgEarth::Drivers

@@ -450,7 +450,7 @@ int main(int argc, char** argv)
         exit(1);
     }
 
-    setUpShadows(shadowedScene, model);
+    ShadowUtils::setUpShadows(shadowedScene, model);
     // The ControlCanvas is a camera and doesn't play nicely with the
     // shadow traversal. Also, it shouldn't be shadowed, and the
     // ReceivesShadowTraversalMask doesn't really prevent that. So,

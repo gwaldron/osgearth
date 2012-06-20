@@ -19,19 +19,19 @@
 #ifndef OSGEARTH_SHADOW_UTILS_H
 #define OSGEARTH_SHADOW_UTILS_H  1
 
+#include <osgEarthUtil/Common>
 #include <osg/Group>
 #include <osgShadow/ShadowedScene>
 
-#include <osgEarth/Common>
-#include <osgEarthUtil/Export>
+namespace osgEarth { namespace Util 
+{
+    struct OSGEARTHUTIL_EXPORT ShadowUtils
+    {
+        static bool setUpShadows(
+            osgShadow::ShadowedScene* sscene,
+            osg::Group*               root);
+    };
 
-namespace osgEarth
-{
-namespace Util
-{
-bool OSGEARTHUTIL_EXPORT setUpShadows(osgShadow::ShadowedScene* sscene,
-                                      osg::Group* root);
-}
-}
+} } // namespace osgEarth::Util
 
 #endif // OSGEARTH_SHADOW_UTILS_H

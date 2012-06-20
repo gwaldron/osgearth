@@ -87,6 +87,7 @@ protected:
 private:
     void init();
     void syncMapModel();
+    void installTerrainTechnique();
 
     /**
      * Reloads all the tiles in the terrain due to a data model change

@@ -211,12 +211,7 @@ ImageLayerTileProcessor::process( osg::ref_ptr<osg::Image>& image ) const
         ImageUtils::PixelVisitor<ApplyChromaKey> applyChroma;
         applyChroma._chromaKey = _chromaKey;
         applyChroma.accept( image.get() );
-    }
-
-    // protected against multi threaded access. This is a requirement in sequential/preemptive mode, 
-    // for example. This used to be in TextureCompositorTexArray::prepareImage.
-    // TODO: review whether this affects performance.    
-    image->setDataVariance( osg::Object::DYNAMIC );
+    }    
 }
 
 //------------------------------------------------------------------------

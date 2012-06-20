@@ -262,20 +262,13 @@ OSGTerrainEngineNode::refresh()
     if (_terrain)
     {
         removeChild( _terrain );
-    }
+    }    
 
 
     _terrain = new TerrainNode(*_update_mapf, *_cull_mapf, _tileFactory.get(), *_terrainOptions.quickReleaseGLObjects() );    
+    installTerrainTechnique();
 
-   CustomTerrainTechnique* tech = new SinglePassTerrainTechnique( _texCompositor.get() );
-
-
-    // prepare the interpolation technique for generating triangles:
-    if ( getMap()->getMapOptions().elevationInterpolation() == INTERP_TRIANGULATE )
-        tech->setOptimizeTriangleOrientation( false );   
-
-    _terrain->setTechniquePrototype( tech );
-
+   
     const MapInfo& mapInfo = _update_mapf->getMapInfo();
     _keyNodeFactory = new SerialKeyNodeFactory( _tileBuilder.get(), _terrainOptions, mapInfo, _terrain, _uid );
 
@@ -349,22 +342,7 @@ OSGTerrainEngineNode::onMapInfoEstablished( const MapInfo& mapInfo )
 
     // install the proper layer composition technique:
 
-    if ( _texCompositor->getTechnique() == TerrainOptions::COMPOSITING_MULTIPASS )
-    {
-        _terrain->setTechniquePrototype( new MultiPassTerrainTechnique( _texCompositor.get() ) );
-        OE_INFO << LC << "Compositing technique = MULTIPASS" << std::endl;
-    }
-
-    else 
-    {
-        CustomTerrainTechnique* tech = new SinglePassTerrainTechnique( _texCompositor.get() );
-
-        // prepare the interpolation technique for generating triangles:
-        if ( mapInfo.getElevationInterpolation() == INTERP_TRIANGULATE )
-            tech->setOptimizeTriangleOrientation( false );
-
-        _terrain->setTechniquePrototype( tech );
-    }
+    installTerrainTechnique();    
 
     // install the shader program, if applicable:
     installShaders();
@@ -978,4 +956,26 @@ OSGTerrainEngineNode::onVerticalScaleChanged()
 
     UpdateElevationVisitor visitor;
     this->accept(visitor);
+}
+
+void
+OSGTerrainEngineNode::installTerrainTechnique()
+{
+    if ( _texCompositor->getTechnique() == TerrainOptions::COMPOSITING_MULTIPASS )
+    {
+        _terrain->setTechniquePrototype( new MultiPassTerrainTechnique( _texCompositor.get() ) );
+        OE_INFO << LC << "Compositing technique = MULTIPASS" << std::endl;
+    }
+
+    else 
+    {
+        SinglePassTerrainTechnique* tech = new SinglePassTerrainTechnique( _texCompositor.get() );
+        tech->setClearDataAfterCompile( !_isStreaming );
+        
+
+        if ( getMap()->getMapOptions().elevationInterpolation() == INTERP_TRIANGULATE )
+            tech->setOptimizeTriangleOrientation( false );   
+        
+        _terrain->setTechniquePrototype( tech );
+    }
 }

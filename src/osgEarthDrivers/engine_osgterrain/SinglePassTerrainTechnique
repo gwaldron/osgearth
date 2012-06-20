@@ -127,6 +127,9 @@ public:
     osg::Transform* getTransform() const { return _transform.get(); }
     osg::Transform* takeTransform() { return _transform.release(); }
 
+    bool getClearDataAfterCompile() const { return _clearDataAfterCompile;}
+    void setClearDataAfterCompile( bool value) { _clearDataAfterCompile = value;}
+
 protected:
 
     void calculateSampling( unsigned int& out_rows, unsigned int& out_cols, double& out_i, double& out_j );
@@ -146,6 +149,7 @@ private:
     int  _initCount;
     bool _pendingFullUpdate;    
     bool _pendingGeometryUpdate;
+    bool _clearDataAfterCompile;
 
     struct ImageLayerUpdate {
         GeoImage _image;

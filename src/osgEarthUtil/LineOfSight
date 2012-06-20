@@ -26,19 +26,22 @@ namespace osgEarth { namespace Util
 {
     using namespace osgEarth;
 
-    /**
-     * The line of sight display mode
-     */
-    enum LOSDisplayMode
+    struct LineOfSight
     {
         /**
-         * Split mode draws a line in the good color from the start of the line to the first hit, then a bad line from the hit to the end
+         * The line of sight display mode
          */
-        MODE_SPLIT,
-        /**
-         * Single mode draws a single line from start to end and colors it good or bad depending on whether there is line of sight or not.
-         */
-        MODE_SINGLE
+        enum DisplayMode
+        {
+            /**
+             * Split mode draws a line in the good color from the start of the line to the first hit, then a bad line from the hit to the end
+             */
+            MODE_SPLIT,
+            /**
+             * Single mode draws a single line from start to end and colors it good or bad depending on whether there is line of sight or not.
+             */
+            MODE_SINGLE
+        };
     };
 
 

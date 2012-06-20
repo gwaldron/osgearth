@@ -41,6 +41,7 @@ SET(HEADERS_ROOT
     TMS
     TMSPackager
     UTMGraticule
+    VolumeLineOfSight
     WFS
     WMS
 )
@@ -75,6 +76,7 @@ SET(SOURCES_ROOT
     TMS.cpp
     TMSPackager.cpp
     UTMGraticule.cpp
+    VolumeLineOfSight.cpp
     WFS.cpp
     WMS.cpp
 )

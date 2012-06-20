@@ -120,7 +120,7 @@ _center(0,0,0),
 _goodColor(0.0f, 1.0f, 0.0f, 1.0f),
 _badColor(1.0f, 0.0f, 0.0f, 1.0f),
 _outlineColor( 1.0f, 1.0f, 1.0f, 1.0f),
-_displayMode( MODE_SPLIT ),
+_displayMode( LineOfSight::MODE_SPLIT ),
 _altitudeMode( ALTMODE_ABSOLUTE ),
 _fill(false),
 _terrainOnly( false )
@@ -275,6 +275,9 @@ RadialLineOfSightNode::compute(osg::Node* node, bool backgroundThread)
 void
 RadialLineOfSightNode::compute_line(osg::Node* node, bool backgroundThread)
 {    
+    GeoPoint( _mapNode->getMapSRS(), _center, _altitudeMode ).toWorld( _centerWorld, _mapNode->getTerrain() );
+
+#if 0
     //Get the center point in geocentric    
     if (_altitudeMode == ALTMODE_ABSOLUTE)
     {
@@ -286,6 +289,7 @@ RadialLineOfSightNode::compute_line(osg::Node* node, bool backgroundThread)
     {
         getRelativeWorld(_center.x(), _center.y(), _center.z(), _mapNode.get(), _centerWorld );
     }
+#endif
 
     osg::Vec3d up = osg::Vec3d(_centerWorld);
     up.normalize();
@@ -348,7 +352,7 @@ RadialLineOfSightNode::compute_line(osg::Node* node, bool backgroundThread)
         }
         else
         {
-            if (_displayMode == MODE_SPLIT)
+            if (_displayMode == LineOfSight::MODE_SPLIT)
             {
                 verts->push_back( start - _centerWorld );
                 verts->push_back( hit - _centerWorld  );
@@ -360,7 +364,7 @@ RadialLineOfSightNode::compute_line(osg::Node* node, bool backgroundThread)
                 colors->push_back( _badColor );
                 colors->push_back( _badColor );
             }
-            else if (_displayMode == MODE_SINGLE)
+            else if (_displayMode == LineOfSight::MODE_SINGLE)
             {
                 verts->push_back( start - _centerWorld );
                 verts->push_back( end - _centerWorld );
@@ -673,14 +677,14 @@ RadialLineOfSightNode::getOutlineColor() const
     return _outlineColor;
 }
 
-LOSDisplayMode
+LineOfSight::DisplayMode
 RadialLineOfSightNode::getDisplayMode() const
 {
     return _displayMode;
 }
 
 void
-RadialLineOfSightNode::setDisplayMode( LOSDisplayMode displayMode )
+RadialLineOfSightNode::setDisplayMode( LineOfSight::DisplayMode displayMode )
 {
     if (_displayMode != displayMode)
     {

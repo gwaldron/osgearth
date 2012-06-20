@@ -259,6 +259,13 @@ Terrain::fireTileAdded( const TileKey& key, osg::Node* node )
 }
 
 
+void
+Terrain::accept( osg::NodeVisitor& nv )
+{
+    _graph->accept( nv );
+}
+
+
 //---------------------------------------------------------------------------
 
 #undef  LC

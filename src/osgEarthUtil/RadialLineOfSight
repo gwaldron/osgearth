@@ -117,12 +117,12 @@ namespace osgEarth { namespace Util
         /**
          * Gets the display mode
          */
-        LOSDisplayMode getDisplayMode() const;
+        LineOfSight::DisplayMode getDisplayMode() const;
 
         /*
          * Sets the display mode
          */
-        void setDisplayMode( LOSDisplayMode displayMode );
+        void setDisplayMode( LineOfSight::DisplayMode displayMode );
 
         /**
          * Gets whether to draw the fill of this RadialLineOfSightNode
@@ -169,7 +169,7 @@ namespace osgEarth { namespace Util
         int _numSpokes;
         double _radius;
 
-        LOSDisplayMode _displayMode;    
+        LineOfSight::DisplayMode _displayMode;    
         bool _fill;
         osg::Vec4 _goodColor;
         osg::Vec4 _badColor;

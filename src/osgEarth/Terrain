@@ -209,6 +209,11 @@ namespace osgEarth
 
     public:
 
+        /**
+         * Accept a node visitor on the terrain's scene graph.
+         */
+        void accept( osg::NodeVisitor& nv );
+
         // access the raw terrain graph
         osg::Node* getGraph() { return _graph.get(); }
 

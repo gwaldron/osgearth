@@ -121,7 +121,7 @@ _hasLOS( true ),
 _clearNeeded( false ),
 _goodColor(0.0f, 1.0f, 0.0f, 1.0f),
 _badColor(1.0f, 0.0f, 0.0f, 1.0f),
-_displayMode( MODE_SPLIT ),
+_displayMode( LineOfSight::MODE_SPLIT ),
 _startAltitudeMode( ALTMODE_ABSOLUTE ),
 _endAltitudeMode( ALTMODE_ABSOLUTE ),
 _terrainOnly( false )
@@ -144,7 +144,7 @@ _hasLOS( true ),
 _clearNeeded( false ),
 _goodColor(0.0f, 1.0f, 0.0f, 1.0f),
 _badColor(1.0f, 0.0f, 0.0f, 1.0f),
-_displayMode( MODE_SPLIT ),
+_displayMode( LineOfSight::MODE_SPLIT ),
 _startAltitudeMode( ALTMODE_ABSOLUTE ),
 _endAltitudeMode( ALTMODE_ABSOLUTE ),
 _terrainOnly( false )
@@ -414,14 +414,14 @@ LinearLineOfSightNode::draw(bool backgroundThread)
         }
         else
         {
-            if (_displayMode == MODE_SINGLE)
+            if (_displayMode == LineOfSight::MODE_SINGLE)
             {
                 verts->push_back( _startWorld - _startWorld );
                 verts->push_back( _endWorld - _startWorld );
                 colors->push_back( _badColor );
                 colors->push_back( _badColor );
             }
-            else if (_displayMode == MODE_SPLIT)
+            else if (_displayMode == LineOfSight::MODE_SPLIT)
             {
                 verts->push_back( _startWorld - _startWorld );
                 colors->push_back( _goodColor );
@@ -495,14 +495,14 @@ LinearLineOfSightNode::getBadColor() const
     return _badColor;
 }
 
-LOSDisplayMode
+LineOfSight::DisplayMode
 LinearLineOfSightNode::getDisplayMode() const
 {
     return _displayMode;
 }
 
 void
-LinearLineOfSightNode::setDisplayMode( LOSDisplayMode displayMode )
+LinearLineOfSightNode::setDisplayMode( LineOfSight::DisplayMode displayMode )
 {
     if (_displayMode != displayMode)
     {

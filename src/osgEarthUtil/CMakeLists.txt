@@ -33,17 +33,20 @@ SET(HEADERS_ROOT
     ObjectLocator
     SkyNode
     SpatialData
-    ShadowUtils
     StarData
     TerrainProfile
-	TFS
-	TFSPackager
+    TFS
+    TFSPackager
     TMS
     TMSPackager
     UTMGraticule
     WFS
     WMS
 )
+IF(NOT ${OPENSCENEGRAPH_VERSION} VERSION_LESS "3.1.0")
+    SET(HEADERS_ROOT ${HEADERS_ROOT}
+        ShadowUtils)
+ENDIF()
 SOURCE_GROUP( Headers FILES ${HEADERS_ROOT} )
 
 
@@ -67,18 +70,22 @@ SET(SOURCES_ROOT
     MouseCoordsTool.cpp
     ObjectPlacer.cpp
     ObjectLocator.cpp
-    ShadowUtils.cpp
     SpatialData.cpp
     SkyNode.cpp
     TerrainProfile.cpp
-	TFS.cpp
-	TFSPackager.cpp
+    TFS.cpp
+    TFSPackager.cpp
     TMS.cpp
     TMSPackager.cpp
     UTMGraticule.cpp
     WFS.cpp
     WMS.cpp
 )
+IF(NOT ${OPENSCENEGRAPH_VERSION} VERSION_LESS "3.1.0")
+    SET(SOURCES_ROOT ${SOURCES_ROOT} 
+        ShadowUtils.cpp)
+ENDIF()
+
 SOURCE_GROUP( Sources FILES ${SOURCES_ROOT} )
 
 
@@ -88,7 +95,7 @@ SET(HEADERS_COLORFILTER
     GammaColorFilter
     HSLColorFilter
     RGBColorFilter
-	ChromaKeyColorFilter
+    ChromaKeyColorFilter
 )
 SOURCE_GROUP( Headers\\ColorFilters FILES ${HEADERS_COLORFILTER} )
 
@@ -99,7 +106,7 @@ SET(SOURCES_COLORFILTER
     GammaColorFilter.cpp
     HSLColorFilter.cpp
     RGBColorFilter.cpp
-	ChromaKeyColorFilter.cpp
+    ChromaKeyColorFilter.cpp
 )
 SOURCE_GROUP( Sources\\ColorFilters FILES ${SOURCES_COLORFILTER} )
 

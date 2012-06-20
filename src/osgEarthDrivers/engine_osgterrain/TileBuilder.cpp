@@ -58,26 +58,38 @@ struct BuildColorLayer
         bool autoFallback = _key.getLevelOfDetail() <= 1;
 
         TileKey imageKey( _key );
-        while( !geoImage.valid() && imageKey.valid() && _layer->isKeyValid(imageKey) )
+        TileSource* tileSource = _layer->getTileSource();
+
+        //Only try to get data from the source if it actually intersects the key extent
+        bool hasDataInExtent = true;
+        if (tileSource)
         {
-            if ( useMercatorFastPath )
+            hasDataInExtent = tileSource->hasDataInExtent( _key.getExtent() );
+        }        
+        
+        if (hasDataInExtent)
+        {
+            while( !geoImage.valid() && imageKey.valid() && _layer->isKeyValid(imageKey) )
             {
-                bool mercFallbackData = false;
-                geoImage = _layer->createImageInNativeProfile( imageKey, 0L, autoFallback, mercFallbackData );
-                if ( geoImage.valid() && mercFallbackData )
+                if ( useMercatorFastPath )
                 {
+                    bool mercFallbackData = false;
+                    geoImage = _layer->createImageInNativeProfile( imageKey, 0L, autoFallback, mercFallbackData );
+                    if ( geoImage.valid() && mercFallbackData )
+                    {
+                        isFallbackData = true;
+                    }
+                }
+                else
+                {
+                    geoImage = _layer->createImage( imageKey, 0L, autoFallback );
+                }
+
+                if ( !geoImage.valid() )
+                {
+                    imageKey = imageKey.createParentKey();
                     isFallbackData = true;
                 }
-            }
-            else
-            {
-                geoImage = _layer->createImage( imageKey, 0L, autoFallback );
-            }
-
-            if ( !geoImage.valid() )
-            {
-                imageKey = imageKey.createParentKey();
-                isFallbackData = true;
             }
         }
 

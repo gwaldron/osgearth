@@ -386,14 +386,21 @@ ImageUtils::sharpenImage( const osg::Image* input )
 osg::Image*
 ImageUtils::createEmptyImage()
 {
-    //TODO: Make this a static or store it in the registry to avoid creating it
-    // each time.
-    osg::Image* image = new osg::Image;
-    image->allocateImage(1,1,1, GL_RGBA, GL_UNSIGNED_BYTE);
-    image->setInternalTextureFormat( GL_RGB8A_INTERNAL );
-    unsigned char *data = image->data(0,0);
-    memset(data, 0, 4);
-    return image;
+    static OpenThreads::Mutex s_mutex;
+    static osg::ref_ptr< osg::Image> s_image;
+    if (!s_image.valid())
+    {
+        OpenThreads::ScopedLock< OpenThreads::Mutex > lock( s_mutex );
+        if (!s_image.valid())
+        {
+            s_image = new osg::Image;
+            s_image->allocateImage(1,1,1, GL_RGBA, GL_UNSIGNED_BYTE);
+            s_image->setInternalTextureFormat( GL_RGB8A_INTERNAL );
+            unsigned char *data = s_image->data(0,0);
+            memset(data, 0, 4);
+        }     
+    }
+    return s_image.get();
 }
 
 bool

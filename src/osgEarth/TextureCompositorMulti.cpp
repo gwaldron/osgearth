@@ -223,6 +223,7 @@ namespace
         if ( !tex )
         {
             tex = new osg::Texture2D();
+            tex->setUnRefImageDataAfterApply( true );
 
             // configure the mipmapping
 

@@ -30,6 +30,7 @@ using namespace osgEarth::Util;
 int
 main(int argc, char** argv)
 {
+
     osg::ArgumentParser arguments(&argc,argv);
     if ( arguments.read("--stencil") )
         osg::DisplaySettings::instance()->setMinimumNumStencilBits( 8 );
@@ -37,11 +38,14 @@ main(int argc, char** argv)
     // create a viewer:
     osgViewer::Viewer viewer(arguments);
 
+    //Tell the database pager to not modify the unref settings
+    viewer.getDatabasePager()->setUnrefImageDataAfterApplyPolicy( false, false );
+
     // install our default manipulator (do this before calling load)
     viewer.setCameraManipulator( new EarthManipulator() );
 
     // load an earth file, and support all or our example command-line options
-    // and earth file <external> tags
+    // and earth file <external> tags    
     osg::Node* node = MapNodeHelper().load( arguments, &viewer );
     if ( node )
     {

@@ -34,22 +34,6 @@ TileSourceOptions( options )
     fromConfig( _conf );
 }
 
-//void
-//CompositeTileSourceOptions::add( const TileSourceOptions& options )
-//{
-//    Component c;
-//    c._tileSourceOptions = options;
-//    _components.push_back( c );
-//}
-//
-//void
-//CompositeTileSourceOptions::add( TileSource* source )
-//{
-//    Component c;
-//    c._tileSourceInstance = source;
-//    _components.push_back( c );
-//}
-
 void
 CompositeTileSourceOptions::add( const ImageLayerOptions& options )
 {
@@ -58,30 +42,15 @@ CompositeTileSourceOptions::add( const ImageLayerOptions& options )
     _components.push_back( c );
 }
 
-//void
-//CompositeTileSourceOptions::add( TileSource* source, const ImageLayerOptions& options )
-//{
-//    Component c;
-//    c._tileSourceInstance = source;
-//    c._imageLayerOptions = options;
-//    _components.push_back( c );
-//}
-
 Config 
 CompositeTileSourceOptions::getConfig() const
 {
     Config conf = TileSourceOptions::newConfig();
 
-    Config thisConf;
-
-    int count = 0;
-
     for( ComponentVector::const_iterator i = _components.begin(); i != _components.end(); ++i )
     {
         if ( i->_imageLayerOptions.isSet() )
-            thisConf.add( "image", i->_imageLayerOptions->getConfig() );
-        //else if ( i->_tileSourceOptions.isSet() )
-        //    thisConf.add( "image", i->_tileSourceOptions->getConfig() );
+            conf.add( "image", i->_imageLayerOptions->getConfig() );
     }
 
     return conf;

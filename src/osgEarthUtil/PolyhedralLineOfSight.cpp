@@ -16,7 +16,7 @@
 * You should have received a copy of the GNU Lesser General Public License
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
-#include <osgEarthUtil/VolumeLineOfSight>
+#include <osgEarthUtil/PolyhedralLineOfSight>
 #include <osgEarth/Terrain>
 
 #include <osgUtil/LineSegmentIntersector>
@@ -53,6 +53,8 @@ _endElev     ( Angle( 45.0, Units::DEGREES) ),
 _spacing     ( Angle(  5.0, Units::DEGREES) ),
 _distance    ( Distance(50000.0, Units::METERS) )
 {
+    OE_WARN << LC << "This class is under development; use at your own risk" << std::endl;
+
     _geode = new osg::Geode();
     rebuildGeometry();
     recalculateExtent();

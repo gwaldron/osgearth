@@ -31,6 +31,7 @@ SET(HEADERS_ROOT
     MouseCoordsTool
     ObjectPlacer
     ObjectLocator
+    PolyhedralLineOfSight
     RadialLineOfSight
     SkyNode
     SpatialData
@@ -41,7 +42,6 @@ SET(HEADERS_ROOT
     TMS
     TMSPackager
     UTMGraticule
-    VolumeLineOfSight
     WFS
     WMS
 )
@@ -71,6 +71,7 @@ SET(SOURCES_ROOT
     MouseCoordsTool.cpp
     ObjectPlacer.cpp
     ObjectLocator.cpp
+    PolyhedralLineOfSight.cpp
     RadialLineOfSight.cpp
     SpatialData.cpp
     SkyNode.cpp
@@ -80,7 +81,6 @@ SET(SOURCES_ROOT
     TMS.cpp
     TMSPackager.cpp
     UTMGraticule.cpp
-    VolumeLineOfSight.cpp
     WFS.cpp
     WMS.cpp
 )

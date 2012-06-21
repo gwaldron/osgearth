@@ -28,7 +28,6 @@
 #include <osgEarthUtil/AutoClipPlaneHandler>
 #include <osgEarthUtil/LinearLineOfSight>
 #include <osgEarthUtil/RadialLineOfSight>
-#include <osgEarthUtil/VolumeLineOfSight>
 #include <osg/io_utils>
 #include <osg/MatrixTransform>
 
@@ -205,18 +204,7 @@ main(int argc, char** argv)
     tetheredRadial->setBadColor( osg::Vec4(1,0,0,0.3) );
     tetheredRadial->setNumSpokes( 100 );
     root->addChild( tetheredRadial );
-    tetheredRadial->setUpdateCallback( new RadialLineOfSightTether( plane3 ) );      
-
-
-    // Put a polyhedral LOS in the scene.
-    PolyhedralLineOfSightNode* plos = new PolyhedralLineOfSightNode( mapNode );
-    root->addChild( plos );
-    plos->setElevationRange( Angle(0.0), Angle(10.0) );
-    plos->setSampleSpacing( Angle(2.5) );
-    plos->setPosition( GeoPoint(mapNode->getMapSRS(), -121.488, 46.0, 1000.0, ALTMODE_RELATIVE) );
-    plos->setDistance( Distance(45.0, Units::KILOMETERS) );
-//    manip->setTetherNode( plos );
-      
+    tetheredRadial->setUpdateCallback( new RadialLineOfSightTether( plane3 ) );
 
     // osgEarth benefits from pre-compilation of GL objects in the pager. In newer versions of
     // OSG, this activates OSG's IncrementalCompileOpeartion in order to avoid frame breaks.

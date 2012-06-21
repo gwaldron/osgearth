@@ -58,7 +58,7 @@ int main(int argc, char** argv)
     arguments.getApplicationUsage()->setDescription(arguments.getApplicationName() + " demonstrates osgEarth working with osgShadow");
     arguments.getApplicationUsage()->setCommandLineUsage(arguments.getApplicationName());
     arguments.getApplicationUsage()->addCommandLineOption("-h or --help", "Display this information");     
-    
+   
     // construct the viewer.
     osgViewer::Viewer viewer(arguments);
 
@@ -76,7 +76,7 @@ int main(int argc, char** argv)
     viewer.setCameraManipulator(new EarthManipulator);
 
     osg::ref_ptr<osgShadow::ShadowedScene> shadowedScene = new osgShadow::ShadowedScene;
-
+    
     //Setup a vdsm shadow map
     osgShadow::ShadowSettings* settings = new osgShadow::ShadowSettings;
     shadowedScene->setShadowSettings(settings);
@@ -87,9 +87,10 @@ int main(int argc, char** argv)
 
     unsigned int unit=1;
     if (arguments.read("--unit",unit)) settings->setBaseShadowTextureUnit(unit);
-
+    
     double n=0.0;
     if (arguments.read("-n",n)) settings->setMinimumShadowMapNearFarRatio(n);
+
 
     unsigned int numShadowMaps;
     if (arguments.read("--num-sm",numShadowMaps)) settings->setNumShadowMapsPerLight(numShadowMaps);
@@ -108,6 +109,8 @@ int main(int argc, char** argv)
     osg::ref_ptr<osg::Group> root = shadowedScene;
     osg::ref_ptr<osg::Group> model = MapNodeHelper().load(arguments, &viewer);
 
+    SkyNode* skyNode = findTopMostNodeOfType< SkyNode > ( model.get() );
+
     if (!model.valid())
     {
         OE_NOTICE
@@ -116,7 +119,11 @@ int main(int argc, char** argv)
         exit(1);
     }
 
-    SkyNode* skyNode = findTopMostNodeOfType< SkyNode > ( model.get() );
+    if (!skyNode)
+    {
+        OE_NOTICE << "Please run with options --sky to enable the SkyNode" << std::endl;
+        exit(1);
+    }
 
     ShadowUtils::setUpShadows(shadowedScene, model);
 
@@ -152,7 +159,7 @@ int main(int argc, char** argv)
 
 
     viewer.addEventHandler(new osgViewer::ScreenCaptureHandler);
-    viewer.addEventHandler(new osgViewer::HelpHandler(arguments.getApplicationUsage()));
+    viewer.addEventHandler(new osgViewer::HelpHandler(arguments.getApplicationUsage()));    
 
     return viewer.run();    
 }

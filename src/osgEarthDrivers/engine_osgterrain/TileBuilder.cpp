@@ -64,7 +64,12 @@ struct BuildColorLayer
         bool hasDataInExtent = true;
         if (tileSource)
         {
-            hasDataInExtent = tileSource->hasDataInExtent( _key.getExtent() );
+            GeoExtent ext = _key.getExtent();
+            if (!_layer->getProfile()->getSRS()->isEquivalentTo( ext.getSRS()))
+            {
+                ext = _layer->getProfile()->clampAndTransformExtent( ext );
+            }
+            hasDataInExtent = tileSource->hasDataInExtent( ext );
         }        
         
         if (hasDataInExtent)

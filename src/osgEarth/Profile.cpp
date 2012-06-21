@@ -373,15 +373,13 @@ Profile::toProfileOptions() const
     return op;
 }
 
-void
-Profile::overrideSRS( const SpatialReference* srs )
+Profile*
+Profile::overrideSRS( const SpatialReference* srs ) const
 {
-    _extent = GeoExtent(
+    return new Profile(
         srs,
-        _extent.xMin(),
-        _extent.yMin(),
-        _extent.xMax(),
-        _extent.yMax() );
+        _extent.xMin(), _extent.yMin(), _extent.xMax(), _extent.yMax(),
+        _numTilesWideAtLod0, _numTilesHighAtLod0 );
 }
 
 void

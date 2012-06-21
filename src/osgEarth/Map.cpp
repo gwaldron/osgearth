@@ -929,6 +929,15 @@ Map::calculateProfile()
             }
         }
 
+        // convert the profile to Plate Carre if necessary.
+        if (_profile.valid() &&
+            _profile->getSRS()->isGeographic() && 
+            getMapOptions().coordSysType() == MapOptions::CSTYPE_PROJECTED )
+        {
+            OE_INFO << LC << "Projected display with geographic SRS; activating Plate Carre mode" << std::endl;
+            _profile = _profile->overrideSRS( _profile->getSRS()->createPlateCarreGeographicSRS() );
+        }
+
         // finally, fire an event if the profile has been set.
         if ( _profile.valid() )
         {
@@ -975,15 +984,6 @@ Map::calculateProfile()
         else
         {
             _profileNoVDatum = _profile;
-        }
-
-        // finally, if the map is flat but the SRS is geographic, mark it as "plate carre"
-        if (_profile->getSRS()->isGeographic() && 
-            getMapOptions().coordSysType() == MapOptions::CSTYPE_PROJECTED)
-        {
-            OE_INFO << LC << "Projected display with geographic SRS; activating Plate Carre mode" << std::endl;
-            const_cast<Profile*>(_profile.get())->overrideSRS(
-                _profile->getSRS()->createPlateCarreGeographicSRS() );
         }
     }
 }

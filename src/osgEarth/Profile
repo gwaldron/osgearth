@@ -264,7 +264,10 @@ namespace osgEarth
 
     public:
 
-        void overrideSRS( const SpatialReference* srs );
+        /**
+         * Makes a clone of this profile but replaces the SRS with a custom one.
+         */
+        Profile* overrideSRS( const SpatialReference* srs ) const;
 
     protected:       
 

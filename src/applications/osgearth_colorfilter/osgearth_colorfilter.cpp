@@ -390,8 +390,8 @@ namespace BC
 
         void onClick( Control* control )
         {
-            _b->setValue( 1.0f );
-            _c->setValue( 1.0f );
+            _b->setValue( 0.0f );
+            _c->setValue( 0.0f );
         }
 
         HSliderControl* _b;
@@ -420,7 +420,7 @@ namespace BC
         bLabel->setVertAlign( Control::ALIGN_CENTER );
         s_layerBox->setControl( 0, 1, bLabel );
 
-        HSliderControl* bAdjust = new HSliderControl( 0.0f, 5.0f, 1.0f, new BC::Set(filter,0) );
+        HSliderControl* bAdjust = new HSliderControl( -1.0f, 1.0f, 0.0f, new BC::Set(filter,0) );
         bAdjust->setWidth( 125 );
         bAdjust->setHeight( 12 );
         bAdjust->setVertAlign( Control::ALIGN_CENTER );
@@ -432,7 +432,7 @@ namespace BC
         cLabel->setVertAlign( Control::ALIGN_CENTER );
         s_layerBox->setControl( 0, 2, cLabel );
 
-        HSliderControl* cAdjust = new HSliderControl( 0.0f, 5.0f, 1.0f, new BC::Set(filter,1) );
+        HSliderControl* cAdjust = new HSliderControl( -1.0f, 1.0f, 0.0f, new BC::Set(filter,1) );
         cAdjust->setWidth( 125 );
         cAdjust->setHeight( 12 );
         cAdjust->setVertAlign( Control::ALIGN_CENTER );
@@ -472,7 +472,7 @@ namespace GAMMA
 
         void onClick( Control* control )
         {
-            _g->setValue( 1.0f );
+            _g->setValue( 0.0f );
         }
 
         HSliderControl*   _g;
@@ -500,7 +500,7 @@ namespace GAMMA
         gLabel->setVertAlign( Control::ALIGN_CENTER );
         s_layerBox->setControl( 0, 1, gLabel );
 
-        HSliderControl* gAdjust = new HSliderControl( 0.1f, 3.0f, 1.0f, new GAMMA::Set(filter) );
+        HSliderControl* gAdjust = new HSliderControl( -1.0f, 1.0f, 0.0f, new GAMMA::Set(filter) );
         gAdjust->setWidth( 125 );
         gAdjust->setHeight( 12 );
         gAdjust->setVertAlign( Control::ALIGN_CENTER );

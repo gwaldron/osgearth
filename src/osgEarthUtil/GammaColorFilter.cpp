@@ -38,7 +38,10 @@ namespace
 
         "void __ENTRY_POINT__(in int slot, inout vec4 color)\n"
         "{\n"
-        "    color.rgb = pow(color.rgb, 1.0 / __UNIFORM_NAME__.rgb); \n"
+        "    if ((__UNIFORM_NAME__.x != 0.0) || (__UNIFORM_NAME__.y != 0.0) || (__UNIFORM_NAME__.z != 0.0))\n"
+        "    {\n"
+        "        color.rgb = clamp(pow(color.rgb, 1.0 / (__UNIFORM_NAME__.rgb + 1.0)), 0.0, 1.0);\n"
+        "    }\n"
         "}\n";
 }
 
@@ -60,7 +63,7 @@ void GammaColorFilter::init()
     // so that each layer can have a unique uniform and entry point.
     m_instanceId = (++s_uniformNameGen) - 1;
     m_gamma = new osg::Uniform(osg::Uniform::FLOAT_VEC3, (osgEarth::Stringify() << UNIFORM_PREFIX << m_instanceId));
-    m_gamma->set( osg::Vec3(1.0f, 1.0f, 1.0f) );
+    m_gamma->set( osg::Vec3(0.0f, 0.0f, 0.0f) );
 }
 
 void GammaColorFilter::setGamma(float value)
@@ -118,15 +121,15 @@ GammaColorFilter::GammaColorFilter(const Config& conf)
 
     if ( conf.hasValue("rgb") )
     {
-        float rgb = conf.value("rgb", 1.0f);
+        float rgb = conf.value("rgb", 0.0f);
         setGamma( osg::Vec3f(rgb, rgb, rgb) );
     }
     else
     {
         osg::Vec3f rgb;
-        rgb[0] = conf.value("r", 1.0f);
-        rgb[1] = conf.value("g", 1.0f);
-        rgb[2] = conf.value("b", 1.0f);
+        rgb[0] = conf.value("r", 0.0f);
+        rgb[1] = conf.value("g", 0.0f);
+        rgb[2] = conf.value("b", 0.0f);
         setGamma( rgb );
     }
 }

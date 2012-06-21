@@ -38,8 +38,15 @@ namespace
 
         "void __ENTRY_POINT__(in int slot, inout vec4 color)\n"
         "{\n"
-        "    color.rgb = ((color.rgb - 0.5) * __UNIFORM_NAME__.y + 0.5) * __UNIFORM_NAME__.x; \n"
-        "    color.rgb = clamp(color.rgb, 0.0, 1.0); \n"
+        "    if ((__UNIFORM_NAME__.x != 0.0) || (__UNIFORM_NAME__.y != 0.0))\n"
+        "    {\n"
+        // apply brightness
+        "        color.rgb += __UNIFORM_NAME__.x;\n"
+        // apply contrast
+        "        color.rgb = ((color.rgb - 0.5) * (__UNIFORM_NAME__.y + 1.0)) + 0.5;\n"
+        // clamp colors to [0..1]
+        "        color.rgb = clamp(color.rgb, 0.0, 1.0);\n"
+        "    }\n"
         "}\n";
 }
 
@@ -61,7 +68,7 @@ void BrightnessContrastColorFilter::init()
     // so that each layer can have a unique uniform and entry point.
     m_instanceId = (++s_uniformNameGen) - 1;
     m_bc = new osg::Uniform(osg::Uniform::FLOAT_VEC2, (osgEarth::Stringify() << UNIFORM_PREFIX << m_instanceId));
-    m_bc->set(osg::Vec2f(1.0f, 1.0f));
+    m_bc->set(osg::Vec2f(0.0f, 0.0f));
 }
 
 void BrightnessContrastColorFilter::setBrightnessContrast(const osg::Vec2f& value)
@@ -112,8 +119,8 @@ BrightnessContrastColorFilter::BrightnessContrastColorFilter(const Config& conf)
     init();
 
     osg::Vec2f val;
-    val[0] = conf.value("b", 1.0);
-    val[1] = conf.value("c", 1.0);
+    val[0] = conf.value("b", 0.0);
+    val[1] = conf.value("c", 0.0);
     setBrightnessContrast( val );
 }
 

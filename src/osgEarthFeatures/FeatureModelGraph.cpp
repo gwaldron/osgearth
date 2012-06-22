@@ -304,6 +304,27 @@ FeatureModelGraph::setupPaging()
     MapFrame mapf = _session->createMapFrame();
     osg::BoundingSphered bs = getBoundInWorldCoords( _usableMapExtent, &mapf );
 
+    const FeatureProfile* featureProfile = _session->getFeatureSource()->getFeatureProfile();
+    if (featureProfile->getTiled() && 
+        !_options.layout()->tileSizeFactor().isSet() && 
+        _options.layout()->maxRange().isSet())
+    {
+        //Automatically compute the tileSizeFactor based on the max range
+        double width, height;
+        featureProfile->getProfile()->getTileDimensions(featureProfile->getFirstLevel(), width, height);
+
+        GeoExtent ext(featureProfile->getSRS(),
+                      featureProfile->getExtent().west(),
+                      featureProfile->getExtent().south(),
+                      featureProfile->getExtent().west() + width,
+                      featureProfile->getExtent().south() + height);
+        osg::BoundingSphered bounds = getBoundInWorldCoords( ext, &mapf);
+        float tileSizeFactor = _options.layout()->maxRange().value() / bounds.radius();
+        OE_DEBUG << LC << "Computed a tilesize factor of " << tileSizeFactor << " with max range setting of " <<  _options.layout()->maxRange().value() << std::endl;
+        _options.layout()->tileSizeFactor() = tileSizeFactor;
+    }
+   
+
     // calculate the max range for the top-level PLOD:
     float maxRange = bs.radius() * _options.layout()->tileSizeFactor().value();
 

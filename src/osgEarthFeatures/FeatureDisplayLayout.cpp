@@ -68,6 +68,7 @@ FeatureLevel::getConfig() const
 
 FeatureDisplayLayout::FeatureDisplayLayout( const Config& conf ) :
 _tileSizeFactor( 15.0f ),
+_maxRange( 0.0f ),
 _cropFeatures  ( false ),
 _priorityOffset( 0.0f ),
 _priorityScale ( 1.0f )
@@ -82,6 +83,7 @@ FeatureDisplayLayout::fromConfig( const Config& conf )
     conf.getIfSet( "crop_features",    _cropFeatures );
     conf.getIfSet( "priority_offset",  _priorityOffset );
     conf.getIfSet( "priority_scale",   _priorityScale );
+    conf.getIfSet( "max_range",        _maxRange);
     ConfigSet children = conf.children( "level" );
     for( ConfigSet::const_iterator i = children.begin(); i != children.end(); ++i )
         addLevel( FeatureLevel( *i ) );
@@ -95,6 +97,7 @@ FeatureDisplayLayout::getConfig() const
     conf.addIfSet( "crop_features",    _cropFeatures );
     conf.addIfSet( "priority_offset",  _priorityOffset );
     conf.addIfSet( "priority_scale",   _priorityScale );
+    conf.addIfSet( "max_range",        _maxRange);
     for( Levels::const_iterator i = _levels.begin(); i != _levels.end(); ++i )
         conf.add( i->second.getConfig() );
     return conf;

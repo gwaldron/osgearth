@@ -1259,11 +1259,14 @@ manualReproject(const osg::Image* image, const GeoExtent& src_extent, const GeoE
     const bool isSrcContiguous = src_extent.getSRS()->isContiguous();
 
     osg::Image *result = new osg::Image();
-    result->allocateImage(width, height, 1, GL_RGBA, GL_UNSIGNED_BYTE);
-    //Initialize the image to be completely transparent
+    //result->allocateImage(width, height, 1, GL_RGBA, GL_UNSIGNED_BYTE);
+    result->allocateImage(width, height, 1, image->getPixelFormat(), GL_UNSIGNED_BYTE);
+
+    //Initialize the image to be completely transparent/black
     memset(result->data(), 0, result->getImageSizeInBytes());
 
-    ImageUtils::PixelReader ra(result);
+    //ImageUtils::PixelReader ra(result);
+    ImageUtils::PixelWriter writer(result);
     const double dx = dest_extent.width() / (double)width;
     const double dy = dest_extent.height() / (double)height;
 
@@ -1402,13 +1405,17 @@ manualReproject(const osg::Image* image, const GeoExtent& src_extent, const GeoE
                     }
                 }
             }
-               
+
+            writer(color, c, r);
+
+#if 0
             unsigned char* rgba = const_cast<unsigned char*>(ra.data(c,r,0));
 
             rgba[0] = (unsigned char)(color.r() * 255);
             rgba[1] = (unsigned char)(color.g() * 255);
             rgba[2] = (unsigned char)(color.b() * 255);
             rgba[3] = (unsigned char)(color.a() * 255);
+#endif
 
             pixel++;            
         }

@@ -568,6 +568,7 @@ Profile::addIntersectingTiles(const GeoExtent& key_ext, std::vector<TileKey>& ou
     getTileDimensions(destLOD, destTileWidth, destTileHeight);
 
     //Find the LOD that most closely matches the area of the incoming key without going under.
+#if 0
     while (true)
     {
         currLOD++;
@@ -580,6 +581,20 @@ Profile::addIntersectingTiles(const GeoExtent& key_ext, std::vector<TileKey>& ou
         destTileWidth = w;
         destTileHeight = h;
     }
+#else
+    while( true )
+    {
+        currLOD++;
+        double w, h;
+        getTileDimensions(currLOD, w,h);
+        if ( w < keyWidth || h < keyHeight ) break;
+        //double a = w * h;
+        //if (a < keyArea) break;
+        destLOD = currLOD;
+        destTileWidth = w;
+        destTileHeight = h;
+    }
+#endif
 
     //OE_DEBUG << std::fixed << "  Source Tile: " << key.getLevelOfDetail() << " (" << keyWidth << ", " << keyHeight << ")" << std::endl;
     OE_DEBUG << std::fixed << "  Dest Size: " << destLOD << " (" << destTileWidth << ", " << destTileHeight << ")" << std::endl;

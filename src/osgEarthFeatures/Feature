@@ -159,18 +159,18 @@ namespace osgEarth { namespace Features
         const SpatialReference* getSRS() const { return _srs.get(); }
         void setSRS( const SpatialReference* srs );
 
-        /** 
-         * Gets the geocentric bounding box that contains the data in this 
-         * feature's geometry.
+        /**
+         * Computes the bound of this feature in the specified SRS.
          */
-        const osg::BoundingSphere& getGeocentricBound() const;
+        bool getWorldBound( const SpatialReference* srs, osg::BoundingSphered& out_bound ) const;
 
         /** 
          * Gets a polytope, in world coordinates (proj or ECEF) that bounds the
          * geographic extents covered by this feature. This is useful for roughly
          * intersecting the feature with the terrain graph.
          */
-        const osg::Polytope& getWorldBoundingPolytope() const;
+        bool getWorldBoundingPolytope( const SpatialReference* srs, osg::Polytope& out_polytope ) const;
+
 
         const AttributeTable& getAttrs() const { return _attrs; }
 
@@ -224,9 +224,6 @@ namespace osgEarth { namespace Features
         optional<Style>                      _style;
         optional<GeoInterpolation>           _geoInterp;
         GeoExtent                            _cachedExtent;
-        osg::BoundingSphere                  _cachedGeocentricBound;
-        osg::Polytope                        _cachedBoundingPolytope;
-        bool                                 _cachedBoundingPolytopeValid;
 
         void dirty();
     };

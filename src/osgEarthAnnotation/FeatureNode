@@ -24,6 +24,7 @@
 #include <osgEarthSymbology/Style>
 #include <osgEarthFeatures/Feature>
 #include <osgEarthFeatures/GeometryCompiler>
+#include <osg/Polytope>
 
 namespace osgEarth { namespace Annotation
 {
@@ -69,6 +70,7 @@ namespace osgEarth { namespace Annotation
         GeometryCompilerOptions     _options;
         bool                        _draped;
         osg::Group*                 _attachPoint;
+        osg::Polytope               _featurePolytope;
 
         FeatureNode() { }
         FeatureNode(const FeatureNode& rhs, const osg::CopyOp& op) { }

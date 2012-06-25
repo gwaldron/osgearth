@@ -217,7 +217,8 @@ ImageOverlay::init()
     g->push_back( osg::Vec3d(_lowerRight.x(), _lowerRight.y(), 0) );
     g->push_back( osg::Vec3d(_upperRight.x(), _upperRight.y(), 0) );
     g->push_back( osg::Vec3d(_upperLeft.x(),  _upperLeft.y(),  0) );
-    _boundingPolytope = f->getWorldBoundingPolytope();
+    //_boundingPolytope = f->getWorldBoundingPolytope();
+    f->getWorldBoundingPolytope( _mapNode->getMapSRS(), _boundingPolytope );
 
     // next, convert to world coords and create the geometry:
     osg::Vec3Array* verts = new osg::Vec3Array();

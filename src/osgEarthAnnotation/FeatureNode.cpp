@@ -68,6 +68,11 @@ FeatureNode::init()
 
     // build the new feature geometry
     {
+        if ( _feature.valid() && _mapNode.valid() )
+        {
+            _feature->getWorldBoundingPolytope( _mapNode->getMapSRS(), _featurePolytope );
+        }
+
         GeometryCompilerOptions options = _options;
         
         // have to disable compiler clamping if we're doing auto-clamping; especially
@@ -149,8 +154,7 @@ FeatureNode::getAttachPoint()
 void
 FeatureNode::reclamp( const TileKey& key, osg::Node* tile, const Terrain* )
 {
-    osg::Polytope p = _feature->getWorldBoundingPolytope();
-    if ( p.contains( tile->getBound() ) )
+    if ( _featurePolytope.contains( tile->getBound() ) )
     {
         clampMesh( tile );
     }

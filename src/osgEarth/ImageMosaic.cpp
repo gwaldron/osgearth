@@ -24,6 +24,8 @@
 #include <osg/Timer>
 #include <osg/io_utils>
 
+#define LC "[ImageMosaic] "
+
 using namespace osgEarth;
 
 
@@ -102,13 +104,24 @@ ImageMosaic::createImage()
     image->allocateImage(pixelsWide, pixelsHigh, 1, _images[0]._image->getPixelFormat(), _images[0]._image->getDataType());
     image->setInternalTextureFormat(_images[0]._image->getInternalTextureFormat()); 
 
+    //Initialize the image to be completely transparent/black
+    //memset(image->data(), 0, image->getImageSizeInBytes());
+
     //Composite the incoming images into the master image
     for (TileImageList::iterator i = _images.begin(); i != _images.end(); ++i)
     {
+        //Warn if the mosaic contains different-sized images, which is illegal and will 
+        // lead to problems.
+        osg::Image* sourceTile = i->getImage();
+        if ( sourceTile->s() != tileWidth || sourceTile->t() != tileHeight )
+        {
+            OE_WARN << LC << "Danger; mosaicing images of different pixel sizes" << std::endl;
+        }
+
         //Determine the indices in the master image for this image
         int dstX = (i->_tileX - minTileX) * tileWidth;
         int dstY = (maxTileY - i->_tileY) * tileHeight;
-        ImageUtils::copyAsSubImage(i->getImage(), image.get(), dstX, dstY);
+        ImageUtils::copyAsSubImage(sourceTile, image.get(), dstX, dstY);
     }
 
     return image.release();

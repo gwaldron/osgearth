@@ -158,16 +158,22 @@ SerialKeyNodeFactory::createRootNode( const TileKey& key )
 }
 
 osg::Node*
-SerialKeyNodeFactory::createNode( const TileKey& key )
+SerialKeyNodeFactory::createNode( const TileKey& parentKey )
 {
     osg::ref_ptr<Tile> tiles[4];
     bool               realData[4];
     bool               lodBlending[4];
     bool               tileHasAnyRealData = false;
 
+    //if ( parentKey.str() == "15/12423/9051" )
+    if ( parentKey.str() == "15/6211/12371" )
+    {
+        int x = 0;
+    }
+
     for( unsigned i = 0; i < 4; ++i )
     {
-        TileKey child = key.createChildKey( i );
+        TileKey child = parentKey.createChildKey( i );
         _builder->createTile( child, false, tiles[i], realData[i], lodBlending[i] );
         if ( tiles[i].valid() && realData[i] )
             tileHasAnyRealData = true;
@@ -176,7 +182,7 @@ SerialKeyNodeFactory::createNode( const TileKey& key )
     osg::Group* root = 0L;
 
     // assemble the tile.
-    if ( tileHasAnyRealData || _options.maxLOD().isSet() || key.getLevelOfDetail() == 0 )
+    if ( tileHasAnyRealData || _options.maxLOD().isSet() || parentKey.getLevelOfDetail() == 0 )
     {
         // Now postprocess them and assemble into a tile group.
         root = new osg::Group();

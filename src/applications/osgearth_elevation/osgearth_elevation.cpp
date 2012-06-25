@@ -68,7 +68,6 @@ struct QueryElevationHandler : public osgGA::GUIEventHandler
             // convert to map coords:
             GeoPoint mapPoint;
             mapPoint.fromWorld( _terrain->getSRS(), world );
-            //_map->worldPointToMapPoint(world, mapPoint);
 
             // do an elevation query:
             double query_resolution = 0.1; // 1/10th of a degree

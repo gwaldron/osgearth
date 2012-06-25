@@ -80,7 +80,6 @@ public:
         _color = osgEarth::htmlColorToVec4f( *_options.colorCode() );
     }
 
-    // Yahoo! uses spherical mercator, but the top LOD is a 2x2 tile set.
     void initialize( const osgDB::Options* options, const Profile* overrideProfile)
     {
         if ( overrideProfile )
@@ -98,7 +97,7 @@ public:
         
         // next render the tile key text:
         std::stringstream buf;        
-        if (*_options.tms())
+        if (_options.invertY() == true)
         {
             //Print out a TMS key for the TileKey
             unsigned int tileX, tileY;

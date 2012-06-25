@@ -178,6 +178,13 @@ namespace osgEarth
             float       my,
             osg::Vec3d& out_world ) const;
 
+        bool getWorldCoordsUnderMouse(
+            osg::View*  view,
+            float       mx,
+            float       my,
+            osg::Vec3d& out_world,
+            osg::ref_ptr<osg::Node>& out_node ) const;
+
     public:
         /**
          * Adds a terrain callback.

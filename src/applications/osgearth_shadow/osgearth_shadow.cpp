@@ -81,23 +81,17 @@ int main(int argc, char** argv)
     osgShadow::ShadowSettings* settings = new osgShadow::ShadowSettings;
     shadowedScene->setShadowSettings(settings);
 
-    while( arguments.read("--debugHUD") ) settings->setDebugDraw( true );
     if (arguments.read("--persp")) settings->setShadowMapProjectionHint(osgShadow::ShadowSettings::PERSPECTIVE_SHADOW_MAP);
     if (arguments.read("--ortho")) settings->setShadowMapProjectionHint(osgShadow::ShadowSettings::ORTHOGRAPHIC_SHADOW_MAP);
 
-    unsigned int unit=1;
-    if (arguments.read("--unit",unit)) settings->setBaseShadowTextureUnit(unit);
-    
     double n=0.0;
     if (arguments.read("-n",n)) settings->setMinimumShadowMapNearFarRatio(n);
-
 
     unsigned int numShadowMaps;
     if (arguments.read("--num-sm",numShadowMaps)) settings->setNumShadowMapsPerLight(numShadowMaps);
 
     if (arguments.read("--parallel-split") || arguments.read("--ps") ) settings->setMultipleShadowMapHint(osgShadow::ShadowSettings::PARALLEL_SPLIT);
     if (arguments.read("--cascaded")) settings->setMultipleShadowMapHint(osgShadow::ShadowSettings::CASCADED);
-
 
     int mapres = 1024;
     while (arguments.read("--mapres", mapres))

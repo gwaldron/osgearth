@@ -625,15 +625,35 @@ public:
     {             
         GDAL_SCOPED_LOCK;
 
+        // Close the _warpedDS dataset if :
+        // - it exists
+        // - and is different from _srcDS
         if (_warpedDS && (_warpedDS != _srcDS))
         {
             GDALClose( _warpedDS );
         }
 
-        //Close the datasets if it exists
+        // Close the _srcDS dataset if :
+        // - it exists
+        // - and : 
+        //    -    is different from external dataset
+        //    - or is equal to external dataset, but the tile source owns the external dataset
         if (_srcDS)
         {     
-            GDALClose(_srcDS);
+            bool needClose = true;
+            osg::ref_ptr<GDALOptions::ExternalDataset> pExternalDataset = _options.externalDataset();
+            if (pExternalDataset != NULL)
+            {
+                if ( (pExternalDataset->dataset() == _srcDS) && (pExternalDataset->ownsDataset() == true) )
+                {
+                    needClose = false;
+                }
+            }
+
+            if (needClose == true)
+            {
+                GDALClose(_srcDS);
+            }
         }
     }
 
@@ -642,83 +662,100 @@ public:
     {   
         GDAL_SCOPED_LOCK;
 
-        if ( !_options.url().isSet() || _options.url()->empty() )
+        // Is a valid external GDAL dataset specified ?
+        bool useExternalDataset = false;
+        osg::ref_ptr<GDALOptions::ExternalDataset> pExternalDataset = _options.externalDataset();
+        if (pExternalDataset != NULL)
+        {
+            if (pExternalDataset->dataset() != NULL)
+            {
+                useExternalDataset = true;
+            }
+        }
+
+        if (useExternalDataset == false &&
+            (!_options.url().isSet() || _options.url()->empty()) )
         {
             OE_WARN << LC << "No URL or directory specified " << std::endl;
             return;
         }
 
-
-
         URI uri = _options.url().value();
 
-        StringTokenizer izer( ";" );
-        StringVector exts;
-        izer.tokenize( *_options.extensions(), exts );
-
-        //std::vector<std::string> exts;
-
-        //tokenize( _options.extensions().value(), exts, ";");
-        for (unsigned int i = 0; i < exts.size(); ++i)
+        if (useExternalDataset == false)
         {
-            OE_DEBUG << LC << "Using Extension: " << exts[i] << std::endl;
-        }
-        std::vector<std::string> files;
-        getFiles(uri.full(), exts, files);
+            StringTokenizer izer( ";" );
+            StringVector exts;
+            izer.tokenize( *_options.extensions(), exts );
 
-        OE_INFO << LC << "Driver found " << files.size() << " files:" << std::endl;
-        for (unsigned int i = 0; i < files.size(); ++i)
-        {
-            OE_INFO << LC << "" << files[i] << std::endl;
-        }
+            //std::vector<std::string> exts;
 
-        if (files.empty())
-        {
-            OE_WARN << LC << "Could not find any valid files " << std::endl;
-            return;
-        }
-
-        //If we found more than one file, try to combine them into a single logical dataset
-        if (files.size() > 1)
-        {
-            _srcDS = (GDALDataset*)build_vrt(files, HIGHEST_RESOLUTION);
-            if (!_srcDS)
+            //tokenize( _options.extensions().value(), exts, ";");
+            for (unsigned int i = 0; i < exts.size(); ++i)
             {
-                OE_WARN << "[osgEarth::GDAL] Failed to build VRT from input datasets" << std::endl;
+                OE_DEBUG << LC << "Using Extension: " << exts[i] << std::endl;
+            }
+            std::vector<std::string> files;
+            getFiles(uri.full(), exts, files);
+
+            OE_INFO << LC << "Driver found " << files.size() << " files:" << std::endl;
+            for (unsigned int i = 0; i < files.size(); ++i)
+            {
+                OE_INFO << LC << "" << files[i] << std::endl;
+            }
+
+            if (files.empty())
+            {
+                OE_WARN << LC << "Could not find any valid files " << std::endl;
                 return;
+            }
+
+            //If we found more than one file, try to combine them into a single logical dataset
+            if (files.size() > 1)
+            {
+                _srcDS = (GDALDataset*)build_vrt(files, HIGHEST_RESOLUTION);
+                if (!_srcDS)
+                {
+                    OE_WARN << "[osgEarth::GDAL] Failed to build VRT from input datasets" << std::endl;
+                    return;
+                }
+            }
+            else
+            {            
+                //If we couldn't build a VRT, just try opening the file directly
+                //Open the dataset
+                _srcDS = (GDALDataset*)GDALOpen( files[0].c_str(), GA_ReadOnly );
+
+                if (_srcDS)
+                {
+
+                    char **subDatasets = _srcDS->GetMetadata( "SUBDATASETS");
+                    int numSubDatasets = CSLCount( subDatasets );
+                    //OE_NOTICE << "There are " << numSubDatasets << " in this file " << std::endl;
+
+                    if (numSubDatasets > 0)
+                    {            
+                        int subDataset = _options.subDataSet().isSet() ? *_options.subDataSet() : 1;
+                        if (subDataset < 1 || subDataset > numSubDatasets) subDataset = 1;
+                        std::stringstream buf;
+                        buf << "SUBDATASET_" << subDataset << "_NAME";
+                        char *pszSubdatasetName = CPLStrdup( CSLFetchNameValue( subDatasets, buf.str().c_str() ) );
+                        GDALClose( _srcDS );
+                        _srcDS = (GDALDataset*)GDALOpen( pszSubdatasetName, GA_ReadOnly ) ;
+                        CPLFree( pszSubdatasetName );
+                    }
+                }
+
+                if (!_srcDS)
+                {
+                    OE_WARN << LC << "Failed to open dataset " << files[0] << std::endl;
+                    return;
+                }
             }
         }
         else
-        {            
-            //If we couldn't build a VRT, just try opening the file directly
-            //Open the dataset
-            _srcDS = (GDALDataset*)GDALOpen( files[0].c_str(), GA_ReadOnly );
-
-            if (_srcDS)
-            {
-
-                char **subDatasets = _srcDS->GetMetadata( "SUBDATASETS");
-                int numSubDatasets = CSLCount( subDatasets );
-                //OE_NOTICE << "There are " << numSubDatasets << " in this file " << std::endl;
-
-                if (numSubDatasets > 0)
-                {            
-                    int subDataset = _options.subDataSet().isSet() ? *_options.subDataSet() : 1;
-                    if (subDataset < 1 || subDataset > numSubDatasets) subDataset = 1;
-                    std::stringstream buf;
-                    buf << "SUBDATASET_" << subDataset << "_NAME";
-                    char *pszSubdatasetName = CPLStrdup( CSLFetchNameValue( subDatasets, buf.str().c_str() ) );
-                    GDALClose( _srcDS );
-                    _srcDS = (GDALDataset*)GDALOpen( pszSubdatasetName, GA_ReadOnly ) ;
-                    CPLFree( pszSubdatasetName );
-                }
-            }
-
-            if (!_srcDS)
-            {
-                OE_WARN << LC << "Failed to open dataset " << files[0] << std::endl;
-                return;
-            }
+        {
+            _srcDS = pExternalDataset->dataset();
         }
 
 
@@ -771,7 +808,7 @@ public:
 
             if ( !src_srs.valid() )
             {
-                OE_WARN << LC << "Dataset has no spatial reference information: " << uri.full() << std::endl;
+                OE_WARN << LC << "Dataset has no spatial reference information (" << uri.full() << ")" << std::endl;
                 return;
             }
         }
@@ -919,7 +956,7 @@ public:
         double resolutionX = (maxX - minX) / (double)_warpedDS->GetRasterXSize();
         double resolutionY = (maxY - minY) / (double)_warpedDS->GetRasterYSize();
 
-		double maxResolution = osg::minimum(resolutionX, resolutionY);
+        double maxResolution = osg::minimum(resolutionX, resolutionY);
 
         OE_INFO << LC << "Resolution= " << resolutionX << "x" << resolutionY << " max=" << maxResolution << std::endl;
 
@@ -955,8 +992,8 @@ public:
 
         getDataExtents().push_back( DataExtent(profile_extent, 0, _maxDataLevel) );
 
-		//Set the profile
-		setProfile( profile );
+        //Set the profile
+        setProfile( profile );
     }
 
 
@@ -1143,7 +1180,7 @@ public:
 
             GDALRasterBand* bandGray = findBand(_warpedDS, GCI_GrayIndex);
 
-			GDALRasterBand* bandPalette = findBand(_warpedDS, GCI_PaletteIndex);
+            GDALRasterBand* bandPalette = findBand(_warpedDS, GCI_PaletteIndex);
 
             //The pixel format is always RGBA to support transparency
             GLenum pixelFormat = GL_RGBA;
@@ -1282,39 +1319,39 @@ public:
                 delete []alpha;
 
             }
-			else if (bandPalette)
+            else if (bandPalette)
             {
                 //Pallete indexed imagery doesn't support interpolation currently and only uses nearest
                 //b/c interpolating pallete indexes doesn't make sense.
-				unsigned char *palette = new unsigned char[target_width * target_height];
+                unsigned char *palette = new unsigned char[target_width * target_height];
 
                 image = new osg::Image;
                 image->allocateImage(tileSize, tileSize, 1, pixelFormat, GL_UNSIGNED_BYTE);
                 memset(image->data(), 0, image->getImageSizeInBytes());
 
-				bandPalette->RasterIO(GF_Read, off_x, off_y, width, height, palette, target_width, target_height, GDT_Byte, 0, 0);
+                bandPalette->RasterIO(GF_Read, off_x, off_y, width, height, palette, target_width, target_height, GDT_Byte, 0, 0);
 
-				for (int src_row = 0, dst_row = tile_offset_top;
-					src_row < target_height;
-					src_row++, dst_row++)
-				{
-					for (int src_col = 0, dst_col = tile_offset_left;
-						src_col < target_width;
-						++src_col, ++dst_col)
-					{
+                for (int src_row = 0, dst_row = tile_offset_top;
+                    src_row < target_height;
+                    src_row++, dst_row++)
+                {
+                    for (int src_col = 0, dst_col = tile_offset_left;
+                        src_col < target_width;
+                        ++src_col, ++dst_col)
+                    {
                         osg::Vec4ub color;
-                        getPalleteIndexColor( bandPalette, palette[src_col + src_row * target_width], color );						
+                        getPalleteIndexColor( bandPalette, palette[src_col + src_row * target_width], color );                        
 
                         *(image->data(dst_col, dst_row) + 0) = color.r();
                         *(image->data(dst_col, dst_row) + 1) = color.g();
                         *(image->data(dst_col, dst_row) + 2) = color.b();
                         *(image->data(dst_col, dst_row) + 3) = color.a();
-					}
-				}
+                    }
+                }
 
-				image->flipVertical();
+                image->flipVertical();
 
-				delete [] palette;
+                delete [] palette;
 
             }
             else

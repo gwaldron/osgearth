@@ -24,12 +24,37 @@
 #include <osgEarth/GeoCommon>
 #include <osgEarth/URI>
 
+// forward-declare GDAL type
+class GDALDataset;
+
 namespace osgEarth { namespace Drivers
 {
     using namespace osgEarth;
 
     class GDALOptions : public TileSourceOptions // NO EXPORT; header only
     {
+    public:
+        class ExternalDataset : public osg::Referenced // NO EXPORT; header only
+        {
+        public:
+            ExternalDataset() : osg::Referenced(), _dataset(NULL), _ownsDataset(true) {};
+            ExternalDataset(GDALDataset* dataset, bool ownsDataset) : osg::Referenced(), _dataset(dataset), _ownsDataset(ownsDataset) {};
+
+        protected:
+            virtual ~ExternalDataset() {};
+
+        public:
+            GDALDataset* dataset() const { return _dataset; };
+            void setDataset(GDALDataset* dataset) { _dataset = dataset; };
+
+            bool ownsDataset() const { return _ownsDataset; };
+            void setOwnsDataset(bool ownsDataset) { _ownsDataset = ownsDataset; };
+
+        private:
+            GDALDataset* _dataset;
+            bool         _ownsDataset;
+        };
+
     public: // properties
 
         optional<URI>& url() { return _url; }
@@ -57,6 +82,15 @@ namespace osgEarth { namespace Drivers
         */
         optional<ProfileOptions>& warpProfile() { return _warpProfile; }
         const optional<ProfileOptions>& warpProfile() const { return _warpProfile; }
+
+        /**
+         The "external dataset" is a way to provide your own GDAL dataset to the GDAL driver.
+         There are two fields :
+          - dataset() : which stores your own GDAL dataset pointer
+          - ownsDataset() : if set to true, the GDALTileSource "owns" the external dataset and closes it when deleted.
+        */
+        osg::ref_ptr<ExternalDataset>& externalDataset() { return _externalDataset; }
+        const osg::ref_ptr<ExternalDataset>& externalDataset() const { return _externalDataset; }
 
     public: // ctors
 
@@ -91,6 +125,9 @@ namespace osgEarth { namespace Drivers
             conf.updateIfSet( "interp_imagery", _interpolateImagery);
 
             conf.updateObjIfSet( "warp_profile", _warpProfile );
+
+            conf.updateNonSerializable( "GDALOptions::ExternalDataset", _externalDataset.get() );
+
             return conf;
         }
 
@@ -112,6 +149,8 @@ namespace osgEarth { namespace Drivers
             conf.getIfSet("interp_imagery", _interpolateImagery);
 
             conf.getObjIfSet( "warp_profile", _warpProfile );
+
+            _externalDataset = conf.getNonSerializable<ExternalDataset>( "GDALOptions::ExternalDataset" );
         }
 
         optional<URI>                    _url;
@@ -121,9 +160,9 @@ namespace osgEarth { namespace Drivers
         optional<unsigned int>           _maxDataLevel;
         optional<unsigned int>           _subDataSet;
         optional<ProfileOptions>         _warpProfile;
+        osg::ref_ptr<ExternalDataset>    _externalDataset;
     };
 
 } } // namespace osgEarth::Drivers
 
 #endif // OSGEARTH_DRIVER_GDAL_DRIVEROPTIONS
-

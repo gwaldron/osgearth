@@ -25,6 +25,7 @@
 #include <osgEarthUtil/BrightnessContrastColorFilter>
 #include <osgEarthUtil/CMYKColorFilter>
 #include <osgEarthUtil/GammaColorFilter>
+#include <osgEarthUtil/GrayscaleWeightedColorFilter>
 #include <osgEarthUtil/HSLColorFilter>
 #include <osgEarthUtil/RGBColorFilter>
 #include <osgEarthUtil/ChromaKeyColorFilter>
@@ -645,6 +646,104 @@ namespace CHROMAKEY
 }
 
 
+namespace GRAYWEIGHT
+{
+    struct Set: public ControlEventHandler
+    {
+        Set(GrayscaleWeightedColorFilter* filter, unsigned index) :
+            _filter(filter), _index(index)
+            { }
+
+        void onValueChanged( Control* control, float value )
+        {
+            osg::Vec3f rgb = _filter->getRGBWeight();
+            rgb[_index] = value;
+            _filter->setRGBWeight( rgb );
+        }
+
+        GrayscaleWeightedColorFilter* _filter;
+        unsigned        _index;
+    };
+
+    struct Reset : public ControlEventHandler
+    {
+        Reset(HSliderControl* r, HSliderControl* g, HSliderControl* b) 
+            : _r(r), _g(g), _b(b) { }
+
+        void onClick( Control* control )
+        {
+            _r->setValue( 0.0 );
+            _g->setValue( 0.0 );
+            _b->setValue( 0.0 );
+        }
+
+        HSliderControl* _r;
+        HSliderControl* _g;
+        HSliderControl* _b;
+    };
+
+
+    void
+    addControls(GrayscaleWeightedColorFilter* filter, Container* container, unsigned i)
+    {
+        // the outer container:
+        Grid* s_layerBox = container->addControl(new Grid());
+        s_layerBox->setBackColor(0,0,0,0.5);
+        s_layerBox->setMargin( 10 );
+        s_layerBox->setPadding( 10 );
+        s_layerBox->setChildSpacing( 10 );
+        s_layerBox->setChildVertAlign( Control::ALIGN_CENTER );
+        s_layerBox->setAbsorbEvents( true );
+        s_layerBox->setVertAlign( Control::ALIGN_TOP );
+
+        // Title:
+        s_layerBox->setControl( 0, 0, new LabelControl(Stringify()<<"Layer "<<i, Color::Yellow) );
+
+        // Red:
+        LabelControl* rLabel = new LabelControl( "Red" );      
+        rLabel->setVertAlign( Control::ALIGN_CENTER );
+        s_layerBox->setControl( 0, 1, rLabel );
+
+        HSliderControl* rAdjust = new HSliderControl( 0.0f, 1.0f, 0.0f, new GRAYWEIGHT::Set(filter,0) );
+        rAdjust->setWidth( 125 );
+        rAdjust->setHeight( 12 );
+        rAdjust->setVertAlign( Control::ALIGN_CENTER );
+        s_layerBox->setControl( 1, 1, rAdjust );
+        s_layerBox->setControl( 2, 1, new LabelControl(rAdjust) );
+
+        // Green:
+        LabelControl* gLabel = new LabelControl( "Green" );      
+        gLabel->setVertAlign( Control::ALIGN_CENTER );
+        s_layerBox->setControl( 0, 2, gLabel );
+
+        HSliderControl* gAdjust = new HSliderControl( 0.0f, 1.0f, 0.0f, new GRAYWEIGHT::Set(filter,1) );
+        gAdjust->setWidth( 125 );
+        gAdjust->setHeight( 12 );
+        gAdjust->setVertAlign( Control::ALIGN_CENTER );
+        s_layerBox->setControl( 1, 2, gAdjust );
+        s_layerBox->setControl( 2, 2, new LabelControl(gAdjust) );
+
+        // Blue
+        LabelControl* bLabel = new LabelControl( "Blue" );      
+        bLabel->setVertAlign( Control::ALIGN_CENTER );
+        s_layerBox->setControl( 0, 3, bLabel );
+
+        HSliderControl* bAdjust = new HSliderControl( 0.0f, 1.0f, 0.0f, new GRAYWEIGHT::Set(filter,2) );
+        bAdjust->setWidth( 125 );
+        bAdjust->setHeight( 12 );
+        bAdjust->setVertAlign( Control::ALIGN_CENTER );
+        s_layerBox->setControl( 1, 3, bAdjust );
+        s_layerBox->setControl( 2, 3, new LabelControl(bAdjust) );
+
+        // Reset button
+        LabelControl* resetButton = new LabelControl( "Reset" );
+        resetButton->setBackColor( Color::Gray );
+        resetButton->setActiveColor( Color::Blue );
+        resetButton->addEventHandler( new Reset(rAdjust, gAdjust, bAdjust) );
+        s_layerBox->setControl( 1, 4, resetButton );
+    }
+}
+
 
 bool usage( const std::string& msg )
 {
@@ -657,6 +756,7 @@ bool usage( const std::string& msg )
         << "            [--bc]         Use the Brightness/Contract filter\n"
         << "            [--gamma]      Use the Gamma filter\n"
         << "            [--chromakey]  Use the chromakey filter\n"
+        << "            [--grayweight] Use the weighted grayscale filter\n"
         << std::endl;
     return -1;
 }
@@ -674,8 +774,9 @@ main(int argc, char** argv)
     bool useBC    = arguments.read("--bc");
     bool useGamma = arguments.read("--gamma");
     bool useChromaKey = arguments.read("--chromakey");
+    bool useGrayWeight = arguments.read("--grayweight");
 
-    if ( !useHSL && !useRGB && !useCMYK && !useBC && !useGamma && !useChromaKey )
+    if ( !useHSL && !useRGB && !useCMYK && !useBC && !useGamma && !useChromaKey && !useGrayWeight )
     {
         return usage( "Please select one of the filter options!" );
     }
@@ -741,6 +842,12 @@ main(int argc, char** argv)
                 ChromaKeyColorFilter* filter = new ChromaKeyColorFilter();
                 layer->addColorFilter( filter );
                 CHROMAKEY::addControls( filter, box , i );
+            }
+            else if ( useGrayWeight )
+            {
+                GrayscaleWeightedColorFilter* filter = new GrayscaleWeightedColorFilter();
+                layer->addColorFilter( filter );
+                GRAYWEIGHT::addControls( filter, box , i );
             }
         }
     }

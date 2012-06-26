@@ -96,7 +96,9 @@ SET(HEADERS_COLORFILTER
     BrightnessContrastColorFilter
     CMYKColorFilter
     GammaColorFilter
+    GrayscaleWeightedColorFilter
     HSLColorFilter
+    InvertColorFilter
     RGBColorFilter
     ChromaKeyColorFilter
 )
@@ -107,7 +109,9 @@ SET(SOURCES_COLORFILTER
     BrightnessContrastColorFilter.cpp
     CMYKColorFilter.cpp
     GammaColorFilter.cpp
+    GrayscaleWeightedColorFilter.cpp
     HSLColorFilter.cpp
+    InvertColorFilter.cpp
     RGBColorFilter.cpp
     ChromaKeyColorFilter.cpp
 )

@@ -65,7 +65,7 @@ TerrainProfile::getDistance( int i ) const
 double
 TerrainProfile::getTotalDistance() const
 {
-    return _elevations[_elevations.size()-1].first;
+    return _elevations.empty() ? 0.0 : _elevations.back().first;
 }
 
 unsigned int

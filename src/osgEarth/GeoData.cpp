@@ -927,7 +927,14 @@ GeoExtent::toString() const
     else
         buf << std::setprecision(12) << "SW=" << west() << "," << south() << " NE=" << east() << "," << north();
 
-    buf << ", SRS=" << _srs->getName();
+    if (_srs.valid() == true)
+    {
+        buf << ", SRS=" << _srs->getName();
+    }
+    else
+    {
+        buf << ", SRS=NULL";
+    }
 
     std::string bufStr;
     bufStr = buf.str();

@@ -356,6 +356,12 @@ TerrainLayer::getCacheBin( const Profile* profile, const std::string& binId )
         return 0L;
     }
 
+    // if cache is not setted, return NULL
+    if (_cache == NULL)
+    {
+        return 0L;
+    }
+
     // see if the cache bin already exists and return it if so
     {
         Threading::ScopedReadLock shared(_cacheBinsMutex);

@@ -207,6 +207,7 @@ FeatureCursorOGR::readChunk()
     }
 
     unsigned handlesToQueue = _chunkSize - _queue.size();
+    bool resultSetEndReached = false;
 
     for( unsigned i=0; i<handlesToQueue; i++ )
     {
@@ -224,7 +225,10 @@ FeatureCursorOGR::readChunk()
             OGR_F_Destroy( handle );
         }
         else
+        {
+            resultSetEndReached = true;
             break;
+        }
     }
 
     // preprocess the features using the filter list:
@@ -241,7 +245,10 @@ FeatureCursorOGR::readChunk()
     }
 
     // read one more for "more" detection:
-    _nextHandleToQueue = OGR_L_GetNextFeature( _resultSetHandle );
+    if (!resultSetEndReached)
+        _nextHandleToQueue = OGR_L_GetNextFeature( _resultSetHandle );
+    else
+        _nextHandleToQueue = 0L;
 
     //OE_NOTICE << "read " << _queue.size() << " features ... " << std::endl;
 }

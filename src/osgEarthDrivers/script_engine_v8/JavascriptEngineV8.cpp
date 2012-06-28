@@ -167,11 +167,19 @@ JavascriptEngineV8::run(const std::string& code, osgEarth::Features::Feature con
   //v8::Context::Scope context_scope(context);
   v8::Context::Scope context_scope(_globalContext);
 
-  v8::Handle<v8::Object> fObj = JSFeature::WrapFeature(const_cast<Feature*>(feature));
-  _globalContext->Global()->Set(v8::String::New("feature"), fObj);
+  if (feature)
+  {
+    v8::Handle<v8::Object> fObj = JSFeature::WrapFeature(const_cast<Feature*>(feature));
+    if (!fObj.IsEmpty())
+      _globalContext->Global()->Set(v8::String::New("feature"), fObj);
+  }
 
-  v8::Handle<v8::Object> cObj = JSFilterContext::WrapFilterContext(const_cast<FilterContext*>(context));
-  _globalContext->Global()->Set(v8::String::New("context"), cObj);
+  if (context)
+  {
+    v8::Handle<v8::Object> cObj = JSFilterContext::WrapFilterContext(const_cast<FilterContext*>(context));
+    if (!cObj.IsEmpty())
+      _globalContext->Global()->Set(v8::String::New("context"), cObj);
+  }
 
   // Compile and run the script
   ScriptResult result = executeScript(v8::String::New(code.c_str(), code.length()));
@@ -205,11 +213,19 @@ JavascriptEngineV8::call(const std::string& function, osgEarth::Features::Featur
 
   v8::Handle<v8::Function> func_func = v8::Handle<v8::Function>::Cast(func_val);
 
-  v8::Handle<v8::Object> fObj = JSFeature::WrapFeature(const_cast<Feature*>(feature));
-  _globalContext->Global()->Set(v8::String::New("feature"), fObj);
+  if (feature)
+  {
+    v8::Handle<v8::Object> fObj = JSFeature::WrapFeature(const_cast<Feature*>(feature));
+    if (!fObj.IsEmpty())
+      _globalContext->Global()->Set(v8::String::New("feature"), fObj);
+  }
 
-  v8::Handle<v8::Object> cObj = JSFilterContext::WrapFilterContext(const_cast<FilterContext*>(context));
-  _globalContext->Global()->Set(v8::String::New("context"), cObj);
+  if (context)
+  {
+    v8::Handle<v8::Object> cObj = JSFilterContext::WrapFilterContext(const_cast<FilterContext*>(context));
+    if (!cObj.IsEmpty())
+      _globalContext->Global()->Set(v8::String::New("context"), cObj);
+  }
 
   // Set up an exception handler before calling the Eval function
   v8::TryCatch try_catch;

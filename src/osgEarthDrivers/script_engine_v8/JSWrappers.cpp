@@ -33,6 +33,12 @@ JSFeature::WrapFeature(osgEarth::Features::Feature* feature, bool freeObject)
 {
   v8::HandleScope handle_scope;
 
+  if (!feature)
+  {
+    v8::Handle<v8::Object> obj;
+    return handle_scope.Close(obj);
+  }
+
   v8::Handle<v8::Object> obj = V8Util::WrapObject(feature, GetObjectTemplate());
 
   if (freeObject)
@@ -496,6 +502,12 @@ v8::Handle<v8::Object>
 JSFilterContext::WrapFilterContext(osgEarth::Features::FilterContext* context, bool freeObject)
 {
   v8::HandleScope handle_scope;
+
+  if (!context)
+  {
+    v8::Handle<v8::Object> obj;
+    return handle_scope.Close(obj);
+  }
 
   v8::Handle<v8::Object> obj = V8Util::WrapObject(context, GetObjectTemplate());
 

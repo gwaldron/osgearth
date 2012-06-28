@@ -39,6 +39,11 @@ using namespace osgEarth::Features;
 JavascriptEngineV8::JavascriptEngineV8(const ScriptEngineOptions& options)
 : ScriptEngine(options)
 {
+  _isolate = v8::Isolate::New();
+
+  v8::Locker locker(_isolate);
+  v8::Isolate::Scope isolate_scope(_isolate);
+
   v8:: HandleScope handle_scope;
 
   v8::Handle<v8::ObjectTemplate> global = createGlobalObjectTemplate();
@@ -63,8 +68,15 @@ JavascriptEngineV8::JavascriptEngineV8(const ScriptEngineOptions& options)
 
 JavascriptEngineV8::~JavascriptEngineV8()
 {
-  _globalTemplate.Dispose();
-  _globalContext.Dispose();
+  {
+    v8::Locker locker(_isolate);
+    v8::Isolate::Scope isolate_scope(_isolate);
+
+    _globalTemplate.Dispose();
+    _globalContext.Dispose();
+  }
+
+  _isolate->Dispose();
 }
 
 v8::Local<v8::ObjectTemplate>
@@ -145,7 +157,9 @@ JavascriptEngineV8::run(const std::string& code, osgEarth::Features::Feature con
   if (code.empty())
     return ScriptResult(EMPTY_STRING, false, "Script is empty.");
 
-  v8::Locker locker;
+  v8::Locker locker(_isolate);
+  v8::Isolate::Scope isolate_scope(_isolate);
+
   v8::HandleScope handle_scope;
 
   //Create a separate context
@@ -174,7 +188,8 @@ JavascriptEngineV8::call(const std::string& function, osgEarth::Features::Featur
     return ScriptResult(EMPTY_STRING, false, "Empty function name parameter.");
 
   // Lock for V8 multithreaded uses
-  v8::Locker locker;
+  v8::Locker locker(_isolate);
+  v8::Isolate::Scope isolate_scope(_isolate);
 
   v8::HandleScope handle_scope;
 

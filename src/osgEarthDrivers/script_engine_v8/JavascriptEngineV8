@@ -64,6 +64,7 @@
   protected:
     v8::Persistent<v8::ObjectTemplate> _globalTemplate;
     v8::Persistent<v8::Context> _globalContext;
+    v8::Isolate* _isolate;
   };
 
 //} } } // namespace osgEarth::Drivers::JavascriptV8

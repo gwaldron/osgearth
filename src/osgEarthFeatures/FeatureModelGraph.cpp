@@ -603,7 +603,8 @@ FeatureModelGraph::buildLevel( const FeatureLevel& level, const GeoExtent& exten
 
     if ( group->getNumChildren() > 0 )
     {
-        // account for a min-range here.
+        // account for a min-range here. Do not address the max-range here; that happens
+        // above when generating paged LOD nodes, etc.
         if ( level.minRange() > 0.0f )
         {
             osg::LOD* lod = new osg::LOD();
@@ -1005,10 +1006,26 @@ FeatureModelGraph::redraw()
     {
         FeatureLevel defaultLevel( 0.0f, FLT_MAX );
         
-        //Remove all current children        
+        //Remove all current children
         osg::Node* node = buildLevel( defaultLevel, GeoExtent::INVALID, 0 );
         if ( node )
+        {
+            if ( _options.maxRange().isSet() )
+            {
+                osg::LOD* lod = dynamic_cast<osg::LOD*>(node);
+                if ( lod == NULL )
+                {
+                    osg::LOD* lod = new osg::LOD();
+                    lod->addChild( node, 0.0, *_options.maxRange() );
+                }
+                else if ( lod->getNumChildren() > 0 )
+                {
+                    lod->setRange(0, lod->getMinRange(0), *_options.maxRange());
+                }
+                node = lod;
+            }
             addChild( node );
+        }
     }
 
     _session->getFeatureSource()->sync( _revision );

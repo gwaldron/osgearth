@@ -22,6 +22,7 @@
 #include <osgEarth/Registry>
 #include <osgEarth/Map>
 #include <osgEarth/FileUtils>
+#include <osg/LOD>
 #include <osg/Notify>
 #include <osg/MatrixTransform>
 #include <osg/io_utils>
@@ -90,13 +91,10 @@ public:
         // required if the model includes local refs, like PagedLOD or ProxyNode:
         osg::ref_ptr<osgDB::Options> localOptions = 
             Registry::instance()->cloneOrCreateOptions( _dbOptions.get() );
-            //_dbOptions.get() ? 
-            //new osgDB::Options(*_dbOptions.get()) : new osgDB::Options();
 
         localOptions->getDatabasePathList().push_back( osgDB::getFilePath(_options.url()->full()) );
 
         result = _options.url()->getNode( localOptions.get(), CachePolicy::INHERIT, progress );
-        //result = _options.url()->readNode( localOptions.get(), CachePolicy::NO_CACHE, progress ).releaseNode();
 
         if (_options.location().isSet())
         {
@@ -128,15 +126,24 @@ public:
             mt->addChild( result.get() );
             result = mt;
 
+            if ( _options.minRange().isSet() || _options.maxRange().isSet() )
+            {
+                osg::LOD* lod = new osg::LOD();
+                lod->addChild(
+                    result.release(),
+                    _options.minRange().isSet() ? (*_options.minRange()) : 0.0f,
+                    _options.maxRange().isSet() ? (*_options.maxRange()) : FLT_MAX );
+                result = lod;
+            }
         }
 
-		if(_options.lodScale().isSet())
-		{
-			LODScaleOverrideNode * node = new LODScaleOverrideNode;
-			node->setLODScale(_options.lodScale().value());
-			node->addChild(result.release());
-			result = node;
-		}
+        if(_options.lodScale().isSet())
+        {
+            LODScaleOverrideNode * node = new LODScaleOverrideNode;
+            node->setLODScale(_options.lodScale().value());
+            node->addChild(result.release());
+            result = node;
+        }
 
         return result.release();
     }

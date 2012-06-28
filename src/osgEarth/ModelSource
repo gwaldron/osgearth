@@ -36,12 +36,7 @@ namespace osgEarth
     class OSGEARTH_EXPORT ModelSourceOptions : public DriverConfigOptions
     {
     public:
-        ModelSourceOptions( const ConfigOptions& options =ConfigOptions() ) :
-              DriverConfigOptions( options ),
-              _minRange(0),
-              _maxRange(FLT_MAX),
-              _renderOrder( 11 ),
-              _depthTestEnabled( true ) { fromConfig(_conf); }
+        ModelSourceOptions( const ConfigOptions& options =ConfigOptions() );
 
         /** dtor */
         virtual ~ModelSourceOptions() { }
@@ -104,8 +99,8 @@ namespace osgEarth
         virtual const char* libraryName() const { return "osgEarth"; }
 
     public:
-		/** Initialize the NodeSource. */
-		virtual void initialize(
+        /** Initialize the NodeSource. */
+        virtual void initialize(
             const osgDB::Options* dbOptions,
             const Map*            map ) { }
 
@@ -139,7 +134,7 @@ namespace osgEarth
      */
     class OSGEARTH_EXPORT ModelSourceFactory
     {   
-	public:
+    public:
         static ModelSource* create( const ModelSourceOptions& options );
     };
 }

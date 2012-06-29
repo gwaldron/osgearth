@@ -135,8 +135,10 @@ ShadowUtils::setUpShadows(osgShadow::ShadowedScene* sscene, osg::Group* root)
     buf << "                    + gl_FrontLightProduct[0].ambient;\n";
     buf << "}\n";
 
-    vp->setFunction("osgearth_setupShadowCoords", buf.str(),
-        ShaderComp::LOCATION_VERTEX_POST_LIGHTING);
+    std::string setupShadowCoords;
+    setupShadowCoords = buf.str();
+
+    vp->setFunction("osgearth_setupShadowCoords", setupShadowCoords, ShaderComp::LOCATION_VERTEX_POST_LIGHTING);
 
     std::stringstream buf2;
     buf2 <<
@@ -165,9 +167,12 @@ ShadowUtils::setUpShadows(osgShadow::ShadowedScene* sscene, osg::Group* root)
         "    color.a = alpha;\n"
         "}\n";
 
+    std::string fragApplyLighting;
+    fragApplyLighting = buf2.str();
+
     // override the terrain engine's default lighting shader:
     vp->setShader("osgearth_frag_applyLighting",
-        new osg::Shader(osg::Shader::FRAGMENT, buf2.str()),
+        new osg::Shader(osg::Shader::FRAGMENT, fragApplyLighting),
         osg::StateAttribute::ON | osg::StateAttribute::OVERRIDE );
 
     setShadowUnit(sscene, su);

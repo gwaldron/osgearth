@@ -64,10 +64,10 @@ namespace osgEarth
         int getFirstIndex() const { return _firstIndex; }
         int getSecondIndex() const { return _secondIndex; }
         Layer* getLayer() const { return _layer.get(); }
-        ImageLayer* getImageLayer() const { return static_cast<ImageLayer*>(_layer.get()); }
-        ElevationLayer* getElevationLayer() const { return static_cast<ElevationLayer*>(_layer.get()); }
-        ModelLayer* getModelLayer() const { return static_cast<ModelLayer*>(_layer.get()); }
-        MaskLayer* getMaskLayer() const { return static_cast<MaskLayer*>(_layer.get()); }
+        ImageLayer* getImageLayer() const { return dynamic_cast<ImageLayer*>(_layer.get()); }
+        ElevationLayer* getElevationLayer() const { return dynamic_cast<ElevationLayer*>(_layer.get()); }
+        ModelLayer* getModelLayer() const { return dynamic_cast<ModelLayer*>(_layer.get()); }
+        MaskLayer* getMaskLayer() const { return dynamic_cast<MaskLayer*>(_layer.get()); }
 
     private:
         ActionType _action;

@@ -288,7 +288,7 @@ TerrainEngineNode::onMapModelChanged( const MapModelChange& change )
     // compositor is up to date with the map model. (After post-initialization,
     // this happens in the subclass...something that probably needs to change
     // since this is unclear)
-    else if ( _texCompositor.valid() )
+    else if ( _texCompositor.valid() && change.getImageLayer() )
     {
         _texCompositor->applyMapModelChange( change );
     }

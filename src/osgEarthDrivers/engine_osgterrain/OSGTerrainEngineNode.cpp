@@ -503,8 +503,10 @@ OSGTerrainEngineNode::onMapModelChanged( const MapModelChange& change )
     if ( change.getLayer() )
     {
         // first inform the texture compositor with the new model changes:
-        if ( _texCompositor.valid() )
+        if ( _texCompositor.valid() && change.getImageLayer() )
+        {
             _texCompositor->applyMapModelChange( change );
+        }
 
         // then apply the actual change:
         switch( change.getAction() )

@@ -363,18 +363,23 @@ TextureCompositor::releaseTextureImageUnit( int unit )
 void
 TextureCompositor::applyMapModelChange( const MapModelChange& change )
 {
+    // verify it's actually an image layer
+    ImageLayer* layer = change.getImageLayer();
+    if ( !layer )
+        return;
+
     Threading::ScopedWriteLock exclusiveLock( _layoutMutex );
 
     // LOD blending does not work with mercator fast path texture mapping.
     bool disableLODBlending =
-      change.getImageLayer()->getProfile() &&
-      change.getImageLayer()->getProfile()->getSRS()->isSphericalMercator() &&
+      layer->getProfile() &&
+      layer->getProfile()->getSRS()->isSphericalMercator() &&
       _options.enableMercatorFastPath() == true;
 
     // Let the use know why they aren't getting LOD blending!
-    if ( disableLODBlending && change.getImageLayer()->getImageLayerOptions().lodBlending() == true )
+    if ( disableLODBlending && layer->getImageLayerOptions().lodBlending() == true )
     {
-        OE_WARN << LC << "LOD blending disabled for layer \"" << change.getImageLayer()->getName()
+        OE_WARN << LC << "LOD blending disabled for layer \"" << layer->getName()
             << "\" becuase it uses Mercator fast-path rendering" << std::endl;
     }
 

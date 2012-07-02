@@ -20,10 +20,13 @@
 #include <osgEarthFeatures/FeatureModelGraph>
 #include <osgEarthFeatures/CropFilter>
 #include <osgEarthFeatures/FeatureSourceIndexNode>
+#include <osgEarth/Capabilities>
 #include <osgEarth/ThreadingUtils>
 #include <osgEarth/CullingUtils>
 #include <osgEarth/NodeUtils>
 #include <osgEarth/ElevationQuery>
+#include <osgEarth/Registry>
+#include <osgEarth/ShaderComposition>
 #include <osg/PagedLOD>
 #include <osg/ProxyNode>
 #include <osgDB/FileNameUtils>
@@ -238,6 +241,12 @@ _pendingUpdate( false )
         }
     }
 
+    // install base shader mains.
+    if ( Registry::instance()->getCapabilities().supportsGLSL() )
+    {
+        installShaderMains();
+    }
+
     ADJUST_EVENT_TRAV_COUNT( this, 1 );
 
     redraw();
@@ -246,6 +255,22 @@ _pendingUpdate( false )
 FeatureModelGraph::~FeatureModelGraph()
 {
     osgEarthFeatureModelPseudoLoader::unregisterGraph( _uid );
+}
+
+void
+FeatureModelGraph::installShaderMains()
+{
+    ShaderFactory* fact = Registry::instance()->getShaderFactory();
+
+    VirtualProgram* vp = new VirtualProgram();
+
+    vp->setShader( "osgearth_vert_setupColoring", fact->createDefaultColoringVertexShader(0) );
+    vp->setShader( "osgearth_vert_setupLighting", fact->createDefaultLightingVertexShader() );
+
+    vp->setShader( "osgearth_frag_applyLighting", fact->createDefaultLightingFragmentShader() );
+    vp->setShader( "osgearth_frag_applyColoring", fact->createDefaultColoringFragmentShader(0) );
+
+    this->getOrCreateStateSet()->setAttributeAndModes( vp, osg::StateAttribute::ON );
 }
 
 void

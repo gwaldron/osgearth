@@ -24,6 +24,7 @@
 #include <osgEarth/Layer>
 #include <osgEarth/Config>
 #include <osgEarth/ModelSource>
+#include <osgEarth/ShaderUtils>
 #include <osg/Node>
 #include <vector>
 
@@ -195,6 +196,7 @@ namespace osgEarth
         osg::ref_ptr<osgDB::Options> _dbOptions;
         Revision                     _modelSourceRev;
         ModelLayerCallbackList       _callbacks;
+        UpdateLightingUniformsHelper _updateLightingUniformsHelper;
 
         virtual void fireCallback( ModelLayerCallbackMethodPtr method );
 

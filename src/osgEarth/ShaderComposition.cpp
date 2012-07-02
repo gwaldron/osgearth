@@ -58,6 +58,32 @@ namespace
 
 //------------------------------------------------------------------------
 
+RenderingHints::RenderingHints() :
+_numTextures( 0 )
+{
+    //nop
+}
+
+RenderingHints::RenderingHints(const RenderingHints& rhs) :
+_numTextures( rhs._numTextures )
+{
+    //nop
+}
+
+bool
+RenderingHints::operator == (const RenderingHints& rhs) const
+{
+    return _numTextures == rhs._numTextures;
+}
+
+void
+RenderingHints::useNumTextures(unsigned num)
+{
+    _numTextures = std::max( _numTextures, num );
+}
+
+//------------------------------------------------------------------------
+
 // If graphics board has program linking problems set MERGE_SHADERS to 1
 // Merge shaders can be used to merge shaders strings into one shader. 
 #define MERGE_SHADERS 0
@@ -394,6 +420,13 @@ VirtualProgram::refreshAccumulatedFunctions( const osg::State& state )
 
 //----------------------------------------------------------------------------
 
+std::string
+ShaderFactory::getSamplerName( unsigned unit ) const
+{
+    return Stringify() << "osgearth_tex" << unit;
+}
+
+
 osg::Shader*
 ShaderFactory::createVertexShaderMain( const FunctionLocationMap& functions ) const
 {
@@ -408,9 +441,8 @@ ShaderFactory::createVertexShaderMain( const FunctionLocationMap& functions ) co
 
     std::stringstream buf;
     buf << "#version 110 \n"
-        << "void osgearth_vert_setupTexturing(); \n"
+        << "void osgearth_vert_setupColoring(); \n"
         << "void osgearth_vert_setupLighting(); \n"
-        << "uniform bool osgearth_LightingEnabled; \n"
         << "uniform float osgearth_CameraElevation; \n"
         << "varying float osgearth_CameraRange; \n";
 
@@ -429,6 +461,7 @@ ShaderFactory::createVertexShaderMain( const FunctionLocationMap& functions ) co
     buf << "void main(void) \n"
         << "{ \n"
         << "    gl_Position = gl_ModelViewProjectionMatrix * gl_Vertex; \n"
+        //<< "    gl_FrontColor = gl_Color; \n"
 
         << "    vec4 position4 = gl_ModelViewMatrix * gl_Vertex; \n"
         << "    osgearth_CameraRange = length( position4.xyz ); \n";
@@ -437,14 +470,13 @@ ShaderFactory::createVertexShaderMain( const FunctionLocationMap& functions ) co
         for( OrderedFunctionMap::const_iterator i = preTexture->begin(); i != preTexture->end(); ++i )
             buf << "    " << i->second << "(); \n";
 
-    buf << "    osgearth_vert_setupTexturing(); \n";
+    buf << "    osgearth_vert_setupColoring(); \n";
     
     if ( preLighting )
         for( OrderedFunctionMap::const_iterator i = preLighting->begin(); i != preLighting->end(); ++i )
             buf << "    " << i->second << "(); \n";
 
-    buf << "    if ( osgearth_LightingEnabled ) \n"
-        << "        osgearth_vert_setupLighting(); \n";
+    buf << "    osgearth_vert_setupLighting(); \n";
     
     if ( postLighting )
         for( OrderedFunctionMap::const_iterator i = postLighting->begin(); i != postLighting->end(); ++i )
@@ -473,7 +505,7 @@ ShaderFactory::createFragmentShaderMain( const FunctionLocationMap& functions ) 
 
     std::stringstream buf;
     buf << "#version 110 \n"
-        << "void osgearth_frag_applyTexturing( inout vec4 color ); \n"
+        << "void osgearth_frag_applyColoring( inout vec4 color ); \n"
         << "void osgearth_frag_applyLighting( inout vec4 color ); \n";
 
     if ( preTexture )
@@ -488,23 +520,21 @@ ShaderFactory::createFragmentShaderMain( const FunctionLocationMap& functions ) 
         for( OrderedFunctionMap::const_iterator i = postLighting->begin(); i != postLighting->end(); ++i )
             buf << "void " << i->second << "( inout vec4 color ); \n";
 
-    buf << "uniform bool osgearth_LightingEnabled; \n"
-        << "void main(void) \n"
+    buf << "void main(void) \n"
         << "{ \n"
-        << "    vec4 color = vec4(1,1,1,1); \n";
+        << "    vec4 color = vec4(1,1,1,1); \n"; //gl_Color; \n"; //vec4(1,1,1,1); \n";
 
     if ( preTexture )
         for( OrderedFunctionMap::const_iterator i = preTexture->begin(); i != preTexture->end(); ++i )
             buf << "    " << i->second << "( color ); \n";
 
-    buf << "    osgearth_frag_applyTexturing( color ); \n";
+    buf << "    osgearth_frag_applyColoring( color ); \n";
 
     if ( preLighting )
         for( OrderedFunctionMap::const_iterator i = preLighting->begin(); i != preLighting->end(); ++i )
             buf << "    " << i->second << "( color ); \n";
     
-    buf << "    if (osgearth_LightingEnabled) \n"
-        << "        osgearth_frag_applyLighting( color ); \n";
+    buf << "    osgearth_frag_applyLighting( color ); \n";
 
     if ( postLighting )
         for( OrderedFunctionMap::const_iterator i = postLighting->begin(); i != postLighting->end(); ++i )
@@ -530,13 +560,15 @@ ShaderFactory::createFragmentShaderMain( const FunctionLocationMap& functions ) 
  
 
 osg::Shader*
-ShaderFactory::createDefaultTextureVertexShader( int numTexCoordSets ) const
+ShaderFactory::createDefaultColoringVertexShader( int numTexCoordSets ) const
 {
     std::stringstream buf;
 
     buf << "#version 110 \n"
-        << "void osgearth_vert_setupTexturing() \n"
-        << "{ \n";
+        << "void osgearth_vert_setupColoring() \n"
+        << "{ \n"
+        << "    gl_FrontColor = gl_Color; \n"
+        << "    gl_FrontSecondaryColor = vec4(0.0); \n";
 
     //TODO: gl_TexCoord et.al. are depcrecated so we should replace them;
     // this approach also only support up to 8 texture coord units
@@ -554,68 +586,107 @@ ShaderFactory::createDefaultTextureVertexShader( int numTexCoordSets ) const
 
 
 osg::Shader*
-ShaderFactory::createDefaultTextureFragmentShader( int numTexImageUnits ) const
+ShaderFactory::createDefaultColoringFragmentShader( int numTexImageUnits ) const
 {
     std::stringstream buf;
 
-    buf << "#version 100 \n";
+    buf << "#version 110 \n";
 
     if ( numTexImageUnits > 0 )
     {
         buf << "uniform sampler2D ";
         for( int i=0; i<numTexImageUnits; ++i )
-            buf << "tex" << i << (i+1 < numTexImageUnits? "," : "; \n");
+        {
+            buf << getSamplerName(i) << (i+1 < numTexImageUnits? "," : "; \n");
+        }
     }
 
-    buf << "void osgearth_frag_applyTexturing( inout vec4 color ) \n"
+    buf << "void osgearth_frag_applyColoring( inout vec4 color ) \n"
         << "{ \n"
-        << "    vec3 color3 = color.rgb; \n"
-        << "    vec4 texel; \n";
-
-    for(int i=0; i<numTexImageUnits; ++i )
+        << "    color = color * gl_Color; \n";
+    
+    if ( numTexImageUnits > 0 )
     {
-        buf << "    texel = texture2D(tex" << i << ", gl_TexCoord["<< i <<"].st); \n"
-            << "    color3 = mix( color3, texel.rgb, texel.a ); \n";
+        buf << "    vec4 texel; \n";
+
+        for(int i=0; i<numTexImageUnits; ++i )
+        {
+            buf << "    texel = texture2D(" << getSamplerName(i) << ", gl_TexCoord["<< i <<"].st); \n"
+                << "    color.rgb = mix( color.rgb, texel.rgb, texel.a ); \n";
+        }
     }
-        
-    buf << "    color = vec4(color3,color.a); \n"
-        << "} \n";
+
+    buf << "} \n";
 
     std::string str;
     str = buf.str();
     return new osg::Shader( osg::Shader::FRAGMENT, str );
 }
 
+#if 0
+osg::Shader*
+ShaderFactory::createDefaultLightingVertexShader() const
+{
+    static char s_PerVertexLighting_VertexShaderSource[] = 
+        "#version 120 \n"
+        "uniform bool osgearth_LightingEnabled; \n"
+        "void osgearth_vert_setupLighting() \n"
+        "{ \n"
+        "    if (osgearth_LightingEnabled) \n"
+        "    { \n"
+        "        vec4 color = gl_Color; \n"
+        "        vec3 normal = normalize( gl_NormalMatrix * gl_Normal ); \n"
+        "        vec3 lightDir = normalize(gl_LightSource[0].position.xyz); \n"
+        "        float NdotL = max(dot(normal, lightDir), 0.0); \n"
+        "        gl_FrontColor = color + gl_LightSource[0].ambient + gl_LightSource[0].diffuse * NdotL; \n"
+        "        gl_FrontSecondaryColor = vec4(0.0); \n"
+        //"        gl_FrontColor = color + gl_FrontLightProduct[0].ambient + gl_FrontLightProduct[0].diffuse * NdotL; \n"
+        "    } \n"
+        "} \n";
 
+    return new osg::Shader( osg::Shader::VERTEX, s_PerVertexLighting_VertexShaderSource );
+}
+
+#else
 osg::Shader*
 ShaderFactory::createDefaultLightingVertexShader() const
 {
     static char s_PerVertexLighting_VertexShaderSource[] = 
         "#version 110 \n"
-        "void osgearth_vert_setupLighting()                                         \n"
-        "{                                                                          \n"
-        "    vec3 normal = normalize( gl_NormalMatrix * gl_Normal );                \n"
-        "    float NdotL = dot( normal, normalize(gl_LightSource[0].position.xyz) );\n"
-        "    NdotL = max( 0.0, NdotL );                                             \n"
-        "    float NdotHV = dot( normal, gl_LightSource[0].halfVector.xyz );        \n"
-        "    NdotHV = max( 0.0, NdotHV );                                           \n"
-        "                                                                           \n"
-        "    gl_FrontColor = gl_FrontLightModelProduct.sceneColor +                 \n"
-        "                    gl_FrontLightProduct[0].ambient +                      \n"
-        "                    gl_FrontLightProduct[0].diffuse * NdotL;               \n"
-        "                                                                           \n"
-        "    gl_FrontSecondaryColor = vec4(0.0);                                    \n"
-        "                                                                           \n"
-        "    if ( NdotL * NdotHV > 0.0 )                                            \n"
-        "        gl_FrontSecondaryColor = gl_FrontLightProduct[0].specular *        \n"
-        "                                 pow( NdotHV, gl_FrontMaterial.shininess );\n"
-        "                                                                           \n"
-        "    gl_BackColor = gl_FrontColor;                                          \n"
-        "    gl_BackSecondaryColor = gl_FrontSecondaryColor;                        \n"
-        "}                                                                          \n";
+        "uniform bool osgearth_LightingEnabled; \n"
+        "void osgearth_vert_setupLighting() \n"
+        "{ \n"
+        "    if (osgearth_LightingEnabled) \n"
+        "    { \n"
+        "        vec3 normal = normalize( gl_NormalMatrix * gl_Normal ); \n"
+        "        float NdotL = dot( normal, normalize(gl_LightSource[0].position.xyz) ); \n"
+        "        NdotL = max( 0.0, NdotL ); \n"
+        "        float NdotHV = dot( normal, gl_LightSource[0].halfVector.xyz ); \n"
+        "        NdotHV = max( 0.0, NdotHV ); \n"
+
+        "        gl_FrontColor.rgb = gl_FrontColor.rgb * clamp( \n"
+
+        //"        gl_FrontColor = gl_FrontColor + \n" //gl_FrontLightModelProduct.sceneColor +     \n"
+        "                        gl_LightModel.ambient + \n"
+        "                        gl_FrontLightProduct[0].ambient +          \n"
+        "                        gl_FrontLightProduct[0].diffuse * NdotL, 0.0, 1.0).rgb;   \n"
+
+        "        gl_FrontSecondaryColor = vec4(0.0); \n"
+
+        "        if ( NdotL * NdotHV > 0.0 ) \n"
+        "        { \n"
+        "            gl_FrontSecondaryColor = gl_FrontLightProduct[0].specular * \n"
+        "                                     pow( NdotHV, gl_FrontMaterial.shininess );\n"
+        "        } \n"
+
+        "        gl_BackColor = gl_FrontColor; \n"
+        "        gl_BackSecondaryColor = gl_FrontSecondaryColor; \n"
+        "    } \n"
+        "} \n";
 
     return new osg::Shader( osg::Shader::VERTEX, s_PerVertexLighting_VertexShaderSource );
 }
+#endif
 
 
 osg::Shader*
@@ -623,12 +694,16 @@ ShaderFactory::createDefaultLightingFragmentShader() const
 {
     static char s_PerVertexLighting_FragmentShaderSource[] =
         "#version 110 \n"
-        "void osgearth_frag_applyLighting( inout vec4 color )                       \n"
-        "{                                                                          \n"
-        "    float alpha = color.a;                                                 \n"
-        "    color = color * gl_Color + gl_SecondaryColor;                          \n"
-        "    color.a = alpha;                                                       \n"
-        "}                                                                          \n";
+        "uniform bool osgearth_LightingEnabled; \n"
+        "void osgearth_frag_applyLighting( inout vec4 color ) \n"
+        "{ \n"
+        "    if ( osgearth_LightingEnabled ) \n"
+        "    { \n"
+        "        float alpha = color.a; \n"
+        "        color = (color * gl_Color) + gl_SecondaryColor; \n"
+        "        color.a = alpha; \n"
+        "    } \n"
+        "} \n";
 
     return new osg::Shader( osg::Shader::FRAGMENT, s_PerVertexLighting_FragmentShaderSource );
 }

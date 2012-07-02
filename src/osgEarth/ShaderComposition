@@ -49,6 +49,23 @@ namespace osgEarth
 
         // user function sets, categorized by function location.
         typedef std::map<FunctionLocation, OrderedFunctionMap> FunctionLocationMap;
+
+        // hints that can be used to automatically generate shader code
+        class OSGEARTH_EXPORT RenderingHints
+        {
+        public:
+            RenderingHints();
+            RenderingHints(const RenderingHints& rhs);
+            bool operator == (const RenderingHints& rhs) const;
+            bool operator != (const RenderingHints& rhs) const { return !operator==(rhs); }
+
+            void useNumTextures(unsigned num);
+            unsigned numTextures() const { return _numTextures; }
+
+        protected:
+            virtual ~RenderingHints() { }
+            unsigned _numTextures;
+        };
     }
 
     /**
@@ -66,20 +83,26 @@ namespace osgEarth
         /** Creates a fragment shader main(). */
         virtual osg::Shader* createFragmentShaderMain( 
             const ShaderComp::FunctionLocationMap& functions =ShaderComp::FunctionLocationMap() ) const;
+
+        /**
+         * Gets the uniform/shader name of the sampler corresponding the the provider
+         * texture image unit
+         */
+        virtual std::string getSamplerName( unsigned texImageUnit ) const;
         
         /**
          * Creates the function that sets up default texcoords in the vertex shader.
          * The name/prototype is:
-         *    void osgearth_vert_setupTexturing(); 
+         *    void osgearth_vert_setupColoring(); 
          */
-        virtual osg::Shader* createDefaultTextureVertexShader( int numTexCoordSets ) const;
+        virtual osg::Shader* createDefaultColoringVertexShader( int numTexCoordSets ) const;
 
         /**
          * Creates the function that applies texture data in the fragment shader.
          * The name/prototype is:
-         *    osgearth_frag_applyTexturing( inout vec4 color );
+         *    osgearth_frag_applyColoring( inout vec4 color );
          */
-        virtual osg::Shader* createDefaultTextureFragmentShader( int numTexCoordSets ) const;
+        virtual osg::Shader* createDefaultColoringFragmentShader( int numTexCoordSets ) const;
 
         /**
          * Creates the function that applies lighting calculations in the vertex shader.
@@ -125,10 +148,10 @@ namespace osgEarth
          * priority: Lets you control the order of functions that you inject at the same location.
          */
         void setFunction( 
-            const std::string& name,
-            const std::string& source, 
+            const std::string&           name,
+            const std::string&           source, 
             ShaderComp::FunctionLocation loc,
-            float priority =1.0f );
+            float                        priority =1.0f );
 
     public: 
         /**

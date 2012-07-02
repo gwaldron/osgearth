@@ -18,6 +18,8 @@
  */
 #include <osgEarth/ModelLayer>
 #include <osgEarth/Map>
+#include <osgEarth/Registry>
+#include <osgEarth/Capabilities>
 #include <osg/Depth>
 
 #define LC "[ModelLayer] "
@@ -164,6 +166,11 @@ ModelLayer::getOrCreateNode( ProgressCallback* progress )
 
             if ( _runtimeOptions.lightingEnabled().isSet() )
                 setLightingEnabled( *_runtimeOptions.lightingEnabled() );
+
+            if ( Registry::instance()->getCapabilities().supportsGLSL() )
+            {
+                _node->addCullCallback( new UpdateLightingUniformsHelper() );
+            }
 
             if ( _modelSource->getOptions().depthTestEnabled() == false )            
             {

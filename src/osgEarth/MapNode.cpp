@@ -17,6 +17,7 @@
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
 #include <osgEarth/MapNode>
+#include <osgEarth/Capabilities>
 #include <osgEarth/MaskNode>
 #include <osgEarth/NodeUtils>
 #include <osgEarth/Registry>
@@ -576,7 +577,7 @@ MapNode::removeTerrainDecorator(osg::Group* decorator)
 void
 MapNode::traverse( osg::NodeVisitor& nv )
 {
-    if ( nv.getVisitorType() == osg::NodeVisitor::EVENT_VISITOR )
+    if ( nv.getVisitorType() == nv.EVENT_VISITOR )
     {
         unsigned int numBlacklist = Registry::instance()->getNumBlacklistedFilenames();
         if (numBlacklist != _lastNumBlacklistedFilenames)

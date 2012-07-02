@@ -68,6 +68,13 @@ _engine( engine )
 }
 
 
+TextureCompositor*
+TerrainEngineNode::getTextureCompositor() const
+{
+    return _texCompositor.get();
+}
+
+
 // this handler adjusts the uniform set when a terrain layer's "enabed" state changes
 void
 TerrainEngineNode::ImageLayerController::onVisibleChanged( TerrainLayer* layer )
@@ -391,7 +398,7 @@ TerrainEngineNode::traverse( osg::NodeVisitor& nv )
                         }
                         _terrainInterface->_updateOperationQueue = q;
                     }
-                }                        
+                }
             }
         }
 

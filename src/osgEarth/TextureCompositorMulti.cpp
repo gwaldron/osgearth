@@ -56,8 +56,10 @@ namespace
             buf << "uniform mat4 osgearth_TexBlendMatrix[" << slots.size() << "];\n";
         }
 
-        buf << "void osgearth_vert_setupTexturing() \n"
-            << "{ \n";
+        buf << "void osgearth_vert_setupColoring() \n"
+            << "{ \n"
+            << "    gl_FrontColor = gl_Color; \n"
+            << "    gl_FrontSecondaryColor = vec4(0.0); \n";
 
         // Set up the texture coordinates for each active slot (primary and secondary).
         // Primary slots are the actual image layer's texture image unit. A Secondary
@@ -131,7 +133,7 @@ namespace
         }
 
         // the main texturing function:
-        buf << "void osgearth_frag_applyTexturing( inout vec4 color ) \n"
+        buf << "void osgearth_frag_applyColoring( inout vec4 color ) \n"
             << "{ \n"
             << "    vec3 color3 = color.rgb; \n"
             << "    vec4 texel; \n"
@@ -388,17 +390,17 @@ TextureCompositorMultiTexture::updateMasterStateSet(osg::StateSet*       stateSe
             bool hasBlending = layout.containsSecondarySlots( maxUnits ); 
 
             vp->setShader( 
-                "osgearth_vert_setupTexturing", 
+                "osgearth_vert_setupColoring", 
                 s_createTextureVertexShader(layout, hasBlending) );
 
             vp->setShader( 
-                "osgearth_frag_applyTexturing",
+                "osgearth_frag_applyColoring",
                 s_createTextureFragShaderFunction(layout, maxUnits, hasBlending, _lodTransitionTime ) );
         }
         else
         {
-            vp->removeShader( "osgearth_frag_applyTexturing" );
-            vp->removeShader( "osgearth_vert_setupTexturing" );
+            vp->removeShader( "osgearth_frag_applyColoring" );
+            vp->removeShader( "osgearth_vert_setupColoring" );
         }
     }
 

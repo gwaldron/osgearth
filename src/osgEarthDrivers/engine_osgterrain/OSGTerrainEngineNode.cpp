@@ -854,18 +854,19 @@ OSGTerrainEngineNode::installShaders()
         const ShaderFactory* sf = Registry::instance()->getShaderFactory();
 
         int numLayers = osg::maximum( 1, (int)_update_mapf->imageLayers().size() );
+        //int numLayers = osg::maximum( 0, (int)_update_mapf->imageLayers().size() );
 
         VirtualProgram* vp = new VirtualProgram();
 
         // note. this stuff should probably happen automatically in VirtualProgram. gw
 
         //vp->setShader( "osgearth_vert_main",     sf->createVertexShaderMain() ); // happens in VirtualProgram now
+        vp->setShader( "osgearth_vert_setupColoring", sf->createDefaultColoringVertexShader( numLayers ) );
         vp->setShader( "osgearth_vert_setupLighting", sf->createDefaultLightingVertexShader() );
-        vp->setShader( "osgearth_vert_setupTexturing",  sf->createDefaultTextureVertexShader( numLayers ) );
 
         //vp->setShader( "osgearth_frag_main",     sf->createFragmentShaderMain() ); // happend in VirtualProgram now
+        vp->setShader( "osgearth_frag_applyColoring", sf->createDefaultColoringFragmentShader( numLayers ) );
         vp->setShader( "osgearth_frag_applyLighting", sf->createDefaultLightingFragmentShader() );
-        vp->setShader( "osgearth_frag_applyTexturing",  sf->createDefaultTextureFragmentShader( numLayers ) );
 
         getOrCreateStateSet()->setAttributeAndModes( vp, osg::StateAttribute::ON );
     }
@@ -887,21 +888,11 @@ OSGTerrainEngineNode::updateTextureCombining()
 
             VirtualProgram* vp = new VirtualProgram();
             terrainStateSet->setAttributeAndModes( vp, osg::StateAttribute::ON );
-
-#if 0
-            VirtualProgram* vp = dynamic_cast<VirtualProgram*>( terrainStateSet->getAttribute(osg::StateAttribute::PROGRAM) );
-            if ( !vp )
-            {
-                // create and add it the first time around..
-                vp = new VirtualProgram();
-                terrainStateSet->setAttributeAndModes( vp, osg::StateAttribute::ON );
-            }
-#endif
             
 
             // first, update the default shader components based on the new layer count:
             const ShaderFactory* sf = Registry::instance()->getShaderFactory();
-            vp->setShader( "osgearth_vert_setupTexturing",  sf->createDefaultTextureVertexShader( numImageLayers ) );
+            vp->setShader( "osgearth_vert_setupColoring",  sf->createDefaultColoringVertexShader( numImageLayers ) );
             
             // second, install the per-layer color filter functions.
             for( int i=0; i<numImageLayers; ++i )
@@ -921,7 +912,7 @@ OSGTerrainEngineNode::updateTextureCombining()
             }
 
             // not this one, because the compositor always generates a new one.
-            //vp->setShader( "osgearth_frag_applyTexturing",  lib.createDefaultTextureFragmentShader( numImageLayers ) );
+            //vp->setShader( "osgearth_frag_applyColoring",  lib.createDefaultTextureFragmentShader( numImageLayers ) );
         }
 
         // next, inform the compositor that it needs to update based on a new layer count:

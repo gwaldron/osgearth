@@ -220,10 +220,14 @@ VirtualProgram::buildProgram( osg::State& state, ShaderMap& accumShaderMap )
     }
 
     // Create a new program and add all our shaders.
+    //OE_INFO << LC << "--------------- PROGRAM -----------------------\n" << std::endl;
+
     osg::Program* program = new osg::Program();
     for( ShaderVector::iterator i = vec.begin(); i != vec.end(); ++i )
     {
         program->addShader( i->get() );
+        //OE_INFO << LC << "SHADER " << i->get()->getName() << ":\n"
+        //    << i->get()->getShaderSource() << "\n" << std::endl;
     }
 
     // Since we replaced the "mains", we have to go through the cache and update all its
@@ -623,31 +627,7 @@ ShaderFactory::createDefaultColoringFragmentShader( int numTexImageUnits ) const
     return new osg::Shader( osg::Shader::FRAGMENT, str );
 }
 
-#if 0
-osg::Shader*
-ShaderFactory::createDefaultLightingVertexShader() const
-{
-    static char s_PerVertexLighting_VertexShaderSource[] = 
-        "#version 120 \n"
-        "uniform bool osgearth_LightingEnabled; \n"
-        "void osgearth_vert_setupLighting() \n"
-        "{ \n"
-        "    if (osgearth_LightingEnabled) \n"
-        "    { \n"
-        "        vec4 color = gl_Color; \n"
-        "        vec3 normal = normalize( gl_NormalMatrix * gl_Normal ); \n"
-        "        vec3 lightDir = normalize(gl_LightSource[0].position.xyz); \n"
-        "        float NdotL = max(dot(normal, lightDir), 0.0); \n"
-        "        gl_FrontColor = color + gl_LightSource[0].ambient + gl_LightSource[0].diffuse * NdotL; \n"
-        "        gl_FrontSecondaryColor = vec4(0.0); \n"
-        //"        gl_FrontColor = color + gl_FrontLightProduct[0].ambient + gl_FrontLightProduct[0].diffuse * NdotL; \n"
-        "    } \n"
-        "} \n";
 
-    return new osg::Shader( osg::Shader::VERTEX, s_PerVertexLighting_VertexShaderSource );
-}
-
-#else
 osg::Shader*
 ShaderFactory::createDefaultLightingVertexShader() const
 {
@@ -658,25 +638,24 @@ ShaderFactory::createDefaultLightingVertexShader() const
         "{ \n"
         "    if (osgearth_LightingEnabled) \n"
         "    { \n"
-        "        vec3 normal = normalize( gl_NormalMatrix * gl_Normal ); \n"
+        "        vec3 normal = gl_NormalMatrix * gl_Normal; \n"
         "        float NdotL = dot( normal, normalize(gl_LightSource[0].position.xyz) ); \n"
         "        NdotL = max( 0.0, NdotL ); \n"
         "        float NdotHV = dot( normal, gl_LightSource[0].halfVector.xyz ); \n"
         "        NdotHV = max( 0.0, NdotHV ); \n"
 
-        "        gl_FrontColor.rgb = gl_FrontColor.rgb * clamp( \n"
-
-        //"        gl_FrontColor = gl_FrontColor + \n" //gl_FrontLightModelProduct.sceneColor +     \n"
-        "                        gl_LightModel.ambient + \n"
-        "                        gl_FrontLightProduct[0].ambient +          \n"
-        "                        gl_FrontLightProduct[0].diffuse * NdotL, 0.0, 1.0).rgb;   \n"
+        "        gl_FrontColor.rgb = gl_FrontColor.rgb * \n"
+        "            clamp( \n"
+        "                gl_LightModel.ambient + \n"
+        "                gl_FrontLightProduct[0].ambient +          \n"
+        "                gl_FrontLightProduct[0].diffuse * NdotL, 0.0, 1.0).rgb;   \n"
 
         "        gl_FrontSecondaryColor = vec4(0.0); \n"
 
         "        if ( NdotL * NdotHV > 0.0 ) \n"
         "        { \n"
-        "            gl_FrontSecondaryColor = gl_FrontLightProduct[0].specular * \n"
-        "                                     pow( NdotHV, gl_FrontMaterial.shininess );\n"
+        "            gl_FrontSecondaryColor.rgb = (gl_FrontLightProduct[0].specular * \n"
+        "                                          pow( NdotHV, gl_FrontMaterial.shininess )).rgb;\n"
         "        } \n"
 
         "        gl_BackColor = gl_FrontColor; \n"
@@ -686,7 +665,6 @@ ShaderFactory::createDefaultLightingVertexShader() const
 
     return new osg::Shader( osg::Shader::VERTEX, s_PerVertexLighting_VertexShaderSource );
 }
-#endif
 
 
 osg::Shader*

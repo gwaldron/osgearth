@@ -396,12 +396,13 @@ MapNodeHelper::load(osg::ArgumentParser& args,
 
     if ( !node )
     {
-        node = osgDB::readNodeFile( "gdal_tiff.earth" );
-        if ( !node )
-        {
-            OE_WARN << LC << "Unable to load an earth file from the command line." << std::endl;
-            return 0L;
-        }
+        OE_WARN << LC << "Unable to load an earth file from the command line." << std::endl;
+        return 0L;
+        //node = osgDB::readNodeFile( "gdal_tiff.earth" );
+        //if ( !node )
+        //{
+        //    return 0L;
+        //}
     }
 
     osg::ref_ptr<MapNode> mapNode = MapNode::findMapNode(node);

@@ -27,6 +27,7 @@
 #include <osgEarth/ElevationQuery>
 #include <osgEarth/Registry>
 #include <osgEarth/ShaderComposition>
+#include <osg/CullFace>
 #include <osg/PagedLOD>
 #include <osg/ProxyNode>
 #include <osgDB/FileNameUtils>
@@ -247,6 +248,10 @@ _pendingUpdate( false )
         installShaderMains();
     }
 
+    // backface culling is ON by default. By the way, this is most definitely
+    // necessary when shading with shadows.
+    this->getOrCreateStateSet()->setMode(GL_CULL_FACE, 1);
+
     ADJUST_EVENT_TRAV_COUNT( this, 1 );
 
     redraw();
@@ -267,8 +272,8 @@ FeatureModelGraph::installShaderMains()
     vp->setShader( "osgearth_vert_setupColoring", fact->createDefaultColoringVertexShader(0) );
     vp->setShader( "osgearth_vert_setupLighting", fact->createDefaultLightingVertexShader() );
 
-    vp->setShader( "osgearth_frag_applyLighting", fact->createDefaultLightingFragmentShader() );
     vp->setShader( "osgearth_frag_applyColoring", fact->createDefaultColoringFragmentShader(0) );
+    vp->setShader( "osgearth_frag_applyLighting", fact->createDefaultLightingFragmentShader() );
 
     this->getOrCreateStateSet()->setAttributeAndModes( vp, osg::StateAttribute::ON );
 }

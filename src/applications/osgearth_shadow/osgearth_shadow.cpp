@@ -79,6 +79,8 @@ int main(int argc, char** argv)
     
     //Setup a vdsm shadow map
     osgShadow::ShadowSettings* settings = new osgShadow::ShadowSettings;
+    settings->setShaderHint( osgShadow::ShadowSettings::NO_SHADERS );
+    settings->setUseOverrideForShadowMapTexture( true );
     shadowedScene->setShadowSettings(settings);
 
     if (arguments.read("--persp")) settings->setShadowMapProjectionHint(osgShadow::ShadowSettings::PERSPECTIVE_SHADOW_MAP);

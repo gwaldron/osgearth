@@ -16,9 +16,6 @@
 * You should have received a copy of the GNU Lesser General Public License
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
-
-#define LC "[ShadowUtils]"
-
 #include <osgEarthUtil/ShadowUtils>
 
 #include <osgEarth/MapNode>
@@ -34,6 +31,7 @@
 
 #include <sstream>
 
+#define LC "[ShadowUtils] "
 
 using namespace osgEarth;
 using namespace osgEarth::Util;
@@ -77,6 +75,7 @@ namespace
                 }
             }
         }
+
         return false;
     }
 }
@@ -96,6 +95,9 @@ ShadowUtils::setUpShadows(osgShadow::ShadowedScene* sscene, osg::Group* root)
     int su = -1;
     if (!compositor->reserveTextureImageUnit(su))
         return false;
+
+    OE_INFO << LC << "Reserved texture unit " << su << " for shadowing" << std::endl;
+
     osgShadow::ViewDependentShadowMap* vdsm = getTechniqueAsVdsm(sscene);
     int su1 = -1;
     if (vdsm && sscene->getShadowSettings()->getNumShadowMapsPerLight() == 2)
@@ -108,6 +110,10 @@ ShadowUtils::setUpShadows(osgShadow::ShadowedScene* sscene, osg::Group* root)
                 compositor->releaseTextureImageUnit(su1);
             su1 = -1;
         }
+        else
+        {
+            OE_INFO << LC << "Reserved texture unit " << su1 << " for shadowing" << std::endl;
+        }
     }
 
     // create a virtual program to attach to the shadows scene.
@@ -117,7 +123,7 @@ ShadowUtils::setUpShadows(osgShadow::ShadowedScene* sscene, osg::Group* root)
 
     std::stringstream buf;
     buf << "varying vec4 colorAmbientEmissive;\n";
-    buf << "void osgearth_setupShadowCoords()\n";
+    buf << "void osgearth_vert_setupShadowCoords()\n";
     buf << "{\n";
     buf << "    vec4 position4 = gl_ModelViewMatrix * gl_Vertex;\n";
     buf << "    gl_TexCoord[" << su << "].s = dot( position4, gl_EyePlaneS[" << su <<"]);\n";
@@ -132,13 +138,18 @@ ShadowUtils::setUpShadows(osgShadow::ShadowedScene* sscene, osg::Group* root)
         buf << "    gl_TexCoord[" << su1 << "].q = dot( position4, gl_EyePlaneQ[" << su1 <<"]);\n";
     }
     buf << "    colorAmbientEmissive = gl_FrontLightModelProduct.sceneColor\n";
-    buf << "                    + gl_FrontLightProduct[0].ambient;\n";
+    buf << "                         + gl_FrontLightProduct[0].ambient;\n";
+    //buf << "    colorAmbientEmissive = gl_LightModel.ambient + gl_FrontLightProduct[0].ambient; \n";
+    //buf << "    colorAmbientEmissive = gl_FrontLightProduct[0].ambient; \n";
     buf << "}\n";
 
     std::string setupShadowCoords;
     setupShadowCoords = buf.str();
 
-    vp->setFunction("osgearth_setupShadowCoords", setupShadowCoords, ShaderComp::LOCATION_VERTEX_POST_LIGHTING);
+    vp->setFunction(
+        "osgearth_vert_setupShadowCoords", 
+        setupShadowCoords, 
+        ShaderComp::LOCATION_VERTEX_POST_LIGHTING);
 
     std::stringstream buf2;
     buf2 <<
@@ -154,12 +165,10 @@ ShadowUtils::setUpShadows(osgShadow::ShadowedScene* sscene, osg::Group* root)
         "void osgearth_frag_applyLighting( inout vec4 color )\n"
         "{\n"
         "    float alpha = color.a;\n"
-        "    float shadowFac = shadow2DProj( shadowTexture, gl_TexCoord["
-        << su << "]).r;\n";
+        "    float shadowFac = shadow2DProj( shadowTexture, gl_TexCoord[" << su << "]).r;\n";
     if (su1 > 0)
     {
-        buf2 << "    shadowFac *= shadow2DProj( shadowTexture1,"
-            " gl_TexCoord[" << su1 << "]).r;\n";
+        buf2 << "    shadowFac *= shadow2DProj( shadowTexture1, gl_TexCoord[" << su1 << "]).r;\n";
     }
     buf2 <<
         "    vec4 diffuseLight = mix(colorAmbientEmissive, gl_Color, shadowFac);\n"
@@ -179,7 +188,7 @@ ShadowUtils::setUpShadows(osgShadow::ShadowedScene* sscene, osg::Group* root)
 
     // VDSM uses a different sampler name, shadowTexture0.
     ssStateSet
-        ->getOrCreateUniform("shadowTexture", osg::Uniform::SAMPLER_2D)
+        ->getOrCreateUniform("shadowTexture", osg::Uniform::SAMPLER_2D_SHADOW)
         ->set(su);
 
     return true;

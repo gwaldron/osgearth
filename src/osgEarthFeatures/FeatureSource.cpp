@@ -31,6 +31,32 @@ using namespace osgEarth::Features;
 using namespace osgEarth::Symbology;
 using namespace OpenThreads;
 
+FeatureSourceOptions::UserFeatureFilters::UserFeatureFilters()
+: osg::Referenced()
+{
+    // NOP
+}
+
+FeatureSourceOptions::UserFeatureFilters::~UserFeatureFilters()
+{
+    // NOP
+}
+
+FeatureFilterList& FeatureSourceOptions::UserFeatureFilters::filters()
+{
+    return _filters;
+}
+
+const FeatureFilterList& FeatureSourceOptions::UserFeatureFilters::filters() const
+{
+    return _filters;
+}
+
+void FeatureSourceOptions::UserFeatureFilters::setFilters(const FeatureFilterList& filters)
+{
+    _filters = filters;
+}
+
 FeatureSourceOptions::FeatureSourceOptions(const ConfigOptions& options) :
 DriverConfigOptions( options )
 {
@@ -93,6 +119,16 @@ FeatureSourceOptions::fromConfig( const Config& conf )
             OE_DEBUG << LC << "Added convert filter" << std::endl;
         }
     }
+
+    // Load user filters if any
+    osg::ref_ptr<UserFeatureFilters> userFeatureFilters = conf.getNonSerializable<UserFeatureFilters>( "UserFeatureFilters" );
+    if (userFeatureFilters.valid() == true)
+    {
+        for( FeatureFilterList::const_iterator i = userFeatureFilters->filters().begin(); i != userFeatureFilters->filters().end(); ++i )
+        {
+            _filters.push_back(i->get());
+        }
+    }
 }
 
 Config
@@ -105,26 +141,27 @@ FeatureSourceOptions::getConfig() const
     conf.updateObjIfSet( "profile",      _profile );
     conf.updateObjIfSet( "cache_policy", _cachePolicy );
 
+    osg::ref_ptr<UserFeatureFilters> userFeatureFilters = new UserFeatureFilters();
+
     //TODO: make each of these filters Configurable.
     for( FeatureFilterList::const_iterator i = _filters.begin(); i != _filters.end(); ++i )
     {
         BufferFilter* buffer = dynamic_cast<BufferFilter*>( i->get() );
+        ResampleFilter* resample = dynamic_cast<ResampleFilter*>( i->get() );
+        ConvertTypeFilter* convert = dynamic_cast<ConvertTypeFilter*>( i->get() );
+        
         if ( buffer ) {
             Config bufferConf( "buffer" );
             bufferConf.addIfSet( "distance", buffer->distance() );
             conf.update( bufferConf );
         }
-
-        ResampleFilter* resample = dynamic_cast<ResampleFilter*>( i->get() );
-        if ( resample ) { 
+        else if ( resample ) { 
             Config resampleConf( "resample" );
             resampleConf.addIfSet( "min_length", resample->minLength() );
             resampleConf.addIfSet( "max_length", resample->maxLength() );
             conf.update( resampleConf );
         }
-
-        ConvertTypeFilter* convert = dynamic_cast<ConvertTypeFilter*>( i->get() );
-        if ( convert ) {
+        else if ( convert ) {
             Config convertConf( "convert" );
             optional<Geometry::Type> type( convert->toType(), convert->toType() ); // weird optional ctor :)
             convertConf.addIfSet( "type", "point",   type, Geometry::TYPE_POINTSET );
@@ -132,6 +169,17 @@ FeatureSourceOptions::getConfig() const
             convertConf.addIfSet( "type", "polygon", type, Geometry::TYPE_POLYGON );
             conf.update( convertConf );
         }
+        else
+        {
+            // Consider this filter as a user feature filter
+            userFeatureFilters->filters().push_back(i->get());
+        }
+    }
+
+    // Add user filters if any
+    if (userFeatureFilters->filters().empty() == false)
+    {
+        conf.updateNonSerializable( "UserFeatureFilters", userFeatureFilters.get() );
     }
 
     return conf;

@@ -47,6 +47,27 @@ namespace osgEarth { namespace Features
      */
     class OSGEARTHFEATURES_EXPORT FeatureSourceOptions : public DriverConfigOptions
     {
+    public:
+        /**
+         * Container class for user-defined feature filters.
+         */
+        class OSGEARTHFEATURES_EXPORT UserFeatureFilters : public osg::Referenced
+        {
+        public:
+            UserFeatureFilters();
+
+        protected:
+            virtual ~UserFeatureFilters();
+
+        public:
+            FeatureFilterList& filters();
+            const FeatureFilterList& filters() const;
+            void setFilters(const FeatureFilterList& filters);
+
+        private:
+			FeatureFilterList _filters;
+        };
+
     public: // properties
 
         /** Name of this feature source. */

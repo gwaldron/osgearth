@@ -44,14 +44,21 @@ namespace
 {
     void toggle(osg::Group* p, const std::string& name, bool onoff)
     {
-        osg::Group* g = p->getChild(1)->asGroup();
-        for(unsigned i=0; i<g->getNumChildren(); ++i)
+        if (p->getNumChildren() > 1)
         {
-            if ( g->getChild(i)->getName() == name )
+            osg::Group* g = p->getChild(1)->asGroup();
+            for(unsigned i=0; i<g->getNumChildren(); ++i)
             {
-                g->getChild(i)->setNodeMask( onoff ? ~0 : 0 );
-                break;
+                if ( g->getChild(i)->getName() == name )
+                {
+                    g->getChild(i)->setNodeMask( onoff ? ~0 : 0 );
+                    break;
+                }
             }
+        }
+        else
+        {
+            OE_WARN << "No overlays to display / toggle." << std::endl;
         }
     }
 

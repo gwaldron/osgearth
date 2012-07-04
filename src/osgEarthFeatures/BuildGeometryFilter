@@ -87,6 +87,12 @@ namespace osgEarth { namespace Features
         optional<bool>& useVertexBufferObjects() { return _useVertexBufferObjects;}
         const optional<bool>& useVertexBufferObjects() const { return _useVertexBufferObjects;}
 
+        /**
+         * Whether to use per vertex colors (color array with BIND_PER_VERTEX) or global color (single color with BIND_OVERALL)
+         */
+        optional<bool>& usePerVertexColor() { return _usePerVertexColor;}
+        const optional<bool>& usePerVertexColor() const { return _usePerVertexColor;}
+
     protected:
         osg::ref_ptr<osg::Node> _result;
         osg::ref_ptr<osg::Geode> _geode;
@@ -96,6 +102,7 @@ namespace osgEarth { namespace Features
         optional<bool> _mergeGeometry;
         optional<StringExpression> _featureNameExpr;
         optional<bool> _useVertexBufferObjects;
+        optional<bool> _usePerVertexColor;
         bool _hasPoints;
         bool _hasLines;
         bool _hasPolygons;

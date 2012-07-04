@@ -52,7 +52,8 @@ _maxGranularity_deg( 1.0 ),
 _mergeGeometry     ( false ),
 _clustering        ( true ),
 _ignoreAlt         ( false ),
-_useVertexBufferObjects( true )
+_useVertexBufferObjects( true ),
+_usePerVertexColor( false )
 {
     fromConfig(_conf);
 }
@@ -68,6 +69,7 @@ GeometryCompilerOptions::fromConfig( const Config& conf )
     conf.getIfSet   ( "geo_interpolation", "great_circle", _geoInterp, GEOINTERP_GREAT_CIRCLE );
     conf.getIfSet   ( "geo_interpolation", "rhumb_line",   _geoInterp, GEOINTERP_RHUMB_LINE );
     conf.getIfSet   ( "use_vbo", _useVertexBufferObjects);
+    conf.getIfSet   ( "use_vertexcolor", _usePerVertexColor);
 }
 
 Config
@@ -82,6 +84,7 @@ GeometryCompilerOptions::getConfig() const
     conf.addIfSet   ( "geo_interpolation", "great_circle", _geoInterp, GEOINTERP_GREAT_CIRCLE );
     conf.addIfSet   ( "geo_interpolation", "rhumb_line",   _geoInterp, GEOINTERP_RHUMB_LINE );
     conf.addIfSet   ( "use_vbo", _useVertexBufferObjects);
+    conf.addIfSet   ( "use_vertexcolor", _usePerVertexColor);
     return conf;
 }
 
@@ -335,6 +338,8 @@ GeometryCompiler::compile(FeatureList&          workingSet,
             filter.featureName() = *_options.featureName();
         if ( _options.useVertexBufferObjects().isSet())
             filter.useVertexBufferObjects() = *_options.useVertexBufferObjects();
+        if ( _options.usePerVertexColor().isSet())
+            filter.usePerVertexColor() = *_options.usePerVertexColor();
 
         osg::Node* node = filter.push( workingSet, sharedCX );
         if ( node )

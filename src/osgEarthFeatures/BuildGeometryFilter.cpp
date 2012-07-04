@@ -45,8 +45,6 @@ using namespace osgEarth;
 using namespace osgEarth::Features;
 using namespace osgEarth::Symbology;
 
-#define USE_SINGLE_COLOR 1
-
 namespace
 {
     void applyLineAndPointSymbology( osg::StateSet* stateSet, const LineSymbol* line, const PointSymbol* point )
@@ -75,7 +73,8 @@ _style        ( style ),
 _maxAngle_deg ( 1.0 ),
 _geoInterp    ( GEOINTERP_RHUMB_LINE ),
 _mergeGeometry( false ),
-_useVertexBufferObjects( true )
+_useVertexBufferObjects( true ),
+_usePerVertexColor( false )
 {
     reset();
 }
@@ -244,21 +243,23 @@ BuildGeometryFilter::process( FeatureList& features, const FilterContext& contex
 
 
             // assign the primary color:
-#if USE_SINGLE_COLOR            
-            osg::Vec4Array* colors = new osg::Vec4Array( 1 );
-            (*colors)[0] = primaryColor;
-            osgGeom->setColorBinding( osg::Geometry::BIND_OVERALL );
-#else
-
-            osg::Vec4Array* colors = new osg::Vec4Array( osgGeom->getVertexArray()->getNumElements() ); //allPoints->size() );
-            for(unsigned c=0; c<colors->size(); ++c)
-                (*colors)[c] = primaryColor;
-            osgGeom->setColorBinding( osg::Geometry::BIND_PER_VERTEX );
-#endif
-
-
-            osgGeom->setColorArray( colors );
-            
+            if (_usePerVertexColor.value() == false)
+            {
+                // Use a single color, and bind over all vertices
+                osg::Vec4Array* colors = new osg::Vec4Array( 1 );
+                (*colors)[0] = primaryColor;
+                osgGeom->setColorBinding( osg::Geometry::BIND_OVERALL );
+                osgGeom->setColorArray( colors );
+            }
+            else
+            {
+                // Use a color per vertex
+                osg::Vec4Array* colors = new osg::Vec4Array( osgGeom->getVertexArray()->getNumElements() ); //allPoints->size() );
+                for(unsigned c=0; c<colors->size(); ++c)
+                    (*colors)[c] = primaryColor;
+                osgGeom->setColorBinding( osg::Geometry::BIND_PER_VERTEX );
+                osgGeom->setColorArray( colors );
+            }
 
             _geode->addDrawable( osgGeom );
 
@@ -282,19 +283,24 @@ BuildGeometryFilter::process( FeatureList& features, const FilterContext& contex
                 
                 osg::Vec4f outlineColor = lineSymbol->stroke()->color();                
 
-                osg::Vec4Array* outlineColors = new osg::Vec4Array();                
-#if USE_SINGLE_COLOR
-                outlineColors->reserve(1);
-                outlineColors->push_back( outlineColor );
-                outline->setColorBinding( osg::Geometry::BIND_OVERALL );
-#else
-                unsigned pcount = part->getTotalPointCount();                
-                outlineColors->reserve( pcount );
-                for( unsigned c=0; c < pcount; ++c )
-                    outlineColors->push_back( outlineColor );
-                outline->setColorBinding( osg::Geometry::BIND_PER_VERTEX );
-#endif
-                outline->setColorArray(outlineColors);
+                if (_usePerVertexColor.value() == false)
+                {
+                    // Use a single color, and bind over all vertices
+                    osg::Vec4Array* outlineColors = new osg::Vec4Array( 1 );                
+                    (*outlineColors)[0] = outlineColor;
+                    outline->setColorBinding( osg::Geometry::BIND_OVERALL );
+                    outline->setColorArray(outlineColors);
+                }
+                else
+                {
+                    // Use a color per vertex
+                    unsigned pcount = part->getTotalPointCount();                
+                    osg::Vec4Array* outlineColors = new osg::Vec4Array( pcount );                
+                    for( unsigned c=0; c < pcount; ++c )
+                        (*outlineColors)[c] = outlineColor;
+                    outline->setColorBinding( osg::Geometry::BIND_PER_VERTEX );
+                    outline->setColorArray(outlineColors);
+                }
 
                 // check for explicit tessellation disable:                
                 bool disableTess = lineSymbol && lineSymbol->tessellation().isSetTo(0);

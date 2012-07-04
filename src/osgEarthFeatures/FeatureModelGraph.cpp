@@ -307,8 +307,15 @@ FeatureModelGraph::setupPaging()
     const FeatureProfile* featureProfile = _session->getFeatureSource()->getFeatureProfile();
     if (featureProfile->getTiled() && 
         !_options.layout()->tileSizeFactor().isSet() && 
-        _options.layout()->maxRange().isSet())
+        (_options.layout()->maxRange().isSet() || _options.maxRange().isSet()))
     {
+        // select the max range either from the Layout or from the model layer options.
+        float userMaxRange = FLT_MAX;
+        if ( _options.layout()->maxRange().isSet() )
+            userMaxRange = *_options.layout()->maxRange();
+        if ( _options.maxRange().isSet() )
+            userMaxRange = std::min(userMaxRange, *_options.maxRange());
+
         //Automatically compute the tileSizeFactor based on the max range
         double width, height;
         featureProfile->getProfile()->getTileDimensions(featureProfile->getFirstLevel(), width, height);
@@ -319,8 +326,9 @@ FeatureModelGraph::setupPaging()
                       featureProfile->getExtent().west() + width,
                       featureProfile->getExtent().south() + height);
         osg::BoundingSphered bounds = getBoundInWorldCoords( ext, &mapf);
-        float tileSizeFactor = _options.layout()->maxRange().value() / bounds.radius();
-        OE_DEBUG << LC << "Computed a tilesize factor of " << tileSizeFactor << " with max range setting of " <<  _options.layout()->maxRange().value() << std::endl;
+
+        float tileSizeFactor = userMaxRange / bounds.radius();
+        OE_DEBUG << LC << "Computed a tilesize factor of " << tileSizeFactor << " with max range setting of " <<  userMaxRange << std::endl;
         _options.layout()->tileSizeFactor() = tileSizeFactor;
     }
    
@@ -603,11 +611,22 @@ FeatureModelGraph::buildLevel( const FeatureLevel& level, const GeoExtent& exten
 
     if ( group->getNumChildren() > 0 )
     {
-        // account for a min-range here.
-        if ( level.minRange() > 0.0f )
+        // account for a min-range here. Do not address the max-range here; that happens
+        // above when generating paged LOD nodes, etc.
+        float minRange = level.minRange();
+        if ( _options.minRange().isSet() ) 
+            minRange = std::max(minRange, *_options.minRange());
+        if ( _options.layout().isSet() && _options.layout()->minRange().isSet() )
+            minRange = std::max(minRange, *_options.layout()->minRange());
+
+        if ( minRange > 0.0f )
         {
+            // minRange can't be less than the tile geometry's radius
+            minRange = std::max(minRange, group->getBound().radius());
+
+            //OE_INFO << LC << "minRange = " << minRange << std::endl;
             osg::LOD* lod = new osg::LOD();
-            lod->addChild( group.get(), level.minRange(), FLT_MAX );
+            lod->addChild( group.get(), minRange, FLT_MAX );
             group = lod;
         }
 
@@ -1005,10 +1024,26 @@ FeatureModelGraph::redraw()
     {
         FeatureLevel defaultLevel( 0.0f, FLT_MAX );
         
-        //Remove all current children        
+        //Remove all current children
         osg::Node* node = buildLevel( defaultLevel, GeoExtent::INVALID, 0 );
         if ( node )
+        {
+            if ( _options.maxRange().isSet() )
+            {
+                osg::LOD* lod = dynamic_cast<osg::LOD*>(node);
+                if ( lod == NULL )
+                {
+                    osg::LOD* lod = new osg::LOD();
+                    lod->addChild( node, 0.0, *_options.maxRange() );
+                }
+                else if ( lod->getNumChildren() > 0 )
+                {
+                    lod->setRange(0, lod->getMinRange(0), *_options.maxRange());
+                }
+                node = lod;
+            }
             addChild( node );
+        }
     }
 
     _session->getFeatureSource()->sync( _revision );

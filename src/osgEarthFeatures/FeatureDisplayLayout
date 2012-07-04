@@ -98,6 +98,12 @@ namespace osgEarth { namespace Features
         const optional<float>& maxRange() const { return _maxRange;}
 
         /**
+         * Minimum visibility range for all tiles in the layout.
+         */
+         optional<float>& minRange() { return _minRange; }
+         const optional<float>& minRange() const { return _minRange; }
+
+        /**
          * Whether to crop geometry to fit within the cell extents when chopping
          * a feature level up into grid cells. By default, this is false, meaning 
          * that a feature whose centroid falls within the cell will be included.
@@ -138,7 +144,7 @@ namespace osgEarth { namespace Features
         const FeatureLevel* getLevel( unsigned i ) const;
 
         /** Gets the maximum range of the schema */
-        float getMaxRange() const;
+        //float getMaxRange() const;
 
         /**
          * Calculates the "best" quadtree LOD for the specified level, given the radius 
@@ -151,6 +157,7 @@ namespace osgEarth { namespace Features
 
     protected:
         optional<float> _tileSizeFactor;
+        optional<float> _minRange;
         optional<float> _maxRange;
         optional<bool>  _cropFeatures;
         optional<float> _priorityOffset;

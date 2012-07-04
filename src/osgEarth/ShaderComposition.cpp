@@ -195,6 +195,7 @@ VirtualProgram::buildProgram( osg::State& state, ShaderMap& accumShaderMap )
 
     // Create a new program and add all our shaders.
     osg::Program* program = new osg::Program();
+    program->setName(getName());
     for( ShaderVector::iterator i = vec.begin(); i != vec.end(); ++i )
     {
         program->addShader( i->get() );

@@ -45,6 +45,8 @@ using namespace osgEarth;
 using namespace osgEarth::Features;
 using namespace osgEarth::Symbology;
 
+#define USE_SINGLE_COLOR 1
+
 namespace
 {
     void applyLineAndPointSymbology( osg::StateSet* stateSet, const LineSymbol* line, const PointSymbol* point )
@@ -72,7 +74,8 @@ BuildGeometryFilter::BuildGeometryFilter( const Style& style ) :
 _style        ( style ),
 _maxAngle_deg ( 1.0 ),
 _geoInterp    ( GEOINTERP_RHUMB_LINE ),
-_mergeGeometry( false )
+_mergeGeometry( false ),
+_useVertexBufferObjects( true )
 {
     reset();
 }
@@ -178,7 +181,7 @@ BuildGeometryFilter::process( FeatureList& features, const FilterContext& contex
                 osg::Vec4f(1,1,1,1);
             
             osg::Geometry* osgGeom = new osg::Geometry();
-            osgGeom->setUseVertexBufferObjects(true);
+            osgGeom->setUseVertexBufferObjects( _useVertexBufferObjects.value() );
 
             if ( _featureNameExpr.isSet() )
             {
@@ -217,7 +220,7 @@ BuildGeometryFilter::process( FeatureList& features, const FilterContext& contex
 
             if (allPoints->getVertexBufferObject())
                 allPoints->getVertexBufferObject()->setUsage(GL_STATIC_DRAW_ARB);
-
+            
             // subdivide the mesh if necessary to conform to an ECEF globe:
             if ( makeECEF && renderType != Geometry::TYPE_POINTSET )
             {
@@ -226,8 +229,9 @@ BuildGeometryFilter::process( FeatureList& features, const FilterContext& contex
                 bool disableTess = line && line->tessellation().isSetTo(0);
 
                 if ( makeECEF && !disableTess )
-                {
+                {                    
                     double threshold = osg::DegreesToRadians( *_maxAngle_deg );
+                    OE_DEBUG << "Running mesh subdivider with threshold " << *_maxAngle_deg << std::endl;
 
                     MeshSubdivider ms( _world2local, _local2world );
                     //ms.setMaxElementsPerEBO( INT_MAX );
@@ -238,12 +242,23 @@ BuildGeometryFilter::process( FeatureList& features, const FilterContext& contex
                 }
             }
 
+
             // assign the primary color:
+#if USE_SINGLE_COLOR            
+            osg::Vec4Array* colors = new osg::Vec4Array( 1 );
+            (*colors)[0] = primaryColor;
+            osgGeom->setColorBinding( osg::Geometry::BIND_OVERALL );
+#else
+
             osg::Vec4Array* colors = new osg::Vec4Array( osgGeom->getVertexArray()->getNumElements() ); //allPoints->size() );
             for(unsigned c=0; c<colors->size(); ++c)
                 (*colors)[c] = primaryColor;
-            osgGeom->setColorArray( colors );
             osgGeom->setColorBinding( osg::Geometry::BIND_PER_VERTEX );
+#endif
+
+
+            osgGeom->setColorArray( colors );
+            
 
             _geode->addDrawable( osgGeom );
 
@@ -258,27 +273,37 @@ BuildGeometryFilter::process( FeatureList& features, const FilterContext& contex
                 osgGeom->getOrCreateStateSet()->setAttributeAndModes( new osg::PolygonOffset(1,1), 1 );
 
                 osg::Geometry* outline = new osg::Geometry();
-                outline->setUseVertexBufferObjects(true);
+                outline->setUseVertexBufferObjects( _useVertexBufferObjects.value() );
 
                 buildPolygon(part, featureSRS, mapSRS, makeECEF, false, outline);
 
                 if ( outline->getVertexArray()->getVertexBufferObject() )
-                    outline->getVertexArray()->getVertexBufferObject()->setUsage(GL_STATIC_DRAW_ARB);
+                    outline->getVertexArray()->getVertexBufferObject()->setUsage(GL_STATIC_DRAW_ARB);                
+                
+                osg::Vec4f outlineColor = lineSymbol->stroke()->color();                
 
-                osg::Vec4Array* outlineColors = new osg::Vec4Array();
-                outline->setColorArray(outlineColors);
-                outline->setColorBinding( osg::Geometry::BIND_PER_VERTEX );
-
-                osg::Vec4f outlineColor = lineSymbol->stroke()->color();
-                unsigned pcount = part->getTotalPointCount();
+                osg::Vec4Array* outlineColors = new osg::Vec4Array();                
+#if USE_SINGLE_COLOR
+                outlineColors->reserve(1);
+                outlineColors->push_back( outlineColor );
+                outline->setColorBinding( osg::Geometry::BIND_OVERALL );
+#else
+                unsigned pcount = part->getTotalPointCount();                
                 outlineColors->reserve( pcount );
                 for( unsigned c=0; c < pcount; ++c )
                     outlineColors->push_back( outlineColor );
+                outline->setColorBinding( osg::Geometry::BIND_PER_VERTEX );
+#endif
+                outline->setColorArray(outlineColors);
 
-                // subdivide if necessary.
-                if ( makeECEF )
+                // check for explicit tessellation disable:                
+                bool disableTess = lineSymbol && lineSymbol->tessellation().isSetTo(0);
+
+                // subdivide if necessary.                
+                if ( makeECEF && !disableTess )
                 {
                     double threshold = osg::DegreesToRadians( *_maxAngle_deg );
+                    OE_DEBUG << "Running mesh subdivider for outlines with threshold " << *_maxAngle_deg << std::endl;
                     MeshSubdivider ms( _world2local, _local2world );
                     if ( input->geoInterp().isSet() )
                         ms.run( *outline, threshold, *input->geoInterp() );
@@ -319,7 +344,8 @@ BuildGeometryFilter::buildPolygon(Geometry*               ring,
     osg::Vec3Array* allPoints = new osg::Vec3Array();
     transformAndLocalize( ring->asVector(), featureSRS, allPoints, mapSRS, _world2local, makeECEF );
 
-    osgGeom->addPrimitiveSet( new osg::DrawArrays( GL_LINE_LOOP, 0, ring->size() ) );
+    GLenum mode = GL_LINE_LOOP;
+    osgGeom->addPrimitiveSet( new osg::DrawArrays( mode, 0, ring->size() ) );
 
     Polygon* poly = dynamic_cast<Polygon*>(ring);
     if ( poly )
@@ -333,7 +359,7 @@ BuildGeometryFilter::buildPolygon(Geometry*               ring,
             {
                 transformAndLocalize( hole->asVector(), featureSRS, allPoints, mapSRS, _world2local, makeECEF );
 
-                osgGeom->addPrimitiveSet( new osg::DrawArrays( GL_LINE_LOOP, offset, hole->size() ) );
+                osgGeom->addPrimitiveSet( new osg::DrawArrays( mode, offset, hole->size() ) );
                 offset += hole->size();
             }
 
@@ -347,6 +373,7 @@ BuildGeometryFilter::buildPolygon(Geometry*               ring,
         osgUtil::Tessellator tess;
         tess.setTessellationType( osgUtil::Tessellator::TESS_TYPE_GEOMETRY );
         tess.setWindingType( osgUtil::Tessellator::TESS_WINDING_POSITIVE );
+        //tess.setBoundaryOnly( true );
         tess.retessellatePolygons( *osgGeom );
     }
 }

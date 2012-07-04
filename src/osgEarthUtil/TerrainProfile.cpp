@@ -168,8 +168,8 @@ void TerrainProfileCalculator::recompute()
     {
         //computeTerrainProfile( _mapNode.get(), _start, _end, _numSamples, _profile);
         osg::Vec3d start, end;
-        _start.toWorld( start );
-        _end.toWorld( end );
+        _start.toWorld( start, _mapNode->getTerrain() );
+        _end.toWorld( end, _mapNode->getTerrain() );
         osgSim::ElevationSlice slice;
         slice.setStartPoint( start );
         slice.setEndPoint( end );

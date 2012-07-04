@@ -33,6 +33,12 @@ JSFeature::WrapFeature(osgEarth::Features::Feature* feature, bool freeObject)
 {
   v8::HandleScope handle_scope;
 
+  if (!feature)
+  {
+    v8::Handle<v8::Object> obj;
+    return handle_scope.Close(obj);
+  }
+
   v8::Handle<v8::Object> obj = V8Util::WrapObject(feature, GetObjectTemplate());
 
   if (freeObject)
@@ -49,17 +55,13 @@ JSFeature::GetObjectTemplate()
 {
   v8::HandleScope handle_scope;
 
-  static v8::Persistent<v8::ObjectTemplate> feat_instance;
+  v8::Handle<v8::ObjectTemplate> feat_instance = v8::ObjectTemplate::New();
 
-  if (feat_instance.IsEmpty())
-  {
-    feat_instance = v8::Persistent<v8::ObjectTemplate>::New(v8::ObjectTemplate::New());
-    feat_instance->Set(v8::String::New(V8_OBJECT_TYPE_PROPERTY), v8::String::New(GetObjectType().c_str()));
-    feat_instance->SetInternalFieldCount(1);
-    feat_instance->SetNamedPropertyHandler(PropertyCallback);
-  }
+  feat_instance->Set(v8::String::New(V8_OBJECT_TYPE_PROPERTY), v8::String::New(GetObjectType().c_str()));
+  feat_instance->SetInternalFieldCount(1);
+  feat_instance->SetNamedPropertyHandler(PropertyCallback);
 
-  return feat_instance;
+  return handle_scope.Close(feat_instance);
 }
 
 v8::Handle<v8::ObjectTemplate>
@@ -67,17 +69,13 @@ JSFeature::GetAttributesObjectTemplate()
 {
   v8::HandleScope handle_scope;
 
-  static v8::Persistent<v8::ObjectTemplate> attr_instance;
+  v8::Handle<v8::ObjectTemplate> attr_instance = v8::ObjectTemplate::New();
 
-  if (attr_instance.IsEmpty())
-  {
-    attr_instance = v8::Persistent<v8::ObjectTemplate>::New(v8::ObjectTemplate::New());
-    attr_instance->Set(v8::String::New(V8_OBJECT_TYPE_PROPERTY), v8::String::New("JSFeature_Attrs"));
-    attr_instance->SetInternalFieldCount(1);
-    attr_instance->SetNamedPropertyHandler(AttrPropertyCallback);
-  }
+  attr_instance->Set(v8::String::New(V8_OBJECT_TYPE_PROPERTY), v8::String::New("JSFeature_Attrs"));
+  attr_instance->SetInternalFieldCount(1);
+  attr_instance->SetNamedPropertyHandler(AttrPropertyCallback);
 
-  return attr_instance;
+  return handle_scope.Close(attr_instance);
 }
 
 v8::Handle<v8::Value>
@@ -176,18 +174,14 @@ JSSymbologyGeometry::GetObjectTemplate()
 {
   v8::HandleScope handle_scope;
 
-  static v8::Persistent<v8::ObjectTemplate> template_instance;
+  v8::Handle<v8::ObjectTemplate> template_instance = v8::ObjectTemplate::New();
 
-  if (template_instance.IsEmpty())
-  {
-    template_instance = v8::Persistent<v8::ObjectTemplate>::New(v8::ObjectTemplate::New());
-    template_instance->Set(v8::String::New(V8_OBJECT_TYPE_PROPERTY), v8::String::New(GetObjectType().c_str()));
-    template_instance->SetInternalFieldCount(1);
-    template_instance->SetNamedPropertyHandler(PropertyCallback);
-    template_instance->SetIndexedPropertyHandler(IndexedPropertyCallback);
-  }
+  template_instance->Set(v8::String::New(V8_OBJECT_TYPE_PROPERTY), v8::String::New(GetObjectType().c_str()));
+  template_instance->SetInternalFieldCount(1);
+  template_instance->SetNamedPropertyHandler(PropertyCallback);
+  template_instance->SetIndexedPropertyHandler(IndexedPropertyCallback);
 
-  return template_instance;
+  return handle_scope.Close(template_instance);
 }
 
 v8::Handle<v8::Value>
@@ -266,21 +260,17 @@ JSBounds::GetObjectTemplate()
 {
   v8::HandleScope handle_scope;
 
-  static v8::Persistent<v8::ObjectTemplate> template_instance;
-  
-  if (template_instance.IsEmpty())
-  {
-    template_instance = v8::Persistent<v8::ObjectTemplate>::New(v8::ObjectTemplate::New());
-    template_instance->Set(v8::String::New(V8_OBJECT_TYPE_PROPERTY), v8::String::New(GetObjectType().c_str()));
-    template_instance->SetInternalFieldCount(1);
-    template_instance->SetNamedPropertyHandler(PropertyCallback);
+  v8::Handle<v8::ObjectTemplate> template_instance = v8::ObjectTemplate::New();
 
-    template_instance->Set(v8::String::New("contains"), v8::FunctionTemplate::New(ContainsCallback));
-    template_instance->Set(v8::String::New("unionWith"), v8::FunctionTemplate::New(UnionCallback));
-    template_instance->Set(v8::String::New("intersectionWith"), v8::FunctionTemplate::New(IntersectionCallback));
-  }
+  template_instance->Set(v8::String::New(V8_OBJECT_TYPE_PROPERTY), v8::String::New(GetObjectType().c_str()));
+  template_instance->SetInternalFieldCount(1);
+  template_instance->SetNamedPropertyHandler(PropertyCallback);
 
-  return template_instance;
+  template_instance->Set(v8::String::New("contains"), v8::FunctionTemplate::New(ContainsCallback));
+  template_instance->Set(v8::String::New("unionWith"), v8::FunctionTemplate::New(UnionCallback));
+  template_instance->Set(v8::String::New("intersectionWith"), v8::FunctionTemplate::New(IntersectionCallback));
+
+  return handle_scope.Close(template_instance);
 }
 
 v8::Handle<v8::Value>
@@ -432,18 +422,14 @@ JSVec3d::GetObjectTemplate()
 {
   v8::HandleScope handle_scope;
 
-  static v8::Persistent<v8::ObjectTemplate> template_instance;
+  v8::Handle<v8::ObjectTemplate> template_instance = v8::ObjectTemplate::New();
 
-  if (template_instance.IsEmpty())
-  {
-    template_instance = v8::Persistent<v8::ObjectTemplate>::New(v8::ObjectTemplate::New());
-    template_instance->Set(v8::String::New(V8_OBJECT_TYPE_PROPERTY), v8::String::New(GetObjectType().c_str()));
-    template_instance->SetInternalFieldCount(1);
-    template_instance->SetNamedPropertyHandler(PropertyCallback);
-    template_instance->SetIndexedPropertyHandler(IndexedPropertyCallback);
-  }
+  template_instance->Set(v8::String::New(V8_OBJECT_TYPE_PROPERTY), v8::String::New(GetObjectType().c_str()));
+  template_instance->SetInternalFieldCount(1);
+  template_instance->SetNamedPropertyHandler(PropertyCallback);
+  template_instance->SetIndexedPropertyHandler(IndexedPropertyCallback);
 
-  return template_instance;
+  return handle_scope.Close(template_instance);
 }
 
 v8::Handle<v8::Value>
@@ -497,6 +483,12 @@ JSFilterContext::WrapFilterContext(osgEarth::Features::FilterContext* context, b
 {
   v8::HandleScope handle_scope;
 
+  if (!context)
+  {
+    v8::Handle<v8::Object> obj;
+    return handle_scope.Close(obj);
+  }
+
   v8::Handle<v8::Object> obj = V8Util::WrapObject(context, GetObjectTemplate());
 
   if (freeObject)
@@ -513,24 +505,20 @@ JSFilterContext::GetObjectTemplate()
 {
   v8::HandleScope handle_scope;
 
-  static v8::Persistent<v8::ObjectTemplate> template_instance;
+  v8::Handle<v8::ObjectTemplate> template_instance = v8::ObjectTemplate::New();
 
-  if (template_instance.IsEmpty())
-  {
-    template_instance = v8::Persistent<v8::ObjectTemplate>::New(v8::ObjectTemplate::New());
-    template_instance->Set(v8::String::New(V8_OBJECT_TYPE_PROPERTY), v8::String::New(GetObjectType().c_str()));
-    template_instance->SetInternalFieldCount(1);
-    template_instance->SetNamedPropertyHandler(PropertyCallback);
+  template_instance->Set(v8::String::New(V8_OBJECT_TYPE_PROPERTY), v8::String::New(GetObjectType().c_str()));
+  template_instance->SetInternalFieldCount(1);
+  template_instance->SetNamedPropertyHandler(PropertyCallback);
 
 #if 0
-    template_instance->Set(v8::String::New("toLocal"), v8::FunctionTemplate::New(ToLocalCallback));
-    template_instance->Set(v8::String::New("toWorld"), v8::FunctionTemplate::New(ToWorldCallback));
-    template_instance->Set(v8::String::New("toMap"), v8::FunctionTemplate::New(ToMapCallback));
-    template_instance->Set(v8::String::New("fromMap"), v8::FunctionTemplate::New(FromMapCallback));
+  template_instance->Set(v8::String::New("toLocal"), v8::FunctionTemplate::New(ToLocalCallback));
+  template_instance->Set(v8::String::New("toWorld"), v8::FunctionTemplate::New(ToWorldCallback));
+  template_instance->Set(v8::String::New("toMap"), v8::FunctionTemplate::New(ToMapCallback));
+  template_instance->Set(v8::String::New("fromMap"), v8::FunctionTemplate::New(FromMapCallback));
 #endif
-  }
 
-  return template_instance;
+  return handle_scope.Close(template_instance);
 }
 
 v8::Handle<v8::Value>
@@ -685,21 +673,17 @@ JSSession::GetObjectTemplate()
 {
   v8::HandleScope handle_scope;
 
-  static v8::Persistent<v8::ObjectTemplate> template_instance;
+  v8::Handle<v8::ObjectTemplate> template_instance = v8::ObjectTemplate::New();
 
-  if (template_instance.IsEmpty())
-  {
-    template_instance = v8::Persistent<v8::ObjectTemplate>::New(v8::ObjectTemplate::New());
-    template_instance->Set(v8::String::New(V8_OBJECT_TYPE_PROPERTY), v8::String::New(GetObjectType().c_str()));
-    template_instance->SetInternalFieldCount(1);
-    template_instance->SetNamedPropertyHandler(PropertyCallback);
+  template_instance->Set(v8::String::New(V8_OBJECT_TYPE_PROPERTY), v8::String::New(GetObjectType().c_str()));
+  template_instance->SetInternalFieldCount(1);
+  template_instance->SetNamedPropertyHandler(PropertyCallback);
 
 #if 0
-    template_instance->Set(v8::String::New("resolveURI"), v8::FunctionTemplate::New(ResolveUriCallback));
+  template_instance->Set(v8::String::New("resolveURI"), v8::FunctionTemplate::New(ResolveUriCallback));
 #endif
-  }
 
-  return template_instance;
+  return handle_scope.Close(template_instance);
 }
 
 v8::Handle<v8::Value>
@@ -771,23 +755,19 @@ JSMapInfo::GetObjectTemplate()
 {
   v8::HandleScope handle_scope;
 
-  static v8::Persistent<v8::ObjectTemplate> template_instance;
+  v8::Handle<v8::ObjectTemplate> template_instance = v8::ObjectTemplate::New();
 
-  if (template_instance.IsEmpty())
-  {
-    template_instance = v8::Persistent<v8::ObjectTemplate>::New(v8::ObjectTemplate::New());
-    template_instance->Set(v8::String::New(V8_OBJECT_TYPE_PROPERTY), v8::String::New(GetObjectType().c_str()));
-    template_instance->SetInternalFieldCount(1);
-    template_instance->SetNamedPropertyHandler(PropertyCallback);
+  template_instance->Set(v8::String::New(V8_OBJECT_TYPE_PROPERTY), v8::String::New(GetObjectType().c_str()));
+  template_instance->SetInternalFieldCount(1);
+  template_instance->SetNamedPropertyHandler(PropertyCallback);
 
 #if 0
-    template_instance->Set(v8::String::New("toMapPoint"), v8::FunctionTemplate::New(ToMapCallback));
-    template_instance->Set(v8::String::New("mapPointToWorldPoint"), v8::FunctionTemplate::New(MapToWorldCallback));
-    template_instance->Set(v8::String::New("worldPointToMapPoint"), v8::FunctionTemplate::New(WorldToMapCallback));
+  template_instance->Set(v8::String::New("toMapPoint"), v8::FunctionTemplate::New(ToMapCallback));
+  template_instance->Set(v8::String::New("mapPointToWorldPoint"), v8::FunctionTemplate::New(MapToWorldCallback));
+  template_instance->Set(v8::String::New("worldPointToMapPoint"), v8::FunctionTemplate::New(WorldToMapCallback));
 #endif
-  }
 
-  return template_instance;
+  return handle_scope.Close(template_instance);
 }
 
 v8::Handle<v8::Value>
@@ -931,19 +911,15 @@ JSFeatureProfile::GetObjectTemplate()
 {
   v8::HandleScope handle_scope;
 
-  static v8::Persistent<v8::ObjectTemplate> template_instance;
+  v8::Handle<v8::ObjectTemplate> template_instance = v8::ObjectTemplate::New();
 
-  if (template_instance.IsEmpty())
-  {
-    template_instance = v8::Persistent<v8::ObjectTemplate>::New(v8::ObjectTemplate::New());
-    template_instance->Set(v8::String::New(V8_OBJECT_TYPE_PROPERTY), v8::String::New(GetObjectType().c_str()));
-    template_instance->SetInternalFieldCount(1);
-    template_instance->SetNamedPropertyHandler(PropertyCallback);
+  template_instance->Set(v8::String::New(V8_OBJECT_TYPE_PROPERTY), v8::String::New(GetObjectType().c_str()));
+  template_instance->SetInternalFieldCount(1);
+  template_instance->SetNamedPropertyHandler(PropertyCallback);
 
-    //template_instance->Set(v8::String::New("toLocal"),
-  }
+  //template_instance->Set(v8::String::New("toLocal"),
 
-  return template_instance;
+  return handle_scope.Close(template_instance);
 }
 
 v8::Handle<v8::Value>
@@ -1000,20 +976,16 @@ JSGeoExtent::GetObjectTemplate()
 {
   v8::HandleScope handle_scope;
 
-  static v8::Persistent<v8::ObjectTemplate> template_instance;
+  v8::Handle<v8::ObjectTemplate> template_instance = v8::ObjectTemplate::New();
 
-  if (template_instance.IsEmpty())
-  {
-    template_instance = v8::Persistent<v8::ObjectTemplate>::New(v8::ObjectTemplate::New());
-    template_instance->Set(v8::String::New(V8_OBJECT_TYPE_PROPERTY), v8::String::New(GetObjectType().c_str()));
-    template_instance->SetInternalFieldCount(1);
-    template_instance->SetNamedPropertyHandler(PropertyCallback);
+  template_instance->Set(v8::String::New(V8_OBJECT_TYPE_PROPERTY), v8::String::New(GetObjectType().c_str()));
+  template_instance->SetInternalFieldCount(1);
+  template_instance->SetNamedPropertyHandler(PropertyCallback);
 
-    template_instance->Set(v8::String::New("contains"), v8::FunctionTemplate::New(ContainsCallback));
-    template_instance->Set(v8::String::New("intersects"), v8::FunctionTemplate::New(IntersectsCallback));
-  }
+  template_instance->Set(v8::String::New("contains"), v8::FunctionTemplate::New(ContainsCallback));
+  template_instance->Set(v8::String::New("intersects"), v8::FunctionTemplate::New(IntersectsCallback));
 
-  return template_instance;
+  return handle_scope.Close(template_instance);
 }
 
 v8::Handle<v8::Value>
@@ -1148,22 +1120,18 @@ JSSpatialReference::GetObjectTemplate()
 {
   v8::HandleScope handle_scope;
 
-  static v8::Persistent<v8::ObjectTemplate> template_instance;
+  v8::Handle<v8::ObjectTemplate> template_instance = v8::ObjectTemplate::New();
 
-  if (template_instance.IsEmpty())
-  {
-    template_instance = v8::Persistent<v8::ObjectTemplate>::New(v8::ObjectTemplate::New());
-    template_instance->Set(v8::String::New(V8_OBJECT_TYPE_PROPERTY), v8::String::New(GetObjectType().c_str()));
-    template_instance->SetInternalFieldCount(1);
-    template_instance->SetNamedPropertyHandler(PropertyCallback);
+  template_instance->Set(v8::String::New(V8_OBJECT_TYPE_PROPERTY), v8::String::New(GetObjectType().c_str()));
+  template_instance->SetInternalFieldCount(1);
+  template_instance->SetNamedPropertyHandler(PropertyCallback);
 
-    template_instance->Set(v8::String::New("isEquivalentTo"), v8::FunctionTemplate::New(EquivalenceCallback));
-    template_instance->Set(v8::String::New("createTangentPlaneSRS"), v8::FunctionTemplate::New(TangentPlaneCallback));
-    //template_instance->Set(v8::String::New("createTransMercFromLongitude"), v8::FunctionTemplate::New(equivalenceCallback));
-    //template_instance->Set(v8::String::New("createUTMFromLongitude"), v8::FunctionTemplate::New(equivalenceCallback));
-  }
+  template_instance->Set(v8::String::New("isEquivalentTo"), v8::FunctionTemplate::New(EquivalenceCallback));
+  template_instance->Set(v8::String::New("createTangentPlaneSRS"), v8::FunctionTemplate::New(TangentPlaneCallback));
+  //template_instance->Set(v8::String::New("createTransMercFromLongitude"), v8::FunctionTemplate::New(equivalenceCallback));
+  //template_instance->Set(v8::String::New("createUTMFromLongitude"), v8::FunctionTemplate::New(equivalenceCallback));
 
-  return template_instance;
+  return handle_scope.Close(template_instance);
 }
 
 v8::Handle<v8::Value>

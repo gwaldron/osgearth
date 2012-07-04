@@ -56,7 +56,7 @@ namespace osgEarth { namespace Drivers
         Config getConfig() const {
             Config conf = ModelSourceOptions::getConfig();
             conf.updateIfSet( "url", _url );
-			conf.updateIfSet( "lod_scale", _lod_scale );
+            conf.updateIfSet( "lod_scale", _lod_scale );
             conf.updateIfSet( "location", _location );
             conf.updateIfSet( "orientation", _orientation);
             return conf;
@@ -71,13 +71,13 @@ namespace osgEarth { namespace Drivers
     private:
         void fromConfig( const Config& conf ) {
             conf.getIfSet( "url", _url );
-			conf.getIfSet( "lod_scale", _lod_scale );
+            conf.getIfSet( "lod_scale", _lod_scale );
             conf.getIfSet( "location", _location);
             conf.getIfSet( "orientation", _orientation);
         }
 
         optional<URI> _url;
-		optional<float> _lod_scale;
+        optional<float> _lod_scale;
         optional<osg::Vec3> _location;
         optional<osg::Vec3> _orientation;
     };

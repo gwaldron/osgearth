@@ -81,6 +81,12 @@ namespace osgEarth { namespace Features
         optional<StringExpression>& featureName() { return _featureNameExpr; }
         const optional<StringExpression>& featureName() const { return _featureNameExpr; }
 
+        /**
+         * Whether or not to use vertex buffer objects
+         */
+        optional<bool>& useVertexBufferObjects() { return _useVertexBufferObjects;}
+        const optional<bool>& useVertexBufferObjects() const { return _useVertexBufferObjects;}
+
     protected:
         osg::ref_ptr<osg::Node> _result;
         osg::ref_ptr<osg::Geode> _geode;
@@ -89,6 +95,7 @@ namespace osgEarth { namespace Features
         optional<GeoInterpolation> _geoInterp;
         optional<bool> _mergeGeometry;
         optional<StringExpression> _featureNameExpr;
+        optional<bool> _useVertexBufferObjects;
         bool _hasPoints;
         bool _hasLines;
         bool _hasPolygons;

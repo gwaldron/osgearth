@@ -51,12 +51,21 @@ namespace osgEarth { namespace Drivers
         optional<float>& lodFallOff() { return _lodFallOff; }
         const optional<float>& lodFallOff() const { return _lodFallOff; }
 
+        optional<osg::Node::NodeMask>& surfaceNodeMask() { return _surfaceNodeMask;}
+        const optional<osg::Node::NodeMask>& surfaceNodeMask() const { return _surfaceNodeMask;}
+
+        optional<osg::Node::NodeMask>& skirtNodeMask() { return _skirtNodeMask;}
+        const optional<osg::Node::NodeMask>& skirtNodeMask() const { return _skirtNodeMask;}
+
+
     protected:
         virtual Config getConfig() const {
             Config conf = TerrainOptions::getConfig();
             conf.updateIfSet( "skirt_ratio", _skirtRatio );
             conf.updateIfSet( "quick_release_gl_objects", _quickRelease );
             conf.updateIfSet( "lod_fall_off", _lodFallOff );
+            conf.updateIfSet( "surface_node_mask", _surfaceNodeMask);
+            conf.updateIfSet( "skirt_node_mask", _skirtNodeMask);
             return conf;
         }
 
@@ -70,11 +79,15 @@ namespace osgEarth { namespace Drivers
             conf.getIfSet( "skirt_ratio", _skirtRatio );
             conf.getIfSet( "quick_release_gl_objects", _quickRelease );
             conf.getIfSet( "lod_fall_off", _lodFallOff );
+            conf.getIfSet( "surface_node_mask", _surfaceNodeMask);
+            conf.getIfSet( "skirt_node_mask", _skirtNodeMask);
         }
 
         optional<float> _skirtRatio;
         optional<bool>  _quickRelease;
         optional<float> _lodFallOff;
+        optional<osg::Node::NodeMask> _surfaceNodeMask;
+        optional<osg::Node::NodeMask> _skirtNodeMask;
     };
 
 } } // namespace osgEarth::Drivers

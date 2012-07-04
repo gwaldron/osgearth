@@ -70,6 +70,9 @@ namespace osgEarth { namespace Features
         optional<double>& resampleMaxLength() { return _resampleMaxLength; }
         const optional<double>& resampleMaxLength() const { return _resampleMaxLength;}
 
+        optional<bool>& useVertexBufferObjects() { return _useVertexBufferObjects;}
+        const optional<bool>& useVertexBufferObjects() const { return _useVertexBufferObjects;}
+
 
     public:
         Config getConfig() const;
@@ -84,6 +87,7 @@ namespace osgEarth { namespace Features
         optional<ResampleFilter::ResampleMode> _resampleMode;
         optional<double>               _resampleMaxLength;
         optional<bool>                 _ignoreAlt;
+        optional<bool>                 _useVertexBufferObjects;
 
         void fromConfig( const Config& conf );
     };

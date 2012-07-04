@@ -27,6 +27,17 @@ using namespace OpenThreads;
 
 /****************************************************************/
 
+
+ModelSourceOptions::ModelSourceOptions( const ConfigOptions& options ) :
+DriverConfigOptions( options ),
+_minRange          ( 0.0f ),
+_maxRange          ( FLT_MAX ),
+_renderOrder       ( 11 ),
+_depthTestEnabled  ( true )
+{ 
+    fromConfig(_conf);
+}
+
 void
 ModelSourceOptions::fromConfig( const Config& conf )
 {

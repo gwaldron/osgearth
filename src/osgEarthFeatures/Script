@@ -20,7 +20,7 @@
 #ifndef OSGEARTH_FEATURES_SCRIPT_H
 #define OSGEARTH_FEATURES_SCRIPT_H 1
 
-#include <osgEarth/Common>
+#include <osgEarthFeatures/Common>
 #include <osg/ref_ptr>
 #include <list>
 #include <map>

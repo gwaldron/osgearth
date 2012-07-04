@@ -67,7 +67,7 @@ namespace osgEarth { namespace Symbology
 
         /** Maximum acceptable real-world object height (meters) for which this image would make an appropriate texture */
         optional<float>& maxObjectHeight() { return _maxObjHeight; }
-        const optional<float>& maxObjectHeight() const { return _minObjHeight; }
+        const optional<float>& maxObjectHeight() const { return _maxObjHeight; }
 
         /** Whether this image is suitable for use as a vertically repeating texture */
         optional<bool>& isTiled() { return _isTiled; }

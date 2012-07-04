@@ -45,7 +45,7 @@ using namespace osgEarth;
 using namespace osgEarth::Features;
 using namespace osgEarth::Symbology;
 
-#define USE_SINGLE_COLOR 1
+#define USE_SINGLE_COLOR 0
 
 namespace
 {
@@ -361,9 +361,7 @@ BuildGeometryFilter::buildPolygon(Geometry*               ring,
 
                 osgGeom->addPrimitiveSet( new osg::DrawArrays( mode, offset, hole->size() ) );
                 offset += hole->size();
-            }
-
-            _geode->addDrawable( osgGeom );
+            }            
         }
     }
     osgGeom->setVertexArray( allPoints );

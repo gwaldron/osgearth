@@ -328,6 +328,8 @@ FeatureModelGraph::setupPaging()
         osg::BoundingSphered bounds = getBoundInWorldCoords( ext, &mapf);
 
         float tileSizeFactor = userMaxRange / bounds.radius();
+        //The tilesize factor must be at least 1.0 to avoid culling the tile when you are within it's bounding sphere. 
+        tileSizeFactor = osg::maximum( tileSizeFactor, 1.0f);
         OE_DEBUG << LC << "Computed a tilesize factor of " << tileSizeFactor << " with max range setting of " <<  userMaxRange << std::endl;
         _options.layout()->tileSizeFactor() = tileSizeFactor;
     }
@@ -616,15 +618,14 @@ FeatureModelGraph::buildLevel( const FeatureLevel& level, const GeoExtent& exten
         float minRange = level.minRange();
         if ( _options.minRange().isSet() ) 
             minRange = std::max(minRange, *_options.minRange());
+
         if ( _options.layout().isSet() && _options.layout()->minRange().isSet() )
             minRange = std::max(minRange, *_options.layout()->minRange());
 
         if ( minRange > 0.0f )
         {
-            // minRange can't be less than the tile geometry's radius
-            minRange = std::max(minRange, group->getBound().radius());
-
-            //OE_INFO << LC << "minRange = " << minRange << std::endl;
+            // minRange can't be less than the tile geometry's radius.  JB:  Why not?
+            //minRange = std::max(minRange, group->getBound().radius());
             osg::LOD* lod = new osg::LOD();
             lod->addChild( group.get(), minRange, FLT_MAX );
             group = lod;

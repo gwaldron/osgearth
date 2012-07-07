@@ -25,6 +25,7 @@
 #include <osg/MatrixTransform>
 #include <osg/ShapeDrawable>
 #include <osgGA/GUIEventHandler>
+#include <osgManipulator/Projector>
 
 namespace osgEarth
 {
@@ -119,6 +120,29 @@ namespace osgEarth
         osg::Vec4f _pickColor;
         osg::Vec4f _color;
         float _size;
+    };
+
+    /**********************************************************/
+    class ElevationDragger : public osgEarth::Dragger
+    {
+    public:
+        ElevationDragger(osgEarth::MapNode* mapNode, bool elevationMode);
+
+	    virtual ~ElevationDragger(void);
+
+        void setModKeyMask(int mask) { _modKeyMask = mask; }
+
+        int getModKeyMask() const { return _modKeyMask; }
+
+    protected:
+        virtual bool handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& aa);
+
+        osg::ref_ptr<  osgManipulator::LineProjector >  _projector;
+        osgManipulator::PointerInfo  _pointer;
+        osg::Vec3d _startProjectedPoint;
+        bool _elevationMode;
+        bool _elevationDragging;
+        int _modKeyMask;
     };
 
 

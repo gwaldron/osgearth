@@ -417,7 +417,7 @@ TMSPackager::package(ElevationLayer*    layer,
     tileMap->setTitle( layer->getName() );
     tileMap->setVersion( "1.0.0" );
     tileMap->getFormat().setMimeType( mimeType );
-    tileMap->generateTileSets( std::max(23u, maxLevel+1) );
+    tileMap->generateTileSets( std::min(23u, maxLevel+1) );
 
     // write out the tilemap catalog:
     std::string tileMapFilename = osgDB::concatPaths(rootFolder, "tms.xml");

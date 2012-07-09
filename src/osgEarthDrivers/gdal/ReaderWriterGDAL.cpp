@@ -1182,6 +1182,8 @@ public:
 
             GDALRasterBand* bandPalette = findBand(_warpedDS, GCI_PaletteIndex);
 
+
+
             //The pixel format is always RGBA to support transparency
             GLenum pixelFormat = GL_RGBA;
 
@@ -1220,10 +1222,21 @@ public:
                             src_col < target_width;
                             ++src_col, ++dst_col)
                         {
-                            *(image->data(dst_col, dst_row) + 0) = red[src_col + src_row * target_width];
-                            *(image->data(dst_col, dst_row) + 1) = green[src_col + src_row * target_width];
-                            *(image->data(dst_col, dst_row) + 2) = blue[src_col + src_row * target_width];
-                            *(image->data(dst_col, dst_row) + 3) = alpha[src_col + src_row * target_width];
+                            unsigned char r = red[src_col + src_row * target_width];
+                            unsigned char g = green[src_col + src_row * target_width];
+                            unsigned char b = blue[src_col + src_row * target_width];
+                            unsigned char a = alpha[src_col + src_row * target_width];
+                            *(image->data(dst_col, dst_row) + 0) = r;
+                            *(image->data(dst_col, dst_row) + 1) = g;
+                            *(image->data(dst_col, dst_row) + 2) = b;                            
+                            if (!isValidValue( r, bandRed)    ||
+                                !isValidValue( g, bandGreen)  || 
+                                !isValidValue( b, bandBlue)   ||
+                                (bandAlpha && !isValidValue( a, bandAlpha )))
+                            {
+                                a = 0.0f;
+                            }                            
+                            *(image->data(dst_col, dst_row) + 3) = a;
                         }
                     }
 
@@ -1284,10 +1297,17 @@ public:
                             src_col < target_width;
                             ++src_col, ++dst_col)
                         {
-                            *(image->data(dst_col, dst_row) + 0) = gray[src_col + src_row * target_width];
-                            *(image->data(dst_col, dst_row) + 1) = gray[src_col + src_row * target_width];
-                            *(image->data(dst_col, dst_row) + 2) = gray[src_col + src_row * target_width];
-                            *(image->data(dst_col, dst_row) + 3) = alpha[src_col + src_row * target_width];
+                            unsigned char g = gray[src_col + src_row * target_width];
+                            unsigned char a = alpha[src_col + src_row * target_width];
+                            *(image->data(dst_col, dst_row) + 0) = g;
+                            *(image->data(dst_col, dst_row) + 1) = g;
+                            *(image->data(dst_col, dst_row) + 2) = g;                            
+                            if (!isValidValue( g, bandGray) ||
+                               (bandAlpha && !isValidValue( a, bandAlpha)))
+                            {
+                                a = 0.0f;
+                            }
+                            *(image->data(dst_col, dst_row) + 3) = a;
                         }
                     }
 
@@ -1339,8 +1359,14 @@ public:
                         src_col < target_width;
                         ++src_col, ++dst_col)
                     {
+                        
+                        unsigned char p = palette[src_col + src_row * target_width];
                         osg::Vec4ub color;
-                        getPalleteIndexColor( bandPalette, palette[src_col + src_row * target_width], color );                        
+                        getPalleteIndexColor( bandPalette, p, color );                        
+                        if (!isValidValue( p, bandPalette))
+                        {
+                            color.a() = 0.0f;
+                        }
 
                         *(image->data(dst_col, dst_row) + 0) = color.r();
                         *(image->data(dst_col, dst_row) + 1) = color.g();

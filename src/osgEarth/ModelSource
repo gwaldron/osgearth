@@ -77,7 +77,7 @@ namespace osgEarth
     /**
      * A ModelSource is a plugin object that generates OSG nodes.
      */
-    class OSGEARTH_EXPORT ModelSource : public virtual Revisioned<osg::Object>
+    class OSGEARTH_EXPORT ModelSource : public osg::Object, public Revisioned
     {
     public:        
         ModelSource( const ModelSourceOptions& options =ModelSourceOptions() );

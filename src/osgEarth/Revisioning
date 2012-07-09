@@ -46,7 +46,7 @@ namespace osgEarth
      * (see above) and use it to see if they are up to date with this object, thereby
      * enabling passive data model synchronization.
      */
-    template<typename T> class Revisioned : public T // header-only; no export
+    class Revisioned // header-only; no export
     {
     public:
         /** Marks this object as dirty */
@@ -86,6 +86,53 @@ namespace osgEarth
         bool _alwaysDirty;
     };
 
+#if 0
+    /**
+     * Base class for a revisioned object. A Revisioned object is one that keeps track
+     * of its state with a version number. Other objects can then hold a Revision object
+     * (see above) and use it to see if they are up to date with this object, thereby
+     * enabling passive data model synchronization.
+     */
+    template<typename T> class Revisioned : public T // header-only; no export
+    {
+    public:
+        /** Marks this object as dirty */
+        void dirty() {
+            ++_revision;
+        }
+
+        /** Synchronizes the external revision number with this revision, effectively
+            bringing the external object up to date. */
+        virtual void sync( Revision& externalRevision ) const {
+            externalRevision = _revision;
+        }
+
+        /** Returns true if the external object is at a different revision that this object. */
+        bool outOfSyncWith( const Revision& externalRevision) const {
+            return !inSyncWith( externalRevision );
+        }
+
+        /** Returns true if the external object is at the same revision as this object. */
+        virtual bool inSyncWith( const Revision& externalRevision ) const {
+            return _alwaysDirty ? false : _revision == externalRevision;
+        }
+
+    protected:
+        Revisioned() : _revision(0), _alwaysDirty(false) { }
+
+        /** dtor */
+        virtual ~Revisioned() { }
+
+        /** Marks this object as always being dirty (i.e. inSyncWith() will always return false) */
+        void setAlwaysDirty( bool value ) {
+            _alwaysDirty = value;
+        }
+
+    private:
+        Revision _revision;
+        bool _alwaysDirty;
+    };
+#endif
 
     template<typename T>
     struct SimpleMutable

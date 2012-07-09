@@ -1363,6 +1363,10 @@ public:
                         unsigned char p = palette[src_col + src_row * target_width];
                         osg::Vec4ub color;
                         getPalleteIndexColor( bandPalette, p, color );                        
+                        if (!isValidValue( p, bandPalette))
+                        {
+                            color.a() = 0.0f;
+                        }
 
                         *(image->data(dst_col, dst_row) + 0) = color.r();
                         *(image->data(dst_col, dst_row) + 1) = color.g();

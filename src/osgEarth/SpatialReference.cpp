@@ -271,9 +271,11 @@ SpatialReference::create( const Key& key, bool useCache )
     {
         srs = createFromWKT( horiz, horiz );
     }
-    else
+
+    // bail out if no SRS exists by this point
+    if ( srs == 0L )
     {
-        return NULL;
+        return 0L;
     }
 
     // next, resolve the vertical SRS:

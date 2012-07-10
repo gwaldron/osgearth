@@ -193,7 +193,7 @@ namespace osgEarth { namespace Util
 
     public:
 
-        class OSGEARTHUTIL_EXPORT Settings : public Revisioned<osg::Referenced>
+        class OSGEARTHUTIL_EXPORT Settings : public osg::Referenced, public Revisioned
         {
         public:
             // construct with default settings

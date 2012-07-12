@@ -395,7 +395,7 @@ namespace osgEarth
         /**
          * Gets a geo circle bounding this extent.
          */
-        const GeoCircle& getBoundingGeoCircle() const;
+        const GeoCircle& getBoundingGeoCircle() const { return _circle; }
 
         /**
          * Grow this extent to include the specified point (which is assumed to be

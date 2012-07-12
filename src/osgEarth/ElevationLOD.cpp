@@ -33,7 +33,7 @@ _srs( srs )
 {
 }
 
-ElevationLOD::ElevationLOD(const SpatialReference* srs, double minElevation, double maxElevation, bool geocentric):
+ElevationLOD::ElevationLOD(const SpatialReference* srs, double minElevation, double maxElevation):
 _minElevation( minElevation ),
 _maxElevation( maxElevation ),
 _srs( srs )
@@ -78,16 +78,23 @@ void ElevationLOD::traverse( osg::NodeVisitor& nv)
         osg::Vec3d eye, center, up;        
         eye = cv->getViewPoint();
 
-        GeoPoint mapPoint;
-        mapPoint.fromWorld( _srs, eye );        
+        float height = eye.z();
+        if (_srs)
+        {
+            GeoPoint mapPoint;
+            mapPoint.fromWorld( _srs, eye );        
+            height = mapPoint.z();
+        }
 
-        if (mapPoint.z() >= _minElevation && mapPoint.z() <= _maxElevation)
+        //OE_NOTICE << "Height " << height << std::endl;
+
+        if (height >= _minElevation && height <= _maxElevation)
         {
             osg::Group::traverse( nv );
         }
         else
         {
-            OE_NOTICE << "Elevation " << mapPoint.z() << " outside of range " << _minElevation << " to " << _maxElevation << std::endl;
+            //OE_NOTICE << "Elevation " << height << " outside of range " << _minElevation << " to " << _maxElevation << std::endl;
         }
     }
     else

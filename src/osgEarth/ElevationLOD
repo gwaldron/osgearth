@@ -33,7 +33,7 @@ namespace osgEarth
     {
     public:
         ElevationLOD(const SpatialReference* srs);
-        ElevationLOD(const SpatialReference* srs, double minElevation, double maxElevation, bool geocentric=true);
+        ElevationLOD(const SpatialReference* srs, double minElevation, double maxElevation);
 
         virtual ~ElevationLOD();
 

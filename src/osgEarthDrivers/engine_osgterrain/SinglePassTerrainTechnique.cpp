@@ -78,9 +78,10 @@ _optimizeTriangleOrientation(true),
 _texCompositor( compositor ),
 _frontGeodeInstalled( false ),
 _debug( false ),
-_compileMutex( Mutex::MUTEX_RECURSIVE )
+_compileMutex( Mutex::MUTEX_RECURSIVE ),
+_clearDataAfterCompile( true )
 {
-    this->setThreadSafeRefUnref(true);
+    setThreadSafeRefUnref(true);
 }
 
 SinglePassTerrainTechnique::SinglePassTerrainTechnique(const SinglePassTerrainTechnique& rhs, const osg::CopyOp& copyop):

@@ -541,7 +541,15 @@ OverlayDecorator::cull( osgUtil::CullVisitor* cv, OverlayDecorator::PerViewData&
     {
         double lat, lon;
         _ellipsoid->convertXYZToLatLongHeight( eye.x(), eye.y(), eye.z(), lat, lon, hasl );
-        hasl = osg::maximum( hasl, 100.0 );
+        
+        //Actually sample the terrain to get the height and adjust the eye position so it's a tighter fit to the real data.
+        double height;
+        if (_engine->getTerrain()->getHeight( SpatialReference::create("epsg:4326"), osg::RadiansToDegrees( lon ), osg::RadiansToDegrees( lat ), &height))
+        {
+            hasl -= height;
+        }
+        hasl = osg::maximum( hasl, 100.0 );                
+
 
         worldUp = _ellipsoid->computeLocalUpVector(eye.x(), eye.y(), eye.z());
 

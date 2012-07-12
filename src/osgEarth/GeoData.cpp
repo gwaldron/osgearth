@@ -747,6 +747,12 @@ GeoExtent::contains(double x, double y, const SpatialReference* srs) const
 }
 
 bool
+GeoExtent::contains( const GeoPoint& rhs ) const
+{
+    return contains( rhs.x(), rhs.y(), rhs.getSRS() );
+}
+
+bool
 GeoExtent::contains( const Bounds& rhs ) const
 {
     return

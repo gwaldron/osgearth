@@ -333,8 +333,10 @@ CompositeTileSource::createImage(const TileKey&    key,
         for (unsigned int i = 0; i < images.size(); i++)
         {
             ImageInfo& info = images[i];
-            if (info.image.valid()) return info.image.release();
+            if (info.image.valid())
+                return info.image.release();
         }
+        return 0L;
     }
     else
     {

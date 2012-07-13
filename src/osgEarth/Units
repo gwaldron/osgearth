@@ -205,8 +205,16 @@ namespace osgEarth
             return _units.canConvert(rhs._units) && _value < rhs.as(_units);
         }
 
+        bool operator <= ( const T& rhs ) const {
+            return _units.canConvert(rhs._units) && _value <= rhs.as(_units);
+        }
+
         bool operator > ( const T& rhs ) const {
             return _units.canConvert(rhs._units) && _value > rhs.as(_units);
+        }
+
+        bool operator >= ( const T& rhs ) const {
+            return _units.canConvert(rhs._units) && _value >= rhs.as(_units);
         }
 
         double as( const Units& convertTo ) const {

@@ -505,14 +505,14 @@ TextureCompositorMultiTexture::createSamplerFunction(UID layerUID,
     {
         std::stringstream buf;
 
-        buf << "uniform sampler2D tex"<< slot << "; \n"
+        buf << "uniform sampler2D "<< makeSamplerName(slot) << "; \n"
             << "vec4 " << functionName << "() \n"
             << "{ \n";
 
         if ( type == osg::Shader::VERTEX )
-            buf << "    return texture2D(tex"<< slot << ", gl_MultiTexCoord"<< slot <<".st); \n";
+            buf << "    return texture2D("<< makeSamplerName(slot) << ", gl_MultiTexCoord"<< slot <<".st); \n";
         else
-            buf << "    return texture2D(tex"<< slot << ", gl_TexCoord["<< slot << "].st); \n";
+            buf << "    return texture2D("<< makeSamplerName(slot) << ", gl_TexCoord["<< slot << "].st); \n";
 
         buf << "} \n";
 

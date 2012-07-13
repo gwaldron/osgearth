@@ -117,7 +117,8 @@ _terrain( terrain )
 
 void
 OSGTerrainEngineNode::ElevationChangedCallback::onVisibleChanged( TerrainLayer* layer )
-{
+{    
+    osgEarth::Registry::instance()->clearBlacklist();
     _terrain->refresh();
 }
 
@@ -259,7 +260,6 @@ OSGTerrainEngineNode::computeBound() const
 void
 OSGTerrainEngineNode::refresh()
 {
-    if (_terrain)
     {
         removeChild( _terrain );
     }    

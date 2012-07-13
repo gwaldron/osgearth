@@ -548,7 +548,9 @@ SinglePassTerrainTechnique::calculateSampling( unsigned int& out_rows, unsigned 
     out_i = 1.0;
     out_j = 1.0;
 
-    float sampleRatio = _tile->getTerrain() ? _tile->getTerrain()->getSampleRatio() : 1.0f;
+    osg::ref_ptr< TerrainNode > terrain = _tile->getTerrain();
+
+    float sampleRatio = terrain.valid() ? terrain->getSampleRatio() : 1.0f;
     if ( sampleRatio != 1.0f )
     {
         unsigned int originalNumColumns = out_cols;
@@ -639,20 +641,24 @@ SinglePassTerrainTechnique::createGeometry( const TileFrame& tilef )
     osg::Geode* skirtGeode = new osg::Geode;
     skirtGeode->addDrawable( skirt );
 
-    //Set the node masks of the surface and skirts if they are set.
-    const OSGTerrainOptions& opts = _tile->getTerrain()->getTileFactory()->getTerrainOptions();
-    if (opts.skirtNodeMask().isSet())
-    {     
-        //OE_NOTICE << "Setting skirt nodemask to " << opts.skirtNodeMask().value() << std::endl;
-        skirtGeode->setNodeMask( opts.skirtNodeMask().value() );
-    }
-
-    if (opts.surfaceNodeMask().isSet())
+    osg::ref_ptr< TerrainNode > terrain = _tile->getTerrain();
+    if (terrain.valid())
     {
-        //OE_NOTICE << "Setting surface nodemask to " << opts.surfaceNodeMask().value() << std::endl;
-        surfaceGeode->setNodeMask( opts.surfaceNodeMask().value() );
-    }
+        //Set the node masks of the surface and skirts if they are set.
+        const OSGTerrainOptions& opts = terrain->getTileFactory()->getTerrainOptions();
+        if (opts.skirtNodeMask().isSet())
+        {     
+            //OE_NOTICE << "Setting skirt nodemask to " << opts.skirtNodeMask().value() << std::endl;
+            skirtGeode->setNodeMask( opts.skirtNodeMask().value() );
+        }
 
+        if (opts.surfaceNodeMask().isSet())
+        {
+            //OE_NOTICE << "Setting surface nodemask to " << opts.surfaceNodeMask().value() << std::endl;
+            surfaceGeode->setNodeMask( opts.surfaceNodeMask().value() );
+        }
+    }
+    
     group->addChild( skirtGeode );
     group->addChild( surfaceGeode );    
 
@@ -666,7 +672,7 @@ SinglePassTerrainTechnique::createGeometry( const TileFrame& tilef )
 
 	float scaleHeight = 
 		_verticalScaleOverride != 1.0? _verticalScaleOverride :
-		_tile->getTerrain() ? _tile->getTerrain()->getVerticalScale() :
+		terrain.valid() ? terrain->getVerticalScale() :
 		1.0f;
 
     MaskRecordVector masks;

@@ -242,12 +242,11 @@ struct OgrUtils
 
         if ( multi )
         {
-            OGRGeometryH group_handle = OGR_G_CreateGeometry( shape_type );
+            OGRGeometryH group_handle = OGR_G_CreateGeometry( wkbGeometryCollection );
+
             for (GeometryCollection::iterator itr = multi->getComponents().begin(); itr != multi->getComponents().end(); ++itr)
             {
-                //OE_NOTICE << "Adding feature " << itr->get()->getType() << std::endl;
-                //We're dealing with a MultiGeometry as the parent, so we just want to encode the underlying part type
-                OGRGeometryH shape_handle = encodeShape( itr->get(), part_type, part_type );
+                OGRGeometryH shape_handle = encodeShape( itr->get(), shape_type, part_type );
                 if ( shape_handle )
                 {
                     OGRErr error = OGR_G_AddGeometryDirectly( group_handle, shape_handle );

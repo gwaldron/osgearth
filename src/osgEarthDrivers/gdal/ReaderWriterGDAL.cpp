@@ -1182,6 +1182,38 @@ public:
 
             GDALRasterBand* bandPalette = findBand(_warpedDS, GCI_PaletteIndex);
 
+            if (!bandRed && !bandGreen && !bandBlue && !bandAlpha && !bandGray && !bandPalette)
+            {
+                OE_DEBUG << LC << "Could not determine bands based on color interpretation, using band count" << std::endl;
+                //We couldn't find any valid bands based on the color interp, so just make an educated guess based on the number of bands in the file
+                //RGB = 3 bands
+                if (_warpedDS->GetRasterCount() == 3)
+                {
+                    bandRed   = _warpedDS->GetRasterBand( 1 );
+                    bandGreen = _warpedDS->GetRasterBand( 2 );
+                    bandBlue  = _warpedDS->GetRasterBand( 3 );
+                }
+                //RGBA = 4 bands
+                else if (_warpedDS->GetRasterCount() == 4)
+                {
+                    bandRed   = _warpedDS->GetRasterBand( 1 );
+                    bandGreen = _warpedDS->GetRasterBand( 2 );
+                    bandBlue  = _warpedDS->GetRasterBand( 3 );
+                    bandAlpha = _warpedDS->GetRasterBand( 4 );
+                }
+                //Gray = 1 band
+                else if (_warpedDS->GetRasterCount() == 1)
+                {
+                    bandGray = _warpedDS->GetRasterBand( 1 );
+                }
+                //Gray + alpha = 2 bands
+                else if (_warpedDS->GetRasterCount() == 2)
+                {
+                    bandGray  = _warpedDS->GetRasterBand( 1 );
+                    bandAlpha = _warpedDS->GetRasterBand( 2 );
+                }
+            }
+
 
 
             //The pixel format is always RGBA to support transparency

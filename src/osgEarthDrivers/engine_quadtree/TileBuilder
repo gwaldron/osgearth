@@ -1,0 +1,76 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+* Copyright 2008-2012 Pelican Mapping
+* http://osgearth.org
+*
+* osgEarth is free software; you can redistribute it and/or modify
+* it under the terms of the GNU Lesser General Public License as published by
+* the Free Software Foundation; either version 2 of the License, or
+* (at your option) any later version.
+*
+* This program is distributed in the hope that it will be useful,
+* but WITHOUT ANY WARRANTY; without even the implied warranty of
+* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+* GNU Lesser General Public License for more details.
+*
+* You should have received a copy of the GNU Lesser General Public License
+* along with this program.  If not, see <http://www.gnu.org/licenses/>
+*/
+#ifndef OSGEARTH_ENGINE_QUADTREE_TILE_BUILDER
+#define OSGEARTH_ENGINE_QUADTREE_TILE_BUILDER 1
+
+#include "Common"
+#include "Tile"
+#include "TransparentLayer"
+#include "QuadTreeTerrainEngineOptions"
+#include <osgEarth/Map>
+#include <osgEarth/ThreadingUtils>
+#include <osg/Group>
+
+using namespace osgEarth;
+
+class TileBuilder : public osg::Referenced
+{
+public:
+    struct SourceRepo
+    {
+        SourceRepo() { }
+
+        void add( const CustomColorLayer& layer )
+        {
+            Threading::ScopedMutexLock lock(_m);
+            _colorLayers[ layer.getUID() ] = layer;
+        }
+
+        void set( const CustomElevLayer& elevLayer )
+        {
+            // only one...no lock required
+            _elevLayer = elevLayer;
+        }
+
+        ColorLayersByUID _colorLayers;
+        CustomElevLayer  _elevLayer;
+        Threading::Mutex _m;
+    };
+
+public:
+    TileBuilder(
+        const Map* map,
+        const Drivers::QuadTreeTerrainEngineOptions& terrainOptions );
+
+    /** dtor */
+    virtual ~TileBuilder() { }
+
+    void createTile(
+        const TileKey&      key,
+        osg::ref_ptr<Tile>& out_tile,
+        bool&               out_hasRealData,
+        bool&               out_hasLodBlendedLayers );
+
+private:
+    const Map* _map;
+
+    const Drivers::QuadTreeTerrainEngineOptions& _terrainOptions;
+};
+
+#endif // OSGEARTH_ENGINE_QUADTREE_TILE_BUILDER

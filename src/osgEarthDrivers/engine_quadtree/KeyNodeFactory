@@ -41,6 +41,8 @@ public:
     */
     virtual osg::Node* createNode( const TileKey& key ) =0;
 
+    virtual class TileModelCompiler* getCompiler() const =0;
+
 protected:
     KeyNodeFactory();
 

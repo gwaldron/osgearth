@@ -45,7 +45,6 @@ public:
         const MapFrame&                     update_mapf,
         const MapFrame&                     cull_mapf,
         const QuadTreeTerrainEngineOptions& options );
-        //bool                                quickReleaseGLObjects );
 
     virtual const char* libraryName() const { return "osgEarth"; }
 
@@ -60,12 +59,6 @@ public:
     const MapFrame& getUpdateThreadMapFrame() { return _update_mapf; }
 
     const MapFrame& getCullThreadMapFrame()   { return _cull_mapf;   }
-
-    //virtual TileNode* createTile( const TileKey& key, GeoLocator* locator ) const;
-    
-    //void setTechniquePrototype( TerrainTechnique* tech );
-
-    //TerrainTechnique* cloneTechnique() const;
 
     void setSampleRatio( float value );
 
@@ -87,12 +80,11 @@ protected:
     // subclass can override this to perform addition UPDATE traversal operations
     virtual void updateTraversal( osg::NodeVisitor& nv ) { }
 
-    typedef std::map< osgTerrain::TileID, osg::ref_ptr<TileNode> > TileTable;
+    typedef std::map< TileKey, osg::ref_ptr<TileNode> > TileTable;
 
-    typedef std::queue< osg::ref_ptr<TileNode> >  TileQueue;
-    typedef std::list< osg::ref_ptr<TileNode> >   TileList;
+    typedef std::queue < osg::ref_ptr<TileNode> > TileQueue;
+    typedef std::list  < osg::ref_ptr<TileNode> > TileList;
     typedef std::vector< osg::ref_ptr<TileNode> > TileVector;
-    typedef std::queue< osgTerrain::TileID >  TileIDQueue;
 
     Threading::ReadWriteMutex _tilesMutex;
     TileTable                 _tiles;

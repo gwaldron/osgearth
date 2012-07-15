@@ -23,10 +23,11 @@
 #include <osgEarth/TextureCompositor>
 #include <osgEarth/Map>
 #include <osgEarth/Revisioning>
+#include <osgEarth/ThreadingUtils>
 
 #include "QuadTreeTerrainEngineOptions"
 #include "KeyNodeFactory"
-#include "TileNodeBuilder"
+#include "TileModelFactory"
 #include "TileModelCompiler"
 
 #include <osg/Geode>
@@ -118,9 +119,12 @@ private:
     MapFrame* _update_mapf; // map frame for the main/update traversal thread
     MapFrame* _cull_mapf;   // map frame for the cull traversal thread
 
-    osg::ref_ptr<KeyNodeFactory>    _keyNodeFactory;
-    osg::ref_ptr<TileNodeBuilder>   _tileNodeBuilder;
-    osg::ref_ptr<TileModelCompiler> _tileModelCompiler;
+    //osg::ref_ptr<KeyNodeFactory>    _keyNodeFactory;
+    //osg::ref_ptr<TileNodeBuilder>   _tileNodeBuilder;
+    //osg::ref_ptr<TileModelCompiler> _tileModelCompiler;
+
+    Threading::PerThread< osg::ref_ptr<KeyNodeFactory> > _keyNodeFactories;
+    KeyNodeFactory* getKeyNodeFactory();
 
     osg::Timer _timer;
     unsigned   _tileCount;

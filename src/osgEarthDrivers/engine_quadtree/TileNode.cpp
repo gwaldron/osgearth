@@ -42,9 +42,9 @@ using namespace OpenThreads;
 
 //----------------------------------------------------------------------------
 
-TileNode::TileNode( const TileKey& key, GeoLocator* keyLocator, bool quickReleaseGLObjects ) :
-_key                  ( key ),
-_locator              ( keyLocator )
+TileNode::TileNode( const TileKey& key, GeoLocator* keyLocator ) :
+_key              ( key ),
+_locator          ( keyLocator )
 {
     this->setName( key.str() );
 }

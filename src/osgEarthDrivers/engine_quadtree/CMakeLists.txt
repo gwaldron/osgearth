@@ -10,7 +10,7 @@ SET(TARGET_SRC
     TerrainNode.cpp
     TileModelCompiler.cpp
     TileNode.cpp
-    TileNodeBuilder.cpp
+    TileModelFactory.cpp
 )
 
 SET(TARGET_H
@@ -26,7 +26,7 @@ SET(TARGET_H
     TileModel
     TileModelCompiler
     TileNode
-    TileNodeBuilder
+    TileModelFactory
 )
 
 SETUP_PLUGIN(osgearth_engine_quadtree)

@@ -35,6 +35,10 @@ using namespace osgEarth::Drivers;
 
 /**
  * Builds the actual tile geometry.
+ *
+ * When used with the KeyNodeFactory, there will be exactly one instance of this
+ * class per thread. So, we can expand this to include caches for commonly shared
+ * data like texture coordinate or color arrays.
  */
 class TileModelCompiler : public osg::Referenced
 {
@@ -46,7 +50,8 @@ public:
         const QuadTreeTerrainEngineOptions& options);
 
     /**
-     * Builds the geometry for a single terrain tile.
+     * Compiles a tile model into an OSG scene graph. The scene graph will
+     * include a MatrixTransform to localize the tile data.
      */
     osg::Node* compile( const TileModel* model );
 

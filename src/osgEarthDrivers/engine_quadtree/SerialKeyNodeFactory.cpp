@@ -34,34 +34,34 @@ using namespace OpenThreads;
 #define LC "[SerialKeyNodeFactory] "
 
 
-SerialKeyNodeFactory::SerialKeyNodeFactory(TileNodeBuilder*         builder,
-                                           TileModelCompiler*       compiler,
+SerialKeyNodeFactory::SerialKeyNodeFactory(TileModelFactory*        modelFactory,
+                                           TileModelCompiler*       modelCompiler,
                                            const QuadTreeTerrainEngineOptions& options,
                                            const MapInfo&           mapInfo,
                                            TerrainNode*             terrain,
                                            UID                      engineUID ) :
-_builder  ( builder ),
-_compiler ( compiler ),
-_options  ( options ),
-_mapInfo  ( mapInfo ),
-_terrain  ( terrain ),
-_engineUID( engineUID )
+_modelFactory ( modelFactory ),
+_modelCompiler( modelCompiler ),
+_options      ( options ),
+_mapInfo      ( mapInfo ),
+_terrain      ( terrain ),
+_engineUID    ( engineUID )
 {
-    //NOP
+    // NOP
 }
 
 void
-SerialKeyNodeFactory::addTile(TileNode* tile, bool tileHasRealData, bool tileHasLodBlending, osg::Group* parent )
+SerialKeyNodeFactory::addTile(TileModel* model, bool tileHasRealData, bool tileHasLodBlending, osg::Group* parent )
 {
-    // compiler the tile:
-    tile->compile( _compiler.get() );
+    // create a node:
+    TileNode* tileNode = new TileNode( model->_tileKey, model->_tileLocator );
 
-    // associate this tile with the terrain:
-  //  tile->setTerrainTechnique( _terrain->cloneTechnique() );
-//    tile->attachToTerrain( _terrain );
+    // install the tile model and compile it:
+    tileNode->setTileModel( model );
+    tileNode->compile( _modelCompiler.get() );
 
     // assemble a URI for this tile's child group:
-    std::string uri = Stringify() << tile->getKey().str() << "." << _engineUID << ".osgearth_engine_quadtree_tile";
+    std::string uri = Stringify() << model->_tileKey.str() << "." << _engineUID << ".osgearth_engine_quadtree_tile";
 
     osg::Node* result = 0L;
 
@@ -72,11 +72,11 @@ SerialKeyNodeFactory::addTile(TileNode* tile, bool tileHasRealData, bool tileHas
     bool wrapInPagedLOD =
         (tileHasRealData || _options.maxLOD().isSet()) &&
         !osgEarth::Registry::instance()->isBlacklisted( uri ) &&
-        tile->getKey().getLevelOfDetail() < (unsigned)*_options.maxLOD();
+        model->_tileKey.getLevelOfDetail() < (unsigned)*_options.maxLOD();
 
     if ( wrapInPagedLOD )
     {
-        osg::BoundingSphere bs = tile->getBound();
+        osg::BoundingSphere bs = tileNode->getBound();
         double maxRange = 1e10;
         
 #if 0
@@ -87,7 +87,7 @@ SerialKeyNodeFactory::addTile(TileNode* tile, bool tileHasRealData, bool tileHas
 #else        
         //double origMinRange = bs.radius() * _options.minTileRangeFactor().value();        
         //Compute the min range based on the 2D size of the tile
-        GeoExtent extent = tile->getKey().getExtent();        
+        GeoExtent extent = model->_tileKey.getExtent();        
         GeoPoint lowerLeft(extent.getSRS(), extent.xMin(), extent.yMin(), 0.0, ALTMODE_ABSOLUTE);
         GeoPoint upperRight(extent.getSRS(), extent.xMax(), extent.yMax(), 0.0, ALTMODE_ABSOLUTE);
         osg::Vec3d ll, ur;
@@ -100,7 +100,7 @@ SerialKeyNodeFactory::addTile(TileNode* tile, bool tileHasRealData, bool tileHas
         // create a PLOD so we can keep subdividing:
         osg::PagedLOD* plod = new osg::PagedLOD();
         plod->setCenter( bs.center() );
-        plod->addChild( tile, minRange, maxRange );
+        plod->addChild( tileNode, minRange, maxRange );
 
         plod->setFileName( 1, uri );
         plod->setRange   ( 1, 0, minRange );
@@ -124,7 +124,7 @@ SerialKeyNodeFactory::addTile(TileNode* tile, bool tileHasRealData, bool tileHas
     }
     else
     {
-        result = tile;
+        result = tileNode;
     }
 
     // this cull callback dynamically adjusts the LOD scale based on distance-to-camera:
@@ -137,13 +137,12 @@ SerialKeyNodeFactory::addTile(TileNode* tile, bool tileHasRealData, bool tileHas
     if ( _mapInfo.isGeocentric() && _options.clusterCulling() == true )
     {
         osg::HeightField* hf =
-            tile->getTileModel()->_elevationData.getHFLayer()->getHeightField();
+            model->_elevationData.getHFLayer()->getHeightField();
 
         result->addCullCallback( HeightFieldUtils::createClusterCullingCallback(
             hf,
-            tile->getLocator()->getEllipsoidModel(),
+            tileNode->getLocator()->getEllipsoidModel(),
             _terrain->getVerticalScale() ) );
-            //tile->getVerticalScale() ) );
     }
 
     parent->addChild( result );
@@ -152,14 +151,14 @@ SerialKeyNodeFactory::addTile(TileNode* tile, bool tileHasRealData, bool tileHas
 osg::Node*
 SerialKeyNodeFactory::createRootNode( const TileKey& key )
 {
-    osg::ref_ptr<TileNode> tile;
-    bool                   real;
-    bool                   lodBlending;
+    osg::ref_ptr<TileModel> model;
+    bool                    real;
+    bool                    lodBlending;
 
-    _builder->createTileNode(key, tile, real, lodBlending);
+    _modelFactory->createTileModel( key, model, real, lodBlending );
 
     osg::Group* root = new osg::Group();
-    addTile( tile, real, lodBlending, root );
+    addTile( model.get(), real, lodBlending, root );
     
     return root;
 }
@@ -167,7 +166,7 @@ SerialKeyNodeFactory::createRootNode( const TileKey& key )
 osg::Node*
 SerialKeyNodeFactory::createNode( const TileKey& parentKey )
 {
-    osg::ref_ptr<TileNode> tiles[4];
+    osg::ref_ptr<TileModel> models[4];
     bool                   realData[4];
     bool                   lodBlending[4];
     bool                   tileHasAnyRealData = false;
@@ -175,9 +174,17 @@ SerialKeyNodeFactory::createNode( const TileKey& parentKey )
     for( unsigned i = 0; i < 4; ++i )
     {
         TileKey child = parentKey.createChildKey( i );
-        _builder->createTileNode( child, tiles[i], realData[i], lodBlending[i] );
-        if ( tiles[i].valid() && realData[i] )
+
+        _modelFactory->createTileModel( child, models[i], realData[i], lodBlending[i] );
+
+        if ( models[i].valid() && realData[i] )
+        {
             tileHasAnyRealData = true;
+        }
+
+        //_builder->createTileNode( child, tiles[i], realData[i], lodBlending[i] );
+        //if ( tiles[i].valid() && realData[i] )
+        //    tileHasAnyRealData = true;
     }
 
     osg::Group* root = 0L;
@@ -190,9 +197,9 @@ SerialKeyNodeFactory::createNode( const TileKey& parentKey )
 
         for( unsigned i = 0; i < 4; ++i )
         {
-            if ( tiles[i].valid() )
+            if ( models[i].valid() )
             {
-                addTile( tiles[i].get(), realData[i], lodBlending[i], root );
+                addTile( models[i].get(), realData[i], lodBlending[i], root );
             }
         }
     }

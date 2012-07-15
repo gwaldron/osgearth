@@ -110,7 +110,7 @@ namespace
             skirt            = 0L;
             stitching_skirts = 0L;
             ss_verts         = 0L;
-            skirtHeight      = 0.0f;
+            //skirtHeight      = 0.0f;
             scaleHeight      = 1.0f;
             createSkirt      = false;
             i_sampleFactor   = 1.0f;
@@ -136,13 +136,14 @@ namespace
         osg::Vec2Array*               unifiedSurfaceTexCoords;
         osg::ref_ptr<osg::FloatArray> elevations;
         Indices                       indices;
+        osg::BoundingSphere           surfaceBound;
 
         // skirt data:
         osg::Geode*              skirtGeode;
         osg::Geometry*           skirt;
         unsigned                 numVerticesInSkirt;
         osg::Vec2Array*          unifiedSkirtTexCoords;
-        double                   skirtHeight;
+        //double                   skirtHeight;
         bool                     createSkirt;
 
         // sampling grid parameters:
@@ -259,12 +260,6 @@ namespace
         {
             d.numCols = hflayer->getNumColumns();
             d.numRows = hflayer->getNumRows();
-
-            if ( hflayer->getHeightField() )
-            {
-                d.skirtHeight = hflayer->getHeightField()->getSkirtHeight();
-                d.createSkirt = d.skirtHeight != 0.0f;
-            }
         }
 
         // calculate the elevation sampling factors that we'll use to step though
@@ -431,6 +426,8 @@ namespace
      */
     void createSurfaceGeometry( Data& d, TextureCompositor* compositor )
     {
+        d.surfaceBound.init();
+
         osgTerrain::HeightFieldLayer* elevationLayer = d.model->_elevationData.getHFLayer();
 
         // populate vertex and tex coord arrays    
@@ -479,10 +476,12 @@ namespace
 
                     osg::Vec3d model;
                     d.model->_tileLocator->unitToModel( ndc, model );
-                    //_masterLocator->convertLocalToModel(ndc, model);
 
-                    //(*surfaceVerts)[k] = model - centerModel;
                     (*d.surfaceVerts).push_back(model - d.centerModel);
+
+                    // grow the bounding sphere:
+                    d.surfaceBound.expandBy( (*d.surfaceVerts).back() );
+
 
                     if ( compositor->requiresUnitTextureSpace() )
                     {
@@ -891,9 +890,13 @@ namespace
      * tile edges that hides the gap effect caused when you render two adjacent tiles at
      * different LODs.
      */
-    void createSkirtGeometry( Data& d, TextureCompositor* compositor )
+    void createSkirtGeometry( Data& d, TextureCompositor* compositor, double skirtRatio )
     {
-        osg::ref_ptr<osg::Vec3Array> skirtVectors = new osg::Vec3Array( *d.normals );
+        // surface normals will double as our skirt extrusion vectors
+        osg::Vec3Array* skirtVectors = d.normals;
+
+        // find the skirt height
+        double skirtHeight = d.surfaceBound.radius() * skirtRatio;
 
         // build the verts first:
         osg::Vec3Array* skirtVerts = new osg::Vec3Array();
@@ -919,7 +922,7 @@ namespace
             else
             {
                 skirtVerts->push_back( (*d.surfaceVerts)[orig_i] );
-                skirtVerts->push_back( (*d.surfaceVerts)[orig_i] - ((*skirtVectors)[orig_i])*d.skirtHeight );
+                skirtVerts->push_back( (*d.surfaceVerts)[orig_i] - ((*skirtVectors)[orig_i])*skirtHeight );
                 skirtNormals->push_back( (*d.normals)[orig_i] );
                 skirtNormals->push_back( (*d.normals)[orig_i] );
 
@@ -953,7 +956,7 @@ namespace
             else
             {
                 skirtVerts->push_back( (*d.surfaceVerts)[orig_i] );
-                skirtVerts->push_back( (*d.surfaceVerts)[orig_i] - ((*skirtVectors)[orig_i])*d.skirtHeight );
+                skirtVerts->push_back( (*d.surfaceVerts)[orig_i] - ((*skirtVectors)[orig_i])*skirtHeight );
                 skirtNormals->push_back( (*d.normals)[orig_i] );             
                 skirtNormals->push_back( (*d.normals)[orig_i] );             
 
@@ -986,7 +989,7 @@ namespace
             else
             {
                 skirtVerts->push_back( (*d.surfaceVerts)[orig_i] );
-                skirtVerts->push_back( (*d.surfaceVerts)[orig_i] - ((*skirtVectors)[orig_i])*d.skirtHeight );
+                skirtVerts->push_back( (*d.surfaceVerts)[orig_i] - ((*skirtVectors)[orig_i])*skirtHeight );
                 skirtNormals->push_back( (*d.normals)[orig_i] );             
                 skirtNormals->push_back( (*d.normals)[orig_i] );             
 
@@ -1019,9 +1022,9 @@ namespace
             else
             {
                 skirtVerts->push_back( (*d.surfaceVerts)[orig_i] );
-                skirtVerts->push_back( (*d.surfaceVerts)[orig_i] - ((*skirtVectors)[orig_i])*d.skirtHeight );              
-                skirtNormals->push_back( (*d.normals)[orig_i] );             
-                skirtNormals->push_back( (*d.normals)[orig_i] );             
+                skirtVerts->push_back( (*d.surfaceVerts)[orig_i] - ((*skirtVectors)[orig_i])*skirtHeight );
+                skirtNormals->push_back( (*d.normals)[orig_i] );
+                skirtNormals->push_back( (*d.normals)[orig_i] );
 
                 if ( compositor->requiresUnitTextureSpace() )
                 {
@@ -1047,10 +1050,16 @@ namespace
         d.skirt->setNormalArray( skirtNormals );
         d.skirt->setNormalBinding( osg::Geometry::BIND_PER_VERTEX );
 
+
+        // GW: not sure why this break stuff is here...?
+#if 0
         //Add a primative set for each continuous skirt strip
         skirtBreaks.push_back(skirtVerts->size());
         for (int p=1; p < (int)skirtBreaks.size(); p++)
             d.skirt->addPrimitiveSet( new osg::DrawArrays( GL_TRIANGLE_STRIP, skirtBreaks[p-1], skirtBreaks[p] - skirtBreaks[p-1] ) );
+#else
+        d.skirt->addPrimitiveSet( new osg::DrawArrays(GL_TRIANGLE_STRIP, 0, skirtVerts->size()) );
+#endif
     }
 
 
@@ -1157,14 +1166,6 @@ namespace
                             elements->addElement(i10);
                             elements->addElement(i11);
 
-                            //elements->push_back(i01);
-                            //elements->push_back(i00);
-                            //elements->push_back(i11);
-
-                            //elements->push_back(i00);
-                            //elements->push_back(i10);
-                            //elements->push_back(i11);
-
                             if (recalcNormals)
                             {                        
                                 osg::Vec3 normal1 = (v00-v01) ^ (v11-v01);
@@ -1187,14 +1188,6 @@ namespace
                             elements->addElement(i01);
                             elements->addElement(i10);
                             elements->addElement(i11);
-
-                            //elements->push_back(i01);
-                            //elements->push_back(i00);
-                            //elements->push_back(i10);
-
-                            //elements->push_back(i01);
-                            //elements->push_back(i10);
-                            //elements->push_back(i11);
 
                             if (recalcNormals)
                             {                       
@@ -1234,6 +1227,8 @@ namespace
         const GeoExtent& tileExtent = d.geoLocator->getDataExtent();
 
         osg::StateSet* stateSet = new osg::StateSet();
+
+        //TODO: implement this to support blending.
         osg::StateSet* parentStateSet = 0L; //getParentStateSet();
 
         for( TileModel::ColorDataByUID::const_iterator i = d.model->_colorData.begin(); i != d.model->_colorData.end(); ++i )
@@ -1313,8 +1308,9 @@ TileModelCompiler::compile(const TileModel* model)
     // A Geode/Geometry for the skirt. This is good for traversal masking (e.g. shadows)
     // but bad since we're not combining the entire tile into a single geometry.
     // TODO: make this optional?
-    osgTerrain::HeightFieldLayer* hflayer = d.model->_elevationData.getHFLayer();
-    if ( hflayer && hflayer->getHeightField() && hflayer->getHeightField()->getSkirtHeight() > 0.0f )
+    d.createSkirt = (_options.heightFieldSkirtRatio().value() > 0.0);
+
+    if ( d.createSkirt )
     {
         d.skirt = new osg::Geometry();
         d.skirt->setUseVertexBufferObjects(true);
@@ -1353,7 +1349,7 @@ TileModelCompiler::compile(const TileModel* model)
 
     // build the skirts.
     if ( d.createSkirt )
-        createSkirtGeometry( d, _texCompositor.get() );
+        createSkirtGeometry( d, _texCompositor.get(), *_options.heightFieldSkirtRatio() );
 
     // tesselate the surface verts into triangles.
     tessellateSurfaceGeometry( d, _optimizeTriOrientation );

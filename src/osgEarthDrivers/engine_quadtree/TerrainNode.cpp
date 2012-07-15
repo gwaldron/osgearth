@@ -94,7 +94,6 @@ _update_mapf                    ( update_mapf ),
 _cull_mapf                      ( cull_mapf ),
 _onDemandDelay                  ( 2 ),
 _options                        ( options ),
-//_quickReleaseGLObjects          ( quickReleaseGLObjects ),
 _quickReleaseCallbackInstalled  ( false ),
 _alwaysUpdate                   ( false ),
 _sampleRatio                    ( 1.0f ),
@@ -120,24 +119,6 @@ TerrainNode::~TerrainNode()
     //}
     _tiles.clear();
 }
-
-//void
-//TerrainNode::setTechniquePrototype( TerrainTechnique* value )
-//{
-//    _techPrototype = value;
-//}
-
-//TerrainTechnique*
-//TerrainNode::cloneTechnique() const
-//{
-//    return osg::clone( _techPrototype.get(), osg::CopyOp::DEEP_COPY_ALL );
-//}
-
-//TileNode*
-//TerrainNode::createTile(const TileKey& key, GeoLocator* keyLocator) const
-//{
-//    return new TileNode( key, keyLocator, this->getOptions().quickReleaseGLObjects() == true ); //this->getQuickReleaseGLObjects() );
-//}
 
 void
 TerrainNode::setVerticalScale( float value )
@@ -171,7 +152,7 @@ void
 TerrainNode::registerTile( TileNode* newTile )
 {
     Threading::ScopedWriteLock exclusiveTileTableLock( _tilesMutex );
-    _tiles[ newTile->getTileId() ] = newTile;
+    _tiles[ newTile->getKey() ] = newTile;
 }
 
 // immediately release GL memory for any expired tiles.

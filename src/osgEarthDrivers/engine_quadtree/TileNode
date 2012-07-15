@@ -40,20 +40,14 @@ using namespace osgEarth;
 class TileNode : public osg::Group
 {
 public:
-    TileNode( const TileKey& key, GeoLocator* keyLocator, bool quickReleaseGLObjects );
+    TileNode( const TileKey& key, GeoLocator* keyLocator );
 
     /** Gets the tilekey associated with this tile. */
     const TileKey& getKey() const { return _key; }
 
     void compile( TileModelCompiler* compiler );
 
-    osgTerrain::Locator* getLocator() const { return _locator.get(); }
-
-    const osgTerrain::TileID& getTileId() const { return _tileId; }
-
-    bool getDirty() const { return _dirty; }
-
-    void setDirty( bool value ) { _dirty = value; }
+    GeoLocator* getLocator() const { return _locator.get(); }
 
     // installs a data model on this tile mode so it can build its geometry.
     void setTileModel( TileModel* model );

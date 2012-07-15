@@ -16,8 +16,8 @@
 * You should have received a copy of the GNU Lesser General Public License
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
-#ifndef OSGEARTH_ENGINE_QUADTREE_TILE_NODE_BUILDER
-#define OSGEARTH_ENGINE_QUADTREE_TILE_NODE_BUILDER 1
+#ifndef OSGEARTH_ENGINE_QUADTREE_TILE_MODEL_FACTORY
+#define OSGEARTH_ENGINE_QUADTREE_TILE_MODEL_FACTORY 1
 
 #include "Common"
 #include "TileNode"
@@ -36,21 +36,21 @@ using namespace osgEarth;
  * the creation of the TileNode itself is trivial and can be done outside of
  * this class.
  */
-class TileNodeBuilder : public osg::Referenced
+class TileModelFactory : public osg::Referenced
 {
 public:
-    TileNodeBuilder(
+    TileModelFactory(
         const Map* map,
         const Drivers::QuadTreeTerrainEngineOptions& terrainOptions );
 
     /** dtor */
-    virtual ~TileNodeBuilder() { }
+    virtual ~TileModelFactory() { }
 
-    void createTileNode(
-        const TileKey&          key,
-        osg::ref_ptr<TileNode>& out_tile,
-        bool&                   out_hasRealData,
-        bool&                   out_hasLodBlendedLayers );
+    void createTileModel(
+        const TileKey&           key,
+        osg::ref_ptr<TileModel>& out_model,
+        bool&                    out_hasRealData,
+        bool&                    out_hasLodBlendedLayers );
 
 private:
     const Map* _map;
@@ -58,4 +58,4 @@ private:
     const Drivers::QuadTreeTerrainEngineOptions& _terrainOptions;
 };
 
-#endif // OSGEARTH_ENGINE_QUADTREE_TILE_NODE_BUILDER
+#endif // OSGEARTH_ENGINE_QUADTREE_TILE_MODEL_FACTORY

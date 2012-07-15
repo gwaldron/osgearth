@@ -16,7 +16,7 @@
 * You should have received a copy of the GNU Lesser General Public License
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
-#include "TileNodeBuilder"
+#include "TileModelFactory"
 #include <osgEarth/ImageUtils>
 #include <osgEarth/HeightFieldUtils>
 
@@ -24,7 +24,7 @@ using namespace osgEarth;
 using namespace osgEarth::Drivers;
 using namespace OpenThreads;
 
-#define LC "[TileNodeBuilder] "
+#define LC "[TileModelFactory] "
 
 //------------------------------------------------------------------------
 
@@ -190,6 +190,7 @@ namespace
 
 //------------------------------------------------------------------------
 
+#if 0
 namespace
 {
     struct AssembleTile
@@ -201,23 +202,23 @@ namespace
             _opt     = &opt;
             _model   = model;
             //_repo    = &repo;
-            _node    = 0L;
+            //_node    = 0L;
             _masks.clear();
             std::copy( masks.begin(), masks.end(), std::back_inserter(_masks) );
         }
 
         void execute()
         {
-            _node = new TileNode( _key, GeoLocator::createForKey(_key, *_mapInfo), *_opt->quickReleaseGLObjects() );
+            _node = new TileNode( _key, GeoLocator::createForKey(_key, *_mapInfo) );
 
             // copy over the source data.
             _node->setTileModel( _model );
 
-            osg::BoundingSphere bs = _node->getBound();
+            //osg::BoundingSphere bs = _node->getBound();
 
             // a skirt hides cracks when transitioning between LODs:
-            osg::HeightField* hf = _model->_elevationData.getHFLayer()->getHeightField();
-            hf->setSkirtHeight(bs.radius() * _opt->heightFieldSkirtRatio().get() );
+            //osg::HeightField* hf = _model->_elevationData.getHFLayer()->getHeightField();
+            //hf->setSkirtHeight(bs.radius() * _opt->heightFieldSkirtRatio().get() );
         }
 
         TileKey                             _key;
@@ -225,14 +226,15 @@ namespace
         const QuadTreeTerrainEngineOptions* _opt;
         //TileNodeBuilder::SourceRepo*            _repo;
         TileModel*                          _model;
-        TileNode*                           _node;
+        //TileNode*                           _node;
         MaskLayerVector                     _masks;
     };
 }
+#endif
 
 //------------------------------------------------------------------------
 
-TileNodeBuilder::TileNodeBuilder(const Map* map, const QuadTreeTerrainEngineOptions& terrainOptions ) :
+TileModelFactory::TileModelFactory(const Map* map, const QuadTreeTerrainEngineOptions& terrainOptions ) :
 _map           ( map ),
 _terrainOptions( terrainOptions )
 {
@@ -241,10 +243,10 @@ _terrainOptions( terrainOptions )
 
 
 void
-TileNodeBuilder::createTileNode(const TileKey&          key, 
-                                osg::ref_ptr<TileNode>& out_tile, 
-                                bool&                   out_hasRealData,
-                                bool&                   out_hasLodBlendedLayers )
+TileModelFactory::createTileModel(const TileKey&           key, 
+                                  osg::ref_ptr<TileModel>& out_model,
+                                  bool&                    out_hasRealData,
+                                  bool&                    out_hasLodBlendedLayers )
 {
     MapFrame mapf( _map, Map::MASKED_TERRAIN_LAYERS );
     
@@ -253,8 +255,6 @@ TileNodeBuilder::createTileNode(const TileKey&          key,
     osg::ref_ptr<TileModel> model = new TileModel();
     model->_tileKey = key;
     model->_tileLocator = GeoLocator::createForKey(key, mapInfo);
-
-    //SourceRepo repo;
 
     // init this to false, then search for real data. "Real data" is data corresponding
     // directly to the key, as opposed to fallback data, which is derived from a lower
@@ -321,9 +321,9 @@ TileNodeBuilder::createTileNode(const TileKey&          key,
     }
 
     // Ready to create the actual tile.
-    AssembleTile assemble;
-    assemble.init( key, mapInfo, _terrainOptions, model.get(), mapf.terrainMaskLayers() );
-    assemble.execute();
+    //AssembleTile assemble;
+    //assemble.init( key, mapInfo, _terrainOptions, model.get(), mapf.terrainMaskLayers() );
+    //assemble.execute();
 
     if (!out_hasRealData)
     {
@@ -343,5 +343,6 @@ TileNodeBuilder::createTileNode(const TileKey&          key,
         out_hasRealData = true;
     }
 
-    out_tile = assemble._node;
+    out_model = model.release();
+    //out_tile = assemble._node;
 }

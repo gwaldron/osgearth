@@ -4,32 +4,29 @@ SET(TARGET_COMMON_LIBRARIES ${TARGET_COMMON_LIBRARIES} osgEarthSymbology)
 SET(TARGET_SRC
     KeyNodeFactory.cpp
     LODFactorCallback.cpp
-    MultiPassTerrainTechnique.cpp
     QuadTreeTerrainEngineNode.cpp
     QuadTreeTerrainEngineDriver.cpp
     SerialKeyNodeFactory.cpp
-    SinglePassTerrainTechnique.cpp
     TerrainNode.cpp
-    Tile.cpp
-    TileBuilder.cpp
+    TileModelCompiler.cpp
+    TileNode.cpp
+    TileNodeBuilder.cpp
 )
 
 SET(TARGET_H
     Common
-    CustomTerrainTechnique
-    DynamicLODScaleCallback   
+    DynamicLODScaleCallback
     FileLocationCallback
     KeyNodeFactory
     LODFactorCallback
-    MultiPassTerrainTechnique
     QuadTreeTerrainEngineNode
     QuadTreeTerrainEngineOptions
     SerialKeyNodeFactory
-    SinglePassTerrainTechnique
     TerrainNode
-    Tile
-    TileBuilder
-    TransparentLayer
+    TileModel
+    TileModelCompiler
+    TileNode
+    TileNodeBuilder
 )
 
 SETUP_PLUGIN(osgearth_engine_quadtree)

@@ -559,7 +559,7 @@ ShaderFactory::createDefaultTextureFragmentShader( int numTexImageUnits ) const
 {
     std::stringstream buf;
 
-    buf << "#version 100 \n";
+    buf << "#version 110 \n";
 
     if ( numTexImageUnits > 0 )
     {

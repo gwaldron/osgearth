@@ -20,8 +20,7 @@
 #define OSGEARTH_ENGINE_QUADTREE_TERRAIN_NODE 1
 
 #include "Common"
-#include "Tile"
-#include "CustomTerrainTechnique"
+#include "TileNode"
 #include "QuadTreeTerrainEngineOptions"
 #include <osgEarth/Locators>
 #include <osgEarth/Profile>
@@ -62,11 +61,11 @@ public:
 
     const MapFrame& getCullThreadMapFrame()   { return _cull_mapf;   }
 
-    virtual Tile* createTile( const TileKey& key, GeoLocator* locator ) const;
+    //virtual TileNode* createTile( const TileKey& key, GeoLocator* locator ) const;
     
-    void setTechniquePrototype( TerrainTechnique* tech );
+    //void setTechniquePrototype( TerrainTechnique* tech );
 
-    TerrainTechnique* cloneTechnique() const;
+    //TerrainTechnique* cloneTechnique() const;
 
     void setSampleRatio( float value );
 
@@ -88,11 +87,11 @@ protected:
     // subclass can override this to perform addition UPDATE traversal operations
     virtual void updateTraversal( osg::NodeVisitor& nv ) { }
 
-    typedef std::map< osgTerrain::TileID, osg::ref_ptr<Tile> > TileTable;
+    typedef std::map< osgTerrain::TileID, osg::ref_ptr<TileNode> > TileTable;
 
-    typedef std::queue< osg::ref_ptr<Tile> >  TileQueue;
-    typedef std::list< osg::ref_ptr<Tile> >   TileList;
-    typedef std::vector< osg::ref_ptr<Tile> > TileVector;
+    typedef std::queue< osg::ref_ptr<TileNode> >  TileQueue;
+    typedef std::list< osg::ref_ptr<TileNode> >   TileList;
+    typedef std::vector< osg::ref_ptr<TileNode> > TileVector;
     typedef std::queue< osgTerrain::TileID >  TileIDQueue;
 
     Threading::ReadWriteMutex _tilesMutex;
@@ -110,7 +109,7 @@ public:
 
     void releaseGLObjectsForTiles( osg::State* state );
 
-    void registerTile( Tile* newTile );
+    void registerTile( TileNode* newTile );
 
     /** Gets a thread-safe copy of the entire tile list */
     void getTiles( TileVector& out_tiles );
@@ -148,7 +147,7 @@ protected:
     bool _quickReleaseGLObjects;
     bool _quickReleaseCallbackInstalled;
 
-    osg::ref_ptr<TerrainTechnique> _techPrototype;
+//    osg::ref_ptr<TerrainTechnique> _techPrototype;
 };
 
 #endif // OSGEARTH_ENGINE_QUADTREE_TERRAIN_NODE

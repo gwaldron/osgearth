@@ -1,0 +1,60 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+* Copyright 2008-2012 Pelican Mapping
+* http://osgearth.org
+*
+* osgEarth is free software; you can redistribute it and/or modify
+* it under the terms of the GNU Lesser General Public License as published by
+* the Free Software Foundation; either version 2 of the License, or
+* (at your option) any later version.
+*
+* This program is distributed in the hope that it will be useful,
+* but WITHOUT ANY WARRANTY; without even the implied warranty of
+* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+* GNU Lesser General Public License for more details.
+*
+* You should have received a copy of the GNU Lesser General Public License
+* along with this program.  If not, see <http://www.gnu.org/licenses/>
+*/
+#ifndef OSGEARTH_ENGINE_QUADTREE_TILE_MODEL_COMPILER
+#define OSGEARTH_ENGINE_QUADTREE_TILE_MODEL_COMPILER 1
+
+#include "Common"
+#include "TileModel"
+#include "QuadTreeTerrainEngineOptions"
+
+#include <osgEarth/Map>
+#include <osgEarth/TextureCompositor>
+#include <osgEarth/ThreadingUtils>
+
+#include <osg/Group>
+
+using namespace osgEarth;
+using namespace osgEarth::Drivers;
+
+
+/**
+ * Builds the actual tile geometry.
+ */
+class TileModelCompiler : public osg::Referenced
+{
+public:
+    TileModelCompiler(
+        const MaskLayerVector&              masks,
+        TextureCompositor*                  compositor,
+        bool                                optimizeTriangleOrientation,
+        const QuadTreeTerrainEngineOptions& options);
+
+    /**
+     * Builds the geometry for a single terrain tile.
+     */
+    osg::Node* compile( const TileModel* model );
+
+protected:
+    const MaskLayerVector&              _masks;
+    osg::ref_ptr<TextureCompositor>     _texCompositor;
+    bool                                _optimizeTriOrientation;
+    const QuadTreeTerrainEngineOptions& _options;
+};
+
+#endif // OSGEARTH_ENGINE_QUADTREE_TILE_MODEL_COMPILER

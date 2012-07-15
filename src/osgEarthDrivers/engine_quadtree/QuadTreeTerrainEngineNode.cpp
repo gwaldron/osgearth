@@ -17,12 +17,10 @@
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
 #include "QuadTreeTerrainEngineNode"
-#include "MultiPassTerrainTechnique"
-#include "SinglePassTerrainTechnique"
 #include "SerialKeyNodeFactory"
 #include "TerrainNode"
-#include "TileBuilder"
-#include "TransparentLayer"
+#include "TileNodeBuilder"
+#include "TileModelCompiler"
 
 #include <osgEarth/HeightFieldUtils>
 #include <osgEarth/ImageUtils>
@@ -230,10 +228,17 @@ QuadTreeTerrainEngineNode::refresh()
 
     _terrain = new TerrainNode(*_update_mapf, *_cull_mapf, _terrainOptions ); //*_terrainOptions.quickReleaseGLObjects() );
 
-    installTerrainTechnique();
+//    installTerrainTechnique();
    
     const MapInfo& mapInfo = _update_mapf->getMapInfo();
-    _keyNodeFactory = new SerialKeyNodeFactory( _tileBuilder.get(), _terrainOptions, mapInfo, _terrain, _uid );
+
+    _keyNodeFactory = new SerialKeyNodeFactory( 
+        _tileNodeBuilder.get(),
+        _tileModelCompiler.get(),
+        _terrainOptions, 
+        mapInfo,
+        _terrain,
+        _uid );
 
     // Build the first level of the terrain.
     // Collect the tile keys comprising the root tiles of the terrain.
@@ -280,16 +285,33 @@ QuadTreeTerrainEngineNode::onMapInfoEstablished( const MapInfo& mapInfo )
     OE_INFO << LC << "Sample ratio = " << _terrainOptions.heightFieldSampleRatio().value() << std::endl;
 
     // install the proper layer composition technique:
-    installTerrainTechnique();
+    //installTerrainTechnique();
 
     // install the shader program, if applicable:
     installShaders();
+    
+
+    // create a compiler for compiling tile models into geometry
+    bool optimizeTriangleOrientation = 
+        getMap()->getMapOptions().elevationInterpolation() != INTERP_TRIANGULATE;
+
+    _tileModelCompiler = new TileModelCompiler(
+        _update_mapf->terrainMaskLayers(),
+        _texCompositor.get(),
+        optimizeTriangleOrientation,
+        _terrainOptions );
 
     // initialize the tile builder
-    _tileBuilder = new TileBuilder( getMap(), _terrainOptions );
+    _tileNodeBuilder = new TileNodeBuilder( getMap(), _terrainOptions );
 
     // initialize a key node factory.
-    _keyNodeFactory = new SerialKeyNodeFactory( _tileBuilder.get(), _terrainOptions, mapInfo, _terrain, _uid );
+    _keyNodeFactory = new SerialKeyNodeFactory( 
+        _tileNodeBuilder.get(), 
+        _tileModelCompiler.get(),
+        _terrainOptions, 
+        mapInfo, 
+        _terrain, 
+        _uid );
 
     // Build the first level of the terrain.
     // Collect the tile keys comprising the root tiles of the terrain.
@@ -327,13 +349,14 @@ QuadTreeTerrainEngineNode::createNode( const TileKey& key )
 osg::Node*
 QuadTreeTerrainEngineNode::createTile( const TileKey& key )
 {
-    if ( !_tileBuilder.valid() )
+    if ( !_tileNodeBuilder.valid() )
         return 0L;
 
-    osg::ref_ptr<Tile> tile;
+    osg::ref_ptr<TileNode> tile;
     bool hasRealData, hasLodBlendedLayers;
 
-    _tileBuilder->createTile(
+    // create the node:
+    _tileNodeBuilder->createTileNode(
         key,
         tile,
         hasRealData,
@@ -342,6 +365,11 @@ QuadTreeTerrainEngineNode::createTile( const TileKey& key )
     if ( !tile.valid() )
         return 0L;
 
+    tile->compile( _tileModelCompiler.get() );
+
+    return tile.release();
+
+#if 0
     // code block required in order to properly manage the ref count of the transform
     SinglePassTerrainTechnique* tech = new SinglePassTerrainTechnique( _texCompositor.get() );
 
@@ -354,6 +382,7 @@ QuadTreeTerrainEngineNode::createTile( const TileKey& key )
     tile->init();
     
     return tech->takeTransform();
+#endif
 }
 
 
@@ -421,20 +450,23 @@ void
 QuadTreeTerrainEngineNode::moveImageLayer( unsigned int oldIndex, unsigned int newIndex )
 {
     // take a thread-safe copy of the tile table
-    TileVector tiles;
+    TileNodeVector tiles;
     _terrain->getTiles( tiles );
 
-    for (TileVector::iterator itr = tiles.begin(); itr != tiles.end(); ++itr)
+    for (TileNodeVector::iterator itr = tiles.begin(); itr != tiles.end(); ++itr)
     {
-        Tile* tile = itr->get();
-        tile->applyImmediateTileUpdate( TileUpdate::MOVE_IMAGE_LAYER );
+        TileNode* tile = itr->get();
+        //tile->applyImmediateTileUpdate( TileUpdate::MOVE_IMAGE_LAYER );
+        OE_WARN << LC << "moveImageLayer under review" << std::endl;
     }     
 
     updateTextureCombining();
 }
 
+
+#if 0
 void
-QuadTreeTerrainEngineNode::updateElevation( Tile* tile )
+QuadTreeTerrainEngineNode::updateElevation( TileNode* tile )
 {
     Threading::ScopedWriteLock exclusiveLock( tile->getTileLayersMutex() );
 
@@ -466,6 +498,7 @@ QuadTreeTerrainEngineNode::updateElevation( Tile* tile )
     }
 }
 
+#endif
 
 void
 QuadTreeTerrainEngineNode::addElevationLayer( ElevationLayer* layer )
@@ -593,25 +626,30 @@ QuadTreeTerrainEngineNode::updateTextureCombining()
     }
 }
 
+
 namespace
 {
     class UpdateElevationVisitor : public osg::NodeVisitor
     {
     public:
-        UpdateElevationVisitor():
-          osg::NodeVisitor(osg::NodeVisitor::TRAVERSE_ALL_CHILDREN)
+        UpdateElevationVisitor( TileModelCompiler* compiler ):
+          osg::NodeVisitor(osg::NodeVisitor::TRAVERSE_ALL_CHILDREN),
+          _compiler(compiler)
           {}
 
           void apply(osg::Node& node)
           {
-              Tile* tile = dynamic_cast<Tile*>(&node);
+              TileNode* tile = dynamic_cast<TileNode*>(&node);
               if (tile)
               {
-                  tile->applyImmediateTileUpdate(TileUpdate::UPDATE_ELEVATION);
+                  tile->compile( _compiler );
+                  //tile->applyImmediateTileUpdate(TileUpdate::UPDATE_ELEVATION);
               }
 
               traverse(node);
           }
+
+          TileModelCompiler* _compiler;
     };
 }
 
@@ -620,12 +658,11 @@ void
 QuadTreeTerrainEngineNode::onVerticalScaleChanged()
 {
     _terrain->setVerticalScale(getVerticalScale());
-
-    UpdateElevationVisitor visitor;
+    UpdateElevationVisitor visitor( _tileModelCompiler.get() );
     this->accept(visitor);
 }
 
-
+#if 0
 void
 QuadTreeTerrainEngineNode::installTerrainTechnique()
 {
@@ -648,3 +685,4 @@ QuadTreeTerrainEngineNode::installTerrainTechnique()
         _terrain->setTechniquePrototype( tech );
     }
 }
+#endif

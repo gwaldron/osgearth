@@ -34,31 +34,34 @@ using namespace OpenThreads;
 #define LC "[SerialKeyNodeFactory] "
 
 
-SerialKeyNodeFactory::SerialKeyNodeFactory(TileBuilder*             builder,
+SerialKeyNodeFactory::SerialKeyNodeFactory(TileNodeBuilder*         builder,
+                                           TileModelCompiler*       compiler,
                                            const QuadTreeTerrainEngineOptions& options,
                                            const MapInfo&           mapInfo,
                                            TerrainNode*             terrain,
                                            UID                      engineUID ) :
-_builder( builder ),
-_options( options ),
-_mapInfo( mapInfo ),
-_terrain( terrain ),
+_builder  ( builder ),
+_compiler ( compiler ),
+_options  ( options ),
+_mapInfo  ( mapInfo ),
+_terrain  ( terrain ),
 _engineUID( engineUID )
 {
     //NOP
 }
 
 void
-SerialKeyNodeFactory::addTile(Tile* tile, bool tileHasRealData, bool tileHasLodBlending, osg::Group* parent )
+SerialKeyNodeFactory::addTile(TileNode* tile, bool tileHasRealData, bool tileHasLodBlending, osg::Group* parent )
 {
+    // compiler the tile:
+    tile->compile( _compiler.get() );
+
     // associate this tile with the terrain:
-    tile->setTerrainTechnique( _terrain->cloneTechnique() );
-    tile->attachToTerrain( _terrain );
+  //  tile->setTerrainTechnique( _terrain->cloneTechnique() );
+//    tile->attachToTerrain( _terrain );
 
     // assemble a URI for this tile's child group:
-    std::stringstream buf;
-    buf << tile->getKey().str() << "." << _engineUID << ".osgearth_engine_quadtree_tile";
-    std::string uri; uri = buf.str();
+    std::string uri = Stringify() << tile->getKey().str() << "." << _engineUID << ".osgearth_engine_quadtree_tile";
 
     osg::Node* result = 0L;
 
@@ -74,7 +77,7 @@ SerialKeyNodeFactory::addTile(Tile* tile, bool tileHasRealData, bool tileHasLodB
     if ( wrapInPagedLOD )
     {
         osg::BoundingSphere bs = tile->getBound();
-        double maxRange = 1e10;        
+        double maxRange = 1e10;
         
 #if 0
         //Compute the min range based on the actual bounds of the tile.  This can break down if you have very high resolution
@@ -133,10 +136,14 @@ SerialKeyNodeFactory::addTile(Tile* tile, bool tileHasRealData, bool tileHasLodB
     // this one rejects back-facing tiles:
     if ( _mapInfo.isGeocentric() && _options.clusterCulling() == true )
     {
+        osg::HeightField* hf =
+            tile->getTileModel()->_elevationData.getHFLayer()->getHeightField();
+
         result->addCullCallback( HeightFieldUtils::createClusterCullingCallback(
-            static_cast<osgTerrain::HeightFieldLayer*>(tile->getElevationLayer())->getHeightField(),
+            hf,
             tile->getLocator()->getEllipsoidModel(),
-            tile->getVerticalScale() ) );
+            _terrain->getVerticalScale() ) );
+            //tile->getVerticalScale() ) );
     }
 
     parent->addChild( result );
@@ -145,11 +152,11 @@ SerialKeyNodeFactory::addTile(Tile* tile, bool tileHasRealData, bool tileHasLodB
 osg::Node*
 SerialKeyNodeFactory::createRootNode( const TileKey& key )
 {
-    osg::ref_ptr<Tile> tile;
-    bool               real;
-    bool               lodBlending;
+    osg::ref_ptr<TileNode> tile;
+    bool                   real;
+    bool                   lodBlending;
 
-    _builder->createTile(key, tile, real, lodBlending);
+    _builder->createTileNode(key, tile, real, lodBlending);
 
     osg::Group* root = new osg::Group();
     addTile( tile, real, lodBlending, root );
@@ -160,21 +167,15 @@ SerialKeyNodeFactory::createRootNode( const TileKey& key )
 osg::Node*
 SerialKeyNodeFactory::createNode( const TileKey& parentKey )
 {
-    osg::ref_ptr<Tile> tiles[4];
-    bool               realData[4];
-    bool               lodBlending[4];
-    bool               tileHasAnyRealData = false;
-
-    //if ( parentKey.str() == "15/12423/9051" )
-    if ( parentKey.str() == "15/6211/12371" )
-    {
-        int x = 0;
-    }
+    osg::ref_ptr<TileNode> tiles[4];
+    bool                   realData[4];
+    bool                   lodBlending[4];
+    bool                   tileHasAnyRealData = false;
 
     for( unsigned i = 0; i < 4; ++i )
     {
         TileKey child = parentKey.createChildKey( i );
-        _builder->createTile( child, tiles[i], realData[i], lodBlending[i] );
+        _builder->createTileNode( child, tiles[i], realData[i], lodBlending[i] );
         if ( tiles[i].valid() && realData[i] )
             tileHasAnyRealData = true;
     }

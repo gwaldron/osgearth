@@ -26,7 +26,8 @@
 
 #include "QuadTreeTerrainEngineOptions"
 #include "KeyNodeFactory"
-#include "TileBuilder"
+#include "TileNodeBuilder"
+#include "TileModelCompiler"
 
 #include <osg/Geode>
 #include <osg/NodeCallback>
@@ -86,7 +87,7 @@ protected:
 private:
     void init();
     void syncMapModel();
-    void installTerrainTechnique();
+    //void installTerrainTechnique();
 
     // Reloads all the tiles in the terrain due to a data model change
     void refresh();
@@ -100,7 +101,7 @@ private:
     void moveImageLayer( unsigned int oldIndex, unsigned int newIndex );
     void moveElevationLayer( unsigned int oldIndex, unsigned int newIndex );
     
-    void updateElevation( Tile* tile );
+    //void updateElevation( TileNode* tile );
     void installShaders();
     void updateTextureCombining();
 
@@ -117,8 +118,9 @@ private:
     MapFrame* _update_mapf; // map frame for the main/update traversal thread
     MapFrame* _cull_mapf;   // map frame for the cull traversal thread
 
-    osg::ref_ptr<KeyNodeFactory> _keyNodeFactory;
-    osg::ref_ptr<TileBuilder>    _tileBuilder;
+    osg::ref_ptr<KeyNodeFactory>    _keyNodeFactory;
+    osg::ref_ptr<TileNodeBuilder>   _tileNodeBuilder;
+    osg::ref_ptr<TileModelCompiler> _tileModelCompiler;
 
     osg::Timer _timer;
     unsigned   _tileCount;

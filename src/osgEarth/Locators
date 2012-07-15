@@ -52,12 +52,19 @@ namespace osgEarth
         void setDataExtent( const GeoExtent& extent );
         const GeoExtent& getDataExtent() const;
 
-        /** Clones the current locator, applying a new display (i.e. crop) extent. */
-        //virtual GeoLocator* cloneAndCrop( const osgTerrain::Locator& prototype, const GeoExtent& displayExtent ) const;
-
         virtual GeoLocator* getGeographicFromGeocentric() const;
 
         virtual bool isEquivalentTo( const GeoLocator& rhs ) const;
+
+    public: // better-sounding functions.
+
+        bool modelToUnit(const osg::Vec3d& model, osg::Vec3d& unit) const {
+            return convertModelToLocal(model, unit);
+        }
+        
+        bool unitToModel(const osg::Vec3d& unit, osg::Vec3d& model) const {
+            return convertLocalToModel(unit, model);
+        }
         
     public: // Locator
         virtual bool convertModelToLocal(const osg::Vec3d& world, osg::Vec3d& local) const;

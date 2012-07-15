@@ -17,8 +17,7 @@
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
 #include "TerrainNode"
-#include "Tile"
-#include "TransparentLayer"
+#include "TileNode"
 
 #include <osgEarth/Registry>
 #include <osgEarth/Map>
@@ -115,30 +114,30 @@ TerrainNode::~TerrainNode()
 {
     // detach all the tiles from the terrain first. Otherwise osgTerrainNode::Terrain
     // will crap out.
-    for( TileTable::iterator i = _tiles.begin(); i != _tiles.end(); ++i )
-    {
-        i->second->attachToTerrain( 0L );
-    }
+    //for( TileTable::iterator i = _tiles.begin(); i != _tiles.end(); ++i )
+    //{
+    //    i->second->attachToTerrain( 0L );
+    //}
     _tiles.clear();
 }
 
-void
-TerrainNode::setTechniquePrototype( TerrainTechnique* value )
-{
-    _techPrototype = value;
-}
+//void
+//TerrainNode::setTechniquePrototype( TerrainTechnique* value )
+//{
+//    _techPrototype = value;
+//}
 
-TerrainTechnique*
-TerrainNode::cloneTechnique() const
-{
-    return osg::clone( _techPrototype.get(), osg::CopyOp::DEEP_COPY_ALL );
-}
+//TerrainTechnique*
+//TerrainNode::cloneTechnique() const
+//{
+//    return osg::clone( _techPrototype.get(), osg::CopyOp::DEEP_COPY_ALL );
+//}
 
-Tile*
-TerrainNode::createTile(const TileKey& key, GeoLocator* keyLocator) const
-{
-    return new Tile( key, keyLocator, this->getOptions().quickReleaseGLObjects() == true ); //this->getQuickReleaseGLObjects() );
-}
+//TileNode*
+//TerrainNode::createTile(const TileKey& key, GeoLocator* keyLocator) const
+//{
+//    return new TileNode( key, keyLocator, this->getOptions().quickReleaseGLObjects() == true ); //this->getQuickReleaseGLObjects() );
+//}
 
 void
 TerrainNode::setVerticalScale( float value )
@@ -169,7 +168,7 @@ TerrainNode::getTiles( TileVector& out )
 }
 
 void
-TerrainNode::registerTile( Tile* newTile )
+TerrainNode::registerTile( TileNode* newTile )
 {
     Threading::ScopedWriteLock exclusiveTileTableLock( _tilesMutex );
     _tiles[ newTile->getTileId() ] = newTile;
@@ -225,8 +224,8 @@ TerrainNode::traverse( osg::NodeVisitor &nv )
 
             for( TileTable::iterator i = _tiles.begin(); i != _tiles.end(); )
             {
-                Tile* tile = i->second.get();
-                if ( tile->getNumParents() == 0 && tile->getHasBeenTraversed() )
+                TileNode* tile = i->second.get();
+                if ( tile->getNumParents() == 0 ) //&& tile->getHasBeenTraversed() )
                 {
                     _tilesToShutDown.push_back( tile );
                     
@@ -249,7 +248,22 @@ TerrainNode::traverse( osg::NodeVisitor &nv )
             // Shut down any dead tiles once there tasks are complete.
             for( TileList::iterator i = _tilesToShutDown.begin(); i != _tilesToShutDown.end(); )
             {
-                Tile* tile = i->get();
+                TileNode* tile = i->get();
+
+                if ( tile )
+                {
+                    if ( _quickReleaseGLObjects && _quickReleaseCallbackInstalled )
+                    {
+                        _tilesToRelease.push_back( tile );
+                    }
+                    i = _tilesToShutDown.erase( i );
+                }
+                else
+                {
+                    ++i;
+                }
+
+#if 0
                 if ( tile && tile->cancelActiveTasks() )
                 {
                     if ( _quickReleaseGLObjects && _quickReleaseCallbackInstalled )
@@ -261,6 +275,7 @@ TerrainNode::traverse( osg::NodeVisitor &nv )
                 }
                 else
                     ++i;
+#endif
             }
         }
 

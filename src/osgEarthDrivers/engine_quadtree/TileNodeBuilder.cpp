@@ -16,8 +16,7 @@
 * You should have received a copy of the GNU Lesser General Public License
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
-#include "TileBuilder"
-#include "TransparentLayer"
+#include "TileNodeBuilder"
 #include <osgEarth/ImageUtils>
 #include <osgEarth/HeightFieldUtils>
 
@@ -25,25 +24,26 @@ using namespace osgEarth;
 using namespace osgEarth::Drivers;
 using namespace OpenThreads;
 
-#define LC "[TileBuilder] "
+#define LC "[TileNodeBuilder] "
 
 //------------------------------------------------------------------------
 
 namespace
 {
-    struct BuildColorLayer
+    struct BuildColorData
     {
         void init( const TileKey&                      key, 
                    ImageLayer*                         layer, 
                    const MapInfo&                      mapInfo,
                    const QuadTreeTerrainEngineOptions& opt, 
-                   TileBuilder::SourceRepo&            repo )
+                   TileModel*                          model )
         {
             _key      = key;
             _layer    = layer;
             _mapInfo  = &mapInfo;
             _opt      = &opt;
-            _repo     = &repo;
+            _model    = model;
+            //_repo     = &repo;
         }
 
         void execute()
@@ -121,19 +121,19 @@ namespace
             }
 
             // add the color layer to the repo.
-            _repo->add( CustomColorLayer(
+            _model->_colorData[_layer->getUID()] = TileModel::ColorData(
                 _layer,
                 geoImage.getImage(),
                 locator,
                 _key.getLevelOfDetail(),
                 _key,
-                isFallbackData ) );
+                isFallbackData );
         }
 
         TileKey        _key;
         const MapInfo* _mapInfo;
         ImageLayer*    _layer;
-        TileBuilder::SourceRepo* _repo;
+        TileModel*     _model;
         const QuadTreeTerrainEngineOptions* _opt;
     };
 }
@@ -142,14 +142,15 @@ namespace
 
 namespace
 {
-    struct BuildElevLayer
+    struct BuildElevationData
     {
-        void init(const TileKey& key, const MapFrame& mapf, const QuadTreeTerrainEngineOptions& opt, TileBuilder::SourceRepo& repo)
+        void init(const TileKey& key, const MapFrame& mapf, const QuadTreeTerrainEngineOptions& opt, TileModel* model) //sourceTileNodeBuilder::SourceRepo& repo)
         {
-            _key  = key;
-            _mapf = &mapf;
-            _opt  = &opt;
-            _repo = &repo;
+            _key   = key;
+            _mapf  = &mapf;
+            _opt   = &opt;
+            _model = model;
+            //_repo = &repo;
         }
 
         void execute()
@@ -176,14 +177,14 @@ namespace
                 // Generate a locator.
                 hfLayer->setLocator( GeoLocator::createForKey( _key, mapInfo ) );
 
-                _repo->set( CustomElevLayer(hfLayer, isFallback) );
+                _model->_elevationData = TileModel::ElevationData(hfLayer, isFallback);
             }
         }
 
         TileKey                  _key;
         const MapFrame*          _mapf;
         const QuadTreeTerrainEngineOptions* _opt;
-        TileBuilder::SourceRepo* _repo;
+        TileModel* _model;
     };
 }
 
@@ -193,49 +194,45 @@ namespace
 {
     struct AssembleTile
     {
-        void init(const TileKey& key, const MapInfo& mapInfo, const QuadTreeTerrainEngineOptions& opt, TileBuilder::SourceRepo& repo, const MaskLayerVector& masks=MaskLayerVector() )
+        void init(const TileKey& key, const MapInfo& mapInfo, const QuadTreeTerrainEngineOptions& opt, TileModel* model, const MaskLayerVector& masks=MaskLayerVector() )
         {
             _key     = key;
             _mapInfo = &mapInfo;
             _opt     = &opt;
-            _repo    = &repo;
-            _tile    = 0L;
+            _model   = model;
+            //_repo    = &repo;
+            _node    = 0L;
             _masks.clear();
             std::copy( masks.begin(), masks.end(), std::back_inserter(_masks) );
         }
 
         void execute()
         {
-            _tile = new Tile( _key, GeoLocator::createForKey(_key, *_mapInfo), *_opt->quickReleaseGLObjects() );
-            _tile->setVerticalScale( *_opt->verticalScale() );
-
-            //_tile->setRequiresNormals( true );
-            _tile->setDataVariance( osg::Object::DYNAMIC );
-            _tile->setTerrainMasks(_masks);
+            _node = new TileNode( _key, GeoLocator::createForKey(_key, *_mapInfo), *_opt->quickReleaseGLObjects() );
 
             // copy over the source data.
-            _tile->setCustomColorLayers( _repo->_colorLayers );
-            _tile->setElevationLayer( _repo->_elevLayer.getHFLayer() );
+            _node->setTileModel( _model );
 
-            osg::BoundingSphere bs = _tile->getBound();
+            osg::BoundingSphere bs = _node->getBound();
 
             // a skirt hides cracks when transitioning between LODs:
-            osg::HeightField* hf = _repo->_elevLayer.getHFLayer()->getHeightField();
+            osg::HeightField* hf = _model->_elevationData.getHFLayer()->getHeightField();
             hf->setSkirtHeight(bs.radius() * _opt->heightFieldSkirtRatio().get() );
         }
 
-        TileKey                  _key;
-        const MapInfo*           _mapInfo;
+        TileKey                             _key;
+        const MapInfo*                      _mapInfo;
         const QuadTreeTerrainEngineOptions* _opt;
-        TileBuilder::SourceRepo* _repo;
-        Tile*                    _tile;
-        MaskLayerVector          _masks;
+        //TileNodeBuilder::SourceRepo*            _repo;
+        TileModel*                          _model;
+        TileNode*                           _node;
+        MaskLayerVector                     _masks;
     };
 }
 
 //------------------------------------------------------------------------
 
-TileBuilder::TileBuilder(const Map* map, const QuadTreeTerrainEngineOptions& terrainOptions ) :
+TileNodeBuilder::TileNodeBuilder(const Map* map, const QuadTreeTerrainEngineOptions& terrainOptions ) :
 _map           ( map ),
 _terrainOptions( terrainOptions )
 {
@@ -244,30 +241,34 @@ _terrainOptions( terrainOptions )
 
 
 void
-TileBuilder::createTile(const TileKey&      key, 
-                        osg::ref_ptr<Tile>& out_tile, 
-                        bool&               out_hasRealData,
-                        bool&               out_hasLodBlendedLayers )
+TileNodeBuilder::createTileNode(const TileKey&          key, 
+                                osg::ref_ptr<TileNode>& out_tile, 
+                                bool&                   out_hasRealData,
+                                bool&                   out_hasLodBlendedLayers )
 {
     MapFrame mapf( _map, Map::MASKED_TERRAIN_LAYERS );
+    
+    const MapInfo& mapInfo = mapf.getMapInfo();
 
-    SourceRepo repo;
+    osg::ref_ptr<TileModel> model = new TileModel();
+    model->_tileKey = key;
+    model->_tileLocator = GeoLocator::createForKey(key, mapInfo);
+
+    //SourceRepo repo;
 
     // init this to false, then search for real data. "Real data" is data corresponding
     // directly to the key, as opposed to fallback data, which is derived from a lower
     // LOD key.
     out_hasRealData = false;
     out_hasLodBlendedLayers = false;
-
-    const MapInfo& mapInfo = mapf.getMapInfo();
     
     // Fetch the image data and make color layers.
     for( ImageLayerVector::const_iterator i = mapf.imageLayers().begin(); i != mapf.imageLayers().end(); ++i )
     {
         ImageLayer* layer = i->get();
 
-        BuildColorLayer build;
-        build.init( key, layer, mapInfo, _terrainOptions, repo );
+        BuildColorData build;
+        build.init( key, layer, mapInfo, _terrainOptions, model.get() );
         build.execute();
 
         if ( layer->getImageLayerOptions().lodBlending() == true )
@@ -277,30 +278,30 @@ TileBuilder::createTile(const TileKey&      key,
     }
 
     // make an elevation layer.
-    BuildElevLayer build;
-    build.init( key, mapf, _terrainOptions, repo );
+    BuildElevationData build;
+    build.init( key, mapf, _terrainOptions, model.get() );
     build.execute();
 
 
     // Bail out now if there's no data to be had.
-    if ( repo._colorLayers.size() == 0 && !repo._elevLayer.getHFLayer() )
+    if ( model->_colorData.size() == 0 && !model->_elevationData.getHFLayer() )
     {
         return;
     }
 
     // OK we are making a tile, so if there's no heightfield yet, make an empty one.
-    if ( !repo._elevLayer.getHFLayer() )
+    if ( !model->_elevationData.getHFLayer() )
     {
         osg::HeightField* hf = HeightFieldUtils::createReferenceHeightField( key.getExtent(), 8, 8 );
         osgTerrain::HeightFieldLayer* hfLayer = new osgTerrain::HeightFieldLayer( hf );
         hfLayer->setLocator( GeoLocator::createForKey(key, mapInfo) );
-        repo._elevLayer = CustomElevLayer( hfLayer, true );
+        model->_elevationData = TileModel::ElevationData( hfLayer, true );
     }
 
     // Now, if there are any color layers that did not get built, create them with an empty
     // image so the shaders have something to draw.
     osg::ref_ptr<osg::Image> emptyImage;
-    osgTerrain::Locator* locator = repo._elevLayer.getHFLayer()->getLocator();
+    osgTerrain::Locator* locator = model->_elevationData.getHFLayer()->getLocator();
 
     for( ImageLayerVector::const_iterator i = mapf.imageLayers().begin(); i != mapf.imageLayers().end(); ++i )
     {
@@ -309,24 +310,25 @@ TileBuilder::createTile(const TileKey&      key,
             if ( !emptyImage.valid() )
                 emptyImage = ImageUtils::createEmptyImage();
 
-            repo.add( CustomColorLayer(
-                i->get(), emptyImage.get(),
+            model->_colorData[i->get()->getUID()] = TileModel::ColorData(
+                i->get(), 
+                emptyImage.get(),
                 locator,
                 key.getLevelOfDetail(),
                 key,
-                true ) );
+                true );
         }
     }
 
     // Ready to create the actual tile.
     AssembleTile assemble;
-    assemble.init( key, mapInfo, _terrainOptions, repo, mapf.terrainMaskLayers() );
+    assemble.init( key, mapInfo, _terrainOptions, model.get(), mapf.terrainMaskLayers() );
     assemble.execute();
 
     if (!out_hasRealData)
     {
         // Check the results and see if we have any real data.
-        for( ColorLayersByUID::const_iterator i = repo._colorLayers.begin(); i != repo._colorLayers.end(); ++i )
+        for( TileModel::ColorDataByUID::const_iterator i = model->_colorData.begin(); i != model->_colorData.end(); ++i )
         {
             if ( !i->second.isFallbackData() ) 
             {
@@ -336,10 +338,10 @@ TileBuilder::createTile(const TileKey&      key,
         }
     }
 
-    if ( !out_hasRealData && !repo._elevLayer.isFallbackData() )
+    if ( !out_hasRealData && !model->_elevationData.isFallbackData() )
     {
         out_hasRealData = true;
     }
 
-    out_tile = assemble._tile;
+    out_tile = assemble._node;
 }

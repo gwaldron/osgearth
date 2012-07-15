@@ -16,12 +16,11 @@
 * You should have received a copy of the GNU Lesser General Public License
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
-#ifndef OSGEARTH_ENGINE_QUADTREE_TILE_BUILDER
-#define OSGEARTH_ENGINE_QUADTREE_TILE_BUILDER 1
+#ifndef OSGEARTH_ENGINE_QUADTREE_TILE_NODE_BUILDER
+#define OSGEARTH_ENGINE_QUADTREE_TILE_NODE_BUILDER 1
 
 #include "Common"
-#include "Tile"
-#include "TransparentLayer"
+#include "TileNode"
 #include "QuadTreeTerrainEngineOptions"
 #include <osgEarth/Map>
 #include <osgEarth/ThreadingUtils>
@@ -29,43 +28,29 @@
 
 using namespace osgEarth;
 
-class TileBuilder : public osg::Referenced
+/**
+ * For a given TileKey, this class builds a a corresponding TileNode from
+ * the map's data model.
+ *
+ * TODO: This should probably change to TileModelFactory or something since
+ * the creation of the TileNode itself is trivial and can be done outside of
+ * this class.
+ */
+class TileNodeBuilder : public osg::Referenced
 {
 public:
-    struct SourceRepo
-    {
-        SourceRepo() { }
-
-        void add( const CustomColorLayer& layer )
-        {
-            Threading::ScopedMutexLock lock(_m);
-            _colorLayers[ layer.getUID() ] = layer;
-        }
-
-        void set( const CustomElevLayer& elevLayer )
-        {
-            // only one...no lock required
-            _elevLayer = elevLayer;
-        }
-
-        ColorLayersByUID _colorLayers;
-        CustomElevLayer  _elevLayer;
-        Threading::Mutex _m;
-    };
-
-public:
-    TileBuilder(
+    TileNodeBuilder(
         const Map* map,
         const Drivers::QuadTreeTerrainEngineOptions& terrainOptions );
 
     /** dtor */
-    virtual ~TileBuilder() { }
+    virtual ~TileNodeBuilder() { }
 
-    void createTile(
-        const TileKey&      key,
-        osg::ref_ptr<Tile>& out_tile,
-        bool&               out_hasRealData,
-        bool&               out_hasLodBlendedLayers );
+    void createTileNode(
+        const TileKey&          key,
+        osg::ref_ptr<TileNode>& out_tile,
+        bool&                   out_hasRealData,
+        bool&                   out_hasLodBlendedLayers );
 
 private:
     const Map* _map;
@@ -73,4 +58,4 @@ private:
     const Drivers::QuadTreeTerrainEngineOptions& _terrainOptions;
 };
 
-#endif // OSGEARTH_ENGINE_QUADTREE_TILE_BUILDER
+#endif // OSGEARTH_ENGINE_QUADTREE_TILE_NODE_BUILDER

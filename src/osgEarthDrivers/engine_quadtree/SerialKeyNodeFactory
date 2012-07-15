@@ -22,7 +22,7 @@
 #include "Common"
 #include "KeyNodeFactory"
 #include "TerrainNode"
-#include "TileBuilder"
+#include "TileNodeBuilder"
 
 using namespace osgEarth;
 using namespace osgEarth::Drivers;
@@ -31,7 +31,8 @@ class SerialKeyNodeFactory : public KeyNodeFactory
 {
 public:
     SerialKeyNodeFactory(
-        TileBuilder*                        builder,
+        TileNodeBuilder*                    builder,
+        TileModelCompiler*                  compiler,
         const QuadTreeTerrainEngineOptions& options,
         const MapInfo&                      mapInfo,
         TerrainNode*                        terrain,
@@ -44,13 +45,14 @@ public:
     osg::Node* createNode( const TileKey& key );
 
 protected:
-    void addTile(Tile* tile, bool tileHasRealData, bool tileHasLodBlending, osg::Group* parent );
+    void addTile(TileNode* tile, bool tileHasRealData, bool tileHasLodBlending, osg::Group* parent );
 
-    osg::ref_ptr< TileBuilder> _builder;
+    osg::ref_ptr<TileNodeBuilder>       _builder;
+    osg::ref_ptr<TileModelCompiler>     _compiler;
     const QuadTreeTerrainEngineOptions& _options;
-    const MapInfo            _mapInfo;
-    osg::ref_ptr< TerrainNode > _terrain;
-    UID                      _engineUID;
+    const MapInfo                       _mapInfo;
+    osg::ref_ptr< TerrainNode >         _terrain;
+    UID                                 _engineUID;
 };
 
 #endif // OSGEARTH_ENGINE_QUADTREE_SERIAL_KEY_NODE_FACTORY

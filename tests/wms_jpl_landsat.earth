@@ -1,0 +1,18 @@
+<!-- 
+osgEarth Sample - WMS Driver
+Demonstrates the WMS Driver connecting to the JPL landsat tiled WMS using their TileService spec.
+-->
+
+<map version="2">
+	
+	<image name="Landsat" driver="wms">
+        <url>http://onearth.jpl.nasa.gov/wms.cgi</url>
+        <srs>EPSG:4326</srs>
+        <tile_size>512</tile_size>
+        <layers>global_mosaic</layers>
+        <styles>visual</styles>
+        <format>jpeg</format>
+    </image>  
+    
+    <options lighting="false"/>
+</map>

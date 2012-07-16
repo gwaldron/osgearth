@@ -60,11 +60,12 @@ namespace
         return s_cint(x*off)/off;
     }
 
-    void s_normalizeLongitude( double& x )
+    double s_normalizeLongitude( double x, double minLon = -180.0, double maxLon = 180.0 )
     {
-        //x = s_roundNplaces( x, 6 );
-        while( x < -180. ) x += 360.;
-        while( x >  180. ) x -= 360.;
+        double result = x;
+        while( result < minLon ) result += 360.;
+        while( result >  maxLon ) result -= 360.;
+        return result;
     }
 
     bool s_crossesAntimeridian( double x0, double x1 )
@@ -76,6 +77,30 @@ namespace
     double s_westToEastLongitudeDistance( double west, double east )
     {
         return west < east ? east-west : fmod(east,360.)-west;
+    }
+
+    /**
+     * Given a longitude value determine what longitude frame it is in.
+     * The base longitude frame is -180 to 180.  As values cross the antimeridian the frame is offset by 360 degrees.
+     */
+    void s_getLongitudeFrame( double longitude, double &minLongitude, double &maxLongitude)
+    {
+        minLongitude = -180.0;
+        maxLongitude = 180.0;
+
+        while ( longitude < minLongitude || longitude > maxLongitude)
+        {
+            if (longitude < minLongitude)
+            {
+                minLongitude -= 360.0;
+                maxLongitude -= 360.0;
+            }
+            else if (longitude > maxLongitude)
+            {
+                minLongitude += 360.0;
+                maxLongitude += 360.0;
+            }
+        }
     }
 }
 
@@ -528,12 +553,7 @@ _west   ( west ),
 _east   ( east ),
 _south  ( south ),
 _north  ( north )
-{
-    if ( isValid() && srs->isGeographic() )
-    {
-        s_normalizeLongitude( _west );
-        s_normalizeLongitude( _east );
-    }
+{    
     recomputeCircle();
 }
 
@@ -544,12 +564,7 @@ _west   ( bounds.xMin() ),
 _east   ( bounds.xMax() ),
 _south  ( bounds.yMin() ),
 _north  ( bounds.yMax() )
-{
-    if ( isValid() && srs->isGeographic() )
-    {
-        s_normalizeLongitude( _west );
-        s_normalizeLongitude( _east );
-    }
+{    
     recomputeCircle();
 }
 
@@ -600,7 +615,7 @@ GeoExtent::isValid() const
 
 double
 GeoExtent::width() const
-{
+{    
     return crossesAntimeridian() ?
         (180.0-_west) + (_east+180.0) :
         _east - _west;
@@ -619,8 +634,9 @@ GeoExtent::getCentroid( double& out_x, double& out_y ) const
 
     out_y = south() + 0.5*height();
     out_x = west() + 0.5*width();
+
     if ( _srs->isGeographic() )
-        s_normalizeLongitude( out_x );
+        out_x = normalizeLongitude( out_x );        
     return true;
 }
 
@@ -637,14 +653,16 @@ GeoExtent::splitAcrossAntimeridian( GeoExtent& out_west, GeoExtent& out_east ) c
 
     if ( crossesAntimeridian() )
     {
+        double minLon, maxLon;
+        s_getLongitudeFrame( west(), minLon, maxLon );
         out_west._srs   = _srs.get();
         out_west._west  = west();
         out_west._south = south();
-        out_west._east  = 180.0;
+        out_west._east  = maxLon;
         out_west._north = north();
 
         out_east._srs   = _srs.get();
-        out_east._west  = -180.0;
+        out_east._west  = minLon;
         out_east._south = south();
         out_east._east  = east();
         out_east._north = north();
@@ -720,7 +738,7 @@ GeoExtent::contains(double x, double y, const SpatialReference* srs) const
     {
         // normalize a geographic longitude to -180:+180
         if ( _srs->isGeographic() )
-            s_normalizeLongitude(x);
+            local_x = normalizeLongitude( local_x );            
 
         //Account for small rounding errors along the edges of the extent
         if (osg::equivalent(_west, local_x)) local_x = _west;
@@ -852,7 +870,7 @@ GeoExtent::expandToInclude( double x, double y )
     }
     else if ( getSRS() && getSRS()->isGeographic() )
     {
-        s_normalizeLongitude(x);
+        x = normalizeLongitude( x );
 
         // calculate possible expansion distances. The lesser of the two
         // will be the direction in which we expand.
@@ -883,8 +901,8 @@ GeoExtent::expandToInclude( double x, double y )
                 if ( dw < maxWidth )
                 {
                     // expand westward
-                    _west -= dw;
-                    s_normalizeLongitude( _west );
+                    _west -= dw;                    
+                    _west = normalizeLongitude( _west );
                 }
                 else
                 {
@@ -899,7 +917,7 @@ GeoExtent::expandToInclude( double x, double y )
                 {
                     // expand eastward
                     _east += de;
-                    s_normalizeLongitude(_east);
+                    _east = normalizeLongitude(_east);
                 }
                 else
                 {
@@ -985,8 +1003,8 @@ GeoExtent::intersectionSameSRS( const GeoExtent& rhs ) const
     }
 
     // normalize our new longitudes
-    s_normalizeLongitude( result._west );
-    s_normalizeLongitude( result._east );
+    result._west = normalizeLongitude( result._west );
+    result._east = normalizeLongitude( result._east );
 
     // latitude is easy, just clamp it
     result._south = std::max( south(), rhs.south() );
@@ -1040,6 +1058,28 @@ double
 GeoExtent::area() const
 {
     return isValid() ? width() * height() : 0.0;
+}
+
+void
+GeoExtent::normalize()
+{
+    if (isValid() && _srs->isGeographic())
+    {
+        _west = s_normalizeLongitude( _west );
+        _east = s_normalizeLongitude( _east );
+    }
+}
+
+double
+GeoExtent::normalizeLongitude( double longitude ) const
+{
+    if (isValid() && _srs->isGeographic())
+    {
+        double minLon, maxLon;
+        s_getLongitudeFrame( _west, minLon, maxLon );        
+        return s_normalizeLongitude( longitude, minLon, maxLon );
+    }
+    return longitude;
 }
 
 std::string

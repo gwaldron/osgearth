@@ -442,6 +442,17 @@ namespace osgEarth
          */
         double area() const;
 
+
+        /**
+         * Normalize the longitude values in this GeoExtent
+         */
+        void normalize();
+
+        /**
+         * Given a longitude value, normalize it so that it exists within the GeoExtents longitude frame.
+         */
+        double normalizeLongitude( double longitude ) const;
+
     public:
         static GeoExtent INVALID;
 

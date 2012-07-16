@@ -28,11 +28,13 @@
 void 
 KML_Geometry::build( const Config& parentConf, KMLContext& cx, Style& style)
 {
-    const ConfigSet& children = parentConf.children();
-    for( ConfigSet::const_iterator i = children.begin(); i != children.end(); ++i )
-    {
+    // For each <Placemark> tag
+	const ConfigSet& children = parentConf.children();
+	for( ConfigSet::const_iterator i = children.begin(); i != children.end(); ++i )
+    // for Name, Lookat, Model and etc in <Placemark> tag
+	{
         buildChild( *i, cx, style );
-    }
+	}
 }
 
 void

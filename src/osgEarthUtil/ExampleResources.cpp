@@ -452,7 +452,8 @@ MapNodeHelper::parse(MapNode*             mapNode,
 
     Container* mainContainer = canvas->addControl( new VBox() );
     mainContainer->setBackColor( Color(Color::Black, 0.8) );
-    mainContainer->setHorizAlign( Control::ALIGN_LEFT );
+	// If we have long list of objects in left side, we can't manage UI controls
+    mainContainer->setHorizAlign( Control::ALIGN_RIGHT );
     mainContainer->setVertAlign( Control::ALIGN_BOTTOM );
 
     // install the user control:

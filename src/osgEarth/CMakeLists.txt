@@ -38,6 +38,7 @@ SET(LIB_PUBLIC_HEADERS
     DrapeableNode
     ECEF
     ElevationLayer
+	ElevationLOD
     ElevationQuery
     Export
     FileUtils
@@ -140,6 +141,7 @@ ADD_LIBRARY(${LIB_NAME} SHARED
     DrapeableNode.cpp
     ECEF.cpp
     ElevationLayer.cpp
+	ElevationLOD.cpp
     ElevationQuery.cpp
     FileUtils.cpp
     GeoData.cpp

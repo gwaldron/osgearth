@@ -66,6 +66,10 @@ namespace osgEarth
 
         virtual void leave();
 
+        virtual void setColor( const osg::Vec4f& color ) =0;
+
+        virtual void setPickColor( const osg::Vec4f& color ) =0;
+
         void addPositionChangedCallback( PositionChangedCallback* callback );
 
         void removePositionChangedCallback( PositionChangedCallback* callback );
@@ -78,6 +82,7 @@ namespace osgEarth
     protected:
         virtual bool handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& aa);
         void setHover( bool hovered);
+        void firePositionChanged();
 
         osg::observer_ptr< MapNode > _mapNode;
         osgEarth::GeoPoint _position;

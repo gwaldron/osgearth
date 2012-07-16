@@ -32,6 +32,33 @@
 using namespace osgEarth::Features;
 using namespace osgEarth::Annotation;
 
+class FindNamedNode : public osg::NodeVisitor 
+// Derive a class from NodeVisitor to find a node with a 
+// specific name. 
+{ 
+	public: 
+		FindNamedNode( const std::string& name ): osg::NodeVisitor(osg::NodeVisitor::TRAVERSE_ALL_CHILDREN ), 
+			_name( name ) 
+		{
+
+		}
+		// This method gets called for every node in the scene 
+		//   graph. Check each node to see if its name matches 
+		//   our target. If so, save the node's address. 
+		virtual void apply( osg::Node& node ) 
+		{ 
+			if (node.getName() == _name) 
+				_node = &node;
+			// Keep traversing the rest of the scene graph.  
+			traverse( node ); 
+		}
+		osg::Node* getNode() { return _node.get(); }
+	protected: 
+		std::string _name; 
+		osg::ref_ptr<osg::Node> _node; 
+};
+
+
 void 
 KML_Placemark::build( const Config& conf, KMLContext& cx )
 {
@@ -90,12 +117,26 @@ KML_Placemark::build( const Config& conf, KMLContext& cx )
 		optional<osg::Vec3f> markerRotate = marker->orientation();
 		// Heading only
 		osg::Quat markerQuat(osg::DegreesToRadians(markerRotate->x()),osg::Vec3d(0.0, 0.0, 1.0));
-		// end Add
+		// end Add Scale, Rotate
 
 		if ( marker && marker->url().isSet() )
         {
             markerURI = URI( marker->url()->eval(), marker->url()->uriContext() );
-            ReadResult result = marker->isModel() == true? markerURI.readNode() : markerURI.readImage();
+			
+			// If we have a few <Placemark> tags in KML file with
+			// the same <href> tags value, we don't need to create new model to each placemark model.
+			// Instead, we'd like to re-use geometry.
+			std::string CurrentModelFile = marker->url()->eval();
+			FindNamedNode FN(CurrentModelFile);
+			//Find the node who's name is CurrentModelFile, like "car.osg"
+			cx._groupStack.top().get()->accept(FN);
+
+			ReadResult result;
+			if (FN.getNode()!=NULL)
+				// We found node with model from CurrentModelFile 
+				result = marker->isModel() == true? FN.getNode() : markerURI.readImage();
+			else
+				result = marker->isModel() == true? markerURI.readNode() : markerURI.readImage();
             markerImage = result.getImage();
             markerModel = result.getNode();
 
@@ -125,21 +166,21 @@ KML_Placemark::build( const Config& conf, KMLContext& cx )
 			//Add Scale, Rotate
 			lg->setScale( osg::Vec3f(markerScale,markerScale,markerScale) );
 			lg->setLocalRotation(markerQuat);
-// This code won't work, because marker was deleted.
-//             if ( marker )
-//             {
-//                 if ( marker->scale().isSet() )
-//                 {
-//                     float scale = marker->scale()->eval();
-//                     lg->setScale( osg::Vec3f(scale,scale,scale) );
-//                 }
-//                 if ( marker->orientation().isSet() )
-//                 {
-//                    // lg->setRotation( );
-//                 }
-//             }
-// 
-            // end Add
+			// This code won't work, because marker was deleted.
+			//             if ( marker )
+			//             {
+			//                 if ( marker->scale().isSet() )
+			//                 {
+			//                     float scale = marker->scale()->eval();
+			//                     lg->setScale( osg::Vec3f(scale,scale,scale) );
+			//                 }
+			//                 if ( marker->orientation().isSet() )
+			//                 {
+			//                    // lg->setRotation( );
+			//                 }
+			//             }
+			// 
+			// end Add
 			fNode = lg;
             //Feature* feature = new Feature(geometry._geom.get(), cx._srs.get(), style);
             //fNode = new FeatureNode( cx._mapNode, feature, false );

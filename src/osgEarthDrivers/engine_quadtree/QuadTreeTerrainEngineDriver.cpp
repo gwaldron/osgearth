@@ -28,6 +28,14 @@
 
 using namespace osgEarth::Drivers;
 
+/**
+ * osgEarth driver for the QuadTree terrain engine.
+ *
+ * TODO LIST:
+ * - integrate support for Quick Release of GL objects
+ * - integrate support for LOD Blending (access to parent state set)
+ * - consider TileNodeCompiler cacheing of TexCoord arrays and other tile-shareable data
+ */
 class QuadTreeTerrainEngineDriver : public osgDB::ReaderWriter
 {
 public:

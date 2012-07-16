@@ -30,6 +30,7 @@
 #include <list>
 #include <queue>
 #include <vector>
+#include <OpenThreads/Atomic>
 
 class TileFactory;
 
@@ -101,7 +102,10 @@ public:
 
     void releaseGLObjectsForTiles( osg::State* state );
 
-    void registerTile( TileNode* newTile );
+    /**
+     * Adds the tile node to the node registry so we can track its lifecycle.
+     */
+    void registerTileNode( TileNode* newTile );
 
     /** Gets a thread-safe copy of the entire tile list */
     void getTiles( TileVector& out_tiles );

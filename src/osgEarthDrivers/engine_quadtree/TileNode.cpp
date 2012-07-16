@@ -19,20 +19,9 @@
 #include "TileNode"
 #include "TerrainNode"
 
-#include <osgEarth/Registry>
-#include <osgEarth/Locators>
-#include <osgEarth/Map>
-#include <osgEarth/NodeUtils>
-
 #include <osg/ClusterCullingCallback>
 #include <osg/NodeCallback>
 #include <osg/NodeVisitor>
-#include <osg/Node>
-#include <osg/Texture2D>
-#include <osgGA/EventVisitor>
-
-#include <OpenThreads/ScopedLock>
-
 
 using namespace osgEarth;
 using namespace OpenThreads;
@@ -63,79 +52,25 @@ TileNode::setTileModel( TileModel* model )
 }
 
 
-void
-TileNode::compile( TileModelCompiler* compiler )
+bool
+TileNode::compile( TileModelCompiler* compiler, bool releaseModel )
 {
-    osg::Node* node = compiler->compile( _model.get() );
-    if ( node )
-    {
-        this->removeChildren( 0, this->getNumChildren() );
-        this->addChild( node );
-    }
-}
-
-
-osg::BoundingSphere
-TileNode::computeBound() const
-{
-    //Overriden computeBound that takes into account the vertical scale.
-    //OE_NOTICE << "TileNode::computeBound verticalScale = " << _verticalScale << std::endl;
-
-    osg::BoundingSphere bs;
-
     if ( !_model.valid() )
-        return bs;
+        return false;
 
-    //if (_elevationLayer.valid())
-    if ( _model->_elevationData.getHFLayer() )
-    {
-        osgTerrain::HeightFieldLayer* hflayer = _model->_elevationData.getHFLayer();
+    osg::Node* node = compiler->compile( _model.get() );
+    if ( !node )
+        return false;
 
-        if ( !hflayer->getLocator() )
-            return bs;
+    this->removeChildren( 0, this->getNumChildren() );
+    this->addChild( node );
 
-        //if (!_elevationLayer->getLocator()) return bs;
+    // release the memory associated with the tile model.
+    if ( releaseModel )
+        _model = 0L;
 
-        osg::BoundingBox bb;
-        unsigned int numColumns = hflayer->getNumColumns();
-        unsigned int numRows = hflayer->getNumRows();
-        for(unsigned int r=0;r<numRows;++r)
-        {
-            for(unsigned int c=0;c<numColumns;++c)
-            {
-                float value = 0.0f;
-                bool validValue = hflayer->getValidValue(c,r, value);
-                if (validValue) 
-                {
-                    //Multiply by the vertical scale.
-                    value *= _verticalScale;
-                    osg::Vec3d ndc, v;
-                    ndc.x() = ((double)c)/(double)(numColumns-1), 
-                        ndc.y() = ((double)r)/(double)(numRows-1);
-                    ndc.z() = value;
-
-                    if (hflayer->getLocator()->convertLocalToModel(ndc, v))
-                    {
-                        bb.expandBy(v);
-                    }
-                }
-            }
-        }
-        bs.expandBy(bb);
-
-    }
-
-    else
-    {
-        for(TileModel::ColorDataByUID::const_iterator i = _model->_colorData.begin(); i != _model->_colorData.end(); ++i )
-        {
-            bs.expandBy( i->second.computeBound() ); 
-        }
-    }
-
-    return bs;
+    return true;
 }
-
 
 void
 TileNode::traverse( osg::NodeVisitor& nv )

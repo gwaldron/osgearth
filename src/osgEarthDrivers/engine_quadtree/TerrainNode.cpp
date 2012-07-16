@@ -149,7 +149,7 @@ TerrainNode::getTiles( TileVector& out )
 }
 
 void
-TerrainNode::registerTile( TileNode* newTile )
+TerrainNode::registerTileNode( TileNode* newTile )
 {
     Threading::ScopedWriteLock exclusiveTileTableLock( _tilesMutex );
     _tiles[ newTile->getKey() ] = newTile;

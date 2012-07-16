@@ -60,6 +60,9 @@ SerialKeyNodeFactory::addTile(TileModel* model, bool tileHasRealData, bool tileH
     tileNode->setTileModel( model );
     tileNode->compile( _modelCompiler.get() );
 
+    // register this new node with the terrain.
+    //_terrain->registerTileNode( tileNode );
+
     // assemble a URI for this tile's child group:
     std::string uri = Stringify() << model->_tileKey.str() << "." << _engineUID << ".osgearth_engine_quadtree_tile";
 
@@ -181,10 +184,6 @@ SerialKeyNodeFactory::createNode( const TileKey& parentKey )
         {
             tileHasAnyRealData = true;
         }
-
-        //_builder->createTileNode( child, tiles[i], realData[i], lodBlending[i] );
-        //if ( tiles[i].valid() && realData[i] )
-        //    tileHasAnyRealData = true;
     }
 
     osg::Group* root = 0L;
@@ -192,7 +191,7 @@ SerialKeyNodeFactory::createNode( const TileKey& parentKey )
     // assemble the tile.
     if ( tileHasAnyRealData || _options.maxLOD().isSet() || parentKey.getLevelOfDetail() == 0 )
     {
-        // Now postprocess them and assemble into a tile group.
+        // Now create TileNodes for them and assemble into a tile group.
         root = new osg::Group();
 
         for( unsigned i = 0; i < 4; ++i )

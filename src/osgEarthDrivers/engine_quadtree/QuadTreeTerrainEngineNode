@@ -124,7 +124,7 @@ private:
     //osg::ref_ptr<TileModelCompiler> _tileModelCompiler;
 
     Threading::PerThread< osg::ref_ptr<KeyNodeFactory> > _keyNodeFactories;
-    KeyNodeFactory* getKeyNodeFactory();
+    KeyNodeFactory* getPerThreadKeyNodeFactory();
 
     osg::Timer _timer;
     unsigned   _tileCount;

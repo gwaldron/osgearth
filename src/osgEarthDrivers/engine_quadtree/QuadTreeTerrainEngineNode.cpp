@@ -228,18 +228,9 @@ QuadTreeTerrainEngineNode::refresh()
 
     _terrain = new TerrainNode(*_update_mapf, *_cull_mapf, _terrainOptions ); //*_terrainOptions.quickReleaseGLObjects() );
 
-//    installTerrainTechnique();
-   
     const MapInfo& mapInfo = _update_mapf->getMapInfo();
 
-    KeyNodeFactory* factory = getKeyNodeFactory();
-    //_keyNodeFactory = new SerialKeyNodeFactory( 
-    //    _tileNodeBuilder.get(),
-    //    _tileModelCompiler.get(),
-    //    _terrainOptions, 
-    //    mapInfo,
-    //    _terrain,
-    //    _uid );
+    KeyNodeFactory* factory = getPerThreadKeyNodeFactory();
 
     // Build the first level of the terrain.
     // Collect the tile keys comprising the root tiles of the terrain.
@@ -285,36 +276,10 @@ QuadTreeTerrainEngineNode::onMapInfoEstablished( const MapInfo& mapInfo )
 
     OE_INFO << LC << "Sample ratio = " << _terrainOptions.heightFieldSampleRatio().value() << std::endl;
 
-    // install the proper layer composition technique:
-    //installTerrainTechnique();
-
     // install the shader program, if applicable:
     installShaders();
-    
 
-    //// create a compiler for compiling tile models into geometry
-    //bool optimizeTriangleOrientation = 
-    //    getMap()->getMapOptions().elevationInterpolation() != INTERP_TRIANGULATE;
-
-    //_tileModelCompiler = new TileModelCompiler(
-    //    _update_mapf->terrainMaskLayers(),
-    //    _texCompositor.get(),
-    //    optimizeTriangleOrientation,
-    //    _terrainOptions );
-
-    //// initialize the tile builder
-    //_tileNodeBuilder = new TileNodeBuilder( getMap(), _terrainOptions );
-
-    //// initialize a key node factory.
-    //_keyNodeFactory = new SerialKeyNodeFactory( 
-    //    _tileNodeBuilder.get(), 
-    //    _tileModelCompiler.get(),
-    //    _terrainOptions, 
-    //    mapInfo, 
-    //    _terrain, 
-    //    _uid );
-
-    KeyNodeFactory* factory = getKeyNodeFactory();
+    KeyNodeFactory* factory = getPerThreadKeyNodeFactory();
 
     // Build the first level of the terrain.
     // Collect the tile keys comprising the root tiles of the terrain.
@@ -336,7 +301,7 @@ QuadTreeTerrainEngineNode::onMapInfoEstablished( const MapInfo& mapInfo )
 
 
 KeyNodeFactory*
-QuadTreeTerrainEngineNode::getKeyNodeFactory()
+QuadTreeTerrainEngineNode::getPerThreadKeyNodeFactory()
 {
     osg::ref_ptr<KeyNodeFactory>& knf = _keyNodeFactories.get(); // thread-safe get
     if ( !knf.valid() )
@@ -345,7 +310,7 @@ QuadTreeTerrainEngineNode::getKeyNodeFactory()
         bool optimizeTriangleOrientation = 
             getMap()->getMapOptions().elevationInterpolation() != INTERP_TRIANGULATE;
 
-        // initialize the tile builder
+        // initialize the model builder:
         TileModelFactory* factory = new TileModelFactory(
             getMap(), 
             _terrainOptions );
@@ -381,63 +346,14 @@ QuadTreeTerrainEngineNode::createNode( const TileKey& key )
 
     OE_DEBUG << LC << "Create node for \"" << key.str() << "\"" << std::endl;
 
-    osg::Node* result =  getKeyNodeFactory()->createNode( key );
+    osg::Node* result =  getPerThreadKeyNodeFactory()->createNode( key );
     return result;
 }
 
 osg::Node*
 QuadTreeTerrainEngineNode::createTile( const TileKey& key )
 {
-    return getKeyNodeFactory()->createNode( key );
-#if 0
-
-    osg::ref_ptr<TileNode> tile;
-    bool hasRealData, hasLodBlendedLayers;
-
-    // create a compiler for compiling tile models into geometry
-    bool optimizeTriangleOrientation = 
-        getMap()->getMapOptions().elevationInterpolation() != INTERP_TRIANGULATE;
-
-    // initialize the tile builder
-    TileNodeBuilder* builder = new TileNodeBuilder( 
-        getMap(), 
-        _terrainOptions );
-
-    _tileNodeBuilder->createTileNode(
-        key,
-        tile,
-        hasRealData,
-        hasLodBlendedLayers );
-
-    if ( !tile.valid() )
-        return 0L;
-
-    // A compiler specific to this thread:
-    TileModelCompiler* compiler = new TileModelCompiler(
-        _update_mapf->terrainMaskLayers(),
-        _texCompositor.get(),
-        optimizeTriangleOrientation,
-        _terrainOptions );
-
-    tile->compile( compiler.get() );
-
-    return tile.release();
-#endif
-
-#if 0
-    // code block required in order to properly manage the ref count of the transform
-    SinglePassTerrainTechnique* tech = new SinglePassTerrainTechnique( _texCompositor.get() );
-
-    // prepare the interpolation technique for generating triangles:
-    if ( getMap()->getMapOptions().elevationInterpolation() == INTERP_TRIANGULATE )
-    {
-        tech->setOptimizeTriangleOrientation( false ); 
-    }
-    tile->setTerrainTechnique( tech );
-    tile->init();
-    
-    return tech->takeTransform();
-#endif
+    return getPerThreadKeyNodeFactory()->createNode( key );
 }
 
 
@@ -713,31 +629,6 @@ void
 QuadTreeTerrainEngineNode::onVerticalScaleChanged()
 {
     _terrain->setVerticalScale(getVerticalScale());
-    UpdateElevationVisitor visitor( getKeyNodeFactory()->getCompiler() );
+    UpdateElevationVisitor visitor( getPerThreadKeyNodeFactory()->getCompiler() );
     this->accept(visitor);
 }
-
-#if 0
-void
-QuadTreeTerrainEngineNode::installTerrainTechnique()
-{
-    if ( _texCompositor->getTechnique() == TerrainOptions::COMPOSITING_MULTIPASS )
-    {
-        _terrain->setTechniquePrototype( new MultiPassTerrainTechnique( _texCompositor.get() ) );
-        OE_INFO << LC << "Compositing technique = MULTIPASS" << std::endl;
-    }
-
-    else 
-    {
-        SinglePassTerrainTechnique* tech = new SinglePassTerrainTechnique( _texCompositor.get() );
-        tech->setClearDataAfterCompile( true ); //!_isStreaming );
-
-        if ( getMap()->getMapOptions().elevationInterpolation() == INTERP_TRIANGULATE )
-        {
-            tech->setOptimizeTriangleOrientation( false );
-        }
-        
-        _terrain->setTechniquePrototype( tech );
-    }
-}
-#endif

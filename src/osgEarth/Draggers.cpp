@@ -84,13 +84,16 @@ void Dragger::setPosition( const GeoPoint& position, bool fireEvents)
         _position = position;
         updateTransform();
 
-        if (fireEvents)
-        {
-            for( PositionChangedCallbackList::iterator i = _callbacks.begin(); i != _callbacks.end(); i++ )
-            {
-                i->get()->onPositionChanged(this, _position);
-            }
-        }
+        if ( fireEvents )
+            firePositionChanged();
+    }
+}
+
+void Dragger::firePositionChanged()
+{
+    for( PositionChangedCallbackList::iterator i = _callbacks.begin(); i != _callbacks.end(); i++ )
+    {
+        i->get()->onPositionChanged(this, _position);
     }
 }
 
@@ -180,7 +183,11 @@ bool Dragger::handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& 
     }
     else if (ea.getEventType() == osgGA::GUIEventAdapter::RELEASE)
     {
-        _dragging = false;
+        if ( _dragging )
+        {
+            _dragging = false;
+            firePositionChanged();
+        }
         aa.requestRedraw();
     }
     else if (ea.getEventType() == osgGA::GUIEventAdapter::DRAG)

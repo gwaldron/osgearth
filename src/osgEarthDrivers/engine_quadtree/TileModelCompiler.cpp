@@ -1335,7 +1335,11 @@ TileModelCompiler::compile(const TileModel* model)
         setupMaskRecords( d );
 
     // allocate all the vertex, normal, and color arrays.
-    setupGeometryAttributes( d, *_options.heightFieldSampleRatio() );
+    double sampleRatio = *_options.heightFieldSampleRatio();
+    if ( sampleRatio <= 0.0f )
+        sampleRatio = osg::clampBetween( model->_tileKey.getLevelOfDetail()/20.0, 0.0625, 1.0 );
+
+    setupGeometryAttributes( d, sampleRatio );
 
     // set up the list of layers to render and their shared arrays.
     setupTextureAttributes( d, _texCompositor.get() );

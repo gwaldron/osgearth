@@ -114,10 +114,14 @@ TerrainOptions::getConfig() const
 {
     Config conf = DriverConfigOptions::getConfig();
     conf.key() = "terrain";
+    
+    if ( _heightFieldSampleRatio.isSetTo( 0.0f ) )
+        conf.update( "sample_ratio", "auto" );
+    else
+        conf.updateIfSet( "sample_ratio", _heightFieldSampleRatio );
 
     conf.updateObjIfSet( "loading_policy", _loadingPolicy );
     conf.updateIfSet( "vertical_scale", _verticalScale );
-    conf.updateIfSet( "sample_ratio", _heightFieldSampleRatio );
     conf.updateIfSet( "min_tile_range_factor", _minTileRangeFactor );
     conf.updateIfSet( "normalize_edges", _normalizeEdges );
     conf.updateIfSet( "combine_layers", _combineLayers );
@@ -156,9 +160,13 @@ TerrainOptions::getConfig() const
 void
 TerrainOptions::fromConfig( const Config& conf )
 {
+    if ( conf.value("sample_ratio") == "auto" )
+        _heightFieldSampleRatio = 0.0f;
+    else
+        conf.getIfSet( "sample_ratio", _heightFieldSampleRatio );
+
     conf.getObjIfSet( "loading_policy", _loadingPolicy );
     conf.getIfSet( "vertical_scale", _verticalScale );
-    conf.getIfSet( "sample_ratio", _heightFieldSampleRatio );
     conf.getIfSet( "min_tile_range_factor", _minTileRangeFactor );
     conf.getIfSet( "normalize_edges", _normalizeEdges );
     conf.getIfSet( "combine_layers", _combineLayers );

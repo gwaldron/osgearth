@@ -29,6 +29,7 @@
 #include "KeyNodeFactory"
 #include "TileModelFactory"
 #include "TileModelCompiler"
+#include "TileNodeRegistry"
 
 #include <osg/Geode>
 #include <osg/NodeCallback>
@@ -119,12 +120,12 @@ private:
     MapFrame* _update_mapf; // map frame for the main/update traversal thread
     MapFrame* _cull_mapf;   // map frame for the cull traversal thread
 
-    //osg::ref_ptr<KeyNodeFactory>    _keyNodeFactory;
-    //osg::ref_ptr<TileNodeBuilder>   _tileNodeBuilder;
-    //osg::ref_ptr<TileModelCompiler> _tileModelCompiler;
+    // node registry is shared across all threads.
+    osg::ref_ptr<TileNodeRegistry> _liveTiles;      // tiles in the scene graph.
+    osg::ref_ptr<TileNodeRegistry> _deadTiles;        // tiles that used to be in the scene graph.
 
-    Threading::PerThread< osg::ref_ptr<KeyNodeFactory> > _keyNodeFactories;
-    KeyNodeFactory* getPerThreadKeyNodeFactory();
+    Threading::PerThread< osg::ref_ptr<KeyNodeFactory> > _perThreadKeyNodeFactories;
+    KeyNodeFactory* getKeyNodeFactory();
 
     osg::Timer _timer;
     unsigned   _tileCount;

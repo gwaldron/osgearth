@@ -64,7 +64,7 @@ namespace
                     i->second.get()->releaseGLObjects( _state );
                 }
                 tiles.clear();
-                OE_INFO << "Quick-released " << size << " tiles" << std::endl;
+                OE_DEBUG << "Quick-released " << size << " tiles" << std::endl;
             }
         };
 

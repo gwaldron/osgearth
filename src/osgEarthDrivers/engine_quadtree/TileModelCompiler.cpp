@@ -1233,7 +1233,7 @@ namespace
         // stateSet->setDataVariance( osg::Object::DYNAMIC );
 
         //TODO: implement this to support blending.
-        osg::StateSet* parentStateSet = 0L; //getParentStateSet();
+        osg::StateSet* parentStateSet = d.model->_parentStateSet.get();
 
         for( TileModel::ColorDataByUID::const_iterator i = d.model->_colorData.begin(); i != d.model->_colorData.end(); ++i )
         {

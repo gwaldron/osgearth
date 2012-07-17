@@ -55,15 +55,10 @@ public: // osg::Group
      * implmementation the DatabasePager is the only entity adding a TileNode
      * to a parent.
      *
-     * DatabasePager only calls addChild, but we will implement all the Group
-     * methods in case this changes in the future.
+     * DatabasePager only calls addChild or removeChild, but we will implement the
+     * other methods (insert, replace, etc) later if necessary
      */
     bool addChild( osg::Node* child );
-#if 0
-    bool insertChild( unsigned index, osg::Node* child );
-    bool replaceChild( osg::Node* oldChild, osg::Node* newChild );
-    bool setChild( unsigned index, osg::Node* child );
-#endif
     bool removeChildren(unsigned pos, unsigned numChildrenToRemove );
 
 private:

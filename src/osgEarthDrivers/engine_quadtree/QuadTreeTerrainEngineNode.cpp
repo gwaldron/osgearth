@@ -128,7 +128,6 @@ QuadTreeTerrainEngineNode::QuadTreeTerrainEngineNode() :
 TerrainEngineNode(),
 _terrain         ( 0L ),
 _update_mapf     ( 0L ),
-_cull_mapf       ( 0L ),
 _tileCount       ( 0 ),
 _tileCreationTime( 0.0 )
 {
@@ -136,9 +135,6 @@ _tileCreationTime( 0.0 )
 
     // install an elevation callback so we can update elevation data
     _elevationCallback = new ElevationChangedCallback( this );
-
-    // a shared registry for tile nodes in the scene graph.
-    _liveTiles = new TileNodeRegistry("live");
 }
 
 QuadTreeTerrainEngineNode::~QuadTreeTerrainEngineNode()
@@ -148,11 +144,6 @@ QuadTreeTerrainEngineNode::~QuadTreeTerrainEngineNode()
     if ( _update_mapf )
     {
         delete _update_mapf;
-    }
-
-    if ( _cull_mapf )
-    {
-        delete _cull_mapf;
     }
 }
 
@@ -171,10 +162,12 @@ QuadTreeTerrainEngineNode::postInitialize( const Map* map, const TerrainOptions&
     // cull thread. Someday we can detect whether these are actually the same thread
     // (depends on the viewer's threading mode).
     _update_mapf = new MapFrame( map, Map::MASKED_TERRAIN_LAYERS, "quadtree-update" );
-    _cull_mapf   = new MapFrame( map, Map::TERRAIN_LAYERS,        "quadtree-cull" );
 
     // merge in the custom options:
     _terrainOptions.merge( options );
+
+    // a shared registry for tile nodes in the scene graph.
+    _liveTiles = new TileNodeRegistry("live");
 
     // set up a registry for quick release:
     if ( _terrainOptions.quickReleaseGLObjects() == true )
@@ -321,7 +314,8 @@ QuadTreeTerrainEngineNode::getKeyNodeFactory()
 
         // initialize the model builder:
         TileModelFactory* factory = new TileModelFactory(
-            getMap(), 
+            getMap(),
+            _liveTiles.get(),
             _terrainOptions );
 
         // A compiler specific to this thread:
@@ -518,25 +512,6 @@ QuadTreeTerrainEngineNode::validateTerrainOptions( TerrainOptions& options )
     //note: to validate plugin-specific features, we would create an QuadTreeTerrainEngineOptions
     // and do the validation on that. You would then re-integrate it by calling
     // options.mergeConfig( osgTerrainOptions ).
-}
-
-void
-QuadTreeTerrainEngineNode::traverse( osg::NodeVisitor& nv )
-{
-    if ( _cull_mapf ) // ensures initialize() has been called
-    {
-        if ( nv.getVisitorType() == osg::NodeVisitor::CULL_VISITOR )
-        {
-            // update the cull-thread map frame if necessary. (We don't need to sync the
-            // update_mapf becuase that happens in response to a map callback.)
-
-            // TODO: address the fact that this can happen from multiple threads.
-            // Really we need a _cull_mapf PER view. -gw
-            _cull_mapf->sync();
-        }
-    }
-
-    TerrainEngineNode::traverse( nv );
 }
 
 void

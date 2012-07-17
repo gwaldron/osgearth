@@ -36,14 +36,18 @@ _dead( dead )
 
 CustomPagedLOD::~CustomPagedLOD()
 {
-    for( unsigned i=0; i < getNumChildren(); ++i )
+    if ( _live.valid() || _dead.valid() )
     {
-        osg::ref_ptr<TileNode> node = dynamic_cast<TileNode*>( getChild(i) );
-        if ( node.valid() )
+        for( unsigned i=0; i < getNumChildren(); ++i )
         {
-            _live->remove( node.get() );
-            if ( _dead.valid() )
-                _dead->add( node.get() );
+            osg::ref_ptr<TileNode> node = dynamic_cast<TileNode*>( getChild(i) );
+            if ( node.valid() )
+            {
+                if ( _live.valid() )
+                    _live->remove( node.get() );
+                if ( _dead.valid() )
+                    _dead->add( node.get() );
+            }
         }
     }
 }
@@ -53,7 +57,7 @@ bool
 CustomPagedLOD::addChild( osg::Node* child )
 {
     bool ok = osg::PagedLOD::addChild( child );
-    if ( ok )
+    if ( ok && _live.valid() )
     {
         TileNodeGroup* tileGroup = dynamic_cast<TileNodeGroup*>( child );
         if ( tileGroup )
@@ -81,85 +85,26 @@ CustomPagedLOD::addChild( osg::Node* child )
     return ok;
 }
 
-#if 0
-bool
-CustomPagedLOD::insertChild( unsigned index, osg::Node* child )
-{
-    bool ok = osg::PagedLOD::insertChild( index, child );
-    if ( ok )
-    {
-        TileNode* tileNode = dynamic_cast<TileNode*>( child );
-        if ( tileNode )
-        {
-            _live->add( tileNode );
-        }
-    }
-    return ok;
-}
-
-bool
-CustomPagedLOD::replaceChild( osg::Node* oldChild, osg::Node* newChild )
-{
-    osg::ref_ptr<TileNode> oldTile = dynamic_cast<TileNode*>( oldChild );
-    if ( oldTile.valid() )
-    {
-        _live->remove( oldTile.get() );
-        _dead->add( oldTile.get() );
-    }
-
-    bool ok = osg::PagedLOD::replaceChild( oldChild, newChild );
-
-    if ( ok )
-    {
-        TileNode* tileNode = dynamic_cast<TileNode*>( newChild );
-        if ( tileNode )
-        {
-            _live->add( tileNode );
-        }
-    }
-    return ok;
-}
-
-bool
-CustomPagedLOD::setChild( unsigned index, osg::Node* child )
-{
-    osg::ref_ptr<TileNode> oldTile = dynamic_cast<TileNode*>( index < getNumChildren() ? getChild(index) : 0L );
-    if ( oldTile.valid() )
-    {
-        _live->remove( oldTile.get() );
-        _dead->add( oldTile.get() );
-    }
-
-    bool ok = osg::PagedLOD::setChild( index, child );
-    if ( ok )
-    {
-        TileNode* tileNode = dynamic_cast<TileNode*>( child );
-        if ( tileNode )
-        {
-            _live->add( tileNode );
-        }
-    }
-    return ok;
-}
-#endif
-
 
 bool 
 CustomPagedLOD::removeChildren(unsigned pos, unsigned numChildrenToRemove)
 {
-    for( unsigned i=pos; i<pos+numChildrenToRemove; ++i )
+    if ( _live.valid() || _dead.valid() )
     {
-        if ( i < getNumChildren() )
+        for( unsigned i=pos; i<pos+numChildrenToRemove; ++i )
         {
-            osg::ref_ptr<TileNode> tile = dynamic_cast<TileNode*>( getChild(i) );
-            if ( tile.valid() )
+            if ( i < getNumChildren() )
             {
-                _live->remove( tile.get() );
-                if ( _dead.valid() )
-                    _dead->add( tile.get() );
+                osg::ref_ptr<TileNode> tile = dynamic_cast<TileNode*>( getChild(i) );
+                if ( tile.valid() )
+                {
+                    if ( _live.valid() )
+                        _live->remove( tile.get() );
+                    if ( _dead.valid() )
+                        _dead->add( tile.get() );
+                }
             }
         }
     }
-
     return osg::PagedLOD::removeChildren( pos, numChildrenToRemove );
 }

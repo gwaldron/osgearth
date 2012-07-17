@@ -27,6 +27,7 @@
 #include <osgTerrain/Locator>
 #include <osgTerrain/Layer>
 #include <osg/Image>
+#include <osg/StateSet>
 #include <map>
 
 using namespace osgEarth;
@@ -137,11 +138,12 @@ public:
     TileModel() { }
     virtual ~TileModel() { }
 
-    TileKey                   _tileKey;
-    osg::ref_ptr<GeoLocator>  _tileLocator;
-    ColorDataByUID            _colorData;
-    ElevationData             _elevationData;
-    float                     _sampleRatio;
+    TileKey                     _tileKey;
+    osg::ref_ptr<GeoLocator>    _tileLocator;
+    ColorDataByUID              _colorData;
+    ElevationData               _elevationData;
+    float                       _sampleRatio;
+    osg::ref_ptr<osg::StateSet> _parentStateSet;
 
     // convenience funciton to pull out a layer by its UID.
     bool getColorData( UID layerUID, ColorData& out ) const {

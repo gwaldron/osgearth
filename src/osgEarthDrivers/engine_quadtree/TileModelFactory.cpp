@@ -190,52 +190,11 @@ namespace
 
 //------------------------------------------------------------------------
 
-#if 0
-namespace
-{
-    struct AssembleTile
-    {
-        void init(const TileKey& key, const MapInfo& mapInfo, const QuadTreeTerrainEngineOptions& opt, TileModel* model, const MaskLayerVector& masks=MaskLayerVector() )
-        {
-            _key     = key;
-            _mapInfo = &mapInfo;
-            _opt     = &opt;
-            _model   = model;
-            //_repo    = &repo;
-            //_node    = 0L;
-            _masks.clear();
-            std::copy( masks.begin(), masks.end(), std::back_inserter(_masks) );
-        }
-
-        void execute()
-        {
-            _node = new TileNode( _key, GeoLocator::createForKey(_key, *_mapInfo) );
-
-            // copy over the source data.
-            _node->setTileModel( _model );
-
-            //osg::BoundingSphere bs = _node->getBound();
-
-            // a skirt hides cracks when transitioning between LODs:
-            //osg::HeightField* hf = _model->_elevationData.getHFLayer()->getHeightField();
-            //hf->setSkirtHeight(bs.radius() * _opt->heightFieldSkirtRatio().get() );
-        }
-
-        TileKey                             _key;
-        const MapInfo*                      _mapInfo;
-        const QuadTreeTerrainEngineOptions* _opt;
-        //TileNodeBuilder::SourceRepo*            _repo;
-        TileModel*                          _model;
-        //TileNode*                           _node;
-        MaskLayerVector                     _masks;
-    };
-}
-#endif
-
-//------------------------------------------------------------------------
-
-TileModelFactory::TileModelFactory(const Map* map, const QuadTreeTerrainEngineOptions& terrainOptions ) :
+TileModelFactory::TileModelFactory(const Map*                          map, 
+                                   TileNodeRegistry*                   liveTiles,
+                                   const QuadTreeTerrainEngineOptions& terrainOptions ) :
 _map           ( map ),
+_liveTiles     ( liveTiles ),
 _terrainOptions( terrainOptions )
 {
     //nop
@@ -324,6 +283,16 @@ TileModelFactory::createTileModel(const TileKey&           key,
     //AssembleTile assemble;
     //assemble.init( key, mapInfo, _terrainOptions, model.get(), mapf.terrainMaskLayers() );
     //assemble.execute();
+
+    // if we're using LOD blending, find and add the parent's state set.
+    if ( out_hasLodBlendedLayers && key.getLevelOfDetail() > 0 && _liveTiles.valid() )
+    {
+        osg::ref_ptr<TileNode> parent;
+        if ( _liveTiles->get( key.createParentKey(), parent ) )
+        {
+            model->_parentStateSet = parent->getPublicStateSet();
+        }
+    }
 
     if (!out_hasRealData)
     {

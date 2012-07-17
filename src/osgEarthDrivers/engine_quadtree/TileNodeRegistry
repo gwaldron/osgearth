@@ -74,9 +74,9 @@ public:
 
 protected:
 
-    std::string               _name;
-    TileNodeMap               _tiles;
-    Threading::ReadWriteMutex _tilesMutex;
+    std::string                       _name;
+    TileNodeMap                       _tiles;
+    mutable Threading::ReadWriteMutex _tilesMutex;
 };
 
 #endif // OSGEARTH_ENGINE_QUADTREE_TILE_NODE_REGISTRY

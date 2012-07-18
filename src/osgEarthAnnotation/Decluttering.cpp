@@ -191,12 +191,13 @@ struct /*internal*/ DeclutterSort : public osgUtil::RenderBin::SortCallback
             return;
 
         // access the view-specific persistent data:
-        osg::View*   view  = bin->getStage()->getCamera()->getView();
-        PerViewInfo& local = _perView.get( bin->getStage()->getCamera()->getView() );   
+        osg::Camera* cam   = bin->getStage()->getCamera();
+        osg::View*   view  = cam->getView();
+        PerViewInfo& local = _perView.get( view );   
         
         // calculate the elapsed time since the previous pass; we'll use this for
         // the animations
-        double now = view->getFrameStamp()->getReferenceTime();
+        double now = view ? view->getFrameStamp()->getReferenceTime() : 0.0;
         float elapsedSeconds = float(now - local._lastTimeStamp);
         local._lastTimeStamp = now;
 
@@ -206,7 +207,7 @@ struct /*internal*/ DeclutterSort : public osgUtil::RenderBin::SortCallback
         local._used.clear();            // list of occupied bounding boxes in screen space
 
         // compute a window matrix so we can do window-space culling:
-        const osg::Viewport* vp = bin->getStage()->getCamera()->getViewport();
+        const osg::Viewport* vp = cam->getViewport();
         osg::Matrix windowMatrix = vp->computeWindowMatrix();
 
         // Track the parent nodes of drawables that are obscured (and culled). Drawables

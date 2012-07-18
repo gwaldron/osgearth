@@ -193,6 +193,14 @@ namespace osgEarth
                 T(0, Units());
         }
 
+        T operator * ( double rhs ) const { 
+            return T(_value * rhs, _units);
+        }
+
+        T operator / ( double rhs ) const { 
+            return T(_value / rhs, _units);
+        }
+
         bool operator == ( const T& rhs ) const {
             return _units.canConvert( rhs._units ) && rhs.as(_units) == _value;
         }
@@ -205,8 +213,16 @@ namespace osgEarth
             return _units.canConvert(rhs._units) && _value < rhs.as(_units);
         }
 
+        bool operator <= ( const T& rhs ) const {
+            return _units.canConvert(rhs._units) && _value <= rhs.as(_units);
+        }
+
         bool operator > ( const T& rhs ) const {
             return _units.canConvert(rhs._units) && _value > rhs.as(_units);
+        }
+
+        bool operator >= ( const T& rhs ) const {
+            return _units.canConvert(rhs._units) && _value >= rhs.as(_units);
         }
 
         double as( const Units& convertTo ) const {

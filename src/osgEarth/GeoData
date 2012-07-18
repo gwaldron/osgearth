@@ -32,6 +32,7 @@
 namespace osgEarth
 {
     class TerrainHeightProvider;
+    class GeoExtent;
 
     /**
      * A georeferenced 3D point.
@@ -213,6 +214,65 @@ namespace osgEarth
         AltitudeMode _altMode;
     };
 
+
+    /**
+     * A simple circular bounding area consiting of a GeoPoint and a linear radius.
+     */
+     class OSGEARTH_EXPORT GeoCircle
+     {
+     public:
+         /** Construct an INVALID GeoCircle */
+        GeoCircle();
+
+        /** Copy another GoeCircle */
+        GeoCircle(const GeoCircle& rhs);
+
+        /** Construct a new GeoCircle */
+        GeoCircle(
+             const GeoPoint& center,
+             double          radius );
+
+        virtual ~GeoCircle() { }
+
+        /** The center point of the circle */
+        const GeoPoint& getCenter() const { return _center; }
+        void setCenter( const GeoPoint& value ) { _center = value; }
+
+        /** Circle's radius, in linear map units (or meters for a geographic SRS) */
+        double getRadius() const { return _radius; }
+        void setRadius( double value ) { _radius = value; }
+
+        /** SRS of the center point */
+        const SpatialReference* getSRS() const { return _center.getSRS(); }
+
+        /** equality test */
+        bool operator == ( const GeoCircle& rhs ) const;
+
+        /** inequality test */
+        bool operator != ( const GeoCircle& rhs ) const { return !operator==(rhs); }
+
+        /** validity test */
+        bool isValid() const { return _center.isValid() && _radius > 0.0; }
+
+        /** transform the GeoCircle to another SRS */
+        GeoCircle transform( const SpatialReference* srs ) const;
+
+        /** transform the GeoCircle to another SRS */
+        bool transform( const SpatialReference* srs, GeoCircle& out_circle ) const;
+
+        /** does this GeoCircle intersect another? */
+        bool intersects( const GeoCircle& rhs ) const;
+
+     public:
+
+         static GeoCircle INVALID;
+
+     protected:
+         GeoPoint _center;
+         double   _radius;
+     };
+
+
     /**
      * An axis-aligned geospatial extent. A bounding box that is aligned with a
      * spatial reference's coordinate system.
@@ -310,7 +370,13 @@ namespace osgEarth
          *      are in the same SRS as this object.
          */
         bool contains(double x, double y, const SpatialReference* srs =0L) const;
+
         bool contains(const osg::Vec3d& xy, const SpatialReference* srs =0L) const { return contains(xy.x(),xy.y(),srs); }
+
+        /**
+         * Returns true if the point falls within this extent.
+         */
+        bool contains( const GeoPoint& rhs ) const;
 
         /**
          * Returns true if this extent fully contains another extent.
@@ -331,6 +397,11 @@ namespace osgEarth
          * Copy of the anonymous bounding box
          */
         Bounds bounds() const;
+
+        /**
+         * Gets a geo circle bounding this extent.
+         */
+        const GeoCircle& getBoundingGeoCircle() const { return _circle; }
 
         /**
          * Grow this extent to include the specified point (which is assumed to be
@@ -361,15 +432,26 @@ namespace osgEarth
          */
         void scale(double x_scale, double y_scale);
 
-		/**
-		 * Expands the extent by x and y.
-		 */
-		void expand( double x, double y );
+        /**
+         * Expands the extent by x and y.
+         */
+        void expand( double x, double y );
 
         /**
          *Gets the area of this GeoExtent
          */
         double area() const;
+
+
+        /**
+         * Normalize the longitude values in this GeoExtent
+         */
+        void normalize();
+
+        /**
+         * Given a longitude value, normalize it so that it exists within the GeoExtents longitude frame.
+         */
+        double normalizeLongitude( double longitude ) const;
 
     public:
         static GeoExtent INVALID;
@@ -377,6 +459,9 @@ namespace osgEarth
     private:
         osg::ref_ptr<const SpatialReference> _srs;
         double _west, _east, _south, _north;
+        GeoCircle _circle;
+
+        void recomputeCircle();
     };
 
     /**

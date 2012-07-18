@@ -36,10 +36,10 @@ namespace osgEarth
         // User function injection points.
         enum FunctionLocation
         {
-            LOCATION_VERTEX_PRE_TEXTURING   =0,
+            LOCATION_VERTEX_PRE_COLORING    =0,   LOCATION_VERTEX_PRE_TEXTURING =0, // alias
             LOCATION_VERTEX_PRE_LIGHTING    =1,
             LOCATION_VERTEX_POST_LIGHTING   =2,
-            LOCATION_FRAGMENT_PRE_TEXTURING =3,
+            LOCATION_FRAGMENT_PRE_COLORING  =3,   LOCATION_FRAGMENT_PRE_TEXTURING =3, // alias
             LOCATION_FRAGMENT_PRE_LIGHTING  =4,
             LOCATION_FRAGMENT_POST_LIGHTING =5
         };
@@ -153,6 +153,17 @@ namespace osgEarth
             ShaderComp::FunctionLocation loc,
             float                        priority =1.0f );
 
+        /**
+         * Installs default shaders for implementing basic coloring and lighting.
+         * The default shaders come from the ShaderFactory.
+         */
+        void installDefaultColoringAndLightingShaders( unsigned numTextures =0u );
+
+        /**
+         * Installs default shader for basic coloring/texturing.
+         */
+        void installDefaultColoringShaders( unsigned numTextures =0u );
+
     public: 
         /**
          * Constructs a new VP
@@ -202,6 +213,10 @@ namespace osgEarth
          */
         osg::Shader* setShader( 
             const std::string&                 shaderID, 
+            osg::Shader*                       shader,
+            osg::StateAttribute::OverrideValue ov         =osg::StateAttribute::ON );
+        
+        osg::Shader* setShader(
             osg::Shader*                       shader,
             osg::StateAttribute::OverrideValue ov         =osg::StateAttribute::ON );
 

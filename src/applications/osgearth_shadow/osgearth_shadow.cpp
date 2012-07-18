@@ -45,9 +45,13 @@
 #include <osgEarthUtil/ExampleResources>
 #include <osgEarthUtil/ShadowUtils>
 #include <osgEarth/NodeUtils>
+#include <osgEarth/MapNode>
+#include <osgEarth/TerrainEngineNode>
+#include <osgEarthDrivers/engine_osgterrain/OSGTerrainOptions>
 
 using namespace osgEarth;
 using namespace osgEarth::Util;
+using namespace osgEarth::Drivers;
 
 int main(int argc, char** argv)
 {
@@ -106,6 +110,7 @@ int main(int argc, char** argv)
     osg::ref_ptr<osg::Group> model = MapNodeHelper().load(arguments, &viewer);
 
     SkyNode* skyNode = findTopMostNodeOfType< SkyNode > ( model.get() );
+    MapNode* mapNode = findTopMostNodeOfType< MapNode > ( model.get() );
 
     if (!model.valid())
     {
@@ -120,6 +125,11 @@ int main(int argc, char** argv)
         OE_NOTICE << "Please run with options --sky to enable the SkyNode" << std::endl;
         exit(1);
     }
+
+    // Disable skirts (or any secondary geometry) from casting shadows
+    const TerrainOptions& terrainOptions = mapNode->getTerrainEngine()->getTerrainOptions();
+    shadowedScene->setCastsShadowTraversalMask( ~terrainOptions.secondaryTraversalMask().value() );
+
 
     ShadowUtils::setUpShadows(shadowedScene, model);
 

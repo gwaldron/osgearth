@@ -51,6 +51,7 @@ namespace osgEarth { namespace Drivers
         optional<float>& lodFallOff() { return _lodFallOff; }
         const optional<float>& lodFallOff() const { return _lodFallOff; }
 
+
     protected:
         virtual Config getConfig() const {
             Config conf = TerrainOptions::getConfig();

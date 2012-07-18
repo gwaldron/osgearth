@@ -434,7 +434,7 @@ TerrainEngineNode::traverse( osg::NodeVisitor& nv )
 //------------------------------------------------------------------------
 
 #undef LC
-#define LC "[TerrainEngineFactory] "
+#define LC "[TerrainEngineNodeFactory] "
 
 TerrainEngineNode*
 TerrainEngineNodeFactory::create( Map* map, const TerrainOptions& options )

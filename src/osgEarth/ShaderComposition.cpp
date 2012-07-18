@@ -32,6 +32,11 @@ using namespace osgEarth::ShaderComp;
 
 //------------------------------------------------------------------------
 
+#define VERTEX_SETUP_COLORING   "osgearth_vert_setupColoring"
+#define VERTEX_SETUP_LIGHTING   "osgearth_vert_setupLighting"
+#define FRAGMENT_APPLY_COLORING "osgearth_frag_applyColoring"
+#define FRAGMENT_APPLY_LIGHTING "osgearth_frag_applyLighting"
+
 namespace
 {
     /** A hack for OSG 2.8.x to get access to the state attribute vector. */
@@ -84,13 +89,7 @@ RenderingHints::useNumTextures(unsigned num)
 
 //------------------------------------------------------------------------
 
-// If graphics board has program linking problems set MERGE_SHADERS to 1
-// Merge shaders can be used to merge shaders strings into one shader. 
-#define MERGE_SHADERS 0
-#define NOTIFICATION_MESSAGES 0
-
-
-VirtualProgram::VirtualProgram( unsigned int mask ) : 
+VirtualProgram::VirtualProgram( unsigned mask ) : 
 _mask( mask ) 
 {
     // because we sometimes update/change the attribute's members from within the apply() method
@@ -131,6 +130,25 @@ VirtualProgram::setShader(const std::string&                 shaderID,
 }
 
 
+osg::Shader*
+VirtualProgram::setShader(osg::Shader*                       shader,
+                          osg::StateAttribute::OverrideValue ov)
+{
+    if ( !shader || shader->getType() == osg::Shader::UNDEFINED )
+        return NULL;
+
+    if ( shader->getName().empty() )
+    {
+        OE_WARN << LC << "setShader called but the shader name is not set" << std::endl;
+        return 0L;
+    }
+
+    _shaderMap[shader->getName()] = ShaderEntry(shader, ov);
+
+    return shader;
+}
+
+
 void
 VirtualProgram::setFunction(const std::string& functionName,
                             const std::string& shaderSource,
@@ -152,11 +170,6 @@ VirtualProgram::removeShader( const std::string& shaderID )
 {
     _shaderMap.erase( shaderID );
 }
-
-
-//static unsigned s_applies = 0;
-//static int      s_framenum = 0;
-
 
 /**
 * Adds a new shader entry to the accumulated shader map, respecting the
@@ -193,6 +206,29 @@ VirtualProgram::addToAccumulatedMap(ShaderMap&         accumShaderMap,
 }
 
 
+void
+VirtualProgram::installDefaultColoringAndLightingShaders( unsigned numTextures )
+{
+    ShaderFactory* sf = osgEarth::Registry::instance()->getShaderFactory();
+
+    this->setShader( sf->createDefaultColoringVertexShader(numTextures) );
+    this->setShader( sf->createDefaultLightingVertexShader() );
+
+    this->setShader( sf->createDefaultColoringFragmentShader(numTextures) );
+    this->setShader( sf->createDefaultLightingFragmentShader() );
+}
+
+
+void
+VirtualProgram::installDefaultColoringShaders( unsigned numTextures )
+{
+    ShaderFactory* sf = osgEarth::Registry::instance()->getShaderFactory();
+
+    this->setShader( sf->createDefaultColoringVertexShader(numTextures) );
+    this->setShader( sf->createDefaultColoringFragmentShader(numTextures) );
+}
+
+
 osg::Program*
 VirtualProgram::buildProgram( osg::State& state, ShaderMap& accumShaderMap )
 {
@@ -202,6 +238,7 @@ VirtualProgram::buildProgram( osg::State& state, ShaderMap& accumShaderMap )
     // No matching program in the cache; make it.
     ShaderFactory* sf = osgEarth::Registry::instance()->getShaderFactory();
 
+    // create the MAINs
     osg::Shader* old_vert_main = getShader( "osgearth_vert_main" );
     osg::ref_ptr<osg::Shader> vert_main = sf->createVertexShaderMain( _accumulatedFunctions );
     setShader( "osgearth_vert_main", vert_main.get() );
@@ -223,6 +260,7 @@ VirtualProgram::buildProgram( osg::State& state, ShaderMap& accumShaderMap )
     //OE_INFO << LC << "--------------- PROGRAM -----------------------\n" << std::endl;
 
     osg::Program* program = new osg::Program();
+    program->setName(getName());
     for( ShaderVector::iterator i = vec.begin(); i != vec.end(); ++i )
     {
         program->addShader( i->get() );
@@ -585,7 +623,11 @@ ShaderFactory::createDefaultColoringVertexShader( int numTexCoordSets ) const
 
     std::string str;
     str = buf.str();
-    return new osg::Shader( osg::Shader::VERTEX, str );
+
+    osg::Shader* shader = new osg::Shader(osg::Shader::VERTEX, str);
+    shader->setName( VERTEX_SETUP_COLORING ); //"osgearth_vert_setupColoring" );
+    return shader;
+    //return new osg::Shader( osg::Shader::VERTEX, str );
 }
 
 
@@ -624,7 +666,10 @@ ShaderFactory::createDefaultColoringFragmentShader( int numTexImageUnits ) const
 
     std::string str;
     str = buf.str();
-    return new osg::Shader( osg::Shader::FRAGMENT, str );
+
+    osg::Shader* shader = new osg::Shader( osg::Shader::FRAGMENT, str );
+    shader->setName( FRAGMENT_APPLY_COLORING );
+    return shader;
 }
 
 
@@ -663,7 +708,9 @@ ShaderFactory::createDefaultLightingVertexShader() const
         "    } \n"
         "} \n";
 
-    return new osg::Shader( osg::Shader::VERTEX, s_PerVertexLighting_VertexShaderSource );
+    osg::Shader* shader = new osg::Shader( osg::Shader::VERTEX, s_PerVertexLighting_VertexShaderSource );
+    shader->setName( VERTEX_SETUP_LIGHTING );
+    return shader;
 }
 
 
@@ -683,7 +730,9 @@ ShaderFactory::createDefaultLightingFragmentShader() const
         "    } \n"
         "} \n";
 
-    return new osg::Shader( osg::Shader::FRAGMENT, s_PerVertexLighting_FragmentShaderSource );
+    osg::Shader* shader = new osg::Shader( osg::Shader::FRAGMENT, s_PerVertexLighting_FragmentShaderSource );
+    shader->setName( FRAGMENT_APPLY_LIGHTING );
+    return shader;
 }
 
 

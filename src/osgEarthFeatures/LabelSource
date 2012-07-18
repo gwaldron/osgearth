@@ -60,7 +60,7 @@ namespace osgEarth { namespace Features
     /**
      * Plugin object that generates text label nodes.
      */
-    class OSGEARTHFEATURES_EXPORT LabelSource : public virtual Revisioned<osg::Object>
+    class OSGEARTHFEATURES_EXPORT LabelSource : public osg::Object, public Revisioned
     {
     public:        
         LabelSource( const LabelSourceOptions& options =LabelSourceOptions() )

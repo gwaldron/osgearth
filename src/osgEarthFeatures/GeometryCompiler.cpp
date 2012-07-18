@@ -51,7 +51,8 @@ ConfigOptions      ( conf ),
 _maxGranularity_deg( 1.0 ),
 _mergeGeometry     ( false ),
 _clustering        ( true ),
-_ignoreAlt         ( false )
+_ignoreAlt         ( false ),
+_useVertexBufferObjects( true )
 {
     fromConfig(_conf);
 }
@@ -66,6 +67,7 @@ GeometryCompilerOptions::fromConfig( const Config& conf )
     conf.getIfSet   ( "ignore_altitude",  _ignoreAlt );
     conf.getIfSet   ( "geo_interpolation", "great_circle", _geoInterp, GEOINTERP_GREAT_CIRCLE );
     conf.getIfSet   ( "geo_interpolation", "rhumb_line",   _geoInterp, GEOINTERP_RHUMB_LINE );
+    conf.getIfSet   ( "use_vbo", _useVertexBufferObjects);
 }
 
 Config
@@ -79,6 +81,7 @@ GeometryCompilerOptions::getConfig() const
     conf.addIfSet   ( "ignore_altitude",  _ignoreAlt );
     conf.addIfSet   ( "geo_interpolation", "great_circle", _geoInterp, GEOINTERP_GREAT_CIRCLE );
     conf.addIfSet   ( "geo_interpolation", "rhumb_line",   _geoInterp, GEOINTERP_RHUMB_LINE );
+    conf.addIfSet   ( "use_vbo", _useVertexBufferObjects);
     return conf;
 }
 
@@ -330,6 +333,8 @@ GeometryCompiler::compile(FeatureList&          workingSet,
             filter.mergeGeometry() = *_options.mergeGeometry();
         if ( _options.featureName().isSet() )
             filter.featureName() = *_options.featureName();
+        if ( _options.useVertexBufferObjects().isSet())
+            filter.useVertexBufferObjects() = *_options.useVertexBufferObjects();
 
         osg::Node* node = filter.push( workingSet, sharedCX );
         if ( node )

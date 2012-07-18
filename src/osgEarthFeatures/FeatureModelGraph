@@ -86,7 +86,7 @@ namespace osgEarth { namespace Features
 
         virtual ~FeatureModelGraph();
 
-        void setupPaging();
+        osg::Node* setupPaging();
 
         osg::Group* buildLevel( 
             const FeatureLevel& level, 

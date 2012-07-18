@@ -117,7 +117,8 @@ _terrain( terrain )
 
 void
 OSGTerrainEngineNode::ElevationChangedCallback::onVisibleChanged( TerrainLayer* layer )
-{
+{    
+    osgEarth::Registry::instance()->clearBlacklist();
     _terrain->refresh();
 }
 
@@ -259,7 +260,6 @@ OSGTerrainEngineNode::computeBound() const
 void
 OSGTerrainEngineNode::refresh()
 {
-    if (_terrain)
     {
         removeChild( _terrain );
     }    
@@ -857,16 +857,18 @@ OSGTerrainEngineNode::installShaders()
         //int numLayers = osg::maximum( 0, (int)_update_mapf->imageLayers().size() );
 
         VirtualProgram* vp = new VirtualProgram();
+        vp->setName( "engine_osgterrain:EngineNode" );
+        vp->installDefaultColoringAndLightingShaders(numLayers);
 
         // note. this stuff should probably happen automatically in VirtualProgram. gw
 
-        //vp->setShader( "osgearth_vert_main",     sf->createVertexShaderMain() ); // happens in VirtualProgram now
-        vp->setShader( "osgearth_vert_setupColoring", sf->createDefaultColoringVertexShader( numLayers ) );
-        vp->setShader( "osgearth_vert_setupLighting", sf->createDefaultLightingVertexShader() );
+        ////vp->setShader( "osgearth_vert_main",     sf->createVertexShaderMain() ); // happens in VirtualProgram now
+        //vp->setShader( "osgearth_vert_setupColoring", sf->createDefaultColoringVertexShader( numLayers ) );
+        //vp->setShader( "osgearth_vert_setupLighting", sf->createDefaultLightingVertexShader() );
 
-        //vp->setShader( "osgearth_frag_main",     sf->createFragmentShaderMain() ); // happend in VirtualProgram now
-        vp->setShader( "osgearth_frag_applyColoring", sf->createDefaultColoringFragmentShader( numLayers ) );
-        vp->setShader( "osgearth_frag_applyLighting", sf->createDefaultLightingFragmentShader() );
+        ////vp->setShader( "osgearth_frag_main",     sf->createFragmentShaderMain() ); // happend in VirtualProgram now
+        //vp->setShader( "osgearth_frag_applyColoring", sf->createDefaultColoringFragmentShader( numLayers ) );
+        //vp->setShader( "osgearth_frag_applyLighting", sf->createDefaultLightingFragmentShader() );
 
         getOrCreateStateSet()->setAttributeAndModes( vp, osg::StateAttribute::ON );
     }
@@ -886,13 +888,15 @@ OSGTerrainEngineNode::updateTextureCombining()
             // These components reside in the CustomTerrain's stateset, and override the components
             // installed in the VP on the engine-node's stateset in installShaders().
 
-            VirtualProgram* vp = new VirtualProgram();
+            VirtualProgram* vp = new VirtualProgram() ;
+            vp->setName( "engine_osgterrain:TerrainNode" );
+            vp->installDefaultColoringShaders(numImageLayers);
+
             terrainStateSet->setAttributeAndModes( vp, osg::StateAttribute::ON );
-            
 
             // first, update the default shader components based on the new layer count:
             const ShaderFactory* sf = Registry::instance()->getShaderFactory();
-            vp->setShader( "osgearth_vert_setupColoring",  sf->createDefaultColoringVertexShader( numImageLayers ) );
+            //vp->setShader( "osgearth_vert_setupColoring",  sf->createDefaultColoringVertexShader( numImageLayers ) );
             
             // second, install the per-layer color filter functions.
             for( int i=0; i<numImageLayers; ++i )

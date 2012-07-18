@@ -50,6 +50,7 @@ namespace osgEarth { namespace Annotation
         virtual ~FeatureNode() { }
 
         void setFeature( Feature* feature );
+        Feature* getFeature() { return _feature.get(); }
         const Feature* getFeature() const { return _feature.get(); }
 
         bool isDraped() const { return _draped; }

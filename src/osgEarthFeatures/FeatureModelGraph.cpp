@@ -34,6 +34,7 @@
 #include <osgDB/ReaderWriter>
 #include <osgDB/WriteFile>
 #include <osgUtil/Optimizer>
+#include <osgEarth/ElevationLOD>
 
 #define LC "[FeatureModelGraph] "
 
@@ -268,12 +269,8 @@ FeatureModelGraph::installShaderMains()
     ShaderFactory* fact = Registry::instance()->getShaderFactory();
 
     VirtualProgram* vp = new VirtualProgram();
-
-    vp->setShader( "osgearth_vert_setupColoring", fact->createDefaultColoringVertexShader(0) );
-    vp->setShader( "osgearth_vert_setupLighting", fact->createDefaultLightingVertexShader() );
-
-    vp->setShader( "osgearth_frag_applyColoring", fact->createDefaultColoringFragmentShader(0) );
-    vp->setShader( "osgearth_frag_applyLighting", fact->createDefaultLightingFragmentShader() );
+    vp->setName( "FeatureModelGraph" );
+    vp->installDefaultColoringAndLightingShaders();
 
     this->getOrCreateStateSet()->setAttributeAndModes( vp, osg::StateAttribute::ON );
 }
@@ -327,7 +324,7 @@ FeatureModelGraph::getBoundInWorldCoords(const GeoExtent& extent,
     return osg::BoundingSphered( center, (center-corner).length() );
 }
 
-void
+osg::Node*
 FeatureModelGraph::setupPaging()
 {
     // calculate the bounds of the full data extent:
@@ -358,8 +355,10 @@ FeatureModelGraph::setupPaging()
         osg::BoundingSphered bounds = getBoundInWorldCoords( ext, &mapf);
 
         float tileSizeFactor = userMaxRange / bounds.radius();
+        //The tilesize factor must be at least 1.0 to avoid culling the tile when you are within it's bounding sphere. 
+        tileSizeFactor = osg::maximum( tileSizeFactor, 1.0f);
         OE_DEBUG << LC << "Computed a tilesize factor of " << tileSizeFactor << " with max range setting of " <<  userMaxRange << std::endl;
-        _options.layout()->tileSizeFactor() = tileSizeFactor;
+        _options.layout()->tileSizeFactor() = tileSizeFactor * 1.5;
     }
    
 
@@ -378,7 +377,7 @@ FeatureModelGraph::setupPaging()
         *_options.layout()->priorityOffset(), 
         *_options.layout()->priorityScale() );
 
-    this->addChild( pagedNode );
+    return pagedNode;
 }
 
 
@@ -641,24 +640,27 @@ FeatureModelGraph::buildLevel( const FeatureLevel& level, const GeoExtent& exten
 
     if ( group->getNumChildren() > 0 )
     {
+        
         // account for a min-range here. Do not address the max-range here; that happens
-        // above when generating paged LOD nodes, etc.
+        // above when generating paged LOD nodes, etc.        
         float minRange = level.minRange();
+
+        /*
         if ( _options.minRange().isSet() ) 
             minRange = std::max(minRange, *_options.minRange());
+
         if ( _options.layout().isSet() && _options.layout()->minRange().isSet() )
             minRange = std::max(minRange, *_options.layout()->minRange());
+            */
 
         if ( minRange > 0.0f )
         {
-            // minRange can't be less than the tile geometry's radius
+            // minRange can't be less than the tile geometry's radius.
             minRange = std::max(minRange, group->getBound().radius());
-
-            //OE_INFO << LC << "minRange = " << minRange << std::endl;
             osg::LOD* lod = new osg::LOD();
             lod->addChild( group.get(), minRange, FLT_MAX );
             group = lod;
-        }
+        }        
 
         if ( _session->getMapInfo().isGeocentric() && _options.clusterCulling() == true )
         {
@@ -1045,36 +1047,45 @@ void
 FeatureModelGraph::redraw()
 {
     removeChildren( 0, getNumChildren() );
+
+    osg::Node* node = 0;
     // if there's a display schema in place, set up for quadtree paging.
     if ( _options.layout().isSet() || _useTiledSource )
     {
-        setupPaging();
+        node = setupPaging();
     }
     else
     {
         FeatureLevel defaultLevel( 0.0f, FLT_MAX );
         
         //Remove all current children
-        osg::Node* node = buildLevel( defaultLevel, GeoExtent::INVALID, 0 );
-        if ( node )
-        {
-            if ( _options.maxRange().isSet() )
-            {
-                osg::LOD* lod = dynamic_cast<osg::LOD*>(node);
-                if ( lod == NULL )
-                {
-                    osg::LOD* lod = new osg::LOD();
-                    lod->addChild( node, 0.0, *_options.maxRange() );
-                }
-                else if ( lod->getNumChildren() > 0 )
-                {
-                    lod->setRange(0, lod->getMinRange(0), *_options.maxRange());
-                }
-                node = lod;
-            }
-            addChild( node );
-        }
+        node = buildLevel( defaultLevel, GeoExtent::INVALID, 0 );
     }
+
+    float minRange = -FLT_MAX;
+    if ( _options.minRange().isSet() ) 
+        minRange = std::max(minRange, *_options.minRange());
+
+    if ( _options.layout().isSet() && _options.layout()->minRange().isSet() )
+        minRange = std::max(minRange, *_options.layout()->minRange());
+
+    float maxRange = FLT_MAX;
+    if ( _options.maxRange().isSet() ) 
+        maxRange = std::min(maxRange, *_options.maxRange());
+
+    if ( _options.layout().isSet() && _options.layout()->maxRange().isSet() )
+        maxRange = std::min(maxRange, *_options.layout()->maxRange());
+    
+    //If they've specified a min/max range, setup an LOD
+    if ( minRange != -FLT_MAX || maxRange != FLT_MAX )
+    {        
+        ElevationLOD *lod = new ElevationLOD(_session->getMapInfo().getSRS(), minRange, maxRange );
+        lod->addChild( node );
+        node = lod;        
+    }
+
+
+    addChild( node );
 
     _session->getFeatureSource()->sync( _revision );
     _dirty = false;

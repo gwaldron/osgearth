@@ -529,6 +529,7 @@ QuadTreeTerrainEngineNode::installShaders()
         int numLayers = osg::maximum( 1, (int)_update_mapf->imageLayers().size() );
 
         VirtualProgram* vp = new VirtualProgram();
+        vp->setName( "engine_quadtree:EngineNode" );
 
         // note. this stuff should probably happen automatically in VirtualProgram. gw
 
@@ -556,6 +557,8 @@ QuadTreeTerrainEngineNode::updateTextureCombining()
             // These components reside in the CustomTerrain's stateset, and override the components
             // installed in the VP on the engine-node's stateset in installShaders().
             VirtualProgram* vp = new VirtualProgram();
+            vp->setName( "engine_quadtree:TerrainNode" );
+
             terrainStateSet->setAttributeAndModes( vp, osg::StateAttribute::ON );
 
             // first, update the default shader components based on the new layer count:

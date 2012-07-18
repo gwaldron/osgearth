@@ -856,6 +856,7 @@ OSGTerrainEngineNode::installShaders()
         int numLayers = osg::maximum( 1, (int)_update_mapf->imageLayers().size() );
 
         VirtualProgram* vp = new VirtualProgram();
+        vp->setName( "engine_osgterrain:EngineNode" );
 
         // note. this stuff should probably happen automatically in VirtualProgram. gw
 
@@ -885,19 +886,10 @@ OSGTerrainEngineNode::updateTextureCombining()
             // These components reside in the CustomTerrain's stateset, and override the components
             // installed in the VP on the engine-node's stateset in installShaders().
 
-            VirtualProgram* vp = new VirtualProgram();
-            terrainStateSet->setAttributeAndModes( vp, osg::StateAttribute::ON );
+            VirtualProgram* vp = new VirtualProgram() ;
+            vp->setName( "engine_osgterrain:TerrainNode" );
 
-#if 0
-            VirtualProgram* vp = dynamic_cast<VirtualProgram*>( terrainStateSet->getAttribute(osg::StateAttribute::PROGRAM) );
-            if ( !vp )
-            {
-                // create and add it the first time around..
-                vp = new VirtualProgram();
-                terrainStateSet->setAttributeAndModes( vp, osg::StateAttribute::ON );
-            }
-#endif
-            
+            terrainStateSet->setAttributeAndModes( vp, osg::StateAttribute::ON );
 
             // first, update the default shader components based on the new layer count:
             const ShaderFactory* sf = Registry::instance()->getShaderFactory();

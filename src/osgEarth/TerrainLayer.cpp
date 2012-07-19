@@ -557,11 +557,13 @@ TerrainLayer::isKeyValid(const TileKey& key) const
 {
     if (!key.valid()) return false;
 
-    // Check to see if explicit levels of detail are set
-    if ( _runtimeOptions->minLevel().isSet() && (int)key.getLevelOfDetail() < _runtimeOptions->minLevel().value() )
+    // Check to see if an explicity max LOD is set. Do NOT compare against the minLevel,
+    // because we still need to create empty tiles until we get to the data. The ImageLayer
+    // will deal with this.
+    if ( _runtimeOptions->maxLevel().isSet() && key.getLOD() > _runtimeOptions->maxLevel().value() ) 
+    {
         return false;
-    if ( _runtimeOptions->maxLevel().isSet() && (int)key.getLevelOfDetail() > _runtimeOptions->maxLevel().value() ) 
-        return false;
+    }
 
     // Check to see if levels of detail based on resolution are set
     if ( getProfile() )

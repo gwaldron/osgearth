@@ -260,17 +260,16 @@ namespace osgEarth
         virtual void initTileSource();
 
     protected:
-        ImageLayerOptions _runtimeOptions;
-
+        ImageLayerOptions                        _runtimeOptions;
         osg::ref_ptr<TileSource::ImageOperation> _preCacheOp;
+        osg::ref_ptr<osg::Image>                 _emptyImage;
+        ImageLayerCallbackList                   _callbacks;
 
-        void initPreCacheOp();
-
-        ImageLayerCallbackList _callbacks;
         virtual void fireCallback( TerrainLayerCallbackMethodPtr method );
         virtual void fireCallback( ImageLayerCallbackMethodPtr method );
 
         void init();
+        void initPreCacheOp();
     };
 
     typedef std::vector< osg::ref_ptr<ImageLayer> > ImageLayerVector;

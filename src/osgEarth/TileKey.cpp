@@ -89,12 +89,6 @@ TileKey::getTileId() const
     return osgTerrain::TileID(_lod, _x, _y);
 }
 
-unsigned int
-TileKey::getLevelOfDetail() const
-{
-    return _lod;
-}
-
 void
 TileKey::getPixelExtents(unsigned int& xmin,
                          unsigned int& ymin,

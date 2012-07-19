@@ -793,9 +793,16 @@ GeoExtent::contains( const GeoExtent& rhs ) const
 }
 
 bool
-GeoExtent::intersects( const GeoExtent& rhs ) const
+GeoExtent::intersects( const GeoExtent& rhs, bool checkSRS ) const
 {
-    if ( !isValid() ) return false;
+    if ( !isValid() || !rhs.isValid() )
+        return false;
+
+    if ( checkSRS && !_srs->isHorizEquivalentTo(rhs.getSRS()) )
+    {
+        GeoExtent rhsExt = rhs.transform(getSRS());
+        return this->intersects( rhsExt );
+    }
 
     if ( rhs.crossesAntimeridian() )
     {

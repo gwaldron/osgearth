@@ -23,6 +23,7 @@
 #include "KeyNodeFactory"
 #include "TerrainNode"
 #include "TileModelFactory"
+#include "TileNodeRegistry"
 
 using namespace osgEarth;
 using namespace osgEarth::Drivers;
@@ -33,6 +34,8 @@ public:
     SerialKeyNodeFactory(
         TileModelFactory*                   modelFactory,
         TileModelCompiler*                  modelCompiler,
+        TileNodeRegistry*                   liveTiles,
+        TileNodeRegistry*                   deadTiles,
         const QuadTreeTerrainEngineOptions& options,
         const MapInfo&                      mapInfo,
         TerrainNode*                        terrain,
@@ -55,6 +58,8 @@ protected:
 
     osg::ref_ptr<TileModelFactory>      _modelFactory;
     osg::ref_ptr<TileModelCompiler>     _modelCompiler;
+    osg::ref_ptr<TileNodeRegistry>      _liveTiles;
+    osg::ref_ptr<TileNodeRegistry>      _deadTiles;
     const QuadTreeTerrainEngineOptions& _options;
     const MapInfo                       _mapInfo;
     osg::ref_ptr< TerrainNode >         _terrain;

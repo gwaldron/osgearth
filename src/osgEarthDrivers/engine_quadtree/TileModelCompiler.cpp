@@ -1222,14 +1222,18 @@ namespace
      * Builds a state set for the tile's Geodes that encodes the color layers as textures
      * according to the setup of the compistor.
      */
-    void createStateSet( Data& d, TextureCompositor* compositor )
+    osg::StateSet* createStateSet( Data& d, TextureCompositor* compositor )
     {
         const GeoExtent& tileExtent = d.geoLocator->getDataExtent();
 
         osg::StateSet* stateSet = new osg::StateSet();
 
+        // mark as DYNAMIC so we can access it from different threads.
+        // TODO: need thing??
+        // stateSet->setDataVariance( osg::Object::DYNAMIC );
+
         //TODO: implement this to support blending.
-        osg::StateSet* parentStateSet = 0L; //getParentStateSet();
+        osg::StateSet* parentStateSet = d.model->_parentStateSet.get();
 
         for( TileModel::ColorDataByUID::const_iterator i = d.model->_colorData.begin(); i != d.model->_colorData.end(); ++i )
         {
@@ -1258,11 +1262,7 @@ namespace
             }
         }
 
-        if ( d.surfaceGeode )
-            d.surfaceGeode->setStateSet( stateSet );
-
-        if ( d.skirtGeode )
-            d.skirtGeode->setStateSet( stateSet );
+        return stateSet;
     }
 
 }
@@ -1282,8 +1282,10 @@ _options               ( options )
 }
 
 
-osg::Node*
-TileModelCompiler::compile(const TileModel* model)
+bool
+TileModelCompiler::compile(const TileModel* model,
+                           osg::Node*&      out_node,
+                           osg::StateSet*&  out_stateSet)
 {
     // Working data for the build.
     Data d(model, _masks);
@@ -1359,7 +1361,10 @@ TileModelCompiler::compile(const TileModel* model)
     tessellateSurfaceGeometry( d, _optimizeTriOrientation );
 
     // create the StateSet that will active texture composition.
-    createStateSet( d, _texCompositor.get() );
+    osg::StateSet* stateSet = createStateSet( d, _texCompositor.get() );
+
+    if ( stateSet )
+        xform->setStateSet( stateSet );
 
 
     // lastly, optimize the results.
@@ -1389,5 +1394,7 @@ TileModelCompiler::compile(const TileModel* model)
         xform->accept(*builder);
     }
 
-    return xform;
+    out_node     = xform;
+    out_stateSet = stateSet;
+    return true;
 }

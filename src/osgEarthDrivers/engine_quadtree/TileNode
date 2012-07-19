@@ -23,15 +23,8 @@
 #include "TileModel"
 #include "TileModelCompiler"
 #include <osgEarth/Locators>
-#include <osgEarth/Profile>
-#include <osgEarth/TerrainOptions>
-#include <osgEarth/ThreadingUtils>
 #include <osg/Group>
-#include <list>
-#include <queue>
-#include <iterator>
-
-//class TerrainTechnique;
+#include <vector>
 
 using namespace osgEarth;
 
@@ -73,6 +66,11 @@ public:
      */
     GeoLocator* getLocator() const { return _locator.get(); }
 
+    /**
+     * The public state set associated with the compiled tile model.
+     */
+    osg::StateSet* getPublicStateSet() const { return _publicStateSet; }
+
 
 public: // OVERRIDES
 
@@ -84,13 +82,25 @@ protected:
 
     virtual ~TileNode();
 
+    bool                      _cullTraversed;
     TileKey                   _key;
     osg::ref_ptr<GeoLocator>  _locator;
     osg::ref_ptr<TileModel>   _model;
-
+    osg::StateSet*            _publicStateSet;
 };
 
-class TileNodeVector : public std::vector< osg::ref_ptr<TileNode> > { };
+
+typedef std::vector< osg::ref_ptr<TileNode> > TileNodeVector;
+
+
+/**
+ * Marker class. 
+ */
+class TileNodeGroup : public osg::Group
+{
+public:
+    TileNodeGroup() : osg::Group() { }
+};
 
 
 #endif // OSGEARTH_ENGINE_QUADTREE_TILE_NODE

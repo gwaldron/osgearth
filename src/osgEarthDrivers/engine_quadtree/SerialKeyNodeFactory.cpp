@@ -20,6 +20,8 @@
 #include "DynamicLODScaleCallback"
 #include "FileLocationCallback"
 #include "LODFactorCallback"
+#include "CustomPagedLOD"
+
 #include <osgEarth/Registry>
 #include <osgEarth/HeightFieldUtils>
 #include <osg/PagedLOD>
@@ -36,16 +38,20 @@ using namespace OpenThreads;
 
 SerialKeyNodeFactory::SerialKeyNodeFactory(TileModelFactory*        modelFactory,
                                            TileModelCompiler*       modelCompiler,
+                                           TileNodeRegistry*        liveTiles,
+                                           TileNodeRegistry*        deadTiles,
                                            const QuadTreeTerrainEngineOptions& options,
                                            const MapInfo&           mapInfo,
                                            TerrainNode*             terrain,
                                            UID                      engineUID ) :
-_modelFactory ( modelFactory ),
-_modelCompiler( modelCompiler ),
-_options      ( options ),
-_mapInfo      ( mapInfo ),
-_terrain      ( terrain ),
-_engineUID    ( engineUID )
+_modelFactory    ( modelFactory ),
+_modelCompiler   ( modelCompiler ),
+_liveTiles       ( liveTiles ),
+_deadTiles       ( deadTiles ),
+_options         ( options ),
+_mapInfo         ( mapInfo ),
+_terrain         ( terrain ),
+_engineUID       ( engineUID )
 {
     // NOP
 }
@@ -59,9 +65,6 @@ SerialKeyNodeFactory::addTile(TileModel* model, bool tileHasRealData, bool tileH
     // install the tile model and compile it:
     tileNode->setTileModel( model );
     tileNode->compile( _modelCompiler.get() );
-
-    // register this new node with the terrain.
-    //_terrain->registerTileNode( tileNode );
 
     // assemble a URI for this tile's child group:
     std::string uri = Stringify() << model->_tileKey.str() << "." << _engineUID << ".osgearth_engine_quadtree_tile";
@@ -97,11 +100,11 @@ SerialKeyNodeFactory::addTile(TileModel* model, bool tileHasRealData, bool tileH
         lowerLeft.toWorld( ll );
         upperRight.toWorld( ur );
         double radius = (ur - ll).length() / 2.0;
-        double minRange = radius * _options.minTileRangeFactor().value();        
+        double minRange = radius * _options.minTileRangeFactor().value();
 #endif
 
         // create a PLOD so we can keep subdividing:
-        osg::PagedLOD* plod = new osg::PagedLOD();
+        osg::PagedLOD* plod = new CustomPagedLOD( _liveTiles.get(), _deadTiles.get() );
         plod->setCenter( bs.center() );
         plod->addChild( tileNode, minRange, maxRange );
 
@@ -145,7 +148,7 @@ SerialKeyNodeFactory::addTile(TileModel* model, bool tileHasRealData, bool tileH
         result->addCullCallback( HeightFieldUtils::createClusterCullingCallback(
             hf,
             tileNode->getLocator()->getEllipsoidModel(),
-            _terrain->getVerticalScale() ) );
+            *_options.verticalScale() ) );
     }
 
     parent->addChild( result );
@@ -160,7 +163,10 @@ SerialKeyNodeFactory::createRootNode( const TileKey& key )
 
     _modelFactory->createTileModel( key, model, real, lodBlending );
 
-    osg::Group* root = new osg::Group();
+    // yes, must put the single tile under a tile node group so that it
+    // gets registered in the tile node registry
+    osg::Group* root = new TileNodeGroup();
+
     addTile( model.get(), real, lodBlending, root );
     
     return root;
@@ -192,7 +198,7 @@ SerialKeyNodeFactory::createNode( const TileKey& parentKey )
     if ( tileHasAnyRealData || _options.maxLOD().isSet() || parentKey.getLevelOfDetail() == 0 )
     {
         // Now create TileNodes for them and assemble into a tile group.
-        root = new osg::Group();
+        root = new TileNodeGroup();
 
         for( unsigned i = 0; i < 4; ++i )
         {

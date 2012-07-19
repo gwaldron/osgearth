@@ -2,6 +2,7 @@
 SET(TARGET_COMMON_LIBRARIES ${TARGET_COMMON_LIBRARIES} osgEarthSymbology)
 
 SET(TARGET_SRC
+    CustomPagedLOD.cpp
     KeyNodeFactory.cpp
     LODFactorCallback.cpp
     QuadTreeTerrainEngineNode.cpp
@@ -10,22 +11,26 @@ SET(TARGET_SRC
     TerrainNode.cpp
     TileModelCompiler.cpp
     TileNode.cpp
+    TileNodeRegistry.cpp
     TileModelFactory.cpp
 )
 
 SET(TARGET_H
     Common
+    CustomPagedLOD
     DynamicLODScaleCallback
     FileLocationCallback
     KeyNodeFactory
     LODFactorCallback
     QuadTreeTerrainEngineNode
     QuadTreeTerrainEngineOptions
+    QuickReleaseGLObjects
     SerialKeyNodeFactory
     TerrainNode
     TileModel
     TileModelCompiler
     TileNode
+    TileNodeRegistry
     TileModelFactory
 )
 

@@ -128,7 +128,6 @@ QuadTreeTerrainEngineNode::QuadTreeTerrainEngineNode() :
 TerrainEngineNode(),
 _terrain         ( 0L ),
 _update_mapf     ( 0L ),
-_cull_mapf       ( 0L ),
 _tileCount       ( 0 ),
 _tileCreationTime( 0.0 )
 {
@@ -145,11 +144,6 @@ QuadTreeTerrainEngineNode::~QuadTreeTerrainEngineNode()
     if ( _update_mapf )
     {
         delete _update_mapf;
-    }
-
-    if ( _cull_mapf )
-    {
-        delete _cull_mapf;
     }
 }
 
@@ -168,10 +162,18 @@ QuadTreeTerrainEngineNode::postInitialize( const Map* map, const TerrainOptions&
     // cull thread. Someday we can detect whether these are actually the same thread
     // (depends on the viewer's threading mode).
     _update_mapf = new MapFrame( map, Map::MASKED_TERRAIN_LAYERS, "quadtree-update" );
-    _cull_mapf   = new MapFrame( map, Map::TERRAIN_LAYERS,        "quadtree-cull" );
 
     // merge in the custom options:
     _terrainOptions.merge( options );
+
+    // a shared registry for tile nodes in the scene graph.
+    _liveTiles = new TileNodeRegistry("live");
+
+    // set up a registry for quick release:
+    if ( _terrainOptions.quickReleaseGLObjects() == true )
+    {
+        _deadTiles = new TileNodeRegistry("dead");
+    }
 
     // handle an already-established map profile:
     if ( _update_mapf->getProfile() )
@@ -226,11 +228,11 @@ QuadTreeTerrainEngineNode::refresh()
 
     this->removeChild( _terrain );
 
-    _terrain = new TerrainNode(*_update_mapf, *_cull_mapf, _terrainOptions ); //*_terrainOptions.quickReleaseGLObjects() );
+    _terrain = new TerrainNode( _deadTiles.get() );
 
     const MapInfo& mapInfo = _update_mapf->getMapInfo();
 
-    KeyNodeFactory* factory = getPerThreadKeyNodeFactory();
+    KeyNodeFactory* factory = getKeyNodeFactory();
 
     // Build the first level of the terrain.
     // Collect the tile keys comprising the root tiles of the terrain.
@@ -261,13 +263,13 @@ void
 QuadTreeTerrainEngineNode::onMapInfoEstablished( const MapInfo& mapInfo )
 {
     // create the root terrai node.
-    _terrain = new TerrainNode( *_update_mapf, *_cull_mapf, _terrainOptions );
+    _terrain = new TerrainNode( _deadTiles.get() );
 
     this->addChild( _terrain );
 
-    // set the initial properties from the options structure:
-    _terrain->setVerticalScale( _terrainOptions.verticalScale().value() );
-    _terrain->setSampleRatio  ( _terrainOptions.heightFieldSampleRatio().value() );
+    //// set the initial properties from the options structure:
+    //_terrain->setVerticalScale( _terrainOptions.verticalScale().value() );
+    //_terrain->setSampleRatio  ( _terrainOptions.heightFieldSampleRatio().value() );
 
     if (_terrainOptions.enableBlending().value())
     {
@@ -279,7 +281,7 @@ QuadTreeTerrainEngineNode::onMapInfoEstablished( const MapInfo& mapInfo )
     // install the shader program, if applicable:
     installShaders();
 
-    KeyNodeFactory* factory = getPerThreadKeyNodeFactory();
+    KeyNodeFactory* factory = getKeyNodeFactory();
 
     // Build the first level of the terrain.
     // Collect the tile keys comprising the root tiles of the terrain.
@@ -301,9 +303,9 @@ QuadTreeTerrainEngineNode::onMapInfoEstablished( const MapInfo& mapInfo )
 
 
 KeyNodeFactory*
-QuadTreeTerrainEngineNode::getPerThreadKeyNodeFactory()
+QuadTreeTerrainEngineNode::getKeyNodeFactory()
 {
-    osg::ref_ptr<KeyNodeFactory>& knf = _keyNodeFactories.get(); // thread-safe get
+    osg::ref_ptr<KeyNodeFactory>& knf = _perThreadKeyNodeFactories.get(); // thread-safe get
     if ( !knf.valid() )
     {
         // create a compiler for compiling tile models into geometry
@@ -312,7 +314,8 @@ QuadTreeTerrainEngineNode::getPerThreadKeyNodeFactory()
 
         // initialize the model builder:
         TileModelFactory* factory = new TileModelFactory(
-            getMap(), 
+            getMap(),
+            _liveTiles.get(),
             _terrainOptions );
 
         // A compiler specific to this thread:
@@ -326,6 +329,8 @@ QuadTreeTerrainEngineNode::getPerThreadKeyNodeFactory()
         knf = new SerialKeyNodeFactory( 
             factory,
             compiler,
+            _liveTiles.get(),
+            _deadTiles.get(),
             _terrainOptions, 
             MapInfo( getMap() ),
             _terrain, 
@@ -346,14 +351,14 @@ QuadTreeTerrainEngineNode::createNode( const TileKey& key )
 
     OE_DEBUG << LC << "Create node for \"" << key.str() << "\"" << std::endl;
 
-    osg::Node* result =  getPerThreadKeyNodeFactory()->createNode( key );
+    osg::Node* result =  getKeyNodeFactory()->createNode( key );
     return result;
 }
 
 osg::Node*
 QuadTreeTerrainEngineNode::createTile( const TileKey& key )
 {
-    return getPerThreadKeyNodeFactory()->createNode( key );
+    return getKeyNodeFactory()->createNode( key );
 }
 
 
@@ -420,6 +425,7 @@ QuadTreeTerrainEngineNode::removeImageLayer( ImageLayer* layerRemoved )
 void
 QuadTreeTerrainEngineNode::moveImageLayer( unsigned int oldIndex, unsigned int newIndex )
 {
+#if 0
     // take a thread-safe copy of the tile table
     TileNodeVector tiles;
     _terrain->getTiles( tiles );
@@ -429,7 +435,8 @@ QuadTreeTerrainEngineNode::moveImageLayer( unsigned int oldIndex, unsigned int n
         TileNode* tile = itr->get();
         //tile->applyImmediateTileUpdate( TileUpdate::MOVE_IMAGE_LAYER );
         OE_WARN << LC << "moveImageLayer under review" << std::endl;
-    }     
+    }
+#endif
 
     updateTextureCombining();
 }
@@ -505,25 +512,6 @@ QuadTreeTerrainEngineNode::validateTerrainOptions( TerrainOptions& options )
     //note: to validate plugin-specific features, we would create an QuadTreeTerrainEngineOptions
     // and do the validation on that. You would then re-integrate it by calling
     // options.mergeConfig( osgTerrainOptions ).
-}
-
-void
-QuadTreeTerrainEngineNode::traverse( osg::NodeVisitor& nv )
-{
-    if ( _cull_mapf ) // ensures initialize() has been called
-    {
-        if ( nv.getVisitorType() == osg::NodeVisitor::CULL_VISITOR )
-        {
-            // update the cull-thread map frame if necessary. (We don't need to sync the
-            // update_mapf becuase that happens in response to a map callback.)
-
-            // TODO: address the fact that this can happen from multiple threads.
-            // Really we need a _cull_mapf PER view. -gw
-            _cull_mapf->sync();
-        }
-    }
-
-    TerrainEngineNode::traverse( nv );
 }
 
 void
@@ -628,7 +616,8 @@ namespace
 void
 QuadTreeTerrainEngineNode::onVerticalScaleChanged()
 {
-    _terrain->setVerticalScale(getVerticalScale());
-    UpdateElevationVisitor visitor( getPerThreadKeyNodeFactory()->getCompiler() );
+//    _terrain->setVerticalScale(getVerticalScale());
+    _terrainOptions.verticalScale() = getVerticalScale();
+    UpdateElevationVisitor visitor( getKeyNodeFactory()->getCompiler() );
     this->accept(visitor);
 }

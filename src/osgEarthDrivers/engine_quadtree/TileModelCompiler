@@ -27,7 +27,8 @@
 #include <osgEarth/TextureCompositor>
 #include <osgEarth/ThreadingUtils>
 
-#include <osg/Group>
+#include <osg/Node>
+#include <osg/StateSet>
 
 using namespace osgEarth;
 using namespace osgEarth::Drivers;
@@ -53,7 +54,10 @@ public:
      * Compiles a tile model into an OSG scene graph. The scene graph will
      * include a MatrixTransform to localize the tile data.
      */
-    osg::Node* compile( const TileModel* model );
+    bool compile(
+        const TileModel* model,
+        osg::Node*&      out_node,
+        osg::StateSet*&  out_stateSet );
 
 protected:
     const MaskLayerVector&              _masks;

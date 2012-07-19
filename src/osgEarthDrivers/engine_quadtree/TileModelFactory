@@ -21,6 +21,7 @@
 
 #include "Common"
 #include "TileNode"
+#include "TileNodeRegistry"
 #include "QuadTreeTerrainEngineOptions"
 #include <osgEarth/Map>
 #include <osgEarth/ThreadingUtils>
@@ -40,7 +41,8 @@ class TileModelFactory : public osg::Referenced
 {
 public:
     TileModelFactory(
-        const Map* map,
+        const Map*                                   map,
+        TileNodeRegistry*                            liveTiles,
         const Drivers::QuadTreeTerrainEngineOptions& terrainOptions );
 
     /** dtor */
@@ -53,8 +55,8 @@ public:
         bool&                    out_hasLodBlendedLayers );
 
 private:
-    const Map* _map;
-
+    const Map*                                   _map;
+    osg::ref_ptr<TileNodeRegistry>               _liveTiles;
     const Drivers::QuadTreeTerrainEngineOptions& _terrainOptions;
 };
 

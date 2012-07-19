@@ -33,7 +33,8 @@ using namespace OpenThreads;
 
 TileNode::TileNode( const TileKey& key, GeoLocator* keyLocator ) :
 _key              ( key ),
-_locator          ( keyLocator )
+_locator          ( keyLocator ),
+_publicStateSet   ( 0L )
 {
     this->setName( key.str() );
 }
@@ -49,6 +50,7 @@ void
 TileNode::setTileModel( TileModel* model )
 {
     _model = model;
+    _publicStateSet = 0L;
 }
 
 
@@ -58,8 +60,10 @@ TileNode::compile( TileModelCompiler* compiler, bool releaseModel )
     if ( !_model.valid() )
         return false;
 
-    osg::Node* node = compiler->compile( _model.get() );
-    if ( !node )
+    osg::Node* node = 0L;
+    _publicStateSet = 0L;
+
+    if ( !compiler->compile( _model.get(), node, _publicStateSet ) )
         return false;
 
     this->removeChildren( 0, this->getNumChildren() );

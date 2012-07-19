@@ -20,17 +20,7 @@
 #define OSGEARTH_ENGINE_QUADTREE_TERRAIN_NODE 1
 
 #include "Common"
-#include "TileNode"
-#include "QuadTreeTerrainEngineOptions"
-#include <osgEarth/Locators>
-#include <osgEarth/Profile>
-#include <osgEarth/TerrainOptions>
-#include <osgEarth/Map>
-#include <osgEarth/ThreadingUtils>
-#include <list>
-#include <queue>
-#include <vector>
-#include <OpenThreads/Atomic>
+#include "TileNodeRegistry"
 
 class TileFactory;
 
@@ -38,112 +28,29 @@ using namespace osgEarth;
 using namespace osgEarth::Drivers;
 
 /**
+ * Parent node for the TileNode quadtree hierarchy.
  */
-class TerrainNode : public osg::Group //osgTerrain::Terrain
+class TerrainNode : public osg::Group
 {
 public:
-    TerrainNode(
-        const MapFrame&                     update_mapf,
-        const MapFrame&                     cull_mapf,
-        const QuadTreeTerrainEngineOptions& options );
 
-    virtual const char* libraryName() const { return "osgEarth"; }
+    /**
+     * Constructs a new terrain node.
+     * @param[in ] deadTiles If non-NULL, the terrain node will active GL object
+     *             quick-release and use this registry to track dead tiles.
+     */
+    TerrainNode( TileNodeRegistry* deadTiles );
 
-    virtual const char* className() const { return "TerrainNode"; }
-
-public:
-
-    const QuadTreeTerrainEngineOptions& getOptions() const { return _options; }
-
-    //bool getQuickReleaseGLObjects() const { return _quickReleaseGLObjects; }
-
-    const MapFrame& getUpdateThreadMapFrame() { return _update_mapf; }
-
-    const MapFrame& getCullThreadMapFrame()   { return _cull_mapf;   }
-
-    void setSampleRatio( float value );
-
-    float getSampleRatio() const { return _sampleRatio; }
-
-    void setVerticalScale( float value );
-
-    float getVerticalScale() const { return _verticalScale; }
+public: // osg::Node
 
     virtual void traverse( osg::NodeVisitor &nv );
 
 protected:
 
-    virtual ~TerrainNode();
+    virtual ~TerrainNode() { }
 
-    // subclass can override to notify of running tasks
-    virtual unsigned getNumActiveTasks() const { return 0; }
-
-    // subclass can override this to perform addition UPDATE traversal operations
-    virtual void updateTraversal( osg::NodeVisitor& nv ) { }
-
-    typedef std::map< TileKey, osg::ref_ptr<TileNode> > TileTable;
-
-    typedef std::queue < osg::ref_ptr<TileNode> > TileQueue;
-    typedef std::list  < osg::ref_ptr<TileNode> > TileList;
-    typedef std::vector< osg::ref_ptr<TileNode> > TileVector;
-
-    Threading::ReadWriteMutex _tilesMutex;
-    TileTable                 _tiles;
-    TileList                  _tilesToShutDown;
-    TileVector                _tilesToRelease;
-    Threading::Mutex          _tilesToReleaseMutex;
-
-    QuadTreeTerrainEngineOptions _options;
-
-    float _sampleRatio;
-    float _verticalScale;
-
-public:
-
-    void releaseGLObjectsForTiles( osg::State* state );
-
-    /**
-     * Adds the tile node to the node registry so we can track its lifecycle.
-     */
-    void registerTileNode( TileNode* newTile );
-
-    /** Gets a thread-safe copy of the entire tile list */
-    void getTiles( TileVector& out_tiles );
-
-    /** Fetches a tile from the repo */
-    template<typename T>
-    void getTile(const osgTerrain::TileID& id, osg::ref_ptr<T>& out_tile, bool lock =true ) const {
-        if ( lock ) {
-            Threading::ScopedReadLock lock( const_cast<TerrainNode*>(this)->_tilesMutex );
-            TileTable::const_iterator i = _tiles.find( id );
-            out_tile = i != _tiles.end()? static_cast<T*>(i->second.get()) : 0L;
-        }
-        else {
-            TileTable::const_iterator i = _tiles.find( id );
-            out_tile = i != _tiles.end()? static_cast<T*>(i->second.get()) : 0L;
-        }
-    }
-
-protected:
-
-    osg::ref_ptr<const Profile>  _profile;
-
-    bool _alwaysUpdate;
-    int  _onDemandDelay; // #frames
-
-    void setDelay( unsigned frames );
-    void decDelay();
-
-    bool _registeredWithReleaseGLCallback;
-
-    // store a separate map frame for each of the traversal threads
-    const MapFrame& _update_mapf; // map frame for the main/update traversal thread
-    const MapFrame& _cull_mapf;   // map frame for the cull traversal thread
-
-    bool _quickReleaseGLObjects;
+    osg::ref_ptr<TileNodeRegistry> _tilesToQuickRelease;
     bool _quickReleaseCallbackInstalled;
-
-//    osg::ref_ptr<TerrainTechnique> _techPrototype;
 };
 
 #endif // OSGEARTH_ENGINE_QUADTREE_TERRAIN_NODE

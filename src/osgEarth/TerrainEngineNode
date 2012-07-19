@@ -123,7 +123,8 @@ namespace osgEarth
 
             void onVisibleChanged( TerrainLayer* layer );
             void onOpacityChanged( ImageLayer* layer );
-            void onColorFiltersChanged( ImageLayer* layer );
+            void onColorFiltersChanged( ImageLayer* layer );      
+            void onVisibleRangeChanged( ImageLayer* layer );
 
             ArrayUniform _layerOpacityUniform;
             ArrayUniform _layerVisibleUniform;

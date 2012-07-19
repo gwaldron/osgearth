@@ -287,6 +287,20 @@ ImageLayer::setOpacity( float value )
 }
 
 void
+ImageLayer::setMinVisibleRange( float minVisibleRange )
+{
+    _runtimeOptions.minVisibleRange() = minVisibleRange;
+    fireCallback( &ImageLayerCallback::onVisibleRangeChanged );
+}
+
+void
+ImageLayer::setMaxVisibleRange( float maxVisibleRange )
+{
+    _runtimeOptions.maxVisibleRange() = maxVisibleRange;
+    fireCallback( &ImageLayerCallback::onVisibleRangeChanged );
+}
+
+void
 ImageLayer::addColorFilter( ColorFilter* filter )
 {
     _runtimeOptions.colorFilters().push_back( filter );

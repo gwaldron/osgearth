@@ -227,6 +227,8 @@ StencilVolumeNode::traverse( osg::NodeVisitor& nv )
 void
 StencilVolumeNode::init()
 {
+    this->getOrCreateStateSet()->setMode( GL_CULL_FACE, osg::StateAttribute::OFF | osg::StateAttribute::PROTECTED );
+
     _root = new osg::Group();
     int baseBin = 100;
 

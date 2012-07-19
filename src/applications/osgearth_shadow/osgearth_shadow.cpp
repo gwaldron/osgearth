@@ -108,7 +108,7 @@ int main(int argc, char** argv)
     osg::ref_ptr<osgShadow::ViewDependentShadowMap> vdsm = new osgShadow::ViewDependentShadowMap;
     shadowedScene->setShadowTechnique(vdsm.get());
     
-    osg::ref_ptr<osg::Group> root = shadowedScene;
+    osg::ref_ptr<osg::Group> root; // = shadowedScene;
     osg::ref_ptr<osg::Group> model = MapNodeHelper().load(arguments, &viewer);
 
     SkyNode* skyNode = findTopMostNodeOfType< SkyNode > ( model.get() );
@@ -132,28 +132,21 @@ int main(int argc, char** argv)
     const TerrainOptions& terrainOptions = mapNode->getTerrainEngine()->getTerrainOptions();
     shadowedScene->setCastsShadowTraversalMask( ~terrainOptions.secondaryTraversalMask().value() );
 
+    ShadowUtils::setUpShadows(shadowedScene, mapNode);
 
-    ShadowUtils::setUpShadows(shadowedScene, model);
-
-    // The ControlCanvas is a camera and doesn't play nicely with the
-    // shadow traversal. Also, it shouldn't be shadowed, and the
-    // ReceivesShadowTraversalMask doesn't really prevent that. So,
-    // take the canvas out of the shadowed scene.
-    for (unsigned int i = 0; i < model->getNumChildren(); ++i)
+    if ( mapNode->getNumParents() > 0 )
     {
-        osg::ref_ptr<Controls::ControlCanvas> canvas
-            = dynamic_cast<Controls::ControlCanvas*>(model->getChild(i));
-        if (canvas.valid())
-        {
-            root = new osg::Group;
-            root->addChild(shadowedScene);
-            model->removeChild(i);
-            root->addChild(canvas.get());
-            break;
-        }
+        osg::Group* parent = mapNode->getParent(0);
+        parent->addChild( shadowedScene );
+        shadowedScene->addChild( mapNode );
+        parent->removeChild( mapNode );
+        root = model.get();
     }
-
-    shadowedScene->addChild(model.get());
+    else
+    {
+        root = shadowedScene;
+        shadowedScene->addChild( model.get() );
+    }
 
     if (skyNode )
     {

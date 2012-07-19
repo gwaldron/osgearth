@@ -90,7 +90,8 @@ RenderingHints::useNumTextures(unsigned num)
 //------------------------------------------------------------------------
 
 VirtualProgram::VirtualProgram( unsigned mask ) : 
-_mask( mask ) 
+_mask   ( mask ),
+_inherit( true )
 {
     // because we sometimes update/change the attribute's members from within the apply() method
     this->setDataVariance( osg::Object::DYNAMIC );
@@ -101,7 +102,8 @@ VirtualProgram::VirtualProgram(const VirtualProgram& rhs, const osg::CopyOp& cop
 osg::Program( rhs, copyop ),
 _shaderMap  ( rhs._shaderMap ),
 _mask       ( rhs._mask ),
-_functions  ( rhs._functions )
+_functions  ( rhs._functions ),
+_inherit    ( rhs._inherit )
 {
     //nop
 }
@@ -229,6 +231,18 @@ VirtualProgram::installDefaultColoringShaders( unsigned numTextures )
 }
 
 
+void
+VirtualProgram::setInheritShaders( bool value )
+{
+    if ( _inherit != value )
+    {
+        _inherit = value;
+        _programCache.clear();
+        _accumulatedFunctions.clear();
+    }
+}
+
+
 osg::Program*
 VirtualProgram::buildProgram( osg::State& state, ShaderMap& accumShaderMap )
 {
@@ -333,19 +347,21 @@ VirtualProgram::apply( osg::State & state ) const
     // first, find and collect all the VirtualProgram attributes:
     ShaderMap accumShaderMap;
 
-    const StateHack::AttributeVec* av = StateHack::GetAttributeVec( state, this );
-    if ( av )
+    if ( _inherit )
     {
-        for( StateHack::AttributeVec::const_iterator i = av->begin(); i != av->end(); ++i )
+        const StateHack::AttributeVec* av = StateHack::GetAttributeVec( state, this );
+        if ( av )
         {
-            const osg::StateAttribute* sa = i->first;
-            const VirtualProgram* vp = dynamic_cast< const VirtualProgram* >( sa );
-            if( vp && ( vp->_mask & _mask ) )
+            for( StateHack::AttributeVec::const_iterator i = av->begin(); i != av->end(); ++i )
             {
-                for( ShaderMap::const_iterator i = vp->_shaderMap.begin(); i != vp->_shaderMap.end(); ++i )
+                const osg::StateAttribute* sa = i->first;
+                const VirtualProgram* vp = dynamic_cast< const VirtualProgram* >( sa );
+                if( vp && ( vp->_mask & _mask ) )
                 {
-                    addToAccumulatedMap( accumShaderMap, i->first, i->second );
-                    //accumShaderMap[ i->first ] = i->second;
+                    for( ShaderMap::const_iterator i = vp->_shaderMap.begin(); i != vp->_shaderMap.end(); ++i )
+                    {
+                        addToAccumulatedMap( accumShaderMap, i->first, i->second );
+                    }
                 }
             }
         }
@@ -428,22 +444,25 @@ VirtualProgram::refreshAccumulatedFunctions( const osg::State& state )
 
     _accumulatedFunctions.clear();
 
-    const StateHack::AttributeVec* av = StateHack::GetAttributeVec( state, this );
-    for( StateHack::AttributeVec::const_iterator i = av->begin(); i != av->end(); ++i )
+    if ( _inherit )
     {
-        const osg::StateAttribute* sa = i->first;
-        const VirtualProgram* vp = dynamic_cast< const VirtualProgram* >( sa );
-        if( vp && vp != this && ( vp->_mask & _mask ) )
+        const StateHack::AttributeVec* av = StateHack::GetAttributeVec( state, this );
+        for( StateHack::AttributeVec::const_iterator i = av->begin(); i != av->end(); ++i )
         {
-            FunctionLocationMap rhs;
-            vp->getFunctions( rhs );
-
-            for( FunctionLocationMap::const_iterator j = rhs.begin(); j != rhs.end(); ++j )
+            const osg::StateAttribute* sa = i->first;
+            const VirtualProgram* vp = dynamic_cast< const VirtualProgram* >( sa );
+            if( vp && vp != this && ( vp->_mask & _mask ) )
             {
-                const OrderedFunctionMap& ofm = j->second;
-                for( OrderedFunctionMap::const_iterator k = ofm.begin(); k != ofm.end(); ++k )
+                FunctionLocationMap rhs;
+                vp->getFunctions( rhs );
+
+                for( FunctionLocationMap::const_iterator j = rhs.begin(); j != rhs.end(); ++j )
                 {
-                    _accumulatedFunctions[j->first].insert( *k );
+                    const OrderedFunctionMap& ofm = j->second;
+                    for( OrderedFunctionMap::const_iterator k = ofm.begin(); k != ofm.end(); ++k )
+                    {
+                        _accumulatedFunctions[j->first].insert( *k );
+                    }
                 }
             }
         }

@@ -247,9 +247,6 @@ OverlayDecorator::initializePerViewData( PerViewData& pvd )
 
     pvd._rttCamera->attach( osg::Camera::COLOR_BUFFER, projTexture, 0, 0, _mipmapping );
 
-    OE_INFO << std::hex << _rttTraversalMask << std::endl;
-    pvd._rttCamera->setNodeMask( _rttTraversalMask );
-
     // try a depth-packed buffer. failing that, try a normal one.. if the FBO doesn't support
     // that (which is doesn't on some GPUs like Intel), it will automatically fall back on 
     // a PBUFFER_RTT impl
@@ -262,6 +259,13 @@ OverlayDecorator::initializePerViewData( PerViewData& pvd )
 
     rttStateSet->setMode( GL_LIGHTING, osg::StateAttribute::OFF | osg::StateAttribute::PROTECTED );
 
+    // install a new default shader program that replaces anything from above.
+    VirtualProgram* vp = new VirtualProgram();
+    vp->setName( "overlay rtt" );
+    vp->installDefaultColoringAndLightingShaders();
+    vp->setInheritShaders( false );
+    rttStateSet->setAttributeAndModes( vp, osg::StateAttribute::ON );
+    
     if ( _rttBlending )
     {
         osg::BlendFunc* blendFunc = new osg::BlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
@@ -798,7 +802,7 @@ OverlayDecorator::cull( osgUtil::CullVisitor* cv, OverlayDecorator::PerViewData&
 }
 
 OverlayDecorator::PerViewData&
-OverlayDecorator::getPerViewData(osg::View* key)
+OverlayDecorator::getPerViewData(osg::Camera* key)
 {
     // first check for it:
     {
@@ -843,13 +847,20 @@ OverlayDecorator::traverse( osg::NodeVisitor& nv )
             osgUtil::CullVisitor* cv = static_cast<osgUtil::CullVisitor*>( &nv );
             if ( cv->getCurrentCamera() )
             {
-                PerViewData& pvd = getPerViewData( cv->getCurrentCamera()->getView() );
+                PerViewData& pvd = getPerViewData( cv->getCurrentCamera() ); //->getView() );
 
-                if ( pvd._texGenNode.valid() ) // FFP only
-                    pvd._texGenNode->accept( nv );
+                if ( (_rttTraversalMask & nv.getTraversalMask()) != 0 )
+                {
+                    if ( pvd._texGenNode.valid() ) // FFP only
+                        pvd._texGenNode->accept( nv );
 
-                cull( cv, pvd );
-                pvd._rttCamera->accept( nv );
+                    cull( cv, pvd );
+                    pvd._rttCamera->accept( nv );
+                }
+                else
+                {
+                    osg::Group::traverse(nv);
+                }
             }
         }
 
@@ -863,7 +874,7 @@ OverlayDecorator::traverse( osg::NodeVisitor& nv )
             osg::View* view = ev->getActionAdapter()->asView();
             if ( view )
             {
-                PerViewData& pvd = getPerViewData(view);
+                PerViewData& pvd = getPerViewData(view->getCamera());
 
                 // first, check whether we already have an update coming.
                 if ( !_updatePending && checkNeedsUpdate(pvd) )

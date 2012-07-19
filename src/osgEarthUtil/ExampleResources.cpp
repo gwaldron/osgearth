@@ -218,6 +218,8 @@ SkyControlFactory::create(SkyNode*         sky,
     skySlider->setHorizFill( true, 200 );
     skySlider->addEventHandler( new SkySliderHandler(sky) );
 
+    skyBox->addControl( new LabelControl(skySlider) );
+
     return skyBox;
 }
 

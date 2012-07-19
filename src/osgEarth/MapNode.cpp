@@ -281,7 +281,7 @@ MapNode::init()
 
     // a decorator for overlay models:
     _overlayDecorator = new OverlayDecorator();
-    _overlayDecorator->setOverlayGraphTraversalMask( ~terrainOptions.secondaryTraversalMask().value() );
+    _overlayDecorator->setOverlayGraphTraversalMask( terrainOptions.secondaryTraversalMask().value() );
 
     if ( _mapNodeOptions.overlayBlending().isSet() )
         _overlayDecorator->setOverlayBlending( *_mapNodeOptions.overlayBlending() );

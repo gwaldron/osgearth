@@ -164,6 +164,12 @@ namespace osgEarth
          */
         void installDefaultColoringShaders( unsigned numTextures =0u );
 
+        /**
+         * Whether this VP should inherit shaders from parent state sets. This is
+         * the normal operation. You can set this to "false" to "reset" the VP.
+         */
+        void setInheritShaders( bool value );
+
     public: 
         /**
          * Constructs a new VP
@@ -240,7 +246,7 @@ namespace osgEarth
         ShaderComp::FunctionLocationMap _accumulatedFunctions;
 
         Threading::Mutex _functionsMutex;
-
+        bool _inherit;
         mutable Threading::ReadWriteMutex _programCacheMutex;
 
         bool hasLocalFunctions() const;

@@ -165,7 +165,7 @@ TerrainEngineNode::preInitialize( const Map* map, const TerrainOptions& options 
     _map = map;
     
     // fire up a terrain utility interface
-    _terrainInterface = new Terrain( this, map->getProfile(), map->isGeocentric() );
+    _terrainInterface = new Terrain( this, map->getProfile(), map->isGeocentric(), options );
 
     // set up the CSN values   
     _map->getProfile()->getSRS()->populateCoordinateSystemNode( this );

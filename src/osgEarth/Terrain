@@ -22,6 +22,7 @@
 #include <osgEarth/Common>
 #include <osgEarth/TileKey>
 #include <osgEarth/ThreadingUtils>
+#include <osgEarth/TerrainOptions>
 #include <osg/OperationThread>
 
 namespace osgEarth
@@ -240,7 +241,7 @@ namespace osgEarth
         virtual ~Terrain() { }
 
     private:
-        Terrain( osg::Node* graph, const Profile* profile, bool geocentric );
+        Terrain( osg::Node* graph, const Profile* profile, bool geocentric, const TerrainOptions& options );
 
         friend class TerrainEngineNode;
 
@@ -251,6 +252,7 @@ namespace osgEarth
         osg::ref_ptr<const Profile>  _profile;
         osg::observer_ptr<osg::Node> _graph;
         bool                         _geocentric;
+        const TerrainOptions&        _terrainOptions;
 
         osg::observer_ptr<osg::OperationQueue> _updateOperationQueue;
     };

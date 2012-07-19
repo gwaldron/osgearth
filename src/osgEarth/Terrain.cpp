@@ -57,10 +57,11 @@ namespace
 
 //---------------------------------------------------------------------------
 
-Terrain::Terrain(osg::Node* graph, const Profile* mapProfile, bool geocentric) :
-_graph     ( graph ),
-_profile   ( mapProfile ),
-_geocentric( geocentric )
+Terrain::Terrain(osg::Node* graph, const Profile* mapProfile, bool geocentric, const TerrainOptions& terrainOptions ) :
+_graph         ( graph ),
+_profile       ( mapProfile ),
+_geocentric    ( geocentric ),
+_terrainOptions( terrainOptions )
 {
     //nop
 }
@@ -100,8 +101,10 @@ Terrain::getHeight(osg::Node*              patch,
     }
 
     osgUtil::LineSegmentIntersector* lsi = new osgUtil::LineSegmentIntersector(start, end);
-    osgUtil::IntersectionVisitor iv( lsi );
     lsi->setIntersectionLimit(osgUtil::Intersector::LIMIT_ONE);
+
+    osgUtil::IntersectionVisitor iv( lsi );
+    iv.setTraversalMask( ~_terrainOptions.secondaryTraversalMask().value() );
 
     if ( patch )
         patch->accept( iv );
@@ -147,7 +150,10 @@ Terrain::getWorldCoordsUnderMouse(osg::View* view, float x, float y, osg::Vec3d&
     osg::NodePath path;
     path.push_back( _graph.get() );
 
-    if ( view2->computeIntersections( x, y, path, results ) )
+    // fine but computeIntersections won't travers a masked Drawable, a la quadtree.
+    unsigned mask = ~_terrainOptions.secondaryTraversalMask().value();
+
+    if ( view2->computeIntersections( x, y, path, results, mask ) )
     {
         // find the first hit under the mouse:
         osgUtil::LineSegmentIntersector::Intersection first = *(results.begin());
@@ -173,7 +179,10 @@ Terrain::getWorldCoordsUnderMouse(osg::View* view,
     osg::NodePath path;
     path.push_back( _graph.get() );
 
-    if ( view2->computeIntersections( x, y, path, results ) )
+    // fine but computeIntersections won't travers a masked Drawable, a la quadtree.
+    unsigned mask = ~_terrainOptions.secondaryTraversalMask().value();
+
+    if ( view2->computeIntersections( x, y, path, results, mask ) )
     {
         // find the first hit under the mouse:
         osgUtil::LineSegmentIntersector::Intersection first = *(results.begin());

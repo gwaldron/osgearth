@@ -119,6 +119,7 @@ ShadowUtils::setUpShadows(osgShadow::ShadowedScene* sscene, osg::Group* root)
     // create a virtual program to attach to the shadows scene.
     VirtualProgram* vp = new VirtualProgram();
     vp->setName( "shadow:terrain" );
+    vp->installDefaultColoringAndLightingShaders();
 
     ssStateSet->setAttributeAndModes( vp, 1 );
 
@@ -151,7 +152,8 @@ ShadowUtils::setUpShadows(osgShadow::ShadowedScene* sscene, osg::Group* root)
     vp->setFunction(
         "osgearth_vert_setupShadowCoords", 
         setupShadowCoords, 
-        ShaderComp::LOCATION_VERTEX_POST_LIGHTING);
+        ShaderComp::LOCATION_VERTEX_POST_LIGHTING,
+        -1.0 );
 
     std::stringstream buf2;
     buf2 <<

@@ -29,7 +29,6 @@
 #include <osgEarth/DrapeableNode>
 #include <osg/ArgumentParser>
 #include <osg/PagedLOD>
-#include <osgSim/OverlayNode>
 
 using namespace osgEarth;
 
@@ -282,6 +281,8 @@ MapNode::init()
 
     // a decorator for overlay models:
     _overlayDecorator = new OverlayDecorator();
+    _overlayDecorator->setOverlayGraphTraversalMask( ~terrainOptions.secondaryTraversalMask().value() );
+
     if ( _mapNodeOptions.overlayBlending().isSet() )
         _overlayDecorator->setOverlayBlending( *_mapNodeOptions.overlayBlending() );
     if ( _mapNodeOptions.overlayTextureSize().isSet() )
@@ -436,7 +437,7 @@ MapNode::onModelLayerAdded( ModelLayer* layer, unsigned int index )
         }
         else
         {
-            if ( dynamic_cast<TerrainDecorator*>(node) || dynamic_cast<osgSim::OverlayNode*>(node) )
+            if ( dynamic_cast<TerrainDecorator*>(node) )
             {
                 OE_INFO << LC << "Installing overlay node" << std::endl;
                 addTerrainDecorator( node->asGroup() );
@@ -480,7 +481,7 @@ MapNode::onModelLayerRemoved( ModelLayer* layer )
         {
             osg::Node* node = i->second;
 
-            if ( dynamic_cast<TerrainDecorator*>( node ) || dynamic_cast<osgSim::OverlayNode*>( node ) )
+            if ( dynamic_cast<TerrainDecorator*>( node ) )
             {
                 removeTerrainDecorator( node->asGroup() );
             }

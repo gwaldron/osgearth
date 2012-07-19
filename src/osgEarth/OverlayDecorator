@@ -89,6 +89,8 @@ namespace osgEarth
         void setOverlayBlending( bool value );
         bool getOverlayBlending() const { return _rttBlending; }
 
+        void setOverlayGraphTraversalMask( unsigned mask );
+
     public: // TerrainDecorator
         virtual void onInstall( TerrainEngineNode* engine );
         virtual void onUninstall( TerrainEngineNode* engine );
@@ -108,6 +110,7 @@ namespace osgEarth
         bool                          _mipmapping;
         bool                          _rttBlending;
         bool                          _updatePending;
+        unsigned                      _rttTraversalMask;
 
         osg::ref_ptr<const osg::EllipsoidModel> _ellipsoid;
         osg::observer_ptr<TerrainEngineNode>    _engine;

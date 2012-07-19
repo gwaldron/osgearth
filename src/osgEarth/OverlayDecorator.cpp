@@ -167,13 +167,14 @@ namespace
 //---------------------------------------------------------------------------
 
 OverlayDecorator::OverlayDecorator() :
-_textureUnit  ( 1 ),
-_textureSize  ( 1024 ),
-_useShaders   ( false ),
-_mipmapping   ( false ),
-_rttBlending  ( true ),
-_updatePending( false ),
-_dumpRequested( false )
+_textureUnit     ( 1 ),
+_textureSize     ( 1024 ),
+_useShaders      ( false ),
+_mipmapping      ( false ),
+_rttBlending     ( true ),
+_updatePending   ( false ),
+_dumpRequested   ( false ),
+_rttTraversalMask( ~0 )
 {
     // nop
 }
@@ -245,6 +246,9 @@ OverlayDecorator::initializePerViewData( PerViewData& pvd )
     pvd._rttCamera->setRenderTargetImplementation( osg::Camera::FRAME_BUFFER_OBJECT );
 
     pvd._rttCamera->attach( osg::Camera::COLOR_BUFFER, projTexture, 0, 0, _mipmapping );
+
+    OE_INFO << std::hex << _rttTraversalMask << std::endl;
+    pvd._rttCamera->setNodeMask( _rttTraversalMask );
 
     // try a depth-packed buffer. failing that, try a normal one.. if the FBO doesn't support
     // that (which is doesn't on some GPUs like Intel), it will automatically fall back on 
@@ -347,7 +351,7 @@ OverlayDecorator::initSubgraphShaders( PerViewData& pvd )
         << "    color = vec4( mix( color.rgb, texel.rgb, texel.a ), color.a); \n"
         << "} \n";
 
-    vp->setFunction( "osgearth_overlay_fragment", fragmentSource, ShaderComp::LOCATION_FRAGMENT_PRE_LIGHTING );
+    vp->setFunction( "osgearth_overlay_fragment", fragmentSource, ShaderComp::LOCATION_FRAGMENT_POST_LIGHTING );
 }
 
 void
@@ -391,6 +395,12 @@ OverlayDecorator::setOverlayGraph( osg::Node* node )
 
         //reinit();
     }
+}
+
+void
+OverlayDecorator::setOverlayGraphTraversalMask( unsigned mask )
+{
+    _rttTraversalMask = mask;
 }
 
 void

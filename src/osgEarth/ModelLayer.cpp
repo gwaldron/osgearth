@@ -20,6 +20,7 @@
 #include <osgEarth/Map>
 #include <osgEarth/Registry>
 #include <osgEarth/Capabilities>
+#include <osgEarth/ShaderComposition>
 #include <osg/Depth>
 
 #define LC "[ModelLayer] "
@@ -50,6 +51,7 @@ ModelLayerOptions::setDefaults()
     _enabled.init( true );
     _visible.init( true );
     _lighting.init( true );
+    _disableShaderComp.init( false );
 }
 
 Config
@@ -63,6 +65,9 @@ ModelLayerOptions::getConfig() const
     conf.updateIfSet( "enabled", _enabled );
     conf.updateIfSet( "visible", _visible );
     conf.updateIfSet( "lighting", _lighting );
+
+    // temporary.
+    conf.updateIfSet( "disable_shaders", _disableShaderComp );
 
     // Merge the ModelSource options
     if ( driver().isSet() )
@@ -79,6 +84,9 @@ ModelLayerOptions::fromConfig( const Config& conf )
     conf.getIfSet( "enabled", _enabled );
     conf.getIfSet( "visible", _visible );
     conf.getIfSet( "lighting", _lighting );
+
+    // temporary.
+    conf.getIfSet( "disable_shaders", _disableShaderComp );
 
     if ( conf.hasValue("driver") )
         driver() = ModelSourceOptions(conf);
@@ -167,20 +175,38 @@ ModelLayer::getOrCreateNode( ProgressCallback* progress )
             if ( _runtimeOptions.lightingEnabled().isSet() )
                 setLightingEnabled( *_runtimeOptions.lightingEnabled() );
 
-            if ( Registry::instance()->getCapabilities().supportsGLSL() )
+            if ( _node.valid() )
             {
-                _node->addCullCallback( new UpdateLightingUniformsHelper() );
-            }
+                if ( Registry::instance()->getCapabilities().supportsGLSL() )
+                {
+                    _node->addCullCallback( new UpdateLightingUniformsHelper() );
 
-            if ( _modelSource->getOptions().depthTestEnabled() == false )            
-            {
-                if ( _node )
+                    if ( _runtimeOptions.disableShaders() == true )
+                    {
+                        // temporary construct until we can get external shadergen working
+                        osg::StateSet* ss = _node->getOrCreateStateSet();
+                        ss->setAttributeAndModes( new osg::Program(), osg::StateAttribute::OFF );
+                    }
+                    else
+                    {
+                        ShaderFactory* fact = Registry::instance()->getShaderFactory();
+
+                        VirtualProgram* vp = new VirtualProgram();
+                        vp->setName( "ModelLayer" );
+                        vp->installDefaultColoringAndLightingShaders();
+
+                        _node->getOrCreateStateSet()->setAttributeAndModes( vp, osg::StateAttribute::ON );
+                    }
+                }
+
+                if ( _modelSource->getOptions().depthTestEnabled() == false )
                 {
                     osg::StateSet* ss = _node->getOrCreateStateSet();
                     ss->setAttributeAndModes( new osg::Depth( osg::Depth::ALWAYS ) );
                     ss->setRenderBinDetails( 99999, "RenderBin" ); //TODO: configure this bin ...
                 }
             }
+
 
             _modelSource->sync( _modelSourceRev );
         }

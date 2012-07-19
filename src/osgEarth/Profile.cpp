@@ -512,7 +512,12 @@ Profile::clampAndTransformExtent( const GeoExtent& input, bool* out_clamped ) co
         input :
         input.transform( geo_srs );
 
+    // bail out on a bad transform:
     if ( !gcs_input.isValid() )
+        return GeoExtent::INVALID;
+
+    // bail out if the extent's do not intersect at all:
+    if ( !gcs_input.intersects(_latlong_extent, false) )
         return GeoExtent::INVALID;
 
     // clamp it to the profile's extents:

@@ -475,7 +475,7 @@ OSGTileFactory::createPlaceholderTile(const MapFrame&   mapf,
     plod->setCenter( bs.center() );
     plod->addChild( tile, min_range, max_range );
 
-    if ( key.getLevelOfDetail() < (unsigned int)getTerrainOptions().maxLOD().get() )
+    if (key.getLevelOfDetail() < getTerrainOptions().maxLOD().get())
     {
         plod->setFileName( 1, createURI( _engineId, key ) ); //map->getId(), key ) );
         plod->setRange( 1, 0.0, min_range );

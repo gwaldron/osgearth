@@ -111,6 +111,25 @@ TerrainEngineNode::ImageLayerController::onOpacityChanged( ImageLayer* layer )
 }
 
 void
+TerrainEngineNode::ImageLayerController::onVisibleRangeChanged( ImageLayer* layer )
+{
+    if ( !Registry::instance()->getCapabilities().supportsGLSL() )
+        return;
+
+    _mapf.sync();
+    int layerNum = _mapf.indexOf( layer );
+    if ( layerNum >= 0 )
+    {
+         _layerRangeUniform.setElement( (2*layerNum),   layer->getMinVisibleRange() );
+         _layerRangeUniform.setElement( (2*layerNum)+1, layer->getMaxVisibleRange() );
+    }        
+    else
+        OE_WARN << LC << "Odd, onVisibleRangeChanged did not find layer" << std::endl;
+
+    _engine->dirty();
+}
+
+void
 TerrainEngineNode::ImageLayerController::onColorFiltersChanged( ImageLayer* layer )
 {
     _engine->updateTextureCombining();
@@ -338,8 +357,8 @@ TerrainEngineNode::updateImageUniforms()
 
             _imageLayerController->_layerVisibleUniform.setElement( index, layer->getVisible() );
             _imageLayerController->_layerOpacityUniform.setElement( index, layer->getOpacity() );
-            _imageLayerController->_layerRangeUniform.setElement( (2*index), layer->getImageLayerOptions().minVisibleRange().value() );
-            _imageLayerController->_layerRangeUniform.setElement( (2*index)+1, layer->getImageLayerOptions().maxVisibleRange().value() );
+            _imageLayerController->_layerRangeUniform.setElement( (2*index), layer->getMinVisibleRange() );
+            _imageLayerController->_layerRangeUniform.setElement( (2*index)+1, layer->getMaxVisibleRange() );
         }
 
         // set the remainder of the layers to disabled 

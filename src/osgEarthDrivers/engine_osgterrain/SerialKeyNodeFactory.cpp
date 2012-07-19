@@ -67,9 +67,10 @@ SerialKeyNodeFactory::addTile(Tile* tile, bool tileHasRealData, bool tileHasLodB
     // 2. The tile isn't blacklisted; and
     // 3. We are still below the max LOD.
     bool wrapInPagedLOD =
-        (tileHasRealData || _options.maxLOD().isSet()) &&
+        (tileHasRealData || (_options.minLOD().isSet() && tile->getKey().getLOD() < *_options.minLOD())) &&
         !osgEarth::Registry::instance()->isBlacklisted( uri ) &&
-        tile->getKey().getLevelOfDetail() < (unsigned)*_options.maxLOD();
+        tile->getKey().getLOD() < *_options.maxLOD();
+        //(!_options.minLOD().isSet() || tile->getKey().getLevelOfDetail() < *_options.maxLOD());
 
     if ( wrapInPagedLOD )
     {
@@ -165,12 +166,6 @@ SerialKeyNodeFactory::createNode( const TileKey& parentKey )
     bool               lodBlending[4];
     bool               tileHasAnyRealData = false;
 
-    //if ( parentKey.str() == "15/12423/9051" )
-    if ( parentKey.str() == "15/6211/12371" )
-    {
-        int x = 0;
-    }
-
     for( unsigned i = 0; i < 4; ++i )
     {
         TileKey child = parentKey.createChildKey( i );
@@ -182,7 +177,7 @@ SerialKeyNodeFactory::createNode( const TileKey& parentKey )
     osg::Group* root = 0L;
 
     // assemble the tile.
-    if ( tileHasAnyRealData || _options.maxLOD().isSet() || parentKey.getLevelOfDetail() == 0 )
+    if ( tileHasAnyRealData || _options.minLOD().isSet() || parentKey.getLevelOfDetail() == 0 )
     {
         // Now postprocess them and assemble into a tile group.
         root = new osg::Group();

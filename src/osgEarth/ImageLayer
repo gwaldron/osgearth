@@ -119,6 +119,7 @@ namespace osgEarth
     struct ImageLayerCallback : public TerrainLayerCallback
     {
         virtual void onOpacityChanged( class ImageLayer* layer ) { }
+        virtual void onVisibleRangeChanged( class ImageLayer* layer ) {}
         virtual void onColorFiltersChanged( class ImageLayer* layer ) { }
         virtual ~ImageLayerCallback() { }
     };
@@ -224,6 +225,13 @@ namespace osgEarth
         void disableLODBlending();
         bool isLODBlendingEnabled() const { return *_runtimeOptions.lodBlending(); }
 
+        float getMinVisibleRange() const { return *_runtimeOptions.minVisibleRange();}
+        void setMinVisibleRange( float minVisibleRange );
+
+        float getMaxVisibleRange() const { return *_runtimeOptions.maxVisibleRange();}
+        void setMaxVisibleRange( float maxVisibleRange );
+
+
     public: // methods
 
         /**
@@ -260,17 +268,16 @@ namespace osgEarth
         virtual void initTileSource();
 
     protected:
-        ImageLayerOptions _runtimeOptions;
-
+        ImageLayerOptions                        _runtimeOptions;
         osg::ref_ptr<TileSource::ImageOperation> _preCacheOp;
+        osg::ref_ptr<osg::Image>                 _emptyImage;
+        ImageLayerCallbackList                   _callbacks;
 
-        void initPreCacheOp();
-
-        ImageLayerCallbackList _callbacks;
         virtual void fireCallback( TerrainLayerCallbackMethodPtr method );
         virtual void fireCallback( ImageLayerCallbackMethodPtr method );
 
         void init();
+        void initPreCacheOp();
     };
 
     typedef std::vector< osg::ref_ptr<ImageLayer> > ImageLayerVector;

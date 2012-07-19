@@ -69,7 +69,7 @@ struct BuildColorLayer
             {
                 ext = _layer->getProfile()->clampAndTransformExtent( ext );
             }
-            hasDataInExtent = tileSource->hasDataInExtent( ext );
+            hasDataInExtent = ext.isValid() && tileSource->hasDataInExtent( ext );
         }        
         
         if (hasDataInExtent)

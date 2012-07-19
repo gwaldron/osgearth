@@ -125,20 +125,20 @@ namespace osgEarth
             osg::ref_ptr<osg::StateSet>   _subgraphStateSet;
         };
 
-        typedef std::map<osg::Camera*, PerViewData> PerViewDataMap;
-        //typedef std::map<osg::View*, PerViewData> PerViewDataMap;
+        //typedef std::map<osg::Camera*, PerViewData> PerViewDataMap;
+        typedef std::map<osg::NodeVisitor*, PerViewData> PerViewDataMap;
         PerViewDataMap _perViewData;
         Threading::ReadWriteMutex _perViewDataMutex;
 
 
     private:
-        void updateRTTCameras();
+        void updateRTTCamera(PerViewData& pvd);
         void cull( osgUtil::CullVisitor* cv, PerViewData& pvd );
         void initializeForOverlayGraph();
         void initializePerViewData( PerViewData& );
         void initSubgraphShaders( PerViewData& );
         bool checkNeedsUpdate( PerViewData& );
-        PerViewData& getPerViewData( osg::Camera* key );
+        PerViewData& getPerViewData( osg::NodeVisitor* key );
 
     public:
         // marker class for DrapeableNode support.

@@ -500,30 +500,23 @@ OverlayDecorator::onUninstall( TerrainEngineNode* engine )
 }
 
 void
-OverlayDecorator::updateRTTCameras()
+OverlayDecorator::updateRTTCamera( OverlayDecorator::PerViewData& pvd )
 {
     static osg::Matrix normalizeMatrix = 
         osg::Matrix::translate(1.0,1.0,1.0) * osg::Matrix::scale(0.5,0.5,0.5);
 
-    Threading::ScopedWriteLock exclusive( _perViewDataMutex );
+    pvd._rttCamera->setViewMatrix( pvd._rttViewMatrix );
+    pvd._rttCamera->setProjectionMatrix( pvd._rttProjMatrix );
 
-    for( PerViewDataMap::iterator i = _perViewData.begin(); i != _perViewData.end(); ++i )
+    osg::Matrix MVPT = pvd._rttViewMatrix * pvd._rttProjMatrix * normalizeMatrix;
+
+    if ( pvd._texGenUniform.valid() )
     {
-        PerViewData& pvd = i->second;
-    
-        pvd._rttCamera->setViewMatrix( pvd._rttViewMatrix );
-        pvd._rttCamera->setProjectionMatrix( pvd._rttProjMatrix );
-
-        osg::Matrix MVPT = pvd._rttViewMatrix * pvd._rttProjMatrix * normalizeMatrix;
-
-        if ( pvd._texGenUniform.valid() )
-        {
-            pvd._texGenUniform->set( MVPT );
-        }
-        else
-        {
-            pvd._texGenNode->getTexGen()->setPlanesFromMatrix( MVPT );
-        }
+        pvd._texGenUniform->set( MVPT );
+    }
+    else
+    {
+        pvd._texGenNode->getTexGen()->setPlanesFromMatrix( MVPT );
     }
 }
 
@@ -802,7 +795,7 @@ OverlayDecorator::cull( osgUtil::CullVisitor* cv, OverlayDecorator::PerViewData&
 }
 
 OverlayDecorator::PerViewData&
-OverlayDecorator::getPerViewData(osg::Camera* key)
+OverlayDecorator::getPerViewData(osg::NodeVisitor* key)
 {
     // first check for it:
     {
@@ -845,12 +838,16 @@ OverlayDecorator::traverse( osg::NodeVisitor& nv )
         if ( nv.getVisitorType() == osg::NodeVisitor::CULL_VISITOR )
         {
             osgUtil::CullVisitor* cv = static_cast<osgUtil::CullVisitor*>( &nv );
+            PerViewData& pvd = getPerViewData( cv );
             if ( cv->getCurrentCamera() )
             {
-                PerViewData& pvd = getPerViewData( cv->getCurrentCamera() ); //->getView() );
-
                 if ( (_rttTraversalMask & nv.getTraversalMask()) != 0 )
                 {
+                    if (checkNeedsUpdate(pvd))
+                    {
+                        updateRTTCamera(pvd);
+                    }
+
                     if ( pvd._texGenNode.valid() ) // FFP only
                         pvd._texGenNode->accept( nv );
 
@@ -864,55 +861,14 @@ OverlayDecorator::traverse( osg::NodeVisitor& nv )
             }
         }
 
-        else if ( nv.getVisitorType() == osg::NodeVisitor::EVENT_VISITOR )
+        else if ( nv.getVisitorType() == nv.UPDATE_VISITOR )
         {
-            // during the event traversal, check to see whether any of the camera
-            // matrices have changed from the previous frame. If so, active the update
-            // visitor to update the RTT camera.
-
-            osgGA::EventVisitor* ev = static_cast<osgGA::EventVisitor*>(&nv);
-            osg::View* view = ev->getActionAdapter()->asView();
-            if ( view )
-            {
-                PerViewData& pvd = getPerViewData(view->getCamera());
-
-                // first, check whether we already have an update coming.
-                if ( !_updatePending && checkNeedsUpdate(pvd) )
-                {
-                    // need it, so schedule it.
-                    //ev->getActionAdapter()->requestRedraw(); // not needed since we are bumping the update trav
-                    _updatePending = true;
-                    ADJUST_UPDATE_TRAV_COUNT( this, 1 );
-                }
-
-                // send the event traversal down the overlay graph
-                pvd._rttCamera->accept( nv );
-            }
-
-            // traverse the overlay decorators subgraph
-            osg::Group::traverse( nv );
-        }
-
-        else if ( nv.getVisitorType() == osg::NodeVisitor::UPDATE_VISITOR )
-        {
-            // if we get an update traversal, recalculate the RTT camera parameters.
-            // TODO: update this to support multiple views..?
-            if ( _updatePending )
-            {
-                OE_DEBUG << LC << "Update RTT camera, frame = " << nv.getFrameStamp()->getFrameNumber() << std::endl;
-                updateRTTCameras();
-                _updatePending = false;
-                ADJUST_UPDATE_TRAV_COUNT( this, -1 );
-            }
-
-            // skip the camera, go straight to the overlay subgraph.
             if ( _overlayGraph.valid() )
             {
                 _overlayGraph->accept( nv );
             }
-
             osg::Group::traverse( nv );
-        }    
+        }
 
         else
         {

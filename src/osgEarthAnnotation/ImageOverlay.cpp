@@ -26,6 +26,7 @@
 #include <osgEarth/NodeUtils>
 #include <osgEarth/ImageUtils>
 #include <osgEarth/DrapeableNode>
+#include <osgEarth/ShaderComposition>
 #include <osg/Geode>
 #include <osg/ShapeDrawable>
 #include <osg/Texture2D>
@@ -190,6 +191,10 @@ ImageOverlay::postCTOR()
 
     d->addChild( _transform );
 
+    // need a shader that supports one texture
+    VirtualProgram* vp = new VirtualProgram();
+    vp->installDefaultColoringShaders(1);
+    d->getOrCreateStateSet()->setAttributeAndModes( vp, 1 );
     
     init();    
     ADJUST_UPDATE_TRAV_COUNT( this, 1 );

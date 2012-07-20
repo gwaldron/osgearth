@@ -247,9 +247,9 @@ MapNode::init()
     // initialize terrain-level lighting:
     if ( terrainOptions.enableLighting().isSet() )
     {
-        _terrainEngineContainer->getOrCreateStateSet()->setMode( GL_LIGHTING, terrainOptions.enableLighting().value() ? 
-            osg::StateAttribute::ON | osg::StateAttribute::PROTECTED :
-            osg::StateAttribute::OFF | osg::StateAttribute::PROTECTED );
+        _terrainEngineContainer->getOrCreateStateSet()->setMode( 
+            GL_LIGHTING, 
+            terrainOptions.enableLighting().value() ? 1 : 0 );
     }
 
     if ( _terrainEngine )
@@ -309,9 +309,9 @@ MapNode::init()
 
     if ( _mapNodeOptions.enableLighting().isSet() )
     {
-        ss->setMode( GL_LIGHTING, _mapNodeOptions.enableLighting().value() ? 
-            osg::StateAttribute::ON | osg::StateAttribute::PROTECTED :
-            osg::StateAttribute::OFF | osg::StateAttribute::PROTECTED );
+        ss->setMode( 
+            GL_LIGHTING, 
+            _mapNodeOptions.enableLighting().value() ? 1 : 0 );
     }
 
     dirtyBound();

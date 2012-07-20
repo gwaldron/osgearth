@@ -79,7 +79,7 @@ int main(int argc, char** argv)
     // set up the camera manipulators.
     viewer.setCameraManipulator(new EarthManipulator);
 
-    osg::ref_ptr<osgShadow::ShadowedScene> shadowedScene = new osgShadow::ShadowedScene;
+    osg::ref_ptr<osgShadow::ShadowedScene> shadowedScene = new osgShadow::ShadowedScene();
     
     //Setup a vdsm shadow map
     osgShadow::ShadowSettings* settings = new osgShadow::ShadowSettings;
@@ -105,15 +105,11 @@ int main(int argc, char** argv)
     while (arguments.read("--mapres", mapres))
         settings->setTextureSize(osg::Vec2s(mapres,mapres));
 
+    // VDSM is really the only technique that osgEarth supports.
     osg::ref_ptr<osgShadow::ViewDependentShadowMap> vdsm = new osgShadow::ViewDependentShadowMap;
     shadowedScene->setShadowTechnique(vdsm.get());
     
-    osg::ref_ptr<osg::Group> root; // = shadowedScene;
     osg::ref_ptr<osg::Group> model = MapNodeHelper().load(arguments, &viewer);
-
-    SkyNode* skyNode = findTopMostNodeOfType< SkyNode > ( model.get() );
-    MapNode* mapNode = findTopMostNodeOfType< MapNode > ( model.get() );
-
     if (!model.valid())
     {
         OE_NOTICE
@@ -122,17 +118,30 @@ int main(int argc, char** argv)
         exit(1);
     }
 
+    MapNode* mapNode = osgEarth::findTopMostNodeOfType< MapNode > ( model.get() );
+
+    SkyNode* skyNode = osgEarth::findTopMostNodeOfType< SkyNode > ( model.get() );
     if (!skyNode)
     {
         OE_NOTICE << "Please run with options --sky to enable the SkyNode" << std::endl;
         exit(1);
     }
 
-    // Disable skirts (or any secondary geometry) from casting shadows
+    // Prevent terrain skirts (or other "secondary geometry") from casting shadows
     const TerrainOptions& terrainOptions = mapNode->getTerrainEngine()->getTerrainOptions();
     shadowedScene->setCastsShadowTraversalMask( ~terrainOptions.secondaryTraversalMask().value() );
 
+    // Enables shadowing on an osgEarth map node
     ShadowUtils::setUpShadows(shadowedScene, mapNode);
+
+    // For shadowing to work, lighting MUST be enabled on the map node.
+    mapNode->getOrCreateStateSet()->setMode(
+        GL_LIGHTING,
+        osg::StateAttribute::ON | osg::StateAttribute::OVERRIDE );
+
+    // Insert the ShadowedScene decorator just above the MapNode. We don't want other
+    // elements (Control canvas, annotations, etc) under the decorator.
+    osg::Group* root;
 
     if ( mapNode->getNumParents() > 0 )
     {
@@ -148,20 +157,15 @@ int main(int argc, char** argv)
         shadowedScene->addChild( model.get() );
     }
 
-    if (skyNode )
+    // The skynode's ambient brightness will control the "darkness" of shadows.
+    if ( skyNode )
     {
         skyNode->setAmbientBrightness( ambientBrightness );
     }
 
-    viewer.setSceneData(root.get());
-
-    // create the windows and run the threads.
+    viewer.setSceneData( root );
     viewer.realize();
-
-
     viewer.addEventHandler(new osgViewer::ScreenCaptureHandler);
-    viewer.addEventHandler(new osgViewer::HelpHandler(arguments.getApplicationUsage()));    
-
     return viewer.run();    
 }
 

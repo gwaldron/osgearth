@@ -174,6 +174,19 @@ void
 VirtualProgram::removeShader( const std::string& shaderID )
 {
     _shaderMap.erase( shaderID );
+
+    for(FunctionLocationMap::iterator i = _functions.begin(); i != _functions.end(); ++i )
+    {
+        OrderedFunctionMap& ofm = i->second;
+        for( OrderedFunctionMap::iterator j = ofm.begin(); j != ofm.end(); ++j )
+        {
+            if ( j->second == shaderID )
+            {
+                ofm.erase( j );
+                break;
+            }
+        }
+    }
 }
 
 /**

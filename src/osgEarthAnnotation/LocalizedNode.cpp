@@ -50,7 +50,11 @@ _scale         ( 1.0f, 1.0f, 1.0f )
     else
     {
         _xform = new osg::MatrixTransform();
+
+        this->getOrCreateStateSet()->setRenderingHint( osg::StateSet::TRANSPARENT_BIN );
     }
+    
+    this->getOrCreateStateSet()->setMode( GL_BLEND, 1 );
 
     if ( _mapSRS.valid() && _mapSRS->isGeographic() )
     {
@@ -73,12 +77,6 @@ LocalizedNode::traverse( osg::NodeVisitor& nv )
     
     AnnotationNode::traverse( nv );
 }
-
-//bool
-//LocalizedNode::setPosition( const osg::Vec3d& position )
-//{
-//    return setPosition( GeoPoint(_mapSRS.get(), position, ALTMODE_ABSOLUTE) );
-//}
 
 bool
 LocalizedNode::setPosition( const GeoPoint& pos )

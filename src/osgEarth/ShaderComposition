@@ -133,6 +133,10 @@ namespace osgEarth
      * VirtualProgram has been adapted from the VirtualProgram shader composition work
      * originally done by Wojciech Lewandowski and found in OSG's osgvirtualprogram
      * example, and is used by permission.
+     *
+     * VirtualProgram in a state attribute. Once you've installed it on a StateSet,
+     * you can still call the set* functions but you'd better mark the state set with
+     * a DYNAMIC data variance.
      */
     class OSGEARTH_EXPORT VirtualProgram : public osg::Program
     {

@@ -78,7 +78,8 @@ namespace
 
             if ( !_tilesToRelease->empty() )
             {
-                _tilesToRelease->run( ReleaseOperation(renderInfo.getState()) );
+                ReleaseOperation op(renderInfo.getState());
+                _tilesToRelease->run( op );
             }
         }
 

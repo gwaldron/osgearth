@@ -355,11 +355,20 @@ VirtualProgram::apply( osg::State & state ) const
         const StateHack::AttributeVec* av = StateHack::GetAttributeVec( state, this );
         if ( av )
         {
-            for( StateHack::AttributeVec::const_iterator i = av->begin(); i != av->end(); ++i )
+            // find the lower VP that doesn't inherit:
+            unsigned start;
+            for( start = (int)av->size()-1; start > 0; --start )
             {
-                const osg::StateAttribute* sa = i->first;
-                const VirtualProgram* vp = dynamic_cast< const VirtualProgram* >( sa );
-                if( vp && ( vp->_mask & _mask ) )
+                const VirtualProgram* vp = dynamic_cast<const VirtualProgram*>( (*av)[start].first );
+                if ( vp && (vp->_mask & _mask) && vp->_inherit == false )
+                    break;
+            }
+
+            // collect shaders from there to here:
+            for( unsigned i=start; i<av->size(); ++i )
+            {
+                const VirtualProgram* vp = dynamic_cast<const VirtualProgram*>( (*av)[i].first );
+                if ( vp && (vp->_mask && _mask) )
                 {
                     for( ShaderMap::const_iterator i = vp->_shaderMap.begin(); i != vp->_shaderMap.end(); ++i )
                     {
@@ -450,21 +459,33 @@ VirtualProgram::refreshAccumulatedFunctions( const osg::State& state )
     if ( _inherit )
     {
         const StateHack::AttributeVec* av = StateHack::GetAttributeVec( state, this );
-        for( StateHack::AttributeVec::const_iterator i = av->begin(); i != av->end(); ++i )
+        if ( av )
         {
-            const osg::StateAttribute* sa = i->first;
-            const VirtualProgram* vp = dynamic_cast< const VirtualProgram* >( sa );
-            if( vp && vp != this && ( vp->_mask & _mask ) )
+            // find the closest VP that doesn't inherit:
+            unsigned start;
+            for( start = (int)av->size()-1; start > 0; --start )
             {
-                FunctionLocationMap rhs;
-                vp->getFunctions( rhs );
+                const VirtualProgram* vp = dynamic_cast<const VirtualProgram*>( (*av)[start].first );
+                if ( vp && (vp->_mask & _mask) && vp->_inherit == false )
+                    break;
+            }
 
-                for( FunctionLocationMap::const_iterator j = rhs.begin(); j != rhs.end(); ++j )
+            // collect functions from there on down.
+            for( unsigned i=start; i<av->size(); ++i )
+            {
+                const VirtualProgram* vp = dynamic_cast<const VirtualProgram*>( (*av)[i].first );
+                if ( vp && (vp->_mask && _mask) )
                 {
-                    const OrderedFunctionMap& ofm = j->second;
-                    for( OrderedFunctionMap::const_iterator k = ofm.begin(); k != ofm.end(); ++k )
+                    FunctionLocationMap rhs;
+                    vp->getFunctions( rhs );
+
+                    for( FunctionLocationMap::const_iterator j = rhs.begin(); j != rhs.end(); ++j )
                     {
-                        _accumulatedFunctions[j->first].insert( *k );
+                        const OrderedFunctionMap& ofm = j->second;
+                        for( OrderedFunctionMap::const_iterator k = ofm.begin(); k != ofm.end(); ++k )
+                        {
+                            _accumulatedFunctions[j->first].insert( *k );
+                        }
                     }
                 }
             }

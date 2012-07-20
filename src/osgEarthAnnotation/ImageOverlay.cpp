@@ -195,6 +195,8 @@ ImageOverlay::postCTOR()
     VirtualProgram* vp = new VirtualProgram();
     vp->setName( "imageoverlay");
     vp->installDefaultColoringShaders(1);
+    //vp->installDefaultColoringAndLightingShaders(1);
+    //vp->setInheritShaders(false);
     d->getOrCreateStateSet()->setAttributeAndModes( vp, 1 );
     
     init();    

@@ -124,7 +124,7 @@ CircleNode::rebuild()
             getDrapeable()->setDraped( _draped );
         }
 
-        applyStyle( _style, _draped );
+        applyStyle( _style );
     }
 
     setDecoration( currentDecoration );

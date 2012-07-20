@@ -299,9 +299,9 @@ AnnotationNode::configureForAltitudeMode( const AltitudeMode& mode )
 }
 
 void
-AnnotationNode::applyStyle( const Style& style, bool noClampHint )
+AnnotationNode::applyStyle( const Style& style)
 {
-    if ( !noClampHint && supportsAutoClamping(style) )
+    if ( supportsAutoClamping(style) )
     {
         _altitude = style.get<AltitudeSymbol>();
         setAutoClamp( true );

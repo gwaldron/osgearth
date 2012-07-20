@@ -123,7 +123,7 @@ FeatureNode::init()
         // workaround until we can auto-clamp extruded/sub'd geometries.
         if ( autoClamping )
         {
-            applyStyle( *_feature->style(), _draped );
+            applyStyle( *_feature->style() );
             clampMesh( _mapNode->getTerrain()->getGraph() );
         }
     }

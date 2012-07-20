@@ -159,8 +159,8 @@ ModelLayer::getOrCreateNode( ProgressCallback* progress )
         {
             _node = _modelSource->createNode( progress );
 
-            if ( _runtimeOptions.visible().isSet() )
-                setVisible( *_runtimeOptions.visible() );
+            if ( _runtimeOptions.visible().isSet() && _node.valid())
+              _node->setNodeMask( *_runtimeOptions.visible() ? ~0 : 0 );
 
             if ( _runtimeOptions.lightingEnabled().isSet() )
                 setLightingEnabled( *_runtimeOptions.lightingEnabled() );

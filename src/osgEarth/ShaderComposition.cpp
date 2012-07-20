@@ -30,6 +30,9 @@
 using namespace osgEarth;
 using namespace osgEarth::ShaderComp;
 
+//#define OE_TEST OE_NULL
+#define OE_TEST OE_NOTICE
+
 //------------------------------------------------------------------------
 
 #define VERTEX_SETUP_COLORING   "osgearth_vert_setupColoring"
@@ -271,15 +274,15 @@ VirtualProgram::buildProgram( osg::State& state, ShaderMap& accumShaderMap )
     }
 
     // Create a new program and add all our shaders.
-    //OE_INFO << LC << "--------------- PROGRAM -----------------------\n" << std::endl;
+    OE_TEST << LC << "---------PROGRAM: " << getName() << " ---------------\n" << std::endl;
 
     osg::Program* program = new osg::Program();
     program->setName(getName());
+
     for( ShaderVector::iterator i = vec.begin(); i != vec.end(); ++i )
     {
         program->addShader( i->get() );
-        //OE_INFO << LC << "SHADER " << i->get()->getName() << ":\n"
-        //    << i->get()->getShaderSource() << "\n" << std::endl;
+        OE_TEST << LC << "SHADER " << i->get()->getName() << ":\n" << i->get()->getShaderSource() << "\n" << std::endl;
     }
 
     // Since we replaced the "mains", we have to go through the cache and update all its
@@ -621,7 +624,7 @@ ShaderFactory::createFragmentShaderMain( const FunctionLocationMap& functions ) 
  
 
 osg::Shader*
-ShaderFactory::createDefaultColoringVertexShader( int numTexCoordSets ) const
+ShaderFactory::createDefaultColoringVertexShader( unsigned numTexCoordSets ) const
 {
     std::stringstream buf;
 
@@ -633,7 +636,7 @@ ShaderFactory::createDefaultColoringVertexShader( int numTexCoordSets ) const
 
     //TODO: gl_TexCoord et.al. are depcrecated so we should replace them;
     // this approach also only support up to 8 texture coord units
-    for(int i=0; i<numTexCoordSets; ++i )
+    for(unsigned i=0; i<numTexCoordSets; ++i )
     {
         buf << "    gl_TexCoord["<< i <<"] = gl_MultiTexCoord"<< i << "; \n";
     }
@@ -651,7 +654,7 @@ ShaderFactory::createDefaultColoringVertexShader( int numTexCoordSets ) const
 
 
 osg::Shader*
-ShaderFactory::createDefaultColoringFragmentShader( int numTexImageUnits ) const
+ShaderFactory::createDefaultColoringFragmentShader( unsigned numTexImageUnits ) const
 {
     std::stringstream buf;
 
@@ -660,7 +663,7 @@ ShaderFactory::createDefaultColoringFragmentShader( int numTexImageUnits ) const
     if ( numTexImageUnits > 0 )
     {
         buf << "uniform sampler2D ";
-        for( int i=0; i<numTexImageUnits; ++i )
+        for( unsigned i=0; i<numTexImageUnits; ++i )
         {
             buf << getSamplerName(i) << (i+1 < numTexImageUnits? "," : "; \n");
         }
@@ -674,10 +677,12 @@ ShaderFactory::createDefaultColoringFragmentShader( int numTexImageUnits ) const
     {
         buf << "    vec4 texel; \n";
 
-        for(int i=0; i<numTexImageUnits; ++i )
+        for(unsigned i=0; i<numTexImageUnits; ++i )
         {
-            buf << "    texel = texture2D(" << getSamplerName(i) << ", gl_TexCoord["<< i <<"].st); \n"
-                << "    color.rgb = mix( color.rgb, texel.rgb, texel.a ); \n";
+            buf << "    texel = texture2D(" << getSamplerName(i) << ", gl_TexCoord["<< i <<"].st); \n";
+            buf << "    color.rgb = mix( color.rgb, texel.rgb, texel.a ); \n";
+            if ( i == 0 )
+                buf << "    color.a = texel.a * color.a; \n";
         }
     }
 

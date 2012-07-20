@@ -95,14 +95,14 @@ namespace osgEarth
          * The name/prototype is:
          *    void osgearth_vert_setupColoring(); 
          */
-        virtual osg::Shader* createDefaultColoringVertexShader( int numTexCoordSets ) const;
+        virtual osg::Shader* createDefaultColoringVertexShader( unsigned numTexCoordSets ) const;
 
         /**
          * Creates the function that applies texture data in the fragment shader.
          * The name/prototype is:
          *    osgearth_frag_applyColoring( inout vec4 color );
          */
-        virtual osg::Shader* createDefaultColoringFragmentShader( int numTexCoordSets ) const;
+        virtual osg::Shader* createDefaultColoringFragmentShader( unsigned numTexCoordSets ) const;
 
         /**
          * Creates the function that applies lighting calculations in the vertex shader.

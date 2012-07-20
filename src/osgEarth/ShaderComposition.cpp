@@ -30,8 +30,8 @@
 using namespace osgEarth;
 using namespace osgEarth::ShaderComp;
 
-//#define OE_TEST OE_NULL
-#define OE_TEST OE_NOTICE
+#define OE_TEST OE_NULL
+//#define OE_TEST OE_NOTICE
 
 //------------------------------------------------------------------------
 

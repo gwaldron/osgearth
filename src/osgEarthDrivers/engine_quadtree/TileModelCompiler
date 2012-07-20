@@ -29,6 +29,7 @@
 
 #include <osg/Node>
 #include <osg/StateSet>
+#include <osg/Drawable>
 
 using namespace osgEarth;
 using namespace osgEarth::Drivers;
@@ -60,10 +61,11 @@ public:
         osg::StateSet*&  out_stateSet );
 
 protected:
-    const MaskLayerVector&              _masks;
-    osg::ref_ptr<TextureCompositor>     _texCompositor;
-    bool                                _optimizeTriOrientation;
-    const QuadTreeTerrainEngineOptions& _options;
+    const MaskLayerVector&                    _masks;
+    osg::ref_ptr<TextureCompositor>           _texCompositor;
+    bool                                      _optimizeTriOrientation;
+    const QuadTreeTerrainEngineOptions&       _options;
+    osg::ref_ptr<osg::Drawable::CullCallback> _cullByTraversalMask;
 };
 
 #endif // OSGEARTH_ENGINE_QUADTREE_TILE_MODEL_COMPILER

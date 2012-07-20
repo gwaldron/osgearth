@@ -642,21 +642,12 @@ SinglePassTerrainTechnique::createGeometry( const TileFrame& tilef )
     skirtGeode->addDrawable( skirt );
 
     osg::ref_ptr< TerrainNode > terrain = _tile->getTerrain();
-    if (terrain.valid())
+    if ( terrain.valid() )
     {
         //Set the node masks of the surface and skirts if they are set.
-        const OSGTerrainOptions& opts = terrain->getTileFactory()->getTerrainOptions();
-        if (opts.skirtNodeMask().isSet())
-        {     
-            //OE_NOTICE << "Setting skirt nodemask to " << opts.skirtNodeMask().value() << std::endl;
-            skirtGeode->setNodeMask( opts.skirtNodeMask().value() );
-        }
-
-        if (opts.surfaceNodeMask().isSet())
-        {
-            //OE_NOTICE << "Setting surface nodemask to " << opts.surfaceNodeMask().value() << std::endl;
-            surfaceGeode->setNodeMask( opts.surfaceNodeMask().value() );
-        }
+        const TerrainOptions& opts = terrain->getTileFactory()->getTerrainOptions();
+        surfaceGeode->setNodeMask( *opts.primaryTraversalMask() );
+        skirtGeode->setNodeMask( *opts.secondaryTraversalMask() );
     }
     
     group->addChild( skirtGeode );

@@ -20,10 +20,14 @@
 #include <osgEarthFeatures/FeatureModelGraph>
 #include <osgEarthFeatures/CropFilter>
 #include <osgEarthFeatures/FeatureSourceIndexNode>
+#include <osgEarth/Capabilities>
 #include <osgEarth/ThreadingUtils>
 #include <osgEarth/CullingUtils>
 #include <osgEarth/NodeUtils>
 #include <osgEarth/ElevationQuery>
+#include <osgEarth/Registry>
+#include <osgEarth/ShaderComposition>
+#include <osg/CullFace>
 #include <osg/PagedLOD>
 #include <osg/ProxyNode>
 #include <osgDB/FileNameUtils>
@@ -239,6 +243,16 @@ _pendingUpdate( false )
         }
     }
 
+    // install base shader mains.
+    if ( Registry::instance()->getCapabilities().supportsGLSL() )
+    {
+        installShaderMains();
+    }
+
+    // backface culling is ON by default. By the way, this is most definitely
+    // necessary when shading with shadows.
+    this->getOrCreateStateSet()->setMode(GL_CULL_FACE, 1);
+
     ADJUST_EVENT_TRAV_COUNT( this, 1 );
 
     redraw();
@@ -247,6 +261,20 @@ _pendingUpdate( false )
 FeatureModelGraph::~FeatureModelGraph()
 {
     osgEarthFeatureModelPseudoLoader::unregisterGraph( _uid );
+}
+
+void
+FeatureModelGraph::installShaderMains()
+{
+#if 0
+    ShaderFactory* fact = Registry::instance()->getShaderFactory();
+
+    VirtualProgram* vp = new VirtualProgram();
+    vp->setName( "FeatureModelGraph" );
+    vp->installDefaultColoringAndLightingShaders();
+
+    this->getOrCreateStateSet()->setAttributeAndModes( vp, osg::StateAttribute::ON );
+#endif
 }
 
 void

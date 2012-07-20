@@ -1265,6 +1265,18 @@ namespace
         return stateSet;
     }
 
+
+
+    struct CullByTraversalMask : public osg::Drawable::CullCallback
+    {
+        CullByTraversalMask( unsigned mask ) : _mask(mask) { }
+        unsigned _mask;
+
+        bool cull(osg::NodeVisitor* nv, osg::Drawable* drawable, osg::RenderInfo* renderInfo) const 
+        {
+            return ((unsigned)nv->getTraversalMask() & ((unsigned)nv->getNodeMaskOverride() | _mask)) == 0;
+        }
+    };
 }
 
 //------------------------------------------------------------------------
@@ -1279,6 +1291,8 @@ _optimizeTriOrientation( optimizeTriOrientation ),
 _options               ( options )
 {
     //nop
+
+    _cullByTraversalMask = new CullByTraversalMask(*options.secondaryTraversalMask());
 }
 
 
@@ -1301,9 +1315,7 @@ TileModelCompiler::compile(const TileModel* model,
     d.surface->setUseVertexBufferObjects(true);
     d.surfaceGeode = new osg::Geode();
     d.surfaceGeode->addDrawable( d.surface );
-
-    if ( _options.surfaceNodeMask().isSet() )
-        d.surfaceGeode->setNodeMask( *_options.surfaceNodeMask() );
+    d.surfaceGeode->setNodeMask( *_options.primaryTraversalMask() );
 
     xform->addChild( d.surfaceGeode );
 
@@ -1316,13 +1328,16 @@ TileModelCompiler::compile(const TileModel* model,
     {
         d.skirt = new osg::Geometry();
         d.skirt->setUseVertexBufferObjects(true);
-        d.skirtGeode = new osg::Geode();
-        d.skirtGeode->addDrawable( d.skirt );
 
-        if ( _options.skirtNodeMask().isSet() )
-            d.skirtGeode->setNodeMask( *_options.skirtNodeMask() );
+        //d.skirtGeode = new osg::Geode();
+        //d.skirtGeode->addDrawable( d.skirt );
+        //d.skirtGeode->setNodeMask( *_options.secondaryTraversalMask() );
+        //xform->addChild( d.skirtGeode );
 
-        xform->addChild( d.skirtGeode );
+        // slightly faster than a separate geode:
+        d.skirt->setDataVariance( osg::Object::DYNAMIC ); // since we're using a custom cull callback
+        d.skirt->setCullCallback( _cullByTraversalMask.get() );
+        d.surfaceGeode->addDrawable( d.skirt );
     }
 
 

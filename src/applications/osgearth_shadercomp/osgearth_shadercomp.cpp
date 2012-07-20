@@ -99,7 +99,7 @@ namespace TEST_1
 namespace TEST_2
 {
     char s_source[] =
-        "void osgearth_frag_applyTexturing( inout vec4 color ) { \n"
+        "void osgearth_frag_applyColoring( inout vec4 color ) { \n"
         "    color.r = 1.0; \n"
         "} \n";
 
@@ -109,7 +109,7 @@ namespace TEST_2
         g1->addChild( earth );
 
         osgEarth::VirtualProgram* vp = new osgEarth::VirtualProgram();
-        vp->setShader( "osgearth_frag_applyTexturing", new osg::Shader(osg::Shader::FRAGMENT, s_source) );
+        vp->setShader( "osgearth_frag_applyColoring", new osg::Shader(osg::Shader::FRAGMENT, s_source) );
         g1->getOrCreateStateSet()->setAttributeAndModes( vp, osg::StateAttribute::ON );
 
         return g1;
@@ -123,7 +123,7 @@ namespace TEST_2
 namespace TEST_3
 {
     char s_source[] =
-        "void osgearth_frag_applyTexturing( inout vec4 color ) { \n"
+        "void osgearth_frag_applyColoring( inout vec4 color ) { \n"
         "    color = vec4(1.0, 0.0, 0.0, 1.0); \n"
         "} \n";
 
@@ -137,7 +137,7 @@ namespace TEST_3
         // NOTE the use of OVERRIDE; this prevents subordinate VPs from replacing the 
         // function (unless marked as PROTECTED).
         vp->setShader( 
-            "osgearth_frag_applyTexturing",
+            "osgearth_frag_applyColoring",
             new osg::Shader(osg::Shader::FRAGMENT, s_source),
             osg::StateAttribute::ON | osg::StateAttribute::OVERRIDE );
 
@@ -155,12 +155,12 @@ namespace TEST_3
 namespace TEST_4
 {
     char s_source_1[] =
-        "void osgearth_frag_applyTexturing( inout vec4 color ) { \n"
+        "void osgearth_frag_applyColoring( inout vec4 color ) { \n"
         "    color = vec4(1.0, 0.0, 0.0, 1.0); \n"
         "} \n";
     
     char s_source_2[] =
-        "void osgearth_frag_applyTexturing( inout vec4 color ) { \n"
+        "void osgearth_frag_applyColoring( inout vec4 color ) { \n"
         "    color = vec4(0.0, 0.0, 1.0, 1.0); \n"
         "} \n";
 
@@ -170,7 +170,7 @@ namespace TEST_4
         osg::Group* g1 = new osg::Group();
         osgEarth::VirtualProgram* vp1 = new osgEarth::VirtualProgram();
         vp1->setShader( 
-            "osgearth_frag_applyTexturing",
+            "osgearth_frag_applyColoring",
             new osg::Shader(osg::Shader::FRAGMENT, s_source_1),
             osg::StateAttribute::ON | osg::StateAttribute::OVERRIDE );
         g1->getOrCreateStateSet()->setAttributeAndModes( vp1, osg::StateAttribute::ON );
@@ -179,7 +179,7 @@ namespace TEST_4
         osg::Group* g2 = new osg::Group();
         osgEarth::VirtualProgram* vp2 = new osgEarth::VirtualProgram();
         vp2->setShader(
-            "osgearth_frag_applyTexturing",
+            "osgearth_frag_applyColoring",
             new osg::Shader(osg::Shader::FRAGMENT, s_source_2),
             osg::StateAttribute::ON | osg::StateAttribute::PROTECTED | osg::StateAttribute::OVERRIDE );
         g2->getOrCreateStateSet()->setAttributeAndModes( vp2, osg::StateAttribute::ON );

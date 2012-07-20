@@ -48,9 +48,11 @@ namespace
         const TextureLayout::TextureSlotVector& slots = layout.getTextureSlots();
 
         buf << "#version 130 \n"
-            << "void osgearth_vert_setupTexturing() \n"
+            << "void osgearth_vert_setupColoring() \n"
             << "{ \n"
             << "    gl_TexCoord[0] = gl_MultiTexCoord0; \n"
+            << "    gl_FrontColor = gl_Color; \n"
+            << "    gl_FrontSecondaryColor = vec4(0.0); \n"
             << "} \n";
 
         std::string str;
@@ -89,7 +91,7 @@ namespace
             << "uniform float osgearth_ImageLayerAttenuation; \n"
             << "varying float osgearth_CameraRange; \n"
 
-            << "void osgearth_frag_applyTexturing( inout vec4 color ) \n"
+            << "void osgearth_frag_applyColoring( inout vec4 color ) \n"
             << "{ \n"
             << "    vec3 color3 = color.rgb; \n"
             << "    float u, v, dmin, dmax, atten_min, atten_max, age; \n"
@@ -403,11 +405,11 @@ TextureCompositorTexArray::updateMasterStateSet( osg::StateSet* stateSet, const 
     VirtualProgram* vp = static_cast<VirtualProgram*>( stateSet->getAttribute(osg::StateAttribute::PROGRAM) );
 
     vp->setShader(
-        "osgearth_vert_setupTexturing",
+        "osgearth_vert_setupColoring",
         s_createTextureVertSetupShaderFunction(layout) );
 
     vp->setShader( 
-        "osgearth_frag_applyTexturing", 
+        "osgearth_frag_applyColoring", 
         s_createTextureFragShaderFunction(layout, true, _lodTransitionTime ) );
 }
 

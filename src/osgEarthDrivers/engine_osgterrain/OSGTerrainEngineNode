@@ -20,7 +20,6 @@
 #define OSGEARTH_ENGINE_OSGTERRAIN_ENGINE_NODE_H 1
 
 #include <osgEarth/TerrainEngineNode>
-#include <osgEarth/TextureCompositor>
 #include <osgEarth/Map>
 #include <osgEarth/Revisioning>
 #include <osgEarth/TaskService>

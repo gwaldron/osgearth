@@ -263,6 +263,21 @@ namespace osgEarth
          */
         optional<bool>& enableMercatorFastPath() { return _mercatorFastPath; }
         const optional<bool>& enableMercatorFastPath() const { return _mercatorFastPath; }
+
+        /**
+         * Traversal mask to use for primary geometry -- geometry that comprises the visible
+         * geometry and should participate in intersection, shadowing, etc.
+         */
+        optional<unsigned>& primaryTraversalMask() { return _primaryTraversalMask; }
+        const optional<unsigned>& primaryTraversalMask() const { return _primaryTraversalMask; }
+
+        /**
+         * Traversal mask to use for secondary geometry -- geometry that exists for
+         * secondary purpose (e.g. terrain skirts) that should not participate in 
+         * intersection, shadowing, etc.
+         */
+        optional<unsigned>& secondaryTraversalMask() { return _secondaryTraversalMask; }
+        const optional<unsigned>& secondaryTraversalMask() const { return _secondaryTraversalMask; }
    
     public:
         virtual Config getConfig() const;
@@ -296,6 +311,8 @@ namespace osgEarth
         optional<osg::Texture::FilterMode> _magFilter;
         optional<osg::Texture::FilterMode> _minFilter;
         optional<ElevationInterpolation> _elevationInterpolation;
+        optional<unsigned> _primaryTraversalMask;
+        optional<unsigned> _secondaryTraversalMask;
     };
 }
 

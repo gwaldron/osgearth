@@ -83,6 +83,8 @@ int main(int argc, char** argv)
     
     //Setup a vdsm shadow map
     osgShadow::ShadowSettings* settings = new osgShadow::ShadowSettings;
+    settings->setShaderHint( osgShadow::ShadowSettings::NO_SHADERS );
+    settings->setUseOverrideForShadowMapTexture( true );
     shadowedScene->setShadowSettings(settings);
 
     if (arguments.read("--persp")) settings->setShadowMapProjectionHint(osgShadow::ShadowSettings::PERSPECTIVE_SHADOW_MAP);
@@ -97,6 +99,8 @@ int main(int argc, char** argv)
     if (arguments.read("--parallel-split") || arguments.read("--ps") ) settings->setMultipleShadowMapHint(osgShadow::ShadowSettings::PARALLEL_SPLIT);
     if (arguments.read("--cascaded")) settings->setMultipleShadowMapHint(osgShadow::ShadowSettings::CASCADED);
 
+    settings->setDebugDraw( arguments.read("--debug") );
+
     int mapres = 1024;
     while (arguments.read("--mapres", mapres))
         settings->setTextureSize(osg::Vec2s(mapres,mapres));
@@ -104,7 +108,7 @@ int main(int argc, char** argv)
     osg::ref_ptr<osgShadow::ViewDependentShadowMap> vdsm = new osgShadow::ViewDependentShadowMap;
     shadowedScene->setShadowTechnique(vdsm.get());
     
-    osg::ref_ptr<osg::Group> root = shadowedScene;
+    osg::ref_ptr<osg::Group> root; // = shadowedScene;
     osg::ref_ptr<osg::Group> model = MapNodeHelper().load(arguments, &viewer);
 
     SkyNode* skyNode = findTopMostNodeOfType< SkyNode > ( model.get() );
@@ -124,39 +128,25 @@ int main(int argc, char** argv)
         exit(1);
     }
 
-    //Disable skirts from casting shadows
-    const OSGTerrainOptions* opt = dynamic_cast<const OSGTerrainOptions*>(&mapNode->getTerrainEngine()->getTerrainOptions());
-    if (opt)
-    {        
-        //Set the skirts to NOT cast shadows or you will see artifacts close to the ground
-        if (opt->skirtNodeMask().isSet())
-        {
-            shadowedScene->setCastsShadowTraversalMask(  ~opt->skirtNodeMask().value() );            
-        }
-    }    
+    // Disable skirts (or any secondary geometry) from casting shadows
+    const TerrainOptions& terrainOptions = mapNode->getTerrainEngine()->getTerrainOptions();
+    shadowedScene->setCastsShadowTraversalMask( ~terrainOptions.secondaryTraversalMask().value() );
 
+    ShadowUtils::setUpShadows(shadowedScene, mapNode);
 
-    ShadowUtils::setUpShadows(shadowedScene, model);
-
-    // The ControlCanvas is a camera and doesn't play nicely with the
-    // shadow traversal. Also, it shouldn't be shadowed, and the
-    // ReceivesShadowTraversalMask doesn't really prevent that. So,
-    // take the canvas out of the shadowed scene.
-    for (unsigned int i = 0; i < model->getNumChildren(); ++i)
+    if ( mapNode->getNumParents() > 0 )
     {
-        osg::ref_ptr<Controls::ControlCanvas> canvas
-            = dynamic_cast<Controls::ControlCanvas*>(model->getChild(i));
-        if (canvas.valid())
-        {
-            root = new osg::Group;
-            root->addChild(shadowedScene);
-            model->removeChild(i);
-            root->addChild(canvas.get());
-            break;
-        }
+        osg::Group* parent = mapNode->getParent(0);
+        parent->addChild( shadowedScene );
+        shadowedScene->addChild( mapNode );
+        parent->removeChild( mapNode );
+        root = model.get();
     }
-
-    shadowedScene->addChild(model.get());
+    else
+    {
+        root = shadowedScene;
+        shadowedScene->addChild( model.get() );
+    }
 
     if (skyNode )
     {

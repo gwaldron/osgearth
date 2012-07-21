@@ -171,7 +171,12 @@ _supportsOcclusionQuery ( false )
 #endif
         OE_INFO << LC << "  Max texture size = " << _maxTextureSize << std::endl;
 
+        //PORT@tom, what effect will this have?
+#ifdef OSG_GL_FIXED_FUNCTION_AVAILABLE
         glGetIntegerv( GL_MAX_LIGHTS, &_maxLights );
+#else
+        _maxLights = 1;
+#endif
         OE_INFO << LC << "  Max lights = " << _maxLights << std::endl;
 
         _supportsGLSL = GL2->isGlslSupported();

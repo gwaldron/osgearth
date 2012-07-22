@@ -24,6 +24,7 @@
 #include <osgEarth/Layer>
 #include <osgEarth/Config>
 #include <osgEarth/ModelSource>
+#include <osgEarth/ShaderUtils>
 #include <osg/Node>
 #include <vector>
 
@@ -81,6 +82,14 @@ namespace osgEarth
         optional<bool>& overlay() { return _overlay; }
         const optional<bool>& overlay() const { return _overlay; }
 
+        /**
+         * TEMPORARY option that will turn off all shader program composition
+         * on the model layer. Need this temporarily to support external model
+         * references until we get a proper shader gen working
+         */
+        optional<bool>& disableShaders() { return _disableShaderComp; }
+        const optional<bool>& disableShaders() const { return _disableShaderComp; }
+
     public:
         virtual Config getConfig() const;
         virtual void mergeConfig( const Config& conf );
@@ -95,6 +104,7 @@ namespace osgEarth
         optional<bool> _enabled;
         optional<bool> _visible;
         optional<bool> _lighting;
+        optional<bool> _disableShaderComp;
     };
 
     /**
@@ -195,6 +205,7 @@ namespace osgEarth
         osg::ref_ptr<osgDB::Options> _dbOptions;
         Revision                     _modelSourceRev;
         ModelLayerCallbackList       _callbacks;
+        UpdateLightingUniformsHelper _updateLightingUniformsHelper;
 
         virtual void fireCallback( ModelLayerCallbackMethodPtr method );
 

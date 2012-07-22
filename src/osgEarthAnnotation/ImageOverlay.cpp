@@ -26,6 +26,7 @@
 #include <osgEarth/NodeUtils>
 #include <osgEarth/ImageUtils>
 #include <osgEarth/DrapeableNode>
+#include <osgEarth/ShaderComposition>
 #include <osg/Geode>
 #include <osg/ShapeDrawable>
 #include <osg/Texture2D>
@@ -190,17 +191,24 @@ ImageOverlay::postCTOR()
 
     d->addChild( _transform );
 
+    // need a shader that supports one texture
+    VirtualProgram* vp = new VirtualProgram();
+    vp->setName( "imageoverlay");
+    vp->installDefaultColoringShaders(1);
+    //vp->installDefaultColoringAndLightingShaders(1);
+    //vp->setInheritShaders(false);
+    d->getOrCreateStateSet()->setAttributeAndModes( vp, 1 );
     
     init();    
     ADJUST_UPDATE_TRAV_COUNT( this, 1 );
 
-    getOrCreateStateSet()->setMode(GL_DEPTH_TEST, osg::StateAttribute::OFF);
+//    getOrCreateStateSet()->setMode(GL_DEPTH_TEST, osg::StateAttribute::OFF);
 }
 
 void
 ImageOverlay::init()
 {
-    OpenThreads::ScopedLock< OpenThreads::Mutex > lock(_mutex);    
+    OpenThreads::ScopedLock< OpenThreads::Mutex > lock(_mutex);
 
     double height = 0;
     osg::Geometry* geometry = new osg::Geometry();

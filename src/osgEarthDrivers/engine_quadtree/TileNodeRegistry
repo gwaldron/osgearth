@@ -70,7 +70,7 @@ public:
     void run( Operation& op );
     
     /** Runs an operation against the read-locked tile set. */
-    void run( ConstOperation& op );
+    void run( const ConstOperation& op ) const;
 
 protected:
 

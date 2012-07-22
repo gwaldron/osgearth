@@ -396,7 +396,11 @@ TileSource::hasDataAtLOD( unsigned lod ) const
 bool
 TileSource::hasDataInExtent( const GeoExtent& extent ) const
 {
-    //If no data extents are provided, just return true
+    // if the extent is invalid, no intersection.
+    if ( !extent.isValid() )
+        return false;
+
+    // If no data extents are provided, just return true
     if ( _dataExtents.size() == 0 )
         return true;
 

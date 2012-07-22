@@ -118,7 +118,7 @@ TileNodeRegistry::run( TileNodeRegistry::Operation& op )
 
 
 void
-TileNodeRegistry::run( TileNodeRegistry::ConstOperation& op )
+TileNodeRegistry::run( const TileNodeRegistry::ConstOperation& op ) const
 {
     Threading::ScopedReadLock lock( _tilesMutex );
     op.operator()( _tiles );

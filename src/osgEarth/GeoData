@@ -361,6 +361,11 @@ namespace osgEarth
         GeoExtent transform( const SpatialReference* to_srs ) const;
 
         /**
+         * Same as transform(srs) but puts the result in the output extent
+         */
+        bool transform( const SpatialReference* to_srs, GeoExtent& output ) const;
+
+        /**
          * Returns true if the specified point falls within the bounds of the extent.
          *
          * @param x, y
@@ -390,8 +395,10 @@ namespace osgEarth
 
         /**
          * Returns TRUE if this extent intersects another extent.
+         * @param[in ] rhs      Extent against which to perform intersect test
+         * @param[in ] checkSRS If false, assume the extents have the same SRS (don't check).
          */
-        bool intersects( const GeoExtent& rhs ) const;
+        bool intersects( const GeoExtent& rhs, bool checkSRS =true ) const;
 
         /**
          * Copy of the anonymous bounding box

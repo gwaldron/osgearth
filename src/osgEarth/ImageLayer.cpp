@@ -241,7 +241,8 @@ _runtimeOptions( options )
 void
 ImageLayer::init()
 {
-    //NOP.
+    _emptyImage = ImageUtils::createEmptyImage();
+    //*((unsigned*)_emptyImage->data()) = 0x7F0000FF;
 }
 
 void
@@ -283,6 +284,20 @@ ImageLayer::setOpacity( float value )
 {
     _runtimeOptions.opacity() = osg::clampBetween( value, 0.0f, 1.0f );
     fireCallback( &ImageLayerCallback::onOpacityChanged );
+}
+
+void
+ImageLayer::setMinVisibleRange( float minVisibleRange )
+{
+    _runtimeOptions.minVisibleRange() = minVisibleRange;
+    fireCallback( &ImageLayerCallback::onVisibleRangeChanged );
+}
+
+void
+ImageLayer::setMaxVisibleRange( float maxVisibleRange )
+{
+    _runtimeOptions.maxVisibleRange() = maxVisibleRange;
+    fireCallback( &ImageLayerCallback::onVisibleRangeChanged );
 }
 
 void
@@ -365,9 +380,6 @@ GeoImage
 ImageLayer::createImage( const TileKey& key, ProgressCallback* progress, bool forceFallback )
 {
     bool isFallback;
-
-    // "16/24846/18102"
-
     return createImageInKeyProfile( key, progress, forceFallback, isFallback);
 }
 
@@ -468,6 +480,13 @@ ImageLayer::createImageInKeyProfile( const TileKey& key, ProgressCallback* progr
     if ( !getEnabled() )
     {
         return GeoImage::INVALID;
+    }
+
+    // Check for a "Minumum level" setting on this layer. If we are before the
+    // min level, just return the empty image. Do not cache empties
+    if ( _runtimeOptions.minLevel().isSet() && key.getLOD() < _runtimeOptions.minLevel().value() )
+    {
+        return GeoImage( _emptyImage.get(), key.getExtent() );
     }
 
     OE_DEBUG << LC << 
@@ -582,7 +601,7 @@ ImageLayer::createImageFromTileSource(const TileKey&    key,
     // If the profiles are different, use a compositing method to assemble the tile.
     if ( !key.getProfile()->isEquivalentTo( getProfile() ) )
     {
-        return assembleImageFromTileSource( key, progress, true, out_isFallback ); //forceFallback, out_isFallback );
+        return assembleImageFromTileSource( key, progress, true, out_isFallback );
     }
 
     // Fail is the image is blacklisted.

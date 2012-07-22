@@ -74,11 +74,12 @@ SerialKeyNodeFactory::addTile(TileModel* model, bool tileHasRealData, bool tileH
     // Only add the next tile if all the following are true:
     // 1. Either there's real tile data, or a maxLOD is explicity set in the options;
     // 2. The tile isn't blacklisted; and
-    // 3. We are still below the max LOD.
+    // 3. We are still below the minimum LOD.
     bool wrapInPagedLOD =
-        (tileHasRealData || _options.maxLOD().isSet()) &&
+        (tileHasRealData || (_options.minLOD().isSet() && model->_tileKey.getLOD() < *_options.minLOD())) &&
+        //(tileHasRealData || _options.minLOD().isSet()) &&
         !osgEarth::Registry::instance()->isBlacklisted( uri ) &&
-        model->_tileKey.getLevelOfDetail() < (unsigned)*_options.maxLOD();
+        model->_tileKey.getLOD() < *_options.maxLOD();
 
     if ( wrapInPagedLOD )
     {
@@ -195,7 +196,7 @@ SerialKeyNodeFactory::createNode( const TileKey& parentKey )
     osg::Group* root = 0L;
 
     // assemble the tile.
-    if ( tileHasAnyRealData || _options.maxLOD().isSet() || parentKey.getLevelOfDetail() == 0 )
+    if ( tileHasAnyRealData || _options.minLOD().isSet() || parentKey.getLevelOfDetail() == 0 )
     {
         // Now create TileNodes for them and assemble into a tile group.
         root = new TileNodeGroup();

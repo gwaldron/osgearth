@@ -61,6 +61,7 @@ SubstituteModelFilter::process(const FeatureList&           features,
                                FilterContext&               context )
 {
     bool makeECEF = context.getSession()->getMapInfo().isGeocentric();
+    const SpatialReference* targetSRS = context.getSession()->getMapInfo().getSRS();
 
     // first, go through the features and build the model cache. Apply the model matrix' scale
     // factor to any AutoTransforms directly (cloning them as necessary)
@@ -146,6 +147,12 @@ SubstituteModelFilter::process(const FeatureList&           features,
             {
                 Geometry* geom = gi.next();
 
+                // if necessary, transform the points to the target SRS:
+                if ( !makeECEF && !targetSRS->isEquivalentTo(context.profile()->getSRS()) )
+                {
+                    context.profile()->getSRS()->transform( geom->asVector(), targetSRS );
+                }
+
                 for( unsigned i=0; i<geom->size(); ++i )
                 {
                     osg::Matrixd mat;
@@ -158,11 +165,11 @@ SubstituteModelFilter::process(const FeatureList&           features,
                         // but if the tile is big enough the up vectors won't be quite right.
                         osg::Matrixd rotation;
                         ECEF::transformAndGetRotationMatrix( point, context.profile()->getSRS(), point, rotation );
-                        mat = rotationMatrix * rotation * scaleMatrix * osg::Matrixd::translate( point ) * _world2local;                        
+                        mat = rotationMatrix * rotation * scaleMatrix * osg::Matrixd::translate( point ) * _world2local;
                     }
                     else
                     {
-                        mat = rotationMatrix * scaleMatrix *  osg::Matrixd::translate( point ) * _world2local;                        
+                        mat = rotationMatrix * scaleMatrix *  osg::Matrixd::translate( point ) * _world2local;
                     }
 
                     osg::MatrixTransform* xform = new osg::MatrixTransform();
@@ -208,6 +215,7 @@ struct ClusterVisitor : public osg::NodeVisitor
     {
         bool makeECEF = _cx.getSession()->getMapInfo().isGeocentric();
         const SpatialReference* srs = _cx.profile()->getSRS();
+        const SpatialReference* targetSRS = _cx.getSession()->getMapInfo().getSRS();
 
         NumericExpression scaleEx = *_symbol->scale();
         osg::Matrixd scaleMatrix;
@@ -236,7 +244,7 @@ struct ClusterVisitor : public osg::NodeVisitor
             // go through the list of input features...
             for( FeatureList::const_iterator j = _features.begin(); j != _features.end(); j++ )
             {
-                const Feature* feature = j->get();
+                Feature* feature = j->get();
 
                 if ( _symbol->scale().isSet() )
                 {
@@ -257,10 +265,16 @@ struct ClusterVisitor : public osg::NodeVisitor
                 }
 
 
-                ConstGeometryIterator gi( feature->getGeometry(), false );
+                GeometryIterator gi( feature->getGeometry(), false );
                 while( gi.hasMore() )
                 {
-                    const Geometry* geom = gi.next();
+                    Geometry* geom = gi.next();
+
+                    // if necessary, transform the points to the target SRS:
+                    if ( !makeECEF && !targetSRS->isEquivalentTo(srs) )
+                    {
+                        srs->transform( geom->asVector(), targetSRS );
+                    }
 
                     for( Geometry::const_iterator k = geom->begin(); k != geom->end(); ++k )
                     {

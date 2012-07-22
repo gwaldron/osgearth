@@ -134,6 +134,8 @@ namespace osgEarth { namespace Features
 
         void redraw();
 
+        void installShaderMains();
+
     private:
         FeatureModelSourceOptions        _options;
         osg::ref_ptr<FeatureNodeFactory> _factory;

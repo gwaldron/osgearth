@@ -24,6 +24,7 @@
 #include <osg/Depth>
 #include <osg/Geometry>
 #include <osg/TextureRectangle>
+#include <osg/Program>
 
 #define LC "[MarkerResource] "
 
@@ -121,16 +122,18 @@ MarkerResource::createNode( const osgDB::Options* dbOptions ) const
 osg::Node*
 MarkerResource::createNodeFromURI( const URI& uri, const osgDB::Options* dbOptions ) const
 {
+    osg::Node* node = 0L;
+
     ReadResult r = uri.readObject( dbOptions );
     if ( r.succeeded() )
     {
         if ( r.getImage() )
         {
-            return buildImageModel( r.getImage() );
+            node = buildImageModel( r.getImage() );
         }
         else if ( r.getNode() )
         {
-            return r.releaseNode();
+            node = r.releaseNode();
         }
     }
 
@@ -142,8 +145,12 @@ MarkerResource::createNodeFromURI( const URI& uri, const osgDB::Options* dbOptio
             return createNodeFromURI( URI(tok[1]), dbOptions );
     }
 
-    // fail
-    return 0L;
+    // for now, disable any shaders on an imported resource until we do something about it
+    if ( node )
+    {
+        // disable shaders. perhaps later we can run a shadergen or something.
+        node->getOrCreateStateSet()->setAttributeAndModes( new osg::Program(), osg::StateAttribute::OFF );
+    }
+
+    return node;
 }
-
-

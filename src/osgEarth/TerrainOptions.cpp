@@ -95,6 +95,7 @@ _combineLayers( true ),
 _loadingPolicy( LoadingPolicy() ),
 _compositingTech( COMPOSITING_AUTO ),
 _maxLOD( 23 ),
+_minLOD( 0 ),
 _enableLighting( false ),
 _attenuationDistance( 1000000 ),
 _lodBlending( false ),
@@ -104,7 +105,9 @@ _clusterCulling( true ),
 _enableBlending( false ),
 _mercatorFastPath( true ),
 _minFilter( osg::Texture::LINEAR_MIPMAP_LINEAR ),
-_magFilter( osg::Texture::LINEAR)
+_magFilter( osg::Texture::LINEAR),
+_primaryTraversalMask  ( 0xFFFFFFFF ),
+_secondaryTraversalMask( 0x80000000 )
 {
     fromConfig( _conf );
 }
@@ -126,6 +129,7 @@ TerrainOptions::getConfig() const
     conf.updateIfSet( "normalize_edges", _normalizeEdges );
     conf.updateIfSet( "combine_layers", _combineLayers );
     conf.updateIfSet( "max_lod", _maxLOD );
+    conf.updateIfSet( "min_lod", _minLOD );
     conf.updateIfSet( "lighting", _enableLighting );
     conf.updateIfSet( "attenuation_distance", _attenuationDistance );
     conf.updateIfSet( "lod_transition_time", _lodTransitionTimeSeconds );
@@ -133,6 +137,8 @@ TerrainOptions::getConfig() const
     conf.updateIfSet( "cluster_culling", _clusterCulling );
     conf.updateIfSet( "blending", _enableBlending );
     conf.updateIfSet( "mercator_fast_path", _mercatorFastPath );
+    conf.updateIfSet( "primary_traversal_mask", _primaryTraversalMask );
+    conf.updateIfSet( "secondary_traversal_mask", _secondaryTraversalMask );
 
     conf.updateIfSet( "compositor", "auto",             _compositingTech, COMPOSITING_AUTO );
     conf.updateIfSet( "compositor", "texture_array",    _compositingTech, COMPOSITING_TEXTURE_ARRAY );
@@ -170,7 +176,8 @@ TerrainOptions::fromConfig( const Config& conf )
     conf.getIfSet( "min_tile_range_factor", _minTileRangeFactor );
     conf.getIfSet( "normalize_edges", _normalizeEdges );
     conf.getIfSet( "combine_layers", _combineLayers );
-    conf.getIfSet( "max_lod", _maxLOD );
+    conf.getIfSet( "max_lod", _maxLOD ); conf.getIfSet( "max_level", _maxLOD );
+    conf.getIfSet( "min_lod", _minLOD ); conf.getIfSet( "min_level", _minLOD );
     conf.getIfSet( "lighting", _enableLighting );
     conf.getIfSet( "attenuation_distance", _attenuationDistance );
     conf.getIfSet( "lod_transition_time", _lodTransitionTimeSeconds );
@@ -178,6 +185,8 @@ TerrainOptions::fromConfig( const Config& conf )
     conf.getIfSet( "cluster_culling", _clusterCulling );
     conf.getIfSet( "blending", _enableBlending );
     conf.getIfSet( "mercator_fast_path", _mercatorFastPath );
+    conf.getIfSet( "primary_traversal_mask", _primaryTraversalMask );
+    conf.getIfSet( "secondary_traversal_mask", _secondaryTraversalMask );
 
     conf.getIfSet( "compositor", "auto",             _compositingTech, COMPOSITING_AUTO );
     conf.getIfSet( "compositor", "texture_array",    _compositingTech, COMPOSITING_TEXTURE_ARRAY );

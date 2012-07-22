@@ -17,6 +17,7 @@
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
 #include <osgEarth/MapNode>
+#include <osgEarth/Capabilities>
 #include <osgEarth/MaskNode>
 #include <osgEarth/NodeUtils>
 #include <osgEarth/Registry>
@@ -28,7 +29,6 @@
 #include <osgEarth/DrapeableNode>
 #include <osg/ArgumentParser>
 #include <osg/PagedLOD>
-#include <osgSim/OverlayNode>
 
 using namespace osgEarth;
 
@@ -247,9 +247,9 @@ MapNode::init()
     // initialize terrain-level lighting:
     if ( terrainOptions.enableLighting().isSet() )
     {
-        _terrainEngineContainer->getOrCreateStateSet()->setMode( GL_LIGHTING, terrainOptions.enableLighting().value() ? 
-            osg::StateAttribute::ON | osg::StateAttribute::PROTECTED :
-            osg::StateAttribute::OFF | osg::StateAttribute::PROTECTED );
+        _terrainEngineContainer->getOrCreateStateSet()->setMode( 
+            GL_LIGHTING, 
+            terrainOptions.enableLighting().value() ? 1 : 0 );
     }
 
     if ( _terrainEngine )
@@ -281,6 +281,8 @@ MapNode::init()
 
     // a decorator for overlay models:
     _overlayDecorator = new OverlayDecorator();
+    _overlayDecorator->setOverlayGraphTraversalMask( terrainOptions.secondaryTraversalMask().value() );
+
     if ( _mapNodeOptions.overlayBlending().isSet() )
         _overlayDecorator->setOverlayBlending( *_mapNodeOptions.overlayBlending() );
     if ( _mapNodeOptions.overlayTextureSize().isSet() )
@@ -307,9 +309,9 @@ MapNode::init()
 
     if ( _mapNodeOptions.enableLighting().isSet() )
     {
-        ss->setMode( GL_LIGHTING, _mapNodeOptions.enableLighting().value() ? 
-            osg::StateAttribute::ON | osg::StateAttribute::PROTECTED :
-            osg::StateAttribute::OFF | osg::StateAttribute::PROTECTED );
+        ss->setMode( 
+            GL_LIGHTING, 
+            _mapNodeOptions.enableLighting().value() ? 1 : 0 );
     }
 
     dirtyBound();
@@ -435,7 +437,7 @@ MapNode::onModelLayerAdded( ModelLayer* layer, unsigned int index )
         }
         else
         {
-            if ( dynamic_cast<TerrainDecorator*>(node) || dynamic_cast<osgSim::OverlayNode*>(node) )
+            if ( dynamic_cast<TerrainDecorator*>(node) )
             {
                 OE_INFO << LC << "Installing overlay node" << std::endl;
                 addTerrainDecorator( node->asGroup() );
@@ -479,7 +481,7 @@ MapNode::onModelLayerRemoved( ModelLayer* layer )
         {
             osg::Node* node = i->second;
 
-            if ( dynamic_cast<TerrainDecorator*>( node ) || dynamic_cast<osgSim::OverlayNode*>( node ) )
+            if ( dynamic_cast<TerrainDecorator*>( node ) )
             {
                 removeTerrainDecorator( node->asGroup() );
             }
@@ -576,7 +578,7 @@ MapNode::removeTerrainDecorator(osg::Group* decorator)
 void
 MapNode::traverse( osg::NodeVisitor& nv )
 {
-    if ( nv.getVisitorType() == osg::NodeVisitor::EVENT_VISITOR )
+    if ( nv.getVisitorType() == nv.EVENT_VISITOR )
     {
         unsigned int numBlacklist = Registry::instance()->getNumBlacklistedFilenames();
         if (numBlacklist != _lastNumBlacklistedFilenames)

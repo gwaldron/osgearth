@@ -173,6 +173,13 @@ UpdateLightingUniformsHelper::updateTraverse( osg::Node* node )
     }
 }
 
+void
+UpdateLightingUniformsHelper::operator()(osg::Node* node, osg::NodeVisitor* nv)
+{
+    cullTraverse( node, nv );
+    traverse(node, nv);
+}
+
 //------------------------------------------------------------------------
 
 ArrayUniform::ArrayUniform( const std::string& name, osg::Uniform::Type type, osg::StateSet* stateSet, unsigned size )

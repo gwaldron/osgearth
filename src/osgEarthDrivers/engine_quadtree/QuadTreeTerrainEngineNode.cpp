@@ -529,14 +529,8 @@ QuadTreeTerrainEngineNode::installShaders()
         int numLayers = osg::maximum( 1, (int)_update_mapf->imageLayers().size() );
 
         VirtualProgram* vp = new VirtualProgram();
-
-        // note. this stuff should probably happen automatically in VirtualProgram. gw
-
-        vp->setShader( "osgearth_vert_setupLighting",  sf->createDefaultLightingVertexShader() );
-        vp->setShader( "osgearth_vert_setupTexturing", sf->createDefaultTextureVertexShader( numLayers ) );
-
-        vp->setShader( "osgearth_frag_applyLighting",  sf->createDefaultLightingFragmentShader() );
-        vp->setShader( "osgearth_frag_applyTexturing", sf->createDefaultTextureFragmentShader( numLayers ) );
+        vp->setName( "engine_quadtree:EngineNode" );
+        vp->installDefaultColoringAndLightingShaders( numLayers );
 
         getOrCreateStateSet()->setAttributeAndModes( vp, osg::StateAttribute::ON );
     }
@@ -556,11 +550,14 @@ QuadTreeTerrainEngineNode::updateTextureCombining()
             // These components reside in the CustomTerrain's stateset, and override the components
             // installed in the VP on the engine-node's stateset in installShaders().
             VirtualProgram* vp = new VirtualProgram();
+            vp->setName( "engine_quadtree:TerrainNode" );
+            //vp->installDefaultColoringShaders(numImageLayers);
+
             terrainStateSet->setAttributeAndModes( vp, osg::StateAttribute::ON );
 
             // first, update the default shader components based on the new layer count:
             const ShaderFactory* sf = Registry::instance()->getShaderFactory();
-            vp->setShader( "osgearth_vert_setupTexturing",  sf->createDefaultTextureVertexShader( numImageLayers ) );
+            //vp->setShader( "osgearth_vert_setupColoring",  sf->createDefaultColoringVertexShader( numImageLayers ) );
             
             // second, install the per-layer color filter functions.
             for( int i=0; i<numImageLayers; ++i )

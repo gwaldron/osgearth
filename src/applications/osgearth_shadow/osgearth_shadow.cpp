@@ -79,10 +79,12 @@ int main(int argc, char** argv)
     // set up the camera manipulators.
     viewer.setCameraManipulator(new EarthManipulator);
 
-    osg::ref_ptr<osgShadow::ShadowedScene> shadowedScene = new osgShadow::ShadowedScene;
+    osg::ref_ptr<osgShadow::ShadowedScene> shadowedScene = new osgShadow::ShadowedScene();
     
     //Setup a vdsm shadow map
     osgShadow::ShadowSettings* settings = new osgShadow::ShadowSettings;
+    settings->setShaderHint( osgShadow::ShadowSettings::NO_SHADERS );
+    settings->setUseOverrideForShadowMapTexture( true );
     shadowedScene->setShadowSettings(settings);
 
     if (arguments.read("--persp")) settings->setShadowMapProjectionHint(osgShadow::ShadowSettings::PERSPECTIVE_SHADOW_MAP);
@@ -97,19 +99,17 @@ int main(int argc, char** argv)
     if (arguments.read("--parallel-split") || arguments.read("--ps") ) settings->setMultipleShadowMapHint(osgShadow::ShadowSettings::PARALLEL_SPLIT);
     if (arguments.read("--cascaded")) settings->setMultipleShadowMapHint(osgShadow::ShadowSettings::CASCADED);
 
+    settings->setDebugDraw( arguments.read("--debug") );
+
     int mapres = 1024;
     while (arguments.read("--mapres", mapres))
         settings->setTextureSize(osg::Vec2s(mapres,mapres));
 
+    // VDSM is really the only technique that osgEarth supports.
     osg::ref_ptr<osgShadow::ViewDependentShadowMap> vdsm = new osgShadow::ViewDependentShadowMap;
     shadowedScene->setShadowTechnique(vdsm.get());
     
-    osg::ref_ptr<osg::Group> root = shadowedScene;
     osg::ref_ptr<osg::Group> model = MapNodeHelper().load(arguments, &viewer);
-
-    SkyNode* skyNode = findTopMostNodeOfType< SkyNode > ( model.get() );
-    MapNode* mapNode = findTopMostNodeOfType< MapNode > ( model.get() );
-
     if (!model.valid())
     {
         OE_NOTICE
@@ -118,60 +118,54 @@ int main(int argc, char** argv)
         exit(1);
     }
 
+    MapNode* mapNode = osgEarth::findTopMostNodeOfType< MapNode > ( model.get() );
+
+    SkyNode* skyNode = osgEarth::findTopMostNodeOfType< SkyNode > ( model.get() );
     if (!skyNode)
     {
         OE_NOTICE << "Please run with options --sky to enable the SkyNode" << std::endl;
         exit(1);
     }
 
-    //Disable skirts from casting shadows
-    const OSGTerrainOptions* opt = dynamic_cast<const OSGTerrainOptions*>(&mapNode->getTerrainEngine()->getTerrainOptions());
-    if (opt)
-    {        
-        //Set the skirts to NOT cast shadows or you will see artifacts close to the ground
-        if (opt->skirtNodeMask().isSet())
-        {
-            shadowedScene->setCastsShadowTraversalMask(  ~opt->skirtNodeMask().value() );            
-        }
-    }    
+    // Prevent terrain skirts (or other "secondary geometry") from casting shadows
+    const TerrainOptions& terrainOptions = mapNode->getTerrainEngine()->getTerrainOptions();
+    shadowedScene->setCastsShadowTraversalMask( ~terrainOptions.secondaryTraversalMask().value() );
 
+    // Enables shadowing on an osgEarth map node
+    ShadowUtils::setUpShadows(shadowedScene, mapNode);
 
-    ShadowUtils::setUpShadows(shadowedScene, model);
+    // For shadowing to work, lighting MUST be enabled on the map node.
+    mapNode->getOrCreateStateSet()->setMode(
+        GL_LIGHTING,
+        osg::StateAttribute::ON | osg::StateAttribute::OVERRIDE );
 
-    // The ControlCanvas is a camera and doesn't play nicely with the
-    // shadow traversal. Also, it shouldn't be shadowed, and the
-    // ReceivesShadowTraversalMask doesn't really prevent that. So,
-    // take the canvas out of the shadowed scene.
-    for (unsigned int i = 0; i < model->getNumChildren(); ++i)
+    // Insert the ShadowedScene decorator just above the MapNode. We don't want other
+    // elements (Control canvas, annotations, etc) under the decorator.
+    osg::Group* root;
+
+    if ( mapNode->getNumParents() > 0 )
     {
-        osg::ref_ptr<Controls::ControlCanvas> canvas
-            = dynamic_cast<Controls::ControlCanvas*>(model->getChild(i));
-        if (canvas.valid())
-        {
-            root = new osg::Group;
-            root->addChild(shadowedScene);
-            model->removeChild(i);
-            root->addChild(canvas.get());
-            break;
-        }
+        osg::Group* parent = mapNode->getParent(0);
+        parent->addChild( shadowedScene );
+        shadowedScene->addChild( mapNode );
+        parent->removeChild( mapNode );
+        root = model.get();
+    }
+    else
+    {
+        root = shadowedScene;
+        shadowedScene->addChild( model.get() );
     }
 
-    shadowedScene->addChild(model.get());
-
-    if (skyNode )
+    // The skynode's ambient brightness will control the "darkness" of shadows.
+    if ( skyNode )
     {
         skyNode->setAmbientBrightness( ambientBrightness );
     }
 
-    viewer.setSceneData(root.get());
-
-    // create the windows and run the threads.
+    viewer.setSceneData( root );
     viewer.realize();
-
-
     viewer.addEventHandler(new osgViewer::ScreenCaptureHandler);
-    viewer.addEventHandler(new osgViewer::HelpHandler(arguments.getApplicationUsage()));    
-
     return viewer.run();    
 }
 

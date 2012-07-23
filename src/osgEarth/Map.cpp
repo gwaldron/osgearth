@@ -990,8 +990,6 @@ Map::calculateProfile()
 
 namespace
 {
-    typedef std::pair<ElevationLayer*, GeoHeightField> GeoHFPair;
-
     /**
      * Returns a heightfield corresponding to the input key by compositing
      * elevation data for a vector of elevation layers. The resulting 
@@ -1008,18 +1006,20 @@ namespace
                      osg::ref_ptr<osg::HeightField>& out_result,
                      bool*                           out_isFallback,
                      ProgressCallback*               progress ) 
-    {
+    {        
         unsigned lowestLOD = key.getLevelOfDetail();
         bool hfInitialized = false;
 
         //Get a HeightField for each of the enabled layers
         GeoHeightFieldVector heightFields;
+        
+        //The number of fallback heightfields we have
+        int numFallbacks = 0;
 
-        unsigned int numValidHeightFields = 0;
-
+        //Default to being fallback data.
         if ( out_isFallback )
         {
-            *out_isFallback = false;
+            *out_isFallback = true;
         }
 
         // if the caller provided an "HAE map profile", he wants an HAE elevation grid even if
@@ -1060,8 +1060,8 @@ namespace
                         if ( hf_key.getLevelOfDetail() < lowestLOD )
                             lowestLOD = hf_key.getLevelOfDetail();
 
-                        if ( out_isFallback )
-                            *out_isFallback = true;
+                        //This HeightField is fallback data, so increment the count.
+                        numFallbacks++;                        
                     }
                 }
 
@@ -1072,18 +1072,24 @@ namespace
             }
         }
 
-        // If we didn't get any heightfields and weren't requested to fallback, just return NULL
-        if ( heightFields.size() == 0 )
+        //If any of the layers produced valid data then it's not considered a fallback
+        if ( out_isFallback )
         {
+            *out_isFallback = (numFallbacks == heightFields.size());
+            //OE_NOTICE << "Num fallbacks=" << numFallbacks << " numHeightFields=" << heightFields.size() << " is fallback " << *out_isFallback << std::endl;
+        }   
+        
+        if ( heightFields.size() == 0 )
+        {            
+            //If we got no heightfields but were requested to fallback, create an empty heightfield.
             if ( fallback )
             {
-                out_result = HeightFieldUtils::createReferenceHeightField( keyToUse.getExtent(), defElevSize, defElevSize );
-                if ( out_isFallback )
-                    *out_isFallback = true;
+                out_result = HeightFieldUtils::createReferenceHeightField( keyToUse.getExtent(), defElevSize, defElevSize );                
                 return true;
             }
             else
             {
+                //We weren't requested to fallback so just return.
                 return false;
             }
         }

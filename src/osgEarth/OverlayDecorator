@@ -112,6 +112,7 @@ namespace osgEarth
         bool                          _updatePending;
         unsigned                      _rttTraversalMask;
 
+        osg::ref_ptr<const SpatialReference>    _srs;
         osg::ref_ptr<const osg::EllipsoidModel> _ellipsoid;
         osg::observer_ptr<TerrainEngineNode>    _engine;
         

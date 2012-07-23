@@ -46,25 +46,118 @@ using namespace osgEarth;
 namespace
 {
     /**
-     * Visits a scene graph (in our case, the overlay graph) and calculates a
-     * geometry bounding box that intersects the provided polytope (which in out case is the
-     * view frustum).
+     * Creates a polytope that minimally bounds a bounding sphere
+     * in world space.
      */
-    struct ComputeBoundsWithinPolytope : public OverlayDecorator::InternalNodeVisitor
+    void computeWorldBoundingPolytope(const osg::BoundingSphere&  bs, 
+                                      const SpatialReference*     srs,
+                                      bool                        geocentric,
+                                      osg::Polytope&              out_polytope)
     {
-        ComputeBoundsWithinPolytope(const osg::Polytope& polytope, osg::BoundingSphere& out_bs)
-            : InternalNodeVisitor(),
-              _bs      ( out_bs ),
-              _original( polytope )
+        out_polytope.clear();
+        const osg::EllipsoidModel* ellipsoid = srs->getEllipsoid();
+
+        // add planes for the four sides of the BS. Normals point inwards.
+        out_polytope.add( osg::Plane(osg::Vec3d( 1, 0,0), osg::Vec3d(-bs.radius(),0,0)) );
+        out_polytope.add( osg::Plane(osg::Vec3d(-1, 0,0), osg::Vec3d( bs.radius(),0,0)) );
+        out_polytope.add( osg::Plane(osg::Vec3d( 0, 1,0), osg::Vec3d(0, -bs.radius(),0)) );
+        out_polytope.add( osg::Plane(osg::Vec3d( 0,-1,0), osg::Vec3d(0,  bs.radius(),0)) );
+
+        // for a projected map, we're done. For a geocentric one, add a bottom cap.
+        if ( geocentric )
         {
-            _polytopeStack.push( polytope );
+            // add a bottom cap, unless the bounds are sufficiently large.
+            double minRad = std::min(ellipsoid->getRadiusPolar(), ellipsoid->getRadiusEquator());
+            double maxRad = std::max(ellipsoid->getRadiusPolar(), ellipsoid->getRadiusEquator());
+            double zeroOffset = bs.center().length();
+            if ( zeroOffset > minRad * 0.1 )
+            {
+                out_polytope.add( osg::Plane(osg::Vec3d(0,0,1), osg::Vec3d(0,0,-maxRad+zeroOffset)) );
+            }
+        }
+
+        // transform the clipping planes ito world space localized about the center point
+        GeoPoint refPoint;
+        refPoint.fromWorld( srs, bs.center() );
+        osg::Matrix local2world;
+        refPoint.createLocalToWorld( local2world );
+
+        out_polytope.transform( local2world );
+    }
+
+
+    /**
+     * Tests whether a "cohesive" point set intersects a polytope. This differs from
+     * Polytope::contains(verts); that function tests each point individually, whereas
+     * this method tests the point set as a whole (i.e. as the border points of a solid --
+     * we are testing whether this solid intersects the polytope.)
+     */
+    bool pointSetIntersectsClippingPolytope(const std::vector<osg::Vec3>& points, osg::Polytope& pt)
+    {
+        osg::Polytope::PlaneList& planes = pt.getPlaneList();
+        for( osg::Polytope::PlaneList::iterator plane = planes.begin(); plane != planes.end(); ++plane )
+        {
+            unsigned outsides = 0;
+            for( std::vector<osg::Vec3>::const_iterator point = points.begin(); point != points.end(); ++point )
+            {
+                bool outside = plane->distance( *point ) < 0.0f;
+                if ( outside ) outsides++;
+                else break;
+            }
+            if ( outsides == points.size() ) 
+                return false;
+        }
+        return true;
+    }
+
+
+    /**
+     * Visitor that computes a bounding sphere for the geometry that intersects
+     * a frustum polyhedron. Since this is used to project geometry on to the 
+     * terrain surface, it has to account for geometry that is not clamped --
+     * so instead of using the normal bounding sphere it computes a world-space
+     * polytope for each geometry and interests that with the frustum.
+     */
+    struct ComputeBoundsWithinFrustum : public OverlayDecorator::InternalNodeVisitor
+    {
+        std::vector<osg::Vec3>  _frustumVerts;
+
+        ComputeBoundsWithinFrustum(const osgShadow::ConvexPolyhedron& frustumPH, 
+                                   const SpatialReference* srs,
+                                   bool                    geocentric,
+                                   osg::BoundingSphere&    out_bs)
+            : InternalNodeVisitor(),
+              _srs       ( srs ),
+              _geocentric( geocentric ),
+              _bs        ( out_bs )
+        {
+            frustumPH.getPolytope( _originalPT );
+
+            _polytopeStack.push( _originalPT );
             _local2worldStack.push( osg::Matrix::identity() );
+            _world2localStack.push( osg::Matrix::identity() );
+
+            // extract the corner verts from the frustum polyhedron; we will use those to
+            // test for intersection.
+            std::vector<osg::Vec3d> temp;
+            temp.reserve( 8 );
+            frustumPH.getPoints( temp );
+            for( unsigned i=0; i<temp.size(); ++i )
+                _frustumVerts.push_back(temp[i]);
+        }
+
+        bool contains( const osg::BoundingSphere& bs )
+        {
+            osg::BoundingSphere worldBS( bs.center() * _local2worldStack.top(), bs.radius() );
+            osg::Polytope bsWorldPT;
+            computeWorldBoundingPolytope( worldBS, _srs, _geocentric, bsWorldPT );
+            return pointSetIntersectsClippingPolytope( _frustumVerts, bsWorldPT );
         }
 
         void apply( osg::Node& node )
         {
             const osg::BoundingSphere& bs = node.getBound();
-            if ( _polytopeStack.top().contains(bs) )
+            if ( contains(bs) )
             {
                 traverse( node );
             }
@@ -73,8 +166,7 @@ namespace
         void apply( osg::Geode& node )
         {
             const osg::BoundingSphere& bs = node.getBound();
-
-            if ( _polytopeStack.top().contains(bs) )
+            if ( contains(bs) )
             {
                 _bs.expandBy( osg::BoundingSphere(
                     bs.center() * _local2worldStack.top(),
@@ -89,9 +181,13 @@ namespace
 
             _local2worldStack.push( local2world );
 
-            _polytopeStack.push( _original );
+            _polytopeStack.push( _originalPT );
             _polytopeStack.top().transformProvidingInverse( local2world );
-            
+
+            osg::Matrix world2local;
+            world2local.invert( local2world );
+            _world2localStack.push( world2local );
+
             traverse(transform);
 
             _local2worldStack.pop();
@@ -99,9 +195,11 @@ namespace
         }
 
         osg::BoundingSphere&      _bs;
-        osg::Polytope             _original;
+        const SpatialReference*   _srs;
+        bool                      _geocentric;
+        osg::Polytope             _originalPT;
         std::stack<osg::Polytope> _polytopeStack;
-        std::stack<osg::Matrixd>  _local2worldStack;
+        std::stack<osg::Matrixd>  _local2worldStack, _world2localStack;
     };
 
 
@@ -461,6 +559,7 @@ OverlayDecorator::onInstall( TerrainEngineNode* engine )
     // establish the earth's major axis:
     MapInfo info(engine->getMap());
     _isGeocentric = info.isGeocentric();
+    _srs = info.getProfile()->getSRS();
     _ellipsoid = info.getProfile()->getSRS()->getEllipsoid();
 
     // the maximum extent (for projected maps only)
@@ -664,24 +763,18 @@ OverlayDecorator::cull( osgUtil::CullVisitor* cv, OverlayDecorator::PerViewData&
     osg::BoundingSphere visibleOverlayBS;
     osg::Polytope frustumPT;
     frustumPH.getPolytope( frustumPT );
-    ComputeBoundsWithinPolytope cbwp( frustumPT, visibleOverlayBS );
+    ComputeBoundsWithinFrustum cbwp( frustumPH, _srs.get(), _isGeocentric, visibleOverlayBS );
     _overlayGraph->accept( cbwp );
-    
-    // make a polyhedron representing the bounding box of the overlay.
-    osgShadow::ConvexPolyhedron visiblePH;
-    osg::BoundingBox visibleOverlayBBox;
-    visibleOverlayBBox.expandBy( visibleOverlayBS );
-    visiblePH.setToBoundingBox( visibleOverlayBBox );
 
-
-    osgShadow::ConvexPolyhedron visiblePHBeforeCut;
-    if ( _dumpRequested )
-        visiblePHBeforeCut = visiblePH;
+    // convert the visible geometry bounding sphere into a world-space polytope:
+    osg::Polytope visiblePT;
+    computeWorldBoundingPolytope( visibleOverlayBS, _srs.get(), _isGeocentric, visiblePT );
 
     // this intersects the viewing frustum with the subgraph's bounding box, basically giving us
     // a "minimal" polyhedron containing all potentially visible geometry. (It can't be truly 
     // minimal without clipping at the geometry level, but that would probably be too expensive.)
-    visiblePH.cut( frustumPH );
+    osgShadow::ConvexPolyhedron visiblePH( frustumPH );
+    visiblePH.cut( visiblePT );
 
     // calculate the extents for our orthographic RTT camera (clamping it to the
     // visible horizon)
@@ -751,10 +844,10 @@ OverlayDecorator::cull( osgUtil::CullVisitor* cv, OverlayDecorator::PerViewData&
         osg::Node* camNode = osgDB::readNodeFile(fn);
         camNode->setName("camera");
 
-        // visible PH or overlay:
-        visiblePHBeforeCut.dumpGeometry(0,0,0,fn,osg::Vec4(0,1,1,1),osg::Vec4(0,1,1,.25));
-        osg::Node* overlay = osgDB::readNodeFile(fn);
-        overlay->setName("overlay");
+        //// visible PH or overlay:
+        //visiblePHBeforeCut.dumpGeometry(0,0,0,fn,osg::Vec4(0,1,1,1),osg::Vec4(0,1,1,.25));
+        //osg::Node* overlay = osgDB::readNodeFile(fn);
+        //overlay->setName("overlay");
 
         // visible overlay Polyherdron AFTER frustum intersection:
         visiblePH.dumpGeometry(0,0,0,fn,osg::Vec4(1,.5,1,1),osg::Vec4(1,.5,0,.25));
@@ -784,7 +877,7 @@ OverlayDecorator::cull( osgUtil::CullVisitor* cv, OverlayDecorator::PerViewData&
 
         osg::Group* g = new osg::Group();
         g->addChild(camNode);
-        g->addChild(overlay);
+        //g->addChild(overlay);
         g->addChild(intersection);
         g->addChild(rttNode);
         g->addChild(dsgmt);
@@ -859,6 +952,9 @@ OverlayDecorator::traverse( osg::NodeVisitor& nv )
                     osg::Group::traverse(nv);
                 }
             }
+
+            // debug-- (draws the overlay at its native location as well)
+            //_overlayGraph->accept(nv);
         }
 
         else if ( nv.getVisitorType() == nv.UPDATE_VISITOR )

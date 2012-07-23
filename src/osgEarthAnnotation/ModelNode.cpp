@@ -58,7 +58,7 @@ ModelNode::init()
             getTransform()->addChild( node );
             this->addChild( getTransform() );
             
-            applyStyle( *_style, false );
+            applyStyle( *_style );
         }
         else
         {

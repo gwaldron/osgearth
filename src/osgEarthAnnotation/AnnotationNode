@@ -130,9 +130,8 @@ namespace osgEarth { namespace Annotation
         
         void configureForAltitudeMode( const AltitudeMode& mode );
 
-        // Apply general style information. You can pass "noClamp=true" as a hint
-        // that no clamping logic is necessary
-        virtual void applyStyle( const Style&, bool noClampHint =false );
+        // Apply general style information
+        virtual void applyStyle( const Style&);
         
         /**
          * Sets the node to automatically re-clamp to the terrain (if applicable).

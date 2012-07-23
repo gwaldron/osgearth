@@ -62,7 +62,7 @@ _draped      ( draped )
         this->addChild( getRoot() );
 
         // this will activate the clamping logic
-        applyStyle( style, draped );
+        applyStyle( style );
     }
 }
 
@@ -85,7 +85,7 @@ LocalGeometryNode::init()
             this->addChild( getRoot() );
 
             // prep for clamping
-            applyStyle( *_style, _draped );
+            applyStyle( *_style );
         }
     }
 }

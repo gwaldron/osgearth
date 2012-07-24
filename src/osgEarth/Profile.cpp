@@ -685,3 +685,48 @@ Profile::getIntersectingTiles(const GeoExtent& extent, std::vector<TileKey>& out
         addIntersectingTiles( ext, out_intersectingKeys );
     }
 }
+
+unsigned int
+Profile::getEquivalentLOD( const Profile* profile, unsigned int lod ) const
+{    
+    //If the profiles are equivalent, just use the incoming lod
+    if (profile->isEquivalentTo( this ) ) return lod;    
+    
+    //Create a TileKey in the incoming Profile
+    TileKey key(lod, 0, 0, profile );
+
+    GeoExtent extent = key.getExtent();
+
+    if (!profile->getSRS()->isEquivalentTo( getSRS()))
+    {           
+        // localize the extents and clamp them to legal values
+        extent = clampAndTransformExtent( extent );
+        if ( !extent.isValid() )
+            return 0;
+    }
+
+    double keyWidth = extent.width();
+    double keyHeight = extent.height();
+
+    //Essentially the same logic in addIntersectingTiles
+    double destTileWidth, destTileHeight;
+
+    int currLOD = 0;
+    int destLOD = currLOD;
+    getTileDimensions(destLOD, destTileWidth, destTileHeight);
+
+    //Find the LOD that most closely matches the area of the incoming key without going under.
+    while( true )
+    {
+        currLOD++;
+        double w, h;
+        getTileDimensions(currLOD, w,h);
+        if ( w < keyWidth || h < keyHeight ) break;
+        //double a = w * h;
+        //if (a < keyArea) break;
+        destLOD = currLOD;
+        destTileWidth = w;
+        destTileHeight = h;
+    }
+    return destLOD;
+}

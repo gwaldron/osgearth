@@ -104,6 +104,9 @@ namespace
         MemCacheLRU               _lru;
         Threading::ReadWriteMutex _mutex;
     };
+    
+
+    static Threading::Mutex s_defaultBinMutex;
 }
 
 //------------------------------------------------------------------------
@@ -123,8 +126,6 @@ MemCache::addBin( const std::string& binID )
 CacheBin*
 MemCache::getOrCreateDefaultBin()
 {
-    static Threading::Mutex s_defaultBinMutex;
-
     if ( !_defaultBin.valid() )
     {
         Threading::ScopedMutexLock lock( s_defaultBinMutex );

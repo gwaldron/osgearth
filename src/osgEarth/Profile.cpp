@@ -707,13 +707,9 @@ Profile::getEquivalentLOD( const Profile* profile, unsigned int lod ) const
 
     double keyWidth = extent.width();
     double keyHeight = extent.height();
-
-    //Essentially the same logic in addIntersectingTiles
-    double destTileWidth, destTileHeight;
-
+    
     int currLOD = 0;
     int destLOD = currLOD;
-    getTileDimensions(destLOD, destTileWidth, destTileHeight);
 
     //Find the LOD that most closely matches the area of the incoming key without going under.
     while( true )
@@ -725,8 +721,6 @@ Profile::getEquivalentLOD( const Profile* profile, unsigned int lod ) const
         //double a = w * h;
         //if (a < keyArea) break;
         destLOD = currLOD;
-        destTileWidth = w;
-        destTileHeight = h;
     }
     return destLOD;
 }

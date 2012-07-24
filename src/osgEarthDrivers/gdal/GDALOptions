@@ -105,7 +105,7 @@ namespace osgEarth { namespace Drivers
 
         virtual ~GDALOptions() { }
 
-    protected:
+    public:
 
         Config getConfig() const
         {

@@ -622,7 +622,7 @@ public:
     }
 
     virtual ~GDALTileSource()
-    {             
+    {                     
         GDAL_SCOPED_LOCK;
 
         // Close the _warpedDS dataset if :
@@ -659,8 +659,28 @@ public:
 
 
     void initialize( const osgDB::Options* dbOptions, const Profile* overrideProfile)
-    {   
+    {           
         GDAL_SCOPED_LOCK;
+
+        Cache* cache = 0;
+        _dbOptions = dbOptions ? osg::clone(dbOptions) : 0L;
+        if ( _dbOptions.valid() )
+        {
+            // Set up a Custom caching bin for this TileSource
+            cache = Cache::get( _dbOptions.get() );
+            if ( cache )
+            {
+                Config optionsConf = _options.getConfig();
+
+                std::string binId = Stringify() << std::hex << hashString(optionsConf.toJSON());
+                _cacheBin = cache->addBin( binId );
+
+                if ( _cacheBin.valid() )
+                {
+                    _cacheBin->store( _dbOptions.get() );
+                }
+            }
+        }  
 
         // Is a valid external GDAL dataset specified ?
         bool useExternalDataset = false;
@@ -713,11 +733,46 @@ public:
             //If we found more than one file, try to combine them into a single logical dataset
             if (files.size() > 1)
             {
-                _srcDS = (GDALDataset*)build_vrt(files, HIGHEST_RESOLUTION);
-                if (!_srcDS)
+                URI uri("combined.vrt");
+
+                //Get the GDAL VRT driver
+                GDALDriver* vrtDriver = (GDALDriver*)GDALGetDriverByName("VRT");
+                
+                //Try to load the VRT file from the cache so we don't have to build it each time.
+                if (_cacheBin.valid())
                 {
-                    OE_WARN << "[osgEarth::GDAL] Failed to build VRT from input datasets" << std::endl;
-                    return;
+                    ReadResult result = uri.readString( _dbOptions, osgEarth::CachePolicy::NO_CACHE, 0);
+                    if (result.succeeded())
+                    {
+                        _srcDS = (GDALDataset*)GDALOpen(result.getString().c_str(), GA_ReadOnly );                                                
+                        if (_srcDS)
+                        {
+                            OE_DEBUG << LC << "Read VRT from cache!" << std::endl;
+                        }
+                    }
+                }
+
+                //Build the dataset if we didn't already load it
+                if (!_srcDS)
+                {                    
+                    osg::Timer_t startTime = osg::Timer::instance()->tick();                    
+                    _srcDS = (GDALDataset*)build_vrt(files, HIGHEST_RESOLUTION);
+                    osg::Timer_t endTime = osg::Timer::instance()->tick();                                                            
+                    OE_INFO << LC << "Built VRT in " << osg::Timer::instance()->delta_s(startTime, endTime) << " s" << std::endl;
+
+                    if (_srcDS)
+                    {
+                        //We couldn't get the VRT from the cache, so build it and cache it                    
+                        if (vrtDriver)
+                        {                    
+                            vrtDriver->CreateCopy(uri.cacheKey().c_str(), _srcDS, 0, 0, 0, 0 );                            
+                        }                                                
+                    }
+                    else
+                    {
+                        OE_WARN << "[osgEarth::GDAL] Failed to build VRT from input datasets" << std::endl;
+                        return;
+                    }                               
                 }
             }
             else
@@ -1660,6 +1715,9 @@ private:
     GeoExtent _extents;
 
     const GDALOptions _options;
+
+    osg::ref_ptr< CacheBin > _cacheBin;
+    osg::ref_ptr< osgDB::Options > _dbOptions;
 
     unsigned int _maxDataLevel;
 };

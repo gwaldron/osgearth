@@ -672,7 +672,7 @@ public:
             {
                 Config optionsConf = _options.getConfig();
 
-                std::string binId = Stringify() << std::hex << hashString(optionsConf.toJSON());
+                std::string binId = Stringify() << std::hex << hashString(optionsConf.toJSON());                
                 _cacheBin = cache->addBin( binId );
 
                 if ( _cacheBin.valid() )
@@ -733,21 +733,21 @@ public:
             //If we found more than one file, try to combine them into a single logical dataset
             if (files.size() > 1)
             {
-                URI uri("combined.vrt");
+                std::string vrtKey = "combined.vrt";
 
                 //Get the GDAL VRT driver
                 GDALDriver* vrtDriver = (GDALDriver*)GDALGetDriverByName("VRT");
                 
                 //Try to load the VRT file from the cache so we don't have to build it each time.
                 if (_cacheBin.valid())
-                {
-                    ReadResult result = uri.readString( _dbOptions, osgEarth::CachePolicy::NO_CACHE, 0);
+                {                
+                    ReadResult result = _cacheBin->readString( vrtKey );                    
                     if (result.succeeded())
-                    {
+                    {                        
                         _srcDS = (GDALDataset*)GDALOpen(result.getString().c_str(), GA_ReadOnly );                                                
                         if (_srcDS)
                         {
-                            OE_DEBUG << LC << "Read VRT from cache!" << std::endl;
+                            OE_INFO << LC << "Read VRT from cache!" << std::endl;
                         }
                     }
                 }
@@ -762,11 +762,31 @@ public:
 
                     if (_srcDS)
                     {
+                        std::string vrtFile = getTempName( "", ".vrt");
+                        OE_INFO << "Writing temp VRT to " << vrtFile << std::endl;
+
                         //We couldn't get the VRT from the cache, so build it and cache it                    
                         if (vrtDriver)
                         {                    
-                            vrtDriver->CreateCopy(uri.cacheKey().c_str(), _srcDS, 0, 0, 0, 0 );                            
+                            vrtDriver->CreateCopy(vrtFile.c_str(), _srcDS, 0, 0, 0, 0 );                                                        
+
+                            
+                            //We created the temp file, now read the contents back                            
+                            std::ifstream input( vrtFile.c_str() );
+                            if ( input.is_open() )
+                            {
+                                input >> std::noskipws;
+                                std::stringstream buf;
+                                buf << input.rdbuf();                                
+                                std::string vrtContents = buf.str();                                
+                                osg::ref_ptr< StringObject > strObject = new StringObject( vrtContents );
+                                _cacheBin->write( vrtKey, strObject.get() );
+                            }
                         }                                                
+                        if (osgDB::fileExists( vrtFile ) )
+                        {
+                            remove( vrtFile.c_str() );
+                        }
                     }
                     else
                     {

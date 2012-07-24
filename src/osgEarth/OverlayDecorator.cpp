@@ -367,8 +367,21 @@ OverlayDecorator::initializePerViewData( PerViewData& pvd )
     if ( _rttBlending )
     {
         //osg::BlendFunc* blendFunc = new osg::BlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
-        //Sure it shouldn't be this? -gw
-        osg::BlendFunc* blendFunc = new osg::BlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+        //osg::BlendFunc* blendFunc = new osg::BlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
+        //Setup a separate blend function for the alpha components and the RGB components.  
+        //Because the destination alpha is initialized to 0 instead of 1
+        osg::BlendFunc* blendFunc = 0;        
+        if (Registry::instance()->getCapabilities().supportsGLSL(1.4f))
+        {
+            //Blend Func Separate is only available on OpenGL 1.4 and above
+            blendFunc = new osg::BlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
+        }
+        else
+        {
+            blendFunc = new osg::BlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+        }
+
         rttStateSet->setAttributeAndModes(blendFunc, osg::StateAttribute::ON | osg::StateAttribute::OVERRIDE);
     }
     else

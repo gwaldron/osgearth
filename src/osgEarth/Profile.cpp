@@ -700,7 +700,10 @@ Profile::getEquivalentLOD( const Profile* profile, unsigned int lod ) const
     if (!profile->getSRS()->isEquivalentTo( getSRS()))
     {           
         // localize the extents and clamp them to legal values
-        extent = clampAndTransformExtent( extent );
+        //extent = clampAndTransformExtent( extent );
+
+        //Transform the extent into the local SRS
+        extent = extent.transform( getSRS() );
         if ( !extent.isValid() )
             return 0;
     }

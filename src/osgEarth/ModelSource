@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2010 Pelican Mapping
+ * Copyright 2008-2012 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -36,12 +36,10 @@ namespace osgEarth
     class OSGEARTH_EXPORT ModelSourceOptions : public DriverConfigOptions
     {
     public:
-        ModelSourceOptions( const ConfigOptions& options =ConfigOptions() ) :
-              DriverConfigOptions( options ),
-              _minRange(0),
-              _maxRange(FLT_MAX),
-              _renderOrder( 11 ),
-              _depthTestEnabled( true ) { fromConfig(_conf); }
+        ModelSourceOptions( const ConfigOptions& options =ConfigOptions() );
+
+        /** dtor */
+        virtual ~ModelSourceOptions() { }
 
     public: // properties
 
@@ -79,10 +77,13 @@ namespace osgEarth
     /**
      * A ModelSource is a plugin object that generates OSG nodes.
      */
-    class OSGEARTH_EXPORT ModelSource : public virtual Revisioned<osg::Object>
+    class OSGEARTH_EXPORT ModelSource : public osg::Object, public Revisioned
     {
     public:        
         ModelSource( const ModelSourceOptions& options =ModelSourceOptions() );
+
+        /** dtor */
+        virtual ~ModelSource() { }
 
         /**
          * Subclass implements this method to create the mode node.
@@ -98,16 +99,13 @@ namespace osgEarth
         virtual const char* libraryName() const { return "osgEarth"; }
 
     public:
-		/** Initialize the NodeSource. */
-		virtual void initialize(
+        /** Initialize the NodeSource. */
+        virtual void initialize(
             const osgDB::Options* dbOptions,
             const Map*            map ) { }
 
         const ModelSourceOptions& getOptions() const {
             return _options; }
-
-    protected:
-        virtual ~ModelSource() { }
 
     private:
         const ModelSourceOptions _options;
@@ -136,7 +134,7 @@ namespace osgEarth
      */
     class OSGEARTH_EXPORT ModelSourceFactory
     {   
-	public:
+    public:
         static ModelSource* create( const ModelSourceOptions& options );
     };
 }

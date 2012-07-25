@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2010 Pelican Mapping
+ * Copyright 2008-2012 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -20,6 +20,7 @@
 #define OSGEARTH_UNITS_H 1
 
 #include <osgEarth/Common>
+#include <osgEarth/Config>
 
 namespace osgEarth
 {
@@ -71,6 +72,8 @@ namespace osgEarth
 
     public:
 
+        static bool parse( const std::string& input, Units& output );
+
         static bool convert( const Units& from, const Units& to, double input, double& output ) {
             if ( canConvert(from, to) ) {
                 if ( from._type == TYPE_LINEAR || from._type == TYPE_ANGULAR || from._type == TYPE_TEMPORAL )
@@ -83,7 +86,7 @@ namespace osgEarth
         }
 
         static double convert( const Units& from, const Units& to, double input ) {
-            double output;
+            double output = input;
             convert( from, to, input, output );
             return output;
         }
@@ -162,14 +165,19 @@ namespace osgEarth
 
         qualified_double<T>( const T& rhs ) : _value(rhs._value), _units(rhs._units) { }
 
+        qualified_double<T>( const Config& conf, const Units& defaultUnits ) {
+            _value = conf.value<double>("value", 0.0);
+            if ( !Units::parse( conf.value("units"), _units ) )
+                _units = defaultUnits;
+        }
+
         void set( double value, const Units& units ) {
             _value = value;
             _units = units;
         }
 
         T& operator = ( const T& rhs ) {
-            if ( _units.canConvert(rhs._units) )
-                _value = rhs.as(_units);
+            set( rhs._value, rhs._units );
             return static_cast<T&>(*this);
         }
 
@@ -185,6 +193,14 @@ namespace osgEarth
                 T(0, Units());
         }
 
+        T operator * ( double rhs ) const { 
+            return T(_value * rhs, _units);
+        }
+
+        T operator / ( double rhs ) const { 
+            return T(_value / rhs, _units);
+        }
+
         bool operator == ( const T& rhs ) const {
             return _units.canConvert( rhs._units ) && rhs.as(_units) == _value;
         }
@@ -197,8 +213,16 @@ namespace osgEarth
             return _units.canConvert(rhs._units) && _value < rhs.as(_units);
         }
 
+        bool operator <= ( const T& rhs ) const {
+            return _units.canConvert(rhs._units) && _value <= rhs.as(_units);
+        }
+
         bool operator > ( const T& rhs ) const {
             return _units.canConvert(rhs._units) && _value > rhs.as(_units);
+        }
+
+        bool operator >= ( const T& rhs ) const {
+            return _units.canConvert(rhs._units) && _value >= rhs.as(_units);
         }
 
         double as( const Units& convertTo ) const {
@@ -207,6 +231,13 @@ namespace osgEarth
 
         const Units& getUnits() const { return _units; }
 
+        Config getConfig() const {
+            Config conf;
+            conf.set("value", _value);
+            conf.set("units", _units.getAbbr());
+            return conf;
+        }
+
     private:
         double _value;
         Units  _units;
@@ -214,24 +245,35 @@ namespace osgEarth
 
     struct Linear : public qualified_double<Linear> {
         Linear() : qualified_double<Linear>(0, Units::METERS) { }
+        Linear(double value ) : qualified_double<Linear>(value, Units::METERS) { }
         Linear(double value, const Units& units) : qualified_double<Linear>(value, units) { }
+        Linear(const Config& conf) : qualified_double<Linear>(conf, Units::METERS) { }
     };
+    typedef Linear Distance;
 
     struct Angular : public qualified_double<Angular> {
         Angular() : qualified_double<Angular>(0, Units::DEGREES) { }
         Angular(double value) : qualified_double<Angular>(value, Units::DEGREES) { }
         Angular(double value, const Units& units) : qualified_double<Angular>(value, units) { }
+        Angular(const Config& conf) : qualified_double<Angular>(conf, Units::DEGREES) { }
     };
+    typedef Angular Angle;
 
     struct Temporal : public qualified_double<Temporal> {
         Temporal() : qualified_double<Temporal>(0, Units::SECONDS) { }
+        Temporal(double value) : qualified_double<Temporal>(value, Units::SECONDS) { }
         Temporal(double value, const Units& units) : qualified_double<Temporal>(value, units) { }
+        Temporal(const Config& conf) : qualified_double<Temporal>(conf, Units::SECONDS) { }
     };
+    typedef Temporal Duration;
 
     struct Speed : public qualified_double<Speed> {
         Speed() : qualified_double<Speed>(0, Units::METERS_PER_SECOND) { }
+        Speed(double value) : qualified_double<Speed>(value, Units::METERS_PER_SECOND) { }
         Speed(double value, const Units& units) : qualified_double<Speed>(value, units) { }
+        Speed(const Config& conf) : qualified_double<Speed>(conf, Units::METERS_PER_SECOND) { }
     };
+
 }
 
 #endif // OSGEARTH_UNITS_H

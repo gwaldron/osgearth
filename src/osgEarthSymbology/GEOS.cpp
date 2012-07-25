@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2010 Pelican Mapping
+ * Copyright 2008-2012 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -108,6 +108,8 @@ import( const Symbology::Geometry* input, const geom::GeometryFactory* f )
         {
             switch( input->getType() )
             {
+            case Symbology::Geometry::TYPE_UNKNOWN: break;
+            case Symbology::Geometry::TYPE_MULTI: break;
             case Symbology::Geometry::TYPE_POINTSET:
                 seq = vec3dArray2CoordSeq( input, false, f->getCoordinateSequenceFactory() );
                 if ( seq ) output = f->createPoint( seq );
@@ -197,7 +199,7 @@ exportPolygon( const geom::Polygon* input )
         }
         output->rewind( Symbology::Ring::ORIENTATION_CCW );
 
-        for( int k=0; k < input->getNumInteriorRing(); k++ )
+        for( unsigned k=0; k < input->getNumInteriorRing(); k++ )
         {
             const geom::LineString* inner = input->getInteriorRingN( k );
             const geom::CoordinateSequence* s = inner->getCoordinates();

@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2008-2010 Pelican Mapping
+* Copyright 2008-2012 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -36,6 +36,14 @@ namespace osgEarth { namespace Annotation
     class OSGEARTHANNO_EXPORT RectangleNode : public LocalizedNode
     {
     public:
+        enum Corner
+        {
+            CORNER_LOWER_LEFT,
+            CORNER_LOWER_RIGHT,
+            CORNER_UPPER_LEFT,
+            CORNER_UPPER_RIGHT
+        };
+
         META_AnnotationNode( osgEarthAnnotation, RectangleNode );
 
         /**
@@ -50,12 +58,13 @@ namespace osgEarth { namespace Annotation
          */
         RectangleNode(
             MapNode*          mapNode,
-            const osg::Vec3d& position,
+            const GeoPoint&   position,
             const Linear&     width,
             const Linear&     height,
             const Style&      style,
             bool              draped      =true );
 
+        virtual ~RectangleNode() { }
 
         /**
          * Gets the width of this rectangle
@@ -94,8 +103,28 @@ namespace osgEarth { namespace Annotation
         /**
          * Sets the style
          */
-        void setStyle( const Style& style );
+        void setStyle( const Style& style );        
 
+        GeoPoint getUpperLeft() const;
+        void setUpperLeft( const GeoPoint& upperLeft );
+
+        GeoPoint getUpperRight() const;
+        void setUpperRight( const GeoPoint& upperRight );
+
+        GeoPoint getLowerLeft() const;
+        void setLowerLeft( const GeoPoint& lowerLeft );
+
+        GeoPoint getLowerRight() const;
+        void setLowerRight( const GeoPoint& lowerRight );
+
+        GeoPoint getCorner( Corner corner ) const;
+        void setCorner( Corner corner, const GeoPoint& location);
+
+    public:
+
+        RectangleNode(MapNode* mapNode, const Config& conf);
+        virtual Config getConfig() const;
+        
 
     private:
         RectangleNode() { }

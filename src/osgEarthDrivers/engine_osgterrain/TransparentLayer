@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2008-2010 Pelican Mapping
+* Copyright 2008-2012 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -32,6 +32,9 @@ class CustomColorLayer
 {
 public:
     CustomColorLayer() { }
+
+    /** dtor */
+    virtual ~CustomColorLayer() { }
 
     CustomColorLayer(
         const osgEarth::ImageLayer* imageLayer,
@@ -106,6 +109,9 @@ class CustomElevLayer
 {
 public:
     CustomElevLayer() { }
+
+    /** dtor */
+    virtual ~CustomElevLayer() { }
 
     CustomElevLayer( osgTerrain::HeightFieldLayer* hfLayer, bool fallbackData =false )
         : _hfLayer(hfLayer), _fallbackData(fallbackData) { }

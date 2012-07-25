@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2010 Pelican Mapping
+ * Copyright 2008-2012 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -48,7 +48,7 @@ KML_GroundOverlay::build( const Config& conf, KMLContext& cx )
         double south = llb.value<double>("south", 0.0);
         double east  = llb.value<double>("east", 0.0);
         double west  = llb.value<double>("west", 0.0);
-        Angular rotation( llb.value<double>("rotation", 0.0), Units::DEGREES );
+        Angular rotation( -llb.value<double>("rotation", 0.0), Units::DEGREES );
 
         osg::ref_ptr<osg::Image> image = URI(href, conf.referrer()).readImage().getImage();
         if ( !image.valid() )

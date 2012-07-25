@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2008-2010 Pelican Mapping
+* Copyright 2008-2012 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -22,6 +22,7 @@
 #include <osgEarthAnnotation/Common>
 #include <osgEarth/Config>
 #include <osg/Drawable>
+#include <osgUtil/RenderLeaf>
 #include <limits.h>
 
 /**
@@ -35,6 +36,15 @@
 namespace osgEarth { namespace Annotation 
 {
     /**
+     * Marker class hinting that an implementation supports the decluttering
+     * render bin.
+     */
+    class SupportsDecluttering
+    {
+        //nop
+    };
+
+    /**
      * Custom functor that compares two RenderLeaf's and returns TRUE if the left-hand one
      * is higher priority, otherwise FALSE. You can call setDeclutterPriorityFunctor()
      * to set a custom priority-sorting functor.
@@ -42,6 +52,7 @@ namespace osgEarth { namespace Annotation
     struct DeclutterSortFunctor : public osg::Referenced
     {
         virtual bool operator() ( const osgUtil::RenderLeaf* lhs, const osgUtil::RenderLeaf* rhs ) const =0;
+        virtual ~DeclutterSortFunctor() { }
     };
 
     /**
@@ -51,6 +62,7 @@ namespace osgEarth { namespace Annotation
     struct OSGEARTHANNO_EXPORT DeclutterByPriority : public DeclutterSortFunctor
     {
         virtual bool operator()(const osgUtil::RenderLeaf* lhs, const osgUtil::RenderLeaf* rhs ) const;
+        virtual ~DeclutterByPriority() { }
     };
 
     /**
@@ -68,6 +80,8 @@ namespace osgEarth { namespace Annotation
         {
             fromConfig(conf);
         }
+
+        virtual ~DeclutteringOptions() { }
 
         /** Alpha value of a fully-occluded object */
         optional<float>& minAnimationAlpha() { return _minAnimAlpha; }

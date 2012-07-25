@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2010 Pelican Mapping
+ * Copyright 2008-2012 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -25,7 +25,6 @@ ImageLayer( options ),
 _sourceMap( sourceMap ),
 _mapf     ( sourceMap )
 {
-    _runtimeOptions.profile() = _sourceMap->getProfile()->toProfileOptions();
     _runtimeOptions.cachePolicy() = CachePolicy::NO_CACHE;
 }
 

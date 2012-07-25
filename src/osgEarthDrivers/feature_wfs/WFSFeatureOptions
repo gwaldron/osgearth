@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2010 Pelican Mapping
+ * Copyright 2008-2012 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -28,23 +28,35 @@ namespace osgEarth { namespace Drivers
     using namespace osgEarth;
     using namespace osgEarth::Features;
 
+    /**
+     * Options for the WFS driver.
+     */
     class WFSFeatureOptions : public FeatureSourceOptions // NO EXPORT; header only
     {
     public:
+        /** Base URL of the WFS service (not including any WFS parameters) */
         optional<URI>& url() { return _url; }
         const optional<URI>& url() const { return _url; }
         
+        /** deprecated */
         optional<Config>& geometryProfileOptions() { return _geometryProfileConf; }
         const optional<Config>& geometryProfileOptions() const { return _geometryProfileConf; }
 
+        /** WFS typename parameter (see WFS spec) */
         optional<std::string>& typeName() { return _typename; }
         const optional<std::string>& typeName() const { return _typename; }
 
+        /** Cap on the number of features that the WFS service will return on a single request */
         optional<unsigned int>& maxFeatures() { return _maxFeatures; }
         const optional<unsigned int>& maxFeatures() const { return _maxFeatures;}
 
+        /** Response format to request (geojson, gml) */
         optional<std::string>& outputFormat() { return _outputFormat; }
         const optional<std::string>& outputFormat() const { return _outputFormat; }
+
+        /** Explicity disable a "TFS" tiled feature source queries */
+        optional<bool>& disableTiling() { return _disableTiling; }
+        const optional<bool>& disableTiling() const { return _disableTiling;}
 
 
 
@@ -54,6 +66,8 @@ namespace osgEarth { namespace Drivers
             fromConfig( _conf );
         }
 
+        virtual ~WFSFeatureOptions() { }
+
     public:
         Config getConfig() const {
             Config conf = FeatureSourceOptions::getConfig();
@@ -62,6 +76,7 @@ namespace osgEarth { namespace Drivers
             conf.updateIfSet( "typename", _typename );
             conf.updateIfSet( "outputformat", _outputFormat);
             conf.updateIfSet( "maxfeatures", _maxFeatures );
+            conf.updateIfSet( "disable_tiling", _disableTiling );
             return conf;
         }
 
@@ -78,6 +93,7 @@ namespace osgEarth { namespace Drivers
             conf.getIfSet( "typename", _typename);
             conf.getIfSet( "outputformat", _outputFormat );
             conf.getIfSet( "maxfeatures", _maxFeatures );
+            conf.getIfSet( "disable_tiling", _disableTiling);
         }
 
         optional<URI>         _url;        
@@ -85,6 +101,7 @@ namespace osgEarth { namespace Drivers
         optional<Config>      _geometryProfileConf;
         optional<std::string> _outputFormat;
         optional<unsigned>    _maxFeatures;            
+        optional<bool>    _disableTiling;            
     };
 
 } } // namespace osgEarth::Drivers

@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2010 Pelican Mapping
+ * Copyright 2008-2012 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -49,6 +49,9 @@ namespace osgEarth { namespace Util
             unsigned splitDim,
             float    splitRangeFactor,
             unsigned depth );
+
+        /** dtor */
+        virtual ~GeoCell() { }
 
         /** Adds an object to this geocell graph. */
         virtual bool insertObject( GeoObject* object );
@@ -122,6 +125,8 @@ namespace osgEarth { namespace Util
             unsigned         rootWidth        =2,
             unsigned         rootHeight       =2 );
 
+        /** dtor */
+        virtual ~GeoGraph() { }
 
         bool insertObject( GeoObject* object );
 
@@ -133,6 +138,7 @@ namespace osgEarth { namespace Util
     {
     public:
         GeoCellVisitor() : osg::NodeVisitor( osg::NodeVisitor::TRAVERSE_ALL_CHILDREN ) { }
+        virtual ~GeoCellVisitor() { }
 
         virtual void operator()( const GeoCell* cell, const GeoObjectCollection& objects ) =0;
 
@@ -167,6 +173,7 @@ namespace osgEarth { namespace Util
 
     protected:
         GeoObject();
+        virtual ~GeoObject() { }
         osg::observer_ptr<GeoCell> _cell;
         float _priority;
         friend class GeoCell;

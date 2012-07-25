@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2010 Pelican Mapping
+ * Copyright 2008-2012 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -17,6 +17,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 #include <osgEarth/Cache>
+#include <osgEarth/Registry>
 #include <osgEarth/ThreadingUtils>
 
 #include <osgDB/FileNameUtils>
@@ -32,8 +33,8 @@ using namespace osgEarth::Threading;
 //------------------------------------------------------------------------
 
 Cache::Cache( const CacheOptions& options ) :
-_options( options ),
-_ok     ( true )
+_ok     ( true ),
+_options( options )
 {
     //nop
 }
@@ -84,7 +85,7 @@ CacheFactory::create( const CacheOptions& options )
 //    }
     else // try to load from a plugin
     {
-        osg::ref_ptr<osgDB::ReaderWriter::Options> rwopt = new osgDB::ReaderWriter::Options();
+        osg::ref_ptr<osgDB::Options> rwopt = Registry::instance()->cloneOrCreateOptions();
         rwopt->setPluginData( CACHE_OPTIONS_TAG, (void*)&options );
 
         std::string driverExt = std::string(".osgearth_cache_") + options.getDriver();

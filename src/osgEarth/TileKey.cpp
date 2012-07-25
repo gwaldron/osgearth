@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2010 Pelican Mapping
+ * Copyright 2008-2012 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -87,12 +87,6 @@ TileKey::getTileId() const
     //TODO: will this be an issue with multi-face? perhaps not since each face will
     // exist within its own scene graph.. ?
     return osgTerrain::TileID(_lod, _x, _y);
-}
-
-unsigned int
-TileKey::getLevelOfDetail() const
-{
-    return _lod;
 }
 
 void

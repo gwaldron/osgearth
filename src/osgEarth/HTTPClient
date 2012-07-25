@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2010 Pelican Mapping
+ * Copyright 2008-2012 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -22,8 +22,6 @@
 #include <osgEarth/Common>
 #include <osgEarth/IOTypes>
 #include <osgEarth/Progress>
-#include <osgEarth/TerrainOptions>
-#include <OpenThreads/Thread>
 #include <osg/ref_ptr>
 #include <osg/Referenced>
 #include <osgDB/ReaderWriter>
@@ -44,16 +42,18 @@ namespace osgEarth
         ProxySettings( const Config& conf =Config() );
         ProxySettings( const std::string& host, int port );
 
+        virtual ~ProxySettings() { }
+
         std::string& hostName() { return _hostName; }
         const std::string& hostName() const { return _hostName; }
 
         int& port() { return _port; }
         const int& port() const { return _port; }
 
-		std::string& userName() { return _userName; }
+        std::string& userName() { return _userName; }
         const std::string& userName() const { return _userName; }
 
-		std::string& password() { return _password; }
+        std::string& password() { return _password; }
         const std::string& password() const { return _password; }
 
     public:
@@ -63,8 +63,8 @@ namespace osgEarth
     protected:
         std::string _hostName;
         int _port;
-		std::string _userName;
-		std::string _password;
+        std::string _userName;
+        std::string _password;
     };
 
 
@@ -79,6 +79,9 @@ namespace osgEarth
 
         /** copy constructor. */
         HTTPRequest( const HTTPRequest& rhs );
+
+        /** dtor */
+        virtual ~HTTPRequest() { }
 
         /** Adds an HTTP parameter to the request query string. */
         void addParameter( const std::string& name, const std::string& value );
@@ -118,6 +121,9 @@ namespace osgEarth
 
         /** Copy constructor */
         HTTPResponse( const HTTPResponse& rhs );
+
+        /** dtor */
+        virtual ~HTTPResponse() { }
 
         /** Gets the HTTP response code (Code) in this response */
         unsigned getCode() const;
@@ -173,7 +179,7 @@ namespace osgEarth
      * probably be renamed. It analyzes the URI and decides whether to make an  HTTP request
      * or to read from disk.
      */
-    class OSGEARTH_EXPORT HTTPClient : public osg::Referenced
+    class OSGEARTH_EXPORT HTTPClient // : public osg::Referenced
     {
     public:
         /**
@@ -191,21 +197,20 @@ namespace osgEarth
 
         /** Gest the user-agent string that all HTTP requests will use.
             TODO: This should probably move into the Registry */
-		static const std::string& getUserAgent();
+        static const std::string& getUserAgent();
 
         /** Sets a user-agent string to use in all HTTP requests.
             TODO: This should probably move into the Registry */
-		static void setUserAgent(const std::string& userAgent);
+        static void setUserAgent(const std::string& userAgent);
 
         /** Sets up proxy info to use in all HTTP requests.
             TODO: This should probably move into the Registry */
-		static void setProxySettings( const ProxySettings &proxySettings );
+        static void setProxySettings( const ProxySettings &proxySettings );
 
 
     public:
         /**
-         * Reads an image. Based on the structure of "location", it will either try to fetch the
-         * data using HTTP or simply read the file from disk.
+         * Reads an image.
          */
         static ReadResult readImage(
             const std::string&    location,
@@ -213,8 +218,7 @@ namespace osgEarth
             ProgressCallback*     progress  =0L );
 
         /**
-         * Reads an osg::Node. Based on the structure of "location" it will either try to fetch the
-         * data using HTTP or simply read the file from disk.
+         * Reads an osg::Node.
          */
         static ReadResult readNode(
             const std::string&    location,
@@ -222,8 +226,7 @@ namespace osgEarth
             ProgressCallback*     progress  =0L );
 
         /**
-         * Reads an object. Based on the structure of "location", it will either try to fetch the
-         * data using HTTP or simply read the file from disk.
+         * Reads an object.
          */
         static ReadResult readObject(
             const std::string&    location,
@@ -231,8 +234,7 @@ namespace osgEarth
             ProgressCallback*     progress  =0L );
 
         /**
-         * Reads a string. Based on the structure of "location", it will either try to fetch the
-         * data using HTTP or simply read the file from disk.
+         * Reads a string.
          */
         static ReadResult readString(
             const std::string&    location,
@@ -259,9 +261,11 @@ namespace osgEarth
                                  const osgDB::Options* options  =0L,
                                  ProgressCallback*     progress =0L );
 
-    private:
+    public:
         HTTPClient();
-        ~HTTPClient();
+        virtual ~HTTPClient();
+
+    private:
 
         void readOptions( const osgDB::ReaderWriter::Options* options, std::string &proxy_host, std::string &proxy_port ) const;
 
@@ -293,31 +297,6 @@ namespace osgEarth
             const osgDB::Options* dbOptions,
             ProgressCallback*     progress );
 
-#if 0
-        ResultCode doReadObjectFile(
-            const std::string&                  url,
-            osg::ref_ptr<osg::Object>&          output,
-            const osgDB::ReaderWriter::Options* options = 0,
-            ProgressCallback*                   callback = 0);
-
-        ResultCode doReadImageFile(
-            const std::string& filename,
-            osg::ref_ptr<osg::Image>& output,
-            const osgDB::ReaderWriter::Options* options = 0,
-            ProgressCallback *callback = 0);
-
-        ResultCode doReadNodeFile(
-            const std::string& filename,
-            osg::ref_ptr<osg::Node>& output,
-            const osgDB::ReaderWriter::Options* options = 0,
-            ProgressCallback *callback = 0);
-
-        ResultCode doReadString(
-            const std::string& filename,
-            std::string& output,
-            ProgressCallback *callback = 0);
-#endif
-
         /**
          * Convenience method for downloading a URL directly to a file
          */
@@ -327,6 +306,10 @@ namespace osgEarth
         void*       _curl_handle;
         std::string _previousPassword;
         long        _previousHttpAuthentication;
+        bool        _initialized;
+
+        void initialize() const;
+        void initializeImpl();
 
 
         static HTTPClient& getClient();

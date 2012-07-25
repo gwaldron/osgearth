@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2008-2010 Pelican Mapping
+* Copyright 2008-2012 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -26,6 +26,7 @@
 #include <osgViewer/Viewer>
 #include <osgViewer/ViewerEventHandlers>
 #include <osgEarth/MapNode>
+#include <osgEarth/TerrainEngineNode>
 #include <osgEarth/Viewpoint>
 #include <osgEarthUtil/EarthManipulator>
 #include <osgEarthUtil/AutoClipPlaneHandler>
@@ -71,6 +72,7 @@ namespace
             "1-6 : fly to preset viewpoints \n"
             "shift-right-mouse: locked panning\n"
             "u : toggle azimuth locking\n"
+            "c : toggle perspective/ortho\n"
             "h : toggle this help\n";
 
         VBox* v = new VBox();
@@ -104,6 +106,7 @@ namespace
             if ( ea.getEventType() == ea.KEYDOWN && ea.getKey() >= '1' && ea.getKey() <= '6' )
             {
                 _manip->setViewpoint( VPs[ea.getKey()-'1'], 4.0 );
+                aa.requestRedraw();
             }
             return false;
         }
@@ -122,9 +125,9 @@ namespace
         {
             if (ea.getEventType() == ea.KEYDOWN && ea.getKey() == _key)
             {
-                bool lockAzimuth
-                    = _manip->getSettings()->getLockAzimuthWhilePanning();
+                bool lockAzimuth = _manip->getSettings()->getLockAzimuthWhilePanning();
                 _manip->getSettings()->setLockAzimuthWhilePanning(!lockAzimuth);
+                aa.requestRedraw();
                 return true;
             }
             return false;
@@ -133,13 +136,42 @@ namespace
         void getUsage(osg::ApplicationUsage& usage) const
         {
             using namespace std;
-            usage.addKeyboardMouseBinding(string(1, _key),
-                string("Toggle azimuth locking"));
+            usage.addKeyboardMouseBinding(string(1, _key), string("Toggle azimuth locking"));
         }
 
         char _key;
         osg::ref_ptr<EarthManipulator> _manip;
+    };
 
+    struct ToggleProjectionHandler : public osgGA::GUIEventHandler
+    {
+        ToggleProjectionHandler(char key, EarthManipulator* manip)
+            : _key(key), _manip(manip)
+        {
+        }
+
+        bool handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& aa)
+        {
+            if (ea.getEventType() == ea.KEYDOWN && ea.getKey() == _key)
+            {
+                if ( _manip->getSettings()->getCameraProjection() == EarthManipulator::PROJ_PERSPECTIVE )
+                    _manip->getSettings()->setCameraProjection( EarthManipulator::PROJ_ORTHOGRAPHIC );
+                else
+                    _manip->getSettings()->setCameraProjection( EarthManipulator::PROJ_PERSPECTIVE );
+                aa.requestRedraw();
+                return true;
+            }
+            return false;
+        }
+
+        void getUsage(osg::ApplicationUsage& usage) const
+        {
+            using namespace std;
+            usage.addKeyboardMouseBinding(string(1, _key), string("Toggle projection type"));
+        }
+
+        char _key;
+        osg::ref_ptr<EarthManipulator> _manip;
     };
 
 }
@@ -178,7 +210,7 @@ int main(int argc, char** argv)
                 Viewpoint( osg::Vec3d( -90, 0, 0 ), 0.0, -90.0, 5e7 ) );
 
             // add a handler that will automatically calculate good clipping planes
-            viewer.getCamera()->addCullCallback( new AutoClipPlaneCullCallback(mapNode->getMap()) );
+            viewer.getCamera()->addCullCallback( new AutoClipPlaneCullCallback(mapNode) );
         }
     }
 
@@ -194,7 +226,7 @@ int main(int argc, char** argv)
     
     viewer.addEventHandler(new FlyToViewpointHandler( manip ));
     viewer.addEventHandler(new LockAzimuthHandler('u', manip));
-
+    viewer.addEventHandler(new ToggleProjectionHandler('c', manip));
 
     // add some stock OSG handlers:
     viewer.addEventHandler(new osgViewer::StatsHandler());

@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2010 Pelican Mapping
+ * Copyright 2008-2012 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -36,17 +36,29 @@ namespace osgEarth { namespace Drivers
         optional<float>& lodScale() { return _lod_scale; }
         const optional<float>& lodScale() const { return _lod_scale; }
 
+        optional<osg::Vec3>& location() { return _location; }
+        const optional<osg::Vec3>& location() const { return _location; }
+
+        optional<osg::Vec3>& orientation() { return _orientation;}
+        const optional<osg::Vec3>& orientation() const { return _orientation;}
+
+
+
     public:
         SimpleModelOptions( const ConfigOptions& options ) : ModelSourceOptions( options ) {
             setDriver( "simple" );
             fromConfig( _conf );
         }
 
+        virtual ~SimpleModelOptions() { }
+
     public:
         Config getConfig() const {
             Config conf = ModelSourceOptions::getConfig();
             conf.updateIfSet( "url", _url );
-			conf.updateIfSet( "lod_scale", _lod_scale );
+            conf.updateIfSet( "lod_scale", _lod_scale );
+            conf.updateIfSet( "location", _location );
+            conf.updateIfSet( "orientation", _orientation);
             return conf;
         }
 
@@ -59,11 +71,15 @@ namespace osgEarth { namespace Drivers
     private:
         void fromConfig( const Config& conf ) {
             conf.getIfSet( "url", _url );
-			conf.getIfSet( "lod_scale", _lod_scale );
+            conf.getIfSet( "lod_scale", _lod_scale );
+            conf.getIfSet( "location", _location);
+            conf.getIfSet( "orientation", _orientation);
         }
 
         optional<URI> _url;
-		optional<float> _lod_scale;
+        optional<float> _lod_scale;
+        optional<osg::Vec3> _location;
+        optional<osg::Vec3> _orientation;
     };
 
 } } // namespace osgEarth::Drivers

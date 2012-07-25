@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2010 Pelican Mapping
+ * Copyright 2008-2012 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -81,24 +81,18 @@ namespace osgEarth { namespace Util
             const SpatialReference* refSRS    =0L,
             unsigned                options   =0);
 
-        /**
-         * Formats a lat/lon (in degrees) as an MGRS string.
-         */
-        std::string format( double latDeg, double lonDeg ) const;
-
-        std::string operator()(double latDeg, double lonDeg ) const { 
-            return format(latDeg, lonDeg);
-        }
+        /** dtor */
+        virtual ~MGRSFormatter() { }
 
         /**
          * Transforms input coords into MGRS.
          */
-        bool transform( const osg::Vec3d& coords, const SpatialReference* srs, MGRSCoord& out_mgrs ) const;
+        bool transform( const GeoPoint& input, MGRSCoord& out_mgrs ) const;
 
 
     public: // Formatter
 
-        virtual std::string format( const osg::Vec3d& coords, const SpatialReference* srs ) const;
+        virtual std::string format( const GeoPoint& coords ) const;
 
 
     private:

@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2010 Pelican Mapping
+ * Copyright 2008-2012 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -18,7 +18,8 @@
  */
 #include <osgEarthSymbology/StencilVolumeNode>
 #include <osgEarth/Registry>
-#include <osgEarth/FindNode>
+#include <osgEarth/NodeUtils>
+#include <osgEarth/Capabilities>
 #include <osg/Stencil>
 #include <osg/StencilTwoSided>
 #include <osg/Depth>
@@ -48,6 +49,8 @@ StencilVolumeNode::createFullScreenQuad( const osg::Vec4f& color )
 {
     // make a full screen quad:
     osg::Geometry* quad = new osg::Geometry();
+    quad->setUseVertexBufferObjects(true);
+
     osg::Vec3Array* verts = new osg::Vec3Array(4);
     (*verts)[0].set( 0, 1, 0 );
     (*verts)[1].set( 0, 0, 0 );
@@ -224,6 +227,8 @@ StencilVolumeNode::traverse( osg::NodeVisitor& nv )
 void
 StencilVolumeNode::init()
 {
+    this->getOrCreateStateSet()->setMode( GL_CULL_FACE, osg::StateAttribute::OFF | osg::StateAttribute::PROTECTED );
+
     _root = new osg::Group();
     int baseBin = 100;
 

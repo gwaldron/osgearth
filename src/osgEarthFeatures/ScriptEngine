@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2010 Pelican Mapping
+ * Copyright 2008-2012 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -22,7 +22,6 @@
 #include <osgEarthFeatures/Common>
 #include <osgEarthFeatures/Script>
 #include <osgEarth/Config>
-#include <osgEarth/Revisioning>
 
 namespace osgEarth { namespace Features
 {
@@ -37,6 +36,8 @@ namespace osgEarth { namespace Features
   public:
       ScriptEngineOptions( const ConfigOptions& options =ConfigOptions() ) : 
         DriverConfigOptions( options ) { fromConfig(_conf); }
+
+    virtual ~ScriptEngineOptions() { }
 
   public: // properties
 
@@ -62,6 +63,8 @@ namespace osgEarth { namespace Features
   {
   public:
     ScriptEngine(const ScriptEngineOptions& options =ScriptEngineOptions()) : _script(options.script()) {}
+
+    virtual ~ScriptEngine() { }
 
     virtual bool supported(std::string lang) =0;
     virtual bool supported(Script* script) =0;

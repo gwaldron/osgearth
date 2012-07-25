@@ -18,11 +18,12 @@ This shows how to label point features with an attribute.
         <styles>
             <style type="text/css">              
                 cities {
-                   text-provider: annotation;
-                   text-content:  [cntry_name];
-                   text-priority: [pop_cntry];
-                   text-halo:     #3f3f7f;
-                   text-align:    center_center;
+                   text-provider:  annotation;
+                   text-content:   [cntry_name];
+                   text-priority:  [pop_cntry];
+                   text-halo:      #3f3f7f;
+                   text-align:     center_center;
+                   text-declutter: true;
                 }     
             </style>
         </styles>

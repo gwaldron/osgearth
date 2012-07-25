@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2010 Pelican Mapping
+ * Copyright 2008-2012 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -22,7 +22,6 @@
 
 #include <osgEarthFeatures/Common>
 #include <osgEarthFeatures/FeatureSource>
-#include <osgEarthFeatures/FeatureGridder>
 #include <osgEarthFeatures/FeatureDisplayLayout>
 #include <osgEarthFeatures/GeometryCompiler>
 #include <osgEarthSymbology/Style>
@@ -69,16 +68,21 @@ namespace osgEarth { namespace Features
         optional<StringExpression>& featureName() { return _featureNameExpr; }
         const optional<StringExpression>& featureName() const { return _featureNameExpr; }
 
+        /** Whether to create feature indexes (default = yes) */
+        optional<bool>& featureIndexing() { return _featureIndexing; }
+        const optional<bool>& featureIndexing() const { return _featureIndexing; }
+
         /** Explicity caching policy for data from the underlying feature source */
         optional<CachePolicy>& cachePolicy() { return _cachePolicy; }
         const optional<CachePolicy>& cachePolicy() const { return _cachePolicy; }
 
     public: // deprecated
 
+#if 0
         /** @deprecated - use levels() instead */
         optional<GriddingPolicy>& gridding() { return _gridding; }
         const optional<GriddingPolicy>& gridding() const { return _gridding; }
-
+#endif
         /** @deprecated - use the ConvertTypeFilter instead */
         optional<Symbology::Geometry::Type>& geometryTypeOverride() { return _geomTypeOverride; }
         const optional<Symbology::Geometry::Type>& geometryTypeOverride() const { return _geomTypeOverride; }
@@ -90,6 +94,8 @@ namespace osgEarth { namespace Features
 
     public:
         FeatureModelSourceOptions( const ConfigOptions& rhs =ConfigOptions() );
+
+        virtual ~FeatureModelSourceOptions() { }
 
         virtual Config getConfig() const;
 
@@ -109,13 +115,14 @@ namespace osgEarth { namespace Features
         optional<double>                _maxGranularity_deg;
         optional<bool>                  _mergeGeometry;
         optional<bool>                  _clusterCulling;
+        optional<bool>                  _featureIndexing;
         optional<CachePolicy>           _cachePolicy;
 
         osg::ref_ptr<StyleSheet>        _styles;
         osg::ref_ptr<FeatureSource>     _featureSource;
 
         /** @deprecated */
-        optional<GriddingPolicy>        _gridding;
+        //optional<GriddingPolicy>        _gridding;
         optional<Geometry::Type>        _geomTypeOverride;
     };
 
@@ -197,7 +204,7 @@ namespace osgEarth { namespace Features
 
         virtual const FeatureModelSourceOptions& getFeatureModelOptions() const { return _options; }
 
-        const osgEarth::Map* getMap() const { return _map.get(); }
+        const Map* getMap() const { return _map.get(); }
 
         /** Creates an implementation-specific data object to be passed to buildNodeForStyle */
         virtual osg::Referenced* createBuildData() { return NULL; }     
@@ -217,7 +224,7 @@ namespace osgEarth { namespace Features
         virtual ~FeatureModelSource() { }
 
         osg::ref_ptr<FeatureSource>        _features;
-        osg::ref_ptr<const Map>            _map;
+        osg::observer_ptr<const Map>       _map;
         const FeatureModelSourceOptions    _options;
         osg::ref_ptr<FeatureNodeFactory>   _factory;
         osg::ref_ptr<const osgDB::Options> _dbOptions;

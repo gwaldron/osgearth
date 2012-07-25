@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2010 Pelican Mapping
+ * Copyright 2008-2012 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -16,11 +16,12 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
-#ifndef OSGEARTH_MAP_ENGINE_NODE_H
-#define OSGEARTH_MAP_ENGINE_NODE_H 1
+#ifndef OSGEARTH_TERRAIN_ENGINE_NODE_H
+#define OSGEARTH_TERRAIN_ENGINE_NODE_H 1
 
 #include <osgEarth/Map>
 #include <osgEarth/Terrain>
+#include <osgEarth/TextureCompositor>
 #include <osgEarth/ShaderUtils>
 #include <osg/CoordinateSystemNode>
 #include <osg/Geode>
@@ -28,8 +29,6 @@
 
 namespace osgEarth
 {
-    class TextureCompositor;
-
     /**
      * TerrainEngineNode is the base class and interface for map engine implementations.
      *
@@ -49,7 +48,7 @@ namespace osgEarth
         virtual const TerrainOptions& getTerrainOptions() const =0;
 
         /** Accesses the compositor that controls the rendering of image layers */
-        TextureCompositor* getTextureCompositor() const { return _texCompositor.get(); }
+        TextureCompositor* getTextureCompositor() const;
 
     public: // Runtime properties
 
@@ -68,7 +67,7 @@ namespace osgEarth
     protected:
         TerrainEngineNode();
 
-        TerrainEngineNode( const TerrainEngineNode& rhs, const osg::CopyOp& op =osg::CopyOp::DEEP_COPY_ALL );
+        //TerrainEngineNode( const TerrainEngineNode& rhs, const osg::CopyOp& op =osg::CopyOp::DEEP_COPY_ALL );
 
         virtual ~TerrainEngineNode();
 
@@ -90,8 +89,20 @@ namespace osgEarth
         virtual void preInitialize( const Map* map, const TerrainOptions& options );
         virtual void postInitialize( const Map* map, const TerrainOptions& options );
 
+        // signals that a redraw is needed because something changed.
+        virtual void dirty();
+
         // allow subclasses direct access for convenience.
         osg::ref_ptr<TextureCompositor> _texCompositor;
+
+    public: // utility
+
+        /**
+         * Utility function that will return an osg::Node representing the geometry
+         * for a tile key. The node is standalone; it has no ability to load children
+         * or receive updates.
+         */
+        virtual osg::Node* createTile( const TileKey& key ) =0;
 
     private:
         friend struct TerrainEngineNodeCallbackProxy;
@@ -101,31 +112,39 @@ namespace osgEarth
         void onMapInfoEstablished( const MapInfo& mapInfo ); // not virtual!
         void onMapModelChanged( const MapModelChange& change );
         void updateImageUniforms();
+        virtual void updateTextureCombining() { }
 
     private:
-        UpdateLightingUniformsHelper _updateLightingUniformsHelper;
-        float _verticalScale;
-        float _elevationSamplingRatio;
         
         struct ImageLayerController : public ImageLayerCallback
         {
-            ImageLayerController( const Map* map );
+            ImageLayerController( const Map* map, TerrainEngineNode* engine );
 
-            void onEnabledChanged( TerrainLayer* layer );
+            void onVisibleChanged( TerrainLayer* layer );
             void onOpacityChanged( ImageLayer* layer );
+            void onColorFiltersChanged( ImageLayer* layer );      
+            void onVisibleRangeChanged( ImageLayer* layer );
 
             ArrayUniform _layerOpacityUniform;
-            ArrayUniform _layerEnabledUniform;
+            ArrayUniform _layerVisibleUniform;
             ArrayUniform _layerRangeUniform;
 
         private:
-            MapFrame _mapf;
+            MapFrame           _mapf;
+            TerrainEngineNode* _engine;
+            friend class TerrainEngineNode;
         };
 
         osg::ref_ptr<ImageLayerController> _imageLayerController;
-        osg::ref_ptr<const Map> _map;
-        osg::ref_ptr<osg::Uniform> _startFrameTimeUniform;
-        osg::ref_ptr<osg::Uniform> _cameraElevationUniform;
+        osg::ref_ptr<const Map>            _map;
+        osg::ref_ptr<osg::Uniform>         _startFrameTimeUniform;
+        osg::ref_ptr<osg::Uniform>         _cameraElevationUniform;
+        bool                               _redrawRequired;
+        float                              _verticalScale;
+        float                              _elevationSamplingRatio;
+        osg::ref_ptr<Terrain>              _terrainInterface;
+        unsigned                           _dirtyCount;
+        UpdateLightingUniformsHelper       _updateLightingUniformsHelper;
         
         enum InitStage {
             INIT_NONE,
@@ -133,13 +152,6 @@ namespace osgEarth
             INIT_POSTINIT_COMPLETE
         };
         InitStage _initStage;
-
-#if 0
-        typedef std::list< osg::ref_ptr< TerrainChangedCallback > > TerrainChangedCallbackList;
-        TerrainChangedCallbackList _terrainChangedCallbacks;
-#endif
-
-        osg::ref_ptr<Terrain> _terrainInterface;
     };
 
     /**
@@ -163,4 +175,4 @@ namespace osgEarth
 
 } // namespace osgEarth
 
-#endif // OSGEARTH_ENGINE_OSGTERRAIN_ENGINE_NODE_H
+#endif // OSGEARTH_TERRAIN_ENGINE_NODE_H

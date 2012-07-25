@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2010 Pelican Mapping
+ * Copyright 2008-2012 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -22,7 +22,10 @@
 #include <osgEarth/Registry>
 #include <osgEarth/Map>
 #include <osgEarth/FileUtils>
+#include <osg/LOD>
 #include <osg/Notify>
+#include <osg/MatrixTransform>
+#include <osg/io_utils>
 #include <osgDB/FileNameUtils>
 
 using namespace osgEarth;
@@ -71,12 +74,13 @@ class SimpleModelSource : public ModelSource
 {
 public:
     SimpleModelSource( const ModelSourceOptions& options )
-        : ModelSource( options ), _options(options) { }
+        : ModelSource( options ), _options(options), _map(0) { }
 
     //override
     void initialize( const osgDB::Options* dbOptions, const osgEarth::Map* map )
     {
         ModelSource::initialize( dbOptions, map );
+        _map = map;
     }
 
     // override
@@ -85,18 +89,61 @@ public:
         osg::ref_ptr<osg::Node> result;
 
         // required if the model includes local refs, like PagedLOD or ProxyNode:
-        osg::ref_ptr<osgDB::Options> localOptions = _dbOptions.get() ? new osgDB::Options(*_dbOptions.get()) : new osgDB::Options();
+        osg::ref_ptr<osgDB::Options> localOptions = 
+            Registry::instance()->cloneOrCreateOptions( _dbOptions.get() );
+
         localOptions->getDatabasePathList().push_back( osgDB::getFilePath(_options.url()->full()) );
 
-        result = _options.url()->readNode( localOptions.get(), CachePolicy::NO_CACHE, progress ).releaseNode();
+        result = _options.url()->getNode( localOptions.get(), CachePolicy::INHERIT, progress );
 
-		if(_options.lodScale().isSet())
-		{
-			LODScaleOverrideNode * node = new LODScaleOverrideNode;
-			node->setLODScale(_options.lodScale().value());
-			node->addChild(result.release());
-			result = node;
-		}
+        if (_options.location().isSet())
+        {
+            GeoPoint geoPoint(
+                _map->getProfile()->getSRS(), 
+                (*_options.location()).x(), 
+                (*_options.location()).y(), 
+                (*_options.location()).z(),
+                ALTMODE_ABSOLUTE );
+
+            OE_NOTICE << "Read location " << geoPoint.vec3d() << std::endl;
+            
+            osg::Matrixd matrix;
+            geoPoint.createLocalToWorld( matrix );                       
+
+            if (_options.orientation().isSet())
+            {
+                //Apply the rotation
+                osg::Matrix rot_mat;
+                rot_mat.makeRotate( 
+                    osg::DegreesToRadians((*_options.orientation()).y()), osg::Vec3(1,0,0),
+                    osg::DegreesToRadians((*_options.orientation()).x()), osg::Vec3(0,0,1),
+                    osg::DegreesToRadians((*_options.orientation()).z()), osg::Vec3(0,1,0) );
+                matrix.preMult(rot_mat);
+            }
+
+            osg::MatrixTransform* mt = new osg::MatrixTransform;
+            mt->setMatrix( matrix );
+            mt->addChild( result.get() );
+            result = mt;
+
+            if ( _options.minRange().isSet() || _options.maxRange().isSet() )
+            {
+                osg::LOD* lod = new osg::LOD();
+                lod->addChild(
+                    result.release(),
+                    _options.minRange().isSet() ? (*_options.minRange()) : 0.0f,
+                    _options.maxRange().isSet() ? (*_options.maxRange()) : FLT_MAX );
+                result = lod;
+            }
+        }
+
+        if(_options.lodScale().isSet())
+        {
+            LODScaleOverrideNode * node = new LODScaleOverrideNode;
+            node->setLODScale(_options.lodScale().value());
+            node->addChild(result.release());
+            result = node;
+        }
 
         return result.release();
     }
@@ -105,6 +152,7 @@ protected:
 
     const SimpleModelOptions           _options;
     const osg::ref_ptr<osgDB::Options> _dbOptions;
+    const Map* _map;
 };
 
 

@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2010 Pelican Mapping
+ * Copyright 2008-2012 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -36,7 +36,7 @@
   {
   public:
     JavascriptEngineV8(const ScriptEngineOptions& options =ScriptEngineOptions());
-    ~JavascriptEngineV8();
+    virtual ~JavascriptEngineV8();
 
     bool supported(std::string lang) { return osgEarth::toLower(lang).compare("javascript") == 0; }
     bool supported(Script* script) { return script && supported(script->getLanguage()); }
@@ -64,6 +64,7 @@
   protected:
     v8::Persistent<v8::ObjectTemplate> _globalTemplate;
     v8::Persistent<v8::Context> _globalContext;
+    v8::Isolate* _isolate;
   };
 
 //} } } // namespace osgEarth::Drivers::JavascriptV8

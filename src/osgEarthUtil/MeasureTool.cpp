@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2010 Pelican Mapping
+ * Copyright 2008-2012 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -23,6 +23,8 @@
 #include <osgEarthFeatures/Feature>
 #include <osgEarthAnnotation/FeatureNode>
 
+#define LC "[MeasureTool] "
+
 using namespace osgEarth;
 using namespace osgEarth::Util;
 using namespace osgEarth::Symbology;
@@ -33,24 +35,27 @@ using namespace osgEarth::Annotation;
 
 
 MeasureToolHandler::MeasureToolHandler( osg::Group* group, osgEarth::MapNode* mapNode ):
-_mouseDown(false),
-_group(group),
-_gotFirstLocation(false),
+_mouseDown         (false),
+_group             (group),
+_gotFirstLocation  (false),
 _lastPointTemporary(false),
-_finished(false),
-_geoInterpolation( GEOINTERP_GREAT_CIRCLE ),
-_mouseButton( osgGA::GUIEventAdapter::LEFT_MOUSE_BUTTON),
-_isPath( false ),
-_mapNode( mapNode ),
-_intersectionMask(0xffffffff)
+_finished          (false),
+_geoInterpolation  (GEOINTERP_GREAT_CIRCLE),
+_mouseButton       (osgGA::GUIEventAdapter::LEFT_MOUSE_BUTTON),
+_isPath            (false),
+_mapNode           (mapNode),
+_intersectionMask  (0xffffffff)
 {
+    if ( !mapNode || mapNode->getMapSRS()->isProjected() )
+    {
+        OE_WARN << LC << "Sorry, MeasureTool does not yet support projected maps" << std::endl;
+    }
+
     AltitudeSymbol* alt = new AltitudeSymbol();
     alt->clamping() = AltitudeSymbol::CLAMP_TO_TERRAIN;
 
     // Define the path feature:
-    _feature = new Feature();
-    _feature->setGeometry( new LineString() );
-    _feature->setSRS( mapNode->getMapSRS() );
+    _feature = new Feature(new LineString(), mapNode->getMapSRS());
     _feature->geoInterp() = _geoInterpolation;    
 
     //Define a style for the line
@@ -200,6 +205,7 @@ bool MeasureToolHandler::handle( const osgGA::GUIEventAdapter& ea, osgGA::GUIAct
 #endif
 
                     fireDistanceChanged();
+                    aa.requestRedraw();
                 }
             }
         }
@@ -208,7 +214,8 @@ bool MeasureToolHandler::handle( const osgGA::GUIEventAdapter& ea, osgGA::GUIAct
         if (_gotFirstLocation)
         {
             //_gotFirstLocation = false;
-            _finished = true;     
+            _finished = true;    
+            aa.requestRedraw(); 
             return true;
         }
     }
@@ -230,6 +237,7 @@ bool MeasureToolHandler::handle( const osgGA::GUIEventAdapter& ea, osgGA::GUIAct
                 }
                 _featureNode->init();
                 fireDistanceChanged();
+                aa.requestRedraw();
             }
         }
     }    

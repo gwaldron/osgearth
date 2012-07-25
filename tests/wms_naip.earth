@@ -8,6 +8,6 @@ Access to the USGS Seamless WMS Server - NAIP Dataset
     <srs>EPSG:4326</srs>
 	<tile_size>256</tile_size>
 	<layers>0</layers>
-	<format>jpeg</format>
+	<format>png</format>
   </image>
 </map>

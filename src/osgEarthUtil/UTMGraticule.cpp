@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2010 Pelican Mapping
+ * Copyright 2008-2012 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -29,7 +29,7 @@
 #include <osgEarth/Registry>
 #include <osgEarth/DepthOffset>
 #include <osgEarth/ECEF>
-#include <osgEarth/FindNode>
+#include <osgEarth/NodeUtils>
 #include <osgEarth/Utils>
 #include <osgEarth/CullingUtils>
 #include <osgEarth/DrapeableNode>
@@ -125,7 +125,6 @@ UTMGraticule::init()
         mapProfile->getExtent().yMin(),
         mapProfile->getExtent().xMax(),
         mapProfile->getExtent().yMax(),
-        mapProfile->getVerticalSRS(),
         8, 4 );
 
     _featureProfile = new FeatureProfile(_profile->getSRS());

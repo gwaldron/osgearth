@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2010 Pelican Mapping
+ * Copyright 2008-2012 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -20,12 +20,15 @@
 #define OSGEARTH_STRING_UTILS_H 1
 
 #include <osgEarth/Common>
+#include <osg/Vec3>
+#include <osg/Vec3d>
 #include <osg/Vec4>
 #include <osg/Vec4ub>
 #include <string>
 #include <algorithm>
 #include <vector>
 #include <sstream>
+#include <locale>
 #include <iomanip>
 #include <map>
 #include <ctype.h>
@@ -47,20 +50,22 @@ namespace osgEarth
     /**
      * True is "ref" starts with "pattern"
      */
-    static
-    bool startsWith( const std::string& ref, const std::string& pattern )
-    {
-        return ref.find( pattern ) == 0;
-    }
+    extern OSGEARTH_EXPORT bool startsWith( 
+        const std::string& ref, 
+        const std::string& pattern, 
+        bool               caseSensitive =true,
+        const std::locale& locale        =std::locale() );
 
     /**
      * True is "ref" ends with "pattern"
      */
-    static
-    bool endsWith( const std::string& ref, const std::string& pattern )
-    {
-        return ref.find( pattern ) == ref.length()-pattern.length();
-    }
+    extern OSGEARTH_EXPORT bool endsWith(
+        const std::string& ref, 
+        const std::string& pattern, 
+        bool               caseSensitive =true,
+        const std::locale& locale        =std::locale() );
+
+
 
     extern OSGEARTH_EXPORT std::string joinStrings( const StringVector& input, char delim );
 
@@ -135,7 +140,8 @@ namespace osgEarth
     toString(const T& value)
     {
         std::stringstream out;
-		out << std::setprecision(20) << std::fixed << value;
+		//out << std::setprecision(20) << std::fixed << value;
+		out << std::setprecision(20) <<  value;
         std::string outStr;
         outStr = out.str();
         return outStr;
@@ -171,6 +177,8 @@ namespace osgEarth
         template<typename T>
         Stringify& operator << (const T& val) { buf << val; return (*this); }
 
+        Stringify& operator << (const Stringify& val) { buf << (std::string)val; return (*this); }
+
     protected:
         std::stringstream buf;
     };
@@ -180,15 +188,15 @@ namespace osgEarth
 
     template<> inline
     Stringify& Stringify::operator << <osg::Vec3f>(const osg::Vec3f& val) {
-        buf << val.x() << ", " << val.y() << ", " << val.z(); return (*this); }
+        buf << val.x() << " " << val.y() << " " << val.z(); return (*this); }
 
     template<> inline
     Stringify& Stringify::operator << <osg::Vec3d>(const osg::Vec3d& val ) {
-        buf << val.x() << ", " << val.y() << ", " << val.z(); return (*this); }
+        buf << val.x() << " " << val.y() << " " << val.z(); return (*this); }
 
     template<> inline
     Stringify& Stringify::operator << <osg::Vec4f>(const osg::Vec4f& val) {
-        buf << val.r() << ", " << val.g() << ", " << val.b() << ", " << val.a(); return (*this); }
+        buf << val.r() << " " << val.g() << " " << val.b() << " " << val.a(); return (*this); }
 
     /**
      * Splits a string up into a vector of strings based on a set of 

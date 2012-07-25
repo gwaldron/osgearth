@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2008-2010 Pelican Mapping
+* Copyright 2008-2012 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -21,10 +21,7 @@
 
 #include <osgEarth/Common>
 #include <osgEarth/Config>
-#include <osgEarth/HeightFieldUtils>
 #include <osgEarth/HTTPClient>
-#include <osgEarth/Profile>
-#include <osgEarth/Revisioning>
 #include <osgEarth/TerrainOptions>
 #include <set>
 
@@ -38,6 +35,7 @@ namespace osgEarth
     public:
         MapNodeOptions( const Config& conf =Config() );
         MapNodeOptions( const TerrainOptions& terrainOpts );
+        MapNodeOptions( const MapNodeOptions& rhs );
         virtual ~MapNodeOptions();
 
         /** 
@@ -59,12 +57,6 @@ namespace osgEarth
          */
         optional<bool>& enableLighting() { return _enableLighting; }
         const optional<bool>& enableLighting() const { return _enableLighting; } 
-
-        /**
-         * Whether to enable overlay vertex warping. See OverlayDecorator
-         */
-        optional<bool>& overlayVertexWarping() { return _overlayVertexWarping; }
-        const optional<bool>& overlayVertexWarping() const { return _overlayVertexWarping; }
 
         /**
          * Whether to enable blending on the overlay decorator subgraph. See OverlayDecorator
@@ -89,7 +81,7 @@ namespace osgEarth
          * terrain surface).
          */
         const TerrainOptions& getTerrainOptions() const;
-        void setTerrainOptions( const TerrainOptions& options );     
+        void setTerrainOptions( const TerrainOptions& options );
     
     public:
         virtual Config getConfig() const;

@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2010 Pelican Mapping
+ * Copyright 2008-2012 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -143,7 +143,10 @@ TransformFilter::push( Feature* input, FilterContext& context )
 
         // first transform the geometry to the output SRS:            
         if ( needsSRSXform )
-            context.profile()->getSRS()->transformPoints( _outputSRS.get(), geom->asVector(), false );
+        {
+            context.profile()->getSRS()->transform( geom->asVector(), _outputSRS.get() );
+        }
+            //context.profile()->getSRS()->transformPoints( _outputSRS.get(), geom->asVector(), false );
 
         // update the bounding box.
         if ( _localize )

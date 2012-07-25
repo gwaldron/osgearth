@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2010 Pelican Mapping
+ * Copyright 2008-2012 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -19,7 +19,7 @@
 #include "KML_IconStyle"
 
 void
-KML_IconStyle::scan( const Config& conf, Style& style )
+KML_IconStyle::scan( const Config& conf, Style& style, KMLContext& cx )
 {
     if ( !conf.empty() )
     {
@@ -36,9 +36,22 @@ KML_IconStyle::scan( const Config& conf, Style& style )
             marker->url()->setURIContext( URIContext(conf.referrer()) );
         }
 
+        optional<float> heading;
+        conf.getIfSet( "heading", heading );
+        if ( heading.isSet() )
+        {
+            osg::Vec3f orient(heading.value(), 0.0, 0.0);
+            marker->orientation() = orient;
+        }
+
+        float finalScale = *cx._options->iconBaseScale();
+
         optional<float> scale;
         conf.getIfSet( "scale", scale );
         if ( scale.isSet() )
-            marker->scale() = NumericExpression( *scale );
+            finalScale *= scale.value();
+
+        if ( finalScale != 1.0f )
+            marker->scale() = NumericExpression( finalScale );
     }
 }

@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2008-2010 Pelican Mapping
+* Copyright 2008-2012 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -44,6 +44,25 @@ namespace
         bool operator()( const osgUtil::RenderLeaf* lhs, const osgUtil::RenderLeaf* rhs ) const 
         {
             return _f(lhs, rhs);
+        }
+    };
+
+    // Custom sorting functor that sorts drawables front-to-back, and when drawables share the
+    // same parent Geode, sorts them in traversal order.
+    struct SortFrontToBackPreservingGeodeTraversalOrder
+    {
+        bool operator()( const osgUtil::RenderLeaf* lhs, const osgUtil::RenderLeaf* rhs ) const
+        {
+            const osg::Node* lhsParentNode = lhs->getDrawable()->getParent(0);
+            if ( lhsParentNode == rhs->getDrawable()->getParent(0) )
+            {
+                const osg::Geode* geode = static_cast<const osg::Geode*>(lhsParentNode);
+                return geode->getDrawableIndex(lhs->getDrawable()) > geode->getDrawableIndex(rhs->getDrawable());
+            }
+            else
+            {
+                return ( lhs->_depth < rhs->_depth );
+            }
         }
     };
 
@@ -161,8 +180,10 @@ struct /*internal*/ DeclutterSort : public osgUtil::RenderBin::SortCallback
         }
         else
         {
-            // default behavior is to sort by depth.
-            bin->sortFrontToBack();
+            // default behavior:
+            bin->copyLeavesFromStateGraphListToRenderLeafList();
+            std::sort( leaves.begin(), leaves.end(), SortFrontToBackPreservingGeodeTraversalOrder() );
+            //bin->sortFrontToBack();
         }
 
         // nothing to sort? bail out
@@ -170,12 +191,13 @@ struct /*internal*/ DeclutterSort : public osgUtil::RenderBin::SortCallback
             return;
 
         // access the view-specific persistent data:
-        osg::View*   view  = bin->getStage()->getCamera()->getView();
-        PerViewInfo& local = _perView.get( bin->getStage()->getCamera()->getView() );   
+        osg::Camera* cam   = bin->getStage()->getCamera();
+        osg::View*   view  = cam->getView();
+        PerViewInfo& local = _perView.get( view );   
         
         // calculate the elapsed time since the previous pass; we'll use this for
         // the animations
-        double now = view->getFrameStamp()->getReferenceTime();
+        double now = view ? view->getFrameStamp()->getReferenceTime() : 0.0;
         float elapsedSeconds = float(now - local._lastTimeStamp);
         local._lastTimeStamp = now;
 
@@ -185,7 +207,7 @@ struct /*internal*/ DeclutterSort : public osgUtil::RenderBin::SortCallback
         local._used.clear();            // list of occupied bounding boxes in screen space
 
         // compute a window matrix so we can do window-space culling:
-        const osg::Viewport* vp = bin->getStage()->getCamera()->getViewport();
+        const osg::Viewport* vp = cam->getViewport();
         osg::Matrix windowMatrix = vp->computeWindowMatrix();
 
         // Track the parent nodes of drawables that are obscured (and culled). Drawables
@@ -576,11 +598,16 @@ Decluttering::setEnabled( osg::StateSet* stateSet, bool enabled, int binNum )
             }
 
             stateSet->setRenderBinDetails( binNum, OSGEARTH_DECLUTTER_BIN );
+
+            // disable renderbin nesting b/c it is incompatible with decluttering for
+            // what should be obvious reasons
+            stateSet->setNestRenderBins( false );
         }
         else
         {
             stateSet->removeAttribute( osg::StateAttribute::PROGRAM );
             stateSet->setRenderBinToInherit();
+            stateSet->setNestRenderBins( true );
         }
     }
 }

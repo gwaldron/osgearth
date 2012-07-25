@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2010 Pelican Mapping
+ * Copyright 2008-2012 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -31,12 +31,40 @@ using namespace osgEarth;
 
 
 TMSPackager::TMSPackager(const Profile* outProfile) :
-_outProfile  ( outProfile ),
-_maxLevel    ( 5 ),
-_verbose     ( false ),
-_abortOnError( true )
+_outProfile         ( outProfile ),
+_maxLevel           ( 5 ),
+_verbose            ( false ),
+_overwrite          ( false ),
+_keepEmptyImageTiles( false ),
+_abortOnError       ( true )
 {
     //nop
+}
+
+
+void
+TMSPackager::addExtent( const GeoExtent& extent )
+{
+    _extents.push_back(extent);
+}
+
+
+bool
+TMSPackager::shouldPackageKey( const TileKey& key ) const
+{
+    // if there are no extent filters, or we're at a sufficiently low level, 
+    // always package the key.
+    if ( _extents.size() == 0 || key.getLevelOfDetail() <= 1 )
+        return true;
+
+    // check for intersection with one of the filter extents.
+    for( std::vector<GeoExtent>::const_iterator i = _extents.begin(); i != _extents.end(); ++i )
+    {
+        if ( i->intersects( key.getExtent() ) )
+            return true;
+    }
+
+    return false;
 }
 
 
@@ -47,12 +75,15 @@ TMSPackager::packageImageTile(ImageLayer*          layer,
                               const std::string&   extension,
                               unsigned&            out_maxLevel )
 {
-    unsigned w, h;
-    key.getProfile()->getNumTiles( key.getLevelOfDetail(), w, h );
+    unsigned minLevel = layer->getImageLayerOptions().minLevel().isSet() ?
+        *layer->getImageLayerOptions().minLevel() : 0;
+    
 
-    GeoImage image = layer->createImage( key );
-    if ( image.valid() )
+    if ( shouldPackageKey(key) && key.getLevelOfDetail() >= minLevel )
     {
+        unsigned w, h;
+        key.getProfile()->getNumTiles( key.getLevelOfDetail(), w, h );
+
         std::string path = Stringify() 
             << rootDir 
             << "/" << key.getLevelOfDetail() 
@@ -60,37 +91,74 @@ TMSPackager::packageImageTile(ImageLayer*          layer,
             << "/" << h - key.getTileY() - 1
             << "." << extension;
 
-        // convert to RGB if necessary
-        osg::ref_ptr<osg::Image> final = image.getImage();
-        if ( extension == "jpg" && final->getPixelFormat() != GL_RGB )
-            final = ImageUtils::convertToRGB8( image.getImage() );
+        bool tileOK = osgDB::fileExists(path) && !_overwrite;
+        if ( !tileOK )
+        {
+            GeoImage image = layer->createImage( key );
+            if ( image.valid() )
+            {
+                // check for empty:
+                if ( !_keepEmptyImageTiles && ImageUtils::isEmptyImage(image.getImage()) )
+                {
+                    if ( _verbose )
+                    {
+                        OE_NOTICE << LC << "Skipping empty tile " << key.str() << std::endl;
+                    }
+                }
+                else
+                {
+                    // convert to RGB if necessary
+                    osg::ref_ptr<osg::Image> final = image.getImage();
+                    if ( extension == "jpg" && final->getPixelFormat() != GL_RGB )
+                        final = ImageUtils::convertToRGB8( image.getImage() );
 
-        // dump it to disk
-        osgDB::makeDirectoryForFile( path );
-        bool writeOK = osgDB::writeImageFile( *final.get(), path );
+                    // dump it to disk
+                    osgDB::makeDirectoryForFile( path );
+                    tileOK = osgDB::writeImageFile( *final.get(), path );
+
+                    if ( _verbose )
+                    {
+                        if ( tileOK ) {
+                            OE_NOTICE << LC << "Wrote tile " << key.str() << " (" << key.getExtent().toString() << ")" << std::endl;
+                        }
+                        else {
+                            OE_NOTICE << LC << "Error write tile " << key.str() << std::endl;
+                        }
+                    }
+
+                    if ( _abortOnError && !tileOK )
+                    {
+                        return Result( Stringify() << "Aborting, write failed for tile " << key.str() );
+                    }
+                }
+            }
+        }
+        else
+        {
+            if ( _verbose )
+            {
+                OE_NOTICE << LC << "Tile " << key.str() << " already exists" << std::endl;
+            }
+        }
 
         // increment the maximum detected tile level:
-        if ( writeOK && key.getLevelOfDetail() > out_maxLevel )
+        if ( tileOK && key.getLevelOfDetail() > out_maxLevel )
+        {
             out_maxLevel = key.getLevelOfDetail();
-
-        if ( _verbose )
-        {
-            if ( writeOK ) {
-                OE_NOTICE << LC << "Wrote tile " << key.str() << std::endl;
-            }
-            else {
-                OE_NOTICE << LC << "Error write tile " << key.str() << std::endl;
-            }
         }
 
-        if ( _abortOnError && !writeOK )
-        {
-            return Result( Stringify() << "Aborting, write failed for tile " << key.str() );
-        }
+        // see if subdivision should continue.
+        unsigned lod = key.getLevelOfDetail();
+        const ImageLayerOptions& options = layer->getImageLayerOptions();
 
-        if ((key.getLevelOfDetail() + 1 < _maxLevel) &&
-            (!layer->getImageLayerOptions().maxLevel().isSet() ||
-             key.getLevelOfDetail() + 1 < *layer->getImageLayerOptions().maxLevel()))
+        unsigned layerMaxLevel = (options.maxLevel().isSet()? *options.maxLevel() : 99);
+        unsigned maxLevel = std::min(_maxLevel, layerMaxLevel);
+        bool subdivide =
+            (options.minLevel().isSet() && lod < *options.minLevel()) ||
+            (tileOK && lod+1 < maxLevel);
+
+        // subdivide if necessary:
+        if ( subdivide )
         {
             for( unsigned q=0; q<4; ++q )
             {
@@ -113,12 +181,14 @@ TMSPackager::packageElevationTile(ElevationLayer*      layer,
                                   const std::string&   extension,
                                   unsigned&            out_maxLevel)
 {
-    unsigned w, h;
-    key.getProfile()->getNumTiles( key.getLevelOfDetail(), w, h );
+    unsigned minLevel = layer->getElevationLayerOptions().minLevel().isSet() ?
+        *layer->getElevationLayerOptions().minLevel() : 0;
 
-    GeoHeightField hf = layer->createHeightField( key );
-    if ( hf.valid() )
+    if ( shouldPackageKey(key) && key.getLevelOfDetail() >= minLevel )
     {
+        unsigned w, h;
+        key.getProfile()->getNumTiles( key.getLevelOfDetail(), w, h );
+
         std::string path = Stringify() 
             << rootDir 
             << "/" << key.getLevelOfDetail() 
@@ -126,36 +196,63 @@ TMSPackager::packageElevationTile(ElevationLayer*      layer,
             << "/" << h - key.getTileY() - 1
             << "." << extension;
 
-        // convert the HF to an image
-        ImageToHeightFieldConverter conv;
-        osg::ref_ptr<osg::Image> image = conv.convert( hf.getHeightField() );
+        bool tileOK = osgDB::fileExists(path) && !_overwrite;
+        if ( !tileOK )
+        {
 
-        // dump it to disk
-        osgDB::makeDirectoryForFile( path );
-        bool writeOK = osgDB::writeImageFile( *image.get(), path );
+            GeoHeightField hf = layer->createHeightField( key );
+            if ( hf.valid() )
+            {
+                // convert the HF to an image
+                ImageToHeightFieldConverter conv;
+                osg::ref_ptr<osg::Image> image = conv.convert( hf.getHeightField() );
+
+                // dump it to disk
+                osgDB::makeDirectoryForFile( path );
+                tileOK = osgDB::writeImageFile( *image.get(), path );
+
+                if ( _verbose )
+                {
+                    if ( tileOK ) {
+                        OE_NOTICE << LC << "Wrote tile " << key.str() << " (" << key.getExtent().toString() << ")" << std::endl;
+                    }
+                    else {
+                        OE_NOTICE << LC << "Error write tile " << key.str() << std::endl;
+                    }
+                }
+
+                if ( _abortOnError && !tileOK )
+                {
+                    return Result( Stringify() << "Aborting, write failed for tile " << key.str() );
+                }
+            }
+        }
+        else
+        {
+            if ( _verbose )
+            {
+                OE_NOTICE << LC << "Tile " << key.str() << " already exists" << std::endl;
+            }
+        }
 
         // increment the maximum detected tile level:
-        if ( writeOK && key.getLevelOfDetail() > out_maxLevel )
+        if ( tileOK && key.getLevelOfDetail() > out_maxLevel )
+        {
             out_maxLevel = key.getLevelOfDetail();
-
-        if ( _verbose )
-        {
-            if ( writeOK ) {
-                OE_NOTICE << LC << "Wrote tile " << key.str() << std::endl;
-            }
-            else {
-                OE_NOTICE << LC << "Error write tile " << key.str() << std::endl;
-            }
         }
 
-        if ( _abortOnError && !writeOK )
-        {
-            return Result( Stringify() << "Aborting, write failed for tile " << key.str() );
-        }
+        // see if subdivision should continue.
+        unsigned lod = key.getLevelOfDetail();
+        const ElevationLayerOptions& options = layer->getElevationLayerOptions();
 
-        if ((key.getLevelOfDetail() + 1 < _maxLevel) &&
-            (!layer->getElevationLayerOptions().maxLevel().isSet() ||
-             key.getLevelOfDetail() + 1 < *layer->getElevationLayerOptions().maxLevel()))
+        unsigned layerMaxLevel = (options.maxLevel().isSet()? *options.maxLevel() : 99);
+        unsigned maxLevel = std::min(_maxLevel, layerMaxLevel);
+        bool subdivide =
+            (options.minLevel().isSet() && lod < *options.minLevel()) ||
+            (tileOK && lod+1 < maxLevel);
+
+        // subdivide if necessary:
+        if ( subdivide )
         {
             for( unsigned q=0; q<4; ++q )
             {
@@ -174,7 +271,7 @@ TMSPackager::packageElevationTile(ElevationLayer*      layer,
 TMSPackager::Result
 TMSPackager::package(ImageLayer*        layer,
                      const std::string& rootFolder,
-                     const std::string& imageExtension)
+                     const std::string& overrideExtension )
 {
     if ( !layer || !_outProfile.valid() )
         return Result( "Illegal null layer or profile" );
@@ -191,26 +288,57 @@ TMSPackager::package(ImageLayer*        layer,
     if ( rootKeys.size() == 0 )
         return Result( "Unable to calculate root key set" );
 
+    // fetch one tile to see what the image size should be
+    
+    GeoImage testImage;
+    for( std::vector<TileKey>::iterator i = rootKeys.begin(); i != rootKeys.end() && !testImage.valid(); ++i )
+    {
+        testImage = layer->createImage( *i );
+    }
+    if ( !testImage.valid() )
+        return Result( "Unable to get a test image!" );
+
+    // try to determine the image extension:
+    std::string extension = overrideExtension;
+
+    if ( extension.empty() && testImage.valid() )
+    {
+        extension = toLower( osgDB::getFileExtension( testImage.getImage()->getFileName() ) );
+        if ( extension.empty() )
+        {
+            if ( ImageUtils::hasAlphaChannel(testImage.getImage()) )
+            {
+                extension = "png";
+            }
+            else
+            {
+                extension = "jpg";
+            }
+        }
+    }
+
     // compute a mime type
     std::string mimeType;
-    if ( imageExtension == "png" )
+    if ( extension == "png" )
         mimeType = "image/png";
-    else if ( imageExtension == "jpg" )
+    else if ( extension == "jpg" || extension == "jpeg" )
         mimeType = "image/jpeg";
-    else if ( imageExtension == "tif" )
+    else if ( extension == "tif" || extension == "tiff" )
         mimeType = "image/tiff";
-    else
-        return Result( Stringify() << "Unable to determine mime-type for extension " << imageExtension );
+    else {
+        OE_WARN << LC << "Unable to determine mime-type for extension \"" << extension << "\"" << std::endl;
+    }
 
-    // fetch one tile to see what the image size should be
-    GeoImage testImage = layer->createImage( rootKeys[0] );
-    if ( !testImage.valid() )
-        return Result( "Unable to determine appropriate image type" );
+    if ( _verbose )
+    {
+        OE_NOTICE << LC << "MIME-TYPE = " << mimeType << ", Extension = " << extension << std::endl;
+    }
 
+    // package the tile hierarchy
     unsigned maxLevel = 0;
     for( std::vector<TileKey>::const_iterator i = rootKeys.begin(); i != rootKeys.end(); ++i )
     {
-        Result r = packageImageTile( layer, *i, rootFolder, imageExtension, maxLevel );
+        Result r = packageImageTile( layer, *i, rootFolder, extension, maxLevel );
         if ( _abortOnError && !r.ok )
             return r;
     }
@@ -219,14 +347,14 @@ TMSPackager::package(ImageLayer*        layer,
     osg::ref_ptr<TMS::TileMap> tileMap = TMS::TileMap::create(
         "",
         _outProfile.get(),
-        imageExtension,
+        extension,
         testImage.getImage()->s(),
         testImage.getImage()->t() );
 
     tileMap->setTitle( layer->getName() );
     tileMap->setVersion( "1.0.0" );
     tileMap->getFormat().setMimeType( mimeType );
-    tileMap->generateTileSets( maxLevel + 1 );
+    tileMap->generateTileSets( std::min(23u, maxLevel+1) );
 
     // write out the tilemap catalog:
     std::string tileMapFilename = osgDB::concatPaths(rootFolder, "tms.xml");
@@ -256,9 +384,17 @@ TMSPackager::package(ElevationLayer*    layer,
         return Result( "Unable to calculate root key set" );
 
     std::string extension = "tif", mimeType = "image/tiff";
+    if ( _verbose )
+    {
+        OE_NOTICE << LC << "MIME-TYPE = " << mimeType << ", Extension = " << extension << std::endl;
+    }
 
     // fetch one tile to see what the tile size will be
-    GeoHeightField testHF = layer->createHeightField( rootKeys[0] );
+    GeoHeightField testHF;
+    for( std::vector<TileKey>::iterator i = rootKeys.begin(); i != rootKeys.end() && !testHF.valid(); ++i )
+    {
+        testHF = layer->createHeightField( *i );
+    }
     if ( !testHF.valid() )
         return Result( "Unable to determine heightfield size" );
 
@@ -281,7 +417,7 @@ TMSPackager::package(ElevationLayer*    layer,
     tileMap->setTitle( layer->getName() );
     tileMap->setVersion( "1.0.0" );
     tileMap->getFormat().setMimeType( mimeType );
-    tileMap->generateTileSets( maxLevel + 1 );
+    tileMap->generateTileSets( std::min(23u, maxLevel+1) );
 
     // write out the tilemap catalog:
     std::string tileMapFilename = osgDB::concatPaths(rootFolder, "tms.xml");

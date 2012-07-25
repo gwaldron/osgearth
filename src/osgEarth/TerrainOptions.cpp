@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2010 Pelican Mapping
+ * Copyright 2008-2012 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -95,6 +95,7 @@ _combineLayers( true ),
 _loadingPolicy( LoadingPolicy() ),
 _compositingTech( COMPOSITING_AUTO ),
 _maxLOD( 23 ),
+_minLOD( 0 ),
 _enableLighting( false ),
 _attenuationDistance( 1000000 ),
 _lodBlending( false ),
@@ -102,8 +103,11 @@ _lodTransitionTimeSeconds( 0.5f ),
 _enableMipmapping( true ),
 _clusterCulling( true ),
 _enableBlending( false ),
+_mercatorFastPath( true ),
 _minFilter( osg::Texture::LINEAR_MIPMAP_LINEAR ),
-_magFilter( osg::Texture::LINEAR)
+_magFilter( osg::Texture::LINEAR),
+_primaryTraversalMask  ( 0xFFFFFFFF ),
+_secondaryTraversalMask( 0x80000000 )
 {
     fromConfig( _conf );
 }
@@ -113,20 +117,28 @@ TerrainOptions::getConfig() const
 {
     Config conf = DriverConfigOptions::getConfig();
     conf.key() = "terrain";
+    
+    if ( _heightFieldSampleRatio.isSetTo( 0.0f ) )
+        conf.update( "sample_ratio", "auto" );
+    else
+        conf.updateIfSet( "sample_ratio", _heightFieldSampleRatio );
 
     conf.updateObjIfSet( "loading_policy", _loadingPolicy );
     conf.updateIfSet( "vertical_scale", _verticalScale );
-    conf.updateIfSet( "sample_ratio", _heightFieldSampleRatio );
     conf.updateIfSet( "min_tile_range_factor", _minTileRangeFactor );
     conf.updateIfSet( "normalize_edges", _normalizeEdges );
     conf.updateIfSet( "combine_layers", _combineLayers );
     conf.updateIfSet( "max_lod", _maxLOD );
+    conf.updateIfSet( "min_lod", _minLOD );
     conf.updateIfSet( "lighting", _enableLighting );
     conf.updateIfSet( "attenuation_distance", _attenuationDistance );
     conf.updateIfSet( "lod_transition_time", _lodTransitionTimeSeconds );
     conf.updateIfSet( "mipmapping", _enableMipmapping );
     conf.updateIfSet( "cluster_culling", _clusterCulling );
     conf.updateIfSet( "blending", _enableBlending );
+    conf.updateIfSet( "mercator_fast_path", _mercatorFastPath );
+    conf.updateIfSet( "primary_traversal_mask", _primaryTraversalMask );
+    conf.updateIfSet( "secondary_traversal_mask", _secondaryTraversalMask );
 
     conf.updateIfSet( "compositor", "auto",             _compositingTech, COMPOSITING_AUTO );
     conf.updateIfSet( "compositor", "texture_array",    _compositingTech, COMPOSITING_TEXTURE_ARRAY );
@@ -154,19 +166,27 @@ TerrainOptions::getConfig() const
 void
 TerrainOptions::fromConfig( const Config& conf )
 {
+    if ( conf.value("sample_ratio") == "auto" )
+        _heightFieldSampleRatio = 0.0f;
+    else
+        conf.getIfSet( "sample_ratio", _heightFieldSampleRatio );
+
     conf.getObjIfSet( "loading_policy", _loadingPolicy );
     conf.getIfSet( "vertical_scale", _verticalScale );
-    conf.getIfSet( "sample_ratio", _heightFieldSampleRatio );
     conf.getIfSet( "min_tile_range_factor", _minTileRangeFactor );
     conf.getIfSet( "normalize_edges", _normalizeEdges );
     conf.getIfSet( "combine_layers", _combineLayers );
-    conf.getIfSet( "max_lod", _maxLOD );
+    conf.getIfSet( "max_lod", _maxLOD ); conf.getIfSet( "max_level", _maxLOD );
+    conf.getIfSet( "min_lod", _minLOD ); conf.getIfSet( "min_level", _minLOD );
     conf.getIfSet( "lighting", _enableLighting );
     conf.getIfSet( "attenuation_distance", _attenuationDistance );
     conf.getIfSet( "lod_transition_time", _lodTransitionTimeSeconds );
     conf.getIfSet( "mipmapping", _enableMipmapping );
     conf.getIfSet( "cluster_culling", _clusterCulling );
     conf.getIfSet( "blending", _enableBlending );
+    conf.getIfSet( "mercator_fast_path", _mercatorFastPath );
+    conf.getIfSet( "primary_traversal_mask", _primaryTraversalMask );
+    conf.getIfSet( "secondary_traversal_mask", _secondaryTraversalMask );
 
     conf.getIfSet( "compositor", "auto",             _compositingTech, COMPOSITING_AUTO );
     conf.getIfSet( "compositor", "texture_array",    _compositingTech, COMPOSITING_TEXTURE_ARRAY );

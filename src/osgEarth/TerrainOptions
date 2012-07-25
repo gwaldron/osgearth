@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2008-2010 Pelican Mapping
+* Copyright 2008-2012 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -21,7 +21,8 @@
 
 #include <osgEarth/Common>
 #include <osgEarth/Config>
-#include <osgEarth/HeightFieldUtils>
+#include <osgEarth/GeoCommon>
+#include <osg/Texture>
 
 namespace osgEarth
 {
@@ -54,6 +55,7 @@ namespace osgEarth
     public:
         LoadingPolicy( const Config& conf =Config() );
         LoadingPolicy( const Mode& mode );
+        virtual ~LoadingPolicy() { }
 
     public: // Configrable
         virtual Config getConfig() const;
@@ -119,6 +121,9 @@ namespace osgEarth
     {
     public:
         TerrainOptions( const ConfigOptions& options =ConfigOptions() );
+
+        /** dtor */
+        virtual ~TerrainOptions() { }
        
         /**
          * Sets or gets the scale factor for height-field values.
@@ -202,10 +207,23 @@ namespace osgEarth
         const optional<CompositingTechnique>& compositingTechnique() const { return _compositingTech; }
 
         /**
-         * The maximum level of detail to which the terrain should subdivide.
+         * The maximum level of detail to which the terrain should subdivide. If you leave this
+         * unset, the terrain will subdivide until the map layers stop providing data (default
+         * behavior). If you set a value, the terrain will stop subdividing at the specified LOD
+         * regardless of data availability.
          */
-        optional<int>& maxLOD() { return _maxLOD; }
-        const optional<int>& maxLOD() const { return _maxLOD; }
+        //optional<unsigned>& maxLOD() { return _maxLOD; }
+        const optional<unsigned >& maxLOD() const { return _maxLOD; }
+
+        /**
+         * The minimum level of detail to which the terrain should subdivide (no matter what).
+         * If you leave this unset, the terrain will terrain will subdivide until the map layers
+         * stop providing data (default behavior). If you set a value, the terrain will subdivide
+         * to the specified LOD no matter what (and may continue farther if higher-resolution
+         * data is available).
+         */
+        optional<unsigned>& minLOD() { return _minLOD; }
+        const optional<unsigned>& minLOD() const { return _minLOD; }
 
         /**
          * Whether to explicity enable or disable GL lighting on the map node.
@@ -230,13 +248,36 @@ namespace osgEarth
          */
         optional<osg::Texture::FilterMode> magFilter() { return _magFilter;}
         const optional<osg::Texture::FilterMode> magFilter() const { return _magFilter;}
-
             
         /**
          * Whether to enable blending
          */
         optional<bool>& enableBlending() { return _enableBlending; }
         const optional<bool>& enableBlending() const { return _enableBlending; }
+
+        /**
+         * Whether to enable the "fast path" for spherical Mercator image layers
+         * Default = true. If enabled, Mercator image tiles will be rendered on a
+         * geocentric map with no reprojection. The trade-off is higher texture
+         * memory usage and NPOT texture usage.
+         */
+        optional<bool>& enableMercatorFastPath() { return _mercatorFastPath; }
+        const optional<bool>& enableMercatorFastPath() const { return _mercatorFastPath; }
+
+        /**
+         * Traversal mask to use for primary geometry -- geometry that comprises the visible
+         * geometry and should participate in intersection, shadowing, etc.
+         */
+        optional<unsigned>& primaryTraversalMask() { return _primaryTraversalMask; }
+        const optional<unsigned>& primaryTraversalMask() const { return _primaryTraversalMask; }
+
+        /**
+         * Traversal mask to use for secondary geometry -- geometry that exists for
+         * secondary purpose (e.g. terrain skirts) that should not participate in 
+         * intersection, shadowing, etc.
+         */
+        optional<unsigned>& secondaryTraversalMask() { return _secondaryTraversalMask; }
+        const optional<unsigned>& secondaryTraversalMask() const { return _secondaryTraversalMask; }
    
     public:
         virtual Config getConfig() const;
@@ -257,7 +298,8 @@ namespace osgEarth
         optional<bool> _combineLayers;
         optional<LoadingPolicy> _loadingPolicy;
         optional<CompositingTechnique> _compositingTech;
-        optional<int> _maxLOD;
+        optional<unsigned> _minLOD;
+        optional<unsigned> _maxLOD;
         optional<bool> _enableLighting;
         optional<float> _attenuationDistance;
         optional<bool> _lodBlending;
@@ -265,9 +307,12 @@ namespace osgEarth
         optional<bool>  _enableMipmapping;
         optional<bool> _clusterCulling;
         optional<bool> _enableBlending;
+        optional<bool> _mercatorFastPath;
         optional<osg::Texture::FilterMode> _magFilter;
         optional<osg::Texture::FilterMode> _minFilter;
         optional<ElevationInterpolation> _elevationInterpolation;
+        optional<unsigned> _primaryTraversalMask;
+        optional<unsigned> _secondaryTraversalMask;
     };
 }
 

@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2010 Pelican Mapping
+ * Copyright 2008-2012 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -83,10 +83,8 @@ Feature*
 GeometryFeatureCursor::nextFeature()
 {
     if ( hasMore() )
-    {
-        _lastFeature = new Feature();
-        _lastFeature->setGeometry( _geom.get() );
-        _lastFeature->setSRS( _featureProfile.valid() ? _featureProfile->getSRS() : 0L );
+    {        
+        _lastFeature = new Feature( _geom.get(), _featureProfile.valid() ? _featureProfile->getSRS() : 0L );
         FilterContext cx;
         cx.profile() = _featureProfile.get();
         FeatureList list;

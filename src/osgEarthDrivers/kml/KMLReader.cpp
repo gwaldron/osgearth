@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2010 Pelican Mapping
+ * Copyright 2008-2012 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -62,7 +62,11 @@ KMLReader::read( const Config& conf )
     cx._sheet = new StyleSheet();
     cx._groupStack.push( root );
     cx._options = _options;
-    cx._srs = SpatialReference::create( "wgs84" );
+    cx._srs = SpatialReference::create( "wgs84", "egm96" );
+
+    KMLOptions blankOptions;
+    if ( cx._options == 0L )
+        cx._options = &blankOptions;
 
     if ( cx._options->iconAndLabelGroup().valid() && cx._options->declutter() == true )
     {

@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2010 Pelican Mapping
+ * Copyright 2008-2012 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -28,12 +28,17 @@ namespace osgEarth { namespace Drivers
     using namespace osgEarth;
     using namespace osgEarth::Features;
 
+    /**
+     * Options for the TFS feature driver.
+     */
     class TFSFeatureOptions : public FeatureSourceOptions // NO EXPORT; header only
     {
     public:
+        /** Base URL of the TFS service */
         optional<URI>& url() { return _url; }
         const optional<URI>& url() const { return _url; }
                 
+        /** Data format extension of TFS data (json, gml) */
         optional<std::string>& format() { return _format; }
         const optional<std::string>& format() const { return _format; }        
 
@@ -42,6 +47,8 @@ namespace osgEarth { namespace Drivers
             setDriver( "tfs" );
             fromConfig( _conf );
         }
+
+        virtual ~TFSFeatureOptions() { }
 
     public:
         Config getConfig() const {

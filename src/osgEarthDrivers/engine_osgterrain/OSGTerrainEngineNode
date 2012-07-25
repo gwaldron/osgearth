@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2010 Pelican Mapping
+ * Copyright 2008-2012 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -20,7 +20,6 @@
 #define OSGEARTH_ENGINE_OSGTERRAIN_ENGINE_NODE_H 1
 
 #include <osgEarth/TerrainEngineNode>
-#include <osgEarth/TextureCompositor>
 #include <osgEarth/Map>
 #include <osgEarth/Revisioning>
 #include <osgEarth/TaskService>
@@ -39,9 +38,8 @@ class OSGTerrainEngineNode : public TerrainEngineNode
 {
 public:
     OSGTerrainEngineNode();
-    OSGTerrainEngineNode( const OSGTerrainEngineNode& rhs, const osg::CopyOp& op =osg::CopyOp::DEEP_COPY_ALL );
     META_Node(osgEarth,OSGTerrainEngineNode);
-    ~OSGTerrainEngineNode();
+    virtual ~OSGTerrainEngineNode();
 
 public:
     osg::Node* createNode(const TileKey& key);
@@ -53,6 +51,9 @@ public: // TerrainEngineNode overrides
     virtual const TerrainOptions& getTerrainOptions() const { return _terrainOptions; }
     virtual void traverse( osg::NodeVisitor& );
     virtual osg::BoundingSphere computeBound() const;    
+
+    // for standalone tile creation outside of a terrain
+    osg::Node* createTile(const TileKey& key);
 
 public: // MapCallback adapter functions
     void onMapInfoEstablished( const MapInfo& mapInfo ); // not virtual!
@@ -73,15 +74,19 @@ public:
     public:
         ElevationChangedCallback( OSGTerrainEngineNode* terrain );
 
-       virtual void onEnabledChanged( TerrainLayer* layer );
+       virtual void onVisibleChanged( TerrainLayer* layer );
 
         OSGTerrainEngineNode* _terrain;
         friend class OSGTerrainEngineNode;
     };
 
+protected:
+	virtual void onVerticalScaleChanged();
+
 private:
     void init();
     void syncMapModel();
+    void installTerrainTechnique();
 
     /**
      * Reloads all the tiles in the terrain due to a data model change
@@ -125,6 +130,8 @@ private:
     unsigned   _tileCount;
     double     _tileCreationTime;
     bool       _isStreaming;
+
+    OSGTerrainEngineNode( const OSGTerrainEngineNode& rhs, const osg::CopyOp& op =osg::CopyOp::DEEP_COPY_ALL ) { }
 };
 
 #endif // OSGEARTH_ENGINE_OSGTERRAIN_ENGINE_NODE_H

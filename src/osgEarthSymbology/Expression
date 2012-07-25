@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2010 Pelican Mapping
+ * Copyright 2008-2012 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -50,6 +50,9 @@ namespace osgEarth { namespace Symbology
 
         /** Copy ctor. */
         NumericExpression( const NumericExpression& rhs );
+
+        /** dtor */
+        virtual ~NumericExpression() { }
 
         /** Access the expression variables. */
         const Variables& variables() const { return _vars; }
@@ -107,11 +110,20 @@ namespace osgEarth { namespace Symbology
         /** Copy ctor. */
         StringExpression( const StringExpression& rhs );
 
+        /** dtor */
+        virtual ~StringExpression() { }
+
+        /** Set the infix expr. */
+        void set( const std::string& infix );
+
         /** Access the expression variables. */
         const Variables& variables() const { return _vars; }
 
         /** Set the value of a variable. */
         void set( const Variable& var, const std::string& value );
+
+        /** Set the value of a names variable if it exists */
+        void set( const std::string& varName, const std::string& value );
 
         /** Evaluate the expression. */
         const std::string& eval() const;

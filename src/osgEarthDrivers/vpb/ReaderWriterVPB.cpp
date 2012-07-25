@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2010 Pelican Mapping
+ * Copyright 2008-2012 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -179,7 +179,7 @@ public:
 			}
 #endif
 			
-            osg::ref_ptr<osgDB::ReaderWriter::Options> localOptions = new osgDB::ReaderWriter::Options;
+            osg::ref_ptr<osgDB::Options> localOptions = Registry::instance()->cloneOrCreateOptions();
             localOptions->setPluginData("osgearth_vpb Plugin",(void*)(1));
 
             ReadResult rc = _url.readNode( localOptions.get(), CachePolicy::NO_CACHE );
@@ -197,7 +197,7 @@ public:
                 
                 OE_INFO << LC << "Loaded root "<< _url.full() <<", path="<<_path<<" base_name="<<_baseNameToUse<<" extension="<<_extension<<std::endl;
                 
-                std::string srs = _profile->getSRS()->getInitString(); //.srs();
+                std::string srs = _profile->getSRS()->getHorizInitString(); //->getInitString(); //.srs();
                 
                 osg::CoordinateSystemNode* csn = dynamic_cast<osg::CoordinateSystemNode*>(_rootNode.get());
                 if (csn)
@@ -374,7 +374,7 @@ public:
             return; //return 0;
         }        
 
-        osg::ref_ptr<osgDB::ReaderWriter::Options> localOptions = new osgDB::ReaderWriter::Options;
+        osg::ref_ptr<osgDB::Options> localOptions = Registry::instance()->cloneOrCreateOptions();
         localOptions->setPluginData("osgearth_vpb Plugin",(void*)(1));
 
 

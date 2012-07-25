@@ -1,8 +1,13 @@
 <!--
 osgEarth Sample.
 
-Same as the boston.earth example only it excludes certain buildings from being rendered so we can replace them with geospecific models.  Run this example with:
-osgearth_viewer boston_buildings.earth --kml ../data/BostonBuildings.kmz to see the hand modeled buildings.
+Same as the boston.earth example only it excludes certain buildings
+from being rendered so we can replace them with geospecific models.
+Run this example with:
+
+osgearth_viewer boston_buildings.earth --kml ../data/BostonBuildings.kmz 
+
+..to see the hand modeled buildings.
 -->
 
 <map name="Boston Demo" type="geocentric" version="2">
@@ -17,23 +22,6 @@ osgearth_viewer boston_buildings.earth --kml ../data/BostonBuildings.kmz to see 
             <url>../data/boston_buildings_utm19.shp</url>
             <build_spatial_index>true</build_spatial_index>
         </features>
-        
-        <!--
-           The "layout" element activates tiling and paging of the feature set. If you
-           omit the layout element, the entire feature set will render as one pre-loaded
-           model (no tiling or paging).
-           
-           Each "level" is a level of detail for features, and should select a style
-              to use for that level. It also can specify min and max camera ranges,
-              in meters.
-              
-           The "tile size factor" controls how a feature is tiled. The higher this factor,
-              the smaller the tile size, and the more tiles will be used to render a given
-              level of detail. The default is 15. (The renderer multiplies a tile's radius
-              by the tile_size_factor to calculate the maximum suitable camera range for
-              a given level of subdivision. It compares this to the feature level's max
-              range to decide how many tiles to create.)
-        -->
         
         <layout>
             <tile_size_factor>45</tile_size_factor>
@@ -86,9 +74,6 @@ osgearth_viewer boston_buildings.earth --kml ../data/BostonBuildings.kmz to see 
     
     <options>
         <lighting>false</lighting>
-        <terrain>
-            <sample_ratio>0.5</sample_ratio>
-        </terrain>
     </options> 
     
     <external>

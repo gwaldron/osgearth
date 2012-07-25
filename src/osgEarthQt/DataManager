@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2010 Pelican Mapping
+ * Copyright 2008-2012 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -49,13 +49,13 @@ namespace osgEarth { namespace QtGui
     Q_OBJECT
 
     public:
-      DataManager(osgEarth::Map* map);
       DataManager(osgEarth::MapNode* mapNode);
 
-      osgEarth::Map* map() { return _map.get(); }
+      osgEarth::MapNode* MapNode() { return _mapNode.get(); }
+      osgEarth::Map* map() { return _mapNode->getMap(); }
 
       void addAnnotation(osgEarth::Annotation::AnnotationNode* annotation, osg::Group* parent/*=0L*/);
-      void removeAnnotaton(osgEarth::Annotation::AnnotationNode* annotation, osg::Group* parent=0L);
+      void removeAnnotation(osgEarth::Annotation::AnnotationNode* annotation, osg::Group* parent=0L);
       void getAnnotations(AnnotationVector& out_annotations) const;
 
       void setSelectedDecoration(const std::string& decoration) { _selectedDecoration = decoration; }
@@ -86,13 +86,14 @@ namespace osgEarth { namespace QtGui
       void annotationRemoved(osgEarth::Annotation::AnnotationNode* annotation);
 
     protected:
-      ~DataManager() { }
+      virtual ~DataManager() { }
 
       void initialize();
       void onMapChanged();
       void onMapChanged(const osgEarth::MapModelChange& change);
 
     private:
+      osg::ref_ptr<osgEarth::MapNode> _mapNode;
       osg::ref_ptr<osgEarth::Map> _map;
       Threading::ReadWriteMutex _dataMutex;
       AnnotationVector _annotations;

@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2010 Pelican Mapping
+ * Copyright 2008-2012 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -65,6 +65,12 @@ namespace osgEarth { namespace Symbology
             TYPE_MULTI
         };
 
+        enum Orientation {
+            ORIENTATION_CCW,
+            ORIENTATION_CW,
+            ORIENTATION_DEGENERATE
+        };
+
         static std::string toString( Type t ) {
             return 
                 t == TYPE_POINTSET ?   "pointset" :
@@ -75,6 +81,7 @@ namespace osgEarth { namespace Symbology
                 "unknown";
         }
 
+        /** Creates a geometry from a vector array */
         static Geometry* create( Type type, const Vec3dVector* toCopy );
 
         // true if osgEarth is compiled for buffering
@@ -161,6 +168,18 @@ namespace osgEarth { namespace Symbology
          * Reverses a call the localize(), given the same offset returned by that method.
          */
         void delocalize( const osg::Vec3d& offset );
+        
+        /**
+         * Reorders the points in the geometry so that, if the last point was connected
+         * to the first in a ring, they would be would in the specified direction.
+         */
+        virtual void rewind( Orientation ori );
+
+        /**
+         * Get the winding orientation of the geometry (if you consider the last point
+         * to connect back to the first in a ring.)
+         */
+        Orientation getOrientation() const;
 
     public:
         virtual Type getType() const =0;
@@ -175,6 +194,9 @@ namespace osgEarth { namespace Symbology
             osgEarth::MixinVector<osg::Vec3d,osg::Referenced>::push_back(osg::Vec3d(x,y,0.)); }
         void push_back(double x, double y, double z) { 
             osgEarth::MixinVector<osg::Vec3d,osg::Referenced>::push_back(osg::Vec3d(x,y,z)); }
+
+        /** dtor */
+        virtual ~Geometry() { }
 
     protected:
         Geometry( int capacity =0 );
@@ -195,6 +217,9 @@ namespace osgEarth { namespace Symbology
         PointSet( const Vec3dVector* toCopy ) : Geometry( toCopy ) { }
         PointSet( const PointSet& rhs );
 
+        /** dtor */
+        virtual ~PointSet() { }
+
     public:
         virtual Type getType() const { return Geometry::TYPE_POINTSET; }
     };
@@ -208,6 +233,9 @@ namespace osgEarth { namespace Symbology
         LineString( int capacity =0 ) : Geometry( capacity ) { }
         LineString( const LineString& rhs );
         LineString( const Vec3dVector* toCopy );
+
+        /** dtor */
+        virtual ~LineString() { }
 
         double getLength() const;
         bool getSegment(double length, osg::Vec3d& start, osg::Vec3d& end);
@@ -225,22 +253,15 @@ namespace osgEarth { namespace Symbology
     class OSGEARTHSYMBOLOGY_EXPORT Ring : public Geometry
     {
     public:
-        enum Orientation {
-            ORIENTATION_CCW,
-            ORIENTATION_CW,
-            ORIENTATION_DEGENERATE
-        };
-
-    public:
         Ring( int capacity =0 ) : Geometry( capacity ) { }
         Ring( const Ring& ring );
         Ring( const Vec3dVector* toCopy );
 
+        /** dtor */
+        virtual ~Ring() { }
+
         // override
         virtual Geometry* cloneAs( const Geometry::Type& newType ) const;
-
-        // gets the ring's orientation
-        Orientation getOrientation() const;
 
         // tests whether the point falls withing the ring
         virtual bool contains2D( double x, double y ) const;
@@ -250,9 +271,9 @@ namespace osgEarth { namespace Symbology
 
         // ensures that the first and last points are not idential.
         virtual void open();
-        
-        // opens and rewinds the ring to the specified orientation.
-        void rewind( Orientation ori );
+
+        // opens and winds the ring in the specified direction
+        virtual void rewind( Orientation ori );
 
     public:
         virtual Type getType() const { return Geometry::TYPE_RING; }
@@ -272,6 +293,9 @@ namespace osgEarth { namespace Symbology
         Polygon( int capacity =0 ) : Ring( capacity ) { }
         Polygon( const Polygon& rhs );
         Polygon( const Vec3dVector* toCopy );
+
+        /** dtor */
+        virtual ~Polygon() { }
         
     public:
         virtual Type getType() const { return Geometry::TYPE_POLYGON; }
@@ -302,6 +326,9 @@ namespace osgEarth { namespace Symbology
         MultiGeometry( const GeometryCollection& parts );
         MultiGeometry( const MultiGeometry& rhs );
 
+        /** dtor */
+        virtual ~MultiGeometry() { }
+
     public:
         virtual Type getType() const { return Geometry::TYPE_MULTI; }        
         virtual Type getComponentType() const;
@@ -314,6 +341,7 @@ namespace osgEarth { namespace Symbology
         virtual Geometry* cloneAs( const Geometry::Type& newType ) const;
         virtual bool isValid() const;
         virtual Bounds getBounds() const;
+        virtual void rewind( Orientation ori );
 
     public:
         GeometryCollection& getComponents() { return _parts; }

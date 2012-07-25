@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2010 Pelican Mapping
+ * Copyright 2008-2012 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -60,6 +60,9 @@ namespace osgEarth
 
         /** Copy constructor. */
         URIContext( const URIContext& rhs ) : _referrer(rhs._referrer) { }
+
+        /** dtor */
+        virtual ~URIContext() { }
 
         /** Serializes this context to an Options structure. This is useful when passing context information
             to an osgDB::ReaderWriter that takes a stream as input -- the stream is anonymous, therefore this
@@ -141,6 +144,9 @@ namespace osgEarth
          */
         URI( const char* location );
 
+        /** dtor */
+        virtual ~URI() { }
+
     public:
 
         /** The base (possibly relative) location string. */
@@ -163,6 +169,15 @@ namespace osgEarth
 
         /** Returns a copy of this URI with the suffix appended */
         URI append( const std::string& suffix ) const;
+
+        /** String used for keying the cache */
+        const std::string& cacheKey() const { return !_cacheKey.empty() ? _cacheKey : _fullURI; }
+
+
+    public:
+
+        /** Sets a cache key. By default the cache key is the full URI, but you can override that. */
+        void setCacheKey( const std::string& key ) { _cacheKey = key; }
 
 
     public: // read methods return a ReadResult object
@@ -187,28 +202,32 @@ namespace osgEarth
             const CachePolicy&    cachePolicy =CachePolicy(),
             ProgressCallback*     progress    =0L ) const;
 
+        ReadResult readConfig(
+            const osgDB::Options* dbOptions   =0L,
+            const CachePolicy&    cachePolicy =CachePolicy(),
+            ProgressCallback*     progress    =0L ) const;
+
     public: // get methods call the read* methods, then just return the raw data.
 
         osg::Object* getObject(
             const osgDB::Options* dbOptions   =0L,
             const CachePolicy&    cachePolicy =CachePolicy(),
-            ProgressCallback*     progress    =0L ) const { return readObject().releaseObject(); }
+            ProgressCallback*     progress    =0L ) const { return readObject(dbOptions, cachePolicy, progress).releaseObject(); }
 
         osg::Image* getImage(
             const osgDB::Options* dbOptions   =0L,
             const CachePolicy&    cachePolicy =CachePolicy(),
-            ProgressCallback*     progress    =0L ) const { return readImage().releaseImage(); }
+            ProgressCallback*     progress    =0L ) const { return readImage(dbOptions, cachePolicy, progress).releaseImage(); }
 
         osg::Node* getNode(
             const osgDB::Options* dbOptions   =0L,
             const CachePolicy&    cachePolicy =CachePolicy(),
-            ProgressCallback*     progress    =0L ) const { return readNode().releaseNode(); }
+            ProgressCallback*     progress    =0L ) const { return readNode(dbOptions, cachePolicy, progress).releaseNode(); }
 
         std::string getString(
             const osgDB::Options* dbOptions   =0L,
             const CachePolicy&    cachePolicy =CachePolicy(),
-            ProgressCallback*     progress    =0L ) const { return readString().getString(); }
-
+            ProgressCallback*     progress    =0L ) const { return readString(dbOptions, cachePolicy, progress).getString(); }
 
     public:
 
@@ -224,6 +243,7 @@ namespace osgEarth
     protected:
         std::string _baseURI;
         std::string _fullURI;
+        std::string _cacheKey;
         URIContext  _context;
     };
 
@@ -235,7 +255,9 @@ namespace osgEarth
     template <> inline
     void Config::addIfSet<URI>( const std::string& key, const optional<URI>& opt ) {
         if ( opt.isSet() ) {
-            add( Config(key, opt->base()) );
+            Config conf(key, opt->base());
+            conf.setReferrer(opt->context().referrer());
+            add( conf );
         }
     }
 
@@ -243,14 +265,16 @@ namespace osgEarth
     void Config::updateIfSet<URI>( const std::string& key, const optional<URI>& opt ) {
         if ( opt.isSet() ) {
             remove(key);
-            add( Config(key, opt->base()) );
+            Config conf(key, opt->base());
+            conf.setReferrer(opt->context().referrer());
+            add( conf );
         }
     }
 
     template<> inline
     bool Config::getIfSet<URI>( const std::string& key, optional<URI>& output ) const {
-        if ( hasValue( key ) ) {
-            output = URI( value(key), _referrer );
+        if ( hasValue(key) ) {
+            output = URI( value(key), referrer(key) );
             return true;
         }
         else

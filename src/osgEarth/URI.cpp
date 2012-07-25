@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2010 Pelican Mapping
+ * Copyright 2008-2012 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -24,6 +24,7 @@
 #include <osgDB/FileNameUtils>
 #include <osgDB/ReadFile>
 #include <osgDB/ReaderWriter>
+#include <osgDB/Archive>
 #include <fstream>
 #include <sstream>
 
@@ -125,6 +126,15 @@ URIContext::URIContext( const osgDB::Options* options )
     if ( options )
     {
         _referrer = options->getPluginStringData( "osgEarth::URIContext::referrer" );
+
+        if ( _referrer.empty() && options->getDatabasePathList().size() > 0 )
+        {
+            const std::string& front = options->getDatabasePathList().front();
+            if ( osgEarth::isArchive(front) )
+            {
+                _referrer = front + "/";
+            }
+        }
     }
 }
 
@@ -205,6 +215,59 @@ namespace
             return ReadResult( ReadResult::RESULT_NOT_FOUND ); // TODO: translate codes better
     }
 
+    // Utility to redirect a local file read if it has an archive name in the URI
+    ReadResult readStringFile( const std::string& uri, const osgDB::Options* opt )
+    {
+        osgDB::Registry::ArchiveExtensionList e = osgDB::Registry::instance()->getArchiveExtensions();
+        for(osgDB::Registry::ArchiveExtensionList::iterator aitr = e.begin(); aitr != e.end(); ++aitr )
+        {
+            std::string archiveExtension = "." + (*aitr);
+            std::string::size_type positionArchive = uri.find(archiveExtension+'/');
+            if (positionArchive == std::string::npos) positionArchive = uri.find(archiveExtension+'\\');
+            if (positionArchive != std::string::npos)
+            {
+                std::string::size_type endArchive = positionArchive + archiveExtension.length();
+                std::string archiveName( uri.substr(0, endArchive));
+                std::string fileName( uri.substr(endArchive+1, std::string::npos) );
+
+                osgDB::ReaderWriter::ReadResult result = osgDB::Registry::instance()->openArchiveImplementation(
+                    archiveName, osgDB::ReaderWriter::READ, 4096, opt );
+
+                if (!result.validArchive()) 
+                    return ReadResult(); // error
+
+                osgDB::Archive* archive = result.getArchive();
+
+                osg::ref_ptr<osgDB::ReaderWriter::Options> options = opt ? opt->cloneOptions() : 
+                    Registry::instance()->cloneOrCreateOptions();
+
+                options->setDatabasePath(archiveName);
+
+                osgDB::ReaderWriter::ReadResult rr = archive->readObject(fileName, options.get());
+                if ( rr.success() )
+                    return ReadResult(rr.takeObject());
+                else
+                    return ReadResult();
+            }
+        }
+
+        // no archive; just read it normally
+        std::ifstream input( uri.c_str() );
+        if ( input.is_open() )
+        {
+            input >> std::noskipws;
+            std::stringstream buf;
+            buf << input.rdbuf();
+            std::string bufStr;
+            bufStr = buf.str();
+            return ReadResult( new StringObject(bufStr) );
+        }
+
+        // no good
+        return ReadResult();
+    }
+
+
     //--------------------------------------------------------------------
     // Read functors (used by the doRead method)
 
@@ -212,7 +275,7 @@ namespace
     {
         bool callbackRequestsCaching( URIReadCallback* cb ) const { return !cb || ((cb->cachingSupport() & URIReadCallback::CACHE_OBJECTS) != 0); }
         osgDB::ReaderWriter::ReadResult fromCallback( URIReadCallback* cb, const std::string& uri, const osgDB::Options* opt ) { return cb->readObject(uri, opt); }
-        ReadResult fromCache( CacheBin* bin, const std::string& uri, double maxAge ) { return bin->readObject(uri, maxAge); }
+        ReadResult fromCache( CacheBin* bin, const std::string& key, double maxAge ) { return bin->readObject(key, maxAge); }
         ReadResult fromHTTP( const std::string& uri, const osgDB::Options* opt, ProgressCallback* p ) { return HTTPClient::readObject(uri, opt, p); }
         ReadResult fromFile( const std::string& uri, const osgDB::Options* opt ) { return ReadResult(osgDB::readObjectFile(uri, opt)); }
     };
@@ -221,40 +284,45 @@ namespace
     {
         bool callbackRequestsCaching( URIReadCallback* cb ) const { return !cb || ((cb->cachingSupport() & URIReadCallback::CACHE_NODES) != 0); }
         osgDB::ReaderWriter::ReadResult fromCallback( URIReadCallback* cb, const std::string& uri, const osgDB::Options* opt ) { return cb->readNode(uri, opt); }
-        ReadResult fromCache( CacheBin* bin, const std::string& uri, double maxAge ) { return bin->readObject(uri, maxAge); }
+        ReadResult fromCache( CacheBin* bin, const std::string& key, double maxAge ) { return bin->readObject(key, maxAge); }
         ReadResult fromHTTP( const std::string& uri, const osgDB::Options* opt, ProgressCallback* p ) { return HTTPClient::readNode(uri, opt, p); }
         ReadResult fromFile( const std::string& uri, const osgDB::Options* opt ) { return ReadResult(osgDB::readNodeFile(uri, opt)); }
     };
 
     struct ReadImage
     {
-        bool callbackRequestsCaching( URIReadCallback* cb ) const { return !cb || ((cb->cachingSupport() & URIReadCallback::CACHE_IMAGES) != 0); }
-        osgDB::ReaderWriter::ReadResult fromCallback( URIReadCallback* cb, const std::string& uri, const osgDB::Options* opt ) { return cb->readImage(uri, opt); }
-        ReadResult fromCache( CacheBin* bin, const std::string& uri, double maxAge ) { return bin->readImage(uri, maxAge); }
-        ReadResult fromHTTP( const std::string& uri, const osgDB::Options* opt, ProgressCallback* p ) { return HTTPClient::readImage(uri, opt, p); }
-        ReadResult fromFile( const std::string& uri, const osgDB::Options* opt ) { return ReadResult(osgDB::readImageFile(uri, opt)); }
+        bool callbackRequestsCaching( URIReadCallback* cb ) const { 
+            return !cb || ((cb->cachingSupport() & URIReadCallback::CACHE_IMAGES) != 0); 
+        }
+        osgDB::ReaderWriter::ReadResult fromCallback( URIReadCallback* cb, const std::string& uri, const osgDB::Options* opt ) { 
+            osgDB::ReaderWriter::ReadResult r = cb->readImage(uri, opt);
+            if ( r.getImage() ) r.getImage()->setFileName(uri);
+            return r;
+        }                
+        ReadResult fromCache( CacheBin* bin, const std::string& key, double maxAge ) { 
+            ReadResult r = bin->readImage(key, maxAge);
+            if ( r.getImage() ) r.getImage()->setFileName( key );
+            return r;
+        }
+        ReadResult fromHTTP( const std::string& uri, const osgDB::Options* opt, ProgressCallback* p ) { 
+            ReadResult r = HTTPClient::readImage(uri, opt, p);
+            if ( r.getImage() ) r.getImage()->setFileName( uri );
+            return r;
+        }
+        ReadResult fromFile( const std::string& uri, const osgDB::Options* opt ) { 
+            ReadResult r = ReadResult(osgDB::readImageFile(uri, opt));
+            if ( r.getImage() ) r.getImage()->setFileName( uri );
+            return r;
+        }
     };
 
     struct ReadString
     {
         bool callbackRequestsCaching( URIReadCallback* cb ) const { return !cb || ((cb->cachingSupport() & URIReadCallback::CACHE_STRINGS) != 0); }
         osgDB::ReaderWriter::ReadResult fromCallback( URIReadCallback* cb, const std::string& uri, const osgDB::Options* opt ) { return cb->readString(uri, opt); }
-        ReadResult fromCache( CacheBin* bin, const std::string& uri, double maxAge ) { return bin->readString(uri, maxAge); }
+        ReadResult fromCache( CacheBin* bin, const std::string& key, double maxAge ) { return bin->readString(key, maxAge); }
         ReadResult fromHTTP( const std::string& uri, const osgDB::Options* opt, ProgressCallback* p ) { return HTTPClient::readString(uri, opt, p); }
-        ReadResult fromFile( const std::string& uri, const osgDB::Options* opt ) 
-        {
-            std::ifstream input( uri.c_str() );
-            if ( input.is_open() )
-            {
-                input >> std::noskipws;
-                std::stringstream buf;
-                buf << input.rdbuf();
-			    std::string bufStr;
-		        bufStr = buf.str();
-                return ReadResult( new StringObject(bufStr) );
-            }
-            else return ReadResult();
-        }
+        ReadResult fromFile( const std::string& uri, const osgDB::Options* opt ) { return readStringFile(uri, opt); }
     };
 
     //--------------------------------------------------------------------
@@ -320,7 +388,7 @@ namespace
             // first try to go to the cache if there is one:
             if ( bin && cp.isCacheReadable() )
             {
-                result = reader.fromCache( bin, uri.full(), *cp.maxAge() );
+                result = reader.fromCache( bin, uri.cacheKey(), *cp.maxAge() );
             }
 
             // not in the cache, so proceed to read it from the network.
@@ -353,10 +421,13 @@ namespace
                 // write the result to the cache if possible:
                 if ( result.succeeded() && bin && cp.isCacheWriteable() )
                 {
-                    bin->write( uri.full(), result.getObject(), result.metadata() );
+                    bin->write( uri.cacheKey(), result.getObject(), result.metadata() );
                 }
             }
         }
+
+        if ( result.getObject() )
+            result.getObject()->setName( uri.base() );
 
         return result;
     }
@@ -393,242 +464,3 @@ URI::readString(const osgDB::Options* dbOptions,
 {
     return doRead<ReadString>( *this, dbOptions, cachePolicy, progress );
 }
-
-
-
-#if 0
-ReadResult
-URI::readObject(const osgDB::Options* dbOptions,
-                const CachePolicy&    cachePolicy,
-                ProgressCallback*     progress ) const
-{
-    ReadResult result;
-
-    if ( empty() )
-        return result;
-
-    // see if there's a read callback installed.
-    URIReadCallback* cb = Registry::instance()->getURIReadCallback();
-    bool cbSupportsCache = !cb || ((cb->cachingSupport() & URIReadCallback::CACHE_OBJECTS) != 0);
-
-    // establish our caching policy:
-    const CachePolicy& cp = !cachePolicy.empty() ? cachePolicy : Registry::instance()->defaultCachePolicy();
-
-    // get a cache bin if we need it:
-    CacheBin* bin = 0L;
-    if (isRemote() && (cp.usage() != CachePolicy::USAGE_NO_CACHE) && cbSupportsCache )
-    {
-        bin = s_getCacheBin( dbOptions );
-    }
-
-    // first try to go to the cache if there is one:
-    if ( bin && cp.isCacheReadable() )
-    {
-        result = bin->readObject( full(), *cp.maxAge() );
-    }
-
-    // not in the cache, so move on:
-    if ( result.empty() )
-    {
-        // try to use the callback if it's set. Callback ignores the caching policy.
-        if ( cb )
-        {
-            osgDB::ReaderWriter::ReadResult rr = cb->readObject( full(), dbOptions );
-            if ( rr.validObject() )
-            {
-                result = ReadResult( rr.getObject() );
-            }
-            else if ( rr.status() != osgDB::ReaderWriter::ReadResult::NOT_IMPLEMENTED )
-            {
-                // only "NOT_IMPLEMENTED" is a reason to fallback. Anything else if a FAIL
-                return ReadResult( ReadResult::RESULT_NOT_FOUND );
-            }
-        }
-
-        // still no data, go to the source:
-        if ( result.empty() )
-        {
-            if ( isRemote() )
-            {
-                result = HTTPClient::readObject(
-                    full(),
-                    dbOptions ? dbOptions : Registry::instance()->getDefaultOptions(),
-                    progress );
-            }
-            else
-            {
-                result = ReadResult( osgDB::readObjectFile(full(), dbOptions) );
-            }
-        }
-
-        // write the result to the cache if possible:
-        if ( result.succeeded() && bin && cp.isCacheWriteable() )
-        {
-            bin->write( full(), result.getObject(), result.metadata() );
-        }
-    }
-
-    return result;
-}
-
-
-
-ReadResult
-URI::readImage(const osgDB::Options* dbOptions,
-               const CachePolicy&    cachePolicy,
-               ProgressCallback*     progress ) const
-{
-    ReadResult result;
-
-    if ( empty() )
-        return result;
-
-    // see if there's a read callback installed.
-    URIReadCallback* cb = Registry::instance()->getURIReadCallback();
-    bool cbSupportsCache = !cb || ((cb->cachingSupport() & URIReadCallback::CACHE_OBJECTS) != 0);
-
-    // establish our caching policy:
-    const CachePolicy& cp = !cachePolicy.empty() ? cachePolicy : Registry::instance()->defaultCachePolicy();
-
-    // get a cache bin if we need it:
-    CacheBin* bin = 0L;
-    if (isRemote() && (cp.usage() != CachePolicy::USAGE_NO_CACHE) && cbSupportsCache )
-    {
-        bin = s_getCacheBin( dbOptions );
-    }
-
-    // first, try to read from the cache.
-    if ( bin && cp.isCacheReadable() )
-    {
-        result = bin->readImage( full(), *cp.maxAge() );
-    }
-
-    // second, try to read from the source.
-    if ( result.empty() && cp.usage() != CachePolicy::USAGE_CACHE_ONLY )
-    {
-        if ( isRemote() )
-        {
-            result = HTTPClient::readImage(
-                _fullURI,
-                dbOptions ? dbOptions : Registry::instance()->getDefaultOptions(),
-                progress );
-        }
-        else
-        {
-            result = ReadResult( osgDB::readImageFile( full(), dbOptions ) );
-        }
-
-        if ( result.succeeded() && bin && cp.isCacheWriteable() )
-        {
-            bin->write( full(), result.get<osg::Image>(), result.metadata() );
-        }
-    }
-
-    return result;
-}
-
-ReadResult
-URI::readNode(const osgDB::Options* dbOptions,
-              const CachePolicy&    cachePolicy,
-              ProgressCallback*     progress ) const
-{
-    ReadResult result;
-
-    if ( empty() )
-        return result;
-
-    // see if there's a read callback installed.
-    URIReadCallback* cb = Registry::instance()->getURIReadCallback();
-    bool cbSupportsCache = !cb || ((cb->cachingSupport() & URIReadCallback::CACHE_OBJECTS) != 0);
-
-    // establish our caching policy:
-    const CachePolicy& cp = !cachePolicy.empty() ? cachePolicy : Registry::instance()->defaultCachePolicy();
-
-    // get a cache bin if we need it:
-    CacheBin* bin = 0L;
-    if (isRemote() && (cp.usage() != CachePolicy::USAGE_NO_CACHE) && cbSupportsCache )
-    {
-        bin = s_getCacheBin( dbOptions );
-    }
-
-    if ( bin && cp.isCacheReadable() )
-    {
-        result = bin->readObject( full(), *cp.maxAge() );
-    }
-
-    if ( result.empty() && cp.usage() != CachePolicy::USAGE_CACHE_ONLY )
-    {
-        if ( isRemote() )
-        {
-            result = HTTPClient::readNode(
-                _fullURI,
-                dbOptions ? dbOptions : Registry::instance()->getDefaultOptions(),
-                progress );
-        }
-        else
-        {
-            result = ReadResult( osgDB::readNodeFile(full(), dbOptions) );
-        }
-
-        if ( result.succeeded() && bin && cp.isCacheWriteable() )
-        {
-            bin->write( full(), result.getObject(), result.metadata() );
-        }
-    }
-
-    return result;
-}
-
-ReadResult
-URI::readString(const osgDB::Options* dbOptions,
-                const CachePolicy&    cachePolicy,
-                ProgressCallback*     progress ) const
-{
-    ReadResult result;
-
-    CacheBin* bin = 0L;
-
-    const CachePolicy& cp = !cachePolicy.empty() ? cachePolicy : Registry::instance()->defaultCachePolicy();
-
-    if ( isRemote() && cp.usage() != CachePolicy::USAGE_NO_CACHE )
-    {
-        bin = s_getCacheBin( dbOptions );
-    }
-
-    if ( bin && cp.isCacheReadable() )
-    {
-        result = bin->readString( full(), *cp.maxAge() );
-    }
-
-    if ( result.empty() && cp.usage() != CachePolicy::USAGE_CACHE_ONLY )
-    {
-        if ( isRemote() )
-        {
-            result = HTTPClient::readString(
-                _fullURI,
-                dbOptions ? dbOptions : Registry::instance()->getDefaultOptions(),
-                progress );
-        }
-        else
-        {            
-            std::ifstream input( full().c_str() );
-            if ( input.is_open() )
-            {
-                input >> std::noskipws;
-                std::stringstream buf;
-                buf << input.rdbuf();
-			    std::string bufStr;
-		        bufStr = buf.str();
-                result = ReadResult( new StringObject(bufStr) );
-            }
-        }
-
-        if ( result.succeeded() && bin && cp.isCacheWriteable() )
-        {
-            bin->write( full(), result.getObject(), result.metadata() );
-        }
-    }
-
-    return result;
-}
-#endif

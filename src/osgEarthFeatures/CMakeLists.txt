@@ -25,13 +25,12 @@ SET(LIB_PUBLIC_HEADERS
     Feature
     FeatureCursor
     FeatureDisplayLayout
-    FeatureGeometryIndex
-    FeatureGridder
+    FeatureDrawSet
 	FeatureListSource
     FeatureModelGraph
     FeatureModelSource
-    #FeatureNode
     FeatureSource
+    FeatureSourceIndexNode
     FeatureTileSource
     Filter
     FilterContext
@@ -39,7 +38,7 @@ SET(LIB_PUBLIC_HEADERS
 	GeometryUtils
     LabelSource
     MeshClamper
-	OgrUtils
+    OgrUtils
     OptimizerHints	
     ResampleFilter
     ScaleFilter
@@ -68,13 +67,12 @@ ADD_LIBRARY(${LIB_NAME} SHARED
     Feature.cpp
     FeatureCursor.cpp
     FeatureDisplayLayout.cpp
-    FeatureGeometryIndex.cpp
-    FeatureGridder.cpp
+    FeatureDrawSet.cpp
 	FeatureListSource.cpp
     FeatureModelGraph.cpp
     FeatureModelSource.cpp
-    #FeatureNode.cpp
     FeatureSource.cpp
+    FeatureSourceIndexNode.cpp
     FeatureTileSource.cpp
     Filter.cpp
     FilterContext.cpp

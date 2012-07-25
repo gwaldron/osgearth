@@ -1,0 +1,63 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+* Copyright 2008-2012 Pelican Mapping
+* http://osgearth.org
+*
+* osgEarth is free software; you can redistribute it and/or modify
+* it under the terms of the GNU Lesser General Public License as published by
+* the Free Software Foundation; either version 2 of the License, or
+* (at your option) any later version.
+*
+* This program is distributed in the hope that it will be useful,
+* but WITHOUT ANY WARRANTY; without even the implied warranty of
+* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+* GNU Lesser General Public License for more details.
+*
+* You should have received a copy of the GNU Lesser General Public License
+* along with this program.  If not, see <http://www.gnu.org/licenses/>
+*/
+#ifndef OSGEARTH_ENGINE_QUADTREE_TILE_MODEL_FACTORY
+#define OSGEARTH_ENGINE_QUADTREE_TILE_MODEL_FACTORY 1
+
+#include "Common"
+#include "TileNode"
+#include "TileNodeRegistry"
+#include "QuadTreeTerrainEngineOptions"
+#include <osgEarth/Map>
+#include <osgEarth/ThreadingUtils>
+#include <osg/Group>
+
+using namespace osgEarth;
+
+/**
+ * For a given TileKey, this class builds a a corresponding TileNode from
+ * the map's data model.
+ *
+ * TODO: This should probably change to TileModelFactory or something since
+ * the creation of the TileNode itself is trivial and can be done outside of
+ * this class.
+ */
+class TileModelFactory : public osg::Referenced
+{
+public:
+    TileModelFactory(
+        const Map*                                   map,
+        TileNodeRegistry*                            liveTiles,
+        const Drivers::QuadTreeTerrainEngineOptions& terrainOptions );
+
+    /** dtor */
+    virtual ~TileModelFactory() { }
+
+    void createTileModel(
+        const TileKey&           key,
+        osg::ref_ptr<TileModel>& out_model,
+        bool&                    out_hasRealData,
+        bool&                    out_hasLodBlendedLayers );
+
+private:
+    const Map*                                   _map;
+    osg::ref_ptr<TileNodeRegistry>               _liveTiles;
+    const Drivers::QuadTreeTerrainEngineOptions& _terrainOptions;
+};
+
+#endif // OSGEARTH_ENGINE_QUADTREE_TILE_MODEL_FACTORY

@@ -125,13 +125,13 @@ public:
         int x = key.getTileX();
         int y = key.getTileY();
 
-        if (z < _minLevel)
+        if (z < (int)_minLevel)
         {
             //Return an empty image to make it continue subdividing
             return ImageUtils::createEmptyImage();
         }
 
-        if (z > _maxLevel)
+        if (z > (int)_maxLevel)
         {
             //If we're at the max level, just return NULL
             return NULL;
@@ -148,7 +148,7 @@ public:
         if ( rc != SQLITE_OK )
         {
             OE_WARN << LC << "Failed to prepare SQL: " << query << "; " << sqlite3_errmsg(_database) << std::endl;
-            return false;
+            return NULL;
         }
 
         bool valid = true;        

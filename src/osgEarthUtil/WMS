@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2008-2010 Pelican Mapping
+* Copyright 2008-2012 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -44,7 +44,10 @@ namespace osgEarth { namespace Util
     {
     public:
         WMSStyle();
-        WMSStyle(const std::string& name, const std::string &title);
+        WMSStyle(const std::string& name, const std::string& title);
+
+        /** dtor */
+        virtual ~WMSStyle() { }
 
         /**
         *Gets the name of the style
@@ -78,6 +81,9 @@ namespace osgEarth { namespace Util
     {
     public:
         WMSLayer();
+
+        /** dtor */
+        virtual ~WMSLayer() { }
 
         /**
         *Gets the name of the layer
@@ -191,6 +197,9 @@ namespace osgEarth { namespace Util
     public:
         WMSCapabilities();
 
+        /** dtor */
+        virtual ~WMSCapabilities() { }
+
         /**
         *Gets the WMS capabilities version
         */
@@ -248,6 +257,9 @@ namespace osgEarth { namespace Util
     private:
         WMSCapabilitiesReader(){}
         WMSCapabilitiesReader(const WMSCapabilitiesReader &cr){}
+
+        /** dtor */
+        virtual ~WMSCapabilitiesReader() { }
     };
 
 } } // namespace osgEarth::Util

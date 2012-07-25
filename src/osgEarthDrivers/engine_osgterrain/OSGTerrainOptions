@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2010 Pelican Mapping
+ * Copyright 2008-2012 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -34,9 +34,12 @@ namespace osgEarth { namespace Drivers
             _quickRelease( true ),
             _lodFallOff( 0.0 )
         {
-            setDriver( "osgTerrainNode" );
+            setDriver( "osgterrain" );
             fromConfig( _conf );
         }
+
+        /** dtor */
+        virtual ~OSGTerrainOptions() { }
 
     public:
         optional<float>& heightFieldSkirtRatio() { return _skirtRatio; }
@@ -47,6 +50,7 @@ namespace osgEarth { namespace Drivers
 
         optional<float>& lodFallOff() { return _lodFallOff; }
         const optional<float>& lodFallOff() const { return _lodFallOff; }
+
 
     protected:
         virtual Config getConfig() const {

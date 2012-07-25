@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2010 Pelican Mapping
+ * Copyright 2008-2012 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -17,7 +17,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 #include <osgEarthUtil/Controls>
-#include <osgEarth/FindNode>
+#include <osgEarth/NodeUtils>
 #include <osg/Geometry>
 #include <osg/NodeCallback>
 #include <osg/Depth>
@@ -45,7 +45,7 @@ namespace
 {
     // ControlNodeBin shaders.
 
-    char* s_controlVertexShader =
+    const char* s_controlVertexShader =
         "void main() \n"
         "{ \n"
         "    gl_Position = gl_ModelViewProjectionMatrix * gl_Vertex; \n"
@@ -53,7 +53,7 @@ namespace
         "    gl_FrontColor = gl_Color; \n"
         "} \n";
 
-    char* s_imageControlFragmentShader =
+    const char* s_imageControlFragmentShader =
         "uniform sampler2D tex0; \n"
         "uniform float visibleTime; \n"
         "uniform float osg_FrameTime; \n"
@@ -64,7 +64,7 @@ namespace
         "    gl_FragColor = vec4(texel.rgb, texel.a * opacity); \n"
         "} \n";
 
-    char* s_labelControlFragmentShader =
+    const char* s_labelControlFragmentShader =
         "uniform sampler2D tex0; \n"
         "uniform float visibleTime; \n"
         "uniform float osg_FrameTime; \n"
@@ -117,6 +117,55 @@ namespace
         out.z() = 0.0f;
     }
 }
+
+// ---------------------------------------------------------------------------
+
+float
+UVec2f::x( const osg::Vec2f& size ) const
+{
+    if ( _xunits == UNITS_PIXELS )
+        return _v[0];
+    else if ( _xunits == UNITS_FRACTION )
+        return _v[0] * size.x();
+    else // UNITS_INSET_PIXELS
+        return size.x() - _v[0] - 1.0f;
+}
+
+float
+UVec2f::x( const ControlContext& cx ) const
+{
+    return cx._vp ? x( osg::Vec2f(cx._vp->width(), cx._vp->height()) ) : _v[0];
+}
+
+float
+UVec2f::y( const osg::Vec2f& size ) const
+{
+    if ( _yunits == UNITS_PIXELS )
+        return _v[1];
+    else if ( _yunits == UNITS_FRACTION )
+        return _v[1] * size.y();
+    else // UNITS_INSET_PIXELS
+        return size.y() - _v[1] - 1.0f;
+}
+
+float
+UVec2f::y( const ControlContext& cx ) const
+{
+    return cx._vp ? y( osg::Vec2f(cx._vp->width(), cx._vp->height()) ) : _v[1];
+}
+
+UVec2f
+UVec2f::asPixels( const osg::Vec2f& size ) const
+{
+    return UVec2f( x(size), y(size), UNITS_PIXELS, UNITS_PIXELS );
+}
+
+UVec2f
+UVec2f::asPixels( const ControlContext& cx ) const
+{
+    return UVec2f( x(cx), y(cx), UNITS_PIXELS, UNITS_PIXELS );
+}
+
 
 // ---------------------------------------------------------------------------
 
@@ -218,6 +267,36 @@ Control::setMargin( const Gutter& value ) {
 }
 
 void
+Control::setMargin( Side side, float value ) {
+    switch(side) {
+        case SIDE_TOP:
+            if ( _margin.top() != value ) {
+                _margin.top() = value;
+                dirty();
+            }
+            break;
+        case SIDE_BOTTOM:
+            if ( _margin.bottom() != value ) {
+                _margin.bottom() = value;
+                dirty();
+            }
+            break;
+        case SIDE_LEFT:
+            if ( _margin.left() != value ) {
+                _margin.left() = value;
+                dirty();
+            }
+            break;
+        case SIDE_RIGHT:
+            if ( _margin.right() != value ) {
+                _margin.right() = value;
+                dirty();
+            }
+            break;
+    }
+}
+
+void
 Control::setPadding( const Gutter& value )
 {
     if ( value != _padding ) {
@@ -232,6 +311,36 @@ Control::setPadding( float value ) {
     if ( g != _padding ) {
         _padding = g;
         dirty();
+    }
+}
+
+void
+Control::setPadding( Side side, float value ) {
+    switch(side) {
+        case SIDE_TOP:
+            if ( _padding.top() != value ) {
+                _padding.top() = value;
+                dirty();
+            }
+            break;
+        case SIDE_BOTTOM:
+            if ( _padding.bottom() != value ) {
+                _padding.bottom() = value;
+                dirty();
+            }
+            break;
+        case SIDE_LEFT:
+            if ( _padding.left() != value ) {
+                _padding.left() = value;
+                dirty();
+            }
+            break;
+        case SIDE_RIGHT:
+            if ( _padding.right() != value ) {
+                _padding.right() = value;
+                dirty();
+            }
+            break;
     }
 }
 
@@ -303,9 +412,11 @@ Control::setActiveColor( const osg::Vec4f& value ) {
 }
 
 void
-Control::addEventHandler( ControlEventHandler* handler )
+Control::addEventHandler( ControlEventHandler* handler, bool fire )
 {
     _eventHandlers.push_back( handler );
+    if ( fire )
+        fireValueChanged( handler );
 }
 
 bool
@@ -420,6 +531,7 @@ Control::draw(const ControlContext& cx, DrawableList& out )
             float vph = cx._vp->height(); // - padding().bottom();
 
             _geom = new osg::Geometry();
+            _geom->setUseVertexBufferObjects(true);
 
             float rx = _renderPos.x() - padding().left();
             float ry = _renderPos.y() - padding().top();
@@ -468,6 +580,7 @@ Control::handle( const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& aa, 
                 {
                     osg::Vec2f relXY( ea.getX() - _renderPos.x(), cx._vp->height() - ea.getY() - _renderPos.y() );
                     i->get()->onClick( this, relXY, ea.getButtonMask() );
+                    aa.requestRedraw();
                 }
             }
         }
@@ -478,18 +591,46 @@ Control::handle( const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& aa, 
 
 // ---------------------------------------------------------------------------
 
-// override osg Text to get at some of the internal properties
-struct LabelText : public osgText::Text
+namespace
 {
-    const osg::BoundingBox& getTextBB() const { return _textBB; }
-    const osg::Matrix& getATMatrix(int contextID) const { return _autoTransformCache[contextID]._matrix; }
-};
+    // override osg Text to get at some of the internal properties
+    struct LabelText : public osgText::Text
+    {
+        const osg::BoundingBox& getTextBB() const { return _textBB; }
+        const osg::Matrix& getATMatrix(int contextID) const { return _autoTransformCache[contextID]._matrix; }
+    };
+
+    // writes a value to a label
+    struct ValueLabelHandler : public ControlEventHandler
+    {
+        osg::observer_ptr<LabelControl> _label;
+        ValueLabelHandler( LabelControl* label ) : _label(label) { }
+        void onValueChanged( class Control* control, bool value ) { 
+            if ( _label.valid() ) _label->setText( Stringify() << value ); }
+        void onValueChanged( class Control* control, double value ) {
+            if ( _label.valid() ) _label->setText( Stringify() << std::setprecision(16) << value ); }
+        void onValueChanged( class Control* control, float value ) {
+            if ( _label.valid() ) _label->setText( Stringify() << value ); }
+        void onValueChanged( class Control* control, int value ) {
+            if ( _label.valid() ) _label->setText( Stringify() << value ); }
+        void onValueChanged( class Control* control, const osg::Vec3f& value ) {
+            if ( _label.valid() ) _label->setText( Stringify() << std::setprecision(8) << value.x() << ", " << value.y() << ", " << value.z() ); }
+        void onValueChanged( class Control* control, const osg::Vec2f& value ) {
+            if ( _label.valid() ) _label->setText( Stringify() << std::setprecision(8) << value.x() << ", " << value.y() ); }
+        void onValueChanged( class Control* control, const osg::Vec3d& value ) {
+            if ( _label.valid() ) _label->setText( Stringify() << std::setprecision(16) << value.x() << ", " << value.y() << ", " << value.z() ); }
+        void onValueChanged( class Control* control, const osg::Vec2d& value ) {
+            if ( _label.valid() ) _label->setText( Stringify() << std::setprecision(16) << value.x() << ", " << value.y() ); }
+        void onValueChanged( class Control* control, const std::string& value ) {
+            if ( _label.valid() ) _label->setText( value ); }
+    };
+}
 
 LabelControl::LabelControl(const std::string& text,
-                           float fontSize,
-                           const osg::Vec4f& foreColor):
-_text(text),
-_fontSize(fontSize),
+                           float              fontSize,
+                           const osg::Vec4f&  foreColor):
+_text    ( text ),
+_fontSize( fontSize ),
 _encoding( osgText::String::ENCODING_UNDEFINED )
 {    
     setFont( Registry::instance()->getDefaultFont() );    
@@ -498,16 +639,45 @@ _encoding( osgText::String::ENCODING_UNDEFINED )
 }
 
 LabelControl::LabelControl(const std::string& text,
-                           const osg::Vec4f& foreColor):
-_text( text ),
-_fontSize( 18.0f ),
+                           const osg::Vec4f&  foreColor,
+                           float              fontSize ):
+_text    ( text ),
+_fontSize( fontSize ),
 _encoding( osgText::String::ENCODING_UNDEFINED )
 {    	
     setFont( Registry::instance()->getDefaultFont() );   
     setForeColor( foreColor );
     setBackColor( osg::Vec4f(0,0,0,0) );
-    
 }
+
+LabelControl::LabelControl(Control*           valueControl,
+                           float              fontSize,
+                           const osg::Vec4f&  foreColor):
+_fontSize( fontSize ),
+_encoding( osgText::String::ENCODING_UNDEFINED )
+{
+    setFont( Registry::instance()->getDefaultFont() );    
+    setForeColor( foreColor );
+    setBackColor( osg::Vec4f(0,0,0,0) );
+
+    if ( valueControl )
+        valueControl->addEventHandler( new ValueLabelHandler(this), true );
+}
+
+LabelControl::LabelControl(Control*           valueControl,
+                           const osg::Vec4f&  foreColor,
+                           float              fontSize ):
+_fontSize( fontSize ),
+_encoding( osgText::String::ENCODING_UNDEFINED )
+{    	
+    setFont( Registry::instance()->getDefaultFont() );   
+    setForeColor( foreColor );
+    setBackColor( osg::Vec4f(0,0,0,0) );
+
+    if ( valueControl )
+        valueControl->addEventHandler( new ValueLabelHandler(this), true );
+}
+
 
 void
 LabelControl::setText( const std::string& value )
@@ -726,6 +896,7 @@ ImageControl::draw( const ControlContext& cx, DrawableList& out )
     {
         //TODO: this is not precisely correct..images get deformed slightly..
         osg::Geometry* g = new osg::Geometry();
+        g->setUseVertexBufferObjects(true);
 
         float rx = osg::round( _renderPos.x() );
         float ry = osg::round( _renderPos.y() );
@@ -830,11 +1001,18 @@ _value(value)
 }
 
 void
-HSliderControl::fireValueChanged()
+HSliderControl::fireValueChanged( ControlEventHandler* oneHandler )
 {
-    for( ControlEventHandlerList::const_iterator i = _eventHandlers.begin(); i != _eventHandlers.end(); ++i )
+    if ( oneHandler )
     {
-        i->get()->onValueChanged( this, _value );
+        oneHandler->onValueChanged( this, _value );
+    }
+    else
+    {
+        for( ControlEventHandlerList::const_iterator i = _eventHandlers.begin(); i != _eventHandlers.end(); ++i )
+        {
+            i->get()->onValueChanged( this, _value );
+        }
     }
 }
 
@@ -897,6 +1075,7 @@ HSliderControl::draw( const ControlContext& cx, DrawableList& out )
     if ( visible() == true )
     {
         osg::ref_ptr<osg::Geometry> g = new osg::Geometry();
+        g->setUseVertexBufferObjects(true);
 
         float rx = osg::round( _renderPos.x() );
         float ry = osg::round( _renderPos.y() );
@@ -942,6 +1121,8 @@ HSliderControl::handle( const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapte
         float relX = ea.getX() - _renderPos.x();
 
         setValue( _min + (_max-_min) * ( relX/_renderSize.x() ) );
+        aa.requestRedraw();
+
         return true;
     }
     return Control::handle( ea, aa, cx );
@@ -965,11 +1146,18 @@ _value( value )
 }
 
 void
-CheckBoxControl::fireValueChanged()
+CheckBoxControl::fireValueChanged( ControlEventHandler* oneHandler )
 {
-    for( ControlEventHandlerList::const_iterator i = _eventHandlers.begin(); i != _eventHandlers.end(); ++i )
+    if ( oneHandler )
     {
-        i->get()->onValueChanged( this, _value );
+        oneHandler->onValueChanged( this, _value );
+    }
+    else
+    {
+        for( ControlEventHandlerList::const_iterator i = _eventHandlers.begin(); i != _eventHandlers.end(); ++i )
+        {
+            i->get()->onValueChanged( this, _value );
+        }
     }
 }
 
@@ -992,6 +1180,7 @@ CheckBoxControl::draw( const ControlContext& cx, DrawableList& out )
     if ( visible() == true )
     {
         osg::Geometry* g = new osg::Geometry();
+        g->setUseVertexBufferObjects(true);
 
         float rx = osg::round( _renderPos.x() );
         float ry = osg::round( _renderPos.y() );
@@ -1034,6 +1223,7 @@ CheckBoxControl::handle( const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapt
     if ( ea.getEventType() == osgGA::GUIEventAdapter::PUSH )
     {
         setValue( !_value );
+        aa.requestRedraw();
         return true;
     }
     return Control::handle( ea, aa, cx );
@@ -1797,7 +1987,17 @@ namespace osgEarth { namespace Util { namespace Controls
                         ControlContext cx;
                         cx._view = aa.asView();
                         cx._vp = new osg::Viewport( 0, 0, vp->width(), vp->height() );
-                        cx._viewContextID = aa.asView()->getCamera()->getGraphicsContext()->getState()->getContextID();
+                        
+                        osg::View* view = aa.asView();
+                        osg::GraphicsContext* gc = view->getCamera()->getGraphicsContext();
+                        if ( !gc && view->getNumSlaves() > 0 )
+                            gc = view->getSlave(0)._camera->getGraphicsContext();
+
+                        if ( gc )
+                            cx._viewContextID = gc->getState()->getContextID();
+                        else
+                            cx._viewContextID = ~0u;
+
                         _cs->setControlContext( cx );
 
                         _width  = (int)vp->width();
@@ -1857,7 +2057,7 @@ namespace osgEarth { namespace Util { namespace Controls
             // must save the manipulator matrix b/c calling setSceneData causes
             // the view to call home() on the manipulator.
             osg::Matrixd savedMatrix;
-            osgGA::MatrixManipulator* manip = view2->getCameraManipulator();
+            osgGA::CameraManipulator* manip = view2->getCameraManipulator();
             if ( manip )
                 savedMatrix = manip->getMatrix();
 
@@ -2069,7 +2269,7 @@ ControlNodeBin::draw( const ControlContext& context, bool newContext, int bin )
               const osg::Vec2f& size = control->renderSize();
 
               // calculate the rendering offset based on alignment:
-              float x, y;
+              float x = 0.f, y = 0.f;
 
               if ( node->anchorPoint().isSet() )
               {
@@ -2235,14 +2435,12 @@ ControlCanvas::get( osg::View* view, bool installInSceneData )
 
 // ---------------------------------------------------------------------------
 
-ControlCanvas::ControlCanvas( osgViewer::View* view ) :
-_contextDirty(true)
+ControlCanvas::ControlCanvas( osgViewer::View* view )
 {
     init( view, true );
 }
 
-ControlCanvas::ControlCanvas( osgViewer::View* view, bool registerCanvas ) :
-_contextDirty( true )
+ControlCanvas::ControlCanvas( osgViewer::View* view, bool registerCanvas )
 {
     init( view, registerCanvas );
 }
@@ -2250,6 +2448,9 @@ _contextDirty( true )
 void
 ControlCanvas::init( osgViewer::View* view, bool registerCanvas )
 {
+    _contextDirty  = true;
+    _updatePending = false;
+
     this->setDataVariance( osg::Object::DYNAMIC );
 
     view->addEventHandler( new ViewportHandler(this) );
@@ -2261,8 +2462,8 @@ ControlCanvas::init( osgViewer::View* view, bool registerCanvas )
     setRenderOrder(osg::Camera::POST_RENDER, 25000);
     setAllowEventFocus( true );
     
-    // activate the update traversal
-    ADJUST_UPDATE_TRAV_COUNT( this, 1 );
+    // register for event traversals.
+    ADJUST_EVENT_TRAV_COUNT( this, 1 );
 
     osg::StateSet* ss = getOrCreateStateSet();
     ss->setMode( GL_LIGHTING, osg::StateAttribute::OFF | osg::StateAttribute::OVERRIDE );
@@ -2270,6 +2471,9 @@ ControlCanvas::init( osgViewer::View* view, bool registerCanvas )
     ss->setAttributeAndModes( new osg::Depth( osg::Depth::ALWAYS, 0, 1, false ) );
     ss->setRenderBinMode( osg::StateSet::USE_RENDERBIN_DETAILS );
     ss->setBinName( OSGEARTH_CONTROLS_BIN );
+
+    // keeps the control bin shaders from "leaking out" into the scene graph :/
+    ss->setAttributeAndModes( new osg::Program(), osg::StateAttribute::OFF | osg::StateAttribute::PROTECTED );
 
     _controlNodeBin = new ControlNodeBin();
     this->addChild( _controlNodeBin->getControlGroup() );
@@ -2434,9 +2638,37 @@ ControlCanvas::update( const osg::FrameStamp* frameStamp )
 void
 ControlCanvas::traverse( osg::NodeVisitor& nv )
 {
-    if ( nv.getVisitorType() == osg::NodeVisitor::UPDATE_VISITOR )
+    if ( nv.getVisitorType() == osg::NodeVisitor::EVENT_VISITOR )
+    {
+        if ( !_updatePending )
+        {
+            bool needsUpdate = _contextDirty;
+            if ( !needsUpdate )
+            {
+                for( ControlList::iterator i = _controls.begin(); i != _controls.end(); ++i )
+                {
+                    Control* control = i->get();
+                    if ( control->isDirty() )
+                    {
+                        needsUpdate = true;
+                        break;
+                    }
+                }
+            }
+
+            if ( needsUpdate )
+            {
+                _updatePending = true;
+                ADJUST_UPDATE_TRAV_COUNT( this, 1 );
+            }
+        }
+    }
+
+    else if ( nv.getVisitorType() == osg::NodeVisitor::UPDATE_VISITOR )
     {
         update( nv.getFrameStamp() );
+        ADJUST_UPDATE_TRAV_COUNT( this, -1 );
+        _updatePending = false;
     }
 
     osg::Camera::traverse( nv );

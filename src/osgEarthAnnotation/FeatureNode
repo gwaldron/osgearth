@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2008-2010 Pelican Mapping
+* Copyright 2008-2012 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -24,6 +24,7 @@
 #include <osgEarthSymbology/Style>
 #include <osgEarthFeatures/Feature>
 #include <osgEarthFeatures/GeometryCompiler>
+#include <osg/Polytope>
 
 namespace osgEarth { namespace Annotation
 {
@@ -46,7 +47,13 @@ namespace osgEarth { namespace Annotation
             bool     draped   =false, 
             const GeometryCompilerOptions& options = GeometryCompilerOptions() );
 
+        virtual ~FeatureNode() { }
+
         void setFeature( Feature* feature );
+        Feature* getFeature() { return _feature.get(); }
+        const Feature* getFeature() const { return _feature.get(); }
+
+        bool isDraped() const { return _draped; }
 
         void init();
 
@@ -54,12 +61,17 @@ namespace osgEarth { namespace Annotation
 
         virtual osg::Group* getAttachPoint();
 
+    public:
+
+        FeatureNode(MapNode* mapNode, const Config& conf );
+        virtual Config getConfig() const;
+
     protected:
         osg::ref_ptr<Feature>       _feature;
-        optional<Style>             _style;
         GeometryCompilerOptions     _options;
         bool                        _draped;
         osg::Group*                 _attachPoint;
+        osg::Polytope               _featurePolytope;
 
         FeatureNode() { }
         FeatureNode(const FeatureNode& rhs, const osg::CopyOp& op) { }

@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2010 Pelican Mapping
+ * Copyright 2008-2012 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -106,12 +106,13 @@ GeoLocator::getDataExtent() const {
     return _dataExtent;
 }
 
+#if 0
 GeoLocator*
 GeoLocator::cloneAndCrop( const osgTerrain::Locator& prototype, const GeoExtent& displayExtent ) const
 {
     return new GeoLocator( prototype, _dataExtent, displayExtent );
 }
-
+#endif
 
 bool
 GeoLocator::convertModelToLocal(const osg::Vec3d& world, osg::Vec3d& local) const
@@ -159,63 +160,78 @@ GeoLocator::getGeographicFromGeocentric( ) const
 #define MERC_MAX_LAT  85.084059050110383
 #define MERC_MIN_LAT -85.084059050110383
 
-static double
-lonToU(double lon) {
-    return (lon + 180.0) / 360.0;
-}
-
-static double
-latToV(double lat) {
-    double sin_lat = sin( osg::DegreesToRadians( lat ) );
-    return 0.5 - log( (1+sin_lat) / (1-sin_lat) ) / (4*osg::PI);
-}
-
-static void
-getUV(const GeoExtent& ext,
-      double lon, double lat,
-      double& out_u, double& out_v)
+namespace
 {
-    out_u = (lon-ext.xMin())/ext.width();
+    double lonToU(double lon)
+    {
+        return (lon + 180.0) / 360.0;
+    }
 
-    double vmin = latToV( osg::clampBetween( ext.yMax(), MERC_MIN_LAT, MERC_MAX_LAT ) );
-    double vmax = latToV( osg::clampBetween( ext.yMin(), MERC_MIN_LAT, MERC_MAX_LAT ) );
-    double vlat = latToV( osg::clampBetween( lat, MERC_MIN_LAT, MERC_MAX_LAT ) );
+    double latToV(double lat)
+    {
+        double sin_lat = sin( osg::DegreesToRadians( lat ) );
+        return 0.5 - log( (1+sin_lat) / (1-sin_lat) ) / (4*osg::PI);
+    }
 
-    out_v = (vlat-vmin)/(vmax-vmin);
+    void getUV(const GeoExtent& ext,
+               double lon, double lat,
+               double& out_u, double& out_v)
+    {
+        out_u = osg::clampBetween( (lon-ext.xMin())/ext.width(), MERC_MINX, MERC_MAXX );
+
+        double vmin = latToV( osg::clampBetween( ext.yMax(), MERC_MIN_LAT, MERC_MAX_LAT ) );
+        double vmax = latToV( osg::clampBetween( ext.yMin(), MERC_MIN_LAT, MERC_MAX_LAT ) );
+        double vlat = latToV( osg::clampBetween( lat, MERC_MIN_LAT, MERC_MAX_LAT ) );
+
+        out_v = osg::clampBetween( (vlat-vmin)/(vmax-vmin), MERC_MINY, MERC_MAXY );
+    }
 }
 
-//static void
-//mercatorToLatLon( double x, double y, double& out_lat, double& out_lon )
-//{
-//    const GeoExtent& m = osgEarth::Registry::instance()->getGlobalMercatorProfile()->getExtent();
-//    double xr = -osg::PI + ((x-m.xMin())/m.width())*2.0*osg::PI;
-//    double yr = -osg::PI + ((y-m.yMin())/m.height())*2.0*osg::PI;
-//    out_lat = osg::RadiansToDegrees( 2.0 * atan( exp(yr) ) - osg::PI_2 );
-//    out_lon = osg::RadiansToDegrees( xr );
-//}
+MercatorLocator::MercatorLocator( const GeoExtent& dataExtent ) :
+GeoLocator( dataExtent )
+{
+    postInit();
+}
 
-MercatorLocator::MercatorLocator( const osgTerrain::Locator& prototype, const GeoExtent& dataExtent ) :
+
+MercatorLocator::MercatorLocator(const osgTerrain::Locator& prototype,
+                                 const GeoExtent& dataExtent ) :
 GeoLocator( prototype, dataExtent )
 {
-    // assumption: incoming extent is Mercator SRS; transform it to LAT/LONG
-
-    _geoDataExtent = dataExtent.transform( dataExtent.getSRS()->getGeographicSRS() );
-
-    //// manually reproject for speed:
-    //double latmin, lonmin, latmax, lonmax;
-    //mercatorToLatLon( dataExtent.xMin(), dataExtent.yMin(), latmin, lonmin );
-    //mercatorToLatLon( dataExtent.xMax(), dataExtent.yMax(), latmax, lonmax );
-
-    //_geoDataExtent = GeoExtent(
-    //    dataExtent.getSRS()->getGeographicSRS(),
-    //    lonmin, latmin, lonmax, latmax );
+    postInit();
 }
 
+
+void
+MercatorLocator::postInit()
+{
+    // assumption: incoming extent is Mercator SRS; transform it to LAT/LONG
+    _geoDataExtent = getDataExtent().transform( getDataExtent().getSRS()->getGeographicSRS() );
+
+    setEllipsoidModel( const_cast<osg::EllipsoidModel*>(_geoDataExtent.getSRS()->getEllipsoid()) );
+    setCoordinateSystemType( osgTerrain::Locator::GEOCENTRIC );
+
+    double minX = _geoDataExtent.xMin(), maxX = _geoDataExtent.xMax();
+    double minY = _geoDataExtent.yMin(), maxY = _geoDataExtent.yMax();
+
+    osg::Matrixd transform;
+    transform.set(
+        maxX-minX, 0.0,       0.0, 0.0,
+        0.0,       maxY-minY, 0.0, 0.0,
+        0.0,       0.0,       1.0, 0.0,
+        minX,      minY,      0.0, 1.0); 
+
+    setTransform(transform);
+}
+
+
+#if 0
 GeoLocator*
 MercatorLocator::cloneAndCrop( const osgTerrain::Locator& prototype, const GeoExtent& displayExtent )
 {
     return new MercatorLocator( prototype, getDataExtent() );
 }
+#endif
 
 bool
 MercatorLocator::convertModelToLocal(const osg::Vec3d& world, osg::Vec3d& local) const
@@ -282,7 +298,7 @@ MercatorLocator::convertModelToLocal(const osg::Vec3d& world, osg::Vec3d& local)
 }
 
 GeoLocator* 
-MercatorLocator::getGeographicFromGeocentric( )
+MercatorLocator::getGeographicFromGeocentric() const
 {
     if (getCoordinateSystemType() == osgTerrain::Locator::GEOCENTRIC)
     {

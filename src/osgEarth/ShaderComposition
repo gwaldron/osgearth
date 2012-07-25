@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2008-2010 Pelican Mapping
+* Copyright 2008-2012 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -22,11 +22,12 @@
 #include <osgEarth/Common>
 #include <osgEarth/Revisioning>
 #include <osgEarth/ThreadingUtils>
-#include <string>
-#include <map>
+#include <osgEarth/ColorFilter>
 #include <osg/Shader>
 #include <osg/Program>
 #include <osg/StateAttribute>
+#include <string>
+#include <map>
 
 namespace osgEarth
 {        
@@ -35,10 +36,10 @@ namespace osgEarth
         // User function injection points.
         enum FunctionLocation
         {
-            LOCATION_VERTEX_PRE_TEXTURING   =0,
+            LOCATION_VERTEX_PRE_COLORING    =0,   LOCATION_VERTEX_PRE_TEXTURING =0, // alias
             LOCATION_VERTEX_PRE_LIGHTING    =1,
             LOCATION_VERTEX_POST_LIGHTING   =2,
-            LOCATION_FRAGMENT_PRE_TEXTURING =3,
+            LOCATION_FRAGMENT_PRE_COLORING  =3,   LOCATION_FRAGMENT_PRE_TEXTURING =3, // alias
             LOCATION_FRAGMENT_PRE_LIGHTING  =4,
             LOCATION_FRAGMENT_POST_LIGHTING =5
         };
@@ -48,6 +49,23 @@ namespace osgEarth
 
         // user function sets, categorized by function location.
         typedef std::map<FunctionLocation, OrderedFunctionMap> FunctionLocationMap;
+
+        // hints that can be used to automatically generate shader code
+        class OSGEARTH_EXPORT RenderingHints
+        {
+        public:
+            RenderingHints();
+            RenderingHints(const RenderingHints& rhs);
+            bool operator == (const RenderingHints& rhs) const;
+            bool operator != (const RenderingHints& rhs) const { return !operator==(rhs); }
+
+            void useNumTextures(unsigned num);
+            unsigned numTextures() const { return _numTextures; }
+
+        protected:
+            virtual ~RenderingHints() { }
+            unsigned _numTextures;
+        };
     }
 
     /**
@@ -65,20 +83,26 @@ namespace osgEarth
         /** Creates a fragment shader main(). */
         virtual osg::Shader* createFragmentShaderMain( 
             const ShaderComp::FunctionLocationMap& functions =ShaderComp::FunctionLocationMap() ) const;
+
+        /**
+         * Gets the uniform/shader name of the sampler corresponding the the provider
+         * texture image unit
+         */
+        virtual std::string getSamplerName( unsigned texImageUnit ) const;
         
         /**
          * Creates the function that sets up default texcoords in the vertex shader.
          * The name/prototype is:
-         *    void osgearth_vert_setupTexturing(); 
+         *    void osgearth_vert_setupColoring(); 
          */
-        virtual osg::Shader* createDefaultTextureVertexShader( int numTexCoordSets ) const;
+        virtual osg::Shader* createDefaultColoringVertexShader( unsigned numTexCoordSets ) const;
 
         /**
          * Creates the function that applies texture data in the fragment shader.
          * The name/prototype is:
-         *    osgearth_frag_applyTexturing( inout vec4 color );
+         *    osgearth_frag_applyColoring( inout vec4 color );
          */
-        virtual osg::Shader* createDefaultTextureFragmentShader( int numTexCoordSets ) const;
+        virtual osg::Shader* createDefaultColoringFragmentShader( unsigned numTexCoordSets ) const;
 
         /**
          * Creates the function that applies lighting calculations in the vertex shader.
@@ -93,6 +117,14 @@ namespace osgEarth
          *    void osgearth_frag_applyLighting( inout vec4 color ); 
          */
         virtual osg::Shader* createDefaultLightingFragmentShader() const;
+
+        /**
+         * Builds a shader that executes an image filter chain.
+         */
+        virtual osg::Shader* createColorFilterChainFragmentShader( const std::string& function, const ColorFilterChain& chain ) const;
+
+        /** dtor */
+        virtual ~ShaderFactory() { }
     };
 
     /**
@@ -101,6 +133,10 @@ namespace osgEarth
      * VirtualProgram has been adapted from the VirtualProgram shader composition work
      * originally done by Wojciech Lewandowski and found in OSG's osgvirtualprogram
      * example, and is used by permission.
+     *
+     * VirtualProgram in a state attribute. Once you've installed it on a StateSet,
+     * you can still call the set* functions but you'd better mark the state set with
+     * a DYNAMIC data variance.
      */
     class OSGEARTH_EXPORT VirtualProgram : public osg::Program
     {
@@ -116,20 +152,49 @@ namespace osgEarth
          * priority: Lets you control the order of functions that you inject at the same location.
          */
         void setFunction( 
-            const std::string& name,
-            const std::string& source, 
+            const std::string&           name,
+            const std::string&           source, 
             ShaderComp::FunctionLocation loc,
-            float priority =1.0f );
+            float                        priority =1.0f );
+
+        /**
+         * Installs default shaders for implementing basic coloring and lighting.
+         * The default shaders come from the ShaderFactory.
+         */
+        void installDefaultColoringAndLightingShaders( unsigned numTextures =0u );
+
+        /**
+         * Installs default shader for basic coloring/texturing.
+         */
+        void installDefaultColoringShaders( unsigned numTextures =0u );
+
+        /**
+         * Whether this VP should inherit shaders from parent state sets. This is
+         * the normal operation. You can set this to "false" to "reset" the VP.
+         */
+        void setInheritShaders( bool value );
 
     public: 
+        /**
+         * Constructs a new VP
+         */
         VirtualProgram( unsigned int mask = 0xFFFFFFFFUL );
 
+        /**
+         * Copy constructor
+         */
         VirtualProgram( const VirtualProgram& VirtualProgram, 
                         const osg::CopyOp& copyop=osg::CopyOp::SHALLOW_COPY );
 
         META_StateAttribute( osgEarth, VirtualProgram, Type( PROGRAM ) )
 
-        /** return -1 if *this < *rhs, 0 if *this==*rhs, 1 if *this>*rhs.*/
+        /** dtor */
+        virtual ~VirtualProgram() { }
+
+        /** 
+         * Compare this program against another (used for state-sorting)
+         * return -1 if *this < *rhs, 0 if *this==*rhs, 1 if *this>*rhs.
+         */
         virtual int compare(const StateAttribute& sa) const
         {
            // check the types are equal and then create the rhs variable
@@ -142,34 +207,57 @@ namespace osgEarth
            return 0; // passed all the above comparison macros, must be equal.
         }
 
-        /** If enabled, activate our program in the GL pipeline,
-         * performing any rebuild operations that might be pending. */
+        /**
+         * If enabled, activate our program in the GL pipeline,
+         * performing any rebuild operations that might be pending.
+         */
         virtual void apply(osg::State& state) const;
 
-        osg::Shader* getShader( const std::string& shaderSemantic, osg::Shader::Type type );   
+        /**
+         * Gets a shader by its ID.
+         */
+        osg::Shader* getShader( const std::string& shaderID ) const;
 
-        osg::Shader* setShader( const std::string& shaderSemantic, osg::Shader* shader );
+        /** 
+         * Adds a shader to this VP's shader table.
+         */
+        osg::Shader* setShader( 
+            const std::string&                 shaderID, 
+            osg::Shader*                       shader,
+            osg::StateAttribute::OverrideValue ov         =osg::StateAttribute::ON );
+        
+        osg::Shader* setShader(
+            osg::Shader*                       shader,
+            osg::StateAttribute::OverrideValue ov         =osg::StateAttribute::ON );
 
-        void removeShader( const std::string& shaderSemantic, osg::Shader::Type type );
+        /**
+         * Removes a shader from the local VP.
+         */
+        void removeShader( const std::string& shaderID );
 
 
     protected:
-        typedef std::vector< osg::ref_ptr< osg::Shader > >            ShaderList;
-        typedef std::pair< std::string, osg::Shader::Type >           ShaderSemantic;
-        typedef std::map< ShaderSemantic, osg::ref_ptr<osg::Shader> > ShaderMap;
-        typedef std::map< ShaderList, osg::ref_ptr<osg::Program> >    ProgramMap;
+        typedef std::vector< osg::ref_ptr<osg::Shader> > ShaderVector;
+        typedef std::pair< osg::ref_ptr<osg::Shader>, osg::StateAttribute::OverrideValue > ShaderEntry;
+        typedef std::map< std::string, ShaderEntry >       ShaderMap;
+        typedef std::map< ShaderVector, osg::ref_ptr<osg::Program> > ProgramMap;
 
-        mutable ProgramMap                   _programMap;
-        ShaderMap                            _shaderMap;
-        unsigned int                         _mask;
+        ProgramMap                   _programCache;
+        ShaderMap                    _shaderMap;
+        unsigned int                 _mask;
 
         ShaderComp::FunctionLocationMap _functions;
         ShaderComp::FunctionLocationMap _accumulatedFunctions;
 
         Threading::Mutex _functionsMutex;
+        bool _inherit;
+        mutable Threading::ReadWriteMutex _programCacheMutex;
 
         bool hasLocalFunctions() const;
         void refreshAccumulatedFunctions( const osg::State& state );
+        void addToAccumulatedMap(ShaderMap& accumShaderMap, const std::string& shaderID, const ShaderEntry& newEntry) const;
+        osg::Program* buildProgram( osg::State& state, ShaderMap& accumShaderMap );
+
 
     public:
         void getFunctions( ShaderComp::FunctionLocationMap& out ) const;

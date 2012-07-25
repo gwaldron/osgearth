@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2008-2010 Pelican Mapping
+* Copyright 2008-2012 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -32,7 +32,7 @@ using namespace osgEarth::Symbology;
 //------------------------------------------------------------------------
 
 TrackNode::TrackNode(MapNode*                    mapNode, 
-                     const osg::Vec3d&           position,
+                     const GeoPoint&             position,
                      osg::Image*                 image,
                      const TrackNodeFieldSchema& fieldSchema ) :
 
@@ -42,10 +42,34 @@ _image      ( image )
     init( fieldSchema );
 }
 
+//TrackNode::TrackNode(MapNode*                    mapNode, 
+//                     const osg::Vec3d&           positionInMapCoords,
+//                     osg::Image*                 image,
+//                     const TrackNodeFieldSchema& fieldSchema ) :
+//
+//OrthoNode   ( mapNode, GeoPoint(mapNode->getMapSRS(),positionInMapCoords) ),
+//_image      ( image )
+//{
+//    init( fieldSchema );
+//}
+
 void
 TrackNode::init( const TrackNodeFieldSchema& schema )
 {
     _geode = new osg::Geode();
+    
+    if ( _image.valid() )
+    {
+        // apply the image icon.
+        osg::Geometry* imageGeom = AnnotationUtils::createImageGeometry( 
+            _image.get(),             // image
+            osg::Vec2s(0,0) );        // offset
+
+        if ( imageGeom )
+        {
+            _geode->addDrawable( imageGeom );
+        }
+    }
 
     if ( !schema.empty() )
     {
@@ -73,19 +97,6 @@ TrackNode::init( const TrackNodeFieldSchema& schema )
                     addDrawable( i->first, drawable );
                 }
             }
-        }
-    }
-    
-    if ( _image.valid() )
-    {
-        // apply the image icon.
-        osg::Geometry* imageGeom = AnnotationUtils::createImageGeometry( 
-            _image.get(),             // image
-            osg::Vec2s(0,0) );        // offset
-
-        if ( imageGeom )
-        {
-            _geode->addDrawable( imageGeom );
         }
     }
 

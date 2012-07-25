@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2008-2010 Pelican Mapping
+* Copyright 2008-2012 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -17,16 +17,19 @@
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
 
+#include <osgEarthQt/AnnotationToolbar>
 #include <osgEarthQt/Common>
-#include <osgEarthQt/CompositeViewerWidget>
+#include <osgEarthQt/MultiViewerWidget>
 #include <osgEarthQt/DataManager>
 #include <osgEarthQt/MapCatalogWidget>
+#include <osgEarthQt/TerrainProfileWidget>
 #include <osgEarthQt/ViewerWidget>
 
 #include <osgEarthAnnotation/AnnotationNode>
 #include <osgEarthAnnotation/PlaceNode>
 #include <osgEarthAnnotation/ScaleDecoration>
 #include <osgEarthDrivers/gdal/GDALOptions>
+#include <osgEarth/GeoData>
 
 #include <QAction>
 #include <QDockWidget>
@@ -37,139 +40,181 @@
 
 class DemoMainWindow : public QMainWindow
 {
-	Q_OBJECT
-	
-	public:
+    Q_OBJECT
+
+public:
 
     DemoMainWindow(osgEarth::QtGui::DataManager* manager, osgEarth::MapNode* mapNode, osg::Group* annotationRoot)
-      : _manager(manager), _mapNode(mapNode), _annoRoot(annotationRoot), _layerAdded(false) { initUi(); }
-
-    void setViewerWidget(osgEarth::QtGui::ViewerWidget* viewer)
+        : _manager(manager), _mapNode(mapNode), _annoRoot(annotationRoot), _layerAdded(false), _terrainProfileDock(0L), _viewerWidget(0L), _compositeViewerWidget(0L)
     {
-      setCentralWidget(viewer);
-      _viewer = viewer;
-
-      _views.clear();
-      _views.push_back(_viewer);
+        initUi(); 
     }
 
-    void setViewerWidget(osgEarth::QtGui::CompositeViewerWidget* viewer, const osgEarth::QtGui::ViewVector& views)
+    void setViewerWidget(osgEarth::QtGui::ViewerWidget* viewerWidget)
     {
-      setCentralWidget(viewer);
-      _compositeViewer = viewer;
+        setCentralWidget(viewerWidget);
+        _viewerWidget = viewerWidget;
 
-      _views.clear();
-      _views.insert(_views.end(), views.begin(), views.end());
+        _views.clear();
+        _viewerWidget->getViews( _views );
+
+        _annotationToolbar->setActiveViews(_views);
     }
 
-  private slots:
-
-		void addRemoveLayer()
+    void setViewerWidget(osgEarth::QtGui::MultiViewerWidget* viewerWidget, const osgEarth::QtGui::ViewVector& views)
     {
-      if (!_testLayer.valid())
-      {
-        osgEarth::Drivers::GDALOptions layerOpt;
-        layerOpt.url() = osgEarth::URI("../data/nyc-inset-wgs84.tif");
-        _testLayer = new osgEarth::ImageLayer(osgEarth::ImageLayerOptions("ny_inset", layerOpt));
-      }
+        setCentralWidget(viewerWidget);
+        _compositeViewerWidget = viewerWidget;
 
-      if (!_layerAdded)
-      {
-        _manager->map()->addImageLayer(_testLayer.get());
-        _layerAdded = true;
-        _addRemoveLayerAction->setText(tr("&Remove Layer"));
-        _addRemoveLayerAction->setToolTip("Remove an image layer");
-      }
-      else
-      {
-        _manager->map()->removeImageLayer(_testLayer.get());
-        _layerAdded = false;
-        _addRemoveLayerAction->setText(tr("&Add Layer"));
-        _addRemoveLayerAction->setToolTip("Add an image layer");
-      }
+        _views.clear();
+        _views.insert(_views.end(), views.begin(), views.end());
+
+        _annotationToolbar->setActiveViews(_views);
     }
 
-		void addAnnotation()
+    void setTerrainProfileWidget(osgEarth::QtGui::TerrainProfileWidget* widget)
     {
-      osgEarth::Annotation::PlaceNode* annotation = new osgEarth::Annotation::PlaceNode(
-        _mapNode.get(), 
-        osg::Vec3d(-74, 40.714, 0), 
-        osgDB::readImageFile("../data/placemark32.png"),
-        "New York");
+        if (!_terrainProfileDock)
+        {
+            _terrainProfileDock = new QDockWidget;
+            _terrainProfileDock->setAllowedAreas(Qt::BottomDockWidgetArea);
+            _terrainProfileDock->setFeatures(QDockWidget::NoDockWidgetFeatures);
+            addDockWidget(Qt::BottomDockWidgetArea, _terrainProfileDock);
+            _terrainProfileDock->setVisible(_terrainProfileAction->isChecked());
+        }
 
-      osgEarth::Annotation::AnnotationData* annoData = new osgEarth::Annotation::AnnotationData();
-      annoData->setName("New York");
-      annoData->setViewpoint(osgEarth::Viewpoint(osg::Vec3d(-74, 40.714, 0), 0.0, -90.0, 1e5));
-      annotation->setAnnotationData(annoData);
-
-      annotation->installDecoration("selected", new osgEarth::Annotation::ScaleDecoration(2.0f));
-
-      _manager->addAnnotation(annotation, _annoRoot.get());
-
-      _addAnnotationAction->setDisabled(true);
-    }
-		
-	protected:
-
-     void closeEvent(QCloseEvent *event)
-     {
-       if (_viewer.valid())
-       {
-         _viewer->setSceneData(0);
-         _viewer->frame();
-         _viewer->setDone(true);
-       }
-
-       if (_compositeViewer.valid())
-       {
-         _compositeViewer->setDone(true);
-       }
-
-       event->accept();
-     }
-		
-	private:
-
-		void initUi()
-    {
-    	setWindowTitle(tr("osgEarth Qt"));
-      //setWindowIcon(QIcon(":/resources/images/pmicon32.png"));
-
-      createActions();
-      createToolbars();
+        _terrainProfileDock->setWidget(widget);
     }
 
-		void createActions()
+    private slots:
+
+        void addRemoveLayer()
+        {
+            if (!_testLayer.valid())
+            {
+                osgEarth::Drivers::GDALOptions layerOpt;
+                layerOpt.url() = osgEarth::URI("../data/nyc-inset-wgs84.tif");
+                _testLayer = new osgEarth::ImageLayer(osgEarth::ImageLayerOptions("ny_inset", layerOpt));
+            }
+
+            if (!_layerAdded)
+            {
+                _manager->map()->addImageLayer(_testLayer.get());
+                _layerAdded = true;
+                _addRemoveLayerAction->setText(tr("&Remove Layer"));
+                _addRemoveLayerAction->setToolTip("Remove an image layer");
+            }
+            else
+            {
+                _manager->map()->removeImageLayer(_testLayer.get());
+                _layerAdded = false;
+                _addRemoveLayerAction->setText(tr("&Add Layer"));
+                _addRemoveLayerAction->setToolTip("Add an image layer");
+            }
+        }
+
+    void addAnnotation()
     {
-      _addRemoveLayerAction = new QAction(tr("&Add Layer"), this);
-	    _addRemoveLayerAction->setStatusTip(tr("Add an image layer"));
-	    connect(_addRemoveLayerAction, SIGNAL(triggered()), this, SLOT(addRemoveLayer()));
-      _addRemoveLayerAction->setDisabled(!_manager.valid());
-    	
-	    _addAnnotationAction = new QAction(/*QIcon(":/resources/images/open.png"),*/ tr("&Add Annotation"), this);
-      _addAnnotationAction->setStatusTip(tr("Add an annotation"));
-      connect(_addAnnotationAction, SIGNAL(triggered()), this, SLOT(addAnnotation()));
-      _addAnnotationAction->setDisabled(!_manager.valid() || !_mapNode.valid() || !_annoRoot.valid());
+        osgEarth::Annotation::PlaceNode* annotation = new osgEarth::Annotation::PlaceNode(
+            _mapNode.get(), 
+            osgEarth::GeoPoint(_mapNode->getMapSRS(), -74.0, 40.714),
+            osgDB::readImageFile("../data/placemark32.png"),
+            "New York");
+
+        osgEarth::Annotation::AnnotationData* annoData = new osgEarth::Annotation::AnnotationData();
+        annoData->setName("New York");
+        annoData->setViewpoint(osgEarth::Viewpoint(osg::Vec3d(-74, 40.714, 0), 0.0, -90.0, 1e5));
+        annotation->setAnnotationData(annoData);
+
+        annotation->installDecoration("selected", new osgEarth::Annotation::ScaleDecoration(2.0f));
+
+        _manager->addAnnotation(annotation, _annoRoot.get());
+
+        _addAnnotationAction->setDisabled(true);
     }
 
-		void createToolbars()
+    void terrainProfileToggled(bool checked)
     {
-      _fileToolbar = addToolBar(tr("File Toolbar"));
-      _fileToolbar->setObjectName(tr("FILE_TOOLBAR"));
-	    _fileToolbar->setIconSize(QSize(24, 24));
-	    _fileToolbar->addAction(_addRemoveLayerAction);
-	    _fileToolbar->addAction(_addAnnotationAction);
+        if (_terrainProfileDock)
+            _terrainProfileDock->setVisible(checked);
+    }
+
+protected:
+
+    void closeEvent(QCloseEvent *event)
+    {
+        if (_viewerWidget)
+        {
+            //_viewerWidget->getViewer()->setSceneData(0);
+            //_viewerWidget->getViewer()->frame();
+            _viewerWidget->getViewer()->setDone(true);
+        }
+
+        if (_compositeViewerWidget)
+        {
+            _compositeViewerWidget/*->getViewer()*/->setDone(true);
+        }
+
+        event->accept();
+    }
+
+private:
+
+    void initUi()
+    {
+        setWindowTitle(tr("osgEarth Qt"));
+        //setWindowIcon(QIcon(":/resources/images/pmicon32.png"));
+
+        createActions();
+        createToolbars();
+    }
+
+	void createActions()
+    {
+        _addRemoveLayerAction = new QAction(tr("&Add Layer"), this);
+        _addRemoveLayerAction->setToolTip(tr("Add an image layer"));
+        connect(_addRemoveLayerAction, SIGNAL(triggered()), this, SLOT(addRemoveLayer()));
+        _addRemoveLayerAction->setDisabled(!_manager.valid());
+
+        _addAnnotationAction = new QAction(/*QIcon(":/images/open.png"),*/ tr("&Add Annotation"), this);
+        _addAnnotationAction->setToolTip(tr("Add an annotation"));
+        connect(_addAnnotationAction, SIGNAL(triggered()), this, SLOT(addAnnotation()));
+        _addAnnotationAction->setDisabled(!_manager.valid() || !_mapNode.valid() || !_annoRoot.valid());
+
+        _terrainProfileAction = new QAction(QIcon(":/images/terrain_profile.png"), tr(""), this);
+        _terrainProfileAction->setToolTip(tr("Terrain Profile Tool"));
+        _terrainProfileAction->setCheckable(true);
+        connect(_terrainProfileAction, SIGNAL(toggled(bool)), this, SLOT(terrainProfileToggled(bool)));
+    }
+
+	void createToolbars()
+    {
+        _fileToolbar = addToolBar(tr("File Toolbar"));
+        _fileToolbar->setObjectName(tr("FILE_TOOLBAR"));
+        _fileToolbar->setIconSize(QSize(24, 24));
+        _fileToolbar->addAction(_addRemoveLayerAction);
+        _fileToolbar->addAction(_addAnnotationAction);
+        _fileToolbar->addSeparator();
+        _fileToolbar->addAction(_terrainProfileAction);
+
+        _annotationToolbar = new osgEarth::QtGui::AnnotationToolbar(_annoRoot, _mapNode, _manager);
+        addToolBar(_annotationToolbar);
     }
 	
     osg::ref_ptr<osgEarth::QtGui::DataManager> _manager;
     osg::ref_ptr<osgEarth::MapNode> _mapNode;
     osg::ref_ptr<osg::Group> _annoRoot;
     osg::ref_ptr<osgEarth::ImageLayer> _testLayer;
-    osg::ref_ptr<osgEarth::QtGui::ViewerWidget> _viewer;
-    osg::ref_ptr<osgEarth::QtGui::CompositeViewerWidget> _compositeViewer;
+    osgEarth::QtGui::ViewerWidget* _viewerWidget;
+    osgEarth::QtGui::MultiViewerWidget* _compositeViewerWidget;
+    //osg::ref_ptr<osgEarth::QtGui::ViewerWidget> _viewerWidget;
+    //osg::ref_ptr<osgEarth::QtGui::MultiViewerWidget> _compositeViewerWidget;
+    osgEarth::QtGui::AnnotationToolbar* _annotationToolbar;
     osgEarth::QtGui::ViewVector _views;
     bool _layerAdded;
-		QAction *_addRemoveLayerAction;
-		QAction *_addAnnotationAction;
-		QToolBar *_fileToolbar;
+    QAction *_addRemoveLayerAction;
+    QAction *_addAnnotationAction;
+    QAction *_terrainProfileAction;
+    QToolBar *_fileToolbar;
+    QDockWidget *_terrainProfileDock;
 };

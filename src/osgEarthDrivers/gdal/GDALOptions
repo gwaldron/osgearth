@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2010 Pelican Mapping
+ * Copyright 2008-2012 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -21,7 +21,11 @@
 
 #include <osgEarth/Common>
 #include <osgEarth/TileSource>
-#include <osgEarth/HeightFieldUtils>
+#include <osgEarth/GeoCommon>
+#include <osgEarth/URI>
+
+// forward-declare GDAL type
+class GDALDataset;
 
 namespace osgEarth { namespace Drivers
 {
@@ -29,6 +33,28 @@ namespace osgEarth { namespace Drivers
 
     class GDALOptions : public TileSourceOptions // NO EXPORT; header only
     {
+    public:
+        class ExternalDataset : public osg::Referenced // NO EXPORT; header only
+        {
+        public:
+            ExternalDataset() : osg::Referenced(), _dataset(NULL), _ownsDataset(true) {};
+            ExternalDataset(GDALDataset* dataset, bool ownsDataset) : osg::Referenced(), _dataset(dataset), _ownsDataset(ownsDataset) {};
+
+        protected:
+            virtual ~ExternalDataset() {};
+
+        public:
+            GDALDataset* dataset() const { return _dataset; };
+            void setDataset(GDALDataset* dataset) { _dataset = dataset; };
+
+            bool ownsDataset() const { return _ownsDataset; };
+            void setOwnsDataset(bool ownsDataset) { _ownsDataset = ownsDataset; };
+
+        private:
+            GDALDataset* _dataset;
+            bool         _ownsDataset;
+        };
+
     public: // properties
 
         optional<URI>& url() { return _url; }
@@ -43,8 +69,28 @@ namespace osgEarth { namespace Drivers
         optional<unsigned int>& maxDataLevel() { return _maxDataLevel;}
         const optional<unsigned int>& maxDataLevel() const { return _maxDataLevel;}
 
+        optional<unsigned int>& subDataSet() { return _subDataSet;}
+        const optional<unsigned int>& subDataSet() const { return _subDataSet;}
+
         optional<bool>& interpolateImagery() { return _interpolateImagery;}
         const optional<bool>& interpolateImagery() const { return _interpolateImagery;}
+
+        /**
+         The "warp profile" is a way to tell the GDAL driver to keep the original SRS and geotransform of the source data
+         but use a Warped VRT to make the data appear to conform to the given profile.  This is useful for merging multiple 
+         files that may be in different projections using the composite driver.
+        */
+        optional<ProfileOptions>& warpProfile() { return _warpProfile; }
+        const optional<ProfileOptions>& warpProfile() const { return _warpProfile; }
+
+        /**
+         The "external dataset" is a way to provide your own GDAL dataset to the GDAL driver.
+         There are two fields :
+          - dataset() : which stores your own GDAL dataset pointer
+          - ownsDataset() : if set to true, the GDALTileSource "owns" the external dataset and closes it when deleted.
+        */
+        osg::ref_ptr<ExternalDataset>& externalDataset() { return _externalDataset; }
+        const osg::ref_ptr<ExternalDataset>& externalDataset() const { return _externalDataset; }
 
     public: // ctors
 
@@ -57,7 +103,9 @@ namespace osgEarth { namespace Drivers
             fromConfig( _conf );
         }
 
-    protected:
+        virtual ~GDALOptions() { }
+
+    public:
 
         Config getConfig() const
         {
@@ -72,8 +120,14 @@ namespace osgEarth { namespace Drivers
             }
 
             conf.updateIfSet( "max_data_level", _maxDataLevel);
+            conf.updateIfSet( "subdataset", _subDataSet);
 
             conf.updateIfSet( "interp_imagery", _interpolateImagery);
+
+            conf.updateObjIfSet( "warp_profile", _warpProfile );
+
+            conf.updateNonSerializable( "GDALOptions::ExternalDataset", _externalDataset.get() );
+
             return conf;
         }
 
@@ -90,18 +144,25 @@ namespace osgEarth { namespace Drivers
             else if ( in == "average" ) _interpolation = osgEarth::INTERP_AVERAGE;
             else if ( in == "bilinear" ) _interpolation = osgEarth::INTERP_BILINEAR;
             conf.getIfSet( "max_data_level", _maxDataLevel);
+            conf.getIfSet( "subdataset", _subDataSet);
 
             conf.getIfSet("interp_imagery", _interpolateImagery);
+
+            conf.getObjIfSet( "warp_profile", _warpProfile );
+
+            _externalDataset = conf.getNonSerializable<ExternalDataset>( "GDALOptions::ExternalDataset" );
         }
 
         optional<URI>                    _url;
         optional<std::string>            _extensions;
         optional<ElevationInterpolation> _interpolation;
         optional<bool>                   _interpolateImagery;
-        optional<unsigned>               _maxDataLevel;
+        optional<unsigned int>           _maxDataLevel;
+        optional<unsigned int>           _subDataSet;
+        optional<ProfileOptions>         _warpProfile;
+        osg::ref_ptr<ExternalDataset>    _externalDataset;
     };
 
 } } // namespace osgEarth::Drivers
 
 #endif // OSGEARTH_DRIVER_GDAL_DRIVEROPTIONS
-

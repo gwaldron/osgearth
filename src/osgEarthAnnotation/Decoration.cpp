@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2008-2010 Pelican Mapping
+* Copyright 2008-2012 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -76,7 +76,7 @@ _injectionGroup( group )
 bool
 InjectionDecoration::apply(AnnotationNode& node, bool enable)
 {
-    bool success = apply( node.getAttachPoint(), enable );
+    bool success = apply( node.getChildAttachPoint(), enable );
     return success ? true : Decoration::apply(node, enable);
 }
 

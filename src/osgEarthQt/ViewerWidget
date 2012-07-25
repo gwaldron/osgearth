@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2010 Pelican Mapping
+ * Copyright 2008-2012 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -24,7 +24,7 @@
 #include <osgEarth/Map>
 
 #include <osgQt/GraphicsWindowQt>
-#include <osgViewer/Viewer>
+#include <osgViewer/ViewerBase>
 
 #include <QtCore/QTimer>
 
@@ -32,19 +32,55 @@ namespace osgEarth { namespace QtGui
 {
     using namespace osgEarth;
 
-    class OSGEARTHQT_EXPORT ViewerWidget : public osgQt::GLWidget, public osgViewer::Viewer
+    /**
+     * Qt widget that encapsulates an osgViewer::Viewer.
+     */
+    class OSGEARTHQT_EXPORT ViewerWidget : public osgQt::GLWidget
     {
     public:
-      ViewerWidget(osg::Node* scene=0L);
+        /**
+         * Constructs a new ViewerWidget, creating an underlying viewer.
+         * @param[in ] scene Scene graph to attach to the viewer (optional)
+         */
+        ViewerWidget(osg::Node* scene=0L);
+
+        /**
+         * Constructs a new ViewerWidget, attaching an existing viewer.
+         * @param[in ] viewer Viewer to attach to this widget. The widget will install
+         *             a new camera in the viewer. (NOTE: this widget does not take
+         *             ownership of the Viewer. You are still respsonsile for its
+         *             destruction)
+         */
+        ViewerWidget(osgViewer::ViewerBase* viewer);
+
+        /**
+         * Access the underlying viewer.
+         */
+        osgViewer::ViewerBase* getViewer() { return _viewer.get(); }
+
+        /**
+         * Populates the incoming collection with the views comprising this viewer.
+         */
+        template<typename T>
+        void getViews( T& views ) const {
+            osgViewer::ViewerBase::Views temp;
+            _viewer->getViews(temp);
+            views.insert(views.end(), temp.begin(), temp.end());
+        }
+
+        virtual ~ViewerWidget();
 
     protected:
-      ~ViewerWidget() { }
 
-      QTimer _timer;
+        QTimer _timer;
 
-      void initialize();
-      osg::Camera* createCamera();
-      void paintEvent(QPaintEvent *) { frame(); }
+        void createViewer();
+        void reconfigure( osgViewer::View* );
+        void installFrameTimer();
+        void paintEvent( QPaintEvent* );
+
+        osg::observer_ptr<osgViewer::ViewerBase> _viewer;
+        osg::ref_ptr<osg::GraphicsContext>       _gc;
     };
 } }
 

@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2008-2010 Pelican Mapping
+* Copyright 2008-2012 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -25,7 +25,7 @@
 #include <osgEarth/MapNode>
 
 namespace osgEarth { namespace Annotation
-{	
+{
     using namespace osgEarth;
     using namespace osgEarth::Symbology;
 
@@ -42,7 +42,7 @@ namespace osgEarth { namespace Annotation
          */
         LabelNode(
             MapNode*                mapNode,
-            const osg::Vec3d&       position,
+            const GeoPoint&         position,
             const std::string&      text,
             const Style&            style =Style() );
 
@@ -51,19 +51,9 @@ namespace osgEarth { namespace Annotation
          */
         LabelNode(
             MapNode*                mapNode,
-            const osg::Vec3d&       position,
+            const GeoPoint&         position,
             const std::string&      text,
             const TextSymbol*       symbol );
-
-        /**
-         * Constructs a label node from an x,y
-         */
-        LabelNode(
-            MapNode*                mapNode,
-            double                  x,
-            double                  y,
-            const std::string&      text,
-            const Style&            style =Style() );
 
         /**
          * Constructs a label node that is positioned relative to a map
@@ -71,7 +61,7 @@ namespace osgEarth { namespace Annotation
          */
         LabelNode(
             const SpatialReference* mapSRS,
-            const osg::Vec3d&       position,
+            const GeoPoint&         position,
             const std::string&      text,
             const TextSymbol*       symbol );
 
@@ -85,10 +75,24 @@ namespace osgEarth { namespace Annotation
             const Style&       style =Style() );
 
         /**
+         * Deserializes a label
+         */
+        LabelNode(
+            MapNode*      mapNode,
+            const Config& conf);
+
+        virtual ~LabelNode() { }
+
+        /**
          * Sets the text content.
          */
         void setText( const std::string& text );
-    
+        const std::string& text() const { return _text; }
+
+        /**
+         * Gets the text style.
+         */
+        const Style style() const { return _style; }
 
     public: // OrthoNode override
 
@@ -96,11 +100,14 @@ namespace osgEarth { namespace Annotation
 
         virtual void setDynamic( bool value );
 
+        virtual Config getConfig() const;
+
     protected:
-        void init( const Style& style );
+        void init();
 
         std::string       _text;
         class osg::Geode* _geode;
+        Style             _style;
 
         /** Copy constructor */
         LabelNode( const LabelNode& rhs, const osg::CopyOp& op =osg::CopyOp::DEEP_COPY_ALL ) { }

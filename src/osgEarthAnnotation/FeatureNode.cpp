@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2008-2010 Pelican Mapping
+* Copyright 2008-2012 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -18,11 +18,17 @@
 */
 
 #include <osgEarthAnnotation/FeatureNode>
+#include <osgEarthAnnotation/AnnotationRegistry>
+#include <osgEarthAnnotation/AnnotationUtils>
+
 #include <osgEarthFeatures/GeometryCompiler>
+#include <osgEarthFeatures/GeometryUtils>
 #include <osgEarthFeatures/MeshClamper>
+
 #include <osgEarthSymbology/AltitudeSymbol>
+
 #include <osgEarth/DrapeableNode>
-#include <osgEarth/FindNode>
+#include <osgEarth/NodeUtils>
 #include <osgEarth/Utils>
 #include <osgEarth/Registry>
 
@@ -43,9 +49,9 @@ FeatureNode::FeatureNode(MapNode* mapNode,
                          bool     draped,
                          const GeometryCompilerOptions& options ) :
 AnnotationNode( mapNode ),
-_feature( feature ),
-_draped ( draped ),
-_options( options )
+_feature      ( feature ),
+_draped       ( draped ),
+_options      ( options )
 {
     init();
 }
@@ -62,8 +68,16 @@ FeatureNode::init()
 
     // build the new feature geometry
     {
+        if ( _feature.valid() && _mapNode.valid() )
+        {
+            _feature->getWorldBoundingPolytope( _mapNode->getMapSRS(), _featurePolytope );
+        }
+
         GeometryCompilerOptions options = _options;
         
+        // have to disable compiler clamping if we're doing auto-clamping; especially
+        // in terrain-relative mode because the auto-clamper will think the clamped
+        // coords are the relative coords.
         bool autoClamping = supportsAutoClamping(*_feature->style());
         if ( autoClamping )
         {
@@ -73,7 +87,7 @@ FeatureNode::init()
         // prep the compiler:
         GeometryCompiler compiler( options );
         Session* session = new Session( _mapNode->getMap() );
-        GeoExtent extent(_mapNode->getMap()->getProfile()->getSRS(), _feature->getGeometry()->getBounds());
+        GeoExtent extent(_feature->getSRS(), _feature->getGeometry()->getBounds());
         osg::ref_ptr<FeatureProfile> profile = new FeatureProfile( extent );
         FilterContext context( session, profile.get(), extent );
 
@@ -84,6 +98,13 @@ FeatureNode::init()
         osg::Node* node = compiler.compile( clone.get(), *clone->style(), context );
         if ( node )
         {
+            if ( _feature->style().isSet() &&
+                AnnotationUtils::styleRequiresAlphaBlending( *_feature->style() ) &&
+                _feature->style()->get<ExtrusionSymbol>() )
+            {
+                node = AnnotationUtils::installTwoPassAlpha( node );
+            }
+
             _attachPoint = new osg::Group();
             _attachPoint->addChild( node );
 
@@ -102,7 +123,7 @@ FeatureNode::init()
         // workaround until we can auto-clamp extruded/sub'd geometries.
         if ( autoClamping )
         {
-            applyStyle( *_feature->style(), _draped );
+            applyStyle( *_feature->style() );
             clampMesh( _mapNode->getTerrain()->getGraph() );
         }
     }
@@ -133,8 +154,7 @@ FeatureNode::getAttachPoint()
 void
 FeatureNode::reclamp( const TileKey& key, osg::Node* tile, const Terrain* )
 {
-    osg::Polytope p = _feature->getWorldBoundingPolytope();
-    if ( p.contains( tile->getBound() ) )
+    if ( _featurePolytope.contains( tile->getBound() ) )
     {
         clampMesh( tile );
     }
@@ -160,4 +180,73 @@ FeatureNode::clampMesh( osg::Node* terrainModel )
     this->accept( clamper );
 
     this->dirtyBound();
+}
+
+
+//-------------------------------------------------------------------
+
+OSGEARTH_REGISTER_ANNOTATION( feature, osgEarth::Annotation::FeatureNode );
+
+
+FeatureNode::FeatureNode(MapNode*      mapNode,
+                         const Config& conf) :
+AnnotationNode( mapNode )
+{
+    osg::ref_ptr<Geometry> geom;
+    if ( conf.hasChild("geometry") )
+    {
+        Config geomconf = conf.child("geometry");
+        geom = GeometryUtils::geometryFromWKT( geomconf.value() );
+        if ( !geom.valid() )
+            OE_WARN << LC << "Config is missing required 'geometry' element" << std::endl;
+    }
+    
+    osg::ref_ptr<const SpatialReference> srs;
+    srs = SpatialReference::create( conf.value("srs"), conf.value("vdatum") );
+    if ( !srs.valid() )
+        OE_WARN << LC << "Config is missing required 'srs' element" << std::endl;
+
+    optional<GeoInterpolation> geoInterp;
+
+    Style style;
+    conf.getObjIfSet( "style", style );
+
+    if ( srs.valid() && geom.valid() )
+    {
+        _draped = conf.value<bool>("draped",false);
+        Feature* feature = new Feature(geom.get(), srs.get(), style);
+
+        conf.getIfSet( "geointerp", "greatcircle", feature->geoInterp(), GEOINTERP_GREAT_CIRCLE );
+        conf.getIfSet( "geointerp", "rhumbline",   feature->geoInterp(), GEOINTERP_RHUMB_LINE );
+
+        setFeature( feature );
+    }
+}
+
+Config
+FeatureNode::getConfig() const
+{
+    Config conf("feature");
+
+    if ( _feature.valid() && _feature->getGeometry() )
+    {
+        conf.set("name", getName());
+
+        Config geomConf("geometry");
+        geomConf.value() = GeometryUtils::geometryToWKT( _feature->getGeometry() );
+        conf.add(geomConf);
+
+        std::string srs = _feature->getSRS() ? _feature->getSRS()->getHorizInitString() : "";
+        if ( !srs.empty() ) conf.set("srs", srs);
+
+        std::string vsrs = _feature->getSRS() ? _feature->getSRS()->getVertInitString() : "";
+        if ( !vsrs.empty() ) conf.set("vdatum", vsrs);
+
+        if ( _feature->geoInterp().isSet() )
+            conf.set("geointerp", _feature->geoInterp() == GEOINTERP_GREAT_CIRCLE? "greatcircle" : "rhumbline");
+
+        conf.addObjIfSet( "style", _feature->style() );
+    }
+
+    return conf;
 }

@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2010 Pelican Mapping
+ * Copyright 2008-2012 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -23,9 +23,12 @@
 #include <osgEarthUtil/Common>
 #include <osgEarthUtil/Controls>
 #include <osgEarthUtil/Formatter>
-#include <osgEarth/MapNode>
 
 #include <osgGA/GUIEventHandler>
+
+namespace osgEarth {
+    class MapNode;
+}
 
 namespace osgEarth { namespace Util
 {
@@ -41,10 +44,12 @@ namespace osgEarth { namespace Util
         struct Callback : public osg::Referenced
         {
             // called when valid map coordinates are found under the mouse
-            virtual void set( const osg::Vec3d& mapCoords, osg::View* view, MapNode* mapNode ) =0;
+            virtual void set( const GeoPoint& coords, osg::View* view, MapNode* mapNode ) =0;
 
             // called when no map coords are found under the mouse
             virtual void reset( osg::View* view, MapNode* mapNode ) =0;
+
+            virtual ~Callback() { }
         };
 
     public:
@@ -62,6 +67,8 @@ namespace osgEarth { namespace Util
          *     for the readout.
          */
         MouseCoordsTool( MapNode* mapNode, LabelControl* label =0L, Formatter* formatter =0L );
+
+        virtual ~MouseCoordsTool() { }
 
         /**
          * Adds a readout callback.
@@ -87,9 +94,11 @@ namespace osgEarth { namespace Util
     class OSGEARTHUTIL_EXPORT MouseCoordsLabelCallback : public MouseCoordsTool::Callback
     {
     public:
-        MouseCoordsLabelCallback( LabelControl* label, Formatter* formatter );
+        MouseCoordsLabelCallback( LabelControl* label, Formatter* formatter =0L );
 
-        virtual void set( const osg::Vec3d& mapCoords, osg::View* view, MapNode* mapNode );
+        virtual ~MouseCoordsLabelCallback() { }
+
+        virtual void set( const GeoPoint& coords, osg::View* view, MapNode* mapNode );
         virtual void reset( osg::View* view, MapNode* mapNode );
 
     protected:

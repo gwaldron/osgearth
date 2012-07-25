@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2010 Pelican Mapping
+ * Copyright 2008-2012 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -17,6 +17,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 #include <osgEarthFeatures/LabelSource>
+#include <osgEarth/DepthOffset>
 #include <osgEarthAnnotation/LabelNode>
 #include <osgEarthAnnotation/Decluttering>
 #include <osgDB/FileNameUtils>
@@ -40,7 +41,7 @@ public:
      */
     osg::Node* createNode(
         const std::string& text,
-        const TextSymbol*  symbol )
+        const Style&       style )
     {
         return 0L; // no support
     }
@@ -50,22 +51,35 @@ public:
      */
     osg::Node* createNode(
         const FeatureList&   input,
-        const TextSymbol*    symbol,
+        const Style&         style,
         const FilterContext& context )
     {
+        if ( style.get<TextSymbol>() == 0L )
+            return 0L;
+
+        // copy the style so we can (potentially) modify the text symbol.
+        Style styleCopy = style;
+        TextSymbol* text = styleCopy.get<TextSymbol>();
+
         osg::Group* group = new osg::Group();
-        Decluttering::setEnabled( group->getOrCreateStateSet(), true );
-        if ( symbol->priority().isSet() )
+
+        // check for decluttering
+        if ( text->declutter().isSet() )
+        {
+            Decluttering::setEnabled( group->getOrCreateStateSet(), *text->declutter() );
+        }
+
+        if ( text->priority().isSet() )
         {
             DeclutteringOptions dco = Decluttering::getOptions();
-            dco.sortByPriority() = symbol->priority().isSet();
+            dco.sortByPriority() = text->priority().isSet();
             Decluttering::setOptions( dco );
         }    
         
-        StringExpression  contentExpr ( *symbol->content() );
-        NumericExpression priorityExpr( *symbol->priority() );
+        StringExpression  contentExpr ( *text->content() );
+        NumericExpression priorityExpr( *text->priority() );
 
-        if ( symbol->removeDuplicateLabels() == true )
+        if ( text->removeDuplicateLabels() == true )
         {
             // in remove-duplicates mode, make a list of unique features, selecting
             // the one with the largest area as the one we'll use for labeling.
@@ -80,7 +94,7 @@ public:
                 Feature* feature = i->get();
                 if ( feature && feature->getGeometry() )
                 {
-                    const std::string& value = feature->eval( contentExpr );
+                    const std::string& value = feature->eval( contentExpr, &context );
                     if ( !value.empty() )
                     {
                         double area = feature->getGeometry()->getBounds().area2d();
@@ -105,7 +119,7 @@ public:
             {
                 const std::string& value = i->first;
                 const Feature* feature = i->second.second.get();
-                group->addChild( makeLabelNode(context, feature, value, symbol, priorityExpr) );
+                group->addChild( makeLabelNode(context, feature, value, text, priorityExpr) );
             }
         }
 
@@ -125,10 +139,16 @@ public:
                 if ( value.empty() )
                     continue;
 
-                group->addChild( makeLabelNode(context, feature, value, symbol, priorityExpr) );
+                group->addChild( makeLabelNode(context, feature, value, text, priorityExpr) );
             }
         }
 
+#if 0 // good idea but needs work.
+        DepthOffsetGroup* dog = new DepthOffsetGroup();
+        dog->setMinimumOffset( 500.0 );
+        dog->addChild( group );
+        return dog;
+#endif
         return group;
     }
 
@@ -136,16 +156,16 @@ public:
     osg::Node* makeLabelNode(const FilterContext& context, 
                              const Feature*       feature, 
                              const std::string&   value, 
-                             const TextSymbol*    symbol, 
+                             const TextSymbol*    text, 
                              NumericExpression&   priorityExpr )
     {
         LabelNode* labelNode = new LabelNode(
             context.getSession()->getMapInfo().getProfile()->getSRS(),
-            feature->getGeometry()->getBounds().center(),
+            GeoPoint(feature->getSRS(), feature->getGeometry()->getBounds().center(), ALTMODE_ABSOLUTE),
             value,
-            symbol );
+            text );
 
-        if ( symbol->priority().isSet() )
+        if ( text->priority().isSet() )
         {
             AnnotationData* data = new AnnotationData();
             data->setPriority( feature->eval(priorityExpr, &context) );

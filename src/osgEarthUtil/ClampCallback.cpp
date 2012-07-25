@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2008-2010 Pelican Mapping
+* Copyright 2008-2012 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -21,7 +21,7 @@
 #include <osgEarth/Notify>
 #include <osgUtil/IntersectionVisitor>
 #include <osgUtil/LineSegmentIntersector>
-#include <osgEarth/FindNode>
+#include <osgEarth/NodeUtils>
 #include <OpenThreads/ScopedLock>
 #include <osg/MatrixTransform>
 

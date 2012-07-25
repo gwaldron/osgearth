@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2010 Pelican Mapping
+ * Copyright 2008-2012 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -40,13 +40,14 @@ namespace osgEarth { namespace Util
         {
         public:
             virtual void onDistanceChanged(MeasureToolHandler* sender, double distance) {}
+            virtual ~MeasureToolEventHandler() { }
         };
 
         typedef std::list< osg::ref_ptr< MeasureToolEventHandler > > MeasureToolEventHandlerList;
 
 
         MeasureToolHandler( osg::Group* group, MapNode* mapNode );        
-        ~MeasureToolHandler();
+        virtual ~MeasureToolHandler();
 
         bool handle( const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& aa );        
 

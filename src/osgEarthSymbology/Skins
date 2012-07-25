@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2010 Pelican Mapping
+ * Copyright 2008-2012 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -40,6 +40,9 @@ namespace osgEarth { namespace Symbology
         /** Constructs a new skin resource. */
         SkinResource( const Config& conf =Config() );
 
+        /** dtor */
+        virtual ~SkinResource() { }
+
         /**
          * Creates a new StateSet containing a Texture based on this Skin.
          */
@@ -64,7 +67,7 @@ namespace osgEarth { namespace Symbology
 
         /** Maximum acceptable real-world object height (meters) for which this image would make an appropriate texture */
         optional<float>& maxObjectHeight() { return _maxObjHeight; }
-        const optional<float>& maxObjectHeight() const { return _minObjHeight; }
+        const optional<float>& maxObjectHeight() const { return _maxObjHeight; }
 
         /** Whether this image is suitable for use as a vertically repeating texture */
         optional<bool>& isTiled() { return _isTiled; }
@@ -113,6 +116,9 @@ namespace osgEarth { namespace Symbology
     {
     public:
         SkinSymbol( const Config& conf =Config() );
+
+        /** dtor */
+        virtual ~SkinSymbol() { }
 
     public: // query parameters
 

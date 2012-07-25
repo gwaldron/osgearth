@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2010 Pelican Mapping
+ * Copyright 2008-2012 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -40,46 +40,59 @@ namespace
     struct OnTileAddedOperation : public BaseOp
     {
         TileKey _key;
-        osg::observer_ptr<osg::Node> _node;
+        osg::ref_ptr<osg::Node> _node;
 
         OnTileAddedOperation(const TileKey& key, osg::Node* node, Terrain* terrain)
             : BaseOp(terrain), _key(key), _node(node) { }
 
         void operator()(osg::Object*)
         {
-            osg::ref_ptr<osg::Node> node_safe = _node.get();
-            if ( node_safe.valid() && _terrain.valid() )
-                _terrain->fireTileAdded( _key, node_safe.get() );
+            if ( _node.valid() && _node->referenceCount() > 1 && _terrain.valid() )
+            {
+                _terrain->fireTileAdded( _key, _node.get() );
+            }
         }
     };
 }
 
 //---------------------------------------------------------------------------
 
-Terrain::Terrain(osg::Node* graph, const Profile* mapProfile, bool geocentric) :
-_graph     ( graph ),
-_profile   ( mapProfile ),
-_geocentric( geocentric )
+Terrain::Terrain(osg::Node* graph, const Profile* mapProfile, bool geocentric, const TerrainOptions& terrainOptions ) :
+_graph         ( graph ),
+_profile       ( mapProfile ),
+_geocentric    ( geocentric ),
+_terrainOptions( terrainOptions )
 {
     //nop
 }
 
 bool
-Terrain::getHeight(const osg::Vec3d& mapPos, double& out_height, osg::Node* patch) const
+Terrain::getHeight(osg::Node*              patch,
+                   const SpatialReference* srs,
+                   double                  x, 
+                   double                  y, 
+                   double*                 out_hamsl,
+                   double*                 out_hae    ) const
 {
     if ( !_graph.valid() && !patch )
         return 0L;
 
+    // convert to map coordinates:
+    if ( srs && !srs->isHorizEquivalentTo(getSRS()) )
+    {
+        srs->transform2D(x, y, getSRS(), x, y);
+    }
+
     // trivially reject a point that lies outside the terrain:
-    if ( !getProfile()->getExtent().contains(mapPos.x(), mapPos.y()) )
+    if ( !getProfile()->getExtent().contains(x, y) )
         return 0L;
 
     const osg::EllipsoidModel* em = getSRS()->getEllipsoid();
     double r = std::min( em->getRadiusEquator(), em->getRadiusPolar() );
 
     // calculate the endpoints for an intersection test:
-    osg::Vec3d start(mapPos.x(), mapPos.y(),  r);
-    osg::Vec3d end  (mapPos.x(), mapPos.y(), -r);
+    osg::Vec3d start(x, y, r);
+    osg::Vec3d end  (x, y, -r);
 
     if ( isGeocentric() )
     {
@@ -88,7 +101,10 @@ Terrain::getHeight(const osg::Vec3d& mapPos, double& out_height, osg::Node* patc
     }
 
     osgUtil::LineSegmentIntersector* lsi = new osgUtil::LineSegmentIntersector(start, end);
+    lsi->setIntersectionLimit(osgUtil::Intersector::LIMIT_ONE);
+
     osgUtil::IntersectionVisitor iv( lsi );
+    iv.setTraversalMask( ~_terrainOptions.secondaryTraversalMask().value() );
 
     if ( patch )
         patch->accept( iv );
@@ -101,16 +117,26 @@ Terrain::getHeight(const osg::Vec3d& mapPos, double& out_height, osg::Node* patc
         const osgUtil::LineSegmentIntersector::Intersection& firstHit = *results.begin();
         osg::Vec3d hit = firstHit.getWorldIntersectPoint();
 
-        if ( isGeocentric() )
-        {
-            getSRS()->transformFromECEF(hit, hit);
-        }
+        getSRS()->transformFromWorld(hit, hit, out_hae);
+        if ( out_hamsl )
+            *out_hamsl = hit.z();
 
-        out_height = hit.z();
         return true;
     }
     return false;
 }
+
+
+bool
+Terrain::getHeight(const SpatialReference* srs,
+                   double                  x, 
+                   double                  y,
+                   double*                 out_hamsl,
+                   double*                 out_hae ) const
+{
+    return getHeight( (osg::Node*)0L, srs, x, y, out_hamsl, out_hae );
+}
+
 
 bool
 Terrain::getWorldCoordsUnderMouse(osg::View* view, float x, float y, osg::Vec3d& out_coords ) const
@@ -124,7 +150,10 @@ Terrain::getWorldCoordsUnderMouse(osg::View* view, float x, float y, osg::Vec3d&
     osg::NodePath path;
     path.push_back( _graph.get() );
 
-    if ( view2->computeIntersections( x, y, path, results ) )
+    // fine but computeIntersections won't travers a masked Drawable, a la quadtree.
+    unsigned mask = ~_terrainOptions.secondaryTraversalMask().value();
+
+    if ( view2->computeIntersections( x, y, path, results, mask ) )
     {
         // find the first hit under the mouse:
         osgUtil::LineSegmentIntersector::Intersection first = *(results.begin());
@@ -133,6 +162,42 @@ Terrain::getWorldCoordsUnderMouse(osg::View* view, float x, float y, osg::Vec3d&
     }
     return false;
 }
+
+
+bool
+Terrain::getWorldCoordsUnderMouse(osg::View* view,
+                                  float x, float y,
+                                  osg::Vec3d& out_coords,
+                                  osg::ref_ptr<osg::Node>& out_node ) const
+{
+    osgViewer::View* view2 = dynamic_cast<osgViewer::View*>(view);
+    if ( !view2 || !_graph.valid() )
+        return false;
+
+    osgUtil::LineSegmentIntersector::Intersections results;
+
+    osg::NodePath path;
+    path.push_back( _graph.get() );
+
+    // fine but computeIntersections won't travers a masked Drawable, a la quadtree.
+    unsigned mask = ~_terrainOptions.secondaryTraversalMask().value();
+
+    if ( view2->computeIntersections( x, y, path, results, mask ) )
+    {
+        // find the first hit under the mouse:
+        osgUtil::LineSegmentIntersector::Intersection first = *(results.begin());
+        out_coords = first.getWorldIntersectPoint();
+        for( osg::NodePath::reverse_iterator j = first.nodePath.rbegin(); j != first.nodePath.rend(); ++j ) {
+            if ( !(*j)->getName().empty() ) {
+                out_node = (*j);
+                break;
+            }
+        }
+        return true;
+    }
+    return false;
+}
+
 
 void
 Terrain::addTerrainCallback( TerrainCallback* cb, osg::Referenced* clientData )
@@ -213,7 +278,7 @@ Terrain::fireTileAdded( const TileKey& key, osg::Node* node )
         bool keep = true;
         osg::ref_ptr<osg::Referenced> clientData_safe = rec._clientData.get();
 
-        // if the client data has gone away, disarcd the callback.
+        // if the client data has gone away, discard the callback.
         if ( rec._hasClientData && !clientData_safe.valid() )
         {
             keep = false;
@@ -232,5 +297,47 @@ Terrain::fireTileAdded( const TileKey& key, osg::Node* node )
             ++i;
         else
             i = _callbacks.erase( i );
+    }
+}
+
+
+void
+Terrain::accept( osg::NodeVisitor& nv )
+{
+    _graph->accept( nv );
+}
+
+
+//---------------------------------------------------------------------------
+
+#undef  LC
+#define LC "[TerrainPatch] "
+
+TerrainPatch::TerrainPatch(osg::Node* patch, const Terrain* terrain) :
+_patch  ( patch ),
+_terrain( terrain )
+{
+    //nop
+    if ( patch == 0L || terrain == 0L )
+    {
+        OE_WARN << "ILLEGAL: Created a TerrainPatch with a NULL parameter" << std::endl;
+    }
+}
+
+
+bool
+TerrainPatch::getHeight(const SpatialReference* srs,
+                        double                  x, 
+                        double                  y,
+                        double*                 out_hamsl,
+                        double*                 out_hae ) const
+{
+    if ( _terrain && _patch )
+    {
+        return _terrain->getHeight( _patch.get(), srs, x, y, out_hamsl, out_hae );
+    }
+    else
+    {
+        return false;
     }
 }

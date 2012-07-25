@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2010 Pelican Mapping
+ * Copyright 2008-2012 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -43,6 +43,9 @@ namespace osgEarth { namespace Symbology
          */
         GeometryFactory( const SpatialReference* srs =0L );
 
+        /** dtor */
+        virtual ~GeometryFactory() { }
+
         /**
          * Creates a circle geometry.
          * @param center Center point (must be in map SRS if a map was provided in ctor)
@@ -52,7 +55,7 @@ namespace osgEarth { namespace Symbology
          */
         Geometry* createCircle( 
             const osg::Vec3d& center,
-            const Linear&     radius,
+            const Distance&   radius,
             unsigned          numSegments =0,
             Geometry*         geomToUse   =0L);
 
@@ -66,10 +69,11 @@ namespace osgEarth { namespace Symbology
          */
         Geometry* createArc(
             const osg::Vec3d& center,
-            const Linear&     radius,
-            const Angular&    startAngle,
-            const Angular&    endAngle,
-            unsigned          numSegments =0);
+            const Distance&   radius,
+            const Angle&      startAngle,
+            const Angle&      endAngle,
+            unsigned          numSegments =0,
+            Geometry*         geomToUse   =0L);
 
         /**
          * Creates a ellipse geometry.
@@ -82,9 +86,9 @@ namespace osgEarth { namespace Symbology
          */
         Geometry* createEllipse(
             const osg::Vec3d& center,
-            const Linear&     radiusMajor,
-            const Linear&     radiusMinor,
-            const Angular&    rotationAngle,
+            const Distance&   radiusMajor,
+            const Distance&   radiusMinor,
+            const Angle&      rotationAngle,
             unsigned          numSegments =0,
             Geometry*         geomToUse   =0L);
 
@@ -96,9 +100,8 @@ namespace osgEarth { namespace Symbology
          */
         Geometry* createRectangle(
             const osg::Vec3d& center,
-            const Linear& width,
-            const Linear& height
-            );
+            const Distance&   width,
+            const Distance&   height );
 
     protected:
 

@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2008-2010 Pelican Mapping
+* Copyright 2008-2012 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -18,13 +18,17 @@
 */
 
 #include <osgEarthAnnotation/AnnotationUtils>
+#include <osgEarthAnnotation/Decluttering>
 #include <osgEarthSymbology/Color>
 #include <osgEarthSymbology/MeshSubdivider>
 #include <osgEarth/ThreadingUtils>
 #include <osgEarth/Registry>
 #include <osgText/Text>
 #include <osg/Depth>
+#include <osg/BlendFunc>
+#include <osg/CullFace>
 #include <osg/MatrixTransform>
+#include <osg/LightModel>
 
 using namespace osgEarth;
 using namespace osgEarth::Annotation;
@@ -126,9 +130,18 @@ AnnotationUtils::createTextDrawable(const std::string& text,
 
     // this disables the default rendering bin set by osgText::Font. Necessary if we're
     // going to do decluttering at a higher level
-    osg::StateSet* stateSet = t->getOrCreateStateSet();
+    osg::StateSet* stateSet = new osg::StateSet();
+    t->setStateSet( stateSet );
+    //osg::StateSet* stateSet = t->getOrCreateStateSet();
 
-    stateSet->setRenderBinToInherit();
+    if ( symbol && symbol->declutter().isSet() )
+    {
+        Decluttering::setEnabled( stateSet, *symbol->declutter() );
+    }
+    else
+    {
+        stateSet->setRenderBinToInherit();
+    }
 
     // add the static "isText=true" uniform; this is a hint for the annotation shaders
     // if they get installed.
@@ -142,7 +155,8 @@ AnnotationUtils::createTextDrawable(const std::string& text,
 osg::Geometry*
 AnnotationUtils::createImageGeometry(osg::Image*       image,
                                      const osg::Vec2s& pixelOffset,
-                                     unsigned          textureUnit )
+                                     unsigned          textureUnit,
+                                     double            heading)
 {
     if ( !image )
         return 0L;
@@ -162,17 +176,31 @@ AnnotationUtils::createImageGeometry(osg::Image*       image,
 
     // set up the geoset.
     osg::Geometry* geom = new osg::Geometry();
+    geom->setUseVertexBufferObjects(true);
+    
     geom->setStateSet(dstate);
 
     float x0 = (float)pixelOffset.x() - image->s()/2.0;
     float y0 = (float)pixelOffset.y() - image->t()/2.0;
 
-    osg::Vec3Array* coords = new osg::Vec3Array(4);
-    (*coords)[0].set( x0, y0, 0 );
-    (*coords)[1].set( x0 + image->s(), y0, 0 );
-    (*coords)[2].set( x0 + image->s(), y0 + image->t(), 0 );
-    (*coords)[3].set( x0, y0 + image->t(), 0 );
-    geom->setVertexArray(coords);
+    osg::Vec3Array* verts = new osg::Vec3Array(4);
+    (*verts)[0].set( x0, y0, 0 );
+    (*verts)[1].set( x0 + image->s(), y0, 0 );
+    (*verts)[2].set( x0 + image->s(), y0 + image->t(), 0 );
+    (*verts)[3].set( x0, y0 + image->t(), 0 );
+
+    if (heading != 0.0)
+    {
+        osg::Matrixd rot;
+        rot.makeRotate( heading, 0.0, 0.0, 1.0);
+        for (unsigned int i = 0; i < 4; i++)
+        {
+            (*verts)[i] = rot * (*verts)[i];
+        }
+    }
+    geom->setVertexArray(verts);
+    if ( verts->getVertexBufferObject() )
+        verts->getVertexBufferObject()->setUsage(GL_STATIC_DRAW_ARB);
 
     osg::Vec2Array* tcoords = new osg::Vec2Array(4);
     (*tcoords)[0].set(0, 0);
@@ -224,6 +252,14 @@ AnnotationUtils::getAnnotationProgram()
         Threading::ScopedMutexLock lock(s_mutex);
         if ( !s_program.valid() )
         {
+            std::string vert_source = Stringify() <<
+                "#version 110 \n"
+                "void main() { \n"
+                "    gl_FrontColor = gl_Color; \n"
+                "    gl_TexCoord[0] = gl_MultiTexCoord0; \n"
+                "    gl_Position = gl_ModelViewProjectionMatrix * gl_Vertex; \n"
+                "} \n";
+
             std::string frag_source = Stringify() <<
                 "uniform float     " << UNIFORM_FADE()      << "; \n"
                 "uniform bool      " << UNIFORM_IS_TEXT()   << "; \n"
@@ -246,6 +282,7 @@ AnnotationUtils::getAnnotationProgram()
 
             s_program = new osg::Program();
             s_program->setName( PROGRAM_NAME() );
+            s_program->addShader( new osg::Shader(osg::Shader::VERTEX,   vert_source) );
             s_program->addShader( new osg::Shader(osg::Shader::FRAGMENT, frag_source) );
         }
     }
@@ -379,6 +416,7 @@ osg::Node*
 AnnotationUtils::createSphere( float r, const osg::Vec4& color, float maxAngle )
 {
     osg::Geometry* geom = new osg::Geometry();
+    geom->setUseVertexBufferObjects(true);
 
     osg::Vec3Array* v = new osg::Vec3Array();
     v->reserve(6);
@@ -389,6 +427,8 @@ AnnotationUtils::createSphere( float r, const osg::Vec4& color, float maxAngle )
     v->push_back( osg::Vec3(0,r,0) ); // back
     v->push_back( osg::Vec3(0,-r,0) ); // front
     geom->setVertexArray(v);
+    if ( v->getVertexBufferObject() )
+       v->getVertexBufferObject()->setUsage(GL_STATIC_DRAW_ARB);
 
     osg::DrawElementsUByte* b = new osg::DrawElementsUByte(GL_TRIANGLES);
     b->reserve(24);
@@ -401,6 +441,17 @@ AnnotationUtils::createSphere( float r, const osg::Vec4& color, float maxAngle )
     b->push_back(1); b->push_back(2); b->push_back(4);
     b->push_back(1); b->push_back(5); b->push_back(2);
     geom->addPrimitiveSet( b );
+
+    osg::Vec3Array* n = new osg::Vec3Array();
+    n->reserve(6);
+    n->push_back( osg::Vec3( 0, 0, 1) );
+    n->push_back( osg::Vec3( 0, 0,-1) );
+    n->push_back( osg::Vec3(-1, 0, 0) );
+    n->push_back( osg::Vec3( 1, 0, 0) );
+    n->push_back( osg::Vec3( 0, 1, 0) );
+    n->push_back( osg::Vec3( 0,-1, 0) );
+    geom->setNormalArray(n);
+    geom->setNormalBinding( osg::Geometry::BIND_PER_VERTEX );
 
     MeshSubdivider ms;
     ms.run( *geom, osg::DegreesToRadians(maxAngle), GEOINTERP_GREAT_CIRCLE );
@@ -420,6 +471,7 @@ osg::Node*
 AnnotationUtils::createHemisphere( float r, const osg::Vec4& color, float maxAngle )
 {
     osg::Geometry* geom = new osg::Geometry();
+    geom->setUseVertexBufferObjects(true);
 
     osg::Vec3Array* v = new osg::Vec3Array();
     v->reserve(5);
@@ -429,6 +481,8 @@ AnnotationUtils::createHemisphere( float r, const osg::Vec4& color, float maxAng
     v->push_back( osg::Vec3(0,r,0) ); // back
     v->push_back( osg::Vec3(0,-r,0) ); // front
     geom->setVertexArray(v);
+    if ( v->getVertexBufferObject() )
+       v->getVertexBufferObject()->setUsage(GL_STATIC_DRAW_ARB);
 
     osg::DrawElementsUByte* b = new osg::DrawElementsUByte(GL_TRIANGLES);
     b->reserve(24);
@@ -437,6 +491,16 @@ AnnotationUtils::createHemisphere( float r, const osg::Vec4& color, float maxAng
     b->push_back(0); b->push_back(1); b->push_back(4);
     b->push_back(0); b->push_back(4); b->push_back(2);
     geom->addPrimitiveSet( b );
+
+    osg::Vec3Array* n = new osg::Vec3Array();
+    n->reserve(5);
+    n->push_back( osg::Vec3(0,0,1) );
+    n->push_back( osg::Vec3(-1,0,0) );
+    n->push_back( osg::Vec3(1,0,0) );
+    n->push_back( osg::Vec3(0,1,0) );
+    n->push_back( osg::Vec3(0,-1,0) );
+    geom->setNormalArray(n);
+    geom->setNormalBinding( osg::Geometry::BIND_PER_VERTEX );
 
     MeshSubdivider ms;
     ms.run( *geom, osg::DegreesToRadians(maxAngle), GEOINTERP_GREAT_CIRCLE );
@@ -449,13 +513,15 @@ AnnotationUtils::createHemisphere( float r, const osg::Vec4& color, float maxAng
     osg::Geode* geode = new osg::Geode();
     geode->addDrawable( geom );
 
-    return geode;
+    // need 2-pass alpha so you can view it properly from below.
+    return installTwoPassAlpha( geode );
 }
 
 osg::Node* 
 AnnotationUtils::createEllipsoid( float xr, float yr, float zr, const osg::Vec4& color, float maxAngle )
 {
     osg::Geometry* geom = new osg::Geometry();
+    geom->setUseVertexBufferObjects(true);
 
     osg::Vec3Array* v = new osg::Vec3Array();
     v->reserve(6);
@@ -466,6 +532,8 @@ AnnotationUtils::createEllipsoid( float xr, float yr, float zr, const osg::Vec4&
     v->push_back( osg::Vec3(0, yr,0) ); // back
     v->push_back( osg::Vec3(0,-yr,0) ); // front
     geom->setVertexArray(v);
+    if ( v->getVertexBufferObject() )
+        v->getVertexBufferObject()->setUsage(GL_STATIC_DRAW_ARB);
 
     osg::DrawElementsUByte* b = new osg::DrawElementsUByte(GL_TRIANGLES);
     b->reserve(24);
@@ -497,6 +565,7 @@ osg::Node*
 AnnotationUtils::createFullScreenQuad( const osg::Vec4& color )
 {
     osg::Geometry* geom = new osg::Geometry();
+    geom->setUseVertexBufferObjects(true);
 
     osg::Vec3Array* v = new osg::Vec3Array();
     v->reserve(4);
@@ -505,6 +574,8 @@ AnnotationUtils::createFullScreenQuad( const osg::Vec4& color )
     v->push_back( osg::Vec3(1,1,0) );
     v->push_back( osg::Vec3(0,1,0) );
     geom->setVertexArray(v);
+    if ( v->getVertexBufferObject() )
+        v->getVertexBufferObject()->setUsage(GL_STATIC_DRAW_ARB);
 
     osg::DrawElementsUByte* b = new osg::DrawElementsUByte(GL_TRIANGLES);
     b->reserve(6);
@@ -541,6 +612,7 @@ osg::Drawable*
 AnnotationUtils::create2DQuad( const osg::BoundingBox& box, float padding, const osg::Vec4& color )
 {
     osg::Geometry* geom = new osg::Geometry();
+    geom->setUseVertexBufferObjects(true);
 
     osg::Vec3Array* v = new osg::Vec3Array();
     v->reserve(4);
@@ -549,6 +621,8 @@ AnnotationUtils::create2DQuad( const osg::BoundingBox& box, float padding, const
     v->push_back( osg::Vec3(box.xMax()+padding, box.yMax()+padding, 0) );
     v->push_back( osg::Vec3(box.xMin()-padding, box.yMax()+padding, 0) );
     geom->setVertexArray(v);
+    if ( v->getVertexBufferObject() )
+        v->getVertexBufferObject()->setUsage(GL_STATIC_DRAW_ARB);
 
     osg::DrawElementsUByte* b = new osg::DrawElementsUByte(GL_TRIANGLES);
     b->reserve(6);
@@ -561,6 +635,12 @@ AnnotationUtils::create2DQuad( const osg::BoundingBox& box, float padding, const
     geom->setColorArray( c );
     geom->setColorBinding( osg::Geometry::BIND_OVERALL );
 
+    // add the static "isText=true" uniform; this is a hint for the annotation shaders
+    // if they get installed.
+    static osg::ref_ptr<osg::Uniform> s_isTextUniform = new osg::Uniform(osg::Uniform::BOOL, UNIFORM_IS_TEXT());
+    s_isTextUniform->set( false );
+    geom->getOrCreateStateSet()->addUniform( s_isTextUniform.get() );
+
     return geom;
 }
 
@@ -568,6 +648,7 @@ osg::Drawable*
 AnnotationUtils::create2DOutline( const osg::BoundingBox& box, float padding, const osg::Vec4& color )
 {
     osg::Geometry* geom = new osg::Geometry();
+    geom->setUseVertexBufferObjects(true);
 
     osg::Vec3Array* v = new osg::Vec3Array();
     v->reserve(4);
@@ -576,6 +657,8 @@ AnnotationUtils::create2DOutline( const osg::BoundingBox& box, float padding, co
     v->push_back( osg::Vec3(box.xMax()+padding, box.yMax()+padding, 0) );
     v->push_back( osg::Vec3(box.xMin()-padding, box.yMax()+padding, 0) );
     geom->setVertexArray(v);
+    if ( v->getVertexBufferObject() )
+        v->getVertexBufferObject()->setUsage(GL_STATIC_DRAW_ARB);
 
     osg::DrawElementsUByte* b = new osg::DrawElementsUByte(GL_LINE_LOOP);
     b->reserve(4);
@@ -588,8 +671,73 @@ AnnotationUtils::create2DOutline( const osg::BoundingBox& box, float padding, co
     geom->setColorBinding( osg::Geometry::BIND_OVERALL );
 
     static osg::ref_ptr<osg::Uniform> s_isNotTextUniform = new osg::Uniform(osg::Uniform::BOOL, UNIFORM_IS_TEXT());
-    s_isNotTextUniform->set( true );
+    s_isNotTextUniform->set( false );
     geom->getOrCreateStateSet()->addUniform( s_isNotTextUniform.get() );
 
     return geom;
+}
+
+
+osg::Node*
+AnnotationUtils::installTwoPassAlpha(osg::Node* node)
+{
+  // first, get the whole thing under a depth-sorted bin:
+  osg::Group* g1 = new osg::Group();
+  g1->getOrCreateStateSet()->setRenderingHint( osg::StateSet::TRANSPARENT_BIN );
+  g1->getOrCreateStateSet()->setAttributeAndModes( new osg::BlendFunc(GL_SRC_ALPHA,GL_ONE_MINUS_SRC_ALPHA), 1);
+
+  // for semi-transpareny items, we want the lighting to "shine through"
+  osg::LightModel* lm = new osg::LightModel();
+  lm->setTwoSided( true );
+  g1->getOrCreateStateSet()->setAttributeAndModes( lm );
+
+  // next start a traversal order bin so we draw in the proper order:
+  osg::Group* g2 = new osg::Group();
+  g2->getOrCreateStateSet()->setRenderBinDetails(0, "TraversalOrderBin");
+  g1->addChild( g2 );
+
+  // next, create a group for the first pass (backfaces only):
+  osg::Group* backPass = new osg::Group();
+  backPass->getOrCreateStateSet()->setAttributeAndModes( new osg::CullFace(osg::CullFace::FRONT), 1 );
+  backPass->getOrCreateStateSet()->setAttributeAndModes( new osg::Depth(osg::Depth::LEQUAL,0,1,false), 1);
+  g2->addChild( backPass );
+
+  // and a group for the front-face pass:
+  osg::Group* frontPass = new osg::Group();
+  frontPass->getOrCreateStateSet()->setAttributeAndModes( new osg::CullFace(osg::CullFace::BACK), 1 );
+  g2->addChild( frontPass );
+
+  // finally, attach the geometry to both passes.
+  backPass->addChild( node );
+  frontPass->addChild( node );
+
+  return g1;
+}
+
+
+bool 
+AnnotationUtils::styleRequiresAlphaBlending( const Style& style )
+{
+    if (style.has<PolygonSymbol>() &&
+        style.get<PolygonSymbol>()->fill().isSet() &&
+        style.get<PolygonSymbol>()->fill()->color().a() < 1.0)
+    {
+        return true;
+    }
+
+    if (style.has<LineSymbol>() &&
+        style.get<LineSymbol>()->stroke().isSet() &&
+        style.get<LineSymbol>()->stroke()->color().a() < 1.0 )
+    {
+        return true;
+    }
+
+    if (style.has<PointSymbol>() &&
+        style.get<PointSymbol>()->fill().isSet() &&
+        style.get<PointSymbol>()->fill()->color().a() < 1.0 )
+    {
+        return true;
+    }
+
+    return false;
 }

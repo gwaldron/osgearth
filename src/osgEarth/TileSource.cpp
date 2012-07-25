@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2010 Pelican Mapping
+ * Copyright 2008-2012 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -139,7 +139,74 @@ TileBlacklist::write(std::ostream &output) const
     }
 }
 
+
 //------------------------------------------------------------------------
+
+
+TileSourceOptions::TileSourceOptions( const ConfigOptions& options ) :
+DriverConfigOptions( options ),
+_tileSize          ( 256 ),
+_noDataValue       ( (float)SHRT_MIN ),
+_noDataMinValue    ( -32000.0f ),
+_noDataMaxValue    (  32000.0f ),
+_L2CacheSize       ( 16 )
+{ 
+    fromConfig( _conf );
+}
+
+
+Config 
+TileSourceOptions::getConfig() const
+{
+    Config conf = DriverConfigOptions::getConfig();
+    conf.updateIfSet( "tile_size", _tileSize );
+    conf.updateIfSet( "nodata_value", _noDataValue );
+    conf.updateIfSet( "nodata_min", _noDataMinValue );
+    conf.updateIfSet( "nodata_max", _noDataMaxValue );
+    conf.updateIfSet( "blacklist_filename", _blacklistFilename);
+    conf.updateIfSet( "l2_cache_size", _L2CacheSize );
+    conf.updateObjIfSet( "profile", _profileOptions );
+    return conf;
+}
+
+
+void
+TileSourceOptions::mergeConfig( const Config& conf )
+{
+    DriverConfigOptions::mergeConfig( conf );
+    fromConfig( conf );
+}
+
+
+void
+TileSourceOptions::fromConfig( const Config& conf )
+{
+    conf.getIfSet( "tile_size", _tileSize );
+    conf.getIfSet( "nodata_value", _noDataValue );
+    conf.getIfSet( "nodata_min", _noDataMinValue );
+    conf.getIfSet( "nodata_max", _noDataMaxValue );
+    conf.getIfSet( "blacklist_filename", _blacklistFilename);
+    conf.getIfSet( "l2_cache_size", _L2CacheSize );
+    conf.getObjIfSet( "profile", _profileOptions );
+
+    // special handling of default tile size:
+    if ( !tileSize().isSet() )
+    {
+        optional<int> defaultTileSize;
+        conf.getIfSet( "default_tile_size", defaultTileSize );
+        if ( defaultTileSize.isSet() )
+        {
+            _tileSize.init(*defaultTileSize);
+        }
+    }
+
+    // remove it now so it does not get serialized
+    _conf.remove( "default_tile_size" );
+}
+
+
+//------------------------------------------------------------------------
+
 
 TileSource::TileSource( const TileSourceOptions& options ) :
 _options( options )
@@ -329,7 +396,11 @@ TileSource::hasDataAtLOD( unsigned lod ) const
 bool
 TileSource::hasDataInExtent( const GeoExtent& extent ) const
 {
-    //If no data extents are provided, just return true
+    // if the extent is invalid, no intersection.
+    if ( !extent.isValid() )
+        return false;
+
+    // If no data extents are provided, just return true
     if ( _dataExtents.size() == 0 )
         return true;
 
@@ -404,7 +475,7 @@ TileSourceFactory::create( const TileSourceOptions& options )
         return 0L;
     }
 
-    osg::ref_ptr<osgDB::ReaderWriter::Options> rwopt = new osgDB::ReaderWriter::Options();
+    osg::ref_ptr<osgDB::Options> rwopt = Registry::instance()->cloneOrCreateOptions();
     rwopt->setPluginData( TILESOURCEOPTIONS_TAG, (void*)&options );
 
     std::string driverExt = std::string( ".osgearth_" ) + driver;
@@ -412,6 +483,16 @@ TileSourceFactory::create( const TileSourceOptions& options )
     if ( !result )
     {
         OE_WARN << "WARNING: Failed to load TileSource driver for \"" << driver << "\"" << std::endl;
+    }
+
+    // apply an Override Profile if provided.
+    if ( result && options.profile().isSet() )
+    {
+        const Profile* profile = Profile::create(*options.profile());
+        if ( profile )
+        {
+            result->setProfile( profile );
+        }
     }
 
     return result;

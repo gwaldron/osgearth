@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2008-2010 Pelican Mapping
+* Copyright 2008-2012 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -25,8 +25,8 @@
 extern "C" {
 
 #define OSGEARTH_MAJOR_VERSION    2
-#define OSGEARTH_MINOR_VERSION    1
-#define OSGEARTH_PATCH_VERSION    1
+#define OSGEARTH_MINOR_VERSION    2
+#define OSGEARTH_PATCH_VERSION    0
 #define OSGEARTH_SOVERSION        0
 
 /* Convenience macro that can be used to decide whether a feature is present or not i.e.

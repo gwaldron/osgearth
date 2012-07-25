@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2008-2010 Pelican Mapping
+* Copyright 2008-2012 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -75,7 +75,7 @@ void printFeature( Feature* feature )
     Geometry* geom = feature->getGeometry();
     if (geom)
     {
-        std::cout << indent << geometryToWkt( geom ) << std::endl;
+        std::cout << indent << GeometryUtils::geometryToWKT( geom ) << std::endl;
     }
     std::cout << std::endl;
 }

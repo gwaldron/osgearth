@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2010 Pelican Mapping
+ * Copyright 2008-2012 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -20,6 +20,7 @@
 #include <osgEarthFeatures/Session>
 #include <osgEarthFeatures/Script>
 #include <osgEarthFeatures/ScriptEngine>
+#include <osgEarthFeatures/FeatureSource>
 #include <osgEarth/FileUtils>
 #include <osgEarth/HTTPClient>
 #include <osgEarth/StringUtils>
@@ -34,10 +35,11 @@ using namespace osgEarth::Features;
 
 //---------------------------------------------------------------------------
 
-Session::Session( const Map* map, StyleSheet* styles, const osgDB::Options* dbOptions ) :
+Session::Session( const Map* map, StyleSheet* styles, FeatureSource* source, const osgDB::Options* dbOptions ) :
 osg::Referenced( true ),
 _map           ( map ),
 _mapInfo       ( map ),
+_featureSource ( source ),
 _dbOptions     ( dbOptions )
 {
     if ( styles )
@@ -48,6 +50,10 @@ _dbOptions     ( dbOptions )
     // if the caller did not provide a dbOptions, take it from the map.
     if ( map && !dbOptions )
         _dbOptions = map->getDBOptions();
+}
+
+Session::~Session()
+{
 }
 
 const osgDB::Options*
@@ -85,4 +91,10 @@ ScriptEngine*
 Session::getScriptEngine() const
 {
   return _styleScriptEngine.get();
+}
+
+FeatureSource*
+Session::getFeatureSource() const 
+{ 
+	return _featureSource.get(); 
 }

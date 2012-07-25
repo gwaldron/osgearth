@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2010 Pelican Mapping
+ * Copyright 2008-2012 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -19,6 +19,7 @@
 #include <osgEarth/Map>
 #include <osgEarth/Registry>
 #include <osgEarth/TileSource>
+#include <osgEarth/HeightFieldUtils>
 #include <osgEarth/URI>
 #include <iterator>
 
@@ -53,17 +54,20 @@ MapCallback::onMapModelChanged( const MapModelChange& change )
         onElevationLayerMoved( change.getElevationLayer(), change.getFirstIndex(), change.getSecondIndex() ); break;
     case MapModelChange::MOVE_IMAGE_LAYER:
         onImageLayerMoved( change.getImageLayer(), change.getFirstIndex(), change.getSecondIndex() ); break;
-		case MapModelChange::MOVE_MODEL_LAYER:
-				onModelLayerMoved( change.getModelLayer(), change.getFirstIndex(), change.getSecondIndex() ); break;
+    case MapModelChange::MOVE_MODEL_LAYER:
+            onModelLayerMoved( change.getModelLayer(), change.getFirstIndex(), change.getSecondIndex() ); break;
+    case MapModelChange::UNSPECIFIED: break;
+    default: break;
     }
 }
 
 //------------------------------------------------------------------------
 
 Map::Map( const MapOptions& options ) :
-osg::Referenced   ( true ),
-_mapOptions       ( options ),
-_dataModelRevision( 0 )
+osg::Referenced      ( true ),
+_mapOptions          ( options ),
+_initMapOptions      ( options ),
+_dataModelRevision   ( 0 )
 {            
     if (_mapOptions.cachePolicy().isSet() &&
         _mapOptions.cachePolicy()->usage() == CachePolicy::USAGE_CACHE_ONLY )
@@ -94,6 +98,11 @@ _dataModelRevision( 0 )
     
     // store the top-level referrer context in the options
     URIContext( _mapOptions.referrer() ).store( _dbOptions );
+}
+
+Map::~Map()
+{
+    OE_DEBUG << "~Map" << std::endl;
 }
 
 bool
@@ -320,7 +329,7 @@ Map::getCache() const
             const_cast<Map*>(this)->setCache( cache );
         }
     }
-	return _cache.get();
+    return _cache.get();
 }
 
 void
@@ -374,14 +383,14 @@ Map::addImageLayer( ImageLayer* layer )
     unsigned int index = -1;
     if ( layer )
     {
-	    // Set the DB options for the map from the layer
+        // Set the DB options for the map from the layer
         layer->setDBOptions( _dbOptions.get() );
 
         // propagate the cache to the layer:
         if (_mapOptions.cachePolicy().isSet())
-		{
+        {
             layer->overrideCachePolicy( _mapOptions.cachePolicy().value() );
-		}
+        }
 
         // propagate the cache to the layer:
         layer->setCache( this->getCache() );
@@ -408,8 +417,8 @@ Map::addImageLayer( ImageLayer* layer )
         {
             i->get()->onMapModelChanged( MapModelChange(
                 MapModelChange::ADD_IMAGE_LAYER, newRevision, layer, index) );
-        }	
-    }	
+        }   
+    }   
 }
 
 
@@ -454,8 +463,8 @@ Map::insertImageLayer( ImageLayer* layer, unsigned int index )
         {
             i->get()->onMapModelChanged( MapModelChange(
                 MapModelChange::ADD_IMAGE_LAYER, newRevision, layer, index) );
-        }	
-    }	
+        }   
+    }   
 }
 
 void
@@ -465,17 +474,17 @@ Map::addElevationLayer( ElevationLayer* layer )
     unsigned int index = -1;
     if ( layer )
     {
-	    //Set options for the map from the layer
-		layer->setDBOptions( _dbOptions.get() );
+        //Set options for the map from the layer
+        layer->setDBOptions( _dbOptions.get() );
 
         //propagate the cache to the layer:
         if ( _mapOptions.cachePolicy().isSet() )
         {
             layer->overrideCachePolicy( *_mapOptions.cachePolicy() );
-		}
+        }
 
-		//Set the Cache for the MapLayer to our cache.
-		layer->setCache( this->getCache() );
+        //Set the Cache for the MapLayer to our cache.
+        layer->setCache( this->getCache() );
         
         // Tell the layer the map profile, if possible:
         if ( _profile.valid() )
@@ -497,8 +506,8 @@ Map::addElevationLayer( ElevationLayer* layer )
         {
             i->get()->onMapModelChanged( MapModelChange(
                 MapModelChange::ADD_ELEVATION_LAYER, newRevision, layer, index) );
-        }	
-    }	
+        }   
+    }   
 }
 
 void 
@@ -843,7 +852,7 @@ Map::removeTerrainMaskLayer( MaskLayer* layer )
         {
             i->get()->onMapModelChanged( MapModelChange(
                 MapModelChange::REMOVE_MASK_LAYER, newRevision, layerRef.get()) );
-        }	
+        }   
     }
 }
 
@@ -920,6 +929,15 @@ Map::calculateProfile()
             }
         }
 
+        // convert the profile to Plate Carre if necessary.
+        if (_profile.valid() &&
+            _profile->getSRS()->isGeographic() && 
+            getMapOptions().coordSysType() == MapOptions::CSTYPE_PROJECTED )
+        {
+            OE_INFO << LC << "Projected display with geographic SRS; activating Plate Carre mode" << std::endl;
+            _profile = _profile->overrideSRS( _profile->getSRS()->createPlateCarreGeographicSRS() );
+        }
+
         // finally, fire an event if the profile has been set.
         if ( _profile.valid() )
         {
@@ -955,49 +973,80 @@ Map::calculateProfile()
                 layer->setTargetProfileHint( _profile.get() );
             }
         }
+
+        // create a "proxy" profile to use when querying elevation layers with a vertical datum
+        if ( _profile->getSRS()->getVerticalDatum() != 0L )
+        {
+            ProfileOptions po = _profile->toProfileOptions();
+            po.vsrsString().unset();
+            _profileNoVDatum = Profile::create(po);
+        }
+        else
+        {
+            _profileNoVDatum = _profile;
+        }
     }
 }
 
 namespace
 {
-    typedef std::pair<ElevationLayer*, GeoHeightField> GeoHFPair;
-
+    /**
+     * Returns a heightfield corresponding to the input key by compositing
+     * elevation data for a vector of elevation layers. The resulting 
+     * heightfield's height values will be expressed relative to the vertical
+     * datum in the requesting key (which is usually that of the Map itself).
+     */
     bool
     s_getHeightField(const TileKey&                  key,
                      const ElevationLayerVector&     elevLayers,
-                     const Profile*                  mapProfile,
                      bool                            fallback,
+                     const Profile*                  haeProfile,
                      ElevationInterpolation          interpolation,
                      ElevationSamplePolicy           samplePolicy,
                      osg::ref_ptr<osg::HeightField>& out_result,
                      bool*                           out_isFallback,
                      ProgressCallback*               progress ) 
-    {
+    {        
         unsigned lowestLOD = key.getLevelOfDetail();
         bool hfInitialized = false;
 
         //Get a HeightField for each of the enabled layers
-	    GeoHeightFieldVector heightFields;
+        GeoHeightFieldVector heightFields;
+        
+        //The number of fallback heightfields we have
+        int numFallbacks = 0;
 
-        unsigned int numValidHeightFields = 0;
-
+        //Default to being fallback data.
         if ( out_isFallback )
         {
-            *out_isFallback = false;
+            *out_isFallback = true;
+        }
+
+        // if the caller provided an "HAE map profile", he wants an HAE elevation grid even if
+        // the map profile has a vertical datum. This is the usual case when building the 3D
+        // terrain, for example. Construct a temporary key that doesn't have the vertical
+        // datum info and use that to query the elevation data.
+        TileKey keyToUse = key;
+        if ( haeProfile )
+        {
+            keyToUse = TileKey(key.getLevelOfDetail(), key.getTileX(), key.getTileY(), haeProfile );
         }
 
         // Generate a heightfield for each elevation layer.
+
+        unsigned defElevSize = 8;
+
         for( ElevationLayerVector::const_iterator i = elevLayers.begin(); i != elevLayers.end(); i++ )
         {
             ElevationLayer* layer = i->get();
-            if ( layer->getEnabled() )
+            if ( layer->getVisible() )
             {
-                GeoHeightField geoHF = layer->createHeightField( key, progress );
+                GeoHeightField geoHF = layer->createHeightField( keyToUse, progress );
 
                 // if "fallback" is set, try to fall back on lower LODs.
                 if ( !geoHF.valid() && fallback )
                 {
-                    TileKey hf_key = key;
+                    TileKey hf_key = keyToUse.createParentKey();
 
                     while ( hf_key.valid() && !geoHF.valid() )
                     {
@@ -1011,8 +1060,8 @@ namespace
                         if ( hf_key.getLevelOfDetail() < lowestLOD )
                             lowestLOD = hf_key.getLevelOfDetail();
 
-                        if ( out_isFallback )
-                            *out_isFallback = true;
+                        //This HeightField is fallback data, so increment the count.
+                        numFallbacks++;                        
                     }
                 }
 
@@ -1023,18 +1072,34 @@ namespace
             }
         }
 
-        // If we didn't get any heightfields and weren't requested to fallback, just return NULL
-        if ( heightFields.size() == 0 )
+        //If any of the layers produced valid data then it's not considered a fallback
+        if ( out_isFallback )
         {
-            return false;
+            *out_isFallback = (numFallbacks == heightFields.size());
+            //OE_NOTICE << "Num fallbacks=" << numFallbacks << " numHeightFields=" << heightFields.size() << " is fallback " << *out_isFallback << std::endl;
+        }   
+        
+        if ( heightFields.size() == 0 )
+        {            
+            //If we got no heightfields but were requested to fallback, create an empty heightfield.
+            if ( fallback )
+            {
+                out_result = HeightFieldUtils::createReferenceHeightField( keyToUse.getExtent(), defElevSize, defElevSize );                
+                return true;
+            }
+            else
+            {
+                //We weren't requested to fallback so just return.
+                return false;
+            }
         }
 
-	    else if (heightFields.size() == 1)
-	    {
+        else if (heightFields.size() == 1)
+        {
             if ( lowestLOD == key.getLevelOfDetail() )
             {
-		        //If we only have on heightfield, just return it.
-		        out_result = heightFields[0].takeHeightField();
+                //If we only have on heightfield, just return it.
+                out_result = heightFields[0].takeHeightField();
             }
             else
             {
@@ -1042,39 +1107,39 @@ namespace
                 out_result = geoHF.takeHeightField();
                 hfInitialized = true;
             }
-	    }
+        }
 
-	    else
-	    {
-		    //If we have multiple heightfields, we need to composite them together.
-		    unsigned int width = 0;
-		    unsigned int height = 0;
+        else
+        {
+            //If we have multiple heightfields, we need to composite them together.
+            unsigned int width = 0;
+            unsigned int height = 0;
 
-		    for (GeoHeightFieldVector::const_iterator i = heightFields.begin(); i < heightFields.end(); ++i)
-		    {
-			    if (i->getHeightField()->getNumColumns() > width) 
+            for (GeoHeightFieldVector::const_iterator i = heightFields.begin(); i < heightFields.end(); ++i)
+            {
+                if (i->getHeightField()->getNumColumns() > width) 
                     width = i->getHeightField()->getNumColumns();
-			    if (i->getHeightField()->getNumRows() > height) 
+                if (i->getHeightField()->getNumRows() > height) 
                     height = i->getHeightField()->getNumRows();
-		    }
-		    out_result = new osg::HeightField();
-		    out_result->allocate( width, height );
+            }
+            out_result = new osg::HeightField();
+            out_result->allocate( width, height );
 
-		    //Go ahead and set up the heightfield so we don't have to worry about it later
+            //Go ahead and set up the heightfield so we don't have to worry about it later
             double minx, miny, maxx, maxy;
             key.getExtent().getBounds(minx, miny, maxx, maxy);
             double dx = (maxx - minx)/(double)(out_result->getNumColumns()-1);
             double dy = (maxy - miny)/(double)(out_result->getNumRows()-1);
 
-            const VerticalSpatialReference* vsrs = mapProfile->getVerticalSRS();
+            const SpatialReference* keySRS = keyToUse.getProfile()->getSRS();
             
-		    //Create the new heightfield by sampling all of them.
+            //Create the new heightfield by sampling all of them.
             for (unsigned int c = 0; c < width; ++c)
             {
-                double geoX = minx + (dx * (double)c);
+                double x = minx + (dx * (double)c);
                 for (unsigned r = 0; r < height; ++r)
                 {
-                    double geoY = miny + (dy * (double)r);
+                    double y = miny + (dy * (double)r);
 
                     //Collect elevations from all of the layers. Iterate BACKWARDS because the last layer
                     // is the highest priority.
@@ -1084,7 +1149,7 @@ namespace
                         const GeoHeightField& geoHF = *itr;
 
                         float elevation = 0.0f;
-                        if ( geoHF.getElevation(key.getExtent().getSRS(), geoX, geoY, interpolation, vsrs, elevation) )
+                        if ( geoHF.getElevation(keySRS, x, y, interpolation, keySRS, elevation) )
                         {
                             if (elevation != NO_DATA_VALUE)
                             {
@@ -1131,31 +1196,46 @@ namespace
                     out_result->setHeight(c, r, elevation);
                 }
             }
-	    }
+        }
 
-	    //Replace any NoData areas with 0
-	    if (out_result.valid())
-	    {
-		    ReplaceInvalidDataOperator o;
-		    o.setValidDataOperator(new osgTerrain::NoDataValue(NO_DATA_VALUE));
-		    o( out_result.get() );
-	    }
+        // Replace any NoData areas with the reference value. This is zero for HAE datums,
+        // and some geoid height for orthometric datums.
+        if (out_result.valid())
+        {
+            const Geoid*         geoid = 0L;
+            const VerticalDatum* vdatum = key.getProfile()->getSRS()->getVerticalDatum();
 
-	    //Initialize the HF values for osgTerrain
-	    if (out_result.valid() && !hfInitialized )
-	    {	
-		    //Go ahead and set up the heightfield so we don't have to worry about it later
-		    double minx, miny, maxx, maxy;
-		    key.getExtent().getBounds(minx, miny, maxx, maxy);
-		    out_result->setOrigin( osg::Vec3d( minx, miny, 0.0 ) );
-		    double dx = (maxx - minx)/(double)(out_result->getNumColumns()-1);
-		    double dy = (maxy - miny)/(double)(out_result->getNumRows()-1);
-		    out_result->setXInterval( dx );
-		    out_result->setYInterval( dy );
-		    out_result->setBorderWidth( 0 );
-	    }
+            if ( haeProfile && vdatum )
+            {
+                geoid = vdatum->getGeoid();
+            }
 
-	    return out_result.valid();
+            HeightFieldUtils::resolveInvalidHeights(
+                out_result.get(),
+                key.getExtent(),
+                NO_DATA_VALUE,
+                geoid );
+
+            //ReplaceInvalidDataOperator o;
+            //o.setValidDataOperator(new osgTerrain::NoDataValue(NO_DATA_VALUE));
+            //o( out_result.get() );
+        }
+
+        //Initialize the HF values for osgTerrain
+        if (out_result.valid() && !hfInitialized )
+        {   
+            //Go ahead and set up the heightfield so we don't have to worry about it later
+            double minx, miny, maxx, maxy;
+            key.getExtent().getBounds(minx, miny, maxx, maxy);
+            out_result->setOrigin( osg::Vec3d( minx, miny, 0.0 ) );
+            double dx = (maxx - minx)/(double)(out_result->getNumColumns()-1);
+            double dy = (maxy - miny)/(double)(out_result->getNumRows()-1);
+            out_result->setXInterval( dx );
+            out_result->setYInterval( dy );
+            out_result->setBorderWidth( 0 );
+        }
+
+        return out_result.valid();
     }
 }
 
@@ -1165,6 +1245,7 @@ Map::getHeightField(const TileKey&                  key,
                     bool                            fallback,
                     osg::ref_ptr<osg::HeightField>& out_result,
                     bool*                           out_isFallback,
+                    bool                            convertToHAE,
                     ElevationSamplePolicy           samplePolicy,
                     ProgressCallback*               progress) const
 {
@@ -1173,9 +1254,14 @@ Map::getHeightField(const TileKey&                  key,
     ElevationInterpolation interp = getMapOptions().elevationInterpolation().get();    
 
     return s_getHeightField(
-        key, _elevationLayers, getProfile(), fallback, 
-        interp, samplePolicy, 
-        out_result, out_isFallback,
+        key, 
+        _elevationLayers, 
+        fallback, 
+        convertToHAE ? _profileNoVDatum.get() : 0L,
+        interp, 
+        samplePolicy, 
+        out_result,  
+        out_isFallback,
         progress );
 }
 
@@ -1230,80 +1316,25 @@ Map::sync( MapFrame& frame ) const
     return result;
 }
 
-bool
-Map::toMapPoint( const osg::Vec3d& input, const SpatialReference* inputSRS, osg::Vec3d& output ) const
-{
-    return MapInfo(this).toMapPoint(input, inputSRS, output);
-}
-
-bool
-Map::mapPointToWorldPoint( const osg::Vec3d& input, osg::Vec3d& output ) const
-{
-    return MapInfo(this).mapPointToWorldPoint(input, output);
-}
-
-bool
-Map::worldPointToMapPoint( const osg::Vec3d& input, osg::Vec3d& output ) const
-{
-    return MapInfo(this).worldPointToMapPoint(input, output);
-}
-
 //------------------------------------------------------------------------
 
-bool
-MapInfo::toMapPoint( const osg::Vec3d& input, const SpatialReference* inputSRS, osg::Vec3d& output ) const
-{
-    if ( !inputSRS )
-        return false;
-
-    const SpatialReference* mapSRS = _profile->getSRS();
-
-    if ( inputSRS->isEquivalentTo( mapSRS ) )
-    {
-        output = input;
-        return true;
-    }
-
-    return inputSRS->transform(
-        input.x(), input.y(), input.z(),
-        mapSRS,
-        output.x(), output.y(), output.z() );
+MapInfo::MapInfo( const Map* map ) :
+_profile( map->getProfile() ),
+_isGeocentric( map->isGeocentric() ),
+_isCube( map->getMapOptions().coordSysType() == MapOptions::CSTYPE_GEOCENTRIC_CUBE ),
+_elevationInterpolation( *map->getMapOptions().elevationInterpolation())
+{ 
+    //nop
 }
 
-bool
-MapInfo::mapPointToWorldPoint( const osg::Vec3d& input, osg::Vec3d& output ) const
+MapInfo::MapInfo( const MapInfo& rhs ) :
+_profile( rhs._profile ),
+_isGeocentric( rhs._isGeocentric ),
+_isCube( rhs._isCube ),
+_elevationInterpolation( rhs._elevationInterpolation )
 {
-    if ( _isGeocentric )
-    {
-        _profile->getSRS()->getEllipsoid()->convertLatLongHeightToXYZ(
-            osg::DegreesToRadians( input.y() ), osg::DegreesToRadians( input.x() ), input.z(),
-            output.x(), output.y(), output.z() );
-    }
-    else
-    {
-        output = input;
-    }
-    return true;
-}
-
-bool
-MapInfo::worldPointToMapPoint( const osg::Vec3d& input, osg::Vec3d& output ) const
-{
-    if ( _isGeocentric )
-    { 
-        _profile->getSRS()->getEllipsoid()->convertXYZToLatLongHeight(
-            input.x(), input.y(), input.z(),
-            output.y(), output.x(), output.z() );
-
-        output.y() = osg::RadiansToDegrees(output.y());
-        output.x() = osg::RadiansToDegrees(output.x());
-    }
-    else
-    {
-        output = input;
-    }
-    return true;
-}
+    //nop
+}              
 
 //------------------------------------------------------------------------
 
@@ -1335,18 +1366,41 @@ _maskLayers          ( src._maskLayers )
 bool
 MapFrame::sync()
 {
-    return _map->sync( *this );
+    if ( _map.valid() )
+    {
+        return _map->sync( *this );
+    }
+    else
+    {
+        _imageLayers.clear();
+        _elevationLayers.clear();
+        _modelLayers.clear();
+        _maskLayers.clear();
+        return false;
+    }
 }
 
 bool
 MapFrame::getHeightField(const TileKey&                  key,
                          bool                            fallback,
                          osg::ref_ptr<osg::HeightField>& out_hf,
-                         bool*                           out_isFallback,                         
+                         bool*                           out_isFallback,    
+                         bool                            convertToHAE,
                          ElevationSamplePolicy           samplePolicy,
                          ProgressCallback*               progress) const
 {
-    return s_getHeightField( key, _elevationLayers, _mapInfo.getProfile(), fallback, _mapInfo.getElevationInterpolation(), samplePolicy, out_hf, out_isFallback, progress );
+    if ( !_map.valid() ) return false;
+
+    return s_getHeightField( 
+        key, 
+        _elevationLayers,
+        fallback, 
+        convertToHAE ? _map->getProfileNoVDatum() : 0L,
+        _mapInfo.getElevationInterpolation(), 
+        samplePolicy, 
+        out_hf, 
+        out_isFallback,
+        progress );
 }
 
 int

@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2010 Pelican Mapping
+ * Copyright 2008-2012 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -54,6 +54,8 @@ namespace osgEarth { namespace Features
         const osg::ref_ptr<FeatureSource>& featureSource() const { return _featureSource; }
 
         FeatureTileSourceOptions( const ConfigOptions& rhs =ConfigOptions() );
+
+        virtual ~FeatureTileSourceOptions() { }
 
     public:
         virtual Config getConfig() const;

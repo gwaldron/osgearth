@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2008-2010 Pelican Mapping
+* Copyright 2008-2012 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -25,19 +25,14 @@ using namespace osgEarth::QtGui;
 using namespace osgEarth::Annotation;
 
 
-DataManager::DataManager(osgEarth::Map* map) : _map(map), _maxUndoStackSize( 128 )
+DataManager::DataManager(osgEarth::MapNode* mapNode) : _mapNode(mapNode), _maxUndoStackSize( 128 )
 {
-  initialize();
-}
-
-DataManager::DataManager(osgEarth::MapNode* mapNode) : _maxUndoStackSize( 128 )
-{
-  if (mapNode)
+  if (_mapNode)
   {
-    _map = mapNode->getMap();
+    _map = _mapNode->getMap();
 
     //Look for viewpoints in the MapNode externals
-    const Config& externals = mapNode->externalConfig();
+    const Config& externals = _mapNode->externalConfig();
     const ConfigSet children = externals.children("viewpoint");
     if (children.size() > 0)
     {
@@ -97,7 +92,7 @@ void DataManager::addAnnotation(osgEarth::Annotation::AnnotationNode* annotation
   }
 }
 
-void DataManager::removeAnnotaton(osgEarth::Annotation::AnnotationNode* annotation, osg::Group* parent)
+void DataManager::removeAnnotation(osgEarth::Annotation::AnnotationNode* annotation, osg::Group* parent)
 {
   if (!annotation)
     return;
@@ -119,14 +114,16 @@ void DataManager::removeAnnotaton(osgEarth::Annotation::AnnotationNode* annotati
     }
   }
 
-  Threading::ScopedWriteLock lock( _dataMutex );
-  for(AnnotationVector::iterator it = _annotations.begin(); it != _annotations.end(); ++it)
   {
-    if (it->get() == annoToRemove.get())
+    Threading::ScopedWriteLock lock( _dataMutex );
+    for(AnnotationVector::iterator it = _annotations.begin(); it != _annotations.end(); ++it)
     {
-      _annotations.erase(it);
-      removed = true;
-      break;
+      if (it->get() == annoToRemove.get())
+      {
+        _annotations.erase(it);
+        removed = true;
+        break;
+      }
     }
   }
 
@@ -264,6 +261,7 @@ void DataManager::onMapChanged(const osgEarth::MapModelChange& change)
     change.getImageLayer()->removeCallback(_imageCallback); break;
   case MapModelChange::REMOVE_MODEL_LAYER:
     change.getModelLayer()->removeCallback(_modelCallback); break;
+  default: break;
   }
 
   onMapChanged();
@@ -320,6 +318,13 @@ bool DataManager::doAction( void* sender, Action* action_, bool reversible )
             j->get()->operator()( sender, action.get() );
     }
 
+    if ( actionSucceeded )
+    {
+        ViewVector& views = action_->getViews();
+        for( ViewVector::iterator i = views.begin(); i != views.end(); ++i )
+            i->get()->requestRedraw();
+    }
+
     return actionSucceeded;
 }
 
@@ -328,19 +333,26 @@ bool DataManager::undoAction()
     if ( !canUndo() )
         return false;
 
-		osg::ref_ptr<ReversibleAction> action = static_cast<ReversibleAction*>( _undoStack.back().get() );
-		_undoStack.pop_back();
+	osg::ref_ptr<ReversibleAction> action = static_cast<ReversibleAction*>( _undoStack.back().get() );
+	_undoStack.pop_back();
 
-		bool undoSucceeded = action->undoAction( this, this );
+	bool undoSucceeded = action->undoAction( this, this );
 
-		// if the undo failed, we are probably in some undefined application state, so
+    // if the undo failed, we are probably in some undefined application state, so
     // clear out the undo stack just to be safe.
     if ( !undoSucceeded )
     {
         clearUndoActions();
     }
 
-		return undoSucceeded;
+    if ( undoSucceeded )
+    {
+        ViewVector& views = action->getViews();
+        for( ViewVector::iterator i = views.begin(); i != views.end(); ++i )
+            i->get()->requestRedraw();
+    }
+
+    return undoSucceeded;
 }
 
 bool DataManager::canUndo() const

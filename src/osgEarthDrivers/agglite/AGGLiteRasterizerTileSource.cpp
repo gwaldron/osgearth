@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2010 Pelican Mapping
+ * Copyright 2008-2012 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -290,7 +290,7 @@ public:
                         c = line->stroke()->color();
                 }
 
-                a = 127+(c.a()*255)/2; // scale alpha up
+                a = (unsigned int)(127+(c.a()*255)/2); // scale alpha up
                 fgColor = agg::rgba8( (unsigned int)(c.r()*255), (unsigned int)(c.g()*255), (unsigned int)(c.b()*255), a );
 
                 ras.filling_rule( agg::fill_even_odd );

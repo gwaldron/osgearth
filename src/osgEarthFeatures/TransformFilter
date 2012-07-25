@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2010 Pelican Mapping
+ * Copyright 2008-2012 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -39,6 +39,8 @@ namespace osgEarth { namespace Features
         TransformFilter();
         TransformFilter( const osg::Matrixd& xform );
         TransformFilter( const SpatialReference* outputSRS );
+
+        virtual ~TransformFilter() { }
 
         /** Transform matrix to apply to each point. If there's is also an SRS conversion,
             the matrix will be applied first. */

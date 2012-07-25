@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2008-2010 Pelican Mapping
+* Copyright 2008-2012 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -126,6 +126,8 @@ public:
     void getCustomColorLayers( ColorLayersByUID& out, bool readLock =true ) const;
     void setCustomColorLayers( const ColorLayersByUID& in, bool writeLock =true );
     void setCustomColorLayer( const CustomColorLayer& colorLayer, bool writeLock =true );
+
+    void clear();
 
     osgTerrain::HeightFieldLayer* getElevationLayer() const { return _elevationLayer.get(); }
     void setElevationLayer( osgTerrain::HeightFieldLayer* value ) { _elevationLayer = value; }

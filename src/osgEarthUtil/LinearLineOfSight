@@ -1,0 +1,277 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+* Copyright 2008-2012 Pelican Mapping
+* http://osgearth.org
+*
+* osgEarth is free software; you can redistribute it and/or modify
+* it under the terms of the GNU Lesser General Public License as published by
+* the Free Software Foundation; either version 2 of the License, or
+* (at your option) any later version.
+*
+* This program is distributed in the hope that it will be useful,
+* but WITHOUT ANY WARRANTY; without even the implied warranty of
+* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+* GNU Lesser General Public License for more details.
+*
+* You should have received a copy of the GNU Lesser General Public License
+* along with this program.  If not, see <http://www.gnu.org/licenses/>
+*/
+#ifndef OSGEARTHUTIL_LINEAR_LINE_OF_SIGHT
+#define OSGEARTHUTIL_LINEAR_LINE_OF_SIGHT
+
+#include <osgEarthUtil/LineOfSight>
+#include <osgEarth/MapNode>
+#include <osgEarth/Terrain>
+#include <osgEarth/GeoData>
+#include <osgEarth/Draggers>
+
+namespace osgEarth { namespace Util
+{
+    /**
+     * A Node that can be used to display point to point line of sight calculations
+     */
+    class OSGEARTHUTIL_EXPORT LinearLineOfSightNode: public LineOfSightNode
+    {
+    public:
+        /**
+         *Constructs and new LinearLineOfSightNode
+         *@param mapNode
+         *       The MapNode that this LinearLineOfSightNode will be operating on
+         */
+        LinearLineOfSightNode( osgEarth::MapNode* mapNode );
+
+        virtual ~LinearLineOfSightNode();
+
+        /**
+         *Constructs and new LinearLineOfSightNode
+         *@param mapNode
+         *       The MapNode that this LinearLineOfSightNode will be operating on
+         *@param start
+         *       The start point
+         *@param end
+         *       The end point
+         */
+        LinearLineOfSightNode( osgEarth::MapNode* mapNode, const osg::Vec3d& start, const osg::Vec3d& end );
+
+        /**
+         * Get the start point
+         */
+        const osg::Vec3d& getStart() const;
+
+        /**
+         * Gets the start point in world coordinates
+         */
+        const osg::Vec3d& getStartWorld() const;
+
+        /**
+         * Set the start point.  The point should be in the Map's coordinate system.  So if you're dealing with a geocentric map
+         * the location should be in the form lon, lat, elevation
+         */
+        void setStart(const osg::Vec3d& start);
+
+        /**
+         * Get the end point
+         */
+        const osg::Vec3d& getEnd() const;
+
+        /**
+         * Gets the end point in world coordinates
+         */
+        const osg::Vec3d& getEndWorld() const;
+
+        /**
+         * Set the end point.  The point should be in the Map's coordinate system.  So if you're dealing with a geocentric map
+         * the location should be in the form lon, lat, elevation
+         */
+        void setEnd(const osg::Vec3d& end);
+
+        /**
+         * Gets the hit point.  Only valid is getHasLOS is false.
+         */
+        const osg::Vec3d& getHit() const;
+
+        /**
+         * Gets the hit point in world coordinates
+         */
+        const osg::Vec3d& getHitWorld() const;
+
+        /**
+         * Gets whether not this calculation has line of sight.
+         */
+        bool getHasLOS() const;
+
+        /**
+         * Set the good color
+         */
+        void setGoodColor( const osg::Vec4f &color );
+
+        /**
+         * Gets the good color
+         */
+        const osg::Vec4f& getGoodColor() const;
+
+        /**
+         * Sets the bad color
+         */
+        void setBadColor( const osg::Vec4f &color );
+
+        /**
+         * Gets the bad color
+         */
+        const osg::Vec4f& getBadColor() const;
+
+        /**
+         * Gets the display mode
+         */
+        LineOfSight::DisplayMode getDisplayMode() const;
+
+        /**
+         * Sets the display mode
+         */
+        void setDisplayMode( LineOfSight::DisplayMode displayMode );
+
+        /**
+         * Gets the altitude mode
+         */
+        AltitudeMode getStartAltitudeMode() const;
+        AltitudeMode getEndAltitudeMode() const;
+
+        /**
+         * Sets the altitude mode
+         */
+        void setStartAltitudeMode( AltitudeMode mode );
+        void setEndAltitudeMode( AltitudeMode mode );
+
+
+        /**
+         * Gets the MapNode that this LineOfSightNode is operating on.
+         */
+        osgEarth::MapNode* getMapNode() const { return _mapNode.get(); }
+
+        /**
+         * Called when the underlying terrain has changed.
+         */
+        void terrainChanged( const osgEarth::TileKey& tileKey, osg::Node* terrain );
+
+        void addChangedCallback( LOSChangedCallback* callback );
+        void removeChangedCallback( LOSChangedCallback* callback );
+
+        virtual void traverse(osg::NodeVisitor& nv);
+
+        bool getTerrainOnly() const;
+
+        void setTerrainOnly( bool terrainOnly );
+
+        /**
+         * Utility method to compute LOS with a MapNode
+         * @param mapNode
+         *        The MapNode to intersect
+         * @param start
+         *        The start point in map coordinates
+         * @param end
+         *        The end point in map coordinates
+         * @param hit
+         *        The hit point, in map coordinates.
+         * @returns
+         *        Whether or not there is line of sight from start to end.  hit is only valid if this function return false.
+         */
+        static bool computeLOS( osgEarth::MapNode* mapNode, const osg::Vec3d& start, const osg::Vec3d& end, AltitudeMode altitudeMode, osg::Vec3d& hit );
+
+
+    private:
+        osg::Node* getNode();
+        void compute(osg::Node* node, bool backgroundThread = false);
+        void draw(bool backgroundThread = false);
+        void subscribeToTerrain();
+        osg::ref_ptr< osgEarth::MapNode > _mapNode;
+        bool _hasLOS;
+
+        LineOfSight::DisplayMode _displayMode;    
+        osg::Vec4 _goodColor;
+        osg::Vec4 _badColor;
+
+        osg::Vec3d _hit;
+        osg::Vec3d _start;
+        osg::Vec3d _end;
+
+        osg::Vec3d _startWorld;
+        osg::Vec3d _endWorld;
+        osg::Vec3d _hitWorld;
+
+        AltitudeMode _startAltitudeMode;
+        AltitudeMode _endAltitudeMode;
+
+        LOSChangedCallbackList _changedCallbacks;
+
+        osg::ref_ptr < osgEarth::TerrainCallback > _terrainChangedCallback;
+
+        osg::ref_ptr< osg::Node > _pendingNode;
+        bool _clearNeeded;
+        bool _terrainOnly;
+    };
+
+
+    /**********************************************************************/
+
+
+    /**
+     * An update callback that allows you to attach a LineOfSightNode to two moving nodes.
+     * The update callback will update the start and end points of the LineOfSight calcuation to
+     * follow the nodes.
+     *
+     * Example:
+     * LineOfSightNode* los = new LineOfSightNode(myMapNode);
+     * los->setUpdateCallback( new LineOfSightTether( startNode, endNode ) );
+     */
+    class OSGEARTHUTIL_EXPORT LineOfSightTether : public osg::NodeCallback
+    {
+    public:
+        LineOfSightTether(osg::Node* startNode, osg::Node* endNode);
+
+        /** dtor */
+        virtual ~LineOfSightTether() { }
+
+        virtual void operator()(osg::Node* node, osg::NodeVisitor* nv);  
+
+        osg::Node* startNode() { return _startNode.get(); }
+        osg::Node* endNode() { return _endNode.get(); }
+
+    private:
+        osg::ref_ptr< osg::Node > _startNode;
+        osg::ref_ptr< osg::Node > _endNode;
+    };
+
+    /**********************************************************************/
+
+    /**
+     * An editor node that allows you to move the start and end points
+     * of the LineOfSightNode
+     */
+    class OSGEARTHUTIL_EXPORT LinearLineOfSightEditor : public osg::Group
+    {
+    public:
+        /**
+         * Create a new LineOfSightEditor
+         * @param los
+         *        The LineOfSightNode to edit
+         */
+        LinearLineOfSightEditor(LinearLineOfSightNode* los);    
+        
+        virtual ~LinearLineOfSightEditor();    
+
+        /**
+         *Updates the position of the draggers to represent the actual location of the LineOfSightNode.
+         *This should be called if the los is changed outside of the editor and would probably benefit
+         *from the LineOfSightNode having a callback that notifies listeners that the start/end points have changed.
+         */
+        void updateDraggers();
+    private:
+        osg::ref_ptr< LinearLineOfSightNode > _los;
+        Dragger* _startDragger;
+        Dragger* _endDragger;
+        osg::ref_ptr< LOSChangedCallback > _callback;
+    };
+
+} } // namespace osgEarth::Util
+
+#endif // OSGEARTHUTIL_LINEAR_LINE_OF_SIGHT

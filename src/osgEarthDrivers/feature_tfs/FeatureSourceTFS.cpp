@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2010 Pelican Mapping
+ * Copyright 2008-2012 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -26,6 +26,7 @@
 #include <osgEarthFeatures/BufferFilter>
 #include <osgEarthFeatures/ScaleFilter>
 #include <osgEarthFeatures/OgrUtils>
+#include <osgEarthUtil/TFS>
 #include <osg/Notify>
 #include <osgDB/FileNameUtils>
 #include <osgDB/FileUtils>
@@ -39,78 +40,12 @@
 #include <windows.h>
 #endif
 
-//#undef  OE_DEBUG
-//#define OE_DEBUG OE_INFO
-
 #define LC "[TFS FeatureSource] "
 
 using namespace osgEarth;
+using namespace osgEarth::Util;
 using namespace osgEarth::Features;
 using namespace osgEarth::Drivers;
-
-#define OGR_SCOPED_LOCK GDAL_SCOPED_LOCK
-
-
-struct TFSLayer
-{
-    std::string _title;
-    std::string _abstract;
-    osgEarth::GeoExtent _extent;
-    unsigned int _maxLevel;
-    unsigned int _firstLevel;
-};
-
-class TFSReader
-{
-public:
-    static bool read(const URI& uri, const osgDB::ReaderWriter::Options* options, TFSLayer &layer);
-    static bool read( std::istream &in, TFSLayer &layer);
-};
-
-bool
-TFSReader::read(const URI& uri, const osgDB::ReaderWriter::Options *options, TFSLayer &layer)
-{
-    osgEarth::ReadResult result = uri.readString();
-    if (result.succeeded())
-    {
-        std::string str = result.getString();
-        std::stringstream in( str.c_str()  );
-        return read( in, layer);
-    }    
-    return false;
-}
-
-bool
-TFSReader::read( std::istream &in, TFSLayer &layer)
-{
-    osg::ref_ptr< XmlDocument > doc = XmlDocument::load( in );
-    if (!doc.valid()) return false;
-
-    osg::ref_ptr<XmlElement> e_layer = doc->getSubElement( "layer" );
-    if (!e_layer.valid()) return false;
-
-    layer._title      = e_layer->getSubElementText("title");
-    layer._abstract   = e_layer->getSubElementText("abstract");    
-    layer._firstLevel   = as<unsigned int>(e_layer->getSubElementText("firstlevel"), 0);
-    layer._maxLevel = as<unsigned int>(e_layer->getSubElementText("maxlevel"), 0);
-
-
-     //Read the bounding box
-    osg::ref_ptr<XmlElement> e_bounding_box = e_layer->getSubElement("boundingbox");
-    if (e_bounding_box.valid())
-    {
-        double minX = as<double>(e_bounding_box->getAttr( "minx" ), 0.0);
-        double minY = as<double>(e_bounding_box->getAttr( "miny" ), 0.0);
-        double maxX = as<double>(e_bounding_box->getAttr( "maxx" ), 0.0);
-        double maxY = as<double>(e_bounding_box->getAttr( "maxy" ), 0.0);
-        layer._extent = GeoExtent(SpatialReference::create( "epsg:4326" ), minX, minY, maxX, maxY);
-    }
-
-
-    return true;
-}
-
-
 
 /**
  * A FeatureSource that reads features from a TFS layer
@@ -162,10 +97,10 @@ public:
                 }
             }
         }     
-        _layerValid = TFSReader::read(_options.url().get(), _dbOptions.get(), _layer);
+        _layerValid = TFSReaderWriter::read(_options.url().get(), _dbOptions.get(), _layer);
         if (_layerValid)
         {
-            OE_INFO << LC <<  "Read layer TFS " << _layer._title << " " << _layer._abstract << " " << _layer._firstLevel << " " << _layer._maxLevel << " " << _layer._extent.toString() << std::endl;
+            OE_INFO << LC <<  "Read layer TFS " << _layer.getTitle() << " " << _layer.getAbstract() << " " << _layer.getFirstLevel() << " " << _layer.getMaxLevel() << " " << _layer.getExtent().toString() << std::endl;
         }
     }
 
@@ -177,11 +112,11 @@ public:
         FeatureProfile* result = NULL;
         if (_layerValid)
         {
-            result = new FeatureProfile(_layer._extent);
+            result = new FeatureProfile(_layer.getExtent());
             result->setTiled( true );
-            result->setFirstLevel( _layer._firstLevel);
-            result->setMaxLevel( _layer._maxLevel);
-            result->setProfile( osgEarth::Profile::create(osgEarth::SpatialReference::create("epsg:4326"), _layer._extent.xMin(), _layer._extent.yMin(), _layer._extent.xMax(), _layer._extent.yMax(), 0, 1, 1) );
+            result->setFirstLevel( _layer.getFirstLevel());
+            result->setMaxLevel( _layer.getMaxLevel());
+            result->setProfile( osgEarth::Profile::create(_layer.getSRS(), _layer.getExtent().xMin(), _layer.getExtent().yMin(), _layer.getExtent().xMax(), _layer.getExtent().yMax(), 1, 1) );
         }
         return result;        
     }
@@ -198,7 +133,7 @@ public:
         // fail if we can't find an appropriate OGR driver:
         if ( !ogrDriver )
         {
-            OE_WARN << LC << "Error reading WFS response; cannot grok content-type \"" << mimeType << "\""
+            OE_WARN << LC << "Error reading TFS response; cannot grok content-type \"" << mimeType << "\""
                 << std::endl;
             return false;
         }
@@ -207,7 +142,7 @@ public:
         
         if ( !ds )
         {
-            OE_WARN << LC << "Error reading WFS response" << std::endl;
+            OE_WARN << LC << "Error reading TFS response" << std::endl;
             return false;
         }
 
@@ -215,7 +150,7 @@ public:
         OGRLayerH layer = OGR_DS_GetLayer(ds, 0);
         if ( layer )
         {
-            const SpatialReference* srs = SpatialReference::create("epsg:4326");
+            const SpatialReference* srs = _layer.getSRS();
 
             OGR_L_ResetReading(layer);                                
             OGRFeatureH feat_handle;
@@ -223,10 +158,10 @@ public:
             {
                 if ( feat_handle )
                 {
-                    Feature* f = OgrUtils::createFeature( feat_handle, srs );
-                    if ( f ) 
+                    osg::ref_ptr<Feature> f = OgrUtils::createFeature( feat_handle, srs );
+                    if ( f.valid() && !isBlacklisted(f->getFID()) )
                     {
-                        features.push_back( f );
+                        features.push_back( f.release() );
                     }
                     OGR_F_Destroy( feat_handle );
                 }
@@ -339,6 +274,23 @@ public:
         if ( dataOK )
         {
             OE_DEBUG << LC << "Read " << features.size() << " features" << std::endl;
+        }
+
+        //If we have any filters, process them here before the cursor is created
+        if (!_options.filters().empty())
+        {
+            // preprocess the features using the filter list:
+            if ( features.size() > 0 )
+            {
+                FilterContext cx;
+                cx.profile() = getFeatureProfile();
+
+                for( FeatureFilterList::const_iterator i = _options.filters().begin(); i != _options.filters().end(); ++i )
+                {
+                    FeatureFilter* filter = i->get();
+                    cx = filter->push( features, cx );
+                }
+            }
         }
 
         //result = new FeatureListCursor(features);

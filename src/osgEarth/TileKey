@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2010 Pelican Mapping
+ * Copyright 2008-2012 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -22,11 +22,8 @@
 
 #include <osgEarth/Common>
 #include <osgEarth/Profile>
-#include <osg/Referenced>
-#include <osg/Image>
-#include <osg/Shape>
+#include <osg/ref_ptr>
 #include <osg/Version>
-#include <osgDB/ReaderWriter>
 #include <osgTerrain/TerrainTile>
 #include <string>
 
@@ -62,6 +59,9 @@ namespace osgEarth
             const Profile* profile );
 
         TileKey( const TileKey& rhs );
+
+        /** dtor */
+        virtual ~TileKey() { }
 
         bool operator == (const TileKey& rhs) const {
             return valid() && rhs.valid() && _lod==rhs._lod && _x==rhs._x && _y==rhs._y;
@@ -132,7 +132,8 @@ namespace osgEarth
         /**
          * Gets the level of detail of the tile represented by this key.
          */
-        unsigned int getLevelOfDetail() const;
+        unsigned getLevelOfDetail() const { return _lod; }
+        unsigned getLOD() const { return _lod; }
 
         /**
          * Gets the geospatial extents of the tile represented by this key.

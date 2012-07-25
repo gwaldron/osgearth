@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2008-2010 Pelican Mapping
+* Copyright 2008-2012 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -26,12 +26,13 @@
 #include <osgEarth/XmlUtils>
 #include <osgEarthUtil/EarthManipulator>
 #include <osgEarthUtil/AutoClipPlaneHandler>
-#include <osgEarthUtil/LineOfSight>
+#include <osgEarthUtil/LinearLineOfSight>
+#include <osgEarthUtil/RadialLineOfSight>
 #include <osg/io_utils>
+#include <osg/MatrixTransform>
 
 using namespace osgEarth;
 using namespace osgEarth::Util;
-using namespace osgEarth::Annotation;
 
 
 osg::AnimationPath* createAnimationPath( MapNode* mapNode, const osg::Vec3& center, float radius,double looptime)
@@ -46,7 +47,11 @@ osg::AnimationPath* createAnimationPath( MapNode* mapNode, const osg::Vec3& cent
 
     //Get the center point in geocentric
     osg::Vec3d centerWorld;
-    mapNode->getMap()->mapPointToWorldPoint( center, centerWorld );
+    
+    GeoPoint centerMap(mapNode->getMapSRS(), center, ALTMODE_ABSOLUTE);
+    centerMap.toWorld( centerWorld, mapNode->getTerrain() );
+    
+    //mapNode->getMap()->toWorldPoint( centerMap, centerWorld );
 
     osg::Vec3d up = centerWorld;
     up.normalize();
@@ -61,7 +66,7 @@ osg::AnimationPath* createAnimationPath( MapNode* mapNode, const osg::Vec3& cent
     osg::Vec3d firstPosition;
     osg::Quat firstRotation;
 
-    for (unsigned int i = 0; i < numSamples; i++)
+    for (unsigned int i = 0; i < (unsigned int)numSamples; i++)
     {
         double angle = delta * (double)i;
         osg::Quat quat(angle, up );
@@ -122,26 +127,27 @@ main(int argc, char** argv)
     viewer.setCameraManipulator( manip );
     
     root->addChild( earthNode );    
-    viewer.getCamera()->addCullCallback( new AutoClipPlaneCullCallback(mapNode->getMap()) );
+    viewer.getCamera()->addCullCallback( new AutoClipPlaneCullCallback(mapNode));
 
     //Create a point to point LineOfSightNode.
-    LineOfSightNode* los = new LineOfSightNode( mapNode, osg::Vec3d(-121.665, 46.0878, 1258.00), osg::Vec3d(-121.488, 46.2054, 3620.11));
+    LinearLineOfSightNode* los = new LinearLineOfSightNode( mapNode, osg::Vec3d(-121.665, 46.0878, 1258.00), osg::Vec3d(-121.488, 46.2054, 3620.11));
     root->addChild( los );
     los->getOrCreateStateSet()->setMode(GL_DEPTH_TEST, osg::StateAttribute::OFF);
 
     
     //Create an editor for the point to point line of sight that allows you to drag the beginning and end points around.
     //This is just one way that you could manipulator the LineOfSightNode.
-    LineOfSightEditor* p2peditor = new LineOfSightEditor( los );
+    LinearLineOfSightEditor* p2peditor = new LinearLineOfSightEditor( los );
     root->addChild( p2peditor );
 
     //Create a relative point to point LineOfSightNode.
-    LineOfSightNode* relativeLOS = new LineOfSightNode( mapNode, osg::Vec3d(-121.2, 46.1, 10), osg::Vec3d(-121.488, 46.2054, 10));
-    relativeLOS->setAltitudeMode( ALTITUDE_RELATIVE );
+    LinearLineOfSightNode* relativeLOS = new LinearLineOfSightNode( mapNode, osg::Vec3d(-121.2, 46.1, 10), osg::Vec3d(-121.488, 46.2054, 10));
+    relativeLOS->setStartAltitudeMode( ALTMODE_RELATIVE );
+    relativeLOS->setEndAltitudeMode( ALTMODE_RELATIVE );
     root->addChild( relativeLOS );
     relativeLOS->getOrCreateStateSet()->setMode(GL_DEPTH_TEST, osg::StateAttribute::OFF);
 
-    LineOfSightEditor* relEditor = new LineOfSightEditor( relativeLOS );
+    LinearLineOfSightEditor* relEditor = new LinearLineOfSightEditor( relativeLOS );
     root->addChild( relEditor );
     
     //Create a RadialLineOfSightNode that allows you to do a 360 degree line of sight analysis.
@@ -157,7 +163,7 @@ main(int argc, char** argv)
     //Create a relative RadialLineOfSightNode that allows you to do a 360 degree line of sight analysis.
     RadialLineOfSightNode* radialRelative = new RadialLineOfSightNode( mapNode );
     radialRelative->setCenter( osg::Vec3d(-121.2, 46.054, 10) );
-    radialRelative->setAltitudeMode( ALTITUDE_RELATIVE );
+    radialRelative->setAltitudeMode( ALTMODE_RELATIVE );
     radialRelative->setRadius( 3000 );
     radialRelative->setNumSpokes(60);    
     radialRelative->getOrCreateStateSet()->setMode(GL_DEPTH_TEST, osg::StateAttribute::OFF);
@@ -170,7 +176,7 @@ main(int argc, char** argv)
 
 
     //Load a plane model.  
-    osg::ref_ptr< osg::Node >  plane = osgDB::readNodeFile("cessna.osg.5,5,5.scale");
+    osg::ref_ptr< osg::Node >  plane = osgDB::readNodeFile("../data/cessna.osg.5,5,5.scale");
 
     //Create 2 moving planes
     osg::Node* plane1 = createPlane(plane, mapNode, osg::Vec3d(-121.656, 46.0935, 4133.06), 5000, 20);
@@ -180,7 +186,7 @@ main(int argc, char** argv)
 
     //Create a LineOfSightNode that will use a LineOfSightTether callback to monitor
     //the two plane's positions and recompute the LOS when they move
-    LineOfSightNode* tetheredLOS = new LineOfSightNode( mapNode);
+    LinearLineOfSightNode* tetheredLOS = new LinearLineOfSightNode( mapNode);
     tetheredLOS->getOrCreateStateSet()->setMode(GL_DEPTH_TEST, osg::StateAttribute::OFF);
     root->addChild( tetheredLOS );
     tetheredLOS->setUpdateCallback( new LineOfSightTether( plane1, plane2 ) );
@@ -198,8 +204,7 @@ main(int argc, char** argv)
     tetheredRadial->setBadColor( osg::Vec4(1,0,0,0.3) );
     tetheredRadial->setNumSpokes( 100 );
     root->addChild( tetheredRadial );
-    tetheredRadial->setUpdateCallback( new RadialLineOfSightTether( plane3 ) );      
-      
+    tetheredRadial->setUpdateCallback( new RadialLineOfSightTether( plane3 ) );
 
     // osgEarth benefits from pre-compilation of GL objects in the pager. In newer versions of
     // OSG, this activates OSG's IncrementalCompileOpeartion in order to avoid frame breaks.

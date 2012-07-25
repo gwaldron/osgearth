@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2008-2010 Pelican Mapping
+* Copyright 2008-2012 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -23,7 +23,7 @@
 #include <osgEarth/Config>
 #include <osgEarth/Cache>
 #include <osgEarth/CachePolicy>
-#include <osgEarth/HeightFieldUtils>
+#include <osgEarth/GeoCommon>
 #include <osgEarth/HTTPClient>
 #include <osgEarth/Profile>
 #include <osgEarth/TerrainOptions>
@@ -45,20 +45,23 @@ namespace osgEarth
 
     public:
         MapOptions( const ConfigOptions& options =ConfigOptions() )
-            : ConfigOptions( options ),
-              _cstype      ( CSTYPE_GEOCENTRIC ),
-              _referenceURI(""),
-              _cachePolicy ( CachePolicy()),
-              _elevationInterpolation(INTERP_BILINEAR)
+            : ConfigOptions          ( options ),
+              _cachePolicy           ( CachePolicy::INHERIT ),
+              _cstype                ( CSTYPE_GEOCENTRIC ),
+              _referenceURI          ( "" ),
+              _elevationInterpolation( INTERP_BILINEAR )
         {
             fromConfig(_conf);
         }
 
+        /** dtor */
+        virtual ~MapOptions() { }
+
         /**
          * Human-readable name of the map.
          */
-        optional<std::string> name() { return _name; }
-        const optional<std::string> name() const { return _name; }
+        optional<std::string>& name() { return _name; }
+        const optional<std::string>& name() const { return _name; }
 
         /**
          * The coordinate system type of the map (default is CSTYPE_GEOCENTRIC)

@@ -1,5 +1,6 @@
 #include <osgEarthUtil/ElevationManager>
 #include <osgEarth/Locators>
+#include <osgEarth/HeightFieldUtils>
 #include <osgTerrain/TerrainTile>
 #include <osgTerrain/GeometryTechnique>
 #include <osgUtil/IntersectionVisitor>
@@ -217,7 +218,7 @@ ElevationManager::getElevationImpl(double x, double y,
         _tileCacheFIFO.push_back( tileId );
 
         // prune the cache. this is a terrible pruning method.
-        if ( _tileCache.size() > _maxCacheSize )
+        if ( (int)_tileCache.size() > _maxCacheSize )
         {
             osgTerrain::TileID id = _tileCacheFIFO.front();
             _tileCacheFIFO.pop_front();

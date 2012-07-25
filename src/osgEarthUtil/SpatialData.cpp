@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2010 Pelican Mapping
+ * Copyright 2008-2012 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -249,6 +249,7 @@ void
 GeoCell::generateBoundaryGeometry()
 {
     osg::Geometry* g = new osg::Geometry();
+    g->setUseVertexBufferObjects(true);
 
     osg::Vec3Array* v = new osg::Vec3Array(10);
     for( unsigned i=0; i<10; ++i )

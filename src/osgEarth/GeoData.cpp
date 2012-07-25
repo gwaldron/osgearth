@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2010 Pelican Mapping
+ * Copyright 2008-2012 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -18,9 +18,13 @@
  */
 
 #include <osgEarth/GeoData>
+#include <osgEarth/GeoMath>
 #include <osgEarth/ImageUtils>
+#include <osgEarth/HeightFieldUtils>
 #include <osgEarth/Registry>
 #include <osgEarth/Cube>
+#include <osgEarth/VerticalDatum>
+#include <osgEarth/Terrain>
 
 #include <osg/Notify>
 #include <osg/Timer>
@@ -32,6 +36,7 @@
 
 #include <sstream>
 #include <iomanip>
+#include <cmath>
 
 #define LC "[GeoData] "
 
@@ -40,10 +45,27 @@ using namespace osgEarth;
 
 namespace
 {
-    void s_normalizeLongitude( double& x )
+    double s_cint( double x )
     {
-        while( x < -180. ) x += 360.;
-        while( x >  180. ) x -= 360.;
+        double dummy;
+        if (modf(x,&dummy) >= .5)
+            return x >= 0.0 ? ceil(x) : floor(x);
+        else
+            return x < 0.0 ? ceil(x) : floor(x);
+    }
+
+    double s_roundNplaces( double x, int n )
+    {
+        double off = pow(10.0, n);
+        return s_cint(x*off)/off;
+    }
+
+    double s_normalizeLongitude( double x, double minLon = -180.0, double maxLon = 180.0 )
+    {
+        double result = x;
+        while( result < minLon ) result += 360.;
+        while( result >  maxLon ) result -= 360.;
+        return result;
     }
 
     bool s_crossesAntimeridian( double x0, double x1 )
@@ -56,148 +78,448 @@ namespace
     {
         return west < east ? east-west : fmod(east,360.)-west;
     }
+
+    /**
+     * Given a longitude value determine what longitude frame it is in.
+     * The base longitude frame is -180 to 180.  As values cross the antimeridian the frame is offset by 360 degrees.
+     */
+    void s_getLongitudeFrame( double longitude, double &minLongitude, double &maxLongitude)
+    {
+        minLongitude = -180.0;
+        maxLongitude = 180.0;
+
+        while ( longitude < minLongitude || longitude > maxLongitude)
+        {
+            if (longitude < minLongitude)
+            {
+                minLongitude -= 360.0;
+                maxLongitude -= 360.0;
+            }
+            else if (longitude > maxLongitude)
+            {
+                minLongitude += 360.0;
+                maxLongitude += 360.0;
+            }
+        }
+    }
 }
 
+//------------------------------------------------------------------------
 
-Bounds::Bounds() :
-osg::BoundingBoxImpl<osg::Vec3d>( DBL_MAX, DBL_MAX, DBL_MAX, -DBL_MAX, -DBL_MAX, -DBL_MAX )
+#undef  LC
+#define LC "[GeoPoint] "
+
+GeoPoint GeoPoint::INVALID;
+
+
+GeoPoint::GeoPoint(const SpatialReference* srs,
+                   double x,
+                   double y ) :
+_srs    ( srs ),
+_p      ( x, y, 0.0 ),
+_altMode( ALTMODE_RELATIVE )
 {
     //nop
 }
 
-Bounds::Bounds(double xmin, double ymin, double xmax, double ymax ) :
-osg::BoundingBoxImpl<osg::Vec3d>( xmin, ymin, -DBL_MAX, xmax, ymax, DBL_MAX )
+GeoPoint::GeoPoint(const SpatialReference* srs,
+                   double x,
+                   double y,
+                   double z,
+                   const AltitudeMode& altMode) :
+_srs    ( srs ),
+_p      ( x, y, z ),
+_altMode( altMode )
 {
     //nop
 }
 
-bool
-Bounds::isValid() const
+GeoPoint::GeoPoint(const SpatialReference* srs,
+                   const osg::Vec3d&       xyz,
+                   const AltitudeMode&     altMode) :
+_srs(srs),
+_p  (xyz),
+_altMode( altMode )
 {
-    return xMin() <= xMax() && yMin() <= yMax();
+    //nop
+}
+
+GeoPoint::GeoPoint(const SpatialReference* srs,
+                   const GeoPoint&         rhs)
+{
+     rhs.transform(srs, *this);
+}
+
+GeoPoint::GeoPoint(const GeoPoint& rhs) :
+_srs    ( rhs._srs.get() ),
+_p      ( rhs._p ),
+_altMode( rhs._altMode )
+{
+    //nop
+}
+
+GeoPoint::GeoPoint() :
+_srs    ( 0L ),
+_altMode( ALTMODE_ABSOLUTE )
+{
+    //nop
+}
+
+GeoPoint::GeoPoint(const Config& conf, const SpatialReference* srs) :
+_srs    ( srs ),
+_altMode( ALTMODE_ABSOLUTE )
+{
+    conf.getIfSet( "x", _p.x() );
+    conf.getIfSet( "y", _p.y() );
+    conf.getIfSet( "z", _p.z() );
+    conf.getIfSet( "alt", _p.z() );
+    conf.getIfSet( "hat", _p.z() ); // height above terrain (relative)
+
+    if ( !_srs.valid() )
+        _srs = SpatialReference::create( conf.value("srs"), conf.value("vdatum") );
+
+    if ( conf.hasValue("lat") && (!_srs.valid() || _srs->isGeographic()) )
+    {
+        conf.getIfSet( "lat", _p.y() );
+        if ( !_srs.valid() ) 
+            _srs = SpatialReference::create("wgs84");
+    }
+    if ( conf.hasValue("long") && (!_srs.valid() || _srs->isGeographic()) )
+    {
+        conf.getIfSet("long", _p.x());
+        if ( !_srs.valid() ) 
+            _srs = SpatialReference::create("wgs84");
+    }
+
+    if ( conf.hasValue("mode") )
+    {
+        conf.getIfSet( "mode", "relative",            _altMode, ALTMODE_RELATIVE );
+        conf.getIfSet( "mode", "relative_to_terrain", _altMode, ALTMODE_RELATIVE );
+        conf.getIfSet( "mode", "absolute",            _altMode, ALTMODE_ABSOLUTE );
+    }
+    else
+    {
+        if ( conf.hasValue("alt") || conf.hasValue("z") )
+            _altMode = ALTMODE_ABSOLUTE;
+        else
+            _altMode = ALTMODE_RELATIVE;
+    }
+}
+
+Config
+GeoPoint::getConfig() const
+{
+    Config conf;
+    if ( _srs.valid() && _srs->isGeographic() )
+    {
+        conf.set( "lat", _p.y() );
+        conf.set( "long", _p.x() );
+        if ( _p.z() != 0.0 )
+        {
+            if ( _altMode == ALTMODE_ABSOLUTE )
+                conf.set( "alt", _p.z() );
+            else
+                conf.set( "hat", _p.z() );
+        }
+    }
+    else
+    {
+        conf.set( "x", _p.x() );
+        conf.set( "y", _p.y() );
+        if ( _altMode == ALTMODE_ABSOLUTE )
+            conf.set( "z", _p.z() );
+        else
+            conf.set( "hat", _p.z() );
+    }
+
+    if ( _srs.valid() )
+    {
+        conf.set("srs", _srs->getHorizInitString());
+        if ( _srs->getVerticalDatum() )
+            conf.set("vdatum", _srs->getVertInitString());
+    }
+
+    return conf;
+}
+
+void
+GeoPoint::set(const SpatialReference* srs,
+              const osg::Vec3d&       xyz,
+              const AltitudeMode&     altMode)
+{
+    _srs = srs;
+    _p   = xyz;
+    _altMode = altMode;
+}
+
+void
+GeoPoint::set(const SpatialReference* srs,
+              double                  x,
+              double                  y,
+              double                  z,
+              const AltitudeMode&     altMode)
+{
+    _srs = srs;
+    _p.set(x, y, z);
+    _altMode = altMode;
 }
 
 bool 
-Bounds::contains(double x, double y ) const
+GeoPoint::operator == (const GeoPoint& rhs) const
 {
-    return 
-        isValid() &&
-        x >= xMin() && x <= xMax() && y >= yMin() && y <= yMax();
+    return
+        isValid() == rhs.isValid() &&
+        _p        == rhs._p        &&
+        _altMode  == rhs._altMode  &&
+        ((_altMode == ALTMODE_ABSOLUTE && _srs->isEquivalentTo(rhs._srs.get())) ||
+         (_altMode == ALTMODE_RELATIVE && _srs->isHorizEquivalentTo(rhs._srs.get())));
+}
+
+GeoPoint
+GeoPoint::transform(const SpatialReference* outSRS) const
+{
+    if ( isValid() && outSRS )
+    {
+        osg::Vec3d out;
+        if ( _altMode == ALTMODE_ABSOLUTE )
+        {
+            if ( _srs->transform(_p, outSRS, out) )
+                return GeoPoint(outSRS, out, ALTMODE_ABSOLUTE);
+        }
+        else // if ( _altMode == ALTMODE_RELATIVE )
+        {
+            if ( _srs->transform2D(_p.x(), _p.y(), outSRS, out.x(), out.y()) )
+            {
+                out.z() = _p.z();
+                return GeoPoint(outSRS, out, ALTMODE_RELATIVE);
+            }
+        }
+    }
+    return GeoPoint::INVALID;
 }
 
 bool
-Bounds::contains(const Bounds& rhs) const
+GeoPoint::transformZ(const AltitudeMode& altMode, const TerrainHeightProvider* terrain ) 
+{
+    double z;
+    if ( transformZ(altMode, terrain, z) )
+    {
+        _p.z() = z;
+        _altMode = altMode;
+        return true;
+    }
+    return false;
+}
+
+bool
+GeoPoint::transformZ(const AltitudeMode& altMode, const TerrainHeightProvider* terrain, double& out_z ) const
+{
+    if ( !isValid() ) return false;
+    
+    // already in the target mode? just return z.
+    if ( _altMode == altMode ) 
+    {
+        out_z = z();
+        return true;
+    }
+
+    if ( !terrain ) return false;
+
+    // convert to geographic if necessary and sample the MSL height under the point.
+    double out_hamsl;
+    if ( !terrain->getHeight(_srs.get(), x(), y(), &out_hamsl) )
+    {
+        return false;
+    }
+
+    // convert the Z value as appropriate.
+    if ( altMode == ALTMODE_RELATIVE )
+    {
+        out_z = z() - out_hamsl;
+    }
+    else // if ( altMode == ALTMODE_ABSOLUTE )
+    {
+        out_z = z() + out_hamsl;
+    }
+    return true;
+}
+
+bool
+GeoPoint::makeGeographic()
+{
+    if ( !isValid() ) return false;
+    if ( !_srs->isGeographic() )
+        return _srs->transform( _p, _srs->getGeographicSRS(), _p);
+    return true;
+}
+
+bool
+GeoPoint::transform(const SpatialReference* outSRS, GeoPoint& output) const
+{
+    output = transform(outSRS);
+    return output.isValid();
+}
+
+bool
+GeoPoint::toWorld( osg::Vec3d& out_world ) const
+{
+    if ( !isValid() ) return false;
+    if ( _altMode != ALTMODE_ABSOLUTE )
+    {
+        OE_WARN << LC << "ILLEGAL: called GeoPoint::toWorld with AltitudeMode = RELATIVE_TO_TERRAIN" << std::endl;
+        return false;
+    }
+    return _srs->transformToWorld( _p, out_world );
+}
+
+bool
+GeoPoint::toWorld( osg::Vec3d& out_world, const TerrainHeightProvider* terrain ) const
+{
+    if ( !isValid() ) return false;
+    if ( _altMode == ALTMODE_ABSOLUTE )
+    {
+        return _srs->transformToWorld( _p, out_world );
+    }
+    else if ( terrain != 0L )
+    {
+        GeoPoint absPoint = *this;
+        absPoint.makeAbsolute( terrain );
+        return absPoint.toWorld( out_world );
+    }
+    else
+    {
+        OE_WARN << LC << "ILLEGAL: called GeoPoint::toWorld with AltitudeMode = RELATIVE_TO_TERRAIN" << std::endl;
+        return false;
+    }
+}
+
+
+bool
+GeoPoint::fromWorld(const SpatialReference* srs, const osg::Vec3d& world)
+{
+    if ( srs )
+    {
+        osg::Vec3d p;
+        if ( srs->transformFromWorld(world, p) )
+        {
+            set( srs, p, ALTMODE_ABSOLUTE );
+            return true;
+        }
+    }
+    return false;
+}
+
+bool
+GeoPoint::createLocalToWorld( osg::Matrixd& out_l2w ) const
+{
+    if ( !isValid() ) return false;
+    if ( _altMode != ALTMODE_ABSOLUTE )
+    {
+        OE_WARN << LC << "ILLEGAL: called GeoPoint::createLocal2World with AltitudeMode = RELATIVE_TO_TERRAIN" << std::endl;
+        return false;
+    }
+    return _srs->createLocalToWorld( _p, out_l2w );
+}
+
+bool
+GeoPoint::createWorldToLocal( osg::Matrixd& out_w2l ) const
+{
+    if ( !isValid() ) return false;
+    if ( _altMode != ALTMODE_ABSOLUTE )
+    {
+        OE_WARN << LC << "ILLEGAL: called GeoPoint::createLocal2World with AltitudeMode = RELATIVE_TO_TERRAIN" << std::endl;
+        return false;
+    }
+    return _srs->createWorldToLocal( _p, out_w2l );
+}
+
+//------------------------------------------------------------------------
+
+#undef  LC
+#define LC "[GeoCircle] "
+
+GeoCircle GeoCircle::INVALID = GeoCircle();
+
+
+GeoCircle::GeoCircle() :
+_center( GeoPoint::INVALID ),
+_radius( -1.0 )
+{
+    //nop
+}
+
+
+GeoCircle::GeoCircle(const GeoCircle& rhs) :
+_center( rhs._center ),
+_radius( rhs._radius )
+{
+    //nop
+}
+
+
+GeoCircle::GeoCircle(const GeoPoint& center,
+                     double          radius ) :
+_center( center ),
+_radius( radius )
+{
+    //nop
+}
+
+
+bool
+GeoCircle::operator == ( const GeoCircle& rhs ) const
 {
     return 
-        isValid() && rhs.isValid() && 
-        xMin() <= rhs.xMin() && xMax() >= rhs.xMax() &&
-        yMin() <= rhs.yMin() && yMax() >= rhs.yMax();
+        _center == rhs._center && 
+        osg::equivalent(_radius, rhs._radius);
 }
 
-void
-Bounds::expandBy( double x, double y )
+
+GeoCircle
+GeoCircle::transform( const SpatialReference* srs ) const
 {
-    osg::BoundingBoxImpl<osg::Vec3d>::expandBy( x, y, 0 );
+    return GeoCircle(
+        getCenter().transform( srs ),
+        getRadius() );
 }
 
-void
-Bounds::expandBy( double x, double y, double z )
+
+bool
+GeoCircle::transform( const SpatialReference* srs, GeoCircle& output ) const
 {
-    osg::BoundingBoxImpl<osg::Vec3d>::expandBy( x, y, z );
+    output._radius = _radius;
+    return getCenter().transform( srs, output._center );
 }
 
-void
-Bounds::expandBy( const Bounds& rhs )
-{
-    osg::BoundingBoxImpl<osg::Vec3d>::expandBy( rhs );
-}
 
-Bounds 
-Bounds::unionWith(const Bounds& rhs) const
+bool 
+GeoCircle::intersects( const GeoCircle& rhs ) const
 {
-    if ( valid() && !rhs.valid() ) return *this;
-    if ( !valid() && rhs.valid() ) return rhs;
+    if ( !isValid() || !rhs.isValid() )
+        return false;
 
-    Bounds u;
-    if ( intersects(rhs) ) {
-        u.xMin() = xMin() >= rhs.xMin() && xMin() <= rhs.xMax() ? xMin() : rhs.xMin();
-        u.xMax() = xMax() >= rhs.xMin() && xMax() <= rhs.xMax() ? xMax() : rhs.xMax();
-        u.yMin() = yMin() >= rhs.yMin() && yMin() <= rhs.yMax() ? yMin() : rhs.yMin();
-        u.yMax() = yMax() >= rhs.yMin() && yMax() <= rhs.yMax() ? yMax() : rhs.yMax();
-        u.zMin() = zMin() >= rhs.zMin() && zMin() <= rhs.zMax() ? zMin() : rhs.zMin();
-        u.zMax() = zMax() >= rhs.zMin() && zMax() <= rhs.zMax() ? zMax() : rhs.zMax();
+    if ( !getSRS()->isHorizEquivalentTo( rhs.getSRS() ) )
+    {
+        return intersects( rhs.transform(getSRS()) );
     }
-    return u;
+    else
+    {
+        if ( getSRS()->isProjected() )
+        {
+            osg::Vec2d vec = osg::Vec2d(_center.x(), _center.y()) - osg::Vec2d(rhs.getCenter().x(), rhs.getCenter().y());
+            return vec.length2() <= (_radius + rhs.getRadius())*(_radius + rhs.getRadius());
+        }
+        else // if ( isGeographic() )
+        {
+            osg::Vec3d p0( _center.x(), _center.y(), 0.0 );
+            osg::Vec3d p1( rhs.getCenter().x(), rhs.getCenter().y(), 0.0 );
+            return GeoMath::distance( p0, p1, getSRS() ) <= (_radius + rhs.getRadius());
+        }
+    }
 }
 
-Bounds
-Bounds::intersectionWith(const Bounds& rhs) const 
-{
-    if ( valid() && !rhs.valid() ) return *this;
-    if ( !valid() && rhs.valid() ) return rhs;
 
-    if ( this->contains(rhs) ) return rhs;
-    if ( rhs.contains(*this) ) return *this;
-
-    if ( !intersects(rhs) ) return Bounds();
-
-    double xmin, xmax, ymin, ymax;
-
-    xmin = ( xMin() > rhs.xMin() && xMin() < rhs.xMax() ) ? xMin() : rhs.xMin();
-    xmax = ( xMax() > rhs.xMin() && xMax() < rhs.xMax() ) ? xMax() : rhs.xMax();
-    ymin = ( yMin() > rhs.yMin() && yMin() < rhs.yMax() ) ? yMin() : rhs.yMin();
-    ymax = ( yMax() > rhs.yMin() && yMax() < rhs.yMax() ) ? yMax() : rhs.yMax();
-
-    return Bounds(xmin, ymin, xmax, ymax);
-}
-
-double
-Bounds::width() const {
-    return xMax()-xMin();
-}
-
-double
-Bounds::height() const {
-    return yMax()-yMin();
-}
-
-double
-Bounds::depth() const {
-    return zMax()-zMin();
-}
-
-osg::Vec2d
-Bounds::center2d() const {
-    osg::Vec3d c = center();
-    return osg::Vec2d( c.x(), c.y() );
-}
-
-double
-Bounds::radius2d() const {
-    return (center2d() - osg::Vec2d(xMin(),yMin())).length();
-}
-
-double
-Bounds::area2d() const {
-    return width() * height();
-}
-
-std::string
-Bounds::toString() const {
-    std::stringstream buf;
-    buf << "(" << xMin() << "," << yMin() << " => " << xMax() << "," << yMax() << ")";
-    std::string result;
-    result = buf.str();
-    return result;
-}
-
-void
-Bounds::transform( const SpatialReference* from, const SpatialReference* to )
-{
-    from->transformExtent( to, _min.x(), _min.y(), _max.x(), _max.y() );
-}
-
-/*************************************************************/
+//------------------------------------------------------------------------
 
 #undef  LC
 #define LC "[GeoExtent] "
@@ -231,12 +553,8 @@ _west   ( west ),
 _east   ( east ),
 _south  ( south ),
 _north  ( north )
-{
-    if ( isValid() && srs->isGeographic() )
-    {
-        s_normalizeLongitude( _west );
-        s_normalizeLongitude( _east );
-    }
+{    
+    recomputeCircle();
 }
 
 
@@ -246,20 +564,17 @@ _west   ( bounds.xMin() ),
 _east   ( bounds.xMax() ),
 _south  ( bounds.yMin() ),
 _north  ( bounds.yMax() )
-{
-    if ( isValid() && srs->isGeographic() )
-    {
-        s_normalizeLongitude( _west );
-        s_normalizeLongitude( _east );
-    }
+{    
+    recomputeCircle();
 }
 
 GeoExtent::GeoExtent( const GeoExtent& rhs ) :
-_srs  ( rhs._srs ),
-_east ( rhs._east ),
-_west ( rhs._west ),
-_south( rhs._south ),
-_north( rhs._north )
+_srs   ( rhs._srs ),
+_east  ( rhs._east ),
+_west  ( rhs._west ),
+_south ( rhs._south ),
+_north ( rhs._north ),
+_circle( rhs._circle )
 {
     //NOP
 }
@@ -300,7 +615,7 @@ GeoExtent::isValid() const
 
 double
 GeoExtent::width() const
-{
+{    
     return crossesAntimeridian() ?
         (180.0-_west) + (_east+180.0) :
         _east - _west;
@@ -319,8 +634,9 @@ GeoExtent::getCentroid( double& out_x, double& out_y ) const
 
     out_y = south() + 0.5*height();
     out_x = west() + 0.5*width();
+
     if ( _srs->isGeographic() )
-        s_normalizeLongitude( out_x );
+        out_x = normalizeLongitude( out_x );        
     return true;
 }
 
@@ -337,14 +653,16 @@ GeoExtent::splitAcrossAntimeridian( GeoExtent& out_west, GeoExtent& out_east ) c
 
     if ( crossesAntimeridian() )
     {
+        double minLon, maxLon;
+        s_getLongitudeFrame( west(), minLon, maxLon );
         out_west._srs   = _srs.get();
         out_west._west  = west();
         out_west._south = south();
-        out_west._east  = 180.0;
+        out_west._east  = maxLon;
         out_west._north = north();
 
         out_east._srs   = _srs.get();
-        out_east._west  = -180.0;
+        out_east._west  = minLon;
         out_east._south = south();
         out_east._east  = east();
         out_east._north = north();
@@ -375,7 +693,7 @@ GeoExtent::transform( const SpatialReference* to_srs ) const
         double xmin = west(), ymin = south();
         double xmax = east(), ymax = north();
         
-        if ( _srs->transformExtent( to_srs, xmin, ymin, xmax, ymax ) )
+        if ( _srs->transformExtentToMBR( to_srs, xmin, ymin, xmax, ymax ) )
         {
             return GeoExtent( to_srs, xmin, ymin, xmax, ymax );
         }
@@ -406,9 +724,13 @@ GeoExtent::contains(double x, double y, const SpatialReference* srs) const
         return false;
 
     double local_x = x, local_y = y;
+
+    osg::Vec3d xy( x, y, 0 );
+    osg::Vec3d localxy = xy;
+
     if (srs &&
         !srs->isEquivalentTo( _srs.get() ) &&
-        !srs->transform2D(x, y, _srs.get(), local_x, local_y) )
+        !srs->transform(xy, _srs.get(), localxy) )
     {
         return false;
     }
@@ -416,7 +738,7 @@ GeoExtent::contains(double x, double y, const SpatialReference* srs) const
     {
         // normalize a geographic longitude to -180:+180
         if ( _srs->isGeographic() )
-            s_normalizeLongitude(x);
+            local_x = normalizeLongitude( local_x );            
 
         //Account for small rounding errors along the edges of the extent
         if (osg::equivalent(_west, local_x)) local_x = _west;
@@ -443,6 +765,12 @@ GeoExtent::contains(double x, double y, const SpatialReference* srs) const
 }
 
 bool
+GeoExtent::contains( const GeoPoint& rhs ) const
+{
+    return contains( rhs.x(), rhs.y(), rhs.getSRS() );
+}
+
+bool
 GeoExtent::contains( const Bounds& rhs ) const
 {
     return
@@ -465,9 +793,16 @@ GeoExtent::contains( const GeoExtent& rhs ) const
 }
 
 bool
-GeoExtent::intersects( const GeoExtent& rhs ) const
+GeoExtent::intersects( const GeoExtent& rhs, bool checkSRS ) const
 {
-    if ( !isValid() ) return false;
+    if ( !isValid() || !rhs.isValid() )
+        return false;
+
+    if ( checkSRS && !_srs->isHorizEquivalentTo(rhs.getSRS()) )
+    {
+        GeoExtent rhsExt = rhs.transform(getSRS());
+        return this->intersects( rhsExt );
+    }
 
     if ( rhs.crossesAntimeridian() )
     {
@@ -493,6 +828,43 @@ GeoExtent::intersects( const GeoExtent& rhs ) const
     }
 }
 
+
+void
+GeoExtent::recomputeCircle()
+{
+    if ( !isValid() )
+    {
+        _circle.setRadius( -1.0 );
+    }
+    else 
+    {
+        double x, y;
+        getCentroid( x, y );
+
+        if ( getSRS()->isProjected() )
+        {
+            _circle.setRadius( (osg::Vec2d(x,y)-osg::Vec2d(_west,_south)).length() );
+        }
+        else // isGeographic
+        {
+            // find the longest east-west edge.
+            double cx = west();
+            double cy =
+                north() > 0.0 && south() > 0.0 ? south() :
+                north() < 0.0 && south() < 0.0 ? north() :
+                north() < fabs(south()) ? north() : south();
+
+            osg::Vec3d p0(x, y, 0.0);
+            osg::Vec3d p1(cx, cy, 0.0);
+
+            _circle.setRadius( GeoMath::distance(p0, p1, getSRS()) );
+        }
+
+        _circle.setCenter( GeoPoint(getSRS(), x, y, 0.0, ALTMODE_ABSOLUTE) );
+    }
+}
+
+
 void
 GeoExtent::expandToInclude( double x, double y )
 {
@@ -505,7 +877,7 @@ GeoExtent::expandToInclude( double x, double y )
     }
     else if ( getSRS() && getSRS()->isGeographic() )
     {
-        s_normalizeLongitude(x);
+        x = normalizeLongitude( x );
 
         // calculate possible expansion distances. The lesser of the two
         // will be the direction in which we expand.
@@ -536,8 +908,8 @@ GeoExtent::expandToInclude( double x, double y )
                 if ( dw < maxWidth )
                 {
                     // expand westward
-                    _west -= dw;
-                    s_normalizeLongitude( _west );
+                    _west -= dw;                    
+                    _west = normalizeLongitude( _west );
                 }
                 else
                 {
@@ -552,7 +924,7 @@ GeoExtent::expandToInclude( double x, double y )
                 {
                     // expand eastward
                     _east += de;
-                    s_normalizeLongitude(_east);
+                    _east = normalizeLongitude(_east);
                 }
                 else
                 {
@@ -572,6 +944,8 @@ GeoExtent::expandToInclude( double x, double y )
 
     _south = std::min(_south, y);
     _north = std::max(_north, y);
+
+    recomputeCircle();
 }
 
 void
@@ -581,21 +955,6 @@ GeoExtent::expandToInclude(const Bounds& rhs)
     expandToInclude( rhs.xMin(), rhs.yMin() );
     expandToInclude( rhs.xMax(), rhs.yMax() );
 }
-
-#if 0
-
-GeoExtent
-GeoExtent::intersectionSameSRS( const Bounds& rhs ) const
-{
-    Bounds b(
-        osg::maximum( xMin(), rhs.xMin() ),
-        osg::maximum( yMin(), rhs.yMin() ),
-        osg::minimum( xMax(), rhs.xMax() ),
-        osg::minimum( yMax(), rhs.yMax() ) );
-
-    return b.width() > 0 && b.height() > 0 ? GeoExtent( getSRS(), b ) : GeoExtent::INVALID;
-}
-#endif
 
 bool
 GeoExtent::expandToInclude( const GeoExtent& rhs )
@@ -651,8 +1010,8 @@ GeoExtent::intersectionSameSRS( const GeoExtent& rhs ) const
     }
 
     // normalize our new longitudes
-    s_normalizeLongitude( result._west );
-    s_normalizeLongitude( result._east );
+    result._west = normalizeLongitude( result._west );
+    result._east = normalizeLongitude( result._east );
 
     // latitude is easy, just clamp it
     result._south = std::max( south(), rhs.south() );
@@ -684,6 +1043,8 @@ GeoExtent::scale(double x_scale, double y_scale)
     _east  += halfXDiff;
     _south -= halfYDiff;
     _north += halfYDiff;
+
+    recomputeCircle();
 }
 
 void
@@ -696,12 +1057,36 @@ GeoExtent::expand( double x, double y )
     _east  += .5*x;
     _south -= .5*y;
     _north += .5*y;
+
+    recomputeCircle();
 }
 
 double
 GeoExtent::area() const
 {
     return isValid() ? width() * height() : 0.0;
+}
+
+void
+GeoExtent::normalize()
+{
+    if (isValid() && _srs->isGeographic())
+    {
+        _west = s_normalizeLongitude( _west );
+        _east = s_normalizeLongitude( _east );
+    }
+}
+
+double
+GeoExtent::normalizeLongitude( double longitude ) const
+{
+    if (isValid() && _srs->isGeographic())
+    {
+        double minLon, maxLon;
+        s_getLongitudeFrame( _west, minLon, maxLon );        
+        return s_normalizeLongitude( longitude, minLon, maxLon );
+    }
+    return longitude;
 }
 
 std::string
@@ -711,9 +1096,16 @@ GeoExtent::toString() const
     if ( !isValid() )
         buf << "INVALID";
     else
-        buf << "SW=" << west() << "," << south() << " NE=" << east() << "," << north();
+        buf << std::setprecision(12) << "SW=" << west() << "," << south() << " NE=" << east() << "," << north();
 
-    buf << ", SRS=" << _srs->getName();
+    if (_srs.valid() == true)
+    {
+        buf << ", SRS=" << _srs->getName();
+    }
+    else
+    {
+        buf << ", SRS=NULL";
+    }
 
     std::string bufStr;
     bufStr = buf.str();
@@ -984,7 +1376,6 @@ reprojectImage(osg::Image* srcImage, const std::string srcWKT, double srcMinX, d
                const std::string destWKT, double destMinX, double destMinY, double destMaxX, double destMaxY,
                int width = 0, int height = 0)
 {
-    //OE_NOTICE << "Reprojecting..." << std::endl;
     GDAL_SCOPED_LOCK;
 	osg::Timer_t start = osg::Timer::instance()->tick();
 
@@ -1046,11 +1437,14 @@ manualReproject(const osg::Image* image, const GeoExtent& src_extent, const GeoE
     const bool isSrcContiguous = src_extent.getSRS()->isContiguous();
 
     osg::Image *result = new osg::Image();
-    result->allocateImage(width, height, 1, GL_RGBA, GL_UNSIGNED_BYTE);
-    //Initialize the image to be completely transparent
+    //result->allocateImage(width, height, 1, GL_RGBA, GL_UNSIGNED_BYTE);
+    result->allocateImage(width, height, 1, image->getPixelFormat(), GL_UNSIGNED_BYTE);
+
+    //Initialize the image to be completely transparent/black
     memset(result->data(), 0, result->getImageSizeInBytes());
 
-    ImageUtils::PixelReader ra(result);
+    //ImageUtils::PixelReader ra(result);
+    ImageUtils::PixelWriter writer(result);
     const double dx = dest_extent.width() / (double)width;
     const double dy = dest_extent.height() / (double)height;
 
@@ -1069,7 +1463,7 @@ manualReproject(const osg::Image* image, const GeoExtent& src_extent, const GeoE
         src_extent.getSRS(),
         dest_extent.xMin() + .5 * dx, dest_extent.yMin() + .5 * dy,
         dest_extent.xMax() - .5 * dx, dest_extent.yMax() - .5 * dy,
-        srcPointsX, srcPointsY, width, height, 0, true);
+        srcPointsX, srcPointsY, width, height);
 
     // Next, go through the source-SRS sample grid, read the color at each point from the source image,
     // and write it to the corresponding pixel in the destination image.
@@ -1189,13 +1583,17 @@ manualReproject(const osg::Image* image, const GeoExtent& src_extent, const GeoE
                     }
                 }
             }
-               
+
+            writer(color, c, r);
+
+#if 0
             unsigned char* rgba = const_cast<unsigned char*>(ra.data(c,r,0));
 
             rgba[0] = (unsigned char)(color.r() * 255);
             rgba[1] = (unsigned char)(color.g() * 255);
             rgba[2] = (unsigned char)(color.b() * 255);
             rgba[3] = (unsigned char)(color.a() * 255);
+#endif
 
             pixel++;            
         }
@@ -1223,9 +1621,12 @@ GeoImage::reproject(const SpatialReference* to_srs, const GeoExtent* to_extent, 
 
     osg::Image* resultImage = 0L;
 
-    if ( getSRS()->isUserDefined() || to_srs->isUserDefined() ||
-        ( getSRS()->isMercator() && to_srs->isGeographic() ) ||
-        ( getSRS()->isGeographic() && to_srs->isMercator() ) )
+    if ( getSRS()->isUserDefined()      || 
+        to_srs->isUserDefined()         ||
+        getSRS()->isSphericalMercator() ||
+        to_srs->isSphericalMercator() )
+        //( getSRS()->isSphericalMercator() && to_srs->isGeographic() ) ||
+        //( getSRS()->isGeographic() && to_srs->isSphericalMercator() ) )
     {
         // if either of the SRS is a custom projection, we have to do a manual reprojection since
         // GDAL will not recognize the SRS.
@@ -1257,22 +1658,19 @@ GeoImage::takeImage()
 #define LC "[GeoHeightField] "
 
 // static
-GeoHeightField GeoHeightField::INVALID( 0L, GeoExtent::INVALID, 0L );
+GeoHeightField GeoHeightField::INVALID( 0L, GeoExtent::INVALID );
 
 GeoHeightField::GeoHeightField() :
 _heightField( 0L ),
-_extent( GeoExtent::INVALID ),
-_vsrs( 0L )
+_extent     ( GeoExtent::INVALID )
 {
     //nop
 }
 
 GeoHeightField::GeoHeightField(osg::HeightField* heightField,
-                               const GeoExtent& extent,
-                               const VerticalSpatialReference* vsrs) :
+                               const GeoExtent&  extent) :
 _heightField( heightField ),
-_extent     ( extent ),
-_vsrs       ( vsrs )
+_extent     ( extent )
 {
 
     if ( _heightField.valid() && extent.isInvalid() )
@@ -1299,58 +1697,60 @@ GeoHeightField::valid() const
 }
 
 bool
-GeoHeightField::getElevation(const osgEarth::SpatialReference* inputSRS, 
-                             double x, double y, 
-                             ElevationInterpolation interp,
-                             const VerticalSpatialReference* outputVSRS,
-                             float &elevation) const
+GeoHeightField::getElevation(const SpatialReference* inputSRS, 
+                             double                  x, 
+                             double                  y, 
+                             ElevationInterpolation  interp,
+                             const SpatialReference* outputSRS,
+                             float&                  out_elevation) const
 {
-    double local_x = x, local_y = y;
+    osg::Vec3d xy(x, y, 0);
+    osg::Vec3d local = xy;
+    const SpatialReference* extentSRS = _extent.getSRS();
 
-    if ( inputSRS && !inputSRS->transform2D(x, y, _extent.getSRS(), local_x, local_y) )
+
+    // first xform the input point into our local SRS:
+    if ( inputSRS && !inputSRS->transform(xy, extentSRS, local) )
         return false;
 
-    if ( _extent.contains(local_x, local_y) )
+    // check that the point falls within the heightfield bounds:
+    if ( _extent.contains(local.x(), local.y()) )
     {
         double xInterval = _extent.width()  / (double)(_heightField->getNumColumns()-1);
         double yInterval = _extent.height() / (double)(_heightField->getNumRows()-1);
 
-        elevation = HeightFieldUtils::getHeightAtLocation(
+        // sample the heightfield at the input coordinates:
+        // (note: since it's sampling the HF, it will return an MSL height if applicable)
+        out_elevation = HeightFieldUtils::getHeightAtLocation(
             _heightField.get(), 
-            local_x, local_y, 
+            local.x(), local.y(),
             _extent.xMin(), _extent.yMin(), 
             xInterval, yInterval, 
             interp);
 
-        if ( elevation != NO_DATA_VALUE )
+        // if the vertical datums don't match, do a conversion:
+        if ( out_elevation != NO_DATA_VALUE && !extentSRS->isVertEquivalentTo(outputSRS) )
         {
-            if ( VerticalSpatialReference::canTransform( _vsrs.get(), outputVSRS ) )
+            // if the caller provided a custom output SRS, perform the appropriate
+            // Z transformation. This requires a lat/long point:
+
+            osg::Vec3d geolocal(local);
+            if ( !extentSRS->isGeographic() )
             {
-                // need geodetic coordinates for a VSRS transformation:
-                double lat_deg, lon_deg, newElevation;
-
-                if ( inputSRS->isGeographic() ) {
-                    lat_deg = y;
-                    lon_deg = x;
-                }
-                else if ( _extent.getSRS()->isGeographic() ) {
-                    lat_deg = local_y;
-                    lon_deg = local_x;
-                }
-                else {
-                    _extent.getSRS()->transform2D( x, y, inputSRS->getGeographicSRS(), lon_deg, lat_deg );
-                }
-
-                if ( _vsrs->transform( outputVSRS, lat_deg, lon_deg, elevation, newElevation ) )
-                    elevation = newElevation;
+                extentSRS->transform(geolocal, extentSRS->getGeographicSRS(), geolocal);
             }
+
+            VerticalDatum::transform(
+                extentSRS->getVerticalDatum(),
+                outputSRS ? outputSRS->getVerticalDatum() : 0L,
+                geolocal.y(), geolocal.x(), out_elevation);
         }
 
         return true;
     }
     else
     {
-        elevation = 0.0f;
+        out_elevation = 0.0f;
         return false;
     }
 }
@@ -1382,6 +1782,22 @@ GeoHeightField::createSubSample( const GeoExtent& destEx, ElevationInterpolation
     double x, y;
     int col, row;
 
+    double x0 = (destEx.xMin()-_extent.xMin())/_extent.width();
+    double y0 = (destEx.yMin()-_extent.yMin())/_extent.height();
+    double xstep = div/double(w-1);
+    double ystep = div/double(h-1);
+
+    for( x = x0, col = 0; col < w; x += xstep, col++ )
+    {
+        for( y = y0, row = 0; row < h; y += ystep, row++ )
+        {
+            float height = HeightFieldUtils::getHeightAtNormalizedLocation(
+                _heightField.get(), x, y, interpolation );
+            dest->setHeight( col, row, height );
+        }
+    }
+
+#if 0
     for( x = destEx.xMin(), col=0; col < w; x += dx, col++ )
     {
         for( y = destEx.yMin(), row=0; row < h; y += dy, row++ )
@@ -1390,11 +1806,12 @@ GeoHeightField::createSubSample( const GeoExtent& destEx, ElevationInterpolation
             dest->setHeight( col, row, height );
         }
     }
+#endif
 
     osg::Vec3d orig( destEx.xMin(), destEx.yMin(), _heightField->getOrigin().z() );
     dest->setOrigin( orig );
 
-    return GeoHeightField( dest, destEx, _vsrs.get() );
+    return GeoHeightField( dest, destEx ); // Q: is the VDATUM accounted for?
 }
 
 const GeoExtent&
@@ -1419,89 +1836,4 @@ osg::HeightField*
 GeoHeightField::takeHeightField()
 {
     return _heightField.release();
-}
-
-// --------------------------------------------------------------------------
-
-#undef  LC
-#define LC "[Geoid] "
-
-Geoid::Geoid() :
-_hf( GeoHeightField::INVALID ),
-_units( Units::METERS ),
-_valid( false )
-{
-    //nop
-}
-
-void
-Geoid::setName( const std::string& name )
-{
-    _name = name;
-    validate();
-}
-
-void
-Geoid::setHeightField( const GeoHeightField& hf )
-{
-    _hf = hf;
-    validate();
-}
-
-void
-Geoid::setUnits( const Units& units ) 
-{
-    _units = units;
-    validate();
-}
-
-void
-Geoid::validate()
-{
-    _valid = false;
-    if ( !_hf.valid() ) {
-        //OE_WARN << LC << "ILLEGAL GEOID: no heightfield" << std::endl;
-    }
-    else if ( !_hf.getExtent().getSRS() || !_hf.getExtent().getSRS()->isGeographic() ) {
-        OE_WARN << LC << "ILLEGAL GEOID: heightfield must be geodetic" << std::endl;
-    }
-    else {
-        _valid = true;
-    }
-}
-
-float 
-Geoid::getOffset(double lat_deg, double lon_deg, const ElevationInterpolation& interp ) const
-{
-    float result = 0.0f;
-
-    if ( _valid )
-    {
-        // first convert the query coordinates to the geoid heightfield range if neccesary.
-        if ( lat_deg < _hf.getExtent().yMin() )
-            lat_deg = 90.0 - (-90.0-lat_deg);
-        else if ( lat_deg > _hf.getExtent().yMax() )
-            lat_deg = -90 + (lat_deg-90.0);
-        if ( lon_deg < _hf.getExtent().xMin() )
-            lon_deg += 360.0;
-        else if ( lon_deg > _hf.getExtent().xMax() )
-            lon_deg -= 360.0;
-
-        bool ok = _hf.getElevation( 0L, lon_deg, lat_deg, interp, 0L, result );
-        if ( !ok )
-            result = 0.0f;
-    }
-
-    return result;
-}
-
-bool
-Geoid::isEquivalentTo( const Geoid& rhs ) const
-{
-    // weak..
-    return
-        _valid &&
-        _name == rhs._name &&
-        _hf.getExtent() == rhs._hf.getExtent() &&
-        _units == rhs._units;
 }

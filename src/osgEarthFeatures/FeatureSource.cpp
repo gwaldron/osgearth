@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2010 Pelican Mapping
+ * Copyright 2008-2012 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -20,6 +20,7 @@
 #include <osgEarthFeatures/ResampleFilter>
 #include <osgEarthFeatures/BufferFilter>
 #include <osgEarthFeatures/ConvertTypeFilter>
+#include <osgEarth/Registry>
 #include <osg/Notify>
 #include <osgDB/ReadFile>
 #include <OpenThreads/ScopedLock>
@@ -179,6 +180,34 @@ FeatureSource::getSchema() const
     return s_emptySchema;
 }
 
+void
+FeatureSource::addToBlacklist( FeatureID fid )
+{
+    Threading::ScopedWriteLock exclusive( _blacklistMutex );
+    _blacklist.insert( fid );
+}
+
+void
+FeatureSource::removeFromBlacklist( FeatureID fid )
+{
+    Threading::ScopedWriteLock exclusive( _blacklistMutex );
+    _blacklist.erase( fid );
+}
+
+void
+FeatureSource::clearBlacklist()
+{
+    Threading::ScopedWriteLock exclusive( _blacklistMutex );
+    _blacklist.clear();
+}
+
+bool
+FeatureSource::isBlacklisted( FeatureID fid ) const
+{
+    Threading::ScopedReadLock shared( const_cast<FeatureSource*>(this)->_blacklistMutex );
+    return _blacklist.find( fid ) != _blacklist.end();
+}
+
 //------------------------------------------------------------------------
 
 #undef  LC
@@ -194,7 +223,7 @@ FeatureSourceFactory::create( const FeatureSourceOptions& options )
     {
         std::string driverExt = std::string(".osgearth_feature_") + options.getDriver();
 
-        osg::ref_ptr<osgDB::ReaderWriter::Options> rwopts = new osgDB::ReaderWriter::Options();
+        osg::ref_ptr<osgDB::Options> rwopts = Registry::instance()->cloneOrCreateOptions();
         rwopts->setPluginData( FEATURE_SOURCE_OPTIONS_TAG, (void*)&options );
 
         featureSource = dynamic_cast<FeatureSource*>( osgDB::readObjectFile( driverExt, rwopts.get() ) );

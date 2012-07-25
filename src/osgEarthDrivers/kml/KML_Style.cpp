@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2010 Pelican Mapping
+ * Copyright 2008-2012 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -28,16 +28,16 @@ KML_Style::scan( const Config& conf, KMLContext& cx )
     Style style( conf.value("id") );
 
     KML_IconStyle icon;
-    icon.scan( conf.child("iconstyle"), style );
+    icon.scan( conf.child("iconstyle"), style, cx );
 
     KML_LabelStyle label;
-    label.scan( conf.child("labelstyle"), style );
+    label.scan( conf.child("labelstyle"), style, cx );
 
     KML_LineStyle line;
-    line.scan( conf.child("linestyle"), style );
+    line.scan( conf.child("linestyle"), style, cx );
 
     KML_PolyStyle poly;
-    poly.scan( conf.child("polystyle"), style );
+    poly.scan( conf.child("polystyle"), style, cx );
 
     cx._sheet->addStyle( style );
 

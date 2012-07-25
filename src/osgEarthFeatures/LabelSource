@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2010 Pelican Mapping
+ * Copyright 2008-2012 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -42,6 +42,8 @@ namespace osgEarth { namespace Features
         {
             fromConfig(_conf);
         }
+        
+        virtual ~LabelSourceOptions() { }
 
     public:
         virtual Config getConfig() const;
@@ -58,7 +60,7 @@ namespace osgEarth { namespace Features
     /**
      * Plugin object that generates text label nodes.
      */
-    class OSGEARTHFEATURES_EXPORT LabelSource : public virtual Revisioned<osg::Object>
+    class OSGEARTHFEATURES_EXPORT LabelSource : public osg::Object, public Revisioned
     {
     public:        
         LabelSource( const LabelSourceOptions& options =LabelSourceOptions() )
@@ -71,20 +73,20 @@ namespace osgEarth { namespace Features
          */
         virtual osg::Node* createNode(
             const FeatureList&   input,
-            const TextSymbol*    symbol,
+            const Style&         style,
             const FilterContext& context ) =0;
 
         /**
          * Creates a single labeling node.
          *
          * @param text     Text string to put in the label
-         * @param symbol   Style information for the label
+         * @param style    Style information for the label
          *
          * @return A scene graph node
          */
         virtual osg::Node* createNode(
             const std::string&  text,
-            const TextSymbol*   textSymbol ) =0;
+            const Style&        style ) =0;
 
 
     public:

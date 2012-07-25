@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2010 Pelican Mapping
+ * Copyright 2008-2012 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -22,28 +22,31 @@
 #include <osgEarth/Registry>
 #include <algorithm>
 
+#define LC "[FeatureCursorOGR] "
+
 #define OGR_SCOPED_LOCK GDAL_SCOPED_LOCK
 
 using namespace osgEarth;
 using namespace osgEarth::Features;
 
 
-FeatureCursorOGR::FeatureCursorOGR(OGRDataSourceH dsHandle,
-                                   OGRLayerH layerHandle,
-                                   const FeatureProfile* profile,
-                                   const Symbology::Query& query,
+FeatureCursorOGR::FeatureCursorOGR(OGRDataSourceH           dsHandle,
+                                   OGRLayerH                layerHandle,
+                                   const FeatureSource*     source,
+                                   const FeatureProfile*    profile,
+                                   const Symbology::Query&  query,
                                    const FeatureFilterList& filters ) :
-_dsHandle( dsHandle ),
-_layerHandle( layerHandle ),
-_resultSetHandle( 0L ),
-_spatialFilter( 0L ),
-_query( query ),
-_chunkSize( 500 ),
+_source           ( source ),
+_dsHandle         ( dsHandle ),
+_layerHandle      ( layerHandle ),
+_resultSetHandle  ( 0L ),
+_spatialFilter    ( 0L ),
+_query            ( query ),
+_chunkSize        ( 500 ),
 _nextHandleToQueue( 0L ),
-_profile( profile ),
-_filters( filters )
+_profile          ( profile ),
+_filters          ( filters )
 {
-    //_resultSetHandle = _layerHandle;
     {
         OGR_SCOPED_LOCK;
 
@@ -88,6 +91,25 @@ _filters( filters )
             expr = buf.str();
         }
 
+        //Include the order by clause if it's set
+        if (query.orderby().isSet())
+        {                     
+            std::string orderby = query.orderby().value();
+            
+            std::string temp = orderby;
+            std::transform( temp.begin(), temp.end(), temp.begin(), ::tolower );
+
+            if ( temp.find( "order by" ) != 0 )
+            {                
+                std::stringstream buf;
+                buf << "ORDER BY " << orderby;                
+                std::string bufStr;
+                bufStr = buf.str();
+                orderby = buf.str();
+            }
+            expr += (" " + orderby );
+        }
+
         // if there's a spatial extent in the query, build the spatial filter:
         if ( query.bounds().isSet() )
         {
@@ -104,6 +126,7 @@ _filters( filters )
         }
 
 
+        OE_DEBUG << LC << "SQL: " << expr << std::endl;
         _resultSetHandle = OGR_DS_ExecuteSQL( _dsHandle, expr.c_str(), _spatialFilter, 0L );
 
         if ( _resultSetHandle )
@@ -171,37 +194,41 @@ FeatureCursorOGR::readChunk()
 
     if ( _nextHandleToQueue )
     {
-        Feature* f = OgrUtils::createFeature( _nextHandleToQueue, _profile->getSRS() );
-        if ( f ) 
+        osg::ref_ptr<Feature> f = OgrUtils::createFeature( _nextHandleToQueue, _profile->getSRS() );
+        if ( f.valid() && !_source->isBlacklisted(f->getFID()) )
         {
             _queue.push( f );
             
             if ( _filters.size() > 0 )
-                preProcessList.push_back( f );
+                preProcessList.push_back( f.release() );
         }
         OGR_F_Destroy( _nextHandleToQueue );
         _nextHandleToQueue = 0L;
     }
 
-    int handlesToQueue = _chunkSize - _queue.size();
+    unsigned handlesToQueue = _chunkSize - _queue.size();
+    bool resultSetEndReached = false;
 
-    for( int i=0; i<handlesToQueue; i++ )
+    for( unsigned i=0; i<handlesToQueue; i++ )
     {
         OGRFeatureH handle = OGR_L_GetNextFeature( _resultSetHandle );
         if ( handle )
         {
-            Feature* f = OgrUtils::createFeature( handle, _profile->getSRS() );
-            if ( f ) 
+            osg::ref_ptr<Feature> f = OgrUtils::createFeature( handle, _profile->getSRS() );
+            if ( f.valid() && !_source->isBlacklisted(f->getFID()) )
             {
                 _queue.push( f );
 
                 if ( _filters.size() > 0 )
-                    preProcessList.push_back( f );
+                    preProcessList.push_back( f.release() );
             }
             OGR_F_Destroy( handle );
         }
         else
+        {
+            resultSetEndReached = true;
             break;
+        }
     }
 
     // preprocess the features using the filter list:
@@ -218,7 +245,10 @@ FeatureCursorOGR::readChunk()
     }
 
     // read one more for "more" detection:
-    _nextHandleToQueue = OGR_L_GetNextFeature( _resultSetHandle );
+    if (!resultSetEndReached)
+        _nextHandleToQueue = OGR_L_GetNextFeature( _resultSetHandle );
+    else
+        _nextHandleToQueue = 0L;
 
     //OE_NOTICE << "read " << _queue.size() << " features ... " << std::endl;
 }

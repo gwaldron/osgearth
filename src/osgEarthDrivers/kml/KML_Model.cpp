@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2010 Pelican Mapping
+ * Copyright 2008-2012 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -43,11 +43,11 @@ KML_Model::parseStyle(const Config& conf, KMLContext& cx, Style& style)
 {    
     MarkerSymbol* marker = 0L;
     
-    Config link = conf.child("link");
-    if (!link.empty())
+    std::string url = KMLUtils::parseLink(conf);
+    if ( !url.empty() )
     {
         if ( !marker ) marker = style.getOrCreate<MarkerSymbol>();
-        marker->url() = StringExpression( link.value("href") );
+        marker->url() = StringExpression( Stringify() << "\"" << url << "\"" );
         marker->url()->setURIContext( URIContext(conf.referrer()) );        
     }
 

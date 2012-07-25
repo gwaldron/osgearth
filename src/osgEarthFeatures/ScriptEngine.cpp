@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2010 Pelican Mapping
+ * Copyright 2008-2012 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -18,6 +18,7 @@
  */
 #include <osgEarthFeatures/ScriptEngine>
 #include <osgEarth/Notify>
+#include <osgEarth/Registry>
 #include <osgDB/ReadFile>
 
 using namespace osgEarth;
@@ -97,7 +98,7 @@ ScriptEngineFactory::create( const ScriptEngineOptions& options )
     {
         std::string driverExt = std::string(".osgearth_scriptengine_") + options.getDriver();
 
-        osg::ref_ptr<osgDB::ReaderWriter::Options> rwopts = new osgDB::ReaderWriter::Options();
+        osg::ref_ptr<osgDB::Options> rwopts = Registry::instance()->cloneOrCreateOptions();
         rwopts->setPluginData( SCRIPT_ENGINE_OPTIONS_TAG, (void*)&options );
 
         scriptEngine = dynamic_cast<ScriptEngine*>( osgDB::readObjectFile( driverExt, rwopts.get() ) );

@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2010 Pelican Mapping
+ * Copyright 2008-2012 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -17,10 +17,10 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 
+#include <osg/io_utils>
 #include <osgDB/FileNameUtils>
 #include <osgDB/FileUtils>
-
-#include <osg/io_utils>
+#include <osgDB/WriteFile>
 
 #include <osgEarth/Common>
 #include <osgEarth/Map>
@@ -29,6 +29,7 @@
 #include <osgEarth/StringUtils>
 #include <osgEarth/HTTPClient>
 #include <osgEarthUtil/TMSPackager>
+#include <osgEarthDrivers/tms/TMSOptions>
 
 #include <iostream>
 #include <sstream>
@@ -36,6 +37,7 @@
 
 using namespace osgEarth;
 using namespace osgEarth::Util;
+using namespace osgEarth::Drivers;
 
 #define LC "[osgearth_package] "
 
@@ -53,10 +55,15 @@ usage( const std::string& msg = "" )
         << std::endl
         << "USAGE: osgearth_package <earth_file>" << std::endl
         << std::endl
-        << "         --tms                   : make a TMS repo" << std::endl
-        << "            [--out <path>]       : root output folder of the TMS repo" << std::endl
-        << "            [--ext <extension>]  : custom image file extension (e.g. jpg)" << std::endl
-        << "            [--max-level <num>]  : max LOD level for tiles (all layers)" << std::endl
+        << "         --tms                              : make a TMS repo\n"
+        << "            <earth_file>                    : earth file defining layers to export (requied)\n"
+        << "            --out <path>                    : root output folder of the TMS repo (required)\n"
+        << "            [--bounds xmin ymin xmax ymax]* : bounds to package (in map coordinates; default=entire map)\n"
+        << "            [--max-level <num>]             : max LOD level for tiles (all layers; default=5)\n"
+        << "            [--out-earth <earthfile>]       : export an earth file referencing the new repo\n"
+        << "            [--ext <extension>]             : overrides the image file extension (e.g. jpg)\n"
+        << "            [--overwrite]                   : overwrite existing tiles\n"
+        << "            [--keep-empties]                : writes out fully transparent image tiles (normally discarded)\n"
 #if 0
         << std::endl
         << "         --tfs                   : make a TFS repo" << std::endl
@@ -102,7 +109,7 @@ int
 makeTMS( osg::ArgumentParser& args )
 {
     // see if the user wants to override the type extension (imagery only)
-    std::string extension = "png";
+    std::string extension;
     args.read( "--ext", extension );
 
     // verbosity?
@@ -118,9 +125,31 @@ makeTMS( osg::ArgumentParser& args )
     if ( !args.read( "--out", rootFolder ) )
         rootFolder = Stringify() << earthFile << ".tms_repo";
 
+    // whether to overwrite existing tile files
+    bool overwrite = false;
+    if ( args.read("--overwrite") )
+        overwrite = true;
+
+    // write out an earth file
+    std::string outEarth;
+    args.read("--out-earth", outEarth);
+
+    std::vector< Bounds > bounds;
+    // restrict packaging to user-specified bounds.    
+    double xmin=DBL_MAX, ymin=DBL_MAX, xmax=DBL_MIN, ymax=DBL_MIN;
+    while (args.read("--bounds", xmin, ymin, xmax, ymax ))
+    {        
+        Bounds b;
+        b.xMin() = xmin, b.yMin() = ymin, b.xMax() = xmax, b.yMax() = ymax;
+        bounds.push_back( b );
+    }
+
     // max level to which to generate
     unsigned maxLevel = ~0;
     args.read( "--max-level", maxLevel );
+
+    // whether to keep 'empty' tiles
+    bool keepEmpties = args.read("--keep-empties");    
 
     // load up the map
     osg::ref_ptr<MapNode> mapNode = MapNode::load( args );
@@ -136,10 +165,35 @@ makeTMS( osg::ArgumentParser& args )
 
     // fire up a packager:
     TMSPackager packager( map->getProfile() );
+
     packager.setVerbose( verbose );
+    packager.setOverwrite( overwrite );
+    packager.setKeepEmptyImageTiles( keepEmpties );
+
     if ( maxLevel != ~0 )
         packager.setMaxLevel( maxLevel );
+
+    if (bounds.size() > 0)
+    {
+        for (unsigned int i = 0; i < bounds.size(); ++i)
+        {
+            Bounds b = bounds[i];            
+            if ( b.isValid() )
+                packager.addExtent( GeoExtent(map->getProfile()->getSRS(), b) );
+        }
+    }    
+
     
+    // new map for an output earth file if necessary.
+    osg::ref_ptr<Map> outMap = 0L;
+    if ( !outEarth.empty() )
+    {
+        // copy the options from the source map first
+        outMap = new Map(map->getInitialMapOptions());
+    }
+
+    // establish the output path of the earth file, if applicable:
+    std::string outEarthFile = osgDB::concatPaths(rootFolder, osgDB::getSimpleFileName(outEarth));
 
     // package any image layers that are enabled:
     ImageLayerVector imageLayers;
@@ -162,7 +216,29 @@ makeTMS( osg::ArgumentParser& args )
             }
 
             std::string layerRoot = osgDB::concatPaths( rootFolder, layerFolder );
-            packager.package( layer, layerRoot, extension );
+            TMSPackager::Result r = packager.package( layer, layerRoot, extension );
+            if ( r.ok )
+            {
+                // save to the output map if requested:
+                if ( outMap.valid() )
+                {
+                    // new TMS driver info:
+                    TMSOptions tms;
+                    tms.url() = URI(
+                        osgDB::concatPaths(layerFolder, "tms.xml"),
+                        outEarthFile );
+
+                    ImageLayerOptions layerOptions( layer->getName(), tms );
+                    layerOptions.mergeConfig( layer->getInitialOptions().getConfig(true) );
+                    layerOptions.cachePolicy() = CachePolicy::NO_CACHE;
+
+                    outMap->addImageLayer( new ImageLayer(layerOptions) );
+                }
+            }
+            else
+            {
+                OE_WARN << LC << r.message << std::endl;
+            }
         }
         else if ( verbose )
         {
@@ -190,11 +266,49 @@ makeTMS( osg::ArgumentParser& args )
             }
 
             std::string layerRoot = osgDB::concatPaths( rootFolder, layerFolder );
-            packager.package( layer, layerRoot );
+            TMSPackager::Result r = packager.package( layer, layerRoot );
+
+            if ( r.ok )
+            {
+                // save to the output map if requested:
+                if ( outMap.valid() )
+                {
+                    // new TMS driver info:
+                    TMSOptions tms;
+                    tms.url() = URI(
+                        osgDB::concatPaths(layerFolder, "tms.xml"),
+                        outEarthFile );
+
+                    ElevationLayerOptions layerOptions( layer->getName(), tms );
+                    layerOptions.mergeConfig( layer->getInitialOptions().getConfig(true) );
+                    layerOptions.cachePolicy() = CachePolicy::NO_CACHE;
+
+                    outMap->addElevationLayer( new ElevationLayer(layerOptions) );
+                }
+            }
+            else
+            {
+                OE_WARN << LC << r.message << std::endl;
+            }
         }
         else if ( verbose )
         {
             OE_NOTICE << LC << "Skipping disabled layer \"" << layer->getName() << "\"" << std::endl;
+        }
+    }
+
+    // Finally, write an earth file if requested:
+    if ( outMap.valid() )
+    {
+        MapNodeOptions outNodeOptions = mapNode->getMapNodeOptions();
+        osg::ref_ptr<MapNode> outMapNode = new MapNode(outMap.get(), outNodeOptions);
+        if ( !osgDB::writeNodeFile(*outMapNode.get(), outEarthFile) )
+        {
+            OE_WARN << LC << "Error writing earth file to \"" << outEarthFile << "\"" << std::endl;
+        }
+        else if ( verbose )
+        {
+            OE_NOTICE << LC << "Wrote earth file to \"" << outEarthFile << "\"" << std::endl;
         }
     }
 

@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2010 Pelican Mapping
+ * Copyright 2008-2012 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -25,13 +25,6 @@ MapNode*
 EarthFileSerializer2::deserialize( const Config& conf, const std::string& referenceURI ) const
 {
     MapOptions mapOptions( conf.child( "options" ) );
-
-    // manually extract the "type" from the main tag:
-    const std::string& csVal = conf.value("type");
-    mapOptions.coordSysType() = 
-        csVal == "cube" ? MapOptions::CSTYPE_GEOCENTRIC_CUBE :
-        csVal == "projected" || csVal == "flat" ? MapOptions::CSTYPE_PROJECTED :
-        MapOptions::CSTYPE_GEOCENTRIC;
 
     // legacy: check for name/type in top-level attrs:
     if ( conf.hasValue( "name" ) || conf.hasValue( "type" ) )
@@ -162,7 +155,7 @@ EarthFileSerializer2::serialize( MapNode* input ) const
     MapFrame mapf( map, Map::ENTIRE_MODEL );
 
     // the map and node options:
-    Config optionsConf = map->getMapOptions().getConfig();
+    Config optionsConf = map->getInitialMapOptions().getConfig();
     optionsConf.merge( input->getMapNodeOptions().getConfig() );
     mapConf.add( "options", optionsConf );
 
@@ -170,25 +163,29 @@ EarthFileSerializer2::serialize( MapNode* input ) const
     for( ImageLayerVector::const_iterator i = mapf.imageLayers().begin(); i != mapf.imageLayers().end(); ++i )
     {
         ImageLayer* layer = i->get();
-        Config layerConf = layer->getInitialOptions().getConfig(); //ImageLayerOptions().getConfig();
+        //Config layerConf = layer->getInitialOptions().getConfig();
+        Config layerConf = layer->getImageLayerOptions().getConfig();
         layerConf.set("name", layer->getName());
         layerConf.set("driver", layer->getInitialOptions().driver()->getDriver());
+        layerConf.remove("default_tile_size");
         mapConf.add( "image", layerConf );
     }
 
     for( ElevationLayerVector::const_iterator i = mapf.elevationLayers().begin(); i != mapf.elevationLayers().end(); ++i )
     {
         ElevationLayer* layer = i->get();
-        Config layerConf = layer->getInitialOptions().getConfig();
+        //Config layerConf = layer->getInitialOptions().getConfig();
+        Config layerConf = layer->getElevationLayerOptions().getConfig();
         layerConf.set("name", layer->getName());
         layerConf.set("driver", layer->getInitialOptions().driver()->getDriver());
+        layerConf.remove("default_tile_size");
         mapConf.add( "elevation", layerConf );
     }
 
     for( ModelLayerVector::const_iterator i = mapf.modelLayers().begin(); i != mapf.modelLayers().end(); ++i )
     {
         ModelLayer* layer = i->get();
-        Config layerConf = layer->getModelLayerOptions().getConfig(); //layer->getDriverConfig();
+        Config layerConf = layer->getModelLayerOptions().getConfig();
         layerConf.set("name", layer->getName());
         layerConf.set("driver", layer->getModelLayerOptions().driver()->getDriver());
         mapConf.add( "model", layerConf );
@@ -198,7 +195,7 @@ EarthFileSerializer2::serialize( MapNode* input ) const
     if ( !ext.empty() )
     {
         ext.key() = "external";
-        mapConf.addChild( ext );
+        mapConf.add( ext );
     }
 
     return mapConf;

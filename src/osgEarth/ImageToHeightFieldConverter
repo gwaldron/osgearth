@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2008-2010 Pelican Mapping
+* Copyright 2008-2012 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -27,43 +27,46 @@
 
 namespace osgEarth
 {
-  /**
-  * Utility class that re-interprets an image as a heightfield and vice-versa.
-  */
-  class OSGEARTH_EXPORT ImageToHeightFieldConverter
-  {
-  public:
-    ImageToHeightFieldConverter();
-
     /**
-    * Instruct the converter to detect and replace "no data" values. It will
-    * try to interpolate the proper value, or fall back on the provided value
-    * if the interpolation fails.
+    * Utility class that re-interprets an image as a heightfield and vice-versa.
     */
-    void setRemoveNoDataValues( bool value, float fallback =0.0f );
+    class OSGEARTH_EXPORT ImageToHeightFieldConverter
+    {
+    public:
+        ImageToHeightFieldConverter();
 
-  public:
-    /**
-    * Converts an image to a heightfield.
-    */
-    osg::HeightField* convert(const osg::Image* image ); 
-    osg::HeightField* convert(const osg::Image* image, float scaleFactor ); 
+        /** dtor */
+        virtual ~ImageToHeightFieldConverter() { }
 
-    /**
-    * Converts a heightfield to an image.
-    */
-    osg::Image* convert(const osg::HeightField* hf, int pixelSize = 32);
+        /**
+        * Instruct the converter to detect and replace "no data" values. It will
+        * try to interpolate the proper value, or fall back on the provided value
+        * if the interpolation fails.
+        */
+        void setRemoveNoDataValues( bool value, float fallback =0.0f );
 
-  private:
-    osg::HeightField* convert16(const osg::Image* image ) const; 
-    osg::HeightField* convert32(const osg::Image* image ) const; 
+    public:
+        /**
+        * Converts an image to a heightfield.
+        */
+        osg::HeightField* convert(const osg::Image* image ); 
+        osg::HeightField* convert(const osg::Image* image, float scaleFactor ); 
 
-    osg::Image* convert16(const osg::HeightField* hf ) const;
-    osg::Image* convert32(const osg::HeightField* hf ) const;
+        /**
+        * Converts a heightfield to an image.
+        */
+        osg::Image* convert(const osg::HeightField* hf, int pixelSize = 32);
 
-    bool  _replace_nodata;
-    float _nodata_value;
-  };
+    private:
+        osg::HeightField* convert16(const osg::Image* image ) const; 
+        osg::HeightField* convert32(const osg::Image* image ) const; 
+
+        osg::Image* convert16(const osg::HeightField* hf ) const;
+        osg::Image* convert32(const osg::HeightField* hf ) const;
+
+        bool  _replace_nodata;
+        float _nodata_value;
+    };
 }
 
 #endif //OSGEARTH_IMAGE_TO_HEIGHTFIELD_CONVERTER

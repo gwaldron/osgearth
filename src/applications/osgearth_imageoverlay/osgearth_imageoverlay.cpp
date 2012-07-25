@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2008-2010 Pelican Mapping
+* Copyright 2008-2012 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -246,7 +246,7 @@ main(int argc, char** argv)
 
             //Create a new ImageOverlayEditor and set it's node mask to 0 to hide it initially
 #if OSG_MIN_VERSION_REQUIRED(2,9,6)
-            osg::Node* editor = new ImageOverlayEditor( overlay, mapNode->getMap()->getProfile()->getSRS()->getEllipsoid(), mapNode );
+            osg::Node* editor = new ImageOverlayEditor( overlay);
 #else
             //Just make an empty group for pre-2.9.6
             osg::Node* editor = new osg::Group;

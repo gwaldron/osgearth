@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2010 Pelican Mapping
+ * Copyright 2008-2012 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -41,6 +41,7 @@ _cachePolicy        ( CachePolicy::USAGE_DEFAULT ),
 _loadingWeight      ( 1.0f ),
 _exactCropping      ( false ),
 _enabled            ( true ),
+_visible            ( true ),
 _reprojectedTileSize( 256 )
 
 {
@@ -61,6 +62,7 @@ void
 TerrainLayerOptions::setDefaults()
 {
     _enabled.init( true );
+    _visible.init( true );
     _exactCropping.init( false );
     _reprojectedTileSize.init( 256 );
     _cachePolicy.init( CachePolicy() );
@@ -81,10 +83,12 @@ TerrainLayerOptions::getConfig( bool isolate ) const
     conf.updateIfSet( "max_level_resolution", _maxLevelResolution );
     conf.updateIfSet( "loading_weight", _loadingWeight );
     conf.updateIfSet( "enabled", _enabled );
+    conf.updateIfSet( "visible", _visible );
     conf.updateIfSet( "edge_buffer_ratio", _edgeBufferRatio);
-    conf.updateObjIfSet( "profile", _profile );
     conf.updateIfSet( "max_data_level", _maxDataLevel);
     conf.updateIfSet( "reprojected_tilesize", _reprojectedTileSize);
+
+    conf.updateIfSet( "vdatum", _vertDatum );
 
     conf.updateIfSet   ( "cacheid",      _cacheId );
     conf.updateIfSet   ( "cache_format", _cacheFormat );
@@ -107,10 +111,13 @@ TerrainLayerOptions::fromConfig( const Config& conf )
     conf.getIfSet( "max_level_resolution", _maxLevelResolution );
     conf.getIfSet( "loading_weight", _loadingWeight );
     conf.getIfSet( "enabled", _enabled );
+    conf.getIfSet( "visible", _visible );
     conf.getIfSet( "edge_buffer_ratio", _edgeBufferRatio);
-    conf.getObjIfSet( "profile", _profile );
     conf.getIfSet( "max_data_level", _maxDataLevel);
     conf.getIfSet( "reprojected_tilesize", _reprojectedTileSize);
+
+    conf.getIfSet( "vdatum", _vertDatum );
+    conf.getIfSet( "vsrs", _vertDatum );    // back compat
 
     conf.getIfSet   ( "cacheid",      _cacheId );
     conf.getIfSet   ( "cache_format", _cacheFormat );
@@ -219,9 +226,9 @@ TerrainLayer::setCache( Cache* cache )
                 hashConf.remove( "cacheid" );
 
                 cacheId = Stringify() << std::hex << osgEarth::hashString(hashConf.toJSON());
-            }
 
-            _runtimeOptions->cacheId() = cacheId;
+                _runtimeOptions->cacheId().init( cacheId ); // set as default value
+            }
         }
     }
 
@@ -271,6 +278,18 @@ TerrainLayer::getProfile() const
         if ( _tileSource.valid() && !_profile.valid() )
         {
             const_cast<TerrainLayer*>(this)->_profile = _tileSource->getProfile();
+
+            // check for a vertical datum override:
+            if ( _profile.valid() && _runtimeOptions->verticalDatum().isSet() )
+            {
+                std::string vdatum = toLower( *_runtimeOptions->verticalDatum() );
+                if ( _profile->getSRS()->getVertInitString() != vdatum )
+                {
+                    ProfileOptions po = _profile->toProfileOptions();
+                    po.vsrsString() = vdatum;
+                    const_cast<TerrainLayer*>(this)->_profile = Profile::create(po);
+                }
+            }
         }
     }
     
@@ -288,14 +307,14 @@ TerrainLayer::getMaxDataLevel() const
     }
 
     //Try the TileSource
-	TileSource* ts = getTileSource();
-	if ( ts )
-	{
-		return ts->getMaxDataLevel();
-	}
+    TileSource* ts = getTileSource();
+    if ( ts )
+    {
+        return ts->getMaxDataLevel();
+    }
 
     //Just default
-	return 20;
+    return 20;
 }
 
 unsigned
@@ -321,9 +340,29 @@ TerrainLayer::getCacheBin( const Profile* profile )
         return 0L;
     }
 
-    // the cache bin ID is the cache IF concatenated with the profile signature.
-    std::string binId = *_runtimeOptions->cacheId() + std::string("_") + profile->getSignature();
+    // the cache bin ID is the cache ID concatenated with the FULL profile signature.
+    std::string binId = *_runtimeOptions->cacheId() + std::string("_") + profile->getFullSignature();
 
+    return getCacheBin( profile, binId );
+}
+
+CacheBin*
+TerrainLayer::getCacheBin( const Profile* profile, const std::string& binId )
+{
+    // in no-cache mode, there are no cache bins.
+    if (_runtimeOptions->cachePolicy().isSet() &&
+        _runtimeOptions->cachePolicy()->usage() == CachePolicy::USAGE_NO_CACHE )
+    {
+        return 0L;
+    }
+
+    // if cache is not setted, return NULL
+    if (_cache == NULL)
+    {
+        return 0L;
+    }
+
+    // see if the cache bin already exists and return it if so
     {
         Threading::ScopedReadLock shared(_cacheBinsMutex);
         CacheBinInfoMap::iterator i = _cacheBins.find( binId );
@@ -331,6 +370,7 @@ TerrainLayer::getCacheBin( const Profile* profile )
             return i->second._bin.get();
     }
 
+    // create/open the cache bin.
     {
         Threading::ScopedWriteLock exclusive(_cacheBinsMutex);
 
@@ -430,7 +470,7 @@ bool
 TerrainLayer::getCacheBinMetadata( const Profile* profile, CacheBinMetadata& output )
 {
     // the cache bin ID is the cache IF concatenated with the profile signature.
-    std::string binId = *_runtimeOptions->cacheId() + std::string("_") + profile->getSignature();
+    std::string binId = *_runtimeOptions->cacheId() + std::string("_") + profile->getFullSignature();
     CacheBin* bin = getCacheBin( profile );
     if ( bin )
     {
@@ -447,10 +487,11 @@ TerrainLayer::getCacheBinMetadata( const Profile* profile, CacheBinMetadata& out
 
 void
 TerrainLayer::initTileSource()
-{	
+{
     OE_DEBUG << LC << "Initializing tile source ..." << std::endl;
 
-    // instantiate it from driver options if it has not already been created:
+    // Instantiate it from driver options if it has not already been created.
+    // This will also set a manual "override" profile if the user provided one.
     if ( !_tileSource.valid() )
     {
         if ( _runtimeOptions->driver().isSet() )
@@ -459,51 +500,47 @@ TerrainLayer::initTileSource()
         }
     }
 
-    // next check for an override-profile. The profile usually comes from the
-    // TileSource itself, but you have the option of overriding:
-	osg::ref_ptr<const Profile> overrideProfile;
-	if ( _runtimeOptions->profile().isSet() )
-	{
-		overrideProfile = Profile::create( *_runtimeOptions->profile() );
-
-        if ( overrideProfile.valid() )
-        {
-            OE_INFO << LC << "Layer " << getName() << " overrides profile to "
-                << overrideProfile->toString() << std::endl;
-        }
-	}
-
     // Initialize the profile with the context information:
-	if ( _tileSource.valid() )
-	{
+    if ( _tileSource.valid() )
+    {
         // set up the URI options.
         if ( !_dbOptions.valid() )
         {
-            _dbOptions = new osgDB::Options();       
+            _dbOptions = Registry::instance()->cloneOrCreateOptions();
             if ( _cache.valid() ) _cache->store( _dbOptions.get() );
             URIContext( _runtimeOptions->referrer() ).store( _dbOptions.get() );
         }
 
-        // intialize the tile source
-		_tileSource->initialize( _dbOptions.get(), overrideProfile.get() );
+        // report on a manual override profile:
+        if ( _tileSource->getProfile() )
+        {
+            OE_INFO << LC << "Layer \"" << getName() << "\" set profile to: " 
+                << _tileSource->getProfile()->toString() << std::endl;
+        }
 
-		if ( _tileSource->isOK() )
-		{
-			_tileSize = _tileSource->getPixelsPerTile();
-		}
-		else
-		{
-	        OE_WARN << "Could not initialize TileSource for layer " << getName() << std::endl;
+        // Intialize the tile source.
+        // It's odd that we pass the profile into initialize. This used to be the override
+        // profile, but now that gets set in TileSourceFactory::create. We are keeping it
+        // here for backwards compatibility for now.
+        _tileSource->initialize( _dbOptions.get(), _tileSource->getProfile() );
+
+        if ( _tileSource->isOK() )
+        {
+            _tileSize = _tileSource->getPixelsPerTile();
+        }
+        else
+        {
+            OE_WARN << "Could not initialize TileSource for layer " << getName() << std::endl;
             _tileSource = NULL;
-		}
-	}
+        }
+    }
 
     // Set the profile from the TileSource if possible:
     if ( _tileSource.valid() )
     {
         _profile = _tileSource->getProfile();
     }
-    
+
     // Otherwise, force cache-only mode (since there is no tilesource). The layer will try to 
     // establish a profile from the metadata in the cache instead.
     else if (_cache.valid())
@@ -518,14 +555,16 @@ TerrainLayer::initTileSource()
 bool
 TerrainLayer::isKeyValid(const TileKey& key) const
 {
-	if (!key.valid()) return false;
+    if (!key.valid()) return false;
 
-    // Check to see if explicit levels of detail are set
-    if ( _runtimeOptions->minLevel().isSet() && (int)key.getLevelOfDetail() < _runtimeOptions->minLevel().value() )
+    // Check to see if an explicity max LOD is set. Do NOT compare against the minLevel,
+    // because we still need to create empty tiles until we get to the data. The ImageLayer
+    // will deal with this.
+    if ( _runtimeOptions->maxLevel().isSet() && key.getLOD() > _runtimeOptions->maxLevel().value() ) 
+    {
         return false;
-	if ( _runtimeOptions->maxLevel().isSet() && (int)key.getLevelOfDetail() > _runtimeOptions->maxLevel().value() ) 
-        return false;
-    
+    }
+
     // Check to see if levels of detail based on resolution are set
     if ( getProfile() )
     {
@@ -566,10 +605,10 @@ TerrainLayer::isCached(const TileKey& key) const
 }
 
 void
-TerrainLayer::setEnabled( bool value )
+TerrainLayer::setVisible( bool value )
 {
-    _runtimeOptions->enabled() = value;
-    fireCallback( &TerrainLayerCallback::onEnabledChanged );
+    _runtimeOptions->visible() = value;
+    fireCallback( &TerrainLayerCallback::onVisibleChanged );
 }
 
 void

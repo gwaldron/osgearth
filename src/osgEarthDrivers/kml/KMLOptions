@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2010 Pelican Mapping
+ * Copyright 2008-2012 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -29,6 +29,10 @@ namespace osgEarth { namespace Drivers
     using namespace osgEarth;
     using namespace osgEarth::Symbology;
 
+    /**
+     * Options for the KML loader. You can pass an instance of this class
+     * to KML::load()
+     */
     class KMLOptions // NO EXPORT; header only
     {
     public:
@@ -45,6 +49,14 @@ namespace osgEarth { namespace Drivers
         osg::ref_ptr<TextSymbol>& defaultTextSymbol() { return _defaultTextSymbol; }
         const osg::ref_ptr<TextSymbol>& defaultTextSymbol() const { return _defaultTextSymbol; }
 
+        /** Default base scale to apply to marker Icons. */
+        optional<float>& iconBaseScale() { return _iconBaseScale; }
+        const optional<float>& iconBaseScale() const { return _iconBaseScale; }
+
+        /** Maximum size (either dimension) of placemarks icons */
+        optional<unsigned>& iconMaxSize() { return _iconMaxSize; }
+        const optional<unsigned>& iconMaxSize() const { return _iconMaxSize; }
+
         /** Automatically assign KML icons and labels to a decluttering bin */
         optional<bool>& declutter() { return _declutter; }
         const optional<bool>& declutter() const { return _declutter; }
@@ -54,14 +66,17 @@ namespace osgEarth { namespace Drivers
         const osg::ref_ptr<osg::Group> iconAndLabelGroup() const { return _iconAndLabelGroup; }
 
     public:
-        KMLOptions() :
-          _declutter( true ) { }
+        KMLOptions() : _declutter( true ), _iconBaseScale( 1.0f ), _iconMaxSize(32) { }
+
+        virtual ~KMLOptions() { }
 
     protected:
         optional<URI>            _defaultIconURI;
         osg::ref_ptr<osg::Image> _defaultIconImage;
         osg::ref_ptr<TextSymbol> _defaultTextSymbol;
         optional<bool>           _declutter;
+        optional<float>          _iconBaseScale;
+        optional<unsigned>       _iconMaxSize;
         osg::ref_ptr<osg::Group> _iconAndLabelGroup;
     };
 

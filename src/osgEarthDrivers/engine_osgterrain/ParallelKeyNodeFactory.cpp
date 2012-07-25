@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2008-2010 Pelican Mapping
+* Copyright 2008-2012 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -36,6 +36,13 @@ ParallelKeyNodeFactory::ParallelKeyNodeFactory(TileBuilder*             builder,
 SerialKeyNodeFactory( builder, options, mapInfo, terrain, engineUID )
 {
     //NOP
+}
+
+osg::Node*
+ParallelKeyNodeFactory::createRootNode( const TileKey& key )
+{
+    // NYI
+    return 0L;
 }
 
 osg::Node*

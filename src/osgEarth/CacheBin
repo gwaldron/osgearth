@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2008-2010 Pelican Mapping
+* Copyright 2008-2012 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -16,7 +16,6 @@
 * You should have received a copy of the GNU Lesser General Public License
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
-
 #ifndef OSGEARTH_CACHE_BIN_H
 #define OSGEARTH_CACHE_BIN_H 1
 
@@ -41,6 +40,9 @@ namespace osgEarth
          * @param driver ReaderWriter that serializes data for this caching bin.
          */
         CacheBin( const std::string& binID ) : _binID(binID) { }
+
+        /** dtor */
+        virtual ~CacheBin() { }
 
         /**
          * The identifier (unique withing a Cache) of this bin.

@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2008-2010 Pelican Mapping
+* Copyright 2008-2012 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -185,7 +185,6 @@ StyleSheet* buildStyleSheet( const osg::Vec4 &color, float width )
     return styleSheet;
 }
 
-
 //
 // NOTE: run this sample from the repo/tests directory.
 //
@@ -221,29 +220,27 @@ int main(int argc, char** argv)
     // vectors as lines, configure the line symbolizer:
     StyleSheet* styleSheet = buildStyleSheet( Color::Yellow, 2.0f );
 
-    s_source = new FeatureListSource();
+    // create a feature list source with the map extents as the default extent.
+    s_source = new FeatureListSource( s_mapNode->getMap()->getProfile()->getExtent() );
 
     LineString* line = new LineString();
     line->push_back( osg::Vec3d(-60, 20, 0) );
     line->push_back( osg::Vec3d(-120, 20, 0) );
     line->push_back( osg::Vec3d(-120, 60, 0) );
     line->push_back( osg::Vec3d(-60, 60, 0) );
-    Feature *feature = new Feature(s_fid++);
-    feature->setGeometry( line );
-    feature->setSRS( SpatialReference::create("wgs84") );
+    Feature* feature = new Feature(line, s_mapNode->getMapSRS(), Style(), s_fid++);
     s_source->insertFeature( feature );
     s_activeFeature = feature;
   
     s_root = new osg::Group;
     s_root->addChild( s_mapNode.get() );
 
-    Session* session = new Session(s_mapNode->getMap(), styleSheet);
+    Session* session = new Session(s_mapNode->getMap(), styleSheet, s_source.get());
 
     FeatureModelGraph* graph = new FeatureModelGraph( 
-        s_source.get(), 
+        session,
         FeatureModelSourceOptions(), 
-        new GeomFeatureNodeFactory(),
-        session );
+        new GeomFeatureNodeFactory() );
 
     graph->getOrCreateStateSet()->setMode(GL_LIGHTING, osg::StateAttribute::OFF);
     graph->getOrCreateStateSet()->setMode(GL_DEPTH_TEST, osg::StateAttribute::OFF);
@@ -300,7 +297,7 @@ int main(int argc, char** argv)
     viewer.setCameraManipulator( new EarthManipulator() );
 
     if ( s_mapNode )
-        viewer.getCamera()->addCullCallback( new osgEarth::Util::AutoClipPlaneCullCallback(s_mapNode->getMap()) );
+        viewer.getCamera()->addCullCallback( new osgEarth::Util::AutoClipPlaneCullCallback(s_mapNode) );
 
     // add some stock OSG handlers:
     viewer.addEventHandler(new osgViewer::StatsHandler());

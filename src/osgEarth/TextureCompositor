@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2010 Pelican Mapping
+ * Copyright 2008-2012 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -60,6 +60,9 @@ namespace osgEarth
     public:
         TextureLayout();
 
+        /** dtor */
+        virtual ~TextureLayout() { }
+
         /**
          * Gets a texture slot corresponding to the layer UID. There may be more than one,
          * the "which" parameter allows you to select one in particular. You can also limit
@@ -91,7 +94,10 @@ namespace osgEarth
     protected:
         friend class TextureCompositor;
 
-        void applyMapModelChange( const MapModelChange& change, bool reserveSeconarySlotIfNecessary );
+        void applyMapModelChange( 
+          const MapModelChange& change, 
+          bool reserveSeconarySlotIfNecessary,
+          bool disableLodBlending );
 
         void setReservedSlots( const std::set<int>& reservedSlots );
 
@@ -153,6 +159,9 @@ namespace osgEarth
          * Constructs a new compositor.
          */
         TextureCompositor( const TerrainOptions& options );
+
+        /** dtor */
+        virtual ~TextureCompositor() { }
 
         /**
          * Sets a custom technique to use.

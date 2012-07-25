@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2010 Pelican Mapping
+ * Copyright 2008-2012 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -20,10 +20,12 @@
 #define OSGEARTH_DRIVER_KML_COMMON 1
 
 #include <osgEarth/Common>
+#include <osgEarth/Config>
 #include <osgEarth/URI>
 #include <osgEarth/MapNode>
 #include <osgEarth/SpatialReference>
 #include <osgEarthSymbology/Style>
+#include <osgEarthSymbology/StyleSheet>
 #include "KMLOptions"
 
 #define LC "[KML] "
@@ -67,6 +69,32 @@ struct KMLContext
     Style                                 _activeStyle;
     std::stack<osg::ref_ptr<osg::Group> > _groupStack;
     osg::ref_ptr<const SpatialReference>  _srs;
+};
+
+struct KMLUtils
+{
+    // parse KML's many variants on a URL link.
+    static std::string parseLink( const Config& conf )
+    {
+        Config link = conf.child("link");
+        if ( !link.empty() )
+        {
+            if ( link.hasValue("href") )
+                return link.value("href");
+            else if ( link.hasValue("url") )
+                return link.value("url");
+            else
+                return link.value();
+        }
+        else
+        {
+            link = conf.child("url");
+            if ( link.hasValue("href") )
+                return link.value("href");
+            else
+                return link.value();
+        }
+    }
 };
 
 

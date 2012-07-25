@@ -19,11 +19,13 @@ SET(LIB_NAME osgEarth)
 
 SET(HEADER_PATH ${OSGEARTH_SOURCE_DIR}/include/${LIB_NAME})
 SET(LIB_PUBLIC_HEADERS
+    Bounds
     Cache
     CacheBin
     CachePolicy
-	CacheSeed
-	Capabilities
+    CacheSeed
+    Capabilities
+    ColorFilter
     Common
     CompositeTileSource
     Config
@@ -32,21 +34,23 @@ SET(LIB_PUBLIC_HEADERS
     CullingUtils
     DepthOffset
     DPLineSegmentIntersector
+    Draggers
     DrapeableNode
     ECEF
     ElevationLayer
+	ElevationLOD
     ElevationQuery
     Export
-    EGM
     FileUtils
-	FindNode
+    GeoCommon
     GeoData
+    Geoid
     GeoMath
     HeightFieldUtils
     HTTPClient
-    ImageToHeightFieldConverter
     ImageLayer
     ImageMosaic
+    ImageToHeightFieldConverter
     ImageUtils
     IOTypes
     JsonUtils
@@ -65,11 +69,13 @@ SET(LIB_PUBLIC_HEADERS
     ModelLayer
     ModelSource
     NodeUtils
-	Notify
-	OverlayDecorator
+    Notify
+    optional
+    OverlayDecorator
+    Pickers
     Profile
-	Progress
-	Random
+    Progress
+    Random
     Registry
     Revisioning
     ShaderComposition
@@ -85,15 +91,14 @@ SET(LIB_PUBLIC_HEADERS
     TextureCompositor
     TextureCompositorMulti
     TextureCompositorTexArray
-    TileFactory
     TileKey
     TileSource
     ThreadingUtils
     Units
     URI
     Utils
-	Version
-    VerticalSpatialReference
+    Version
+    VerticalDatum
     Viewpoint
     XmlUtils
 )
@@ -120,23 +125,27 @@ ADD_LIBRARY(${LIB_NAME} SHARED
 #    ${OSGEARTH_USER_DEFINED_DYNAMIC_OR_STATIC}
     ${LIB_PUBLIC_HEADERS}
     ${TINYXML_SRC}
+    Bounds.cpp
     Cache.cpp
     CachePolicy.cpp
     CacheSeed.cpp
-	Capabilities.cpp
+    Capabilities.cpp
+    ColorFilter.cpp
     CompositeTileSource.cpp
     Config.cpp
     Cube.cpp
     CullingUtils.cpp
     DepthOffset.cpp
+    Draggers.cpp
     DPLineSegmentIntersector.cpp
     DrapeableNode.cpp
     ECEF.cpp
-    EGM.cpp
     ElevationLayer.cpp
+	ElevationLOD.cpp
     ElevationQuery.cpp
     FileUtils.cpp
     GeoData.cpp
+    Geoid.cpp
     GeoMath.cpp
     HeightFieldUtils.cpp
     HTTPClient.cpp
@@ -157,15 +166,16 @@ ADD_LIBRARY(${LIB_NAME} SHARED
     MaskNode.cpp
     MaskSource.cpp
     MemCache.cpp
-	MimeTypes.cpp
-	ModelLayer.cpp
-	ModelSource.cpp
-	NodeUtils.cpp
-	Notify.cpp
-	OverlayDecorator.cpp
+    MimeTypes.cpp
+    ModelLayer.cpp
+    ModelSource.cpp
+    NodeUtils.cpp
+    Notify.cpp
+    OverlayDecorator.cpp
+    Pickers.cpp
     Profile.cpp
-	Progress.cpp
-	Random.cpp
+    Progress.cpp
+    Random.cpp
     Registry.cpp
     ShaderComposition.cpp
     ShaderUtils.cpp
@@ -180,14 +190,14 @@ ADD_LIBRARY(${LIB_NAME} SHARED
     TextureCompositor.cpp
     TextureCompositorMulti.cpp
     TextureCompositorTexArray.cpp
-    TileFactory.cpp
     TileKey.cpp
     TileSource.cpp
+    ThreadingUtils.cpp
     Units.cpp
     URI.cpp
     Utils.cpp
     Version.cpp
-    VerticalSpatialReference.cpp
+    VerticalDatum.cpp
     Viewpoint.cpp
     XmlUtils.cpp
 )
@@ -204,7 +214,15 @@ ELSE(WIN32)
   LINK_EXTERNAL(${LIB_NAME} ${TARGET_EXTERNAL_LIBRARIES} ${CMAKE_THREAD_LIBS_INIT} ${MATH_LIBRARY} )
 ENDIF(WIN32)
 
-LINK_WITH_VARIABLES(${LIB_NAME} OSG_LIBRARY OSGUTIL_LIBRARY OSGSIM_LIBRARY OSGTERRAIN_LIBRARY OSGDB_LIBRARY OSGFX_LIBRARY OSGVIEWER_LIBRARY OSGTEXT_LIBRARY OSGGA_LIBRARY OSGSHADOW_LIBRARY OPENTHREADS_LIBRARY CURL_LIBRARY GDAL_LIBRARY ZLIB_LIBRARY)
+#LINK_WITH_VARIABLES(${LIB_NAME} OSG_LIBRARY OSGUTIL_LIBRARY OSGSIM_LIBRARY OSGTERRAIN_LIBRARY OSGDB_LIBRARY OSGFX_LIBRARY OSGVIEWER_LIBRARY OSGTEXT_LIBRARY OSGGA_LIBRARY OSGSHADOW_LIBRARY OPENTHREADS_LIBRARY CURL_LIBRARY GDAL_LIBRARY ZLIB_LIBRARY)
+
+OPTION(NRL_STATIC_LIBRARIES "Link osgEarth against static GDAL and cURL, including static OpenSSL, Proj4, JPEG, PNG, and TIFF." OFF)
+if(NOT NRL_STATIC_LIBRARIES)
+  LINK_WITH_VARIABLES(${LIB_NAME} OSG_LIBRARY OSGUTIL_LIBRARY OSGSIM_LIBRARY OSGTERRAIN_LIBRARY OSGDB_LIBRARY OSGFX_LIBRARY OSGVIEWER_LIBRARY OSGTEXT_LIBRARY OSGGA_LIBRARY OSGSHADOW_LIBRARY OPENTHREADS_LIBRARY CURL_LIBRARY GDAL_LIBRARY ZLIB_LIBRARY)
+else(NOT NRL_STATIC_LIBRARIES)
+  LINK_WITH_VARIABLES(${LIB_NAME} OSG_LIBRARY OSGUTIL_LIBRARY OSGSIM_LIBRARY OSGTERRAIN_LIBRARY OSGDB_LIBRARY OSGFX_LIBRARY OSGVIEWER_LIBRARY OSGTEXT_LIBRARY OSGGA_LIBRARY OSGSHADOW_LIBRARY OPENTHREADS_LIBRARY CURL_LIBRARY GDAL_LIBRARY ZLIB_LIBRARY SSL_EAY_RELEASE LIB_EAY_RELEASE TIFF_LIBRARY PROJ4_LIBRARY PNG_LIBRARY JPEG_LIBRARY)
+endif(NOT NRL_STATIC_LIBRARIES)
+
 LINK_CORELIB_DEFAULT(${LIB_NAME} ${CMAKE_THREAD_LIBS_INIT} ${MATH_LIBRARY})
 
 IF (TINYXML_FOUND)

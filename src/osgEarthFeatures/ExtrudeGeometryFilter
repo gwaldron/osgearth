@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2010 Pelican Mapping
+ * Copyright 2008-2012 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -31,6 +31,9 @@ namespace osgEarth { namespace Features
 {
     using namespace osgEarth;
     using namespace osgEarth::Symbology;
+    
+    class FeatureSourceIndex;
+
 
     /**
      * Extrudes footprint geometry into 3D geometry
@@ -47,6 +50,8 @@ namespace osgEarth { namespace Features
 
         /** Constructs a new filter that will extrude footprints */
         ExtrudeGeometryFilter();
+
+        virtual ~ExtrudeGeometryFilter() { }
 
         /**
          * Sets the style that will govern the geometry generation.
@@ -76,6 +81,7 @@ namespace osgEarth { namespace Features
          */
         void setFeatureNameExpr( const StringExpression& expr ) { _featureNameExpr = expr; }
         const StringExpression& getFeatureNameExpr() const { return _featureNameExpr; }
+
 
     protected:
 
@@ -110,12 +116,14 @@ namespace osgEarth { namespace Features
         void reset( const FilterContext& context );
         
         void addDrawable( 
-            osg::Drawable*     drawable, 
-            osg::StateSet*     stateSet, 
-            const std::string& name );
+            osg::Drawable*      drawable, 
+            osg::StateSet*      stateSet, 
+            const std::string&  name,
+            FeatureID           fid,
+            FeatureSourceIndex* index);
         
         bool process( 
-            FeatureList&    input,
+            FeatureList&     input,
             FilterContext&   context );
 
         bool extrudeGeometry(

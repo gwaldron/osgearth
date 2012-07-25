@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2010 Pelican Mapping
+ * Copyright 2008-2012 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -18,6 +18,8 @@
  */
 #include <osgEarth/ShaderUtils>
 #include <osgEarth/Registry>
+#include <osgEarth/Capabilities>
+#include <osgUtil/CullVisitor>
 #include <list>
 
 using namespace osgEarth;
@@ -32,12 +34,14 @@ namespace
     getModeValue(const StateSetStack& statesetStack, osg::StateAttribute::GLMode mode)
     {
         osg::StateAttribute::GLModeValue base_val = osg::StateAttribute::ON;
+
         for(StateSetStack::const_iterator itr = statesetStack.begin();
             itr != statesetStack.end();
             ++itr)
         {
             osg::StateAttribute::GLModeValue val = (*itr)->getMode(mode);
-            if ((val & ~osg::StateAttribute::INHERIT)!=0)
+
+            if ( (val & osg::StateAttribute::INHERIT) == 0 )
             {
                 if ((val & osg::StateAttribute::PROTECTED)!=0 ||
                     (base_val & osg::StateAttribute::OVERRIDE)==0)
@@ -57,9 +61,9 @@ namespace
 
 UpdateLightingUniformsHelper::UpdateLightingUniformsHelper( bool useUpdateTrav ) :
 _lightingEnabled( true ),
-_dirty( true ),
-_applied( false ),
-_useUpdateTrav( useUpdateTrav )
+_dirty          ( true ),
+_applied        ( false ),
+_useUpdateTrav  ( useUpdateTrav )
 {
     _maxLights = Registry::instance()->getCapabilities().getMaxLights();
 
@@ -106,7 +110,7 @@ UpdateLightingUniformsHelper::cullTraverse( osg::Node* node, osg::NodeVisitor* n
         }
 
         // Update the overall lighting-enabled value:
-        bool lightingEnabled = 
+        bool lightingEnabled =
             ( getModeValue(stateSetStack, GL_LIGHTING) & osg::StateAttribute::ON ) != 0;
 
         if ( lightingEnabled != _lightingEnabled || !_applied )
@@ -167,6 +171,13 @@ UpdateLightingUniformsHelper::updateTraverse( osg::Node* node )
             stateSet->addUniform( _lightEnabledUniform.get() );
         }
     }
+}
+
+void
+UpdateLightingUniformsHelper::operator()(osg::Node* node, osg::NodeVisitor* nv)
+{
+    cullTraverse( node, nv );
+    traverse(node, nv);
 }
 
 //------------------------------------------------------------------------

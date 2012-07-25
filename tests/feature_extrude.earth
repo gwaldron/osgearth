@@ -28,6 +28,7 @@ Footprint Extrusion using the "feature_geom" driver.
                     extrusion-flatten: true;
                     fill:              #ff7f2f;
                     altitude-clamping: terrain;
+                    altitude-resolution: 0.001;
                 }            
             </style>
         </styles>   
@@ -41,9 +42,6 @@ Footprint Extrusion using the "feature_geom" driver.
         <terrain>
             <sample_ratio>0.2</sample_ratio>
         </terrain>
-        <cache type="filesystem">
-            <path>osgearth_cache</path>
-        </cache>
     </options> 
     
     <image name="ReadyMap.org - Imagery" driver="tms">

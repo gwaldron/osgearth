@@ -1,7 +1,7 @@
 <!-- 
 osgEarth Sample - TMS
 
-Show how to use CloudMade's TMS interface.
+Show how to use CloudMade's XYZ interface.
 -->
 
 <map name="Cloudmade" type="geocentric" version="2">
@@ -10,12 +10,9 @@ Show how to use CloudMade's TMS interface.
         <url>../data/world.tif</url>
     </image>
 
-   <image name="osm-cloudmade-35117" driver="tms">
-       <url>http://b.tile.cloudmade.com/f10ecb40ab2159639c5f2d4b9a273f1d/35117/256/</url>
+   <image name="osm-cloudmade-35117" driver="xyz">
+       <url>http://[abc].tile.cloudmade.com/f10ecb40ab2159639c5f2d4b9a273f1d/35117/256/{z}/{x}/{y}.png</url>
        <profile>global-mercator</profile>
-       <format>png</format>
-       <tile_size>256</tile_size>
-       <tms_type>google</tms_type>       
    </image> 
 
    <options>   

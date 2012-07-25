@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2010 Pelican Mapping
+ * Copyright 2008-2012 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -19,6 +19,8 @@
 
 #ifndef OSGEARTHSYMBOLOGY_MODEL_SYMBOL_H
 #define OSGEARTHSYMBOLOGY_MODEL_SYMBOL_H 1
+
+#include <climits>
 
 #include <osgEarth/Common>
 #include <osgEarthSymbology/Symbol>
@@ -53,8 +55,26 @@ namespace osgEarth { namespace Symbology
             PLACEMENT_RANDOM
         };
 
+        // note: these are similar to the values in osgText::Text::AlignmentType
+        enum Alignment {
+            ALIGN_LEFT_TOP,
+            ALIGN_LEFT_CENTER,
+            ALIGN_LEFT_BOTTOM,
+
+            ALIGN_CENTER_TOP,
+            ALIGN_CENTER_CENTER,
+            ALIGN_CENTER_BOTTOM,
+
+            ALIGN_RIGHT_TOP,
+            ALIGN_RIGHT_CENTER,
+            ALIGN_RIGHT_BOTTOM,
+        };
+
     public:
         MarkerSymbol( const Config& conf =Config() );
+
+        /** dtor */
+        virtual ~MarkerSymbol() { }
 
         /** URI of the model to use for substitution. */
         optional<StringExpression>& url() { return _url; }
@@ -88,11 +108,15 @@ namespace osgEarth { namespace Symbology
         optional<bool>& isModel() { return _isModelHint; }
         const optional<bool>& isModel() const { return _isModelHint; }
 
+        /** Alignment of the marker relative to center pixels */
+        optional<Alignment>& alignment() { return _alignment; }
+        const optional<Alignment>& alignment() const { return _alignment; }
+        
     public: // non-serialized properties (for programmatic use only)
 
         /** Explicit image to use for 2D icon placemet */
         void setImage( osg::Image* image ) { _image = image; }
-        osg::Image* getImage() const { return _image.get(); }
+        osg::Image* getImage( unsigned maxSize =INT_MAX ) const;
 
         /** Explicit model to use for model placement */
         void setModel( osg::Node* node ) { _node = node; }
@@ -111,9 +135,10 @@ namespace osgEarth { namespace Symbology
         optional<float>              _density;
         optional<unsigned>           _randomSeed;
         optional<bool>               _isModelHint;
+        optional<Alignment>         _alignment;
 
-        osg::ref_ptr<osg::Image>     _image;
         osg::ref_ptr<osg::Node>      _node;
+        mutable osg::ref_ptr<osg::Image> _image;
     };
 
 } } // namespace osgEarth::Symbology

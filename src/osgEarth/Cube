@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2010 Pelican Mapping
+ * Copyright 2008-2012 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -64,7 +64,7 @@ namespace osgEarth
         static bool cubeToFace( 
             double& in_out_x, 
             double& in_out_y, 
-            int& out_face );
+            int&    out_face );
 
         /**
          * Converts cube coordinates (0,0=>6,1) to face coordinates (0,0=>1,1,F). This
@@ -74,14 +74,14 @@ namespace osgEarth
         static bool cubeToFace( 
             double& in_out_xmin, double& in_out_ymin, 
             double& in_out_xmax, double& in_out_ymax, 
-            int& out_face );
+            int&    out_face );
 
         /**
          * Converts face coordinates (0,0=>1,1 +F) to cube coordinates (0,0=>6,1).
          */
         static bool faceToCube(
             double& in_out_x, double& in_out_y, 
-            int face );
+            int     face );
     };
 
     /**
@@ -92,6 +92,9 @@ namespace osgEarth
     {
     public:
         CubeFaceLocator(unsigned int face);
+
+        /** dtor */
+        virtual ~CubeFaceLocator() { }
 
         // This method will generate geocentric vertex coordinates, given local tile
         // coordinates (0=>1).
@@ -115,6 +118,9 @@ namespace osgEarth
     public:
         CubeSpatialReference(void* handle);
 
+        /** dtor */
+        virtual ~CubeSpatialReference() { }
+
         virtual GeoLocator* createLocator(
             double xmin, double ymin, double xmax, double ymax,
             bool plate_carre =false) const;
@@ -125,16 +131,15 @@ namespace osgEarth
 
         // This SRS uses a WGS84 lat/long SRS under the hood for reprojection. So we need the
         // pre/post transforms to move from cube to latlong and back.
-        virtual bool preTransform(double& x, double& y, double& z, void* context) const;
-        virtual bool postTransform(double& x, double& y, double& z, void* context) const;
+        virtual bool preTransform ( std::vector<osg::Vec3d>& points ) const;
+        virtual bool postTransform( std::vector<osg::Vec3d>& points ) const;
 
-        virtual bool transformExtent(
+        virtual bool transformExtentToMBR(
             const SpatialReference* to_srs,
-            double& in_out_xmin,
-            double& in_out_ymin,
-            double& in_out_xmax,
-            double& in_out_ymax,
-            void* context) const;
+            double&                 in_out_xmin,
+            double&                 in_out_ymin,
+            double&                 in_out_xmax,
+            double&                 in_out_ymax ) const;
 
     protected: // SpatialReference overrides
 

@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2008-2010 Pelican Mapping
+* Copyright 2008-2012 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -20,6 +20,7 @@
 #include "TransparentLayer"
 #include <osgEarth/ImageUtils>
 #include <osgEarth/TaskService>
+#include <osgEarth/HeightFieldUtils>
 
 using namespace osgEarth;
 using namespace OpenThreads;
@@ -45,32 +46,57 @@ struct BuildColorLayer
         GeoImage geoImage;
         bool isFallbackData = false;
 
+        bool useMercatorFastPath =
+            _opt->enableMercatorFastPath() != false &&
+            _mapInfo->isGeocentric()                &&
+            _layer->getProfile()                    &&
+            _layer->getProfile()->getSRS()->isSphericalMercator();
+
         // fetch the image from the layer, falling back on parent keys utils we are 
         // able to find one that works.
 
         bool autoFallback = _key.getLevelOfDetail() <= 1;
 
         TileKey imageKey( _key );
-        while( !geoImage.valid() && imageKey.valid() && _layer->isKeyValid(imageKey) )
+        TileSource* tileSource = _layer->getTileSource();
+
+        //Only try to get data from the source if it actually intersects the key extent
+        bool hasDataInExtent = true;
+        if (tileSource)
         {
-            geoImage = _layer->createImage( imageKey, 0L, autoFallback ); // TODO: include a progress callback?
-            if ( !geoImage.valid() )
+            GeoExtent ext = _key.getExtent();
+            if (!_layer->getProfile()->getSRS()->isEquivalentTo( ext.getSRS()))
             {
-                imageKey = imageKey.createParentKey();
-                isFallbackData = true;
+                ext = _layer->getProfile()->clampAndTransformExtent( ext );
+            }
+            hasDataInExtent = ext.isValid() && tileSource->hasDataInExtent( ext );
+        }        
+        
+        if (hasDataInExtent)
+        {
+            while( !geoImage.valid() && imageKey.valid() && _layer->isKeyValid(imageKey) )
+            {
+                if ( useMercatorFastPath )
+                {
+                    bool mercFallbackData = false;
+                    geoImage = _layer->createImageInNativeProfile( imageKey, 0L, autoFallback, mercFallbackData );
+                    if ( geoImage.valid() && mercFallbackData )
+                    {
+                        isFallbackData = true;
+                    }
+                }
+                else
+                {
+                    geoImage = _layer->createImage( imageKey, 0L, autoFallback );
+                }
+
+                if ( !geoImage.valid() )
+                {
+                    imageKey = imageKey.createParentKey();
+                    isFallbackData = true;
+                }
             }
         }
-
-#if 0
-        bool autoFallback = _key.getLevelOfDetail() == 1;
-
-        geoImage = _layer->createImage( _key, 0L, autoFallback );
-        if ( !geoImage.valid() && !autoFallback )
-        {
-            geoImage = _layer->createImage( _key, 0L, true );
-            isFallbackData = true;
-        }
-#endif
 
         GeoLocator* locator = 0L;
 
@@ -83,8 +109,22 @@ struct BuildColorLayer
         }
         else
         {
-            locator = GeoLocator::createForExtent(geoImage.getExtent(), *_mapInfo);                                                                                       
+            if ( useMercatorFastPath )
+                locator = new MercatorLocator(geoImage.getExtent());
+            else
+                locator = GeoLocator::createForExtent(geoImage.getExtent(), *_mapInfo);
         }
+
+        bool isStreaming = _opt->loadingPolicy()->mode() == LoadingPolicy::MODE_PREEMPTIVE || _opt->loadingPolicy()->mode() == LoadingPolicy::MODE_SEQUENTIAL;
+
+        if (geoImage.getImage() && isStreaming)
+        {
+            // protected against multi threaded access. This is a requirement in sequential/preemptive mode, 
+            // for example. This used to be in TextureCompositorTexArray::prepareImage.
+            // TODO: review whether this affects performance.    
+            geoImage.getImage()->setDataVariance( osg::Object::DYNAMIC );
+        }
+
         // add the color layer to the repo.
         _repo->add( CustomColorLayer(
             _layer,
@@ -262,7 +302,7 @@ TileBuilder::finalizeJob(TileBuilder::Job*   job,
     // OK we are making a tile, so if there's no heightfield yet, make an empty one.
     if ( !repo._elevLayer.getHFLayer() )
     {
-        osg::HeightField* hf = key.getProfile()->getVerticalSRS()->createReferenceHeightField( key.getExtent(), 8, 8 );
+        osg::HeightField* hf = HeightFieldUtils::createReferenceHeightField( key.getExtent(), 8, 8 );
         osgTerrain::HeightFieldLayer* hfLayer = new osgTerrain::HeightFieldLayer( hf );
         hfLayer->setLocator( GeoLocator::createForKey(key, mapInfo) );
         repo._elevLayer = CustomElevLayer( hfLayer, true );
@@ -421,7 +461,8 @@ TileBuilder::createTile(const TileKey&      key,
     // OK we are making a tile, so if there's no heightfield yet, make an empty one.
     if ( !repo._elevLayer.getHFLayer() )
     {
-        osg::HeightField* hf = key.getProfile()->getVerticalSRS()->createReferenceHeightField( key.getExtent(), 8, 8 );
+        osg::HeightField* hf = HeightFieldUtils::createReferenceHeightField( key.getExtent(), 8, 8 );
+        //osg::HeightField* hf = key.getProfile()->getVerticalSRS()->createReferenceHeightField( key.getExtent(), 8, 8 );
         osgTerrain::HeightFieldLayer* hfLayer = new osgTerrain::HeightFieldLayer( hf );
         hfLayer->setLocator( GeoLocator::createForKey(key, mapInfo) );
         repo._elevLayer = CustomElevLayer( hfLayer, true );

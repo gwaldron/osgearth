@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2010 Pelican Mapping
+ * Copyright 2008-2012 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -24,7 +24,6 @@
 #include <osgEarthFeatures/ExtrudeGeometryFilter>
 #include <osgEarthFeatures/ScatterFilter>
 #include <osgEarthFeatures/SubstituteModelFilter>
-#include <osgEarthFeatures/TransformFilter>
 #include <osgEarthFeatures/TessellateOperator>
 #include <osg/MatrixTransform>
 #include <osg/Timer>
@@ -52,7 +51,8 @@ ConfigOptions      ( conf ),
 _maxGranularity_deg( 1.0 ),
 _mergeGeometry     ( false ),
 _clustering        ( true ),
-_ignoreAlt         ( false )
+_ignoreAlt         ( false ),
+_useVertexBufferObjects( true )
 {
     fromConfig(_conf);
 }
@@ -60,26 +60,28 @@ _ignoreAlt         ( false )
 void
 GeometryCompilerOptions::fromConfig( const Config& conf )
 {
-    conf.getIfSet   ( "max_granularity", _maxGranularity_deg );
-    conf.getIfSet   ( "merge_geometry",  _mergeGeometry );
-    conf.getIfSet   ( "clustering",      _clustering );
-    conf.getObjIfSet( "feature_name",    _featureNameExpr );
-    conf.getIfSet   ( "ignore_altitude", _ignoreAlt );
+    conf.getIfSet   ( "max_granularity",  _maxGranularity_deg );
+    conf.getIfSet   ( "merge_geometry",   _mergeGeometry );
+    conf.getIfSet   ( "clustering",       _clustering );
+    conf.getObjIfSet( "feature_name",     _featureNameExpr );
+    conf.getIfSet   ( "ignore_altitude",  _ignoreAlt );
     conf.getIfSet   ( "geo_interpolation", "great_circle", _geoInterp, GEOINTERP_GREAT_CIRCLE );
     conf.getIfSet   ( "geo_interpolation", "rhumb_line",   _geoInterp, GEOINTERP_RHUMB_LINE );
+    conf.getIfSet   ( "use_vbo", _useVertexBufferObjects);
 }
 
 Config
 GeometryCompilerOptions::getConfig() const
 {
     Config conf = ConfigOptions::getConfig();
-    conf.addIfSet   ( "max_granularity", _maxGranularity_deg );
-    conf.addIfSet   ( "merge_geometry",  _mergeGeometry );
-    conf.addIfSet   ( "clustering",      _clustering );
-    conf.addObjIfSet( "feature_name",    _featureNameExpr );
-    conf.addIfSet   ( "ignore_altitude", _ignoreAlt );
+    conf.addIfSet   ( "max_granularity",  _maxGranularity_deg );
+    conf.addIfSet   ( "merge_geometry",   _mergeGeometry );
+    conf.addIfSet   ( "clustering",       _clustering );
+    conf.addObjIfSet( "feature_name",     _featureNameExpr );
+    conf.addIfSet   ( "ignore_altitude",  _ignoreAlt );
     conf.addIfSet   ( "geo_interpolation", "great_circle", _geoInterp, GEOINTERP_GREAT_CIRCLE );
     conf.addIfSet   ( "geo_interpolation", "rhumb_line",   _geoInterp, GEOINTERP_RHUMB_LINE );
+    conf.addIfSet   ( "use_vbo", _useVertexBufferObjects);
     return conf;
 }
 
@@ -108,8 +110,15 @@ GeometryCompiler::compile(Geometry*             geometry,
                           const Style&          style,
                           const FilterContext&  context)
 {
-    osg::ref_ptr<Feature> f = new Feature(geometry, 0L); // no SRS
+    osg::ref_ptr<Feature> f = new Feature(geometry, 0L); // no SRS!
     return compile(f.get(), style, context);
+}
+
+osg::Node*
+GeometryCompiler::compile(Geometry*             geometry,
+                          const FilterContext&  context)
+{
+    return compile( geometry, Style(), context );
 }
 
 osg::Node*
@@ -120,6 +129,13 @@ GeometryCompiler::compile(Feature*              feature,
     FeatureList workingSet;
     workingSet.push_back(feature);
     return compile(workingSet, style, context);
+}
+
+osg::Node*
+GeometryCompiler::compile(Feature*              feature,
+                          const FilterContext&  context)
+{
+    return compile(feature, *feature->style(), context);
 }
 
 osg::Node*
@@ -198,6 +214,8 @@ GeometryCompiler::compile(FeatureList&          workingSet,
                 point = s_defaultPointSymbol.get(); break;
             case Geometry::TYPE_POLYGON:
                 polygon = s_defaultPolygonSymbol.get(); break;
+            case Geometry::TYPE_UNKNOWN: break;
+            case Geometry::TYPE_MULTI: break;
             }
         }
     }
@@ -315,6 +333,8 @@ GeometryCompiler::compile(FeatureList&          workingSet,
             filter.mergeGeometry() = *_options.mergeGeometry();
         if ( _options.featureName().isSet() )
             filter.featureName() = *_options.featureName();
+        if ( _options.useVertexBufferObjects().isSet())
+            filter.useVertexBufferObjects() = *_options.useVertexBufferObjects();
 
         osg::Node* node = filter.push( workingSet, sharedCX );
         if ( node )

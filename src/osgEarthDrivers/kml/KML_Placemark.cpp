@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2010 Pelican Mapping
+ * Copyright 2008-2012 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -24,8 +24,10 @@
 #include <osgEarthAnnotation/PlaceNode>
 #include <osgEarthAnnotation/LabelNode>
 #include <osgEarthAnnotation/Decluttering>
+#include <osgEarthAnnotation/LocalGeometryNode>
 
 #include <osg/Depth>
+#include <osgDB/WriteFile>
 
 using namespace osgEarth::Features;
 using namespace osgEarth::Annotation;
@@ -49,19 +51,31 @@ KML_Placemark::build( const Config& conf, KMLContext& cx )
         style = cx._activeStyle;
     }
 
-    // KML's default altitude mode is clampToGround.
-    if ( style.get<AltitudeSymbol>() == 0L )
-        style.getOrCreate<AltitudeSymbol>()->clamping() = AltitudeSymbol::CLAMP_TO_TERRAIN;
-
-    // parse the geometry. the placemark must have geometry to be valid.
+    // parse the geometry. the placemark must have geometry to be valid. The 
+    // geometry parse may optionally specify an altitude mode as well.
     KML_Geometry geometry;
     geometry.build(conf, cx, style);
+
+    // KML's default altitude mode is clampToGround.
+    AltitudeMode altMode = ALTMODE_RELATIVE;
+
+    AltitudeSymbol* altSym = style.get<AltitudeSymbol>();
+    if ( !altSym )
+    {
+        altSym = style.getOrCreate<AltitudeSymbol>();
+        altSym->clamping() = AltitudeSymbol::CLAMP_RELATIVE_TO_TERRAIN;
+    }
+    else if ( !altSym->clamping().isSetTo(AltitudeSymbol::CLAMP_RELATIVE_TO_TERRAIN) )
+    {
+        altMode = ALTMODE_ABSOLUTE;
+    }
     
     if ( geometry._geom.valid() && geometry._geom->getTotalPointCount() > 0 )
     {
         Geometry* geom = geometry._geom.get();
 
-        osg::Vec3d position = geom->getBounds().center();
+        GeoPoint position(cx._srs.get(), geom->getBounds().center(), altMode);
+
         bool isPoly = geom->getComponentType() == Geometry::TYPE_POLYGON;
         bool isPoint = geom->getComponentType() == Geometry::TYPE_POINTSET;
 
@@ -70,28 +84,52 @@ KML_Placemark::build( const Config& conf, KMLContext& cx )
         osg::ref_ptr<osg::Image> markerImage;
         osg::ref_ptr<osg::Node>  markerModel;
 
-        MarkerSymbol* marker = style.get<MarkerSymbol>();    
+        MarkerSymbol* marker = style.get<MarkerSymbol>();
+
         if ( marker && marker->url().isSet() )
         {
-            markerURI = URI( marker->url()->expr(), marker->url()->uriContext() );
-            ReadResult result = marker->isModel() == true? markerURI.readNode() : markerURI.readImage();
-            markerImage = result.getImage();
-            markerModel = result.getNode();
+            if ( marker->isModel() == false )
+            {
+                markerImage = marker->getImage( *cx._options->iconMaxSize() );
+            }
+            else
+            {
+                markerURI = URI( marker->url()->eval(), marker->url()->uriContext() );
+                markerModel = markerURI.getNode();
+
+                // We can't leave the marker symbol in the style, or the GeometryCompiler will
+                // think we want to do Point-model substitution. So remove it. A bit of a hack
+                if ( marker )
+                    style.removeSymbol(marker);
+            }
         }
 
-        std::string text = 
-            conf.hasValue("name") ? conf.value("name") :
-            conf.hasValue("description") ? conf.value("description") :
-            "Unnamed";  
+        std::string text = conf.hasValue("name") ? conf.value("name") : "";
 
-        FeatureNode*    fNode = 0L;
+        AnnotationNode* fNode = 0L;
         AnnotationNode* pNode = 0L;
 
         // place a 3D model:
         if ( markerModel.valid() )
         {
-            Feature* feature = new Feature(geometry._geom.get(), cx._srs.get(), style);
-            fNode = new FeatureNode( cx._mapNode, feature, false ); //, options );
+            LocalGeometryNode* lg = new LocalGeometryNode(cx._mapNode, markerModel.get(), style, false);
+            lg->setPosition( position );
+            if ( marker )
+            {
+                if ( marker->scale().isSet() )
+                {
+                    float scale = marker->scale()->eval();
+                    lg->setScale( osg::Vec3f(scale,scale,scale) );
+                }
+                if ( marker->orientation().isSet() )
+                {
+                   // lg->setRotation( );
+                }
+            }
+
+            fNode = lg;
+            //Feature* feature = new Feature(geometry._geom.get(), cx._srs.get(), style);
+            //fNode = new FeatureNode( cx._mapNode, feature, false );
         }
 
         // Place node (icon + text) or Label node (text only)
@@ -120,17 +158,15 @@ KML_Placemark::build( const Config& conf, KMLContext& cx )
         if ( geometry._geom->getTotalPointCount() > 1 )
         {
             const ExtrusionSymbol* ex = style.get<ExtrusionSymbol>();
-            const AltitudeSymbol* alt = style.get<AltitudeSymbol>();        
+            const AltitudeSymbol* alt = style.get<AltitudeSymbol>();    
+
+            if ( style.get<MarkerSymbol>() )
+                style.removeSymbol(style.get<MarkerSymbol>());
 
             bool draped =
                 isPoly   && 
                 ex == 0L && 
                 (alt == 0L || alt->clamping() == AltitudeSymbol::CLAMP_TO_TERRAIN);
-
-            // this will confuse the GeometryCompiler into thinking we want point-model sub..
-            // probably need a more elegant solution here..
-            if ( marker )
-                style.removeSymbol(marker);
 
             // Make a feature node; drape if we're not extruding.
             GeometryCompilerOptions options;

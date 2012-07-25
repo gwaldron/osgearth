@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2008-2010 Pelican Mapping
+* Copyright 2008-2012 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -31,10 +31,12 @@
     META_Node(library,type); \
     virtual bool accept(Decoration* ds, bool enable) { return ds->apply(*this, enable); }
 
+// forward decs
 namespace osgEarth
 {
     class MapNode;
 }
+
 
 namespace osgEarth { namespace Annotation
 {	
@@ -44,7 +46,7 @@ namespace osgEarth { namespace Annotation
     /**
      * Base class for all annotation node types.
      */
-    class OSGEARTHANNO_EXPORT AnnotationNode : public osg::Switch
+    class OSGEARTHANNO_EXPORT AnnotationNode : public osg::Group
     {
     public:
         META_AnnotationNode(osgEarthAnnotation, AnnotationNode);
@@ -64,13 +66,17 @@ namespace osgEarth { namespace Annotation
         /** 
          * Gets the attach point for children of this node
          */
-        virtual osg::Group* getAttachPoint();
+        virtual osg::Group* getChildAttachPoint();
 
         /**
-         Gets the MapNode that this AnnotationNode is attached to
+         * Gets the MapNode that this AnnotationNode is attached to
          */
         osgEarth::MapNode* getMapNode() const;
 
+        /**
+         * Serialized this annotation node so you can re-create it later
+         */
+        virtual Config getConfig() const { return Config(); }
 
 
     public: // decoration support
@@ -84,6 +90,11 @@ namespace osgEarth { namespace Annotation
          * Uninstalls a decoration on this annotation node.
          */
         void uninstallDecoration( const std::string& name );
+
+        /**
+         * Gets the current decoration
+         */
+        const std::string& getDecoration() const;
 
         /**
          * Activates a named decoration that was installed previously
@@ -116,10 +127,11 @@ namespace osgEarth { namespace Annotation
 
 
         bool supportsAutoClamping( const Style& style ) const;
+        
+        void configureForAltitudeMode( const AltitudeMode& mode );
 
-        // Apply general style information. You can pass "noClamp=true" as a hint
-        // that no clamping logic is necessary
-        virtual void applyStyle( const Style&, bool noClampHint =false );
+        // Apply general style information
+        virtual void applyStyle( const Style&);
         
         /**
          * Sets the node to automatically re-clamp to the terrain (if applicable).
@@ -135,11 +147,8 @@ namespace osgEarth { namespace Annotation
          */
         virtual void setDepthAdjustment( bool value );
 
-        /**
-         * Clamps a point to the terrain.
-         */
-        void clamp( osg::Vec3d& mapPos ) const;
-
+        // utility funcion to make a geopoint absolute height
+        bool makeAbsolute( GeoPoint& mapPoint, osg::Node* patch =0L ) const;
 
         // hidden default ctor
         AnnotationNode( MapNode* mapNode =0L );
@@ -153,7 +162,6 @@ namespace osgEarth { namespace Annotation
         virtual void reclamp( const TileKey& key, osg::Node* tile, const Terrain* terrain ) { }
 
         virtual ~AnnotationNode();
-
     };
 
     /**
@@ -162,34 +170,27 @@ namespace osgEarth { namespace Annotation
     class PositionedAnnotationNode : public AnnotationNode
     {
     public:
-        /**
-         * Sets the map position of the node. The coordinates are in the SRS
-         * of the current Map. Returns true upon success.
-         */
-        virtual bool setPosition( const osg::Vec3d& pos ) =0;
 
         /**
-         * Sets the map position of the node. The coordinates are in the SRS
-         * passed in, and will be reprojected to Map coordinates.
+         * Sets the map position of the node.
          * Returns true upon success.
          */
-        virtual bool setPosition( const osg::Vec3d& pos, const SpatialReference* srs ) =0;
+        virtual bool setPosition( const GeoPoint& p ) =0;
+
+        /**
+         * Sets the map position of the node, in map coordinates.
+         * Returns true upon success.
+         */
+        //virtual bool setPosition( const osg::Vec3d& pos ) =0;
 
         /**
          * Gets the position (in map coordinates) of the node
          */
-        virtual osg::Vec3d getPosition() const =0;
-
-        /**
-         * Gets the position (in the requested coordinate system)
-         */
-        virtual osg::Vec3d getPosition( const SpatialReference* srs ) const =0;
+        virtual GeoPoint getPosition() const =0;
 
     protected:
-        PositionedAnnotationNode(MapNode* mapNode =0L) : AnnotationNode(mapNode) { }
 
-        //PositionedAnnotationNode( const AnnotationNode& rhs, const osg::CopyOp& op=osg::CopyOp::DEEP_COPY_ALL) 
-        //    : AnnotationNode( rhs, op ) { }
+        PositionedAnnotationNode(MapNode* mapNode =0L) : AnnotationNode(mapNode) { }
         
     };
 

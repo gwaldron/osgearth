@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2010 Pelican Mapping
+ * Copyright 2008-2012 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -34,6 +34,9 @@ class KMLReader
 public:
     /** Initialized a KML reader that will work with the provided map node */
     KMLReader( MapNode* mapNode, const KMLOptions* options );
+
+    /** dtor */
+    virtual ~KMLReader() { }
 
     /** Reads KML from a stream and returns a node */
     osg::Node* read( std::istream& in, const URIContext& context );

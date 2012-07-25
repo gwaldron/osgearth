@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2008-2010 Pelican Mapping
+* Copyright 2008-2012 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -45,26 +45,33 @@ namespace osgEarth { namespace Annotation
          */
         PlaceNode(
             MapNode*           mapNode,
-            const osg::Vec3d&  position,
+            const GeoPoint&    position,
             osg::Image*        iconImage,
             const std::string& labelText,
             const Style&       style =Style() );
 
         /**
-         * Constructs a new place node.
+         * Constructs a new place node. You can specify an icon marker by
+         * adding a MarkerSymbol to the Style.
          */
         PlaceNode(
             MapNode*           mapNode,
-            double             x,
-            double             y,
-            osg::Image*        iconImage,
+            const GeoPoint&    position,
             const std::string& labelText,
             const Style&       style =Style() );
+
+        /**
+         * Deserializes a place node
+         */
+        PlaceNode(
+            MapNode*      mapNode,
+            const Config& conf);
+
+        virtual ~PlaceNode() { }
 
         /**
          * Image to use for the icon
          */
-        void setIconImage( osg::Image* image );
         osg::Image* getIconImage() const { return _image.get(); }
 
         /**
@@ -76,9 +83,8 @@ namespace osgEarth { namespace Annotation
         /**
          * Style (for text)
          */
-        void setStyle( const Style& style );
         const Style& getStyle() const { return _style; }
-        
+
 
     public: // OrthoNode override
 
@@ -86,6 +92,8 @@ namespace osgEarth { namespace Annotation
 
         virtual void setDynamic( bool value );
 
+        virtual Config getConfig() const;
+        
     private:
         osg::ref_ptr<osg::Image>   _image;
         std::string                _text;

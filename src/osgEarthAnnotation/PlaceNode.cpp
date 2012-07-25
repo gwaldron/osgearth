@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2008-2010 Pelican Mapping
+* Copyright 2008-2012 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -19,9 +19,11 @@
 
 #include <osgEarthAnnotation/PlaceNode>
 #include <osgEarthAnnotation/AnnotationUtils>
+#include <osgEarthAnnotation/AnnotationRegistry>
 #include <osgEarthFeatures/BuildTextFilter>
 #include <osgEarthFeatures/LabelSource>
 #include <osgEarth/Utils>
+#include <osgEarth/Registry>
 #include <osg/Depth>
 
 #define LC "[PlaceNode] "
@@ -33,7 +35,7 @@ using namespace osgEarth::Symbology;
 
 
 PlaceNode::PlaceNode(MapNode*           mapNode,
-                     const osg::Vec3d&  position,
+                     const GeoPoint&    position,
                      osg::Image*        image,
                      const std::string& text,
                      const Style&       style ) :
@@ -48,14 +50,11 @@ _geode  ( 0L )
 }
 
 PlaceNode::PlaceNode(MapNode*           mapNode,
-                     double             x,
-                     double             y,
-                     osg::Image*        image,
+                     const GeoPoint&    position,
                      const std::string& text,
                      const Style&       style ) :
 
-OrthoNode( mapNode, osg::Vec3d(x,y,0) ),
-_image  ( image ),
+OrthoNode( mapNode, position ),
 _text   ( text ),
 _style  ( style ),
 _geode  ( 0L )
@@ -70,18 +69,74 @@ PlaceNode::init()
 
     osg::Drawable* text = 0L;
 
+    if ( !_image.valid() && _style.getSymbol<MarkerSymbol>() )
+    {
+        _image = _style.getSymbol<MarkerSymbol>()->getImage();
+    }
+
     if ( _image.get() )
     {
         // this offset anchors the image at the bottom
-        osg::Vec2s offset( 0.0, _image->t()/2.0 );
-        osg::Geometry* imageGeom = AnnotationUtils::createImageGeometry( _image.get(), offset );
+        osg::Vec2s offset;
+        MarkerSymbol* marker = _style.get<MarkerSymbol>();
+        if ((marker == NULL) || !marker->alignment().isSet())
+        {	
+            // default to bottom center
+            offset.set(0.0, (_image->t() / 2.0));
+        }
+        else
+        {	// default to bottom center
+            switch (marker->alignment().value())
+            {
+            case MarkerSymbol::ALIGN_LEFT_TOP:
+                offset.set((_image->s() / 2.0), -(_image->t() / 2.0));
+                break;
+            case MarkerSymbol::ALIGN_LEFT_CENTER:
+                offset.set((_image->s() / 2.0), 0.0);
+                break;
+            case MarkerSymbol::ALIGN_LEFT_BOTTOM:
+                offset.set((_image->s() / 2.0), (_image->t() / 2.0));
+                break;
+            case MarkerSymbol::ALIGN_CENTER_TOP:
+                offset.set(0.0, -(_image->t() / 2.0));
+                break;
+            case MarkerSymbol::ALIGN_CENTER_CENTER:
+                offset.set(0.0, 0.0);
+                break;
+            case MarkerSymbol::ALIGN_CENTER_BOTTOM:
+            default:
+                offset.set(0.0, (_image->t() / 2.0));
+                break;
+            case MarkerSymbol::ALIGN_RIGHT_TOP:
+                offset.set(-(_image->s() / 2.0), -(_image->t() / 2.0));
+                break;
+            case MarkerSymbol::ALIGN_RIGHT_CENTER:
+                offset.set(-(_image->s() / 2.0), 0.0);
+                break;
+            case MarkerSymbol::ALIGN_RIGHT_BOTTOM:
+                offset.set(-(_image->s() / 2.0), (_image->t() / 2.0));
+                break;
+            }
+        }
+
+        // Apply a rotation to the marker if requested:
+        double heading = 0.0;
+        if ( marker && marker->orientation().isSet() )
+        {
+            //Just get the heading
+            heading = osg::DegreesToRadians(marker->orientation().value().x());
+        }
+
+        //We must actually rotate the geometry itself and not use a MatrixTransform b/c the 
+        //decluttering doesn't respect Transforms above the drawable.
+        osg::Geometry* imageGeom = AnnotationUtils::createImageGeometry( _image.get(), offset, 0, heading );
         if ( imageGeom )
             _geode->addDrawable( imageGeom );
 
         text = AnnotationUtils::createTextDrawable(
             _text,
             _style.get<TextSymbol>(),
-            osg::Vec3( _image->s()/2.0 + 2, _image->t()/2.0, 0 ) );
+            osg::Vec3( (offset.x() + (_image->s() / 2.0) + 2), offset.y(), 0 ) );
     }
     else
     {
@@ -103,6 +158,7 @@ PlaceNode::init()
     applyStyle( _style );
 }
 
+#if 0 // TODO
 void
 PlaceNode::setIconImage( osg::Image* image )
 {
@@ -112,6 +168,7 @@ PlaceNode::setIconImage( osg::Image* image )
         return;
     }
 }
+#endif
 
 void
 PlaceNode::setText( const std::string& text )
@@ -121,6 +178,8 @@ PlaceNode::setText( const std::string& text )
         OE_WARN << LC << "Illegal state: cannot change a LabelNode that is not dynamic" << std::endl;
         return;
     }
+
+    _text = text;
 
     const osg::Geode::DrawableList& list = _geode->getDrawableList();
     for( osg::Geode::DrawableList::const_iterator i = list.begin(); i != list.end(); ++i )
@@ -134,6 +193,7 @@ PlaceNode::setText( const std::string& text )
     }
 }
 
+#if 0 // TODO
 void
 PlaceNode::setStyle( const Style& style )
 {
@@ -143,6 +203,7 @@ PlaceNode::setStyle( const Style& style )
         return;
     }
 }
+#endif
 
 void
 PlaceNode::setAnnotationData( AnnotationData* data )
@@ -167,4 +228,49 @@ PlaceNode::setDynamic( bool value )
     {
         i->get()->setDataVariance( value ? osg::Object::DYNAMIC : osg::Object::STATIC );
     }
+}
+
+
+
+//-------------------------------------------------------------------
+
+OSGEARTH_REGISTER_ANNOTATION( place, osgEarth::Annotation::PlaceNode );
+
+
+PlaceNode::PlaceNode(MapNode*      mapNode,
+                     const Config& conf ) :
+OrthoNode( mapNode, GeoPoint::INVALID )
+{
+    conf.getObjIfSet( "style",  _style );
+    conf.getIfSet   ( "text",   _text );
+
+    optional<URI> imageURI;
+    conf.getIfSet( "icon", imageURI );
+    if ( imageURI.isSet() ) {
+        _image = imageURI->getImage();
+        if ( _image.valid() )
+            _image->setFileName( imageURI->base() );
+    }
+
+    init();
+
+    if ( conf.hasChild("position") )
+        setPosition( GeoPoint(conf.child("position")) );
+}
+
+Config
+PlaceNode::getConfig() const
+{
+    Config conf( "place" );
+    conf.add   ( "text",   _text );
+    conf.addObj( "style",  _style );
+    conf.addObj( "position", getPosition() );
+    if ( _image.valid() ) {
+        if ( !_image->getFileName().empty() )
+            conf.add( "icon", _image->getFileName() );
+        else if ( !_image->getName().empty() )
+            conf.add( "icon", _image->getName() );
+    }
+
+    return conf;
 }

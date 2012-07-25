@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2008-2010 Pelican Mapping
+* Copyright 2008-2012 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -328,6 +328,14 @@ _uriContext( rhs._uriContext )
     //nop
 }
 
+void
+StringExpression::set( const std::string& expr )
+{
+    _src = expr;
+    _dirty = true;
+    init();
+}
+
 StringExpression::StringExpression( const Config& conf )
 {
     mergeConfig( conf );
@@ -337,14 +345,17 @@ StringExpression::StringExpression( const Config& conf )
 void
 StringExpression::mergeConfig( const Config& conf )
 {
-    _src = conf.value();
-    _dirty = true;
+    _src        = conf.value();
+    _uriContext = conf.referrer();
+    _dirty      = true;
 }
 
 Config
 StringExpression::getConfig() const
 {
-    return Config( "string_expression", _src );
+    Config conf( "string_expression", _src );
+    conf.setReferrer( uriContext().referrer() );
+    return conf;
 }
 
 void
@@ -353,7 +364,7 @@ StringExpression::init()
     bool inQuotes = false;
     int inVar = 0;
     int startPos = 0;
-    for (int i=0; i < _src.length(); i++)
+    for (int i=0; i < (int)_src.length(); i++)
     {
       if (_src[i] == '"')
       {
@@ -440,6 +451,18 @@ StringExpression::set( const Variable& var, const std::string& value )
     {
         a.second = value;
         _dirty = true;
+    }
+}
+
+void
+StringExpression::set( const std::string& varName, const std::string& value )
+{
+    for( Variables::const_iterator v = _vars.begin(); v != _vars.end(); ++v )
+    {
+        if ( v->first == varName )
+        {
+            set( *v, value );
+        }
     }
 }
 

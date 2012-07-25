@@ -1,0 +1,94 @@
+<!--
+osgEarth Sample - Annotations
+-->
+<map name="readymap.org" type="projected" version="2">
+
+    <image name="mapquest_osm" driver="xyz">
+        <url>http://otile[1234].mqcdn.com/tiles/1.0.0/osm/{z}/{x}/{y}.jpg</url>
+        <profile>global-mercator</profile>
+        <cache_policy usage="no_cache"/>
+    </image>
+        
+    <elevation name="ReadyMap.org - Elevation" driver="tms">
+        <url>http://readymap.org/readymap/tiles/1.0.0/9/</url>
+    </elevation>
+    
+    <options>
+        <terrain>
+            <lighting>false</lighting>
+            <sample_ratio>0.125</sample_ratio>
+        </terrain>
+        <!-- <cache_policy usage="cache_only"/> -->
+    </options>
+    
+    <external>
+        <viewpoint name="Annotation Samples" heading="35.27" lat="33" long="-118" pitch="-35" range="500000"/>
+        
+        <annotations declutter="true">
+        
+            <label text="Los Angeles">
+                <position lat="34.051" long="-117.974" alt="100" mode="relative"/>
+                <style type="text/css">
+                    text-align: center_center;
+                    text-size:  20;
+                    text-halo:  #000000;
+                </style>
+            </label>
+            
+            <place text="San Diego">
+                <position lat="32.73" long="-117.17"/>
+                <icon>http://demo.pelicanmapping.com/icons/gmaps/yoga.png</icon>
+            </place>
+            
+            <circle draped="true">
+                <position lat="34.051" long="-117.974"/>
+                <radius value="50" units="km"/>
+                <style type="text/css">fill: #ffff005f;</style>
+            </circle>
+            
+            <ellipse>
+                <position lat="32.73" long="-119.0"/>
+                <radius_major value="50" units="km"/>
+                <radius_minor value="20" units="km"/>
+                <style type="text/css">
+                    fill:             #ff7f008f;
+                    stroke:           #ff0000ff;
+                    extrusion-height: 5000;
+                </style>
+            </ellipse>
+            
+            <rectangle>
+                <position lat="32.2" long="-118" alt="1000"/>
+                <width value="50" units="nm"/>
+                <height value="25" units="nm"/>
+                <style type="text/css"> stroke: #00ffff; stroke-width: 2; </style>
+            </rectangle>
+
+            <feature>
+                <srs>wgs84</srs>
+                <geometry>
+                    LINESTRING(-120.37 34.039, -120.09 33.96, -119.75 34, -118.43 33.37, -118.48 32.88)
+                </geometry>
+                <style type="text/css">
+                    fill:             #ff00ff7f;
+                    stroke:           #ffff00;
+                    stroke-width:     3;
+                    extrusion-height: 30000;
+                </style>
+            </feature>
+            
+            <local_geometry>
+                <geometry>
+                    POLYGON((0 0 0, -1000 0 25000, -5000 0 25000, 0 0 30000, 5000 0 25000, 1000 0 25000))
+                </geometry>
+                <position lat="33.4" long="-116.6" alt="0"/>
+                <style type="text/css">
+                    fill: #00ff00;
+                    stroke: #ffff00;
+                </style>
+            </local_geometry>
+            
+        </annotations>
+        
+    </external>
+</map>

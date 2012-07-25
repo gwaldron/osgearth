@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2010 Pelican Mapping
+ * Copyright 2008-2012 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -56,6 +56,9 @@ namespace osgEarth { namespace Util
             const AngularFormat& defaultFormat =FORMAT_DECIMAL_DEGREES,
             unsigned             optionsMask   =0u );
 
+        /** dtor */
+        virtual ~LatLongFormatter() { }
+
         /**
          * Sets the output precision for decimal numbers  (default is 5)
          */
@@ -71,16 +74,8 @@ namespace osgEarth { namespace Util
          */
         std::string format(
             const Angular&       angle,
-            int                  precision =-1, 
-            const AngularFormat& outputFormat    =FORMAT_DEFAULT) const;
-
-        std::string operator()(
-            const Angular&       angle,
-            int                  precision =-1, 
-            const AngularFormat& outputFormat =FORMAT_DEFAULT) const
-        {
-            return format(angle, precision, outputFormat);
-        }
+            int                  precision    =-1, 
+            const AngularFormat& outputFormat =FORMAT_DEFAULT) const;
 
         /**
          * Parses a string into an angle (returning false if parsing fails).
@@ -89,7 +84,7 @@ namespace osgEarth { namespace Util
 
     public: // Formatter
 
-        virtual std::string format( const osg::Vec3d& mapCoords, const SpatialReference* srs ) const;
+        virtual std::string format( const GeoPoint& p ) const;
 
 
     protected:

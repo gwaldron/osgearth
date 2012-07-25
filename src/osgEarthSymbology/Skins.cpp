@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2010 Pelican Mapping
+ * Copyright 2008-2012 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -20,6 +20,8 @@
 #include <osgEarth/StringUtils>
 #include <osgEarth/ImageUtils>
 #include <osgEarth/HTTPClient>
+#include <osgEarth/ShaderComposition>
+#include <osgEarth/Registry>
 
 #include <osg/BlendFunc>
 #include <osg/Texture2D>
@@ -96,6 +98,7 @@ SkinResource::createStateSet( osg::Image* image ) const
         stateSet = new osg::StateSet();
 
         osg::Texture* tex = new osg::Texture2D( image );
+        tex->setResizeNonPowerOfTwoHint(false);
         tex->setWrap( osg::Texture::WRAP_S, osg::Texture::REPEAT );
         tex->setWrap( osg::Texture::WRAP_T, osg::Texture::REPEAT );
         stateSet->setTextureAttributeAndModes( 0, tex, osg::StateAttribute::ON );
@@ -114,6 +117,31 @@ SkinResource::createStateSet( osg::Image* image ) const
             blendFunc->setFunction( GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA );
             stateSet->setAttributeAndModes( blendFunc, osg::StateAttribute::ON );
             stateSet->setRenderingHint( osg::StateSet::TRANSPARENT_BIN );
+        }
+
+        // build the shader functions to apply the skin:
+        if ( true ) // useShaders
+        {
+            ShaderFactory* fact = Registry::instance()->getShaderFactory();
+
+            VirtualProgram* vp = new VirtualProgram();
+            vp->setName( image->getFileName() );
+
+            vp->setShader(
+                "osgearth_vert_setupColoring",
+                fact->createDefaultColoringVertexShader( 1 ),
+                osg::StateAttribute::ON );
+
+            vp->setShader(
+                "osgearth_frag_applyColoring",
+                fact->createDefaultColoringFragmentShader( 1 ),
+                osg::StateAttribute::ON );
+
+            stateSet->setAttributeAndModes( vp, osg::StateAttribute::ON );
+
+            stateSet->getOrCreateUniform(
+                fact->getSamplerName(0),
+                osg::Uniform::SAMPLER_2D)->set(0);
         }
     }
 

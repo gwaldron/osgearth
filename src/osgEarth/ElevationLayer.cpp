@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2010 Pelican Mapping
+ * Copyright 2008-2012 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -17,6 +17,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 #include <osgEarth/ElevationLayer>
+#include <osgEarth/VerticalDatum>
+#include <osgEarth/HeightFieldUtils>
 #include <osg/Version>
 
 using namespace osgEarth;
@@ -194,6 +196,49 @@ ElevationLayer::createHeightFieldFromTileSource(const TileKey&    key,
         return 0L;
     }
 
+    // If the profiles are horizontally equivalent (different vdatums is OK), take the
+    // quick route:
+    if ( key.getProfile()->isHorizEquivalentTo( getProfile() ) )
+    {
+        // Only try to get data if the source actually has data
+        if ( !source->hasData(key) )
+        {
+            OE_DEBUG << LC << "Source for layer \"" << getName() << "\" has no data at " << key.str() << std::endl;
+            return 0L;
+        }
+
+        // Make it from the source:
+        result = source->createHeightField( key, _preCacheOp.get(), progress );
+
+        // If the result is good, we how have a heightfield but it's vertical values
+        // are still relative to the tile source's vertical datum. Convert them.
+        if ( result )
+        {
+            if ( ! key.getExtent().getSRS()->isVertEquivalentTo( getProfile()->getSRS() ) )
+            {
+                VerticalDatum::transform(
+                    getProfile()->getSRS()->getVerticalDatum(),    // from
+                    key.getExtent().getSRS()->getVerticalDatum(),  // to
+                    key.getExtent(),
+                    result );
+            }
+        }
+        
+        // Blacklist the tile if it is the same projection as the source and we can't get it and it wasn't cancelled
+        if ( !result && (!progress || !progress->isCanceled()))
+        {
+            source->getBlacklist()->add( key.getTileId() );
+        }
+    }
+
+    // Otherwise, profiles don't match so we need to composite:
+    else
+    {
+        // note: this method takes care of the vertical datum shift internally.
+        result = assembleHeightFieldFromTileSource( key, progress );
+    }
+
+#if 0
     // If the profiles don't match, use a more complicated technique to assemble the tile:
     if ( !key.getProfile()->isEquivalentTo( getProfile() ) )
     {
@@ -211,12 +256,9 @@ ElevationLayer::createHeightFieldFromTileSource(const TileKey&    key,
         // Make it from the source:
         result = source->createHeightField( key, _preCacheOp.get(), progress );
     }
+#endif
 
-    // Blacklist the tile if we can't get it and it wasn't cancelled
-    if ( !result && (!progress || !progress->isCanceled()))
-    {
-        source->getBlacklist()->add( key.getTileId() );
-    }
+
 
     return result;
 }
@@ -235,6 +277,9 @@ ElevationLayer::assembleHeightFieldFromTileSource(const TileKey&    key,
     std::vector< TileKey > intersectingTiles;
     getProfile()->getIntersectingTiles( key, intersectingTiles );
 
+    // collect heightfield for each intersecting key. Note, we're hitting the
+    // underlying tile source here, so there's no vetical datum shifts happening yet.
+    // we will do that later.
     if ( intersectingTiles.size() > 0 )
     {
         for (unsigned int i = 0; i < intersectingTiles.size(); ++i)
@@ -246,8 +291,7 @@ ElevationLayer::assembleHeightFieldFromTileSource(const TileKey&    key,
                 osg::HeightField* hf = createHeightFieldFromTileSource( layerKey, progress );
                 if ( hf )
                 {
-                    heightFields.push_back( GeoHeightField(
-                        hf, layerKey.getExtent(), layerKey.getProfile()->getVerticalSRS() ) );
+                    heightFields.push_back( GeoHeightField(hf, layerKey.getExtent()) );
                 }
             }
         }
@@ -279,17 +323,19 @@ ElevationLayer::assembleHeightFieldFromTileSource(const TileKey&    key,
         //Create the new heightfield by sampling all of them.
         for (unsigned int c = 0; c < width; ++c)
         {
-            double geoX = minx + (dx * (double)c);
+            double x = minx + (dx * (double)c);
             for (unsigned r = 0; r < height; ++r)
             {
-                double geoY = miny + (dy * (double)r);
+                double y = miny + (dy * (double)r);
 
                 //For each sample point, try each heightfield.  The first one with a valid elevation wins.
                 float elevation = NO_DATA_VALUE;
                 for (GeoHeightFieldVector::iterator itr = heightFields.begin(); itr != heightFields.end(); ++itr)
                 {
+                    // get the elevation value, at the same time transforming it vertically into the 
+                    // requesting key's vertical datum.
                     float e = 0.0;
-                    if (itr->getElevation(key.getExtent().getSRS(), geoX, geoY, INTERP_BILINEAR, _profile->getVerticalSRS(), e))
+                    if (itr->getElevation(key.getExtent().getSRS(), x, y, INTERP_BILINEAR, key.getExtent().getSRS(), e))
                     {
                         elevation = e;
                         break;
@@ -390,6 +436,6 @@ ElevationLayer::createHeightField(const TileKey&    key,
     }
 
     return result ?
-        GeoHeightField( result, key.getExtent(), key.getProfile()->getVerticalSRS() ) :
+        GeoHeightField( result, key.getExtent() ) :
         GeoHeightField::INVALID;
 }

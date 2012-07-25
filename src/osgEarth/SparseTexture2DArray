@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2010 Pelican Mapping
+ * Copyright 2008-2012 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -42,6 +42,10 @@ namespace osgEarth
             : osg::Texture2DArray( rhs, copyop ) { }
 
         META_StateAttribute( osgEarth, SparseTexture2DArray, TEXTURE );
+
+        /** dtor */
+        virtual ~SparseTexture2DArray() { }
+
 
     public:
         virtual void computeInternalFormat() const;

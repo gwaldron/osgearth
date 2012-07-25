@@ -1,6 +1,6 @@
 /* --*-c++-*-- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2010 Pelican Mapping
+ * Copyright 2008-2012 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -34,11 +34,10 @@ namespace osgEarth { namespace Features
     using namespace osgEarth::Symbology;
 
     /**
-     * A graph that gets its contents from a FeatureNodeFactory. This class will
-     * handle all the internals of selecting features, gridding feature data if
-     * required, and sorting features based on style. Then for each cell and each
-     * style, it will invoke the FeatureNodeFactory to create the actual data for
-     * each set.
+     * A scene graph that renders feature data.
+     * This class will handle all the internals of selecting features, gridding feature
+     * data if required, and sorting features based on style. Then for each cell and each
+     * style, it will invoke the FeatureNodeFactory to create the actual data for each set.
      */
     class OSGEARTHFEATURES_EXPORT FeatureModelGraph : public osg::Group
     {
@@ -46,8 +45,6 @@ namespace osgEarth { namespace Features
         /**
          * Constructs a new model graph.
          *
-         * @param source
-         *      Source from which to read feature data
          * @param options
          *      Model source options
          * @param factory
@@ -55,40 +52,81 @@ namespace osgEarth { namespace Features
          * @param session
          *      Session under which to create elements in this graph
          */
-        FeatureModelGraph( 
-            FeatureSource*                   source,
+        FeatureModelGraph(
+            Session*                         session,
             const FeatureModelSourceOptions& options,
-            FeatureNodeFactory*              factory,
-            Session*                         session );
+            FeatureNodeFactory*              factory );
 
         /**
          * Loads and returns a subnode. Used internally for paging.
          */
         osg::Node* load( unsigned lod, unsigned tileX, unsigned tileY, const std::string& uri );
 
+        /**
+         * Style sheet associated with this feature graph.
+         */
         StyleSheet* getStyles() { return _session->styles(); }
 
+        /**
+         * Sets the style sheet to use to render features 
+         */
         void setStyles( StyleSheet* styles );
 
+        /**
+         * Mark the feature graph dirty and in need of regeneration 
+         */
         void dirty();
 
+
+    public: // osg::Node
 
         virtual void traverse(osg::NodeVisitor& nv);
 
     protected:
+
         virtual ~FeatureModelGraph();
 
-        void setupPaging();
+        osg::Node* setupPaging();
 
-        osg::Group* build( const FeatureLevel& level, const GeoExtent& extent, const TileKey* key);
+        osg::Group* buildLevel( 
+            const FeatureLevel& level, 
+            const GeoExtent&    extent, 
+            const TileKey*      key);
 
-        osg::Group* build( const Style& baseStyle, const Query& baseQuery, const GeoExtent& extent );
+        osg::Group* build( 
+            const Style&        baseStyle, 
+            const Query&        baseQuery, 
+            const GeoExtent&    extent, 
+            FeatureSourceIndex* index);
+
 
     private:
         
-        osg::Group* createNodeForStyle(const Style& style, const Query& query);
+        osg::Group* createStyleGroup(
+            const Style&        style, 
+            const Query&        query, 
+            FeatureSourceIndex* index);
+
+        osg::Group* createStyleGroup(
+            const Style&         style, 
+            FeatureList&         workingSet, 
+            const FilterContext& contextPrototype);
+
+        void buildStyleGroups(
+            const StyleSelector* selector,
+            const Query&         baseQuery,
+            FeatureSourceIndex*  index,
+            osg::Group*          parent);
+
+        void queryAndSortIntoStyleGroups(
+            const Query&            query,
+            const StringExpression& styleExpr,
+            FeatureSourceIndex*     index,
+            osg::Group*             parent);
        
-        osg::BoundingSphered getBoundInWorldCoords( const GeoExtent& extent, const MapFrame* mapf ) const;
+        osg::BoundingSphered getBoundInWorldCoords( 
+            const GeoExtent& extent, 
+            const MapFrame*  mapf ) const;
 
         void buildSubTilePagedLODs(
             unsigned lod, unsigned tileX, unsigned tileY,
@@ -96,9 +134,10 @@ namespace osgEarth { namespace Features
 
         void redraw();
 
+        void installShaderMains();
+
     private:
         FeatureModelSourceOptions        _options;
-        osg::ref_ptr<FeatureSource>      _source;
         osg::ref_ptr<FeatureNodeFactory> _factory;
         osg::ref_ptr<Session>            _session;
         UID                              _uid;
@@ -111,6 +150,7 @@ namespace osgEarth { namespace Features
         bool                             _useTiledSource;
         osgEarth::Revision               _revision;
         bool                             _dirty;
+        bool                             _pendingUpdate;
         std::vector<const FeatureLevel*> _lodmap;
     };
 

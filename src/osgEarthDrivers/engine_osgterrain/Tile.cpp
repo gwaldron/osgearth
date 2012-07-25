@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2008-2010 Pelican Mapping
+* Copyright 2008-2012 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -24,7 +24,7 @@
 #include <osgEarth/Registry>
 #include <osgEarth/Locators>
 #include <osgEarth/Map>
-#include <osgEarth/FindNode>
+#include <osgEarth/NodeUtils>
 
 #include <osg/NodeCallback>
 #include <osg/NodeVisitor>
@@ -39,6 +39,7 @@ using namespace osgEarth;
 using namespace OpenThreads;
 
 #define LC "[Tile] "
+
 
 //----------------------------------------------------------------------------
 
@@ -59,6 +60,7 @@ _dirty( true )
     // traversal the first time through. It is on the first update traversal that we
     // know the tile is in the scene graph and that it can be registered with the terrain.
     ADJUST_UPDATE_TRAV_COUNT( this, 1 );
+
 }
 
 Tile::~Tile()
@@ -207,6 +209,15 @@ Tile::setCustomColorLayers( const ColorLayersByUID& in, bool writeLock )
         if ( delta != 0 )
             ADJUST_UPDATE_TRAV_COUNT( this, delta );
     }
+}
+
+void Tile::clear()
+{    
+    //Clear out any imagery & elevation data being held by this Tile
+    Threading::ScopedWriteLock exclusiveLock( _tileLayersMutex );
+    _colorLayers.clear();
+    _elevationLayer = 0;
+
 }
 
 osg::BoundingSphere

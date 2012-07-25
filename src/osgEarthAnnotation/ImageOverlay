@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2010 Pelican Mapping
+ * Copyright 2008-2012 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -19,22 +19,24 @@
 #ifndef OSGEARTH_ANNO_IMAGE_OVERLAY_H
 #define OSGEARTH_ANNO_IMAGE_OVERLAY_H
 
-#include <osgEarthAnnotation/Common>
+#include <osgEarthAnnotation/AnnotationNode>
 #include <osgEarth/GeoData>
-#include <osgEarth/DrapeableNode>
 #include <osgEarth/Units>
+#include <osgEarth/URI>
 
 #include <osg/Group>
 #include <osg/Geometry>
 #include <osg/Image>
+#include <osg/MatrixTransform>
 
 namespace osgEarth { namespace Annotation
 {
     using namespace osgEarth;
 
-    class OSGEARTHANNO_EXPORT ImageOverlay : public DrapeableNode
+    class OSGEARTHANNO_EXPORT ImageOverlay : public AnnotationNode
     {
-    public:    
+    public:
+        META_AnnotationNode(osgEarthAnnotation, ImageOverlay);
         
         enum ControlPoint
         {
@@ -46,6 +48,13 @@ namespace osgEarth { namespace Annotation
         };
         
         ImageOverlay(MapNode* mapNode, osg::Image* image = NULL);
+
+        /**
+         * Construcs an image overlay annotation from a serialized representation
+         */
+        ImageOverlay(MapNode* mapNode, const Config& conf);
+
+        virtual ~ImageOverlay() { }
 
         void setCorners(const osg::Vec2d& lowerLeft, const osg::Vec2d& lowerRight, 
                         const osg::Vec2d& upperLeft, const osg::Vec2d& upperRight);
@@ -71,6 +80,7 @@ namespace osgEarth { namespace Annotation
         struct ImageOverlayCallback : public osg::Referenced
         {
             virtual void onOverlayChanged() {};
+            virtual ~ImageOverlayCallback() { }
         };
 
         typedef std::list< osg::ref_ptr<ImageOverlayCallback> > CallbackList;
@@ -87,6 +97,12 @@ namespace osgEarth { namespace Annotation
         osg::Image* getImage() const;
         void setImage( osg::Image* image );
 
+        osg::Texture::FilterMode getMinFilter() const;
+        void setMinFilter( osg::Texture::FilterMode filter );
+
+        osg::Texture::FilterMode getMagFilter() const;
+        void setMagFilter( osg::Texture::FilterMode filter );
+
         void setNorth(double value_deg);
         void setSouth(double value_deg);
         void setEast(double value_deg);
@@ -95,26 +111,57 @@ namespace osgEarth { namespace Annotation
         float getAlpha() const;
         void setAlpha(float alpha);
 
-        virtual void traverse(osg::NodeVisitor& nv);
-
         void dirty();
+
+        bool getDraped() const;
+        void setDraped( bool draped );
+        
+        /** Serialize the contents of this node */
+        Config getConfig() const;
+
+    public: // AnnotationNode
+        
+        virtual void reclamp( const TileKey& key, osg::Node* tile, const Terrain* );
+
+    public: // osg::Node
+
+        virtual void traverse(osg::NodeVisitor& nv);
+        
     private:
         void fireCallback(ImageOverlay::ControlPoint point, const osg::Vec2d& location);
 
         void postCTOR();
         void init();
         void clampLatitudes();
+
+        void clampMesh( osg::Node* terrainModel );
+
+        void updateFilters();
+
+
         osg::Vec2d _lowerLeft;
         osg::Vec2d _lowerRight;
         osg::Vec2d _upperRight;
         osg::Vec2d _upperLeft;
+        osg::Polytope _boundingPolytope;        
         osg::ref_ptr< osg::Image > _image;
         bool _dirty;
         OpenThreads::Mutex _mutex;
         osg::Geode* _geode;
+        osg::MatrixTransform* _transform;
         osg::Geometry* _geometry;
-        float _alpha;
+        osg::Texture* _texture;
+
+        //float _alpha;
         CallbackList _callbacks;
+
+        optional<URI>   _imageURI;
+        optional<float> _alpha;
+        optional<osg::Texture::FilterMode> _minFilter;
+        optional<osg::Texture::FilterMode> _magFilter;
+
+        ImageOverlay() { }
+        ImageOverlay(const ImageOverlay&, const osg::CopyOp&) { }
     };
 
 } } // namespace osgEarth::Annotation

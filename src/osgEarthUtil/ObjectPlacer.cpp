@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2010 Pelican Mapping
+ * Copyright 2008-2012 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -17,7 +17,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 #include <osgEarthUtil/ObjectPlacer>
-#include <osgEarth/FindNode>
+#include <osgEarth/NodeUtils>
 #include <osgEarth/MapNode>
 #include <osgEarth/SpatialReference>
 #include <osgSim/LineOfSight>
@@ -149,7 +149,8 @@ ObjectPlacer::createPlacerMatrix( double lat_deg, double lon_deg, double height,
         osg::Vec3d local(0, 0, height);
         
         // first convert the input coords to the map srs:
-        srs->getGeographicSRS()->transform2D( lon_deg, lat_deg, srs, local.x(), local.y());
+        srs->getGeographicSRS()->transform( osg::Vec3d(lon_deg, lat_deg, height), srs, local );
+        //srs->getGeographicSRS()->transform2D( lon_deg, lat_deg, srs, local.x(), local.y());
 
         if ( _clamp )
         {

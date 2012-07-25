@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2008-2010 Pelican Mapping
+* Copyright 2008-2012 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -35,6 +35,8 @@ namespace osgEarth { namespace Annotation
         ScaleDecoration(float factor =1.1f) :
             InjectionDecoration(new osg::MatrixTransform(osg::Matrix::scale(factor,factor,factor))),
             _factor(factor) { }
+
+        virtual ~ScaleDecoration() { }
 
         virtual Decoration* clone() const { return new ScaleDecoration(_factor); }
 

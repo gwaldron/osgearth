@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2010 Pelican Mapping
+ * Copyright 2008-2012 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -64,6 +64,12 @@ namespace
         }
 
         ReadResult readString(const std::string& key,
+                              double             maxAge )
+        {
+            return readObject( key, maxAge );
+        }
+
+        ReadResult readConfig(const std::string& key,
                               double             maxAge )
         {
             return readObject( key, maxAge );

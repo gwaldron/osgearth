@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2008-2010 Pelican Mapping
+* Copyright 2008-2012 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -32,6 +32,7 @@ namespace osgEarth { namespace Annotation
     {
     public:
         Decoration() { }
+        virtual ~Decoration() { }
 
         virtual bool isShareable() const { return false; }
         virtual Decoration* clone() const =0;
@@ -64,7 +65,7 @@ namespace osgEarth { namespace Annotation
          */
         DecorationInstaller( const std::string& name, Decoration* tech )
             : osg::NodeVisitor(osg::NodeVisitor::TRAVERSE_ALL_CHILDREN),
-              _name(name), _tech(tech) { }
+              _tech(tech), _name(name) { }
 
         /**
          * Constructor - for using a callback to assign a decorator to each
@@ -72,15 +73,18 @@ namespace osgEarth { namespace Annotation
          */
         DecorationInstaller( const std::string& name, Callback* callback )
             : osg::NodeVisitor(osg::NodeVisitor::TRAVERSE_ALL_CHILDREN),
-              _name(name), _callback(callback) { }
+              _callback(callback), _name(name) { }
+
+
+        virtual ~DecorationInstaller() { }
 
     public:
         virtual void apply(osg::Node& node);
 
     public:
         osg::ref_ptr<Decoration> _tech;
-        osg::ref_ptr<Callback>  _callback;
-        std::string             _name;
+        osg::ref_ptr<Callback>   _callback;
+        std::string              _name;
     };
 
     //-----------------------------------------------------------------------
@@ -94,6 +98,8 @@ namespace osgEarth { namespace Annotation
     {
     public:
         InjectionDecoration( osg::Group* group =0L );
+        virtual ~InjectionDecoration() { }
+
         virtual Decoration* clone() const { return new InjectionDecoration(osg::clone(_injectionGroup.get(), osg::CopyOp::DEEP_COPY_ALL)); }
 
         virtual bool apply(class AnnotationNode& node, bool enable);

@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2010 Pelican Mapping
+ * Copyright 2008-2012 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -34,6 +34,8 @@ Query::mergeConfig( const Config& conf )
             if ( !conf.getIfSet( "sql", _expression ) )
                 conf.getIfSet( "expression", _expression );
 
+    conf.getIfSet("orderby", _orderby);
+
     Config b = conf.child( "extent" );
     if( !b.empty() )
     {
@@ -50,6 +52,7 @@ Query::getConfig() const
 {
     Config conf( "query" );
     conf.addIfSet( "expr", _expression );
+    conf.addIfSet( "orderby", _orderby);
     if ( _bounds.isSet() ) {
         Config bc( "extent" );
         bc.add( "xmin", toString(_bounds->xMin()) );
@@ -88,18 +91,26 @@ Query::combineWith( const Query& rhs ) const
         merged.expression() = *_expression;
     }
 
-    // merge the bounds:
-    if ( bounds().isSet() && rhs.bounds().isSet() )
+    // tilekey overrides bounds:
+    if ( _tileKey.isSet() )
     {
-        merged.bounds() = bounds()->intersectionWith( *rhs.bounds() );
+        merged.tileKey() = *_tileKey;
     }
-    else if ( bounds().isSet() )
+    else
     {
-        merged.bounds() = *bounds();
-    }
-    else if ( rhs.bounds().isSet() )
-    {
-        merged.bounds() = *rhs.bounds();
+        // merge the bounds:
+        if ( bounds().isSet() && rhs.bounds().isSet() )
+        {
+            merged.bounds() = bounds()->intersectionWith( *rhs.bounds() );
+        }
+        else if ( bounds().isSet() )
+        {
+            merged.bounds() = *bounds();
+        }
+        else if ( rhs.bounds().isSet() )
+        {
+            merged.bounds() = *rhs.bounds();
+        }
     }
 
     return merged;

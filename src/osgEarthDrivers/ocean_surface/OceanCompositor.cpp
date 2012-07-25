@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2010 Pelican Mapping
+ * Copyright 2008-2012 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -34,8 +34,8 @@ OceanCompositor::updateMasterStateSet(osg::StateSet*       stateSet,
         vp = new VirtualProgram();
         stateSet->setAttributeAndModes( vp, 1 );
     }
-    vp->setShader( "osgearth_vert_setupTexturing", new osg::Shader(osg::Shader::VERTEX, source_setupTexturing) );
-    vp->setShader( "osgearth_frag_applyTexturing", new osg::Shader(osg::Shader::FRAGMENT, source_applyTexturing ) );
+    vp->setShader( "osgearth_vert_setupColoring", new osg::Shader(osg::Shader::VERTEX, source_setupColoring) );
+    vp->setShader( "osgearth_frag_applyColoring", new osg::Shader(osg::Shader::FRAGMENT, source_applyColoring ) );
 }
     
 namespace

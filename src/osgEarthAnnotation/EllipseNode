@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2008-2010 Pelican Mapping
+* Copyright 2008-2012 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -52,7 +52,7 @@ namespace osgEarth { namespace Annotation
          */
         EllipseNode( 
             MapNode*                mapNode,
-            const osg::Vec3d&       position,
+            const GeoPoint&         position,
             const Linear&           radiusMajor,
             const Linear&           radiusMinor,
             const Angular&          rotationAngle,
@@ -60,6 +60,7 @@ namespace osgEarth { namespace Annotation
             bool                    draped      =true,
             unsigned                numSegments =0 );
 
+        virtual ~EllipseNode() { }
 
         /**
          * Gets the major radius
@@ -95,7 +96,7 @@ namespace osgEarth { namespace Annotation
         /**
          * Sets the rotation angle
          */
-        void setRotationAngle(Angular& rotationAngle);
+        void setRotationAngle(const Angular& rotationAngle);
 
         /**
          * Gets the number of segments
@@ -117,6 +118,16 @@ namespace osgEarth { namespace Annotation
          * Sets the style
          */
         void setStyle( const Style& style );
+
+        /**
+         * Gets draped property
+         */
+        bool isDraped() const { return _draped; }
+
+    public:
+
+        EllipseNode(MapNode* mapNode, const Config& conf);
+        virtual Config getConfig() const;
 
 
     private:

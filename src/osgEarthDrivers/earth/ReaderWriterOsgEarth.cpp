@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2010 Pelican Mapping
+ * Copyright 2008-2012 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -27,15 +27,37 @@
 #include <osgDB/Registry>
 #include <string>
 #include <sstream>
+#include <osgEarthUtil/Common>
 
 using namespace osgEarth;
 
 #define LC "[ReaderWriterEarth] "
 
+// Macros to determine the filename for dependent libs.
+#define Q2(x) #x
+#define Q(x)  Q2(x)
+
+#if defined(_DEBUG) && defined(OSGEARTH_DEBUG_POSTFIX)
+#    define LIBNAME_UTIL "osgEarthUtil" ## Q(OSGEARTH_DEBUG_POSTFIX)
+#elif defined(OSGEARTH_RELEASE_POSTFIX)
+#    define LIBNAME_UTIL "osgEarthUtil" ## Q(OSGEARTH_RELEASE_POSTFIX)
+#else
+#    define LIBNAME_UTIL "osgEarthUtil"
+#endif
+
+
+
 class ReaderWriterEarth : public osgDB::ReaderWriter
 {
     public:
-        ReaderWriterEarth() {}
+        ReaderWriterEarth()
+        {
+            // force the loading of other osgEarth libraries that might be needed to 
+            // deserialize an earth file. 
+            // osgEarthUtil: contains ColorFilter implementations
+            OE_DEBUG << LC << "Forced load: " << LIBNAME_UTIL << std::endl;
+            osgDB::Registry::instance()->loadLibrary( LIBNAME_UTIL );
+        }
 
         virtual const char* className()
         {
@@ -50,6 +72,11 @@ class ReaderWriterEarth : public osgDB::ReaderWriter
         virtual ReadResult readObject(const std::string& file_name, const Options* options) const
         {
             return readNode( file_name, options );
+        }
+
+        virtual ReadResult readObject(std::istream& in, const Options* options) const
+        {
+            return readNode( in, options );
         }
 
         virtual WriteResult writeNode(const osg::Node& node, const std::string& fileName, const Options* options ) const
@@ -132,7 +159,9 @@ class ReaderWriterEarth : public osgDB::ReaderWriter
         {
             // pull the URI context from the options structure (since we're reading
             // from an "anonymous" stream here)
-            URIContext uriContext( options );            
+            URIContext uriContext( options ); 
+            //if ( uriContext.empty() && options && options->getDatabasePathList().size() > 0 )
+            //    uriContext = URIContext( options->getDatabasePathList().front() + "/" );
 
             osg::ref_ptr<XmlDocument> doc = XmlDocument::load( in, uriContext );            
             if ( !doc.valid() )

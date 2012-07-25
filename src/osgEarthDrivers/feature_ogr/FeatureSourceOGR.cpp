@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2010 Pelican Mapping
+ * Copyright 2008-2012 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -23,6 +23,7 @@
 #include <osgEarthFeatures/Filter>
 #include <osgEarthFeatures/BufferFilter>
 #include <osgEarthFeatures/ScaleFilter>
+#include <osgEarthFeatures/GeometryUtils>
 #include "OGRFeatureOptions"
 #include "FeatureCursorOGR"
 #include <osgEarthFeatures/OgrUtils>
@@ -80,6 +81,7 @@ public:
                 buf << "REPACK " << name; 
                 std::string bufStr;
                 bufStr = buf.str();
+                OE_DEBUG << LC << "SQL: " << bufStr << std::endl;
                 OGR_DS_ExecuteSQL( _dsHandle, bufStr.c_str(), 0L, 0L );
             }
             _layerHandle = 0L;
@@ -202,6 +204,7 @@ public:
                         buf << "CREATE SPATIAL INDEX ON " << name; 
 					    std::string bufStr;
 					    bufStr = buf.str();
+                        OE_DEBUG << LC << "SQL: " << bufStr << std::endl;
                         OGR_DS_ExecuteSQL( _dsHandle, bufStr.c_str(), 0L, 0L );
                     }
 
@@ -289,6 +292,7 @@ public:
                 return new FeatureCursorOGR( 
                     dsHandle,
                     layerHandle, 
+                    this,
                     getFeatureProfile(),
                     query, 
                     _options.filters() );
@@ -321,13 +325,18 @@ public:
     virtual Feature* getFeature( FeatureID fid )
     {
         Feature* result = NULL;
-        OGRFeatureH handle = OGR_L_GetFeature( _layerHandle, fid);
-        if (handle)
+
+        if ( !isBlacklisted(fid) )
         {
-            const FeatureProfile* p = getFeatureProfile();
-            const SpatialReference* srs = p ? p->getSRS() : 0L;
-            result = OgrUtils::createFeature( handle, srs );
-            OGR_F_Destroy( handle );
+            OGR_SCOPED_LOCK;
+            OGRFeatureH handle = OGR_L_GetFeature( _layerHandle, fid);
+            if (handle)
+            {
+                const FeatureProfile* p = getFeatureProfile();
+                const SpatialReference* srs = p ? p->getSRS() : 0L;
+                result = OgrUtils::createFeature( handle, srs );
+                OGR_F_Destroy( handle );
+            }
         }
         return result;
     }
@@ -372,27 +381,10 @@ public:
                     case OFTString:
                         OGR_F_SetFieldString( feature_handle, field_index, a->second.getString().c_str() );
                         break;
+                    default:break;
                     }
                 }
             }
-
-            //    std::string value = feature->getAttr( name );
-            //    if (!value.empty())
-            //    {
-            //        switch( OGR_Fld_GetType( field_handle_ref ) )
-            //        {
-            //        case OFTInteger:
-            //            OGR_F_SetFieldInteger( feature_handle, field_index, as<int>(value, 0) );
-            //            break;
-            //        case OFTReal:
-            //            OGR_F_SetFieldDouble( feature_handle, field_index, as<double>(value, 0.0) );
-            //            break;
-            //        case OFTString:
-            //            OGR_F_SetFieldString( feature_handle, field_index, value.c_str() );
-            //            break;                    
-            //        }
-            //    }
-            //}
 
             // assign the geometry:
             OGRFeatureDefnH def = ::OGR_L_GetLayerDefn( _layerHandle );
@@ -436,7 +428,7 @@ protected:
     // parses an explicit WKT geometry string into a Geometry.
     Symbology::Geometry* parseGeometry( const Config& geomConf )
     {
-        return OgrUtils::createGeometryFromWKT( geomConf.value() );
+        return GeometryUtils::geometryFromWKT( geomConf.value() );
     }
 
     // read the WKT geometry from a URL, then parse into a Geometry.

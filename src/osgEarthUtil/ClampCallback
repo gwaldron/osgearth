@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2008-2010 Pelican Mapping
+* Copyright 2008-2012 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -22,9 +22,7 @@
 
 #include <osg/NodeCallback>
 #include <osg/CoordinateSystemNode>
-
-
-#include <osgEarth/FindNode>
+#include <osgEarth/NodeUtils>
 #include <osgEarth/MapNode>
 
 #include <osgEarthUtil/Common>
@@ -47,6 +45,9 @@ namespace osgEarth { namespace Util
         *     The node to clamp to
 		*/
         ClampCallback(osg::Node* terrainNode = NULL);
+
+        /** dtor */
+        virtual ~ClampCallback() { }
 
         /**
          *Sets the terrain node to clamp against

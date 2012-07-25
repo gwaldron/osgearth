@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2008-2010 Pelican Mapping
+* Copyright 2008-2012 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -40,6 +40,9 @@ namespace osgEarth
             fromConfig( _conf ); 
         }
 
+        /** dtor */
+        virtual ~CacheOptions() { }
+
     public:
         virtual Config getConfig() const {
             return ConfigOptions::getConfig();
@@ -69,6 +72,9 @@ namespace osgEarth
         Cache( const CacheOptions& options =CacheOptions() );
         Cache( const Cache& rhs, const osg::CopyOp& op =osg::CopyOp::DEEP_COPY_ALL );
         META_Object( osgEarth, Cache );
+
+        /** dtor */
+        virtual ~Cache() { }
 
     public:
         /**
@@ -138,6 +144,9 @@ namespace osgEarth
     {
     public:
         const CacheOptions& getCacheOptions( const osgDB::ReaderWriter::Options* options ) const;
+
+        /** dtor */
+        virtual ~CacheDriver() { }
     };
 
 //----------------------------------------------------------------------

@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2010 Pelican Mapping
+ * Copyright 2008-2012 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -22,11 +22,15 @@
 #include <osgEarthUtil/Common>
 #include <osgEarth/Common>
 #include <osgEarth/Viewpoint>
-#include <osgEarth/MapNode>
+#include <osgEarth/GeoData>
+#include <osgEarth/Revisioning>
 #include <osg/Timer>
+#include <osgGA/CameraManipulator>
 #include <map>
 #include <list>
 #include <utility>
+
+#define USE_OBSERVER_NODE_PATH 1
 
 namespace osgEarth { namespace Util
 {
@@ -39,7 +43,7 @@ namespace osgEarth { namespace Util
      * and navigation parameters. Create one or more of these and call 
      * applySettings() to "program" the manipulator at runtime.
      */
-    class OSGEARTHUTIL_EXPORT EarthManipulator : public osgGA::MatrixManipulator
+    class OSGEARTHUTIL_EXPORT EarthManipulator : public osgGA::CameraManipulator
     {
     public:
 
@@ -98,6 +102,13 @@ namespace osgEarth { namespace Util
 			TETHER_CENTER_AND_ROTATION, // The camera will follow the node and all rotations made by the node
 			TETHER_CENTER_AND_HEADING   // The camera will follow the node and only follow heading rotation
 		};
+
+        /** Camera projection matrix type **/
+        enum CameraProjection
+        {
+            PROJ_PERSPECTIVE,
+            PROJ_ORTHOGRAPHIC
+        };
 
         struct OSGEARTHUTIL_EXPORT ActionOption {
             ActionOption() { }
@@ -182,7 +193,7 @@ namespace osgEarth { namespace Util
 
     public:
 
-        class OSGEARTHUTIL_EXPORT Settings : public osg::Referenced
+        class OSGEARTHUTIL_EXPORT Settings : public osg::Referenced, public Revisioned
         {
         public:
             // construct with default settings
@@ -190,6 +201,9 @@ namespace osgEarth { namespace Util
 
             // copy ctor
             Settings( const Settings& rhs );
+
+            /** dtor */
+            virtual ~Settings() { }
 
             /**
              * Assigns behavior to the action of dragging the mouse while depressing one or
@@ -373,18 +387,6 @@ namespace osgEarth { namespace Util
             bool getSingleAxisRotation() const { return _single_axis_rotation; }
 
             /**
-             * Setting this to True lets motion continue when the user releases the mouse button
-             * while still dragging. Default = false.
-             */
-            void setThrowingEnabled( bool value ) { _throwing = value; }
-
-            /**
-             * Gets whether to allow motion to continue when the user releases the mouse button 
-             * while still dragging the mouse.
-             */
-            bool getThrowingEnabled() const { return _throwing; }
-
-            /**
              * Sets whether to lock in a camera heading when performing panning operations (i.e.,
              * changing the focal point).
              */
@@ -456,12 +458,19 @@ namespace osgEarth { namespace Util
                 out_maxSeconds = _max_vp_duration_s;
             }
 
+            /** The camera projection matrix type */
+            void setCameraProjection( const CameraProjection& value );
+            const CameraProjection& getCameraProjection() const { return _camProjType; }
+
+            /** Frustum offset (in pixels) */
+            void setCameraFrustumOffsets( const osg::Vec2s& offsets );
+            const osg::Vec2s& getCameraFrustumOffsets() const { return _camFrustOffsets; }
+
         private:
 
             friend class EarthManipulator;
 
             typedef std::pair<InputSpec,Action> ActionBinding;
-            //typedef std::vector<ActionBinding> ActionBindings;
             typedef std::map<InputSpec,Action> ActionBindings;
 
             // Gets the action bound to the provided input specification, or NullAction if there is
@@ -475,7 +484,6 @@ namespace osgEarth { namespace Util
 
             ActionBindings _bindings;
             bool _single_axis_rotation;
-            bool _throwing;
             bool _lock_azim_while_panning;
             double _mouse_sens;
             double _keyboard_sens;
@@ -493,6 +501,9 @@ namespace osgEarth { namespace Util
             bool _arc_viewpoints;
             bool _auto_vp_duration;
             double _min_vp_duration_s, _max_vp_duration_s;
+
+            CameraProjection _camProjType;
+            osg::Vec2s _camFrustOffsets;
         };
 
     public:
@@ -518,7 +529,6 @@ namespace osgEarth { namespace Util
          * Sets the camera position, optionally moving it there over time.
          */
         virtual void setViewpoint( const Viewpoint& vp, double duration_s =0.0 );
-
         
         /**
          * Cancels a viewpoint transition if one is in progress
@@ -638,6 +648,7 @@ namespace osgEarth { namespace Util
         virtual osg::Node* getNode();
 
         // Move the camera to the default position.
+        virtual void home(double /*unused*/);
         virtual void home(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& us);
         
         // Start/restart the manipulator.
@@ -702,20 +713,22 @@ namespace osgEarth { namespace Util
         struct Task : public osg::Referenced
         {
             Task() : _type(TASK_NONE) { }
-            void set( TaskType type, double dx, double dy, double duration =DBL_MAX ) {
-                _type = type; _dx = dx; _dy = dy; _duration_s = duration;
+            void set( TaskType type, double dx, double dy, double duration, double now ) {
+                _type = type; _dx = dx; _dy = dy; _duration_s = duration; _time_last_service = now;
             }
             TaskType _type;
             double   _dx, _dy;
             double   _duration_s;
+            double   _time_last_service;
         };
 
         // "ticks" the resident Task, which allows for multi-frame animation of navigation
         // movements.
         bool serviceTask();
 
-        void recalculateLocalPitchAndAzimuth();
-		double getAzimuth() const;
+        //void recalculateLocalPitchAndAzimuth();
+        void getLocalEulerAngles( double* out_azim, double* out_pitch =0L ) const;
+
 
         void recalculateCenter( const osg::CoordinateFrame& frame );
 
@@ -741,7 +754,17 @@ namespace osgEarth { namespace Util
 
         bool established();
 
-        osg::CoordinateFrame getMyCoordinateFrame( const osg::Vec3d& position ) const;
+        // sets the new center (focal) point and recalculates it's L2W matrix.
+        void setCenter( const osg::Vec3d& center );
+
+        // creates a "local-to-world" transform relative to the input point.
+        bool createLocalCoordFrame( const osg::Vec3d& worldPos, osg::CoordinateFrame& out_frame ) const;
+
+    public:
+            
+        void recalculateCenter() { recalculateCenter(_centerLocalToWorld); }
+
+        const GeoPoint& centerMap() const { return _centerMap; }
 
     private:
         // makeshift "stack" of the last 2 incoming events.
@@ -750,7 +773,6 @@ namespace osgEarth { namespace Util
 
         osg::ref_ptr<const osgGA::GUIEventAdapter> _mouse_down_event;
 
-        //osg::ref_ptr<osg::Node> _node;
         osg::observer_ptr<osg::Node> _node;
         osg::observer_ptr<osg::CoordinateSystemNode> _csn;
 #ifdef USE_OBSERVER_NODE_PATH
@@ -763,6 +785,7 @@ namespace osgEarth { namespace Util
         bool _srs_lookup_failed;
 
         osg::observer_ptr<osg::Node> _tether_node;
+        Viewpoint               _pre_tether_vp;
 
         double                  _time_s_last_frame;
         double                  _time_s_now;
@@ -770,11 +793,18 @@ namespace osgEarth { namespace Util
         double                  _delta_t;
         double                  _t_factor;
         bool                    _thrown;
+
         // The world coordinate of the Viewpoint focal point.
         osg::Vec3d              _center;
+        GeoPoint                _centerMap;
+
+        // local2world matrix for the center point.
+        osg::CoordinateFrame    _centerLocalToWorld;
+
         // The rotation (heading and pitch) of the camera in the
         // earth-local frame.
         osg::Quat               _rotation;
+
         // The rotation that makes the camera look down on the focal
         // point on the earth. This is equivalent to a rotation by
         // latitude, longitude.
@@ -785,12 +815,13 @@ namespace osgEarth { namespace Util
         osg::Vec3d              _previousUp;
         osg::ref_ptr<Task>      _task;
         osg::Timer_t            _time_last_frame;
-        double                  _local_pitch;
-        double                  _local_azim;
+        //double                  _local_pitch;
+        //double                  _local_azim;
 
         bool                    _continuous;
         double                  _continuous_dx;
         double                  _continuous_dy;
+        double                  _last_continuous_action_time;
 
         double                  _single_axis_x;
         double                  _single_axis_y;
@@ -818,8 +849,13 @@ namespace osgEarth { namespace Util
         double _homeViewpointDuration;
 
         Action _last_action;
+
         // to support updating the camera after the update traversal (e.g., for tethering)
         osg::observer_ptr<osg::Camera> _viewCamera;
+        double _vfov;
+        double _tanHalfVFOV;
+        optional<osg::CullSettings::ComputeNearFarMode> _savedCNFMode;
+        Revision _viewCameraSettingsMonitor;
         
         struct CameraPostUpdateCallback : public osg::NodeCallback {
             CameraPostUpdateCallback(EarthManipulator* m) : _m(m) { }

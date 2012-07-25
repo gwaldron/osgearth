@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2010 Pelican Mapping
+ * Copyright 2008-2012 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -19,6 +19,9 @@
 
 #include <osgEarthUtil/MouseCoordsTool>
 #include <osgEarthUtil/LatLongFormatter>
+#include <osgEarth/MapNode>
+#include <osgEarth/Terrain>
+#include <osgEarth/TerrainEngineNode>
 #include <osgViewer/View>
 
 using namespace osgEarth;
@@ -49,10 +52,10 @@ MouseCoordsTool::handle( const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapt
     if (ea.getEventType() == ea.MOVE || ea.getEventType() == ea.DRAG)
     {
         osg::Vec3d world;
-        if ( _mapNode->getTerrain()->getWorldCoordsUnderMouse( aa.asView(), ea.getX(), ea.getY(), world ))
+        if ( _mapNode->getTerrain()->getWorldCoordsUnderMouse(aa.asView(), ea.getX(), ea.getY(), world) )
         {
-            osg::Vec3d map;
-            _mapNode->getMap()->worldPointToMapPoint( world, map );
+            GeoPoint map;
+            map.fromWorld( _mapNode->getMapSRS(), world );
 
             for( Callbacks::iterator i = _callbacks.begin(); i != _callbacks.end(); ++i )
                 i->get()->set( map, aa.asView(), _mapNode );
@@ -74,18 +77,17 @@ _label    ( label ),
 _formatter( formatter )
 {
     if ( !formatter )
-        _formatter = new LatLongFormatter();
+        _formatter = new LatLongFormatter( LatLongFormatter::FORMAT_DECIMAL_DEGREES );
 }
 
 void
-MouseCoordsLabelCallback::set( const osg::Vec3d& mapCoords, osg::View* view, MapNode* mapNode )
+MouseCoordsLabelCallback::set( const GeoPoint& mapCoords, osg::View* view, MapNode* mapNode )
 {
     if ( _label.valid() )
     {
         _label->setText( Stringify()
-            <<  _formatter->format(mapCoords, mapNode->getMapSRS())
-            << " "
-            << mapCoords.z() );            
+            <<  _formatter->format( mapCoords )
+            << ", " << mapCoords.z() );
     }
 }
 

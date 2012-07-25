@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2008-2010 Pelican Mapping
+* Copyright 2008-2012 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -22,7 +22,6 @@
 #include <osgEarthAnnotation/AnnotationUtils>
 
 #include <osgEarth/DepthOffset>
-#include <osgEarth/FindNode>
 #include <osgEarth/MapNode>
 #include <osgEarth/NodeUtils>
 #include <osgEarth/TerrainEngineNode>
@@ -86,7 +85,11 @@ AnnotationNode::setAutoClamp( bool value )
         if ( !_autoclamp && value )
         {
             setDynamic( true );
-            mapNode_safe->getTerrain()->addTerrainCallback(new AutoClampCallback(), this);
+
+            if ( AnnotationSettings::getContinuousClamping() )
+            {
+                mapNode_safe->getTerrain()->addTerrainCallback(new AutoClampCallback(), this);
+            }
         }
         else if ( _autoclamp && !value )
         {
@@ -94,6 +97,28 @@ AnnotationNode::setAutoClamp( bool value )
         }
 
         _autoclamp = value;
+        
+        if ( _autoclamp && AnnotationSettings::getApplyDepthOffsetToClampedLines() )
+        {
+            if ( !_depthAdj )
+            {
+                // verify that the geometry if polygon-less:
+                bool wantDepthAdjustment = false;
+                PrimitiveSetTypeCounter counter;
+                this->accept(counter);
+                if ( counter._polygon == 0 && (counter._line > 0 || counter._point > 0) )
+                {
+                    wantDepthAdjustment = true;
+                }
+
+                setDepthAdjustment( wantDepthAdjustment );
+            }
+            else
+            {
+                // update depth adjustment calculation
+                getOrCreateStateSet()->addUniform( DepthOffsetUtils::createMinOffsetUniform(this) );
+            }
+        }
     }
 }
 
@@ -106,7 +131,7 @@ AnnotationNode::setDepthAdjustment( bool enable )
         osg::Program* daProgram = DepthOffsetUtils::getOrCreateProgram(); // cached, not a leak.
         osg::Program* p = dynamic_cast<osg::Program*>( s->getAttribute(osg::StateAttribute::PROGRAM) );
         if ( !p || p != daProgram )
-            s->setAttributeAndModes( daProgram );
+            s->setAttributeAndModes( daProgram, osg::StateAttribute::ON|osg::StateAttribute::OVERRIDE );
 
         s->addUniform( DepthOffsetUtils::createMinOffsetUniform(this) );
         s->addUniform( DepthOffsetUtils::getIsNotTextUniform() );
@@ -115,26 +140,57 @@ AnnotationNode::setDepthAdjustment( bool enable )
     {
         this->getStateSet()->removeAttribute(osg::StateAttribute::PROGRAM);
     }
+
+    _depthAdj = enable;
 }
 
-void
-AnnotationNode::clamp( osg::Vec3d& mapCoord ) const
+bool
+AnnotationNode::makeAbsolute( GeoPoint& mapPoint, osg::Node* patch ) const
 {
-    osg::ref_ptr<MapNode> mapNode_safe = _mapNode.get();
-    if ( mapNode_safe.valid() )
-    { 
-        double height;
-        if ( mapNode_safe->getTerrain()->getHeight(mapCoord, height) )
+    // in terrain-clamping mode, force it to HAT=0:
+    if ( _altitude.valid() && (
+        _altitude->clamping() == AltitudeSymbol::CLAMP_TO_TERRAIN || 
+        _altitude->clamping() == AltitudeSymbol::CLAMP_RELATIVE_TO_TERRAIN) )
+    {
+        mapPoint.altitudeMode() = ALTMODE_RELATIVE;
+        //If we're clamping to the terrain
+        if (_altitude->clamping() == AltitudeSymbol::CLAMP_TO_TERRAIN)
         {
-            if ( _altitude.valid() )
-            {
-                height *= _altitude->verticalScale()->eval();
-                height += _altitude->verticalOffset()->eval();
-            }
-            mapCoord.z() = height;
+            mapPoint.z() = 0.0;
         }
     }
+
+    // if the point's already absolute and we're not clamping it, nop.
+    if ( mapPoint.altitudeMode() == ALTMODE_ABSOLUTE )
+    {
+        return true;
+    }
+
+    // calculate the absolute Z of the map point.
+    osg::ref_ptr<MapNode> mapNode_safe = _mapNode.get();
+    if ( mapNode_safe.valid() )
+    {
+        // find the terrain height at the map point:
+        double hamsl;
+        if (mapNode_safe->getTerrain()->getHeight(patch, mapPoint.getSRS(), mapPoint.x(), mapPoint.y(), &hamsl, 0L))
+        {
+            // apply any scale/offset in the symbology:
+            if ( _altitude.valid() )
+            {
+                if ( _altitude->verticalScale().isSet() )
+                    hamsl *= _altitude->verticalScale()->eval();
+                if ( _altitude->verticalOffset().isSet() )
+                    hamsl += _altitude->verticalOffset()->eval();
+            }
+            mapPoint.z() += hamsl;
+        }
+        mapPoint.altitudeMode() = ALTMODE_ABSOLUTE;
+        return true;
+    }
+
+    return false;
 }
+
 
 void
 AnnotationNode::installDecoration( const std::string& name, Decoration* ds )
@@ -159,6 +215,12 @@ AnnotationNode::uninstallDecoration( const std::string& name )
 {
     clearDecoration();
     _dsMap.erase( name );
+}
+
+const std::string&
+AnnotationNode::getDecoration() const
+{
+    return _activeDsName;
 }
 
 void
@@ -205,7 +267,7 @@ AnnotationNode::hasDecoration( const std::string& name ) const
 }
 
 osg::Group*
-AnnotationNode::getAttachPoint()
+AnnotationNode::getChildAttachPoint()
 {
     osg::Transform* t = osgEarth::findTopMostNodeOfType<osg::Transform>(this);
     return t ? (osg::Group*)t : (osg::Group*)this;
@@ -229,40 +291,19 @@ AnnotationNode::supportsAutoClamping( const Style& style ) const
 }
 
 void
-AnnotationNode::applyStyle( const Style& style, bool noClampHint )
+AnnotationNode::configureForAltitudeMode( const AltitudeMode& mode )
 {
-    bool wantAutoClamp = false;
-    bool wantDepthAdjustment = false;
-    
-    if ( !noClampHint && supportsAutoClamping(style) )
+    setAutoClamp(
+        mode == ALTMODE_RELATIVE ||
+        (_altitude.valid() && _altitude->clamping() == AltitudeSymbol::CLAMP_TO_TERRAIN) );
+}
+
+void
+AnnotationNode::applyStyle( const Style& style)
+{
+    if ( supportsAutoClamping(style) )
     {
-        const AltitudeSymbol* alt = style.get<AltitudeSymbol>();
-        if (alt->clamping() == AltitudeSymbol::CLAMP_TO_TERRAIN || 
-            alt->clamping() == AltitudeSymbol::CLAMP_RELATIVE_TO_TERRAIN )
-        {
-            // continuous clamping: automatically re-clamp whenever a new terrain tile
-            // appears under the geometry
-            if ( AnnotationSettings::getContinuousClamping() )
-            {
-                wantAutoClamp = true;
-                _altitude = alt;
-            }
-
-            // depth adjustment: twiddle the Z buffering to help rid clamped line
-            // geometry of its z-fighting tendencies
-            if ( AnnotationSettings::getApplyDepthOffsetToClampedLines() )
-            {
-                // verify that the geometry if polygon-less:
-                PrimitiveSetTypeCounter counter;
-                this->accept(counter);
-                if ( counter._polygon == 0 && (counter._line > 0 || counter._point > 0) )
-                {
-                    wantDepthAdjustment = true;
-                }
-            }
-        }
+        _altitude = style.get<AltitudeSymbol>();
+        setAutoClamp( true );
     }
-
-    setAutoClamp( wantAutoClamp );
-    setDepthAdjustment( wantDepthAdjustment );
 }

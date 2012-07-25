@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2008-2010 Pelican Mapping
+* Copyright 2008-2012 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -21,6 +21,7 @@
 
 #include <osgEarthAnnotation/Common>
 #include <osgEarthSymbology/TextSymbol>
+#include <osgEarthSymbology/Style>
 #include <osg/AutoTransform>
 #include <osg/Drawable>
 #include <osg/Geometry>
@@ -59,7 +60,8 @@ namespace osgEarth { namespace Annotation
         static osg::Geometry* createImageGeometry(
             osg::Image*       image,
             const osg::Vec2s& pixelOffsets,
-            unsigned          textureUnit       =0 );
+            unsigned          textureUnit       =0,
+            double            heading = 0.0);
 
         /**
          * Creates a fading uniform that the decluttering engine can use
@@ -78,6 +80,18 @@ namespace osgEarth { namespace Annotation
          */
         static osg::Program* getAnnotationProgram();
 
+        /**
+         * Builds a graph on top of the specified that that implements a 2-pass
+         * rendering scheme for self-occluding or self-intersecting geometies that
+         * would not otherwise properly blend. The scheme renders the back faces
+         * first, followed by the front faces, ensuring proper blending.
+         */
+        static osg::Node* installTwoPassAlpha( osg::Node* );
+
+        /**
+         * Checks whether using a style will require transparency blending.
+         */
+        static bool styleRequiresAlphaBlending( const Style& style );
 
         /**
          * Internal - A customized AutoTransform used by the OrthoNode to
@@ -86,6 +100,8 @@ namespace osgEarth { namespace Annotation
         struct OrthoNodeAutoTransform : public osg::AutoTransform
         {
             void acceptCullNoTraverse( osg::CullStack* cs );
+
+            bool okToIntersect() const { return !_firstTimeToInitEyePoint; }
         };
 
         // some geometry creation utilities
@@ -120,6 +136,10 @@ namespace osgEarth { namespace Annotation
          * @param maxAngle Maximum angle between verts (controls tessellation)
          */
         static osg::Node* createEllipsoid( float xr, float yr, float zr, const osg::Vec4& color, float maxAngle =15.0f );
+
+
+    private:
+        AnnotationUtils() { }
     };
 
 } } // namespace osgEarth::Annotation

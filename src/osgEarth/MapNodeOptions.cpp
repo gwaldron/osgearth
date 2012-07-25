@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2010 Pelican Mapping
+ * Copyright 2008-2012 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -55,6 +55,19 @@ _overlayMipMapping   ( false ),
 _terrainOptions      ( 0L )
 {
     setTerrainOptions( to );
+}
+
+MapNodeOptions::MapNodeOptions( const MapNodeOptions& rhs ) :
+_proxySettings       ( ProxySettings() ),
+_cacheOnly           ( false ),
+_enableLighting      ( true ),
+_overlayVertexWarping( false ),
+_overlayBlending     ( true ),
+_overlayTextureSize  ( 4096 ),
+_overlayMipMapping   ( false ),
+_terrainOptions      ( 0L )
+{
+    mergeConfig( rhs.getConfig() );
 }
 
 

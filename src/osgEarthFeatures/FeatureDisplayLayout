@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2010 Pelican Mapping
+ * Copyright 2008-2012 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -37,16 +37,26 @@ namespace osgEarth { namespace Features
     class OSGEARTHFEATURES_EXPORT FeatureLevel
     {
     public:
+        /** Constructs a feature level from serialized data */
         FeatureLevel( const Config& config );
+
+        /** Constructs a feature level with range information */
         FeatureLevel( float minRange, float maxRange );
-        FeatureLevel( float minRange, float maxRange, const StyleSelector& oneSelector );
 
-        float minRange() const { return _minRange; }
-        float maxRange() const { return _maxRange; }
+        /** Constructs a feature level with range information and a style class */
+        FeatureLevel( float minRange, float maxRange, const std::string& styleName );
 
-        const StyleSelectorVector& selectors() const { return _selectors; }
+        /** Minimum and aximum display ranges for this level */
+        float minRange() const { return *_minRange; }
+        float maxRange() const { return *_maxRange; }
 
-        void addStyleSelector(const StyleSelector& selector);
+        /** Style class (or style selector) name associated with this level (optional) */
+        optional<std::string>& styleName() { return _styleName; }
+        const optional<std::string>& styleName() const { return _styleName; }
+
+
+        virtual ~FeatureLevel() { }
+
 
     public:
         Config getConfig() const;
@@ -54,9 +64,9 @@ namespace osgEarth { namespace Features
     protected:
         void fromConfig( const Config& conf );
 
-        float               _minRange, _maxRange;
-        StyleSelectorVector _selectors;
-        optional<unsigned>  _lod;
+        optional<float>       _minRange;
+        optional<float>       _maxRange;
+        optional<std::string> _styleName;
     };
 
     /**
@@ -66,14 +76,32 @@ namespace osgEarth { namespace Features
     {
     public:
         FeatureDisplayLayout( const Config& conf =Config() );
+        virtual ~FeatureDisplayLayout() { }
 
         /**
          * The ratio of visibility range to feature tile radius. Default is 15.
          * Increase this to produce more, smaller tiles at a given visibility
-         * range; decrease this to procide fewer, larger tiles.
+         * range; decrease this to produce fewer, larger tiles.
+         *
+         * For example, for factor=15, at a visibility range of (say) 120,000m
+         * the system will attempt to create tiles that are approximately
+         * 8,000m in radius. (120,000 / 15 = 8,000).
          */
         optional<float>& tileSizeFactor() { return _tileSizeFactor; }
         const optional<float>& tileSizeFactor() const { return _tileSizeFactor; }
+
+        /**
+         * The desired max range for pre-tiled feature sources like TFS.  The tileSizeFactor will be automatically computed
+         * based on the first level of the feature profile so that it shows up at that range.
+         */
+        optional<float>& maxRange() { return _maxRange;}
+        const optional<float>& maxRange() const { return _maxRange;}
+
+        /**
+         * Minimum visibility range for all tiles in the layout.
+         */
+         optional<float>& minRange() { return _minRange; }
+         const optional<float>& minRange() const { return _minRange; }
 
         /**
          * Whether to crop geometry to fit within the cell extents when chopping
@@ -116,7 +144,7 @@ namespace osgEarth { namespace Features
         const FeatureLevel* getLevel( unsigned i ) const;
 
         /** Gets the maximum range of the schema */
-        float getMaxRange() const;
+        //float getMaxRange() const;
 
         /**
          * Calculates the "best" quadtree LOD for the specified level, given the radius 
@@ -129,6 +157,8 @@ namespace osgEarth { namespace Features
 
     protected:
         optional<float> _tileSizeFactor;
+        optional<float> _minRange;
+        optional<float> _maxRange;
         optional<bool>  _cropFeatures;
         optional<float> _priorityOffset;
         optional<float> _priorityScale;

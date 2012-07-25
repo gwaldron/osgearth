@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2010 Pelican Mapping
+ * Copyright 2008-2012 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -25,19 +25,44 @@
 using namespace osgEarth;
 using namespace osgEarth::Symbology;
 
-Config
-CssUtils::readConfig( std::istream& in )
+void
+CssUtils::split( const std::string& input, std::vector<std::string>& output )
 {
-    // read the entire stream into a string:
-    std::stringstream buf;
-    //std::copy( std::istreambuf_iterator<char>(in), //::istream_iterator<char>(in),
-    //    std::istreambuf_iterator<char>(),
-    //    std::ostreambuf_iterator<char>( buf ) );
+    StringTokenizer blockIzer( "{}", "" );
+    blockIzer.addQuotes( "'\"", true );
 
-    buf << in.rdbuf();
+    std::vector<std::string> blocks;
+    blockIzer.tokenize( input, blocks );
 
-    std::string css;
-	css = buf.str();
+    for( unsigned i=0; i<blocks.size(); ++i )
+    {
+        if ( startsWith( blocks[i], "{" ) )
+        {
+            output.push_back( "default { " + blocks[i] + " }" );
+        }
+        else if ( i+1 < blocks.size() )
+        {
+            output.push_back( blocks[i] + "{ " + blocks[i+1] + " }" );
+            ++i;
+        }
+    }
+}
+
+void
+CssUtils::readConfig( const std::string& css, const std::string& referrer, ConfigSet& output )
+{
+    ConfigSet result;
+
+    // if there's no brackets, assume this is a single default block.
+    std::string temp = css;
+    if ( css.find_first_of("{") == std::string::npos )
+    {
+        temp = "default { " + css + " }";
+    }
+    else if ( css.size() > 0 && css[0] == '{' )
+    {
+        temp = "default " + css;
+    }
 
     // tokenize the CSS into a config object..
     Config conf( "css" );
@@ -52,7 +77,7 @@ CssUtils::readConfig( std::istream& in )
     propIzer.addQuotes( "()'\"", true );
 
     StringVector blocks;
-    blockIzer.tokenize( css, blocks );
+    blockIzer.tokenize( temp, blocks );
 
     for( unsigned i=0; i<blocks.size(); )
     {
@@ -60,6 +85,7 @@ CssUtils::readConfig( std::istream& in )
         if ( i < blocks.size() )
         {
             Config elementConf( name );
+            elementConf.setReferrer( referrer );
 
             StringVector propSet;
             propSetIzer.tokenize( blocks[i++], propSet );
@@ -74,9 +100,8 @@ CssUtils::readConfig( std::istream& in )
                     elementConf.set( prop[0], prop[1] );
                 }
             }
-            conf.add( elementConf );
+
+            output.push_back( elementConf );
         }
     }
-
-    return conf;
 }

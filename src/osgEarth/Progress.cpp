@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2010 Pelican Mapping
+ * Copyright 2008-2012 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -18,8 +18,7 @@
  */
 
 #include <osgEarth/Progress>
-
-#include <osg/Notify>
+#include <osgEarth/Notify>
 
 using namespace osgEarth;
 
@@ -48,12 +47,12 @@ ConsoleProgressCallback::reportProgress(double current, double total, const std:
 {
     if (total > 0)
     {
-	double percentComplete = (current / total) * 100.0;
-	OE_NOTICE << "Completed " << percentComplete << "% " << current << " of " << total << std::endl;
+        double percentComplete = (current / total) * 100.0;
+        OE_NOTICE << "Completed " << percentComplete << "% " << current << " of " << total << std::endl;
     }
     else
     {
-	OE_NOTICE << msg << std::endl;
+        OE_NOTICE << msg << std::endl;
     }
     return false;
 }

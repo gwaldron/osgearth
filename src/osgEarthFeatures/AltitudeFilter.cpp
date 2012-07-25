@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2010 Pelican Mapping
+ * Copyright 2008-2012 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -75,8 +75,9 @@ AltitudeFilter::pushAndDontClamp( FeatureList& features, FilterContext& cx )
     for( FeatureList::iterator i = features.begin(); i != features.end(); ++i )
     {
         Feature* feature = i->get();
-        double maxGeomZ     = -DBL_MAX;
-        double minGeomZ     =  DBL_MAX;
+
+        double minHAT       =  DBL_MAX;
+        double maxHAT       = -DBL_MAX;
 
         double scaleZ = 1.0;
         if ( _altitude.valid() && _altitude->verticalScale().isSet() )
@@ -90,22 +91,22 @@ AltitudeFilter::pushAndDontClamp( FeatureList& features, FilterContext& cx )
         while( gi.hasMore() )
         {
             Geometry* geom = gi.next();
-            for( Geometry::iterator i = geom->begin(); i != geom->end(); ++i )
+            for( Geometry::iterator g = geom->begin(); g != geom->end(); ++g )
             {
-                i->z() *= scaleZ;
-                i->z() += offsetZ;
+                g->z() *= scaleZ;
+                g->z() += offsetZ;
 
-                if ( i->z() > maxGeomZ )
-                    maxGeomZ = i->z();
-                if ( i->z() < minGeomZ )
-                    minGeomZ = i->z();
+                if ( g->z() < minHAT )
+                    minHAT = g->z();
+                if ( g->z() > maxHAT )
+                    maxHAT = g->z();
             }
         }
 
-        if ( minGeomZ != DBL_MAX )
+        if ( minHAT != DBL_MAX )
         {
-            feature->set( "__min_geom_z", minGeomZ );
-            feature->set( "__max_geom_z", maxGeomZ );
+            feature->set( "__min_hat", minHAT );
+            feature->set( "__max_hat", maxHAT );
         }
     }
 }
@@ -116,10 +117,11 @@ AltitudeFilter::pushAndClamp( FeatureList& features, FilterContext& cx )
     const Session* session = cx.getSession();
 
     // the map against which we'll be doing elevation clamping
-    MapFrame mapf = session->createMapFrame( Map::ELEVATION_LAYERS );
+    //MapFrame mapf = session->createMapFrame( Map::ELEVATION_LAYERS );
+    MapFrame mapf = session->createMapFrame( Map::TERRAIN_LAYERS );
 
-    const SpatialReference* mapSRS     = mapf.getProfile()->getSRS();
-    const SpatialReference* featureSRS = cx.profile()->getSRS();
+    const SpatialReference* mapSRS = mapf.getProfile()->getSRS();
+    osg::ref_ptr<const SpatialReference> featureSRS = cx.profile()->getSRS();
 
     // establish an elevation query interface based on the features' SRS.
     ElevationQuery eq( mapf );
@@ -132,16 +134,20 @@ AltitudeFilter::pushAndClamp( FeatureList& features, FilterContext& cx )
     if ( _altitude->verticalOffset().isSet() )
         offsetExpr = *_altitude->verticalOffset();
 
-    // whether to record a "minimum terrain" value
+    // whether to record the min/max height-above-terrain values.
     bool collectHATs =
         _altitude->clamping() == AltitudeSymbol::CLAMP_RELATIVE_TO_TERRAIN ||
         _altitude->clamping() == AltitudeSymbol::CLAMP_ABSOLUTE;
 
+    // whether the SRS's have a compatible vertical datum.
+    bool vertEquiv =
+        featureSRS->isVertEquivalentTo( mapSRS );
+
     for( FeatureList::iterator i = features.begin(); i != features.end(); ++i )
     {
         Feature* feature = i->get();
-        double maxGeomZ     = -DBL_MAX;
-        double minGeomZ     =  DBL_MAX;
+        //double maxGeomZ     = -DBL_MAX;
+        //double minGeomZ     =  DBL_MAX;
         double maxTerrainZ  = -DBL_MAX;
         double minTerrainZ  =  DBL_MAX;
         double minHAT       =  DBL_MAX;
@@ -160,54 +166,110 @@ AltitudeFilter::pushAndClamp( FeatureList& features, FilterContext& cx )
         {
             Geometry* geom = gi.next();
 
-            // clamps the entire array to the terrain using the specified resolution.
-            if ( collectHATs )
+            // Absolute heights in Z. Only need to collect the HATs; the geometry
+            // remains unchanged.
+            if ( _altitude->clamping() == AltitudeSymbol::CLAMP_ABSOLUTE )
             {
                 std::vector<double> elevations;
                 elevations.reserve( geom->size() );
+
                 if ( eq.getElevations( geom->asVector(), featureSRS, elevations, _maxRes ) )
                 {
                     for( unsigned i=0; i<geom->size(); ++i )
                     {
-                        double z = (*geom)[i].z() * scaleZ + offsetZ;
-                        double hat =
-                            _altitude->clamping() == AltitudeSymbol::CLAMP_ABSOLUTE ? z - elevations[i] :
-                            z;
+                        osg::Vec3d& p = (*geom)[i];
+                        double z = p.z();
+
+                        if ( !vertEquiv )
+                        {
+                            osg::Vec3d tempgeo;
+                            if ( !featureSRS->transform(p, mapSRS->getGeographicSRS(), tempgeo) )
+                                z = tempgeo.z();
+                        }
+
+                        double hat = z - elevations[i];
 
                         if ( hat > maxHAT )
                             maxHAT = hat;
                         if ( hat < minHAT )
                             minHAT = hat;
 
-                        double elev = elevations[i];
-                        if ( elev > maxTerrainZ )
-                            maxTerrainZ = elev;
-                        if ( elev < minTerrainZ )
-                            minTerrainZ = elev;
-
-                        (*geom)[i].z() =
-                            _altitude->clamping() == AltitudeSymbol::CLAMP_ABSOLUTE ? z :
-                            z + elevations[i];
+                        if ( elevations[i] > maxTerrainZ )
+                            maxTerrainZ = elevations[i];
+                        if ( elevations[i] < minTerrainZ )
+                            minTerrainZ = elevations[i];
                     }
                 }
             }
-            else
+
+            // Heights-above-ground in Z. Need to resolve this to an absolute number
+            // and record HATs along the way.
+            else if ( _altitude->clamping() == AltitudeSymbol::CLAMP_RELATIVE_TO_TERRAIN )
             {
-                eq.getElevations( geom->asVector(), featureSRS, true, _maxRes );
+                osg::ref_ptr<const SpatialReference> featureSRSwithMapVertDatum = !vertEquiv ?
+                    SpatialReference::create(featureSRS->getHorizInitString(), mapSRS->getVertInitString()) : 0L;
+
+                std::vector<double> elevations;
+                elevations.reserve( geom->size() );
+
+                if ( eq.getElevations( geom->asVector(), featureSRS, elevations, _maxRes ) )
+                {
+                    for( unsigned i=0; i<geom->size(); ++i )
+                    {
+                        osg::Vec3d& p = (*geom)[i];
+
+                        double hat = p.z();
+                        p.z() = elevations[i] + p.z();
+
+                        // if necessary, convert the Z value (which is now in the map's SRS) back to
+                        // the feature's SRS.
+                        if ( !vertEquiv )
+                        {
+                            featureSRSwithMapVertDatum->transform(p, featureSRS, p);
+                        }
+
+                        if ( hat > maxHAT )
+                            maxHAT = hat;
+                        if ( hat < minHAT )
+                            minHAT = hat;
+
+                        if ( elevations[i] > maxTerrainZ )
+                            maxTerrainZ = elevations[i];
+                        if ( elevations[i] < minTerrainZ )
+                            minTerrainZ = elevations[i];
+                    }
+                }
+
             }
 
-            for( Geometry::iterator i = geom->begin(); i != geom->end(); ++i )
+            // Clamp - replace the geometry's Z with the terrain height.
+            else // CLAMP_TO_TERRAIN
             {
-                if ( !collectHATs )
+                eq.getElevations( geom->asVector(), featureSRS, true, _maxRes );
+                
+                // if necessary, transform the Z values (which are now in the map SRS) back
+                // into the feature's SRS.
+                if ( !vertEquiv )
+                {
+                    osg::ref_ptr<const SpatialReference> featureSRSwithMapVertDatum = !vertEquiv ?
+                        SpatialReference::create(featureSRS->getHorizInitString(), mapSRS->getVertInitString()) : 0L;
+
+                    osg::Vec3d tempgeo;
+                    for( unsigned i=0; i<geom->size(); ++i )
+                    {
+                        osg::Vec3d& p = (*geom)[i];
+                        featureSRSwithMapVertDatum->transform(p, featureSRS, p);
+                    }
+                }
+            }
+
+            if ( !collectHATs )
+            {
+                for( Geometry::iterator i = geom->begin(); i != geom->end(); ++i )
                 {
                     i->z() *= scaleZ;
                     i->z() += offsetZ;
                 }
-
-                if ( i->z() > maxGeomZ )
-                    maxGeomZ = i->z();
-                if ( i->z() < minGeomZ )
-                    minGeomZ = i->z();
             }
         }
 
@@ -215,12 +277,6 @@ AltitudeFilter::pushAndClamp( FeatureList& features, FilterContext& cx )
         {
             feature->set( "__min_hat", minHAT );
             feature->set( "__max_hat", maxHAT );
-        }
-
-        if ( minGeomZ != DBL_MAX )
-        {
-            feature->set( "__min_geom_z", minGeomZ );
-            feature->set( "__max_geom_z", maxGeomZ );
         }
 
         if ( minTerrainZ != DBL_MAX )

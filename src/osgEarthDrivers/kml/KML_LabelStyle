@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2010 Pelican Mapping
+ * Copyright 2008-2012 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -25,7 +25,7 @@ using namespace osgEarth;
 
 struct KML_LabelStyle : public KML_Object
 {
-    virtual void scan( const Config& conf, Style& style );
+    virtual void scan( const Config& conf, Style& style, KMLContext& cx );
 };
 
 #endif // OSGEARTH_DRIVER_KML_KML_LABELSTYLE

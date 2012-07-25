@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2008-2010 Pelican Mapping
+* Copyright 2008-2012 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -17,6 +17,7 @@
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
 #include <osgEarthAnnotation/EllipseNode>
+#include <osgEarthAnnotation/AnnotationRegistry>
 #include <osgEarthFeatures/GeometryCompiler>
 #include <osgEarthSymbology/GeometryFactory>
 #include <osgEarth/DrapeableNode>
@@ -29,7 +30,7 @@ using namespace osgEarth::Symbology;
 
 
 EllipseNode::EllipseNode(MapNode*          mapNode,
-                         const osg::Vec3d& position,
+                         const GeoPoint&   position,
                          const Linear&     radiusMajor,
                          const Linear&     radiusMinor,
                          const Angular&    rotationAngle,
@@ -120,7 +121,7 @@ EllipseNode::getRotationAngle() const
 }
 
 void 
-EllipseNode::setRotationAngle(Angular& rotationAngle)
+EllipseNode::setRotationAngle(const Angular& rotationAngle)
 {
     if (_rotationAngle != rotationAngle)
     {
@@ -133,11 +134,18 @@ EllipseNode::setRotationAngle(Angular& rotationAngle)
 void
 EllipseNode::rebuild()
 {
+    std::string currentDecoration = getDecoration();
+    clearDecoration();
+
     //Remove all children from this node
-    removeChildren( 0, getNumChildren() );
+    //removeChildren( 0, getNumChildren() );
+    if ( getRoot()->getNumParents() == 0 )
+    {
+        this->addChild( getRoot() );
+    }
 
     //Remove all children from the attach point
-    getAttachPoint()->removeChildren( 0, getAttachPoint()->getNumChildren() );
+    getChildAttachPoint()->removeChildren( 0, getChildAttachPoint()->getNumChildren() );
 
     // construct a local-origin ellipse.
     GeometryFactory factory;
@@ -149,21 +157,57 @@ EllipseNode::rebuild()
         osg::Node* node = compiler.compile( feature.get(), _style, FilterContext(0L) );
         if ( node )
         {
-            getAttachPoint()->addChild( node );
-
-            if ( _draped )
-            {
-                DrapeableNode* drapeable = new DrapeableNode( _mapNode.get() );
-                drapeable->addChild( getAttachPoint() );
-                this->addChild( drapeable );
-            }
-
-            else
-            {
-                this->addChild( getAttachPoint() );
-            }
+            getChildAttachPoint()->addChild( node );
+            getDrapeable()->setDraped( _draped );
         }
 
-        applyStyle( _style, _draped );
+        applyStyle( _style );
     }
+
+    setDecoration( currentDecoration );
+}
+
+
+
+//-------------------------------------------------------------------
+
+OSGEARTH_REGISTER_ANNOTATION( ellipse, osgEarth::Annotation::EllipseNode );
+
+
+EllipseNode::EllipseNode(MapNode*      mapNode,
+                         const Config& conf ) :
+LocalizedNode( mapNode ),
+_draped      ( false ),
+_numSegments ( 0 )
+{
+    conf.getObjIfSet( "radius_major", _radiusMajor );
+    conf.getObjIfSet( "radius_minor", _radiusMinor );
+    conf.getObjIfSet( "rotation", _rotationAngle );
+    conf.getObjIfSet( "style",  _style );
+    conf.getIfSet   ( "draped", _draped );
+    conf.getIfSet   ( "num_segments", _numSegments );
+
+    rebuild();
+
+    if ( conf.hasChild("position") )
+        setPosition( GeoPoint(conf.child("position")) );
+}
+
+Config
+EllipseNode::getConfig() const
+{
+    Config conf( "ellipse" );
+    conf.addObj( "radius_major", _radiusMajor );
+    conf.addObj( "radius_minor", _radiusMinor );
+    conf.addObj( "rotation", _rotationAngle );
+    conf.addObj( "style", _style );
+
+    if ( _numSegments != 0 )
+        conf.add( "num_segments", _numSegments );
+    if ( _draped != false )
+        conf.add( "draped", _draped );
+
+    conf.addObj( "position", getPosition() );
+
+    return conf;
 }

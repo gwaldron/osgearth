@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2010 Pelican Mapping
+ * Copyright 2008-2012 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -51,12 +51,15 @@ namespace osgEarth { namespace Drivers
 
     public:
         WCSOptions( const TileSourceOptions& opt =TileSourceOptions() ) :
-              TileSourceOptions( opt ),
+          TileSourceOptions( opt ),
               _elevationUnit( "m" )
           {
               setDriver( "wcs" );
               fromConfig( _conf );
           }
+
+        /** dtor */
+        virtual ~WCSOptions() { }
 
     public:
         Config getConfig() const {

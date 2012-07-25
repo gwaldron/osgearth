@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2010 Pelican Mapping
+ * Copyright 2008-2012 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -43,8 +43,18 @@ namespace osgEarth { namespace Symbology
     class OSGEARTHSYMBOLOGY_EXPORT MeshConsolidator
     {
     public:
-        static void run( osg::Geometry& geom );
+        /**
+         * Converts all polygon primitive sets (tristrips, trifans, polygons, etc)
+         * into GL_TRIANGLES. Similar to the IndexMeshVisitor, except that this
+         * retians user data pointers on the primsets.
+         */
+        static void convertToTriangles( osg::Geometry& geom );
 
+        /**
+         * Consolidates compatible geometries in the geode. First runs the 
+         * convertToTriangles method on each Geometry if applicable, them combines
+         * geometies into a minimal set for performance purposes.
+         */
         static void run( osg::Geode& geode );
     };
 

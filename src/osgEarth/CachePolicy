@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2008-2010 Pelican Mapping
+* Copyright 2008-2012 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -40,15 +40,22 @@ namespace osgEarth
             USAGE_DEFAULT      = USAGE_READ_WRITE
         };
 
+        static CachePolicy INHERIT;
         static CachePolicy NO_CACHE;
         static CachePolicy CACHE_ONLY;
 
     public:
-        /** constructs a default caching policy. */
-        CachePolicy( const Usage& usage, double maxAgeSeconds =DBL_MAX );
+        /** constructs a caching policy. */
+        CachePolicy( const Usage& usage );
+
+        /** constructs a caching policy. */
+        CachePolicy( const Usage& usage, double maxAgeSeconds );
 
         /** constructs a CachePolicy from a config options */
         CachePolicy( const Config& conf =Config() );
+
+        /** dtor */
+        virtual ~CachePolicy() { }
 
         /** Gets the usage policy */
         optional<Usage>& usage() { return _usage; }

@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2008-2010 Pelican Mapping
+* Copyright 2008-2012 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -33,7 +33,19 @@ namespace osgEarth { namespace Features
     class OSGEARTHFEATURES_EXPORT FeatureListSource : public osgEarth::Features::FeatureSource
     {
     public:
+        /**
+         * Constructs an empty feature list source.
+         */
         FeatureListSource();
+
+        /**
+         * Constructs a feature list source with a default extent. The source can use
+         * this default extent to report a valid feature profile in the event that the
+         * list is empty.
+         */
+        FeatureListSource(const GeoExtent& defaultExtent );
+
+        virtual ~FeatureListSource() { }
 
         virtual FeatureCursor* createFeatureCursor( const Symbology::Query& query );
 
@@ -59,7 +71,7 @@ namespace osgEarth { namespace Features
         virtual const FeatureProfile* createFeatureProfile();
 
         FeatureList _features;
-        osg::ref_ptr< FeatureProfile > _profile;
+        GeoExtent   _defaultExtent;
     };
 
 } } // namespace osgEarth::Features

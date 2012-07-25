@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2008-2010 Pelican Mapping
+* Copyright 2008-2012 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -20,10 +20,12 @@
 #include <osgEarthUtil/StarData>
 
 #include <osgEarth/ShaderComposition>
-#include <osgEarth/FindNode>
+#include <osgEarthUtil/LatLongFormatter>
+#include <osgEarth/NodeUtils>
 #include <osgEarth/MapNode>
 #include <osgEarth/Utils>
 #include <osgEarth/Registry>
+#include <osgEarth/Capabilities>
 
 #include <osg/MatrixTransform>
 #include <osg/ShapeDrawable>
@@ -47,8 +49,9 @@ using namespace osgEarth::Util;
 
 //---------------------------------------------------------------------------
 
-#define BIN_STARS      -10
-#define BIN_SUN         -9
+#define BIN_STARS      -11
+#define BIN_SUN         -10
+#define BIN_MOON         100
 #define BIN_ATMOSPHERE  -8
 
 //---------------------------------------------------------------------------
@@ -129,11 +132,12 @@ namespace
     };
 
     osg::Geometry*
-    s_makeEllipsoidGeometry( const osg::EllipsoidModel* ellipsoid, double outerRadius )
+    s_makeEllipsoidGeometry( const osg::EllipsoidModel* ellipsoid, double outerRadius, bool genTexCoords = false )
     {
         double hae = outerRadius - ellipsoid->getRadiusEquator();
 
         osg::Geometry* geom = new osg::Geometry();
+        geom->setUseVertexBufferObjects(true);
 
         int latSegments = 100;
         int lonSegments = 2 * latSegments;
@@ -142,6 +146,22 @@ namespace
 
         osg::Vec3Array* verts = new osg::Vec3Array();
         verts->reserve( latSegments * lonSegments );
+
+        osg::Vec2Array* texCoords = 0;
+        osg::Vec3Array* normals = 0;
+        if (genTexCoords)
+        {
+            texCoords = new osg::Vec2Array();
+            texCoords->reserve( latSegments * lonSegments );
+            geom->setTexCoordArray( 0, texCoords );
+
+            normals = new osg::Vec3Array();
+            normals->reserve( latSegments * lonSegments );
+            geom->setNormalArray( normals );
+            geom->setNormalBinding(osg::Geometry::BIND_PER_VERTEX );
+        }
+
+
 
         osg::DrawElementsUShort* el = new osg::DrawElementsUShort( GL_TRIANGLES );
         el->reserve( latSegments * lonSegments * 6 );
@@ -155,6 +175,21 @@ namespace
                 double gx, gy, gz;
                 ellipsoid->convertLatLongHeightToXYZ( osg::DegreesToRadians(lat), osg::DegreesToRadians(lon), hae, gx, gy, gz );
                 verts->push_back( osg::Vec3(gx, gy, gz) );
+
+                if (genTexCoords)
+                {
+                    double s = (lon + 180) / 360.0;
+                    double t = (lat + 90.0) / 180.0;
+                    texCoords->push_back( osg::Vec2(s, t ) );
+                }
+
+                if (normals)
+                {
+                    osg::Vec3 normal( gx, gy, gz);
+                    normal.normalize();
+                    normals->push_back( normal );
+                }
+
 
                 if ( y < latSegments )
                 {
@@ -183,6 +218,7 @@ namespace
         float deltaAngle = 360.0/(float)segments;
 
         osg::Geometry* geom = new osg::Geometry();
+        geom->setUseVertexBufferObjects(true);
 
         osg::Vec3Array* verts = new osg::Vec3Array();
         verts->reserve( 1 + segments );
@@ -207,11 +243,35 @@ namespace
             el->push_back( 1 + i );
         }
 
+
         return geom;
     }
 }
 
 //---------------------------------------------------------------------------
+
+double sgCalcEccAnom(double M, double e)
+{
+    double eccAnom, E0, E1, diff;
+
+    double epsilon = osg::DegreesToRadians(0.001);
+    
+    eccAnom = M + e * sin(M) * (1.0 + e * cos (M));
+    // iterate to achieve a greater precision for larger eccentricities 
+    if (e > 0.05)
+    {
+        E0 = eccAnom;
+        do
+        {
+             E1 = E0 - (E0 - e * sin(E0) - M) / (1 - e *cos(E0));
+             diff = fabs(E0 - E1);
+             E0 = E1;
+        } while (diff > epsilon );
+        return E0;
+    }
+    return eccAnom;
+}
+
 
 // Astronomical Math
 // http://www.stjarnhimlen.se/comp/ppcomp.html
@@ -314,6 +374,91 @@ namespace
                 cos(sun_lat) * cos(-app_sun_lon),
                 cos(sun_lat) * sin(-app_sun_lon),
                 sin(sun_lat) );
+        }
+    };
+
+    struct Moon
+    {
+        Moon() { }
+
+        static std::string radiansToHoursMinutesSeconds(double ra)
+        {
+            while (ra < 0) ra += (osg::PI * 2.0);
+            //Get the total number of hours
+            double hours = (ra / (osg::PI * 2.0) ) * 24.0;
+            double minutes = hours - (int)hours;
+            hours -= minutes;
+            minutes *= 60.0;
+            double seconds = minutes - (int)minutes;
+            seconds *= 60.0;
+            std::stringstream buf;
+            buf << (int)hours << ":" << (int)minutes << ":" << (int)seconds;
+            return buf.str();
+        }
+
+        // From http://www.stjarnhimlen.se/comp/ppcomp.html
+        osg::Vec3d getPosition(int year, int month, int date, double hoursUTC ) const
+        {
+            //double julianDate = getJulianDate( year, month, date );
+            //julianDate += hoursUTC /24.0;
+            double d = 367*year - 7 * ( year + (month+9)/12 ) / 4 + 275*month/9 + date - 730530;
+            d += (hoursUTC / 24.0);                     
+
+            double ecl = osg::DegreesToRadians(23.4393 - 3.563E-7 * d);
+
+            double N = osg::DegreesToRadians(125.1228 - 0.0529538083 * d);
+            double i = osg::DegreesToRadians(5.1454);
+            double w = osg::DegreesToRadians(318.0634 + 0.1643573223 * d);
+            double a = 60.2666;//  (Earth radii)
+            double e = 0.054900;
+            double M = osg::DegreesToRadians(115.3654 + 13.0649929509 * d);
+
+            double E = M + e*(180.0/osg::PI) * sin(M) * ( 1.0 + e * cos(M) );
+            
+            double xv = a * ( cos(E) - e );
+            double yv = a * ( sqrt(1.0 - e*e) * sin(E) );
+
+            double v = atan2( yv, xv );
+            double r = sqrt( xv*xv + yv*yv );
+
+            //Compute the geocentric (Earth-centered) position of the moon in the ecliptic coordinate system
+            double xh = r * ( cos(N) * cos(v+w) - sin(N) * sin(v+w) * cos(i) );
+            double yh = r * ( sin(N) * cos(v+w) + cos(N) * sin(v+w) * cos(i) );
+            double zh = r * ( sin(v+w) * sin(i) );
+
+            // calculate the ecliptic latitude and longitude here
+            double lonEcl = atan2 (yh, xh);
+            double latEcl = atan2(zh, sqrt(xh*xh + yh*yh));
+
+            double xg = r * cos(lonEcl) * cos(latEcl);
+            double yg = r * sin(lonEcl) * cos(latEcl);
+            double zg = r * sin(latEcl);
+
+            double xe = xg;
+            double ye = yg * cos(ecl) -zg * sin(ecl);
+            double ze = yg * sin(ecl) +zg * cos(ecl);
+
+            double RA    = atan2(ye, xe);
+            double Dec = atan2(ze, sqrt(xe*xe + ye*ye));
+
+            //Just use the average distance from the earth            
+            double rg = 6378137.0 + 384400000.0;
+            
+            // finally, adjust for the time of day (rotation of the earth)
+            double time_r = hoursUTC/24.0; // 0..1            
+            double moon_r = RA/TWO_PI; // convert to 0..1
+
+            // rotational difference between UTC and current time
+            double diff_r = moon_r - time_r;
+            double diff_lon = TWO_PI * diff_r;
+
+            RA -= diff_lon;
+
+            nrad2(RA);
+
+            return SkyNode::getPositionFromRADecl( RA, Dec, rg );
+
+
         }
     };
 }
@@ -540,11 +685,30 @@ namespace
 
         return Stringify()
             << "#version " << (glslVersion < 1.2f ? "110" : "120") << "\n"
+
+            << "float remap( float val, float vmin, float vmax, float r0, float r1 ) \n"
+            << "{ \n"
+            << "    float vr = (clamp(val, vmin, vmax)-vmin)/(vmax-vmin); \n"
+            << "    return r0 + vr * (r1-r0); \n"
+            << "} \n"
+
+            << "uniform vec3 atmos_v3LightPos; \n"
+            << "uniform mat4 osg_ViewMatrixInverse; \n"
+            << "varying float visibility; \n"
             << "void main() \n"
             << "{ \n"
             << "    gl_FrontColor = gl_Color; \n"
-            << "    gl_PointSize = gl_Color.r * " << (glslVersion < 1.2f ? "2.0" : "12.5") << ";\n"
+            << "    gl_PointSize = gl_Color.r * " << (glslVersion < 1.2f ? "2.0" : "14.0") << ";\n"
             << "    gl_Position = gl_ModelViewProjectionMatrix * gl_Vertex; \n"
+
+            << "    vec3 eye = osg_ViewMatrixInverse[3].xyz; \n"
+            << "    float hae = length(eye) - 6378137.0; \n"
+            // "highness": visibility increases with altitude
+            << "    float highness = remap( hae, 25000.0, 150000.0, 0.0, 1.0 ); \n"
+            << "    eye = normalize(eye); \n"
+            // "darkness": visibility increase as the sun goes around the other side of the earth
+            << "    float darkness = 1.0-remap(dot(eye,atmos_v3LightPos), -0.25, 0.0, 0.0, 1.0); \n"
+            << "    visibility = clamp(highness + darkness, 0.0, 1.0); \n"
             << "} \n";
     }
 
@@ -556,34 +720,53 @@ namespace
         {
             return Stringify()
                 << "#version 110 \n"
+                << "varying float visibility; \n"
                 << "void main( void ) \n"
                 << "{ \n"
-                << "    gl_FragColor = gl_Color; \n"
+                << "    gl_FragColor = gl_Color * visibility; \n"
                 << "} \n";
         }
         else
         {
             return Stringify()
                 << "#version 120 \n"
+                << "varying float visibility; \n"
                 << "void main( void ) \n"
                 << "{ \n"
                 << "    float b1 = 1.0-(2.0*abs(gl_PointCoord.s-0.5)); \n"
                 << "    float b2 = 1.0-(2.0*abs(gl_PointCoord.t-0.5)); \n"
-                << "    float i = b1*b1*b1 * b2*b2*b2; \n"
-                << "    gl_FragColor = gl_Color * i; \n"
+                << "    float i = b1*b1 * b2*b2; \n" //b1*b1*b1 * b2*b2*b2; \n"
+                << "    gl_FragColor = gl_Color * i * visibility; \n"
                 << "} \n";
         }
     }
 }
 
+
 //---------------------------------------------------------------------------
 
-SkyNode::SkyNode( Map* map, const std::string& starFile, float minStarMagnitude ) : _minStarMagnitude(minStarMagnitude)
+osg::Vec3d DefaultEphemerisProvider::getSunPosition( int year, int month, int date, double hoursUTC )
+{
+    Sun sun;
+    return sun.getPosition( year, month, date, hoursUTC );
+}
+
+osg::Vec3d DefaultEphemerisProvider::getMoonPosition( int year, int month, int date, double hoursUTC )
+{
+    Moon moon;
+    return moon.getPosition( year, month, date, hoursUTC );        
+}
+
+//---------------------------------------------------------------------------
+
+SkyNode::SkyNode( Map* map, const std::string& starFile, float minStarMagnitude ) : 
+_minStarMagnitude(minStarMagnitude)
 {
     initialize(map, starFile);
 }
 
-SkyNode::SkyNode( Map *map, float minStarMagnitude) : _minStarMagnitude(minStarMagnitude)
+SkyNode::SkyNode( Map *map, float minStarMagnitude) : 
+_minStarMagnitude(minStarMagnitude)
 {
     initialize(map);
 }
@@ -591,6 +774,8 @@ SkyNode::SkyNode( Map *map, float minStarMagnitude) : _minStarMagnitude(minStarM
 void
 SkyNode::initialize( Map *map, const std::string& starFile )
 {
+    _ephemerisProvider = new DefaultEphemerisProvider();
+
     // intialize the default settings:
     _defaultPerViewData._lightPos.set( osg::Vec3f(0.0f, 1.0f, 0.0f) );
     _defaultPerViewData._light = new osg::Light( 0 );  
@@ -599,6 +784,11 @@ SkyNode::initialize( Map *map, const std::string& starFile )
     _defaultPerViewData._light->setDiffuse( osg::Vec4(1,1,1,1) );
     _defaultPerViewData._light->setSpecular( osg::Vec4(0,0,0,1) );
     _defaultPerViewData._starsVisible = true;
+    _defaultPerViewData._moonVisible = true;
+    
+    // set up the uniform that conveys the normalized light position in world space
+    _defaultPerViewData._lightPosUniform = new osg::Uniform( osg::Uniform::FLOAT_VEC3, "atmos_v3LightPos" );
+    _defaultPerViewData._lightPosUniform->set( _defaultPerViewData._lightPos / _defaultPerViewData._lightPos.length() );
     
     // set up the astronomical parameters:
     _ellipsoidModel = map->getProfile()->getSRS()->getGeographicSRS()->getEllipsoid();
@@ -609,6 +799,7 @@ SkyNode::initialize( Map *map, const std::string& starFile )
     // make the ephemeris (note: order is important here)
     makeAtmosphere( _ellipsoidModel.get() );
     makeSun();
+    makeMoon();
 
     if (_minStarMagnitude < 0)
     {
@@ -618,6 +809,9 @@ SkyNode::initialize( Map *map, const std::string& starFile )
     }
 
     makeStars(starFile);
+
+    //Set a default time
+    setDateTime( 2011, 3, 6, 18 );
 }
 
 osg::BoundingSphere
@@ -656,6 +850,25 @@ SkyNode::traverse( osg::NodeVisitor& nv )
     }
 }
 
+EphemerisProvider* SkyNode::getEphemerisProvider() const
+{
+    return _ephemerisProvider;
+}
+
+void SkyNode::setEphemerisProvider(EphemerisProvider* ephemerisProvider )
+{
+    if (_ephemerisProvider != ephemerisProvider)
+    {
+        _ephemerisProvider = ephemerisProvider;
+
+        //Update the positions of the planets
+        for( PerViewDataMap::iterator i = _perViewData.begin(); i != _perViewData.end(); ++i )
+        {
+            setDateTime(i->second._year, i->second._month, i->second._date, i->second._hoursUTC, i->first);
+        }
+    }
+}
+
 void
 SkyNode::attach( osg::View* view, int lightNum )
 {
@@ -681,16 +894,25 @@ SkyNode::attach( osg::View* view, int lightNum )
     data._sunXform->addChild( _sun.get() );
     data._cullContainer->addChild( data._sunXform.get() );
 
+    data._moonXform = new osg::MatrixTransform();
+    data._moonMatrix = _defaultPerViewData._moonMatrix;
+    data._moonXform->setMatrix( data._moonMatrix );
+    data._moonXform->addChild( _moon.get() );
+    data._cullContainer->addChild( data._moonXform.get() );
+    data._moonVisible = _defaultPerViewData._moonVisible;
+    data._moonXform->setNodeMask( data._moonVisible ? ~0 : 0 );
+    
     data._starsXform = new osg::MatrixTransform();
     data._starsMatrix = _defaultPerViewData._starsMatrix;
     data._starsXform->setMatrix( _defaultPerViewData._starsMatrix );
     data._starsXform->addChild( _stars.get() );
-    data._cullContainer->addChild( data._starsXform.get() );
-
-    data._starsVisible = true;
+    data._cullContainer->addChild( data._starsXform.get() );    
+    data._starsVisible = _defaultPerViewData._starsVisible;
+    data._starsXform->setNodeMask( data._starsVisible ? ~0 : 0 );
 
     data._cullContainer->addChild( _atmosphere.get() );
     data._lightPosUniform = osg::clone( _defaultPerViewData._lightPosUniform.get() );
+    data._cullContainer->getOrCreateStateSet()->addUniform( data._lightPosUniform.get() );
 
     // node to traverse the child nodes
     data._cullContainer->addChild( new TraverseNode<osg::Group>(this) );
@@ -698,6 +920,11 @@ SkyNode::attach( osg::View* view, int lightNum )
     view->setLightingMode( osg::View::SKY_LIGHT );
     view->setLight( data._light.get() );
     view->getCamera()->setClearColor( osg::Vec4(0,0,0,1) );
+
+    data._year = _defaultPerViewData._year;
+    data._month = _defaultPerViewData._month;
+    data._date = _defaultPerViewData._date;
+    data._hoursUTC = _defaultPerViewData._hoursUTC;
 }
 
 void
@@ -751,6 +978,22 @@ SkyNode::setSunPosition( const osg::Vec3& pos, osg::View* view )
 }
 
 void
+SkyNode::setMoonPosition( const osg::Vec3d& pos, osg::View* view )
+{
+    _moonPosition = pos;
+    if ( !view )
+    {
+        setMoonPosition( _defaultPerViewData, pos );
+        for( PerViewDataMap::iterator i = _perViewData.begin(); i != _perViewData.end(); ++i )
+            setMoonPosition( i->second, pos );
+    }
+    else if ( _perViewData.find(view) != _perViewData.end() )
+    {
+        setMoonPosition( _perViewData[view], pos );
+    }
+}
+
+void
 SkyNode::setSunPosition( PerViewData& data, const osg::Vec3& pos )
 {
     data._lightPos = pos;
@@ -787,15 +1030,57 @@ SkyNode::setSunPosition( double lat_degrees, double long_degrees, osg::View* vie
 }
 
 void
-SkyNode::setDateTime( int year, int month, int date, double hoursUTC, osg::View* view )
+SkyNode::setMoonPosition( PerViewData& data, const osg::Vec3d& pos )
 {
+    if ( data._moonXform.valid() )
+    {
+        data._moonMatrix = osg::Matrixd::translate( pos.x(), pos.y(), pos.z() );
+        data._moonXform->setMatrix( data._moonMatrix );
+    }
+}
+
+
+void
+SkyNode::getDateTime( int &year, int &month, int &date, double &hoursUTC, osg::View* view )
+{    
+    PerViewData& data = _defaultPerViewData;
+    if ( view )
+    {
+        if ( _perViewData.find(view) != _perViewData.end() )
+        {
+            data = _perViewData[view];
+        }
+    }
+
+    year = data._year;
+    month = data._month;
+    date = data._date;
+    hoursUTC = data._hoursUTC;        
+}
+
+
+
+void
+SkyNode::setDateTime( int year, int month, int date, double hoursUTC, osg::View* view )
+{    
     if ( _ellipsoidModel.valid() )
     {
-        // position the sun:
-        Sun sun;
-        osg::Vec3d pos = sun.getPosition( year, month, date, hoursUTC );
-        pos.normalize();
-        setSunPosition( pos, view );
+        osg::Vec3d sunPosition;
+        osg::Vec3d moonPosition;
+
+        if (_ephemerisProvider)
+        {
+            sunPosition = _ephemerisProvider->getSunPosition( year, month, date, hoursUTC );
+            moonPosition = _ephemerisProvider->getMoonPosition( year, month, date, hoursUTC );
+        }
+        else
+        {
+            OE_NOTICE << "You must provide an EphemerisProvider" << std::endl;
+        }
+
+        sunPosition.normalize();
+        setSunPosition( sunPosition, view );
+        setMoonPosition( moonPosition, view );       
 
         // position the stars:
         double time_r = hoursUTC/24.0; // 0..1
@@ -805,10 +1090,19 @@ SkyNode::setDateTime( int year, int month, int date, double hoursUTC, osg::View*
         if ( !view )
         {
             _defaultPerViewData._starsMatrix = starsMatrix;
+            _defaultPerViewData._year = year;
+            _defaultPerViewData._month = month;
+            _defaultPerViewData._date = date;
+            _defaultPerViewData._hoursUTC = hoursUTC;
+
             for( PerViewDataMap::iterator i = _perViewData.begin(); i != _perViewData.end(); ++i )
             {
                 i->second._starsMatrix = starsMatrix;
                 i->second._starsXform->setMatrix( starsMatrix );
+                i->second._year = year;
+                i->second._month = month;
+                i->second._date = date;
+                i->second._hoursUTC = hoursUTC;
             }
         }
         else if ( _perViewData.find(view) != _perViewData.end() )
@@ -816,6 +1110,10 @@ SkyNode::setDateTime( int year, int month, int date, double hoursUTC, osg::View*
             PerViewData& data = _perViewData[view];
             data._starsMatrix = starsMatrix;
             data._starsXform->setMatrix( starsMatrix );
+            data._year = year;
+            data._month = month;
+            data._date = date;
+            data._hoursUTC = hoursUTC;
         }
     }
 }
@@ -826,6 +1124,7 @@ SkyNode::setStarsVisible( bool value, osg::View* view )
     if ( !view )
     {
         _defaultPerViewData._starsVisible = value;
+        _defaultPerViewData._starsXform->setNodeMask( value ? ~0 : 0 );
         for( PerViewDataMap::iterator i = _perViewData.begin(); i != _perViewData.end(); ++i )
         {
             i->second._starsVisible = value;
@@ -836,6 +1135,26 @@ SkyNode::setStarsVisible( bool value, osg::View* view )
     {
         _perViewData[view]._starsVisible = value;
         _perViewData[view]._starsXform->setNodeMask( value ? ~0 : 0 );
+    }
+}
+
+void
+SkyNode::setMoonVisible( bool value, osg::View* view )
+{
+    if ( !view )
+    {
+        _defaultPerViewData._moonVisible = value;
+        _defaultPerViewData._moonXform->setNodeMask( value ? ~0 : 0 );
+        for( PerViewDataMap::iterator i = _perViewData.begin(); i != _perViewData.end(); ++i )
+        {
+            i->second._moonVisible = value;
+            i->second._moonXform->setNodeMask( value ? ~0 : 0 );
+        }
+    }
+    else if ( _perViewData.find(view) != _perViewData.end() )
+    {
+        _perViewData[view]._moonVisible = value;
+        _perViewData[view]._moonXform->setNodeMask( value ? ~0 : 0 );
     }
 }
 
@@ -854,11 +1173,27 @@ SkyNode::getStarsVisible( osg::View* view ) const
     }
 }
 
+bool
+SkyNode::getMoonVisible( osg::View* view ) const
+{
+    PerViewDataMap::const_iterator i = _perViewData.find(view);
+
+    if ( !view || i == _perViewData.end() )
+    {
+        return _defaultPerViewData._moonVisible;
+    }
+    else
+    {
+        return i->second._moonVisible;
+    }
+}
+
 void
 SkyNode::makeAtmosphere( const osg::EllipsoidModel* em )
 {
     // create some skeleton geometry to shade:
     osg::Geometry* drawable = s_makeEllipsoidGeometry( em, _outerRadius );
+    
 
     osg::Geode* geode = new osg::Geode();
     geode->addDrawable( drawable );
@@ -910,8 +1245,11 @@ SkyNode::makeAtmosphere( const osg::EllipsoidModel* em )
     
     float Scale = 1.0f / (_outerRadius - _innerRadius);
 
-    _defaultPerViewData._lightPosUniform = set->getOrCreateUniform( "atmos_v3LightPos", osg::Uniform::FLOAT_VEC3 );
+#if 0
+//    _defaultPerViewData._lightPosUniform = set->getOrCreateUniform( "atmos_v3LightPos", osg::Uniform::FLOAT_VEC3 );
+    _defaultPerViewData._lightPosUniform = new osg::Uniform( osg::Uniform::FLOAT_VEC3, "atmos_v3LightPos" );
     _defaultPerViewData._lightPosUniform->set( _defaultPerViewData._lightPos / _defaultPerViewData._lightPos.length() );
+#endif
 
     set->getOrCreateUniform( "atmos_v3InvWavelength", osg::Uniform::FLOAT_VEC3 )->set( RGB_wl );
     set->getOrCreateUniform( "atmos_fInnerRadius",    osg::Uniform::FLOAT )->set( _innerRadius );
@@ -987,6 +1325,63 @@ SkyNode::makeSun()
     _sun = sun;
 }
 
+void
+SkyNode::makeMoon()
+{
+    osg::ref_ptr< osg::EllipsoidModel > em = new osg::EllipsoidModel( 1738140.0, 1735970.0 );   
+
+    osg::Geode* moon = new osg::Geode;
+    moon->getOrCreateStateSet()->setAttributeAndModes( new osg::Program(), osg::StateAttribute::OFF | osg::StateAttribute::PROTECTED );
+    osg::Geometry* geom = s_makeEllipsoidGeometry( em.get(), em->getRadiusEquator(), true );    
+    //TODO:  Embed this texture in code or provide a way to have a default resource directory for osgEarth.
+    //       Right now just need to have this file somewhere in your OSG_FILE_PATH
+    osg::Image* image = osgDB::readImageFile( "moon_1024x512.jpg" );
+    osg::Texture2D * texture = new osg::Texture2D( image );
+    texture->setFilter(osg::Texture::MIN_FILTER,osg::Texture::LINEAR);
+    texture->setFilter(osg::Texture::MAG_FILTER,osg::Texture::LINEAR);
+    texture->setResizeNonPowerOfTwoHint(false);
+    geom->getOrCreateStateSet()->setTextureAttributeAndModes( 0, texture, osg::StateAttribute::ON | osg::StateAttribute::PROTECTED);
+    
+    osg::Vec4Array* colors = new osg::Vec4Array(1);    
+    geom->setColorArray( colors );
+    geom->setColorBinding(osg::Geometry::BIND_OVERALL);
+    (*colors)[0] = osg::Vec4(1, 1, 1, 1 );
+    moon->addDrawable( geom  ); 
+    
+    osg::StateSet* set = moon->getOrCreateStateSet();
+    // configure the stateset
+    set->setMode( GL_LIGHTING, osg::StateAttribute::ON );
+    set->setAttributeAndModes( new osg::CullFace( osg::CullFace::BACK ), osg::StateAttribute::ON);    
+    set->setRenderBinDetails( BIN_MOON, "RenderBin" );
+    //set->setAttributeAndModes( new osg::Depth(osg::Depth::ALWAYS, 0, 1, false), osg::StateAttribute::ON );
+    set->setAttributeAndModes( new osg::BlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA), osg::StateAttribute::ON );
+
+    // make the moon's transform:
+    // todo: move this?
+    _defaultPerViewData._moonXform = new osg::MatrixTransform();    
+
+    Moon moonModel;
+    //Get some default value of the moon
+    osg::Vec3d pos = moonModel.getPosition( 2011, 2, 1, 0 );            
+    _defaultPerViewData._moonXform->setMatrix( osg::Matrix::translate( pos ) ); 
+    _defaultPerViewData._moonXform->addChild( moon );
+
+    //If we couldn't load the moon texture, turn the moon off
+    if (!image)
+    {
+        OE_NOTICE << "Couldn't load moon texture, add osgEarth's data directory your OSG_FILE_PATH" << std::endl;
+        _defaultPerViewData._moonXform->setNodeMask( 0 );
+        _defaultPerViewData._moonVisible = false;
+    }
+
+    double moonDistance = 6378137.0 + 384400000.0;
+    
+    AddCallbackToDrawablesVisitor visitor( moonDistance );
+    moon->accept( visitor );
+
+    _moon = moon;
+}
+
 SkyNode::StarData::StarData(std::stringstream &ss)
 {
   std::getline( ss, name, ',' );
@@ -1031,10 +1426,8 @@ SkyNode::buildStarGeometry(const std::vector<StarData>& stars)
   std::vector<StarData>::const_iterator p;
   for( p = stars.begin(); p != stars.end(); p++ )
   {
-    osg::Vec3 v = osg::Vec3(0,_starRadius,0) * 
-      osg::Matrix::rotate( p->declination, 1, 0, 0 ) * 
-      osg::Matrix::rotate( p->right_ascension, 0, 0, 1 );
-
+    
+    osg::Vec3d v = getPositionFromRADecl( p->right_ascension, p->declination, _starRadius );
     coords->push_back( v );
 
     if ( p->magnitude < minMag ) minMag = p->magnitude;
@@ -1044,12 +1437,13 @@ SkyNode::buildStarGeometry(const std::vector<StarData>& stars)
   osg::Vec4Array* colors = new osg::Vec4Array();
   for( p = stars.begin(); p != stars.end(); p++ )
   {
-      //float c = 0.5f + 0.5f * ( (p->magnitude-minMag) / (maxMag-minMag) );
       float c = ( (p->magnitude-minMag) / (maxMag-minMag) );
       colors->push_back( osg::Vec4(c,c,c,1.0f) );
   }
 
   osg::Geometry* geometry = new osg::Geometry;
+  geometry->setUseVertexBufferObjects(true);
+
   geometry->setVertexArray( coords );
   geometry->setColorArray( colors );
   geometry->setColorBinding(osg::Geometry::BIND_PER_VERTEX);
@@ -1067,6 +1461,7 @@ SkyNode::buildStarGeometry(const std::vector<StarData>& stars)
 
   sset->setRenderBinDetails( BIN_STARS, "RenderBin");
   sset->setAttributeAndModes( new osg::Depth(osg::Depth::ALWAYS, 0, 1, false), osg::StateAttribute::ON );
+  sset->setMode(GL_BLEND, 1);
 
   osg::Geode* starGeode = new osg::Geode;
   starGeode->addDrawable( geometry );
@@ -1122,4 +1517,12 @@ SkyNode::parseStarFile(const std::string& starFile, std::vector<StarData>& out_s
   in.close();
 
   return true;
+}
+
+osg::Vec3d
+SkyNode::getPositionFromRADecl( double ra, double decl, double range )
+{
+    return osg::Vec3(0,range,0) * 
+           osg::Matrix::rotate( decl, 1, 0, 0 ) * 
+           osg::Matrix::rotate( ra - osg::PI_2, 0, 0, 1 );
 }

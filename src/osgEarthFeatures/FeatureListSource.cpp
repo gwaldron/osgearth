@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2010 Pelican Mapping
+ * Copyright 2008-2012 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -23,7 +23,14 @@ using namespace osgEarth::Features;
 FeatureListSource::FeatureListSource():
 FeatureSource()
 {
-    _profile = new FeatureProfile(GeoExtent(osgEarth::SpatialReference::create("epsg:4326"), -180, -90, 180, 90));
+    //nop
+}
+
+FeatureListSource::FeatureListSource(const GeoExtent& defaultExtent ) :
+FeatureSource (),
+_defaultExtent( defaultExtent )
+{
+    //nop
 }
 
 FeatureCursor*
@@ -43,12 +50,36 @@ FeatureListSource::createFeatureCursor( const Symbology::Query& query )
 const FeatureProfile*
 FeatureListSource::createFeatureProfile()
 {    
-    return _profile.get();
+    const SpatialReference* srs = 0L;
+    osgEarth::Bounds        bounds;
+
+    if ( !_features.empty() )
+    {
+        // Get the SRS of the first feature
+        srs = _features.front()->getSRS();
+
+        // Compute the extent of the features
+        for (FeatureList::iterator itr = _features.begin(); itr != _features.end(); ++itr)
+        {
+            Feature* feature = itr->get();
+            if (feature->getGeometry())
+            {
+                bounds.expandBy( feature->getGeometry()->getBounds() );
+            }        
+        }
+    }
+
+    // return the new profile, or a default extent if the profile could not be computed.
+    if ( srs && bounds.isValid() )
+        return new FeatureProfile( GeoExtent(srs, bounds) );
+    else
+        return new FeatureProfile( _defaultExtent );
 }
 
 bool
 FeatureListSource::deleteFeature(FeatureID fid)
 {
+    dirtyFeatureProfile();
     for (FeatureList::iterator itr = _features.begin(); itr != _features.end(); ++itr) 
     {
         if (itr->get()->getFID() == fid)
@@ -76,6 +107,7 @@ FeatureListSource::getFeature( FeatureID fid )
 
 bool FeatureListSource::insertFeature(Feature* feature)
 {
+    dirtyFeatureProfile();
     _features.push_back( feature );
     dirty();
     return true;

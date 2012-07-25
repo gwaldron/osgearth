@@ -255,7 +255,6 @@ MapService::init( const std::string& _url, const osgDB::ReaderWriter::Options* o
         profile = Profile::create(
             spatialReference.get(),
             xmin, ymin, xmax, ymax,
-            NULL,
             num_tiles_wide,
             num_tiles_high);
     }    

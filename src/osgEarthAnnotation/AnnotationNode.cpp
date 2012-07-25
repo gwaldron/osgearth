@@ -42,7 +42,6 @@ namespace osgEarth { namespace Annotation
 
         void onTileAdded( const TileKey& key, osg::Node* tile, TerrainCallbackContext& context )
         {
-            //osg::ref_ptr< AnnotationNode > anno = static_cast<AnnotationNode*>(context.getClientData());
             _annotation->reclamp( key, tile, context.getTerrain() );
         }
 
@@ -71,7 +70,6 @@ AnnotationNode::~AnnotationNode()
         {
             mapNodeSafe->getTerrain()->removeTerrainCallback( _autoClampCallback );
         }
-        //mapNodeSafe->getTerrain()->removeTerrainCallbacksWithClientData(this);
     }
 }
 
@@ -101,14 +99,12 @@ AnnotationNode::setAutoClamp( bool value )
             {
                 _autoClampCallback = new AutoClampCallback( this );
                 mapNode_safe->getTerrain()->addTerrainCallback( _autoClampCallback.get() );
-                //mapNode_safe->getTerrain()->addTerrainCallback(new AutoClampCallback(), this);
             }
         }
         else if ( _autoclamp && !value && _autoClampCallback.valid())
         {
             mapNode_safe->getTerrain()->removeTerrainCallback( _autoClampCallback );
             _autoClampCallback = 0;
-            //mapNode_safe->getTerrain()->removeTerrainCallbacksWithClientData(this);
         }
 
         _autoclamp = value;

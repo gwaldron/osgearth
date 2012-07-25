@@ -100,6 +100,10 @@ namespace osgEarth { namespace Symbology
         optional<osg::Vec3f>& orientation() { return _orientation; }
         const optional<osg::Vec3f>& orientation() const { return _orientation; }
 
+        /** Heading offset in degrees */
+        optional<NumericExpression>& headingOffset() { return _headingOffset; }
+        const optional<NumericExpression>& headingOffset() const { return _headingOffset; }
+
         /** Seeding value for the randomizer */
         optional<unsigned>& randomSeed() { return _randomSeed; }
         const optional<unsigned>& randomSeed() const { return _randomSeed; }
@@ -132,6 +136,7 @@ namespace osgEarth { namespace Symbology
         optional<NumericExpression>  _scale;
         optional<Placement>          _placement;
         optional<osg::Vec3f>         _orientation;
+        optional<NumericExpression>  _headingOffset;
         optional<float>              _density;
         optional<unsigned>           _randomSeed;
         optional<bool>               _isModelHint;

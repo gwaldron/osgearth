@@ -109,6 +109,14 @@ SubstituteModelFilter::process(const FeatureList&           features,
         if ( symbol->orientation().isSet() )
         {
             osg::Vec3d hpr = *symbol->orientation();
+
+            if ( symbol->headingOffset().isSet() )
+            {
+                NumericExpression headingOffsetEx = *symbol->headingOffset();
+                hpr = osg::Vec3d(
+                        hpr.x() + input->eval( headingOffsetEx, &context ), hpr.y(), hpr.z());
+            }
+
             //Rotation in HPR
             //Apply the rotation            
             rotationMatrix.makeRotate( 
@@ -256,6 +264,14 @@ struct ClusterVisitor : public osg::NodeVisitor
                 if ( _symbol->orientation().isSet() )
                 {
                     osg::Vec3d hpr = *_symbol->orientation();
+
+                    if ( _symbol->headingOffset().isSet() )
+                    {
+                        NumericExpression headingOffsetEx = *_symbol->headingOffset();
+                        hpr = osg::Vec3d(
+                                hpr.x() + feature->eval( headingOffsetEx, &_cx ), hpr.y(), hpr.z());
+                    }
+
                     //Rotation in HPR
                     //Apply the rotation            
                     rotationMatrix.makeRotate( 

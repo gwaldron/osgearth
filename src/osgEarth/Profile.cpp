@@ -690,8 +690,23 @@ unsigned int
 Profile::getEquivalentLOD( const Profile* profile, unsigned int lod ) const
 {    
     //If the profiles are equivalent, just use the incoming lod
-    if (profile->isEquivalentTo( this ) ) return lod;    
-    
+    if (profile->isEquivalentTo( this ) ) 
+        return lod;
+
+    double rhsWidth, rhsHeight;
+    profile->getTileDimensions( lod, rhsWidth, rhsHeight );
+
+    double targetWidth = rhsWidth, targetHeight = rhsHeight;
+
+    if ( !profile->getSRS()->isHorizEquivalentTo(profile->getSRS()) )
+    {
+        targetWidth = profile->getSRS()->transformUnits( rhsWidth, getSRS() );
+        targetHeight = profile->getSRS()->transformUnits( rhsHeight, getSRS() );
+    }
+
+
+
+#if 0
     //Create a TileKey in the incoming Profile
     TileKey key(lod, 0, 0, profile );
 
@@ -707,6 +722,7 @@ Profile::getEquivalentLOD( const Profile* profile, unsigned int lod ) const
 
     double keyWidth = extent.width();
     double keyHeight = extent.height();
+#endif
     
     int currLOD = 0;
     int destLOD = currLOD;
@@ -716,8 +732,8 @@ Profile::getEquivalentLOD( const Profile* profile, unsigned int lod ) const
     {
         currLOD++;
         double w, h;
-        getTileDimensions(currLOD, w,h);
-        if ( w < keyWidth || h < keyHeight ) break;
+        getTileDimensions(currLOD, w, h);
+        if ( w < targetWidth || h < targetHeight ) break;
         //double a = w * h;
         //if (a < keyArea) break;
         destLOD = currLOD;

@@ -678,7 +678,7 @@ HTTPClient::doGet( const HTTPRequest& request, const osgDB::Options* options, Pr
     CURLcode res;
     long response_code = 0L;
 
-    if ( _simResponseCode < 0 || (::rand()%100) < 50 )
+    if ( _simResponseCode < 0 )
     {
         char errorBuf[CURL_ERROR_SIZE];
         errorBuf[0] = 0;
@@ -703,6 +703,7 @@ HTTPClient::doGet( const HTTPRequest& request, const osgDB::Options* options, Pr
     }
     else
     {
+        // simulate failure with a custom response code
         response_code = _simResponseCode;
         res = response_code == 408 ? CURLE_OPERATION_TIMEDOUT : CURLE_COULDNT_CONNECT;
     }

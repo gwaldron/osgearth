@@ -17,7 +17,7 @@
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
 #include <osgEarthUtil/PolyhedralLineOfSight>
-#include <osgEarth/Terrain>
+
 
 #include <osgUtil/LineSegmentIntersector>
 #include <osgUtil/IntersectionVisitor>
@@ -61,8 +61,10 @@ _distance    ( Distance(50000.0, Units::METERS) )
 
     getChildAttachPoint()->addChild( _geode );
     this->addChild( getRoot() );
+
+    _terrainCallback = new TerrainChangedCallback(this);
     
-    mapNode->getTerrain()->addTerrainCallback(  new TerrainChangedCallback(this), this );
+    mapNode->getTerrain()->addTerrainCallback( _terrainCallback );
 
     osg::StateSet* stateSet = this->getOrCreateStateSet();
     stateSet->setMode( GL_BLEND, 1 );
@@ -73,7 +75,10 @@ _distance    ( Distance(50000.0, Units::METERS) )
 
 PolyhedralLineOfSightNode::~PolyhedralLineOfSightNode()
 {
-    //nop
+    if (_terrainCallback)
+    {
+        _mapNode->getTerrain()->removeTerrainCallback( _terrainCallback );
+    }
 }
 
 

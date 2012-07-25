@@ -37,9 +37,6 @@ namespace osgEarth
     class TerrainCallbackContext
     {
     public:
-        /** Gets the client data that was used to register this callback */
-        osg::Referenced* getClientData() { return _cd; }
-
         const Terrain* getTerrain() const { return _terrain; }
 
         /** Indicate that the callback should be removed immediately */
@@ -50,15 +47,14 @@ namespace osgEarth
 
         
     public:
-        TerrainCallbackContext(Terrain* terrain, osg::Referenced* cd)
-            : _remove(false), _cd(cd), _terrain(terrain) { }
+        TerrainCallbackContext(Terrain* terrain)
+            : _remove(false), _terrain(terrain) { }
 
         /** dtor */
         virtual ~TerrainCallbackContext() { }
 
     protected:
         bool _remove;
-        osg::Referenced* _cd;
         Terrain* _terrain;
         friend class Terrain;
     };
@@ -193,26 +189,13 @@ namespace osgEarth
          * @param callback
          *      Terrain callback to add. This will get called whenever tile data changes in
          *      the active terrain graph
-         * @param clientData
-         *      User-specified client data structure that will be passed to the callback.
-         *      If you specify client data, it is held with an observer_ptr. When that observer_ptr
-         *      detects that the client data has been deleted, the callback is automatically
-         *      removed.
          */
-        void addTerrainCallback( TerrainCallback* callback, osg::Referenced* clientData =0L );
+        void addTerrainCallback( TerrainCallback* callback);
 
         /**
          * Removes a terrain callback.
          */
         void removeTerrainCallback( TerrainCallback* callback );
-
-        /**
-         * Removes any terrain callbacks referencing the specified client data.
-         *
-         * @param clientData
-         *      User object for which to remove any callbacks
-         */
-        void removeTerrainCallbacksWithClientData( osg::Referenced* clientData );
         
 
     public:
@@ -224,13 +207,6 @@ namespace osgEarth
 
         // access the raw terrain graph
         osg::Node* getGraph() { return _graph.get(); }
-
-        // internal record of a callback registration
-        struct CallbackRecord {
-            bool                               _hasClientData;
-            osg::observer_ptr<osg::Referenced> _clientData;
-            osg::ref_ptr<TerrainCallback>      _callback;
-        };
         
         // queues the onTileAdded callback (internal)
         void notifyTileAdded( const TileKey& key, osg::Node* tile );
@@ -245,7 +221,7 @@ namespace osgEarth
 
         friend class TerrainEngineNode;
 
-        typedef std::list<CallbackRecord> CallbackList;
+        typedef std::list< osg::ref_ptr<TerrainCallback> > CallbackList;
 
         CallbackList                 _callbacks;
         Threading::ReadWriteMutex    _callbacksMutex;

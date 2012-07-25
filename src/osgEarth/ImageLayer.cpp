@@ -495,7 +495,8 @@ ImageLayer::createImageInKeyProfile( const TileKey& key, ProgressCallback* progr
     {
         double keyres = key.getExtent().width() / getTileSize();
         double keyresInLayerProfile = key.getProfile()->getSRS()->transformUnits(keyres, getProfile()->getSRS());
-        if ( keyresInLayerProfile < _runtimeOptions.minResolution().value() )
+
+        if ( keyresInLayerProfile > _runtimeOptions.minResolution().value() )
         {
             return GeoImage( _emptyImage.get(), key.getExtent() );
         }

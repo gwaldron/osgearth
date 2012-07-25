@@ -578,22 +578,14 @@ TerrainLayer::isKeyValid(const TileKey& key) const
 
         if ( _runtimeOptions->maxResolution().isSet() )
         {
-            double keyResolution = key.getExtent().width() / (double)getTileSize();
-            double keyResolutionInLayerProfile = key.getProfile()->getSRS()->transformUnits(keyResolution, profile->getSRS());
+            double keyres = key.getExtent().width() / (double)getTileSize();
+            double keyresInLayerProfile = key.getProfile()->getSRS()->transformUnits(keyres, profile->getSRS());
 
-            if ( _runtimeOptions->maxResolution().isSet() && keyResolution > _runtimeOptions->maxResolution().value() )
+            if ( _runtimeOptions->maxResolution().isSet() && keyresInLayerProfile < _runtimeOptions->maxResolution().value() )
             {
                 return false;
             }
         }
-
-        //if (_runtimeOptions->maxLevelResolution().isSet())
-        //{        
-        //    unsigned int maxLevel = getProfile()->getLevelOfDetailForHorizResolution(
-        //        _runtimeOptions->maxLevelResolution().value(), getTileSize() );
-        //    OE_DEBUG << "Computed max level of " << maxLevel << std::endl;
-        //    if (key.getLevelOfDetail() > maxLevel) return false;
-        //}
     }
 
 	return true;

@@ -91,8 +91,8 @@ public:
                 << "&z=" << zoom + 2;
         }
 
-		std::string base;
-		base = buf.str();
+        std::string base;
+        base = buf.str();
 
         OE_DEBUG << key.str() << "=" << base << std::endl;
 
@@ -107,15 +107,16 @@ public:
         return NULL;
     }
 
-    virtual std::string getExtension()  const 
+    std::string getExtension()  const 
     {
         //All Yahoo tiles are in JPEG format
         return "jpg";
     }
-
-    virtual bool supportsPersistentCaching() const
+    
+    /** Tell the terrain engine not to cache tiles form this source. */
+    CachePolicy getCachePolicyHint() const
     {
-        return false;
+        return CachePolicy::NO_CACHE;
     }
 
 private:

@@ -90,13 +90,13 @@ namespace osgEarth
             return *_usage == USAGE_READ_WRITE;
         }
 
-        bool operator == ( const CachePolicy& rhs ) const {
-            return _usage == rhs._usage && _maxAge == rhs._maxAge;
-        }
+        bool operator == ( const CachePolicy& rhs ) const;
 
         bool operator != ( const CachePolicy& rhs ) const {
             return ! operator==(rhs);
         }
+
+        std::string usageString() const;
 
     public: // config
         Config getConfig() const;

@@ -23,7 +23,8 @@
 #include <osgEarth/ShaderComposition>
 #include <osgEarth/TextureCompositor>
 #include <osgEarthDrivers/osg/OSGOptions>
-#include <osgEarthDrivers/engine_osgterrain/OSGTerrainOptions>
+//#include <osgEarthDrivers/engine_osgterrain/OSGTerrainOptions>
+#include <osgEarthDrivers/engine_quadtree/QuadTreeTerrainEngineOptions>
 
 #include <osg/CullFace>
 #include <osg/Depth>
@@ -55,7 +56,7 @@ _parentMapNode( mapNode )
         if ( mno.enableLighting().isSet() )
             mno.enableLighting() = *mno.enableLighting();
 
-        OSGTerrainOptions to;
+        QuadTreeTerrainEngineOptions to;
         to.heightFieldSkirtRatio() = 0.0;  // don't want to see skirts
         to.clusterCulling() = false;       // want to see underwater
         to.enableBlending() = true;        // gotsta blend with the main node

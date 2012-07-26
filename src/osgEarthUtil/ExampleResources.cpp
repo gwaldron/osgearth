@@ -181,9 +181,7 @@ namespace
 {
     struct SkySliderHandler : public ControlEventHandler
     {
-        SkySliderHandler(SkyNode* sky) : _sky(sky) 
-        {
-        }
+        SkySliderHandler(SkyNode* sky) : _sky(sky)  { }
 
         SkyNode* _sky;
 
@@ -195,32 +193,47 @@ namespace
             _sky->setDateTime( year, month, date, value );
         }
     };
+
+    struct AmbientBrightnessHandler : public ControlEventHandler
+    {
+        AmbientBrightnessHandler(SkyNode* sky) : _sky(sky) { }
+
+        SkyNode* _sky;
+
+        virtual void onValueChanged( class Control* control, float value )
+        {
+            _sky->setAmbientBrightness( value );
+        }
+    };
 }
 
 Control*
 SkyControlFactory::create(SkyNode*         sky,
                           osgViewer::View* view) const
 {
-    HBox* skyBox = new HBox();
-    skyBox->setChildVertAlign( Control::ALIGN_CENTER );
-    skyBox->setChildSpacing( 10 );
-    skyBox->setHorizFill( true );
+    Grid* grid = new Grid();
+    grid->setChildVertAlign( Control::ALIGN_CENTER );
+    grid->setChildSpacing( 10 );
+    grid->setHorizFill( true );
 
-    skyBox->addControl( new LabelControl("Time: ", 16) );
+    grid->setControl( 0, 0, new LabelControl("Time: ", 16) );
 
     int year, month, date;
     double h;
-    sky->getDateTime( year, month, date, h);    
+    sky->getDateTime( year, month, date, h);
 
-    HSliderControl* skySlider = skyBox->addControl(new HSliderControl( 0.0f, 24.0f, h ));
-    skySlider->setBackColor( Color::Gray );
-    skySlider->setHeight( 12 );
+    HSliderControl* skySlider = grid->setControl(1, 0, new HSliderControl( 0.0f, 24.0f, h ));
     skySlider->setHorizFill( true, 200 );
     skySlider->addEventHandler( new SkySliderHandler(sky) );
 
-    skyBox->addControl( new LabelControl(skySlider) );
+    grid->setControl(2, 0, new LabelControl(skySlider) );
 
-    return skyBox;
+    grid->setControl(0, 1, new LabelControl("Ambient: ", 16) );
+    HSliderControl* ambient = grid->setControl(1, 1, new HSliderControl(0.0f, 1.0f, sky->getAmbientBrightness()));
+    ambient->addEventHandler( new AmbientBrightnessHandler(sky) );
+    grid->setControl(2, 1, new LabelControl(ambient) );
+
+    return grid;
 }
 
 //------------------------------------------------------------------------
@@ -625,10 +638,6 @@ MapNodeHelper::configureView( osgViewer::View* view ) const
     view->addEventHandler(new osgViewer::ThreadingHandler());
     view->addEventHandler(new osgViewer::LODScaleHandler());
     view->addEventHandler(new osgGA::StateSetManipulator(view->getCamera()->getOrCreateStateSet()));
-
-    // osgEarth benefits from pre-compilation of GL objects in the pager. In newer versions of
-    // OSG, this activates OSG's IncrementalCompileOpeartion in order to avoid frame breaks.
-    view->getDatabasePager()->setDoPreCompile( true );
 }
 
 

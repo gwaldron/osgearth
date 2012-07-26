@@ -140,6 +140,7 @@ AnnotationNode::setDepthAdjustment( bool enable )
     {
         osg::StateSet* s = this->getOrCreateStateSet();
         osg::Program* daProgram = DepthOffsetUtils::getOrCreateProgram(); // cached, not a leak.
+        //TODO: be careful to check for VirtualProgram as well in the future if things change
         osg::Program* p = dynamic_cast<osg::Program*>( s->getAttribute(osg::StateAttribute::PROGRAM) );
         if ( !p || p != daProgram )
             s->setAttributeAndModes( daProgram, osg::StateAttribute::ON|osg::StateAttribute::OVERRIDE );

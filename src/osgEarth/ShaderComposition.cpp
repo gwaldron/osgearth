@@ -94,7 +94,8 @@ RenderingHints::useNumTextures(unsigned num)
 
 //------------------------------------------------------------------------
 
-const osg::StateAttribute::Type VirtualProgram::SA_TYPE = osg::StateAttribute::Type(477270);
+// same type as PROGRAM (for proper state sorting)
+const osg::StateAttribute::Type VirtualProgram::SA_TYPE = osg::StateAttribute::PROGRAM;
 
 
 VirtualProgram::VirtualProgram( unsigned mask ) : 
@@ -107,7 +108,7 @@ _inherit( true )
 
 
 VirtualProgram::VirtualProgram(const VirtualProgram& rhs, const osg::CopyOp& copyop ) :
-//osg::Program( rhs, copyop ),
+osg::StateAttribute( rhs, copyop ),
 _shaderMap  ( rhs._shaderMap ),
 _mask       ( rhs._mask ),
 _functions  ( rhs._functions ),
@@ -493,7 +494,7 @@ VirtualProgram::buildProgram( osg::State& state, ShaderMap& accumShaderMap )
 
 
 void
-VirtualProgram::apply( osg::State & state ) const
+VirtualProgram::apply( osg::State& state ) const
 {
     // first, find and collect all the VirtualProgram attributes:
     ShaderMap accumShaderMap;

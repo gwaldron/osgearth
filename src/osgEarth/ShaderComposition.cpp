@@ -503,10 +503,10 @@ VirtualProgram::apply( osg::State & state ) const
     if ( _inherit )
     {
         const StateHack::AttributeVec* av = StateHack::GetAttributeVec( state, this );
-        if ( av )
+        if ( av && av->size() > 0 )
         {
             // find the lower VP that doesn't inherit:
-            unsigned start;
+            unsigned start = 0;
             for( start = (int)av->size()-1; start > 0; --start )
             {
                 const VirtualProgram* vp = dynamic_cast<const VirtualProgram*>( (*av)[start].first );
@@ -609,7 +609,7 @@ VirtualProgram::refreshAccumulatedFunctions( const osg::State& state )
     if ( _inherit )
     {
         const StateHack::AttributeVec* av = StateHack::GetAttributeVec( state, this );
-        if ( av )
+        if ( av && av->size() > 0 )
         {
             // find the closest VP that doesn't inherit:
             unsigned start;

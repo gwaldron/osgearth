@@ -17,40 +17,6 @@
 
 #include "GLES2ShaderGenVisitor.h"
 
-#ifndef WIN32
-#define SHADER_COMPAT \
-"#ifndef GL_ES\n" \
-"#if (__VERSION__ <= 110)\n" \
-"#define lowp\n" \
-"#define mediump\n" \
-"#define highp\n" \
-"#endif\n" \
-"#endif\n"
-#else
-#define SHADER_COMPAT ""
-#endif
-
-
-static const char* texturedVertSource = { 
-	SHADER_COMPAT 
-	"attribute vec4 osg_Vertex;\n"
-	"attribute vec4 osg_MultiTexCoord0;\n"
-	"uniform mat4 osg_ModelViewProjectionMatrix;\n"
-	"varying mediump vec2 texCoord0;\n"
-	"void main(void) {\n" 
-	"  gl_Position = osg_ModelViewProjectionMatrix * osg_Vertex;\n"
-	"  texCoord0 = osg_MultiTexCoord0.xy;\n"
-	"}\n" 
-}; 
-
-static const char* texturedFragSource = { 
-	SHADER_COMPAT 
-	"uniform sampler2D diffuseTexture;\n"
-	"varying mediump vec2 texCoord0;\n"
-	"void main(void) {\n" 
-    "  gl_FragColor = texture2D(diffuseTexture, texCoord0);\n"
-	"}\n" 
-};
 
 
 @interface ViewController () {
@@ -59,67 +25,6 @@ static const char* texturedFragSource = {
 
 @end
 
-osg::ref_ptr<osg::Program> g_defaultShader = NULL; 
-
-//
-//Visitor to enable VBO on all drawables
-class SafeStateVisitor : public osg::NodeVisitor
-{
-public:
-    
-    SafeStateVisitor()
-    : osg::NodeVisitor(osg::NodeVisitor::TRAVERSE_ALL_CHILDREN)
-    {
-    }
-    virtual void apply(osg::Node& node){
-        this->SetupStateSet(node.getStateSet());
-        traverse(node);
-    }
-    virtual void apply(osg::Geode& geode)
-    {
-        this->SetupStateSet(geode.getStateSet());
-        for(unsigned int i=0; i<geode.getNumDrawables(); i++)
-        {
-            geode.getDrawable(i)->setUseDisplayList(false);
-            geode.getDrawable(i)->setUseVertexBufferObjects(true);
-            this->SetupStateSet(geode.getDrawable(i)->getStateSet());
-        }
-        
-        traverse(geode);
-    }
-protected:
-    void SetupStateSet(osg::StateSet* state){
-        if(!state){return;}
-        OSG_ALWAYS << "SetupStateSet" << std::endl;
-        state->removeAttribute(osg::StateAttribute::PROGRAM);
-        //osg::StateSet::TextureAttributeList textures = state->getTextureAttributeList();
-        
-        if(g_defaultShader == NULL){
-            g_defaultShader = new osg::Program();
-            g_defaultShader->setName("defaultShader"); 
-            g_defaultShader->addShader(new osg::Shader(osg::Shader::VERTEX, texturedVertSource)); 
-            g_defaultShader->addShader(new osg::Shader(osg::Shader::FRAGMENT, texturedFragSource));
-        }
-
-        state->setAttributeAndModes(g_defaultShader, osg::StateAttribute::ON | osg::StateAttribute::OVERRIDE); 	
-        
-        
-        for(unsigned int i=0; i<4; i++){
-            osg::Texture2D* tex = dynamic_cast<osg::Texture2D*>(state->getTextureAttribute(i,
-                                                                osg::StateAttribute::TEXTURE));
-            if(tex){
-                OSG_ALWAYS << "SafeTex" << std::endl;
-                //tex->setUnRefImageDataAfterApply(true);
-                //tex->setUseHardwareMipMapGeneration(false);
-                //tex->setWrap(osg::Texture::WRAP_S, osg::Texture::CLAMP_TO_EDGE);
-                //tex->setWrap(osg::Texture::WRAP_T, osg::Texture::CLAMP_TO_EDGE);
-                //set to linear to disable mipmap generation
-                //tex->setFilter(osg::Texture2D::MIN_FILTER, osg::Texture2D::NEAREST);
-                //tex->setFilter(osg::Texture2D::MAG_FILTER, osg::Texture2D::NEAREST);
-            }
-        }
-    }
-};
 
 @implementation ViewController
 
@@ -140,7 +45,7 @@ protected:
     osg::Node* node = osgDB::readNodeFile(osgDB::findDataFile("models/box.osg"));
     
     osgUtil::GLES2ShaderGenVisitor shaderGen;
-    //node->accept(shaderGen);
+    node->accept(shaderGen);
     
     _viewer->setSceneData(node);
 
@@ -177,8 +82,6 @@ protected:
     osg::Group* root = new osg::Group();
     root->addChild( mapNode.get() );
     
-    SafeStateVisitor stateVisitor;
-    //root->accept(stateVisitor);
     
     osgUtil::GLES2ShaderGenVisitor shaderGen;
     //root->accept(shaderGen);
@@ -191,6 +94,7 @@ protected:
     [super viewDidLoad];
     
     osg::setNotifyLevel(osg::DEBUG_FP);
+    osgEarth::setNotifyLevel(osg::DEBUG_FP);
     
     //get screen scale
     UIScreen* screen = [UIScreen mainScreen];
@@ -216,9 +120,9 @@ protected:
 	traits->height = h*scale;
 	traits->depth = 24; //keep memory down, default is currently 24
 	traits->alpha = 8;
-    //traits->samples = 4;
-    //traits->sampleBuffers = 2;
-	//traits->stencil = 8;
+    traits->samples = 4;
+    traits->sampleBuffers = 2;
+	//traits->stencil = 1;
 	traits->windowDecoration = false;
 	traits->doubleBuffer = true;
 	traits->sharedContext = 0;
@@ -301,15 +205,6 @@ protected:
 
 - (void)update:(CADisplayLink *)sender
 {
-    SafeStateVisitor stateVisitor;
-    _viewer->getSceneData()->accept(stateVisitor);
-
-    
-	//_viewer->getSceneData()->getOrCreateStateSet()->setAttributeAndModes(defaultShader, osg::StateAttribute::ON | osg::StateAttribute::OVERRIDE); 	
-
-    
-    osgUtil::GLES2ShaderGenVisitor shaderGen;
-    //_viewer->getSceneData()->accept(shaderGen);
     _viewer->frame();
 }
 

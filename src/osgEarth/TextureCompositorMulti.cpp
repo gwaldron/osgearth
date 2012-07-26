@@ -49,8 +49,12 @@ namespace
        
         const TextureLayout::TextureSlotVector& slots = layout.getTextureSlots();
 
-        buf << "#version 110 \n";
+        buf << "#version " << GLSL_VERSION_STR << "\n";
 
+        buf << "varying vec4 osg_FrontColor;\n"
+        << "varying vec4 osg_FrontSecondaryColor;\n"
+        << "varying vec4 osg_TexCoord[" << (int)slots.size() << "];\n";
+        
         if ( blending )
         {
             buf << "uniform mat4 osgearth_TexBlendMatrix[" << slots.size() << "];\n";
@@ -58,8 +62,8 @@ namespace
 
         buf << "void osgearth_vert_setupColoring() \n"
             << "{ \n"
-            << "    gl_FrontColor = gl_Color; \n"
-            << "    gl_FrontSecondaryColor = vec4(0.0); \n";
+            << "    osg_FrontColor = gl_Color; \n"
+            << "    osg_FrontSecondaryColor = vec4(0.0); \n";
 
         // Set up the texture coordinates for each active slot (primary and secondary).
         // Primary slots are the actual image layer's texture image unit. A Secondary
@@ -74,12 +78,12 @@ namespace
                 if ( slot == primarySlot )
                 {
                     // normal unit:
-                    buf << "    gl_TexCoord["<< slot <<"] = gl_MultiTexCoord" << slot << ";\n";
+                    buf << "    osg_TexCoord["<< slot <<"] = gl_MultiTexCoord" << slot << ";\n";
                 }
                 else
                 {
                     // secondary (blending) unit:
-                    buf << "    gl_TexCoord["<< slot <<"] = osgearth_TexBlendMatrix["<< primarySlot << "] * gl_MultiTexCoord" << primarySlot << ";\n";
+                    buf << "    osg_TexCoord["<< slot <<"] = osgearth_TexBlendMatrix["<< primarySlot << "] * gl_MultiTexCoord" << primarySlot << ";\n";
                 }
             }
         }
@@ -98,7 +102,12 @@ namespace
 
         std::stringstream buf;
 
-        buf << "#version 110 \n";
+        buf << "#version " << GLSL_VERSION_STR << "\n";
+#ifdef OSG_GLES2_AVAILABLE
+        buf << "precision mediump float;\n";
+#endif
+        
+        buf << "varying vec4 osg_TexCoord[" << maxSlots << "];\n";
 
         if ( blending )
         {
@@ -164,8 +173,8 @@ namespace
                     << std::setprecision(1)
                     << "            age = "<< invFadeInDuration << " * min( "<< fadeInDuration << ", osg_FrameTime - osgearth_SlotStamp[" << slot << "] ); \n"
                     << "            age = clamp(age, 0.0, 1.0); \n"
-                    << "            vec4 texel0 = texture2D(" << makeSamplerName(slot) << ", gl_TexCoord["<< slot << "].st);\n"
-                    << "            vec4 texel1 = texture2D(" << makeSamplerName(secondarySlot) << ", gl_TexCoord["<< secondarySlot << "].st);\n"
+                    << "            vec4 texel0 = texture2D(" << makeSamplerName(slot) << ", osg_TexCoord["<< slot << "].st);\n"
+                    << "            vec4 texel1 = texture2D(" << makeSamplerName(secondarySlot) << ", osg_TexCoord["<< secondarySlot << "].st);\n"
                     << "            float mixval = age * osgearth_LODRangeFactor;\n"
 
                     // pre-multiply alpha before mixing:
@@ -180,7 +189,7 @@ namespace
             }
             else
             {
-                buf << "            texel = texture2D(" << makeSamplerName(slot) << ", gl_TexCoord["<< slot <<"].st); \n";
+                buf << "            texel = texture2D(" << makeSamplerName(slot) << ", osg_TexCoord["<< slot <<"].st); \n";
             }
             
             buf 
@@ -287,7 +296,11 @@ TextureCompositorMultiTexture::isSupported( bool useGPU )
 {
     const Capabilities& caps = osgEarth::Registry::instance()->getCapabilities();
     if ( useGPU )
+#ifndef OSG_GLES2_AVAILABLE
         return caps.supportsGLSL( 1.10f ) && caps.supportsMultiTexture();
+#else
+        return caps.supportsGLSL( 1.0f ) && caps.supportsMultiTexture();
+#endif
     else
         return caps.supportsMultiTexture();
 }

@@ -59,6 +59,24 @@ _maxAge( DBL_MAX )
     fromConfig( conf );
 }
 
+bool
+CachePolicy::operator == (const CachePolicy& rhs) const
+{
+    return 
+        (_usage.get() == rhs._usage.get()) &&
+        (_maxAge.get() == rhs._maxAge.get());
+}
+
+std::string
+CachePolicy::usageString() const
+{
+    if ( _usage == USAGE_READ_WRITE ) return "read-write";
+    if ( _usage == USAGE_READ_ONLY )  return "read-only";
+    if ( _usage == USAGE_CACHE_ONLY)  return "cache-only";
+    if ( _usage == USAGE_NO_CACHE)    return "no-cache";
+    return "unknown";
+}
+
 void
 CachePolicy::fromConfig( const Config& conf )
 {

@@ -252,11 +252,26 @@ TerrainLayer::getTileSource() const
         (!_tileSource.valid() && !isCacheOnly()))
     {
         OpenThreads::ScopedLock< OpenThreads::Mutex > lock(const_cast<TerrainLayer*>(this)->_initTileSourceMutex );
+        
         // double-check pattern
         if ((_tileSource.valid() && !_tileSourceInitialized) ||
             (!_tileSource.valid() && !isCacheOnly()))
         {
+            // Initialize the tile source once.
             const_cast<TerrainLayer*>(this)->initTileSource();
+
+            // read the cache policy hint from the tile source unless user expressly set 
+            // a policy in the initialization options.
+            if ( !_initOptions.cachePolicy().isSet() )
+            {
+                CachePolicy hint = _tileSource->getCachePolicyHint();
+
+                if ( hint.usage().isSetTo(CachePolicy::USAGE_NO_CACHE) )
+                {
+                    _runtimeOptions->cachePolicy() = hint;
+                    OE_INFO << LC << "Caching disabled (by policy hint) for layer " << getName() << std::endl;
+                }
+            }
         }
     }
 

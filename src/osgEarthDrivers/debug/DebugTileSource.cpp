@@ -130,14 +130,15 @@ public:
         return image;
     }
 
-    virtual std::string getExtension() const 
+    std::string getExtension() const 
     {
         return "png";
     }
 
-    virtual bool supportsPersistentCaching() const
+    /** Tell the terrain engine not to cache tiles form this source. */
+    CachePolicy getCachePolicyHint() const
     {
-        return false;
+        return CachePolicy::NO_CACHE;
     }
 
 private:

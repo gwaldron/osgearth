@@ -109,7 +109,7 @@ void ChromaKeyColorFilter::install(osg::StateSet* stateSet) const
     stateSet->addUniform(_color.get());
     stateSet->addUniform(_distance.get());
 
-    osgEarth::VirtualProgram* vp = dynamic_cast<osgEarth::VirtualProgram*>(stateSet->getAttribute(osg::StateAttribute::PROGRAM));
+    osgEarth::VirtualProgram* vp = dynamic_cast<osgEarth::VirtualProgram*>(stateSet->getAttribute(VirtualProgram::SA_TYPE));
     if (vp)
     {
         // build the local shader (unique per instance). We will

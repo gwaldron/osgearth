@@ -141,6 +141,9 @@ namespace osgEarth
     class OSGEARTH_EXPORT VirtualProgram : public osg::Program
     {
     public:
+        static const osg::StateAttribute::Type SA_TYPE;
+
+    public:
         /**
          * Adds a shader function to the program.
          * Call this method (rather than setShader directly) to inject "user" functions into the
@@ -191,7 +194,8 @@ namespace osgEarth
         VirtualProgram( const VirtualProgram& VirtualProgram, 
                         const osg::CopyOp& copyop=osg::CopyOp::SHALLOW_COPY );
 
-        META_StateAttribute( osgEarth, VirtualProgram, Type( PROGRAM ) )
+        //META_StateAttribute( osgEarth, VirtualProgram, Type( PROGRAM ) )
+        META_StateAttribute( osgEarth, VirtualProgram, SA_TYPE);
 
         /** dtor */
         virtual ~VirtualProgram() { }

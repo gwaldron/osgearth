@@ -489,6 +489,19 @@ ImageLayer::createImageInKeyProfile( const TileKey& key, ProgressCallback* progr
         return GeoImage( _emptyImage.get(), key.getExtent() );
     }
 
+    // Check for a "Minimum resolution" setting on the layer. If we are before the
+    // min resolution, return the empty image. Do not cache empties.
+    if ( _runtimeOptions.minResolution().isSet() )
+    {
+        double keyres = key.getExtent().width() / getTileSize();
+        double keyresInLayerProfile = key.getProfile()->getSRS()->transformUnits(keyres, getProfile()->getSRS());
+
+        if ( keyresInLayerProfile > _runtimeOptions.minResolution().value() )
+        {
+            return GeoImage( _emptyImage.get(), key.getExtent() );
+        }
+    }
+
     OE_DEBUG << LC << 
         "Layer \"" << getName() << "\" create image for \"" << key.str() << "\", ext= "
         << key.getExtent().toString() << std::endl;

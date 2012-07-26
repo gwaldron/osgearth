@@ -376,7 +376,8 @@ namespace
             bool callbackCachingOK = !cb || reader.callbackRequestsCaching(cb);
 
             // establish our caching policy:
-            const CachePolicy& cp = !cachePolicy.empty() ? cachePolicy : Registry::instance()->defaultCachePolicy();
+            const CachePolicy& cp = 
+                !cachePolicy.empty() ? cachePolicy : Registry::instance()->defaultCachePolicy();
 
             // get a cache bin if we need it:
             CacheBin* bin = 0L;

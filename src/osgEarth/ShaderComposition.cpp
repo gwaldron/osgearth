@@ -33,6 +33,8 @@ using namespace osgEarth::ShaderComp;
 #define OE_TEST OE_NULL
 //#define OE_TEST OE_NOTICE
 
+//#define MERGE_SHADERS 1
+
 //------------------------------------------------------------------------
 
 #define VERTEX_SETUP_COLORING   "osgearth_vert_setupColoring"
@@ -238,6 +240,16 @@ VirtualProgram::installDefaultColoringAndLightingShaders( unsigned numTextures )
 
 
 void
+VirtualProgram::installDefaultLightingShaders()
+{
+    ShaderFactory* sf = osgEarth::Registry::instance()->getShaderFactory();
+
+    this->setShader( sf->createDefaultLightingVertexShader() );
+    this->setShader( sf->createDefaultLightingFragmentShader() );
+}
+
+
+void
 VirtualProgram::installDefaultColoringShaders( unsigned numTextures )
 {
     ShaderFactory* sf = osgEarth::Registry::instance()->getShaderFactory();
@@ -255,6 +267,128 @@ VirtualProgram::setInheritShaders( bool value )
         _inherit = value;
         _programCache.clear();
         _accumulatedFunctions.clear();
+    }
+}
+
+
+namespace
+{
+    typedef std::map<std::string, std::string> HeaderMap;
+
+    void parseShaderForMerging( const std::string& source, unsigned& version, HeaderMap& headers, std::stringstream& body )
+    {
+        // break into lines:
+        StringVector lines;
+        StringTokenizer( source, lines, "\n", "", true, false );
+
+        for( StringVector::const_iterator line = lines.begin(); line != lines.end(); ++line )
+        {
+            if ( line->size() > 0 )
+            {
+                StringVector tokens;
+                StringTokenizer( *line, tokens, " \t", "", false, true );
+
+                if (tokens[0] == "#version")
+                {
+                    // find the highest version number.
+                    if ( tokens.size() > 1 )
+                    {
+                        unsigned newVersion = osgEarth::as<unsigned>(tokens[1], 0);
+                        if ( newVersion > version )
+                        {
+                            version = newVersion;
+                        }
+                    }
+                }
+
+                else if (
+                    tokens[0] == "#extension"   ||
+                    tokens[0] == "varying"      ||
+                    tokens[0] == "uniform"      ||
+                    tokens[0] == "attribute" )
+                {
+                    std::string& header = headers[*line];
+                    header = *line;
+                }
+
+                else
+                {
+                    body << (*line) << "\n";
+                }
+            }
+        }
+    }
+
+
+    void addShadersToProgram( const VirtualProgram::ShaderVector& shaders, osg::Program* program )
+    {
+#ifdef MERGE_SHADERS
+        bool mergeShaders = true;
+#else
+        bool mergeShaders = false;
+#endif
+
+        if ( mergeShaders )
+        {
+            unsigned          vertVersion = 0;
+            HeaderMap         vertHeaders;
+            std::stringstream vertBody;
+
+            unsigned          fragVersion = 0;
+            HeaderMap         fragHeaders;
+            std::stringstream fragBody;
+
+            // parse the shaders, combining header lines and finding the highest version:
+            for( VirtualProgram::ShaderVector::const_iterator i = shaders.begin(); i != shaders.end(); ++i )
+            {
+                osg::Shader* s = i->get();
+                if ( s->getType() == osg::Shader::VERTEX )
+                {
+                    parseShaderForMerging( s->getShaderSource(), vertVersion, vertHeaders, vertBody );
+                }
+                else if ( s->getType() == osg::Shader::FRAGMENT )
+                {
+                    parseShaderForMerging( s->getShaderSource(), fragVersion, fragHeaders, fragBody );
+                }
+            }
+
+            // write out the merged shader code:
+            std::string vertBodyText;
+            vertBodyText = vertBody.str();
+            std::stringstream vertShaderBuf;
+            if ( vertVersion > 0 )
+                vertShaderBuf << "#version " << vertVersion << "\n";
+            for( HeaderMap::const_iterator h = vertHeaders.begin(); h != vertHeaders.end(); ++h )
+                vertShaderBuf << h->second << "\n";
+            vertShaderBuf << vertBodyText << "\n";
+            vertBodyText = vertShaderBuf.str();
+
+            std::string fragBodyText;
+            fragBodyText = fragBody.str();
+            std::stringstream fragShaderBuf;
+            if ( fragVersion > 0 )
+                fragShaderBuf << "#version " << fragVersion << "\n";
+            for( HeaderMap::const_iterator h = fragHeaders.begin(); h != fragHeaders.end(); ++h )
+                fragShaderBuf << h->second << "\n";
+            fragShaderBuf << fragBodyText << "\n";
+            fragBodyText = fragShaderBuf.str();
+
+            // add them to the program.
+            program->addShader( new osg::Shader(osg::Shader::VERTEX, vertBodyText) );
+            program->addShader( new osg::Shader(osg::Shader::FRAGMENT, fragBodyText) );
+
+            OE_TEST << LC 
+                << "\nMERGED VERTEX SHADER: \n\n" << vertBodyText << "\n\n"
+                << "MERGED FRAGMENT SHADER: \n\n" << fragBodyText << "\n" << std::endl;
+        }
+        else
+        {
+            for( VirtualProgram::ShaderVector::const_iterator i = shaders.begin(); i != shaders.end(); ++i )
+            {
+                program->addShader( i->get() );
+                OE_TEST << LC << "SHADER " << i->get()->getName() << ":\n" << i->get()->getShaderSource() << "\n" << std::endl;
+            }
+        }
     }
 }
 
@@ -291,12 +425,8 @@ VirtualProgram::buildProgram( osg::State& state, ShaderMap& accumShaderMap )
 
     osg::Program* program = new osg::Program();
     program->setName(getName());
+    addShadersToProgram( vec, program );
 
-    for( ShaderVector::iterator i = vec.begin(); i != vec.end(); ++i )
-    {
-        program->addShader( i->get() );
-        OE_TEST << LC << "SHADER " << i->get()->getName() << ":\n" << i->get()->getShaderSource() << "\n" << std::endl;
-    }
 
     // Since we replaced the "mains", we have to go through the cache and update all its
     // entries to point at the new mains instead of the old ones.
@@ -321,7 +451,13 @@ VirtualProgram::buildProgram( osg::State& state, ShaderMap& accumShaderMap )
                     newKey.push_back( i->get() );
             }
 
+            osg::Program* newProgram = new osg::Program();
+            newProgram->setName( m->second->getName() );
+            addShadersToProgram( original, newProgram );
+
+#if 0
             osg::Program* p = m->second.get();
+
             for( unsigned n = 0; n < p->getNumShaders(); --n )
             {
                 osg::Shader* s = p->getShader(n);
@@ -338,8 +474,9 @@ VirtualProgram::buildProgram( osg::State& state, ShaderMap& accumShaderMap )
                     --n;
                 }
             }
+#endif
 
-            newProgramCache[newKey] = p;
+            newProgramCache[newKey] = newProgram;
         }
 
         _programCache = newProgramCache;
@@ -366,10 +503,10 @@ VirtualProgram::apply( osg::State & state ) const
     if ( _inherit )
     {
         const StateHack::AttributeVec* av = StateHack::GetAttributeVec( state, this );
-        if ( av )
+        if ( av && av->size() > 0 )
         {
             // find the lower VP that doesn't inherit:
-            unsigned start;
+            unsigned start = 0;
             for( start = (int)av->size()-1; start > 0; --start )
             {
                 const VirtualProgram* vp = dynamic_cast<const VirtualProgram*>( (*av)[start].first );
@@ -472,7 +609,7 @@ VirtualProgram::refreshAccumulatedFunctions( const osg::State& state )
     if ( _inherit )
     {
         const StateHack::AttributeVec* av = StateHack::GetAttributeVec( state, this );
-        if ( av )
+        if ( av && av->size() > 0 )
         {
             // find the closest VP that doesn't inherit:
             unsigned start;

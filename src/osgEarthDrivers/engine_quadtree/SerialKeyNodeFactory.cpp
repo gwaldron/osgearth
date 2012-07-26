@@ -53,7 +53,7 @@ _mapInfo         ( mapInfo ),
 _terrain         ( terrain ),
 _engineUID       ( engineUID )
 {
-    // NOP
+    //nop
 }
 
 void
@@ -72,9 +72,9 @@ SerialKeyNodeFactory::addTile(TileModel* model, bool tileHasRealData, bool tileH
     osg::Node* result = 0L;
 
     // Only add the next tile if all the following are true:
-    // 1. Either there's real tile data, or a maxLOD is explicity set in the options;
+    // 1. Either there's real tile data, or a minLOD is explicity set in the options;
     // 2. The tile isn't blacklisted; and
-    // 3. We are still below the minimum LOD.
+    // 3. We are still below the maximim LOD.
     bool wrapInPagedLOD =
         (tileHasRealData || (_options.minLOD().isSet() && model->_tileKey.getLOD() < *_options.minLOD())) &&
         //(tileHasRealData || _options.minLOD().isSet()) &&

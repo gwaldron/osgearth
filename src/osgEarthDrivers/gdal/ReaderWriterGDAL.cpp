@@ -754,7 +754,8 @@ public:
 
                 //Build the dataset if we didn't already load it
                 if (!_srcDS)
-                {                    
+                {                 
+                    //We couldn't get the VRT from the cache, so build it
                     osg::Timer_t startTime = osg::Timer::instance()->tick();                    
                     _srcDS = (GDALDataset*)build_vrt(files, HIGHEST_RESOLUTION);
                     osg::Timer_t endTime = osg::Timer::instance()->tick();                                                            
@@ -762,30 +763,33 @@ public:
 
                     if (_srcDS)
                     {
-                        std::string vrtFile = getTempName( "", ".vrt");
-                        OE_INFO << "Writing temp VRT to " << vrtFile << std::endl;
-
-                        //We couldn't get the VRT from the cache, so build it and cache it                    
-                        if (vrtDriver)
-                        {                    
-                            vrtDriver->CreateCopy(vrtFile.c_str(), _srcDS, 0, 0, 0, 0 );                                                        
-
-                            
-                            //We created the temp file, now read the contents back                            
-                            std::ifstream input( vrtFile.c_str() );
-                            if ( input.is_open() )
-                            {
-                                input >> std::noskipws;
-                                std::stringstream buf;
-                                buf << input.rdbuf();                                
-                                std::string vrtContents = buf.str();                                
-                                osg::ref_ptr< StringObject > strObject = new StringObject( vrtContents );
-                                _cacheBin->write( vrtKey, strObject.get() );
-                            }
-                        }                                                
-                        if (osgDB::fileExists( vrtFile ) )
+                        //Cache the VRT so we don't have to build it next time.
+                        if (_cacheBin)
                         {
-                            remove( vrtFile.c_str() );
+                            std::string vrtFile = getTempName( "", ".vrt");
+                            OE_INFO << "Writing temp VRT to " << vrtFile << std::endl;
+                         
+                            if (vrtDriver)
+                            {                    
+                                vrtDriver->CreateCopy(vrtFile.c_str(), _srcDS, 0, 0, 0, 0 );                                                        
+
+
+                                //We created the temp file, now read the contents back                            
+                                std::ifstream input( vrtFile.c_str() );
+                                if ( input.is_open() )
+                                {
+                                    input >> std::noskipws;
+                                    std::stringstream buf;
+                                    buf << input.rdbuf();                                
+                                    std::string vrtContents = buf.str();                                
+                                    osg::ref_ptr< StringObject > strObject = new StringObject( vrtContents );
+                                    _cacheBin->write( vrtKey, strObject.get() );
+                                }
+                            }                                                
+                            if (osgDB::fileExists( vrtFile ) )
+                            {
+                                remove( vrtFile.c_str() );
+                            }
                         }
                     }
                     else

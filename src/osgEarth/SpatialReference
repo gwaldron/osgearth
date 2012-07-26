@@ -255,13 +255,13 @@ namespace osgEarth
         const std::string& getInitType() const;
 
         /** Gets the initialization key. */
-        const Key& getKey() const { return _key; }
+        const Key& getKey() const;
 
         /** Gets the initialization string for the horizontal datum */
-        const std::string& getHorizInitString() const { return _key.first; }
+        const std::string& getHorizInitString() const;
 
         /** Gets the initialization string for the vertical datum */
-        const std::string& getVertInitString() const { return _key.second; }
+        const std::string& getVertInitString() const;
 
         /** Gets the datum identifier of this SRS (or empty string if not available) */
         const std::string& getDatumName() const;

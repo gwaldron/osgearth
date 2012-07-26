@@ -497,6 +497,30 @@ SpatialReference::getVerticalDatum() const
     return _vdatum.get();
 }
 
+const SpatialReference::Key&
+SpatialReference::getKey() const
+{
+    if ( !_initialized )
+        const_cast<SpatialReference*>(this)->init();
+    return _key;
+}
+
+const std::string&
+SpatialReference::getHorizInitString() const 
+{ 
+    if ( !_initialized )
+        const_cast<SpatialReference*>(this)->init();
+    return _key.first;
+}
+
+const std::string&
+SpatialReference::getVertInitString() const 
+{ 
+    if ( !_initialized )
+        const_cast<SpatialReference*>(this)->init();
+    return _key.second;
+}
+
 bool
 SpatialReference::isEquivalentTo( const SpatialReference* rhs ) const
 {

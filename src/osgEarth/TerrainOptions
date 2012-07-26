@@ -210,14 +210,15 @@ namespace osgEarth
          * The maximum level of detail to which the terrain should subdivide. If you leave this
          * unset, the terrain will subdivide until the map layers stop providing data (default
          * behavior). If you set a value, the terrain will stop subdividing at the specified LOD
-         * regardless of data availability.
+         * even if higher-resolution data is available. (It still might stop subdividing before it
+         * reaches this level if data runs out.)
          */
-        //optional<unsigned>& maxLOD() { return _maxLOD; }
+        optional<unsigned>& maxLOD() { return _maxLOD; }
         const optional<unsigned >& maxLOD() const { return _maxLOD; }
 
         /**
          * The minimum level of detail to which the terrain should subdivide (no matter what).
-         * If you leave this unset, the terrain will terrain will subdivide until the map layers
+         * If you leave this unset, the terrain will subdivide until the map layers
          * stop providing data (default behavior). If you set a value, the terrain will subdivide
          * to the specified LOD no matter what (and may continue farther if higher-resolution
          * data is available).

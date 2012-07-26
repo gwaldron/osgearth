@@ -130,7 +130,7 @@ public:
 
         OE_TEST << LC << "URI: " << uri.full() << ", key: " << uri.cacheKey() << std::endl;
 
-        return uri.getImage( _dbOptions.get(), CachePolicy::INHERIT, progress );
+        return uri.getImage( _dbOptions.get(), CachePolicy::NO_CACHE, progress );
     }
 
     virtual std::string getExtension() const 

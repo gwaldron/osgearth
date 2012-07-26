@@ -63,16 +63,17 @@ namespace osgEarth
         const optional<TileSourceOptions>& driver() const { return _driver; }
 
         /**
-         * Gets or sets the minimum level of detail for which this layer should generate data.
+         * Gets or sets the minimum of detail for which this layer should generate data.
          */
         optional<unsigned>& minLevel() { return _minLevel; }
         const optional<unsigned>& minLevel() const { return _minLevel; }
 
         /**
-         * Gets or sets the minimum level resolution for which this layer should generate data.
+         * Gets or sets the minimum resolution for which this layer should generate data.
+         * The value is in units per pixel, using the base units of the layer's source data.
          */
-        optional<double>& minLevelResolution() { return _minLevelResolution;}
-        const optional<double>& minLevelResolution() const { return _minLevelResolution; }
+        optional<double>& minResolution() { return _minResolution; }
+        const optional<double>& minResolution() const { return _minResolution; }
 
         /**
          * The maximum level of detail for which this layer should generate data.
@@ -82,9 +83,10 @@ namespace osgEarth
 
         /**
          * The maximum level resolution for which this layer should generate data.
+         * The value is in units per pixel, using the base units of the layer's source data.
          */
-        optional<double>& maxLevelResolution() { return _maxLevelResolution; }
-        const optional<double>& maxLevelResolution() const { return _maxLevelResolution; }
+        optional<double>& maxResolution() { return _maxResolution; }
+        const optional<double>& maxResolution() const { return _maxResolution; }
 
         /**
          * The maximum level that data should be queried for this layer.
@@ -168,8 +170,8 @@ namespace osgEarth
         optional<TileSourceOptions> _driver;
         optional<unsigned>          _minLevel;
         optional<unsigned>          _maxLevel;
-        optional<double>            _minLevelResolution;
-        optional<double>            _maxLevelResolution;
+        optional<double>            _minResolution;
+        optional<double>            _maxResolution;
         optional<float>             _loadingWeight;
         optional<bool>              _exactCropping;
         optional<bool>              _enabled;

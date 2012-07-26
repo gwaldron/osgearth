@@ -464,6 +464,15 @@ SpatialReference::getDatumName() const
     return _datum;
 }
 
+const Units&
+SpatialReference::getUnits() const
+{
+    if ( !_initialized )
+        const_cast<SpatialReference*>(this)->init();
+    return _units;
+}
+
+
 const std::string&
 SpatialReference::getWKT() const 
 {
@@ -486,6 +495,30 @@ SpatialReference::getVerticalDatum() const
     if ( !_initialized )
         const_cast<SpatialReference*>(this)->init();
     return _vdatum.get();
+}
+
+const SpatialReference::Key&
+SpatialReference::getKey() const
+{
+    if ( !_initialized )
+        const_cast<SpatialReference*>(this)->init();
+    return _key;
+}
+
+const std::string&
+SpatialReference::getHorizInitString() const 
+{ 
+    if ( !_initialized )
+        const_cast<SpatialReference*>(this)->init();
+    return _key.first;
+}
+
+const std::string&
+SpatialReference::getVertInitString() const 
+{ 
+    if ( !_initialized )
+        const_cast<SpatialReference*>(this)->init();
+    return _key.second;
 }
 
 bool
@@ -1255,6 +1288,28 @@ SpatialReference::transformFromECEF(std::vector<osg::Vec3d>& points) const
     return ok;
 }
 
+double
+SpatialReference::transformUnits(double                  input,
+                                 const SpatialReference* outSRS ) const
+{
+    if ( this->isProjected() && outSRS->isGeographic() )
+    {
+        double metersPerEquatorialDegree = (outSRS->getEllipsoid()->getRadiusEquator() * 2.0 * osg::PI) / 360.0;
+        double inputDegrees = getUnits().convertTo(Units::METERS, input) / metersPerEquatorialDegree;
+        return Units::DEGREES.convertTo( outSRS->getUnits(), inputDegrees );
+    }
+    else if ( this->isGeographic() && outSRS->isProjected() )
+    {
+        double metersPerEquatorialDegree = (outSRS->getEllipsoid()->getRadiusEquator() * 2.0 * osg::PI) / 360.0;
+        double inputMeters = getUnits().convertTo(Units::DEGREES, input) * metersPerEquatorialDegree;
+        return Units::METERS.convertTo( outSRS->getUnits(), inputMeters );
+    }
+    else // both projected or both geographic.
+    {
+        return getUnits().convertTo( outSRS->getUnits(), input );
+    }
+}
+
 bool
 SpatialReference::transformExtentToMBR(const SpatialReference* to_srs,
                                        double&                 in_out_xmin,
@@ -1460,6 +1515,14 @@ SpatialReference::_init()
 
     // Try to extract the horizontal datum
     _datum = getOGRAttrValue( _handle, "DATUM", 0, true );
+
+    // Extract the base units:
+    std::string units = getOGRAttrValue( _handle, "UNIT", 0, true );
+    double unitMultiplier = osgEarth::as<double>( getOGRAttrValue( _handle, "UNIT", 1, true ), 1.0 );
+    if ( _is_geographic )
+        _units = Units(units, units, Units::TYPE_ANGULAR, unitMultiplier);
+    else
+        _units = Units(units, units, Units::TYPE_LINEAR, unitMultiplier);
 
     // Give the SRS a name if it doesn't have one:
     if ( _name == "unnamed" || _name.empty() )

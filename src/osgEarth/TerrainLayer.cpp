@@ -79,8 +79,8 @@ TerrainLayerOptions::getConfig( bool isolate ) const
     conf.set("name", _name);
     conf.updateIfSet( "min_level", _minLevel );
     conf.updateIfSet( "max_level", _maxLevel );
-    conf.updateIfSet( "min_level_resolution", _minLevelResolution );
-    conf.updateIfSet( "max_level_resolution", _maxLevelResolution );
+    conf.updateIfSet( "min_resolution", _minResolution );
+    conf.updateIfSet( "max_resolution", _maxResolution );
     conf.updateIfSet( "loading_weight", _loadingWeight );
     conf.updateIfSet( "enabled", _enabled );
     conf.updateIfSet( "visible", _visible );
@@ -107,8 +107,8 @@ TerrainLayerOptions::fromConfig( const Config& conf )
     _name = conf.value("name");
     conf.getIfSet( "min_level", _minLevel );
     conf.getIfSet( "max_level", _maxLevel );        
-    conf.getIfSet( "min_level_resolution", _minLevelResolution );
-    conf.getIfSet( "max_level_resolution", _maxLevelResolution );
+    conf.getIfSet( "min_resolution", _minResolution );
+    conf.getIfSet( "max_resolution", _maxResolution );
     conf.getIfSet( "loading_weight", _loadingWeight );
     conf.getIfSet( "enabled", _enabled );
     conf.getIfSet( "visible", _visible );
@@ -566,31 +566,25 @@ TerrainLayer::isKeyValid(const TileKey& key) const
     }
 
     // Check to see if levels of detail based on resolution are set
-    if ( getProfile() )
+    const Profile* profile = getProfile();
+    if ( profile )
     {
-        if ( !getProfile()->isEquivalentTo( key.getProfile() ) )
+        if ( !profile->isEquivalentTo( key.getProfile() ) )
         {
             OE_DEBUG << LC
                 << "TerrainLayer::isKeyValid called with key of a different profile" << std::endl;
             //return true;
         }
 
-        if ( _runtimeOptions->minLevelResolution().isSet() )
-        {        
-            unsigned int minLevel = getProfile()->getLevelOfDetailForHorizResolution(
-                _runtimeOptions->minLevelResolution().value(), 
-                getTileSize() );
-            OE_DEBUG << "Computed min level of " << minLevel << std::endl;
-            if (key.getLevelOfDetail() < minLevel) 
-                return false;
-        }
+        if ( _runtimeOptions->maxResolution().isSet() )
+        {
+            double keyres = key.getExtent().width() / (double)getTileSize();
+            double keyresInLayerProfile = key.getProfile()->getSRS()->transformUnits(keyres, profile->getSRS());
 
-        if (_runtimeOptions->maxLevelResolution().isSet())
-        {        
-            unsigned int maxLevel = getProfile()->getLevelOfDetailForHorizResolution(
-                _runtimeOptions->maxLevelResolution().value(), getTileSize() );
-            OE_DEBUG << "Computed max level of " << maxLevel << std::endl;
-            if (key.getLevelOfDetail() > maxLevel) return false;
+            if ( _runtimeOptions->maxResolution().isSet() && keyresInLayerProfile < _runtimeOptions->maxResolution().value() )
+            {
+                return false;
+            }
         }
     }
 

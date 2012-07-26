@@ -188,18 +188,22 @@ CompositeTileSource::createImage(const TileKey&    key,
             {
                 minLevel = i->_imageLayerOptions->minLevel().value();
             }
-            else if (i->_imageLayerOptions->minLevelResolution().isSet())
+            else if (i->_imageLayerOptions->minResolution().isSet())
             {
-                minLevel = source->getProfile()->getLevelOfDetailForHorizResolution( i->_imageLayerOptions->minLevelResolution().value(), source->getPixelsPerTile());            
+                minLevel = source->getProfile()->getLevelOfDetailForHorizResolution( 
+                    i->_imageLayerOptions->minResolution().value(), 
+                    source->getPixelsPerTile());
             }
 
             if (i->_imageLayerOptions->maxLevel().isSet())
             {
                 maxLevel = i->_imageLayerOptions->maxLevel().value();
             }
-            else if (i->_imageLayerOptions->maxLevelResolution().isSet())
+            else if (i->_imageLayerOptions->maxResolution().isSet())
             {
-                maxLevel = source->getProfile()->getLevelOfDetailForHorizResolution( i->_imageLayerOptions->maxLevelResolution().value(), source->getPixelsPerTile());            
+                maxLevel = source->getProfile()->getLevelOfDetailForHorizResolution( 
+                    i->_imageLayerOptions->maxResolution().value(), 
+                    source->getPixelsPerTile());
             }
 
             // check that this source is within the level bounds:

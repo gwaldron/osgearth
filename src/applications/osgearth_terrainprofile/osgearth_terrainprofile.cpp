@@ -387,10 +387,6 @@ main(int argc, char** argv)
 
     viewer.addEventHandler( new DrawProfileEventHandler( mapNode, root, calculator ) );
 
-    // osgEarth benefits from pre-compilation of GL objects in the pager. In newer versions of
-    // OSG, this activates OSG's IncrementalCompileOpeartion in order to avoid frame breaks.
-    viewer.getDatabasePager()->setDoPreCompile( true );
-
     viewer.setSceneData( root );    
 
     // add some stock OSG handlers:

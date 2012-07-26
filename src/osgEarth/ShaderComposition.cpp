@@ -107,7 +107,7 @@ _inherit( true )
 
 
 VirtualProgram::VirtualProgram(const VirtualProgram& rhs, const osg::CopyOp& copyop ) :
-osg::Program( rhs, copyop ),
+//osg::Program( rhs, copyop ),
 _shaderMap  ( rhs._shaderMap ),
 _mask       ( rhs._mask ),
 _functions  ( rhs._functions ),
@@ -495,11 +495,6 @@ VirtualProgram::buildProgram( osg::State& state, ShaderMap& accumShaderMap )
 void
 VirtualProgram::apply( osg::State & state ) const
 {
-    if( _shaderMap.empty() ) // Virtual Program works as normal Program
-    {
-        return Program::apply( state );
-    }
-
     // first, find and collect all the VirtualProgram attributes:
     ShaderMap accumShaderMap;
 
@@ -585,10 +580,6 @@ VirtualProgram::apply( osg::State & state ) const
 
         // finally, apply the program attribute.
         program->apply( state );
-    }
-    else
-    {
-        Program::apply( state );
     }
 }
 

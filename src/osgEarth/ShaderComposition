@@ -138,7 +138,7 @@ namespace osgEarth
      * you can still call the set* functions but you'd better mark the state set with
      * a DYNAMIC data variance.
      */
-    class OSGEARTH_EXPORT VirtualProgram : public osg::Program
+    class OSGEARTH_EXPORT VirtualProgram : public osg::StateAttribute // osg::Program
     {
     public:
         static const osg::StateAttribute::Type SA_TYPE;

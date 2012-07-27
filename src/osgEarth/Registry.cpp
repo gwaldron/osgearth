@@ -48,12 +48,13 @@ using namespace OpenThreads;
 extern const char* builtinMimeTypeExtMappings[];
 
 Registry::Registry() :
-osg::Referenced  ( true ),
-_gdal_registered ( false ),
-_numGdalMutexGets( 0 ),
-_uidGen          ( 0 ),
-_caps            ( 0L ),
-_defaultFont     ( 0L )
+osg::Referenced     ( true ),
+_gdal_registered    ( false ),
+_numGdalMutexGets   ( 0 ),
+_uidGen             ( 0 ),
+_caps               ( 0L ),
+_defaultFont        ( 0L ),
+_terrainEngineDriver( "osgterrain" )
 {
     // set up GDAL and OGR.
     OGRRegisterAll();
@@ -268,14 +269,6 @@ Registry::getNamedProfile( const std::string& name ) const
         return NULL;
 }
 
-//const VerticalSpatialReference*
-//Registry::getDefaultVSRS() const
-//{
-//    if ( !_defaultVSRS.valid() )
-//        const_cast<Registry*>(this)->_defaultVSRS = new VerticalSpatialReference( Units::METERS );
-//    return _defaultVSRS.get();
-//}
-
 osgEarth::Cache*
 Registry::getCache() const
 {
@@ -289,22 +282,6 @@ Registry::setCache( osgEarth::Cache* cache )
     if ( cache )
         cache->store( _defaultOptions.get() );
 }
-
-#if 0
-void Registry::addMimeTypeExtensionMapping(const std::string fromMimeType, const std::string toExt)
-{
-    _mimeTypeExtMap[fromMimeType] = toExt;
-}
-
-osgDB::ReaderWriter* 
-Registry::getReaderWriterForMimeType(const std::string& mimeType)
-{
-    MimeTypeExtensionMap::const_iterator i = _mimeTypeExtMap.find( mimeType );
-    return i != _mimeTypeExtMap.end()?
-        osgDB::Registry::instance()->getReaderWriterForExtension( i->second ) :
-        NULL;
-}
-#endif
 
 bool
 Registry::isBlacklisted(const std::string& filename)
@@ -444,6 +421,13 @@ Registry::getUnits(const std::string& name) const
     }
     return 0L;
 }
+
+void
+Registry::setDefaultTerrainEngineDriverName(const std::string& name)
+{
+    _terrainEngineDriver = name;
+}
+
 
 //Simple class used to add a file extension alias for the earth_tile to the earth plugin
 class RegisterEarthTileExtension

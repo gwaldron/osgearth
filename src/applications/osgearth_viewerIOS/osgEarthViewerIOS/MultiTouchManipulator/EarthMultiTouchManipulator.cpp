@@ -12,8 +12,7 @@
 */
 
 
-#include "MultiTouchTrackballManipulator2.h"
-#include <osg/io_utils>
+#include "EarthMultiTouchlManipulator.h"
 
 using namespace osg;
 using namespace osgGA;

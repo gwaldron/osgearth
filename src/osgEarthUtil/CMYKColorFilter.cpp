@@ -142,7 +142,7 @@ void CMYKColorFilter::install(osg::StateSet* stateSet) const
     // safe: will not add twice.
     stateSet->addUniform(m_cmyk.get());
 
-    osgEarth::VirtualProgram* vp = dynamic_cast<osgEarth::VirtualProgram*>(stateSet->getAttribute(osg::StateAttribute::PROGRAM));
+    osgEarth::VirtualProgram* vp = dynamic_cast<osgEarth::VirtualProgram*>(stateSet->getAttribute(VirtualProgram::SA_TYPE));
     if (vp)
     {
         // build the local shader (unique per instance). We will

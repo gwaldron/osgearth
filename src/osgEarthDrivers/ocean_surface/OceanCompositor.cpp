@@ -19,6 +19,7 @@
 #include "OceanCompositor"
 #include "OceanShaders"
 #include <osgEarth/ImageUtils>
+#include <osgEarth/Registry>
 #include <osgEarth/ShaderComposition>
 #include <osg/Texture2D>
 
@@ -28,12 +29,13 @@ void
 OceanCompositor::updateMasterStateSet(osg::StateSet*       stateSet, 
                                       const TextureLayout& layout ) const
 {
-    VirtualProgram* vp = static_cast<VirtualProgram*>( stateSet->getAttribute(osg::StateAttribute::PROGRAM) );
+    VirtualProgram* vp = static_cast<VirtualProgram*>( stateSet->getAttribute(VirtualProgram::SA_TYPE) );
     if ( !vp )
     {
         vp = new VirtualProgram();
         stateSet->setAttributeAndModes( vp, 1 );
     }
+    vp->installDefaultLightingShaders();
     vp->setShader( "osgearth_vert_setupColoring", new osg::Shader(osg::Shader::VERTEX, source_setupColoring) );
     vp->setShader( "osgearth_frag_applyColoring", new osg::Shader(osg::Shader::FRAGMENT, source_applyColoring ) );
 }

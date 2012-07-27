@@ -134,7 +134,6 @@ main(int argc, char** argv)
     viewer.setSceneData( root );
 
     viewer.getCamera()->addCullCallback( new AutoClipPlaneCullCallback(mapNode) );
-    viewer.getDatabasePager()->setDoPreCompile( true );
     viewer.addEventHandler(new osgViewer::StatsHandler());
     viewer.addEventHandler(new osgViewer::WindowSizeHandler());
     viewer.addEventHandler(new osgGA::StateSetManipulator(viewer.getCamera()->getOrCreateStateSet()));

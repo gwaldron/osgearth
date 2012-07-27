@@ -30,7 +30,6 @@ using namespace osgEarth::Util;
 int
 main(int argc, char** argv)
 {
-
     osg::ArgumentParser arguments(&argc,argv);
     if ( arguments.read("--stencil") )
         osg::DisplaySettings::instance()->setMinimumNumStencilBits( 8 );
@@ -54,10 +53,6 @@ main(int argc, char** argv)
         // configure the near/far so we don't clip things that are up close
         viewer.getCamera()->setNearFarRatio(0.00002);
 
-        // osgEarth benefits from pre-compilation of GL objects in the pager. In newer versions of
-        // OSG, this activates OSG's IncrementalCompileOpeartion in order to avoid frame breaks.
-        viewer.getDatabasePager()->setDoPreCompile( true );
-
         viewer.run();
     }
     else
@@ -66,4 +61,5 @@ main(int argc, char** argv)
             << "\nUsage: " << argv[0] << " file.earth" << std::endl
             << MapNodeHelper().usage() << std::endl;
     }
+    return 0;
 }

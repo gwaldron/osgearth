@@ -24,6 +24,7 @@
 #include <osgEarth/GeoData>
 #include <osgEarth/Units>
 #include <osgEarthAnnotation/LocalizedNode>
+#include <osgEarth/Terrain>
 #include <osg/Geode>
 
 namespace osgEarth { namespace Util
@@ -102,6 +103,8 @@ namespace osgEarth { namespace Util
         unsigned               _numCols;
         osg::Geode*            _geode;
         GeoExtent              _extent;
+
+        osg::ref_ptr< TerrainCallback > _terrainCallback;
 
         void dirty();
         void rebuildGeometry();

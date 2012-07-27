@@ -67,7 +67,7 @@ namespace osgEarth
      * @param suffix
      *        The suffix of the temporary filename
      */
-     std::string getTempName(const std::string& prefix="", const std::string& suffix="");
+     extern OSGEARTH_EXPORT std::string getTempName(const std::string& prefix="", const std::string& suffix="");
 
 
 }

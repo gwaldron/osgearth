@@ -262,6 +262,12 @@ namespace osgEarth
          */
         const std::string& getHorizSignature() const { return _horizSignature; }
 
+        /**
+         * Given another Profile and an LOD in that Profile, determine 
+         * the LOD in this Profile that is nearly equivalent.
+         */
+        unsigned int getEquivalentLOD( const Profile* profile, unsigned int lod ) const;
+
     public:
 
         /**

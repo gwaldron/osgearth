@@ -26,13 +26,37 @@
 #include <osgEarth/Map>
 #include <osgEarth/TextureCompositor>
 #include <osgEarth/ThreadingUtils>
+#include <osgEarth/Locators>
 
 #include <osg/Node>
 #include <osg/StateSet>
 #include <osg/Drawable>
+#include <osg/Array>
 
 using namespace osgEarth;
 using namespace osgEarth::Drivers;
+
+/**
+ * Cache used by the TileModelCompiler. This lets us share common data across
+ * compilations. Since the compiler is thread-locked, we just have a separate
+ * cache per compiler.
+ */
+struct CompilerCache
+{
+    // Texture coordinate array cache def
+    struct TexCoordTableKey {
+        osg::ref_ptr<const GeoLocator> _locator;
+        osg::Vec4d                     _mat;
+        unsigned                       _cols, _rows;
+    };
+    typedef std::pair< TexCoordTableKey, osg::ref_ptr<osg::Vec2Array> > LocatorTexCoordPair;
+    struct TexCoordArrayCache : public std::list<LocatorTexCoordPair> {
+        osg::ref_ptr<osg::Vec2Array>& get( const osg::Vec4d& mat, unsigned cols, unsigned rows );
+    };
+
+    TexCoordArrayCache _surfaceTexCoordArrays;
+    TexCoordArrayCache _skirtTexCoordArrays;
+};
 
 
 /**
@@ -66,6 +90,7 @@ protected:
     bool                                      _optimizeTriOrientation;
     const QuadTreeTerrainEngineOptions&       _options;
     osg::ref_ptr<osg::Drawable::CullCallback> _cullByTraversalMask;
+    CompilerCache                             _cache;
 };
 
 #endif // OSGEARTH_ENGINE_QUADTREE_TILE_MODEL_COMPILER

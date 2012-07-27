@@ -489,6 +489,19 @@ ImageLayer::createImageInKeyProfile( const TileKey& key, ProgressCallback* progr
         return GeoImage( _emptyImage.get(), key.getExtent() );
     }
 
+    // Check for a "Minimum resolution" setting on the layer. If we are before the
+    // min resolution, return the empty image. Do not cache empties.
+    if ( _runtimeOptions.minResolution().isSet() )
+    {
+        double keyres = key.getExtent().width() / getTileSize();
+        double keyresInLayerProfile = key.getProfile()->getSRS()->transformUnits(keyres, getProfile()->getSRS());
+
+        if ( keyresInLayerProfile > _runtimeOptions.minResolution().value() )
+        {
+            return GeoImage( _emptyImage.get(), key.getExtent() );
+        }
+    }
+
     OE_DEBUG << LC << 
         "Layer \"" << getName() << "\" create image for \"" << key.str() << "\", ext= "
         << key.getExtent().toString() << std::endl;
@@ -548,7 +561,10 @@ ImageLayer::createImageInKeyProfile( const TileKey& key, ProgressCallback* progr
 
     // If we got a result, the cache is valid and we are caching in the map profile, write to the map cache.
     if (result.valid()  &&
-        !out_isFallback &&
+        //JB:  Removed the check to not write out fallback data.  If you have a low resolution base dataset (max lod 3) and a high resolution insert (max lod 22)
+        //     then the low res data needs to "fallback" from LOD 4 - 22 so you can display the high res inset.  If you don't cache these intermediate tiles then
+        //     performance can suffer generating all those fallback tiles, especially if you have to do reprojection or mosaicing.
+        //!out_isFallback &&
         cacheBin        && 
         _runtimeOptions.cachePolicy()->isCacheWriteable() )
     {

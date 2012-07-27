@@ -23,24 +23,32 @@ using namespace osgEarth;
 //------------------------------------------------------------------------
 
 //statics
+CachePolicy CachePolicy::DEFAULT;
 CachePolicy CachePolicy::INHERIT;
 CachePolicy CachePolicy::NO_CACHE( CachePolicy::USAGE_NO_CACHE );
 CachePolicy CachePolicy::CACHE_ONLY( CachePolicy::USAGE_CACHE_ONLY );
 
 //------------------------------------------------------------------------
 
-CachePolicy::CachePolicy( const Usage& usage ) :
-_usage( usage ),
+CachePolicy::CachePolicy() :
+_usage ( USAGE_DEFAULT ),
 _maxAge( DBL_MAX )
 {
-    _usage = usage;
+    _usage = USAGE_DEFAULT; // explicity init the optional<>
+}
+
+CachePolicy::CachePolicy( const Usage& usage ) :
+_usage ( usage ),
+_maxAge( DBL_MAX )
+{
+    _usage = usage; // explicity init the optional<>
 }
 
 CachePolicy::CachePolicy( const Usage& usage, double maxAge ) :
 _usage( usage ),
 _maxAge( maxAge )
 {
-    _usage  = usage;
+    _usage  = usage; // explicity init the optional<>
     _maxAge = maxAge;
 }
 
@@ -49,6 +57,24 @@ _usage ( USAGE_DEFAULT ),
 _maxAge( DBL_MAX )
 {
     fromConfig( conf );
+}
+
+bool
+CachePolicy::operator == (const CachePolicy& rhs) const
+{
+    return 
+        (_usage.get() == rhs._usage.get()) &&
+        (_maxAge.get() == rhs._maxAge.get());
+}
+
+std::string
+CachePolicy::usageString() const
+{
+    if ( _usage == USAGE_READ_WRITE ) return "read-write";
+    if ( _usage == USAGE_READ_ONLY )  return "read-only";
+    if ( _usage == USAGE_CACHE_ONLY)  return "cache-only";
+    if ( _usage == USAGE_NO_CACHE)    return "no-cache";
+    return "unknown";
 }
 
 void

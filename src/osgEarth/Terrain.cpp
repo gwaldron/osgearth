@@ -200,17 +200,12 @@ Terrain::getWorldCoordsUnderMouse(osg::View* view,
 
 
 void
-Terrain::addTerrainCallback( TerrainCallback* cb, osg::Referenced* clientData )
+Terrain::addTerrainCallback( TerrainCallback* cb )
 {
     if ( cb )
-    {
-        CallbackRecord rec;
-        rec._callback = cb;
-        rec._clientData = clientData;
-        rec._hasClientData = clientData != 0L;
-
+    {        
         Threading::ScopedWriteLock exclusiveLock( _callbacksMutex );
-        _callbacks.push_back( rec );
+        _callbacks.push_back( cb );
     }
 }
 
@@ -220,28 +215,8 @@ Terrain::removeTerrainCallback( TerrainCallback* cb )
     Threading::ScopedWriteLock exclusiveLock( _callbacksMutex );
 
     for( CallbackList::iterator i = _callbacks.begin(); i != _callbacks.end(); )
-    {
-        CallbackRecord& rec = *i;
-        if ( rec._callback.get() == cb )
-        {
-            i = _callbacks.erase( i );
-        }
-        else
-        {
-            ++i;
-        }
-    }
-}
-
-void
-Terrain::removeTerrainCallbacksWithClientData( osg::Referenced* cd )
-{
-    Threading::ScopedWriteLock exclusiveLock( _callbacksMutex );
-
-    for( CallbackList::iterator i = _callbacks.begin(); i != _callbacks.end(); )
-    {
-        CallbackRecord& rec = *i;
-        if ( rec._hasClientData && rec._clientData.get() == cd )
+    {        
+        if ( i->get() == cb )
         {
             i = _callbacks.erase( i );
         }
@@ -272,28 +247,12 @@ Terrain::fireTileAdded( const TileKey& key, osg::Node* node )
     Threading::ScopedReadLock sharedLock( _callbacksMutex );
 
     for( CallbackList::iterator i = _callbacks.begin(); i != _callbacks.end(); )
-    {
-        CallbackRecord& rec = *i;
+    {       
+        TerrainCallbackContext context( this );
+        i->get()->onTileAdded( key, node, context );
 
-        bool keep = true;
-        osg::ref_ptr<osg::Referenced> clientData_safe = rec._clientData.get();
-
-        // if the client data has gone away, discard the callback.
-        if ( rec._hasClientData && !clientData_safe.valid() )
-        {
-            keep = false;
-        }
-        else
-        {
-            TerrainCallbackContext context( this, clientData_safe.get() );
-            rec._callback->onTileAdded( key, node, context );
-
-            // if the callback set the "remove" flag, discard the callback.
-            if ( context._remove )
-                keep = false;
-        }
-
-        if ( keep )
+        // if the callback set the "remove" flag, discard the callback.
+        if ( !context._remove )
             ++i;
         else
             i = _callbacks.erase( i );

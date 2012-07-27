@@ -29,7 +29,6 @@
 #include <string>
 #include <map>
 
-
 #ifdef OSG_GLES2_AVAILABLE
     #define GLSL_VERSION_STR "100"
 #else
@@ -145,8 +144,11 @@ namespace osgEarth
      * you can still call the set* functions but you'd better mark the state set with
      * a DYNAMIC data variance.
      */
-    class OSGEARTH_EXPORT VirtualProgram : public osg::Program
+    class OSGEARTH_EXPORT VirtualProgram : public osg::StateAttribute // osg::Program
     {
+    public:
+        static const osg::StateAttribute::Type SA_TYPE;
+
     public:
         /**
          * Adds a shader function to the program.
@@ -198,7 +200,7 @@ namespace osgEarth
         VirtualProgram( const VirtualProgram& VirtualProgram, 
                         const osg::CopyOp& copyop=osg::CopyOp::SHALLOW_COPY );
 
-        META_StateAttribute( osgEarth, VirtualProgram, Type( PROGRAM ) )
+        META_StateAttribute( osgEarth, VirtualProgram, SA_TYPE);
 
         /** dtor */
         virtual ~VirtualProgram() { }
@@ -279,3 +281,4 @@ namespace osgEarth
 } // namespace osgEarth
 
 #endif // OSGEARTH_SHADER_COMPOSITION_H
+

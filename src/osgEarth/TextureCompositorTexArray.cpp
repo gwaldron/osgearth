@@ -402,7 +402,7 @@ TextureCompositorTexArray::applyLayerUpdate(osg::StateSet*       stateSet,
 void
 TextureCompositorTexArray::updateMasterStateSet( osg::StateSet* stateSet, const TextureLayout& layout ) const
 {
-    VirtualProgram* vp = static_cast<VirtualProgram*>( stateSet->getAttribute(osg::StateAttribute::PROGRAM) );
+    VirtualProgram* vp = static_cast<VirtualProgram*>( stateSet->getAttribute(VirtualProgram::SA_TYPE) );
 
     vp->setShader(
         "osgearth_vert_setupColoring",

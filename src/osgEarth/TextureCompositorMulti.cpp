@@ -396,7 +396,7 @@ TextureCompositorMultiTexture::updateMasterStateSet(osg::StateSet*       stateSe
                 << std::endl;
         }
 
-        VirtualProgram* vp = static_cast<VirtualProgram*>( stateSet->getAttribute(osg::StateAttribute::PROGRAM) );
+        VirtualProgram* vp = static_cast<VirtualProgram*>( stateSet->getAttribute(VirtualProgram::SA_TYPE) );
         if ( maxUnits > 0 )
         {
             // see if we have any blended layers:

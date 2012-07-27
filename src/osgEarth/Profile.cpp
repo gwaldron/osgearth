@@ -373,6 +373,13 @@ Profile::toProfileOptions() const
     return op;
 }
 
+unsigned int 
+Profile::getEquivalentLOD( const Profile* profile, unsigned int lod ) const
+{
+    return lod;
+}
+
+
 Profile*
 Profile::overrideSRS( const SpatialReference* srs ) const
 {

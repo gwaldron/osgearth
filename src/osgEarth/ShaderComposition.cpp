@@ -98,24 +98,28 @@ RenderingHints::useNumTextures(unsigned num)
 
 //------------------------------------------------------------------------
 
-VirtualProgram::VirtualProgram( unsigned mask ) : 
-_mask   ( mask ),
-_inherit( true )
-{
-    // because we sometimes update/change the attribute's members from within the apply() method
-    this->setDataVariance( osg::Object::DYNAMIC );
-}
-
-
-VirtualProgram::VirtualProgram(const VirtualProgram& rhs, const osg::CopyOp& copyop ) :
-osg::Program( rhs, copyop ),
-_shaderMap  ( rhs._shaderMap ),
-_mask       ( rhs._mask ),
-_functions  ( rhs._functions ),
-_inherit    ( rhs._inherit )
-{
-    //nop
-}
+ // same type as PROGRAM (for proper state sorting)
+ const osg::StateAttribute::Type VirtualProgram::SA_TYPE = osg::StateAttribute::PROGRAM;
+ 
+ 
+ VirtualProgram::VirtualProgram( unsigned mask ) : 
+ _mask   ( mask ),
+ _inherit( true )
+ {
+ // because we sometimes update/change the attribute's members from within the apply() method
+ this->setDataVariance( osg::Object::DYNAMIC );
+ }
+ 
+ 
+ VirtualProgram::VirtualProgram(const VirtualProgram& rhs, const osg::CopyOp& copyop ) :
+ osg::StateAttribute( rhs, copyop ),
+ _shaderMap  ( rhs._shaderMap ),
+ _mask       ( rhs._mask ),
+ _functions  ( rhs._functions ),
+ _inherit    ( rhs._inherit )
+ {
+ //nop
+ }
 
 
 osg::Shader*
@@ -495,30 +499,25 @@ VirtualProgram::buildProgram( osg::State& state, ShaderMap& accumShaderMap )
 
 
 void
-VirtualProgram::apply( osg::State & state ) const
+VirtualProgram::apply( osg::State& state ) const
 {
-    if( _shaderMap.empty() ) // Virtual Program works as normal Program
-    {
-        return Program::apply( state );
-    }
-
     // first, find and collect all the VirtualProgram attributes:
     ShaderMap accumShaderMap;
-
+    
     if ( _inherit )
     {
         const StateHack::AttributeVec* av = StateHack::GetAttributeVec( state, this );
-        if ( av )
+        if ( av && av->size() > 0 )
         {
-            // find the lower VP that doesn't inherit:
-            unsigned start;
+            // find the deepest VP that doesn't inherit:
+            unsigned start = 0;
             for( start = (int)av->size()-1; start > 0; --start )
             {
                 const VirtualProgram* vp = dynamic_cast<const VirtualProgram*>( (*av)[start].first );
                 if ( vp && (vp->_mask & _mask) && vp->_inherit == false )
                     break;
             }
-
+            
             // collect shaders from there to here:
             for( unsigned i=start; i<av->size(); ++i )
             {
@@ -533,17 +532,18 @@ VirtualProgram::apply( osg::State & state ) const
             }
         }
     }
-
+    
     // next add the local shader components to the map, respecting the override values:
     for( ShaderMap::const_iterator i = _shaderMap.begin(); i != _shaderMap.end(); ++i )
     {
         addToAccumulatedMap( accumShaderMap, i->first, i->second );
     }
-
-
+    
+    
     if ( accumShaderMap.size() )
     {
-        // next, assemble a list of the shaders in the map so we can compare it:
+        // next, assemble a list of the shaders in the map so we can use it as our
+        // program cache key.
         ShaderVector vec;
         vec.reserve( accumShaderMap.size() );
         for( ShaderMap::iterator i = accumShaderMap.begin(); i != accumShaderMap.end(); ++i )
@@ -551,26 +551,26 @@ VirtualProgram::apply( osg::State & state ) const
             ShaderEntry& entry = i->second;
             vec.push_back( entry.first.get() );
         }
-
+        
         // see if there's already a program associated with this list:
         osg::Program* program = 0L;
-
+        
         // look up the program:
         {
             Threading::ScopedReadLock shared( _programCacheMutex );
-
+            
             ProgramMap::const_iterator p = _programCache.find( vec );
             if ( p != _programCache.end() )
             {
                 program = p->second.get();
             }
         }
-
+        
         // if not found, lock and build it:
         if ( !program )
         {
             Threading::ScopedWriteLock exclusive( _programCacheMutex );
-
+            
             // look again in case of contention:
             ProgramMap::const_iterator p = _programCache.find( vec );
             if ( p != _programCache.end() )
@@ -583,13 +583,9 @@ VirtualProgram::apply( osg::State & state ) const
                 program = nc->buildProgram( state, accumShaderMap );
             }
         }
-
+        
         // finally, apply the program attribute.
         program->apply( state );
-    }
-    else
-    {
-        Program::apply( state );
     }
 }
 
@@ -1081,4 +1077,3 @@ static char s_PerFragmentDirectionalLighting_FragmentShaderSource[] =
 
 #endif
 
-//------------------------------------------------------------------------

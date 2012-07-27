@@ -14,7 +14,7 @@
             <BuildableReference
                BuildableIdentifier = "primary"
                BlueprintIdentifier = "9051FFF915B1EDFD00D9ABD3"
-               BuildableName = "osgEarthViewerIOS.app"
+               BuildableName = "osgEarth.app"
                BlueprintName = "osgEarthViewerIOS"
                ReferencedContainer = "container:osgEarthViewerIOS.xcodeproj">
             </BuildableReference>
@@ -32,7 +32,7 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "9051FFF915B1EDFD00D9ABD3"
-            BuildableName = "osgEarthViewerIOS.app"
+            BuildableName = "osgEarth.app"
             BlueprintName = "osgEarthViewerIOS"
             ReferencedContainer = "container:osgEarthViewerIOS.xcodeproj">
          </BuildableReference>
@@ -52,7 +52,7 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "9051FFF915B1EDFD00D9ABD3"
-            BuildableName = "osgEarthViewerIOS.app"
+            BuildableName = "osgEarth.app"
             BlueprintName = "osgEarthViewerIOS"
             ReferencedContainer = "container:osgEarthViewerIOS.xcodeproj">
          </BuildableReference>
@@ -70,7 +70,7 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "9051FFF915B1EDFD00D9ABD3"
-            BuildableName = "osgEarthViewerIOS.app"
+            BuildableName = "osgEarth.app"
             BlueprintName = "osgEarthViewerIOS"
             ReferencedContainer = "container:osgEarthViewerIOS.xcodeproj">
          </BuildableReference>

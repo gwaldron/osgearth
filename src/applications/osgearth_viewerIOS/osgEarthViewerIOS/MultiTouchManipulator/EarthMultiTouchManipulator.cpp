@@ -12,29 +12,33 @@
 */
 
 
-#include "EarthMultiTouchlManipulator.h"
+#include "EarthMultiTouchManipulator.h"
 
-using namespace osg;
-using namespace osgGA;
-
-
+using namespace osgEarth::Util;
 
 /// Constructor.
-MultiTouchTrackballManipulator2::MultiTouchTrackballManipulator2( int flags )
-   : inherited( flags )
+EarthMultiTouchManipulator::EarthMultiTouchManipulator()
+   : EarthManipulator(),
+    _pinching(false)
 {
-    setVerticalAxisFixed( false );
+
 }
 
 
 /// Constructor.
-MultiTouchTrackballManipulator2::MultiTouchTrackballManipulator2( const MultiTouchTrackballManipulator2& tm, const CopyOp& copyOp )
-    : inherited( tm, copyOp )
+EarthMultiTouchManipulator::EarthMultiTouchManipulator( const EarthMultiTouchManipulator& tm)
+    : EarthManipulator(tm)
 {
 }
 
+EarthMultiTouchManipulator::~EarthMultiTouchManipulator(){
+    
+}
 
-void MultiTouchTrackballManipulator2::handleMultiTouchDrag(GUIEventAdapter::TouchData* now, GUIEventAdapter::TouchData* last, const double eventTimeDelta)
+osgGA::GUIEventAdapter* EarthMultiTouchManipulator::handleMultiTouchDrag(osgGA::GUIEventAdapter::TouchData* now, 
+                                                                         osgGA::GUIEventAdapter::TouchData* last, 
+                                                                         const osgGA::GUIEventAdapter& ea,
+                                                                         const double eventTimeDelta)
 {
     const float zoom_threshold = 1.0f;
     
@@ -42,8 +46,6 @@ void MultiTouchTrackballManipulator2::handleMultiTouchDrag(GUIEventAdapter::Touc
     osg::Vec2 pt_2_now(now->get(1).x,now->get(1).y);
     osg::Vec2 pt_1_last(last->get(0).x,last->get(0).y);
     osg::Vec2 pt_2_last(last->get(1).x,last->get(1).y);
-    
-    
     
     float gap_now((pt_1_now - pt_2_now).length());
     float gap_last((pt_1_last - pt_2_last).length());
@@ -54,31 +56,53 @@ void MultiTouchTrackballManipulator2::handleMultiTouchDrag(GUIEventAdapter::Touc
     //float pt2Traveled = pt2Dir.normalize();
     float dotNow = pt1Dir * pt2Dir;
     
+    
     //osg::notify(osg::ALWAYS) << "Gap: " << gap_now << " " << gap_last << ", Dot: " << dotNow << std::endl;
     
     if (fabs(gap_last - gap_now) >= zoom_threshold && dotNow <= -0.6f)
     {
+        _pinching = true;
+        
         // zoom gesture
-        float _zoomScaler = 0.1f;
-        zoomModel( ((gap_last - gap_now)*_zoomScaler) * eventTimeDelta, false );
+        float zoomScaler = 0.1f;
+        float zoomBy = ((gap_last - gap_now)*zoomScaler) * eventTimeDelta;
+        OSG_ALWAYS << "Zoom: " << zoomBy << std::endl;
+        
+        //zoomModel( , false );
+        osgGA::GUIEventAdapter::ScrollingMotion scrollMotion = osgGA::GUIEventAdapter::SCROLL_UP;
+        if(zoomBy < 0.0f){
+            scrollMotion = osgGA::GUIEventAdapter::SCROLL_DOWN;
+        }
+        
+        osgGA::GUIEventAdapter* zoomAdpt = new osgGA::GUIEventAdapter(ea);
+        //zoomAdpt->setEventType(osgGA::GUIEventAdapter::DRAG);
+        zoomAdpt->setButtonMask(osgGA::GUIEventAdapter::RIGHT_MOUSE_BUTTON);
+        _pinchVector.y() += gap_last - gap_now;
+        zoomAdpt->setY(_pinchVector.y());
+        //zoomAdpt->setEventType(osgGA::GUIEventAdapter::SCROLL);
+        //zoomAdpt->setScrollingMotion(scrollMotion);
+        //zoomAdpt->setScrollingMotionDelta(0.0f, zoomBy);
+        OSG_ALWAYS << "y: " << _pinchVector.y() << std::endl;
+        return zoomAdpt;
+    }else{
+        if(_pinching){
+            osgGA::GUIEventAdapter* zoomAdpt = new osgGA::GUIEventAdapter(ea);
+            //zoomAdpt->setEventType(osgGA::GUIEventAdapter::DRAG);
+            zoomAdpt->setButtonMask(osgGA::GUIEventAdapter::RIGHT_MOUSE_BUTTON);
+            zoomAdpt->setY(_pinchVector.y());
+            return zoomAdpt;
+        }
     }
-
-    // drag gesture
-
-    osg::Vec2 delta = ((pt_1_last - pt_1_now) + (pt_2_last - pt_2_now)) / 2.0f;
-
-    float scale = 0.2f * _distance * eventTimeDelta;
-
-    // osg::notify(osg::ALWAYS) << "drag: " << delta << " scale: " << scale << std::endl;
-
-   // panModel( delta.x() * scale, delta.y() * scale * (-1)); // flip y-coord because of different origins.
+    return NULL;
 }
 
 
-bool MultiTouchTrackballManipulator2::handle( const GUIEventAdapter& ea, GUIActionAdapter& us )
+bool EarthMultiTouchManipulator::handle( const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& us )
 {
 
     bool handled(false);
+    
+    osg::ref_ptr<osgGA::GUIEventAdapter> touchAdpt = NULL;
 
     switch(ea.getEventType())
     {
@@ -96,23 +120,34 @@ bool MultiTouchTrackballManipulator2::handle( const GUIEventAdapter& ea, GUIActi
                 }
                 osgGA::GUIEventAdapter::TouchData* data = ea.getTouchData();
 
-                // three touches or two taps for home position
-                if ((data->getNumTouchPoints() == 3) || ((data->getNumTouchPoints() == 1) && (data->get(0).tapCount >= 2)))
+                // single double tap replaces left double click
+                if((data->getNumTouchPoints() == 1) && (data->get(0).tapCount >= 2))
                 {
-                    flushMouseEventStack();
-                    _thrown = false;
-                    home(ea,us);
-                    handled = true;
-                }
-
-                else if (data->getNumTouchPoints() >= 2)
+                    OSG_ALWAYS << "Left Click" << std::endl;
+                    //build dummy input event
+                    touchAdpt = new osgGA::GUIEventAdapter(ea);
+                    touchAdpt->setButtonMask(osgGA::GUIEventAdapter::LEFT_MOUSE_BUTTON);
+                    touchAdpt->setEventType(osgGA::GUIEventAdapter::DOUBLECLICK);
+                    
+                //two touch doble tap replaces right click
+                }else if((data->getNumTouchPoints() == 2) && (data->get(0).tapCount >= 2))
+                {
+                    OSG_ALWAYS << "Right Click" << std::endl;
+                    //build dummy input event
+                    touchAdpt = new osgGA::GUIEventAdapter(ea);
+                    touchAdpt->setButtonMask(osgGA::GUIEventAdapter::RIGHT_MOUSE_BUTTON);
+                    touchAdpt->setEventType(osgGA::GUIEventAdapter::DOUBLECLICK);
+                    
+                }else if (data->getNumTouchPoints() >= 2)//handle multi touch
                 {
                     if ((_lastTouchData.valid()) && (_lastTouchData->getNumTouchPoints() >= 2))
                     {
-                        handleMultiTouchDrag(data, _lastTouchData.get(), eventTimeDelta);
+                        touchAdpt = handleMultiTouchDrag(data, _lastTouchData.get(), ea, eventTimeDelta);
+                    }else{
+                        _pinchVector.y() = ea.getY();
                     }
-
-                    handled = true;
+                    
+                    //handled = true;
                 }
 
                 _lastTouchData = data;
@@ -128,6 +163,8 @@ bool MultiTouchTrackballManipulator2::handle( const GUIEventAdapter& ea, GUIActi
                 if(num_touches_ended == data->getNumTouchPoints())
                 {
                     _lastTouchData = NULL;
+                    _pinchVector = osg::Vec2(0,0);
+                    _pinching = false;
                 }
 
             }
@@ -136,5 +173,8 @@ bool MultiTouchTrackballManipulator2::handle( const GUIEventAdapter& ea, GUIActi
             break;
     }
 
-    return handled ? handled : TrackballManipulator::handle(ea, us);
+    if(touchAdpt.valid()){
+        return EarthManipulator::handle(*touchAdpt.get(), us);
+    }
+    return EarthManipulator::handle(ea, us);
 }

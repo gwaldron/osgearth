@@ -9,12 +9,17 @@
 #import "ViewController.h"
 
 #include "osgPlugins.h"
+
 #include <osgDB/FileUtils>
-#include "MultiTouchManipulator/MultiTouchTrackballManipulator2.h"
+
+#include <osgGA/MultiTouchTrackballManipulator>
+
 #include <osgViewer/api/IOS/GraphicsWindowIOS>
+
 #include <osgEarthUtil/EarthManipulator>
 #include <osgEarthUtil/ExampleResources>
 
+#include "EarthMultiTouchManipulator.h"
 #include "GLES2ShaderGenVisitor.h"
 
 
@@ -40,7 +45,7 @@
 
 - (void)loadBasicScene{
     
-    _viewer->setCameraManipulator(new osgGA::MultiTouchTrackballManipulator2());
+    _viewer->setCameraManipulator(new osgGA::MultiTouchTrackballManipulator());
     
     osg::Node* node = osgDB::readNodeFile(osgDB::findDataFile("models/box.osg"));
     
@@ -54,10 +59,9 @@
 - (void)loadOsgEarthDemoScene{
 
     // install our default manipulator (do this before calling load)
-    //_viewer->setCameraManipulator( new osgEarth::Util::EarthManipulator() );
-    _viewer->setCameraManipulator(new osgGA::MultiTouchTrackballManipulator2());
+    _viewer->setCameraManipulator( new osgEarth::Util::EarthMultiTouchManipulator() );
     
-    osg::Node* node = osgDB::readNodeFile(osgDB::findDataFile("tests/yahoo_maps.earth"));
+    osg::Node* node = osgDB::readNodeFile(osgDB::findDataFile("tests/readymap.earth"));
     if ( !node )
     {
         OSG_WARN << "Unable to load an earth file from the command line." << std::endl;
@@ -93,8 +97,8 @@
 {
     [super viewDidLoad];
     
-    osg::setNotifyLevel(osg::DEBUG_FP);
-    osgEarth::setNotifyLevel(osg::DEBUG_FP);
+    osg::setNotifyLevel(osg::FATAL);
+    //osgEarth::setNotifyLevel(osg::DEBUG_FP);
     
     //get screen scale
     UIScreen* screen = [UIScreen mainScreen];
@@ -120,8 +124,8 @@
 	traits->height = h*scale;
 	traits->depth = 24; //keep memory down, default is currently 24
 	traits->alpha = 8;
-    traits->samples = 4;
-    traits->sampleBuffers = 2;
+    //traits->samples = 4;
+    //traits->sampleBuffers = 2;
 	//traits->stencil = 1;
 	traits->windowDecoration = false;
 	traits->doubleBuffer = true;

@@ -24,21 +24,30 @@ class EarthMultiTouchManipulator : public EarthManipulator
 {
 public:
 
-    EarthMultiTouchManipulator( int flags = DEFAULT_SETTINGS );
-    EarthMultiTouchManipulator( const EarthMultiTouchManipulator& tm,
-                          const osg::CopyOp& copyOp = osg::CopyOp::SHALLOW_COPY );
+    EarthMultiTouchManipulator();
+    EarthMultiTouchManipulator( const EarthMultiTouchManipulator& tm);
 
 
-    bool handle( const GUIEventAdapter& ea, GUIActionAdapter& us );
+    bool handle( const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& us );
 
+public: // osgGA::MatrixManipulator
+    
+    virtual const char* className() const { return "EarthMultiTouchManipulator"; }
+    
 protected:
+    virtual ~EarthMultiTouchManipulator();
 
-    void handleMultiTouchDrag(GUIEventAdapter::TouchData* now, GUIEventAdapter::TouchData* last, const double eventTimeDelta);
+    osgGA::GUIEventAdapter* handleMultiTouchDrag(osgGA::GUIEventAdapter::TouchData* now, 
+                                                 osgGA::GUIEventAdapter::TouchData* last, 
+                                                 const osgGA::GUIEventAdapter& ea,
+                                                 const double eventTimeDelta);
 
-    osg::ref_ptr<GUIEventAdapter::TouchData> _lastTouchData;
+    bool _pinching;
+    osg::Vec2 _pinchVector;
+    osg::ref_ptr<osgGA::GUIEventAdapter::TouchData> _lastTouchData;
 };
 
 }
 }
 
-#endif /* OSGGA_MULTITOUCH_TRACKBALL_MANIPULATOR2 */
+#endif /* OSGEARTHUTIL_EARTHMULTITOUCHMANIPULATOR */

@@ -948,7 +948,7 @@
 					"/Users/hogbox/Documents/AlphaPixel/osgEarthPort/osg-ios-gles2/include",
 				);
 				INFOPLIST_FILE = "osgEarthViewerIOS/osgEarthViewerIOS-Info.plist";
-				IPHONEOS_DEPLOYMENT_TARGET = 5.1;
+				IPHONEOS_DEPLOYMENT_TARGET = 4.3;
 				LIBRARY_SEARCH_PATHS = (
 					"\"$(SRCROOT)/../../../../osg-ios-gles2/lib\"",
 					"\"$(SRCROOT)/../../../../3rdParty/freetype-ios-universal/lib\"",
@@ -967,6 +967,7 @@
 		9051002515B1EDFD00D9ABD3 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "iPhone Distribution: Thomas Hogarth";
 				GCC_PRECOMPILE_PREFIX_HEADER = YES;
 				GCC_PREFIX_HEADER = "osgEarthViewerIOS/osgEarthViewerIOS-Prefix.pch";
 				"GCC_THUMB_SUPPORT[arch=armv6]" = "";
@@ -975,7 +976,7 @@
 					"/Users/hogbox/Documents/AlphaPixel/osgEarthPort/osg-ios-gles2/include",
 				);
 				INFOPLIST_FILE = "osgEarthViewerIOS/osgEarthViewerIOS-Info.plist";
-				IPHONEOS_DEPLOYMENT_TARGET = 5.1;
+				IPHONEOS_DEPLOYMENT_TARGET = 4.3;
 				LIBRARY_SEARCH_PATHS = (
 					"\"$(SRCROOT)/../../../../osg-ios-gles2/lib\"",
 					"\"$(SRCROOT)/../../../../3rdParty/freetype-ios-universal/lib\"",
@@ -986,6 +987,7 @@
 					"\"$(SRCROOT)/../../../../3rdParty/geos-ios-device/lib\"",
 				);
 				PRODUCT_NAME = osgEarth;
+				"PROVISIONING_PROFILE[sdk=iphoneos*]" = "608DCC62-C945-4557-B0F8-96D5589CF48A";
 				WRAPPER_EXTENSION = app;
 			};
 			name = Release;

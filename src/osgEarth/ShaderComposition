@@ -138,8 +138,11 @@ namespace osgEarth
      * you can still call the set* functions but you'd better mark the state set with
      * a DYNAMIC data variance.
      */
-    class OSGEARTH_EXPORT VirtualProgram : public osg::Program
+    class OSGEARTH_EXPORT VirtualProgram : public osg::StateAttribute // osg::Program
     {
+    public:
+        static const osg::StateAttribute::Type SA_TYPE;
+
     public:
         /**
          * Adds a shader function to the program.
@@ -169,6 +172,11 @@ namespace osgEarth
         void installDefaultColoringShaders( unsigned numTextures =0u );
 
         /**
+         * Installs default shader for basic lighting.
+         */
+        void installDefaultLightingShaders();
+
+        /**
          * Whether this VP should inherit shaders from parent state sets. This is
          * the normal operation. You can set this to "false" to "reset" the VP.
          */
@@ -186,7 +194,7 @@ namespace osgEarth
         VirtualProgram( const VirtualProgram& VirtualProgram, 
                         const osg::CopyOp& copyop=osg::CopyOp::SHALLOW_COPY );
 
-        META_StateAttribute( osgEarth, VirtualProgram, Type( PROGRAM ) )
+        META_StateAttribute( osgEarth, VirtualProgram, SA_TYPE);
 
         /** dtor */
         virtual ~VirtualProgram() { }
@@ -235,9 +243,10 @@ namespace osgEarth
          */
         void removeShader( const std::string& shaderID );
 
+    public:
+        typedef std::vector< osg::ref_ptr<osg::Shader> > ShaderVector;
 
     protected:
-        typedef std::vector< osg::ref_ptr<osg::Shader> > ShaderVector;
         typedef std::pair< osg::ref_ptr<osg::Shader>, osg::StateAttribute::OverrideValue > ShaderEntry;
         typedef std::map< std::string, ShaderEntry >       ShaderMap;
         typedef std::map< ShaderVector, osg::ref_ptr<osg::Program> > ProgramMap;

@@ -439,12 +439,6 @@ TileSource::hasData(const osgEarth::TileKey& key) const
     return intersectsData;
 }
 
-bool
-TileSource::supportsPersistentCaching() const
-{
-    return true;
-}
-
 TileBlacklist*
 TileSource::getBlacklist()
 {

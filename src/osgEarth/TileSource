@@ -25,6 +25,7 @@
 #include <osg/Version>
 
 #include <osgEarth/Common>
+#include <osgEarth/CachePolicy>
 #include <osgEarth/TileKey>
 #include <osgEarth/Profile>
 #include <osgEarth/MemCache>
@@ -264,11 +265,6 @@ namespace osgEarth
         virtual unsigned int getMinDataLevel() const;
 
         /**
-         * Returns true if data from this source can be cached to disk
-         */
-        virtual bool supportsPersistentCaching() const;
-
-        /**
          * Gets the preferred extension for this TileSource
          */
         virtual std::string getExtension() const {return "png";}
@@ -299,6 +295,22 @@ namespace osgEarth
          * it's been created.
          */
         virtual bool isDynamic() const { return false; }
+
+        /**
+         * A hint as to what kind of caching policy would be appropriate to employ
+         * on this data source. By default, this is the default, which is to use a 
+         * cache if one is configured. But a TileSource can report that caching should
+         * not be used (for whatever reason) by returning CachePolicy::NO_CACHE.
+         */
+        virtual CachePolicy getCachePolicyHint() const { return CachePolicy::DEFAULT; }
+
+
+        /**
+         * Returns true if data from this source can be cached to disk
+         * @deprecated. Use getCachePolicyHint instead.
+         */
+        bool supportsPersistentCaching() const {
+            return getCachePolicyHint() != CachePolicy::NO_CACHE; }
 
         /**
          * Initializes the TileSource.

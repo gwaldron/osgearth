@@ -36,10 +36,36 @@ using namespace osgEarth::Symbology;
 
 //------------------------------------------------------------------------
 
+osg::ref_ptr<osg::Vec2Array>&
+CompilerCache::TexCoordArrayCache::get(const osg::Vec4d& mat,
+                                       unsigned          cols,
+                                       unsigned          rows)
+{
+    for( iterator i = begin(); i != end(); ++i )
+    {
+        CompilerCache::TexCoordTableKey& key = i->first;
+        if ( key._mat == mat && key._cols == cols && key._rows == rows )
+        {
+            return i->second;
+        }
+    }
+    
+    CompilerCache::TexCoordTableKey newKey;
+    newKey._mat     = mat;
+    newKey._cols    = cols;
+    newKey._rows    = rows;
+    this->push_back( std::make_pair(newKey, (osg::Vec2Array*)0L) );
+    return this->back().second;
+}
+
+//------------------------------------------------------------------------
+
+
 #define MATCH_TOLERANCE 0.000001
 
 namespace
 {
+#if 0
     // Comparator for GeoLocators - used to sort texture coordinate data into
     // bins for sharing
     struct GeoLocatorComp
@@ -63,6 +89,7 @@ namespace
             return 0L;
         }
     };
+#endif
     
     // Data for a single renderable color layer
     struct RenderLayer
@@ -74,7 +101,8 @@ namespace
         osg::ref_ptr<osg::Vec2Array>   _stitchTexCoords;
         osg::ref_ptr<osg::Vec2Array>   _stitchSkirtTexCoords;
         bool _ownsTexCoords;
-        RenderLayer() : _ownsTexCoords(false) { }
+        bool _ownsSkirtTexCoords;
+        RenderLayer() : _ownsTexCoords(false), _ownsSkirtTexCoords(false) { }
     };
 
     typedef std::vector< RenderLayer > RenderLayerVector;
@@ -319,7 +347,7 @@ namespace
      * TODO: introduce support in the TextureCompositor to not only share the texture
      * coordinate array, but also the binding attribute slot.
      */
-    void setupTextureAttributes( Data& d, TextureCompositor* compositor )
+    void setupTextureAttributes( Data& d, TextureCompositor* compositor, CompilerCache& cache )
     {
         if ( compositor->requiresUnitTextureSpace() )
         {
@@ -355,7 +383,9 @@ namespace
             // above) but we should also share the texture coord arrays across ALL tiles,
             // not just within a single tile. Perhaps a TerrainModel-wide cache.
 
-            LocatorToTexCoordTable locatorToTexCoordTable;
+            //LocatorToTexCoordTable locatorToTexCoordTable;
+            //TileModelCompiler::LocatorToTexCoordTable texCoordArrayCache;
+
             d.renderLayers.reserve( d.model->_colorData.size() );
 
             // build a list of "render layers", in rendering order, sharing texture coordinate
@@ -369,20 +399,51 @@ namespace
                 const GeoLocator* locator = dynamic_cast<const GeoLocator*>( r._layer.getLocator() );
                 if ( locator )
                 {
-                    r._texCoords = locatorToTexCoordTable.find( locator );
-                    if ( !r._texCoords.valid() )
+                    // if we have no mask records, we can use the texture coordinate array cache.
+                    if ( d.maskRecords.size() == 0 )
                     {
+                        const GeoExtent& locex = locator->getDataExtent();
+                        const GeoExtent& keyex = d.model->_tileKey.getExtent();
+
+                        osg::Vec4d mat;
+                        mat[0] = (keyex.xMin() - locex.xMin())/locex.width();
+                        mat[1] = (keyex.yMin() - locex.yMin())/locex.height();
+                        mat[2] = (keyex.width() / locex.width());
+                        mat[3] = (keyex.height() / locex.height());
+
+                        //OE_DEBUG << "key=" << d.model->_tileKey.str() << ": off=[" <<mat[0]<< ", " <<mat[1] << "] scale=["
+                        //    << mat[2]<< ", " << mat[3] << "]" << std::endl;
+
+                        osg::ref_ptr<osg::Vec2Array>& surfaceTexCoords = cache._surfaceTexCoordArrays.get( mat, d.numCols, d.numRows );
+                        if ( !surfaceTexCoords.valid() )
+                        {
+                            surfaceTexCoords = new osg::Vec2Array();
+                            surfaceTexCoords->reserve( d.numVerticesInSurface );
+                            r._ownsTexCoords = true;
+                        }
+                        r._texCoords = surfaceTexCoords.get();
+
+                        osg::ref_ptr<osg::Vec2Array>& skirtTexCoords = cache._skirtTexCoordArrays.get( mat, d.numCols, d.numRows );
+                        if ( !skirtTexCoords.valid() )
+                        {
+                            skirtTexCoords = new osg::Vec2Array();
+                            skirtTexCoords->reserve( d.numVerticesInSkirt );
+                            r._ownsSkirtTexCoords = true;
+                        }
+                        r._skirtTexCoords = skirtTexCoords.get();
+                    }
+
+                    else // if ( d.maskRecords.size() > 0 )
+                    {
+                        // cannot use the tex coord array cache if there are masking records.
                         r._texCoords = new osg::Vec2Array();
                         r._texCoords->reserve( d.numVerticesInSurface );
                         r._ownsTexCoords = true;
-                        locatorToTexCoordTable.push_back( LocatorTexCoordPair(locator, r._texCoords.get()) );
-                    }
 
-                    r._skirtTexCoords = new osg::Vec2Array();
-                    r._skirtTexCoords->reserve( d.numVerticesInSkirt );
-
-                    if ( d.maskRecords.size() > 0 )
-                    {
+                        r._skirtTexCoords = new osg::Vec2Array();
+                        r._skirtTexCoords->reserve( d.numVerticesInSkirt );
+                        r._ownsSkirtTexCoords = true;
+                    
                         r._stitchTexCoords = new osg::Vec2Array();
                         r._stitchSkirtTexCoords = new osg::Vec2Array();
                     }
@@ -936,9 +997,12 @@ namespace
                 {
                     for (unsigned int i = 0; i < d.renderLayers.size(); ++i)
                     {
-                        const osg::Vec2& tc = (*d.renderLayers[i]._texCoords.get())[orig_i];
-                        d.renderLayers[i]._skirtTexCoords->push_back( tc );
-                        d.renderLayers[i]._skirtTexCoords->push_back( tc );
+                        if ( d.renderLayers[i]._ownsSkirtTexCoords )
+                        {
+                            const osg::Vec2& tc = (*d.renderLayers[i]._texCoords.get())[orig_i];
+                            d.renderLayers[i]._skirtTexCoords->push_back( tc );
+                            d.renderLayers[i]._skirtTexCoords->push_back( tc );
+                        }
                     }
                 }
             }
@@ -969,9 +1033,12 @@ namespace
                 {
                     for (unsigned int i = 0; i < d.renderLayers.size(); ++i)
                     {
-                        const osg::Vec2& tc = (*d.renderLayers[i]._texCoords.get())[orig_i];
-                        d.renderLayers[i]._skirtTexCoords->push_back( tc );
-                        d.renderLayers[i]._skirtTexCoords->push_back( tc );
+                        if ( d.renderLayers[i]._ownsSkirtTexCoords )
+                        {
+                            const osg::Vec2& tc = (*d.renderLayers[i]._texCoords.get())[orig_i];
+                            d.renderLayers[i]._skirtTexCoords->push_back( tc );
+                            d.renderLayers[i]._skirtTexCoords->push_back( tc );
+                        }
                     }
                 }
             }
@@ -1002,9 +1069,12 @@ namespace
                 {
                     for (unsigned int i = 0; i < d.renderLayers.size(); ++i)
                     {
-                        const osg::Vec2& tc = (*d.renderLayers[i]._texCoords.get())[orig_i];
-                        d.renderLayers[i]._skirtTexCoords->push_back( tc );
-                        d.renderLayers[i]._skirtTexCoords->push_back( tc );
+                        if ( d.renderLayers[i]._ownsSkirtTexCoords )
+                        {
+                            const osg::Vec2& tc = (*d.renderLayers[i]._texCoords.get())[orig_i];
+                            d.renderLayers[i]._skirtTexCoords->push_back( tc );
+                            d.renderLayers[i]._skirtTexCoords->push_back( tc );
+                        }
                     }
                 }
             }
@@ -1035,9 +1105,12 @@ namespace
                 {
                     for (unsigned int i = 0; i < d.renderLayers.size(); ++i)
                     {
-                        const osg::Vec2& tc = (*d.renderLayers[i]._texCoords.get())[orig_i];
-                        d.renderLayers[i]._skirtTexCoords->push_back( tc );
-                        d.renderLayers[i]._skirtTexCoords->push_back( tc );
+                        if ( d.renderLayers[i]._ownsSkirtTexCoords )
+                        {
+                            const osg::Vec2& tc = (*d.renderLayers[i]._texCoords.get())[orig_i];
+                            d.renderLayers[i]._skirtTexCoords->push_back( tc );
+                            d.renderLayers[i]._skirtTexCoords->push_back( tc );
+                        }
                     }
                 }
             }
@@ -1359,7 +1432,7 @@ TileModelCompiler::compile(const TileModel* model,
     setupGeometryAttributes( d, sampleRatio );
 
     // set up the list of layers to render and their shared arrays.
-    setupTextureAttributes( d, _texCompositor.get() );
+    setupTextureAttributes( d, _texCompositor.get(), _cache );
 
     // calculate the vertex and normals for the surface geometry.
     createSurfaceGeometry( d, _texCompositor.get() );

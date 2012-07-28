@@ -206,10 +206,6 @@ main(int argc, char** argv)
     root->addChild( tetheredRadial );
     tetheredRadial->setUpdateCallback( new RadialLineOfSightTether( plane3 ) );
 
-    // osgEarth benefits from pre-compilation of GL objects in the pager. In newer versions of
-    // OSG, this activates OSG's IncrementalCompileOpeartion in order to avoid frame breaks.
-    viewer.getDatabasePager()->setDoPreCompile( true );
-
     manip->setHomeViewpoint(Viewpoint( "Mt Rainier",        osg::Vec3d( -121.488, 46.2054, 0 ), 0.0, -50, 100000 ));
 
     viewer.setSceneData( root );    

@@ -307,6 +307,7 @@ namespace osgEarth
         std::string _previousPassword;
         long        _previousHttpAuthentication;
         bool        _initialized;
+        long        _simResponseCode;
 
         void initialize() const;
         void initializeImpl();

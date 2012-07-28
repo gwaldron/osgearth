@@ -215,7 +215,7 @@ HSLColorFilter::install( osg::StateSet* stateSet ) const
     // safe: won't add twice.
     stateSet->addUniform( _hsl.get() );
 
-    VirtualProgram* vp = dynamic_cast<VirtualProgram*>(stateSet->getAttribute(osg::StateAttribute::PROGRAM));
+    VirtualProgram* vp = dynamic_cast<VirtualProgram*>(stateSet->getAttribute(VirtualProgram::SA_TYPE));
     if ( vp )
     {
         // safe: won't add the same pointer twice.

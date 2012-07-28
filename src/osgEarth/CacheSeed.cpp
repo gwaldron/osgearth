@@ -69,11 +69,11 @@ void CacheSeed::seed( Map* map )
         {
             OE_WARN << LC << "Warning: Layer \"" << layer->getName() << "\" is set to cache-only; skipping." << std::endl;
         }
-        else if (!src)
+        else if ( !src )
         {
             OE_WARN << "Warning: Layer \"" << layer->getName() << "\" could not create TileSource; skipping." << std::endl;
         }
-        else if ( !src->supportsPersistentCaching() )
+        else if ( src->getCachePolicyHint() == CachePolicy::NO_CACHE )
         {
             OE_WARN << LC << "Warning: Layer \"" << layer->getName() << "\" does not support seeding; skipping." << std::endl;
         }
@@ -106,7 +106,7 @@ void CacheSeed::seed( Map* map )
         {
             OE_WARN << "Warning: Layer \"" << layer->getName() << "\" could not create TileSource; skipping." << std::endl;
         }
-        else if ( !src->supportsPersistentCaching() )
+        else if ( src->getCachePolicyHint() == CachePolicy::NO_CACHE )
         {
             OE_WARN << LC << "Warning: Layer \"" << layer->getName() << "\" does not support seeding; skipping." << std::endl;
         }

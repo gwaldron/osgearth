@@ -26,6 +26,7 @@
 #include <osgEarth/Revisioning>
 #include <osg/Timer>
 #include <osgGA/CameraManipulator>
+#include <osgEarth/Terrain>
 #include <map>
 #include <list>
 #include <utility>
@@ -871,6 +872,9 @@ namespace osgEarth { namespace Util
         // Support snappy transition when the pointer leaves and
         // returns to earth during a drag
         osg::Vec3d               _lastPointOnEarth;
+
+
+        osg::ref_ptr< TerrainCallback > _terrainCallback;
 
     };
 

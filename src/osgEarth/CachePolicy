@@ -40,11 +40,22 @@ namespace osgEarth
             USAGE_DEFAULT      = USAGE_READ_WRITE
         };
 
+        /* default cache policy */
+        static CachePolicy DEFAULT;
+
+        /* inherited cache policy (same as DEFAULT) */
         static CachePolicy INHERIT;
+
+        /* policy indicating to never use a cache */
         static CachePolicy NO_CACHE;
+
+        /** policy indicating to only use a cache */
         static CachePolicy CACHE_ONLY;
 
     public:
+        /** constructs a default caching policy (usage is READ_WRITE) */
+        CachePolicy();
+
         /** constructs a caching policy. */
         CachePolicy( const Usage& usage );
 
@@ -52,7 +63,7 @@ namespace osgEarth
         CachePolicy( const Usage& usage, double maxAgeSeconds );
 
         /** constructs a CachePolicy from a config options */
-        CachePolicy( const Config& conf =Config() );
+        CachePolicy( const Config& conf );
 
         /** dtor */
         virtual ~CachePolicy() { }
@@ -79,13 +90,13 @@ namespace osgEarth
             return *_usage == USAGE_READ_WRITE;
         }
 
-        bool operator == ( const CachePolicy& rhs ) const {
-            return _usage == rhs._usage && _maxAge == rhs._maxAge;
-        }
+        bool operator == ( const CachePolicy& rhs ) const;
 
         bool operator != ( const CachePolicy& rhs ) const {
             return ! operator==(rhs);
         }
+
+        std::string usageString() const;
 
     public: // config
         Config getConfig() const;

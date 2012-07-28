@@ -83,6 +83,7 @@ is randomized, but it is randomized exactly the same way each time.
             <style type="text/css">      
                 default {
                    fill:                #00ff007f;
+                   stroke:              #ffff00ff;
                    altitide-clamping:   terrain;
                 }                
             </style>
@@ -97,9 +98,13 @@ is randomized, but it is randomized exactly the same way each time.
         </cache>
     </options> 
     
-    <image name="ReadyMap.org - Imagery" driver="tms">
-        <url>http://readymap.org/readymap/tiles/1.0.0/7/</url>
+    <image name="mapquest_open_aerial" driver="xyz">
+        <url>http://oatile[1234].mqcdn.com/tiles/1.0.0/sat/{z}/{x}/{y}.jpg</url>
+        <profile>spherical-mercator</profile>
+        <cache_policy usage="no_cache"/>
+        <nodata_image>http://oatile3.mqcdn.com/tiles/1.0.0/sat/18/49761/99026.jpg</nodata_image>
     </image>
+    
     <elevation name="ReadyMap.org - Elevation" driver="tms">
         <url>http://readymap.org/readymap/tiles/1.0.0/9/</url>
     </elevation>

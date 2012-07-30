@@ -281,9 +281,13 @@ ImageOverlay::init()
     (*texcoords)[3].set(0.0f,flip ? 0.0 : 1.0f);
     geometry->setTexCoordArray(0, texcoords);
 
-        
-    MeshSubdivider ms(osg::Matrixd::inverse(_transform->getMatrix()), _transform->getMatrix());
-    ms.run(*geometry, osg::DegreesToRadians(5.0), GEOINTERP_RHUMB_LINE);
+     
+    //Only run the MeshSubdivider on geocentric maps
+    if (_mapNode->getMap()->isGeocentric())
+    {
+        MeshSubdivider ms(osg::Matrixd::inverse(_transform->getMatrix()), _transform->getMatrix());
+        ms.run(*geometry, osg::DegreesToRadians(5.0), GEOINTERP_RHUMB_LINE);
+    }
 
     _geode->removeDrawables(0, _geode->getNumDrawables() );
 

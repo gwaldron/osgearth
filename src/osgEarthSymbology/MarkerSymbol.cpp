@@ -43,6 +43,7 @@ MarkerSymbol::getConfig() const
     conf.addObjIfSet( "url", _url );
     conf.addObjIfSet( "library", _libraryName );
     conf.addObjIfSet( "scale", _scale );
+    conf.addObjIfSet( "heading_offset", _headingOffset );
     conf.addIfSet( "orientation", _orientation);
     conf.addIfSet( "placement", "vertex",   _placement, PLACEMENT_VERTEX );
     conf.addIfSet( "placement", "interval", _placement, PLACEMENT_INTERVAL );
@@ -72,6 +73,7 @@ MarkerSymbol::mergeConfig( const Config& conf )
     conf.getObjIfSet( "url", _url );
     conf.getObjIfSet( "library", _libraryName );
     conf.getObjIfSet( "scale", _scale );    
+    conf.getObjIfSet( "heading_offset", _headingOffset );
     conf.getIfSet( "placement", "vertex",   _placement, PLACEMENT_VERTEX );
     conf.getIfSet( "placement", "interval", _placement, PLACEMENT_INTERVAL );
     conf.getIfSet( "placement", "random",   _placement, PLACEMENT_RANDOM );

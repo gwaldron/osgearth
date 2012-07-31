@@ -98,28 +98,28 @@ RenderingHints::useNumTextures(unsigned num)
 
 //------------------------------------------------------------------------
 
- // same type as PROGRAM (for proper state sorting)
- const osg::StateAttribute::Type VirtualProgram::SA_TYPE = osg::StateAttribute::PROGRAM;
- 
- 
- VirtualProgram::VirtualProgram( unsigned mask ) : 
- _mask   ( mask ),
- _inherit( true )
- {
- // because we sometimes update/change the attribute's members from within the apply() method
- this->setDataVariance( osg::Object::DYNAMIC );
- }
- 
- 
- VirtualProgram::VirtualProgram(const VirtualProgram& rhs, const osg::CopyOp& copyop ) :
- osg::StateAttribute( rhs, copyop ),
- _shaderMap  ( rhs._shaderMap ),
- _mask       ( rhs._mask ),
- _functions  ( rhs._functions ),
- _inherit    ( rhs._inherit )
- {
- //nop
- }
+// same type as PROGRAM (for proper state sorting)
+const osg::StateAttribute::Type VirtualProgram::SA_TYPE = osg::StateAttribute::PROGRAM;
+
+
+VirtualProgram::VirtualProgram( unsigned mask ) : 
+_mask   ( mask ),
+_inherit( true )
+{
+    // because we sometimes update/change the attribute's members from within the apply() method
+    this->setDataVariance( osg::Object::DYNAMIC );
+}
+
+
+VirtualProgram::VirtualProgram(const VirtualProgram& rhs, const osg::CopyOp& copyop ) :
+osg::StateAttribute( rhs, copyop ),
+_shaderMap  ( rhs._shaderMap ),
+_mask       ( rhs._mask ),
+_functions  ( rhs._functions ),
+_inherit    ( rhs._inherit )
+{
+    //nop
+}
 
 
 osg::Shader*
@@ -610,7 +610,7 @@ VirtualProgram::refreshAccumulatedFunctions( const osg::State& state )
     if ( _inherit )
     {
         const StateHack::AttributeVec* av = StateHack::GetAttributeVec( state, this );
-        if ( av )
+        if ( av && av->size() > 0 )
         {
             // find the closest VP that doesn't inherit:
             unsigned start;
@@ -806,12 +806,17 @@ ShaderFactory::createDefaultColoringVertexShader( unsigned numTexCoordSets ) con
 {
     std::stringstream buf;
 
-    buf << "#version " << GLSL_VERSION_STR << "\n"
+    buf << "#version " << GLSL_VERSION_STR << "\n";
 #ifdef OSG_GLES2_AVAILABLE
-        << "precision mediump float;\n"
+    buf << "precision mediump float;\n";
 #endif
     
-        << "varying vec4 osg_TexCoord[" << numTexCoordSets << "];\n"
+    if ( numTexCoordSets > 0 )
+    {
+        buf << "varying vec4 osg_TexCoord[" << numTexCoordSets << "];\n";
+    }
+
+    buf
         << "varying vec4 osg_FrontColor;\n"
         << "varying vec4 osg_FrontSecondaryColor;\n"
     
@@ -833,9 +838,8 @@ ShaderFactory::createDefaultColoringVertexShader( unsigned numTexCoordSets ) con
     str = buf.str();
 
     osg::Shader* shader = new osg::Shader(osg::Shader::VERTEX, str);
-    shader->setName( VERTEX_SETUP_COLORING ); //"osgearth_vert_setupColoring" );
+    shader->setName( VERTEX_SETUP_COLORING );
     return shader;
-    //return new osg::Shader( osg::Shader::VERTEX, str );
 }
 
 
@@ -854,8 +858,6 @@ ShaderFactory::createDefaultColoringFragmentShader( unsigned numTexImageUnits ) 
     if ( numTexImageUnits > 0 )
     {
         buf << "varying vec4 osg_TexCoord[" << numTexImageUnits << "];\n";
-
-        
         buf << "uniform sampler2D ";
         for( unsigned i=0; i<numTexImageUnits; ++i )
         {
@@ -1012,9 +1014,9 @@ osg::Shader*
 ShaderFactory::createColorFilterChainFragmentShader( const std::string& function, const ColorFilterChain& chain ) const
 {
     std::stringstream buf;
-    buf << "#version " << GLSL_VERSION_STR << "\n"
+    buf << "#version " << GLSL_VERSION_STR << "\n";
 #ifdef OSG_GLES2_AVAILABLE
-    << "precision mediump float;\n";
+    buf << "precision mediump float;\n";
 #endif
 
     // write out the shader function prototypes:

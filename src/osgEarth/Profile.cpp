@@ -373,12 +373,6 @@ Profile::toProfileOptions() const
     return op;
 }
 
-unsigned int 
-Profile::getEquivalentLOD( const Profile* profile, unsigned int lod ) const
-{
-    return lod;
-}
-
 
 Profile*
 Profile::overrideSRS( const SpatialReference* srs ) const
@@ -691,4 +685,62 @@ Profile::getIntersectingTiles(const GeoExtent& extent, std::vector<TileKey>& out
     {
         addIntersectingTiles( ext, out_intersectingKeys );
     }
+}
+
+unsigned int
+Profile::getEquivalentLOD( const Profile* profile, unsigned int lod ) const
+{    
+    //If the profiles are equivalent, just use the incoming lod
+    if (profile->isEquivalentTo( this ) ) 
+        return lod;
+
+    double rhsWidth, rhsHeight;
+    profile->getTileDimensions( lod, rhsWidth, rhsHeight );
+
+    double targetWidth = rhsWidth, targetHeight = rhsHeight;
+
+    if ( !profile->getSRS()->isHorizEquivalentTo(profile->getSRS()) )
+    {
+        targetWidth = profile->getSRS()->transformUnits( rhsWidth, getSRS() );
+        targetHeight = profile->getSRS()->transformUnits( rhsHeight, getSRS() );
+    }
+
+
+
+#if 0
+    //Create a TileKey in the incoming Profile
+    TileKey key(lod, 0, 0, profile );
+
+    GeoExtent extent = key.getExtent();
+
+    if (!profile->getSRS()->isEquivalentTo( getSRS()))
+    {           
+        // localize the extents and clamp them to legal values
+        //extent = clampAndTransformExtent( extent );
+
+        //Transform the extent into the local SRS
+        extent = extent.transform( getSRS() );
+        if ( !extent.isValid() )
+            return 0;
+    }
+
+    double keyWidth = extent.width();
+    double keyHeight = extent.height();
+#endif
+    
+    int currLOD = 0;
+    int destLOD = currLOD;
+
+    //Find the LOD that most closely matches the area of the incoming key without going under.
+    while( true )
+    {
+        currLOD++;
+        double w, h;
+        getTileDimensions(currLOD, w, h);
+        if ( w < targetWidth || h < targetHeight ) break;
+        //double a = w * h;
+        //if (a < keyArea) break;
+        destLOD = currLOD;
+    }
+    return destLOD;
 }

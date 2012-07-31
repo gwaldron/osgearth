@@ -462,7 +462,7 @@ TerrainEngineNodeFactory::create( Map* map, const TerrainOptions& options )
 
     std::string driver = options.getDriver();
     if ( driver.empty() )
-        driver = "osgterrain";
+        driver = Registry::instance()->getDefaultTerrainEngineDriverName();
 
     std::string driverExt = std::string( ".osgearth_engine_" ) + driver;
     result = dynamic_cast<TerrainEngineNode*>( osgDB::readObjectFile( driverExt ) );

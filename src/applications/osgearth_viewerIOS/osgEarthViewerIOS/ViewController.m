@@ -3,7 +3,6 @@
 //  osgEarthViewerIOS
 //
 //  Created by Thomas Hogarth on 14/07/2012.
-//  Copyright (c) 2012 __MyCompanyName__. All rights reserved.
 //
 
 #import "ViewController.h"
@@ -23,7 +22,6 @@
 #include "GLES2ShaderGenVisitor.h"
 
 
-
 @interface ViewController () {
 
 }
@@ -33,6 +31,16 @@
 
 @implementation ViewController
 
+- (id)intWithFileName:(NSString*)file
+{
+    self = [super init];
+    if(self){
+        
+        _file = [file cStringUsingEncoding:NSASCIIStringEncoding];
+        
+    }
+    return self;
+}
 
 - (void)dealloc
 {
@@ -43,25 +51,12 @@
     _viewer = NULL;
 }
 
-- (void)loadBasicScene{
-    
-    _viewer->setCameraManipulator(new osgGA::MultiTouchTrackballManipulator());
-    
-    osg::Node* node = osgDB::readNodeFile(osgDB::findDataFile("models/box.osg"));
-    
-    osgUtil::GLES2ShaderGenVisitor shaderGen;
-    node->accept(shaderGen);
-    
-    _viewer->setSceneData(node);
-
-}
-
 - (void)loadOsgEarthDemoScene{
 
     // install our default manipulator (do this before calling load)
     _viewer->setCameraManipulator( new osgEarth::Util::EarthMultiTouchManipulator() );
     
-    osg::Node* node = osgDB::readNodeFile(osgDB::findDataFile("tests/readymap.earth"));
+    osg::Node* node = osgDB::readNodeFile(osgDB::findDataFile("tests/" + _file));
     if ( !node )
     {
         OSG_WARN << "Unable to load an earth file from the command line." << std::endl;
@@ -99,6 +94,7 @@
     
     osg::setNotifyLevel(osg::FATAL);
     //osgEarth::setNotifyLevel(osg::DEBUG_FP);
+
     
     //get screen scale
     UIScreen* screen = [UIScreen mainScreen];
@@ -115,7 +111,10 @@
     
     //create the viewer
 	_viewer = new osgViewer::Viewer();
+    
     //_viewer->setThreadingModel(osgViewer::ViewerBase::SingleThreaded);
+    _viewer->getDatabasePager()->setTargetMaximumNumberOfPageLOD(0);
+    _viewer->getDatabasePager()->setUnrefImageDataAfterApplyPolicy(true,true);
     
 	// Setup the traits parameters
 	traits->x = 0;
@@ -152,7 +151,6 @@
 
     //load
     [self loadOsgEarthDemoScene];
-    //[self loadBasicScene];
     
     // configure the near/far so we don't clip things that are up close
     _viewer->getCamera()->setNearFarRatio(0.00002);
@@ -185,6 +183,11 @@
     return interfaceOrientation == UIInterfaceOrientationPortrait;
 }
 
+- (void)touchesBegan:(NSSet *)touches withEvent:(UIEvent *)event
+{
+	NSLog(@"touchesBegan");
+}
+
 #pragma mark - update fired by timer to render update and render osgm
 
 //
@@ -209,6 +212,7 @@
 
 - (void)update:(CADisplayLink *)sender
 {
+    //
     _viewer->frame();
 }
 

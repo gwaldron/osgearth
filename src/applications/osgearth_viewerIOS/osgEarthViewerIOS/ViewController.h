@@ -3,7 +3,6 @@
 //  osgEarthViewerIOS
 //
 //  Created by Thomas Hogarth on 14/07/2012.
-//  Copyright (c) 2012 __MyCompanyName__. All rights reserved.
 //
 
 #import <UIKit/UIKit.h>
@@ -15,7 +14,12 @@
     osg::ref_ptr<osgViewer::Viewer> _viewer;
     CADisplayLink* _displayLink;
     bool _isAnimating;
+    
+    //the file to load
+    std::string _file;
 }
+
+- (id)intWithFileName:(NSString*)file;
 
 - (void)startAnimation;
 - (void)stopAnimation;

@@ -3,22 +3,21 @@
 //  osgEarthViewerIOS
 //
 //  Created by Thomas Hogarth on 14/07/2012.
-//  Copyright (c) 2012 __MyCompanyName__. All rights reserved.
 //
 
 #import "AppDelegate.h"
 
-#import "ViewController.h"
+#import "StartViewerController.h"
 
 @implementation AppDelegate
 
 @synthesize window = _window;
-@synthesize viewController = _viewController;
+@synthesize startViewerController = _startViewerController;
 
 - (void)dealloc
 {
     [_window release];
-    [_viewController release];
+    [_startViewerController release];
     [super dealloc];
 }
 
@@ -26,12 +25,9 @@
 {
     self.window = [[[UIWindow alloc] initWithFrame:[[UIScreen mainScreen] bounds]] autorelease];
     // Override point for customization after application launch.
-    if ([[UIDevice currentDevice] userInterfaceIdiom] == UIUserInterfaceIdiomPhone) {
-        self.viewController = [[[ViewController alloc] initWithNibName:@"ViewController_iPhone" bundle:nil] autorelease];
-    } else {
-        self.viewController = [[[ViewController alloc] initWithNibName:@"ViewController_iPad" bundle:nil] autorelease];
-    }
-    self.window.rootViewController = self.viewController;
+    
+    self.startViewerController = [[StartViewerController alloc] init];
+    self.window.rootViewController = self.startViewerController;
     [self.window makeKeyAndVisible];
     return YES;
 }
@@ -46,7 +42,7 @@
 {
     // Use this method to release shared resources, save user data, invalidate timers, and store enough application state information to restore your application to its current state in case it is terminated later. 
     // If your application supports background execution, this method is called instead of applicationWillTerminate: when the user quits.
-    [self.viewController stopAnimation];
+    [self.startViewerController stopAnimation];
 }
 
 - (void)applicationWillEnterForeground:(UIApplication *)application
@@ -57,7 +53,7 @@
 - (void)applicationDidBecomeActive:(UIApplication *)application
 {
     // Restart any tasks that were paused (or not yet started) while the application was inactive. If the application was previously in the background, optionally refresh the user interface.
-    [self.viewController startAnimation];
+    [self.startViewerController startAnimation];
 }
 
 - (void)applicationWillTerminate:(UIApplication *)application
@@ -65,8 +61,8 @@
     OSG_ALWAYS << "applicationWillTerminate" <<std::endl;
     // Called when the application is about to terminate. Save data if appropriate. See also applicationDidEnterBackground:.
     self.window.rootViewController = nil;
-    [self.viewController stopAnimation];
-    self.viewController = nil;
+    [self.startViewerController stopAnimation];
+    //self.viewController = nil;
 }
 
 @end

@@ -23,6 +23,8 @@
 #include <osgEarth/ECEF>
 #include <osgEarth/ShaderComposition>
 #include <osgEarth/DrawInstanced>
+#include <osgEarth/Registry>
+#include <osgEarth/Capabilities>
 
 #include <osg/AutoTransform>
 #include <osg/Drawable>
@@ -303,7 +305,7 @@ SubstituteModelFilter::process(const FeatureList&           features,
         }
     }
 
-    if ( _useDrawInstanced )
+    if ( _useDrawInstanced && Registry::instance()->getCapabilities().supportsDrawInstanced() )
     {
         //OE_INFO << LC << "Converting to draw-instanced..." << std::endl;
 

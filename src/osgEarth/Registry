@@ -110,6 +110,7 @@ namespace osgEarth
          */
         const Capabilities& getCapabilities() const;
         void setCapabilities( Capabilities* caps );
+        static const Capabilities& capabilities() { return instance()->getCapabilities(); }
 
         /**
          * Gets or sets the default shader factory. You can replace the default

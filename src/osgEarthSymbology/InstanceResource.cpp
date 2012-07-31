@@ -65,7 +65,7 @@ InstanceResource::createNode( const osgDB::Options* dbOptions ) const
     // shader generator
     if ( node )
     {
-        OE_WARN << LC << "Instance model does NOT have shaders disabled; use shadergen" << std::endl;
+        OE_DEBUG << LC << "Instance model does NOT have shaders disabled; use shadergen" << std::endl;
         //node->getOrCreateStateSet()->setAttributeAndModes( new osg::Program(), osg::StateAttribute::OFF );
     }
 

@@ -128,7 +128,32 @@ VirtualProgram::compare(const osg::StateAttribute& sa) const
     // compare each parameter in turn against the rhs.
     COMPARE_StateAttribute_Parameter(_mask);
     COMPARE_StateAttribute_Parameter(_inherit);
-    COMPARE_StateAttribute_Parameter(_shaderMap);
+    //COMPARE_StateAttribute_Parameter(_shaderMap);
+
+    // compare the shader maps.
+    if ( _shaderMap.size() < rhs._shaderMap.size() ) return -1;
+    if ( _shaderMap.size() > rhs._shaderMap.size() ) return 1;
+
+    ShaderMap::const_iterator lhsIter = _shaderMap.begin();
+    ShaderMap::const_iterator rhsIter = rhs._shaderMap.begin();
+
+    while( lhsIter != _shaderMap.end() )
+    {
+        int keyCompare = lhsIter->first.compare( rhsIter->first );
+        if ( keyCompare != 0 ) return keyCompare;
+
+        const ShaderEntry& lhsEntry = lhsIter->second;
+        const ShaderEntry& rhsEntry = rhsIter->second;
+        int shaderComp = lhsEntry.first->compare( *rhsEntry.first.get() );
+        if ( shaderComp != 0 ) return shaderComp;
+
+        if ( lhsEntry.second < rhsEntry.second ) return -1;
+        if ( lhsEntry.second > rhsEntry.second ) return 1;
+
+        lhsIter++;
+        rhsIter++;
+    }
+
     return 0; // passed all the above comparison macros, must be equal.
 }
 

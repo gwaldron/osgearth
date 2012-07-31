@@ -237,9 +237,19 @@ namespace osgEarth
         typedef std::vector< osg::ref_ptr<osg::Shader> > ShaderVector;
 
     protected:
+        //struct ShaderEntry : public std::pair< osg::ref_ptr<osg::Shader>, osg::StateAttribute::OverrideValue >
+        //{
+        //    ShaderEntry()
+        //        : std::pair< osg::ref_ptr<osg::Shader>, osg::StateAttribute::OverrideValue >((osg::Shader*)0L, 1) { }
+        //    ShaderEntry(osg::Shader* shader, osg::StateAttribute::OverrideValue ov)
+        //        : std::pair< osg::ref_ptr<osg::Shader>, osg::StateAttribute::OverrideValue >(shader, ov) { }
+        //    bool operator == (const ShaderEntry& rhs) const {
+        //        return first->compare( *rhs.first.get() ) == 0;
+        //    }
+        //};
         typedef std::pair< osg::ref_ptr<osg::Shader>, osg::StateAttribute::OverrideValue > ShaderEntry;
-        typedef std::map< std::string, ShaderEntry >       ShaderMap;
-        typedef std::map< ShaderVector, osg::ref_ptr<osg::Program> > ProgramMap;
+        typedef std::map< std::string, ShaderEntry > ShaderMap;
+        typedef std::map< ShaderVector, osg::ref_ptr<osg::Program> >        ProgramMap;
 
         ProgramMap                   _programCache;
         ShaderMap                    _shaderMap;

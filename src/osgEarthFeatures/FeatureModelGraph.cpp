@@ -266,15 +266,7 @@ FeatureModelGraph::~FeatureModelGraph()
 void
 FeatureModelGraph::installShaderMains()
 {
-#if 0
-    ShaderFactory* fact = Registry::instance()->getShaderFactory();
-
-    VirtualProgram* vp = new VirtualProgram();
-    vp->setName( "FeatureModelGraph" );
-    vp->installDefaultColoringAndLightingShaders();
-
-    this->getOrCreateStateSet()->setAttributeAndModes( vp, osg::StateAttribute::ON );
-#endif
+    //nop
 }
 
 void

@@ -33,6 +33,9 @@
 #include <osg/NodeVisitor>
 #include <osg/ShapeDrawable>
 
+#include <osgDB/FileNameUtils>
+#include <osgDB/Registry>
+
 #include <osgUtil/Optimizer>
 #include <osgUtil/MeshOptimizers>
 
@@ -58,8 +61,37 @@ namespace
     InstanceSymbol* convertMarkerToInstance( const MarkerSymbol* marker )
     {
         InstanceSymbol* result = 0L;
+        
+        bool isModel = true;
 
-        if ( marker->isModel() == true || marker->getModel() )
+        if ( marker->isModel().isSet() )
+        {
+            isModel = *marker->isModel();
+        }
+        else if ( marker->getModel() )
+        {
+            isModel = true;
+        }
+        else if ( marker->url().isSet() )
+        {
+            const std::string& str = marker->url()->expr();
+            std::string ext = osgDB::getLowerCaseFileExtension(str);
+            if ( !ext.empty() )
+            {
+                const osgDB::Registry::MimeTypeExtensionMap& exmap = osgDB::Registry::instance()->getMimeTypeExtensionMap();
+                for( osgDB::Registry::MimeTypeExtensionMap::const_iterator i = exmap.begin(); i != exmap.end(); ++i )
+                {
+                    if ( i->second == ext )
+                    {
+                        if ( i->first.compare(0, 6, "image/") == 0 )
+                            isModel = false;
+                        break;
+                    }
+                }
+            }
+        }
+
+        if ( isModel )
         {
             ModelSymbol* model = new ModelSymbol();
 
@@ -133,7 +165,7 @@ SubstituteModelFilter::findResource(const URI&            uri,
     else
     {
         // create it on the fly:
-        OE_NOTICE << "New resource (not in the cache!)" << std::endl;
+        OE_DEBUG << "New resource (not in the cache!)" << std::endl;
         instance = symbol->createResource();
         instance->uri() = uri;
         _instanceCache.insert( uri, instance );
@@ -618,20 +650,10 @@ SubstituteModelFilter::push(FeatureList& features, FilterContext& context)
     else
     {
         process( features, symbol, context.getSession(), group, newContext );
-
-#if 0
-        osg::Group* bsg = new osg::Group();
-        const osg::BoundingSphere& bs = group->getBound();
-        osg::ShapeDrawable* sd = new osg::ShapeDrawable(new osg::Sphere(bs.center(), bs.radius()));
-        sd->setColor(osg::Vec4(1,0,0,0.3));
-        osg::Geode* sdg = new osg::Geode();
-        sdg->getOrCreateStateSet()->setAttribute(new osg::Program, 0);
-        sdg->addDrawable(sd);
-        bsg->addChild( sdg );
-        bsg->addChild( group );
-        group = bsg;
-#endif
     }
+
+    // finally, optimize for stateset sharing.
+    context.getSession()->shareStateSets( group );
 
     return group;
 }

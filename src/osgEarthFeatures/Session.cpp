@@ -35,6 +35,68 @@ using namespace osgEarth::Features;
 
 //---------------------------------------------------------------------------
 
+namespace
+{
+    /**
+     * Visitor that calls Session::getSharedStateSet on all statesets found
+     * in a scene graph.
+     */
+    struct ShareStateSets : public osg::NodeVisitor
+    {
+        Session* _session;
+        unsigned _stateSets;
+        unsigned _shares;
+        //std::vector<osg::StateSet*> _misses; // for debugging
+
+        ShareStateSets(Session* session) :
+            osg::NodeVisitor( osg::NodeVisitor::TRAVERSE_ALL_CHILDREN ),
+            _session  ( session ),
+            _stateSets( 0 ),
+            _shares   ( 0 ) { }
+
+        void apply(osg::Node& node)
+        {
+            if ( node.getStateSet() )
+            {
+                _stateSets++;
+                osg::ref_ptr<osg::StateSet> in, out;
+                in = node.getStateSet();
+                if ( _session->getSharedStateSet(in, out) )
+                {
+                    node.setStateSet( out.get() );
+                    _shares++;
+                }
+                //else _misses.push_back(in.get());
+            }
+            traverse(node);
+        }
+
+        void apply(osg::Geode& geode)
+        {
+            unsigned numDrawables = geode.getNumDrawables();
+            for( unsigned i=0; i<numDrawables; ++i )
+            {
+                osg::Drawable* d = geode.getDrawable(i);
+                if ( d && d->getStateSet() )
+                {
+                    _stateSets++;
+                    osg::ref_ptr<osg::StateSet> in, out;
+                    in = d->getStateSet();
+                    if ( _session->getSharedStateSet(in, out) )
+                    {
+                        d->setStateSet( out.get() );
+                        _shares++;
+                    }
+                    //else _misses.push_back(in.get());
+                }
+            }
+            apply((osg::Node&)geode);
+        }
+    };
+}
+
+//---------------------------------------------------------------------------
+
 Session::Session( const Map* map, StyleSheet* styles, FeatureSource* source, const osgDB::Options* dbOptions ) :
 osg::Referenced( true ),
 _map           ( map ),
@@ -71,7 +133,8 @@ Session::createMapFrame( Map::ModelParts parts ) const
 void
 Session::removeObject( const std::string& key )
 {
-    Threading::ScopedWriteLock lock( _objMapMutex );
+    Threading::ScopedMutexLock lock( _objMapMutex );
+    //Threading::ScopedWriteLock lock( _objMapMutex );
     _objMap.erase( key );
 }
 
@@ -97,4 +160,37 @@ FeatureSource*
 Session::getFeatureSource() const 
 { 
 	return _featureSource.get(); 
+}
+
+
+bool
+Session::getSharedStateSet( osg::ref_ptr<osg::StateSet>& input, osg::ref_ptr<osg::StateSet>& output )
+{
+    Threading::ScopedMutexLock lock( _objMapMutex );
+
+    std::pair<StateSetSet::iterator,bool> result = _stateSetCache.insert( input );
+    if ( result.second )
+    {
+        // first use
+        output = input.get();
+        return false;
+    }
+    else
+    {
+        // found a share!
+        output = result.first->get();
+        return true;
+    }
+}
+
+
+void
+Session::shareStateSets( osg::Node* graph )
+{
+    if ( graph )
+    {
+        ShareStateSets visitor( this );
+        graph->accept( visitor );
+        //OE_WARN << LC << "Shares = " << visitor._shares << "/" << visitor._stateSets << ", cache = " << _stateSetCache.size() << std::endl;
+    }
 }

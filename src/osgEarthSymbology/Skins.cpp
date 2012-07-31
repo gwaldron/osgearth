@@ -118,31 +118,6 @@ SkinResource::createStateSet( osg::Image* image ) const
             stateSet->setAttributeAndModes( blendFunc, osg::StateAttribute::ON );
             stateSet->setRenderingHint( osg::StateSet::TRANSPARENT_BIN );
         }
-
-        // build the shader functions to apply the skin:
-        if ( true ) // useShaders
-        {
-            ShaderFactory* fact = Registry::instance()->getShaderFactory();
-
-            VirtualProgram* vp = new VirtualProgram();
-            vp->setName( image->getFileName() );
-
-            vp->setShader(
-                "osgearth_vert_setupColoring",
-                fact->createDefaultColoringVertexShader( 1 ),
-                osg::StateAttribute::ON );
-
-            vp->setShader(
-                "osgearth_frag_applyColoring",
-                fact->createDefaultColoringFragmentShader( 1 ),
-                osg::StateAttribute::ON );
-
-            stateSet->setAttributeAndModes( vp, osg::StateAttribute::ON );
-
-            stateSet->getOrCreateUniform(
-                fact->getSamplerName(0),
-                osg::Uniform::SAMPLER_2D)->set(0);
-        }
     }
 
     return stateSet;

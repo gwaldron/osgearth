@@ -187,16 +187,6 @@ ModelLayer::getOrCreateNode( ProgressCallback* progress )
                         osg::StateSet* ss = _node->getOrCreateStateSet();
                         ss->setAttributeAndModes( new osg::Program(), osg::StateAttribute::OFF );
                     }
-                    else
-                    {
-                        ShaderFactory* fact = Registry::instance()->getShaderFactory();
-
-                        VirtualProgram* vp = new VirtualProgram();
-                        vp->setName( "ModelLayer" );
-                        vp->installDefaultColoringAndLightingShaders();
-
-                        _node->getOrCreateStateSet()->setAttributeAndModes( vp, osg::StateAttribute::ON );
-                    }
                 }
 
                 if ( _modelSource->getOptions().depthTestEnabled() == false )

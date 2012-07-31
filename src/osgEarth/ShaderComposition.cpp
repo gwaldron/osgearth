@@ -620,7 +620,7 @@ VirtualProgram::refreshAccumulatedFunctions( const osg::State& state )
             for( unsigned i=start; i<av->size(); ++i )
             {
                 const VirtualProgram* vp = dynamic_cast<const VirtualProgram*>( (*av)[i].first );
-                if ( vp && (vp->_mask && _mask) )
+                if ( vp && (vp->_mask && _mask) && (vp != this) )
                 {
                     FunctionLocationMap rhs;
                     vp->getFunctions( rhs );

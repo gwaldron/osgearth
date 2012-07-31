@@ -109,12 +109,27 @@ _inherit( true )
 
 VirtualProgram::VirtualProgram(const VirtualProgram& rhs, const osg::CopyOp& copyop ) :
 osg::StateAttribute( rhs, copyop ),
+//osg::Program( rhs, copyop ),
 _shaderMap  ( rhs._shaderMap ),
 _mask       ( rhs._mask ),
 _functions  ( rhs._functions ),
 _inherit    ( rhs._inherit )
 {
     //nop
+}
+
+int
+VirtualProgram::compare(const osg::StateAttribute& sa) const
+{
+    // check the types are equal and then create the rhs variable
+    // used by the COMPARE_StateAttribute_Parameter macros below.
+    COMPARE_StateAttribute_Types(VirtualProgram,sa);
+
+    // compare each parameter in turn against the rhs.
+    COMPARE_StateAttribute_Parameter(_mask);
+    COMPARE_StateAttribute_Parameter(_inherit);
+    COMPARE_StateAttribute_Parameter(_shaderMap);
+    return 0; // passed all the above comparison macros, must be equal.
 }
 
 
@@ -400,6 +415,8 @@ namespace
 osg::Program*
 VirtualProgram::buildProgram( osg::State& state, ShaderMap& accumShaderMap )
 {
+    OE_TEST << LC << "Building new Program for VP " << getName() << std::endl;
+
     // build a new set of accumulated functions, to support the creation of main()
     refreshAccumulatedFunctions( state );
 
@@ -620,7 +637,7 @@ VirtualProgram::refreshAccumulatedFunctions( const osg::State& state )
             for( unsigned i=start; i<av->size(); ++i )
             {
                 const VirtualProgram* vp = dynamic_cast<const VirtualProgram*>( (*av)[i].first );
-                if ( vp && (vp->_mask && _mask) )
+                if ( vp && (vp->_mask && _mask) && vp != this )
                 {
                     FunctionLocationMap rhs;
                     vp->getFunctions( rhs );

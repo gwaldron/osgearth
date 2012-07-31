@@ -500,8 +500,22 @@ CullNodeByNormal::operator()(osg::Node* node, osg::NodeVisitor* nv)
     }
 }
 
+//------------------------------------------------------------------------
+
+void
+DisableSubgraphCulling::operator()(osg::Node* n, osg::NodeVisitor* v)
+{
+    osgUtil::CullVisitor* cv = static_cast<osgUtil::CullVisitor*>(v);
+    cv->getCurrentCullingSet().setCullingMask( osg::CullSettings::NO_CULLING );
+    //osg::CullSettings::ComputeNearFarMode mode = cv->getComputeNearFarMode();
+    //cv->setComputeNearFarMode( osg::CullSettings::DO_NOT_COMPUTE_NEAR_FAR );
+    traverse(n, v);
+    //cv->setComputeNearFarMode( mode );
+}
+
 
 //------------------------------------------------------------------------
+
 OcclusionCullingCallback::OcclusionCullingCallback(const osg::Vec3d& world, osg::Node* node):
 _world(world),
 _node( node ),

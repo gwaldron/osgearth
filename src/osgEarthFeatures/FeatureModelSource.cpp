@@ -36,7 +36,7 @@ _lit               ( true ),
 _maxGranularity_deg( 1.0 ),
 _mergeGeometry     ( false ),
 _clusterCulling    ( true ),
-_featureIndexing   ( true )
+_featureIndexing   ( false )
 {
     fromConfig( _conf );
 }
@@ -45,14 +45,11 @@ void
 FeatureModelSourceOptions::fromConfig( const Config& conf )
 {
     conf.getObjIfSet( "features", _featureOptions );
-    //if ( conf.hasChild("features") )
-    //    _featureOptions->merge( conf.child("features") );
     _featureSource = conf.getNonSerializable<FeatureSource>("feature_source");
 
     conf.getObjIfSet( "styles",       _styles );
     conf.getObjIfSet( "layout",       _layout );
     conf.getObjIfSet( "paging",       _layout ); // backwards compat.. to be deprecated
-    //conf.getObjIfSet( "gridding",     _gridding ); // to be deprecated
     conf.getObjIfSet( "feature_name", _featureNameExpr );
     conf.getObjIfSet( "cache_policy", _cachePolicy );
 
@@ -81,8 +78,6 @@ FeatureModelSourceOptions::getConfig() const
     {
         conf.addNonSerializable("feature_source", _featureSource.get());
     }
-    //conf.updateObjIfSet( "feature_source", _featureSource);
-    //conf.updateObjIfSet( "gridding",     _gridding ); // to be deprecated
     conf.updateObjIfSet( "styles",       _styles );
     conf.updateObjIfSet( "layout",       _layout );
     conf.updateObjIfSet( "cache_policy", _cachePolicy );

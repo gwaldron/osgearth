@@ -889,6 +889,7 @@ OverlayDecorator::cull( osgUtil::CullVisitor* cv, OverlayDecorator::PerViewData&
         dsgmt->addChild( dsg );
 
         osg::Group* g = new osg::Group();
+        g->getOrCreateStateSet()->setAttribute(new osg::Program(), 0);
         g->addChild(camNode);
         //g->addChild(overlay);
         g->addChild(intersection);

@@ -36,6 +36,7 @@ SET(LIB_PUBLIC_HEADERS
     DPLineSegmentIntersector
     Draggers
     DrapeableNode
+    DrawInstanced
     ECEF
     ElevationLayer
 	ElevationLOD
@@ -139,6 +140,7 @@ ADD_LIBRARY(${LIB_NAME} SHARED
     Draggers.cpp
     DPLineSegmentIntersector.cpp
     DrapeableNode.cpp
+    DrawInstanced.cpp
     ECEF.cpp
     ElevationLayer.cpp
 	ElevationLOD.cpp

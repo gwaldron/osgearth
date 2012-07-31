@@ -21,12 +21,19 @@
 #include <osgEarthSymbology/MeshConsolidator>
 #include <osgEarth/HTTPClient>
 #include <osgEarth/ECEF>
+#include <osgEarth/ShaderComposition>
+#include <osgEarth/DrawInstanced>
+
 #include <osg/AutoTransform>
 #include <osg/Drawable>
 #include <osg/Geode>
 #include <osg/MatrixTransform>
 #include <osg/NodeVisitor>
+#include <osg/ShapeDrawable>
+
 #include <osgUtil/Optimizer>
+#include <osgUtil/MeshOptimizers>
+
 #include <list>
 #include <deque>
 
@@ -40,26 +47,117 @@ using namespace osgEarth::Symbology;
 
 namespace
 {
+
     static osg::Node* s_defaultModel =0L;
+
+    /**
+     * Backwards compatibility - convert a MarkerSymbol so we can process it.
+     */
+    InstanceSymbol* convertMarkerToInstance( const MarkerSymbol* marker )
+    {
+        InstanceSymbol* result = 0L;
+
+        if ( marker->isModel() == true || marker->getModel() )
+        {
+            ModelSymbol* model = new ModelSymbol();
+
+            if ( marker->orientation().isSet() )
+                model->heading() = NumericExpression(marker->orientation()->x());
+
+            if ( model->getModel() )
+                model->setModel( marker->getModel() );
+
+            result = model;
+        }
+        else // icon image
+        {
+            IconSymbol* icon = new IconSymbol();
+
+            if ( marker->alignment().isSet() )
+                icon->alignment() = (IconSymbol::Alignment)marker->alignment().get();
+
+            if ( marker->getImage() )
+                icon->setImage( marker->getImage() );
+        }
+
+        if ( marker->url().isSet() )
+            result->url() = marker->url().get();
+        if ( marker->libraryName().isSet() )
+            result->libraryName() = marker->libraryName().get();
+        if ( marker->placement().isSet() )
+            result->placement() = (InstanceSymbol::Placement)marker->placement().get();
+        if ( marker->density().isSet() )
+            result->density() = marker->density().get();
+        if ( marker->scale().isSet() )
+            result->scale() = marker->scale().get();
+        if ( marker->randomSeed().isSet() )
+            result->randomSeed() = marker->randomSeed().get();
+
+        return result;
+    }
 }
 
 //------------------------------------------------------------------------
 
 SubstituteModelFilter::SubstituteModelFilter( const Style& style ) :
-_style   ( style ),
-_cluster ( false ),
-_merge   ( true )
+_style           ( style ),
+_cluster         ( false ),
+_useDrawInstanced( false ),
+_merge           ( true )
 {
     //NOP
 }
 
+InstanceResource*
+SubstituteModelFilter::findResource(const URI&            uri,
+                                    const InstanceSymbol* symbol, 
+                                    FilterContext&        context, 
+                                    std::set<URI>&        missing ) 
+{
+    // find the corresponding marker in the cache
+    InstanceResource* instance = 0L;
+    InstanceCache::Record rec = _instanceCache.get( uri );
+
+    if ( rec.valid() )
+    {
+        // found it in the cache:
+        instance = rec.value();
+    }
+    else if ( _resourceLib.valid() )
+    {
+        // look it up in the resource library:
+        instance = _resourceLib->getInstance( uri.base(), context.getDBOptions() );
+    }
+    else
+    {
+        // create it on the fly:
+        OE_NOTICE << "New resource (not in the cache!)" << std::endl;
+        instance = symbol->createResource();
+        instance->uri() = uri;
+        _instanceCache.insert( uri, instance );
+    }
+
+    // failed to find the instance.
+    if ( instance == 0L )
+    {
+        if ( missing.find(uri) == missing.end() )
+        {
+            missing.insert(uri);
+            OE_WARN << LC << "Failed to locate resource: " << uri.full() << std::endl;
+        }
+    }
+
+    return instance;
+}
+
 bool
-SubstituteModelFilter::process(const FeatureList&           features,                               
-                               const MarkerSymbol*          symbol,
+SubstituteModelFilter::process(const FeatureList&           features,
+                               const InstanceSymbol*        symbol,
                                Session*                     session,
                                osg::Group*                  attachPoint,
                                FilterContext&               context )
 {
+    // Establish SRS information:
     bool makeECEF = context.getSession()->getMapInfo().isGeocentric();
     const SpatialReference* targetSRS = context.getSession()->getMapInfo().getSRS();
 
@@ -67,31 +165,32 @@ SubstituteModelFilter::process(const FeatureList&           features,
     // factor to any AutoTransforms directly (cloning them as necessary)
     std::map< std::pair<URI, float>, osg::ref_ptr<osg::Node> > uniqueModels;
 
+    // keep track of failed URIs so we don't waste time or warning messages on them
+    std::set< URI > missing;
+
     StringExpression  uriEx   = *symbol->url();
     NumericExpression scaleEx = *symbol->scale();
+
+    const ModelSymbol* modelSymbol = dynamic_cast<const ModelSymbol*>(symbol);
+    const IconSymbol*  iconSymbol  = dynamic_cast<const IconSymbol*> (symbol);
+
+    NumericExpression headingEx;
+    if ( modelSymbol )
+        headingEx = *modelSymbol->heading();
+
 
     for( FeatureList::const_iterator f = features.begin(); f != features.end(); ++f )
     {
         Feature* input = f->get();
 
-        // evaluate the marker URI expression:
+        // evaluate the instance URI expression:
         StringExpression uriEx = *symbol->url();
-        URI markerURI( input->eval(uriEx, &context), uriEx.uriContext() );
+        URI instanceURI( input->eval(uriEx, &context), uriEx.uriContext() );
 
         // find the corresponding marker in the cache
-        MarkerResource* marker = 0L;
-        MarkerCache::Record rec = _markerCache.get( markerURI );
-        if ( rec.valid() ) {
-            marker = rec.value();
-        }
-        else if ( _markerLib.valid() ) {
-            marker = _markerLib->getMarker( markerURI.base(), context.getDBOptions() );
-        }
-        else {
-            marker = new MarkerResource();
-            marker->uri() = markerURI;
-            _markerCache.insert( markerURI, marker );
-        }
+        InstanceResource* instance = findResource( instanceURI, symbol, context, missing );
+        if ( !instance )
+            continue;
 
         // evalute the scale expression (if there is one)
         float scale = 1.0f;
@@ -106,6 +205,7 @@ SubstituteModelFilter::process(const FeatureList&           features,
         }
         
         osg::Matrixd rotationMatrix;
+#if 0
         if ( symbol->orientation().isSet() )
         {
             osg::Vec3d hpr = *symbol->orientation();
@@ -114,15 +214,23 @@ SubstituteModelFilter::process(const FeatureList&           features,
             rotationMatrix.makeRotate( 
                 osg::DegreesToRadians(hpr.y()), osg::Vec3(1,0,0),
                 osg::DegreesToRadians(hpr.x()), osg::Vec3(0,0,1),
-                osg::DegreesToRadians(hpr.z()), osg::Vec3(0,1,0) );            
+                osg::DegreesToRadians(hpr.z()), osg::Vec3(0,1,0) );
+        }
+#endif
+
+        if ( modelSymbol && modelSymbol->heading().isSet() )
+        {
+            float heading = input->eval(headingEx, &context);
+            rotationMatrix.makeRotate( osg::Quat(osg::DegreesToRadians(heading), osg::Vec3(0,0,1)) );
         }
 
         // how that we have a marker source, create a node for it
-        std::pair<URI,float> key( markerURI, scale );
+        std::pair<URI,float> key( instanceURI, scale );
+
         osg::ref_ptr<osg::Node>& model = uniqueModels[key];
         if ( !model.valid() )
         {
-            model = context.resourceCache()->getMarkerNode( marker );
+            model = context.resourceCache()->getInstanceNode( instance );
 
             if ( scale != 1.0f && dynamic_cast<osg::AutoTransform*>( model.get() ) )
             {
@@ -178,8 +286,10 @@ SubstituteModelFilter::process(const FeatureList&           features,
                     xform->addChild( model.get() );
                     attachPoint->addChild( xform );
 
-                    if ( context.featureIndex() )
+                    if ( context.featureIndex() && !_useDrawInstanced )
+                    {
                         context.featureIndex()->tagNode( xform, input->getFID() );
+                    }
 
                     // name the feature if necessary
                     if ( !_featureNameExpr.empty() )
@@ -193,6 +303,23 @@ SubstituteModelFilter::process(const FeatureList&           features,
         }
     }
 
+    if ( _useDrawInstanced )
+    {
+        //OE_INFO << LC << "Converting to draw-instanced..." << std::endl;
+
+        DrawInstanced::convertGraphToUseDrawInstanced( attachPoint );
+
+        // install a shader program
+        VirtualProgram* p = DrawInstanced::createDrawInstancedProgram();
+        p->installDefaultColoringShaders( 1 );
+
+        attachPoint->getOrCreateStateSet()->setAttributeAndModes( p, osg::StateAttribute::ON );
+    }
+    else
+    {
+        attachPoint->getOrCreateStateSet()->setAttribute( new osg::Program, 0 );
+    }
+
     return true;
 }
 
@@ -201,25 +328,26 @@ SubstituteModelFilter::process(const FeatureList&           features,
 
 struct ClusterVisitor : public osg::NodeVisitor
 {
-    ClusterVisitor( const FeatureList& features, const MarkerSymbol* symbol, FeaturesToNodeFilter* f2n, FilterContext& cx )
+    ClusterVisitor( const FeatureList& features, const InstanceSymbol* symbol, FeaturesToNodeFilter* f2n, FilterContext& cx )
         : _features   ( features ),
           _symbol     ( symbol ),
           _f2n        ( f2n ),
           _cx         ( cx ),
           osg::NodeVisitor( osg::NodeVisitor::TRAVERSE_ALL_CHILDREN )
     {
-        //nop
+        _modelSymbol = dynamic_cast<const ModelSymbol*>( symbol );
+        if ( _modelSymbol )
+            _headingExpr = *_modelSymbol->heading();
+
+        _scaleExpr = *_symbol->scale();
+
+        _makeECEF  = _cx.getSession()->getMapInfo().isGeocentric();
+        _srs       = _cx.profile()->getSRS();
+        _targetSRS = _cx.getSession()->getMapInfo().getSRS();
     }
 
     void apply( osg::Geode& geode )
     {
-        bool makeECEF = _cx.getSession()->getMapInfo().isGeocentric();
-        const SpatialReference* srs = _cx.profile()->getSRS();
-        const SpatialReference* targetSRS = _cx.getSession()->getMapInfo().getSRS();
-
-        NumericExpression scaleEx = *_symbol->scale();
-        osg::Matrixd scaleMatrix;
-
         // save the geode's drawables..
         osg::Geode::DrawableList old_drawables = geode.getDrawableList();
 
@@ -246,13 +374,16 @@ struct ClusterVisitor : public osg::NodeVisitor
             {
                 Feature* feature = j->get();
 
+                osg::Matrixd scaleMatrix;
+
                 if ( _symbol->scale().isSet() )
                 {
-                    double scale = feature->eval( scaleEx, &_cx );
+                    double scale = feature->eval( _scaleExpr, &_cx );
                     scaleMatrix.makeScale( scale, scale, scale );
                 }
 
                 osg::Matrixd rotationMatrix;
+#if 0
                 if ( _symbol->orientation().isSet() )
                 {
                     osg::Vec3d hpr = *_symbol->orientation();
@@ -263,7 +394,12 @@ struct ClusterVisitor : public osg::NodeVisitor
                         osg::DegreesToRadians(hpr.x()), osg::Vec3(0,0,1),
                         osg::DegreesToRadians(hpr.z()), osg::Vec3(0,1,0) );            
                 }
-
+#endif
+                if ( _modelSymbol && _modelSymbol->heading().isSet() )
+                {
+                    float heading = feature->eval( _headingExpr, &_cx );
+                    rotationMatrix.makeRotate( osg::Quat(osg::DegreesToRadians(heading), osg::Vec3(0,0,1)) );
+                }
 
                 GeometryIterator gi( feature->getGeometry(), false );
                 while( gi.hasMore() )
@@ -271,9 +407,9 @@ struct ClusterVisitor : public osg::NodeVisitor
                     Geometry* geom = gi.next();
 
                     // if necessary, transform the points to the target SRS:
-                    if ( !makeECEF && !targetSRS->isEquivalentTo(srs) )
+                    if ( !_makeECEF && !_targetSRS->isEquivalentTo(_srs) )
                     {
-                        srs->transform( geom->asVector(), targetSRS );
+                        _srs->transform( geom->asVector(), _targetSRS );
                     }
 
                     for( Geometry::const_iterator k = geom->begin(); k != geom->end(); ++k )
@@ -281,10 +417,10 @@ struct ClusterVisitor : public osg::NodeVisitor
                         osg::Vec3d   point = *k;
                         osg::Matrixd mat;
 
-                        if ( makeECEF )
+                        if ( _makeECEF )
                         {
                             osg::Matrixd rotation;
-                            ECEF::transformAndGetRotationMatrix( point, srs, point, rotation );
+                            ECEF::transformAndGetRotationMatrix( point, _srs, point, rotation );
                             mat = rotationMatrix * rotation * scaleMatrix * osg::Matrixd::translate(point) * _f2n->world2local();
                         }
                         else
@@ -327,12 +463,19 @@ struct ClusterVisitor : public osg::NodeVisitor
 private:
     const FeatureList&      _features;
     FilterContext&          _cx;
-    const MarkerSymbol*     _symbol;
+    const InstanceSymbol*   _symbol;
+    const ModelSymbol*      _modelSymbol;
     FeaturesToNodeFilter*   _f2n;
+    NumericExpression       _scaleExpr;
+    NumericExpression       _headingExpr;
+    bool                    _makeECEF;
+    const SpatialReference* _srs;
+    const SpatialReference* _targetSRS;
 };
 
 
-typedef std::map< osg::Node*, FeatureList > MarkerToFeatures;
+//typedef std::map< osg::Node*, FeatureList > MarkerToFeatures;
+typedef std::map< osg::ref_ptr<osg::Node>, FeatureList > ModelBins;
 
 //clustering:
 //  troll the external model for geodes. for each geode, create a geode in the target
@@ -342,12 +485,15 @@ typedef std::map< osg::Node*, FeatureList > MarkerToFeatures;
 //  hopefully stateset sharing etc will work out. we may need to strip out LODs too.
 bool
 SubstituteModelFilter::cluster(const FeatureList&           features,
-                               const MarkerSymbol*          symbol, 
+                               const InstanceSymbol*        symbol, 
                                Session*                     session,
                                osg::Group*                  attachPoint,
                                FilterContext&               context )
-{    
-    MarkerToFeatures markerToFeatures;
+{
+    ModelBins modelBins;
+    //ModelToFeatures modelToFeatures;
+
+    std::set<URI> missing;
 
     // first, sort the features into buckets, each bucket corresponding to a
     // unique marker.
@@ -357,38 +503,39 @@ SubstituteModelFilter::cluster(const FeatureList&           features,
 
         // resolve the URI for the marker:
         StringExpression uriEx( *symbol->url() );
-        URI markerURI( f->eval( uriEx, &context ), uriEx.uriContext() );
+        URI instanceURI( f->eval( uriEx, &context ), uriEx.uriContext() );
 
         // find and load the corresponding marker model. We're using the session-level
         // object store to cache models. This is thread-safe sine we are always going
         // to CLONE the model before using it.
-        osg::ref_ptr<osg::Node> model = context.getSession()->getObject<osg::Node>( markerURI.full() );
+        osg::ref_ptr<osg::Node> model = context.getSession()->getObject<osg::Node>( instanceURI.full() );
         if ( !model.valid() )
         {
-            osg::ref_ptr<MarkerResource> mres = new MarkerResource();
-            mres->uri() = markerURI;
-            model = mres->createNode( context.getSession()->getDBOptions() );
+            InstanceResource* instance = findResource( instanceURI, symbol, context, missing );
+            if ( !instance )
+                continue;
+
+            model = instance->createNode( context.getSession()->getDBOptions() );
             if ( model.valid() )
             {
-                // store it, but only if there isn't already one in there.
-                model = context.getSession()->putObject( markerURI.full(), model.get(), false );
+                model = context.getSession()->putObject( instanceURI.full(), model.get(), false );
             }
         }
 
         if ( model.valid() )
         {
-            MarkerToFeatures::iterator itr = markerToFeatures.find( model.get() );
-            if (itr == markerToFeatures.end())
-                markerToFeatures[ model.get() ].push_back( f );
+            ModelBins::iterator itr = modelBins.find( model.get() );
+            if (itr == modelBins.end())
+                modelBins[ model.get() ].push_back( f );
             else
                 itr->second.push_back( f );
         }
     }
 
     // For each model, cluster the features that use that marker
-    for (MarkerToFeatures::iterator i = markerToFeatures.begin(); i != markerToFeatures.end(); ++i)
+    for (ModelBins::iterator i = modelBins.begin(); i != modelBins.end(); ++i)
     {
-        osg::Node* prototype = i->first;
+        osg::Node* prototype = i->first.get();
 
         // we're using the Session cache since we know we'll be cloning.
         if ( prototype )
@@ -409,45 +556,58 @@ SubstituteModelFilter::cluster(const FeatureList&           features,
 osg::Node*
 SubstituteModelFilter::push(FeatureList& features, FilterContext& context)
 {
-    if ( !isSupported() ) {
+    if ( !isSupported() )
+    {
         OE_WARN << "SubstituteModelFilter support not enabled" << std::endl;
         return 0L;
     }
 
-    if ( _style.empty() ) {
+    if ( _style.empty() )
+    {
         OE_WARN << LC << "Empty style; cannot process features" << std::endl;
         return 0L;
     }
 
-    const MarkerSymbol* symbol = _style.getSymbol<MarkerSymbol>();
-    if ( !symbol ) {
-        OE_WARN << LC << "No MarkerSymbol found in style; cannot process feautres" << std::endl;
+    osg::ref_ptr<const InstanceSymbol> symbol = _style.get<InstanceSymbol>();
+
+    // check for deprecated MarkerSymbol type.
+    if ( !symbol.valid() )
+    {
+        if ( _style.has<MarkerSymbol>() )
+            symbol = convertMarkerToInstance( _style.get<MarkerSymbol>() );
+    }
+
+    if ( !symbol.valid() )
+    {
+        OE_WARN << LC << "No appropriate symbol found in stylesheet; aborting." << std::endl;
         return 0L;
     }
 
-    _markerLib = 0L;
+    // establish the resource library, if there is one:
+    _resourceLib = 0L;
 
     const StyleSheet* sheet = context.getSession() ? context.getSession()->styles() : 0L;
 
     if ( symbol->libraryName().isSet() )
     {
-        _markerLib = sheet->getResourceLibrary( symbol->libraryName()->expr(), context.getDBOptions() );
+        _resourceLib = sheet->getResourceLibrary( symbol->libraryName()->expr(), context.getDBOptions() );
 
-        if ( !_markerLib.valid() )
+        if ( !_resourceLib.valid() )
         {
             OE_WARN << LC << "Unable to load resource library '" << symbol->libraryName()->expr() << "'"
-                << "; may not find marker models." << std::endl;
+                << "; may not find instance models." << std::endl;
         }
     }
 
+    // Compute localization info:
     FilterContext newContext( context );
 
     computeLocalizers( context );
 
     osg::Group* group = createDelocalizeGroup();
 
+    // Process the feature set, using clustering if requested
     bool ok = true;
-
     if ( _cluster )
     {
         ok = cluster( features, symbol, context.getSession(), group, newContext );
@@ -458,14 +618,17 @@ SubstituteModelFilter::push(FeatureList& features, FilterContext& context)
         process( features, symbol, context.getSession(), group, newContext );
 
 #if 0
-        // speeds things up a bit, at the expense of creating tons of geometry..
-
-        // this optimizer pass will remove all the MatrixTransform nodes that we
-        // used to offset each instance
-        osgUtil::Optimizer optimizer;
-        optimizer.optimize( group, osgUtil::Optimizer::FLATTEN_STATIC_TRANSFORMS_DUPLICATING_SHARED_SUBGRAPHS );
+        osg::Group* bsg = new osg::Group();
+        const osg::BoundingSphere& bs = group->getBound();
+        osg::ShapeDrawable* sd = new osg::ShapeDrawable(new osg::Sphere(bs.center(), bs.radius()));
+        sd->setColor(osg::Vec4(1,0,0,0.3));
+        osg::Geode* sdg = new osg::Geode();
+        sdg->getOrCreateStateSet()->setAttribute(new osg::Program, 0);
+        sdg->addDrawable(sd);
+        bsg->addChild( sdg );
+        bsg->addChild( group );
+        group = bsg;
 #endif
-
     }
 
     return group;

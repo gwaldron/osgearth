@@ -22,10 +22,12 @@
 #include <osgEarthSymbology/Common>
 #include <osgEarthSymbology/Color>
 #include <osgEarthSymbology/Query>
+#include <osgEarthSymbology/IconSymbol>
 #include <osgEarthSymbology/PointSymbol>
 #include <osgEarthSymbology/LineSymbol>
 #include <osgEarthSymbology/PolygonSymbol>
 #include <osgEarthSymbology/MarkerSymbol>
+#include <osgEarthSymbology/ModelSymbol>
 #include <osgEarthSymbology/ExtrusionSymbol>
 #include <osgEarthSymbology/AltitudeSymbol>
 #include <osgEarthSymbology/TextSymbol>
@@ -96,6 +98,7 @@ namespace osgEarth { namespace Symbology
         }
         template<typename T> T* get() { return getSymbol<T>(); } // alias
 
+        /** Whether the style contains a symbol of the template type */
         template<typename T> bool has() { return get<T>() != 0L; }
         template<typename T> const bool has() const { return get<T>() != 0L; }
 

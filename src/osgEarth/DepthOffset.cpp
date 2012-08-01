@@ -317,7 +317,7 @@ DepthOffsetUtils::getIsNotTextUniform()
     }
     return s_isNotTextUniform.get();
 }
-
+ 
 namespace
 {
     static osg::ref_ptr<osg::Program> s_depthOffsetProgram;
@@ -333,6 +333,7 @@ DepthOffsetUtils::getOrCreateProgram()
         if ( !s_depthOffsetProgram.valid() )
         {
             s_depthOffsetProgram = new osg::Program();
+            s_depthOffsetProgram->setName( "osgEarth::DepthOffset" );
             s_depthOffsetProgram->addShader( new osg::Shader(osg::Shader::VERTEX, createVertexShader("")) );
             s_depthOffsetProgram->addShader( new osg::Shader(osg::Shader::FRAGMENT, createFragmentShader("")) );
         }

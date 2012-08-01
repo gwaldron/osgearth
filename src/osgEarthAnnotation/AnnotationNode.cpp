@@ -318,4 +318,7 @@ AnnotationNode::applyStyle( const Style& style)
         _altitude = style.get<AltitudeSymbol>();
         setAutoClamp( true );
     }
+
+    bool enableLighting = style.has<ExtrusionSymbol>();
+    this->getOrCreateStateSet()->setMode( GL_LIGHTING, enableLighting );
 }

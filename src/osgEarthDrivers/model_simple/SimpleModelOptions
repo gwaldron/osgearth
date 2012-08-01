@@ -81,7 +81,7 @@ namespace osgEarth { namespace Drivers
             conf.getIfSet( "lod_scale", _lod_scale );
             conf.getIfSet( "location", _location);
             conf.getIfSet( "orientation", _orientation);
-            _node = conf.getNonSerializable<ExternalDataset>( "SimpleModelOptions::Node" );
+            _node = conf.getNonSerializable<osg::Node>( "SimpleModelOptions::Node" );
         }
 
         optional<URI> _url;

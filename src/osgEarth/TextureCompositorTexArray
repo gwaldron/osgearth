@@ -28,7 +28,8 @@
 namespace osgEarth
 {
     /**
-     * TODO: document
+     * Texture compositor that stacks image layers into a Texture Array.
+     * Note: not compatible with GLES, or with GLSL Version < 1.3
      */
     class TextureCompositorTexArray : public TextureCompositorTechnique
     {

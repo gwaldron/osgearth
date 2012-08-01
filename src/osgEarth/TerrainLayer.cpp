@@ -262,7 +262,7 @@ TerrainLayer::getTileSource() const
 
             // read the cache policy hint from the tile source unless user expressly set 
             // a policy in the initialization options.
-            if ( !_initOptions.cachePolicy().isSet() )
+            if ( _tileSource.valid() && !_initOptions.cachePolicy().isSet() )
             {
                 CachePolicy hint = _tileSource->getCachePolicyHint();
 

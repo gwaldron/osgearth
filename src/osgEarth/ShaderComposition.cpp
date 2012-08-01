@@ -19,6 +19,7 @@
 #include <osgEarth/ShaderComposition>
 
 #include <osgEarth/Registry>
+#include <osgEarth/Capabilities>
 #include <osg/Shader>
 #include <osg/Program>
 #include <osg/State>
@@ -46,8 +47,12 @@ using namespace osgEarth::ShaderComp;
 #define FRAGMENT_APPLY_COLORING "osgearth_frag_applyColoring"
 #define FRAGMENT_APPLY_LIGHTING "osgearth_frag_applyLighting"
 
+#define OSGEARTH_DUMP_SHADERS "OSGEARTH_DUMP_SHADERS"
+
 namespace
 {
+    bool s_dumpShaders = false;
+
     /** A hack for OSG 2.8.x to get access to the state attribute vector. */
     /** TODO: no longer needed in OSG 3+ ?? */
     class StateHack : public osg::State 
@@ -98,28 +103,34 @@ RenderingHints::useNumTextures(unsigned num)
 
 //------------------------------------------------------------------------
 
- // same type as PROGRAM (for proper state sorting)
- const osg::StateAttribute::Type VirtualProgram::SA_TYPE = osg::StateAttribute::PROGRAM;
- 
- 
- VirtualProgram::VirtualProgram( unsigned mask ) : 
- _mask   ( mask ),
- _inherit( true )
- {
- // because we sometimes update/change the attribute's members from within the apply() method
- this->setDataVariance( osg::Object::DYNAMIC );
- }
- 
- 
- VirtualProgram::VirtualProgram(const VirtualProgram& rhs, const osg::CopyOp& copyop ) :
- osg::StateAttribute( rhs, copyop ),
- _shaderMap  ( rhs._shaderMap ),
- _mask       ( rhs._mask ),
- _functions  ( rhs._functions ),
- _inherit    ( rhs._inherit )
- {
- //nop
- }
+// same type as PROGRAM (for proper state sorting)
+const osg::StateAttribute::Type VirtualProgram::SA_TYPE = osg::StateAttribute::PROGRAM;
+
+
+VirtualProgram::VirtualProgram( unsigned mask ) : 
+_mask   ( mask ),
+_inherit( true )
+{
+    // because we sometimes update/change the attribute's members from within the apply() method
+    this->setDataVariance( osg::Object::DYNAMIC );
+
+    // check the the dump env var
+    if ( ::getenv(OSGEARTH_DUMP_SHADERS) != 0L )
+    {
+        s_dumpShaders = true;
+    }
+}
+
+
+VirtualProgram::VirtualProgram(const VirtualProgram& rhs, const osg::CopyOp& copyop ) :
+osg::StateAttribute( rhs, copyop ),
+_shaderMap  ( rhs._shaderMap ),
+_mask       ( rhs._mask ),
+_functions  ( rhs._functions ),
+_inherit    ( rhs._inherit )
+{
+    //nop
+}
 
 
 osg::Shader*
@@ -395,7 +406,8 @@ namespace
             for( VirtualProgram::ShaderVector::const_iterator i = shaders.begin(); i != shaders.end(); ++i )
             {
                 program->addShader( i->get() );
-                OE_TEST << LC << "SHADER " << i->get()->getName() << ":\n" << i->get()->getShaderSource() << "\n" << std::endl;
+                if ( s_dumpShaders )
+                    OE_NOTICE << LC << "SHADER " << i->get()->getName() << ":\n" << i->get()->getShaderSource() << "\n" << std::endl;
             }
         }
     }
@@ -430,7 +442,8 @@ VirtualProgram::buildProgram( osg::State& state, ShaderMap& accumShaderMap )
     }
 
     // Create a new program and add all our shaders.
-    OE_TEST << LC << "---------PROGRAM: " << getName() << " ---------------\n" << std::endl;
+    if ( s_dumpShaders )
+        OE_NOTICE << LC << "---------PROGRAM: " << getName() << " ---------------\n" << std::endl;
 
     osg::Program* program = new osg::Program();
     program->setName(getName());
@@ -610,7 +623,7 @@ VirtualProgram::refreshAccumulatedFunctions( const osg::State& state )
     if ( _inherit )
     {
         const StateHack::AttributeVec* av = StateHack::GetAttributeVec( state, this );
-        if ( av )
+        if ( av && av->size() > 0 )
         {
             // find the closest VP that doesn't inherit:
             unsigned start;
@@ -806,12 +819,18 @@ ShaderFactory::createDefaultColoringVertexShader( unsigned numTexCoordSets ) con
 {
     std::stringstream buf;
 
-    buf << "#version " << GLSL_VERSION_STR << "\n"
+    buf << "#version " << GLSL_VERSION_STR << "\n";
 #ifdef OSG_GLES2_AVAILABLE
-        << "precision mediump float;\n"
+    buf << "precision mediump float;\n";
 #endif
     
-        << "varying vec4 osg_TexCoord[" << numTexCoordSets << "];\n"
+    //if ( numTexCoordSets > 0 )
+    //{
+    //    buf << "varying vec4 osg_TexCoord[" << numTexCoordSets << "];\n";
+    //}
+    buf << "varying vec4 osg_TexCoord[" << Registry::instance()->getCapabilities().getMaxGPUTextureCoordSets() << "];\n";
+
+    buf
         << "varying vec4 osg_FrontColor;\n"
         << "varying vec4 osg_FrontSecondaryColor;\n"
     
@@ -833,9 +852,8 @@ ShaderFactory::createDefaultColoringVertexShader( unsigned numTexCoordSets ) con
     str = buf.str();
 
     osg::Shader* shader = new osg::Shader(osg::Shader::VERTEX, str);
-    shader->setName( VERTEX_SETUP_COLORING ); //"osgearth_vert_setupColoring" );
+    shader->setName( VERTEX_SETUP_COLORING );
     return shader;
-    //return new osg::Shader( osg::Shader::VERTEX, str );
 }
 
 
@@ -853,9 +871,8 @@ ShaderFactory::createDefaultColoringFragmentShader( unsigned numTexImageUnits ) 
     
     if ( numTexImageUnits > 0 )
     {
-        buf << "varying vec4 osg_TexCoord[" << numTexImageUnits << "];\n";
-
-        
+        //buf << "varying vec4 osg_TexCoord[" << numTexImageUnits << "];\n";
+        buf << "varying vec4 osg_TexCoord[" << Registry::instance()->getCapabilities().getMaxGPUTextureCoordSets() << "];\n";
         buf << "uniform sampler2D ";
         for( unsigned i=0; i<numTexImageUnits; ++i )
         {
@@ -1012,9 +1029,9 @@ osg::Shader*
 ShaderFactory::createColorFilterChainFragmentShader( const std::string& function, const ColorFilterChain& chain ) const
 {
     std::stringstream buf;
-    buf << "#version " << GLSL_VERSION_STR << "\n"
+    buf << "#version " << GLSL_VERSION_STR << "\n";
 #ifdef OSG_GLES2_AVAILABLE
-    << "precision mediump float;\n";
+    buf << "precision mediump float;\n";
 #endif
 
     // write out the shader function prototypes:

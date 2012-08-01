@@ -76,7 +76,7 @@ namespace
 			// No textures : create a no-op shader
 			buf << "void osgearth_frag_applyColoring( inout vec4 color ) \n"
 				<< "{ \n"
-				<< "} \n"
+				<< "} \n";
 		}
 		else
 		{

@@ -65,19 +65,25 @@ namespace osgEarth { namespace Drivers
         osg::ref_ptr<osg::Group> iconAndLabelGroup() { return _iconAndLabelGroup; }
         const osg::ref_ptr<osg::Group> iconAndLabelGroup() const { return _iconAndLabelGroup; }
 
+        /** Specify a NodeCallBack which will be triggered on each external loaded model right after loading.
+        This allow to run optimizer or other specific processing on model referenced in KML file */
+        osg::ref_ptr<osg::NodeCallback>& externalNodeLoadedCallback() { return _externalNodeLoadedCallback; }
+        const osg::ref_ptr<osg::NodeCallback>& externalNodeLoadedCallback() const { return _externalNodeLoadedCallback; }
+
     public:
         KMLOptions() : _declutter( true ), _iconBaseScale( 1.0f ), _iconMaxSize(32) { }
 
         virtual ~KMLOptions() { }
 
     protected:
-        optional<URI>            _defaultIconURI;
-        osg::ref_ptr<osg::Image> _defaultIconImage;
-        osg::ref_ptr<TextSymbol> _defaultTextSymbol;
-        optional<bool>           _declutter;
-        optional<float>          _iconBaseScale;
-        optional<unsigned>       _iconMaxSize;
-        osg::ref_ptr<osg::Group> _iconAndLabelGroup;
+        optional<URI>                   _defaultIconURI;
+        osg::ref_ptr<osg::Image>        _defaultIconImage;
+        osg::ref_ptr<TextSymbol>        _defaultTextSymbol;
+        optional<bool>                  _declutter;
+        optional<float>                 _iconBaseScale;
+        optional<unsigned>              _iconMaxSize;
+        osg::ref_ptr<osg::Group>        _iconAndLabelGroup;
+        osg::ref_ptr<osg::NodeCallback> _externalNodeLoadedCallback;
     };
 
 } } // namespace osgEarth::Drivers

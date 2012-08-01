@@ -35,6 +35,8 @@ using namespace osgEarth::Annotation;
 void 
 KML_Placemark::build( const Config& conf, KMLContext& cx )
 {
+    osg::ref_ptr<osg::NodeCallback> externalNodeLoadedCallback = cx._options->externalNodeLoadedCallback();
+
     Style style;
     if ( conf.hasValue("styleurl") )
     {
@@ -96,6 +98,10 @@ KML_Placemark::build( const Config& conf, KMLContext& cx )
             {
                 markerURI = URI( marker->url()->eval(), marker->url()->uriContext() );
                 markerModel = markerURI.getNode();
+                if ( (markerModel.valid() == true) && (externalNodeLoadedCallback.valid() == true) )
+                {
+                    (*externalNodeLoadedCallback.get())(markerModel.get(), NULL);
+                }
 
                 // We can't leave the marker symbol in the style, or the GeometryCompiler will
                 // think we want to do Point-model substitution. So remove it. A bit of a hack

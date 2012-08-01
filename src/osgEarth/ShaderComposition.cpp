@@ -514,6 +514,18 @@ VirtualProgram::buildProgram( osg::State& state, ShaderMap& accumShaderMap )
 void
 VirtualProgram::apply( osg::State& state ) const
 {
+    if ( _shaderMap.empty() )
+    {
+        // if there's no data in the VP, unload any existing program.
+        const unsigned int contextID = state.getContextID();
+        const osg::GL2Extensions* extensions = osg::GL2Extensions::Get(contextID,true);
+        if( ! extensions->isGlslSupported() ) return;
+
+        extensions->glUseProgram( 0 );
+        state.setLastAppliedProgramObject(0);
+        return;
+    }
+
     // first, find and collect all the VirtualProgram attributes:
     ShaderMap accumShaderMap;
     

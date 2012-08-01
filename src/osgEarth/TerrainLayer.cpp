@@ -37,7 +37,7 @@ TerrainLayerOptions::TerrainLayerOptions( const ConfigOptions& options ) :
 ConfigOptions       ( options ),
 _minLevel           ( 0 ),
 _maxLevel           ( 99 ),
-_cachePolicy        ( CachePolicy::USAGE_DEFAULT ),
+_cachePolicy        ( CachePolicy::DEFAULT ),
 _loadingWeight      ( 1.0f ),
 _exactCropping      ( false ),
 _enabled            ( true ),

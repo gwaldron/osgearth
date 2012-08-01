@@ -377,7 +377,9 @@ namespace
 
             // establish our caching policy:
             const CachePolicy& cp = 
-                !cachePolicy.empty() ? cachePolicy : Registry::instance()->defaultCachePolicy();
+                !cachePolicy.inherits() ? cachePolicy :
+                Registry::instance()->defaultCachePolicy().isSet() ? Registry::instance()->defaultCachePolicy().value() :
+                CachePolicy::DEFAULT;
 
             // get a cache bin if we need it:
             CacheBin* bin = 0L;

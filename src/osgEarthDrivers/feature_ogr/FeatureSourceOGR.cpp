@@ -415,6 +415,8 @@ public:
             return false;
         }
 
+        dirty();
+
         return true;
     }
 

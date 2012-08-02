@@ -51,7 +51,7 @@ namespace osgEarth { namespace Drivers
 
 
     public:
-        SimpleModelOptions( const ConfigOptions& options ) : ModelSourceOptions( options ) {
+        SimpleModelOptions( const ConfigOptions& options=ConfigOptions() ) : ModelSourceOptions( options ) {
             setDriver( "simple" );
             fromConfig( _conf );
         }

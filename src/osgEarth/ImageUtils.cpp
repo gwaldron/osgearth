@@ -427,24 +427,24 @@ ImageUtils::isSingleColorImage(const osg::Image* image, float threshold)
 {
     PixelReader read(image);
 
-	osg::Vec4 referenceColor = read(0, 0);
-	float refR = referenceColor.r();
-	float refG = referenceColor.g();
-	float refB = referenceColor.b();
-	float refA = referenceColor.a();
+    osg::Vec4 referenceColor = read(0, 0);
+    float refR = referenceColor.r();
+    float refG = referenceColor.g();
+    float refB = referenceColor.b();
+    float refA = referenceColor.a();
 
     for(unsigned t=0; t<(unsigned)image->t(); ++t) 
     {
         for(unsigned s=0; s<(unsigned)image->s(); ++s)
         {
             osg::Vec4 color = read(s, t);
-			if (   (fabs(color.r()-refR) > threshold)
-				|| (fabs(color.g()-refG) > threshold)
-				|| (fabs(color.b()-refB) > threshold)
-				|| (fabs(color.a()-refA) > threshold) )
-			{
+            if (   (fabs(color.r()-refR) > threshold)
+                || (fabs(color.g()-refG) > threshold)
+                || (fabs(color.b()-refB) > threshold)
+                || (fabs(color.a()-refA) > threshold) )
+            {
                 return false;
-			}
+            }
         }
     }
     return true;    

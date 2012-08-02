@@ -277,15 +277,11 @@ GeometryCompiler::compile(FeatureList&          workingSet,
         }
 
         SubstituteModelFilter sub( style );
-        if ( marker->scale().isSet() )
-        {
-            //Turn on GL_NORMALIZE so lighting works properly
-            resultGroup->getOrCreateStateSet()->setMode(GL_NORMALIZE, osg::StateAttribute::ON );
-            //sub.setModelMatrix( osg::Matrixd::scale( *marker->scale() ) );
-        }
 
         sub.setClustering( *_options.clustering() );
+
         sub.setUseDrawInstanced( *_options.instancing() );
+
         if ( _options.featureName().isSet() )
             sub.setFeatureNameExpr( *_options.featureName() );
 
@@ -330,12 +326,6 @@ GeometryCompiler::compile(FeatureList&          workingSet,
         }
 
         SubstituteModelFilter sub( style );
-
-        if ( model && model->scale().isSet() )
-        {
-            // Turn on GL_NORMALIZE so lighting works properly
-            resultGroup->getOrCreateStateSet()->setMode(GL_NORMALIZE, osg::StateAttribute::ON );
-        }
 
         // activate clustering
         sub.setClustering( *_options.clustering() );
@@ -427,7 +417,9 @@ GeometryCompiler::compile(FeatureList&          workingSet,
         }
     }
 
-    resultGroup->getOrCreateStateSet()->setMode( GL_BLEND, 1 );
+    // Finally, optimize the stateset-sharing in the group.
+    sharedCX.getSession()->getStateSetCache().optimize( resultGroup.get() );
+
 
     //osgDB::writeNodeFile( *(resultGroup.get()), "out.osg" );
 

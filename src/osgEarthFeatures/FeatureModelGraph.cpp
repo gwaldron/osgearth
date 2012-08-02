@@ -188,12 +188,6 @@ _pendingUpdate( false )
         OE_WARN << LC << "ILLEGAL: Session must have a feature source" << std::endl;
         return;
     }
-
-    // initialize lighting on the graph, if necessary.
-    osg::StateSet* stateSet = getOrCreateStateSet();
-
-    if ( _options.enableLighting().isSet() )
-        stateSet->setMode( GL_LIGHTING, *_options.enableLighting() ? 1 : 0 );
     
     // Calculate the usable extent (in both feature and map coordinates) and bounds.
     const Profile* mapProfile = session->getMapInfo().getProfile();
@@ -249,9 +243,14 @@ _pendingUpdate( false )
         installShaderMains();
     }
 
+    // Set up the state set.
     // backface culling is ON by default. By the way, this is most definitely
     // necessary when shading with shadows.
-    this->getOrCreateStateSet()->setMode(GL_CULL_FACE, 1);
+    osg::StateSet* stateSet = getOrCreateStateSet();
+    stateSet->setMode( GL_CULL_FACE, 1 );
+    stateSet->setMode( GL_BLEND, 1 );
+    if ( _options.enableLighting().isSet() )
+        stateSet->setMode( GL_LIGHTING, *_options.enableLighting() ? 1 : 0 );
 
     ADJUST_EVENT_TRAV_COUNT( this, 1 );
 

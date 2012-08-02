@@ -29,6 +29,12 @@
 #include <string>
 #include <map>
 
+#ifdef OSG_GLES2_AVAILABLE
+    #define GLSL_VERSION_STR "100"
+#else
+    #define GLSL_VERSION_STR "110" 
+#endif
+
 namespace osgEarth
 {        
     namespace ShaderComp
@@ -275,3 +281,4 @@ namespace osgEarth
 } // namespace osgEarth
 
 #endif // OSGEARTH_SHADER_COMPOSITION_H
+

@@ -134,10 +134,11 @@ namespace
 //------------------------------------------------------------------------
 
 SubstituteModelFilter::SubstituteModelFilter( const Style& style ) :
-_style           ( style ),
-_cluster         ( false ),
-_useDrawInstanced( false ),
-_merge           ( true )
+_style                ( style ),
+_cluster              ( false ),
+_useDrawInstanced     ( false ),
+_merge                ( true ),
+_normalScalingRequired( false )
 {
     //NOP
 }
@@ -235,6 +236,8 @@ SubstituteModelFilter::process(const FeatureList&           features,
             scale = input->eval( scaleEx, &context );
             if ( scale == 0.0 )
                 scale = 1.0;
+            if ( scale != 1.0 )
+                _normalScalingRequired = true;
             scaleMatrix = osg::Matrix::scale( scale, scale, scale );
         }
         
@@ -633,6 +636,9 @@ SubstituteModelFilter::push(FeatureList& features, FilterContext& context)
         }
     }
 
+    // reset this marker:
+    _normalScalingRequired = false;
+
     // Compute localization info:
     FilterContext newContext( context );
 
@@ -652,8 +658,18 @@ SubstituteModelFilter::push(FeatureList& features, FilterContext& context)
         process( features, symbol, context.getSession(), group, newContext );
     }
 
-    // finally, optimize for stateset sharing.
-    context.getSession()->shareStateSets( group );
+    // see if we need normalized normals
+    if ( _normalScalingRequired )
+    {
+        // TODO: carefully test for this, since GL_NORMALIZE hurts performance in 
+        // FFP mode (RESCALE_NORMAL is faster for uniform scaling); and I think auto-normal-scaling
+        // is disabled entirely when using shaders. For now I believe we are dropping to FFP
+        // when not using instancing...so just check for that
+        if ( !_useDrawInstanced )
+        {
+            group->getOrCreateStateSet()->setMode( GL_NORMALIZE, osg::StateAttribute::ON );
+        }
+    }
 
     return group;
 }

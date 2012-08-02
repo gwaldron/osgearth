@@ -1,0 +1,67 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+* Copyright 2008-2012 Pelican Mapping
+* http://osgearth.org
+*
+* osgEarth is free software; you can redistribute it and/or modify
+* it under the terms of the GNU Lesser General Public License as published by
+* the Free Software Foundation; either version 2 of the License, or
+* (at your option) any later version.
+*
+* This program is distributed in the hope that it will be useful,
+* but WITHOUT ANY WARRANTY; without even the implied warranty of
+* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+* GNU Lesser General Public License for more details.
+*
+* You should have received a copy of the GNU Lesser General Public License
+* along with this program.  If not, see <http://www.gnu.org/licenses/>
+*/
+#ifndef OSGEARTH_STATE_SET_CACHE_H
+#define OSGEARTH_STATE_SET_CACHE_H 1
+
+#include <osgEarth/Common>
+#include <osgEarth/ThreadingUtils>
+#include <osg/StateSet>
+#include <set>
+
+namespace osgEarth
+{
+    /**
+     * Cache for optimizing state set sharing.
+     */
+    class OSGEARTH_EXPORT StateSetCache
+    {
+    public:
+        StateSetCache() { }
+        virtual ~StateSetCache() { }
+
+        /**
+         * Traverse the node and consolidate equivalent state sets, updating
+         * the cache along the way.
+         */
+        void optimize( osg::Node* node );
+
+        /**
+         * Looks in the cache for a stateset matching the input. If found,
+         * returns the cached one in output. If not found, stores the input 
+         * in the cache and returns the same one in output.
+         */
+        bool share( 
+            osg::ref_ptr<osg::StateSet>& input, 
+            osg::ref_ptr<osg::StateSet>& output );
+
+    protected: 
+        struct CompareStateSets {
+            bool operator()(
+                const osg::ref_ptr<osg::StateSet>& lhs,
+                const osg::ref_ptr<osg::StateSet>& rhs) const {
+                    return lhs->compare(*(rhs.get()), true) < 0;
+            }
+        };
+        typedef std::set< osg::ref_ptr<osg::StateSet>, CompareStateSets> StateSetSet;
+        StateSetSet              _stateSetCache;
+        mutable Threading::Mutex _mutex;
+    };
+}
+
+#endif // OSGEARTH_STATE_SET_CACHE_H

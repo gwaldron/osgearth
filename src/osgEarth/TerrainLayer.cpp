@@ -37,7 +37,7 @@ TerrainLayerOptions::TerrainLayerOptions( const ConfigOptions& options ) :
 ConfigOptions       ( options ),
 _minLevel           ( 0 ),
 _maxLevel           ( 99 ),
-_cachePolicy        ( CachePolicy::USAGE_DEFAULT ),
+_cachePolicy        ( CachePolicy::DEFAULT ),
 _loadingWeight      ( 1.0f ),
 _exactCropping      ( false ),
 _enabled            ( true ),
@@ -262,7 +262,7 @@ TerrainLayer::getTileSource() const
 
             // read the cache policy hint from the tile source unless user expressly set 
             // a policy in the initialization options.
-            if ( !_initOptions.cachePolicy().isSet() )
+            if ( _tileSource.valid() && !_initOptions.cachePolicy().isSet() )
             {
                 CachePolicy hint = _tileSource->getCachePolicyHint();
 

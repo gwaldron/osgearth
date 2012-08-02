@@ -33,17 +33,17 @@ namespace osgEarth
     public:
         enum Usage
         {
-            USAGE_READ_WRITE   = 0,  // read/write to the cache if one exists.
-            USAGE_CACHE_ONLY   = 1,  // treat the cache as the ONLY source of data.
-            USAGE_READ_ONLY    = 2,  // read from the cache, but don't write new data to it.
-            USAGE_NO_CACHE     = 3,  // neither read from or write to the cache
-            USAGE_DEFAULT      = USAGE_READ_WRITE
+            USAGE_UNSPECIFIED  = 0,
+            USAGE_READ_WRITE   = 1,  // read/write to the cache if one exists.
+            USAGE_CACHE_ONLY   = 2,  // treat the cache as the ONLY source of data.
+            USAGE_READ_ONLY    = 3,  // read from the cache, but don't write new data to it.
+            USAGE_NO_CACHE     = 4   // neither read from or write to the cache
         };
 
-        /* default cache policy */
+        /** default cache policy (READ_WRITE) */
         static CachePolicy DEFAULT;
 
-        /* inherited cache policy (same as DEFAULT) */
+        /* inherited cache policy */
         static CachePolicy INHERIT;
 
         /* policy indicating to never use a cache */
@@ -53,7 +53,7 @@ namespace osgEarth
         static CachePolicy CACHE_ONLY;
 
     public:
-        /** constructs a default caching policy (usage is READ_WRITE) */
+        /** constructs a default caching policy (usage is UNSPECIFIED..inherit) */
         CachePolicy();
 
         /** constructs a caching policy. */
@@ -78,8 +78,8 @@ namespace osgEarth
 
     public: // convenience functions.
 
-        bool empty() const {
-            return !_usage.isSet();
+        bool inherits() const {
+            return !_usage.isSet() || *_usage == USAGE_UNSPECIFIED;
         }
 
         bool isCacheReadable() const { 

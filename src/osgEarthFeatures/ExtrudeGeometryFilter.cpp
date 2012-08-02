@@ -947,8 +947,5 @@ ExtrudeGeometryFilter::push( FeatureList& input, FilterContext& context )
         stateSet->getOrCreateUniform("tex0", osg::Uniform::SAMPLER_2D)->set(0);
     }
 
-    // Finally, attempt to share state sets.
-    context.getSession()->shareStateSets( group );
-
     return group;
 }

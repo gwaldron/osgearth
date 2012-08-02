@@ -17,11 +17,11 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 #include "OceanCompositor"
-#include "OceanShaders"
 #include <osgEarth/ImageUtils>
 #include <osgEarth/Registry>
 #include <osgEarth/ShaderComposition>
 #include <osg/Texture2D>
+#include "OceanShaders"
 
 using namespace osgEarth;
 
@@ -33,6 +33,7 @@ OceanCompositor::updateMasterStateSet(osg::StateSet*       stateSet,
     if ( !vp )
     {
         vp = new VirtualProgram();
+        vp->setName("osgEarth OceanCompositor");
         stateSet->setAttributeAndModes( vp, 1 );
     }
     vp->installDefaultLightingShaders();
@@ -45,7 +46,7 @@ namespace
     std::string makeSamplerName(int slot)
     {
         std::stringstream buf;
-        buf << "tex" << slot;
+        buf << "ocean_tex" << slot;
         std::string str;
         str = buf.str();
         return str;

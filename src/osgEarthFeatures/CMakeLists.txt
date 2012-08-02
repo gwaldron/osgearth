@@ -53,7 +53,7 @@ SET(LIB_PUBLIC_HEADERS
     VirtualFeatureSource
 )
 
-ADD_LIBRARY(${LIB_NAME} SHARED
+ADD_LIBRARY(${LIB_NAME} ${OSGEARTH_USER_DEFINED_DYNAMIC_OR_STATIC}
     ${LIB_PUBLIC_HEADERS}
     AltitudeFilter.cpp
     BufferFilter.cpp

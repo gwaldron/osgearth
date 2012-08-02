@@ -39,7 +39,7 @@ SET(LIB_PUBLIC_HEADERS
     DrawInstanced
     ECEF
     ElevationLayer
-	ElevationLOD
+    ElevationLOD
     ElevationQuery
     Export
     FileUtils
@@ -83,6 +83,7 @@ SET(LIB_PUBLIC_HEADERS
     ShaderUtils
     SparseTexture2DArray
     SpatialReference
+    StateSetCache
     StringUtils
     TaskService
     Terrain
@@ -122,8 +123,7 @@ IF (NOT TINYXML_FOUND)
     )
 ENDIF (NOT TINYXML_FOUND)
 
-ADD_LIBRARY(${LIB_NAME} SHARED
-#    ${OSGEARTH_USER_DEFINED_DYNAMIC_OR_STATIC}
+ADD_LIBRARY(${LIB_NAME} ${OSGEARTH_USER_DEFINED_DYNAMIC_OR_STATIC}
     ${LIB_PUBLIC_HEADERS}
     ${TINYXML_SRC}
     Bounds.cpp
@@ -143,7 +143,7 @@ ADD_LIBRARY(${LIB_NAME} SHARED
     DrawInstanced.cpp
     ECEF.cpp
     ElevationLayer.cpp
-	ElevationLOD.cpp
+    ElevationLOD.cpp
     ElevationQuery.cpp
     FileUtils.cpp
     GeoData.cpp
@@ -183,6 +183,7 @@ ADD_LIBRARY(${LIB_NAME} SHARED
     ShaderUtils.cpp
     SparseTexture2DArray.cpp
     SpatialReference.cpp
+    StateSetCache.cpp
     StringUtils.cpp
     TaskService.cpp
     Terrain.cpp

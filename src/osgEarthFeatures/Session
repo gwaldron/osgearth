@@ -23,9 +23,8 @@
 #include <osgEarthFeatures/Common>
 #include <osgEarthFeatures/ScriptEngine>
 #include <osgEarthSymbology/StyleSheet>
+#include <osgEarth/StateSetCache>
 #include <osgEarth/ThreadingUtils>
-#include <osgEarth/Cache>
-#include <osgEarth/CachePolicy>
 #include <osgEarth/Map>
 
 namespace osgEarth { namespace Features
@@ -146,19 +145,9 @@ namespace osgEarth { namespace Features
 
     public:
         /**
-         * Looks in the shared stateset cache for a stateset matching the
-         * input. If found, returns the cached one in output. If not found,
-         * stores the input in the cache and returns in output. This can be
-         * used to automatically share identical state sets without running
-         * an optimization pass.
+         * The cache for optimizing stateset sharing within a session
          */
-        bool getSharedStateSet( osg::ref_ptr<osg::StateSet>& input, osg::ref_ptr<osg::StateSet>& output );
-
-        /**
-         * Traverses a graph and calls getSharedStateSet on any statesets found,
-         * facilitating sharing.
-         */
-        void shareStateSets( osg::Node* graph );
+        StateSetCache& getStateSetCache() { return _stateSetCache; }
 
     public:
       ScriptEngine* getScriptEngine() const;
@@ -177,17 +166,7 @@ namespace osgEarth { namespace Features
         osg::ref_ptr<const osgDB::Options> _dbOptions;
         osg::ref_ptr<ScriptEngine>         _styleScriptEngine;
         osg::ref_ptr<FeatureSource>        _featureSource;
-
-    private:
-        struct CompareStateSets {
-            bool operator()(
-                const osg::ref_ptr<osg::StateSet>& lhs,
-                const osg::ref_ptr<osg::StateSet>& rhs) const {
-                    return lhs->compare(*(rhs.get()), true) < 0;
-            }
-        };
-        typedef std::set< osg::ref_ptr<osg::StateSet>, CompareStateSets> StateSetSet;
-        StateSetSet _stateSetCache;
+        StateSetCache                      _stateSetCache;
     };
 
 } }

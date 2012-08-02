@@ -85,6 +85,7 @@ namespace osgEarth { namespace Features
         bool                          _merge;
         StringExpression              _featureNameExpr;
         osg::ref_ptr<ResourceLibrary> _resourceLib;
+        bool                          _normalScalingRequired;
 
         typedef LRUCache<URI, osg::ref_ptr<InstanceResource> > InstanceCache;
         InstanceCache _instanceCache;

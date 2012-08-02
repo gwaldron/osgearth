@@ -47,11 +47,14 @@ ModelNode::init()
 {
     this->setHorizonCulling(false);
 
-    osg::ref_ptr<const InstanceSymbol> sym = _style->get<InstanceSymbol>();
+    osg::ref_ptr<const ModelSymbol> sym = _style->get<ModelSymbol>();
     
     // backwards-compatibility: support for MarkerSymbol (deprecated)
     if ( !sym.valid() && _style->has<MarkerSymbol>() )
-        sym = _style->get<MarkerSymbol>()->convertToInstanceSymbol();
+    {
+        osg::ref_ptr<InstanceSymbol> temp = _style->get<MarkerSymbol>()->convertToInstanceSymbol();
+        sym = dynamic_cast<const ModelSymbol*>( temp.get() );
+    }
 
     if ( sym.valid() )
     {
@@ -70,14 +73,12 @@ ModelNode::init()
                     this->setScale( osg::Vec3f(s, s, s) );
                 }
 
-                const ModelSymbol* model = sym->asModel();
-
-                if (model && (model->heading().isSet() || model->pitch().isSet() || model->roll().isSet()) )
+                if (sym && (sym->heading().isSet() || sym->pitch().isSet() || sym->roll().isSet()) )
                 {
                     osg::Matrix rot;
-                    double heading = model->heading().isSet() ? model->heading()->eval() : 0.0;
-                    double pitch   = model->pitch().isSet()   ? model->pitch()->eval()   : 0.0;
-                    double roll    = model->roll().isSet()    ? model->roll()->eval()    : 0.0;
+                    double heading = sym->heading().isSet() ? sym->heading()->eval() : 0.0;
+                    double pitch   = sym->pitch().isSet()   ? sym->pitch()->eval()   : 0.0;
+                    double roll    = sym->roll().isSet()    ? sym->roll()->eval()    : 0.0;
                     rot.makeRotate( 
                         osg::DegreesToRadians(heading), osg::Vec3(1,0,0),
                         osg::DegreesToRadians(pitch),   osg::Vec3(0,0,1),

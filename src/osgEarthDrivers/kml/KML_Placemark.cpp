@@ -81,8 +81,9 @@ KML_Placemark::build( const Config& conf, KMLContext& cx )
         bool isPoint = geom->getComponentType() == Geometry::TYPE_POINTSET;
 
         // check for symbols.
-        InstanceSymbol* instance = style.get<InstanceSymbol>();
-        TextSymbol*     text     = style.get<TextSymbol>();
+        ModelSymbol*    model = style.get<ModelSymbol>();
+        IconSymbol*     icon  = style.get<IconSymbol>();
+        TextSymbol*     text  = style.get<TextSymbol>();
 
         if ( !text && cx._options->defaultTextSymbol().valid() )
             text = cx._options->defaultTextSymbol().get();
@@ -94,44 +95,42 @@ KML_Placemark::build( const Config& conf, KMLContext& cx )
             text->content()->setLiteral( name );
         }
 
-        AnnotationNode* fNode = 0L;
-        AnnotationNode* pNode = 0L;
+        AnnotationNode* featureNode = 0L;
+        AnnotationNode* iconNode    = 0L;
+        AnnotationNode* modelNode   = 0L;
 
         // one coordinate? It's a place marker or a label.
         if ( geometry._geom->getTotalPointCount() == 1 )
         {
             // load up the default icon if there we don't have one.
-            if ( !instance )
+            if ( !model && !icon )
             {
-                instance = cx._options->defaultIconSymbol().get();
-                if ( instance )
-                    style.add( instance );
+                icon = cx._options->defaultIconSymbol().get();
+                if ( icon )
+                    style.add( icon );
             }
 
-            if ( instance && instance->asModel() )
+            if ( model )
             {
                 ModelNode* node = new ModelNode( cx._mapNode, style, cx._dbOptions );
                 node->setPosition( position );
-                pNode = node;
+                modelNode = node;
             }
 
-            else
+            if ( !text && !name.empty() )
             {
-                if ( !text && !name.empty() )
-                {
-                    text = style.getOrCreate<TextSymbol>();
-                    text->content()->setLiteral( name );
-                }
+                text = style.getOrCreate<TextSymbol>();
+                text->content()->setLiteral( name );
+            }
 
-                if ( instance && instance->asIcon() )
-                {
-                    pNode = new PlaceNode( cx._mapNode, position, style, cx._dbOptions );
-                }
+            if ( icon )
+            {
+                iconNode = new PlaceNode( cx._mapNode, position, style, cx._dbOptions );
+            }
 
-                else if ( text && !name.empty() )
-                {
-                    pNode = new LabelNode( cx._mapNode, position, style );
-                }
+            else if ( text && !name.empty() )
+            {
+                iconNode = new LabelNode( cx._mapNode, position, style );
             }
         }
 
@@ -156,42 +155,59 @@ KML_Placemark::build( const Config& conf, KMLContext& cx )
             }
 
             Feature* feature = new Feature(geometry._geom.get(), cx._srs.get(), style);
-            fNode = new FeatureNode( cx._mapNode, feature, draped, compilerOptions );
+            featureNode = new FeatureNode( cx._mapNode, feature, draped, compilerOptions );
         }
 
 
         // assemble the results:
-        if ( pNode && fNode )
+        if ( (iconNode || modelNode) && featureNode )
         {
             osg::Group* group = new osg::Group();
-            group->addChild( fNode );
-            group->addChild( pNode );
+            group->addChild( featureNode );
+            if ( iconNode )
+                group->addChild( iconNode );
+            if ( modelNode )
+                group->addChild( modelNode );
+
             cx._groupStack.top()->addChild( group );
-            if ( cx._options->declutter() == true )
-                Decluttering::setEnabled( pNode->getOrCreateStateSet(), true );
-            KML_Feature::build( conf, cx, pNode );
-            KML_Feature::build( conf, cx, fNode );
+
+            if ( iconNode && cx._options->declutter() == true )
+                Decluttering::setEnabled( iconNode->getOrCreateStateSet(), true );
+
+            if ( iconNode )
+                KML_Feature::build( conf, cx, iconNode );
+            if ( modelNode )
+                KML_Feature::build( conf, cx, modelNode );
+            if ( featureNode )
+                KML_Feature::build( conf, cx, featureNode );
         }
 
-        else if ( pNode )
+        else
         {
-            if ( cx._options->iconAndLabelGroup().valid() )
+            if ( iconNode )
             {
-                cx._options->iconAndLabelGroup()->addChild( pNode );
+                if ( cx._options->iconAndLabelGroup().valid() )
+                {
+                    cx._options->iconAndLabelGroup()->addChild( iconNode );
+                }
+                else
+                {
+                    cx._groupStack.top()->addChild( iconNode );
+                    if ( cx._options->declutter() == true )
+                        Decluttering::setEnabled( iconNode->getOrCreateStateSet(), true );
+                }
+                KML_Feature::build( conf, cx, iconNode );
             }
-            else
+            if ( modelNode )
             {
-                cx._groupStack.top()->addChild( pNode );
-                if ( cx._options->declutter() == true )
-                    Decluttering::setEnabled( pNode->getOrCreateStateSet(), true );
+                cx._groupStack.top()->addChild( modelNode );
+                KML_Feature::build( conf, cx, modelNode );
             }
-            KML_Feature::build( conf, cx, pNode );
-        }
-
-        else if ( fNode )
-        {
-            cx._groupStack.top()->addChild( fNode );
-            KML_Feature::build( conf, cx, fNode );
+            if ( featureNode )
+            {
+                cx._groupStack.top()->addChild( featureNode );
+                KML_Feature::build( conf, cx, featureNode );
+            }
         }
     }
 }

@@ -47,7 +47,7 @@ KML_Model::parseStyle(const Config& conf, KMLContext& cx, Style& style)
     if ( !url.empty() )
     {
         if ( !model ) model = style.getOrCreate<ModelSymbol>();
-        model->url() = StringExpression( Stringify() << "\"" << url << "\"" );
+        model->url()->setLiteral( url );
         model->url()->setURIContext( URIContext(conf.referrer()) );
     }
 

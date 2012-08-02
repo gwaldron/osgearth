@@ -78,16 +78,22 @@ _dataModelRevision   ( 0 )
     // if the map was a cache policy set, make this the system-wide default, UNLESS
     // there ALREADY IS a registry default, in which case THAT will override THIS one.
     // (In other words, whichever one is set first wins.)
+    const optional<CachePolicy> regCachePolicy = Registry::instance()->defaultCachePolicy();
+
     if ( _mapOptions.cachePolicy().isSet() )
     {
-        if ( Registry::instance()->defaultCachePolicy().empty() )
+        if ( !regCachePolicy.isSet() || regCachePolicy->inherits() )
+        {
             Registry::instance()->setDefaultCachePolicy( *_mapOptions.cachePolicy() );
+        }
         else
-            _mapOptions.cachePolicy() = Registry::instance()->defaultCachePolicy();
+        {
+            _mapOptions.cachePolicy() = *regCachePolicy;
+        }
     }
-    else if ( ! Registry::instance()->defaultCachePolicy().empty() )
+    else if ( regCachePolicy.isSet() )
     {
-        _mapOptions.cachePolicy() = Registry::instance()->defaultCachePolicy();
+        _mapOptions.cachePolicy() = *regCachePolicy;
     }
 
     // the map-side dbOptions object holds I/O information for all components.

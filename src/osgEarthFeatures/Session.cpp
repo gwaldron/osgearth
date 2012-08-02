@@ -71,7 +71,8 @@ Session::createMapFrame( Map::ModelParts parts ) const
 void
 Session::removeObject( const std::string& key )
 {
-    Threading::ScopedWriteLock lock( _objMapMutex );
+    Threading::ScopedMutexLock lock( _objMapMutex );
+    //Threading::ScopedWriteLock lock( _objMapMutex );
     _objMap.erase( key );
 }
 

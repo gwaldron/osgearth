@@ -17,8 +17,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 
-#ifndef OSGEARTHSYMBOLOGY_MODEL_SYMBOL_H
-#define OSGEARTHSYMBOLOGY_MODEL_SYMBOL_H 1
+#ifndef OSGEARTHSYMBOLOGY_MARKER_SYMBOL_H
+#define OSGEARTHSYMBOLOGY_MARKER_SYMBOL_H 1
 
 #include <climits>
 
@@ -143,4 +143,4 @@ namespace osgEarth { namespace Symbology
 
 } } // namespace osgEarth::Symbology
 
-#endif
+#endif // OSGEARTHSYMBOLOGY_MARKER_SYMBOL_H

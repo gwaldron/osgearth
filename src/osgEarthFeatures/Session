@@ -23,9 +23,8 @@
 #include <osgEarthFeatures/Common>
 #include <osgEarthFeatures/ScriptEngine>
 #include <osgEarthSymbology/StyleSheet>
+#include <osgEarth/StateSetCache>
 #include <osgEarth/ThreadingUtils>
-#include <osgEarth/Cache>
-#include <osgEarth/CachePolicy>
 #include <osgEarth/Map>
 
 namespace osgEarth { namespace Features
@@ -84,6 +83,11 @@ namespace osgEarth { namespace Features
         const osgDB::Options* getDBOptions() const;
 
     public:
+        template<typename T>
+        struct CreateFunctor {
+            virtual T* operator()() const =0;
+        };
+
         /**
          * Stores an object in the shared Session cache.
          *
@@ -95,7 +99,8 @@ namespace osgEarth { namespace Features
          */
         template<typename T>
         T* putObject( const std::string& key, T* object, bool overwrite =true ) {
-            Threading::ScopedWriteLock lock( _objMapMutex );
+            //Threading::ScopedWriteLock lock( _objMapMutex );
+            Threading::ScopedMutexLock lock( _objMapMutex );
             ObjectMap::iterator i = _objMap.find(key);
             if ( i != _objMap.end() && !overwrite )
                 return dynamic_cast<T*>(i->second.get());
@@ -109,12 +114,40 @@ namespace osgEarth { namespace Features
          */
         template<typename T>
         osg::ref_ptr<T> getObject( const std::string& key ) {
-            Threading::ScopedReadLock lock( _objMapMutex );
+            //Threading::ScopedReadLock lock( _objMapMutex );
+            Threading::ScopedMutexLock lock( _objMapMutex );
             ObjectMap::const_iterator i = _objMap.find(key);
             return i != _objMap.end() ? dynamic_cast<T*>( i->second.get() ) : 0L;
         }
 
+        template<typename T>
+        bool getOrCreateObject(const std::string& key, osg::ref_ptr<T>& output, const CreateFunctor<T>& create) {
+            Threading::ScopedMutexLock lock( _objMapMutex );
+            ObjectMap::const_iterator i = _objMap.find(key);
+            if ( i != _objMap.end() ) {
+                output = dynamic_cast<T*>( i->second.get() );
+                return true;
+            }
+            else {
+                T* object = create();
+                if ( object ) {
+                    _objMap[key] = object;
+                    output = object;
+                    return true;
+                }
+                else {
+                    return false;
+                }
+            }
+        }
+
         void removeObject( const std::string& key );
+
+    public:
+        /**
+         * The cache for optimizing stateset sharing within a session
+         */
+        StateSetCache& getStateSetCache() { return _stateSetCache; }
 
     public:
       ScriptEngine* getScriptEngine() const;
@@ -122,7 +155,8 @@ namespace osgEarth { namespace Features
     private:
         typedef std::map<std::string, osg::ref_ptr<osg::Referenced> > ObjectMap;
         ObjectMap                    _objMap;
-        Threading::ReadWriteMutex    _objMapMutex;
+        //Threading::ReadWriteMutex    _objMapMutex;
+        Threading::Mutex             _objMapMutex;
 
         URIContext                         _uriContext;
         osg::observer_ptr<const Map>       _map;
@@ -132,6 +166,7 @@ namespace osgEarth { namespace Features
         osg::ref_ptr<const osgDB::Options> _dbOptions;
         osg::ref_ptr<ScriptEngine>         _styleScriptEngine;
         osg::ref_ptr<FeatureSource>        _featureSource;
+        StateSetCache                      _stateSetCache;
     };
 
 } }

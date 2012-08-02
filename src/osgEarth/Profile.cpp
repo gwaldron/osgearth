@@ -373,6 +373,7 @@ Profile::toProfileOptions() const
     return op;
 }
 
+
 Profile*
 Profile::overrideSRS( const SpatialReference* srs ) const
 {

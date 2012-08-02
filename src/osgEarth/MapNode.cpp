@@ -272,7 +272,6 @@ MapNode::init()
     // model layer will still work OK though.
     _models = new osg::Group();
     _models->setName( "osgEarth::MapNode.modelsGroup" );
-    _models->getOrCreateStateSet()->setAttributeAndModes( new osg::Program(), osg::StateAttribute::OFF );
     addChild( _models.get() );
 
     // make a group for overlay model layers:
@@ -315,6 +314,15 @@ MapNode::init()
     }
 
     dirtyBound();
+
+    // Install top-level shader programs:
+    if ( Registry::capabilities().supportsGLSL() )
+    {
+        VirtualProgram* vp = new VirtualProgram();
+        vp->setName( "MapNode" );
+        vp->installDefaultColoringAndLightingShaders();
+        ss->setAttributeAndModes( vp, osg::StateAttribute::ON );
+    }
 
     // register for event traversals so we can deal with blacklisted filenames
     ADJUST_EVENT_TRAV_COUNT( this, 1 );

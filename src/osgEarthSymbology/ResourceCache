@@ -23,6 +23,7 @@
 #include <osgEarthSymbology/Common>
 #include <osgEarthSymbology/Skins>
 #include <osgEarthSymbology/MarkerResource>
+#include <osgEarthSymbology/InstanceResource>
 #include <osgEarth/Containers>
 #include <osgEarth/ThreadingUtils>
 
@@ -64,8 +65,14 @@ namespace osgEarth { namespace Symbology
 
         /**
          * Gets a node corresponding to a marker.
+         * @deprecated
          */
         osg::Node* getMarkerNode( MarkerResource* marker );
+
+        /**
+         * Gets a node corresponding to an instance resource.
+         */
+        osg::Node* getInstanceNode( InstanceResource* instance );
 
     protected:
         osg::ref_ptr<const osgDB::Options> _dbOptions;
@@ -77,6 +84,9 @@ namespace osgEarth { namespace Symbology
 
         typedef LRUCache<MarkerResource*, osg::ref_ptr<osg::Node> > MarkerCache;
         MarkerCache _markerCache;
+
+        typedef LRUCache<InstanceResource*, osg::ref_ptr<osg::Node> > InstanceCache;
+        InstanceCache _instanceCache;
     };
 
 } } // namespace osgEarth::Symbology

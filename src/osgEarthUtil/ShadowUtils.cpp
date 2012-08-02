@@ -24,6 +24,8 @@
 #include <osgEarth/ShaderComposition>
 #include <osgEarth/TerrainEngineNode>
 #include <osgEarth/TextureCompositor>
+#include <osgEarth/Registry>
+#include <osgEarth/Capabilities>
 
 #include <osg/StateSet>
 #include <osgShadow/StandardShadowMap>
@@ -125,20 +127,26 @@ ShadowUtils::setUpShadows(osgShadow::ShadowedScene* sscene, osg::Group* root)
 
 
     std::stringstream buf;
+    buf << "#version " << GLSL_VERSION_STR << "\n";
     buf << "varying vec4 colorAmbientEmissive;\n";
+    buf << "varying vec4 shadow_TexCoord0;\n";
+    if ( su1 >= 0 )
+        buf << "varying vec4 shadow_TexCoord1;\n";
+
+
     buf << "void osgearth_vert_setupShadowCoords()\n";
     buf << "{\n";
     buf << "    vec4 position4 = gl_ModelViewMatrix * gl_Vertex;\n";
-    buf << "    gl_TexCoord[" << su << "].s = dot( position4, gl_EyePlaneS[" << su <<"]);\n";
-    buf << "    gl_TexCoord[" << su << "].t = dot( position4, gl_EyePlaneT[" << su <<"]);\n";
-    buf << "    gl_TexCoord[" << su << "].p = dot( position4, gl_EyePlaneR[" << su <<"]);\n";
-    buf << "    gl_TexCoord[" << su << "].q = dot( position4, gl_EyePlaneQ[" << su <<"]);\n";
+    buf << "    shadow_TexCoord0.s = dot( position4, gl_EyePlaneS[" << su <<"]);\n";
+    buf << "    shadow_TexCoord0.t = dot( position4, gl_EyePlaneT[" << su <<"]);\n";
+    buf << "    shadow_TexCoord0.p = dot( position4, gl_EyePlaneR[" << su <<"]);\n";
+    buf << "    shadow_TexCoord0.q = dot( position4, gl_EyePlaneQ[" << su <<"]);\n";
     if (su1 >= 0)
     {
-        buf << "    gl_TexCoord[" << su1 << "].s = dot( position4, gl_EyePlaneS[" << su1 <<"]);\n";
-        buf << "    gl_TexCoord[" << su1 << "].t = dot( position4, gl_EyePlaneT[" << su1 <<"]);\n";
-        buf << "    gl_TexCoord[" << su1 << "].p = dot( position4, gl_EyePlaneR[" << su1 <<"]);\n";
-        buf << "    gl_TexCoord[" << su1 << "].q = dot( position4, gl_EyePlaneQ[" << su1 <<"]);\n";
+        buf << "    shadow_TexCoord1.s = dot( position4, gl_EyePlaneS[" << su1 <<"]);\n";
+        buf << "    shadow_TexCoord1.t = dot( position4, gl_EyePlaneT[" << su1 <<"]);\n";
+        buf << "    shadow_TexCoord1.p = dot( position4, gl_EyePlaneR[" << su1 <<"]);\n";
+        buf << "    shadow_TexCoord1.q = dot( position4, gl_EyePlaneQ[" << su1 <<"]);\n";
     }
     buf << "    colorAmbientEmissive = gl_FrontLightModelProduct.sceneColor\n";
     buf << "                         + gl_FrontLightProduct[0].ambient;\n";
@@ -157,26 +165,31 @@ ShadowUtils::setUpShadows(osgShadow::ShadowedScene* sscene, osg::Group* root)
 
     std::stringstream buf2;
     buf2 <<
-        "#version 110 \n"
-        "uniform sampler2DShadow shadowTexture;\n";
+        "#version " << GLSL_VERSION_STR << "\n"
+        "uniform sampler2DShadow shadowTexture;\n"
+        "varying vec4 shadow_TexCoord0;\n";
+
     if (su1 >= 0)
     {
         // bound by vdsm
         buf2 << "uniform sampler2DShadow shadowTexture1;\n";
+        buf2 << "varying vec4 shadow_TexCoord1;\n";
     }
     buf2 <<
-        "varying vec4 colorAmbientEmissive;\n\n"
+        "varying vec4 colorAmbientEmissive;\n"
+        "varying vec4 osg_FrontColor;\n"
+        "varying vec4 osg_FrontSecondaryColor;\n"
         "void osgearth_frag_applyLighting( inout vec4 color )\n"
         "{\n"
         "    float alpha = color.a;\n"
-        "    float shadowFac = shadow2DProj( shadowTexture, gl_TexCoord[" << su << "]).r;\n";
+        "    float shadowFac = shadow2DProj( shadowTexture, shadow_TexCoord0).r;\n";
     if (su1 > 0)
     {
-        buf2 << "    shadowFac *= shadow2DProj( shadowTexture1, gl_TexCoord[" << su1 << "]).r;\n";
+        buf2 << "    shadowFac *= shadow2DProj( shadowTexture1, shadow_TexCoord1).r;\n";
     }
     buf2 <<
-        "    vec4 diffuseLight = mix(colorAmbientEmissive, gl_Color, shadowFac);\n"
-        "    color = color * diffuseLight + gl_SecondaryColor * shadowFac;\n"
+        "    vec4 diffuseLight = mix(colorAmbientEmissive, osg_FrontColor, shadowFac);\n"
+        "    color = color * diffuseLight + osg_FrontSecondaryColor * shadowFac;\n"
         "    color.a = alpha;\n"
         "}\n";
 

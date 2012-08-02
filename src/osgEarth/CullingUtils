@@ -26,6 +26,7 @@
 #include <osg/CoordinateSystemNode>
 #include <osg/Vec3d>
 #include <osg/Vec3>
+#include <osgUtil/CullVisitor>
 
 namespace osgEarth
 {    
@@ -105,6 +106,16 @@ namespace osgEarth
             if ( nv->getFrameStamp()->getFrameNumber() - _frame <= 1 )
                 traverse(node, nv);
         }
+    };
+
+    struct DisableSubgraphCulling : public osg::NodeCallback {
+        void operator()(osg::Node* n, osg::NodeVisitor* v);
+    };
+
+    struct StaticBound : public osg::Node::ComputeBoundingSphereCallback {
+        osg::BoundingSphere _bs;
+        StaticBound(const osg::BoundingSphere& bs) : _bs(bs) { }
+        osg::BoundingSphere computeBound(const osg::Node&) const { return _bs; }
     };
 
     /**

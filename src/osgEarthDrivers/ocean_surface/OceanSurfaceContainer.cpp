@@ -79,16 +79,16 @@ _parentMapNode( mapNode )
         // set up the options uniforms.
         osg::StateSet* ss = this->getOrCreateStateSet();
 
-        _seaLevel = new osg::Uniform(osg::Uniform::FLOAT, "seaLevel");
+        _seaLevel = new osg::Uniform(osg::Uniform::FLOAT, "ocean_seaLevel");
         ss->addUniform( _seaLevel.get() );
 
-        _lowFeather = new osg::Uniform(osg::Uniform::FLOAT, "lowFeather");
+        _lowFeather = new osg::Uniform(osg::Uniform::FLOAT, "ocean_lowFeather");
         ss->addUniform( _lowFeather.get() );
 
-        _highFeather = new osg::Uniform(osg::Uniform::FLOAT, "highFeather");
+        _highFeather = new osg::Uniform(osg::Uniform::FLOAT, "ocean_highFeather");
         ss->addUniform( _highFeather.get() );
 
-        _baseColor = new osg::Uniform(osg::Uniform::FLOAT_VEC4, "baseColor");
+        _baseColor = new osg::Uniform(osg::Uniform::FLOAT_VEC4, "ocean_baseColor");
         ss->addUniform( _baseColor.get() );
 
         // trick to prevent z-fighting..
@@ -96,11 +96,11 @@ _parentMapNode( mapNode )
         ss->setRenderBinDetails( 15, "RenderBin" );
 
         // load up a surface texture
-        ss->getOrCreateUniform( "has_tex1", osg::Uniform::BOOL )->set( false );
+        ss->getOrCreateUniform( "ocean_has_tex1", osg::Uniform::BOOL )->set( false );
         if ( options.textureURI().isSet() )
         {
             //TODO: enable cache support here:
-            osg::Image* image = options.textureURI()->readImage().releaseImage();
+            osg::Image* image = options.textureURI()->getImage();
             if ( image )
             {
                 osg::Texture2D* tex = new osg::Texture2D( image );
@@ -110,8 +110,8 @@ _parentMapNode( mapNode )
                 tex->setWrap  ( osg::Texture::WRAP_T, osg::Texture::REPEAT );
 
                 ss->setTextureAttributeAndModes( 1, tex, 1 );
-                ss->getOrCreateUniform( "tex1", osg::Uniform::SAMPLER_2D )->set( 1 );
-                ss->getOrCreateUniform( "has_tex1", osg::Uniform::BOOL )->set( true );
+                ss->getOrCreateUniform( "ocean_tex1", osg::Uniform::SAMPLER_2D )->set( 1 );
+                ss->getOrCreateUniform( "ocean_has_tex1", osg::Uniform::BOOL )->set( true );
             }
         }
 

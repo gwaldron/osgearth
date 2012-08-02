@@ -31,12 +31,13 @@ using namespace osgEarth;
 
 
 TMSPackager::TMSPackager(const Profile* outProfile) :
-_outProfile         ( outProfile ),
-_maxLevel           ( 5 ),
-_verbose            ( false ),
-_overwrite          ( false ),
-_keepEmptyImageTiles( false ),
-_abortOnError       ( true )
+_outProfile                     ( outProfile ),
+_maxLevel                       ( 5 ),
+_verbose                        ( false ),
+_overwrite                      ( false ),
+_keepEmptyImageTiles            ( false ),
+_subdivideSingleColorImageTiles ( false ),
+_abortOnError                   ( true )
 {
     //nop
 }
@@ -91,12 +92,23 @@ TMSPackager::packageImageTile(ImageLayer*          layer,
             << "/" << h - key.getTileY() - 1
             << "." << extension;
 
+        bool isSingleColor = false;
         bool tileOK = osgDB::fileExists(path) && !_overwrite;
         if ( !tileOK )
         {
             GeoImage image = layer->createImage( key );
             if ( image.valid() )
             {
+                // Check for single color
+                if ( !_subdivideSingleColorImageTiles )
+                {
+                    isSingleColor = ImageUtils::isSingleColorImage(image.getImage());
+                    if ( _verbose )
+                    {
+                        OE_NOTICE << LC << "Not subdividing single color tile " << key.str() << std::endl;
+                    }
+                }
+
                 // check for empty:
                 if ( !_keepEmptyImageTiles && ImageUtils::isEmptyImage(image.getImage()) )
                 {
@@ -158,7 +170,7 @@ TMSPackager::packageImageTile(ImageLayer*          layer,
             (tileOK && lod+1 < maxLevel);
 
         // subdivide if necessary:
-        if ( subdivide )
+        if ( (subdivide == true) && (isSingleColor == false) )
         {
             for( unsigned q=0; q<4; ++q )
             {

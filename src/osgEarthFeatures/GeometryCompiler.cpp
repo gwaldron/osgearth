@@ -418,7 +418,15 @@ GeometryCompiler::compile(FeatureList&          workingSet,
     }
 
     // Finally, optimize the stateset-sharing in the group.
-    sharedCX.getSession()->getStateSetCache().optimize( resultGroup.get() );
+    if ( sharedCX.getSession() )
+    {
+        sharedCX.getSession()->getStateSetCache().optimize( resultGroup.get() );
+    }
+    else
+    {
+        StateSetCache tempCache;
+        tempCache.optimize( resultGroup.get() );
+    }
 
 
     //osgDB::writeNodeFile( *(resultGroup.get()), "out.osg" );

@@ -19,15 +19,17 @@
 
 #include <osgEarthAnnotation/ModelNode>
 #include <osgEarthAnnotation/AnnotationRegistry>
+#include <osgEarthSymbology/Style>
+#include <osgEarthSymbology/InstanceSymbol>
 
 #define LC "[ModelNode] "
 
 using namespace osgEarth;
 using namespace osgEarth::Annotation;
+using namespace osgEarth::Symbology;
 
 
 ModelNode::ModelNode(MapNode*              mapNode,
-                     const URI&            uri,
                      const Style&          style,
                      const osgDB::Options* dbOptions,
                      const CachePolicy&    cachePolicy ) :
@@ -35,12 +37,7 @@ LocalizedNode( mapNode ),
 _dbOptions   ( dbOptions ),
 _cachePolicy ( cachePolicy )
 {
-    if ( !uri.empty() )
-        _uri = uri;
-    
-    if ( !style.empty() )
-        _style = style;
-
+    _style = style;
     init();
 }
 
@@ -50,23 +47,61 @@ ModelNode::init()
 {
     this->setHorizonCulling(false);
 
-    if ( _uri.isSet() )
+    osg::ref_ptr<const InstanceSymbol> sym = _style->get<InstanceSymbol>();
+    
+    // backwards-compatibility: support for MarkerSymbol (deprecated)
+    if ( !sym.valid() && _style->has<MarkerSymbol>() )
+        sym = _style->get<MarkerSymbol>()->convertToInstanceSymbol();
+
+    if ( sym.valid() )
     {
-        osg::Node* node = _uri->getNode( _dbOptions.get(), *_cachePolicy );
-        if ( node )
+        if ( sym->url().isSet() )
         {
-            getTransform()->addChild( node );
-            this->addChild( getTransform() );
-            
-            applyStyle( *_style );
+            URI uri( sym->url()->eval(), sym->url()->uriContext() );
+            osg::Node* node = uri.getNode( _dbOptions.get(), *_cachePolicy );
+            if ( node )
+            {
+                getTransform()->addChild( node );
+                this->addChild( getTransform() );
+
+                if ( sym->scale().isSet() )
+                {
+                    double s = sym->scale()->eval();
+                    this->setScale( osg::Vec3f(s, s, s) );
+                }
+
+                const ModelSymbol* model = sym->asModel();
+
+                if (model && (model->heading().isSet() || model->pitch().isSet() || model->roll().isSet()) )
+                {
+                    osg::Matrix rot;
+                    double heading = model->heading().isSet() ? model->heading()->eval() : 0.0;
+                    double pitch   = model->pitch().isSet()   ? model->pitch()->eval()   : 0.0;
+                    double roll    = model->roll().isSet()    ? model->roll()->eval()    : 0.0;
+                    rot.makeRotate( 
+                        osg::DegreesToRadians(heading), osg::Vec3(1,0,0),
+                        osg::DegreesToRadians(pitch),   osg::Vec3(0,0,1),
+                        osg::DegreesToRadians(roll),    osg::Vec3(0,1,0) );
+                    this->setLocalRotation( rot.getRotate() );
+                }
+
+                applyStyle( *_style );
+            }
+            else
+            {
+                OE_WARN << LC << "Failed to load data from " << uri.full() << std::endl;
+            }
         }
         else
         {
-            OE_WARN << LC << "Failed to load node from " << _uri->full() << std::endl;
+            OE_WARN << LC << "Symbology: no URI" << std::endl;
         }
     }
+    else
+    {
+        OE_WARN << LC << "Insufficient symbology" << std::endl;
+    }
 }
-
 
 //-------------------------------------------------------------------
 
@@ -76,9 +111,12 @@ OSGEARTH_REGISTER_ANNOTATION( model, osgEarth::Annotation::ModelNode );
 ModelNode::ModelNode(MapNode* mapNode, const Config& conf) :
 LocalizedNode( mapNode )
 {
-    conf.getIfSet   ( "url",          _uri );
     conf.getObjIfSet( "style",        _style );
     conf.getObjIfSet( "cache_policy", _cachePolicy );
+
+    std::string uri = conf.value("url");
+    if ( !uri.empty() )
+        _style->getOrCreate<ModelSymbol>()->url() = StringExpression(uri);
 
     init();
 
@@ -91,7 +129,7 @@ ModelNode::getConfig() const
 {
     Config conf("model");
 
-    conf.updateIfSet   ( "url",          _uri );
+    //conf.updateIfSet   ( "url",          _uri );
     conf.updateObjIfSet( "style",        _style );
     conf.updateObjIfSet( "cache_policy", _cachePolicy );
     conf.updateObj     ( "position",     getPosition() );

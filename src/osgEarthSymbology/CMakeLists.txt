@@ -44,6 +44,7 @@ SET(LIB_PUBLIC_HEADERS
     Skins
     StencilVolumeNode
     Style
+    StyleContext
     StyleSelector
     StyleSheet
     SLD

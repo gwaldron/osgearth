@@ -184,13 +184,13 @@ GeometryCompiler::compile(FeatureList&          workingSet,
     }
 
     // go through the Style and figure out which filters to use.
-    const MarkerSymbol*    marker    = style.get<MarkerSymbol>();
     const PointSymbol*     point     = style.get<PointSymbol>();
     const LineSymbol*      line      = style.get<LineSymbol>();
     const PolygonSymbol*   polygon   = style.get<PolygonSymbol>();
     const ExtrusionSymbol* extrusion = style.get<ExtrusionSymbol>();
     const AltitudeSymbol*  altitude  = style.get<AltitudeSymbol>();
     const TextSymbol*      text      = style.get<TextSymbol>();
+    const MarkerSymbol*    marker    = style.get<MarkerSymbol>();    // to be deprecated
     const IconSymbol*      icon      = style.get<IconSymbol>();
     const ModelSymbol*     model     = style.get<ModelSymbol>();
 

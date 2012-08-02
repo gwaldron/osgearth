@@ -47,8 +47,11 @@ namespace osgEarth { namespace Symbology
       };
 
     public:
-        /** Constructs a new style sheet, optionally from a Config serialization. */
-        StyleSheet( const Config& conf =Config() );
+        /** Constructs an empty style sheet. */
+        StyleSheet();
+
+        /** Constructs a new style sheet */
+        StyleSheet( const Config& conf );
 
         /** Gets the context for relative path resolution */
         const URIContext& uriContext() const { return _uriContext; }
@@ -78,7 +81,7 @@ namespace osgEarth { namespace Symbology
         void addResourceLibrary( ResourceLibrary* library );
 
         /** Gets a resource library by name. */
-        ResourceLibrary* getResourceLibrary( const std::string& name, const osgDB::Options* dbOptions ) const;
+        ResourceLibrary* getResourceLibrary( const std::string& name ) const;
 
         /** Gets the script */
         Script* script() const { return _script.get(); }

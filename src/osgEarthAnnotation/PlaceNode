@@ -20,16 +20,12 @@
 #define OSGEARTH_ANNOTATION_PLACE_NODE_H 1
 
 #include <osgEarthAnnotation/OrthoNode>
-#include <osgEarth/MapNode>
 #include <osgEarthSymbology/Style>
-#include <osgEarthUtil/Controls>
-#include <osg/MatrixTransform>
 
 namespace osgEarth { namespace Annotation
-{	
+{
     using namespace osgEarth;
     using namespace osgEarth::Symbology;
-    using namespace osgEarth::Util::Controls;
 
     /** 
      * A PlaceNode combines an 2D icon, a label, support for mouse interaction
@@ -52,13 +48,22 @@ namespace osgEarth { namespace Annotation
 
         /**
          * Constructs a new place node. You can specify an icon marker by
-         * adding a MarkerSymbol to the Style.
+         * adding a IconSymbol to the Style.
          */
         PlaceNode(
             MapNode*           mapNode,
             const GeoPoint&    position,
             const std::string& labelText,
             const Style&       style =Style() );
+
+        /**
+         * Constuct a new place node entirely from symbology
+         */
+        PlaceNode(
+            MapNode*              mapNode,
+            const GeoPoint&       position,
+            const Style&          style,
+            const osgDB::Options* dbOptions);
 
         /**
          * Deserializes a place node
@@ -99,9 +104,7 @@ namespace osgEarth { namespace Annotation
         std::string                _text;
         Style                      _style;
 
-        osg::ref_ptr<Container>    _container;
-        osg::ref_ptr<ImageControl> _icon;
-        osg::ref_ptr<LabelControl> _label;
+        osg::ref_ptr<const osgDB::Options> _dbOptions;
 
         class osg::Geode*          _geode;
 

@@ -41,9 +41,17 @@ namespace osgEarth { namespace Symbology
         /** dtor */
         virtual ~ModelSymbol() { }
 
-        /** Orientation in HPR degrees */
+        /** heading in degrees */
         optional<NumericExpression>& heading() { return _heading; }
         const optional<NumericExpression>& heading() const { return _heading; }
+
+        /** pitch in degrees */
+        optional<NumericExpression>& pitch() { return _pitch; }
+        const optional<NumericExpression>& pitch() const { return _pitch; }
+        
+        /** roll in degrees */
+        optional<NumericExpression>& roll() { return _roll; }
+        const optional<NumericExpression>& roll() const { return _roll; }
         
     public: // non-serialized properties (for programmatic use only)
 
@@ -61,6 +69,8 @@ namespace osgEarth { namespace Symbology
 
     protected:
         optional<NumericExpression>  _heading;
+        optional<NumericExpression>  _pitch;
+        optional<NumericExpression>  _roll;
         osg::ref_ptr<osg::Node>      _node;
     };
 

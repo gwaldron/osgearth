@@ -29,6 +29,8 @@
 
 namespace osgEarth { namespace Symbology
 {
+    class InstanceSymbol;
+
     /**
      * The MarkerSymbol describes replacement of geometry with "markers". A marker
      * it another object like a 3D model (node) or an image.
@@ -72,6 +74,9 @@ namespace osgEarth { namespace Symbology
 
     public:
         MarkerSymbol( const Config& conf =Config() );
+
+        /** Since MarkerSymbol is deprecated, this conveneince function will convert to an InstanceSymbol */
+        class InstanceSymbol* convertToInstanceSymbol() const;
 
         /** dtor */
         virtual ~MarkerSymbol() { }

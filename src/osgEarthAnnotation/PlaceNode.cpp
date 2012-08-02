@@ -24,7 +24,9 @@
 #include <osgEarthFeatures/LabelSource>
 #include <osgEarth/Utils>
 #include <osgEarth/Registry>
+
 #include <osg/Depth>
+#include <osgText/Text>
 
 #define LC "[PlaceNode] "
 
@@ -62,58 +64,91 @@ _geode  ( 0L )
     init();
 }
 
+PlaceNode::PlaceNode(MapNode*              mapNode,
+                     const GeoPoint&       position,
+                     const Style&          style,
+                     const osgDB::Options* dbOptions ) :
+OrthoNode ( mapNode, position ),
+_style    ( style ),
+_dbOptions( dbOptions )
+{
+    init();
+}
+
 void
 PlaceNode::init()
 {
     _geode = new osg::Geode();
-
     osg::Drawable* text = 0L;
 
-    if ( !_image.valid() && _style.getSymbol<MarkerSymbol>() )
+    // If there's no explicit text, look to the text symbol for content.
+    if ( _text.empty() && _style.has<TextSymbol>() )
+        _text = _style.get<TextSymbol>()->content()->eval();
+
+    osg::ref_ptr<const InstanceSymbol> instance = _style.get<InstanceSymbol>();
+
+    // backwards compability, support for deprecated MarkerSymbol
+    if ( !instance.valid() && _style.has<MarkerSymbol>() )
+        instance = _style.get<MarkerSymbol>()->convertToInstanceSymbol();
+
+    const IconSymbol* icon = instance->asIcon();
+
+    if ( !_image.valid() )
     {
-        _image = _style.getSymbol<MarkerSymbol>()->getImage();
+        URI imageURI;
+
+        if ( icon )
+        {
+            if ( icon->url().isSet() )
+                imageURI = URI( icon->url()->eval(), icon->url()->uriContext() );
+        }
+
+        if ( !imageURI.empty() )
+        {
+            _image = imageURI.getImage( _dbOptions.get() );
+        }
     }
 
+    // found an image; now format it:
     if ( _image.get() )
     {
         // this offset anchors the image at the bottom
         osg::Vec2s offset;
-        MarkerSymbol* marker = _style.get<MarkerSymbol>();
-        if ((marker == NULL) || !marker->alignment().isSet())
+        if ( !icon || !icon->alignment().isSet() )
         {	
             // default to bottom center
             offset.set(0.0, (_image->t() / 2.0));
         }
         else
         {	// default to bottom center
-            switch (marker->alignment().value())
+            switch (icon->alignment().value())
             {
-            case MarkerSymbol::ALIGN_LEFT_TOP:
+            case IconSymbol::ALIGN_LEFT_TOP:
                 offset.set((_image->s() / 2.0), -(_image->t() / 2.0));
                 break;
-            case MarkerSymbol::ALIGN_LEFT_CENTER:
+            case IconSymbol::ALIGN_LEFT_CENTER:
                 offset.set((_image->s() / 2.0), 0.0);
                 break;
-            case MarkerSymbol::ALIGN_LEFT_BOTTOM:
+            case IconSymbol::ALIGN_LEFT_BOTTOM:
                 offset.set((_image->s() / 2.0), (_image->t() / 2.0));
                 break;
-            case MarkerSymbol::ALIGN_CENTER_TOP:
+            case IconSymbol::ALIGN_CENTER_TOP:
                 offset.set(0.0, -(_image->t() / 2.0));
                 break;
-            case MarkerSymbol::ALIGN_CENTER_CENTER:
+            case IconSymbol::ALIGN_CENTER_CENTER:
                 offset.set(0.0, 0.0);
                 break;
-            case MarkerSymbol::ALIGN_CENTER_BOTTOM:
+            case IconSymbol::ALIGN_CENTER_BOTTOM:
             default:
                 offset.set(0.0, (_image->t() / 2.0));
                 break;
-            case MarkerSymbol::ALIGN_RIGHT_TOP:
+            case IconSymbol::ALIGN_RIGHT_TOP:
                 offset.set(-(_image->s() / 2.0), -(_image->t() / 2.0));
                 break;
-            case MarkerSymbol::ALIGN_RIGHT_CENTER:
+            case IconSymbol::ALIGN_RIGHT_CENTER:
                 offset.set(-(_image->s() / 2.0), 0.0);
                 break;
-            case MarkerSymbol::ALIGN_RIGHT_BOTTOM:
+            case IconSymbol::ALIGN_RIGHT_BOTTOM:
                 offset.set(-(_image->s() / 2.0), (_image->t() / 2.0));
                 break;
             }
@@ -121,10 +156,9 @@ PlaceNode::init()
 
         // Apply a rotation to the marker if requested:
         double heading = 0.0;
-        if ( marker && marker->orientation().isSet() )
+        if ( icon && icon->heading().isSet() )
         {
-            //Just get the heading
-            heading = osg::DegreesToRadians(marker->orientation().value().x());
+            heading = osg::DegreesToRadians( icon->heading()->eval() );
         }
 
         //We must actually rotate the geometry itself and not use a MatrixTransform b/c the 
@@ -158,17 +192,6 @@ PlaceNode::init()
     applyStyle( _style );
 }
 
-#if 0 // TODO
-void
-PlaceNode::setIconImage( osg::Image* image )
-{
-    if ( !_dynamic )
-    {
-        OE_WARN << LC << "Illegal state: cannot change a LabelNode that is not dynamic" << std::endl;
-        return;
-    }
-}
-#endif
 
 void
 PlaceNode::setText( const std::string& text )
@@ -193,17 +216,6 @@ PlaceNode::setText( const std::string& text )
     }
 }
 
-#if 0 // TODO
-void
-PlaceNode::setStyle( const Style& style )
-{
-    if ( !_dynamic )
-    {
-        OE_WARN << LC << "Illegal state: cannot change a LabelNode that is not dynamic" << std::endl;
-        return;
-    }
-}
-#endif
 
 void
 PlaceNode::setAnnotationData( AnnotationData* data )
@@ -217,6 +229,7 @@ PlaceNode::setAnnotationData( AnnotationData* data )
         i->get()->setUserData( data );
     }
 }
+
 
 void
 PlaceNode::setDynamic( bool value )

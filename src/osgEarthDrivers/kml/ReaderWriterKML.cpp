@@ -91,12 +91,9 @@ struct ReaderWriterKML : public osgDB::ReaderWriter
         const KMLOptions* kmlOptions =
             static_cast<const KMLOptions*>(options->getPluginData("osgEarth::KMLOptions") );
 
-        // Grab the URIContext from the options (since we're reading from a stream)
-        URIContext uriContext( options );
-
         // fire up a KML reader and parse the data.
         KMLReader reader( mapNode, kmlOptions );
-        osg::Node* node = reader.read( in, uriContext );
+        osg::Node* node = reader.read( in, options );
         return ReadResult(node);
     }
 

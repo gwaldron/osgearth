@@ -28,7 +28,8 @@ using namespace osgEarth::Symbology;
 
 IconSymbol::IconSymbol( const Config& conf ) :
 InstanceSymbol( conf ),
-_alignment    ( ALIGN_CENTER_BOTTOM )
+_alignment    ( ALIGN_CENTER_BOTTOM ),
+_heading      ( NumericExpression(0.0) )
 {
     mergeConfig( conf );
 }
@@ -49,6 +50,8 @@ IconSymbol::getConfig() const
     conf.addIfSet( "alignment", "right_center",  _alignment, ALIGN_RIGHT_CENTER );
     conf.addIfSet( "alignment", "right_bottom",  _alignment, ALIGN_RIGHT_BOTTOM );
 
+    conf.addObjIfSet( "heading", _heading );
+
     conf.addNonSerializable( "IconSymbol::image", _image.get() );
     return conf;
 }
@@ -65,6 +68,8 @@ IconSymbol::mergeConfig( const Config& conf )
     conf.getIfSet( "alignment", "right_top",     _alignment, ALIGN_RIGHT_TOP );
     conf.getIfSet( "alignment", "right_center",  _alignment, ALIGN_RIGHT_CENTER );
     conf.getIfSet( "alignment", "right_bottom",  _alignment, ALIGN_RIGHT_BOTTOM );
+
+    conf.getObjIfSet( "heading", _heading );
 
     _image = conf.getNonSerializable<osg::Image>( "IconSymbol::image" );
 }

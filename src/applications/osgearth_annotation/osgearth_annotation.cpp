@@ -182,7 +182,7 @@ main(int argc, char** argv)
     // A series of place nodes (an icon with a text label)
     {
         Style pin;
-        pin.getOrCreate<MarkerSymbol>()->url()->set( "../data/placemark32.png" );
+        pin.getOrCreate<IconSymbol>()->url()->setLiteral( "../data/placemark32.png" );
 
         labelGroup->addChild( new PlaceNode(mapNode, GeoPoint(geoSRS, -74.00, 40.71), "New York"      , pin));
         labelGroup->addChild( new PlaceNode(mapNode, GeoPoint(geoSRS, -77.04, 38.85), "Washington, DC", pin));

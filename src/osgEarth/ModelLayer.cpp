@@ -65,6 +65,7 @@ ModelLayerOptions::getConfig() const
     conf.updateIfSet( "enabled", _enabled );
     conf.updateIfSet( "visible", _visible );
     conf.updateIfSet( "lighting", _lighting );
+    conf.updateNonSerializable( "ModelLayerOptions::Decorator", _decorator.get() );
 
     // temporary.
     conf.updateIfSet( "disable_shaders", _disableShaderComp );
@@ -84,6 +85,7 @@ ModelLayerOptions::fromConfig( const Config& conf )
     conf.getIfSet( "enabled", _enabled );
     conf.getIfSet( "visible", _visible );
     conf.getIfSet( "lighting", _lighting );
+    _decorator = conf.getNonSerializable<osg::Group>( "ModelLayerOptions::Decorator" );
 
     // temporary.
     conf.getIfSet( "disable_shaders", _disableShaderComp );
@@ -169,6 +171,12 @@ ModelLayer::getOrCreateNode( ProgressCallback* progress )
         {
             _node = _modelSource->createNode( progress );
 
+            if ( (_node.valid() == true) && (_runtimeOptions.decorator().valid() == true) )
+            {
+                _runtimeOptions.decorator()->addChild(_node);
+                _node = _runtimeOptions.decorator();
+            }
+
             if ( _runtimeOptions.visible().isSet() && _node.valid())
               _node->setNodeMask( *_runtimeOptions.visible() ? ~0 : 0 );
 
@@ -186,6 +194,16 @@ ModelLayer::getOrCreateNode( ProgressCallback* progress )
                         // temporary construct until we can get external shadergen working
                         osg::StateSet* ss = _node->getOrCreateStateSet();
                         ss->setAttributeAndModes( new osg::Program(), osg::StateAttribute::OFF );
+                    }
+                    else
+                    {
+                        ShaderFactory* fact = Registry::instance()->getShaderFactory();
+
+                        VirtualProgram* vp = new VirtualProgram();
+                        vp->setName( "ModelLayer" );
+                        vp->installDefaultColoringAndLightingShaders();
+
+                        _node->getOrCreateStateSet()->setAttributeAndModes( vp, osg::StateAttribute::ON );
                     }
                 }
 

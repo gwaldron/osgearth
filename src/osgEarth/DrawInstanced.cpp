@@ -178,7 +178,7 @@ DrawInstanced::convertGraphToUseDrawInstanced( osg::Group* parent )
         }
 
         // calculate slice count and sizes:
-        unsigned sliceSize = std::min(matrices.size(), maxSliceSize);
+        unsigned sliceSize = std::min(matrices.size(), (size_t)maxSliceSize);
         unsigned numSlices = matrices.size() / maxSliceSize;
         unsigned lastSliceSize = matrices.size() % maxSliceSize;
         if ( lastSliceSize == 0 )

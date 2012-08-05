@@ -17,6 +17,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 #include <osgEarthSymbology/InstanceSymbol>
+#include <osgEarthSymbology/IconSymbol>
+#include <osgEarthSymbology/ModelSymbol>
 
 using namespace osgEarth;
 using namespace osgEarth::Symbology;
@@ -57,4 +59,17 @@ InstanceSymbol::mergeConfig( const Config& conf )
     conf.getIfSet   ( "placement", "random",   _placement, PLACEMENT_RANDOM );
     conf.getIfSet   ( "density", _density );
     conf.getIfSet   ( "random_seed", _randomSeed );
+}
+
+
+const IconSymbol*
+InstanceSymbol::asIcon() const
+{
+    return dynamic_cast<const IconSymbol*>( this );
+}
+
+const ModelSymbol*
+InstanceSymbol::asModel() const
+{
+    return dynamic_cast<const ModelSymbol*>( this );
 }

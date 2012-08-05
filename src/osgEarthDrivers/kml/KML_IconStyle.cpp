@@ -17,13 +17,14 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 #include "KML_IconStyle"
+#include <osgEarthSymbology/IconSymbol>
 
 void
 KML_IconStyle::scan( const Config& conf, Style& style, KMLContext& cx )
 {
     if ( !conf.empty() )
     {
-        MarkerSymbol* marker = style.getOrCreate<MarkerSymbol>();
+        IconSymbol* icon = style.getOrCreate<IconSymbol>();
 
         // Icon/Href or just Icon are both valid
         std::string iconHref = conf.child("icon").value("href");
@@ -31,27 +32,15 @@ KML_IconStyle::scan( const Config& conf, Style& style, KMLContext& cx )
             iconHref = conf.value("icon");
 
         if ( !iconHref.empty() )
-        {
-            marker->url() = StringExpression( iconHref );
-            marker->url()->setURIContext( URIContext(conf.referrer()) );
-        }
+            icon->url() = StringExpression( iconHref, URIContext(conf.referrer()) );
 
-        optional<float> heading;
-        conf.getIfSet( "heading", heading );
-        if ( heading.isSet() )
-        {
-            osg::Vec3f orient(heading.value(), 0.0, 0.0);
-            marker->orientation() = orient;
-        }
+        // see: https://developers.google.com/kml/documentation/kmlreference#headingdiagram
+        if ( conf.hasValue("heading") )
+            icon->heading() = NumericExpression( conf.value("heading") );
 
         float finalScale = *cx._options->iconBaseScale();
 
-        optional<float> scale;
-        conf.getIfSet( "scale", scale );
-        if ( scale.isSet() )
-            finalScale *= scale.value();
-
-        if ( finalScale != 1.0f )
-            marker->scale() = NumericExpression( finalScale );
+        if ( conf.hasValue("scale") )
+            icon->scale() = NumericExpression( conf.value("scale") );
     }
 }

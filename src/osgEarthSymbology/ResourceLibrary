@@ -46,12 +46,15 @@ namespace osgEarth { namespace Symbology
          * Creates a new resource library with a source URI. The library
          * will populate upon first use..
          */
-        ResourceLibrary( const std::string& name, const URI& uri );
+        ResourceLibrary( 
+            const std::string& name, 
+            const URI&         uri);
 
         /**
          * Creates a new resource library from a config.
          */
-        ResourceLibrary( const Config& conf =Config() );
+        ResourceLibrary( const Config& conf );
+
 
         /** dtor */
         virtual ~ResourceLibrary() { }

@@ -52,83 +52,7 @@ using namespace osgEarth::Symbology;
 
 namespace
 {
-
     static osg::Node* s_defaultModel =0L;
-
-    /**
-     * Backwards compatibility - convert a MarkerSymbol so we can process it.
-     */
-    InstanceSymbol* convertMarkerToInstance( const MarkerSymbol* marker )
-    {
-        InstanceSymbol* result = 0L;
-        
-        bool isModel = true;
-
-        if ( marker->isModel().isSet() )
-        {
-            isModel = *marker->isModel();
-        }
-        else if ( marker->getModel() )
-        {
-            isModel = true;
-        }
-        else if ( marker->url().isSet() )
-        {
-            const std::string& str = marker->url()->expr();
-            std::string ext = osgDB::getLowerCaseFileExtension(str);
-            if ( !ext.empty() )
-            {
-                const osgDB::Registry::MimeTypeExtensionMap& exmap = osgDB::Registry::instance()->getMimeTypeExtensionMap();
-                for( osgDB::Registry::MimeTypeExtensionMap::const_iterator i = exmap.begin(); i != exmap.end(); ++i )
-                {
-                    if ( i->second == ext )
-                    {
-                        if ( i->first.compare(0, 6, "image/") == 0 )
-                            isModel = false;
-                        break;
-                    }
-                }
-            }
-        }
-
-        if ( isModel )
-        {
-            ModelSymbol* model = new ModelSymbol();
-
-            if ( marker->orientation().isSet() )
-                model->heading() = NumericExpression(marker->orientation()->x());
-
-            if ( model->getModel() )
-                model->setModel( marker->getModel() );
-
-            result = model;
-        }
-        else // icon image
-        {
-            IconSymbol* icon = new IconSymbol();
-
-            if ( marker->alignment().isSet() )
-                icon->alignment() = (IconSymbol::Alignment)marker->alignment().get();
-
-            if ( marker->getImage() )
-                icon->setImage( marker->getImage() );
-        }
-
-        if ( marker->url().isSet() )
-            result->url() = marker->url().get();
-        if ( marker->libraryName().isSet() )
-            result->libraryName() = marker->libraryName().get();
-        if ( marker->placement().isSet() )
-            result->placement() = (InstanceSymbol::Placement)marker->placement().get();
-        if ( marker->density().isSet() )
-            result->density() = marker->density().get();
-        if ( marker->scale().isSet() )
-            result->scale() = marker->scale().get();
-        if ( marker->randomSeed().isSet() )
-            result->randomSeed() = marker->randomSeed().get();
-
-        return result;
-    }
 }
 
 //------------------------------------------------------------------------
@@ -611,7 +535,7 @@ SubstituteModelFilter::push(FeatureList& features, FilterContext& context)
     if ( !symbol.valid() )
     {
         if ( _style.has<MarkerSymbol>() )
-            symbol = convertMarkerToInstance( _style.get<MarkerSymbol>() );
+            symbol = _style.get<MarkerSymbol>()->convertToInstanceSymbol();
     }
 
     if ( !symbol.valid() )
@@ -627,7 +551,7 @@ SubstituteModelFilter::push(FeatureList& features, FilterContext& context)
 
     if ( symbol->libraryName().isSet() )
     {
-        _resourceLib = sheet->getResourceLibrary( symbol->libraryName()->expr(), context.getDBOptions() );
+        _resourceLib = sheet->getResourceLibrary( symbol->libraryName()->expr() );
 
         if ( !_resourceLib.valid() )
         {

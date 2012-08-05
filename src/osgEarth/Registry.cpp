@@ -119,6 +119,13 @@ _terrainEngineDriver( "osgterrain" )
         OE_INFO << LC << "NO-CACHE MODE set from environment variable" << std::endl;
     }
 
+    // set the default terrain engine driver from the environment
+    const char* teStr = ::getenv("OSGEARTH_TERRAIN_ENGINE");
+    if ( teStr )
+    {
+        _terrainEngineDriver = std::string(teStr);
+    }
+
     // load a default font
 
     const char* envFont = ::getenv("OSGEARTH_DEFAULT_FONT");

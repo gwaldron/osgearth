@@ -53,7 +53,6 @@
 
 
 using namespace osgEarth::Util;
-using namespace osgEarth::Util::Controls;
 
 #define TRACK_ICON_URL    "../data/m2525_air.png"
 #define TRACK_ICON_SIZE   24

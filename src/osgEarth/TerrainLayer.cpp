@@ -29,7 +29,7 @@
 using namespace osgEarth;
 using namespace OpenThreads;
 
-#define LC "[TerrainLayer] "
+#define LC "[TerrainLayer] \"" << getName() << "\": "
 
 //------------------------------------------------------------------------
 
@@ -217,7 +217,7 @@ TerrainLayer::setCache( Cache* cache )
                 Config driverConf = _runtimeOptions->driver()->getConfig();
                 Config hashConf   = driverConf - layerConf;
 
-                OE_DEBUG << LC << "Hash JSON for layer " << getName() << " is: " << hashConf.toJSON(false) << std::endl;
+                OE_DEBUG << LC << "Hash JSON is: " << hashConf.toJSON(false) << std::endl;
 
                 // remove cache-control properties before hashing.
                 hashConf.remove( "cache_only" );
@@ -282,11 +282,11 @@ TerrainLayer::getTileSource() const
                 if ( hint.usage().isSetTo(CachePolicy::USAGE_NO_CACHE) )
                 {
                     const_cast<TerrainLayer*>(this)->setCachePolicy( hint );
-                    OE_INFO << LC << "Caching disabled (by policy hint) for layer " << getName() << std::endl;
+                    OE_INFO << LC << "Caching disabled (by policy hint)" << std::endl;
                 }
             }
 
-            OE_INFO << LC << "Layer " << getName() << ": cache policy = " << getCachePolicy().usageString() << std::endl;
+            OE_INFO << LC << "cache policy = " << getCachePolicy().usageString() << std::endl;
         }
     }
 
@@ -463,15 +463,15 @@ TerrainLayer::getCacheBin( const Profile* profile, const std::string& binId )
                 }
                 else if ( isCacheOnly() )
                 {
-                    OE_WARN << LC << "Failed to create a cache bin for layer \"" << getName()
-                        << "\" because cache_only mode is enabled and no existing cache could be found."
+                    OE_WARN << LC << "Failed to create a cache bin for layer"
+                        << " because cache_only mode is enabled and no existing cache could be found."
                         << std::endl;
                     return 0L;
                 }
                 else
                 {
-                    OE_WARN << LC << "Failed to create a cache bin for layer \"" << getName()
-                        << "\" because there is no valid tile source."
+                    OE_WARN << LC << "Failed to create a cache bin for layer"
+                        << " because there is no valid tile source."
                         << std::endl;
                     return 0L;
                 }
@@ -487,8 +487,7 @@ TerrainLayer::getCacheBin( const Profile* profile, const std::string& binId )
         {
             // bin creation failed, so disable caching for this layer.
             _runtimeOptions->cachePolicy()->usage() = CachePolicy::USAGE_NO_CACHE;
-            OE_WARN << LC << "Failed to create a cacheing bin for layer \"" << getName() 
-                << "\"; cache disabled." 
+            OE_WARN << LC << "Failed to create a cacheing bin for layer; cache disabled." 
                 << std::endl;
         }
 
@@ -544,23 +543,20 @@ TerrainLayer::initTileSource()
         // report on a manual override profile:
         if ( _tileSource->getProfile() )
         {
-            OE_INFO << LC << "Layer \"" << getName() << "\" set profile to: " 
+            OE_INFO << LC << "set profile to: " 
                 << _tileSource->getProfile()->toString() << std::endl;
         }
 
         // Intialize the tile source.
-        // It's odd that we pass the profile into initialize. This used to be the override
-        // profile, but now that gets set in TileSourceFactory::create. We are keeping it
-        // here for backwards compatibility for now.
-        _tileSource->initialize( _dbOptions.get(), _tileSource->getProfile() );
+        const TileSource::Status& status = _tileSource->startup( _dbOptions.get() );
 
-        if ( _tileSource->isOK() )
+        if ( status == TileSource::STATUS_OK )
         {
             _tileSize = _tileSource->getPixelsPerTile();
         }
         else
         {
-            OE_WARN << "Could not initialize TileSource for layer " << getName() << std::endl;
+            OE_WARN << LC << "Could not initialize driver" << std::endl;
             _tileSource = NULL;
         }
     }

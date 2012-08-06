@@ -80,12 +80,12 @@ public:
         _color = osgEarth::htmlColorToVec4f( *_options.colorCode() );
     }
 
-    void initialize( const osgDB::Options* options, const Profile* overrideProfile)
+    Status initialize( const osgDB::Options* options )
     {
-        if ( overrideProfile )
-            setProfile( overrideProfile );
-        else
+        if ( !getProfile() )
             setProfile( Profile::create("global-geodetic") );
+
+        return STATUS_OK;
     }
 
     osg::Image* createImage( const TileKey& key, ProgressCallback* progress )

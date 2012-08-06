@@ -293,6 +293,9 @@ ImageUtils::cropImage(const osg::Image* image,
                       double src_minx, double src_miny, double src_maxx, double src_maxy,
                       double &dst_minx, double &dst_miny, double &dst_maxx, double &dst_maxy)
 {
+    if ( image == 0L )
+        return 0L;
+
     //Compute the desired cropping rectangle
     int windowX        = osg::clampBetween( (int)floor( (dst_minx - src_minx) / (src_maxx - src_minx) * (double)image->s()), 0, image->s()-1);
     int windowY        = osg::clampBetween( (int)floor( (dst_miny - src_miny) / (src_maxy - src_miny) * (double)image->t()), 0, image->t()-1);

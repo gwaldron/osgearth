@@ -49,9 +49,7 @@ public:
     }
 
 public:
-    void initialize( 
-        const osgDB::Options* dbOptions, 
-        const Profile*        overrideProfile)
+    Status initialize( const osgDB::Options* dbOptions )
     {
         _dbOptions = Registry::instance()->cloneOrCreateOptions(dbOptions);
         CachePolicy::NO_CACHE.apply( _dbOptions.get() );
@@ -61,6 +59,8 @@ public:
             // Assume it is global geodetic
             setProfile( osgEarth::Registry::instance()->getGlobalGeodeticProfile() );
         }
+
+        return STATUS_OK;
     }
 
 public:

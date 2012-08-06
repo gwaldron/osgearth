@@ -32,7 +32,7 @@
 using namespace osgEarth;
 using namespace OpenThreads;
 
-#define LC "[ImageLayer] "
+#define LC "[ImageLayer] \"" << getName() << "\" "
 
 // TESTING
 //#undef  OE_DEBUG
@@ -169,7 +169,7 @@ ImageLayerTileProcessor::init(const ImageLayerOptions& options,
         //_noDataImage = URI( *_options.noDataImageFilename() ).readImage(dbOptions).getImage();
         if ( !_noDataImage.valid() )
         {
-            OE_WARN << "Warning: Could not read nodata image from \"" << _options.noDataImageFilename().value() << "\"" << std::endl;
+            OE_WARN << "Failed to read nodata image from \"" << _options.noDataImageFilename().value() << "\"" << std::endl;
         }
     }
 }
@@ -394,7 +394,7 @@ ImageLayer::createImageInNativeProfile( const TileKey& key, ProgressCallback* pr
     const Profile* nativeProfile = getProfile();
     if ( !nativeProfile )
     {
-        OE_WARN << LC << "Could not establish the profile for Layer \"" << getName() << "\"" << std::endl;
+        OE_WARN << LC << "Could not establish the profile" << std::endl;
         return GeoImage::INVALID;
     }
 
@@ -504,8 +504,7 @@ ImageLayer::createImageInKeyProfile( const TileKey& key, ProgressCallback* progr
         }
     }
 
-    OE_DEBUG << LC << 
-        "Layer \"" << getName() << "\" create image for \"" << key.str() << "\", ext= "
+    OE_DEBUG << LC << "create image for \"" << key.str() << "\", ext= "
         << key.getExtent().toString() << std::endl;
 
 
@@ -524,7 +523,7 @@ ImageLayer::createImageInKeyProfile( const TileKey& key, ProgressCallback* progr
     // case there is no layer profile)
     if ( !isCacheOnly() && !getProfile() )
     {
-        OE_WARN << LC << "Could not establish a valid profile for Layer \"" << getName() << "\"" << std::endl;
+        OE_WARN << LC << "Could not establish a valid profile" << std::endl;
         _runtimeOptions.enabled() = false;
         return GeoImage::INVALID;
     }
@@ -536,7 +535,6 @@ ImageLayer::createImageInKeyProfile( const TileKey& key, ProgressCallback* progr
         ReadResult r = cacheBin->readImage( key.str() );
         if ( r.succeeded() )
         {            
-            //OE_INFO << LC << getName() << " : " << key.str() << " cache hit" << std::endl;
             ImageUtils::normalizeImage( r.getImage() );
             return GeoImage( r.releaseImage(), key.getExtent() );
         }
@@ -581,11 +579,11 @@ ImageLayer::createImageInKeyProfile( const TileKey& key, ProgressCallback* progr
 
     if ( result.valid() )
     {
-        OE_DEBUG << LC << getName() << " : " << key.str() << " result OK" << std::endl;
+        OE_DEBUG << LC << key.str() << " result OK" << std::endl;
     }
     else
     {
-        OE_DEBUG << LC << getName() << " : " << key.str() << "result INVALID" << std::endl;
+        OE_DEBUG << LC << key.str() << "result INVALID" << std::endl;
     }
 
     return result;

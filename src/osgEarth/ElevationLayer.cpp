@@ -24,7 +24,7 @@
 using namespace osgEarth;
 using namespace OpenThreads;
 
-#define LC "[ElevationLayer] "
+#define LC "[ElevationLayer] \"" << getName() << "\" : "
 
 //------------------------------------------------------------------------
 
@@ -203,7 +203,7 @@ ElevationLayer::createHeightFieldFromTileSource(const TileKey&    key,
         // Only try to get data if the source actually has data
         if ( !source->hasData(key) )
         {
-            OE_DEBUG << LC << "Source for layer \"" << getName() << "\" has no data at " << key.str() << std::endl;
+            OE_DEBUG << LC << "Source for layer has no data at " << key.str() << std::endl;
             return 0L;
         }
 
@@ -249,7 +249,7 @@ ElevationLayer::createHeightFieldFromTileSource(const TileKey&    key,
         // Only try to get data if the source actually has data
         if ( !source->hasData( key ) )
         {
-            OE_DEBUG << LC << "Source for layer \"" << getName() << "\" has no data at " << key.str() << std::endl;
+            OE_DEBUG << LC << "Source for layer has no data at " << key.str() << std::endl;
             return 0L;
         }
 
@@ -367,18 +367,18 @@ ElevationLayer::createHeightField(const TileKey&    key,
     // validate that we have either a valid tile source, or we're cache-only.
     if ( ! (getTileSource() || (isCacheOnly() && cacheBin) ) )
     {
-		OE_WARN << LC << "Error: layer does not have a valid TileSource, cannot create heightfield" << std::endl;
+        OE_WARN << LC << "Error: layer does not have a valid TileSource, cannot create heightfield" << std::endl;
         _runtimeOptions.enabled() = false;
         return GeoHeightField::INVALID;
-	}
+    }
 
     // validate the existance of a valid layer profile.
     if ( !isCacheOnly() && !getProfile() )
     {
-		OE_WARN << LC << "Could not establish a valid profile for layer \"" << getName() << "\"" << std::endl;
+        OE_WARN << LC << "Could not establish a valid profile" << std::endl;
         _runtimeOptions.enabled() = false;
         return GeoHeightField::INVALID;
-	}
+    }
 
     // First, attempt to read from the cache. Since the cached data is stored in the
     // map profile, we can try this first.

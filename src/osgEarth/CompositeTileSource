@@ -104,9 +104,7 @@ namespace osgEarth
         virtual bool isDynamic() const { return _dynamic; }
         
         /** Initializes the tile source */
-        virtual void initialize( 
-            const osgDB::Options* dbOptions,
-            const Profile*        overrideProfile );
+        Status initialize( const osgDB::Options* dbOptions );
 
     protected:
         CompositeTileSourceOptions         _options;

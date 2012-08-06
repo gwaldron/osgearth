@@ -80,7 +80,7 @@ public:
     }
 
     /** override */
-    void initialize( const osgDB::Options* dbOptions, const Profile* overrideProfile)
+    Status initialize( const osgDB::Options* dbOptions )
     {
         osg::ref_ptr<const Profile> result;
 
@@ -101,8 +101,7 @@ public:
         osg::ref_ptr<WMSCapabilities> capabilities = WMSCapabilitiesReader::read( capUrl.full(), dbOptions );
         if ( !capabilities.valid() )
         {
-            OE_WARN << "[osgEarth::WMS] Unable to read WMS GetCapabilities." << std::endl;
-            //return;
+            return Status::Error( "Unable to read WMS GetCapabilities." );
         }
         else
         {
@@ -112,7 +111,7 @@ public:
         if ( _formatToUse.empty() && capabilities.valid() )
         {
             _formatToUse = capabilities->suggestExtension();
-            OE_NOTICE << "[osgEarth::WMS] No format specified, capabilities suggested extension " << _formatToUse << std::endl;
+            OE_INFO << "[osgEarth::WMS] No format specified, capabilities suggested extension " << _formatToUse << std::endl;
         }
 
         if ( _formatToUse.empty() )
@@ -138,8 +137,6 @@ public:
             << "&WIDTH="<< _options.tileSize().value()
             << "&HEIGHT="<< _options.tileSize().value()
             << "&BBOX=%lf,%lf,%lf,%lf";
-
-        
 
         // then the optional keys:
         if ( _options.transparent().isSet() )
@@ -212,19 +209,17 @@ public:
         {
             result = osgEarth::Registry::instance()->getGlobalGeodeticProfile();
         }
-        
 
         // JPL uses an experimental interface called TileService -- ping to see if that's what
         // we are trying to read:
         URI tsUrl = _options.tileServiceUrl().value();
         if ( tsUrl.empty() )
         {
-            tsUrl = URI(
-                _options.url()->full() + sep + std::string("request=GetTileService") );
+            tsUrl = URI(_options.url()->full() + sep + std::string("request=GetTileService") );
         }
 
         OE_INFO << "[osgEarth::WMS] Testing for JPL/TileService at " << tsUrl.full() << std::endl;
-        _tileService = TileServiceReader::read(tsUrl.full(), 0L); //getOptions());
+        _tileService = TileServiceReader::read(tsUrl.full(), dbOptions);
         if (_tileService.valid())
         {
             OE_INFO << "[osgEarth::WMS] Found JPL/TileService spec" << std::endl;
@@ -249,24 +244,26 @@ public:
             OE_INFO << "[osgEarth::WMS] No JPL/TileService spec found; assuming standard WMS" << std::endl;
         }
 
-        //Use the override profile if one is passed in.
-        if (overrideProfile)
+        // Use the override profile if one is passed in.
+        if ( getProfile() == 0L )
         {
-            result = overrideProfile;
+            setProfile( result.get() );
         }
 
-        //TODO: won't need this for OSG 2.9+, b/c of mime-type support
-        //_prototype = _prototype + std::string("&.") + _formatToUse;
+        if ( getProfile() )
+        {
+            OE_NOTICE << "[osgEarth::WMS] Profile=" << getProfile()->toString() << std::endl;
 
-        // populate the data metadata:
-        // TODO
+            // set up the cache options properly for a TileSource.
+            _dbOptions = Registry::instance()->cloneOrCreateOptions( dbOptions );
+            CachePolicy::NO_CACHE.apply( _dbOptions.get() );
 
-        setProfile( result.get() );
-        OE_NOTICE << "[osgEarth::WMS] Profile=" << result->toString() << std::endl;
-
-        // set up the cache options properly for a TileSource.
-        _dbOptions = Registry::instance()->cloneOrCreateOptions( dbOptions );
-        CachePolicy::NO_CACHE.apply( _dbOptions.get() );
+            return STATUS_OK;
+        }
+        else
+        {
+            return Status::Error( "Unable to establish profile" );
+        }
     }
 
     /* override */

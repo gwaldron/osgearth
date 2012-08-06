@@ -100,7 +100,7 @@ public:
 
             localOptions->getDatabasePathList().push_back( osgDB::getFilePath(_options.url()->full()) );
 
-            result = _options.url()->getNode( localOptions.get(), CachePolicy::INHERIT, progress );
+            result = _options.url()->getNode( localOptions.get(), progress );
         }
 
         if (_options.location().isSet())

@@ -371,7 +371,10 @@ namespace osgEarth
         osg::ref_ptr<const Profile>    _targetProfileHint;
         bool                           _tileSourceInitialized;
         unsigned                       _tileSize;  
-        osg::ref_ptr<osgDB::Options>   _dbOptions;      
+        osg::ref_ptr<osgDB::Options>   _dbOptions;
+
+        void setCachePolicy( const CachePolicy& cp );
+        const CachePolicy& getCachePolicy() const;
 
     private:
         std::string                    _name;
@@ -400,9 +403,6 @@ namespace osgEarth
         // methods accesible by Map:
         friend class Map;
         void setDBOptions( const osgDB::Options* dbOptions );
-        //void setReferenceURI( const std::string& uri );
-
-        void overrideCachePolicy( const CachePolicy& policy );
 
         /**
          * Sets the cache to be used on this MapLayer

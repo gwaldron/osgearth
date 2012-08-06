@@ -19,7 +19,6 @@
 #include <osgEarthSymbology/Skins>
 #include <osgEarth/StringUtils>
 #include <osgEarth/ImageUtils>
-#include <osgEarth/HTTPClient>
 #include <osgEarth/ShaderComposition>
 #include <osgEarth/Registry>
 

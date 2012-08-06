@@ -19,7 +19,6 @@
 #include <osgEarthFeatures/SubstituteModelFilter>
 #include <osgEarthFeatures/FeatureSourceIndexNode>
 #include <osgEarthSymbology/MeshConsolidator>
-#include <osgEarth/HTTPClient>
 #include <osgEarth/ECEF>
 #include <osgEarth/ShaderComposition>
 #include <osgEarth/DrawInstanced>

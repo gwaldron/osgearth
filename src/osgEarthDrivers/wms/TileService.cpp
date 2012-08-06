@@ -20,7 +20,6 @@
 #include "TileService"
 
 #include <osgEarth/XmlUtils>
-#include <osgEarth/HTTPClient>
 
 #include <osg/io_utils>
 #include <osgDB/FileNameUtils>
@@ -29,21 +28,22 @@
 using namespace osgEarth;
 using namespace std;
 
-
-
-std::string extractBetween(const std::string& str, const string &lhs, const string &rhs)
+namespace
 {
-    std::string result;
-    string::size_type start = str.find(lhs);
-    if (start != string::npos)
+    std::string extractBetween(const std::string& str, const string &lhs, const string &rhs)
     {
-        start += lhs.length();
-        string::size_type count = str.size() - start;
-        string::size_type end = str.find(rhs, start); 
-        if (end != string::npos) count = end-start;
-        result = str.substr(start, count);
+        std::string result;
+        string::size_type start = str.find(lhs);
+        if (start != string::npos)
+        {
+            start += lhs.length();
+            string::size_type count = str.size() - start;
+            string::size_type end = str.find(rhs, start); 
+            if (end != string::npos) count = end-start;
+            result = str.substr(start, count);
+        }
+        return result;
     }
-    return result;
 }
 
 TilePattern::TilePattern(const std::string& pattern)
@@ -211,60 +211,55 @@ TileService*
 TileServiceReader::read( const std::string &location, const osgDB::ReaderWriter::Options* options )
 {
     TileService *tileService = NULL;
-    if ( osgDB::containsServerAddress( location ) )
+
+    ReadResult r = URI(location).readString( options );
+    if ( r.succeeded() )
     {
-        HTTPResponse response = HTTPClient::get( location, options);
-        if (response.isOK() && response.getNumParts() > 0 )
-        {
-            tileService = read( response.getPartStream( 0 ) );
-        }
+        std::istringstream buf( r.getString() );
+        tileService = read( buf );
     }
-    else
-    {
-        if ((osgDB::fileExists(location)) && (osgDB::fileType(location) == osgDB::REGULAR_FILE))
-        {
-            std::ifstream in( location.c_str() );
-            tileService = read( in );
-        }
-    }
+
     return tileService;
 }
 
-void readBoundingBox(XmlElement* e_bb, double &minX, double &minY, double &maxX, double &maxY)
+namespace
 {
-    if (e_bb)
+    void readBoundingBox(XmlElement* e_bb, double &minX, double &minY, double &maxX, double &maxY)
     {
-        minX = as<double>(e_bb->getAttr( ATTR_MINX ), minX);
-        minY = as<double>(e_bb->getAttr( ATTR_MINY ), minY);
-        maxX = as<double>(e_bb->getAttr( ATTR_MAXX ), maxX);
-        maxY = as<double>(e_bb->getAttr( ATTR_MAXY ), maxY);
-    }
-}
-
-void addTilePatterns(XmlElement* e_root, TileService* tileService)
-{
-    //Read all the TilePatterns
-    XmlNodeList tile_patterns = e_root->getSubElements( ELEM_TILEPATTERN );
-    for( XmlNodeList::const_iterator i = tile_patterns.begin(); i != tile_patterns.end(); i++ )
-    {            
-        //We only really care about a single access pattern, so extract it
-        string txt = static_cast<XmlElement*>( i->get() )->getText();
-        //Access patterns are separated by whitespace 
-        std::string whitespace (" \t\f\v\n\r");
-        string::size_type len = txt.find_first_of(whitespace);
-        if (len != string::npos)
+        if (e_bb)
         {
-            txt = trim(txt.substr(0, len));
+            minX = as<double>(e_bb->getAttr( ATTR_MINX ), minX);
+            minY = as<double>(e_bb->getAttr( ATTR_MINY ), minY);
+            maxX = as<double>(e_bb->getAttr( ATTR_MAXX ), maxX);
+            maxY = as<double>(e_bb->getAttr( ATTR_MAXY ), maxY);
         }
-        TilePattern pattern(txt);
-        tileService->getPatterns().push_back(pattern);
     }
 
-    //Read all TilePatterns in the TiledGroups
-    XmlNodeList tiled_groups = e_root->getSubElements(ELEM_TILEDGROUP);
-    for( XmlNodeList::const_iterator i = tiled_groups.begin(); i != tiled_groups.end(); i++ )
+    void addTilePatterns(XmlElement* e_root, TileService* tileService)
     {
-        addTilePatterns(static_cast<XmlElement*>(i->get()), tileService);
+        //Read all the TilePatterns
+        XmlNodeList tile_patterns = e_root->getSubElements( ELEM_TILEPATTERN );
+        for( XmlNodeList::const_iterator i = tile_patterns.begin(); i != tile_patterns.end(); i++ )
+        {            
+            //We only really care about a single access pattern, so extract it
+            string txt = static_cast<XmlElement*>( i->get() )->getText();
+            //Access patterns are separated by whitespace 
+            std::string whitespace (" \t\f\v\n\r");
+            string::size_type len = txt.find_first_of(whitespace);
+            if (len != string::npos)
+            {
+                txt = trim(txt.substr(0, len));
+            }
+            TilePattern pattern(txt);
+            tileService->getPatterns().push_back(pattern);
+        }
+
+        //Read all TilePatterns in the TiledGroups
+        XmlNodeList tiled_groups = e_root->getSubElements(ELEM_TILEDGROUP);
+        for( XmlNodeList::const_iterator i = tiled_groups.begin(); i != tiled_groups.end(); i++ )
+        {
+            addTilePatterns(static_cast<XmlElement*>(i->get()), tileService);
+        }
     }
 }
 

@@ -43,8 +43,7 @@ namespace osgEarth { namespace Annotation
         ModelNode(
             MapNode*              mapNode,
             const Style&          style,
-            const osgDB::Options* dbOptions   =0L,
-            const CachePolicy&    cachePolicy =CachePolicy::INHERIT );
+            const osgDB::Options* dbOptions   =0L );
 
         virtual ~ModelNode() { }
 

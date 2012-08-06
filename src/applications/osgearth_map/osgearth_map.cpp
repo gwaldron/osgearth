@@ -43,7 +43,7 @@ main(int argc, char** argv)
 
     // add a TMS imager layer:
     TMSOptions imagery;
-    imagery.url() = "http://readymap.org/readymap/tiles/1.0.0/7/";
+    imagery.url() = "http://readymaps.org/readymap/tiles/1.0.0/7/";
     map->addImageLayer( new ImageLayer("Imagery", imagery) );
 
     // add a TMS elevation layer:

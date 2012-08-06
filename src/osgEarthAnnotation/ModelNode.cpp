@@ -31,11 +31,9 @@ using namespace osgEarth::Symbology;
 
 ModelNode::ModelNode(MapNode*              mapNode,
                      const Style&          style,
-                     const osgDB::Options* dbOptions,
-                     const CachePolicy&    cachePolicy ) :
+                     const osgDB::Options* dbOptions ) :
 LocalizedNode( mapNode ),
-_dbOptions   ( dbOptions ),
-_cachePolicy ( cachePolicy )
+_dbOptions   ( dbOptions )
 {
     _style = style;
     init();
@@ -61,7 +59,7 @@ ModelNode::init()
         if ( sym->url().isSet() )
         {
             URI uri( sym->url()->eval(), sym->url()->uriContext() );
-            osg::Node* node = uri.getNode( _dbOptions.get(), *_cachePolicy );
+            osg::Node* node = uri.getNode( _dbOptions.get() );
             if ( node )
             {
                 getTransform()->addChild( node );
@@ -112,8 +110,7 @@ OSGEARTH_REGISTER_ANNOTATION( model, osgEarth::Annotation::ModelNode );
 ModelNode::ModelNode(MapNode* mapNode, const Config& conf) :
 LocalizedNode( mapNode )
 {
-    conf.getObjIfSet( "style",        _style );
-    conf.getObjIfSet( "cache_policy", _cachePolicy );
+    conf.getObjIfSet( "style", _style );
 
     std::string uri = conf.value("url");
     if ( !uri.empty() )
@@ -130,10 +127,8 @@ ModelNode::getConfig() const
 {
     Config conf("model");
 
-    //conf.updateIfSet   ( "url",          _uri );
-    conf.updateObjIfSet( "style",        _style );
-    conf.updateObjIfSet( "cache_policy", _cachePolicy );
-    conf.updateObj     ( "position",     getPosition() );
+    conf.updateObjIfSet( "style",    _style );
+    conf.updateObj     ( "position", getPosition() );
 
     return conf;
 }

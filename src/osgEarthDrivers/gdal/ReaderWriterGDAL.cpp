@@ -663,7 +663,9 @@ public:
         GDAL_SCOPED_LOCK;
 
         Cache* cache = 0;
-        _dbOptions = dbOptions ? osg::clone(dbOptions) : 0L;
+
+        _dbOptions = Registry::instance()->cloneOrCreateOptions( dbOptions );
+
         if ( _dbOptions.valid() )
         {
             // Set up a Custom caching bin for this TileSource
@@ -677,7 +679,7 @@ public:
 
                 if ( _cacheBin.valid() )
                 {
-                    _cacheBin->store( _dbOptions.get() );
+                    _cacheBin->apply( _dbOptions.get() );
                 }
             }
         }  
@@ -879,7 +881,7 @@ public:
             // not found in the dataset; try loading a .prj file
             std::string prjLocation = osgDB::getNameLessExtension( uri.full() ) + std::string(".prj");
 
-            ReadResult r = URI(prjLocation).readString( 0L, CachePolicy::NO_CACHE );
+            ReadResult r = URI(prjLocation).readString( _dbOptions.get() );
             if ( r.succeeded() )
             {
                 src_srs = SpatialReference::create( r.getString() );

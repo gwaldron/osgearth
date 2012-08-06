@@ -21,7 +21,6 @@
 #include <osgEarthSymbology/IconResource>
 #include <osgEarth/ThreadingUtils>
 #include <osgEarth/XmlUtils>
-#include <osgEarth/HTTPClient>
 #include <osgEarth/Random>
 #include <iterator>
 #include <algorithm>

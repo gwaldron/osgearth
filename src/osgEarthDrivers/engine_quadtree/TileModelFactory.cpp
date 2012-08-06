@@ -63,19 +63,20 @@ namespace
             bool autoFallback = _key.getLevelOfDetail() <= 1;
 
             TileKey imageKey( _key );
-            TileSource* tileSource = _layer->getTileSource();
+            TileSource*    tileSource   = _layer->getTileSource();
+            const Profile* layerProfile = _layer->getProfile();
 
             //Only try to get data from the source if it actually intersects the key extent
             bool hasDataInExtent = true;
-            if (tileSource)
+            if (tileSource && layerProfile)
             {
                 GeoExtent ext = _key.getExtent();
-                if (!_layer->getProfile()->getSRS()->isEquivalentTo( ext.getSRS()))
+                if (!layerProfile->getSRS()->isEquivalentTo( ext.getSRS()))
                 {
-                    ext = _layer->getProfile()->clampAndTransformExtent( ext );
+                    ext = layerProfile->clampAndTransformExtent( ext );
                 }
                 hasDataInExtent = tileSource->hasDataInExtent( ext );
-            }        
+            }
             
             if (hasDataInExtent)
             {

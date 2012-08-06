@@ -216,6 +216,7 @@ MapNode::init()
     // establish global driver options. These are OSG reader-writer options that
     // will make their way to any read* calls down the pipe
     const osgDB::Options* global_options = _map->getGlobalOptions();
+
     osg::ref_ptr<osgDB::Options> local_options = global_options ? 
         Registry::instance()->cloneOrCreateOptions( global_options ) :
         NULL;

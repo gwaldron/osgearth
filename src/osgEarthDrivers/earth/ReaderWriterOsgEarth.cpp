@@ -21,7 +21,6 @@
 #include <osgEarth/MapNode>
 #include <osgEarth/Registry>
 #include <osgEarth/XmlUtils>
-#include <osgEarth/HTTPClient>
 #include <osgDB/FileNameUtils>
 #include <osgDB/FileUtils>
 #include <osgDB/Registry>
@@ -69,17 +68,17 @@ class ReaderWriterEarth : public osgDB::ReaderWriter
             return osgDB::equalCaseInsensitive( extension, "earth" );
         }
 
-        virtual ReadResult readObject(const std::string& file_name, const Options* options) const
+        virtual ReadResult readObject(const std::string& file_name, const osgDB::Options* options) const
         {
             return readNode( file_name, options );
         }
 
-        virtual ReadResult readObject(std::istream& in, const Options* options) const
+        virtual ReadResult readObject(std::istream& in, const osgDB::Options* options) const
         {
             return readNode( in, options );
         }
 
-        virtual WriteResult writeNode(const osg::Node& node, const std::string& fileName, const Options* options ) const
+        virtual WriteResult writeNode(const osg::Node& node, const std::string& fileName, const osgDB::Options* options ) const
         {
             if ( !acceptsExtension( osgDB::getFileExtension(fileName) ) )
                 return WriteResult::FILE_NOT_HANDLED;
@@ -91,7 +90,7 @@ class ReaderWriterEarth : public osgDB::ReaderWriter
             return WriteResult::ERROR_IN_WRITING_FILE;            
         }
 
-        virtual WriteResult writeNode(const osg::Node& node, std::ostream& out, const Options* options ) const
+        virtual WriteResult writeNode(const osg::Node& node, std::ostream& out, const osgDB::Options* options ) const
         {
             osg::Node* searchNode = const_cast<osg::Node*>( &node );
             MapNode* mapNode = MapNode::findMapNode( searchNode );
@@ -109,7 +108,7 @@ class ReaderWriterEarth : public osgDB::ReaderWriter
             return WriteResult::FILE_SAVED;
         }
 
-        virtual ReadResult readNode(const std::string& fileName, const Options* options) const
+        virtual ReadResult readNode(const std::string& fileName, const osgDB::Options* options) const
         {
             std::string ext = osgDB::getFileExtension( fileName );
             if ( !acceptsExtension( ext ) )
@@ -137,33 +136,28 @@ class ReaderWriterEarth : public osgDB::ReaderWriter
 
             else
             {
-                osgEarth::ReadResult r = URI(fileName).readString( options, CachePolicy::NO_CACHE );
+                osgEarth::ReadResult r = URI(fileName).readString( options );
                 if ( r.failed() )
                     return ReadResult::ERROR_IN_READING_FILE;
 
                 // Since we're now passing off control to the stream, we have to pass along the
                 // reference URI as well..
-                osg::ref_ptr<Options> myOptions = options ? 
-                    static_cast<Options*>(options->clone(osg::CopyOp::DEEP_COPY_ALL)) : 
-                    new Options();
+                osg::ref_ptr<osgDB::Options> myOptions = Registry::instance()->cloneOrCreateOptions(options);
 
-                URIContext( fileName ).store( myOptions.get() );
-                //myOptions->setPluginData( "__ReaderWriterOsgEarth::ref_uri", (void*)&fileName );
+                URIContext( fileName ).apply( myOptions.get() );
 
                 std::stringstream in( r.getString() );
                 return readNode( in, myOptions.get() );
             }
         }
 
-        virtual ReadResult readNode(std::istream& in, const Options* options ) const
+        virtual ReadResult readNode(std::istream& in, const osgDB::Options* options ) const
         {
             // pull the URI context from the options structure (since we're reading
             // from an "anonymous" stream here)
             URIContext uriContext( options ); 
-            //if ( uriContext.empty() && options && options->getDatabasePathList().size() > 0 )
-            //    uriContext = URIContext( options->getDatabasePathList().front() + "/" );
 
-            osg::ref_ptr<XmlDocument> doc = XmlDocument::load( in, uriContext );            
+            osg::ref_ptr<XmlDocument> doc = XmlDocument::load( in, uriContext );
             if ( !doc.valid() )
                 return ReadResult::ERROR_IN_READING_FILE;
 

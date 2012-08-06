@@ -181,12 +181,12 @@ TerrainLayer::init()
 {
     _tileSourceInitialized = false;
     _tileSize              = 256;
-}
-
-void
-TerrainLayer::overrideCachePolicy( const CachePolicy& policy )
-{
-    _runtimeOptions->cachePolicy() = policy;
+    _dbOptions             = Registry::instance()->cloneOrCreateOptions();
+    
+    if ( _runtimeOptions->cachePolicy().isSet() )
+    {
+        _runtimeOptions->cachePolicy()->apply( _dbOptions.get() );
+    }
 }
 
 void
@@ -213,9 +213,9 @@ TerrainLayer::setCache( Cache* cache )
                 // system will generate a cacheId.
                 // technically, this is not quite right, we need to remove everything that's
                 // an image layer property and just use the tilesource properties.
-                Config layerConf = _runtimeOptions->getConfig( true );
+                Config layerConf  = _runtimeOptions->getConfig( true );
                 Config driverConf = _runtimeOptions->driver()->getConfig();
-                Config hashConf = driverConf - layerConf;
+                Config hashConf   = driverConf - layerConf;
 
                 OE_DEBUG << LC << "Hash JSON for layer " << getName() << " is: " << hashConf.toJSON(false) << std::endl;
 
@@ -235,8 +235,21 @@ TerrainLayer::setCache( Cache* cache )
     if ( !_cache.valid() )
     {
         _cache = 0L; 
-        _runtimeOptions->cachePolicy()->usage() = CachePolicy::USAGE_NO_CACHE;
+        setCachePolicy( CachePolicy::NO_CACHE );
     }
+}
+
+void
+TerrainLayer::setCachePolicy( const CachePolicy& cp )
+{
+    _runtimeOptions->cachePolicy() = cp;
+    _runtimeOptions->cachePolicy()->apply( _dbOptions.get() );
+}
+
+const CachePolicy&
+TerrainLayer::getCachePolicy() const
+{
+    return _runtimeOptions->cachePolicy().value();
 }
 
 void
@@ -268,10 +281,12 @@ TerrainLayer::getTileSource() const
 
                 if ( hint.usage().isSetTo(CachePolicy::USAGE_NO_CACHE) )
                 {
-                    _runtimeOptions->cachePolicy() = hint;
+                    const_cast<TerrainLayer*>(this)->setCachePolicy( hint );
                     OE_INFO << LC << "Caching disabled (by policy hint) for layer " << getName() << std::endl;
                 }
             }
+
+            OE_INFO << LC << "Layer " << getName() << ": cache policy = " << getCachePolicy().usageString() << std::endl;
         }
     }
 
@@ -523,7 +538,7 @@ TerrainLayer::initTileSource()
         {
             _dbOptions = Registry::instance()->cloneOrCreateOptions();
             if ( _cache.valid() ) _cache->store( _dbOptions.get() );
-            URIContext( _runtimeOptions->referrer() ).store( _dbOptions.get() );
+            URIContext( _runtimeOptions->referrer() ).apply( _dbOptions.get() );
         }
 
         // report on a manual override profile:
@@ -624,4 +639,8 @@ void
 TerrainLayer::setDBOptions( const osgDB::Options* dbOptions )
 {
     _dbOptions = osg::clone( dbOptions );
+
+    // override the cache policy if there's one set locally.
+    if ( _runtimeOptions->cachePolicy().isSet() )
+        _runtimeOptions->cachePolicy()->apply( _dbOptions.get() );
 }

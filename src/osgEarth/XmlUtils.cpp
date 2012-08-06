@@ -19,7 +19,6 @@
 
 #include <osgEarth/XmlUtils>
 #include <osgEarth/StringUtils>
-#include <osgEarth/HTTPClient>
 #include <osg/Notify>
 #include "tinyxml.h"
 #include <algorithm>

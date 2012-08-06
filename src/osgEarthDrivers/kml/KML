@@ -59,7 +59,7 @@ namespace osgEarth { namespace Drivers {
                 return osgDB::readNodeFile( uri.full() + "/.kml", options.get() );
             }
 
-            return uri.getNode( options.get(), CachePolicy::NO_CACHE );
+            return uri.getNode( options.get() );
         }
 
         static osg::Node* load(const URI&            uri, 

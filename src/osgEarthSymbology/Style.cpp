@@ -19,7 +19,6 @@
 #include <osgEarthSymbology/Style>
 #include <osgEarthSymbology/CssUtils>
 #include <osgEarthSymbology/SLD>
-#include <osgEarth/HTTPClient>
 #include <algorithm>
 
 using namespace osgEarth;

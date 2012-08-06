@@ -48,18 +48,14 @@ public:
 
     void initialize( const osgDB::Options* dbOptions, const Profile* overrideProfile)
     {
-        _dbOptions = dbOptions;
+        _dbOptions = Registry::instance()->cloneOrCreateOptions(dbOptions);
+        CachePolicy::NO_CACHE.apply( _dbOptions.get() );
 
-		if (overrideProfile)
-		{
-		    //If we were given a profile, take it on.
-			setProfile(overrideProfile);
-		}
-		else
-		{
-			//Assume it is global-geodetic
-			setProfile( osgEarth::Registry::instance()->getGlobalGeodeticProfile() );
-		}            
+        if ( !getProfile() )
+        {
+            // Assume it is global-geodetic
+            setProfile( osgEarth::Registry::instance()->getGlobalGeodeticProfile() );
+        }
     }
 
     osg::Image* createImage( const TileKey& key, ProgressCallback* progress)
@@ -89,7 +85,7 @@ public:
 
        
         std::string path(buf);
-        return URI(path).readImage( _dbOptions.get(), CachePolicy::NO_CACHE, progress ).releaseImage();
+        return URI(path).readImage( _dbOptions.get(), progress ).releaseImage();
     }
 
     virtual std::string getExtension()  const 
@@ -98,8 +94,8 @@ public:
     }
 
 private:
-    const TileCacheOptions             _options;
-    osg::ref_ptr<const osgDB::Options> _dbOptions;
+    const TileCacheOptions       _options;
+    osg::ref_ptr<osgDB::Options> _dbOptions;
 };
 
 // Reads tiles from a TileCache disk cache.

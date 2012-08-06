@@ -20,7 +20,6 @@
 #include <osgEarthUtil/TMS>
 #include <osgEarth/Common>
 #include <osgEarth/GeoData>
-#include <osgEarth/HTTPClient>
 #include <osgEarth/XmlUtils>
 #include <osgEarth/TileKey>
 #include <osgEarth/TileSource>

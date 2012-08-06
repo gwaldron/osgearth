@@ -19,7 +19,6 @@
 
 #include <osgEarthUtil/WFS>
 #include <osgEarth/XmlUtils>
-#include <osgEarth/HTTPClient>
 
 #include <osgDB/FileNameUtils>
 #include <osgDB/FileUtils>
@@ -27,9 +26,6 @@
 using namespace osgEarth;
 using namespace osgEarth::Util;
 using namespace std;
-
-
-
 
 
 WFSCapabilities::WFSCapabilities()

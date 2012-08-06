@@ -57,6 +57,8 @@ private:
     const WCSOptions _options;
     std::string _covFormat, _osgFormat;
 
+    osg::ref_ptr<osgDB::Options> _dbOptions;
+
     HTTPRequest createRequest( const TileKey& key ) const;
 };
 

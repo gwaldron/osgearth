@@ -21,7 +21,6 @@
 #include <osgEarthSymbology/IconResource>
 #include <osgEarth/ThreadingUtils>
 #include <osgEarth/XmlUtils>
-#include <osgEarth/HTTPClient>
 #include <osgEarth/Random>
 #include <iterator>
 #include <algorithm>
@@ -35,13 +34,14 @@ using namespace OpenThreads;
 
 //------------------------------------------------------------------------
 
-ResourceLibrary::ResourceLibrary( const Config& conf ) :
+ResourceLibrary::ResourceLibrary(const Config& conf) :
 _initialized( false )
 {
     mergeConfig( conf );
 }
 
-ResourceLibrary::ResourceLibrary( const std::string& name, const URI& uri ) :
+ResourceLibrary::ResourceLibrary(const std::string&    name,
+                                 const URI&            uri) :
 _name       ( name ),
 _uri        ( uri, uri ),
 _initialized( false )

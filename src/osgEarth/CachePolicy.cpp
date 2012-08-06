@@ -24,17 +24,15 @@ using namespace osgEarth;
 
 //statics
 CachePolicy CachePolicy::DEFAULT( CachePolicy::USAGE_READ_WRITE );
-CachePolicy CachePolicy::INHERIT( CachePolicy::USAGE_UNSPECIFIED );
 CachePolicy CachePolicy::NO_CACHE( CachePolicy::USAGE_NO_CACHE );
 CachePolicy CachePolicy::CACHE_ONLY( CachePolicy::USAGE_CACHE_ONLY );
 
 //------------------------------------------------------------------------
 
 CachePolicy::CachePolicy() :
-_usage ( USAGE_UNSPECIFIED ),
 _maxAge( DBL_MAX )
 {
-    _usage = USAGE_UNSPECIFIED; // explicity init the optional<>
+    _usage = USAGE_READ_WRITE;
 }
 
 CachePolicy::CachePolicy( const Usage& usage ) :
@@ -53,10 +51,35 @@ _maxAge( maxAge )
 }
 
 CachePolicy::CachePolicy( const Config& conf ) :
-_usage ( USAGE_UNSPECIFIED ),
+_usage ( USAGE_READ_WRITE ),
 _maxAge( DBL_MAX )
 {
     fromConfig( conf );
+}
+
+void
+CachePolicy::fromOptions( const osgDB::Options* dbOptions, optional<CachePolicy>& out )
+{
+    if ( dbOptions )
+    {
+        std::string jsonString = dbOptions->getPluginStringData( "osgEarth::CachePolicy" );
+        if ( !jsonString.empty() )
+        {
+            Config conf;
+            conf.fromJSON( jsonString );
+            out = CachePolicy( conf );
+        }
+    }
+}
+
+void
+CachePolicy::apply( osgDB::Options* dbOptions )
+{
+    if ( dbOptions )
+    {
+        Config conf = getConfig();
+        dbOptions->setPluginStringData( "osgEarth::CachePolicy", conf.toJSON() );
+    }
 }
 
 bool
@@ -74,7 +97,6 @@ CachePolicy::usageString() const
     if ( _usage == USAGE_READ_ONLY )  return "read-only";
     if ( _usage == USAGE_CACHE_ONLY)  return "cache-only";
     if ( _usage == USAGE_NO_CACHE)    return "no-cache";
-    if ( _usage == USAGE_UNSPECIFIED) return "inherted";
     return "unknown";
 }
 

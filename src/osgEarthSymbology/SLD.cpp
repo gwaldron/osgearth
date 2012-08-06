@@ -92,6 +92,11 @@ SLDReader::readStyleFromCSSParams( const Config& conf, Style& sc )
             if (!line) line = sc.getOrCreateSymbol<LineSymbol>();
             parseLineCap( value, line->stroke()->lineCap() );
         }
+        else if ( match(key, "stroke-tessellation") )
+        {
+            if (!line) line = sc.getOrCreate<LineSymbol>();
+            line->tessellation() = as<unsigned>( value, 0 );
+        }
 
         // ..... PolygonSymbol .....
 

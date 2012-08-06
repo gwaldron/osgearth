@@ -20,7 +20,6 @@
 #include <osgEarth/TileSource>
 #include <osgEarth/FileUtils>
 #include <osgEarth/ImageUtils>
-#include <osgEarth/HTTPClient>
 #include <osgEarth/Registry>
 
 #include <osg/Notify>

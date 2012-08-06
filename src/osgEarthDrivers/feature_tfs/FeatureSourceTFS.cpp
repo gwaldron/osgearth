@@ -93,7 +93,7 @@ public:
 
                 if ( _cacheBin.valid() )
                 {
-                    _cacheBin->store( _dbOptions.get() );
+                    _cacheBin->apply( _dbOptions.get() );
                 }
             }
         }     

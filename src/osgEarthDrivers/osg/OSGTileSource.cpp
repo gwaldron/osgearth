@@ -18,9 +18,9 @@
  */
 #include "OSGOptions"
 
-#include <osgEarth/HTTPClient>
 #include <osgEarth/FileUtils>
 #include <osgEarth/ImageUtils>
+#include <osgEarth/Registry>
 #include <osgEarth/URI>
 #include <osgDB/FileNameUtils>
 
@@ -65,19 +65,20 @@ public:
 
     void initialize( const osgDB::Options* dbOptions, const Profile* overrideProfile)
     {
-        if ( !overrideProfile )
+        osg::ref_ptr<osgDB::Options> localOptions = Registry::instance()->cloneOrCreateOptions(dbOptions);
+        CachePolicy::NO_CACHE.apply(localOptions.get());
+
+        if ( !getProfile() )
         {
             OE_WARN << LC << "An explicit profile definition is required by the OSG driver." << std::endl;
             return;
         }
 
-        setProfile( overrideProfile );
-
         osg::ref_ptr<osg::Image> image;
 
         if ( !_options.url()->empty() )
         {
-            ReadResult r = _options.url()->readImage( dbOptions, CachePolicy::NO_CACHE );
+            ReadResult r = _options.url()->readImage( localOptions.get() );
             if ( r.succeeded() )
             {
                 image = r.getImage();

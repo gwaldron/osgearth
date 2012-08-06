@@ -317,6 +317,15 @@ _dirty( true )
     init();
 }
 
+StringExpression::StringExpression(const std::string& expr,
+                                   const URIContext&  uriContext) :
+_src       ( expr ),
+_uriContext( uriContext ),
+_dirty     ( true )
+{
+    init();
+}
+
 StringExpression::StringExpression( const StringExpression& rhs ) :
 _src( rhs._src ),
 _vars( rhs._vars ),
@@ -329,11 +338,19 @@ _uriContext( rhs._uriContext )
 }
 
 void
-StringExpression::set( const std::string& expr )
+StringExpression::setInfix( const std::string& expr )
 {
     _src = expr;
     _dirty = true;
     init();
+}
+
+void
+StringExpression::setLiteral( const std::string& expr )
+{
+    _src = "\"" + expr + "\"";
+    _value = expr;
+    _dirty = false;
 }
 
 StringExpression::StringExpression( const Config& conf )

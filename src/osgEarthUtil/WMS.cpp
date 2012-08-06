@@ -19,7 +19,6 @@
 
 #include <osgEarthUtil/WMS>
 #include <osgEarth/XmlUtils>
-#include <osgEarth/HTTPClient>
 
 #include <osgDB/FileNameUtils>
 #include <osgDB/FileUtils>
@@ -138,10 +137,11 @@ WMSCapabilitiesReader::read( const std::string &location, const osgDB::ReaderWri
     WMSCapabilities *caps = NULL;
     if ( osgDB::containsServerAddress( location ) )
     {
-        HTTPResponse response = HTTPClient::get( location, options );
-        if ( response.isOK() && response.getNumParts() > 0 )
+        ReadResult rr = URI(location).readString( options );
+        if ( rr.succeeded() )
         {
-            caps = read( response.getPartStream( 0 ) );
+            std::istringstream in( rr.getString() );
+            caps = read( in );
         }
     }
     else

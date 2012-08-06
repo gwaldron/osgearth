@@ -85,10 +85,23 @@ _style   ( style )
     init();
 }
 
+LabelNode::LabelNode(MapNode*            mapNode,
+                     const GeoPoint&     position,
+                     const Style&        style ) :
+OrthoNode( mapNode, position ),
+_geode   ( 0L ),
+_style   ( style )
+{
+    init();
+}
+
 void
 LabelNode::init()
 {
     const TextSymbol* symbol = _style.get<TextSymbol>();
+
+    if ( _text.empty() )
+        _text = symbol->content()->eval();
 
     _geode = new osg::Geode();
 

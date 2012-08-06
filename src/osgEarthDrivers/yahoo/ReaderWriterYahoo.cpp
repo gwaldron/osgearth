@@ -46,6 +46,11 @@ public:
     void initialize(const osgDB::Options* dbOptions,
                     const Profile*        overrideProfile )
     {
+        // no caching of source tiles
+        _dbOptions = Registry::instance()->cloneOrCreateOptions( dbOptions );
+        CachePolicy::NO_CACHE.apply( _dbOptions.get() );
+
+        // always a sperhical mercator profile
         setProfile( Profile::create( "spherical-mercator", "", 2, 2 ) );
     }
 
@@ -96,7 +101,7 @@ public:
 
         OE_DEBUG << key.str() << "=" << base << std::endl;
 
-        return URI(base).readImage( 0L, CachePolicy::NO_CACHE ).releaseImage();
+        return URI(base).readImage( _dbOptions.get() ).releaseImage();
     }
 
     osg::HeightField* createHeightField(const TileKey&        key,
@@ -120,7 +125,8 @@ public:
     }
 
 private:
-    const YahooOptions _options;
+    const YahooOptions           _options;
+    osg::ref_ptr<osgDB::Options> _dbOptions;
 };
 
 

@@ -296,7 +296,8 @@ AnnotationNode::supportsAutoClamping( const Style& style ) const
 {
     return
         !style.has<ExtrusionSymbol>()  &&
-        !style.has<MarkerSymbol>()     &&
+        !style.has<InstanceSymbol>()   &&
+        !style.has<MarkerSymbol>()     &&  // backwards-compability
         style.has<AltitudeSymbol>()    &&
         (style.get<AltitudeSymbol>()->clamping() == AltitudeSymbol::CLAMP_TO_TERRAIN ||
          style.get<AltitudeSymbol>()->clamping() == AltitudeSymbol::CLAMP_RELATIVE_TO_TERRAIN);

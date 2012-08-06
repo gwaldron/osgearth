@@ -84,19 +84,19 @@ namespace osgEarth
 
         /** Construct a result with no object */
         ReadResult( Code code =RESULT_NOT_FOUND )
-            : _code(code) { }
+            : _code(code), _fromCache(false) { }
 
         /** Construct a successful result */
         ReadResult( osg::Object* result )
-            : _code(RESULT_OK), _result(result) { }
+            : _code(RESULT_OK), _result(result), _fromCache(false) { }
 
         /** Construct a successful result with metadata */
         ReadResult( osg::Object* result, const Config& meta )
-            : _code(RESULT_OK), _result(result), _meta(meta) { }
+            : _code(RESULT_OK), _result(result), _meta(meta), _fromCache(false) { }
 
         /** Copy construct */
         ReadResult( const ReadResult& rhs )
-            : _code(rhs._code), _result(rhs._result.get()), _meta(rhs._meta) { }
+            : _code(rhs._code), _result(rhs._result.get()), _meta(rhs._meta), _fromCache(rhs._fromCache) { }
 
         /** dtor */
         virtual ~ReadResult() { }
@@ -112,6 +112,9 @@ namespace osgEarth
 
         /** The result code */
         const Code& code() const { return _code; }
+
+        /** True if the object came from the cache */
+        bool isFromCache() const { return _fromCache; }
 
         /** The result */
         osg::Object* getObject() const { return _result.get(); }
@@ -156,12 +159,16 @@ namespace osgEarth
             return getResultCodeString( _code );
         }
 
+    public:
+        void setIsFromCache(bool value) { _fromCache = value; }
+
     protected:
         Code                      _code;
         osg::ref_ptr<osg::Object> _result;
         Config                    _meta;
         std::string               _emptyString;
         Config                    _emptyConfig;
+        bool                      _fromCache;
     };
 
 //--------------------------------------------------------------------

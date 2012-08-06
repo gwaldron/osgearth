@@ -24,7 +24,6 @@
 #include <osgEarth/Cache>
 #include <osgEarth/CachePolicy>
 #include <osgEarth/GeoCommon>
-#include <osgEarth/HTTPClient>
 #include <osgEarth/Profile>
 #include <osgEarth/TerrainOptions>
 
@@ -46,7 +45,7 @@ namespace osgEarth
     public:
         MapOptions( const ConfigOptions& options =ConfigOptions() )
             : ConfigOptions          ( options ),
-              _cachePolicy           ( CachePolicy::INHERIT ),
+              _cachePolicy           ( ),
               _cstype                ( CSTYPE_GEOCENTRIC ),
               _referenceURI          ( "" ),
               _elevationInterpolation( INTERP_BILINEAR )

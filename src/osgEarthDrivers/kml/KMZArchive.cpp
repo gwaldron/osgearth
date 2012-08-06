@@ -278,7 +278,7 @@ KMZArchive::readImage(const std::string& filename, const osgDB::Options* options
             if ( readToBuffer( filename, iobuf ) )
             {
                 osg::ref_ptr<osgDB::Options> myOptions = Registry::instance()->cloneOrCreateOptions(options);
-                URIContext(*_archiveURI).add(filename).store( myOptions.get() );
+                URIContext(*_archiveURI).add(filename).apply( myOptions.get() );
                 return rw->readImage( iobuf, myOptions.get() );
             }
             else return ReadResult::ERROR_IN_READING_FILE;
@@ -300,7 +300,7 @@ KMZArchive::readNode(const std::string& filename, const osgDB::Options* options)
             if ( readToBuffer( filename, iobuf ) )
             {
                 osg::ref_ptr<osgDB::Options> myOptions = Registry::instance()->cloneOrCreateOptions(options);
-                URIContext(*_archiveURI).add(filename).store( myOptions.get() );
+                URIContext(*_archiveURI).add(filename).apply( myOptions.get() );
                 return rw->readNode( iobuf, myOptions.get() );
             }
             else return ReadResult::ERROR_IN_READING_FILE;
@@ -322,7 +322,7 @@ KMZArchive::readObject(const std::string& filename, const osgDB::Options* option
             if ( readToBuffer( filename, iobuf ) )
             {
                 osg::ref_ptr<osgDB::Options> myOptions = Registry::instance()->cloneOrCreateOptions(options);
-                URIContext(*_archiveURI).add(filename).store( myOptions.get() );
+                URIContext(*_archiveURI).add(filename).apply( myOptions.get() );
                 return rw->readObject( iobuf, myOptions.get() );
             }
             else return ReadResult::ERROR_IN_READING_FILE;

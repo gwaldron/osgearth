@@ -18,7 +18,7 @@
  */
 #include "KML_Model"
 
-#include <osgEarthSymbology/MarkerSymbol>
+#include <osgEarthSymbology/ModelSymbol>
 
 using namespace osgEarth::Symbology;
 
@@ -41,37 +41,41 @@ KML_Model::parseCoords( const Config& conf, KMLContext& cx )
 void
 KML_Model::parseStyle(const Config& conf, KMLContext& cx, Style& style)
 {    
-    MarkerSymbol* marker = 0L;
+    ModelSymbol* model = 0L;
     
     std::string url = KMLUtils::parseLink(conf);
     if ( !url.empty() )
     {
-        if ( !marker ) marker = style.getOrCreate<MarkerSymbol>();
-        marker->url() = StringExpression( Stringify() << "\"" << url << "\"" );
-        marker->url()->setURIContext( URIContext(conf.referrer()) );        
+        if ( !model ) model = style.getOrCreate<ModelSymbol>();
+        model->url()->setLiteral( url );
+        model->url()->setURIContext( URIContext(conf.referrer()) );
     }
 
     Config scale = conf.child("scale");
     if (!scale.empty())
     {
-        if ( !marker ) marker = style.getOrCreate<MarkerSymbol>();
+        if ( !model ) model = style.getOrCreate<ModelSymbol>();
         //TODO:  Support XYZ scale instead of single value
-        marker->scale() = scale.value("x", 1.0);
+        model->scale() = scale.value("x", 1.0);
     }
 
     Config orientation = conf.child("orientation");
     if (!orientation.empty())
     {
-        if ( !marker ) marker = style.getOrCreate<MarkerSymbol>();
+        if ( !model ) model = style.getOrCreate<ModelSymbol>();
+        
         double h = orientation.value("heading", 0);
-        double p = orientation.value("tilt", 0);
-        double r = orientation.value("roll", 0);        
-        marker->orientation() = osg::Vec3d(h,p,r);
-    }
+        if ( !osg::equivalent(h, 0.0) )
+            model->heading() = NumericExpression( h );
 
-    // since we know this is a model, not an icon.
-    if ( marker )
-        marker->isModel() = true;
+        double p = orientation.value("tilt", 0);
+        if ( !osg::equivalent(p, 0.0) )
+            model->pitch() = NumericExpression( p );
+
+        double r = orientation.value("roll", 0);
+        if ( !osg::equivalent(r, 0.0) )
+            model->roll() = NumericExpression( r );
+    }
 
     KML_Geometry::parseStyle(conf, cx, style);
 }

@@ -33,6 +33,9 @@
 
 #define LC "[HTTPClient] "
 
+//#define OE_TEST OE_NOTICE
+#define OE_TEST OE_NULL
+
 using namespace osgEarth;
 
 //----------------------------------------------------------------------------
@@ -550,7 +553,7 @@ HTTPClient::doGet( const HTTPRequest& request, const osgDB::Options* options, Pr
 {
     initialize();
 
-    OE_DEBUG << LC << "doGet " << request.getURL() << std::endl;
+    OE_TEST << LC << "doGet " << request.getURL() << std::endl;
 
     const osgDB::AuthenticationMap* authenticationMap = (options && options->getAuthenticationMap()) ? 
             options->getAuthenticationMap() :

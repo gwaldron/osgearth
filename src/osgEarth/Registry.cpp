@@ -119,6 +119,19 @@ _terrainEngineDriver( "osgterrain" )
         OE_INFO << LC << "NO-CACHE MODE set from environment variable" << std::endl;
     }
 
+    // if there's a default caching policy, add it to the default options.
+    if ( _defaultCachePolicy.isSet() )
+    {
+        _defaultCachePolicy->apply( _defaultOptions.get() );
+    }
+
+    // set the default terrain engine driver from the environment
+    const char* teStr = ::getenv("OSGEARTH_TERRAIN_ENGINE");
+    if ( teStr )
+    {
+        _terrainEngineDriver = std::string(teStr);
+    }
+
     // load a default font
 
     const char* envFont = ::getenv("OSGEARTH_DEFAULT_FONT");
@@ -389,7 +402,9 @@ Registry::createUID()
 osgDB::Options*
 Registry::cloneOrCreateOptions( const osgDB::Options* input ) const
 {
-    osgDB::Options* newOptions = input ? static_cast<osgDB::Options*>(input->clone(osg::CopyOp::SHALLOW_COPY)) : new osgDB::Options();
+    osgDB::Options* newOptions = 
+        input ? static_cast<osgDB::Options*>(input->clone(osg::CopyOp::SHALLOW_COPY)) : 
+        new osgDB::Options();
 
     // clear the CACHE_ARCHIVES flag because it is evil
     if ( ((int)newOptions->getObjectCacheHint() & osgDB::Options::CACHE_ARCHIVES) != 0 )

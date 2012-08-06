@@ -68,7 +68,7 @@ osg::Referenced      ( true ),
 _mapOptions          ( options ),
 _initMapOptions      ( options ),
 _dataModelRevision   ( 0 )
-{            
+{
     if (_mapOptions.cachePolicy().isSet() &&
         _mapOptions.cachePolicy()->usage() == CachePolicy::USAGE_CACHE_ONLY )
     {
@@ -82,7 +82,7 @@ _dataModelRevision   ( 0 )
 
     if ( _mapOptions.cachePolicy().isSet() )
     {
-        if ( !regCachePolicy.isSet() || regCachePolicy->inherits() )
+        if ( !regCachePolicy.isSet() )
         {
             Registry::instance()->setDefaultCachePolicy( *_mapOptions.cachePolicy() );
         }
@@ -101,9 +101,10 @@ _dataModelRevision   ( 0 )
 
     // we do our own caching
     _dbOptions->setObjectCacheHint( osgDB::Options::CACHE_NONE );
-    
-    // store the top-level referrer context in the options
-    URIContext( _mapOptions.referrer() ).store( _dbOptions );
+
+    // store the IO information in the top-level DB Options:
+    _mapOptions.cachePolicy()->apply( _dbOptions.get() );
+    URIContext( _mapOptions.referrer() ).apply( _dbOptions.get() );
 }
 
 Map::~Map()
@@ -389,14 +390,8 @@ Map::addImageLayer( ImageLayer* layer )
     unsigned int index = -1;
     if ( layer )
     {
-        // Set the DB options for the map from the layer
+        // Set the DB options for the map from the layer, including the cache policy.
         layer->setDBOptions( _dbOptions.get() );
-
-        // propagate the cache to the layer:
-        if (_mapOptions.cachePolicy().isSet())
-        {
-            layer->overrideCachePolicy( _mapOptions.cachePolicy().value() );
-        }
 
         // propagate the cache to the layer:
         layer->setCache( this->getCache() );
@@ -437,12 +432,6 @@ Map::insertImageLayer( ImageLayer* layer, unsigned int index )
         //Set options for the map from the layer
         layer->setDBOptions( _dbOptions.get() );
 
-        //propagate the cache to the layer:
-        if (_mapOptions.cachePolicy().isSet() )
-        {
-            layer->overrideCachePolicy( *_mapOptions.cachePolicy() );
-        }
-
         //Set the Cache for the MapLayer to our cache.
         layer->setCache( this->getCache() );
 
@@ -482,12 +471,6 @@ Map::addElevationLayer( ElevationLayer* layer )
     {
         //Set options for the map from the layer
         layer->setDBOptions( _dbOptions.get() );
-
-        //propagate the cache to the layer:
-        if ( _mapOptions.cachePolicy().isSet() )
-        {
-            layer->overrideCachePolicy( *_mapOptions.cachePolicy() );
-        }
 
         //Set the Cache for the MapLayer to our cache.
         layer->setCache( this->getCache() );

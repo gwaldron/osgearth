@@ -21,6 +21,7 @@
 #define OSGEARTH_ARCGIS_MAP_SERVICE_H 1
 
 #include <osgEarth/Profile>
+#include <osgEarth/URI>
 #include <list>
 #include "Extent.h"
 
@@ -92,7 +93,7 @@ public:
      * provided REST API URL (e.g.: http://server/ArcGIS/rest/services/MyMapService)
      * Call isValid() to verify success.
      */
-    bool init( const std::string& url, const osgDB::ReaderWriter::Options* options =0L );
+    bool init( const URI& uri, const osgDB::Options* options =0L );
 
     /**
      * Returns true if the map service initialized succesfully.
@@ -118,7 +119,7 @@ public:
 
 private:
     bool is_valid;
-    std::string url;
+    URI uri;
     osg::ref_ptr<const Profile> profile;
     std::string error_msg;
     MapServiceLayerList layers;

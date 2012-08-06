@@ -20,7 +20,7 @@
 #include <osgEarth/TileSource>
 #include <osgEarth/FileUtils>
 #include <osgEarth/ImageUtils>
-#include <osgEarth/HTTPClient>
+#include <osgEarth/Registry>
 
 #include <osg/Notify>
 #include <osgDB/FileNameUtils>
@@ -56,9 +56,8 @@ public:
     void initialize(const osgDB::Options* dbOptions,
                     const Profile*        overrideProfile )
     {
-        _dbOptions = dbOptions;
-
-        const Profile* result = NULL;
+        _dbOptions = Registry::instance()->cloneOrCreateOptions(dbOptions);
+        CachePolicy::NO_CACHE.apply( _dbOptions.get() );
 
         URI xyzURI = _options.url().value();
         if ( xyzURI.empty() )
@@ -67,16 +66,12 @@ public:
             return;
         }
 
-		//Take the override profile if one is given
-		if (overrideProfile)
-		{
-            OE_INFO << LC 
-                << "Using override profile \"" << overrideProfile->toString() 
-                << "\" for URI \"" << xyzURI.base() << "\"" 
-                << std::endl;
-
-			result = overrideProfile;
-		}
+        // driver requires a profile.
+        if ( !getProfile() )
+        {
+            OE_WARN << LC << "An explicit profile definition is required by the OSG driver." << std::endl;
+            return;
+        }
 
         _template = xyzURI.full();
         
@@ -91,8 +86,6 @@ public:
         _format = _options.format().isSet() 
             ? *_options.format()
             : osgDB::getLowerCaseFileExtension( xyzURI.base() );
-
-		setProfile( result );
     }
 
 
@@ -130,7 +123,7 @@ public:
 
         OE_TEST << LC << "URI: " << uri.full() << ", key: " << uri.cacheKey() << std::endl;
 
-        return uri.getImage( _dbOptions.get(), CachePolicy::NO_CACHE, progress );
+        return uri.getImage( _dbOptions.get(), progress );
     }
 
     virtual std::string getExtension() const 
@@ -147,7 +140,7 @@ private:
     std::string::size_type _rotateStart, _rotateEnd;
     OpenThreads::Atomic    _rotate_iter;
 
-    osg::ref_ptr<const osgDB::Options> _dbOptions;
+    osg::ref_ptr<osgDB::Options> _dbOptions;
 };
 
 

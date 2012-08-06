@@ -23,7 +23,10 @@ using namespace osgEarth;
 using namespace osgEarth::Symbology;
 
 ModelSymbol::ModelSymbol( const Config& conf ) :
-InstanceSymbol( conf )
+InstanceSymbol( conf ),
+_heading( NumericExpression(0.0) ),
+_pitch  ( NumericExpression(0.0) ),
+_roll   ( NumericExpression(0.0) )
 {
     mergeConfig( conf );
 }
@@ -34,6 +37,8 @@ ModelSymbol::getConfig() const
     Config conf = InstanceSymbol::getConfig();
     conf.key() = "model";
     conf.addObjIfSet( "heading", _heading );
+    conf.addObjIfSet( "pitch",   _pitch );
+    conf.addObjIfSet( "roll",    _roll );
 
     conf.addNonSerializable( "ModelSymbol::node", _node.get() );
     return conf;
@@ -43,7 +48,9 @@ void
 ModelSymbol::mergeConfig( const Config& conf )
 {
     conf.getObjIfSet( "heading", _heading );
-    _node = conf.getNonSerializable<osg::Node>( "MarkerSymbol::node" );
+    conf.getObjIfSet( "pitch",   _pitch );
+    conf.getObjIfSet( "roll",    _roll );
+    _node = conf.getNonSerializable<osg::Node>( "ModelSymbol::node" );
 }
 
 InstanceResource*

@@ -22,7 +22,6 @@
 #include <osgEarthFeatures/ScriptEngine>
 #include <osgEarthFeatures/FeatureSource>
 #include <osgEarth/FileUtils>
-#include <osgEarth/HTTPClient>
 #include <osgEarth/StringUtils>
 #include <osg/AutoTransform>
 #include <osg/Depth>

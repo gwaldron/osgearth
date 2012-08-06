@@ -40,14 +40,17 @@ namespace osgEarth { namespace Drivers {
          * @param[in ] mapNode MapNode to which to attach KML elements
          * @param[in ] options Optional KML options
          */
-        static osg::Node* load( const URI& uri, MapNode* mapNode, const KMLOptions& kmlOptions =KMLOptions() )
+        static osg::Node* load(const URI&            uri, 
+                               MapNode*              mapNode,
+                               const osgDB::Options* dbOptions, 
+                               const KMLOptions&     kmlOptions)
         {
             if ( !mapNode ) {
                 OE_WARN << "[KML] " << "MapNode instance required" << std::endl;
                 return 0L;
             }
-            osg::ref_ptr<osgDB::Options> options = Registry::instance()->cloneOrCreateOptions();
-            options->setPluginData( "osgEarth::MapNode", mapNode );
+            osg::ref_ptr<osgDB::Options> options = Registry::instance()->cloneOrCreateOptions( dbOptions );
+            options->setPluginData( "osgEarth::MapNode",    mapNode );
             options->setPluginData( "osgEarth::KMLOptions", (void*)&kmlOptions );
 
             // for a KMZ archive over HTTP, we need to go through OSG's archive management system
@@ -56,7 +59,14 @@ namespace osgEarth { namespace Drivers {
                 return osgDB::readNodeFile( uri.full() + "/.kml", options.get() );
             }
 
-            return uri.getNode( options.get(), CachePolicy::NO_CACHE );
+            return uri.getNode( options.get() );
+        }
+
+        static osg::Node* load(const URI&            uri, 
+                               MapNode*              mapNode,
+                               const KMLOptions&     kmlOptions =KMLOptions() )
+        {
+            return load(uri, mapNode, 0L, kmlOptions);
         }
     };
 

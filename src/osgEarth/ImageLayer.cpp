@@ -165,7 +165,7 @@ ImageLayerTileProcessor::init(const ImageLayerOptions& options,
     if ( _options.noDataImageFilename().isSet() && !_options.noDataImageFilename()->empty() )
     {
         URI noDataURI( *_options.noDataImageFilename() );
-        _noDataImage = noDataURI.getImage( dbOptions, *options.cachePolicy() );
+        _noDataImage = noDataURI.getImage( dbOptions );
         //_noDataImage = URI( *_options.noDataImageFilename() ).readImage(dbOptions).getImage();
         if ( !_noDataImage.valid() )
         {
@@ -361,7 +361,7 @@ ImageLayer::initPreCacheOp()
         getProfile()               &&
         _targetProfileHint->isEquivalentTo( getProfile() );
 
-    ImageLayerPreCacheOperation* op = new ImageLayerPreCacheOperation();    
+    ImageLayerPreCacheOperation* op = new ImageLayerPreCacheOperation();
     op->_processor.init( _runtimeOptions, _dbOptions.get(), layerInTargetProfile );
 
     _preCacheOp = op;
@@ -531,7 +531,7 @@ ImageLayer::createImageInKeyProfile( const TileKey& key, ProgressCallback* progr
 
     // First, attempt to read from the cache. Since the cached data is stored in the
     // map profile, we can try this first.
-    if ( cacheBin && _runtimeOptions.cachePolicy()->isCacheReadable() )
+    if ( cacheBin && getCachePolicy().isCacheReadable() )
     {
         ReadResult r = cacheBin->readImage( key.str() );
         if ( r.succeeded() )
@@ -568,7 +568,7 @@ ImageLayer::createImageInKeyProfile( const TileKey& key, ProgressCallback* progr
         //     performance can suffer generating all those fallback tiles, especially if you have to do reprojection or mosaicing.
         //!out_isFallback &&
         cacheBin        && 
-        _runtimeOptions.cachePolicy()->isCacheWriteable() )
+        getCachePolicy().isCacheWriteable() )
     {
         if ( key.getExtent() != result.getExtent() )
         {

@@ -57,6 +57,10 @@ namespace osgEarth { namespace Symbology
         /** Alignment of the marker relative to center pixels */
         optional<Alignment>& alignment() { return _alignment; }
         const optional<Alignment>& alignment() const { return _alignment; }
+
+        /** Heading. Semantically this differs from an model's heading */
+        optional<NumericExpression>& heading() { return _heading; }
+        const optional<NumericExpression>& heading() const { return _heading; }
         
     public: // non-serialized properties (for programmatic use only)
 
@@ -73,6 +77,7 @@ namespace osgEarth { namespace Symbology
 
     protected:
         optional<Alignment>              _alignment;
+        optional<NumericExpression>      _heading;
         mutable osg::ref_ptr<osg::Image> _image;
     };
 

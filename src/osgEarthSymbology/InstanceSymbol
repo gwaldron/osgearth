@@ -30,6 +30,8 @@
 namespace osgEarth { namespace Symbology
 {
     class InstanceResource;
+    class IconSymbol;
+    class ModelSymbol;
 
     /**
      * Base class for symbols that represent an instance of an external resource
@@ -84,6 +86,11 @@ namespace osgEarth { namespace Symbology
         /** Seeding value for the randomizer */
         optional<unsigned>& randomSeed() { return _randomSeed; }
         const optional<unsigned>& randomSeed() const { return _randomSeed; }
+
+    public: // conversions to built-in base classes, for convenience.
+
+        const IconSymbol* asIcon() const;
+        const ModelSymbol* asModel() const;
 
     public:
         virtual Config getConfig() const;

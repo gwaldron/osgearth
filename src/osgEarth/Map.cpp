@@ -85,15 +85,24 @@ _dataModelRevision   ( 0 )
         if ( !regCachePolicy.isSet() )
         {
             Registry::instance()->setDefaultCachePolicy( *_mapOptions.cachePolicy() );
+            OE_INFO << LC 
+                << "Setting default cache policy from map ("
+                << _mapOptions.cachePolicy()->usageString() << ")" << std::endl;
         }
         else
         {
             _mapOptions.cachePolicy() = *regCachePolicy;
+            OE_INFO << LC
+                << "Settings map caching policy to default ("
+                << _mapOptions.cachePolicy()->usageString() << ")" << std::endl;
         }
     }
     else if ( regCachePolicy.isSet() )
     {
         _mapOptions.cachePolicy() = *regCachePolicy;
+        OE_INFO << LC
+            << "Settings map caching policy to default ("
+            << _mapOptions.cachePolicy()->usageString() << ")" << std::endl;
     }
 
     // the map-side dbOptions object holds I/O information for all components.

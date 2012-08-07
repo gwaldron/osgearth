@@ -57,7 +57,7 @@ _maxAge( DBL_MAX )
     fromConfig( conf );
 }
 
-void
+bool
 CachePolicy::fromOptions( const osgDB::Options* dbOptions, optional<CachePolicy>& out )
 {
     if ( dbOptions )
@@ -68,8 +68,10 @@ CachePolicy::fromOptions( const osgDB::Options* dbOptions, optional<CachePolicy>
             Config conf;
             conf.fromJSON( jsonString );
             out = CachePolicy( conf );
+            return true;
         }
     }
+    return false;
 }
 
 void

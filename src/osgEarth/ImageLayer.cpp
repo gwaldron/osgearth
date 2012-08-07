@@ -574,7 +574,7 @@ ImageLayer::createImageInKeyProfile( const TileKey& key, ProgressCallback* progr
         }
 
         cacheBin->write( key.str(), result.getImage() );
-        OE_DEBUG << LC << "WRITING " << key.str() << " to the cache." << std::endl;
+        //OE_INFO << LC << "WRITING " << key.str() << " to the cache." << std::endl;
     }
 
     if ( result.valid() )
@@ -727,10 +727,6 @@ ImageLayer::assembleImageFromTileSource(const TileKey&    key,
     {
         double dst_minx, dst_miny, dst_maxx, dst_maxy;
         key.getExtent().getBounds(dst_minx, dst_miny, dst_maxx, dst_maxy);
-
-        //ImageMosaic mosaic;
-        //osg::ref_ptr<ImageMosaic> mi = new ImageMosaic();
-        //std::vector<TileKey> missingTiles;
 
         // if we find at least one "real" tile in the mosaic, then the whole result tile is
         // "real" (i.e. not a fallback tile)

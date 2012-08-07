@@ -183,17 +183,13 @@ TerrainLayer::init()
     _tileSize              = 256;
     _dbOptions             = Registry::instance()->cloneOrCreateOptions();
     
-    if ( _runtimeOptions->cachePolicy().isSet() )
-    {
-        _runtimeOptions->cachePolicy()->apply( _dbOptions.get() );
-    }
+    initializeCachePolicy( _dbOptions.get() );
 }
 
 void
 TerrainLayer::setCache( Cache* cache )
 {
-    if (_cache.get() != cache && 
-        _runtimeOptions->cachePolicy()->usage() != CachePolicy::USAGE_NO_CACHE )
+    if (_cache.get() != cache && getCachePolicy() != CachePolicy::NO_CACHE )
     {
         _cache = cache;
 
@@ -364,8 +360,7 @@ TerrainLayer::isDynamic() const
 CacheBin*
 TerrainLayer::getCacheBin( const Profile* profile )
 {
-    if (_runtimeOptions->cachePolicy().isSet() &&
-        _runtimeOptions->cachePolicy()->usage() == CachePolicy::USAGE_NO_CACHE )
+    if ( getCachePolicy() == CachePolicy::NO_CACHE )
     {
         return 0L;
     }
@@ -380,8 +375,7 @@ CacheBin*
 TerrainLayer::getCacheBin( const Profile* profile, const std::string& binId )
 {
     // in no-cache mode, there are no cache bins.
-    if (_runtimeOptions->cachePolicy().isSet() &&
-        _runtimeOptions->cachePolicy()->usage() == CachePolicy::USAGE_NO_CACHE )
+    if ( getCachePolicy() == CachePolicy::NO_CACHE )
     {
         return 0L;
     }
@@ -428,7 +422,7 @@ TerrainLayer::getCacheBin( const Profile* profile, const std::string& binId )
                     {
                         OE_WARN << LC << "Cache has an incompatible driver or profile... disabling"
                             << std::endl;
-                        _runtimeOptions->cachePolicy()->usage() = CachePolicy::USAGE_NO_CACHE;
+                        setCachePolicy( CachePolicy::NO_CACHE );
                         return 0L;
                     }
                 }   
@@ -486,9 +480,8 @@ TerrainLayer::getCacheBin( const Profile* profile, const std::string& binId )
         else
         {
             // bin creation failed, so disable caching for this layer.
-            _runtimeOptions->cachePolicy()->usage() = CachePolicy::USAGE_NO_CACHE;
-            OE_WARN << LC << "Failed to create a cacheing bin for layer; cache disabled." 
-                << std::endl;
+            setCachePolicy( CachePolicy::NO_CACHE );
+            OE_WARN << LC << "Failed to create a caching bin for layer; cache disabled." << std::endl;
         }
 
         return newBin.get(); // not release()
@@ -572,7 +565,7 @@ TerrainLayer::initTileSource()
     else if (_cache.valid())
     {
         OE_NOTICE << LC << "Could not initialize TileSource " << _name << ", but a cache exists. Setting layer to cache-only mode." << std::endl;
-        _runtimeOptions->cachePolicy()->usage() = CachePolicy::USAGE_CACHE_ONLY;
+        setCachePolicy( CachePolicy::CACHE_ONLY );
     }
 
     _tileSourceInitialized = true;
@@ -634,9 +627,37 @@ TerrainLayer::setVisible( bool value )
 void
 TerrainLayer::setDBOptions( const osgDB::Options* dbOptions )
 {
-    _dbOptions = osg::clone( dbOptions );
-
-    // override the cache policy if there's one set locally.
-    if ( _runtimeOptions->cachePolicy().isSet() )
-        _runtimeOptions->cachePolicy()->apply( _dbOptions.get() );
+    _dbOptions = Registry::instance()->cloneOrCreateOptions( dbOptions );
+    initializeCachePolicy( dbOptions );
 }
+
+void
+TerrainLayer::initializeCachePolicy( const osgDB::Options* options )
+{
+    // establish this layer's cache policy.
+    if ( _initOptions.cachePolicy().isSet() )
+    {
+        // if this layer defines its own CP, use it.
+        setCachePolicy( *_initOptions.cachePolicy() );
+    }
+    else
+    {
+        // see if the new DBOptions has one set; if so, inherit that:
+        optional<CachePolicy> incomingCP;
+        if ( CachePolicy::fromOptions(options, incomingCP) )
+        {
+            setCachePolicy( incomingCP.get() );
+        }
+        else if ( Registry::instance()->defaultCachePolicy().isSet() )
+        {
+            // not set, no try to inherit from the registry:
+            setCachePolicy( Registry::instance()->defaultCachePolicy().value() );
+        }
+        else
+        {
+            // not found anywhere; set to the default.
+            setCachePolicy( CachePolicy::DEFAULT );
+        }
+    }
+}
+

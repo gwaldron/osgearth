@@ -244,7 +244,16 @@ purge( osg::ArgumentParser& args )
     map->getImageLayers( imageLayers );
     for( ImageLayerVector::const_iterator i = imageLayers.begin(); i != imageLayers.end(); ++i )
     {
-        CacheBin* bin = i->get()->getCacheBin( map->getProfile() );
+        ImageLayer* layer = i->get();
+
+        bool useMFP =
+            layer->getProfile() &&
+            layer->getProfile()->getSRS()->isSphericalMercator() &&
+            mapNode->getMapNodeOptions().getTerrainOptions().enableMercatorFastPath() == true;
+
+        const Profile* cacheProfile = useMFP ? layer->getProfile() : map->getProfile();
+
+        CacheBin* bin = layer->getCacheBin( cacheProfile );
         if ( bin )
         {
             entries.push_back(Entry());
@@ -258,7 +267,16 @@ purge( osg::ArgumentParser& args )
     map->getElevationLayers( elevationLayers );
     for( ElevationLayerVector::const_iterator i = elevationLayers.begin(); i != elevationLayers.end(); ++i )
     {
-        CacheBin* bin = i->get()->getCacheBin( map->getProfile() );
+        ElevationLayer* layer = i->get();
+
+        bool useMFP =
+            layer->getProfile() &&
+            layer->getProfile()->getSRS()->isSphericalMercator() &&
+            mapNode->getMapNodeOptions().getTerrainOptions().enableMercatorFastPath() == true;
+
+        const Profile* cacheProfile = useMFP ? layer->getProfile() : map->getProfile();
+
+        CacheBin* bin = i->get()->getCacheBin( cacheProfile );
         if ( bin )
         {
             entries.push_back(Entry());

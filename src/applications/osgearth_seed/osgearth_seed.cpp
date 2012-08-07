@@ -188,7 +188,14 @@ list( osg::ArgumentParser& args )
         TerrainLayer* layer = i->get();
         TerrainLayer::CacheBinMetadata meta;
 
-        if ( layer->getCacheBinMetadata( map->getProfile(), meta ) )
+        bool useMFP =
+            layer->getProfile() &&
+            layer->getProfile()->getSRS()->isSphericalMercator() &&
+            mapNode->getMapNodeOptions().getTerrainOptions().enableMercatorFastPath() == true;
+
+        const Profile* cacheProfile = useMFP ? layer->getProfile() : map->getProfile();
+
+        if ( layer->getCacheBinMetadata( cacheProfile, meta ) )
         {
             Config conf = meta.getConfig();
             std::cout << "Layer \"" << layer->getName() << "\", cache metadata =" << std::endl

@@ -77,6 +77,10 @@ namespace osgEarth { namespace Features
          */
         void dirty();
 
+        /**
+         * Access to the features levels
+         */
+        std::vector<const FeatureLevel*> getLevels() const { return _lodmap; };
 
     public: // osg::Node
 

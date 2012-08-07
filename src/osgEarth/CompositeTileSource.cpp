@@ -441,11 +441,13 @@ CompositeTileSource::initialize(const osgDB::Options* dbOptions)
 
                 const TileSourceOptions& opt = source->getOptions();
                 if ( opt.profile().isSet() )
+                {
                     localOverrideProfile = Profile::create( opt.profile().value() );
+                    source->setProfile( localOverrideProfile.get() );
+                }
 
                 // initialize the component tile source:
-                source->setProfile( localOverrideProfile.get() );
-                TileSource::Status compStatus = source->initialize( _dbOptions.get() );
+                TileSource::Status compStatus = source->startup( _dbOptions.get() );
 
                 if ( compStatus == TileSource::STATUS_OK )
                 {

@@ -423,6 +423,13 @@ ImageLayer::createImageInNativeProfile( const TileKey& key, ProgressCallback* pr
                 if ( !isFallback )
                     foundAtLeastOneRealTile = true;
             }
+            else
+            {
+                // if we get EVEN ONE invalid tile, we have to abort because there will be
+                // empty spots in the mosaic. (By "invalid" we mean a tile that could not
+                // even be resolved through the fallback procedure.)
+                return GeoImage::INVALID;
+            }
         }
 
         // bail out if we got nothing.
@@ -617,7 +624,7 @@ ImageLayer::createImageFromTileSource(const TileKey&    key,
     // If the profiles are different, use a compositing method to assemble the tile.
     if ( !key.getProfile()->isEquivalentTo( getProfile() ) )
     {
-        return assembleImageFromTileSource( key, progress, true, out_isFallback );
+        return assembleImageFromTileSource( key, progress, out_isFallback );
     }
 
     // Fail is the image is blacklisted.
@@ -678,7 +685,8 @@ ImageLayer::createImageFromTileSource(const TileKey&    key,
 
         if ( !result.valid() )
         {
-            result = ImageUtils::createEmptyImage();
+            result = 0L;
+            //result = _emptyImage.get();
             finalKey = key;
         }
     }
@@ -704,7 +712,6 @@ ImageLayer::createImageFromTileSource(const TileKey&    key,
 GeoImage
 ImageLayer::assembleImageFromTileSource(const TileKey&    key,
                                         ProgressCallback* progress,
-                                        bool              forceFallback,
                                         bool&             out_isFallback)
 {
     GeoImage mosaicedImage, result;

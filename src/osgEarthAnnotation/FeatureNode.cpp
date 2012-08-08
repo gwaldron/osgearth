@@ -66,11 +66,14 @@ FeatureNode::init()
     // if there is existing geometry, kill it
     this->removeChildren( 0, this->getNumChildren() );
 
+    if ( !getMapNode() )
+        return;
+
     // build the new feature geometry
     {
-        if ( _feature.valid() && _mapNode.valid() )
+        if ( _feature.valid() )
         {
-            _feature->getWorldBoundingPolytope( _mapNode->getMapSRS(), _featurePolytope );
+            _feature->getWorldBoundingPolytope( getMapNode()->getMapSRS(), _featurePolytope );
         }
 
         GeometryCompilerOptions options = _options;
@@ -86,7 +89,7 @@ FeatureNode::init()
 
         // prep the compiler:
         GeometryCompiler compiler( options );
-        Session* session = new Session( _mapNode->getMap() );
+        Session* session = new Session( getMapNode()->getMap() );
         GeoExtent extent(_feature->getSRS(), _feature->getGeometry()->getBounds());
         osg::ref_ptr<FeatureProfile> profile = new FeatureProfile( extent );
         FilterContext context( session, profile.get(), extent );
@@ -110,7 +113,7 @@ FeatureNode::init()
 
             if ( _draped )
             {
-                DrapeableNode* d = new DrapeableNode(_mapNode.get());
+                DrapeableNode* d = new DrapeableNode( getMapNode() );
                 d->addChild( _attachPoint );
                 this->addChild( d );
             }
@@ -124,8 +127,18 @@ FeatureNode::init()
         if ( autoClamping )
         {
             applyStyle( *_feature->style() );
-            clampMesh( _mapNode->getTerrain()->getGraph() );
+            clampMesh( getMapNode()->getTerrain()->getGraph() );
         }
+    }
+}
+
+void
+FeatureNode::setMapNode( MapNode* mapNode )
+{
+    if ( getMapNode() != mapNode )
+    {
+        AnnotationNode::setMapNode( mapNode );
+        init();
     }
 }
 
@@ -176,7 +189,7 @@ FeatureNode::clampMesh( osg::Node* terrainModel )
         relative = _altitude->clamping() == AltitudeSymbol::CLAMP_RELATIVE_TO_TERRAIN;
     }
 
-    MeshClamper clamper( terrainModel, _mapNode->getMapSRS(), _mapNode->isGeocentric(), relative, scale, offset );
+    MeshClamper clamper( terrainModel, getMapNode()->getMapSRS(), getMapNode()->isGeocentric(), relative, scale, offset );
     this->accept( clamper );
 
     this->dirtyBound();

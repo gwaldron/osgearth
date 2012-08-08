@@ -58,7 +58,6 @@ namespace osgEarth { namespace Annotation
     protected:
 
         optional<Style>                    _style;
-        optional<CachePolicy>              _cachePolicy;
         osg::ref_ptr<const osgDB::Options> _dbOptions;
 
         void init();

@@ -59,17 +59,33 @@ _depthAdj   ( false ),
 _activeDs   ( 0L )
 {
     //nop
+    //Note: Cannot call setMapNode() here because it's a virtual function.
+    //      Each subclass will be separately responsible at ctor time.
 }
 
 AnnotationNode::~AnnotationNode()
 {
-    osg::ref_ptr<MapNode> mapNodeSafe = _mapNode.get();
-    if ( mapNodeSafe.get() )
+    setMapNode( 0L );
+}
+
+void
+AnnotationNode::setMapNode( MapNode* mapNode )
+{
+    if ( getMapNode() != mapNode )
     {
-        if (_autoClampCallback)
+        // relocate the auto-clamping callback, if there is one:
+        osg::ref_ptr<MapNode> oldMapNode = _mapNode.get();
+        if ( oldMapNode.valid() )
         {
-            mapNodeSafe->getTerrain()->removeTerrainCallback( _autoClampCallback );
+            if ( _autoClampCallback )
+            {
+                oldMapNode->getTerrain()->removeTerrainCallback( _autoClampCallback.get() );
+                if ( mapNode )
+                    mapNode->getTerrain()->addTerrainCallback( _autoClampCallback.get() );
+            }
         }
+
+        _mapNode = mapNode;
     }
 }
 
@@ -283,12 +299,6 @@ AnnotationNode::getChildAttachPoint()
 {
     osg::Transform* t = osgEarth::findTopMostNodeOfType<osg::Transform>(this);
     return t ? (osg::Group*)t : (osg::Group*)this;
-}
-
-osgEarth::MapNode*
-AnnotationNode::getMapNode() const
-{
-    return _mapNode.get();
 }
 
 bool

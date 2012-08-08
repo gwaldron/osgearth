@@ -529,7 +529,8 @@ TerrainLayer::initTileSource()
         if ( !_dbOptions.valid() )
         {
             _dbOptions = Registry::instance()->cloneOrCreateOptions();
-            if ( _cache.valid() ) _cache->store( _dbOptions.get() );
+            if ( _cache.valid() ) _cache->apply( _dbOptions.get() );
+            _initOptions.cachePolicy()->apply( _dbOptions.get() );
             URIContext( _runtimeOptions->referrer() ).apply( _dbOptions.get() );
         }
 
@@ -540,8 +541,12 @@ TerrainLayer::initTileSource()
                 << _tileSource->getProfile()->toString() << std::endl;
         }
 
-        // Intialize the tile source.
-        const TileSource::Status& status = _tileSource->startup( _dbOptions.get() );
+        // Start up the tile source (if it hasn't already been started)
+        TileSource::Status status = _tileSource->getStatus();
+        if ( status != TileSource::STATUS_OK )
+        {
+            status = _tileSource->startup( _dbOptions.get() );
+        }
 
         if ( status == TileSource::STATUS_OK )
         {

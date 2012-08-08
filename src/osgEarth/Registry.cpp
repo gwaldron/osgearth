@@ -293,7 +293,7 @@ Registry::setCache( osgEarth::Cache* cache )
 {
 	_cache = cache;
     if ( cache )
-        cache->store( _defaultOptions.get() );
+        cache->apply( _defaultOptions.get() );
 }
 
 bool

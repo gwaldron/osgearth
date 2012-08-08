@@ -357,7 +357,7 @@ Map::setCache( Cache* cache )
 
         if ( _cache.valid() )
         {
-            _cache->store( _dbOptions.get() );
+            _cache->apply( _dbOptions.get() );
         }
 
         // Propagate the cache to any of our layers

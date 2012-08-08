@@ -23,6 +23,7 @@
 #include <osgEarthAnnotation/AnnotationData>
 #include <osgEarthAnnotation/Decoration>
 #include <osgEarthSymbology/Style>
+#include <osgEarth/MapNodeObserver>
 #include <osgEarth/Terrain>
 #include <osgEarth/TileKey>
 #include <osg/Switch>
@@ -46,7 +47,8 @@ namespace osgEarth { namespace Annotation
     /**
      * Base class for all annotation node types.
      */
-    class OSGEARTHANNO_EXPORT AnnotationNode : public osg::Group
+    class OSGEARTHANNO_EXPORT AnnotationNode : public osg::Group,
+                                               public MapNodeObserver
     {
     public:
         META_AnnotationNode(osgEarthAnnotation, AnnotationNode);
@@ -111,9 +113,14 @@ namespace osgEarth { namespace Annotation
          */
         bool hasDecoration( const std::string& name ) const;
 
+    public: // MapNodeObserver
+
+        virtual void setMapNode( MapNode* mapNode );
+
+        MapNode* getMapNode() { return _mapNode.get(); }
+
     protected:
 
-        osg::observer_ptr<MapNode>   _mapNode;
         osg::ref_ptr<AnnotationData> _annoData;
         bool                         _dynamic;
         bool                         _autoclamp;
@@ -158,6 +165,10 @@ namespace osgEarth { namespace Annotation
 
         osg::ref_ptr< TerrainCallback > _autoClampCallback;
 
+    private:
+            
+        osg::observer_ptr<MapNode>   _mapNode;
+
 
     public: // internal methods; do not call directly
 
@@ -178,12 +189,6 @@ namespace osgEarth { namespace Annotation
          * Returns true upon success.
          */
         virtual bool setPosition( const GeoPoint& p ) =0;
-
-        /**
-         * Sets the map position of the node, in map coordinates.
-         * Returns true upon success.
-         */
-        //virtual bool setPosition( const osg::Vec3d& pos ) =0;
 
         /**
          * Gets the position (in map coordinates) of the node

@@ -55,6 +55,7 @@ namespace osgEarth { namespace Annotation
             const std::string&      text,
             const TextSymbol*       symbol );
 
+#if 0
         /**
          * Constructs a label node that is positioned relative to a map
          * point (referneced by the spatial reference)
@@ -64,6 +65,7 @@ namespace osgEarth { namespace Annotation
             const GeoPoint&         position,
             const std::string&      text,
             const TextSymbol*       symbol );
+#endif
 
         /** 
          * Construct a label node purely from the style. The text string

@@ -95,7 +95,6 @@ OrthoNode::OrthoNode(MapNode*        mapNode,
                      const GeoPoint& position ) :
 
 PositionedAnnotationNode( mapNode ),
-_mapSRS                 ( mapNode ? mapNode->getMapSRS() : 0L ),
 _horizonCulling         ( false ),
 _occlusionCulling       ( false )
 {
@@ -107,6 +106,7 @@ _occlusionCulling       ( false )
     setPosition( position );
 }
 
+#if 0
 OrthoNode::OrthoNode(const SpatialReference* mapSRS,
                      const GeoPoint&         position ) :
 
@@ -121,9 +121,9 @@ _occlusionCulling( false )
     }
     setPosition( position );
 }
+#endif
 
 OrthoNode::OrthoNode() :
-_mapSRS          ( 0L ),
 _horizonCulling  ( false ),
 _occlusionCulling( false )
 {
@@ -236,19 +236,41 @@ OrthoNode::computeBound() const
     return osg::BoundingSphere(_matxform->getMatrix().getTrans(), 1000.0);
 }
 
-//bool
-//OrthoNode::setPosition( const osg::Vec3d& position )
-//{
-//    return setPosition( GeoPoint(_mapSRS.get(), position) );
-//}
+void
+OrthoNode::setMapNode( MapNode* mapNode )
+{
+    if ( getMapNode() != mapNode )
+    {
+        PositionedAnnotationNode::setMapNode( mapNode );
+
+        // the occlusion culler depends on the mapnode, so re-initialize it:
+        if ( _occlusionCulling )
+        {
+            setOcclusionCulling( false );
+            setOcclusionCulling( true );
+        }
+
+        // same goes for the horizon culler:
+        if ( _horizonCulling )
+        {
+            setHorizonCulling( false );
+            setHorizonCulling( true );
+        }
+
+        // re-apply the position since the map has changed
+        setPosition( getPosition() );
+    }
+}
 
 bool
 OrthoNode::setPosition( const GeoPoint& position )
 {
-    if ( _mapSRS.valid() )
+    MapNode* mapNode = getMapNode();
+    if ( mapNode )
     {
         // first transform the point to the map's SRS:
-        GeoPoint mapPos = _mapSRS.valid() ? position.transform(_mapSRS.get()) : position;
+        const SpatialReference* mapSRS = mapNode->getMapSRS();
+        GeoPoint mapPos = mapSRS ? position.transform(mapSRS) : position;
         if ( !mapPos.isValid() )
             return false;
 
@@ -272,7 +294,8 @@ OrthoNode::setPosition( const GeoPoint& position )
 bool
 OrthoNode::updateTransforms( const GeoPoint& p, osg::Node* patch )
 {
-    if ( _mapSRS.valid() )
+    osg::ref_ptr<MapNode> mapNode = getMapNode();
+    if ( mapNode.valid() )
     {
         //OE_NOTICE << "updateTransforms" << std::endl;
         // make sure the point is absolute to terrain
@@ -341,7 +364,7 @@ OrthoNode::getHorizonCulling() const
 void
 OrthoNode::setHorizonCulling( bool value )
 {
-    if ( _horizonCulling != value && _mapSRS.valid() )
+    if ( _horizonCulling != value && getMapNode() )
     {
         _horizonCulling = value;
 
@@ -349,7 +372,7 @@ OrthoNode::setHorizonCulling( bool value )
         {
             osg::Vec3d world = _autoxform->getPosition();
 
-            _horizonCuller = new CullNodeByHorizon(world, _mapSRS->getEllipsoid());
+            _horizonCuller = new CullNodeByHorizon(world, getMapNode()->getMapSRS()->getEllipsoid());
             addCullCallback( _horizonCuller.get()  );
         }
         else
@@ -366,11 +389,18 @@ OrthoNode::setHorizonCulling( bool value )
 osg::Vec3d
 OrthoNode::adjustOcclusionCullingPoint( const osg::Vec3d& world )
 {
-    //Adjust the height by a little bit "up", we can't have the occlusion point sitting right on the ground
-    const osg::EllipsoidModel* em = _mapNode->getMapSRS()->getEllipsoid();
-    osg::Vec3d up = em ? em->computeLocalUpVector( world.x(), world.y(), world.z() ) : osg::Vec3d(0,0,1);                
-    osg::Vec3d adjust = up * 0.1;
-    return world + adjust;
+    // Adjust the height by a little bit "up", we can't have the occlusion point sitting right on the ground
+    if ( getMapNode() )
+    {
+        const osg::EllipsoidModel* em = getMapNode()->getMapSRS()->getEllipsoid();
+        osg::Vec3d up = em ? em->computeLocalUpVector( world.x(), world.y(), world.z() ) : osg::Vec3d(0,0,1);
+        osg::Vec3d adjust = up * 0.1;
+        return world + adjust;
+    }
+    else
+    {
+        return world;
+    }
 }
 
 bool
@@ -389,7 +419,7 @@ OrthoNode::setOcclusionCulling( bool value )
         if ( _occlusionCulling )
         {
             osg::Vec3d world = _autoxform->getPosition();
-            _occlusionCuller = new OcclusionCullingCallback(adjustOcclusionCullingPoint(world), _mapNode.get());
+            _occlusionCuller = new OcclusionCullingCallback(adjustOcclusionCullingPoint(world), getMapNode());
             _occlusionCuller->setMaxRange( AnnotationSettings::getOcclusionQueryMaxRange() );
             addCullCallback( _occlusionCuller.get()  );
         }

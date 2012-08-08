@@ -62,11 +62,30 @@ namespace osgEarth
         
         virtual void apply( MapNodeObserver* m ) = 0;
 
+        void tryApply( MapNodeObserver* m )
+        {
+            if ( m ) apply( m );
+        }
+
         void apply( osg::Node& node )
         {
-            MapNodeObserver* m = dynamic_cast<MapNodeObserver*>(&node);
-            if ( m ) apply( m );
+            tryApply( dynamic_cast<MapNodeObserver*>(&node) );
+            tryApply( dynamic_cast<MapNodeObserver*>(node.getEventCallback()) );
+            tryApply( dynamic_cast<MapNodeObserver*>(node.getUpdateCallback()) );
+            tryApply( dynamic_cast<MapNodeObserver*>(node.getCullCallback()) );
             traverse( node );
+        }
+
+        void apply( osg::Geode& geode )
+        {
+            for(unsigned d=0; d<geode.getNumDrawables(); ++d )
+            {
+                osg::Drawable* drawable = geode.getDrawable(d);
+                tryApply( dynamic_cast<MapNodeObserver*>(drawable->getEventCallback()) );
+                tryApply( dynamic_cast<MapNodeObserver*>(drawable->getUpdateCallback()) );
+                tryApply( dynamic_cast<MapNodeObserver*>(drawable->getCullCallback()) );
+            }
+            traverse( geode );
         }
     };
 

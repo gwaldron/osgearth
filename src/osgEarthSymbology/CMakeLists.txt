@@ -24,11 +24,17 @@ SET(LIB_PUBLIC_HEADERS
     GeometryFactory
     GEOS
     GeometryRasterizer
+    IconResource
+    IconSymbol
+    InstanceResource
+    InstanceSymbol
     LineSymbol
     MarkerResource
     MarkerSymbol
     MeshConsolidator
     MeshSubdivider
+    ModelResource
+    ModelSymbol
     PointSymbol
     PolygonSymbol
     Query
@@ -58,11 +64,17 @@ ADD_LIBRARY(${LIB_NAME} ${OSGEARTH_USER_DEFINED_DYNAMIC_OR_STATIC}
     GeometryFactory.cpp
     GEOS.cpp
     GeometryRasterizer.cpp
+    IconResource.cpp
+    IconSymbol.cpp
+    InstanceResource.cpp
+    InstanceSymbol.cpp
     LineSymbol.cpp
     MarkerResource.cpp
     MarkerSymbol.cpp
     MeshConsolidator.cpp
     MeshSubdivider.cpp
+    ModelResource.cpp
+    ModelSymbol.cpp
     PointSymbol.cpp
     PolygonSymbol.cpp
     Query.cpp

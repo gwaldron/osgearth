@@ -17,8 +17,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 
-#ifndef OSGEARTHSYMBOLOGY_MODEL_SYMBOL_H
-#define OSGEARTHSYMBOLOGY_MODEL_SYMBOL_H 1
+#ifndef OSGEARTHSYMBOLOGY_MARKER_SYMBOL_H
+#define OSGEARTHSYMBOLOGY_MARKER_SYMBOL_H 1
 
 #include <climits>
 
@@ -29,6 +29,8 @@
 
 namespace osgEarth { namespace Symbology
 {
+    class InstanceSymbol;
+
     /**
      * The MarkerSymbol describes replacement of geometry with "markers". A marker
      * it another object like a 3D model (node) or an image.
@@ -72,6 +74,9 @@ namespace osgEarth { namespace Symbology
 
     public:
         MarkerSymbol( const Config& conf =Config() );
+
+        /** Since MarkerSymbol is deprecated, this conveneince function will convert to an InstanceSymbol */
+        class InstanceSymbol* convertToInstanceSymbol() const;
 
         /** dtor */
         virtual ~MarkerSymbol() { }
@@ -143,4 +148,4 @@ namespace osgEarth { namespace Symbology
 
 } } // namespace osgEarth::Symbology
 
-#endif
+#endif // OSGEARTHSYMBOLOGY_MARKER_SYMBOL_H

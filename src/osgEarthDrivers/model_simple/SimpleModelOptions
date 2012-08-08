@@ -41,11 +41,17 @@ namespace osgEarth { namespace Drivers
 
         optional<osg::Vec3>& orientation() { return _orientation;}
         const optional<osg::Vec3>& orientation() const { return _orientation;}
+        
+        /**
+         If specified, use this node instead try to load from url
+        */
+        osg::ref_ptr<osg::Node>& node() { return _node; }
+        const osg::ref_ptr<osg::Node>& node() const { return _node; }
 
 
 
     public:
-        SimpleModelOptions( const ConfigOptions& options ) : ModelSourceOptions( options ) {
+        SimpleModelOptions( const ConfigOptions& options=ConfigOptions() ) : ModelSourceOptions( options ) {
             setDriver( "simple" );
             fromConfig( _conf );
         }
@@ -59,6 +65,7 @@ namespace osgEarth { namespace Drivers
             conf.updateIfSet( "lod_scale", _lod_scale );
             conf.updateIfSet( "location", _location );
             conf.updateIfSet( "orientation", _orientation);
+            conf.updateNonSerializable( "SimpleModelOptions::Node", _node.get() );
             return conf;
         }
 
@@ -74,12 +81,14 @@ namespace osgEarth { namespace Drivers
             conf.getIfSet( "lod_scale", _lod_scale );
             conf.getIfSet( "location", _location);
             conf.getIfSet( "orientation", _orientation);
+            _node = conf.getNonSerializable<osg::Node>( "SimpleModelOptions::Node" );
         }
 
         optional<URI> _url;
         optional<float> _lod_scale;
         optional<osg::Vec3> _location;
         optional<osg::Vec3> _orientation;
+        osg::ref_ptr<osg::Node> _node;
     };
 
 } } // namespace osgEarth::Drivers

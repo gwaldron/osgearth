@@ -658,12 +658,14 @@ public:
     }
 
 
-    void initialize( const osgDB::Options* dbOptions, const Profile* overrideProfile)
+    Status initialize( const osgDB::Options* dbOptions )
     {           
         GDAL_SCOPED_LOCK;
 
         Cache* cache = 0;
-        _dbOptions = dbOptions ? osg::clone(dbOptions) : 0L;
+
+        _dbOptions = Registry::instance()->cloneOrCreateOptions( dbOptions );
+
         if ( _dbOptions.valid() )
         {
             // Set up a Custom caching bin for this TileSource
@@ -677,7 +679,7 @@ public:
 
                 if ( _cacheBin.valid() )
                 {
-                    _cacheBin->store( _dbOptions.get() );
+                    _cacheBin->apply( _dbOptions.get() );
                 }
             }
         }  
@@ -696,8 +698,7 @@ public:
         if (useExternalDataset == false &&
             (!_options.url().isSet() || _options.url()->empty()) )
         {
-            OE_WARN << LC << "No URL or directory specified " << std::endl;
-            return;
+            return Status::Error( "No URL or directory specified" );
         }
 
         URI uri = _options.url().value();
@@ -726,8 +727,7 @@ public:
 
             if (files.empty())
             {
-                OE_WARN << LC << "Could not find any valid files " << std::endl;
-                return;
+                return Status::Error( "Could not find any valid files" );
             }
 
             //If we found more than one file, try to combine them into a single logical dataset
@@ -794,9 +794,8 @@ public:
                     }
                     else
                     {
-                        OE_WARN << "[osgEarth::GDAL] Failed to build VRT from input datasets" << std::endl;
-                        return;
-                    }                               
+                        return Status::Error( "Failed to build VRT from input datasets" );
+                    }
                 }
             }
             else
@@ -827,8 +826,7 @@ public:
 
                 if (!_srcDS)
                 {
-                    OE_WARN << LC << "Failed to open dataset " << files[0] << std::endl;
-                    return;
+                    return Status::Error( Stringify() << "Failed to open dataset " << files[0] );
                 }
             }
         }
@@ -856,17 +854,18 @@ public:
 
         //Create a spatial reference for the source.
         std::string srcProj = _srcDS->GetProjectionRef();
-        //const char* srcProj = _srcDS->GetProjectionRef();
-        if ( !srcProj.empty() && overrideProfile != 0L )
+
+        
+        if ( !srcProj.empty() && getProfile() != 0L )
         {
             OE_WARN << LC << "WARNING, overriding profile of a source that already defines its own SRS (" 
                 << this->getName() << ")" << std::endl;
         }
 
         osg::ref_ptr<const SpatialReference> src_srs;
-        if ( overrideProfile )
+        if ( getProfile() )
         {
-            src_srs = overrideProfile->getSRS();
+            src_srs = getProfile()->getSRS();
         }
         else if ( !srcProj.empty() )
         {
@@ -879,7 +878,7 @@ public:
             // not found in the dataset; try loading a .prj file
             std::string prjLocation = osgDB::getNameLessExtension( uri.full() ) + std::string(".prj");
 
-            ReadResult r = URI(prjLocation).readString( 0L, CachePolicy::NO_CACHE );
+            ReadResult r = URI(prjLocation).readString( _dbOptions.get() );
             if ( r.succeeded() )
             {
                 src_srs = SpatialReference::create( r.getString() );
@@ -887,8 +886,8 @@ public:
 
             if ( !src_srs.valid() )
             {
-                OE_WARN << LC << "Dataset has no spatial reference information (" << uri.full() << ")" << std::endl;
-                return;
+                return Status::Error( Stringify()
+                    << "Dataset has no spatial reference information (" << uri.full() << ")" );
             }
         }
 
@@ -903,15 +902,15 @@ public:
 
         const Profile* profile = NULL;
 
-        if (warpProfile)
+        if ( warpProfile )
         {
             profile = warpProfile;
         }
 
-        //If we have an override profile, just take it.
-        if ( overrideProfile )
+        // If we have an override profile, just take it.
+        if ( getProfile() )
         {
-            profile = overrideProfile;
+            profile = getProfile();
         }
 
         if ( !profile && src_srs->isGeographic() )
@@ -966,15 +965,15 @@ public:
         }
 
         //Get the _geotransform
-        if (overrideProfile)
-        {        
-            _geotransform[0] = overrideProfile->getExtent().xMin(); //Top left x
-            _geotransform[1] = overrideProfile->getExtent().width() / (double)_warpedDS->GetRasterXSize();//pixel width
-            _geotransform[2] = 0;
+        if ( getProfile() )
+        {
+            _geotransform[0] =  getProfile()->getExtent().xMin(); //Top left x
+            _geotransform[1] =  getProfile()->getExtent().width() / (double)_warpedDS->GetRasterXSize();//pixel width
+            _geotransform[2] =  0;
 
-            _geotransform[3] = overrideProfile->getExtent().yMax(); //Top left y
-            _geotransform[4] = 0;
-            _geotransform[5] = -overrideProfile->getExtent().height() / (double)_warpedDS->GetRasterYSize();//pixel height
+            _geotransform[3] =  getProfile()->getExtent().yMax(); //Top left y
+            _geotransform[4] =  0;
+            _geotransform[5] = -getProfile()->getExtent().height() / (double)_warpedDS->GetRasterYSize();//pixel height
 
         }
         else
@@ -1073,6 +1072,8 @@ public:
 
         //Set the profile
         setProfile( profile );
+
+        return STATUS_OK;
     }
 
 

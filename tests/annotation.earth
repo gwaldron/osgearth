@@ -40,7 +40,7 @@ osgEarth Sample - Annotations
             <circle draped="true">
                 <position lat="34.051" long="-117.974"/>
                 <radius value="50" units="km"/>
-                <style type="text/css">fill: #ffff005f;</style>
+                <style type="text/css">fill: #ffff0080;</style>
             </circle>
             
             <ellipse>

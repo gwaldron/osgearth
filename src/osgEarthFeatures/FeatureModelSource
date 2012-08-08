@@ -68,7 +68,7 @@ namespace osgEarth { namespace Features
         optional<StringExpression>& featureName() { return _featureNameExpr; }
         const optional<StringExpression>& featureName() const { return _featureNameExpr; }
 
-        /** Whether to create feature indexes (default = yes) */
+        /** Whether to create feature indexes (default = no) */
         optional<bool>& featureIndexing() { return _featureIndexing; }
         const optional<bool>& featureIndexing() const { return _featureIndexing; }
 

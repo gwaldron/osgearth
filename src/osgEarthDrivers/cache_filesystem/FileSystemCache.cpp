@@ -207,6 +207,7 @@ namespace
             _rwOptions = Registry::instance()->cloneOrCreateOptions();
             _rwOptions->setOptionString( "Compressor=zlib" );
 #endif
+            CachePolicy::NO_CACHE.apply(_rwOptions.get());
         }
     }
 
@@ -305,55 +306,6 @@ namespace
         return r.succeeded() && r.get<StringObject>() ? r : ReadResult();
     }
 
-#if 0
-    ReadResult
-    FileSystemCacheBin::readString(const std::string& key, double maxAge)
-    {
-        Config      meta;
-        std::string output;
-
-        if ( !_ok ) return 0L;
-
-        //todo: handle maxAge
-
-        //todo: mangle "key" into a legal path name
-        URI fileURI( toLegalFileName(key), _metaPath );
-
-        bool readOK = false;
-        if ( osgDB::fileExists( fileURI.full() ) )
-        {
-            ScopedReadLock sharedLock( _rwmutex );
-            std::ifstream infile( fileURI.full().c_str() );
-            if ( infile.is_open() )
-            {
-                infile >> std::noskipws;
-                std::stringstream buf;
-                buf << infile.rdbuf();
-		        output = buf.str();
-                readOK = true;
-            }
-            
-            // read metadata
-            std::string metafile = fileURI.full() + ".meta";
-            if ( osgDB::fileExists(metafile) )
-            {
-                readMeta( metafile, meta );
-            }
-        }
-
-        if ( output.size() > 0 )
-        {
-            OE_DEBUG << LC << "Read \"" << key << "\" from cache bin " << getID() << std::endl;
-        }
-        else
-        {
-            OE_DEBUG << LC << "Failed to read \"" << key << "\" from cache bin " << getID() << std::endl;
-        }
-
-        return readOK ? ReadResult( new StringObject(output), meta ) : ReadResult();
-    }
-#endif
-
     bool
     FileSystemCacheBin::write( const std::string& key, const osg::Object* object, const Config& meta )
     {
@@ -386,18 +338,6 @@ namespace
                 r = _rw->writeNode( *static_cast<const osg::Node*>(object), filename, _rwOptions.get() );
                 objWriteOK = r.success();
             }
-            //else if ( dynamic_cast<const StringObject*>(object) )
-            //{
-            //    const StringObject* so = static_cast<const StringObject*>( object );
-            //    std::ofstream outfile( fileURI.full().c_str() );
-            //    if ( outfile.is_open() )
-            //    {
-            //        outfile << so->getString();
-            //        outfile.flush();
-            //        outfile.close();
-            //        objWriteOK = true;
-            //    }
-            //}
             else
             {
                 std::string filename = fileURI.full() + ".osgb";
@@ -492,7 +432,7 @@ namespace
         ScopedReadLock sharedLock( _rwmutex );
         
         Config conf;
-        conf.fromJSON( URI(_metaPath).readString(0L,CachePolicy::NO_CACHE).getString() );
+        conf.fromJSON( URI(_metaPath).getString(_rwOptions.get()) );
 
         return conf;
     }

@@ -207,9 +207,12 @@ TileSourceOptions::fromConfig( const Config& conf )
 
 //------------------------------------------------------------------------
 
+TileSource::Status TileSource::STATUS_OK = TileSource::Status();
+
 
 TileSource::TileSource( const TileSourceOptions& options ) :
-_options( options )
+_options( options ),
+_status ( Status::Error("Not initialized") )
 {
     this->setThreadSafeRefUnref( true );
 
@@ -252,6 +255,45 @@ TileSource::~TileSource()
     }
 }
 
+void
+TileSource::setStatus( TileSource::Status status )
+{
+    _status = status;
+}
+
+TileSource::Status
+TileSource::initialize(const osgDB::Options* options)
+{
+    // default implementation. Subclasses should override this.
+    return STATUS_OK;
+}
+
+const TileSource::Status&
+TileSource::startup(const osgDB::Options* options)
+{
+    Status status = initialize(options);
+    if ( status == STATUS_OK )
+    {
+        if ( getProfile() != 0L )
+        {
+            _status = status;
+        }
+        else 
+        {
+            _status = Status::Error("No profile available");
+        }
+    }
+    else
+    {
+        _status = status;
+    }
+
+    if ( _status.isError() )
+        OE_WARN << LC << "Startup failed: " << _status.message() << std::endl;
+
+    return _status;
+}
+
 int
 TileSource::getPixelsPerTile() const
 {
@@ -263,6 +305,9 @@ TileSource::createImage(const TileKey&        key,
                         ImageOperation*       prepOp, 
                         ProgressCallback*     progress )
 {
+    if ( _status != STATUS_OK )
+        return 0L;
+
     // Try to get it from the memcache fist
     if (_memCache.valid())
     {
@@ -290,13 +335,16 @@ TileSource::createHeightField(const TileKey&        key,
                               HeightFieldOperation* prepOp, 
                               ProgressCallback*     progress )
 {
+    if ( _status != STATUS_OK )
+        return 0L;
+
     // Try to get it from the memcache first:
-	if (_memCache.valid())
-	{
+    if (_memCache.valid())
+    {
         ReadResult r = _memCache->getOrCreateDefaultBin()->readObject( key.str() );
         if ( r.succeeded() )
             return r.release<osg::HeightField>();
-	}
+    }
 
     osg::ref_ptr<osg::HeightField> newHF = createHeightField( key, progress );
 
@@ -316,7 +364,9 @@ osg::HeightField*
 TileSource::createHeightField(const TileKey&        key,
                               ProgressCallback*     progress)
 {
-    //osg::ref_ptr<osg::Image> image = createImage(key, dbOptions, progress);
+    if ( _status != STATUS_OK )
+        return 0L;
+
     osg::ref_ptr<osg::Image> image = createImage(key, progress);
     osg::HeightField* hf = 0;
     if (image.valid())
@@ -330,7 +380,7 @@ TileSource::createHeightField(const TileKey&        key,
 bool
 TileSource::isOK() const 
 {
-    return getProfile() != NULL;
+    return _status == STATUS_OK;
 }
 
 void

@@ -37,15 +37,13 @@ namespace osgEarth { namespace Annotation
     {
     public:
         /**
-         * Constructs a node that will load and render a 3D model from
-         * a URI.
+         * Constructs a model node; the style must contain an InstanceSymbol
+         * (ModelSymbol or IconSymbol) to produce a valid node.
          */
-        ModelNode( 
+        ModelNode(
             MapNode*              mapNode,
-            const URI&            uri,
-            const Style&          style     =Style(),
-            const osgDB::Options* dbOptions =0L,
-            const CachePolicy&    cachePolicy =CachePolicy::INHERIT );
+            const Style&          style,
+            const osgDB::Options* dbOptions   =0L );
 
         virtual ~ModelNode() { }
 
@@ -59,7 +57,6 @@ namespace osgEarth { namespace Annotation
 
     protected:
 
-        optional<URI>                      _uri;
         optional<Style>                    _style;
         optional<CachePolicy>              _cachePolicy;
         osg::ref_ptr<const osgDB::Options> _dbOptions;

@@ -22,6 +22,7 @@
 
 #include <osgEarth/Common>
 #include <osgEarth/Config>
+#include <osgDB/Options>
 
 namespace osgEarth
 {
@@ -36,15 +37,11 @@ namespace osgEarth
             USAGE_READ_WRITE   = 0,  // read/write to the cache if one exists.
             USAGE_CACHE_ONLY   = 1,  // treat the cache as the ONLY source of data.
             USAGE_READ_ONLY    = 2,  // read from the cache, but don't write new data to it.
-            USAGE_NO_CACHE     = 3,  // neither read from or write to the cache
-            USAGE_DEFAULT      = USAGE_READ_WRITE
+            USAGE_NO_CACHE     = 3   // neither read from or write to the cache
         };
 
-        /* default cache policy */
+        /** default cache policy (READ_WRITE) */
         static CachePolicy DEFAULT;
-
-        /* inherited cache policy (same as DEFAULT) */
-        static CachePolicy INHERIT;
 
         /* policy indicating to never use a cache */
         static CachePolicy NO_CACHE;
@@ -53,7 +50,7 @@ namespace osgEarth
         static CachePolicy CACHE_ONLY;
 
     public:
-        /** constructs a default caching policy (usage is READ_WRITE) */
+        /** constructs an invalid CachePolicy. */
         CachePolicy();
 
         /** constructs a caching policy. */
@@ -64,6 +61,12 @@ namespace osgEarth
 
         /** constructs a CachePolicy from a config options */
         CachePolicy( const Config& conf );
+
+        /** construct a cache policy be reading it from an osgDB::Options */
+        static bool fromOptions( const osgDB::Options* dbOptions, optional<CachePolicy>& out_policy );
+
+        /** Stores this cache policy in a DB Options. */
+        void apply( osgDB::Options* options );
 
         /** dtor */
         virtual ~CachePolicy() { }
@@ -77,10 +80,6 @@ namespace osgEarth
         const optional<double>& maxAge() const { return _maxAge; }
 
     public: // convenience functions.
-
-        bool empty() const {
-            return !_usage.isSet();
-        }
 
         bool isCacheReadable() const { 
             return *_usage == USAGE_READ_WRITE || *_usage == USAGE_CACHE_ONLY || *_usage == USAGE_READ_ONLY;

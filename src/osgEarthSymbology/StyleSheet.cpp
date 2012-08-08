@@ -19,7 +19,6 @@
 #include <osgEarthSymbology/StyleSheet>
 #include <osgEarthSymbology/CssUtils>
 #include <osgEarthSymbology/SLD>
-#include <osgEarth/HTTPClient>
 #include <algorithm>
 
 #define LC "[StyleSheet] "
@@ -29,7 +28,12 @@ using namespace osgEarth::Symbology;
 
 //------------------------------------------------------------------------
 
-StyleSheet::StyleSheet( const Config& conf )
+StyleSheet::StyleSheet()
+{
+    //nop
+}
+
+StyleSheet::StyleSheet(const Config& conf)
 {
     mergeConfig( conf );
 }
@@ -141,7 +145,7 @@ StyleSheet::addResourceLibrary( ResourceLibrary* lib )
 }
 
 ResourceLibrary*
-StyleSheet::getResourceLibrary( const std::string& name, const osgDB::Options* dbOptions ) const
+StyleSheet::getResourceLibrary( const std::string& name ) const
 {
     Threading::ScopedReadLock shared( const_cast<StyleSheet*>(this)->_resLibsMutex );
     ResourceLibraries::const_iterator i = _resLibs.find( name );

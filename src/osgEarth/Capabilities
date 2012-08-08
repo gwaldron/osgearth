@@ -96,6 +96,9 @@ namespace osgEarth
         /** whether the GPU supporst occlusion query */
         bool supportsOcclusionQuery() const { return _supportsOcclusionQuery; }
 
+        /** whether the GPU supports DrawInstanced rendering */
+        bool supportsDrawInstanced() const { return _supportsDrawInstanced; }
+
 
 
     protected:
@@ -123,6 +126,7 @@ namespace osgEarth
         bool _supportsMipmappedTextureUpdates;
         bool _supportsDepthPackedStencilBuffer;
         bool _supportsOcclusionQuery;
+        bool _supportsDrawInstanced;
         std::string _vendor;
         std::string _renderer;
         std::string _version;

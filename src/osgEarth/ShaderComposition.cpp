@@ -124,12 +124,52 @@ _inherit( true )
 
 VirtualProgram::VirtualProgram(const VirtualProgram& rhs, const osg::CopyOp& copyop ) :
 osg::StateAttribute( rhs, copyop ),
+//osg::Program( rhs, copyop ),
 _shaderMap  ( rhs._shaderMap ),
 _mask       ( rhs._mask ),
 _functions  ( rhs._functions ),
 _inherit    ( rhs._inherit )
 {
     //nop
+}
+
+int
+VirtualProgram::compare(const osg::StateAttribute& sa) const
+{
+    // check the types are equal and then create the rhs variable
+    // used by the COMPARE_StateAttribute_Parameter macros below.
+    COMPARE_StateAttribute_Types(VirtualProgram,sa);
+
+    // compare each parameter in turn against the rhs.
+    COMPARE_StateAttribute_Parameter(_mask);
+    COMPARE_StateAttribute_Parameter(_inherit);
+    //COMPARE_StateAttribute_Parameter(_shaderMap);
+
+    // compare the shader maps.
+    if ( _shaderMap.size() < rhs._shaderMap.size() ) return -1;
+    if ( _shaderMap.size() > rhs._shaderMap.size() ) return 1;
+
+    ShaderMap::const_iterator lhsIter = _shaderMap.begin();
+    ShaderMap::const_iterator rhsIter = rhs._shaderMap.begin();
+
+    while( lhsIter != _shaderMap.end() )
+    {
+        int keyCompare = lhsIter->first.compare( rhsIter->first );
+        if ( keyCompare != 0 ) return keyCompare;
+
+        const ShaderEntry& lhsEntry = lhsIter->second;
+        const ShaderEntry& rhsEntry = rhsIter->second;
+        int shaderComp = lhsEntry.first->compare( *rhsEntry.first.get() );
+        if ( shaderComp != 0 ) return shaderComp;
+
+        if ( lhsEntry.second < rhsEntry.second ) return -1;
+        if ( lhsEntry.second > rhsEntry.second ) return 1;
+
+        lhsIter++;
+        rhsIter++;
+    }
+
+    return 0; // passed all the above comparison macros, must be equal.
 }
 
 
@@ -418,6 +458,8 @@ namespace
 osg::Program*
 VirtualProgram::buildProgram( osg::State& state, ShaderMap& accumShaderMap )
 {
+    OE_TEST << LC << "Building new Program for VP " << getName() << std::endl;
+
     // build a new set of accumulated functions, to support the creation of main()
     refreshAccumulatedFunctions( state );
 
@@ -515,6 +557,18 @@ VirtualProgram::buildProgram( osg::State& state, ShaderMap& accumShaderMap )
 void
 VirtualProgram::apply( osg::State& state ) const
 {
+    if ( _shaderMap.empty() )
+    {
+        // if there's no data in the VP, unload any existing program.
+        const unsigned int contextID = state.getContextID();
+        const osg::GL2Extensions* extensions = osg::GL2Extensions::Get(contextID,true);
+        if( ! extensions->isGlslSupported() ) return;
+
+        extensions->glUseProgram( 0 );
+        state.setLastAppliedProgramObject(0);
+        return;
+    }
+
     // first, find and collect all the VirtualProgram attributes:
     ShaderMap accumShaderMap;
     
@@ -639,7 +693,7 @@ VirtualProgram::refreshAccumulatedFunctions( const osg::State& state )
             for( unsigned i=start; i<av->size(); ++i )
             {
                 const VirtualProgram* vp = dynamic_cast<const VirtualProgram*>( (*av)[i].first );
-                if ( vp && (vp->_mask && _mask) )
+                if ( vp && (vp->_mask && _mask) && (vp != this) )
                 {
                     FunctionLocationMap rhs;
                     vp->getFunctions( rhs );

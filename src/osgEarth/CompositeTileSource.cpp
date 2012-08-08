@@ -19,6 +19,7 @@
 #include <osgEarth/CompositeTileSource>
 #include <osgEarth/ImageUtils>
 #include <osgEarth/StringUtils>
+#include <osgEarth/Registry>
 #include <osgDB/FileNameUtils>
 
 #define LC "[CompositeTileSource] "
@@ -403,12 +404,12 @@ CompositeTileSource::add( TileSource* ts, const ImageLayerOptions& options )
     }
 }
 
-void
-CompositeTileSource::initialize(const osgDB::Options* dbOptions, 
-                                const Profile*        overrideProfile )
+TileSource::Status
+CompositeTileSource::initialize(const osgDB::Options* dbOptions)
 {
-    _dbOptions = dbOptions;
-    osg::ref_ptr<const Profile> profile = overrideProfile;
+    _dbOptions = Registry::instance()->cloneOrCreateOptions(dbOptions);
+
+    osg::ref_ptr<const Profile> profile = getProfile();
 
     for(CompositeTileSourceOptions::ComponentVector::iterator i = _options._components.begin();
         i != _options._components.end(); )
@@ -436,34 +437,48 @@ CompositeTileSource::initialize(const osgDB::Options* dbOptions,
             TileSource* source = i->_tileSourceInstance.get();
             if ( source )
             {
-                osg::ref_ptr<const Profile> localOverrideProfile = overrideProfile;
+                osg::ref_ptr<const Profile> localOverrideProfile = profile.get();
 
                 const TileSourceOptions& opt = source->getOptions();
                 if ( opt.profile().isSet() )
+                {
                     localOverrideProfile = Profile::create( opt.profile().value() );
-
-                source->initialize( dbOptions, localOverrideProfile.get() );
-
-                if ( !profile.valid() )
-                {
-                    // assume the profile of the first source to be the overall profile.
-                    profile = source->getProfile();
+                    source->setProfile( localOverrideProfile.get() );
                 }
-                else if ( !profile->isEquivalentTo( source->getProfile() ) )
+
+                // initialize the component tile source:
+                TileSource::Status compStatus = source->startup( _dbOptions.get() );
+
+                if ( compStatus == TileSource::STATUS_OK )
                 {
-                    // if sub-sources have different profiles, print a warning because this is
-                    // not supported!
-                    OE_WARN << LC << "Components with differing profiles are not supported. " 
-                        << "Visual anomalies may result." << std::endl;
-                }
+                    if ( !profile.valid() )
+                    {
+                        // assume the profile of the first source to be the overall profile.
+                        profile = source->getProfile();
+                    }
+                    else if ( !profile->isEquivalentTo( source->getProfile() ) )
+                    {
+                        // if sub-sources have different profiles, print a warning because this is
+                        // not supported!
+                        OE_WARN << LC << "Components with differing profiles are not supported. " 
+                            << "Visual anomalies may result." << std::endl;
+                    }
                 
-                _dynamic = _dynamic || source->isDynamic();
+                    _dynamic = _dynamic || source->isDynamic();
 
-                // gather extents
-                const DataExtentList& extents = source->getDataExtents();
-                for( DataExtentList::const_iterator j = extents.begin(); j != extents.end(); ++j )
+                    // gather extents
+                    const DataExtentList& extents = source->getDataExtents();
+                    for( DataExtentList::const_iterator j = extents.begin(); j != extents.end(); ++j )
+                    {
+                        getDataExtents().push_back( *j );
+                    }
+                }
+
+                else
                 {
-                    getDataExtents().push_back( *j );
+                    // if even one of the components fails to initialize, the entire
+                    // composite tile source is invalid.
+                    return Status::Error("At least one component is invalid");
                 }
             }
         }
@@ -471,9 +486,11 @@ CompositeTileSource::initialize(const osgDB::Options* dbOptions,
         ++i;
     }
 
+    // set the new profile that was derived from the components
     setProfile( profile.get() );
 
     _initialized = true;
+    return STATUS_OK;
 }
 
 //------------------------------------------------------------------------

@@ -49,6 +49,7 @@ int usage( const std::string& msg )
         << "           [--test2]    : Run the shader nesting test \n"
         << "           [--test3]    : Run the OVERRIDE mode test \n"
         << "           [--test4]    : Run the PROTECTED mode test \n"
+        << "           [--test5]    : Run the Program state set text \n"
         << std::endl;
 
     return -1;
@@ -190,53 +191,124 @@ namespace TEST_4
     }
 }
 
+//-------------------------------------------------------------------------
+
+// 
+namespace TEST_5
+{
+    char s_vert[] =
+        "void main() { \n"
+        "    gl_Position = gl_ModelViewProjectionMatrix * gl_Vertex; \n"
+        "} \n";
+    char s_frag[] =
+        "void main() { \n"
+        "    gl_FragColor = vec4(1,0,0,1); \n"
+        "} \n";
+    char s_vp[] =
+        "void test( inout vec4 color ) { color = vec4(1,0,0,1); } \n";
+
+    osg::Geode* makeGeom( float v )
+    {
+        osg::Geode* geode = new osg::Geode();
+        osg::Geometry* geom = new osg::Geometry();
+        osg::Vec3Array* verts = new osg::Vec3Array();
+        verts->push_back( osg::Vec3(v-1, 0, 0) );
+        verts->push_back( osg::Vec3(v+1, 0, 0) );
+        verts->push_back( osg::Vec3(  0, 0, 2) );
+        geom->setVertexArray( verts );
+        geom->setUseDisplayList(false);
+        geom->setUseVertexBufferObjects(true);
+        osg::Vec4Array* colors = new osg::Vec4Array();
+        colors->push_back( osg::Vec4(0,0,1,1) );
+        geom->setColorArray(colors);
+        geom->setColorBinding(osg::Geometry::BIND_OVERALL);
+        geom->addPrimitiveSet(new osg::DrawArrays(GL_TRIANGLES,0,3));
+        geode->addDrawable(geom);
+        return geode;
+    }
+
+    osg::Group* run()
+    {
+        osg::Node* n1 = makeGeom( -5 );
+        osg::Node* n2 = makeGeom(  5 );
+
+#if 0
+        osg::Program* p = new osg::Program();
+        p->addShader( new osg::Shader(osg::Shader::VERTEX, s_vert) );
+        p->addShader( new osg::Shader(osg::Shader::FRAGMENT, s_frag) );
+#else
+        VirtualProgram* p = new VirtualProgram();
+        p->installDefaultColoringAndLightingShaders();
+        p->setFunction("test", s_vp, ShaderComp::LOCATION_FRAGMENT_POST_LIGHTING);
+#endif
+
+        n1->getOrCreateStateSet()->setAttributeAndModes( p, 1 );
+
+        osg::Group* root = new osg::Group();
+        root->getOrCreateStateSet()->setRenderBinDetails( 0, "TraversalOrderBin" );
+        //n1->getOrCreateStateSet()->setRenderBinDetails( 2, "RenderBin" );
+        //n2->getOrCreateStateSet()->setRenderBinDetails( 1, "RenderBin" );
+        root->getOrCreateStateSet()->setMode(GL_LIGHTING,0);
+
+        root->addChild( n1 );
+        root->addChild( n2 );
+
+        return root;
+    }
+}
+
 
 //-------------------------------------------------------------------------
 
 int main(int argc, char** argv)
 {
     osg::ArgumentParser arguments(&argc,argv);
+    osgViewer::Viewer viewer(arguments);
 
     bool test1 = arguments.read("--test1");
     bool test2 = arguments.read("--test2");
     bool test3 = arguments.read("--test3");
     bool test4 = arguments.read("--test4");
+    bool test5 = arguments.read("--test5");
 
-    osg::Node* earthNode = osgDB::readNodeFiles( arguments );
-    if (!earthNode)
+    if ( !test5 )
     {
-        return usage( "Unable to load earth model." );
-    }
+        osg::Node* earthNode = osgDB::readNodeFiles( arguments );
+        if (!earthNode)
+        {
+            return usage( "Unable to load earth model." );
+        }
 
-    osgViewer::Viewer viewer(arguments);
-    viewer.setCameraManipulator( new osgEarth::Util::EarthManipulator() );
+        viewer.setCameraManipulator( new osgEarth::Util::EarthManipulator() );
 
-    LabelControl* label = new LabelControl();
-    ControlCanvas::get(&viewer,true)->addControl(label);
+        LabelControl* label = new LabelControl();
+        if ( !test5 )
+            ControlCanvas::get(&viewer,true)->addControl(label);
 
-    if ( test1 )
-    {
-        viewer.setSceneData( TEST_1::run(earthNode) );
-        label->setText( "Function injection test: the map should appear hazy." );
+        if ( test1 )
+        {
+            viewer.setSceneData( TEST_1::run(earthNode) );
+            label->setText( "Function injection test: the map should appear hazy." );
+        }
+        else if ( test2 )
+        {
+            viewer.setSceneData( TEST_2::run(earthNode) );
+            label->setText( "Shader nesting test: the map should appear normally." );
+        }
+        else if ( test3 )
+        {
+            viewer.setSceneData( TEST_3::run(earthNode) );
+            label->setText( "Shader override test: the map should appear red." );
+        }
+        else if ( test4 )
+        {
+            viewer.setSceneData( TEST_4::run(earthNode) );
+            label->setText( "Shader protected test: the map should appear blue." );
+        }
     }
-    else if ( test2 )
+    else // if ( test5 )
     {
-        viewer.setSceneData( TEST_2::run(earthNode) );
-        label->setText( "Shader nesting test: the map should appear normally." );
-    }
-    else if ( test3 )
-    {
-        viewer.setSceneData( TEST_3::run(earthNode) );
-        label->setText( "Shader override test: the map should appear red." );
-    }
-    else if ( test4 )
-    {
-        viewer.setSceneData( TEST_4::run(earthNode) );
-        label->setText( "Shader protected test: the map should appear blue." );
-    }
-    else
-    {
-        return usage("Please select a test to run.");
+        viewer.setSceneData( TEST_5::run() );
     }
 
     // add some stock OSG handlers:

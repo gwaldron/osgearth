@@ -67,7 +67,7 @@ namespace osgEarth
         /** Serializes this context to an Options structure. This is useful when passing context information
             to an osgDB::ReaderWriter that takes a stream as input -- the stream is anonymous, therefore this
             is the preferred way to communicate the context information. */
-        void store( osgDB::Options* options );
+        void apply( osgDB::Options* options );
 
         /** Creates a context from the serialized version in an Options structure (see above) */
         URIContext( const osgDB::Options* options );
@@ -184,50 +184,41 @@ namespace osgEarth
 
         ReadResult readObject(
             const osgDB::Options* dbOptions   =0L,
-            const CachePolicy&    cachePolicy =CachePolicy(),
             ProgressCallback*     progress    =0L ) const;
 
         ReadResult readImage(
             const osgDB::Options* dbOptions   =0L,
-            const CachePolicy&    cachePolicy =CachePolicy(),
             ProgressCallback*     progress    =0L ) const;
 
         ReadResult readNode(
             const osgDB::Options* dbOptions   =0L,
-            const CachePolicy&    cachePolicy =CachePolicy(),
             ProgressCallback*     progress    =0L ) const;
 
         ReadResult readString(
             const osgDB::Options* dbOptions   =0L,
-            const CachePolicy&    cachePolicy =CachePolicy(),
             ProgressCallback*     progress    =0L ) const;
 
         ReadResult readConfig(
             const osgDB::Options* dbOptions   =0L,
-            const CachePolicy&    cachePolicy =CachePolicy(),
             ProgressCallback*     progress    =0L ) const;
 
     public: // get methods call the read* methods, then just return the raw data.
 
         osg::Object* getObject(
             const osgDB::Options* dbOptions   =0L,
-            const CachePolicy&    cachePolicy =CachePolicy(),
-            ProgressCallback*     progress    =0L ) const { return readObject(dbOptions, cachePolicy, progress).releaseObject(); }
+            ProgressCallback*     progress    =0L ) const { return readObject(dbOptions, progress).releaseObject(); }
 
         osg::Image* getImage(
             const osgDB::Options* dbOptions   =0L,
-            const CachePolicy&    cachePolicy =CachePolicy(),
-            ProgressCallback*     progress    =0L ) const { return readImage(dbOptions, cachePolicy, progress).releaseImage(); }
+            ProgressCallback*     progress    =0L ) const { return readImage(dbOptions, progress).releaseImage(); }
 
         osg::Node* getNode(
             const osgDB::Options* dbOptions   =0L,
-            const CachePolicy&    cachePolicy =CachePolicy(),
-            ProgressCallback*     progress    =0L ) const { return readNode(dbOptions, cachePolicy, progress).releaseNode(); }
+            ProgressCallback*     progress    =0L ) const { return readNode(dbOptions, progress).releaseNode(); }
 
         std::string getString(
             const osgDB::Options* dbOptions   =0L,
-            const CachePolicy&    cachePolicy =CachePolicy(),
-            ProgressCallback*     progress    =0L ) const { return readString(dbOptions, cachePolicy, progress).getString(); }
+            ProgressCallback*     progress    =0L ) const { return readString(dbOptions, progress).getString(); }
 
     public:
 

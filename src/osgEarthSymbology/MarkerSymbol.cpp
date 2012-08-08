@@ -17,10 +17,15 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 #include <osgEarthSymbology/MarkerSymbol>
+#include <osgEarthSymbology/IconSymbol>
+#include <osgEarthSymbology/ModelSymbol>
 #include <osgEarth/ThreadingUtils>
 #include <osgEarth/Registry>
 #include <osgEarth/ImageUtils>
+
 #include <osgDB/Options>
+#include <osgDB/FileNameUtils>
+#include <osgDB/Registry>
 
 using namespace osgEarth;
 using namespace osgEarth::Symbology;
@@ -128,4 +133,93 @@ MarkerSymbol::getImage( unsigned maxSize ) const
         }
     }
     return _image.get();
+}
+
+
+InstanceSymbol*
+MarkerSymbol::convertToInstanceSymbol() const
+{
+    InstanceSymbol* result = 0L;
+
+    bool isModel = true;
+
+    if ( this->isModel().isSet() )
+    {
+        isModel = *this->isModel();
+    }
+    else if ( this->getModel() )
+    {
+        isModel = true;
+    }
+    else if ( this->url().isSet() )
+    {
+        const std::string& str = this->url()->expr();
+        std::string ext = osgDB::getLowerCaseFileExtension(str);
+        if ( !ext.empty() )
+        {
+            osg::ref_ptr<osgDB::ReaderWriter> rw = osgDB::Registry::instance()->getReaderWriterForExtension(ext);
+            if ( rw.valid() )
+            {
+                unsigned features = (unsigned)rw->supportedFeatures();
+                if ( (features & osgDB::ReaderWriter::FEATURE_READ_IMAGE) != 0 )
+                {
+                    isModel = false;
+                }
+            }
+
+#if 0 // original method-- but getMimeTypeExtensionMap didn't exist until post-3.0
+            const osgDB::Registry::MimeTypeExtensionMap& exmap = osgDB::Registry::instance()->getMimeTypeExtensionMap();
+            for( osgDB::Registry::MimeTypeExtensionMap::const_iterator i = exmap.begin(); i != exmap.end(); ++i )
+            {
+                if ( i->second == ext )
+                {
+                    if ( i->first.compare(0, 6, "image/") == 0 )
+                        isModel = false;
+                    break;
+                }
+            }
+#endif
+
+        }
+    }
+
+    if ( isModel )
+    {
+        ModelSymbol* model = new ModelSymbol();
+
+        if ( this->orientation().isSet() )
+            model->heading() = NumericExpression(this->orientation()->x());
+
+        if ( model->getModel() )
+            model->setModel( this->getModel() );
+
+        result = model;
+    }
+    else // icon image
+    {
+        IconSymbol* icon = new IconSymbol();
+
+        if ( this->alignment().isSet() )
+            icon->alignment() = (IconSymbol::Alignment)this->alignment().get();
+
+        if ( this->getImage() )
+            icon->setImage( this->getImage() );
+
+        result = icon;
+    }
+
+    if ( this->url().isSet() )
+        result->url() = this->url().get();
+    if ( this->libraryName().isSet() )
+        result->libraryName() = this->libraryName().get();
+    if ( this->placement().isSet() )
+        result->placement() = (InstanceSymbol::Placement)this->placement().get();
+    if ( this->density().isSet() )
+        result->density() = this->density().get();
+    if ( this->scale().isSet() )
+        result->scale() = this->scale().get();
+    if ( this->randomSeed().isSet() )
+        result->randomSeed() = this->randomSeed().get();
+
+    return result;
 }

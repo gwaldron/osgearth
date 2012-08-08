@@ -21,6 +21,8 @@
 #include <osgEarthSymbology/MeshSubdivider>
 #include <osgEarthSymbology/MeshConsolidator>
 #include <osgEarth/ECEF>
+#include <osgEarth/ImageUtils>
+#include <osgEarth/ShaderComposition>
 #include <osg/Geode>
 #include <osg/Geometry>
 #include <osg/MatrixTransform>
@@ -872,22 +874,24 @@ ExtrudeGeometryFilter::push( FeatureList& input, FilterContext& context )
     {
         if ( _wallSkinSymbol.valid() && _wallSkinSymbol->libraryName().isSet() )
         {
-            _wallResLib = sheet->getResourceLibrary( *_wallSkinSymbol->libraryName(), context.getDBOptions() );
+            _wallResLib = sheet->getResourceLibrary( *_wallSkinSymbol->libraryName() );
 
             if ( !_wallResLib.valid() )
             {
                 OE_WARN << LC << "Unable to load resource library '" << *_wallSkinSymbol->libraryName() << "'"
                     << "; wall geometry will not be textured." << std::endl;
+                _wallSkinSymbol = 0L;
             }
         }
 
         if ( _roofSkinSymbol.valid() && _roofSkinSymbol->libraryName().isSet() )
         {
-            _roofResLib = sheet->getResourceLibrary( *_roofSkinSymbol->libraryName(), context.getDBOptions() );
+            _roofResLib = sheet->getResourceLibrary( *_roofSkinSymbol->libraryName() );
             if ( !_roofResLib.valid() )
             {
                 OE_WARN << LC << "Unable to load resource library '" << *_roofSkinSymbol->libraryName() << "'"
                     << "; roof geometry will not be textured." << std::endl;
+                _roofSkinSymbol = 0L;
             }
         }
     }
@@ -926,18 +930,22 @@ ExtrudeGeometryFilter::push( FeatureList& input, FilterContext& context )
             groupStateSet->setAttributeAndModes( new osg::LineWidth(*_outlineSymbol->stroke()->width()), 1 );
     }
 
-    OE_DEBUG << LC << "Sorted geometry into " << group->getNumChildren() << " groups" << std::endl;
-
-#if 0
-    // running this after the MC reduces the primitive set count by a huge amount;
-    // but, it actually increases draw time and overall frame time. So, bad. Also it 
-    // messes up our nice feature source index primitive set tagging.
-    if ( _mergeGeometry == true )
+    // if we have textures, install a shader to draw them
+    if ( _wallSkinSymbol.valid() || _roofSkinSymbol.valid() )
     {
-        osgUtil::Optimizer o;
-        o.optimize( group, osgUtil::Optimizer::MERGE_GEOMETRY );
+        osg::StateSet* stateSet = group->getOrCreateStateSet();
+
+        VirtualProgram* vp = new VirtualProgram();
+        vp->setName("ExtrudeGeomFilter");
+        vp->installDefaultColoringShaders( 1 );
+        stateSet->setAttributeAndModes( vp, osg::StateAttribute::ON );
+
+        // a default empty texture will support any non-textured geometry 
+        osg::Texture2D* tex = new osg::Texture2D( ImageUtils::createEmptyImage() );
+        tex->setUnRefImageDataAfterApply( false );
+        stateSet->setTextureAttributeAndModes(0, tex, osg::StateAttribute::ON);
+        stateSet->getOrCreateUniform("tex0", osg::Uniform::SAMPLER_2D)->set(0);
     }
-#endif
 
     return group;
 }

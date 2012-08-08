@@ -522,18 +522,18 @@ QuadTreeTerrainEngineNode::installShaders()
     // it this way so that the developer has the option of removing this top-level shader program,
     // replacing it, or migrating it higher up the scene graph if necessary.
 
-    if ( _texCompositor.valid() && _texCompositor->usesShaderComposition() )
-    {
-        const ShaderFactory* sf = Registry::instance()->getShaderFactory();
+    //if ( _texCompositor.valid() && _texCompositor->usesShaderComposition() )
+    //{
+    //    const ShaderFactory* sf = Registry::instance()->getShaderFactory();
 
-        int numLayers = osg::maximum( 1, (int)_update_mapf->imageLayers().size() );
+    //    int numLayers = osg::maximum( 1, (int)_update_mapf->imageLayers().size() );
 
-        VirtualProgram* vp = new VirtualProgram();
-        vp->setName( "engine_quadtree:EngineNode" );
-        vp->installDefaultColoringAndLightingShaders( numLayers );
+    //    VirtualProgram* vp = new VirtualProgram();
+    //    vp->setName( "engine_quadtree:EngineNode" );
+    //    vp->installDefaultColoringAndLightingShaders( numLayers );
 
-        getOrCreateStateSet()->setAttributeAndModes( vp, osg::StateAttribute::ON );
-    }
+    //    getOrCreateStateSet()->setAttributeAndModes( vp, osg::StateAttribute::ON );
+    //}
 }
 
 void
@@ -551,13 +551,11 @@ QuadTreeTerrainEngineNode::updateTextureCombining()
             // installed in the VP on the engine-node's stateset in installShaders().
             VirtualProgram* vp = new VirtualProgram();
             vp->setName( "engine_quadtree:TerrainNode" );
-            //vp->installDefaultColoringShaders(numImageLayers);
 
             terrainStateSet->setAttributeAndModes( vp, osg::StateAttribute::ON );
 
             // first, update the default shader components based on the new layer count:
             const ShaderFactory* sf = Registry::instance()->getShaderFactory();
-            //vp->setShader( "osgearth_vert_setupColoring",  sf->createDefaultColoringVertexShader( numImageLayers ) );
             
             // second, install the per-layer color filter functions.
             for( int i=0; i<numImageLayers; ++i )

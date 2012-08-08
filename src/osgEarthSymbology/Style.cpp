@@ -19,7 +19,6 @@
 #include <osgEarthSymbology/Style>
 #include <osgEarthSymbology/CssUtils>
 #include <osgEarthSymbology/SLD>
-#include <osgEarth/HTTPClient>
 #include <algorithm>
 
 using namespace osgEarth;
@@ -75,12 +74,12 @@ void Style::addSymbol(Symbol* symbol)
 bool Style::removeSymbol(Symbol* symbol)
 {
     SymbolList::iterator it = std::find(_symbols.begin(), _symbols.end(), symbol);
-	if (it == _symbols.end())
-		return false;
-		
-	_symbols.erase(it);
-	
-	return true;
+    if (it == _symbols.end())
+        return false;
+
+    _symbols.erase(it);
+
+    return true;
 }
 
 Style::Style( const Config& conf )
@@ -151,35 +150,53 @@ Style::mergeConfig( const Config& conf )
 
                 if ( c.key() == "text" )
                 {
-                    getOrCreate<TextSymbol>()->mergeConfig( c );
+                    add( new TextSymbol(c) );
+                    //getOrCreate<TextSymbol>()->mergeConfig( c );
                 }
                 else if ( c.key() == "point" )
                 {
-                    getOrCreate<PointSymbol>()->mergeConfig( c );
+                    add( new PointSymbol(c) );
+                    //getOrCreate<PointSymbol>()->mergeConfig( c );
                 }
                 else if ( c.key() == "line" )
                 {
-                    getOrCreate<LineSymbol>()->mergeConfig( c );
+                    //getOrCreate<LineSymbol>()->mergeConfig( c );
+                    add( new LineSymbol(c) );
                 }
                 else if ( c.key() == "polygon" )
                 {
-                    getOrCreate<PolygonSymbol>()->mergeConfig( c );
+                    //getOrCreate<PolygonSymbol>()->mergeConfig( c );
+                    add( new PolygonSymbol(c) );
                 }
                 else if ( c.key() == "extrusion" )
                 {
-                    getOrCreate<ExtrusionSymbol>()->mergeConfig( c );
+                    //getOrCreate<ExtrusionSymbol>()->mergeConfig( c );
+                    add( new ExtrusionSymbol(c) );
                 }
                 else if ( c.key() == "altitude" )
                 {
-                    getOrCreate<AltitudeSymbol>()->mergeConfig( c );
+                    //getOrCreate<AltitudeSymbol>()->mergeConfig( c );
+                    add( new AltitudeSymbol(c) );
                 }
                 else if ( c.key() == "marker" )
                 {
-                    getOrCreate<MarkerSymbol>()->mergeConfig( c );
+                    //getOrCreate<MarkerSymbol>()->mergeConfig( c );
+                    add( new MarkerSymbol(c) );
                 }
                 else if ( c.key() == "skin" )
                 {
-                    getOrCreate<SkinSymbol>()->mergeConfig( c );
+                    //getOrCreate<SkinSymbol>()->mergeConfig( c );
+                    add( new SkinSymbol(c) );
+                }
+                else if ( c.key() == "model" )
+                {
+                    //getOrCreate<ModelSymbol>()->mergeConfig( c );
+                    add( new ModelSymbol(c) );
+                }
+                else if ( c.key() == "icon" )
+                {
+                    //getOrCreate<IconSymbol>()->mergeConfig( c );
+                    add( new IconSymbol(c) );
                 }
             }
         }

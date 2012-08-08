@@ -33,8 +33,11 @@ _options( options )
 }
 
 osg::Node*
-KMLReader::read( std::istream& in, const URIContext& context )
+KMLReader::read( std::istream& in, const osgDB::Options* dbOptions )
 {
+    // pull the URI context out of the DB options:
+    URIContext context(dbOptions);
+
     // read the KML from an XML stream:
     osg::ref_ptr<XmlDocument> xml = XmlDocument::load( in, context );
     if ( !xml.valid() )
@@ -43,14 +46,14 @@ KMLReader::read( std::istream& in, const URIContext& context )
     // convert to a config:
     Config config = xml->getConfig();
 
-    osg::Node* node = read( config );
+    osg::Node* node = read( config, dbOptions );
     node->setName( context.referrer() );
 
     return node;
 }
 
 osg::Node*
-KMLReader::read( const Config& conf )
+KMLReader::read( const Config& conf, const osgDB::Options* dbOptions )
 {
     osg::Group* root = new osg::Group();
     root->ref();
@@ -58,11 +61,12 @@ KMLReader::read( const Config& conf )
     root->setName( conf.referrer() );
 
     KMLContext cx;
-    cx._mapNode = _mapNode;
-    cx._sheet = new StyleSheet();
+    cx._mapNode   = _mapNode;
+    cx._sheet     = new StyleSheet();
+    cx._options   = _options;
+    cx._dbOptions = dbOptions;
+    cx._srs       = SpatialReference::create( "wgs84", "egm96" );
     cx._groupStack.push( root );
-    cx._options = _options;
-    cx._srs = SpatialReference::create( "wgs84", "egm96" );
 
     KMLOptions blankOptions;
     if ( cx._options == 0L )

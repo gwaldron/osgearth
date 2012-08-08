@@ -69,6 +69,7 @@ struct KMLContext
     Style                                 _activeStyle;
     std::stack<osg::ref_ptr<osg::Group> > _groupStack;
     osg::ref_ptr<const SpatialReference>  _srs;
+    osg::ref_ptr<const osgDB::Options>    _dbOptions;
 };
 
 struct KMLUtils

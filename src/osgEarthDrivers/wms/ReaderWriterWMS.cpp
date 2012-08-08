@@ -21,7 +21,6 @@
 #include <osgEarth/ImageToHeightFieldConverter>
 #include <osgEarth/Registry>
 #include <osgEarth/XmlUtils>
-#include <osgEarth/HTTPClient>
 #include <osgEarthUtil/WMS>
 #include <osgDB/FileNameUtils>
 #include <osgDB/FileUtils>
@@ -81,7 +80,7 @@ public:
     }
 
     /** override */
-    void initialize( const osgDB::Options* options, const Profile* overrideProfile)
+    Status initialize( const osgDB::Options* dbOptions )
     {
         osg::ref_ptr<const Profile> result;
 
@@ -99,11 +98,10 @@ public:
         }
 
         //Try to read the WMS capabilities
-        osg::ref_ptr<WMSCapabilities> capabilities = WMSCapabilitiesReader::read( capUrl.full(), 0L ); //getOptions() );
+        osg::ref_ptr<WMSCapabilities> capabilities = WMSCapabilitiesReader::read( capUrl.full(), dbOptions );
         if ( !capabilities.valid() )
         {
-            OE_WARN << "[osgEarth::WMS] Unable to read WMS GetCapabilities." << std::endl;
-            //return;
+            return Status::Error( "Unable to read WMS GetCapabilities." );
         }
         else
         {
@@ -113,7 +111,7 @@ public:
         if ( _formatToUse.empty() && capabilities.valid() )
         {
             _formatToUse = capabilities->suggestExtension();
-            OE_NOTICE << "[osgEarth::WMS] No format specified, capabilities suggested extension " << _formatToUse << std::endl;
+            OE_INFO << "[osgEarth::WMS] No format specified, capabilities suggested extension " << _formatToUse << std::endl;
         }
 
         if ( _formatToUse.empty() )
@@ -140,14 +138,12 @@ public:
             << "&HEIGHT="<< _options.tileSize().value()
             << "&BBOX=%lf,%lf,%lf,%lf";
 
-        
-
         // then the optional keys:
         if ( _options.transparent().isSet() )
             buf << "&TRANSPARENT=" << (_options.transparent() == true ? "TRUE" : "FALSE");
             
 
-		_prototype = "";
+        _prototype = "";
         _prototype = buf.str();
 
         //OE_NOTICE << "Prototype " << _prototype << std::endl;
@@ -159,10 +155,10 @@ public:
         {
             result = osgEarth::Registry::instance()->getGlobalMercatorProfile();
         }
-		else if (wms_srs.valid() && wms_srs->isEquivalentTo( osgEarth::Registry::instance()->getGlobalGeodeticProfile()->getSRS()))
-		{
-			result = osgEarth::Registry::instance()->getGlobalGeodeticProfile();
-		}
+        else if (wms_srs.valid() && wms_srs->isEquivalentTo( osgEarth::Registry::instance()->getGlobalGeodeticProfile()->getSRS()))
+        {
+            result = osgEarth::Registry::instance()->getGlobalGeodeticProfile();
+        }
 
         // Next, try to glean the extents from the layer list
         if ( capabilities.valid() )
@@ -178,14 +174,14 @@ public:
                 //Check to see if the profile is equivalent to global-geodetic
                 if (wms_srs->isGeographic())
                 {
-					//Try to get the lat lon extents if they are provided
-				    layer->getLatLonExtents(minx, miny, maxx, maxy);
+                    //Try to get the lat lon extents if they are provided
+                    layer->getLatLonExtents(minx, miny, maxx, maxy);
 
-					//If we still don't have any extents, just default to global geodetic.
-					if (!result.valid() && minx == 0 && miny == 0 && maxx == 0 && maxy == 0)
-					{
-						result = osgEarth::Registry::instance()->getGlobalGeodeticProfile();
-					}
+                    //If we still don't have any extents, just default to global geodetic.
+                    if (!result.valid() && minx == 0 && miny == 0 && maxx == 0 && maxy == 0)
+                    {
+                        result = osgEarth::Registry::instance()->getGlobalGeodeticProfile();
+                    }
                 }	
 
                 if (minx == 0 && miny == 0 && maxx == 0 && maxy == 0)
@@ -213,19 +209,17 @@ public:
         {
             result = osgEarth::Registry::instance()->getGlobalGeodeticProfile();
         }
-        
 
         // JPL uses an experimental interface called TileService -- ping to see if that's what
         // we are trying to read:
         URI tsUrl = _options.tileServiceUrl().value();
         if ( tsUrl.empty() )
         {
-            tsUrl = URI(
-                _options.url()->full() + sep + std::string("request=GetTileService") );
+            tsUrl = URI(_options.url()->full() + sep + std::string("request=GetTileService") );
         }
 
         OE_INFO << "[osgEarth::WMS] Testing for JPL/TileService at " << tsUrl.full() << std::endl;
-        _tileService = TileServiceReader::read(tsUrl.full(), 0L); //getOptions());
+        _tileService = TileServiceReader::read(tsUrl.full(), dbOptions);
         if (_tileService.valid())
         {
             OE_INFO << "[osgEarth::WMS] Found JPL/TileService spec" << std::endl;
@@ -250,20 +244,26 @@ public:
             OE_INFO << "[osgEarth::WMS] No JPL/TileService spec found; assuming standard WMS" << std::endl;
         }
 
-        //Use the override profile if one is passed in.
-        if (overrideProfile)
+        // Use the override profile if one is passed in.
+        if ( getProfile() == 0L )
         {
-            result = overrideProfile;
+            setProfile( result.get() );
         }
 
-        //TODO: won't need this for OSG 2.9+, b/c of mime-type support
-        //_prototype = _prototype + std::string("&.") + _formatToUse;
+        if ( getProfile() )
+        {
+            OE_NOTICE << "[osgEarth::WMS] Profile=" << getProfile()->toString() << std::endl;
 
-        // populate the data metadata:
-        // TODO
+            // set up the cache options properly for a TileSource.
+            _dbOptions = Registry::instance()->cloneOrCreateOptions( dbOptions );
+            CachePolicy::NO_CACHE.apply( _dbOptions.get() );
 
-		setProfile( result.get() );
-        OE_NOTICE << "[osgEarth::WMS] Profile=" << result->toString() << std::endl;
+            return STATUS_OK;
+        }
+        else
+        {
+            return Status::Error( "Unable to establish profile" );
+        }
     }
 
     /* override */
@@ -280,7 +280,7 @@ public:
         const TileKey&     key, 
         const std::string& extraAttrs,
         ProgressCallback*  progress, 
-        HTTPResponse&      out_response )
+        ReadResult&        out_response )
     {
         osgDB::ReaderWriter* result = 0L;
 
@@ -292,27 +292,36 @@ public:
         }
 
 
-        out_response = HTTPClient::get( uri, 0L, progress ); //getOptions(), progress );
+        out_response = URI( uri ).readString( _dbOptions.get(), progress );
 
-        if ( out_response.isOK() )
+        //...
+        //out_response = HTTPClient::get( uri, 0L, progress ); //getOptions(), progress );
+
+        if ( out_response.succeeded() )
         {
-            const std::string& mt = out_response.getMimeType();
+            // get the mime type:
+            std::string mt = out_response.metadata().value( IOMetadata::CONTENT_TYPE );
 
             if ( mt == "application/vnd.ogc.se_xml" || mt == "text/xml" )
             {
+                std::istringstream content( out_response.getString() );
+
                 // an XML result means there was a WMS service exception:
                 Config se;
-                if ( se.fromXML( out_response.getPartStream(0) ) )
+                if ( se.fromXML(content) )
                 {
                     Config ex = se.child("serviceexceptionreport").child("serviceexception");
-                    if ( !ex.empty() ) {
+                    if ( !ex.empty() )
+                    {
                         OE_NOTICE << "WMS Service Exception: " << ex.toJSON(true) << std::endl;
                     }
-                    else {
+                    else
+                    {
                         OE_NOTICE << "WMS Response: " << se.toJSON(true) << std::endl;
                     }
                 }
-                else {
+                else
+                {
                     OE_NOTICE << "WMS: unknown error." << std::endl;
                 }
             }
@@ -321,7 +330,8 @@ public:
                 // really ought to use mime-type support here -GW
                 std::string typeExt = mt.substr( mt.find_last_of("/")+1 );
                 result = osgDB::Registry::instance()->getReaderWriterForExtension( typeExt );
-                if ( !result ) {
+                if ( !result )
+                {
                     OE_NOTICE << "WMS: no reader registered; URI=" << createURI(key) << std::endl;
                 }
             }
@@ -345,15 +355,18 @@ public:
             if ( _timesVec.size() == 1 )
                 extras = std::string("TIME=") + _timesVec[0];
 
-            HTTPResponse response;
+            ReadResult response;
             osgDB::ReaderWriter* reader = fetchTileAndReader( key, extras, progress, response );
             if ( reader )
             {
-                osgDB::ReaderWriter::ReadResult readResult = reader->readImage( response.getPartStream( 0 ), 0L ); //getOptions() );
-                if ( readResult.error() ) {
+                std::istringstream buf( response.getString() );
+                osgDB::ReaderWriter::ReadResult readResult = reader->readImage( buf, _dbOptions.get() );
+                if ( readResult.error() )
+                {
                     OE_WARN << "WMS: image read failed for " << createURI(key) << std::endl;
                 }
-                else {
+                else
+                {
                     image = readResult.getImage();
                 }
             }
@@ -370,12 +383,15 @@ public:
         for( unsigned int r=0; r<_timesVec.size(); ++r )
         {
             std::string extraAttrs = std::string("TIME=") + _timesVec[r];
-            HTTPResponse response;
+            ReadResult response;
             osgDB::ReaderWriter* reader = fetchTileAndReader( key, extraAttrs, progress, response );
             if ( reader )
             {
-                osgDB::ReaderWriter::ReadResult readResult = reader->readImage( response.getPartStream( 0 ), 0L ); //getOptions() );
-                if ( readResult.error() ) {
+                std::istringstream buf( response.getString() );
+
+                osgDB::ReaderWriter::ReadResult readResult = reader->readImage( buf, _dbOptions.get() );
+                if ( readResult.error() )
+                {
                     OE_WARN << "WMS: image read failed for " << createURI(key) << std::endl;
                 }
                 else
@@ -417,11 +433,12 @@ public:
         {
             std::string extraAttrs = std::string("TIME=") + _timesVec[r];
 
-            HTTPResponse response;
+            ReadResult response;
             osgDB::ReaderWriter* reader = fetchTileAndReader( key, extraAttrs, progress, response );
             if ( reader )
             {
-                osgDB::ReaderWriter::ReadResult readResult = reader->readImage( response.getPartStream( 0 ), 0L ); //getOptions() );
+                std::istringstream buf(response.getString());
+                osgDB::ReaderWriter::ReadResult readResult = reader->readImage( buf, _dbOptions.get() );
                 if ( !readResult.error() )
                 {
                     seq->addImage( readResult.getImage() );
@@ -494,6 +511,7 @@ private:
     osg::ref_ptr<const Profile> _profile;
     std::string _prototype;
     std::vector<std::string> _timesVec;
+    osg::ref_ptr<osgDB::Options> _dbOptions;
 };
 
 

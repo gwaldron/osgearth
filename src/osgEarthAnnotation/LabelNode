@@ -65,6 +65,15 @@ namespace osgEarth { namespace Annotation
             const std::string&      text,
             const TextSymbol*       symbol );
 
+        /** 
+         * Construct a label node purely from the style. The text string
+         * must be in the text symbol
+         */
+        LabelNode(
+            MapNode*                mapNode,
+            const GeoPoint&         position,
+            const Style&            style );
+
         /**
          * Constructs a label node that is positioned some other way,
          * typically by being in a subgraph under another transform

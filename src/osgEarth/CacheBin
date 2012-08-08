@@ -112,7 +112,7 @@ namespace osgEarth
         /**
          * Store this pointer in an options structure
          */
-        void store( osgDB::Options* options ) const {
+        void apply( osgDB::Options* options ) const {
             if ( options ) options->setPluginData( "osgEarth::CacheBin", (void*)this );
         }
 

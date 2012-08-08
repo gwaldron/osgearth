@@ -556,7 +556,11 @@ MapNodeHelper::parse(MapNode*             mapNode,
     {
         KMLOptions kml_options;
         kml_options.declutter() = true;
-        kml_options.defaultIconImage() = URI( KML_PUSHPIN_URL ).getImage();
+
+        // set up a default icon for point placemarks:
+        IconSymbol* defaultIcon = new IconSymbol();
+        defaultIcon->url()->setLiteral(KML_PUSHPIN_URL);
+        kml_options.defaultIconSymbol() = defaultIcon;
 
         osg::Node* kml = KML::load( URI(kmlFile), mapNode, kml_options );
         if ( kml )

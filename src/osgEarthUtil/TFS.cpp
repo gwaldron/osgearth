@@ -19,7 +19,6 @@
 
 #include <osgEarthUtil/TFS>
 #include <osgEarth/XmlUtils>
-#include <osgEarth/HTTPClient>
 
 #include <osgDB/FileNameUtils>
 #include <osgDB/FileUtils>

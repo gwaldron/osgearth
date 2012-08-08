@@ -27,31 +27,6 @@
 using namespace osgEarth;
 using namespace osgEarth::Symbology;
 
-#define CSS_STROKE          "stroke"
-#define CSS_STROKE_WIDTH    "stroke-width"
-#define CSS_STROKE_OPACITY  "stroke-opacity"
-#define CSS_STROKE_LINECAP  "stroke-linecap"
-
-#define CSS_FILL           "fill"
-#define CSS_FILL_OPACITY   "fill-opacity"
-
-#define CSS_POINT_SIZE     "point-size"
-
-#define CSS_TEXT_FONT             "text-font"
-#define CSS_TEXT_SIZE             "text-size"
-#define CSS_TEXT_HALO             "text-halo"
-#define CSS_TEXT_ATTRIBUTE        "text-attribute"
-#define CSS_TEXT_ENCODING         "text-encoding"
-#define CSS_TEXT_ROTATE_TO_SCREEN "text-rotate-to-screen"
-#define CSS_TEXT_SIZE_MODE        "text-size-mode"
-#define CSS_TEXT_REMOVE_DUPLICATE_LABELS "text-remove-duplicate-labels"
-#define CSS_TEXT_LINE_ORIENTATION "text-line-orientation"
-#define CSS_TEXT_LINE_PLACEMENT   "text-line-placement"
-#define CSS_TEXT_CONTENT          "text-content"
-#define CSS_TEXT_ALIGN            "text-align"
-#define CSS_TEXT_CONTENT_ATTRIBUTE_DELIMITER "text-content-attribute-delimiter"
-
-
 namespace
 {
     void parseLineCap( const std::string& value, optional<Stroke::LineCapStyle>& cap )
@@ -77,12 +52,14 @@ SLDReader::readStyleFromCSSParams( const Config& conf, Style& sc )
 {
     sc.setName( conf.key() );
 
+    IconSymbol*      icon      = 0L;
     LineSymbol*      line      = 0L;
     PolygonSymbol*   polygon   = 0L;
     PointSymbol*     point     = 0L;
     TextSymbol*      text      = 0L;
     ExtrusionSymbol* extrusion = 0L;
     MarkerSymbol*    marker    = 0L;
+    ModelSymbol*     model     = 0L;
     AltitudeSymbol*  altitude  = 0L;
     SkinSymbol*      skin      = 0L;
 
@@ -114,6 +91,11 @@ SLDReader::readStyleFromCSSParams( const Config& conf, Style& sc )
         {
             if (!line) line = sc.getOrCreateSymbol<LineSymbol>();
             parseLineCap( value, line->stroke()->lineCap() );
+        }
+        else if ( match(key, "stroke-tessellation") )
+        {
+            if (!line) line = sc.getOrCreate<LineSymbol>();
+            line->tessellation() = as<unsigned>( value, 0 );
         }
 
         // ..... PolygonSymbol .....
@@ -207,15 +189,15 @@ SLDReader::readStyleFromCSSParams( const Config& conf, Style& sc )
             if (!text) text = sc.getOrCreate<TextSymbol>();
             text->provider() = value;
         }
-		else if ( match(key, "text-encoding") )
-		{
-			if (!text) text = sc.getOrCreateSymbol<TextSymbol>();
-			if      (match(value, "utf-8"))  text->encoding() = TextSymbol::ENCODING_UTF8;
-			else if (match(value, "utf-16")) text->encoding() = TextSymbol::ENCODING_UTF16;
-			else if (match(value, "utf-32")) text->encoding() = TextSymbol::ENCODING_UTF32;
-			else if (match(value, "ascii"))  text->encoding() = TextSymbol::ENCODING_ASCII;
-			else text->encoding() = TextSymbol::ENCODING_ASCII;
-		}
+        else if ( match(key, "text-encoding") )
+        {
+            if (!text) text = sc.getOrCreateSymbol<TextSymbol>();
+            if      (match(value, "utf-8"))  text->encoding() = TextSymbol::ENCODING_UTF8;
+            else if (match(value, "utf-16")) text->encoding() = TextSymbol::ENCODING_UTF16;
+            else if (match(value, "utf-32")) text->encoding() = TextSymbol::ENCODING_UTF32;
+            else if (match(value, "ascii"))  text->encoding() = TextSymbol::ENCODING_ASCII;
+            else text->encoding() = TextSymbol::ENCODING_ASCII;
+        }
         else if ( match(key, "text-declutter") )
         {
             if (!text) text = sc.getOrCreate<TextSymbol>();
@@ -270,6 +252,93 @@ SLDReader::readStyleFromCSSParams( const Config& conf, Style& sc )
             else if ( match(value, "right-top") ) marker->alignment() = MarkerSymbol::ALIGN_RIGHT_TOP;
             else if ( match(value, "right-center") ) marker->alignment() = MarkerSymbol::ALIGN_RIGHT_CENTER;
             else if ( match(value, "right-bottom") ) marker->alignment() = MarkerSymbol::ALIGN_RIGHT_BOTTOM;
+        }
+
+        // ..... ModelSymbol .....
+
+        else if ( match(key, "model") )
+        {
+            if (!model) model = sc.getOrCreate<ModelSymbol>();
+            model->url() = value;
+            model->url()->setURIContext( conf.referrer() );
+        }
+        else if ( match(key, "model-placement") )
+        {
+            if (!model) model = sc.getOrCreate<ModelSymbol>();
+            if      ( match(value, "vertex") )   model->placement() = ModelSymbol::PLACEMENT_VERTEX;
+            else if ( match(value, "interval") ) model->placement() = ModelSymbol::PLACEMENT_INTERVAL;
+            else if ( match(value, "random") )   model->placement() = ModelSymbol::PLACEMENT_RANDOM;
+            else if ( match(value, "centroid") ) model->placement() = ModelSymbol::PLACEMENT_CENTROID;
+        }
+        else if ( match(key, "model-density") )
+        {
+            if (!model) model = sc.getOrCreate<ModelSymbol>();
+            model->density() = as<float>(value, 1.0f);
+        }
+        else if ( match(key, "model-random-seed") )
+        {
+            if (!model) model = sc.getOrCreate<ModelSymbol>();
+            model->randomSeed() = as<unsigned>(value, 0);
+        }
+        else if ( match(key, "model-scale") )
+        {
+            if (!model) model = sc.getOrCreate<ModelSymbol>();
+            model->scale() = NumericExpression(value);
+        }
+        else if ( match(key, "model-heading") )
+        {
+            if (!model) model = sc.getOrCreate<ModelSymbol>();
+            model->heading() = NumericExpression(value);
+        }
+
+        // ..... IconSymbol .....
+
+        else if ( match(key, "icon") )
+        {
+            if (!icon) icon = sc.getOrCreate<IconSymbol>();
+            icon->url() = value;
+            icon->url()->setURIContext( conf.referrer() );
+        }
+        else if ( match(key,"icon-library") )
+        {
+            if (!icon) icon = sc.getOrCreate<IconSymbol>();
+            icon->libraryName() = StringExpression(value);
+        }
+        else if ( match(key, "icon-placement") )
+        {
+            if (!icon) icon = sc.getOrCreate<IconSymbol>();
+            if      ( match(value, "vertex") )   icon->placement() = ModelSymbol::PLACEMENT_VERTEX;
+            else if ( match(value, "interval") ) icon->placement() = ModelSymbol::PLACEMENT_INTERVAL;
+            else if ( match(value, "random") )   icon->placement() = ModelSymbol::PLACEMENT_RANDOM;
+            else if ( match(value, "centroid") ) icon->placement() = ModelSymbol::PLACEMENT_CENTROID;
+        }
+        else if ( match(key, "icon-density") )
+        {
+            if (!icon) icon = sc.getOrCreate<IconSymbol>();
+            icon->density() = as<float>(value, 1.0f);
+        }
+        else if ( match(key, "icon-random-seed") )
+        {
+            if (!icon) icon = sc.getOrCreate<IconSymbol>();
+            icon->randomSeed() = as<unsigned>(value, 0);
+        }
+        else if ( match(key, "icon-scale") )
+        {
+            if (!icon) icon = sc.getOrCreate<IconSymbol>();
+            icon->scale() = NumericExpression(value);
+        }
+        else if ( match(key, "icon-align") )
+        {
+            if (!icon) icon = sc.getOrCreate<IconSymbol>();
+            if      ( match(value, "left-top") )      icon->alignment() = IconSymbol::ALIGN_LEFT_TOP;
+            else if ( match(value, "left-center") )   icon->alignment() = IconSymbol::ALIGN_LEFT_CENTER;
+            else if ( match(value, "left-bottom") )   icon->alignment() = IconSymbol::ALIGN_LEFT_BOTTOM;
+            else if ( match(value, "center-top")  )   icon->alignment() = IconSymbol::ALIGN_CENTER_TOP;
+            else if ( match(value, "center-center") ) icon->alignment() = IconSymbol::ALIGN_CENTER_CENTER;
+            else if ( match(value, "center-bottom") ) icon->alignment() = IconSymbol::ALIGN_CENTER_BOTTOM;
+            else if ( match(value, "right-top") )     icon->alignment() = IconSymbol::ALIGN_RIGHT_TOP;
+            else if ( match(value, "right-center") )  icon->alignment() = IconSymbol::ALIGN_RIGHT_CENTER;
+            else if ( match(value, "right-bottom") )  icon->alignment() = IconSymbol::ALIGN_RIGHT_BOTTOM;
         }
 
         // ..... ExtrusionSymbol .....

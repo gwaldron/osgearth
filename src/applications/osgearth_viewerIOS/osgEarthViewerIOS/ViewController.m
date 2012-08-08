@@ -15,6 +15,8 @@
 
 #include <osgViewer/api/IOS/GraphicsWindowIOS>
 
+#include <osgEarthUtil/SkyNode>
+#include <osgEarthUtil/EarthManipulator>
 #include <osgEarthUtil/EarthManipulator>
 #include <osgEarthUtil/ExampleResources>
 
@@ -56,6 +58,18 @@
     // install our default manipulator (do this before calling load)
     _viewer->setCameraManipulator( new osgEarth::Util::EarthMultiTouchManipulator() );
     
+    osg::Light* light = new osg::Light( 0 );  
+    light->setPosition( osg::Vec4(0, -1, 0, 0 ) );
+    light->setAmbient( osg::Vec4(0.4f, 0.4f, 0.4f ,1.0) );
+    light->setDiffuse( osg::Vec4(1,1,1,1) );
+    light->setSpecular( osg::Vec4(0,0,0,1) );
+
+    osg::Material* material = new osg::Material();
+    material->setAmbient(osg::Material::FRONT, osg::Vec4(0.4,0.4,0.4,1.0));
+    material->setDiffuse(osg::Material::FRONT, osg::Vec4(0.9,0.9,0.9,1.0));
+    material->setSpecular(osg::Material::FRONT, osg::Vec4(0.4,0.4,0.4,1.0));
+    
+    
     osg::Node* node = osgDB::readNodeFile(osgDB::findDataFile("tests/" + _file));
     if ( !node )
     {
@@ -80,6 +94,24 @@
     // a root node to hold everything:
     osg::Group* root = new osg::Group();
     root->addChild( mapNode.get() );
+    //root->getOrCreateStateSet()->setAttribute(light);
+    
+    //have to add these
+    root->getOrCreateStateSet()->setAttribute(material);
+    root->getOrCreateStateSet()->setMode(GL_LIGHTING, osg::StateAttribute::ON | osg::StateAttribute::OVERRIDE);
+    
+    double hours = 12.0f;
+    float ambientBrightness = 0.4f;
+    osgEarth::Util::SkyNode* sky = new osgEarth::Util::SkyNode( mapNode->getMap() );
+    sky->setAmbientBrightness( ambientBrightness );
+    sky->setDateTime( 1984, 11, 8, hours );
+    sky->attach( _viewer, 0 );
+    root->addChild( sky );
+    
+    
+    //for some reason we have to do this as global stateset doesn't
+    //appear to be in the statesetstack
+    root->getOrCreateStateSet()->setAttribute(_viewer->getLight());
     
     
     osgUtil::GLES2ShaderGenVisitor shaderGen;
@@ -92,7 +124,7 @@
 {
     [super viewDidLoad];
     
-    osg::setNotifyLevel(osg::FATAL);
+    osg::setNotifyLevel(osg::INFO);
     //osgEarth::setNotifyLevel(osg::DEBUG_FP);
 
     

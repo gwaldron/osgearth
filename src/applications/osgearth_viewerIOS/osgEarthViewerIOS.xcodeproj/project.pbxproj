@@ -167,6 +167,7 @@
 		90A0DD7615B7BBA4004FACEE /* libcurl.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 90A0DD7515B7BBA4004FACEE /* libcurl.a */; };
 		90B8676615C8894900F5CDC3 /* StartViewerController.m in Sources */ = {isa = PBXBuildFile; fileRef = 90B8676415C8894900F5CDC3 /* StartViewerController.m */; };
 		90B8676715C8894900F5CDC3 /* StartViewerController.xib in Resources */ = {isa = PBXBuildFile; fileRef = 90B8676515C8894900F5CDC3 /* StartViewerController.xib */; };
+		90DABDDC15CEFF9700D0F609 /* moon_1024x512.jpg in Resources */ = {isa = PBXBuildFile; fileRef = 90DABDDB15CEFF9700D0F609 /* moon_1024x512.jpg */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -339,6 +340,7 @@
 		90B8676315C8894900F5CDC3 /* StartViewerController.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = StartViewerController.h; sourceTree = "<group>"; };
 		90B8676415C8894900F5CDC3 /* StartViewerController.m */ = {isa = PBXFileReference; explicitFileType = sourcecode.cpp.objcpp; fileEncoding = 4; path = StartViewerController.m; sourceTree = "<group>"; };
 		90B8676515C8894900F5CDC3 /* StartViewerController.xib */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = file.xib; path = StartViewerController.xib; sourceTree = "<group>"; };
+		90DABDDB15CEFF9700D0F609 /* moon_1024x512.jpg */ = {isa = PBXFileReference; lastKnownFileType = image.jpeg; name = moon_1024x512.jpg; path = ../../../../data/moon_1024x512.jpg; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -532,6 +534,7 @@
 		905100D215B21FFD00D9ABD3 /* Resources */ = {
 			isa = PBXGroup;
 			children = (
+				90DABDDB15CEFF9700D0F609 /* moon_1024x512.jpg */,
 				90283E5415C6FB3E00620EEF /* tests */,
 				90283E5515C6FB3E00620EEF /* data */,
 			);
@@ -856,6 +859,7 @@
 				90283E5615C6FB3E00620EEF /* tests in Resources */,
 				90283E5715C6FB3E00620EEF /* data in Resources */,
 				90B8676715C8894900F5CDC3 /* StartViewerController.xib in Resources */,
+				90DABDDC15CEFF9700D0F609 /* moon_1024x512.jpg in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -982,6 +986,8 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "iPhone Distribution: Thomas Hogarth";
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				GCC_GENERATE_DEBUGGING_SYMBOLS = NO;
 				GCC_PRECOMPILE_PREFIX_HEADER = YES;
 				GCC_PREFIX_HEADER = "osgEarthViewerIOS/osgEarthViewerIOS-Prefix.pch";
 				"GCC_THUMB_SUPPORT[arch=armv6]" = "";

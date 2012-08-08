@@ -222,6 +222,13 @@ TerrainEngineNode::preInitialize( const Map* map, const TerrainOptions& options 
     set->getOrCreateUniform( "osgearth_ImageLayerAttenuation", osg::Uniform::FLOAT )->set(
         *options.attentuationDistance() );
 
+    if ( options.enableMercatorFastPath().isSet() )
+    {
+        OE_INFO 
+            << LC << "Mercator fast path " 
+            << (options.enableMercatorFastPath()==true? "enabled" : "DISABLED") << std::endl;
+    }
+
     _initStage = INIT_PREINIT_COMPLETE;
 }
 

@@ -403,6 +403,7 @@ namespace osgEarth
         // methods accesible by Map:
         friend class Map;
         void setDBOptions( const osgDB::Options* dbOptions );
+        void initializeCachePolicy( const osgDB::Options* );
 
         /**
          * Sets the cache to be used on this MapLayer

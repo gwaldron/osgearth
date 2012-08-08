@@ -53,8 +53,7 @@ public:
     }
 
 
-    void initialize(const osgDB::Options* dbOptions,
-                    const Profile*        overrideProfile )
+    Status initialize(const osgDB::Options* dbOptions)
     {
         _dbOptions = Registry::instance()->cloneOrCreateOptions(dbOptions);
         CachePolicy::NO_CACHE.apply( _dbOptions.get() );
@@ -62,15 +61,13 @@ public:
         URI xyzURI = _options.url().value();
         if ( xyzURI.empty() )
         {
-            OE_WARN << LC << "Fail: driver requires a valid \"url\" property" << std::endl;
-            return;
+            return Status::Error( "Fail: driver requires a valid \"url\" property" );
         }
 
         // driver requires a profile.
         if ( !getProfile() )
         {
-            OE_WARN << LC << "An explicit profile definition is required by the OSG driver." << std::endl;
-            return;
+            return Status::Error( "An explicit profile definition is required by the XYZ driver." );
         }
 
         _template = xyzURI.full();
@@ -86,6 +83,8 @@ public:
         _format = _options.format().isSet() 
             ? *_options.format()
             : osgDB::getLowerCaseFileExtension( xyzURI.base() );
+
+        return STATUS_OK;
     }
 
 

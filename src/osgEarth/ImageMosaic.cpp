@@ -115,7 +115,8 @@ ImageMosaic::createImage()
         osg::Image* sourceTile = i->getImage();
         if ( sourceTile->s() != tileWidth || sourceTile->t() != tileHeight )
         {
-            OE_WARN << LC << "Danger; mosaicing images of different pixel sizes" << std::endl;
+            OE_WARN << LC << "Failure: mosaicing images of different pixel sizes" << std::endl;
+            return 0L;
         }
 
         //Determine the indices in the master image for this image

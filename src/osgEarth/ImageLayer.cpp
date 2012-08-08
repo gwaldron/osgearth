@@ -32,7 +32,7 @@
 using namespace osgEarth;
 using namespace OpenThreads;
 
-#define LC "[ImageLayer] "
+#define LC "[ImageLayer] \"" << getName() << "\" "
 
 // TESTING
 //#undef  OE_DEBUG
@@ -169,7 +169,7 @@ ImageLayerTileProcessor::init(const ImageLayerOptions& options,
         //_noDataImage = URI( *_options.noDataImageFilename() ).readImage(dbOptions).getImage();
         if ( !_noDataImage.valid() )
         {
-            OE_WARN << "Warning: Could not read nodata image from \"" << _options.noDataImageFilename().value() << "\"" << std::endl;
+            OE_WARN << "Failed to read nodata image from \"" << _options.noDataImageFilename().value() << "\"" << std::endl;
         }
     }
 }
@@ -394,7 +394,7 @@ ImageLayer::createImageInNativeProfile( const TileKey& key, ProgressCallback* pr
     const Profile* nativeProfile = getProfile();
     if ( !nativeProfile )
     {
-        OE_WARN << LC << "Could not establish the profile for Layer \"" << getName() << "\"" << std::endl;
+        OE_WARN << LC << "Could not establish the profile" << std::endl;
         return GeoImage::INVALID;
     }
 
@@ -422,6 +422,13 @@ ImageLayer::createImageInNativeProfile( const TileKey& key, ProgressCallback* pr
                 mosaic.getImages().push_back( TileImage(image.getImage(), *k) );
                 if ( !isFallback )
                     foundAtLeastOneRealTile = true;
+            }
+            else
+            {
+                // if we get EVEN ONE invalid tile, we have to abort because there will be
+                // empty spots in the mosaic. (By "invalid" we mean a tile that could not
+                // even be resolved through the fallback procedure.)
+                return GeoImage::INVALID;
             }
         }
 
@@ -504,8 +511,7 @@ ImageLayer::createImageInKeyProfile( const TileKey& key, ProgressCallback* progr
         }
     }
 
-    OE_DEBUG << LC << 
-        "Layer \"" << getName() << "\" create image for \"" << key.str() << "\", ext= "
+    OE_DEBUG << LC << "create image for \"" << key.str() << "\", ext= "
         << key.getExtent().toString() << std::endl;
 
 
@@ -524,7 +530,7 @@ ImageLayer::createImageInKeyProfile( const TileKey& key, ProgressCallback* progr
     // case there is no layer profile)
     if ( !isCacheOnly() && !getProfile() )
     {
-        OE_WARN << LC << "Could not establish a valid profile for Layer \"" << getName() << "\"" << std::endl;
+        OE_WARN << LC << "Could not establish a valid profile" << std::endl;
         _runtimeOptions.enabled() = false;
         return GeoImage::INVALID;
     }
@@ -536,7 +542,6 @@ ImageLayer::createImageInKeyProfile( const TileKey& key, ProgressCallback* progr
         ReadResult r = cacheBin->readImage( key.str() );
         if ( r.succeeded() )
         {            
-            //OE_INFO << LC << getName() << " : " << key.str() << " cache hit" << std::endl;
             ImageUtils::normalizeImage( r.getImage() );
             return GeoImage( r.releaseImage(), key.getExtent() );
         }
@@ -576,16 +581,16 @@ ImageLayer::createImageInKeyProfile( const TileKey& key, ProgressCallback* progr
         }
 
         cacheBin->write( key.str(), result.getImage() );
-        OE_DEBUG << LC << "WRITING " << key.str() << " to the cache." << std::endl;
+        //OE_INFO << LC << "WRITING " << key.str() << " to the cache." << std::endl;
     }
 
     if ( result.valid() )
     {
-        OE_DEBUG << LC << getName() << " : " << key.str() << " result OK" << std::endl;
+        OE_DEBUG << LC << key.str() << " result OK" << std::endl;
     }
     else
     {
-        OE_DEBUG << LC << getName() << " : " << key.str() << "result INVALID" << std::endl;
+        OE_DEBUG << LC << key.str() << "result INVALID" << std::endl;
     }
 
     return result;
@@ -619,7 +624,7 @@ ImageLayer::createImageFromTileSource(const TileKey&    key,
     // If the profiles are different, use a compositing method to assemble the tile.
     if ( !key.getProfile()->isEquivalentTo( getProfile() ) )
     {
-        return assembleImageFromTileSource( key, progress, true, out_isFallback );
+        return assembleImageFromTileSource( key, progress, out_isFallback );
     }
 
     // Fail is the image is blacklisted.
@@ -680,7 +685,8 @@ ImageLayer::createImageFromTileSource(const TileKey&    key,
 
         if ( !result.valid() )
         {
-            result = ImageUtils::createEmptyImage();
+            result = 0L;
+            //result = _emptyImage.get();
             finalKey = key;
         }
     }
@@ -706,7 +712,6 @@ ImageLayer::createImageFromTileSource(const TileKey&    key,
 GeoImage
 ImageLayer::assembleImageFromTileSource(const TileKey&    key,
                                         ProgressCallback* progress,
-                                        bool              forceFallback,
                                         bool&             out_isFallback)
 {
     GeoImage mosaicedImage, result;
@@ -729,10 +734,6 @@ ImageLayer::assembleImageFromTileSource(const TileKey&    key,
     {
         double dst_minx, dst_miny, dst_maxx, dst_maxy;
         key.getExtent().getBounds(dst_minx, dst_miny, dst_maxx, dst_maxy);
-
-        //ImageMosaic mosaic;
-        //osg::ref_ptr<ImageMosaic> mi = new ImageMosaic();
-        //std::vector<TileKey> missingTiles;
 
         // if we find at least one "real" tile in the mosaic, then the whole result tile is
         // "real" (i.e. not a fallback tile)

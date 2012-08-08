@@ -43,8 +43,7 @@ public:
     }
 
     // Yahoo! uses spherical mercator, but the top LOD is a 2x2 tile set.
-    void initialize(const osgDB::Options* dbOptions,
-                    const Profile*        overrideProfile )
+    Status initialize(const osgDB::Options* dbOptions)
     {
         // no caching of source tiles
         _dbOptions = Registry::instance()->cloneOrCreateOptions( dbOptions );
@@ -52,6 +51,8 @@ public:
 
         // always a sperhical mercator profile
         setProfile( Profile::create( "spherical-mercator", "", 2, 2 ) );
+
+        return STATUS_OK;
     }
 
     osg::Image* createImage(const TileKey&        key,

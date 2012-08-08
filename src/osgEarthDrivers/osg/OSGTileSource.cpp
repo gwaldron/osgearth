@@ -63,15 +63,14 @@ public:
         //nop
     }
 
-    void initialize( const osgDB::Options* dbOptions, const Profile* overrideProfile)
+    Status initialize( const osgDB::Options* dbOptions )
     {
         osg::ref_ptr<osgDB::Options> localOptions = Registry::instance()->cloneOrCreateOptions(dbOptions);
         CachePolicy::NO_CACHE.apply(localOptions.get());
 
         if ( !getProfile() )
         {
-            OE_WARN << LC << "An explicit profile definition is required by the OSG driver." << std::endl;
-            return;
+            return Status::Error( "An explicit profile definition is required by the OSG driver." );
         }
 
         osg::ref_ptr<osg::Image> image;
@@ -83,15 +82,12 @@ public:
             {
                 image = r.getImage();
             }
-            else
-            {
-                OE_WARN << LC << "Failed to load data from \"" <<  _options.url()->full() << "\", because: "
-                    << r.getResultCodeString() << std::endl;
-            }
         }
 
         if ( !image.valid() )
-            OE_WARN << LC << "Faild to load data from \"" << _options.url()->full() << "\"" << std::endl;
+        {
+            return Status::Error( Stringify() <<  "Faild to load data from \"" << _options.url()->full() << "\"" );
+        }
 
         // calculate and store the maximum LOD for which to return data
         if ( image.valid() )
@@ -108,7 +104,7 @@ public:
                 //OE_NOTICE << "[osgEarth::OSG driver] minSpan=" << minSpan << ", _tileSize=" << tileSize << ", maxDataLevel = " << _maxDataLevel << std::endl;
             }
             
-            getDataExtents().push_back( DataExtent(overrideProfile->getExtent(), 0, _maxDataLevel) );
+            getDataExtents().push_back( DataExtent(getProfile()->getExtent(), 0, _maxDataLevel) );
 
             bool computeAlpha =
                 (_options.convertLuminanceToRGBA() == true && image->getPixelFormat() == GL_LUMINANCE) ||
@@ -131,6 +127,8 @@ public:
         }
 
         _extension = osgDB::getFileExtension( _options.url()->full() );
+
+        return STATUS_OK;
     }
     
     //override

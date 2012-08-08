@@ -262,7 +262,7 @@ namespace osgEarth
         // Fetches multiple images from the TileSource; mosaics/reprojects/crops as necessary, and
         // returns a single tile. This is called by createImageFromTileSource() if the key profile
         // doesn't match the layer profile.
-        GeoImage assembleImageFromTileSource(const TileKey& key, ProgressCallback* progress, bool forceFallback, bool& out_isFallback);
+        GeoImage assembleImageFromTileSource(const TileKey& key, ProgressCallback* progress, bool& out_isFallback);
 
 
         virtual void initTileSource();

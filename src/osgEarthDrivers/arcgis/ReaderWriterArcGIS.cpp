@@ -59,7 +59,7 @@ public:
     }
 
     // override
-    void initialize( const osgDB::Options* dbOptions, const Profile* overrideProfile)
+    Status initialize( const osgDB::Options* dbOptions )
     {
         // add the security token to the URL if necessary:
         URI url = _options.url().value();
@@ -72,11 +72,13 @@ public:
                 url = url.append( sep + std::string("token=") + token );
             }
         }
+
         // read map service metadata from the server
         if ( !_map_service.init(url, dbOptions) )
         {
-            OE_WARN << "[osgearth] [ArcGIS] map service initialization failed: "
-                << _map_service.getError() << std::endl;
+            return Status::Error( Stringify()
+                << "[osgearth] [ArcGIS] map service initialization failed: "
+                << _map_service.getError() );
         }
 
         // create a local i/o options with caching disabled (since the TerrainLayer
@@ -99,10 +101,13 @@ public:
             }
             else
             {
+                // finally, fall back on lat/long
                 profile = osgEarth::Registry::instance()->getGlobalGeodeticProfile();
             }
             setProfile( profile );
         }
+
+        return STATUS_OK;
     }
 
     // override

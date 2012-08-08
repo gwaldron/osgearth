@@ -27,16 +27,18 @@ using namespace osgEarth;
 using namespace osgEarth::Util;
 using namespace std;
 
-static
-WMSLayer* getLayerByName(const string &name, WMSLayer::LayerList& layers)
+namespace
 {
-    for (WMSLayer::LayerList::iterator i = layers.begin(); i != layers.end(); ++i)
+    WMSLayer* getLayerByName(const string &name, WMSLayer::LayerList& layers)
     {
-        if (osgDB::equalCaseInsensitive(i->get()->getName(),name)) return i->get();
-        WMSLayer *l = getLayerByName(name, i->get()->getLayers());
-        if (l) return l;
+        for (WMSLayer::LayerList::iterator i = layers.begin(); i != layers.end(); ++i)
+        {
+            if (osgDB::equalCaseInsensitive(i->get()->getName(),name)) return i->get();
+            WMSLayer *l = getLayerByName(name, i->get()->getLayers());
+            if (l) return l;
+        }
+        return 0;
     }
-    return 0;
 }
 
 WMSStyle::WMSStyle()

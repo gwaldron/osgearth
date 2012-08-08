@@ -52,33 +52,29 @@ public:
     }
 
 
-    void initialize(const osgDB::Options* dbOptions,
-                    const Profile*        overrideProfile )
+    Status initialize(const osgDB::Options* dbOptions)
     {
         _dbOptions = Registry::instance()->cloneOrCreateOptions(dbOptions);
 
-        const Profile* profile = NULL;
+        const Profile* profile = getProfile();
 
         URI tmsURI = _options.url().value();
         if ( tmsURI.empty() )
         {
-            OE_WARN << LC << "Fail: TMS driver requires a valid \"url\" property" << std::endl;
-            return;
+            return Status::Error( "Fail: TMS driver requires a valid \"url\" property" );
         }
 
         // Take the override profile if one is given
-        if (overrideProfile)
+        if ( profile )
         {
             OE_INFO << LC 
-                << "Using override profile \"" << overrideProfile->toString() 
+                << "Using override profile \"" << getProfile()->toString() 
                 << "\" for URI \"" << tmsURI.base() << "\"" 
                 << std::endl;
 
-            profile = overrideProfile;
-
             _tileMap = TMS::TileMap::create( 
                 _options.url()->full(),
-                overrideProfile, 
+                profile,
                 _options.format().value(),
                 _options.tileSize().value(), 
                 _options.tileSize().value() );
@@ -90,16 +86,22 @@ public:
             _tileMap = TMS::TileMapReaderWriter::read( tmsURI.full(), _dbOptions.get() );
             if (!_tileMap.valid())
             {
-                OE_WARN << LC << "Failed to read tilemap from " << tmsURI.full() << std::endl;
-                return;
+                return Status::Error( Stringify() << "Failed to read tilemap from " << tmsURI.full() );
             }
             
             profile = _tileMap->createProfile();
+            if ( profile )
+                setProfile( profile );
         }
 
-        // TileMap is valid at this point. Build the tile sets.
-        // Automatically set the min and max level of the TileMap
+        // Make sure we've established a profile by this point:
+        if ( !profile )
+        {
+            return Status::Error( Stringify() << "Failed to establish a profile for " << tmsURI.full() );
+        }
 
+        // TileMap and profile are valid at this point. Build the tile sets.
+        // Automatically set the min and max level of the TileMap
         if ( _tileMap->getTileSets().size() > 0 )
         {
             OE_DEBUG << LC << "TileMap min/max " << _tileMap->getMinLevel() << ", " << _tileMap->getMaxLevel() << std::endl;
@@ -120,7 +122,7 @@ public:
         // set up the IO options so that we do not cache TMS tiles:
         CachePolicy::NO_CACHE.apply( _dbOptions.get() );
 
-        setProfile( profile );
+        return STATUS_OK;
     }
 
 

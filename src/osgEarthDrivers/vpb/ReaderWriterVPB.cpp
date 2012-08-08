@@ -512,21 +512,19 @@ public:
         //nop
      }
 
-    void initialize( const osgDB::Options* dbOptions, const Profile* overrideProfile)
+    Status initialize( const osgDB::Options* dbOptions )
     {
         _dbOptions = Registry::instance()->cloneOrCreateOptions( dbOptions );
         CachePolicy::NO_CACHE.apply( _dbOptions.get() );
 
         _vpbDatabase->initialize( _dbOptions.get() );
 
-        if ( overrideProfile)
-        {
-            setProfile( overrideProfile );
-        }
-        else
+        if ( !getProfile() )
         {
             setProfile(_vpbDatabase->_profile.get());
         }
+
+        return STATUS_OK;
     }
 
     osg::Image* createImage( const TileKey& key, ProgressCallback* progress)

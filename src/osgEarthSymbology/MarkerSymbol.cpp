@@ -157,6 +157,17 @@ MarkerSymbol::convertToInstanceSymbol() const
         std::string ext = osgDB::getLowerCaseFileExtension(str);
         if ( !ext.empty() )
         {
+            osg::ref_ptr<osgDB::ReaderWriter> rw = osgDB::Registry::instance()->getReaderWriterForExtension(ext);
+            if ( rw.valid() )
+            {
+                unsigned features = (unsigned)rw->supportedFeatures();
+                if ( (features & osgDB::ReaderWriter::FEATURE_READ_IMAGE) != 0 )
+                {
+                    isModel = false;
+                }
+            }
+
+#if 0 // original method-- but getMimeTypeExtensionMap didn't exist until post-3.0
             const osgDB::Registry::MimeTypeExtensionMap& exmap = osgDB::Registry::instance()->getMimeTypeExtensionMap();
             for( osgDB::Registry::MimeTypeExtensionMap::const_iterator i = exmap.begin(); i != exmap.end(); ++i )
             {
@@ -167,6 +178,8 @@ MarkerSymbol::convertToInstanceSymbol() const
                     break;
                 }
             }
+#endif
+
         }
     }
 

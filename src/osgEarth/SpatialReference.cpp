@@ -44,7 +44,7 @@ namespace
     getOGRAttrValue( void* _handle, const std::string& name, int child_num, bool lowercase =false)
     {
         GDAL_SCOPED_LOCK;
-	    const char* val = OSRGetAttrValue( _handle, name.c_str(), child_num );
+        const char* val = OSRGetAttrValue( _handle, name.c_str(), child_num );
         if ( val )
         {
             std::string t = val;
@@ -55,23 +55,7 @@ namespace
             return t;
         }
         return "";
-    }
-
-    std::string&
-    replaceIn( std::string& s, const std::string& sub, const std::string& other)
-    {
-        if ( sub.empty() ) return s;
-        size_t b=0;
-        for( ; ; )
-        {
-            b = s.find( sub, b );
-            if ( b == s.npos ) break;
-            s.replace( b, sub.size(), other );
-            b += other.size();
-        }
-        return s;
-    }
-    
+    }    
 
     // http://en.wikipedia.org/wiki/Mercator_projection#Mathematics_of_the_projection
     bool sphericalMercatorToGeographic( std::vector<osg::Vec3d>& points )
@@ -165,20 +149,20 @@ SpatialReference::createFromWKT( const std::string& wkt, const std::string& name
 {
     osg::ref_ptr<SpatialReference> result;
     GDAL_SCOPED_LOCK;
-	void* handle = OSRNewSpatialReference( NULL );
+    void* handle = OSRNewSpatialReference( NULL );
     char buf[4096];
     char* buf_ptr = &buf[0];
-	strcpy( buf, wkt.c_str() );
-	if ( OSRImportFromWkt( handle, &buf_ptr ) == OGRERR_NONE )
-	{
+    strcpy( buf, wkt.c_str() );
+    if ( OSRImportFromWkt( handle, &buf_ptr ) == OGRERR_NONE )
+    {
         result = new SpatialReference( handle, "WKT" );
         result = result->fixWKT();
-	}
-	else 
-	{
-		OE_WARN << LC << "Unable to create spatial reference from WKT: " << wkt << std::endl;
-		OSRDestroySpatialReference( handle );
-	}
+    }
+    else 
+    {
+        OE_WARN << LC << "Unable to create spatial reference from WKT: " << wkt << std::endl;
+        OSRDestroySpatialReference( handle );
+    }
     return result.release();
 }
 
@@ -323,7 +307,7 @@ SpatialReference::fixWKT()
     std::string proj = getOGRAttrValue( _handle, "PROJECTION", 0 );
 
     // fix invalid ESRI LCC projections:
-    if ( proj == "Lambert_Conformal_Conic" )
+    if ( ciEquals( proj, "Lambert_Conformal_Conic" ) )
     {
         bool has_2_sps =
             !getOGRAttrValue( _handle, "Standard_Parallel_2", 0 ).empty() ||
@@ -331,9 +315,13 @@ SpatialReference::fixWKT()
 
         std::string new_wkt = getWKT();
         if ( has_2_sps )
-            replaceIn( new_wkt, "Lambert_Conformal_Conic", "Lambert_Conformal_Conic_2SP" );
-        else
-            replaceIn( new_wkt, "Lambert_Conformal_Conic", "Lambert_Conformal_Conic_1SP" );
+        {
+            ciReplaceIn( new_wkt, "Lambert_Conformal_Conic", "Lambert_Conformal_Conic_2SP" );
+        }
+        else 
+        {
+            ciReplaceIn( new_wkt, "Lambert_Conformal_Conic", "Lambert_Conformal_Conic_1SP" );
+        }
 
         OE_INFO << LC << "Morphing Lambert_Conformal_Conic to 1SP/2SP" << std::endl;
         
@@ -344,7 +332,7 @@ SpatialReference::fixWKT()
     else if ( proj == "Plate_Carree" )
     {
         std::string new_wkt = getWKT();
-        replaceIn( new_wkt, "Plate_Carree", "Equirectangular" );
+        ciReplaceIn( new_wkt, "Plate_Carree", "Equirectangular" );
         OE_INFO << LC << "Morphing Plate_Carree to Equirectangular" << std::endl;
         return createFromWKT( new_wkt, _name ); //, input->getReferenceFrame() );
     }
@@ -352,7 +340,7 @@ SpatialReference::fixWKT()
     {
         std::string new_wkt = getWKT();
         OE_INFO << LC << "Morphing Equidistant_Cylindrical to Equirectangular" << std::endl;
-        replaceIn( new_wkt, "Equidistant_Cylindrical", "Equirectangular" );
+        ciReplaceIn( new_wkt, "Equidistant_Cylindrical", "Equirectangular" );
         return createFromWKT( new_wkt, _name );
     }
 

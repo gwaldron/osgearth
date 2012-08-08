@@ -56,14 +56,33 @@ _hovered(false)
     setNumChildrenRequiringEventTraversal( 1 );
 
     _autoClampCallback = new ClampDraggerCallback( this );
+
+    setMapNode( mapNode );
 }
 
 Dragger::~Dragger()
 {
-    osg::ref_ptr< MapNode > mapNode = _mapNode;
-    if (mapNode.valid() && _autoClampCallback.valid())
+    setMapNode( 0L );
+}
+
+void
+Dragger::setMapNode( MapNode* mapNode )
+{
+    MapNode* oldMapNode = getMapNode();
+
+    if ( oldMapNode != mapNode )
     {
-        mapNode->getTerrain()->removeTerrainCallback( _autoClampCallback.get() );
+        if ( oldMapNode && _autoClampCallback.valid() )
+        {
+            oldMapNode->getTerrain()->removeTerrainCallback( _autoClampCallback.get() );
+        }
+
+        _mapNode = mapNode;
+
+        if ( _mapNode.valid() && _autoClampCallback.valid() )
+        {
+            _mapNode->getTerrain()->addTerrainCallback( _autoClampCallback.get() );
+        }
     }
 }
 
@@ -104,28 +123,16 @@ void Dragger::firePositionChanged()
 
 void Dragger::updateTransform(osg::Node* patch)
 {
-    osg::Matrixd matrix;
-
-
-    GeoPoint mapPoint( _position );
-    mapPoint.makeAbsolute( _mapNode->getTerrain() );
-    //mapPoint.fromWorld( _mapNode->getMapSRS(), _position );
-    
-#if 0
-    //Get the height
-    if (_position.altitudeMode() == ALTMODE_RELATIVE)
+    if ( getMapNode() )
     {
-        double hamsl;
-        if (_mapNode->getTerrain()->getHeight(patch, mapPoint.getSRS(), mapPoint.x(), mapPoint.y(), &hamsl, 0L))
-        {
-            mapPoint.z() += hamsl;
-        }
-        mapPoint.altitudeMode() = ALTMODE_ABSOLUTE;
-    }            
-#endif
+        osg::Matrixd matrix;
 
-    mapPoint.createLocalToWorld( matrix );
-    setMatrix( matrix );
+        GeoPoint mapPoint( _position );
+        mapPoint.makeAbsolute( getMapNode()->getTerrain() );
+
+        mapPoint.createLocalToWorld( matrix );
+        setMatrix( matrix );
+    }
 }
 
 void Dragger::enter()
@@ -200,11 +207,11 @@ bool Dragger::handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& 
         if (_dragging)
         {
             osg::Vec3d world;
-            if ( _mapNode->getTerrain()->getWorldCoordsUnderMouse(view, ea.getX(), ea.getY(), world) )
+            if ( getMapNode() && getMapNode()->getTerrain()->getWorldCoordsUnderMouse(view, ea.getX(), ea.getY(), world) )
             {
                 //Get the absolute mapPoint that they've drug it to.
                 GeoPoint mapPoint;
-                mapPoint.fromWorld( _mapNode->getMapSRS(), world );
+                mapPoint.fromWorld( getMapNode()->getMapSRS(), world );
                 //_mapNode->getMap()->worldPointToMapPoint(world, mapPoint);
 
                 //If the current position is relative, we need to convert the absolute world point to relative.

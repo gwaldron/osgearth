@@ -229,7 +229,7 @@ FeatureManipTool::onHit( FeatureSourceIndexNode* index, FeatureID fid, const Eve
             circleStyle.getOrCreate<PolygonSymbol>()->fill()->color() = Color(Color::Yellow, 0.25);
             circleStyle.getOrCreate<LineSymbol>()->stroke()->color() = Color::White;
             const osg::BoundingSphere& bs = manipModel->getBound();
-            _circle = new CircleNode( _mapNode, anchorMap, Distance(bs.radius()*1.5), circleStyle, false );
+            _circle = new CircleNode( getMapNode(), anchorMap, Distance(bs.radius()*1.5), circleStyle, false );
             _circle->getOrCreateStateSet()->setAttributeAndModes( new osg::Depth(osg::Depth::ALWAYS,0,1,false) );
 
             _circleEditor = new CircleNodeEditor( _circle.get() );

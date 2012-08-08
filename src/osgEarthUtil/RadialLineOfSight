@@ -21,6 +21,7 @@
 
 #include <osgEarthUtil/LineOfSight>
 #include <osgEarth/MapNode>
+#include <osgEarth/MapNodeObserver>
 #include <osgEarth/Terrain>
 #include <osgEarth/GeoData>
 #include <osgEarth/Draggers>
@@ -30,7 +31,7 @@ namespace osgEarth { namespace Util
     /**
      * A Node that can be used to display radial line of sight calculations
      */
-    class OSGEARTHUTIL_EXPORT RadialLineOfSightNode : public LineOfSightNode
+    class OSGEARTHUTIL_EXPORT RadialLineOfSightNode : public LineOfSightNode, public MapNodeObserver
     {
     public:
         /**
@@ -41,11 +42,6 @@ namespace osgEarth { namespace Util
         RadialLineOfSightNode( MapNode* mapNode );
 
         virtual ~RadialLineOfSightNode();
-
-        /**
-         * Gets the MapNode this RadialLineOfSightNode is operating on
-         */
-        osgEarth::MapNode* getMapNode() { return _mapNode.get(); }
 
         /**
          * Sets the radius in meters
@@ -161,6 +157,13 @@ namespace osgEarth { namespace Util
         void setTerrainOnly( bool terrainOnly );
 
 
+    public: // MapNodeObserver
+
+        virtual void setMapNode( MapNode* mapNode );
+
+        MapNode* getMapNode() { return _mapNode.get(); }
+
+
     private:
         osg::Node* getNode();
         void compute(osg::Node* node, bool backgroundThread = false);
@@ -176,7 +179,7 @@ namespace osgEarth { namespace Util
         osg::Vec4 _outlineColor;
         osg::Vec3d _center;
         osg::Vec3d _centerWorld;
-        osg::ref_ptr< MapNode > _mapNode;
+        osg::observer_ptr< MapNode > _mapNode;
         AltitudeMode _altitudeMode;
         LOSChangedCallbackList _changedCallbacks;
         osg::ref_ptr< osg::Node > _pendingNode;

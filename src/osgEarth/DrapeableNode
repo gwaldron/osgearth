@@ -21,8 +21,8 @@
 #define OSGEARTH_DRAPEABLE_NODE_H 1
 
 #include <osgEarth/Common>
+#include <osgEarth/MapNodeObserver>
 #include <osg/Group>
-#include <osg/observer_ptr>
 
 namespace osgEarth
 {
@@ -35,7 +35,7 @@ namespace osgEarth
      * Usage: Create this node and put it anywhere in the scene graph. The
      * subgraph of this node will be draped on the MapNode's terrain.
      */
-    class OSGEARTH_EXPORT DrapeableNode : public osg::Group
+    class OSGEARTH_EXPORT DrapeableNode : public osg::Group, public MapNodeObserver
     {
     public:
         /**
@@ -52,9 +52,10 @@ namespace osgEarth
         void setDraped( bool value );
         bool getDraped() const { return _draped; }
 
-        /**
-         * Gets the map node used to drape this node
-         */
+    public: // MapNodeObserver
+
+        void setMapNode( MapNode* mapNode );
+
         MapNode* getMapNode() { return _mapNode.get(); }
 
     public: // osg::Node

@@ -22,6 +22,7 @@
 
 #include <osgEarthUtil/Common>
 #include <osgEarth/MapNode>
+#include <osgEarth/MapNodeObserver>
 #include <osgEarth/GeoData>
 #include <osgEarthFeatures/Feature>
 #include <osgEarthFeatures/FeatureSource>
@@ -41,7 +42,8 @@ namespace osgEarth { namespace Util
      * By default, an unmodified left-click will activate a query. You can replace
      * this test by calling setInputPredicate().
      */
-    class OSGEARTHUTIL_EXPORT FeatureQueryTool : public osgGA::GUIEventHandler
+    class OSGEARTHUTIL_EXPORT FeatureQueryTool : public osgGA::GUIEventHandler,
+                                                 public MapNodeObserver
     {
     public:
 
@@ -107,10 +109,17 @@ namespace osgEarth { namespace Util
         virtual bool handle( const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& aa );
 
 
+    public: // MapNodeObserver
+
+        virtual void setMapNode( MapNode* mapNode );
+
+        virtual MapNode* getMapNode() { return _mapNode.get(); }
+
+
     protected:
-        MapNode*      _mapNode;
-        bool          _mouseDown;
-        float         _mouseDownX, _mouseDownY;
+        osg::observer_ptr<MapNode> _mapNode;
+        bool                       _mouseDown;
+        float                      _mouseDownX, _mouseDownY;
 
         osg::ref_ptr<InputPredicate> _inputPredicate;
 

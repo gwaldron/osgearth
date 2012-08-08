@@ -21,6 +21,7 @@
 
 #include <osgEarthUtil/LineOfSight>
 #include <osgEarth/MapNode>
+#include <osgEarth/MapNodeObserver>
 #include <osgEarth/Terrain>
 #include <osgEarth/GeoData>
 #include <osgEarth/Draggers>
@@ -30,7 +31,7 @@ namespace osgEarth { namespace Util
     /**
      * A Node that can be used to display point to point line of sight calculations
      */
-    class OSGEARTHUTIL_EXPORT LinearLineOfSightNode: public LineOfSightNode
+    class OSGEARTHUTIL_EXPORT LinearLineOfSightNode: public LineOfSightNode, public MapNodeObserver
     {
     public:
         /**
@@ -142,12 +143,6 @@ namespace osgEarth { namespace Util
         void setStartAltitudeMode( AltitudeMode mode );
         void setEndAltitudeMode( AltitudeMode mode );
 
-
-        /**
-         * Gets the MapNode that this LineOfSightNode is operating on.
-         */
-        osgEarth::MapNode* getMapNode() const { return _mapNode.get(); }
-
         /**
          * Called when the underlying terrain has changed.
          */
@@ -178,12 +173,22 @@ namespace osgEarth { namespace Util
         static bool computeLOS( osgEarth::MapNode* mapNode, const osg::Vec3d& start, const osg::Vec3d& end, AltitudeMode altitudeMode, osg::Vec3d& hit );
 
 
+    public: // MapNodeObserver
+        
+        /**
+         * Gets the MapNode that this LineOfSightNode is operating on.
+         */
+        virtual osgEarth::MapNode* getMapNode() { return _mapNode.get(); }
+
+        virtual void setMapNode( osgEarth::MapNode* mapNode );
+
+
     private:
         osg::Node* getNode();
         void compute(osg::Node* node, bool backgroundThread = false);
         void draw(bool backgroundThread = false);
         void subscribeToTerrain();
-        osg::ref_ptr< osgEarth::MapNode > _mapNode;
+        osg::observer_ptr< osgEarth::MapNode > _mapNode;
         bool _hasLOS;
 
         LineOfSight::DisplayMode _displayMode;    

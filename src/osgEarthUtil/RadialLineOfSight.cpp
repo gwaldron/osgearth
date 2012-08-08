@@ -132,8 +132,34 @@ _terrainOnly( false )
 }
 
 RadialLineOfSightNode::~RadialLineOfSightNode()
-{    
-    _mapNode->getTerrain()->removeTerrainCallback( _terrainChangedCallback.get() );
+{
+    setMapNode( 0L );
+}
+
+void
+RadialLineOfSightNode::setMapNode( MapNode* mapNode )
+{
+    MapNode* oldMapNode = getMapNode();
+
+    if ( oldMapNode != mapNode )
+    {
+        if ( oldMapNode )
+        {
+            if ( _terrainChangedCallback.valid() )
+            {
+                oldMapNode->getTerrain()->removeTerrainCallback( _terrainChangedCallback.get() );
+            }
+        }
+
+        _mapNode = mapNode;
+
+        if ( _mapNode.valid() && _terrainChangedCallback.valid() )
+        {
+            _mapNode->getTerrain()->addTerrainCallback( _terrainChangedCallback.get() );
+        }
+
+        compute( getNode() );
+    }
 }
 
 bool
@@ -241,7 +267,7 @@ void RadialLineOfSightNode::setTerrainOnly( bool terrainOnly )
 osg::Node*
 RadialLineOfSightNode::getNode()
 {
-    if (_terrainOnly) return _mapNode->getTerrainEngine();
+    if (_terrainOnly && getMapNode()) return getMapNode()->getTerrainEngine();
     return _mapNode.get();
 }
 
@@ -275,21 +301,10 @@ RadialLineOfSightNode::compute(osg::Node* node, bool backgroundThread)
 void
 RadialLineOfSightNode::compute_line(osg::Node* node, bool backgroundThread)
 {    
-    GeoPoint( _mapNode->getMapSRS(), _center, _altitudeMode ).toWorld( _centerWorld, _mapNode->getTerrain() );
+    if ( !getMapNode() )
+        return;
 
-#if 0
-    //Get the center point in geocentric    
-    if (_altitudeMode == ALTMODE_ABSOLUTE)
-    {
-        GeoPoint center(_mapNode->getMapSRS(),_center,ALTMODE_ABSOLUTE);
-        center.toWorld( _centerWorld, _mapNode->getTerrain() );
-        //_mapNode->getMap()->toWorldPoint( center, _centerWorld );
-    }
-    else
-    {
-        getRelativeWorld(_center.x(), _center.y(), _center.z(), _mapNode.get(), _centerWorld );
-    }
-#endif
+    GeoPoint( getMapNode()->getMapSRS(), _center, _altitudeMode ).toWorld( _centerWorld, getMapNode()->getTerrain() );
 
     osg::Vec3d up = osg::Vec3d(_centerWorld);
     up.normalize();
@@ -426,12 +441,15 @@ RadialLineOfSightNode::compute_line(osg::Node* node, bool backgroundThread)
 
 void
 RadialLineOfSightNode::compute_fill(osg::Node* node, bool backgroundThread)
-{    
+{
+    if ( !getMapNode() )
+        return;
+
     //Get the center point in geocentric    
     if (_altitudeMode == ALTMODE_ABSOLUTE)
     {
-        GeoPoint centerMap(_mapNode->getMapSRS(), _center, ALTMODE_ABSOLUTE);
-        centerMap.toWorld( _centerWorld, _mapNode->getTerrain() );
+        GeoPoint centerMap(getMapNode()->getMapSRS(), _center, ALTMODE_ABSOLUTE);
+        centerMap.toWorld( _centerWorld, getMapNode()->getTerrain() );
         //_mapNode->getMap()->toWorldPoint( centerMap, _centerWorld );
     }
     else
@@ -724,14 +742,16 @@ RadialLineOfSightTether::operator()(osg::Node* node, osg::NodeVisitor* nv)
     {
         RadialLineOfSightNode* los = static_cast<RadialLineOfSightNode*>(node);
 
-        osg::Vec3d worldCenter = getNodeCenter( _node );
+        if ( los->getMapNode() )
+        {
+            osg::Vec3d worldCenter = getNodeCenter( _node );
 
-        //Convert center to mappoint since that is what LOS expects
-        GeoPoint mapCenter;
-        mapCenter.fromWorld( los->getMapNode()->getMapSRS(), worldCenter );
-        //los->getMapNode()->getMap()->worldPointToMapPoint( worldCenter, mapCenter );
+            //Convert center to mappoint since that is what LOS expects
+            GeoPoint mapCenter;
+            mapCenter.fromWorld( los->getMapNode()->getMapSRS(), worldCenter );
 
-        los->setCenter( mapCenter.vec3d() );      
+            los->setCenter( mapCenter.vec3d() );
+        }
     }
     traverse(node, nv);
 }
@@ -812,8 +832,11 @@ RadialLineOfSightEditor::~RadialLineOfSightEditor()
 void
 RadialLineOfSightEditor::updateDraggers()
 {
-    osg::Vec3d center = _los->getCenterWorld();             
-    GeoPoint centerMap;
-    centerMap.fromWorld(_los->getMapNode()->getMapSRS(), center);    
-    _dragger->setPosition(centerMap, false);        
+    if ( _los->getMapNode() )
+    {
+        osg::Vec3d center = _los->getCenterWorld();             
+        GeoPoint centerMap;
+        centerMap.fromWorld(_los->getMapNode()->getMapSRS(), center);    
+        _dragger->setPosition(centerMap, false);        
+    }
 }

@@ -472,7 +472,11 @@ namespace
     // Copyright (c) 2004 Sean O'Neil
 
     static char s_versionString[] =
+#ifdef OSG_GLES2_AVAILABLE
+        "#version 100 \n";
+#else
         "#version 110 \n";
+#endif
 
     static char s_mathUtils[] =
         "float fastpow( in float x, in float y ) \n"
@@ -673,6 +677,22 @@ namespace
         "   gl_FragColor.rgb = fMiePhase*vec3(.3,.3,.2); \n"
         "   gl_FragColor.a = sunAlpha*gl_FragColor.r; \n"
         "} \n";
+    
+    static char s_moonVertexSource[] = 
+    "varying vec4 osg_TexCoord;\n"
+    "void main() \n"
+    "{ \n"
+    "    osg_TexCoord = gl_MultiTexCoord0; \n"
+    "    gl_Position = gl_ModelViewProjectionMatrix * gl_Vertex; \n"
+    "} \n";
+    
+    static char s_moonFragmentSource[] =
+    "varying vec4 osg_TexCoord;\n"
+    "uniform sampler2D diffuseTex;\n"
+    "void main( void ) \n"
+    "{ \n"
+    "   gl_FragColor = texture2D(diffuseTex, osg_TexCoord.st);\n"
+    "} \n";
 }
 
 //---------------------------------------------------------------------------
@@ -684,7 +704,7 @@ namespace
         float glslVersion = Registry::instance()->getCapabilities().getGLSLVersion();
 
         return Stringify()
-            << "#version " << (glslVersion < 1.2f ? "110" : "120") << "\n"
+            << "#version " << (glslVersion < 1.2f ? GLSL_VERSION_STR : "120") << "\n"
 
             << "float remap( float val, float vmin, float vmax, float r0, float r1 ) \n"
             << "{ \n"
@@ -695,9 +715,10 @@ namespace
             << "uniform vec3 atmos_v3LightPos; \n"
             << "uniform mat4 osg_ViewMatrixInverse; \n"
             << "varying float visibility; \n"
+            << "varying vec4 osg_FrontColor; \n"
             << "void main() \n"
             << "{ \n"
-            << "    gl_FrontColor = gl_Color; \n"
+            << "    osg_FrontColor = gl_Color; \n"
             << "    gl_PointSize = gl_Color.r * " << (glslVersion < 1.2f ? "2.0" : "14.0") << ";\n"
             << "    gl_Position = gl_ModelViewProjectionMatrix * gl_Vertex; \n"
 
@@ -719,24 +740,32 @@ namespace
         if ( glslVersion < 1.2f )
         {
             return Stringify()
-                << "#version 110 \n"
+                << "#version " << GLSL_VERSION_STR << "\n"
+#ifdef OSG_GLES2_AVAILABLE
+                << "precision mediump float;\n"
+#endif  
                 << "varying float visibility; \n"
+                << "varying vec4 osg_FrontColor; \n"
                 << "void main( void ) \n"
                 << "{ \n"
-                << "    gl_FragColor = gl_Color * visibility; \n"
+                << "    gl_FragColor = osg_FrontColor * visibility; \n"
                 << "} \n";
         }
         else
         {
             return Stringify()
                 << "#version 120 \n"
+#ifdef OSG_GLES2_AVAILABLE
+                << "precision mediump float;\n"
+#endif
                 << "varying float visibility; \n"
+                << "varying vec4 osg_FrontColor; \n"
                 << "void main( void ) \n"
                 << "{ \n"
                 << "    float b1 = 1.0-(2.0*abs(gl_PointCoord.s-0.5)); \n"
                 << "    float b2 = 1.0-(2.0*abs(gl_PointCoord.t-0.5)); \n"
                 << "    float i = b1*b1 * b2*b2; \n" //b1*b1*b1 * b2*b2*b2; \n"
-                << "    gl_FragColor = gl_Color * i * visibility; \n"
+                << "    gl_FragColor = osg_FrontColor * i * visibility; \n"
                 << "} \n";
         }
     }
@@ -1221,6 +1250,9 @@ SkyNode::makeAtmosphere( const osg::EllipsoidModel* em )
     program->addShader( vs );
     osg::Shader* fs = new osg::Shader( osg::Shader::FRAGMENT, Stringify()
         << s_versionString
+#ifdef OSG_GLES2_AVAILABLE
+        << "precision highp float;\n"
+#endif
         << s_mathUtils
         << s_atmosphereFragmentDeclarations
         //<< s_atmosphereFragmentShared
@@ -1305,6 +1337,9 @@ SkyNode::makeSun()
     program->addShader( vs );
     osg::Shader* fs = new osg::Shader( osg::Shader::FRAGMENT, Stringify()
         << s_versionString
+#ifdef OSG_GLES2_AVAILABLE
+        << "precision mediump float;\n"
+#endif
         << s_mathUtils
         << s_sunFragmentSource );
     program->addShader( fs );
@@ -1356,6 +1391,25 @@ SkyNode::makeMoon()
     //set->setAttributeAndModes( new osg::Depth(osg::Depth::ALWAYS, 0, 1, false), osg::StateAttribute::ON );
     set->setAttributeAndModes( new osg::BlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA), osg::StateAttribute::ON );
 
+#ifdef OSG_GLES2_AVAILABLE
+    
+    set->addUniform(new osg::Uniform("diffuseTex", 0));
+    
+    // create shaders
+    osg::Program* program = new osg::Program();
+    osg::Shader* vs = new osg::Shader( osg::Shader::VERTEX, Stringify()
+                                      << s_versionString
+                                      << s_moonVertexSource );
+    program->addShader( vs );
+    osg::Shader* fs = new osg::Shader( osg::Shader::FRAGMENT, Stringify()
+                                      << s_versionString
+                                      << "precision mediump float;\n"
+                                      << s_mathUtils
+                                      << s_moonFragmentSource );
+    program->addShader( fs );
+    set->setAttributeAndModes( program, osg::StateAttribute::ON );
+#endif
+    
     // make the moon's transform:
     // todo: move this?
     _defaultPerViewData._moonXform = new osg::MatrixTransform();    

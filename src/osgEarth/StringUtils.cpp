@@ -327,10 +327,10 @@ osgEarth::ciReplaceIn( std::string& s, const std::string& pattern, const std::st
     if ( pattern.empty() ) return s;
     
     std::string upperSource = s;
-    std::transform( upperSource.begin(), upperSource.end(), upperSource.begin(), std::toupper );
+    std::transform( upperSource.begin(), upperSource.end(), upperSource.begin(), (int(*)(int))std::toupper );
 
     std::string upperPattern;
-    std::transform( upperPattern.begin(), upperPattern.end(), upperPattern.begin(), std::toupper );
+    std::transform( upperPattern.begin(), upperPattern.end(), upperPattern.begin(), (int(*)(int))std::toupper<char> );
 
     for( size_t b = 0; ; )
     {

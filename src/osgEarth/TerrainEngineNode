@@ -42,7 +42,8 @@ namespace osgEarth
         const Map* getMap() const { return _map.get(); }
 
         /** Gets the Terrain interface for interacting with the scene graph */
-        Terrain* getTerrain() const { return _terrainInterface.get(); }
+        Terrain* getTerrain() { return _terrainInterface.get(); }
+        const Terrain* getTerrain() const { return _terrainInterface.get(); }
 
         /** Gets the property set in use by this map engine. */
         virtual const TerrainOptions& getTerrainOptions() const =0;

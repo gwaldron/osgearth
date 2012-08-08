@@ -96,6 +96,7 @@ namespace osgEarth
          * Gets an interface for querying the in-memory terrain scene graph directly.
          */
         Terrain* getTerrain();
+        const Terrain* getTerrain() const;
 
         /**
          * Finds the topmost Map node in the specified scene graph, or returns NULL if

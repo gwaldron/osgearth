@@ -18,6 +18,7 @@
 */
 #include <osgEarth/MapNode>
 #include <osgEarth/Capabilities>
+#include <osgEarth/MapNodeObserver>
 #include <osgEarth/MaskNode>
 #include <osgEarth/NodeUtils>
 #include <osgEarth/Registry>
@@ -65,9 +66,8 @@ namespace
     };
 
     // converys overlay property changes to the OverlayDecorator in MapNode.
-    class MapModelLayerCallback : public ModelLayerCallback
+    struct MapModelLayerCallback : public ModelLayerCallback
     {
-    public:
         MapModelLayerCallback(MapNode* mapNode) : _node(mapNode) { }
 
         virtual void onOverlayChanged(ModelLayer* layer)
@@ -76,6 +76,24 @@ namespace
         }
 
         osg::observer_ptr<MapNode> _node;
+    };
+
+    // callback that will run the MapNode installer on model layers so that
+    // MapNodeObservers can have MapNode access
+    struct MapNodeObserverInstaller : public NodeOperation
+    {
+        MapNodeObserverInstaller( MapNode* mapNode ) : _mapNode( mapNode ) { }
+
+        void operator()( osg::Node* node )
+        {
+            if ( _mapNode.valid() && node )
+            {
+                MapNodeReplacer replacer( _mapNode.get() );
+                node->accept( replacer );
+            }
+        }
+
+        osg::observer_ptr<MapNode> _mapNode;
     };
 }
 
@@ -186,6 +204,14 @@ _mapNodeOptions( options )
 void
 MapNode::init()
 {
+    // Take a reference to this object so that it doesn't get inadvertently
+    // deleting during startup. It is possible that during startup, a driver
+    // will load that will take a reference to the MapNode (like in a
+    // ModelSource node operation) and we don't want that deleting the MapNode
+    // out from under us. 
+    // This is paired by an unref_nodelete() at the end of this method.
+    this->ref();
+
     // Protect the MapNode from the Optimizer
     setDataVariance(osg::Object::DYNAMIC);
 
@@ -327,6 +353,9 @@ MapNode::init()
 
     // register for event traversals so we can deal with blacklisted filenames
     ADJUST_EVENT_TRAV_COUNT( this, 1 );
+
+    // remove the temporary reference.
+    this->unref_nodelete();
 }
 
 MapNode::~MapNode()
@@ -375,6 +404,12 @@ MapNode::getMapSRS() const
 
 Terrain*
 MapNode::getTerrain()
+{
+    return getTerrainEngine()->getTerrain();
+}
+
+const Terrain*
+MapNode::getTerrain() const
 {
     return getTerrainEngine()->getTerrain();
 }
@@ -430,7 +465,18 @@ MapNode::onModelLayerAdded( ModelLayer* layer, unsigned int index )
 {
     if ( !layer->getEnabled() )
         return;
+    
+    // install a noe operation that will associate this mapnode with
+    // any MapNodeObservers loaded by the model layer:
+    ModelSource* modelSource = layer->getModelSource();
+    if ( modelSource )
+    {
+        // install a post-processing callback on the ModelLayer's source 
+        // so we can update the MapNode on new data that comes in:
+        modelSource->addPostProcessor( new MapNodeObserverInstaller(this) );
+    }
 
+    // create the scene graph:
     osg::Node* node = layer->getOrCreateNode();
 
     layer->addCallback(_modelLayerCallback.get() );
@@ -464,10 +510,15 @@ MapNode::onModelLayerAdded( ModelLayer* layer, unsigned int index )
             }
 
             ModelSource* ms = layer->getModelSource();
-            if ( ms && ms->getOptions().renderOrder().isSet() )
+
+            if ( ms )
             {
-                node->getOrCreateStateSet()->setRenderBinDetails(
-                    ms->getOptions().renderOrder().value(), "RenderBin" );
+                // enfore a rendering bin if necessary:
+                if ( ms->getOptions().renderOrder().isSet() )
+                {
+                    node->getOrCreateStateSet()->setRenderBinDetails(
+                        ms->getOptions().renderOrder().value(), "RenderBin" );
+                }
             }
 
             _modelLayerNodes[ layer ] = node;

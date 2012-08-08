@@ -71,11 +71,6 @@ namespace osgEarth { namespace Annotation
         virtual osg::Group* getChildAttachPoint();
 
         /**
-         * Gets the MapNode that this AnnotationNode is attached to
-         */
-        osgEarth::MapNode* getMapNode() const;
-
-        /**
          * Serialized this annotation node so you can re-create it later
          */
         virtual Config getConfig() const { return Config(); }
@@ -118,6 +113,8 @@ namespace osgEarth { namespace Annotation
         virtual void setMapNode( MapNode* mapNode );
 
         MapNode* getMapNode() { return _mapNode.get(); }
+        const MapNode* getMapNode() const { return _mapNode.get(); }
+
 
     protected:
 

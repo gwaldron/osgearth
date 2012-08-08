@@ -99,35 +99,17 @@ _horizonCulling         ( false ),
 _occlusionCulling       ( false )
 {
     init();
-    if ( mapNode && mapNode->isGeocentric() )
-    {
-        setHorizonCulling( true );
-    }
+    setHorizonCulling( true );
     setPosition( position );
 }
 
-#if 0
-OrthoNode::OrthoNode(const SpatialReference* mapSRS,
-                     const GeoPoint&         position ) :
-
-_mapSRS          ( mapSRS ),
-_horizonCulling  ( false ),
-_occlusionCulling( false )
-{
-    init();
-    if ( _mapSRS.valid() && _mapSRS->isGeographic() && !_mapSRS->isPlateCarre() )
-    {
-        setHorizonCulling( true );
-    }
-    setPosition( position );
-}
-#endif
 
 OrthoNode::OrthoNode() :
 _horizonCulling  ( false ),
 _occlusionCulling( false )
 {
     init();
+    setHorizonCulling( true );
 }
 
 //#define TRY_OQ 1
@@ -239,7 +221,8 @@ OrthoNode::computeBound() const
 void
 OrthoNode::setMapNode( MapNode* mapNode )
 {
-    if ( getMapNode() != mapNode )
+    MapNode* oldMapNode = getMapNode();
+    if ( oldMapNode != mapNode )
     {
         PositionedAnnotationNode::setMapNode( mapNode );
 
@@ -251,7 +234,7 @@ OrthoNode::setMapNode( MapNode* mapNode )
         }
 
         // same goes for the horizon culler:
-        if ( _horizonCulling )
+        if ( _horizonCulling || (oldMapNode == 0L && mapNode->isGeocentric()) )
         {
             setHorizonCulling( false );
             setHorizonCulling( true );
@@ -294,8 +277,7 @@ OrthoNode::setPosition( const GeoPoint& position )
 bool
 OrthoNode::updateTransforms( const GeoPoint& p, osg::Node* patch )
 {
-    osg::ref_ptr<MapNode> mapNode = getMapNode();
-    if ( mapNode.valid() )
+    if ( getMapNode() )
     {
         //OE_NOTICE << "updateTransforms" << std::endl;
         // make sure the point is absolute to terrain
@@ -364,11 +346,11 @@ OrthoNode::getHorizonCulling() const
 void
 OrthoNode::setHorizonCulling( bool value )
 {
-    if ( _horizonCulling != value && getMapNode() )
+    if ( _horizonCulling != value )
     {
         _horizonCulling = value;
 
-        if ( _horizonCulling )
+        if ( _horizonCulling && getMapNode() && getMapNode()->isGeocentric() )
         {
             osg::Vec3d world = _autoxform->getPosition();
 
@@ -416,7 +398,7 @@ OrthoNode::setOcclusionCulling( bool value )
     {
         _occlusionCulling = value;
 
-        if ( _occlusionCulling )
+        if ( _occlusionCulling && getMapNode() )
         {
             osg::Vec3d world = _autoxform->getPosition();
             _occlusionCuller = new OcclusionCullingCallback(adjustOcclusionCullingPoint(world), getMapNode());

@@ -22,8 +22,10 @@
 
 #include <osgEarth/Common>
 #include <osgEarth/Config>
+#include <osgEarth/NodeUtils>
 #include <osgEarth/Progress>
 #include <osgEarth/Revisioning>
+#include <osgEarth/ThreadingUtils>
 #include <osg/Referenced>
 
 namespace osgEarth
@@ -79,7 +81,7 @@ namespace osgEarth
      */
     class OSGEARTH_EXPORT ModelSource : public osg::Object, public Revisioned
     {
-    public:        
+    public:
         ModelSource( const ModelSourceOptions& options =ModelSourceOptions() );
 
         /** dtor */
@@ -89,6 +91,22 @@ namespace osgEarth
          * Subclass implements this method to create the mode node.
          */
         virtual osg::Node* createNode( ProgressCallback* progress =0L ) =0;
+
+        /**
+         * Add a post processing opeation - this will be called on any node
+         * that enters the scene graph by the model source.
+         */
+        void addPostProcessor( NodeOperation* cb );
+        
+        /**
+         * Remove a post processing operation
+         */
+        void removePostProcessor( NodeOperation* cb );
+
+        /**
+         * The vector of post processor callback operations
+         */
+        const NodeOperationVector& postProcessors() const { return _postProcessors; }
 
 
     public: // META_Object specialization
@@ -107,11 +125,21 @@ namespace osgEarth
         const ModelSourceOptions& getOptions() const {
             return _options; }
 
+    protected:
+        /**
+         * Fire the callbacks. The implementation class should call this whenever it adds
+         * a new node.
+         */
+        void firePostProcessors( osg::Node* node );
+
     private:
         const ModelSourceOptions _options;
         optional<double> _minRange;
         optional<double> _maxRange;
         optional<int>    _renderOrder;
+
+        NodeOperationVector       _postProcessors;
+        mutable Threading::Mutex  _postProcessorsMutex;
 
         friend class Map;
         friend class MapEngine;

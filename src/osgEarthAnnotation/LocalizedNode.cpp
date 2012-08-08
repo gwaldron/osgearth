@@ -55,10 +55,7 @@ _scale                  ( 1.0f, 1.0f, 1.0f )
     
     this->getOrCreateStateSet()->setMode( GL_BLEND, 1 );
 
-    if ( mapNode && mapNode->getMapSRS()->isGeographic() )
-    {
-        setHorizonCulling( true );
-    }
+    setHorizonCulling( true );
 
     _draper = new DrapeableNode( mapNode, false );
     _draper->addChild( _xform.get() );
@@ -99,11 +96,10 @@ LocalizedNode::traverse( osg::NodeVisitor& nv )
 bool
 LocalizedNode::setPosition( const GeoPoint& pos )
 {
-    osg::ref_ptr<MapNode> mapNode = getMapNode();
-    if ( mapNode.valid() )
+    if ( getMapNode() )
     {
         // first transform the point to the map's SRS:
-        const SpatialReference* mapSRS = mapNode->getMapSRS();
+        const SpatialReference* mapSRS = getMapNode()->getMapSRS();
         GeoPoint mapPos = mapSRS ? pos.transform(mapSRS) : pos;
         if ( !mapPos.isValid() )
             return false;
@@ -229,13 +225,11 @@ LocalizedNode::getLocalRotation() const
 void
 LocalizedNode::setHorizonCulling( bool value )
 {
-    osg::ref_ptr<MapNode> mapNode = getMapNode();
-
-    if ( _horizonCulling != value && mapNode.valid() && mapNode->getMapSRS()->isGeographic() )
+    if ( _horizonCulling != value )
     {
         _horizonCulling = value;
 
-        if ( _horizonCulling )
+        if ( _horizonCulling && getMapNode() && getMapNode()->isGeocentric() )
         {
             osg::Vec3d world;
             if ( _autoTransform )
@@ -243,7 +237,7 @@ LocalizedNode::setHorizonCulling( bool value )
             else
                 world = static_cast<osg::MatrixTransform*>(_xform.get())->getMatrix().getTrans();
 
-            _xform->setCullCallback( new CullNodeByHorizon(world, mapNode->getMapSRS()->getEllipsoid()) );
+            _xform->setCullCallback( new CullNodeByHorizon(world, getMapNode()->getMapSRS()->getEllipsoid()) );
         }
         else
         {

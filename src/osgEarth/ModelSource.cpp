@@ -74,6 +74,44 @@ _options( options )
     this->setThreadSafeRefUnref( true );
 }
 
+
+void 
+ModelSource::addPostProcessor( NodeOperation* op )
+{
+    if ( op )
+    {
+        Threading::ScopedMutexLock lock( _postProcessorsMutex );
+        _postProcessors.push_back( op );
+    }
+}
+
+
+void
+ModelSource::removePostProcessor( NodeOperation* op )
+{
+    if ( op )
+    {
+        Threading::ScopedMutexLock lock( _postProcessorsMutex );
+        NodeOperationVector::iterator i = std::find( _postProcessors.begin(), _postProcessors.end(), op );
+        if ( i != _postProcessors.end() )
+            _postProcessors.erase( i );
+    }
+}
+
+
+void
+ModelSource::firePostProcessors( osg::Node* node )
+{
+    if ( node )
+    {
+        Threading::ScopedMutexLock lock( _postProcessorsMutex );
+        for( NodeOperationVector::iterator i = _postProcessors.begin(); i != _postProcessors.end(); ++i )
+        {
+            i->get()->operator()( node );
+        }
+    }
+}
+
 //------------------------------------------------------------------------
 
 #undef  LC

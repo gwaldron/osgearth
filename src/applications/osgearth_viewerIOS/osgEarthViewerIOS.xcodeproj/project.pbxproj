@@ -7,6 +7,9 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		90283E5615C6FB3E00620EEF /* tests in Resources */ = {isa = PBXBuildFile; fileRef = 90283E5415C6FB3E00620EEF /* tests */; };
+		90283E5715C6FB3E00620EEF /* data in Resources */ = {isa = PBXBuildFile; fileRef = 90283E5515C6FB3E00620EEF /* data */; };
+		90283E5D15C7091A00620EEF /* libosgdb_osgearth_engine_quadtree.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 90283E5C15C7091A00620EEF /* libosgdb_osgearth_engine_quadtree.a */; };
 		903B45DB15C0DE9F00F7702B /* EarthMultiTouchManipulator.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 903B45D915C0DE9F00F7702B /* EarthMultiTouchManipulator.cpp */; };
 		9051000115B1EDFD00D9ABD3 /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 9051000015B1EDFD00D9ABD3 /* Foundation.framework */; };
 		9051000315B1EDFD00D9ABD3 /* CoreGraphics.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 9051000215B1EDFD00D9ABD3 /* CoreGraphics.framework */; };
@@ -23,8 +26,6 @@
 		905100CD15B217A800D9ABD3 /* libc++.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 905100CC15B217A800D9ABD3 /* libc++.dylib */; };
 		905100CF15B217B500D9ABD3 /* libz.1.1.3.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 905100CE15B217B500D9ABD3 /* libz.1.1.3.dylib */; };
 		905100D115B2185000D9ABD3 /* libiconv.2.4.0.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 905100D015B2185000D9ABD3 /* libiconv.2.4.0.dylib */; };
-		905100D915B2204C00D9ABD3 /* data in Resources */ = {isa = PBXBuildFile; fileRef = 905100D715B2204C00D9ABD3 /* data */; };
-		905100DA15B2204C00D9ABD3 /* tests in Resources */ = {isa = PBXBuildFile; fileRef = 905100D815B2204C00D9ABD3 /* tests */; };
 		9051FFFF15B1EDFD00D9ABD3 /* UIKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 9051FFFE15B1EDFD00D9ABD3 /* UIKit.framework */; };
 		907D033915B86F8700575110 /* libOpenThreads.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 907D02DC15B86F8700575110 /* libOpenThreads.a */; };
 		907D033A15B86F8700575110 /* libosg.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 907D02DD15B86F8700575110 /* libosg.a */; };
@@ -157,18 +158,22 @@
 		907D03E015B86F9F00575110 /* libosgdb_osgearth_arcgis.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 907D03BA15B86F9E00575110 /* libosgdb_osgearth_arcgis.a */; };
 		907D03E115B86F9F00575110 /* libosgdb_osgearth_osg.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 907D03BB15B86F9E00575110 /* libosgdb_osgearth_osg.a */; };
 		907D03E215B86F9F00575110 /* libosgEarth.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 907D03BC15B86F9E00575110 /* libosgEarth.a */; };
-		907D03F715B8C03800575110 /* gdalData in Resources */ = {isa = PBXBuildFile; fileRef = 907D03F615B8C03800575110 /* gdalData */; };
 		907D03FA15B8C31A00575110 /* libsqlite3.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 907D03F915B8C31A00575110 /* libsqlite3.dylib */; };
 		907D0A8E15B8CEBE00575110 /* libGEOS_3.2.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 907D0A8D15B8CEBE00575110 /* libGEOS_3.2.a */; };
 		907D0A9115B8DDAA00575110 /* GLES2ShaderGenVisitor.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 907D0A8F15B8DDAA00575110 /* GLES2ShaderGenVisitor.cpp */; };
-		907D0A9415B8E27800575110 /* models in Resources */ = {isa = PBXBuildFile; fileRef = 907D0A9315B8E27800575110 /* models */; };
 		90A0DD6D15B7BAF9004FACEE /* libFreeType_iphone_universal.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 90A0DD6C15B7BAF9004FACEE /* libFreeType_iphone_universal.a */; };
 		90A0DD6F15B7BB50004FACEE /* libproj.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 90A0DD6E15B7BB50004FACEE /* libproj.a */; };
 		90A0DD7115B7BB64004FACEE /* libgdal.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 90A0DD7015B7BB64004FACEE /* libgdal.a */; };
 		90A0DD7615B7BBA4004FACEE /* libcurl.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 90A0DD7515B7BBA4004FACEE /* libcurl.a */; };
+		90B8676615C8894900F5CDC3 /* StartViewerController.m in Sources */ = {isa = PBXBuildFile; fileRef = 90B8676415C8894900F5CDC3 /* StartViewerController.m */; };
+		90B8676715C8894900F5CDC3 /* StartViewerController.xib in Resources */ = {isa = PBXBuildFile; fileRef = 90B8676515C8894900F5CDC3 /* StartViewerController.xib */; };
+		90DABDDC15CEFF9700D0F609 /* moon_1024x512.jpg in Resources */ = {isa = PBXBuildFile; fileRef = 90DABDDB15CEFF9700D0F609 /* moon_1024x512.jpg */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		90283E5415C6FB3E00620EEF /* tests */ = {isa = PBXFileReference; lastKnownFileType = folder; name = tests; path = ../../../../tests; sourceTree = "<group>"; };
+		90283E5515C6FB3E00620EEF /* data */ = {isa = PBXFileReference; lastKnownFileType = folder; name = data; path = ../../../../data; sourceTree = "<group>"; };
+		90283E5C15C7091A00620EEF /* libosgdb_osgearth_engine_quadtree.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libosgdb_osgearth_engine_quadtree.a; path = ../../../lib/Release/libosgdb_osgearth_engine_quadtree.a; sourceTree = "<group>"; };
 		903B45D915C0DE9F00F7702B /* EarthMultiTouchManipulator.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = EarthMultiTouchManipulator.cpp; sourceTree = "<group>"; };
 		903B45DA15C0DE9F00F7702B /* EarthMultiTouchManipulator.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = EarthMultiTouchManipulator.h; sourceTree = "<group>"; };
 		9051000015B1EDFD00D9ABD3 /* Foundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Foundation.framework; path = System/Library/Frameworks/Foundation.framework; sourceTree = SDKROOT; };
@@ -191,8 +196,6 @@
 		905100CC15B217A800D9ABD3 /* libc++.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = "libc++.dylib"; path = "usr/lib/libc++.dylib"; sourceTree = SDKROOT; };
 		905100CE15B217B500D9ABD3 /* libz.1.1.3.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = libz.1.1.3.dylib; path = usr/lib/libz.1.1.3.dylib; sourceTree = SDKROOT; };
 		905100D015B2185000D9ABD3 /* libiconv.2.4.0.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = libiconv.2.4.0.dylib; path = usr/lib/libiconv.2.4.0.dylib; sourceTree = SDKROOT; };
-		905100D715B2204C00D9ABD3 /* data */ = {isa = PBXFileReference; lastKnownFileType = folder; name = data; path = Resources/data; sourceTree = SOURCE_ROOT; };
-		905100D815B2204C00D9ABD3 /* tests */ = {isa = PBXFileReference; lastKnownFileType = folder; name = tests; path = Resources/tests; sourceTree = SOURCE_ROOT; };
 		9051FFFA15B1EDFD00D9ABD3 /* osgEarth.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = osgEarth.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		9051FFFE15B1EDFD00D9ABD3 /* UIKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = UIKit.framework; path = System/Library/Frameworks/UIKit.framework; sourceTree = SDKROOT; };
 		907D02DC15B86F8700575110 /* libOpenThreads.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libOpenThreads.a; path = "../../../../osg-ios-gles2/lib/libOpenThreads.a"; sourceTree = "<group>"; };
@@ -326,16 +329,18 @@
 		907D03BA15B86F9E00575110 /* libosgdb_osgearth_arcgis.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libosgdb_osgearth_arcgis.a; path = ../../../lib/Release/libosgdb_osgearth_arcgis.a; sourceTree = "<group>"; };
 		907D03BB15B86F9E00575110 /* libosgdb_osgearth_osg.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libosgdb_osgearth_osg.a; path = ../../../lib/Release/libosgdb_osgearth_osg.a; sourceTree = "<group>"; };
 		907D03BC15B86F9E00575110 /* libosgEarth.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libosgEarth.a; path = ../../../lib/Release/libosgEarth.a; sourceTree = "<group>"; };
-		907D03F615B8C03800575110 /* gdalData */ = {isa = PBXFileReference; lastKnownFileType = folder; name = gdalData; path = Resources/gdalData; sourceTree = SOURCE_ROOT; };
 		907D03F915B8C31A00575110 /* libsqlite3.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = libsqlite3.dylib; path = usr/lib/libsqlite3.dylib; sourceTree = SDKROOT; };
 		907D0A8D15B8CEBE00575110 /* libGEOS_3.2.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libGEOS_3.2.a; path = "../../../../3rdParty/geos-ios-device/lib/libGEOS_3.2.a"; sourceTree = "<group>"; };
 		907D0A8F15B8DDAA00575110 /* GLES2ShaderGenVisitor.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = GLES2ShaderGenVisitor.cpp; path = ShaderGen/GLES2ShaderGenVisitor.cpp; sourceTree = "<group>"; };
 		907D0A9015B8DDAA00575110 /* GLES2ShaderGenVisitor.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = GLES2ShaderGenVisitor.h; path = ShaderGen/GLES2ShaderGenVisitor.h; sourceTree = "<group>"; };
-		907D0A9315B8E27800575110 /* models */ = {isa = PBXFileReference; lastKnownFileType = folder; name = models; path = Resources/models; sourceTree = SOURCE_ROOT; };
 		90A0DD6C15B7BAF9004FACEE /* libFreeType_iphone_universal.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; path = libFreeType_iphone_universal.a; sourceTree = "<group>"; };
 		90A0DD6E15B7BB50004FACEE /* libproj.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; path = libproj.a; sourceTree = "<group>"; };
 		90A0DD7015B7BB64004FACEE /* libgdal.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; path = libgdal.a; sourceTree = "<group>"; };
 		90A0DD7515B7BBA4004FACEE /* libcurl.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; path = libcurl.a; sourceTree = "<group>"; };
+		90B8676315C8894900F5CDC3 /* StartViewerController.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = StartViewerController.h; sourceTree = "<group>"; };
+		90B8676415C8894900F5CDC3 /* StartViewerController.m */ = {isa = PBXFileReference; explicitFileType = sourcecode.cpp.objcpp; fileEncoding = 4; path = StartViewerController.m; sourceTree = "<group>"; };
+		90B8676515C8894900F5CDC3 /* StartViewerController.xib */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = file.xib; path = StartViewerController.xib; sourceTree = "<group>"; };
+		90DABDDB15CEFF9700D0F609 /* moon_1024x512.jpg */ = {isa = PBXFileReference; lastKnownFileType = image.jpeg; name = moon_1024x512.jpg; path = ../../../../data/moon_1024x512.jpg; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -490,6 +495,7 @@
 				907D03E115B86F9F00575110 /* libosgdb_osgearth_osg.a in Frameworks */,
 				907D03E215B86F9F00575110 /* libosgEarth.a in Frameworks */,
 				907D0A8E15B8CEBE00575110 /* libGEOS_3.2.a in Frameworks */,
+				90283E5D15C7091A00620EEF /* libosgdb_osgearth_engine_quadtree.a in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -499,6 +505,7 @@
 		9051000815B1EDFD00D9ABD3 /* osgEarthViewerIOS */ = {
 			isa = PBXGroup;
 			children = (
+				90B8676915C8895100F5CDC3 /* StartView */,
 				908C793D15BB0B4E001CFA5E /* MultiTouchManipulator */,
 				907D0A9215B8DDAF00575110 /* ShaderGen */,
 				905100C615B20B1D00D9ABD3 /* osgPlugins.h */,
@@ -527,10 +534,9 @@
 		905100D215B21FFD00D9ABD3 /* Resources */ = {
 			isa = PBXGroup;
 			children = (
-				907D0A9315B8E27800575110 /* models */,
-				907D03F615B8C03800575110 /* gdalData */,
-				905100D715B2204C00D9ABD3 /* data */,
-				905100D815B2204C00D9ABD3 /* tests */,
+				90DABDDB15CEFF9700D0F609 /* moon_1024x512.jpg */,
+				90283E5415C6FB3E00620EEF /* tests */,
+				90283E5515C6FB3E00620EEF /* data */,
 			);
 			name = Resources;
 			path = osgEarthViewerIOS;
@@ -689,6 +695,7 @@
 				907D03A615B86F9E00575110 /* libosgdb_osgearth_vdatum_egm2008.a */,
 				907D03A715B86F9E00575110 /* libosgdb_osgearth_model_simple.a */,
 				907D03A815B86F9E00575110 /* libosgdb_osgearth_engine_osgterrain.a */,
+				90283E5C15C7091A00620EEF /* libosgdb_osgearth_engine_quadtree.a */,
 				907D03A915B86F9E00575110 /* libosgEarthFeatures.a */,
 				907D03AA15B86F9E00575110 /* libosgdb_osgearth_vdatum_egm96.a */,
 				907D03AB15B86F9E00575110 /* libosgdb_osgearth_ocean_surface.a */,
@@ -786,6 +793,16 @@
 			path = "../../../../3rdParty/curl-ios-device/lib";
 			sourceTree = "<group>";
 		};
+		90B8676915C8895100F5CDC3 /* StartView */ = {
+			isa = PBXGroup;
+			children = (
+				90B8676315C8894900F5CDC3 /* StartViewerController.h */,
+				90B8676415C8894900F5CDC3 /* StartViewerController.m */,
+				90B8676515C8894900F5CDC3 /* StartViewerController.xib */,
+			);
+			name = StartView;
+			sourceTree = "<group>";
+		};
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
@@ -839,10 +856,10 @@
 				9051000D15B1EDFD00D9ABD3 /* InfoPlist.strings in Resources */,
 				9051001D15B1EDFD00D9ABD3 /* ViewController_iPhone.xib in Resources */,
 				9051002015B1EDFD00D9ABD3 /* ViewController_iPad.xib in Resources */,
-				905100D915B2204C00D9ABD3 /* data in Resources */,
-				905100DA15B2204C00D9ABD3 /* tests in Resources */,
-				907D03F715B8C03800575110 /* gdalData in Resources */,
-				907D0A9415B8E27800575110 /* models in Resources */,
+				90283E5615C6FB3E00620EEF /* tests in Resources */,
+				90283E5715C6FB3E00620EEF /* data in Resources */,
+				90B8676715C8894900F5CDC3 /* StartViewerController.xib in Resources */,
+				90DABDDC15CEFF9700D0F609 /* moon_1024x512.jpg in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -858,6 +875,7 @@
 				9051001A15B1EDFD00D9ABD3 /* ViewController.m in Sources */,
 				907D0A9115B8DDAA00575110 /* GLES2ShaderGenVisitor.cpp in Sources */,
 				903B45DB15C0DE9F00F7702B /* EarthMultiTouchManipulator.cpp in Sources */,
+				90B8676615C8894900F5CDC3 /* StartViewerController.m in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -968,6 +986,8 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "iPhone Distribution: Thomas Hogarth";
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				GCC_GENERATE_DEBUGGING_SYMBOLS = NO;
 				GCC_PRECOMPILE_PREFIX_HEADER = YES;
 				GCC_PREFIX_HEADER = "osgEarthViewerIOS/osgEarthViewerIOS-Prefix.pch";
 				"GCC_THUMB_SUPPORT[arch=armv6]" = "";
@@ -987,7 +1007,7 @@
 					"\"$(SRCROOT)/../../../../3rdParty/geos-ios-device/lib\"",
 				);
 				PRODUCT_NAME = osgEarth;
-				"PROVISIONING_PROFILE[sdk=iphoneos*]" = "608DCC62-C945-4557-B0F8-96D5589CF48A";
+				"PROVISIONING_PROFILE[sdk=iphoneos*]" = "C58518B5-0DE9-42CD-881F-C8102ECE8779";
 				WRAPPER_EXTENSION = app;
 			};
 			name = Release;

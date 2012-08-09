@@ -101,12 +101,16 @@ DrapeableNode::applyChanges()
         {
             getMapNode()->getOverlayGroup()->addChild( _overlayProxyContainer.get() );
             getMapNode()->updateOverlayGraph();
+            setComputeBoundingSphereCallback( new StaticBound( osg::BoundingSphere(osg::Vec3f(0,0,0), FLT_MAX)));
         }
         else if ( !_draped && _overlayProxyContainer->getNumParents() > 0 )
         {
             getMapNode()->getOverlayGroup()->removeChild( _overlayProxyContainer.get() );
             getMapNode()->updateOverlayGraph();
+            setComputeBoundingSphereCallback( 0L );
         }
+
+        dirtyBound();
     }
 }
 

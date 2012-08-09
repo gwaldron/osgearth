@@ -160,7 +160,7 @@ public:
                              NumericExpression&   priorityExpr )
     {
         LabelNode* labelNode = new LabelNode(
-            context.getSession()->getMapInfo().getProfile()->getSRS(),
+            0L,
             GeoPoint(feature->getSRS(), feature->getGeometry()->getBounds().center(), ALTMODE_ABSOLUTE),
             value,
             text );

@@ -42,17 +42,6 @@ _image      ( image )
     init( fieldSchema );
 }
 
-//TrackNode::TrackNode(MapNode*                    mapNode, 
-//                     const osg::Vec3d&           positionInMapCoords,
-//                     osg::Image*                 image,
-//                     const TrackNodeFieldSchema& fieldSchema ) :
-//
-//OrthoNode   ( mapNode, GeoPoint(mapNode->getMapSRS(),positionInMapCoords) ),
-//_image      ( image )
-//{
-//    init( fieldSchema );
-//}
-
 void
 TrackNode::init( const TrackNodeFieldSchema& schema )
 {

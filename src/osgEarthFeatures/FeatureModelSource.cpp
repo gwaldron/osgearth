@@ -173,16 +173,26 @@ FeatureModelSource::createNode( ProgressCallback* progress )
         return 0L;
     }
 
+    // Session holds data that's shared across the life of the FMG
     Session* session = new Session( 
         _map.get(), 
         _options.styles().get(),
         _features.get(),
         _dbOptions.get() );
 
+    // Graph that will render feature models. May included paged data.
     FeatureModelGraph* graph = new FeatureModelGraph( 
         session,
         _options, 
         _factory.get() );
+
+    // install any post-merge operations on the FMG so it can call them during paging:
+    const NodeOperationVector& ops = postProcessors();
+    for( NodeOperationVector::const_iterator i = ops.begin(); i != ops.end(); ++i )
+        graph->addPostMergeOperation( i->get() );
+
+    // then run the ops on the staring graph:
+    firePostProcessors( graph );
 
     return graph;
 }

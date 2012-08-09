@@ -21,13 +21,48 @@
 
 #include <osgEarth/Common>
 #include <osg/View>
+#include <osg/PagedLOD>
 #include <osgGA/GUIActionAdapter>
 #include <osgUtil/LineSegmentIntersector>
 #include <osgEarth/ThreadingUtils>
 #include <set>
+#include <vector>
 
 namespace osgEarth
 {
+    /**
+     * General purpose operation for doing something to a node.
+     */
+    struct NodeOperation : public osg::Referenced
+    {
+        virtual void operator()( osg::Node* node ) =0;
+    };
+
+    typedef std::vector< osg::ref_ptr<NodeOperation> > NodeOperationVector;
+
+    struct RefNodeOperationVector : public osg::Referenced, public NodeOperationVector { };
+
+    /**
+     * A PagedLOD that will fire node operation callbacks when it merges
+     * new nodes into the graph.
+     */
+    class OSGEARTH_EXPORT PagedLODWithNodeOperations : public osg::PagedLOD
+    {
+    public:
+        PagedLODWithNodeOperations( RefNodeOperationVector* postMergeOps );
+
+    public: // osg::Group
+
+        virtual bool addChild( osg::Node* child );
+        virtual bool insertChild( unsigned index, Node* child );
+        virtual bool replaceChild( Node* origChild, Node* newChild );
+
+    protected:
+        osg::observer_ptr<RefNodeOperationVector> _postMergeOps;
+        
+        void runPostMerge( osg::Node* node );
+    };
+
     /**
      * Visitor that looks for empty group nodes and removes them from the 
      * scene graph. (Note, if the entry node is an empty group, it will

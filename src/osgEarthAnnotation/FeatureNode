@@ -61,6 +61,10 @@ namespace osgEarth { namespace Annotation
 
         virtual osg::Group* getAttachPoint();
 
+    public: // MapNodeObserver
+
+        virtual void setMapNode( MapNode* mapNode );
+
     public:
 
         FeatureNode(MapNode* mapNode, const Config& conf );

@@ -65,7 +65,13 @@ namespace
         return str;
     }
 
-    osg::Group* createPagedNode( const osg::BoundingSphered& bs, const std::string& uri, float minRange, float maxRange, float priOffset, float priScale )
+    osg::Group* createPagedNode(const osg::BoundingSphered& bs, 
+                                const std::string& uri, 
+                                float minRange, 
+                                float maxRange, 
+                                float priOffset, 
+                                float priScale,
+                                RefNodeOperationVector* postMergeOps)
     {
 #ifdef USE_PROXY_NODE_FOR_TESTING
         osg::ProxyNode* p = new osg::ProxyNode();
@@ -73,7 +79,8 @@ namespace
         p->setRadius( bs.radius() );
         p->setFileName( 0, uri );
 #else
-        osg::PagedLOD* p = new osg::PagedLOD();
+        PagedLODWithNodeOperations* p = new PagedLODWithNodeOperations(postMergeOps);
+        //osg::PagedLOD* p = new osg::PagedLOD();
         p->setCenter( bs.center() );
         //p->setRadius( bs.radius() );
         p->setRadius(std::max((float)bs.radius(),maxRange));
@@ -179,6 +186,8 @@ _pendingUpdate( false )
 {
     _uid = osgEarthFeatureModelPseudoLoader::registerGraph( this );
 
+    _postMergeOperations = new RefNodeOperationVector();
+
     // install the stylesheet in the session if it doesn't already have one.
     if ( !session->styles() )
         session->setStyles( _options.styles().get() );
@@ -272,6 +281,13 @@ void
 FeatureModelGraph::dirty()
 {
     _dirty = true;
+}
+
+void
+FeatureModelGraph::addPostMergeOperation( NodeOperation* op )
+{
+    if ( op )
+        _postMergeOperations->push_back( op );
 }
 
 osg::BoundingSphered
@@ -368,7 +384,8 @@ FeatureModelGraph::setupPaging()
         0.0f, 
         maxRange, 
         *_options.layout()->priorityOffset(), 
-        *_options.layout()->priorityScale() );
+        *_options.layout()->priorityScale(),
+        _postMergeOperations.get() );
 
     return pagedNode;
 }
@@ -559,7 +576,8 @@ FeatureModelGraph::buildSubTilePagedLODs(unsigned        parentLOD,
                     uri, 
                     0.0f, maxRange, 
                     *_options.layout()->priorityOffset(), 
-                    *_options.layout()->priorityScale() );
+                    *_options.layout()->priorityScale(),
+                    _postMergeOperations.get() );
 
                 parent->addChild( pagedNode );
             }

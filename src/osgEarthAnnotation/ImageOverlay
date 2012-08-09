@@ -123,6 +123,10 @@ namespace osgEarth { namespace Annotation
         
         virtual void reclamp( const TileKey& key, osg::Node* tile, const Terrain* );
 
+    public: // MapNodeObserver
+
+        virtual void setMapNode( MapNode* mapNode );
+
     public: // osg::Node
 
         virtual void traverse(osg::NodeVisitor& nv);

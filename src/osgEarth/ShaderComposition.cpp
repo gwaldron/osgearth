@@ -363,6 +363,7 @@ namespace
                 else if (
                     tokens[0] == "#extension"   ||
                     tokens[0] == "precision"    ||
+                    tokens[0] == "struct"       ||
                     tokens[0] == "varying"      ||
                     tokens[0] == "uniform"      ||
                     tokens[0] == "attribute")
@@ -837,7 +838,7 @@ ShaderFactory::createFragmentShaderMain( const FunctionLocationMap& functions ) 
         for( OrderedFunctionMap::const_iterator i = preTexture->begin(); i != preTexture->end(); ++i )
             buf << "    " << i->second << "( color ); \n";
 
-    buf << "    osgearth_frag_applyColoring( color ); \n";
+    buf << "    osgearth_frag_applyColoring( color ); \n";//EDITHERE
 
     if ( preLighting )
         for( OrderedFunctionMap::const_iterator i = preLighting->begin(); i != preLighting->end(); ++i )
@@ -965,10 +966,37 @@ ShaderFactory::createDefaultColoringFragmentShader( unsigned numTexImageUnits ) 
 osg::Shader*
 ShaderFactory::createDefaultLightingVertexShader() const
 {
+    int maxLights = Registry::instance()->getCapabilities().getMaxLights();
+    
     std::stringstream buf;
     buf << "#version " << GLSL_VERSION_STR << "\n"
 #ifdef OSG_GLES2_AVAILABLE
     << "precision mediump float;\n"
+    
+    //add lightsource typedef and uniform array
+    << "struct osg_LightSourceParameters {"
+    << "    vec4  ambient;"
+    << "    vec4  diffuse;"
+    << "    vec4  specular;"
+    << "    vec4  position;"
+    << "    vec4  halfVector;"
+    << "    vec3  spotDirection;" 
+    << "    float  spotExponent;"
+    << "    float  spotCutoff;"
+    << "    float  spotCosCutoff;" 
+    << "    float  constantAttenuation;"
+    << "    float  linearAttenuation;"
+    << "    float  quadraticAttenuation;" 
+    << "};\n"
+    << "uniform osg_LightSourceParameters osg_LightSource[" << maxLights << "];\n"
+    
+    << "struct  osg_LightProducts {"
+    << "    vec4  ambient;"
+    << "    vec4  diffuse;"
+    << "    vec4  specular;"
+    << "};\n"
+    << "uniform osg_LightProducts osg_FrontLightProduct[" << maxLights << "];\n"
+    
 #endif
     
     << "varying vec4 osg_FrontColor;\n"
@@ -994,7 +1022,6 @@ ShaderFactory::createDefaultLightingVertexShader() const
     << "                gl_FrontLightProduct[0].diffuse * NdotL, 0.0, 1.0).rgb;   \n"
 
     << "        osg_FrontSecondaryColor = vec4(0.0); \n"
-
     << "        if ( NdotL * NdotHV > 0.0 ) \n"
     << "        { \n"
     << "            osg_FrontSecondaryColor.rgb = (gl_FrontLightProduct[0].specular * \n"
@@ -1010,33 +1037,29 @@ ShaderFactory::createDefaultLightingVertexShader() const
     << "{ \n"
     << "    if (osgearth_LightingEnabled) \n"
     << "    { \n"
-    << "        vec3 lightPos = vec3(10000.0);\n"
-    << "        vec3 halfVector = vec3(10000.0);\n"
-    << "        vec3 lightModelAmbi = vec3(0.1);\n"
-    << "        vec3 lightProductAmbi = vec3(0.5);\n"
-    << "        vec3 lightProductDif = vec3(0.5);\n"
-    << "        vec3 lightProductSpec = vec3(0.8);\n"
-    << "        float matShine = 16.0;\n"
+    << "        float shine = 10.0;\n"
+    << "        vec4 lightModelAmbi = vec4(0.1,0.1,0.1,1.0);\n"
+//gl_FrontMaterial.shininess
+//gl_LightModel.ambient
     << "        vec3 normal = gl_NormalMatrix * gl_Normal; \n"
-    << "        float NdotL = dot( normal, normalize(lightPos) ); \n"
+    << "        float NdotL = dot( normal, normalize(osg_LightSource[0].position.xyz) ); \n"
     << "        NdotL = max( 0.0, NdotL ); \n"
-    << "        float NdotHV = dot( normal, halfVector ); \n"
+    << "        float NdotHV = dot( normal, osg_LightSource[0].halfVector.xyz ); \n"
     << "        NdotHV = max( 0.0, NdotHV ); \n"
     
     << "        osg_FrontColor.rgb = osg_FrontColor.rgb * \n"
     << "            clamp( \n"
     << "                lightModelAmbi + \n"
-    << "                lightProductAmbi +          \n"
-    << "                lightProductDif * NdotL, 0.0, 1.0).rgb;   \n"
+    << "                osg_FrontLightProduct[0].ambient +          \n"
+    << "                osg_FrontLightProduct[0].diffuse * NdotL, 0.0, 1.0).rgb;   \n"
     
     << "        osg_FrontSecondaryColor = vec4(0.0); \n"
     
     << "        if ( NdotL * NdotHV > 0.0 ) \n"
     << "        { \n"
-    << "            osg_FrontSecondaryColor.rgb = (lightProductSpec * \n"
-    << "                                          pow( NdotHV, matShine )).rgb;\n"
+    << "            osg_FrontSecondaryColor.rgb = (osg_FrontLightProduct[0].specular * \n"
+    << "                                          pow( NdotHV, shine )).rgb;\n"
     << "        } \n"
-    
     //    << "        gl_BackColor = gl_FrontColor; \n"
     //    << "        gl_BackSecondaryColor = gl_FrontSecondaryColor; \n"
     << "    } \n"

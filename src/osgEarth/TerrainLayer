@@ -369,7 +369,8 @@ namespace osgEarth
         osg::ref_ptr<TileSource>       _tileSource;
         osg::ref_ptr<const Profile>    _profile;
         osg::ref_ptr<const Profile>    _targetProfileHint;
-        bool                           _tileSourceInitialized;
+        bool                           _tileSourceInitAttempted;
+        bool                           _tileSourceInitFailed;
         unsigned                       _tileSize;  
         osg::ref_ptr<osgDB::Options>   _dbOptions;
 

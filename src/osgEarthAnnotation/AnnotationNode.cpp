@@ -59,17 +59,33 @@ _depthAdj   ( false ),
 _activeDs   ( 0L )
 {
     //nop
+    //Note: Cannot call setMapNode() here because it's a virtual function.
+    //      Each subclass will be separately responsible at ctor time.
 }
 
 AnnotationNode::~AnnotationNode()
 {
-    osg::ref_ptr<MapNode> mapNodeSafe = _mapNode.get();
-    if ( mapNodeSafe.get() )
+    setMapNode( 0L );
+}
+
+void
+AnnotationNode::setMapNode( MapNode* mapNode )
+{
+    if ( getMapNode() != mapNode )
     {
-        if (_autoClampCallback)
+        // relocate the auto-clamping callback, if there is one:
+        osg::ref_ptr<MapNode> oldMapNode = _mapNode.get();
+        if ( oldMapNode.valid() )
         {
-            mapNodeSafe->getTerrain()->removeTerrainCallback( _autoClampCallback );
+            if ( _autoClampCallback )
+            {
+                oldMapNode->getTerrain()->removeTerrainCallback( _autoClampCallback.get() );
+                if ( mapNode )
+                    mapNode->getTerrain()->addTerrainCallback( _autoClampCallback.get() );
+            }
         }
+
+        _mapNode = mapNode;
     }
 }
 
@@ -88,8 +104,7 @@ AnnotationNode::setDynamic( bool value )
 void
 AnnotationNode::setAutoClamp( bool value )
 {
-    osg::ref_ptr<MapNode> mapNode_safe = _mapNode.get();
-    if ( mapNode_safe.valid() )
+    if ( getMapNode() )
     {
         if ( !_autoclamp && value )
         {
@@ -98,12 +113,12 @@ AnnotationNode::setAutoClamp( bool value )
             if ( AnnotationSettings::getContinuousClamping() )
             {
                 _autoClampCallback = new AutoClampCallback( this );
-                mapNode_safe->getTerrain()->addTerrainCallback( _autoClampCallback.get() );
+                getMapNode()->getTerrain()->addTerrainCallback( _autoClampCallback.get() );
             }
         }
         else if ( _autoclamp && !value && _autoClampCallback.valid())
         {
-            mapNode_safe->getTerrain()->removeTerrainCallback( _autoClampCallback );
+            getMapNode()->getTerrain()->removeTerrainCallback( _autoClampCallback );
             _autoClampCallback = 0;
         }
 
@@ -179,12 +194,11 @@ AnnotationNode::makeAbsolute( GeoPoint& mapPoint, osg::Node* patch ) const
     }
 
     // calculate the absolute Z of the map point.
-    osg::ref_ptr<MapNode> mapNode_safe = _mapNode.get();
-    if ( mapNode_safe.valid() )
+    if ( getMapNode() )
     {
         // find the terrain height at the map point:
         double hamsl;
-        if (mapNode_safe->getTerrain()->getHeight(patch, mapPoint.getSRS(), mapPoint.x(), mapPoint.y(), &hamsl, 0L))
+        if (getMapNode()->getTerrain()->getHeight(patch, mapPoint.getSRS(), mapPoint.x(), mapPoint.y(), &hamsl, 0L))
         {
             // apply any scale/offset in the symbology:
             if ( _altitude.valid() )
@@ -283,12 +297,6 @@ AnnotationNode::getChildAttachPoint()
 {
     osg::Transform* t = osgEarth::findTopMostNodeOfType<osg::Transform>(this);
     return t ? (osg::Group*)t : (osg::Group*)this;
-}
-
-osgEarth::MapNode*
-AnnotationNode::getMapNode() const
-{
-    return _mapNode.get();
 }
 
 bool

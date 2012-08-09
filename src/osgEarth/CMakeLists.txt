@@ -61,6 +61,7 @@ SET(LIB_PUBLIC_HEADERS
     LocalTangentPlane
     Map
     MapNode
+    MapNodeObserver
     MapNodeOptions
     MapOptions
     MaskLayer

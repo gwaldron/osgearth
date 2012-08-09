@@ -31,7 +31,7 @@ _mapf     ( sourceMap )
 void
 ElevationProxyImageLayer::initTileSource()
 {
-    _tileSourceInitialized = true;
+    _tileSourceInitAttempted = true;
 }
 
 bool

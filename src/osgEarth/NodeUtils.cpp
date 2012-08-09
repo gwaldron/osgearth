@@ -28,7 +28,73 @@
 
 using namespace osgEarth;
 
+
 //------------------------------------------------------------------------
+
+PagedLODWithNodeOperations::PagedLODWithNodeOperations( RefNodeOperationVector* postMergeOps ) :
+_postMergeOps( postMergeOps )
+{
+    //nop
+}
+
+
+void
+PagedLODWithNodeOperations::runPostMerge( osg::Node* node )
+{
+    if ( _postMergeOps.valid() )
+    {
+        for( NodeOperationVector::iterator i = _postMergeOps->begin(); i != _postMergeOps->end(); ++i )
+        {
+            i->get()->operator()( node );
+        }
+    }
+}
+
+
+bool 
+PagedLODWithNodeOperations::addChild( osg::Node* child )
+{
+    bool ok = false;
+    if ( child )
+    {
+        ok = osg::PagedLOD::addChild( child );
+        if ( ok )
+            runPostMerge( child );
+    }
+    return ok;
+}
+
+
+bool 
+PagedLODWithNodeOperations::insertChild( unsigned index, Node* child )
+{
+    bool ok = false;
+    if ( child )
+    {
+        ok = osg::PagedLOD::insertChild( index, child );
+        if ( ok )
+            runPostMerge( child );
+    }
+    return ok;
+}
+
+
+bool 
+PagedLODWithNodeOperations::replaceChild( Node* origChild, Node* newChild )
+{
+    bool ok = false;
+    if ( origChild && newChild )
+    {
+        ok = osg::PagedLOD::replaceChild( origChild, newChild );
+        if ( ok )
+            runPostMerge( newChild );
+    }
+    return ok;
+}
+
+
+//------------------------------------------------------------------------
+
 
 RemoveEmptyGroupsVisitor::RemoveEmptyGroupsVisitor() :
 osg::NodeVisitor( osg::NodeVisitor::TRAVERSE_ALL_CHILDREN )

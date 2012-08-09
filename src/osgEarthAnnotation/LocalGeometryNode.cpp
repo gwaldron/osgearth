@@ -76,7 +76,7 @@ LocalGeometryNode::init()
         feature->style() = *_style;
 
         GeometryCompiler compiler;
-        FilterContext cx( _mapNode.valid() ? new Session(_mapNode->getMap()) : 0L );
+        FilterContext cx( getMapNode() ? new Session(getMapNode()->getMap()) : 0L );
         osg::Node* node = compiler.compile( feature.get(), cx );
         if ( node )
         {

@@ -22,6 +22,7 @@
 #include <osgEarth/Common>
 #include <osgEarth/GeoData>
 #include <osgEarth/TileKey>
+#include <osgEarth/MapNodeObserver>
 #include <osg/MatrixTransform>
 #include <osg/ShapeDrawable>
 #include <osgGA/GUIEventHandler>
@@ -32,7 +33,7 @@ namespace osgEarth
     class MapNode;
     class Terrain;
 
-    class OSGEARTH_EXPORT Dragger : public osg::MatrixTransform
+    class OSGEARTH_EXPORT Dragger : public osg::MatrixTransform, public MapNodeObserver
     {
     public:
         /**
@@ -78,6 +79,13 @@ namespace osgEarth
         virtual void traverse(osg::NodeVisitor& nv);        
 
         virtual void reclamp( const TileKey& key, osg::Node* tile, const Terrain* terrain );
+
+
+    public: // MapNodeObserver
+
+        virtual void setMapNode( MapNode* mapNode );
+
+        virtual MapNode* getMapNode() { return _mapNode.get(); }
 
 
     protected:

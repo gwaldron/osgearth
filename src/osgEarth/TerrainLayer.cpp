@@ -179,9 +179,10 @@ TerrainLayer::~TerrainLayer()
 void
 TerrainLayer::init()
 {
-    _tileSourceInitialized = false;
-    _tileSize              = 256;
-    _dbOptions             = Registry::instance()->cloneOrCreateOptions();
+    _tileSourceInitAttempted = false;
+    _tileSourceInitFailed    = false;
+    _tileSize                = 256;
+    _dbOptions               = Registry::instance()->cloneOrCreateOptions();
     
     initializeCachePolicy( _dbOptions.get() );
 }
@@ -257,13 +258,16 @@ TerrainLayer::setTargetProfileHint( const Profile* profile )
 TileSource* 
 TerrainLayer::getTileSource() const
 {
-    if ((_tileSource.valid() && !_tileSourceInitialized) ||
+    if ( _tileSourceInitFailed )
+        return 0L;
+
+    if ((_tileSource.valid() && !_tileSourceInitAttempted) ||
         (!_tileSource.valid() && !isCacheOnly()))
     {
         OpenThreads::ScopedLock< OpenThreads::Mutex > lock(const_cast<TerrainLayer*>(this)->_initTileSourceMutex );
         
         // double-check pattern
-        if ((_tileSource.valid() && !_tileSourceInitialized) ||
+        if ((_tileSource.valid() && !_tileSourceInitAttempted) ||
             (!_tileSource.valid() && !isCacheOnly()))
         {
             // Initialize the tile source once.
@@ -295,13 +299,13 @@ TerrainLayer::getProfile() const
     // NB: in cache-only mode, there IS NO layer profile.
     if ( !_profile.valid() && !isCacheOnly() )
     {
-        if ( !_tileSourceInitialized )
+        if ( !_tileSourceInitAttempted )
         {
             // Call getTileSource to make sure the TileSource is initialized
             getTileSource();
         }
 
-        if ( _tileSource.valid() && !_profile.valid() )
+        if ( _tileSource.valid() && !_profile.valid() && !_tileSourceInitFailed )
         {
             const_cast<TerrainLayer*>(this)->_profile = _tileSource->getProfile();
 
@@ -529,7 +533,8 @@ TerrainLayer::initTileSource()
         if ( !_dbOptions.valid() )
         {
             _dbOptions = Registry::instance()->cloneOrCreateOptions();
-            if ( _cache.valid() ) _cache->store( _dbOptions.get() );
+            if ( _cache.valid() ) _cache->apply( _dbOptions.get() );
+            _initOptions.cachePolicy()->apply( _dbOptions.get() );
             URIContext( _runtimeOptions->referrer() ).apply( _dbOptions.get() );
         }
 
@@ -540,8 +545,12 @@ TerrainLayer::initTileSource()
                 << _tileSource->getProfile()->toString() << std::endl;
         }
 
-        // Intialize the tile source.
-        const TileSource::Status& status = _tileSource->startup( _dbOptions.get() );
+        // Start up the tile source (if it hasn't already been started)
+        TileSource::Status status = _tileSource->getStatus();
+        if ( status != TileSource::STATUS_OK )
+        {
+            status = _tileSource->startup( _dbOptions.get() );
+        }
 
         if ( status == TileSource::STATUS_OK )
         {
@@ -551,6 +560,8 @@ TerrainLayer::initTileSource()
         {
             OE_WARN << LC << "Could not initialize driver" << std::endl;
             _tileSource = NULL;
+            _tileSourceInitFailed = true;
+            _runtimeOptions->enabled() = true;
         }
     }
 
@@ -568,13 +579,14 @@ TerrainLayer::initTileSource()
         setCachePolicy( CachePolicy::CACHE_ONLY );
     }
 
-    _tileSourceInitialized = true;
+    _tileSourceInitAttempted = true;
 }
 
 bool
 TerrainLayer::isKeyValid(const TileKey& key) const
 {
-    if (!key.valid()) return false;
+    if (!key.valid() || _tileSourceInitFailed) 
+        return false;
 
     // Check to see if an explicity max LOD is set. Do NOT compare against the minLevel,
     // because we still need to create empty tiles until we get to the data. The ImageLayer

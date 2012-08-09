@@ -89,7 +89,7 @@ namespace
         ImageInfo()
         {
             image = 0;
-            opacity = 0;
+            opacity = 1;
             dataInExtents = false;
         }
 
@@ -213,43 +213,39 @@ CompositeTileSource::createImage(const TileKey&    key,
             {
                 continue;
             }
-
-            if ( !source->getBlacklist()->contains( key.getTileId() ) )
-            {
+            
                 //Only try to get data if the source actually has data                
                 if (source->hasDataInExtent( key.getExtent() ) )
                 {
                     //We have data within these extents
                     imageInfo.dataInExtents = true;
 
-                    osg::ref_ptr< ImageLayerPreCacheOperation > preCacheOp;
-                    if ( i->_imageLayerOptions.isSet() )
-                    {
-                        preCacheOp = new ImageLayerPreCacheOperation();
-                        preCacheOp->_processor.init( i->_imageLayerOptions.value(), _dbOptions.get(), true );                        
-                    }
+                    if ( !source->getBlacklist()->contains( key.getTileId() ) )
+                    {                        
+                        osg::ref_ptr< ImageLayerPreCacheOperation > preCacheOp;
+                        if ( i->_imageLayerOptions.isSet() )
+                        {
+                            preCacheOp = new ImageLayerPreCacheOperation();
+                            preCacheOp->_processor.init( i->_imageLayerOptions.value(), _dbOptions.get(), true );                        
+                        }
 
-                    imageInfo.image = source->createImage( key, preCacheOp.get(), progress );
-                    imageInfo.opacity = 1.0f;
+                        imageInfo.image = source->createImage( key, preCacheOp.get(), progress );
+                        imageInfo.opacity = 1.0f;
 
-                    //If the image is not valid and the progress was not cancelled, blacklist
-                    if (!imageInfo.image.valid() && (!progress || !progress->isCanceled()))
-                    {
-                        //Add the tile to the blacklist
-                        OE_DEBUG << LC << "Adding tile " << key.str() << " to the blacklist" << std::endl;
-                        source->getBlacklist()->add( key.getTileId() );
+                        //If the image is not valid and the progress was not cancelled, blacklist
+                        if (!imageInfo.image.valid() && (!progress || !progress->isCanceled()))
+                        {
+                            //Add the tile to the blacklist
+                            OE_DEBUG << LC << "Adding tile " << key.str() << " to the blacklist" << std::endl;
+                            source->getBlacklist()->add( key.getTileId() );
+                        }
+                        imageInfo.opacity = i->_imageLayerOptions.isSet() ? i->_imageLayerOptions->opacity().value() : 1.0f;
                     }
-                    imageInfo.opacity = i->_imageLayerOptions.isSet() ? i->_imageLayerOptions->opacity().value() : 1.0f;
                 }
                 else
                 {
                     OE_DEBUG << LC << "Source has no data at " << key.str() << std::endl;
                 }
-            }
-            else
-            {
-                OE_DEBUG << LC << "Tile " << key.str() << " is blacklisted, not checking" << std::endl;
-            }
         }
 
         //Add the ImageInfo to the list

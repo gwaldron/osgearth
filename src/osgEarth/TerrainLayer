@@ -28,6 +28,7 @@
 #include <osgEarth/TileSource>
 #include <osgEarth/Profile>
 #include <osgEarth/ThreadingUtils>
+#include <osgEarth/HTTPClient>
 
 namespace osgEarth
 {
@@ -156,6 +157,13 @@ namespace osgEarth
         optional<double>& edgeBufferRatio() { return _edgeBufferRatio;}
         const optional<double>& edgeBufferRatio() const { return _edgeBufferRatio; }
 
+        /** 
+         * The hostname/port of a proxy server to use for HTTP communications on this layer
+         * Default = no proxy.
+         */
+        optional<ProxySettings>& proxySettings() { return _proxySettings; }
+        const optional<ProxySettings>& proxySettings() const { return _proxySettings; }
+
     public:
         virtual Config getConfig() const { return getConfig(false); }
         virtual Config getConfig( bool isolate ) const;
@@ -183,6 +191,7 @@ namespace osgEarth
         optional<std::string>       _cacheId;
         optional<std::string>       _cacheFormat;
         optional<CachePolicy>       _cachePolicy;
+        optional<ProxySettings>     _proxySettings;
     };
 
     /**
@@ -405,6 +414,7 @@ namespace osgEarth
         friend class Map;
         void setDBOptions( const osgDB::Options* dbOptions );
         void initializeCachePolicy( const osgDB::Options* );
+        void storeProxySettings( osgDB::Options* );
 
         /**
          * Sets the cache to be used on this MapLayer

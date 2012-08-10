@@ -134,7 +134,7 @@ AnnotationUtils::createTextDrawable(const std::string& text,
     t->setStateSet( stateSet );
     //osg::StateSet* stateSet = t->getOrCreateStateSet();
 
-    if ( symbol && symbol->declutter().isSet() )
+    if ( symbol )
     {
         Decluttering::setEnabled( stateSet, *symbol->declutter() );
     }

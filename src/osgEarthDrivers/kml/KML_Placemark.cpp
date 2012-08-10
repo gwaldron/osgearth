@@ -137,8 +137,8 @@ KML_Placemark::build( const Config& conf, KMLContext& cx )
         // multiple coords? feature:
         if ( geometry._geom->getTotalPointCount() > 1 )
         {
-            const ExtrusionSymbol* extruded = style.get<ExtrusionSymbol>();
-            const AltitudeSymbol*  altitude = style.get<AltitudeSymbol>();
+            ExtrusionSymbol* extruded = style.get<ExtrusionSymbol>();
+            AltitudeSymbol*  altitude = style.get<AltitudeSymbol>();
 
             // Remove symbols that we have already processed so the geometry
             // compiler doesn't get confused.
@@ -149,11 +149,35 @@ KML_Placemark::build( const Config& conf, KMLContext& cx )
             if ( text )
                 style.removeSymbol( text );
 
+            // analyze the data; if the Z coords are all 0.0, enable draping.
+            if ( isPoly && !extruded && altitude && altitude->clamping() != AltitudeSymbol::CLAMP_TO_TERRAIN )
+            {
+                bool zeroElev = true;
+                ConstGeometryIterator gi( geometry._geom.get(), false );
+                while( zeroElev == true && gi.hasMore() )
+                {
+                    const Geometry* g = gi.next();
+                    for( Geometry::const_iterator ji = g->begin(); ji != g->end() && zeroElev == true; ++ji )
+                    {
+                        if ( !osg::equivalent(ji->z(), 0.0) )
+                            zeroElev = false;
+                    }
+                }
+                if ( zeroElev )
+                {
+                    altitude->clamping() = AltitudeSymbol::CLAMP_TO_TERRAIN;
+                }
+            }
+
             // Make a feature node; drape if we're not extruding.
             bool draped =
                 isPoly    && 
                 !extruded &&
                 (!altitude || altitude->clamping() == AltitudeSymbol::CLAMP_TO_TERRAIN);
+
+            // turn off the clamping if we're draping.
+            if ( draped && altitude )
+                altitude->clamping() = AltitudeSymbol::CLAMP_NONE;
 
             GeometryCompilerOptions compilerOptions;
 

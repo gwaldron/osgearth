@@ -167,8 +167,9 @@ LabelNode::setDynamic( bool dynamic )
 OSGEARTH_REGISTER_ANNOTATION( label, osgEarth::Annotation::LabelNode );
 
 
-LabelNode::LabelNode(MapNode*      mapNode,
-                     const Config& conf ) :
+LabelNode::LabelNode(MapNode*               mapNode,
+                     const Config&         conf,
+                     const osgDB::Options* dbOptions ) :
 OrthoNode( mapNode, GeoPoint::INVALID )
 {
     conf.getObjIfSet( "style",  _style );

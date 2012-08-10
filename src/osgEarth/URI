@@ -22,6 +22,7 @@
 #include <osgEarth/Common>
 #include <osgEarth/CacheBin>
 #include <osgEarth/CachePolicy>
+#include <osgEarth/Containers>
 #include <osgEarth/FileUtils>
 #include <osgEarth/IOTypes>
 #include <osgEarth/Progress>
@@ -236,6 +237,32 @@ namespace osgEarth
         std::string _fullURI;
         std::string _cacheKey;
         URIContext  _context;
+    };
+    
+
+    
+//------------------------------------------------------------------------
+
+    /**
+     * A URI result cache that you can embed in an osgDB::Options, and if found,
+     * URI will attempt to use it. 
+     *
+     * WARNING: osgDB::Options will only store a raw pointer to the class, so
+     * make sure the scope of the osgDB::Options does not exceed the scope of
+     * the embedded cache!
+     */
+    struct /*header-only*/ URIResultCache : public LRUCache<URI, ReadResult>
+    {
+        URIResultCache( bool threadsafe =true )
+            : LRUCache<URI,ReadResult>( threadsafe ) { }
+
+        static URIResultCache* from(const osgDB::Options* options) {
+            return options ? static_cast<URIResultCache*>(const_cast<osgDB::Options*>(options)->getPluginData("osgEarth::URIResultCache")) : 0L;
+        }
+
+        void apply( osgDB::Options* options ) {
+            if ( options ) options->setPluginData("osgEarth::URIResultCache", this);
+        }
     };
 
     

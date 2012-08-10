@@ -67,7 +67,7 @@ namespace osgEarth { namespace Annotation
 
     public:
 
-        FeatureNode(MapNode* mapNode, const Config& conf );
+        FeatureNode(MapNode* mapNode, const Config& conf, const osgDB::Options* options);
         virtual Config getConfig() const;
 
     protected:

@@ -90,14 +90,17 @@ AnnotationRegistry::add( const std::string& type, AnnotationFactory* factory )
 
 
 bool
-AnnotationRegistry::create( MapNode* mapNode, const Config& conf, osg::Group*& results ) const
+AnnotationRegistry::create(MapNode*              mapNode, 
+                           const Config&         conf, 
+                           const osgDB::Options* options,
+                           osg::Group*&          results ) const
 {
     bool createdAtLeastOne = false;
 
     bool declutter = conf.value<bool>("declutter",false) == true;
 
     // first try to parse the top-level config as an annotation:
-    AnnotationNode* top = createOne(mapNode, conf, declutter);
+    AnnotationNode* top = createOne(mapNode, conf, options, declutter);
     if ( top )
     {
         if ( results == 0L )
@@ -111,7 +114,7 @@ AnnotationRegistry::create( MapNode* mapNode, const Config& conf, osg::Group*& r
     {
         for( ConfigSet::const_iterator i = conf.children().begin(); i != conf.children().end(); ++i )
         {
-            AnnotationNode* anno = createOne( mapNode, *i, declutter );
+            AnnotationNode* anno = createOne( mapNode, *i, options, declutter );
             if ( anno )
             {
                 if ( results == 0L )
@@ -127,12 +130,15 @@ AnnotationRegistry::create( MapNode* mapNode, const Config& conf, osg::Group*& r
 
 
 AnnotationNode*
-AnnotationRegistry::createOne( MapNode* mapNode, const Config& conf, bool declutterOrthos ) const
+AnnotationRegistry::createOne(MapNode*              mapNode, 
+                              const Config&         conf, 
+                              const osgDB::Options* options, 
+                              bool                  declutterOrthos ) const
 {
     FactoryMap::const_iterator f = _factories.find( conf.key() );
     if ( f != _factories.end() && f->second != 0L )
     {
-        AnnotationNode* anno = f->second->create(mapNode, conf);
+        AnnotationNode* anno = f->second->create(mapNode, conf, options);
         if ( anno )
         {
             if ( declutterOrthos && dynamic_cast<SupportsDecluttering*>(anno) )

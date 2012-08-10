@@ -52,7 +52,7 @@ namespace osgEarth { namespace Annotation
         /**
          * Construcs an image overlay annotation from a serialized representation
          */
-        ImageOverlay(MapNode* mapNode, const Config& conf);
+        ImageOverlay(MapNode* mapNode, const Config& conf, const osgDB::Options* dbOptions);
 
         virtual ~ImageOverlay() { }
 

@@ -100,7 +100,7 @@ KML_Placemark::build( const Config& conf, KMLContext& cx )
         AnnotationNode* modelNode   = 0L;
 
         // one coordinate? It's a place marker or a label.
-        if ( geometry._geom->getTotalPointCount() == 1 )
+        if ( model || icon || text || geometry._geom->getTotalPointCount() == 1 )
         {
             // load up the default icon if there we don't have one.
             if ( !model && !icon )
@@ -135,10 +135,19 @@ KML_Placemark::build( const Config& conf, KMLContext& cx )
         }
 
         // multiple coords? feature:
-        else if ( geometry._geom->getTotalPointCount() > 1 )
+        if ( geometry._geom->getTotalPointCount() > 1 )
         {
             const ExtrusionSymbol* extruded = style.get<ExtrusionSymbol>();
             const AltitudeSymbol*  altitude = style.get<AltitudeSymbol>();
+
+            // Remove symbols that we have already processed so the geometry
+            // compiler doesn't get confused.
+            if ( model )
+                style.removeSymbol( model );
+            if ( icon )
+                style.removeSymbol( icon );
+            if ( text )
+                style.removeSymbol( text );
 
             // Make a feature node; drape if we're not extruding.
             bool draped =

@@ -93,6 +93,7 @@ TerrainLayerOptions::getConfig( bool isolate ) const
     conf.updateIfSet   ( "cacheid",      _cacheId );
     conf.updateIfSet   ( "cache_format", _cacheFormat );
     conf.updateObjIfSet( "cache_policy", _cachePolicy );
+    conf.updateObjIfSet( "proxy",        _proxySettings );
 
     // Merge the TileSource options
     if ( !isolate && driver().isSet() )
@@ -122,6 +123,7 @@ TerrainLayerOptions::fromConfig( const Config& conf )
     conf.getIfSet   ( "cacheid",      _cacheId );
     conf.getIfSet   ( "cache_format", _cacheFormat );
     conf.getObjIfSet( "cache_policy", _cachePolicy );
+    conf.getObjIfSet( "proxy",        _proxySettings );
 
     // legacy support:
     if ( conf.value<bool>( "cache_only", false ) == true )
@@ -185,6 +187,7 @@ TerrainLayer::init()
     _dbOptions               = Registry::instance()->cloneOrCreateOptions();
     
     initializeCachePolicy( _dbOptions.get() );
+    storeProxySettings( _dbOptions.get() );
 }
 
 void
@@ -640,7 +643,8 @@ void
 TerrainLayer::setDBOptions( const osgDB::Options* dbOptions )
 {
     _dbOptions = Registry::instance()->cloneOrCreateOptions( dbOptions );
-    initializeCachePolicy( dbOptions );
+    initializeCachePolicy( dbOptions );    
+    storeProxySettings( _dbOptions );
 }
 
 void
@@ -670,6 +674,16 @@ TerrainLayer::initializeCachePolicy( const osgDB::Options* options )
             // not found anywhere; set to the default.
             setCachePolicy( CachePolicy::DEFAULT );
         }
+    }
+}
+
+void
+TerrainLayer::storeProxySettings(osgDB::Options* opt)
+{
+    //Store the proxy settings in the options structure.
+    if (_initOptions.proxySettings().isSet())
+    {        
+        _initOptions.proxySettings().get().apply( opt );
     }
 }
 

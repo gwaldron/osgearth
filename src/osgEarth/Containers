@@ -20,6 +20,7 @@
 #define OSGEARTH_CONTAINERS_H 1
 
 #include <osgEarth/Common>
+#include <osgEarth/ThreadingUtils>
 #include <list>
 
 namespace osgEarth
@@ -140,9 +141,16 @@ namespace osgEarth
         unsigned _buf;
         unsigned _queries;
         unsigned _hits;
+        bool     _threadsafe;
+        mutable Threading::Mutex _mutex;
 
     public:
-        LRUCache( unsigned max =100 ) : _max(max) {
+        LRUCache( unsigned max =100 ) : _threadsafe(false), _max(max) {
+            _buf = _max/10;
+            _queries = 0;
+            _hits = 0;
+        }
+        LRUCache( bool threadsafe, unsigned max =100 ) : _threadsafe(threadsafe), _max(max) {
             _buf = _max/10;
             _queries = 0;
             _hits = 0;
@@ -152,6 +160,77 @@ namespace osgEarth
         virtual ~LRUCache() { }
 
         void insert( const K& key, const T& value ) {
+            if ( _threadsafe ) {
+                Threading::ScopedMutexLock lock(_mutex);
+                insert_impl( key, value );
+            }
+            else {
+                insert_impl( key, value );
+            }
+        }
+
+        Record get( const K& key ) {
+            if ( _threadsafe ) {
+                Threading::ScopedMutexLock lock(_mutex);
+                return get_impl( key );
+            }
+            else {
+                return get_impl( key );
+            }
+        }
+
+        bool has( const K& key ) {
+            if ( _threadsafe ) {
+                Threading::ScopedMutexLock lock(_mutex);
+                return has_impl( key );
+            }
+            else {
+                return has_impl( key );
+            }
+        }
+
+        void erase( const K& key ) {
+            if ( _threadsafe ) {
+                Threading::ScopedMutexLock lock(_mutex);
+                erase_impl( key );
+            }
+            else {
+                erase_impl( key );
+            }
+        }
+
+        void clear() {
+            if ( _threadsafe ) {
+                Threading::ScopedMutexLock lock(_mutex);
+                clear_impl();
+            }
+            else {
+                clear_impl();
+            }
+        }
+
+        void setMaxSize( unsigned max ) {
+            if ( _threadsafe ) {
+                Threading::ScopedMutexLock lock(_mutex);
+                setMaxSize_impl( max );
+            }
+            else {
+                setMaxSize_impl( max );
+            }
+        }
+
+        unsigned getMaxSize() const {
+            return _max;
+        }
+
+        CacheStats getStats() const {
+            return CacheStats(
+                _lru.size(), _max, _queries, _queries > 0 ? (float)_hits/(float)_queries : 0.0f );
+        }
+
+    private:
+
+        void insert_impl( const K& key, const T& value ) {
             map_iter mi = _map.find( key );
             if ( mi != _map.end() ) {
                 _lru.erase( mi->second.second );
@@ -175,7 +254,7 @@ namespace osgEarth
             }
         }
 
-        Record get( const K& key ) {
+        Record get_impl( const K& key ) {
             _queries++;
             map_iter mi = _map.find( key );
             if ( mi != _map.end() ) {
@@ -191,11 +270,11 @@ namespace osgEarth
             }
         }
 
-        bool has( const K& key ) {
+        bool has_impl( const K& key ) {
             return _map.find( key ) != _map.end();
         }
 
-        void erase( const K& key ) {
+        void erase_impl( const K& key ) {
             map_iter mi = _map.find( key );
             if ( mi != _map.end() ) {
                 _lru.erase( mi->second.second );
@@ -203,14 +282,14 @@ namespace osgEarth
             }
         }
 
-        void clear() {
+        void clear_impl() {
             _lru.clear();
             _map.clear();
             _queries = 0;
             _hits = 0;
         }
 
-        void setMaxSize( unsigned max ) {
+        void setMaxSize_impl( unsigned max ) {
             _max = max;
             _buf = max/10;
             while( _lru.size() > _max ) {
@@ -220,14 +299,6 @@ namespace osgEarth
             }
         }
 
-        unsigned getMaxSize() const {
-            return _max;
-        }
-
-        CacheStats getStats() const {
-            return CacheStats(
-                _lru.size(), _max, _queries, _queries > 0 ? (float)_hits/(float)_queries : 0.0f );
-        }
     };
 
     //--------------------------------------------------------------------

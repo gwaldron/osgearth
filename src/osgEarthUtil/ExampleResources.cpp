@@ -459,6 +459,9 @@ MapNodeHelper::parse(MapNode*             mapNode,
     if ( !root )
         root = mapNode;
 
+    // options to use for the load
+    osg::ref_ptr<osgDB::Options> dbOptions = Registry::instance()->cloneOrCreateOptions();
+
     // parse out custom example arguments first:
 
     bool useSky        = args.read("--sky");
@@ -579,7 +582,7 @@ MapNodeHelper::parse(MapNode*             mapNode,
     if ( !annoConf.empty() )
     {
         osg::Group* annotations = 0L;
-        AnnotationRegistry::instance()->create( mapNode, annoConf, annotations );
+        AnnotationRegistry::instance()->create( mapNode, annoConf, dbOptions.get(), annotations );
         if ( annotations )
         {
             root->addChild( annotations );

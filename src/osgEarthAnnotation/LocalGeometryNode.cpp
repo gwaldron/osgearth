@@ -41,7 +41,7 @@ _geom        ( geom ),
 _draped      ( draped )
 {
     _style = style;
-    init();
+    init( 0L );
 }
 
 
@@ -68,7 +68,7 @@ _draped      ( draped )
 
 
 void
-LocalGeometryNode::init()
+LocalGeometryNode::init(const osgDB::Options* dbOptions)
 {
     if ( _geom.valid() )
     {
@@ -96,8 +96,9 @@ LocalGeometryNode::init()
 OSGEARTH_REGISTER_ANNOTATION( local_geometry, osgEarth::Annotation::LocalGeometryNode );
 
 
-LocalGeometryNode::LocalGeometryNode(MapNode*      mapNode,
-                                     const Config& conf) :
+LocalGeometryNode::LocalGeometryNode(MapNode*              mapNode,
+                                     const Config&         conf,
+                                     const osgDB::Options* dbOptions) :
 LocalizedNode( mapNode )
 {
     if ( conf.hasChild("geometry") )
@@ -108,7 +109,9 @@ LocalizedNode( mapNode )
         {
             conf.getObjIfSet( "style", _style );
             _draped = conf.value<bool>("draped",false);
-            init();
+
+            init( dbOptions );
+
             if ( conf.hasChild("position") )
                 setPosition( GeoPoint(conf.child("position")) );
         }

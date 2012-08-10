@@ -55,7 +55,7 @@ namespace
 
 OSGEARTH_REGISTER_ANNOTATION( imageoverlay, osgEarth::Annotation::ImageOverlay );
 
-ImageOverlay::ImageOverlay(MapNode* mapNode, const Config& conf) :
+ImageOverlay::ImageOverlay(MapNode* mapNode, const Config& conf, const osgDB::Options* dbOptions) :
 AnnotationNode(mapNode),
 _lowerLeft    (10, 10),
 _lowerRight   (20, 10),
@@ -70,7 +70,7 @@ _texture      (0)
     conf.getIfSet( "url",   _imageURI );
     if ( _imageURI.isSet() )
     {
-        setImage( _imageURI->getImage() );
+        setImage( _imageURI->getImage(dbOptions) );
     }
 
     conf.getIfSet( "alpha", _alpha );

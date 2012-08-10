@@ -204,8 +204,9 @@ FeatureNode::clampMesh( osg::Node* terrainModel )
 OSGEARTH_REGISTER_ANNOTATION( feature, osgEarth::Annotation::FeatureNode );
 
 
-FeatureNode::FeatureNode(MapNode*      mapNode,
-                         const Config& conf) :
+FeatureNode::FeatureNode(MapNode*              mapNode,
+                         const Config&         conf,
+                         const osgDB::Options* dbOptions ) :
 AnnotationNode( mapNode )
 {
     osg::ref_ptr<Geometry> geom;

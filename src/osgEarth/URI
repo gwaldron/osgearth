@@ -243,6 +243,14 @@ namespace osgEarth
     
 //------------------------------------------------------------------------
 
+    /**
+     * A URI result cache that you can embed in an osgDB::Options, and if found,
+     * URI will attempt to use it. 
+     *
+     * WARNING: osgDB::Options will only store a raw pointer to the class, so
+     * make sure the scope of the osgDB::Options does not exceed the scope of
+     * the embedded cache!
+     */
     struct /*header-only*/ URIResultCache : public LRUCache<URI, ReadResult>
     {
         URIResultCache( bool threadsafe =true )

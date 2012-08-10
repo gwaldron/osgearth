@@ -295,8 +295,12 @@ FeatureModelGraph::getBoundInWorldCoords(const GeoExtent& extent,
                                          const MapFrame*  mapf ) const
 {
     osg::Vec3d center, corner;
-    //double z = 0.0;
     GeoExtent workingExtent;
+
+    if ( !extent.isValid() )
+    {
+        return osg::BoundingSphered();
+    }
 
     if ( extent.getSRS()->isEquivalentTo( _usableMapExtent.getSRS() ) )
     {

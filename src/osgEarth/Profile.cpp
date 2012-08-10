@@ -699,11 +699,13 @@ Profile::getEquivalentLOD( const Profile* profile, unsigned int lod ) const
 
     double targetWidth = rhsWidth, targetHeight = rhsHeight;
 
-    if ( !profile->getSRS()->isHorizEquivalentTo(profile->getSRS()) )
+    if ( !profile->getSRS()->isHorizEquivalentTo(getSRS()) )
     {
         targetWidth = profile->getSRS()->transformUnits( rhsWidth, getSRS() );
         targetHeight = profile->getSRS()->transformUnits( rhsHeight, getSRS() );
     }
+
+
 
 
 

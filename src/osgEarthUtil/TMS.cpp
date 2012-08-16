@@ -25,6 +25,7 @@
 #include <osgEarth/TileSource>
 #include <osgEarth/Registry>
 #include <osgEarth/StringUtils>
+#include <osgEarth/Profile>
 
 #include <osg/Notify>
 #include <osgDB/FileUtils>
@@ -183,11 +184,11 @@ TileMap::createProfile() const
 {
     osg::ref_ptr< SpatialReference > spatialReference =  osgEarth::SpatialReference::create(_srs);
 
-    if (getProfileType() == Profile::ProfileType::TYPE_GEODETIC)
+    if (getProfileType() == Profile::TYPE_GEODETIC)
     {
         return osgEarth::Registry::instance()->getGlobalGeodeticProfile();
     }
-    else if (getProfileType() == Profile::ProfileType::TYPE_MERCATOR)
+    else if (getProfileType() == Profile::TYPE_MERCATOR)
     {
         return osgEarth::Registry::instance()->getSphericalMercatorProfile();
     }    

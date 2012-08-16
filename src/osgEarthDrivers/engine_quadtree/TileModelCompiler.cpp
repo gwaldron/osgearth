@@ -1153,9 +1153,9 @@ namespace
         else if ( d.surfaceVerts->size() < 0xFFFF )
             elements = new osg::DrawElementsUShort(GL_TRIANGLES);
         else
-            elements = new osg::DrawElementsUInt(GL_TRIANGLES);
+            elements = new osg::DrawElementsUShort(GL_TRIANGLES);
 
-        //DrawElementsUInt* elements = new osg::DrawElementsUInt(GL_TRIANGLES);
+        //DrawElementsUShort* elements = new osg::DrawElementsUShort(GL_TRIANGLES);
         elements->reserveElements((d.numRows-1) * (d.numCols-1) * 6);
         d.surface->addPrimitiveSet( elements );
 

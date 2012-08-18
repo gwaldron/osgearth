@@ -38,6 +38,7 @@ _options      ( options )
 {
     // set the node mask so that our custom EarthManipulator will NOT find this node.
     setNodeMask( 0xFFFFFFFE );
+    rebuild();
 }
 
 

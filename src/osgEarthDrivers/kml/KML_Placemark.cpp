@@ -150,7 +150,7 @@ KML_Placemark::build( const Config& conf, KMLContext& cx )
                 style.removeSymbol( text );
 
             // analyze the data; if the Z coords are all 0.0, enable draping.
-            if ( isPoly && !extruded && altitude && altitude->clamping() != AltitudeSymbol::CLAMP_TO_TERRAIN )
+            if ( /*isPoly &&*/ !extruded && altitude && altitude->clamping() != AltitudeSymbol::CLAMP_TO_TERRAIN )
             {
                 bool zeroElev = true;
                 ConstGeometryIterator gi( geometry._geom.get(), false );

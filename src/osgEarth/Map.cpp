@@ -1317,18 +1317,24 @@ Map::sync( MapFrame& frame ) const
 //------------------------------------------------------------------------
 
 MapInfo::MapInfo( const Map* map ) :
-_profile( map->getProfile() ),
-_isGeocentric( map->isGeocentric() ),
-_isCube( map->getMapOptions().coordSysType() == MapOptions::CSTYPE_GEOCENTRIC_CUBE ),
-_elevationInterpolation( *map->getMapOptions().elevationInterpolation())
+_profile               ( 0L ),
+_isGeocentric          ( true ),
+_isCube                ( false ),
+_elevationInterpolation( INTERP_BILINEAR )
 { 
-    //nop
+    if ( map )
+    {
+        _profile = map->getProfile();
+        _isGeocentric = map->isGeocentric();
+        _isCube = map->getMapOptions().coordSysType() == MapOptions::CSTYPE_GEOCENTRIC_CUBE;
+        _elevationInterpolation = *map->getMapOptions().elevationInterpolation();
+    }
 }
 
 MapInfo::MapInfo( const MapInfo& rhs ) :
-_profile( rhs._profile ),
-_isGeocentric( rhs._isGeocentric ),
-_isCube( rhs._isCube ),
+_profile               ( rhs._profile ),
+_isGeocentric          ( rhs._isGeocentric ),
+_isCube                ( rhs._isCube ),
 _elevationInterpolation( rhs._elevationInterpolation )
 {
     //nop

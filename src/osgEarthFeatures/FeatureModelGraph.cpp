@@ -54,7 +54,8 @@ namespace
 {
     UID                               _uid         = 0;
     Threading::ReadWriteMutex         _fmgMutex;
-    std::map<UID, FeatureModelGraph*> _fmgRegistry;
+    typedef std::map<UID, osg::observer_ptr<FeatureModelGraph> > FMGRegistry;
+    FMGRegistry _fmgRegistry;
 
     static std::string s_makeURI( UID uid, unsigned lod, unsigned x, unsigned y ) 
     {
@@ -144,8 +145,8 @@ struct osgEarthFeatureModelPseudoLoader : public osgDB::ReaderWriter
     static FeatureModelGraph* getGraph( UID uid ) 
     {
         Threading::ScopedReadLock lock( _fmgMutex );
-        std::map<UID, FeatureModelGraph*>::const_iterator i = _fmgRegistry.find( uid );
-        return i != _fmgRegistry.end() ? i->second : 0L;
+        FMGRegistry::const_iterator i = _fmgRegistry.find( uid );
+        return i != _fmgRegistry.end() ? i->second.get() : 0L;
     }
 };
 

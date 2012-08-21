@@ -114,6 +114,18 @@ KML_Placemark::build( const Config& conf, KMLContext& cx )
             {
                 ModelNode* node = new ModelNode( cx._mapNode, style, cx._dbOptions );
                 node->setPosition( position );
+
+                if ( cx._options->modelScale() != 1.0f )
+                {
+                    float s = *cx._options->modelScale();
+                    node->setScale( osg::Vec3f(s,s,s) );
+                }
+
+                if ( !cx._options->modelRotation()->zeroRotation() )
+                {
+                    node->setLocalRotation( *cx._options->modelRotation() );
+                }
+
                 modelNode = node;
             }
 

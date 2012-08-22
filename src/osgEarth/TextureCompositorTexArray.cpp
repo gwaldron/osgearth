@@ -48,11 +48,14 @@ namespace
         const TextureLayout::TextureSlotVector& slots = layout.getTextureSlots();
 
         buf << "#version 130 \n"
+            << "varying vec4 osg_FrontColor; \n"
+            << "varying vec4 osg_FrontSecondaryColor; \n"
+
             << "void osgearth_vert_setupColoring() \n"
             << "{ \n"
             << "    gl_TexCoord[0] = gl_MultiTexCoord0; \n"
-            << "    gl_FrontColor = gl_Color; \n"
-            << "    gl_FrontSecondaryColor = vec4(0.0); \n"
+            << "    osg_FrontColor = gl_Color; \n"
+            << "    osg_FrontSecondaryColor = vec4(0.0); \n"
             << "} \n";
 
         std::string str;
@@ -68,7 +71,9 @@ namespace
         std::stringstream buf;
 
         buf << "#version 130 \n"
-            << "#extension GL_EXT_gpu_shader4 : enable \n";
+            << "#extension GL_EXT_gpu_shader4 : enable \n"
+            << "varying vec4 osg_FrontColor; \n"
+            << "varying vec4 osg_FrontSecondaryColor; \n";
             
 
 		if ( numSlots <= 0 )
@@ -76,6 +81,7 @@ namespace
 			// No textures : create a no-op shader
 			buf << "void osgearth_frag_applyColoring( inout vec4 color ) \n"
 				<< "{ \n"
+                << "    color = osg_FrontColor; \n"
 				<< "} \n";
 		}
 		else

@@ -91,14 +91,9 @@ KMLReader::read( const Config& conf, const osgDB::Options* dbOptions )
         Decluttering::setEnabled( cx._options->iconAndLabelGroup()->getOrCreateStateSet(), true );
     }
 
-    const Config* top = 0L;
+    const Config* top = conf.hasChild("kml" ) ? conf.child_ptr("kml") : &conf;
 
-    if ( conf.hasChild("kml") )
-        top = &conf.child("kml");
-    else
-        top = &conf;
-
-    if ( !top->empty() )
+    if ( top && !top->empty() )
     {
         KML_Root kmlRoot;
         kmlRoot.scan ( *top, cx );    // first pass

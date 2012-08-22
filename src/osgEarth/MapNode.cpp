@@ -477,7 +477,7 @@ MapNode::onModelLayerAdded( ModelLayer* layer, unsigned int index )
     }
 
     // create the scene graph:
-    osg::Node* node = layer->getOrCreateNode();
+    osg::Node* node = layer->createSceneGraph( _map.get(), _map->getDBOptions(), 0L );
 
     layer->addCallback(_modelLayerCallback.get() );
 

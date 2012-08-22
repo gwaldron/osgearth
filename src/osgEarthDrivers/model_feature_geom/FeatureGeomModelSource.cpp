@@ -52,13 +52,13 @@ namespace
 
         const FeatureGeomModelOptions& getOptions() const { return _options; }
 
-        //override
-        void initialize( const osgDB::Options* dbOptions, const osgEarth::Map* map )
+    public: // FeatureModelSource
+
+        void initialize( const osgDB::Options* dbOptions )
         {
-            FeatureModelSource::initialize( dbOptions, map );
+            FeatureModelSource::initialize( dbOptions );
         }
 
-        //override
         FeatureNodeFactory* createFeatureNodeFactory()
         {
             return new GeomFeatureNodeFactory( _options.compilerOptions() );

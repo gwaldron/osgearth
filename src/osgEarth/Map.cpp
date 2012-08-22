@@ -688,8 +688,8 @@ Map::addModelLayer( ModelLayer* layer )
             newRevision = ++_dataModelRevision;
         }
 
-        //TODO: deprecate this in favor of URIContext..
-        layer->initialize( _dbOptions.get(), this ); //getReferenceURI(), this );        
+        // initialize the model layer
+        layer->initialize( _dbOptions.get() );
 
         // a seprate block b/c we don't need the mutex
         for( MapCallbackList::iterator i = _mapCallbacks.begin(); i != _mapCallbacks.end(); i++ )
@@ -712,8 +712,8 @@ Map::insertModelLayer( ModelLayer* layer, unsigned int index )
             newRevision = ++_dataModelRevision;
         }
 
-        //TODO: deprecate this in favor of URIContext..
-        layer->initialize( _dbOptions.get(), this ); //getReferenceURI(), this );        
+        // initialize the model layer
+        layer->initialize( _dbOptions.get() );
 
         // a seprate block b/c we don't need the mutex
         for( MapCallbackList::iterator i = _mapCallbacks.begin(); i != _mapCallbacks.end(); i++ )

@@ -561,7 +561,7 @@ MapNode::onModelLayerRemoved( ModelLayer* layer )
 void
 MapNode::onModelLayerMoved( ModelLayer* layer, unsigned int oldIndex, unsigned int newIndex )
 {
-		if ( layer )
+    if ( layer )
     {
         // look up the node associated with this model layer.
         ModelLayerNodeMap::iterator i = _modelLayerNodes.find( layer );
@@ -584,16 +584,19 @@ MapNode::onModelLayerMoved( ModelLayer* layer, unsigned int oldIndex, unsigned i
     }
 }
 
-struct MaskNodeFinder : public osg::NodeVisitor {
-    MaskNodeFinder() : osg::NodeVisitor( osg::NodeVisitor::TRAVERSE_ALL_CHILDREN ) { }
-    void apply( osg::Group& group ) {
-        if ( dynamic_cast<MaskNode*>( &group ) ) {
-            _groups.push_back( &group );
+namespace
+{
+    struct MaskNodeFinder : public osg::NodeVisitor {
+        MaskNodeFinder() : osg::NodeVisitor( osg::NodeVisitor::TRAVERSE_ALL_CHILDREN ) { }
+        void apply( osg::Group& group ) {
+            if ( dynamic_cast<MaskNode*>( &group ) ) {
+                _groups.push_back( &group );
+            }
+            traverse(group);
         }
-        traverse(group);
-    }
-    std::list< osg::Group* > _groups;
-};
+        std::list< osg::Group* > _groups;
+    };
+}
 
 void
 MapNode::addTerrainDecorator(osg::Group* decorator)

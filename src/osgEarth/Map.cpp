@@ -854,6 +854,70 @@ Map::removeTerrainMaskLayer( MaskLayer* layer )
     }
 }
 
+
+void
+Map::clear()
+{
+    ImageLayerVector     imageLayersRemoved;
+    ElevationLayerVector elevLayersRemoved;
+    ModelLayerVector     modelLayersRemoved;
+    MaskLayerVector      maskLayersRemoved;
+
+    Revision newRevision;
+    {
+        Threading::ScopedWriteLock lock( _mapDataMutex );
+
+        imageLayersRemoved.swap( _imageLayers );
+        elevLayersRemoved.swap ( _elevationLayers );
+        modelLayersRemoved.swap( _modelLayers );
+
+        // Because you cannot remove a mask layer once it's in place
+        //maskLayersRemoved.swap ( _terrainMaskLayers );
+
+        // calculate a new revision.
+        newRevision = ++_dataModelRevision;
+    }
+    
+    // a separate block b/c we don't need the mutex   
+    for( MapCallbackList::iterator i = _mapCallbacks.begin(); i != _mapCallbacks.end(); i++ )
+    {
+        for( ImageLayerVector::iterator k = imageLayersRemoved.begin(); k != imageLayersRemoved.end(); ++k )
+            i->get()->onMapModelChanged( MapModelChange(MapModelChange::REMOVE_IMAGE_LAYER, newRevision, k->get()) );
+        for( ElevationLayerVector::iterator k = elevLayersRemoved.begin(); k != elevLayersRemoved.end(); ++k )
+            i->get()->onMapModelChanged( MapModelChange(MapModelChange::REMOVE_ELEVATION_LAYER, newRevision, k->get()) );
+        for( ModelLayerVector::iterator k = modelLayersRemoved.begin(); k != modelLayersRemoved.end(); ++k )
+            i->get()->onMapModelChanged( MapModelChange(MapModelChange::REMOVE_MODEL_LAYER, newRevision, k->get()) );
+        //for( MaskLayerVector::iterator k = maskLayersRemoved.begin(); k != maskLayersRemoved.end(); ++k )
+        //    i->get()->onMapModelChanged( MapModelChange(MapModelChange::REMOVE_MASK_LAYER, newRevision, k->get()) );
+    }
+}
+
+
+void
+Map::setLayersFromMap( const Map* map )
+{
+    this->clear();
+
+    if ( map )
+    {
+        ImageLayerVector newImages;
+        map->getImageLayers( newImages );
+        for( ImageLayerVector::iterator i = newImages.begin(); i != newImages.end(); ++i )
+            addImageLayer( i->get() );
+
+        ElevationLayerVector newElev;
+        map->getElevationLayers( newElev );
+        for( ElevationLayerVector::iterator i = newElev.begin(); i != newElev.end(); ++i )
+            addElevationLayer( i->get() );
+
+        ModelLayerVector newModels;
+        map->getModelLayers( newModels );
+        for( ModelLayerVector::iterator i = newModels.begin(); i != newModels.end(); ++i )
+            addModelLayer( i->get() );
+    }
+}
+
+
 void
 Map::calculateProfile()
 {

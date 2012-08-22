@@ -84,14 +84,14 @@ ElevationQuery::getMaxLevel( double x, double y, const SpatialReference* srs, co
                     layerMax = j->getMaxLevel();
                 }
             }
+
+            //Need to convert the layer max of this TileSource to that of the actual profile
+            layerMax = profile->getEquivalentLOD( ts->getProfile(), layerMax );                    
         }
         else
         {
             layerMax = i->get()->getMaxDataLevel();
-        }
-
-        //Need to convert the layer max of this TileSource to that of the actual profile
-        layerMax = profile->getEquivalentLOD( ts->getProfile(), layerMax );                    
+        }        
 
         if ( i->get()->getTerrainLayerRuntimeOptions().maxLevel().isSet() )
             layerMax = std::min( layerMax, *i->get()->getTerrainLayerRuntimeOptions().maxLevel() );
@@ -122,13 +122,15 @@ ElevationQuery::getMaxLevel( double x, double y, const SpatialReference* srs, co
                     layerMax = j->getMaxLevel();
                 }
             }
+
+            //Need to convert the layer max of this TileSource to that of the actual profile
+            layerMax = profile->getEquivalentLOD( ts->getProfile(), layerMax );
         }
         else
         {
             layerMax = i->get()->getMaxDataLevel();
         }
-
-        layerMax = profile->getEquivalentLOD( ts->getProfile(), layerMax );
+        
         
         if ( i->get()->getTerrainLayerRuntimeOptions().maxLevel().isSet() )
             layerMax = std::min( layerMax, *i->get()->getTerrainLayerRuntimeOptions().maxLevel() );

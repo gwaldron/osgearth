@@ -44,7 +44,8 @@ using namespace osgEarth::Symbology;
 
 #undef USE_PROXY_NODE_FOR_TESTING
 
-#define OE_TEST OE_NULL
+//#define OE_TEST OE_NULL
+#define OE_TEST OE_NOTICE
 
 //---------------------------------------------------------------------------
 
@@ -645,11 +646,16 @@ FeatureModelGraph::buildLevel( const FeatureLevel& level, const GeoExtent& exten
 
     else
     {
-        // attempt to glean the style from the feature source name:
-        const Style style = *_session->styles()->getStyle( 
-            *_session->getFeatureSource()->getFeatureSourceOptions().name() );
+        Style defaultStyle;
 
-        osg::Node* node = build( style, query, extent, index );
+        if ( _session->styles()->selectors().size() == 0 )
+        {
+            // attempt to glean the style from the feature source name:
+            defaultStyle = *_session->styles()->getStyle( 
+                *_session->getFeatureSource()->getFeatureSourceOptions().name() );
+        }
+
+        osg::Node* node = build( defaultStyle, query, extent, index );
         if ( node )
             group->addChild( node );
     }
@@ -843,6 +849,8 @@ FeatureModelGraph::buildStyleGroups(const StyleSelector* selector,
                                     FeatureSourceIndex*  index,
                                     osg::Group*          parent)
 {
+    OE_TEST << LC << "buildStyleGroups: " << selector->name() << std::endl;
+
     // if the selector uses an expression to select the style name, then we must perform the
     // query and then SORT the features into style groups.
     if ( selector->styleExpression().isSet() )

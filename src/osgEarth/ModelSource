@@ -76,6 +76,7 @@ namespace osgEarth
         optional<bool> _overlay;
     };
 
+
     /**
      * A ModelSource is a plugin object that generates OSG nodes.
      */
@@ -88,9 +89,13 @@ namespace osgEarth
         virtual ~ModelSource() { }
 
         /**
-         * Subclass implements this method to create the mode node.
+         * Subclass implements this method to create a scene graph within the
+         * context of the provided Map.
          */
-        virtual osg::Node* createNode( ProgressCallback* progress =0L ) =0;
+        virtual osg::Node* createNode(
+            const Map*            map,
+            const osgDB::Options* dbOptions,
+            ProgressCallback*     progress ) =0;
 
         /**
          * Add a post processing opeation - this will be called on any node
@@ -110,6 +115,7 @@ namespace osgEarth
 
 
     public: // META_Object specialization
+        // these are neseccary to we can load ModelSource implementations as plugins
         virtual osg::Object* cloneType() const { return 0; } // cloneType() not appropriate
         virtual osg::Object* clone(const osg::CopyOp&) const { return 0; } // clone() not appropriate
         virtual bool isSameKindAs(const osg::Object* obj) const { return dynamic_cast<const ModelSource*>(obj)!=NULL; }
@@ -117,13 +123,12 @@ namespace osgEarth
         virtual const char* libraryName() const { return "osgEarth"; }
 
     public:
-        /** Initialize the NodeSource. */
-        virtual void initialize(
-            const osgDB::Options* dbOptions,
-            const Map*            map ) { }
 
-        const ModelSourceOptions& getOptions() const {
-            return _options; }
+        /** Perform any one-time initialization */
+        virtual void initialize( const osgDB::Options* dbOptions ) { }
+
+        /** Get the options used to create this model source */
+        const ModelSourceOptions& getOptions() const { return _options; }
 
     protected:
         /**

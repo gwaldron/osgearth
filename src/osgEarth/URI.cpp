@@ -334,13 +334,13 @@ namespace
 
     template<typename READ_FUNCTOR>
     ReadResult doRead(
-        const URI&            uri,
+        const URI&            inputURI,
         const osgDB::Options* dbOptions,
         ProgressCallback*     progress)
     {
         ReadResult result;
 
-        if ( uri.empty() )
+        if ( inputURI.empty() )
             return result;
 
         // establish our IO options:
@@ -348,7 +348,16 @@ namespace
 
         READ_FUNCTOR reader;
 
-        // first check if there's a URI cache in the options.
+        URI uri = inputURI;
+
+        // check if there's an alias map, and if so, attempt to resolve the alias:
+        URIAliasMap* aliasMap = URIAliasMap::from( localOptions );
+        if ( aliasMap )
+        {
+            uri = aliasMap->resolve(inputURI.full(), inputURI.context());
+        }
+
+        // check if there's a URI cache in the options.
         URIResultCache* memCache = URIResultCache::from( localOptions );
         if ( memCache )
         {
@@ -489,4 +498,76 @@ URI::readString(const osgDB::Options* dbOptions,
                 ProgressCallback*     progress ) const
 {
     return doRead<ReadString>( *this, dbOptions, progress );
+}
+
+
+//------------------------------------------------------------------------
+
+
+std::string
+URIAliasMap::resolve(const std::string& input, const URIContext& context) const
+{
+    for(const_iterator i = begin(); i != end(); ++i )
+    {
+        std::string source = context.getOSGPath(i->first);
+        std::string pattern = context.getOSGPath(input);
+        if ( ciEquals(source, pattern) )
+            return context.getOSGPath(i->second);
+    }
+    return input;
+}
+
+
+//------------------------------------------------------------------------
+
+
+URIAliasMapReadCallback::URIAliasMapReadCallback(const URIAliasMap& aliasMap,
+                                                 const URIContext&  context ) : 
+_aliasMap( aliasMap ), 
+_context ( context )
+{
+    //nop
+}
+
+osgDB::ReaderWriter::ReadResult
+URIAliasMapReadCallback::openArchive(const std::string& filename, osgDB::ReaderWriter::ArchiveStatus status, unsigned int indexBlockSizeHint, const osgDB::Options* useObjectCache)
+{
+    if (osgDB::Registry::instance()->getReadFileCallback()) return osgDB::Registry::instance()->getReadFileCallback()->openArchive(_aliasMap.resolve(filename,_context), status, indexBlockSizeHint, useObjectCache);
+    else return osgDB::Registry::instance()->openArchive(_aliasMap.resolve(filename,_context), status, indexBlockSizeHint, useObjectCache);
+}
+
+osgDB::ReaderWriter::ReadResult 
+URIAliasMapReadCallback::readObject(const std::string& filename, const osgDB::Options* options)
+{
+    if (osgDB::Registry::instance()->getReadFileCallback()) return osgDB::Registry::instance()->getReadFileCallback()->readObject(_aliasMap.resolve(filename,_context),options);
+    else return osgDB::Registry::instance()->readObjectImplementation(_aliasMap.resolve(filename,_context),options);
+}
+
+osgDB::ReaderWriter::ReadResult 
+URIAliasMapReadCallback::readImage(const std::string& filename, const osgDB::Options* options)
+{
+    OE_INFO << LC << "Map: " << filename << " to " << _aliasMap.resolve(filename,_context) << std::endl;
+    if (osgDB::Registry::instance()->getReadFileCallback()) return osgDB::Registry::instance()->getReadFileCallback()->readImage(_aliasMap.resolve(filename,_context),options);
+    else return osgDB::Registry::instance()->readImageImplementation(_aliasMap.resolve(filename,_context),options);
+}
+
+osgDB::ReaderWriter::ReadResult 
+URIAliasMapReadCallback::readHeightField(const std::string& filename, const osgDB::Options* options)
+{
+    if (osgDB::Registry::instance()->getReadFileCallback()) return osgDB::Registry::instance()->getReadFileCallback()->readHeightField(_aliasMap.resolve(filename,_context),options);
+    else return osgDB::Registry::instance()->readHeightFieldImplementation(_aliasMap.resolve(filename,_context),options);
+}
+
+osgDB::ReaderWriter::ReadResult 
+URIAliasMapReadCallback::readNode(const std::string& filename, const osgDB::Options* options)
+{
+    if (osgDB::Registry::instance()->getReadFileCallback()) return osgDB::Registry::instance()->getReadFileCallback()->readNode(_aliasMap.resolve(filename,_context),options);
+    else return osgDB::Registry::instance()->readNodeImplementation(_aliasMap.resolve(filename,_context),options);
+}
+
+osgDB::ReaderWriter::ReadResult 
+URIAliasMapReadCallback::readShader(const std::string& filename, const osgDB::Options* options)
+{
+    if (osgDB::Registry::instance()->getReadFileCallback()) return osgDB::Registry::instance()->getReadFileCallback()->readShader(_aliasMap.resolve(filename,_context),options);
+    else return osgDB::Registry::instance()->readShaderImplementation(_aliasMap.resolve(filename,_context),options);
 }

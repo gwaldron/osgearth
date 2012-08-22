@@ -426,6 +426,34 @@ ImageUtils::isEmptyImage(const osg::Image* image, float alphaThreshold)
 }
 
 bool
+ImageUtils::isSingleColorImage(const osg::Image* image, float threshold)
+{
+    PixelReader read(image);
+
+    osg::Vec4 referenceColor = read(0, 0);
+    float refR = referenceColor.r();
+    float refG = referenceColor.g();
+    float refB = referenceColor.b();
+    float refA = referenceColor.a();
+
+    for(unsigned t=0; t<(unsigned)image->t(); ++t) 
+    {
+        for(unsigned s=0; s<(unsigned)image->s(); ++s)
+        {
+            osg::Vec4 color = read(s, t);
+            if (   (fabs(color.r()-refR) > threshold)
+                || (fabs(color.g()-refG) > threshold)
+                || (fabs(color.b()-refB) > threshold)
+                || (fabs(color.a()-refA) > threshold) )
+            {
+                return false;
+            }
+        }
+    }
+    return true;    
+}
+
+bool
 ImageUtils::canConvert( const osg::Image* image, GLenum pixelFormat, GLenum dataType )
 {
     if ( !image ) return false;
@@ -479,29 +507,29 @@ ImageUtils::convertToRGBA8(const osg::Image* image)
 bool 
 ImageUtils::areEquivalent(const osg::Image *lhs, const osg::Image *rhs)
 {
-	if (lhs == rhs) return true;
+    if (lhs == rhs) return true;
 
-	if ((lhs->s() == rhs->s()) &&
-		(lhs->t() == rhs->t()) &&
-		(lhs->getInternalTextureFormat() == rhs->getInternalTextureFormat()) &&
-		(lhs->getPixelFormat() == rhs->getPixelFormat()) &&
-		(lhs->getDataType() == rhs->getDataType()) &&
-		(lhs->getPacking() == rhs->getPacking()) &&
-		(lhs->getImageSizeInBytes() == rhs->getImageSizeInBytes()))
-	{
-		unsigned int size = lhs->getImageSizeInBytes();
+    if ((lhs->s() == rhs->s()) &&
+        (lhs->t() == rhs->t()) &&
+        (lhs->getInternalTextureFormat() == rhs->getInternalTextureFormat()) &&
+        (lhs->getPixelFormat() == rhs->getPixelFormat()) &&
+        (lhs->getDataType() == rhs->getDataType()) &&
+        (lhs->getPacking() == rhs->getPacking()) &&
+        (lhs->getImageSizeInBytes() == rhs->getImageSizeInBytes()))
+    {
+        unsigned int size = lhs->getImageSizeInBytes();
         const unsigned char* ptr1 = lhs->data();
         const unsigned char* ptr2 = rhs->data();
-		for (unsigned int i = 0; i < size; ++i)
-		{
+        for (unsigned int i = 0; i < size; ++i)
+        {
             if ( *ptr1++ != *ptr2++ )
                 return false;
-		}
+        }
 
         return true;
-	}
+    }
 
-	return false;
+    return false;
 }
 
 bool

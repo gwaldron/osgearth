@@ -121,6 +121,8 @@ namespace osgEarth
 
         Config child( const std::string& key ) const;
 
+        const Config* child_ptr( const std::string& key ) const;
+
         Config* mutable_child( const std::string& key );
 
         void merge( const Config& rhs );

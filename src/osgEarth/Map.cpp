@@ -688,8 +688,8 @@ Map::addModelLayer( ModelLayer* layer )
             newRevision = ++_dataModelRevision;
         }
 
-        //TODO: deprecate this in favor of URIContext..
-        layer->initialize( _dbOptions.get(), this ); //getReferenceURI(), this );        
+        // initialize the model layer
+        layer->initialize( _dbOptions.get() );
 
         // a seprate block b/c we don't need the mutex
         for( MapCallbackList::iterator i = _mapCallbacks.begin(); i != _mapCallbacks.end(); i++ )
@@ -712,8 +712,8 @@ Map::insertModelLayer( ModelLayer* layer, unsigned int index )
             newRevision = ++_dataModelRevision;
         }
 
-        //TODO: deprecate this in favor of URIContext..
-        layer->initialize( _dbOptions.get(), this ); //getReferenceURI(), this );        
+        // initialize the model layer
+        layer->initialize( _dbOptions.get() );
 
         // a seprate block b/c we don't need the mutex
         for( MapCallbackList::iterator i = _mapCallbacks.begin(); i != _mapCallbacks.end(); i++ )
@@ -1317,18 +1317,24 @@ Map::sync( MapFrame& frame ) const
 //------------------------------------------------------------------------
 
 MapInfo::MapInfo( const Map* map ) :
-_profile( map->getProfile() ),
-_isGeocentric( map->isGeocentric() ),
-_isCube( map->getMapOptions().coordSysType() == MapOptions::CSTYPE_GEOCENTRIC_CUBE ),
-_elevationInterpolation( *map->getMapOptions().elevationInterpolation())
+_profile               ( 0L ),
+_isGeocentric          ( true ),
+_isCube                ( false ),
+_elevationInterpolation( INTERP_BILINEAR )
 { 
-    //nop
+    if ( map )
+    {
+        _profile = map->getProfile();
+        _isGeocentric = map->isGeocentric();
+        _isCube = map->getMapOptions().coordSysType() == MapOptions::CSTYPE_GEOCENTRIC_CUBE;
+        _elevationInterpolation = *map->getMapOptions().elevationInterpolation();
+    }
 }
 
 MapInfo::MapInfo( const MapInfo& rhs ) :
-_profile( rhs._profile ),
-_isGeocentric( rhs._isGeocentric ),
-_isCube( rhs._isCube ),
+_profile               ( rhs._profile ),
+_isGeocentric          ( rhs._isGeocentric ),
+_isCube                ( rhs._isCube ),
 _elevationInterpolation( rhs._elevationInterpolation )
 {
     //nop

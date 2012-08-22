@@ -847,7 +847,8 @@ HTTPClient::doDownload(const std::string& url, const std::string& filename)
     }
     else
     {
-        OE_WARN << LC << "Error downloading file " << filename << std::endl;
+        OE_WARN << LC << "Error downloading file " << filename
+            << " (" << response.getCode() << ")" << std::endl;
         return false;
     } 
 }

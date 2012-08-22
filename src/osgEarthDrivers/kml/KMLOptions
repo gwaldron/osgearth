@@ -60,8 +60,16 @@ namespace osgEarth { namespace Drivers
         osg::ref_ptr<osg::Group> iconAndLabelGroup() { return _iconAndLabelGroup; }
         const osg::ref_ptr<osg::Group> iconAndLabelGroup() const { return _iconAndLabelGroup; }
 
+        /** Default scale factor to apply to embedded 3D models */
+        optional<float>& modelScale() { return _modelScale; }
+        const optional<float>& modelScale() const { return _modelScale; }
+
+        /** Default rotation to apply to embedded 3D models */
+        optional<osg::Quat>& modelRotation() { return _modelRotation; }
+        const optional<osg::Quat>& modelRotation() const { return _modelRotation; }
+
     public:
-        KMLOptions() : _declutter( true ), _iconBaseScale( 1.0f ), _iconMaxSize(32) { }
+        KMLOptions() : _declutter( true ), _iconBaseScale( 1.0f ), _iconMaxSize(32), _modelScale(1.0f) { }
 
         virtual ~KMLOptions() { }
 
@@ -71,6 +79,8 @@ namespace osgEarth { namespace Drivers
         optional<bool>           _declutter;
         optional<float>          _iconBaseScale;
         optional<unsigned>       _iconMaxSize;
+        optional<float>          _modelScale;
+        optional<osg::Quat>      _modelRotation;
         osg::ref_ptr<osg::Group> _iconAndLabelGroup;
     };
 

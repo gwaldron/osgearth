@@ -185,10 +185,10 @@ public:
     
     
     //add model
-     unsigned int numObjects = 500;
+     unsigned int numObjects = 2;
     osg::Group* treeGroup = new osg::Group();
     root->addChild(treeGroup);
-    osg::Node* tree = osgDB::readNodeFile("./data/tree.osg");         
+    osg::Node* tree = osgDB::readNodeFile("./data/boxman.osg");         
     osg::MatrixTransform* mt = new osg::MatrixTransform();
     mt->setMatrix(osg::Matrixd::scale(1000,1000,1000));
     mt->addChild( tree );
@@ -214,8 +214,11 @@ public:
         mapNode->getTerrain()->addTerrainCallback( new ClampObjectLocatorCallback(locator) );        
     }    
     
-    manip->setHomeViewpoint(Viewpoint( "Mt Rainier",        osg::Vec3d(    centerLon,   centerLat, 0.0 ), 0.0, -90, 45000 ));
+    //manip->setHomeViewpoint(Viewpoint( "Mt Rainier",        osg::Vec3d(    centerLon,   centerLat, 0.0 ), 0.0, -90, 45000 ));
     
+    //attach a UpdateLightingUniformsHelper to the model
+    UpdateLightingUniformsHelper* updateLightInfo = new UpdateLightingUniformsHelper();
+    treeGroup->setCullCallback(updateLightInfo);
     
     osgUtil::GLES2ShaderGenVisitor shaderGen;
     treeGroup->accept(shaderGen);
@@ -227,8 +230,8 @@ public:
 {
     [super viewDidLoad];
     
-    osg::setNotifyLevel(osg::INFO);
-    //osgEarth::setNotifyLevel(osg::DEBUG_FP);
+    osg::setNotifyLevel(osg::DEBUG_FP);
+    osgEarth::setNotifyLevel(osg::DEBUG_FP);
 
     
     //get screen scale

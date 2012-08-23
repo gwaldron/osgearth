@@ -442,6 +442,13 @@ MapNode::getModelLayerGroup() const
     return _models.get();
 }
 
+osg::Node*
+MapNode::getModelLayerNode( ModelLayer* layer ) const
+{
+    ModelLayerNodeMap::const_iterator i = _modelLayerNodes.find( layer );
+    return i != _modelLayerNodes.end() ? i->second : 0L;
+}
+
 const MapNodeOptions&
 MapNode::getMapNodeOptions() const
 {

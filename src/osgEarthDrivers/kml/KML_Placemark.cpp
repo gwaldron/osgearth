@@ -118,6 +118,7 @@ KML_Placemark::build( const Config& conf, KMLContext& cx )
                             style.add( icon );
                     }
 
+                    // if there's a model, render that - models do NOT get labels.
                     if ( model )
                     {
                         ModelNode* node = new ModelNode( cx._mapNode, style, cx._dbOptions );
@@ -137,7 +138,7 @@ KML_Placemark::build( const Config& conf, KMLContext& cx )
                         modelNode = node;
                     }
 
-                    if ( !text && !name.empty() )
+                    else if ( !text && !name.empty() )
                     {
                         text = style.getOrCreate<TextSymbol>();
                         text->content()->setLiteral( name );
@@ -148,8 +149,9 @@ KML_Placemark::build( const Config& conf, KMLContext& cx )
                         iconNode = new PlaceNode( cx._mapNode, position, style, cx._dbOptions );
                     }
 
-                    else if ( text && !name.empty() )
+                    else if ( !model && text && !name.empty() )
                     {
+                        // note: models do not get labels.
                         iconNode = new LabelNode( cx._mapNode, position, style );
                     }
                 }

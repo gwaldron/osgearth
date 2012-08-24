@@ -21,12 +21,16 @@
 #include <osgEarthAnnotation/AnnotationRegistry>
 #include <osgEarthSymbology/Style>
 #include <osgEarthSymbology/InstanceSymbol>
+#include <osgEarth/Registry>
 
 #define LC "[ModelNode] "
 
 using namespace osgEarth;
 using namespace osgEarth::Annotation;
 using namespace osgEarth::Symbology;
+
+
+//------------------------------------------------------------------------
 
 
 ModelNode::ModelNode(MapNode*              mapNode,
@@ -58,7 +62,20 @@ ModelNode::init(const osgDB::Options* dbOptions)
         if ( sym->url().isSet() )
         {
             URI uri( sym->url()->eval(), sym->url()->uriContext() );
-            osg::Node* node = uri.getNode( dbOptions );
+            osg::Node* node = 0L;
+            
+            if ( sym->uriAliasMap()->empty() )
+            {
+                node = uri.getNode( dbOptions );
+            }
+            else
+            {
+                // install an alias map if there's one in the symbology.
+                osg::ref_ptr<osgDB::Options> tempOptions = Registry::instance()->cloneOrCreateOptions(dbOptions);
+                tempOptions->setReadFileCallback( new URIAliasMapReadCallback(*sym->uriAliasMap(), uri.full()) );
+                node = uri.getNode( tempOptions.get() );
+            }
+
             if ( node )
             {
                 getTransform()->addChild( node );

@@ -52,7 +52,7 @@ namespace
         buf << "#version " << GLSL_VERSION_STR << "\n";
 
         buf << "varying vec4 osg_FrontColor;\n"
-        << "varying vec4 osg_FrontSecondaryColor;\n";
+            << "varying vec4 osg_FrontSecondaryColor;\n";
 
         if ( slots.size() > 0 )
         {
@@ -129,8 +129,7 @@ namespace
             << "uniform bool  osgearth_ImageLayerVisible[" << MAX_IMAGE_LAYERS << "]; \n"
             << "uniform float osgearth_ImageLayerRange[" << 2 * maxSlots << "]; \n"
             << "uniform float osgearth_ImageLayerAttenuation; \n"
-            << "uniform float osgearth_CameraElevation; \n"
-            << "varying float osgearth_CameraRange; \n";
+            << "uniform float osgearth_CameraElevation; \n";
 
         const TextureLayout::TextureSlotVector& slots = layout.getTextureSlots();
 

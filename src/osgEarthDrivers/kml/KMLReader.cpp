@@ -91,13 +91,14 @@ KMLReader::read( const Config& conf, const osgDB::Options* dbOptions )
         Decluttering::setEnabled( cx._options->iconAndLabelGroup()->getOrCreateStateSet(), true );
     }
 
-    const Config& kml = conf.child("kml");
-    if ( !kml.empty() )
+    const Config* top = conf.hasChild("kml" ) ? conf.child_ptr("kml") : &conf;
+
+    if ( top && !top->empty() )
     {
         KML_Root kmlRoot;
-        kmlRoot.scan( kml, cx );    // first pass
-        kmlRoot.scan2( kml, cx );   // second pass
-        kmlRoot.build( kml, cx );   // third pass.
+        kmlRoot.scan ( *top, cx );    // first pass
+        kmlRoot.scan2( *top, cx );   // second pass
+        kmlRoot.build( *top, cx );   // third pass.
     }
 
     URIResultCache* cacheUsed = URIResultCache::from(cx._dbOptions.get());

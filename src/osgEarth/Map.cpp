@@ -688,8 +688,8 @@ Map::addModelLayer( ModelLayer* layer )
             newRevision = ++_dataModelRevision;
         }
 
-        //TODO: deprecate this in favor of URIContext..
-        layer->initialize( _dbOptions.get(), this ); //getReferenceURI(), this );        
+        // initialize the model layer
+        layer->initialize( _dbOptions.get() );
 
         // a seprate block b/c we don't need the mutex
         for( MapCallbackList::iterator i = _mapCallbacks.begin(); i != _mapCallbacks.end(); i++ )
@@ -712,8 +712,8 @@ Map::insertModelLayer( ModelLayer* layer, unsigned int index )
             newRevision = ++_dataModelRevision;
         }
 
-        //TODO: deprecate this in favor of URIContext..
-        layer->initialize( _dbOptions.get(), this ); //getReferenceURI(), this );        
+        // initialize the model layer
+        layer->initialize( _dbOptions.get() );
 
         // a seprate block b/c we don't need the mutex
         for( MapCallbackList::iterator i = _mapCallbacks.begin(); i != _mapCallbacks.end(); i++ )
@@ -853,6 +853,70 @@ Map::removeTerrainMaskLayer( MaskLayer* layer )
         }   
     }
 }
+
+
+void
+Map::clear()
+{
+    ImageLayerVector     imageLayersRemoved;
+    ElevationLayerVector elevLayersRemoved;
+    ModelLayerVector     modelLayersRemoved;
+    MaskLayerVector      maskLayersRemoved;
+
+    Revision newRevision;
+    {
+        Threading::ScopedWriteLock lock( _mapDataMutex );
+
+        imageLayersRemoved.swap( _imageLayers );
+        elevLayersRemoved.swap ( _elevationLayers );
+        modelLayersRemoved.swap( _modelLayers );
+
+        // Because you cannot remove a mask layer once it's in place
+        //maskLayersRemoved.swap ( _terrainMaskLayers );
+
+        // calculate a new revision.
+        newRevision = ++_dataModelRevision;
+    }
+    
+    // a separate block b/c we don't need the mutex   
+    for( MapCallbackList::iterator i = _mapCallbacks.begin(); i != _mapCallbacks.end(); i++ )
+    {
+        for( ImageLayerVector::iterator k = imageLayersRemoved.begin(); k != imageLayersRemoved.end(); ++k )
+            i->get()->onMapModelChanged( MapModelChange(MapModelChange::REMOVE_IMAGE_LAYER, newRevision, k->get()) );
+        for( ElevationLayerVector::iterator k = elevLayersRemoved.begin(); k != elevLayersRemoved.end(); ++k )
+            i->get()->onMapModelChanged( MapModelChange(MapModelChange::REMOVE_ELEVATION_LAYER, newRevision, k->get()) );
+        for( ModelLayerVector::iterator k = modelLayersRemoved.begin(); k != modelLayersRemoved.end(); ++k )
+            i->get()->onMapModelChanged( MapModelChange(MapModelChange::REMOVE_MODEL_LAYER, newRevision, k->get()) );
+        //for( MaskLayerVector::iterator k = maskLayersRemoved.begin(); k != maskLayersRemoved.end(); ++k )
+        //    i->get()->onMapModelChanged( MapModelChange(MapModelChange::REMOVE_MASK_LAYER, newRevision, k->get()) );
+    }
+}
+
+
+void
+Map::setLayersFromMap( const Map* map )
+{
+    this->clear();
+
+    if ( map )
+    {
+        ImageLayerVector newImages;
+        map->getImageLayers( newImages );
+        for( ImageLayerVector::iterator i = newImages.begin(); i != newImages.end(); ++i )
+            addImageLayer( i->get() );
+
+        ElevationLayerVector newElev;
+        map->getElevationLayers( newElev );
+        for( ElevationLayerVector::iterator i = newElev.begin(); i != newElev.end(); ++i )
+            addElevationLayer( i->get() );
+
+        ModelLayerVector newModels;
+        map->getModelLayers( newModels );
+        for( ModelLayerVector::iterator i = newModels.begin(); i != newModels.end(); ++i )
+            addModelLayer( i->get() );
+    }
+}
+
 
 void
 Map::calculateProfile()
@@ -1317,18 +1381,24 @@ Map::sync( MapFrame& frame ) const
 //------------------------------------------------------------------------
 
 MapInfo::MapInfo( const Map* map ) :
-_profile( map->getProfile() ),
-_isGeocentric( map->isGeocentric() ),
-_isCube( map->getMapOptions().coordSysType() == MapOptions::CSTYPE_GEOCENTRIC_CUBE ),
-_elevationInterpolation( *map->getMapOptions().elevationInterpolation())
+_profile               ( 0L ),
+_isGeocentric          ( true ),
+_isCube                ( false ),
+_elevationInterpolation( INTERP_BILINEAR )
 { 
-    //nop
+    if ( map )
+    {
+        _profile = map->getProfile();
+        _isGeocentric = map->isGeocentric();
+        _isCube = map->getMapOptions().coordSysType() == MapOptions::CSTYPE_GEOCENTRIC_CUBE;
+        _elevationInterpolation = *map->getMapOptions().elevationInterpolation();
+    }
 }
 
 MapInfo::MapInfo( const MapInfo& rhs ) :
-_profile( rhs._profile ),
-_isGeocentric( rhs._isGeocentric ),
-_isCube( rhs._isCube ),
+_profile               ( rhs._profile ),
+_isGeocentric          ( rhs._isGeocentric ),
+_isCube                ( rhs._isCube ),
 _elevationInterpolation( rhs._elevationInterpolation )
 {
     //nop

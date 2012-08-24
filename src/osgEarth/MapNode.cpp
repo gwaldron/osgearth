@@ -442,6 +442,13 @@ MapNode::getModelLayerGroup() const
     return _models.get();
 }
 
+osg::Node*
+MapNode::getModelLayerNode( ModelLayer* layer ) const
+{
+    ModelLayerNodeMap::const_iterator i = _modelLayerNodes.find( layer );
+    return i != _modelLayerNodes.end() ? i->second : 0L;
+}
+
 const MapNodeOptions&
 MapNode::getMapNodeOptions() const
 {
@@ -477,7 +484,7 @@ MapNode::onModelLayerAdded( ModelLayer* layer, unsigned int index )
     }
 
     // create the scene graph:
-    osg::Node* node = layer->getOrCreateNode();
+    osg::Node* node = layer->createSceneGraph( _map.get(), _map->getDBOptions(), 0L );
 
     layer->addCallback(_modelLayerCallback.get() );
 
@@ -561,7 +568,7 @@ MapNode::onModelLayerRemoved( ModelLayer* layer )
 void
 MapNode::onModelLayerMoved( ModelLayer* layer, unsigned int oldIndex, unsigned int newIndex )
 {
-		if ( layer )
+    if ( layer )
     {
         // look up the node associated with this model layer.
         ModelLayerNodeMap::iterator i = _modelLayerNodes.find( layer );
@@ -584,16 +591,19 @@ MapNode::onModelLayerMoved( ModelLayer* layer, unsigned int oldIndex, unsigned i
     }
 }
 
-struct MaskNodeFinder : public osg::NodeVisitor {
-    MaskNodeFinder() : osg::NodeVisitor( osg::NodeVisitor::TRAVERSE_ALL_CHILDREN ) { }
-    void apply( osg::Group& group ) {
-        if ( dynamic_cast<MaskNode*>( &group ) ) {
-            _groups.push_back( &group );
+namespace
+{
+    struct MaskNodeFinder : public osg::NodeVisitor {
+        MaskNodeFinder() : osg::NodeVisitor( osg::NodeVisitor::TRAVERSE_ALL_CHILDREN ) { }
+        void apply( osg::Group& group ) {
+            if ( dynamic_cast<MaskNode*>( &group ) ) {
+                _groups.push_back( &group );
+            }
+            traverse(group);
         }
-        traverse(group);
-    }
-    std::list< osg::Group* > _groups;
-};
+        std::list< osg::Group* > _groups;
+    };
+}
 
 void
 MapNode::addTerrainDecorator(osg::Group* decorator)

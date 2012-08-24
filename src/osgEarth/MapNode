@@ -121,6 +121,11 @@ namespace osgEarth
         osg::Group* getModelLayerGroup() const;
 
         /**
+         * Accesses the root node for a specific ModelLayer.
+         */
+        osg::Node* getModelLayerNode( ModelLayer* layer ) const;
+
+        /**
          * Adds a node that decorates the terrain groups
          */
         void addTerrainDecorator( osg::Group* decorator );

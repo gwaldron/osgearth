@@ -302,6 +302,17 @@ namespace osgEarth
          */
         void removeTerrainMaskLayer( MaskLayer* layer );
 
+        /**
+         * Clear all layers from this map.
+         */
+        void clear();
+
+        /**
+         * Replaces the layers in this Map with layers from the specified Map
+         * (except for terrain mask layers)
+         */
+        void setLayersFromMap( const Map* map );
+
     public:
         /**
          * Gets the user-provided options structure stored in this map.

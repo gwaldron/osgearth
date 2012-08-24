@@ -73,6 +73,16 @@ Config::child( const std::string& childName ) const
     return emptyConf;
 }
 
+const Config*
+Config::child_ptr( const std::string& childName ) const
+{
+    for( ConfigSet::const_iterator i = _children.begin(); i != _children.end(); i++ ) {
+        if ( i->key() == childName )
+            return &(*i);
+    }
+    return 0L;
+}
+
 Config*
 Config::mutable_child( const std::string& childName )
 {

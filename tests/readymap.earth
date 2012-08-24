@@ -21,7 +21,4 @@ http://readymap.org
         <url>http://readymap.org/readymap/tiles/1.0.0/9/</url>
     </elevation>
     
-    <options>
-        <terrain lighting="false" sample_ratio="1.0"/>
-    </options>
 </map>

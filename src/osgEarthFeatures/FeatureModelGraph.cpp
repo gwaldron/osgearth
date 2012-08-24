@@ -44,7 +44,8 @@ using namespace osgEarth::Symbology;
 
 #undef USE_PROXY_NODE_FOR_TESTING
 
-#define OE_TEST OE_NULL
+//#define OE_TEST OE_NULL
+#define OE_TEST OE_NOTICE
 
 //---------------------------------------------------------------------------
 
@@ -54,7 +55,8 @@ namespace
 {
     UID                               _uid         = 0;
     Threading::ReadWriteMutex         _fmgMutex;
-    std::map<UID, FeatureModelGraph*> _fmgRegistry;
+    typedef std::map<UID, osg::observer_ptr<FeatureModelGraph> > FMGRegistry;
+    FMGRegistry _fmgRegistry;
 
     static std::string s_makeURI( UID uid, unsigned lod, unsigned x, unsigned y ) 
     {
@@ -144,8 +146,8 @@ struct osgEarthFeatureModelPseudoLoader : public osgDB::ReaderWriter
     static FeatureModelGraph* getGraph( UID uid ) 
     {
         Threading::ScopedReadLock lock( _fmgMutex );
-        std::map<UID, FeatureModelGraph*>::const_iterator i = _fmgRegistry.find( uid );
-        return i != _fmgRegistry.end() ? i->second : 0L;
+        FMGRegistry::const_iterator i = _fmgRegistry.find( uid );
+        return i != _fmgRegistry.end() ? i->second.get() : 0L;
     }
 };
 
@@ -644,11 +646,16 @@ FeatureModelGraph::buildLevel( const FeatureLevel& level, const GeoExtent& exten
 
     else
     {
-        // attempt to glean the style from the feature source name:
-        const Style style = *_session->styles()->getStyle( 
-            *_session->getFeatureSource()->getFeatureSourceOptions().name() );
+        Style defaultStyle;
 
-        osg::Node* node = build( style, query, extent, index );
+        if ( _session->styles()->selectors().size() == 0 )
+        {
+            // attempt to glean the style from the feature source name:
+            defaultStyle = *_session->styles()->getStyle( 
+                *_session->getFeatureSource()->getFeatureSourceOptions().name() );
+        }
+
+        osg::Node* node = build( defaultStyle, query, extent, index );
         if ( node )
             group->addChild( node );
     }
@@ -842,6 +849,8 @@ FeatureModelGraph::buildStyleGroups(const StyleSelector* selector,
                                     FeatureSourceIndex*  index,
                                     osg::Group*          parent)
 {
+    OE_TEST << LC << "buildStyleGroups: " << selector->name() << std::endl;
+
     // if the selector uses an expression to select the style name, then we must perform the
     // query and then SORT the features into style groups.
     if ( selector->styleExpression().isSet() )

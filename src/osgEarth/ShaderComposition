@@ -149,6 +149,8 @@ namespace osgEarth
     public:
         static const osg::StateAttribute::Type SA_TYPE;
 
+        typedef osg::Program::AttribBindingList AttribBindingList;
+
     public:
         /**
          * Adds a shader function to the program.
@@ -239,20 +241,20 @@ namespace osgEarth
          */
         void removeShader( const std::string& shaderID );
 
+        /** Add an attribute location binding. */
+        void addBindAttribLocation( const std::string& name, GLuint index );
+
+        /** Remove an attribute location binding. */
+        void removeBindAttribLocation( const std::string& name );
+
+        /** Gets a reference to the attribute bindings. */
+        const AttribBindingList& getAttribBindingList() const { return _attribBindingList; }
+
     public:
         typedef std::vector< osg::ref_ptr<osg::Shader> > ShaderVector;
 
     protected:
-        //struct ShaderEntry : public std::pair< osg::ref_ptr<osg::Shader>, osg::StateAttribute::OverrideValue >
-        //{
-        //    ShaderEntry()
-        //        : std::pair< osg::ref_ptr<osg::Shader>, osg::StateAttribute::OverrideValue >((osg::Shader*)0L, 1) { }
-        //    ShaderEntry(osg::Shader* shader, osg::StateAttribute::OverrideValue ov)
-        //        : std::pair< osg::ref_ptr<osg::Shader>, osg::StateAttribute::OverrideValue >(shader, ov) { }
-        //    bool operator == (const ShaderEntry& rhs) const {
-        //        return first->compare( *rhs.first.get() ) == 0;
-        //    }
-        //};
+
         typedef std::pair< osg::ref_ptr<osg::Shader>, osg::StateAttribute::OverrideValue > ShaderEntry;
         typedef std::map< std::string, ShaderEntry > ShaderMap;
         typedef std::map< ShaderVector, osg::ref_ptr<osg::Program> >        ProgramMap;
@@ -260,6 +262,7 @@ namespace osgEarth
         ProgramMap                   _programCache;
         ShaderMap                    _shaderMap;
         unsigned int                 _mask;
+        AttribBindingList            _attribBindingList;
 
         ShaderComp::FunctionLocationMap _functions;
         ShaderComp::FunctionLocationMap _accumulatedFunctions;
@@ -271,8 +274,8 @@ namespace osgEarth
         bool hasLocalFunctions() const;
         void refreshAccumulatedFunctions( const osg::State& state );
         void addToAccumulatedMap(ShaderMap& accumShaderMap, const std::string& shaderID, const ShaderEntry& newEntry) const;
-        osg::Program* buildProgram( osg::State& state, ShaderMap& accumShaderMap );
-
+        osg::Program* buildProgram( osg::State& state, ShaderMap& accumShaderMap, AttribBindingList& bindings );
+        void addShadersToProgram(const ShaderVector& shaders, const AttribBindingList& attribBindings, osg::Program* program );
 
     public:
         void getFunctions( ShaderComp::FunctionLocationMap& out ) const;

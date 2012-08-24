@@ -160,6 +160,7 @@ namespace
         osg::Geometry*                surface;
         osg::Vec3Array*               surfaceVerts;
         osg::Vec3Array*               normals;
+        osg::Vec4Array*               surfaceElevData;
         unsigned                      numVerticesInSurface;
         osg::Vec2Array*               unifiedSurfaceTexCoords;
         osg::ref_ptr<osg::FloatArray> elevations;
@@ -331,6 +332,14 @@ namespace
         (*colors)[0].set(1.0f,1.0f,1.0f,1.0f);
         d.surface->setColorArray( colors );
         d.surface->setColorBinding( osg::Geometry::BIND_OVERALL );
+
+        // elevation attribution
+        // for each vertex, a vec4 containing a unit extrusion vector in [0..2] and the raw elevation in [3]
+        d.surfaceElevData = new osg::Vec4Array();
+        d.surfaceElevData->reserve( d.numVerticesInSurface );
+        d.surface->setVertexAttribArray( osg::Drawable::ATTRIBUTE_6, d.surfaceElevData );
+        d.surface->setVertexAttribBinding( osg::Drawable::ATTRIBUTE_6, osg::Geometry::BIND_PER_VERTEX );
+        d.surface->setVertexAttribNormalize( osg::Drawable::ATTRIBUTE_6, false );
         
         // temporary data structures for triangulation support
         d.elevations = new osg::FloatArray();
@@ -501,9 +510,22 @@ namespace
 
                 bool validValue = true;
 
+                // use the sampling factor to determine the lookup index:
+                unsigned i_equiv = d.i_sampleFactor==1.0 ? i : (unsigned) (double(i)*d.i_sampleFactor);
+                unsigned j_equiv = d.j_sampleFactor==1.0 ? j : (unsigned) (double(j)*d.j_sampleFactor);
+
+                // raw height:
+                float heightValue = 0.0f;
+
+                if ( elevationLayer )
+                {
+                    validValue = elevationLayer->getValidValue(i_equiv,j_equiv, heightValue);
+                    ndc.z() = heightValue; //*scaleHeight; // scaling will be done in the shader
+                }
+
                 // First check whether the sampling point falls within a mask's bounding box.
                 // If so, skip the sampling and mark it as a mask location
-                if ( d.maskRecords.size() > 0 )
+                if ( validValue && d.maskRecords.size() > 0 )
                 {
                     for (MaskRecordVector::iterator mr = d.maskRecords.begin(); mr != d.maskRecords.end(); ++mr)
                     {
@@ -518,17 +540,6 @@ namespace
                             break;
                         }
                     }
-                }
-
-                if ( validValue && elevationLayer )
-                {
-                    // use the sampling factor to determine the lookup index:
-                    unsigned i_equiv = d.i_sampleFactor==1.0 ? i : (unsigned) (double(i)*d.i_sampleFactor);
-                    unsigned j_equiv = d.j_sampleFactor==1.0 ? j : (unsigned) (double(j)*d.j_sampleFactor);
-
-                    float value = 0.0f;
-                    validValue = elevationLayer->getValidValue(i_equiv, j_equiv, value);
-                    ndc.z() = value * d.scaleHeight;
                 }
                 
                 if ( validValue )
@@ -583,6 +594,9 @@ namespace
 
                     //(*normals)[k] = model_one;
                     (*d.normals).push_back(model_one);
+
+                    // store the unit extrusion vector and the raw height value.
+                    (*d.surfaceElevData).push_back( osg::Vec4f(model_one.x(), model_one.y(), model_one.z(), heightValue) );
                 }
             }
         }
@@ -962,9 +976,11 @@ namespace
         // build the verts first:
         osg::Vec3Array* skirtVerts = new osg::Vec3Array();
         osg::Vec3Array* skirtNormals = new osg::Vec3Array();
+        osg::Vec4Array* skirtElevData = new osg::Vec4Array();
 
         skirtVerts->reserve( d.numVerticesInSkirt );
         skirtNormals->reserve( d.numVerticesInSkirt );
+        skirtElevData->reserve( d.numVerticesInSkirt );
 
         Indices skirtBreaks;
         skirtBreaks.reserve( d.numVerticesInSkirt );
@@ -982,11 +998,17 @@ namespace
             }
             else
             {
-                skirtVerts->push_back( (*d.surfaceVerts)[orig_i] );
-                skirtVerts->push_back( (*d.surfaceVerts)[orig_i] - ((*skirtVectors)[orig_i])*skirtHeight );
-                skirtNormals->push_back( (*d.normals)[orig_i] );
-                skirtNormals->push_back( (*d.normals)[orig_i] );
+                const osg::Vec3f& surfaceVert = (*d.surfaceVerts)[orig_i];
+                skirtVerts->push_back( surfaceVert );
+                skirtVerts->push_back( surfaceVert - ((*skirtVectors)[orig_i])*skirtHeight );
 
+                const osg::Vec3f& surfaceNormal = (*d.normals)[orig_i];
+                skirtNormals->push_back( surfaceNormal );
+                skirtNormals->push_back( surfaceNormal );
+
+                const osg::Vec4f& elevData = (*d.surfaceElevData)[orig_i];
+                skirtElevData->push_back( elevData );
+                skirtElevData->push_back( elevData - osg::Vec4f(0,0,0,skirtHeight) );
 
                 if ( compositor->requiresUnitTextureSpace() )
                 {
@@ -1019,10 +1041,17 @@ namespace
             }
             else
             {
-                skirtVerts->push_back( (*d.surfaceVerts)[orig_i] );
-                skirtVerts->push_back( (*d.surfaceVerts)[orig_i] - ((*skirtVectors)[orig_i])*skirtHeight );
-                skirtNormals->push_back( (*d.normals)[orig_i] );             
-                skirtNormals->push_back( (*d.normals)[orig_i] );             
+                const osg::Vec3f& surfaceVert = (*d.surfaceVerts)[orig_i];
+                skirtVerts->push_back( surfaceVert );
+                skirtVerts->push_back( surfaceVert - ((*skirtVectors)[orig_i])*skirtHeight );
+
+                const osg::Vec3f& surfaceNormal = (*d.normals)[orig_i];
+                skirtNormals->push_back( surfaceNormal );
+                skirtNormals->push_back( surfaceNormal );
+
+                const osg::Vec4f& elevData = (*d.surfaceElevData)[orig_i];
+                skirtElevData->push_back( elevData );
+                skirtElevData->push_back( elevData - osg::Vec4f(0,0,0,skirtHeight) );
 
                 if ( compositor->requiresUnitTextureSpace() )
                 {
@@ -1055,10 +1084,17 @@ namespace
             }
             else
             {
-                skirtVerts->push_back( (*d.surfaceVerts)[orig_i] );
-                skirtVerts->push_back( (*d.surfaceVerts)[orig_i] - ((*skirtVectors)[orig_i])*skirtHeight );
-                skirtNormals->push_back( (*d.normals)[orig_i] );             
-                skirtNormals->push_back( (*d.normals)[orig_i] );             
+                const osg::Vec3f& surfaceVert = (*d.surfaceVerts)[orig_i];
+                skirtVerts->push_back( surfaceVert );
+                skirtVerts->push_back( surfaceVert - ((*skirtVectors)[orig_i])*skirtHeight );
+
+                const osg::Vec3f& surfaceNormal = (*d.normals)[orig_i];
+                skirtNormals->push_back( surfaceNormal );
+                skirtNormals->push_back( surfaceNormal );
+
+                const osg::Vec4f& elevData = (*d.surfaceElevData)[orig_i];
+                skirtElevData->push_back( elevData );
+                skirtElevData->push_back( elevData - osg::Vec4f(0,0,0,skirtHeight) );
 
                 if ( compositor->requiresUnitTextureSpace() )
                 {
@@ -1091,10 +1127,17 @@ namespace
             }
             else
             {
-                skirtVerts->push_back( (*d.surfaceVerts)[orig_i] );
-                skirtVerts->push_back( (*d.surfaceVerts)[orig_i] - ((*skirtVectors)[orig_i])*skirtHeight );
-                skirtNormals->push_back( (*d.normals)[orig_i] );
-                skirtNormals->push_back( (*d.normals)[orig_i] );
+                const osg::Vec3f& surfaceVert = (*d.surfaceVerts)[orig_i];
+                skirtVerts->push_back( surfaceVert );
+                skirtVerts->push_back( surfaceVert - ((*skirtVectors)[orig_i])*skirtHeight );
+
+                const osg::Vec3f& surfaceNormal = (*d.normals)[orig_i];
+                skirtNormals->push_back( surfaceNormal );
+                skirtNormals->push_back( surfaceNormal );
+
+                const osg::Vec4f& elevData = (*d.surfaceElevData)[orig_i];
+                skirtElevData->push_back( elevData );
+                skirtElevData->push_back( elevData - osg::Vec4f(0,0,0,skirtHeight) );
 
                 if ( compositor->requiresUnitTextureSpace() )
                 {
@@ -1122,6 +1165,10 @@ namespace
 
         d.skirt->setNormalArray( skirtNormals );
         d.skirt->setNormalBinding( osg::Geometry::BIND_PER_VERTEX );
+
+        d.skirt->setVertexAttribArray    (osg::Drawable::ATTRIBUTE_6, skirtElevData );
+        d.skirt->setVertexAttribBinding  (osg::Drawable::ATTRIBUTE_6, osg::Geometry::BIND_PER_VERTEX);
+        d.skirt->setVertexAttribNormalize(osg::Drawable::ATTRIBUTE_6, false);
 
 
         // GW: not sure why this break stuff is here...?

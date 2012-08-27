@@ -119,6 +119,10 @@ _inherit( true )
     {
         s_dumpShaders = true;
     }
+
+    // a template object to hold program data (so we don't have to dupliate all the 
+    // osg::Program methods..)
+    _template = new osg::Program();
 }
 
 
@@ -476,6 +480,19 @@ VirtualProgram::addShadersToProgram(const ShaderVector&      shaders,
 }
 
 
+void
+VirtualProgram::addTemplateDataToProgram( osg::Program* program )
+{
+    const osg::Program::FragDataBindingList& fbl = _template->getFragDataBindingList();
+    for( osg::Program::FragDataBindingList::const_iterator i = fbl.begin(); i != fbl.end(); ++i )
+        program->addBindFragDataLocation( i->first, i->second );
+
+    const osg::Program::UniformBlockBindingList& ubl = _template->getUniformBlockBindingList();
+    for( osg::Program::UniformBlockBindingList::const_iterator i = ubl.begin(); i != ubl.end(); ++i )
+        program->addBindUniformBlock( i->first, i->second );
+}
+
+
 osg::Program*
 VirtualProgram::buildProgram(osg::State&        state, 
                              ShaderMap&         accumShaderMap,
@@ -514,6 +531,7 @@ VirtualProgram::buildProgram(osg::State&        state,
     osg::Program* program = new osg::Program();
     program->setName(getName());
     addShadersToProgram( vec, accumAttribBindings, program );
+    addTemplateDataToProgram( program );
 
 
     // Since we replaced the "mains", we have to go through the cache and update all its
@@ -542,6 +560,7 @@ VirtualProgram::buildProgram(osg::State&        state,
             osg::Program* newProgram = new osg::Program();
             newProgram->setName( m->second->getName() );
             addShadersToProgram( original, m->second->getAttribBindingList(), newProgram );
+            addTemplateDataToProgram( newProgram );
 
 #if 0
             osg::Program* p = m->second.get();

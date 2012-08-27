@@ -250,6 +250,9 @@ namespace osgEarth
         /** Gets a reference to the attribute bindings. */
         const AttribBindingList& getAttribBindingList() const { return _attribBindingList; }
 
+        /** Access to the property template. */
+        osg::Program* getTemplate() { return _template.get(); }
+
     public:
         typedef std::vector< osg::ref_ptr<osg::Shader> > ShaderVector;
 
@@ -258,6 +261,8 @@ namespace osgEarth
         typedef std::pair< osg::ref_ptr<osg::Shader>, osg::StateAttribute::OverrideValue > ShaderEntry;
         typedef std::map< std::string, ShaderEntry > ShaderMap;
         typedef std::map< ShaderVector, osg::ref_ptr<osg::Program> >        ProgramMap;
+
+        osg::ref_ptr<osg::Program>   _template;
 
         ProgramMap                   _programCache;
         ShaderMap                    _shaderMap;
@@ -276,6 +281,7 @@ namespace osgEarth
         void addToAccumulatedMap(ShaderMap& accumShaderMap, const std::string& shaderID, const ShaderEntry& newEntry) const;
         osg::Program* buildProgram( osg::State& state, ShaderMap& accumShaderMap, AttribBindingList& bindings );
         void addShadersToProgram(const ShaderVector& shaders, const AttribBindingList& attribBindings, osg::Program* program );
+        void addTemplateDataToProgram(osg::Program* program );
 
     public:
         void getFunctions( ShaderComp::FunctionLocationMap& out ) const;

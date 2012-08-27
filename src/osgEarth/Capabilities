@@ -99,6 +99,11 @@ namespace osgEarth
         /** whether the GPU supports DrawInstanced rendering */
         bool supportsDrawInstanced() const { return _supportsDrawInstanced; }
 
+        /** whether the GPU supports Uniform Buffer Objects */
+        bool supportsUniformBufferObjects() const { return _supportsUniformBufferObjects; }
+
+        /** maximum size of a uniform buffer block, in bytes */
+        int getMaxUniformBlockSize() const { return _maxUniformBlockSize; }
 
 
     protected:
@@ -127,6 +132,8 @@ namespace osgEarth
         bool _supportsDepthPackedStencilBuffer;
         bool _supportsOcclusionQuery;
         bool _supportsDrawInstanced;
+        bool _supportsUniformBufferObjects;
+        int  _maxUniformBlockSize;
         std::string _vendor;
         std::string _renderer;
         std::string _version;

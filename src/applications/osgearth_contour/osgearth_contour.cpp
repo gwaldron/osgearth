@@ -18,12 +18,8 @@
 */
 
 /**
- * This sample demonstrates a simple use of osgEarth's shader composition framework.
- *
- * By default, osgEarth uses GL shaders to render the terrain. Shader composition is a
- * mechanism by which you can inject custom shader code into osgEarth's shader program
- * pipeline. This gets around the problem of having to duplicate shader code in order 
- * to add functionality.
+ * This sample shows how to use osgEarth's built-in elevation data attributes
+ * to apply contour-coloring to the terrain.
  */
 #include <osg/Notify>
 #include <osgViewer/Viewer>

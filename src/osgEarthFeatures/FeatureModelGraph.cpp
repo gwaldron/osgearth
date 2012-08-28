@@ -21,12 +21,15 @@
 #include <osgEarthFeatures/CropFilter>
 #include <osgEarthFeatures/FeatureSourceIndexNode>
 #include <osgEarth/Capabilities>
-#include <osgEarth/ThreadingUtils>
 #include <osgEarth/CullingUtils>
-#include <osgEarth/NodeUtils>
+#include <osgEarth/ElevationLOD>
 #include <osgEarth/ElevationQuery>
+#include <osgEarth/FadeEffect>
+#include <osgEarth/NodeUtils>
 #include <osgEarth/Registry>
 #include <osgEarth/ShaderComposition>
+#include <osgEarth/ThreadingUtils>
+
 #include <osg/CullFace>
 #include <osg/PagedLOD>
 #include <osg/ProxyNode>
@@ -34,7 +37,6 @@
 #include <osgDB/ReaderWriter>
 #include <osgDB/WriteFile>
 #include <osgUtil/Optimizer>
-#include <osgEarth/ElevationLOD>
 
 #define LC "[FeatureModelGraph] "
 
@@ -172,6 +174,17 @@ namespace
             fullExtent.xMin() + w * (double)(tileX+1),
             fullExtent.yMin() + h * (double)(tileY+1) );
     }
+
+
+    struct SetupFading : public NodeOperation
+    {
+        void operator()( osg::Node* node )
+        {
+            osg::Uniform* u = FadeEffect::createStartTimeUniform();
+            u->set( (float)osg::Timer::instance()->time_s() );
+            node->getOrCreateStateSet()->addUniform( u );
+        }
+    };
 }
 
 
@@ -188,6 +201,8 @@ _pendingUpdate( false )
 {
     _uid = osgEarthFeatureModelPseudoLoader::registerGraph( this );
 
+    // operations that get applied after a new node gets merged into the 
+    // scene graph by the pager.
     _postMergeOperations = new RefNodeOperationVector();
 
     // install the stylesheet in the session if it doesn't already have one.
@@ -263,6 +278,14 @@ _pendingUpdate( false )
     if ( _options.enableLighting().isSet() )
         stateSet->setMode( GL_LIGHTING, *_options.enableLighting() ? 1 : 0 );
 
+    // If the user requests fade-in, install a post-merge operation that will set the 
+    // proper fade time for paged nodes.
+    if ( _options.fadeInDuration().value() > 0.0f )
+    {
+        addPostMergeOperation( new SetupFading() );
+        OE_INFO << LC << "Added fading post-merge operation" << std::endl;
+    }
+
     ADJUST_EVENT_TRAV_COUNT( this, 1 );
 
     redraw();
@@ -276,7 +299,7 @@ FeatureModelGraph::~FeatureModelGraph()
 void
 FeatureModelGraph::installShaderMains()
 {
-    //nop
+    osg::StateSet* ss = this->getOrCreateStateSet();
 }
 
 void
@@ -1105,9 +1128,17 @@ FeatureModelGraph::redraw()
     {        
         ElevationLOD *lod = new ElevationLOD(_session->getMapInfo().getSRS(), minRange, maxRange );
         lod->addChild( node );
-        node = lod;        
+        node = lod;
     }
 
+    // If we want fading, install a fader.
+    if ( _options.fadeInDuration().value() > 0.0f )
+    {
+        FadeEffect* fader = new FadeEffect();
+        fader->setFadeDuration( *_options.fadeInDuration() );
+        fader->addChild( node );
+        node = fader;
+    }
 
     addChild( node );
 

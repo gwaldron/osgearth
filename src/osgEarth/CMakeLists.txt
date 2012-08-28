@@ -42,6 +42,7 @@ SET(LIB_PUBLIC_HEADERS
     ElevationLOD
     ElevationQuery
     Export
+    FadeEffect
     FileUtils
     GeoCommon
     GeoData
@@ -146,6 +147,7 @@ ADD_LIBRARY(${LIB_NAME} ${OSGEARTH_USER_DEFINED_DYNAMIC_OR_STATIC}
     ElevationLayer.cpp
     ElevationLOD.cpp
     ElevationQuery.cpp
+    FadeEffect.cpp
     FileUtils.cpp
     GeoData.cpp
     Geoid.cpp

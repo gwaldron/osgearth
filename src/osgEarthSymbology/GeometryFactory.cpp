@@ -55,7 +55,7 @@ GeometryFactory::createCircle(const osg::Vec3d& center,
         double lon = osg::DegreesToRadians(center.x());
         double rM  = radius.as(Units::METERS);
 
-        for( unsigned i=0; i<numSegments; ++i )
+        for( int i=numSegments-1; i >= 0; --i )
         {
             double angle = segAngle * (double)i;
             double clat, clon;
@@ -68,7 +68,7 @@ GeometryFactory::createCircle(const osg::Vec3d& center,
     {
         double rM = radius.as(Units::METERS);
 
-        for( unsigned i=0; i<numSegments; ++i )
+        for( int i=numSegments-1; i >= 0; --i )
         {
             double angle = segAngle * (double)i;
             double x, y;
@@ -115,7 +115,7 @@ GeometryFactory::createArc(const osg::Vec3d& center,
         double lon = osg::DegreesToRadians(center.x());
         double rM  = radius.as(Units::METERS);
 
-        for( unsigned i=0; i<=numSegments; ++i )
+        for( int i=numSegments-1; i >= 0; --i )
         {
             double angle = startRad + step*(double)i;
             double clat, clon;
@@ -128,7 +128,7 @@ GeometryFactory::createArc(const osg::Vec3d& center,
     {
         double rM = radius.as(Units::METERS);
 
-        for( unsigned i=0; i<=numSegments; ++i )
+        for( int i=numSegments-1; i >= 0; --i )
         {
             double angle = startRad + step*(double)i;
             double x, y;

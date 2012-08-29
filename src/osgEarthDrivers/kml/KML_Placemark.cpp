@@ -135,6 +135,11 @@ KML_Placemark::build( const Config& conf, KMLContext& cx )
                             node->setLocalRotation( *cx._options->modelRotation() );
                         }
 
+                        if (cx._options->externalNodePostProcessor().valid() == true)
+                        {
+                            (*cx._options->externalNodePostProcessor().get())(node);
+                        }
+
                         modelNode = node;
                     }
 

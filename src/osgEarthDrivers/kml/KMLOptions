@@ -21,6 +21,7 @@
 
 #include <osgEarth/Common>
 #include <osgEarth/URI>
+#include <osgEarth/NodeUtils>
 #include <osgEarthSymbology/Style>
 #include <osg/Image>
 
@@ -68,20 +69,26 @@ namespace osgEarth { namespace Drivers
         optional<osg::Quat>& modelRotation() { return _modelRotation; }
         const optional<osg::Quat>& modelRotation() const { return _modelRotation; }
 
+        /** Specify a NodeOperation which will be triggered on each external loaded model right after loading.
+        This allow to run optimizer or other specific processing on model referenced in KML file */
+        osg::ref_ptr<NodeOperation>& externalNodePostProcessor() { return _externalNodePostProcessor; }
+        const osg::ref_ptr<NodeOperation>& externalNodePostProcessor() const { return _externalNodePostProcessor; }
+
     public:
         KMLOptions() : _declutter( true ), _iconBaseScale( 1.0f ), _iconMaxSize(32), _modelScale(1.0f) { }
 
         virtual ~KMLOptions() { }
 
     protected:
-        osg::ref_ptr<IconSymbol> _defaultIconSymbol;
-        osg::ref_ptr<TextSymbol> _defaultTextSymbol;
-        optional<bool>           _declutter;
-        optional<float>          _iconBaseScale;
-        optional<unsigned>       _iconMaxSize;
-        optional<float>          _modelScale;
-        optional<osg::Quat>      _modelRotation;
-        osg::ref_ptr<osg::Group> _iconAndLabelGroup;
+        osg::ref_ptr<IconSymbol>    _defaultIconSymbol;
+        osg::ref_ptr<TextSymbol>    _defaultTextSymbol;
+        optional<bool>              _declutter;
+        optional<float>             _iconBaseScale;
+        optional<unsigned>          _iconMaxSize;
+        optional<float>             _modelScale;
+        optional<osg::Quat>         _modelRotation;
+        osg::ref_ptr<osg::Group>    _iconAndLabelGroup;
+        osg::ref_ptr<NodeOperation> _externalNodePostProcessor;
     };
 
 } } // namespace osgEarth::Drivers

@@ -90,6 +90,14 @@ namespace osgEarth
         optional<bool>& disableShaders() { return _disableShaderComp; }
         const optional<bool>& disableShaders() const { return _disableShaderComp; }
 
+        /**
+         * An osg::Group which acts as a decorator on this model layer.
+         * Usefull to add uniforms, shaders and state attributes on the top of the model layers,
+         * regardless the map used to display this model layer
+         */
+        osg::ref_ptr<osg::Group>& decorator() { return _decorator; }
+        const osg::ref_ptr<osg::Group>& decorator() const { return _decorator; }
+
     public:
         virtual Config getConfig() const;
         virtual void mergeConfig( const Config& conf );
@@ -105,6 +113,7 @@ namespace osgEarth
         optional<bool> _visible;
         optional<bool> _lighting;
         optional<bool> _disableShaderComp;
+        osg::ref_ptr<osg::Group> _decorator;
     };
 
     /**

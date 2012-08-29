@@ -21,8 +21,8 @@
 #define OSGEARTH_FADE_EFFECT_H 1
 
 #include <osgEarth/Common>
+#include <osgEarth/ThreadingUtils>
 #include <osg/Group>
-//#include <osgFX/Effect>
 #include <osg/Uniform>
 
 namespace osgEarth
@@ -50,6 +50,43 @@ namespace osgEarth
 
     private:
         osg::ref_ptr<osg::Uniform> _fadeDuration;
+    };
+
+
+    class OSGEARTH_EXPORT FadeLOD : public osg::Group
+    {
+    public:
+        FadeLOD();
+        virtual ~FadeLOD() { }
+
+        void setMinPixelExtent( float value ) { _minPixelExtent = value; }
+        float getMinPixelExtent() const { return _minPixelExtent; }
+
+        void setMaxPixelExtent( float value ) { _maxPixelExtent = value; }
+        float getMaxPixelExtent() const { return _maxPixelExtent; }
+
+        void setMinFadeExtent( float value ) { _minFadeExtent = value; }
+        float getMinFadeExtent() const { return _minFadeExtent; }
+
+        void setMaxFadeExtent( float value ) { _maxFadeExtent = value; }
+        float getMaxFadeExtent() const { return _maxFadeExtent; }
+
+    public: // osg::Node
+
+        virtual void traverse(osg::NodeVisitor& nv );
+
+    protected:
+        struct PerViewData
+        {
+            osg::ref_ptr<osg::StateSet> _stateSet;
+            osg::ref_ptr<osg::Uniform>  _opacity;
+        };
+        Threading::PerObjectMap<osg::NodeVisitor*, PerViewData> _perViewData;
+
+        float _minPixelExtent;
+        float _maxPixelExtent;
+        float _minFadeExtent;
+        float _maxFadeExtent;
     };
 
 } // namespace osgEarth

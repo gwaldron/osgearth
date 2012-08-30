@@ -25,6 +25,8 @@
 #include <osgEarth/MapNodeOptions>
 #include <osgEarth/SpatialReference>
 
+#define OVERLAY_RENDER_BIN "osgEarth_Overlay"
+
 namespace osgEarth
 {
     class OverlayDecorator;

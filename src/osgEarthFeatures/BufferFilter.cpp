@@ -40,6 +40,8 @@ BufferFilter::isSupported()
     if ( !BufferFilter::isSupported() ) { \
         OE_NOTICE << "BufferFilter NOT SUPPORTED - please compile osgEarth with GEOS" << std::endl; }
 
+OSGEARTH_REGISTER_SIMPLE_FEATUREFILTER(buffer, BufferFilter );
+
 BufferFilter::BufferFilter() :
 _distance   ( 1.0 ),
 _numQuadSegs( 0 ),
@@ -54,6 +56,24 @@ _numQuadSegs( rhs._numQuadSegs ),
 _capStyle   ( rhs._capStyle )
 {
     //NOP
+}
+
+BufferFilter::BufferFilter( const Config& conf ) :
+_distance   ( 1.0 ),
+_numQuadSegs( 0 ),
+_capStyle   ( Stroke::LINECAP_DEFAULT )
+{
+    if (conf.key() == "buffer")
+    {
+        conf.getIfSet( "distance", _distance );
+    }
+}
+
+Config BufferFilter::getConfig() const
+{
+    Config config( "buffer" );
+    config.addIfSet( "distance", _distance);
+    return config;
 }
 
 FilterContext

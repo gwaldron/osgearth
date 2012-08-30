@@ -75,7 +75,7 @@ FeatureSourceOptions::fromConfig( const Config& conf )
                     }
                 }
 
-                OE_NOTICE << "Added FeatureFilter " << filter->getConfig().toJSON(true) << std::endl;
+                OE_DEBUG << "Added FeatureFilter " << filter->getConfig().toJSON(true) << std::endl;
                 _filters.push_back( filter );
             }
         }        

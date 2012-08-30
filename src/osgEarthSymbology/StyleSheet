@@ -38,7 +38,7 @@ namespace osgEarth { namespace Symbology
        */
       struct Script : osg::Referenced
       {
-        Script(const std::string& code, const std::string& language, const std::string& name) :
+        Script(const std::string& code, const std::string& language="javascript", const std::string& name="") :
           code(code), language(language), name(name) { }
 
         std::string code;
@@ -83,7 +83,8 @@ namespace osgEarth { namespace Symbology
         /** Gets a resource library by name. */
         ResourceLibrary* getResourceLibrary( const std::string& name ) const;
 
-        /** Gets the script */
+        /** Script accessors */
+        void setScript( Script* script );
         Script* script() const { return _script.get(); }
 
     public: // serialization functions

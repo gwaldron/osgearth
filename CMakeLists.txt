@@ -105,13 +105,6 @@ IF(UNIX)
     FIND_LIBRARY(MATH_LIBRARY m)
 ENDIF(UNIX)
 
-# Make the headers visible to everything
-INCLUDE_DIRECTORIES(
-    ${OSGEARTH_SOURCE_DIR}/src
-    ${OSG_DIR}/include
-    ${OSG_INCLUDE_DIR}
-)
-
 # Common global definitions
 #ADD_DEFINITIONS(-D)
 # Platform specific definitions
@@ -162,6 +155,11 @@ SET(CMAKE_DEBUG_POSTFIX  "d" CACHE STRING "add a postfix, usually d on windows")
 
 FIND_PACKAGE(OSG)
 
+# Make the headers visible to everything
+INCLUDE_DIRECTORIES(
+    ${OSGEARTH_SOURCE_DIR}/src
+    ${OSG_INCLUDE_DIR}
+)
 
 #FIND_PACKAGE(GDAL)
 

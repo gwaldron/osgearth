@@ -155,6 +155,12 @@ StyleSheet::getResourceLibrary( const std::string& name ) const
         return 0L;
 }
 
+void StyleSheet::setScript( Script* script )
+{
+  _script = script;
+}
+
+
 Config
 StyleSheet::getConfig() const
 {

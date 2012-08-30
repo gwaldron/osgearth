@@ -363,6 +363,11 @@ SLDReader::readStyleFromCSSParams( const Config& conf, Style& sc )
             if (!extrusion) extrusion = sc.getOrCreate<ExtrusionSymbol>();
             extrusion->roofStyleName() = value;
         }
+        else if ( match(key, "extrusion-wall-gradient") )
+        {
+            if (!extrusion) extrusion = sc.getOrCreate<ExtrusionSymbol>();
+            extrusion->wallGradientPercentage() = as<float>(value, 0.0f);
+        }
 
         // ..... AltitideSymbol .....
                 

@@ -59,6 +59,7 @@ ADD_SUBDIRECTORY(osgearth_occlusionculling)
 ADD_SUBDIRECTORY(osgearth_colorfilter)
 ADD_SUBDIRECTORY(osgearth_tfs)
 ADD_SUBDIRECTORY(osgearth_contour)
+ADD_SUBDIRECTORY(osgearth_verticalscale)
 
 IF(NOT ${OPENSCENEGRAPH_VERSION} VERSION_LESS "3.1.0")
     ADD_SUBDIRECTORY(osgearth_shadow)

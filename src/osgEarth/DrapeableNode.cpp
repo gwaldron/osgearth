@@ -30,6 +30,7 @@ using namespace osgEarth;
 
 namespace
 {
+#if 0
     // Custom group that limits traversals to CULL and any visitor internal to
     // the operation of the OverlayDecorator.
     struct OverlayTraversalGroup : public osg::Group {
@@ -40,6 +41,97 @@ namespace
                 osg::Group::traverse(nv);
             }
         }
+    };
+#endif
+
+    struct OverlayProxy : public osg::Group
+    {
+        OverlayProxy( osg::Node* owner ) 
+            : _owner(owner) { }
+
+        void traverse(osg::NodeVisitor& nv)
+        {
+            // only allow CULL and OD-internal traversal:
+            if ( dynamic_cast<OverlayDecorator::InternalNodeVisitor*>(&nv) )
+            {
+                osg::Group::traverse( nv );
+            }
+            else if ( nv.getVisitorType() == nv.CULL_VISITOR && _owner.valid() )
+            {
+                // first find the highest ancestor in the owner's node parental node path that does
+                // not occur in the visitor's node path. That is where we want to begin collecting
+                // state.
+                const osg::NodePath& visitorPath = nv.getNodePath();
+
+                // get the owner's node path (just use the first one)
+                osg::NodePathList ownerPaths;
+                ownerPaths = _owner->getParentalNodePaths();
+                const osg::NodePath& ownerPath = ownerPaths[0];
+
+                // first check the owner's traversal mask.
+                bool visible = true;
+                for( int k = 0; visible && k < ownerPath.size(); ++k )
+                {
+                    visible = nv.validNodeMask(*ownerPath[k]);
+                }
+
+                if ( visible )
+                {
+                    // find the intersection point:
+                    int i = findIndexOfNodePathConvergence( visitorPath, ownerPath );
+
+                    if ( i >= 0 && i < ownerPath.size()-1 )
+                    {
+                        osgUtil::CullVisitor* cv = static_cast<osgUtil::CullVisitor*>(&nv);
+
+                        int pushes = 0;
+                        for( int k = i+1; k < ownerPath.size(); ++k )
+                        {
+                            osg::Node* node = ownerPath[k];
+                            osg::StateSet* ss = ownerPath[k]->getStateSet();
+                            if ( ss )
+                            {
+                                cv->pushStateSet( ss );
+                                ++pushes;
+                            }
+                        }
+                    
+                        osg::Group::traverse( nv );
+
+                        for( int k = 0; k < pushes; ++k )
+                        {
+                            cv->popStateSet();
+                        }
+                    }
+                }
+            }
+        }
+
+
+        // returns the deepest index into the ownerPath at which the two paths converge
+        // (i.e. share a node pointer)
+        int findIndexOfNodePathConvergence(const osg::NodePath& visitorPath, const osg::NodePath& ownerPath)
+        {
+            // use the knowledge that a NodePath is a vector.
+
+            for( int vi = visitorPath.size()-1; vi >= 0; --vi )
+            {
+                osg::Node* visitorNode = visitorPath[vi];
+                for( int oi = ownerPath.size()-1; oi >= 0; --oi )
+                {
+                    if ( ownerPath[oi] == visitorNode )
+                    {
+                        // found the deepest intersection, so set the start index to one higher.
+                        return oi;
+                    }
+                }
+            }   
+
+            // no convergence. 
+            return -1;
+        }
+
+        osg::observer_ptr<osg::Node> _owner;
     };
 }
 
@@ -53,9 +145,7 @@ _dirty    ( false )
     // create a container group that will house the culler. This culler
     // allows a draped node, which sits under the MapNode's OverlayDecorator,
     // to "track" the traversal state of the DrapeableNode itself.
-    _overlayProxyContainer = new OverlayTraversalGroup();
-    _overlayProxyContainer->setCullCallback( new CullNodeByFrameNumber() );
-    _overlayProxyContainer->setStateSet( this->getOrCreateStateSet() ); // share the stateset
+    _overlayProxyContainer = new OverlayProxy( this );
 
     setMapNode( mapNode );
 
@@ -101,15 +191,11 @@ DrapeableNode::applyChanges()
         {
             getMapNode()->getOverlayGroup()->addChild( _overlayProxyContainer.get() );
             getMapNode()->updateOverlayGraph();
-            //Set a giant bounding sphere on this node so it always passes the view frustum test and will be included in the OverlayDecorator.
-            setComputeBoundingSphereCallback( new StaticBound( osg::BoundingSphere(osg::Vec3f(0,0,0), FLT_MAX)));
         }
         else if ( !_draped && _overlayProxyContainer->getNumParents() > 0 )
         {
             getMapNode()->getOverlayGroup()->removeChild( _overlayProxyContainer.get() );
             getMapNode()->updateOverlayGraph();
-            //Remove the bounding sphere callback, it's just a regular node.
-            setComputeBoundingSphereCallback( 0L );
         }
 
         dirtyBound();
@@ -179,13 +265,7 @@ DrapeableNode::traverse( osg::NodeVisitor& nv )
         {
             if ( _draped )
             {
-                // for a draped node, inform the proxy that we are visible. But do NOT traverse the
-                // child graph (since it will be traversed by the OverlayDecorator).
-                CullNodeByFrameNumber* cb = static_cast<CullNodeByFrameNumber*>(_overlayProxyContainer->getCullCallback());
-                if (cb)
-                {
-                    cb->_frame = nv.getFrameStamp()->getFrameNumber();
-                }
+                // do nothing -- culling will happen via the OverlayProxy instead.
             }
             else
             {

@@ -36,7 +36,8 @@ _lit               ( true ),
 _maxGranularity_deg( 1.0 ),
 _mergeGeometry     ( false ),
 _clusterCulling    ( true ),
-_featureIndexing   ( false )
+_featureIndexing   ( false ),
+_fadeInDuration    ( 0.0f )
 {
     fromConfig( _conf );
 }
@@ -58,6 +59,7 @@ FeatureModelSourceOptions::fromConfig( const Config& conf )
     conf.getIfSet( "merge_geometry",   _mergeGeometry );
     conf.getIfSet( "cluster_culling",  _clusterCulling );
     conf.getIfSet( "feature_indexing", _featureIndexing );
+    conf.getIfSet( "fade_in_duration", _fadeInDuration );
 
     std::string gt = conf.value( "geometry_type" );
     if ( gt == "line" || gt == "lines" || gt == "linestring" )
@@ -87,7 +89,7 @@ FeatureModelSourceOptions::getConfig() const
     conf.updateIfSet( "merge_geometry",   _mergeGeometry );
     conf.updateIfSet( "cluster_culling",  _clusterCulling );
     conf.updateIfSet( "feature_indexing", _featureIndexing );
-
+    conf.updateIfSet( "fade_in_duration", _fadeInDuration );
 
     if ( _geomTypeOverride.isSet() ) {
         if ( _geomTypeOverride == Geometry::TYPE_LINESTRING )

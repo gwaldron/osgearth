@@ -24,6 +24,7 @@
 #include <osgUtil/RenderBin>
 #include <osgUtil/StateGraph>
 #include <osgText/Text>
+#include <osg/UserDataContainer>
 #include <set>
 #include <algorithm>
 
@@ -578,36 +579,55 @@ public:
 
 //static
 
+#define STATESET_ID "osgEarth::Decluttering::prevStateSet"
+
 void
-Decluttering::setEnabled( osg::StateSet* stateSet, bool enabled, int binNum )
+Decluttering::setEnabled( osg::StateSet* stateSet, bool enable, int binNum )
 {
+    // note: even though we're fiddling with the StateSet, I don't think we need
+    // to mark it as DYNAMIC .... but we'll see
     if ( stateSet )
     {
-        if ( enabled )
+        if ( enable )
         {
-            osg::Program* p = dynamic_cast<osg::Program*>(stateSet->getAttribute(osg::StateAttribute::PROGRAM));
-            if ( p == 0L || p->getName() != AnnotationUtils::PROGRAM_NAME() )
+            osg::StateSet* prevStateSet = 0L;
+            osg::UserDataContainer* udc = stateSet->getOrCreateUserDataContainer();
+            unsigned index = udc->getUserObjectIndex( STATESET_ID );
+            if ( index < udc->getNumUserObjects() )
             {
-                stateSet->setAttributeAndModes( AnnotationUtils::getAnnotationProgram(), 1 );
+                prevStateSet = dynamic_cast<osg::StateSet*>( udc->getUserObject(index) );
             }
 
-            // just installs a default highlight uniform so the shader has default value.
-            if ( !stateSet->getUniform( AnnotationUtils::UNIFORM_HIGHLIGHT() ) )
+            if ( !prevStateSet )
             {
-                stateSet->addUniform( AnnotationUtils::createHighlightUniform() );
+                prevStateSet = new osg::StateSet();
+                prevStateSet->setName( STATESET_ID );
+                prevStateSet->setBinName( stateSet->getBinName() );
+                prevStateSet->setBinNumber( stateSet->getBinNumber() );
+                prevStateSet->setRenderBinMode( stateSet->getRenderBinMode() );
+                prevStateSet->setNestRenderBins( stateSet->getNestRenderBins() );
+                udc->addUserObject( prevStateSet );
             }
 
             stateSet->setRenderBinDetails( binNum, OSGEARTH_DECLUTTER_BIN );
 
-            // disable renderbin nesting b/c it is incompatible with decluttering for
-            // what should be obvious reasons
+            // disable renderbin nesting b/c it is incompatible with decluttering;
+            // i.e. we only want one decluttering bin per render stage
             stateSet->setNestRenderBins( false );
         }
         else
         {
-            stateSet->removeAttribute( osg::StateAttribute::PROGRAM );
-            stateSet->setRenderBinToInherit();
-            stateSet->setNestRenderBins( true );
+            osg::UserDataContainer* udc = stateSet->getOrCreateUserDataContainer();
+            unsigned index = udc->getUserObjectIndex( STATESET_ID );
+            if ( index < udc->getNumUserObjects() )
+            {
+                osg::StateSet* prevStateSet = dynamic_cast<osg::StateSet*>( udc->getUserObject(index) );
+                stateSet->setBinName( prevStateSet->getBinName() );
+                stateSet->setBinNumber( prevStateSet->getBinNumber() );
+                stateSet->setRenderBinMode( prevStateSet->getRenderBinMode() );
+                stateSet->setNestRenderBins( prevStateSet->getNestRenderBins() );
+                udc->removeUserObject( index );
+            }
         }
     }
 }

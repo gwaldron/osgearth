@@ -23,6 +23,8 @@
 #include <osgEarthSymbology/MeshSubdivider>
 #include <osgEarth/ThreadingUtils>
 #include <osgEarth/Registry>
+#include <osgEarth/ShaderComposition>
+
 #include <osgText/Text>
 #include <osg/Depth>
 #include <osg/BlendFunc>
@@ -43,7 +45,7 @@ AnnotationUtils::PROGRAM_NAME()
 const std::string&
 AnnotationUtils::UNIFORM_HIGHLIGHT()
 {
-   static std::string s = "highlight";
+   static std::string s = "oeAnno_highlight";
    return s;
 }
 
@@ -51,14 +53,14 @@ AnnotationUtils::UNIFORM_HIGHLIGHT()
 const std::string&
 AnnotationUtils::UNIFORM_IS_TEXT()
 {
-  static std::string s = "is_text";
+  static std::string s = "oeAnno_isText";
   return s;
 }
 
 const std::string&
 AnnotationUtils::UNIFORM_FADE()
 {
-  static std::string s ="fade";
+  static std::string s ="oeAnno_fade";
   return s;
 }
 
@@ -134,7 +136,7 @@ AnnotationUtils::createTextDrawable(const std::string& text,
     t->setStateSet( stateSet );
     //osg::StateSet* stateSet = t->getOrCreateStateSet();
 
-    if ( symbol )
+    if ( symbol && symbol->declutter().isSet() )
     {
         Decluttering::setEnabled( stateSet, *symbol->declutter() );
     }
@@ -241,18 +243,73 @@ AnnotationUtils::createHighlightUniform()
     return u;
 }
 
-osg::Program*
-AnnotationUtils::getAnnotationProgram()
+void
+AnnotationUtils::installAnnotationProgram( osg::StateSet* stateSet )
 {
     static Threading::Mutex           s_mutex;
-    static osg::ref_ptr<osg::Program> s_program;
+    //static osg::ref_ptr<osg::Program> s_program;
+    static osg::ref_ptr<VirtualProgram> s_program;
+    static osg::ref_ptr<osg::Uniform>   s_samplerUniform;
+    static osg::ref_ptr<osg::Uniform>   s_defaultFadeUniform;
+    static osg::ref_ptr<osg::Uniform>   s_defaultIsTextUniform;
 
     if ( !s_program.valid() )
     {
         Threading::ScopedMutexLock lock(s_mutex);
         if ( !s_program.valid() )
         {
-            std::string vert_source = Stringify() <<
+            std::string vertSource =
+                "#version " GLSL_VERSION_STR "\n"
+                "varying vec4 osg_FrontColor; \n"
+                "varying vec4 oeAnno_texCoord; \n"
+                "void oeAnno_vertColoring() \n"
+                "{ \n"
+                "    osg_FrontColor = gl_Color; \n"
+                "    oeAnno_texCoord = gl_MultiTexCoord0; \n"
+                "} \n";
+
+            std::string fragSource = Stringify() <<
+                "#version " << GLSL_VERSION_STR << "\n"
+                "uniform float " << UNIFORM_FADE()      << "; \n"
+                "uniform bool  " << UNIFORM_IS_TEXT()   << "; \n"
+                //"uniform bool  " << UNIFORM_HIGHLIGHT() << "; \n"
+                "uniform sampler2D oeAnno_tex0; \n"
+                "varying vec4 osg_FrontColor; \n"
+                "varying vec4 oeAnno_texCoord; \n"
+                "void oeAnno_fragColoring( inout vec4 color ) \n"
+                "{ \n"
+                "    if (" << UNIFORM_IS_TEXT() << ") \n"
+                "    { \n"
+                "        float alpha = texture2D(oeAnno_tex0, oeAnno_texCoord.st).a; \n"
+                "        color = vec4(osg_FrontColor.rgb, osg_FrontColor.a * alpha * " << UNIFORM_FADE() << "); \n"
+                "    } \n"
+                "    else \n"
+                "    { \n"
+                "        color = osg_FrontColor * texture2D(oeAnno_tex0, oeAnno_texCoord.st) * vec4(1,1,1," << UNIFORM_FADE() << "); \n"
+                "    } \n"
+                //"    if (" << UNIFORM_HIGHLIGHT() << ") \n"
+                //"    { \n"
+                //"        color = vec4(color.r*1.5, color.g*0.5, color.b*0.25, color.a); \n"
+                //"    } \n"
+                "} \n";
+
+            s_program = new VirtualProgram();
+            s_program->setName( PROGRAM_NAME() );
+            s_program->setUseLightingShaders( false );
+            s_program->installDefaultColoringShaders();
+            s_program->setFunction( "oeAnno_vertColoring", vertSource, ShaderComp::LOCATION_VERTEX_PRE_LIGHTING );
+            s_program->setFunction( "oeAnno_fragColoring", fragSource, ShaderComp::LOCATION_FRAGMENT_PRE_LIGHTING );
+
+            s_samplerUniform = new osg::Uniform(osg::Uniform::SAMPLER_2D, "oeAnno_tex0");
+            s_samplerUniform->set( 0 );
+
+            s_defaultFadeUniform = createFadeUniform();
+
+            s_defaultIsTextUniform = new osg::Uniform(osg::Uniform::BOOL, "oeAnno_isText");
+            s_defaultIsTextUniform->set( false );
+
+#if 0
+            std::string vert_source = // Stringify() <<
                 "#version 110 \n"
                 "void main() { \n"
                 "    gl_FrontColor = gl_Color; \n"
@@ -284,9 +341,14 @@ AnnotationUtils::getAnnotationProgram()
             s_program->setName( PROGRAM_NAME() );
             s_program->addShader( new osg::Shader(osg::Shader::VERTEX,   vert_source) );
             s_program->addShader( new osg::Shader(osg::Shader::FRAGMENT, frag_source) );
+#endif
         }
     }
-    return s_program.get();
+
+    stateSet->setAttributeAndModes( s_program.get() );
+    stateSet->addUniform( s_samplerUniform.get() );
+    stateSet->addUniform( s_defaultFadeUniform.get() );
+    stateSet->addUniform( s_defaultIsTextUniform.get() );
 }
 
 //-------------------------------------------------------------------------

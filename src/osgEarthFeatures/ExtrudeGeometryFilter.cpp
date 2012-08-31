@@ -769,6 +769,10 @@ ExtrudeGeometryFilter::process( FeatureList& features, FilterContext& context )
                 {
                     wallBaseColor = Color(wallColor).brightness( 1.0 - *_extrusionSymbol->wallGradientPercentage() );
                 }
+                else
+                {
+                    wallBaseColor = wallColor;
+                }
             }
             if ( _roofPolygonSymbol.valid() )
             {

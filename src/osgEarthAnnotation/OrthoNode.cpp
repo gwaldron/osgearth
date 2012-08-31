@@ -125,12 +125,14 @@ OrthoNode::init()
     OrthoOQNode* oq = new OrthoOQNode("");
     oq->setQueriesEnabled(true);
     _oq = oq;
-#else
-    _oq = new osg::Group();
-#endif
-
     _oq->addChild( _switch );
     this->addChild( _oq );
+#else
+    this->addChild( _switch );
+#endif
+
+    //_oq->addChild( _switch );
+    //this->addChild( _oq );
 
     _autoxform = new AnnotationUtils::OrthoNodeAutoTransform();
     _autoxform->setAutoRotateMode( osg::AutoTransform::ROTATE_TO_SCREEN );
@@ -189,7 +191,8 @@ OrthoNode::traverse( osg::NodeVisitor& nv )
 
         AnnotationNode::traverse( nv );
 
-        this->setCullingActive( true );
+        if ( this->getCullingActive() == false )
+            this->setCullingActive( true );
     }
     
     // For an intersection visitor, ALWAYS traverse the autoxform instead of the 

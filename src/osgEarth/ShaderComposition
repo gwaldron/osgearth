@@ -84,11 +84,13 @@ namespace osgEarth
     public:
         /** Creates a vertex shader main(). */
         virtual osg::Shader* createVertexShaderMain(
-            const ShaderComp::FunctionLocationMap& functions =ShaderComp::FunctionLocationMap() ) const;
+            const ShaderComp::FunctionLocationMap& functions =ShaderComp::FunctionLocationMap(),
+            bool useLightingShaders =true ) const;
 
         /** Creates a fragment shader main(). */
         virtual osg::Shader* createFragmentShaderMain( 
-            const ShaderComp::FunctionLocationMap& functions =ShaderComp::FunctionLocationMap() ) const;
+            const ShaderComp::FunctionLocationMap& functions =ShaderComp::FunctionLocationMap(),
+            bool useLightingShaders =true ) const;
 
         /**
          * Gets the uniform/shader name of the sampler corresponding the the provider
@@ -185,6 +187,12 @@ namespace osgEarth
         void installDefaultLightingShaders();
 
         /**
+         * Sets whether to use lighting shaders at all - set this to false if you
+         * don't want lighting shaders (normal or inherited) included in the program.
+         */
+        void setUseLightingShaders(bool value);
+
+        /**
          * Whether this VP should inherit shaders from parent state sets. This is
          * the normal operation. You can set this to "false" to "reset" the VP.
          */
@@ -268,6 +276,7 @@ namespace osgEarth
         ShaderMap                    _shaderMap;
         unsigned int                 _mask;
         AttribBindingList            _attribBindingList;
+        bool                         _useLightingShaders;
 
         ShaderComp::FunctionLocationMap _functions;
         ShaderComp::FunctionLocationMap _accumulatedFunctions;

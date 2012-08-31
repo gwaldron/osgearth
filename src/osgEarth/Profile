@@ -262,9 +262,18 @@ namespace osgEarth
          */
         const std::string& getHorizSignature() const { return _horizSignature; }
 
+        /**
+         * Given another Profile and an LOD in that Profile, determine 
+         * the LOD in this Profile that is nearly equivalent.
+         */
+        unsigned int getEquivalentLOD( const Profile* profile, unsigned int lod ) const;
+
     public:
 
-        void overrideSRS( const SpatialReference* srs );
+        /**
+         * Makes a clone of this profile but replaces the SRS with a custom one.
+         */
+        Profile* overrideSRS( const SpatialReference* srs ) const;
 
     protected:       
 

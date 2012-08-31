@@ -68,7 +68,7 @@ namespace osgEarth { namespace Features
         optional<StringExpression>& featureName() { return _featureNameExpr; }
         const optional<StringExpression>& featureName() const { return _featureNameExpr; }
 
-        /** Whether to create feature indexes (default = yes) */
+        /** Whether to create feature indexes (default = no) */
         optional<bool>& featureIndexing() { return _featureIndexing; }
         const optional<bool>& featureIndexing() const { return _featureIndexing; }
 
@@ -76,13 +76,12 @@ namespace osgEarth { namespace Features
         optional<CachePolicy>& cachePolicy() { return _cachePolicy; }
         const optional<CachePolicy>& cachePolicy() const { return _cachePolicy; }
 
+        /** Time (in seconds) to fade in the graphics */
+        optional<float>& fadeInDuration() { return _fadeInDuration; }
+        const optional<float>& fadeInDuration() const { return _fadeInDuration; }
+
     public: // deprecated
 
-#if 0
-        /** @deprecated - use levels() instead */
-        optional<GriddingPolicy>& gridding() { return _gridding; }
-        const optional<GriddingPolicy>& gridding() const { return _gridding; }
-#endif
         /** @deprecated - use the ConvertTypeFilter instead */
         optional<Symbology::Geometry::Type>& geometryTypeOverride() { return _geomTypeOverride; }
         const optional<Symbology::Geometry::Type>& geometryTypeOverride() const { return _geomTypeOverride; }
@@ -117,14 +116,15 @@ namespace osgEarth { namespace Features
         optional<bool>                  _clusterCulling;
         optional<bool>                  _featureIndexing;
         optional<CachePolicy>           _cachePolicy;
+        optional<float>                 _fadeInDuration;
 
         osg::ref_ptr<StyleSheet>        _styles;
         osg::ref_ptr<FeatureSource>     _featureSource;
 
         /** @deprecated */
-        //optional<GriddingPolicy>        _gridding;
         optional<Geometry::Type>        _geomTypeOverride;
     };
+
 
     /**
      * Interface for a class that can create a Node from a set of features and
@@ -154,6 +154,10 @@ namespace osgEarth { namespace Features
             Session*     session ) { return new osg::Group(); }
     };
 
+    
+    /**
+     * A Feature node factory that invokes the GeometryCompiler.
+     */
     class OSGEARTHFEATURES_EXPORT GeomFeatureNodeFactory : public FeatureNodeFactory
     {
     public:
@@ -175,24 +179,37 @@ namespace osgEarth { namespace Features
      */
     class OSGEARTHFEATURES_EXPORT FeatureModelSource : public ModelSource
     {
-    public:      
+    public:
         /**
          * Constructs a new feature model source with the provided options.
          */
         FeatureModelSource( const FeatureModelSourceOptions& options =FeatureModelSourceOptions() );
 
+
+    public: // ModelSource
+
+        virtual void initialize( const osgDB::Options* dbOptions =0L );
+
+        virtual osg::Node* createNode(
+            const Map*            map,
+            const osgDB::Options* dbOptions,
+            ProgressCallback*     progress );
+    
+
     public:
 
-        //override 
-        virtual void initialize( 
-            const osgDB::Options* dbOptions =0L,
-            const osgEarth::Map*  map       =0L );
-
-        // override
-        virtual osg::Node* createNode( ProgressCallback* progress );
-    
+        /**
+         * Abstract - the implementation class must define a feature node factory object
+         * that will actually bulid feature geometry.
+         */
         virtual FeatureNodeFactory* createFeatureNodeFactory() =0;
 
+
+        /**
+         * Creates an implementation-specific data object to be passed to buildNodeForStyle
+         * @deprecated
+         */
+        //virtual osg::Referenced* createBuildData() { return NULL; }
 
     public: // properties:
 
@@ -202,12 +219,8 @@ namespace osgEarth { namespace Features
         /** The underlying feature source. */
         FeatureSource* getFeatureSource() { return _features.get(); }
 
+        /** The options with which this source was created */
         virtual const FeatureModelSourceOptions& getFeatureModelOptions() const { return _options; }
-
-        const Map* getMap() const { return _map.get(); }
-
-        /** Creates an implementation-specific data object to be passed to buildNodeForStyle */
-        virtual osg::Referenced* createBuildData() { return NULL; }     
 
     public: 
 

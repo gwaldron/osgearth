@@ -68,6 +68,10 @@ namespace osgEarth { namespace Annotation
         /** Gets the node position (in map coords) */
         virtual GeoPoint getPosition() const;
 
+    public: // MapNodeObserver
+
+        virtual void setMapNode( MapNode* mapNode );
+
     public: // osg::Node
 
         virtual void traverse( osg::NodeVisitor& nv );
@@ -114,7 +118,6 @@ namespace osgEarth { namespace Annotation
         virtual DrapeableNode* getDrapeable() { return _draper.get(); }
 
     protected:
-        osg::observer_ptr<const SpatialReference> _mapSRS;
         osg::ref_ptr<osg::Transform> _xform;
         osg::ref_ptr<DrapeableNode> _draper;
         bool _horizonCulling;

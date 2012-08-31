@@ -17,10 +17,11 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 #include "OceanCompositor"
-#include "OceanShaders"
 #include <osgEarth/ImageUtils>
+#include <osgEarth/Registry>
 #include <osgEarth/ShaderComposition>
 #include <osg/Texture2D>
+#include "OceanShaders"
 
 using namespace osgEarth;
 
@@ -28,14 +29,16 @@ void
 OceanCompositor::updateMasterStateSet(osg::StateSet*       stateSet, 
                                       const TextureLayout& layout ) const
 {
-    VirtualProgram* vp = static_cast<VirtualProgram*>( stateSet->getAttribute(osg::StateAttribute::PROGRAM) );
+    VirtualProgram* vp = static_cast<VirtualProgram*>( stateSet->getAttribute(VirtualProgram::SA_TYPE) );
     if ( !vp )
     {
         vp = new VirtualProgram();
+        vp->setName("osgEarth OceanCompositor");
         stateSet->setAttributeAndModes( vp, 1 );
     }
-    vp->setShader( "osgearth_vert_setupTexturing", new osg::Shader(osg::Shader::VERTEX, source_setupTexturing) );
-    vp->setShader( "osgearth_frag_applyTexturing", new osg::Shader(osg::Shader::FRAGMENT, source_applyTexturing ) );
+    vp->installDefaultLightingShaders();
+    vp->setShader( "osgearth_vert_setupColoring", new osg::Shader(osg::Shader::VERTEX, source_setupColoring) );
+    vp->setShader( "osgearth_frag_applyColoring", new osg::Shader(osg::Shader::FRAGMENT, source_applyColoring ) );
 }
     
 namespace
@@ -43,7 +46,7 @@ namespace
     std::string makeSamplerName(int slot)
     {
         std::stringstream buf;
-        buf << "tex" << slot;
+        buf << "ocean_tex" << slot;
         std::string str;
         str = buf.str();
         return str;

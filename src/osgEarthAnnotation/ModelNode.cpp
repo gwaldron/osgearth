@@ -19,68 +19,120 @@
 
 #include <osgEarthAnnotation/ModelNode>
 #include <osgEarthAnnotation/AnnotationRegistry>
+#include <osgEarthSymbology/Style>
+#include <osgEarthSymbology/InstanceSymbol>
+#include <osgEarth/Registry>
 
 #define LC "[ModelNode] "
 
 using namespace osgEarth;
 using namespace osgEarth::Annotation;
+using namespace osgEarth::Symbology;
+
+
+//------------------------------------------------------------------------
 
 
 ModelNode::ModelNode(MapNode*              mapNode,
-                     const URI&            uri,
                      const Style&          style,
-                     const osgDB::Options* dbOptions,
-                     const CachePolicy&    cachePolicy ) :
-LocalizedNode( mapNode ),
-_dbOptions   ( dbOptions ),
-_cachePolicy ( cachePolicy )
+                     const osgDB::Options* dbOptions ) :
+LocalizedNode( mapNode )
 {
-    if ( !uri.empty() )
-        _uri = uri;
-    
-    if ( !style.empty() )
-        _style = style;
-
-    init();
+    _style = style;
+    init( dbOptions );
 }
 
 
 void
-ModelNode::init()
+ModelNode::init(const osgDB::Options* dbOptions)
 {
     this->setHorizonCulling(false);
 
-    if ( _uri.isSet() )
+    osg::ref_ptr<const ModelSymbol> sym = _style->get<ModelSymbol>();
+    
+    // backwards-compatibility: support for MarkerSymbol (deprecated)
+    if ( !sym.valid() && _style->has<MarkerSymbol>() )
     {
-        osg::Node* node = _uri->getNode( _dbOptions.get(), *_cachePolicy );
-        if ( node )
+        osg::ref_ptr<InstanceSymbol> temp = _style->get<MarkerSymbol>()->convertToInstanceSymbol();
+        sym = dynamic_cast<const ModelSymbol*>( temp.get() );
+    }
+
+    if ( sym.valid() )
+    {
+        if ( sym->url().isSet() )
         {
-            getTransform()->addChild( node );
-            this->addChild( getTransform() );
+            URI uri( sym->url()->eval(), sym->url()->uriContext() );
+            osg::Node* node = 0L;
             
-            applyStyle( *_style, false );
+            if ( sym->uriAliasMap()->empty() )
+            {
+                node = uri.getNode( dbOptions );
+            }
+            else
+            {
+                // install an alias map if there's one in the symbology.
+                osg::ref_ptr<osgDB::Options> tempOptions = Registry::instance()->cloneOrCreateOptions(dbOptions);
+                tempOptions->setReadFileCallback( new URIAliasMapReadCallback(*sym->uriAliasMap(), uri.full()) );
+                node = uri.getNode( tempOptions.get() );
+            }
+
+            if ( node )
+            {
+                getTransform()->addChild( node );
+                this->addChild( getTransform() );
+
+                if ( sym->scale().isSet() )
+                {
+                    double s = sym->scale()->eval();
+                    this->setScale( osg::Vec3f(s, s, s) );
+                }
+
+                if (sym && (sym->heading().isSet() || sym->pitch().isSet() || sym->roll().isSet()) )
+                {
+                    osg::Matrix rot;
+                    double heading = sym->heading().isSet() ? sym->heading()->eval() : 0.0;
+                    double pitch   = sym->pitch().isSet()   ? sym->pitch()->eval()   : 0.0;
+                    double roll    = sym->roll().isSet()    ? sym->roll()->eval()    : 0.0;
+                    rot.makeRotate( 
+                        osg::DegreesToRadians(heading), osg::Vec3(1,0,0),
+                        osg::DegreesToRadians(pitch),   osg::Vec3(0,0,1),
+                        osg::DegreesToRadians(roll),    osg::Vec3(0,1,0) );
+                    this->setLocalRotation( rot.getRotate() );
+                }
+
+                applyStyle( *_style );
+            }
+            else
+            {
+                OE_WARN << LC << "Failed to load data from " << uri.full() << std::endl;
+            }
         }
         else
         {
-            OE_WARN << LC << "Failed to load node from " << _uri->full() << std::endl;
+            OE_WARN << LC << "Symbology: no URI" << std::endl;
         }
     }
+    else
+    {
+        OE_WARN << LC << "Insufficient symbology" << std::endl;
+    }
 }
-
 
 //-------------------------------------------------------------------
 
 OSGEARTH_REGISTER_ANNOTATION( model, osgEarth::Annotation::ModelNode );
 
 
-ModelNode::ModelNode(MapNode* mapNode, const Config& conf) :
+ModelNode::ModelNode(MapNode* mapNode, const Config& conf, const osgDB::Options* dbOptions) :
 LocalizedNode( mapNode )
 {
-    conf.getIfSet   ( "url",          _uri );
-    conf.getObjIfSet( "style",        _style );
-    conf.getObjIfSet( "cache_policy", _cachePolicy );
+    conf.getObjIfSet( "style", _style );
 
-    init();
+    std::string uri = conf.value("url");
+    if ( !uri.empty() )
+        _style->getOrCreate<ModelSymbol>()->url() = StringExpression(uri);
+
+    init( dbOptions );
 
     if ( conf.hasChild( "position" ) )
         setPosition( GeoPoint(conf.child("position")) );
@@ -91,10 +143,8 @@ ModelNode::getConfig() const
 {
     Config conf("model");
 
-    conf.updateIfSet   ( "url",          _uri );
-    conf.updateObjIfSet( "style",        _style );
-    conf.updateObjIfSet( "cache_policy", _cachePolicy );
-    conf.updateObj     ( "position",     getPosition() );
+    conf.updateObjIfSet( "style",    _style );
+    conf.updateObj     ( "position", getPosition() );
 
     return conf;
 }

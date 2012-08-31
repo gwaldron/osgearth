@@ -75,24 +75,26 @@ struct MyAnnoEventHandler : public AnnotationEventHandler
     void onHoverEnter( AnnotationNode* anno, const EventArgs& args )
     {
         anno->setDecoration( "hover" );
+        OE_NOTICE << "Hover enter" << std::endl;
     }
 
     void onHoverLeave( AnnotationNode* anno, const EventArgs& args )
     {
         anno->clearDecoration();
+        OE_NOTICE << "Hover leave" << std::endl;
     }
 
     virtual void onClick( AnnotationNode* node, const EventArgs& details )
     {        
-		PlaceNode* place = dynamic_cast<PlaceNode*>(node);
-		if (place == NULL)
-		{
-			OE_NOTICE << "Thanks for clicking this annotation" << std::endl;
-		}
-		else
-		{
-			OE_NOTICE << "Thanks for clicking the PlaceNode: " << place->getText() << std::endl;
-		}
+        PlaceNode* place = dynamic_cast<PlaceNode*>(node);
+        if (place == NULL)
+        {
+            OE_NOTICE << "Thanks for clicking this annotation" << std::endl;
+        }
+        else
+        {
+            OE_NOTICE << "Thanks for clicking the PlaceNode: " << place->getText() << std::endl;
+        }
     }
 };
 
@@ -127,19 +129,19 @@ main(int argc, char** argv)
     osg::ArgumentParser arguments(&argc,argv);
 
     osgViewer::Viewer viewer(arguments);
+    viewer.setCameraManipulator( new EarthManipulator() );
+
+    viewer.setCameraManipulator( new EarthManipulator() );
 
     // load an earth file and parse demo arguments
     osg::Node* node = MapNodeHelper().load(arguments, &viewer);
-    if ( !node )
-        return usage(argv);
+    if ( !node ) return usage(argv);
+    root->addChild( node );
 
     // find the map node that we loaded.
     MapNode* mapNode = MapNode::findMapNode(node);
     if ( !mapNode )
         return usage(argv);
-
-    root->addChild( mapNode );
-
 
     // Group to hold all our annotation elements.
     osg::Group* annoGroup = new osg::Group();
@@ -150,20 +152,15 @@ main(int argc, char** argv)
     root->addChild( editorGroup );
     editorGroup->setNodeMask( 0 );
 
-    // create a surface to house the controls
-    ControlCanvas* cs = ControlCanvas::get( &viewer );
-    root->addChild( cs );
-
-    HBox* box = new HBox();    
+    HBox* box = ControlCanvas::get(&viewer)->addControl( new HBox() );
     box->setChildSpacing( 5 );
     //Add a toggle button to toggle editing
-    CheckBoxControl* editCheckbox = new CheckBoxControl( false );    
+    CheckBoxControl* editCheckbox = new CheckBoxControl( false );
     editCheckbox->addEventHandler( new ToggleNodeHandler( editorGroup ) );
     box->addControl( editCheckbox );
     LabelControl* labelControl = new LabelControl( "Edit Annotations" );
     labelControl->setFontSize( 24.0f );
     box->addControl( labelControl  );
-    cs->addControl( box );
 
 
     // Make a group for 2D items, and activate the decluttering engine. Decluttering
@@ -185,11 +182,11 @@ main(int argc, char** argv)
     // A series of place nodes (an icon with a text label)
     {
         Style pin;
-        pin.getOrCreate<MarkerSymbol>()->url()->set( "../data/placemark32.png" );
+        pin.getOrCreate<IconSymbol>()->url()->setLiteral( "../data/placemark32.png" );
 
         labelGroup->addChild( new PlaceNode(mapNode, GeoPoint(geoSRS, -74.00, 40.71), "New York"      , pin));
         labelGroup->addChild( new PlaceNode(mapNode, GeoPoint(geoSRS, -77.04, 38.85), "Washington, DC", pin));
-        labelGroup->addChild( new PlaceNode(mapNode, GeoPoint(geoSRS, -87.65, 41.90), "Chicago"       , pin));
+        //labelGroup->addChild( new PlaceNode(mapNode, GeoPoint(geoSRS, -87.65, 41.90), "Chicago"       , pin));
         labelGroup->addChild( new PlaceNode(mapNode, GeoPoint(geoSRS,-118.40, 33.93), "Los Angeles"   , pin));
         labelGroup->addChild( new PlaceNode(mapNode, GeoPoint(geoSRS, -71.03, 42.37), "Boston"        , pin));
         labelGroup->addChild( new PlaceNode(mapNode, GeoPoint(geoSRS,-157.93, 21.35), "Honolulu"      , pin));
@@ -197,6 +194,14 @@ main(int argc, char** argv)
         labelGroup->addChild( new PlaceNode(mapNode, GeoPoint(geoSRS, -90.25, 29.98), "New Orleans"   , pin));
         labelGroup->addChild( new PlaceNode(mapNode, GeoPoint(geoSRS, -80.28, 25.82), "Miami"         , pin));
         labelGroup->addChild( new PlaceNode(mapNode, GeoPoint(geoSRS,-117.17, 32.72), "San Diego"     , pin));
+
+        // test with an LOD, just for kicks:
+        osg::LOD* lod = new osg::LOD();
+        lod->addChild( new PlaceNode(mapNode, GeoPoint(geoSRS, 14.68, 50.0), "Prague", pin), 0.0, 1e6);
+        labelGroup->addChild( lod );
+
+
+        labelGroup->addChild( new PlaceNode(mapNode, GeoPoint(geoSRS, -87.65, 41.90, 1000, ALTMODE_ABSOLUTE), "Chicago"       , pin));
     }
 
     //--------------------------------------------------------------------
@@ -376,19 +381,12 @@ main(int argc, char** argv)
     //--------------------------------------------------------------------
 
     // initialize the viewer:    
-    viewer.setCameraManipulator( new EarthManipulator() );
     viewer.setSceneData( root );
 
     viewer.getCamera()->addCullCallback( new AutoClipPlaneCullCallback(mapNode) );
-    viewer.getDatabasePager()->setDoPreCompile( true );
     viewer.addEventHandler(new osgViewer::StatsHandler());
     viewer.addEventHandler(new osgViewer::WindowSizeHandler());
     viewer.addEventHandler(new osgGA::StateSetManipulator(viewer.getCamera()->getOrCreateStateSet()));
-
-    // testing:
-    Config annoConfig = AnnotationRegistry::instance()->getConfig( annoGroup );
-    mapNode->externalConfig().add(annoConfig);
-    osgDB::writeNodeFile( *mapNode, "out.earth" );
 
     return viewer.run();
 }

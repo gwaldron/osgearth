@@ -53,7 +53,7 @@ Picker::pick( float x, float y, Hits& results ) const
         buffer_y /= aspectRatio;
     }
     
-    double zNear = 0.0;
+    double zNear = 0.00001;
     double zFar  = 1.0;
 
     double xMin = local_x - buffer_x;

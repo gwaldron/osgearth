@@ -22,6 +22,7 @@
 #include <osgEarth/ShaderComposition>
 #include <osgEarth/TaskService>
 #include <osgEarth/IOTypes>
+#include <osgEarth/ColorFilter>
 #include <osgEarthDrivers/cache_filesystem/FileSystemCache>
 #include <osg/Notify>
 #include <osg/Version>
@@ -47,12 +48,13 @@ using namespace OpenThreads;
 extern const char* builtinMimeTypeExtMappings[];
 
 Registry::Registry() :
-osg::Referenced  ( true ),
-_gdal_registered ( false ),
-_numGdalMutexGets( 0 ),
-_uidGen          ( 0 ),
-_caps            ( 0L ),
-_defaultFont     ( 0L )
+osg::Referenced     ( true ),
+_gdal_registered    ( false ),
+_numGdalMutexGets   ( 0 ),
+_uidGen             ( 0 ),
+_caps               ( 0L ),
+_defaultFont        ( 0L ),
+_terrainEngineDriver( "osgterrain" )
 {
     // set up GDAL and OGR.
     OGRRegisterAll();
@@ -115,6 +117,19 @@ _defaultFont     ( 0L )
     {
         _defaultCachePolicy = CachePolicy::NO_CACHE;
         OE_INFO << LC << "NO-CACHE MODE set from environment variable" << std::endl;
+    }
+
+    // if there's a default caching policy, add it to the default options.
+    if ( _defaultCachePolicy.isSet() )
+    {
+        _defaultCachePolicy->apply( _defaultOptions.get() );
+    }
+
+    // set the default terrain engine driver from the environment
+    const char* teStr = ::getenv("OSGEARTH_TERRAIN_ENGINE");
+    if ( teStr )
+    {
+        _terrainEngineDriver = std::string(teStr);
     }
 
     // load a default font
@@ -267,14 +282,6 @@ Registry::getNamedProfile( const std::string& name ) const
         return NULL;
 }
 
-//const VerticalSpatialReference*
-//Registry::getDefaultVSRS() const
-//{
-//    if ( !_defaultVSRS.valid() )
-//        const_cast<Registry*>(this)->_defaultVSRS = new VerticalSpatialReference( Units::METERS );
-//    return _defaultVSRS.get();
-//}
-
 osgEarth::Cache*
 Registry::getCache() const
 {
@@ -286,24 +293,8 @@ Registry::setCache( osgEarth::Cache* cache )
 {
 	_cache = cache;
     if ( cache )
-        cache->store( _defaultOptions.get() );
+        cache->apply( _defaultOptions.get() );
 }
-
-#if 0
-void Registry::addMimeTypeExtensionMapping(const std::string fromMimeType, const std::string toExt)
-{
-    _mimeTypeExtMap[fromMimeType] = toExt;
-}
-
-osgDB::ReaderWriter* 
-Registry::getReaderWriterForMimeType(const std::string& mimeType)
-{
-    MimeTypeExtensionMap::const_iterator i = _mimeTypeExtMap.find( mimeType );
-    return i != _mimeTypeExtMap.end()?
-        osgDB::Registry::instance()->getReaderWriterForExtension( i->second ) :
-        NULL;
-}
-#endif
 
 bool
 Registry::isBlacklisted(const std::string& filename)
@@ -411,7 +402,9 @@ Registry::createUID()
 osgDB::Options*
 Registry::cloneOrCreateOptions( const osgDB::Options* input ) const
 {
-    osgDB::Options* newOptions = input ? static_cast<osgDB::Options*>(input->clone(osg::CopyOp::SHALLOW_COPY)) : new osgDB::Options();
+    osgDB::Options* newOptions = 
+        input ? static_cast<osgDB::Options*>(input->clone(osg::CopyOp::SHALLOW_COPY)) : 
+        new osgDB::Options();
 
     // clear the CACHE_ARCHIVES flag because it is evil
     if ( ((int)newOptions->getObjectCacheHint() & osgDB::Options::CACHE_ARCHIVES) != 0 )
@@ -443,6 +436,13 @@ Registry::getUnits(const std::string& name) const
     }
     return 0L;
 }
+
+void
+Registry::setDefaultTerrainEngineDriverName(const std::string& name)
+{
+    _terrainEngineDriver = name;
+}
+
 
 //Simple class used to add a file extension alias for the earth_tile to the earth plugin
 class RegisterEarthTileExtension

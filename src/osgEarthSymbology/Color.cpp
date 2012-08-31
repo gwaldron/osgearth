@@ -180,9 +180,12 @@ Color::toHTML( Format format ) const
 Color
 Color::brightness( float perc ) const
 {
+#if 0
     Color c( *this );
     rgb2hsv( c );
     c.b() = osg::clampBetween( perc * c.b(), 0.0f, 1.0f );
     hsv2rgb( c );
     return c;
+#endif
+    return Color(r()*perc, g()*perc, b()*perc, a());
 }

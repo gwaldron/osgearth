@@ -16,11 +16,12 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
-#ifndef OSGEARTH_MAP_ENGINE_NODE_H
-#define OSGEARTH_MAP_ENGINE_NODE_H 1
+#ifndef OSGEARTH_TERRAIN_ENGINE_NODE_H
+#define OSGEARTH_TERRAIN_ENGINE_NODE_H 1
 
 #include <osgEarth/Map>
 #include <osgEarth/Terrain>
+#include <osgEarth/TextureCompositor>
 #include <osgEarth/ShaderUtils>
 #include <osg/CoordinateSystemNode>
 #include <osg/Geode>
@@ -28,8 +29,6 @@
 
 namespace osgEarth
 {
-    class TextureCompositor;
-
     /**
      * TerrainEngineNode is the base class and interface for map engine implementations.
      *
@@ -43,13 +42,14 @@ namespace osgEarth
         const Map* getMap() const { return _map.get(); }
 
         /** Gets the Terrain interface for interacting with the scene graph */
-        Terrain* getTerrain() const { return _terrainInterface.get(); }
+        Terrain* getTerrain() { return _terrainInterface.get(); }
+        const Terrain* getTerrain() const { return _terrainInterface.get(); }
 
         /** Gets the property set in use by this map engine. */
         virtual const TerrainOptions& getTerrainOptions() const =0;
 
         /** Accesses the compositor that controls the rendering of image layers */
-        TextureCompositor* getTextureCompositor() const { return _texCompositor.get(); }
+        TextureCompositor* getTextureCompositor() const;
 
     public: // Runtime properties
 
@@ -113,6 +113,7 @@ namespace osgEarth
         void onMapInfoEstablished( const MapInfo& mapInfo ); // not virtual!
         void onMapModelChanged( const MapModelChange& change );
         void updateImageUniforms();
+        virtual void updateTextureCombining() { }
 
     private:
         
@@ -122,6 +123,8 @@ namespace osgEarth
 
             void onVisibleChanged( TerrainLayer* layer );
             void onOpacityChanged( ImageLayer* layer );
+            void onColorFiltersChanged( ImageLayer* layer );      
+            void onVisibleRangeChanged( ImageLayer* layer );
 
             ArrayUniform _layerOpacityUniform;
             ArrayUniform _layerVisibleUniform;
@@ -138,11 +141,11 @@ namespace osgEarth
         osg::ref_ptr<osg::Uniform>         _startFrameTimeUniform;
         osg::ref_ptr<osg::Uniform>         _cameraElevationUniform;
         bool                               _redrawRequired;
-        UpdateLightingUniformsHelper       _updateLightingUniformsHelper;
         float                              _verticalScale;
         float                              _elevationSamplingRatio;
         osg::ref_ptr<Terrain>              _terrainInterface;
         unsigned                           _dirtyCount;
+        UpdateLightingUniformsHelper       _updateLightingUniformsHelper;
         
         enum InitStage {
             INIT_NONE,
@@ -173,4 +176,4 @@ namespace osgEarth
 
 } // namespace osgEarth
 
-#endif // OSGEARTH_ENGINE_OSGTERRAIN_ENGINE_NODE_H
+#endif // OSGEARTH_TERRAIN_ENGINE_NODE_H

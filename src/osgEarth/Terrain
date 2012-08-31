@@ -22,6 +22,7 @@
 #include <osgEarth/Common>
 #include <osgEarth/TileKey>
 #include <osgEarth/ThreadingUtils>
+#include <osgEarth/TerrainOptions>
 #include <osg/OperationThread>
 
 namespace osgEarth
@@ -36,9 +37,6 @@ namespace osgEarth
     class TerrainCallbackContext
     {
     public:
-        /** Gets the client data that was used to register this callback */
-        osg::Referenced* getClientData() { return _cd; }
-
         const Terrain* getTerrain() const { return _terrain; }
 
         /** Indicate that the callback should be removed immediately */
@@ -49,15 +47,14 @@ namespace osgEarth
 
         
     public:
-        TerrainCallbackContext(Terrain* terrain, osg::Referenced* cd)
-            : _remove(false), _cd(cd), _terrain(terrain) { }
+        TerrainCallbackContext(Terrain* terrain)
+            : _remove(false), _terrain(terrain) { }
 
         /** dtor */
         virtual ~TerrainCallbackContext() { }
 
     protected:
         bool _remove;
-        osg::Referenced* _cd;
         Terrain* _terrain;
         friend class Terrain;
     };
@@ -89,6 +86,18 @@ namespace osgEarth
     };
 
 
+    class /*interface-only*/ TerrainHeightProvider
+    {
+    public:
+        virtual bool getHeight(
+            const SpatialReference* srs,
+            double                  x,
+            double                  y,
+            double*                 out_heightAboveMSL,
+            double*                 out_heightAboveEllipsoid =0L) const =0;
+    };
+
+
     /**
      * Services for interacting with the live terrain graph. This differs from
      * the Map model; Map represents the parametric data backing the terrain, 
@@ -97,7 +106,7 @@ namespace osgEarth
      * All returned map coordinate values are in the units conveyed in the
      * spatial reference at getSRS().
      */
-    class OSGEARTH_EXPORT Terrain : public osg::Referenced
+    class OSGEARTH_EXPORT Terrain : public osg::Referenced, public TerrainHeightProvider
     {
     public:
         /**
@@ -120,37 +129,36 @@ namespace osgEarth
     public: // Intersection Utilities
 
         /**
-         * Intersects the terrain at the map location x, y and returns the height data.
+         * Intersects the terrain at the location x, y and returns the height data.
          *
-         * @param mapX, mapY
-         *      Map coordinates at which to query the height
+         * @param srs
+         *      Spatial reference system of (x,y) coordinates
+         * @param x, y
+         *      Coordinates at which to query the height
          * @param out_heightAboveMSL
          *      The resulting relative height goes here. The height is relative to MSL
          *      (mean sea level) as expressed by the map's vertical datum.
          * @param out_heightAboveEllipsoid
          *      The resulting geodetic height goes here. The height is relative to the
          *      geodetic ellipsoid expressed by the map's SRS.
-         * @param patch (optional)
-         *      If you want to query just a specific terrain path, instead of the entire
-         *      terrain, specify it here.
-         */
-        bool getHeight(
-            double     mapX,
-            double     mapY,
-            double*    out_heightAboveMSL,
-            double*    out_heightAboveEllipsoid =0L,
-            osg::Node* patch                    =0L) const;
-        
-        /**
-         * Same as above, but you pass in an SRS describing the x,y coords.
          */
         bool getHeight(
             const SpatialReference* srs,
             double                  x,
             double                  y,
             double*                 out_heightAboveMSL,
-            double*                 out_heightAboveEllipsoid =0L,
-            osg::Node*              patch                    =0L) const;
+            double*                 out_heightAboveEllipsoid =0L) const;
+
+        /**
+         * Save as above, but specify a subgraph patch.
+         */
+        bool getHeight(
+            osg::Node*              patch,
+            const SpatialReference* srs,
+            double                  x,
+            double                  y,
+            double*                 out_heightAboveMSL,
+            double*                 out_heightAboveEllipsoid =0L) const;
 
         /**
          * Returns the world coordinates under the mouse.
@@ -167,6 +175,13 @@ namespace osgEarth
             float       my,
             osg::Vec3d& out_world ) const;
 
+        bool getWorldCoordsUnderMouse(
+            osg::View*  view,
+            float       mx,
+            float       my,
+            osg::Vec3d& out_world,
+            osg::ref_ptr<osg::Node>& out_node ) const;
+
     public:
         /**
          * Adds a terrain callback.
@@ -174,39 +189,24 @@ namespace osgEarth
          * @param callback
          *      Terrain callback to add. This will get called whenever tile data changes in
          *      the active terrain graph
-         * @param clientData
-         *      User-specified client data structure that will be passed to the callback.
-         *      If you specify client data, it is held with an observer_ptr. When that observer_ptr
-         *      detects that the client data has been deleted, the callback is automatically
-         *      removed.
          */
-        void addTerrainCallback( TerrainCallback* callback, osg::Referenced* clientData =0L );
+        void addTerrainCallback( TerrainCallback* callback);
 
         /**
          * Removes a terrain callback.
          */
         void removeTerrainCallback( TerrainCallback* callback );
-
-        /**
-         * Removes any terrain callbacks referencing the specified client data.
-         *
-         * @param clientData
-         *      User object for which to remove any callbacks
-         */
-        void removeTerrainCallbacksWithClientData( osg::Referenced* clientData );
         
 
     public:
 
+        /**
+         * Accept a node visitor on the terrain's scene graph.
+         */
+        void accept( osg::NodeVisitor& nv );
+
         // access the raw terrain graph
         osg::Node* getGraph() { return _graph.get(); }
-
-        // internal record of a callback registration
-        struct CallbackRecord {
-            bool                               _hasClientData;
-            osg::observer_ptr<osg::Referenced> _clientData;
-            osg::ref_ptr<TerrainCallback>      _callback;
-        };
         
         // queues the onTileAdded callback (internal)
         void notifyTileAdded( const TileKey& key, osg::Node* tile );
@@ -217,21 +217,49 @@ namespace osgEarth
         virtual ~Terrain() { }
 
     private:
-        Terrain( osg::Node* graph, const Profile* profile, bool geocentric );
+        Terrain( osg::Node* graph, const Profile* profile, bool geocentric, const TerrainOptions& options );
 
         friend class TerrainEngineNode;
 
-        typedef std::list<CallbackRecord> CallbackList;
+        typedef std::list< osg::ref_ptr<TerrainCallback> > CallbackList;
 
         CallbackList                 _callbacks;
         Threading::ReadWriteMutex    _callbacksMutex;
         osg::ref_ptr<const Profile>  _profile;
         osg::observer_ptr<osg::Node> _graph;
         bool                         _geocentric;
+        const TerrainOptions&        _terrainOptions;
 
         osg::observer_ptr<osg::OperationQueue> _updateOperationQueue;
-
     };
+
+
+    /**
+     * A TerrainPatch is a standalone subset of terrain that you can use for 
+     * height queries. The intention is that this be used for a "disconnected"
+     * terrain tile, i.e. one that is not in the scene graph yet -- making it
+     * MT-safe.
+     */
+     class OSGEARTH_EXPORT TerrainPatch : public TerrainHeightProvider
+   {
+   public:
+       TerrainPatch( osg::Node* patch, const Terrain* terrain );
+
+       /**
+        * Queries the elevation under the specified point. This method is
+        * identical to calling Terrain::getHeight with the specified patch.
+        */
+      bool getHeight(
+          const SpatialReference* srs,
+          double                  x,
+          double                  y,
+          double*                 out_heightAboveMSL,
+          double*                 out_heightAboveEllipsoid =0L) const;
+
+   protected:
+       osg::ref_ptr<osg::Node>     _patch;
+       osg::ref_ptr<const Terrain> _terrain;
+   };
 }
 
 #endif // OSGEARTH_COMPOSITING_H

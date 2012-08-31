@@ -34,10 +34,9 @@ LocalizedNode::LocalizedNode(MapNode*                mapNode,
                              const GeoPoint&         position,
                              bool                    is2D ) :
 PositionedAnnotationNode( mapNode ),
-_mapSRS        ( mapNode ? mapNode->getMapSRS() : 0L ),
-_horizonCulling( false ),
-_autoTransform ( is2D ),
-_scale         ( 1.0f, 1.0f, 1.0f )
+_horizonCulling         ( false ),
+_autoTransform          ( is2D ),
+_scale                  ( 1.0f, 1.0f, 1.0f )
 {
     if ( _autoTransform )
     {
@@ -50,17 +49,37 @@ _scale         ( 1.0f, 1.0f, 1.0f )
     else
     {
         _xform = new osg::MatrixTransform();
-    }
 
-    if ( _mapSRS.valid() && _mapSRS->isGeographic() )
-    {
-        setHorizonCulling( true );
+        this->getOrCreateStateSet()->setRenderingHint( osg::StateSet::TRANSPARENT_BIN );
     }
+    
+    this->getOrCreateStateSet()->setMode( GL_BLEND, 1 );
+
+    setHorizonCulling( true );
 
     _draper = new DrapeableNode( mapNode, false );
     _draper->addChild( _xform.get() );
     
     setPosition( position );
+}
+
+void
+LocalizedNode::setMapNode( MapNode* mapNode )
+{
+    if ( getMapNode() != mapNode )
+    {
+        PositionedAnnotationNode::setMapNode( mapNode );
+
+        // The horizon culler depends on the map node, so reinitialize it:
+        if ( _horizonCulling )
+        {
+            setHorizonCulling( false );
+            setHorizonCulling( true );
+        }
+
+        // re-apply the position since the map has changed
+        setPosition( getPosition() );
+    }
 }
 
 void
@@ -74,19 +93,14 @@ LocalizedNode::traverse( osg::NodeVisitor& nv )
     AnnotationNode::traverse( nv );
 }
 
-//bool
-//LocalizedNode::setPosition( const osg::Vec3d& position )
-//{
-//    return setPosition( GeoPoint(_mapSRS.get(), position, ALTMODE_ABSOLUTE) );
-//}
-
 bool
 LocalizedNode::setPosition( const GeoPoint& pos )
 {
-    if ( _mapSRS.valid() )
+    if ( getMapNode() )
     {
         // first transform the point to the map's SRS:
-        GeoPoint mapPos = _mapSRS.get() ? pos.transform(_mapSRS.get()) : pos;
+        const SpatialReference* mapSRS = getMapNode()->getMapSRS();
+        GeoPoint mapPos = mapSRS ? pos.transform(mapSRS) : pos;
         if ( !mapPos.isValid() )
             return false;
 
@@ -211,11 +225,11 @@ LocalizedNode::getLocalRotation() const
 void
 LocalizedNode::setHorizonCulling( bool value )
 {
-    if ( _horizonCulling != value && _mapSRS.valid() && _mapSRS->isGeographic() )
+    if ( _horizonCulling != value )
     {
         _horizonCulling = value;
 
-        if ( _horizonCulling )
+        if ( _horizonCulling && getMapNode() && getMapNode()->isGeocentric() )
         {
             osg::Vec3d world;
             if ( _autoTransform )
@@ -223,7 +237,7 @@ LocalizedNode::setHorizonCulling( bool value )
             else
                 world = static_cast<osg::MatrixTransform*>(_xform.get())->getMatrix().getTrans();
 
-            _xform->setCullCallback( new CullNodeByHorizon(world, _mapSRS->getEllipsoid()) );
+            _xform->setCullCallback( new CullNodeByHorizon(world, getMapNode()->getMapSRS()->getEllipsoid()) );
         }
         else
         {

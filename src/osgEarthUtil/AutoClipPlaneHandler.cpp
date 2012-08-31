@@ -239,7 +239,8 @@ AutoClipPlaneCullCallback::operator()( osg::Node* node, osg::NodeVisitor* nv )
                 GeoPoint loc;
                 if ( map )
                 {
-                    map->worldPointToMapPoint( eye, loc );
+                    loc.fromWorld( map->getSRS(), eye );
+                    //map->worldPointToMapPoint( eye, loc );
                 }
                 else
                 {
@@ -253,7 +254,7 @@ AutoClipPlaneCullCallback::operator()( osg::Node* node, osg::NodeVisitor* nv )
                 if (_mapNode.valid())
                 {
                     double height = 0.0;
-                    _mapNode->getTerrain()->getHeight(loc.x(), loc.y(), &height);
+                    _mapNode->getTerrain()->getHeight(loc.getSRS(), loc.x(), loc.y(), &height);
                     //OE_NOTICE << "got height " << height << std::endl;
                     hae -= height;
                     //OE_NOTICE << "HAE=" << hae <<  std::endl;

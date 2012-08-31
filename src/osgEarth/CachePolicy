@@ -22,6 +22,7 @@
 
 #include <osgEarth/Common>
 #include <osgEarth/Config>
+#include <osgDB/Options>
 
 namespace osgEarth
 {
@@ -36,15 +37,22 @@ namespace osgEarth
             USAGE_READ_WRITE   = 0,  // read/write to the cache if one exists.
             USAGE_CACHE_ONLY   = 1,  // treat the cache as the ONLY source of data.
             USAGE_READ_ONLY    = 2,  // read from the cache, but don't write new data to it.
-            USAGE_NO_CACHE     = 3,  // neither read from or write to the cache
-            USAGE_DEFAULT      = USAGE_READ_WRITE
+            USAGE_NO_CACHE     = 3   // neither read from or write to the cache
         };
 
-        static CachePolicy INHERIT;
+        /** default cache policy (READ_WRITE) */
+        static CachePolicy DEFAULT;
+
+        /* policy indicating to never use a cache */
         static CachePolicy NO_CACHE;
+
+        /** policy indicating to only use a cache */
         static CachePolicy CACHE_ONLY;
 
     public:
+        /** constructs an invalid CachePolicy. */
+        CachePolicy();
+
         /** constructs a caching policy. */
         CachePolicy( const Usage& usage );
 
@@ -52,7 +60,13 @@ namespace osgEarth
         CachePolicy( const Usage& usage, double maxAgeSeconds );
 
         /** constructs a CachePolicy from a config options */
-        CachePolicy( const Config& conf =Config() );
+        CachePolicy( const Config& conf );
+
+        /** construct a cache policy be reading it from an osgDB::Options */
+        static bool fromOptions( const osgDB::Options* dbOptions, optional<CachePolicy>& out_policy );
+
+        /** Stores this cache policy in a DB Options. */
+        void apply( osgDB::Options* options );
 
         /** dtor */
         virtual ~CachePolicy() { }
@@ -67,10 +81,6 @@ namespace osgEarth
 
     public: // convenience functions.
 
-        bool empty() const {
-            return !_usage.isSet();
-        }
-
         bool isCacheReadable() const { 
             return *_usage == USAGE_READ_WRITE || *_usage == USAGE_CACHE_ONLY || *_usage == USAGE_READ_ONLY;
         }
@@ -79,13 +89,13 @@ namespace osgEarth
             return *_usage == USAGE_READ_WRITE;
         }
 
-        bool operator == ( const CachePolicy& rhs ) const {
-            return _usage == rhs._usage && _maxAge == rhs._maxAge;
-        }
+        bool operator == ( const CachePolicy& rhs ) const;
 
         bool operator != ( const CachePolicy& rhs ) const {
             return ! operator==(rhs);
         }
+
+        std::string usageString() const;
 
     public: // config
         Config getConfig() const;

@@ -22,7 +22,6 @@
 #include <osgEarthFeatures/Common>
 #include <osgEarthFeatures/Script>
 #include <osgEarth/Config>
-#include <osgEarth/Revisioning>
 
 namespace osgEarth { namespace Features
 {

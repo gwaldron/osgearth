@@ -35,6 +35,7 @@ namespace osgEarth { namespace Features
         extern OSGEARTHFEATURES_EXPORT std::string geometryToGeoJSON( Geometry* geometry );
         extern OSGEARTHFEATURES_EXPORT std::string geometryToKML( Geometry* geometry );
         extern OSGEARTHFEATURES_EXPORT std::string geometryToGML( Geometry* geometry );
+        extern OSGEARTHFEATURES_EXPORT double getGeometryArea( Geometry* geometry );
     }
 
 } } // namespace osgEarth::Features

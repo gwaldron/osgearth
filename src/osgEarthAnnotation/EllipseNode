@@ -126,7 +126,7 @@ namespace osgEarth { namespace Annotation
 
     public:
 
-        EllipseNode(MapNode* mapNode, const Config& conf);
+        EllipseNode(MapNode* mapNode, const Config& conf, const osgDB::Options* dbOptions);
         virtual Config getConfig() const;
 
 

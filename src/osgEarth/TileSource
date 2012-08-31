@@ -20,11 +20,15 @@
 #ifndef OSGEARTH_TILE_SOURCE_H
 #define OSGEARTH_TILE_SOURCE_H 1
 
+// Need to undef Status in case it has been defined in Xlib.h. This can happen on Linux
+#undef Status
+
 #include <limits.h>
 
 #include <osg/Version>
 
 #include <osgEarth/Common>
+#include <osgEarth/CachePolicy>
 #include <osgEarth/TileKey>
 #include <osgEarth/Profile>
 #include <osgEarth/MemCache>
@@ -49,14 +53,14 @@
 
 
 namespace osgEarth
-{   
+{
     /**
      * Configuration options for a tile source driver.
      */
     class OSGEARTH_EXPORT TileSourceOptions : public DriverConfigOptions // no export; header only
     {
     public:
-        
+
         optional<int>& tileSize() { return _tileSize; }
         const optional<int>& tileSize() const { return _tileSize; }
 
@@ -168,12 +172,32 @@ namespace osgEarth
     };
 
     /**
-     * A TileSource is an object that can create image and/or heightfield tiles. Driver 
+     * A TileSource is an object that can create image and/or heightfield tiles. Driver
      * plugins are responsible for creating and returning a TileSource that the Map
      * will then use to create tiles for tile keys.
      */
     class OSGEARTH_EXPORT TileSource : public virtual osg::Object
     {
+    public:
+        /** Initialization status */
+        struct Status
+        {
+        public:
+            Status() { }
+            Status(const Status& rhs) : _msg(rhs._msg) { }
+            Status(const std::string& msg) : _msg(msg) { }
+            bool isOK() const { return _msg.empty(); }
+            bool isError() const { return !_msg.empty(); }
+            const std::string& message() const { return _msg; }
+            bool operator == (const Status& rhs) const { return _msg.compare(rhs._msg)==0; }
+            bool operator != (const Status& rhs) const { return _msg.compare(rhs._msg)!=0; }
+            static Status Error(const std::string& msg) { return Status(msg); }
+        private:
+            std::string _msg;
+        };
+
+        static Status STATUS_OK;
+
     public:
         struct ImageOperation : public osg::Referenced {
             virtual void operator()( osg::ref_ptr<osg::Image>& in_out_image ) =0;
@@ -183,13 +207,18 @@ namespace osgEarth
             virtual void operator()( osg::ref_ptr<osg::HeightField>& in_out_hf ) =0;
         };
 
-    public:        
+    public:
         TileSource( const TileSourceOptions& options =TileSourceOptions() );
+
+        /**
+         * Gets the status of this tile source.
+         */
+        const Status& getStatus() const { return _status; }
 
         /**
          * Gets the number of pixels per tile for this TileSource.
          */
-        virtual int getPixelsPerTile() const;   
+        virtual int getPixelsPerTile() const;
 
         /**
          * Gets the list of areas with data for this TileSource
@@ -197,10 +226,10 @@ namespace osgEarth
         const DataExtentList& getDataExtents() const { return _dataExtents; }
         DataExtentList& getDataExtents() { return _dataExtents; }
 
-	    /**
-    	 * Creates an image for the given TileKey. The TileKey's profile must match
+        /**
+         * Creates an image for the given TileKey. The TileKey's profile must match
          * the profile of the TileSource.
-		 */
+         */
         virtual osg::Image* createImage(
             const TileKey&        key,
             ImageOperation*       op        =0L,
@@ -213,7 +242,7 @@ namespace osgEarth
         virtual osg::HeightField* createHeightField(
             const TileKey&        key,
             HeightFieldOperation* op        =0L,
-            ProgressCallback*     progress  =0L );     
+            ProgressCallback*     progress  =0L );
 
     public:
 
@@ -229,44 +258,39 @@ namespace osgEarth
          */
         virtual const Profile* getProfile() const;
 
-		/**
-		 * Gets the nodata elevation value
-		 */
+        /**
+         * Gets the nodata elevation value
+         */
         virtual float getNoDataValue() {
             return _options.noDataValue().value(); }
 
-		/**
-		 * Gets the nodata min value
-		 */
+        /**
+         * Gets the nodata min value
+         */
         virtual float getNoDataMinValue() {
             return _options.noDataMinValue().value(); }
 
-		/**
-		 * Gets the nodata max value
-		 */
+        /**
+         * Gets the nodata max value
+         */
         virtual float getNoDataMaxValue() {
             return _options.noDataMaxValue().value(); }
 
         /**
-         * Gets the maximum level of detail available from the tile source. Unlike 
-         * getMaxLevel(), which reports the maximum level at which to use this tile 
-         * source in a Map, this method reports the maximum level for which the 
+         * Gets the maximum level of detail available from the tile source. Unlike
+         * getMaxLevel(), which reports the maximum level at which to use this tile
+         * source in a Map, this method reports the maximum level for which the
          * tile source is able to return data.
          */
         virtual unsigned int getMaxDataLevel() const;
 
         /**
-         * Gets the minimum level of detail available from the tile source. Unlike 
-         * getMinLevel(), which reports the minimum level at which to use this tile 
-         * source in a Map, this method reports the minimum level for which the 
+         * Gets the minimum level of detail available from the tile source. Unlike
+         * getMinLevel(), which reports the minimum level at which to use this tile
+         * source in a Map, this method reports the minimum level for which the
          * tile source is able to return data.
          */
         virtual unsigned int getMinDataLevel() const;
-
-        /**
-         * Returns true if data from this source can be cached to disk
-         */
-        virtual bool supportsPersistentCaching() const;
 
         /**
          * Gets the preferred extension for this TileSource
@@ -277,7 +301,7 @@ namespace osgEarth
          *Gets the blacklist for this TileSource
          */
         TileBlacklist* getBlacklist();
-        const TileBlacklist* getBlacklist() const;     
+        const TileBlacklist* getBlacklist() const;
 
         /**
          * Whether or not the source has data for the given TileKey
@@ -300,15 +324,37 @@ namespace osgEarth
          */
         virtual bool isDynamic() const { return false; }
 
-		/**
-		 * Initializes the TileSource.
-         *
-         * This is the initialize() function called by the osgEarth engine. You can define it in 
-         * the implementation class to do initial startup of the TileSource.
-		 */
-        virtual void initialize( 
-            const osgDB::Options* dbOptions       =0L,
-            const Profile*        overrideProfile =0L ) =0;
+        /**
+         * A hint as to what kind of caching policy would be appropriate to employ
+         * on this data source. By default, this is the default, which is to use a
+         * cache if one is configured. But a TileSource can report that caching should
+         * not be used (for whatever reason) by returning CachePolicy::NO_CACHE.
+         */
+        virtual CachePolicy getCachePolicyHint() const { return CachePolicy::DEFAULT; }
+
+
+        /**
+         * Returns true if data from this source can be cached to disk
+         * @deprecated. Use getCachePolicyHint instead.
+         */
+        bool supportsPersistentCaching() const {
+            return getCachePolicyHint() != CachePolicy::NO_CACHE; }
+
+        /**
+         * Starts up the tile source.
+         */
+        const Status& startup( const osgDB::Options* dbOptions );
+
+        /**
+         * @deprecated
+         * Initializes the TileSource. This is the old initialize method; it will exists
+         * for backwards compatibility with older user-defined TileSource implementations.
+         * Consider updating to the new initialize() method above since it properly
+         * reports the results of the initialization.
+         */
+        virtual void initialize(
+            const osgDB::Options* dbOptions,
+            const Profile*        overrideProfile ) { }
 
         /** The options used to construct this tile source. */
         const TileSourceOptions& getOptions() const { return _options; }
@@ -321,16 +367,31 @@ namespace osgEarth
         virtual bool isSameKindAs(const osg::Object* obj) const { return dynamic_cast<const TileSource*>(obj)!=NULL; }
         virtual const char* className() const { return "TileSource"; }
         virtual const char* libraryName() const { return "osgEarth"; }
-   
+
     protected:
 
         virtual ~TileSource();
 
-		/**
-		 * Creates an image for the given TileKey.
+        /**
+         * Initializes the tile source (called by startup)
+         *
+         * The osgEarth engine calls this function to initialize a TileSource using an
+         * active osgDB::Options. The method returns a status code indicating whether
+         * intialization succeeded (in which case the owning layer will become enabled)
+         * or failed (in which case the owning layer will become disabled.
+         *
+         * This method replaces the now-deprecated initialize method below.
+         *
+         * The Subclass should override this to report a correct initialization status.
+         * The default implementation reports STATUS_OK (for compatibility).
+         */
+        virtual Status initialize( const osgDB::Options* dbOptions );
+
+        /**
+         * Creates an image for the given TileKey.
          * The returned object is new and is the responsibility of the caller.
-		 */
-		virtual osg::Image* createImage( 
+         */
+        virtual osg::Image* createImage(
             const TileKey&        key,
             ProgressCallback*     progress ) = 0;
 
@@ -338,14 +399,20 @@ namespace osgEarth
          * Creates a heightfield for the given TileKey
          * The returned object is new and is the responsibility of the caller.
          */
-        virtual osg::HeightField* createHeightField( 
+        virtual osg::HeightField* createHeightField(
             const TileKey&        key,
             ProgressCallback*     progress );
 
-		/**
-		 * Called by subclasses to initialize their profile
-		 */
-		void setProfile( const Profile* profile );
+        /**
+         * Called by subclasses to initialize their profile
+         */
+        void setProfile( const Profile* profile );
+
+        /**
+         * Sets the status of this tile source. Called by a subclass to
+         * set the status
+         */
+        void setStatus( Status status );
 
     private:
 
@@ -355,16 +422,18 @@ namespace osgEarth
         friend class Map;
         friend class MapEngine;
         friend class TileSourceFactory;
+        friend class CompositeTileSource;
 
         osg::ref_ptr< TileBlacklist > _blacklist;
         std::string _blacklistFilename;
 
-		osg::ref_ptr<MemCache> _memCache;
+        osg::ref_ptr<MemCache> _memCache;
 
         DataExtentList _dataExtents;
+        Status         _status;
     };
 
-    
+
     typedef std::vector< osg::ref_ptr<TileSource> > TileSourceVector;
 
     //--------------------------------------------------------------------
@@ -382,8 +451,8 @@ namespace osgEarth
      * tile source "pipelines" for data access and processing.
      */
     class OSGEARTH_EXPORT TileSourceFactory
-    {   
-	public:
+    {
+    public:
         static TileSource* create( const TileSourceOptions& options );
     };
 }

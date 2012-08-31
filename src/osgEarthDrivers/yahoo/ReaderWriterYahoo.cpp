@@ -43,10 +43,16 @@ public:
     }
 
     // Yahoo! uses spherical mercator, but the top LOD is a 2x2 tile set.
-    void initialize(const osgDB::Options* dbOptions,
-                    const Profile*        overrideProfile )
+    Status initialize(const osgDB::Options* dbOptions)
     {
-        setProfile( Profile::create( "world-mercator", "", 2, 2 ) );
+        // no caching of source tiles
+        _dbOptions = Registry::instance()->cloneOrCreateOptions( dbOptions );
+        CachePolicy::NO_CACHE.apply( _dbOptions.get() );
+
+        // always a sperhical mercator profile
+        setProfile( Profile::create( "spherical-mercator", "", 2, 2 ) );
+
+        return STATUS_OK;
     }
 
     osg::Image* createImage(const TileKey&        key,
@@ -91,12 +97,12 @@ public:
                 << "&z=" << zoom + 2;
         }
 
-		std::string base;
-		base = buf.str();
+        std::string base;
+        base = buf.str();
 
         OE_DEBUG << key.str() << "=" << base << std::endl;
 
-        return URI(base).readImage( 0L, CachePolicy::NO_CACHE ).releaseImage();
+        return URI(base).readImage( _dbOptions.get() ).releaseImage();
     }
 
     osg::HeightField* createHeightField(const TileKey&        key,
@@ -107,19 +113,21 @@ public:
         return NULL;
     }
 
-    virtual std::string getExtension()  const 
+    std::string getExtension()  const 
     {
         //All Yahoo tiles are in JPEG format
         return "jpg";
     }
-
-    virtual bool supportsPersistentCaching() const
+    
+    /** Tell the terrain engine not to cache tiles form this source. */
+    CachePolicy getCachePolicyHint() const
     {
-        return false;
+        return CachePolicy::NO_CACHE;
     }
 
 private:
-    const YahooOptions _options;
+    const YahooOptions           _options;
+    osg::ref_ptr<osgDB::Options> _dbOptions;
 };
 
 

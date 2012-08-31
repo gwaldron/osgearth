@@ -32,13 +32,13 @@ namespace osgEarth { namespace Drivers
         optional<std::string>& colorCode() { return _colorCode; }
         const optional<std::string>& colorCode() const { return _colorCode; }
 
-        optional<bool>& tms() { return _tms; }
-        const optional<bool>& tms() const { return _tms; }
+        optional<bool>& invertY() { return _invertY; }
+        const optional<bool>& invertY() const { return _invertY; }
 
     public:
         DebugOptions( const TileSourceOptions& opt =TileSourceOptions() ) : TileSourceOptions( opt ),
             _colorCode( "#000000" ),
-            _tms( false )
+            _invertY( false )
         {
             setDriver( "debug" );
             fromConfig( _conf );
@@ -51,7 +51,7 @@ namespace osgEarth { namespace Drivers
         Config getConfig() const {
             Config conf = TileSourceOptions::getConfig();
             conf.updateIfSet( "color", _colorCode );
-            conf.updateIfSet( "tms", _tms );
+            conf.updateIfSet( "invertY", _invertY );
             return conf;
         }
 
@@ -64,11 +64,11 @@ namespace osgEarth { namespace Drivers
     private:
         void fromConfig( const Config& conf ) {
             conf.getIfSet( "color", _colorCode );
-            conf.getIfSet( "tms", _tms);
+            conf.getIfSet( "invertY", _invertY);
         }
 
         optional<std::string> _colorCode;
-        optional<bool> _tms;
+        optional<bool>        _invertY;
     };
 
 } } // namespace osgEarth::Drivers

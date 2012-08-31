@@ -18,7 +18,6 @@
 */
 #include <osgEarth/Draggers>
 #include <osgEarth/MapNode>
-#include <osgEarth/Terrain>
 #include <osgEarth/Pickers>
 
 #include <osg/AutoTransform>
@@ -34,11 +33,17 @@ using namespace osgEarth;
 
 struct ClampDraggerCallback : public TerrainCallback
 {
-    void onTileAdded( const TileKey& key, osg::Node* tile, TerrainCallbackContext& context )
-    {
-        Dragger* dragger = static_cast<Dragger*>(context.getClientData());
-        dragger->reclamp( key, tile, context.getTerrain() );
-    }
+    ClampDraggerCallback( Dragger* dragger ):
+_dragger( dragger )
+{
+}
+
+void onTileAdded( const TileKey& key, osg::Node* tile, TerrainCallbackContext& context )
+{
+    _dragger->reclamp( key, tile, context.getTerrain() );
+}
+
+Dragger* _dragger;
 };
 
 /**********************************************************/
@@ -50,12 +55,35 @@ _hovered(false)
 {
     setNumChildrenRequiringEventTraversal( 1 );
 
-    _mapNode->getTerrain()->addTerrainCallback( new ClampDraggerCallback(), this ); 
+    _autoClampCallback = new ClampDraggerCallback( this );
+
+    setMapNode( mapNode );
 }
 
 Dragger::~Dragger()
 {
-    _mapNode->getTerrain()->removeTerrainCallbacksWithClientData(this);
+    setMapNode( 0L );
+}
+
+void
+Dragger::setMapNode( MapNode* mapNode )
+{
+    MapNode* oldMapNode = getMapNode();
+
+    if ( oldMapNode != mapNode )
+    {
+        if ( oldMapNode && _autoClampCallback.valid() )
+        {
+            oldMapNode->getTerrain()->removeTerrainCallback( _autoClampCallback.get() );
+        }
+
+        _mapNode = mapNode;
+
+        if ( _mapNode.valid() && _autoClampCallback.valid() )
+        {
+            _mapNode->getTerrain()->addTerrainCallback( _autoClampCallback.get() );
+        }
+    }
 }
 
 bool Dragger::getDragging() const
@@ -80,33 +108,31 @@ void Dragger::setPosition( const GeoPoint& position, bool fireEvents)
         _position = position;
         updateTransform();
 
-        if (fireEvents)
-        {
-            for( PositionChangedCallbackList::iterator i = _callbacks.begin(); i != _callbacks.end(); i++ )
-            {
-                i->get()->onPositionChanged(this, _position);
-            }
-        }
+        if ( fireEvents )
+            firePositionChanged();
+    }
+}
+
+void Dragger::firePositionChanged()
+{
+    for( PositionChangedCallbackList::iterator i = _callbacks.begin(); i != _callbacks.end(); i++ )
+    {
+        i->get()->onPositionChanged(this, _position);
     }
 }
 
 void Dragger::updateTransform(osg::Node* patch)
 {
-    osg::Matrixd matrix;
-    GeoPoint mapPoint;
-    _mapNode->getMap()->toMapPoint( _position, mapPoint );
-    //Get the height
-    if (_position.altitudeMode() == ALTMODE_RELATIVE)
+    if ( getMapNode() )
     {
-        double hamsl;
-        if (_mapNode->getTerrain()->getHeight(mapPoint.x(), mapPoint.y(), &hamsl, 0L, patch))
-        {
-            mapPoint.z() += hamsl;
-        }
-        mapPoint.altitudeMode() = ALTMODE_ABSOLUTE;
-    }            
-    mapPoint.createLocalToWorld( matrix );
-    setMatrix( matrix );
+        osg::Matrixd matrix;
+
+        GeoPoint mapPoint( _position );
+        mapPoint.makeAbsolute( getMapNode()->getTerrain() );
+
+        mapPoint.createLocalToWorld( matrix );
+        setMatrix( matrix );
+    }
 }
 
 void Dragger::enter()
@@ -169,7 +195,11 @@ bool Dragger::handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& 
     }
     else if (ea.getEventType() == osgGA::GUIEventAdapter::RELEASE)
     {
-        _dragging = false;
+        if ( _dragging )
+        {
+            _dragging = false;
+            firePositionChanged();
+        }
         aa.requestRedraw();
     }
     else if (ea.getEventType() == osgGA::GUIEventAdapter::DRAG)
@@ -177,11 +207,12 @@ bool Dragger::handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& 
         if (_dragging)
         {
             osg::Vec3d world;
-            if ( _mapNode->getTerrain()->getWorldCoordsUnderMouse(view, ea.getX(), ea.getY(), world) )
+            if ( getMapNode() && getMapNode()->getTerrain()->getWorldCoordsUnderMouse(view, ea.getX(), ea.getY(), world) )
             {
                 //Get the absolute mapPoint that they've drug it to.
                 GeoPoint mapPoint;
-                _mapNode->getMap()->worldPointToMapPoint(world, mapPoint);
+                mapPoint.fromWorld( getMapNode()->getMapSRS(), world );
+                //_mapNode->getMap()->worldPointToMapPoint(world, mapPoint);
 
                 //If the current position is relative, we need to convert the absolute world point to relative.
                 //If the point is absolute then just emit the absolute point.

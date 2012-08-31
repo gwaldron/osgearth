@@ -117,7 +117,7 @@ namespace osgEarth
         /**
          * Store this to an osgDB::Options
          */
-        void store( osgDB::Options* options ) {
+        void apply( osgDB::Options* options ) {
             if ( options ) options->setPluginData( "osgEarth::Cache", this );
         }
 

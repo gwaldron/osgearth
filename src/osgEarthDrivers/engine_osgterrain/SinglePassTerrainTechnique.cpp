@@ -78,9 +78,10 @@ _optimizeTriangleOrientation(true),
 _texCompositor( compositor ),
 _frontGeodeInstalled( false ),
 _debug( false ),
-_compileMutex( Mutex::MUTEX_RECURSIVE )
+_compileMutex( Mutex::MUTEX_RECURSIVE ),
+_clearDataAfterCompile( true )
 {
-    this->setThreadSafeRefUnref(true);
+    setThreadSafeRefUnref(true);
 }
 
 SinglePassTerrainTechnique::SinglePassTerrainTechnique(const SinglePassTerrainTechnique& rhs, const osg::CopyOp& copyop):
@@ -95,7 +96,8 @@ _texCompositor( rhs._texCompositor.get() ),
 _frontGeodeInstalled( rhs._frontGeodeInstalled ),
 _debug( rhs._debug ),
 _parentTile( rhs._parentTile ),
-_compileMutex( Mutex::MUTEX_RECURSIVE )
+_compileMutex( Mutex::MUTEX_RECURSIVE ),
+_clearDataAfterCompile( rhs._clearDataAfterCompile )
 {
     //NOP
 }
@@ -134,6 +136,11 @@ SinglePassTerrainTechnique::init()
 {
     compile( TileUpdate(TileUpdate::UPDATE_ALL), 0L );
     applyTileUpdates();
+
+    if (_clearDataAfterCompile)
+    {        
+        _tile->clear();
+    }
 }
 
 void
@@ -189,9 +196,9 @@ SinglePassTerrainTechnique::compile( const TileUpdate& update, ProgressCallback*
         // TODO: optimize this with a method that ONLY regenerates the texture coordinates.
         if ( !_texCompositor->requiresUnitTextureSpace() )
         {
-            osg::ref_ptr<osg::StateSet> stateSet = _backGeode.valid() ? _backGeode->getStateSet() : 0L;
-            _backGeode = createGeometry( tilef );
-            _backGeode->setStateSet( stateSet.get() );
+            osg::ref_ptr<osg::StateSet> stateSet = _backNode.valid() ? _backNode->getStateSet() : 0L;
+            _backNode = createGeometry( tilef );
+            _backNode->setStateSet( stateSet.get() );
 
             _pendingGeometryUpdate = true;
         }
@@ -206,9 +213,9 @@ SinglePassTerrainTechnique::compile( const TileUpdate& update, ProgressCallback*
     // multitexture mode (white tiles show up). Need to investigate and fix.
     else if ( partialUpdateOK && update.getAction() == TileUpdate::UPDATE_ELEVATION )
     {
-        osg::ref_ptr<osg::StateSet> stateSet = _backGeode.valid() ? _backGeode->getStateSet() : 0L;
-        _backGeode = createGeometry( tilef );
-        _backGeode->setStateSet( stateSet.get() );
+        osg::ref_ptr<osg::StateSet> stateSet = _backNode.valid() ? _backNode->getStateSet() : 0L;
+        _backNode = createGeometry( tilef );
+        _backNode->setStateSet( stateSet.get() );
 
         _pendingGeometryUpdate = true;
     }
@@ -218,13 +225,13 @@ SinglePassTerrainTechnique::compile( const TileUpdate& update, ProgressCallback*
         // give the engine a chance to bail out before generating geometry
         if ( progress && progress->isCanceled() )
         {
-            _backGeode = 0L;
+            _backNode = 0L;
             return;
         }
     
         // create the geometry and texture coordinates for this tile in a new buffer
-        _backGeode = createGeometry( tilef );
-        if ( !_backGeode.valid() )
+        _backNode = createGeometry( tilef );
+        if ( !_backNode.valid() )
         {
             OE_WARN << LC << "createGeometry returned NULL" << std::endl;
             return;
@@ -233,7 +240,7 @@ SinglePassTerrainTechnique::compile( const TileUpdate& update, ProgressCallback*
         // give the engine a chance to bail out before building the texture stateset:
         if ( progress && progress->isCanceled() )
         {
-            _backGeode = 0L;
+            _backNode = 0L;
             return;
         }
 
@@ -241,13 +248,13 @@ SinglePassTerrainTechnique::compile( const TileUpdate& update, ProgressCallback*
         osg::StateSet* stateSet = createStateSet( tilef );
         if ( stateSet )
         {
-            _backGeode->setStateSet( stateSet );
+            _backNode->setStateSet( stateSet );
         }
 
         // give the engine a chance to bail out before swapping buffers
         if ( progress && progress->isCanceled() )
         {
-            _backGeode = 0L;
+            _backNode = 0L;
             return;
         }
        
@@ -255,8 +262,8 @@ SinglePassTerrainTechnique::compile( const TileUpdate& update, ProgressCallback*
         if ( _initCount > 1 )
             OE_WARN << LC << "Tile was fully build " << _initCount << " times" << std::endl;
 
-        if ( _backGeode.valid() && !_backGeode->getStateSet() )
-            OE_WARN << LC << "ILLEGAL! no stateset in BackGeode!!" << std::endl;
+        if ( _backNode.valid() && !_backNode->getStateSet() )
+            OE_WARN << LC << "ILLEGAL! no stateset in BackNode!!" << std::endl;
 
         _pendingFullUpdate = true;
     }
@@ -274,87 +281,113 @@ SinglePassTerrainTechnique::applyTileUpdates()
     // process a pending buffer swap:
     if ( _pendingFullUpdate )
     {
-        if ( _backGeode->getStateSet() == 0L )
+        if ( _backNode->getStateSet() == 0L )
             OE_WARN << LC << "ILLEGAL: backGeode has no stateset" << std::endl;
 
-        _transform->setChild( 0, _backGeode.get() );
+        _transform->setChild( 0, _backNode.get() );
         _frontGeodeInstalled = true;
-        _backGeode = 0L;
+        _backNode = 0L;
         _pendingFullUpdate = false;
         _pendingGeometryUpdate = false;
         applied = true;
-    }
+    }  
 
     else
     {
         // process any pending LIVE geometry updates:
         if ( _pendingGeometryUpdate )
         {
-            osg::Geode* frontGeode = getFrontGeode();
+            osg::Group* frontNode = getFrontNode();
 
-            if (frontGeode)
+            if (frontNode)
             {
+                if (frontNode->getNumChildren() != _backNode->getNumChildren())
+                {
+                    OE_WARN << "Error:  Front and back nodes do not have equal number of children" << std::endl;
+                    return false;
+                }
 
                 if ( _texCompositor->requiresUnitTextureSpace() )
                 {
-                    // in "unit-texture-space" mode, we can take the shortcut of just updating
-                    // the geometry VBOs. The texture coordinates never change.
-                    for( unsigned int i=0; i<_backGeode->getNumDrawables(); ++i )
+                    for (unsigned int i = 0; i < _backNode->getNumChildren(); ++i)
                     {
-                        osg::Geometry* backGeom = static_cast<osg::Geometry*>( _backGeode->getDrawable(i) );
-                        osg::Vec3Array* backVerts = static_cast<osg::Vec3Array*>( backGeom->getVertexArray() );
-
-                        osg::Geometry* frontGeom = static_cast<osg::Geometry*>( frontGeode->getDrawable(i) );
-                        osg::Vec3Array* frontVerts = static_cast<osg::Vec3Array*>( frontGeom->getVertexArray() );
-
-                        if ( backVerts->size() == frontVerts->size() )
+                        osg::Geode* frontGeode = dynamic_cast< osg::Geode* > (frontNode->getChild(i));
+                        osg::Geode* backGeode = dynamic_cast< osg::Geode* > (_backNode->getChild(i));
+                        if (!frontGeode || !backGeode)
                         {
-                            // simple VBO update:
-                            std::copy( backVerts->begin(), backVerts->end(), frontVerts->begin() );
-                            frontVerts->dirty();
-
-                            osg::Vec3Array* backNormals = static_cast<osg::Vec3Array*>( backGeom->getNormalArray() );
-                            if ( backNormals )
-                            {
-                                osg::Vec3Array* frontNormals = static_cast<osg::Vec3Array*>( frontGeom->getNormalArray() );
-                                std::copy( backNormals->begin(), backNormals->end(), frontNormals->begin() );
-                                frontNormals->dirty();
-                            }
-
-                            osg::Vec2Array* backTexCoords = static_cast<osg::Vec2Array*>( backGeom->getTexCoordArray(0) );
-                            if ( backTexCoords )
-                            {
-                                osg::Vec2Array* frontTexCoords = static_cast<osg::Vec2Array*>( frontGeom->getTexCoordArray(0) );
-                                std::copy( backTexCoords->begin(), backTexCoords->end(), frontTexCoords->begin() );
-                                frontTexCoords->dirty();
-                            }
+                            OE_WARN << "Error:  Children must be osg::Geodes" << std::endl;
                         }
-                        else
-                        {
-                            frontGeom->setVertexArray( backVerts );
-                            if ( backVerts->getVertexBufferObject() )
-                                backVerts->getVertexBufferObject()->setUsage(GL_STATIC_DRAW_ARB);
 
-                            frontGeom->setTexCoordArray( 0, backGeom->getTexCoordArray( 0 ) ); // TODO: un-hard-code
-                            if ( backGeom->getNormalArray() )
-                                frontGeom->setNormalArray( backGeom->getNormalArray() );
+                        // in "unit-texture-space" mode, we can take the shortcut of just updating
+                        // the geometry VBOs. The texture coordinates never change.
+                        for( unsigned int j=0; j< backGeode->getNumDrawables(); ++j )
+                        {
+                            osg::Geometry* backGeom = static_cast<osg::Geometry*>( backGeode->getDrawable(j) );
+                            osg::Vec3Array* backVerts = static_cast<osg::Vec3Array*>( backGeom->getVertexArray() );
+
+                            osg::Geometry* frontGeom = static_cast<osg::Geometry*>( frontGeode->getDrawable(j) );
+                            osg::Vec3Array* frontVerts = static_cast<osg::Vec3Array*>( frontGeom->getVertexArray() );
+
+                            if ( backVerts->size() == frontVerts->size() )
+                            {
+                                // simple VBO update:
+                                std::copy( backVerts->begin(), backVerts->end(), frontVerts->begin() );
+                                frontVerts->dirty();
+
+                                osg::Vec3Array* backNormals = static_cast<osg::Vec3Array*>( backGeom->getNormalArray() );
+                                if ( backNormals )
+                                {
+                                    osg::Vec3Array* frontNormals = static_cast<osg::Vec3Array*>( frontGeom->getNormalArray() );
+                                    std::copy( backNormals->begin(), backNormals->end(), frontNormals->begin() );
+                                    frontNormals->dirty();
+                                }
+
+                                osg::Vec2Array* backTexCoords = static_cast<osg::Vec2Array*>( backGeom->getTexCoordArray(0) );
+                                if ( backTexCoords )
+                                {
+                                    osg::Vec2Array* frontTexCoords = static_cast<osg::Vec2Array*>( frontGeom->getTexCoordArray(0) );
+                                    std::copy( backTexCoords->begin(), backTexCoords->end(), frontTexCoords->begin() );
+                                    frontTexCoords->dirty();
+                                }
+                            }
+                            else
+                            {
+                                frontGeom->setVertexArray( backVerts );
+                                if ( backVerts->getVertexBufferObject() )
+                                    backVerts->getVertexBufferObject()->setUsage(GL_STATIC_DRAW_ARB);
+
+                                frontGeom->setTexCoordArray( 0, backGeom->getTexCoordArray( 0 ) ); // TODO: un-hard-code
+                                if ( backGeom->getNormalArray() )
+                                    frontGeom->setNormalArray( backGeom->getNormalArray() );
+                            }
                         }
                     }
                 }
                 else
                 {
-                    // copy the drawables from the back buffer to the front buffer. By doing this,
-                    // we don't touch the front geode's stateset (which contains the textures) and
-                    // therefore they don't get re-applied.
-                    for( unsigned int i=0; i<_backGeode->getNumDrawables(); ++i )
+
+                    for (unsigned int i = 0; i < _backNode->getNumChildren(); ++i)
                     {
-                        frontGeode->setDrawable( i, _backGeode->getDrawable( i ) );
+                        osg::Geode* frontGeode = dynamic_cast< osg::Geode* > (frontNode->getChild(i));
+                        osg::Geode* backGeode = dynamic_cast< osg::Geode* > (_backNode->getChild(i));
+                        if (!frontGeode || !backGeode)
+                        {
+                            OE_WARN << "Error:  Children must be osg::Geodes" << std::endl;
+                        }
+
+                        // copy the drawables from the back buffer to the front buffer. By doing this,
+                        // we don't touch the front geode's stateset (which contains the textures) and
+                        // therefore they don't get re-applied.
+                        for( unsigned int j=0; j<backGeode->getNumDrawables(); ++j )
+                        {
+                            frontGeode->setDrawable( j, backGeode->getDrawable( j ) );
+                        }
                     }
                 }
             }
 
             _pendingGeometryUpdate = false;
-            _backGeode = 0L;
+            _backNode = 0L;
             applied = true;
         }
 
@@ -370,11 +403,11 @@ SinglePassTerrainTechnique::applyTileUpdates()
         {
             const ImageLayerUpdate& update = _pendingImageLayerUpdates.front();
 
-            osg::ref_ptr< osg::Geode > frontGeode = getFrontGeode();
-            if (frontGeode.valid())
+            osg::ref_ptr< osg::Group > front = getFrontNode();
+            if (front.valid())
             {
                 _texCompositor->applyLayerUpdate(
-                    frontGeode->getStateSet(),
+                    front->getStateSet(),
                     update._layerUID,
                     update._image,
                     _tileKey,
@@ -441,11 +474,11 @@ SinglePassTerrainTechnique::getActiveStateSet() const
     OpenThreads::ScopedLock<Mutex> exclusiveLock( const_cast<SinglePassTerrainTechnique*>(this)->_compileMutex );
 
     osg::StateSet* result = 0L;
-    osg::Geode* front = getFrontGeode();
+    osg::Node* front = getFrontNode();
     if ( front ) 
         result = front->getStateSet();
-    if ( !result && _backGeode.valid() )
-        result = _backGeode->getStateSet();
+    if ( !result && _backNode.valid() )
+        result = _backNode->getStateSet();
 
     return result;
 }
@@ -515,7 +548,9 @@ SinglePassTerrainTechnique::calculateSampling( unsigned int& out_rows, unsigned 
     out_i = 1.0;
     out_j = 1.0;
 
-    float sampleRatio = _tile->getTerrain() ? _tile->getTerrain()->getSampleRatio() : 1.0f;
+    osg::ref_ptr< TerrainNode > terrain = _tile->getTerrain();
+
+    float sampleRatio = terrain.valid() ? terrain->getSampleRatio() : 1.0f;
     if ( sampleRatio != 1.0f )
     {
         unsigned int originalNumColumns = out_cols;
@@ -565,7 +600,7 @@ namespace
     typedef std::vector< RenderLayer > RenderLayerVector;
 }
 
-osg::Geode*
+osg::Group*
 SinglePassTerrainTechnique::createGeometry( const TileFrame& tilef )
 {
     osg::ref_ptr<GeoLocator> masterTextureLocator = _masterLocator.get();
@@ -579,13 +614,11 @@ SinglePassTerrainTechnique::createGeometry( const TileFrame& tilef )
     {
         masterTextureLocator = masterTextureLocator->getGeographicFromGeocentric();
     }
+
+    osg::Group* group = new osg::Group;
     
     osgTerrain::Layer* elevationLayer = _tile->getElevationLayer();
 
-    // fire up a brand new geode.
-    osg::Geode* geode = new osg::Geode();
-    geode->setThreadSafeRefUnref(true);
-    
     // setting the geometry to DYNAMIC means its draw will not overlap the next frame's update/cull
     // traversal - which could access the buffer without a mutex
 
@@ -595,14 +628,32 @@ SinglePassTerrainTechnique::createGeometry( const TileFrame& tilef )
     surface->setDataVariance( osg::Object::DYNAMIC );
     surface->setUseDisplayList(false);
     surface->setUseVertexBufferObjects(true);
-    geode->addDrawable( surface );
+
+    osg::Geode* surfaceGeode = new osg::Geode();
+    surfaceGeode->addDrawable( surface );
 
     osg::Geometry* skirt = new osg::Geometry();
     skirt->setThreadSafeRefUnref(true); // TODO: probably unnecessary.
     skirt->setDataVariance( osg::Object::DYNAMIC );
     skirt->setUseDisplayList(false);
     skirt->setUseVertexBufferObjects(true);
-    geode->addDrawable( skirt );
+    
+    osg::Geode* skirtGeode = new osg::Geode;
+    skirtGeode->addDrawable( skirt );
+
+    osg::ref_ptr< TerrainNode > terrain = _tile->getTerrain();
+    if ( terrain.valid() )
+    {
+        //Set the node masks of the surface and skirts if they are set.
+        const TerrainOptions& opts = terrain->getTileFactory()->getTerrainOptions();
+        surfaceGeode->setNodeMask( *opts.primaryTraversalMask() );
+        skirtGeode->setNodeMask( *opts.secondaryTraversalMask() );
+    }
+    
+    group->addChild( skirtGeode );
+    group->addChild( surfaceGeode );    
+
+
 
 	osg::ref_ptr<GeoLocator> geoLocator = _masterLocator;
 	// Avoid coordinates conversion when GEOCENTRIC, so get a GEOGRAPHIC version of Locator 
@@ -612,7 +663,7 @@ SinglePassTerrainTechnique::createGeometry( const TileFrame& tilef )
 
 	float scaleHeight = 
 		_verticalScaleOverride != 1.0? _verticalScaleOverride :
-		_tile->getTerrain() ? _tile->getTerrain()->getVerticalScale() :
+		terrain.valid() ? terrain->getVerticalScale() :
 		1.0f;
 
     MaskRecordVector masks;
@@ -668,7 +719,7 @@ SinglePassTerrainTechnique::createGeometry( const TileFrame& tilef )
             mask_geom->setUseDisplayList(false);
             mask_geom->setUseVertexBufferObjects(true);
             //mask_geom->getOrCreateStateSet()->setAttribute(new osg::Point( 5.0f ), osg::StateAttribute::ON);
-            geode->addDrawable(mask_geom);
+            surfaceGeode->addDrawable(mask_geom);
 
             masks.push_back(MaskRecord(boundary, min_ndc, max_ndc, mask_geom));
           }
@@ -685,7 +736,7 @@ SinglePassTerrainTechnique::createGeometry( const TileFrame& tilef )
       stitching_skirts->setUseDisplayList(false);
       stitching_skirts->setUseVertexBufferObjects(true);
       //stitching_skirts->getOrCreateStateSet()->setAttribute(new osg::Point( 5.0f ), osg::StateAttribute::ON);
-      geode->addDrawable( stitching_skirts);
+      surfaceGeode->addDrawable( stitching_skirts);
 
       ss_verts = new osg::Vec3Array();
       stitching_skirts->setVertexArray(ss_verts);
@@ -1975,10 +2026,10 @@ SinglePassTerrainTechnique::createGeometry( const TileFrame& tilef )
         osgDB::Registry::instance()->getKdTreeBuilder())
     {            
         osg::ref_ptr<osg::KdTreeBuilder> builder = osgDB::Registry::instance()->getKdTreeBuilder()->clone();
-        geode->accept(*builder);
+        group->accept(*builder);
     }
 
-    return geode;
+    return group;
 }
 
 void
@@ -2005,9 +2056,9 @@ SinglePassTerrainTechnique::releaseGLObjects(osg::State* state) const
         _transform->releaseGLObjects( state );
     }
 
-    if ( _backGeode.valid() )
+    if ( _backNode.valid() )
     {
-        _backGeode->releaseGLObjects(state);
-        ncThis->_backGeode = 0L;
+        _backNode->releaseGLObjects(state);
+        ncThis->_backNode = 0L;
     }
 }

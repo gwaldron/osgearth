@@ -23,6 +23,7 @@
 #include <osgEarthAnnotation/AnnotationData>
 #include <osgEarthAnnotation/Decoration>
 #include <osgEarthSymbology/Style>
+#include <osgEarth/MapNodeObserver>
 #include <osgEarth/Terrain>
 #include <osgEarth/TileKey>
 #include <osg/Switch>
@@ -46,7 +47,8 @@ namespace osgEarth { namespace Annotation
     /**
      * Base class for all annotation node types.
      */
-    class OSGEARTHANNO_EXPORT AnnotationNode : public osg::Group
+    class OSGEARTHANNO_EXPORT AnnotationNode : public osg::Group,
+                                               public MapNodeObserver
     {
     public:
         META_AnnotationNode(osgEarthAnnotation, AnnotationNode);
@@ -67,11 +69,6 @@ namespace osgEarth { namespace Annotation
          * Gets the attach point for children of this node
          */
         virtual osg::Group* getChildAttachPoint();
-
-        /**
-         * Gets the MapNode that this AnnotationNode is attached to
-         */
-        osgEarth::MapNode* getMapNode() const;
 
         /**
          * Serialized this annotation node so you can re-create it later
@@ -111,9 +108,16 @@ namespace osgEarth { namespace Annotation
          */
         bool hasDecoration( const std::string& name ) const;
 
+    public: // MapNodeObserver
+
+        virtual void setMapNode( MapNode* mapNode );
+
+        MapNode* getMapNode() { return _mapNode.get(); }
+        const MapNode* getMapNode() const { return _mapNode.get(); }
+
+
     protected:
 
-        osg::observer_ptr<MapNode>   _mapNode;
         osg::ref_ptr<AnnotationData> _annoData;
         bool                         _dynamic;
         bool                         _autoclamp;
@@ -130,9 +134,8 @@ namespace osgEarth { namespace Annotation
         
         void configureForAltitudeMode( const AltitudeMode& mode );
 
-        // Apply general style information. You can pass "noClamp=true" as a hint
-        // that no clamping logic is necessary
-        virtual void applyStyle( const Style&, bool noClampHint =false );
+        // Apply general style information
+        virtual void applyStyle( const Style&);
         
         /**
          * Sets the node to automatically re-clamp to the terrain (if applicable).
@@ -157,6 +160,12 @@ namespace osgEarth { namespace Annotation
         // hidden copy ctor
         AnnotationNode(const AnnotationNode& rhs, const osg::CopyOp& op=osg::CopyOp::DEEP_COPY_ALL) { }
 
+        osg::ref_ptr< TerrainCallback > _autoClampCallback;
+
+    private:
+            
+        osg::observer_ptr<MapNode>   _mapNode;
+
 
     public: // internal methods; do not call directly
 
@@ -177,12 +186,6 @@ namespace osgEarth { namespace Annotation
          * Returns true upon success.
          */
         virtual bool setPosition( const GeoPoint& p ) =0;
-
-        /**
-         * Sets the map position of the node, in map coordinates.
-         * Returns true upon success.
-         */
-        //virtual bool setPosition( const osg::Vec3d& pos ) =0;
 
         /**
          * Gets the position (in map coordinates) of the node

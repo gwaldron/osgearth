@@ -22,6 +22,7 @@
 #include <osgEarth/Registry>
 #include <osgEarth/Map>
 #include <osgEarth/FileUtils>
+#include <osg/LOD>
 #include <osg/Notify>
 #include <osg/MatrixTransform>
 #include <osg/io_utils>
@@ -38,7 +39,7 @@ namespace
     {
     public:
         LODScaleOverrideNode() : m_lodScale(1.0f) {}
-        virtual	~LODScaleOverrideNode() {}
+        virtual ~LODScaleOverrideNode() {}
     public:
         void setLODScale(float scale) { m_lodScale = scale; }
         float getLODScale() const { return m_lodScale; }
@@ -73,35 +74,38 @@ class SimpleModelSource : public ModelSource
 {
 public:
     SimpleModelSource( const ModelSourceOptions& options )
-        : ModelSource( options ), _options(options), _map(0) { }
+        : ModelSource( options ), _options(options) { }
 
     //override
-    void initialize( const osgDB::Options* dbOptions, const osgEarth::Map* map )
+    void initialize( const osgDB::Options* dbOptions )
     {
-        ModelSource::initialize( dbOptions, map );
-        _map = map;
+        ModelSource::initialize( dbOptions );
     }
 
     // override
-    osg::Node* createNode( ProgressCallback* progress )
+    osg::Node* createNode(const Map* map, const osgDB::Options* dbOptions, ProgressCallback* progress )
     {
         osg::ref_ptr<osg::Node> result;
 
-        // required if the model includes local refs, like PagedLOD or ProxyNode:
-        osg::ref_ptr<osgDB::Options> localOptions = 
-            Registry::instance()->cloneOrCreateOptions( _dbOptions.get() );
-            //_dbOptions.get() ? 
-            //new osgDB::Options(*_dbOptions.get()) : new osgDB::Options();
+        if (_options.node() != NULL)
+        {
+            result = _options.node();
+        }
+        else
+        {
+            // required if the model includes local refs, like PagedLOD or ProxyNode:
+            osg::ref_ptr<osgDB::Options> localOptions = 
+                Registry::instance()->cloneOrCreateOptions( dbOptions );
 
-        localOptions->getDatabasePathList().push_back( osgDB::getFilePath(_options.url()->full()) );
+            localOptions->getDatabasePathList().push_back( osgDB::getFilePath(_options.url()->full()) );
 
-        result = _options.url()->getNode( localOptions.get(), CachePolicy::INHERIT, progress );
-        //result = _options.url()->readNode( localOptions.get(), CachePolicy::NO_CACHE, progress ).releaseNode();
+            result = _options.url()->getNode( localOptions.get(), progress );
+        }
 
-        if (_options.location().isSet())
+        if (_options.location().isSet() && map != 0L)
         {
             GeoPoint geoPoint(
-                _map->getProfile()->getSRS(), 
+                map->getProfile()->getSRS(), 
                 (*_options.location()).x(), 
                 (*_options.location()).y(), 
                 (*_options.location()).z(),
@@ -110,7 +114,7 @@ public:
             OE_NOTICE << "Read location " << geoPoint.vec3d() << std::endl;
             
             osg::Matrixd matrix;
-            geoPoint.createLocalToWorld( matrix );                       
+            geoPoint.createLocalToWorld( matrix );
 
             if (_options.orientation().isSet())
             {
@@ -128,24 +132,31 @@ public:
             mt->addChild( result.get() );
             result = mt;
 
+            if ( _options.minRange().isSet() || _options.maxRange().isSet() )
+            {
+                osg::LOD* lod = new osg::LOD();
+                lod->addChild(
+                    result.release(),
+                    _options.minRange().isSet() ? (*_options.minRange()) : 0.0f,
+                    _options.maxRange().isSet() ? (*_options.maxRange()) : FLT_MAX );
+                result = lod;
+            }
         }
 
-		if(_options.lodScale().isSet())
-		{
-			LODScaleOverrideNode * node = new LODScaleOverrideNode;
-			node->setLODScale(_options.lodScale().value());
-			node->addChild(result.release());
-			result = node;
-		}
+        if(_options.lodScale().isSet())
+        {
+            LODScaleOverrideNode * node = new LODScaleOverrideNode;
+            node->setLODScale(_options.lodScale().value());
+            node->addChild(result.release());
+            result = node;
+        }
 
         return result.release();
     }
 
 protected:
 
-    const SimpleModelOptions           _options;
-    const osg::ref_ptr<osgDB::Options> _dbOptions;
-    const Map* _map;
+    const SimpleModelOptions _options;
 };
 
 

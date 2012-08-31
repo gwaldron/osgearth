@@ -24,6 +24,7 @@
 #include <osgEarthFeatures/FeatureModelSource>
 #include <osgEarthFeatures/Session>
 #include <osgEarthSymbology/Style>
+#include <osgEarth/NodeUtils>
 #include <osgEarth/ThreadingUtils>
 #include <osg/Node>
 #include <set>
@@ -77,6 +78,13 @@ namespace osgEarth { namespace Features
          */
         void dirty();
 
+        /**
+         * Adds an operation that will run on new nodes that are added by the
+         * paging system. Note, the operation only runs after the pager actually
+         * added the node to the live scene graph.
+         */
+        void addPostMergeOperation( NodeOperation* op );
+
 
     public: // osg::Node
 
@@ -86,23 +94,55 @@ namespace osgEarth { namespace Features
 
         virtual ~FeatureModelGraph();
 
-        void setupPaging();
+        osg::Node* setupPaging();
 
-        osg::Group* build( const FeatureLevel& level, const GeoExtent& extent, const TileKey* key);
+        osg::Group* buildLevel( 
+            const FeatureLevel& level, 
+            const GeoExtent&    extent, 
+            const TileKey*      key);
 
-        osg::Group* build( const Style& baseStyle, const Query& baseQuery, const GeoExtent& extent, FeatureSourceIndex* index);
+        osg::Group* build( 
+            const Style&        baseStyle, 
+            const Query&        baseQuery, 
+            const GeoExtent&    extent, 
+            FeatureSourceIndex* index);
+
 
     private:
         
-        osg::Group* createNodeForStyle(const Style& style, const Query& query, FeatureSourceIndex* index);
+        osg::Group* createStyleGroup(
+            const Style&        style, 
+            const Query&        query, 
+            FeatureSourceIndex* index);
+
+        osg::Group* createStyleGroup(
+            const Style&         style, 
+            FeatureList&         workingSet, 
+            const FilterContext& contextPrototype);
+
+        void buildStyleGroups(
+            const StyleSelector* selector,
+            const Query&         baseQuery,
+            FeatureSourceIndex*  index,
+            osg::Group*          parent);
+
+        void queryAndSortIntoStyleGroups(
+            const Query&            query,
+            const StringExpression& styleExpr,
+            FeatureSourceIndex*     index,
+            osg::Group*             parent);
        
-        osg::BoundingSphered getBoundInWorldCoords( const GeoExtent& extent, const MapFrame* mapf ) const;
+        osg::BoundingSphered getBoundInWorldCoords( 
+            const GeoExtent& extent, 
+            const MapFrame*  mapf ) const;
 
         void buildSubTilePagedLODs(
             unsigned lod, unsigned tileX, unsigned tileY,
             const MapFrame* mapFrame, osg::Group* parent);
 
         void redraw();
+
+        void installShaderMains();
 
     private:
         FeatureModelSourceOptions        _options;
@@ -120,6 +160,8 @@ namespace osgEarth { namespace Features
         bool                             _dirty;
         bool                             _pendingUpdate;
         std::vector<const FeatureLevel*> _lodmap;
+        
+        osg::ref_ptr<RefNodeOperationVector> _postMergeOperations;
     };
 
 } } // namespace osgEarth::Features

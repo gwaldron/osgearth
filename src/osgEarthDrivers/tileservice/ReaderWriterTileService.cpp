@@ -21,6 +21,7 @@
 #include <osgEarth/ImageToHeightFieldConverter>
 #include <osgEarth/Registry>
 #include <osgEarth/URI>
+#include <osgEarth/StringUtils>
 
 #include <osgDB/FileNameUtils>
 #include <osgDB/FileUtils>
@@ -48,22 +49,18 @@ public:
     }
 
 public:
-    void initialize( 
-        const osgDB::Options* dbOptions, 
-        const Profile*        overrideProfile)
+    Status initialize( const osgDB::Options* dbOptions )
     {
-        _dbOptions = dbOptions;
+        _dbOptions = Registry::instance()->cloneOrCreateOptions(dbOptions);
+        CachePolicy::NO_CACHE.apply( _dbOptions.get() );
 
-		//Take on the override profile if one is given.
-		if (overrideProfile)
-		{
-			setProfile( overrideProfile );
-		}
-		else
-		{
-			//Assume it is global geodetic
-			setProfile( osgEarth::Registry::instance()->getGlobalGeodeticProfile() );
-		}
+        if ( !getProfile() )
+        {
+            // Assume it is global geodetic
+            setProfile( osgEarth::Registry::instance()->getGlobalGeodeticProfile() );
+        }
+
+        return STATUS_OK;
     }
 
 public:
@@ -71,7 +68,7 @@ public:
         const TileKey&        key,
         ProgressCallback*     progress )
     {        
-        return URI( createURL(key) ).readImage( _dbOptions.get(), CachePolicy::NO_CACHE, progress ).releaseImage();
+        return URI( createURL(key) ).readImage( _dbOptions.get(), progress ).releaseImage();
     }
 
     osg::HeightField* createHeightField(
@@ -89,17 +86,14 @@ public:
 
         unsigned int lod = key.getLevelOfDetail()+1;
 
-        std::stringstream buf;
         //http://s0.tileservice.worldwindcentral.com/getTile?interface=map&version=1&dataset=bmng.topo.bathy.200401&level=0&x=0&y=0
-        buf << _options.url()->full() << "interface=map&version=1"
+        return Stringify() 
+            << _options.url()->full() << "interface=map&version=1"
             << "&dataset=" << _options.dataset().value()
             << "&level=" << lod
             << "&x=" << x
             << "&y=" << y
             << "&." << _formatToUse; //Add this to trick osg into using the correct loader.
-        std::string bufStr;
-		  bufStr = buf.str();
-		  return bufStr;
     }
 
     virtual std::string getExtension()  const 
@@ -108,9 +102,9 @@ public:
     }
 
 private:
-    std::string                        _formatToUse;
-    const TileServiceOptions           _options;
-    osg::ref_ptr<const osgDB::Options> _dbOptions;
+    std::string                  _formatToUse;
+    const TileServiceOptions     _options;
+    osg::ref_ptr<osgDB::Options> _dbOptions;
 };
 
 

@@ -20,16 +20,12 @@
 #define OSGEARTH_ANNOTATION_PLACE_NODE_H 1
 
 #include <osgEarthAnnotation/OrthoNode>
-#include <osgEarth/MapNode>
 #include <osgEarthSymbology/Style>
-#include <osgEarthUtil/Controls>
-#include <osg/MatrixTransform>
 
 namespace osgEarth { namespace Annotation
-{	
+{
     using namespace osgEarth;
     using namespace osgEarth::Symbology;
-    using namespace osgEarth::Util::Controls;
 
     /** 
      * A PlaceNode combines an 2D icon, a label, support for mouse interaction
@@ -52,7 +48,7 @@ namespace osgEarth { namespace Annotation
 
         /**
          * Constructs a new place node. You can specify an icon marker by
-         * adding a MarkerSymbol to the Style.
+         * adding a IconSymbol to the Style.
          */
         PlaceNode(
             MapNode*           mapNode,
@@ -61,18 +57,27 @@ namespace osgEarth { namespace Annotation
             const Style&       style =Style() );
 
         /**
+         * Constuct a new place node entirely from symbology
+         */
+        PlaceNode(
+            MapNode*              mapNode,
+            const GeoPoint&       position,
+            const Style&          style,
+            const osgDB::Options* dbOptions);
+
+        /**
          * Deserializes a place node
          */
         PlaceNode(
-            MapNode*      mapNode,
-            const Config& conf);
+            MapNode*              mapNode,
+            const Config&         conf,
+            const osgDB::Options* dbOptions );
 
         virtual ~PlaceNode() { }
 
         /**
          * Image to use for the icon
          */
-        void setIconImage( osg::Image* image );
         osg::Image* getIconImage() const { return _image.get(); }
 
         /**
@@ -84,7 +89,6 @@ namespace osgEarth { namespace Annotation
         /**
          * Style (for text)
          */
-        void setStyle( const Style& style );
         const Style& getStyle() const { return _style; }
 
 
@@ -100,14 +104,9 @@ namespace osgEarth { namespace Annotation
         osg::ref_ptr<osg::Image>   _image;
         std::string                _text;
         Style                      _style;
-
-        osg::ref_ptr<Container>    _container;
-        osg::ref_ptr<ImageControl> _icon;
-        osg::ref_ptr<LabelControl> _label;
-
         class osg::Geode*          _geode;
 
-        void init();
+        void init(const osgDB::Options* options);
 
         // required by META_Node, but this object is not cloneable
         PlaceNode() { }

@@ -91,6 +91,25 @@ _filters          ( filters )
             expr = buf.str();
         }
 
+        //Include the order by clause if it's set
+        if (query.orderby().isSet())
+        {                     
+            std::string orderby = query.orderby().value();
+            
+            std::string temp = orderby;
+            std::transform( temp.begin(), temp.end(), temp.begin(), ::tolower );
+
+            if ( temp.find( "order by" ) != 0 )
+            {                
+                std::stringstream buf;
+                buf << "ORDER BY " << orderby;                
+                std::string bufStr;
+                bufStr = buf.str();
+                orderby = buf.str();
+            }
+            expr += (" " + orderby );
+        }
+
         // if there's a spatial extent in the query, build the spatial filter:
         if ( query.bounds().isSet() )
         {
@@ -188,6 +207,7 @@ FeatureCursorOGR::readChunk()
     }
 
     unsigned handlesToQueue = _chunkSize - _queue.size();
+    bool resultSetEndReached = false;
 
     for( unsigned i=0; i<handlesToQueue; i++ )
     {
@@ -205,7 +225,10 @@ FeatureCursorOGR::readChunk()
             OGR_F_Destroy( handle );
         }
         else
+        {
+            resultSetEndReached = true;
             break;
+        }
     }
 
     // preprocess the features using the filter list:
@@ -222,7 +245,10 @@ FeatureCursorOGR::readChunk()
     }
 
     // read one more for "more" detection:
-    _nextHandleToQueue = OGR_L_GetNextFeature( _resultSetHandle );
+    if (!resultSetEndReached)
+        _nextHandleToQueue = OGR_L_GetNextFeature( _resultSetHandle );
+    else
+        _nextHandleToQueue = 0L;
 
     //OE_NOTICE << "read " << _queue.size() << " features ... " << std::endl;
 }

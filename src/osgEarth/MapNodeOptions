@@ -21,10 +21,7 @@
 
 #include <osgEarth/Common>
 #include <osgEarth/Config>
-#include <osgEarth/GeoCommon>
 #include <osgEarth/HTTPClient>
-#include <osgEarth/Profile>
-#include <osgEarth/Revisioning>
 #include <osgEarth/TerrainOptions>
 #include <set>
 
@@ -84,7 +81,7 @@ namespace osgEarth
          * terrain surface).
          */
         const TerrainOptions& getTerrainOptions() const;
-        void setTerrainOptions( const TerrainOptions& options );     
+        void setTerrainOptions( const TerrainOptions& options );
     
     public:
         virtual Config getConfig() const;

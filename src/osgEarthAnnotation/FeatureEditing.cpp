@@ -70,6 +70,8 @@ AddPointHandler::addPoint( float x, float y, osgViewer::View* view )
         {
             _feature->getGeometry()->push_back( osg::Vec3d(lon_deg, lat_deg, 0) );
             _source->dirty();
+            //Also must dirty the feature profile since the geometry has changed
+            _source->dirtyFeatureProfile();
         }
         return true;
     }
@@ -127,6 +129,7 @@ public:
       {
           (*_feature->getGeometry())[_point] = osg::Vec3d(position.x(), position.y(), 0);
           _source->dirty();
+          _source->dirtyFeatureProfile();
       }
 
       osg::ref_ptr< Feature > _feature;

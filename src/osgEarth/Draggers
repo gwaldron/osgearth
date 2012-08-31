@@ -22,15 +22,18 @@
 #include <osgEarth/Common>
 #include <osgEarth/GeoData>
 #include <osgEarth/TileKey>
+#include <osgEarth/MapNodeObserver>
 #include <osg/MatrixTransform>
 #include <osg/ShapeDrawable>
 #include <osgGA/GUIEventHandler>
+#include <osgEarth/Terrain>
 
 namespace osgEarth
 {
     class MapNode;
+    class Terrain;
 
-    class OSGEARTH_EXPORT Dragger : public osg::MatrixTransform
+    class OSGEARTH_EXPORT Dragger : public osg::MatrixTransform, public MapNodeObserver
     {
     public:
         /**
@@ -65,6 +68,10 @@ namespace osgEarth
 
         virtual void leave();
 
+        virtual void setColor( const osg::Vec4f& color ) =0;
+
+        virtual void setPickColor( const osg::Vec4f& color ) =0;
+
         void addPositionChangedCallback( PositionChangedCallback* callback );
 
         void removePositionChangedCallback( PositionChangedCallback* callback );
@@ -74,9 +81,19 @@ namespace osgEarth
         virtual void reclamp( const TileKey& key, osg::Node* tile, const Terrain* terrain );
 
 
+    public: // MapNodeObserver
+
+        virtual void setMapNode( MapNode* mapNode );
+
+        virtual MapNode* getMapNode() { return _mapNode.get(); }
+
+
     protected:
         virtual bool handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& aa);
         void setHover( bool hovered);
+        void firePositionChanged();
+
+        osg::ref_ptr< TerrainCallback > _autoClampCallback;
 
         osg::observer_ptr< MapNode > _mapNode;
         osgEarth::GeoPoint _position;

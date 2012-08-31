@@ -282,10 +282,10 @@ EllipseNodeEditor::updateDraggers()
         double lat, lon;
         GeoMath::destination(osg::DegreesToRadians( location.y() ), osg::DegreesToRadians( location.x() ), osg::PI_2 - rotation, minorR, lat, lon, em->getRadiusEquator());        
 
-        _minorDragger->setPosition( GeoPoint(location.getSRS(), osg::RadiansToDegrees( lon ), osg::RadiansToDegrees( lat ), 0, ALTMODE_ABSOLUTE), false);
+        _minorDragger->setPosition( GeoPoint(location.getSRS(), osg::RadiansToDegrees( lon ), osg::RadiansToDegrees( lat )), false);
 
         GeoMath::destination(osg::DegreesToRadians( location.y() ), osg::DegreesToRadians( location.x() ), -rotation, majorR, lat, lon, em->getRadiusEquator());                
-        _majorDragger->setPosition( GeoPoint(location.getSRS(), osg::RadiansToDegrees( lon ), osg::RadiansToDegrees( lat ), 0, ALTMODE_ABSOLUTE), false);
+        _majorDragger->setPosition( GeoPoint(location.getSRS(), osg::RadiansToDegrees( lon ), osg::RadiansToDegrees( lat )), false);
     }
 }
 

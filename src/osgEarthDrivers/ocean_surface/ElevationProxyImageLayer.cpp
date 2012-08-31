@@ -25,14 +25,13 @@ ImageLayer( options ),
 _sourceMap( sourceMap ),
 _mapf     ( sourceMap )
 {
-    _runtimeOptions.profile() = _sourceMap->getProfile()->toProfileOptions();
     _runtimeOptions.cachePolicy() = CachePolicy::NO_CACHE;
 }
 
 void
 ElevationProxyImageLayer::initTileSource()
 {
-    _tileSourceInitialized = true;
+    _tileSourceInitAttempted = true;
 }
 
 bool

@@ -60,7 +60,7 @@ ElevationQuery::sync()
 }
 
 unsigned int
-ElevationQuery::getMaxLevel( double x, double y, const SpatialReference* srs ) const
+ElevationQuery::getMaxLevel( double x, double y, const SpatialReference* srs, const Profile* profile ) const
 {
     unsigned int maxLevel = 0;
     for( ElevationLayerVector::const_iterator i = _mapf.elevationLayers().begin(); i != _mapf.elevationLayers().end(); ++i )
@@ -70,6 +70,7 @@ ElevationQuery::getMaxLevel( double x, double y, const SpatialReference* srs ) c
         if ( ts && ts->getDataExtents().size() > 0 )
         {
             osg::Vec3d tsCoord(x, y, 0);
+
             const SpatialReference* tsSRS = ts->getProfile() ? ts->getProfile()->getSRS() : 0L;
             if ( srs && tsSRS )
                 srs->transform(tsCoord, tsSRS, tsCoord);
@@ -83,17 +84,20 @@ ElevationQuery::getMaxLevel( double x, double y, const SpatialReference* srs ) c
                     layerMax = j->getMaxLevel();
                 }
             }
+
+            //Need to convert the layer max of this TileSource to that of the actual profile
+            layerMax = profile->getEquivalentLOD( ts->getProfile(), layerMax );                    
         }
         else
         {
             layerMax = i->get()->getMaxDataLevel();
-        }
+        }        
 
         if ( i->get()->getTerrainLayerRuntimeOptions().maxLevel().isSet() )
             layerMax = std::min( layerMax, *i->get()->getTerrainLayerRuntimeOptions().maxLevel() );
 
         if (layerMax > maxLevel) maxLevel = layerMax;
-    }
+    }    
 
     // need to check the image layers too, because if image layers do deeper than elevation layers,
     // upsampling occurs that can change the formation of the terrain skin.
@@ -118,17 +122,21 @@ ElevationQuery::getMaxLevel( double x, double y, const SpatialReference* srs ) c
                     layerMax = j->getMaxLevel();
                 }
             }
+
+            //Need to convert the layer max of this TileSource to that of the actual profile
+            layerMax = profile->getEquivalentLOD( ts->getProfile(), layerMax );
         }
         else
         {
             layerMax = i->get()->getMaxDataLevel();
         }
-
+        
+        
         if ( i->get()->getTerrainLayerRuntimeOptions().maxLevel().isSet() )
             layerMax = std::min( layerMax, *i->get()->getTerrainLayerRuntimeOptions().maxLevel() );
 
         if (layerMax > maxLevel) maxLevel = layerMax;
-    }
+    }    
 
     return maxLevel;
 }
@@ -228,7 +236,7 @@ ElevationQuery::getElevationImpl(const GeoPoint& point,
 
     
     //This is the max resolution that we actually have data at this point
-    unsigned int bestAvailLevel = getMaxLevel( point.x(), point.y(), point.getSRS());
+    unsigned int bestAvailLevel = getMaxLevel( point.x(), point.y(), point.getSRS(), _mapf.getProfile());
 
     if (desiredResolution > 0.0)
     {

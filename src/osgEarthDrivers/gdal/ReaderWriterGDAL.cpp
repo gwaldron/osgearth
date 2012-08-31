@@ -622,133 +622,252 @@ public:
     }
 
     virtual ~GDALTileSource()
-    {             
+    {                     
         GDAL_SCOPED_LOCK;
 
-        if (_warpedDS != _srcDS)
+        // Close the _warpedDS dataset if :
+        // - it exists
+        // - and is different from _srcDS
+        if (_warpedDS && (_warpedDS != _srcDS))
         {
             GDALClose( _warpedDS );
         }
 
-        //Close the datasets if it exists
+        // Close the _srcDS dataset if :
+        // - it exists
+        // - and : 
+        //    -    is different from external dataset
+        //    - or is equal to external dataset, but the tile source owns the external dataset
         if (_srcDS)
         {     
-            GDALClose(_srcDS);
+            bool needClose = true;
+            osg::ref_ptr<GDALOptions::ExternalDataset> pExternalDataset = _options.externalDataset();
+            if (pExternalDataset != NULL)
+            {
+                if ( (pExternalDataset->dataset() == _srcDS) && (pExternalDataset->ownsDataset() == true) )
+                {
+                    needClose = false;
+                }
+            }
+
+            if (needClose == true)
+            {
+                GDALClose(_srcDS);
+            }
         }
     }
 
 
-    void initialize( const osgDB::Options* dbOptions, const Profile* overrideProfile)
-    {   
+    Status initialize( const osgDB::Options* dbOptions )
+    {           
         GDAL_SCOPED_LOCK;
 
-        if ( !_options.url().isSet() || _options.url()->empty() )
+        Cache* cache = 0;
+
+        _dbOptions = Registry::instance()->cloneOrCreateOptions( dbOptions );
+
+        if ( _dbOptions.valid() )
         {
-            OE_WARN << LC << "No URL or directory specified " << std::endl;
-            return;
+            // Set up a Custom caching bin for this TileSource
+            cache = Cache::get( _dbOptions.get() );
+            if ( cache )
+            {
+                Config optionsConf = _options.getConfig();
+
+                std::string binId = Stringify() << std::hex << hashString(optionsConf.toJSON());                
+                _cacheBin = cache->addBin( binId );
+
+                if ( _cacheBin.valid() )
+                {
+                    _cacheBin->apply( _dbOptions.get() );
+                }
+            }
+        }  
+
+        // Is a valid external GDAL dataset specified ?
+        bool useExternalDataset = false;
+        osg::ref_ptr<GDALOptions::ExternalDataset> pExternalDataset = _options.externalDataset();
+        if (pExternalDataset != NULL)
+        {
+            if (pExternalDataset->dataset() != NULL)
+            {
+                useExternalDataset = true;
+            }
+        }
+
+        if (useExternalDataset == false &&
+            (!_options.url().isSet() || _options.url()->empty()) )
+        {
+            return Status::Error( "No URL or directory specified" );
         }
 
         URI uri = _options.url().value();
 
-#if 0 //OBE
-        //Find the full path to the URL
-        //If we have a relative path and the map file contains a server address, just concat the server path and the _url together
-
-        if (osgEarth::isRelativePath(uri.full()) && osgDB::containsServerAddress(referenceURI))
+        if (useExternalDataset == false)
         {
-            uri = URI(osgDB::getFilePath(referenceURI) + std::string("/") + uri.full());
-        }
+            StringTokenizer izer( ";" );
+            StringVector exts;
+            izer.tokenize( *_options.extensions(), exts );
 
-        //If the path doesn't contain a server address, get the full path to the file.
-        if (!osgDB::containsServerAddress(uri.full()))
-        {
-            uri = URI(uri.full(), referenceURI);
-        }
-#endif
+            //std::vector<std::string> exts;
 
-        StringTokenizer izer( ";" );
-        StringVector exts;
-        izer.tokenize( *_options.extensions(), exts );
-
-        //std::vector<std::string> exts;
-
-        //tokenize( _options.extensions().value(), exts, ";");
-        for (unsigned int i = 0; i < exts.size(); ++i)
-        {
-            OE_DEBUG << LC << "Using Extension: " << exts[i] << std::endl;
-        }
-        std::vector<std::string> files;
-        getFiles(uri.full(), exts, files);
-
-        OE_INFO << LC << "Driver found " << files.size() << " files:" << std::endl;
-        for (unsigned int i = 0; i < files.size(); ++i)
-        {
-            OE_INFO << LC << "" << files[i] << std::endl;
-        }
-
-        if (files.empty())
-        {
-            OE_WARN << LC << "Could not find any valid files " << std::endl;
-            return;
-        }
-
-        //If we found more than one file, try to combine them into a single logical dataset
-        if (files.size() > 1)
-        {
-            _srcDS = (GDALDataset*)build_vrt(files, HIGHEST_RESOLUTION);
-            if (!_srcDS)
+            //tokenize( _options.extensions().value(), exts, ";");
+            for (unsigned int i = 0; i < exts.size(); ++i)
             {
-                OE_WARN << "[osgEarth::GDAL] Failed to build VRT from input datasets" << std::endl;
-                return;
+                OE_DEBUG << LC << "Using Extension: " << exts[i] << std::endl;
+            }
+            std::vector<std::string> files;
+            getFiles(uri.full(), exts, files);
+
+            OE_INFO << LC << "Driver found " << files.size() << " files:" << std::endl;
+            for (unsigned int i = 0; i < files.size(); ++i)
+            {
+                OE_INFO << LC << "" << files[i] << std::endl;
+            }
+
+            if (files.empty())
+            {
+                return Status::Error( "Could not find any valid files" );
+            }
+
+            //If we found more than one file, try to combine them into a single logical dataset
+            if (files.size() > 1)
+            {
+                std::string vrtKey = "combined.vrt";
+
+                //Get the GDAL VRT driver
+                GDALDriver* vrtDriver = (GDALDriver*)GDALGetDriverByName("VRT");
+                
+                //Try to load the VRT file from the cache so we don't have to build it each time.
+                if (_cacheBin.valid())
+                {                
+                    ReadResult result = _cacheBin->readString( vrtKey );                    
+                    if (result.succeeded())
+                    {                        
+                        _srcDS = (GDALDataset*)GDALOpen(result.getString().c_str(), GA_ReadOnly );                                                
+                        if (_srcDS)
+                        {
+                            OE_INFO << LC << "Read VRT from cache!" << std::endl;
+                        }
+                    }
+                }
+
+                //Build the dataset if we didn't already load it
+                if (!_srcDS)
+                {                 
+                    //We couldn't get the VRT from the cache, so build it
+                    osg::Timer_t startTime = osg::Timer::instance()->tick();                    
+                    _srcDS = (GDALDataset*)build_vrt(files, HIGHEST_RESOLUTION);
+                    osg::Timer_t endTime = osg::Timer::instance()->tick();                                                            
+                    OE_INFO << LC << "Built VRT in " << osg::Timer::instance()->delta_s(startTime, endTime) << " s" << std::endl;
+
+                    if (_srcDS)
+                    {
+                        //Cache the VRT so we don't have to build it next time.
+                        if (_cacheBin)
+                        {
+                            std::string vrtFile = getTempName( "", ".vrt");
+                            OE_INFO << "Writing temp VRT to " << vrtFile << std::endl;
+                         
+                            if (vrtDriver)
+                            {                    
+                                vrtDriver->CreateCopy(vrtFile.c_str(), _srcDS, 0, 0, 0, 0 );                                                        
+
+
+                                //We created the temp file, now read the contents back                            
+                                std::ifstream input( vrtFile.c_str() );
+                                if ( input.is_open() )
+                                {
+                                    input >> std::noskipws;
+                                    std::stringstream buf;
+                                    buf << input.rdbuf();                                
+                                    std::string vrtContents = buf.str();                                
+                                    osg::ref_ptr< StringObject > strObject = new StringObject( vrtContents );
+                                    _cacheBin->write( vrtKey, strObject.get() );
+                                }
+                            }                                                
+                            if (osgDB::fileExists( vrtFile ) )
+                            {
+                                remove( vrtFile.c_str() );
+                            }
+                        }
+                    }
+                    else
+                    {
+                        return Status::Error( "Failed to build VRT from input datasets" );
+                    }
+                }
+            }
+            else
+            {            
+                //If we couldn't build a VRT, just try opening the file directly
+                //Open the dataset
+                _srcDS = (GDALDataset*)GDALOpen( files[0].c_str(), GA_ReadOnly );
+
+                if (_srcDS)
+                {
+
+                    char **subDatasets = _srcDS->GetMetadata( "SUBDATASETS");
+                    int numSubDatasets = CSLCount( subDatasets );
+                    //OE_NOTICE << "There are " << numSubDatasets << " in this file " << std::endl;
+
+                    if (numSubDatasets > 0)
+                    {            
+                        int subDataset = _options.subDataSet().isSet() ? *_options.subDataSet() : 1;
+                        if (subDataset < 1 || subDataset > numSubDatasets) subDataset = 1;
+                        std::stringstream buf;
+                        buf << "SUBDATASET_" << subDataset << "_NAME";
+                        char *pszSubdatasetName = CPLStrdup( CSLFetchNameValue( subDatasets, buf.str().c_str() ) );
+                        GDALClose( _srcDS );
+                        _srcDS = (GDALDataset*)GDALOpen( pszSubdatasetName, GA_ReadOnly ) ;
+                        CPLFree( pszSubdatasetName );
+                    }
+                }
+
+                if (!_srcDS)
+                {
+                    return Status::Error( Stringify() << "Failed to open dataset " << files[0] );
+                }
             }
         }
         else
-        {            
-            //If we couldn't build a VRT, just try opening the file directly
-            //Open the dataset
-            _srcDS = (GDALDataset*)GDALOpen( files[0].c_str(), GA_ReadOnly );
-
-            if (_srcDS)
-            {
-
-                char **subDatasets = _srcDS->GetMetadata( "SUBDATASETS");
-                int numSubDatasets = CSLCount( subDatasets );
-                //OE_NOTICE << "There are " << numSubDatasets << " in this file " << std::endl;
-
-                if (numSubDatasets > 0)
-                {            
-                    int subDataset = _options.subDataSet().isSet() ? *_options.subDataSet() : 1;
-                    if (subDataset < 1 || subDataset > numSubDatasets) subDataset = 1;
-                    std::stringstream buf;
-                    buf << "SUBDATASET_" << subDataset << "_NAME";
-                    char *pszSubdatasetName = CPLStrdup( CSLFetchNameValue( subDatasets, buf.str().c_str() ) );
-                    GDALClose( _srcDS );
-                    _srcDS = (GDALDataset*)GDALOpen( pszSubdatasetName, GA_ReadOnly ) ;
-                    CPLFree( pszSubdatasetName );
-                }
-            }
-
-            if (!_srcDS)
-            {
-                OE_WARN << LC << "Failed to open dataset " << files[0] << std::endl;
-                return;
-            }
+        {
+            _srcDS = pExternalDataset->dataset();
         }
 
+
+        //Get the "warp profile", which is the profile that this dataset should take on by creating a warping VRT.  This is
+        //useful when you want to use multiple images of different projections in a composite image.
+        osg::ref_ptr< const Profile > warpProfile;
+        if (_options.warpProfile().isSet())
+        {
+            warpProfile = Profile::create( _options.warpProfile().value() );
+        }
+
+        if (warpProfile.valid())
+        {
+            OE_NOTICE << "Created warp profile " << warpProfile->toString() <<  std::endl;
+        }
+
+
+
+
         //Create a spatial reference for the source.
-        const char* srcProj = _srcDS->GetProjectionRef();
-        if ( srcProj != 0L && overrideProfile != 0L )
+        std::string srcProj = _srcDS->GetProjectionRef();
+
+        
+        if ( !srcProj.empty() && getProfile() != 0L )
         {
             OE_WARN << LC << "WARNING, overriding profile of a source that already defines its own SRS (" 
                 << this->getName() << ")" << std::endl;
         }
 
         osg::ref_ptr<const SpatialReference> src_srs;
-        if ( overrideProfile )
+        if ( getProfile() )
         {
-            src_srs = overrideProfile->getSRS();
+            src_srs = getProfile()->getSRS();
         }
-        else if ( srcProj )
+        else if ( !srcProj.empty() )
         {
             src_srs = SpatialReference::create( srcProj );
         }
@@ -759,7 +878,7 @@ public:
             // not found in the dataset; try loading a .prj file
             std::string prjLocation = osgDB::getNameLessExtension( uri.full() ) + std::string(".prj");
 
-            ReadResult r = URI(prjLocation).readString( 0L, CachePolicy::NO_CACHE );
+            ReadResult r = URI(prjLocation).readString( _dbOptions.get() );
             if ( r.succeeded() )
             {
                 src_srs = SpatialReference::create( r.getString() );
@@ -767,8 +886,8 @@ public:
 
             if ( !src_srs.valid() )
             {
-                OE_WARN << LC << "Dataset has no spatial reference information: " << uri.full() << std::endl;
-                return;
+                return Status::Error( Stringify()
+                    << "Dataset has no spatial reference information (" << uri.full() << ")" );
             }
         }
 
@@ -779,13 +898,19 @@ public:
         bool isRotated = _geotransform[2] != 0.0 || _geotransform[4];
         if (hasGCP) OE_DEBUG << LC << uri.full() << " has GCP georeferencing" << std::endl;
         if (isRotated) OE_DEBUG << LC << uri.full() << " is rotated " << std::endl;
-        bool requiresReprojection = hasGCP || isRotated;        
+        bool requiresReprojection = hasGCP || isRotated;
 
         const Profile* profile = NULL;
 
-        if ( overrideProfile )
+        if ( warpProfile )
         {
-            profile = overrideProfile;
+            profile = warpProfile;
+        }
+
+        // If we have an override profile, just take it.
+        if ( getProfile() )
+        {
+            profile = getProfile();
         }
 
         if ( !profile && src_srs->isGeographic() )
@@ -818,7 +943,7 @@ public:
                     NULL);
             }
             else
-            {                
+            {                                
                 _warpedDS = (GDALDataset*)GDALAutoCreateWarpedVRT(
                     _srcDS,
                     src_srs->getWKT().c_str(),
@@ -840,15 +965,15 @@ public:
         }
 
         //Get the _geotransform
-        if (overrideProfile)
-        {        
-            _geotransform[0] = overrideProfile->getExtent().xMin(); //Top left x
-            _geotransform[1] = overrideProfile->getExtent().width() / (double)_warpedDS->GetRasterXSize();//pixel width
-            _geotransform[2] = 0;
+        if ( getProfile() )
+        {
+            _geotransform[0] =  getProfile()->getExtent().xMin(); //Top left x
+            _geotransform[1] =  getProfile()->getExtent().width() / (double)_warpedDS->GetRasterXSize();//pixel width
+            _geotransform[2] =  0;
 
-            _geotransform[3] = overrideProfile->getExtent().yMax(); //Top left y
-            _geotransform[4] = 0;
-            _geotransform[5] = -overrideProfile->getExtent().height() / (double)_warpedDS->GetRasterYSize();//pixel height
+            _geotransform[3] =  getProfile()->getExtent().yMax(); //Top left y
+            _geotransform[4] =  0;
+            _geotransform[5] = -getProfile()->getExtent().height() / (double)_warpedDS->GetRasterYSize();//pixel height
 
         }
         else
@@ -909,7 +1034,7 @@ public:
         double resolutionX = (maxX - minX) / (double)_warpedDS->GetRasterXSize();
         double resolutionY = (maxY - minY) / (double)_warpedDS->GetRasterYSize();
 
-		double maxResolution = osg::minimum(resolutionX, resolutionY);
+        double maxResolution = osg::minimum(resolutionX, resolutionY);
 
         OE_INFO << LC << "Resolution= " << resolutionX << "x" << resolutionY << " max=" << maxResolution << std::endl;
 
@@ -945,8 +1070,10 @@ public:
 
         getDataExtents().push_back( DataExtent(profile_extent, 0, _maxDataLevel) );
 
-		//Set the profile
-		setProfile( profile );
+        //Set the profile
+        setProfile( profile );
+
+        return STATUS_OK;
     }
 
 
@@ -1133,7 +1260,41 @@ public:
 
             GDALRasterBand* bandGray = findBand(_warpedDS, GCI_GrayIndex);
 
-			GDALRasterBand* bandPalette = findBand(_warpedDS, GCI_PaletteIndex);
+            GDALRasterBand* bandPalette = findBand(_warpedDS, GCI_PaletteIndex);
+
+            if (!bandRed && !bandGreen && !bandBlue && !bandAlpha && !bandGray && !bandPalette)
+            {
+                OE_DEBUG << LC << "Could not determine bands based on color interpretation, using band count" << std::endl;
+                //We couldn't find any valid bands based on the color interp, so just make an educated guess based on the number of bands in the file
+                //RGB = 3 bands
+                if (_warpedDS->GetRasterCount() == 3)
+                {
+                    bandRed   = _warpedDS->GetRasterBand( 1 );
+                    bandGreen = _warpedDS->GetRasterBand( 2 );
+                    bandBlue  = _warpedDS->GetRasterBand( 3 );
+                }
+                //RGBA = 4 bands
+                else if (_warpedDS->GetRasterCount() == 4)
+                {
+                    bandRed   = _warpedDS->GetRasterBand( 1 );
+                    bandGreen = _warpedDS->GetRasterBand( 2 );
+                    bandBlue  = _warpedDS->GetRasterBand( 3 );
+                    bandAlpha = _warpedDS->GetRasterBand( 4 );
+                }
+                //Gray = 1 band
+                else if (_warpedDS->GetRasterCount() == 1)
+                {
+                    bandGray = _warpedDS->GetRasterBand( 1 );
+                }
+                //Gray + alpha = 2 bands
+                else if (_warpedDS->GetRasterCount() == 2)
+                {
+                    bandGray  = _warpedDS->GetRasterBand( 1 );
+                    bandAlpha = _warpedDS->GetRasterBand( 2 );
+                }
+            }
+
+
 
             //The pixel format is always RGBA to support transparency
             GLenum pixelFormat = GL_RGBA;
@@ -1173,10 +1334,21 @@ public:
                             src_col < target_width;
                             ++src_col, ++dst_col)
                         {
-                            *(image->data(dst_col, dst_row) + 0) = red[src_col + src_row * target_width];
-                            *(image->data(dst_col, dst_row) + 1) = green[src_col + src_row * target_width];
-                            *(image->data(dst_col, dst_row) + 2) = blue[src_col + src_row * target_width];
-                            *(image->data(dst_col, dst_row) + 3) = alpha[src_col + src_row * target_width];
+                            unsigned char r = red[src_col + src_row * target_width];
+                            unsigned char g = green[src_col + src_row * target_width];
+                            unsigned char b = blue[src_col + src_row * target_width];
+                            unsigned char a = alpha[src_col + src_row * target_width];
+                            *(image->data(dst_col, dst_row) + 0) = r;
+                            *(image->data(dst_col, dst_row) + 1) = g;
+                            *(image->data(dst_col, dst_row) + 2) = b;                            
+                            if (!isValidValue( r, bandRed)    ||
+                                !isValidValue( g, bandGreen)  || 
+                                !isValidValue( b, bandBlue)   ||
+                                (bandAlpha && !isValidValue( a, bandAlpha )))
+                            {
+                                a = 0.0f;
+                            }                            
+                            *(image->data(dst_col, dst_row) + 3) = a;
                         }
                     }
 
@@ -1237,10 +1409,17 @@ public:
                             src_col < target_width;
                             ++src_col, ++dst_col)
                         {
-                            *(image->data(dst_col, dst_row) + 0) = gray[src_col + src_row * target_width];
-                            *(image->data(dst_col, dst_row) + 1) = gray[src_col + src_row * target_width];
-                            *(image->data(dst_col, dst_row) + 2) = gray[src_col + src_row * target_width];
-                            *(image->data(dst_col, dst_row) + 3) = alpha[src_col + src_row * target_width];
+                            unsigned char g = gray[src_col + src_row * target_width];
+                            unsigned char a = alpha[src_col + src_row * target_width];
+                            *(image->data(dst_col, dst_row) + 0) = g;
+                            *(image->data(dst_col, dst_row) + 1) = g;
+                            *(image->data(dst_col, dst_row) + 2) = g;                            
+                            if (!isValidValue( g, bandGray) ||
+                               (bandAlpha && !isValidValue( a, bandAlpha)))
+                            {
+                                a = 0.0f;
+                            }
+                            *(image->data(dst_col, dst_row) + 3) = a;
                         }
                     }
 
@@ -1272,39 +1451,45 @@ public:
                 delete []alpha;
 
             }
-			else if (bandPalette)
+            else if (bandPalette)
             {
                 //Pallete indexed imagery doesn't support interpolation currently and only uses nearest
                 //b/c interpolating pallete indexes doesn't make sense.
-				unsigned char *palette = new unsigned char[target_width * target_height];
+                unsigned char *palette = new unsigned char[target_width * target_height];
 
                 image = new osg::Image;
                 image->allocateImage(tileSize, tileSize, 1, pixelFormat, GL_UNSIGNED_BYTE);
                 memset(image->data(), 0, image->getImageSizeInBytes());
 
-				bandPalette->RasterIO(GF_Read, off_x, off_y, width, height, palette, target_width, target_height, GDT_Byte, 0, 0);
+                bandPalette->RasterIO(GF_Read, off_x, off_y, width, height, palette, target_width, target_height, GDT_Byte, 0, 0);
 
-				for (int src_row = 0, dst_row = tile_offset_top;
-					src_row < target_height;
-					src_row++, dst_row++)
-				{
-					for (int src_col = 0, dst_col = tile_offset_left;
-						src_col < target_width;
-						++src_col, ++dst_col)
-					{
+                for (int src_row = 0, dst_row = tile_offset_top;
+                    src_row < target_height;
+                    src_row++, dst_row++)
+                {
+                    for (int src_col = 0, dst_col = tile_offset_left;
+                        src_col < target_width;
+                        ++src_col, ++dst_col)
+                    {
+                        
+                        unsigned char p = palette[src_col + src_row * target_width];
                         osg::Vec4ub color;
-                        getPalleteIndexColor( bandPalette, palette[src_col + src_row * target_width], color );						
+                        getPalleteIndexColor( bandPalette, p, color );                        
+                        if (!isValidValue( p, bandPalette))
+                        {
+                            color.a() = 0.0f;
+                        }
 
                         *(image->data(dst_col, dst_row) + 0) = color.r();
                         *(image->data(dst_col, dst_row) + 1) = color.g();
                         *(image->data(dst_col, dst_row) + 2) = color.b();
                         *(image->data(dst_col, dst_row) + 3) = color.a();
-					}
-				}
+                    }
+                }
 
-				image->flipVertical();
+                image->flipVertical();
 
-				delete [] palette;
+                delete [] palette;
 
             }
             else
@@ -1555,6 +1740,9 @@ private:
     GeoExtent _extents;
 
     const GDALOptions _options;
+
+    osg::ref_ptr< CacheBin > _cacheBin;
+    osg::ref_ptr< osgDB::Options > _dbOptions;
 
     unsigned int _maxDataLevel;
 };

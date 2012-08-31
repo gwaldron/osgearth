@@ -39,7 +39,10 @@ public:
 
       virtual void onPositionChanged(const Dragger* sender, const osgEarth::GeoPoint& position)
       {
-          _overlay->setControlPoint(_controlPoint, position.x(), position.y());
+          //Convert to lat/lon
+          GeoPoint p;
+          position.transform(SpatialReference::create( "epsg:4326"), p);
+          _overlay->setControlPoint(_controlPoint, p.x(), p.y());
       }
 
       osg::ref_ptr<ImageOverlay>           _overlay;
@@ -89,7 +92,7 @@ ImageOverlayEditor::addDragger( ImageOverlay::ControlPoint controlPoint )
     osg::Vec2d location = _overlay->getControlPoint( controlPoint );
     
     SphereDragger* dragger = new SphereDragger(_overlay->getMapNode());
-    dragger->setPosition( GeoPoint( _overlay->getMapNode()->getMapSRS(), location.x(), location.y()));
+    dragger->setPosition( GeoPoint( SpatialReference::create( "epsg:4326"), location.x(), location.y()));
     dragger->addPositionChangedCallback( new ImageOverlayDraggerCallback(_overlay.get(), controlPoint));
     addChild(dragger);
     _draggers[ controlPoint ] = dragger;
@@ -103,6 +106,6 @@ ImageOverlayEditor::updateDraggers()
         Dragger* dragger = itr->second.get();
         //Get the location of the control point
         osg::Vec2d location = getOverlay()->getControlPoint( itr->first );
-        dragger->setPosition( GeoPoint( _overlay->getMapNode()->getMapSRS(), location.x(), location.y()), false );
+        dragger->setPosition( GeoPoint( SpatialReference::create( "epsg:4326"), location.x(), location.y()), false );
     }
 }

@@ -23,15 +23,56 @@
 #include <osg/NodeCallback>
 #include <osg/StateSet>
 #include <osg/Uniform>
+#include <osg/Light>
+#include <osg/Material>
 #include <osg/observer_ptr>
 
 namespace osgEarth
 {
     /**
+    * Container for light uniforms
+    */
+    //light product
+    class osg_LightProducts 
+    { 
+    public:
+        osg_LightProducts(int id);
+        
+        osg::ref_ptr<osg::Uniform> ambient; // vec4 
+        osg::ref_ptr<osg::Uniform> diffuse; // vec4
+        osg::ref_ptr<osg::Uniform> specular; //vec4
+    };
+        
+    class osg_LightSourceParameters 
+    { 
+    public:
+        osg_LightSourceParameters(int id);
+        
+        void setUniformsFromOsgLight(const osg::Light* light, osg::Matrix viewMatrix, const osg::Material* frontMat);
+        void applyState(osg::StateSet* stateset);
+        
+        osg::ref_ptr<osg::Uniform>  ambient; // vec4
+        osg::ref_ptr<osg::Uniform>  diffuse; // vec4 
+        osg::ref_ptr<osg::Uniform>  specular; // vec4
+        osg::ref_ptr<osg::Uniform>  position; // vec4
+        osg::ref_ptr<osg::Uniform>  halfVector; // vec4 
+        osg::ref_ptr<osg::Uniform>  spotDirection; // vec3 
+        osg::ref_ptr<osg::Uniform> spotExponent; // float
+        osg::ref_ptr<osg::Uniform> spotCutoff; // float
+        osg::ref_ptr<osg::Uniform> spotCosCutoff; // float
+        osg::ref_ptr<osg::Uniform>  constantAttenuation; // float 
+        osg::ref_ptr<osg::Uniform>  linearAttenuation; // float
+        osg::ref_ptr<osg::Uniform>  quadraticAttenuation; // float
+
+        //just store the light product in here
+        osg_LightProducts _frontLightProduct;
+    };
+    
+    /**
      * A callback that will update the osgEarth lighting uniforms (based on the
      * FFP lighting state) if necessary.
      */
-    class OSGEARTH_EXPORT UpdateLightingUniformsHelper
+    class OSGEARTH_EXPORT UpdateLightingUniformsHelper : public osg::NodeCallback
     {
     public:
         UpdateLightingUniformsHelper( bool useUpdateTraversal =false );
@@ -39,6 +80,10 @@ namespace osgEarth
 
         void cullTraverse( osg::Node* node, osg::NodeVisitor* nv );
         void updateTraverse( osg::Node* node );
+
+    public: // NodeCallback
+        // for use as a cull callback.
+        virtual void operator()(osg::Node*, osg::NodeVisitor* nv);
 
     protected:
         int   _maxLights;
@@ -51,6 +96,8 @@ namespace osgEarth
 
         osg::ref_ptr<osg::Uniform> _lightingEnabledUniform;
         osg::ref_ptr<osg::Uniform> _lightEnabledUniform;
+         
+        std::vector<osg_LightSourceParameters>   _osgLightSourceParameters; 
     };
 
     /**

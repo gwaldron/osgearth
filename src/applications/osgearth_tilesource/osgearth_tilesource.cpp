@@ -60,12 +60,13 @@ public:
     }
 
     // Called by the terrain engine when a layer using this driver is first added.
-    void initialize( const osgDB::Options* options, const Profile* overrideProfile )
+    Status initialize(const osgDB::Options* dbOptions)
     {
-        if ( overrideProfile )
-            setProfile( overrideProfile );
-        else
+        if ( !getProfile() )
+        {
             setProfile( Registry::instance()->getGlobalGeodeticProfile() );
+        }
+        return STATUS_OK;
     }
 
     // Define this method to return an image corresponding to the given TileKey.

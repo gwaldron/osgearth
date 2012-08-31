@@ -19,7 +19,6 @@
 
 #include <osgEarthUtil/WMS>
 #include <osgEarth/XmlUtils>
-#include <osgEarth/HTTPClient>
 
 #include <osgDB/FileNameUtils>
 #include <osgDB/FileUtils>
@@ -28,16 +27,18 @@ using namespace osgEarth;
 using namespace osgEarth::Util;
 using namespace std;
 
-static
-WMSLayer* getLayerByName(const string &name, WMSLayer::LayerList& layers)
+namespace
 {
-    for (WMSLayer::LayerList::iterator i = layers.begin(); i != layers.end(); ++i)
+    WMSLayer* getLayerByName(const string &name, WMSLayer::LayerList& layers)
     {
-        if (osgDB::equalCaseInsensitive(i->get()->getName(),name)) return i->get();
-        WMSLayer *l = getLayerByName(name, i->get()->getLayers());
-        if (l) return l;
+        for (WMSLayer::LayerList::iterator i = layers.begin(); i != layers.end(); ++i)
+        {
+            if (osgDB::equalCaseInsensitive(i->get()->getName(),name)) return i->get();
+            WMSLayer *l = getLayerByName(name, i->get()->getLayers());
+            if (l) return l;
+        }
+        return 0;
     }
-    return 0;
 }
 
 WMSStyle::WMSStyle()
@@ -138,10 +139,11 @@ WMSCapabilitiesReader::read( const std::string &location, const osgDB::ReaderWri
     WMSCapabilities *caps = NULL;
     if ( osgDB::containsServerAddress( location ) )
     {
-        HTTPResponse response = HTTPClient::get( location, options );
-        if ( response.isOK() && response.getNumParts() > 0 )
+        ReadResult rr = URI(location).readString( options );
+        if ( rr.succeeded() )
         {
-            caps = read( response.getPartStream( 0 ) );
+            std::istringstream in( rr.getString() );
+            caps = read( in );
         }
     }
     else

@@ -25,7 +25,8 @@
 #include <osgEarthQt/DataManager>
 
 #include <osgEarth/Draggers>
-#include <osgEarthUtil/LineOfSight>
+#include <osgEarthUtil/LinearLineOfSight>
+#include <osgEarthUtil/RadialLineOfSight>
 
 #include <osg/AutoTransform>
 
@@ -159,7 +160,7 @@ namespace osgEarth { namespace QtGui
     osg::ref_ptr<osg::Group> _root;
     osg::ref_ptr<DataManager> _manager;
     osg::ref_ptr<osgEarth::Map> _map;
-    osg::ref_ptr<osgEarth::Util::LineOfSightNode> _p2p;
+    osg::ref_ptr<osgEarth::Util::LinearLineOfSightNode> _p2p;
     osg::ref_ptr<osgEarth::Util::RadialLineOfSightNode> _radial;
     osg::ref_ptr<LOSIntersectingDragger> _p1Dragger;
     osg::ref_ptr<LOSIntersectingDragger> _p2Dragger;

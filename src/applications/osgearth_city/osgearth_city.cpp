@@ -131,7 +131,6 @@ main(int argc, char** argv)
     // zoom to a good startup position
     manip->setViewpoint( Viewpoint(-71.0763, 42.34425, 0, 24.261, -21.6, 3450.0), 5.0 );
 
-    viewer.getDatabasePager()->setDoPreCompile( true );
     viewer.getCamera()->addCullCallback( new AutoClipPlaneCullCallback(mapNode) );
 
     return viewer.run();

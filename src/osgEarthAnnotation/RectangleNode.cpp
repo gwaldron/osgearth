@@ -361,7 +361,7 @@ RectangleNode::rebuild()
             getDrapeable()->setDraped( _draped );
         }
 
-        applyStyle( _style, _draped );
+        applyStyle( _style );
     }
 
     setDecoration( currentDecoration );
@@ -374,8 +374,9 @@ RectangleNode::rebuild()
 OSGEARTH_REGISTER_ANNOTATION( rectangle, osgEarth::Annotation::RectangleNode );
 
 
-RectangleNode::RectangleNode(MapNode*      mapNode,
-                             const Config& conf ) :
+RectangleNode::RectangleNode(MapNode*              mapNode,
+                             const Config&         conf,
+                             const osgDB::Options* dbOptions) :
 LocalizedNode( mapNode ),
 _draped      ( false )
 {

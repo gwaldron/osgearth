@@ -165,9 +165,12 @@ Profile::create(const std::string& srsInitString,
                 unsigned int numTilesWideAtLod0,
                 unsigned int numTilesHighAtLod0)
 {
-    const Profile* named = osgEarth::Registry::instance()->getNamedProfile( srsInitString );
-    if ( named )
-        return const_cast<Profile*>( named );
+    if ( vsrsInitString.empty() && numTilesWideAtLod0 == 0 && numTilesHighAtLod0 == 0 )
+    {
+        const Profile* named = osgEarth::Registry::instance()->getNamedProfile( srsInitString );
+        if ( named )
+            return const_cast<Profile*>( named );
+    }
 
     osg::ref_ptr<const SpatialReference> srs = SpatialReference::create( srsInitString, vsrsInitString );
 
@@ -184,15 +187,15 @@ Profile::create(const std::string& srsInitString,
         osg::Vec3d point(180.0, 0.0, 0.0);
         srs->getGeographicSRS()->transform(point, srs.get(), point);
         double e = point.x();
-        //GDAL_SCOPED_LOCK;
-        //double e, dummy;
-        //srs->getGeographicSRS()->transform2D( 180.0, 0.0, srs.get(), e, dummy );
         return Profile::create( srs.get(), -e, -e, e, e, numTilesWideAtLod0, numTilesHighAtLod0 );
+    }
+    else if ( srs.valid() )
+    {
+        OE_WARN << LC << "Failed to create profile; you must provide extents with a projected SRS." << std::endl;
     }
     else
     {
-        OE_WARN << LC << "Failed to create profile; SRS spec requires addition information: \"" << srsInitString << 
-            std::endl;
+        OE_WARN << LC << "Failed to create profile; unrecognized SRS: \"" << srsInitString << "\"" << std::endl;
     }
 
     return NULL;
@@ -370,15 +373,14 @@ Profile::toProfileOptions() const
     return op;
 }
 
-void
-Profile::overrideSRS( const SpatialReference* srs )
+
+Profile*
+Profile::overrideSRS( const SpatialReference* srs ) const
 {
-    _extent = GeoExtent(
+    return new Profile(
         srs,
-        _extent.xMin(),
-        _extent.yMin(),
-        _extent.xMax(),
-        _extent.yMax() );
+        _extent.xMin(), _extent.yMin(), _extent.xMax(), _extent.yMax(),
+        _numTilesWideAtLod0, _numTilesHighAtLod0 );
 }
 
 void
@@ -511,7 +513,12 @@ Profile::clampAndTransformExtent( const GeoExtent& input, bool* out_clamped ) co
         input :
         input.transform( geo_srs );
 
+    // bail out on a bad transform:
     if ( !gcs_input.isValid() )
+        return GeoExtent::INVALID;
+
+    // bail out if the extent's do not intersect at all:
+    if ( !gcs_input.intersects(_latlong_extent, false) )
         return GeoExtent::INVALID;
 
     // clamp it to the profile's extents:
@@ -567,6 +574,7 @@ Profile::addIntersectingTiles(const GeoExtent& key_ext, std::vector<TileKey>& ou
     getTileDimensions(destLOD, destTileWidth, destTileHeight);
 
     //Find the LOD that most closely matches the area of the incoming key without going under.
+#if 0
     while (true)
     {
         currLOD++;
@@ -579,6 +587,20 @@ Profile::addIntersectingTiles(const GeoExtent& key_ext, std::vector<TileKey>& ou
         destTileWidth = w;
         destTileHeight = h;
     }
+#else
+    while( true )
+    {
+        currLOD++;
+        double w, h;
+        getTileDimensions(currLOD, w,h);
+        if ( w < keyWidth || h < keyHeight ) break;
+        //double a = w * h;
+        //if (a < keyArea) break;
+        destLOD = currLOD;
+        destTileWidth = w;
+        destTileHeight = h;
+    }
+#endif
 
     //OE_DEBUG << std::fixed << "  Source Tile: " << key.getLevelOfDetail() << " (" << keyWidth << ", " << keyHeight << ")" << std::endl;
     OE_DEBUG << std::fixed << "  Dest Size: " << destLOD << " (" << destTileWidth << ", " << destTileHeight << ")" << std::endl;
@@ -591,6 +613,13 @@ Profile::addIntersectingTiles(const GeoExtent& key_ext, std::vector<TileKey>& ou
 
     unsigned int numWide, numHigh;
     getNumTiles(destLOD, numWide, numHigh);
+
+    // bail out if the tiles are out of bounds.
+    if ( tileMinX >= (int)numWide || tileMinY >= (int)numHigh ||
+         tileMaxX < 0 || tileMaxY < 0 )
+    {
+        return;
+    }
 
     tileMinX = osg::clampBetween(tileMinX, 0, (int)numWide-1);
     tileMaxX = osg::clampBetween(tileMaxX, 0, (int)numWide-1);
@@ -656,4 +685,64 @@ Profile::getIntersectingTiles(const GeoExtent& extent, std::vector<TileKey>& out
     {
         addIntersectingTiles( ext, out_intersectingKeys );
     }
+}
+
+unsigned int
+Profile::getEquivalentLOD( const Profile* profile, unsigned int lod ) const
+{    
+    //If the profiles are equivalent, just use the incoming lod
+    if (profile->isEquivalentTo( this ) ) 
+        return lod;
+
+    double rhsWidth, rhsHeight;
+    profile->getTileDimensions( lod, rhsWidth, rhsHeight );
+
+    double targetWidth = rhsWidth, targetHeight = rhsHeight;
+
+    if ( !profile->getSRS()->isHorizEquivalentTo(getSRS()) )
+    {
+        targetWidth = profile->getSRS()->transformUnits( rhsWidth, getSRS() );
+        targetHeight = profile->getSRS()->transformUnits( rhsHeight, getSRS() );
+    }
+
+
+
+
+
+#if 0
+    //Create a TileKey in the incoming Profile
+    TileKey key(lod, 0, 0, profile );
+
+    GeoExtent extent = key.getExtent();
+
+    if (!profile->getSRS()->isEquivalentTo( getSRS()))
+    {           
+        // localize the extents and clamp them to legal values
+        //extent = clampAndTransformExtent( extent );
+
+        //Transform the extent into the local SRS
+        extent = extent.transform( getSRS() );
+        if ( !extent.isValid() )
+            return 0;
+    }
+
+    double keyWidth = extent.width();
+    double keyHeight = extent.height();
+#endif
+    
+    int currLOD = 0;
+    int destLOD = currLOD;
+
+    //Find the LOD that most closely matches the area of the incoming key without going under.
+    while( true )
+    {
+        currLOD++;
+        double w, h;
+        getTileDimensions(currLOD, w, h);
+        if ( w < targetWidth || h < targetHeight ) break;
+        //double a = w * h;
+        //if (a < keyArea) break;
+        destLOD = currLOD;
+    }
+    return destLOD;
 }

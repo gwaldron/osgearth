@@ -21,16 +21,4 @@ http://readymap.org
         <url>http://readymap.org/readymap/tiles/1.0.0/9/</url>
     </elevation>
     
-    <options>
-        <terrain>
-            <lighting>false</lighting>
-            <sample_ratio>0.125</sample_ratio>
-        </terrain>
-    </options>
-    
-    <external>
-        <viewpoints>
-            <viewpoint name="Los Angeles" heading="35.27" height="97.48" lat="34.051" long="-117.974" pitch="-17" range="136405"/>
-        </viewpoints>
-    </external>
 </map>

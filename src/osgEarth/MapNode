@@ -25,9 +25,12 @@
 #include <osgEarth/MapNodeOptions>
 #include <osgEarth/SpatialReference>
 
+#define OVERLAY_RENDER_BIN "osgEarth_Overlay"
+
 namespace osgEarth
 {
     class OverlayDecorator;
+    class Terrain;
     class TerrainEngineNode;
 
     /**
@@ -36,6 +39,12 @@ namespace osgEarth
      */
     class OSGEARTH_EXPORT MapNode : public osg::Group
     {
+    public:
+        /**
+         * Attempts to load a MapNOde from a ".earth" file in the arguments list
+         */
+        static MapNode* load( class osg::ArgumentParser& arguments );
+
     public:
         /**
          * Creates an empty map node.
@@ -68,13 +77,6 @@ namespace osgEarth
          */
         MapNode( Map* map, const MapNodeOptions& options );
 
-        /**
-         * Attempts to load a MapNOde from a ".earth" file in the arguments list
-         */
-        static MapNode* load( class osg::ArgumentParser& arguments );        
-
-
-
     public:
 
         virtual const char* libraryName() const { return "osgEarth"; }
@@ -96,6 +98,7 @@ namespace osgEarth
          * Gets an interface for querying the in-memory terrain scene graph directly.
          */
         Terrain* getTerrain();
+        const Terrain* getTerrain() const;
 
         /**
          * Finds the topmost Map node in the specified scene graph, or returns NULL if
@@ -118,6 +121,11 @@ namespace osgEarth
          * Accesses the group node that contains all the ModelLayers.
          */
         osg::Group* getModelLayerGroup() const;
+
+        /**
+         * Accesses the root node for a specific ModelLayer.
+         */
+        osg::Node* getModelLayerNode( ModelLayer* layer ) const;
 
         /**
          * Adds a node that decorates the terrain groups
@@ -174,6 +182,15 @@ namespace osgEarth
          */
         void setCompositorTechnique( class TextureCompositorTechnique* tech );
 
+    public: // special purpose
+
+        /**
+         * Constructs a mapnode, optionally specifying whether th intialize the
+         * data sources in the map. Typically you would only use this CTOR if you are
+         * strictly using the MapNode for serialization.
+         */
+        MapNode( Map* map, const MapNodeOptions& options, bool initMap );
+
 
     public: //override osg::Node
 
@@ -223,7 +240,7 @@ namespace osgEarth
     private:
 
         osg::ref_ptr< ModelLayerCallback > _modelLayerCallback;
-        osg::ref_ptr< MapCallback > _mapCallback;        
+        osg::ref_ptr< MapCallback > _mapCallback;
     
         void init();
     };

@@ -34,7 +34,7 @@ namespace
     {
         MemCacheBin( const std::string& id, unsigned maxSize )
             : CacheBin( id ),
-              _lru    ( maxSize )
+              _lru    ( true, maxSize )
         {
             //nop
         }
@@ -42,9 +42,8 @@ namespace
         ReadResult readObject(const std::string& key,
                               double             maxAge )
         {
-            // sadly we must write-lock even to read, since get() alters the LRU list
-            Threading::ScopedWriteLock exclusiveLock( _mutex );
             MemCacheLRU::Record rec = _lru.get(key);
+
             // clone required since the cache is in memory
 
             if ( rec.valid() )
@@ -79,7 +78,6 @@ namespace
         {
             if ( object ) 
             {
-                Threading::ScopedWriteLock exclusiveLock( _mutex );
                 _lru.insert( key, std::make_pair(object, meta) );
                 return true;
             }
@@ -89,21 +87,21 @@ namespace
 
         bool isCached( const std::string& key, double maxAge ) 
         {
-            Threading::ScopedReadLock sharedLock( _mutex );
             return _lru.has(key);
         }
 
         bool purge()
         {
-            Threading::ScopedWriteLock exclusiveLock( _mutex );
             _lru.clear();
             return true;
         }
 
     private:
-        MemCacheLRU               _lru;
-        Threading::ReadWriteMutex _mutex;
+        MemCacheLRU _lru;
     };
+    
+
+    static Threading::Mutex s_defaultBinMutex;
 }
 
 //------------------------------------------------------------------------
@@ -123,8 +121,6 @@ MemCache::addBin( const std::string& binID )
 CacheBin*
 MemCache::getOrCreateDefaultBin()
 {
-    static Threading::Mutex s_defaultBinMutex;
-
     if ( !_defaultBin.valid() )
     {
         Threading::ScopedMutexLock lock( s_defaultBinMutex );

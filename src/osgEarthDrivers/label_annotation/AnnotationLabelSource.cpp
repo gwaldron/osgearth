@@ -54,12 +54,16 @@ public:
         const Style&         style,
         const FilterContext& context )
     {
-        const TextSymbol* text = style.get<TextSymbol>();
-        if ( !text )
+        if ( style.get<TextSymbol>() == 0L )
             return 0L;
+
+        // copy the style so we can (potentially) modify the text symbol.
+        Style styleCopy = style;
+        TextSymbol* text = styleCopy.get<TextSymbol>();
 
         osg::Group* group = new osg::Group();
 
+        // check for decluttering
         if ( text->declutter().isSet() )
         {
             Decluttering::setEnabled( group->getOrCreateStateSet(), *text->declutter() );
@@ -90,7 +94,7 @@ public:
                 Feature* feature = i->get();
                 if ( feature && feature->getGeometry() )
                 {
-                    const std::string& value = feature->eval( contentExpr );
+                    const std::string& value = feature->eval( contentExpr, &context );
                     if ( !value.empty() )
                     {
                         double area = feature->getGeometry()->getBounds().area2d();
@@ -156,7 +160,7 @@ public:
                              NumericExpression&   priorityExpr )
     {
         LabelNode* labelNode = new LabelNode(
-            context.getSession()->getMapInfo().getProfile()->getSRS(),
+            0L,
             GeoPoint(feature->getSRS(), feature->getGeometry()->getBounds().center(), ALTMODE_ABSOLUTE),
             value,
             text );

@@ -158,13 +158,19 @@ TextureLayout::assignSecondarySlot( ImageLayer* layer )
 }
 
 void
-TextureLayout::applyMapModelChange( const MapModelChange& change, bool reserveSeconarySlotIfNecessary )
+TextureLayout::applyMapModelChange(const MapModelChange& change, 
+                                   bool reserveSeconarySlotIfNecessary,
+                                   bool disableLODBlending )
 {
     if ( change.getAction() == MapModelChange::ADD_IMAGE_LAYER )
     {
         assignPrimarySlot( change.getImageLayer(), change.getFirstIndex() );
 
-        bool blendingOn = change.getImageLayer()->getImageLayerOptions().lodBlending() == true;
+        // did the layer specify LOD blending (and is it supported?)
+        bool blendingOn = 
+          !disableLODBlending &&
+          change.getImageLayer()->getImageLayerOptions().lodBlending() == true;
+    
         _lodBlending[ change.getImageLayer()->getUID() ] = blendingOn;
 
         if ( blendingOn && reserveSeconarySlotIfNecessary )
@@ -357,11 +363,30 @@ TextureCompositor::releaseTextureImageUnit( int unit )
 void
 TextureCompositor::applyMapModelChange( const MapModelChange& change )
 {
+    // verify it's actually an image layer
+    ImageLayer* layer = change.getImageLayer();
+    if ( !layer )
+        return;
+
     Threading::ScopedWriteLock exclusiveLock( _layoutMutex );
+
+    // LOD blending does not work with mercator fast path texture mapping.
+    bool disableLODBlending =
+      layer->getProfile() &&
+      layer->getProfile()->getSRS()->isSphericalMercator() &&
+      _options.enableMercatorFastPath() == true;
+
+    // Let the use know why they aren't getting LOD blending!
+    if ( disableLODBlending && layer->getImageLayerOptions().lodBlending() == true )
+    {
+        OE_WARN << LC << "LOD blending disabled for layer \"" << layer->getName()
+            << "\" becuase it uses Mercator fast-path rendering" << std::endl;
+    }
 
     _layout.applyMapModelChange(
         change, 
-        _impl.valid() ? _impl->blendingRequiresSecondarySlot() : false );
+        _impl.valid() ? _impl->blendingRequiresSecondarySlot() : false,
+        disableLODBlending );
 }
 
 bool

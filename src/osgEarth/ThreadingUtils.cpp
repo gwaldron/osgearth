@@ -21,6 +21,7 @@
 #ifdef _WIN32
     extern "C" unsigned long __stdcall GetCurrentThreadId();
 #else
+#   include <unistd.h>
 #   include <sys/syscall.h>
 #endif
 

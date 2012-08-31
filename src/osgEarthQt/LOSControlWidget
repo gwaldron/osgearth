@@ -24,7 +24,8 @@
 #include <osgEarthQt/Common>
 #include <osgEarthQt/DataManager>
 
-#include <osgEarthUtil/LineOfSight>
+#include <osgEarthUtil/LinearLineOfSight>
+#include <osgEarthUtil/RadialLineOfSight>
 
 #include <osgGA/GUIEventHandler>
 

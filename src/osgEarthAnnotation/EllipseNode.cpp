@@ -161,7 +161,7 @@ EllipseNode::rebuild()
             getDrapeable()->setDraped( _draped );
         }
 
-        applyStyle( _style, _draped );
+        applyStyle( _style );
     }
 
     setDecoration( currentDecoration );
@@ -174,8 +174,9 @@ EllipseNode::rebuild()
 OSGEARTH_REGISTER_ANNOTATION( ellipse, osgEarth::Annotation::EllipseNode );
 
 
-EllipseNode::EllipseNode(MapNode*      mapNode,
-                         const Config& conf ) :
+EllipseNode::EllipseNode(MapNode*              mapNode,
+                         const Config&         conf,
+                         const osgDB::Options* dbOptions) :
 LocalizedNode( mapNode ),
 _draped      ( false ),
 _numSegments ( 0 )

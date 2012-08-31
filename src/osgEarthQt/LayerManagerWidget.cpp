@@ -586,7 +586,7 @@ Action* ModelLayerControlWidget::getDoubleClickAction(const ViewVector& views)
 {
   if (!_doubleClick.valid() && _layer.valid() && _map.valid())
   {
-    osg::ref_ptr<osg::Node> temp = _layer->getOrCreateNode();
+    osg::ref_ptr<osg::Node> temp = _layer->createSceneGraph( _map.get(), _map->getDBOptions(), 0L );
     if (temp.valid())
     {
       osg::NodePathList nodePaths = temp->getParentalNodePaths();
@@ -605,7 +605,8 @@ Action* ModelLayerControlWidget::getDoubleClickAction(const ViewVector& views)
           center += bs.center();
 
         GeoPoint output;
-        _map->worldPointToMapPoint(center, output);
+        output.fromWorld( _map->getSRS(), center );
+        //_map->worldPointToMapPoint(center, output);
 
         //TODO: make a better range calculation
         return new SetViewpointAction(osgEarth::Viewpoint(output.vec3d(), 0.0, -90.0, bs.radius() * 4.0), views);

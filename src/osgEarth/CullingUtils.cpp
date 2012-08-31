@@ -293,8 +293,10 @@ SuperClusterCullingCallback::cull(osg::NodeVisitor* nv, osg::Drawable* , osg::St
 {
     osgUtil::CullVisitor* cv = dynamic_cast<osgUtil::CullVisitor*>(nv);
 
+    if (!cv) return false;
+
     // quick bail if cluster culling is disabled:
-    if ( cv && !(cv->getCullingMode() & osg::CullSettings::CLUSTER_CULLING) )
+    if ( !(cv->getCullingMode() & osg::CullSettings::CLUSTER_CULLING) )
         return false;
 
     // quick bail is the deviation is maxed out
@@ -500,8 +502,22 @@ CullNodeByNormal::operator()(osg::Node* node, osg::NodeVisitor* nv)
     }
 }
 
+//------------------------------------------------------------------------
+
+void
+DisableSubgraphCulling::operator()(osg::Node* n, osg::NodeVisitor* v)
+{
+    osgUtil::CullVisitor* cv = static_cast<osgUtil::CullVisitor*>(v);
+    cv->getCurrentCullingSet().setCullingMask( osg::CullSettings::NO_CULLING );
+    //osg::CullSettings::ComputeNearFarMode mode = cv->getComputeNearFarMode();
+    //cv->setComputeNearFarMode( osg::CullSettings::DO_NOT_COMPUTE_NEAR_FAR );
+    traverse(n, v);
+    //cv->setComputeNearFarMode( mode );
+}
+
 
 //------------------------------------------------------------------------
+
 OcclusionCullingCallback::OcclusionCullingCallback(const osg::Vec3d& world, osg::Node* node):
 _world(world),
 _node( node ),

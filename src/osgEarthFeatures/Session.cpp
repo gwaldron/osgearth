@@ -22,7 +22,6 @@
 #include <osgEarthFeatures/ScriptEngine>
 #include <osgEarthFeatures/FeatureSource>
 #include <osgEarth/FileUtils>
-#include <osgEarth/HTTPClient>
 #include <osgEarth/StringUtils>
 #include <osg/AutoTransform>
 #include <osg/Depth>
@@ -71,7 +70,8 @@ Session::createMapFrame( Map::ModelParts parts ) const
 void
 Session::removeObject( const std::string& key )
 {
-    Threading::ScopedWriteLock lock( _objMapMutex );
+    Threading::ScopedMutexLock lock( _objMapMutex );
+    //Threading::ScopedWriteLock lock( _objMapMutex );
     _objMap.erase( key );
 }
 

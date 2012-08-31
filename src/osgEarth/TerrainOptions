@@ -209,11 +209,22 @@ namespace osgEarth
         /**
          * The maximum level of detail to which the terrain should subdivide. If you leave this
          * unset, the terrain will subdivide until the map layers stop providing data (default
-         * behavior). If you set a value, the terrain will subdivide to the specified LOD regardless
-         * of data availability.
+         * behavior). If you set a value, the terrain will stop subdividing at the specified LOD
+         * even if higher-resolution data is available. (It still might stop subdividing before it
+         * reaches this level if data runs out.)
          */
-        optional<int>& maxLOD() { return _maxLOD; }
-        const optional<int>& maxLOD() const { return _maxLOD; }
+        optional<unsigned>& maxLOD() { return _maxLOD; }
+        const optional<unsigned >& maxLOD() const { return _maxLOD; }
+
+        /**
+         * The minimum level of detail to which the terrain should subdivide (no matter what).
+         * If you leave this unset, the terrain will subdivide until the map layers
+         * stop providing data (default behavior). If you set a value, the terrain will subdivide
+         * to the specified LOD no matter what (and may continue farther if higher-resolution
+         * data is available).
+         */
+        optional<unsigned>& minLOD() { return _minLOD; }
+        const optional<unsigned>& minLOD() const { return _minLOD; }
 
         /**
          * Whether to explicity enable or disable GL lighting on the map node.
@@ -253,6 +264,21 @@ namespace osgEarth
          */
         optional<bool>& enableMercatorFastPath() { return _mercatorFastPath; }
         const optional<bool>& enableMercatorFastPath() const { return _mercatorFastPath; }
+
+        /**
+         * Traversal mask to use for primary geometry -- geometry that comprises the visible
+         * geometry and should participate in intersection, shadowing, etc.
+         */
+        optional<unsigned>& primaryTraversalMask() { return _primaryTraversalMask; }
+        const optional<unsigned>& primaryTraversalMask() const { return _primaryTraversalMask; }
+
+        /**
+         * Traversal mask to use for secondary geometry -- geometry that exists for
+         * secondary purpose (e.g. terrain skirts) that should not participate in 
+         * intersection, shadowing, etc.
+         */
+        optional<unsigned>& secondaryTraversalMask() { return _secondaryTraversalMask; }
+        const optional<unsigned>& secondaryTraversalMask() const { return _secondaryTraversalMask; }
    
     public:
         virtual Config getConfig() const;
@@ -273,7 +299,8 @@ namespace osgEarth
         optional<bool> _combineLayers;
         optional<LoadingPolicy> _loadingPolicy;
         optional<CompositingTechnique> _compositingTech;
-        optional<int> _maxLOD;
+        optional<unsigned> _minLOD;
+        optional<unsigned> _maxLOD;
         optional<bool> _enableLighting;
         optional<float> _attenuationDistance;
         optional<bool> _lodBlending;
@@ -285,6 +312,8 @@ namespace osgEarth
         optional<osg::Texture::FilterMode> _magFilter;
         optional<osg::Texture::FilterMode> _minFilter;
         optional<ElevationInterpolation> _elevationInterpolation;
+        optional<unsigned> _primaryTraversalMask;
+        optional<unsigned> _secondaryTraversalMask;
     };
 }
 

@@ -475,7 +475,7 @@ OSGTileFactory::createPlaceholderTile(const MapFrame&   mapf,
     plod->setCenter( bs.center() );
     plod->addChild( tile, min_range, max_range );
 
-    if ( key.getLevelOfDetail() < (unsigned int)getTerrainOptions().maxLOD().get() )
+    if (key.getLevelOfDetail() < getTerrainOptions().maxLOD().get())
     {
         plod->setFileName( 1, createURI( _engineId, key ) ); //map->getId(), key ) );
         plod->setRange( 1, 0.0, min_range );
@@ -526,8 +526,7 @@ OSGTileFactory::createPopulatedTile(const MapFrame&  mapf,
                                     bool             wrapInPagedLOD, 
                                     bool             fallback, 
                                     bool&            validData )
-{
-    OE_NOTICE << "createPopulatedtile" << std::endl;
+{    
     const MapInfo& mapInfo = mapf.getMapInfo();
     bool isPlateCarre = !mapInfo.isGeocentric() && mapInfo.isGeographicSRS();
 
@@ -742,8 +741,8 @@ OSGTileFactory::createPopulatedTile(const MapFrame&  mapf,
     //double origMinRange = bs.radius() * _options.minTileRangeFactor().value();        
     //Compute the min range based on the 2D size of the tile
     GeoExtent extent = tile->getKey().getExtent();        
-    GeoPoint lowerLeft(extent.getSRS(), extent.xMin(), extent.yMin());
-    GeoPoint upperRight(extent.getSRS(), extent.xMax(), extent.yMax());
+    GeoPoint lowerLeft(extent.getSRS(), extent.xMin(), extent.yMin(), 0.0, ALTMODE_ABSOLUTE);
+    GeoPoint upperRight(extent.getSRS(), extent.xMax(), extent.yMax(), 0.0, ALTMODE_ABSOLUTE);
     osg::Vec3d ll, ur;
     lowerLeft.toWorld( ll );
     upperRight.toWorld( ur );

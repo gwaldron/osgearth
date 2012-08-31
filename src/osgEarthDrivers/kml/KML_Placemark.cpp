@@ -23,6 +23,7 @@
 #include <osgEarthAnnotation/FeatureNode>
 #include <osgEarthAnnotation/PlaceNode>
 #include <osgEarthAnnotation/LabelNode>
+#include <osgEarthAnnotation/ModelNode>
 #include <osgEarthAnnotation/Decluttering>
 #include <osgEarthAnnotation/LocalGeometryNode>
 
@@ -35,184 +36,235 @@ using namespace osgEarth::Annotation;
 void 
 KML_Placemark::build( const Config& conf, KMLContext& cx )
 {
-    Style style;
+    Style masterStyle;
+
     if ( conf.hasValue("styleurl") )
     {
         // process a "stylesheet" style
         const Style* ref_style = cx._sheet->getStyle( conf.value("styleurl"), false );
         if ( ref_style )
-            style = *ref_style;
+            masterStyle = *ref_style;
     }
     else if ( conf.hasChild("style") )
     {
         // process an "inline" style
         KML_Style kmlStyle;
         kmlStyle.scan( conf.child("style"), cx );
-        style = cx._activeStyle;
+        masterStyle = cx._activeStyle;
     }
 
-    // KML's default altitude mode is clampToGround.
-    AltitudeMode altMode = ALTMODE_RELATIVE;
-
-    AltitudeSymbol* altSym = style.get<AltitudeSymbol>();
-    if ( !altSym )
-    {
-        altSym = style.getOrCreate<AltitudeSymbol>();
-        altSym->clamping() = AltitudeSymbol::CLAMP_RELATIVE_TO_TERRAIN;
-    }
-    else if ( !altSym->clamping().isSetTo(AltitudeSymbol::CLAMP_RELATIVE_TO_TERRAIN) )
-    {
-        altMode = ALTMODE_ABSOLUTE;
-    }
-
-    // parse the geometry. the placemark must have geometry to be valid.
+    // parse the geometry. the placemark must have geometry to be valid. The 
+    // geometry parse may optionally specify an altitude mode as well.
     KML_Geometry geometry;
-    geometry.build(conf, cx, style);
-    
-    if ( geometry._geom.valid() && geometry._geom->getTotalPointCount() > 0 )
+    geometry.build(conf, cx, masterStyle);
+
+    Geometry* allGeom = geometry._geom.get();
+    if ( allGeom )
     {
-        Geometry* geom = geometry._geom.get();
-
-        GeoPoint position(cx._srs.get(), geom->getBounds().center(), altMode);
-
-        bool isPoly = geom->getComponentType() == Geometry::TYPE_POLYGON;
-        bool isPoint = geom->getComponentType() == Geometry::TYPE_POINTSET;
-
-        // read in the Marker if there is one.
-        URI                      markerURI;
-        osg::ref_ptr<osg::Image> markerImage;
-        osg::ref_ptr<osg::Node>  markerModel;
-
-        MarkerSymbol* marker = style.get<MarkerSymbol>();
-
-        if ( marker && marker->url().isSet() )
+        GeometryIterator giter( allGeom, false );
+        while( giter.hasMore() )
         {
-            if ( marker->isModel() == false )
+            Geometry* geom = giter.next();
+            Style style = masterStyle;
+
+            // KML's default altitude mode is clampToGround.
+            AltitudeMode altMode = ALTMODE_RELATIVE;
+
+            AltitudeSymbol* altSym = style.get<AltitudeSymbol>();
+            if ( !altSym )
             {
-                markerImage = marker->getImage( *cx._options->iconMaxSize() );
+                altSym = style.getOrCreate<AltitudeSymbol>();
+                altSym->clamping() = AltitudeSymbol::CLAMP_RELATIVE_TO_TERRAIN;
             }
-            else
+            else if ( !altSym->clamping().isSetTo(AltitudeSymbol::CLAMP_RELATIVE_TO_TERRAIN) )
             {
-                markerURI = URI( marker->url()->eval(), marker->url()->uriContext() );
-                markerModel = markerURI.getNode();
-
-                // We can't leave the marker symbol in the style, or the GeometryCompiler will
-                // think we want to do Point-model substitution. So remove it. A bit of a hack
-                if ( marker )
-                    style.removeSymbol(marker);
-            }
-        }
-
-        std::string text = 
-            conf.hasValue("name") ? conf.value("name") :
-            conf.hasValue("description") ? conf.value("description") :
-            "Unnamed";  
-
-        AnnotationNode* fNode = 0L;
-        AnnotationNode* pNode = 0L;
-
-        // place a 3D model:
-        if ( markerModel.valid() )
-        {
-            LocalGeometryNode* lg = new LocalGeometryNode(cx._mapNode, markerModel.get(), style, false);
-            lg->setPosition( position );
-            if ( marker )
-            {
-                if ( marker->scale().isSet() )
-                {
-                    float scale = marker->scale()->eval();
-                    lg->setScale( osg::Vec3f(scale,scale,scale) );
-                }
-                if ( marker->orientation().isSet() )
-                {
-                   // lg->setRotation( );
-                }
-            }
-
-            fNode = lg;
-            //Feature* feature = new Feature(geometry._geom.get(), cx._srs.get(), style);
-            //fNode = new FeatureNode( cx._mapNode, feature, false );
-        }
-
-        // Place node (icon + text) or Label node (text only)
-        else if ( marker || geometry._geom->getTotalPointCount() == 1 )
-        {
-            if ( !markerImage.valid() )
-            {
-                markerImage = cx._options->defaultIconImage().get();
-                if ( !markerImage.valid() )
-                {
-                    markerImage = cx._options->defaultIconURI()->getImage();
-                }
+                altMode = ALTMODE_ABSOLUTE;
             }
             
-            if ( !style.get<TextSymbol>() && cx._options->defaultTextSymbol().valid() )
+            if ( geom && geom->getTotalPointCount() > 0 )
             {
-                style.addSymbol( cx._options->defaultTextSymbol().get() );
+                GeoPoint position(cx._srs.get(), geom->getBounds().center(), altMode);
+
+                bool isPoly = geom->getComponentType() == Geometry::TYPE_POLYGON;
+                bool isPoint = geom->getComponentType() == Geometry::TYPE_POINTSET;
+
+                // check for symbols.
+                ModelSymbol*    model = style.get<ModelSymbol>();
+                IconSymbol*     icon  = style.get<IconSymbol>();
+                TextSymbol*     text  = style.get<TextSymbol>();
+
+                if ( !text && cx._options->defaultTextSymbol().valid() )
+                    text = cx._options->defaultTextSymbol().get();
+
+                // the annotation name:
+                std::string name = conf.hasValue("name") ? conf.value("name") : "";
+                if ( text && !name.empty() )
+                {
+                    text->content()->setLiteral( name );
+                }
+
+                AnnotationNode* featureNode = 0L;
+                AnnotationNode* iconNode    = 0L;
+                AnnotationNode* modelNode   = 0L;
+
+                // one coordinate? It's a place marker or a label.
+                if ( model || icon || text || geom->getTotalPointCount() == 1 )
+                {
+                    // load up the default icon if there we don't have one.
+                    if ( !model && !icon )
+                    {
+                        icon = cx._options->defaultIconSymbol().get();
+                        if ( icon )
+                            style.add( icon );
+                    }
+
+                    // if there's a model, render that - models do NOT get labels.
+                    if ( model )
+                    {
+                        ModelNode* node = new ModelNode( cx._mapNode, style, cx._dbOptions );
+                        node->setPosition( position );
+
+                        if ( cx._options->modelScale() != 1.0f )
+                        {
+                            float s = *cx._options->modelScale();
+                            node->setScale( osg::Vec3f(s,s,s) );
+                        }
+
+                        if ( !cx._options->modelRotation()->zeroRotation() )
+                        {
+                            node->setLocalRotation( *cx._options->modelRotation() );
+                        }
+
+                        modelNode = node;
+                    }
+
+                    else if ( !text && !name.empty() )
+                    {
+                        text = style.getOrCreate<TextSymbol>();
+                        text->content()->setLiteral( name );
+                    }
+
+                    if ( icon )
+                    {
+                        iconNode = new PlaceNode( cx._mapNode, position, style, cx._dbOptions );
+                    }
+
+                    else if ( !model && text && !name.empty() )
+                    {
+                        // note: models do not get labels.
+                        iconNode = new LabelNode( cx._mapNode, position, style );
+                    }
+                }
+
+                // multiple coords? feature:
+                if ( geom->getTotalPointCount() > 1 )
+                {
+                    ExtrusionSymbol* extruded = style.get<ExtrusionSymbol>();
+                    AltitudeSymbol*  altitude = style.get<AltitudeSymbol>();
+
+                    // Remove symbols that we have already processed so the geometry
+                    // compiler doesn't get confused.
+                    if ( model )
+                        style.removeSymbol( model );
+                    if ( icon )
+                        style.removeSymbol( icon );
+                    if ( text )
+                        style.removeSymbol( text );
+
+                    // analyze the data; if the Z coords are all 0.0, enable draping.
+                    if ( /*isPoly &&*/ !extruded && altitude && altitude->clamping() != AltitudeSymbol::CLAMP_TO_TERRAIN )
+                    {
+                        bool zeroElev = true;
+                        ConstGeometryIterator gi( geom, false );
+                        while( zeroElev == true && gi.hasMore() )
+                        {
+                            const Geometry* g = gi.next();
+                            for( Geometry::const_iterator ji = g->begin(); ji != g->end() && zeroElev == true; ++ji )
+                            {
+                                if ( !osg::equivalent(ji->z(), 0.0) )
+                                    zeroElev = false;
+                            }
+                        }
+                        if ( zeroElev )
+                        {
+                            altitude->clamping() = AltitudeSymbol::CLAMP_TO_TERRAIN;
+                        }
+                    }
+
+                    // Make a feature node; drape if we're not extruding.
+                    bool draped =
+                        isPoly    && 
+                        !extruded &&
+                        (!altitude || altitude->clamping() == AltitudeSymbol::CLAMP_TO_TERRAIN);
+
+                    // turn off the clamping if we're draping.
+                    if ( draped && altitude )
+                        altitude->clamping() = AltitudeSymbol::CLAMP_NONE;
+
+                    GeometryCompilerOptions compilerOptions;
+
+                    // Check for point-model substitution:
+                    if ( style.has<ModelSymbol>() )
+                    {
+                        compilerOptions.instancing() = true;
+                    }
+
+                    Feature* feature = new Feature(geom, cx._srs.get(), style);
+                    featureNode = new FeatureNode( cx._mapNode, feature, draped, compilerOptions );
+                }
+
+
+                // assemble the results:
+                if ( (iconNode || modelNode) && featureNode )
+                {
+                    osg::Group* group = new osg::Group();
+                    group->addChild( featureNode );
+                    if ( iconNode )
+                        group->addChild( iconNode );
+                    if ( modelNode )
+                        group->addChild( modelNode );
+
+                    cx._groupStack.top()->addChild( group );
+
+                    if ( iconNode && cx._options->declutter() == true )
+                        Decluttering::setEnabled( iconNode->getOrCreateStateSet(), true );
+
+                    if ( iconNode )
+                        KML_Feature::build( conf, cx, iconNode );
+                    if ( modelNode )
+                        KML_Feature::build( conf, cx, modelNode );
+                    if ( featureNode )
+                        KML_Feature::build( conf, cx, featureNode );
+                }
+
+                else
+                {
+                    if ( iconNode )
+                    {
+                        if ( cx._options->iconAndLabelGroup().valid() )
+                        {
+                            cx._options->iconAndLabelGroup()->addChild( iconNode );
+                        }
+                        else
+                        {
+                            cx._groupStack.top()->addChild( iconNode );
+                            if ( cx._options->declutter() == true )
+                                Decluttering::setEnabled( iconNode->getOrCreateStateSet(), true );
+                        }
+                        KML_Feature::build( conf, cx, iconNode );
+                    }
+                    if ( modelNode )
+                    {
+                        cx._groupStack.top()->addChild( modelNode );
+                        KML_Feature::build( conf, cx, modelNode );
+                    }
+                    if ( featureNode )
+                    {
+                        cx._groupStack.top()->addChild( featureNode );
+                        KML_Feature::build( conf, cx, featureNode );
+                    }
+                }
             }
-
-            if ( markerImage.valid() )
-                pNode = new PlaceNode( cx._mapNode, position, markerImage.get(), text, style );
-            else
-                pNode = new LabelNode( cx._mapNode, position, text, style );
-        }
-
-        if ( geometry._geom->getTotalPointCount() > 1 )
-        {
-            const ExtrusionSymbol* ex = style.get<ExtrusionSymbol>();
-            const AltitudeSymbol* alt = style.get<AltitudeSymbol>();    
-
-            if ( style.get<MarkerSymbol>() )
-                style.removeSymbol(style.get<MarkerSymbol>());
-
-            bool draped =
-                isPoly   && 
-                ex == 0L && 
-                (alt == 0L || alt->clamping() == AltitudeSymbol::CLAMP_TO_TERRAIN);
-
-            // Make a feature node; drape if we're not extruding.
-            GeometryCompilerOptions options;
-            options.clustering() = false;            
-            Feature* feature = new Feature(geometry._geom.get(), cx._srs.get(), style);
-            fNode = new FeatureNode( cx._mapNode, feature, draped, options );
-
-            if ( !ex )
-            {
-                fNode->getOrCreateStateSet()->setMode(GL_LIGHTING, 0);
-            }
-        }
-        
-        if ( pNode && fNode )
-        {
-            osg::Group* group = new osg::Group();
-            group->addChild( fNode );
-            group->addChild( pNode );
-            cx._groupStack.top()->addChild( group );
-            if ( cx._options->declutter() == true )
-                Decluttering::setEnabled( pNode->getOrCreateStateSet(), true );
-            KML_Feature::build( conf, cx, pNode );
-            KML_Feature::build( conf, cx, fNode );
-        }
-
-        else if ( pNode )
-        {
-            if ( cx._options->iconAndLabelGroup().valid() )
-            {
-                cx._options->iconAndLabelGroup()->addChild( pNode );
-            }
-            else
-            {
-                cx._groupStack.top()->addChild( pNode );
-                if ( cx._options->declutter() == true )
-                    Decluttering::setEnabled( pNode->getOrCreateStateSet(), true );
-            }
-            KML_Feature::build( conf, cx, pNode );
-        }
-
-        else if ( fNode )
-        {
-            cx._groupStack.top()->addChild( fNode );
-            KML_Feature::build( conf, cx, fNode );
         }
     }
 }

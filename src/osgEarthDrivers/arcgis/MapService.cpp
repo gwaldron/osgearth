@@ -1,5 +1,4 @@
 #include "MapService.h"
-#include <osgEarth/HTTPClient>
 #include <osgEarth/JsonUtils>
 #include <osgEarth/Registry>
 #include <osg/Notify>
@@ -126,19 +125,20 @@ MapService::getTileInfo() const {
 }
 
 bool
-MapService::init( const std::string& _url, const osgDB::ReaderWriter::Options* options )
+MapService::init( const URI& _uri, const osgDB::ReaderWriter::Options* options )
 {
-    url = _url;
-    std::string sep = url.find( "?" ) == std::string::npos ? "?" : "&";
-    std::string json_url = url + sep + std::string("f=pjson");  // request the data in JSON format
+    uri = _uri;
+    std::string sep = uri.full().find( "?" ) == std::string::npos ? "?" : "&";
+    std::string json_url = uri.full() + sep + std::string("f=pjson");  // request the data in JSON format
 
-    HTTPResponse response = HTTPClient::get( json_url, options );
-    if ( !response.isOK() )
+    ReadResult r = URI(json_url).readString( options );
+    if ( r.failed() )
         return setError( "Unable to read metadata from ArcGIS service" );
 
     Json::Value doc;
     Json::Reader reader;
-    if ( !reader.parse( response.getPartStream(0), doc ) )
+//    if ( !reader.parse( response.getPartStream(0), doc ) )
+    if ( !reader.parse( r.getString(), doc ) )
         return setError( "Unable to parse metadata; invalid JSON" );
 
     // Read the profile. We are using "fullExtent"; perhaps an option to use "initialExtent" instead?

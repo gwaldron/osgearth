@@ -171,7 +171,7 @@ void LOSCreationDialog::initUi(const std::string& name, osg::Group* los)
 
 
   // Create los nodes and initialize
-  _p2p = new osgEarth::Util::LineOfSightNode(_mapNode.get());
+  _p2p = new osgEarth::Util::LinearLineOfSightNode(_mapNode.get());
   _radial = new osgEarth::Util::RadialLineOfSightNode(_mapNode.get());
 
   // simulate type change to force UI update
@@ -185,7 +185,7 @@ void LOSCreationDialog::initUi(const std::string& name, osg::Group* los)
   // If an los node was passed in, initialize components accordingly
   if (los)
   {
-    osgEarth::Util::LineOfSightNode* p2pNode = dynamic_cast<osgEarth::Util::LineOfSightNode*>(los);
+    osgEarth::Util::LinearLineOfSightNode* p2pNode = dynamic_cast<osgEarth::Util::LinearLineOfSightNode*>(los);
     if (p2pNode)
     {
       _ui.typeTabs->setCurrentIndex(0);
@@ -240,7 +240,7 @@ void LOSCreationDialog::initUi(const std::string& name, osg::Group* los)
           double hat = pos.z();
 
           double height;
-          if (_mapNode->getTerrain()->getHeight(pos.x(), pos.y(), &height))
+          if (_mapNode->getTerrain()->getHeight(_mapNode->getMapSRS(), pos.x(), pos.y(), &height))
             pos.set(pos.x(), pos.y(), height);
 
           setLOSPoint(P2P_START, pos, true);
@@ -276,7 +276,7 @@ void LOSCreationDialog::initUi(const std::string& name, osg::Group* los)
           double hat = pos.z();
 
           double height;
-          if (_mapNode->getTerrain()->getHeight(pos.x(), pos.y(), &height))
+          if (_mapNode->getTerrain()->getHeight(_mapNode->getMapSRS(), pos.x(), pos.y(), &height))
             pos.set(pos.x(), pos.y(), height);
 
           setLOSPoint(P2P_END, pos, true);
@@ -337,7 +337,7 @@ void LOSCreationDialog::initUi(const std::string& name, osg::Group* los)
             double hat = pos.z();
 
             double height;
-            if (_mapNode->getTerrain()->getHeight(pos.x(), pos.y(), &height))
+            if (_mapNode->getTerrain()->getHeight(_mapNode->getMapSRS(), pos.x(), pos.y(), &height))
               pos.set(pos.x(), pos.y(), height);
 
             setLOSPoint(RADIAL_CENTER, pos, true);
@@ -370,7 +370,8 @@ void LOSCreationDialog::mapClick(const osg::Vec3d& point)
   {
     // transform point to map coordinates:
     osgEarth::GeoPoint outPoint;
-    _map->worldPointToMapPoint(point, outPoint);
+    outPoint.fromWorld( _map->getSRS(), point );
+    //_map->worldPointToMapPoint(point, outPoint);
 
     if (_activeButton == _ui.p1PointButton)
     {
@@ -725,7 +726,8 @@ void LOSCreationDialog::centerMapOnNode(osg::Node* node)
       osg::Vec3d center = node->getBound().center();
 
       GeoPoint output;
-      _map->worldPointToMapPoint(center, output);
+      output.fromWorld( _map->getSRS(), center );
+      //_map->worldPointToMapPoint(center, output);
 
       _manager->doAction(this, new SetViewpointAction(osgEarth::Viewpoint(output.vec3d(), 0.0, -90.0, 1e5), *_views));
     }
@@ -834,7 +836,7 @@ void LOSCreationDialog::onLocationValueChanged(double d)
       if (_updateAlt)
       {
         double alt;
-        if (_mapNode->getTerrain()->getHeight(_ui.p1LonBox->value(), _ui.p1LatBox->value(), &alt))
+        if (_mapNode->getTerrain()->getHeight(_mapNode->getMapSRS(), _ui.p1LonBox->value(), _ui.p1LatBox->value(), &alt))
           _p1BaseAlt = alt;
       }
 
@@ -849,7 +851,7 @@ void LOSCreationDialog::onLocationValueChanged(double d)
       if (_updateAlt)
       {
         double alt;
-        if (_mapNode->getTerrain()->getHeight(_ui.p2LonBox->value(), _ui.p2LatBox->value(), &alt))
+        if (_mapNode->getTerrain()->getHeight(_mapNode->getMapSRS(), _ui.p2LonBox->value(), _ui.p2LatBox->value(), &alt))
           _p2BaseAlt = alt;
       }
 
@@ -864,7 +866,7 @@ void LOSCreationDialog::onLocationValueChanged(double d)
       if (_updateAlt)
       {
         double alt;
-        if (_mapNode->getTerrain()->getHeight(_ui.radLonBox->value(), _ui.radLatBox->value(), &alt))
+        if (_mapNode->getTerrain()->getHeight(_mapNode->getMapSRS(), _ui.radLonBox->value(), _ui.radLatBox->value(), &alt))
           _radBaseAlt = alt;
       }
 

@@ -261,7 +261,8 @@ public:
               if ( _mapNode->getTerrain()->getWorldCoordsUnderMouse( aa.asView(), ea.getX(), ea.getY(), world ))
               {
                   GeoPoint mapPoint;
-                  _mapNode->getMap()->worldPointToMapPoint( world, mapPoint );
+                  mapPoint.fromWorld( _mapNode->getMapSRS(), world );
+                  //_mapNode->getMap()->worldPointToMapPoint( world, mapPoint );
 
                   if (!_startValid)
                   {
@@ -385,10 +386,6 @@ main(int argc, char** argv)
     viewer.getCamera()->addCullCallback( new AutoClipPlaneCullCallback(mapNode));
 
     viewer.addEventHandler( new DrawProfileEventHandler( mapNode, root, calculator ) );
-
-    // osgEarth benefits from pre-compilation of GL objects in the pager. In newer versions of
-    // OSG, this activates OSG's IncrementalCompileOpeartion in order to avoid frame breaks.
-    viewer.getDatabasePager()->setDoPreCompile( true );
 
     viewer.setSceneData( root );    
 

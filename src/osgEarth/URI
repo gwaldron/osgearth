@@ -22,6 +22,7 @@
 #include <osgEarth/Common>
 #include <osgEarth/CacheBin>
 #include <osgEarth/CachePolicy>
+#include <osgEarth/Containers>
 #include <osgEarth/FileUtils>
 #include <osgEarth/IOTypes>
 #include <osgEarth/Progress>
@@ -67,7 +68,7 @@ namespace osgEarth
         /** Serializes this context to an Options structure. This is useful when passing context information
             to an osgDB::ReaderWriter that takes a stream as input -- the stream is anonymous, therefore this
             is the preferred way to communicate the context information. */
-        void store( osgDB::Options* options );
+        void apply( osgDB::Options* options );
 
         /** Creates a context from the serialized version in an Options structure (see above) */
         URIContext( const osgDB::Options* options );
@@ -184,50 +185,41 @@ namespace osgEarth
 
         ReadResult readObject(
             const osgDB::Options* dbOptions   =0L,
-            const CachePolicy&    cachePolicy =CachePolicy(),
             ProgressCallback*     progress    =0L ) const;
 
         ReadResult readImage(
             const osgDB::Options* dbOptions   =0L,
-            const CachePolicy&    cachePolicy =CachePolicy(),
             ProgressCallback*     progress    =0L ) const;
 
         ReadResult readNode(
             const osgDB::Options* dbOptions   =0L,
-            const CachePolicy&    cachePolicy =CachePolicy(),
             ProgressCallback*     progress    =0L ) const;
 
         ReadResult readString(
             const osgDB::Options* dbOptions   =0L,
-            const CachePolicy&    cachePolicy =CachePolicy(),
             ProgressCallback*     progress    =0L ) const;
 
         ReadResult readConfig(
             const osgDB::Options* dbOptions   =0L,
-            const CachePolicy&    cachePolicy =CachePolicy(),
             ProgressCallback*     progress    =0L ) const;
 
     public: // get methods call the read* methods, then just return the raw data.
 
         osg::Object* getObject(
             const osgDB::Options* dbOptions   =0L,
-            const CachePolicy&    cachePolicy =CachePolicy(),
-            ProgressCallback*     progress    =0L ) const { return readObject(dbOptions, cachePolicy, progress).releaseObject(); }
+            ProgressCallback*     progress    =0L ) const { return readObject(dbOptions, progress).releaseObject(); }
 
         osg::Image* getImage(
             const osgDB::Options* dbOptions   =0L,
-            const CachePolicy&    cachePolicy =CachePolicy(),
-            ProgressCallback*     progress    =0L ) const { return readImage(dbOptions, cachePolicy, progress).releaseImage(); }
+            ProgressCallback*     progress    =0L ) const { return readImage(dbOptions, progress).releaseImage(); }
 
         osg::Node* getNode(
             const osgDB::Options* dbOptions   =0L,
-            const CachePolicy&    cachePolicy =CachePolicy(),
-            ProgressCallback*     progress    =0L ) const { return readNode(dbOptions, cachePolicy, progress).releaseNode(); }
+            ProgressCallback*     progress    =0L ) const { return readNode(dbOptions, progress).releaseNode(); }
 
         std::string getString(
             const osgDB::Options* dbOptions   =0L,
-            const CachePolicy&    cachePolicy =CachePolicy(),
-            ProgressCallback*     progress    =0L ) const { return readString(dbOptions, cachePolicy, progress).getString(); }
+            ProgressCallback*     progress    =0L ) const { return readString(dbOptions, progress).getString(); }
 
     public:
 
@@ -246,16 +238,91 @@ namespace osgEarth
         std::string _cacheKey;
         URIContext  _context;
     };
+    
+
+//------------------------------------------------------------------------
+
+
+    /**
+     * A lookup table that maps URI references to other URI references. This
+     * is used as an optional resource mapping table. (See KML's ResourceMap
+     * for usage example)
+     *
+     * WARNING: osgDB::Options will only store a raw pointer to the class, so
+     * make sure the scope of the osgDB::Options does not exceed the scope of
+     * the embedded alias map!
+     */
+    struct OSGEARTH_EXPORT URIAliasMap : public std::map<std::string, std::string>
+    {
+        static URIAliasMap* from( const osgDB::Options* options ) {
+            return options ? static_cast<URIAliasMap*>(const_cast<osgDB::Options*>(options)->getPluginData("osgEarth::URIAliasMap")) : 0L;
+        }
+
+        void apply( osgDB::Options* options ) {
+            if ( options ) options->setPluginData("osgEarth::URIAliasMap", this);
+        }
+
+        std::string resolve(const std::string& input, const URIContext& context) const;
+    };
+
+
+    /**
+     * A custom read callback (that you can set in an osgDB::Options) that will 
+     * attempt to resolve pathnames using a URI alias map.
+     */
+    class OSGEARTH_EXPORT URIAliasMapReadCallback : public osgDB::ReadFileCallback
+    {
+    public:
+        URIAliasMapReadCallback( const URIAliasMap& aliasMap, const URIContext& context );
+
+        virtual osgDB::ReaderWriter::ReadResult openArchive(const std::string& filename, osgDB::ReaderWriter::ArchiveStatus status, unsigned int indexBlockSizeHint, const osgDB::Options* useObjectCache);
+        virtual osgDB::ReaderWriter::ReadResult readObject(const std::string& filename, const osgDB::Options* options);
+        virtual osgDB::ReaderWriter::ReadResult readImage(const std::string& filename, const osgDB::Options* options);
+        virtual osgDB::ReaderWriter::ReadResult readHeightField(const std::string& filename, const osgDB::Options* options);
+        virtual osgDB::ReaderWriter::ReadResult readNode(const std::string& filename, const osgDB::Options* options);
+        virtual osgDB::ReaderWriter::ReadResult readShader(const std::string& filename, const osgDB::Options* options);
+
+    protected:
+        const URIAliasMap& _aliasMap;
+        URIContext         _context;
+    };
+
+
+//------------------------------------------------------------------------
+
+    /**
+     * A URI result cache that you can embed in an osgDB::Options, and if found,
+     * URI will attempt to use it. 
+     *
+     * WARNING: osgDB::Options will only store a raw pointer to the class, so
+     * make sure the scope of the osgDB::Options does not exceed the scope of
+     * the embedded cache!
+     */
+    struct /*header-only*/ URIResultCache : public LRUCache<URI, ReadResult>
+    {
+        URIResultCache( bool threadsafe =true )
+            : LRUCache<URI,ReadResult>( threadsafe ) { }
+
+        static URIResultCache* from(const osgDB::Options* options) {
+            return options ? static_cast<URIResultCache*>(const_cast<osgDB::Options*>(options)->getPluginData("osgEarth::URIResultCache")) : 0L;
+        }
+
+        void apply( osgDB::Options* options ) {
+            if ( options ) options->setPluginData("osgEarth::URIResultCache", this);
+        }
+    };
 
     
 //------------------------------------------------------------------------
 
-    // Config specifialization for URI:
+    // Config specialization for URI:
 
     template <> inline
     void Config::addIfSet<URI>( const std::string& key, const optional<URI>& opt ) {
         if ( opt.isSet() ) {
-            add( Config(key, opt->base()) );
+            Config conf(key, opt->base());
+            conf.setReferrer(opt->context().referrer());
+            add( conf );
         }
     }
 
@@ -263,18 +330,61 @@ namespace osgEarth
     void Config::updateIfSet<URI>( const std::string& key, const optional<URI>& opt ) {
         if ( opt.isSet() ) {
             remove(key);
-            add( Config(key, opt->base()) );
+            Config conf(key, opt->base());
+            conf.setReferrer(opt->context().referrer());
+            add( conf );
         }
     }
 
     template<> inline
     bool Config::getIfSet<URI>( const std::string& key, optional<URI>& output ) const {
-        if ( hasValue( key ) ) {
-            output = URI( value(key), _referrer );
+        if ( hasValue(key) ) {
+            output = URI( value(key), referrer(key) );
             return true;
         }
         else
             return false;
+    }
+
+    // Config specialization for URIAliasMap
+
+    template <> inline
+    void Config::addIfSet<URIAliasMap>( const std::string& key, const optional<URIAliasMap>& map ) {
+        if ( map.isSet() ) {
+            Config conf( key );
+            for( URIAliasMap::const_iterator i = map->begin(); i != map->end(); ++i ) {
+                Config alias( "alias" );
+                alias.add( "source", i->first );
+                alias.add( "target", i->second );
+                conf.add( alias );
+            }
+            add(conf);
+        }
+    }
+
+    template <> inline
+    void Config::updateIfSet<URIAliasMap>( const std::string& key, const optional<URIAliasMap>& map ) {
+        if ( map.isSet() ) {
+            remove( key );
+            addIfSet( key, map );
+        }
+    }
+
+    template <> inline
+    bool Config::getIfSet<URIAliasMap>( const std::string& key, optional<URIAliasMap>& output ) const {
+        Config alias = child(key);
+        if ( !alias.empty() ) {
+            for( ConfigSet::const_iterator i = alias.children().begin(); i != alias.children().end(); ++i ) {
+                std::string source = i->value("source");
+                std::string target = i->value("target");
+                if ( !source.empty() && !target.empty() )
+                    output->insert( std::make_pair(source, target) );
+            }
+            return true;
+        }
+        else {
+            return false;
+        }
     }
 }
 

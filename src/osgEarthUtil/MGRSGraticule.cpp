@@ -518,7 +518,7 @@ MGRSGraticule::buildSQIDTiles( const std::string& gzd )
     lineStyle.add( _options->secondaryStyle()->get<AltitudeSymbol>() );
 
     GeometryCompiler compiler;
-    osg::ref_ptr<Session> session = new Session( _mapNode->getMap() );
+    osg::ref_ptr<Session> session = new Session( getMapNode()->getMap() );
     FilterContext context( session.get(), _featureProfile.get(), extent );
 
     // make sure we get sufficient tessellation:

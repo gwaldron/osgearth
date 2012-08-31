@@ -24,6 +24,7 @@
 #include <osgEarth/Layer>
 #include <osgEarth/Config>
 #include <osgEarth/ModelSource>
+#include <osgEarth/ShaderUtils>
 #include <osg/Node>
 #include <vector>
 
@@ -81,6 +82,14 @@ namespace osgEarth
         optional<bool>& overlay() { return _overlay; }
         const optional<bool>& overlay() const { return _overlay; }
 
+        /**
+         * TEMPORARY option that will turn off all shader program composition
+         * on the model layer. Need this temporarily to support external model
+         * references until we get a proper shader gen working
+         */
+        optional<bool>& disableShaders() { return _disableShaderComp; }
+        const optional<bool>& disableShaders() const { return _disableShaderComp; }
+
     public:
         virtual Config getConfig() const;
         virtual void mergeConfig( const Config& conf );
@@ -95,6 +104,7 @@ namespace osgEarth
         optional<bool> _enabled;
         optional<bool> _visible;
         optional<bool> _lighting;
+        optional<bool> _disableShaderComp;
     };
 
     /**
@@ -135,6 +145,7 @@ namespace osgEarth
          */
         ModelLayer(const std::string& name, osg::Node* node);
 
+        /** dtor */
         virtual ~ModelLayer();
 
     public:
@@ -155,7 +166,19 @@ namespace osgEarth
 
     public:
 
-        osg::Node* getOrCreateNode( ProgressCallback* progress =0L );
+        /**
+         * Perform one-time initialize of the model layer.
+         */
+        void initialize( const osgDB::Options* options );
+
+        /**
+         * Creates the scene graph representing this model layer for the given Map.
+         */
+        osg::Node* createSceneGraph( 
+            const Map*            map, 
+            const osgDB::Options* dbOptions,
+            ProgressCallback*     progress );
+
 
     public: // properties
 
@@ -182,19 +205,18 @@ namespace osgEarth
         /** Removes a property notification callback from this layer */
         void removeCallback( ModelLayerCallback* cb );
 
-    public:
-
-        // internal function
-        void initialize( const osgDB::Options* options, const Map* map );
-
     private:
         osg::ref_ptr<ModelSource>    _modelSource;
         const ModelLayerOptions      _initOptions;
         ModelLayerOptions            _runtimeOptions;
-        osg::ref_ptr< osg::Node >    _node;
-        osg::ref_ptr<osgDB::Options> _dbOptions;
+        //osg::ref_ptr< osg::Node >    _node;
+        //osg::ref_ptr<osgDB::Options> _dbOptions;
         Revision                     _modelSourceRev;
         ModelLayerCallbackList       _callbacks;
+        UpdateLightingUniformsHelper _updateLightingUniformsHelper;
+
+        typedef std::set< osg::observer_ptr<osg::Node> > NodeObserverSet;
+        NodeObserverSet _nodeSet;
 
         virtual void fireCallback( ModelLayerCallbackMethodPtr method );
 

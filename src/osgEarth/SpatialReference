@@ -99,6 +99,19 @@ namespace osgEarth
             double&                 out_y ) const;
 
 
+    public: // Units transformations.
+
+        /**
+         * Transforms a distance from the base units of this SRS to the base units of
+         * another. If one of the SRS's is geographic (i.e. has angular units), the 
+         * conversion will assume that the corresponding distance is measured at the
+         * equator.
+         */
+        double transformUnits(
+            double                  distance,
+            const SpatialReference* outputSRS ) const;
+
+
     public: // World transformations.
 
         /**
@@ -108,7 +121,7 @@ namespace osgEarth
          */
         bool transformToWorld(
             const osg::Vec3d& input,
-            osg::Vec3d&       out_world ) const;        
+            osg::Vec3d&       out_world ) const;
 
         /**
          * Transforms a point from the "world" coordinate system into this spatial
@@ -242,16 +255,19 @@ namespace osgEarth
         const std::string& getInitType() const;
 
         /** Gets the initialization key. */
-        const Key& getKey() const { return _key; }
+        const Key& getKey() const;
 
         /** Gets the initialization string for the horizontal datum */
-        const std::string& getHorizInitString() const { return _key.first; }
+        const std::string& getHorizInitString() const;
 
         /** Gets the initialization string for the vertical datum */
-        const std::string& getVertInitString() const { return _key.second; }
+        const std::string& getVertInitString() const;
 
         /** Gets the datum identifier of this SRS (or empty string if not available) */
         const std::string& getDatumName() const;
+
+        /** Gets the base units of data in this SRS */
+        const Units& getUnits() const;
 
         /** Whether the two SRS are completely equivalent. */
         virtual bool isEquivalentTo( const SpatialReference* rhs ) const;
@@ -347,6 +363,7 @@ namespace osgEarth
         std::string _proj4;
         std::string _init_type;
         std::string _datum;
+        Units       _units;
         osg::ref_ptr<osg::EllipsoidModel> _ellipsoid;
         osg::ref_ptr<SpatialReference>    _geo_srs;
         osg::ref_ptr<SpatialReference>    _geodetic_srs;  // _geo_srs with a NULL vdatum.

@@ -19,7 +19,8 @@
 
 #include <osgEarth/StringUtils>
 #include <osgDB/FileNameUtils>
-#include <ctype.h>
+//#include <ctype.h>
+#include <cctype>
 
 using namespace osgEarth;
 
@@ -320,6 +321,29 @@ osgEarth::replaceIn( std::string& s, const std::string& sub, const std::string& 
     return s;
 }
 
+std::string&
+osgEarth::ciReplaceIn( std::string& s, const std::string& pattern, const std::string& replacement )
+{
+    if ( pattern.empty() ) return s;
+    
+    std::string upperSource = s;
+    std::transform( upperSource.begin(), upperSource.end(), upperSource.begin(), (int(*)(int))std::toupper );
+
+    std::string upperPattern = pattern;
+    std::transform( upperPattern.begin(), upperPattern.end(), upperPattern.begin(), (int(*)(int))std::toupper );
+
+    for( size_t b = 0; ; )
+    {
+        b = upperSource.find( upperPattern, b );
+        if ( b == s.npos ) break;
+        s.replace( b, pattern.size(), replacement );
+        upperSource.replace( b, upperPattern.size(), replacement );
+        b += replacement.size();
+    }
+
+    return s;
+}
+
 /**
 * Trims whitespace from the ends of a string.
 * by Rodrigo C F Dias
@@ -374,6 +398,21 @@ namespace
         }
         const std::locale& _loc;
     };
+}
+
+bool
+osgEarth::ciEquals(const std::string& lhs, const std::string& rhs, const std::locale& loc )
+{
+    if ( lhs.length() != rhs.length() )
+        return false;
+
+    for( unsigned i=0; i<lhs.length(); ++i )
+    {
+        if ( std::toupper(lhs[i], loc) != std::toupper(rhs[i], loc) )
+            return false;
+    }
+
+    return true;
 }
 
 bool

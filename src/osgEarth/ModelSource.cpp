@@ -27,6 +27,17 @@ using namespace OpenThreads;
 
 /****************************************************************/
 
+
+ModelSourceOptions::ModelSourceOptions( const ConfigOptions& options ) :
+DriverConfigOptions( options ),
+_minRange          ( 0.0f ),
+_maxRange          ( FLT_MAX ),
+_renderOrder       ( 11 ),
+_depthTestEnabled  ( true )
+{ 
+    fromConfig(_conf);
+}
+
 void
 ModelSourceOptions::fromConfig( const Config& conf )
 {
@@ -61,6 +72,44 @@ _options( options )
 {
     //TODO: is this really necessary?
     this->setThreadSafeRefUnref( true );
+}
+
+
+void 
+ModelSource::addPostProcessor( NodeOperation* op )
+{
+    if ( op )
+    {
+        Threading::ScopedMutexLock lock( _postProcessorsMutex );
+        _postProcessors.push_back( op );
+    }
+}
+
+
+void
+ModelSource::removePostProcessor( NodeOperation* op )
+{
+    if ( op )
+    {
+        Threading::ScopedMutexLock lock( _postProcessorsMutex );
+        NodeOperationVector::iterator i = std::find( _postProcessors.begin(), _postProcessors.end(), op );
+        if ( i != _postProcessors.end() )
+            _postProcessors.erase( i );
+    }
+}
+
+
+void
+ModelSource::firePostProcessors( osg::Node* node )
+{
+    if ( node )
+    {
+        Threading::ScopedMutexLock lock( _postProcessorsMutex );
+        for( NodeOperationVector::iterator i = _postProcessors.begin(); i != _postProcessors.end(); ++i )
+        {
+            i->get()->operator()( node );
+        }
+    }
 }
 
 //------------------------------------------------------------------------

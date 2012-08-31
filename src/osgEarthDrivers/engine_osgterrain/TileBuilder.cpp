@@ -58,17 +58,44 @@ struct BuildColorLayer
         bool autoFallback = _key.getLevelOfDetail() <= 1;
 
         TileKey imageKey( _key );
-        while( !geoImage.valid() && imageKey.valid() && _layer->isKeyValid(imageKey) )
-        {
-            if ( useMercatorFastPath )
-                geoImage = _layer->createImageInNativeProfile( imageKey, 0L, autoFallback );
-            else
-                geoImage = _layer->createImage( imageKey, 0L, autoFallback );
+        TileSource* tileSource = _layer->getTileSource();
+        const Profile* layerProfile = _layer->getProfile();
 
-            if ( !geoImage.valid() )
+        //Only try to get data from the source if it actually intersects the key extent
+        bool hasDataInExtent = true;
+        if (tileSource && layerProfile)
+        {
+            GeoExtent ext = _key.getExtent();
+            if (!layerProfile->getSRS()->isEquivalentTo( ext.getSRS()))
             {
-                imageKey = imageKey.createParentKey();
-                isFallbackData = true;
+                ext = layerProfile->clampAndTransformExtent( ext );
+            }
+            hasDataInExtent = ext.isValid() && tileSource->hasDataInExtent( ext );
+        }        
+        
+        if (hasDataInExtent)
+        {
+            while( !geoImage.valid() && imageKey.valid() && _layer->isKeyValid(imageKey) )
+            {
+                if ( useMercatorFastPath )
+                {
+                    bool mercFallbackData = false;
+                    geoImage = _layer->createImageInNativeProfile( imageKey, 0L, autoFallback, mercFallbackData );
+                    if ( geoImage.valid() && mercFallbackData )
+                    {
+                        isFallbackData = true;
+                    }
+                }
+                else
+                {
+                    geoImage = _layer->createImage( imageKey, 0L, autoFallback );
+                }
+
+                if ( !geoImage.valid() )
+                {
+                    imageKey = imageKey.createParentKey();
+                    isFallbackData = true;
+                }
             }
         }
 
@@ -88,6 +115,17 @@ struct BuildColorLayer
             else
                 locator = GeoLocator::createForExtent(geoImage.getExtent(), *_mapInfo);
         }
+
+        bool isStreaming = _opt->loadingPolicy()->mode() == LoadingPolicy::MODE_PREEMPTIVE || _opt->loadingPolicy()->mode() == LoadingPolicy::MODE_SEQUENTIAL;
+
+        if (geoImage.getImage() && isStreaming)
+        {
+            // protected against multi threaded access. This is a requirement in sequential/preemptive mode, 
+            // for example. This used to be in TextureCompositorTexArray::prepareImage.
+            // TODO: review whether this affects performance.    
+            geoImage.getImage()->setDataVariance( osg::Object::DYNAMIC );
+        }
+
         // add the color layer to the repo.
         _repo->add( CustomColorLayer(
             _layer,
@@ -213,7 +251,8 @@ TileBuilder::createJob( const TileKey& key, Threading::MultiEvent& semaphore )
     for( ImageLayerVector::const_iterator i = job->_mapf.imageLayers().begin(); i != job->_mapf.imageLayers().end(); ++i )
     {
         ImageLayer* layer = i->get();
-        if ( layer->isKeyValid(key) )
+
+        if ( layer->getEnabled() && layer->isKeyValid(key) )
         {
             ParallelTask<BuildColorLayer>* j = new ParallelTask<BuildColorLayer>( &semaphore );
             j->init( key, layer, job->_mapf.getMapInfo(), _terrainOptions, job->_repo );
@@ -278,21 +317,26 @@ TileBuilder::finalizeJob(TileBuilder::Job*   job,
 
     for( ImageLayerVector::const_iterator i = job->_mapf.imageLayers().begin(); i != job->_mapf.imageLayers().end(); ++i )
     {
-        if ( !i->get()->isKeyValid(key) )
+        ImageLayer* layer = i->get();
+
+        if ( layer->getEnabled() )
         {
-            if ( !emptyImage.valid() )
-                emptyImage = ImageUtils::createEmptyImage();
+            if ( !layer->isKeyValid(key) )
+            {
+                if ( !emptyImage.valid() )
+                    emptyImage = ImageUtils::createEmptyImage();
 
-            repo.add( CustomColorLayer(
-                i->get(), emptyImage.get(),
-                locator,
-                key.getLevelOfDetail(),
-                key,
-                true ) );
+                repo.add( CustomColorLayer(
+                    i->get(), emptyImage.get(),
+                    locator,
+                    key.getLevelOfDetail(),
+                    key,
+                    true ) );
+            }
+
+            if ( i->get()->getImageLayerOptions().lodBlending() == true )
+                out_hasLodBlending = true;
         }
-
-        if ( i->get()->getImageLayerOptions().lodBlending() == true )
-            out_hasLodBlending = true;
     }
 
     // Ready to create the actual tile.
@@ -399,14 +443,16 @@ TileBuilder::createTile(const TileKey&      key,
         {
             ImageLayer* layer = i->get();
             //if ( layer->isKeyValid(key) )  // Wrong. no guarantee key is in the same profile.
+
+            if ( layer->getEnabled() )
             {
                 BuildColorLayer build;
                 build.init( key, layer, mapInfo, _terrainOptions, repo );
                 build.execute();
-            }
 
-            if ( layer->getImageLayerOptions().lodBlending() == true )
-                out_hasLodBlendedLayers = true;
+                if ( layer->getImageLayerOptions().lodBlending() == true )
+                    out_hasLodBlendedLayers = true;
+            }
         }
         
         // make an elevation layer.
@@ -438,13 +484,16 @@ TileBuilder::createTile(const TileKey&      key,
 
     for( ImageLayerVector::const_iterator i = mapf.imageLayers().begin(); i != mapf.imageLayers().end(); ++i )
     {
-        if ( !i->get()->isKeyValid(key) )
+        ImageLayer* layer = i->get();
+
+        if ( layer->getEnabled() && !layer->isKeyValid(key) )
         {
             if ( !emptyImage.valid() )
                 emptyImage = ImageUtils::createEmptyImage();
 
             repo.add( CustomColorLayer(
-                i->get(), emptyImage.get(),
+                layer,
+                emptyImage.get(),
                 locator,
                 key.getLevelOfDetail(),
                 key,

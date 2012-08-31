@@ -23,7 +23,8 @@
 #include <osgEarth/ShaderComposition>
 #include <osgEarth/TextureCompositor>
 #include <osgEarthDrivers/osg/OSGOptions>
-#include <osgEarthDrivers/engine_osgterrain/OSGTerrainOptions>
+//#include <osgEarthDrivers/engine_osgterrain/OSGTerrainOptions>
+#include <osgEarthDrivers/engine_quadtree/QuadTreeTerrainEngineOptions>
 
 #include <osg/CullFace>
 #include <osg/Depth>
@@ -32,10 +33,19 @@
 #define LC "[OceanSurface] "
 
 OceanSurfaceContainer::OceanSurfaceContainer( MapNode* mapNode, const OceanSurfaceOptions& options ) :
-_parentMapNode( mapNode )
+_parentMapNode( mapNode ),
+_options      ( options )
 {
     // set the node mask so that our custom EarthManipulator will NOT find this node.
     setNodeMask( 0xFFFFFFFE );
+    rebuild();
+}
+
+
+void
+OceanSurfaceContainer::rebuild()
+{
+    this->removeChildren( 0, this->getNumChildren() );
 
     if ( _parentMapNode.valid() )
     {
@@ -55,7 +65,7 @@ _parentMapNode( mapNode )
         if ( mno.enableLighting().isSet() )
             mno.enableLighting() = *mno.enableLighting();
 
-        OSGTerrainOptions to;
+        QuadTreeTerrainEngineOptions to;
         to.heightFieldSkirtRatio() = 0.0;  // don't want to see skirts
         to.clusterCulling() = false;       // want to see underwater
         to.enableBlending() = true;        // gotsta blend with the main node
@@ -70,7 +80,7 @@ _parentMapNode( mapNode )
         // install an "elevation proxy" layer that reads elevation tiles from the
         // parent map and turns them into encoded images for our shader to use.
         ImageLayerOptions epo( "ocean-proxy" );
-        epo.maxLevel() = *options.maxLOD();
+        epo.maxLevel() = *_options.maxLOD();
         oceanMap->addImageLayer( new ElevationProxyImageLayer(_parentMapNode->getMap(), epo) );
 
         this->addChild( oceanMapNode );
@@ -78,16 +88,16 @@ _parentMapNode( mapNode )
         // set up the options uniforms.
         osg::StateSet* ss = this->getOrCreateStateSet();
 
-        _seaLevel = new osg::Uniform(osg::Uniform::FLOAT, "seaLevel");
+        _seaLevel = new osg::Uniform(osg::Uniform::FLOAT, "ocean_seaLevel");
         ss->addUniform( _seaLevel.get() );
 
-        _lowFeather = new osg::Uniform(osg::Uniform::FLOAT, "lowFeather");
+        _lowFeather = new osg::Uniform(osg::Uniform::FLOAT, "ocean_lowFeather");
         ss->addUniform( _lowFeather.get() );
 
-        _highFeather = new osg::Uniform(osg::Uniform::FLOAT, "highFeather");
+        _highFeather = new osg::Uniform(osg::Uniform::FLOAT, "ocean_highFeather");
         ss->addUniform( _highFeather.get() );
 
-        _baseColor = new osg::Uniform(osg::Uniform::FLOAT_VEC4, "baseColor");
+        _baseColor = new osg::Uniform(osg::Uniform::FLOAT_VEC4, "ocean_baseColor");
         ss->addUniform( _baseColor.get() );
 
         // trick to prevent z-fighting..
@@ -95,11 +105,11 @@ _parentMapNode( mapNode )
         ss->setRenderBinDetails( 15, "RenderBin" );
 
         // load up a surface texture
-        ss->getOrCreateUniform( "has_tex1", osg::Uniform::BOOL )->set( false );
-        if ( options.textureURI().isSet() )
+        ss->getOrCreateUniform( "ocean_has_tex1", osg::Uniform::BOOL )->set( false );
+        if ( _options.textureURI().isSet() )
         {
             //TODO: enable cache support here:
-            osg::Image* image = options.textureURI()->readImage().releaseImage();
+            osg::Image* image = _options.textureURI()->getImage();
             if ( image )
             {
                 osg::Texture2D* tex = new osg::Texture2D( image );
@@ -109,8 +119,8 @@ _parentMapNode( mapNode )
                 tex->setWrap  ( osg::Texture::WRAP_T, osg::Texture::REPEAT );
 
                 ss->setTextureAttributeAndModes( 1, tex, 1 );
-                ss->getOrCreateUniform( "tex1", osg::Uniform::SAMPLER_2D )->set( 1 );
-                ss->getOrCreateUniform( "has_tex1", osg::Uniform::BOOL )->set( true );
+                ss->getOrCreateUniform( "ocean_tex1", osg::Uniform::SAMPLER_2D )->set( 1 );
+                ss->getOrCreateUniform( "ocean_has_tex1", osg::Uniform::BOOL )->set( true );
             }
         }
 
@@ -118,7 +128,7 @@ _parentMapNode( mapNode )
         // (use OVERRIDE since the terrain engine sets back face culling.)
         ss->setAttributeAndModes( new osg::CullFace(), osg::StateAttribute::OFF | osg::StateAttribute::OVERRIDE );
 
-        apply( options );
+        apply( _options );
     }
 }
 
@@ -134,29 +144,9 @@ OceanSurfaceContainer::apply( const OceanSurfaceOptions& options )
 }
 
 
-// removed, because it was causing conflicts with the ACPH and with entity data
-#if 0
 void
-OceanSurfaceContainer::traverse( osg::NodeVisitor& nv )
+OceanSurfaceContainer::setMapNode( MapNode* parentMapNode )
 {
-    osgUtil::CullVisitor* cv = 0L;
-    osg::CullSettings::ComputeNearFarMode mode;
-
-    if ( nv.getVisitorType() == osg::NodeVisitor::CULL_VISITOR )
-    {
-        // temporarily disable near/far computation so that the ocean surface doesn't
-        // play into the clip plane math
-        cv = static_cast<osgUtil::CullVisitor*>(&nv);
-        mode = cv->getComputeNearFarMode();
-
-        cv->setComputeNearFarMode( osg::CullSettings::DO_NOT_COMPUTE_NEAR_FAR );
-    }
-
-    osg::Group::traverse( nv );
-
-    if ( cv )
-    {
-        cv->setComputeNearFarMode( mode );
-    }
+    _parentMapNode = parentMapNode;
+    rebuild();
 }
-#endif

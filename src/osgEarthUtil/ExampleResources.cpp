@@ -181,13 +181,28 @@ namespace
 {
     struct SkySliderHandler : public ControlEventHandler
     {
-        SkySliderHandler(SkyNode* sky) : _sky(sky) { }
+        SkySliderHandler(SkyNode* sky) : _sky(sky)  { }
 
         SkyNode* _sky;
 
         virtual void onValueChanged( class Control* control, float value )
         {
-            _sky->setDateTime( 2011, 3, 6, value );
+            int year, month, date;
+            double h;
+            _sky->getDateTime( year, month, date, h);
+            _sky->setDateTime( year, month, date, value );
+        }
+    };
+
+    struct AmbientBrightnessHandler : public ControlEventHandler
+    {
+        AmbientBrightnessHandler(SkyNode* sky) : _sky(sky) { }
+
+        SkyNode* _sky;
+
+        virtual void onValueChanged( class Control* control, float value )
+        {
+            _sky->setAmbientBrightness( value );
         }
     };
 }
@@ -196,20 +211,29 @@ Control*
 SkyControlFactory::create(SkyNode*         sky,
                           osgViewer::View* view) const
 {
-    HBox* skyBox = new HBox();
-    skyBox->setChildVertAlign( Control::ALIGN_CENTER );
-    skyBox->setChildSpacing( 10 );
-    skyBox->setHorizFill( true );
+    Grid* grid = new Grid();
+    grid->setChildVertAlign( Control::ALIGN_CENTER );
+    grid->setChildSpacing( 10 );
+    grid->setHorizFill( true );
 
-    skyBox->addControl( new LabelControl("Time: ", 16) );
+    grid->setControl( 0, 0, new LabelControl("Time: ", 16) );
 
-    HSliderControl* skySlider = skyBox->addControl(new HSliderControl( 0.0f, 24.0f, 18.0f ));
-    skySlider->setBackColor( Color::Gray );
-    skySlider->setHeight( 12 );
+    int year, month, date;
+    double h;
+    sky->getDateTime( year, month, date, h);
+
+    HSliderControl* skySlider = grid->setControl(1, 0, new HSliderControl( 0.0f, 24.0f, h ));
     skySlider->setHorizFill( true, 200 );
     skySlider->addEventHandler( new SkySliderHandler(sky) );
 
-    return skyBox;
+    grid->setControl(2, 0, new LabelControl(skySlider) );
+
+    grid->setControl(0, 1, new LabelControl("Ambient: ", 16) );
+    HSliderControl* ambient = grid->setControl(1, 1, new HSliderControl(0.0f, 1.0f, sky->getAmbientBrightness()));
+    ambient->addEventHandler( new AmbientBrightnessHandler(sky) );
+    grid->setControl(2, 1, new LabelControl(ambient) );
+
+    return grid;
 }
 
 //------------------------------------------------------------------------
@@ -387,12 +411,13 @@ MapNodeHelper::load(osg::ArgumentParser& args,
 
     if ( !node )
     {
-        node = osgDB::readNodeFile( "gdal_tiff.earth" );
-        if ( !node )
-        {
-            OE_WARN << LC << "Unable to load an earth file from the command line." << std::endl;
-            return 0L;
-        }
+        OE_WARN << LC << "Unable to load an earth file from the command line." << std::endl;
+        return 0L;
+        //node = osgDB::readNodeFile( "gdal_tiff.earth" );
+        //if ( !node )
+        //{
+        //    return 0L;
+        //}
     }
 
     osg::ref_ptr<MapNode> mapNode = MapNode::findMapNode(node);
@@ -434,6 +459,9 @@ MapNodeHelper::parse(MapNode*             mapNode,
     if ( !root )
         root = mapNode;
 
+    // options to use for the load
+    osg::ref_ptr<osgDB::Options> dbOptions = Registry::instance()->cloneOrCreateOptions();
+
     // parse out custom example arguments first:
 
     bool useSky        = args.read("--sky");
@@ -444,6 +472,9 @@ MapNodeHelper::parse(MapNode*             mapNode,
     bool useCoords     = args.read("--coords") || useMGRS || useDMS || useDD;
     bool useOrtho      = args.read("--ortho");
     bool useAutoClip   = args.read("--autoclip");
+
+    float ambientBrightness = 0.4f;
+    args.read("--ambientBrightness", ambientBrightness);
 
     std::string kmlFile;
     args.read( "--kml", kmlFile );
@@ -501,6 +532,7 @@ MapNodeHelper::parse(MapNode*             mapNode,
     {
         double hours = skyConf.value( "hours", 12.0 );
         SkyNode* sky = new SkyNode( mapNode->getMap() );
+        sky->setAmbientBrightness( ambientBrightness );
         sky->setDateTime( 2011, 3, 6, hours );
         sky->attach( view );
         root->addChild( sky );
@@ -527,7 +559,11 @@ MapNodeHelper::parse(MapNode*             mapNode,
     {
         KMLOptions kml_options;
         kml_options.declutter() = true;
-        kml_options.defaultIconImage() = URI( KML_PUSHPIN_URL ).getImage();
+
+        // set up a default icon for point placemarks:
+        IconSymbol* defaultIcon = new IconSymbol();
+        defaultIcon->url()->setLiteral(KML_PUSHPIN_URL);
+        kml_options.defaultIconSymbol() = defaultIcon;
 
         osg::Node* kml = KML::load( URI(kmlFile), mapNode, kml_options );
         if ( kml )
@@ -546,7 +582,7 @@ MapNodeHelper::parse(MapNode*             mapNode,
     if ( !annoConf.empty() )
     {
         osg::Group* annotations = 0L;
-        AnnotationRegistry::instance()->create( mapNode, annoConf, annotations );
+        AnnotationRegistry::instance()->create( mapNode, annoConf, dbOptions.get(), annotations );
         if ( annotations )
         {
             root->addChild( annotations );
@@ -609,10 +645,6 @@ MapNodeHelper::configureView( osgViewer::View* view ) const
     view->addEventHandler(new osgViewer::ThreadingHandler());
     view->addEventHandler(new osgViewer::LODScaleHandler());
     view->addEventHandler(new osgGA::StateSetManipulator(view->getCamera()->getOrCreateStateSet()));
-
-    // osgEarth benefits from pre-compilation of GL objects in the pager. In newer versions of
-    // OSG, this activates OSG's IncrementalCompileOpeartion in order to avoid frame breaks.
-    view->getDatabasePager()->setDoPreCompile( true );
 }
 
 

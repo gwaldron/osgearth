@@ -24,6 +24,7 @@
 #include <osgEarthSymbology/Style>
 #include <osgEarthFeatures/Feature>
 #include <osgEarthFeatures/GeometryCompiler>
+#include <osg/Polytope>
 
 namespace osgEarth { namespace Annotation
 {
@@ -49,6 +50,7 @@ namespace osgEarth { namespace Annotation
         virtual ~FeatureNode() { }
 
         void setFeature( Feature* feature );
+        Feature* getFeature() { return _feature.get(); }
         const Feature* getFeature() const { return _feature.get(); }
 
         bool isDraped() const { return _draped; }
@@ -59,9 +61,13 @@ namespace osgEarth { namespace Annotation
 
         virtual osg::Group* getAttachPoint();
 
+    public: // MapNodeObserver
+
+        virtual void setMapNode( MapNode* mapNode );
+
     public:
 
-        FeatureNode(MapNode* mapNode, const Config& conf );
+        FeatureNode(MapNode* mapNode, const Config& conf, const osgDB::Options* options);
         virtual Config getConfig() const;
 
     protected:
@@ -69,6 +75,7 @@ namespace osgEarth { namespace Annotation
         GeometryCompilerOptions     _options;
         bool                        _draped;
         osg::Group*                 _attachPoint;
+        osg::Polytope               _featurePolytope;
 
         FeatureNode() { }
         FeatureNode(const FeatureNode& rhs, const osg::CopyOp& op) { }

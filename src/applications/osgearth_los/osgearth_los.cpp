@@ -26,8 +26,10 @@
 #include <osgEarth/XmlUtils>
 #include <osgEarthUtil/EarthManipulator>
 #include <osgEarthUtil/AutoClipPlaneHandler>
-#include <osgEarthUtil/LineOfSight>
+#include <osgEarthUtil/LinearLineOfSight>
+#include <osgEarthUtil/RadialLineOfSight>
 #include <osg/io_utils>
+#include <osg/MatrixTransform>
 
 using namespace osgEarth;
 using namespace osgEarth::Util;
@@ -44,9 +46,12 @@ osg::AnimationPath* createAnimationPath( MapNode* mapNode, const osg::Vec3& cent
     double delta = osg::PI * 2.0 / (double)numSamples;
 
     //Get the center point in geocentric
-    GeoPoint centerMap(mapNode->getMapSRS(), center, ALTMODE_ABSOLUTE);
     osg::Vec3d centerWorld;
-    mapNode->getMap()->toWorldPoint( centerMap, centerWorld );
+    
+    GeoPoint centerMap(mapNode->getMapSRS(), center, ALTMODE_ABSOLUTE);
+    centerMap.toWorld( centerWorld, mapNode->getTerrain() );
+    
+    //mapNode->getMap()->toWorldPoint( centerMap, centerWorld );
 
     osg::Vec3d up = centerWorld;
     up.normalize();
@@ -125,24 +130,24 @@ main(int argc, char** argv)
     viewer.getCamera()->addCullCallback( new AutoClipPlaneCullCallback(mapNode));
 
     //Create a point to point LineOfSightNode.
-    LineOfSightNode* los = new LineOfSightNode( mapNode, osg::Vec3d(-121.665, 46.0878, 1258.00), osg::Vec3d(-121.488, 46.2054, 3620.11));
+    LinearLineOfSightNode* los = new LinearLineOfSightNode( mapNode, osg::Vec3d(-121.665, 46.0878, 1258.00), osg::Vec3d(-121.488, 46.2054, 3620.11));
     root->addChild( los );
     los->getOrCreateStateSet()->setMode(GL_DEPTH_TEST, osg::StateAttribute::OFF);
 
     
     //Create an editor for the point to point line of sight that allows you to drag the beginning and end points around.
     //This is just one way that you could manipulator the LineOfSightNode.
-    LineOfSightEditor* p2peditor = new LineOfSightEditor( los );
+    LinearLineOfSightEditor* p2peditor = new LinearLineOfSightEditor( los );
     root->addChild( p2peditor );
 
     //Create a relative point to point LineOfSightNode.
-    LineOfSightNode* relativeLOS = new LineOfSightNode( mapNode, osg::Vec3d(-121.2, 46.1, 10), osg::Vec3d(-121.488, 46.2054, 10));
+    LinearLineOfSightNode* relativeLOS = new LinearLineOfSightNode( mapNode, osg::Vec3d(-121.2, 46.1, 10), osg::Vec3d(-121.488, 46.2054, 10));
     relativeLOS->setStartAltitudeMode( ALTMODE_RELATIVE );
     relativeLOS->setEndAltitudeMode( ALTMODE_RELATIVE );
     root->addChild( relativeLOS );
     relativeLOS->getOrCreateStateSet()->setMode(GL_DEPTH_TEST, osg::StateAttribute::OFF);
 
-    LineOfSightEditor* relEditor = new LineOfSightEditor( relativeLOS );
+    LinearLineOfSightEditor* relEditor = new LinearLineOfSightEditor( relativeLOS );
     root->addChild( relEditor );
     
     //Create a RadialLineOfSightNode that allows you to do a 360 degree line of sight analysis.
@@ -181,7 +186,7 @@ main(int argc, char** argv)
 
     //Create a LineOfSightNode that will use a LineOfSightTether callback to monitor
     //the two plane's positions and recompute the LOS when they move
-    LineOfSightNode* tetheredLOS = new LineOfSightNode( mapNode);
+    LinearLineOfSightNode* tetheredLOS = new LinearLineOfSightNode( mapNode);
     tetheredLOS->getOrCreateStateSet()->setMode(GL_DEPTH_TEST, osg::StateAttribute::OFF);
     root->addChild( tetheredLOS );
     tetheredLOS->setUpdateCallback( new LineOfSightTether( plane1, plane2 ) );
@@ -199,12 +204,7 @@ main(int argc, char** argv)
     tetheredRadial->setBadColor( osg::Vec4(1,0,0,0.3) );
     tetheredRadial->setNumSpokes( 100 );
     root->addChild( tetheredRadial );
-    tetheredRadial->setUpdateCallback( new RadialLineOfSightTether( plane3 ) );      
-      
-
-    // osgEarth benefits from pre-compilation of GL objects in the pager. In newer versions of
-    // OSG, this activates OSG's IncrementalCompileOpeartion in order to avoid frame breaks.
-    viewer.getDatabasePager()->setDoPreCompile( true );
+    tetheredRadial->setUpdateCallback( new RadialLineOfSightTether( plane3 ) );
 
     manip->setHomeViewpoint(Viewpoint( "Mt Rainier",        osg::Vec3d( -121.488, 46.2054, 0 ), 0.0, -50, 100000 ));
 

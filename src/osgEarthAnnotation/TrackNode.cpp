@@ -42,17 +42,6 @@ _image      ( image )
     init( fieldSchema );
 }
 
-//TrackNode::TrackNode(MapNode*                    mapNode, 
-//                     const osg::Vec3d&           positionInMapCoords,
-//                     osg::Image*                 image,
-//                     const TrackNodeFieldSchema& fieldSchema ) :
-//
-//OrthoNode   ( mapNode, GeoPoint(mapNode->getMapSRS(),positionInMapCoords) ),
-//_image      ( image )
-//{
-//    init( fieldSchema );
-//}
-
 void
 TrackNode::init( const TrackNodeFieldSchema& schema )
 {
@@ -103,6 +92,8 @@ TrackNode::init( const TrackNodeFieldSchema& schema )
     // ensure depth testing always passes, and disable depth buffer writes.
     osg::StateSet* stateSet = _geode->getOrCreateStateSet();
     stateSet->setAttributeAndModes( new osg::Depth(osg::Depth::ALWAYS, 0, 1, false), 1 );
+
+    AnnotationUtils::installAnnotationProgram( stateSet );
 
     getAttachPoint()->addChild( _geode );
 }

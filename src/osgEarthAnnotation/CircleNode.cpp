@@ -124,7 +124,7 @@ CircleNode::rebuild()
             getDrapeable()->setDraped( _draped );
         }
 
-        applyStyle( _style, _draped );
+        applyStyle( _style );
     }
 
     setDecoration( currentDecoration );
@@ -136,8 +136,9 @@ CircleNode::rebuild()
 OSGEARTH_REGISTER_ANNOTATION( circle, osgEarth::Annotation::CircleNode );
 
 
-CircleNode::CircleNode(MapNode*      mapNode,
-                       const Config& conf ) :
+CircleNode::CircleNode(MapNode*              mapNode,
+                       const Config&         conf,
+                       const osgDB::Options* dbOptions) :
 LocalizedNode( mapNode ),
 _radius      ( 1.0, Units::KILOMETERS ),
 _draped      ( false ),

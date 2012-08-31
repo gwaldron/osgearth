@@ -18,7 +18,6 @@
  */
 #include <osgEarthUtil/EarthManipulator>
 #include <osgEarth/MapNode>
-#include <osgEarth/Terrain>
 #include <osgEarth/NodeUtils>
 #include <osg/Quat>
 #include <osg/Notify>
@@ -187,7 +186,8 @@ static short s_actionOptionTypes[] = { 1, 1, 0, 0, 1, 1 }; // 0=bool, 1=double
 //------------------------------------------------------------------------
 
 EarthManipulator::Settings::Settings() :
-Revisioned<osg::Referenced>(),
+osg::Referenced         (),
+Revisioned              (),
 _single_axis_rotation   ( false ),
 _lock_azim_while_panning( true ),
 _mouse_sens             ( 1.0 ),
@@ -211,7 +211,8 @@ _camFrustOffsets        ( 0, 0 )
 }
 
 EarthManipulator::Settings::Settings( const EarthManipulator::Settings& rhs ) :
-Revisioned<osg::Referenced>(),
+osg::Referenced( rhs ),
+Revisioned     ( rhs ),
 _bindings( rhs._bindings ),
 _single_axis_rotation( rhs._single_axis_rotation ),
 _lock_azim_while_panning( rhs._lock_azim_while_panning ),
@@ -430,7 +431,16 @@ _settings               ( new Settings(*rhs.getSettings()) )
 
 EarthManipulator::~EarthManipulator()
 {
-    //NOP
+    osg::ref_ptr<osg::Node> safeNode = _node.get();
+    if (safeNode && _terrainCallback)
+    {
+        // find a map node.
+        MapNode* mapNode = MapNode::findMapNode( safeNode.get(), 0x01 );
+        if ( mapNode )
+        {             
+            mapNode->getTerrain()->removeTerrainCallback( _terrainCallback );
+        }
+    }    
 }
 
 void
@@ -556,7 +566,8 @@ EarthManipulator::established()
         MapNode* mapNode = MapNode::findMapNode( safeNode.get(), 0x01 );
         if ( mapNode )
         {
-            mapNode->getTerrain()->addTerrainCallback( new ManipTerrainCallback(this), this );
+            _terrainCallback = new ManipTerrainCallback( this );
+            mapNode->getTerrain()->addTerrainCallback( _terrainCallback );
         }
 
         // find a CSN node - if there is one, we want to attach the manip to that
@@ -580,9 +591,8 @@ EarthManipulator::established()
 
                     _has_pending_viewpoint = false;
                 }
-
                 //If we have a CoordinateSystemNode and it has an ellipsoid model
-                if ( _csn->getEllipsoidModel() )
+                else if ( _csn->getEllipsoidModel() )
                 {
                     setHomeViewpoint( 
                         Viewpoint(osg::Vec3d(-90,0,0), 0, -89,
@@ -652,6 +662,13 @@ EarthManipulator::setNode(osg::Node* node)
     {
         _node = node;
         _csn = 0L;
+
+        if ( _viewCamera.valid() && _cameraUpdateCB.valid() )
+        {
+            _viewCamera->removeUpdateCallback( _cameraUpdateCB.get() );
+            _cameraUpdateCB = 0L;
+        }
+
         _viewCamera = 0L;
 
 #ifdef USE_OBSERVER_NODE_PATH
@@ -1149,105 +1166,109 @@ EarthManipulator::updateCamera( osg::Camera* eventCamera )
     // check to see if the camera has changed, and update the callback if necessary
     if ( _viewCamera.get() != eventCamera )
     {
-        if ( _cameraUpdateCB.valid() )
+        if ( _cameraUpdateCB.valid() && _viewCamera.valid() )
             _viewCamera->removeUpdateCallback( _cameraUpdateCB.get() );
 
         _viewCamera = eventCamera;
-        if ( _cameraUpdateCB.valid() )
+
+        if ( _cameraUpdateCB.valid() && _viewCamera.valid() )
             _viewCamera->addUpdateCallback( _cameraUpdateCB.get() );
     }
 
     // check to see if we need to install a new camera callback:
-    if ( _tether_node.valid() && !_cameraUpdateCB.valid() )
+    if ( _viewCamera.valid() )
     {
-        _cameraUpdateCB = new CameraPostUpdateCallback(this);
-        _viewCamera->addUpdateCallback( _cameraUpdateCB.get() );
-    }
-    else if ( !_tether_node.valid() && _cameraUpdateCB.valid() )
-    {
-        _viewCamera->removeUpdateCallback( _cameraUpdateCB.get() );
-        _cameraUpdateCB = 0L;
-    }
-
-    // check whether a settings change requires an update:
-    bool settingsChanged = _settings->outOfSyncWith(_viewCameraSettingsMonitor);
-
-    // update the projection matrix if necessary
-    osg::Viewport* vp = _viewCamera->getViewport();
-    if ( vp )
-    {
-        const osg::Matrixd& proj = _viewCamera->getProjectionMatrix();
-        bool isOrtho = ( proj(3,3) == 1. ) && ( proj(2,3) == 0. ) && ( proj(1,3) == 0. ) && ( proj(0,3) == 0.);
-        CameraProjection type = _settings->getCameraProjection();
-
-        if ( type == PROJ_PERSPECTIVE )
+        if ( _tether_node.valid() && !_cameraUpdateCB.valid() )
         {
-            if ( isOrtho || settingsChanged )
+            _cameraUpdateCB = new CameraPostUpdateCallback(this);
+            _viewCamera->addUpdateCallback( _cameraUpdateCB.get() );
+        }
+        else if ( !_tether_node.valid() && _cameraUpdateCB.valid() )
+        {
+            _viewCamera->removeUpdateCallback( _cameraUpdateCB.get() );
+            _cameraUpdateCB = 0L;
+        }
+
+        // check whether a settings change requires an update:
+        bool settingsChanged = _settings->outOfSyncWith(_viewCameraSettingsMonitor);
+
+        // update the projection matrix if necessary
+        osg::Viewport* vp = _viewCamera->getViewport();
+        if ( vp )
+        {
+            const osg::Matrixd& proj = _viewCamera->getProjectionMatrix();
+            bool isOrtho = ( proj(3,3) == 1. ) && ( proj(2,3) == 0. ) && ( proj(1,3) == 0. ) && ( proj(0,3) == 0.);
+            CameraProjection type = _settings->getCameraProjection();
+
+            if ( type == PROJ_PERSPECTIVE )
             {
-                // need to switch from ortho to perspective
-                if ( isOrtho )
-                    OE_INFO << LC << "Switching to PERSPECTIVE" << std::endl;
-
-                const osg::Vec2s& p = _settings->getCameraFrustumOffsets();
-                double px = 2.0*(((vp->width()/2)+p.x())/vp->width())-1.0;
-                double py = 2.0*(((vp->height()/2)+p.y())/vp->height())-1.0;
-
-                osg::Matrix projMatrix;
-                projMatrix.makePerspective(_vfov, vp->width()/vp->height(), 1.0f, 10000.0f);
-                projMatrix.postMult( osg::Matrix::translate(px, py, 0.0) );
-
-                _viewCamera->setProjectionMatrix( projMatrix );
-
-                if ( _savedCNFMode.isSet() )
+                if ( isOrtho || settingsChanged )
                 {
-                    _viewCamera->setComputeNearFarMode( *_savedCNFMode );
-                    _savedCNFMode.unset();
+                    // need to switch from ortho to perspective
+                    if ( isOrtho )
+                        OE_INFO << LC << "Switching to PERSPECTIVE" << std::endl;
+
+                    const osg::Vec2s& p = _settings->getCameraFrustumOffsets();
+                    double px = 2.0*(((vp->width()/2)+p.x())/vp->width())-1.0;
+                    double py = 2.0*(((vp->height()/2)+p.y())/vp->height())-1.0;
+
+                    osg::Matrix projMatrix;
+                    projMatrix.makePerspective(_vfov, vp->width()/vp->height(), 1.0f, 10000.0f);
+                    projMatrix.postMult( osg::Matrix::translate(px, py, 0.0) );
+
+                    _viewCamera->setProjectionMatrix( projMatrix );
+
+                    if ( _savedCNFMode.isSet() )
+                    {
+                        _viewCamera->setComputeNearFarMode( *_savedCNFMode );
+                        _savedCNFMode.unset();
+                    }
                 }
             }
-        }
-        else if ( type == PROJ_ORTHOGRAPHIC )
-        {
-            if ( !isOrtho )
+            else if ( type == PROJ_ORTHOGRAPHIC )
             {
-                // need to switch from perspective to ortho, so cache the VFOV of the perspective
-                // camera -- we'll need it in ortho mode to create a proper frustum.
-                OE_INFO << LC << "Switching to ORTHO" << std::endl;
+                if ( !isOrtho )
+                {
+                    // need to switch from perspective to ortho, so cache the VFOV of the perspective
+                    // camera -- we'll need it in ortho mode to create a proper frustum.
+                    OE_INFO << LC << "Switching to ORTHO" << std::endl;
 
-                double ar, zn, zf; // not used
-                _viewCamera->getProjectionMatrixAsPerspective(_vfov, ar, zn, zf);
-                _tanHalfVFOV = tan(0.5*(double)osg::DegreesToRadians(_vfov));
-                _savedCNFMode = _viewCamera->getComputeNearFarMode();
-                _viewCamera->setComputeNearFarMode( osg::CullSettings::DO_NOT_COMPUTE_NEAR_FAR );
+                    double ar, zn, zf; // not used
+                    _viewCamera->getProjectionMatrixAsPerspective(_vfov, ar, zn, zf);
+                    _tanHalfVFOV = tan(0.5*(double)osg::DegreesToRadians(_vfov));
+                    _savedCNFMode = _viewCamera->getComputeNearFarMode();
+                    _viewCamera->setComputeNearFarMode( osg::CullSettings::DO_NOT_COMPUTE_NEAR_FAR );
+                }
+                
+                double pitch;
+                getLocalEulerAngles(0L, &pitch);
+
+                // need to update the ortho projection matrix to reflect the camera distance.
+                double ar = vp->width()/vp->height();
+                double y = _distance * _tanHalfVFOV;
+                double x = y * ar;
+                double f = std::max(x,y);
+                double znear = -f * 5.0;
+                double zfar  =  f * (5.0 + 10.0 * sin(pitch+osg::PI_2));
+
+                // assemble the projection matrix:
+                osg::Matrixd orthoMatrix;
+
+                // apply the offsets:
+                double px = 0.0, py = 0.0;
+                const osg::Vec2s& p = _settings->getCameraFrustumOffsets();
+                if ( p.x() != 0 || p.y() != 0 )
+                {
+                    px = (2.0*x*(double)-p.x()) / (double)vp->width();
+                    py = (2.0*y*(double)-p.y()) / (double)vp->height();
+                }
+
+                _viewCamera->setProjectionMatrixAsOrtho( px-x, px+x, py-y, py+y, znear, zfar );
             }
-            
-            double pitch;
-            getLocalEulerAngles(0L, &pitch);
-
-            // need to update the ortho projection matrix to reflect the camera distance.
-            double ar = vp->width()/vp->height();
-            double y = _distance * _tanHalfVFOV;
-            double x = y * ar;
-            double f = std::max(x,y);
-            double znear = -f * 5.0;
-            double zfar  =  f * (5.0 + 10.0 * sin(pitch+osg::PI_2));
-
-            // assemble the projection matrix:
-            osg::Matrixd orthoMatrix;
-
-            // apply the offsets:
-            double px = 0.0, py = 0.0;
-            const osg::Vec2s& p = _settings->getCameraFrustumOffsets();
-            if ( p.x() != 0 || p.y() != 0 )
-            {
-                px = (2.0*x*(double)-p.x()) / (double)vp->width();
-                py = (2.0*y*(double)-p.y()) / (double)vp->height();
-            }
-
-            _viewCamera->setProjectionMatrixAsOrtho( px-x, px+x, py-y, py+y, znear, zfar );
         }
+
+        _settings->sync( _viewCameraSettingsMonitor );
     }
-
-    _settings->sync( _viewCameraSettingsMonitor );
 }
 
 

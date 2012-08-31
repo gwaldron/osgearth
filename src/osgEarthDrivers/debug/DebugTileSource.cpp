@@ -80,13 +80,12 @@ public:
         _color = osgEarth::htmlColorToVec4f( *_options.colorCode() );
     }
 
-    // Yahoo! uses spherical mercator, but the top LOD is a 2x2 tile set.
-    void initialize( const osgDB::Options* options, const Profile* overrideProfile)
+    Status initialize( const osgDB::Options* options )
     {
-        if ( overrideProfile )
-            setProfile( overrideProfile );
-        else
+        if ( !getProfile() )
             setProfile( Profile::create("global-geodetic") );
+
+        return STATUS_OK;
     }
 
     osg::Image* createImage( const TileKey& key, ProgressCallback* progress )
@@ -98,7 +97,7 @@ public:
         
         // next render the tile key text:
         std::stringstream buf;        
-        if (*_options.tms())
+        if (_options.invertY() == true)
         {
             //Print out a TMS key for the TileKey
             unsigned int tileX, tileY;
@@ -131,14 +130,15 @@ public:
         return image;
     }
 
-    virtual std::string getExtension() const 
+    std::string getExtension() const 
     {
         return "png";
     }
 
-    virtual bool supportsPersistentCaching() const
+    /** Tell the terrain engine not to cache tiles form this source. */
+    CachePolicy getCachePolicyHint() const
     {
-        return false;
+        return CachePolicy::NO_CACHE;
     }
 
 private:

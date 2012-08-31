@@ -36,18 +36,13 @@ namespace osgEarth { namespace Drivers
     class KMLOptions // NO EXPORT; header only
     {
     public:
-        /** The default URI to use for placemarks that don't specify an icon. */
-        optional<URI>& defaultIconURI() { return _defaultIconURI; }
-        const optional<URI>& defaultIconURI() const { return _defaultIconURI; }
-
-        /** The default image to use for placemarks that don't specify an icon (you
-            can use this instead of the icon uri.) NOT Serializable. */
-        osg::ref_ptr<osg::Image>& defaultIconImage() { return _defaultIconImage; }
-        const osg::ref_ptr<osg::Image>& defaultIconImage() const { return _defaultIconImage; }
-
         /** TextSymbol to use when no styles are set in the KML. */
         osg::ref_ptr<TextSymbol>& defaultTextSymbol() { return _defaultTextSymbol; }
         const osg::ref_ptr<TextSymbol>& defaultTextSymbol() const { return _defaultTextSymbol; }
+
+        /** Default IconSymbol to use for placemarks that don't specify an icon or a model */
+        osg::ref_ptr<IconSymbol>& defaultIconSymbol() { return _defaultIconSymbol; }
+        const osg::ref_ptr<IconSymbol>& defaultIconSymbol() const { return _defaultIconSymbol; }
 
         /** Default base scale to apply to marker Icons. */
         optional<float>& iconBaseScale() { return _iconBaseScale; }
@@ -65,22 +60,30 @@ namespace osgEarth { namespace Drivers
         osg::ref_ptr<osg::Group> iconAndLabelGroup() { return _iconAndLabelGroup; }
         const osg::ref_ptr<osg::Group> iconAndLabelGroup() const { return _iconAndLabelGroup; }
 
+        /** Default scale factor to apply to embedded 3D models */
+        optional<float>& modelScale() { return _modelScale; }
+        const optional<float>& modelScale() const { return _modelScale; }
+
+        /** Default rotation to apply to embedded 3D models */
+        optional<osg::Quat>& modelRotation() { return _modelRotation; }
+        const optional<osg::Quat>& modelRotation() const { return _modelRotation; }
+
     public:
-        KMLOptions() : _declutter( true ), _iconBaseScale( 1.0f ), _iconMaxSize(32) { }
+        KMLOptions() : _declutter( true ), _iconBaseScale( 1.0f ), _iconMaxSize(32), _modelScale(1.0f) { }
 
         virtual ~KMLOptions() { }
 
     protected:
-        optional<URI>            _defaultIconURI;
-        osg::ref_ptr<osg::Image> _defaultIconImage;
+        osg::ref_ptr<IconSymbol> _defaultIconSymbol;
         osg::ref_ptr<TextSymbol> _defaultTextSymbol;
         optional<bool>           _declutter;
         optional<float>          _iconBaseScale;
         optional<unsigned>       _iconMaxSize;
+        optional<float>          _modelScale;
+        optional<osg::Quat>      _modelRotation;
         osg::ref_ptr<osg::Group> _iconAndLabelGroup;
     };
 
 } } // namespace osgEarth::Drivers
 
 #endif // OSGEARTH_DRIVER_KML_OPTIONS
-

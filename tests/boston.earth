@@ -18,6 +18,10 @@ to extruded buildings.
             <build_spatial_index>true</build_spatial_index>
         </features>
         
+        <feature_indexing>true</feature_indexing>
+        
+        <fade_in_duration>1.0</fade_in_duration>
+        
         <!--
            The "layout" element activates tiling and paging of the feature set. If you
            omit the layout element, the entire feature set will render as one pre-loaded
@@ -73,11 +77,6 @@ to extruded buildings.
 
         <lighting>true</lighting>        
     </model>
-    
-    
-    <options>
-        <lighting>false</lighting>
-    </options> 
     
     <external>
         <viewpoints>

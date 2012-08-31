@@ -39,10 +39,10 @@ public:
     virtual ~KMLReader() { }
 
     /** Reads KML from a stream and returns a node */
-    osg::Node* read( std::istream& in, const URIContext& context );
+    osg::Node* read( std::istream& in, const osgDB::Options* dbOptions ) ;
 
     /** Reads KML from a Config object */
-    osg::Node* read( const Config& conf );
+    osg::Node* read( const Config& conf, const osgDB::Options* dbOptions );
 
 private:
     MapNode*          _mapNode;

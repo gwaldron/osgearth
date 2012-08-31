@@ -68,7 +68,7 @@ osg::Referenced      ( true ),
 _mapOptions          ( options ),
 _initMapOptions      ( options ),
 _dataModelRevision   ( 0 )
-{            
+{
     if (_mapOptions.cachePolicy().isSet() &&
         _mapOptions.cachePolicy()->usage() == CachePolicy::USAGE_CACHE_ONLY )
     {
@@ -78,16 +78,31 @@ _dataModelRevision   ( 0 )
     // if the map was a cache policy set, make this the system-wide default, UNLESS
     // there ALREADY IS a registry default, in which case THAT will override THIS one.
     // (In other words, whichever one is set first wins.)
+    const optional<CachePolicy> regCachePolicy = Registry::instance()->defaultCachePolicy();
+
     if ( _mapOptions.cachePolicy().isSet() )
     {
-        if ( Registry::instance()->defaultCachePolicy().empty() )
+        if ( !regCachePolicy.isSet() )
+        {
             Registry::instance()->setDefaultCachePolicy( *_mapOptions.cachePolicy() );
+            OE_INFO << LC 
+                << "Setting default cache policy from map ("
+                << _mapOptions.cachePolicy()->usageString() << ")" << std::endl;
+        }
         else
-            _mapOptions.cachePolicy() = Registry::instance()->defaultCachePolicy();
+        {
+            _mapOptions.cachePolicy() = *regCachePolicy;
+            OE_INFO << LC
+                << "Settings map caching policy to default ("
+                << _mapOptions.cachePolicy()->usageString() << ")" << std::endl;
+        }
     }
-    else if ( ! Registry::instance()->defaultCachePolicy().empty() )
+    else if ( regCachePolicy.isSet() )
     {
-        _mapOptions.cachePolicy() = Registry::instance()->defaultCachePolicy();
+        _mapOptions.cachePolicy() = *regCachePolicy;
+        OE_INFO << LC
+            << "Settings map caching policy to default ("
+            << _mapOptions.cachePolicy()->usageString() << ")" << std::endl;
     }
 
     // the map-side dbOptions object holds I/O information for all components.
@@ -95,9 +110,10 @@ _dataModelRevision   ( 0 )
 
     // we do our own caching
     _dbOptions->setObjectCacheHint( osgDB::Options::CACHE_NONE );
-    
-    // store the top-level referrer context in the options
-    URIContext( _mapOptions.referrer() ).store( _dbOptions );
+
+    // store the IO information in the top-level DB Options:
+    _mapOptions.cachePolicy()->apply( _dbOptions.get() );
+    URIContext( _mapOptions.referrer() ).apply( _dbOptions.get() );
 }
 
 Map::~Map()
@@ -341,7 +357,7 @@ Map::setCache( Cache* cache )
 
         if ( _cache.valid() )
         {
-            _cache->store( _dbOptions.get() );
+            _cache->apply( _dbOptions.get() );
         }
 
         // Propagate the cache to any of our layers
@@ -383,14 +399,8 @@ Map::addImageLayer( ImageLayer* layer )
     unsigned int index = -1;
     if ( layer )
     {
-        // Set the DB options for the map from the layer
+        // Set the DB options for the map from the layer, including the cache policy.
         layer->setDBOptions( _dbOptions.get() );
-
-        // propagate the cache to the layer:
-        if (_mapOptions.cachePolicy().isSet())
-        {
-            layer->overrideCachePolicy( _mapOptions.cachePolicy().value() );
-        }
 
         // propagate the cache to the layer:
         layer->setCache( this->getCache() );
@@ -431,12 +441,6 @@ Map::insertImageLayer( ImageLayer* layer, unsigned int index )
         //Set options for the map from the layer
         layer->setDBOptions( _dbOptions.get() );
 
-        //propagate the cache to the layer:
-        if (_mapOptions.cachePolicy().isSet() )
-        {
-            layer->overrideCachePolicy( *_mapOptions.cachePolicy() );
-        }
-
         //Set the Cache for the MapLayer to our cache.
         layer->setCache( this->getCache() );
 
@@ -476,12 +480,6 @@ Map::addElevationLayer( ElevationLayer* layer )
     {
         //Set options for the map from the layer
         layer->setDBOptions( _dbOptions.get() );
-
-        //propagate the cache to the layer:
-        if ( _mapOptions.cachePolicy().isSet() )
-        {
-            layer->overrideCachePolicy( *_mapOptions.cachePolicy() );
-        }
 
         //Set the Cache for the MapLayer to our cache.
         layer->setCache( this->getCache() );
@@ -690,8 +688,8 @@ Map::addModelLayer( ModelLayer* layer )
             newRevision = ++_dataModelRevision;
         }
 
-        //TODO: deprecate this in favor of URIContext..
-        layer->initialize( _dbOptions.get(), this ); //getReferenceURI(), this );        
+        // initialize the model layer
+        layer->initialize( _dbOptions.get() );
 
         // a seprate block b/c we don't need the mutex
         for( MapCallbackList::iterator i = _mapCallbacks.begin(); i != _mapCallbacks.end(); i++ )
@@ -714,8 +712,8 @@ Map::insertModelLayer( ModelLayer* layer, unsigned int index )
             newRevision = ++_dataModelRevision;
         }
 
-        //TODO: deprecate this in favor of URIContext..
-        layer->initialize( _dbOptions.get(), this ); //getReferenceURI(), this );        
+        // initialize the model layer
+        layer->initialize( _dbOptions.get() );
 
         // a seprate block b/c we don't need the mutex
         for( MapCallbackList::iterator i = _mapCallbacks.begin(); i != _mapCallbacks.end(); i++ )
@@ -856,6 +854,70 @@ Map::removeTerrainMaskLayer( MaskLayer* layer )
     }
 }
 
+
+void
+Map::clear()
+{
+    ImageLayerVector     imageLayersRemoved;
+    ElevationLayerVector elevLayersRemoved;
+    ModelLayerVector     modelLayersRemoved;
+    MaskLayerVector      maskLayersRemoved;
+
+    Revision newRevision;
+    {
+        Threading::ScopedWriteLock lock( _mapDataMutex );
+
+        imageLayersRemoved.swap( _imageLayers );
+        elevLayersRemoved.swap ( _elevationLayers );
+        modelLayersRemoved.swap( _modelLayers );
+
+        // Because you cannot remove a mask layer once it's in place
+        //maskLayersRemoved.swap ( _terrainMaskLayers );
+
+        // calculate a new revision.
+        newRevision = ++_dataModelRevision;
+    }
+    
+    // a separate block b/c we don't need the mutex   
+    for( MapCallbackList::iterator i = _mapCallbacks.begin(); i != _mapCallbacks.end(); i++ )
+    {
+        for( ImageLayerVector::iterator k = imageLayersRemoved.begin(); k != imageLayersRemoved.end(); ++k )
+            i->get()->onMapModelChanged( MapModelChange(MapModelChange::REMOVE_IMAGE_LAYER, newRevision, k->get()) );
+        for( ElevationLayerVector::iterator k = elevLayersRemoved.begin(); k != elevLayersRemoved.end(); ++k )
+            i->get()->onMapModelChanged( MapModelChange(MapModelChange::REMOVE_ELEVATION_LAYER, newRevision, k->get()) );
+        for( ModelLayerVector::iterator k = modelLayersRemoved.begin(); k != modelLayersRemoved.end(); ++k )
+            i->get()->onMapModelChanged( MapModelChange(MapModelChange::REMOVE_MODEL_LAYER, newRevision, k->get()) );
+        //for( MaskLayerVector::iterator k = maskLayersRemoved.begin(); k != maskLayersRemoved.end(); ++k )
+        //    i->get()->onMapModelChanged( MapModelChange(MapModelChange::REMOVE_MASK_LAYER, newRevision, k->get()) );
+    }
+}
+
+
+void
+Map::setLayersFromMap( const Map* map )
+{
+    this->clear();
+
+    if ( map )
+    {
+        ImageLayerVector newImages;
+        map->getImageLayers( newImages );
+        for( ImageLayerVector::iterator i = newImages.begin(); i != newImages.end(); ++i )
+            addImageLayer( i->get() );
+
+        ElevationLayerVector newElev;
+        map->getElevationLayers( newElev );
+        for( ElevationLayerVector::iterator i = newElev.begin(); i != newElev.end(); ++i )
+            addElevationLayer( i->get() );
+
+        ModelLayerVector newModels;
+        map->getModelLayers( newModels );
+        for( ModelLayerVector::iterator i = newModels.begin(); i != newModels.end(); ++i )
+            addModelLayer( i->get() );
+    }
+}
+
+
 void
 Map::calculateProfile()
 {
@@ -929,6 +991,15 @@ Map::calculateProfile()
             }
         }
 
+        // convert the profile to Plate Carre if necessary.
+        if (_profile.valid() &&
+            _profile->getSRS()->isGeographic() && 
+            getMapOptions().coordSysType() == MapOptions::CSTYPE_PROJECTED )
+        {
+            OE_INFO << LC << "Projected display with geographic SRS; activating Plate Carre mode" << std::endl;
+            _profile = _profile->overrideSRS( _profile->getSRS()->createPlateCarreGeographicSRS() );
+        }
+
         // finally, fire an event if the profile has been set.
         if ( _profile.valid() )
         {
@@ -976,22 +1047,11 @@ Map::calculateProfile()
         {
             _profileNoVDatum = _profile;
         }
-
-        // finally, if the map is flat but the SRS is geographic, mark it as "plate carre"
-        if (_profile->getSRS()->isGeographic() && 
-            getMapOptions().coordSysType() == MapOptions::CSTYPE_PROJECTED)
-        {
-            OE_INFO << LC << "Projected display with geographic SRS; activating Plate Carre mode" << std::endl;
-            const_cast<Profile*>(_profile.get())->overrideSRS(
-                _profile->getSRS()->createPlateCarreGeographicSRS() );
-        }
     }
 }
 
 namespace
 {
-    typedef std::pair<ElevationLayer*, GeoHeightField> GeoHFPair;
-
     /**
      * Returns a heightfield corresponding to the input key by compositing
      * elevation data for a vector of elevation layers. The resulting 
@@ -1008,18 +1068,20 @@ namespace
                      osg::ref_ptr<osg::HeightField>& out_result,
                      bool*                           out_isFallback,
                      ProgressCallback*               progress ) 
-    {
+    {        
         unsigned lowestLOD = key.getLevelOfDetail();
         bool hfInitialized = false;
 
         //Get a HeightField for each of the enabled layers
         GeoHeightFieldVector heightFields;
+        
+        //The number of fallback heightfields we have
+        int numFallbacks = 0;
 
-        unsigned int numValidHeightFields = 0;
-
+        //Default to being fallback data.
         if ( out_isFallback )
         {
-            *out_isFallback = false;
+            *out_isFallback = true;
         }
 
         // if the caller provided an "HAE map profile", he wants an HAE elevation grid even if
@@ -1060,8 +1122,8 @@ namespace
                         if ( hf_key.getLevelOfDetail() < lowestLOD )
                             lowestLOD = hf_key.getLevelOfDetail();
 
-                        if ( out_isFallback )
-                            *out_isFallback = true;
+                        //This HeightField is fallback data, so increment the count.
+                        numFallbacks++;                        
                     }
                 }
 
@@ -1072,18 +1134,24 @@ namespace
             }
         }
 
-        // If we didn't get any heightfields and weren't requested to fallback, just return NULL
-        if ( heightFields.size() == 0 )
+        //If any of the layers produced valid data then it's not considered a fallback
+        if ( out_isFallback )
         {
+            *out_isFallback = (numFallbacks == heightFields.size());
+            //OE_NOTICE << "Num fallbacks=" << numFallbacks << " numHeightFields=" << heightFields.size() << " is fallback " << *out_isFallback << std::endl;
+        }   
+        
+        if ( heightFields.size() == 0 )
+        {            
+            //If we got no heightfields but were requested to fallback, create an empty heightfield.
             if ( fallback )
             {
-                out_result = HeightFieldUtils::createReferenceHeightField( keyToUse.getExtent(), defElevSize, defElevSize );
-                if ( out_isFallback )
-                    *out_isFallback = true;
+                out_result = HeightFieldUtils::createReferenceHeightField( keyToUse.getExtent(), defElevSize, defElevSize );                
                 return true;
             }
             else
             {
+                //We weren't requested to fallback so just return.
                 return false;
             }
         }
@@ -1310,51 +1378,31 @@ Map::sync( MapFrame& frame ) const
     return result;
 }
 
-bool
-Map::toMapPoint( const GeoPoint& input, GeoPoint& output ) const
-{
-    return MapInfo(this).toMapPoint(input, output);
-}
-
-bool
-Map::toWorldPoint( const GeoPoint& input, osg::Vec3d& output ) const
-{
-    return MapInfo(this).toWorldPoint(input, output);
-}
-
-bool
-Map::worldPointToMapPoint( const osg::Vec3d& input, GeoPoint& output ) const
-{
-    return MapInfo(this).worldPointToMapPoint(input, output);
-}
-
 //------------------------------------------------------------------------
 
-bool
-MapInfo::toMapPoint( const GeoPoint& input, GeoPoint& output ) const
-{
-    return input.isValid() ? input.transform(_profile->getSRS(), output) : false;
+MapInfo::MapInfo( const Map* map ) :
+_profile               ( 0L ),
+_isGeocentric          ( true ),
+_isCube                ( false ),
+_elevationInterpolation( INTERP_BILINEAR )
+{ 
+    if ( map )
+    {
+        _profile = map->getProfile();
+        _isGeocentric = map->isGeocentric();
+        _isCube = map->getMapOptions().coordSysType() == MapOptions::CSTYPE_GEOCENTRIC_CUBE;
+        _elevationInterpolation = *map->getMapOptions().elevationInterpolation();
+    }
 }
 
-bool
-MapInfo::toWorldPoint( const GeoPoint& input, osg::Vec3d& output ) const
+MapInfo::MapInfo( const MapInfo& rhs ) :
+_profile               ( rhs._profile ),
+_isGeocentric          ( rhs._isGeocentric ),
+_isCube                ( rhs._isCube ),
+_elevationInterpolation( rhs._elevationInterpolation )
 {
-    if (!input.isValid()) return false;
-    //Transform the incoming point to the map's SRS
-    GeoPoint mapPoint;
-    toMapPoint(input, mapPoint );
-    return mapPoint.toWorld( output );
-}
-
-bool
-MapInfo::worldPointToMapPoint( const osg::Vec3d& input, GeoPoint& output ) const
-{
-    osg::Vec3d temp;
-    bool ok = _profile->getSRS()->transformFromWorld(input, temp);
-    if ( ok )
-        output.set(_profile->getSRS(), temp, ALTMODE_ABSOLUTE);
-    return ok;
-}
+    //nop
+}              
 
 //------------------------------------------------------------------------
 

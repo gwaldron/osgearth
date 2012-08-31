@@ -24,7 +24,7 @@
 using namespace osgEarth;
 using namespace OpenThreads;
 
-#define LC "[ElevationLayer] "
+#define LC "[ElevationLayer] \"" << getName() << "\" : "
 
 //------------------------------------------------------------------------
 
@@ -77,18 +77,18 @@ namespace
 
         ElevationLayerPreCacheOperation( TileSource* source )
         {
-		    ops = new CompositeValidValueOperator;
-		    ops->getOperators().push_back(new osgTerrain::NoDataValue(source->getNoDataValue()));
-		    ops->getOperators().push_back(new osgTerrain::ValidRange(source->getNoDataMinValue(), source->getNoDataMaxValue()));
+            ops = new CompositeValidValueOperator;
+            ops->getOperators().push_back(new osgTerrain::NoDataValue(source->getNoDataValue()));
+            ops->getOperators().push_back(new osgTerrain::ValidRange(source->getNoDataMinValue(), source->getNoDataMaxValue()));
         }
 
         void operator()( osg::ref_ptr<osg::HeightField>& hf )
         {
-		    //Modify the heightfield data so that is contains a standard value for NO_DATA
-		    ReplaceInvalidDataOperator op;
-		    op.setReplaceWith(NO_DATA_VALUE);
-		    op.setValidDataOperator(ops.get());
-		    op( hf.get() );
+            //Modify the heightfield data so that is contains a standard value for NO_DATA
+            ReplaceInvalidDataOperator op;
+            op.setReplaceWith(NO_DATA_VALUE);
+            op.setValidDataOperator(ops.get());
+            op( hf.get() );
         }
     };
 }
@@ -203,7 +203,7 @@ ElevationLayer::createHeightFieldFromTileSource(const TileKey&    key,
         // Only try to get data if the source actually has data
         if ( !source->hasData(key) )
         {
-            OE_DEBUG << LC << "Source for layer \"" << getName() << "\" has no data at " << key.str() << std::endl;
+            OE_DEBUG << LC << "Source for layer has no data at " << key.str() << std::endl;
             return 0L;
         }
 
@@ -249,7 +249,7 @@ ElevationLayer::createHeightFieldFromTileSource(const TileKey&    key,
         // Only try to get data if the source actually has data
         if ( !source->hasData( key ) )
         {
-            OE_DEBUG << LC << "Source for layer \"" << getName() << "\" has no data at " << key.str() << std::endl;
+            OE_DEBUG << LC << "Source for layer has no data at " << key.str() << std::endl;
             return 0L;
         }
 
@@ -367,23 +367,23 @@ ElevationLayer::createHeightField(const TileKey&    key,
     // validate that we have either a valid tile source, or we're cache-only.
     if ( ! (getTileSource() || (isCacheOnly() && cacheBin) ) )
     {
-		OE_WARN << LC << "Error: layer does not have a valid TileSource, cannot create heightfield" << std::endl;
+        OE_WARN << LC << "Error: layer does not have a valid TileSource, cannot create heightfield" << std::endl;
         _runtimeOptions.enabled() = false;
         return GeoHeightField::INVALID;
-	}
+    }
 
     // validate the existance of a valid layer profile.
     if ( !isCacheOnly() && !getProfile() )
     {
-		OE_WARN << LC << "Could not establish a valid profile for layer \"" << getName() << "\"" << std::endl;
+        OE_WARN << LC << "Could not establish a valid profile" << std::endl;
         _runtimeOptions.enabled() = false;
         return GeoHeightField::INVALID;
-	}
+    }
 
     // First, attempt to read from the cache. Since the cached data is stored in the
     // map profile, we can try this first.
     bool fromCache = false;
-    if ( cacheBin && _runtimeOptions.cachePolicy()->isCacheReadable() )
+    if ( cacheBin && getCachePolicy().isCacheReadable() )
     {
         ReadResult r = cacheBin->readObject( key.str() );
         if ( r.succeeded() )
@@ -417,22 +417,22 @@ ElevationLayer::createHeightField(const TileKey&    key,
     if ( result        && 
          cacheBin      && 
          !fromCache    &&
-         _runtimeOptions.cachePolicy()->isCacheWriteable() )
+         getCachePolicy().isCacheWriteable() )
     {
         cacheBin->write( key.str(), result );
     }
 
     if ( result )
     {
-		// Set up the heightfield so we don't have to worry about it later
-		double minx, miny, maxx, maxy;
-		key.getExtent().getBounds(minx, miny, maxx, maxy);
-		result->setOrigin( osg::Vec3d( minx, miny, 0.0 ) );
-		double dx = (maxx - minx)/(double)(result->getNumColumns()-1);
-		double dy = (maxy - miny)/(double)(result->getNumRows()-1);
-		result->setXInterval( dx );
-		result->setYInterval( dy );
-		result->setBorderWidth( 0 );
+        // Set up the heightfield so we don't have to worry about it later
+        double minx, miny, maxx, maxy;
+        key.getExtent().getBounds(minx, miny, maxx, maxy);
+        result->setOrigin( osg::Vec3d( minx, miny, 0.0 ) );
+        double dx = (maxx - minx)/(double)(result->getNumColumns()-1);
+        double dy = (maxy - miny)/(double)(result->getNumRows()-1);
+        result->setXInterval( dx );
+        result->setYInterval( dy );
+        result->setBorderWidth( 0 );
     }
 
     return result ?

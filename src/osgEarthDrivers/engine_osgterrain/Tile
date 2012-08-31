@@ -127,6 +127,8 @@ public:
     void setCustomColorLayers( const ColorLayersByUID& in, bool writeLock =true );
     void setCustomColorLayer( const CustomColorLayer& colorLayer, bool writeLock =true );
 
+    void clear();
+
     osgTerrain::HeightFieldLayer* getElevationLayer() const { return _elevationLayer.get(); }
     void setElevationLayer( osgTerrain::HeightFieldLayer* value ) { _elevationLayer = value; }
 

@@ -946,6 +946,8 @@ OSGTerrainEngineNode::installTerrainTechnique()
 {
     if ( _texCompositor->getTechnique() == TerrainOptions::COMPOSITING_MULTIPASS )
     {
+        //If we are using multipass mode, disable GLSL on it, it is using straight FFP
+        _terrain->getOrCreateStateSet()->setAttributeAndModes( new osg::Program(), osg::StateAttribute::OFF | osg::StateAttribute::PROTECTED );
         _terrain->setTechniquePrototype( new MultiPassTerrainTechnique( _texCompositor.get() ) );
         OE_INFO << LC << "Compositing technique = MULTIPASS" << std::endl;
     }

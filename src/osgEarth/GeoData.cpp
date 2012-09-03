@@ -268,7 +268,7 @@ bool
 GeoPoint::operator == (const GeoPoint& rhs) const
 {
     return
-        isValid() == rhs.isValid() &&
+        isValid() && rhs.isValid() &&
         _p        == rhs._p        &&
         _altMode  == rhs._altMode  &&
         ((_altMode == ALTMODE_ABSOLUTE && _srs->isEquivalentTo(rhs._srs.get())) ||

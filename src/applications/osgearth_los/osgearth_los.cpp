@@ -35,7 +35,7 @@ using namespace osgEarth;
 using namespace osgEarth::Util;
 
 
-osg::AnimationPath* createAnimationPath( MapNode* mapNode, const osg::Vec3& center, float radius,double looptime)
+osg::AnimationPath* createAnimationPath(const GeoPoint& pos, const SpatialReference* mapSRS, float radius, double looptime)
 {
     // set up the animation path 
     osg::AnimationPath* animationPath = new osg::AnimationPath;
@@ -46,18 +46,17 @@ osg::AnimationPath* createAnimationPath( MapNode* mapNode, const osg::Vec3& cent
     double delta = osg::PI * 2.0 / (double)numSamples;
 
     //Get the center point in geocentric
+    GeoPoint mapPos = pos.transform(mapSRS);
     osg::Vec3d centerWorld;
-    
-    GeoPoint centerMap(mapNode->getMapSRS(), center, ALTMODE_ABSOLUTE);
-    centerMap.toWorld( centerWorld, mapNode->getTerrain() );
-    
-    //mapNode->getMap()->toWorldPoint( centerMap, centerWorld );
+    mapPos.toWorld( centerWorld );
 
-    osg::Vec3d up = centerWorld;
+    bool isProjected = mapSRS->isProjected();
+
+    osg::Vec3d up = isProjected ? osg::Vec3d(0,0,1) : centerWorld;
     up.normalize();
 
     //Get the "side" vector
-    osg::Vec3d side = up ^ osg::Vec3d(0,0,1);
+    osg::Vec3d side = isProjected ? osg::Vec3d(1,0,0) : up ^ osg::Vec3d(0,0,1);
 
 
     double time=0.0f;
@@ -91,11 +90,11 @@ osg::AnimationPath* createAnimationPath( MapNode* mapNode, const osg::Vec3& cent
     return animationPath;    
 }
 
-osg::Node* createPlane(osg::Node* node, MapNode* mapNode, const osg::Vec3d& center, double radius, double time)
+osg::Node* createPlane(osg::Node* node, const GeoPoint& pos, const SpatialReference* mapSRS, double radius, double time)
 {
     osg::MatrixTransform* positioner = new osg::MatrixTransform;
-    positioner->addChild( node);
-    osg::AnimationPath* animationPath = createAnimationPath(mapNode, center, radius, time);
+    positioner->addChild( node );
+    osg::AnimationPath* animationPath = createAnimationPath(pos, mapSRS, radius, time);
     positioner->setUpdateCallback( new osg::AnimationPathCallback(animationPath, 0.0, 1.0));
     return positioner;
 }
@@ -123,14 +122,22 @@ main(int argc, char** argv)
         return 1;
     }
 
-    osgEarth::Util::EarthManipulator* manip = new EarthManipulator();    
+    osgEarth::Util::EarthManipulator* manip = new EarthManipulator();
     viewer.setCameraManipulator( manip );
     
     root->addChild( earthNode );    
     viewer.getCamera()->addCullCallback( new AutoClipPlaneCullCallback(mapNode));
 
+    // so we can speak lat/long:
+    const SpatialReference* mapSRS = mapNode->getMapSRS();
+    const SpatialReference* geoSRS = mapSRS->getGeographicSRS();
+
     //Create a point to point LineOfSightNode.
-    LinearLineOfSightNode* los = new LinearLineOfSightNode( mapNode, osg::Vec3d(-121.665, 46.0878, 1258.00), osg::Vec3d(-121.488, 46.2054, 3620.11));
+    LinearLineOfSightNode* los = new LinearLineOfSightNode(
+        mapNode, 
+        GeoPoint(geoSRS, -121.665, 46.0878, 1258.00, ALTMODE_ABSOLUTE),
+        GeoPoint(geoSRS, -121.488, 46.2054, 3620.11, ALTMODE_ABSOLUTE) );
+
     root->addChild( los );
     los->getOrCreateStateSet()->setMode(GL_DEPTH_TEST, osg::StateAttribute::OFF);
 
@@ -141,20 +148,22 @@ main(int argc, char** argv)
     root->addChild( p2peditor );
 
     //Create a relative point to point LineOfSightNode.
-    LinearLineOfSightNode* relativeLOS = new LinearLineOfSightNode( mapNode, osg::Vec3d(-121.2, 46.1, 10), osg::Vec3d(-121.488, 46.2054, 10));
-    relativeLOS->setStartAltitudeMode( ALTMODE_RELATIVE );
-    relativeLOS->setEndAltitudeMode( ALTMODE_RELATIVE );
+    LinearLineOfSightNode* relativeLOS = new LinearLineOfSightNode( 
+        mapNode, 
+        GeoPoint(geoSRS, -121.2, 46.1, 10, ALTMODE_RELATIVE),
+        GeoPoint(geoSRS, -121.488, 46.2054, 10, ALTMODE_RELATIVE) );
+
     root->addChild( relativeLOS );
     relativeLOS->getOrCreateStateSet()->setMode(GL_DEPTH_TEST, osg::StateAttribute::OFF);
 
     LinearLineOfSightEditor* relEditor = new LinearLineOfSightEditor( relativeLOS );
     root->addChild( relEditor );
-    
+
     //Create a RadialLineOfSightNode that allows you to do a 360 degree line of sight analysis.
     RadialLineOfSightNode* radial = new RadialLineOfSightNode( mapNode );
-    radial->setCenter( osg::Vec3d(-121.515, 46.054, 847.604) );
+    radial->setCenter( GeoPoint(geoSRS, -121.515, 46.054, 847.604, ALTMODE_ABSOLUTE) );
     radial->setRadius( 2000 );
-    radial->setNumSpokes(100);    
+    radial->setNumSpokes( 100 );    
     radial->getOrCreateStateSet()->setMode(GL_DEPTH_TEST, osg::StateAttribute::OFF);
     root->addChild( radial );
     RadialLineOfSightEditor* radialEditor = new RadialLineOfSightEditor( radial );
@@ -162,8 +171,7 @@ main(int argc, char** argv)
 
     //Create a relative RadialLineOfSightNode that allows you to do a 360 degree line of sight analysis.
     RadialLineOfSightNode* radialRelative = new RadialLineOfSightNode( mapNode );
-    radialRelative->setCenter( osg::Vec3d(-121.2, 46.054, 10) );
-    radialRelative->setAltitudeMode( ALTMODE_RELATIVE );
+    radialRelative->setCenter( GeoPoint(geoSRS, -121.2, 46.054, 10, ALTMODE_RELATIVE) );
     radialRelative->setRadius( 3000 );
     radialRelative->setNumSpokes(60);    
     radialRelative->getOrCreateStateSet()->setMode(GL_DEPTH_TEST, osg::StateAttribute::OFF);
@@ -171,17 +179,13 @@ main(int argc, char** argv)
     RadialLineOfSightEditor* radialRelEditor = new RadialLineOfSightEditor( radialRelative );
     root->addChild( radialRelEditor );
 
-
-    //Create an editor for the radial line of sight that allows you to drag it around.
-
-
     //Load a plane model.  
     osg::ref_ptr< osg::Node >  plane = osgDB::readNodeFile("../data/cessna.osg.5,5,5.scale");
 
     //Create 2 moving planes
-    osg::Node* plane1 = createPlane(plane, mapNode, osg::Vec3d(-121.656, 46.0935, 4133.06), 5000, 20);
-    osg::Node* plane2 = createPlane(plane, mapNode, osg::Vec3d(-121.321, 46.2589, 1390.09), 3000, 5);
-    root->addChild( plane1  );
+    osg::Node* plane1 = createPlane(plane, GeoPoint(geoSRS, -121.656, 46.0935, 4133.06, ALTMODE_ABSOLUTE), mapSRS, 5000, 20);
+    osg::Node* plane2 = createPlane(plane, GeoPoint(geoSRS, -121.321, 46.2589, 1390.09, ALTMODE_ABSOLUTE), mapSRS, 3000, 5);
+    root->addChild( plane1 );
     root->addChild( plane2 );
 
     //Create a LineOfSightNode that will use a LineOfSightTether callback to monitor
@@ -192,7 +196,7 @@ main(int argc, char** argv)
     tetheredLOS->setUpdateCallback( new LineOfSightTether( plane1, plane2 ) );
 
     //Create another plane and attach a RadialLineOfSightNode to it using the RadialLineOfSightTether
-    osg::Node* plane3 = createPlane(plane, mapNode, osg::Vec3d( -121.463, 46.3548, 1348.71), 10000, 5);    
+    osg::Node* plane3 = createPlane(plane, GeoPoint(geoSRS, -121.463, 46.3548, 1348.71, ALTMODE_ABSOLUTE), mapSRS, 10000, 5);
     root->addChild( plane3 );
     RadialLineOfSightNode* tetheredRadial = new RadialLineOfSightNode( mapNode );    
     tetheredRadial->getOrCreateStateSet()->setMode(GL_DEPTH_TEST, osg::StateAttribute::OFF);    
@@ -206,7 +210,11 @@ main(int argc, char** argv)
     root->addChild( tetheredRadial );
     tetheredRadial->setUpdateCallback( new RadialLineOfSightTether( plane3 ) );
 
-    manip->setHomeViewpoint(Viewpoint( "Mt Rainier",        osg::Vec3d( -121.488, 46.2054, 0 ), 0.0, -50, 100000 ));
+    manip->setHomeViewpoint( Viewpoint( 
+        "Mt Rainier",        
+        osg::Vec3d( -121.488, 46.2054, 0 ), 
+        0.0, -50, 100000,
+        geoSRS) );
 
     viewer.setSceneData( root );    
 

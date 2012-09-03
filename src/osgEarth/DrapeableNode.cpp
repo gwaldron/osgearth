@@ -66,41 +66,45 @@ namespace
                 // get the owner's node path (just use the first one)
                 osg::NodePathList ownerPaths;
                 ownerPaths = _owner->getParentalNodePaths();
-                const osg::NodePath& ownerPath = ownerPaths[0];
 
-                // first check the owner's traversal mask.
-                bool visible = true;
-                for( int k = 0; visible && k < ownerPath.size(); ++k )
+                if ( ownerPaths.size() > 0 )
                 {
-                    visible = nv.validNodeMask(*ownerPath[k]);
-                }
+                    const osg::NodePath& ownerPath = ownerPaths[0];
 
-                if ( visible )
-                {
-                    // find the intersection point:
-                    int i = findIndexOfNodePathConvergence( visitorPath, ownerPath );
-
-                    if ( i >= 0 && i < ownerPath.size()-1 )
+                    // first check the owner's traversal mask.
+                    bool visible = true;
+                    for( int k = 0; visible && k < ownerPath.size(); ++k )
                     {
-                        osgUtil::CullVisitor* cv = static_cast<osgUtil::CullVisitor*>(&nv);
+                        visible = nv.validNodeMask(*ownerPath[k]);
+                    }
 
-                        int pushes = 0;
-                        for( int k = i+1; k < ownerPath.size(); ++k )
+                    if ( visible )
+                    {
+                        // find the intersection point:
+                        int i = findIndexOfNodePathConvergence( visitorPath, ownerPath );
+
+                        if ( i >= 0 && i < ownerPath.size()-1 )
                         {
-                            osg::Node* node = ownerPath[k];
-                            osg::StateSet* ss = ownerPath[k]->getStateSet();
-                            if ( ss )
+                            osgUtil::CullVisitor* cv = static_cast<osgUtil::CullVisitor*>(&nv);
+
+                            int pushes = 0;
+                            for( int k = i+1; k < ownerPath.size(); ++k )
                             {
-                                cv->pushStateSet( ss );
-                                ++pushes;
+                                osg::Node* node = ownerPath[k];
+                                osg::StateSet* ss = ownerPath[k]->getStateSet();
+                                if ( ss )
+                                {
+                                    cv->pushStateSet( ss );
+                                    ++pushes;
+                                }
                             }
-                        }
-                    
-                        osg::Group::traverse( nv );
+                        
+                            osg::Group::traverse( nv );
 
-                        for( int k = 0; k < pushes; ++k )
-                        {
-                            cv->popStateSet();
+                            for( int k = 0; k < pushes; ++k )
+                            {
+                                cv->popStateSet();
+                            }
                         }
                     }
                 }

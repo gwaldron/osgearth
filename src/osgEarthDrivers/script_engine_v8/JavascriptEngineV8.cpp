@@ -132,7 +132,7 @@ JavascriptEngineV8::executeScript(v8::Handle<v8::String> script)
 		//v8::String::AsciiValue filename(message->GetScriptResourceName());
 		int linenum = message->GetLineNumber();
 		std::ostringstream str;
-		str << linenum << "\:[" << message->GetStartColumn() << "-" << message->GetEndColumn() << "]\:" << std::string(*error) << std::endl;
+		str << linenum << ":[" << message->GetStartColumn() << "-" << message->GetEndColumn() << "]:" << std::string(*error) << std::endl;
 		v8::String::AsciiValue sourceline(message->GetSourceLine());
 		str << std::string(*sourceline) << std::endl;
 		/*

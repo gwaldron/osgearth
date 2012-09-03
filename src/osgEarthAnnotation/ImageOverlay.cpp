@@ -184,18 +184,12 @@ ImageOverlay::postCTOR()
 
     _transform = new osg::MatrixTransform;
     _transform->addChild( _geode );
-    this->addChild( _transform );
 
-    osg::StateSet* ss = getOrCreateStateSet();
-
-
-#if 0
     // place the geometry under a drapeable node so it will project onto the terrain    
     DrapeableNode* d = new DrapeableNode( getMapNode() );
     addChild( d );
 
     d->addChild( _transform );
-#endif
 
     // need a shader that supports one texture
     VirtualProgram* vp = new VirtualProgram();
@@ -203,11 +197,7 @@ ImageOverlay::postCTOR()
     vp->installDefaultColoringShaders(1);
     //vp->installDefaultColoringAndLightingShaders(1);
     //vp->setInheritShaders(false);
-
-    ss->setAttributeAndModes( vp, 1 );
-
-    ss->setRenderBinDetails( 0, OVERLAY_RENDER_BIN );
-    ss->setNestRenderBins( false );
+    d->getOrCreateStateSet()->setAttributeAndModes( vp, 1 );
     
     init();    
     ADJUST_UPDATE_TRAV_COUNT( this, 1 );

@@ -19,14 +19,16 @@
 #include <osgEarth/DrawInstanced>
 #include <osgEarth/CullingUtils>
 #include <osgEarth/ShaderUtils>
+#include <osgEarth/Registry>
+#include <osgEarth/Capabilities>
 
 #include <osg/ComputeBoundsVisitor>
 #include <osg/MatrixTransform>
+#include <osg/BufferIndexBinding>
 #include <osgUtil/MeshOptimizers>
 
-// The maximum size of the per-instance data in the shader is 8192.
-// So this should 8192/sizeof(per-instance data) = 8192/sizeof(mat4).
-#define MAX_INSTANCES_PER_GROUP 128
+#define MAX_COUNT_UBO   (Registry::capabilities().getMaxUniformBlockSize()/64)
+#define MAX_COUNT_ARRAY 128 // max size of a mat4 uniform array...how to query?
 
 using namespace osgEarth;
 using namespace osgEarth::DrawInstanced;
@@ -37,7 +39,7 @@ using namespace osgEarth::DrawInstanced;
 namespace
 {
     typedef std::map< osg::ref_ptr<osg::Node>, std::vector<osg::Matrix> > ModelNodeMatrices;
-
+    
     /**
      * Simple bbox callback to return a static bbox.
      */
@@ -103,20 +105,38 @@ DrawInstanced::createDrawInstancedProgram()
     VirtualProgram* vp = new VirtualProgram();
     vp->setName( "DrawInstanced" );
 
-    std::string src = Stringify()
-        << "#extension GL_EXT_draw_instanced : enable\n"
+    std::stringstream buf;
 
-        << "uniform mat4 osgearth_InstanceModelMatrix[" << MAX_INSTANCES_PER_GROUP << "];\n" //<< numInstances << "];\n"
+    buf << "#version 120 \n"
+        << "#extension GL_EXT_draw_instanced : enable\n";
 
-        << "void osgearth_setInstancePosition()\n"
+    if ( Registry::capabilities().supportsUniformBufferObjects() )
+    {
+        buf << "#extension GL_ARB_uniform_buffer_object : enable\n"
+            << "layout(std140) uniform osgearth_InstanceModelData\n"
+            << "{\n"
+            <<     "mat4 osgearth_instanceModelMatrix[ " << MAX_COUNT_UBO << "];\n"
+            << "};\n";
+    }
+    else
+    {
+        buf << "uniform mat4 osgearth_instanceModelMatrix[" << MAX_COUNT_ARRAY << "];\n";
+    }
+
+    buf << "void osgearth_setInstancePosition()\n"
         << "{\n"
-        << "    gl_Position = gl_ModelViewProjectionMatrix * osgearth_InstanceModelMatrix[gl_InstanceID] * gl_Vertex; \n"
+        << "    gl_Position = gl_ModelViewProjectionMatrix * osgearth_instanceModelMatrix[gl_InstanceID] * gl_Vertex; \n"
         << "}\n";
+
+    std::string src;
+    src = buf.str();
 
     vp->setFunction(
         "osgearth_setInstancePosition",
         src,
         ShaderComp::LOCATION_VERTEX_PRE_COLORING );
+
+    vp->getTemplate()->addBindUniformBlock( "osgearth_InstanceModelData", 0 );
 
     return vp;
 }
@@ -149,8 +169,13 @@ DrawInstanced::convertGraphToUseDrawInstanced( osg::Group* parent )
     // get rid of the old matrix transforms.
     parent->removeChildren(0, parent->getNumChildren());
 
-    // maximum size of a slice:
-    unsigned maxSliceSize = MAX_INSTANCES_PER_GROUP;
+    // whether to use UBOs.
+    bool useUBO = Registry::capabilities().supportsUniformBufferObjects();
+
+    // maximum size of a slice.
+    // for UBOs, assume 64K / sizeof(mat4) = 1024.
+    // for uniform array, assume 8K / sizeof(mat4) = 128.
+    unsigned maxSliceSize = useUBO ? MAX_COUNT_UBO : MAX_COUNT_ARRAY;
 
     // For each model:
     for( ModelNodeMatrices::iterator i = models.begin(); i != models.end(); ++i )
@@ -217,16 +242,31 @@ DrawInstanced::convertGraphToUseDrawInstanced( osg::Group* parent )
             // this group is simply a container for the uniform:
             osg::Group* sliceGroup = new osg::Group();
 
-            ArrayUniform uniform(
-                "osgearth_InstanceModelMatrix", 
-                osg::Uniform::FLOAT_MAT4,
-                sliceGroup->getOrCreateStateSet(),
-                currentSize );
-
-            // assign the matrices to the uniform array:
-            for( unsigned m=0; m < currentSize; ++m )
+            if ( useUBO ) // uniform buffer object:
             {
-                uniform.setElement( m, matrices[offset + m] );
+                osg::MatrixfArray* mats = new osg::MatrixfArray();
+                mats->setBufferObject( new osg::UniformBufferObject() );
+                // 64 = sizeof(mat4)
+                osg::UniformBufferBinding* ubb = new osg::UniformBufferBinding( 0, mats->getBufferObject(), 0, currentSize * 64 );
+                sliceGroup->getOrCreateStateSet()->setAttribute( ubb, osg::StateAttribute::ON );
+                for( unsigned m=0; m < currentSize; ++m )
+                {
+                    mats->push_back( matrices[offset + m] );
+                }
+            }
+            else // just use a uniform array
+            {
+                // assign the matrices to the uniform array:
+                ArrayUniform uniform(
+                    "osgearth_instanceModelMatrix", 
+                    osg::Uniform::FLOAT_MAT4,
+                    sliceGroup->getOrCreateStateSet(),
+                    currentSize );
+
+                for( unsigned m=0; m < currentSize; ++m )
+                {
+                    uniform.setElement( m, matrices[offset + m] );
+                }
             }
 
             // add the node as a child:

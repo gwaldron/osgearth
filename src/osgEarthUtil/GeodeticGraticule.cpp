@@ -22,6 +22,7 @@
 #include <osgEarthFeatures/GeometryCompiler>
 #include <osgEarthSymbology/Geometry>
 #include <osgEarthAnnotation/LabelNode>
+#include <osgEarthAnnotation/Decluttering>
 
 #include <osgEarth/Registry>
 #include <osgEarth/NodeUtils>
@@ -111,23 +112,46 @@ _root      ( 0L )
 void
 GeodeticGraticule::init()
 {
-    if ( !_mapNode.valid() )
-    {
-        OE_WARN << LC << "Illegal NULL map node" << std::endl;
-        return;
-    }
-
-    if ( !_mapNode->isGeocentric() )
-    {
-        OE_WARN << LC << "Projected map mode is not yet supported" << std::endl;
-        return;
-    }
-
     // safely generate a unique ID for this graticule:
     _id = Registry::instance()->createUID();
     {
         Threading::ScopedMutexLock lock( s_graticuleMutex );
         s_graticuleRegistry[_id] = this;
+    }
+
+    // this will intialize the graph.
+    rebuild();
+}
+
+void
+GeodeticGraticule::setMapNode( MapNode* mapNode )
+{
+    _mapNode = mapNode;
+    rebuild();
+}
+
+void
+GeodeticGraticule::setOptions( const GeodeticGraticuleOptions& options )
+{
+    _options = options;
+    rebuild();
+}
+
+void
+GeodeticGraticule::rebuild()
+{
+    this->removeChildren( 0, this->getNumChildren() );
+
+    if ( !getMapNode() )
+    {
+        OE_WARN << LC << "Illegal NULL map node" << std::endl;
+        return;
+    }
+
+    if ( !getMapNode()->isGeocentric() )
+    {
+        OE_WARN << LC << "Projected map mode is not yet supported" << std::endl;
+        return;
     }
 
     const Profile* mapProfile = _mapNode->getMap()->getProfile();
@@ -180,30 +204,8 @@ GeodeticGraticule::init()
         }
     }
 
-    // this will intialize the graph.
-    rebuild();
-}
-
-void
-GeodeticGraticule::setOptions( const GeodeticGraticuleOptions& options )
-{
-    _options = options;
-    rebuild();
-}
-
-void
-GeodeticGraticule::rebuild()
-{
-    // intialize the container if necessary
-    if ( !_root )
-    {
-        _root = new DrapeableNode( _mapNode.get(), false );
-        this->addChild( _root );
-    }
-    else
-    {
-        _root->removeChildren(0, _root->getNumChildren());
-    }
+    _root = new DrapeableNode( _mapNode.get(), false );
+    this->addChild( _root );
 
     // need at least one level
     if ( _options->levels().size() < 1 )
@@ -220,7 +222,7 @@ GeodeticGraticule::rebuild()
         for( unsigned ty = 0; ty < tilesY; ++ty )
         {
             TileKey key( 0, tx, ty, _profile.get() );
-            osg::Node* tile = buildTile( key, _mapNode->getMap() );
+            osg::Node* tile = buildTile( key, getMapNode()->getMap() );
             if ( tile )
                 _root->addChild( tile );
         }
@@ -264,7 +266,11 @@ GeodeticGraticule::buildTile( const TileKey& key, Map* map ) const
 
     osg::ref_ptr<osg::Group> labels;
     if ( hasText )
+    {
         labels = new osg::Group();
+        //TODO:  This is a bug, if you don't turn on decluttering the text labels are giant.  Need to determine what is wrong with LabelNodes without decluttering.
+        Decluttering::setEnabled( labels->getOrCreateStateSet(), true );
+    }
 
     // spatial ref for features:
     const SpatialReference* geoSRS = tileExtent.getSRS()->getGeographicSRS();

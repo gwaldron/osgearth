@@ -55,7 +55,7 @@ namespace
 
 OSGEARTH_REGISTER_ANNOTATION( imageoverlay, osgEarth::Annotation::ImageOverlay );
 
-ImageOverlay::ImageOverlay(MapNode* mapNode, const Config& conf) :
+ImageOverlay::ImageOverlay(MapNode* mapNode, const Config& conf, const osgDB::Options* dbOptions) :
 AnnotationNode(mapNode),
 _lowerLeft    (10, 10),
 _lowerRight   (20, 10),
@@ -70,7 +70,7 @@ _texture      (0)
     conf.getIfSet( "url",   _imageURI );
     if ( _imageURI.isSet() )
     {
-        setImage( _imageURI->getImage() );
+        setImage( _imageURI->getImage(dbOptions) );
     }
 
     conf.getIfSet( "alpha", _alpha );
@@ -186,7 +186,7 @@ ImageOverlay::postCTOR()
     _transform->addChild( _geode );
 
     // place the geometry under a drapeable node so it will project onto the terrain    
-    DrapeableNode* d = new DrapeableNode(_mapNode.get());
+    DrapeableNode* d = new DrapeableNode( getMapNode() );
     addChild( d );
 
     d->addChild( _transform );
@@ -210,100 +210,113 @@ ImageOverlay::init()
 {
     OpenThreads::ScopedLock< OpenThreads::Mutex > lock(_mutex);
 
-    double height = 0;
-    osg::Geometry* geometry = new osg::Geometry();
-    geometry->setUseVertexBufferObjects(true);
-
-    const osg::EllipsoidModel* ellipsoid = getMapNode()->getMapSRS()->getEllipsoid();
-
-    const SpatialReference* mapSRS = getMapNode()->getMapSRS();    
-
-    // calculate a bounding polytope in world space (for mesh clamping):
-    osg::ref_ptr<Feature> f = new Feature( new Polygon(), mapSRS->getGeodeticSRS() );
-    Geometry* g = f->getGeometry();
-    g->push_back( osg::Vec3d(_lowerLeft.x(),  _lowerLeft.y(), 0) );
-    g->push_back( osg::Vec3d(_lowerRight.x(), _lowerRight.y(), 0) );
-    g->push_back( osg::Vec3d(_upperRight.x(), _upperRight.y(), 0) );
-    g->push_back( osg::Vec3d(_upperLeft.x(),  _upperLeft.y(),  0) );
-    //_boundingPolytope = f->getWorldBoundingPolytope();
-    f->getWorldBoundingPolytope( _mapNode->getMapSRS(), _boundingPolytope );
-
-    // next, convert to world coords and create the geometry:
-    osg::Vec3Array* verts = new osg::Vec3Array();
-    verts->reserve(4);
-    osg::Vec3d anchor;
-    for( Geometry::iterator i = g->begin(); i != g->end(); ++i )
-    {        
-        osg::Vec3d map, world;        
-        f->getSRS()->transform( *i, mapSRS, map);                
-        mapSRS->transformToWorld( map, world );
-        if (i == g->begin())
-        {
-            anchor = world;
-        }
-        verts->push_back( world - anchor );
-    }
-    
-    _transform->setMatrix( osg::Matrixd::translate( anchor ) );
-
-
-
-    geometry->setVertexArray( verts );
-    if ( verts->getVertexBufferObject() )
-        verts->getVertexBufferObject()->setUsage(GL_STATIC_DRAW_ARB);
-
-    osg::Vec4Array* colors = new osg::Vec4Array(1);
-    (*colors)[0] = osg::Vec4(1,1,1,*_alpha);
-
-    geometry->setColorArray( colors );
-    geometry->setColorBinding( osg::Geometry::BIND_OVERALL );
-
-     GLuint tris[6] = { 0, 1, 2,
-                        0, 2, 3
-                      };        
-    geometry->addPrimitiveSet(new osg::DrawElementsUInt( GL_TRIANGLES, 6, tris ) );
-
-    bool flip = false;
-    if (_image.valid())
-    {
-        //Create the texture
-        _texture = new osg::Texture2D(_image.get());        
-        _texture->setResizeNonPowerOfTwoHint(false);
-        updateFilters();
-        _geode->getOrCreateStateSet()->setTextureAttributeAndModes(0, _texture, osg::StateAttribute::ON);    
-        flip = _image->getOrigin()==osg::Image::TOP_LEFT;
-    }
-
-    osg::Vec2Array* texcoords = new osg::Vec2Array(4);
-    (*texcoords)[0].set(0.0f,flip ? 1.0 : 0.0f);
-    (*texcoords)[1].set(1.0f,flip ? 1.0 : 0.0f);
-    (*texcoords)[2].set(1.0f,flip ? 0.0 : 1.0f);
-    (*texcoords)[3].set(0.0f,flip ? 0.0 : 1.0f);
-    geometry->setTexCoordArray(0, texcoords);
-
-     
-    //Only run the MeshSubdivider on geocentric maps
-    if (_mapNode->getMap()->isGeocentric())
-    {
-        MeshSubdivider ms(osg::Matrixd::inverse(_transform->getMatrix()), _transform->getMatrix());
-        ms.run(*geometry, osg::DegreesToRadians(5.0), GEOINTERP_RHUMB_LINE);
-    }
-
     _geode->removeDrawables(0, _geode->getNumDrawables() );
 
-    _geode->addDrawable( geometry );
+    if ( getMapNode() )
+    {
+        double height = 0;
+        osg::Geometry* geometry = new osg::Geometry();
+        geometry->setUseVertexBufferObjects(true);
 
-    _geometry = geometry;
+        const osg::EllipsoidModel* ellipsoid = getMapNode()->getMapSRS()->getEllipsoid();
 
-    _dirty = false;
-    
-    // Set the annotation up for auto-clamping. We always need to auto-clamp a draped image
-    // so that the mesh roughly conforms with the surface, otherwise the draping routine
-    // might clip it.
-    Style style;
-    style.getOrCreate<AltitudeSymbol>()->clamping() = AltitudeSymbol::CLAMP_RELATIVE_TO_TERRAIN;
-    applyStyle( style );
-    clampMesh( _mapNode->getTerrain()->getGraph() );
+        const SpatialReference* mapSRS = getMapNode()->getMapSRS();
+
+        // calculate a bounding polytope in world space (for mesh clamping):
+        osg::ref_ptr<Feature> f = new Feature( new Polygon(), mapSRS->getGeodeticSRS() );
+        Geometry* g = f->getGeometry();
+        g->push_back( osg::Vec3d(_lowerLeft.x(),  _lowerLeft.y(), 0) );
+        g->push_back( osg::Vec3d(_lowerRight.x(), _lowerRight.y(), 0) );
+        g->push_back( osg::Vec3d(_upperRight.x(), _upperRight.y(), 0) );
+        g->push_back( osg::Vec3d(_upperLeft.x(),  _upperLeft.y(),  0) );
+        //_boundingPolytope = f->getWorldBoundingPolytope();
+        f->getWorldBoundingPolytope( getMapNode()->getMapSRS(), _boundingPolytope );
+
+        // next, convert to world coords and create the geometry:
+        osg::Vec3Array* verts = new osg::Vec3Array();
+        verts->reserve(4);
+        osg::Vec3d anchor;
+        for( Geometry::iterator i = g->begin(); i != g->end(); ++i )
+        {        
+            osg::Vec3d map, world;        
+            f->getSRS()->transform( *i, mapSRS, map);
+            mapSRS->transformToWorld( map, world );
+            if (i == g->begin())
+            {
+                anchor = world;
+            }
+            verts->push_back( world - anchor );
+        }
+        
+        _transform->setMatrix( osg::Matrixd::translate( anchor ) );
+
+
+
+        geometry->setVertexArray( verts );
+        if ( verts->getVertexBufferObject() )
+            verts->getVertexBufferObject()->setUsage(GL_STATIC_DRAW_ARB);
+
+        osg::Vec4Array* colors = new osg::Vec4Array(1);
+        (*colors)[0] = osg::Vec4(1,1,1,*_alpha);
+
+        geometry->setColorArray( colors );
+        geometry->setColorBinding( osg::Geometry::BIND_OVERALL );
+
+         GLuint tris[6] = { 0, 1, 2,
+                            0, 2, 3
+                          };        
+        geometry->addPrimitiveSet(new osg::DrawElementsUInt( GL_TRIANGLES, 6, tris ) );
+
+        bool flip = false;
+        if (_image.valid())
+        {
+            //Create the texture
+            _texture = new osg::Texture2D(_image.get());        
+            _texture->setResizeNonPowerOfTwoHint(false);
+            updateFilters();
+            _geode->getOrCreateStateSet()->setTextureAttributeAndModes(0, _texture, osg::StateAttribute::ON);    
+            flip = _image->getOrigin()==osg::Image::TOP_LEFT;
+        }
+
+        osg::Vec2Array* texcoords = new osg::Vec2Array(4);
+        (*texcoords)[0].set(0.0f,flip ? 1.0 : 0.0f);
+        (*texcoords)[1].set(1.0f,flip ? 1.0 : 0.0f);
+        (*texcoords)[2].set(1.0f,flip ? 0.0 : 1.0f);
+        (*texcoords)[3].set(0.0f,flip ? 0.0 : 1.0f);
+        geometry->setTexCoordArray(0, texcoords);
+
+         
+        //Only run the MeshSubdivider on geocentric maps
+        if (getMapNode()->getMap()->isGeocentric())
+        {
+            MeshSubdivider ms(osg::Matrixd::inverse(_transform->getMatrix()), _transform->getMatrix());
+            ms.run(*geometry, osg::DegreesToRadians(5.0), GEOINTERP_RHUMB_LINE);
+        }
+
+        _geode->addDrawable( geometry );
+
+        _geometry = geometry;
+
+        _dirty = false;
+        
+        // Set the annotation up for auto-clamping. We always need to auto-clamp a draped image
+        // so that the mesh roughly conforms with the surface, otherwise the draping routine
+        // might clip it.
+        Style style;
+        style.getOrCreate<AltitudeSymbol>()->clamping() = AltitudeSymbol::CLAMP_RELATIVE_TO_TERRAIN;
+        applyStyle( style );
+        clampMesh( getMapNode()->getTerrain()->getGraph() );
+    }
+}
+
+void
+ImageOverlay::setMapNode( MapNode* mapNode )
+{
+    if ( getMapNode() != mapNode )
+    {
+        AnnotationNode::setMapNode( mapNode );
+        init();
+    }
 }
 
 bool
@@ -727,7 +740,7 @@ ImageOverlay::clampMesh( osg::Node* terrainModel )
         relative = _altitude->clamping() == AltitudeSymbol::CLAMP_RELATIVE_TO_TERRAIN;
     }
 
-    MeshClamper clamper( terrainModel, _mapNode->getMapSRS(), _mapNode->isGeocentric(), relative, scale, offset );
+    MeshClamper clamper( terrainModel, getMapNode()->getMapSRS(), getMapNode()->isGeocentric(), relative, scale, offset );
     this->accept( clamper );
 
     this->dirtyBound();

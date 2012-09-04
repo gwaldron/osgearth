@@ -55,6 +55,14 @@ namespace osgEarth { namespace Features
         BufferFilter();
         BufferFilter( const BufferFilter& rhs );
 
+        BufferFilter( const Config& conf );
+
+        /**
+         * Serialize this FeatureFilter
+         */
+        virtual Config getConfig() const;
+
+
         virtual ~BufferFilter() { }
 
     public:

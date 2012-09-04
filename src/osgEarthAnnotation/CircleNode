@@ -60,8 +60,9 @@ namespace osgEarth { namespace Annotation
          * Constructs a circle node from its serialized form
          */
         CircleNode(
-            MapNode*          mapNode,
-            const Config&     conf );
+            MapNode*              mapNode,
+            const Config&         conf,
+            const osgDB::Options* dbOptions);
 
 
         virtual ~CircleNode() { }

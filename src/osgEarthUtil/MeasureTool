@@ -22,6 +22,7 @@
 
 #include <osgEarthUtil/Common>
 #include <osgEarth/MapNode>
+#include <osgEarth/MapNodeObserver>
 #include <osgEarthAnnotation/FeatureNode>
 #include <osgEarthSymbology/Style>
 #include <osg/Group>
@@ -32,7 +33,7 @@ namespace osgEarth { namespace Util
 {
     using namespace osgEarth::Symbology;
 
-    struct OSGEARTHUTIL_EXPORT MeasureToolHandler : public osgGA::GUIEventHandler 
+    struct OSGEARTHUTIL_EXPORT MeasureToolHandler : public osgGA::GUIEventHandler, public MapNodeObserver
     {
     public:
 
@@ -73,6 +74,11 @@ namespace osgEarth { namespace Util
         void setIntersectionMask( osg::Node::NodeMask intersectionMask ) { _intersectionMask = intersectionMask; }
         osg::Node::NodeMask getIntersectionMask() const { return _intersectionMask;}
 
+    public: // MapNodeObserver
+
+        virtual void setMapNode( MapNode* mapNode );
+        virtual MapNode* getMapNode() { return _mapNode.get(); }
+
     protected:
         GeoInterpolation _geoInterpolation;
         void fireDistanceChanged();
@@ -92,8 +98,10 @@ namespace osgEarth { namespace Util
 
         MeasureToolEventHandlerList _eventHandlers;
         bool _isPath;        
-        osg::ref_ptr< MapNode > _mapNode;
+        osg::observer_ptr< MapNode > _mapNode;
         osg::Node::NodeMask _intersectionMask;
+
+        void rebuild();
     };
 }}
 #endif

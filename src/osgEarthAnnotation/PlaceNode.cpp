@@ -43,12 +43,12 @@ PlaceNode::PlaceNode(MapNode*           mapNode,
                      const Style&       style ) :
 
 OrthoNode( mapNode, position ),
-_image  ( image ),
-_text   ( text ),
-_style  ( style ),
-_geode  ( 0L )
+_image   ( image ),
+_text    ( text ),
+_style   ( style ),
+_geode   ( 0L )
 {
-    init();
+    init( 0L );
 }
 
 PlaceNode::PlaceNode(MapNode*           mapNode,
@@ -57,11 +57,11 @@ PlaceNode::PlaceNode(MapNode*           mapNode,
                      const Style&       style ) :
 
 OrthoNode( mapNode, position ),
-_text   ( text ),
-_style  ( style ),
-_geode  ( 0L )
+_text    ( text ),
+_style   ( style ),
+_geode   ( 0L )
 {
-    init();
+    init( 0L );
 }
 
 PlaceNode::PlaceNode(MapNode*              mapNode,
@@ -69,14 +69,13 @@ PlaceNode::PlaceNode(MapNode*              mapNode,
                      const Style&          style,
                      const osgDB::Options* dbOptions ) :
 OrthoNode ( mapNode, position ),
-_style    ( style ),
-_dbOptions( dbOptions )
+_style    ( style )
 {
-    init();
+    init( dbOptions );
 }
 
 void
-PlaceNode::init()
+PlaceNode::init(const osgDB::Options* dbOptions)
 {
     _geode = new osg::Geode();
     osg::Drawable* text = 0L;
@@ -100,12 +99,14 @@ PlaceNode::init()
         if ( icon )
         {
             if ( icon->url().isSet() )
+            {
                 imageURI = URI( icon->url()->eval(), icon->url()->uriContext() );
+            }
         }
 
         if ( !imageURI.empty() )
         {
-            _image = imageURI.getImage( _dbOptions.get() );
+            _image = imageURI.getImage( dbOptions );
         }
     }
 
@@ -186,6 +187,8 @@ PlaceNode::init()
     osg::StateSet* stateSet = _geode->getOrCreateStateSet();
     stateSet->setAttributeAndModes( new osg::Depth(osg::Depth::ALWAYS, 0, 1, false), 1 );
 
+    AnnotationUtils::installAnnotationProgram( stateSet );
+
     getAttachPoint()->addChild( _geode );
 
     // for clamping
@@ -250,8 +253,9 @@ PlaceNode::setDynamic( bool value )
 OSGEARTH_REGISTER_ANNOTATION( place, osgEarth::Annotation::PlaceNode );
 
 
-PlaceNode::PlaceNode(MapNode*      mapNode,
-                     const Config& conf ) :
+PlaceNode::PlaceNode(MapNode*              mapNode,
+                     const Config&         conf,
+                     const osgDB::Options* dbOptions) :
 OrthoNode( mapNode, GeoPoint::INVALID )
 {
     conf.getObjIfSet( "style",  _style );
@@ -259,13 +263,14 @@ OrthoNode( mapNode, GeoPoint::INVALID )
 
     optional<URI> imageURI;
     conf.getIfSet( "icon", imageURI );
-    if ( imageURI.isSet() ) {
+    if ( imageURI.isSet() )
+    {
         _image = imageURI->getImage();
         if ( _image.valid() )
             _image->setFileName( imageURI->base() );
     }
 
-    init();
+    init( dbOptions );
 
     if ( conf.hasChild("position") )
         setPosition( GeoPoint(conf.child("position")) );

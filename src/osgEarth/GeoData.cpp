@@ -268,7 +268,7 @@ bool
 GeoPoint::operator == (const GeoPoint& rhs) const
 {
     return
-        isValid() == rhs.isValid() &&
+        isValid() && rhs.isValid() &&
         _p        == rhs._p        &&
         _altMode  == rhs._altMode  &&
         ((_altMode == ALTMODE_ABSOLUTE && _srs->isEquivalentTo(rhs._srs.get())) ||
@@ -1421,187 +1421,194 @@ reprojectImage(osg::Image* srcImage, const std::string srcWKT, double srcMinX, d
     return result;
 }    
 
-static osg::Image*
-manualReproject(const osg::Image* image, const GeoExtent& src_extent, const GeoExtent& dest_extent,
-                unsigned int width = 0, unsigned int height = 0)
+namespace
 {
-    //TODO:  Compute the optimal destination size
-    if (width == 0 || height == 0)
+    osg::Image* manualReproject(
+        const osg::Image* image, 
+        const GeoExtent&  src_extent, 
+        const GeoExtent&  dest_extent,
+        unsigned int      width = 0, 
+        unsigned int      height = 0)
     {
-        //If no width and height are specified, just use the minimum dimension for the image
-        width = osg::minimum(image->s(), image->t());
-        height = osg::minimum(image->s(), image->t());        
-    }
+        //TODO:  Compute the optimal destination size
+        if (width == 0 || height == 0)
+        {
+            //If no width and height are specified, just use the minimum dimension for the image
+            width = osg::minimum(image->s(), image->t());
+            height = osg::minimum(image->s(), image->t());
+        }
 
-    // need to know this in order to choose the right interpolation algorithm
-    const bool isSrcContiguous = src_extent.getSRS()->isContiguous();
+        // need to know this in order to choose the right interpolation algorithm
+        const bool isSrcContiguous = src_extent.getSRS()->isContiguous();
 
-    osg::Image *result = new osg::Image();
-    //result->allocateImage(width, height, 1, GL_RGBA, GL_UNSIGNED_BYTE);
-    result->allocateImage(width, height, 1, image->getPixelFormat(), GL_UNSIGNED_BYTE);
+        osg::Image *result = new osg::Image();
+        //result->allocateImage(width, height, 1, GL_RGBA, GL_UNSIGNED_BYTE);
+        result->allocateImage(width, height, 1, image->getPixelFormat(), GL_UNSIGNED_BYTE);
 
-    //Initialize the image to be completely transparent/black
-    memset(result->data(), 0, result->getImageSizeInBytes());
+        //Initialize the image to be completely transparent/black
+        memset(result->data(), 0, result->getImageSizeInBytes());
 
-    //ImageUtils::PixelReader ra(result);
-    ImageUtils::PixelWriter writer(result);
-    const double dx = dest_extent.width() / (double)width;
-    const double dy = dest_extent.height() / (double)height;
+        //ImageUtils::PixelReader ra(result);
+        ImageUtils::PixelWriter writer(result);
+        const double dx = dest_extent.width() / (double)width;
+        const double dy = dest_extent.height() / (double)height;
 
-    // offset the sample points by 1/2 a pixel so we are sampling "pixel center".
-    // (This is especially useful in the UnifiedCubeProfile since it nullifes the chances for
-    // edge ambiguity.)
+        // offset the sample points by 1/2 a pixel so we are sampling "pixel center".
+        // (This is especially useful in the UnifiedCubeProfile since it nullifes the chances for
+        // edge ambiguity.)
 
-    unsigned int numPixels = width * height;
+        unsigned int numPixels = width * height;
 
-    // Start by creating a sample grid over the destination
-    // extent. These will be the source coordinates. Then, reproject
-    // the sample grid into the source coordinate system.
-    double *srcPointsX = new double[numPixels * 2];
-    double *srcPointsY = srcPointsX + numPixels;
-    dest_extent.getSRS()->transformExtentPoints(
-        src_extent.getSRS(),
-        dest_extent.xMin() + .5 * dx, dest_extent.yMin() + .5 * dy,
-        dest_extent.xMax() - .5 * dx, dest_extent.yMax() - .5 * dy,
-        srcPointsX, srcPointsY, width, height);
+        // Start by creating a sample grid over the destination
+        // extent. These will be the source coordinates. Then, reproject
+        // the sample grid into the source coordinate system.
+        double *srcPointsX = new double[numPixels * 2];
+        double *srcPointsY = srcPointsX + numPixels;
+        dest_extent.getSRS()->transformExtentPoints(
+            src_extent.getSRS(),
+            dest_extent.xMin() + .5 * dx, dest_extent.yMin() + .5 * dy,
+            dest_extent.xMax() - .5 * dx, dest_extent.yMax() - .5 * dy,
+            srcPointsX, srcPointsY, width, height);
 
-    // Next, go through the source-SRS sample grid, read the color at each point from the source image,
-    // and write it to the corresponding pixel in the destination image.
-    int pixel = 0;
-    ImageUtils::PixelReader ia(image);
-    double xfac = (image->s() - 1) / src_extent.width();
-    double yfac = (image->t() - 1) / src_extent.height();
-    for (unsigned int c = 0; c < width; ++c)
-    {
-        for (unsigned int r = 0; r < height; ++r)
-        {   
-            double src_x = srcPointsX[pixel];
-            double src_y = srcPointsY[pixel];
+        // Next, go through the source-SRS sample grid, read the color at each point from the source image,
+        // and write it to the corresponding pixel in the destination image.
+        int pixel = 0;
+        ImageUtils::PixelReader ia(image);
+        double xfac = (image->s() - 1) / src_extent.width();
+        double yfac = (image->t() - 1) / src_extent.height();
+        for (unsigned int c = 0; c < width; ++c)
+        {
+            for (unsigned int r = 0; r < height; ++r)
+            {   
+                double src_x = srcPointsX[pixel];
+                double src_y = srcPointsY[pixel];
 
-            if ( src_x < src_extent.xMin() || src_x > src_extent.xMax() || src_y < src_extent.yMin() || src_y > src_extent.yMax() )
-            {
-                //If the sample point is outside of the bound of the source extent, increment the pixel and keep looping through.
-                //OE_WARN << LC << "ERROR: sample point out of bounds: " << src_x << ", " << src_y << std::endl;
-                pixel++;
-                continue;
-            }
-
-            float px = (src_x - src_extent.xMin()) * xfac;
-            float py = (src_y - src_extent.yMin()) * yfac;
-
-            int px_i = osg::clampBetween( (int)osg::round(px), 0, image->s()-1 );
-            int py_i = osg::clampBetween( (int)osg::round(py), 0, image->t()-1 );
-
-            osg::Vec4 color(0,0,0,0);
-
-            if ( ! isSrcContiguous ) // non-contiguous space- use nearest neighbot
-            {
-                color = ia(px_i, py_i);
-            }
-
-            else // contiguous space - use bilinear sampling
-            {
-                int rowMin = osg::maximum((int)floor(py), 0);
-                int rowMax = osg::maximum(osg::minimum((int)ceil(py), (int)(image->t()-1)), 0);
-                int colMin = osg::maximum((int)floor(px), 0);
-                int colMax = osg::maximum(osg::minimum((int)ceil(px), (int)(image->s()-1)), 0);
-
-                if (rowMin > rowMax) rowMin = rowMax;
-                if (colMin > colMax) colMin = colMax;
-
-                osg::Vec4 urColor = ia(colMax, rowMax);
-                osg::Vec4 llColor = ia(colMin, rowMin);
-                osg::Vec4 ulColor = ia(colMin, rowMax);
-                osg::Vec4 lrColor = ia(colMax, rowMin);
-
-                /*Average Interpolation*/
-                /*double x_rem = px - (int)px;
-                double y_rem = py - (int)py;
-
-                double w00 = (1.0 - y_rem) * (1.0 - x_rem);
-                double w01 = (1.0 - y_rem) * x_rem;
-                double w10 = y_rem * (1.0 - x_rem);
-                double w11 = y_rem * x_rem;
-                double wsum = w00 + w01 + w10 + w11;
-                wsum = 1.0/wsum;
-
-                color.r() = (w00 * llColor.r() + w01 * lrColor.r() + w10 * ulColor.r() + w11 * urColor.r()) * wsum;
-                color.g() = (w00 * llColor.g() + w01 * lrColor.g() + w10 * ulColor.g() + w11 * urColor.g()) * wsum;
-                color.b() = (w00 * llColor.b() + w01 * lrColor.b() + w10 * ulColor.b() + w11 * urColor.b()) * wsum;
-                color.a() = (w00 * llColor.a() + w01 * lrColor.a() + w10 * ulColor.a() + w11 * urColor.a()) * wsum;*/
-
-                /*Nearest Neighbor Interpolation*/
-                /*if (px_i >= 0 && px_i < image->s() &&
-                py_i >= 0 && py_i < image->t())
+                if ( src_x < src_extent.xMin() || src_x > src_extent.xMax() || src_y < src_extent.yMin() || src_y > src_extent.yMax() )
                 {
-                //OE_NOTICE << "[osgEarth::GeoData] Sampling pixel " << px << "," << py << std::endl;
-                color = ImageUtils::getColor(image, px_i, py_i);
+                    //If the sample point is outside of the bound of the source extent, increment the pixel and keep looping through.
+                    //OE_WARN << LC << "ERROR: sample point out of bounds: " << src_x << ", " << src_y << std::endl;
+                    pixel++;
+                    continue;
                 }
-                else
-                {
-                OE_NOTICE << "[osgEarth::GeoData] Pixel out of range " << px_i << "," << py_i << "  image is " << image->s() << "x" << image->t() << std::endl;
-                }*/
 
-                /*Bilinear interpolation*/
-                //Check for exact value
-                if ((colMax == colMin) && (rowMax == rowMin))
+                float px = (src_x - src_extent.xMin()) * xfac;
+                float py = (src_y - src_extent.yMin()) * yfac;
+
+                int px_i = osg::clampBetween( (int)osg::round(px), 0, image->s()-1 );
+                int py_i = osg::clampBetween( (int)osg::round(py), 0, image->t()-1 );
+
+                osg::Vec4 color(0,0,0,0);
+
+                // TODO: consider this again later. Causes blockiness.
+                if ( false ) //! isSrcContiguous ) // non-contiguous space- use nearest neighbot
                 {
-                    //OE_NOTICE << "[osgEarth::GeoData] Exact value" << std::endl;
                     color = ia(px_i, py_i);
                 }
-                else if (colMax == colMin)
-                {
-                    //OE_NOTICE << "[osgEarth::GeoData] Vertically" << std::endl;
-                    //Linear interpolate vertically
-                    for (unsigned int i = 0; i < 4; ++i)
-                    {
-                        color[i] = ((float)rowMax - py) * llColor[i] + (py - (float)rowMin) * ulColor[i];
-                    }
-                }
-                else if (rowMax == rowMin)
-                {
-                    //OE_NOTICE << "[osgEarth::GeoData] Horizontally" << std::endl;
-                    //Linear interpolate horizontally
-                    for (unsigned int i = 0; i < 4; ++i)
-                    {
-                        color[i] = ((float)colMax - px) * llColor[i] + (px - (float)colMin) * lrColor[i];
-                    }
-                }
-                else
-                {
-                    //OE_NOTICE << "[osgEarth::GeoData] Bilinear" << std::endl;
-                    //Bilinear interpolate
-                    float col1 = colMax - px, col2 = px - colMin;
-                    float row1 = rowMax - py, row2 = py - rowMin;
-                    for (unsigned int i = 0; i < 4; ++i)
-                    {
-                        float r1 = col1 * llColor[i] + col2 * lrColor[i];
-                        float r2 = col1 * ulColor[i] + col2 * urColor[i];
 
-                        //OE_INFO << "r1, r2 = " << r1 << " , " << r2 << std::endl;
-                        color[i] = row1 * r1 + row2 * r2;
+                else // contiguous space - use bilinear sampling
+                {
+                    int rowMin = osg::maximum((int)floor(py), 0);
+                    int rowMax = osg::maximum(osg::minimum((int)ceil(py), (int)(image->t()-1)), 0);
+                    int colMin = osg::maximum((int)floor(px), 0);
+                    int colMax = osg::maximum(osg::minimum((int)ceil(px), (int)(image->s()-1)), 0);
+
+                    if (rowMin > rowMax) rowMin = rowMax;
+                    if (colMin > colMax) colMin = colMax;
+
+                    osg::Vec4 urColor = ia(colMax, rowMax);
+                    osg::Vec4 llColor = ia(colMin, rowMin);
+                    osg::Vec4 ulColor = ia(colMin, rowMax);
+                    osg::Vec4 lrColor = ia(colMax, rowMin);
+
+                    /*Average Interpolation*/
+                    /*double x_rem = px - (int)px;
+                    double y_rem = py - (int)py;
+
+                    double w00 = (1.0 - y_rem) * (1.0 - x_rem);
+                    double w01 = (1.0 - y_rem) * x_rem;
+                    double w10 = y_rem * (1.0 - x_rem);
+                    double w11 = y_rem * x_rem;
+                    double wsum = w00 + w01 + w10 + w11;
+                    wsum = 1.0/wsum;
+
+                    color.r() = (w00 * llColor.r() + w01 * lrColor.r() + w10 * ulColor.r() + w11 * urColor.r()) * wsum;
+                    color.g() = (w00 * llColor.g() + w01 * lrColor.g() + w10 * ulColor.g() + w11 * urColor.g()) * wsum;
+                    color.b() = (w00 * llColor.b() + w01 * lrColor.b() + w10 * ulColor.b() + w11 * urColor.b()) * wsum;
+                    color.a() = (w00 * llColor.a() + w01 * lrColor.a() + w10 * ulColor.a() + w11 * urColor.a()) * wsum;*/
+
+                    /*Nearest Neighbor Interpolation*/
+                    /*if (px_i >= 0 && px_i < image->s() &&
+                    py_i >= 0 && py_i < image->t())
+                    {
+                    //OE_NOTICE << "[osgEarth::GeoData] Sampling pixel " << px << "," << py << std::endl;
+                    color = ImageUtils::getColor(image, px_i, py_i);
+                    }
+                    else
+                    {
+                    OE_NOTICE << "[osgEarth::GeoData] Pixel out of range " << px_i << "," << py_i << "  image is " << image->s() << "x" << image->t() << std::endl;
+                    }*/
+
+                    /*Bilinear interpolation*/
+                    //Check for exact value
+                    if ((colMax == colMin) && (rowMax == rowMin))
+                    {
+                        //OE_NOTICE << "[osgEarth::GeoData] Exact value" << std::endl;
+                        color = ia(px_i, py_i);
+                    }
+                    else if (colMax == colMin)
+                    {
+                        //OE_NOTICE << "[osgEarth::GeoData] Vertically" << std::endl;
+                        //Linear interpolate vertically
+                        for (unsigned int i = 0; i < 4; ++i)
+                        {
+                            color[i] = ((float)rowMax - py) * llColor[i] + (py - (float)rowMin) * ulColor[i];
+                        }
+                    }
+                    else if (rowMax == rowMin)
+                    {
+                        //OE_NOTICE << "[osgEarth::GeoData] Horizontally" << std::endl;
+                        //Linear interpolate horizontally
+                        for (unsigned int i = 0; i < 4; ++i)
+                        {
+                            color[i] = ((float)colMax - px) * llColor[i] + (px - (float)colMin) * lrColor[i];
+                        }
+                    }
+                    else
+                    {
+                        //OE_NOTICE << "[osgEarth::GeoData] Bilinear" << std::endl;
+                        //Bilinear interpolate
+                        float col1 = colMax - px, col2 = px - colMin;
+                        float row1 = rowMax - py, row2 = py - rowMin;
+                        for (unsigned int i = 0; i < 4; ++i)
+                        {
+                            float r1 = col1 * llColor[i] + col2 * lrColor[i];
+                            float r2 = col1 * ulColor[i] + col2 * urColor[i];
+
+                            //OE_INFO << "r1, r2 = " << r1 << " , " << r2 << std::endl;
+                            color[i] = row1 * r1 + row2 * r2;
+                        }
                     }
                 }
-            }
 
-            writer(color, c, r);
+                writer(color, c, r);
 
 #if 0
-            unsigned char* rgba = const_cast<unsigned char*>(ra.data(c,r,0));
+                unsigned char* rgba = const_cast<unsigned char*>(ra.data(c,r,0));
 
-            rgba[0] = (unsigned char)(color.r() * 255);
-            rgba[1] = (unsigned char)(color.g() * 255);
-            rgba[2] = (unsigned char)(color.b() * 255);
-            rgba[3] = (unsigned char)(color.a() * 255);
+                rgba[0] = (unsigned char)(color.r() * 255);
+                rgba[1] = (unsigned char)(color.g() * 255);
+                rgba[2] = (unsigned char)(color.b() * 255);
+                rgba[3] = (unsigned char)(color.a() * 255);
 #endif
 
-            pixel++;            
+                pixel++;            
+            }
         }
+
+        delete[] srcPointsX;
+
+        return result;
     }
-
-    delete[] srcPointsX;
-
-    return result;
 }
 
 

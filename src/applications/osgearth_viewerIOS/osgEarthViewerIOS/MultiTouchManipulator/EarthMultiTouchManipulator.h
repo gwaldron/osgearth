@@ -23,6 +23,11 @@ namespace osgEarth { namespace Util
 class EarthMultiTouchManipulator : public EarthManipulator
 {
 public:
+    enum GestureState{
+        NO_GESTURE,
+        PINCHING,
+        TWO_DRAGING
+    };
 
     EarthMultiTouchManipulator();
     EarthMultiTouchManipulator( const EarthMultiTouchManipulator& tm);
@@ -42,7 +47,7 @@ protected:
                                                  const osgGA::GUIEventAdapter& ea,
                                                  const double eventTimeDelta);
 
-    bool _pinching;
+    GestureState _gestureState;
     osg::Vec2 _pinchVector;
     osg::ref_ptr<osgGA::GUIEventAdapter::TouchData> _lastTouchData;
 };

@@ -18,6 +18,7 @@
 */
 #include <osgEarthUtil/LinearLineOfSight>
 #include <osgEarth/TerrainEngineNode>
+#include <osgEarth/DPLineSegmentIntersector>
 #include <osgSim/LineOfSight>
 #include <osgUtil/IntersectionVisitor>
 #include <osgUtil/LineSegmentIntersector>
@@ -43,45 +44,6 @@ namespace
     private:
         LinearLineOfSightNode* _los;
     }; 
-
-
-#if 0
-    bool getRelativeWorld(double x, double y, double relativeHeight, MapNode* mapNode, osg::Vec3d& world )
-    {
-        GeoPoint mapPoint(mapNode->getMapSRS(), x, y);
-        osg::Vec3d pos;
-        mapNode->getMap()->toWorldPoint(mapPoint, pos);
-
-        osg::Vec3d up(0,0,1);
-        const osg::EllipsoidModel* em = mapNode->getMap()->getProfile()->getSRS()->getEllipsoid();
-        if (em)
-        {
-            up = em->computeLocalUpVector( world.x(), world.y(), world.z());
-        }    
-        up.normalize();
-
-        double segOffset = 50000;
-
-        osg::Vec3d start = pos + (up * segOffset);
-        osg::Vec3d end = pos - (up * segOffset);
-        
-        osgUtil::LineSegmentIntersector* i = new osgUtil::LineSegmentIntersector( start, end );
-        
-        osgUtil::IntersectionVisitor iv;    
-        iv.setIntersector( i );
-        mapNode->getTerrainEngine()->accept( iv );
-
-        osgUtil::LineSegmentIntersector::Intersections& results = i->getIntersections();
-        if ( !results.empty() )
-        {
-            const osgUtil::LineSegmentIntersector::Intersection& result = *results.begin();
-            world = result.getWorldIntersectPoint();
-            world += up * relativeHeight;
-            return true;
-        }
-        return false;    
-    }
-#endif
 
 
     osg::Vec3d getNodeCenter(osg::Node* node)
@@ -114,16 +76,16 @@ namespace
 LinearLineOfSightNode::LinearLineOfSightNode(osgEarth::MapNode *mapNode):
 LineOfSightNode(),
 _mapNode(mapNode),
-_start(0,0,0),
-_end(0,0,0),
-_hit(0,0,0),
+//_start(0,0,0),
+//_end(0,0,0),
+//_hit(0,0,0),
 _hasLOS( true ),
 _clearNeeded( false ),
 _goodColor(0.0f, 1.0f, 0.0f, 1.0f),
 _badColor(1.0f, 0.0f, 0.0f, 1.0f),
 _displayMode( LineOfSight::MODE_SPLIT ),
-_startAltitudeMode( ALTMODE_ABSOLUTE ),
-_endAltitudeMode( ALTMODE_ABSOLUTE ),
+//_startAltitudeMode( ALTMODE_ABSOLUTE ),
+//_endAltitudeMode( ALTMODE_ABSOLUTE ),
 _terrainOnly( false )
 {
     compute(getNode());
@@ -133,20 +95,20 @@ _terrainOnly( false )
 
 
 LinearLineOfSightNode::LinearLineOfSightNode(osgEarth::MapNode* mapNode, 
-                                             const osg::Vec3d& start, 
-                                             const osg::Vec3d& end):
+                                             const GeoPoint&    start,
+                                             const GeoPoint&    end ) :
 LineOfSightNode(),
 _mapNode(mapNode),
 _start(start),
 _end(end),
-_hit(0,0,0),
+//_hit(0,0,0),
 _hasLOS( true ),
 _clearNeeded( false ),
 _goodColor(0.0f, 1.0f, 0.0f, 1.0f),
 _badColor(1.0f, 0.0f, 0.0f, 1.0f),
 _displayMode( LineOfSight::MODE_SPLIT ),
-_startAltitudeMode( ALTMODE_ABSOLUTE ),
-_endAltitudeMode( ALTMODE_ABSOLUTE ),
+//_startAltitudeMode( ALTMODE_ABSOLUTE ),
+//_endAltitudeMode( ALTMODE_ABSOLUTE ),
 _terrainOnly( false )
 {
     compute(getNode());    
@@ -165,7 +127,33 @@ LinearLineOfSightNode::subscribeToTerrain()
 LinearLineOfSightNode::~LinearLineOfSightNode()
 {
     //Unsubscribe to the terrain callback
-    _mapNode->getTerrain()->removeTerrainCallback( _terrainChangedCallback.get() );
+    setMapNode( 0L );
+}
+
+void
+LinearLineOfSightNode::setMapNode( MapNode* mapNode )
+{
+    MapNode* oldMapNode = getMapNode();
+
+    if ( oldMapNode != mapNode )
+    {
+        if ( oldMapNode )
+        {
+            if ( _terrainChangedCallback.valid() )
+            {
+                oldMapNode->getTerrain()->removeTerrainCallback( _terrainChangedCallback.get() );
+            }
+        }
+
+        _mapNode = mapNode;
+
+        if ( _mapNode.valid() && _terrainChangedCallback.valid() )
+        {
+            _mapNode->getTerrain()->addTerrainCallback( _terrainChangedCallback.get() );
+        }
+
+        compute( getNode() );
+    }
 }
 
 void
@@ -181,14 +169,14 @@ LinearLineOfSightNode::terrainChanged( const osgEarth::TileKey& tileKey, osg::No
     compute( group, true );
 }
 
-const osg::Vec3d&
+const GeoPoint&
 LinearLineOfSightNode::getStart() const
 {
     return _start;
 }
 
 void
-LinearLineOfSightNode::setStart(const osg::Vec3d& start)
+LinearLineOfSightNode::setStart(const GeoPoint& start)
 {
     if (_start != start)
     {
@@ -197,14 +185,14 @@ LinearLineOfSightNode::setStart(const osg::Vec3d& start)
     }
 }
 
-const osg::Vec3d&
+const GeoPoint&
 LinearLineOfSightNode::getEnd() const
 {
     return _end;
 }
 
 void
-LinearLineOfSightNode::setEnd(const osg::Vec3d& end)
+LinearLineOfSightNode::setEnd(const GeoPoint& end)
 {
     if (_end != end)
     {
@@ -231,7 +219,7 @@ LinearLineOfSightNode::getHitWorld() const
     return _hitWorld;
 }
 
-const osg::Vec3d&
+const GeoPoint&
 LinearLineOfSightNode::getHit() const
 {
     return _hit;
@@ -241,38 +229,6 @@ bool
 LinearLineOfSightNode::getHasLOS() const
 {
     return _hasLOS;
-}
-
-AltitudeMode
-LinearLineOfSightNode::getStartAltitudeMode() const
-{
-    return _startAltitudeMode;
-}
-
-AltitudeMode
-LinearLineOfSightNode::getEndAltitudeMode() const
-{
-    return _endAltitudeMode;
-}
-
-void
-LinearLineOfSightNode::setStartAltitudeMode( AltitudeMode mode )
-{
-    if (_startAltitudeMode != mode)
-    {
-        _startAltitudeMode = mode;
-        compute(getNode());
-    }
-}
-
-void
-LinearLineOfSightNode::setEndAltitudeMode( AltitudeMode mode )
-{
-    if (_endAltitudeMode != mode)
-    {
-        _endAltitudeMode = mode;
-        compute(getNode());
-    }
 }
 
 void
@@ -292,6 +248,7 @@ LinearLineOfSightNode::removeChangedCallback( LOSChangedCallback* callback )
 }
 
 
+#if 0
 bool
 LinearLineOfSightNode::computeLOS( osgEarth::MapNode* mapNode, const osg::Vec3d& start, const osg::Vec3d& end, AltitudeMode altitudeMode, osg::Vec3d& hit )
 {
@@ -301,19 +258,6 @@ LinearLineOfSightNode::computeLOS( osgEarth::MapNode* mapNode, const osg::Vec3d&
     osg::Vec3d startWorld, endWorld;
     GeoPoint(mapSRS, start, altitudeMode).toWorld( startWorld, mapNode->getTerrain() );
     GeoPoint(mapSRS, end,   altitudeMode).toWorld( endWorld,   mapNode->getTerrain() );
-
-#if 0
-    if (altitudeMode == ALTMODE_ABSOLUTE)
-    {
-        mapNode->getMap()->toWorldPoint( GeoPoint(mapSRS, start, ALTMODE_ABSOLUTE), startWorld );
-        mapNode->getMap()->toWorldPoint( GeoPoint(mapSRS, end,   ALTMODE_ABSOLUTE), endWorld );
-    }
-    else
-    {
-        getRelativeWorld(start.x(), start.y(), start.z(), mapNode, startWorld);
-        getRelativeWorld(end.x(), end.y(), end.z(), mapNode, endWorld);
-    }
-#endif
     
     osgSim::LineOfSight los;
     los.setDatabaseCacheReadCallback(0);
@@ -331,45 +275,37 @@ LinearLineOfSightNode::computeLOS( osgEarth::MapNode* mapNode, const osg::Vec3d&
     }
     return true;
 }
-
+#endif
 
 
 void
 LinearLineOfSightNode::compute(osg::Node* node, bool backgroundThread)
 {
+    if ( !getMapNode() )
+        return;
+
     if (_start != _end)
     {
-      const SpatialReference* mapSRS = _mapNode->getMapSRS();
+      const SpatialReference* mapSRS = getMapNode()->getMapSRS();
+      const Terrain* terrain = getMapNode()->getTerrain();
 
       //Computes the LOS and redraws the scene
-      GeoPoint(mapSRS, _start, _startAltitudeMode).toWorld( _startWorld, _mapNode->getTerrain() );
-      GeoPoint(mapSRS, _end,   _endAltitudeMode).toWorld( _endWorld, _mapNode->getTerrain() );
 
-#if 0
-      if (_startAltitudeMode == ALTMODE_ABSOLUTE)
-          _mapNode->getMap()->toWorldPoint( GeoPoint(mapSRS,_start,ALTMODE_ABSOLUTE), _startWorld );
-      else
-          getRelativeWorld(_start.x(), _start.y(), _start.z(), _mapNode.get(), _startWorld);
+      _start.transform(mapSRS).toWorld( _startWorld, terrain );
+      _end.transform(mapSRS).toWorld( _endWorld, terrain );
 
-      if (_endAltitudeMode == ALTMODE_ABSOLUTE)
-          _mapNode->getMap()->toWorldPoint( GeoPoint(mapSRS,_end,ALTMODE_ABSOLUTE), _endWorld );
-      else
-          getRelativeWorld(_end.x(), _end.y(), _end.z(), _mapNode.get(), _endWorld);
-#endif
-      
-      osgSim::LineOfSight los;
-      los.setDatabaseCacheReadCallback(0);
-      unsigned int index = los.addLOS(_startWorld, _endWorld);
-      los.computeIntersections(node);
-      osgSim::LineOfSight::Intersections hits = los.getIntersections(0);    
-      if (hits.size() > 0)
+
+      DPLineSegmentIntersector* lsi = new DPLineSegmentIntersector(_startWorld, _endWorld);
+      osgUtil::IntersectionVisitor iv( lsi );
+
+      node->accept( iv );
+
+      DPLineSegmentIntersector::Intersections& hits = lsi->getIntersections();
+      if ( hits.size() > 0 )
       {
           _hasLOS = false;
-          _hitWorld = *hits.begin();
-          GeoPoint mapHit;
-          mapHit.fromWorld( _mapNode->getMapSRS(), _hitWorld );
-          //_mapNode->getMap()->worldPointToMapPoint( _hitWorld, mapHit);
-          _hit = mapHit.vec3d();
+          _hitWorld = hits.begin()->getWorldIntersectPoint();
+          _hit.fromWorld( mapSRS, _hitWorld );
       }
       else
       {
@@ -530,7 +466,10 @@ LinearLineOfSightNode::setTerrainOnly( bool terrainOnly )
 osg::Node*
 LinearLineOfSightNode::getNode()
 {
-    if (_terrainOnly) return _mapNode->getTerrainEngine();
+    if (_terrainOnly && _mapNode.valid() )
+    {
+        return _mapNode->getTerrainEngine();
+    }
     return _mapNode.get();
 }
 
@@ -567,26 +506,27 @@ LineOfSightTether::operator()(osg::Node* node, osg::NodeVisitor* nv)
     {
         LinearLineOfSightNode* los = static_cast<LinearLineOfSightNode*>(node);
 
-        if (_startNode.valid())
+        if ( los->getMapNode() )
         {
-            osg::Vec3d worldStart = getNodeCenter(_startNode);
+            if (_startNode.valid())
+            {
+                osg::Vec3d worldStart = getNodeCenter(_startNode);
 
-            //Convert to mappoint since that is what LOS expects
-            GeoPoint mapStart;
-            mapStart.fromWorld( los->getMapNode()->getMapSRS(), worldStart );
-            //los->getMapNode()->getMap()->worldPointToMapPoint( worldStart, mapStart );
-            los->setStart( mapStart.vec3d() );
-        }
+                //Convert to mappoint since that is what LOS expects
+                GeoPoint mapStart;
+                mapStart.fromWorld( los->getMapNode()->getMapSRS(), worldStart );
+                los->setStart( mapStart ); //.vec3d() );
+            }
 
-        if (_endNode.valid())
-        {
-            osg::Vec3d worldEnd = getNodeCenter( _endNode );
+            if (_endNode.valid())
+            {
+                osg::Vec3d worldEnd = getNodeCenter( _endNode );
 
-            //Convert to mappoint since that is what LOS expects
-            GeoPoint mapEnd;
-            mapEnd.fromWorld( los->getMapNode()->getMapSRS(), worldEnd );
-            //los->getMapNode()->getMap()->worldPointToMapPoint( worldEnd, mapEnd );
-            los->setEnd( mapEnd.vec3d() );
+                //Convert to mappoint since that is what LOS expects
+                GeoPoint mapEnd;
+                mapEnd.fromWorld( los->getMapNode()->getMapSRS(), worldEnd );
+                los->setEnd( mapEnd ); //.vec3d() );
+            }
         }
     }
     traverse(node, nv);
@@ -608,21 +548,26 @@ namespace
 
           virtual void onPositionChanged(const Dragger* sender, const osgEarth::GeoPoint& position)
           {   
-              GeoPoint location(position);
-              if ((_start ? _los->getStartAltitudeMode() : _los->getEndAltitudeMode()) == ALTMODE_RELATIVE)
-              {
-                  double z = _start ? _los->getStart().z() : _los->getEnd().z();
-                  location.z() = z;              
-              }
-
-              if (_start)
-              {
-                  _los->setStart( location.vec3d() );
-              }
+              if ( _start )
+                  _los->setStart( position );
               else
-              {
-                  _los->setEnd( location.vec3d() );
-              }
+                  _los->setEnd( position );
+
+              //GeoPoint location(position);
+              //if ((_start ? _los->getStartAltitudeMode() : _los->getEndAltitudeMode()) == ALTMODE_RELATIVE)
+              //{
+              //    double z = _start ? _los->getStart().z() : _los->getEnd().z();
+              //    location.z() = z;              
+              //}
+
+              //if (_start)
+              //{
+              //    _los->setStart( location.vec3d() );
+              //}
+              //else
+              //{
+              //    _los->setEnd( location.vec3d() );
+              //}
           }
 
           
@@ -655,7 +600,6 @@ namespace
 LinearLineOfSightEditor::LinearLineOfSightEditor(LinearLineOfSightNode* los):
 _los(los)
 {
-
     _startDragger  = new SphereDragger( _los->getMapNode());
     _startDragger->addPositionChangedCallback(new LOSDraggerCallback(_los, true ) );    
     static_cast<SphereDragger*>(_startDragger)->setColor(osg::Vec4(0,0,1,0));
@@ -681,13 +625,16 @@ LinearLineOfSightEditor::~LinearLineOfSightEditor()
 void
 LinearLineOfSightEditor::updateDraggers()
 {
-    osg::Vec3d start = _los->getStartWorld();           
-    GeoPoint startMap;
-    startMap.fromWorld(_los->getMapNode()->getMapSRS(), start);
-    _startDragger->setPosition( startMap, false );
+    if ( _los->getMapNode() )
+    {
+        osg::Vec3d start = _los->getStartWorld();           
+        GeoPoint startMap;
+        startMap.fromWorld(_los->getMapNode()->getMapSRS(), start);
+        _startDragger->setPosition( startMap, false );
 
-    osg::Vec3d end = _los->getEndWorld();           
-    GeoPoint endMap;
-    endMap.fromWorld(_los->getMapNode()->getMapSRS(), end);    
-    _endDragger->setPosition( endMap, false );
+        osg::Vec3d end = _los->getEndWorld();           
+        GeoPoint endMap;
+        endMap.fromWorld(_los->getMapNode()->getMapSRS(), end);    
+        _endDragger->setPosition( endMap, false );
+    }
 }

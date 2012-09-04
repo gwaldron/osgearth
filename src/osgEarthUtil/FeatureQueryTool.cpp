@@ -51,6 +51,12 @@ FeatureQueryTool::addCallback( FeatureQueryTool::Callback* cb )
         _callbacks.push_back( cb );
 }
 
+void
+FeatureQueryTool::setMapNode( MapNode* mapNode )
+{
+    _mapNode = mapNode;
+}
+
 bool
 FeatureQueryTool::handle( const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& aa )
 {
@@ -70,13 +76,13 @@ FeatureQueryTool::handle( const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdap
             fabs(ea.getY()-_mouseDownY) <= 3.0;
     }
 
-    if ( attempt )
+    if ( attempt && getMapNode() )
     {
         osg::View* view = aa.asView();
 
         Picker picker(
             dynamic_cast<osgViewer::View*>(view),
-            _mapNode->getModelLayerGroup() );
+            getMapNode()->getModelLayerGroup() );
 
         Picker::Hits hits;
 

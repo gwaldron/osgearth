@@ -96,6 +96,7 @@ namespace osgEarth
          * Gets an interface for querying the in-memory terrain scene graph directly.
          */
         Terrain* getTerrain();
+        const Terrain* getTerrain() const;
 
         /**
          * Finds the topmost Map node in the specified scene graph, or returns NULL if
@@ -118,6 +119,11 @@ namespace osgEarth
          * Accesses the group node that contains all the ModelLayers.
          */
         osg::Group* getModelLayerGroup() const;
+
+        /**
+         * Accesses the root node for a specific ModelLayer.
+         */
+        osg::Node* getModelLayerNode( ModelLayer* layer ) const;
 
         /**
          * Adds a node that decorates the terrain groups

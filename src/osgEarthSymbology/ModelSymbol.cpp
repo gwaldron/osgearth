@@ -36,9 +36,11 @@ ModelSymbol::getConfig() const
 {
     Config conf = InstanceSymbol::getConfig();
     conf.key() = "model";
-    conf.addObjIfSet( "heading", _heading );
-    conf.addObjIfSet( "pitch",   _pitch );
-    conf.addObjIfSet( "roll",    _roll );
+    conf.addObjIfSet( "heading",   _heading );
+    conf.addObjIfSet( "pitch",     _pitch );
+    conf.addObjIfSet( "roll",      _roll );
+
+    conf.addIfSet   ( "alias_map", _uriAliasMap );
 
     conf.addNonSerializable( "ModelSymbol::node", _node.get() );
     return conf;
@@ -50,6 +52,9 @@ ModelSymbol::mergeConfig( const Config& conf )
     conf.getObjIfSet( "heading", _heading );
     conf.getObjIfSet( "pitch",   _pitch );
     conf.getObjIfSet( "roll",    _roll );
+
+    conf.getIfSet   ( "alias_map", _uriAliasMap );
+
     _node = conf.getNonSerializable<osg::Node>( "ModelSymbol::node" );
 }
 

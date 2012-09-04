@@ -97,10 +97,10 @@ namespace
                                 (llExt.yMax() + llExt.yMin()) / 2.0,
                                 0L);
 
-				  double rangeFactor = llExt.yMax() != llExt.yMin() ? llExt.yMax() - llExt.yMin() : llExt.xMax() - llExt.xMin();
-				  double range = ((0.5 * rangeFactor) / 0.267949849) * 111000.0;
-				  if (range == 0.0)
-					  range = 20000000.0;
+          double rangeFactor = llExt.yMax() != llExt.yMin() ? llExt.yMax() - llExt.yMin() : llExt.xMax() - llExt.xMin();
+          double range = ((0.5 * rangeFactor) / 0.267949849) * 111000.0;
+          if (range == 0.0)
+              range = 20000000.0;
 
           _doubleClick = new SetViewpointAction(osgEarth::Viewpoint(focalPoint, 0.0, -90.0, range), views);
         }
@@ -109,7 +109,7 @@ namespace
           osgEarth::ModelLayer* model = dynamic_cast<osgEarth::ModelLayer*>(_layer.get());
           if (model && _map.valid())
           {
-            osg::ref_ptr<osg::Node> temp = model->getOrCreateNode();
+            osg::ref_ptr<osg::Node> temp = model->createSceneGraph( _map.get(), _map->getDBOptions(), 0L );
             if (temp.valid())
             {
               osg::NodePathList nodePaths = temp->getParentalNodePaths();

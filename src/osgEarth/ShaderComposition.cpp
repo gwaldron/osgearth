@@ -108,8 +108,9 @@ const osg::StateAttribute::Type VirtualProgram::SA_TYPE = osg::StateAttribute::P
 
 
 VirtualProgram::VirtualProgram( unsigned mask ) : 
-_mask   ( mask ),
-_inherit( true )
+_mask              ( mask ),
+_inherit           ( true ),
+_useLightingShaders( true )
 {
     // because we sometimes update/change the attribute's members from within the apply() method
     this->setDataVariance( osg::Object::DYNAMIC );
@@ -119,16 +120,21 @@ _inherit( true )
     {
         s_dumpShaders = true;
     }
+
+    // a template object to hold program data (so we don't have to dupliate all the 
+    // osg::Program methods..)
+    _template = new osg::Program();
 }
 
 
 VirtualProgram::VirtualProgram(const VirtualProgram& rhs, const osg::CopyOp& copyop ) :
 osg::StateAttribute( rhs, copyop ),
 //osg::Program( rhs, copyop ),
-_shaderMap  ( rhs._shaderMap ),
-_mask       ( rhs._mask ),
-_functions  ( rhs._functions ),
-_inherit    ( rhs._inherit )
+_shaderMap         ( rhs._shaderMap ),
+_mask              ( rhs._mask ),
+_functions         ( rhs._functions ),
+_inherit           ( rhs._inherit ),
+_useLightingShaders( rhs._useLightingShaders )
 {
     //nop
 }
@@ -170,6 +176,18 @@ VirtualProgram::compare(const osg::StateAttribute& sa) const
     }
 
     return 0; // passed all the above comparison macros, must be equal.
+}
+
+void
+VirtualProgram::addBindAttribLocation( const std::string& name, GLuint index )
+{
+    _attribBindingList[name] = index;
+}
+
+void
+VirtualProgram::removeBindAttribLocation( const std::string& name )
+{
+    _attribBindingList.erase(name);
 }
 
 
@@ -295,6 +313,8 @@ VirtualProgram::installDefaultColoringAndLightingShaders( unsigned numTextures )
 
     this->setShader( sf->createDefaultColoringFragmentShader(numTextures) );
     this->setShader( sf->createDefaultLightingFragmentShader() );
+
+    setUseLightingShaders( true );
 }
 
 
@@ -305,6 +325,8 @@ VirtualProgram::installDefaultLightingShaders()
 
     this->setShader( sf->createDefaultLightingVertexShader() );
     this->setShader( sf->createDefaultLightingFragmentShader() );
+
+    setUseLightingShaders( true );
 }
 
 
@@ -324,6 +346,18 @@ VirtualProgram::setInheritShaders( bool value )
     if ( _inherit != value )
     {
         _inherit = value;
+        _programCache.clear();
+        _accumulatedFunctions.clear();
+    }
+}
+
+
+void
+VirtualProgram::setUseLightingShaders( bool value )
+{
+    if ( _useLightingShaders != value )
+    {
+        _useLightingShaders = value;
         _programCache.clear();
         _accumulatedFunctions.clear();
     }
@@ -363,6 +397,7 @@ namespace
                 else if (
                     tokens[0] == "#extension"   ||
                     tokens[0] == "precision"    ||
+                    tokens[0] == "struct"       ||
                     tokens[0] == "varying"      ||
                     tokens[0] == "uniform"      ||
                     tokens[0] == "attribute")
@@ -378,84 +413,108 @@ namespace
             }
         }
     }
+}
 
 
-    void addShadersToProgram( const VirtualProgram::ShaderVector& shaders, osg::Program* program )
-    {
+void 
+VirtualProgram::addShadersToProgram(const ShaderVector&      shaders, 
+                                    const AttribBindingList& attribBindings,
+                                    osg::Program*            program )
+{
 #ifdef MERGE_SHADERS
-        bool mergeShaders = true;
+    bool mergeShaders = true;
 #else
-        bool mergeShaders = false;
+    bool mergeShaders = false;
 #endif
 
-        if ( mergeShaders )
+    if ( mergeShaders )
+    {
+        unsigned          vertVersion = 0;
+        HeaderMap         vertHeaders;
+        std::stringstream vertBody;
+
+        unsigned          fragVersion = 0;
+        HeaderMap         fragHeaders;
+        std::stringstream fragBody;
+
+        // parse the shaders, combining header lines and finding the highest version:
+        for( VirtualProgram::ShaderVector::const_iterator i = shaders.begin(); i != shaders.end(); ++i )
         {
-            unsigned          vertVersion = 0;
-            HeaderMap         vertHeaders;
-            std::stringstream vertBody;
-
-            unsigned          fragVersion = 0;
-            HeaderMap         fragHeaders;
-            std::stringstream fragBody;
-
-            // parse the shaders, combining header lines and finding the highest version:
-            for( VirtualProgram::ShaderVector::const_iterator i = shaders.begin(); i != shaders.end(); ++i )
+            osg::Shader* s = i->get();
+            if ( s->getType() == osg::Shader::VERTEX )
             {
-                osg::Shader* s = i->get();
-                if ( s->getType() == osg::Shader::VERTEX )
-                {
-                    parseShaderForMerging( s->getShaderSource(), vertVersion, vertHeaders, vertBody );
-                }
-                else if ( s->getType() == osg::Shader::FRAGMENT )
-                {
-                    parseShaderForMerging( s->getShaderSource(), fragVersion, fragHeaders, fragBody );
-                }
+                parseShaderForMerging( s->getShaderSource(), vertVersion, vertHeaders, vertBody );
             }
-
-            // write out the merged shader code:
-            std::string vertBodyText;
-            vertBodyText = vertBody.str();
-            std::stringstream vertShaderBuf;
-            if ( vertVersion > 0 )
-                vertShaderBuf << "#version " << vertVersion << "\n";
-            for( HeaderMap::const_iterator h = vertHeaders.begin(); h != vertHeaders.end(); ++h )
-                vertShaderBuf << h->second << "\n";
-            vertShaderBuf << vertBodyText << "\n";
-            vertBodyText = vertShaderBuf.str();
-
-            std::string fragBodyText;
-            fragBodyText = fragBody.str();
-            std::stringstream fragShaderBuf;
-            if ( fragVersion > 0 )
-                fragShaderBuf << "#version " << fragVersion << "\n";
-            for( HeaderMap::const_iterator h = fragHeaders.begin(); h != fragHeaders.end(); ++h )
-                fragShaderBuf << h->second << "\n";
-            fragShaderBuf << fragBodyText << "\n";
-            fragBodyText = fragShaderBuf.str();
-
-            // add them to the program.
-            program->addShader( new osg::Shader(osg::Shader::VERTEX, vertBodyText) );
-            program->addShader( new osg::Shader(osg::Shader::FRAGMENT, fragBodyText) );
-
-            OE_TEST << LC 
-                << "\nMERGED VERTEX SHADER: \n\n" << vertBodyText << "\n\n"
-                << "MERGED FRAGMENT SHADER: \n\n" << fragBodyText << "\n" << std::endl;
-        }
-        else
-        {
-            for( VirtualProgram::ShaderVector::const_iterator i = shaders.begin(); i != shaders.end(); ++i )
+            else if ( s->getType() == osg::Shader::FRAGMENT )
             {
-                program->addShader( i->get() );
-                if ( s_dumpShaders )
-                    OE_NOTICE << LC << "SHADER " << i->get()->getName() << ":\n" << i->get()->getShaderSource() << "\n" << std::endl;
+                parseShaderForMerging( s->getShaderSource(), fragVersion, fragHeaders, fragBody );
             }
         }
+
+        // write out the merged shader code:
+        std::string vertBodyText;
+        vertBodyText = vertBody.str();
+        std::stringstream vertShaderBuf;
+        if ( vertVersion > 0 )
+            vertShaderBuf << "#version " << vertVersion << "\n";
+        for( HeaderMap::const_iterator h = vertHeaders.begin(); h != vertHeaders.end(); ++h )
+            vertShaderBuf << h->second << "\n";
+        vertShaderBuf << vertBodyText << "\n";
+        vertBodyText = vertShaderBuf.str();
+
+        std::string fragBodyText;
+        fragBodyText = fragBody.str();
+        std::stringstream fragShaderBuf;
+        if ( fragVersion > 0 )
+            fragShaderBuf << "#version " << fragVersion << "\n";
+        for( HeaderMap::const_iterator h = fragHeaders.begin(); h != fragHeaders.end(); ++h )
+            fragShaderBuf << h->second << "\n";
+        fragShaderBuf << fragBodyText << "\n";
+        fragBodyText = fragShaderBuf.str();
+
+        // add them to the program.
+        program->addShader( new osg::Shader(osg::Shader::VERTEX, vertBodyText) );
+        program->addShader( new osg::Shader(osg::Shader::FRAGMENT, fragBodyText) );
+
+        OE_TEST << LC 
+            << "\nMERGED VERTEX SHADER: \n\n" << vertBodyText << "\n\n"
+            << "MERGED FRAGMENT SHADER: \n\n" << fragBodyText << "\n" << std::endl;
+    }
+    else
+    {
+        for( VirtualProgram::ShaderVector::const_iterator i = shaders.begin(); i != shaders.end(); ++i )
+        {
+            program->addShader( i->get() );
+            if ( s_dumpShaders )
+                OE_NOTICE << LC << "SHADER " << i->get()->getName() << ":\n" << i->get()->getShaderSource() << "\n" << std::endl;
+        }
+    }
+
+    // add the attribute bindings
+    for( VirtualProgram::AttribBindingList::const_iterator abl = attribBindings.begin(); abl != attribBindings.end(); ++abl )
+    {
+        program->addBindAttribLocation( abl->first, abl->second );
     }
 }
 
 
+void
+VirtualProgram::addTemplateDataToProgram( osg::Program* program )
+{
+    const osg::Program::FragDataBindingList& fbl = _template->getFragDataBindingList();
+    for( osg::Program::FragDataBindingList::const_iterator i = fbl.begin(); i != fbl.end(); ++i )
+        program->addBindFragDataLocation( i->first, i->second );
+
+    const osg::Program::UniformBlockBindingList& ubl = _template->getUniformBlockBindingList();
+    for( osg::Program::UniformBlockBindingList::const_iterator i = ubl.begin(); i != ubl.end(); ++i )
+        program->addBindUniformBlock( i->first, i->second );
+}
+
+
 osg::Program*
-VirtualProgram::buildProgram( osg::State& state, ShaderMap& accumShaderMap )
+VirtualProgram::buildProgram(osg::State&        state, 
+                             ShaderMap&         accumShaderMap,
+                             AttribBindingList& accumAttribBindings)
 {
     OE_TEST << LC << "Building new Program for VP " << getName() << std::endl;
 
@@ -467,12 +526,12 @@ VirtualProgram::buildProgram( osg::State& state, ShaderMap& accumShaderMap )
 
     // create the MAINs
     osg::Shader* old_vert_main = getShader( "osgearth_vert_main" );
-    osg::ref_ptr<osg::Shader> vert_main = sf->createVertexShaderMain( _accumulatedFunctions );
+    osg::ref_ptr<osg::Shader> vert_main = sf->createVertexShaderMain( _accumulatedFunctions, _useLightingShaders );
     setShader( "osgearth_vert_main", vert_main.get() );
     addToAccumulatedMap( accumShaderMap, "osgearth_vert_main", ShaderEntry(vert_main.get(), osg::StateAttribute::ON) );
 
     osg::Shader* old_frag_main = getShader( "osgearth_frag_main" );
-    osg::ref_ptr<osg::Shader> frag_main = sf->createFragmentShaderMain( _accumulatedFunctions );
+    osg::ref_ptr<osg::Shader> frag_main = sf->createFragmentShaderMain( _accumulatedFunctions, _useLightingShaders );
     setShader( "osgearth_frag_main", frag_main );
     addToAccumulatedMap( accumShaderMap, "osgearth_frag_main", ShaderEntry(frag_main.get(), osg::StateAttribute::ON) );
 
@@ -489,7 +548,8 @@ VirtualProgram::buildProgram( osg::State& state, ShaderMap& accumShaderMap )
 
     osg::Program* program = new osg::Program();
     program->setName(getName());
-    addShadersToProgram( vec, program );
+    addShadersToProgram( vec, accumAttribBindings, program );
+    addTemplateDataToProgram( program );
 
 
     // Since we replaced the "mains", we have to go through the cache and update all its
@@ -517,7 +577,8 @@ VirtualProgram::buildProgram( osg::State& state, ShaderMap& accumShaderMap )
 
             osg::Program* newProgram = new osg::Program();
             newProgram->setName( m->second->getName() );
-            addShadersToProgram( original, newProgram );
+            addShadersToProgram( original, m->second->getAttribBindingList(), newProgram );
+            addTemplateDataToProgram( newProgram );
 
 #if 0
             osg::Program* p = m->second.get();
@@ -569,7 +630,8 @@ VirtualProgram::apply( osg::State& state ) const
     }
 
     // first, find and collect all the VirtualProgram attributes:
-    ShaderMap accumShaderMap;
+    ShaderMap         accumShaderMap;
+    AttribBindingList accumAttribBindings;
     
     if ( _inherit )
     {
@@ -595,6 +657,9 @@ VirtualProgram::apply( osg::State& state ) const
                     {
                         addToAccumulatedMap( accumShaderMap, i->first, i->second );
                     }
+
+                    const AttribBindingList& abl = vp->getAttribBindingList();
+                    accumAttribBindings.insert( abl.begin(), abl.end() );
                 }
             }
         }
@@ -605,12 +670,18 @@ VirtualProgram::apply( osg::State& state ) const
     {
         addToAccumulatedMap( accumShaderMap, i->first, i->second );
     }
+    const AttribBindingList& abl = this->getAttribBindingList();
+    accumAttribBindings.insert( abl.begin(), abl.end() );
     
     
     if ( accumShaderMap.size() )
     {
         // next, assemble a list of the shaders in the map so we can use it as our
         // program cache key.
+        // (Note: at present, the "cache key" does not include any information on the vertex
+        // attribute bindings. Technically it should, but in practice this might not be an
+        // issue; it is unlikely one would have two identical shader programs with different
+        // bindings.)
         ShaderVector vec;
         vec.reserve( accumShaderMap.size() );
         for( ShaderMap::iterator i = accumShaderMap.begin(); i != accumShaderMap.end(); ++i )
@@ -647,7 +718,7 @@ VirtualProgram::apply( osg::State& state ) const
             else
             {
                 VirtualProgram* nc = const_cast<VirtualProgram*>(this);
-                program = nc->buildProgram( state, accumShaderMap );
+                program = nc->buildProgram( state, accumShaderMap, accumAttribBindings );
             }
         }
         
@@ -731,7 +802,8 @@ ShaderFactory::getSamplerName( unsigned unit ) const
 
 
 osg::Shader*
-ShaderFactory::createVertexShaderMain( const FunctionLocationMap& functions ) const
+ShaderFactory::createVertexShaderMain(const FunctionLocationMap& functions,
+                                      bool  useLightingShaders ) const
 {
     FunctionLocationMap::const_iterator i = functions.find( LOCATION_VERTEX_PRE_TEXTURING );
     const OrderedFunctionMap* preTexture = i != functions.end() ? &i->second : 0L;
@@ -747,10 +819,10 @@ ShaderFactory::createVertexShaderMain( const FunctionLocationMap& functions ) co
 #ifdef OSG_GLES2_AVAILABLE
         << "precision mediump float;\n"
 #endif
-        << "void osgearth_vert_setupColoring(); \n"
-        << "void osgearth_vert_setupLighting(); \n"
-        << "uniform float osgearth_CameraElevation; \n"
-        << "varying float osgearth_CameraRange; \n";
+        << "void osgearth_vert_setupColoring(); \n";
+
+    if ( useLightingShaders )
+        buf << "void osgearth_vert_setupLighting(); \n";
 
     if ( preTexture )
         for( OrderedFunctionMap::const_iterator i = preTexture->begin(); i != preTexture->end(); ++i )
@@ -766,11 +838,7 @@ ShaderFactory::createVertexShaderMain( const FunctionLocationMap& functions ) co
 
     buf << "void main(void) \n"
         << "{ \n"
-        << "    gl_Position = gl_ModelViewProjectionMatrix * gl_Vertex; \n"
-        //<< "    gl_FrontColor = gl_Color; \n"
-
-        << "    vec4 position4 = gl_ModelViewMatrix * gl_Vertex; \n"
-        << "    osgearth_CameraRange = length( position4.xyz ); \n";
+        << "    gl_Position = gl_ModelViewProjectionMatrix * gl_Vertex; \n";
 
     if ( preTexture )
         for( OrderedFunctionMap::const_iterator i = preTexture->begin(); i != preTexture->end(); ++i )
@@ -782,7 +850,8 @@ ShaderFactory::createVertexShaderMain( const FunctionLocationMap& functions ) co
         for( OrderedFunctionMap::const_iterator i = preLighting->begin(); i != preLighting->end(); ++i )
             buf << "    " << i->second << "(); \n";
 
-    buf << "    osgearth_vert_setupLighting(); \n";
+    if ( useLightingShaders )
+        buf << "    osgearth_vert_setupLighting(); \n";
     
     if ( postLighting )
         for( OrderedFunctionMap::const_iterator i = postLighting->begin(); i != postLighting->end(); ++i )
@@ -798,7 +867,8 @@ ShaderFactory::createVertexShaderMain( const FunctionLocationMap& functions ) co
 
 
 osg::Shader*
-ShaderFactory::createFragmentShaderMain( const FunctionLocationMap& functions ) const
+ShaderFactory::createFragmentShaderMain(const FunctionLocationMap& functions,
+                                        bool  useLightingShaders ) const
 {
     FunctionLocationMap::const_iterator i = functions.find( LOCATION_FRAGMENT_PRE_TEXTURING );
     const OrderedFunctionMap* preTexture = i != functions.end() ? &i->second : 0L;
@@ -814,8 +884,10 @@ ShaderFactory::createFragmentShaderMain( const FunctionLocationMap& functions ) 
 #ifdef OSG_GLES2_AVAILABLE
         << "precision mediump float;\n"
 #endif
-        << "void osgearth_frag_applyColoring( inout vec4 color ); \n"
-        << "void osgearth_frag_applyLighting( inout vec4 color ); \n";
+        << "void osgearth_frag_applyColoring( inout vec4 color ); \n";
+
+    if ( useLightingShaders )
+        buf << "void osgearth_frag_applyLighting( inout vec4 color ); \n";
 
     if ( preTexture )
         for( OrderedFunctionMap::const_iterator i = preTexture->begin(); i != preTexture->end(); ++i )
@@ -843,7 +915,8 @@ ShaderFactory::createFragmentShaderMain( const FunctionLocationMap& functions ) 
         for( OrderedFunctionMap::const_iterator i = preLighting->begin(); i != preLighting->end(); ++i )
             buf << "    " << i->second << "( color ); \n";
     
-    buf << "    osgearth_frag_applyLighting( color ); \n";
+    if ( useLightingShaders )
+        buf << "    osgearth_frag_applyLighting( color ); \n";
 
     if ( postLighting )
         for( OrderedFunctionMap::const_iterator i = postLighting->begin(); i != postLighting->end(); ++i )
@@ -965,10 +1038,37 @@ ShaderFactory::createDefaultColoringFragmentShader( unsigned numTexImageUnits ) 
 osg::Shader*
 ShaderFactory::createDefaultLightingVertexShader() const
 {
+    int maxLights = Registry::instance()->getCapabilities().getMaxLights();
+    
     std::stringstream buf;
     buf << "#version " << GLSL_VERSION_STR << "\n"
 #ifdef OSG_GLES2_AVAILABLE
     << "precision mediump float;\n"
+    
+    //add lightsource typedef and uniform array
+    << "struct osg_LightSourceParameters {"
+    << "    vec4  ambient;"
+    << "    vec4  diffuse;"
+    << "    vec4  specular;"
+    << "    vec4  position;"
+    << "    vec4  halfVector;"
+    << "    vec3  spotDirection;" 
+    << "    float  spotExponent;"
+    << "    float  spotCutoff;"
+    << "    float  spotCosCutoff;" 
+    << "    float  constantAttenuation;"
+    << "    float  linearAttenuation;"
+    << "    float  quadraticAttenuation;" 
+    << "};\n"
+    << "uniform osg_LightSourceParameters osg_LightSource[" << maxLights << "];\n"
+    
+    << "struct  osg_LightProducts {"
+    << "    vec4  ambient;"
+    << "    vec4  diffuse;"
+    << "    vec4  specular;"
+    << "};\n"
+    << "uniform osg_LightProducts osg_FrontLightProduct[" << maxLights << "];\n"
+    
 #endif
     
     << "varying vec4 osg_FrontColor;\n"
@@ -994,7 +1094,6 @@ ShaderFactory::createDefaultLightingVertexShader() const
     << "                gl_FrontLightProduct[0].diffuse * NdotL, 0.0, 1.0).rgb;   \n"
 
     << "        osg_FrontSecondaryColor = vec4(0.0); \n"
-
     << "        if ( NdotL * NdotHV > 0.0 ) \n"
     << "        { \n"
     << "            osg_FrontSecondaryColor.rgb = (gl_FrontLightProduct[0].specular * \n"
@@ -1010,33 +1109,29 @@ ShaderFactory::createDefaultLightingVertexShader() const
     << "{ \n"
     << "    if (osgearth_LightingEnabled) \n"
     << "    { \n"
-    << "        vec3 lightPos = vec3(10000.0);\n"
-    << "        vec3 halfVector = vec3(10000.0);\n"
-    << "        vec3 lightModelAmbi = vec3(0.1);\n"
-    << "        vec3 lightProductAmbi = vec3(0.5);\n"
-    << "        vec3 lightProductDif = vec3(0.5);\n"
-    << "        vec3 lightProductSpec = vec3(0.8);\n"
-    << "        float matShine = 16.0;\n"
+    << "        float shine = 10.0;\n"
+    << "        vec4 lightModelAmbi = vec4(0.1,0.1,0.1,1.0);\n"
+//gl_FrontMaterial.shininess
+//gl_LightModel.ambient
     << "        vec3 normal = gl_NormalMatrix * gl_Normal; \n"
-    << "        float NdotL = dot( normal, normalize(lightPos) ); \n"
+    << "        float NdotL = dot( normal, normalize(osg_LightSource[0].position.xyz) ); \n"
     << "        NdotL = max( 0.0, NdotL ); \n"
-    << "        float NdotHV = dot( normal, halfVector ); \n"
+    << "        float NdotHV = dot( normal, osg_LightSource[0].halfVector.xyz ); \n"
     << "        NdotHV = max( 0.0, NdotHV ); \n"
     
     << "        osg_FrontColor.rgb = osg_FrontColor.rgb * \n"
     << "            clamp( \n"
     << "                lightModelAmbi + \n"
-    << "                lightProductAmbi +          \n"
-    << "                lightProductDif * NdotL, 0.0, 1.0).rgb;   \n"
+    << "                osg_FrontLightProduct[0].ambient +          \n"
+    << "                osg_FrontLightProduct[0].diffuse * NdotL, 0.0, 1.0).rgb;   \n"
     
     << "        osg_FrontSecondaryColor = vec4(0.0); \n"
     
     << "        if ( NdotL * NdotHV > 0.0 ) \n"
     << "        { \n"
-    << "            osg_FrontSecondaryColor.rgb = (lightProductSpec * \n"
-    << "                                          pow( NdotHV, matShine )).rgb;\n"
+    << "            osg_FrontSecondaryColor.rgb = (osg_FrontLightProduct[0].specular * \n"
+    << "                                          pow( NdotHV, shine )).rgb;\n"
     << "        } \n"
-    
     //    << "        gl_BackColor = gl_FrontColor; \n"
     //    << "        gl_BackSecondaryColor = gl_FrontSecondaryColor; \n"
     << "    } \n"

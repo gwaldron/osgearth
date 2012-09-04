@@ -50,18 +50,17 @@ namespace osgEarth { namespace Annotation
     public:
 
         ModelNode(
-            MapNode*      mapNode,
-            const Config& conf);
+            MapNode*              mapNode,
+            const Config&         conf,
+            const osgDB::Options* dbOptions );
 
         virtual Config getConfig() const;
 
     protected:
 
-        optional<Style>                    _style;
-        optional<CachePolicy>              _cachePolicy;
-        osg::ref_ptr<const osgDB::Options> _dbOptions;
+        optional<Style> _style;
 
-        void init();
+        void init(const osgDB::Options*);
     };
 
 } } // namespace osgEarth::Annotation

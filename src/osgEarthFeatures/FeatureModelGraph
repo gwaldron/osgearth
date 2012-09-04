@@ -24,6 +24,7 @@
 #include <osgEarthFeatures/FeatureModelSource>
 #include <osgEarthFeatures/Session>
 #include <osgEarthSymbology/Style>
+#include <osgEarth/NodeUtils>
 #include <osgEarth/ThreadingUtils>
 #include <osg/Node>
 #include <set>
@@ -76,6 +77,13 @@ namespace osgEarth { namespace Features
          * Mark the feature graph dirty and in need of regeneration 
          */
         void dirty();
+
+        /**
+         * Adds an operation that will run on new nodes that are added by the
+         * paging system. Note, the operation only runs after the pager actually
+         * added the node to the live scene graph.
+         */
+        void addPostMergeOperation( NodeOperation* op );
 
 
     public: // osg::Node
@@ -152,6 +160,8 @@ namespace osgEarth { namespace Features
         bool                             _dirty;
         bool                             _pendingUpdate;
         std::vector<const FeatureLevel*> _lodmap;
+        
+        osg::ref_ptr<RefNodeOperationVector> _postMergeOperations;
     };
 
 } } // namespace osgEarth::Features

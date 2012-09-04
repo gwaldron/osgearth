@@ -74,17 +74,16 @@ class SimpleModelSource : public ModelSource
 {
 public:
     SimpleModelSource( const ModelSourceOptions& options )
-        : ModelSource( options ), _options(options), _map(0) { }
+        : ModelSource( options ), _options(options) { }
 
     //override
-    void initialize( const osgDB::Options* dbOptions, const osgEarth::Map* map )
+    void initialize( const osgDB::Options* dbOptions )
     {
-        ModelSource::initialize( dbOptions, map );
-        _map = map;
+        ModelSource::initialize( dbOptions );
     }
 
     // override
-    osg::Node* createNode( ProgressCallback* progress )
+    osg::Node* createNode(const Map* map, const osgDB::Options* dbOptions, ProgressCallback* progress )
     {
         osg::ref_ptr<osg::Node> result;
 
@@ -96,17 +95,17 @@ public:
         {
             // required if the model includes local refs, like PagedLOD or ProxyNode:
             osg::ref_ptr<osgDB::Options> localOptions = 
-                Registry::instance()->cloneOrCreateOptions( _dbOptions.get() );
+                Registry::instance()->cloneOrCreateOptions( dbOptions );
 
             localOptions->getDatabasePathList().push_back( osgDB::getFilePath(_options.url()->full()) );
 
             result = _options.url()->getNode( localOptions.get(), progress );
         }
 
-        if (_options.location().isSet())
+        if (_options.location().isSet() && map != 0L)
         {
             GeoPoint geoPoint(
-                _map->getProfile()->getSRS(), 
+                map->getProfile()->getSRS(), 
                 (*_options.location()).x(), 
                 (*_options.location()).y(), 
                 (*_options.location()).z(),
@@ -115,7 +114,7 @@ public:
             OE_NOTICE << "Read location " << geoPoint.vec3d() << std::endl;
             
             osg::Matrixd matrix;
-            geoPoint.createLocalToWorld( matrix );                       
+            geoPoint.createLocalToWorld( matrix );
 
             if (_options.orientation().isSet())
             {
@@ -157,9 +156,7 @@ public:
 
 protected:
 
-    const SimpleModelOptions           _options;
-    const osg::ref_ptr<osgDB::Options> _dbOptions;
-    const Map* _map;
+    const SimpleModelOptions _options;
 };
 
 

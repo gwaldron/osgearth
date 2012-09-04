@@ -84,11 +84,13 @@ namespace osgEarth
     public:
         /** Creates a vertex shader main(). */
         virtual osg::Shader* createVertexShaderMain(
-            const ShaderComp::FunctionLocationMap& functions =ShaderComp::FunctionLocationMap() ) const;
+            const ShaderComp::FunctionLocationMap& functions =ShaderComp::FunctionLocationMap(),
+            bool useLightingShaders =true ) const;
 
         /** Creates a fragment shader main(). */
         virtual osg::Shader* createFragmentShaderMain( 
-            const ShaderComp::FunctionLocationMap& functions =ShaderComp::FunctionLocationMap() ) const;
+            const ShaderComp::FunctionLocationMap& functions =ShaderComp::FunctionLocationMap(),
+            bool useLightingShaders =true ) const;
 
         /**
          * Gets the uniform/shader name of the sampler corresponding the the provider
@@ -149,6 +151,8 @@ namespace osgEarth
     public:
         static const osg::StateAttribute::Type SA_TYPE;
 
+        typedef osg::Program::AttribBindingList AttribBindingList;
+
     public:
         /**
          * Adds a shader function to the program.
@@ -181,6 +185,12 @@ namespace osgEarth
          * Installs default shader for basic lighting.
          */
         void installDefaultLightingShaders();
+
+        /**
+         * Sets whether to use lighting shaders at all - set this to false if you
+         * don't want lighting shaders (normal or inherited) included in the program.
+         */
+        void setUseLightingShaders(bool value);
 
         /**
          * Whether this VP should inherit shaders from parent state sets. This is
@@ -239,27 +249,34 @@ namespace osgEarth
          */
         void removeShader( const std::string& shaderID );
 
+        /** Add an attribute location binding. */
+        void addBindAttribLocation( const std::string& name, GLuint index );
+
+        /** Remove an attribute location binding. */
+        void removeBindAttribLocation( const std::string& name );
+
+        /** Gets a reference to the attribute bindings. */
+        const AttribBindingList& getAttribBindingList() const { return _attribBindingList; }
+
+        /** Access to the property template. */
+        osg::Program* getTemplate() { return _template.get(); }
+
     public:
         typedef std::vector< osg::ref_ptr<osg::Shader> > ShaderVector;
 
     protected:
-        //struct ShaderEntry : public std::pair< osg::ref_ptr<osg::Shader>, osg::StateAttribute::OverrideValue >
-        //{
-        //    ShaderEntry()
-        //        : std::pair< osg::ref_ptr<osg::Shader>, osg::StateAttribute::OverrideValue >((osg::Shader*)0L, 1) { }
-        //    ShaderEntry(osg::Shader* shader, osg::StateAttribute::OverrideValue ov)
-        //        : std::pair< osg::ref_ptr<osg::Shader>, osg::StateAttribute::OverrideValue >(shader, ov) { }
-        //    bool operator == (const ShaderEntry& rhs) const {
-        //        return first->compare( *rhs.first.get() ) == 0;
-        //    }
-        //};
+
         typedef std::pair< osg::ref_ptr<osg::Shader>, osg::StateAttribute::OverrideValue > ShaderEntry;
         typedef std::map< std::string, ShaderEntry > ShaderMap;
         typedef std::map< ShaderVector, osg::ref_ptr<osg::Program> >        ProgramMap;
 
+        osg::ref_ptr<osg::Program>   _template;
+
         ProgramMap                   _programCache;
         ShaderMap                    _shaderMap;
         unsigned int                 _mask;
+        AttribBindingList            _attribBindingList;
+        bool                         _useLightingShaders;
 
         ShaderComp::FunctionLocationMap _functions;
         ShaderComp::FunctionLocationMap _accumulatedFunctions;
@@ -271,8 +288,9 @@ namespace osgEarth
         bool hasLocalFunctions() const;
         void refreshAccumulatedFunctions( const osg::State& state );
         void addToAccumulatedMap(ShaderMap& accumShaderMap, const std::string& shaderID, const ShaderEntry& newEntry) const;
-        osg::Program* buildProgram( osg::State& state, ShaderMap& accumShaderMap );
-
+        osg::Program* buildProgram( osg::State& state, ShaderMap& accumShaderMap, AttribBindingList& bindings );
+        void addShadersToProgram(const ShaderVector& shaders, const AttribBindingList& attribBindings, osg::Program* program );
+        void addTemplateDataToProgram(osg::Program* program );
 
     public:
         void getFunctions( ShaderComp::FunctionLocationMap& out ) const;

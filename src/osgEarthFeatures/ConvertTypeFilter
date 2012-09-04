@@ -42,6 +42,14 @@ namespace osgEarth { namespace Features
         ConvertTypeFilter();
         ConvertTypeFilter( const Symbology::Geometry::Type& toType );
         ConvertTypeFilter( const ConvertTypeFilter& rhs );
+
+        ConvertTypeFilter( const Config& conf );
+
+        /**
+         * Serialize this FeatureFilter
+         */
+        virtual Config getConfig() const;
+
         virtual ~ConvertTypeFilter() { }
 
     public:

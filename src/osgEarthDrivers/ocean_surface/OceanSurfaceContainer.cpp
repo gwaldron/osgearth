@@ -33,10 +33,19 @@
 #define LC "[OceanSurface] "
 
 OceanSurfaceContainer::OceanSurfaceContainer( MapNode* mapNode, const OceanSurfaceOptions& options ) :
-_parentMapNode( mapNode )
+_parentMapNode( mapNode ),
+_options      ( options )
 {
     // set the node mask so that our custom EarthManipulator will NOT find this node.
     setNodeMask( 0xFFFFFFFE );
+    rebuild();
+}
+
+
+void
+OceanSurfaceContainer::rebuild()
+{
+    this->removeChildren( 0, this->getNumChildren() );
 
     if ( _parentMapNode.valid() )
     {
@@ -71,7 +80,7 @@ _parentMapNode( mapNode )
         // install an "elevation proxy" layer that reads elevation tiles from the
         // parent map and turns them into encoded images for our shader to use.
         ImageLayerOptions epo( "ocean-proxy" );
-        epo.maxLevel() = *options.maxLOD();
+        epo.maxLevel() = *_options.maxLOD();
         oceanMap->addImageLayer( new ElevationProxyImageLayer(_parentMapNode->getMap(), epo) );
 
         this->addChild( oceanMapNode );
@@ -97,10 +106,10 @@ _parentMapNode( mapNode )
 
         // load up a surface texture
         ss->getOrCreateUniform( "ocean_has_tex1", osg::Uniform::BOOL )->set( false );
-        if ( options.textureURI().isSet() )
+        if ( _options.textureURI().isSet() )
         {
             //TODO: enable cache support here:
-            osg::Image* image = options.textureURI()->getImage();
+            osg::Image* image = _options.textureURI()->getImage();
             if ( image )
             {
                 osg::Texture2D* tex = new osg::Texture2D( image );
@@ -119,7 +128,7 @@ _parentMapNode( mapNode )
         // (use OVERRIDE since the terrain engine sets back face culling.)
         ss->setAttributeAndModes( new osg::CullFace(), osg::StateAttribute::OFF | osg::StateAttribute::OVERRIDE );
 
-        apply( options );
+        apply( _options );
     }
 }
 
@@ -135,29 +144,9 @@ OceanSurfaceContainer::apply( const OceanSurfaceOptions& options )
 }
 
 
-// removed, because it was causing conflicts with the ACPH and with entity data
-#if 0
 void
-OceanSurfaceContainer::traverse( osg::NodeVisitor& nv )
+OceanSurfaceContainer::setMapNode( MapNode* parentMapNode )
 {
-    osgUtil::CullVisitor* cv = 0L;
-    osg::CullSettings::ComputeNearFarMode mode;
-
-    if ( nv.getVisitorType() == osg::NodeVisitor::CULL_VISITOR )
-    {
-        // temporarily disable near/far computation so that the ocean surface doesn't
-        // play into the clip plane math
-        cv = static_cast<osgUtil::CullVisitor*>(&nv);
-        mode = cv->getComputeNearFarMode();
-
-        cv->setComputeNearFarMode( osg::CullSettings::DO_NOT_COMPUTE_NEAR_FAR );
-    }
-
-    osg::Group::traverse( nv );
-
-    if ( cv )
-    {
-        cv->setComputeNearFarMode( mode );
-    }
+    _parentMapNode = parentMapNode;
+    rebuild();
 }
-#endif

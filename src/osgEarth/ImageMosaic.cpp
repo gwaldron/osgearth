@@ -110,14 +110,7 @@ ImageMosaic::createImage()
     //Composite the incoming images into the master image
     for (TileImageList::iterator i = _images.begin(); i != _images.end(); ++i)
     {
-        //Warn if the mosaic contains different-sized images, which is illegal and will 
-        // lead to problems.
         osg::Image* sourceTile = i->getImage();
-        if ( sourceTile->s() != tileWidth || sourceTile->t() != tileHeight )
-        {
-            OE_WARN << LC << "Failure: mosaicing images of different pixel sizes" << std::endl;
-            return 0L;
-        }
 
         //Determine the indices in the master image for this image
         int dstX = (i->_tileX - minTileX) * tileWidth;

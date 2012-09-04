@@ -227,13 +227,16 @@ TileModelFactory::createTileModel(const TileKey&           key,
     {
         ImageLayer* layer = i->get();
 
-        BuildColorData build;
-        build.init( key, layer, mapInfo, _terrainOptions, model.get() );
-        build.execute();
-
-        if ( layer->getImageLayerOptions().lodBlending() == true )
+        if ( layer->getEnabled() )
         {
-            out_hasLodBlendedLayers = true;
+            BuildColorData build;
+            build.init( key, layer, mapInfo, _terrainOptions, model.get() );
+            build.execute();
+
+            if ( layer->getImageLayerOptions().lodBlending() == true )
+            {
+                out_hasLodBlendedLayers = true;
+            }
         }
     }
 
@@ -265,13 +268,15 @@ TileModelFactory::createTileModel(const TileKey&           key,
 
     for( ImageLayerVector::const_iterator i = mapf.imageLayers().begin(); i != mapf.imageLayers().end(); ++i )
     {
-        if ( !i->get()->isKeyValid(key) )
+        ImageLayer* layer = i->get();
+
+        if ( layer->getEnabled() && !layer->isKeyValid(key) )
         {
             if ( !emptyImage.valid() )
                 emptyImage = ImageUtils::createEmptyImage();
 
             model->_colorData[i->get()->getUID()] = TileModel::ColorData(
-                i->get(), 
+                layer,
                 emptyImage.get(),
                 locator,
                 key.getLevelOfDetail(),

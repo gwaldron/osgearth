@@ -64,7 +64,8 @@ _distance    ( Distance(50000.0, Units::METERS) )
 
     _terrainCallback = new TerrainChangedCallback(this);
     
-    mapNode->getTerrain()->addTerrainCallback( _terrainCallback );
+    if ( mapNode )
+        mapNode->getTerrain()->addTerrainCallback( _terrainCallback );
 
     osg::StateSet* stateSet = this->getOrCreateStateSet();
     stateSet->setMode( GL_BLEND, 1 );
@@ -75,12 +76,30 @@ _distance    ( Distance(50000.0, Units::METERS) )
 
 PolyhedralLineOfSightNode::~PolyhedralLineOfSightNode()
 {
-    if (_terrainCallback)
+    if (_terrainCallback && getMapNode() )
     {
-        _mapNode->getTerrain()->removeTerrainCallback( _terrainCallback );
+        getMapNode()->getTerrain()->removeTerrainCallback( _terrainCallback.get() );
     }
 }
 
+void
+PolyhedralLineOfSightNode::setMapNode( MapNode* mapNode )
+{
+    osg::ref_ptr<MapNode> oldMapNode = getMapNode();
+    if ( oldMapNode.valid() )
+    {
+        if ( _terrainCallback.valid() )
+        {
+            oldMapNode->getTerrain()->removeTerrainCallback( _terrainCallback.get() );
+        }
+        if ( mapNode )
+        {
+            mapNode->getTerrain()->addTerrainCallback( _terrainCallback.get() );
+        }
+    }
+
+    LocalizedNode::setMapNode( mapNode );
+}
 
 void
 PolyhedralLineOfSightNode::setDistance( const Distance& value )

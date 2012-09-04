@@ -22,8 +22,10 @@
 
 #include <osgEarth/Common>
 #include <osgEarth/Config>
+#include <osgEarth/NodeUtils>
 #include <osgEarth/Progress>
 #include <osgEarth/Revisioning>
+#include <osgEarth/ThreadingUtils>
 #include <osg/Referenced>
 
 namespace osgEarth
@@ -74,24 +76,46 @@ namespace osgEarth
         optional<bool> _overlay;
     };
 
+
     /**
      * A ModelSource is a plugin object that generates OSG nodes.
      */
     class OSGEARTH_EXPORT ModelSource : public osg::Object, public Revisioned
     {
-    public:        
+    public:
         ModelSource( const ModelSourceOptions& options =ModelSourceOptions() );
 
         /** dtor */
         virtual ~ModelSource() { }
 
         /**
-         * Subclass implements this method to create the mode node.
+         * Subclass implements this method to create a scene graph within the
+         * context of the provided Map.
          */
-        virtual osg::Node* createNode( ProgressCallback* progress =0L ) =0;
+        virtual osg::Node* createNode(
+            const Map*            map,
+            const osgDB::Options* dbOptions,
+            ProgressCallback*     progress ) =0;
+
+        /**
+         * Add a post processing opeation - this will be called on any node
+         * that enters the scene graph by the model source.
+         */
+        void addPostProcessor( NodeOperation* cb );
+        
+        /**
+         * Remove a post processing operation
+         */
+        void removePostProcessor( NodeOperation* cb );
+
+        /**
+         * The vector of post processor callback operations
+         */
+        const NodeOperationVector& postProcessors() const { return _postProcessors; }
 
 
     public: // META_Object specialization
+        // these are neseccary to we can load ModelSource implementations as plugins
         virtual osg::Object* cloneType() const { return 0; } // cloneType() not appropriate
         virtual osg::Object* clone(const osg::CopyOp&) const { return 0; } // clone() not appropriate
         virtual bool isSameKindAs(const osg::Object* obj) const { return dynamic_cast<const ModelSource*>(obj)!=NULL; }
@@ -99,19 +123,28 @@ namespace osgEarth
         virtual const char* libraryName() const { return "osgEarth"; }
 
     public:
-        /** Initialize the NodeSource. */
-        virtual void initialize(
-            const osgDB::Options* dbOptions,
-            const Map*            map ) { }
 
-        const ModelSourceOptions& getOptions() const {
-            return _options; }
+        /** Perform any one-time initialization */
+        virtual void initialize( const osgDB::Options* dbOptions ) { }
+
+        /** Get the options used to create this model source */
+        const ModelSourceOptions& getOptions() const { return _options; }
+
+    protected:
+        /**
+         * Fire the callbacks. The implementation class should call this whenever it adds
+         * a new node.
+         */
+        void firePostProcessors( osg::Node* node );
 
     private:
         const ModelSourceOptions _options;
         optional<double> _minRange;
         optional<double> _maxRange;
         optional<int>    _renderOrder;
+
+        NodeOperationVector       _postProcessors;
+        mutable Threading::Mutex  _postProcessorsMutex;
 
         friend class Map;
         friend class MapEngine;

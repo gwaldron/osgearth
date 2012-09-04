@@ -40,6 +40,10 @@ using namespace osgEarth::Drivers;
  * Cache used by the TileModelCompiler. This lets us share common data across
  * compilations. Since the compiler is thread-locked, we just have a separate
  * cache per compiler.
+ *
+ * Important Note! Any array you store in the cache MUST have it's OWN 
+ * unique VBO. Call array->setVertexBufferObject( new osg::VertexBufferObject() )
+ * to assign one. This will prevent non-thread-safe buffer object sharing.
  */
 struct CompilerCache
 {

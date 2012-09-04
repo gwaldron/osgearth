@@ -73,6 +73,33 @@ ProxySettings::getConfig() const
     return conf;
 }
 
+bool
+ProxySettings::fromOptions( const osgDB::Options* dbOptions, optional<ProxySettings>& out )
+{
+    if ( dbOptions )
+    {
+        std::string jsonString = dbOptions->getPluginStringData( "osgEarth::ProxySettings" );
+        if ( !jsonString.empty() )
+        {
+            Config conf;
+            conf.fromJSON( jsonString );
+            out = ProxySettings( conf );
+            return true;
+        }
+    }
+    return false;
+}
+
+void
+ProxySettings::apply( osgDB::Options* dbOptions ) const
+{
+    if ( dbOptions )
+    {
+        Config conf = getConfig();
+        dbOptions->setPluginStringData( "osgEarth::ProxySettings", conf.toJSON() );
+    }
+}
+
 /****************************************************************************/
    
 namespace osgEarth
@@ -586,6 +613,15 @@ HTTPClient::doGet( const HTTPRequest& request, const osgDB::Options* options, Pr
     //Try to get the proxy settings from the local options that are passed in.
     readOptions( options, proxy_host, proxy_port );
 
+    optional< ProxySettings > proxySettings;
+    ProxySettings::fromOptions( options, proxySettings );
+    if (proxySettings.isSet())
+    {       
+        proxy_host = proxySettings.get().hostName();
+        proxy_port = toString<int>(proxySettings.get().port());
+        OE_DEBUG << "Read proxy settings from options " << proxy_host << " " << proxy_port << std::endl;
+    }
+
     //Try to get the proxy settings from the environment variable
     const char* proxyEnvAddress = getenv("OSG_CURL_PROXY");
     if (proxyEnvAddress) //Env Proxy Settings
@@ -626,6 +662,12 @@ HTTPClient::doGet( const HTTPRequest& request, const osgDB::Options* options, Pr
             curl_easy_setopt( _curl_handle, CURLOPT_PROXYUSERPWD, proxy_auth.c_str());
         }
     }
+    else
+    {
+        OE_DEBUG << "Removing proxy settings" << std::endl;
+        curl_easy_setopt( _curl_handle, CURLOPT_PROXY, 0 );
+    }
+
 
     const osgDB::AuthenticationDetails* details = authenticationMap ?
         authenticationMap->getAuthenticationDetails(request.getURL()) :
@@ -805,7 +847,8 @@ HTTPClient::doDownload(const std::string& url, const std::string& filename)
     }
     else
     {
-        OE_WARN << LC << "Error downloading file " << filename << std::endl;
+        OE_WARN << LC << "Error downloading file " << filename
+            << " (" << response.getCode() << ")" << std::endl;
         return false;
     } 
 }

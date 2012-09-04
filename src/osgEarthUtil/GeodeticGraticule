@@ -21,6 +21,7 @@
 
 #include <osgEarthUtil/Common>
 #include <osgEarth/MapNode>
+#include <osgEarth/MapNodeObserver>
 #include <osgEarthSymbology/Style>
 #include <osgEarthFeatures/Feature>
 #include <vector>
@@ -107,7 +108,7 @@ namespace osgEarth { namespace Util
      * NOTE: So far, this only works for geocentric maps.
      * TODO: Add projected support; add text label support
      */
-    class OSGEARTHUTIL_EXPORT GeodeticGraticule : public osg::Group
+    class OSGEARTHUTIL_EXPORT GeodeticGraticule : public osg::Group, public MapNodeObserver
     {
     public:
 
@@ -142,6 +143,12 @@ namespace osgEarth { namespace Util
     public: // osg::Node
 
         virtual void traverse(osg::NodeVisitor& nv);
+
+    public: // MapNodeObserver
+
+        virtual void setMapNode( MapNode* mapNode );
+
+        virtual MapNode* getMapNode() { return _mapNode.get(); }
 
 
     private:

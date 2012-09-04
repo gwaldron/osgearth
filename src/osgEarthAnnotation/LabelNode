@@ -55,16 +55,6 @@ namespace osgEarth { namespace Annotation
             const std::string&      text,
             const TextSymbol*       symbol );
 
-        /**
-         * Constructs a label node that is positioned relative to a map
-         * point (referneced by the spatial reference)
-         */
-        LabelNode(
-            const SpatialReference* mapSRS,
-            const GeoPoint&         position,
-            const std::string&      text,
-            const TextSymbol*       symbol );
-
         /** 
          * Construct a label node purely from the style. The text string
          * must be in the text symbol
@@ -87,8 +77,9 @@ namespace osgEarth { namespace Annotation
          * Deserializes a label
          */
         LabelNode(
-            MapNode*      mapNode,
-            const Config& conf);
+            MapNode*              mapNode,
+            const Config&         conf,
+            const osgDB::Options* dbOptions );
 
         virtual ~LabelNode() { }
 

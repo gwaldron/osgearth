@@ -45,6 +45,7 @@ using namespace osgEarth;
 
 namespace
 {
+#if 0
     /**
      * Creates a polytope that minimally bounds a bounding sphere
      * in world space.
@@ -201,6 +202,7 @@ namespace
         std::stack<osg::Polytope> _polytopeStack;
         std::stack<osg::Matrixd>  _local2worldStack, _world2localStack;
     };
+#endif
 
 
     /**
@@ -776,18 +778,37 @@ OverlayDecorator::cull( osgUtil::CullVisitor* cv, OverlayDecorator::PerViewData&
     osg::BoundingSphere visibleOverlayBS;
     osg::Polytope frustumPT;
     frustumPH.getPolytope( frustumPT );
+
+    // get a bounds of the overlay graph as a whole, and convert that to a
+    // bounding box. We can probably do better with a ComputeBoundsVisitor but it
+    // will be slower.
+    visibleOverlayBS = _overlayGraph->getBound();
+    osg::BoundingBox visibleOverlayBBox;
+    visibleOverlayBBox.expandBy( visibleOverlayBS );
+
+    // intersect that bound with the camera frustum:
+    osg::Polytope visibleOverlayPT;
+    visibleOverlayPT.setToBoundingBox( visibleOverlayBBox );
+    osgShadow::ConvexPolyhedron visiblePH( frustumPH );
+    visiblePH.cut( visibleOverlayPT );
+
+#if 0
+    // This method does not work. Like with larged paged feature sets.
+
     ComputeBoundsWithinFrustum cbwp( frustumPH, _srs.get(), _isGeocentric, visibleOverlayBS );
     _overlayGraph->accept( cbwp );
 
     // convert the visible geometry bounding sphere into a world-space polytope:
     osg::Polytope visiblePT;
-    computeWorldBoundingPolytope( visibleOverlayBS, _srs.get(), _isGeocentric, visiblePT );
+    osgShadow::ConvexPolyhedron visiblePH( frustumPH );
 
     // this intersects the viewing frustum with the subgraph's bounding box, basically giving us
     // a "minimal" polyhedron containing all potentially visible geometry. (It can't be truly 
     // minimal without clipping at the geometry level, but that would probably be too expensive.)
-    osgShadow::ConvexPolyhedron visiblePH( frustumPH );
+
+    computeWorldBoundingPolytope( visibleOverlayBS, _srs.get(), _isGeocentric, visiblePT );
     visiblePH.cut( visiblePT );
+#endif
 
     // calculate the extents for our orthographic RTT camera (clamping it to the
     // visible horizon)

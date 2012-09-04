@@ -293,8 +293,10 @@ SuperClusterCullingCallback::cull(osg::NodeVisitor* nv, osg::Drawable* , osg::St
 {
     osgUtil::CullVisitor* cv = dynamic_cast<osgUtil::CullVisitor*>(nv);
 
+    if (!cv) return false;
+
     // quick bail if cluster culling is disabled:
-    if ( cv && !(cv->getCullingMode() & osg::CullSettings::CLUSTER_CULLING) )
+    if ( !(cv->getCullingMode() & osg::CullSettings::CLUSTER_CULLING) )
         return false;
 
     // quick bail is the deviation is maxed out

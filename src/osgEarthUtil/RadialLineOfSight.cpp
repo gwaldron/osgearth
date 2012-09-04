@@ -18,6 +18,7 @@
 */
 #include <osgEarthUtil/RadialLineOfSight>
 #include <osgEarth/TerrainEngineNode>
+#include <osgEarth/DPLineSegmentIntersector>
 #include <osgSim/LineOfSight>
 #include <osgUtil/IntersectionVisitor>
 #include <osgUtil/LineSegmentIntersector>
@@ -27,6 +28,7 @@ using namespace osgEarth::Util;
 
 namespace
 {
+#if 0
     bool getRelativeWorld(double x, double y, double relativeHeight, MapNode* mapNode, osg::Vec3d& world )
     {
         GeoPoint mapPoint(mapNode->getMapSRS(), x, y);
@@ -63,6 +65,7 @@ namespace
         }
         return false;    
     }
+#endif
 
 
     osg::Vec3d getNodeCenter(osg::Node* node)
@@ -116,12 +119,12 @@ RadialLineOfSightNode::RadialLineOfSightNode( MapNode* mapNode):
 _mapNode( mapNode ),
 _numSpokes(20),
 _radius(500),
-_center(0,0,0),
+//_center(0,0,0),
 _goodColor(0.0f, 1.0f, 0.0f, 1.0f),
 _badColor(1.0f, 0.0f, 0.0f, 1.0f),
 _outlineColor( 1.0f, 1.0f, 1.0f, 1.0f),
 _displayMode( LineOfSight::MODE_SPLIT ),
-_altitudeMode( ALTMODE_ABSOLUTE ),
+//_altitudeMode( ALTMODE_ABSOLUTE ),
 _fill(false),
 _terrainOnly( false )
 {
@@ -132,8 +135,34 @@ _terrainOnly( false )
 }
 
 RadialLineOfSightNode::~RadialLineOfSightNode()
-{    
-    _mapNode->getTerrain()->removeTerrainCallback( _terrainChangedCallback.get() );
+{
+    setMapNode( 0L );
+}
+
+void
+RadialLineOfSightNode::setMapNode( MapNode* mapNode )
+{
+    MapNode* oldMapNode = getMapNode();
+
+    if ( oldMapNode != mapNode )
+    {
+        if ( oldMapNode )
+        {
+            if ( _terrainChangedCallback.valid() )
+            {
+                oldMapNode->getTerrain()->removeTerrainCallback( _terrainChangedCallback.get() );
+            }
+        }
+
+        _mapNode = mapNode;
+
+        if ( _mapNode.valid() && _terrainChangedCallback.valid() )
+        {
+            _mapNode->getTerrain()->addTerrainCallback( _terrainChangedCallback.get() );
+        }
+
+        compute( getNode() );
+    }
 }
 
 bool
@@ -191,34 +220,18 @@ RadialLineOfSightNode::getCenterWorld() const
 
 
 
-const osg::Vec3d&
+const GeoPoint&
 RadialLineOfSightNode::getCenter() const
 {
     return _center;
 }
 
 void
-RadialLineOfSightNode::setCenter(const osg::Vec3d& center)
+RadialLineOfSightNode::setCenter(const GeoPoint& center)
 {
     if (_center != center)
     {
         _center = center;
-        compute(getNode());
-    }
-}
-
-AltitudeMode
-RadialLineOfSightNode::getAltitudeMode() const
-{
-    return _altitudeMode;
-}
-
-void
-RadialLineOfSightNode::setAltitudeMode( AltitudeMode mode )
-{
-    if (_altitudeMode != mode)
-    {
-        _altitudeMode = mode;
         compute(getNode());
     }
 }
@@ -241,7 +254,7 @@ void RadialLineOfSightNode::setTerrainOnly( bool terrainOnly )
 osg::Node*
 RadialLineOfSightNode::getNode()
 {
-    if (_terrainOnly) return _mapNode->getTerrainEngine();
+    if (_terrainOnly && getMapNode()) return getMapNode()->getTerrainEngine();
     return _mapNode.get();
 }
 
@@ -275,27 +288,19 @@ RadialLineOfSightNode::compute(osg::Node* node, bool backgroundThread)
 void
 RadialLineOfSightNode::compute_line(osg::Node* node, bool backgroundThread)
 {    
-    GeoPoint( _mapNode->getMapSRS(), _center, _altitudeMode ).toWorld( _centerWorld, _mapNode->getTerrain() );
+    if ( !getMapNode() )
+        return;
 
-#if 0
-    //Get the center point in geocentric    
-    if (_altitudeMode == ALTMODE_ABSOLUTE)
-    {
-        GeoPoint center(_mapNode->getMapSRS(),_center,ALTMODE_ABSOLUTE);
-        center.toWorld( _centerWorld, _mapNode->getTerrain() );
-        //_mapNode->getMap()->toWorldPoint( center, _centerWorld );
-    }
-    else
-    {
-        getRelativeWorld(_center.x(), _center.y(), _center.z(), _mapNode.get(), _centerWorld );
-    }
-#endif
+    GeoPoint centerMap;
+    _center.transform( getMapNode()->getMapSRS(), centerMap );
+    centerMap.toWorld( _centerWorld, getMapNode()->getTerrain() );
 
-    osg::Vec3d up = osg::Vec3d(_centerWorld);
+    bool isProjected = getMapNode()->getMapSRS()->isProjected();
+    osg::Vec3d up = isProjected ? osg::Vec3d(0,0,1) : osg::Vec3d(_centerWorld);
     up.normalize();
 
     //Get the "side" vector
-    osg::Vec3d side = up ^ osg::Vec3d(0,0,1);
+    osg::Vec3d side = isProjected ? osg::Vec3d(1,0,0) : up ^ osg::Vec3d(0,0,1);
 
     //Get the number of spokes
     double delta = osg::PI * 2.0 / (double)_numSpokes;
@@ -316,31 +321,36 @@ RadialLineOfSightNode::compute_line(osg::Node* node, bool backgroundThread)
     osg::Vec3d previousEnd;
     osg::Vec3d firstEnd;
 
-    osgSim::LineOfSight los;
-    los.setDatabaseCacheReadCallback(0);
+    osg::ref_ptr<osgUtil::IntersectorGroup> ivGroup = new osgUtil::IntersectorGroup();
 
     for (unsigned int i = 0; i < (unsigned int)_numSpokes; i++)
     {
         double angle = delta * (double)i;
         osg::Quat quat(angle, up );
         osg::Vec3d spoke = quat * (side * _radius);
-        osg::Vec3d end = _centerWorld + spoke;        
-        los.addLOS( _centerWorld, end);      
+        osg::Vec3d end = _centerWorld + spoke;
+        osg::ref_ptr<DPLineSegmentIntersector> dplsi = new DPLineSegmentIntersector( _centerWorld, end );
+        ivGroup->addIntersector( dplsi.get() );
     }
 
-    los.computeIntersections(node);
+    osgUtil::IntersectionVisitor iv;
+    iv.setIntersector( ivGroup.get() );
+
+    node->accept( iv );
 
     for (unsigned int i = 0; i < (unsigned int)_numSpokes; i++)
     {
-        osg::Vec3d start = los.getStartPoint(i);
-        osg::Vec3d end = los.getEndPoint(i);
+        DPLineSegmentIntersector* los = dynamic_cast<DPLineSegmentIntersector*>(ivGroup->getIntersectors()[i].get());
+        DPLineSegmentIntersector::Intersections& hits = los->getIntersections();
 
-        osgSim::LineOfSight::Intersections hits = los.getIntersections(i);
+        osg::Vec3d start = los->getStart();
+        osg::Vec3d end = los->getEnd();
+
         osg::Vec3d hit;
         bool hasLOS = hits.empty();
         if (!hasLOS)
         {
-            hit = *hits.begin();
+            hit = hits.begin()->getWorldIntersectPoint();
         }
 
         if (hasLOS)
@@ -426,24 +436,21 @@ RadialLineOfSightNode::compute_line(osg::Node* node, bool backgroundThread)
 
 void
 RadialLineOfSightNode::compute_fill(osg::Node* node, bool backgroundThread)
-{    
-    //Get the center point in geocentric    
-    if (_altitudeMode == ALTMODE_ABSOLUTE)
-    {
-        GeoPoint centerMap(_mapNode->getMapSRS(), _center, ALTMODE_ABSOLUTE);
-        centerMap.toWorld( _centerWorld, _mapNode->getTerrain() );
-        //_mapNode->getMap()->toWorldPoint( centerMap, _centerWorld );
-    }
-    else
-    {
-        getRelativeWorld(_center.x(), _center.y(), _center.z(), _mapNode.get(), _centerWorld );
-    }
+{
+    if ( !getMapNode() )
+        return;
 
-    osg::Vec3d up = osg::Vec3d(_centerWorld);
+    GeoPoint centerMap;
+    _center.transform( getMapNode()->getMapSRS(), centerMap );
+    centerMap.toWorld( _centerWorld, getMapNode()->getTerrain() );
+
+    bool isProjected = getMapNode()->getMapSRS()->isProjected();
+
+    osg::Vec3d up = isProjected ? osg::Vec3d(0,0,1) : osg::Vec3d(_centerWorld);
     up.normalize();
 
     //Get the "side" vector
-    osg::Vec3d side = up ^ osg::Vec3d(0,0,1);
+    osg::Vec3d side = isProjected ? osg::Vec3d(1,0,0) : up ^ osg::Vec3d(0,0,1);
 
     //Get the number of spokes
     double delta = osg::PI * 2.0 / (double)_numSpokes;
@@ -461,8 +468,7 @@ RadialLineOfSightNode::compute_fill(osg::Node* node, bool backgroundThread)
     geometry->setColorArray( colors );
     geometry->setColorBinding(osg::Geometry::BIND_PER_VERTEX);
 
-    osgSim::LineOfSight los;
-    los.setDatabaseCacheReadCallback(0);
+    osg::ref_ptr<osgUtil::IntersectorGroup> ivGroup = new osgUtil::IntersectorGroup();
 
     for (unsigned int i = 0; i < (unsigned int)_numSpokes; i++)
     {
@@ -470,24 +476,34 @@ RadialLineOfSightNode::compute_fill(osg::Node* node, bool backgroundThread)
         osg::Quat quat(angle, up );
         osg::Vec3d spoke = quat * (side * _radius);
         osg::Vec3d end = _centerWorld + spoke;        
-        los.addLOS( _centerWorld, end);      
+        osg::ref_ptr<DPLineSegmentIntersector> dplsi = new DPLineSegmentIntersector( _centerWorld, end );
+        ivGroup->addIntersector( dplsi.get() );
     }
 
-    los.computeIntersections(node);
+    osgUtil::IntersectionVisitor iv;
+    iv.setIntersector( ivGroup.get() );
+
+    node->accept( iv );
 
     for (unsigned int i = 0; i < (unsigned int)_numSpokes; i++)
     {
         //Get the current hit
-        osg::Vec3d currEnd = los.getEndPoint(i);
-        bool currHasLOS = los.getIntersections(i).empty();
-        osg::Vec3d currHit = currHasLOS ? osg::Vec3d() : *los.getIntersections(i).begin();
+        DPLineSegmentIntersector* los = dynamic_cast<DPLineSegmentIntersector*>(ivGroup->getIntersectors()[i].get());
+        DPLineSegmentIntersector::Intersections& hits = los->getIntersections();
 
+        osg::Vec3d currEnd = los->getEnd();
+        bool currHasLOS = hits.empty();
+        osg::Vec3d currHit = currHasLOS ? osg::Vec3d() : hits.begin()->getWorldIntersectPoint();
+
+        //Get the next hit
         unsigned int nextIndex = i + 1;
         if (nextIndex == _numSpokes) nextIndex = 0;
-        //Get the current hit
-        osg::Vec3d nextEnd = los.getEndPoint(nextIndex);
-        bool nextHasLOS = los.getIntersections(nextIndex).empty();
-        osg::Vec3d nextHit = nextHasLOS ? osg::Vec3d() : *los.getIntersections(nextIndex).begin();
+        DPLineSegmentIntersector* losNext = static_cast<DPLineSegmentIntersector*>(ivGroup->getIntersectors()[nextIndex].get());
+        DPLineSegmentIntersector::Intersections& hitsNext = losNext->getIntersections();
+
+        osg::Vec3d nextEnd = losNext->getEnd();
+        bool nextHasLOS = hitsNext.empty();
+        osg::Vec3d nextHit = nextHasLOS ? osg::Vec3d() : hitsNext.begin()->getWorldIntersectPoint();
         
         if (currHasLOS && nextHasLOS)
         {
@@ -498,7 +514,7 @@ RadialLineOfSightNode::compute_fill(osg::Node* node, bool backgroundThread)
             verts->push_back( nextEnd - _centerWorld );
             colors->push_back( _goodColor );
             
-            verts->push_back( currEnd - _centerWorld );                       
+            verts->push_back( currEnd - _centerWorld );
             colors->push_back( _goodColor );
         }        
         else if (!currHasLOS && !nextHasLOS)
@@ -724,14 +740,16 @@ RadialLineOfSightTether::operator()(osg::Node* node, osg::NodeVisitor* nv)
     {
         RadialLineOfSightNode* los = static_cast<RadialLineOfSightNode*>(node);
 
-        osg::Vec3d worldCenter = getNodeCenter( _node );
+        if ( los->getMapNode() )
+        {
+            osg::Vec3d worldCenter = getNodeCenter( _node );
 
-        //Convert center to mappoint since that is what LOS expects
-        GeoPoint mapCenter;
-        mapCenter.fromWorld( los->getMapNode()->getMapSRS(), worldCenter );
-        //los->getMapNode()->getMap()->worldPointToMapPoint( worldCenter, mapCenter );
+            //Convert center to mappoint since that is what LOS expects
+            GeoPoint mapCenter;
+            mapCenter.fromWorld( los->getMapNode()->getMapSRS(), worldCenter );
 
-        los->setCenter( mapCenter.vec3d() );      
+            los->setCenter( mapCenter ); //mapCenter.vec3d() );
+        }
     }
     traverse(node, nv);
 }
@@ -769,13 +787,15 @@ namespace
 
           virtual void onPositionChanged(const Dragger* sender, const osgEarth::GeoPoint& position)
           {
-              GeoPoint location(position);
-              if (_los->getAltitudeMode() == ALTMODE_RELATIVE)
-              {
-                  double z = _los->getCenter().z();
-                  location.z() = z;
-              }                  
-              _los->setCenter( location.vec3d() );
+              _los->setCenter( position );
+
+              //GeoPoint location(position);
+              //if (_los->getAltitudeMode() == ALTMODE_RELATIVE)
+              //{
+              //    double z = _los->getCenter().z();
+              //    location.z() = z;
+              //}                  
+              //_los->setCenter( location.vec3d() );
           }
 
           RadialLineOfSightNode* _los;
@@ -812,8 +832,11 @@ RadialLineOfSightEditor::~RadialLineOfSightEditor()
 void
 RadialLineOfSightEditor::updateDraggers()
 {
-    osg::Vec3d center = _los->getCenterWorld();             
-    GeoPoint centerMap;
-    centerMap.fromWorld(_los->getMapNode()->getMapSRS(), center);    
-    _dragger->setPosition(centerMap, false);        
+    if ( _los->getMapNode() )
+    {
+        osg::Vec3d center = _los->getCenterWorld();             
+        GeoPoint centerMap;
+        centerMap.fromWorld(_los->getMapNode()->getMapSRS(), center);    
+        _dragger->setPosition(centerMap, false);        
+    }
 }

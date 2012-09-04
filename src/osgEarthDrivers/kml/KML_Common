@@ -1,3 +1,4 @@
+
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
  * Copyright 2008-2012 Pelican Mapping
@@ -26,6 +27,7 @@
 #include <osgEarth/SpatialReference>
 #include <osgEarthSymbology/Style>
 #include <osgEarthSymbology/StyleSheet>
+#include <osgEarthSymbology/ResourceCache>
 #include "KMLOptions"
 
 #define LC "[KML] "
@@ -63,13 +65,13 @@ using namespace osgEarth::Symbology;
 
 struct KMLContext
 {
-    MapNode*                              _mapNode;
-    const KMLOptions*                     _options;
-    osg::ref_ptr<StyleSheet>              _sheet;
-    Style                                 _activeStyle;
-    std::stack<osg::ref_ptr<osg::Group> > _groupStack;
-    osg::ref_ptr<const SpatialReference>  _srs;
-    osg::ref_ptr<const osgDB::Options>    _dbOptions;
+    MapNode*                              _mapNode;         // reference map node
+    const KMLOptions*                     _options;         // user options
+    osg::ref_ptr<StyleSheet>              _sheet;           // entire style sheet
+    Style                                 _activeStyle;     // currently active style
+    std::stack<osg::ref_ptr<osg::Group> > _groupStack;      // resulting scene graph
+    osg::ref_ptr<const SpatialReference>  _srs;             // map's spatial reference
+    osg::ref_ptr<const osgDB::Options>    _dbOptions;       // I/O options (caching, etc)
 };
 
 struct KMLUtils

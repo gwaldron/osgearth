@@ -136,6 +136,7 @@ namespace osgEarth { namespace Features
             osg::Geometry*       bottom_cap,
             osg::Geometry*       outline,
             const osg::Vec4&     wallColor,
+            const osg::Vec4&     wallBaseColor,
             const osg::Vec4&     roofColor,
             const osg::Vec4&     outlineColor,
             const SkinResource*  wallSkin,

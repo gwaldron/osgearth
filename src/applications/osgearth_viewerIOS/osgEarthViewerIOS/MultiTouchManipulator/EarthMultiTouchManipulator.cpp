@@ -19,7 +19,7 @@ using namespace osgEarth::Util;
 /// Constructor.
 EarthMultiTouchManipulator::EarthMultiTouchManipulator()
    : EarthManipulator(),
-    _pinching(false)
+    _gestureState(NO_GESTURE)
 {
 
 }
@@ -59,38 +59,37 @@ osgGA::GUIEventAdapter* EarthMultiTouchManipulator::handleMultiTouchDrag(osgGA::
     
     //osg::notify(osg::ALWAYS) << "Gap: " << gap_now << " " << gap_last << ", Dot: " << dotNow << std::endl;
     
-    if (fabs(gap_last - gap_now) >= zoom_threshold && dotNow <= -0.6f)
+    if (fabs(gap_last - gap_now) >= zoom_threshold && dotNow <= -0.6f)// && _gestureState != TWO_DRAGING)
     {
-        _pinching = true;
+        _gestureState = PINCHING;
         
         // zoom gesture
-        float zoomScaler = 0.1f;
-        float zoomBy = ((gap_last - gap_now)*zoomScaler) * eventTimeDelta;
-        OSG_ALWAYS << "Zoom: " << zoomBy << std::endl;
-        
-        //zoomModel( , false );
-        osgGA::GUIEventAdapter::ScrollingMotion scrollMotion = osgGA::GUIEventAdapter::SCROLL_UP;
-        if(zoomBy < 0.0f){
-            scrollMotion = osgGA::GUIEventAdapter::SCROLL_DOWN;
-        }
-        
         osgGA::GUIEventAdapter* zoomAdpt = new osgGA::GUIEventAdapter(ea);
-        //zoomAdpt->setEventType(osgGA::GUIEventAdapter::DRAG);
         zoomAdpt->setButtonMask(osgGA::GUIEventAdapter::RIGHT_MOUSE_BUTTON);
         _pinchVector.y() += gap_last - gap_now;
         zoomAdpt->setY(_pinchVector.y());
-        //zoomAdpt->setEventType(osgGA::GUIEventAdapter::SCROLL);
-        //zoomAdpt->setScrollingMotion(scrollMotion);
-        //zoomAdpt->setScrollingMotionDelta(0.0f, zoomBy);
-        OSG_ALWAYS << "y: " << _pinchVector.y() << std::endl;
         return zoomAdpt;
+        
+    }else if(fabs(gap_last - gap_now) >= zoom_threshold && dotNow >= 0.3f){// && _gestureState != PINCHING){
+    
+        _gestureState = TWO_DRAGING;
+        OSG_ALWAYS << "two drag" << std::endl;
+        // drag gesture
+        osgGA::GUIEventAdapter* dragAdpt = new osgGA::GUIEventAdapter(ea);
+        dragAdpt->setButtonMask(osgGA::GUIEventAdapter::MIDDLE_MOUSE_BUTTON);
+        return dragAdpt;
+        
     }else{
-        if(_pinching){
+        if(_gestureState == PINCHING){
             osgGA::GUIEventAdapter* zoomAdpt = new osgGA::GUIEventAdapter(ea);
-            //zoomAdpt->setEventType(osgGA::GUIEventAdapter::DRAG);
             zoomAdpt->setButtonMask(osgGA::GUIEventAdapter::RIGHT_MOUSE_BUTTON);
             zoomAdpt->setY(_pinchVector.y());
             return zoomAdpt;
+        }
+        if(_gestureState == TWO_DRAGING){
+            osgGA::GUIEventAdapter* dragAdpt = new osgGA::GUIEventAdapter(ea);
+            dragAdpt->setButtonMask(osgGA::GUIEventAdapter::MIDDLE_MOUSE_BUTTON);
+            return dragAdpt;
         }
     }
     return NULL;
@@ -164,7 +163,7 @@ bool EarthMultiTouchManipulator::handle( const osgGA::GUIEventAdapter& ea, osgGA
                 {
                     _lastTouchData = NULL;
                     _pinchVector = osg::Vec2(0,0);
-                    _pinching = false;
+                    _gestureState = NO_GESTURE;
                 }
 
             }

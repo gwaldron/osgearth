@@ -48,11 +48,14 @@ namespace
         const TextureLayout::TextureSlotVector& slots = layout.getTextureSlots();
 
         buf << "#version 130 \n"
+            << "varying vec4 osg_FrontColor; \n"
+            << "varying vec4 osg_FrontSecondaryColor; \n"
+
             << "void osgearth_vert_setupColoring() \n"
             << "{ \n"
             << "    gl_TexCoord[0] = gl_MultiTexCoord0; \n"
-            << "    gl_FrontColor = gl_Color; \n"
-            << "    gl_FrontSecondaryColor = vec4(0.0); \n"
+            << "    osg_FrontColor = gl_Color; \n"
+            << "    osg_FrontSecondaryColor = vec4(0.0); \n"
             << "} \n";
 
         std::string str;
@@ -68,103 +71,106 @@ namespace
         std::stringstream buf;
 
         buf << "#version 130 \n"
-            << "#extension GL_EXT_gpu_shader4 : enable \n";
+            << "#extension GL_EXT_gpu_shader4 : enable \n"
+            << "varying vec4 osg_FrontColor; \n"
+            << "varying vec4 osg_FrontSecondaryColor; \n";
             
 
-		if ( numSlots <= 0 )
-		{
-			// No textures : create a no-op shader
-			buf << "void osgearth_frag_applyColoring( inout vec4 color ) \n"
-				<< "{ \n"
-				<< "} \n";
-		}
-		else
-		{
-			if ( blending )
-			{
-				buf << "#extension GL_ARB_shader_texture_lod : enable \n"
-					<< "uniform float osgearth_SlotStamp[ " << numSlots << "]; \n"
-					<< "uniform float osg_FrameTime;\n"
-					<< "uniform float osgearth_LODRangeFactor;\n";
-			}
+        if ( numSlots <= 0 )
+        {
+            // No textures : create a no-op shader
+            buf << "void osgearth_frag_applyColoring( inout vec4 color ) \n"
+                << "{ \n"
+                << "    color = osg_FrontColor; \n"
+                << "} \n";
+        }
+        else
+        {
+            if ( blending )
+            {
+                buf << "#extension GL_ARB_shader_texture_lod : enable \n"
+                    << "uniform float osgearth_SlotStamp[ " << numSlots << "]; \n"
+                    << "uniform float osg_FrameTime;\n"
+                    << "uniform float osgearth_LODRangeFactor;\n";
+            }
 
-			buf << "uniform sampler2DArray tex0; \n";
-			
-			if ( blending )
-				buf << "uniform sampler2DArray tex1;\n";
+            buf << "uniform sampler2DArray tex0; \n";
+            
+            if ( blending )
+                buf << "uniform sampler2DArray tex1;\n";
 
-			buf << "uniform float region[ " << 8*numSlots << "]; \n"
-				<< "uniform float osgearth_ImageLayerOpacity[" << numSlots << "]; \n"
-				<< "uniform bool  osgearth_ImageLayerVisible[" << numSlots << "]; \n"
-				<< "uniform float osgearth_ImageLayerRange[" << 2*numSlots << "]; \n"
-				<< "uniform float osgearth_ImageLayerAttenuation; \n"
-				<< "varying float osgearth_CameraRange; \n"
+            buf << "uniform float region[ " << 8*numSlots << "]; \n"
+                << "uniform float osgearth_ImageLayerOpacity[" << numSlots << "]; \n"
+                << "uniform bool  osgearth_ImageLayerVisible[" << numSlots << "]; \n"
+                << "uniform float osgearth_ImageLayerRange[" << 2*numSlots << "]; \n"
+                << "uniform float osgearth_ImageLayerAttenuation; \n"
+                << "uniform float osgearth_CameraElevation; \n"
 
-				<< "void osgearth_frag_applyColoring( inout vec4 color ) \n"
-				<< "{ \n"
-				<< "    vec3 color3 = color.rgb; \n"
-				<< "    float u, v, dmin, dmax, atten_min, atten_max, age; \n"
-				<< "    vec4 texel; \n";
+                << "void osgearth_frag_applyColoring( inout vec4 color ) \n"
+                << "{ \n"
+                << "    vec3 color3 = color.rgb; \n"
+                << "    float u, v, dmin, dmax, atten_min, atten_max, age; \n"
+                << "    vec4 texel; \n";
 
-			const TextureLayout::TextureSlotVector& slots = layout.getTextureSlots();
-			const TextureLayout::RenderOrderVector& order = layout.getRenderOrder();
+            const TextureLayout::TextureSlotVector& slots = layout.getTextureSlots();
+            const TextureLayout::RenderOrderVector& order = layout.getRenderOrder();
 
-			for( unsigned int i = 0; i < order.size(); ++i )
-			{
-				int slot = order[i];
-				int q = 2 * i;
-				int r = 8 * slot;
-				UID uid = slots[slot];
+            for( unsigned int i = 0; i < order.size(); ++i )
+            {
+                int slot = order[i];
+                int q = 2 * i;
+                int r = 8 * slot;
+                UID uid = slots[slot];
 
-				buf << "    if (osgearth_ImageLayerVisible["<< i << "]) \n"
-					<< "    { \n"
-					<< "        u = region["<< r <<"] + (region["<< r+2 <<"] * gl_TexCoord[0].s); \n"
-					<< "        v = region["<< r+1 <<"] + (region["<< r+3 <<"] * gl_TexCoord[0].t); \n"
-					<< "        dmin = osgearth_CameraRange - osgearth_ImageLayerRange["<< q << "]; \n"
-					<< "        dmax = osgearth_CameraRange - osgearth_ImageLayerRange["<< q+1 <<"]; \n"
-					<< "        if (dmin >= 0 && dmax <= 0.0) \n"
-					<< "        { \n"
-					<< "            atten_max = -clamp( dmax, -osgearth_ImageLayerAttenuation, 0 ) / osgearth_ImageLayerAttenuation; \n"
-					<< "            atten_min =  clamp( dmin, 0, osgearth_ImageLayerAttenuation ) / osgearth_ImageLayerAttenuation; \n";
+                buf << "    if (osgearth_ImageLayerVisible["<< i << "]) \n"
+                    << "    { \n"
+                    << "        u = region["<< r <<"] + (region["<< r+2 <<"] * gl_TexCoord[0].s); \n"
+                    << "        v = region["<< r+1 <<"] + (region["<< r+3 <<"] * gl_TexCoord[0].t); \n"
+                    << "        dmin = osgearth_CameraElevation - osgearth_ImageLayerRange["<< q << "]; \n"
+                    << "        dmax = osgearth_CameraElevation - osgearth_ImageLayerRange["<< q+1 <<"]; \n"
+                    << "        if (dmin >= 0 && dmax <= 0.0) \n"
+                    << "        { \n"
+                    << "            atten_max = -clamp( dmax, -osgearth_ImageLayerAttenuation, 0 ) / osgearth_ImageLayerAttenuation; \n"
+                    << "            atten_min =  clamp( dmin, 0, osgearth_ImageLayerAttenuation ) / osgearth_ImageLayerAttenuation; \n";
 
-				if ( layout.isBlendingEnabled(uid) )
-				{
-					float invBlendTime = 1.0f/blendTime;
+                if ( layout.isBlendingEnabled(uid) )
+                {
+                    float invBlendTime = 1.0f/blendTime;
 
-					buf << "            age = "<< invBlendTime << " * min( "<< blendTime << ", osg_FrameTime - osgearth_SlotStamp[" << slot << "] ); \n"
-						<< "            age = clamp(age, 0.0, 1.0);\n"
-						<< "            float pu, pv;\n"
-						<< "            pu = region["<< r+4 <<"] + (region["<< r+6 <<"] * gl_TexCoord[0].s); \n"
-						<< "            pv = region["<< r+5 <<"] + (region["<< r+7 <<"] * gl_TexCoord[0].t); \n"
+                    buf << "            age = "<< invBlendTime << " * min( "<< blendTime << ", osg_FrameTime - osgearth_SlotStamp[" << slot << "] ); \n"
+                        << "            age = clamp(age, 0.0, 1.0);\n"
+                        << "            float pu, pv;\n"
+                        << "            pu = region["<< r+4 <<"] + (region["<< r+6 <<"] * gl_TexCoord[0].s); \n"
+                        << "            pv = region["<< r+5 <<"] + (region["<< r+7 <<"] * gl_TexCoord[0].t); \n"
 
-						<< "            vec3 texCoord = vec3(pu, pv, " << slot <<");\n;\n"
-						<< "            vec4 texel0 = texture2DArray( tex0, vec3(u, v, " << slot << ") );\n"
-						<< "            vec4 texel1 = texture2DArray( tex1, vec3(pu, pv, " << slot << ") );\n"
-						<< "            float mixval = age * osgearth_LODRangeFactor;\n"
-						
-						// pre-multiply alpha before mixing:
-						<< "            texel0.rgb *= texel0.a; \n"
-						<< "            texel1.rgb *= texel1.a; \n"
-						<< "            texel = mix(texel1, texel0, mixval); \n"
+                        << "            vec3 texCoord = vec3(pu, pv, " << slot <<");\n;\n"
+                        << "            vec4 texel0 = texture2DArray( tex0, vec3(u, v, " << slot << ") );\n"
+                        << "            vec4 texel1 = texture2DArray( tex1, vec3(pu, pv, " << slot << ") );\n"
+                        << "            float mixval = age * osgearth_LODRangeFactor;\n"
+                        
+                        // pre-multiply alpha before mixing:
+                        << "            texel0.rgb *= texel0.a; \n"
+                        << "            texel1.rgb *= texel1.a; \n"
+                        << "            texel = mix(texel1, texel0, mixval); \n"
 
-						// revert to non-pre-multiplies alpha (assumes openGL state uses non-pre-mult alpha)
-						<< "            if (texel.a > 0.0) { \n"
-						<< "                texel.rgb /= texel.a; \n"
-						<< "            } \n";
-				}
-				else
-				{
-					buf << "            texel = texture2DArray( tex0, vec3(u,v,"<< slot <<") ); \n";
-				}
+                        // revert to non-pre-multiplies alpha (assumes openGL state uses non-pre-mult alpha)
+                        << "            if (texel.a > 0.0) { \n"
+                        << "                texel.rgb /= texel.a; \n"
+                        << "            } \n";
+                }
+                else
+                {
+                    buf << "            texel = texture2DArray( tex0, vec3(u,v,"<< slot <<") ); \n";
+                }
 
-				buf << "            color3 = mix(color3, texel.rgb, texel.a * osgearth_ImageLayerOpacity["<< i <<"] * atten_max * atten_min); \n"
-					<< "        } \n"
-					<< "    } \n";
-			}
+                buf << "            color3 = mix(color3, texel.rgb, texel.a * osgearth_ImageLayerOpacity["<< i <<"] * atten_max * atten_min); \n"
+                    << "        } \n"
+                    << "    } \n";
+            }
 
-			buf << "    color = vec4(color3.rgb, color.a); \n"
-				<< "} \n";
-		}
+            buf << "    color = vec4(color3.rgb, color.a); \n"
+                << "} \n";
+        }
 
         std::string str;
         str = buf.str();

@@ -21,12 +21,15 @@
 #include <osgEarthFeatures/CropFilter>
 #include <osgEarthFeatures/FeatureSourceIndexNode>
 #include <osgEarth/Capabilities>
-#include <osgEarth/ThreadingUtils>
 #include <osgEarth/CullingUtils>
-#include <osgEarth/NodeUtils>
+#include <osgEarth/ElevationLOD>
 #include <osgEarth/ElevationQuery>
+#include <osgEarth/FadeEffect>
+#include <osgEarth/NodeUtils>
 #include <osgEarth/Registry>
 #include <osgEarth/ShaderComposition>
+#include <osgEarth/ThreadingUtils>
+
 #include <osg/CullFace>
 #include <osg/PagedLOD>
 #include <osg/ProxyNode>
@@ -34,7 +37,6 @@
 #include <osgDB/ReaderWriter>
 #include <osgDB/WriteFile>
 #include <osgUtil/Optimizer>
-#include <osgEarth/ElevationLOD>
 
 #define LC "[FeatureModelGraph] "
 
@@ -44,7 +46,8 @@ using namespace osgEarth::Symbology;
 
 #undef USE_PROXY_NODE_FOR_TESTING
 
-#define OE_TEST OE_NULL
+//#define OE_TEST OE_NULL
+#define OE_TEST OE_NOTICE
 
 //---------------------------------------------------------------------------
 
@@ -54,7 +57,8 @@ namespace
 {
     UID                               _uid         = 0;
     Threading::ReadWriteMutex         _fmgMutex;
-    std::map<UID, FeatureModelGraph*> _fmgRegistry;
+    typedef std::map<UID, osg::observer_ptr<FeatureModelGraph> > FMGRegistry;
+    FMGRegistry _fmgRegistry;
 
     static std::string s_makeURI( UID uid, unsigned lod, unsigned x, unsigned y ) 
     {
@@ -65,7 +69,13 @@ namespace
         return str;
     }
 
-    osg::Group* createPagedNode( const osg::BoundingSphered& bs, const std::string& uri, float minRange, float maxRange, float priOffset, float priScale )
+    osg::Group* createPagedNode(const osg::BoundingSphered& bs, 
+                                const std::string& uri, 
+                                float minRange, 
+                                float maxRange, 
+                                float priOffset, 
+                                float priScale,
+                                RefNodeOperationVector* postMergeOps)
     {
 #ifdef USE_PROXY_NODE_FOR_TESTING
         osg::ProxyNode* p = new osg::ProxyNode();
@@ -73,7 +83,8 @@ namespace
         p->setRadius( bs.radius() );
         p->setFileName( 0, uri );
 #else
-        osg::PagedLOD* p = new osg::PagedLOD();
+        PagedLODWithNodeOperations* p = new PagedLODWithNodeOperations(postMergeOps);
+        //osg::PagedLOD* p = new osg::PagedLOD();
         p->setCenter( bs.center() );
         //p->setRadius( bs.radius() );
         p->setRadius(std::max((float)bs.radius(),maxRange));
@@ -137,8 +148,8 @@ struct osgEarthFeatureModelPseudoLoader : public osgDB::ReaderWriter
     static FeatureModelGraph* getGraph( UID uid ) 
     {
         Threading::ScopedReadLock lock( _fmgMutex );
-        std::map<UID, FeatureModelGraph*>::const_iterator i = _fmgRegistry.find( uid );
-        return i != _fmgRegistry.end() ? i->second : 0L;
+        FMGRegistry::const_iterator i = _fmgRegistry.find( uid );
+        return i != _fmgRegistry.end() ? i->second.get() : 0L;
     }
 };
 
@@ -163,6 +174,17 @@ namespace
             fullExtent.xMin() + w * (double)(tileX+1),
             fullExtent.yMin() + h * (double)(tileY+1) );
     }
+
+
+    struct SetupFading : public NodeOperation
+    {
+        void operator()( osg::Node* node )
+        {
+            osg::Uniform* u = FadeEffect::createStartTimeUniform();
+            u->set( (float)osg::Timer::instance()->time_s() );
+            node->getOrCreateStateSet()->addUniform( u );
+        }
+    };
 }
 
 
@@ -178,6 +200,10 @@ _dirty        ( false ),
 _pendingUpdate( false )
 {
     _uid = osgEarthFeatureModelPseudoLoader::registerGraph( this );
+
+    // operations that get applied after a new node gets merged into the 
+    // scene graph by the pager.
+    _postMergeOperations = new RefNodeOperationVector();
 
     // install the stylesheet in the session if it doesn't already have one.
     if ( !session->styles() )
@@ -252,6 +278,14 @@ _pendingUpdate( false )
     if ( _options.enableLighting().isSet() )
         stateSet->setMode( GL_LIGHTING, *_options.enableLighting() ? 1 : 0 );
 
+    // If the user requests fade-in, install a post-merge operation that will set the 
+    // proper fade time for paged nodes.
+    if ( _options.fadeInDuration().value() > 0.0f )
+    {
+        addPostMergeOperation( new SetupFading() );
+        OE_INFO << LC << "Added fading post-merge operation" << std::endl;
+    }
+
     ADJUST_EVENT_TRAV_COUNT( this, 1 );
 
     redraw();
@@ -265,7 +299,7 @@ FeatureModelGraph::~FeatureModelGraph()
 void
 FeatureModelGraph::installShaderMains()
 {
-    //nop
+    osg::StateSet* ss = this->getOrCreateStateSet();
 }
 
 void
@@ -274,13 +308,24 @@ FeatureModelGraph::dirty()
     _dirty = true;
 }
 
+void
+FeatureModelGraph::addPostMergeOperation( NodeOperation* op )
+{
+    if ( op )
+        _postMergeOperations->push_back( op );
+}
+
 osg::BoundingSphered
 FeatureModelGraph::getBoundInWorldCoords(const GeoExtent& extent,
                                          const MapFrame*  mapf ) const
 {
     osg::Vec3d center, corner;
-    //double z = 0.0;
     GeoExtent workingExtent;
+
+    if ( !extent.isValid() )
+    {
+        return osg::BoundingSphered();
+    }
 
     if ( extent.getSRS()->isEquivalentTo( _usableMapExtent.getSRS() ) )
     {
@@ -368,7 +413,8 @@ FeatureModelGraph::setupPaging()
         0.0f, 
         maxRange, 
         *_options.layout()->priorityOffset(), 
-        *_options.layout()->priorityScale() );
+        *_options.layout()->priorityScale(),
+        _postMergeOperations.get() );
 
     return pagedNode;
 }
@@ -559,7 +605,8 @@ FeatureModelGraph::buildSubTilePagedLODs(unsigned        parentLOD,
                     uri, 
                     0.0f, maxRange, 
                     *_options.layout()->priorityOffset(), 
-                    *_options.layout()->priorityScale() );
+                    *_options.layout()->priorityScale(),
+                    _postMergeOperations.get() );
 
                 parent->addChild( pagedNode );
             }
@@ -622,11 +669,16 @@ FeatureModelGraph::buildLevel( const FeatureLevel& level, const GeoExtent& exten
 
     else
     {
-        // attempt to glean the style from the feature source name:
-        const Style style = *_session->styles()->getStyle( 
-            *_session->getFeatureSource()->getFeatureSourceOptions().name() );
+        Style defaultStyle;
 
-        osg::Node* node = build( style, query, extent, index );
+        if ( _session->styles()->selectors().size() == 0 )
+        {
+            // attempt to glean the style from the feature source name:
+            defaultStyle = *_session->styles()->getStyle( 
+                *_session->getFeatureSource()->getFeatureSourceOptions().name() );
+        }
+
+        osg::Node* node = build( defaultStyle, query, extent, index );
         if ( node )
             group->addChild( node );
     }
@@ -820,6 +872,8 @@ FeatureModelGraph::buildStyleGroups(const StyleSelector* selector,
                                     FeatureSourceIndex*  index,
                                     osg::Group*          parent)
 {
+    OE_TEST << LC << "buildStyleGroups: " << selector->name() << std::endl;
+
     // if the selector uses an expression to select the style name, then we must perform the
     // query and then SORT the features into style groups.
     if ( selector->styleExpression().isSet() )
@@ -1074,9 +1128,17 @@ FeatureModelGraph::redraw()
     {        
         ElevationLOD *lod = new ElevationLOD(_session->getMapInfo().getSRS(), minRange, maxRange );
         lod->addChild( node );
-        node = lod;        
+        node = lod;
     }
 
+    // If we want fading, install a fader.
+    if ( _options.fadeInDuration().value() > 0.0f )
+    {
+        FadeEffect* fader = new FadeEffect();
+        fader->setFadeDuration( *_options.fadeInDuration() );
+        fader->addChild( node );
+        node = fader;
+    }
 
     addChild( node );
 

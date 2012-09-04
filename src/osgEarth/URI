@@ -22,6 +22,7 @@
 #include <osgEarth/Common>
 #include <osgEarth/CacheBin>
 #include <osgEarth/CachePolicy>
+#include <osgEarth/Containers>
 #include <osgEarth/FileUtils>
 #include <osgEarth/IOTypes>
 #include <osgEarth/Progress>
@@ -237,11 +238,113 @@ namespace osgEarth
         std::string _cacheKey;
         URIContext  _context;
     };
+    
+
+//------------------------------------------------------------------------
+
+
+    /**
+     * A lookup table that maps URI references to other URI references. This
+     * is used as an optional resource mapping table. (See KML's ResourceMap
+     * for usage example)
+     *
+     * WARNING: osgDB::Options will only store a raw pointer to the class, so
+     * make sure the scope of the osgDB::Options does not exceed the scope of
+     * the embedded alias map!
+     */
+    class OSGEARTH_EXPORT URIAliasMap
+    {
+    public:
+        /**
+         * Inserts a key-value pair into the map.
+         */
+        void insert( const std::string& key, const std::string& value );
+
+        /**
+         * Resolves the input address into a URI string.
+         */
+        std::string resolve(const std::string& input, const URIContext& context) const;
+
+        /**
+         * True if there are no mappings
+         */
+        bool empty() const { return _map.empty(); }
+
+        /**
+         * Clears out the map.
+         */
+        void clear() { _map.clear(); }
+
+        /**
+         * Loads an alias map from an Options.
+         */
+        static URIAliasMap* from( const osgDB::Options* options ) {
+            return options ? static_cast<URIAliasMap*>(const_cast<osgDB::Options*>(options)->getPluginData("osgEarth::URIAliasMap")) : 0L;
+        }
+
+        /**
+         * Stores an alias map in an Options
+         */
+        void apply( osgDB::Options* options ) {
+            if ( options ) options->setPluginData("osgEarth::URIAliasMap", this);
+        }
+
+    protected:
+        std::map<std::string,std::string> _map;
+        friend class Config;
+    };
+
+
+    /**
+     * A custom read callback (that you can set in an osgDB::Options) that will 
+     * attempt to resolve pathnames using a URI alias map.
+     */
+    class OSGEARTH_EXPORT URIAliasMapReadCallback : public osgDB::ReadFileCallback
+    {
+    public:
+        URIAliasMapReadCallback( const URIAliasMap& aliasMap, const URIContext& context );
+
+        virtual osgDB::ReaderWriter::ReadResult openArchive(const std::string& filename, osgDB::ReaderWriter::ArchiveStatus status, unsigned int indexBlockSizeHint, const osgDB::Options* useObjectCache);
+        virtual osgDB::ReaderWriter::ReadResult readObject(const std::string& filename, const osgDB::Options* options);
+        virtual osgDB::ReaderWriter::ReadResult readImage(const std::string& filename, const osgDB::Options* options);
+        virtual osgDB::ReaderWriter::ReadResult readHeightField(const std::string& filename, const osgDB::Options* options);
+        virtual osgDB::ReaderWriter::ReadResult readNode(const std::string& filename, const osgDB::Options* options);
+        virtual osgDB::ReaderWriter::ReadResult readShader(const std::string& filename, const osgDB::Options* options);
+
+    protected:
+        const URIAliasMap& _aliasMap;
+        URIContext         _context;
+    };
+
+
+//------------------------------------------------------------------------
+
+    /**
+     * A URI result cache that you can embed in an osgDB::Options, and if found,
+     * URI will attempt to use it. 
+     *
+     * WARNING: osgDB::Options will only store a raw pointer to the class, so
+     * make sure the scope of the osgDB::Options does not exceed the scope of
+     * the embedded cache!
+     */
+    struct /*header-only*/ URIResultCache : public LRUCache<URI, ReadResult>
+    {
+        URIResultCache( bool threadsafe =true )
+            : LRUCache<URI,ReadResult>( threadsafe ) { }
+
+        static URIResultCache* from(const osgDB::Options* options) {
+            return options ? static_cast<URIResultCache*>(const_cast<osgDB::Options*>(options)->getPluginData("osgEarth::URIResultCache")) : 0L;
+        }
+
+        void apply( osgDB::Options* options ) {
+            if ( options ) options->setPluginData("osgEarth::URIResultCache", this);
+        }
+    };
 
     
 //------------------------------------------------------------------------
 
-    // Config specifialization for URI:
+    // Config specialization for URI:
 
     template <> inline
     void Config::addIfSet<URI>( const std::string& key, const optional<URI>& opt ) {
@@ -270,6 +373,47 @@ namespace osgEarth
         }
         else
             return false;
+    }
+
+    // Config specialization for URIAliasMap
+
+    template <> inline
+    void Config::addIfSet<URIAliasMap>( const std::string& key, const optional<URIAliasMap>& map ) {
+        if ( map.isSet() ) {
+            Config conf( key );
+            for( std::map<std::string,std::string>::const_iterator i = map->_map.begin(); i != map->_map.end(); ++i ) {
+                Config alias( "alias" );
+                alias.add( "source", i->first );
+                alias.add( "target", i->second );
+                conf.add( alias );
+            }
+            add(conf);
+        }
+    }
+
+    template <> inline
+    void Config::updateIfSet<URIAliasMap>( const std::string& key, const optional<URIAliasMap>& map ) {
+        if ( map.isSet() ) {
+            remove( key );
+            addIfSet( key, map );
+        }
+    }
+
+    template <> inline
+    bool Config::getIfSet<URIAliasMap>( const std::string& key, optional<URIAliasMap>& output ) const {
+        Config alias = child(key);
+        if ( !alias.empty() ) {
+            for( ConfigSet::const_iterator i = alias.children().begin(); i != alias.children().end(); ++i ) {
+                std::string source = i->value("source");
+                std::string target = i->value("target");
+                if ( !source.empty() && !target.empty() )
+                    output->insert( source, target );
+            }
+            return true;
+        }
+        else {
+            return false;
+        }
     }
 }
 

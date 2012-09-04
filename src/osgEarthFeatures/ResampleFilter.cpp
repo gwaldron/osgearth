@@ -27,6 +27,8 @@ using namespace osgEarth;
 using namespace osgEarth::Features;
 using namespace osgEarth::Symbology;
 
+OSGEARTH_REGISTER_SIMPLE_FEATUREFILTER(resample, ResampleFilter );
+
 bool
 ResampleFilter::isSupported()
 {
@@ -50,6 +52,29 @@ _resampleMode(RESAMPLE_LINEAR)
 {
     // NOP
 }
+
+ResampleFilter::ResampleFilter( const Config& conf):
+_minLen( 0 ),
+_maxLen( DBL_MAX ),
+_perturbThresh( 0 ),
+_resampleMode(RESAMPLE_LINEAR)
+{
+    if (conf.key() == "resample")
+    {
+        conf.getIfSet( "min_length", _minLen );
+        conf.getIfSet( "max_length", _maxLen );
+    }
+}
+
+Config ResampleFilter::getConfig() const
+{
+    Config config( "resample" );
+    config.addIfSet( "min_length", _minLen);
+    config.addIfSet( "max_length", _maxLen);
+    return config;
+}
+
+
 
 bool
 ResampleFilter::push( Feature* input, FilterContext& context )

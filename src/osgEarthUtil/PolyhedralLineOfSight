@@ -47,11 +47,6 @@ namespace osgEarth { namespace Util
         virtual ~PolyhedralLineOfSightNode();
 
         /**
-         * Gets the LOS' map node
-         */
-        MapNode* getMapNode() { return _mapNode.get(); }
-
-        /**
          * The maximum sampling range from the center point
          */
         void setDistance( const Distance& value );
@@ -84,6 +79,10 @@ namespace osgEarth { namespace Util
     public: // LocalizedNode
         
         virtual bool setPosition( const GeoPoint& pos );
+
+    public: // MapNodeObserver
+
+        virtual void setMapNode( MapNode* mapNode );
 
     public:
         // internal: called when the underlying terrain changes and resampling

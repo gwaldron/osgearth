@@ -64,33 +64,7 @@ CompilerCache::TexCoordArrayCache::get(const osg::Vec4d& mat,
 #define MATCH_TOLERANCE 0.000001
 
 namespace
-{
-#if 0
-    // Comparator for GeoLocators - used to sort texture coordinate data into
-    // bins for sharing
-    struct GeoLocatorComp
-    {
-        bool operator()( const GeoLocator* lhs, const GeoLocator* rhs ) const
-        {
-            return rhs && lhs && lhs->isEquivalentTo( *rhs );
-        }
-    };
-
-    typedef std::pair< const GeoLocator*, osg::Vec2Array* > LocatorTexCoordPair;
-
-    // Lookup table that stores the shared tex coord array data.
-    struct LocatorToTexCoordTable : public std::list<LocatorTexCoordPair>
-    {
-        osg::Vec2Array* find( const GeoLocator* key ) const {
-            for( const_iterator i = begin(); i != end(); ++i ) {
-                if ( i->first->isEquivalentTo( *key ) )
-                    return i->second;
-            }
-            return 0L;
-        }
-    };
-#endif
-    
+{    
     // Data for a single renderable color layer
     struct RenderLayer
     {
@@ -160,6 +134,7 @@ namespace
         osg::Geometry*                surface;
         osg::Vec3Array*               surfaceVerts;
         osg::Vec3Array*               normals;
+        osg::Vec4Array*               surfaceElevData;
         unsigned                      numVerticesInSurface;
         osg::Vec2Array*               unifiedSurfaceTexCoords;
         osg::ref_ptr<osg::FloatArray> elevations;
@@ -331,6 +306,14 @@ namespace
         (*colors)[0].set(1.0f,1.0f,1.0f,1.0f);
         d.surface->setColorArray( colors );
         d.surface->setColorBinding( osg::Geometry::BIND_OVERALL );
+
+        // elevation attribution
+        // for each vertex, a vec4 containing a unit extrusion vector in [0..2] and the raw elevation in [3]
+        d.surfaceElevData = new osg::Vec4Array();
+        d.surfaceElevData->reserve( d.numVerticesInSurface );
+        d.surface->setVertexAttribArray( osg::Drawable::ATTRIBUTE_6, d.surfaceElevData );
+        d.surface->setVertexAttribBinding( osg::Drawable::ATTRIBUTE_6, osg::Geometry::BIND_PER_VERTEX );
+        d.surface->setVertexAttribNormalize( osg::Drawable::ATTRIBUTE_6, false );
         
         // temporary data structures for triangulation support
         d.elevations = new osg::FloatArray();
@@ -417,7 +400,9 @@ namespace
                         osg::ref_ptr<osg::Vec2Array>& surfaceTexCoords = cache._surfaceTexCoordArrays.get( mat, d.numCols, d.numRows );
                         if ( !surfaceTexCoords.valid() )
                         {
+                            // Note: anything in the cache must have its own VBO. No sharing!
                             surfaceTexCoords = new osg::Vec2Array();
+                            surfaceTexCoords->setVertexBufferObject( new osg::VertexBufferObject() );
                             surfaceTexCoords->reserve( d.numVerticesInSurface );
                             r._ownsTexCoords = true;
                         }
@@ -426,7 +411,9 @@ namespace
                         osg::ref_ptr<osg::Vec2Array>& skirtTexCoords = cache._skirtTexCoordArrays.get( mat, d.numCols, d.numRows );
                         if ( !skirtTexCoords.valid() )
                         {
+                            // Note: anything in the cache must have its own VBO. No sharing!
                             skirtTexCoords = new osg::Vec2Array();
+                            skirtTexCoords->setVertexBufferObject( new osg::VertexBufferObject() );
                             skirtTexCoords->reserve( d.numVerticesInSkirt );
                             r._ownsSkirtTexCoords = true;
                         }
@@ -456,26 +443,52 @@ namespace
                             r._locator = geo->getGeographicFromGeocentric();
                     }
 
-                    compositor->assignTexCoordArray( d.surface, colorLayer.getUID(), r._texCoords.get() );
-                    compositor->assignTexCoordArray( d.skirt,   colorLayer.getUID(), r._skirtTexCoords.get() );
-
-                    // If we have mask stitching geometries, those need tex coords too:
-                    for ( MaskRecordVector::iterator mr = d.maskRecords.begin(); mr != d.maskRecords.end(); ++mr )
-                    {
-                        compositor->assignTexCoordArray( (*mr)._geom, colorLayer.getUID(), r._stitchTexCoords.get() );
-                    }
-
-                    if (d.stitching_skirts)
-                    {
-                        compositor->assignTexCoordArray( d.stitching_skirts, colorLayer.getUID(), r._stitchSkirtTexCoords.get() );
-                    }
-
                     d.renderLayers.push_back( r );
+
+                    // Note that we don't actually assign the tex coord arrays to the geometry yet.
+                    // That must wait until the end. See the comments in assignTextureArrays()
+                    // to understand why.
                 }
                 else
                 {
                     OE_WARN << LC << "Found a Locator, but it wasn't a GeoLocator." << std::endl;
                 }
+            }
+        }
+    }
+
+
+    /**
+     * Assigns any texture coordinate arrays to the corresponding geometry.
+     *
+     * NOTE: This has to happen AFTER all other arrays have been assigned to the geometry.
+     * Here is why:
+     *
+     * This compiler attempts to share texture coordinate arrays between tiles where possible.
+     * When you call Geometry::setVertexArray (or other similar functions) OSG attempts to find
+     * an existing VBO that it can use to attach to the array. If a shared texture coordinate
+     * array is in the Geometry, and OSG will find its VBO and attempt to use it so store the
+     * buffer data for the new array. In doing do it will be modifying a VBO that is potentially
+     * in use by another thread, causing a crash.
+     *
+     * By assigning the shared arrays last, we prevent this from happening.
+     */
+    void assignTextureArrays( Data& d, TextureCompositor* compositor )
+    {
+        for( RenderLayerVector::const_iterator r = d.renderLayers.begin(); r != d.renderLayers.end(); ++r )
+        {
+            compositor->assignTexCoordArray( d.surface, r->_layer.getUID(), r->_texCoords.get() );
+            compositor->assignTexCoordArray( d.skirt,   r->_layer.getUID(), r->_skirtTexCoords.get() );
+
+            // If we have mask stitching geometries, those need tex coords too:
+            for ( MaskRecordVector::iterator mr = d.maskRecords.begin(); mr != d.maskRecords.end(); ++mr )
+            {
+                compositor->assignTexCoordArray( (*mr)._geom, r->_layer.getUID(), r->_stitchTexCoords.get() );
+            }
+
+            if (d.stitching_skirts)
+            {
+                compositor->assignTexCoordArray( d.stitching_skirts, r->_layer.getUID(), r->_stitchSkirtTexCoords.get() );
             }
         }
     }
@@ -501,9 +514,22 @@ namespace
 
                 bool validValue = true;
 
+                // use the sampling factor to determine the lookup index:
+                unsigned i_equiv = d.i_sampleFactor==1.0 ? i : (unsigned) (double(i)*d.i_sampleFactor);
+                unsigned j_equiv = d.j_sampleFactor==1.0 ? j : (unsigned) (double(j)*d.j_sampleFactor);
+
+                // raw height:
+                float heightValue = 0.0f;
+
+                if ( elevationLayer )
+                {
+                    validValue = elevationLayer->getValidValue(i_equiv,j_equiv, heightValue);
+                    ndc.z() = heightValue; //*scaleHeight; // scaling will be done in the shader
+                }
+
                 // First check whether the sampling point falls within a mask's bounding box.
                 // If so, skip the sampling and mark it as a mask location
-                if ( d.maskRecords.size() > 0 )
+                if ( validValue && d.maskRecords.size() > 0 )
                 {
                     for (MaskRecordVector::iterator mr = d.maskRecords.begin(); mr != d.maskRecords.end(); ++mr)
                     {
@@ -518,17 +544,6 @@ namespace
                             break;
                         }
                     }
-                }
-
-                if ( validValue && elevationLayer )
-                {
-                    // use the sampling factor to determine the lookup index:
-                    unsigned i_equiv = d.i_sampleFactor==1.0 ? i : (unsigned) (double(i)*d.i_sampleFactor);
-                    unsigned j_equiv = d.j_sampleFactor==1.0 ? j : (unsigned) (double(j)*d.j_sampleFactor);
-
-                    float value = 0.0f;
-                    validValue = elevationLayer->getValidValue(i_equiv, j_equiv, value);
-                    ndc.z() = value * d.scaleHeight;
                 }
                 
                 if ( validValue )
@@ -583,6 +598,9 @@ namespace
 
                     //(*normals)[k] = model_one;
                     (*d.normals).push_back(model_one);
+
+                    // store the unit extrusion vector and the raw height value.
+                    (*d.surfaceElevData).push_back( osg::Vec4f(model_one.x(), model_one.y(), model_one.z(), heightValue) );
                 }
             }
         }
@@ -962,9 +980,11 @@ namespace
         // build the verts first:
         osg::Vec3Array* skirtVerts = new osg::Vec3Array();
         osg::Vec3Array* skirtNormals = new osg::Vec3Array();
+        osg::Vec4Array* skirtElevData = new osg::Vec4Array();
 
         skirtVerts->reserve( d.numVerticesInSkirt );
         skirtNormals->reserve( d.numVerticesInSkirt );
+        skirtElevData->reserve( d.numVerticesInSkirt );
 
         Indices skirtBreaks;
         skirtBreaks.reserve( d.numVerticesInSkirt );
@@ -982,11 +1002,17 @@ namespace
             }
             else
             {
-                skirtVerts->push_back( (*d.surfaceVerts)[orig_i] );
-                skirtVerts->push_back( (*d.surfaceVerts)[orig_i] - ((*skirtVectors)[orig_i])*skirtHeight );
-                skirtNormals->push_back( (*d.normals)[orig_i] );
-                skirtNormals->push_back( (*d.normals)[orig_i] );
+                const osg::Vec3f& surfaceVert = (*d.surfaceVerts)[orig_i];
+                skirtVerts->push_back( surfaceVert );
+                skirtVerts->push_back( surfaceVert - ((*skirtVectors)[orig_i])*skirtHeight );
 
+                const osg::Vec3f& surfaceNormal = (*d.normals)[orig_i];
+                skirtNormals->push_back( surfaceNormal );
+                skirtNormals->push_back( surfaceNormal );
+
+                const osg::Vec4f& elevData = (*d.surfaceElevData)[orig_i];
+                skirtElevData->push_back( elevData );
+                skirtElevData->push_back( elevData - osg::Vec4f(0,0,0,skirtHeight) );
 
                 if ( compositor->requiresUnitTextureSpace() )
                 {
@@ -1019,10 +1045,17 @@ namespace
             }
             else
             {
-                skirtVerts->push_back( (*d.surfaceVerts)[orig_i] );
-                skirtVerts->push_back( (*d.surfaceVerts)[orig_i] - ((*skirtVectors)[orig_i])*skirtHeight );
-                skirtNormals->push_back( (*d.normals)[orig_i] );             
-                skirtNormals->push_back( (*d.normals)[orig_i] );             
+                const osg::Vec3f& surfaceVert = (*d.surfaceVerts)[orig_i];
+                skirtVerts->push_back( surfaceVert );
+                skirtVerts->push_back( surfaceVert - ((*skirtVectors)[orig_i])*skirtHeight );
+
+                const osg::Vec3f& surfaceNormal = (*d.normals)[orig_i];
+                skirtNormals->push_back( surfaceNormal );
+                skirtNormals->push_back( surfaceNormal );
+
+                const osg::Vec4f& elevData = (*d.surfaceElevData)[orig_i];
+                skirtElevData->push_back( elevData );
+                skirtElevData->push_back( elevData - osg::Vec4f(0,0,0,skirtHeight) );
 
                 if ( compositor->requiresUnitTextureSpace() )
                 {
@@ -1055,10 +1088,17 @@ namespace
             }
             else
             {
-                skirtVerts->push_back( (*d.surfaceVerts)[orig_i] );
-                skirtVerts->push_back( (*d.surfaceVerts)[orig_i] - ((*skirtVectors)[orig_i])*skirtHeight );
-                skirtNormals->push_back( (*d.normals)[orig_i] );             
-                skirtNormals->push_back( (*d.normals)[orig_i] );             
+                const osg::Vec3f& surfaceVert = (*d.surfaceVerts)[orig_i];
+                skirtVerts->push_back( surfaceVert );
+                skirtVerts->push_back( surfaceVert - ((*skirtVectors)[orig_i])*skirtHeight );
+
+                const osg::Vec3f& surfaceNormal = (*d.normals)[orig_i];
+                skirtNormals->push_back( surfaceNormal );
+                skirtNormals->push_back( surfaceNormal );
+
+                const osg::Vec4f& elevData = (*d.surfaceElevData)[orig_i];
+                skirtElevData->push_back( elevData );
+                skirtElevData->push_back( elevData - osg::Vec4f(0,0,0,skirtHeight) );
 
                 if ( compositor->requiresUnitTextureSpace() )
                 {
@@ -1091,10 +1131,17 @@ namespace
             }
             else
             {
-                skirtVerts->push_back( (*d.surfaceVerts)[orig_i] );
-                skirtVerts->push_back( (*d.surfaceVerts)[orig_i] - ((*skirtVectors)[orig_i])*skirtHeight );
-                skirtNormals->push_back( (*d.normals)[orig_i] );
-                skirtNormals->push_back( (*d.normals)[orig_i] );
+                const osg::Vec3f& surfaceVert = (*d.surfaceVerts)[orig_i];
+                skirtVerts->push_back( surfaceVert );
+                skirtVerts->push_back( surfaceVert - ((*skirtVectors)[orig_i])*skirtHeight );
+
+                const osg::Vec3f& surfaceNormal = (*d.normals)[orig_i];
+                skirtNormals->push_back( surfaceNormal );
+                skirtNormals->push_back( surfaceNormal );
+
+                const osg::Vec4f& elevData = (*d.surfaceElevData)[orig_i];
+                skirtElevData->push_back( elevData );
+                skirtElevData->push_back( elevData - osg::Vec4f(0,0,0,skirtHeight) );
 
                 if ( compositor->requiresUnitTextureSpace() )
                 {
@@ -1122,6 +1169,10 @@ namespace
 
         d.skirt->setNormalArray( skirtNormals );
         d.skirt->setNormalBinding( osg::Geometry::BIND_PER_VERTEX );
+
+        d.skirt->setVertexAttribArray    (osg::Drawable::ATTRIBUTE_6, skirtElevData );
+        d.skirt->setVertexAttribBinding  (osg::Drawable::ATTRIBUTE_6, osg::Geometry::BIND_PER_VERTEX);
+        d.skirt->setVertexAttribNormalize(osg::Drawable::ATTRIBUTE_6, false);
 
 
         // GW: not sure why this break stuff is here...?
@@ -1447,6 +1498,10 @@ TileModelCompiler::compile(const TileModel* model,
 
     // tesselate the surface verts into triangles.
     tessellateSurfaceGeometry( d, _optimizeTriOrientation );
+
+    // assign our texture coordinate arrays to the geometry. This must happen LAST
+    // since we're sharing arrays across tiles. Here is why:
+    assignTextureArrays( d, _texCompositor.get() );
 
     // create the StateSet that will active texture composition.
     osg::StateSet* stateSet = createStateSet( d, _texCompositor.get() );

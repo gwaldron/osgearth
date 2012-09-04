@@ -182,8 +182,16 @@ const Profile*
 TileMap::createProfile() const
 {
     osg::ref_ptr< SpatialReference > spatialReference =  osgEarth::SpatialReference::create(_srs);
-    
-    if (spatialReference->isSphericalMercator())
+
+    if (getProfileType() == Profile::TYPE_GEODETIC)
+    {
+        return osgEarth::Registry::instance()->getGlobalGeodeticProfile();
+    }
+    else if (getProfileType() == Profile::TYPE_MERCATOR)
+    {
+        return osgEarth::Registry::instance()->getSphericalMercatorProfile();
+    }    
+    else if (spatialReference->isSphericalMercator())
     {
         //HACK:  Some TMS sources, most notably TileCache, use a global mercator extent that is very slightly different than
         //       the automatically computed mercator bounds which can cause rendering issues due to the some texture coordinates

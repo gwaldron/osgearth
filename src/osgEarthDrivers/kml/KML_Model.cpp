@@ -77,5 +77,22 @@ KML_Model::parseStyle(const Config& conf, KMLContext& cx, Style& style)
             model->roll() = NumericExpression( r );
     }
 
+    // Read and store file path aliases from a KML ResourceMap.
+    Config resource_map = conf.child("resourcemap");
+    if ( !resource_map.empty() )
+    {
+        const ConfigSet aliases = resource_map.children("alias");
+        for( ConfigSet::const_iterator i = aliases.begin(); i != aliases.end(); ++i )
+        {
+            std::string source = i->value("sourcehref");
+            std::string target = i->value("targethref");
+            if ( !source.empty() || !target.empty() )
+            {
+                if ( !model ) model = style.getOrCreate<ModelSymbol>();
+                model->uriAliasMap()->insert( source, target );
+            }
+        }
+    }
+
     KML_Geometry::parseStyle(conf, cx, style);
 }

@@ -87,6 +87,10 @@ namespace osgEarth { namespace Symbology
         optional<unsigned>& randomSeed() { return _randomSeed; }
         const optional<unsigned>& randomSeed() const { return _randomSeed; }
 
+        /** URI alias map for embedded resources */
+        optional<URIAliasMap>& uriAliasMap() { return _uriAliasMap; }
+        const optional<URIAliasMap>& uriAliasMap() const { return _uriAliasMap; }
+
     public: // conversions to built-in base classes, for convenience.
 
         const IconSymbol* asIcon() const;
@@ -110,6 +114,7 @@ namespace osgEarth { namespace Symbology
         optional<Placement>          _placement;
         optional<float>              _density;
         optional<unsigned>           _randomSeed;
+        optional<URIAliasMap>        _uriAliasMap;
     };
 
 } } // namespace osgEarth::Symbology

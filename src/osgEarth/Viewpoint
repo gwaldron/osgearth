@@ -41,9 +41,9 @@ namespace osgEarth
          * Constructs a new viewpoint.
          *
          * @param focal_point
-         *      The location at which the camera points. Express this is either
-         *      cartesian coordinates (for a "flat-earth" model) or in lat/long
-         *      degrees for a round-earth model.
+         *      The location at which the camera points. Express this coordinate
+         *      relative to the spatial reference system of the map, or you 
+         *      can specify the SRS in the last argument.
          *
          * @param heading_deg
          *      Heading (in clockwise degrees) of the camera relative to the 
@@ -80,9 +80,9 @@ namespace osgEarth
          *      Name of this viewpoint.
          *
          * @param focal_point
-         *      The location at which the camera points. Express this is either
-         *      cartesian coordinates (for a "flat-earth" model) or in lat/long
-         *      degrees for a round-earth model.
+         *      The location at which the camera points. Express this coordinate
+         *      relative to the spatial reference system of the map, or you 
+         *      can specify the SRS in the last argument.
          *
          * @param heading_deg
          *      Heading (in clockwise degrees) of the camera relative to the 

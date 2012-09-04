@@ -102,18 +102,11 @@ _initialized( false )
     }
 }
 
-void 
-FeatureTileSource::initialize(const osgDB::Options* dbOptions,
-                              const Profile*        overrideProfile )
+TileSource::Status 
+FeatureTileSource::initialize(const osgDB::Options* dbOptions)
 {
-    if (overrideProfile)
+    if ( !getProfile() )
     {
-        //If we were given a profile, take it on.
-        setProfile(overrideProfile);
-    }
-    else
-    {
-        //Assume it is global-geodetic
         setProfile( osgEarth::Registry::instance()->getGlobalGeodeticProfile() );
     }            
 
@@ -133,10 +126,11 @@ FeatureTileSource::initialize(const osgDB::Options* dbOptions,
     }
     else
     {
-        OE_WARN << LC << "No FeatureSource provided; nothing will be rendered (" << getName() << ")" << std::endl;
+        return Status::Error("No FeatureSource provided; nothing will be rendered");
     }
 
     _initialized = true;
+    return STATUS_OK;
 }
 
 void

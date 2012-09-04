@@ -345,16 +345,6 @@ namespace osgEarth
          */
         const Status& startup( const osgDB::Options* dbOptions );
 
-        /**
-         * @deprecated
-         * Initializes the TileSource. This is the old initialize method; it will exists
-         * for backwards compatibility with older user-defined TileSource implementations.
-         * Consider updating to the new initialize() method above since it properly
-         * reports the results of the initialization.
-         */
-        virtual void initialize(
-            const osgDB::Options* dbOptions,
-            const Profile*        overrideProfile ) { }
 
         /** The options used to construct this tile source. */
         const TileSourceOptions& getOptions() const { return _options; }
@@ -413,6 +403,20 @@ namespace osgEarth
          * set the status
          */
         void setStatus( Status status );
+
+
+    protected: // deprecated
+
+        /**
+         * @deprecated
+         * Initializes the TileSource. This is the old initialize method; it will exists
+         * for backwards compatibility with older user-defined TileSource implementations.
+         * Consider updating to the new initialize() method above since it properly
+         * reports the results of the initialization.
+         */
+        virtual void initialize(
+            const osgDB::Options* dbOptions,
+            const Profile*        overrideProfile ) { }
 
     private:
 

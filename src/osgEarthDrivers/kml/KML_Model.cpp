@@ -89,7 +89,7 @@ KML_Model::parseStyle(const Config& conf, KMLContext& cx, Style& style)
             if ( !source.empty() || !target.empty() )
             {
                 if ( !model ) model = style.getOrCreate<ModelSymbol>();
-                model->uriAliasMap()->insert( std::make_pair(source, target) );
+                model->uriAliasMap()->insert( source, target );
             }
         }
     }

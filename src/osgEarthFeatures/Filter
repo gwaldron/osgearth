@@ -117,7 +117,7 @@ namespace osgEarth { namespace Features
     static RegisterFeatureFilterProxy<CLASSNAME> s_osgEarthRegisterFeatureFilterProxy_##CLASSNAME;
 
 #define OSGEARTH_REGISTER_SIMPLE_FEATUREFILTER( KEY, CLASSNAME)\
-    static RegisterFeatureFilterProxy<SimpleFeatureFilterFactory<CLASSNAME>> s_osgEarthRegisterFeatureFilterProxy_##CLASSNAME##KEY(new SimpleFeatureFilterFactory<CLASSNAME>(#KEY));
+    static RegisterFeatureFilterProxy< SimpleFeatureFilterFactory<CLASSNAME> > s_osgEarthRegisterFeatureFilterProxy_##CLASSNAME##KEY(new SimpleFeatureFilterFactory<CLASSNAME>(#KEY));
 
 
     template<typename T>

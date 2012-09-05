@@ -15,6 +15,7 @@ USE_GRAPICSWINDOW_IMPLEMENTATION(IOS)
 
 //osg plugins
 
+USE_OSGPLUGIN(OpenFlight)
 USE_OSGPLUGIN(obj)
 USE_OSGPLUGIN(ive)
 
@@ -34,6 +35,7 @@ USE_OSGPLUGIN(trans)
 
 //image files
 #ifndef ANDROID
+USE_OSGPLUGIN(tiff)
 USE_OSGPLUGIN(imageio)
 #else
 USE_OSGPLUGIN(png)

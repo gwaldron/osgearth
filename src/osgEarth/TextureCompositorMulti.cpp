@@ -56,12 +56,12 @@ namespace
 
         if ( slots.size() > 0 )
         {
-            buf << "varying vec4 osg_TexCoord[" << (int)slots.size() << "];\n";
+            buf << "varying vec4 osg_TexCoord[" << Registry::instance()->getCapabilities().getMaxGPUTextureCoordSets()  << "];\n";
         }
 
         if ( blending )
         {
-            buf << "uniform mat4 osgearth_TexBlendMatrix[" << slots.size() << "];\n";
+            buf << "uniform mat4 osgearth_TexBlendMatrix[" << Registry::instance()->getCapabilities().getMaxGPUTextureCoordSets() << "];\n";
         }
 
         buf << "void osgearth_vert_setupColoring() \n"
@@ -113,7 +113,7 @@ namespace
 
         if ( maxSlots > 0 )
         {
-            buf << "varying vec4 osg_TexCoord[" << maxSlots << "];\n";
+            buf << "varying vec4 osg_TexCoord[" << Registry::instance()->getCapabilities().getMaxGPUTextureCoordSets() << "];\n";
         }
 
         if ( blending )

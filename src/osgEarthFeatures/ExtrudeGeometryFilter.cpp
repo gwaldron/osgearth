@@ -416,7 +416,7 @@ ExtrudeGeometryFilter::extrudeGeometry(const Geometry*         input,
         if (div == 0) div = 1; //Prevent divide by zero
         tex_height_m_adj = maxHeight / div;
 
-        osg::DrawElementsUInt* idx = new osg::DrawElementsUInt( GL_TRIANGLES );
+        osg::DrawElementsUShort* idx = new osg::DrawElementsUShort( GL_TRIANGLES );
 
         for( Geometry::const_iterator m = part->begin(); m != part->end(); ++m )
         {
@@ -599,7 +599,7 @@ ExtrudeGeometryFilter::extrudeGeometry(const Geometry*         input,
             unsigned len = baseVertPtr - basePartPtr;
 
             GLenum roofLineMode = isPolygon ? GL_LINE_LOOP : GL_LINE_STRIP;
-            osg::DrawElementsUInt* roofLine = new osg::DrawElementsUInt( roofLineMode );
+            osg::DrawElementsUShort* roofLine = new osg::DrawElementsUShort( roofLineMode );
             roofLine->reserveElements( len );
             for( unsigned i=0; i<len; ++i )
                 roofLine->addElement( basePartPtr + i*2 );

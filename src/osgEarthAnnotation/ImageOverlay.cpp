@@ -262,10 +262,10 @@ ImageOverlay::init()
         geometry->setColorArray( colors );
         geometry->setColorBinding( osg::Geometry::BIND_OVERALL );
 
-         GLuint tris[6] = { 0, 1, 2,
+         GLushort tris[6] = { 0, 1, 2,
                             0, 2, 3
                           };        
-        geometry->addPrimitiveSet(new osg::DrawElementsUInt( GL_TRIANGLES, 6, tris ) );
+        geometry->addPrimitiveSet(new osg::DrawElementsUShort( GL_TRIANGLES, 6, tris ) );
 
         bool flip = false;
         if (_image.valid())

@@ -283,7 +283,7 @@ PolyhedralLineOfSightNode::rebuildGeometry()
     // Build the primitive sets to render the polyhedron.
     // first the walls.
     osg::DrawElements* de = 
-        verts->size() > 0xFFFF ? (osg::DrawElements*)new osg::DrawElementsUInt  ( GL_TRIANGLES ) :
+        verts->size() > 0xFFFF ? (osg::DrawElements*)new osg::DrawElementsUShort  ( GL_TRIANGLES ) :
         verts->size() > 0xFF   ? (osg::DrawElements*)new osg::DrawElementsUShort( GL_TRIANGLES ) :
                                  (osg::DrawElements*)new osg::DrawElementsUByte ( GL_TRIANGLES );
 

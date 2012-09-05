@@ -124,11 +124,17 @@ Profile::create(const std::string& srsInitString,
                 unsigned int numTilesWideAtLod0,
                 unsigned int numTilesHighAtLod0)
 {
-    return new Profile(
-        SpatialReference::create( srsInitString, vsrsInitString ),
-        xmin, ymin, xmax, ymax,
-        numTilesWideAtLod0,
-        numTilesHighAtLod0 );
+    osg::ref_ptr<osgEarth::SpatialReference> srs = SpatialReference::create( srsInitString, vsrsInitString );
+    if (srs.valid() == true)
+    {
+        return new Profile(
+            srs,
+            xmin, ymin, xmax, ymax,
+            numTilesWideAtLod0,
+            numTilesHighAtLod0 );
+    }
+
+    return NULL;
 }
 
 const Profile*
@@ -137,11 +143,14 @@ Profile::create(const SpatialReference* srs,
                 unsigned int numTilesWideAtLod0,
                 unsigned int numTilesHighAtLod0)
 {
-    return new Profile(
-        srs,
-        xmin, ymin, xmax, ymax,
-        numTilesWideAtLod0,
-        numTilesHighAtLod0 );
+    if (srs != NULL)
+    {
+        return new Profile(
+            srs,
+            xmin, ymin, xmax, ymax,
+            numTilesWideAtLod0,
+            numTilesHighAtLod0 );
+    }
 }
 
 const Profile*

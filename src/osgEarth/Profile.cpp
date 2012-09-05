@@ -128,12 +128,13 @@ Profile::create(const std::string& srsInitString,
     if (srs.valid() == true)
     {
         return new Profile(
-            srs,
+            srs.get(),
             xmin, ymin, xmax, ymax,
             numTilesWideAtLod0,
             numTilesHighAtLod0 );
     }
 
+    OE_WARN << LC << "Failed to create profile; unrecognized SRS: \"" << srsInitString << "\"" << std::endl;
     return NULL;
 }
 
@@ -151,6 +152,9 @@ Profile::create(const SpatialReference* srs,
             numTilesWideAtLod0,
             numTilesHighAtLod0 );
     }
+
+    OE_WARN << LC << "Failed to create profile; null SRS" << std::endl;
+    return 0L;
 }
 
 const Profile*
@@ -160,12 +164,18 @@ Profile::create(const SpatialReference* srs,
                 unsigned int numTilesWideAtLod0,
                 unsigned int numTilesHighAtLod0)
 {
-    return new Profile(
-        srs,
-        xmin, ymin, xmax, ymax,
-        geoxmin, geoymin, geoxmax, geoymax,
-        numTilesWideAtLod0,
-        numTilesHighAtLod0 );
+    if ( srs )
+    {
+        return new Profile(
+            srs,
+            xmin, ymin, xmax, ymax,
+            geoxmin, geoymin, geoxmax, geoymax,
+            numTilesWideAtLod0,
+            numTilesHighAtLod0 );
+    }
+    
+    OE_WARN << LC << "Failed to create profile; null SRS" << std::endl;
+    return 0L;
 }
 
 const Profile*

@@ -52,12 +52,16 @@ namespace osgEarth { namespace Util
          *@param end
          *       The end point
          */
-        LinearLineOfSightNode( osgEarth::MapNode* mapNode, const osg::Vec3d& start, const osg::Vec3d& end );
+        LinearLineOfSightNode( 
+            osgEarth::MapNode* mapNode, 
+            const GeoPoint&    start,
+            const GeoPoint&    end );
 
         /**
          * Get the start point
          */
-        const osg::Vec3d& getStart() const;
+        //const osg::Vec3d& getStart() const;
+        const GeoPoint& getStart() const;
 
         /**
          * Gets the start point in world coordinates
@@ -68,12 +72,12 @@ namespace osgEarth { namespace Util
          * Set the start point.  The point should be in the Map's coordinate system.  So if you're dealing with a geocentric map
          * the location should be in the form lon, lat, elevation
          */
-        void setStart(const osg::Vec3d& start);
+        void setStart(const GeoPoint& start);
 
         /**
          * Get the end point
          */
-        const osg::Vec3d& getEnd() const;
+        const GeoPoint& getEnd() const;
 
         /**
          * Gets the end point in world coordinates
@@ -84,12 +88,12 @@ namespace osgEarth { namespace Util
          * Set the end point.  The point should be in the Map's coordinate system.  So if you're dealing with a geocentric map
          * the location should be in the form lon, lat, elevation
          */
-        void setEnd(const osg::Vec3d& end);
+        void setEnd(const GeoPoint& end);
 
         /**
          * Gets the hit point.  Only valid is getHasLOS is false.
          */
-        const osg::Vec3d& getHit() const;
+        const GeoPoint& getHit() const;
 
         /**
          * Gets the hit point in world coordinates
@@ -132,18 +136,6 @@ namespace osgEarth { namespace Util
         void setDisplayMode( LineOfSight::DisplayMode displayMode );
 
         /**
-         * Gets the altitude mode
-         */
-        AltitudeMode getStartAltitudeMode() const;
-        AltitudeMode getEndAltitudeMode() const;
-
-        /**
-         * Sets the altitude mode
-         */
-        void setStartAltitudeMode( AltitudeMode mode );
-        void setEndAltitudeMode( AltitudeMode mode );
-
-        /**
          * Called when the underlying terrain has changed.
          */
         void terrainChanged( const osgEarth::TileKey& tileKey, osg::Node* terrain );
@@ -170,7 +162,7 @@ namespace osgEarth { namespace Util
          * @returns
          *        Whether or not there is line of sight from start to end.  hit is only valid if this function return false.
          */
-        static bool computeLOS( osgEarth::MapNode* mapNode, const osg::Vec3d& start, const osg::Vec3d& end, AltitudeMode altitudeMode, osg::Vec3d& hit );
+        //static bool computeLOS( osgEarth::MapNode* mapNode, const osg::Vec3d& start, const osg::Vec3d& end, AltitudeMode altitudeMode, osg::Vec3d& hit );
 
 
     public: // MapNodeObserver
@@ -195,16 +187,13 @@ namespace osgEarth { namespace Util
         osg::Vec4 _goodColor;
         osg::Vec4 _badColor;
 
-        osg::Vec3d _hit;
-        osg::Vec3d _start;
-        osg::Vec3d _end;
+        GeoPoint _hit;
+        GeoPoint _start;
+        GeoPoint _end;
 
         osg::Vec3d _startWorld;
         osg::Vec3d _endWorld;
         osg::Vec3d _hitWorld;
-
-        AltitudeMode _startAltitudeMode;
-        AltitudeMode _endAltitudeMode;
 
         LOSChangedCallbackList _changedCallbacks;
 

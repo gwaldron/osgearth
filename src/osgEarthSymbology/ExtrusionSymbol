@@ -79,6 +79,11 @@ namespace osgEarth { namespace Symbology
         /** Name of a style describing how to symbolize the elevated rooftop */
         optional<std::string>& roofStyleName() { return _roofStyleName; }
         const optional<std::string>& roofStyleName() const { return _roofStyleName; }
+
+        /** Percentage by which to darken the color of the bottom of the walls relative
+            to the main wall color (default = 0.0, range = [0..1]) */
+        optional<float>& wallGradientPercentage() { return _wallGradientPercentage; }
+        const optional<float>& wallGradientPercentage() const { return _wallGradientPercentage; }
         
     public:
         virtual Config getConfig() const;
@@ -91,6 +96,7 @@ namespace osgEarth { namespace Symbology
         optional<HeightReference>   _heightRef;
         optional<std::string>       _wallStyleName;
         optional<std::string>       _roofStyleName;
+        optional<float>             _wallGradientPercentage;
     };
 
 } } // namespace osgEarth::Symbology

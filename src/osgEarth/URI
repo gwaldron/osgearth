@@ -252,17 +252,46 @@ namespace osgEarth
      * make sure the scope of the osgDB::Options does not exceed the scope of
      * the embedded alias map!
      */
-    struct OSGEARTH_EXPORT URIAliasMap : public std::map<std::string, std::string>
+    class OSGEARTH_EXPORT URIAliasMap
     {
+    public:
+        /**
+         * Inserts a key-value pair into the map.
+         */
+        void insert( const std::string& key, const std::string& value );
+
+        /**
+         * Resolves the input address into a URI string.
+         */
+        std::string resolve(const std::string& input, const URIContext& context) const;
+
+        /**
+         * True if there are no mappings
+         */
+        bool empty() const { return _map.empty(); }
+
+        /**
+         * Clears out the map.
+         */
+        void clear() { _map.clear(); }
+
+        /**
+         * Loads an alias map from an Options.
+         */
         static URIAliasMap* from( const osgDB::Options* options ) {
             return options ? static_cast<URIAliasMap*>(const_cast<osgDB::Options*>(options)->getPluginData("osgEarth::URIAliasMap")) : 0L;
         }
 
+        /**
+         * Stores an alias map in an Options
+         */
         void apply( osgDB::Options* options ) {
             if ( options ) options->setPluginData("osgEarth::URIAliasMap", this);
         }
 
-        std::string resolve(const std::string& input, const URIContext& context) const;
+    protected:
+        std::map<std::string,std::string> _map;
+        friend class Config;
     };
 
 
@@ -352,7 +381,7 @@ namespace osgEarth
     void Config::addIfSet<URIAliasMap>( const std::string& key, const optional<URIAliasMap>& map ) {
         if ( map.isSet() ) {
             Config conf( key );
-            for( URIAliasMap::const_iterator i = map->begin(); i != map->end(); ++i ) {
+            for( std::map<std::string,std::string>::const_iterator i = map->_map.begin(); i != map->_map.end(); ++i ) {
                 Config alias( "alias" );
                 alias.add( "source", i->first );
                 alias.add( "target", i->second );
@@ -378,7 +407,7 @@ namespace osgEarth
                 std::string source = i->value("source");
                 std::string target = i->value("target");
                 if ( !source.empty() && !target.empty() )
-                    output->insert( std::make_pair(source, target) );
+                    output->insert( source, target );
             }
             return true;
         }

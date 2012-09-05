@@ -127,7 +127,25 @@ JavascriptEngineV8::executeScript(v8::Handle<v8::String> script)
   if (compiled_script.IsEmpty())
   {
     v8::String::AsciiValue error(try_catch.Exception());
-    return ScriptResult(EMPTY_STRING, false, std::string("Script compile error: ") + std::string(*error));
+	v8::Handle<v8::Message> message = try_catch.Message();
+	if(!message.IsEmpty()) {
+		//v8::String::AsciiValue filename(message->GetScriptResourceName());
+		int linenum = message->GetLineNumber();
+		std::ostringstream str;
+		str << linenum << ":[" << message->GetStartColumn() << "-" << message->GetEndColumn() << "]:" << std::string(*error) << std::endl;
+		v8::String::AsciiValue sourceline(message->GetSourceLine());
+		str << std::string(*sourceline) << std::endl;
+		/*
+		v8::String::Utf8Value stack_trace(try_catch.StackTrace());
+		if (stack_trace.length() > 0) {
+			str <<  std::string(*stack_trace) << std::endl;
+		}
+		*/
+	    return ScriptResult(EMPTY_STRING, false, std::string("Script compile error: ") + str.str());
+	}
+	else {
+	    return ScriptResult(EMPTY_STRING, false, std::string("Script compile error: ") + std::string(*error));
+	}
   }
 
   // Run the script

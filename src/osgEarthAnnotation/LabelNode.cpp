@@ -115,6 +115,8 @@ LabelNode::init()
 
     getAttachPoint()->addChild( _geode );
 
+    AnnotationUtils::installAnnotationProgram( stateSet );
+
     applyStyle( _style );
 }
 

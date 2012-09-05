@@ -23,6 +23,50 @@
 using namespace osgEarth;
 using namespace osgEarth::Features;
 
+/********************************************************************************/
+        
+FeatureFilterRegistry::FeatureFilterRegistry()
+{
+}
+
+FeatureFilterRegistry*
+FeatureFilterRegistry::instance()
+{
+    // OK to be in the local scope since this gets called at static init time
+    // by the OSGEARTH_REGISTER_ANNOTATION macro
+    static FeatureFilterRegistry* s_singleton =0L;
+    static Threading::Mutex    s_singletonMutex;
+
+    if ( !s_singleton )
+    {
+        Threading::ScopedMutexLock lock(s_singletonMutex);
+        if ( !s_singleton )
+        {
+            s_singleton = new FeatureFilterRegistry();
+        }
+    }
+    return s_singleton;
+}
+
+void
+FeatureFilterRegistry::add( FeatureFilterFactory* factory )
+{
+    _factories.push_back( factory );
+}
+
+FeatureFilter*
+FeatureFilterRegistry::create( const Config& conf )
+{
+    for (FeatureFilterFactoryList::iterator itr = _factories.begin(); itr != _factories.end(); itr++)
+    {
+        FeatureFilter* filter = itr->get()->create( conf );
+        if (filter) return filter;
+    }
+    return 0;
+} 
+
+/********************************************************************************/
+
 void
 FeaturesToNodeFilter::computeLocalizers( const FilterContext& context )
 {

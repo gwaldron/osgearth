@@ -71,13 +71,13 @@ namespace osgEarth { namespace Util
         /**
          * Gets the center point
          */
-        const osg::Vec3d& getCenter() const;
+        const GeoPoint& getCenter() const;
 
         /**
          * Set the center point.  The point should be in the Map's coordinate system.  So if you're dealing with a geocentric map
          * the location should be in the form lon, lat, elevation
          */
-        void setCenter(const osg::Vec3d& center);
+        void setCenter(const GeoPoint& center);
 
         /**
          * Sets the good color
@@ -130,16 +130,6 @@ namespace osgEarth { namespace Util
          */
         void setFill( bool fill );
 
-        /**
-         * Gets the altitude mode
-         */
-        AltitudeMode getAltitudeMode() const;
-
-        /**
-         * Sets the altitude mode
-         */
-
-        void setAltitudeMode( AltitudeMode mode );
 
         void addChangedCallback( LOSChangedCallback* callback );
         
@@ -177,10 +167,11 @@ namespace osgEarth { namespace Util
         osg::Vec4 _goodColor;
         osg::Vec4 _badColor;
         osg::Vec4 _outlineColor;
-        osg::Vec3d _center;
+        GeoPoint   _center;
+        //osg::Vec3d _center;
         osg::Vec3d _centerWorld;
         osg::observer_ptr< MapNode > _mapNode;
-        AltitudeMode _altitudeMode;
+        //AltitudeMode _altitudeMode;
         LOSChangedCallbackList _changedCallbacks;
         osg::ref_ptr< osg::Node > _pendingNode;
         osg::ref_ptr < osgEarth::TerrainCallback > _terrainChangedCallback;

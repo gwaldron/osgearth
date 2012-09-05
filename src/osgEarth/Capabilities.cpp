@@ -113,7 +113,9 @@ _supportsTexture2DLod   ( false ),
 _supportsMipmappedTextureUpdates( false ),
 _supportsDepthPackedStencilBuffer( false ),
 _supportsOcclusionQuery ( false ),
-_supportsDrawInstanced  ( false )
+_supportsDrawInstanced  ( false ),
+_supportsUniformBufferObjects( false ),
+_maxUniformBlockSize    ( 0 )
 {
     // little hack to force the osgViewer library to link so we can create a graphics context
     osgViewerGetVersion();
@@ -225,6 +227,13 @@ _supportsDrawInstanced  ( false )
 
         _supportsDrawInstanced = osg::isGLExtensionOrVersionSupported( id, "GL_EXT_draw_instanced", 3.1f );
         OE_INFO << LC << "  draw instanced = " << SAYBOOL(_supportsDrawInstanced) << std::endl;
+
+        _supportsUniformBufferObjects = osg::isGLExtensionOrVersionSupported( id, "GL_ARB_uniform_buffer_object", 2.0f );
+        OE_INFO << LC << "  uniform buffer objects = " << SAYBOOL(_supportsUniformBufferObjects) << std::endl;
+
+        glGetIntegerv( GL_MAX_UNIFORM_BLOCK_SIZE, &_maxUniformBlockSize );
+        OE_INFO << LC << "  max uniform block size = " << _maxUniformBlockSize << std::endl;
+
 
         //_supportsTexture2DLod = osg::isGLExtensionSupported( id, "GL_ARB_shader_texture_lod" );
         //OE_INFO << LC << "  texture2DLod = " << SAYBOOL(_supportsTexture2DLod) << std::endl;

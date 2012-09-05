@@ -503,11 +503,16 @@ URI::readString(const osgDB::Options* dbOptions,
 
 //------------------------------------------------------------------------
 
+void
+URIAliasMap::insert(const std::string& key, const std::string& value)
+{
+    _map.insert( std::make_pair(key, value) );
+}
 
 std::string
 URIAliasMap::resolve(const std::string& input, const URIContext& context) const
 {
-    for(const_iterator i = begin(); i != end(); ++i )
+    for(std::map<std::string,std::string>::const_iterator i = _map.begin(); i != _map.end(); ++i )
     {
         std::string source = context.getOSGPath(i->first);
         std::string pattern = context.getOSGPath(input);

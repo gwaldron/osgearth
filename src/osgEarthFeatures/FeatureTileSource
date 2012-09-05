@@ -86,9 +86,7 @@ namespace osgEarth { namespace Features
         FeatureTileSource( const TileSourceOptions& options =TileSourceOptions() );
 
         //override
-        virtual void initialize(
-            const osgDB::Options* options         =0L,
-            const Profile*        overrideProfile =0L );
+        virtual Status initialize( const osgDB::Options* options );
 
         //override
         virtual osg::Image* createImage(

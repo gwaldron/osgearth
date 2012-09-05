@@ -64,33 +64,7 @@ CompilerCache::TexCoordArrayCache::get(const osg::Vec4d& mat,
 #define MATCH_TOLERANCE 0.000001
 
 namespace
-{
-#if 0
-    // Comparator for GeoLocators - used to sort texture coordinate data into
-    // bins for sharing
-    struct GeoLocatorComp
-    {
-        bool operator()( const GeoLocator* lhs, const GeoLocator* rhs ) const
-        {
-            return rhs && lhs && lhs->isEquivalentTo( *rhs );
-        }
-    };
-
-    typedef std::pair< const GeoLocator*, osg::Vec2Array* > LocatorTexCoordPair;
-
-    // Lookup table that stores the shared tex coord array data.
-    struct LocatorToTexCoordTable : public std::list<LocatorTexCoordPair>
-    {
-        osg::Vec2Array* find( const GeoLocator* key ) const {
-            for( const_iterator i = begin(); i != end(); ++i ) {
-                if ( i->first->isEquivalentTo( *key ) )
-                    return i->second;
-            }
-            return 0L;
-        }
-    };
-#endif
-    
+{    
     // Data for a single renderable color layer
     struct RenderLayer
     {
@@ -426,7 +400,9 @@ namespace
                         osg::ref_ptr<osg::Vec2Array>& surfaceTexCoords = cache._surfaceTexCoordArrays.get( mat, d.numCols, d.numRows );
                         if ( !surfaceTexCoords.valid() )
                         {
+                            // Note: anything in the cache must have its own VBO. No sharing!
                             surfaceTexCoords = new osg::Vec2Array();
+                            surfaceTexCoords->setVertexBufferObject( new osg::VertexBufferObject() );
                             surfaceTexCoords->reserve( d.numVerticesInSurface );
                             r._ownsTexCoords = true;
                         }
@@ -435,7 +411,9 @@ namespace
                         osg::ref_ptr<osg::Vec2Array>& skirtTexCoords = cache._skirtTexCoordArrays.get( mat, d.numCols, d.numRows );
                         if ( !skirtTexCoords.valid() )
                         {
+                            // Note: anything in the cache must have its own VBO. No sharing!
                             skirtTexCoords = new osg::Vec2Array();
+                            skirtTexCoords->setVertexBufferObject( new osg::VertexBufferObject() );
                             skirtTexCoords->reserve( d.numVerticesInSkirt );
                             r._ownsSkirtTexCoords = true;
                         }
@@ -465,26 +443,52 @@ namespace
                             r._locator = geo->getGeographicFromGeocentric();
                     }
 
-                    compositor->assignTexCoordArray( d.surface, colorLayer.getUID(), r._texCoords.get() );
-                    compositor->assignTexCoordArray( d.skirt,   colorLayer.getUID(), r._skirtTexCoords.get() );
-
-                    // If we have mask stitching geometries, those need tex coords too:
-                    for ( MaskRecordVector::iterator mr = d.maskRecords.begin(); mr != d.maskRecords.end(); ++mr )
-                    {
-                        compositor->assignTexCoordArray( (*mr)._geom, colorLayer.getUID(), r._stitchTexCoords.get() );
-                    }
-
-                    if (d.stitching_skirts)
-                    {
-                        compositor->assignTexCoordArray( d.stitching_skirts, colorLayer.getUID(), r._stitchSkirtTexCoords.get() );
-                    }
-
                     d.renderLayers.push_back( r );
+
+                    // Note that we don't actually assign the tex coord arrays to the geometry yet.
+                    // That must wait until the end. See the comments in assignTextureArrays()
+                    // to understand why.
                 }
                 else
                 {
                     OE_WARN << LC << "Found a Locator, but it wasn't a GeoLocator." << std::endl;
                 }
+            }
+        }
+    }
+
+
+    /**
+     * Assigns any texture coordinate arrays to the corresponding geometry.
+     *
+     * NOTE: This has to happen AFTER all other arrays have been assigned to the geometry.
+     * Here is why:
+     *
+     * This compiler attempts to share texture coordinate arrays between tiles where possible.
+     * When you call Geometry::setVertexArray (or other similar functions) OSG attempts to find
+     * an existing VBO that it can use to attach to the array. If a shared texture coordinate
+     * array is in the Geometry, and OSG will find its VBO and attempt to use it so store the
+     * buffer data for the new array. In doing do it will be modifying a VBO that is potentially
+     * in use by another thread, causing a crash.
+     *
+     * By assigning the shared arrays last, we prevent this from happening.
+     */
+    void assignTextureArrays( Data& d, TextureCompositor* compositor )
+    {
+        for( RenderLayerVector::const_iterator r = d.renderLayers.begin(); r != d.renderLayers.end(); ++r )
+        {
+            compositor->assignTexCoordArray( d.surface, r->_layer.getUID(), r->_texCoords.get() );
+            compositor->assignTexCoordArray( d.skirt,   r->_layer.getUID(), r->_skirtTexCoords.get() );
+
+            // If we have mask stitching geometries, those need tex coords too:
+            for ( MaskRecordVector::iterator mr = d.maskRecords.begin(); mr != d.maskRecords.end(); ++mr )
+            {
+                compositor->assignTexCoordArray( (*mr)._geom, r->_layer.getUID(), r->_stitchTexCoords.get() );
+            }
+
+            if (d.stitching_skirts)
+            {
+                compositor->assignTexCoordArray( d.stitching_skirts, r->_layer.getUID(), r->_stitchSkirtTexCoords.get() );
             }
         }
     }
@@ -1494,6 +1498,10 @@ TileModelCompiler::compile(const TileModel* model,
 
     // tesselate the surface verts into triangles.
     tessellateSurfaceGeometry( d, _optimizeTriOrientation );
+
+    // assign our texture coordinate arrays to the geometry. This must happen LAST
+    // since we're sharing arrays across tiles. Here is why:
+    assignTextureArrays( d, _texCompositor.get() );
 
     // create the StateSet that will active texture composition.
     osg::StateSet* stateSet = createStateSet( d, _texCompositor.get() );

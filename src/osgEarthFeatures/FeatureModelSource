@@ -76,6 +76,10 @@ namespace osgEarth { namespace Features
         optional<CachePolicy>& cachePolicy() { return _cachePolicy; }
         const optional<CachePolicy>& cachePolicy() const { return _cachePolicy; }
 
+        /** Time (in seconds) to fade in the graphics */
+        optional<float>& fadeInDuration() { return _fadeInDuration; }
+        const optional<float>& fadeInDuration() const { return _fadeInDuration; }
+
     public: // deprecated
 
         /** @deprecated - use the ConvertTypeFilter instead */
@@ -112,6 +116,7 @@ namespace osgEarth { namespace Features
         optional<bool>                  _clusterCulling;
         optional<bool>                  _featureIndexing;
         optional<CachePolicy>           _cachePolicy;
+        optional<float>                 _fadeInDuration;
 
         osg::ref_ptr<StyleSheet>        _styles;
         osg::ref_ptr<FeatureSource>     _featureSource;

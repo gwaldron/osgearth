@@ -108,8 +108,9 @@ const osg::StateAttribute::Type VirtualProgram::SA_TYPE = osg::StateAttribute::P
 
 
 VirtualProgram::VirtualProgram( unsigned mask ) : 
-_mask   ( mask ),
-_inherit( true )
+_mask              ( mask ),
+_inherit           ( true ),
+_useLightingShaders( true )
 {
     // because we sometimes update/change the attribute's members from within the apply() method
     this->setDataVariance( osg::Object::DYNAMIC );
@@ -119,16 +120,21 @@ _inherit( true )
     {
         s_dumpShaders = true;
     }
+
+    // a template object to hold program data (so we don't have to dupliate all the 
+    // osg::Program methods..)
+    _template = new osg::Program();
 }
 
 
 VirtualProgram::VirtualProgram(const VirtualProgram& rhs, const osg::CopyOp& copyop ) :
 osg::StateAttribute( rhs, copyop ),
 //osg::Program( rhs, copyop ),
-_shaderMap  ( rhs._shaderMap ),
-_mask       ( rhs._mask ),
-_functions  ( rhs._functions ),
-_inherit    ( rhs._inherit )
+_shaderMap         ( rhs._shaderMap ),
+_mask              ( rhs._mask ),
+_functions         ( rhs._functions ),
+_inherit           ( rhs._inherit ),
+_useLightingShaders( rhs._useLightingShaders )
 {
     //nop
 }
@@ -307,6 +313,8 @@ VirtualProgram::installDefaultColoringAndLightingShaders( unsigned numTextures )
 
     this->setShader( sf->createDefaultColoringFragmentShader(numTextures) );
     this->setShader( sf->createDefaultLightingFragmentShader() );
+
+    setUseLightingShaders( true );
 }
 
 
@@ -317,6 +325,8 @@ VirtualProgram::installDefaultLightingShaders()
 
     this->setShader( sf->createDefaultLightingVertexShader() );
     this->setShader( sf->createDefaultLightingFragmentShader() );
+
+    setUseLightingShaders( true );
 }
 
 
@@ -336,6 +346,18 @@ VirtualProgram::setInheritShaders( bool value )
     if ( _inherit != value )
     {
         _inherit = value;
+        _programCache.clear();
+        _accumulatedFunctions.clear();
+    }
+}
+
+
+void
+VirtualProgram::setUseLightingShaders( bool value )
+{
+    if ( _useLightingShaders != value )
+    {
+        _useLightingShaders = value;
         _programCache.clear();
         _accumulatedFunctions.clear();
     }
@@ -476,6 +498,19 @@ VirtualProgram::addShadersToProgram(const ShaderVector&      shaders,
 }
 
 
+void
+VirtualProgram::addTemplateDataToProgram( osg::Program* program )
+{
+    const osg::Program::FragDataBindingList& fbl = _template->getFragDataBindingList();
+    for( osg::Program::FragDataBindingList::const_iterator i = fbl.begin(); i != fbl.end(); ++i )
+        program->addBindFragDataLocation( i->first, i->second );
+
+    const osg::Program::UniformBlockBindingList& ubl = _template->getUniformBlockBindingList();
+    for( osg::Program::UniformBlockBindingList::const_iterator i = ubl.begin(); i != ubl.end(); ++i )
+        program->addBindUniformBlock( i->first, i->second );
+}
+
+
 osg::Program*
 VirtualProgram::buildProgram(osg::State&        state, 
                              ShaderMap&         accumShaderMap,
@@ -491,12 +526,12 @@ VirtualProgram::buildProgram(osg::State&        state,
 
     // create the MAINs
     osg::Shader* old_vert_main = getShader( "osgearth_vert_main" );
-    osg::ref_ptr<osg::Shader> vert_main = sf->createVertexShaderMain( _accumulatedFunctions );
+    osg::ref_ptr<osg::Shader> vert_main = sf->createVertexShaderMain( _accumulatedFunctions, _useLightingShaders );
     setShader( "osgearth_vert_main", vert_main.get() );
     addToAccumulatedMap( accumShaderMap, "osgearth_vert_main", ShaderEntry(vert_main.get(), osg::StateAttribute::ON) );
 
     osg::Shader* old_frag_main = getShader( "osgearth_frag_main" );
-    osg::ref_ptr<osg::Shader> frag_main = sf->createFragmentShaderMain( _accumulatedFunctions );
+    osg::ref_ptr<osg::Shader> frag_main = sf->createFragmentShaderMain( _accumulatedFunctions, _useLightingShaders );
     setShader( "osgearth_frag_main", frag_main );
     addToAccumulatedMap( accumShaderMap, "osgearth_frag_main", ShaderEntry(frag_main.get(), osg::StateAttribute::ON) );
 
@@ -514,6 +549,7 @@ VirtualProgram::buildProgram(osg::State&        state,
     osg::Program* program = new osg::Program();
     program->setName(getName());
     addShadersToProgram( vec, accumAttribBindings, program );
+    addTemplateDataToProgram( program );
 
 
     // Since we replaced the "mains", we have to go through the cache and update all its
@@ -542,6 +578,7 @@ VirtualProgram::buildProgram(osg::State&        state,
             osg::Program* newProgram = new osg::Program();
             newProgram->setName( m->second->getName() );
             addShadersToProgram( original, m->second->getAttribBindingList(), newProgram );
+            addTemplateDataToProgram( newProgram );
 
 #if 0
             osg::Program* p = m->second.get();
@@ -765,7 +802,8 @@ ShaderFactory::getSamplerName( unsigned unit ) const
 
 
 osg::Shader*
-ShaderFactory::createVertexShaderMain( const FunctionLocationMap& functions ) const
+ShaderFactory::createVertexShaderMain(const FunctionLocationMap& functions,
+                                      bool  useLightingShaders ) const
 {
     FunctionLocationMap::const_iterator i = functions.find( LOCATION_VERTEX_PRE_TEXTURING );
     const OrderedFunctionMap* preTexture = i != functions.end() ? &i->second : 0L;
@@ -781,8 +819,10 @@ ShaderFactory::createVertexShaderMain( const FunctionLocationMap& functions ) co
 #ifdef OSG_GLES2_AVAILABLE
         << "precision mediump float;\n"
 #endif
-        << "void osgearth_vert_setupColoring(); \n"
-        << "void osgearth_vert_setupLighting(); \n";
+        << "void osgearth_vert_setupColoring(); \n";
+
+    if ( useLightingShaders )
+        buf << "void osgearth_vert_setupLighting(); \n";
 
     if ( preTexture )
         for( OrderedFunctionMap::const_iterator i = preTexture->begin(); i != preTexture->end(); ++i )
@@ -810,7 +850,8 @@ ShaderFactory::createVertexShaderMain( const FunctionLocationMap& functions ) co
         for( OrderedFunctionMap::const_iterator i = preLighting->begin(); i != preLighting->end(); ++i )
             buf << "    " << i->second << "(); \n";
 
-    buf << "    osgearth_vert_setupLighting(); \n";
+    if ( useLightingShaders )
+        buf << "    osgearth_vert_setupLighting(); \n";
     
     if ( postLighting )
         for( OrderedFunctionMap::const_iterator i = postLighting->begin(); i != postLighting->end(); ++i )
@@ -826,7 +867,8 @@ ShaderFactory::createVertexShaderMain( const FunctionLocationMap& functions ) co
 
 
 osg::Shader*
-ShaderFactory::createFragmentShaderMain( const FunctionLocationMap& functions ) const
+ShaderFactory::createFragmentShaderMain(const FunctionLocationMap& functions,
+                                        bool  useLightingShaders ) const
 {
     FunctionLocationMap::const_iterator i = functions.find( LOCATION_FRAGMENT_PRE_TEXTURING );
     const OrderedFunctionMap* preTexture = i != functions.end() ? &i->second : 0L;
@@ -842,8 +884,10 @@ ShaderFactory::createFragmentShaderMain( const FunctionLocationMap& functions ) 
 #ifdef OSG_GLES2_AVAILABLE
         << "precision mediump float;\n"
 #endif
-        << "void osgearth_frag_applyColoring( inout vec4 color ); \n"
-        << "void osgearth_frag_applyLighting( inout vec4 color ); \n";
+        << "void osgearth_frag_applyColoring( inout vec4 color ); \n";
+
+    if ( useLightingShaders )
+        buf << "void osgearth_frag_applyLighting( inout vec4 color ); \n";
 
     if ( preTexture )
         for( OrderedFunctionMap::const_iterator i = preTexture->begin(); i != preTexture->end(); ++i )
@@ -865,13 +909,14 @@ ShaderFactory::createFragmentShaderMain( const FunctionLocationMap& functions ) 
         for( OrderedFunctionMap::const_iterator i = preTexture->begin(); i != preTexture->end(); ++i )
             buf << "    " << i->second << "( color ); \n";
 
-    buf << "    osgearth_frag_applyColoring( color ); \n";//EDITHERE
+    buf << "    osgearth_frag_applyColoring( color ); \n";
 
     if ( preLighting )
         for( OrderedFunctionMap::const_iterator i = preLighting->begin(); i != preLighting->end(); ++i )
             buf << "    " << i->second << "( color ); \n";
     
-    buf << "    osgearth_frag_applyLighting( color ); \n";
+    if ( useLightingShaders )
+        buf << "    osgearth_frag_applyLighting( color ); \n";
 
     if ( postLighting )
         for( OrderedFunctionMap::const_iterator i = postLighting->begin(); i != postLighting->end(); ++i )

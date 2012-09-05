@@ -1,0 +1,48 @@
+<!--
+osgEarth Sample
+This example shows how you can use a custom FeatureFilter, even one that is defined in an Earth File!  Run this example with the osgearth_feature_filter example
+-->
+
+<map name="Feature Custom Filter Demo" type="geocentric" version="2">
+        
+    <image name="world" driver="gdal">
+        <url>../data/world.tif</url>
+    </image>
+    
+    <model name="cities" driver="feature_geom">
+
+        <features name="cities" driver="ogr">
+            <url>../data/world.shp</url>
+			
+			<!--Define a ChangeAttributeFilter, which is defined in the osgearth_featurefilter example.  This will change the cntry_name of all countries to osgEarthLand.-->
+			<change_attribute key="cntry_name" value="osgEarthLand"/>
+        </features>
+
+        <styles>
+            <style type="text/css">              
+                cities {
+                   text-provider:  annotation;
+                   text-content:   [cntry_name];
+                   text-priority:  [pop_cntry];
+                   text-halo:      #3f3f7f;
+                   text-align:     center_center;
+                   text-declutter: true;
+                }     
+            </style>
+        </styles>
+        
+    </model>
+    
+    <options lighting="false"/>
+    
+    <external>
+        <decluttering>
+            <out_animation_time>  0.0  </out_animation_time>
+            <in_animation_time>   0.25 </in_animation_time>
+            <min_animation_scale> 0.45 </min_animation_scale>
+            <min_animation_alpha> 0.35 </min_animation_alpha>
+            <sort_by_priority>    true </sort_by_priority>
+        </decluttering>
+    </external>
+  
+</map>

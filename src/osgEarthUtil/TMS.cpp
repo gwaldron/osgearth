@@ -25,6 +25,7 @@
 #include <osgEarth/TileSource>
 #include <osgEarth/Registry>
 #include <osgEarth/StringUtils>
+#include <osgEarth/Profile>
 
 #include <osg/Notify>
 #include <osgDB/FileUtils>

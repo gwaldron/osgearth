@@ -135,6 +135,8 @@ namespace
         geom->setVertexArray( verts );
         geom->addPrimitiveSet( el );
 
+//        OSG_ALWAYS << "s_makeEllipsoidGeometry Bounds: " << geom->computeBound().radius() << " outerRadius: " << outerRadius << std::endl;
+        
         return geom;
     }
 
@@ -605,19 +607,20 @@ namespace
         "} \n";
 
     static char s_moonVertexSource[] = 
+        "uniform mat4 osg_ModelViewProjectionMatrix;"
         "varying vec4 osg_TexCoord;\n"
         "void main() \n"
         "{ \n"
         "    osg_TexCoord = gl_MultiTexCoord0; \n"
-        "    gl_Position = gl_ModelViewProjectionMatrix * gl_Vertex; \n"
+        "    gl_Position = osg_ModelViewProjectionMatrix * gl_Vertex; \n"
         "} \n";
 
     static char s_moonFragmentSource[] =
         "varying vec4 osg_TexCoord;\n"
-        "uniform sampler2D diffuseTex;\n"
+        "uniform sampler2D moonTex;\n"
         "void main( void ) \n"
         "{ \n"
-        "   gl_FragColor = texture2D(diffuseTex, osg_TexCoord.st);\n"
+        "   gl_FragColor = texture2D(moonTex, osg_TexCoord.st);\n"
         "} \n";
 }
 
@@ -668,7 +671,7 @@ namespace
             return Stringify()
                 << "#version " << GLSL_VERSION_STR << "\n"
 #ifdef OSG_GLES2_AVAILABLE
-                << "precision mediump float;\n"
+                << "precision highp float;\n"
 #endif  
                 << "varying float visibility; \n"
                 << "varying vec4 osg_FrontColor; \n"
@@ -682,7 +685,7 @@ namespace
             return Stringify()
                 << "#version 120 \n"
 #ifdef OSG_GLES2_AVAILABLE
-                << "precision mediump float;\n"
+                << "precision highp float;\n"
 #endif
                 << "varying float visibility; \n"
                 << "varying vec4 osg_FrontColor; \n"
@@ -1239,6 +1242,7 @@ SkyNode::makeSun()
     sun->addDrawable( s_makeDiscGeometry( sunRadius*80.0f ) ); 
 
     osg::StateSet* set = sun->getOrCreateStateSet();
+    set->setMode( GL_BLEND, 1 );
 
     set->getOrCreateUniform( "sunAlpha", osg::Uniform::FLOAT )->set( 1.0f );
 
@@ -1246,7 +1250,7 @@ SkyNode::makeSun()
     set->setMode( GL_LIGHTING, osg::StateAttribute::OFF );
     set->setMode( GL_CULL_FACE, osg::StateAttribute::OFF );
     set->setAttributeAndModes( new osg::Depth(osg::Depth::ALWAYS, 0, 1, false), osg::StateAttribute::ON );
-    set->setAttributeAndModes( new osg::BlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA), osg::StateAttribute::ON );
+   // set->setAttributeAndModes( new osg::BlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA), osg::StateAttribute::ON );
 
     // create shaders
     osg::Program* program = new osg::Program();
@@ -1257,7 +1261,7 @@ SkyNode::makeSun()
     osg::Shader* fs = new osg::Shader( osg::Shader::FRAGMENT, Stringify()
         << s_versionString
 #ifdef OSG_GLES2_AVAILABLE
-        << "precision mediump float;\n"
+        << "precision highp float;\n"
 #endif
         << s_mathUtils
         << s_sunFragmentSource );
@@ -1288,7 +1292,6 @@ void
 SkyNode::makeMoon()
 {
     osg::ref_ptr< osg::EllipsoidModel > em = new osg::EllipsoidModel( 1738140.0, 1735970.0 );   
-
     osg::Geode* moon = new osg::Geode;
     moon->getOrCreateStateSet()->setAttributeAndModes( new osg::Program(), osg::StateAttribute::OFF | osg::StateAttribute::PROTECTED );
     osg::Geometry* geom = s_makeEllipsoidGeometry( em.get(), em->getRadiusEquator(), true );    
@@ -1317,21 +1320,21 @@ SkyNode::makeMoon()
 
 #ifdef OSG_GLES2_AVAILABLE
     
-    set->addUniform(new osg::Uniform("diffuseTex", 0));
+    set->addUniform(new osg::Uniform("moonTex", 0));
     
     // create shaders
     osg::Program* program = new osg::Program();
     osg::Shader* vs = new osg::Shader( osg::Shader::VERTEX, Stringify()
                                       << s_versionString
+                                      << "precision highp float;\n"
                                       << s_moonVertexSource );
     program->addShader( vs );
     osg::Shader* fs = new osg::Shader( osg::Shader::FRAGMENT, Stringify()
                                       << s_versionString
-                                      << "precision mediump float;\n"
-                                      << s_mathUtils
+                                      << "precision highp float;\n"
                                       << s_moonFragmentSource );
     program->addShader( fs );
-    set->setAttributeAndModes( program, osg::StateAttribute::ON );
+    set->setAttributeAndModes( program, osg::StateAttribute::ON | osg::StateAttribute::PROTECTED );
 #endif
     
     // make the moon's transform:
@@ -1347,7 +1350,7 @@ SkyNode::makeMoon()
     //If we couldn't load the moon texture, turn the moon off
     if (!image)
     {
-        OE_NOTICE << "Couldn't load moon texture, add osgEarth's data directory your OSG_FILE_PATH" << std::endl;
+        OSG_ALWAYS << "Couldn't load moon texture, add osgEarth's data directory your OSG_FILE_PATH" << std::endl;
         _defaultPerViewData._moonXform->setNodeMask( 0 );
         _defaultPerViewData._moonVisible = false;
     }

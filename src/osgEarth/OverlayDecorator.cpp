@@ -446,24 +446,30 @@ OverlayDecorator::initSubgraphShaders( PerViewData& pvd )
 
     // vertex shader - subgraph
     std::string vertexSource = Stringify()
-        << "#version 110 \n"
+        << "#version " << GLSL_VERSION_STR << "\n"
+#ifdef OSG_GLES2_AVAILABLE
+        << "precision mediump float;\n"
+#endif
         << "uniform mat4 osgearth_overlay_TexGenMatrix; \n"
         << "uniform mat4 osg_ViewMatrixInverse; \n"
 
         << "void osgearth_overlay_vertex(void) \n"
         << "{ \n"
-        << "    gl_TexCoord["<< *_textureUnit << "] = osgearth_overlay_TexGenMatrix * osg_ViewMatrixInverse * gl_ModelViewMatrix * gl_Vertex; \n"
+        << "    osg_TexCoord["<< *_textureUnit << "] = osgearth_overlay_TexGenMatrix * osg_ViewMatrixInverse * gl_ModelViewMatrix * gl_Vertex; \n"
         << "} \n";
 
     vp->setFunction( "osgearth_overlay_vertex", vertexSource, ShaderComp::LOCATION_VERTEX_POST_LIGHTING );
 
     // fragment shader - subgraph
     std::string fragmentSource = Stringify()
-        << "#version 110 \n"
+        << "#version " << GLSL_VERSION_STR << "\n"
+#ifdef OSG_GLES2_AVAILABLE
+        << "precision mediump float;\n"
+#endif
         << "uniform sampler2D osgearth_overlay_ProjTex; \n"
         << "void osgearth_overlay_fragment( inout vec4 color ) \n"
         << "{ \n"
-        << "    vec2 texCoord = gl_TexCoord["<< *_textureUnit << "].xy / gl_TexCoord["<< *_textureUnit << "].q; \n"
+        << "    vec2 texCoord = osg_TexCoord["<< *_textureUnit << "].xy / osg_TexCoord["<< *_textureUnit << "].q; \n"
         << "    vec4 texel = texture2D(osgearth_overlay_ProjTex, texCoord); \n"  
         << "    color = vec4( mix( color.rgb, texel.rgb, texel.a ), color.a); \n"
         << "} \n";

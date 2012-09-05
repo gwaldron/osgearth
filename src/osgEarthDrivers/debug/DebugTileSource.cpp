@@ -25,9 +25,7 @@
 #include <osgEarthSymbology/Geometry>
 #include <osgEarthSymbology/GeometryRasterizer>
 #include <osgDB/FileNameUtils>
-#if !((OPENSCENEGRAPH_MAJOR_VERSION <= 2) && (OPENSCENEGRAPH_MINOR_VERSION <= 8))
-# include <osgText/Glyph>
-#endif
+#include <osgText/Glyph>
 #include <osgText/Font>
 #include <osg/Notify>
 #include <sstream>
@@ -120,11 +118,9 @@ public:
         osgText::FontResolution resolution(32, 32);
         for( unsigned i=0; i<text.length(); ++i )
         {
-#if !((OPENSCENEGRAPH_MAJOR_VERSION <= 2) && (OPENSCENEGRAPH_MINOR_VERSION <= 8))
             osgText::Glyph* glyph = _font->getGlyph( resolution, text.at(i) );
             copySubImageAndColorize( glyph, image, x, y, _color );
             x += glyph->s() + 1;
-#endif
         }
 
         return image;

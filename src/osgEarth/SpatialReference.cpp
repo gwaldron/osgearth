@@ -1039,12 +1039,12 @@ SpatialReference::transformXYPointArrays(double*  x,
     TransformHandleCache::const_iterator itr = _transformHandleCache.find(out_srs->getWKT());
     if (itr != _transformHandleCache.end())
     {
-        //OE_DEBUG << "using cached transform handle" << std::endl;
+        OE_DEBUG << "using cached transform handle" << std::endl;
         xform_handle = itr->second;
     }
     else
     {
-        //OE_DEBUG << "allocating new OCT Transform" << std::endl;
+        OE_DEBUG << "allocating new OCT Transform" << std::endl;
         xform_handle = OCTNewCoordinateTransformation( _handle, out_srs->_handle);
         const_cast<SpatialReference*>(this)->_transformHandleCache[out_srs->getWKT()] = xform_handle;
     }

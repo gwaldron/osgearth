@@ -323,7 +323,7 @@ MultiPassTerrainTechnique::createGeometryPrototype(osgTerrain::Locator* masterLo
 //    bool optimizeOrientations = elevations!=0;
     bool swapOrientation = !(masterLocator->orientationOpenGL());
     
-    osg::ref_ptr<osg::DrawElementsUInt> elements = new osg::DrawElementsUInt(GL_TRIANGLES);
+    osg::ref_ptr<osg::DrawElementsUShort> elements = new osg::DrawElementsUShort(GL_TRIANGLES);
     elements->reserve((numRows-1) * (numColumns-1) * 6);
 
     geometry->addPrimitiveSet(elements.get());

@@ -416,7 +416,8 @@ ExtrudeGeometryFilter::extrudeGeometry(const Geometry*         input,
         if (div == 0) div = 1; //Prevent divide by zero
         tex_height_m_adj = maxHeight / div;
 
-        osg::DrawElementsUShort* idx = new osg::DrawElementsUShort( GL_TRIANGLES );
+        //osg::DrawElementsUShort* idx = new osg::DrawElementsUShort( GL_TRIANGLES );
+        osg::DrawElementsUInt* idx = new osg::DrawElementsUInt( GL_TRIANGLES );
 
         for( Geometry::const_iterator m = part->begin(); m != part->end(); ++m )
         {
@@ -599,7 +600,8 @@ ExtrudeGeometryFilter::extrudeGeometry(const Geometry*         input,
             unsigned len = baseVertPtr - basePartPtr;
 
             GLenum roofLineMode = isPolygon ? GL_LINE_LOOP : GL_LINE_STRIP;
-            osg::DrawElementsUShort* roofLine = new osg::DrawElementsUShort( roofLineMode );
+            //osg::DrawElementsUShort* roofLine = new osg::DrawElementsUShort( roofLineMode );
+            osg::DrawElementsUInt* roofLine = new osg::DrawElementsUInt( roofLineMode );
             roofLine->reserveElements( len );
             for( unsigned i=0; i<len; ++i )
                 roofLine->addElement( basePartPtr + i*2 );
@@ -610,7 +612,8 @@ ExtrudeGeometryFilter::extrudeGeometry(const Geometry*         input,
             unsigned step = std::max( 1u, 
                 _outlineSymbol->tessellation().isSet() ? *_outlineSymbol->tessellation() : 1u );
 
-            osg::DrawElementsUShort* wallLines = new osg::DrawElementsUShort( GL_LINES );
+            //osg::DrawElementsUShort* wallLines = new osg::DrawElementsUShort( GL_LINES );
+            osg::DrawElementsUInt* wallLines = new osg::DrawElementsUInt( GL_LINES );
             wallLines->reserve( len*2 );
             for( unsigned i=0; i<len; i+=step )
             {

@@ -67,6 +67,8 @@ namespace
                 osg::NodePathList ownerPaths;
                 ownerPaths = _owner->getParentalNodePaths();
 
+                // note: I descovered that getParentalNodePaths will stop when it finds an "invalid"
+                // node mask (e.g., == zero).. so indeed it's possible for there to be zero node paths.
                 if ( ownerPaths.size() > 0 )
                 {
                     const osg::NodePath& ownerPath = ownerPaths[0];

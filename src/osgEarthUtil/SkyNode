@@ -195,7 +195,7 @@ namespace osgEarth { namespace Util
         void makeMoon();
 
         void makeStars(const std::string& starFile);
-        osg::Geode* buildStarGeometry(const std::vector<StarData>& stars);
+        osg::Node* buildStarGeometry(const std::vector<StarData>& stars);
         void getDefaultStars(std::vector<StarData>& out_stars);
         bool parseStarFile(const std::string& starFile, std::vector<StarData>& out_stars);
 

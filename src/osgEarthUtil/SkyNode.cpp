@@ -34,6 +34,7 @@
 #include <osg/FrontFace>
 #include <osg/CullFace>
 #include <osg/Program>
+#include <osg/Camera>
 #include <osg/Point>
 #include <osg/Shape>
 #include <osg/Depth>
@@ -49,90 +50,16 @@ using namespace osgEarth::Util;
 
 //---------------------------------------------------------------------------
 
-#define BIN_STARS      -11
-#define BIN_SUN         -10
-#define BIN_MOON         100
-#define BIN_ATMOSPHERE  -8
+#define BIN_STARS       -100003
+#define BIN_SUN         -100002
+#define BIN_MOON        -100001
+#define BIN_ATMOSPHERE  -100000
 
 //---------------------------------------------------------------------------
 
 namespace
 {
-    // draw callback that will tweak the far clipping plane just
-    // before rendering a drawable.
-    struct OverrideNearFarValuesCallback : public osg::Drawable::DrawCallback
-    {
-        OverrideNearFarValuesCallback(double radius)
-            : _radius(radius) {}
-
-        virtual void drawImplementation(osg::RenderInfo& renderInfo,
-            const osg::Drawable* drawable) const
-        {
-            osg::Camera* currentCamera = renderInfo.getCurrentCamera();
-            if (currentCamera)
-            {
-                
-                // Get the current camera position.
-                osg::Vec3 eye, center, up;
-                renderInfo.getCurrentCamera()->getViewMatrixAsLookAt( eye, center, up);
-
-                // Get the max distance we need the far plane to be at,
-                // which is the distance between the eye and the origin
-                // plus the distant from the origin to the object (star sphere
-                // radius, sun distance etc), and then some.
-                double distance = eye.length() + _radius*2;
-
-                // Save old values.
-                osg::ref_ptr<osg::RefMatrixd> oldProjectionMatrix = new osg::RefMatrix;
-                oldProjectionMatrix->set( renderInfo.getState()->getProjectionMatrix());
-
-                // Get the individual values
-                double left, right, bottom, top, zNear, zFar;
-                oldProjectionMatrix->getFrustum( left, right, bottom, top, zNear, zFar);
-
-                // Build a new projection matrix with a modified far plane
-                osg::ref_ptr<osg::RefMatrixd> projectionMatrix = new osg::RefMatrix;
-                projectionMatrix->makeFrustum( left, right, bottom, top, zNear, distance );
-                //OSG_ALWAYS << "OverrideNearFarValuesCallback::drawImplementation zNear: " << zNear << " Distance: " << distance << std::endl;
-                renderInfo.getState()->applyProjectionMatrix( projectionMatrix.get());
-
-                // Draw the drawable
-                drawable->drawImplementation(renderInfo);
-
-                // Reset the far plane to the old value.
-                renderInfo.getState()->applyProjectionMatrix( oldProjectionMatrix.get() );
-            }
-            else
-            {
-                drawable->drawImplementation(renderInfo);
-            }
-        }
-
-        double _radius;
-    };
-
-    struct AddCallbackToDrawablesVisitor : public osg::NodeVisitor
-    {
-        AddCallbackToDrawablesVisitor(double radius)
-            : osg::NodeVisitor(osg::NodeVisitor::TRAVERSE_ALL_CHILDREN),
-            _radius(radius) {}
-
-        virtual void apply(osg::Geode& node)
-        {
-            for (unsigned int i = 0; i < node.getNumDrawables(); i++)
-            {
-                node.getDrawable(i)->setDrawCallback( new OverrideNearFarValuesCallback(_radius) );
-
-                // Do not use display lists otherwise the callback will only
-                // be called once on initial compile.
-                node.getDrawable(i)->setUseDisplayList(false);
-                node.getDrawable(i)->setUseVertexBufferObjects(false);
-            }
-        }
-
-        double _radius;
-    };
-
+    // constucts an ellipsoidal mesh that we will use to draw the atmosphere
     osg::Geometry*
     s_makeEllipsoidGeometry( const osg::EllipsoidModel* ellipsoid, double outerRadius, bool genTexCoords = false )
     {
@@ -162,8 +89,6 @@ namespace
             geom->setNormalArray( normals );
             geom->setNormalBinding(osg::Geometry::BIND_PER_VERTEX );
         }
-
-
 
         osg::DrawElementsUShort* el = new osg::DrawElementsUShort( GL_TRIANGLES );
         el->reserve( latSegments * lonSegments * 6 );
@@ -210,11 +135,12 @@ namespace
         geom->setVertexArray( verts );
         geom->addPrimitiveSet( el );
 
-        OSG_ALWAYS << "s_makeEllipsoidGeometry Bounds: " << geom->computeBound().radius() << " outerRadius: " << outerRadius << std::endl;
+//        OSG_ALWAYS << "s_makeEllipsoidGeometry Bounds: " << geom->computeBound().radius() << " outerRadius: " << outerRadius << std::endl;
         
         return geom;
     }
 
+    // makes a disc geometry that we'll use to render the sun/moon
     osg::Geometry*
     s_makeDiscGeometry( double radius )
     {
@@ -247,34 +173,11 @@ namespace
             el->push_back( 1 + i );
         }
 
-
         return geom;
     }
 }
 
 //---------------------------------------------------------------------------
-
-double sgCalcEccAnom(double M, double e)
-{
-    double eccAnom, E0, E1, diff;
-
-    double epsilon = osg::DegreesToRadians(0.001);
-    
-    eccAnom = M + e * sin(M) * (1.0 + e * cos (M));
-    // iterate to achieve a greater precision for larger eccentricities 
-    if (e > 0.05)
-    {
-        E0 = eccAnom;
-        do
-        {
-             E1 = E0 - (E0 - e * sin(E0) - M) / (1 - e *cos(E0));
-             diff = fabs(E0 - E1);
-             E0 = E1;
-        } while (diff > epsilon );
-        return E0;
-    }
-    return eccAnom;
-}
 
 
 // Astronomical Math
@@ -288,6 +191,29 @@ namespace
 
     static const double TWO_PI = (2.0*osg::PI);
     static const double JD2000 = 2451545.0;
+
+
+    double sgCalcEccAnom(double M, double e)
+    {
+        double eccAnom, E0, E1, diff;
+
+        double epsilon = osg::DegreesToRadians(0.001);
+        
+        eccAnom = M + e * sin(M) * (1.0 + e * cos (M));
+        // iterate to achieve a greater precision for larger eccentricities 
+        if (e > 0.05)
+        {
+            E0 = eccAnom;
+            do
+            {
+                 E1 = E0 - (E0 - e * sin(E0) - M) / (1 - e *cos(E0));
+                 diff = fabs(E0 - E1);
+                 E0 = E1;
+            } while (diff > epsilon );
+            return E0;
+        }
+        return eccAnom;
+    }
 
     //double getTimeScale( int year, int month, int date, double hoursUT )
     //{
@@ -461,8 +387,6 @@ namespace
             nrad2(RA);
 
             return SkyNode::getPositionFromRADecl( RA, Dec, rg );
-
-
         }
     };
 }
@@ -681,23 +605,23 @@ namespace
         "   gl_FragColor.rgb = fMiePhase*vec3(.3,.3,.2); \n"
         "   gl_FragColor.a = sunAlpha*gl_FragColor.r; \n"
         "} \n";
-    
+
     static char s_moonVertexSource[] = 
-    "uniform highp mat4 osg_ModelViewProjectionMatrix;"
-    "varying vec4 osg_TexCoord;\n"
-    "void main() \n"
-    "{ \n"
-    "    osg_TexCoord = gl_MultiTexCoord0; \n"
-    "    gl_Position = osg_ModelViewProjectionMatrix * gl_Vertex; \n"
-    "} \n";
-    
+        "uniform mat4 osg_ModelViewProjectionMatrix;"
+        "varying vec4 osg_TexCoord;\n"
+        "void main() \n"
+        "{ \n"
+        "    osg_TexCoord = gl_MultiTexCoord0; \n"
+        "    gl_Position = osg_ModelViewProjectionMatrix * gl_Vertex; \n"
+        "} \n";
+
     static char s_moonFragmentSource[] =
-    "varying vec4 osg_TexCoord;\n"
-    "uniform sampler2D moonTex;\n"
-    "void main( void ) \n"
-    "{ \n"
-    "   gl_FragColor = texture2D(moonTex, osg_TexCoord.st);\n"
-    "} \n";
+        "varying vec4 osg_TexCoord;\n"
+        "uniform sampler2D moonTex;\n"
+        "void main( void ) \n"
+        "{ \n"
+        "   gl_FragColor = texture2D(moonTex, osg_TexCoord.st);\n"
+        "} \n";
 }
 
 //---------------------------------------------------------------------------
@@ -779,16 +703,18 @@ namespace
 
 //---------------------------------------------------------------------------
 
-osg::Vec3d DefaultEphemerisProvider::getSunPosition( int year, int month, int date, double hoursUTC )
+osg::Vec3d
+DefaultEphemerisProvider::getSunPosition( int year, int month, int date, double hoursUTC )
 {
     Sun sun;
     return sun.getPosition( year, month, date, hoursUTC );
 }
 
-osg::Vec3d DefaultEphemerisProvider::getMoonPosition( int year, int month, int date, double hoursUTC )
+osg::Vec3d
+DefaultEphemerisProvider::getMoonPosition( int year, int month, int date, double hoursUTC )
 {
     Moon moon;
-    return moon.getPosition( year, month, date, hoursUTC );        
+    return moon.getPosition( year, month, date, hoursUTC );
 }
 
 //---------------------------------------------------------------------------
@@ -830,9 +756,11 @@ SkyNode::initialize( Map *map, const std::string& starFile )
     _outerRadius = _innerRadius * 1.025f;
     _sunDistance = _innerRadius * 12000.0f;
 
-    // make the ephemeris (note: order is important here)
+    // make the sky elements (don't change the order here)
     makeAtmosphere( _ellipsoidModel.get() );
+
     makeSun();
+
     makeMoon();
 
     if (_minStarMagnitude < 0)
@@ -857,14 +785,9 @@ SkyNode::computeBound() const
 void
 SkyNode::traverse( osg::NodeVisitor& nv )
 {
-    osg::CullSettings::ComputeNearFarMode saveMode;
-
     osgUtil::CullVisitor* cv = dynamic_cast<osgUtil::CullVisitor*>( &nv );
     if ( cv )
     {
-        saveMode = cv->getComputeNearFarMode();
-        cv->setComputeNearFarMode( osg::CullSettings::DO_NOT_COMPUTE_NEAR_FAR );
-
         osg::View* view = cv->getCurrentCamera()->getView();
         PerViewDataMap::iterator i = _perViewData.find( view );
         if ( i != _perViewData.end() )
@@ -877,19 +800,16 @@ SkyNode::traverse( osg::NodeVisitor& nv )
     {
         osg::Group::traverse( nv );
     }
-
-    if ( cv )
-    {
-        cv->setComputeNearFarMode( saveMode );
-    }
 }
 
-EphemerisProvider* SkyNode::getEphemerisProvider() const
+EphemerisProvider*
+SkyNode::getEphemerisProvider() const
 {
     return _ephemerisProvider;
 }
 
-void SkyNode::setEphemerisProvider(EphemerisProvider* ephemerisProvider )
+void
+SkyNode::setEphemerisProvider(EphemerisProvider* ephemerisProvider )
 {
     if (_ephemerisProvider != ephemerisProvider)
     {
@@ -1089,9 +1009,8 @@ SkyNode::getDateTime( int &year, int &month, int &date, double &hoursUTC, osg::V
     year = data._year;
     month = data._month;
     date = data._date;
-    hoursUTC = data._hoursUTC;        
+    hoursUTC = data._hoursUTC;
 }
-
 
 
 void
@@ -1228,7 +1147,6 @@ SkyNode::makeAtmosphere( const osg::EllipsoidModel* em )
     // create some skeleton geometry to shade:
     osg::Geometry* drawable = s_makeEllipsoidGeometry( em, _outerRadius );
     
-
     osg::Geode* geode = new osg::Geode();
     geode->addDrawable( drawable );
 
@@ -1238,11 +1156,8 @@ SkyNode::makeAtmosphere( const osg::EllipsoidModel* em )
     set->setMode( GL_LIGHTING, osg::StateAttribute::OFF );
     set->setMode( GL_CULL_FACE, osg::StateAttribute::ON );
     set->setRenderingHint( osg::StateSet::TRANSPARENT_BIN );
-    //set->setBinNumber( 65 ); // todo, what?
-    set->setBinNumber( BIN_ATMOSPHERE );
     set->setAttributeAndModes( new osg::Depth( osg::Depth::LESS, 0, 1, false ) ); // no depth write
     set->setAttributeAndModes( new osg::BlendFunc( GL_ONE, GL_ONE ), osg::StateAttribute::ON );
-    //set->setAttributeAndModes( new osg::FrontFace( osg::FrontFace::CLOCKWISE ), osg::StateAttribute::ON );
 
     // next, create and add the shaders:
     osg::Program* program = new osg::Program();
@@ -1253,6 +1168,7 @@ SkyNode::makeAtmosphere( const osg::EllipsoidModel* em )
         << s_atmosphereVertexShared
         << s_atmosphereVertexMain );
     program->addShader( vs );
+
     osg::Shader* fs = new osg::Shader( osg::Shader::FRAGMENT, Stringify()
         << s_versionString
 #ifdef OSG_GLES2_AVAILABLE
@@ -1263,6 +1179,7 @@ SkyNode::makeAtmosphere( const osg::EllipsoidModel* em )
         //<< s_atmosphereFragmentShared
         << s_atmosphereFragmentMain );
     program->addShader( fs );
+
     set->setAttributeAndModes( program, osg::StateAttribute::ON );
 
     // apply the uniforms:
@@ -1282,11 +1199,7 @@ SkyNode::makeAtmosphere( const osg::EllipsoidModel* em )
     
     float Scale = 1.0f / (_outerRadius - _innerRadius);
 
-#if 0
-//    _defaultPerViewData._lightPosUniform = set->getOrCreateUniform( "atmos_v3LightPos", osg::Uniform::FLOAT_VEC3 );
-    _defaultPerViewData._lightPosUniform = new osg::Uniform( osg::Uniform::FLOAT_VEC3, "atmos_v3LightPos" );
-    _defaultPerViewData._lightPosUniform->set( _defaultPerViewData._lightPos / _defaultPerViewData._lightPos.length() );
-#endif
+    // TODO: replace this with a UBO.
 
     set->getOrCreateUniform( "atmos_v3InvWavelength", osg::Uniform::FLOAT_VEC3 )->set( RGB_wl );
     set->getOrCreateUniform( "atmos_fInnerRadius",    osg::Uniform::FLOAT )->set( _innerRadius );
@@ -1306,10 +1219,15 @@ SkyNode::makeAtmosphere( const osg::EllipsoidModel* em )
     set->getOrCreateUniform( "atmos_fSamples",        osg::Uniform::FLOAT )->set( (float)Samples );
     set->getOrCreateUniform( "atmos_fWeather",        osg::Uniform::FLOAT )->set( Weather );
     
-    AddCallbackToDrawablesVisitor visitor( _innerRadius );
-    geode->accept( visitor );
+    // A nested camera isolates the projection matrix calculations so the node won't 
+    // affect the clip planes in the rest of the scene.
+    osg::Camera* cam = new osg::Camera();
+    cam->getOrCreateStateSet()->setRenderBinDetails( BIN_ATMOSPHERE, "RenderBin" );
+    cam->setRenderOrder( osg::Camera::NESTED_RENDER );
+    cam->setComputeNearFarMode( osg::CullSettings::COMPUTE_NEAR_FAR_USING_BOUNDING_VOLUMES );
+    cam->addChild( geode );
 
-    _atmosphere = geode;
+    _atmosphere = cam;
 }
 
 void
@@ -1324,13 +1242,13 @@ SkyNode::makeSun()
     sun->addDrawable( s_makeDiscGeometry( sunRadius*80.0f ) ); 
 
     osg::StateSet* set = sun->getOrCreateStateSet();
+    set->setMode( GL_BLEND, 1 );
 
     set->getOrCreateUniform( "sunAlpha", osg::Uniform::FLOAT )->set( 1.0f );
 
     // configure the stateset
     set->setMode( GL_LIGHTING, osg::StateAttribute::OFF );
     set->setMode( GL_CULL_FACE, osg::StateAttribute::OFF );
-    set->setRenderBinDetails( BIN_SUN, "RenderBin" );
     set->setAttributeAndModes( new osg::Depth(osg::Depth::ALWAYS, 0, 1, false), osg::StateAttribute::ON );
    // set->setAttributeAndModes( new osg::BlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA), osg::StateAttribute::ON );
 
@@ -1358,11 +1276,16 @@ SkyNode::makeSun()
         _sunDistance * _defaultPerViewData._lightPos.y(), 
         _sunDistance * _defaultPerViewData._lightPos.z() ) );
     _defaultPerViewData._sunXform->addChild( sun );
-    
-    AddCallbackToDrawablesVisitor visitor( _sunDistance );
-    sun->accept( visitor );
 
-    _sun = sun;
+    // A nested camera isolates the projection matrix calculations so the node won't 
+    // affect the clip planes in the rest of the scene.
+    osg::Camera* cam = new osg::Camera();
+    cam->getOrCreateStateSet()->setRenderBinDetails( BIN_SUN, "RenderBin" );
+    cam->setRenderOrder( osg::Camera::NESTED_RENDER );
+    cam->setComputeNearFarMode( osg::CullSettings::COMPUTE_NEAR_FAR_USING_BOUNDING_VOLUMES );
+    cam->addChild( sun );
+
+    _sun = cam;
 }
 
 void
@@ -1390,7 +1313,7 @@ SkyNode::makeMoon()
     osg::StateSet* set = moon->getOrCreateStateSet();
     // configure the stateset
     set->setMode( GL_LIGHTING, osg::StateAttribute::ON );
-    set->setAttributeAndModes( new osg::CullFace( osg::CullFace::BACK ), osg::StateAttribute::ON);    
+    set->setAttributeAndModes( new osg::CullFace( osg::CullFace::BACK ), osg::StateAttribute::ON);
     set->setRenderBinDetails( BIN_MOON, "RenderBin" );
     set->setAttributeAndModes( new osg::Depth(osg::Depth::ALWAYS, 0, 1, false), osg::StateAttribute::ON );
     set->setAttributeAndModes( new osg::BlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA), osg::StateAttribute::ON );
@@ -1432,12 +1355,15 @@ SkyNode::makeMoon()
         _defaultPerViewData._moonVisible = false;
     }
 
-    double moonDistance = 6378137.0 + 384400000.0;
-    
-    AddCallbackToDrawablesVisitor visitor( moonDistance );
-    //moon->accept( visitor );
+    // A nested camera isolates the projection matrix calculations so the node won't 
+    // affect the clip planes in the rest of the scene.
+    osg::Camera* cam = new osg::Camera();
+    cam->getOrCreateStateSet()->setRenderBinDetails( BIN_MOON, "RenderBin" );
+    cam->setRenderOrder( osg::Camera::NESTED_RENDER );
+    cam->setComputeNearFarMode( osg::CullSettings::COMPUTE_NEAR_FAR_USING_BOUNDING_VOLUMES );
+    cam->addChild( moon );
 
-    _moon = moon;
+    _moon = cam;
 }
 
 SkyNode::StarData::StarData(std::stringstream &ss)
@@ -1469,13 +1395,13 @@ SkyNode::makeStars(const std::string& starFile)
 
   osg::Node* starNode = buildStarGeometry(stars);
 
-  AddCallbackToDrawablesVisitor visitor(_starRadius);
-  starNode->accept(visitor);
+  //AddCallbackToDrawablesVisitor visitor(_starRadius);
+  //starNode->accept(visitor);
 
   _stars = starNode;
 }
 
-osg::Geode*
+osg::Node*
 SkyNode::buildStarGeometry(const std::vector<StarData>& stars)
 {
   double minMag = DBL_MAX, maxMag = DBL_MIN;
@@ -1524,7 +1450,15 @@ SkyNode::buildStarGeometry(const std::vector<StarData>& stars)
   osg::Geode* starGeode = new osg::Geode;
   starGeode->addDrawable( geometry );
 
-  return starGeode;
+  // A separate camera isolates the projection matrix calculations.
+  osg::Camera* cam = new osg::Camera();
+  cam->getOrCreateStateSet()->setRenderBinDetails( BIN_STARS, "RenderBin" );
+  cam->setRenderOrder( osg::Camera::NESTED_RENDER );
+  cam->setComputeNearFarMode( osg::CullSettings::COMPUTE_NEAR_FAR_USING_BOUNDING_VOLUMES );
+  cam->addChild( starGeode );
+
+  return cam;
+  //return starGeode;
 }
 
 void

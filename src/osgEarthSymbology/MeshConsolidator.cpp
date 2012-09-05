@@ -97,7 +97,7 @@ namespace
                         validateDE(de_short, 0xFFFF, numVerts );
                     }
 
-                    osg::DrawElementsUShort* de_int = dynamic_cast<osg::DrawElementsUShort*>(pset);
+                    osg::DrawElementsUInt* de_int = dynamic_cast<osg::DrawElementsUInt*>(pset);
                     if ( de_int )
                     {
                         validateDE(de_int, 0xFFFFFFFF, numVerts );
@@ -148,7 +148,7 @@ namespace
         else if ( numVerts < 0x10000 )
             return copy<FROM,osg::DrawElementsUShort>( src, offset );
         else
-            return copy<FROM,osg::DrawElementsUShort>( src, offset );
+            return copy<FROM,osg::DrawElementsUInt>( src, offset );
     }
 
     osg::PrimitiveSet* convertDAtoDE( osg::DrawArrays* da, unsigned numVerts, unsigned offset )
@@ -159,7 +159,7 @@ namespace
         else if ( numVerts < 0x10000 )
             de = new osg::DrawElementsUShort( da->getMode() );
         else
-            de = new osg::DrawElementsUShort( da->getMode() );
+            de = new osg::DrawElementsUInt( da->getMode() );
 
         de->reserveElements( da->getCount() );
         for( GLsizei i=0; i<da->getCount(); ++i )
@@ -274,10 +274,18 @@ MeshConsolidator::convertToTriangles( osg::Geometry& geom )
         }
         else
         {
+#ifdef OSG_GLES2_AVAILABLE
+            // GLES only supports UShort, not UInt
             osg::TriangleIndexFunctor< Collector<osg::DrawElementsUShort> > collector;
+            collector._newPrimSets = &newPrimSets;
+            collector._maxSize = 0xFFFF;
+            geom.accept( collector );
+#else
+            osg::TriangleIndexFunctor< Collector<osg::DrawElementsUInt> > collector;
             collector._newPrimSets = &newPrimSets;
             collector._maxSize = 0xFFFFFFFF;
             geom.accept( collector );
+#endif
         }
 
         for( osg::Geometry::PrimitiveSetList::iterator i = newPrimSets.begin(); i != newPrimSets.end(); ++i )
@@ -423,8 +431,8 @@ namespace
 					    newpset = remake( static_cast<osg::DrawElementsUByte*>(pset), numVerts, offset );
 				    else if ( dynamic_cast<osg::DrawElementsUShort*>(pset) )
 					    newpset = remake( static_cast<osg::DrawElementsUShort*>(pset), numVerts, offset );
-				    else if ( dynamic_cast<osg::DrawElementsUShort*>(pset) )
-					    newpset = remake( static_cast<osg::DrawElementsUShort*>(pset), numVerts, offset );
+				    else if ( dynamic_cast<osg::DrawElementsUInt*>(pset) )
+					    newpset = remake( static_cast<osg::DrawElementsUInt*>(pset), numVerts, offset );
 				    else if ( dynamic_cast<osg::DrawArrays*>(pset) )
                         newpset = convertDAtoDE( static_cast<osg::DrawArrays*>(pset), numVerts, offset );
 

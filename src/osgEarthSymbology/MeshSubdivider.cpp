@@ -543,7 +543,7 @@ namespace
             else if ( data._verts->size() < 65536 )
                 populateLines<osg::DrawElementsUShort,GLushort>( geom, done, maxElementsPerEBO );
             else
-                populateLines<osg::DrawElementsUShort,GLuint>( geom, done, maxElementsPerEBO );
+                populateLines<osg::DrawElementsUInt,GLuint>( geom, done, maxElementsPerEBO );
         }
     }
 
@@ -740,7 +740,7 @@ namespace
             else if ( data._verts->size() < 65536 )
                 populateTriangles<osg::DrawElementsUShort,GLushort>( geom, done, maxElementsPerEBO );
             else
-                populateTriangles<osg::DrawElementsUShort,GLuint>( geom, done, maxElementsPerEBO );
+                populateTriangles<osg::DrawElementsUInt,GLuint>( geom, done, maxElementsPerEBO );
         }
     }
 

@@ -701,7 +701,7 @@ FeatureModelGraph::buildLevel( const FeatureLevel& level, const GeoExtent& exten
         if ( minRange > 0.0f )
         {
             // minRange can't be less than the tile geometry's radius.
-            minRange = std::max(minRange, group->getBound().radius());
+            minRange = std::max(minRange, (float)group->getBound().radius());
             osg::LOD* lod = new osg::LOD();
             lod->addChild( group.get(), minRange, FLT_MAX );
             group = lod;

@@ -146,7 +146,30 @@ osg::StateSet* GLES2ShaderGenCache::createStateSet(int stateMask) const
     
     if (stateMask & (LIGHTING | NORMAL_MAP))
     {
-        vert << "varying highp vec3 lightDir;\n";
+        vert << "struct osg_LightSourceParameters {"
+        << "    mediump vec4  ambient;"
+        << "    mediump vec4  diffuse;"
+        << "    mediump vec4  specular;"
+        << "    mediump vec4  position;"
+        << "    mediump vec4  halfVector;"
+        << "    mediump vec3  spotDirection;" 
+        << "    mediump float  spotExponent;"
+        << "    mediump float  spotCutoff;"
+        << "    mediump float  spotCosCutoff;" 
+        << "    mediump float  constantAttenuation;"
+        << "    mediump float  linearAttenuation;"
+        << "    mediump float  quadraticAttenuation;" 
+        << "};\n"
+        << "uniform osg_LightSourceParameters osg_LightSource[" << 1 << "];\n"
+        
+        << "struct  osg_LightProducts {"
+        << "    mediump vec4  ambient;"
+        << "    mediump vec4  diffuse;"
+        << "    mediump vec4  specular;"
+        << "};\n"
+        << "uniform osg_LightProducts osg_FrontLightProduct[" << 1 << "];\n"
+        
+        << "varying highp vec3 lightDir;\n";
     }
     
     if (stateMask & (LIGHTING | NORMAL_MAP | FOG))
@@ -266,7 +289,7 @@ osg::StateSet* GLES2ShaderGenCache::createStateSet(int stateMask) const
 #ifdef OSG_GL_FIXED_FUNCTION_AVAILABLE 
         vert << "  vec4 lpos = gl_LightSource[0].position;\n";
 #else
-        vert << "  highp vec4 lpos = vec4(100.0,100.0,100.0,0.0);\n";
+        vert << "  highp vec4 lpos = osg_LightSource[0].position;\n";
 #endif
         vert << 
         "  if (lpos.w == 0.0)\n"\
@@ -287,7 +310,7 @@ osg::StateSet* GLES2ShaderGenCache::createStateSet(int stateMask) const
 #ifdef OSG_GL_FIXED_FUNCTION_AVAILABLE
         vert << "  vec4 lpos = gl_LightSource[0].position;\n";
 #else
-        vert << "  vec4 lpos = vec4(100.0,100.0,100.0,0.0);\n";
+        vert << "  vec4 lpos = osg_LightSource[0].position;\n";
 #endif
         vert <<
         "  if (lpos.w == 0.0)\n"\
@@ -367,17 +390,17 @@ osg::StateSet* GLES2ShaderGenCache::createStateSet(int stateMask) const
         "  highp vec3 nd = normalize(normalDir);\n"\
         "  highp vec3 ld = normalize(lightDir);\n"\
         "  highp vec3 vd = normalize(viewDir);\n"\
-        "  mediump vec4 color = vec4(0.0,0.0,0.0,1.0);\n"\
-        "  color += osg_Material.ambient;\n"\
+        "  mediump vec4 color = vec4(0.01,0.01,0.01,1.0);\n"\
+        "  color += osg_FrontLightProduct[0].ambient;\n"\
         "  mediump float diff = max(dot(ld, nd), 0.0);\n"\
-        "  color = osg_Material.diffuse * diff;\n"\
+        "  color += osg_FrontLightProduct[0].diffuse * diff;\n"\
         "  color *= base;\n"\
         "  if (diff > 0.0)\n"\
         "  {\n"\
         "    highp vec3 halfDir = normalize(ld+vd);\n"\
-        "    color.rgb += base.a * osg_Material.specular.rgb * \n"\
+        "    color.rgb += base.a * osg_FrontLightProduct[0].specular.rgb * \n"\
         "      pow(max(dot(halfDir, nd), 0.0), osg_Material.shine);\n"\
-        "  }\n";        
+        "  }\n";       
 #endif
     }
     else

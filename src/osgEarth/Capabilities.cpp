@@ -150,7 +150,13 @@ _supportsDrawInstanced  ( false )
         OE_INFO << LC << "  Max GPU texture units = " << _maxGPUTextureUnits << std::endl;
 
         glGetIntegerv( GL_MAX_TEXTURE_COORDS_ARB, &_maxGPUTextureCoordSets );
+#if defined(OSG_GLES2_AVAILABLE)
+        int maxVertAttributes = 0;
+        glGetIntegerv(GL_MAX_VERTEX_ATTRIBS, &maxVertAttributes);
+        _maxGPUTextureCoordSets = maxVertAttributes - 5; //-5 for vertex, normal, color, tangent and binormal
+#endif
         OE_INFO << LC << "  Max GPU texture coordinate sets = " << _maxGPUTextureCoordSets << std::endl;
+
 
         glGetIntegerv( GL_DEPTH_BITS, &_depthBits );
         OE_INFO << LC << "  Depth buffer bits = " << _depthBits << std::endl;

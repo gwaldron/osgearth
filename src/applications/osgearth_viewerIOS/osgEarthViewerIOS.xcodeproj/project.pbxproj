@@ -168,6 +168,7 @@
 		90B8676615C8894900F5CDC3 /* StartViewerController.m in Sources */ = {isa = PBXBuildFile; fileRef = 90B8676415C8894900F5CDC3 /* StartViewerController.m */; };
 		90B8676715C8894900F5CDC3 /* StartViewerController.xib in Resources */ = {isa = PBXBuildFile; fileRef = 90B8676515C8894900F5CDC3 /* StartViewerController.xib */; };
 		90DABDDC15CEFF9700D0F609 /* moon_1024x512.jpg in Resources */ = {isa = PBXBuildFile; fileRef = 90DABDDB15CEFF9700D0F609 /* moon_1024x512.jpg */; };
+		90DDCB7915E8275800F28A52 /* libosgdb_tiff.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 90DDCB7815E8275800F28A52 /* libosgdb_tiff.a */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -341,6 +342,7 @@
 		90B8676415C8894900F5CDC3 /* StartViewerController.m */ = {isa = PBXFileReference; explicitFileType = sourcecode.cpp.objcpp; fileEncoding = 4; path = StartViewerController.m; sourceTree = "<group>"; };
 		90B8676515C8894900F5CDC3 /* StartViewerController.xib */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = file.xib; path = StartViewerController.xib; sourceTree = "<group>"; };
 		90DABDDB15CEFF9700D0F609 /* moon_1024x512.jpg */ = {isa = PBXFileReference; lastKnownFileType = image.jpeg; name = moon_1024x512.jpg; path = ../../../../data/moon_1024x512.jpg; sourceTree = "<group>"; };
+		90DDCB7815E8275800F28A52 /* libosgdb_tiff.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libosgdb_tiff.a; path = "../../../../osg-ios-gles2/lib/libosgdb_tiff.a"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -348,6 +350,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				90DDCB7915E8275800F28A52 /* libosgdb_tiff.a in Frameworks */,
 				907D03FA15B8C31A00575110 /* libsqlite3.dylib in Frameworks */,
 				90A0DD7615B7BBA4004FACEE /* libcurl.a in Frameworks */,
 				90A0DD7115B7BB64004FACEE /* libgdal.a in Frameworks */,
@@ -577,6 +580,7 @@
 		907D02DB15B86F7100575110 /* osg */ = {
 			isa = PBXGroup;
 			children = (
+				90DDCB7815E8275800F28A52 /* libosgdb_tiff.a */,
 				907D02DC15B86F8700575110 /* libOpenThreads.a */,
 				907D02DD15B86F8700575110 /* libosg.a */,
 				907D02DE15B86F8700575110 /* libosgAnimation.a */,

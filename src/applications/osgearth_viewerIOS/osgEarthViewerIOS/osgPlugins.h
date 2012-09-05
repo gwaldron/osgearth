@@ -35,6 +35,7 @@ USE_OSGPLUGIN(trans)
 
 //image files
 #ifndef ANDROID
+USE_OSGPLUGIN(tiff)
 USE_OSGPLUGIN(imageio)
 #else
 USE_OSGPLUGIN(png)

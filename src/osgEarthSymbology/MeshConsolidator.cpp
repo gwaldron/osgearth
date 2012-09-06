@@ -274,10 +274,18 @@ MeshConsolidator::convertToTriangles( osg::Geometry& geom )
         }
         else
         {
+#ifdef OSG_GLES2_AVAILABLE
+            // GLES only supports UShort, not UInt
+            osg::TriangleIndexFunctor< Collector<osg::DrawElementsUShort> > collector;
+            collector._newPrimSets = &newPrimSets;
+            collector._maxSize = 0xFFFF;
+            geom.accept( collector );
+#else
             osg::TriangleIndexFunctor< Collector<osg::DrawElementsUInt> > collector;
             collector._newPrimSets = &newPrimSets;
             collector._maxSize = 0xFFFFFFFF;
             geom.accept( collector );
+#endif
         }
 
         for( osg::Geometry::PrimitiveSetList::iterator i = newPrimSets.begin(); i != newPrimSets.end(); ++i )

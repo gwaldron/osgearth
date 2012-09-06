@@ -998,7 +998,6 @@ ShaderFactory::createDefaultColoringFragmentShader( unsigned numTexImageUnits ) 
     
     if ( numTexImageUnits > 0 )
     {
-        //buf << "varying vec4 osg_TexCoord[" << numTexImageUnits << "];\n";
         buf << "varying vec4 osg_TexCoord[" << Registry::instance()->getCapabilities().getMaxGPUTextureCoordSets() << "];\n";
         buf << "uniform sampler2D ";
         for( unsigned i=0; i<numTexImageUnits; ++i )

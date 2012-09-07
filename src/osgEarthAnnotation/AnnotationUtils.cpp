@@ -262,7 +262,9 @@ AnnotationUtils::installAnnotationProgram( osg::StateSet* stateSet )
         {
             std::string vertSource =
                 "#version " GLSL_VERSION_STR "\n"
-                //"varying vec4 osg_FrontColor; \n" //not sure why but these arn't merging properly, osg earth color funcs decalre it anyhow for now
+                //NOTE: Tom commented this out; I commented it back in b/c that breaks things 
+                //( //not sure why but these arn't merging properly, osg earth color funcs decalre it anyhow for now)
+                "varying vec4 osg_FrontColor; \n"
                 "varying vec4 oeAnno_texCoord; \n"
                 "void oeAnno_vertColoring() \n"
                 "{ \n"
@@ -279,7 +281,7 @@ AnnotationUtils::installAnnotationProgram( osg::StateSet* stateSet )
                 "uniform bool  " << UNIFORM_IS_TEXT()   << "; \n"
                 //"uniform bool  " << UNIFORM_HIGHLIGHT() << "; \n"
                 "uniform sampler2D oeAnno_tex0; \n"
-                //"varying vec4 osg_FrontColor; \n"
+                "varying vec4 osg_FrontColor; \n"
                 "varying vec4 oeAnno_texCoord; \n"
                 "void oeAnno_fragColoring( inout vec4 color ) \n"
                 "{ \n"

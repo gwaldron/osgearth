@@ -1293,7 +1293,6 @@ EarthManipulator::handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapt
         // this factor adjusts for the variation of frame rate relative to 60fps
         _t_factor = _delta_t / 0.01666666666;
 
-
         if ( _has_pending_viewpoint && _node.valid() )
         {
             _has_pending_viewpoint = false;
@@ -1355,6 +1354,21 @@ EarthManipulator::handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapt
     Action action = ACTION_NULL;
     _time_s_now = osg::Timer::instance()->time_s();
 
+    // if tethering is active, check to see whether the incoming event 
+    // will break the tether.
+    if ( _tether_node.valid() )
+    {
+        const ActionTypeVector& atv = _settings->getBreakTetherActions();
+        if ( atv.size() > 0 )
+        {
+            const Action& action = _settings->getAction( ea.getEventType(), ea.getButtonMask(), ea.getModKeyMask() );
+            if ( std::find(atv.begin(), atv.end(), action._type) != atv.end() )
+            {
+                setTetherNode( 0L );
+            }
+        }
+    }
+
     switch( ea.getEventType() )
     {
         case osgGA::GUIEventAdapter::PUSH:
@@ -1415,7 +1429,7 @@ EarthManipulator::handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapt
             addMouseEvent( ea );
             if (_mouse_down_event)
             {
-                action = _settings->getAction( EVENT_MOUSE_DOUBLE_CLICK, _mouse_down_event->getButtonMask(), _mouse_down_event->getModKeyMask() );
+                action = _settings->getAction( ea.getEventType(), _mouse_down_event->getButtonMask(), _mouse_down_event->getModKeyMask() );
                 if ( handlePointAction( action, ea.getX(), ea.getY(), aa.asView() ) )
                     aa.requestRedraw();
                 resetMouse( aa );
@@ -2733,3 +2747,4 @@ EarthManipulator::drag(double dx, double dy, osg::View* theView)
         setCenter( _center + (worldStartDrag - worldEndDrag) );
     }
 }
+

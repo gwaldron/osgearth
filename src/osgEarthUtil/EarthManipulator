@@ -69,6 +69,9 @@ namespace osgEarth { namespace Util
             ACTION_EARTH_DRAG
         };
 
+        /** Vector of action types */
+        typedef std::vector<ActionType> ActionTypeVector;
+
         /** Bindable event types. */
         enum EventType {
             EVENT_MOUSE_CLICK        = osgGA::GUIEventAdapter::USER << 1,
@@ -445,6 +448,10 @@ namespace osgEarth { namespace Util
             */
             void setTetherMode( TetherMode tether_mode ) { _tether_mode = tether_mode; }
 
+            /** Access to the list of Actions that will automatically break a tether */
+            ActionTypeVector& getBreakTetherActions() { return _breakTetherActions; }
+            const ActionTypeVector& getBreakTetherActions() const { return _breakTetherActions; }
+
             /** Whether a setViewpoint transition whould "arc" */
             void setArcViewpointTransitions( bool value );
             bool getArcViewpointTransitions() const { return _arc_viewpoints; }
@@ -499,6 +506,7 @@ namespace osgEarth { namespace Util
             double _max_distance;
 
             TetherMode _tether_mode;
+            ActionTypeVector _breakTetherActions;
             bool _arc_viewpoints;
             bool _auto_vp_duration;
             double _min_vp_duration_s, _max_vp_duration_s;
@@ -760,6 +768,9 @@ namespace osgEarth { namespace Util
 
         // creates a "local-to-world" transform relative to the input point.
         bool createLocalCoordFrame( const osg::Vec3d& worldPos, osg::CoordinateFrame& out_frame ) const;
+
+        // returns an ActionType that would be initiated by the OSG UI event
+        ActionType getActionTypeForEvent( const osgGA::GUIEventAdapter& ea ) const;
 
     public:
             

@@ -96,13 +96,13 @@ namespace osgEarth { namespace Util
             OPTION_DURATION             // Time it takes to complete the action (in seconds)
         };
 
-		/** Tethering options **/
-		enum TetherMode
-		{
-			TETHER_CENTER,              // The camera will follow the center of the node.
-			TETHER_CENTER_AND_ROTATION, // The camera will follow the node and all rotations made by the node
-			TETHER_CENTER_AND_HEADING   // The camera will follow the node and only follow heading rotation
-		};
+        /** Tethering options **/
+        enum TetherMode
+        {
+            TETHER_CENTER,              // The camera will follow the center of the node.
+            TETHER_CENTER_AND_ROTATION, // The camera will follow the node and all rotations made by the node
+            TETHER_CENTER_AND_HEADING   // The camera will follow the node and only follow heading rotation
+        };
 
         /** Camera projection matrix type **/
         enum CameraProjection
@@ -415,35 +415,35 @@ namespace osgEarth { namespace Util
             /** Gets the maximum allowable local pitch, in degrees. */
             double getMaxPitch() const { return _max_pitch; }        
 
-			/** Gets the max x offset in world coordates */
-			double getMaxXOffset() const { return _max_x_offset; }
+            /** Gets the max x offset in world coordates */
+            double getMaxXOffset() const { return _max_x_offset; }
 
-			/** Gets the max y offset in world coordates */
-			double getMaxYOffset() const { return _max_y_offset; }
+            /** Gets the max y offset in world coordates */
+            double getMaxYOffset() const { return _max_y_offset; }
 
-			/** Gets the minimum distance from the focal point in world coordinates */
-			double getMinDistance() const {return _min_distance; }
-			
-			/** Gets the maximum distance from the focal point in world coordinates */
-			double getMaxDistance() const {return _max_distance; }
+            /** Gets the minimum distance from the focal point in world coordinates */
+            double getMinDistance() const {return _min_distance; }
+            
+            /** Gets the maximum distance from the focal point in world coordinates */
+            double getMaxDistance() const {return _max_distance; }
 
-			/** Sets the min and max distance from the focal point in world coordiantes */
-			void setMinMaxDistance( double min_distance, double max_distance);
+            /** Sets the min and max distance from the focal point in world coordiantes */
+            void setMinMaxDistance( double min_distance, double max_distance);
 
-			/**
-			* Sets the maximum allowable offsets for the x and y camera offsets in world coordinates
-			*/
-			void setMaxOffset(double max_x_offset, double max_y_offset);
+            /**
+            * Sets the maximum allowable offsets for the x and y camera offsets in world coordinates
+            */
+            void setMaxOffset(double max_x_offset, double max_y_offset);
 
-			/**
-			* Gets the TetherMode
-			*/
-			TetherMode getTetherMode() const { return _tether_mode; }
+            /**
+            * Gets the TetherMode
+            */
+            TetherMode getTetherMode() const { return _tether_mode; }
 
-			/**
-			* Sets the TetherMode
-			*/
-			void setTetherMode( TetherMode tether_mode ) { _tether_mode = tether_mode; }
+            /**
+            * Sets the TetherMode
+            */
+            void setTetherMode( TetherMode tether_mode ) { _tether_mode = tether_mode; }
 
             /** Whether a setViewpoint transition whould "arc" */
             void setArcViewpointTransitions( bool value );
@@ -492,13 +492,13 @@ namespace osgEarth { namespace Util
             double _min_pitch;
             double _max_pitch;
 
-			double _max_x_offset;
-			double _max_y_offset;
+            double _max_x_offset;
+            double _max_y_offset;
 
-			double _min_distance;
-			double _max_distance;
+            double _min_distance;
+            double _max_distance;
 
-			TetherMode _tether_mode;
+            TetherMode _tether_mode;
             bool _arc_viewpoints;
             bool _auto_vp_duration;
             double _min_vp_duration_s, _max_vp_duration_s;
@@ -596,27 +596,27 @@ namespace osgEarth { namespace Util
          */
         bool screenToWorld(float x, float y, osg::View* view, osg::Vec3d& out_coords ) const;
 
-		/**
-		 * Gets the distance from the focal point in world coordiantes
-		 */
-		double getDistance() const { return _distance; }
+        /**
+         * Gets the distance from the focal point in world coordiantes
+         */
+        double getDistance() const { return _distance; }
 
-		/**
-		 * Sets the distance from the focal point in world coordinates.
-		 *
-		 * The incoming distance value will be clamped within the valid range specified by the settings.
-		 */
-		void   setDistance( double distance);
+        /**
+         * Sets the distance from the focal point in world coordinates.
+         *
+         * The incoming distance value will be clamped within the valid range specified by the settings.
+         */
+        void   setDistance( double distance);
 
-		/**
-		 * Gets the rotation of the manipulator.  Note:  This rotation is in addition to the rotation needed to center the view on the focal point.
-		 */
-		const osg::Quat& getRotation() { return _rotation; }
+        /**
+         * Gets the rotation of the manipulator.  Note:  This rotation is in addition to the rotation needed to center the view on the focal point.
+         */
+        const osg::Quat& getRotation() { return _rotation; }
 
-		/**
-		 * Sets the rotation of the manipulator.  Note:  This rotation is in addition to the rotation needed to center the view on the focal point.
-		 */
-		void  setRotation( const osg::Quat& rotation) { _rotation = rotation; }
+        /**
+         * Sets the rotation of the manipulator.  Note:  This rotation is in addition to the rotation needed to center the view on the focal point.
+         */
+        void  setRotation( const osg::Quat& rotation) { _rotation = rotation; }
 
 
 

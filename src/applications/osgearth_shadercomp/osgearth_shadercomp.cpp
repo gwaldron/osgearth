@@ -61,17 +61,20 @@ int usage( const std::string& msg )
 namespace TEST_1
 {
     char s_hazeVertShader[] =
+        "#version " GLSL_VERSION_STR "\n"
         "varying vec3 v_pos; \n"
+        "uniform mat4 gl_ModelViewMatrix; \n"
         "void setup_haze() \n"
         "{ \n"
         "    v_pos = vec3(gl_ModelViewMatrix * gl_Vertex); \n"
         "} \n";
 
     char s_hazeFragShader[] =
+        "#version " GLSL_VERSION_STR "\n"
         "varying vec3 v_pos; \n"
         "void apply_haze(inout vec4 color) \n"
         "{ \n"
-        "    float dist = clamp( length(v_pos)/10000000.0, 0, 0.75 ); \n"
+        "    float dist = clamp( length(v_pos)/1e7, 0.0, 0.75 ); \n"
         "    color = mix(color, vec4(0.5, 0.5, 0.5, 1.0), dist); \n"
         "} \n";
 
@@ -84,7 +87,7 @@ namespace TEST_1
     }
 
     osg::Group* run( osg::Node* earth )
-    {    
+    {   
         osg::Group* g = new osg::Group();
         g->addChild( earth );
         g->getOrCreateStateSet()->setAttributeAndModes( createHaze(), osg::StateAttribute::ON );

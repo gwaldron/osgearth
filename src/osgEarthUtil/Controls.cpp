@@ -2497,11 +2497,14 @@ ControlCanvas::~ControlCanvas()
     OpenThreads::ScopedLock<OpenThreads::Mutex> lock( _viewCanvasMapMutex );
     _viewCanvasMap.erase( _context._view );
 
+    // commented out: causing a crash on exit
+#if 0
     std::map<osgGA::GUIEventHandler*, osgViewer::View*>::iterator itr;
     for (itr = _eventHandlersMap.begin(); itr != _eventHandlersMap.end(); ++itr)
     {
         itr->second->removeEventHandler(itr->first);
     }
+#endif
 }
 
 void

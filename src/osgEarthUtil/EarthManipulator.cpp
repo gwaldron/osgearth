@@ -25,6 +25,7 @@
 #include <osgUtil/LineSegmentIntersector>
 #include <osgViewer/View>
 #include <iomanip>
+#include <osgEarth/DPLineSegmentIntersector>
 
 #include <osg/io_utils>
 
@@ -186,26 +187,27 @@ static short s_actionOptionTypes[] = { 1, 1, 0, 0, 1, 1 }; // 0=bool, 1=double
 //------------------------------------------------------------------------
 
 EarthManipulator::Settings::Settings() :
-osg::Referenced         (),
-Revisioned              (),
-_single_axis_rotation   ( false ),
-_lock_azim_while_panning( true ),
-_mouse_sens             ( 1.0 ),
-_keyboard_sens          ( 1.0 ),
-_scroll_sens            ( 1.0 ),
-_min_pitch              ( -89.9 ),
-_max_pitch              ( -10.0 ),
-_max_x_offset           ( 0.0 ),
-_max_y_offset           ( 0.0 ),
-_min_distance           ( 0.001 ),
-_max_distance           ( DBL_MAX ),
-_tether_mode            ( TETHER_CENTER ),
-_arc_viewpoints         ( true ),
-_auto_vp_duration       ( false ),
-_min_vp_duration_s      ( 3.0 ),
-_max_vp_duration_s      ( 8.0 ),
-_camProjType            ( PROJ_PERSPECTIVE ),
-_camFrustOffsets        ( 0, 0 )
+osg::Referenced                 (),
+Revisioned                      (),
+_single_axis_rotation           ( false ),
+_lock_azim_while_panning        ( true ),
+_mouse_sens                     ( 1.0 ),
+_keyboard_sens                  ( 1.0 ),
+_scroll_sens                    ( 1.0 ),
+_min_pitch                      ( -89.9 ),
+_max_pitch                      ( -10.0 ),
+_max_x_offset                   ( 0.0 ),
+_max_y_offset                   ( 0.0 ),
+_min_distance                   ( 0.001 ),
+_max_distance                   ( DBL_MAX ),
+_tether_mode                    ( TETHER_CENTER ),
+_arc_viewpoints                 ( true ),
+_auto_vp_duration               ( false ),
+_min_vp_duration_s              ( 3.0 ),
+_max_vp_duration_s              ( 8.0 ),
+_camProjType                    ( PROJ_PERSPECTIVE ),
+_camFrustOffsets                ( 0, 0 ),
+_useDoublePrecisionIntersector  ( false )
 {
     //NOP
 }
@@ -1076,7 +1078,16 @@ EarthManipulator::intersect(const osg::Vec3d& start, const osg::Vec3d& end, osg:
     osg::ref_ptr<osg::Node> safeNode = _node.get();
     if ( safeNode.valid() )
     {
-        osg::ref_ptr<osgUtil::LineSegmentIntersector> lsi = new osgUtil::LineSegmentIntersector(start,end);
+		osg::ref_ptr<osgUtil::LineSegmentIntersector> lsi = NULL;
+
+		if (_settings->getUseDoublePrecisionIntersector() == true)
+		{
+			lsi = new osgEarth::DPLineSegmentIntersector(start,end);
+		}
+		else
+		{
+			lsi = new osgUtil::LineSegmentIntersector(start,end);
+		}
 
         osgUtil::IntersectionVisitor iv(lsi.get());
         iv.setTraversalMask(_intersectTraversalMask);
@@ -2013,7 +2024,16 @@ EarthManipulator::screenToWorld(float x, float y, osg::View* theView, osg::Vec3d
     osg::Vec3d startVertex = osg::Vec3d(local_x,local_y,zNear) * inverse;
     osg::Vec3d endVertex = osg::Vec3d(local_x,local_y,zFar) * inverse;
 
-    osg::ref_ptr< osgUtil::LineSegmentIntersector > picker = new osgUtil::LineSegmentIntersector(osgUtil::Intersector::MODEL, startVertex, endVertex);
+	osg::ref_ptr<osgUtil::LineSegmentIntersector> picker = NULL;
+
+	if (_settings->getUseDoublePrecisionIntersector() == true)
+	{
+		picker = new osgEarth::DPLineSegmentIntersector(osgUtil::Intersector::MODEL, startVertex, endVertex);
+	}
+	else
+	{
+		picker = new osgUtil::LineSegmentIntersector(osgUtil::Intersector::MODEL, startVertex, endVertex);
+	}
 
     osgUtil::IntersectionVisitor iv(picker.get());
     iv.setTraversalMask(_intersectTraversalMask);

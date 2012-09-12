@@ -103,6 +103,7 @@ namespace TEST_1
 namespace TEST_2
 {
     char s_source[] =
+        "#version " GLSL_VERSION_STR "\n"
         "void osgearth_frag_applyColoring( inout vec4 color ) { \n"
         "    color.r = 1.0; \n"
         "} \n";
@@ -127,6 +128,7 @@ namespace TEST_2
 namespace TEST_3
 {
     char s_source[] =
+        "#version " GLSL_VERSION_STR "\n"
         "void osgearth_frag_applyColoring( inout vec4 color ) { \n"
         "    color = vec4(1.0, 0.0, 0.0, 1.0); \n"
         "} \n";
@@ -159,11 +161,13 @@ namespace TEST_3
 namespace TEST_4
 {
     char s_source_1[] =
+        "#version " GLSL_VERSION_STR "\n"
         "void osgearth_frag_applyColoring( inout vec4 color ) { \n"
         "    color = vec4(1.0, 0.0, 0.0, 1.0); \n"
         "} \n";
     
     char s_source_2[] =
+        "#version " GLSL_VERSION_STR "\n"
         "void osgearth_frag_applyColoring( inout vec4 color ) { \n"
         "    color = vec4(0.0, 0.0, 1.0, 1.0); \n"
         "} \n";
@@ -200,15 +204,18 @@ namespace TEST_4
 namespace TEST_5
 {
     char s_vert[] =
+        "#version " GLSL_VERSION_STR "\n"
         "void main() { \n"
         "    gl_Position = gl_ModelViewProjectionMatrix * gl_Vertex; \n"
         "} \n";
     char s_frag[] =
+        "#version " GLSL_VERSION_STR "\n"
         "void main() { \n"
-        "    gl_FragColor = vec4(1,0,0,1); \n"
+        "    gl_FragColor = vec4(1.0,0.0,0.0,1.0); \n"
         "} \n";
     char s_vp[] =
-        "void test( inout vec4 color ) { color = vec4(1,0,0,1); } \n";
+        "#version " GLSL_VERSION_STR "\n"
+        "void test( inout vec4 color ) { color = vec4(1.0,0.0,0.0,1.0); } \n";
 
     osg::Geode* makeGeom( float v )
     {

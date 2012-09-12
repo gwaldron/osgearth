@@ -828,6 +828,8 @@ namespace osgEarth { namespace Util { namespace Controls
         bool            _contextDirty;
         bool            _updatePending;
 
+		std::map<osgGA::GUIEventHandler*, osgViewer::View*> _eventHandlersMap;
+
         osg::ref_ptr<ControlNodeBin> _controlNodeBin;
 
         Control* addControlImpl( Control* control );

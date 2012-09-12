@@ -140,7 +140,7 @@ namespace osgEarth { namespace Util
             void add( int option, double value) { push_back( ActionOption(option,value) ); }
         };
 
-    private:
+    protected:
         struct InputSpec 
         {
             InputSpec( int event_type, int input_mask, int modkey_mask )
@@ -474,6 +474,10 @@ namespace osgEarth { namespace Util
             void setCameraFrustumOffsets( const osg::Vec2s& offsets );
             const osg::Vec2s& getCameraFrustumOffsets() const { return _camFrustOffsets; }
 
+            /** Use of a double precision intersector */
+            void setUseDoublePrecisionIntersector( bool useDoublePrecisionIntersector ) { _useDoublePrecisionIntersector = useDoublePrecisionIntersector; }
+            bool getUseDoublePrecisionIntersector() const { return _useDoublePrecisionIntersector; }
+
         private:
 
             friend class EarthManipulator;
@@ -513,6 +517,8 @@ namespace osgEarth { namespace Util
 
             CameraProjection _camProjType;
             osg::Vec2s _camFrustOffsets;
+
+			bool _useDoublePrecisionIntersector;
         };
 
     public:
@@ -694,14 +700,13 @@ namespace osgEarth { namespace Util
         // Applies an action using the raw input parameters.
         bool handleAction( const Action& action, double dx, double dy, double duration );
 
-        bool handleMouseAction( const Action& action, osg::View* view );
-        bool handleMouseClickAction( const Action& action );
-        bool handleKeyboardAction( const Action& action, double duration_s = DBL_MAX );
-        bool handleScrollAction( const Action& action, double duration_s = DBL_MAX );        
-        bool handlePointAction( const Action& type, float mx, float my, osg::View* view );
-        void handleContinuousAction( const Action& action, osg::View* view );
-        void handleMovementAction( const ActionType& type, double dx, double dy,
-                                   osg::View* view );
+        virtual bool handleMouseAction( const Action& action, osg::View* view );
+        virtual bool handleMouseClickAction( const Action& action );
+        virtual bool handleKeyboardAction( const Action& action, double duration_s = DBL_MAX );
+        virtual bool handleScrollAction( const Action& action, double duration_s = DBL_MAX );
+        virtual bool handlePointAction( const Action& type, float mx, float my, osg::View* view );
+        virtual void handleContinuousAction( const Action& action, osg::View* view );
+        virtual void handleMovementAction( const ActionType& type, double dx, double dy, osg::View* view );
 
         // checks to see whether the mouse is "moving".
         bool isMouseMoving();
@@ -709,7 +714,7 @@ namespace osgEarth { namespace Util
         // This sets the camera's roll based on your location on the globe.
         void recalculateRoll();
 
-    private:
+    protected:
 
         enum TaskType
         {
@@ -778,7 +783,7 @@ namespace osgEarth { namespace Util
 
         const GeoPoint& centerMap() const { return _centerMap; }
 
-    private:
+    protected:
         // makeshift "stack" of the last 2 incoming events.
         osg::ref_ptr<const osgGA::GUIEventAdapter> _ga_t1;
         osg::ref_ptr<const osgGA::GUIEventAdapter> _ga_t0;

@@ -264,9 +264,6 @@ int main(int argc, char** argv)
         {
             manip->setHomeViewpoint( 
                 Viewpoint( osg::Vec3d( -90, 0, 0 ), 0.0, -90.0, 5e7 ) );
-
-            // add a handler that will automatically calculate good clipping planes
-            viewer.getCamera()->addCullCallback( new AutoClipPlaneCullCallback(mapNode) );
         }
     }
 
@@ -288,15 +285,6 @@ int main(int argc, char** argv)
     viewer.addEventHandler(new FlyToViewpointHandler( manip ));
     viewer.addEventHandler(new LockAzimuthHandler('u', manip));
     viewer.addEventHandler(new ToggleProjectionHandler('c', manip));
-
-    // add some stock OSG handlers:
-    viewer.addEventHandler(new osgViewer::StatsHandler());
-    viewer.addEventHandler(new osgViewer::WindowSizeHandler());
-    viewer.addEventHandler(new osgViewer::ThreadingHandler());
-    viewer.addEventHandler(new osgViewer::LODScaleHandler());
-    viewer.addEventHandler(new osgGA::StateSetManipulator(viewer.getCamera()->getOrCreateStateSet()));
-    viewer.addEventHandler(new osgViewer::HelpHandler(arguments.getApplicationUsage()));
-    //viewer.addEventHandler(new osgViewer::RecordCameraPathHandler());
 
     return viewer.run();
 }

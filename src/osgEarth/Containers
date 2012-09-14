@@ -145,12 +145,12 @@ namespace osgEarth
         mutable Threading::Mutex _mutex;
 
     public:
-        LRUCache( unsigned max =100 ) : _threadsafe(false), _max(max) {
+        LRUCache( unsigned max =100 ) : _max(max), _threadsafe(false) {
             _buf = _max/10;
             _queries = 0;
             _hits = 0;
         }
-        LRUCache( bool threadsafe, unsigned max =100 ) : _threadsafe(threadsafe), _max(max) {
+        LRUCache( bool threadsafe, unsigned max =100 ) : _max(max), _threadsafe(threadsafe) {
             _buf = _max/10;
             _queries = 0;
             _hits = 0;

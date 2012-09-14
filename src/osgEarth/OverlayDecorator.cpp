@@ -452,6 +452,7 @@ OverlayDecorator::initSubgraphShaders( PerViewData& pvd )
 #endif
         << "uniform mat4 osgearth_overlay_TexGenMatrix; \n"
         << "uniform mat4 osg_ViewMatrixInverse; \n"
+        << "varying vec4 osg_TexCoord[" << Registry::capabilities().getMaxGPUTextureCoordSets() << "]; \n"
 
         << "void osgearth_overlay_vertex(void) \n"
         << "{ \n"
@@ -467,6 +468,7 @@ OverlayDecorator::initSubgraphShaders( PerViewData& pvd )
         << "precision mediump float;\n"
 #endif
         << "uniform sampler2D osgearth_overlay_ProjTex; \n"
+        << "varying vec4 osg_TexCoord[" << Registry::capabilities().getMaxGPUTextureCoordSets() << "]; \n"
         << "void osgearth_overlay_fragment( inout vec4 color ) \n"
         << "{ \n"
         << "    vec2 texCoord = osg_TexCoord["<< *_textureUnit << "].xy / osg_TexCoord["<< *_textureUnit << "].q; \n"

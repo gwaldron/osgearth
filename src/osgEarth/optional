@@ -38,6 +38,10 @@ namespace osgEarth
         bool operator !=(const optional<T>& rhs) const { return !( (*this)==rhs); }
         bool operator ==(const T& value) const { return _value==value; }
         bool operator !=(const T& value) const { return _value!=value; }
+        bool operator > (const T& value) const { return _value>value; }
+        bool operator >=(const T& value) const { return _value>=value; }
+        bool operator < (const T& value) const { return _value<value; }
+        bool operator <=(const T& value) const { return _value<=value; }
         bool isSetTo(const T& value) const { return _set && _value==value; } // differs from == in that the value must be explicity set
         bool isSet() const { return _set; }
         void unset() { _set = false; _value=_defaultValue; }

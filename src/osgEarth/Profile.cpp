@@ -716,6 +716,13 @@ Profile::getEquivalentLOD( const Profile* profile, unsigned int lod ) const
     double rhsWidth, rhsHeight;
     profile->getTileDimensions( lod, rhsWidth, rhsHeight );
 
+    // safety catch
+    if ( osg::equivalent(rhsWidth, 0.0) || osg::equivalent(rhsHeight, 0.0) )
+    {
+        OE_WARN << LC << "getEquivalentLOD: zero dimension" << std::endl;
+        return lod;
+    }
+
     double targetWidth = rhsWidth, targetHeight = rhsHeight;
 
     if ( !profile->getSRS()->isHorizEquivalentTo(getSRS()) )
@@ -723,31 +730,6 @@ Profile::getEquivalentLOD( const Profile* profile, unsigned int lod ) const
         targetWidth = profile->getSRS()->transformUnits( rhsWidth, getSRS() );
         targetHeight = profile->getSRS()->transformUnits( rhsHeight, getSRS() );
     }
-
-
-
-
-
-#if 0
-    //Create a TileKey in the incoming Profile
-    TileKey key(lod, 0, 0, profile );
-
-    GeoExtent extent = key.getExtent();
-
-    if (!profile->getSRS()->isEquivalentTo( getSRS()))
-    {           
-        // localize the extents and clamp them to legal values
-        //extent = clampAndTransformExtent( extent );
-
-        //Transform the extent into the local SRS
-        extent = extent.transform( getSRS() );
-        if ( !extent.isValid() )
-            return 0;
-    }
-
-    double keyWidth = extent.width();
-    double keyHeight = extent.height();
-#endif
     
     int currLOD = 0;
     int destLOD = currLOD;

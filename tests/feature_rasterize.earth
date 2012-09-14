@@ -5,14 +5,7 @@ Demonstrates use of the "agglite" feature rasterization driver.
 
 <map name="Geometry Rasterizer Demo" type="round" version="2">
   
-    <options>
-        <lighting>false</lighting>
-        <terrain>
-            <lod_blending>true</lod_blending>
-            <compositor>texture_array</compositor>
-            <!-- <loading_policy mode="sequential"/> -->
-        </terrain>
-    </options>
+    <options lighting="false"/>
 
     <image name="world" driver="gdal">
         <url>../data/world.tif</url>
@@ -31,6 +24,8 @@ Demonstrates use of the "agglite" feature rasterization driver.
                 
         <!-- This means the "stroke-width" in the style is (approximately) in pixels. -->
         <relative_line_size>true</relative_line_size>
+        
+        <lod_blending>true</lod_blending>
                 
         <styles>
             <style type="text/css">

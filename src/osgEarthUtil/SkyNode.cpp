@@ -1154,8 +1154,9 @@ SkyNode::makeAtmosphere( const osg::EllipsoidModel* em )
 
     // configure the state set:
     set->setMode( GL_LIGHTING, osg::StateAttribute::OFF );
-    set->setMode( GL_CULL_FACE, osg::StateAttribute::ON );
-    set->setRenderingHint( osg::StateSet::TRANSPARENT_BIN );
+    //set->setMode( GL_CULL_FACE, osg::StateAttribute::ON );
+    set->setMode( GL_CULL_FACE, osg::StateAttribute::OFF );
+    //set->setRenderingHint( osg::StateSet::TRANSPARENT_BIN );
     set->setAttributeAndModes( new osg::Depth( osg::Depth::LESS, 0, 1, false ) ); // no depth write
     set->setAttributeAndModes( new osg::BlendFunc( GL_ONE, GL_ONE ), osg::StateAttribute::ON );
 
@@ -1224,7 +1225,8 @@ SkyNode::makeAtmosphere( const osg::EllipsoidModel* em )
     osg::Camera* cam = new osg::Camera();
     cam->getOrCreateStateSet()->setRenderBinDetails( BIN_ATMOSPHERE, "RenderBin" );
     cam->setRenderOrder( osg::Camera::NESTED_RENDER );
-    cam->setComputeNearFarMode( osg::CullSettings::COMPUTE_NEAR_FAR_USING_BOUNDING_VOLUMES );
+    //cam->setComputeNearFarMode( osg::CullSettings::COMPUTE_NEAR_FAR_USING_BOUNDING_VOLUMES );
+    cam->setComputeNearFarMode( osg::CullSettings::COMPUTE_NEAR_FAR_USING_PRIMITIVES );
     cam->addChild( geode );
 
     _atmosphere = cam;

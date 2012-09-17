@@ -15,7 +15,7 @@ TIP: set your OSG_NUM_HTTP_DATABASE_THREADS to 4 or more!
         <url>http://oatile[1234].mqcdn.com/tiles/1.0.0/sat/{z}/{x}/{y}.jpg</url>
         <profile>spherical-mercator</profile>
         <cache_policy usage="no_cache"/>
-        <nodata_image>http://oatile3.mqcdn.com/tiles/1.0.0/sat/18/49761/99026.jpg</nodata_image>
+        <nodata_image>http://oatile3.mqcdn.com/tiles/1.0.0/sat/13/636/6210.jpg</nodata_image>
     </image>
     
     <options>

@@ -1566,7 +1566,8 @@ EarthManipulator::updateTether()
             if ( nodePaths.empty() )
                 return;
             localToWorld = osg::computeLocalToWorld( nodePaths[0] );
-            setCenter( localToWorld.getTrans() + (localToWorld.getRotate() * _tether_local_center) );
+            //setCenter( localToWorld.getTrans() + (localToWorld.getRotate() * _tether_local_center) );
+            setCenter( _tether_local_center * localToWorld );
         }
         else
         {

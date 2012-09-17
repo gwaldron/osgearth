@@ -1057,7 +1057,6 @@ EarthManipulator::setTetherNode( osg::Node* node )
 
             if ( _tether_xform )
             {
-                OE_NOTICE << "found an xform" << std::endl;
                 osg::BoundingSphere bs;
 
                 for( unsigned i=0; i<_tether_xform->getNumChildren(); ++i )

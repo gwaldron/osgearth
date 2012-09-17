@@ -34,9 +34,13 @@
 #include <osgEarthUtil/AutoClipPlaneHandler>
 #include <osgEarthUtil/Controls>
 #include <osgEarthUtil/ExampleResources>
+#include <osgEarthAnnotation/AnnotationUtils>
+#include <osgEarthAnnotation/LocalGeometryNode>
+#include <osgEarthSymbology/Style>
 
 using namespace osgEarth::Util;
 using namespace osgEarth::Util::Controls;
+using namespace osgEarth::Annotation;
 
 #define D2R (osg::PI/180.0)
 #define R2D (180.0/osg::PI)
@@ -187,18 +191,19 @@ namespace
      */
     struct Simulator : public osgGA::GUIEventHandler
     {
-        Simulator( osg::Group* root, EarthManipulator* manip ) 
+        Simulator( osg::Group* root, EarthManipulator* manip )
             : _manip(manip), _lat0(55.0), _lon0(45.0), _lat1(-55.0), _lon1(-45.0)
         {
-            osg::Geode* geode = new osg::Geode();
-            geode->addDrawable( new osg::ShapeDrawable( new osg::Box(osg::Vec3(0,0,0),100.0) ) ); //2500.0) ) );
+            osg::Node* geode = AnnotationUtils::createSphere( 100.0, osg::Vec4(1,1,1,1) );
+            
             _xform = new osg::MatrixTransform();
-
             _xform->addChild( geode );
+
             _cam = new osg::Camera();
             _cam->setRenderOrder( osg::Camera::NESTED_RENDER, 1 );
             _cam->addChild( _xform );
-            root->addChild( _cam );
+
+            root->addChild( _cam.get() );
         }
 
         bool handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& aa)
@@ -215,7 +220,7 @@ namespace
             }
             else if ( ea.getEventType() == ea.KEYDOWN && ea.getKey() == 't' )
             {
-                _manip->setTetherNode( _manip->getTetherNode() ? 0L : _cam );
+                _manip->setTetherNode( _manip->getTetherNode() ? 0L : _cam.get() );
                 if ( _manip->getTetherNode() )
                 {
                     _manip->getSettings()->setArcViewpointTransitions( false );
@@ -227,17 +232,17 @@ namespace
             return false;
         }
 
-        EarthManipulator*   _manip;
-        osg::Camera*          _cam;
-        osg::MatrixTransform* _xform;
-        double _lat0, _lon0, _lat1, _lon1;
+        EarthManipulator*                  _manip;
+        osg::ref_ptr<osg::Camera>          _cam;
+        osg::ref_ptr<osg::MatrixTransform> _xform;
+        double                             _lat0, _lon0, _lat1, _lon1;
     };
 }
 
 
 int main(int argc, char** argv)
 {
-    osg::ArgumentParser arguments(&argc,argv);       
+    osg::ArgumentParser arguments(&argc,argv);
     osg::DisplaySettings::instance()->setMinimumNumStencilBits( 8 );
 
     osgViewer::Viewer viewer(arguments);

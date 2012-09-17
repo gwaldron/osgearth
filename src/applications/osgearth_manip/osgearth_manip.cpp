@@ -191,10 +191,14 @@ namespace
             : _manip(manip), _lat0(55.0), _lon0(45.0), _lat1(-55.0), _lon1(-45.0)
         {
             osg::Geode* geode = new osg::Geode();
-            geode->addDrawable( new osg::ShapeDrawable( new osg::Box(osg::Vec3(0,0,0),2500.0) ) );
+            geode->addDrawable( new osg::ShapeDrawable( new osg::Box(osg::Vec3(0,0,0),100.0) ) ); //2500.0) ) );
             _xform = new osg::MatrixTransform();
+
             _xform->addChild( geode );
-            root->addChild( _xform );
+            _cam = new osg::Camera();
+            _cam->setRenderOrder( osg::Camera::NESTED_RENDER, 1 );
+            _cam->addChild( _xform );
+            root->addChild( _cam );
         }
 
         bool handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& aa)
@@ -211,11 +215,11 @@ namespace
             }
             else if ( ea.getEventType() == ea.KEYDOWN && ea.getKey() == 't' )
             {
-                _manip->setTetherNode( _manip->getTetherNode() ? 0L : _xform );
+                _manip->setTetherNode( _manip->getTetherNode() ? 0L : _cam );
                 if ( _manip->getTetherNode() )
                 {
                     _manip->getSettings()->setArcViewpointTransitions( false );
-                    _manip->setViewpoint(Viewpoint(osg::Vec3d(0,0,0), 45, -25, 250000), 2.0);
+                    _manip->setViewpoint(Viewpoint(osg::Vec3d(0,0,0), 45, -25, 250000));
                     _manip->getSettings()->setArcViewpointTransitions( true );
                 }
                 return true;
@@ -224,6 +228,7 @@ namespace
         }
 
         EarthManipulator*   _manip;
+        osg::Camera*          _cam;
         osg::MatrixTransform* _xform;
         double _lat0, _lon0, _lat1, _lon1;
     };

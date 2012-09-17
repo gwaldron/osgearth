@@ -1037,7 +1037,43 @@ EarthManipulator::setTetherNode( osg::Node* node )
     {
         _offset_x = 0.0;
         _offset_y = 0.0;
-        if ( !node )
+
+        if ( node )
+        {
+            // pre-compute some tether properties. If the node is an MT, treat it
+            // a little differently.
+
+            // Find the deepest transform that has a single child. That is the one we
+            // will use to calculate the tether location.
+            _tether_xform = 0L;
+            for( osg::Group* c = node->asGroup(); c != 0L; )
+            {
+                osg::Transform* xform = dynamic_cast<osg::Transform*>(c);
+                if ( xform )
+                    _tether_xform = xform;
+                
+                c = c->getNumChildren() == 1 ? c->getChild(0)->asGroup() : 0L;
+            }
+
+            if ( _tether_xform )
+            {
+                OE_NOTICE << "found an xform" << std::endl;
+                osg::BoundingSphere bs;
+
+                for( unsigned i=0; i<_tether_xform->getNumChildren(); ++i )
+                {
+                    bs.expandBy( _tether_xform->getChild(i)->getBound() );
+                }
+
+                _tether_local_center = bs.center();
+            }
+            else
+            {
+                _tether_local_center.set( 0.0, 0.0, 0.0 );
+            }
+        }
+
+        else
         {
             // rekajigger the distance, center, and pitch to legal non-tethered values:
             double pitch;
@@ -1046,9 +1082,6 @@ EarthManipulator::setTetherNode( osg::Node* node )
             double maxPitch = osg::DegreesToRadians(-10.0);
             if ( pitch > maxPitch )
                 rotate( 0.0, -(pitch-maxPitch) );
-            
-            //getLocalEulerAngles(0L, &pitch);
-            //OE_NOTICE << "pitch=" << osg::RadiansToDegrees(pitch) << std::endl;
 
             osg::Vec3d eye = getMatrix().getTrans();
 
@@ -1061,6 +1094,7 @@ EarthManipulator::setTetherNode( osg::Node* node )
             setDistance( newDistance );
         }
     }
+
     _tether_node = node;
 }
 
@@ -1525,30 +1559,24 @@ EarthManipulator::updateTether()
     osg::ref_ptr<osg::Node> temp = _tether_node.get();
     if ( temp.valid() )
     {
-        osg::NodePathList nodePaths = temp->getParentalNodePaths();
-        if ( nodePaths.empty() )
-            return;
-        osg::NodePath path = nodePaths[0];
+        osg::Matrix localToWorld;
 
-        osg::Matrixd localToWorld = osg::computeLocalToWorld( path );
-        setCenter( localToWorld.getTrans() );
-
-        // if the tether node is a MT, we are set. If it's not, we need to get the
-        // local bound and add its translation to the localToWorld. We cannot just use
-        // the bounds directly because they are single precision (unless you built OSG
-        // with double-precision bounding spheres, which you probably did not :)
-        if ( !dynamic_cast<osg::MatrixTransform*>( temp.get() ) )
+        if ( _tether_xform )
         {
-            const osg::BoundingSphere& bs = temp->getBound();
-            setCenter( _center + bs.center() );
+            osg::NodePathList nodePaths = _tether_xform->getParentalNodePaths();
+            if ( nodePaths.empty() )
+                return;
+            localToWorld = osg::computeLocalToWorld( nodePaths[0] );
+            setCenter( localToWorld.getTrans() + (localToWorld.getRotate() * _tether_local_center) );
         }
-
-        //OE_INFO
-        //    << std::fixed << std::setprecision(3)
-        //    << "Tether center: (" << _center.x() << "," << _center.y() << "," << _center.z()
-        //    << "); bbox center: (" << bs.center().x() << "," << bs.center().y() << "," << bs.center().z() << ")"
-        //    << std::endl;
-
+        else
+        {
+            osg::NodePathList nodePaths = temp->getParentalNodePaths();
+            if ( nodePaths.empty() )
+                return;
+            localToWorld = osg::computeLocalToWorld( nodePaths[0] );
+            setCenter( localToWorld.getTrans() );
+        }
 
         _previousUp = getUpVector( _centerLocalToWorld );
 

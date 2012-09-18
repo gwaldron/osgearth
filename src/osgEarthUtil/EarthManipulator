@@ -802,7 +802,9 @@ namespace osgEarth { namespace Util
         bool _srs_lookup_failed;
 
         osg::observer_ptr<osg::Node> _tether_node;
-        Viewpoint               _pre_tether_vp;
+        osg::Transform*              _tether_xform;
+        osg::Vec3d                   _tether_local_center;
+        Viewpoint                    _pre_tether_vp;
 
         double                  _time_s_last_frame;
         double                  _time_s_now;

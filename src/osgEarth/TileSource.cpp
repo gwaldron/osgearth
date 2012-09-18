@@ -402,7 +402,7 @@ TileSource::getMaxDataLevel() const
 
     for (DataExtentList::const_iterator itr = _dataExtents.begin(); itr != _dataExtents.end(); ++itr)
     {
-        if ( itr->maxLevel().isSet() && itr->maxLevel() > maxDataLevel )
+        if ( itr->maxLevel().isSet() && itr->maxLevel() > *maxDataLevel )
         {
             maxDataLevel = itr->maxLevel().get();
         }
@@ -419,7 +419,7 @@ TileSource::getMinDataLevel() const
 
     for (DataExtentList::const_iterator itr = _dataExtents.begin(); itr != _dataExtents.end(); ++itr)
     {
-        if ( itr->minLevel().isSet() && itr->minLevel() < minDataLevel )
+        if ( itr->minLevel().isSet() && itr->minLevel() < *minDataLevel )
         {
             minDataLevel = itr->minLevel().get();
         }

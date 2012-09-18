@@ -182,6 +182,7 @@ ADD_LIBRARY(${LIB_NAME} ${OSGEARTH_USER_DEFINED_DYNAMIC_OR_STATIC}
     Progress.cpp
     Random.cpp
     Registry.cpp
+    Revisioning.cpp
     ShaderComposition.cpp
     ShaderUtils.cpp
     SparseTexture2DArray.cpp

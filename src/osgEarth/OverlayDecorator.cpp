@@ -274,7 +274,8 @@ _mipmapping      ( false ),
 _rttBlending     ( true ),
 _updatePending   ( false ),
 _dumpRequested   ( false ),
-_rttTraversalMask( ~0 )
+_rttTraversalMask( ~0 ),
+_maxHorizonDistance( DBL_MAX )
 {
     // nop
 }
@@ -761,9 +762,10 @@ OverlayDecorator::cull( osgUtil::CullVisitor* cv, OverlayDecorator::PerViewData&
     cv->setCalculatedFarPlane( osg::maximum(zSavedFar, zFar) );
 
     if ( _isGeocentric )
-    {
+    {        
         // in geocentric mode, clamp the far clip plane to the horizon.
         double maxDistance = (1.0 - haslWeight)  * horizonDistance  + haslWeight * hasl;
+        maxDistance = osg::clampBelow( maxDistance, _maxHorizonDistance );
         maxDistance *= 1.5;
         if (zFar - zNear >= maxDistance)
             zFar = zNear + maxDistance;
@@ -1035,4 +1037,16 @@ OverlayDecorator::checkNeedsUpdate( OverlayDecorator::PerViewData& pvd )
         pvd._rttCamera->getViewMatrix()       != pvd._rttViewMatrix ||
         pvd._rttCamera->getProjectionMatrix() != pvd._rttProjMatrix ||
         (_overlayGraph.valid() && _overlayGraph->getNumChildrenRequiringUpdateTraversal() > 0);
+}
+
+
+double OverlayDecorator::getMaxHorizonDistance( ) const
+{
+    return _maxHorizonDistance;
+}
+
+void
+OverlayDecorator::setMaxHorizonDistance( double horizonDistance )
+{
+    _maxHorizonDistance = horizonDistance;
 }

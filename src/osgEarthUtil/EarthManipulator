@@ -472,11 +472,7 @@ namespace osgEarth { namespace Util
 
             /** Frustum offset (in pixels) */
             void setCameraFrustumOffsets( const osg::Vec2s& offsets );
-            const osg::Vec2s& getCameraFrustumOffsets() const { return _camFrustOffsets; }
-
-            /** Use of a double precision intersector */
-            void setUseDoublePrecisionIntersector( bool useDoublePrecisionIntersector ) { _useDoublePrecisionIntersector = useDoublePrecisionIntersector; }
-            bool getUseDoublePrecisionIntersector() const { return _useDoublePrecisionIntersector; }
+            const osg::Vec2s& getCameraFrustumOffsets() const { return _camFrustOffsets; }            
 
         private:
 
@@ -516,9 +512,7 @@ namespace osgEarth { namespace Util
             double _min_vp_duration_s, _max_vp_duration_s;
 
             CameraProjection _camProjType;
-            osg::Vec2s _camFrustOffsets;
-
-			bool _useDoublePrecisionIntersector;
+            osg::Vec2s _camFrustOffsets;			
         };
 
     public:

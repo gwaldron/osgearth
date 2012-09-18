@@ -608,19 +608,19 @@ namespace
 
     static char s_moonVertexSource[] = 
         "uniform mat4 osg_ModelViewProjectionMatrix;"
-        "varying vec4 osg_TexCoord;\n"
+        "varying vec4 moon_TexCoord;\n"
         "void main() \n"
         "{ \n"
-        "    osg_TexCoord = gl_MultiTexCoord0; \n"
+        "    moon_TexCoord = gl_MultiTexCoord0; \n"
         "    gl_Position = osg_ModelViewProjectionMatrix * gl_Vertex; \n"
         "} \n";
 
     static char s_moonFragmentSource[] =
-        "varying vec4 osg_TexCoord;\n"
+        "varying vec4 moon_TexCoord;\n"
         "uniform sampler2D moonTex;\n"
         "void main( void ) \n"
         "{ \n"
-        "   gl_FragColor = texture2D(moonTex, osg_TexCoord.st);\n"
+        "   gl_FragColor = texture2D(moonTex, moon_TexCoord.st);\n"
         "} \n";
 }
 

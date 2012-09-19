@@ -421,7 +421,7 @@ GeometryCompiler::compile(FeatureList&          workingSet,
     if ( sharedCX.getSession() )
     {
         sharedCX.getSession()->getStateSetCache()->optimize( resultGroup.get() );
-        OE_INFO << LC << "state set cache size = " << sharedCX.getSession()->getStateSetCache()->size() << std::endl;
+        //OE_INFO << LC << "state set cache size = " << sharedCX.getSession()->getStateSetCache()->size() << std::endl;
     }
     else
     {

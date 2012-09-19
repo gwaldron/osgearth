@@ -150,13 +150,13 @@ osg::NodeVisitor( osg::NodeVisitor::TRAVERSE_ALL_CHILDREN )
 void 
 ShaderGenerator::apply( osg::Node& node )
 {
-    osg::StateSet* ss = node.getStateSet();
-    if ( ss )
+    osg::ref_ptr<osg::StateSet> ss = node.getStateSet();
+    if ( ss.valid() )
     {
-        _state->pushStateSet( ss );
+        _state->pushStateSet( ss.get() );
 
         osg::ref_ptr<osg::StateSet> replacement;
-        if ( generate(ss, replacement) )
+        if ( generate(ss.get(), replacement) )
         {
             _state->popStateSet();
             node.setStateSet( replacement.get() );
@@ -166,7 +166,7 @@ ShaderGenerator::apply( osg::Node& node )
 
     traverse(node);
 
-    if ( ss )
+    if ( ss.get() )
     {
         _state->popStateSet();
     }
@@ -176,13 +176,13 @@ ShaderGenerator::apply( osg::Node& node )
 void 
 ShaderGenerator::apply( osg::Geode& geode )
 {
-    osg::StateSet* ss = geode.getStateSet();
-    if ( ss )
+    osg::ref_ptr<osg::StateSet> ss = geode.getStateSet();
+    if ( ss.valid() )
     {
-        _state->pushStateSet( ss );
+        _state->pushStateSet( ss.get() );
 
         osg::ref_ptr<osg::StateSet> replacement;
-        if ( generate(ss, replacement) )
+        if ( generate(ss.get(), replacement) )
         {
             _state->popStateSet();
             geode.setStateSet( replacement.get() );
@@ -195,7 +195,7 @@ ShaderGenerator::apply( osg::Geode& geode )
         apply( geode.getDrawable(d) );
     }
 
-    if ( ss )
+    if ( ss.valid() )
     {
         _state->popStateSet();
     }
@@ -205,18 +205,21 @@ ShaderGenerator::apply( osg::Geode& geode )
 void 
 ShaderGenerator::apply( osg::Drawable* drawable )
 {
-    osg::StateSet* ss = drawable->getStateSet();
-    if ( ss )
+    if ( drawable )
     {
-        _state->pushStateSet(ss);
-        
-        osg::ref_ptr<osg::StateSet> replacement;
-        if ( generate(ss, replacement) )
+        osg::ref_ptr<osg::StateSet> ss = drawable->getStateSet();
+        if ( ss.valid() )
         {
-            drawable->setStateSet(replacement.get());
-        }
+            _state->pushStateSet(ss.get());
+            
+            osg::ref_ptr<osg::StateSet> replacement;
+            if ( generate(ss.get(), replacement) )
+            {
+                drawable->setStateSet(replacement.get());
+            }
 
-        _state->popStateSet();
+            _state->popStateSet();
+        }
     }
 }
 

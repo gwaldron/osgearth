@@ -20,20 +20,18 @@ Shows how to use point model substitution with a model encoded in the shapefile.
         <styles>
             <style type="text/css">
                 points {
-                   marker:              [model];
-                   marker-scale:        200;    
+                   model:               [model];
+                   model-scale:         200;    
                    altitude-clamping:   terrain;
                    altitude-offset:     500;				   
                 }                                            
             </style>
         </styles>   
-	<clustering>false</clustering>	
-    <lighting>false</lighting>	
+        
     </model>
     
     
     <options>
-        <lighting>false</lighting>
 		<osg_file_paths>
 		    <url>../data</url>
 		</osg_file_paths>

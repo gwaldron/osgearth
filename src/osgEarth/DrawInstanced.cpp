@@ -253,6 +253,7 @@ DrawInstanced::convertGraphToUseDrawInstanced( osg::Group* parent )
                 {
                     mats->push_back( matrices[offset + m] );
                 }
+                ubb->setDataVariance( osg::Object::DYNAMIC );
             }
             else // just use a uniform array
             {

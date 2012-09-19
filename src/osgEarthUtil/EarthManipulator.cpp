@@ -206,8 +206,7 @@ _auto_vp_duration               ( false ),
 _min_vp_duration_s              ( 3.0 ),
 _max_vp_duration_s              ( 8.0 ),
 _camProjType                    ( PROJ_PERSPECTIVE ),
-_camFrustOffsets                ( 0, 0 ),
-_useDoublePrecisionIntersector  ( false )
+_camFrustOffsets                ( 0, 0 )
 {
     //NOP
 }
@@ -1113,14 +1112,8 @@ EarthManipulator::intersect(const osg::Vec3d& start, const osg::Vec3d& end, osg:
     {
 		osg::ref_ptr<osgUtil::LineSegmentIntersector> lsi = NULL;
 
-		if (_settings->getUseDoublePrecisionIntersector() == true)
-		{
-			lsi = new osgEarth::DPLineSegmentIntersector(start,end);
-		}
-		else
-		{
-			lsi = new osgUtil::LineSegmentIntersector(start,end);
-		}
+		lsi = new osgEarth::DPLineSegmentIntersector(start,end);
+		//lsi = new osgUtil::LineSegmentIntersector(start,end);		
 
         osgUtil::IntersectionVisitor iv(lsi.get());
         iv.setTraversalMask(_intersectTraversalMask);
@@ -2068,14 +2061,8 @@ EarthManipulator::screenToWorld(float x, float y, osg::View* theView, osg::Vec3d
 
 	osg::ref_ptr<osgUtil::LineSegmentIntersector> picker = NULL;
 
-	if (_settings->getUseDoublePrecisionIntersector() == true)
-	{
-		picker = new osgEarth::DPLineSegmentIntersector(osgUtil::Intersector::MODEL, startVertex, endVertex);
-	}
-	else
-	{
-		picker = new osgUtil::LineSegmentIntersector(osgUtil::Intersector::MODEL, startVertex, endVertex);
-	}
+	picker = new osgEarth::DPLineSegmentIntersector(osgUtil::Intersector::MODEL, startVertex, endVertex);	
+	//picker = new osgUtil::LineSegmentIntersector(osgUtil::Intersector::MODEL, startVertex, endVertex);	
 
     osgUtil::IntersectionVisitor iv(picker.get());
     iv.setTraversalMask(_intersectTraversalMask);

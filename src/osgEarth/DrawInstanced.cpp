@@ -117,6 +117,8 @@ DrawInstanced::createDrawInstancedProgram()
             << "{\n"
             <<     "mat4 osgearth_instanceModelMatrix[ " << MAX_COUNT_UBO << "];\n"
             << "};\n";
+
+        vp->getTemplate()->addBindUniformBlock( "osgearth_InstanceModelData", 0 );
     }
     else
     {
@@ -135,8 +137,6 @@ DrawInstanced::createDrawInstancedProgram()
         "osgearth_setInstancePosition",
         src,
         ShaderComp::LOCATION_VERTEX_PRE_COLORING );
-
-    vp->getTemplate()->addBindUniformBlock( "osgearth_InstanceModelData", 0 );
 
     return vp;
 }

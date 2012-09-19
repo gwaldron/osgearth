@@ -22,6 +22,7 @@
 #include <osgEarthSymbology/Style>
 #include <osgEarthSymbology/InstanceSymbol>
 #include <osgEarth/Registry>
+#include <osgEarth/ShaderGenerator>
 
 #define LC "[ModelNode] "
 
@@ -78,6 +79,9 @@ ModelNode::init(const osgDB::Options* dbOptions)
 
             if ( node )
             {
+                ShaderGenerator gen;
+                node->accept( gen );
+
                 getTransform()->addChild( node );
                 this->addChild( getTransform() );
 

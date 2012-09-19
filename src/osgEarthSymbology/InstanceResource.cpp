@@ -19,6 +19,7 @@
 #include <osgEarthSymbology/InstanceResource>
 #include <osgEarth/StringUtils>
 #include <osgEarth/ImageUtils>
+#include <osgEarth/ShaderGenerator>
 
 #include <osg/AutoTransform>
 #include <osg/Depth>
@@ -67,6 +68,11 @@ InstanceResource::createNode( const osgDB::Options* dbOptions ) const
     {
         OE_DEBUG << LC << "Instance model does NOT have shaders disabled; use shadergen" << std::endl;
         //node->getOrCreateStateSet()->setAttributeAndModes( new osg::Program(), osg::StateAttribute::OFF );
+
+        //ShaderGenerator gen;
+        //node->accept( gen );
+
+        //Note. ShaderGen usually runs elsewhere where it can take advantage of a stateset optimizer.
     }
 
     return node;

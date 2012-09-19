@@ -115,7 +115,7 @@ namespace osgEarth
      *    if ( rec.valid() )
      *        const T& value = rec.value();
      */
-    template<typename K, typename T>
+    template<typename K, typename T, typename COMPARE=std::less<K> >
     class LRUCache
     {
     public:

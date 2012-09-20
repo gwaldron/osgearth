@@ -252,10 +252,19 @@ VirtualProgram::setFunction(const std::string& functionName,
 
     // if there's already a function by this name, remove it
     for( OrderedFunctionMap::iterator i = ofm.begin(); i != ofm.end(); )
+    {
         if ( i->second.compare(functionName) == 0 )
-            i = ofm.erase( i );
+        {
+            OrderedFunctionMap::iterator j = i;
+            ++j;
+            ofm.erase( i );
+            i = j;
+        }
         else
+        {
             ++i;
+        }
+    }
     
     ofm.insert( std::pair<float,std::string>( priority, functionName ) );
 

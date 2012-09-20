@@ -108,7 +108,8 @@ DrawInstanced::createDrawInstancedProgram()
     std::stringstream buf;
 
     buf << "#version 120 \n"
-        << "#extension GL_EXT_draw_instanced : enable\n";
+        << "#extension GL_EXT_gpu_shader4 : enable \n";
+        //<< "#extension GL_EXT_draw_instanced : enable\n";
 
     if ( Registry::capabilities().supportsUniformBufferObjects() )
     {

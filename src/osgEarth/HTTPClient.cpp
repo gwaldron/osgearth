@@ -295,6 +295,7 @@ HTTPResponse::getHeadersAsConfig() const
 
 static optional<ProxySettings>     _proxySettings;
 static std::string                 _userAgent = USER_AGENT;
+static long                         _timeout = 0;
 
 namespace
 {
@@ -355,8 +356,15 @@ HTTPClient::initializeImpl()
     curl_easy_setopt( _curl_handle, CURLOPT_FOLLOWLOCATION, (void*)1 );
     curl_easy_setopt( _curl_handle, CURLOPT_MAXREDIRS, (void*)5 );
     curl_easy_setopt( _curl_handle, CURLOPT_PROGRESSFUNCTION, &CurlProgressCallback);
-    curl_easy_setopt( _curl_handle, CURLOPT_NOPROGRESS, (void*)0 ); //FALSE);
-    //curl_easy_setopt( _curl_handle, CURLOPT_TIMEOUT, 1L );
+    curl_easy_setopt( _curl_handle, CURLOPT_NOPROGRESS, (void*)0 ); //FALSE);    
+    long timeout = _timeout;
+    const char* timeoutEnv = getenv("OSGEARTH_HTTP_TIMEOUT");
+    if (timeoutEnv)
+    {        
+        timeout = osgEarth::as<long>(std::string(timeoutEnv), 0);
+    }
+    OE_INFO << LC << "Setting timeout to " << timeout << std::endl;
+    curl_easy_setopt( _curl_handle, CURLOPT_TIMEOUT, timeout );
 
     _initialized = true;
 }
@@ -381,6 +389,16 @@ const std::string& HTTPClient::getUserAgent()
 void  HTTPClient::setUserAgent(const std::string& userAgent)
 {
     _userAgent = userAgent;
+}
+
+long HTTPClient::getTimeout()
+{
+    return _timeout;
+}
+
+void HTTPClient::setTimeout( long timeout )
+{
+    _timeout = timeout;
 }
 
 void
@@ -795,7 +813,7 @@ HTTPClient::doGet( const HTTPRequest& request, const osgDB::Options* options, Pr
         }
     }
     else if (res == CURLE_ABORTED_BY_CALLBACK || res == CURLE_OPERATION_TIMEDOUT)
-    {
+    {        
         //If we were aborted by a callback, then it was cancelled by a user
         response._cancelled = true;
     }
@@ -929,7 +947,7 @@ HTTPClient::doReadImage(const std::string&    location,
 
         //If we have an error but it's recoverable, like a server error or timeout then set the callback to retry.
         if (HTTPClient::isRecoverable( result.code() ) )
-        {
+        {            
             if (callback)
             {
                 OE_DEBUG << "Error in HTTPClient for " << location << " but it's recoverable" << std::endl;
@@ -1090,7 +1108,7 @@ HTTPClient::doReadString(const std::string&    location,
 
         //If we have an error but it's recoverable, like a server error or timeout then set the callback to retry.
         if (HTTPClient::isRecoverable( result.code() ) )
-        {
+        {            
             if (callback)
             {
                 OE_DEBUG << "Error in HTTPClient for " << location << " but it's recoverable" << std::endl;

@@ -788,12 +788,20 @@ SkyNode::traverse( osg::NodeVisitor& nv )
     osgUtil::CullVisitor* cv = dynamic_cast<osgUtil::CullVisitor*>( &nv );
     if ( cv )
     {
+        // If there's a custom projection matrix clamper installed, remove it temporarily.
+        // We dont' want it mucking with our sky elements.
+        osg::ref_ptr<osg::CullSettings::ClampProjectionMatrixCallback> cb = cv->getClampProjectionMatrixCallback();
+        cv->setClampProjectionMatrixCallback( 0L );
+
         osg::View* view = cv->getCurrentCamera()->getView();
         PerViewDataMap::iterator i = _perViewData.find( view );
         if ( i != _perViewData.end() )
         {
             i->second._cullContainer->accept( nv );
         }
+
+        // restore a custom clamper.
+        if ( cb.valid() ) cv->setClampProjectionMatrixCallback( cb.get() );
     }
 
     else
@@ -1154,10 +1162,10 @@ SkyNode::makeAtmosphere( const osg::EllipsoidModel* em )
 
     // configure the state set:
     set->setMode( GL_LIGHTING, osg::StateAttribute::OFF );
-    //set->setMode( GL_CULL_FACE, osg::StateAttribute::ON );
-    set->setMode( GL_CULL_FACE, osg::StateAttribute::OFF );
+    set->setAttributeAndModes( new osg::CullFace(osg::CullFace::BACK), osg::StateAttribute::ON );
     //set->setRenderingHint( osg::StateSet::TRANSPARENT_BIN );
     set->setAttributeAndModes( new osg::Depth( osg::Depth::LESS, 0, 1, false ) ); // no depth write
+    set->setAttributeAndModes( new osg::Depth(osg::Depth::ALWAYS, 0, 1, false) ); // no zbuffer
     set->setAttributeAndModes( new osg::BlendFunc( GL_ONE, GL_ONE ), osg::StateAttribute::ON );
 
     // next, create and add the shaders:
@@ -1225,8 +1233,7 @@ SkyNode::makeAtmosphere( const osg::EllipsoidModel* em )
     osg::Camera* cam = new osg::Camera();
     cam->getOrCreateStateSet()->setRenderBinDetails( BIN_ATMOSPHERE, "RenderBin" );
     cam->setRenderOrder( osg::Camera::NESTED_RENDER );
-    //cam->setComputeNearFarMode( osg::CullSettings::COMPUTE_NEAR_FAR_USING_BOUNDING_VOLUMES );
-    cam->setComputeNearFarMode( osg::CullSettings::COMPUTE_NEAR_FAR_USING_PRIMITIVES );
+    cam->setComputeNearFarMode( osg::CullSettings::COMPUTE_NEAR_FAR_USING_BOUNDING_VOLUMES );
     cam->addChild( geode );
 
     _atmosphere = cam;

@@ -98,8 +98,8 @@ ModelNode::init(const osgDB::Options* dbOptions)
                     double pitch   = sym->pitch().isSet()   ? sym->pitch()->eval()   : 0.0;
                     double roll    = sym->roll().isSet()    ? sym->roll()->eval()    : 0.0;
                     rot.makeRotate( 
-                        osg::DegreesToRadians(heading), osg::Vec3(1,0,0),
-                        osg::DegreesToRadians(pitch),   osg::Vec3(0,0,1),
+                        osg::DegreesToRadians(heading), osg::Vec3(0,0,1),
+                        osg::DegreesToRadians(pitch),   osg::Vec3(1,0,0),
                         osg::DegreesToRadians(roll),    osg::Vec3(0,1,0) );
                     this->setLocalRotation( rot.getRotate() );
                 }

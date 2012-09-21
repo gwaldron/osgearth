@@ -32,7 +32,7 @@ KML_Model::parseCoords( const Config& conf, KMLContext& cx )
     {
         double latitude  = location.value("latitude",  0.0);
         double longitude = location.value("longitude", 0.0);
-        double altitude  = location.value("alttiude", 0.0); 
+        double altitude  = location.value("altitude", 0.0); 
         point->push_back( osg::Vec3d(longitude, latitude, altitude));
     }    
     _geom = point;

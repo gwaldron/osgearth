@@ -130,27 +130,27 @@ namespace osgEarth
         /**
          * Marks the object dirty and notifies parents
          */
-        void setDirty();
+        virtual void setDirty();
 
         /**
          * Marks the object not dirty.
          */
-        void resetDirty() { _counter->_count = 0; }
+        virtual void resetDirty() { _counter->_count = 0; }
 
         /**
          * Is this object dirty?
          */
-        bool isDirty() const { return _counter->_count > 0; }
+        virtual bool isDirty() const { return _counter->_count > 0; }
 
         /**
          * Adds a dependent parent that will be dirtied if this object if dirtied.
          */
-        void addParent( DirtyNotifier* parent );
+        virtual void addParent( DirtyNotifier* parent );
 
         /**
          * Removes a dependent parent previously added by addParent.
          */
-        void removeParent( DirtyNotifier* parent );
+        virtual void removeParent( DirtyNotifier* parent );
 
     private:
         // this pattern is used to we can track parents with an observer pointer.

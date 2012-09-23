@@ -269,12 +269,17 @@ _pendingUpdate( false )
         installShaderMains();
     }
 
-    // Set up the state set.
-    // backface culling is ON by default. By the way, this is most definitely
-    // necessary when shading with shadows.
     osg::StateSet* stateSet = getOrCreateStateSet();
-    stateSet->setMode( GL_CULL_FACE, 1 );
-    stateSet->setMode( GL_BLEND, 1 );
+
+    // Set up backface culling, only if the option is set
+    if ( _options.backfaceCulling().isSet() )
+        stateSet->setMode( GL_CULL_FACE, *_options.backfaceCulling() ? 1 : 0 );
+
+    // Set up alpha blending, only if the option is set
+    if ( _options.alphaBlending().isSet() )
+        stateSet->setMode( GL_BLEND, *_options.alphaBlending() ? 1 : 0 );
+
+    // Set up lighting, only if the option is set
     if ( _options.enableLighting().isSet() )
         stateSet->setMode( GL_LIGHTING, *_options.enableLighting() ? 1 : 0 );
 

@@ -72,6 +72,14 @@ namespace osgEarth { namespace Features
         optional<bool>& featureIndexing() { return _featureIndexing; }
         const optional<bool>& featureIndexing() const { return _featureIndexing; }
 
+        /** Whether to activate backface culling (default = yes) */
+        optional<bool>& backfaceCulling() { return _backfaceCulling; }
+        const optional<bool>& backfaceCulling() const { return _backfaceCulling; }
+
+        /** Whether to activate alpha blending (default = yes) */
+        optional<bool>& alphaBlending() { return _alphaBlending; }
+        const optional<bool>& alphaBlending() const { return _alphaBlending; }
+
         /** Explicity caching policy for data from the underlying feature source */
         optional<CachePolicy>& cachePolicy() { return _cachePolicy; }
         const optional<CachePolicy>& cachePolicy() const { return _cachePolicy; }
@@ -115,6 +123,8 @@ namespace osgEarth { namespace Features
         optional<bool>                  _mergeGeometry;
         optional<bool>                  _clusterCulling;
         optional<bool>                  _featureIndexing;
+        optional<bool>                  _backfaceCulling;
+        optional<bool>                  _alphaBlending;
         optional<CachePolicy>           _cachePolicy;
         optional<float>                 _fadeInDuration;
 

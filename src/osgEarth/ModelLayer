@@ -90,6 +90,13 @@ namespace osgEarth
         optional<bool>& disableShaders() { return _disableShaderComp; }
         const optional<bool>& disableShaders() const { return _disableShaderComp; }
 
+        /**
+         * An osg::StateSet which is placed on top of this model layer nodes graph.
+         * This allow to set uniform, shaders... whitout the need of knowing which map owns this layer
+         */
+        osg::ref_ptr<osg::StateSet>& decoratorStateSet() { return _decoratorStateSet; }
+        const osg::ref_ptr<osg::StateSet>& decoratorStateSet() const { return _decoratorStateSet; }
+
     public:
         virtual Config getConfig() const;
         virtual void mergeConfig( const Config& conf );
@@ -105,6 +112,7 @@ namespace osgEarth
         optional<bool> _visible;
         optional<bool> _lighting;
         optional<bool> _disableShaderComp;
+        osg::ref_ptr<osg::StateSet> _decoratorStateSet;
     };
 
     /**

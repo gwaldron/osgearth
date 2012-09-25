@@ -85,6 +85,7 @@ ModelLayerOptions::getConfig() const
     conf.updateIfSet( "enabled", _enabled );
     conf.updateIfSet( "visible", _visible );
     conf.updateIfSet( "lighting", _lighting );
+    conf.updateNonSerializable( "ModelLayerOptions::DecoratorStateSet", _decoratorStateSet.get() );
 
     // temporary.
     conf.updateIfSet( "disable_shaders", _disableShaderComp );
@@ -104,6 +105,7 @@ ModelLayerOptions::fromConfig( const Config& conf )
     conf.getIfSet( "enabled", _enabled );
     conf.getIfSet( "visible", _visible );
     conf.getIfSet( "lighting", _lighting );
+    _decoratorStateSet = conf.getNonSerializable<osg::StateSet>( "ModelLayerOptions::DecoratorStateSet" );
 
     // temporary.
     conf.getIfSet( "disable_shaders", _disableShaderComp );
@@ -226,6 +228,16 @@ ModelLayer::createSceneGraph(const Map*            map,
             // save an observer reference to the node so we can change the visibility/lighting/etc.
             _nodeSet.insert( node );
         }
+    }
+
+    // Add model layer decorator state set if requested in options
+    if ( (node != NULL) && (_runtimeOptions.decoratorStateSet().valid() == true) )
+    {
+		// Build an osg::Group to store this StateSet
+		osg::Group* pGroup = new osg::Group();
+		pGroup->setStateSet(_runtimeOptions.decoratorStateSet());
+        pGroup->addChild(node);
+        node = pGroup;
     }
 
     return node;

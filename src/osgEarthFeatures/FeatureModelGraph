@@ -85,6 +85,11 @@ namespace osgEarth { namespace Features
          */
         void addPostMergeOperation( NodeOperation* op );
 
+        /**
+         * Access to the features levels
+         */
+        const std::vector<const FeatureLevel*>& getLevels() const { return _lodmap; };
+
 
     public: // osg::Node
 

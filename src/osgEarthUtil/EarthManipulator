@@ -24,9 +24,9 @@
 #include <osgEarth/Viewpoint>
 #include <osgEarth/GeoData>
 #include <osgEarth/Revisioning>
+#include <osgEarth/Terrain>
 #include <osg/Timer>
 #include <osgGA/CameraManipulator>
-#include <osgEarth/Terrain>
 #include <map>
 #include <list>
 #include <utility>

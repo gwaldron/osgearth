@@ -353,7 +353,7 @@ OverlayDecorator::initializePerViewData( PerViewData& pvd )
     // a PBUFFER_RTT impl
     if ( Registry::instance()->getCapabilities().supportsDepthPackedStencilBuffer() ){
 #ifdef OSG_GLES2_AVAILABLE 
-        pvd._rttCamera->attach( osg::Camera::PACKED_DEPTH_STENCIL_BUFFER, GL_DEPTH24_STENCIL8_OES );
+        pvd._rttCamera->attach( osg::Camera::PACKED_DEPTH_STENCIL_BUFFER, GL_DEPTH24_STENCIL8_EXT );
 #else
         pvd._rttCamera->attach( osg::Camera::PACKED_DEPTH_STENCIL_BUFFER, GL_DEPTH_STENCIL_EXT );
 #endif

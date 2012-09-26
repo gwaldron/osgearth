@@ -479,7 +479,7 @@ OverlayDecorator::initSubgraphShaders( PerViewData& pvd )
         << "{ \n"
         << "    vec2 texCoord = osg_TexCoord["<< *_textureUnit << "].xy / osg_TexCoord["<< *_textureUnit << "].q; \n"
         << "    vec4 texel = texture2D(osgearth_overlay_ProjTex, texCoord); \n"  
-        << "    color = texel;//vec4( mix( color.rgb, texel.rgb, texel.a ), color.a); \n"
+        << "    color = vec4( mix( color.rgb, texel.rgb, texel.a ), color.a); \n"
         << "} \n";
 
     vp->setFunction( "osgearth_overlay_fragment", fragmentSource, ShaderComp::LOCATION_FRAGMENT_POST_LIGHTING );

@@ -981,9 +981,9 @@ ShaderFactory::createDefaultColoringVertexShader( unsigned numTexCoordSets ) con
     
     //if ( numTexCoordSets > 0 )
     //{
-    //    buf << "varying vec4 osg_TexCoord[" << numTexCoordSets << "];\n";
+    //    buf << "varying vec4 osg_TexCoord[" << numTexCoordSets << "]; \n";
     //}
-    buf << "varying vec4 osg_TexCoord[" << Registry::capabilities().getMaxGPUTextureCoordSets() << "];\n";
+    buf << "varying vec4 osg_TexCoord[" << Registry::capabilities().getMaxGPUTextureCoordSets() << "]; \n";
 
     buf
         << "varying vec4 osg_FrontColor;\n"
@@ -1026,7 +1026,7 @@ ShaderFactory::createDefaultColoringFragmentShader( unsigned numTexImageUnits ) 
     
     if ( numTexImageUnits > 0 )
     {
-        buf << "varying vec4 osg_TexCoord[" << Registry::capabilities().getMaxGPUTextureCoordSets() << "];\n";
+        buf << "varying vec4 osg_TexCoord[" << Registry::capabilities().getMaxGPUTextureCoordSets() << "]; \n";
         buf << "uniform sampler2D ";
         for( unsigned i=0; i<numTexImageUnits; ++i )
         {

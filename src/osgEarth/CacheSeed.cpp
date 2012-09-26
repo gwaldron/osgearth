@@ -268,7 +268,7 @@ void CacheSeed::seed( Map* map )
 
     _total = _completed;
 
-    if ( _progress.valid()) _progress->reportProgress(_completed, _total, "Finished");
+    if ( _progress.valid()) _progress->reportProgress(_completed, _total, 0, 1, "Finished");
 }
 
 void CacheSeed::incrementCompleted( unsigned int total ) const

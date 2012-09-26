@@ -51,8 +51,8 @@ namespace
 
         buf << "#version " << GLSL_VERSION_STR << "\n";
 
-        buf << "varying vec4 osg_FrontColor;\n"
-            << "varying vec4 osg_FrontSecondaryColor;\n";
+        buf << "varying vec4 osg_FrontColor; \n"
+            << "varying vec4 osg_FrontSecondaryColor; \n";
 
         if ( slots.size() > 0 )
         {

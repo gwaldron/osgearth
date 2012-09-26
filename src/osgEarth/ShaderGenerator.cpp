@@ -18,7 +18,7 @@
  */
 
 #include <osgEarth/ShaderGenerator>
-#include <osgEarth/ShaderComposition>
+#include <osgEarth/VirtualProgram>
 #include <osgEarth/StringUtils>
 #include <osgEarth/Registry>
 #include <osgEarth/Capabilities>

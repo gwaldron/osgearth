@@ -25,7 +25,7 @@
 
 #include <osgEarth/ImageUtils>
 #include <osgEarth/Registry>
-#include <osgEarth/ShaderComposition>
+#include <osgEarth/VirtualProgram>
 #include <osgEarth/SparseTexture2DArray>
 #include <osgEarth/ShaderUtils>
 #include <osgEarth/TileKey>

@@ -20,7 +20,7 @@
 #include <osgEarthFeatures/FeatureSourceIndexNode>
 #include <osgEarthSymbology/MeshConsolidator>
 #include <osgEarth/ECEF>
-#include <osgEarth/ShaderComposition>
+#include <osgEarth/VirtualProgram>
 #include <osgEarth/ShaderGenerator>
 #include <osgEarth/DrawInstanced>
 #include <osgEarth/Registry>

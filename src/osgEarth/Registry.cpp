@@ -19,7 +19,8 @@
 #include <osgEarth/Registry>
 #include <osgEarth/Capabilities>
 #include <osgEarth/Cube>
-#include <osgEarth/ShaderComposition>
+#include <osgEarth/VirtualProgram>
+#include <osgEarth/ShaderFactory>
 #include <osgEarth/TaskService>
 #include <osgEarth/IOTypes>
 #include <osgEarth/ColorFilter>

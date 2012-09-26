@@ -22,7 +22,7 @@
 #include <osgEarth/MaskNode>
 #include <osgEarth/NodeUtils>
 #include <osgEarth/Registry>
-#include <osgEarth/ShaderComposition>
+#include <osgEarth/VirtualProgram>
 #include <osgEarth/OverlayDecorator>
 #include <osgEarth/TerrainEngineNode>
 #include <osgEarth/TextureCompositor>

@@ -21,7 +21,7 @@
 #include <osgEarth/NodeUtils>
 #include <osgEarth/Registry>
 #include <osgEarth/TextureCompositor>
-#include <osgEarth/ShaderComposition>
+#include <osgEarth/VirtualProgram>
 #include <osgEarth/Capabilities>
 #include <osg/Texture2D>
 #include <osg/TexEnv>

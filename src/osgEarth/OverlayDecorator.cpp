@@ -322,14 +322,14 @@ OverlayDecorator::initializePerViewData( PerViewData& pvd )
     // create the projected texture:
     osg::Texture2D* projTexture = new osg::Texture2D();
     projTexture->setTextureSize( *_textureSize, *_textureSize );
-    projTexture->setInternalFormat( GL_RGBA8 );
+    projTexture->setInternalFormat( GL_RGBA );
     projTexture->setSourceFormat( GL_RGBA );
     projTexture->setSourceType( GL_UNSIGNED_BYTE );
     projTexture->setFilter( osg::Texture::MIN_FILTER, _mipmapping? osg::Texture::LINEAR_MIPMAP_LINEAR: osg::Texture::LINEAR );
     projTexture->setFilter( osg::Texture::MAG_FILTER, osg::Texture::LINEAR );
-    projTexture->setWrap( osg::Texture::WRAP_S, osg::Texture::CLAMP_TO_BORDER );
-    projTexture->setWrap( osg::Texture::WRAP_T, osg::Texture::CLAMP_TO_BORDER );
-    projTexture->setWrap( osg::Texture::WRAP_R, osg::Texture::CLAMP_TO_BORDER );
+    projTexture->setWrap( osg::Texture::WRAP_S, osg::Texture::CLAMP_TO_EDGE); //CLAMP_TO_BORDER );
+    projTexture->setWrap( osg::Texture::WRAP_T, osg::Texture::CLAMP_TO_EDGE );
+    projTexture->setWrap( osg::Texture::WRAP_R, osg::Texture::CLAMP_TO_EDGE );
     projTexture->setBorderColor( osg::Vec4(0,0,0,0) );
 
     // set up the RTT camera:
@@ -350,10 +350,15 @@ OverlayDecorator::initializePerViewData( PerViewData& pvd )
     // try a depth-packed buffer. failing that, try a normal one.. if the FBO doesn't support
     // that (which is doesn't on some GPUs like Intel), it will automatically fall back on 
     // a PBUFFER_RTT impl
-    if ( Registry::instance()->getCapabilities().supportsDepthPackedStencilBuffer() )
+    if ( Registry::instance()->getCapabilities().supportsDepthPackedStencilBuffer() ){
+#ifdef OSG_GLES2_AVAILABLE 
+        pvd._rttCamera->attach( osg::Camera::PACKED_DEPTH_STENCIL_BUFFER, GL_DEPTH24_STENCIL8_OES );
+#else
         pvd._rttCamera->attach( osg::Camera::PACKED_DEPTH_STENCIL_BUFFER, GL_DEPTH_STENCIL_EXT );
-    else
+#endif
+    }else{
         pvd._rttCamera->attach( osg::Camera::STENCIL_BUFFER, GL_STENCIL_INDEX );
+    }
 
     osg::StateSet* rttStateSet = pvd._rttCamera->getOrCreateStateSet();
 
@@ -471,7 +476,7 @@ OverlayDecorator::initSubgraphShaders( PerViewData& pvd )
         << "{ \n"
         << "    vec2 texCoord = osg_TexCoord["<< *_textureUnit << "].xy / osg_TexCoord["<< *_textureUnit << "].q; \n"
         << "    vec4 texel = texture2D(osgearth_overlay_ProjTex, texCoord); \n"  
-        << "    color = vec4( mix( color.rgb, texel.rgb, texel.a ), color.a); \n"
+        << "    color = texel;//vec4( mix( color.rgb, texel.rgb, texel.a ), color.a); \n"
         << "} \n";
 
     vp->setFunction( "osgearth_overlay_fragment", fragmentSource, ShaderComp::LOCATION_FRAGMENT_POST_LIGHTING );

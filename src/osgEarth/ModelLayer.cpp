@@ -67,11 +67,10 @@ ConfigOptions()
 void
 ModelLayerOptions::setDefaults()
 {
-    _overlay.init( false );
-    _enabled.init( true );
-    _visible.init( true );
-    _lighting.init( true );
-    _disableShaderComp.init( false );
+    _overlay.init     ( false );
+    _enabled.init     ( true );
+    _visible.init     ( true );
+    _lighting.init    ( true );
 }
 
 Config
@@ -85,9 +84,6 @@ ModelLayerOptions::getConfig() const
     conf.updateIfSet( "enabled", _enabled );
     conf.updateIfSet( "visible", _visible );
     conf.updateIfSet( "lighting", _lighting );
-
-    // temporary.
-    conf.updateIfSet( "disable_shaders", _disableShaderComp );
 
     // Merge the ModelSource options
     if ( driver().isSet() )
@@ -104,9 +100,6 @@ ModelLayerOptions::fromConfig( const Config& conf )
     conf.getIfSet( "enabled", _enabled );
     conf.getIfSet( "visible", _visible );
     conf.getIfSet( "lighting", _lighting );
-
-    // temporary.
-    conf.getIfSet( "disable_shaders", _disableShaderComp );
 
     if ( conf.hasValue("driver") )
         driver() = ModelSourceOptions(conf);
@@ -181,12 +174,6 @@ ModelLayer::createSceneGraph(const Map*            map,
 
     if ( _modelSource.valid() )
     {
-        //// if the model source has changed, regenerate the node.
-        //if ( _node.valid() && !_modelSource->inSyncWith(_modelSourceRev) )
-        //{
-        //    _node = 0L;
-        //}
-
         node = _modelSource->createNode( map, dbOptions, progress );
 
         if ( node )
@@ -199,19 +186,6 @@ ModelLayer::createSceneGraph(const Map*            map,
             if ( _runtimeOptions.lightingEnabled().isSet() )
             {
                 setLightingEnabled( *_runtimeOptions.lightingEnabled() );
-            }
-
-            if ( Registry::instance()->getCapabilities().supportsGLSL() )
-            {
-                node->addCullCallback( new UpdateLightingUniformsHelper() );
-
-                if ( _runtimeOptions.disableShaders() == true )
-                {
-                    osg::StateSet* ss = node->getOrCreateStateSet();
-                    ss->setAttributeAndModes(
-                        new osg::Program(), 
-                        osg::StateAttribute::OFF | osg::StateAttribute::OVERRIDE );
-                }
             }
 
             if ( _modelSource->getOptions().depthTestEnabled() == false )

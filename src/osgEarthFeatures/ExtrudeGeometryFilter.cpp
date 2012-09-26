@@ -955,26 +955,8 @@ ExtrudeGeometryFilter::push( FeatureList& input, FilterContext& context )
             groupStateSet->setAttributeAndModes( new osg::LineWidth(*_outlineSymbol->stroke()->width()), 1 );
     }
 
-#if 0
-    // if we have textures, install a shader to draw them
-    if ( _wallSkinSymbol.valid() || _roofSkinSymbol.valid() )
-    {
-        osg::StateSet* stateSet = group->getOrCreateStateSet();
+#if 0 // now called from GeometryCompiler
 
-        VirtualProgram* vp = new VirtualProgram();
-        vp->setName("ExtrudeGeomFilter");
-        vp->installDefaultColoringShaders( 1 );
-        stateSet->setAttributeAndModes( vp, osg::StateAttribute::ON );
-
-        // a default empty texture will support any non-textured geometry 
-        osg::Texture2D* tex = new osg::Texture2D( ImageUtils::createEmptyImage() );
-        tex->setUnRefImageDataAfterApply( false );
-        stateSet->setTextureAttributeAndModes(0, tex, osg::StateAttribute::ON);
-        stateSet->getOrCreateUniform("tex0", osg::Uniform::SAMPLER_2D)->set(0);
-    }
-#endif
-
-#if 1
     // generate shaders to draw the geometry.
     if ( Registry::capabilities().supportsGLSL() )
     {

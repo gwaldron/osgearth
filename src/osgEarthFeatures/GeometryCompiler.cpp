@@ -25,6 +25,10 @@
 #include <osgEarthFeatures/ScatterFilter>
 #include <osgEarthFeatures/SubstituteModelFilter>
 #include <osgEarthFeatures/TessellateOperator>
+#include <osgEarth/Registry>
+#include <osgEarth/Capabilities>
+#include <osgEarth/ShaderGenerator>
+#include <osgEarth/ShaderUtils>
 #include <osg/MatrixTransform>
 #include <osg/Timer>
 #include <osgDB/WriteFile>
@@ -42,6 +46,7 @@ namespace
     osg::ref_ptr<PointSymbol>   s_defaultPointSymbol   = new PointSymbol();
     osg::ref_ptr<LineSymbol>    s_defaultLineSymbol    = new LineSymbol();
     osg::ref_ptr<PolygonSymbol> s_defaultPolygonSymbol = new PolygonSymbol();
+    osg::ref_ptr<osg::Program>  s_nullProgram          = new osg::Program();
 }
 
 //-----------------------------------------------------------------------
@@ -53,7 +58,8 @@ _mergeGeometry     ( false ),
 _clustering        ( false ),
 _instancing        ( false ),
 _ignoreAlt         ( false ),
-_useVertexBufferObjects( true )
+_useVertexBufferObjects( true ),
+_shaderPolicy      ( SHADERPOLICY_GENERATE )
 {
     fromConfig(_conf);
 }
@@ -70,6 +76,10 @@ GeometryCompilerOptions::fromConfig( const Config& conf )
     conf.getIfSet   ( "geo_interpolation", "great_circle", _geoInterp, GEOINTERP_GREAT_CIRCLE );
     conf.getIfSet   ( "geo_interpolation", "rhumb_line",   _geoInterp, GEOINTERP_RHUMB_LINE );
     conf.getIfSet   ( "use_vbo", _useVertexBufferObjects);
+
+    conf.getIfSet( "shader_policy", "disable",  _shaderPolicy, SHADERPOLICY_DISABLE );
+    conf.getIfSet( "shader_policy", "inherit",  _shaderPolicy, SHADERPOLICY_INHERIT );
+    conf.getIfSet( "shader_policy", "generate", _shaderPolicy, SHADERPOLICY_GENERATE );
 }
 
 Config
@@ -85,6 +95,10 @@ GeometryCompilerOptions::getConfig() const
     conf.addIfSet   ( "geo_interpolation", "great_circle", _geoInterp, GEOINTERP_GREAT_CIRCLE );
     conf.addIfSet   ( "geo_interpolation", "rhumb_line",   _geoInterp, GEOINTERP_RHUMB_LINE );
     conf.addIfSet   ( "use_vbo", _useVertexBufferObjects);
+
+    conf.addIfSet( "shader_policy", "disable",  _shaderPolicy, SHADERPOLICY_DISABLE );
+    conf.addIfSet( "shader_policy", "inherit",  _shaderPolicy, SHADERPOLICY_INHERIT );
+    conf.addIfSet( "shader_policy", "generate", _shaderPolicy, SHADERPOLICY_GENERATE );
     return conf;
 }
 
@@ -417,17 +431,31 @@ GeometryCompiler::compile(FeatureList&          workingSet,
         }
     }
 
-    // Finally, optimize the stateset-sharing in the group.
+    // Common state set cache?
+    osg::ref_ptr<StateSetCache> sscache;
     if ( sharedCX.getSession() )
+        sscache = sharedCX.getSession()->getStateSetCache();
+    else 
+        sscache = new StateSetCache();
+
+    // Generate shaders, if necessary
+    if (Registry::capabilities().supportsGLSL())
     {
-        sharedCX.getSession()->getStateSetCache()->optimize( resultGroup.get() );
-        //OE_INFO << LC << "state set cache size = " << sharedCX.getSession()->getStateSetCache()->size() << std::endl;
+        if ( _options.shaderPolicy() == SHADERPOLICY_GENERATE )
+        {
+            ShaderGenerator gen( sscache.get() );
+            resultGroup->accept( gen );
+        }
+        else if ( _options.shaderPolicy() == SHADERPOLICY_DISABLE )
+        {
+            resultGroup->getOrCreateStateSet()->setAttributeAndModes(
+                s_nullProgram,
+                osg::StateAttribute::OFF | osg::StateAttribute::OVERRIDE );
+        }
     }
-    else
-    {
-        StateSetCache tempCache;
-        tempCache.optimize( resultGroup.get() );
-    }
+
+    // Optimize stateset sharing.
+    sscache->optimize( resultGroup.get() );
 
 
     //osgDB::writeNodeFile( *(resultGroup.get()), "out.osg" );

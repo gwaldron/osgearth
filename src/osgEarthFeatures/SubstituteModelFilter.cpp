@@ -273,11 +273,14 @@ SubstituteModelFilter::process(const FeatureList&           features,
         attachPoint->getOrCreateStateSet()->setAttributeAndModes( p, osg::StateAttribute::ON );
     }
 
+#if 0 // now called from GeometryCompiler
+
     // Generate shader code to render the models
     StateSetCache* cache = context.getSession() ? context.getSession()->getStateSetCache() : 0L;
     ShaderGenerator gen( cache );
     attachPoint->accept( gen );
 
+#endif
     return true;
 }
 

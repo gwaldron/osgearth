@@ -23,7 +23,7 @@
 #include <osgEarthSymbology/MeshSubdivider>
 #include <osgEarth/ThreadingUtils>
 #include <osgEarth/Registry>
-#include <osgEarth/ShaderComposition>
+#include <osgEarth/VirtualProgram>
 #include <osgEarth/Capabilities>
 
 

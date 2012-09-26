@@ -23,7 +23,7 @@
  */
 #include <osg/Notify>
 #include <osgViewer/Viewer>
-#include <osgEarth/ShaderComposition>
+#include <osgEarth/VirtualProgram>
 #include <osgEarth/Registry>
 #include <osgEarth/TerrainEngineNode>
 #include <osgEarthUtil/EarthManipulator>

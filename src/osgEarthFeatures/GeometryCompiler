@@ -77,6 +77,9 @@ namespace osgEarth { namespace Features
         optional<bool>& useVertexBufferObjects() { return _useVertexBufferObjects;}
         const optional<bool>& useVertexBufferObjects() const { return _useVertexBufferObjects;}
 
+        optional<ShaderPolicy>& shaderPolicy() { return _shaderPolicy; }
+        const optional<ShaderPolicy>& shaderPolicy() const { return _shaderPolicy; }
+
 
     public:
         Config getConfig() const;
@@ -93,6 +96,7 @@ namespace osgEarth { namespace Features
         optional<double>               _resampleMaxLength;
         optional<bool>                 _ignoreAlt;
         optional<bool>                 _useVertexBufferObjects;
+        optional<ShaderPolicy>         _shaderPolicy;
 
         void fromConfig( const Config& conf );
     };

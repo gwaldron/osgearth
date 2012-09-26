@@ -1,8 +1,7 @@
 <!--
 osgEarth Sample
 
-This one demonstrates how to read feature data from a shapefile and "drape" it
-on the map using the overlay technique.
+Demonstrates how to select a style name using javascript.
 -->
 
 <map name="Feature Overlay Demo" type="geocentric" version="2">

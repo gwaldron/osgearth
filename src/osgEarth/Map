@@ -24,6 +24,7 @@
 #include <osgEarth/GeoData>
 #include <osgEarth/Profile>
 #include <osgEarth/MapOptions>
+#include <osgEarth/MapCallback>
 #include <osgEarth/ImageLayer>
 #include <osgEarth/ElevationLayer>
 #include <osgEarth/ModelLayer>
@@ -33,78 +34,8 @@
 #include <osgDB/ReaderWriter>
 
 namespace osgEarth
-{    
+{
     class MapInfo;
-
-    /**
-     * Conveys atomic change actions to the map data model.
-     */
-    struct MapModelChange
-    {
-        enum ActionType {
-            ADD_IMAGE_LAYER,
-            REMOVE_IMAGE_LAYER,
-            MOVE_IMAGE_LAYER,
-            ADD_ELEVATION_LAYER,
-            REMOVE_ELEVATION_LAYER,
-            MOVE_ELEVATION_LAYER,
-            ADD_MODEL_LAYER,
-            REMOVE_MODEL_LAYER,
-            MOVE_MODEL_LAYER,
-            ADD_MASK_LAYER,
-            REMOVE_MASK_LAYER,
-            UNSPECIFIED
-        };
-
-        MapModelChange( ActionType action, Revision mapModeRev, Layer* layer, int firstIndex =-1, int secondIndex =-1 ) 
-            : _action(action), _layer(layer), _modelRevision(mapModeRev), _firstIndex(firstIndex), _secondIndex(secondIndex) { }
-
-        const ActionType& getAction() const { return _action; }
-        const Revision& getRevision() const { return _modelRevision; }
-        int getFirstIndex() const { return _firstIndex; }
-        int getSecondIndex() const { return _secondIndex; }
-        Layer* getLayer() const { return _layer.get(); }
-        ImageLayer* getImageLayer() const { return dynamic_cast<ImageLayer*>(_layer.get()); }
-        ElevationLayer* getElevationLayer() const { return dynamic_cast<ElevationLayer*>(_layer.get()); }
-        ModelLayer* getModelLayer() const { return dynamic_cast<ModelLayer*>(_layer.get()); }
-        MaskLayer* getMaskLayer() const { return dynamic_cast<MaskLayer*>(_layer.get()); }
-
-    private:
-        ActionType _action;
-        osg::ref_ptr<Layer> _layer;
-        Revision _modelRevision;
-        int _firstIndex, _secondIndex;
-    };
-
-    /**
-     * Callback that the Map object uses to notify listeners of map data model changes.
-     */
-    struct OSGEARTH_EXPORT MapCallback : public osg::Referenced
-    {
-        virtual void onMapInfoEstablished( const MapInfo& mapInfo ) { } 
-
-        virtual void onMapModelChanged( const MapModelChange& change );
-
-        virtual void onImageLayerAdded( ImageLayer* layer, unsigned int index ) { }
-        virtual void onImageLayerRemoved( ImageLayer* layer, unsigned int index ) { }
-        virtual void onImageLayerMoved( ImageLayer* layer, unsigned int oldIndex, unsigned int newIndex ) { }
-
-        virtual void onElevationLayerAdded( ElevationLayer* layer, unsigned int index ) { }
-        virtual void onElevationLayerRemoved( ElevationLayer* layer, unsigned int index ) { }
-        virtual void onElevationLayerMoved( ElevationLayer* layer, unsigned int oldIndex, unsigned int newIndex ) { }
-
-        virtual void onModelLayerAdded( ModelLayer* layer, unsigned int index ) { }
-        virtual void onModelLayerRemoved( ModelLayer* layer ) { }
-        virtual void onModelLayerMoved( ModelLayer* layer, unsigned int oldIndex, unsigned int newIndex ) { }
-
-        virtual void onMaskLayerAdded( MaskLayer* mask ) { }
-        virtual void onMaskLayerRemoved( MaskLayer* mask ) { }
-
-        /** dtor */
-        virtual ~MapCallback() { }
-    };
-
-    typedef std::list< osg::ref_ptr<MapCallback> > MapCallbackList;
 
     /**
      * Map is the main data model that the MapNode will render. It is a
@@ -442,133 +373,6 @@ namespace osgEarth
 
         friend class MapInfo;
     };
-
-
-    /**
-     * A convenience class that combines a general geospatial profile and additional 
-     * information about the map itself.
-     */
-    class OSGEARTH_EXPORT MapInfo
-    {
-    public:
-        MapInfo( const Map* map );
-
-        MapInfo( const MapInfo& rhs );
-
-        /** dtor */
-        virtual ~MapInfo() { }
-        
-        const Profile* getProfile() const { return _profile.get(); }
-        const SpatialReference* getSRS() const { return _profile->getSRS(); }
-
-        bool isGeocentric() const { return _isGeocentric; }
-        bool isCube() const { return _isCube; }
-        bool isPlateCarre() const { return _profile->getSRS()->isPlateCarre(); }
-
-        bool isProjectedSRS() const { return !isGeographicSRS(); }
-        bool isGeographicSRS() const { return _profile->getSRS()->isGeographic(); }        
-
-        ElevationInterpolation getElevationInterpolation() const { return _elevationInterpolation;}
-
-    private:
-        osg::ref_ptr<const Profile> _profile;
-        bool _isGeocentric, _isCube;
-        ElevationInterpolation _elevationInterpolation;
-    };
-
-
-    /**
-     * A "snapshot in time" of a Map model revision. Use this class to get a safe "copy" of
-     * the map model lists that you can use without worrying about the model changing underneath
-     * you from another thread.
-     */
-    class OSGEARTH_EXPORT MapFrame
-    {
-    public:
-        /**
-         * Constructs a new map frame.
-         */
-        MapFrame( const Map* map, Map::ModelParts parts =Map::TERRAIN_LAYERS, const std::string& name ="" );
-
-        /**
-         * A copy constructor with a new name (no sync happens)
-         */
-        MapFrame( const MapFrame& frame, const std::string& name ="" );
-
-        /** dtor */
-        virtual ~MapFrame() { }
-
-        /**
-         * Synchronizes this frame with the source map model (only if necessary). Returns
-         * true is new data was synced; false if nothing changed.
-         */
-        bool sync();
-
-        /** Accesses the profile/rendering info about the source map. */
-        const MapInfo& getMapInfo() const { return _mapInfo; }
-
-        /** Convenience method to access the map's profile */
-        const Profile* getProfile() const { return _mapInfo.getProfile(); }
-        
-
-        /** The image layer stack snapshot */
-        const ImageLayerVector& imageLayers() const { return _imageLayers; }
-        ImageLayer* getImageLayerAt( int index ) const { return _imageLayers[index].get(); }
-        ImageLayer* getImageLayerByUID( UID uid ) const;
-        ImageLayer* getImageLayerByName( const std::string& name ) const;
-
-        /** The elevation layer stack snapshot */
-        const ElevationLayerVector& elevationLayers() const { return _elevationLayers; }
-        ElevationLayer* getElevationLayerAt( int index ) const { return _elevationLayers[index].get(); }
-        ElevationLayer* getElevationLayerByUID( UID uid ) const;
-        ElevationLayer* getElevationLayerByName( const std::string& name ) const;
-
-        /** The model layer set snapshot */
-        const ModelLayerVector& modelLayers() const { return _modelLayers; }
-        ModelLayer* getModelLayerAt(int index) const { return _modelLayers[index].get(); }
-
-        /** The mask layer set snapshot */
-        const MaskLayerVector& terrainMaskLayers() const { return _maskLayers; }
-
-        /** Gets the index of the layer in the layer stack snapshot. */
-        int indexOf( ImageLayer* layer ) const;
-        int indexOf( ElevationLayer* layer ) const;
-        int indexOf( ModelLayer* layer ) const;
-
-        /** Gets the map data model revision with which this frame is currently sync'd */
-        Revision getRevision() const { return _mapDataModelRevision; }
-
-        /** Checks whether all the data for the specified key is cached. */
-        bool isCached( const TileKey& key ) const;
-
-        /**
-         * Equivalent to the Map::createHeightField() method, but operates on the elevation stack
-         * snapshot in this MapFrame.
-         */
-        bool getHeightField(
-            const TileKey&                  key,
-            bool                            fallback,
-            osg::ref_ptr<osg::HeightField>& out_hf,
-            bool*                           out_isFallback =0L,   
-            bool                            convertToHAE   =true,         
-            ElevationSamplePolicy           samplePolicy   =SAMPLE_FIRST_VALID,
-            ProgressCallback*               progress       =0L ) const;
-
-    private:
-        bool _initialized;
-        osg::observer_ptr<const Map> _map;
-        //osg::ref_ptr<const Map> _map;
-        std::string _name;
-        MapInfo _mapInfo;
-        Map::ModelParts _parts;
-        Revision _mapDataModelRevision;
-        ImageLayerVector _imageLayers;
-        ElevationLayerVector _elevationLayers;
-        ModelLayerVector _modelLayers;
-        MaskLayerVector _maskLayers;
-        friend class Map;        
-    };
-
 }
 
 #endif // OSGEARTH_MAP_H

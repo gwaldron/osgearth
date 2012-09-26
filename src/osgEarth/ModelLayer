@@ -82,14 +82,6 @@ namespace osgEarth
         optional<bool>& overlay() { return _overlay; }
         const optional<bool>& overlay() const { return _overlay; }
 
-        /**
-         * TEMPORARY option that will turn off all shader program composition
-         * on the model layer. Need this temporarily to support external model
-         * references until we get a proper shader gen working
-         */
-        optional<bool>& disableShaders() { return _disableShaderComp; }
-        const optional<bool>& disableShaders() const { return _disableShaderComp; }
-
     public:
         virtual Config getConfig() const;
         virtual void mergeConfig( const Config& conf );
@@ -98,13 +90,12 @@ namespace osgEarth
         void fromConfig( const Config& conf );
         void setDefaults();
 
-        optional<std::string> _name;
-        optional<bool> _overlay;
+        optional<std::string>        _name;
+        optional<bool>               _overlay;
         optional<ModelSourceOptions> _driver;
-        optional<bool> _enabled;
-        optional<bool> _visible;
-        optional<bool> _lighting;
-        optional<bool> _disableShaderComp;
+        optional<bool>               _enabled;
+        optional<bool>               _visible;
+        optional<bool>               _lighting;
     };
 
     /**
@@ -209,8 +200,6 @@ namespace osgEarth
         osg::ref_ptr<ModelSource>    _modelSource;
         const ModelLayerOptions      _initOptions;
         ModelLayerOptions            _runtimeOptions;
-        //osg::ref_ptr< osg::Node >    _node;
-        //osg::ref_ptr<osgDB::Options> _dbOptions;
         Revision                     _modelSourceRev;
         ModelLayerCallbackList       _callbacks;
         UpdateLightingUniformsHelper _updateLightingUniformsHelper;

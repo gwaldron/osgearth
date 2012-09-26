@@ -17,7 +17,7 @@
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
 #include <osgEarthUtil/HSLColorFilter>
-#include <osgEarth/ShaderComposition>
+#include <osgEarth/VirtualProgram>
 #include <osgEarth/StringUtils>
 #include <osgEarth/ThreadingUtils>
 #include <osg/Program>

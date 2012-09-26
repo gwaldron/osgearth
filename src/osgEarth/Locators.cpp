@@ -19,7 +19,7 @@
 #include <osgEarth/Locators>
 #include <osgEarth/TileKey>
 #include <osgEarth/Registry>
-#include <osgEarth/Map>
+#include <osgEarth/MapInfo>
 #include <osg/Notify>
 
 using namespace osgEarth;

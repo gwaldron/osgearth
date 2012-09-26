@@ -21,6 +21,7 @@
 #include <osgEarth/Registry>
 #include <osgEarth/TextureCompositor>
 #include <osgEarth/NodeUtils>
+#include <osgEarth/MapModelChange>
 #include <osgDB/ReadFile>
 #include <osg/CullFace>
 #include <osg/PolygonOffset>

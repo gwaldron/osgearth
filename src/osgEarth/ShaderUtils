@@ -30,6 +30,18 @@
 namespace osgEarth
 {
     /**
+     * ShaderPolicy encodes general behavior when deciding how to
+     * employ shaders in certain situations
+     */
+    enum ShaderPolicy
+    {
+        SHADERPOLICY_DISABLE,
+        SHADERPOLICY_GENERATE,
+        SHADERPOLICY_INHERIT
+    };
+
+
+    /**
     * Container for light uniforms
     */
     //light product

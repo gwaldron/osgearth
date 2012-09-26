@@ -24,6 +24,7 @@
 #include <osgEarth/ImageUtils>
 #include <osgEarth/Registry>
 #include <osgEarth/Map>
+#include <osgEarth/MapModelChange>
 #include <osg/Texture2DArray>
 #include <osg/Texture2D>
 #include <osg/Texture3D>

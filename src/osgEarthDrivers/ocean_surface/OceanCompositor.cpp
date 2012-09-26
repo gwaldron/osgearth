@@ -19,7 +19,7 @@
 #include "OceanCompositor"
 #include <osgEarth/ImageUtils>
 #include <osgEarth/Registry>
-#include <osgEarth/ShaderComposition>
+#include <osgEarth/VirtualProgram>
 #include <osg/Texture2D>
 #include "OceanShaders"
 

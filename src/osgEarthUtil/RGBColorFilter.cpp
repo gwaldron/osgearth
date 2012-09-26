@@ -19,7 +19,7 @@
 * Original author: Thomas Lerman
 */
 #include <osgEarthUtil/RGBColorFilter>
-#include <osgEarth/ShaderComposition>
+#include <osgEarth/VirtualProgram>
 #include <osgEarth/StringUtils>
 #include <osgEarth/ThreadingUtils>
 #include <osg/Program>

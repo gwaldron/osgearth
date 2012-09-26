@@ -2017,6 +2017,42 @@ EarthManipulator::zoom( double dx, double dy )
 }
 
 
+namespace
+{
+    // osg::View::getCameraContainingPosition has a bug in it. If the camera's current event
+    // state is not up to date (after a window resize, for example), it still uses that event
+    // state to get the window's current size instead of using the Viewport.
+    //
+    // This version works around that
+
+    const osg::Camera*
+    getCameraContainingPosition(osgViewer::View* view, float x, float y, float& out_local_x, float& out_local_y)
+    {
+        osg::Camera* camera = view->getCamera();
+        osg::Viewport* viewport = camera->getViewport();
+
+        if ( camera->getGraphicsContext() && viewport )
+        {
+            double new_x = x;
+            double new_y = y;
+            
+            const double epsilon = 0.5;
+
+            if (
+                new_x >= (viewport->x()-epsilon) && new_y >= (viewport->y()-epsilon) &&
+                new_x < (viewport->x()+viewport->width()-1.0+epsilon) && new_y <= (viewport->y()+viewport->height()-1.0+epsilon) )
+            {
+                out_local_x = new_x;
+                out_local_y = new_y;
+                return camera;
+            }
+        }
+
+        return view->getCameraContainingPosition(x, y, out_local_x, out_local_y);
+    }
+}
+
+
 bool
 EarthManipulator::screenToWorld(float x, float y, osg::View* theView, osg::Vec3d& out_coords ) const
 {
@@ -2030,7 +2066,7 @@ EarthManipulator::screenToWorld(float x, float y, osg::View* theView, osg::Vec3d
         return false;
 
     float local_x, local_y = 0.0;
-    const osg::Camera* camera = view->getCameraContainingPosition(x, y, local_x, local_y);
+    const osg::Camera* camera = getCameraContainingPosition(view, x, y, local_x, local_y);
     if ( !camera )
         return false;
 
@@ -2157,6 +2193,9 @@ EarthManipulator::handlePointAction( const Action& action, float mx, float my, o
 
                 osg::Vec3d pointVP;
                 here.getSRS()->transformFromWorld(point, pointVP);
+
+                OE_NOTICE << "X=" << pointVP.x() << ", Y=" << pointVP.y() << std::endl;
+
                 here.setFocalPoint( pointVP );
 
                 double duration_s = action.getDoubleOption(OPTION_DURATION, 1.0);

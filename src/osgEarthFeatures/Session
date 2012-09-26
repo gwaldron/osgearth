@@ -25,7 +25,8 @@
 #include <osgEarthSymbology/StyleSheet>
 #include <osgEarth/StateSetCache>
 #include <osgEarth/ThreadingUtils>
-#include <osgEarth/Map>
+#include <osgEarth/MapInfo>
+#include <osgEarth/MapFrame>
 
 namespace osgEarth { namespace Features
 {

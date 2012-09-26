@@ -21,7 +21,7 @@
 #include <osgEarth/MapNode>
 #include <osgEarth/NodeUtils>
 #include <osgEarth/Notify>
-#include <osgEarth/ShaderComposition>
+#include <osgEarth/VirtualProgram>
 #include <osgEarth/TerrainEngineNode>
 #include <osgEarth/TextureCompositor>
 #include <osgEarth/Registry>

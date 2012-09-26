@@ -456,6 +456,7 @@ MapNodeHelper::parse(MapNode*             mapNode,
                      osg::Group*          root,
                      Control*             userControl ) const
 {
+    // this is a dubious move.
     if ( !root )
         root = mapNode;
 
@@ -629,7 +630,17 @@ MapNodeHelper::parse(MapNode*             mapNode,
     // Install an auto clip plane clamper
     if ( useAutoClip )
     {
-        view->getCamera()->addCullCallback( new AutoClipPlaneCullCallback(mapNode) );
+#if 0
+        HorizonClipNode* hcn = new HorizonClipNode( mapNode );
+        if ( mapNode->getNumParents() == 1 )
+        {
+            osg::Group* parent = mapNode->getParent(0);
+            hcn->addChild( mapNode );
+            parent->replaceChild( mapNode, hcn );
+        }
+#else
+        mapNode->addCullCallback( new AutoClipPlaneCullCallback(mapNode) );
+#endif
     }
 
     root->addChild( canvas );

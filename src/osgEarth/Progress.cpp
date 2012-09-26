@@ -24,13 +24,17 @@ using namespace osgEarth;
 
 ProgressCallback::ProgressCallback() :
 osg::Referenced( true ),
-_canceled(false),
-_needsRetry(false)
+_canceled      ( false ),
+_needsRetry    ( false )
 {
     //NOP
 }
 
-bool ProgressCallback::reportProgress(double /*current*/, double /*total*/, const std::string& /*msg*/) 
+bool ProgressCallback::reportProgress(double             current,
+                                      double             total,
+                                      unsigned           stage,
+                                      unsigned           numStages,
+                                      const std::string& msg )
 {
     return false;
 }
@@ -43,12 +47,17 @@ ProgressCallback()
 }
 
 bool
-ConsoleProgressCallback::reportProgress(double current, double total, const std::string& msg)
+ConsoleProgressCallback::reportProgress(double current, double total, 
+                                        unsigned stage, unsigned numStages,
+                                        const std::string& msg)
 {
     if (total > 0)
     {
         double percentComplete = (current / total) * 100.0;
-        OE_NOTICE << "Completed " << percentComplete << "% " << current << " of " << total << std::endl;
+        OE_NOTICE 
+            << "Stage " << (stage+1) << "/" << numStages 
+            << "; completed " << percentComplete << "% " << current << " of " << total 
+            << std::endl;
     }
     else
     {

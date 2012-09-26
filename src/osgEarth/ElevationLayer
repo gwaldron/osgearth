@@ -21,6 +21,7 @@
 #define OSGEARTH_ELEVATION_TERRAIN_LAYER_H 1
 
 #include <osgEarth/TerrainLayer>
+#include <osg/MixinVector>
 
 namespace osgEarth
 {
@@ -45,7 +46,7 @@ namespace osgEarth
         virtual void mergeConfig( const Config& conf );
         
     private:
-        void fromConfig( const Config& conf );            
+        void fromConfig( const Config& conf );
         void setDefaults();
     };
 
@@ -143,7 +144,26 @@ namespace osgEarth
         void init();
     };
 
-    typedef std::vector< osg::ref_ptr<ElevationLayer> > ElevationLayerVector;
+
+    /**
+     * Vector of elevation layers, with added methods.
+     */
+    class OSGEARTH_EXPORT ElevationLayerVector : public osg::MixinVector< osg::ref_ptr<ElevationLayer> >
+    {
+    public:
+        /**
+         * Creates a heightfield object by sampling this elevation layer vector.
+         */
+        bool createHeightField(
+            const TileKey&                  key,
+            bool                            fallback,
+            const Profile*                  haeProfile,
+            ElevationInterpolation          interpolation,
+            ElevationSamplePolicy           samplePolicy,
+            osg::ref_ptr<osg::HeightField>& out_result,
+            bool*                           out_isFallback,
+            ProgressCallback*               progress ) const;
+    };
 
 } // namespace osgEarth
 

@@ -19,7 +19,7 @@
 #include <osgEarth/TextureCompositorMulti>
 #include <osgEarth/ImageUtils>
 #include <osgEarth/Registry>
-#include <osgEarth/ShaderComposition>
+#include <osgEarth/VirtualProgram>
 #include <osgEarth/ShaderUtils>
 #include <osgEarth/TileKey>
 #include <osgEarth/StringUtils>

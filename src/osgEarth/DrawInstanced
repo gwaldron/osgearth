@@ -21,7 +21,7 @@
 #define OSGEARTH_DRAW_INSTANCED_H 1
 
 #include <osgEarth/Common>
-#include <osgEarth/ShaderComposition>
+#include <osgEarth/VirtualProgram>
 #include <osg/NodeVisitor>
 #include <osg/Geode>
 

@@ -138,16 +138,17 @@ namespace osgEarth { namespace Util { namespace Controls
         virtual void onClick( class Control* control, const osg::Vec2f& pos, int mouseButtonMask ) { onClick(control, mouseButtonMask); }
 
         /** Value events */
-        virtual void onValueChanged( class Control* control, bool value ) { }
-        virtual void onValueChanged( class Control* control, double value ) { }
-        virtual void onValueChanged( class Control* control, float value ) { }
-        virtual void onValueChanged( class Control* control, int value ) { }
-        virtual void onValueChanged( class Control* control, const osg::Vec3f& value ) { }
-        virtual void onValueChanged( class Control* control, const osg::Vec2f& value ) { }
-        virtual void onValueChanged( class Control* control, const osg::Vec3d& value ) { }
-        virtual void onValueChanged( class Control* control, const osg::Vec2d& value ) { }
-        virtual void onValueChanged( class Control* control, const std::string& value ) { }
-        virtual void onValueChanged( class Control* control, void* value ) { }
+        virtual void onValueChanged( class Control* control, bool value ) { onValueChanged(control); }
+        virtual void onValueChanged( class Control* control, double value ) { onValueChanged(control); }
+        virtual void onValueChanged( class Control* control, float value ) { onValueChanged(control, static_cast<double>(value)); }
+        virtual void onValueChanged( class Control* control, int value ) { onValueChanged(control); }
+        virtual void onValueChanged( class Control* control, const osg::Vec3f& value ) { onValueChanged(control); }
+        virtual void onValueChanged( class Control* control, const osg::Vec2f& value ) { onValueChanged(control); }
+        virtual void onValueChanged( class Control* control, const osg::Vec3d& value ) { onValueChanged(control); }
+        virtual void onValueChanged( class Control* control, const osg::Vec2d& value ) { onValueChanged(control); }
+        virtual void onValueChanged( class Control* control, const std::string& value ) { onValueChanged(control); }
+        virtual void onValueChanged( class Control* control, void* value ) { onValueChanged(control); }
+        virtual void onValueChanged( class Control* control ) { }
         
         /** dtor */
         virtual ~ControlEventHandler() { }
@@ -826,6 +827,9 @@ namespace osgEarth { namespace Util { namespace Controls
         ControlContext  _context;
         bool            _contextDirty;
         bool            _updatePending;
+
+        typedef std::map< osg::observer_ptr<osgGA::GUIEventHandler>, osg::observer_ptr<osgViewer::View> > EventHandlersMap;
+		EventHandlersMap _eventHandlersMap;
 
         osg::ref_ptr<ControlNodeBin> _controlNodeBin;
 

@@ -207,9 +207,10 @@ ModelLayer::createSceneGraph(const Map*            map,
 
                 if ( _runtimeOptions.disableShaders() == true )
                 {
-                    // temporary construct until we can get external shadergen working
                     osg::StateSet* ss = node->getOrCreateStateSet();
-                    ss->setAttributeAndModes( new osg::Program(), osg::StateAttribute::OFF );
+                    ss->setAttributeAndModes(
+                        new osg::Program(), 
+                        osg::StateAttribute::OFF | osg::StateAttribute::OVERRIDE );
                 }
             }
 

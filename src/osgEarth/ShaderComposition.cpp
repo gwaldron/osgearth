@@ -42,6 +42,9 @@ using namespace osgEarth::ShaderComp;
 
 //------------------------------------------------------------------------
 
+#define VERTEX_MAIN             "osgearth_vert_main"
+#define FRAGMENT_MAIN           "osgearth_frag_main"
+
 #define VERTEX_SETUP_COLORING   "osgearth_vert_setupColoring"
 #define VERTEX_SETUP_LIGHTING   "osgearth_vert_setupLighting"
 #define FRAGMENT_APPLY_COLORING "osgearth_frag_applyColoring"
@@ -175,6 +178,10 @@ VirtualProgram::compare(const osg::StateAttribute& sa) const
         rhsIter++;
     }
 
+    // compare the template settings.
+    int templateCompare = _template->compare( *(rhs.getTemplate()) );
+    if ( templateCompare != 0 ) return templateCompare;
+
     return 0; // passed all the above comparison macros, must be equal.
 }
 
@@ -242,7 +249,25 @@ VirtualProgram::setFunction(const std::string& functionName,
     Threading::ScopedMutexLock lock( _functionsMutex );
 
     OrderedFunctionMap& ofm = _functions[location];
+
+    // if there's already a function by this name, remove it
+    for( OrderedFunctionMap::iterator i = ofm.begin(); i != ofm.end(); )
+    {
+        if ( i->second.compare(functionName) == 0 )
+        {
+            OrderedFunctionMap::iterator j = i;
+            ++j;
+            ofm.erase( i );
+            i = j;
+        }
+        else
+        {
+            ++i;
+        }
+    }
+    
     ofm.insert( std::pair<float,std::string>( priority, functionName ) );
+
     osg::Shader::Type type = (int)location <= (int)LOCATION_VERTEX_POST_LIGHTING ?
         osg::Shader::VERTEX : osg::Shader::FRAGMENT;
 
@@ -524,23 +549,37 @@ VirtualProgram::buildProgram(osg::State&        state,
     // No matching program in the cache; make it.
     ShaderFactory* sf = osgEarth::Registry::instance()->getShaderFactory();
 
-    // create the MAINs
-    osg::Shader* old_vert_main = getShader( "osgearth_vert_main" );
-    osg::ref_ptr<osg::Shader> vert_main = sf->createVertexShaderMain( _accumulatedFunctions, _useLightingShaders );
-    setShader( "osgearth_vert_main", vert_main.get() );
-    addToAccumulatedMap( accumShaderMap, "osgearth_vert_main", ShaderEntry(vert_main.get(), osg::StateAttribute::ON) );
+    // create the MAINs. Save the old ones so we can replace them in the cache.
+    osg::ref_ptr<osg::Shader> oldVertMain = _vertMain.get();
+    _vertMain = sf->createVertexShaderMain( _accumulatedFunctions, _useLightingShaders );
 
-    osg::Shader* old_frag_main = getShader( "osgearth_frag_main" );
+    osg::ref_ptr<osg::Shader> oldFragMain = _fragMain.get();
+    _fragMain = sf->createFragmentShaderMain( _accumulatedFunctions, _useLightingShaders );
+
+#if 0
+    osg::Shader* old_vert_main = getShader( VERTEX_MAIN );
+    osg::ref_ptr<osg::Shader> vert_main = sf->createVertexShaderMain( _accumulatedFunctions, _useLightingShaders );
+    setShader( VERTEX_MAIN, vert_main.get() );
+    addToAccumulatedMap( accumShaderMap, VERTEX_MAIN, ShaderEntry(vert_main.get(), osg::StateAttribute::ON) );
+
+    osg::Shader* old_frag_main = getShader( FRAGMENT_MAIN );
     osg::ref_ptr<osg::Shader> frag_main = sf->createFragmentShaderMain( _accumulatedFunctions, _useLightingShaders );
-    setShader( "osgearth_frag_main", frag_main );
-    addToAccumulatedMap( accumShaderMap, "osgearth_frag_main", ShaderEntry(frag_main.get(), osg::StateAttribute::ON) );
+    setShader( FRAGMENT_MAIN, frag_main.get() );
+    addToAccumulatedMap( accumShaderMap, FRAGMENT_MAIN, ShaderEntry(frag_main.get(), osg::StateAttribute::ON) );
+#endif
 
     // rebuild the shader list now that we've changed the shader map.
-    ShaderVector vec;
+    ShaderVector keyVector;
     for( ShaderMap::iterator i = accumShaderMap.begin(); i != accumShaderMap.end(); ++i )
     {
-        vec.push_back( i->second.first.get() );
+        keyVector.push_back( i->second.first.get() );
     }
+
+    // finally, add the mains (AFTER building the key vector)
+    ShaderVector buildVector( keyVector );
+    buildVector.push_back( _vertMain.get() );
+    buildVector.push_back( _fragMain.get() );
+
 
     // Create a new program and add all our shaders.
     if ( s_dumpShaders )
@@ -548,20 +587,23 @@ VirtualProgram::buildProgram(osg::State&        state,
 
     osg::Program* program = new osg::Program();
     program->setName(getName());
-    addShadersToProgram( vec, accumAttribBindings, program );
+    addShadersToProgram( buildVector, accumAttribBindings, program );
+    //addShadersToProgram( vec, accumAttribBindings, program );
     addTemplateDataToProgram( program );
 
 
     // Since we replaced the "mains", we have to go through the cache and update all its
     // entries to point at the new mains instead of the old ones.
-    if ( old_vert_main || old_frag_main )
+//    if ( old_vert_main || old_frag_main )
+    if ( oldVertMain.valid() || oldFragMain.valid() )
     {
         ProgramMap newProgramCache;
 
         for( ProgramMap::iterator m = _programCache.begin(); m != _programCache.end(); ++m )
         {
-            const ShaderVector& original = m->first;
+            const ShaderVector& originalKey = m->first;
 
+#if 0
             // build a new cache key:
             ShaderVector newKey;
 
@@ -574,41 +616,27 @@ VirtualProgram::buildProgram(osg::State&        state,
                 else
                     newKey.push_back( i->get() );
             }
+#endif
 
             osg::Program* newProgram = new osg::Program();
             newProgram->setName( m->second->getName() );
-            addShadersToProgram( original, m->second->getAttribBindingList(), newProgram );
+
+            ShaderVector newBuildKey( originalKey );
+            newBuildKey.push_back( _vertMain.get() );
+            newBuildKey.push_back( _fragMain.get() );
+            addShadersToProgram( newBuildKey, m->second->getAttribBindingList(), newProgram );
+
             addTemplateDataToProgram( newProgram );
 
-#if 0
-            osg::Program* p = m->second.get();
-
-            for( unsigned n = 0; n < p->getNumShaders(); --n )
-            {
-                osg::Shader* s = p->getShader(n);
-                if ( s == old_vert_main )
-                {
-                    p->removeShader( s );
-                    p->addShader( vert_main.get() );
-                    --n;
-                }
-                else if ( s == old_frag_main )
-                {
-                    p->removeShader( s );
-                    p->addShader( frag_main.get() );
-                    --n;
-                }
-            }
-#endif
-
-            newProgramCache[newKey] = newProgram;
+            //newProgramCache[newKey] = newProgram;
+            newProgramCache[originalKey] = newProgram;
         }
 
         _programCache = newProgramCache;
     }
 
     // finally, put own new program in the cache.
-    _programCache[ vec ] = program;
+    _programCache[ keyVector ] = program;
 
     return program;
 }
@@ -955,7 +983,7 @@ ShaderFactory::createDefaultColoringVertexShader( unsigned numTexCoordSets ) con
     //{
     //    buf << "varying vec4 osg_TexCoord[" << numTexCoordSets << "];\n";
     //}
-    buf << "varying vec4 osg_TexCoord[" << Registry::instance()->getCapabilities().getMaxGPUTextureCoordSets() << "];\n";
+    buf << "varying vec4 osg_TexCoord[" << Registry::capabilities().getMaxGPUTextureCoordSets() << "];\n";
 
     buf
         << "varying vec4 osg_FrontColor;\n"
@@ -998,7 +1026,7 @@ ShaderFactory::createDefaultColoringFragmentShader( unsigned numTexImageUnits ) 
     
     if ( numTexImageUnits > 0 )
     {
-        buf << "varying vec4 osg_TexCoord[" << Registry::instance()->getCapabilities().getMaxGPUTextureCoordSets() << "];\n";
+        buf << "varying vec4 osg_TexCoord[" << Registry::capabilities().getMaxGPUTextureCoordSets() << "];\n";
         buf << "uniform sampler2D ";
         for( unsigned i=0; i<numTexImageUnits; ++i )
         {
@@ -1037,7 +1065,7 @@ ShaderFactory::createDefaultColoringFragmentShader( unsigned numTexImageUnits ) 
 osg::Shader*
 ShaderFactory::createDefaultLightingVertexShader() const
 {
-    int maxLights = Registry::instance()->getCapabilities().getMaxLights();
+    int maxLights = Registry::capabilities().getMaxLights();
     
     std::stringstream buf;
     buf << "#version " << GLSL_VERSION_STR << "\n"

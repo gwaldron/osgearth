@@ -37,6 +37,8 @@ _maxGranularity_deg( 1.0 ),
 _mergeGeometry     ( false ),
 _clusterCulling    ( true ),
 _featureIndexing   ( false ),
+_backfaceCulling   ( true ),
+_alphaBlending     ( true ),
 _fadeInDuration    ( 0.0f )
 {
     fromConfig( _conf );
@@ -59,6 +61,8 @@ FeatureModelSourceOptions::fromConfig( const Config& conf )
     conf.getIfSet( "merge_geometry",   _mergeGeometry );
     conf.getIfSet( "cluster_culling",  _clusterCulling );
     conf.getIfSet( "feature_indexing", _featureIndexing );
+    conf.getIfSet( "backface_culling", _backfaceCulling );
+    conf.getIfSet( "alpha_blending",   _alphaBlending );
     conf.getIfSet( "fade_in_duration", _fadeInDuration );
 
     std::string gt = conf.value( "geometry_type" );
@@ -89,6 +93,8 @@ FeatureModelSourceOptions::getConfig() const
     conf.updateIfSet( "merge_geometry",   _mergeGeometry );
     conf.updateIfSet( "cluster_culling",  _clusterCulling );
     conf.updateIfSet( "feature_indexing", _featureIndexing );
+    conf.updateIfSet( "backface_culling", _backfaceCulling );
+    conf.updateIfSet( "alpha_blending",   _alphaBlending );
     conf.updateIfSet( "fade_in_duration", _fadeInDuration );
 
     if ( _geomTypeOverride.isSet() ) {

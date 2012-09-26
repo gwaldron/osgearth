@@ -108,7 +108,8 @@ DrawInstanced::createDrawInstancedProgram()
     std::stringstream buf;
 
     buf << "#version 120 \n"
-        << "#extension GL_EXT_draw_instanced : enable\n";
+        << "#extension GL_EXT_gpu_shader4 : enable \n";
+        //<< "#extension GL_EXT_draw_instanced : enable\n";
 
     if ( Registry::capabilities().supportsUniformBufferObjects() )
     {
@@ -117,6 +118,8 @@ DrawInstanced::createDrawInstancedProgram()
             << "{\n"
             <<     "mat4 osgearth_instanceModelMatrix[ " << MAX_COUNT_UBO << "];\n"
             << "};\n";
+
+        vp->getTemplate()->addBindUniformBlock( "osgearth_InstanceModelData", 0 );
     }
     else
     {
@@ -135,8 +138,6 @@ DrawInstanced::createDrawInstancedProgram()
         "osgearth_setInstancePosition",
         src,
         ShaderComp::LOCATION_VERTEX_PRE_COLORING );
-
-    vp->getTemplate()->addBindUniformBlock( "osgearth_InstanceModelData", 0 );
 
     return vp;
 }
@@ -253,6 +254,7 @@ DrawInstanced::convertGraphToUseDrawInstanced( osg::Group* parent )
                 {
                     mats->push_back( matrices[offset + m] );
                 }
+                ubb->setDataVariance( osg::Object::DYNAMIC );
             }
             else // just use a uniform array
             {

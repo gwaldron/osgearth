@@ -395,53 +395,61 @@ TileSource::getProfile() const
     return _profile.get();
 }
 
-unsigned int
+unsigned
 TileSource::getMaxDataLevel() const
 {
-    //If we have no data extents, just use a reasonably high number
-    if (_dataExtents.size() == 0) return 23;
+    optional<unsigned> maxDataLevel;
 
-    unsigned int maxDataLevel = 0;
     for (DataExtentList::const_iterator itr = _dataExtents.begin(); itr != _dataExtents.end(); ++itr)
     {
-        if (itr->getMaxLevel() > maxDataLevel) maxDataLevel = itr->getMaxLevel();
+        if ( itr->maxLevel().isSet() && itr->maxLevel() > *maxDataLevel )
+        {
+            maxDataLevel = itr->maxLevel().get();
+        }
     }
-    return maxDataLevel;
+
+    // return "23" if no max is found
+    return maxDataLevel.isSet() ? *maxDataLevel : 23u;
 }
 
-unsigned int
+unsigned
 TileSource::getMinDataLevel() const
 {
-    //If we have no data extents, just use 0
-    if (_dataExtents.size() == 0) return 0;
+    optional<unsigned> minDataLevel;
 
-    unsigned int minDataLevel = INT_MAX;
     for (DataExtentList::const_iterator itr = _dataExtents.begin(); itr != _dataExtents.end(); ++itr)
     {
-        if (itr->getMinLevel() < minDataLevel) minDataLevel = itr->getMinLevel();
+        if ( itr->minLevel().isSet() && itr->minLevel() < *minDataLevel )
+        {
+            minDataLevel = itr->minLevel().get();
+        }
     }
-    return minDataLevel;
+
+    return minDataLevel.isSet() ? *minDataLevel : 0;
 }
+
 
 bool
 TileSource::hasDataAtLOD( unsigned lod ) const
 {
-    //If no data extents are provided, just return true
+    // the sematics here are really "MIGHT have data at LOD".
+
+    // If no data extents are provided, just return true
     if ( _dataExtents.size() == 0 )
         return true;
 
-    bool intersects = false;
-
     for (DataExtentList::const_iterator itr = _dataExtents.begin(); itr != _dataExtents.end(); ++itr)
     {
-        if ( itr->getMinLevel() <= lod && lod <= itr->getMaxLevel() )
+        if ((!itr->minLevel().isSet() || itr->minLevel() <= lod) &&
+            (!itr->maxLevel().isSet() || itr->maxLevel() >= lod))
         {
-            intersects = true;
-            break;
+            return true;
         }
     }
-    return intersects;
+
+    return false;
 }
+
 
 bool
 TileSource::hasDataInExtent( const GeoExtent& extent ) const
@@ -471,15 +479,20 @@ TileSource::hasDataInExtent( const GeoExtent& extent ) const
 bool
 TileSource::hasData(const osgEarth::TileKey& key) const
 {
+    //sematics: might have data.
+
     //If no data extents are provided, just return true
-    if (_dataExtents.size() == 0) return true;
+    if (_dataExtents.size() == 0) 
+        return true;
 
     const osgEarth::GeoExtent& keyExtent = key.getExtent();
     bool intersectsData = false;
 
     for (DataExtentList::const_iterator itr = _dataExtents.begin(); itr != _dataExtents.end(); ++itr)
     {
-        if (keyExtent.intersects( *itr ) && key.getLevelOfDetail() >= itr->getMinLevel() && key.getLevelOfDetail() <= itr->getMaxLevel())
+        if ((keyExtent.intersects( *itr )) && 
+            (!itr->minLevel().isSet() || itr->minLevel() <= key.getLOD()) &&
+            (!itr->maxLevel().isSet() || itr->maxLevel() >= key.getLOD()))
         {
             intersectsData = true;
             break;

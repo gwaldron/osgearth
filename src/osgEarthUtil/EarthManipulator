@@ -24,9 +24,9 @@
 #include <osgEarth/Viewpoint>
 #include <osgEarth/GeoData>
 #include <osgEarth/Revisioning>
+#include <osgEarth/Terrain>
 #include <osg/Timer>
 #include <osgGA/CameraManipulator>
-#include <osgEarth/Terrain>
 #include <map>
 #include <list>
 #include <utility>
@@ -69,6 +69,9 @@ namespace osgEarth { namespace Util
             ACTION_EARTH_DRAG
         };
 
+        /** Vector of action types */
+        typedef std::vector<ActionType> ActionTypeVector;
+
         /** Bindable event types. */
         enum EventType {
             EVENT_MOUSE_CLICK        = osgGA::GUIEventAdapter::USER << 1,
@@ -96,13 +99,13 @@ namespace osgEarth { namespace Util
             OPTION_DURATION             // Time it takes to complete the action (in seconds)
         };
 
-		/** Tethering options **/
-		enum TetherMode
-		{
-			TETHER_CENTER,              // The camera will follow the center of the node.
-			TETHER_CENTER_AND_ROTATION, // The camera will follow the node and all rotations made by the node
-			TETHER_CENTER_AND_HEADING   // The camera will follow the node and only follow heading rotation
-		};
+        /** Tethering options **/
+        enum TetherMode
+        {
+            TETHER_CENTER,              // The camera will follow the center of the node.
+            TETHER_CENTER_AND_ROTATION, // The camera will follow the node and all rotations made by the node
+            TETHER_CENTER_AND_HEADING   // The camera will follow the node and only follow heading rotation
+        };
 
         /** Camera projection matrix type **/
         enum CameraProjection
@@ -137,7 +140,7 @@ namespace osgEarth { namespace Util
             void add( int option, double value) { push_back( ActionOption(option,value) ); }
         };
 
-    private:
+    protected:
         struct InputSpec 
         {
             InputSpec( int event_type, int input_mask, int modkey_mask )
@@ -415,35 +418,39 @@ namespace osgEarth { namespace Util
             /** Gets the maximum allowable local pitch, in degrees. */
             double getMaxPitch() const { return _max_pitch; }        
 
-			/** Gets the max x offset in world coordates */
-			double getMaxXOffset() const { return _max_x_offset; }
+            /** Gets the max x offset in world coordates */
+            double getMaxXOffset() const { return _max_x_offset; }
 
-			/** Gets the max y offset in world coordates */
-			double getMaxYOffset() const { return _max_y_offset; }
+            /** Gets the max y offset in world coordates */
+            double getMaxYOffset() const { return _max_y_offset; }
 
-			/** Gets the minimum distance from the focal point in world coordinates */
-			double getMinDistance() const {return _min_distance; }
-			
-			/** Gets the maximum distance from the focal point in world coordinates */
-			double getMaxDistance() const {return _max_distance; }
+            /** Gets the minimum distance from the focal point in world coordinates */
+            double getMinDistance() const {return _min_distance; }
+            
+            /** Gets the maximum distance from the focal point in world coordinates */
+            double getMaxDistance() const {return _max_distance; }
 
-			/** Sets the min and max distance from the focal point in world coordiantes */
-			void setMinMaxDistance( double min_distance, double max_distance);
+            /** Sets the min and max distance from the focal point in world coordiantes */
+            void setMinMaxDistance( double min_distance, double max_distance);
 
-			/**
-			* Sets the maximum allowable offsets for the x and y camera offsets in world coordinates
-			*/
-			void setMaxOffset(double max_x_offset, double max_y_offset);
+            /**
+            * Sets the maximum allowable offsets for the x and y camera offsets in world coordinates
+            */
+            void setMaxOffset(double max_x_offset, double max_y_offset);
 
-			/**
-			* Gets the TetherMode
-			*/
-			TetherMode getTetherMode() const { return _tether_mode; }
+            /**
+            * Gets the TetherMode
+            */
+            TetherMode getTetherMode() const { return _tether_mode; }
 
-			/**
-			* Sets the TetherMode
-			*/
-			void setTetherMode( TetherMode tether_mode ) { _tether_mode = tether_mode; }
+            /**
+            * Sets the TetherMode
+            */
+            void setTetherMode( TetherMode tether_mode ) { _tether_mode = tether_mode; }
+
+            /** Access to the list of Actions that will automatically break a tether */
+            ActionTypeVector& getBreakTetherActions() { return _breakTetherActions; }
+            const ActionTypeVector& getBreakTetherActions() const { return _breakTetherActions; }
 
             /** Whether a setViewpoint transition whould "arc" */
             void setArcViewpointTransitions( bool value );
@@ -465,7 +472,7 @@ namespace osgEarth { namespace Util
 
             /** Frustum offset (in pixels) */
             void setCameraFrustumOffsets( const osg::Vec2s& offsets );
-            const osg::Vec2s& getCameraFrustumOffsets() const { return _camFrustOffsets; }
+            const osg::Vec2s& getCameraFrustumOffsets() const { return _camFrustOffsets; }            
 
         private:
 
@@ -492,19 +499,20 @@ namespace osgEarth { namespace Util
             double _min_pitch;
             double _max_pitch;
 
-			double _max_x_offset;
-			double _max_y_offset;
+            double _max_x_offset;
+            double _max_y_offset;
 
-			double _min_distance;
-			double _max_distance;
+            double _min_distance;
+            double _max_distance;
 
-			TetherMode _tether_mode;
+            TetherMode _tether_mode;
+            ActionTypeVector _breakTetherActions;
             bool _arc_viewpoints;
             bool _auto_vp_duration;
             double _min_vp_duration_s, _max_vp_duration_s;
 
             CameraProjection _camProjType;
-            osg::Vec2s _camFrustOffsets;
+            osg::Vec2s _camFrustOffsets;			
         };
 
     public:
@@ -596,27 +604,27 @@ namespace osgEarth { namespace Util
          */
         bool screenToWorld(float x, float y, osg::View* view, osg::Vec3d& out_coords ) const;
 
-		/**
-		 * Gets the distance from the focal point in world coordiantes
-		 */
-		double getDistance() const { return _distance; }
+        /**
+         * Gets the distance from the focal point in world coordiantes
+         */
+        double getDistance() const { return _distance; }
 
-		/**
-		 * Sets the distance from the focal point in world coordinates.
-		 *
-		 * The incoming distance value will be clamped within the valid range specified by the settings.
-		 */
-		void   setDistance( double distance);
+        /**
+         * Sets the distance from the focal point in world coordinates.
+         *
+         * The incoming distance value will be clamped within the valid range specified by the settings.
+         */
+        void   setDistance( double distance);
 
-		/**
-		 * Gets the rotation of the manipulator.  Note:  This rotation is in addition to the rotation needed to center the view on the focal point.
-		 */
-		const osg::Quat& getRotation() { return _rotation; }
+        /**
+         * Gets the rotation of the manipulator.  Note:  This rotation is in addition to the rotation needed to center the view on the focal point.
+         */
+        const osg::Quat& getRotation() { return _rotation; }
 
-		/**
-		 * Sets the rotation of the manipulator.  Note:  This rotation is in addition to the rotation needed to center the view on the focal point.
-		 */
-		void  setRotation( const osg::Quat& rotation) { _rotation = rotation; }
+        /**
+         * Sets the rotation of the manipulator.  Note:  This rotation is in addition to the rotation needed to center the view on the focal point.
+         */
+        void  setRotation( const osg::Quat& rotation) { _rotation = rotation; }
 
 
 
@@ -686,14 +694,13 @@ namespace osgEarth { namespace Util
         // Applies an action using the raw input parameters.
         bool handleAction( const Action& action, double dx, double dy, double duration );
 
-        bool handleMouseAction( const Action& action, osg::View* view );
-        bool handleMouseClickAction( const Action& action );
-        bool handleKeyboardAction( const Action& action, double duration_s = DBL_MAX );
-        bool handleScrollAction( const Action& action, double duration_s = DBL_MAX );        
-        bool handlePointAction( const Action& type, float mx, float my, osg::View* view );
-        void handleContinuousAction( const Action& action, osg::View* view );
-        void handleMovementAction( const ActionType& type, double dx, double dy,
-                                   osg::View* view );
+        virtual bool handleMouseAction( const Action& action, osg::View* view );
+        virtual bool handleMouseClickAction( const Action& action );
+        virtual bool handleKeyboardAction( const Action& action, double duration_s = DBL_MAX );
+        virtual bool handleScrollAction( const Action& action, double duration_s = DBL_MAX );
+        virtual bool handlePointAction( const Action& type, float mx, float my, osg::View* view );
+        virtual void handleContinuousAction( const Action& action, osg::View* view );
+        virtual void handleMovementAction( const ActionType& type, double dx, double dy, osg::View* view );
 
         // checks to see whether the mouse is "moving".
         bool isMouseMoving();
@@ -701,7 +708,7 @@ namespace osgEarth { namespace Util
         // This sets the camera's roll based on your location on the globe.
         void recalculateRoll();
 
-    private:
+    protected:
 
         enum TaskType
         {
@@ -761,13 +768,16 @@ namespace osgEarth { namespace Util
         // creates a "local-to-world" transform relative to the input point.
         bool createLocalCoordFrame( const osg::Vec3d& worldPos, osg::CoordinateFrame& out_frame ) const;
 
+        // returns an ActionType that would be initiated by the OSG UI event
+        ActionType getActionTypeForEvent( const osgGA::GUIEventAdapter& ea ) const;
+
     public:
             
         void recalculateCenter() { recalculateCenter(_centerLocalToWorld); }
 
         const GeoPoint& centerMap() const { return _centerMap; }
 
-    private:
+    protected:
         // makeshift "stack" of the last 2 incoming events.
         osg::ref_ptr<const osgGA::GUIEventAdapter> _ga_t1;
         osg::ref_ptr<const osgGA::GUIEventAdapter> _ga_t0;
@@ -786,7 +796,9 @@ namespace osgEarth { namespace Util
         bool _srs_lookup_failed;
 
         osg::observer_ptr<osg::Node> _tether_node;
-        Viewpoint               _pre_tether_vp;
+        osg::Transform*              _tether_xform;
+        osg::Vec3d                   _tether_local_center;
+        Viewpoint                    _pre_tether_vp;
 
         double                  _time_s_last_frame;
         double                  _time_s_now;

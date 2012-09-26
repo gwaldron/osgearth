@@ -263,18 +263,25 @@ _pendingUpdate( false )
         }
     }
 
-    // install base shader mains.
-    if ( Registry::instance()->getCapabilities().supportsGLSL() )
-    {
-        installShaderMains();
-    }
+    // Apply some default state. The options properties let you override the
+    // defaults, but we'll set some reasonable state if they are not set.
 
-    // Set up the state set.
-    // backface culling is ON by default. By the way, this is most definitely
-    // necessary when shading with shadows.
     osg::StateSet* stateSet = getOrCreateStateSet();
-    stateSet->setMode( GL_CULL_FACE, 1 );
-    stateSet->setMode( GL_BLEND, 1 );
+
+    // Set up backface culling. If the option is unset, enable it by default
+    // since shadowing requires it and it's a decent general-purpose setting
+    if ( _options.backfaceCulling().isSet() )
+        stateSet->setMode( GL_CULL_FACE, *_options.backfaceCulling() ? 1 : 0 );
+    else
+        stateSet->setMode( GL_CULL_FACE, 1 );
+
+    // Set up alpha blending. Enable it by default if not specified.
+    if ( _options.alphaBlending().isSet() )
+        stateSet->setMode( GL_BLEND, *_options.alphaBlending() ? 1 : 0 );
+    else
+        stateSet->setMode( GL_BLEND, 1 );
+
+    // Set up lighting, only if the option is set
     if ( _options.enableLighting().isSet() )
         stateSet->setMode( GL_LIGHTING, *_options.enableLighting() ? 1 : 0 );
 
@@ -294,12 +301,6 @@ _pendingUpdate( false )
 FeatureModelGraph::~FeatureModelGraph()
 {
     osgEarthFeatureModelPseudoLoader::unregisterGraph( _uid );
-}
-
-void
-FeatureModelGraph::installShaderMains()
-{
-    osg::StateSet* ss = this->getOrCreateStateSet();
 }
 
 void

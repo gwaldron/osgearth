@@ -274,7 +274,8 @@ _mipmapping      ( false ),
 _rttBlending     ( true ),
 _updatePending   ( false ),
 _dumpRequested   ( false ),
-_rttTraversalMask( ~0 )
+_rttTraversalMask( ~0 ),
+_maxHorizonDistance( DBL_MAX )
 {
     // nop
 }
@@ -457,6 +458,7 @@ OverlayDecorator::initSubgraphShaders( PerViewData& pvd )
 #endif
         << "uniform mat4 osgearth_overlay_TexGenMatrix; \n"
         << "uniform mat4 osg_ViewMatrixInverse; \n"
+        << "varying vec4 osg_TexCoord[" << Registry::capabilities().getMaxGPUTextureCoordSets() << "]; \n"
 
         << "void osgearth_overlay_vertex(void) \n"
         << "{ \n"
@@ -472,6 +474,7 @@ OverlayDecorator::initSubgraphShaders( PerViewData& pvd )
         << "precision mediump float;\n"
 #endif
         << "uniform sampler2D osgearth_overlay_ProjTex; \n"
+        << "varying vec4 osg_TexCoord[" << Registry::capabilities().getMaxGPUTextureCoordSets() << "]; \n"
         << "void osgearth_overlay_fragment( inout vec4 color ) \n"
         << "{ \n"
         << "    vec2 texCoord = osg_TexCoord["<< *_textureUnit << "].xy / osg_TexCoord["<< *_textureUnit << "].q; \n"
@@ -764,9 +767,10 @@ OverlayDecorator::cull( osgUtil::CullVisitor* cv, OverlayDecorator::PerViewData&
     cv->setCalculatedFarPlane( osg::maximum(zSavedFar, zFar) );
 
     if ( _isGeocentric )
-    {
+    {        
         // in geocentric mode, clamp the far clip plane to the horizon.
         double maxDistance = (1.0 - haslWeight)  * horizonDistance  + haslWeight * hasl;
+        maxDistance = osg::clampBelow( maxDistance, _maxHorizonDistance );
         maxDistance *= 1.5;
         if (zFar - zNear >= maxDistance)
             zFar = zNear + maxDistance;
@@ -1038,4 +1042,16 @@ OverlayDecorator::checkNeedsUpdate( OverlayDecorator::PerViewData& pvd )
         pvd._rttCamera->getViewMatrix()       != pvd._rttViewMatrix ||
         pvd._rttCamera->getProjectionMatrix() != pvd._rttProjMatrix ||
         (_overlayGraph.valid() && _overlayGraph->getNumChildrenRequiringUpdateTraversal() > 0);
+}
+
+
+double OverlayDecorator::getMaxHorizonDistance( ) const
+{
+    return _maxHorizonDistance;
+}
+
+void
+OverlayDecorator::setMaxHorizonDistance( double horizonDistance )
+{
+    _maxHorizonDistance = horizonDistance;
 }

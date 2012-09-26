@@ -477,20 +477,22 @@ namespace osgEarth
     class OSGEARTH_EXPORT DataExtent : public GeoExtent
     {
     public:
-        DataExtent(const GeoExtent& extent, unsigned int minLevel, unsigned int maxLevel);
+        DataExtent(const GeoExtent& extent);
+        DataExtent(const GeoExtent& extent, unsigned minLevel );
+        DataExtent(const GeoExtent& extent, unsigned minLevel, unsigned maxLevel);
 
         /** dtor */
         virtual ~DataExtent() { }
 
         /** The minimum LOD of the extent */
-        unsigned int getMinLevel() const;
+        const optional<unsigned>& minLevel() const { return _minLevel; }
 
         /** The maximum LOD of the extent */
-        unsigned int getMaxLevel() const;
+        const optional<unsigned>& maxLevel() const { return _maxLevel; }
 
     private:
-        unsigned int _minLevel;
-        unsigned int _maxLevel;
+        optional<unsigned> _minLevel;
+        optional<unsigned> _maxLevel;
     };
 
     typedef std::vector< DataExtent > DataExtentList;

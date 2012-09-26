@@ -608,19 +608,19 @@ namespace
 
     static char s_moonVertexSource[] = 
         "uniform mat4 osg_ModelViewProjectionMatrix;"
-        "varying vec4 osg_TexCoord;\n"
+        "varying vec4 moon_TexCoord;\n"
         "void main() \n"
         "{ \n"
-        "    osg_TexCoord = gl_MultiTexCoord0; \n"
+        "    moon_TexCoord = gl_MultiTexCoord0; \n"
         "    gl_Position = osg_ModelViewProjectionMatrix * gl_Vertex; \n"
         "} \n";
 
     static char s_moonFragmentSource[] =
-        "varying vec4 osg_TexCoord;\n"
+        "varying vec4 moon_TexCoord;\n"
         "uniform sampler2D moonTex;\n"
         "void main( void ) \n"
         "{ \n"
-        "   gl_FragColor = texture2D(moonTex, osg_TexCoord.st);\n"
+        "   gl_FragColor = texture2D(moonTex, moon_TexCoord.st);\n"
         "} \n";
 }
 
@@ -788,12 +788,20 @@ SkyNode::traverse( osg::NodeVisitor& nv )
     osgUtil::CullVisitor* cv = dynamic_cast<osgUtil::CullVisitor*>( &nv );
     if ( cv )
     {
+        // If there's a custom projection matrix clamper installed, remove it temporarily.
+        // We dont' want it mucking with our sky elements.
+        osg::ref_ptr<osg::CullSettings::ClampProjectionMatrixCallback> cb = cv->getClampProjectionMatrixCallback();
+        cv->setClampProjectionMatrixCallback( 0L );
+
         osg::View* view = cv->getCurrentCamera()->getView();
         PerViewDataMap::iterator i = _perViewData.find( view );
         if ( i != _perViewData.end() )
         {
             i->second._cullContainer->accept( nv );
         }
+
+        // restore a custom clamper.
+        if ( cb.valid() ) cv->setClampProjectionMatrixCallback( cb.get() );
     }
 
     else
@@ -1154,9 +1162,10 @@ SkyNode::makeAtmosphere( const osg::EllipsoidModel* em )
 
     // configure the state set:
     set->setMode( GL_LIGHTING, osg::StateAttribute::OFF );
-    set->setMode( GL_CULL_FACE, osg::StateAttribute::ON );
-    set->setRenderingHint( osg::StateSet::TRANSPARENT_BIN );
+    set->setAttributeAndModes( new osg::CullFace(osg::CullFace::BACK), osg::StateAttribute::ON );
+    //set->setRenderingHint( osg::StateSet::TRANSPARENT_BIN );
     set->setAttributeAndModes( new osg::Depth( osg::Depth::LESS, 0, 1, false ) ); // no depth write
+    set->setAttributeAndModes( new osg::Depth(osg::Depth::ALWAYS, 0, 1, false) ); // no zbuffer
     set->setAttributeAndModes( new osg::BlendFunc( GL_ONE, GL_ONE ), osg::StateAttribute::ON );
 
     // next, create and add the shaders:

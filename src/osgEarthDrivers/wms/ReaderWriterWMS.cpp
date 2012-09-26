@@ -198,8 +198,8 @@ public:
                 //Add the layer extents to the list of valid areas
                 if (minx != 0 || maxx != 0 || miny != 0 || maxy != 0)
                 {
-                    GeoExtent extent( result->getSRS(), minx, miny, maxx, maxy);                    
-                    getDataExtents().push_back( DataExtent(extent, 0, INT_MAX) );
+                    GeoExtent extent( result->getSRS(), minx, miny, maxx, maxy);
+                    getDataExtents().push_back( DataExtent(extent, 0) );
                 }
             }
         }

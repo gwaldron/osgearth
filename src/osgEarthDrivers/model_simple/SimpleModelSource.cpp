@@ -21,6 +21,7 @@
 #include <osgEarth/ModelSource>
 #include <osgEarth/Registry>
 #include <osgEarth/Map>
+#include <osgEarth/ShaderGenerator>
 #include <osgEarth/FileUtils>
 #include <osg/LOD>
 #include <osg/Notify>
@@ -149,6 +150,13 @@ public:
             node->setLODScale(_options.lodScale().value());
             node->addChild(result.release());
             result = node;
+        }
+
+        // generate a shader program to render the model.
+        if ( result.valid() )
+        {
+            ShaderGenerator gen;
+            result->accept( gen );
         }
 
         return result.release();

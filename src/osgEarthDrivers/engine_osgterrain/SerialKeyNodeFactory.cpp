@@ -75,13 +75,13 @@ SerialKeyNodeFactory::addTile(Tile* tile, bool tileHasRealData, bool tileHasLodB
     if ( wrapInPagedLOD )
     {
         osg::BoundingSphere bs = tile->getBound();
-        double maxRange = 1e10;        
+        float maxRange = FLT_MAX;
         
 #if 0
         //Compute the min range based on the actual bounds of the tile.  This can break down if you have very high resolution
         //data with elevation variations and you can run out of memory b/c the elevation change is greater than the actual size of the tile so you end up
         //inifinitely subdividing (or at least until you run out of data or memory)
-        double minRange = bs.radius() * _options.minTileRangeFactor().value();
+        float minRange = (float)(bs.radius() * _options.minTileRangeFactor().value());
 #else        
         //double origMinRange = bs.radius() * _options.minTileRangeFactor().value();        
         //Compute the min range based on the 2D size of the tile
@@ -92,7 +92,7 @@ SerialKeyNodeFactory::addTile(Tile* tile, bool tileHasRealData, bool tileHasLodB
         lowerLeft.toWorld( ll );
         upperRight.toWorld( ur );
         double radius = (ur - ll).length() / 2.0;
-        double minRange = radius * _options.minTileRangeFactor().value();        
+        float minRange = (float)(radius * _options.minTileRangeFactor().value());
 #endif
 
         // create a PLOD so we can keep subdividing:

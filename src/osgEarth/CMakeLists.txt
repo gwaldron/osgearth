@@ -82,6 +82,7 @@ SET(LIB_PUBLIC_HEADERS
     Registry
     Revisioning
     ShaderComposition
+    ShaderGenerator
     ShaderUtils
     SparseTexture2DArray
     SpatialReference
@@ -182,7 +183,9 @@ ADD_LIBRARY(${LIB_NAME} ${OSGEARTH_USER_DEFINED_DYNAMIC_OR_STATIC}
     Progress.cpp
     Random.cpp
     Registry.cpp
+    Revisioning.cpp
     ShaderComposition.cpp
+    ShaderGenerator.cpp
     ShaderUtils.cpp
     SparseTexture2DArray.cpp
     SpatialReference.cpp

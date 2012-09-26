@@ -420,7 +420,8 @@ GeometryCompiler::compile(FeatureList&          workingSet,
     // Finally, optimize the stateset-sharing in the group.
     if ( sharedCX.getSession() )
     {
-        sharedCX.getSession()->getStateSetCache().optimize( resultGroup.get() );
+        sharedCX.getSession()->getStateSetCache()->optimize( resultGroup.get() );
+        //OE_INFO << LC << "state set cache size = " << sharedCX.getSession()->getStateSetCache()->size() << std::endl;
     }
     else
     {

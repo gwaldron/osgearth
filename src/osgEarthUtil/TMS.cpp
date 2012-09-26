@@ -543,10 +543,15 @@ TileMapReaderWriter::read( const Config& conf )
             double minY = conf.value<double>(ATTR_MINY, 0.0);
             double maxX = conf.value<double>(ATTR_MAXX, 0.0);
             double maxY = conf.value<double>(ATTR_MAXY, 0.0);
+
             unsigned int maxLevel = conf.value<unsigned>(ATTR_MAX_LEVEL, 0);
 
             //OE_DEBUG << LC << "Read area " << minX << ", " << minY << ", " << maxX << ", " << maxY << ", minlevel=" << minLevel << " maxlevel=" << maxLevel << std::endl;
-            tileMap->getDataExtents().push_back( DataExtent(GeoExtent(profile->getSRS(), minX, minY, maxX, maxY), 0, maxLevel));
+
+            if ( maxLevel > 0 )
+                tileMap->getDataExtents().push_back( DataExtent(GeoExtent(profile->getSRS(), minX, minY, maxX, maxY), 0, maxLevel));
+            else
+                tileMap->getDataExtents().push_back( DataExtent(GeoExtent(profile->getSRS(), minX, minY, maxX, maxY), 0) );
         }
     }
 
@@ -634,8 +639,10 @@ tileMapToXmlDocument(const TileMap* tileMap)
             e_data_extent->getAttrs()[ATTR_MINY] = toString(itr->yMin());
             e_data_extent->getAttrs()[ATTR_MAXX] = toString(itr->xMax());
             e_data_extent->getAttrs()[ATTR_MAXY] = toString(itr->yMax());
-            e_data_extent->getAttrs()[ATTR_MIN_LEVEL] = toString<unsigned int>(itr->getMinLevel());
-            e_data_extent->getAttrs()[ATTR_MAX_LEVEL] = toString<unsigned int>(itr->getMaxLevel());
+            if ( itr->minLevel().isSet() )
+                e_data_extent->getAttrs()[ATTR_MIN_LEVEL] = toString<unsigned int>(*itr->minLevel());
+            if ( itr->maxLevel().isSet() )
+                e_data_extent->getAttrs()[ATTR_MAX_LEVEL] = toString<unsigned int>(*itr->maxLevel());
             e_data_extents->getChildren().push_back( e_data_extent );
         }
         doc->getChildren().push_back( e_data_extents.get() );

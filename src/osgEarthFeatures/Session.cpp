@@ -49,6 +49,9 @@ _dbOptions     ( dbOptions )
     // if the caller did not provide a dbOptions, take it from the map.
     if ( map && !dbOptions )
         _dbOptions = map->getDBOptions();
+
+    // a new cache to optimize state changes.
+    _stateSetCache = new StateSetCache();
 }
 
 Session::~Session()

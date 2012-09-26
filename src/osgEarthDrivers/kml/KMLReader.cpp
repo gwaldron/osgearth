@@ -19,7 +19,10 @@
 #include "KMLReader"
 #include "KML_Root"
 #include <osgEarth/Registry>
+#include <osgEarth/Capabilities>
 #include <osgEarth/XmlUtils>
+#include <osgEarth/ShaderGenerator>
+#include <osgEarth/ShaderComposition>
 #include <osgEarthAnnotation/Decluttering>
 #include <stack>
 #include <iterator>
@@ -104,6 +107,16 @@ KMLReader::read( const Config& conf, const osgDB::Options* dbOptions )
     URIResultCache* cacheUsed = URIResultCache::from(cx._dbOptions.get());
     CacheStats stats = cacheUsed->getStats();
     OE_INFO << LC << "URI Cache: " << stats._queries << " reads, " << (stats._hitRatio*100.0) << "% hits" << std::endl;
+
+    if ( Registry::capabilities().supportsGLSL() )
+    {
+        ShaderGenerator gen;
+        root->accept( gen );
+
+        VirtualProgram* vp = new VirtualProgram();
+        vp->installDefaultColoringAndLightingShaders();
+        root->getOrCreateStateSet()->setAttributeAndModes( vp, osg::StateAttribute::ON );
+    }
 
     return root;
 }

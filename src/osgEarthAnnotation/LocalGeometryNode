@@ -53,7 +53,7 @@ namespace osgEarth { namespace Annotation
         LocalGeometryNode( 
             MapNode*     mapNode,
             osg::Node*   node, 
-            const Style& style, 
+            const Style& style      =Style(), 
             bool         draped     =false );
 
         virtual ~LocalGeometryNode() { }

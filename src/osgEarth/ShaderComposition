@@ -260,6 +260,7 @@ namespace osgEarth
 
         /** Access to the property template. */
         osg::Program* getTemplate() { return _template.get(); }
+        const osg::Program* getTemplate() const { return _template.get(); }
 
     public:
         typedef std::vector< osg::ref_ptr<osg::Shader> > ShaderVector;
@@ -268,7 +269,7 @@ namespace osgEarth
 
         typedef std::pair< osg::ref_ptr<osg::Shader>, osg::StateAttribute::OverrideValue > ShaderEntry;
         typedef std::map< std::string, ShaderEntry > ShaderMap;
-        typedef std::map< ShaderVector, osg::ref_ptr<osg::Program> >        ProgramMap;
+        typedef std::map< ShaderVector, osg::ref_ptr<osg::Program> > ProgramMap;
 
         osg::ref_ptr<osg::Program>   _template;
 
@@ -277,6 +278,8 @@ namespace osgEarth
         unsigned int                 _mask;
         AttribBindingList            _attribBindingList;
         bool                         _useLightingShaders;
+        osg::ref_ptr<osg::Shader>    _vertMain;
+        osg::ref_ptr<osg::Shader>    _fragMain;
 
         ShaderComp::FunctionLocationMap _functions;
         ShaderComp::FunctionLocationMap _accumulatedFunctions;

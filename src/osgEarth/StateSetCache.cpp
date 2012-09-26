@@ -29,6 +29,73 @@ using namespace osgEarth;
 namespace
 {
     /**
+     * Visitor that calls StateSetCache::share on all attributes found
+     * in a scene graph.
+     */
+    struct ShareStateAttributes : public osg::NodeVisitor
+    {
+        StateSetCache* _cache;
+
+        ShareStateAttributes(StateSetCache* cache) :
+            osg::NodeVisitor( osg::NodeVisitor::TRAVERSE_ALL_CHILDREN ),
+            _cache          ( cache ) { }
+
+        void apply(osg::Node& node)
+        {
+            if ( node.getStateSet() && node.getStateSet()->getDataVariance() != osg::Object::DYNAMIC )
+            {
+                applyStateSet( node.getStateSet() );
+            }
+            traverse(node);
+        }
+
+        void apply(osg::Geode& geode)
+        {
+            unsigned numDrawables = geode.getNumDrawables();
+            for( unsigned i=0; i<numDrawables; ++i )
+            {
+                osg::Drawable* d = geode.getDrawable(i);
+                if ( d && d->getStateSet() && d->getStateSet()->getDataVariance() != osg::Object::DYNAMIC )
+                {
+                    applyStateSet( d->getStateSet() );
+                }
+            }
+            apply((osg::Node&)geode);
+        }
+
+        void applyStateSet(osg::StateSet* stateSet)
+        {
+            osg::StateSet::AttributeList& attrs = stateSet->getAttributeList();
+            for( osg::StateSet::AttributeList::iterator i = attrs.begin(); i != attrs.end(); ++i )
+            {
+                osg::ref_ptr<osg::StateAttribute> in, shared;
+                in = i->second.first.get();
+                if ( in.valid() && _cache->share(in, shared) )
+                {
+                    i->second.first = shared.get();
+                }
+            }
+
+            osg::StateSet::TextureAttributeList& texAttrs = stateSet->getTextureAttributeList();
+            for( osg::StateSet::TextureAttributeList::iterator j = texAttrs.begin(); j != texAttrs.end(); ++j )
+            {
+                osg::StateSet::AttributeList& attrs = *j;
+                for( osg::StateSet::AttributeList::iterator i = attrs.begin(); i != attrs.end(); ++i )
+                {
+                    osg::StateAttribute* sa = i->second.first.get();
+                    osg::ref_ptr<osg::StateAttribute> in, shared;
+                    in = i->second.first.get();
+                    if ( in.valid() && _cache->share(in, shared) )
+                    {
+                        i->second.first = shared.get();
+                    }
+                }
+            }
+        }
+    };
+
+
+    /**
      * Visitor that calls StateSetCache::share on all statesets found
      * in a scene graph.
      */
@@ -47,14 +114,14 @@ namespace
 
         void apply(osg::Node& node)
         {
-            if ( node.getStateSet() )
+            if ( node.getStateSet() && node.getStateSet()->getDataVariance() != osg::Object::DYNAMIC )
             {
                 _stateSets++;
-                osg::ref_ptr<osg::StateSet> in, out;
+                osg::ref_ptr<osg::StateSet> in, shared;
                 in = node.getStateSet();
-                if ( _cache->share(in, out) )
+                if ( in.valid() && _cache->share(in, shared) )
                 {
-                    node.setStateSet( out.get() );
+                    node.setStateSet( shared.get() );
                     _shares++;
                 }
                 //else _misses.push_back(in.get());
@@ -68,14 +135,14 @@ namespace
             for( unsigned i=0; i<numDrawables; ++i )
             {
                 osg::Drawable* d = geode.getDrawable(i);
-                if ( d && d->getStateSet() )
+                if ( d && d->getStateSet() && d->getStateSet()->getDataVariance() != osg::Object::DYNAMIC )
                 {
                     _stateSets++;
-                    osg::ref_ptr<osg::StateSet> in, out;
+                    osg::ref_ptr<osg::StateSet> in, shared;
                     in = d->getStateSet();
-                    if ( _cache->share(in, out) )
+                    if ( in.valid() && _cache->share(in, shared) )
                     {
-                        d->setStateSet( out.get() );
+                        d->setStateSet( shared.get() );
                         _shares++;
                     }
                     //else _misses.push_back(in.get());
@@ -93,18 +160,47 @@ StateSetCache::optimize(osg::Node* node)
 {
     if ( node )
     {
-        ShareStateSets visitor( this );
-        node->accept( visitor );
+        // replace all equivalent attributes with a single instance
+        ShareStateAttributes v1( this );
+        node->accept( v1 );
+
+        // replace all equivalent static statesets with a single instance
+        ShareStateSets v2( this );
+        node->accept( v2 );
     }
 }
 
+
 bool
-StateSetCache::share(osg::ref_ptr<osg::StateSet>& input, 
+StateSetCache::share(osg::ref_ptr<osg::StateSet>& input,
                      osg::ref_ptr<osg::StateSet>& output )
 {
     Threading::ScopedMutexLock lock( _mutex );
 
     std::pair<StateSetSet::iterator,bool> result = _stateSetCache.insert( input );
+    if ( result.second )
+    {
+        // first use
+        output = input.get();
+        return false;
+    }
+    else
+    {
+        // found a share!
+        output = result.first->get();
+        return true;
+    }
+}
+
+
+
+bool
+StateSetCache::share(osg::ref_ptr<osg::StateAttribute>& input,
+                     osg::ref_ptr<osg::StateAttribute>& output)
+{
+    Threading::ScopedMutexLock lock( _mutex );
+
+    std::pair<StateAttributeSet::iterator,bool> result = _stateAttributeCache.insert( input );
     if ( result.second )
     {
         // first use

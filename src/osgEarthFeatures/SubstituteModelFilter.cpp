@@ -21,6 +21,7 @@
 #include <osgEarthSymbology/MeshConsolidator>
 #include <osgEarth/ECEF>
 #include <osgEarth/ShaderComposition>
+#include <osgEarth/ShaderGenerator>
 #include <osgEarth/DrawInstanced>
 #include <osgEarth/Registry>
 #include <osgEarth/Capabilities>
@@ -263,22 +264,19 @@ SubstituteModelFilter::process(const FeatureList&           features,
         }
     }
 
-    if ( _useDrawInstanced && Registry::instance()->getCapabilities().supportsDrawInstanced() )
+    if ( _useDrawInstanced && Registry::capabilities().supportsDrawInstanced() )
     {
-        //OE_INFO << LC << "Converting to draw-instanced..." << std::endl;
-
         DrawInstanced::convertGraphToUseDrawInstanced( attachPoint );
 
-        // install a shader program
+        // install a shader program to render draw-instanced.
         VirtualProgram* p = DrawInstanced::createDrawInstancedProgram();
-        p->installDefaultColoringShaders( 1 );
-
         attachPoint->getOrCreateStateSet()->setAttributeAndModes( p, osg::StateAttribute::ON );
     }
-    else
-    {
-        attachPoint->getOrCreateStateSet()->setAttribute( new osg::Program, 0 );
-    }
+
+    // Generate shader code to render the models
+    StateSetCache* cache = context.getSession() ? context.getSession()->getStateSetCache() : 0L;
+    ShaderGenerator gen( cache );
+    attachPoint->accept( gen );
 
     return true;
 }

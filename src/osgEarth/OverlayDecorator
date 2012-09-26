@@ -81,6 +81,20 @@ namespace osgEarth
         bool getMipMapping() const { return _mipmapping; }
 
         /**
+         * Gets the maximum horizon distance
+         */
+        double getMaxHorizonDistance() const;
+
+        /**
+         * Sets the maximum horizon distance.  The computed far distance will be no longer than this value.
+         * If you use overlay data that spans large distances it can become pixelated when you tilt your camera to look out over
+         * the horizon b/c the view frustum can extend over long distances.  If you set this to a smaller value you can control
+         * how far out you want to go and reduce the pixelation.  However, if you set this value to be too small, features at a distance may
+         * be clipped out of the scene.
+         */
+        void setMaxHorizonDistance( double maxHorizonDistance );
+
+        /**
          * Whether to enable blending on the RTT camera graph. Default = true. You might
          * want to disable this is you are draping polygons that cover a very large area
          * and curve around the globe; sometimes they suffer from tessellation artifacts
@@ -111,6 +125,8 @@ namespace osgEarth
         bool                          _rttBlending;
         bool                          _updatePending;
         unsigned                      _rttTraversalMask;
+        
+        double                        _maxHorizonDistance;
 
         osg::ref_ptr<const SpatialReference>    _srs;
         osg::ref_ptr<const osg::EllipsoidModel> _ellipsoid;

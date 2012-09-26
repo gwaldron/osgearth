@@ -51,17 +51,17 @@ namespace
 
         buf << "#version " << GLSL_VERSION_STR << "\n";
 
-        buf << "varying vec4 osg_FrontColor;\n"
-            << "varying vec4 osg_FrontSecondaryColor;\n";
+        buf << "varying vec4 osg_FrontColor; \n"
+            << "varying vec4 osg_FrontSecondaryColor; \n";
 
         if ( slots.size() > 0 )
         {
-            buf << "varying vec4 osg_TexCoord[" << Registry::instance()->getCapabilities().getMaxGPUTextureCoordSets()  << "];\n";
+            buf << "varying vec4 osg_TexCoord[" << Registry::instance()->getCapabilities().getMaxGPUTextureCoordSets()  << "]; \n";
         }
 
         if ( blending )
         {
-            buf << "uniform mat4 osgearth_TexBlendMatrix[" << Registry::instance()->getCapabilities().getMaxGPUTextureCoordSets() << "];\n";
+            buf << "uniform mat4 osgearth_TexBlendMatrix[" << Registry::instance()->getCapabilities().getMaxGPUTextureCoordSets() << "]; \n";
         }
 
         buf << "void osgearth_vert_setupColoring() \n"
@@ -82,12 +82,12 @@ namespace
                 if ( slot == primarySlot )
                 {
                     // normal unit:
-                    buf << "    osg_TexCoord["<< slot <<"] = gl_MultiTexCoord" << slot << ";\n";
+                    buf << "    osg_TexCoord["<< slot <<"] = gl_MultiTexCoord" << slot << "; \n";
                 }
                 else
                 {
                     // secondary (blending) unit:
-                    buf << "    osg_TexCoord["<< slot <<"] = osgearth_TexBlendMatrix["<< primarySlot << "] * gl_MultiTexCoord" << primarySlot << ";\n";
+                    buf << "    osg_TexCoord["<< slot <<"] = osgearth_TexBlendMatrix["<< primarySlot << "] * gl_MultiTexCoord" << primarySlot << "; \n";
                 }
             }
         }
@@ -113,7 +113,7 @@ namespace
 
         if ( maxSlots > 0 )
         {
-            buf << "varying vec4 osg_TexCoord[" << Registry::instance()->getCapabilities().getMaxGPUTextureCoordSets() << "];\n";
+            buf << "varying vec4 osg_TexCoord[" << Registry::instance()->getCapabilities().getMaxGPUTextureCoordSets() << "]; \n";
         }
 
         if ( blending )

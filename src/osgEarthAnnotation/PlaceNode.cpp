@@ -193,6 +193,8 @@ PlaceNode::init(const osgDB::Options* dbOptions)
 
     // for clamping
     applyStyle( _style );
+
+    setLightingIfNotSet( false );
 }
 
 
@@ -256,7 +258,7 @@ OSGEARTH_REGISTER_ANNOTATION( place, osgEarth::Annotation::PlaceNode );
 PlaceNode::PlaceNode(MapNode*              mapNode,
                      const Config&         conf,
                      const osgDB::Options* dbOptions) :
-OrthoNode( mapNode, GeoPoint::INVALID )
+OrthoNode( mapNode, conf )
 {
     conf.getObjIfSet( "style",  _style );
     conf.getIfSet   ( "text",   _text );

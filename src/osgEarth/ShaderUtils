@@ -45,9 +45,8 @@ namespace osgEarth
     * Container for light uniforms
     */
     //light product
-    class osg_LightProducts 
+    struct osg_LightProducts 
     { 
-    public:
         osg_LightProducts(int id);
         
         osg::ref_ptr<osg::Uniform> ambient; // vec4 
@@ -55,9 +54,21 @@ namespace osgEarth
         osg::ref_ptr<osg::Uniform> specular; //vec4
     };
         
-    class osg_LightSourceParameters 
+
+#if 0
+    // gl_FrontLightModelProduct, gl_BackLightModelProduct
+    struct osg_LightModelProducts
+    {
+        osg_LightModelProducts(int id);
+
+        void setUniformsFromOsgLightModel(const osg::LightModel* model);
+
+        osg::ref_ptr<osg::Uniform> sceneColor; // vec4
+    };
+#endif
+
+    struct osg_LightSourceParameters 
     { 
-    public:
         osg_LightSourceParameters(int id);
         
         void setUniformsFromOsgLight(const osg::Light* light, osg::Matrix viewMatrix, const osg::Material* frontMat);
@@ -78,8 +89,13 @@ namespace osgEarth
 
         //just store the light product in here
         osg_LightProducts _frontLightProduct;
+
+#if 0
+        //and the light model product too..
+        osg_LightModelProducts _frontLightModelProduct;
+#endif
     };
-    
+
     /**
      * A callback that will update the osgEarth lighting uniforms (based on the
      * FFP lighting state) if necessary.

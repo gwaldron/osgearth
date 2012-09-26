@@ -30,13 +30,29 @@ using namespace osgEarth;
 using namespace osgEarth::Annotation;
 
 
-LocalizedNode::LocalizedNode(MapNode*                mapNode,
-                             const GeoPoint&         position,
-                             bool                    is2D ) :
+LocalizedNode::LocalizedNode(MapNode*        mapNode,
+                             const GeoPoint& position,
+                             bool            is2D ) :
 PositionedAnnotationNode( mapNode ),
 _horizonCulling         ( false ),
 _autoTransform          ( is2D ),
 _scale                  ( 1.0f, 1.0f, 1.0f )
+{
+    init( mapNode, position );
+}
+
+LocalizedNode::LocalizedNode(MapNode* mapNode, const Config& conf) :
+PositionedAnnotationNode(mapNode, conf),
+_horizonCulling         ( false ),
+_autoTransform          ( false ),
+_scale                  ( 1.0f, 1.0f, 1.0f )
+{
+    init( mapNode, GeoPoint::INVALID );
+}
+
+
+void
+LocalizedNode::init( MapNode* mapNode, const GeoPoint& position )
 {
     if ( _autoTransform )
     {

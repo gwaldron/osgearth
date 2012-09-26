@@ -23,6 +23,7 @@
 #include <osgEarthSymbology/InstanceSymbol>
 #include <osgEarth/Registry>
 #include <osgEarth/ShaderGenerator>
+#include <osgEarth/VirtualProgram>
 
 #define LC "[ModelNode] "
 
@@ -79,9 +80,18 @@ ModelNode::init(const osgDB::Options* dbOptions)
 
             if ( node )
             {
+                // generate shader code for the loaded model:
                 ShaderGenerator gen;
                 node->accept( gen );
 
+                // need a top-level shader too:
+                VirtualProgram* vp = new VirtualProgram();
+                vp->installDefaultColoringAndLightingShaders();
+                this->getOrCreateStateSet()->setAttributeAndModes( vp, 1 );
+
+                node->addCullCallback( new UpdateLightingUniformsHelper() );
+
+                // attach to the transform:
                 getTransform()->addChild( node );
                 this->addChild( getTransform() );
 
@@ -128,7 +138,7 @@ OSGEARTH_REGISTER_ANNOTATION( model, osgEarth::Annotation::ModelNode );
 
 
 ModelNode::ModelNode(MapNode* mapNode, const Config& conf, const osgDB::Options* dbOptions) :
-LocalizedNode( mapNode )
+LocalizedNode( mapNode, conf )
 {
     conf.getObjIfSet( "style", _style );
 

@@ -19,7 +19,7 @@
 #include <osgEarthUtil/SkyNode>
 #include <osgEarthUtil/StarData>
 
-#include <osgEarth/ShaderComposition>
+#include <osgEarth/VirtualProgram>
 #include <osgEarthUtil/LatLongFormatter>
 #include <osgEarth/NodeUtils>
 #include <osgEarth/MapNode>

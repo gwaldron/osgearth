@@ -17,6 +17,8 @@
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
 #include "TileModelFactory"
+#include <osgEarth/MapFrame>
+#include <osgEarth/MapInfo>
 #include <osgEarth/ImageUtils>
 #include <osgEarth/HeightFieldUtils>
 

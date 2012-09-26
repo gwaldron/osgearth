@@ -18,6 +18,7 @@
 */
 
 #include <osgEarth/CacheSeed>
+#include <osgEarth/MapFrame>
 #include <OpenThreads/ScopedLock>
 #include <limits.h>
 
@@ -27,12 +28,12 @@ using namespace osgEarth;
 using namespace OpenThreads;
 
 CacheSeed::CacheSeed():
-          _minLevel(0),
-          _maxLevel(12),          
-          _total(0),
-          _completed(0)
-          {
-          }
+_minLevel (0),
+_maxLevel (12),
+_total    (0),
+_completed(0)
+{
+}
 
 void CacheSeed::seed( Map* map )
 {
@@ -60,7 +61,7 @@ void CacheSeed::seed( Map* map )
     //Assumes the the TileSource will perform the caching for us when we call createImage
     for( ImageLayerVector::const_iterator i = mapf.imageLayers().begin(); i != mapf.imageLayers().end(); i++ )
     {
-		ImageLayer* layer = i->get();
+        ImageLayer* layer = i->get();
         TileSource* src   = layer->getTileSource();
 
         const ImageLayerOptions& opt = layer->getImageLayerOptions();
@@ -85,16 +86,16 @@ void CacheSeed::seed( Map* map )
         {
             hasCaches = true;
 
-			if (opt.minLevel().isSet() && (int)opt.minLevel().get() < src_min_level)
+            if (opt.minLevel().isSet() && (int)opt.minLevel().get() < src_min_level)
                 src_min_level = opt.minLevel().get();
-			if (opt.maxLevel().isSet() && opt.maxLevel().get() > src_max_level)
+            if (opt.maxLevel().isSet() && opt.maxLevel().get() > src_max_level)
                 src_max_level = opt.maxLevel().get();
         }
     }
 
     for( ElevationLayerVector::const_iterator i = mapf.elevationLayers().begin(); i != mapf.elevationLayers().end(); i++ )
     {
-		ElevationLayer* layer = i->get();
+        ElevationLayer* layer = i->get();
         TileSource*     src   = layer->getTileSource();
         const ElevationLayerOptions& opt = layer->getElevationLayerOptions();
 
@@ -118,11 +119,11 @@ void CacheSeed::seed( Map* map )
         {
             hasCaches = true;
 
-			if (opt.minLevel().isSet() && (int)opt.minLevel().get() < src_min_level)
+            if (opt.minLevel().isSet() && (int)opt.minLevel().get() < src_min_level)
                 src_min_level = opt.minLevel().get();
-			if (opt.maxLevel().isSet() && opt.maxLevel().get() > src_max_level)
+            if (opt.maxLevel().isSet() && opt.maxLevel().get() > src_max_level)
                 src_max_level = opt.maxLevel().get();
-		}
+        }
     }
 
     if ( !hasCaches )
@@ -267,7 +268,7 @@ void CacheSeed::seed( Map* map )
 
     _total = _completed;
 
-    if ( _progress.valid()) _progress->reportProgress(_completed, _total, "Finished");
+    if ( _progress.valid()) _progress->reportProgress(_completed, _total, 0, 1, "Finished");
 }
 
 void CacheSeed::incrementCompleted( unsigned int total ) const
@@ -293,8 +294,8 @@ CacheSeed::processKey(const MapFrame& mapf, const TileKey& key ) const
         incrementCompleted( 1 );
         }
 
-    	if ( _progress.valid() && _progress->isCanceled() )
-	        return; // Task has been cancelled by user
+        if ( _progress.valid() && _progress->isCanceled() )
+            return; // Task has been cancelled by user
 
         if ( _progress.valid() && gotData && _progress->reportProgress(_completed, _total, std::string("Cached tile: ") + key.str()) )
             return; // Canceled

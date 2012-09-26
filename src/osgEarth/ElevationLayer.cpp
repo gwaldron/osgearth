@@ -439,3 +439,248 @@ ElevationLayer::createHeightField(const TileKey&    key,
         GeoHeightField( result, key.getExtent() ) :
         GeoHeightField::INVALID;
 }
+
+
+//------------------------------------------------------------------------
+
+
+bool
+ElevationLayerVector::createHeightField(const TileKey&                  key,
+                                        bool                            fallback,
+                                        const Profile*                  haeProfile,
+                                        ElevationInterpolation          interpolation,
+                                        ElevationSamplePolicy           samplePolicy,
+                                        osg::ref_ptr<osg::HeightField>& out_result,
+                                        bool*                           out_isFallback,
+                                        ProgressCallback*               progress )  const
+{        
+    unsigned lowestLOD = key.getLevelOfDetail();
+    bool hfInitialized = false;
+
+    //Get a HeightField for each of the enabled layers
+    GeoHeightFieldVector heightFields;
+
+    //The number of fallback heightfields we have
+    int numFallbacks = 0;
+
+    //Default to being fallback data.
+    if ( out_isFallback )
+    {
+        *out_isFallback = true;
+    }
+
+    // if the caller provided an "HAE map profile", he wants an HAE elevation grid even if
+    // the map profile has a vertical datum. This is the usual case when building the 3D
+    // terrain, for example. Construct a temporary key that doesn't have the vertical
+    // datum info and use that to query the elevation data.
+    TileKey keyToUse = key;
+    if ( haeProfile )
+    {
+        keyToUse = TileKey(key.getLevelOfDetail(), key.getTileX(), key.getTileY(), haeProfile );
+    }
+
+    // Generate a heightfield for each elevation layer.
+
+    unsigned defElevSize = 8;
+
+    for( ElevationLayerVector::const_iterator i = this->begin(); i != this->end(); i++ )
+    {
+        ElevationLayer* layer = i->get();
+        if ( layer->getVisible() )
+        {
+            GeoHeightField geoHF = layer->createHeightField( keyToUse, progress );
+
+            // if "fallback" is set, try to fall back on lower LODs.
+            if ( !geoHF.valid() && fallback )
+            {
+                TileKey hf_key = keyToUse.createParentKey();
+
+                while ( hf_key.valid() && !geoHF.valid() )
+                {
+                    geoHF = layer->createHeightField( hf_key, progress );
+                    if ( !geoHF.valid() )
+                        hf_key = hf_key.createParentKey();
+                }
+
+                if ( geoHF.valid() )
+                {
+                    if ( hf_key.getLevelOfDetail() < lowestLOD )
+                        lowestLOD = hf_key.getLevelOfDetail();
+
+                    //This HeightField is fallback data, so increment the count.
+                    numFallbacks++;
+                }
+            }
+
+            if ( geoHF.valid() )
+            {
+                heightFields.push_back( geoHF );
+            }
+        }
+    }
+
+    //If any of the layers produced valid data then it's not considered a fallback
+    if ( out_isFallback )
+    {
+        *out_isFallback = (numFallbacks == heightFields.size());
+        //OE_NOTICE << "Num fallbacks=" << numFallbacks << " numHeightFields=" << heightFields.size() << " is fallback " << *out_isFallback << std::endl;
+    }   
+
+    if ( heightFields.size() == 0 )
+    {            
+        //If we got no heightfields but were requested to fallback, create an empty heightfield.
+        if ( fallback )
+        {
+            out_result = HeightFieldUtils::createReferenceHeightField( keyToUse.getExtent(), defElevSize, defElevSize );                
+            return true;
+        }
+        else
+        {
+            //We weren't requested to fallback so just return.
+            return false;
+        }
+    }
+
+    else if (heightFields.size() == 1)
+    {
+        if ( lowestLOD == key.getLevelOfDetail() )
+        {
+            //If we only have on heightfield, just return it.
+            out_result = heightFields[0].takeHeightField();
+        }
+        else
+        {
+            GeoHeightField geoHF = heightFields[0].createSubSample( key.getExtent(), interpolation);
+            out_result = geoHF.takeHeightField();
+            hfInitialized = true;
+        }
+    }
+
+    else
+    {
+        //If we have multiple heightfields, we need to composite them together.
+        unsigned int width = 0;
+        unsigned int height = 0;
+
+        for (GeoHeightFieldVector::const_iterator i = heightFields.begin(); i < heightFields.end(); ++i)
+        {
+            if (i->getHeightField()->getNumColumns() > width) 
+                width = i->getHeightField()->getNumColumns();
+            if (i->getHeightField()->getNumRows() > height) 
+                height = i->getHeightField()->getNumRows();
+        }
+        out_result = new osg::HeightField();
+        out_result->allocate( width, height );
+
+        //Go ahead and set up the heightfield so we don't have to worry about it later
+        double minx, miny, maxx, maxy;
+        key.getExtent().getBounds(minx, miny, maxx, maxy);
+        double dx = (maxx - minx)/(double)(out_result->getNumColumns()-1);
+        double dy = (maxy - miny)/(double)(out_result->getNumRows()-1);
+
+        const SpatialReference* keySRS = keyToUse.getProfile()->getSRS();
+
+        //Create the new heightfield by sampling all of them.
+        for (unsigned int c = 0; c < width; ++c)
+        {
+            double x = minx + (dx * (double)c);
+            for (unsigned r = 0; r < height; ++r)
+            {
+                double y = miny + (dy * (double)r);
+
+                //Collect elevations from all of the layers. Iterate BACKWARDS because the last layer
+                // is the highest priority.
+                std::vector<float> elevations;
+                for( GeoHeightFieldVector::reverse_iterator itr = heightFields.rbegin(); itr != heightFields.rend(); ++itr )
+                {
+                    const GeoHeightField& geoHF = *itr;
+
+                    float elevation = 0.0f;
+                    if ( geoHF.getElevation(keySRS, x, y, interpolation, keySRS, elevation) )
+                    {
+                        if (elevation != NO_DATA_VALUE)
+                        {
+                            elevations.push_back(elevation);
+                        }
+                    }
+                }
+
+                float elevation = NO_DATA_VALUE;
+
+                //The list of elevations only contains valid values
+                if (elevations.size() > 0)
+                {
+                    if (samplePolicy == SAMPLE_FIRST_VALID)
+                    {
+                        elevation = elevations[0];
+                    }
+                    else if (samplePolicy == SAMPLE_HIGHEST)
+                    {
+                        elevation = -FLT_MAX;
+                        for (unsigned int i = 0; i < elevations.size(); ++i)
+                        {
+                            if (elevation < elevations[i]) elevation = elevations[i];
+                        }
+                    }
+                    else if (samplePolicy == SAMPLE_LOWEST)
+                    {
+                        elevation = FLT_MAX;
+                        for (unsigned i = 0; i < elevations.size(); ++i)
+                        {
+                            if (elevation > elevations[i]) elevation = elevations[i];
+                        }
+                    }
+                    else if (samplePolicy == SAMPLE_AVERAGE)
+                    {
+                        elevation = 0.0;
+                        for (unsigned i = 0; i < elevations.size(); ++i)
+                        {
+                            elevation += elevations[i];
+                        }
+                        elevation /= (float)elevations.size();
+                    }
+                }
+                out_result->setHeight(c, r, elevation);
+            }
+        }
+    }
+
+    // Replace any NoData areas with the reference value. This is zero for HAE datums,
+    // and some geoid height for orthometric datums.
+    if (out_result.valid())
+    {
+        const Geoid*         geoid = 0L;
+        const VerticalDatum* vdatum = key.getProfile()->getSRS()->getVerticalDatum();
+
+        if ( haeProfile && vdatum )
+        {
+            geoid = vdatum->getGeoid();
+        }
+
+        HeightFieldUtils::resolveInvalidHeights(
+            out_result.get(),
+            key.getExtent(),
+            NO_DATA_VALUE,
+            geoid );
+
+        //ReplaceInvalidDataOperator o;
+        //o.setValidDataOperator(new osgTerrain::NoDataValue(NO_DATA_VALUE));
+        //o( out_result.get() );
+    }
+
+    //Initialize the HF values for osgTerrain
+    if (out_result.valid() && !hfInitialized )
+    {   
+        //Go ahead and set up the heightfield so we don't have to worry about it later
+        double minx, miny, maxx, maxy;
+        key.getExtent().getBounds(minx, miny, maxx, maxy);
+        out_result->setOrigin( osg::Vec3d( minx, miny, 0.0 ) );
+        double dx = (maxx - minx)/(double)(out_result->getNumColumns()-1);
+        double dy = (maxy - miny)/(double)(out_result->getNumRows()-1);
+        out_result->setXInterval( dx );
+        out_result->setYInterval( dy );
+        out_result->setBorderWidth( 0 );
+    }
+
+    return out_result.valid();
+}

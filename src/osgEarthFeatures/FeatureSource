@@ -32,6 +32,7 @@
 #include <osgEarth/Cache>
 #include <osgEarth/CachePolicy>
 #include <osgEarth/URI>
+#include <osgEarth/Revisioning>
 
 #include <osgDB/ReaderWriter>
 #include <OpenThreads/Mutex>

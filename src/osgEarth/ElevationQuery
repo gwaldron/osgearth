@@ -19,7 +19,7 @@
 #ifndef OSGEARTH_ELEVATION_QUERY_H
 #define OSGEARTH_ELEVATION_QUERY_H 1
 
-#include <osgEarth/Map>
+#include <osgEarth/MapFrame>
 #include <osgEarth/Containers>
 
 namespace osgEarth

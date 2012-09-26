@@ -24,6 +24,7 @@
 
 #include <osgEarth/Common>
 #include <osgEarth/Map>
+#include <osgEarth/MapFrame>
 #include <osgEarth/Cache>
 #include <osgEarth/CacheSeed>
 #include <osgEarth/MapNode>

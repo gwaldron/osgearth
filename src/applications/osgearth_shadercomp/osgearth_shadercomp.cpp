@@ -31,7 +31,7 @@
 #include <osgViewer/Viewer>
 #include <osgViewer/ViewerEventHandlers>
 #include <osgEarthUtil/EarthManipulator>
-#include <osgEarth/ShaderComposition>
+#include <osgEarth/VirtualProgram>
 #include <osgEarth/Registry>
 #include <osgEarthUtil/Controls>
 

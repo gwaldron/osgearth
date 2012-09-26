@@ -25,7 +25,9 @@
 #include <osgEarth/HeightFieldUtils>
 #include <osgEarth/ImageUtils>
 #include <osgEarth/Registry>
-#include <osgEarth/ShaderComposition>
+#include <osgEarth/VirtualProgram>
+#include <osgEarth/ShaderFactory>
+#include <osgEarth/MapModelChange>
 
 #include <osg/TexEnv>
 #include <osg/TexEnvCombine>

@@ -19,6 +19,7 @@
 #include <osgEarthQt/DataManager>
 
 #include <osgEarth/Map>
+#include <osgEarth/MapModelChange>
 #include <osgEarth/MapNode>
 
 using namespace osgEarth::QtGui;

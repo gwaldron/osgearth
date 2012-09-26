@@ -19,7 +19,7 @@
 #include <osgEarthSymbology/Skins>
 #include <osgEarth/StringUtils>
 #include <osgEarth/ImageUtils>
-#include <osgEarth/ShaderComposition>
+#include <osgEarth/VirtualProgram>
 #include <osgEarth/Registry>
 
 #include <osg/BlendFunc>

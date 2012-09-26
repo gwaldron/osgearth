@@ -24,6 +24,7 @@
 #include "TerrainNode"
 #include "TileModelFactory"
 #include "TileNodeRegistry"
+#include <osgEarth/MapInfo>
 
 using namespace osgEarth;
 using namespace osgEarth::Drivers;

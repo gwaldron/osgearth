@@ -19,7 +19,7 @@
 * Original author: Thomas Lerman
 */
 #include <osgEarthUtil/BrightnessContrastColorFilter>
-#include <osgEarth/ShaderComposition>
+#include <osgEarth/VirtualProgram>
 #include <osgEarth/StringUtils>
 #include <osgEarth/ThreadingUtils>
 #include <osg/Program>

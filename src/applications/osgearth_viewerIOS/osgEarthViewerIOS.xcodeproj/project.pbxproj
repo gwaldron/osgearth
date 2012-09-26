@@ -990,7 +990,7 @@
 		9051002515B1EDFD00D9ABD3 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "iPhone Distribution: Thomas Hogarth";
+				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "iPhone Developer: Thomas Hogarth (35UD7TG27V)";
 				DEBUG_INFORMATION_FORMAT = dwarf;
 				GCC_GENERATE_DEBUGGING_SYMBOLS = NO;
 				GCC_PRECOMPILE_PREFIX_HEADER = YES;
@@ -1012,7 +1012,7 @@
 					"\"$(SRCROOT)/../../../../3rdParty/geos-ios-device/lib\"",
 				);
 				PRODUCT_NAME = osgEarth;
-				"PROVISIONING_PROFILE[sdk=iphoneos*]" = "C58518B5-0DE9-42CD-881F-C8102ECE8779";
+				"PROVISIONING_PROFILE[sdk=iphoneos*]" = "C5A8E349-91DB-4E98-9612-789DB499534E";
 				WRAPPER_EXTENSION = app;
 			};
 			name = Release;

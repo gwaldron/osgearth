@@ -75,7 +75,7 @@ namespace
 
                     // first check the owner's traversal mask.
                     bool visible = true;
-                    for( int k = 0; visible && k < ownerPath.size(); ++k )
+                    for( int k = 0; visible && k < (int)ownerPath.size(); ++k )
                     {
                         visible = nv.validNodeMask(*ownerPath[k]);
                     }
@@ -85,12 +85,12 @@ namespace
                         // find the intersection point:
                         int i = findIndexOfNodePathConvergence( visitorPath, ownerPath );
 
-                        if ( i >= 0 && i < ownerPath.size()-1 )
+                        if ( i >= 0 && i < (int)ownerPath.size()-1 )
                         {
                             osgUtil::CullVisitor* cv = static_cast<osgUtil::CullVisitor*>(&nv);
 
                             int pushes = 0;
-                            for( int k = i+1; k < ownerPath.size(); ++k )
+                            for( int k = i+1; k < (int)ownerPath.size(); ++k )
                             {
                                 osg::Node* node = ownerPath[k];
                                 osg::StateSet* ss = ownerPath[k]->getStateSet();

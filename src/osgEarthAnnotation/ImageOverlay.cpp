@@ -26,7 +26,7 @@
 #include <osgEarth/NodeUtils>
 #include <osgEarth/ImageUtils>
 #include <osgEarth/DrapeableNode>
-#include <osgEarth/ShaderComposition>
+#include <osgEarth/VirtualProgram>
 #include <osg/Geode>
 #include <osg/ShapeDrawable>
 #include <osg/Texture2D>

@@ -28,6 +28,7 @@
 #include <osgEarth/ImageUtils>
 #include <osgEarth/Registry>
 #include <osgEarth/ShaderComposition>
+#include <osgEarth/MapModelChange>
 #include <osg/TexEnv>
 #include <osg/TexEnvCombine>
 #include <osg/PagedLOD>

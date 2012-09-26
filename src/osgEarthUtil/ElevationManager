@@ -20,8 +20,7 @@
 #define OSGEARTHUTIL_ELEVATION_MANAGER_H
 
 #include <osgEarthUtil/Common>
-#include <osgEarth/Map>
-#include <osgEarth/MapNode>
+#include <osgEarth/MapFrame>
 
 namespace osgEarth { namespace Util
 {

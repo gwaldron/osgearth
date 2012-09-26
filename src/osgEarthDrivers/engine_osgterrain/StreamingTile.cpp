@@ -23,7 +23,7 @@
 
 #include <osgEarth/Registry>
 #include <osgEarth/Locators>
-#include <osgEarth/Map>
+#include <osgEarth/MapFrame>
 #include <osgEarth/NodeUtils>
 
 #include <osg/NodeCallback>
@@ -89,8 +89,8 @@ namespace
         MapFrame _mapf;
         //osg::ref_ptr<Map> _map;
         osg::ref_ptr<OSGTileFactory> _tileFactory;
-	    unsigned int _numTries;
-	    unsigned int _maxTries;
+        unsigned int _numTries;
+        unsigned int _maxTries;
     };
 
     struct TileColorLayerRequest : public TileLayerRequest
@@ -104,10 +104,10 @@ namespace
             if ( imageLayer.valid() )
             {
                 _result = _tileFactory->createImageLayer( _mapf.getMapInfo(), imageLayer.get(), _key, progress );
-			    if (!wasCanceled())
-			    {
-			      _numTries++;
-			    }
+                if (!wasCanceled())
+                {
+                  _numTries++;
+                }
             }
         }
         UID _layerUID;
@@ -124,7 +124,7 @@ namespace
         void operator()( ProgressCallback* progress )
         {
             _result = _tileFactory->createHeightFieldLayer( _mapf, _key, true ); //exactOnly=true
-		    _numTries++;
+            _numTries++;
         }
     };
 
@@ -410,8 +410,8 @@ StreamingTile::resetElevationRequests( const MapFrame& mapf )
     _elevRequest->setPriority( priority );
     std::stringstream ss;
     ss << "TileElevationLayerRequest " << _key.str() << std::endl;
-	std::string ssStr;
-	ssStr = ss.str();
+    std::string ssStr;
+    ssStr = ss.str();
     _elevRequest->setName( ssStr );
 
     // this request will load placeholder elevation data for the tile:
@@ -421,7 +421,7 @@ StreamingTile::resetElevationRequests( const MapFrame& mapf )
     _elevPlaceholderRequest->setPriority( priority );
     ss.str("");
     ss << "TileElevationPlaceholderLayerRequest " << _key.str() << std::endl;
-	ssStr = ss.str();
+    ssStr = ss.str();
     _elevPlaceholderRequest->setName( ssStr );
 }
 

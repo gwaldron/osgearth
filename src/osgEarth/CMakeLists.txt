@@ -61,6 +61,10 @@ SET(LIB_PUBLIC_HEADERS
     Locators
     LocalTangentPlane
     Map
+    MapCallback
+    MapFrame
+    MapInfo
+    MapModelChange
     MapNode
     MapNodeObserver
     MapNodeOptions
@@ -165,6 +169,9 @@ ADD_LIBRARY(${LIB_NAME} ${OSGEARTH_USER_DEFINED_DYNAMIC_OR_STATIC}
     Locators.cpp
     LocalTangentPlane.cpp
     Map.cpp
+    MapCallback.cpp
+    MapFrame.cpp
+    MapInfo.cpp
     MapNode.cpp
     MapNodeOptions.cpp
     MapOptions.cpp

@@ -19,7 +19,7 @@
 #ifndef OSGEARTH_DRIVER_OCEAN_SURFACE_ELEV_PROXY_IMAGE_LAYER
 #define OSGEARTH_DRIVER_OCEAN_SURFACE_ELEV_PROXY_IMAGE_LAYER 1
 
-#include <osgEarth/Map>
+#include <osgEarth/MapFrame>
 #include <osgEarth/ImageLayer>
 
 using namespace osgEarth;

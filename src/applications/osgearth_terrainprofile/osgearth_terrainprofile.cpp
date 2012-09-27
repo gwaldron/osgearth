@@ -28,6 +28,7 @@
 #include <osgEarthUtil/AutoClipPlaneHandler>
 #include <osgEarthUtil/TerrainProfile>
 #include <osgEarth/GeoMath>
+#include <osgEarth/Registry>
 #include <osgEarthFeatures/Feature>
 #include <osgEarthAnnotation/FeatureNode>
 #include <osgText/Text>
@@ -93,7 +94,7 @@ public:
         _profileCalculator->addChangedCallback( _graphChangedCallback.get() );
 
         float textSize = 8;
-        osg::ref_ptr< osgText::Font> font = osgText::readFontFile( "arialbd.ttf" );
+        osg::ref_ptr< osgText::Font> font = osgEarth::Registry::instance()->getDefaultFont();
 
         osg::Vec4 textColor = osg::Vec4f(1,0,0,1);
         

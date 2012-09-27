@@ -17,6 +17,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 #include <osgEarthUtil/SpatialData>
+#include <osgEarth/Registry>
 #include <osgUtil/CullVisitor>
 #include <osg/PolygonOffset>
 #include <osg/Polytope>
@@ -44,8 +45,7 @@ namespace
 
         return row*xdim + col;
     }
-
-    static osgText::Font* s_font = 0L;
+    
 
     osg::Geode* makeClusterGeode( const GeoExtent& cellExtent, unsigned num )
     {
@@ -66,10 +66,8 @@ namespace
         t->setCharacterSizeMode( osgText::TextBase::SCREEN_COORDS );
         t->setCharacterSize( 22.0f );
         t->setAutoRotateToScreen( true );
-
-        if ( !s_font )
-            s_font = osgText::readFontFile( "arialbd.ttf" );
-        t->setFont( s_font );
+        
+        t->setFont( osgEarth::Registry::instance()->getDefaultFont() );
 
         t->setBackdropType( osgText::Text::OUTLINE );
         t->setColor( osg::Vec4(1,1,1,1) );

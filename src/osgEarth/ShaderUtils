@@ -52,20 +52,11 @@ namespace osgEarth
         osg::ref_ptr<osg::Uniform> ambient; // vec4 
         osg::ref_ptr<osg::Uniform> diffuse; // vec4
         osg::ref_ptr<osg::Uniform> specular; //vec4
+
+        // GLSL strings
+        static std::string glslDefinition();
     };
-        
 
-#if 0
-    // gl_FrontLightModelProduct, gl_BackLightModelProduct
-    struct osg_LightModelProducts
-    {
-        osg_LightModelProducts(int id);
-
-        void setUniformsFromOsgLightModel(const osg::LightModel* model);
-
-        osg::ref_ptr<osg::Uniform> sceneColor; // vec4
-    };
-#endif
 
     struct osg_LightSourceParameters 
     { 
@@ -80,9 +71,9 @@ namespace osgEarth
         osg::ref_ptr<osg::Uniform>  position; // vec4
         osg::ref_ptr<osg::Uniform>  halfVector; // vec4 
         osg::ref_ptr<osg::Uniform>  spotDirection; // vec3 
-        osg::ref_ptr<osg::Uniform> spotExponent; // float
-        osg::ref_ptr<osg::Uniform> spotCutoff; // float
-        osg::ref_ptr<osg::Uniform> spotCosCutoff; // float
+        osg::ref_ptr<osg::Uniform>  spotExponent; // float
+        osg::ref_ptr<osg::Uniform>  spotCutoff; // float
+        osg::ref_ptr<osg::Uniform>  spotCosCutoff; // float
         osg::ref_ptr<osg::Uniform>  constantAttenuation; // float 
         osg::ref_ptr<osg::Uniform>  linearAttenuation; // float
         osg::ref_ptr<osg::Uniform>  quadraticAttenuation; // float
@@ -90,10 +81,18 @@ namespace osgEarth
         //just store the light product in here
         osg_LightProducts _frontLightProduct;
 
-#if 0
-        //and the light model product too..
-        osg_LightModelProducts _frontLightModelProduct;
-#endif
+        // GLSL strings
+        static std::string glslDefinition();
+    };
+
+    /**
+     * Preprocesses GLES shader source to include our osg_LightProducts and osg_LightSourceParameters
+     * definitions and uniforms.
+     */
+    class OSGEARTH_EXPORT ShaderPreProcessor
+    {
+    public:
+        static void run(osg::Shader* shader);
     };
 
     /**

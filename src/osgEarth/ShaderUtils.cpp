@@ -122,6 +122,98 @@ namespace
 
 //------------------------------------------------------------------------
 
+namespace State_Utils
+{
+    // Code borrowed from osg::State.cpp
+    bool replace(std::string& str, const std::string& original_phrase, const std::string& new_phrase)
+    {
+        bool replacedStr = false;
+        std::string::size_type pos = 0;
+        while((pos=str.find(original_phrase, pos))!=std::string::npos)
+        {
+            std::string::size_type endOfPhrasePos = pos+original_phrase.size();
+            if (endOfPhrasePos<str.size())
+            {
+                char c = str[endOfPhrasePos];
+                if ((c>='0' && c<='9') ||
+                    (c>='a' && c<='z') ||
+                    (c>='A' && c<='Z'))
+                {
+                    pos = endOfPhrasePos;
+                    continue;
+                }
+            }
+
+            replacedStr = true;
+            str.replace(pos, original_phrase.size(), new_phrase);
+        }
+        return replacedStr;
+    }
+
+    void replaceAndInsertDeclaration(std::string& source, std::string::size_type declPos, const std::string& originalStr, const std::string& newStr, const std::string& declarationPrefix, const std::string& declarationSuffix)
+    {
+        if (replace(source, originalStr, newStr))
+        {
+            source.insert(declPos, declarationPrefix + newStr + declarationSuffix + std::string(";\n"));
+        }
+    }
+}
+
+void
+ShaderPreProcessor::run(osg::Shader* shader)
+{
+#if !defined(OSG_GL_FIXED_FUNCTION_AVAILABLE)
+
+    // only runs for non-FFP.
+
+    if ( shader )
+    {
+        std::string source = shader->getShaderSource();
+
+        // find the first legal insertion point for replacement declarations. GLSL requires that nothing
+        // precede a "#verson" compiler directive, so we must insert new declarations after it.
+        std::string::size_type declPos = source.rfind( "#version " );
+        if ( declPos != std::string::npos )
+        {
+            // found the string, now find the next linefeed and set the insertion point after it.
+            declPos = source.find( '\n', declPos );
+            declPos = declPos != std::string::npos ? declPos+1 : source.length();
+        }
+        else
+        {
+            declPos = 0;
+        }
+
+        int maxLights = Registry::capabilities().getMaxLights();
+
+
+        State_Utils::replaceAndInsertDeclaration(
+            source, declPos, 
+            "gl_LightSource", "osg_LightSource", 
+            Stringify() 
+                << osg_LightSourceParameters::glslDefinition() << "\n"
+                << "uniform osg_LightSourceParameters ",
+            Stringify()
+                << "[" << maxLights << "]" );
+
+
+        State_Utils::replaceAndInsertDeclaration(
+            source, declPos,
+            "gl_FrontLightProduct", "osg_FrontLightProduct",
+            Stringify()
+                << osg_LightProducts::glslDefinition() << "\n"
+                << "uniform osg_LightProducts ",
+            Stringify()
+                << "[" << maxLights << "]" );
+
+        shader->setShaderSource( source );
+    }
+
+#endif
+}
+
+//------------------------------------------------------------------------
+
 osg_LightProducts::osg_LightProducts(int id)
 {
     std::stringstream uniNameStream;
@@ -132,6 +224,28 @@ osg_LightProducts::osg_LightProducts(int id)
     diffuse = new osg::Uniform(osg::Uniform::FLOAT_VEC4, uniName+".diffuse"); // vec4
     specular = new osg::Uniform(osg::Uniform::FLOAT_VEC4, uniName+".specular"); // vec4
 }
+
+std::string 
+osg_LightProducts::glslDefinition()
+{
+    return
+        "struct osg_LightSourceParameters {"
+        "    vec4   ambient;"
+        "    vec4   diffuse;"
+        "    vec4   specular;"
+        "    vec4   position;"
+        "    vec4   halfVector;"
+        "    vec3   spotDirection;"
+        "    float  spotExponent;"
+        "    float  spotCutoff;"
+        "    float  spotCosCutoff;"
+        "    float  constantAttenuation;"
+        "    float  linearAttenuation;"
+        "    float  quadraticAttenuation;"
+        "};";
+}
+
+//------------------------------------------------------------------------
 
 osg_LightSourceParameters::osg_LightSourceParameters(int id)
     : _frontLightProduct(id)
@@ -224,18 +338,16 @@ void osg_LightSourceParameters::applyState(osg::StateSet* stateset)
     stateset->addUniform(_frontLightProduct.specular.get());
 }
 
-//------------------------------------------------------------------------
-
-#if 0
-osg_LightModelProducts::osg_LightModelProducts(int id)
+std::string
+osg_LightSourceParameters::glslDefinition()
 {
-    std::stringstream uniNameStream;
-    uniNameStream << "osg_FrontLightModelProduct[" << id << "]";
-    std::string uniName = uniNameStream.str();
-
-    sceneColor = new osg::Uniform(osg::Uniform::FLOAT_VEC4, uniName+".sceneColor"); // vec4
+    return
+        "struct osg_LightProducts {"
+        "    vec4  ambient;"
+        "    vec4  diffuse;"
+        "    vec4  specular;"
+        "};";
 }
-#endif
 
 //------------------------------------------------------------------------
 

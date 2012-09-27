@@ -21,6 +21,7 @@
 #include <osgEarth/Registry>
 #include <osgEarth/Capabilities>
 #include <osgEarth/ShaderFactory>
+#include <osgEarth/ShaderUtils>
 #include <osg/Shader>
 #include <osg/Program>
 #include <osg/State>
@@ -203,6 +204,10 @@ VirtualProgram::setShader(osg::Shader*                       shader,
         OE_WARN << LC << "setShader called but the shader name is not set" << std::endl;
         return 0L;
     }
+
+    // pre-processes the shader's source to include GLES uniforms as necessary
+    // (no-op on non-GLES)
+    ShaderPreProcessor::run( shader );
 
     _shaderMap[shader->getName()] = ShaderEntry(shader, ov);
 

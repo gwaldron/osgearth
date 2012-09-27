@@ -224,6 +224,21 @@ void osg_LightSourceParameters::applyState(osg::StateSet* stateset)
     stateset->addUniform(_frontLightProduct.specular.get());
 }
 
+//------------------------------------------------------------------------
+
+#if 0
+osg_LightModelProducts::osg_LightModelProducts(int id)
+{
+    std::stringstream uniNameStream;
+    uniNameStream << "osg_FrontLightModelProduct[" << id << "]";
+    std::string uniName = uniNameStream.str();
+
+    sceneColor = new osg::Uniform(osg::Uniform::FLOAT_VEC4, uniName+".sceneColor"); // vec4
+}
+#endif
+
+//------------------------------------------------------------------------
+
 
 #undef LC
 #define LC "[UpdateLightingUniformHelper] "

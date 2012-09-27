@@ -121,13 +121,16 @@ FeatureNode::init()
             {
                 this->addChild( _attachPoint );
             }
-        }
 
-        // workaround until we can auto-clamp extruded/sub'd geometries.
-        if ( autoClamping )
-        {
-            applyStyle( *_feature->style() );
-            clampMesh( getMapNode()->getTerrain()->getGraph() );
+            // workaround until we can auto-clamp extruded/sub'd geometries.
+            if ( autoClamping )
+            {
+                applyStyle( *_feature->style() );
+
+                setLightingIfNotSet( _feature->style()->has<ExtrusionSymbol>() );
+
+                clampMesh( getMapNode()->getTerrain()->getGraph() );
+            }
         }
     }
 }
@@ -207,7 +210,7 @@ OSGEARTH_REGISTER_ANNOTATION( feature, osgEarth::Annotation::FeatureNode );
 FeatureNode::FeatureNode(MapNode*              mapNode,
                          const Config&         conf,
                          const osgDB::Options* dbOptions ) :
-AnnotationNode( mapNode )
+AnnotationNode( mapNode, conf )
 {
     osg::ref_ptr<Geometry> geom;
     if ( conf.hasChild("geometry") )

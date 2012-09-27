@@ -63,6 +63,8 @@ _draped      ( draped )
 
         // this will activate the clamping logic
         applyStyle( style );
+
+        setLightingIfNotSet( style.has<ExtrusionSymbol>() );
     }
 }
 
@@ -99,7 +101,7 @@ OSGEARTH_REGISTER_ANNOTATION( local_geometry, osgEarth::Annotation::LocalGeometr
 LocalGeometryNode::LocalGeometryNode(MapNode*              mapNode,
                                      const Config&         conf,
                                      const osgDB::Options* dbOptions) :
-LocalizedNode( mapNode )
+LocalizedNode( mapNode, conf )
 {
     if ( conf.hasChild("geometry") )
     {

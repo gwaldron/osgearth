@@ -118,6 +118,8 @@ LabelNode::init()
     AnnotationUtils::installAnnotationProgram( stateSet );
 
     applyStyle( _style );
+
+    setLightingIfNotSet( false );
 }
 
 void

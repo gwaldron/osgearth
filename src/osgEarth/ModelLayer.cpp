@@ -195,6 +195,12 @@ ModelLayer::createSceneGraph(const Map*            map,
                 ss->setRenderBinDetails( 99999, "RenderBin" ); //TODO: configure this bin ...
             }
 
+            if ( Registry::capabilities().supportsGLSL() )
+            {
+                // install a callback that keeps the shader uniforms up to date
+                node->addCullCallback( new UpdateLightingUniformsHelper() );
+            }
+
             _modelSource->sync( _modelSourceRev );
 
             // save an observer reference to the node so we can change the visibility/lighting/etc.
@@ -253,14 +259,6 @@ ModelLayer::setLightingEnabled( bool value )
                 (osg::StateAttribute::OFF | osg::StateAttribute::PROTECTED) );
         }
     }
-
-    //if ( _node.valid() )
-    //{
-    //    _node->getOrCreateStateSet()->setMode( 
-    //        GL_LIGHTING, value ? osg::StateAttribute::ON : 
-    //        (osg::StateAttribute::OFF | osg::StateAttribute::PROTECTED) );
-
-    //}
 }
 
 bool

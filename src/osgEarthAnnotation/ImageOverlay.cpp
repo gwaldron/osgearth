@@ -56,7 +56,7 @@ namespace
 OSGEARTH_REGISTER_ANNOTATION( imageoverlay, osgEarth::Annotation::ImageOverlay );
 
 ImageOverlay::ImageOverlay(MapNode* mapNode, const Config& conf, const osgDB::Options* dbOptions) :
-AnnotationNode(mapNode),
+AnnotationNode(mapNode, conf),
 _lowerLeft    (10, 10),
 _lowerRight   (20, 10),
 _upperRight   (20, 20),
@@ -305,6 +305,7 @@ ImageOverlay::init()
         Style style;
         style.getOrCreate<AltitudeSymbol>()->clamping() = AltitudeSymbol::CLAMP_RELATIVE_TO_TERRAIN;
         applyStyle( style );
+        setLightingIfNotSet( false );
         clampMesh( getMapNode()->getTerrain()->getGraph() );
     }
 }

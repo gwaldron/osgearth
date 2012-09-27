@@ -63,9 +63,48 @@ _activeDs   ( 0L )
     //      Each subclass will be separately responsible at ctor time.
 }
 
+AnnotationNode::AnnotationNode(MapNode* mapNode, const Config& conf) :
+_mapNode    ( mapNode ),
+_dynamic    ( false ),
+_autoclamp  ( false ),
+_depthAdj   ( false ),
+_activeDs   ( 0L )
+{
+    if ( conf.hasValue("lighting") )
+    {
+        bool lighting = conf.value<bool>("lighting", false);
+        setLightingIfNotSet( lighting );
+    }
+
+    if ( conf.hasValue("backface_culling") )
+    {
+        bool culling = conf.value<bool>("backface_culling", false);
+        getOrCreateStateSet()->setMode( GL_CULL_FACE, (culling?1:0) | osg::StateAttribute::OVERRIDE );
+    }
+
+    if ( conf.hasValue("blending") )
+    {
+        bool blending = conf.value<bool>("blending", false);
+        getOrCreateStateSet()->setMode( GL_BLEND, (blending?1:0) | osg::StateAttribute::OVERRIDE );
+    }
+}
+
 AnnotationNode::~AnnotationNode()
 {
     setMapNode( 0L );
+}
+
+void
+AnnotationNode::setLightingIfNotSet( bool lighting )
+{
+    osg::StateSet* ss = this->getOrCreateStateSet();
+
+    if ( ss->getMode(GL_LIGHTING) == osg::StateAttribute::INHERIT )
+    {
+        this->getOrCreateStateSet()->setMode(
+            GL_LIGHTING,
+            (lighting ? 1 : 0) | osg::StateAttribute::OVERRIDE );
+    }
 }
 
 void
@@ -327,7 +366,4 @@ AnnotationNode::applyStyle( const Style& style)
         _altitude = style.get<AltitudeSymbol>();
         setAutoClamp( true );
     }
-
-    bool enableLighting = style.has<ExtrusionSymbol>();
-    this->getOrCreateStateSet()->setMode( GL_LIGHTING, enableLighting );
 }

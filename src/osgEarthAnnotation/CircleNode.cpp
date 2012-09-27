@@ -125,6 +125,8 @@ CircleNode::rebuild()
         }
 
         applyStyle( _style );
+
+        setLightingIfNotSet( false );
     }
 
     setDecoration( currentDecoration );
@@ -139,7 +141,7 @@ OSGEARTH_REGISTER_ANNOTATION( circle, osgEarth::Annotation::CircleNode );
 CircleNode::CircleNode(MapNode*              mapNode,
                        const Config&         conf,
                        const osgDB::Options* dbOptions) :
-LocalizedNode( mapNode ),
+LocalizedNode( mapNode, conf ),
 _radius      ( 1.0, Units::KILOMETERS ),
 _draped      ( false ),
 _numSegments ( 0 )

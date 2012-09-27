@@ -44,14 +44,9 @@ namespace osgEarth { namespace Annotation
          * @param is2D    Whether to autotransform the node to face/scale to the screen
          */
         LocalizedNode( 
-            MapNode*          mapNode  =0L,
+            MapNode*          mapNode,
             const GeoPoint&   pos      =GeoPoint::INVALID,
             bool              is2D     =false );
-
-        LocalizedNode(
-            MapNode*          mapNode,
-            const osg::Vec3d& pos,
-            bool              is2D    =false );
 
         LocalizedNode(
             MapNode*          mapNode,
@@ -133,9 +128,14 @@ namespace osgEarth { namespace Annotation
 
             
         // copy constructor
+        LocalizedNode() { }
         LocalizedNode(const LocalizedNode& rhs, const osg::CopyOp& op=osg::CopyOp::DEEP_COPY_ALL) { }
 
         bool updateTransforms(const GeoPoint& absPt, osg::Node* patch =0L);
+
+    private:
+
+        void init( MapNode* mapNode, const GeoPoint& position );
         
     };
 

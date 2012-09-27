@@ -33,6 +33,14 @@
 #define FRAGMENT_APPLY_COLORING "osgearth_frag_applyColoring"
 #define FRAGMENT_APPLY_LIGHTING "osgearth_frag_applyLighting"
 
+#ifdef OSG_GLES2_AVAILABLE
+#   define PRECISION_MEDIUMP_FLOAT "precision mediump float;"
+    static bool GLES = true;
+#else
+#   define PRECISION_MEDIUMP_FLOAT ""
+    static bool GLES = false;
+#endif
+
 using namespace osgEarth;
 using namespace osgEarth::ShaderComp;
 
@@ -59,9 +67,7 @@ ShaderFactory::createVertexShaderMain(const FunctionLocationMap& functions,
 
     std::stringstream buf;
     buf << "#version " << GLSL_VERSION_STR << "\n"
-#ifdef OSG_GLES2_AVAILABLE
-        << "precision mediump float;\n"
-#endif
+        << PRECISION_MEDIUMP_FLOAT "\n"
         << "void osgearth_vert_setupColoring(); \n";
 
     if ( useLightingShaders )
@@ -124,9 +130,7 @@ ShaderFactory::createFragmentShaderMain(const FunctionLocationMap& functions,
 
     std::stringstream buf;
     buf << "#version " << GLSL_VERSION_STR << "\n"
-#ifdef OSG_GLES2_AVAILABLE
-        << "precision mediump float;\n"
-#endif
+        << PRECISION_MEDIUMP_FLOAT << "\n"
         << "void osgearth_frag_applyColoring( inout vec4 color ); \n";
 
     if ( useLightingShaders )
@@ -189,15 +193,10 @@ ShaderFactory::createDefaultColoringVertexShader( unsigned numTexCoordSets ) con
 {
     std::stringstream buf;
 
-    buf << "#version " << GLSL_VERSION_STR << "\n";
-#ifdef OSG_GLES2_AVAILABLE
-    buf << "precision mediump float;\n";
-#endif
-    
-    //if ( numTexCoordSets > 0 )
-    //{
-    //    buf << "varying vec4 osg_TexCoord[" << numTexCoordSets << "];\n";
-    //}
+    buf << 
+        "#version " << GLSL_VERSION_STR << "\n"
+        PRECISION_MEDIUMP_FLOAT "\n";
+
     buf << "varying vec4 osg_TexCoord[" << Registry::capabilities().getMaxGPUTextureCoordSets() << "];\n";
 
     buf
@@ -232,10 +231,8 @@ ShaderFactory::createDefaultColoringFragmentShader( unsigned numTexImageUnits ) 
 {
     std::stringstream buf;
 
-    buf << "#version " << GLSL_VERSION_STR << "\n";
-#ifdef OSG_GLES2_AVAILABLE
-    buf << "precision mediump float;\n";
-#endif
+    buf << "#version " << GLSL_VERSION_STR << "\n"
+        << PRECISION_MEDIUMP_FLOAT << "\n";
     
     buf << "varying vec4 osg_FrontColor;\n";
     
@@ -276,6 +273,165 @@ ShaderFactory::createDefaultColoringFragmentShader( unsigned numTexImageUnits ) 
     return shader;
 }
 
+#if 1
+
+osg::Shader*
+ShaderFactory::createDefaultLightingVertexShader() const
+{
+    std::stringstream buf;
+
+#ifdef OSG_GLES2_AVAILABLE // GLES
+
+    buf << 
+        "#version " GLSL_VERSION_STR "\n"
+
+        "uniform bool osgearth_LightingEnabled; \n"
+        "uniform mat3 osg_NormalMatrix; \n"
+        "varying vec3 oe_lighting_normal; \n"
+
+        "void osgearth_vert_setupLighting() \n"
+        "{ \n"
+        "    if (osgearth_LightingEnabled) \n"
+        "    { \n"
+        "        oe_lighting_normal = normalize(osg_NormalMatrix * gl_Normal); \n"
+        "    } \n"
+        "} \n";
+
+#else // OPENGL
+
+    buf << 
+        "#version " GLSL_VERSION_STR "\n"
+
+        "uniform bool osgearth_LightingEnabled; \n"
+        "varying vec3 oe_lighting_normal; \n"
+
+        "void osgearth_vert_setupLighting() \n"
+        "{ \n"
+        "    if (osgearth_LightingEnabled) \n"
+        "    { \n"
+        "        oe_lighting_normal = normalize(gl_NormalMatrix * gl_Normal); \n"
+        "    } \n"
+        "} \n";
+
+#endif 
+
+    std::string str;
+    str = buf.str();
+
+    osg::Shader* shader = new osg::Shader( osg::Shader::VERTEX, str );
+    shader->setName( VERTEX_SETUP_LIGHTING );
+    return shader;
+}
+
+
+osg::Shader*
+ShaderFactory::createDefaultLightingFragmentShader() const
+{
+    std::stringstream buf;
+
+#ifdef OSG_GLES2_AVAILABLE
+
+    buf << 
+        "#version " GLSL_VERSION_STR "\n"
+        PRECISION_MEDIUMP_FLOAT "\n"
+        
+        //add lightsource typedef and uniform array
+        "struct osg_LightSourceParameters {"
+        "    vec4   ambient;"
+        "    vec4   diffuse;"
+        "    vec4   specular;"
+        "    vec4   position;"
+        "    vec4   halfVector;"
+        "    vec3   spotDirection;" 
+        "    float  spotExponent;"
+        "    float  spotCutoff;"
+        "    float  spotCosCutoff;" 
+        "    float  constantAttenuation;"
+        "    float  linearAttenuation;"
+        "    float  quadraticAttenuation;" 
+        "};\n"
+        "uniform osg_LightSourceParameters osg_LightSource[" << maxLights << "];\n"
+        
+        "struct  osg_LightProducts {"
+        "    vec4  ambient;"
+        "    vec4  diffuse;"
+        "    vec4  specular;"
+        "};\n"
+        "uniform osg_LightProducts osg_FrontLightProduct[" << maxLights << "];\n"
+
+        //<< "struct osg_LightModelProducs {"
+        //<< "    vec4 sceneColor;"
+        //<< "};\n"
+        //<< "uniform osg_LightModelProducts osg_FrontLightModelProduct; \n"
+
+        "uniform bool osgearth_LightingEnabled; \n"
+        "varying vec3 oe_lighting_normal; \n"
+        "varying vec3 oe_lighting_vertex_eye; \n"
+
+        "void osgearth_frag_applyLighting( inout vec4 color ) \n"
+        "{ \n"
+        "    if ( osgearth_LightingEnabled ) \n"
+        "    { \n"
+                "    float alpha = color.a; \n"
+                "    float FrontMaterial_shininess = 10.0; \n" // just set a constant
+                "    vec3 n = normalize( oe_lighting_normal ); \n"
+                "    float NdotL = dot( n, normalize(osg_LightSource[0].position.xyz) ); \n"
+                "    NdotL = max( 0.0, NdotL ); \n"
+                "    float NdotHV = dot( n, osg_LightSource[0].halfVector.xyz ); \n"
+                "    NdotHV = max( 0.0, NdotHV ); \n"
+                "    vec4 adjustment = \n"
+                //"        osg_FrontLightModelProduct.sceneColor + \n" // dont' have this in GLES adapter yet
+                "        osg_FrontLightProduct[0].ambient + \n"
+                "        osg_FrontLightProduct[0].diffuse * NdotL; \n"
+                "    color *= clamp(adjustment, 0.0, 1.0); \n"
+                "    if ( NdotL * NdotHV > 0.0 ) \n"
+                "        color += osg_FrontLightProduct[0].specular * \n"
+                "                 pow( NdotHV, FrontMaterial_shininess ); \n"
+                "    color.a = alpha; \n"
+        "    } \n"
+        "} \n";
+
+#else // normal GLSL:
+
+    buf << "#version " << GLSL_VERSION_STR << "\n"
+
+        << "uniform bool osgearth_LightingEnabled; \n"
+        << "varying vec3 oe_lighting_normal; \n"
+
+        << "void osgearth_frag_applyLighting( inout vec4 color ) \n"
+        << "{ \n"
+        << "    if ( osgearth_LightingEnabled ) \n"
+        << "    { \n"
+                "    float alpha = color.a; \n"
+                "    vec3 n = normalize( oe_lighting_normal ); \n"
+                "    float NdotL = dot( n, normalize(gl_LightSource[0].position.xyz) ); \n"
+                "    NdotL = max( 0.0, NdotL ); \n"
+                "    float NdotHV = dot( n, gl_LightSource[0].halfVector.xyz ); \n"
+                "    NdotHV = max( 0.0, NdotHV ); \n"
+                "    vec4 adjustment = \n"
+                "        gl_FrontLightModelProduct.sceneColor + \n"
+                "        gl_FrontLightProduct[0].ambient + \n"
+                "        gl_FrontLightProduct[0].diffuse * NdotL; \n"
+                "    color *= clamp(adjustment, 0.0, 1.0); \n"
+                "    if ( NdotL * NdotHV > 0.0 ) \n"
+                "        color += gl_FrontLightProduct[0].specular * \n"
+                "                 pow( NdotHV, gl_FrontMaterial.shininess ); \n"
+                "    color.a = alpha; \n"
+        << "    } \n"
+        << "} \n";
+
+#endif // OSG_GLES2_AVAILABLE
+
+    std::string str;
+    str = buf.str();
+
+    osg::Shader* shader = new osg::Shader( osg::Shader::FRAGMENT, str );
+    shader->setName( FRAGMENT_APPLY_LIGHTING );
+    return shader;
+
+}
+
+#else //...................................
 
 osg::Shader*
 ShaderFactory::createDefaultLightingVertexShader() const
@@ -341,12 +497,9 @@ ShaderFactory::createDefaultLightingVertexShader() const
     << "            osg_FrontSecondaryColor.rgb = (gl_FrontLightProduct[0].specular * \n"
     << "                                          pow( NdotHV, gl_FrontMaterial.shininess )).rgb;\n"
     << "        } \n"
-
-//    << "        gl_BackColor = gl_FrontColor; \n"
-//    << "        gl_BackSecondaryColor = gl_FrontSecondaryColor; \n"
     << "    } \n"
     << "} \n";
-#else
+#else // if OSG_GLES2_AVAILABLE
     << "void osgearth_vert_setupLighting() \n"
     << "{ \n"
     << "    if (osgearth_LightingEnabled) \n"
@@ -374,8 +527,6 @@ ShaderFactory::createDefaultLightingVertexShader() const
     << "            osg_FrontSecondaryColor.rgb = (osg_FrontLightProduct[0].specular * \n"
     << "                                          pow( NdotHV, shine )).rgb;\n"
     << "        } \n"
-    //    << "        gl_BackColor = gl_FrontColor; \n"
-    //    << "        gl_BackSecondaryColor = gl_FrontSecondaryColor; \n"
     << "    } \n"
     << "} \n";
 #endif
@@ -414,7 +565,7 @@ ShaderFactory::createDefaultLightingFragmentShader() const
     shader->setName( FRAGMENT_APPLY_LIGHTING );
     return shader;
 }
-
+#endif // ........................................................
 
 osg::Shader*
 ShaderFactory::createColorFilterChainFragmentShader( const std::string& function, const ColorFilterChain& chain ) const

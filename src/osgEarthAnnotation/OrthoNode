@@ -53,15 +53,10 @@ namespace osgEarth { namespace Annotation
             MapNode*        mapNode, 
             const GeoPoint& position );
 
-        /**
-         * Constructs an ortho node that resides at an absolute position on the map
-         */
-#if 0
-        OrthoNode(
-            const SpatialReference* mapSRS, 
-            const GeoPoint&         position );
-#endif
 
+        /**
+         * dtor.
+         */
         virtual ~OrthoNode() { }
 
         /**

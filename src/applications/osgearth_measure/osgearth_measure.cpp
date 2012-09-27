@@ -24,6 +24,7 @@
 #include <osgViewer/ViewerEventHandlers>
 #include <osgEarth/MapNode>
 #include <osgEarth/XmlUtils>
+#include <osgEarth/Registry>
 #include <osgEarth/Viewpoint>
 #include <osgEarthUtil/EarthManipulator>
 #include <osgEarthUtil/AutoClipPlaneHandler>
@@ -150,7 +151,7 @@ main(int argc, char** argv)
     // Add a text label:
     grid->setControl( 0, 0, new LabelControl("Distance:") );
     LabelControl* label = new LabelControl();
-    label->setFont( osgText::readFontFile( "arialbd.ttf" ) );
+    label->setFont( osgEarth::Registry::instance()->getDefaultFont() );
     label->setFontSize( 24.0f );
     label->setHorizAlign( Control::ALIGN_LEFT );    
     label->setText("click to measure");

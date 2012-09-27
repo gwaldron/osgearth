@@ -23,6 +23,7 @@
 #include <osgDB/ReadFile>
 #include <osgGA/GUIEventHandler>
 #include <osgViewer/Viewer>
+#include <osgEarth/Registry>
 #include <osgEarthUtil/EarthManipulator>
 #include <osgEarthUtil/Controls>
 #include <osgEarthSymbology/Color>
@@ -115,7 +116,7 @@ createControls( ControlCanvas* cs )
 
         // Add a text label:
         LabelControl* label = new LabelControl( "osgEarth Controls Toolkit" );
-        label->setFont( osgText::readFontFile( "arialbd.ttf" ) );
+        label->setFont( osgEarth::Registry::instance()->getDefaultFont() );
         label->setFontSize( 24.0f );
         label->setHorizAlign( Control::ALIGN_CENTER );
         label->setMargin( 5 );

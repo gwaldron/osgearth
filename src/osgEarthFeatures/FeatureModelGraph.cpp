@@ -124,9 +124,16 @@ struct osgEarthFeatureModelPseudoLoader : public osgDB::ReaderWriter
 
         osg::ref_ptr<FeatureModelGraph> graph = getGraph(uid);
         if ( graph.valid() )
-            return ReadResult( graph->load( lod, x, y, uri ) );
-        else
-            return ReadResult::ERROR_IN_READING_FILE;
+        {
+            // Take a reference on the map to avoid map destruction during thread operation
+            osg::ref_ptr<const Map> map = graph->getSession()->getMap();
+            if (map.valid() == true)
+            {
+                return ReadResult( graph->load( lod, x, y, uri ) );
+            }
+        }
+
+        return ReadResult::ERROR_IN_READING_FILE;
     }
 
     static UID registerGraph( FeatureModelGraph* graph )

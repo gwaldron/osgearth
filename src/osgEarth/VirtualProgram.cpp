@@ -410,7 +410,7 @@ namespace
 
                 else
                 {
-                    body << line << "\n";
+                    body << (*line_iter) << "\n";
                 }
             }
         }

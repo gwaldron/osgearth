@@ -381,6 +381,7 @@ AnnotationGraphControlFactory::create(osg::Node*       graph,
                                       osgViewer::View* view) const
 {
     AnnoControlBuilder builder( view );
+	builder.setNodeMaskOverride(~0);
     if ( graph )
         graph->accept( builder );
 

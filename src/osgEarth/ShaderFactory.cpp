@@ -283,12 +283,12 @@ ShaderFactory::createDefaultLightingVertexShader() const
         "#version " GLSL_VERSION_STR "\n"
         PRECISION_MEDIUMP_FLOAT "\n"
 
-        "uniform bool osgearth_LightingEnabled; \n"
+        "uniform bool oe_mode_GL_LIGHTING; \n"
         "varying vec3 oe_lighting_normal; \n"
 
         "void osgearth_vert_setupLighting() \n"
         "{ \n"
-        "    if (osgearth_LightingEnabled) \n"
+        "    if (oe_mode_GL_LIGHTING) \n"
         "    { \n"
         "        oe_lighting_normal = normalize(gl_NormalMatrix * gl_Normal); \n"
         "    } \n"
@@ -308,12 +308,12 @@ ShaderFactory::createDefaultLightingFragmentShader() const
         "#version " GLSL_VERSION_STR "\n"
         PRECISION_MEDIUMP_FLOAT "\n"
 
-        "uniform bool osgearth_LightingEnabled; \n"
+        "uniform bool oe_mode_GL_LIGHTING; \n"
         "varying vec3 oe_lighting_normal; \n"
 
          "void osgearth_frag_applyLighting( inout vec4 color ) \n"
          "{ \n"
-         "    if ( osgearth_LightingEnabled ) \n"
+         "    if ( oe_mode_GL_LIGHTING ) \n"
          "    { \n"
          "        float alpha = color.a; \n"
          "        vec3 n = normalize( oe_lighting_normal ); \n"
@@ -382,12 +382,12 @@ ShaderFactory::createDefaultLightingVertexShader() const
     << "varying vec4 osg_FrontColor;\n"
     << "varying vec4 osg_FrontSecondaryColor;\n"
     
-    << "uniform bool osgearth_LightingEnabled; \n"
+    << "uniform bool oe_mode_GL_LIGHTING; \n"
     
 #ifndef OSG_GLES2_AVAILABLE
     << "void osgearth_vert_setupLighting() \n"
     << "{ \n"
-    << "    if (osgearth_LightingEnabled) \n"
+    << "    if (oe_mode_GL_LIGHTING) \n"
     << "    { \n"
     << "        vec3 normal = gl_NormalMatrix * gl_Normal; \n"
     << "        float NdotL = dot( normal, normalize(gl_LightSource[0].position.xyz) ); \n"
@@ -412,7 +412,7 @@ ShaderFactory::createDefaultLightingVertexShader() const
 #else // if OSG_GLES2_AVAILABLE
     << "void osgearth_vert_setupLighting() \n"
     << "{ \n"
-    << "    if (osgearth_LightingEnabled) \n"
+    << "    if (oe_mode_GL_LIGHTING) \n"
     << "    { \n"
     << "        float shine = 10.0;\n"
     << "        vec4 lightModelAmbi = vec4(0.1,0.1,0.1,1.0);\n"
@@ -460,10 +460,10 @@ ShaderFactory::createDefaultLightingFragmentShader() const
     << "varying vec4 osg_FrontColor;\n"
     << "varying vec4 osg_FrontSecondaryColor;\n"
     
-    << "uniform bool osgearth_LightingEnabled; \n"
+    << "uniform bool oe_mode_GL_LIGHTING; \n"
     << "void osgearth_frag_applyLighting( inout vec4 color ) \n"
     << "{ \n"
-    << "    if ( osgearth_LightingEnabled ) \n"
+    << "    if ( oe_mode_GL_LIGHTING ) \n"
     << "    { \n"
     << "        float alpha = color.a; \n"
     << "        color = (color * osg_FrontColor) + osg_FrontSecondaryColor; \n"
@@ -510,36 +510,28 @@ ShaderFactory::createColorFilterChainFragmentShader( const std::string& function
 }
 
 
-//--------------------------------------------------------------------------
+osg::Uniform*
+ShaderFactory::getUniformForGLMode(osg::StateAttribute::GLMode      mode,
+                                   osg::StateAttribute::GLModeValue value)
+{
+    if ( !_glLightOn.valid() )
+    {
+        Threading::ScopedMutexLock lock( _modeUniformMutex );
+        if ( !_glLightOn.valid() )
+        {
+            _glLightOn = new osg::Uniform(osg::Uniform::BOOL, "oe_mode_GL_LIGHTING");
+            _glLightOn->set( true );
 
-#if 0
-// This is just a holding pen for various stuff
+            _glLightOff = new osg::Uniform(osg::Uniform::BOOL, "oe_mode_GL_LIGHTING");
+            _glLightOff->set( false );
+        }
+    }
 
-static char s_PerFragmentLighting_VertexShaderSource[] =
-    "varying vec3 Normal; \n"
-    "varying vec3 Position; \n"
-    "void osgearth_vert_setupLighting() \n"
-    "{ \n"
-    "    Normal = normal; \n"
-    "    Position = position; \n"
-    "} \n";
+    if ( mode == GL_LIGHTING )
+    {
+        return (value & osg::StateAttribute::ON) != 0 ? _glLightOn.get() : _glLightOff.get();
+    }
 
-static char s_PerFragmentDirectionalLighting_FragmentShaderSource[] =
-    "varying vec3 Normal; \n"
-    "varying vec3 Position; \n"
-    "void osgearth_frag_applyLighting( inout vec4 color ) \n"
-    "{ \n"
-    "    vec3 n = normalize( Normal ); \n"
-    "    float NdotL = dot( n, normalize(gl_LightSource[0].position.xyz) ); \n"
-    "    NdotL = max( 0.0, NdotL ); \n"
-    "    float NdotHV = dot( n, gl_LightSource[0].halfVector.xyz ); \n"
-    "    NdotHV = max( 0.0, NdotHV ); \n"
-    "    color *= gl_FrontLightModelProduct.sceneColor + \n"
-    "             gl_FrontLightProduct[0].ambient + \n"
-    "             gl_FrontLightProduct[0].diffuse * NdotL; \n"
-    "    if ( NdotL * NdotHV > 0.0 ) \n"
-    "        color += gl_FrontLightProduct[0].specular * \n"
-    "                 pow( NdotHV, gl_FrontMaterial.shininess ); \n"
-    "} \n";
-
-#endif
+    // unsupported.
+    return 0L;
+}

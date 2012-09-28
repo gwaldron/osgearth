@@ -81,8 +81,20 @@ namespace osgEarth
          */
         virtual osg::Shader* createColorFilterChainFragmentShader( const std::string& function, const ColorFilterChain& chain ) const;
 
+        /**
+         * Gets a uniform corresponding to the given mode and value
+         */
+        virtual osg::Uniform* getUniformForGLMode(
+            osg::StateAttribute::GLMode      mode,
+            osg::StateAttribute::GLModeValue value );
+
         /** dtor */
         virtual ~ShaderFactory() { }
+
+    private:
+        osg::ref_ptr<osg::Uniform> _glLightOn;
+        osg::ref_ptr<osg::Uniform> _glLightOff;
+        mutable Threading::Mutex   _modeUniformMutex;
     };
 
 

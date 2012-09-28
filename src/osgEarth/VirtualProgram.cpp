@@ -476,9 +476,12 @@ VirtualProgram::addShadersToProgram(const ShaderVector&      shaders,
         program->addShader( new osg::Shader(osg::Shader::VERTEX, vertBodyText) );
         program->addShader( new osg::Shader(osg::Shader::FRAGMENT, fragBodyText) );
 
-        OE_TEST << LC 
-            << "\nMERGED VERTEX SHADER: \n\n" << vertBodyText << "\n\n"
-            << "MERGED FRAGMENT SHADER: \n\n" << fragBodyText << "\n" << std::endl;
+        if ( s_dumpShaders )
+        {
+            OE_NOTICE << LC 
+                << "\nMERGED VERTEX SHADER: \n\n" << vertBodyText << "\n\n"
+                << "MERGED FRAGMENT SHADER: \n\n" << fragBodyText << "\n" << std::endl;
+        }
     }
     else
     {

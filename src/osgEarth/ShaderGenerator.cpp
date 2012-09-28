@@ -19,6 +19,7 @@
 
 #include <osgEarth/ShaderGenerator>
 #include <osgEarth/VirtualProgram>
+#include <osgEarth/ShaderFactory>
 #include <osgEarth/StringUtils>
 #include <osgEarth/Registry>
 #include <osgEarth/Capabilities>
@@ -246,9 +247,9 @@ ShaderGenerator::generate( osg::StateSet* ss, osg::ref_ptr<osg::StateSet>& repla
     // check whether the lighting state has changed.
     if ( ss->getMode(GL_LIGHTING) != osg::StateAttribute::INHERIT )
     {
+        ShaderFactory* sf = Registry::instance()->getShaderFactory();
         osg::StateAttribute::GLModeValue value = state->getMode(GL_LIGHTING); // from the state, not the ss.
-        osg::Uniform* lighting = newStateSet->getOrCreateUniform( "osgearth_LightingEnabled", osg::Uniform::BOOL );
-        lighting->set( (value & osg::StateAttribute::ON) != 0 );
+        newStateSet->addUniform( sf->getUniformForGLMode(GL_LIGHTING, value) );
     }
 
     // if the stateset changes any texture attributes, we need a new virtual program:
@@ -370,10 +371,6 @@ ShaderGenerator::generate( osg::StateSet* ss, osg::ref_ptr<osg::StateSet>& repla
 
         // optimize sharing of VPs.
         newStateSet->setAttributeAndModes( vp.get(), osg::StateAttribute::ON );
-
-        //osg::ref_ptr<osg::StateAttribute> sharedVP;
-        //_stateSetCache->share( vp.get(), sharedVP );
-        //newStateSet->setAttributeAndModes( sharedVP.get(), osg::StateAttribute::ON );
     }
 
     // pop the current stateset off the stack so we can change it:

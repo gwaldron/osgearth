@@ -374,8 +374,8 @@ _useUpdateTrav  ( useUpdateTrav )
         _osgLightSourceParameters.push_back(osg_LightSourceParameters(i));
     }
 
-    _lightingEnabledUniform = new osg::Uniform( osg::Uniform::BOOL, "osgearth_LightingEnabled" );
-    _lightEnabledUniform    = new osg::Uniform( osg::Uniform::INT,  "osgearth_LightEnabled", _maxLights );
+    _lightingEnabledUniform = new osg::Uniform( osg::Uniform::BOOL, "oe_mode_GL_LIGHTING" );
+    _lightEnabledUniform    = new osg::Uniform( osg::Uniform::INT,  "oe_mode_GL_LIGHT", _maxLights );
 
     if ( !_useUpdateTrav )
     {

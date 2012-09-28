@@ -175,8 +175,8 @@ public:
     osgEarth::Util::SkyNode* sky = new osgEarth::Util::SkyNode( mapNode->getMap() );
     sky->setAmbientBrightness( ambientBrightness );
     sky->setDateTime( 1984, 11, 8, hours );
-    sky->attach( _viewer, 0 );
-    root->addChild( sky );
+    //sky->attach( _viewer, 0 );
+    //root->addChild( sky );
     
     
     //for some reason we have to do this as global stateset doesn't
@@ -185,7 +185,7 @@ public:
     
     
     //add model
-     unsigned int numObjects = 2;
+    /*unsigned int numObjects = 2;
     osg::Group* treeGroup = new osg::Group();
     root->addChild(treeGroup);
     osg::Node* tree = osgDB::readNodeFile("./data/boxman.osg");         
@@ -212,16 +212,16 @@ public:
         locator->addChild( mt );
         treeGroup->addChild( locator );
         mapNode->getTerrain()->addTerrainCallback( new ClampObjectLocatorCallback(locator) );        
-    }    
+    }*/    
     
     //manip->setHomeViewpoint(Viewpoint( "Mt Rainier",        osg::Vec3d(    centerLon,   centerLat, 0.0 ), 0.0, -90, 45000 ));
     
     //attach a UpdateLightingUniformsHelper to the model
     UpdateLightingUniformsHelper* updateLightInfo = new UpdateLightingUniformsHelper();
-    treeGroup->setCullCallback(updateLightInfo);
+    //treeGroup->setCullCallback(updateLightInfo);
     
     osgUtil::GLES2ShaderGenVisitor shaderGen;
-    treeGroup->accept(shaderGen);
+    //treeGroup->accept(shaderGen);
     
     _viewer->setSceneData( root );
 }
@@ -250,10 +250,6 @@ public:
     //create the viewer
 	_viewer = new osgViewer::Viewer();
     
-    //_viewer->setThreadingModel(osgViewer::ViewerBase::SingleThreaded);
-    _viewer->getDatabasePager()->setTargetMaximumNumberOfPageLOD(0);
-    _viewer->getDatabasePager()->setUnrefImageDataAfterApplyPolicy(true,true);
-    
 	// Setup the traits parameters
 	traits->x = 0;
 	traits->y = 0;
@@ -263,7 +259,7 @@ public:
 	traits->alpha = 8;
     //traits->samples = 4;
     //traits->sampleBuffers = 2;
-	//traits->stencil = 1;
+	traits->stencil = 1;
 	traits->windowDecoration = false;
 	traits->doubleBuffer = true;
 	traits->sharedContext = 0;
@@ -281,8 +277,9 @@ public:
     }
     
     _viewer->getCamera()->setViewport(new osg::Viewport(0, 0, traits->width, traits->height));
-    _viewer->getCamera()->setClearMask(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+    _viewer->getCamera()->setClearMask(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
     _viewer->getCamera()->setClearColor(osg::Vec4(1.0f,0.0f,0.0f,0.0f));
+    _viewer->getCamera()->setClearStencil(0);
     _viewer->getCamera()->setProjectionMatrixAsPerspective(45.0f,(float)w/h,
                                                            0.1f, 10000.0f);
 
@@ -293,9 +290,15 @@ public:
     // configure the near/far so we don't clip things that are up close
     _viewer->getCamera()->setNearFarRatio(0.00002);
     
+    //optimize viewer and db pager
+    _viewer->setThreadingModel(osgViewer::ViewerBase::SingleThreaded);
+    _viewer->getCamera()->setLODScale(_viewer->getCamera()->getLODScale()/2.0);
+    
     // osgEarth benefits from pre-compilation of GL objects in the pager. In newer versions of
     // OSG, this activates OSG's IncrementalCompileOpeartion in order to avoid frame breaks.
     _viewer->getDatabasePager()->setDoPreCompile( true );
+    _viewer->getDatabasePager()->setTargetMaximumNumberOfPageLOD(0);
+    _viewer->getDatabasePager()->setUnrefImageDataAfterApplyPolicy(true,true);
 
   
     _isAnimating=false;

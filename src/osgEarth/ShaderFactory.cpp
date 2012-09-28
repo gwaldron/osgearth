@@ -197,11 +197,11 @@ ShaderFactory::createDefaultColoringVertexShader( unsigned numTexCoordSets ) con
         "#version " << GLSL_VERSION_STR << "\n"
         PRECISION_MEDIUMP_FLOAT "\n";
 
-    buf << "varying vec4 osg_TexCoord[" << Registry::capabilities().getMaxGPUTextureCoordSets() << "];\n";
+    buf << "varying vec4 osg_TexCoord[" << Registry::capabilities().getMaxGPUTextureCoordSets() << "]; \n";
 
     buf
-        << "varying vec4 osg_FrontColor;\n"
-        << "varying vec4 osg_FrontSecondaryColor;\n"
+        << "varying vec4 osg_FrontColor; \n"
+        << "varying vec4 osg_FrontSecondaryColor; \n"
     
         << "void osgearth_vert_setupColoring() \n"
         << "{ \n"
@@ -234,11 +234,11 @@ ShaderFactory::createDefaultColoringFragmentShader( unsigned numTexImageUnits ) 
     buf << "#version " << GLSL_VERSION_STR << "\n"
         << PRECISION_MEDIUMP_FLOAT << "\n";
     
-    buf << "varying vec4 osg_FrontColor;\n";
+    buf << "varying vec4 osg_FrontColor; \n";
     
     if ( numTexImageUnits > 0 )
     {
-        buf << "varying vec4 osg_TexCoord[" << Registry::capabilities().getMaxGPUTextureCoordSets() << "];\n";
+        buf << "varying vec4 osg_TexCoord[" << Registry::capabilities().getMaxGPUTextureCoordSets() << "]; \n";
         buf << "uniform sampler2D ";
         for( unsigned i=0; i<numTexImageUnits; ++i )
         {
@@ -379,8 +379,8 @@ ShaderFactory::createDefaultLightingVertexShader() const
     
 #endif
     
-    << "varying vec4 osg_FrontColor;\n"
-    << "varying vec4 osg_FrontSecondaryColor;\n"
+    << "varying vec4 osg_FrontColor; \n"
+    << "varying vec4 osg_FrontSecondaryColor; \n"
     
     << "uniform bool oe_mode_GL_LIGHTING; \n"
     
@@ -457,8 +457,8 @@ ShaderFactory::createDefaultLightingFragmentShader() const
     << "precision mediump float;\n"
 #endif
     
-    << "varying vec4 osg_FrontColor;\n"
-    << "varying vec4 osg_FrontSecondaryColor;\n"
+    << "varying vec4 osg_FrontColor; \n"
+    << "varying vec4 osg_FrontSecondaryColor; \n"
     
     << "uniform bool oe_mode_GL_LIGHTING; \n"
     << "void osgearth_frag_applyLighting( inout vec4 color ) \n"

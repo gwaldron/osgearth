@@ -332,7 +332,7 @@ AnnotationUtils::installAnnotationProgram( osg::StateSet* stateSet )
                 "uniform bool      " << UNIFORM_IS_TEXT()   << "; \n"
                 "uniform bool      " << UNIFORM_HIGHLIGHT() << "; \n"
                 "uniform sampler2D tex0; \n"
-                "varying vec4 osg_TexCoord[" << Registry::instance()->getCapabilities().getMaxGPUTextureCoordSets() << "];\n"
+                "varying vec4 osg_TexCoord[" << Registry::instance()->getCapabilities().getMaxGPUTextureCoordSets() << "]; \n"
                 "varying vec4 osg_FrontColor; \n"
                 "void main() { \n"
                 "    vec4 color; \n"

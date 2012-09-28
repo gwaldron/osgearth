@@ -374,12 +374,14 @@ namespace
         StringVector lines;
         StringTokenizer( source, lines, "\n", "", true, false );
 
-        for( StringVector::const_iterator line = lines.begin(); line != lines.end(); ++line )
+        for( StringVector::const_iterator line_iter = lines.begin(); line_iter != lines.end(); ++line_iter )
         {
-            if ( line->size() > 0 )
+            std::string line = trim(*line_iter);
+
+            if ( line.size() > 0 )
             {
                 StringVector tokens;
-                StringTokenizer( *line, tokens, " \t", "", false, true );
+                StringTokenizer( line, tokens, " \t", "", false, true );
 
                 if (tokens[0] == "#version")
                 {
@@ -402,13 +404,13 @@ namespace
                     tokens[0] == "uniform"      ||
                     tokens[0] == "attribute")
                 {
-                    std::string& header = headers[*line];
-                    header = *line;
+                    std::string& header = headers[line];
+                    header = line;
                 }
 
                 else
                 {
-                    body << (*line) << "\n";
+                    body << line << "\n";
                 }
             }
         }

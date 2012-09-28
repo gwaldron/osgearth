@@ -27,6 +27,7 @@
 #include <osgEarth/ThreadingUtils>
 #include <osgEarth/MapInfo>
 #include <osgEarth/MapFrame>
+#include <osgEarth/Map>
 
 namespace osgEarth { namespace Features
 {
@@ -72,6 +73,11 @@ namespace osgEarth { namespace Features
          * Gets the map information backing up this session.
          */
         const MapInfo& getMapInfo() const { return _mapInfo; }
+
+        /**
+         * Gets the map related to this session. Be carefull, this is held by an osg::observer_ptr and may be NULL
+         */
+        const Map* getMap() const { return _map.get(); }
 
         /** The style sheet governing this session. */
         void setStyles( StyleSheet* value );

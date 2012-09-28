@@ -74,6 +74,11 @@ namespace osgEarth { namespace Features
         void setStyles( StyleSheet* styles );
 
         /**
+         * Session associated with this feature graph.
+         */
+        Session* getSession() { return _session; }
+
+        /**
          * Mark the feature graph dirty and in need of regeneration 
          */
         void dirty();
@@ -89,7 +94,6 @@ namespace osgEarth { namespace Features
          * Access to the features levels
          */
         const std::vector<const FeatureLevel*>& getLevels() const { return _lodmap; };
-
 
     public: // osg::Node
 

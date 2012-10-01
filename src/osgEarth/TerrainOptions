@@ -241,14 +241,14 @@ namespace osgEarth
         /**
          * The min filter to be applied to textures
          */
-        optional<osg::Texture::FilterMode> minFilter() { return _minFilter;}
-        const optional<osg::Texture::FilterMode> minFilter() const { return _minFilter;}
+        optional<osg::Texture::FilterMode>& minFilter() { return _minFilter;}
+        const optional<osg::Texture::FilterMode>& minFilter() const { return _minFilter;}
 
         /**
          * The mag filter to be applied to textures
          */
-        optional<osg::Texture::FilterMode> magFilter() { return _magFilter;}
-        const optional<osg::Texture::FilterMode> magFilter() const { return _magFilter;}
+        optional<osg::Texture::FilterMode>& magFilter() { return _magFilter;}
+        const optional<osg::Texture::FilterMode>& magFilter() const { return _magFilter;}
             
         /**
          * Whether to enable blending

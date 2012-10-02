@@ -363,7 +363,7 @@ HTTPClient::initializeImpl()
     {        
         timeout = osgEarth::as<long>(std::string(timeoutEnv), 0);
     }
-    OE_INFO << LC << "Setting timeout to " << timeout << std::endl;
+    OE_DEBUG << LC << "Setting timeout to " << timeout << std::endl;
     curl_easy_setopt( _curl_handle, CURLOPT_TIMEOUT, timeout );
 
     _initialized = true;

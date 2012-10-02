@@ -279,8 +279,10 @@ ShaderGenerator::generate( osg::StateSet* ss, osg::ref_ptr<osg::StateSet>& repla
         for( int t = 0; t < texCount; ++t )
         {
             //todo: consider TexEnv for DECAL/MODULATE
-
-            fragBody << INDENT << MEDIUMP "vec4 texel; \n";
+            if (t == 0)
+            {
+                fragBody << INDENT << MEDIUMP "vec4 texel; \n";
+            }
 
             osg::StateAttribute* tex = state->getTextureAttribute( t, osg::StateAttribute::TEXTURE );
             if ( tex )

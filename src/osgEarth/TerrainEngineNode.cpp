@@ -430,7 +430,7 @@ TerrainEngineNode::traverse( osg::NodeVisitor& nv )
         }
 
 
-        if ( Registry::instance()->getCapabilities().supportsGLSL() )
+        if ( Registry::capabilities().supportsGLSL() )
         {
             _updateLightingUniformsHelper.cullTraverse( this, &nv );
 

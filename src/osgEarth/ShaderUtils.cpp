@@ -28,6 +28,13 @@ using namespace osgEarth;
 
 namespace 
 {
+#if !defined(OSG_GL_FIXED_FUNCTION_AVAILABLE)
+    static bool s_NO_FFP = true;
+#else
+    static bool s_NO_FFP = false;
+#endif
+
+
     typedef std::list<const osg::StateSet*> StateSetStack;
 
     static osg::StateAttribute::GLModeValue 
@@ -162,11 +169,9 @@ namespace State_Utils
 void
 ShaderPreProcessor::run(osg::Shader* shader)
 {
-#if !defined(OSG_GL_FIXED_FUNCTION_AVAILABLE)
+    // only runs for non-FFP (GLES, GL3+, etc.)
 
-    // only runs for non-FFP.
-
-    if ( shader )
+    if ( s_NO_FFP && shader )
     {
         std::string source = shader->getShaderSource();
 
@@ -208,8 +213,6 @@ ShaderPreProcessor::run(osg::Shader* shader)
 
         shader->setShaderSource( source );
     }
-
-#endif
 }
 
 //------------------------------------------------------------------------

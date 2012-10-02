@@ -1080,13 +1080,24 @@ public:
     /**
     * Finds a raster band based on color interpretation 
     */
-    static GDALRasterBand* findBand(GDALDataset *ds, GDALColorInterp colorInterp)
+    static GDALRasterBand* findBandByColorInterp(GDALDataset *ds, GDALColorInterp colorInterp)
     {
         GDAL_SCOPED_LOCK;
 
         for (int i = 1; i <= ds->GetRasterCount(); ++i)
         {
             if (ds->GetRasterBand(i)->GetColorInterpretation() == colorInterp) return ds->GetRasterBand(i);
+        }
+        return 0;
+    }
+
+    static GDALRasterBand* findBandByDataType(GDALDataset *ds, GDALDataType dataType)
+    {
+        GDAL_SCOPED_LOCK;
+
+        for (int i = 1; i <= ds->GetRasterCount(); ++i)
+        {
+            if (ds->GetRasterBand(i)->GetRasterDataType() == dataType) return ds->GetRasterBand(i);
         }
         return 0;
     }
@@ -1253,14 +1264,14 @@ public:
 
 
 
-            GDALRasterBand* bandRed = findBand(_warpedDS, GCI_RedBand);
-            GDALRasterBand* bandGreen = findBand(_warpedDS, GCI_GreenBand);
-            GDALRasterBand* bandBlue = findBand(_warpedDS, GCI_BlueBand);
-            GDALRasterBand* bandAlpha = findBand(_warpedDS, GCI_AlphaBand);
+            GDALRasterBand* bandRed = findBandByColorInterp(_warpedDS, GCI_RedBand);
+            GDALRasterBand* bandGreen = findBandByColorInterp(_warpedDS, GCI_GreenBand);
+            GDALRasterBand* bandBlue = findBandByColorInterp(_warpedDS, GCI_BlueBand);
+            GDALRasterBand* bandAlpha = findBandByColorInterp(_warpedDS, GCI_AlphaBand);
 
-            GDALRasterBand* bandGray = findBand(_warpedDS, GCI_GrayIndex);
+            GDALRasterBand* bandGray = findBandByColorInterp(_warpedDS, GCI_GrayIndex);
 
-            GDALRasterBand* bandPalette = findBand(_warpedDS, GCI_PaletteIndex);
+            GDALRasterBand* bandPalette = findBandByColorInterp(_warpedDS, GCI_PaletteIndex);
 
             if (!bandRed && !bandGreen && !bandBlue && !bandAlpha && !bandGray && !bandPalette)
             {
@@ -1700,8 +1711,13 @@ public:
             double xmin, ymin, xmax, ymax;
             key.getExtent().getBounds(xmin, ymin, xmax, ymax);
 
-            //Just read from the first band
-            GDALRasterBand* band = _warpedDS->GetRasterBand(1);
+            // Try to find a FLOAT band
+            GDALRasterBand* band = findBandByDataType(_warpedDS, GDT_Float32);
+            if (band == NULL)
+            {
+                // Just get first band
+                band = _warpedDS->GetRasterBand(1);
+            }
 
             double dx = (xmax - xmin) / (tileSize-1);
             double dy = (ymax - ymin) / (tileSize-1);

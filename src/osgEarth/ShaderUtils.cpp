@@ -232,20 +232,11 @@ std::string
 osg_LightProducts::glslDefinition()
 {
     return
-        "struct osg_LightSourceParameters {"
-        "    vec4   ambient;"
-        "    vec4   diffuse;"
-        "    vec4   specular;"
-        "    vec4   position;"
-        "    vec4   halfVector;"
-        "    vec3   spotDirection;"
-        "    float  spotExponent;"
-        "    float  spotCutoff;"
-        "    float  spotCosCutoff;"
-        "    float  constantAttenuation;"
-        "    float  linearAttenuation;"
-        "    float  quadraticAttenuation;"
-        "};";
+        "struct osg_LightProducts {"
+        " vec4 ambient;"
+        " vec4 diffuse;"
+        " vec4 specular;"
+        " };";
 }
 
 //------------------------------------------------------------------------
@@ -345,11 +336,20 @@ std::string
 osg_LightSourceParameters::glslDefinition()
 {
     return
-        "struct osg_LightProducts {"
-        "    vec4  ambient;"
-        "    vec4  diffuse;"
-        "    vec4  specular;"
-        "};";
+        "struct osg_LightSourceParameters {"
+        " vec4 ambient;"
+        " vec4 diffuse;"
+        " vec4 specular;"
+        " vec4 position;"
+        " vec4 halfVector;"
+        " vec3 spotDirection;"
+        " float spotExponent;"
+        " float spotCutoff;"
+        " float spotCosCutoff;"
+        " float constantAttenuation;"
+        " float linearAttenuation;"
+        " float quadraticAttenuation;"
+        " };";
 }
 
 //------------------------------------------------------------------------

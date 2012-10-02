@@ -148,6 +148,11 @@ SLDReader::readStyleFromCSSParams( const Config& conf, Style& sc )
             if (!text) text = sc.getOrCreateSymbol<TextSymbol>();
             text->halo()->color() = htmlColorToVec4f( value );
         }
+        else if ( match(key, "text-halo-offset") )
+        {
+            if (!text) text = sc.getOrCreateSymbol<TextSymbol>();
+            text->haloOffset() = as<float>(value, 0.07f);
+        }
         else if ( match(key, "text-remove-duplicate-labels") )
         {
             if (!text) text = sc.getOrCreateSymbol<TextSymbol>();

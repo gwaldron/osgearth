@@ -43,10 +43,9 @@ LabelNode::LabelNode(MapNode*            mapNode,
 
 OrthoNode( mapNode, position ),
 _text    ( text ),
-_geode   ( 0L ),
-_style   ( style )
+_geode   ( 0L )
 {
-    init();
+    init( style );
 }
 
 LabelNode::LabelNode(MapNode*            mapNode,
@@ -58,66 +57,43 @@ OrthoNode( mapNode, position ),
 _text    ( text ),
 _geode   ( 0L )
 {
-    _style.add( const_cast<TextSymbol*>(symbol) );
-    init();
+    Style style;
+    style.add( const_cast<TextSymbol*>(symbol) );
+    init( style );
 }
-
-#if 0
-LabelNode::LabelNode(const SpatialReference* mapSRS,
-                     const GeoPoint&         position,
-                     const std::string&      text,
-                     const TextSymbol*       symbol ) :
-
-OrthoNode( mapSRS, position ),
-_text    ( text ),
-_geode   ( 0L )
-{
-    _style.add( const_cast<TextSymbol*>(symbol) );
-    init();
-}
-#endif
 
 LabelNode::LabelNode(const std::string&  text,
                      const Style&        style ) :
 OrthoNode(),
 _text    ( text ),
-_geode   ( 0L ),
-_style   ( style )
+_geode   ( 0L )
 {
-    init();
+    init( style );
 }
 
 LabelNode::LabelNode(MapNode*            mapNode,
                      const GeoPoint&     position,
                      const Style&        style ) :
 OrthoNode( mapNode, position ),
-_geode   ( 0L ),
-_style   ( style )
+_geode   ( 0L )
 {
-    init();
+    init( style );
 }
 
 void
-LabelNode::init()
+LabelNode::init( const Style& style )
 {
-    const TextSymbol* symbol = _style.get<TextSymbol>();
-
-    if ( _text.empty() )
-        _text = symbol->content()->eval();
-
     _geode = new osg::Geode();
-
-    osg::Drawable* t = AnnotationUtils::createTextDrawable( _text, symbol, osg::Vec3(0,0,0) );
-    _geode->addDrawable(t);
+    getAttachPoint()->addChild( _geode );
 
     osg::StateSet* stateSet = _geode->getOrCreateStateSet();
     stateSet->setAttributeAndModes( new osg::Depth(osg::Depth::ALWAYS, 0, 1, false), 1 );
 
-    getAttachPoint()->addChild( _geode );
-
     AnnotationUtils::installAnnotationProgram( stateSet );
 
-    applyStyle( _style );
+    setStyle( style );
+
+    applyStyle( style );
 
     setLightingIfNotSet( false );
 }
@@ -137,6 +113,32 @@ LabelNode::setText( const std::string& text )
         d->setText( text );
         d->dirtyDisplayList();
     }
+}
+
+void
+LabelNode::setStyle( const Style& style )
+{
+    if ( !_dynamic && getNumParents() > 0 )
+    {
+        OE_WARN << LC << "Illegal state: cannot change a LabelNode that is not dynamic" << std::endl;
+        return;
+    }
+
+    _geode->removeDrawables( 0, _geode->getNumDrawables() );
+
+    _style = style;
+
+    const TextSymbol* symbol = _style.get<TextSymbol>();
+
+    if ( _text.empty() )
+        _text = symbol->content()->eval();
+
+    osg::Drawable* t = AnnotationUtils::createTextDrawable( _text, symbol, osg::Vec3(0,0,0) );
+    _geode->addDrawable(t);
+
+    applyStyle( _style );
+
+    setLightingIfNotSet( false );
 }
 
 void
@@ -176,10 +178,12 @@ LabelNode::LabelNode(MapNode*               mapNode,
                      const osgDB::Options* dbOptions ) :
 OrthoNode( mapNode, GeoPoint::INVALID )
 {
-    conf.getObjIfSet( "style",  _style );
-    conf.getIfSet   ( "text",   _text );
+    optional<Style> style;
 
-    init();
+    conf.getObjIfSet( "style", style );
+    conf.getIfSet   ( "text",  _text );
+
+    init( *style );
 
     if ( conf.hasChild("position") )
         setPosition( GeoPoint(conf.child("position")) );

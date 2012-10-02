@@ -124,6 +124,11 @@ AnnotationUtils::createTextDrawable(const std::string& text,
     {
         t->setBackdropColor( symbol->halo()->color() );
         t->setBackdropType( osgText::Text::OUTLINE );
+
+        if ( symbol->haloOffset().isSet() )
+        {
+            t->setBackdropOffset( *symbol->haloOffset(), *symbol->haloOffset() );
+        }
     }
     else if ( !symbol )
     {

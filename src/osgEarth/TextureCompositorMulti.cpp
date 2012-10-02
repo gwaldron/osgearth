@@ -111,11 +111,6 @@ namespace
         buf << "precision mediump float;\n";
 #endif
 
-        if ( maxSlots > 0 )
-        {
-            buf << "varying vec4 osg_TexCoord[" << Registry::instance()->getCapabilities().getMaxGPUTextureCoordSets() << "]; \n";
-        }
-
         if ( blending )
         {
             buf << "#extension GL_ARB_shader_texture_lod : enable \n"
@@ -124,12 +119,16 @@ namespace
                 << "uniform float osgearth_LODRangeFactor; \n";
         }
 
-        buf << "uniform float osgearth_ImageLayerOpacity[" << maxSlots << "]; \n"
-            //The enabled array is a fixed size.  Make sure this corresponds EXCATLY to the size definition in TerrainEngineNode.cpp
-            << "uniform bool  osgearth_ImageLayerVisible[" << MAX_IMAGE_LAYERS << "]; \n"
-            << "uniform float osgearth_ImageLayerRange[" << 2 * maxSlots << "]; \n"
-            << "uniform float osgearth_ImageLayerAttenuation; \n"
-            << "uniform float osgearth_CameraElevation; \n";
+        if ( maxSlots > 0 )
+        {
+            buf << "varying vec4 osg_TexCoord[" << Registry::instance()->getCapabilities().getMaxGPUTextureCoordSets() << "]; \n"
+                << "uniform float osgearth_ImageLayerOpacity[" << maxSlots << "]; \n"
+                //The enabled array is a fixed size.  Make sure this corresponds EXCATLY to the size definition in TerrainEngineNode.cpp
+                << "uniform bool  osgearth_ImageLayerVisible[" << maxSlots << "]; \n"
+                << "uniform float osgearth_ImageLayerRange[" << 2 * maxSlots << "]; \n"
+                << "uniform float osgearth_ImageLayerAttenuation; \n"
+                << "uniform float osgearth_CameraElevation; \n";
+        }
 
         const TextureLayout::TextureSlotVector& slots = layout.getTextureSlots();
 
@@ -403,24 +402,16 @@ TextureCompositorMultiTexture::updateMasterStateSet(osg::StateSet*       stateSe
         }
 
         VirtualProgram* vp = static_cast<VirtualProgram*>( stateSet->getAttribute(VirtualProgram::SA_TYPE) );
-        if ( maxUnits > 0 )
-        {
-            // see if we have any blended layers:
-            bool hasBlending = layout.containsSecondarySlots( maxUnits );
+        // see if we have any blended layers:
+        bool hasBlending = layout.containsSecondarySlots( maxUnits );
 
-            vp->setShader(
-                "osgearth_vert_setupColoring",
-                s_createTextureVertexShader(layout, hasBlending) );
+        vp->setShader(
+            "osgearth_vert_setupColoring",
+            s_createTextureVertexShader(layout, hasBlending) );
 
-            vp->setShader(
-                "osgearth_frag_applyColoring",
-                s_createTextureFragShaderFunction(layout, maxUnits, hasBlending, _lodTransitionTime ) );
-        }
-        else
-        {
-            vp->removeShader( "osgearth_frag_applyColoring" );
-            vp->removeShader( "osgearth_vert_setupColoring" );
-        }
+        vp->setShader(
+            "osgearth_frag_applyColoring",
+            s_createTextureFragShaderFunction(layout, maxUnits, hasBlending, _lodTransitionTime ) );
     }
 
     else

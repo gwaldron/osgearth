@@ -144,7 +144,8 @@ namespace State_Utils
                 char c = str[endOfPhrasePos];
                 if ((c>='0' && c<='9') ||
                     (c>='a' && c<='z') ||
-                    (c>='A' && c<='Z'))
+                    (c>='A' && c<='Z') ||
+                    (c==']'))
                 {
                     pos = endOfPhrasePos;
                     continue;
@@ -157,7 +158,7 @@ namespace State_Utils
         return replacedStr;
     }
 
-    void replaceAndInsertDeclaration(std::string& source, std::string::size_type declPos, const std::string& originalStr, const std::string& newStr, const std::string& declarationPrefix, const std::string& declarationSuffix)
+    void replaceAndInsertDeclaration(std::string& source, std::string::size_type declPos, const std::string& originalStr, const std::string& newStr, const std::string& declarationPrefix, const std::string& declarationSuffix ="")
     {
         if (replace(source, originalStr, newStr))
         {
@@ -191,25 +192,24 @@ ShaderPreProcessor::run(osg::Shader* shader)
 
         int maxLights = Registry::capabilities().getMaxLights();
 
+        for( int i=0; i<maxLights; ++i )
+        {
+            State_Utils::replaceAndInsertDeclaration(
+                source, declPos,
+                Stringify() << "gl_LightSource[" << i << "]",
+                Stringify() << "osg_LightSource" << i,
+                Stringify() 
+                    << osg_LightSourceParameters::glslDefinition() << "\n"
+                    << "uniform osg_LightSourceParameters " );
 
-        State_Utils::replaceAndInsertDeclaration(
-            source, declPos, 
-            "gl_LightSource", "osg_LightSource", 
-            Stringify() 
-                << osg_LightSourceParameters::glslDefinition() << "\n"
-                << "uniform osg_LightSourceParameters ",
-            Stringify()
-                << "[" << maxLights << "]" );
-
-
-        State_Utils::replaceAndInsertDeclaration(
-            source, declPos,
-            "gl_FrontLightProduct", "osg_FrontLightProduct",
-            Stringify()
-                << osg_LightProducts::glslDefinition() << "\n"
-                << "uniform osg_LightProducts ",
-            Stringify()
-                << "[" << maxLights << "]" );
+            State_Utils::replaceAndInsertDeclaration(
+                source, declPos,
+                Stringify() << "gl_FrontLightProduct[" << i << "]", 
+                Stringify() << "osg_FrontLightProduct" << i,
+                Stringify()
+                    << osg_LightProducts::glslDefinition() << "\n"
+                    << "uniform osg_LightProducts " );
+        }
 
         shader->setShaderSource( source );
     }
@@ -220,7 +220,7 @@ ShaderPreProcessor::run(osg::Shader* shader)
 osg_LightProducts::osg_LightProducts(int id)
 {
     std::stringstream uniNameStream;
-    uniNameStream << "osg_FrontLightProduct[" << id << "]";
+    uniNameStream << "osg_FrontLightProduct" << id; //[" << id << "]";
     std::string uniName = uniNameStream.str();
 
     ambient = new osg::Uniform(osg::Uniform::FLOAT_VEC4, uniName+".ambient"); // vec4
@@ -245,7 +245,7 @@ osg_LightSourceParameters::osg_LightSourceParameters(int id)
     : _frontLightProduct(id)
 {
     std::stringstream uniNameStream;
-    uniNameStream << "osg_LightSource[" << id << "]";
+    uniNameStream << "osg_LightSource" << id; // [" << id << "]";
     std::string uniName = uniNameStream.str();
     
     ambient = new osg::Uniform(osg::Uniform::FLOAT_VEC4, uniName+".ambient"); // vec4

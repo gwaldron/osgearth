@@ -368,17 +368,17 @@ _useUpdateTrav  ( useUpdateTrav )
 
     _lightEnabled = new bool[ _maxLights ];
     if ( _maxLights > 0 ){
-        _lightEnabled[0] = 1;
+        _lightEnabled[0] = true;
         //allocate light
         _osgLightSourceParameters.push_back(osg_LightSourceParameters(0));
     }
     for(int i=1; i<_maxLights; ++i ){
-        _lightEnabled[i] = 0;
+        _lightEnabled[i] = true;
         _osgLightSourceParameters.push_back(osg_LightSourceParameters(i));
     }
 
     _lightingEnabledUniform = new osg::Uniform( osg::Uniform::BOOL, "oe_mode_GL_LIGHTING" );
-    _lightEnabledUniform    = new osg::Uniform( osg::Uniform::INT,  "oe_mode_GL_LIGHT", _maxLights );
+    _lightEnabledUniform    = new osg::Uniform( osg::Uniform::BOOL, "oe_mode_GL_LIGHT", _maxLights );
 
     if ( !_useUpdateTrav )
     {
@@ -416,7 +416,7 @@ UpdateLightingUniformsHelper::cullTraverse( osg::Node* node, osg::NodeVisitor* n
         // Update the overall lighting-enabled value:
         bool lightingEnabled =
             ( getModeValue(stateSetStack, GL_LIGHTING) & osg::StateAttribute::ON ) != 0;
-        
+
         if ( lightingEnabled != _lightingEnabled || !_applied )
         {
             _lightingEnabled = lightingEnabled;
@@ -426,30 +426,50 @@ UpdateLightingUniformsHelper::cullTraverse( osg::Node* node, osg::NodeVisitor* n
                 _lightingEnabledUniform->set( _lightingEnabled );
         }
 
-        // Update the list of enabled lights:
-        for( int i=0; i < _maxLights; ++i )
+        osg::View* view = cv->getCurrentCamera()->getView();
+        if ( view )
         {
-            bool enabled =
-                ( getModeValue( stateSetStack, GL_LIGHT0 + i ) & osg::StateAttribute::ON ) != 0;
-            
-            const osg::Light* light = getLightByID(stateSetStack, i);
-            const osg::Material* material = getFrontMaterial(stateSetStack);
-
-            if ( _lightEnabled[i] != enabled || !_applied )
+            osg::Light* light = view->getLight();
+            if ( light )
             {
-                _lightEnabled[i] = enabled;
-                if ( _useUpdateTrav ){
-                    _dirty = true;
-                }else{
-                    _lightEnabledUniform->setElement( i, _lightEnabled[i] );
+                const osg::Material* material = getFrontMaterial(stateSetStack);
+                _osgLightSourceParameters[0].setUniformsFromOsgLight(light, cv->getCurrentCamera()->getViewMatrix(), material);
+            }
+        }
+
+        else
+        {
+            // Update the list of enabled lights:
+            for( int i=0; i < _maxLights; ++i )
+            {
+                bool enabled =
+                    ( getModeValue( stateSetStack, GL_LIGHT0 + i ) & osg::StateAttribute::ON ) != 0;
+                
+                const osg::Light* light = getLightByID(stateSetStack, i);
+                const osg::Material* material = getFrontMaterial(stateSetStack);
+
+                if ( light )
+                {
+                    OE_NOTICE << "Found Light " << i << std::endl;
                 }
-            }
-            
-            //update light position info regardsless of if applied for now
-            if(light){
-                _osgLightSourceParameters[i].setUniformsFromOsgLight(light, cv->getCurrentCamera()->getViewMatrix(), material);
-            }
-        }	
+
+                if ( _lightEnabled[i] != enabled || !_applied )
+                {
+                    _lightEnabled[i] = enabled;
+                    if ( _useUpdateTrav ){
+                        _dirty = true;
+                    }else{
+                        _lightEnabledUniform->setElement( i, _lightEnabled[i] );
+                    }
+                }
+                
+                //update light position info regardsless of if applied for now
+                if(light){
+                    OE_NOTICE << "Setting light source params." << std::endl;
+                    _osgLightSourceParameters[i].setUniformsFromOsgLight(light, cv->getCurrentCamera()->getViewMatrix(), material);
+                }
+            }	
+        }
 
         // apply if necessary:
         if ( !_applied && !_useUpdateTrav )

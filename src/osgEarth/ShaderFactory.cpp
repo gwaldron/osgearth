@@ -18,6 +18,7 @@
  */
 #include <osgEarth/ShaderFactory>
 
+#include <osgEarth/ShaderUtils>
 #include <osgEarth/Registry>
 #include <osgEarth/Capabilities>
 #include <osg/Shader>
@@ -36,10 +37,13 @@
 #ifdef OSG_GLES2_AVAILABLE
 #   define PRECISION_MEDIUMP_FLOAT "precision mediump float;"
     static bool s_GLES_SHADERS = true;
+#   define GLENNS_PER_VERTEX_LIGHTING 1
 #else
 #   define PRECISION_MEDIUMP_FLOAT ""
     static bool s_GLES_SHADERS = false;
+#   define GLENNS_PER_VERTEX_LIGHTING 1
 #endif
+
 
 using namespace osgEarth;
 using namespace osgEarth::ShaderComp;
@@ -275,6 +279,7 @@ ShaderFactory::createDefaultColoringFragmentShader( unsigned numTexImageUnits ) 
     return shader;
 }
 
+#ifdef GLENNS_PER_VERTEX_LIGHTING
 
 osg::Shader*
 ShaderFactory::createDefaultLightingVertexShader() const
@@ -328,6 +333,8 @@ ShaderFactory::createDefaultLightingFragmentShader() const
     shader->setName( FRAGMENT_APPLY_LIGHTING );
     return shader;
 }
+
+#endif
 
 
 #ifdef GLENNS_PER_FRAGMENT_LIGHTING // does not work on GLES - unresolved
@@ -415,6 +422,7 @@ ShaderFactory::createDefaultLightingVertexShader() const
     {
         buf << "precision mediump float;\n"
     
+#if 0
         //add lightsource typedef and uniform array
         << "struct osg_LightSourceParameters {"
         << "    vec4  ambient;"
@@ -430,14 +438,20 @@ ShaderFactory::createDefaultLightingVertexShader() const
         << "    float  linearAttenuation;"
         << "    float  quadraticAttenuation;" 
         << "};\n"
-        << "uniform osg_LightSourceParameters osg_LightSource[" << maxLights << "];\n"
+        << "uniform osg_LightSourceParameters osg_LightSource0;\n" //[" << maxLights << "];\n"
         
         << "struct  osg_LightProducts {"
         << "    vec4  ambient;"
         << "    vec4  diffuse;"
         << "    vec4  specular;"
         << "};\n"
-        << "uniform osg_LightProducts osg_FrontLightProduct[" << maxLights << "];\n";
+        << "uniform osg_LightProducts osg_FrontLightProduct0;\n"; //[" << maxLights << "];\n";
+#else
+        << osg_LightSourceParameters::glslDefinition() << "\n"
+        << osg_LightProducts::glslDefinition() << "\n"
+        << "uniform osg_LightSourceParameters osg_LightSource0;\n"
+        << "uniform osg_LightProducts osg_FrontLightProduct0;\n";
+#endif
     }
     
     buf
@@ -485,22 +499,22 @@ ShaderFactory::createDefaultLightingVertexShader() const
             //gl_FrontMaterial.shininess
             //gl_LightModel.ambient
             << "        vec3 normal = gl_NormalMatrix * gl_Normal; \n"
-            << "        float NdotL = dot( normal, normalize(osg_LightSource[0].position.xyz) ); \n"
+            << "        float NdotL = dot( normal, normalize(osg_LightSource0.position.xyz) ); \n"
             << "        NdotL = max( 0.0, NdotL ); \n"
-            << "        float NdotHV = dot( normal, osg_LightSource[0].halfVector.xyz ); \n"
+            << "        float NdotHV = dot( normal, osg_LightSource0.halfVector.xyz ); \n"
             << "        NdotHV = max( 0.0, NdotHV ); \n"
             
             << "        osg_FrontColor.rgb = osg_FrontColor.rgb * \n"
             << "            clamp( \n"
             << "                lightModelAmbi + \n"
-            << "                osg_FrontLightProduct[0].ambient +          \n"
-            << "                osg_FrontLightProduct[0].diffuse * NdotL, 0.0, 1.0).rgb;   \n"
+            << "                osg_FrontLightProduct0.ambient +          \n"
+            << "                osg_FrontLightProduct0.diffuse * NdotL, 0.0, 1.0).rgb;   \n"
             
             << "        osg_FrontSecondaryColor = vec4(0.0); \n"
             
             << "        if ( NdotL * NdotHV > 0.0 ) \n"
             << "        { \n"
-            << "            osg_FrontSecondaryColor.rgb = (osg_FrontLightProduct[0].specular * \n"
+            << "            osg_FrontSecondaryColor.rgb = (osg_FrontLightProduct0.specular * \n"
             << "                                          pow( NdotHV, shine )).rgb;\n"
             << "        } \n"
             << "    } \n"

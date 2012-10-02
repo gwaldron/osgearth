@@ -1716,7 +1716,7 @@ public:
             if (band == NULL)
             {
                 // Just get first band
-                _warpedDS->GetRasterBand(1);
+                band = _warpedDS->GetRasterBand(1);
             }
 
             double dx = (xmax - xmin) / (tileSize-1);

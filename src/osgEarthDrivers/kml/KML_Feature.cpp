@@ -19,6 +19,8 @@
 #include "KML_Feature"
 #include "KML_Style"
 #include "KML_StyleMap"
+#include <osg/UserDataContainer>
+#include <osg/ValueObject>
 #include <osgEarth/Viewpoint>
 
 using namespace osgEarth;
@@ -69,6 +71,16 @@ KML_Feature::build( const Config& conf, KMLContext& cx, osg::Node* working )
                 lookat.value<double>("range", 10000.0) );
 
             anno->setViewpoint( vp );
+        }
+
+        const Config& extdata = conf.child("extendeddata");
+        if ( !extdata.empty() )
+        {
+            ConfigSet innerConfs = extdata.children("data");
+            for( ConfigSet::const_iterator i = innerConfs.begin(); i != innerConfs.end(); ++i )
+            {
+                working->setUserValue(i->value("name"), i->value("value"));
+            }
         }
     }
 }

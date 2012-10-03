@@ -291,6 +291,7 @@ ShaderFactory::createDefaultLightingVertexShader() const
 
         "uniform bool oe_mode_GL_LIGHTING; \n"
         "varying vec4 oe_lighting_adjustment; \n"
+        "varying vec4 oe_zero_vec; \n"
 
         "void osgearth_vert_setupLighting() \n"
         "{ \n"
@@ -300,6 +301,7 @@ ShaderFactory::createDefaultLightingVertexShader() const
         "        vec3 N = normalize(gl_NormalMatrix * gl_Normal); \n"
         "        float NdotL = dot( N, normalize(gl_LightSource[0].position.xyz) ); \n"
         "        NdotL = max( 0.0, NdotL ); \n"
+        "        oe_zero_vec = vec4(0.0); \n"
         "        vec4 adj = \n"
         //"            gl_FrontLightModelProduct.sceneColor + \n" // not available in GLES yet
         "            gl_FrontLightProduct[0].ambient + \n"
@@ -323,10 +325,17 @@ ShaderFactory::createDefaultLightingFragmentShader() const
         PRECISION_MEDIUMP_FLOAT "\n"
 
         "varying vec4 oe_lighting_adjustment; \n"
+        "varying vec4 oe_zero_vec; \n"
 
+         "uniform bool oe_mode_GL_LIGHTING; \n"
          "void osgearth_frag_applyLighting( inout vec4 color ) \n"
          "{ \n"
-         "    color *= oe_lighting_adjustment; \n"
+         "    if ( oe_mode_GL_LIGHTING ) \n"
+         "    { \n"
+         "        float alpha = color.a; \n"
+         "        color = color * oe_lighting_adjustment + oe_zero_vec; \n"
+         "        color.a = alpha; \n"
+         "    } \n"
         "} \n";
 
     osg::Shader* shader = new osg::Shader( osg::Shader::FRAGMENT, str );

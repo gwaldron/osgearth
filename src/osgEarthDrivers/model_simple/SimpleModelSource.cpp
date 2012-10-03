@@ -155,8 +155,17 @@ public:
         // generate a shader program to render the model.
         if ( result.valid() )
         {
-            ShaderGenerator gen;
-            result->accept( gen );
+            if ( _options.shaderPolicy() == SHADERPOLICY_GENERATE )
+            {
+                ShaderGenerator gen;
+                result->accept( gen );
+            }
+            else if ( _options.shaderPolicy() == SHADERPOLICY_DISABLE )
+            {
+                result->getOrCreateStateSet()->setAttributeAndModes(
+                    new osg::Program(),
+                    osg::StateAttribute::OFF | osg::StateAttribute::OVERRIDE );
+            }
         }
 
         return result.release();

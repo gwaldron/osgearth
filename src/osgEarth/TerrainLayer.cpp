@@ -650,31 +650,25 @@ TerrainLayer::setDBOptions( const osgDB::Options* dbOptions )
 void
 TerrainLayer::initializeCachePolicy( const osgDB::Options* options )
 {
-    // establish this layer's cache policy.
+    optional<CachePolicy> cp;
+
     if ( _initOptions.cachePolicy().isSet() )
     {
-        // if this layer defines its own CP, use it.
-        setCachePolicy( *_initOptions.cachePolicy() );
+        // if the initialization options specify a cache policy, attempt to use it
+        osg::ref_ptr<osgDB::Options> temp = Registry::instance()->cloneOrCreateOptions(options);
+        _initOptions.cachePolicy()->apply( temp.get() );
+
+        if ( ! Registry::instance()->getCachePolicy(cp, temp.get()) )
+            cp = CachePolicy::DEFAULT;
     }
-    else
+    else 
     {
-        // see if the new DBOptions has one set; if so, inherit that:
-        optional<CachePolicy> incomingCP;
-        if ( CachePolicy::fromOptions(options, incomingCP) )
-        {
-            setCachePolicy( incomingCP.get() );
-        }
-        else if ( Registry::instance()->defaultCachePolicy().isSet() )
-        {
-            // not set, no try to inherit from the registry:
-            setCachePolicy( Registry::instance()->defaultCachePolicy().value() );
-        }
-        else
-        {
-            // not found anywhere; set to the default.
-            setCachePolicy( CachePolicy::DEFAULT );
-        }
+        // otherwise go the normal route.
+        if ( ! Registry::instance()->getCachePolicy(cp, options) )
+            cp = CachePolicy::DEFAULT;
     }
+
+    setCachePolicy( *cp );
 }
 
 void

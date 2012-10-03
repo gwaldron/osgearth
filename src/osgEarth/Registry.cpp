@@ -109,21 +109,15 @@ _terrainEngineDriver( "osgterrain" )
     // activate cache-only mode from the environment
     if ( ::getenv("OSGEARTH_CACHE_ONLY") )
     {
-        _defaultCachePolicy = CachePolicy::CACHE_ONLY;
+        setOverrideCachePolicy( CachePolicy::CACHE_ONLY );
         OE_INFO << LC << "CACHE-ONLY MODE set from environment variable" << std::endl;
     }
 
     // activate no-cache mode from the environment
     else if ( ::getenv("OSGEARTH_NO_CACHE") )
     {
-        _defaultCachePolicy = CachePolicy::NO_CACHE;
+        setOverrideCachePolicy( CachePolicy::NO_CACHE );
         OE_INFO << LC << "NO-CACHE MODE set from environment variable" << std::endl;
-    }
-
-    // if there's a default caching policy, add it to the default options.
-    if ( _defaultCachePolicy.isSet() )
-    {
-        _defaultCachePolicy->apply( _defaultOptions.get() );
     }
 
     // set the default terrain engine driver from the environment
@@ -281,6 +275,48 @@ Registry::getNamedProfile( const std::string& name ) const
         return getCubeProfile();
     else
         return NULL;
+}
+
+void
+Registry::setDefaultCachePolicy( const CachePolicy& value )
+{
+    _defaultCachePolicy = value;
+    if ( !_overrideCachePolicy.isSet() )
+        _defaultCachePolicy->apply(_defaultOptions.get());
+    else
+        _overrideCachePolicy->apply(_defaultOptions.get());
+}
+
+void
+Registry::setOverrideCachePolicy( const CachePolicy& value )
+{
+    _overrideCachePolicy = value;
+    _overrideCachePolicy->apply( _defaultOptions.get() );
+}
+
+bool
+Registry::getCachePolicy( optional<CachePolicy>& cp, const osgDB::Options* options ) const
+{
+    if ( overrideCachePolicy().isSet() )
+    {
+        // if there is a system-wide override in place, use it.
+        cp = overrideCachePolicy().value();
+    }
+    else 
+    {
+        // Try to read the cache policy from the db-options
+        CachePolicy::fromOptions( options, cp );
+
+        if ( !cp.isSet() )
+        {
+            if ( defaultCachePolicy().isSet() )
+            {
+                cp = defaultCachePolicy().value();
+            }
+        }
+    }
+
+    return cp.isSet();
 }
 
 osgEarth::Cache*

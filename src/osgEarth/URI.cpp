@@ -402,21 +402,10 @@ namespace
                 {
                     bool callbackCachingOK = !cb || reader.callbackRequestsCaching(cb);
 
-                    // by default, use a CachePolicy specified by the caller:
+                    // establish the caching policy.
                     optional<CachePolicy> cp;
-                    CachePolicy::fromOptions( localOptions, cp );
-
-                    // if not, use the system defult:
-                    if ( !cp.isSet() && Registry::instance()->defaultCachePolicy().isSet() )
-                    {
-                        cp =  Registry::instance()->defaultCachePolicy().value();
-                    }
-                    
-                    // otherwise, just use a default (read/write)
-                    if ( !cp.isSet() )
-                    {
+                    if ( !Registry::instance()->getCachePolicy( cp, localOptions ) )
                         cp = CachePolicy::DEFAULT;
-                    }
 
                     // get a cache bin if we need it:
                     CacheBin* bin = 0L;

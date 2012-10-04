@@ -315,6 +315,8 @@ MapNode::init()
         _overlayDecorator->setTextureSize( *_mapNodeOptions.overlayTextureSize() );
     if ( _mapNodeOptions.overlayMipMapping().isSet() )
         _overlayDecorator->setMipMapping( *_mapNodeOptions.overlayMipMapping() );
+    if ( _mapNodeOptions.overlayAttachStencil().isSet() )
+        _overlayDecorator->setAttachStencil( *_mapNodeOptions.overlayAttachStencil() );
 
     addTerrainDecorator( _overlayDecorator );
 

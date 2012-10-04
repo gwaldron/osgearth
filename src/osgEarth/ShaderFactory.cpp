@@ -301,7 +301,11 @@ ShaderFactory::createDefaultLightingVertexShader() const
         "        vec3 N = normalize(gl_NormalMatrix * gl_Normal); \n"
         "        float NdotL = dot( N, normalize(gl_LightSource[0].position.xyz) ); \n"
         "        NdotL = max( 0.0, NdotL ); \n"
+
+        // NOTE: See comment in the fragment shader below for an explanation of
+        //       this oe_zero_vec value.
         "        oe_zero_vec = vec4(0.0); \n"
+
         "        vec4 adj = \n"
         //"            gl_FrontLightModelProduct.sceneColor + \n" // not available in GLES yet
         "            gl_FrontLightProduct[0].ambient + \n"
@@ -330,6 +334,13 @@ ShaderFactory::createDefaultLightingFragmentShader() const
          "uniform bool oe_mode_GL_LIGHTING; \n"
          "void osgearth_frag_applyLighting( inout vec4 color ) \n"
          "{ \n"
+         //NOTE: The follow was changed from the single line
+         //      "color *= oe_lighting_adjustment" to the current code to fix
+         //      an issue on iOS devices.  Adding a varying vec4 value set to
+         //      (0.0,0.0,0.0,0.0) to the color should not make a difference,
+         //      but it is part of the solution to the issue we were seeing.
+         //      Without it and the additional lines of code, the globe was
+         //      rendering textureless (just a white surface with lighting).
          "    if ( oe_mode_GL_LIGHTING ) \n"
          "    { \n"
          "        float alpha = color.a; \n"

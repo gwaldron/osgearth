@@ -341,6 +341,31 @@ namespace osgEarth
         }
     };
 
+
+//------------------------------------------------------------------------
+
+    /**
+     * You can install a post-read callback in a osgDB::Options and the URI
+     * class till invoke it on a ReadResult before returning.
+     */
+    class /*header-only*/ URIPostReadCallback : public osg::Referenced
+    {
+    public:
+        URIPostReadCallback() { }
+        virtual ~URIPostReadCallback() { }
+
+        virtual void operator()( ReadResult& result ) =0;
+
+    public:
+        void apply(osgDB::Options* options) {
+            if ( options ) options->setPluginData("osgEarth::URIPostReadCallback", this);
+        }
+
+        static URIPostReadCallback* from(const osgDB::Options* options) {
+            return options ? static_cast<URIPostReadCallback*>(const_cast<osgDB::Options*>(options)->getPluginData("osgEarth::URIPostReadCallback")) : 0L;
+        }
+    };
+
     
 //------------------------------------------------------------------------
 

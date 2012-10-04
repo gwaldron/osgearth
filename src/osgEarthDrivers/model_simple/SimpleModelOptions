@@ -22,6 +22,7 @@
 #include <osgEarth/Common>
 #include <osgEarth/ModelSource>
 #include <osgEarth/URI>
+#include <osgEarth/ShaderUtils>
 
 namespace osgEarth { namespace Drivers
 {
@@ -41,6 +42,9 @@ namespace osgEarth { namespace Drivers
 
         optional<osg::Vec3>& orientation() { return _orientation;}
         const optional<osg::Vec3>& orientation() const { return _orientation;}
+
+        optional<ShaderPolicy>& shaderPolicy() { return _shaderPolicy; }
+        const optional<ShaderPolicy>& shaderPolicy() const { return _shaderPolicy; }
         
         /**
          If specified, use this node instead try to load from url
@@ -51,7 +55,10 @@ namespace osgEarth { namespace Drivers
 
 
     public:
-        SimpleModelOptions( const ConfigOptions& options=ConfigOptions() ) : ModelSourceOptions( options ) {
+        SimpleModelOptions( const ConfigOptions& options=ConfigOptions() )
+            : ModelSourceOptions( options ),
+              _shaderPolicy( SHADERPOLICY_GENERATE )
+        {
             setDriver( "simple" );
             fromConfig( _conf );
         }
@@ -65,6 +72,11 @@ namespace osgEarth { namespace Drivers
             conf.updateIfSet( "lod_scale", _lod_scale );
             conf.updateIfSet( "location", _location );
             conf.updateIfSet( "orientation", _orientation);
+
+            conf.addIfSet( "shader_policy", "disable",  _shaderPolicy, SHADERPOLICY_DISABLE );
+            conf.addIfSet( "shader_policy", "inherit",  _shaderPolicy, SHADERPOLICY_INHERIT );
+            conf.addIfSet( "shader_policy", "generate", _shaderPolicy, SHADERPOLICY_GENERATE );
+
             conf.updateNonSerializable( "SimpleModelOptions::Node", _node.get() );
             return conf;
         }
@@ -81,6 +93,11 @@ namespace osgEarth { namespace Drivers
             conf.getIfSet( "lod_scale", _lod_scale );
             conf.getIfSet( "location", _location);
             conf.getIfSet( "orientation", _orientation);
+
+            conf.getIfSet( "shader_policy", "disable",  _shaderPolicy, SHADERPOLICY_DISABLE );
+            conf.getIfSet( "shader_policy", "inherit",  _shaderPolicy, SHADERPOLICY_INHERIT );
+            conf.getIfSet( "shader_policy", "generate", _shaderPolicy, SHADERPOLICY_GENERATE );
+
             _node = conf.getNonSerializable<osg::Node>( "SimpleModelOptions::Node" );
         }
 
@@ -88,6 +105,7 @@ namespace osgEarth { namespace Drivers
         optional<float> _lod_scale;
         optional<osg::Vec3> _location;
         optional<osg::Vec3> _orientation;
+        optional<ShaderPolicy> _shaderPolicy;
         osg::ref_ptr<osg::Node> _node;
     };
 

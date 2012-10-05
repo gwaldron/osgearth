@@ -11,11 +11,13 @@ needs to be absolutely positioned.
     </image>
 	
 	<model name = "cow" driver="simple">
-	  <url>cow.osg.100,100,100.scale</url>
+	  <url>../data/red_flag.osg.100,100,100.scale</url>
 	  <location>-74.018 40.717 10</location>	  
 	</model>
     
-    <options lighting="false"/>
+    <options lighting="false">
+        <terrain min_lod="12"/>
+    </options>
 	
 	<external>
         <viewpoint name="Zoom to model" heading="0" height="0" lat="40.717" long="-74.018" pitch="-90" range="6000"/>    

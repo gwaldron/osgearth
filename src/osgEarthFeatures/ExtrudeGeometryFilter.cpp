@@ -21,6 +21,10 @@
 #include <osgEarthSymbology/MeshSubdivider>
 #include <osgEarthSymbology/MeshConsolidator>
 #include <osgEarth/ECEF>
+#include <osgEarth/ImageUtils>
+#include <osgEarth/Registry>
+#include <osgEarth/Capabilities>
+#include <osgEarth/ShaderGenerator>
 #include <osg/Geode>
 #include <osg/Geometry>
 #include <osg/MatrixTransform>
@@ -187,6 +191,7 @@ ExtrudeGeometryFilter::extrudeGeometry(const Geometry*         input,
                                        osg::Geometry*          base,
                                        osg::Geometry*          outline,
                                        const osg::Vec4&        wallColor,
+                                       const osg::Vec4&        wallBaseColor,
                                        const osg::Vec4&        roofColor,
                                        const osg::Vec4&        outlineColor,
                                        const SkinResource*     wallSkin,
@@ -235,10 +240,11 @@ ExtrudeGeometryFilter::extrudeGeometry(const Geometry*         input,
         walls->setTexCoordArray( 0, wallTexcoords );
     }
 
+    osg::Vec4Array* colors = 0L;
     if ( useColor )
     {
         // per-vertex colors are necessary if we are going to use the MeshConsolidator -gw
-        osg::Vec4Array* colors = new osg::Vec4Array();
+        colors = new osg::Vec4Array();
         colors->reserve( numWallVerts );
         colors->assign( numWallVerts, wallColor );
         walls->setColorArray( colors );
@@ -412,6 +418,7 @@ ExtrudeGeometryFilter::extrudeGeometry(const Geometry*         input,
         if (div == 0) div = 1; //Prevent divide by zero
         tex_height_m_adj = maxHeight / div;
 
+        //osg::DrawElementsUShort* idx = new osg::DrawElementsUShort( GL_TRIANGLES );
         osg::DrawElementsUInt* idx = new osg::DrawElementsUInt( GL_TRIANGLES );
 
         for( Geometry::const_iterator m = part->begin(); m != part->end(); ++m )
@@ -470,15 +477,25 @@ ExtrudeGeometryFilter::extrudeGeometry(const Geometry*         input,
 
 
             if ( base )
+            {
                 (*baseVerts)[baseVertPtr] = basePt;
+            }
+
             if ( roof )
+            {
                 (*roofVerts)[roofVertPtr] = roofPt;
+            }
 
             baseVertPtr++;
             roofVertPtr++;
 
             (*verts)[p] = roofPt;
             (*verts)[p+1] = basePt;
+
+            if ( useColor )
+            {
+                (*colors)[p+1] = wallBaseColor;
+            }
 
             if ( outline )
             {
@@ -585,6 +602,7 @@ ExtrudeGeometryFilter::extrudeGeometry(const Geometry*         input,
             unsigned len = baseVertPtr - basePartPtr;
 
             GLenum roofLineMode = isPolygon ? GL_LINE_LOOP : GL_LINE_STRIP;
+            //osg::DrawElementsUShort* roofLine = new osg::DrawElementsUShort( roofLineMode );
             osg::DrawElementsUInt* roofLine = new osg::DrawElementsUInt( roofLineMode );
             roofLine->reserveElements( len );
             for( unsigned i=0; i<len; ++i )
@@ -596,7 +614,8 @@ ExtrudeGeometryFilter::extrudeGeometry(const Geometry*         input,
             unsigned step = std::max( 1u, 
                 _outlineSymbol->tessellation().isSet() ? *_outlineSymbol->tessellation() : 1u );
 
-            osg::DrawElementsUShort* wallLines = new osg::DrawElementsUShort( GL_LINES );
+            //osg::DrawElementsUShort* wallLines = new osg::DrawElementsUShort( GL_LINES );
+            osg::DrawElementsUInt* wallLines = new osg::DrawElementsUInt( GL_LINES );
             wallLines->reserve( len*2 );
             for( unsigned i=0; i<len; i+=step )
             {
@@ -746,11 +765,19 @@ ExtrudeGeometryFilter::process( FeatureList& features, FilterContext& context )
             }
 
             // calculate the colors:
-            osg::Vec4f wallColor(1,1,1,1), roofColor(1,1,1,1), outlineColor(1,1,1,1);
+            osg::Vec4f wallColor(1,1,1,1), wallBaseColor(1,1,1,1), roofColor(1,1,1,1), outlineColor(1,1,1,1);
 
             if ( _wallPolygonSymbol.valid() )
             {
                 wallColor = _wallPolygonSymbol->fill()->color();
+                if ( _extrusionSymbol->wallGradientPercentage().isSet() )
+                {
+                    wallBaseColor = Color(wallColor).brightness( 1.0 - *_extrusionSymbol->wallGradientPercentage() );
+                }
+                else
+                {
+                    wallBaseColor = wallColor;
+                }
             }
             if ( _roofPolygonSymbol.valid() )
             {
@@ -766,7 +793,7 @@ ExtrudeGeometryFilter::process( FeatureList& features, FilterContext& context )
                     part, height, offset, 
                     *_extrusionSymbol->flatten(),
                     walls.get(), rooflines.get(), baselines.get(), outlines.get(),
-                    wallColor, roofColor, outlineColor,
+                    wallColor, wallBaseColor, roofColor, outlineColor,
                     wallSkin, roofSkin,
                     context ) )
             {      
@@ -872,22 +899,24 @@ ExtrudeGeometryFilter::push( FeatureList& input, FilterContext& context )
     {
         if ( _wallSkinSymbol.valid() && _wallSkinSymbol->libraryName().isSet() )
         {
-            _wallResLib = sheet->getResourceLibrary( *_wallSkinSymbol->libraryName(), context.getDBOptions() );
+            _wallResLib = sheet->getResourceLibrary( *_wallSkinSymbol->libraryName() );
 
             if ( !_wallResLib.valid() )
             {
                 OE_WARN << LC << "Unable to load resource library '" << *_wallSkinSymbol->libraryName() << "'"
                     << "; wall geometry will not be textured." << std::endl;
+                _wallSkinSymbol = 0L;
             }
         }
 
         if ( _roofSkinSymbol.valid() && _roofSkinSymbol->libraryName().isSet() )
         {
-            _roofResLib = sheet->getResourceLibrary( *_roofSkinSymbol->libraryName(), context.getDBOptions() );
+            _roofResLib = sheet->getResourceLibrary( *_roofSkinSymbol->libraryName() );
             if ( !_roofResLib.valid() )
             {
                 OE_WARN << LC << "Unable to load resource library '" << *_roofSkinSymbol->libraryName() << "'"
                     << "; roof geometry will not be textured." << std::endl;
+                _roofSkinSymbol = 0L;
             }
         }
     }
@@ -926,16 +955,14 @@ ExtrudeGeometryFilter::push( FeatureList& input, FilterContext& context )
             groupStateSet->setAttributeAndModes( new osg::LineWidth(*_outlineSymbol->stroke()->width()), 1 );
     }
 
-    OE_DEBUG << LC << "Sorted geometry into " << group->getNumChildren() << " groups" << std::endl;
+#if 0 // now called from GeometryCompiler
 
-#if 0
-    // running this after the MC reduces the primitive set count by a huge amount;
-    // but, it actually increases draw time and overall frame time. So, bad. Also it 
-    // messes up our nice feature source index primitive set tagging.
-    if ( _mergeGeometry == true )
+    // generate shaders to draw the geometry.
+    if ( Registry::capabilities().supportsGLSL() )
     {
-        osgUtil::Optimizer o;
-        o.optimize( group, osgUtil::Optimizer::MERGE_GEOMETRY );
+        StateSetCache* cache = context.getSession() ? context.getSession()->getStateSetCache() : 0L;
+        ShaderGenerator gen( cache );
+        group->accept( gen );
     }
 #endif
 

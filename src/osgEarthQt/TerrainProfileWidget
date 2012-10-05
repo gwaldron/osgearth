@@ -155,7 +155,8 @@ namespace osgEarth { namespace QtGui
                 if ( _mapNode->getTerrain()->getWorldCoordsUnderMouse( aa.asView(), ea.getX(), ea.getY(), world ))
                 {
                   osgEarth::GeoPoint mapPoint;
-                  _mapNode->getMap()->worldPointToMapPoint( world, mapPoint );
+                  mapPoint.fromWorld( _mapNode->getMapSRS(), world );
+                  //_mapNode->getMap()->worldPointToMapPoint( world, mapPoint );
 
                   if (!_startValid)
                   {
@@ -168,8 +169,8 @@ namespace osgEarth { namespace QtGui
                     _end = mapPoint.vec3d();
                     _startValid = false;
 
-                    _profileWidget->setStartEnd(GeoPoint(_mapNode->getMapSRS(), _start.x(), _start.y(), 0),
-                                                GeoPoint(_mapNode->getMapSRS(), _end.x(), _end.y(), 0));
+                    _profileWidget->setStartEnd(GeoPoint(_mapNode->getMapSRS(), _start.x(), _start.y()),
+                                                GeoPoint(_mapNode->getMapSRS(), _end.x(), _end.y()));
                   }
 
                   updateDisplay();
@@ -188,7 +189,8 @@ namespace osgEarth { namespace QtGui
               if (_mapNode->getTerrain()->getWorldCoordsUnderMouse(aa.asView(), ea.getX(), ea.getY(), world))
               {
                 osgEarth::GeoPoint mapPoint;
-                _mapNode->getMap()->worldPointToMapPoint(world, mapPoint);
+                mapPoint.fromWorld( _mapNode->getMapSRS(), world );
+                //_mapNode->getMap()->worldPointToMapPoint( world, mapPoint );
                 _end = mapPoint.vec3d();
 
                 updateDisplay();

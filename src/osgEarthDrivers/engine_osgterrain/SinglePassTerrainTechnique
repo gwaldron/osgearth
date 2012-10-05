@@ -127,6 +127,9 @@ public:
     osg::Transform* getTransform() const { return _transform.get(); }
     osg::Transform* takeTransform() { return _transform.release(); }
 
+    bool getClearDataAfterCompile() const { return _clearDataAfterCompile;}
+    void setClearDataAfterCompile( bool value) { _clearDataAfterCompile = value;}
+
 protected:
 
     void calculateSampling( unsigned int& out_rows, unsigned int& out_cols, double& out_i, double& out_j );
@@ -137,7 +140,7 @@ private:
     OpenThreads::Mutex _compileMutex;
     //OpenThreads::Mutex                  _writeBufferMutex;
     osg::ref_ptr<osg::MatrixTransform> _transform;
-    osg::ref_ptr<osg::Geode> _backGeode;
+    osg::ref_ptr<osg::Group> _backNode;
     osg::ref_ptr<osg::Uniform> _imageLayerStampUniform;
     osg::Vec3d _centerModel;
     float _verticalScaleOverride;
@@ -146,6 +149,7 @@ private:
     int  _initCount;
     bool _pendingFullUpdate;    
     bool _pendingGeometryUpdate;
+    bool _clearDataAfterCompile;
 
     struct ImageLayerUpdate {
         GeoImage _image;
@@ -174,13 +178,13 @@ private:
 
     osg::Vec3d computeCenterModel();
     bool createGeoImage( const CustomColorLayer& layer, GeoImage& image ) const; //const osgTerrain::Layer* imageLayer ) const;
-    osg::Geode* createGeometry( const TileFrame& tilef );
+    osg::Group* createGeometry( const TileFrame& tilef );
     osg::StateSet* createStateSet( const TileFrame& tilef );
     void prepareImageLayerUpdate( int layerIndex, const TileFrame& tilef );
     //Threading::ReadWriteMutex& getMutex();
-    inline osg::Geode* getFrontGeode() const {
+    inline osg::Group* getFrontNode() const {
         if (_transform.valid() && _transform->getNumChildren() > 0)
-            return static_cast<osg::Geode*>( _transform->getChild(0) ); 
+            return static_cast<osg::Group*>(_transform->getChild(0));
         return NULL;
     }
     osg::StateSet* getParentStateSet() const;

@@ -32,6 +32,7 @@
 #include <osgEarth/Cache>
 #include <osgEarth/CachePolicy>
 #include <osgEarth/URI>
+#include <osgEarth/Revisioning>
 
 #include <osgDB/ReaderWriter>
 #include <OpenThreads/Mutex>
@@ -90,7 +91,7 @@ namespace osgEarth { namespace Features
      * A FeatureSource is a pluggable object that generates Features, and 
      * optionally, styling information to go along with them.
      */
-    class OSGEARTHFEATURES_EXPORT FeatureSource : public virtual Revisioned<osg::Object>
+    class OSGEARTHFEATURES_EXPORT FeatureSource : public osg::Object, public Revisioned
     {
     public:      
         /**
@@ -222,6 +223,9 @@ namespace osgEarth { namespace Features
 		 */
         virtual void initialize( const osgDB::Options* dbOptions =0L ) { }
 
+        /** Dirties the feature profile */
+        void dirtyFeatureProfile() { _featureProfile = 0;}
+
     protected:
 
         /**
@@ -243,10 +247,7 @@ namespace osgEarth { namespace Features
         const URIContext& uriContext() const { return _uriContext; }
 
         /** The Cache passed in via the dbOptions */
-        Cache* getCache() const { return _cache.get(); }    
-
-        /** Dirties the feature profile */
-        void dirtyFeatureProfile() { _featureProfile = 0;}
+        Cache* getCache() const { return _cache.get(); }            
 
     private:
         const FeatureSourceOptions         _options;

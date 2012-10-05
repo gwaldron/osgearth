@@ -1,523 +1,76 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2008-2012 Pelican Mapping
-* http://osgearth.org
-*
-* osgEarth is free software; you can redistribute it and/or modify
-* it under the terms of the GNU Lesser General Public License as published by
-* the Free Software Foundation; either version 2 of the License, or
-* (at your option) any later version.
-*
-* This program is distributed in the hope that it will be useful,
-* but WITHOUT ANY WARRANTY; without even the implied warranty of
-* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-* GNU Lesser General Public License for more details.
-*
-* You should have received a copy of the GNU Lesser General Public License
-* along with this program.  If not, see <http://www.gnu.org/licenses/>
-*/
-#ifndef OSGEARTHUTIL_LINEOFSIGHT
-#define OSGEARTHUTIL_LINEOFSIGHT
+ * Copyright 2008-2012 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+#ifndef OSGEARTH_UTIL_LINE_OF_SIGHT_H
+#define OSGEARTH_UTIL_LINE_OF_SIGHT_H
 
 #include <osgEarthUtil/Common>
-#include <osgEarth/MapNode>
-#include <osgEarth/Terrain>
-#include <osgEarth/GeoData>
-#include <osgEarth/Draggers>
+#include <osg/Group>
 
 namespace osgEarth { namespace Util
 {
-    /**
-     * The line of sight display mode
-     */
-    enum LOSDisplayMode
+    using namespace osgEarth;
+
+    struct LineOfSight
     {
         /**
-         * Split mode draws a line in the good color from the start of the line to the first hit, then a bad line from the hit to the end
+         * The line of sight display mode
          */
-        MODE_SPLIT,
-        /**
-         * Single mode draws a single line from start to end and colors it good or bad depending on whether there is line of sight or not.
-         */
-        MODE_SINGLE        
+        enum DisplayMode
+        {
+            /**
+             * Split mode draws a line in the good color from the start of the line to the first hit, then a bad line from the hit to the end
+             */
+            MODE_SPLIT,
+            /**
+             * Single mode draws a single line from start to end and colors it good or bad depending on whether there is line of sight or not.
+             */
+            MODE_SINGLE
+        };
     };
 
-    /**
-     * The altitude mode of the locations
-     */
-    //enum AltitudeMode
-    //{
-    //    ALTITUDE_ABSOLUTE,
-    //    ALTITUDE_RELATIVE
-    //};
 
-    struct ChangedCallback : public osg::Referenced
+    /**
+     * Base class for LOS node implementations
+     */
+    class /* no export */ LineOfSightNode : public osg::Group
+    {
+    public:
+        LineOfSightNode() { }
+        virtual ~LineOfSightNode() { }
+    };
+
+
+    /** 
+     * Callback for LOS change notifications 
+     */
+    struct LOSChangedCallback : public osg::Referenced
     {
     public:
         virtual void onChanged() {};
 
         /** dtor */
-        virtual ~ChangedCallback() { }
+        virtual ~LOSChangedCallback() { }
     };
 
-    typedef std::list< osg::ref_ptr<ChangedCallback> > ChangedCallbackList;
-
-
-    /**
-     * A Node that can be used to display point to point line of sight calculations
-     */
-    class OSGEARTHUTIL_EXPORT LineOfSightNode: public osg::Group
-    {
-    public:
-        /**
-         *Constructs and new LineOfSightNode
-         *@param mapNode
-         *       The MapNode that this LineOfSightNode will be operating on
-         */
-        LineOfSightNode( osgEarth::MapNode* mapNode );
-
-        virtual ~LineOfSightNode();
-
-        /**
-         *Constructs and new LineOfSightNode
-         *@param mapNode
-         *       The MapNode that this LineOfSightNode will be operating on
-         *@param start
-         *       The start point
-         *@param end
-         *       The end point
-         */
-        LineOfSightNode( osgEarth::MapNode* mapNode, const osg::Vec3d& start, const osg::Vec3d& end );
-
-        /**
-         * Get the start point
-         */
-        const osg::Vec3d& getStart() const;
-
-        /**
-         * Gets the start point in world coordinates
-         */
-        const osg::Vec3d& getStartWorld() const;
-
-        /**
-         * Set the start point.  The point should be in the Map's coordinate system.  So if you're dealing with a geocentric map
-         * the location should be in the form lon, lat, elevation
-         */
-        void setStart(const osg::Vec3d& start);
-
-        /**
-         * Get the end point
-         */
-        const osg::Vec3d& getEnd() const;
-
-        /**
-         * Gets the end point in world coordinates
-         */
-        const osg::Vec3d& getEndWorld() const;
-
-        /**
-         * Set the end point.  The point should be in the Map's coordinate system.  So if you're dealing with a geocentric map
-         * the location should be in the form lon, lat, elevation
-         */
-        void setEnd(const osg::Vec3d& end);
-
-        /**
-         * Gets the hit point.  Only valid is getHasLOS is false.
-         */
-        const osg::Vec3d& getHit() const;
-
-        /**
-         * Gets the hit point in world coordinates
-         */
-        const osg::Vec3d& getHitWorld() const;
-
-        /**
-         * Gets whether not this calculation has line of sight.
-         */
-        bool getHasLOS() const;
-
-        /**
-         * Set the good color
-         */
-        void setGoodColor( const osg::Vec4f &color );
-
-        /**
-         * Gets the good color
-         */
-        const osg::Vec4f& getGoodColor() const;
-
-        /**
-         * Sets the bad color
-         */
-        void setBadColor( const osg::Vec4f &color );
-
-        /**
-         * Gets the bad color
-         */
-        const osg::Vec4f& getBadColor() const;
-
-        /**
-         * Gets the display mode
-         */
-        LOSDisplayMode getDisplayMode() const;
-
-        /**
-         * Sets the display mode
-         */
-        void setDisplayMode( LOSDisplayMode displayMode );
-
-        /**
-         * Gets the altitude mode
-         */
-        AltitudeMode getStartAltitudeMode() const;
-        AltitudeMode getEndAltitudeMode() const;
-
-        /**
-         * Sets the altitude mode
-         */
-        void setStartAltitudeMode( AltitudeMode mode );
-        void setEndAltitudeMode( AltitudeMode mode );
-
-
-        /**
-         * Gets the MapNode that this LineOfSightNode is operating on.
-         */
-        osgEarth::MapNode* getMapNode() const { return _mapNode.get(); }
-
-        /**
-         * Called when the underlying terrain has changed.
-         */
-        void terrainChanged( const osgEarth::TileKey& tileKey, osg::Node* terrain );
-
-        void addChangedCallback( ChangedCallback* callback );
-        void removeChangedCallback( ChangedCallback* callback );
-
-        virtual void traverse(osg::NodeVisitor& nv);
-
-        bool getTerrainOnly() const;
-
-        void setTerrainOnly( bool terrainOnly );
-
-        /**
-         * Utility method to compute LOS with a MapNode
-         * @param mapNode
-         *        The MapNode to intersect
-         * @param start
-         *        The start point in map coordinates
-         * @param end
-         *        The end point in map coordinates
-         * @param hit
-         *        The hit point, in map coordinates.
-         * @returns
-         *        Whether or not there is line of sight from start to end.  hit is only valid if this function return false.
-         */
-        static bool computeLOS( osgEarth::MapNode* mapNode, const osg::Vec3d& start, const osg::Vec3d& end, AltitudeMode altitudeMode, osg::Vec3d& hit );
-
-
-    private:
-        osg::Node* getNode();
-        void compute(osg::Node* node, bool backgroundThread = false);
-        void draw(bool backgroundThread = false);
-        void subscribeToTerrain();
-        osg::ref_ptr< osgEarth::MapNode > _mapNode;
-        bool _hasLOS;
-
-        LOSDisplayMode _displayMode;    
-        osg::Vec4 _goodColor;
-        osg::Vec4 _badColor;
-
-        osg::Vec3d _hit;
-        osg::Vec3d _start;
-        osg::Vec3d _end;
-
-        osg::Vec3d _startWorld;
-        osg::Vec3d _endWorld;
-        osg::Vec3d _hitWorld;
-
-        AltitudeMode _startAltitudeMode;
-        AltitudeMode _endAltitudeMode;
-
-        ChangedCallbackList _changedCallbacks;
-
-        osg::ref_ptr < osgEarth::TerrainCallback > _terrainChangedCallback;
-
-        osg::ref_ptr< osg::Node > _pendingNode;
-        bool _clearNeeded;
-        bool _terrainOnly;
-    };
-
-
-    /**********************************************************************/
-
-
-    /**
-     * An update callback that allows you to attach a LineOfSightNode to two moving nodes.
-     * The update callback will update the start and end points of the LineOfSight calcuation to
-     * follow the nodes.
-     *
-     * Example:
-     * LineOfSightNode* los = new LineOfSightNode(myMapNode);
-     * los->setUpdateCallback( new LineOfSightTether( startNode, endNode ) );
-     */
-    class OSGEARTHUTIL_EXPORT LineOfSightTether : public osg::NodeCallback
-    {
-    public:
-        LineOfSightTether(osg::Node* startNode, osg::Node* endNode);
-
-        /** dtor */
-        virtual ~LineOfSightTether() { }
-
-        virtual void operator()(osg::Node* node, osg::NodeVisitor* nv);  
-
-        osg::Node* startNode() { return _startNode.get(); }
-        osg::Node* endNode() { return _endNode.get(); }
-
-    private:
-        osg::ref_ptr< osg::Node > _startNode;
-        osg::ref_ptr< osg::Node > _endNode;
-    };
-
-
-    /**********************************************************************/
-
-    /**
-     * A Node that can be used to display radial line of sight calculations
-     */
-    class OSGEARTHUTIL_EXPORT RadialLineOfSightNode : public osg::Group
-    {
-    public:
-        /**
-         * Create a new RadialLineOfSightNode
-         * @param mapNode
-         *        The MapNode this RadialLineOfSightNode is operating on.
-         */
-        RadialLineOfSightNode( MapNode* mapNode );
-
-        virtual ~RadialLineOfSightNode();
-
-        /**
-         * Gets the MapNode this RadialLineOfSightNode is operating on
-         */
-        osgEarth::MapNode* getMapNode() { return _mapNode.get(); }
-
-        /**
-         * Sets the radius in meters
-         */
-        void setRadius( double radius );
-        
-        /**
-         * Gets the radius in meters
-         */
-        double getRadius() const;
-
-        /**
-         * Sets the number of spokes in the radial line of sight calculation
-         */
-        void setNumSpokes( int numSpokes );
-
-        /**
-         * Gets the number of spokes in the radial line of sight calculation
-         */
-        int getNumSpokes() const;
-
-        /**
-         * Gets the center point in world coordinates
-         */
-        const osg::Vec3d& getCenterWorld() const;
-
-        /**
-         * Gets the center point
-         */
-        const osg::Vec3d& getCenter() const;
-
-        /**
-         * Set the center point.  The point should be in the Map's coordinate system.  So if you're dealing with a geocentric map
-         * the location should be in the form lon, lat, elevation
-         */
-        void setCenter(const osg::Vec3d& center);
-
-        /**
-         * Sets the good color
-         */
-        void setGoodColor( const osg::Vec4f &color );
-
-        /**
-         * Gets the good color
-         */
-        const osg::Vec4f& getGoodColor() const;
-
-
-        /**
-         * Sets the bad color
-         */
-        void setBadColor( const osg::Vec4f &color );
-
-        /**
-         * Gets the bad color
-         */
-        const osg::Vec4f& getBadColor() const;
-
-        /**
-         * Sets the outline color
-         */
-        void setOutlineColor( const osg::Vec4f &color );
-
-        /**
-         * Gets the outline color
-         */
-        const osg::Vec4f& getOutlineColor() const;
-
-        /**
-         * Gets the display mode
-         */
-        LOSDisplayMode getDisplayMode() const;
-
-        /*
-         * Sets the display mode
-         */
-        void setDisplayMode( LOSDisplayMode displayMode );
-
-        /**
-         * Gets whether to draw the fill of this RadialLineOfSightNode
-         */
-        bool getFill() const;
-
-        /*
-         * Sets whether to draw the fill of this RadialLineOfSightNode
-         */
-        void setFill( bool fill );
-
-        /**
-         * Gets the altitude mode
-         */
-        AltitudeMode getAltitudeMode() const;
-
-        /**
-         * Sets the altitude mode
-         */
-
-        void setAltitudeMode( AltitudeMode mode );
-
-        void addChangedCallback( ChangedCallback* callback );
-        
-        void removeChangedCallback( ChangedCallback* callback );
-
-
-        /**
-         * Called when the underlying terrain has changed.
-         */
-        void terrainChanged( const osgEarth::TileKey& tileKey, osg::Node* terrain );
-
-        virtual void traverse(osg::NodeVisitor& nv);
-
-        bool getTerrainOnly() const;
-        void setTerrainOnly( bool terrainOnly );
-
-
-    private:
-        osg::Node* getNode();
-        void compute(osg::Node* node, bool backgroundThread = false);
-        void compute_line(osg::Node* node, bool backgroundThread = false);
-        void compute_fill(osg::Node* node, bool backgroundThread = false);
-        int _numSpokes;
-        double _radius;
-
-        LOSDisplayMode _displayMode;    
-        bool _fill;
-        osg::Vec4 _goodColor;
-        osg::Vec4 _badColor;
-        osg::Vec4 _outlineColor;
-        osg::Vec3d _center;
-        osg::Vec3d _centerWorld;
-        osg::ref_ptr< MapNode > _mapNode;
-        AltitudeMode _altitudeMode;
-        ChangedCallbackList _changedCallbacks;
-        osg::ref_ptr< osg::Node > _pendingNode;
-        osg::ref_ptr < osgEarth::TerrainCallback > _terrainChangedCallback;
-        bool _terrainOnly;
-    };
-
-    /**********************************************************************/
-
-     /**
-     * An update callback that allows you to attach a RadialLineOfSightNode to a moving node.
-     * The update callback will update the center point of the calcuation to follow the node.
-     *
-     * Example:
-     * RadialLineOfSightNode* los = new RadialLineOfSightNode(myMapNode);
-     * los->setUpdateCallback( new RadialLineOfSightTether( myNode ) );
-     */
-    class OSGEARTHUTIL_EXPORT RadialLineOfSightTether : public osg::NodeCallback
-    {
-    public:
-        RadialLineOfSightTether(osg::Node* node);
-        virtual ~RadialLineOfSightTether() { }
-        virtual void operator()(osg::Node* node, osg::NodeVisitor* nv);  
-
-        osg::Node* node() { return _node.get(); }
-
-    private:
-        osg::ref_ptr< osg::Node > _node;
-    };
-
-    /**********************************************************************/
-
-    /**
-     * An editor node that allows you to move the start and end points
-     * of the LineOfSightNode
-     */
-    class OSGEARTHUTIL_EXPORT LineOfSightEditor : public osg::Group
-    {
-    public:
-        /**
-         * Create a new LineOfSightEditor
-         * @param los
-         *        The LineOfSightNode to edit
-         */
-        LineOfSightEditor(LineOfSightNode* los);    
-        
-        virtual ~LineOfSightEditor();    
-
-        /**
-         *Updates the position of the draggers to represent the actual location of the LineOfSightNode.
-         *This should be called if the los is changed outside of the editor and would probably benefit
-         *from the LineOfSightNode having a callback that notifies listeners that the start/end points have changed.
-         */
-        void updateDraggers();
-    private:
-        osg::ref_ptr< LineOfSightNode > _los;
-        Dragger* _startDragger;
-        Dragger* _endDragger;
-        osg::ref_ptr< ChangedCallback > _callback;
-    };
-
-    /**********************************************************************/
-
-    class OSGEARTHUTIL_EXPORT RadialLineOfSightEditor : public osg::Group
-    {
-    public:
-        /**
-         * Create a new RadialLineOfSightEditor
-         * @param los
-         *        The RadialLineOfSightNode to edit
-         */
-        RadialLineOfSightEditor(RadialLineOfSightNode* los);    
-        virtual ~RadialLineOfSightEditor();
-
-         /**
-         *Updates the position of the dragger to represent the actual location of the RadialLineOfSightNode.
-         *This should be called if the los is changed outside of the editor and would probably benefit
-         *from the RadialLineOfSightNode having a callback that notifies listeners that the start/end points have changed.
-         */
-        void updateDraggers();
-    private:
-        osg::ref_ptr< RadialLineOfSightNode > _los;
-        Dragger* _dragger;
-        osg::ref_ptr< ChangedCallback > _callback;
-    };
-
+    typedef std::list< osg::ref_ptr<LOSChangedCallback> > LOSChangedCallbackList;
 
 
 } } // namespace osgEarth::Util
 
-#endif // OSGEARTHUTIL_LINEOFSIGHT
+#endif // OSGEARTH_UTIL_LINE_OF_SIGHT_H

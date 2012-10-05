@@ -41,7 +41,7 @@ _geom        ( geom ),
 _draped      ( draped )
 {
     _style = style;
-    init();
+    init( 0L );
 }
 
 
@@ -56,26 +56,21 @@ _draped      ( draped )
 
     if ( content )
     {
-        getTransform()->addChild( content );
-        if ( draped )
-        {
-            DrapeableNode* dn = new DrapeableNode(mapNode);
-            dn->addChild( getTransform() );
-            this->addChild( dn );
-        }
-        else
-        {
-            this->addChild( getTransform() );
-        }
+        getChildAttachPoint()->addChild( content );
+        getDrapeable()->setDraped( _draped );
+
+        this->addChild( getRoot() );
 
         // this will activate the clamping logic
-        applyStyle( style, draped );
+        applyStyle( style );
+
+        setLightingIfNotSet( style.has<ExtrusionSymbol>() );
     }
 }
 
 
 void
-LocalGeometryNode::init()
+LocalGeometryNode::init(const osgDB::Options* dbOptions)
 {
     if ( _geom.valid() )
     {
@@ -83,24 +78,16 @@ LocalGeometryNode::init()
         feature->style() = *_style;
 
         GeometryCompiler compiler;
-        FilterContext cx( _mapNode.valid() ? new Session(_mapNode->getMap()) : 0L );
+        FilterContext cx( getMapNode() ? new Session(getMapNode()->getMap()) : 0L );
         osg::Node* node = compiler.compile( feature.get(), cx );
         if ( node )
         {
-            getTransform()->addChild( node );
-            if ( _draped && _mapNode.valid() )
-            {
-                DrapeableNode* dn = new DrapeableNode(_mapNode.get());
-                dn->addChild( getTransform() );
-                this->addChild( dn );
-            }
-            else
-            {
-                this->addChild( getTransform() );
-            }
+            getChildAttachPoint()->addChild( node );
+            getDrapeable()->setDraped( _draped );
+            this->addChild( getRoot() );
 
             // prep for clamping
-            applyStyle( *_style, _draped );
+            applyStyle( *_style );
         }
     }
 }
@@ -111,9 +98,10 @@ LocalGeometryNode::init()
 OSGEARTH_REGISTER_ANNOTATION( local_geometry, osgEarth::Annotation::LocalGeometryNode );
 
 
-LocalGeometryNode::LocalGeometryNode(MapNode*      mapNode,
-                                     const Config& conf) :
-LocalizedNode( mapNode )
+LocalGeometryNode::LocalGeometryNode(MapNode*              mapNode,
+                                     const Config&         conf,
+                                     const osgDB::Options* dbOptions) :
+LocalizedNode( mapNode, conf )
 {
     if ( conf.hasChild("geometry") )
     {
@@ -123,7 +111,9 @@ LocalizedNode( mapNode )
         {
             conf.getObjIfSet( "style", _style );
             _draped = conf.value<bool>("draped",false);
-            init();
+
+            init( dbOptions );
+
             if ( conf.hasChild("position") )
                 setPosition( GeoPoint(conf.child("position")) );
         }

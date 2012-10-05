@@ -1,0 +1,103 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+* Copyright 2008-2012 Pelican Mapping
+* http://osgearth.org
+*
+* osgEarth is free software; you can redistribute it and/or modify
+* it under the terms of the GNU Lesser General Public License as published by
+* the Free Software Foundation; either version 2 of the License, or
+* (at your option) any later version.
+*
+* This program is distributed in the hope that it will be useful,
+* but WITHOUT ANY WARRANTY; without even the implied warranty of
+* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+* GNU Lesser General Public License for more details.
+*
+* You should have received a copy of the GNU Lesser General Public License
+* along with this program.  If not, see <http://www.gnu.org/licenses/>
+*/
+#ifndef OSGEARTH_SHADER_FACTORY_H
+#define OSGEARTH_SHADER_FACTORY_H 1
+
+#include <osgEarth/Common>
+#include <osgEarth/VirtualProgram>
+
+namespace osgEarth
+{
+    /**
+     * A factory class that generates shader functions for the osgEarth engine.
+     * The default ShaderFactory is stored in the osgEarth registry. You can replace it
+     * if you want to replace osgEarth's default shader templates.
+     */
+    class OSGEARTH_EXPORT ShaderFactory : public osg::Referenced
+    {
+    public:
+        /** Creates a vertex shader main(). */
+        virtual osg::Shader* createVertexShaderMain(
+            const ShaderComp::FunctionLocationMap& functions =ShaderComp::FunctionLocationMap(),
+            bool useLightingShaders =true ) const;
+
+        /** Creates a fragment shader main(). */
+        virtual osg::Shader* createFragmentShaderMain( 
+            const ShaderComp::FunctionLocationMap& functions =ShaderComp::FunctionLocationMap(),
+            bool useLightingShaders =true ) const;
+
+        /**
+         * Gets the uniform/shader name of the sampler corresponding the the provider
+         * texture image unit
+         */
+        virtual std::string getSamplerName( unsigned texImageUnit ) const;
+        
+        /**
+         * Creates the function that sets up default texcoords in the vertex shader.
+         * The name/prototype is:
+         *    void osgearth_vert_setupColoring(); 
+         */
+        virtual osg::Shader* createDefaultColoringVertexShader( unsigned numTexCoordSets ) const;
+
+        /**
+         * Creates the function that applies texture data in the fragment shader.
+         * The name/prototype is:
+         *    osgearth_frag_applyColoring( inout vec4 color );
+         */
+        virtual osg::Shader* createDefaultColoringFragmentShader( unsigned numTexCoordSets ) const;
+
+        /**
+         * Creates the function that applies lighting calculations in the vertex shader.
+         * The name/prototype is:
+         *    void osgearth_vert_setupLighting();
+         */
+        virtual osg::Shader* createDefaultLightingVertexShader() const;
+
+        /**
+         * Creates the function that applies lighting coloring in the fragment shader.
+         * The name/prototype is:
+         *    void osgearth_frag_applyLighting( inout vec4 color ); 
+         */
+        virtual osg::Shader* createDefaultLightingFragmentShader() const;
+
+        /**
+         * Builds a shader that executes an image filter chain.
+         */
+        virtual osg::Shader* createColorFilterChainFragmentShader( const std::string& function, const ColorFilterChain& chain ) const;
+
+        /**
+         * Gets a uniform corresponding to the given mode and value
+         */
+        virtual osg::Uniform* getUniformForGLMode(
+            osg::StateAttribute::GLMode      mode,
+            osg::StateAttribute::GLModeValue value );
+
+        /** dtor */
+        virtual ~ShaderFactory() { }
+
+    private:
+        osg::ref_ptr<osg::Uniform> _glLightOn;
+        osg::ref_ptr<osg::Uniform> _glLightOff;
+        mutable Threading::Mutex   _modeUniformMutex;
+    };
+
+
+} // namespace osgEarth
+
+#endif // OSGEARTH_SHADER_FACTORY_H

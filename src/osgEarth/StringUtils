@@ -39,8 +39,17 @@ namespace osgEarth
 
     typedef std::vector<std::string> StringVector;
 
-    /** Replaces all the instances of "sub" with "other" in "s". */
-    extern OSGEARTH_EXPORT std::string& replaceIn( std::string& s, const std::string& sub, const std::string& other);
+    /** Replaces all the instances of "pattern" with "replacement" in "in_out" */
+    extern OSGEARTH_EXPORT std::string& replaceIn(
+        std::string&       in_out, 
+        const std::string& pattern, 
+        const std::string& replacement );
+
+    /** Replaces all the instances of "pattern" with "replacement" in "in_out" (case-insensitive) */
+    extern OSGEARTH_EXPORT std::string& ciReplaceIn(
+        std::string&       in_out, 
+        const std::string& pattern, 
+        const std::string& replacement );
 
     /**
      * Trims whitespace from the ends of a string.
@@ -65,6 +74,13 @@ namespace osgEarth
         bool               caseSensitive =true,
         const std::locale& locale        =std::locale() );
 
+    /**
+     * Case-insensitive compare
+     */
+    extern OSGEARTH_EXPORT bool ciEquals(
+        const std::string& lhs,
+        const std::string& rhs,
+        const std::locale& local = std::locale() );
 
 
     extern OSGEARTH_EXPORT std::string joinStrings( const StringVector& input, char delim );

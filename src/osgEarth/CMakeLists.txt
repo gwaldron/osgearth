@@ -23,8 +23,9 @@ SET(LIB_PUBLIC_HEADERS
     Cache
     CacheBin
     CachePolicy
-	CacheSeed
-	Capabilities
+    CacheSeed
+    Capabilities
+    ColorFilter
     Common
     CompositeTileSource
     Config
@@ -33,12 +34,15 @@ SET(LIB_PUBLIC_HEADERS
     CullingUtils
     DepthOffset
     DPLineSegmentIntersector
-	Draggers
+    Draggers
     DrapeableNode
+    DrawInstanced
     ECEF
     ElevationLayer
+    ElevationLOD
     ElevationQuery
     Export
+    FadeEffect
     FileUtils
     GeoCommon
     GeoData
@@ -46,9 +50,9 @@ SET(LIB_PUBLIC_HEADERS
     GeoMath
     HeightFieldUtils
     HTTPClient
-    ImageToHeightFieldConverter
     ImageLayer
     ImageMosaic
+    ImageToHeightFieldConverter
     ImageUtils
     IOTypes
     JsonUtils
@@ -57,7 +61,12 @@ SET(LIB_PUBLIC_HEADERS
     Locators
     LocalTangentPlane
     Map
+    MapCallback
+    MapFrame
+    MapInfo
+    MapModelChange
     MapNode
+    MapNodeObserver
     MapNodeOptions
     MapOptions
     MaskLayer
@@ -67,19 +76,21 @@ SET(LIB_PUBLIC_HEADERS
     ModelLayer
     ModelSource
     NodeUtils
-	Notify
-	optional
-	OverlayDecorator
-	Pickers
+    Notify
+    optional
+    OverlayDecorator
+    Pickers
     Profile
-	Progress
-	Random
+    Progress
+    Random
     Registry
     Revisioning
-    ShaderComposition
+    ShaderFactory
+    ShaderGenerator
     ShaderUtils
     SparseTexture2DArray
     SpatialReference
+    StateSetCache
     StringUtils
     TaskService
     Terrain
@@ -95,9 +106,10 @@ SET(LIB_PUBLIC_HEADERS
     Units
     URI
     Utils
-	Version
-	VerticalDatum
+    Version
+    VerticalDatum
     Viewpoint
+    VirtualProgram
     XmlUtils
 )
 
@@ -119,26 +131,29 @@ IF (NOT TINYXML_FOUND)
     )
 ENDIF (NOT TINYXML_FOUND)
 
-ADD_LIBRARY(${LIB_NAME} SHARED
-#    ${OSGEARTH_USER_DEFINED_DYNAMIC_OR_STATIC}
+ADD_LIBRARY(${LIB_NAME} ${OSGEARTH_USER_DEFINED_DYNAMIC_OR_STATIC}
     ${LIB_PUBLIC_HEADERS}
     ${TINYXML_SRC}
     Bounds.cpp
     Cache.cpp
     CachePolicy.cpp
     CacheSeed.cpp
-	Capabilities.cpp
+    Capabilities.cpp
+    ColorFilter.cpp
     CompositeTileSource.cpp
     Config.cpp
     Cube.cpp
     CullingUtils.cpp
     DepthOffset.cpp
-	Draggers.cpp
+    Draggers.cpp
     DPLineSegmentIntersector.cpp
     DrapeableNode.cpp
+    DrawInstanced.cpp
     ECEF.cpp
     ElevationLayer.cpp
+    ElevationLOD.cpp
     ElevationQuery.cpp
+    FadeEffect.cpp
     FileUtils.cpp
     GeoData.cpp
     Geoid.cpp
@@ -155,6 +170,9 @@ ADD_LIBRARY(${LIB_NAME} SHARED
     Locators.cpp
     LocalTangentPlane.cpp
     Map.cpp
+    MapCallback.cpp
+    MapFrame.cpp
+    MapInfo.cpp
     MapNode.cpp
     MapNodeOptions.cpp
     MapOptions.cpp
@@ -162,21 +180,24 @@ ADD_LIBRARY(${LIB_NAME} SHARED
     MaskNode.cpp
     MaskSource.cpp
     MemCache.cpp
-	MimeTypes.cpp
-	ModelLayer.cpp
-	ModelSource.cpp
-	NodeUtils.cpp
-	Notify.cpp
-	OverlayDecorator.cpp
-	Pickers.cpp
+    MimeTypes.cpp
+    ModelLayer.cpp
+    ModelSource.cpp
+    NodeUtils.cpp
+    Notify.cpp
+    OverlayDecorator.cpp
+    Pickers.cpp
     Profile.cpp
-	Progress.cpp
-	Random.cpp
+    Progress.cpp
+    Random.cpp
     Registry.cpp
-    ShaderComposition.cpp
+    Revisioning.cpp
+    ShaderFactory.cpp
+    ShaderGenerator.cpp
     ShaderUtils.cpp
     SparseTexture2DArray.cpp
     SpatialReference.cpp
+    StateSetCache.cpp
     StringUtils.cpp
     TaskService.cpp
     Terrain.cpp
@@ -193,8 +214,9 @@ ADD_LIBRARY(${LIB_NAME} SHARED
     URI.cpp
     Utils.cpp
     Version.cpp
-	VerticalDatum.cpp
+    VerticalDatum.cpp
     Viewpoint.cpp
+    VirtualProgram.cpp
     XmlUtils.cpp
 )
 

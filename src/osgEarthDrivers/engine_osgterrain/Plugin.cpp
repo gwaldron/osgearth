@@ -111,9 +111,14 @@ public:
                 }
                 else
                 {   
+                    // make safe ref/unref so we can reference from multiple threads
+                    node->setThreadSafeRefUnref( true );
+
+                    // notify the Terrain interface of a new tile
                     osg::Timer_t start = osg::Timer::instance()->tick();
                     engineNode->getTerrain()->notifyTileAdded(key, node.get());
                     osg::Timer_t end = osg::Timer::instance()->tick();
+
                     //OE_DEBUG << "Took " << osg::Timer::instance()->delta_m(start, end) << "ms to fire terrain callbacks" << std::endl;
                 }
 

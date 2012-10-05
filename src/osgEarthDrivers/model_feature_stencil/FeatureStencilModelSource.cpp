@@ -324,19 +324,18 @@ namespace
             }
         }
         
-        //override
+    public: // FeatureModelSource
+
         virtual const FeatureModelSourceOptions& getFeatureModelOptions() const
         {
             return _options;
         }
 
-        //override
-        void initialize( const osgDB::Options* dbOptions, const Map* map )
+        void initialize( const osgDB::Options* dbOptions )
         {
-            FeatureModelSource::initialize( dbOptions, map );
+            FeatureModelSource::initialize( dbOptions );
         }
 
-        //override
         FeatureNodeFactory* createFeatureNodeFactory()
         {
             return new StencilVolumeNodeFactory( _options, _renderBinStart );

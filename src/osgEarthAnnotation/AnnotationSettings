@@ -47,7 +47,11 @@ namespace osgEarth { namespace Annotation
         static void setApplyDepthOffsetToClampedLines( bool value ) { _autoDepthOffset = value; }
         static bool getApplyDepthOffsetToClampedLines() { return _autoDepthOffset; }
 
+        static void setOcclusionQueryMaxRange( double value ) { _occlusionQueryMaxRange = value; }
+        static double getOcclusionQueryMaxRange() { return _occlusionQueryMaxRange; }
+
     private:
+        static double _occlusionQueryMaxRange;
         static bool _continuousClamping;
         static bool _autoDepthOffset;
     };

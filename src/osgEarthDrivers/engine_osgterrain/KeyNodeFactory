@@ -33,6 +33,7 @@ class KeyNodeFactory : public osg::Referenced
 {
 public:
     virtual osg::Node* createRootNode( const TileKey& key ) =0;
+
     virtual osg::Node* createNode( const TileKey& key ) =0;
 
 protected:

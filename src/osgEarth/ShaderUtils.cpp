@@ -28,6 +28,13 @@ using namespace osgEarth;
 
 namespace 
 {
+#if !defined(OSG_GL_FIXED_FUNCTION_AVAILABLE)
+    static bool s_NO_FFP = true;
+#else
+    static bool s_NO_FFP = false;
+#endif
+
+
     typedef std::list<const osg::StateSet*> StateSetStack;
 
     static osg::StateAttribute::GLModeValue 
@@ -52,9 +59,301 @@ namespace
         }
         return base_val;
     }
+    
+    static const osg::Light*
+    getLightByID(const StateSetStack& statesetStack, int id)
+    {
+        const osg::Light* base_light = NULL;
+        osg::StateAttribute::GLModeValue base_val = osg::StateAttribute::ON;
+        
+        for(StateSetStack::const_iterator itr = statesetStack.begin();
+            itr != statesetStack.end();
+            ++itr)
+        {
+            
+            osg::StateAttribute::GLModeValue val = (*itr)->getMode(GL_LIGHT0+id);
+
+            //if ( (val & osg::StateAttribute::INHERIT) == 0 )
+            {
+            //    if ((val & osg::StateAttribute::PROTECTED)!=0 ||
+            //        (base_val & osg::StateAttribute::OVERRIDE)==0)
+                {
+                    base_val = val;
+                    const osg::StateAttribute* lightAtt = (*itr)->getAttribute(osg::StateAttribute::LIGHT, id);
+                    if(lightAtt){
+                        const osg::Light* asLight = dynamic_cast<const osg::Light*>(lightAtt);
+                        if(val){
+                            base_light = asLight;
+                        }
+                    }
+                }
+            }
+            
+        }
+        return base_light;
+    }
+    
+    static const osg::Material*
+    getFrontMaterial(const StateSetStack& statesetStack)
+    {
+        const osg::Material* base_material = NULL;
+        osg::StateAttribute::GLModeValue base_val = osg::StateAttribute::ON;
+        
+        for(StateSetStack::const_iterator itr = statesetStack.begin();
+            itr != statesetStack.end();
+            ++itr)
+        {
+            
+            osg::StateAttribute::GLModeValue val = (*itr)->getMode(GL_DIFFUSE);//?
+            
+            //if ( (val & osg::StateAttribute::INHERIT) == 0 )
+            {
+            //    if ((val & osg::StateAttribute::PROTECTED)!=0 ||
+             //       (base_val & osg::StateAttribute::OVERRIDE)==0)
+                {
+                    base_val = val;
+                    const osg::StateAttribute* materialAtt = (*itr)->getAttribute(osg::StateAttribute::MATERIAL);
+                    if(materialAtt){
+                        const osg::Material* asMaterial = dynamic_cast<const osg::Material*>(materialAtt);
+                        if(val){
+                            base_material = asMaterial;
+                        }
+                    }
+                }
+            }
+            
+        }
+        return base_material;
+    }
 }
 
 //------------------------------------------------------------------------
+
+namespace State_Utils
+{
+    // Code borrowed from osg::State.cpp
+    bool replace(std::string& str, const std::string& original_phrase, const std::string& new_phrase)
+    {
+        bool replacedStr = false;
+        std::string::size_type pos = 0;
+        while((pos=str.find(original_phrase, pos))!=std::string::npos)
+        {
+            std::string::size_type endOfPhrasePos = pos+original_phrase.size();
+            if (endOfPhrasePos<str.size())
+            {
+                char c = str[endOfPhrasePos];
+                if ((c>='0' && c<='9') ||
+                    (c>='a' && c<='z') ||
+                    (c>='A' && c<='Z') ||
+                    (c==']'))
+                {
+                    pos = endOfPhrasePos;
+                    continue;
+                }
+            }
+
+            replacedStr = true;
+            str.replace(pos, original_phrase.size(), new_phrase);
+        }
+        return replacedStr;
+    }
+
+    void replaceAndInsertDeclaration(std::string& source, std::string::size_type declPos, const std::string& originalStr, const std::string& newStr, const std::string& declarationPrefix, const std::string& declarationSuffix ="")
+    {
+        if (replace(source, originalStr, newStr))
+        {
+            source.insert(declPos, declarationPrefix + newStr + declarationSuffix + std::string(";\n"));
+        }
+    }
+}
+
+void
+ShaderPreProcessor::run(osg::Shader* shader)
+{
+    // only runs for non-FFP (GLES, GL3+, etc.)
+
+    if ( s_NO_FFP && shader )
+    {
+        std::string source = shader->getShaderSource();
+
+        // find the first legal insertion point for replacement declarations. GLSL requires that nothing
+        // precede a "#verson" compiler directive, so we must insert new declarations after it.
+        std::string::size_type declPos = source.rfind( "#version " );
+        if ( declPos != std::string::npos )
+        {
+            // found the string, now find the next linefeed and set the insertion point after it.
+            declPos = source.find( '\n', declPos );
+            declPos = declPos != std::string::npos ? declPos+1 : source.length();
+        }
+        else
+        {
+            declPos = 0;
+        }
+
+        int maxLights = Registry::capabilities().getMaxLights();
+
+        for( int i=0; i<maxLights; ++i )
+        {
+            State_Utils::replaceAndInsertDeclaration(
+                source, declPos,
+                Stringify() << "gl_LightSource[" << i << "]",
+                Stringify() << "osg_LightSource" << i,
+                Stringify() 
+                    << osg_LightSourceParameters::glslDefinition() << "\n"
+                    << "uniform osg_LightSourceParameters " );
+
+            State_Utils::replaceAndInsertDeclaration(
+                source, declPos,
+                Stringify() << "gl_FrontLightProduct[" << i << "]", 
+                Stringify() << "osg_FrontLightProduct" << i,
+                Stringify()
+                    << osg_LightProducts::glslDefinition() << "\n"
+                    << "uniform osg_LightProducts " );
+        }
+
+        shader->setShaderSource( source );
+    }
+}
+
+//------------------------------------------------------------------------
+
+osg_LightProducts::osg_LightProducts(int id)
+{
+    std::stringstream uniNameStream;
+    uniNameStream << "osg_FrontLightProduct" << id; //[" << id << "]";
+    std::string uniName = uniNameStream.str();
+
+    ambient = new osg::Uniform(osg::Uniform::FLOAT_VEC4, uniName+".ambient"); // vec4
+    diffuse = new osg::Uniform(osg::Uniform::FLOAT_VEC4, uniName+".diffuse"); // vec4
+    specular = new osg::Uniform(osg::Uniform::FLOAT_VEC4, uniName+".specular"); // vec4
+}
+
+std::string 
+osg_LightProducts::glslDefinition()
+{
+    return
+        "struct osg_LightProducts {"
+        " vec4 ambient;"
+        " vec4 diffuse;"
+        " vec4 specular;"
+        " };";
+}
+
+//------------------------------------------------------------------------
+
+osg_LightSourceParameters::osg_LightSourceParameters(int id)
+    : _frontLightProduct(id)
+{
+    std::stringstream uniNameStream;
+    uniNameStream << "osg_LightSource" << id; // [" << id << "]";
+    std::string uniName = uniNameStream.str();
+    
+    ambient = new osg::Uniform(osg::Uniform::FLOAT_VEC4, uniName+".ambient"); // vec4
+    diffuse = new osg::Uniform(osg::Uniform::FLOAT_VEC4, uniName+".diffuse"); // vec4
+    specular = new osg::Uniform(osg::Uniform::FLOAT_VEC4, uniName+".specular"); // vec4
+    position = new osg::Uniform(osg::Uniform::FLOAT_VEC4, uniName+".position"); // vec4
+    halfVector = new osg::Uniform(osg::Uniform::FLOAT_VEC4, uniName+".halfVector"); // vec4
+    spotDirection = new osg::Uniform(osg::Uniform::FLOAT_VEC3, uniName+".spotDirection"); // vec3
+    spotExponent = new osg::Uniform(osg::Uniform::FLOAT, uniName+".spotExponent"); // float
+    spotCutoff = new osg::Uniform(osg::Uniform::FLOAT, uniName+".spotCutoff"); // float
+    spotCosCutoff = new osg::Uniform(osg::Uniform::FLOAT, uniName+".spotCosCutoff"); // float
+    constantAttenuation = new osg::Uniform(osg::Uniform::FLOAT, uniName+".constantAttenuation"); // float
+    linearAttenuation = new osg::Uniform(osg::Uniform::FLOAT, uniName+".linearAttenuation"); // float
+    quadraticAttenuation = new osg::Uniform(osg::Uniform::FLOAT, uniName+".quadraticAttenuation"); // float
+}
+
+void osg_LightSourceParameters::setUniformsFromOsgLight(const osg::Light* light, osg::Matrix viewMatrix, const osg::Material* frontMat)
+{
+    if(light){
+        ambient->set(light->getAmbient());
+        diffuse->set(light->getDiffuse());
+        specular->set(light->getSpecular());
+        
+        osg::Vec4 eyeLightPos = light->getPosition()*viewMatrix;
+        position->set(eyeLightPos);
+       
+        // compute half vec
+        osg::Vec4 normPos = eyeLightPos;
+        normPos.normalize();
+        osg::Vec4 halfVec4 = normPos + osg::Vec4(0,0,1,0);
+        halfVec4.normalize();
+        halfVector->set(halfVec4);
+        
+        spotDirection->set(light->getDirection()*viewMatrix);
+        spotExponent->set(light->getSpotExponent());
+        spotCutoff->set(light->getSpotCutoff());
+        //need to compute cosCutOff
+        //spotCosCutoff->set(light->get)
+        constantAttenuation->set(light->getConstantAttenuation());
+        linearAttenuation->set(light->getLinearAttenuation());
+        quadraticAttenuation->set(light->getQuadraticAttenuation());
+        
+        //front product
+        if(frontMat){
+             osg::Vec4 frontAmbient = frontMat->getAmbient(osg::Material::FRONT);
+             osg::Vec4 frontDiffuse = frontMat->getDiffuse(osg::Material::FRONT);
+             osg::Vec4 frontSpecular = frontMat->getSpecular(osg::Material::FRONT);
+            _frontLightProduct.ambient->set(osg::Vec4(light->getAmbient().x() * frontAmbient.x(),
+                                                      light->getAmbient().y() * frontAmbient.y(),
+                                                      light->getAmbient().z() * frontAmbient.z(),
+                                                      light->getAmbient().w() * frontAmbient.w()));
+            
+            _frontLightProduct.diffuse->set(osg::Vec4(light->getDiffuse().x() * frontDiffuse.x(),
+                                                      light->getDiffuse().y() * frontDiffuse.y(),
+                                                      light->getDiffuse().z() * frontDiffuse.z(),
+                                                      light->getDiffuse().w() * frontDiffuse.w()));
+            
+            _frontLightProduct.specular->set(osg::Vec4(light->getSpecular().x() * frontSpecular.x(),
+                                                      light->getSpecular().y() * frontSpecular.y(),
+                                                      light->getSpecular().z() * frontSpecular.z(),
+                                                      light->getSpecular().w() * frontSpecular.w()));
+        }
+    }
+}
+
+void osg_LightSourceParameters::applyState(osg::StateSet* stateset)
+{
+    stateset->addUniform(ambient.get());
+    stateset->addUniform(diffuse.get());
+    stateset->addUniform(specular.get());
+    stateset->addUniform(position.get());
+    stateset->addUniform(halfVector.get());
+    stateset->addUniform(spotDirection.get());
+    stateset->addUniform(spotExponent.get());
+    stateset->addUniform(spotCutoff.get());
+    stateset->addUniform(spotCosCutoff.get());
+    stateset->addUniform(constantAttenuation.get());
+    stateset->addUniform(linearAttenuation.get());
+    stateset->addUniform(quadraticAttenuation.get());
+    
+    //apply front light product
+    stateset->addUniform(_frontLightProduct.ambient.get());
+    stateset->addUniform(_frontLightProduct.diffuse.get());
+    stateset->addUniform(_frontLightProduct.specular.get());
+}
+
+std::string
+osg_LightSourceParameters::glslDefinition()
+{
+    return
+        "struct osg_LightSourceParameters {"
+        " vec4 ambient;"
+        " vec4 diffuse;"
+        " vec4 specular;"
+        " vec4 position;"
+        " vec4 halfVector;"
+        " vec3 spotDirection;"
+        " float spotExponent;"
+        " float spotCutoff;"
+        " float spotCosCutoff;"
+        " float constantAttenuation;"
+        " float linearAttenuation;"
+        " float quadraticAttenuation;"
+        " };";
+}
+
+//------------------------------------------------------------------------
+
 
 #undef LC
 #define LC "[UpdateLightingUniformHelper] "
@@ -68,13 +367,18 @@ _useUpdateTrav  ( useUpdateTrav )
     _maxLights = Registry::instance()->getCapabilities().getMaxLights();
 
     _lightEnabled = new bool[ _maxLights ];
-    if ( _maxLights > 0 )
-        _lightEnabled[0] = 1;
-    for(int i=1; i<_maxLights; ++i )
-        _lightEnabled[i] = 0;
+    if ( _maxLights > 0 ){
+        _lightEnabled[0] = true;
+        //allocate light
+        _osgLightSourceParameters.push_back(osg_LightSourceParameters(0));
+    }
+    for(int i=1; i<_maxLights; ++i ){
+        _lightEnabled[i] = true;
+        _osgLightSourceParameters.push_back(osg_LightSourceParameters(i));
+    }
 
-    _lightingEnabledUniform = new osg::Uniform( osg::Uniform::BOOL, "osgearth_LightingEnabled" );
-    _lightEnabledUniform    = new osg::Uniform( osg::Uniform::INT,  "osgearth_LightEnabled", _maxLights );
+    _lightingEnabledUniform = new osg::Uniform( osg::Uniform::BOOL, "oe_mode_GL_LIGHTING" );
+    _lightEnabledUniform    = new osg::Uniform( osg::Uniform::BOOL, "oe_mode_GL_LIGHT", _maxLights );
 
     if ( !_useUpdateTrav )
     {
@@ -122,21 +426,50 @@ UpdateLightingUniformsHelper::cullTraverse( osg::Node* node, osg::NodeVisitor* n
                 _lightingEnabledUniform->set( _lightingEnabled );
         }
 
-        // Update the list of enabled lights:
-        for( int i=0; i < _maxLights; ++i )
+        osg::View* view = cv->getCurrentCamera()->getView();
+        if ( view )
         {
-            bool enabled =
-                ( getModeValue( stateSetStack, GL_LIGHT0 + i ) & osg::StateAttribute::ON ) != 0;
-
-            if ( _lightEnabled[i] != enabled || !_applied )
+            osg::Light* light = view->getLight();
+            if ( light )
             {
-                _lightEnabled[i] = enabled;
-                if ( _useUpdateTrav )
-                    _dirty = true;
-                else
-                    _lightEnabledUniform->setElement( i, _lightEnabled[i] );
+                const osg::Material* material = getFrontMaterial(stateSetStack);
+                _osgLightSourceParameters[0].setUniformsFromOsgLight(light, cv->getCurrentCamera()->getViewMatrix(), material);
             }
-        }	
+        }
+
+        else
+        {
+            // Update the list of enabled lights:
+            for( int i=0; i < _maxLights; ++i )
+            {
+                bool enabled =
+                    ( getModeValue( stateSetStack, GL_LIGHT0 + i ) & osg::StateAttribute::ON ) != 0;
+                
+                const osg::Light* light = getLightByID(stateSetStack, i);
+                const osg::Material* material = getFrontMaterial(stateSetStack);
+
+                if ( light )
+                {
+                    OE_NOTICE << "Found Light " << i << std::endl;
+                }
+
+                if ( _lightEnabled[i] != enabled || !_applied )
+                {
+                    _lightEnabled[i] = enabled;
+                    if ( _useUpdateTrav ){
+                        _dirty = true;
+                    }else{
+                        _lightEnabledUniform->setElement( i, _lightEnabled[i] );
+                    }
+                }
+                
+                //update light position info regardsless of if applied for now
+                if(light){
+                    OE_NOTICE << "Setting light source params." << std::endl;
+                    _osgLightSourceParameters[i].setUniformsFromOsgLight(light, cv->getCurrentCamera()->getViewMatrix(), material);
+                }
+            }	
+        }
 
         // apply if necessary:
         if ( !_applied && !_useUpdateTrav )
@@ -146,6 +479,10 @@ UpdateLightingUniformsHelper::cullTraverse( osg::Node* node, osg::NodeVisitor* n
             {
                 node->getOrCreateStateSet()->addUniform( _lightingEnabledUniform.get() );
                 node->getStateSet()->addUniform( _lightEnabledUniform.get() );
+                for( int i=0; i < _maxLights; ++i )
+                {
+                    _osgLightSourceParameters[i].applyState(node->getStateSet());
+                }
                 _applied = true;
             }
         }		
@@ -169,8 +506,19 @@ UpdateLightingUniformsHelper::updateTraverse( osg::Node* node )
             osg::StateSet* stateSet = node->getOrCreateStateSet();
             stateSet->addUniform( _lightingEnabledUniform.get() );
             stateSet->addUniform( _lightEnabledUniform.get() );
+            for( int i=0; i < _maxLights; ++i )
+            {
+                _osgLightSourceParameters[i].applyState(stateSet);
+            }
         }
     }
+}
+
+void
+UpdateLightingUniformsHelper::operator()(osg::Node* node, osg::NodeVisitor* nv)
+{
+    cullTraverse( node, nv );
+    traverse(node, nv);
 }
 
 //------------------------------------------------------------------------

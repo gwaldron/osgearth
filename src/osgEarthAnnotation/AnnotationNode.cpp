@@ -35,11 +35,17 @@ namespace osgEarth { namespace Annotation
 {
     struct AutoClampCallback : public TerrainCallback
     {
+        AutoClampCallback( AnnotationNode* annotation):
+        _annotation( annotation )
+        {
+        }
+
         void onTileAdded( const TileKey& key, osg::Node* tile, TerrainCallbackContext& context )
         {
-            AnnotationNode* anno = static_cast<AnnotationNode*>(context.getClientData());
-            anno->reclamp( key, tile, context.getTerrain() );
+            _annotation->reclamp( key, tile, context.getTerrain() );
         }
+
+        AnnotationNode* _annotation;
     };
 }  }
 
@@ -53,14 +59,72 @@ _depthAdj   ( false ),
 _activeDs   ( 0L )
 {
     //nop
+    //Note: Cannot call setMapNode() here because it's a virtual function.
+    //      Each subclass will be separately responsible at ctor time.
+}
+
+AnnotationNode::AnnotationNode(MapNode* mapNode, const Config& conf) :
+_mapNode    ( mapNode ),
+_dynamic    ( false ),
+_autoclamp  ( false ),
+_depthAdj   ( false ),
+_activeDs   ( 0L )
+{
+    if ( conf.hasValue("lighting") )
+    {
+        bool lighting = conf.value<bool>("lighting", false);
+        setLightingIfNotSet( lighting );
+    }
+
+    if ( conf.hasValue("backface_culling") )
+    {
+        bool culling = conf.value<bool>("backface_culling", false);
+        getOrCreateStateSet()->setMode( GL_CULL_FACE, (culling?1:0) | osg::StateAttribute::OVERRIDE );
+    }
+
+    if ( conf.hasValue("blending") )
+    {
+        bool blending = conf.value<bool>("blending", false);
+        getOrCreateStateSet()->setMode( GL_BLEND, (blending?1:0) | osg::StateAttribute::OVERRIDE );
+    }
 }
 
 AnnotationNode::~AnnotationNode()
 {
-    osg::ref_ptr<MapNode> mapNodeSafe = _mapNode.get();
-    if ( mapNodeSafe.get() )
+    setMapNode( 0L );
+}
+
+void
+AnnotationNode::setLightingIfNotSet( bool lighting )
+{
+    osg::StateSet* ss = this->getOrCreateStateSet();
+
+    if ( ss->getMode(GL_LIGHTING) == osg::StateAttribute::INHERIT )
     {
-        mapNodeSafe->getTerrain()->removeTerrainCallbacksWithClientData(this);
+        this->getOrCreateStateSet()->setMode(
+            GL_LIGHTING,
+            (lighting ? 1 : 0) | osg::StateAttribute::OVERRIDE );
+    }
+}
+
+void
+AnnotationNode::setMapNode( MapNode* mapNode )
+{
+    if ( getMapNode() != mapNode )
+    {
+        // relocate the auto-clamping callback, if there is one:
+        osg::ref_ptr<MapNode> oldMapNode = _mapNode.get();
+        if ( oldMapNode.valid() )
+        {
+            if ( _autoClampCallback )
+            {
+                oldMapNode->getTerrain()->removeTerrainCallback( _autoClampCallback.get() );
+                if ( mapNode )
+                    mapNode->getTerrain()->addTerrainCallback( _autoClampCallback.get() );
+            }
+        }
+
+        _mapNode = mapNode;
     }
 }
 
@@ -79,8 +143,7 @@ AnnotationNode::setDynamic( bool value )
 void
 AnnotationNode::setAutoClamp( bool value )
 {
-    osg::ref_ptr<MapNode> mapNode_safe = _mapNode.get();
-    if ( mapNode_safe.valid() )
+    if ( getMapNode() )
     {
         if ( !_autoclamp && value )
         {
@@ -88,12 +151,14 @@ AnnotationNode::setAutoClamp( bool value )
 
             if ( AnnotationSettings::getContinuousClamping() )
             {
-                mapNode_safe->getTerrain()->addTerrainCallback(new AutoClampCallback(), this);
+                _autoClampCallback = new AutoClampCallback( this );
+                getMapNode()->getTerrain()->addTerrainCallback( _autoClampCallback.get() );
             }
         }
-        else if ( _autoclamp && !value )
+        else if ( _autoclamp && !value && _autoClampCallback.valid())
         {
-            mapNode_safe->getTerrain()->removeTerrainCallbacksWithClientData(this);
+            getMapNode()->getTerrain()->removeTerrainCallback( _autoClampCallback );
+            _autoClampCallback = 0;
         }
 
         _autoclamp = value;
@@ -129,6 +194,7 @@ AnnotationNode::setDepthAdjustment( bool enable )
     {
         osg::StateSet* s = this->getOrCreateStateSet();
         osg::Program* daProgram = DepthOffsetUtils::getOrCreateProgram(); // cached, not a leak.
+        //TODO: be careful to check for VirtualProgram as well in the future if things change
         osg::Program* p = dynamic_cast<osg::Program*>( s->getAttribute(osg::StateAttribute::PROGRAM) );
         if ( !p || p != daProgram )
             s->setAttributeAndModes( daProgram, osg::StateAttribute::ON|osg::StateAttribute::OVERRIDE );
@@ -153,7 +219,11 @@ AnnotationNode::makeAbsolute( GeoPoint& mapPoint, osg::Node* patch ) const
         _altitude->clamping() == AltitudeSymbol::CLAMP_RELATIVE_TO_TERRAIN) )
     {
         mapPoint.altitudeMode() = ALTMODE_RELATIVE;
-        mapPoint.z() = 0.0;
+        //If we're clamping to the terrain
+        if (_altitude->clamping() == AltitudeSymbol::CLAMP_TO_TERRAIN)
+        {
+            mapPoint.z() = 0.0;
+        }
     }
 
     // if the point's already absolute and we're not clamping it, nop.
@@ -163,12 +233,11 @@ AnnotationNode::makeAbsolute( GeoPoint& mapPoint, osg::Node* patch ) const
     }
 
     // calculate the absolute Z of the map point.
-    osg::ref_ptr<MapNode> mapNode_safe = _mapNode.get();
-    if ( mapNode_safe.valid() )
+    if ( getMapNode() )
     {
         // find the terrain height at the map point:
         double hamsl;
-        if (mapNode_safe->getTerrain()->getHeight(mapPoint.x(), mapPoint.y(), &hamsl, 0L, patch))
+        if (getMapNode()->getTerrain()->getHeight(patch, mapPoint.getSRS(), mapPoint.x(), mapPoint.y(), &hamsl, 0L))
         {
             // apply any scale/offset in the symbology:
             if ( _altitude.valid() )
@@ -263,16 +332,10 @@ AnnotationNode::hasDecoration( const std::string& name ) const
 }
 
 osg::Group*
-AnnotationNode::getAttachPoint()
+AnnotationNode::getChildAttachPoint()
 {
     osg::Transform* t = osgEarth::findTopMostNodeOfType<osg::Transform>(this);
     return t ? (osg::Group*)t : (osg::Group*)this;
-}
-
-osgEarth::MapNode*
-AnnotationNode::getMapNode() const
-{
-    return _mapNode.get();
 }
 
 bool
@@ -280,7 +343,8 @@ AnnotationNode::supportsAutoClamping( const Style& style ) const
 {
     return
         !style.has<ExtrusionSymbol>()  &&
-        !style.has<MarkerSymbol>()     &&
+        !style.has<InstanceSymbol>()   &&
+        !style.has<MarkerSymbol>()     &&  // backwards-compability
         style.has<AltitudeSymbol>()    &&
         (style.get<AltitudeSymbol>()->clamping() == AltitudeSymbol::CLAMP_TO_TERRAIN ||
          style.get<AltitudeSymbol>()->clamping() == AltitudeSymbol::CLAMP_RELATIVE_TO_TERRAIN);
@@ -295,9 +359,9 @@ AnnotationNode::configureForAltitudeMode( const AltitudeMode& mode )
 }
 
 void
-AnnotationNode::applyStyle( const Style& style, bool noClampHint )
+AnnotationNode::applyStyle( const Style& style)
 {
-    if ( !noClampHint && supportsAutoClamping(style) )
+    if ( supportsAutoClamping(style) )
     {
         _altitude = style.get<AltitudeSymbol>();
         setAutoClamp( true );

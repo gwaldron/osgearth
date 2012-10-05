@@ -250,7 +250,8 @@ void AnnotationListWidget::onItemDoubleClicked(QListWidgetItem* item)
       osg::Vec3d center = annoItem->annotation()->getBound().center();
 
       GeoPoint output;
-      _manager->map()->worldPointToMapPoint(center, output);
+      output.fromWorld( _manager->map()->getSRS(), center );
+      //_manager->map()->worldPointToMapPoint(center, output);
 
       _manager->doAction(this, new SetViewpointAction(osgEarth::Viewpoint(output.vec3d(), 0.0, -90.0, 1e5), _views));
     }
@@ -353,10 +354,6 @@ void AnnotationListWidget::onEditSelected()
     {
       this->setEnabled(false);
 
-      _activeAnnotation = annoItem->annotation();
-      _activeRoot = annoItem->annotation()->getParent(0);
-      _manager->removeAnnotation(annoItem->annotation());
-
       connect(_activeDialog, SIGNAL(finished(int)), this, SLOT(onAddFinished(int)));
 
       _activeDialog->setWindowTitle(tr("Edit annotation"));
@@ -372,15 +369,5 @@ void AnnotationListWidget::onAddFinished(int result)
   this->setEnabled(true);
 
   if (result == QDialog::Accepted)
-  {
-    osgEarth::Annotation::AnnotationNode* annotation = _activeDialog->getAnnotation();
-    if (annotation && _activeRoot.valid() && _manager.valid())
-      _manager->addAnnotation(annotation, _activeRoot);
-  }
-  else if (_activeAnnotation.valid() && _activeRoot.valid() && _manager.valid())
-  {
-    _manager->addAnnotation(_activeAnnotation, _activeRoot);
-  }
-
-  _activeAnnotation = 0L;
+    refresh();
 }

@@ -43,6 +43,15 @@ namespace osgEarth { namespace Features
         ResampleFilter();
         ResampleFilter( double minLength, double maxLength );
 
+        ResampleFilter( const Config& conf );
+
+        /**
+         * Serialize this FeatureFilter
+         */
+        virtual Config getConfig() const;
+
+
+
         virtual ~ResampleFilter() { }
 
     public:

@@ -37,6 +37,7 @@ FIND_PATH( ${THIS_OSG_INCLUDE_DIR} ${THIS_OSG_INCLUDE_FILE}
         /Library/Frameworks
     PATH_SUFFIXES
         /include/
+		/inc/
 )
 
 ENDMACRO( FIND_OSG_INCLUDE THIS_OSG_INCLUDE_DIR THIS_OSG_INCLUDE_FILE )
@@ -74,6 +75,8 @@ FIND_LIBRARY(${MYLIBRARY}
         /build/lib64/
         /Build/lib/
         /Build/lib64/
+		/win/32/debug/lib/
+		/win/32/release/lib/		
      )
 
 ENDMACRO(FIND_OSG_LIBRARY LIBRARY LIBRARYNAME)

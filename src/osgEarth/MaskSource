@@ -58,7 +58,7 @@ namespace osgEarth
     /**
      * MaskSource is a plugin object that generates a masking goemetry
      */
-    class OSGEARTH_EXPORT MaskSource : public virtual Revisioned<osg::Object>
+    class OSGEARTH_EXPORT MaskSource : public osg::Object, public Revisioned
     {
     public:        
         MaskSource( const MaskSourceOptions& options =MaskSourceOptions() );

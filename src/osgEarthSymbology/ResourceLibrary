@@ -23,12 +23,15 @@
 #include <osgEarthSymbology/Common>
 #include <osgEarthSymbology/Skins>
 #include <osgEarthSymbology/MarkerResource>
+#include <osgEarthSymbology/InstanceResource>
 #include <osgEarth/ThreadingUtils>
 #include <osgEarth/Random>
 #include <map>
 
 namespace osgEarth { namespace Symbology
 {
+    template<typename T> struct ResourceMap : public std::map<std::string, osg::ref_ptr<T> > { };
+
     /** 
      * ResourceLibrary manages a collection of external resources that a
      * build system can use the construct geometries.
@@ -43,12 +46,15 @@ namespace osgEarth { namespace Symbology
          * Creates a new resource library with a source URI. The library
          * will populate upon first use..
          */
-        ResourceLibrary( const std::string& name, const URI& uri );
+        ResourceLibrary( 
+            const std::string& name, 
+            const URI&         uri);
 
         /**
          * Creates a new resource library from a config.
          */
-        ResourceLibrary( const Config& conf =Config() );
+        ResourceLibrary( const Config& conf );
+
 
         /** dtor */
         virtual ~ResourceLibrary() { }
@@ -96,7 +102,7 @@ namespace osgEarth { namespace Symbology
         SkinResource* getSkin( const SkinSymbol* symbol, Random& prng, const osgDB::Options* dbOptions =0L ) const;
 
 
-    public: // Marker resource functions
+    public: // Marker resource functions (deprecated)
 
         /**
          * Finds and returns a marker reosurce by name.
@@ -107,6 +113,14 @@ namespace osgEarth { namespace Symbology
          * Returns a list of all marker resources in this library.
          */
         void getMarkers( MarkerResourceVector& output, const osgDB::Options* dbOptions =0L ) const;
+
+
+    public: // Instance functions
+
+        /**
+         * Finds an instance-resource by name.
+         */
+        InstanceResource* getInstance( const std::string& name, const osgDB::Options* dbOptions =0L ) const;
 
 
     public: // serialization functions
@@ -120,9 +134,11 @@ namespace osgEarth { namespace Symbology
         optional<URI>                      _uri;
         std::string                        _name;
         bool                               _initialized;
-        Threading::ReadWriteMutex          _mutex;
-        SkinResourceMap                    _skins;
-        MarkerResourceMap                  _markers;
+        mutable Threading::ReadWriteMutex  _mutex;
+
+        ResourceMap<SkinResource>          _skins;
+        ResourceMap<MarkerResource>        _markers;
+        ResourceMap<InstanceResource>      _instances;
 
         bool matches( const SkinSymbol* symbol, SkinResource* skin ) const;
 

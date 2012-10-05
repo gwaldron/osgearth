@@ -17,10 +17,12 @@
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
 #include <osgEarth/MapNode>
+#include <osgEarth/Capabilities>
+#include <osgEarth/MapNodeObserver>
 #include <osgEarth/MaskNode>
 #include <osgEarth/NodeUtils>
 #include <osgEarth/Registry>
-#include <osgEarth/ShaderComposition>
+#include <osgEarth/VirtualProgram>
 #include <osgEarth/OverlayDecorator>
 #include <osgEarth/TerrainEngineNode>
 #include <osgEarth/TextureCompositor>
@@ -28,7 +30,6 @@
 #include <osgEarth/DrapeableNode>
 #include <osg/ArgumentParser>
 #include <osg/PagedLOD>
-#include <osgSim/OverlayNode>
 
 using namespace osgEarth;
 
@@ -65,9 +66,8 @@ namespace
     };
 
     // converys overlay property changes to the OverlayDecorator in MapNode.
-    class MapModelLayerCallback : public ModelLayerCallback
+    struct MapModelLayerCallback : public ModelLayerCallback
     {
-    public:
         MapModelLayerCallback(MapNode* mapNode) : _node(mapNode) { }
 
         virtual void onOverlayChanged(ModelLayer* layer)
@@ -76,6 +76,24 @@ namespace
         }
 
         osg::observer_ptr<MapNode> _node;
+    };
+
+    // callback that will run the MapNode installer on model layers so that
+    // MapNodeObservers can have MapNode access
+    struct MapNodeObserverInstaller : public NodeOperation
+    {
+        MapNodeObserverInstaller( MapNode* mapNode ) : _mapNode( mapNode ) { }
+
+        void operator()( osg::Node* node )
+        {
+            if ( _mapNode.valid() && node )
+            {
+                MapNodeReplacer replacer( _mapNode.get() );
+                node->accept( replacer );
+            }
+        }
+
+        osg::observer_ptr<MapNode> _mapNode;
     };
 }
 
@@ -172,9 +190,28 @@ _mapNodeOptions( options )
     init();
 }
 
+MapNode::MapNode( Map* map, const MapNodeOptions& options, bool autoInit ) :
+_map( map? map : new Map() ),
+_mapNodeOptions( options )
+{
+    if ( autoInit )
+    {
+        init();
+    }
+}
+
+
 void
 MapNode::init()
 {
+    // Take a reference to this object so that it doesn't get inadvertently
+    // deleting during startup. It is possible that during startup, a driver
+    // will load that will take a reference to the MapNode (like in a
+    // ModelSource node operation) and we don't want that deleting the MapNode
+    // out from under us. 
+    // This is paired by an unref_nodelete() at the end of this method.
+    this->ref();
+
     // Protect the MapNode from the Optimizer
     setDataVariance(osg::Object::DYNAMIC);
 
@@ -205,6 +242,7 @@ MapNode::init()
     // establish global driver options. These are OSG reader-writer options that
     // will make their way to any read* calls down the pipe
     const osgDB::Options* global_options = _map->getGlobalOptions();
+
     osg::ref_ptr<osgDB::Options> local_options = global_options ? 
         Registry::instance()->cloneOrCreateOptions( global_options ) :
         NULL;
@@ -236,9 +274,9 @@ MapNode::init()
     // initialize terrain-level lighting:
     if ( terrainOptions.enableLighting().isSet() )
     {
-        _terrainEngineContainer->getOrCreateStateSet()->setMode( GL_LIGHTING, terrainOptions.enableLighting().value() ? 
-            osg::StateAttribute::ON | osg::StateAttribute::PROTECTED :
-            osg::StateAttribute::OFF | osg::StateAttribute::PROTECTED );
+        _terrainEngineContainer->getOrCreateStateSet()->setMode( 
+            GL_LIGHTING, 
+            terrainOptions.enableLighting().value() ? 1 : 0 );
     }
 
     if ( _terrainEngine )
@@ -261,21 +299,24 @@ MapNode::init()
     // model layer will still work OK though.
     _models = new osg::Group();
     _models->setName( "osgEarth::MapNode.modelsGroup" );
-    _models->getOrCreateStateSet()->setAttributeAndModes( new osg::Program(), osg::StateAttribute::OFF );
     addChild( _models.get() );
 
     // make a group for overlay model layers:
-    _overlayModels = new osg::Group();
+    _overlayModels = new ObserverGroup(); //osg::Group();
     _overlayModels->setName( "osgEarth::MapNode.overlayModelsGroup" );
 
     // a decorator for overlay models:
     _overlayDecorator = new OverlayDecorator();
+    _overlayDecorator->setOverlayGraphTraversalMask( terrainOptions.secondaryTraversalMask().value() );
+
     if ( _mapNodeOptions.overlayBlending().isSet() )
         _overlayDecorator->setOverlayBlending( *_mapNodeOptions.overlayBlending() );
     if ( _mapNodeOptions.overlayTextureSize().isSet() )
         _overlayDecorator->setTextureSize( *_mapNodeOptions.overlayTextureSize() );
     if ( _mapNodeOptions.overlayMipMapping().isSet() )
         _overlayDecorator->setMipMapping( *_mapNodeOptions.overlayMipMapping() );
+    if ( _mapNodeOptions.overlayAttachStencil().isSet() )
+        _overlayDecorator->setAttachStencil( *_mapNodeOptions.overlayAttachStencil() );
 
     addTerrainDecorator( _overlayDecorator );
 
@@ -296,15 +337,27 @@ MapNode::init()
 
     if ( _mapNodeOptions.enableLighting().isSet() )
     {
-        ss->setMode( GL_LIGHTING, _mapNodeOptions.enableLighting().value() ? 
-            osg::StateAttribute::ON | osg::StateAttribute::PROTECTED :
-            osg::StateAttribute::OFF | osg::StateAttribute::PROTECTED );
+        ss->setMode( 
+            GL_LIGHTING, 
+            _mapNodeOptions.enableLighting().value() ? 1 : 0 );
     }
 
     dirtyBound();
 
+    // Install top-level shader programs:
+    if ( Registry::capabilities().supportsGLSL() )
+    {
+        VirtualProgram* vp = new VirtualProgram();
+        vp->setName( "MapNode" );
+        vp->installDefaultColoringAndLightingShaders();
+        ss->setAttributeAndModes( vp, osg::StateAttribute::ON );
+    }
+
     // register for event traversals so we can deal with blacklisted filenames
     ADJUST_EVENT_TRAV_COUNT( this, 1 );
+
+    // remove the temporary reference.
+    this->unref_nodelete();
 }
 
 MapNode::~MapNode()
@@ -357,6 +410,12 @@ MapNode::getTerrain()
     return getTerrainEngine()->getTerrain();
 }
 
+const Terrain*
+MapNode::getTerrain() const
+{
+    return getTerrainEngine()->getTerrain();
+}
+
 TerrainEngineNode*
 MapNode::getTerrainEngine() const
 {
@@ -385,6 +444,13 @@ MapNode::getModelLayerGroup() const
     return _models.get();
 }
 
+osg::Node*
+MapNode::getModelLayerNode( ModelLayer* layer ) const
+{
+    ModelLayerNodeMap::const_iterator i = _modelLayerNodes.find( layer );
+    return i != _modelLayerNodes.end() ? i->second : 0L;
+}
+
 const MapNodeOptions&
 MapNode::getMapNodeOptions() const
 {
@@ -408,8 +474,19 @@ MapNode::onModelLayerAdded( ModelLayer* layer, unsigned int index )
 {
     if ( !layer->getEnabled() )
         return;
+    
+    // install a noe operation that will associate this mapnode with
+    // any MapNodeObservers loaded by the model layer:
+    ModelSource* modelSource = layer->getModelSource();
+    if ( modelSource )
+    {
+        // install a post-processing callback on the ModelLayer's source 
+        // so we can update the MapNode on new data that comes in:
+        modelSource->addPostProcessor( new MapNodeObserverInstaller(this) );
+    }
 
-    osg::Node* node = layer->getOrCreateNode();
+    // create the scene graph:
+    osg::Node* node = layer->createSceneGraph( _map.get(), _map->getDBOptions(), 0L );
 
     layer->addCallback(_modelLayerCallback.get() );
 
@@ -424,7 +501,7 @@ MapNode::onModelLayerAdded( ModelLayer* layer, unsigned int index )
         }
         else
         {
-            if ( dynamic_cast<TerrainDecorator*>(node) || dynamic_cast<osgSim::OverlayNode*>(node) )
+            if ( dynamic_cast<TerrainDecorator*>(node) )
             {
                 OE_INFO << LC << "Installing overlay node" << std::endl;
                 addTerrainDecorator( node->asGroup() );
@@ -433,26 +510,24 @@ MapNode::onModelLayerAdded( ModelLayer* layer, unsigned int index )
             {
                 if ( layer->getOverlay() )
                 {
-#if 0
-                    _overlayModels->addChild( node );
-                    updateOverlayGraph();
-#else
                     DrapeableNode* draper = new DrapeableNode( this );
                     draper->addChild( node );
-                    _models->insertChild( index, draper );
-#endif
+                    node = draper;
                 }
-                else
-                {
-                    _models->insertChild( index, node );
-                }
+
+                _models->insertChild( index, node );
             }
 
             ModelSource* ms = layer->getModelSource();
-            if ( ms && ms->getOptions().renderOrder().isSet() )
+
+            if ( ms )
             {
-                node->getOrCreateStateSet()->setRenderBinDetails(
-                    ms->getOptions().renderOrder().value(), "RenderBin" );
+                // enfore a rendering bin if necessary:
+                if ( ms->getOptions().renderOrder().isSet() )
+                {
+                    node->getOrCreateStateSet()->setRenderBinDetails(
+                        ms->getOptions().renderOrder().value(), "RenderBin" );
+                }
             }
 
             _modelLayerNodes[ layer ] = node;
@@ -475,21 +550,14 @@ MapNode::onModelLayerRemoved( ModelLayer* layer )
         {
             osg::Node* node = i->second;
 
-            if ( dynamic_cast<TerrainDecorator*>( node ) || dynamic_cast<osgSim::OverlayNode*>( node ) )
+            if ( dynamic_cast<TerrainDecorator*>( node ) )
             {
                 removeTerrainDecorator( node->asGroup() );
             }
             else
             {
-                if ( layer->getModelLayerOptions().overlay() == true )
-                {
-                    _overlayModels->removeChild( node );
-                    updateOverlayGraph();
-                }
-                else
-                {
-                    _models->removeChild( node );
-                }
+                _models->removeChild( node );
+                updateOverlayGraph();
             }
             
             _modelLayerNodes.erase( i );
@@ -502,22 +570,22 @@ MapNode::onModelLayerRemoved( ModelLayer* layer )
 void
 MapNode::onModelLayerMoved( ModelLayer* layer, unsigned int oldIndex, unsigned int newIndex )
 {
-		if ( layer )
+    if ( layer )
     {
         // look up the node associated with this model layer.
         ModelLayerNodeMap::iterator i = _modelLayerNodes.find( layer );
         if ( i != _modelLayerNodes.end() )
         {
-            osg::Node* node = i->second;
+            osg::ref_ptr<osg::Node> node = i->second;
             
-            if ( dynamic_cast<osgSim::OverlayNode*>( node ) )
+            //if ( dynamic_cast<osgSim::OverlayNode*>( node ) )
+            //{
+            //    // treat overlay node as a special case
+            //}
+            //else
             {
-                // treat overlay node as a special case
-            }
-            else
-            {
-                _models->removeChild( node );
-                _models->insertChild( newIndex, node );
+                _models->removeChild( node.get() );
+                _models->insertChild( newIndex, node.get() );
             }
         }
         
@@ -525,16 +593,19 @@ MapNode::onModelLayerMoved( ModelLayer* layer, unsigned int oldIndex, unsigned i
     }
 }
 
-struct MaskNodeFinder : public osg::NodeVisitor {
-    MaskNodeFinder() : osg::NodeVisitor( osg::NodeVisitor::TRAVERSE_ALL_CHILDREN ) { }
-    void apply( osg::Group& group ) {
-        if ( dynamic_cast<MaskNode*>( &group ) ) {
-            _groups.push_back( &group );
+namespace
+{
+    struct MaskNodeFinder : public osg::NodeVisitor {
+        MaskNodeFinder() : osg::NodeVisitor( osg::NodeVisitor::TRAVERSE_ALL_CHILDREN ) { }
+        void apply( osg::Group& group ) {
+            if ( dynamic_cast<MaskNode*>( &group ) ) {
+                _groups.push_back( &group );
+            }
+            traverse(group);
         }
-        traverse(group);
-    }
-    std::list< osg::Group* > _groups;
-};
+        std::list< osg::Group* > _groups;
+    };
+}
 
 void
 MapNode::addTerrainDecorator(osg::Group* decorator)
@@ -579,7 +650,7 @@ MapNode::removeTerrainDecorator(osg::Group* decorator)
 void
 MapNode::traverse( osg::NodeVisitor& nv )
 {
-    if ( nv.getVisitorType() == osg::NodeVisitor::EVENT_VISITOR )
+    if ( nv.getVisitorType() == nv.EVENT_VISITOR )
     {
         unsigned int numBlacklist = Registry::instance()->getNumBlacklistedFilenames();
         if (numBlacklist != _lastNumBlacklistedFilenames)
@@ -598,17 +669,33 @@ MapNode::traverse( osg::NodeVisitor& nv )
 void
 MapNode::onModelLayerOverlayChanged( ModelLayer* layer )
 {
-    OE_NOTICE << "Overlay changed to "  << layer->getOverlay() << std::endl;
-    osg::ref_ptr< osg::Group > origParent = layer->getOverlay() ? _models.get() : _overlayModels.get();
-    osg::ref_ptr< osg::Group > newParent  = layer->getOverlay() ? _overlayModels.get() : _models.get();
-
-    osg::ref_ptr< osg::Node > node = layer->getOrCreateNode();
-    if (node.valid())
+    osg::ref_ptr<osg::Node> node = _modelLayerNodes[ layer ];
+    if ( node.get() )
     {
-        //Remove it from the original parent and add it to the new parent
-        origParent->removeChild( node.get() );
-        newParent->addChild( node.get() );
+        DrapeableNode* draper = dynamic_cast<DrapeableNode*>(node.get());
+        if ( !draper && layer->getOverlay() )
+        {
+            draper = new DrapeableNode(this);
+            draper->addChild( node.get() );
+            _models->replaceChild( node.get(), draper );
+        }
+        else
+        {
+            draper->setDraped( layer->getOverlay() );
+        }
     }
+
+    //OE_NOTICE << "Overlay changed to "  << layer->getOverlay() << std::endl;
+    //osg::ref_ptr< osg::Group > origParent = layer->getOverlay() ? _models.get() : _overlayModels.get();
+    //osg::ref_ptr< osg::Group > newParent  = layer->getOverlay() ? _overlayModels.get() : _models.get();
+
+    //osg::ref_ptr< osg::Node > node = layer->getOrCreateNode();
+    //if (node.valid())
+    //{
+    //    //Remove it from the original parent and add it to the new parent
+    //    origParent->removeChild( node.get() );
+    //    newParent->addChild( node.get() );
+    //}
 
     updateOverlayGraph();
 }

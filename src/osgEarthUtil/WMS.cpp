@@ -19,7 +19,6 @@
 
 #include <osgEarthUtil/WMS>
 #include <osgEarth/XmlUtils>
-#include <osgEarth/HTTPClient>
 
 #include <osgDB/FileNameUtils>
 #include <osgDB/FileUtils>
@@ -28,16 +27,18 @@ using namespace osgEarth;
 using namespace osgEarth::Util;
 using namespace std;
 
-static
-WMSLayer* getLayerByName(const string &name, WMSLayer::LayerList& layers)
+namespace
 {
-    for (WMSLayer::LayerList::iterator i = layers.begin(); i != layers.end(); ++i)
+    WMSLayer* getLayerByName(const string &name, WMSLayer::LayerList& layers)
     {
-        if (osgDB::equalCaseInsensitive(i->get()->getName(),name)) return i->get();
-        WMSLayer *l = getLayerByName(name, i->get()->getLayers());
-        if (l) return l;
+        for (WMSLayer::LayerList::iterator i = layers.begin(); i != layers.end(); ++i)
+        {
+            if (osgDB::equalCaseInsensitive(i->get()->getName(),name)) return i->get();
+            WMSLayer *l = getLayerByName(name, i->get()->getLayers());
+            if (l) return l;
+        }
+        return 0;
     }
-    return 0;
 }
 
 WMSStyle::WMSStyle()
@@ -138,10 +139,11 @@ WMSCapabilitiesReader::read( const std::string &location, const osgDB::ReaderWri
     WMSCapabilities *caps = NULL;
     if ( osgDB::containsServerAddress( location ) )
     {
-        HTTPResponse response = HTTPClient::get( location, options );
-        if ( response.isOK() && response.getNumParts() > 0 )
+        ReadResult rr = URI(location).readString( options );
+        if ( rr.succeeded() )
         {
-            caps = read( response.getPartStream( 0 ) );
+            std::istringstream in( rr.getString() );
+            caps = read( in );
         }
     }
     else
@@ -168,13 +170,17 @@ WMSCapabilitiesReader::read( const std::string &location, const osgDB::ReaderWri
 #define ELEM_SRS "srs"
 #define ELEM_CRS "crs"
 #define ELEM_LATLONBOUNDINGBOX "latlonboundingbox"
+#define ELEM_GEOGRAPHICBOUNDINGBOX "ex_geographicboundingbox"
 #define ELEM_BOUNDINGBOX "boundingbox"
 #define ATTR_MINX              "minx"
 #define ATTR_MINY              "miny"
 #define ATTR_MAXX              "maxx"
 #define ATTR_MAXY              "maxy"
 
-
+#define ATTR_EASTLON           "eastboundlongitude"
+#define ATTR_WESTLON           "westboundlongitude"
+#define ATTR_NORTHLAT          "northboundlatitude"
+#define ATTR_SOUTHLAT          "southboundlatitude"
 
 static void
 readLayers(XmlElement* e, WMSLayer* parentLayer, WMSLayer::LayerList& layers)
@@ -224,6 +230,18 @@ readLayers(XmlElement* e, WMSLayer* parentLayer, WMSLayer::LayerList& layers)
             maxX = as<double>(e_bb->getAttr( ATTR_MAXX ), 0);
             maxY = as<double>(e_bb->getAttr( ATTR_MAXY ), 0);
             layer->setLatLonExtents(minX, minY, maxX, maxY);
+        }
+        else {
+            osg::ref_ptr<XmlElement> e_gbb = e_layer->getSubElement( ELEM_GEOGRAPHICBOUNDINGBOX );
+            if (e_gbb.valid())
+            {
+                double minX, minY, maxX, maxY;
+                minX = as<double>(e_gbb->getSubElementText( ATTR_WESTLON ), 0);
+                minY = as<double>(e_gbb->getSubElementText( ATTR_SOUTHLAT ), 0);
+                maxX = as<double>(e_gbb->getSubElementText( ATTR_EASTLON ), 0);
+                maxY = as<double>(e_gbb->getSubElementText( ATTR_NORTHLAT ), 0);
+                layer->setLatLonExtents(minX, minY, maxX, maxY);
+            }
         }
 
         e_bb = e_layer->getSubElement( ELEM_BOUNDINGBOX );

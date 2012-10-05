@@ -21,15 +21,19 @@
 
 #include <osgEarth/Common>
 #include <osgEarth/GeoData>
+#include <osgEarth/TileKey>
+#include <osgEarth/MapNodeObserver>
 #include <osg/MatrixTransform>
 #include <osg/ShapeDrawable>
 #include <osgGA/GUIEventHandler>
+#include <osgEarth/Terrain>
 
 namespace osgEarth
 {
     class MapNode;
+    class Terrain;
 
-    class OSGEARTH_EXPORT Dragger : public osg::MatrixTransform
+    class OSGEARTH_EXPORT Dragger : public osg::MatrixTransform, public MapNodeObserver
     {
     public:
         /**
@@ -47,7 +51,7 @@ namespace osgEarth
         Dragger( MapNode* mapNode);
 
         /** dtor */
-        virtual ~Dragger() { }
+        virtual ~Dragger();
 
         bool getDragging() const;
 
@@ -58,11 +62,15 @@ namespace osgEarth
         void setPosition( const osgEarth::GeoPoint& position, bool fireEvents=true);
 
 
-        void updateTransform();
+        void updateTransform(osg::Node* patch = 0);
 
         virtual void enter();
 
         virtual void leave();
+
+        virtual void setColor( const osg::Vec4f& color ) =0;
+
+        virtual void setPickColor( const osg::Vec4f& color ) =0;
 
         void addPositionChangedCallback( PositionChangedCallback* callback );
 
@@ -70,10 +78,22 @@ namespace osgEarth
 
         virtual void traverse(osg::NodeVisitor& nv);        
 
+        virtual void reclamp( const TileKey& key, osg::Node* tile, const Terrain* terrain );
+
+
+    public: // MapNodeObserver
+
+        virtual void setMapNode( MapNode* mapNode );
+
+        virtual MapNode* getMapNode() { return _mapNode.get(); }
+
 
     protected:
         virtual bool handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& aa);
         void setHover( bool hovered);
+        void firePositionChanged();
+
+        osg::ref_ptr< TerrainCallback > _autoClampCallback;
 
         osg::observer_ptr< MapNode > _mapNode;
         osgEarth::GeoPoint _position;

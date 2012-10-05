@@ -20,7 +20,7 @@
 #include <osgEarth/TileSource>
 #include <osgEarth/FileUtils>
 #include <osgEarth/ImageUtils>
-#include <osgEarth/HTTPClient>
+#include <osgEarth/Registry>
 #include <osgEarthUtil/TMS>
 
 #include <osg/Notify>
@@ -52,76 +52,77 @@ public:
     }
 
 
-    void initialize(const osgDB::Options* dbOptions,
-                    const Profile*        overrideProfile )
+    Status initialize(const osgDB::Options* dbOptions)
     {
-        _dbOptions = dbOptions;
+        _dbOptions = Registry::instance()->cloneOrCreateOptions(dbOptions);
 
-        const Profile* result = NULL;
+        const Profile* profile = getProfile();
 
         URI tmsURI = _options.url().value();
         if ( tmsURI.empty() )
         {
-            OE_WARN << LC << "Fail: TMS driver requires a valid \"url\" property" << std::endl;
-            return;
+            return Status::Error( "Fail: TMS driver requires a valid \"url\" property" );
         }
 
-		// Attempt to read the tile map parameters from a TMS TileMap XML tile on the server:
-        _tileMap = TMS::TileMapReaderWriter::read( tmsURI.full(), 0L );
-        if (!_tileMap.valid())
+        // Take the override profile if one is given
+        if ( profile )
         {
-            OE_NOTICE << "Failed to read tilemap from " << tmsURI.full() << std::endl;
-        }
-
-
-		//Take the override profile if one is given
-		if (overrideProfile)
-		{
             OE_INFO << LC 
-                << "Using override profile \"" << overrideProfile->toString() 
+                << "Using override profile \"" << getProfile()->toString() 
                 << "\" for URI \"" << tmsURI.base() << "\"" 
                 << std::endl;
 
-			result = overrideProfile;
             _tileMap = TMS::TileMap::create( 
                 _options.url()->full(),
-                overrideProfile, 
+                profile,
                 _options.format().value(),
                 _options.tileSize().value(), 
                 _options.tileSize().value() );
-		}
-		else
-		{
-     		if (_tileMap.valid())
-			{
-				result = _tileMap->createProfile();
-			}
-			else
-			{
-                OE_WARN << LC << "Error reading TMS TileMap, and no overrides set (url=" << tmsURI.full() << ")" << std::endl;		
-			    return;
-			}
-		}
-
-        //Automatically set the min and max level of the TileMap
-        if (_tileMap.valid() && _tileMap->getTileSets().size() > 0)
-        {
-          OE_DEBUG << LC << "TileMap min/max " << _tileMap->getMinLevel() << ", " << _tileMap->getMaxLevel() << std::endl;
-          if (_tileMap->getDataExtents().size() > 0)
-          {
-              for (DataExtentList::iterator itr = _tileMap->getDataExtents().begin(); itr != _tileMap->getDataExtents().end(); ++itr)
-              {
-                  this->getDataExtents().push_back(*itr);
-              }
-          }
-          else
-          {
-              //Push back a single area that encompasses the whole profile going up to the max level
-              this->getDataExtents().push_back(DataExtent(result->getExtent(), 0, _tileMap->getMaxLevel()));
-          }
         }
 
-		setProfile( result );
+        else
+        {
+            // Attempt to read the tile map parameters from a TMS TileMap XML tile on the server:
+            _tileMap = TMS::TileMapReaderWriter::read( tmsURI.full(), _dbOptions.get() );
+            if (!_tileMap.valid())
+            {
+                return Status::Error( Stringify() << "Failed to read tilemap from " << tmsURI.full() );
+            }
+            
+            profile = _tileMap->createProfile();
+            if ( profile )
+                setProfile( profile );
+        }
+
+        // Make sure we've established a profile by this point:
+        if ( !profile )
+        {
+            return Status::Error( Stringify() << "Failed to establish a profile for " << tmsURI.full() );
+        }
+
+        // TileMap and profile are valid at this point. Build the tile sets.
+        // Automatically set the min and max level of the TileMap
+        if ( _tileMap->getTileSets().size() > 0 )
+        {
+            OE_DEBUG << LC << "TileMap min/max " << _tileMap->getMinLevel() << ", " << _tileMap->getMaxLevel() << std::endl;
+            if (_tileMap->getDataExtents().size() > 0)
+            {
+                for (DataExtentList::iterator itr = _tileMap->getDataExtents().begin(); itr != _tileMap->getDataExtents().end(); ++itr)
+                {
+                    this->getDataExtents().push_back(*itr);
+                }
+            }
+            else
+            {
+                //Push back a single area that encompasses the whole profile going up to the max level
+                this->getDataExtents().push_back(DataExtent(profile->getExtent(), 0, _tileMap->getMaxLevel()));
+            }
+        }
+
+        // set up the IO options so that we do not cache TMS tiles:
+        CachePolicy::NO_CACHE.apply( _dbOptions.get() );
+
+        return STATUS_OK;
     }
 
 
@@ -134,10 +135,10 @@ public:
                 
             //OE_NOTICE << "TMSSource: Key=" << key.str() << ", URL=" << image_url << std::endl;
 
-            osg::ref_ptr<osg::Image> image;            
+            osg::ref_ptr<osg::Image> image;
             if (!image_url.empty())
             {
-                image = URI(image_url).readImage( _dbOptions.get(), CachePolicy::NO_CACHE, progress ).getImage();
+                image = URI(image_url).readImage( _dbOptions.get(), progress ).getImage();
             }
 
             if (!image.valid())
@@ -170,10 +171,10 @@ public:
 
 private:
 
-    osg::ref_ptr<TMS::TileMap> _tileMap;
-    bool                       _invertY;
-    const TMSOptions           _options;
-    osg::ref_ptr<const osgDB::Options> _dbOptions;
+    osg::ref_ptr<TMS::TileMap>   _tileMap;
+    bool                         _invertY;
+    const TMSOptions             _options;
+    osg::ref_ptr<osgDB::Options> _dbOptions;
 };
 
 

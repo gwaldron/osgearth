@@ -20,72 +20,71 @@
 #include <string>
 
 #include <osg/Notify>
-#include <osg/Switch>
+#include <osg/Timer>
+#include <osg/ShapeDrawable>
 #include <osgGA/StateSetManipulator>
 #include <osgGA/GUIEventHandler>
 #include <osgViewer/Viewer>
 #include <osgViewer/ViewerEventHandlers>
+#include <osgEarth/GeoMath>
 #include <osgEarth/MapNode>
 #include <osgEarth/TerrainEngineNode>
 #include <osgEarth/Viewpoint>
 #include <osgEarthUtil/EarthManipulator>
 #include <osgEarthUtil/AutoClipPlaneHandler>
 #include <osgEarthUtil/Controls>
+#include <osgEarthUtil/ExampleResources>
+#include <osgEarthAnnotation/AnnotationUtils>
+#include <osgEarthAnnotation/LocalGeometryNode>
+#include <osgEarthSymbology/Style>
 
 using namespace osgEarth::Util;
 using namespace osgEarth::Util::Controls;
+using namespace osgEarth::Annotation;
+
+#define D2R (osg::PI/180.0)
+#define R2D (180.0/osg::PI)
 
 namespace
 {
-    class SwitchHandler : public osgGA::GUIEventHandler
+    /**
+     * Builds our help menu UI.
+     */
+    Control* createHelp( osgViewer::View* view )
     {
-    public:
-        SwitchHandler(char key = 0) : _key(key) {}
-
-        bool handle(const osgGA::GUIEventAdapter& ea,osgGA::GUIActionAdapter& aa, osg::Object* object, osg::NodeVisitor* /*nv*/)
+        static char* text[] =
         {
-            if (ea.getHandled() || ea.getEventType() != osgGA::GUIEventAdapter::KEYDOWN )
-                return false;
+            "left mouse :",        "pan",
+            "middle mouse :",      "rotate",
+            "right mouse :",       "continuous zoom",
+            "double-click :",      "zoom to point",
+            "scroll wheel :",      "zoom in/out",
+            "arrows :",            "pan",
+            "1-6 :",               "fly to preset viewpoints",
+            "shift-right-mouse :", "locked panning",
+            "u :",                 "toggle azimuth lock",
+            "c :",                 "toggle perspective/ortho",
+            "t :",                 "toggle tethering"
+        };
 
-            if ( ea.getKey() == _key )
-            {
-                ControlCanvas* canvas = ControlCanvas::get(aa.asView());
-                if ( canvas )
-                    canvas->setNodeMask( canvas->getNodeMask() ^ 0xFFFFFFFF );
-            }
-            return false;
+        Grid* g = new Grid();
+        for( unsigned i=0; i<sizeof(text)/sizeof(text[0]); ++i )
+        {
+            unsigned c = i % 2;
+            unsigned r = i / 2;
+            g->setControl( c, r, new LabelControl(text[i]) );
         }
 
-    protected:
-        char _key;
-    };
-
-    osg::Node* createHelp( osgViewer::View* view )
-    {
-        static char s_help[] = 
-            "left mouse: pan \n"
-            "middle mouse: tilt/slew \n"
-            "right mouse: zoom in/out continuous \n"
-            "double-click: zoom in \n"
-            "scroll wheel: zoom in/out \n"
-            "arrows: pan\n"
-            "1-6 : fly to preset viewpoints \n"
-            "shift-right-mouse: locked panning\n"
-            "u : toggle azimuth locking\n"
-            "c : toggle perspective/ortho\n"
-            "h : toggle this help\n";
-
         VBox* v = new VBox();
-        v->addControl( new LabelControl( "EarthManipulator", osg::Vec4f(1,1,0,1) ) );
-        v->addControl( new LabelControl( s_help ) );
-        ControlCanvas* canvas = ControlCanvas::get( view );
-        canvas->addControl( v );
-        canvas->setEventCallback(new SwitchHandler('h'));    
+        v->addControl( g );
 
-        return canvas;
+        return v;
     }
 
-    // some preset viewpoints.
+
+    /**
+     * Some preset viewpoints to show off the setViewpoint function.
+     */
     static Viewpoint VPs[] = {
         Viewpoint( "Africa",        osg::Vec3d(    0.0,   0.0, 0.0 ), 0.0, -90.0, 10e6 ),
         Viewpoint( "California",    osg::Vec3d( -121.0,  34.0, 0.0 ), 0.0, -90.0, 6e6 ),
@@ -95,8 +94,11 @@ namespace
         Viewpoint( "Boston",        osg::Vec3d( -71.096936, 42.332771, 0 ), 0.0, -90, 1e5 )
     };
 
-    // a simple handler that demonstrates the "viewpoint" functionality in 
-    // osgEarthUtil::EarthManipulator. Press a number key to fly to a viewpoint.
+
+    /**
+     * Handler that demonstrates the "viewpoint" functionality in 
+     *  osgEarthUtil::EarthManipulator. Press a number key to fly to a viewpoint.
+     */
     struct FlyToViewpointHandler : public osgGA::GUIEventHandler 
     {
         FlyToViewpointHandler( EarthManipulator* manip ) : _manip(manip) { }
@@ -114,12 +116,16 @@ namespace
         osg::observer_ptr<EarthManipulator> _manip;
     };
 
+
+    /**
+     * Handler to toggle "azimuth locking", which locks the camera's relative Azimuth
+     * while panning. For example, it can maintain "north-up" as you pan around. The
+     * caveat is that when azimuth is locked you cannot cross the poles.
+     */
     struct LockAzimuthHandler : public osgGA::GUIEventHandler
     {
         LockAzimuthHandler(char key, EarthManipulator* manip)
-            : _key(key), _manip(manip)
-        {
-        }
+            : _key(key), _manip(manip) { }
 
         bool handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& aa)
         {
@@ -143,6 +149,10 @@ namespace
         osg::ref_ptr<EarthManipulator> _manip;
     };
 
+
+    /**
+     * Toggles the projection matrix between perspective and orthographic.
+     */
     struct ToggleProjectionHandler : public osgGA::GUIEventHandler
     {
         ToggleProjectionHandler(char key, EarthManipulator* manip)
@@ -174,29 +184,85 @@ namespace
         osg::ref_ptr<EarthManipulator> _manip;
     };
 
+
+    /**
+     * A simple simulator that moves an object around the Earth. We use this to
+     * demonstrate/test tethering.
+     */
+    struct Simulator : public osgGA::GUIEventHandler
+    {
+        Simulator( osg::Group* root, EarthManipulator* manip )
+            : _manip(manip), _lat0(55.0), _lon0(45.0), _lat1(-55.0), _lon1(-45.0)
+        {
+            osg::Node* geode = AnnotationUtils::createSphere( 100.0, osg::Vec4(1,1,1,1) );
+            
+            _xform = new osg::MatrixTransform();
+            _xform->addChild( geode );
+
+            _cam = new osg::Camera();
+            _cam->setRenderOrder( osg::Camera::NESTED_RENDER, 1 );
+            _cam->addChild( _xform );
+
+            root->addChild( _cam.get() );
+        }
+
+        bool handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& aa)
+        {
+            if ( ea.getEventType() == ea.FRAME )
+            {
+                double t = fmod( osg::Timer::instance()->time_s(), 600.0 ) / 600.0;
+                double lat, lon;
+                GeoMath::interpolate( D2R*_lat0, D2R*_lon0, D2R*_lat1, D2R*_lon1, t, lat, lon );
+                GeoPoint p( SpatialReference::create("wgs84"), R2D*lon, R2D*lat, 25000.0, ALTMODE_ABSOLUTE );
+                osg::Vec3d world;
+                p.toWorld( world );
+                _xform->setMatrix( osg::Matrix::translate(world) );
+            }
+            else if ( ea.getEventType() == ea.KEYDOWN && ea.getKey() == 't' )
+            {
+                _manip->setTetherNode( _manip->getTetherNode() ? 0L : _cam.get() );
+                if ( _manip->getTetherNode() )
+                {
+                    _manip->getSettings()->setArcViewpointTransitions( false );
+                    _manip->setViewpoint(Viewpoint(osg::Vec3d(0,0,0), 45, -25, 250000));
+                    _manip->getSettings()->setArcViewpointTransitions( true );
+                }
+                return true;
+            }
+            return false;
+        }
+
+        EarthManipulator*                  _manip;
+        osg::ref_ptr<osg::Camera>          _cam;
+        osg::ref_ptr<osg::MatrixTransform> _xform;
+        double                             _lat0, _lon0, _lat1, _lon1;
+    };
 }
 
 
 int main(int argc, char** argv)
 {
-    osg::ArgumentParser arguments(&argc,argv);       
+    osg::ArgumentParser arguments(&argc,argv);
     osg::DisplaySettings::instance()->setMinimumNumStencilBits( 8 );
+
+    osgViewer::Viewer viewer(arguments);
 
     // install the programmable manipulator.
     EarthManipulator* manip = new EarthManipulator();
+    viewer.setCameraManipulator( manip );
 
-    osg::Node* earthNode = osgDB::readNodeFiles( arguments );
+    // UI:
+    Control* help = createHelp(&viewer);
+
+    osg::Node* earthNode = MapNodeHelper().load( arguments, &viewer, help );
     if (!earthNode)
     {
         OE_WARN << "Unable to load earth model." << std::endl;
         return -1;
     }
 
-    osgViewer::Viewer viewer(arguments);
-
     osg::Group* root = new osg::Group();
     root->addChild( earthNode );
-    root->addChild( createHelp(&viewer) );
 
     osgEarth::MapNode* mapNode = osgEarth::MapNode::findMapNode( earthNode );
     if ( mapNode )
@@ -208,14 +274,16 @@ int main(int argc, char** argv)
         {
             manip->setHomeViewpoint( 
                 Viewpoint( osg::Vec3d( -90, 0, 0 ), 0.0, -90.0, 5e7 ) );
-
-            // add a handler that will automatically calculate good clipping planes
-            viewer.getCamera()->addCullCallback( new AutoClipPlaneCullCallback(mapNode) );
         }
     }
 
+    // Simulator for tethering:
+    viewer.addEventHandler( new Simulator(root, manip) );
+    manip->getSettings()->getBreakTetherActions().push_back( EarthManipulator::ACTION_PAN );
+    manip->getSettings()->getBreakTetherActions().push_back( EarthManipulator::ACTION_GOTO );
+
+
     viewer.setSceneData( root );
-    viewer.setCameraManipulator( manip );
 
     manip->getSettings()->bindMouse(
         EarthManipulator::ACTION_EARTH_DRAG,
@@ -227,15 +295,6 @@ int main(int argc, char** argv)
     viewer.addEventHandler(new FlyToViewpointHandler( manip ));
     viewer.addEventHandler(new LockAzimuthHandler('u', manip));
     viewer.addEventHandler(new ToggleProjectionHandler('c', manip));
-
-    // add some stock OSG handlers:
-    viewer.addEventHandler(new osgViewer::StatsHandler());
-    viewer.addEventHandler(new osgViewer::WindowSizeHandler());
-    viewer.addEventHandler(new osgViewer::ThreadingHandler());
-    viewer.addEventHandler(new osgViewer::LODScaleHandler());
-    viewer.addEventHandler(new osgGA::StateSetManipulator(viewer.getCamera()->getOrCreateStateSet()));
-    viewer.addEventHandler(new osgViewer::HelpHandler(arguments.getApplicationUsage()));
-    //viewer.addEventHandler(new osgViewer::RecordCameraPathHandler());
 
     return viewer.run();
 }

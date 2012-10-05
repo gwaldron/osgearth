@@ -96,7 +96,9 @@ struct TrackSim : public osg::Referenced
         GeoPoint geo(
             _track->getMapNode()->getMapSRS(),
             osg::RadiansToDegrees(pos.x()),
-            osg::RadiansToDegrees(pos.y()) );
+            osg::RadiansToDegrees(pos.y()),
+            10000.0,
+            ALTMODE_ABSOLUTE);
 
         // update the position label.
         _track->setPosition(geo);
@@ -338,10 +340,6 @@ main(int argc, char** argv)
 
     // configure a UI for controlling the demo
     createControls( &viewer );
-
-    // osgEarth benefits from pre-compilation of GL objects in the pager. In newer versions of
-    // OSG, this activates OSG's IncrementalCompileOpeartion in order to avoid frame breaks.
-    viewer.getDatabasePager()->setDoPreCompile( true );
 
     viewer.run();
 }

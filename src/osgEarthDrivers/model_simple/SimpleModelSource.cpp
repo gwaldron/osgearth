@@ -21,7 +21,9 @@
 #include <osgEarth/ModelSource>
 #include <osgEarth/Registry>
 #include <osgEarth/Map>
+#include <osgEarth/ShaderGenerator>
 #include <osgEarth/FileUtils>
+#include <osg/LOD>
 #include <osg/Notify>
 #include <osg/MatrixTransform>
 #include <osg/io_utils>
@@ -38,7 +40,7 @@ namespace
     {
     public:
         LODScaleOverrideNode() : m_lodScale(1.0f) {}
-        virtual	~LODScaleOverrideNode() {}
+        virtual ~LODScaleOverrideNode() {}
     public:
         void setLODScale(float scale) { m_lodScale = scale; }
         float getLODScale() const { return m_lodScale; }
@@ -73,38 +75,47 @@ class SimpleModelSource : public ModelSource
 {
 public:
     SimpleModelSource( const ModelSourceOptions& options )
-        : ModelSource( options ), _options(options), _map(0) { }
+        : ModelSource( options ), _options(options) { }
 
     //override
-    void initialize( const osgDB::Options* dbOptions, const osgEarth::Map* map )
+    void initialize( const osgDB::Options* dbOptions )
     {
-        ModelSource::initialize( dbOptions, map );
-        _map = map;
+        ModelSource::initialize( dbOptions );
     }
 
     // override
-    osg::Node* createNode( ProgressCallback* progress )
+    osg::Node* createNode(const Map* map, const osgDB::Options* dbOptions, ProgressCallback* progress )
     {
         osg::ref_ptr<osg::Node> result;
 
-        // required if the model includes local refs, like PagedLOD or ProxyNode:
-        osg::ref_ptr<osgDB::Options> localOptions = 
-            Registry::instance()->cloneOrCreateOptions( _dbOptions.get() );
-            //_dbOptions.get() ? 
-            //new osgDB::Options(*_dbOptions.get()) : new osgDB::Options();
-
-        localOptions->getDatabasePathList().push_back( osgDB::getFilePath(_options.url()->full()) );
-
-        result = _options.url()->getNode( localOptions.get(), CachePolicy::INHERIT, progress );
-        //result = _options.url()->readNode( localOptions.get(), CachePolicy::NO_CACHE, progress ).releaseNode();
-
-        if (_options.location().isSet())
+        if (_options.node() != NULL)
         {
-            GeoPoint geoPoint(_map->getProfile()->getSRS(), (*_options.location()).x(), (*_options.location()).y(), (*_options.location()).z());
+            result = _options.node();
+        }
+        else
+        {
+            // required if the model includes local refs, like PagedLOD or ProxyNode:
+            osg::ref_ptr<osgDB::Options> localOptions = 
+                Registry::instance()->cloneOrCreateOptions( dbOptions );
+
+            localOptions->getDatabasePathList().push_back( osgDB::getFilePath(_options.url()->full()) );
+
+            result = _options.url()->getNode( localOptions.get(), progress );
+        }
+
+        if (_options.location().isSet() && map != 0L)
+        {
+            GeoPoint geoPoint(
+                map->getProfile()->getSRS(), 
+                (*_options.location()).x(), 
+                (*_options.location()).y(), 
+                (*_options.location()).z(),
+                ALTMODE_ABSOLUTE );
+
             OE_NOTICE << "Read location " << geoPoint.vec3d() << std::endl;
             
             osg::Matrixd matrix;
-            geoPoint.createLocalToWorld( matrix );                       
+            geoPoint.createLocalToWorld( matrix );
 
             if (_options.orientation().isSet())
             {
@@ -122,24 +133,47 @@ public:
             mt->addChild( result.get() );
             result = mt;
 
+            if ( _options.minRange().isSet() || _options.maxRange().isSet() )
+            {
+                osg::LOD* lod = new osg::LOD();
+                lod->addChild(
+                    result.release(),
+                    _options.minRange().isSet() ? (*_options.minRange()) : 0.0f,
+                    _options.maxRange().isSet() ? (*_options.maxRange()) : FLT_MAX );
+                result = lod;
+            }
         }
 
-		if(_options.lodScale().isSet())
-		{
-			LODScaleOverrideNode * node = new LODScaleOverrideNode;
-			node->setLODScale(_options.lodScale().value());
-			node->addChild(result.release());
-			result = node;
-		}
+        if(_options.lodScale().isSet())
+        {
+            LODScaleOverrideNode * node = new LODScaleOverrideNode;
+            node->setLODScale(_options.lodScale().value());
+            node->addChild(result.release());
+            result = node;
+        }
+
+        // generate a shader program to render the model.
+        if ( result.valid() )
+        {
+            if ( _options.shaderPolicy() == SHADERPOLICY_GENERATE )
+            {
+                ShaderGenerator gen;
+                result->accept( gen );
+            }
+            else if ( _options.shaderPolicy() == SHADERPOLICY_DISABLE )
+            {
+                result->getOrCreateStateSet()->setAttributeAndModes(
+                    new osg::Program(),
+                    osg::StateAttribute::OFF | osg::StateAttribute::OVERRIDE );
+            }
+        }
 
         return result.release();
     }
 
 protected:
 
-    const SimpleModelOptions           _options;
-    const osg::ref_ptr<osgDB::Options> _dbOptions;
-    const Map* _map;
+    const SimpleModelOptions _options;
 };
 
 

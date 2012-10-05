@@ -21,11 +21,11 @@
 
 namespace
 {
-    static char source_setupTexturing[] =
+    static char source_setupColoring[] =
 
-        "#version 110 \n"
+        "#version " GLSL_VERSION_STR "\n"
 
-        "vec2 xyz_to_spherical(in vec3 xyz) \n"
+        "vec2 ocean_xyz_to_spherical(in vec3 xyz) \n"
         "{ \n"
         "    float r = length(xyz); \n"
         "    float lat = acos(xyz.z/r); \n"
@@ -35,90 +35,92 @@ namespace
 
         "uniform mat4 osg_ViewMatrixInverse; \n"
         "uniform mat4 osg_ViewMatrix; \n"
-        "uniform sampler2D tex0; \n"                 // heightfield encoded into 16 bit texture
-        "uniform float seaLevel; \n"                 // sea level offset
-        "uniform bool has_tex1; \n"                  // whether there's a surface texture
-        "varying vec2 texCoord1; \n"
+        "uniform sampler2D ocean_tex0; \n"                 // heightfield encoded into 16 bit texture
+        "uniform float ocean_seaLevel; \n"                 // sea level offset
+        "uniform bool ocean_has_tex1; \n"                  // whether there's a surface texture
 
-        "varying float v_msl; \n"                    // elevation (MSL) of camera
-        "varying float v_range; \n"                  // distance from camera to current vertex
-        "varying float v_enorm; \n"                  // normalized terrain height at vertex [0..1]
+        "varying vec4  osg_FrontColor; \n"
+        "varying vec2  ocean_texCoord1; \n"
+        "varying float ocean_v_msl; \n"                    // elevation (MSL) of camera
+        "varying float ocean_v_range; \n"                  // distance from camera to current vertex
+        "varying float ocean_v_enorm; \n"                  // normalized terrain height at vertex [0..1]
 
-        "void osgearth_vert_setupTexturing() \n"
+        "void osgearth_vert_setupColoring() \n"
         "{ \n"
+        "   osg_FrontColor = gl_Color; \n"
 
         // adjust our vert for the sea level - extrude along the normal vector 
         // (this must be done in modelview space to preserve precision)
         "   vec4 mvVertex = gl_ModelViewMatrix * gl_Vertex; \n"
         "   vec3 mvNormal = gl_NormalMatrix * gl_Normal; \n"
-        "   vec4 mvVertex2 = vec4(mvVertex.xyz + (mvNormal * seaLevel), mvVertex.w ); \n"
+        "   vec4 mvVertex2 = vec4(mvVertex.xyz + (mvNormal * ocean_seaLevel), mvVertex.w ); \n"
         "   gl_Position = gl_ProjectionMatrix * mvVertex2; \n"
 
         // read normalized [0..1] elevation data from the height texture:
-        "   v_enorm = texture2D( tex0, gl_MultiTexCoord0.st ).r; \n"
+        "   ocean_v_enorm = texture2D( ocean_tex0, gl_MultiTexCoord0.st ).r; \n"
 
         // send interpolated params to the fs:
         "   vec4 eye = osg_ViewMatrixInverse * vec4(0,0,0,1); \n"
 
         // height of camera above sea level:
-        "   v_msl = length(eye.xyz/eye.w) - 6378137.0 + seaLevel; \n"
+        "   ocean_v_msl = length(eye.xyz/eye.w) - 6378137.0 + ocean_seaLevel; \n"
 
         // disatnce to camera:
-        "   v_range = length(gl_Position); \n"
+        "   ocean_v_range = length(gl_Position); \n"
 
         // scale the texture mapping to something reasonable:
         "   vec4 worldVertex = osg_ViewMatrixInverse * mvVertex; \n"
-        "   vec2 lonlat = xyz_to_spherical( worldVertex.xyz/worldVertex.w ); \n"
-        "   texCoord1 = lonlat / 0.0005; \n"
+        "   vec2 lonlat = ocean_xyz_to_spherical( worldVertex.xyz/worldVertex.w ); \n"
+        "   ocean_texCoord1 = lonlat / 0.0005; \n"
         "} \n";
 
 
-    char source_applyTexturing[] = 
+    char source_applyColoring[] = 
 
-        "#version 110 \n"
+        "#version " GLSL_VERSION_STR "\n"
 
         // clamps a value to the vmin/vmax range, then re-maps it to the r0/r1 range:
-        "float remap( float val, float vmin, float vmax, float r0, float r1 ) \n"
+        "float ocean_remap( float val, float vmin, float vmax, float r0, float r1 ) \n"
         "{ \n"
         "    float vr = (clamp(val, vmin, vmax)-vmin)/(vmax-vmin); \n"
         "    return r0 + vr * (r1-r0); \n"
         "} \n"
 
-        "varying float v_msl; \n"                  // elevation (MSL) of camera
-        "varying float v_range; \n"                // distance from camera to current vertex
-        "varying float v_enorm; \n"                // normalized terrain height at vertex [0..1]
+        "varying float ocean_v_msl; \n"                  // elevation (MSL) of camera
+        "varying float ocean_v_range; \n"                // distance from camera to current vertex
+        "varying float ocean_v_enorm; \n"                // normalized terrain height at vertex [0..1]
+        "varying vec2  ocean_texCoord1; \n"              // surface texture coords
 
-        "varying vec2 texCoord1; \n"               // surface texture coords
-        "uniform bool has_tex1; \n"                // whether there's a surface texture
-        "uniform sampler2D tex1; \n"               // surface texture
-        "uniform float seaLevel; \n"               // sea level offset
-        "uniform float lowFeather; \n"             // offset from sea level at which to start feathering out
-        "uniform float highFeather; \n"            // offset from sea level at which to stop feathering out
-        "uniform vec4  baseColor; \n"              // base ocean color before processing
+        "uniform bool ocean_has_tex1; \n"                // whether there's a surface texture
+        "uniform sampler2D ocean_tex1; \n"               // surface texture
+        "uniform float ocean_seaLevel; \n"               // sea level offset
+        "uniform float ocean_lowFeather; \n"             // offset from sea level at which to start feathering out
+        "uniform float ocean_highFeather; \n"            // offset from sea level at which to stop feathering out
+        "uniform vec4  ocean_baseColor; \n"              // base ocean color before processing
 
-        "void osgearth_frag_applyTexturing(inout vec4 color) \n"
+        "void osgearth_frag_applyColoring(inout vec4 color) \n"
         "{ \n"
-        "    color = baseColor; \n"
+        "    color = ocean_baseColor; \n"
 
         // amplify the range's effect on alpha when the camera elevation gets low
-        "    float rangeFactor = remap( v_msl, -10000.0, 10000.0, 10.0, 1.0 ); \n"
+        "    float rangeFactor = ocean_remap( ocean_v_msl, -10000.0, 10000.0, 10.0, 1.0 ); \n"
 
         // affect alpha based on the distance from the camera
-        "    float rangeEffect = remap( v_range, 75000.0, 200000.0 * rangeFactor, 1.0, 0.0 ); \n"
+        "    float rangeEffect = ocean_remap( ocean_v_range, 75000.0, 200000.0 * rangeFactor, 1.0, 0.0 ); \n"
 
         // start with the surface texture.
-        "    if (has_tex1) \n"
+        "    if (ocean_has_tex1) \n"
         "    { \n"
-        "        vec4 texel = texture2D(tex1, texCoord1); \n"
+        "        vec4 texel = texture2D(ocean_tex1, ocean_texCoord1); \n"
         "        vec4 nearColor = vec4(mix(color.rgb, texel.rgb, texel.a), color.a); \n"
         "        color = mix(color, nearColor, rangeEffect); \n"
         "    } \n"
 
         // un-normalize the heightfield data
-        "    float terrainHeight = (v_enorm * 65535.0) - 32768.0; \n"                  
+        "    float terrainHeight = (ocean_v_enorm * 65535.0) - 32768.0; \n"
 
         // heightfield's effect on alpha [0..1]
-        "    float terrainEffect = remap( terrainHeight, seaLevel+lowFeather, seaLevel+highFeather, 1.0, 0.0 ); \n" 
+        "    float terrainEffect = ocean_remap( terrainHeight, ocean_seaLevel+ocean_lowFeather, ocean_seaLevel+ocean_highFeather, 1.0, 0.0 ); \n" 
 
         // balance between texture-based alpha and static alpha
         //"    float texBalance = remap( v_range, 7500.0, 15000.0, 0.0, 1.0 ); \n"
@@ -126,7 +128,6 @@ namespace
         //"    float texEffect = mix( texIntensity, 0.8, texBalance ); \n"
 
         // color it
-        //"    color = vec4( baseColor.rgb, texEffect * terrainEffect * rangeEffect * baseColor.a ); \n"
         "    color = vec4( color.rgb, terrainEffect * rangeEffect * color.a ); \n"
 
         //"    color = vec4( 1, 0, 0, 1 ); \n" // debugging

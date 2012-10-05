@@ -67,31 +67,32 @@ SerialKeyNodeFactory::addTile(Tile* tile, bool tileHasRealData, bool tileHasLodB
     // 2. The tile isn't blacklisted; and
     // 3. We are still below the max LOD.
     bool wrapInPagedLOD =
-        (tileHasRealData || _options.maxLOD().isSet()) &&
+        (tileHasRealData || (_options.minLOD().isSet() && tile->getKey().getLOD() < *_options.minLOD())) &&
         !osgEarth::Registry::instance()->isBlacklisted( uri ) &&
-        tile->getKey().getLevelOfDetail() < (unsigned)*_options.maxLOD();
+        tile->getKey().getLOD() < *_options.maxLOD();
+        //(!_options.minLOD().isSet() || tile->getKey().getLevelOfDetail() < *_options.maxLOD());
 
     if ( wrapInPagedLOD )
     {
         osg::BoundingSphere bs = tile->getBound();
-        double maxRange = 1e10;        
+        float maxRange = FLT_MAX;
         
 #if 0
         //Compute the min range based on the actual bounds of the tile.  This can break down if you have very high resolution
         //data with elevation variations and you can run out of memory b/c the elevation change is greater than the actual size of the tile so you end up
         //inifinitely subdividing (or at least until you run out of data or memory)
-        double minRange = bs.radius() * _options.minTileRangeFactor().value();
+        float minRange = (float)(bs.radius() * _options.minTileRangeFactor().value());
 #else        
         //double origMinRange = bs.radius() * _options.minTileRangeFactor().value();        
         //Compute the min range based on the 2D size of the tile
         GeoExtent extent = tile->getKey().getExtent();        
-        GeoPoint lowerLeft(extent.getSRS(), extent.xMin(), extent.yMin());
-        GeoPoint upperRight(extent.getSRS(), extent.xMax(), extent.yMax());
+        GeoPoint lowerLeft(extent.getSRS(), extent.xMin(), extent.yMin(), 0.0, ALTMODE_ABSOLUTE);
+        GeoPoint upperRight(extent.getSRS(), extent.xMax(), extent.yMax(), 0.0, ALTMODE_ABSOLUTE);
         osg::Vec3d ll, ur;
         lowerLeft.toWorld( ll );
         upperRight.toWorld( ur );
         double radius = (ur - ll).length() / 2.0;
-        double minRange = radius * _options.minTileRangeFactor().value();        
+        float minRange = (float)(radius * _options.minTileRangeFactor().value());
 #endif
 
         // create a PLOD so we can keep subdividing:
@@ -158,7 +159,7 @@ SerialKeyNodeFactory::createRootNode( const TileKey& key )
 }
 
 osg::Node*
-SerialKeyNodeFactory::createNode( const TileKey& key )
+SerialKeyNodeFactory::createNode( const TileKey& parentKey )
 {
     osg::ref_ptr<Tile> tiles[4];
     bool               realData[4];
@@ -167,7 +168,7 @@ SerialKeyNodeFactory::createNode( const TileKey& key )
 
     for( unsigned i = 0; i < 4; ++i )
     {
-        TileKey child = key.createChildKey( i );
+        TileKey child = parentKey.createChildKey( i );
         _builder->createTile( child, false, tiles[i], realData[i], lodBlending[i] );
         if ( tiles[i].valid() && realData[i] )
             tileHasAnyRealData = true;
@@ -176,7 +177,7 @@ SerialKeyNodeFactory::createNode( const TileKey& key )
     osg::Group* root = 0L;
 
     // assemble the tile.
-    if ( tileHasAnyRealData || _options.maxLOD().isSet() || key.getLevelOfDetail() == 0 )
+    if ( tileHasAnyRealData || _options.minLOD().isSet() || parentKey.getLevelOfDetail() == 0 )
     {
         // Now postprocess them and assemble into a tile group.
         root = new osg::Group();

@@ -75,8 +75,6 @@ namespace osgEarth { namespace QtGui
       QAction*      _editAction;
 
       QPointer<BaseAnnotationDialog>  _activeDialog;
-      osg::ref_ptr<osgEarth::Annotation::AnnotationNode> _activeAnnotation;
-      osg::ref_ptr<osg::Group> _activeRoot;
 
       osg::ref_ptr<DataManager>  _manager;
       ViewVector                 _views;

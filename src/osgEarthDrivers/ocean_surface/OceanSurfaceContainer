@@ -21,6 +21,7 @@
 
 #include "OceanSurface"
 #include <osgEarth/MapNode>
+#include <osgEarth/MapNodeObserver>
 #include <osgEarth/ImageLayer>
 #include <osgEarth/URI>
 #include <osg/Node>
@@ -30,7 +31,8 @@
 using namespace osgEarth;
 using namespace osgEarth::Drivers;
 
-class OceanSurfaceContainer : public osg::Group
+class OceanSurfaceContainer : public osg::Group,
+                              public MapNodeObserver
 {
 public:
     OceanSurfaceContainer( MapNode* mapNode, const OceanSurfaceOptions& options );
@@ -40,14 +42,17 @@ public:
 
     void apply( const OceanSurfaceOptions& options );
 
-public: // osg::Node
-
-    //void traverse( osg::NodeVisitor& nv );
+public:
+    MapNode* getMapNode() { return _parentMapNode.get(); }
+    void setMapNode( MapNode* mapNode );
 
 private:
     osg::observer_ptr<MapNode> _parentMapNode;
+    OceanSurfaceOptions        _options;
     osg::ref_ptr<osg::Uniform> _seaLevel, _lowFeather, _highFeather;
     osg::ref_ptr<osg::Uniform> _baseColor;
+
+    void rebuild();
 };
 
 #endif // OSGEARTH_DRIVER_OCEAN_SURFACE_CONTAINER

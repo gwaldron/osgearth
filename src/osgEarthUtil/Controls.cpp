@@ -2453,8 +2453,14 @@ ControlCanvas::init( osgViewer::View* view, bool registerCanvas )
 
     this->setDataVariance( osg::Object::DYNAMIC );
 
-    view->addEventHandler( new ViewportHandler(this) );
-    view->addEventHandler( new ControlCanvasEventHandler(this) );
+    osg::ref_ptr<osgGA::GUIEventHandler> pViewportHandler = new ViewportHandler(this);
+    osg::ref_ptr<osgGA::GUIEventHandler> pControlCanvasEventHandler = new ControlCanvasEventHandler(this);
+
+    _eventHandlersMap[pViewportHandler] = view;
+    _eventHandlersMap[pControlCanvasEventHandler] = view;
+
+    view->addEventHandler( pViewportHandler );
+    view->addEventHandler( pControlCanvasEventHandler );
 
     setReferenceFrame(osg::Transform::ABSOLUTE_RF);
     setViewMatrix(osg::Matrix::identity());
@@ -2472,6 +2478,9 @@ ControlCanvas::init( osgViewer::View* view, bool registerCanvas )
     ss->setRenderBinMode( osg::StateSet::USE_RENDERBIN_DETAILS );
     ss->setBinName( OSGEARTH_CONTROLS_BIN );
 
+    // keeps the control bin shaders from "leaking out" into the scene graph :/
+    ss->setAttributeAndModes( new osg::Program(), osg::StateAttribute::OFF | osg::StateAttribute::PROTECTED );
+
     _controlNodeBin = new ControlNodeBin();
     this->addChild( _controlNodeBin->getControlGroup() );
 
@@ -2487,6 +2496,17 @@ ControlCanvas::~ControlCanvas()
 {
     OpenThreads::ScopedLock<OpenThreads::Mutex> lock( _viewCanvasMapMutex );
     _viewCanvasMap.erase( _context._view );
+
+    EventHandlersMap::iterator itr;
+    for (itr = _eventHandlersMap.begin(); itr != _eventHandlersMap.end(); ++itr)
+    {
+		osgGA::GUIEventHandler* pGUIEventHandler = itr->first.get();
+		osgViewer::View* pView = itr->second.get();
+		if ( (pView != NULL) && (pGUIEventHandler != NULL) )
+		{
+			pView->removeEventHandler(pGUIEventHandler);
+		}
+    }
 }
 
 void

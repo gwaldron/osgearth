@@ -87,6 +87,64 @@ ResourceCache::getStateSet( SkinResource* skin )
 }
 
 osg::Node*
+ResourceCache::getInstanceNode( InstanceResource* res )
+{
+    osg::Node* result = 0L;
+
+    if ( _threadSafe )
+    {
+        // first check if it exists
+        {
+            Threading::ScopedReadLock shared( _mutex );
+
+            InstanceCache::Record rec = _instanceCache.get( res );
+            if ( rec.valid() )
+            {
+                result = rec.value();
+            }
+        }
+
+        // no? exclusive lock and create it.
+        if ( !result )
+        {
+            Threading::ScopedWriteLock exclusive( _mutex );
+            
+            // double check to avoid race condition
+            InstanceCache::Record rec = _instanceCache.get( res );
+            if ( rec.valid() )
+            {
+                result = rec.value();
+            }
+            else
+            {
+                // still not there, make it.
+                result = res->createNode( _dbOptions.get() );
+                if ( result )
+                    _instanceCache.insert( res, result );
+            }
+        }
+    }
+
+    else
+    {
+        InstanceCache::Record rec = _instanceCache.get( res );
+        if ( rec.valid() )
+        {
+            result = rec.value();
+        }
+        else
+        {
+            result = res->createNode( _dbOptions.get() );
+            if ( result )
+                _instanceCache.insert( res, result );
+        }
+    }
+
+    return result;
+}
+
+
+osg::Node*
 ResourceCache::getMarkerNode( MarkerResource* marker )
 {
     osg::Node* result = 0L;

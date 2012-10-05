@@ -81,6 +81,20 @@ namespace osgEarth
         bool getMipMapping() const { return _mipmapping; }
 
         /**
+         * Gets the maximum horizon distance
+         */
+        double getMaxHorizonDistance() const;
+
+        /**
+         * Sets the maximum horizon distance.  The computed far distance will be no longer than this value.
+         * If you use overlay data that spans large distances it can become pixelated when you tilt your camera to look out over
+         * the horizon b/c the view frustum can extend over long distances.  If you set this to a smaller value you can control
+         * how far out you want to go and reduce the pixelation.  However, if you set this value to be too small, features at a distance may
+         * be clipped out of the scene.
+         */
+        void setMaxHorizonDistance( double maxHorizonDistance );
+
+        /**
          * Whether to enable blending on the RTT camera graph. Default = true. You might
          * want to disable this is you are draping polygons that cover a very large area
          * and curve around the globe; sometimes they suffer from tessellation artifacts
@@ -88,6 +102,16 @@ namespace osgEarth
          */
         void setOverlayBlending( bool value );
         bool getOverlayBlending() const { return _rttBlending; }
+
+
+        /**
+         * Whether to attach the RTT to camera to the stencil buffer.  Default = true.
+         * Some older cards don't have very good support 
+         */
+        void setAttachStencil( bool value );
+        bool getAttachStencil() const;
+
+        void setOverlayGraphTraversalMask( unsigned mask );
 
     public: // TerrainDecorator
         virtual void onInstall( TerrainEngineNode* engine );
@@ -108,7 +132,12 @@ namespace osgEarth
         bool                          _mipmapping;
         bool                          _rttBlending;
         bool                          _updatePending;
+        unsigned                      _rttTraversalMask;
+        
+        double                        _maxHorizonDistance;
+        bool                          _attachStencil;
 
+        osg::ref_ptr<const SpatialReference>    _srs;
         osg::ref_ptr<const osg::EllipsoidModel> _ellipsoid;
         osg::observer_ptr<TerrainEngineNode>    _engine;
         
@@ -122,23 +151,24 @@ namespace osgEarth
             osg::ref_ptr<osg::StateSet>   _subgraphStateSet;
         };
 
-        typedef std::map<osg::View*, PerViewData> PerViewDataMap;
+        //typedef std::map<osg::Camera*, PerViewData> PerViewDataMap;
+        typedef std::map<osg::NodeVisitor*, PerViewData> PerViewDataMap;
         PerViewDataMap _perViewData;
         Threading::ReadWriteMutex _perViewDataMutex;
 
 
     private:
-        void updateRTTCameras();
+        void updateRTTCamera(PerViewData& pvd);
         void cull( osgUtil::CullVisitor* cv, PerViewData& pvd );
         void initializeForOverlayGraph();
         void initializePerViewData( PerViewData& );
         void initSubgraphShaders( PerViewData& );
         bool checkNeedsUpdate( PerViewData& );
-        PerViewData& getPerViewData( osg::View* key );
+        PerViewData& getPerViewData( osg::NodeVisitor* key );
 
     public:
         // marker class for DrapeableNode support.
-        struct InternalNodeVisitor : public virtual osg::NodeVisitor {
+        struct InternalNodeVisitor : public osg::NodeVisitor {
             InternalNodeVisitor(const osg::NodeVisitor::TraversalMode& mode =osg::NodeVisitor::TRAVERSE_ALL_CHILDREN) : 
                 osg::NodeVisitor(mode) { }
         };

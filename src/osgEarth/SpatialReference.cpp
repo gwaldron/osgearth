@@ -44,7 +44,7 @@ namespace
     getOGRAttrValue( void* _handle, const std::string& name, int child_num, bool lowercase =false)
     {
         GDAL_SCOPED_LOCK;
-	    const char* val = OSRGetAttrValue( _handle, name.c_str(), child_num );
+        const char* val = OSRGetAttrValue( _handle, name.c_str(), child_num );
         if ( val )
         {
             std::string t = val;
@@ -55,23 +55,7 @@ namespace
             return t;
         }
         return "";
-    }
-
-    std::string&
-    replaceIn( std::string& s, const std::string& sub, const std::string& other)
-    {
-        if ( sub.empty() ) return s;
-        size_t b=0;
-        for( ; ; )
-        {
-            b = s.find( sub, b );
-            if ( b == s.npos ) break;
-            s.replace( b, sub.size(), other );
-            b += other.size();
-        }
-        return s;
-    }
-    
+    }    
 
     // http://en.wikipedia.org/wiki/Mercator_projection#Mathematics_of_the_projection
     bool sphericalMercatorToGeographic( std::vector<osg::Vec3d>& points )
@@ -165,20 +149,20 @@ SpatialReference::createFromWKT( const std::string& wkt, const std::string& name
 {
     osg::ref_ptr<SpatialReference> result;
     GDAL_SCOPED_LOCK;
-	void* handle = OSRNewSpatialReference( NULL );
+    void* handle = OSRNewSpatialReference( NULL );
     char buf[4096];
     char* buf_ptr = &buf[0];
-	strcpy( buf, wkt.c_str() );
-	if ( OSRImportFromWkt( handle, &buf_ptr ) == OGRERR_NONE )
-	{
+    strcpy( buf, wkt.c_str() );
+    if ( OSRImportFromWkt( handle, &buf_ptr ) == OGRERR_NONE )
+    {
         result = new SpatialReference( handle, "WKT" );
         result = result->fixWKT();
-	}
-	else 
-	{
-		OE_WARN << LC << "Unable to create spatial reference from WKT: " << wkt << std::endl;
-		OSRDestroySpatialReference( handle );
-	}
+    }
+    else 
+    {
+        OE_WARN << LC << "Unable to create spatial reference from WKT: " << wkt << std::endl;
+        OSRDestroySpatialReference( handle );
+    }
     return result.release();
 }
 
@@ -243,6 +227,16 @@ SpatialReference::create( const Key& key, bool useCache )
             "WGS84" );
     }
 
+    // WGS84 Plate Carre:
+    else if (horiz == "plate-carre")
+    {
+        srs = createFromPROJ4(
+            "+proj=longlat +ellps=WGS84 +datum=WGS84 +no_defs",
+            "WGS84" );
+
+        srs->_is_plate_carre = true;
+    }
+
     // custom srs for the unified cube
     else if ( horiz == "unified-cube" )
     {
@@ -261,9 +255,11 @@ SpatialReference::create( const Key& key, bool useCache )
     {
         srs = createFromWKT( horiz, horiz );
     }
-    else
+
+    // bail out if no SRS exists by this point
+    if ( srs == 0L )
     {
-        return NULL;
+        return 0L;
     }
 
     // next, resolve the vertical SRS:
@@ -311,7 +307,7 @@ SpatialReference::fixWKT()
     std::string proj = getOGRAttrValue( _handle, "PROJECTION", 0 );
 
     // fix invalid ESRI LCC projections:
-    if ( proj == "Lambert_Conformal_Conic" )
+    if ( ciEquals( proj, "Lambert_Conformal_Conic" ) )
     {
         bool has_2_sps =
             !getOGRAttrValue( _handle, "Standard_Parallel_2", 0 ).empty() ||
@@ -319,9 +315,13 @@ SpatialReference::fixWKT()
 
         std::string new_wkt = getWKT();
         if ( has_2_sps )
-            replaceIn( new_wkt, "Lambert_Conformal_Conic", "Lambert_Conformal_Conic_2SP" );
-        else
-            replaceIn( new_wkt, "Lambert_Conformal_Conic", "Lambert_Conformal_Conic_1SP" );
+        {
+            ciReplaceIn( new_wkt, "Lambert_Conformal_Conic", "Lambert_Conformal_Conic_2SP" );
+        }
+        else 
+        {
+            ciReplaceIn( new_wkt, "Lambert_Conformal_Conic", "Lambert_Conformal_Conic_1SP" );
+        }
 
         OE_INFO << LC << "Morphing Lambert_Conformal_Conic to 1SP/2SP" << std::endl;
         
@@ -332,7 +332,7 @@ SpatialReference::fixWKT()
     else if ( proj == "Plate_Carree" )
     {
         std::string new_wkt = getWKT();
-        replaceIn( new_wkt, "Plate_Carree", "Equirectangular" );
+        ciReplaceIn( new_wkt, "Plate_Carree", "Equirectangular" );
         OE_INFO << LC << "Morphing Plate_Carree to Equirectangular" << std::endl;
         return createFromWKT( new_wkt, _name ); //, input->getReferenceFrame() );
     }
@@ -340,7 +340,7 @@ SpatialReference::fixWKT()
     {
         std::string new_wkt = getWKT();
         OE_INFO << LC << "Morphing Equidistant_Cylindrical to Equirectangular" << std::endl;
-        replaceIn( new_wkt, "Equidistant_Cylindrical", "Equirectangular" );
+        ciReplaceIn( new_wkt, "Equidistant_Cylindrical", "Equirectangular" );
         return createFromWKT( new_wkt, _name );
     }
 
@@ -452,6 +452,15 @@ SpatialReference::getDatumName() const
     return _datum;
 }
 
+const Units&
+SpatialReference::getUnits() const
+{
+    if ( !_initialized )
+        const_cast<SpatialReference*>(this)->init();
+    return _units;
+}
+
+
 const std::string&
 SpatialReference::getWKT() const 
 {
@@ -474,6 +483,30 @@ SpatialReference::getVerticalDatum() const
     if ( !_initialized )
         const_cast<SpatialReference*>(this)->init();
     return _vdatum.get();
+}
+
+const SpatialReference::Key&
+SpatialReference::getKey() const
+{
+    if ( !_initialized )
+        const_cast<SpatialReference*>(this)->init();
+    return _key;
+}
+
+const std::string&
+SpatialReference::getHorizInitString() const 
+{ 
+    if ( !_initialized )
+        const_cast<SpatialReference*>(this)->init();
+    return _key.first;
+}
+
+const std::string&
+SpatialReference::getVertInitString() const 
+{ 
+    if ( !_initialized )
+        const_cast<SpatialReference*>(this)->init();
+    return _key.second;
 }
 
 bool
@@ -904,14 +937,14 @@ SpatialReference::transform(std::vector<osg::Vec3d>& points,
     // any normal horizontal datum conversion. In other words we ignore the ellipsoid
     // of the other SRS and just do a straight spherical conversion.
     if ( isGeographic() && outputSRS->isSphericalMercator() )
-    {
+    {        
         transformZ( points, outputSRS, true );
         success = geographicToSphericalMercator( points );
         return success;
     }
 
     else if ( isSphericalMercator() && outputSRS->isGeographic() )
-    {
+    {     
         success = sphericalMercatorToGeographic( points );
         transformZ( points, outputSRS, true );
         return success;
@@ -1006,12 +1039,12 @@ SpatialReference::transformXYPointArrays(double*  x,
     TransformHandleCache::const_iterator itr = _transformHandleCache.find(out_srs->getWKT());
     if (itr != _transformHandleCache.end())
     {
-        //OE_DEBUG << "using cached transform handle" << std::endl;
+        OE_DEBUG << "using cached transform handle" << std::endl;
         xform_handle = itr->second;
     }
     else
     {
-        //OE_DEBUG << "allocating new OCT Transform" << std::endl;
+        OE_DEBUG << "allocating new OCT Transform" << std::endl;
         xform_handle = OCTNewCoordinateTransformation( _handle, out_srs->_handle);
         const_cast<SpatialReference*>(this)->_transformHandleCache[out_srs->getWKT()] = xform_handle;
     }
@@ -1243,6 +1276,28 @@ SpatialReference::transformFromECEF(std::vector<osg::Vec3d>& points) const
     return ok;
 }
 
+double
+SpatialReference::transformUnits(double                  input,
+                                 const SpatialReference* outSRS ) const
+{
+    if ( this->isProjected() && outSRS->isGeographic() )
+    {
+        double metersPerEquatorialDegree = (outSRS->getEllipsoid()->getRadiusEquator() * 2.0 * osg::PI) / 360.0;
+        double inputDegrees = getUnits().convertTo(Units::METERS, input) / metersPerEquatorialDegree;
+        return Units::DEGREES.convertTo( outSRS->getUnits(), inputDegrees );
+    }
+    else if ( this->isGeographic() && outSRS->isProjected() )
+    {
+        double metersPerEquatorialDegree = (outSRS->getEllipsoid()->getRadiusEquator() * 2.0 * osg::PI) / 360.0;
+        double inputMeters = getUnits().convertTo(Units::DEGREES, input) * metersPerEquatorialDegree;
+        return Units::METERS.convertTo( outSRS->getUnits(), inputMeters );
+    }
+    else // both projected or both geographic.
+    {
+        return getUnits().convertTo( outSRS->getUnits(), input );
+    }
+}
+
 bool
 SpatialReference::transformExtentToMBR(const SpatialReference* to_srs,
                                        double&                 in_out_xmin,
@@ -1253,6 +1308,8 @@ SpatialReference::transformExtentToMBR(const SpatialReference* to_srs,
     if ( !_initialized )
         const_cast<SpatialReference*>(this)->init();
 
+    //Original code that checks the 4 corners of the bounds and translates them
+#if 0
     // Transform all points and take the maximum bounding rectangle the resulting points
     std::vector<osg::Vec3d> v;
     v.push_back( osg::Vec3d(in_out_xmin, in_out_ymin, 0) ); // ll
@@ -1268,6 +1325,73 @@ SpatialReference::transformExtentToMBR(const SpatialReference* to_srs,
         in_out_ymax = std::max( v[1].y(), v[2].y() );
         return true;
     }
+#else
+    // Transform all points and take the maximum bounding rectangle the resulting points
+    std::vector<osg::Vec3d> v;
+
+    double height = in_out_ymax - in_out_ymin;
+    double width = in_out_xmax - in_out_xmin;
+    v.push_back( osg::Vec3d(in_out_xmin, in_out_ymin, 0) ); // ll    
+    v.push_back( osg::Vec3d(in_out_xmin, in_out_ymax, 0) ); // ul
+    v.push_back( osg::Vec3d(in_out_xmax, in_out_ymax, 0) ); // ur
+    v.push_back( osg::Vec3d(in_out_xmax, in_out_ymin, 0) ); // lr
+
+    //We also sample along the edges of the bounding box and include them in the 
+    //MBR computation in case you are dealing with a projection that will cause the edges
+    //of the bounding box to be expanded.  This was first noticed when dealing with converting
+    //Hotline Oblique Mercator to WGS84
+   
+    //Sample the edges
+    unsigned int numSamples = 5;    
+    double dWidth  = width / (numSamples - 1 );
+    double dHeight = height / (numSamples - 1 );
+    
+    //Left edge
+    for (unsigned int i = 0; i < numSamples; i++)
+    {
+        v.push_back( osg::Vec3d(in_out_xmin, in_out_ymin + dHeight * (double)i, 0) );
+    }
+
+    //Right edge
+    for (unsigned int i = 0; i < numSamples; i++)
+    {
+        v.push_back( osg::Vec3d(in_out_xmax, in_out_ymin + dHeight * (double)i, 0) );
+    }
+
+    //Top edge
+    for (unsigned int i = 0; i < numSamples; i++)
+    {
+        v.push_back( osg::Vec3d(in_out_xmin + dWidth * (double)i, in_out_ymax, 0) );
+    }
+
+    //Bottom edge
+    for (unsigned int i = 0; i < numSamples; i++)
+    {
+        v.push_back( osg::Vec3d(in_out_xmin + dWidth * (double)i, in_out_ymin, 0) );
+    }
+    
+    
+    
+    if ( transform(v, to_srs) )
+    {
+        in_out_xmin = DBL_MAX;
+        in_out_ymin = DBL_MAX;
+        in_out_xmax = -DBL_MAX;
+        in_out_ymax = -DBL_MAX;
+
+        for (unsigned int i = 0; i < v.size(); i++)
+        {
+            in_out_xmin = std::min( v[i].x(), in_out_xmin );
+            in_out_ymin = std::min( v[i].y(), in_out_ymin );
+            in_out_xmax = std::max( v[i].x(), in_out_xmax );
+            in_out_ymax = std::max( v[i].y(), in_out_ymax );
+        }
+
+        return true;
+    }
+
+   
+#endif
 
     return false;
 }
@@ -1379,6 +1503,14 @@ SpatialReference::_init()
 
     // Try to extract the horizontal datum
     _datum = getOGRAttrValue( _handle, "DATUM", 0, true );
+
+    // Extract the base units:
+    std::string units = getOGRAttrValue( _handle, "UNIT", 0, true );
+    double unitMultiplier = osgEarth::as<double>( getOGRAttrValue( _handle, "UNIT", 1, true ), 1.0 );
+    if ( _is_geographic )
+        _units = Units(units, units, Units::TYPE_ANGULAR, unitMultiplier);
+    else
+        _units = Units(units, units, Units::TYPE_LINEAR, unitMultiplier);
 
     // Give the SRS a name if it doesn't have one:
     if ( _name == "unnamed" || _name.empty() )

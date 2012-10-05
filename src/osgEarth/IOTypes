@@ -79,24 +79,25 @@ namespace osgEarth
             RESULT_TIMEOUT,
             RESULT_NO_READER,
             RESULT_READER_ERROR,
-            RESULT_UNKNOWN_ERROR
+            RESULT_UNKNOWN_ERROR,
+            RESULT_NOT_IMPLEMENTED
         };
 
         /** Construct a result with no object */
         ReadResult( Code code =RESULT_NOT_FOUND )
-            : _code(code) { }
+            : _code(code), _fromCache(false) { }
 
         /** Construct a successful result */
         ReadResult( osg::Object* result )
-            : _code(RESULT_OK), _result(result) { }
+            : _code(RESULT_OK), _result(result), _fromCache(false) { }
 
         /** Construct a successful result with metadata */
         ReadResult( osg::Object* result, const Config& meta )
-            : _code(RESULT_OK), _result(result), _meta(meta) { }
+            : _code(RESULT_OK), _result(result), _meta(meta), _fromCache(false) { }
 
         /** Copy construct */
         ReadResult( const ReadResult& rhs )
-            : _code(rhs._code), _result(rhs._result.get()), _meta(rhs._meta) { }
+            : _code(rhs._code), _result(rhs._result.get()), _meta(rhs._meta), _fromCache(rhs._fromCache) { }
 
         /** dtor */
         virtual ~ReadResult() { }
@@ -112,6 +113,9 @@ namespace osgEarth
 
         /** The result code */
         const Code& code() const { return _code; }
+
+        /** True if the object came from the cache */
+        bool isFromCache() const { return _fromCache; }
 
         /** The result */
         osg::Object* getObject() const { return _result.get(); }
@@ -141,13 +145,14 @@ namespace osgEarth
         static std::string getResultCodeString( unsigned code )
         {
             return
-                code == RESULT_OK           ? "OK" :
-                code == RESULT_CANCELED     ? "Read canceled" :
-                code == RESULT_NOT_FOUND    ? "Target not found" :
-                code == RESULT_SERVER_ERROR ? "Server error" :
-                code == RESULT_TIMEOUT      ? "Read timed out" :
-                code == RESULT_NO_READER    ? "No suitable ReaderWriter found" :
-                code == RESULT_READER_ERROR ? "ReaderWriter error" :
+                code == RESULT_OK              ? "OK" :
+                code == RESULT_CANCELED        ? "Read canceled" :
+                code == RESULT_NOT_FOUND       ? "Target not found" :
+                code == RESULT_SERVER_ERROR    ? "Server error" :
+                code == RESULT_TIMEOUT         ? "Read timed out" :
+                code == RESULT_NO_READER       ? "No suitable ReaderWriter found" :
+                code == RESULT_READER_ERROR    ? "ReaderWriter error" :
+                code == RESULT_NOT_IMPLEMENTED ? "Not implemented" :
                 "Unknown error";
         }
 
@@ -156,12 +161,16 @@ namespace osgEarth
             return getResultCodeString( _code );
         }
 
+    public:
+        void setIsFromCache(bool value) { _fromCache = value; }
+
     protected:
         Code                      _code;
         osg::ref_ptr<osg::Object> _result;
         Config                    _meta;
         std::string               _emptyString;
         Config                    _emptyConfig;
+        bool                      _fromCache;
     };
 
 //--------------------------------------------------------------------
@@ -196,24 +205,24 @@ namespace osgEarth
     public:
 
         /** Override the readObject() implementation */
-        virtual osgDB::ReaderWriter::ReadResult readObject( const std::string& uri, const osgDB::Options* options ) {
-            return osgDB::ReaderWriter::ReadResult::NOT_IMPLEMENTED; }
+        virtual osgEarth::ReadResult readObject( const std::string& uri, const osgDB::Options* options ) {
+            return osgEarth::ReadResult::RESULT_NOT_IMPLEMENTED; }
 
         /** Override the readNode() implementation */
-        virtual osgDB::ReaderWriter::ReadResult readNode( const std::string& uri, const osgDB::Options* options ) {
-            return osgDB::ReaderWriter::ReadResult::NOT_IMPLEMENTED; }
+        virtual osgEarth::ReadResult readNode( const std::string& uri, const osgDB::Options* options ) {
+            return osgEarth::ReadResult::RESULT_NOT_IMPLEMENTED; }
 
         /** Override the readImage() implementation */
-        virtual osgDB::ReaderWriter::ReadResult readImage( const std::string& uri, const osgDB::Options* options ) {
-            return osgDB::ReaderWriter::ReadResult::NOT_IMPLEMENTED; }
+        virtual osgEarth::ReadResult readImage( const std::string& uri, const osgDB::Options* options ) {
+            return osgEarth::ReadResult::RESULT_NOT_IMPLEMENTED; }
 
         /** Override the readString() implementation */
-        virtual osgDB::ReaderWriter::ReadResult readString( const std::string& uri, const osgDB::Options* options ) {
-            return osgDB::ReaderWriter::ReadResult::NOT_IMPLEMENTED; }
+        virtual osgEarth::ReadResult readString( const std::string& uri, const osgDB::Options* options ) {
+            return osgEarth::ReadResult::RESULT_NOT_IMPLEMENTED; }
 
         /** Override the readConfig() implementation */
-        virtual osgDB::ReaderWriter::ReadResult readConfig( const std::string& uri, const osgDB::Options* options ) {
-            return osgDB::ReaderWriter::ReadResult::NOT_IMPLEMENTED; }
+        virtual osgEarth::ReadResult readConfig( const std::string& uri, const osgDB::Options* options ) {
+            return osgEarth::ReadResult::RESULT_NOT_IMPLEMENTED; }
 
     protected:
 

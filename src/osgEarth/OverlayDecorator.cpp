@@ -17,10 +17,11 @@
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
 #include <osgEarth/OverlayDecorator>
+#include <osgEarth/MapInfo>
 #include <osgEarth/NodeUtils>
 #include <osgEarth/Registry>
 #include <osgEarth/TextureCompositor>
-#include <osgEarth/ShaderComposition>
+#include <osgEarth/VirtualProgram>
 #include <osgEarth/Capabilities>
 #include <osg/Texture2D>
 #include <osg/TexEnv>
@@ -107,13 +108,16 @@ namespace
 //---------------------------------------------------------------------------
 
 OverlayDecorator::OverlayDecorator() :
-_textureUnit  ( 1 ),
-_textureSize  ( 1024 ),
-_useShaders   ( false ),
-_mipmapping   ( false ),
-_rttBlending  ( true ),
-_updatePending( false ),
-_dumpRequested( false )
+_textureUnit     ( 1 ),
+_textureSize     ( 1024 ),
+_useShaders      ( false ),
+_mipmapping      ( false ),
+_rttBlending     ( true ),
+_updatePending   ( false ),
+_dumpRequested   ( false ),
+_rttTraversalMask( ~0 ),
+_maxHorizonDistance( DBL_MAX ),
+_attachStencil   ( true )
 {
     // nop
 }
@@ -161,14 +165,14 @@ OverlayDecorator::initializePerViewData( PerViewData& pvd )
     // create the projected texture:
     osg::Texture2D* projTexture = new osg::Texture2D();
     projTexture->setTextureSize( *_textureSize, *_textureSize );
-    projTexture->setInternalFormat( GL_RGBA8 );
+    projTexture->setInternalFormat( GL_RGBA );
     projTexture->setSourceFormat( GL_RGBA );
     projTexture->setSourceType( GL_UNSIGNED_BYTE );
     projTexture->setFilter( osg::Texture::MIN_FILTER, _mipmapping? osg::Texture::LINEAR_MIPMAP_LINEAR: osg::Texture::LINEAR );
     projTexture->setFilter( osg::Texture::MAG_FILTER, osg::Texture::LINEAR );
-    projTexture->setWrap( osg::Texture::WRAP_S, osg::Texture::CLAMP_TO_BORDER );
-    projTexture->setWrap( osg::Texture::WRAP_T, osg::Texture::CLAMP_TO_BORDER );
-    projTexture->setWrap( osg::Texture::WRAP_R, osg::Texture::CLAMP_TO_BORDER );
+    projTexture->setWrap( osg::Texture::WRAP_S, osg::Texture::CLAMP_TO_EDGE); //CLAMP_TO_BORDER );
+    projTexture->setWrap( osg::Texture::WRAP_T, osg::Texture::CLAMP_TO_EDGE );
+    projTexture->setWrap( osg::Texture::WRAP_R, osg::Texture::CLAMP_TO_EDGE );
     projTexture->setBorderColor( osg::Vec4(0,0,0,0) );
 
     // set up the RTT camera:
@@ -186,23 +190,50 @@ OverlayDecorator::initializePerViewData( PerViewData& pvd )
 
     pvd._rttCamera->attach( osg::Camera::COLOR_BUFFER, projTexture, 0, 0, _mipmapping );
 
-    // try a depth-packed buffer. failing that, try a normal one.. if the FBO doesn't support
-    // that (which is doesn't on some GPUs like Intel), it will automatically fall back on 
-    // a PBUFFER_RTT impl
-    if ( Registry::instance()->getCapabilities().supportsDepthPackedStencilBuffer() )
-        pvd._rttCamera->attach( osg::Camera::PACKED_DEPTH_STENCIL_BUFFER, GL_DEPTH_STENCIL_EXT );
-    else
-        pvd._rttCamera->attach( osg::Camera::STENCIL_BUFFER, GL_STENCIL_INDEX );
+    if (_attachStencil) {
+        // try a depth-packed buffer. failing that, try a normal one.. if the FBO doesn't support
+        // that (which is doesn't on some GPUs like Intel), it will automatically fall back on 
+        // a PBUFFER_RTT impl
+        if ( Registry::instance()->getCapabilities().supportsDepthPackedStencilBuffer() ){
+#ifdef OSG_GLES2_AVAILABLE 
+            pvd._rttCamera->attach( osg::Camera::PACKED_DEPTH_STENCIL_BUFFER, GL_DEPTH24_STENCIL8_EXT );
+#else
+            pvd._rttCamera->attach( osg::Camera::PACKED_DEPTH_STENCIL_BUFFER, GL_DEPTH_STENCIL_EXT );
+#endif
+        }else{
+            pvd._rttCamera->attach( osg::Camera::STENCIL_BUFFER, GL_STENCIL_INDEX );
+        }
+    }
 
     osg::StateSet* rttStateSet = pvd._rttCamera->getOrCreateStateSet();
 
     rttStateSet->setMode( GL_LIGHTING, osg::StateAttribute::OFF | osg::StateAttribute::PROTECTED );
 
+    // install a new default shader program that replaces anything from above.
+    VirtualProgram* vp = new VirtualProgram();
+    vp->setName( "overlay rtt" );
+    vp->installDefaultColoringAndLightingShaders();
+    vp->setInheritShaders( false );
+    rttStateSet->setAttributeAndModes( vp, osg::StateAttribute::ON );
+    
     if ( _rttBlending )
     {
-        osg::BlendFunc* blendFunc = new osg::BlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
-        //Sure it shouldn't be this? -gw
+        //osg::BlendFunc* blendFunc = new osg::BlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
         //osg::BlendFunc* blendFunc = new osg::BlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
+        //Setup a separate blend function for the alpha components and the RGB components.  
+        //Because the destination alpha is initialized to 0 instead of 1
+        osg::BlendFunc* blendFunc = 0;        
+        if (Registry::instance()->getCapabilities().supportsGLSL(1.4f))
+        {
+            //Blend Func Separate is only available on OpenGL 1.4 and above
+            blendFunc = new osg::BlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
+        }
+        else
+        {
+            blendFunc = new osg::BlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+        }
+
         rttStateSet->setAttributeAndModes(blendFunc, osg::StateAttribute::ON | osg::StateAttribute::OVERRIDE);
     }
     else
@@ -263,36 +294,39 @@ OverlayDecorator::initSubgraphShaders( PerViewData& pvd )
     // the texture projection matrix uniform.
     pvd._texGenUniform = set->getOrCreateUniform( "osgearth_overlay_TexGenMatrix", osg::Uniform::FLOAT_MAT4 );
 
-    std::stringstream buf;
-
     // vertex shader - subgraph
-    buf << "#version 110 \n"
+    std::string vertexSource = Stringify()
+        << "#version " << GLSL_VERSION_STR << "\n"
+#ifdef OSG_GLES2_AVAILABLE
+        << "precision mediump float;\n"
+#endif
         << "uniform mat4 osgearth_overlay_TexGenMatrix; \n"
         << "uniform mat4 osg_ViewMatrixInverse; \n"
+        << "varying vec4 osg_TexCoord[" << Registry::capabilities().getMaxGPUTextureCoordSets() << "]; \n"
 
         << "void osgearth_overlay_vertex(void) \n"
         << "{ \n"
-        << "    gl_TexCoord["<< *_textureUnit << "] = osgearth_overlay_TexGenMatrix * osg_ViewMatrixInverse * gl_ModelViewMatrix * gl_Vertex; \n"
+        << "    osg_TexCoord["<< *_textureUnit << "] = osgearth_overlay_TexGenMatrix * osg_ViewMatrixInverse * gl_ModelViewMatrix * gl_Vertex; \n"
         << "} \n";
 
-    std::string vertexSource;
-    vertexSource = buf.str();
     vp->setFunction( "osgearth_overlay_vertex", vertexSource, ShaderComp::LOCATION_VERTEX_POST_LIGHTING );
 
     // fragment shader - subgraph
-    buf.str("");
-    buf << "#version 110 \n"
+    std::string fragmentSource = Stringify()
+        << "#version " << GLSL_VERSION_STR << "\n"
+#ifdef OSG_GLES2_AVAILABLE
+        << "precision mediump float;\n"
+#endif
         << "uniform sampler2D osgearth_overlay_ProjTex; \n"
+        << "varying vec4 osg_TexCoord[" << Registry::capabilities().getMaxGPUTextureCoordSets() << "]; \n"
         << "void osgearth_overlay_fragment( inout vec4 color ) \n"
         << "{ \n"
-        << "    vec2 texCoord = gl_TexCoord["<< *_textureUnit << "].xy / gl_TexCoord["<< *_textureUnit << "].q; \n"
+        << "    vec2 texCoord = osg_TexCoord["<< *_textureUnit << "].xy / osg_TexCoord["<< *_textureUnit << "].q; \n"
         << "    vec4 texel = texture2D(osgearth_overlay_ProjTex, texCoord); \n"  
         << "    color = vec4( mix( color.rgb, texel.rgb, texel.a ), color.a); \n"
         << "} \n";
 
-    std::string fragmentSource;
-    fragmentSource = buf.str();
-    vp->setFunction( "osgearth_overlay_fragment", fragmentSource, ShaderComp::LOCATION_FRAGMENT_PRE_LIGHTING );
+    vp->setFunction( "osgearth_overlay_fragment", fragmentSource, ShaderComp::LOCATION_FRAGMENT_POST_LIGHTING );
 }
 
 void
@@ -336,6 +370,12 @@ OverlayDecorator::setOverlayGraph( osg::Node* node )
 
         //reinit();
     }
+}
+
+void
+OverlayDecorator::setOverlayGraphTraversalMask( unsigned mask )
+{
+    _rttTraversalMask = mask;
 }
 
 void
@@ -384,6 +424,18 @@ OverlayDecorator::setOverlayBlending( bool value )
     }
 }
 
+bool
+OverlayDecorator::getAttachStencil() const
+{
+    return _attachStencil;
+}
+
+void
+OverlayDecorator::setAttachStencil( bool value )
+{
+    _attachStencil = value;            
+}
+
 void
 OverlayDecorator::onInstall( TerrainEngineNode* engine )
 {
@@ -392,6 +444,7 @@ OverlayDecorator::onInstall( TerrainEngineNode* engine )
     // establish the earth's major axis:
     MapInfo info(engine->getMap());
     _isGeocentric = info.isGeocentric();
+    _srs = info.getProfile()->getSRS();
     _ellipsoid = info.getProfile()->getSRS()->getEllipsoid();
 
     // the maximum extent (for projected maps only)
@@ -431,30 +484,23 @@ OverlayDecorator::onUninstall( TerrainEngineNode* engine )
 }
 
 void
-OverlayDecorator::updateRTTCameras()
+OverlayDecorator::updateRTTCamera( OverlayDecorator::PerViewData& pvd )
 {
     static osg::Matrix normalizeMatrix = 
         osg::Matrix::translate(1.0,1.0,1.0) * osg::Matrix::scale(0.5,0.5,0.5);
 
-    Threading::ScopedWriteLock exclusive( _perViewDataMutex );
+    pvd._rttCamera->setViewMatrix( pvd._rttViewMatrix );
+    pvd._rttCamera->setProjectionMatrix( pvd._rttProjMatrix );
 
-    for( PerViewDataMap::iterator i = _perViewData.begin(); i != _perViewData.end(); ++i )
+    osg::Matrix MVPT = pvd._rttViewMatrix * pvd._rttProjMatrix * normalizeMatrix;
+
+    if ( pvd._texGenUniform.valid() )
     {
-        PerViewData& pvd = i->second;
-    
-        pvd._rttCamera->setViewMatrix( pvd._rttViewMatrix );
-        pvd._rttCamera->setProjectionMatrix( pvd._rttProjMatrix );
-
-        osg::Matrix MVPT = pvd._rttViewMatrix * pvd._rttProjMatrix * normalizeMatrix;
-
-        if ( pvd._texGenUniform.valid() )
-        {
-            pvd._texGenUniform->set( MVPT );
-        }
-        else
-        {
-            pvd._texGenNode->getTexGen()->setPlanesFromMatrix( MVPT );
-        }
+        pvd._texGenUniform->set( MVPT );
+    }
+    else
+    {
+        pvd._texGenNode->getTexGen()->setPlanesFromMatrix( MVPT );
     }
 }
 
@@ -486,7 +532,15 @@ OverlayDecorator::cull( osgUtil::CullVisitor* cv, OverlayDecorator::PerViewData&
     {
         double lat, lon;
         _ellipsoid->convertXYZToLatLongHeight( eye.x(), eye.y(), eye.z(), lat, lon, hasl );
-        hasl = osg::maximum( hasl, 100.0 );
+        
+        //Actually sample the terrain to get the height and adjust the eye position so it's a tighter fit to the real data.
+        double height;
+        if (_engine->getTerrain()->getHeight( SpatialReference::create("epsg:4326"), osg::RadiansToDegrees( lon ), osg::RadiansToDegrees( lat ), &height))
+        {
+            hasl -= height;
+        }
+        hasl = osg::maximum( hasl, 100.0 );                
+
 
         worldUp = _ellipsoid->computeLocalUpVector(eye.x(), eye.y(), eye.z());
 
@@ -569,9 +623,10 @@ OverlayDecorator::cull( osgUtil::CullVisitor* cv, OverlayDecorator::PerViewData&
     cv->setCalculatedFarPlane( osg::maximum(zSavedFar, zFar) );
 
     if ( _isGeocentric )
-    {
+    {        
         // in geocentric mode, clamp the far clip plane to the horizon.
         double maxDistance = (1.0 - haslWeight)  * horizonDistance  + haslWeight * hasl;
+        maxDistance = osg::clampBelow( maxDistance, _maxHorizonDistance );
         maxDistance *= 1.5;
         if (zFar - zNear >= maxDistance)
             zFar = zNear + maxDistance;
@@ -583,32 +638,48 @@ OverlayDecorator::cull( osgUtil::CullVisitor* cv, OverlayDecorator::PerViewData&
        
     // contruct the polyhedron representing the viewing frustum.
     osgShadow::ConvexPolyhedron frustumPH;
+    //MyConvexPolyhedron frustumPH;
     frustumPH.setToUnitFrustum( true, true );
     osg::Matrixd MVP = *cv->getModelViewMatrix() * projMatrix;
     osg::Matrixd inverseMVP;
     inverseMVP.invert(MVP);
     frustumPH.transform( inverseMVP, MVP );
 
-    // take the bounds of the overlay graph:
+    // take the bounds of the overlay graph, constrained to the view frustum:
+    osg::BoundingSphere visibleOverlayBS;
+    osg::Polytope frustumPT;
+    frustumPH.getPolytope( frustumPT );
+
+    // get a bounds of the overlay graph as a whole, and convert that to a
+    // bounding box. We can probably do better with a ComputeBoundsVisitor but it
+    // will be slower.
+    visibleOverlayBS = _overlayGraph->getBound();
     osg::BoundingBox visibleOverlayBBox;
-    visibleOverlayBBox.expandBy( _overlayGraph->getBound() );
+    visibleOverlayBBox.expandBy( visibleOverlayBS );
 
-    // adjust the bounding box to account for "flat" geometry. The Bbox must have 
-    // 3D volume or it won't intersect properly with the frustum PH.
-    visibleOverlayBBox.expandBy( osg::BoundingSphere(visibleOverlayBBox.center(), 1.0) );
+    // intersect that bound with the camera frustum:
+    osg::Polytope visibleOverlayPT;
+    visibleOverlayPT.setToBoundingBox( visibleOverlayBBox );
+    osgShadow::ConvexPolyhedron visiblePH( frustumPH );
+    visiblePH.cut( visibleOverlayPT );
 
-    // make a polyhedron representing the bounding box of the overlay.
-    osgShadow::ConvexPolyhedron visiblePH;
-    visiblePH.setToBoundingBox( visibleOverlayBBox );
+#if 0
+    // This method does not work. Like with larged paged feature sets.
 
-    osgShadow::ConvexPolyhedron visiblePHBeforeCut;
-    if ( _dumpRequested )
-        visiblePHBeforeCut = visiblePH;
+    ComputeBoundsWithinFrustum cbwp( frustumPH, _srs.get(), _isGeocentric, visibleOverlayBS );
+    _overlayGraph->accept( cbwp );
+
+    // convert the visible geometry bounding sphere into a world-space polytope:
+    osg::Polytope visiblePT;
+    osgShadow::ConvexPolyhedron visiblePH( frustumPH );
 
     // this intersects the viewing frustum with the subgraph's bounding box, basically giving us
     // a "minimal" polyhedron containing all potentially visible geometry. (It can't be truly 
     // minimal without clipping at the geometry level, but that would probably be too expensive.)
-    visiblePH.cut( frustumPH );
+
+    computeWorldBoundingPolytope( visibleOverlayBS, _srs.get(), _isGeocentric, visiblePT );
+    visiblePH.cut( visiblePT );
+#endif
 
     // calculate the extents for our orthographic RTT camera (clamping it to the
     // visible horizon)
@@ -678,10 +749,10 @@ OverlayDecorator::cull( osgUtil::CullVisitor* cv, OverlayDecorator::PerViewData&
         osg::Node* camNode = osgDB::readNodeFile(fn);
         camNode->setName("camera");
 
-        // visible PH or overlay:
-        visiblePHBeforeCut.dumpGeometry(0,0,0,fn,osg::Vec4(0,1,1,1),osg::Vec4(0,1,1,.25));
-        osg::Node* overlay = osgDB::readNodeFile(fn);
-        overlay->setName("overlay");
+        //// visible PH or overlay:
+        //visiblePHBeforeCut.dumpGeometry(0,0,0,fn,osg::Vec4(0,1,1,1),osg::Vec4(0,1,1,.25));
+        //osg::Node* overlay = osgDB::readNodeFile(fn);
+        //overlay->setName("overlay");
 
         // visible overlay Polyherdron AFTER frustum intersection:
         visiblePH.dumpGeometry(0,0,0,fn,osg::Vec4(1,.5,1,1),osg::Vec4(1,.5,0,.25));
@@ -710,8 +781,9 @@ OverlayDecorator::cull( osgUtil::CullVisitor* cv, OverlayDecorator::PerViewData&
         dsgmt->addChild( dsg );
 
         osg::Group* g = new osg::Group();
+        g->getOrCreateStateSet()->setAttribute(new osg::Program(), 0);
         g->addChild(camNode);
-        g->addChild(overlay);
+        //g->addChild(overlay);
         g->addChild(intersection);
         g->addChild(rttNode);
         g->addChild(dsgmt);
@@ -722,7 +794,7 @@ OverlayDecorator::cull( osgUtil::CullVisitor* cv, OverlayDecorator::PerViewData&
 }
 
 OverlayDecorator::PerViewData&
-OverlayDecorator::getPerViewData(osg::View* key)
+OverlayDecorator::getPerViewData(osg::NodeVisitor* key)
 {
     // first check for it:
     {
@@ -765,67 +837,40 @@ OverlayDecorator::traverse( osg::NodeVisitor& nv )
         if ( nv.getVisitorType() == osg::NodeVisitor::CULL_VISITOR )
         {
             osgUtil::CullVisitor* cv = static_cast<osgUtil::CullVisitor*>( &nv );
+            PerViewData& pvd = getPerViewData( cv );
             if ( cv->getCurrentCamera() )
             {
-                PerViewData& pvd = getPerViewData( cv->getCurrentCamera()->getView() );
-
-                if ( pvd._texGenNode.valid() ) // FFP only
-                    pvd._texGenNode->accept( nv );
-
-                cull( cv, pvd );
-                pvd._rttCamera->accept( nv );
-            }
-        }
-
-        else if ( nv.getVisitorType() == osg::NodeVisitor::EVENT_VISITOR )
-        {
-            // during the event traversal, check to see whether any of the camera
-            // matrices have changed from the previous frame. If so, active the update
-            // visitor to update the RTT camera.
-
-            osgGA::EventVisitor* ev = static_cast<osgGA::EventVisitor*>(&nv);
-            osg::View* view = ev->getActionAdapter()->asView();
-            if ( view )
-            {
-                PerViewData& pvd = getPerViewData(view);
-
-                // first, check whether we already have an update coming.
-                if ( !_updatePending && checkNeedsUpdate(pvd) )
+                if ( (_rttTraversalMask & nv.getTraversalMask()) != 0 )
                 {
-                    // need it, so schedule it.
-                    //ev->getActionAdapter()->requestRedraw(); // not needed since we are bumping the update trav
-                    _updatePending = true;
-                    ADJUST_UPDATE_TRAV_COUNT( this, 1 );
-                }
+                    if (checkNeedsUpdate(pvd))
+                    {
+                        updateRTTCamera(pvd);
+                    }
 
-                // send the event traversal down the overlay graph
-                pvd._rttCamera->accept( nv );
+                    if ( pvd._texGenNode.valid() ) // FFP only
+                        pvd._texGenNode->accept( nv );
+
+                    cull( cv, pvd );
+                    pvd._rttCamera->accept( nv );
+                }
+                else
+                {
+                    osg::Group::traverse(nv);
+                }
             }
 
-            // traverse the overlay decorators subgraph
-            osg::Group::traverse( nv );
+            // debug-- (draws the overlay at its native location as well)
+            //_overlayGraph->accept(nv);
         }
 
-        else if ( nv.getVisitorType() == osg::NodeVisitor::UPDATE_VISITOR )
+        else if ( nv.getVisitorType() == nv.UPDATE_VISITOR )
         {
-            // if we get an update traversal, recalculate the RTT camera parameters.
-            // TODO: update this to support multiple views..?
-            if ( _updatePending )
-            {
-                OE_DEBUG << LC << "Update RTT camera, frame = " << nv.getFrameStamp()->getFrameNumber() << std::endl;
-                updateRTTCameras();
-                _updatePending = false;
-                ADJUST_UPDATE_TRAV_COUNT( this, -1 );
-            }
-
-            // skip the camera, go straight to the overlay subgraph.
             if ( _overlayGraph.valid() )
             {
                 _overlayGraph->accept( nv );
             }
-
             osg::Group::traverse( nv );
-        }    
+        }
 
         else
         {
@@ -851,5 +896,18 @@ OverlayDecorator::checkNeedsUpdate( OverlayDecorator::PerViewData& pvd )
 {
     return
         pvd._rttCamera->getViewMatrix()       != pvd._rttViewMatrix ||
-        pvd._rttCamera->getProjectionMatrix() != pvd._rttProjMatrix;
+        pvd._rttCamera->getProjectionMatrix() != pvd._rttProjMatrix ||
+        (_overlayGraph.valid() && _overlayGraph->getNumChildrenRequiringUpdateTraversal() > 0);
+}
+
+
+double OverlayDecorator::getMaxHorizonDistance( ) const
+{
+    return _maxHorizonDistance;
+}
+
+void
+OverlayDecorator::setMaxHorizonDistance( double horizonDistance )
+{
+    _maxHorizonDistance = horizonDistance;
 }

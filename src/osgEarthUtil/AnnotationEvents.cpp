@@ -94,8 +94,12 @@ AnnotationEventCallback::operator()( osg::Node* node, osg::NodeVisitor* nv )
 
         else if ( ea->getEventType() == osgGA::GUIEventAdapter::FRAME && _hoverEnabled && !_mouseDown )
         {
+            //Insert all the currently hovered annotations into a set to be unhoverd
             std::set<AnnotationNode*> toUnHover;
-            toUnHover.swap( _hovered );
+            for( std::set<AnnotationNode*>::iterator i = _hovered.begin(); i != _hovered.end(); ++i )
+            {
+                toUnHover.insert( *i );
+            }
 
             Picker picker( view, node );
             Picker::Hits hits;
@@ -109,19 +113,24 @@ AnnotationEventCallback::operator()( osg::Node* node, osg::NodeVisitor* nv )
                     AnnotationNode* anno = picker.getNode<AnnotationNode>( hit );
                     if ( anno )
                     {
-                        if ( toUnHover.find(anno) == toUnHover.end() )
+                        //If the annotation ins't current hovered, add it to the list of new hovered items
+                        if ( _hovered.find(anno) == _hovered.end() )
                         {
+                            _hovered.insert( anno );
                             fireEvent( &AnnotationEventHandler::onHoverEnter, anno );
                         }
-                        _hovered.insert( anno );
+                        //It's still hovered, so don't unhover it
                         toUnHover.erase( anno );
                         //break;
                     }
                 }
             }                
 
+            //The unhovered list now contains all the annotations that were hovered on the previous frame that need to be unhovered
+            //and removed from the previous hover list
             for( std::set<AnnotationNode*>::iterator i = toUnHover.begin(); i != toUnHover.end(); ++i )
             {
+                _hovered.erase( *i );
                 fireEvent( &AnnotationEventHandler::onHoverLeave, *i );
             }
         }

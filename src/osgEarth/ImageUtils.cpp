@@ -293,6 +293,9 @@ ImageUtils::cropImage(const osg::Image* image,
                       double src_minx, double src_miny, double src_maxx, double src_maxy,
                       double &dst_minx, double &dst_miny, double &dst_maxx, double &dst_maxy)
 {
+    if ( image == 0L )
+        return 0L;
+
     //Compute the desired cropping rectangle
     int windowX        = osg::clampBetween( (int)floor( (dst_minx - src_minx) / (src_maxx - src_minx) * (double)image->s()), 0, image->s()-1);
     int windowY        = osg::clampBetween( (int)floor( (dst_miny - src_miny) / (src_maxy - src_miny) * (double)image->t()), 0, image->t()-1);
@@ -386,14 +389,21 @@ ImageUtils::sharpenImage( const osg::Image* input )
 osg::Image*
 ImageUtils::createEmptyImage()
 {
-    //TODO: Make this a static or store it in the registry to avoid creating it
-    // each time.
-    osg::Image* image = new osg::Image;
-    image->allocateImage(1,1,1, GL_RGBA, GL_UNSIGNED_BYTE);
-    image->setInternalTextureFormat( GL_RGB8A_INTERNAL );
-    unsigned char *data = image->data(0,0);
-    memset(data, 0, 4);
-    return image;
+    static OpenThreads::Mutex s_mutex;
+    static osg::ref_ptr< osg::Image> s_image;
+    if (!s_image.valid())
+    {
+        OpenThreads::ScopedLock< OpenThreads::Mutex > lock( s_mutex );
+        if (!s_image.valid())
+        {
+            s_image = new osg::Image;
+            s_image->allocateImage(1,1,1, GL_RGBA, GL_UNSIGNED_BYTE);
+            s_image->setInternalTextureFormat( GL_RGB8A_INTERNAL );
+            unsigned char *data = s_image->data(0,0);
+            memset(data, 0, 4);
+        }     
+    }
+    return s_image.get();
 }
 
 bool
@@ -410,6 +420,34 @@ ImageUtils::isEmptyImage(const osg::Image* image, float alphaThreshold)
             osg::Vec4 color = read(s, t);
             if ( color.a() > alphaThreshold )
                 return false;
+        }
+    }
+    return true;    
+}
+
+bool
+ImageUtils::isSingleColorImage(const osg::Image* image, float threshold)
+{
+    PixelReader read(image);
+
+    osg::Vec4 referenceColor = read(0, 0);
+    float refR = referenceColor.r();
+    float refG = referenceColor.g();
+    float refB = referenceColor.b();
+    float refA = referenceColor.a();
+
+    for(unsigned t=0; t<(unsigned)image->t(); ++t) 
+    {
+        for(unsigned s=0; s<(unsigned)image->s(); ++s)
+        {
+            osg::Vec4 color = read(s, t);
+            if (   (fabs(color.r()-refR) > threshold)
+                || (fabs(color.g()-refG) > threshold)
+                || (fabs(color.b()-refB) > threshold)
+                || (fabs(color.a()-refA) > threshold) )
+            {
+                return false;
+            }
         }
     }
     return true;    
@@ -469,29 +507,29 @@ ImageUtils::convertToRGBA8(const osg::Image* image)
 bool 
 ImageUtils::areEquivalent(const osg::Image *lhs, const osg::Image *rhs)
 {
-	if (lhs == rhs) return true;
+    if (lhs == rhs) return true;
 
-	if ((lhs->s() == rhs->s()) &&
-		(lhs->t() == rhs->t()) &&
-		(lhs->getInternalTextureFormat() == rhs->getInternalTextureFormat()) &&
-		(lhs->getPixelFormat() == rhs->getPixelFormat()) &&
-		(lhs->getDataType() == rhs->getDataType()) &&
-		(lhs->getPacking() == rhs->getPacking()) &&
-		(lhs->getImageSizeInBytes() == rhs->getImageSizeInBytes()))
-	{
-		unsigned int size = lhs->getImageSizeInBytes();
+    if ((lhs->s() == rhs->s()) &&
+        (lhs->t() == rhs->t()) &&
+        (lhs->getInternalTextureFormat() == rhs->getInternalTextureFormat()) &&
+        (lhs->getPixelFormat() == rhs->getPixelFormat()) &&
+        (lhs->getDataType() == rhs->getDataType()) &&
+        (lhs->getPacking() == rhs->getPacking()) &&
+        (lhs->getImageSizeInBytes() == rhs->getImageSizeInBytes()))
+    {
+        unsigned int size = lhs->getImageSizeInBytes();
         const unsigned char* ptr1 = lhs->data();
         const unsigned char* ptr2 = rhs->data();
-		for (unsigned int i = 0; i < size; ++i)
-		{
+        for (unsigned int i = 0; i < size; ++i)
+        {
             if ( *ptr1++ != *ptr2++ )
                 return false;
-		}
+        }
 
         return true;
-	}
+    }
 
-	return false;
+    return false;
 }
 
 bool

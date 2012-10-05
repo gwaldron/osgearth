@@ -38,6 +38,19 @@ Config::setReferrer( const std::string& referrer )
     }
 }
 
+void
+Config::inheritReferrer( const std::string& referrer )
+{
+    if ( _referrer.empty() || !osgEarth::isRelativePath(referrer) )
+    {
+        setReferrer( referrer );
+    }
+    else if ( !referrer.empty() )
+    {
+        setReferrer( osgDB::concatPaths(_referrer, referrer) );
+    }
+}
+
 bool
 Config::fromXML( std::istream& in )
 {
@@ -58,6 +71,16 @@ Config::child( const std::string& childName ) const
     Config emptyConf;
     emptyConf.setReferrer( _referrer );
     return emptyConf;
+}
+
+const Config*
+Config::child_ptr( const std::string& childName ) const
+{
+    for( ConfigSet::const_iterator i = _children.begin(); i != _children.end(); i++ ) {
+        if ( i->key() == childName )
+            return &(*i);
+    }
+    return 0L;
 }
 
 Config*

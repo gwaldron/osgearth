@@ -81,6 +81,14 @@ namespace osgEarth { namespace Util
         bool getKeepEmptyImageTiles() const { return _keepEmptyImageTiles; }
 
         /**
+         * Whether to subdivide single color image tiles. An single color tile is a tile
+         * that is filled with a single color. By default, the packager does not subdivide past them.
+         * default = false
+         */
+        void setSubdivideSingleColorImageTiles( bool value ) { _subdivideSingleColorImageTiles = value; }
+        bool getSubdivideSingleColorImageTiles() const { return _subdivideSingleColorImageTiles; }
+
+        /**
          * Bounding box to package
          */
         void addExtent( const GeoExtent& value );
@@ -141,6 +149,7 @@ namespace osgEarth { namespace Util
         bool                        _abortOnError;
         bool                        _overwrite;
         bool                        _keepEmptyImageTiles;
+        bool                        _subdivideSingleColorImageTiles;
         unsigned                    _maxLevel;
         std::vector<GeoExtent>      _extents;
         osg::ref_ptr<const Profile> _outProfile;

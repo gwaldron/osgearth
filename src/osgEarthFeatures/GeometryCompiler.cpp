@@ -25,6 +25,10 @@
 #include <osgEarthFeatures/ScatterFilter>
 #include <osgEarthFeatures/SubstituteModelFilter>
 #include <osgEarthFeatures/TessellateOperator>
+#include <osgEarth/Registry>
+#include <osgEarth/Capabilities>
+#include <osgEarth/ShaderGenerator>
+#include <osgEarth/ShaderUtils>
 #include <osg/MatrixTransform>
 #include <osg/Timer>
 #include <osgDB/WriteFile>
@@ -42,6 +46,7 @@ namespace
     osg::ref_ptr<PointSymbol>   s_defaultPointSymbol   = new PointSymbol();
     osg::ref_ptr<LineSymbol>    s_defaultLineSymbol    = new LineSymbol();
     osg::ref_ptr<PolygonSymbol> s_defaultPolygonSymbol = new PolygonSymbol();
+    osg::ref_ptr<osg::Program>  s_nullProgram          = new osg::Program();
 }
 
 //-----------------------------------------------------------------------
@@ -50,8 +55,11 @@ GeometryCompilerOptions::GeometryCompilerOptions( const ConfigOptions& conf ) :
 ConfigOptions      ( conf ),
 _maxGranularity_deg( 1.0 ),
 _mergeGeometry     ( false ),
-_clustering        ( true ),
-_ignoreAlt         ( false )
+_clustering        ( false ),
+_instancing        ( false ),
+_ignoreAlt         ( false ),
+_useVertexBufferObjects( true ),
+_shaderPolicy      ( SHADERPOLICY_GENERATE )
 {
     fromConfig(_conf);
 }
@@ -62,10 +70,16 @@ GeometryCompilerOptions::fromConfig( const Config& conf )
     conf.getIfSet   ( "max_granularity",  _maxGranularity_deg );
     conf.getIfSet   ( "merge_geometry",   _mergeGeometry );
     conf.getIfSet   ( "clustering",       _clustering );
+    conf.getIfSet   ( "instancing",       _instancing );
     conf.getObjIfSet( "feature_name",     _featureNameExpr );
     conf.getIfSet   ( "ignore_altitude",  _ignoreAlt );
     conf.getIfSet   ( "geo_interpolation", "great_circle", _geoInterp, GEOINTERP_GREAT_CIRCLE );
     conf.getIfSet   ( "geo_interpolation", "rhumb_line",   _geoInterp, GEOINTERP_RHUMB_LINE );
+    conf.getIfSet   ( "use_vbo", _useVertexBufferObjects);
+
+    conf.getIfSet( "shader_policy", "disable",  _shaderPolicy, SHADERPOLICY_DISABLE );
+    conf.getIfSet( "shader_policy", "inherit",  _shaderPolicy, SHADERPOLICY_INHERIT );
+    conf.getIfSet( "shader_policy", "generate", _shaderPolicy, SHADERPOLICY_GENERATE );
 }
 
 Config
@@ -75,10 +89,16 @@ GeometryCompilerOptions::getConfig() const
     conf.addIfSet   ( "max_granularity",  _maxGranularity_deg );
     conf.addIfSet   ( "merge_geometry",   _mergeGeometry );
     conf.addIfSet   ( "clustering",       _clustering );
+    conf.addIfSet   ( "instancing",       _instancing );
     conf.addObjIfSet( "feature_name",     _featureNameExpr );
     conf.addIfSet   ( "ignore_altitude",  _ignoreAlt );
     conf.addIfSet   ( "geo_interpolation", "great_circle", _geoInterp, GEOINTERP_GREAT_CIRCLE );
     conf.addIfSet   ( "geo_interpolation", "rhumb_line",   _geoInterp, GEOINTERP_RHUMB_LINE );
+    conf.addIfSet   ( "use_vbo", _useVertexBufferObjects);
+
+    conf.addIfSet( "shader_policy", "disable",  _shaderPolicy, SHADERPOLICY_DISABLE );
+    conf.addIfSet( "shader_policy", "inherit",  _shaderPolicy, SHADERPOLICY_INHERIT );
+    conf.addIfSet( "shader_policy", "generate", _shaderPolicy, SHADERPOLICY_GENERATE );
     return conf;
 }
 
@@ -178,13 +198,15 @@ GeometryCompiler::compile(FeatureList&          workingSet,
     }
 
     // go through the Style and figure out which filters to use.
-    const MarkerSymbol*    marker    = style.get<MarkerSymbol>();
     const PointSymbol*     point     = style.get<PointSymbol>();
     const LineSymbol*      line      = style.get<LineSymbol>();
     const PolygonSymbol*   polygon   = style.get<PolygonSymbol>();
     const ExtrusionSymbol* extrusion = style.get<ExtrusionSymbol>();
     const AltitudeSymbol*  altitude  = style.get<AltitudeSymbol>();
     const TextSymbol*      text      = style.get<TextSymbol>();
+    const MarkerSymbol*    marker    = style.get<MarkerSymbol>();    // to be deprecated
+    const IconSymbol*      icon      = style.get<IconSymbol>();
+    const ModelSymbol*     model     = style.get<ModelSymbol>();
 
     // check whether we need tessellation:
     if ( line && line->tessellation().isSet() )
@@ -196,7 +218,7 @@ GeometryCompiler::compile(FeatureList&          workingSet,
 
     // if the style was empty, use some defaults based on the geometry type of the
     // first feature.
-    if ( !point && !line && !polygon && !marker && !extrusion && !text && workingSet.size() > 0 )
+    if ( !point && !line && !polygon && !marker && !extrusion && !text && !model && !icon && workingSet.size() > 0 )
     {
         Feature* first = workingSet.begin()->get();
         Geometry* geom = first->getGeometry();
@@ -217,6 +239,7 @@ GeometryCompiler::compile(FeatureList&          workingSet,
         }
     }
 
+    // resample the geometry if necessary:
     if (_options.resampleMode().isSet())
     {
         ResampleFilter resample;
@@ -228,6 +251,7 @@ GeometryCompiler::compile(FeatureList&          workingSet,
         sharedCX = resample.push( workingSet, sharedCX );        
     }    
     
+    // check whether we need to do elevation clamping:
     bool altRequired =
         _options.ignoreAltitudeSymbol() != true &&
         altitude && (
@@ -235,7 +259,7 @@ GeometryCompiler::compile(FeatureList&          workingSet,
             altitude->verticalOffset().isSet() ||
             altitude->verticalScale().isSet() );
 
-    // model substitution
+    // marker substitution -- to be deprecated in favor of model/icon
     if ( marker )
     {
         // use a separate filter context since we'll be munging the data
@@ -267,18 +291,67 @@ GeometryCompiler::compile(FeatureList&          workingSet,
         }
 
         SubstituteModelFilter sub( style );
-        if ( marker->scale().isSet() )
-        {
-            //Turn on GL_NORMALIZE so lighting works properly
-            resultGroup->getOrCreateStateSet()->setMode(GL_NORMALIZE, osg::StateAttribute::ON );
-            //sub.setModelMatrix( osg::Matrixd::scale( *marker->scale() ) );
-        }
 
         sub.setClustering( *_options.clustering() );
+
+        sub.setUseDrawInstanced( *_options.instancing() );
+
         if ( _options.featureName().isSet() )
             sub.setFeatureNameExpr( *_options.featureName() );
 
         osg::Node* node = sub.push( workingSet, markerCX );
+        if ( node )
+        {
+            resultGroup->addChild( node );
+        }
+    }
+
+    // instance substitution (replaces marker)
+    else if ( model || icon )
+    {
+        const InstanceSymbol* instance = model ? (const InstanceSymbol*)model : (const InstanceSymbol*)icon;
+
+        // use a separate filter context since we'll be munging the data
+        FilterContext localCX = sharedCX;
+
+        if ( instance->placement() == InstanceSymbol::PLACEMENT_RANDOM   ||
+             instance->placement() == InstanceSymbol::PLACEMENT_INTERVAL )
+        {
+            ScatterFilter scatter;
+            scatter.setDensity( *instance->density() );
+            scatter.setRandom( instance->placement() == InstanceSymbol::PLACEMENT_RANDOM );
+            scatter.setRandomSeed( *instance->randomSeed() );
+            localCX = scatter.push( workingSet, localCX );
+        }
+        else if ( instance->placement() == InstanceSymbol::PLACEMENT_CENTROID )
+        {
+            CentroidFilter centroid;
+            centroid.push( workingSet, localCX );
+        }
+
+        if ( altRequired )
+        {
+            AltitudeFilter clamp;
+            clamp.setPropertiesFromStyle( style );
+            localCX = clamp.push( workingSet, localCX );
+
+            // don't set this; we changed the input data.
+            //altRequired = false;
+        }
+
+        SubstituteModelFilter sub( style );
+
+        // activate clustering
+        sub.setClustering( *_options.clustering() );
+
+        // activate draw-instancing
+        sub.setUseDrawInstanced( *_options.instancing() );
+
+        // activate feature naming
+        if ( _options.featureName().isSet() )
+            sub.setFeatureNameExpr( *_options.featureName() );
+
+        osg::Node* node = sub.push( workingSet, localCX );
         if ( node )
         {
             resultGroup->addChild( node );
@@ -330,6 +403,8 @@ GeometryCompiler::compile(FeatureList&          workingSet,
             filter.mergeGeometry() = *_options.mergeGeometry();
         if ( _options.featureName().isSet() )
             filter.featureName() = *_options.featureName();
+        if ( _options.useVertexBufferObjects().isSet())
+            filter.useVertexBufferObjects() = *_options.useVertexBufferObjects();
 
         osg::Node* node = filter.push( workingSet, sharedCX );
         if ( node )
@@ -356,7 +431,32 @@ GeometryCompiler::compile(FeatureList&          workingSet,
         }
     }
 
-    resultGroup->getOrCreateStateSet()->setMode( GL_BLEND, 1 );
+    // Common state set cache?
+    osg::ref_ptr<StateSetCache> sscache;
+    if ( sharedCX.getSession() )
+        sscache = sharedCX.getSession()->getStateSetCache();
+    else 
+        sscache = new StateSetCache();
+
+    // Generate shaders, if necessary
+    if (Registry::capabilities().supportsGLSL())
+    {
+        if ( _options.shaderPolicy() == SHADERPOLICY_GENERATE )
+        {
+            ShaderGenerator gen( sscache.get() );
+            resultGroup->accept( gen );
+        }
+        else if ( _options.shaderPolicy() == SHADERPOLICY_DISABLE )
+        {
+            resultGroup->getOrCreateStateSet()->setAttributeAndModes(
+                s_nullProgram,
+                osg::StateAttribute::OFF | osg::StateAttribute::OVERRIDE );
+        }
+    }
+
+    // Optimize stateset sharing.
+    sscache->optimize( resultGroup.get() );
+
 
     //osgDB::writeNodeFile( *(resultGroup.get()), "out.osg" );
 

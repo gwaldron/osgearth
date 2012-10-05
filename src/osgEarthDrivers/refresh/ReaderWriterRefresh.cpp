@@ -20,7 +20,6 @@
 #include <osgEarth/TileSource>
 #include <osgEarth/FileUtils>
 #include <osgEarth/ImageUtils>
-#include <osgEarth/HTTPClient>
 #include <osgEarth/Registry>
 
 #include <osg/Notify>
@@ -185,15 +184,15 @@ public:
     }
 
 
-    void initialize(const osgDB::Options* dbOptions,
-        const Profile*        overrideProfile )
+    Status initialize(const osgDB::Options* dbOptions)
     {        
-        //It is important that 
         setProfile( osgEarth::Registry::instance()->getGlobalGeodeticProfile() );
+        return STATUS_OK;
     }
 
 
-    osg::Image* createImage(const TileKey&        key,
+    osg::Image* createImage(
+        const TileKey&        key,
         ProgressCallback*     progress )
     {        
         return new RefreshImage( _options.url()->full(), *_options.frequency());     

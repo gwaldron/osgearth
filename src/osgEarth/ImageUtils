@@ -157,6 +157,12 @@ namespace osgEarth
         static bool isEmptyImage(const osg::Image* image, float alphaThreshold =0.01);
 
         /**
+         * Tests an image to see whether it's "single color", i.e. completely filled with a single color,
+         * within an threshold (threshold is tested on each channel).
+         */
+        static bool isSingleColorImage(const osg::Image* image, float threshold =0.01);
+
+        /**
          * Returns true if it is possible to convert the image to the specified 
          * format/datatype specification.
          */
@@ -167,20 +173,20 @@ namespace osgEarth
          */
         static osg::Image* convert(const osg::Image* image, GLenum pixelFormat, GLenum dataType);
 
-		/**
-		 *Converts the given image to RGB8
-		 */
-		static osg::Image* convertToRGB8(const osg::Image* image);
+        /**
+         *Converts the given image to RGB8
+         */
+        static osg::Image* convertToRGB8(const osg::Image* image);
 
-		/**
-		 *Converts the given image to RGBA8
-		 */
-		static osg::Image* convertToRGBA8(const osg::Image* image);
+        /**
+         *Converts the given image to RGBA8
+         */
+        static osg::Image* convertToRGBA8(const osg::Image* image);
 
-		/**
-		 *Compares the image data of two images and determines if they are equivalent
-		 */
-		static bool areEquivalent(const osg::Image *lhs, const osg::Image *rhs);
+        /**
+         *Compares the image data of two images and determines if they are equivalent
+         */
+        static bool areEquivalent(const osg::Image *lhs, const osg::Image *rhs);
 
         /**
          * Whether two colors are roughly equivalent.

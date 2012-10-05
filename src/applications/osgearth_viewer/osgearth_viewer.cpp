@@ -24,9 +24,8 @@
 
 #define LC "[viewer] "
 
+using namespace osgEarth;
 using namespace osgEarth::Util;
-
-//------------------------------------------------------------------------
 
 int
 main(int argc, char** argv)
@@ -38,11 +37,14 @@ main(int argc, char** argv)
     // create a viewer:
     osgViewer::Viewer viewer(arguments);
 
+    //Tell the database pager to not modify the unref settings
+    viewer.getDatabasePager()->setUnrefImageDataAfterApplyPolicy( false, false );
+
     // install our default manipulator (do this before calling load)
     viewer.setCameraManipulator( new EarthManipulator() );
 
     // load an earth file, and support all or our example command-line options
-    // and earth file <external> tags
+    // and earth file <external> tags    
     osg::Node* node = MapNodeHelper().load( arguments, &viewer );
     if ( node )
     {
@@ -51,11 +53,7 @@ main(int argc, char** argv)
         // configure the near/far so we don't clip things that are up close
         viewer.getCamera()->setNearFarRatio(0.00002);
 
-        // osgEarth benefits from pre-compilation of GL objects in the pager. In newer versions of
-        // OSG, this activates OSG's IncrementalCompileOpeartion in order to avoid frame breaks.
-        viewer.getDatabasePager()->setDoPreCompile( true );
-
-        return viewer.run();
+        viewer.run();
     }
     else
     {
@@ -63,4 +61,5 @@ main(int argc, char** argv)
             << "\nUsage: " << argv[0] << " file.earth" << std::endl
             << MapNodeHelper().usage() << std::endl;
     }
+    return 0;
 }

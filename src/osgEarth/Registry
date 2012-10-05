@@ -42,6 +42,7 @@ namespace osgEarth
     class ShaderFactory;
     class TaskServiceManager;
     class URIReadCallback;
+    class ColorFilterRegistry;
 
     /**
      * Application-wide global repository.
@@ -74,9 +75,20 @@ namespace osgEarth
         Cache* getCache() const;
         void setCache( Cache* cache );
 
-        /** The system-wide default cache policy */
-        const CachePolicy& defaultCachePolicy() const { return _defaultCachePolicy; }
-        void setDefaultCachePolicy( const CachePolicy& policy ) { _defaultCachePolicy = policy; }
+        /** The override cache policy (overrides all others if set) */
+        const optional<CachePolicy>& overrideCachePolicy() const { return _overrideCachePolicy; }
+        void setOverrideCachePolicy( const CachePolicy& policy );
+
+        /** The default cache policy (used when no policy is set) */
+        const optional<CachePolicy>& defaultCachePolicy() const { return _defaultCachePolicy; }
+        void setDefaultCachePolicy( const CachePolicy& policy );
+
+        /**
+         * Gets the cache policy. 
+         * First checks for an override policy; then looks in the DB::Options for one,
+         * then checks for the default policy; then returns false as a last resort.
+         */
+        bool getCachePolicy( optional<CachePolicy>& cp, const osgDB::Options* options =0L ) const;
 
         /**
          * Whether the given filename is blacklisted
@@ -109,6 +121,7 @@ namespace osgEarth
          */
         const Capabilities& getCapabilities() const;
         void setCapabilities( Capabilities* caps );
+        static const Capabilities& capabilities() { return instance()->getCapabilities(); }
 
         /**
          * Gets or sets the default shader factory. You can replace the default
@@ -157,6 +170,12 @@ namespace osgEarth
 
         const Units* getUnits(const std::string& name) const;
 
+        /**
+         * The name of the default terrain engine driver
+         */
+        void setDefaultTerrainEngineDriverName( const std::string& name );
+        const std::string& getDefaultTerrainEngineDriverName() const { return _terrainEngineDriver; }
+
     protected:
         virtual ~Registry();
         Registry();
@@ -178,8 +197,9 @@ namespace osgEarth
         // maps mime-types to extensions.
         MimeTypeExtensionMap _mimeTypeExtMap;
 
-		osg::ref_ptr<Cache> _cache;
-        CachePolicy         _defaultCachePolicy;
+        osg::ref_ptr<Cache> _cache;
+        optional<CachePolicy> _defaultCachePolicy;
+        optional<CachePolicy> _overrideCachePolicy;
 
         typedef std::set<std::string> StringSet;
         StringSet _blacklistedFilenames;
@@ -202,6 +222,8 @@ namespace osgEarth
 
         typedef std::vector<const Units*> UnitsVector;
         UnitsVector _unitsVector;
+
+        std::string _terrainEngineDriver;
     };
 }
 

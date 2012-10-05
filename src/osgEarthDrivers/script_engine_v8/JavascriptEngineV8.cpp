@@ -39,6 +39,11 @@ using namespace osgEarth::Features;
 JavascriptEngineV8::JavascriptEngineV8(const ScriptEngineOptions& options)
 : ScriptEngine(options)
 {
+  _isolate = v8::Isolate::New();
+
+  v8::Locker locker(_isolate);
+  v8::Isolate::Scope isolate_scope(_isolate);
+
   v8:: HandleScope handle_scope;
 
   v8::Handle<v8::ObjectTemplate> global = createGlobalObjectTemplate();
@@ -63,8 +68,15 @@ JavascriptEngineV8::JavascriptEngineV8(const ScriptEngineOptions& options)
 
 JavascriptEngineV8::~JavascriptEngineV8()
 {
-  _globalTemplate.Dispose();
-  _globalContext.Dispose();
+  {
+    v8::Locker locker(_isolate);
+    v8::Isolate::Scope isolate_scope(_isolate);
+
+    _globalTemplate.Dispose();
+    _globalContext.Dispose();
+  }
+
+  _isolate->Dispose();
 }
 
 v8::Local<v8::ObjectTemplate>
@@ -115,7 +127,25 @@ JavascriptEngineV8::executeScript(v8::Handle<v8::String> script)
   if (compiled_script.IsEmpty())
   {
     v8::String::AsciiValue error(try_catch.Exception());
-    return ScriptResult(EMPTY_STRING, false, std::string("Script compile error: ") + std::string(*error));
+	v8::Handle<v8::Message> message = try_catch.Message();
+	if(!message.IsEmpty()) {
+		//v8::String::AsciiValue filename(message->GetScriptResourceName());
+		int linenum = message->GetLineNumber();
+		std::ostringstream str;
+		str << linenum << ":[" << message->GetStartColumn() << "-" << message->GetEndColumn() << "]:" << std::string(*error) << std::endl;
+		v8::String::AsciiValue sourceline(message->GetSourceLine());
+		str << std::string(*sourceline) << std::endl;
+		/*
+		v8::String::Utf8Value stack_trace(try_catch.StackTrace());
+		if (stack_trace.length() > 0) {
+			str <<  std::string(*stack_trace) << std::endl;
+		}
+		*/
+	    return ScriptResult(EMPTY_STRING, false, std::string("Script compile error: ") + str.str());
+	}
+	else {
+	    return ScriptResult(EMPTY_STRING, false, std::string("Script compile error: ") + std::string(*error));
+	}
   }
 
   // Run the script
@@ -145,7 +175,9 @@ JavascriptEngineV8::run(const std::string& code, osgEarth::Features::Feature con
   if (code.empty())
     return ScriptResult(EMPTY_STRING, false, "Script is empty.");
 
-  v8::Locker locker;
+  v8::Locker locker(_isolate);
+  v8::Isolate::Scope isolate_scope(_isolate);
+
   v8::HandleScope handle_scope;
 
   //Create a separate context
@@ -153,11 +185,19 @@ JavascriptEngineV8::run(const std::string& code, osgEarth::Features::Feature con
   //v8::Context::Scope context_scope(context);
   v8::Context::Scope context_scope(_globalContext);
 
-  v8::Handle<v8::Object> fObj = JSFeature::WrapFeature(const_cast<Feature*>(feature));
-  _globalContext->Global()->Set(v8::String::New("feature"), fObj);
+  if (feature)
+  {
+    v8::Handle<v8::Object> fObj = JSFeature::WrapFeature(const_cast<Feature*>(feature));
+    if (!fObj.IsEmpty())
+      _globalContext->Global()->Set(v8::String::New("feature"), fObj);
+  }
 
-  v8::Handle<v8::Object> cObj = JSFilterContext::WrapFilterContext(const_cast<FilterContext*>(context));
-  _globalContext->Global()->Set(v8::String::New("context"), cObj);
+  if (context)
+  {
+    v8::Handle<v8::Object> cObj = JSFilterContext::WrapFilterContext(const_cast<FilterContext*>(context));
+    if (!cObj.IsEmpty())
+      _globalContext->Global()->Set(v8::String::New("context"), cObj);
+  }
 
   // Compile and run the script
   ScriptResult result = executeScript(v8::String::New(code.c_str(), code.length()));
@@ -174,7 +214,8 @@ JavascriptEngineV8::call(const std::string& function, osgEarth::Features::Featur
     return ScriptResult(EMPTY_STRING, false, "Empty function name parameter.");
 
   // Lock for V8 multithreaded uses
-  v8::Locker locker;
+  v8::Locker locker(_isolate);
+  v8::Isolate::Scope isolate_scope(_isolate);
 
   v8::HandleScope handle_scope;
 
@@ -190,11 +231,19 @@ JavascriptEngineV8::call(const std::string& function, osgEarth::Features::Featur
 
   v8::Handle<v8::Function> func_func = v8::Handle<v8::Function>::Cast(func_val);
 
-  v8::Handle<v8::Object> fObj = JSFeature::WrapFeature(const_cast<Feature*>(feature));
-  _globalContext->Global()->Set(v8::String::New("feature"), fObj);
+  if (feature)
+  {
+    v8::Handle<v8::Object> fObj = JSFeature::WrapFeature(const_cast<Feature*>(feature));
+    if (!fObj.IsEmpty())
+      _globalContext->Global()->Set(v8::String::New("feature"), fObj);
+  }
 
-  v8::Handle<v8::Object> cObj = JSFilterContext::WrapFilterContext(const_cast<FilterContext*>(context));
-  _globalContext->Global()->Set(v8::String::New("context"), cObj);
+  if (context)
+  {
+    v8::Handle<v8::Object> cObj = JSFilterContext::WrapFilterContext(const_cast<FilterContext*>(context));
+    if (!cObj.IsEmpty())
+      _globalContext->Global()->Set(v8::String::New("context"), cObj);
+  }
 
   // Set up an exception handler before calling the Eval function
   v8::TryCatch try_catch;

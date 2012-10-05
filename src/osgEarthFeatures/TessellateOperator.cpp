@@ -99,7 +99,8 @@ TessellateOperator::operator()( Feature* feature, FilterContext& context ) const
         return;
     }
 
-    bool isGeo = context.profile() ? context.profile()->getSRS()->isGeographic() : true;
+    bool isGeo = feature->getSRS() ? feature->getSRS()->isGeographic() : true;
+    //bool isGeo = context.profile() ? context.profile()->getSRS()->isGeographic() : true;
     GeoInterpolation interp = feature->geoInterp().isSet() ? *feature->geoInterp() : _defaultInterp;
 
     GeometryIterator i( feature->getGeometry(), true );

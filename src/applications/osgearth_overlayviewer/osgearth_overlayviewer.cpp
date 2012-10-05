@@ -44,14 +44,21 @@ namespace
 {
     void toggle(osg::Group* p, const std::string& name, bool onoff)
     {
-        osg::Group* g = p->getChild(1)->asGroup();
-        for(unsigned i=0; i<g->getNumChildren(); ++i)
+        if (p->getNumChildren() > 1)
         {
-            if ( g->getChild(i)->getName() == name )
+            osg::Group* g = p->getChild(1)->asGroup();
+            for(unsigned i=0; i<g->getNumChildren(); ++i)
             {
-                g->getChild(i)->setNodeMask( onoff ? ~0 : 0 );
-                break;
+                if ( g->getChild(i)->getName() == name )
+                {
+                    g->getChild(i)->setNodeMask( onoff ? ~0 : 0 );
+                    break;
+                }
             }
+        }
+        else
+        {
+            OE_WARN << "No overlays to display / toggle." << std::endl;
         }
     }
 
@@ -100,7 +107,7 @@ namespace
                     _parent->addChild( dump );
 
                     toggle(_parent, "camera", s_cameraCheck->getValue());
-                    toggle(_parent, "overlay", s_overlayCheck->getValue());
+                    //toggle(_parent, "overlay", s_overlayCheck->getValue());
                     toggle(_parent, "intersection", s_intersectionCheck->getValue());
                     toggle(_parent, "rtt", s_rttCheck->getValue());
 
@@ -127,11 +134,11 @@ setupOverlayView( osgViewer::View* view, osg::Group* parent, MapNode* mapNode )
             camBox->addControl(s_cameraCheck = new CheckBoxControl(true, new Toggle(parent,"camera")));
             camBox->addControl(new LabelControl("Camera", Color("#00ff00")));
         }
-        HBox* overlayBox = v->addControl(new HBox());
-        {
-            overlayBox->addControl(s_overlayCheck = new CheckBoxControl(false, new Toggle(parent,"overlay")));
-            overlayBox->addControl(new LabelControl("Overlay", Color("#00ffff")));
-        }
+        //HBox* overlayBox = v->addControl(new HBox());
+        //{
+        //    overlayBox->addControl(s_overlayCheck = new CheckBoxControl(false, new Toggle(parent,"overlay")));
+        //    overlayBox->addControl(new LabelControl("Overlay", Color("#00ffff")));
+        //}
         HBox* isectBox = v->addControl(new HBox());
         {
             isectBox->addControl(s_intersectionCheck = new CheckBoxControl(true, new Toggle(parent,"intersection")));

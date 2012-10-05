@@ -132,7 +132,8 @@ namespace osgEarth
         /**
          * Gets the level of detail of the tile represented by this key.
          */
-        unsigned int getLevelOfDetail() const;
+        unsigned getLevelOfDetail() const { return _lod; }
+        unsigned getLOD() const { return _lod; }
 
         /**
          * Gets the geospatial extents of the tile represented by this key.

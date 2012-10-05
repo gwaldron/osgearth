@@ -18,6 +18,7 @@
  */
 
 #include <osgEarth/GeoData>
+#include <osgEarth/GeoMath>
 #include <osgEarth/ImageUtils>
 #include <osgEarth/HeightFieldUtils>
 #include <osgEarth/Registry>
@@ -59,11 +60,12 @@ namespace
         return s_cint(x*off)/off;
     }
 
-    void s_normalizeLongitude( double& x )
+    double s_normalizeLongitude( double x, double minLon = -180.0, double maxLon = 180.0 )
     {
-        //x = s_roundNplaces( x, 6 );
-        while( x < -180. ) x += 360.;
-        while( x >  180. ) x -= 360.;
+        double result = x;
+        while( result < minLon ) result += 360.;
+        while( result >  maxLon ) result -= 360.;
+        return result;
     }
 
     bool s_crossesAntimeridian( double x0, double x1 )
@@ -76,6 +78,30 @@ namespace
     {
         return west < east ? east-west : fmod(east,360.)-west;
     }
+
+    /**
+     * Given a longitude value determine what longitude frame it is in.
+     * The base longitude frame is -180 to 180.  As values cross the antimeridian the frame is offset by 360 degrees.
+     */
+    void s_getLongitudeFrame( double longitude, double &minLongitude, double &maxLongitude)
+    {
+        minLongitude = -180.0;
+        maxLongitude = 180.0;
+
+        while ( longitude < minLongitude || longitude > maxLongitude)
+        {
+            if (longitude < minLongitude)
+            {
+                minLongitude -= 360.0;
+                maxLongitude -= 360.0;
+            }
+            else if (longitude > maxLongitude)
+            {
+                minLongitude += 360.0;
+                maxLongitude += 360.0;
+            }
+        }
+    }
 }
 
 //------------------------------------------------------------------------
@@ -85,6 +111,16 @@ namespace
 
 GeoPoint GeoPoint::INVALID;
 
+
+GeoPoint::GeoPoint(const SpatialReference* srs,
+                   double x,
+                   double y ) :
+_srs    ( srs ),
+_p      ( x, y, 0.0 ),
+_altMode( ALTMODE_RELATIVE )
+{
+    //nop
+}
 
 GeoPoint::GeoPoint(const SpatialReference* srs,
                    double x,
@@ -100,7 +136,7 @@ _altMode( altMode )
 
 GeoPoint::GeoPoint(const SpatialReference* srs,
                    const osg::Vec3d&       xyz,
-                   const AltitudeMode& altMode) :
+                   const AltitudeMode&     altMode) :
 _srs(srs),
 _p  (xyz),
 _altMode( altMode )
@@ -209,7 +245,7 @@ GeoPoint::getConfig() const
 void
 GeoPoint::set(const SpatialReference* srs,
               const osg::Vec3d&       xyz,
-              const AltitudeMode& altMode)
+              const AltitudeMode&     altMode)
 {
     _srs = srs;
     _p   = xyz;
@@ -221,7 +257,7 @@ GeoPoint::set(const SpatialReference* srs,
               double                  x,
               double                  y,
               double                  z,
-              const AltitudeMode& altMode)
+              const AltitudeMode&     altMode)
 {
     _srs = srs;
     _p.set(x, y, z);
@@ -232,7 +268,7 @@ bool
 GeoPoint::operator == (const GeoPoint& rhs) const
 {
     return
-        isValid() == rhs.isValid() &&
+        isValid() && rhs.isValid() &&
         _p        == rhs._p        &&
         _altMode  == rhs._altMode  &&
         ((_altMode == ALTMODE_ABSOLUTE && _srs->isEquivalentTo(rhs._srs.get())) ||
@@ -263,7 +299,7 @@ GeoPoint::transform(const SpatialReference* outSRS) const
 }
 
 bool
-GeoPoint::transformZ(const AltitudeMode& altMode, const Terrain* terrain ) 
+GeoPoint::transformZ(const AltitudeMode& altMode, const TerrainHeightProvider* terrain ) 
 {
     double z;
     if ( transformZ(altMode, terrain, z) )
@@ -276,7 +312,7 @@ GeoPoint::transformZ(const AltitudeMode& altMode, const Terrain* terrain )
 }
 
 bool
-GeoPoint::transformZ(const AltitudeMode& altMode, const Terrain* terrain, double& out_z ) const
+GeoPoint::transformZ(const AltitudeMode& altMode, const TerrainHeightProvider* terrain, double& out_z ) const
 {
     if ( !isValid() ) return false;
     
@@ -337,6 +373,28 @@ GeoPoint::toWorld( osg::Vec3d& out_world ) const
 }
 
 bool
+GeoPoint::toWorld( osg::Vec3d& out_world, const TerrainHeightProvider* terrain ) const
+{
+    if ( !isValid() ) return false;
+    if ( _altMode == ALTMODE_ABSOLUTE )
+    {
+        return _srs->transformToWorld( _p, out_world );
+    }
+    else if ( terrain != 0L )
+    {
+        GeoPoint absPoint = *this;
+        absPoint.makeAbsolute( terrain );
+        return absPoint.toWorld( out_world );
+    }
+    else
+    {
+        OE_WARN << LC << "ILLEGAL: called GeoPoint::toWorld with AltitudeMode = RELATIVE_TO_TERRAIN" << std::endl;
+        return false;
+    }
+}
+
+
+bool
 GeoPoint::fromWorld(const SpatialReference* srs, const osg::Vec3d& world)
 {
     if ( srs )
@@ -378,6 +436,92 @@ GeoPoint::createWorldToLocal( osg::Matrixd& out_w2l ) const
 //------------------------------------------------------------------------
 
 #undef  LC
+#define LC "[GeoCircle] "
+
+GeoCircle GeoCircle::INVALID = GeoCircle();
+
+
+GeoCircle::GeoCircle() :
+_center( GeoPoint::INVALID ),
+_radius( -1.0 )
+{
+    //nop
+}
+
+
+GeoCircle::GeoCircle(const GeoCircle& rhs) :
+_center( rhs._center ),
+_radius( rhs._radius )
+{
+    //nop
+}
+
+
+GeoCircle::GeoCircle(const GeoPoint& center,
+                     double          radius ) :
+_center( center ),
+_radius( radius )
+{
+    //nop
+}
+
+
+bool
+GeoCircle::operator == ( const GeoCircle& rhs ) const
+{
+    return 
+        _center == rhs._center && 
+        osg::equivalent(_radius, rhs._radius);
+}
+
+
+GeoCircle
+GeoCircle::transform( const SpatialReference* srs ) const
+{
+    return GeoCircle(
+        getCenter().transform( srs ),
+        getRadius() );
+}
+
+
+bool
+GeoCircle::transform( const SpatialReference* srs, GeoCircle& output ) const
+{
+    output._radius = _radius;
+    return getCenter().transform( srs, output._center );
+}
+
+
+bool 
+GeoCircle::intersects( const GeoCircle& rhs ) const
+{
+    if ( !isValid() || !rhs.isValid() )
+        return false;
+
+    if ( !getSRS()->isHorizEquivalentTo( rhs.getSRS() ) )
+    {
+        return intersects( rhs.transform(getSRS()) );
+    }
+    else
+    {
+        if ( getSRS()->isProjected() )
+        {
+            osg::Vec2d vec = osg::Vec2d(_center.x(), _center.y()) - osg::Vec2d(rhs.getCenter().x(), rhs.getCenter().y());
+            return vec.length2() <= (_radius + rhs.getRadius())*(_radius + rhs.getRadius());
+        }
+        else // if ( isGeographic() )
+        {
+            osg::Vec3d p0( _center.x(), _center.y(), 0.0 );
+            osg::Vec3d p1( rhs.getCenter().x(), rhs.getCenter().y(), 0.0 );
+            return GeoMath::distance( p0, p1, getSRS() ) <= (_radius + rhs.getRadius());
+        }
+    }
+}
+
+
+//------------------------------------------------------------------------
+
+#undef  LC
 #define LC "[GeoExtent] "
 
 GeoExtent GeoExtent::INVALID = GeoExtent();
@@ -409,12 +553,8 @@ _west   ( west ),
 _east   ( east ),
 _south  ( south ),
 _north  ( north )
-{
-    if ( isValid() && srs->isGeographic() )
-    {
-        s_normalizeLongitude( _west );
-        s_normalizeLongitude( _east );
-    }
+{    
+    recomputeCircle();
 }
 
 
@@ -424,20 +564,17 @@ _west   ( bounds.xMin() ),
 _east   ( bounds.xMax() ),
 _south  ( bounds.yMin() ),
 _north  ( bounds.yMax() )
-{
-    if ( isValid() && srs->isGeographic() )
-    {
-        s_normalizeLongitude( _west );
-        s_normalizeLongitude( _east );
-    }
+{    
+    recomputeCircle();
 }
 
 GeoExtent::GeoExtent( const GeoExtent& rhs ) :
-_srs  ( rhs._srs ),
-_east ( rhs._east ),
-_west ( rhs._west ),
-_south( rhs._south ),
-_north( rhs._north )
+_srs   ( rhs._srs ),
+_east  ( rhs._east ),
+_west  ( rhs._west ),
+_south ( rhs._south ),
+_north ( rhs._north ),
+_circle( rhs._circle )
 {
     //NOP
 }
@@ -478,7 +615,7 @@ GeoExtent::isValid() const
 
 double
 GeoExtent::width() const
-{
+{    
     return crossesAntimeridian() ?
         (180.0-_west) + (_east+180.0) :
         _east - _west;
@@ -497,8 +634,9 @@ GeoExtent::getCentroid( double& out_x, double& out_y ) const
 
     out_y = south() + 0.5*height();
     out_x = west() + 0.5*width();
+
     if ( _srs->isGeographic() )
-        s_normalizeLongitude( out_x );
+        out_x = normalizeLongitude( out_x );        
     return true;
 }
 
@@ -515,14 +653,16 @@ GeoExtent::splitAcrossAntimeridian( GeoExtent& out_west, GeoExtent& out_east ) c
 
     if ( crossesAntimeridian() )
     {
+        double minLon, maxLon;
+        s_getLongitudeFrame( west(), minLon, maxLon );
         out_west._srs   = _srs.get();
         out_west._west  = west();
         out_west._south = south();
-        out_west._east  = 180.0;
+        out_west._east  = maxLon;
         out_west._north = north();
 
         out_east._srs   = _srs.get();
-        out_east._west  = -180.0;
+        out_east._west  = minLon;
         out_east._south = south();
         out_east._east  = east();
         out_east._north = north();
@@ -598,7 +738,7 @@ GeoExtent::contains(double x, double y, const SpatialReference* srs) const
     {
         // normalize a geographic longitude to -180:+180
         if ( _srs->isGeographic() )
-            s_normalizeLongitude(x);
+            local_x = normalizeLongitude( local_x );            
 
         //Account for small rounding errors along the edges of the extent
         if (osg::equivalent(_west, local_x)) local_x = _west;
@@ -625,6 +765,12 @@ GeoExtent::contains(double x, double y, const SpatialReference* srs) const
 }
 
 bool
+GeoExtent::contains( const GeoPoint& rhs ) const
+{
+    return contains( rhs.x(), rhs.y(), rhs.getSRS() );
+}
+
+bool
 GeoExtent::contains( const Bounds& rhs ) const
 {
     return
@@ -647,9 +793,16 @@ GeoExtent::contains( const GeoExtent& rhs ) const
 }
 
 bool
-GeoExtent::intersects( const GeoExtent& rhs ) const
+GeoExtent::intersects( const GeoExtent& rhs, bool checkSRS ) const
 {
-    if ( !isValid() ) return false;
+    if ( !isValid() || !rhs.isValid() )
+        return false;
+
+    if ( checkSRS && !_srs->isHorizEquivalentTo(rhs.getSRS()) )
+    {
+        GeoExtent rhsExt = rhs.transform(getSRS());
+        return this->intersects( rhsExt );
+    }
 
     if ( rhs.crossesAntimeridian() )
     {
@@ -675,6 +828,43 @@ GeoExtent::intersects( const GeoExtent& rhs ) const
     }
 }
 
+
+void
+GeoExtent::recomputeCircle()
+{
+    if ( !isValid() )
+    {
+        _circle.setRadius( -1.0 );
+    }
+    else 
+    {
+        double x, y;
+        getCentroid( x, y );
+
+        if ( getSRS()->isProjected() )
+        {
+            _circle.setRadius( (osg::Vec2d(x,y)-osg::Vec2d(_west,_south)).length() );
+        }
+        else // isGeographic
+        {
+            // find the longest east-west edge.
+            double cx = west();
+            double cy =
+                north() > 0.0 && south() > 0.0 ? south() :
+                north() < 0.0 && south() < 0.0 ? north() :
+                north() < fabs(south()) ? north() : south();
+
+            osg::Vec3d p0(x, y, 0.0);
+            osg::Vec3d p1(cx, cy, 0.0);
+
+            _circle.setRadius( GeoMath::distance(p0, p1, getSRS()) );
+        }
+
+        _circle.setCenter( GeoPoint(getSRS(), x, y, 0.0, ALTMODE_ABSOLUTE) );
+    }
+}
+
+
 void
 GeoExtent::expandToInclude( double x, double y )
 {
@@ -687,7 +877,7 @@ GeoExtent::expandToInclude( double x, double y )
     }
     else if ( getSRS() && getSRS()->isGeographic() )
     {
-        s_normalizeLongitude(x);
+        x = normalizeLongitude( x );
 
         // calculate possible expansion distances. The lesser of the two
         // will be the direction in which we expand.
@@ -718,8 +908,8 @@ GeoExtent::expandToInclude( double x, double y )
                 if ( dw < maxWidth )
                 {
                     // expand westward
-                    _west -= dw;
-                    s_normalizeLongitude( _west );
+                    _west -= dw;                    
+                    _west = normalizeLongitude( _west );
                 }
                 else
                 {
@@ -734,7 +924,7 @@ GeoExtent::expandToInclude( double x, double y )
                 {
                     // expand eastward
                     _east += de;
-                    s_normalizeLongitude(_east);
+                    _east = normalizeLongitude(_east);
                 }
                 else
                 {
@@ -754,6 +944,8 @@ GeoExtent::expandToInclude( double x, double y )
 
     _south = std::min(_south, y);
     _north = std::max(_north, y);
+
+    recomputeCircle();
 }
 
 void
@@ -763,21 +955,6 @@ GeoExtent::expandToInclude(const Bounds& rhs)
     expandToInclude( rhs.xMin(), rhs.yMin() );
     expandToInclude( rhs.xMax(), rhs.yMax() );
 }
-
-#if 0
-
-GeoExtent
-GeoExtent::intersectionSameSRS( const Bounds& rhs ) const
-{
-    Bounds b(
-        osg::maximum( xMin(), rhs.xMin() ),
-        osg::maximum( yMin(), rhs.yMin() ),
-        osg::minimum( xMax(), rhs.xMax() ),
-        osg::minimum( yMax(), rhs.yMax() ) );
-
-    return b.width() > 0 && b.height() > 0 ? GeoExtent( getSRS(), b ) : GeoExtent::INVALID;
-}
-#endif
 
 bool
 GeoExtent::expandToInclude( const GeoExtent& rhs )
@@ -833,8 +1010,8 @@ GeoExtent::intersectionSameSRS( const GeoExtent& rhs ) const
     }
 
     // normalize our new longitudes
-    s_normalizeLongitude( result._west );
-    s_normalizeLongitude( result._east );
+    result._west = normalizeLongitude( result._west );
+    result._east = normalizeLongitude( result._east );
 
     // latitude is easy, just clamp it
     result._south = std::max( south(), rhs.south() );
@@ -866,6 +1043,8 @@ GeoExtent::scale(double x_scale, double y_scale)
     _east  += halfXDiff;
     _south -= halfYDiff;
     _north += halfYDiff;
+
+    recomputeCircle();
 }
 
 void
@@ -878,12 +1057,36 @@ GeoExtent::expand( double x, double y )
     _east  += .5*x;
     _south -= .5*y;
     _north += .5*y;
+
+    recomputeCircle();
 }
 
 double
 GeoExtent::area() const
 {
     return isValid() ? width() * height() : 0.0;
+}
+
+void
+GeoExtent::normalize()
+{
+    if (isValid() && _srs->isGeographic())
+    {
+        _west = s_normalizeLongitude( _west );
+        _east = s_normalizeLongitude( _east );
+    }
+}
+
+double
+GeoExtent::normalizeLongitude( double longitude ) const
+{
+    if (isValid() && _srs->isGeographic())
+    {
+        double minLon, maxLon;
+        s_getLongitudeFrame( _west, minLon, maxLon );        
+        return s_normalizeLongitude( longitude, minLon, maxLon );
+    }
+    return longitude;
 }
 
 std::string
@@ -895,7 +1098,14 @@ GeoExtent::toString() const
     else
         buf << std::setprecision(12) << "SW=" << west() << "," << south() << " NE=" << east() << "," << north();
 
-    buf << ", SRS=" << _srs->getName();
+    if (_srs.valid() == true)
+    {
+        buf << ", SRS=" << _srs->getName();
+    }
+    else
+    {
+        buf << ", SRS=NULL";
+    }
 
     std::string bufStr;
     bufStr = buf.str();
@@ -905,23 +1115,26 @@ GeoExtent::toString() const
 
 /***************************************************************************/
 
-DataExtent::DataExtent(const osgEarth::GeoExtent &extent, unsigned int minLevel,  unsigned int maxLevel):
+DataExtent::DataExtent(const osgEarth::GeoExtent& extent, unsigned minLevel,  unsigned maxLevel) :
+GeoExtent(extent)
+{
+    _minLevel = minLevel;
+    _maxLevel = maxLevel;
+}
+
+DataExtent::DataExtent(const osgEarth::GeoExtent& extent, unsigned minLevel) :
 GeoExtent(extent),
-_minLevel(minLevel),
-_maxLevel(maxLevel)
+_maxLevel( 0 )
 {
+    _minLevel = minLevel;
 }
 
-unsigned int
-DataExtent::getMinLevel() const
+DataExtent::DataExtent(const osgEarth::GeoExtent& extent ) :
+GeoExtent(extent),
+_minLevel( 0 ),
+_maxLevel( 0 )
 {
-    return _minLevel;
-}
-
-unsigned int
-DataExtent::getMaxLevel() const
-{
-    return _maxLevel;
+    //nop
 }
 
 
@@ -1211,180 +1424,194 @@ reprojectImage(osg::Image* srcImage, const std::string srcWKT, double srcMinX, d
     return result;
 }    
 
-static osg::Image*
-manualReproject(const osg::Image* image, const GeoExtent& src_extent, const GeoExtent& dest_extent,
-                unsigned int width = 0, unsigned int height = 0)
+namespace
 {
-    //TODO:  Compute the optimal destination size
-    if (width == 0 || height == 0)
+    osg::Image* manualReproject(
+        const osg::Image* image, 
+        const GeoExtent&  src_extent, 
+        const GeoExtent&  dest_extent,
+        unsigned int      width = 0, 
+        unsigned int      height = 0)
     {
-        //If no width and height are specified, just use the minimum dimension for the image
-        width = osg::minimum(image->s(), image->t());
-        height = osg::minimum(image->s(), image->t());        
-    }
+        //TODO:  Compute the optimal destination size
+        if (width == 0 || height == 0)
+        {
+            //If no width and height are specified, just use the minimum dimension for the image
+            width = osg::minimum(image->s(), image->t());
+            height = osg::minimum(image->s(), image->t());
+        }
 
-    // need to know this in order to choose the right interpolation algorithm
-    const bool isSrcContiguous = src_extent.getSRS()->isContiguous();
+        // need to know this in order to choose the right interpolation algorithm
+        const bool isSrcContiguous = src_extent.getSRS()->isContiguous();
 
-    osg::Image *result = new osg::Image();
-    result->allocateImage(width, height, 1, GL_RGBA, GL_UNSIGNED_BYTE);
-    //Initialize the image to be completely transparent
-    memset(result->data(), 0, result->getImageSizeInBytes());
+        osg::Image *result = new osg::Image();
+        //result->allocateImage(width, height, 1, GL_RGBA, GL_UNSIGNED_BYTE);
+        result->allocateImage(width, height, 1, image->getPixelFormat(), GL_UNSIGNED_BYTE);
 
-    ImageUtils::PixelReader ra(result);
-    const double dx = dest_extent.width() / (double)width;
-    const double dy = dest_extent.height() / (double)height;
+        //Initialize the image to be completely transparent/black
+        memset(result->data(), 0, result->getImageSizeInBytes());
 
-    // offset the sample points by 1/2 a pixel so we are sampling "pixel center".
-    // (This is especially useful in the UnifiedCubeProfile since it nullifes the chances for
-    // edge ambiguity.)
+        //ImageUtils::PixelReader ra(result);
+        ImageUtils::PixelWriter writer(result);
+        const double dx = dest_extent.width() / (double)width;
+        const double dy = dest_extent.height() / (double)height;
 
-    unsigned int numPixels = width * height;
+        // offset the sample points by 1/2 a pixel so we are sampling "pixel center".
+        // (This is especially useful in the UnifiedCubeProfile since it nullifes the chances for
+        // edge ambiguity.)
 
-    // Start by creating a sample grid over the destination
-    // extent. These will be the source coordinates. Then, reproject
-    // the sample grid into the source coordinate system.
-    double *srcPointsX = new double[numPixels * 2];
-    double *srcPointsY = srcPointsX + numPixels;
-    dest_extent.getSRS()->transformExtentPoints(
-        src_extent.getSRS(),
-        dest_extent.xMin() + .5 * dx, dest_extent.yMin() + .5 * dy,
-        dest_extent.xMax() - .5 * dx, dest_extent.yMax() - .5 * dy,
-        srcPointsX, srcPointsY, width, height);
+        unsigned int numPixels = width * height;
 
-    // Next, go through the source-SRS sample grid, read the color at each point from the source image,
-    // and write it to the corresponding pixel in the destination image.
-    int pixel = 0;
-    ImageUtils::PixelReader ia(image);
-    double xfac = (image->s() - 1) / src_extent.width();
-    double yfac = (image->t() - 1) / src_extent.height();
-    for (unsigned int c = 0; c < width; ++c)
-    {
-        for (unsigned int r = 0; r < height; ++r)
-        {   
-            double src_x = srcPointsX[pixel];
-            double src_y = srcPointsY[pixel];
+        // Start by creating a sample grid over the destination
+        // extent. These will be the source coordinates. Then, reproject
+        // the sample grid into the source coordinate system.
+        double *srcPointsX = new double[numPixels * 2];
+        double *srcPointsY = srcPointsX + numPixels;
+        dest_extent.getSRS()->transformExtentPoints(
+            src_extent.getSRS(),
+            dest_extent.xMin() + .5 * dx, dest_extent.yMin() + .5 * dy,
+            dest_extent.xMax() - .5 * dx, dest_extent.yMax() - .5 * dy,
+            srcPointsX, srcPointsY, width, height);
 
-            if ( src_x < src_extent.xMin() || src_x > src_extent.xMax() || src_y < src_extent.yMin() || src_y > src_extent.yMax() )
-            {
-                //If the sample point is outside of the bound of the source extent, increment the pixel and keep looping through.
-                //OE_WARN << LC << "ERROR: sample point out of bounds: " << src_x << ", " << src_y << std::endl;
-                pixel++;
-                continue;
-            }
+        // Next, go through the source-SRS sample grid, read the color at each point from the source image,
+        // and write it to the corresponding pixel in the destination image.
+        int pixel = 0;
+        ImageUtils::PixelReader ia(image);
+        double xfac = (image->s() - 1) / src_extent.width();
+        double yfac = (image->t() - 1) / src_extent.height();
+        for (unsigned int c = 0; c < width; ++c)
+        {
+            for (unsigned int r = 0; r < height; ++r)
+            {   
+                double src_x = srcPointsX[pixel];
+                double src_y = srcPointsY[pixel];
 
-            float px = (src_x - src_extent.xMin()) * xfac;
-            float py = (src_y - src_extent.yMin()) * yfac;
-
-            int px_i = osg::clampBetween( (int)osg::round(px), 0, image->s()-1 );
-            int py_i = osg::clampBetween( (int)osg::round(py), 0, image->t()-1 );
-
-            osg::Vec4 color(0,0,0,0);
-
-            if ( ! isSrcContiguous ) // non-contiguous space- use nearest neighbot
-            {
-                color = ia(px_i, py_i);
-            }
-
-            else // contiguous space - use bilinear sampling
-            {
-                int rowMin = osg::maximum((int)floor(py), 0);
-                int rowMax = osg::maximum(osg::minimum((int)ceil(py), (int)(image->t()-1)), 0);
-                int colMin = osg::maximum((int)floor(px), 0);
-                int colMax = osg::maximum(osg::minimum((int)ceil(px), (int)(image->s()-1)), 0);
-
-                if (rowMin > rowMax) rowMin = rowMax;
-                if (colMin > colMax) colMin = colMax;
-
-                osg::Vec4 urColor = ia(colMax, rowMax);
-                osg::Vec4 llColor = ia(colMin, rowMin);
-                osg::Vec4 ulColor = ia(colMin, rowMax);
-                osg::Vec4 lrColor = ia(colMax, rowMin);
-
-                /*Average Interpolation*/
-                /*double x_rem = px - (int)px;
-                double y_rem = py - (int)py;
-
-                double w00 = (1.0 - y_rem) * (1.0 - x_rem);
-                double w01 = (1.0 - y_rem) * x_rem;
-                double w10 = y_rem * (1.0 - x_rem);
-                double w11 = y_rem * x_rem;
-                double wsum = w00 + w01 + w10 + w11;
-                wsum = 1.0/wsum;
-
-                color.r() = (w00 * llColor.r() + w01 * lrColor.r() + w10 * ulColor.r() + w11 * urColor.r()) * wsum;
-                color.g() = (w00 * llColor.g() + w01 * lrColor.g() + w10 * ulColor.g() + w11 * urColor.g()) * wsum;
-                color.b() = (w00 * llColor.b() + w01 * lrColor.b() + w10 * ulColor.b() + w11 * urColor.b()) * wsum;
-                color.a() = (w00 * llColor.a() + w01 * lrColor.a() + w10 * ulColor.a() + w11 * urColor.a()) * wsum;*/
-
-                /*Nearest Neighbor Interpolation*/
-                /*if (px_i >= 0 && px_i < image->s() &&
-                py_i >= 0 && py_i < image->t())
+                if ( src_x < src_extent.xMin() || src_x > src_extent.xMax() || src_y < src_extent.yMin() || src_y > src_extent.yMax() )
                 {
-                //OE_NOTICE << "[osgEarth::GeoData] Sampling pixel " << px << "," << py << std::endl;
-                color = ImageUtils::getColor(image, px_i, py_i);
+                    //If the sample point is outside of the bound of the source extent, increment the pixel and keep looping through.
+                    //OE_WARN << LC << "ERROR: sample point out of bounds: " << src_x << ", " << src_y << std::endl;
+                    pixel++;
+                    continue;
                 }
-                else
-                {
-                OE_NOTICE << "[osgEarth::GeoData] Pixel out of range " << px_i << "," << py_i << "  image is " << image->s() << "x" << image->t() << std::endl;
-                }*/
 
-                /*Bilinear interpolation*/
-                //Check for exact value
-                if ((colMax == colMin) && (rowMax == rowMin))
+                float px = (src_x - src_extent.xMin()) * xfac;
+                float py = (src_y - src_extent.yMin()) * yfac;
+
+                int px_i = osg::clampBetween( (int)osg::round(px), 0, image->s()-1 );
+                int py_i = osg::clampBetween( (int)osg::round(py), 0, image->t()-1 );
+
+                osg::Vec4 color(0,0,0,0);
+
+                // TODO: consider this again later. Causes blockiness.
+                if ( false ) //! isSrcContiguous ) // non-contiguous space- use nearest neighbot
                 {
-                    //OE_NOTICE << "[osgEarth::GeoData] Exact value" << std::endl;
                     color = ia(px_i, py_i);
                 }
-                else if (colMax == colMin)
-                {
-                    //OE_NOTICE << "[osgEarth::GeoData] Vertically" << std::endl;
-                    //Linear interpolate vertically
-                    for (unsigned int i = 0; i < 4; ++i)
-                    {
-                        color[i] = ((float)rowMax - py) * llColor[i] + (py - (float)rowMin) * ulColor[i];
-                    }
-                }
-                else if (rowMax == rowMin)
-                {
-                    //OE_NOTICE << "[osgEarth::GeoData] Horizontally" << std::endl;
-                    //Linear interpolate horizontally
-                    for (unsigned int i = 0; i < 4; ++i)
-                    {
-                        color[i] = ((float)colMax - px) * llColor[i] + (px - (float)colMin) * lrColor[i];
-                    }
-                }
-                else
-                {
-                    //OE_NOTICE << "[osgEarth::GeoData] Bilinear" << std::endl;
-                    //Bilinear interpolate
-                    float col1 = colMax - px, col2 = px - colMin;
-                    float row1 = rowMax - py, row2 = py - rowMin;
-                    for (unsigned int i = 0; i < 4; ++i)
-                    {
-                        float r1 = col1 * llColor[i] + col2 * lrColor[i];
-                        float r2 = col1 * ulColor[i] + col2 * urColor[i];
 
-                        //OE_INFO << "r1, r2 = " << r1 << " , " << r2 << std::endl;
-                        color[i] = row1 * r1 + row2 * r2;
+                else // contiguous space - use bilinear sampling
+                {
+                    int rowMin = osg::maximum((int)floor(py), 0);
+                    int rowMax = osg::maximum(osg::minimum((int)ceil(py), (int)(image->t()-1)), 0);
+                    int colMin = osg::maximum((int)floor(px), 0);
+                    int colMax = osg::maximum(osg::minimum((int)ceil(px), (int)(image->s()-1)), 0);
+
+                    if (rowMin > rowMax) rowMin = rowMax;
+                    if (colMin > colMax) colMin = colMax;
+
+                    osg::Vec4 urColor = ia(colMax, rowMax);
+                    osg::Vec4 llColor = ia(colMin, rowMin);
+                    osg::Vec4 ulColor = ia(colMin, rowMax);
+                    osg::Vec4 lrColor = ia(colMax, rowMin);
+
+                    /*Average Interpolation*/
+                    /*double x_rem = px - (int)px;
+                    double y_rem = py - (int)py;
+
+                    double w00 = (1.0 - y_rem) * (1.0 - x_rem);
+                    double w01 = (1.0 - y_rem) * x_rem;
+                    double w10 = y_rem * (1.0 - x_rem);
+                    double w11 = y_rem * x_rem;
+                    double wsum = w00 + w01 + w10 + w11;
+                    wsum = 1.0/wsum;
+
+                    color.r() = (w00 * llColor.r() + w01 * lrColor.r() + w10 * ulColor.r() + w11 * urColor.r()) * wsum;
+                    color.g() = (w00 * llColor.g() + w01 * lrColor.g() + w10 * ulColor.g() + w11 * urColor.g()) * wsum;
+                    color.b() = (w00 * llColor.b() + w01 * lrColor.b() + w10 * ulColor.b() + w11 * urColor.b()) * wsum;
+                    color.a() = (w00 * llColor.a() + w01 * lrColor.a() + w10 * ulColor.a() + w11 * urColor.a()) * wsum;*/
+
+                    /*Nearest Neighbor Interpolation*/
+                    /*if (px_i >= 0 && px_i < image->s() &&
+                    py_i >= 0 && py_i < image->t())
+                    {
+                    //OE_NOTICE << "[osgEarth::GeoData] Sampling pixel " << px << "," << py << std::endl;
+                    color = ImageUtils::getColor(image, px_i, py_i);
+                    }
+                    else
+                    {
+                    OE_NOTICE << "[osgEarth::GeoData] Pixel out of range " << px_i << "," << py_i << "  image is " << image->s() << "x" << image->t() << std::endl;
+                    }*/
+
+                    /*Bilinear interpolation*/
+                    //Check for exact value
+                    if ((colMax == colMin) && (rowMax == rowMin))
+                    {
+                        //OE_NOTICE << "[osgEarth::GeoData] Exact value" << std::endl;
+                        color = ia(px_i, py_i);
+                    }
+                    else if (colMax == colMin)
+                    {
+                        //OE_NOTICE << "[osgEarth::GeoData] Vertically" << std::endl;
+                        //Linear interpolate vertically
+                        for (unsigned int i = 0; i < 4; ++i)
+                        {
+                            color[i] = ((float)rowMax - py) * llColor[i] + (py - (float)rowMin) * ulColor[i];
+                        }
+                    }
+                    else if (rowMax == rowMin)
+                    {
+                        //OE_NOTICE << "[osgEarth::GeoData] Horizontally" << std::endl;
+                        //Linear interpolate horizontally
+                        for (unsigned int i = 0; i < 4; ++i)
+                        {
+                            color[i] = ((float)colMax - px) * llColor[i] + (px - (float)colMin) * lrColor[i];
+                        }
+                    }
+                    else
+                    {
+                        //OE_NOTICE << "[osgEarth::GeoData] Bilinear" << std::endl;
+                        //Bilinear interpolate
+                        float col1 = colMax - px, col2 = px - colMin;
+                        float row1 = rowMax - py, row2 = py - rowMin;
+                        for (unsigned int i = 0; i < 4; ++i)
+                        {
+                            float r1 = col1 * llColor[i] + col2 * lrColor[i];
+                            float r2 = col1 * ulColor[i] + col2 * urColor[i];
+
+                            //OE_INFO << "r1, r2 = " << r1 << " , " << r2 << std::endl;
+                            color[i] = row1 * r1 + row2 * r2;
+                        }
                     }
                 }
+
+                writer(color, c, r);
+
+#if 0
+                unsigned char* rgba = const_cast<unsigned char*>(ra.data(c,r,0));
+
+                rgba[0] = (unsigned char)(color.r() * 255);
+                rgba[1] = (unsigned char)(color.g() * 255);
+                rgba[2] = (unsigned char)(color.b() * 255);
+                rgba[3] = (unsigned char)(color.a() * 255);
+#endif
+
+                pixel++;            
             }
-               
-            unsigned char* rgba = const_cast<unsigned char*>(ra.data(c,r,0));
-
-            rgba[0] = (unsigned char)(color.r() * 255);
-            rgba[1] = (unsigned char)(color.g() * 255);
-            rgba[2] = (unsigned char)(color.b() * 255);
-            rgba[3] = (unsigned char)(color.a() * 255);
-
-            pixel++;            
         }
+
+        delete[] srcPointsX;
+
+        return result;
     }
-
-    delete[] srcPointsX;
-
-    return result;
 }
 
 

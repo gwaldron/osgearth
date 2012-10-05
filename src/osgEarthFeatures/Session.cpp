@@ -22,7 +22,6 @@
 #include <osgEarthFeatures/ScriptEngine>
 #include <osgEarthFeatures/FeatureSource>
 #include <osgEarth/FileUtils>
-#include <osgEarth/HTTPClient>
 #include <osgEarth/StringUtils>
 #include <osg/AutoTransform>
 #include <osg/Depth>
@@ -50,6 +49,9 @@ _dbOptions     ( dbOptions )
     // if the caller did not provide a dbOptions, take it from the map.
     if ( map && !dbOptions )
         _dbOptions = map->getDBOptions();
+
+    // a new cache to optimize state changes.
+    _stateSetCache = new StateSetCache();
 }
 
 Session::~Session()
@@ -71,7 +73,8 @@ Session::createMapFrame( Map::ModelParts parts ) const
 void
 Session::removeObject( const std::string& key )
 {
-    Threading::ScopedWriteLock lock( _objMapMutex );
+    Threading::ScopedMutexLock lock( _objMapMutex );
+    //Threading::ScopedWriteLock lock( _objMapMutex );
     _objMap.erase( key );
 }
 

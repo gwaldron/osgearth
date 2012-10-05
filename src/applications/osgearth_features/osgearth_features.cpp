@@ -94,11 +94,6 @@ int main(int argc, char** argv)
     {
         // Configures the feature driver to load the vectors from a shapefile:
         featureOptions.url() = "../data/world.shp";
-
-        // installs an inline filter to convert geometry to lines
-        ConvertTypeFilter* filter = new ConvertTypeFilter();
-        filter->toType() = Geometry::TYPE_LINESTRING;
-        featureOptions.filters().push_back( filter );
     }
     else
     {

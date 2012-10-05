@@ -112,7 +112,10 @@ _supportsTwoSidedStencil( false ),
 _supportsTexture2DLod   ( false ),
 _supportsMipmappedTextureUpdates( false ),
 _supportsDepthPackedStencilBuffer( false ),
-_supportsOcclusionQuery ( false )
+_supportsOcclusionQuery ( false ),
+_supportsDrawInstanced  ( false ),
+_supportsUniformBufferObjects( false ),
+_maxUniformBlockSize    ( 0 )
 {
     // little hack to force the osgViewer library to link so we can create a graphics context
     osgViewerGetVersion();
@@ -149,14 +152,21 @@ _supportsOcclusionQuery ( false )
         OE_INFO << LC << "  Max GPU texture units = " << _maxGPUTextureUnits << std::endl;
 
         glGetIntegerv( GL_MAX_TEXTURE_COORDS_ARB, &_maxGPUTextureCoordSets );
+#if defined(OSG_GLES2_AVAILABLE)
+        int maxVertAttributes = 0;
+        glGetIntegerv(GL_MAX_VERTEX_ATTRIBS, &maxVertAttributes);
+        _maxGPUTextureCoordSets = maxVertAttributes - 5; //-5 for vertex, normal, color, tangent and binormal
+#endif
         OE_INFO << LC << "  Max GPU texture coordinate sets = " << _maxGPUTextureCoordSets << std::endl;
+
 
         glGetIntegerv( GL_DEPTH_BITS, &_depthBits );
         OE_INFO << LC << "  Depth buffer bits = " << _depthBits << std::endl;
 
+        
+        glGetIntegerv( GL_MAX_TEXTURE_SIZE, &_maxTextureSize );
 #if !(defined(OSG_GLES1_AVAILABLE) || defined(OSG_GLES2_AVAILABLE))
         // Use the texture-proxy method to determine the maximum texture size 
-        glGetIntegerv( GL_MAX_TEXTURE_SIZE, &_maxTextureSize );
         for( int s = _maxTextureSize; s > 2; s >>= 1 )
         {
             glTexImage2D( GL_PROXY_TEXTURE_2D, 0, GL_RGBA8, s, s, 0, GL_RGBA, GL_UNSIGNED_BYTE, 0L );
@@ -171,7 +181,12 @@ _supportsOcclusionQuery ( false )
 #endif
         OE_INFO << LC << "  Max texture size = " << _maxTextureSize << std::endl;
 
+        //PORT@tom, what effect will this have?
+#ifdef OSG_GL_FIXED_FUNCTION_AVAILABLE
         glGetIntegerv( GL_MAX_LIGHTS, &_maxLights );
+#else
+        _maxLights = 1;
+#endif
         OE_INFO << LC << "  Max lights = " << _maxLights << std::endl;
 
         _supportsGLSL = GL2->isGlslSupported();
@@ -204,11 +219,22 @@ _supportsOcclusionQuery ( false )
         _supportsTwoSidedStencil = osg::isGLExtensionSupported( id, "GL_EXT_stencil_two_side" );
         OE_INFO << LC << "  2-sided stencils = " << SAYBOOL(_supportsTwoSidedStencil) << std::endl;
 
-        _supportsDepthPackedStencilBuffer = osg::isGLExtensionSupported( id, "GL_EXT_packed_depth_stencil" );
+        _supportsDepthPackedStencilBuffer = osg::isGLExtensionSupported( id, "GL_EXT_packed_depth_stencil" ) || 
+                                            osg::isGLExtensionSupported( id, "GL_OES_packed_depth_stencil" );
         OE_INFO << LC << "  depth-packed stencil = " << SAYBOOL(_supportsDepthPackedStencilBuffer) << std::endl;
 
         _supportsOcclusionQuery = osg::isGLExtensionSupported( id, "GL_ARB_occlusion_query" );
         OE_INFO << LC << "  occulsion query = " << SAYBOOL(_supportsOcclusionQuery) << std::endl;
+
+        _supportsDrawInstanced = osg::isGLExtensionOrVersionSupported( id, "GL_EXT_draw_instanced", 3.1f );
+        OE_INFO << LC << "  draw instanced = " << SAYBOOL(_supportsDrawInstanced) << std::endl;
+
+        _supportsUniformBufferObjects = osg::isGLExtensionOrVersionSupported( id, "GL_ARB_uniform_buffer_object", 2.0f );
+        OE_INFO << LC << "  uniform buffer objects = " << SAYBOOL(_supportsUniformBufferObjects) << std::endl;
+
+        glGetIntegerv( GL_MAX_UNIFORM_BLOCK_SIZE, &_maxUniformBlockSize );
+        OE_INFO << LC << "  max uniform block size = " << _maxUniformBlockSize << std::endl;
+
 
         //_supportsTexture2DLod = osg::isGLExtensionSupported( id, "GL_ARB_shader_texture_lod" );
         //OE_INFO << LC << "  texture2DLod = " << SAYBOOL(_supportsTexture2DLod) << std::endl;

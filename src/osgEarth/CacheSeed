@@ -33,10 +33,7 @@ namespace osgEarth
     class OSGEARTH_EXPORT CacheSeed
     {
     public:
-        CacheSeed():
-          _minLevel(0),
-          _maxLevel(12),
-          _bounds(-180, -90, 180, 90) { }
+        CacheSeed();
 
         /** dtor */
         virtual ~CacheSeed() { }
@@ -62,19 +59,9 @@ namespace osgEarth
         const unsigned int getMaxLevel() const {return _maxLevel;}
 
         /**
-        * Gets the bounds to seed in
+        *Adds an extent to cache
         */
-        const Bounds& getBounds() const { return _bounds; }
-
-        /**
-        * Sets the bounds to seed in
-        */
-        void setBounds(const Bounds& bounds) { _bounds = bounds; }
-
-        /**
-        * Sets the bounds to seed in
-        */
-        void setBounds(const double& minLon, const double& minLat, const double& maxLon, const double& maxLat) { _bounds = Bounds(minLon, minLat, maxLon, maxLat); }
+        void addExtent( const GeoExtent& value );
 
         /**
         * Set progress callback for reporting which tiles are seeded
@@ -87,13 +74,21 @@ namespace osgEarth
         void seed( Map* map );
 
     protected:
+
+        void incrementCompleted( unsigned int total ) const;
+
         unsigned int _minLevel;
         unsigned int _maxLevel;
-        Bounds _bounds;
+
+        unsigned int _total;
+        unsigned int _completed;
+
         osg::ref_ptr<ProgressCallback> _progress;
 
         void processKey( const MapFrame& mapf, const TileKey& key ) const;
         bool cacheTile( const MapFrame& mapf, const TileKey& key ) const;
+
+        std::vector< GeoExtent > _extents;
     };
 }
 

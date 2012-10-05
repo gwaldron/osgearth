@@ -19,6 +19,6 @@
 #include "KML_LabelStyle"
 
 void 
-KML_LabelStyle::scan( const Config& conf, Style& style )
+KML_LabelStyle::scan( const Config& conf, Style& style, KMLContext& cx )
 {
 }

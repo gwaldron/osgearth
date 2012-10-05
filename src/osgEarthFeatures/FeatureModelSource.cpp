@@ -36,7 +36,10 @@ _lit               ( true ),
 _maxGranularity_deg( 1.0 ),
 _mergeGeometry     ( false ),
 _clusterCulling    ( true ),
-_featureIndexing   ( true )
+_featureIndexing   ( false ),
+_backfaceCulling   ( true ),
+_alphaBlending     ( true ),
+_fadeInDuration    ( 0.0f )
 {
     fromConfig( _conf );
 }
@@ -45,14 +48,11 @@ void
 FeatureModelSourceOptions::fromConfig( const Config& conf )
 {
     conf.getObjIfSet( "features", _featureOptions );
-    //if ( conf.hasChild("features") )
-    //    _featureOptions->merge( conf.child("features") );
     _featureSource = conf.getNonSerializable<FeatureSource>("feature_source");
 
     conf.getObjIfSet( "styles",       _styles );
     conf.getObjIfSet( "layout",       _layout );
     conf.getObjIfSet( "paging",       _layout ); // backwards compat.. to be deprecated
-    //conf.getObjIfSet( "gridding",     _gridding ); // to be deprecated
     conf.getObjIfSet( "feature_name", _featureNameExpr );
     conf.getObjIfSet( "cache_policy", _cachePolicy );
 
@@ -61,6 +61,9 @@ FeatureModelSourceOptions::fromConfig( const Config& conf )
     conf.getIfSet( "merge_geometry",   _mergeGeometry );
     conf.getIfSet( "cluster_culling",  _clusterCulling );
     conf.getIfSet( "feature_indexing", _featureIndexing );
+    conf.getIfSet( "backface_culling", _backfaceCulling );
+    conf.getIfSet( "alpha_blending",   _alphaBlending );
+    conf.getIfSet( "fade_in_duration", _fadeInDuration );
 
     std::string gt = conf.value( "geometry_type" );
     if ( gt == "line" || gt == "lines" || gt == "linestring" )
@@ -81,8 +84,6 @@ FeatureModelSourceOptions::getConfig() const
     {
         conf.addNonSerializable("feature_source", _featureSource.get());
     }
-    //conf.updateObjIfSet( "feature_source", _featureSource);
-    //conf.updateObjIfSet( "gridding",     _gridding ); // to be deprecated
     conf.updateObjIfSet( "styles",       _styles );
     conf.updateObjIfSet( "layout",       _layout );
     conf.updateObjIfSet( "cache_policy", _cachePolicy );
@@ -92,7 +93,9 @@ FeatureModelSourceOptions::getConfig() const
     conf.updateIfSet( "merge_geometry",   _mergeGeometry );
     conf.updateIfSet( "cluster_culling",  _clusterCulling );
     conf.updateIfSet( "feature_indexing", _featureIndexing );
-
+    conf.updateIfSet( "backface_culling", _backfaceCulling );
+    conf.updateIfSet( "alpha_blending",   _alphaBlending );
+    conf.updateIfSet( "fade_in_duration", _fadeInDuration );
 
     if ( _geomTypeOverride.isSet() ) {
         if ( _geomTypeOverride == Geometry::TYPE_LINESTRING )
@@ -110,21 +113,9 @@ FeatureModelSourceOptions::getConfig() const
 
 FeatureModelSource::FeatureModelSource( const FeatureModelSourceOptions& options ) :
 ModelSource( options ),
-_options( options )
+_options   ( options )
 {
-    // the data source from which to pull features:
-    if ( _options.featureSource().valid() )
-    {
-        _features = _options.featureSource().get();
-    }
-    else if ( _options.featureOptions().isSet() )
-    {
-        _features = FeatureSourceFactory::create( _options.featureOptions().value() );
-        if ( !_features.valid() )
-        {
-            OE_WARN << "FeatureModelSource - no valid feature source provided" << std::endl;
-        }
-    }
+    //nop
 }
 
 void
@@ -141,13 +132,25 @@ FeatureModelSource::setFeatureSource( FeatureSource* source )
 }
 
 void 
-FeatureModelSource::initialize(const osgDB::Options* dbOptions, 
-                               const osgEarth::Map*  map )
+FeatureModelSource::initialize(const osgDB::Options* dbOptions)
 {
-    ModelSource::initialize( dbOptions, map );
+    ModelSource::initialize( dbOptions );
+    
+    // the data source from which to pull features:
+    if ( _options.featureSource().valid() )
+    {
+        _features = _options.featureSource().get();
+    }
+    else if ( _options.featureOptions().isSet() )
+    {
+        _features = FeatureSourceFactory::create( _options.featureOptions().value() );
+        if ( !_features.valid() )
+        {
+            OE_WARN << LC << "No valid feature source provided!" << std::endl;
+        }
+    }
 
-    _dbOptions = dbOptions;
-
+    // initialize the feature source if it exists:
     if ( _features.valid() )
     {
         _features->initialize( dbOptions );
@@ -156,38 +159,50 @@ FeatureModelSource::initialize(const osgDB::Options* dbOptions,
     {
         OE_WARN << LC << "No FeatureSource; nothing will be rendered (" << getName() << ")" << std::endl;
     }
-
-    _map = map;
 }
 
 osg::Node*
-FeatureModelSource::createNode( ProgressCallback* progress )
+FeatureModelSource::createNode(const Map*            map,
+                               const osgDB::Options* dbOptions,
+                               ProgressCallback*     progress )
 {
-    if ( !_factory.valid() )
-        _factory = createFeatureNodeFactory();
-
-    if ( !_factory.valid() )
+    // user must provide a valid map.
+    if ( !map )
+    {
+        OE_WARN << LC << "NULL Map is illegal when building feature data." << std::endl;
         return 0L;
+    }
 
-    if ( !_map.valid() )
-        return 0L;
-
+    // make sure the feature source initialized properly:
     if ( !_features.valid() || !_features->getFeatureProfile() )
     {
         OE_WARN << LC << "Invalid feature source" << std::endl;
         return 0L;
     }
 
-    Session* session = new Session( 
-        _map.get(), 
-        _options.styles().get(),
-        _features.get(),
-        _dbOptions.get() );
+    // create a feature node factory:
+    FeatureNodeFactory* factory = createFeatureNodeFactory();
+    if ( !factory )
+    {
+        OE_WARN << LC << "Unable to create a feature node factory!" << std::endl;
+        return 0L;
+    }
 
-    FeatureModelGraph* graph = new FeatureModelGraph( 
-        session,
-        _options, 
-        _factory.get() );
+    // Session holds data that's shared across the life of the FMG
+    Session* session = new Session( map, _options.styles().get(), _features.get(), dbOptions );
+
+    // Graph that will render feature models. May included paged data.
+    FeatureModelGraph* graph = new FeatureModelGraph( session, _options, factory );
+
+    // install any post-merge operations on the FMG so it can call them during paging:
+    const NodeOperationVector& ops = postProcessors();
+    for( NodeOperationVector::const_iterator i = ops.begin(); i != ops.end(); ++i )
+    {
+        graph->addPostMergeOperation( i->get() );
+    }
+
+    // then run the ops on the staring graph:
+    firePostProcessors( graph );
 
     return graph;
 }

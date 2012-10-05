@@ -24,6 +24,7 @@
 #include <osgEarth/Layer>
 #include <osgEarth/Config>
 #include <osgEarth/ModelSource>
+#include <osgEarth/ShaderUtils>
 #include <osg/Node>
 #include <vector>
 
@@ -89,12 +90,12 @@ namespace osgEarth
         void fromConfig( const Config& conf );
         void setDefaults();
 
-        optional<std::string> _name;
-        optional<bool> _overlay;
+        optional<std::string>        _name;
+        optional<bool>               _overlay;
         optional<ModelSourceOptions> _driver;
-        optional<bool> _enabled;
-        optional<bool> _visible;
-        optional<bool> _lighting;
+        optional<bool>               _enabled;
+        optional<bool>               _visible;
+        optional<bool>               _lighting;
     };
 
     /**
@@ -135,6 +136,7 @@ namespace osgEarth
          */
         ModelLayer(const std::string& name, osg::Node* node);
 
+        /** dtor */
         virtual ~ModelLayer();
 
     public:
@@ -155,7 +157,19 @@ namespace osgEarth
 
     public:
 
-        osg::Node* getOrCreateNode( ProgressCallback* progress =0L );
+        /**
+         * Perform one-time initialize of the model layer.
+         */
+        void initialize( const osgDB::Options* options );
+
+        /**
+         * Creates the scene graph representing this model layer for the given Map.
+         */
+        osg::Node* createSceneGraph( 
+            const Map*            map, 
+            const osgDB::Options* dbOptions,
+            ProgressCallback*     progress );
+
 
     public: // properties
 
@@ -182,19 +196,16 @@ namespace osgEarth
         /** Removes a property notification callback from this layer */
         void removeCallback( ModelLayerCallback* cb );
 
-    public:
-
-        // internal function
-        void initialize( const osgDB::Options* options, const Map* map );
-
     private:
         osg::ref_ptr<ModelSource>    _modelSource;
         const ModelLayerOptions      _initOptions;
         ModelLayerOptions            _runtimeOptions;
-        osg::ref_ptr< osg::Node >    _node;
-        osg::ref_ptr<osgDB::Options> _dbOptions;
         Revision                     _modelSourceRev;
         ModelLayerCallbackList       _callbacks;
+        UpdateLightingUniformsHelper _updateLightingUniformsHelper;
+
+        typedef std::set< osg::observer_ptr<osg::Node> > NodeObserverSet;
+        NodeObserverSet _nodeSet;
 
         virtual void fireCallback( ModelLayerCallbackMethodPtr method );
 

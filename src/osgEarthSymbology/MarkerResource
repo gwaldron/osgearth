@@ -66,8 +66,6 @@ namespace osgEarth { namespace Symbology
         osg::Node* createNodeFromURI( const URI& uri, const osgDB::Options* dbOptions ) const;
     };
 
-    typedef std::map<std::string, osg::ref_ptr<MarkerResource> > MarkerResourceMap;
-
     typedef std::vector< osg::ref_ptr<MarkerResource> > MarkerResourceVector;
 
 } } // namespace osgEarth::Symbology

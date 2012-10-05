@@ -21,6 +21,7 @@
 #include <osgEarth/Registry>
 #include <osgEarth/TextureCompositor>
 #include <osgEarth/NodeUtils>
+#include <osgEarth/MapModelChange>
 #include <osgDB/ReadFile>
 #include <osg/CullFace>
 #include <osg/PolygonOffset>
@@ -68,6 +69,13 @@ _engine( engine )
 }
 
 
+TextureCompositor*
+TerrainEngineNode::getTextureCompositor() const
+{
+    return _texCompositor.get();
+}
+
+
 // this handler adjusts the uniform set when a terrain layer's "enabed" state changes
 void
 TerrainEngineNode::ImageLayerController::onVisibleChanged( TerrainLayer* layer )
@@ -102,6 +110,33 @@ TerrainEngineNode::ImageLayerController::onOpacityChanged( ImageLayer* layer )
 
     _engine->dirty();
 }
+
+void
+TerrainEngineNode::ImageLayerController::onVisibleRangeChanged( ImageLayer* layer )
+{
+    if ( !Registry::instance()->getCapabilities().supportsGLSL() )
+        return;
+
+    _mapf.sync();
+    int layerNum = _mapf.indexOf( layer );
+    if ( layerNum >= 0 )
+    {
+         _layerRangeUniform.setElement( (2*layerNum),   layer->getMinVisibleRange() );
+         _layerRangeUniform.setElement( (2*layerNum)+1, layer->getMaxVisibleRange() );
+    }        
+    else
+        OE_WARN << LC << "Odd, onVisibleRangeChanged did not find layer" << std::endl;
+
+    _engine->dirty();
+}
+
+void
+TerrainEngineNode::ImageLayerController::onColorFiltersChanged( ImageLayer* layer )
+{
+    _engine->updateTextureCombining();
+    _engine->dirty();
+}
+
 
 
 //------------------------------------------------------------------------
@@ -150,7 +185,7 @@ TerrainEngineNode::preInitialize( const Map* map, const TerrainOptions& options 
     _map = map;
     
     // fire up a terrain utility interface
-    _terrainInterface = new Terrain( this, map->getProfile(), map->isGeocentric() );
+    _terrainInterface = new Terrain( this, map->getProfile(), map->isGeocentric(), options );
 
     // set up the CSN values   
     _map->getProfile()->getSRS()->populateCoordinateSystemNode( this );
@@ -187,6 +222,13 @@ TerrainEngineNode::preInitialize( const Map* map, const TerrainOptions& options 
     
     set->getOrCreateUniform( "osgearth_ImageLayerAttenuation", osg::Uniform::FLOAT )->set(
         *options.attentuationDistance() );
+
+    if ( options.enableMercatorFastPath().isSet() )
+    {
+        OE_INFO 
+            << LC << "Mercator fast path " 
+            << (options.enableMercatorFastPath()==true? "enabled" : "DISABLED") << std::endl;
+    }
 
     _initStage = INIT_PREINIT_COMPLETE;
 }
@@ -280,7 +322,7 @@ TerrainEngineNode::onMapModelChanged( const MapModelChange& change )
     // compositor is up to date with the map model. (After post-initialization,
     // this happens in the subclass...something that probably needs to change
     // since this is unclear)
-    else if ( _texCompositor.valid() )
+    else if ( _texCompositor.valid() && change.getImageLayer() )
     {
         _texCompositor->applyMapModelChange( change );
     }
@@ -312,7 +354,7 @@ TerrainEngineNode::updateImageUniforms()
         // layer count has changed, but the shader has not yet caught up. In the future we might use this to disable
         // "ghost" layers that used to exist at a given index, but no longer do.
         
-        _imageLayerController->_layerVisibleUniform.attach( "osgearth_ImageLayerVisible", osg::Uniform::BOOL,  stateSet, MAX_IMAGE_LAYERS );
+        _imageLayerController->_layerVisibleUniform.attach( "osgearth_ImageLayerVisible", osg::Uniform::BOOL,  stateSet, mapf.imageLayers().size() );
         _imageLayerController->_layerOpacityUniform.attach( "osgearth_ImageLayerOpacity", osg::Uniform::FLOAT, stateSet, mapf.imageLayers().size() );
         _imageLayerController->_layerRangeUniform.attach  ( "osgearth_ImageLayerRange",   osg::Uniform::FLOAT, stateSet, 2 * mapf.imageLayers().size() );
 
@@ -323,8 +365,8 @@ TerrainEngineNode::updateImageUniforms()
 
             _imageLayerController->_layerVisibleUniform.setElement( index, layer->getVisible() );
             _imageLayerController->_layerOpacityUniform.setElement( index, layer->getOpacity() );
-            _imageLayerController->_layerRangeUniform.setElement( (2*index), layer->getImageLayerOptions().minVisibleRange().value() );
-            _imageLayerController->_layerRangeUniform.setElement( (2*index)+1, layer->getImageLayerOptions().maxVisibleRange().value() );
+            _imageLayerController->_layerRangeUniform.setElement( (2*index), layer->getMinVisibleRange() );
+            _imageLayerController->_layerRangeUniform.setElement( (2*index)+1, layer->getMaxVisibleRange() );
         }
 
         // set the remainder of the layers to disabled 
@@ -353,6 +395,11 @@ TerrainEngineNode::validateTerrainOptions( TerrainOptions& options )
     }
 }
 
+namespace
+{
+    Threading::Mutex s_opqlock;
+}
+
 void
 TerrainEngineNode::traverse( osg::NodeVisitor& nv )
 {
@@ -361,7 +408,6 @@ TerrainEngineNode::traverse( osg::NodeVisitor& nv )
         // see if we need to set up the Terrain object with an update ops queue.
         if ( !_terrainInterface->_updateOperationQueue.valid() )
         {
-            static Threading::Mutex s_opqlock;
             Threading::ScopedMutexLock lock(s_opqlock);
             if ( !_terrainInterface->_updateOperationQueue.valid() ) // double check pattern
             {
@@ -379,12 +425,12 @@ TerrainEngineNode::traverse( osg::NodeVisitor& nv )
                         }
                         _terrainInterface->_updateOperationQueue = q;
                     }
-                }                        
+                }
             }
         }
 
 
-        if ( Registry::instance()->getCapabilities().supportsGLSL() )
+        if ( Registry::capabilities().supportsGLSL() )
         {
             _updateLightingUniformsHelper.cullTraverse( this, &nv );
 
@@ -415,7 +461,7 @@ TerrainEngineNode::traverse( osg::NodeVisitor& nv )
 //------------------------------------------------------------------------
 
 #undef LC
-#define LC "[TerrainEngineFactory] "
+#define LC "[TerrainEngineNodeFactory] "
 
 TerrainEngineNode*
 TerrainEngineNodeFactory::create( Map* map, const TerrainOptions& options )
@@ -424,7 +470,7 @@ TerrainEngineNodeFactory::create( Map* map, const TerrainOptions& options )
 
     std::string driver = options.getDriver();
     if ( driver.empty() )
-        driver = "osgterrain";
+        driver = Registry::instance()->getDefaultTerrainEngineDriverName();
 
     std::string driverExt = std::string( ".osgearth_engine_" ) + driver;
     result = dynamic_cast<TerrainEngineNode*>( osgDB::readObjectFile( driverExt ) );

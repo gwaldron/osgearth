@@ -23,32 +23,83 @@ using namespace osgEarth;
 //------------------------------------------------------------------------
 
 //statics
-CachePolicy CachePolicy::INHERIT;
+CachePolicy CachePolicy::DEFAULT( CachePolicy::USAGE_READ_WRITE );
 CachePolicy CachePolicy::NO_CACHE( CachePolicy::USAGE_NO_CACHE );
 CachePolicy CachePolicy::CACHE_ONLY( CachePolicy::USAGE_CACHE_ONLY );
 
 //------------------------------------------------------------------------
 
-CachePolicy::CachePolicy( const Usage& usage ) :
-_usage( usage ),
+CachePolicy::CachePolicy() :
 _maxAge( DBL_MAX )
 {
-    _usage = usage;
+    _usage = USAGE_READ_WRITE;
+}
+
+CachePolicy::CachePolicy( const Usage& usage ) :
+_usage ( usage ),
+_maxAge( DBL_MAX )
+{
+    _usage = usage; // explicity init the optional<>
 }
 
 CachePolicy::CachePolicy( const Usage& usage, double maxAge ) :
 _usage( usage ),
 _maxAge( maxAge )
 {
-    _usage  = usage;
+    _usage  = usage; // explicity init the optional<>
     _maxAge = maxAge;
 }
 
 CachePolicy::CachePolicy( const Config& conf ) :
-_usage ( USAGE_DEFAULT ),
+_usage ( USAGE_READ_WRITE ),
 _maxAge( DBL_MAX )
 {
     fromConfig( conf );
+}
+
+bool
+CachePolicy::fromOptions( const osgDB::Options* dbOptions, optional<CachePolicy>& out )
+{
+    if ( dbOptions )
+    {
+        std::string jsonString = dbOptions->getPluginStringData( "osgEarth::CachePolicy" );
+        if ( !jsonString.empty() )
+        {
+            Config conf;
+            conf.fromJSON( jsonString );
+            out = CachePolicy( conf );
+            return true;
+        }
+    }
+    return false;
+}
+
+void
+CachePolicy::apply( osgDB::Options* dbOptions )
+{
+    if ( dbOptions )
+    {
+        Config conf = getConfig();
+        dbOptions->setPluginStringData( "osgEarth::CachePolicy", conf.toJSON() );
+    }
+}
+
+bool
+CachePolicy::operator == (const CachePolicy& rhs) const
+{
+    return 
+        (_usage.get() == rhs._usage.get()) &&
+        (_maxAge.get() == rhs._maxAge.get());
+}
+
+std::string
+CachePolicy::usageString() const
+{
+    if ( _usage == USAGE_READ_WRITE ) return "read-write";
+    if ( _usage == USAGE_READ_ONLY )  return "read-only";
+    if ( _usage == USAGE_CACHE_ONLY)  return "cache-only";
+    if ( _usage == USAGE_NO_CACHE)    return "no-cache";
+    return "unknown";
 }
 
 void

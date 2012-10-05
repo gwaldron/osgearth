@@ -26,3 +26,4 @@ using namespace osgEarth::Annotation;
 // static defaults
 bool AnnotationSettings::_continuousClamping = true;
 bool AnnotationSettings::_autoDepthOffset = true;
+double AnnotationSettings::_occlusionQueryMaxRange = 200000.0;

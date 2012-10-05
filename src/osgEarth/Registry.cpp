@@ -19,9 +19,11 @@
 #include <osgEarth/Registry>
 #include <osgEarth/Capabilities>
 #include <osgEarth/Cube>
-#include <osgEarth/ShaderComposition>
+#include <osgEarth/VirtualProgram>
+#include <osgEarth/ShaderFactory>
 #include <osgEarth/TaskService>
 #include <osgEarth/IOTypes>
+#include <osgEarth/ColorFilter>
 #include <osgEarthDrivers/cache_filesystem/FileSystemCache>
 #include <osg/Notify>
 #include <osg/Version>
@@ -47,12 +49,13 @@ using namespace OpenThreads;
 extern const char* builtinMimeTypeExtMappings[];
 
 Registry::Registry() :
-osg::Referenced  ( true ),
-_gdal_registered ( false ),
-_numGdalMutexGets( 0 ),
-_uidGen          ( 0 ),
-_caps            ( 0L ),
-_defaultFont     ( 0L )
+osg::Referenced     ( true ),
+_gdal_registered    ( false ),
+_numGdalMutexGets   ( 0 ),
+_uidGen             ( 0 ),
+_caps               ( 0L ),
+_defaultFont        ( 0L ),
+_terrainEngineDriver( "osgterrain" )
 {
     // set up GDAL and OGR.
     OGRRegisterAll();
@@ -62,22 +65,16 @@ _defaultFont     ( 0L )
     _taskServiceManager = new TaskServiceManager();
 
     // activate KMZ support
-    osgDB::Registry::instance()->addFileExtensionAlias( "kmz", "kml" );
     osgDB::Registry::instance()->addArchiveExtension  ( "kmz" );    
+    osgDB::Registry::instance()->addFileExtensionAlias( "kmz", "kml" );
 
-#if OSG_MIN_VERSION_REQUIRED(3,0,0)
     osgDB::Registry::instance()->addMimeTypeExtensionMapping( "application/vnd.google-earth.kml+xml", "kml" );
     osgDB::Registry::instance()->addMimeTypeExtensionMapping( "application/vnd.google-earth.kmz",     "kmz" );
-    //osgDB::Registry::instance()->addMimeTypeExtensionMapping( "text/xml",                             "xml" );
-    //osgDB::Registry::instance()->addMimeTypeExtensionMapping( "application/json",                     "json" );
-    //osgDB::Registry::instance()->addMimeTypeExtensionMapping( "text/json",                            "json" );
-    //osgDB::Registry::instance()->addMimeTypeExtensionMapping( "text/x-json",                          "json" );
     osgDB::Registry::instance()->addMimeTypeExtensionMapping( "text/plain",                           "osgb" );
     osgDB::Registry::instance()->addMimeTypeExtensionMapping( "text/xml",                             "osgb" );
     osgDB::Registry::instance()->addMimeTypeExtensionMapping( "application/json",                     "osgb" );
     osgDB::Registry::instance()->addMimeTypeExtensionMapping( "text/json",                            "osgb" );
     osgDB::Registry::instance()->addMimeTypeExtensionMapping( "text/x-json",                          "osgb" );
-#endif
     
     // pre-load OSG's ZIP plugin so that we can use it in URIs
     std::string zipLib = osgDB::Registry::instance()->createLibraryNameForExtension( "zip" );
@@ -112,15 +109,22 @@ _defaultFont     ( 0L )
     // activate cache-only mode from the environment
     if ( ::getenv("OSGEARTH_CACHE_ONLY") )
     {
-        _defaultCachePolicy = CachePolicy::CACHE_ONLY;
+        setOverrideCachePolicy( CachePolicy::CACHE_ONLY );
         OE_INFO << LC << "CACHE-ONLY MODE set from environment variable" << std::endl;
     }
 
     // activate no-cache mode from the environment
     else if ( ::getenv("OSGEARTH_NO_CACHE") )
     {
-        _defaultCachePolicy = CachePolicy::NO_CACHE;
+        setOverrideCachePolicy( CachePolicy::NO_CACHE );
         OE_INFO << LC << "NO-CACHE MODE set from environment variable" << std::endl;
+    }
+
+    // set the default terrain engine driver from the environment
+    const char* teStr = ::getenv("OSGEARTH_TERRAIN_ENGINE");
+    if ( teStr )
+    {
+        _terrainEngineDriver = std::string(teStr);
     }
 
     // load a default font
@@ -273,13 +277,47 @@ Registry::getNamedProfile( const std::string& name ) const
         return NULL;
 }
 
-//const VerticalSpatialReference*
-//Registry::getDefaultVSRS() const
-//{
-//    if ( !_defaultVSRS.valid() )
-//        const_cast<Registry*>(this)->_defaultVSRS = new VerticalSpatialReference( Units::METERS );
-//    return _defaultVSRS.get();
-//}
+void
+Registry::setDefaultCachePolicy( const CachePolicy& value )
+{
+    _defaultCachePolicy = value;
+    if ( !_overrideCachePolicy.isSet() )
+        _defaultCachePolicy->apply(_defaultOptions.get());
+    else
+        _overrideCachePolicy->apply(_defaultOptions.get());
+}
+
+void
+Registry::setOverrideCachePolicy( const CachePolicy& value )
+{
+    _overrideCachePolicy = value;
+    _overrideCachePolicy->apply( _defaultOptions.get() );
+}
+
+bool
+Registry::getCachePolicy( optional<CachePolicy>& cp, const osgDB::Options* options ) const
+{
+    if ( overrideCachePolicy().isSet() )
+    {
+        // if there is a system-wide override in place, use it.
+        cp = overrideCachePolicy().value();
+    }
+    else 
+    {
+        // Try to read the cache policy from the db-options
+        CachePolicy::fromOptions( options, cp );
+
+        if ( !cp.isSet() )
+        {
+            if ( defaultCachePolicy().isSet() )
+            {
+                cp = defaultCachePolicy().value();
+            }
+        }
+    }
+
+    return cp.isSet();
+}
 
 osgEarth::Cache*
 Registry::getCache() const
@@ -292,24 +330,8 @@ Registry::setCache( osgEarth::Cache* cache )
 {
 	_cache = cache;
     if ( cache )
-        cache->store( _defaultOptions.get() );
+        cache->apply( _defaultOptions.get() );
 }
-
-#if 0
-void Registry::addMimeTypeExtensionMapping(const std::string fromMimeType, const std::string toExt)
-{
-    _mimeTypeExtMap[fromMimeType] = toExt;
-}
-
-osgDB::ReaderWriter* 
-Registry::getReaderWriterForMimeType(const std::string& mimeType)
-{
-    MimeTypeExtensionMap::const_iterator i = _mimeTypeExtMap.find( mimeType );
-    return i != _mimeTypeExtMap.end()?
-        osgDB::Registry::instance()->getReaderWriterForExtension( i->second ) :
-        NULL;
-}
-#endif
 
 bool
 Registry::isBlacklisted(const std::string& filename)
@@ -417,7 +439,9 @@ Registry::createUID()
 osgDB::Options*
 Registry::cloneOrCreateOptions( const osgDB::Options* input ) const
 {
-    osgDB::Options* newOptions = input ? static_cast<osgDB::Options*>(input->clone(osg::CopyOp::SHALLOW_COPY)) : new osgDB::Options();
+    osgDB::Options* newOptions = 
+        input ? static_cast<osgDB::Options*>(input->clone(osg::CopyOp::SHALLOW_COPY)) : 
+        new osgDB::Options();
 
     // clear the CACHE_ARCHIVES flag because it is evil
     if ( ((int)newOptions->getObjectCacheHint() & osgDB::Options::CACHE_ARCHIVES) != 0 )
@@ -449,6 +473,13 @@ Registry::getUnits(const std::string& name) const
     }
     return 0L;
 }
+
+void
+Registry::setDefaultTerrainEngineDriverName(const std::string& name)
+{
+    _terrainEngineDriver = name;
+}
+
 
 //Simple class used to add a file extension alias for the earth_tile to the earth plugin
 class RegisterEarthTileExtension

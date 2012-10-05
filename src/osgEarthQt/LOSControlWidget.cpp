@@ -233,7 +233,8 @@ void LOSControlWidget::onItemDoubleClicked(QListWidgetItem* item)
     osg::Vec3d center = losItem->los()->getBound().center();
 
     GeoPoint output;
-    _map->worldPointToMapPoint(center, output);
+    output.fromWorld( _map->getSRS(), center );
+    //_map->worldPointToMapPoint(center, output);
 
     double range = losItem->los()->getBound().radius() / 0.267949849;
 
@@ -273,7 +274,7 @@ void LOSControlWidget::onItemSelectionChanged()
       _removeAction->setEnabled(true);
       _editAction->setEnabled(true);
 
-      osgEarth::Util::LineOfSightNode* p2pNode = dynamic_cast<osgEarth::Util::LineOfSightNode*>(losItem->los());
+      osgEarth::Util::LinearLineOfSightNode* p2pNode = dynamic_cast<osgEarth::Util::LinearLineOfSightNode*>(losItem->los());
       if (p2pNode)
       {
         _typeField->setText("Point-to-Point");

@@ -107,11 +107,20 @@ namespace osgEarth { namespace Symbology
         /** Construct a new expression from the infix string. */
         StringExpression( const std::string& expr );
 
+        /** Construct an expression from the infix string and a URI context. */
+        StringExpression( const std::string& expr, const URIContext& uriContext );
+
         /** Copy ctor. */
         StringExpression( const StringExpression& rhs );
 
         /** dtor */
         virtual ~StringExpression() { }
+
+        /** Set the infix expr. */
+        void setInfix( const std::string& infix );
+
+        /** Set the infix expr to a literal string */
+        void setLiteral( const std::string& value );
 
         /** Access the expression variables. */
         const Variables& variables() const { return _vars; }

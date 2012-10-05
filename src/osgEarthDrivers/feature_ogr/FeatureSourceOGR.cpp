@@ -59,11 +59,7 @@ public:
       _needsSync(false),
       _writable(false)
     {
-        _geometry = 
-            _options.geometry().valid() ? _options.geometry().get() :
-            _options.geometryConfig().isSet() ? parseGeometry( *_options.geometryConfig() ) :
-            _options.geometryUrl().isSet() ? parseGeometryUrl( *_options.geometryUrl() ) :
-            0L;
+        //nop
     }
 
     /** Destruct the object, cleaning up and OGR handles. */
@@ -81,6 +77,7 @@ public:
                 buf << "REPACK " << name; 
                 std::string bufStr;
                 bufStr = buf.str();
+                OE_DEBUG << LC << "SQL: " << bufStr << std::endl;
                 OGR_DS_ExecuteSQL( _dsHandle, bufStr.c_str(), 0L, 0L );
             }
             _layerHandle = 0L;
@@ -99,12 +96,18 @@ public:
         if ( _options.url().isSet() )
         {
             _source = _options.url()->full();
-            //_source = osgEarth::getFullPath( referenceURI, _options.url()->full() );
         }
         else if ( _options.connection().isSet() )
         {
             _source = _options.connection().value();
         }
+        
+        // establish the geometry:
+        _geometry = 
+            _options.geometry().valid()       ? _options.geometry().get() :
+            _options.geometryConfig().isSet() ? parseGeometry( *_options.geometryConfig() ) :
+            _options.geometryUrl().isSet()    ? parseGeometryUrl( *_options.geometryUrl(), dbOptions ) :
+            0L;
     }
 
     /** Called once at startup to create the profile for this feature set. Successful profile
@@ -203,6 +206,7 @@ public:
                         buf << "CREATE SPATIAL INDEX ON " << name; 
 					    std::string bufStr;
 					    bufStr = buf.str();
+                        OE_DEBUG << LC << "SQL: " << bufStr << std::endl;
                         OGR_DS_ExecuteSQL( _dsHandle, bufStr.c_str(), 0L, 0L );
                     }
 
@@ -413,6 +417,8 @@ public:
             return false;
         }
 
+        dirty();
+
         return true;
     }
 
@@ -430,9 +436,9 @@ protected:
     }
 
     // read the WKT geometry from a URL, then parse into a Geometry.
-    Symbology::Geometry* parseGeometryUrl( const std::string& geomUrl )
+    Symbology::Geometry* parseGeometryUrl( const std::string& geomUrl, const osgDB::Options* dbOptions )
     {
-        ReadResult r = URI(geomUrl).readString( 0L, CachePolicy::NO_CACHE );
+        ReadResult r = URI(geomUrl).readString( dbOptions );
         if ( r.succeeded() )
         {
             Config conf( "geometry", r.getString() );

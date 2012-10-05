@@ -61,9 +61,7 @@ LocalizedNodeEditor::~LocalizedNodeEditor()
 void
 LocalizedNodeEditor::updateDraggers()
 {
-    GeoPoint pos = _node->getPosition();
-    pos.makeAbsolute( _node->getMapNode()->getTerrain() );
-
+    GeoPoint pos = _node->getPosition();    
     _dragger->setPosition( pos, false );
 }
 
@@ -168,7 +166,7 @@ CircleNodeEditor::updateDraggers()
         // Get the current location of the center of the circle (in lat/long, absolute Z)
         GeoPoint location = _node->getPosition();   
         location.makeGeographic();
-        location.makeAbsolute( _node->getMapNode()->getTerrain() );
+        //location.makeAbsolute( _node->getMapNode()->getTerrain() );
         
         //Get the radius of the circle in meters
         double r = static_cast<CircleNode*>(_node.get())->getRadius().as(Units::METERS);
@@ -181,9 +179,7 @@ CircleNodeEditor::updateDraggers()
         GeoPoint draggerLocation( 
             location.getSRS(),
             osg::RadiansToDegrees(lon),
-            osg::RadiansToDegrees(lat),
-            location.z(),
-            ALTMODE_ABSOLUTE );
+            osg::RadiansToDegrees(lat));
 
         _radiusDragger->setPosition( draggerLocation, false );
     }
@@ -286,10 +282,10 @@ EllipseNodeEditor::updateDraggers()
         double lat, lon;
         GeoMath::destination(osg::DegreesToRadians( location.y() ), osg::DegreesToRadians( location.x() ), osg::PI_2 - rotation, minorR, lat, lon, em->getRadiusEquator());        
 
-        _minorDragger->setPosition( GeoPoint(location.getSRS(), osg::RadiansToDegrees( lon ), osg::RadiansToDegrees( lat ), 0), false);
+        _minorDragger->setPosition( GeoPoint(location.getSRS(), osg::RadiansToDegrees( lon ), osg::RadiansToDegrees( lat )), false);
 
         GeoMath::destination(osg::DegreesToRadians( location.y() ), osg::DegreesToRadians( location.x() ), -rotation, majorR, lat, lon, em->getRadiusEquator());                
-        _majorDragger->setPosition( GeoPoint(location.getSRS(), osg::RadiansToDegrees( lon ), osg::RadiansToDegrees( lat ), 0), false);
+        _majorDragger->setPosition( GeoPoint(location.getSRS(), osg::RadiansToDegrees( lon ), osg::RadiansToDegrees( lat )), false);
     }
 }
 

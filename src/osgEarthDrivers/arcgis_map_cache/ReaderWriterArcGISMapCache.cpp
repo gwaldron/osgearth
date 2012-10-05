@@ -67,12 +67,15 @@ public:
             _format = "png";
     }
 
-    void initialize( const osgDB::Options* dbOptions, const Profile* overrideProfile)
+    Status initialize( const osgDB::Options* dbOptions )
     {
-        _dbOptions = dbOptions;
+        _dbOptions = Registry::instance()->cloneOrCreateOptions( dbOptions );
+        CachePolicy::NO_CACHE.apply( _dbOptions.get() );
 
         //Set the profile to global geodetic.
         setProfile(osgEarth::Registry::instance()->getGlobalGeodeticProfile());
+
+        return STATUS_OK;
     }
 
     // override
@@ -85,17 +88,16 @@ public:
         unsigned int tile_x, tile_y;
         key.getTileXY( tile_x, tile_y );
 
-        buf << _url << "/" << _map 
+        std::string bufStr = Stringify()
+            << _url << "/" << _map 
             << "/Layers/" << _layer
             << "/L" << std::hex << std::setw(2) << std::setfill('0') << level
             << "/R" << std::hex << std::setw(8) << std::setfill('0') << tile_y
             << "/C" << std::hex << std::setw(8) << std::setfill('0') << tile_x << "." << _format;
         
         osg::ref_ptr<osg::Image> image;
-		std::string bufStr;
-		bufStr = buf.str();
 
-        return URI(bufStr).readImage( _dbOptions.get(), CachePolicy::NO_CACHE, progress ).releaseImage();
+        return URI(bufStr).getImage( _dbOptions.get(), progress );
     }
 
     // override
@@ -116,7 +118,7 @@ private:
     std::string _map;
     std::string _layer;
     std::string _format;
-    osg::ref_ptr<const osgDB::Options> _dbOptions;
+    osg::ref_ptr<osgDB::Options> _dbOptions;
 };
 
 

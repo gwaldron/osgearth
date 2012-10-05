@@ -17,8 +17,10 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 
-#ifndef OSGEARTHSYMBOLOGY_MODEL_SYMBOL_H
-#define OSGEARTHSYMBOLOGY_MODEL_SYMBOL_H 1
+#ifndef OSGEARTHSYMBOLOGY_MARKER_SYMBOL_H
+#define OSGEARTHSYMBOLOGY_MARKER_SYMBOL_H 1
+
+#include <climits>
 
 #include <osgEarth/Common>
 #include <osgEarthSymbology/Symbol>
@@ -27,6 +29,8 @@
 
 namespace osgEarth { namespace Symbology
 {
+    class InstanceSymbol;
+
     /**
      * The MarkerSymbol describes replacement of geometry with "markers". A marker
      * it another object like a 3D model (node) or an image.
@@ -53,8 +57,26 @@ namespace osgEarth { namespace Symbology
             PLACEMENT_RANDOM
         };
 
+        // note: these are similar to the values in osgText::Text::AlignmentType
+        enum Alignment {
+            ALIGN_LEFT_TOP,
+            ALIGN_LEFT_CENTER,
+            ALIGN_LEFT_BOTTOM,
+
+            ALIGN_CENTER_TOP,
+            ALIGN_CENTER_CENTER,
+            ALIGN_CENTER_BOTTOM,
+
+            ALIGN_RIGHT_TOP,
+            ALIGN_RIGHT_CENTER,
+            ALIGN_RIGHT_BOTTOM,
+        };
+
     public:
         MarkerSymbol( const Config& conf =Config() );
+
+        /** Since MarkerSymbol is deprecated, this conveneince function will convert to an InstanceSymbol */
+        class InstanceSymbol* convertToInstanceSymbol() const;
 
         /** dtor */
         virtual ~MarkerSymbol() { }
@@ -91,11 +113,15 @@ namespace osgEarth { namespace Symbology
         optional<bool>& isModel() { return _isModelHint; }
         const optional<bool>& isModel() const { return _isModelHint; }
 
+        /** Alignment of the marker relative to center pixels */
+        optional<Alignment>& alignment() { return _alignment; }
+        const optional<Alignment>& alignment() const { return _alignment; }
+        
     public: // non-serialized properties (for programmatic use only)
 
         /** Explicit image to use for 2D icon placemet */
         void setImage( osg::Image* image ) { _image = image; }
-        osg::Image* getImage() const { return _image.get(); }
+        osg::Image* getImage( unsigned maxSize =INT_MAX ) const;
 
         /** Explicit model to use for model placement */
         void setModel( osg::Node* node ) { _node = node; }
@@ -114,11 +140,12 @@ namespace osgEarth { namespace Symbology
         optional<float>              _density;
         optional<unsigned>           _randomSeed;
         optional<bool>               _isModelHint;
+        optional<Alignment>         _alignment;
 
-        osg::ref_ptr<osg::Image>     _image;
         osg::ref_ptr<osg::Node>      _node;
+        mutable osg::ref_ptr<osg::Image> _image;
     };
 
 } } // namespace osgEarth::Symbology
 
-#endif
+#endif // OSGEARTHSYMBOLOGY_MARKER_SYMBOL_H

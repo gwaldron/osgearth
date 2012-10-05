@@ -207,9 +207,12 @@ TileSourceOptions::fromConfig( const Config& conf )
 
 //------------------------------------------------------------------------
 
+TileSource::Status TileSource::STATUS_OK = TileSource::Status();
+
 
 TileSource::TileSource( const TileSourceOptions& options ) :
-_options( options )
+_options( options ),
+_status ( Status::Error("Not initialized") )
 {
     this->setThreadSafeRefUnref( true );
 
@@ -252,6 +255,45 @@ TileSource::~TileSource()
     }
 }
 
+void
+TileSource::setStatus( TileSource::Status status )
+{
+    _status = status;
+}
+
+TileSource::Status
+TileSource::initialize(const osgDB::Options* options)
+{
+    // default implementation. Subclasses should override this.
+    return STATUS_OK;
+}
+
+const TileSource::Status&
+TileSource::startup(const osgDB::Options* options)
+{
+    Status status = initialize(options);
+    if ( status == STATUS_OK )
+    {
+        if ( getProfile() != 0L )
+        {
+            _status = status;
+        }
+        else 
+        {
+            _status = Status::Error("No profile available");
+        }
+    }
+    else
+    {
+        _status = status;
+    }
+
+    if ( _status.isError() )
+        OE_WARN << LC << "Startup failed: " << _status.message() << std::endl;
+
+    return _status;
+}
+
 int
 TileSource::getPixelsPerTile() const
 {
@@ -263,6 +305,9 @@ TileSource::createImage(const TileKey&        key,
                         ImageOperation*       prepOp, 
                         ProgressCallback*     progress )
 {
+    if ( _status != STATUS_OK )
+        return 0L;
+
     // Try to get it from the memcache fist
     if (_memCache.valid())
     {
@@ -290,13 +335,16 @@ TileSource::createHeightField(const TileKey&        key,
                               HeightFieldOperation* prepOp, 
                               ProgressCallback*     progress )
 {
+    if ( _status != STATUS_OK )
+        return 0L;
+
     // Try to get it from the memcache first:
-	if (_memCache.valid())
-	{
+    if (_memCache.valid())
+    {
         ReadResult r = _memCache->getOrCreateDefaultBin()->readObject( key.str() );
         if ( r.succeeded() )
             return r.release<osg::HeightField>();
-	}
+    }
 
     osg::ref_ptr<osg::HeightField> newHF = createHeightField( key, progress );
 
@@ -316,7 +364,9 @@ osg::HeightField*
 TileSource::createHeightField(const TileKey&        key,
                               ProgressCallback*     progress)
 {
-    //osg::ref_ptr<osg::Image> image = createImage(key, dbOptions, progress);
+    if ( _status != STATUS_OK )
+        return 0L;
+
     osg::ref_ptr<osg::Image> image = createImage(key, progress);
     osg::HeightField* hf = 0;
     if (image.valid())
@@ -330,7 +380,7 @@ TileSource::createHeightField(const TileKey&        key,
 bool
 TileSource::isOK() const 
 {
-    return getProfile() != NULL;
+    return _status == STATUS_OK;
 }
 
 void
@@ -345,58 +395,70 @@ TileSource::getProfile() const
     return _profile.get();
 }
 
-unsigned int
+unsigned
 TileSource::getMaxDataLevel() const
 {
-    //If we have no data extents, just use a reasonably high number
-    if (_dataExtents.size() == 0) return 23;
+    optional<unsigned> maxDataLevel;
 
-    unsigned int maxDataLevel = 0;
     for (DataExtentList::const_iterator itr = _dataExtents.begin(); itr != _dataExtents.end(); ++itr)
     {
-        if (itr->getMaxLevel() > maxDataLevel) maxDataLevel = itr->getMaxLevel();
+        if ( itr->maxLevel().isSet() && itr->maxLevel() > *maxDataLevel )
+        {
+            maxDataLevel = itr->maxLevel().get();
+        }
     }
-    return maxDataLevel;
+
+    // return "23" if no max is found
+    return maxDataLevel.isSet() ? *maxDataLevel : 23u;
 }
 
-unsigned int
+unsigned
 TileSource::getMinDataLevel() const
 {
-    //If we have no data extents, just use 0
-    if (_dataExtents.size() == 0) return 0;
+    optional<unsigned> minDataLevel;
 
-    unsigned int minDataLevel = INT_MAX;
     for (DataExtentList::const_iterator itr = _dataExtents.begin(); itr != _dataExtents.end(); ++itr)
     {
-        if (itr->getMinLevel() < minDataLevel) minDataLevel = itr->getMinLevel();
+        if ( itr->minLevel().isSet() && itr->minLevel() < *minDataLevel )
+        {
+            minDataLevel = itr->minLevel().get();
+        }
     }
-    return minDataLevel;
+
+    return minDataLevel.isSet() ? *minDataLevel : 0;
 }
+
 
 bool
 TileSource::hasDataAtLOD( unsigned lod ) const
 {
-    //If no data extents are provided, just return true
+    // the sematics here are really "MIGHT have data at LOD".
+
+    // If no data extents are provided, just return true
     if ( _dataExtents.size() == 0 )
         return true;
 
-    bool intersects = false;
-
     for (DataExtentList::const_iterator itr = _dataExtents.begin(); itr != _dataExtents.end(); ++itr)
     {
-        if ( itr->getMinLevel() <= lod && lod <= itr->getMaxLevel() )
+        if ((!itr->minLevel().isSet() || itr->minLevel() <= lod) &&
+            (!itr->maxLevel().isSet() || itr->maxLevel() >= lod))
         {
-            intersects = true;
-            break;
+            return true;
         }
     }
-    return intersects;
+
+    return false;
 }
+
 
 bool
 TileSource::hasDataInExtent( const GeoExtent& extent ) const
 {
-    //If no data extents are provided, just return true
+    // if the extent is invalid, no intersection.
+    if ( !extent.isValid() )
+        return false;
+
+    // If no data extents are provided, just return true
     if ( _dataExtents.size() == 0 )
         return true;
 
@@ -417,15 +479,20 @@ TileSource::hasDataInExtent( const GeoExtent& extent ) const
 bool
 TileSource::hasData(const osgEarth::TileKey& key) const
 {
+    //sematics: might have data.
+
     //If no data extents are provided, just return true
-    if (_dataExtents.size() == 0) return true;
+    if (_dataExtents.size() == 0) 
+        return true;
 
     const osgEarth::GeoExtent& keyExtent = key.getExtent();
     bool intersectsData = false;
 
     for (DataExtentList::const_iterator itr = _dataExtents.begin(); itr != _dataExtents.end(); ++itr)
     {
-        if (keyExtent.intersects( *itr ) && key.getLevelOfDetail() >= itr->getMinLevel() && key.getLevelOfDetail() <= itr->getMaxLevel())
+        if ((keyExtent.intersects( *itr )) && 
+            (!itr->minLevel().isSet() || itr->minLevel() <= key.getLOD()) &&
+            (!itr->maxLevel().isSet() || itr->maxLevel() >= key.getLOD()))
         {
             intersectsData = true;
             break;
@@ -433,12 +500,6 @@ TileSource::hasData(const osgEarth::TileKey& key) const
     }
 
     return intersectsData;
-}
-
-bool
-TileSource::supportsPersistentCaching() const
-{
-    return true;
 }
 
 TileBlacklist*
@@ -479,6 +540,16 @@ TileSourceFactory::create( const TileSourceOptions& options )
     if ( !result )
     {
         OE_WARN << "WARNING: Failed to load TileSource driver for \"" << driver << "\"" << std::endl;
+    }
+
+    // apply an Override Profile if provided.
+    if ( result && options.profile().isSet() )
+    {
+        const Profile* profile = Profile::create(*options.profile());
+        if ( profile )
+        {
+            result->setProfile( profile );
+        }
     }
 
     return result;

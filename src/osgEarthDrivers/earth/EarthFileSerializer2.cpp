@@ -18,6 +18,7 @@
  */
 #include "EarthFileSerializer"
 #include <osgEarth/FileUtils>
+#include <osgEarth/MapFrame>
 
 using namespace osgEarth;
 
@@ -163,7 +164,8 @@ EarthFileSerializer2::serialize( MapNode* input ) const
     for( ImageLayerVector::const_iterator i = mapf.imageLayers().begin(); i != mapf.imageLayers().end(); ++i )
     {
         ImageLayer* layer = i->get();
-        Config layerConf = layer->getInitialOptions().getConfig();
+        //Config layerConf = layer->getInitialOptions().getConfig();
+        Config layerConf = layer->getImageLayerOptions().getConfig();
         layerConf.set("name", layer->getName());
         layerConf.set("driver", layer->getInitialOptions().driver()->getDriver());
         layerConf.remove("default_tile_size");
@@ -173,7 +175,8 @@ EarthFileSerializer2::serialize( MapNode* input ) const
     for( ElevationLayerVector::const_iterator i = mapf.elevationLayers().begin(); i != mapf.elevationLayers().end(); ++i )
     {
         ElevationLayer* layer = i->get();
-        Config layerConf = layer->getInitialOptions().getConfig();
+        //Config layerConf = layer->getInitialOptions().getConfig();
+        Config layerConf = layer->getElevationLayerOptions().getConfig();
         layerConf.set("name", layer->getName());
         layerConf.set("driver", layer->getInitialOptions().driver()->getDriver());
         layerConf.remove("default_tile_size");

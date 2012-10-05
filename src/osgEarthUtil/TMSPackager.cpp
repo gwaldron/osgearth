@@ -30,7 +30,7 @@ using namespace osgEarth::Util;
 using namespace osgEarth;
 
 
-TMSPackager::TMSPackager(const Profile* outProfile) :
+TMSPackager::TMSPackager(const Profile* outProfile, osgDB::Options* imageWriteOptions) :
 _outProfile         ( outProfile ),
 _maxLevel           ( 5 ),
 _verbose            ( false ),
@@ -114,7 +114,7 @@ TMSPackager::packageImageTile(ImageLayer*          layer,
 
                     // dump it to disk
                     osgDB::makeDirectoryForFile( path );
-                    tileOK = osgDB::writeImageFile( *final.get(), path );
+                    tileOK = osgDB::writeImageFile( *final.get(), path, _imageWriteOptions);
 
                     if ( _verbose )
                     {

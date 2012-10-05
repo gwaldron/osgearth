@@ -39,7 +39,7 @@ namespace osgEarth { namespace Util
          * Constructs a new packager.
          * @param profile    Profile of packaged tile data (required)
          */
-        TMSPackager( const Profile* outProfile );
+        TMSPackager( const Profile* outProfile, osgDB::Options* imageWriteOptions);
 
         /** dtor */
         virtual ~TMSPackager() { }
@@ -153,6 +153,7 @@ namespace osgEarth { namespace Util
         unsigned                    _maxLevel;
         std::vector<GeoExtent>      _extents;
         osg::ref_ptr<const Profile> _outProfile;
+        osg::ref_ptr<osgDB::Options>    _imageWriteOptions;
     };
 
 } } // namespace osgEarth::Util

@@ -116,7 +116,8 @@ _rttBlending     ( true ),
 _updatePending   ( false ),
 _dumpRequested   ( false ),
 _rttTraversalMask( ~0 ),
-_maxHorizonDistance( DBL_MAX )
+_maxHorizonDistance( DBL_MAX ),
+_attachStencil   ( true )
 {
     // nop
 }
@@ -189,17 +190,19 @@ OverlayDecorator::initializePerViewData( PerViewData& pvd )
 
     pvd._rttCamera->attach( osg::Camera::COLOR_BUFFER, projTexture, 0, 0, _mipmapping );
 
-    // try a depth-packed buffer. failing that, try a normal one.. if the FBO doesn't support
-    // that (which is doesn't on some GPUs like Intel), it will automatically fall back on 
-    // a PBUFFER_RTT impl
-    if ( Registry::instance()->getCapabilities().supportsDepthPackedStencilBuffer() ){
+    if (_attachStencil) {
+        // try a depth-packed buffer. failing that, try a normal one.. if the FBO doesn't support
+        // that (which is doesn't on some GPUs like Intel), it will automatically fall back on 
+        // a PBUFFER_RTT impl
+        if ( Registry::instance()->getCapabilities().supportsDepthPackedStencilBuffer() ){
 #ifdef OSG_GLES2_AVAILABLE 
-        pvd._rttCamera->attach( osg::Camera::PACKED_DEPTH_STENCIL_BUFFER, GL_DEPTH24_STENCIL8_EXT );
+            pvd._rttCamera->attach( osg::Camera::PACKED_DEPTH_STENCIL_BUFFER, GL_DEPTH24_STENCIL8_EXT );
 #else
-        pvd._rttCamera->attach( osg::Camera::PACKED_DEPTH_STENCIL_BUFFER, GL_DEPTH_STENCIL_EXT );
+            pvd._rttCamera->attach( osg::Camera::PACKED_DEPTH_STENCIL_BUFFER, GL_DEPTH_STENCIL_EXT );
 #endif
-    }else{
-        pvd._rttCamera->attach( osg::Camera::STENCIL_BUFFER, GL_STENCIL_INDEX );
+        }else{
+            pvd._rttCamera->attach( osg::Camera::STENCIL_BUFFER, GL_STENCIL_INDEX );
+        }
     }
 
     osg::StateSet* rttStateSet = pvd._rttCamera->getOrCreateStateSet();
@@ -419,6 +422,18 @@ OverlayDecorator::setOverlayBlending( bool value )
         if ( _rttBlending )
             OE_INFO << LC << "Overlay blending " << (value?"enabled":"disabled")<< std::endl;
     }
+}
+
+bool
+OverlayDecorator::getAttachStencil() const
+{
+    return _attachStencil;
+}
+
+void
+OverlayDecorator::setAttachStencil( bool value )
+{
+    _attachStencil = value;            
 }
 
 void

@@ -103,6 +103,14 @@ namespace osgEarth
         void setOverlayBlending( bool value );
         bool getOverlayBlending() const { return _rttBlending; }
 
+
+        /**
+         * Whether to attach the RTT to camera to the stencil buffer.  Default = true.
+         * Some older cards don't have very good support 
+         */
+        void setAttachStencil( bool value );
+        bool getAttachStencil() const;
+
         void setOverlayGraphTraversalMask( unsigned mask );
 
     public: // TerrainDecorator
@@ -127,6 +135,7 @@ namespace osgEarth
         unsigned                      _rttTraversalMask;
         
         double                        _maxHorizonDistance;
+        bool                          _attachStencil;
 
         osg::ref_ptr<const SpatialReference>    _srs;
         osg::ref_ptr<const osg::EllipsoidModel> _ellipsoid;

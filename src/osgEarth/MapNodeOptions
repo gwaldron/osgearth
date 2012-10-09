@@ -77,6 +77,12 @@ namespace osgEarth
         const optional<bool>& overlayMipMapping() const { return _overlayMipMapping; }
 
         /**
+         * Whether to attach the RTT camera to the stencil buffer
+         */
+        optional<bool>& overlayAttachStencil() { return _overlayAttachStencil; }
+        const optional<bool>& overlayAttachStencil() const { return _overlayAttachStencil; }
+
+        /**
          * Options to conigure the terrain engine (the component that renders the
          * terrain surface).
          */
@@ -98,6 +104,7 @@ namespace osgEarth
         optional<bool>     _overlayBlending;
         optional<unsigned> _overlayTextureSize;
         optional<bool>     _overlayMipMapping;
+        optional<bool>     _overlayAttachStencil;
 
         optional<Config> _terrainOptionsConf;
         TerrainOptions* _terrainOptions;

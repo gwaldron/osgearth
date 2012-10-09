@@ -88,6 +88,7 @@ LabelNode::init( const Style& style )
 
     osg::StateSet* stateSet = _geode->getOrCreateStateSet();
     stateSet->setAttributeAndModes( new osg::Depth(osg::Depth::ALWAYS, 0, 1, false), 1 );
+    stateSet->setRenderBinDetails(INT_MAX, "RenderBin");	// Force labels nodes to be drawn last
 
     AnnotationUtils::installAnnotationProgram( stateSet );
 

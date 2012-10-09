@@ -679,14 +679,18 @@ HTTPClient::doGet( const HTTPRequest& request, const osgDB::Options* options, Pr
         bufStr = buf.str();
         proxy_addr = bufStr;
     
-        OE_DEBUG << LC << "setting proxy: " << proxy_addr << std::endl;
+        if ( s_HTTP_DEBUG )
+            OE_NOTICE << LC << "Using proxy: " << proxy_addr << std::endl;
+
         //curl_easy_setopt( _curl_handle, CURLOPT_HTTPPROXYTUNNEL, 1 ); 
         curl_easy_setopt( _curl_handle, CURLOPT_PROXY, proxy_addr.c_str() );
 
         //Setup the proxy authentication if setup
         if (!proxy_auth.empty())
         {
-            OE_DEBUG << LC << "Setting up proxy authentication " << proxy_auth << std::endl;
+            if ( s_HTTP_DEBUG )
+                OE_NOTICE << LC << "Using proxy authentication " << proxy_auth << std::endl;
+
             curl_easy_setopt( _curl_handle, CURLOPT_PROXYUSERPWD, proxy_auth.c_str());
         }
     }
@@ -768,8 +772,12 @@ HTTPClient::doGet( const HTTPRequest& request, const osgDB::Options* options, Pr
         if (!proxy_addr.empty())
         {
             long connect_code = 0L;
-            curl_easy_getinfo( _curl_handle, CURLINFO_HTTP_CONNECTCODE, &connect_code );
-            OE_DEBUG << LC << "proxy connect code " << connect_code << std::endl;
+            CURLcode r = curl_easy_getinfo(_curl_handle, CURLINFO_HTTP_CONNECTCODE, &connect_code);
+            if ( r != CURLE_OK )
+            {
+                OE_WARN << LC << "Proxy connect error: " << curl_easy_strerror(r) << std::endl;
+                return HTTPResponse(0);
+            }
         }
         
         curl_easy_getinfo( _curl_handle, CURLINFO_RESPONSE_CODE, &response_code );

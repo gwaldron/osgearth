@@ -181,6 +181,29 @@ namespace
                 hfLayer->setLocator( GeoLocator::createForKey( _key, mapInfo ) );
 
                 _model->_elevationData = TileModel::ElevationData(hfLayer, isFallback);
+
+
+                if ( false )
+                {
+                    // next, query the neighboring tiles to get adjacency information.
+                    for( int x=-1; x<=1; x++ )
+                    {
+                        for( int y=-1; y<=1; y++ )
+                        {
+                            if ( x != 0 || y != 0 )
+                            {
+                                TileKey nk = _key.createNeighborKey(x, y);
+                                if ( nk.valid() )
+                                {
+                                    if ( _mapf->getHeightField(nk, true, hf, &isFallback) )
+                                    {
+                                        _model->_elevationData.setNeighbor( 3*(y+1)+(x+1), hf.get() );
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
             }
         }
 

@@ -194,13 +194,16 @@ OverlayDecorator::initializePerViewData( PerViewData& pvd )
         // try a depth-packed buffer. failing that, try a normal one.. if the FBO doesn't support
         // that (which is doesn't on some GPUs like Intel), it will automatically fall back on 
         // a PBUFFER_RTT impl
-        if ( Registry::instance()->getCapabilities().supportsDepthPackedStencilBuffer() ){
+        if ( Registry::instance()->getCapabilities().supportsDepthPackedStencilBuffer() )
+        {
 #ifdef OSG_GLES2_AVAILABLE 
             pvd._rttCamera->attach( osg::Camera::PACKED_DEPTH_STENCIL_BUFFER, GL_DEPTH24_STENCIL8_EXT );
 #else
             pvd._rttCamera->attach( osg::Camera::PACKED_DEPTH_STENCIL_BUFFER, GL_DEPTH_STENCIL_EXT );
 #endif
-        }else{
+        }
+        else
+        {
             pvd._rttCamera->attach( osg::Camera::STENCIL_BUFFER, GL_STENCIL_INDEX );
         }
     }
@@ -218,9 +221,6 @@ OverlayDecorator::initializePerViewData( PerViewData& pvd )
     
     if ( _rttBlending )
     {
-        //osg::BlendFunc* blendFunc = new osg::BlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
-        //osg::BlendFunc* blendFunc = new osg::BlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-
         //Setup a separate blend function for the alpha components and the RGB components.  
         //Because the destination alpha is initialized to 0 instead of 1
         osg::BlendFunc* blendFunc = 0;        

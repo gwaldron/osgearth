@@ -111,12 +111,12 @@ _useLightingShaders( true )
 
 VirtualProgram::VirtualProgram(const VirtualProgram& rhs, const osg::CopyOp& copyop ) :
 osg::StateAttribute( rhs, copyop ),
-//osg::Program( rhs, copyop ),
 _shaderMap         ( rhs._shaderMap ),
 _mask              ( rhs._mask ),
 _functions         ( rhs._functions ),
 _inherit           ( rhs._inherit ),
-_useLightingShaders( rhs._useLightingShaders )
+_useLightingShaders( rhs._useLightingShaders ),
+_template          ( osg::clone(rhs._template.get()) )
 {
     //nop
 }
@@ -312,39 +312,41 @@ VirtualProgram::addToAccumulatedMap(ShaderMap&         accumShaderMap,
 
 
 void
-VirtualProgram::installDefaultColoringAndLightingShaders( unsigned numTextures )
+VirtualProgram::installDefaultColoringAndLightingShaders(unsigned                           numTextures,
+                                                         osg::StateAttribute::OverrideValue qual )
 {
     ShaderFactory* sf = osgEarth::Registry::instance()->getShaderFactory();
 
-    this->setShader( sf->createDefaultColoringVertexShader(numTextures) );
-    this->setShader( sf->createDefaultLightingVertexShader() );
+    this->setShader( sf->createDefaultColoringVertexShader(numTextures), qual );
+    this->setShader( sf->createDefaultLightingVertexShader(), qual );
 
-    this->setShader( sf->createDefaultColoringFragmentShader(numTextures) );
-    this->setShader( sf->createDefaultLightingFragmentShader() );
+    this->setShader( sf->createDefaultColoringFragmentShader(numTextures), qual );
+    this->setShader( sf->createDefaultLightingFragmentShader(), qual );
 
     setUseLightingShaders( true );
 }
 
 
 void
-VirtualProgram::installDefaultLightingShaders()
+VirtualProgram::installDefaultLightingShaders(osg::StateAttribute::OverrideValue qual)
 {
     ShaderFactory* sf = osgEarth::Registry::instance()->getShaderFactory();
 
-    this->setShader( sf->createDefaultLightingVertexShader() );
-    this->setShader( sf->createDefaultLightingFragmentShader() );
+    this->setShader( sf->createDefaultLightingVertexShader(), qual );
+    this->setShader( sf->createDefaultLightingFragmentShader(), qual );
 
     setUseLightingShaders( true );
 }
 
 
 void
-VirtualProgram::installDefaultColoringShaders( unsigned numTextures )
+VirtualProgram::installDefaultColoringShaders(unsigned                           numTextures,
+                                              osg::StateAttribute::OverrideValue qual )
 {
     ShaderFactory* sf = osgEarth::Registry::instance()->getShaderFactory();
 
-    this->setShader( sf->createDefaultColoringVertexShader(numTextures) );
-    this->setShader( sf->createDefaultColoringFragmentShader(numTextures) );
+    this->setShader( sf->createDefaultColoringVertexShader(numTextures), qual );
+    this->setShader( sf->createDefaultColoringFragmentShader(numTextures), qual );
 }
 
 

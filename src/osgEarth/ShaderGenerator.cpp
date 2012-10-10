@@ -17,12 +17,11 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 
-#include <osgEarth/ShaderGenerator>
-#include <osgEarth/VirtualProgram>
-#include <osgEarth/ShaderFactory>
-#include <osgEarth/StringUtils>
-#include <osgEarth/Registry>
 #include <osgEarth/Capabilities>
+#include <osgEarth/Registry>
+#include <osgEarth/ShaderFactory>
+#include <osgEarth/ShaderGenerator>
+#include <osgEarth/StringUtils>
 
 #include <osg/Drawable>
 #include <osg/Geode>
@@ -137,6 +136,8 @@ osg::NodeVisitor( osg::NodeVisitor::TRAVERSE_ALL_CHILDREN )
 {
     _state = new StateEx();
     _stateSetCache = new StateSetCache();
+    _defaultVP = new VirtualProgram();
+    _defaultVP->installDefaultColoringAndLightingShaders();
 }
 
 
@@ -145,6 +146,8 @@ osg::NodeVisitor( osg::NodeVisitor::TRAVERSE_ALL_CHILDREN )
 {
     _state = new StateEx();
     _stateSetCache = cache ? cache : new StateSetCache();
+    _defaultVP = new VirtualProgram();
+    _defaultVP->installDefaultColoringAndLightingShaders();
 }
 
 
@@ -244,6 +247,12 @@ ShaderGenerator::generate( osg::StateSet* ss, osg::ref_ptr<osg::StateSet>& repla
     // New stateset that we'll merge with the existing one.
     osg::ref_ptr<osg::StateSet> newStateSet = new osg::StateSet();
 
+    // Install the default program for starters, if a VP is not already installed.
+    if ( !program )
+    {
+        newStateSet->setAttributeAndModes( _defaultVP.get(), osg::StateAttribute::ON );
+    }
+
     // check whether the lighting state has changed.
     if ( ss->getMode(GL_LIGHTING) != osg::StateAttribute::INHERIT )
     {
@@ -259,10 +268,14 @@ ShaderGenerator::generate( osg::StateSet* ss, osg::ref_ptr<osg::StateSet>& repla
         int texCount = state->getNumTextureAttributes();
 
         // check for an existing VirtualProgram; if found, we'll add to it.
-        // if not, we'll make a new one.
+        // if not, we'll clone the default and modify it.
         osg::ref_ptr<VirtualProgram> vp = dynamic_cast<VirtualProgram*>(program);
         if ( !vp.valid() )
-            vp = new VirtualProgram();
+        {
+            vp = osg::clone( _defaultVP.get() );
+            //vp = new VirtualProgram();
+            //vp->installDefaultColoringAndLightingShaders();
+        }
 
         // start generating the shader source.
         std::stringstream vertHead, vertBody, fragHead, fragBody;
@@ -278,7 +291,6 @@ ShaderGenerator::generate( osg::StateSet* ss, osg::ref_ptr<osg::StateSet>& repla
 
         for( int t = 0; t < texCount; ++t )
         {
-            //todo: consider TexEnv for DECAL/MODULATE
             if (t == 0)
             {
                 fragBody << INDENT << MEDIUMP "vec4 texel; \n";

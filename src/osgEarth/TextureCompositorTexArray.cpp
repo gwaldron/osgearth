@@ -421,11 +421,13 @@ TextureCompositorTexArray::updateMasterStateSet( osg::StateSet* stateSet, const 
 
     vp->setShader(
         "osgearth_vert_setupColoring",
-        s_createTextureVertSetupShaderFunction(layout) );
+        s_createTextureVertSetupShaderFunction(layout),
+        osg::StateAttribute::ON | osg::StateAttribute::PROTECTED );
 
     vp->setShader( 
         "osgearth_frag_applyColoring", 
-        s_createTextureFragShaderFunction(layout, true, _lodTransitionTime ) );
+        s_createTextureFragShaderFunction(layout, true, _lodTransitionTime ),
+        osg::StateAttribute::ON | osg::StateAttribute::PROTECTED );
 }
 
 osg::Shader*

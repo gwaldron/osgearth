@@ -28,7 +28,8 @@ _initialized( false ),
 _map        ( map ),
 _name       ( name ),
 _mapInfo    ( map ),
-_parts      ( parts )
+_parts      ( parts ),
+_hfcache    ( true, 128 )
 {
     sync();
 }
@@ -44,7 +45,8 @@ _mapDataModelRevision( src._mapDataModelRevision ),
 _imageLayers         ( src._imageLayers ),
 _elevationLayers     ( src._elevationLayers ),
 _modelLayers         ( src._modelLayers ),
-_maskLayers          ( src._maskLayers )
+_maskLayers          ( src._maskLayers ),
+_hfcache             ( true, 128 )
 {
     //no sync required here; we copied the arrays etc
 }
@@ -53,9 +55,15 @@ _maskLayers          ( src._maskLayers )
 bool
 MapFrame::sync()
 {
+    bool changed = false;
+
     if ( _map.valid() )
     {
-        return _map->sync( *this );
+        changed = _map->sync( *this );
+        if ( changed )
+        {
+            _hfcache.clear();
+        }
     }
     else
     {
@@ -63,8 +71,10 @@ MapFrame::sync()
         _elevationLayers.clear();
         _modelLayers.clear();
         _maskLayers.clear();
-        return false;
+        _hfcache.clear();
     }
+
+    return changed;
 }
 
 
@@ -77,17 +87,50 @@ MapFrame::getHeightField(const TileKey&                  key,
                          ElevationSamplePolicy           samplePolicy,
                          ProgressCallback*               progress) const
 {
-    if ( !_map.valid() ) return false;
+    if ( !_map.valid() ) 
+        return false;
 
-    return _elevationLayers.createHeightField(
+    // check the quick cache.
+    HFKey cachekey;
+    cachekey._key          = key;
+    cachekey._fallback     = fallback;
+    cachekey._convertToHAE = convertToHAE;
+    cachekey._samplePolicy = samplePolicy;
+    LRUCache<HFKey,HFValue>::Record rec = _hfcache.get( cachekey );
+    if ( rec.valid() )
+    {
+        out_hf = rec.value()._hf.get();
+        if ( out_isFallback )
+            *out_isFallback = rec.value()._isFallback;
+        return true;
+    }
+
+    // go to the source.
+    bool isFallback;
+
+    bool ok = _elevationLayers.createHeightField(
         key,
         fallback, 
         convertToHAE ? _map->getProfileNoVDatum() : 0L,
         _mapInfo.getElevationInterpolation(), 
         samplePolicy, 
         out_hf, 
-        out_isFallback,
+        &isFallback,
         progress );
+
+    if ( ok )
+    {
+        if ( out_isFallback )
+            *out_isFallback = isFallback;
+
+        // cache me
+        HFValue cacheval;
+        cacheval._hf = out_hf.get();
+        cacheval._isFallback = isFallback;
+        _hfcache.insert( cachekey, cacheval );
+    }
+
+    return ok;
 }
 
 

@@ -22,6 +22,7 @@
 #include <osgEarth/Common>
 #include <osgEarth/ThreadingUtils>
 #include <list>
+#include <vector>
 
 namespace osgEarth
 {

@@ -403,6 +403,9 @@ TextureCompositorMultiTexture::updateMasterStateSet(osg::StateSet*       stateSe
         // see if we have any blended layers:
         bool hasBlending = layout.containsSecondarySlots( maxUnits );
 
+        // Why are these marked as PROTECTED? See the comments in MapNode.cpp for the answer.
+        // (Where it sets up the top-level VirtualProgram)
+
         vp->setShader(
             "osgearth_vert_setupColoring",
             s_createTextureVertexShader(layout, hasBlending),

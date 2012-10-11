@@ -38,10 +38,10 @@ namespace osgEarth { namespace Util
         virtual ~BrightnessContrastColorFilter() { }
 
         /**
-        * The brightness and contrast as percentages of the incoming pixel value.
-        * (For example, brightness => 1.2 to increase brightness by 20%.)
+        * The brightness and contrast adjusts the incoming pixel value.
+        * (For example, brightness => 0.0 is not change. => 1.0 is all white. => -1.0 is all black)
         *
-        * Range is [0..inf], results are clamped to [0..1].
+        * Range is [-1..1], results are clamped to [0..1].
         */
         void setBrightnessContrast(const osg::Vec2f& bc);
         osg::Vec2f getBrightnessContrast(void) const;

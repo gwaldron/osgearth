@@ -82,6 +82,9 @@ namespace osgEarth
         optional<int>& L2CacheSize() { return _L2CacheSize; }
         const optional<int>& L2CacheSize() const { return _L2CacheSize; }
 
+        optional<bool>& bilinearReprojection() { return _bilinearReprojection; }
+        const optional<bool>& bilinearReprojection() const { return _bilinearReprojection; }
+
     public:
         TileSourceOptions( const ConfigOptions& options =ConfigOptions() );
 
@@ -102,6 +105,7 @@ namespace osgEarth
         optional<ProfileOptions> _profileOptions;
         optional<std::string>    _blacklistFilename;
         optional<int>            _L2CacheSize;
+        optional<bool>           _bilinearReprojection;
     };
 
     typedef std::vector<TileSourceOptions> TileSourceOptionsVector;

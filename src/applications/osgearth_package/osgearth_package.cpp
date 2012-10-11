@@ -64,6 +64,7 @@ usage( const std::string& msg = "" )
         << "            [--ext <extension>]             : overrides the image file extension (e.g. jpg)\n"
         << "            [--overwrite]                   : overwrite existing tiles\n"
         << "            [--keep-empties]                : writes out fully transparent image tiles (normally discarded)\n"
+        << "            [--db-options]                : db options string to pass to the image writer in quotes (e.g., \"JPEG_QUALITY 60\")\n"
 #if 0
         << std::endl
         << "         --tfs                   : make a TFS repo" << std::endl
@@ -117,9 +118,9 @@ makeTMS( osg::ArgumentParser& args )
 
     // find a .earth file on the command line
     std::string earthFile = findArgumentWithExtension(args, ".earth");
-    if ( earthFile.empty() )
+ /*   if ( earthFile.empty() )
         return usage( "Missing required .earth file" );
-
+        */
     // folder to which to write the TMS archive.
     std::string rootFolder;
     if ( !args.read( "--out", rootFolder ) )
@@ -133,6 +134,17 @@ makeTMS( osg::ArgumentParser& args )
     // write out an earth file
     std::string outEarth;
     args.read("--out-earth", outEarth);
+
+    std::string dbOptions;
+    args.read("--db-options", dbOptions);
+    std::string::size_type n = 0;
+    while ((n=dbOptions.find('"', n))!=dbOptions.npos)
+    {
+        dbOptions.erase(n,1);
+    }
+
+    osg::ref_ptr<osgDB::Options> options = new osgDB::Options(dbOptions);
+
 
     std::vector< Bounds > bounds;
     // restrict packaging to user-specified bounds.    
@@ -164,7 +176,7 @@ makeTMS( osg::ArgumentParser& args )
     Map* map = mapNode->getMap();
 
     // fire up a packager:
-    TMSPackager packager( map->getProfile() );
+    TMSPackager packager( map->getProfile(), options);
 
     packager.setVerbose( verbose );
     packager.setOverwrite( overwrite );

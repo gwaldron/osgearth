@@ -45,7 +45,8 @@ _dataModelRevision   ( 0 )
 
     // if the map was a cache policy set, make this the system-wide default, UNLESS
     // there ALREADY IS a registry default, in which case THAT will override THIS one.
-    // (In other words, whichever one is set first wins.)
+    // (In other words, whichever one is set first wins. And of course, if the registry
+    // has an override set, that will cancel out all of this.)
     const optional<CachePolicy> regCachePolicy = Registry::instance()->defaultCachePolicy();
 
     if ( _mapOptions.cachePolicy().isSet() )

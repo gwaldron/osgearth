@@ -95,6 +95,8 @@ TrackNode::init( const TrackNodeFieldSchema& schema )
 
     AnnotationUtils::installAnnotationProgram( stateSet );
 
+    setLightingIfNotSet( false );
+
     getAttachPoint()->addChild( _geode );
 }
 
@@ -113,7 +115,7 @@ TrackNode::setFieldValue( const std::string& name, const osgText::String& value 
             if (drawable->getDataVariance() == osg::Object::DYNAMIC || this->getNumParents() == 0)
             {
                 // btw, setText checks for assigning an equal value, so we don't have to
-                drawable->setText( value );             
+                drawable->setText( value );
             }
             else
             {

@@ -72,6 +72,7 @@ osgEarth Sample - Annotations
                     stroke-width:     3;
                     extrusion-height: 30000;
                 </style>
+                <lighting>false</lighting>
             </feature>
             
             <local_geometry>
@@ -83,6 +84,7 @@ osgEarth Sample - Annotations
                     fill: #00ff00;
                     stroke: #ffff00;
                 </style>
+                <lighting>false</lighting>
             </local_geometry>
             
             <model>
@@ -95,6 +97,7 @@ osgEarth Sample - Annotations
                 <alpha>1.0</alpha>
                 <geometry>POLYGON((-81 26, -80.5 26, -80.5 26.5, -81 26.5))</geometry>
             </imageoverlay>
+            
             <label text="image overlay">
                 <position lat="26" long="-81" />
             </label>

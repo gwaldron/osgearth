@@ -32,13 +32,12 @@ using namespace osgEarth::Features;
 using namespace osgEarth::Symbology;
 
 
-RectangleNode::RectangleNode(
-            MapNode*          mapNode,
-            const GeoPoint&   position,
-            const Linear&     width,
-            const Linear&     height,
-            const Style&      style,
-            bool              draped ) :
+RectangleNode::RectangleNode(MapNode*          mapNode,
+                             const GeoPoint&   position,
+                             const Linear&     width,
+                             const Linear&     height,
+                             const Style&      style,
+                             bool              draped ) :
 LocalizedNode( mapNode, position, false ),
 _width       ( width ),
 _height      ( height ),
@@ -362,6 +361,8 @@ RectangleNode::rebuild()
         }
 
         applyStyle( _style );
+
+        setLightingIfNotSet( false );
     }
 
     setDecoration( currentDecoration );
@@ -377,7 +378,7 @@ OSGEARTH_REGISTER_ANNOTATION( rectangle, osgEarth::Annotation::RectangleNode );
 RectangleNode::RectangleNode(MapNode*              mapNode,
                              const Config&         conf,
                              const osgDB::Options* dbOptions) :
-LocalizedNode( mapNode ),
+LocalizedNode( mapNode, conf ),
 _draped      ( false )
 {
     conf.getObjIfSet( "width", _width );

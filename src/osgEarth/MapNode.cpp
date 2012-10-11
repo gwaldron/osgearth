@@ -315,6 +315,8 @@ MapNode::init()
         _overlayDecorator->setTextureSize( *_mapNodeOptions.overlayTextureSize() );
     if ( _mapNodeOptions.overlayMipMapping().isSet() )
         _overlayDecorator->setMipMapping( *_mapNodeOptions.overlayMipMapping() );
+    if ( _mapNodeOptions.overlayAttachStencil().isSet() )
+        _overlayDecorator->setAttachStencil( *_mapNodeOptions.overlayAttachStencil() );
 
     addTerrainDecorator( _overlayDecorator );
 
@@ -345,9 +347,14 @@ MapNode::init()
     // Install top-level shader programs:
     if ( Registry::capabilities().supportsGLSL() )
     {
+        // Note. We use OVERRIDE here so that child object that use the ShaderGenerator
+        // don't have to worry about installing default shaders. The usage pattern is
+        // to use PROTECTED mode if you want to override the defaults in (say) a ModelLayer
+        // or in a TextureCompositor.
+
         VirtualProgram* vp = new VirtualProgram();
         vp->setName( "MapNode" );
-        vp->installDefaultColoringAndLightingShaders();
+        vp->installDefaultColoringAndLightingShaders( osg::StateAttribute::ON | osg::StateAttribute::OVERRIDE );
         ss->setAttributeAndModes( vp, osg::StateAttribute::ON );
     }
 
@@ -367,7 +374,7 @@ MapNode::~MapNode()
     //Remove our model callback from any of the model layers in the map    
     for (osgEarth::ModelLayerVector::iterator itr = modelLayers.begin(); itr != modelLayers.end(); ++itr)
     {
-        this->onModelLayerRemoved( itr->get() );        
+        this->onModelLayerRemoved( itr->get() );
     }
 }
 

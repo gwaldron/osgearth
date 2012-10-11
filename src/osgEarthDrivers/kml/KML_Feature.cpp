@@ -19,6 +19,8 @@
 #include "KML_Feature"
 #include "KML_Style"
 #include "KML_StyleMap"
+#include <osg/UserDataContainer>
+#include <osg/ValueObject>
 #include <osgEarth/Viewpoint>
 
 using namespace osgEarth;
@@ -49,7 +51,7 @@ KML_Feature::build( const Config& conf, KMLContext& cx, osg::Node* working )
     {
         // parse the visibility to show/hide the item by default:
         if ( conf.hasValue("visibility") )
-            working->setNodeMask( conf.value<bool>("visibility",true) == true ? ~0 : 0 );
+            working->setNodeMask( conf.value<int>("visibility", 1) == 1 ? ~0 : 0 );
 
         // parse a "LookAt" element (stores a viewpoint)
         AnnotationData* anno = getOrCreateAnnotationData(working);
@@ -69,6 +71,16 @@ KML_Feature::build( const Config& conf, KMLContext& cx, osg::Node* working )
                 lookat.value<double>("range", 10000.0) );
 
             anno->setViewpoint( vp );
+        }
+
+        const Config& extdata = conf.child("extendeddata");
+        if ( !extdata.empty() )
+        {
+            ConfigSet innerConfs = extdata.children("data");
+            for( ConfigSet::const_iterator i = innerConfs.begin(); i != innerConfs.end(); ++i )
+            {
+                working->setUserValue(i->value("name"), i->value("value"));
+            }
         }
     }
 }

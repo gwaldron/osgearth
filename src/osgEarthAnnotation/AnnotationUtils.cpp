@@ -124,6 +124,11 @@ AnnotationUtils::createTextDrawable(const std::string& text,
     {
         t->setBackdropColor( symbol->halo()->color() );
         t->setBackdropType( osgText::Text::OUTLINE );
+
+        if ( symbol->haloOffset().isSet() )
+        {
+            t->setBackdropOffset( *symbol->haloOffset(), *symbol->haloOffset() );
+        }
     }
     else if ( !symbol )
     {
@@ -249,7 +254,6 @@ void
 AnnotationUtils::installAnnotationProgram( osg::StateSet* stateSet )
 {
     static Threading::Mutex           s_mutex;
-    //static osg::ref_ptr<osg::Program> s_program;
     static osg::ref_ptr<VirtualProgram> s_program;
     static osg::ref_ptr<osg::Uniform>   s_samplerUniform;
     static osg::ref_ptr<osg::Uniform>   s_defaultFadeUniform;
@@ -262,6 +266,9 @@ AnnotationUtils::installAnnotationProgram( osg::StateSet* stateSet )
         {
             std::string vertSource =
                 "#version " GLSL_VERSION_STR "\n"
+#ifdef OSG_GLES2_AVAILABLE
+                "precision mediump float;\n"
+#endif
                 //NOTE: Tom commented this out; I commented it back in b/c that breaks things 
                 //( //not sure why but these arn't merging properly, osg earth color funcs decalre it anyhow for now)
                 "varying vec4 osg_FrontColor; \n"
@@ -279,7 +286,6 @@ AnnotationUtils::installAnnotationProgram( osg::StateSet* stateSet )
 #endif
                 "uniform float " << UNIFORM_FADE()      << "; \n"
                 "uniform bool  " << UNIFORM_IS_TEXT()   << "; \n"
-                //"uniform bool  " << UNIFORM_HIGHLIGHT() << "; \n"
                 "uniform sampler2D oeAnno_tex0; \n"
                 "varying vec4 osg_FrontColor; \n"
                 "varying vec4 oeAnno_texCoord; \n"
@@ -294,10 +300,6 @@ AnnotationUtils::installAnnotationProgram( osg::StateSet* stateSet )
                 "    { \n"
                 "        color = osg_FrontColor * texture2D(oeAnno_tex0, oeAnno_texCoord.st) * vec4(1,1,1," << UNIFORM_FADE() << "); \n"
                 "    } \n"
-                //"    if (" << UNIFORM_HIGHLIGHT() << ") \n"
-                //"    { \n"
-                //"        color = vec4(color.r*1.5, color.g*0.5, color.b*0.25, color.a); \n"
-                //"    } \n"
                 "} \n";
 
             s_program = new VirtualProgram();
@@ -314,46 +316,6 @@ AnnotationUtils::installAnnotationProgram( osg::StateSet* stateSet )
 
             s_defaultIsTextUniform = new osg::Uniform(osg::Uniform::BOOL, "oeAnno_isText");
             s_defaultIsTextUniform->set( false );
-
-#if 0
-            std::string vert_source = // Stringify() <<
-                "#version 110 \n"
-                "void main() { \n"
-                "    osg_FrontColor = gl_Color; \n"
-                "    osg_TexCoord[0] = gl_MultiTexCoord0; \n"
-                "    gl_Position = gl_ModelViewProjectionMatrix * gl_Vertex; \n"
-                "} \n";
-
-            std::string frag_source = Stringify() <<
-#ifdef OSG_GLES2_AVAILABLE
-                "precision mediump float;\n"
-#endif
-                "uniform float     " << UNIFORM_FADE()      << "; \n"
-                "uniform bool      " << UNIFORM_IS_TEXT()   << "; \n"
-                "uniform bool      " << UNIFORM_HIGHLIGHT() << "; \n"
-                "uniform sampler2D tex0; \n"
-                "varying vec4 osg_TexCoord[" << Registry::instance()->getCapabilities().getMaxGPUTextureCoordSets() << "]; \n"
-                "varying vec4 osg_FrontColor; \n"
-                "void main() { \n"
-                "    vec4 color; \n"
-                "    if (" << UNIFORM_IS_TEXT() << ") { \n"
-                "        float alpha = texture2D(tex0,osg_TexCoord[0].st).a; \n"
-                "        color = vec4( osg_FrontColor.rgb, osg_FrontColor.a * alpha * " << UNIFORM_FADE() << "); \n"
-                "    } \n"
-                "    else { \n"
-                "        color = osg_FrontColor * texture2D(tex0,osg_TexCoord[0].st) * vec4(1,1,1," << UNIFORM_FADE() << "); \n"
-                "    } \n"
-                "    if (" << UNIFORM_HIGHLIGHT() << ") { \n"
-                "        color = vec4(color.r*1.5, color.g*0.5, color.b*0.25, color.a); \n"
-                "    } \n"
-                "    gl_FragColor = color; \n"
-                "} \n";
-
-            s_program = new osg::Program();
-            s_program->setName( PROGRAM_NAME() );
-            s_program->addShader( new osg::Shader(osg::Shader::VERTEX,   vert_source) );
-            s_program->addShader( new osg::Shader(osg::Shader::FRAGMENT, frag_source) );
-#endif
         }
     }
 

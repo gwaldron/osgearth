@@ -21,6 +21,7 @@
 #include <osgEarth/Registry>
 #include <osgEarth/Capabilities>
 #include <osgEarth/ShaderFactory>
+#include <osgEarth/ShaderUtils>
 #include <osg/Shader>
 #include <osg/Program>
 #include <osg/State>
@@ -35,22 +36,24 @@ using namespace osgEarth::ShaderComp;
 #define OE_TEST OE_NULL
 //#define OE_TEST OE_NOTICE
 
-#ifdef OSG_GLES2_AVAILABLE
-    #define MERGE_SHADERS 1
-#else
-    //#define MERGE_SHADERS 1
-#endif
-
 //------------------------------------------------------------------------
 
 #define VERTEX_MAIN             "osgearth_vert_main"
 #define FRAGMENT_MAIN           "osgearth_frag_main"
 
-#define OSGEARTH_DUMP_SHADERS "OSGEARTH_DUMP_SHADERS"
+// environment variable control
+#define OSGEARTH_DUMP_SHADERS  "OSGEARTH_DUMP_SHADERS"
+#define OSGEARTH_MERGE_SHADERS "OSGEARTH_MERGE_SHADERS"
 
 namespace
 {
-    bool s_dumpShaders = false;
+#ifdef OSG_GLES2_AVAILABLE
+    bool s_mergeShaders = true;
+#else
+    bool s_mergeShaders = false;
+#endif
+
+    bool s_dumpShaders = false;        // debugging
 
     /** A hack for OSG 2.8.x to get access to the state attribute vector. */
     /** TODO: no longer needed in OSG 3+ ?? */
@@ -94,6 +97,12 @@ _useLightingShaders( true )
         s_dumpShaders = true;
     }
 
+    // check the merge env var
+    if ( ::getenv(OSGEARTH_MERGE_SHADERS) != 0L )
+    {
+        s_mergeShaders = true;
+    }
+
     // a template object to hold program data (so we don't have to dupliate all the 
     // osg::Program methods..)
     _template = new osg::Program();
@@ -102,12 +111,12 @@ _useLightingShaders( true )
 
 VirtualProgram::VirtualProgram(const VirtualProgram& rhs, const osg::CopyOp& copyop ) :
 osg::StateAttribute( rhs, copyop ),
-//osg::Program( rhs, copyop ),
 _shaderMap         ( rhs._shaderMap ),
 _mask              ( rhs._mask ),
 _functions         ( rhs._functions ),
 _inherit           ( rhs._inherit ),
-_useLightingShaders( rhs._useLightingShaders )
+_useLightingShaders( rhs._useLightingShaders ),
+_template          ( osg::clone(rhs._template.get()) )
 {
     //nop
 }
@@ -204,6 +213,10 @@ VirtualProgram::setShader(osg::Shader*                       shader,
         return 0L;
     }
 
+    // pre-processes the shader's source to include GLES uniforms as necessary
+    // (no-op on non-GLES)
+    ShaderPreProcessor::run( shader );
+
     _shaderMap[shader->getName()] = ShaderEntry(shader, ov);
 
     return shader;
@@ -299,39 +312,41 @@ VirtualProgram::addToAccumulatedMap(ShaderMap&         accumShaderMap,
 
 
 void
-VirtualProgram::installDefaultColoringAndLightingShaders( unsigned numTextures )
+VirtualProgram::installDefaultColoringAndLightingShaders(unsigned                           numTextures,
+                                                         osg::StateAttribute::OverrideValue qual )
 {
     ShaderFactory* sf = osgEarth::Registry::instance()->getShaderFactory();
 
-    this->setShader( sf->createDefaultColoringVertexShader(numTextures) );
-    this->setShader( sf->createDefaultLightingVertexShader() );
+    this->setShader( sf->createDefaultColoringVertexShader(numTextures), qual );
+    this->setShader( sf->createDefaultLightingVertexShader(), qual );
 
-    this->setShader( sf->createDefaultColoringFragmentShader(numTextures) );
-    this->setShader( sf->createDefaultLightingFragmentShader() );
+    this->setShader( sf->createDefaultColoringFragmentShader(numTextures), qual );
+    this->setShader( sf->createDefaultLightingFragmentShader(), qual );
 
     setUseLightingShaders( true );
 }
 
 
 void
-VirtualProgram::installDefaultLightingShaders()
+VirtualProgram::installDefaultLightingShaders(osg::StateAttribute::OverrideValue qual)
 {
     ShaderFactory* sf = osgEarth::Registry::instance()->getShaderFactory();
 
-    this->setShader( sf->createDefaultLightingVertexShader() );
-    this->setShader( sf->createDefaultLightingFragmentShader() );
+    this->setShader( sf->createDefaultLightingVertexShader(), qual );
+    this->setShader( sf->createDefaultLightingFragmentShader(), qual );
 
     setUseLightingShaders( true );
 }
 
 
 void
-VirtualProgram::installDefaultColoringShaders( unsigned numTextures )
+VirtualProgram::installDefaultColoringShaders(unsigned                           numTextures,
+                                              osg::StateAttribute::OverrideValue qual )
 {
     ShaderFactory* sf = osgEarth::Registry::instance()->getShaderFactory();
 
-    this->setShader( sf->createDefaultColoringVertexShader(numTextures) );
-    this->setShader( sf->createDefaultColoringFragmentShader(numTextures) );
+    this->setShader( sf->createDefaultColoringVertexShader(numTextures), qual );
+    this->setShader( sf->createDefaultColoringFragmentShader(numTextures), qual );
 }
 
 
@@ -369,12 +384,14 @@ namespace
         StringVector lines;
         StringTokenizer( source, lines, "\n", "", true, false );
 
-        for( StringVector::const_iterator line = lines.begin(); line != lines.end(); ++line )
+        for( StringVector::const_iterator line_iter = lines.begin(); line_iter != lines.end(); ++line_iter )
         {
-            if ( line->size() > 0 )
+            std::string line = trim(*line_iter);
+
+            if ( line.size() > 0 )
             {
                 StringVector tokens;
-                StringTokenizer( *line, tokens, " \t", "", false, true );
+                StringTokenizer( line, tokens, " \t", "", false, true );
 
                 if (tokens[0] == "#version")
                 {
@@ -397,13 +414,13 @@ namespace
                     tokens[0] == "uniform"      ||
                     tokens[0] == "attribute")
                 {
-                    std::string& header = headers[*line];
-                    header = *line;
+                    std::string& header = headers[line];
+                    header = line;
                 }
 
                 else
                 {
-                    body << (*line) << "\n";
+                    body << (*line_iter) << "\n";
                 }
             }
         }
@@ -416,13 +433,7 @@ VirtualProgram::addShadersToProgram(const ShaderVector&      shaders,
                                     const AttribBindingList& attribBindings,
                                     osg::Program*            program )
 {
-#ifdef MERGE_SHADERS
-    bool mergeShaders = true;
-#else
-    bool mergeShaders = false;
-#endif
-
-    if ( mergeShaders )
+    if ( s_mergeShaders )
     {
         unsigned          vertVersion = 0;
         HeaderMap         vertHeaders;
@@ -471,9 +482,12 @@ VirtualProgram::addShadersToProgram(const ShaderVector&      shaders,
         program->addShader( new osg::Shader(osg::Shader::VERTEX, vertBodyText) );
         program->addShader( new osg::Shader(osg::Shader::FRAGMENT, fragBodyText) );
 
-        OE_TEST << LC 
-            << "\nMERGED VERTEX SHADER: \n\n" << vertBodyText << "\n\n"
-            << "MERGED FRAGMENT SHADER: \n\n" << fragBodyText << "\n" << std::endl;
+        if ( s_dumpShaders )
+        {
+            OE_NOTICE << LC 
+                << "\nMERGED VERTEX SHADER: \n\n" << vertBodyText << "\n\n"
+                << "MERGED FRAGMENT SHADER: \n\n" << fragBodyText << "\n" << std::endl;
+        }
     }
     else
     {
@@ -526,18 +540,6 @@ VirtualProgram::buildProgram(osg::State&        state,
     osg::ref_ptr<osg::Shader> oldFragMain = _fragMain.get();
     _fragMain = sf->createFragmentShaderMain( _accumulatedFunctions, _useLightingShaders );
 
-#if 0
-    osg::Shader* old_vert_main = getShader( VERTEX_MAIN );
-    osg::ref_ptr<osg::Shader> vert_main = sf->createVertexShaderMain( _accumulatedFunctions, _useLightingShaders );
-    setShader( VERTEX_MAIN, vert_main.get() );
-    addToAccumulatedMap( accumShaderMap, VERTEX_MAIN, ShaderEntry(vert_main.get(), osg::StateAttribute::ON) );
-
-    osg::Shader* old_frag_main = getShader( FRAGMENT_MAIN );
-    osg::ref_ptr<osg::Shader> frag_main = sf->createFragmentShaderMain( _accumulatedFunctions, _useLightingShaders );
-    setShader( FRAGMENT_MAIN, frag_main.get() );
-    addToAccumulatedMap( accumShaderMap, FRAGMENT_MAIN, ShaderEntry(frag_main.get(), osg::StateAttribute::ON) );
-#endif
-
     // rebuild the shader list now that we've changed the shader map.
     ShaderVector keyVector;
     for( ShaderMap::iterator i = accumShaderMap.begin(); i != accumShaderMap.end(); ++i )
@@ -564,7 +566,6 @@ VirtualProgram::buildProgram(osg::State&        state,
 
     // Since we replaced the "mains", we have to go through the cache and update all its
     // entries to point at the new mains instead of the old ones.
-//    if ( old_vert_main || old_frag_main )
     if ( oldVertMain.valid() || oldFragMain.valid() )
     {
         ProgramMap newProgramCache;
@@ -572,21 +573,6 @@ VirtualProgram::buildProgram(osg::State&        state,
         for( ProgramMap::iterator m = _programCache.begin(); m != _programCache.end(); ++m )
         {
             const ShaderVector& originalKey = m->first;
-
-#if 0
-            // build a new cache key:
-            ShaderVector newKey;
-
-            for( ShaderVector::const_iterator i = original.begin(); i != original.end(); ++i )
-            {
-                if ( i->get() == old_vert_main )
-                    newKey.push_back( vert_main.get() );
-                else if ( i->get() == old_frag_main )
-                    newKey.push_back( frag_main.get() );
-                else
-                    newKey.push_back( i->get() );
-            }
-#endif
 
             osg::Program* newProgram = new osg::Program();
             newProgram->setName( m->second->getName() );
@@ -598,7 +584,6 @@ VirtualProgram::buildProgram(osg::State&        state,
 
             addTemplateDataToProgram( newProgram );
 
-            //newProgramCache[newKey] = newProgram;
             newProgramCache[originalKey] = newProgram;
         }
 

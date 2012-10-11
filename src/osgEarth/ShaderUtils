@@ -45,19 +45,21 @@ namespace osgEarth
     * Container for light uniforms
     */
     //light product
-    class osg_LightProducts 
+    struct osg_LightProducts 
     { 
-    public:
         osg_LightProducts(int id);
         
         osg::ref_ptr<osg::Uniform> ambient; // vec4 
         osg::ref_ptr<osg::Uniform> diffuse; // vec4
         osg::ref_ptr<osg::Uniform> specular; //vec4
+
+        // GLSL strings
+        static std::string glslDefinition();
     };
-        
-    class osg_LightSourceParameters 
+
+
+    struct osg_LightSourceParameters 
     { 
-    public:
         osg_LightSourceParameters(int id);
         
         void setUniformsFromOsgLight(const osg::Light* light, osg::Matrix viewMatrix, const osg::Material* frontMat);
@@ -69,17 +71,30 @@ namespace osgEarth
         osg::ref_ptr<osg::Uniform>  position; // vec4
         osg::ref_ptr<osg::Uniform>  halfVector; // vec4 
         osg::ref_ptr<osg::Uniform>  spotDirection; // vec3 
-        osg::ref_ptr<osg::Uniform> spotExponent; // float
-        osg::ref_ptr<osg::Uniform> spotCutoff; // float
-        osg::ref_ptr<osg::Uniform> spotCosCutoff; // float
+        osg::ref_ptr<osg::Uniform>  spotExponent; // float
+        osg::ref_ptr<osg::Uniform>  spotCutoff; // float
+        osg::ref_ptr<osg::Uniform>  spotCosCutoff; // float
         osg::ref_ptr<osg::Uniform>  constantAttenuation; // float 
         osg::ref_ptr<osg::Uniform>  linearAttenuation; // float
         osg::ref_ptr<osg::Uniform>  quadraticAttenuation; // float
 
         //just store the light product in here
         osg_LightProducts _frontLightProduct;
+
+        // GLSL strings
+        static std::string glslDefinition();
     };
-    
+
+    /**
+     * Preprocesses GLES shader source to include our osg_LightProducts and osg_LightSourceParameters
+     * definitions and uniforms.
+     */
+    class OSGEARTH_EXPORT ShaderPreProcessor
+    {
+    public:
+        static void run(osg::Shader* shader);
+    };
+
     /**
      * A callback that will update the osgEarth lighting uniforms (based on the
      * FFP lighting state) if necessary.

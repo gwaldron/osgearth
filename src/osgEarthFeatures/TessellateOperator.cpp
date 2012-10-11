@@ -25,56 +25,55 @@ using namespace osgEarth::Symbology;
 
 //------------------------------------------------------------------------
 
-namespace
+void 
+TessellateOperator::tessellateLinear( const osg::Vec3d& p0, const osg::Vec3d& p1, unsigned parts, Vec3dVector& out )
 {
-    void tessellateLinear( const osg::Vec3d& p0, const osg::Vec3d& p1, unsigned parts, Vec3dVector& out )
+    osg::Vec3d vec = (p1-p0)/double(parts);
+    out.push_back( p0 );
+    for( unsigned i=1; i<parts; ++i )
     {
-        osg::Vec3d vec = (p1-p0)/double(parts);
-        out.push_back( p0 );
-        for( unsigned i=1; i<parts; ++i )
-        {
-            out.push_back( p0 + vec*double(i) );
-        }
+        out.push_back( p0 + vec*double(i) );
     }
+}
 
-    void tessellateGeo( const osg::Vec3d& p0, const osg::Vec3d& p1, unsigned parts, GeoInterpolation interp, Vec3dVector& out )
+void 
+TessellateOperator::tessellateGeo( const osg::Vec3d& p0, const osg::Vec3d& p1, unsigned parts, GeoInterpolation interp, Vec3dVector& out )
+{
+    double step = 1.0/double(parts);
+    double zdelta = p1.z() - p0.z();
+
+    out.push_back( p0 );
+
+    for( unsigned i=1; i<parts; ++i )
     {
-        double step = 1.0/double(parts);
-        double zdelta = p1.z() - p0.z();
+        double t = step*double(i);
+        osg::Vec3d p;
 
-        out.push_back( p0 );
-
-        for( unsigned i=1; i<parts; ++i )
+        if ( interp == GEOINTERP_GREAT_CIRCLE )
         {
-            double t = step*double(i);
-            osg::Vec3d p;
-
-            if ( interp == GEOINTERP_GREAT_CIRCLE )
-            {
-                double lat, lon;
-                GeoMath::interpolate(
-                    osg::DegreesToRadians(p0.y()), osg::DegreesToRadians(p0.x()),
-                    osg::DegreesToRadians(p1.y()), osg::DegreesToRadians(p1.x()),
-                    t,
-                    lat, lon );
-                p.set( osg::RadiansToDegrees(lon), osg::RadiansToDegrees(lat), p0.z() + t*zdelta );
-            }
-            else // GEOINTERP_RHUMB_LINE
-            {
-                double lat1 = osg::DegreesToRadians(p0.y()), lon1 = osg::DegreesToRadians(p1.x());
-                double lat2 = osg::DegreesToRadians(p1.y()), lon2 = osg::DegreesToRadians(p1.x());
-
-                double distance = GeoMath::rhumbDistance( lat1, lon1, lat2, lon2 );
-                double bearing  = GeoMath::rhumbBearing( lat1, lon1, lat2, lon2 );
-
-                double lat3, lon3;
-                GeoMath::rhumbDestination(lat1, lon1, bearing, distance, lat3, lon3);
-
-                p.set( osg::RadiansToDegrees(lon3), osg::RadiansToDegrees(lat3), p0.z() + t*zdelta );
-            }
-
-            out.push_back(p);
+            double lat, lon;
+            GeoMath::interpolate(
+                osg::DegreesToRadians(p0.y()), osg::DegreesToRadians(p0.x()),
+                osg::DegreesToRadians(p1.y()), osg::DegreesToRadians(p1.x()),
+                t,
+                lat, lon );
+            p.set( osg::RadiansToDegrees(lon), osg::RadiansToDegrees(lat), p0.z() + t*zdelta );
         }
+        else // GEOINTERP_RHUMB_LINE
+        {
+            double lat1 = osg::DegreesToRadians(p0.y()), lon1 = osg::DegreesToRadians(p1.x());
+            double lat2 = osg::DegreesToRadians(p1.y()), lon2 = osg::DegreesToRadians(p1.x());
+
+            double distance = GeoMath::rhumbDistance( lat1, lon1, lat2, lon2 );
+            double bearing  = GeoMath::rhumbBearing( lat1, lon1, lat2, lon2 );
+
+            double lat3, lon3;
+            GeoMath::rhumbDestination(lat1, lon1, bearing, distance, lat3, lon3);
+
+            p.set( osg::RadiansToDegrees(lon3), osg::RadiansToDegrees(lat3), p0.z() + t*zdelta );
+        }
+
+        out.push_back(p);
     }
 }
 

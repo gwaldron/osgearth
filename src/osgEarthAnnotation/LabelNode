@@ -90,9 +90,14 @@ namespace osgEarth { namespace Annotation
         const std::string& text() const { return _text; }
 
         /**
-         * Gets the text style.
+         * Gets a copy of the text style.
          */
         const Style style() const { return _style; }
+
+        /**
+         * Sets a new text style
+         */
+        void setStyle( const Style& style );
 
     public: // OrthoNode override
 
@@ -103,7 +108,7 @@ namespace osgEarth { namespace Annotation
         virtual Config getConfig() const;
 
     protected:
-        void init();
+        void init(const Style& style);
 
         std::string       _text;
         class osg::Geode* _geode;

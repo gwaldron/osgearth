@@ -145,14 +145,7 @@ namespace osgEarth
          * Default = 6.0.
          */
         optional<float>& minTileRangeFactor() { return _minTileRangeFactor; }
-        const optional<float>& minTileRangeFactor() const { return _minTileRangeFactor; }
-
-        /**
-         * Whether to monitor terrain tile boundaries and match up the vertices.
-         * Default = false.
-         */
-        optional<bool>& normalizeEdges() { return _normalizeEdges; }
-        const optional<bool>& normalizeEdges() const { return _normalizeEdges; }
+        const optional<float>& minTileRangeFactor() const { return _minTileRangeFactor; }        
 
         /**
          * Whether to apply the default layer combination logic using TexEnvCombine.
@@ -241,14 +234,14 @@ namespace osgEarth
         /**
          * The min filter to be applied to textures
          */
-        optional<osg::Texture::FilterMode> minFilter() { return _minFilter;}
-        const optional<osg::Texture::FilterMode> minFilter() const { return _minFilter;}
+        optional<osg::Texture::FilterMode>& minFilter() { return _minFilter;}
+        const optional<osg::Texture::FilterMode>& minFilter() const { return _minFilter;}
 
         /**
          * The mag filter to be applied to textures
          */
-        optional<osg::Texture::FilterMode> magFilter() { return _magFilter;}
-        const optional<osg::Texture::FilterMode> magFilter() const { return _magFilter;}
+        optional<osg::Texture::FilterMode>& magFilter() { return _magFilter;}
+        const optional<osg::Texture::FilterMode>& magFilter() const { return _magFilter;}
             
         /**
          * Whether to enable blending
@@ -294,8 +287,7 @@ namespace osgEarth
                     
         optional<float> _verticalScale;
         optional<float> _heightFieldSampleRatio;
-        optional<float> _minTileRangeFactor;
-        optional<bool> _normalizeEdges;
+        optional<float> _minTileRangeFactor;        
         optional<bool> _combineLayers;
         optional<LoadingPolicy> _loadingPolicy;
         optional<CompositingTechnique> _compositingTech;

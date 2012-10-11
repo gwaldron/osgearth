@@ -437,7 +437,24 @@ Feature::getGeoJSON()
     {
 
         for (AttributeTable::const_iterator itr = getAttrs().begin(); itr != getAttrs().end(); ++itr)
-            props[itr->first] = itr->second.getString();
+        {
+            if (itr->second.first == ATTRTYPE_INT)
+            {
+                props[itr->first] = itr->second.getInt();
+            }
+            else if (itr->second.first == ATTRTYPE_DOUBLE)
+            {
+                props[itr->first] = itr->second.getDouble();
+            }
+            else if (itr->second.first == ATTRTYPE_BOOL)
+            {
+                props[itr->first] = itr->second.getBool();
+            }
+            else
+            {
+                props[itr->first] = itr->second.getString();
+            }            
+        }
     } 
 
     root["properties"] = props;

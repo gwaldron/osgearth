@@ -21,9 +21,10 @@
 #define OSGEARTH_SHADER_GENERATOR_H 1
 
 #include <osgEarth/Common>
+#include <osgEarth/StateSetCache>
+#include <osgEarth/VirtualProgram>
 #include <osg/NodeVisitor>
 #include <osg/State>
-#include <osgEarth/StateSetCache>
 
 namespace osgEarth
 {
@@ -46,6 +47,7 @@ namespace osgEarth
          */
         ShaderGenerator( StateSetCache* cache );
 
+        /** dtor. */
         virtual ~ShaderGenerator() { }
 
 
@@ -64,6 +66,8 @@ namespace osgEarth
         osg::ref_ptr<osg::State> _state;
 
         osg::ref_ptr<StateSetCache> _stateSetCache;
+
+        osg::ref_ptr<VirtualProgram> _defaultVP;
     };
 
 } // namespace osgEarth

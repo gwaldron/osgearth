@@ -54,14 +54,17 @@ namespace
         buf << "varying vec4 osg_FrontColor; \n"
             << "varying vec4 osg_FrontSecondaryColor; \n";
 
+        // NOTE: always use the "max GPU coord sets" for texture coordinates 
+        // to support proper shader merging under GLES. -gw
+
         if ( slots.size() > 0 )
         {
-            buf << "varying vec4 osg_TexCoord[" << Registry::instance()->getCapabilities().getMaxGPUTextureCoordSets()  << "]; \n";
+            buf << "varying vec4 osg_TexCoord[" << Registry::capabilities().getMaxGPUTextureCoordSets()  << "]; \n";
         }
 
         if ( blending )
         {
-            buf << "uniform mat4 osgearth_TexBlendMatrix[" << Registry::instance()->getCapabilities().getMaxGPUTextureCoordSets() << "]; \n";
+            buf << "uniform mat4 osgearth_TexBlendMatrix[" << Registry::capabilities().getMaxGPUTextureCoordSets() << "]; \n";
         }
 
         buf << "void osgearth_vert_setupColoring() \n"
@@ -111,11 +114,6 @@ namespace
         buf << "precision mediump float;\n";
 #endif
 
-        if ( maxSlots > 0 )
-        {
-            buf << "varying vec4 osg_TexCoord[" << Registry::instance()->getCapabilities().getMaxGPUTextureCoordSets() << "]; \n";
-        }
-
         if ( blending )
         {
             buf << "#extension GL_ARB_shader_texture_lod : enable \n"
@@ -124,12 +122,15 @@ namespace
                 << "uniform float osgearth_LODRangeFactor; \n";
         }
 
-        buf << "uniform float osgearth_ImageLayerOpacity[" << maxSlots << "]; \n"
-            //The enabled array is a fixed size.  Make sure this corresponds EXCATLY to the size definition in TerrainEngineNode.cpp
-            << "uniform bool  osgearth_ImageLayerVisible[" << MAX_IMAGE_LAYERS << "]; \n"
-            << "uniform float osgearth_ImageLayerRange[" << 2 * maxSlots << "]; \n"
-            << "uniform float osgearth_ImageLayerAttenuation; \n"
-            << "uniform float osgearth_CameraElevation; \n";
+        if ( maxSlots > 0 )
+        {
+            buf << "varying vec4 osg_TexCoord[" << Registry::capabilities().getMaxGPUTextureCoordSets() << "]; \n"
+                << "uniform float osgearth_ImageLayerOpacity[" << maxSlots << "]; \n"
+                << "uniform bool  osgearth_ImageLayerVisible[" << maxSlots << "]; \n"
+                << "uniform float osgearth_ImageLayerRange[" << 2 * maxSlots << "]; \n"
+                << "uniform float osgearth_ImageLayerAttenuation; \n"
+                << "uniform float osgearth_CameraElevation; \n";
+        }
 
         const TextureLayout::TextureSlotVector& slots = layout.getTextureSlots();
 
@@ -300,25 +301,21 @@ namespace
 bool
 TextureCompositorMultiTexture::isSupported( bool useGPU )
 {
-    const Capabilities& caps = osgEarth::Registry::instance()->getCapabilities();
+    const Capabilities& caps = osgEarth::Registry::capabilities();
     if ( useGPU )
-#ifndef OSG_GLES2_AVAILABLE
-        return caps.supportsGLSL( 1.10f ) && caps.supportsMultiTexture();
-#else
-        return caps.supportsGLSL( 1.0f ) && caps.supportsMultiTexture();
-#endif
+        return caps.supportsGLSL() && caps.supportsMultiTexture();
     else
         return caps.supportsMultiTexture();
 }
 
 TextureCompositorMultiTexture::TextureCompositorMultiTexture( bool useGPU, const TerrainOptions& options ) :
 _lodTransitionTime( *options.lodTransitionTime() ),
-_enableMipmapping( *options.enableMipmapping() ),
-_minFilter( *options.minFilter() ),
-_magFilter( *options.magFilter() ),
-_useGPU( useGPU )
+_enableMipmapping ( *options.enableMipmapping() ),
+_minFilter        ( *options.minFilter() ),
+_magFilter        ( *options.magFilter() ),
+_useGPU           ( useGPU )
 {
-    _enableMipmappingOnUpdatedTextures = Registry::instance()->getCapabilities().supportsMipmappedTextureUpdates();
+    _enableMipmappingOnUpdatedTextures = Registry::capabilities().supportsMipmappedTextureUpdates();
 }
 
 void
@@ -403,24 +400,21 @@ TextureCompositorMultiTexture::updateMasterStateSet(osg::StateSet*       stateSe
         }
 
         VirtualProgram* vp = static_cast<VirtualProgram*>( stateSet->getAttribute(VirtualProgram::SA_TYPE) );
-        if ( maxUnits > 0 )
-        {
-            // see if we have any blended layers:
-            bool hasBlending = layout.containsSecondarySlots( maxUnits );
+        // see if we have any blended layers:
+        bool hasBlending = layout.containsSecondarySlots( maxUnits );
 
-            vp->setShader(
-                "osgearth_vert_setupColoring",
-                s_createTextureVertexShader(layout, hasBlending) );
+        // Why are these marked as PROTECTED? See the comments in MapNode.cpp for the answer.
+        // (Where it sets up the top-level VirtualProgram)
 
-            vp->setShader(
-                "osgearth_frag_applyColoring",
-                s_createTextureFragShaderFunction(layout, maxUnits, hasBlending, _lodTransitionTime ) );
-        }
-        else
-        {
-            vp->removeShader( "osgearth_frag_applyColoring" );
-            vp->removeShader( "osgearth_vert_setupColoring" );
-        }
+        vp->setShader(
+            "osgearth_vert_setupColoring",
+            s_createTextureVertexShader(layout, hasBlending),
+            osg::StateAttribute::ON | osg::StateAttribute::PROTECTED );
+
+        vp->setShader(
+            "osgearth_frag_applyColoring",
+            s_createTextureFragShaderFunction(layout, maxUnits, hasBlending, _lodTransitionTime),
+            osg::StateAttribute::ON | osg::StateAttribute::PROTECTED );
     }
 
     else
@@ -533,7 +527,7 @@ TextureCompositorMultiTexture::createSamplerFunction(UID layerUID,
         if ( type == osg::Shader::VERTEX )
             buf << "    return texture2D("<< makeSamplerName(slot) << ", gl_MultiTexCoord"<< slot <<".st); \n";
         else
-            buf << "    return texture2D("<< makeSamplerName(slot) << ", gl_TexCoord["<< slot << "].st); \n";
+            buf << "    return texture2D("<< makeSamplerName(slot) << ", osg_TexCoord["<< slot << "].st); \n";
 
         buf << "} \n";
 

@@ -354,7 +354,7 @@ TerrainEngineNode::updateImageUniforms()
         // layer count has changed, but the shader has not yet caught up. In the future we might use this to disable
         // "ghost" layers that used to exist at a given index, but no longer do.
         
-        _imageLayerController->_layerVisibleUniform.attach( "osgearth_ImageLayerVisible", osg::Uniform::BOOL,  stateSet, MAX_IMAGE_LAYERS );
+        _imageLayerController->_layerVisibleUniform.attach( "osgearth_ImageLayerVisible", osg::Uniform::BOOL,  stateSet, mapf.imageLayers().size() );
         _imageLayerController->_layerOpacityUniform.attach( "osgearth_ImageLayerOpacity", osg::Uniform::FLOAT, stateSet, mapf.imageLayers().size() );
         _imageLayerController->_layerRangeUniform.attach  ( "osgearth_ImageLayerRange",   osg::Uniform::FLOAT, stateSet, 2 * mapf.imageLayers().size() );
 
@@ -430,7 +430,7 @@ TerrainEngineNode::traverse( osg::NodeVisitor& nv )
         }
 
 
-        if ( Registry::instance()->getCapabilities().supportsGLSL() )
+        if ( Registry::capabilities().supportsGLSL() )
         {
             _updateLightingUniformsHelper.cullTraverse( this, &nv );
 

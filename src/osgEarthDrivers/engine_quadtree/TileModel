@@ -36,6 +36,19 @@ using namespace osgEarth;
 class TileModel : public osg::Referenced
 {
 public:
+    // do not change the order of these.
+    enum Neighbor
+    {
+        NORTHWEST = 0,
+        NORTH     = 1,
+        NORTHEAST = 2,
+        WEST      = 3,
+        EAST      = 4,
+        SOUTHWEST = 5,
+        SOUTH     = 6,
+        SOUTHEAST = 7
+    };
+
     class ElevationData
     {
     public:
@@ -46,10 +59,29 @@ public:
 
         osgTerrain::HeightFieldLayer* getHFLayer() const { return _hfLayer.get(); }
         bool isFallbackData() const { return _fallbackData; }
+        
+        osg::HeightField* getNeighbor(int xoffset, int yoffset) const
+        {
+            int index = getNeighborIndex(xoffset, yoffset);
+            return _neighbors[index];
+        }
+
+        void setNeighbor(int xoffset, int yoffset, osg::HeightField* hf )
+        {
+            int index = getNeighborIndex(xoffset, yoffset);
+            _neighbors[index] = hf;
+        }
 
     private:
+        static int getNeighborIndex(int xoffset, int yoffset)
+        {
+            int index = 3*(yoffset+1)+(xoffset+1);
+            if (index > 4) index--;
+            return index;
+        }
         osg::ref_ptr<osgTerrain::HeightFieldLayer> _hfLayer;
         bool _fallbackData;
+        osg::ref_ptr<osg::HeightField> _neighbors[8];
     };
 
 

@@ -340,132 +340,145 @@ namespace
     {
         ReadResult result;
 
-        if ( inputURI.empty() )
-            return result;
-
-        // establish our IO options:
-        const osgDB::Options* localOptions = dbOptions ? dbOptions : Registry::instance()->getDefaultOptions();
-
-        READ_FUNCTOR reader;
-
-        URI uri = inputURI;
-
-        // check if there's an alias map, and if so, attempt to resolve the alias:
-        URIAliasMap* aliasMap = URIAliasMap::from( localOptions );
-        if ( aliasMap )
+        if ( !inputURI.empty() )
         {
-            uri = aliasMap->resolve(inputURI.full(), inputURI.context());
-        }
+            // establish our IO options:
+            const osgDB::Options* localOptions = dbOptions ? dbOptions : Registry::instance()->getDefaultOptions();
 
-        // check if there's a URI cache in the options.
-        URIResultCache* memCache = URIResultCache::from( localOptions );
-        if ( memCache )
-        {
-            URIResultCache::Record r = memCache->get( uri );
-            if ( r.valid() ) result = r.value();
-        }
+            READ_FUNCTOR reader;
 
-        if ( result.empty() )
-        {
-            // see if there's a read callback installed.
-            URIReadCallback* cb = Registry::instance()->getURIReadCallback();
+            URI uri = inputURI;
 
-            // for a local URI, bypass all the caching logic
-            if ( !uri.isRemote() )
+            bool gotResultFromCallback = false;
+
+            // check if there's an alias map, and if so, attempt to resolve the alias:
+            URIAliasMap* aliasMap = URIAliasMap::from( localOptions );
+            if ( aliasMap )
             {
-                // try to use the callback if it's set. Callback ignores the caching policy.
-                if ( cb )
-                {
-                    result = reader.fromCallback( cb, uri.full(), localOptions );
-                    if (result.code() != ReadResult::RESULT_NOT_IMPLEMENTED)
-                    {
-                        // only "NOT_IMPLEMENTED" is a reason to fallback. Anything else if a FAIL
-                        return result;
-                    }
-                }
+                uri = aliasMap->resolve(inputURI.full(), inputURI.context());
+            }
 
-                if ( result.empty() )
+            // check if there's a URI cache in the options.
+            URIResultCache* memCache = URIResultCache::from( localOptions );
+            if ( memCache )
+            {
+                URIResultCache::Record r = memCache->get( uri );
+                if ( r.valid() )
                 {
-                    result = reader.fromFile( uri.full(), localOptions );
+                    result = r.value();
                 }
             }
 
-            // remote URI, consider caching:
-            else
+            if ( result.empty() )
             {
-                bool callbackCachingOK = !cb || reader.callbackRequestsCaching(cb);
+                // see if there's a read callback installed.
+                URIReadCallback* cb = Registry::instance()->getURIReadCallback();
 
-                // by default, use a CachePolicy specified by the caller:
-                optional<CachePolicy> cp;
-                CachePolicy::fromOptions( localOptions, cp );
-
-                // if not, use the system defult:
-                if ( !cp.isSet() && Registry::instance()->defaultCachePolicy().isSet() )
-                    cp =  Registry::instance()->defaultCachePolicy().value();
-                
-                // otherwise, just use a default (read/write)
-                if ( !cp.isSet() )
-                    cp = CachePolicy::DEFAULT;
-
-
-                // get a cache bin if we need it:
-                CacheBin* bin = 0L;
-                if ( (cp->usage() != CachePolicy::USAGE_NO_CACHE) && callbackCachingOK )
-                {
-                    bin = s_getCacheBin( dbOptions );
-                }
-
-                // first try to go to the cache if there is one:
-                if ( bin && cp->isCacheReadable() )
-                {
-                    result = reader.fromCache( bin, uri.cacheKey(), *cp->maxAge() );
-                    if ( result.succeeded() )
-                        result.setIsFromCache(true);
-                }
-
-                // not in the cache, so proceed to read it from the network.
-                if ( result.empty() )
+                // for a local URI, bypass all the caching logic
+                if ( !uri.isRemote() )
                 {
                     // try to use the callback if it's set. Callback ignores the caching policy.
                     if ( cb )
-                    {                
+                    {
+                        // if this returns "not implemented" we fill fall back
                         result = reader.fromCallback( cb, uri.full(), localOptions );
+
                         if ( result.code() != ReadResult::RESULT_NOT_IMPLEMENTED )
                         {
-                            return result;
+                            // "not implemented" is the only excuse to fall back.
+                            gotResultFromCallback = true;
                         }
                     }
 
-                    // still no data, go to the source:
-                    if ( result.empty() && cp->usage() != CachePolicy::USAGE_CACHE_ONLY )
+                    if ( !gotResultFromCallback )
                     {
-                        result = reader.fromHTTP( uri.full(), localOptions, progress );
-                    }
-
-                    // write the result to the cache if possible:
-                    if ( result.succeeded() && bin && cp->isCacheWriteable() )
-                    {
-                        bin->write( uri.cacheKey(), result.getObject(), result.metadata() );
+                        // no callback, just read from a local file.
+                        result = reader.fromFile( uri.full(), localOptions );
                     }
                 }
 
-                OE_TEST << LC 
-                    << uri.base() << ": " 
-                    << (result.succeeded() ? "OK" : "FAILED") 
-                    << "; policy=" << cp->usageString()
-                    << (result.isFromCache() && result.succeeded() ? "; (from cache)" : "")
-                    << std::endl;
-            }
-
-            if ( result.getObject() )
-            {
-                result.getObject()->setName( uri.base() );
-
-                if ( memCache )
+                // remote URI, consider caching:
+                else
                 {
-                    memCache->insert( uri, result );
+                    bool callbackCachingOK = !cb || reader.callbackRequestsCaching(cb);
+
+                    // establish the caching policy.
+                    optional<CachePolicy> cp;
+                    if ( !Registry::instance()->getCachePolicy( cp, localOptions ) )
+                        cp = CachePolicy::DEFAULT;
+
+                    // get a cache bin if we need it:
+                    CacheBin* bin = 0L;
+                    if ( (cp->usage() != CachePolicy::USAGE_NO_CACHE) && callbackCachingOK )
+                    {
+                        bin = s_getCacheBin( dbOptions );
+                    }
+
+                    // first try to go to the cache if there is one:
+                    if ( bin && cp->isCacheReadable() )
+                    {
+                        result = reader.fromCache( bin, uri.cacheKey(), *cp->maxAge() );
+                        if ( result.succeeded() )
+                            result.setIsFromCache(true);
+                    }
+
+                    // not in the cache, so proceed to read it from the network.
+                    if ( result.empty() )
+                    {
+                        // try to use the callback if it's set. Callback ignores the caching policy.
+                        if ( cb )
+                        {                
+                            result = reader.fromCallback( cb, uri.full(), localOptions );
+
+                            if ( result.code() != ReadResult::RESULT_NOT_IMPLEMENTED )
+                            {
+                                // "not implemented" is the only excuse for falling back
+                                gotResultFromCallback = true;
+                            }
+                        }
+
+                        if ( !gotResultFromCallback )
+                        {
+                            // still no data, go to the source:
+                            if ( result.empty() && cp->usage() != CachePolicy::USAGE_CACHE_ONLY )
+                            {
+                                result = reader.fromHTTP( uri.full(), localOptions, progress );
+                            }
+
+                            // write the result to the cache if possible:
+                            if ( result.succeeded() && bin && cp->isCacheWriteable() )
+                            {
+                                bin->write( uri.cacheKey(), result.getObject(), result.metadata() );
+                            }
+                        }
+                    }
+
+                    OE_TEST << LC 
+                        << uri.base() << ": " 
+                        << (result.succeeded() ? "OK" : "FAILED") 
+                        << "; policy=" << cp->usageString()
+                        << (result.isFromCache() && result.succeeded() ? "; (from cache)" : "")
+                        << std::endl;
+                }
+
+                    
+                if ( result.getObject() && !gotResultFromCallback )
+                {
+                    result.getObject()->setName( uri.base() );
+
+                    if ( memCache )
+                    {
+                        memCache->insert( uri, result );
+                    }
                 }
             }
+        }
+
+        // post-process if there's a post-URI callback.
+        URIPostReadCallback* post = URIPostReadCallback::from(dbOptions);
+        if ( post )
+        {
+            (*post)(result);
         }
 
         return result;

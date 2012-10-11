@@ -151,11 +151,19 @@ namespace osgEarth { namespace Annotation
          */
         virtual void setDepthAdjustment( bool value );
 
+        /**
+         * Sets a lighting override but only if lighting is not already set.
+         */
+        void setLightingIfNotSet( bool lighting );
+
         // utility funcion to make a geopoint absolute height
         bool makeAbsolute( GeoPoint& mapPoint, osg::Node* patch =0L ) const;
 
         // hidden default ctor
         AnnotationNode( MapNode* mapNode =0L );
+
+        // hidden config ctor
+        AnnotationNode( MapNode* mapNode, const Config& conf );
 
         // hidden copy ctor
         AnnotationNode(const AnnotationNode& rhs, const osg::CopyOp& op=osg::CopyOp::DEEP_COPY_ALL) { }
@@ -194,7 +202,14 @@ namespace osgEarth { namespace Annotation
 
     protected:
 
-        PositionedAnnotationNode(MapNode* mapNode =0L) : AnnotationNode(mapNode) { }
+        PositionedAnnotationNode()
+            : AnnotationNode() { }
+
+        PositionedAnnotationNode(MapNode* mapNode)
+            : AnnotationNode( mapNode ) { }
+
+        PositionedAnnotationNode(MapNode* mapNode, const Config& conf)
+            : AnnotationNode( mapNode, conf ) { }
         
     };
 

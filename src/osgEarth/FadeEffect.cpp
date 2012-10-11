@@ -28,24 +28,30 @@ namespace
 {
     char* FadeEffectVertexShader =
         "#version " GLSL_VERSION_STR "\n"
-        "uniform float osgearth_FadeEffect_duration; \n"
-        "uniform float osgearth_FadeEffect_startTime; \n"
+#ifdef OSG_GLES2_AVAILABLE
+        "precision mediump float; \n"
+#endif
+        "uniform float oe_FadeEffect_duration; \n"
+        "uniform float oe_FadeEffect_startTime; \n"
         "uniform float osg_FrameTime; \n"
-        "varying float osgearth_FadeEffect_opacity; \n"
+        "varying float oe_FadeEffect_opacity; \n"
 
-        "void vertFadeEffect() \n"
+        "void oe_vertFadeEffect() \n"
         "{ \n"
-        "    float t = (osg_FrameTime-osgearth_FadeEffect_startTime)/osgearth_FadeEffect_duration; \n"
-        "    osgearth_FadeEffect_opacity = clamp( t, 0.0, 1.0 ); \n"
+        "    float t = (osg_FrameTime-oe_FadeEffect_startTime)/oe_FadeEffect_duration; \n"
+        "    oe_FadeEffect_opacity = clamp( t, 0.0, 1.0 ); \n"
         "} \n";
 
     char* FadeEffectFragmentShader = 
         "#version " GLSL_VERSION_STR "\n"
-        "varying float osgearth_FadeEffect_opacity; \n"
+#ifdef OSG_GLES2_AVAILABLE
+        "precision mediump float; \n"
+#endif
+        "varying float oe_FadeEffect_opacity; \n"
 
-        "void fragFadeEffect( inout vec4 color ) \n"
+        "void oe_fragFadeEffect( inout vec4 color ) \n"
         "{ \n"
-        "    color.a *= osgearth_FadeEffect_opacity; \n"
+        "    color.a *= oe_FadeEffect_opacity; \n"
         "} \n";
 }
 
@@ -54,7 +60,7 @@ namespace
 osg::Uniform*
 FadeEffect::createStartTimeUniform()
 {
-    return new osg::Uniform( osg::Uniform::FLOAT, "osgearth_FadeEffect_startTime" );
+    return new osg::Uniform( osg::Uniform::FLOAT, "oe_FadeEffect_startTime" );
 }
 
 FadeEffect::FadeEffect()
@@ -63,12 +69,12 @@ FadeEffect::FadeEffect()
 
     VirtualProgram* vp = new VirtualProgram();
 
-    vp->setFunction( "vertFadeEffect", FadeEffectVertexShader,   ShaderComp::LOCATION_VERTEX_POST_LIGHTING );
-    vp->setFunction( "fragFadeEffect", FadeEffectFragmentShader, ShaderComp::LOCATION_FRAGMENT_PRE_LIGHTING );
+    vp->setFunction( "oe_vertFadeEffect", FadeEffectVertexShader,   ShaderComp::LOCATION_VERTEX_POST_LIGHTING );
+    vp->setFunction( "oe_fragFadeEffect", FadeEffectFragmentShader, ShaderComp::LOCATION_FRAGMENT_PRE_LIGHTING );
 
     ss->setAttributeAndModes( vp, osg::StateAttribute::ON );
 
-    _fadeDuration = new osg::Uniform( osg::Uniform::FLOAT, "osgearth_FadeEffect_duration" );
+    _fadeDuration = new osg::Uniform( osg::Uniform::FLOAT, "oe_FadeEffect_duration" );
     _fadeDuration->set( 1.0f );
     ss->addUniform( _fadeDuration );
 
@@ -95,10 +101,13 @@ namespace
 {
     char* FadeLODFragmentShader = 
         "#version " GLSL_VERSION_STR "\n"
-        "varying float osgearth_FadeLOD_opacity; \n"
-        "void fragFadeLOD( inout vec4 color ) \n"
+#ifdef OSG_GLES_AVAILABLE
+        "precision mediump float; \n"
+#endif
+        "varying float oe_FadeLOD_opacity; \n"
+        "void oe_fragFadeLOD( inout vec4 color ) \n"
         "{ \n"
-        "    color.a *= osgearth_FadeLOD_opacity; \n"
+        "    color.a *= oe_FadeLOD_opacity; \n"
         "} \n";
 }
 
@@ -116,7 +125,7 @@ _maxFadeExtent ( 0.0f )
     VirtualProgram* vp = new VirtualProgram();
 
     vp->setFunction(
-        "fragFadeLOD",
+        "oe_fragFadeLOD",
         FadeLODFragmentShader,
         ShaderComp::LOCATION_FRAGMENT_PRE_LIGHTING );
 
@@ -135,7 +144,7 @@ FadeLOD::traverse( osg::NodeVisitor& nv )
         PerViewData& data = _perViewData.get(cv);
         if ( !data._opacity.valid() )
         {
-            data._opacity = new osg::Uniform(osg::Uniform::FLOAT, "osgearth_FadeLOD_opacity");
+            data._opacity = new osg::Uniform(osg::Uniform::FLOAT, "oe_FadeLOD_opacity");
             data._stateSet = new osg::StateSet();
             data._stateSet->addUniform( data._opacity.get() );
         }

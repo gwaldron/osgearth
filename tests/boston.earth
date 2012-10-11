@@ -73,9 +73,7 @@ to extruded buildings.
                     fill:             #ffffff;
                 }
             </style>
-        </styles>
-
-        <lighting>true</lighting>        
+        </styles>   
     </model>
     
     <external>

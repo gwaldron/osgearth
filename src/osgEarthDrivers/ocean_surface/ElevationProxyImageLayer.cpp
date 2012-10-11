@@ -32,6 +32,7 @@ void
 ElevationProxyImageLayer::initTileSource()
 {
     _tileSourceInitAttempted = true;
+    _tileSourceInitFailed    = true;
 }
 
 bool

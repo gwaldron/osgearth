@@ -33,12 +33,12 @@ namespace osgEarth { namespace Symbology
     class OSGEARTHSYMBOLOGY_EXPORT TextSymbol : public Symbol
     {
     public:
-		enum Encoding {
+        enum Encoding {
             ENCODING_ASCII,
             ENCODING_UTF8,
             ENCODING_UTF16,
-			ENCODING_UTF32
-		};
+            ENCODING_UTF32
+        };
 
         // note: these are identical to the values in osgText::Text::AlignmentType
         enum Alignment {
@@ -77,6 +77,10 @@ namespace osgEarth { namespace Symbology
         /** Text outline color. */
         optional<Stroke>& halo() { return _halo; }
         const optional<Stroke>& halo() const { return _halo; }
+
+        /** Text outline offset */
+        optional<float>& haloOffset() { return _haloOffset; }
+        const optional<float>& haloOffset() const { return _haloOffset; }
 
         /** Name of text font. */
         optional<std::string>& font() { return _font; }
@@ -125,6 +129,7 @@ namespace osgEarth { namespace Symbology
     protected:
         optional<Fill>              _fill;
         optional<Stroke>            _halo;
+        optional<float>             _haloOffset;
         optional<std::string>       _font;
         optional<float>             _size;
         optional<StringExpression>  _content;
@@ -132,7 +137,7 @@ namespace osgEarth { namespace Symbology
         optional<bool>              _removeDuplicateLabels;
         optional<osg::Vec2s>        _pixelOffset;
         optional<std::string>       _provider;
-		optional<Encoding>          _encoding;
+        optional<Encoding>          _encoding;
         optional<Alignment>         _alignment;
         optional<bool>              _declutter;
     };

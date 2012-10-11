@@ -128,37 +128,39 @@ ShadowUtils::setUpShadows(osgShadow::ShadowedScene* sscene, osg::Group* root)
 
     std::stringstream buf;
     buf << "#version " << GLSL_VERSION_STR << "\n";
-    buf << "varying vec4 colorAmbientEmissive;\n";
-    buf << "varying vec4 shadow_TexCoord0;\n";
+#ifdef OSG_GLES2_AVAILABLE
+    buf << "precision mediump float;\n";
+#endif
+    buf << "varying vec4 oe_shadow_ambient;\n";
+    buf << "varying vec4 oe_shadow_TexCoord0;\n";
     if ( su1 >= 0 )
-        buf << "varying vec4 shadow_TexCoord1;\n";
+        buf << "varying vec4 oe_shadow_TexCoord1;\n";
 
 
-    buf << "void osgearth_vert_setupShadowCoords()\n";
+    buf << "void oe_shadow_setupShadowCoords()\n";
     buf << "{\n";
     buf << "    vec4 position4 = gl_ModelViewMatrix * gl_Vertex;\n";
-    buf << "    shadow_TexCoord0.s = dot( position4, gl_EyePlaneS[" << su <<"]);\n";
-    buf << "    shadow_TexCoord0.t = dot( position4, gl_EyePlaneT[" << su <<"]);\n";
-    buf << "    shadow_TexCoord0.p = dot( position4, gl_EyePlaneR[" << su <<"]);\n";
-    buf << "    shadow_TexCoord0.q = dot( position4, gl_EyePlaneQ[" << su <<"]);\n";
+    buf << "    oe_shadow_TexCoord0.s = dot( position4, gl_EyePlaneS[" << su <<"]);\n";
+    buf << "    oe_shadow_TexCoord0.t = dot( position4, gl_EyePlaneT[" << su <<"]);\n";
+    buf << "    oe_shadow_TexCoord0.p = dot( position4, gl_EyePlaneR[" << su <<"]);\n";
+    buf << "    oe_shadow_TexCoord0.q = dot( position4, gl_EyePlaneQ[" << su <<"]);\n";
     if (su1 >= 0)
     {
-        buf << "    shadow_TexCoord1.s = dot( position4, gl_EyePlaneS[" << su1 <<"]);\n";
-        buf << "    shadow_TexCoord1.t = dot( position4, gl_EyePlaneT[" << su1 <<"]);\n";
-        buf << "    shadow_TexCoord1.p = dot( position4, gl_EyePlaneR[" << su1 <<"]);\n";
-        buf << "    shadow_TexCoord1.q = dot( position4, gl_EyePlaneQ[" << su1 <<"]);\n";
+        buf << "    oe_shadow_TexCoord1.s = dot( position4, gl_EyePlaneS[" << su1 <<"]);\n";
+        buf << "    oe_shadow_TexCoord1.t = dot( position4, gl_EyePlaneT[" << su1 <<"]);\n";
+        buf << "    oe_shadow_TexCoord1.p = dot( position4, gl_EyePlaneR[" << su1 <<"]);\n";
+        buf << "    oe_shadow_TexCoord1.q = dot( position4, gl_EyePlaneQ[" << su1 <<"]);\n";
     }
-    buf << "    colorAmbientEmissive = gl_FrontLightModelProduct.sceneColor\n";
-    buf << "                         + gl_FrontLightProduct[0].ambient;\n";
-    //buf << "    colorAmbientEmissive = gl_LightModel.ambient + gl_FrontLightProduct[0].ambient; \n";
-    //buf << "    colorAmbientEmissive = gl_FrontLightProduct[0].ambient; \n";
-    buf << "}\n";
+
+    // the ambient lighting will control the intensity of the shadow.
+    buf << "    oe_shadow_ambient = gl_FrontLightProduct[0].ambient; \n"
+        << "}\n";
 
     std::string setupShadowCoords;
     setupShadowCoords = buf.str();
 
     vp->setFunction(
-        "osgearth_vert_setupShadowCoords", 
+        "oe_shadow_setupShadowCoords", 
         setupShadowCoords, 
         ShaderComp::LOCATION_VERTEX_POST_LIGHTING,
         -1.0 );
@@ -166,40 +168,46 @@ ShadowUtils::setUpShadows(osgShadow::ShadowedScene* sscene, osg::Group* root)
     std::stringstream buf2;
     buf2 <<
         "#version " << GLSL_VERSION_STR << "\n"
+#ifdef OSG_GLES2_AVAILABLE
+        "precision mediump float;\n"
+#endif
         "uniform sampler2DShadow shadowTexture;\n"
-        "varying vec4 shadow_TexCoord0;\n";
+        "varying vec4 oe_shadow_TexCoord0;\n";
 
     if (su1 >= 0)
     {
         // bound by vdsm
         buf2 << "uniform sampler2DShadow shadowTexture1;\n";
-        buf2 << "varying vec4 shadow_TexCoord1;\n";
+        buf2 << "varying vec4 oe_shadow_TexCoord1;\n";
     }
     buf2 <<
-        "varying vec4 colorAmbientEmissive;\n"
-        "varying vec4 osg_FrontColor;\n"
-        "varying vec4 osg_FrontSecondaryColor;\n"
-        "void osgearth_frag_applyLighting( inout vec4 color )\n"
+        "varying vec4 oe_shadow_ambient;\n"
+
+        "void oe_shadow_applyLighting( inout vec4 color )\n"
         "{\n"
         "    float alpha = color.a;\n"
-        "    float shadowFac = shadow2DProj( shadowTexture, shadow_TexCoord0).r;\n";
+        "    float shadowFac = shadow2DProj( shadowTexture, oe_shadow_TexCoord0).r;\n";
     if (su1 > 0)
     {
-        buf2 << "    shadowFac *= shadow2DProj( shadowTexture1, shadow_TexCoord1).r;\n";
+        buf2 << "    shadowFac *= shadow2DProj( shadowTexture1, oe_shadow_TexCoord1).r;\n";
     }
+
+    // calculate the shadowed color and mix if with the lit color based on the
+    // ambient lighting. The 0.5 is a multiplier that darkens the shadow in
+    // proportion to ambient light. It should probably be a uniform.
     buf2 <<
-        "    vec4 diffuseLight = mix(colorAmbientEmissive, osg_FrontColor, shadowFac);\n"
-        "    color = color * diffuseLight + osg_FrontSecondaryColor * shadowFac;\n"
+        "    vec4 colorInFullShadow = color * oe_shadow_ambient; \n"
+        "    color = mix(colorInFullShadow, color, shadowFac); \n"
         "    color.a = alpha;\n"
         "}\n";
 
     std::string fragApplyLighting;
     fragApplyLighting = buf2.str();
 
-    // override the terrain engine's default lighting shader:
-    vp->setShader("osgearth_frag_applyLighting",
-        new osg::Shader(osg::Shader::FRAGMENT, fragApplyLighting),
-        osg::StateAttribute::ON | osg::StateAttribute::OVERRIDE );
+    vp->setFunction(
+        "oe_shadow_applyLighting",
+        fragApplyLighting,
+        osgEarth::ShaderComp::LOCATION_FRAGMENT_POST_LIGHTING );
 
     setShadowUnit(sscene, su);
 

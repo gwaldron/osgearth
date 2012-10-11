@@ -152,14 +152,9 @@ ShadowUtils::setUpShadows(osgShadow::ShadowedScene* sscene, osg::Group* root)
         buf << "    oe_shadow_TexCoord1.q = dot( position4, gl_EyePlaneQ[" << su1 <<"]);\n";
     }
 
-    // the ambient lighting will control the darkness of the shadow
-    buf << "    oe_shadow_ambient = gl_FrontLightProduct[0].ambient + gl_FrontLightProduct[0].ambient; \n";
-
-    //buf << "    colorAmbientEmissive = gl_FrontLightModelProduct.sceneColor\n";
-    //buf << "                         + gl_FrontLightProduct[0].ambient;\n";
-    //buf << "    colorAmbientEmissive = gl_LightModel.ambient + gl_FrontLightProduct[0].ambient; \n";
-    //buf << "    colorAmbientEmissive = gl_FrontLightProduct[0].ambient; \n";
-    buf << "}\n";
+    // the ambient lighting will control the intensity of the shadow.
+    buf << "    oe_shadow_ambient = gl_FrontLightProduct[0].ambient; \n"
+        << "}\n";
 
     std::string setupShadowCoords;
     setupShadowCoords = buf.str();
@@ -198,7 +193,8 @@ ShadowUtils::setUpShadows(osgShadow::ShadowedScene* sscene, osg::Group* root)
     }
 
     // calculate the shadowed color and mix if with the lit color based on the
-    // ambient lighting.
+    // ambient lighting. The 0.5 is a multiplier that darkens the shadow in
+    // proportion to ambient light. It should probably be a uniform.
     buf2 <<
         "    vec4 colorInFullShadow = color * oe_shadow_ambient; \n"
         "    color = mix(colorInFullShadow, color, shadowFac); \n"
@@ -208,18 +204,10 @@ ShadowUtils::setUpShadows(osgShadow::ShadowedScene* sscene, osg::Group* root)
     std::string fragApplyLighting;
     fragApplyLighting = buf2.str();
 
-    // override the map node's default lighting shader:
-    //vp->setShader("osgearth_frag_applyLighting",
-    //    new osg::Shader(osg::Shader::FRAGMENT, fragApplyLighting),
-    //    osg::StateAttribute::ON | osg::StateAttribute::OVERRIDE );
-
-    // We set the priority of this function so that it applies *after* the main
-    // lighting shader.
     vp->setFunction(
         "oe_shadow_applyLighting",
         fragApplyLighting,
-        osgEarth::ShaderComp::LOCATION_FRAGMENT_POST_LIGHTING,
-        2.0f );
+        osgEarth::ShaderComp::LOCATION_FRAGMENT_POST_LIGHTING );
 
     setShadowUnit(sscene, su);
 

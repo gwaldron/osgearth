@@ -558,7 +558,8 @@ namespace osgEarth
             const GeoExtent& extent,
             bool exact = false,
             unsigned int width = 0,
-            unsigned int height = 0) const;
+            unsigned int height = 0,
+            bool useBilinearInterpolation = true) const;
 
         /**
          * Warps the image into a new spatial reference system.
@@ -576,7 +577,8 @@ namespace osgEarth
             const SpatialReference* to_srs,
             const GeoExtent* to_extent = 0,
             unsigned int width = 0,
-            unsigned int height = 0) const;
+            unsigned int height = 0,
+            bool useBilinearInterpolation = true) const;
 
         /**
          * Adds a one-pixel transparent border around an image.

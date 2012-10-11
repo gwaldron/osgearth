@@ -90,7 +90,6 @@ DriverConfigOptions( options ),
 _verticalScale( 1.0f ),
 _heightFieldSampleRatio( 1.0f ),
 _minTileRangeFactor( 6.0 ),
-_normalizeEdges( false ),
 _combineLayers( true ),
 _loadingPolicy( LoadingPolicy() ),
 _compositingTech( COMPOSITING_AUTO ),
@@ -125,8 +124,7 @@ TerrainOptions::getConfig() const
 
     conf.updateObjIfSet( "loading_policy", _loadingPolicy );
     conf.updateIfSet( "vertical_scale", _verticalScale );
-    conf.updateIfSet( "min_tile_range_factor", _minTileRangeFactor );
-    conf.updateIfSet( "normalize_edges", _normalizeEdges );
+    conf.updateIfSet( "min_tile_range_factor", _minTileRangeFactor );    
     conf.updateIfSet( "combine_layers", _combineLayers );
     conf.updateIfSet( "max_lod", _maxLOD );
     conf.updateIfSet( "min_lod", _minLOD );
@@ -173,8 +171,7 @@ TerrainOptions::fromConfig( const Config& conf )
 
     conf.getObjIfSet( "loading_policy", _loadingPolicy );
     conf.getIfSet( "vertical_scale", _verticalScale );
-    conf.getIfSet( "min_tile_range_factor", _minTileRangeFactor );
-    conf.getIfSet( "normalize_edges", _normalizeEdges );
+    conf.getIfSet( "min_tile_range_factor", _minTileRangeFactor );    
     conf.getIfSet( "combine_layers", _combineLayers );
     conf.getIfSet( "max_lod", _maxLOD ); conf.getIfSet( "max_level", _maxLOD );
     conf.getIfSet( "min_lod", _minLOD ); conf.getIfSet( "min_level", _minLOD );

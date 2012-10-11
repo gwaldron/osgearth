@@ -2194,7 +2194,7 @@ EarthManipulator::handlePointAction( const Action& action, float mx, float my, o
                 osg::Vec3d pointVP;
                 here.getSRS()->transformFromWorld(point, pointVP);
 
-                OE_NOTICE << "X=" << pointVP.x() << ", Y=" << pointVP.y() << std::endl;
+                //OE_NOTICE << "X=" << pointVP.x() << ", Y=" << pointVP.y() << std::endl;
 
                 here.setFocalPoint( pointVP );
 

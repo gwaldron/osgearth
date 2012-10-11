@@ -405,11 +405,13 @@ TextureCompositorMultiTexture::updateMasterStateSet(osg::StateSet*       stateSe
 
         vp->setShader(
             "osgearth_vert_setupColoring",
-            s_createTextureVertexShader(layout, hasBlending) );
+            s_createTextureVertexShader(layout, hasBlending),
+            osg::StateAttribute::ON | osg::StateAttribute::PROTECTED );
 
         vp->setShader(
             "osgearth_frag_applyColoring",
-            s_createTextureFragShaderFunction(layout, maxUnits, hasBlending, _lodTransitionTime ) );
+            s_createTextureFragShaderFunction(layout, maxUnits, hasBlending, _lodTransitionTime),
+            osg::StateAttribute::ON | osg::StateAttribute::PROTECTED );
     }
 
     else

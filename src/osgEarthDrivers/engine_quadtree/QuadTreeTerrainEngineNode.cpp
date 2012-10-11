@@ -176,6 +176,10 @@ QuadTreeTerrainEngineNode::postInitialize( const Map* map, const TerrainOptions&
     {
         _deadTiles = new TileNodeRegistry("dead");
     }
+    
+    // initialize the model factory:
+    _tileModelFactory = new TileModelFactory(getMap(), _liveTiles.get(), _terrainOptions );
+
 
     // handle an already-established map profile:
     if ( _update_mapf->getProfile() )
@@ -206,6 +210,8 @@ QuadTreeTerrainEngineNode::postInitialize( const Map* map, const TerrainOptions&
 
     // now that we have a map, set up to recompute the bounds
     dirtyBound();
+
+
 }
 
 
@@ -226,6 +232,13 @@ QuadTreeTerrainEngineNode::computeBound() const
 void
 QuadTreeTerrainEngineNode::refresh()
 {
+
+    //Clear out the hf cache
+    if (_tileModelFactory)
+    {
+        _tileModelFactory->getHeightFieldCache()->clear();
+    }
+
     // rebuilds the terrain graph entirely.
 
     this->removeChild( _terrain );
@@ -313,12 +326,7 @@ QuadTreeTerrainEngineNode::getKeyNodeFactory()
         // create a compiler for compiling tile models into geometry
         bool optimizeTriangleOrientation = 
             getMap()->getMapOptions().elevationInterpolation() != INTERP_TRIANGULATE;
-
-        // initialize the model builder:
-        TileModelFactory* factory = new TileModelFactory(
-            getMap(),
-            _liveTiles.get(),
-            _terrainOptions );
+        
 
         // A compiler specific to this thread:
         TileModelCompiler* compiler = new TileModelCompiler(
@@ -329,7 +337,7 @@ QuadTreeTerrainEngineNode::getKeyNodeFactory()
 
         // initialize a key node factory.
         knf = new SerialKeyNodeFactory( 
-            factory,
+            _tileModelFactory.get(),
             compiler,
             _liveTiles.get(),
             _deadTiles.get(),

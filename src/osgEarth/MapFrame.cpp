@@ -28,8 +28,7 @@ _initialized( false ),
 _map        ( map ),
 _name       ( name ),
 _mapInfo    ( map ),
-_parts      ( parts ),
-_hfcache    ( true, 128 )
+_parts      ( parts )
 {
     sync();
 }
@@ -45,8 +44,7 @@ _mapDataModelRevision( src._mapDataModelRevision ),
 _imageLayers         ( src._imageLayers ),
 _elevationLayers     ( src._elevationLayers ),
 _modelLayers         ( src._modelLayers ),
-_maskLayers          ( src._maskLayers ),
-_hfcache             ( true, 128 )
+_maskLayers          ( src._maskLayers )
 {
     //no sync required here; we copied the arrays etc
 }
@@ -59,19 +57,14 @@ MapFrame::sync()
 
     if ( _map.valid() )
     {
-        changed = _map->sync( *this );
-        if ( changed )
-        {
-            _hfcache.clear();
-        }
+        changed = _map->sync( *this );        
     }
     else
     {
         _imageLayers.clear();
         _elevationLayers.clear();
         _modelLayers.clear();
-        _maskLayers.clear();
-        _hfcache.clear();
+        _maskLayers.clear();        
     }
 
     return changed;
@@ -89,48 +82,18 @@ MapFrame::getHeightField(const TileKey&                  key,
 {
     if ( !_map.valid() ) 
         return false;
+    
 
-    // check the quick cache.
-    HFKey cachekey;
-    cachekey._key          = key;
-    cachekey._fallback     = fallback;
-    cachekey._convertToHAE = convertToHAE;
-    cachekey._samplePolicy = samplePolicy;
-    LRUCache<HFKey,HFValue>::Record rec = _hfcache.get( cachekey );
-    if ( rec.valid() )
-    {
-        out_hf = rec.value()._hf.get();
-        if ( out_isFallback )
-            *out_isFallback = rec.value()._isFallback;
-        return true;
-    }
 
-    // go to the source.
-    bool isFallback;
-
-    bool ok = _elevationLayers.createHeightField(
+    return _elevationLayers.createHeightField(
         key,
         fallback, 
         convertToHAE ? _map->getProfileNoVDatum() : 0L,
         _mapInfo.getElevationInterpolation(), 
         samplePolicy, 
         out_hf, 
-        &isFallback,
-        progress );
-
-    if ( ok )
-    {
-        if ( out_isFallback )
-            *out_isFallback = isFallback;
-
-        // cache me
-        HFValue cacheval;
-        cacheval._hf = out_hf.get();
-        cacheval._isFallback = isFallback;
-        _hfcache.insert( cachekey, cacheval );
-    }
-
-    return ok;
+        out_isFallback,
+        progress );    
 }
 
 

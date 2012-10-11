@@ -130,6 +130,8 @@ private:
 
     osg::Uniform* _verticalScaleUniform;
 
+    osg::ref_ptr< TileModelFactory > _tileModelFactory;
+
     QuadTreeTerrainEngineNode( const QuadTreeTerrainEngineNode& rhs, const osg::CopyOp& op =osg::CopyOp::DEEP_COPY_ALL ) { }
 };
 

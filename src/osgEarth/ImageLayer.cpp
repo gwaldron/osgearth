@@ -451,7 +451,7 @@ ImageLayer::createImageInNativeProfile( const TileKey& key, ProgressCallback* pr
             GeoExtent tightExtent = nativeProfile->clampAndTransformExtent( key.getExtent() );
 
             // a non-exact crop is critical here to avoid resampling the data
-            return result.crop( tightExtent, false );
+            return result.crop( tightExtent, false, 0, 0, *_runtimeOptions.driver()->bilinearReprojection() );
         }
 
         else // all fallback data
@@ -670,7 +670,7 @@ ImageLayer::createImageFromTileSource(const TileKey&    key,
                         // same pixel size; because chances are if we're requesting a fallback that we're
                         // planning to mosaic it later, and the mosaicer requires same-size images.
                         GeoImage raw( result.get(), finalKey.getExtent() );
-                        GeoImage cropped = raw.crop( key.getExtent(), true, raw.getImage()->s(), raw.getImage()->t() );
+                        GeoImage cropped = raw.crop( key.getExtent(), true, raw.getImage()->s(), raw.getImage()->t(), *_runtimeOptions.driver()->bilinearReprojection() );
                         result = cropped.takeImage();
                         fellBack = true;
                     }
@@ -811,7 +811,8 @@ ImageLayer::assembleImageFromTileSource(const TileKey&    key,
             key.getProfile()->getSRS(),
             &key.getExtent(), 
             *_runtimeOptions.reprojectedTileSize(),
-            *_runtimeOptions.reprojectedTileSize() );
+            *_runtimeOptions.reprojectedTileSize(),
+            *_runtimeOptions.driver()->bilinearReprojection());
     }
 
     return result;

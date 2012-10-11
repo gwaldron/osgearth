@@ -169,5 +169,7 @@ TileKey::createNeighborKey( int xoffset, int yoffset ) const
         sy >= (int)ty ? (unsigned)sy - ty :
         (unsigned)sy;
 
+    //OE_NOTICE << "Returning neighbor " << x << ", " << y << " for tile " << str() << " offset=" << xoffset << ", " << yoffset << std::endl;
+
     return TileKey( _lod, x, y, _profile.get() );
 }

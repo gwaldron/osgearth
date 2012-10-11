@@ -80,6 +80,7 @@ OceanSurfaceContainer::rebuild()
         // install an "elevation proxy" layer that reads elevation tiles from the
         // parent map and turns them into encoded images for our shader to use.
         ImageLayerOptions epo( "ocean-proxy" );
+        epo.cachePolicy() = CachePolicy::NO_CACHE;
         epo.maxLevel() = *_options.maxLOD();
         oceanMap->addImageLayer( new ElevationProxyImageLayer(_parentMapNode->getMap(), epo) );
 

@@ -154,7 +154,7 @@ public:
             // attempt to open the dataset:
             int openMode = _options.openWrite().isSet() && _options.openWrite().value() ? 1 : 0;
 
-	        _dsHandle = OGROpenShared( _source.c_str(), openMode, &_ogrDriverHandle );
+	        _dsHandle = OGROpen( _source.c_str(), openMode, &_ogrDriverHandle );
 	        if ( _dsHandle )
 	        {
                 if (openMode == 1) _writable = true;

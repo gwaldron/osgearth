@@ -47,6 +47,11 @@ namespace osgEarth
          * Gets the map node from its observer reference
          */
         virtual MapNode* getMapNode() =0;
+
+        /**
+         * dtor
+         */
+        virtual ~MapNodeObserver() { }
     };
 
 

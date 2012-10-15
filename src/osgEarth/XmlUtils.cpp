@@ -20,6 +20,7 @@
 #include <osgEarth/XmlUtils>
 #include <osgEarth/StringUtils>
 #include <osg/Notify>
+
 #include "tinyxml.h"
 #include <algorithm>
 #include <sstream>
@@ -429,49 +430,38 @@ XmlDocument::getConfig() const
     return conf;
 }
 
-#define INDENT 4
-
 static void
-storeNode( const XmlNode* node, int depth, std::ostream& out )
+storeNode( const XmlNode* node, TiXmlNode* parent)
 {
-    out << std::fixed; // always use fixed notation
-
-    for( int k=0; k<depth*INDENT; k++ ) out << " ";
-
-    if ( node->isElement() )
+    if (node->isElement())
     {
         XmlElement* e = (XmlElement*)node;
-        out << "<" << e->getName();
+        TiXmlElement* element = new TiXmlElement( e->getName().c_str() );
+        //Write out all the attributes
         for( XmlAttributes::iterator a = e->getAttrs().begin(); a != e->getAttrs().end(); a++ )
         {
-            out << " " << a->first << "=" << "\"" << a->second << "\"";
+            element->SetAttribute(a->first.c_str(), a->second.c_str() );            
         }
-        out << ">" << std::endl;
+
+        //Write out all the child nodes
         for( XmlNodeList::iterator i = e->getChildren().begin(); i != e->getChildren().end(); i++ )
         {
-            storeNode( i->get(), depth+1, out );
+            storeNode( i->get(), element );
         }
-        for( int k=0; k<depth*INDENT; k++ ) out << " ";
-        out << "</" << e->getName() << ">" << std::endl;
+        parent->LinkEndChild( element );
     }
-    else if ( node->isText() )
+    else if (node->isText())
     {
         XmlText* t = (XmlText*)node;
-        const std::string& text = t->getValue();
-        if ( text.find_first_of( "<&" ) != std::string::npos )
-            out << "<![CDATA[" << text << "]]>" << std::endl;
-        else
-            out << text << std::endl;
+        parent->LinkEndChild( new TiXmlText( t->getValue().c_str() ) );
     }
 }
 
 void
 XmlDocument::store( std::ostream& out ) const
-{
-    out << "<?xml version=\"1.0\"?>" << std::endl;
-    storeNode( this, 0, out);
-    /*for( XmlNodeList::const_iterator i = getChildren().begin(); i != getChildren().end(); i++ )
-    {
-        storeNode( i->get(), 0, out );
-    }*/
+{    
+    TiXmlDocument doc;
+    doc.LinkEndChild( new TiXmlDeclaration( "1.0", "", ""));
+    storeNode( this, &doc );    
+    out << doc;    
 }

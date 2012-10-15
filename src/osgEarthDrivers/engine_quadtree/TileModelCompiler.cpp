@@ -1343,11 +1343,8 @@ namespace
             osg::ref_ptr< osg::HeightField > n_neighbor  = d.model->_elevationData.getNeighbor( 0, -1 );            
 
             //Recalculate the west side
-            if (w_neighbor.valid())
-            {                                
-                unsigned int w_neighbor_numColums = w_neighbor->getNumColumns();
-                unsigned int w_neighbor_numRows = w_neighbor->getNumRows();
-
+            if (w_neighbor.valid() && w_neighbor->getNumColumns() == d.numCols && w_neighbor->getNumRows() == d.numRows)
+            {                                     
                 osg::ref_ptr< osg::Vec3Array > boundaryVerts = new osg::Vec3Array();
                 boundaryVerts->reserve( 2 * d.numRows );
 
@@ -1362,9 +1359,7 @@ namespace
                         osg::Vec3d ndc( (double)(i - static_cast<int>(d.numCols-1))/(double)(d.numCols-1), ((double)j)/(double)(d.numRows-1), 0.0);                                                                        
 
                         //TODO:  Should probably use an interpolated method here
-                        unsigned int neighbor_i = (i * w_neighbor_numColums) / d.numCols;
-                        unsigned int neighbor_j = (j * w_neighbor_numRows) / d.numRows;
-                        float heightValue = w_neighbor->getHeight( neighbor_i, neighbor_j );
+                        float heightValue = w_neighbor->getHeight( i, j );
                         ndc.z() = heightValue;                        
 
                         osg::Vec3d model;
@@ -1433,11 +1428,8 @@ namespace
 
                         
             //Recalculate the east side
-            if (e_neighbor.valid())
-            {                
-                unsigned int e_neighbor_numColums = e_neighbor->getNumColumns();
-                unsigned int e_neighbor_numRows = e_neighbor->getNumRows();
-
+            if (e_neighbor.valid() && e_neighbor->getNumColumns() == d.numCols && e_neighbor->getNumRows() == d.numRows)
+            {                           
                 osg::ref_ptr< osg::Vec3Array > boundaryVerts = new osg::Vec3Array();
                 boundaryVerts->reserve( 2 * d.numRows );
 
@@ -1452,9 +1444,7 @@ namespace
                         osg::Vec3d ndc( ((double)(d.numCols -1 + i))/(double)(d.numCols-1), ((double)j)/(double)(d.numRows-1), 0.0);
                         
                         //TODO:  Should probably use an interpolated method here
-                        unsigned int neighbor_i = (i * e_neighbor_numColums) / d.numCols;
-                        unsigned int neighbor_j = (j * e_neighbor_numRows) / d.numRows;
-                        float heightValue = e_neighbor->getHeight( neighbor_i, neighbor_j );
+                        float heightValue = e_neighbor->getHeight( i, j );
                         ndc.z() = heightValue;                        
 
                         osg::Vec3d model;
@@ -1520,11 +1510,8 @@ namespace
             }
 
             //Recalculate the north side
-            if (n_neighbor.valid())
-            {
-                unsigned int n_neighbor_numColums = n_neighbor->getNumColumns();
-                unsigned int n_neighbor_numRows = n_neighbor->getNumRows();
-
+            if (n_neighbor.valid() && n_neighbor->getNumColumns() == d.numCols && n_neighbor->getNumRows() == d.numRows)
+            {                 
                 osg::ref_ptr< osg::Vec3Array > boundaryVerts = new osg::Vec3Array();
                 boundaryVerts->reserve( 2 * d.numCols );
 
@@ -1540,9 +1527,7 @@ namespace
                         //osg::Vec3d ndc( (double)(i)/(double)(d.numCols-1), (double)(-static_cast<int>(j))/(double)(d.numRows-1), 0.0);                        
                         
                         //TODO:  Should probably use an interpolated method here
-                        unsigned int neighbor_i = (i * n_neighbor_numColums) / d.numCols;
-                        unsigned int neighbor_j = (j * n_neighbor_numRows) / d.numRows;
-                        float heightValue = n_neighbor->getHeight( neighbor_i, neighbor_j );
+                        float heightValue = n_neighbor->getHeight( i, j );
                         ndc.z() = heightValue;                        
 
                         osg::Vec3d model;
@@ -1608,11 +1593,8 @@ namespace
             }
 
             //Recalculate the south side
-            if (s_neighbor.valid())
-            {
-                unsigned int s_neighbor_numColums = s_neighbor->getNumColumns();
-                unsigned int s_neighbor_numRows = s_neighbor->getNumRows();
-
+            if (s_neighbor.valid() && s_neighbor->getNumColumns() == d.numCols && s_neighbor->getNumRows() == d.numRows)
+            {                
                 osg::ref_ptr< osg::Vec3Array > boundaryVerts = new osg::Vec3Array();
                 boundaryVerts->reserve( 2 * d.numCols );
 
@@ -1627,9 +1609,7 @@ namespace
                         osg::Vec3d ndc( (double)(i)/(double)(d.numCols-1), (double)(j - static_cast<int>(d.numRows-1))/(double)(d.numRows-1), 0.0);                                                
                         
                         //TODO:  Should probably use an interpolated method here
-                        unsigned int neighbor_i = (i * s_neighbor_numColums) / d.numCols;
-                        unsigned int neighbor_j = (j * s_neighbor_numRows) / d.numRows;
-                        float heightValue = s_neighbor->getHeight( neighbor_i, neighbor_j );
+                        float heightValue = s_neighbor->getHeight( i, j );
                         ndc.z() = heightValue;                        
 
                         osg::Vec3d model;

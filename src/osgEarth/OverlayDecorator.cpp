@@ -213,11 +213,14 @@ OverlayDecorator::initializePerViewData( PerViewData& pvd )
     rttStateSet->setMode( GL_LIGHTING, osg::StateAttribute::OFF | osg::StateAttribute::PROTECTED );
 
     // install a new default shader program that replaces anything from above.
-    VirtualProgram* vp = new VirtualProgram();
-    vp->setName( "overlay rtt" );
-    vp->installDefaultColoringAndLightingShaders();
-    vp->setInheritShaders( false );
-    rttStateSet->setAttributeAndModes( vp, osg::StateAttribute::ON );
+    if ( _useShaders )
+    {
+        VirtualProgram* vp = new VirtualProgram();
+        vp->setName( "overlay rtt" );
+        vp->installDefaultColoringAndLightingShaders();
+        vp->setInheritShaders( false );
+        rttStateSet->setAttributeAndModes( vp, osg::StateAttribute::ON );
+    }
     
     if ( _rttBlending )
     {
@@ -259,23 +262,23 @@ OverlayDecorator::initializePerViewData( PerViewData& pvd )
     // assemble the subgraph stateset:
     pvd._subgraphStateSet = new osg::StateSet();
 
-    // set up the subgraph to receive the projected texture:
-    pvd._subgraphStateSet->setTextureMode( *_textureUnit, GL_TEXTURE_GEN_S, osg::StateAttribute::ON );
-    pvd._subgraphStateSet->setTextureMode( *_textureUnit, GL_TEXTURE_GEN_T, osg::StateAttribute::ON );
-    pvd._subgraphStateSet->setTextureMode( *_textureUnit, GL_TEXTURE_GEN_R, osg::StateAttribute::ON );
-    pvd._subgraphStateSet->setTextureMode( *_textureUnit, GL_TEXTURE_GEN_Q, osg::StateAttribute::ON );
     pvd._subgraphStateSet->setTextureAttributeAndModes( *_textureUnit, projTexture, osg::StateAttribute::ON );
     
     if ( _useShaders )
     {            
-        // set up the shaders
+        // GPU path
         initSubgraphShaders( pvd );
     }
     else
     {
-        // FFP path:
-        pvd._texGenNode = new osg::TexGenNode();
-        pvd._texGenNode->setTexGen( new osg::TexGen() );
+        // FFP path
+        pvd._texGen = new osg::TexGen();
+        pvd._texGen->setMode( osg::TexGen::EYE_LINEAR );
+        pvd._subgraphStateSet->setTextureAttributeAndModes( *_textureUnit, pvd._texGen.get(), 1 );
+
+        osg::TexEnv* env = new osg::TexEnv();
+        env->setMode( osg::TexEnv::DECAL );
+        pvd._subgraphStateSet->setTextureAttributeAndModes( *_textureUnit, env, 1 );
     }
 }
 
@@ -433,7 +436,7 @@ OverlayDecorator::getAttachStencil() const
 void
 OverlayDecorator::setAttachStencil( bool value )
 {
-    _attachStencil = value;            
+    _attachStencil = value;
 }
 
 void
@@ -457,11 +460,13 @@ OverlayDecorator::onInstall( TerrainEngineNode* engine )
     // see whether we want shader support:
     // TODO: this is not stricty correct; you might still want to use shader overlays
     // in multipass mode, AND you might want FFP overlays in multitexture-FFP mode.
-    _useShaders = engine->getTextureCompositor()->usesShaderComposition();
+    _useShaders = 
+        Registry::capabilities().supportsGLSL() && 
+        engine->getTextureCompositor()->usesShaderComposition();
 
     if ( !_textureSize.isSet() )
     {
-        unsigned maxSize = Registry::instance()->getCapabilities().getMaxFastTextureSize();
+        unsigned maxSize = Registry::capabilities().getMaxFastTextureSize();
         _textureSize.init( osg::minimum( 4096u, maxSize ) );
 
         OE_INFO << LC << "Using texture size = " << *_textureSize << std::endl;
@@ -500,7 +505,7 @@ OverlayDecorator::updateRTTCamera( OverlayDecorator::PerViewData& pvd )
     }
     else
     {
-        pvd._texGenNode->getTexGen()->setPlanesFromMatrix( MVPT );
+        pvd._texGen->setPlanesFromMatrix( MVPT );
     }
 }
 
@@ -846,10 +851,15 @@ OverlayDecorator::traverse( osg::NodeVisitor& nv )
                     updateRTTCamera(pvd);
                 }
 
-                if ( pvd._texGenNode.valid() ) // FFP only
-                    pvd._texGenNode->accept( nv );
+                if ( pvd._texGen.valid() )
+                {
+                    // FFP path only
+                    cv->getCurrentRenderBin()->getStage()->addPositionedTextureAttribute(
+                        *_textureUnit, cv->getModelViewMatrix(), pvd._texGen.get() );
+                }
 
                 cull( cv, pvd );
+
                 pvd._rttCamera->accept( nv );
             }
             else

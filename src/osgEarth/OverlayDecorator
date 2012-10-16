@@ -145,7 +145,7 @@ namespace osgEarth
         {
             osg::ref_ptr<osg::Camera>     _rttCamera;
             osg::ref_ptr<osg::Uniform>    _texGenUniform;
-            osg::ref_ptr<osg::TexGenNode> _texGenNode;
+            osg::ref_ptr<osg::TexGen>     _texGen;
             osg::Matrixd                  _rttViewMatrix;
             osg::Matrixd                  _rttProjMatrix;
             osg::ref_ptr<osg::StateSet>   _subgraphStateSet;

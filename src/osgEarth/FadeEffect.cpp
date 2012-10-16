@@ -18,6 +18,8 @@
  */
 #include <osgEarth/FadeEffect>
 #include <osgEarth/VirtualProgram>
+#include <osgEarth/Registry>
+#include <osgEarth/Capabilities>
 #include <osgUtil/CullVisitor>
 
 using namespace osgEarth;
@@ -67,12 +69,15 @@ FadeEffect::FadeEffect()
 {
     osg::StateSet* ss = this->getOrCreateStateSet();
 
-    VirtualProgram* vp = new VirtualProgram();
+    if ( Registry::capabilities().supportsGLSL() )
+    {
+        VirtualProgram* vp = new VirtualProgram();
 
-    vp->setFunction( "oe_vertFadeEffect", FadeEffectVertexShader,   ShaderComp::LOCATION_VERTEX_POST_LIGHTING );
-    vp->setFunction( "oe_fragFadeEffect", FadeEffectFragmentShader, ShaderComp::LOCATION_FRAGMENT_PRE_LIGHTING );
+        vp->setFunction( "oe_vertFadeEffect", FadeEffectVertexShader,   ShaderComp::LOCATION_VERTEX_POST_LIGHTING );
+        vp->setFunction( "oe_fragFadeEffect", FadeEffectFragmentShader, ShaderComp::LOCATION_FRAGMENT_PRE_LIGHTING );
 
-    ss->setAttributeAndModes( vp, osg::StateAttribute::ON );
+        ss->setAttributeAndModes( vp, osg::StateAttribute::ON );
+    }
 
     _fadeDuration = new osg::Uniform( osg::Uniform::FLOAT, "oe_FadeEffect_duration" );
     _fadeDuration->set( 1.0f );
@@ -122,16 +127,19 @@ _maxPixelExtent( FLT_MAX ),
 _minFadeExtent ( 0.0f ),
 _maxFadeExtent ( 0.0f )
 {
-    VirtualProgram* vp = new VirtualProgram();
+    if ( Registry::capabilities().supportsGLSL() )
+    {
+        VirtualProgram* vp = new VirtualProgram();
 
-    vp->setFunction(
-        "oe_fragFadeLOD",
-        FadeLODFragmentShader,
-        ShaderComp::LOCATION_FRAGMENT_PRE_LIGHTING );
+        vp->setFunction(
+            "oe_fragFadeLOD",
+            FadeLODFragmentShader,
+            ShaderComp::LOCATION_FRAGMENT_PRE_LIGHTING );
 
-    osg::StateSet* ss = getOrCreateStateSet();
+        osg::StateSet* ss = getOrCreateStateSet();
 
-    ss->setAttributeAndModes( vp, osg::StateAttribute::ON );
+        ss->setAttributeAndModes( vp, osg::StateAttribute::ON );
+    }
 }
 
 

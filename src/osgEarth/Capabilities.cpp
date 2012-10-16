@@ -189,7 +189,11 @@ _maxUniformBlockSize    ( 0 )
 #endif
         OE_INFO << LC << "  Max lights = " << _maxLights << std::endl;
 
-        _supportsGLSL = GL2->isGlslSupported();
+        
+        if ( ::getenv("OSGEARTH_NO_GLSL") )
+            _supportsGLSL = false;
+        else
+            _supportsGLSL = GL2->isGlslSupported();
         OE_INFO << LC << "  GLSL = " << SAYBOOL(_supportsGLSL) << std::endl;
 
         if ( _supportsGLSL )

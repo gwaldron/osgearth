@@ -250,6 +250,7 @@ AnnotationUtils::createHighlightUniform()
     return u;
 }
 
+#if 0
 void
 AnnotationUtils::installAnnotationProgram(osg::StateSet*                     stateSet,
                                           osg::StateAttribute::OverrideValue qualifier)
@@ -327,6 +328,7 @@ AnnotationUtils::installAnnotationProgram(osg::StateSet*                     sta
     stateSet->addUniform( s_defaultFadeUniform.get() );
     stateSet->addUniform( s_defaultIsTextUniform.get() );
 }
+#endif
 
 //-------------------------------------------------------------------------
 

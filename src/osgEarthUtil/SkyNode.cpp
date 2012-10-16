@@ -893,7 +893,7 @@ SkyNode::attach( osg::View* view, int lightNum )
     data._starsMatrix = _defaultPerViewData._starsMatrix;
     data._starsXform->setMatrix( _defaultPerViewData._starsMatrix );
     data._starsXform->addChild( _stars.get() );
-    data._cullContainer->addChild( data._starsXform.get() );    
+    data._cullContainer->addChild( data._starsXform.get() );
     data._starsVisible = _defaultPerViewData._starsVisible;
     data._starsXform->setNodeMask( data._starsVisible ? ~0 : 0 );
 
@@ -1193,65 +1193,68 @@ SkyNode::makeAtmosphere( const osg::EllipsoidModel* em )
     set->setAttributeAndModes( new osg::Depth(osg::Depth::ALWAYS, 0, 1, false) ); // no zbuffer
     set->setAttributeAndModes( new osg::BlendFunc( GL_ONE, GL_ONE ), osg::StateAttribute::ON );
 
-    // next, create and add the shaders:
-    osg::Program* program = new osg::Program();
-    osg::Shader* vs = new osg::Shader( osg::Shader::VERTEX, Stringify()
-        << s_versionString
-        << s_mathUtils
-        << s_atmosphereVertexDeclarations
-        << s_atmosphereVertexShared
-        << s_atmosphereVertexMain );
-    program->addShader( vs );
+    if ( Registry::capabilities().supportsGLSL() )
+    {
+        // next, create and add the shaders:
+        osg::Program* program = new osg::Program();
+        osg::Shader* vs = new osg::Shader( osg::Shader::VERTEX, Stringify()
+            << s_versionString
+            << s_mathUtils
+            << s_atmosphereVertexDeclarations
+            << s_atmosphereVertexShared
+            << s_atmosphereVertexMain );
+        program->addShader( vs );
 
-    osg::Shader* fs = new osg::Shader( osg::Shader::FRAGMENT, Stringify()
-        << s_versionString
+        osg::Shader* fs = new osg::Shader( osg::Shader::FRAGMENT, Stringify()
+            << s_versionString
 #ifdef OSG_GLES2_AVAILABLE
-        << "precision highp float;\n"
+            << "precision highp float;\n"
 #endif
-        << s_mathUtils
-        << s_atmosphereFragmentDeclarations
-        //<< s_atmosphereFragmentShared
-        << s_atmosphereFragmentMain );
-    program->addShader( fs );
+            << s_mathUtils
+            << s_atmosphereFragmentDeclarations
+            //<< s_atmosphereFragmentShared
+            << s_atmosphereFragmentMain );
+        program->addShader( fs );
 
-    set->setAttributeAndModes( program, osg::StateAttribute::ON );
+        set->setAttributeAndModes( program, osg::StateAttribute::ON );
 
-    // apply the uniforms:
-    float r_wl   = ::powf( .65f, 4.0f );
-    float g_wl = ::powf( .57f, 4.0f );
-    float b_wl  = ::powf( .475f, 4.0f );
-    osg::Vec3 RGB_wl( 1.0f/r_wl, 1.0f/g_wl, 1.0f/b_wl );
-    float Kr = 0.0025f;
-    float Kr4PI = Kr * 4.0f * osg::PI;
-    float Km = 0.0015f;
-    float Km4PI = Km * 4.0f * osg::PI;
-    float ESun = 15.0f;
-    float MPhase = -.095f;
-    float RayleighScaleDepth = 0.25f;
-    int   Samples = 2;
-    float Weather = 1.0f;
-    
-    float Scale = 1.0f / (_outerRadius - _innerRadius);
+        // apply the uniforms:
+        float r_wl   = ::powf( .65f, 4.0f );
+        float g_wl = ::powf( .57f, 4.0f );
+        float b_wl  = ::powf( .475f, 4.0f );
+        osg::Vec3 RGB_wl( 1.0f/r_wl, 1.0f/g_wl, 1.0f/b_wl );
+        float Kr = 0.0025f;
+        float Kr4PI = Kr * 4.0f * osg::PI;
+        float Km = 0.0015f;
+        float Km4PI = Km * 4.0f * osg::PI;
+        float ESun = 15.0f;
+        float MPhase = -.095f;
+        float RayleighScaleDepth = 0.25f;
+        int   Samples = 2;
+        float Weather = 1.0f;
 
-    // TODO: replace this with a UBO.
+        float Scale = 1.0f / (_outerRadius - _innerRadius);
 
-    set->getOrCreateUniform( "atmos_v3InvWavelength", osg::Uniform::FLOAT_VEC3 )->set( RGB_wl );
-    set->getOrCreateUniform( "atmos_fInnerRadius",    osg::Uniform::FLOAT )->set( _innerRadius );
-    set->getOrCreateUniform( "atmos_fInnerRadius2",   osg::Uniform::FLOAT )->set( _innerRadius * _innerRadius );
-    set->getOrCreateUniform( "atmos_fOuterRadius",    osg::Uniform::FLOAT )->set( _outerRadius );
-    set->getOrCreateUniform( "atmos_fOuterRadius2",   osg::Uniform::FLOAT )->set( _outerRadius * _outerRadius );
-    set->getOrCreateUniform( "atmos_fKrESun",         osg::Uniform::FLOAT )->set( Kr * ESun );
-    set->getOrCreateUniform( "atmos_fKmESun",         osg::Uniform::FLOAT )->set( Km * ESun );
-    set->getOrCreateUniform( "atmos_fKr4PI",          osg::Uniform::FLOAT )->set( Kr4PI );
-    set->getOrCreateUniform( "atmos_fKm4PI",          osg::Uniform::FLOAT )->set( Km4PI );
-    set->getOrCreateUniform( "atmos_fScale",          osg::Uniform::FLOAT )->set( Scale );
-    set->getOrCreateUniform( "atmos_fScaleDepth",     osg::Uniform::FLOAT )->set( RayleighScaleDepth );
-    set->getOrCreateUniform( "atmos_fScaleOverScaleDepth", osg::Uniform::FLOAT )->set( Scale / RayleighScaleDepth );
-    set->getOrCreateUniform( "atmos_g",               osg::Uniform::FLOAT )->set( MPhase );
-    set->getOrCreateUniform( "atmos_g2",              osg::Uniform::FLOAT )->set( MPhase * MPhase );
-    set->getOrCreateUniform( "atmos_nSamples",        osg::Uniform::INT )->set( Samples );
-    set->getOrCreateUniform( "atmos_fSamples",        osg::Uniform::FLOAT )->set( (float)Samples );
-    set->getOrCreateUniform( "atmos_fWeather",        osg::Uniform::FLOAT )->set( Weather );
+        // TODO: replace this with a UBO.
+
+        set->getOrCreateUniform( "atmos_v3InvWavelength", osg::Uniform::FLOAT_VEC3 )->set( RGB_wl );
+        set->getOrCreateUniform( "atmos_fInnerRadius",    osg::Uniform::FLOAT )->set( _innerRadius );
+        set->getOrCreateUniform( "atmos_fInnerRadius2",   osg::Uniform::FLOAT )->set( _innerRadius * _innerRadius );
+        set->getOrCreateUniform( "atmos_fOuterRadius",    osg::Uniform::FLOAT )->set( _outerRadius );
+        set->getOrCreateUniform( "atmos_fOuterRadius2",   osg::Uniform::FLOAT )->set( _outerRadius * _outerRadius );
+        set->getOrCreateUniform( "atmos_fKrESun",         osg::Uniform::FLOAT )->set( Kr * ESun );
+        set->getOrCreateUniform( "atmos_fKmESun",         osg::Uniform::FLOAT )->set( Km * ESun );
+        set->getOrCreateUniform( "atmos_fKr4PI",          osg::Uniform::FLOAT )->set( Kr4PI );
+        set->getOrCreateUniform( "atmos_fKm4PI",          osg::Uniform::FLOAT )->set( Km4PI );
+        set->getOrCreateUniform( "atmos_fScale",          osg::Uniform::FLOAT )->set( Scale );
+        set->getOrCreateUniform( "atmos_fScaleDepth",     osg::Uniform::FLOAT )->set( RayleighScaleDepth );
+        set->getOrCreateUniform( "atmos_fScaleOverScaleDepth", osg::Uniform::FLOAT )->set( Scale / RayleighScaleDepth );
+        set->getOrCreateUniform( "atmos_g",               osg::Uniform::FLOAT )->set( MPhase );
+        set->getOrCreateUniform( "atmos_g2",              osg::Uniform::FLOAT )->set( MPhase * MPhase );
+        set->getOrCreateUniform( "atmos_nSamples",        osg::Uniform::INT )->set( Samples );
+        set->getOrCreateUniform( "atmos_fSamples",        osg::Uniform::FLOAT )->set( (float)Samples );
+        set->getOrCreateUniform( "atmos_fWeather",        osg::Uniform::FLOAT )->set( Weather );
+    }
     
     // A nested camera isolates the projection matrix calculations so the node won't 
     // affect the clip planes in the rest of the scene.
@@ -1287,20 +1290,23 @@ SkyNode::makeSun()
    // set->setAttributeAndModes( new osg::BlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA), osg::StateAttribute::ON );
 
     // create shaders
-    osg::Program* program = new osg::Program();
-    osg::Shader* vs = new osg::Shader( osg::Shader::VERTEX, Stringify()
-        << s_versionString
-        << s_sunVertexSource );
-    program->addShader( vs );
-    osg::Shader* fs = new osg::Shader( osg::Shader::FRAGMENT, Stringify()
-        << s_versionString
+    if ( Registry::capabilities().supportsGLSL() )
+    {
+        osg::Program* program = new osg::Program();
+        osg::Shader* vs = new osg::Shader( osg::Shader::VERTEX, Stringify()
+            << s_versionString
+            << s_sunVertexSource );
+        program->addShader( vs );
+        osg::Shader* fs = new osg::Shader( osg::Shader::FRAGMENT, Stringify()
+            << s_versionString
 #ifdef OSG_GLES2_AVAILABLE
-        << "precision highp float;\n"
+            << "precision highp float;\n"
 #endif
-        << s_mathUtils
-        << s_sunFragmentSource );
-    program->addShader( fs );
-    set->setAttributeAndModes( program, osg::StateAttribute::ON );
+            << s_mathUtils
+            << s_sunFragmentSource );
+        program->addShader( fs );
+        set->setAttributeAndModes( program, osg::StateAttribute::ON );
+    }
 
     // make the sun's transform:
     // todo: move this?
@@ -1354,21 +1360,24 @@ SkyNode::makeMoon()
 
 #ifdef OSG_GLES2_AVAILABLE
     
-    set->addUniform(new osg::Uniform("moonTex", 0));
-    
-    // create shaders
-    osg::Program* program = new osg::Program();
-    osg::Shader* vs = new osg::Shader( osg::Shader::VERTEX, Stringify()
-                                      << s_versionString
-                                      << "precision highp float;\n"
-                                      << s_moonVertexSource );
-    program->addShader( vs );
-    osg::Shader* fs = new osg::Shader( osg::Shader::FRAGMENT, Stringify()
-                                      << s_versionString
-                                      << "precision highp float;\n"
-                                      << s_moonFragmentSource );
-    program->addShader( fs );
-    set->setAttributeAndModes( program, osg::StateAttribute::ON | osg::StateAttribute::PROTECTED );
+    if ( Registry::capabilities().supportsGLSL() )
+    {
+        set->addUniform(new osg::Uniform("moonTex", 0));
+        
+        // create shaders
+        osg::Program* program = new osg::Program();
+        osg::Shader* vs = new osg::Shader( osg::Shader::VERTEX, Stringify()
+                                          << s_versionString
+                                          << "precision highp float;\n"
+                                          << s_moonVertexSource );
+        program->addShader( vs );
+        osg::Shader* fs = new osg::Shader( osg::Shader::FRAGMENT, Stringify()
+                                          << s_versionString
+                                          << "precision highp float;\n"
+                                          << s_moonFragmentSource );
+        program->addShader( fs );
+        set->setAttributeAndModes( program, osg::StateAttribute::ON | osg::StateAttribute::PROTECTED );
+    }
 #endif
     
     // make the moon's transform:
@@ -1429,9 +1438,6 @@ SkyNode::makeStars(const std::string& starFile)
 
   osg::Node* starNode = buildStarGeometry(stars);
 
-  //AddCallbackToDrawablesVisitor visitor(_starRadius);
-  //starNode->accept(visitor);
-
   _stars = starNode;
 }
 
@@ -1469,13 +1475,16 @@ SkyNode::buildStarGeometry(const std::vector<StarData>& stars)
 
   osg::StateSet* sset = geometry->getOrCreateStateSet();
 
-  sset->setTextureAttributeAndModes( 0, new osg::PointSprite(), osg::StateAttribute::ON );
-  sset->setMode( GL_VERTEX_PROGRAM_POINT_SIZE, osg::StateAttribute::ON );
+  if ( Registry::capabilities().supportsGLSL() )
+  {
+    sset->setTextureAttributeAndModes( 0, new osg::PointSprite(), osg::StateAttribute::ON );
+    sset->setMode( GL_VERTEX_PROGRAM_POINT_SIZE, osg::StateAttribute::ON );
 
-  osg::Program* program = new osg::Program;
-  program->addShader( new osg::Shader(osg::Shader::VERTEX, s_createStarVertexSource()) );
-  program->addShader( new osg::Shader(osg::Shader::FRAGMENT, s_createStarFragmentSource()) );
-  sset->setAttributeAndModes( program, osg::StateAttribute::ON );
+    osg::Program* program = new osg::Program;
+    program->addShader( new osg::Shader(osg::Shader::VERTEX, s_createStarVertexSource()) );
+    program->addShader( new osg::Shader(osg::Shader::FRAGMENT, s_createStarFragmentSource()) );
+    sset->setAttributeAndModes( program, osg::StateAttribute::ON );
+  }
 
   sset->setRenderBinDetails( BIN_STARS, "RenderBin");
   sset->setAttributeAndModes( new osg::Depth(osg::Depth::ALWAYS, 0, 1, false), osg::StateAttribute::ON );

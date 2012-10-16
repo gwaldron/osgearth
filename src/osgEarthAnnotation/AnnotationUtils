@@ -74,6 +74,7 @@ namespace osgEarth { namespace Annotation
          */
         static osg::Uniform* createHighlightUniform();
 
+#if 0
         /**
          * Install a program that implements fading, highligting, etc. on annotation 
          * objects.
@@ -81,6 +82,7 @@ namespace osgEarth { namespace Annotation
         static void installAnnotationProgram(
             osg::StateSet*                     stateSet,
             osg::StateAttribute::OverrideValue value    =osg::StateAttribute::ON );
+#endif
 
         /**
          * Builds a graph on top of the specified that that implements a 2-pass

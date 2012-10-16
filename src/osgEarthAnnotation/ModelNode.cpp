@@ -22,6 +22,7 @@
 #include <osgEarthSymbology/Style>
 #include <osgEarthSymbology/InstanceSymbol>
 #include <osgEarth/Registry>
+#include <osgEarth/Capabilities>
 #include <osgEarth/ShaderGenerator>
 #include <osgEarth/VirtualProgram>
 
@@ -91,16 +92,19 @@ ModelNode::init(const osgDB::Options* dbOptions)
 
             if (node.valid() == true)
             {
-                // generate shader code for the loaded model:
-                ShaderGenerator gen( Registry::stateSetCache() );
-                node->accept( gen );
+                if ( Registry::capabilities().supportsGLSL() )
+                {
+                    // generate shader code for the loaded model:
+                    ShaderGenerator gen( Registry::stateSetCache() );
+                    node->accept( gen );
 
-                // need a top-level shader too:
-                VirtualProgram* vp = new VirtualProgram();
-                vp->installDefaultColoringAndLightingShaders();
-                this->getOrCreateStateSet()->setAttributeAndModes( vp, 1 );
+                    // need a top-level shader too:
+                    VirtualProgram* vp = new VirtualProgram();
+                    vp->installDefaultColoringAndLightingShaders();
+                    this->getOrCreateStateSet()->setAttributeAndModes( vp, 1 );
 
-                node->addCullCallback( new UpdateLightingUniformsHelper() );
+                    node->addCullCallback( new UpdateLightingUniformsHelper() );
+                }
 
                 // attach to the transform:
                 getTransform()->addChild( node );

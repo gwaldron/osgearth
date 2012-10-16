@@ -20,10 +20,8 @@
 #include "OceanCompositor"
 #include "ElevationProxyImageLayer"
 #include <osgEarth/Map>
-#include <osgEarth/VirtualProgram>
 #include <osgEarth/TextureCompositor>
 #include <osgEarthDrivers/osg/OSGOptions>
-//#include <osgEarthDrivers/engine_osgterrain/OSGTerrainOptions>
 #include <osgEarthDrivers/engine_quadtree/QuadTreeTerrainEngineOptions>
 
 #include <osg/CullFace>

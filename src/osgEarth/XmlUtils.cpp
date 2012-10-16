@@ -463,5 +463,13 @@ XmlDocument::store( std::ostream& out ) const
     TiXmlDocument doc;
     doc.LinkEndChild( new TiXmlDeclaration( "1.0", "", ""));
     storeNode( this, &doc );    
-    out << doc;    
+
+
+    //Use TiXmlPrinter to do pretty printing.
+    TiXmlPrinter printer;
+    printer.SetIndent("  ");
+    doc.Accept(&printer);
+    out << printer.CStr();
+
+    //out << doc;    
 }

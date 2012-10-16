@@ -59,19 +59,12 @@ usage( const std::string& msg = "" )
         << "            <earth_file>                    : earth file defining layers to export (requied)\n"
         << "            --out <path>                    : root output folder of the TMS repo (required)\n"
         << "            [--bounds xmin ymin xmax ymax]* : bounds to package (in map coordinates; default=entire map)\n"
-        << "            [--max-level <num>]             : max LOD level for tiles (all layers; default=5)\n"
+        << "            [--max-level <num>]             : max LOD level for tiles (all layers; default=inf)\n"
         << "            [--out-earth <earthfile>]       : export an earth file referencing the new repo\n"
         << "            [--ext <extension>]             : overrides the image file extension (e.g. jpg)\n"
         << "            [--overwrite]                   : overwrite existing tiles\n"
         << "            [--keep-empties]                : writes out fully transparent image tiles (normally discarded)\n"
         << "            [--db-options]                : db options string to pass to the image writer in quotes (e.g., \"JPEG_QUALITY 60\")\n"
-#if 0
-        << std::endl
-        << "         --tfs                   : make a TFS repo" << std::endl
-        << "            [--out  <path>]      : root output folder of the TFS repo" << std::endl
-        << "            [--sort <attr>]      : name of attribute by which to sort features" << std::endl
-        << "            [--max  <num> ]      : target maximum # of features per tile" << std::endl
-#endif
         << std::endl
         << "         [--quiet]               : suppress progress output" << std::endl;
 

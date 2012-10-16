@@ -27,7 +27,6 @@
 #include <osgEarth/FadeEffect>
 #include <osgEarth/NodeUtils>
 #include <osgEarth/Registry>
-#include <osgEarth/VirtualProgram>
 #include <osgEarth/ThreadingUtils>
 
 #include <osg/CullFace>

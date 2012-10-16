@@ -354,7 +354,7 @@ MapNode::init()
 
         VirtualProgram* vp = new VirtualProgram();
         vp->setName( "MapNode" );
-        vp->installDefaultColoringAndLightingShaders( osg::StateAttribute::ON | osg::StateAttribute::OVERRIDE );
+        vp->installDefaultColoringAndLightingShaders( 0, osg::StateAttribute::ON | osg::StateAttribute::OVERRIDE );
         ss->setAttributeAndModes( vp, osg::StateAttribute::ON );
     }
 

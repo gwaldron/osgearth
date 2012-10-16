@@ -24,6 +24,7 @@
 #include <osgEarth/TaskService>
 #include <osgEarth/IOTypes>
 #include <osgEarth/ColorFilter>
+#include <osgEarth/StateSetCache>
 #include <osgEarthDrivers/cache_filesystem/FileSystemCache>
 #include <osg/Notify>
 #include <osg/Version>
@@ -63,6 +64,7 @@ _terrainEngineDriver( "osgterrain" )
 
     _shaderLib = new ShaderFactory();
     _taskServiceManager = new TaskServiceManager();
+    _stateSetCache = new StateSetCache();
 
     // activate KMZ support
     osgDB::Registry::instance()->addArchiveExtension  ( "kmz" );    
@@ -478,6 +480,18 @@ void
 Registry::setDefaultTerrainEngineDriverName(const std::string& name)
 {
     _terrainEngineDriver = name;
+}
+
+void
+Registry::setStateSetCache( StateSetCache* cache )
+{
+    _stateSetCache = cache;
+}
+
+StateSetCache*
+Registry::getStateSetCache() const
+{
+    return _stateSetCache.get();
 }
 
 

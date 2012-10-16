@@ -251,9 +251,10 @@ AnnotationUtils::createHighlightUniform()
 }
 
 void
-AnnotationUtils::installAnnotationProgram( osg::StateSet* stateSet )
+AnnotationUtils::installAnnotationProgram(osg::StateSet*                     stateSet,
+                                          osg::StateAttribute::OverrideValue qualifier)
 {
-    static Threading::Mutex           s_mutex;
+    static Threading::Mutex             s_mutex;
     static osg::ref_ptr<VirtualProgram> s_program;
     static osg::ref_ptr<osg::Uniform>   s_samplerUniform;
     static osg::ref_ptr<osg::Uniform>   s_defaultFadeUniform;
@@ -287,27 +288,29 @@ AnnotationUtils::installAnnotationProgram( osg::StateSet* stateSet )
                 "uniform float " << UNIFORM_FADE()      << "; \n"
                 "uniform bool  " << UNIFORM_IS_TEXT()   << "; \n"
                 "uniform sampler2D oeAnno_tex0; \n"
-                "varying vec4 osg_FrontColor; \n"
                 "varying vec4 oeAnno_texCoord; \n"
+                "varying vec4 osg_FrontColor; \n"
                 "void oeAnno_fragColoring( inout vec4 color ) \n"
                 "{ \n"
+                "    color = osg_FrontColor; \n"
                 "    if (" << UNIFORM_IS_TEXT() << ") \n"
                 "    { \n"
                 "        float alpha = texture2D(oeAnno_tex0, oeAnno_texCoord.st).a; \n"
-                "        color = vec4(osg_FrontColor.rgb, osg_FrontColor.a * alpha * " << UNIFORM_FADE() << "); \n"
+                "        color = vec4(color.rgb, color.a * alpha * " << UNIFORM_FADE() << "); \n"
                 "    } \n"
                 "    else \n"
                 "    { \n"
-                "        color = osg_FrontColor * texture2D(oeAnno_tex0, oeAnno_texCoord.st) * vec4(1,1,1," << UNIFORM_FADE() << "); \n"
+                "        color = color * texture2D(oeAnno_tex0, oeAnno_texCoord.st) * vec4(1,1,1," << UNIFORM_FADE() << "); \n"
                 "    } \n"
                 "} \n";
 
             s_program = new VirtualProgram();
             s_program->setName( PROGRAM_NAME() );
+            s_program->setInheritShaders( false );
             s_program->setUseLightingShaders( false );
             s_program->installDefaultColoringShaders();
             s_program->setFunction( "oeAnno_vertColoring", vertSource, ShaderComp::LOCATION_VERTEX_PRE_LIGHTING );
-            s_program->setFunction( "oeAnno_fragColoring", fragSource, ShaderComp::LOCATION_FRAGMENT_PRE_LIGHTING );
+            s_program->setFunction( "oeAnno_fragColoring", fragSource, ShaderComp::LOCATION_FRAGMENT_PRE_LIGHTING, 2.0f );
 
             s_samplerUniform = new osg::Uniform(osg::Uniform::SAMPLER_2D, "oeAnno_tex0");
             s_samplerUniform->set( 0 );
@@ -319,7 +322,7 @@ AnnotationUtils::installAnnotationProgram( osg::StateSet* stateSet )
         }
     }
 
-    stateSet->setAttributeAndModes( s_program.get() );
+    stateSet->setAttributeAndModes( s_program.get(), qualifier );
     stateSet->addUniform( s_samplerUniform.get() );
     stateSet->addUniform( s_defaultFadeUniform.get() );
     stateSet->addUniform( s_defaultIsTextUniform.get() );

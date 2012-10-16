@@ -68,6 +68,11 @@ namespace osgEarth
          */
         unsigned size() const { return _stateSetCache.size(); }
 
+        /**
+         * Clears out the cache.
+         */
+        void clear();
+
     protected: 
         struct CompareStateSets {
             bool operator()(

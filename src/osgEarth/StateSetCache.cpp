@@ -214,3 +214,13 @@ StateSetCache::share(osg::ref_ptr<osg::StateAttribute>& input,
         return true;
     }
 }
+
+
+void
+StateSetCache::clear()
+{
+    Threading::ScopedMutexLock lock( _mutex );
+
+    _stateAttributeCache.clear();
+    _stateSetCache.clear();
+}

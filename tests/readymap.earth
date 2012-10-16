@@ -21,4 +21,8 @@ http://readymap.org
         <url>http://readymap.org/readymap/tiles/1.0.0/9/</url>
     </elevation>
     
+    <options>
+      <terrain normalize_edges="true"/>
+    </options>
+    
 </map>

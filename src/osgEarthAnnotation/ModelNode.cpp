@@ -92,7 +92,7 @@ ModelNode::init(const osgDB::Options* dbOptions)
             if (node.valid() == true)
             {
                 // generate shader code for the loaded model:
-                ShaderGenerator gen;
+                ShaderGenerator gen( Registry::stateSetCache() );
                 node->accept( gen );
 
                 // need a top-level shader too:

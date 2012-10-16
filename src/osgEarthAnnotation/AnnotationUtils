@@ -78,7 +78,9 @@ namespace osgEarth { namespace Annotation
          * Install a program that implements fading, highligting, etc. on annotation 
          * objects.
          */
-        static void installAnnotationProgram( osg::StateSet* stateSet );
+        static void installAnnotationProgram(
+            osg::StateSet*                     stateSet,
+            osg::StateAttribute::OverrideValue value    =osg::StateAttribute::ON );
 
         /**
          * Builds a graph on top of the specified that that implements a 2-pass

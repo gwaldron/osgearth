@@ -29,6 +29,7 @@
 #include <osg/Texture2D>
 #include <osg/Texture3D>
 #include <osg/TexEnv>
+#include <osgText/Text>
 
 #define LC "[ShaderGenerator] "
 
@@ -51,10 +52,12 @@ using namespace osgEarth;
 #endif
 
 // shader names
-#define TEX_COORD    "oe_sg_texcoord"
-#define SAMPLER      "oe_sg_sampler"
-#define ATTRIB       "oe_sg_attrib"
-#define TEXENV_COLOR "oe_sg_texenvcolor"
+#define TEX_COORD      "oe_sg_texcoord"
+#define TEX_COORD_TEXT "oe_sg_texcoord_text"
+#define SAMPLER        "oe_sg_sampler"
+#define SAMPLER_TEXT   "oe_sg_sampler_text"
+#define ATTRIB         "oe_sg_attrib"
+#define TEXENV_COLOR   "oe_sg_texenvcolor"
 
 #define VERTEX_FUNCTION   "oe_sg_vert"
 #define FRAGMENT_FUNCTION "oe_sg_frag"
@@ -160,7 +163,7 @@ ShaderGenerator::apply( osg::Node& node )
         _state->pushStateSet( ss.get() );
 
         osg::ref_ptr<osg::StateSet> replacement;
-        if ( generate(ss.get(), replacement) )
+        if ( processGeometry(ss.get(), replacement) )
         {
             _state->popStateSet();
             node.setStateSet( replacement.get() );
@@ -186,7 +189,7 @@ ShaderGenerator::apply( osg::Geode& geode )
         _state->pushStateSet( ss.get() );
 
         osg::ref_ptr<osg::StateSet> replacement;
-        if ( generate(ss.get(), replacement) )
+        if ( processGeometry(ss.get(), replacement) )
         {
             _state->popStateSet();
             geode.setStateSet( replacement.get() );
@@ -215,11 +218,22 @@ ShaderGenerator::apply( osg::Drawable* drawable )
         if ( ss.valid() )
         {
             _state->pushStateSet(ss.get());
-            
+
             osg::ref_ptr<osg::StateSet> replacement;
-            if ( generate(ss.get(), replacement) )
+
+            if ( dynamic_cast<osgText::Text*>(drawable) != 0L )
             {
-                drawable->setStateSet(replacement.get());
+                if ( processText(ss.get(), replacement) )
+                {
+                    drawable->setStateSet( replacement.get() );
+                }
+            }
+            else
+            {
+                if ( processGeometry(ss.get(), replacement) )
+                {
+                    drawable->setStateSet(replacement.get());
+                }
             }
 
             _state->popStateSet();
@@ -229,7 +243,7 @@ ShaderGenerator::apply( osg::Drawable* drawable )
 
 
 bool
-ShaderGenerator::generate( osg::StateSet* ss, osg::ref_ptr<osg::StateSet>& replacement )
+ShaderGenerator::processText( osg::StateSet* ss, osg::ref_ptr<osg::StateSet>& replacement )
 {
     // do nothing if there's no GLSL support
     if ( !Registry::capabilities().supportsGLSL() )
@@ -247,7 +261,69 @@ ShaderGenerator::generate( osg::StateSet* ss, osg::ref_ptr<osg::StateSet>& repla
     // New stateset that we'll merge with the existing one.
     osg::ref_ptr<osg::StateSet> newStateSet = new osg::StateSet();
 
-    // Install the default program for starters, if a VP is not already installed.
+    std::string vertSrc =
+        "#version " GLSL_VERSION_STR "\n" GLSL_PRECISION "\n"
+        "varying " MEDIUMP "vec4 " TEX_COORD_TEXT ";\n"
+        "void " VERTEX_FUNCTION "()\n"
+        "{ \n"
+        INDENT TEX_COORD_TEXT " = gl_MultiTexCoord0;\n"
+        "} \n";
+
+    std::string fragSrc =
+        "#version " GLSL_VERSION_STR "\n" GLSL_PRECISION "\n"
+        "uniform sampler2D " SAMPLER_TEXT ";\n"
+        "varying " MEDIUMP "vec4 " TEX_COORD_TEXT ";\n"
+        "void " FRAGMENT_FUNCTION "(inout vec4 color)\n"
+        "{ \n"
+        INDENT MEDIUMP "vec4 texel = texture2D(" SAMPLER_TEXT ", " TEX_COORD_TEXT ".xy);\n"
+        INDENT "color.a *= texel.a; \n"
+        "}\n";
+
+    VirtualProgram* vp = dynamic_cast<VirtualProgram*>(program);
+    if ( !vp )
+    {
+        vp = osg::clone( _defaultVP.get() );
+    }
+
+    vp->setUseLightingShaders( false );
+    vp->setFunction( VERTEX_FUNCTION,   vertSrc, ShaderComp::LOCATION_VERTEX_PRE_LIGHTING );
+    vp->setFunction( FRAGMENT_FUNCTION, fragSrc, ShaderComp::LOCATION_FRAGMENT_PRE_LIGHTING );
+    newStateSet->setAttributeAndModes( vp, osg::StateAttribute::ON );
+    newStateSet->getOrCreateUniform( SAMPLER_TEXT, osg::Uniform::SAMPLER_2D )->set( 0 );
+
+    // merge in the new state set:
+    osg::ref_ptr<osg::StateSet> current = osg::clone( ss );
+    current->merge( *newStateSet.get() );
+
+    // optimize sharing:
+    _stateSetCache->share(current, replacement);
+
+    return true;
+}
+
+
+bool
+ShaderGenerator::processGeometry( osg::StateSet* ss, osg::ref_ptr<osg::StateSet>& replacement )
+{
+    // do nothing if there's no GLSL support
+    if ( !Registry::capabilities().supportsGLSL() )
+        return false;
+
+    // State object with extra accessors:
+    StateEx* state = static_cast<StateEx*>(_state.get());
+
+    // check for a real osg::Program. If it exists, bail out so that OSG
+    // can use the program already in the graph
+    osg::StateAttribute* program = state->getAttribute(osg::StateAttribute::PROGRAM);
+    if ( dynamic_cast<osg::Program*>(program) != 0L )
+        return false;
+
+    // New stateset that we'll merge with the existing one.
+    osg::ref_ptr<osg::StateSet> newStateSet = new osg::StateSet();
+
+    // Install the default program for starters, if a VP is not already installed
+    // on the current stateset.
+    program = ss->getAttribute(osg::StateAttribute::PROGRAM);
     if ( !program )
     {
         newStateSet->setAttributeAndModes( _defaultVP.get(), osg::StateAttribute::ON );
@@ -262,7 +338,7 @@ ShaderGenerator::generate( osg::StateSet* ss, osg::ref_ptr<osg::StateSet>& repla
     }
 
     // if the stateset changes any texture attributes, we need a new virtual program:
-    if ( ss->getTextureAttributeList().size() > 0 )
+    if (ss->getTextureAttributeList().size() > 0)
     {
         // work off the state's accumulated texture attribute set:
         int texCount = state->getNumTextureAttributes();
@@ -273,8 +349,6 @@ ShaderGenerator::generate( osg::StateSet* ss, osg::ref_ptr<osg::StateSet>& repla
         if ( !vp.valid() )
         {
             vp = osg::clone( _defaultVP.get() );
-            //vp = new VirtualProgram();
-            //vp->installDefaultColoringAndLightingShaders();
         }
 
         // start generating the shader source.
@@ -383,14 +457,11 @@ ShaderGenerator::generate( osg::StateSet* ss, osg::ref_ptr<osg::StateSet>& repla
         vp->setFunction( VERTEX_FUNCTION,   vertSrc, ShaderComp::LOCATION_VERTEX_PRE_LIGHTING );
         vp->setFunction( FRAGMENT_FUNCTION, fragSrc, ShaderComp::LOCATION_FRAGMENT_PRE_LIGHTING );
 
-        // optimize sharing of VPs.
         newStateSet->setAttributeAndModes( vp.get(), osg::StateAttribute::ON );
     }
 
-    // pop the current stateset off the stack so we can change it:
-    osg::ref_ptr<osg::StateSet> current = osg::clone( ss );
-
     // merge in the new state set:
+    osg::ref_ptr<osg::StateSet> current = osg::clone( ss );
     current->merge( *newStateSet.get() );
 
     // optimize sharing:

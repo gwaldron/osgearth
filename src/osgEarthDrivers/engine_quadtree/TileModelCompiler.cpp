@@ -1343,8 +1343,8 @@ namespace
             osg::ref_ptr< osg::HeightField > n_neighbor  = d.model->_elevationData.getNeighbor( 0, -1 );            
 
             //Recalculate the west side
-            if (w_neighbor.valid())
-            {                                
+            if (w_neighbor.valid() && w_neighbor->getNumColumns() == d.numCols && w_neighbor->getNumRows() == d.numRows)
+            {                                     
                 osg::ref_ptr< osg::Vec3Array > boundaryVerts = new osg::Vec3Array();
                 boundaryVerts->reserve( 2 * d.numRows );
 
@@ -1428,8 +1428,8 @@ namespace
 
                         
             //Recalculate the east side
-            if (e_neighbor.valid())
-            {                
+            if (e_neighbor.valid() && e_neighbor->getNumColumns() == d.numCols && e_neighbor->getNumRows() == d.numRows)
+            {                           
                 osg::ref_ptr< osg::Vec3Array > boundaryVerts = new osg::Vec3Array();
                 boundaryVerts->reserve( 2 * d.numRows );
 
@@ -1510,8 +1510,8 @@ namespace
             }
 
             //Recalculate the north side
-            if (n_neighbor.valid())
-            {
+            if (n_neighbor.valid() && n_neighbor->getNumColumns() == d.numCols && n_neighbor->getNumRows() == d.numRows)
+            {                 
                 osg::ref_ptr< osg::Vec3Array > boundaryVerts = new osg::Vec3Array();
                 boundaryVerts->reserve( 2 * d.numCols );
 
@@ -1593,8 +1593,8 @@ namespace
             }
 
             //Recalculate the south side
-            if (s_neighbor.valid())
-            {
+            if (s_neighbor.valid() && s_neighbor->getNumColumns() == d.numCols && s_neighbor->getNumRows() == d.numRows)
+            {                
                 osg::ref_ptr< osg::Vec3Array > boundaryVerts = new osg::Vec3Array();
                 boundaryVerts->reserve( 2 * d.numCols );
 

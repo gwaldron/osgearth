@@ -180,7 +180,7 @@ AnnotationUtils::createImageGeometry(osg::Image*       image,
     osg::StateSet* dstate = new osg::StateSet;
     dstate->setMode(GL_CULL_FACE,osg::StateAttribute::OFF);
     dstate->setMode(GL_LIGHTING,osg::StateAttribute::OFF);
-    dstate->setMode(GL_BLEND, 1);
+    //dstate->setMode(GL_BLEND, 1); // redundant. AnnotationNode sets blending.
     dstate->setTextureAttributeAndModes(0, texture,osg::StateAttribute::ON);   
 
     // set up the geoset.
@@ -634,7 +634,7 @@ AnnotationUtils::createFullScreenQuad( const osg::Vec4& color )
 
     osg::StateSet* s = geom->getOrCreateStateSet();
     s->setMode(GL_LIGHTING,0);
-    s->setMode(GL_BLEND,1);
+    //s->setMode(GL_BLEND,1); // redundant. AnnotationNode sets blend.
     s->setMode(GL_DEPTH_TEST,0);
     s->setMode(GL_CULL_FACE,0);
     s->setAttributeAndModes( new osg::Depth(osg::Depth::ALWAYS, 0, 1, false), 1 );

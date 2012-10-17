@@ -36,6 +36,7 @@
 
 #define LC "[QuadTreeTerrainEngineNode] "
 
+using namespace osgEarth_engine_quadtree;
 using namespace osgEarth;
 
 //------------------------------------------------------------------------

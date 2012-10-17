@@ -25,29 +25,33 @@
 
 using namespace osgEarth;
 
-/**
-* Factory object that can create a scene graph given a TileKey.
-*/
-class KeyNodeFactory : public osg::Referenced
+namespace osgEarth_engine_quadtree
 {
-public:
     /**
-    * Creates a node for a tile key at the root level.
+    * Factory object that can create a scene graph given a TileKey.
     */
-    virtual osg::Node* createRootNode( const TileKey& key ) =0;
+    class KeyNodeFactory : public osg::Referenced
+    {
+    public:
+        /**
+        * Creates a node for a tile key at the root level.
+        */
+        virtual osg::Node* createRootNode( const TileKey& key ) =0;
 
-    /**
-    * Creates a node for a tile key.
-    */
-    virtual osg::Node* createNode( const TileKey& key ) =0;
+        /**
+        * Creates a node for a tile key.
+        */
+        virtual osg::Node* createNode( const TileKey& key ) =0;
 
-    virtual class TileModelCompiler* getCompiler() const =0;
+        virtual class TileModelCompiler* getCompiler() const =0;
 
-protected:
-    KeyNodeFactory();
+    protected:
+        KeyNodeFactory();
 
-    /** dtor */
-    virtual ~KeyNodeFactory() { }
-};
+        /** dtor */
+        virtual ~KeyNodeFactory() { }
+    };
+
+} // namespace osgEarth_engine_quadtree
 
 #endif // OSGEARTH_ENGINE_KEY_NODE_FACTORY

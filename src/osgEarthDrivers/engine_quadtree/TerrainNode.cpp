@@ -29,6 +29,7 @@
 #include <osg/Node>
 #include <osgGA/EventVisitor>
 
+using namespace osgEarth_engine_quadtree;
 using namespace osgEarth;
 using namespace OpenThreads;
 

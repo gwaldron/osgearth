@@ -22,35 +22,39 @@
 #include "Common"
 #include "TileNodeRegistry"
 
-class TileFactory;
-
-using namespace osgEarth;
-using namespace osgEarth::Drivers;
-
-/**
- * Parent node for the TileNode quadtree hierarchy.
- */
-class TerrainNode : public osg::Group
+namespace osgEarth_engine_quadtree
 {
-public:
+    class TileFactory;
+
+    using namespace osgEarth;
+    using namespace osgEarth::Drivers;
 
     /**
-     * Constructs a new terrain node.
-     * @param[in ] deadTiles If non-NULL, the terrain node will active GL object
-     *             quick-release and use this registry to track dead tiles.
+     * Parent node for the TileNode quadtree hierarchy.
      */
-    TerrainNode( TileNodeRegistry* deadTiles );
+    class TerrainNode : public osg::Group
+    {
+    public:
 
-public: // osg::Node
+        /**
+         * Constructs a new terrain node.
+         * @param[in ] deadTiles If non-NULL, the terrain node will active GL object
+         *             quick-release and use this registry to track dead tiles.
+         */
+        TerrainNode( TileNodeRegistry* deadTiles );
 
-    virtual void traverse( osg::NodeVisitor &nv );
+    public: // osg::Node
 
-protected:
+        virtual void traverse( osg::NodeVisitor &nv );
 
-    virtual ~TerrainNode() { }
+    protected:
 
-    osg::ref_ptr<TileNodeRegistry> _tilesToQuickRelease;
-    bool _quickReleaseCallbackInstalled;
-};
+        virtual ~TerrainNode() { }
+
+        osg::ref_ptr<TileNodeRegistry> _tilesToQuickRelease;
+        bool _quickReleaseCallbackInstalled;
+    };
+
+} // namespace osgEarth_engine_quadtree
 
 #endif // OSGEARTH_ENGINE_QUADTREE_TERRAIN_NODE

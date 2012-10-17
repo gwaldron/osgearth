@@ -28,6 +28,7 @@
 #include <osg/MatrixTransform>
 #include <osgUtil/DelaunayTriangulator>
 
+using namespace osgEarth_engine_quadtree;
 using namespace osgEarth;
 using namespace osgEarth::Drivers;
 using namespace osgEarth::Symbology;

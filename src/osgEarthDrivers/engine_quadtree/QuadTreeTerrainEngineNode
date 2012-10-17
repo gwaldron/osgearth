@@ -37,102 +37,106 @@
 
 using namespace osgEarth;
 
-class QuadTreeTerrainEngineNode : public TerrainEngineNode
+namespace osgEarth_engine_quadtree
 {
-public:
-    QuadTreeTerrainEngineNode();
-    META_Node(osgEarth,QuadTreeTerrainEngineNode);
-    virtual ~QuadTreeTerrainEngineNode();
-
-public:
-    osg::Node* createNode(const TileKey& key);
-
-public: // TerrainEngineNode
-
-    // for standalone tile creation outside of a terrain
-    osg::Node* createTile(const TileKey& key);
-
-public: // internal TerrainEngineNode
-
-    virtual void preInitialize( const Map* map, const TerrainOptions& options );
-    virtual void postInitialize( const Map* map, const TerrainOptions& options );
-    virtual void validateTerrainOptions( TerrainOptions& options );
-    virtual const TerrainOptions& getTerrainOptions() const { return _terrainOptions; }
-    virtual osg::BoundingSphere computeBound() const;
-
-public: // MapCallback adapter functions
-    void onMapInfoEstablished( const MapInfo& mapInfo ); // not virtual!
-    void onMapModelChanged( const MapModelChange& change ); // not virtual!
-
-    UID getUID() const;
-
-public: // statics    
-    static void registerEngine( QuadTreeTerrainEngineNode* engineNode );
-    static void unregisterEngine( UID uid );
-    static void getEngineByUID( UID uid, osg::ref_ptr<QuadTreeTerrainEngineNode>& output );
-
-public:
-    class ElevationChangedCallback : public ElevationLayerCallback
+    class QuadTreeTerrainEngineNode : public TerrainEngineNode
     {
     public:
-        ElevationChangedCallback( QuadTreeTerrainEngineNode* terrain );
+        QuadTreeTerrainEngineNode();
+        META_Node(osgEarth,QuadTreeTerrainEngineNode);
+        virtual ~QuadTreeTerrainEngineNode();
 
-       virtual void onVisibleChanged( TerrainLayer* layer );
+    public:
+        osg::Node* createNode(const TileKey& key);
 
-        QuadTreeTerrainEngineNode* _terrain;
-        friend class QuadTreeTerrainEngineNode;
+    public: // TerrainEngineNode
+
+        // for standalone tile creation outside of a terrain
+        osg::Node* createTile(const TileKey& key);
+
+    public: // internal TerrainEngineNode
+
+        virtual void preInitialize( const Map* map, const TerrainOptions& options );
+        virtual void postInitialize( const Map* map, const TerrainOptions& options );
+        virtual void validateTerrainOptions( TerrainOptions& options );
+        virtual const TerrainOptions& getTerrainOptions() const { return _terrainOptions; }
+        virtual osg::BoundingSphere computeBound() const;
+
+    public: // MapCallback adapter functions
+        void onMapInfoEstablished( const MapInfo& mapInfo ); // not virtual!
+        void onMapModelChanged( const MapModelChange& change ); // not virtual!
+
+        UID getUID() const;
+
+    public: // statics    
+        static void registerEngine( QuadTreeTerrainEngineNode* engineNode );
+        static void unregisterEngine( UID uid );
+        static void getEngineByUID( UID uid, osg::ref_ptr<QuadTreeTerrainEngineNode>& output );
+
+    public:
+        class ElevationChangedCallback : public ElevationLayerCallback
+        {
+        public:
+            ElevationChangedCallback( QuadTreeTerrainEngineNode* terrain );
+
+           virtual void onVisibleChanged( TerrainLayer* layer );
+
+            QuadTreeTerrainEngineNode* _terrain;
+            friend class QuadTreeTerrainEngineNode;
+        };
+
+    protected:
+        virtual void onVerticalScaleChanged();
+
+    private:
+        void init();
+        void syncMapModel();
+
+        // Reloads all the tiles in the terrain due to a data model change
+        void refresh();
+
+        void addImageLayer( ImageLayer* layer );
+        void addElevationLayer( ElevationLayer* layer );
+
+        void removeImageLayer( ImageLayer* layerRemoved );
+        void removeElevationLayer( ElevationLayer* layerRemoved );
+
+        void moveImageLayer( unsigned int oldIndex, unsigned int newIndex );
+        void moveElevationLayer( unsigned int oldIndex, unsigned int newIndex );
+        
+        //void updateElevation( TileNode* tile );
+        void installShaders();
+        void updateTextureCombining();
+
+    private:
+        osgEarth::Drivers::QuadTreeTerrainEngineOptions _terrainOptions;
+
+        class TerrainNode* _terrain;
+        UID                _uid;
+        Revision           _shaderLibRev;
+
+        osg::ref_ptr< ElevationChangedCallback > _elevationCallback;
+
+        MapFrame* _update_mapf; // map frame for the main/update traversal thread
+
+        // node registry is shared across all threads.
+        osg::ref_ptr<TileNodeRegistry> _liveTiles;      // tiles in the scene graph.
+        osg::ref_ptr<TileNodeRegistry> _deadTiles;        // tiles that used to be in the scene graph.
+
+        Threading::PerThread< osg::ref_ptr<KeyNodeFactory> > _perThreadKeyNodeFactories;
+        KeyNodeFactory* getKeyNodeFactory();
+
+        osg::Timer _timer;
+        unsigned   _tileCount;
+        double     _tileCreationTime;
+
+        osg::Uniform* _verticalScaleUniform;
+
+        osg::ref_ptr< TileModelFactory > _tileModelFactory;
+
+        QuadTreeTerrainEngineNode( const QuadTreeTerrainEngineNode& rhs, const osg::CopyOp& op =osg::CopyOp::DEEP_COPY_ALL ) { }
     };
 
-protected:
-    virtual void onVerticalScaleChanged();
-
-private:
-    void init();
-    void syncMapModel();
-
-    // Reloads all the tiles in the terrain due to a data model change
-    void refresh();
-
-    void addImageLayer( ImageLayer* layer );
-    void addElevationLayer( ElevationLayer* layer );
-
-    void removeImageLayer( ImageLayer* layerRemoved );
-    void removeElevationLayer( ElevationLayer* layerRemoved );
-
-    void moveImageLayer( unsigned int oldIndex, unsigned int newIndex );
-    void moveElevationLayer( unsigned int oldIndex, unsigned int newIndex );
-    
-    //void updateElevation( TileNode* tile );
-    void installShaders();
-    void updateTextureCombining();
-
-private:
-    osgEarth::Drivers::QuadTreeTerrainEngineOptions _terrainOptions;
-
-    class TerrainNode* _terrain;
-    UID                _uid;
-    Revision           _shaderLibRev;
-
-    osg::ref_ptr< ElevationChangedCallback > _elevationCallback;
-
-    MapFrame* _update_mapf; // map frame for the main/update traversal thread
-
-    // node registry is shared across all threads.
-    osg::ref_ptr<TileNodeRegistry> _liveTiles;      // tiles in the scene graph.
-    osg::ref_ptr<TileNodeRegistry> _deadTiles;        // tiles that used to be in the scene graph.
-
-    Threading::PerThread< osg::ref_ptr<KeyNodeFactory> > _perThreadKeyNodeFactories;
-    KeyNodeFactory* getKeyNodeFactory();
-
-    osg::Timer _timer;
-    unsigned   _tileCount;
-    double     _tileCreationTime;
-
-    osg::Uniform* _verticalScaleUniform;
-
-    osg::ref_ptr< TileModelFactory > _tileModelFactory;
-
-    QuadTreeTerrainEngineNode( const QuadTreeTerrainEngineNode& rhs, const osg::CopyOp& op =osg::CopyOp::DEEP_COPY_ALL ) { }
-};
+} // namespace osgEarth_engine_quadtree
 
 #endif // OSGEARTH_ENGINE_QUADTREE_ENGINE_NODE_H

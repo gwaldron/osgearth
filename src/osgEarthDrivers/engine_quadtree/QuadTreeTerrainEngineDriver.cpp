@@ -27,6 +27,7 @@
 #define LC "[engine_quadtree driver] "
 
 using namespace osgEarth::Drivers;
+using namespace osgEarth_engine_quadtree;
 
 /**
  * osgEarth driver for the QuadTree terrain engine.
@@ -36,10 +37,10 @@ using namespace osgEarth::Drivers;
  * - integrate support for LOD Blending (access to parent state set)
  * - consider TileNodeCompiler cacheing of TexCoord arrays and other tile-shareable data
  */
-class QuadTreeTerrainEngineDriver : public osgDB::ReaderWriter
+class osgEarth_QuadTreeTerrainEngineDriver : public osgDB::ReaderWriter
 {
 public:
-    QuadTreeTerrainEngineDriver() {}
+    osgEarth_QuadTreeTerrainEngineDriver() {}
 
     virtual const char* className()
     {
@@ -145,4 +146,4 @@ public:
     }
 };
 
-REGISTER_OSGPLUGIN(osgearth_engine_quadtree, QuadTreeTerrainEngineDriver)
+REGISTER_OSGPLUGIN(osgearth_engine_quadtree, osgEarth_QuadTreeTerrainEngineDriver)

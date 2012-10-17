@@ -26,44 +26,48 @@
 
 using namespace osgEarth;
 
-/**
- * Customized PagedLOD node that automatically registers TileNodes
- * with a TileNodeRegistry when they are added to the scene graph.
- */
-class CustomPagedLOD : public osg::PagedLOD
+namespace osgEarth_engine_quadtree
 {
-public:
     /**
-     * Constructs a PagedLOD node that will register TileNode's with the 
-     * provided registry 
+     * Customized PagedLOD node that automatically registers TileNodes
+     * with a TileNodeRegistry when they are added to the scene graph.
      */
-    CustomPagedLOD(
-        TileNodeRegistry* liveTiles,
-        TileNodeRegistry* deadTiles );
+    class CustomPagedLOD : public osg::PagedLOD
+    {
+    public:
+        /**
+         * Constructs a PagedLOD node that will register TileNode's with the 
+         * provided registry 
+         */
+        CustomPagedLOD(
+            TileNodeRegistry* liveTiles,
+            TileNodeRegistry* deadTiles );
 
-    /**
-     * Destructor 
-     */
-    virtual ~CustomPagedLOD();
+        /**
+         * Destructor 
+         */
+        virtual ~CustomPagedLOD();
 
-public: // osg::Group
+    public: // osg::Group
 
-    /**
-     * Override Group methods so that a TileNode gets registered when the 
-     * DatabasePager adds it to the scene graph. Of course this would happen
-     * if you simply added the TileNode to any parent, but in this 
-     * implmementation the DatabasePager is the only entity adding a TileNode
-     * to a parent.
-     *
-     * DatabasePager only calls addChild or removeChild, but we will implement the
-     * other methods (insert, replace, etc) later if necessary
-     */
-    bool addChild( osg::Node* child );
-    bool removeChildren(unsigned pos, unsigned numChildrenToRemove );
+        /**
+         * Override Group methods so that a TileNode gets registered when the 
+         * DatabasePager adds it to the scene graph. Of course this would happen
+         * if you simply added the TileNode to any parent, but in this 
+         * implmementation the DatabasePager is the only entity adding a TileNode
+         * to a parent.
+         *
+         * DatabasePager only calls addChild or removeChild, but we will implement the
+         * other methods (insert, replace, etc) later if necessary
+         */
+        bool addChild( osg::Node* child );
+        bool removeChildren(unsigned pos, unsigned numChildrenToRemove );
 
-private:
+    private:
 
-    osg::ref_ptr<TileNodeRegistry> _live, _dead;
-};
+        osg::ref_ptr<TileNodeRegistry> _live, _dead;
+    };
+
+} // namespace osgEarth_engine_quadtree
 
 #endif // OSGEARTH_ENGINE_QUADTREE_CUSTOM_PAGED_LOD

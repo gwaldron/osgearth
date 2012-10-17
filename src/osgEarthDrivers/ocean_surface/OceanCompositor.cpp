@@ -23,6 +23,7 @@
 #include <osg/Texture2D>
 #include "OceanShaders"
 
+using namespace osgEarth_ocean_surface;
 using namespace osgEarth;
 
 void

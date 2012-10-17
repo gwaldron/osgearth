@@ -21,31 +21,35 @@
 
 #include <osgEarth/TextureCompositor>
 
-using namespace osgEarth;
-
-/**
- * A custom texture compositor for rendering the ocean surface.
- */
-class OceanCompositor : public TextureCompositorTechnique
+namespace osgEarth_ocean_surface
 {
-public:
-    OceanCompositor() { }
+    using namespace osgEarth;
 
-    /** dtor */
-    virtual ~OceanCompositor() { }
+    /**
+     * A custom texture compositor for rendering the ocean surface.
+     */
+    class OceanCompositor : public TextureCompositorTechnique
+    {
+    public:
+        OceanCompositor() { }
 
-    virtual bool requiresUnitTextureSpace() const { return true; }
+        /** dtor */
+        virtual ~OceanCompositor() { }
 
-    virtual bool usesShaderComposition() const { return true; }
+        virtual bool requiresUnitTextureSpace() const { return true; }
 
-    virtual void updateMasterStateSet( osg::StateSet* stateSet, const TextureLayout& layout ) const;
+        virtual bool usesShaderComposition() const { return true; }
 
-    virtual void applyLayerUpdate(osg::StateSet*       stateSet,
-                                  UID                  layerUID,
-                                  const GeoImage&      preparedImage,
-                                  const TileKey&       tileKey,
-                                  const TextureLayout& layout,
-                                  osg::StateSet*       parentStateSet) const;
-};
+        virtual void updateMasterStateSet( osg::StateSet* stateSet, const TextureLayout& layout ) const;
+
+        virtual void applyLayerUpdate(osg::StateSet*       stateSet,
+                                      UID                  layerUID,
+                                      const GeoImage&      preparedImage,
+                                      const TileKey&       tileKey,
+                                      const TextureLayout& layout,
+                                      osg::StateSet*       parentStateSet) const;
+    };
+
+} // namespace osgEarth_ocean_surface
 
 #endif // OSGEARTH_DRIVER_OCEAN_SURFACE_COMPOSITOR

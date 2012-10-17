@@ -30,6 +30,9 @@
 
 #define LC "[OceanSurface] "
 
+using namespace osgEarth_ocean_surface;
+
+
 OceanSurfaceContainer::OceanSurfaceContainer( MapNode* mapNode, const OceanSurfaceOptions& options ) :
 _parentMapNode( mapNode ),
 _options      ( options )

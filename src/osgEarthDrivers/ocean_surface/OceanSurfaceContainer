@@ -28,31 +28,35 @@
 #include <osg/Image>
 #include <osg/Uniform>
 
-using namespace osgEarth;
-using namespace osgEarth::Drivers;
-
-class OceanSurfaceContainer : public osg::Group,
-                              public MapNodeObserver
+namespace osgEarth_ocean_surface
 {
-public:
-    OceanSurfaceContainer( MapNode* mapNode, const OceanSurfaceOptions& options );
+    using namespace osgEarth;
+    using namespace osgEarth::Drivers;
 
-    /** dtor */
-    virtual ~OceanSurfaceContainer() { }
+    class OceanSurfaceContainer : public osg::Group,
+                                  public MapNodeObserver
+    {
+    public:
+        OceanSurfaceContainer( MapNode* mapNode, const OceanSurfaceOptions& options );
 
-    void apply( const OceanSurfaceOptions& options );
+        /** dtor */
+        virtual ~OceanSurfaceContainer() { }
 
-public:
-    MapNode* getMapNode() { return _parentMapNode.get(); }
-    void setMapNode( MapNode* mapNode );
+        void apply( const OceanSurfaceOptions& options );
 
-private:
-    osg::observer_ptr<MapNode> _parentMapNode;
-    OceanSurfaceOptions        _options;
-    osg::ref_ptr<osg::Uniform> _seaLevel, _lowFeather, _highFeather;
-    osg::ref_ptr<osg::Uniform> _baseColor;
+    public:
+        MapNode* getMapNode() { return _parentMapNode.get(); }
+        void setMapNode( MapNode* mapNode );
 
-    void rebuild();
-};
+    private:
+        osg::observer_ptr<MapNode> _parentMapNode;
+        OceanSurfaceOptions        _options;
+        osg::ref_ptr<osg::Uniform> _seaLevel, _lowFeather, _highFeather;
+        osg::ref_ptr<osg::Uniform> _baseColor;
+
+        void rebuild();
+    };
+
+} // namespace osgEarth_ocean_surface
 
 #endif // OSGEARTH_DRIVER_OCEAN_SURFACE_CONTAINER

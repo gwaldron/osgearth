@@ -124,7 +124,7 @@ int main(int argc, char** argv)
     if (!skyNode)
     {
         OE_NOTICE << "Please run with options --sky to enable the SkyNode" << std::endl;
-        exit(1);
+        //exit(1);
     }
 
     // Prevent terrain skirts (or other "secondary geometry") from casting shadows

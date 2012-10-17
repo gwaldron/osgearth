@@ -22,124 +22,127 @@
 #include "Tile"
 #include <osgEarth/TaskService>
 
-class TileFactory;
-class StreamingTerrain;
-
-using namespace osgEarth;
-
-//------------------------------------------------------------------------
-
-class StreamingTile : public Tile
+namespace osgEarth_engine_osgterrain
 {
-public:
-    // Please refer the StreamingTerrain::refreshFamily() method for more info on this structure.
-    struct Relative
+    class TileFactory;
+    class StreamingTerrain;
+
+    using namespace osgEarth;
+
+    //------------------------------------------------------------------------
+
+    class StreamingTile : public Tile
     {
-        int getImageLOD(unsigned int layerID)
+    public:
+        // Please refer the StreamingTerrain::refreshFamily() method for more info on this structure.
+        struct Relative
         {
-            LayerIDtoLODMap::iterator itr = imageLODs.find(layerID);
-            if (itr != imageLODs.end()) return itr->second;
-            return -1;
-        }
-        
-        typedef std::map<unsigned int, int> LayerIDtoLODMap;
+            int getImageLOD(unsigned int layerID)
+            {
+                LayerIDtoLODMap::iterator itr = imageLODs.find(layerID);
+                if (itr != imageLODs.end()) return itr->second;
+                return -1;
+            }
+            
+            typedef std::map<unsigned int, int> LayerIDtoLODMap;
 
-        bool               expected;
-        int                elevLOD;
-        LayerIDtoLODMap    imageLODs;
-        osgTerrain::TileID tileID;
+            bool               expected;
+            int                elevLOD;
+            LayerIDtoLODMap    imageLODs;
+            osgTerrain::TileID tileID;
 
-        enum Direction {
-            PARENT =0,
-            WEST   =1,
-            NORTH  =2,
-            EAST   =3,
-            SOUTH  =4
+            enum Direction {
+                PARENT =0,
+                WEST   =1,
+                NORTH  =2,
+                EAST   =3,
+                SOUTH  =4
+            };
+
+            Relative() { }
         };
 
-        Relative() { }
+    public:
+        StreamingTile( const TileKey& key, GeoLocator* keyLocator, bool quickReleaseGLObjects );
+
+        virtual const char* libraryName() const { return "osgEarth"; }
+        virtual const char* className() const { return "StreamingTile"; }
+
+        // Updates and services this tile's image request tasks
+        void servicePendingImageRequests( const MapFrame& mapf, int stamp );
+
+        // Updates and services this tile's heightfield request tasks
+        void servicePendingElevationRequests( const MapFrame& mapf, int stamp, bool tileTableLocked );
+
+        // returns TRUE if the tile was modified as a result of a completed request.
+        bool serviceCompletedRequests( const MapFrame& mapf, bool tileTableLocked );
+
+        /** Setting this hint tells the tile whether it should bother trying to load elevation data. */
+        void setHasElevationHint( bool hasElevation );
+
+        /** Gets whether the tile's real (not placeholder) elevation data has been loaded. */
+        bool isElevationLayerUpToDate() const { return _elevationLayerUpToDate; }
+
+        /** Gets or sets the LOD of this tile's current heightfield data. */
+        int getElevationLOD() const { return _elevationLOD; }
+        void setElevationLOD( int lod );
+
+        /** Gets the terrain object to which this tile belongs. */
+        class StreamingTerrainNode* getStreamingTerrain();
+        const class StreamingTerrainNode* getStreamingTerrain() const;
+
+        // updates one image layer
+        void updateImagery( ImageLayer* layer, const MapFrame& mapf, OSGTileFactory* factory );
+
+        // are we using a task service for tile generation?
+        bool getUseTileGenRequest() const { return _useTileGenRequest; }
+
+        // gets this tile's relatives
+        Relative* getFamily() { return _family; }
+
+        // marks a request to regenerate the tile based on the specified change(s).
+        void queueTileUpdate( TileUpdate::Action action, int index =-1 );
+        
+        void applyImmediateTileUpdate( TileUpdate::Action action, int index =-1 );
+
+        // marks any pending or running requests for cancelation, and returns true if they
+        // are all canceled.
+        virtual bool cancelActiveTasks(); //override
+
+        void resetElevationRequests( const MapFrame& mapf );
+
+    protected:
+
+        virtual ~StreamingTile();
+
+    private:
+
+        bool _requestsInstalled;
+        bool _hasElevation;
+        bool _elevationLayerDirty;
+        bool _colorLayersDirty;
+        bool _elevationLayerRequested;
+        bool _elevationLayerUpToDate;
+        int  _elevationLOD;
+        bool _useTileGenRequest;
+        bool _sequentialImagery;
+
+        typedef std::queue<TileUpdate> TileUpdateQueue;
+        TileUpdateQueue _tileUpdates;
+
+        TaskRequestList _requests;
+        osg::ref_ptr<TaskRequest> _elevRequest;
+        osg::ref_ptr<TaskRequest> _elevPlaceholderRequest;
+        osg::ref_ptr<TaskRequest> _tileGenRequest;
+
+        Relative _family[5];
+
+        /** Deals with completed requests during the UPDATE traversal. */
+        void installRequests( const MapFrame& mapf, int stamp );
+        bool readyForNewElevation();
+        bool readyForNewImagery(osgEarth::ImageLayer* layer, int currentLOD);
     };
 
-public:
-    StreamingTile( const TileKey& key, GeoLocator* keyLocator, bool quickReleaseGLObjects );
-
-    virtual const char* libraryName() const { return "osgEarth"; }
-    virtual const char* className() const { return "StreamingTile"; }
-
-    // Updates and services this tile's image request tasks
-    void servicePendingImageRequests( const MapFrame& mapf, int stamp );
-
-    // Updates and services this tile's heightfield request tasks
-    void servicePendingElevationRequests( const MapFrame& mapf, int stamp, bool tileTableLocked );
-
-    // returns TRUE if the tile was modified as a result of a completed request.
-    bool serviceCompletedRequests( const MapFrame& mapf, bool tileTableLocked );
-
-    /** Setting this hint tells the tile whether it should bother trying to load elevation data. */
-    void setHasElevationHint( bool hasElevation );
-
-    /** Gets whether the tile's real (not placeholder) elevation data has been loaded. */
-    bool isElevationLayerUpToDate() const { return _elevationLayerUpToDate; }
-
-    /** Gets or sets the LOD of this tile's current heightfield data. */
-    int getElevationLOD() const { return _elevationLOD; }
-    void setElevationLOD( int lod );
-
-    /** Gets the terrain object to which this tile belongs. */
-    class StreamingTerrainNode* getStreamingTerrain();
-    const class StreamingTerrainNode* getStreamingTerrain() const;
-
-    // updates one image layer
-    void updateImagery( ImageLayer* layer, const MapFrame& mapf, OSGTileFactory* factory );
-
-    // are we using a task service for tile generation?
-    bool getUseTileGenRequest() const { return _useTileGenRequest; }
-
-    // gets this tile's relatives
-    Relative* getFamily() { return _family; }
-
-    // marks a request to regenerate the tile based on the specified change(s).
-    void queueTileUpdate( TileUpdate::Action action, int index =-1 );
-    
-    void applyImmediateTileUpdate( TileUpdate::Action action, int index =-1 );
-
-    // marks any pending or running requests for cancelation, and returns true if they
-    // are all canceled.
-    virtual bool cancelActiveTasks(); //override
-
-    void resetElevationRequests( const MapFrame& mapf );
-
-protected:
-
-    virtual ~StreamingTile();
-
-private:
-
-    bool _requestsInstalled;
-    bool _hasElevation;
-    bool _elevationLayerDirty;
-    bool _colorLayersDirty;
-    bool _elevationLayerRequested;
-    bool _elevationLayerUpToDate;
-    int  _elevationLOD;
-    bool _useTileGenRequest;
-    bool _sequentialImagery;
-
-    typedef std::queue<TileUpdate> TileUpdateQueue;
-    TileUpdateQueue _tileUpdates;
-
-    TaskRequestList _requests;
-    osg::ref_ptr<TaskRequest> _elevRequest;
-    osg::ref_ptr<TaskRequest> _elevPlaceholderRequest;
-    osg::ref_ptr<TaskRequest> _tileGenRequest;
-
-    Relative _family[5];
-
-    /** Deals with completed requests during the UPDATE traversal. */
-    void installRequests( const MapFrame& mapf, int stamp );
-    bool readyForNewElevation();
-    bool readyForNewImagery(osgEarth::ImageLayer* layer, int currentLOD);
-};
-
+} // namespace osgEarth_engine_osgterrain
 
 #endif // OSGEARTH_ENGINE_OSGTERRAIN_STREAMING_TILE

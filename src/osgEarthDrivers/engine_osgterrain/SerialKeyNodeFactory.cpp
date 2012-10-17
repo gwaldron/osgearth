@@ -28,6 +28,7 @@
 
 #include <osgEarth/MapNode>
 
+using namespace osgEarth_engine_osgterrain;
 using namespace osgEarth;
 using namespace OpenThreads;
 
@@ -117,7 +118,7 @@ SerialKeyNodeFactory::addTile(Tile* tile, bool tileHasRealData, bool tileHasLodB
         {
             // Make the LOD transition distance, and a measure of how
             // close the tile is to an LOD change, to shaders.
-            result->addCullCallback(new Drivers::LODFactorCallback);
+            result->addCullCallback(new LODFactorCallback);
         }
     }
     else

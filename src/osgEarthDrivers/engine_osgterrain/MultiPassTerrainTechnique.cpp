@@ -34,6 +34,7 @@
 #include <osg/Depth>
 #include <osg/Version>
 
+using namespace osgEarth_engine_osgterrain;
 using namespace osgEarth;
 
 #define NEW_COORD_CODE

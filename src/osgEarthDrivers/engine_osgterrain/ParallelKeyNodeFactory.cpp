@@ -20,6 +20,7 @@
 #include <osgEarth/Registry>
 #include <osg/PagedLOD>
 
+using namespace osgEarth_engine_osgterrain;
 using namespace osgEarth;
 using namespace OpenThreads;
 

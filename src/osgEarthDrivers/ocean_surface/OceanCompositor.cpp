@@ -36,9 +36,18 @@ OceanCompositor::updateMasterStateSet(osg::StateSet*       stateSet,
         vp->setName("osgEarth OceanCompositor");
         stateSet->setAttributeAndModes( vp, 1 );
     }
+    
     vp->installDefaultLightingShaders();
-    vp->setShader( "osgearth_vert_setupColoring", new osg::Shader(osg::Shader::VERTEX, source_setupColoring) );
-    vp->setShader( "osgearth_frag_applyColoring", new osg::Shader(osg::Shader::FRAGMENT, source_applyColoring ) );
+    
+    vp->setShader( 
+        "osgearth_vert_setupColoring", 
+        new osg::Shader(osg::Shader::VERTEX, source_setupColoring),
+        osg::StateAttribute::ON | osg::StateAttribute::PROTECTED );
+
+    vp->setShader( 
+        "osgearth_frag_applyColoring", 
+        new osg::Shader(osg::Shader::FRAGMENT, source_applyColoring),
+        osg::StateAttribute::ON | osg::StateAttribute::PROTECTED );
 }
     
 namespace

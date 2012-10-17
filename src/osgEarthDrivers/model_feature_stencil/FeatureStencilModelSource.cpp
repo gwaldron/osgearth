@@ -191,13 +191,31 @@ namespace
             {
                 Feature* feature = (*i).get();
                 Geometry* geom = feature->getGeometry();
-                if ( geom && 
-                     ( geom->getComponentType() == Geometry::TYPE_LINESTRING ||
-                       geom->getComponentType() == Geometry::TYPE_RING ) )
-                {
-                    hasLines = true;
-                    break;
-                }
+
+				if(geom) {
+					if ( geom->getType() == Geometry::TYPE_MULTI  )
+					{
+						const MultiGeometry* m = static_cast<const MultiGeometry*>(geom);
+						for( GeometryCollection::const_iterator i = m->getComponents().begin(); i != m->getComponents().end(); ++i ) {
+							if ( (*i)->getComponentType() == Geometry::TYPE_LINESTRING ||
+								 (*i)->getComponentType() == Geometry::TYPE_RING )
+							{
+								hasLines = true;
+								break;
+							}
+						}
+					}
+					else {
+						if ( geom->getComponentType() == Geometry::TYPE_LINESTRING ||
+							 geom->getComponentType() == Geometry::TYPE_RING )
+						{
+							hasLines = true;
+						}
+					}
+				}
+				if(hasLines) {
+					break;
+				}
             }
 
             // If the geometry is lines, we need to buffer them before they will work with stenciling

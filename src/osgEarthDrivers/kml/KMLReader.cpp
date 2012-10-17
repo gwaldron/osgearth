@@ -27,6 +27,7 @@
 #include <stack>
 #include <iterator>
 
+using namespace osgEarth_kml;
 using namespace osgEarth;
 
 KMLReader::KMLReader( MapNode* mapNode, const KMLOptions* options ) :

@@ -21,11 +21,15 @@
 
 #include "KML_Object"
 
-using namespace osgEarth;
-
-struct KML_LabelStyle : public KML_Object
+namespace osgEarth_kml
 {
-    virtual void scan( const Config& conf, Style& style, KMLContext& cx );
-};
+    using namespace osgEarth;
+
+    struct KML_LabelStyle : public KML_Object
+    {
+        virtual void scan( const Config& conf, Style& style, KMLContext& cx );
+    };
+
+} // namespace osgEarth_kml
 
 #endif // OSGEARTH_DRIVER_KML_KML_LABELSTYLE

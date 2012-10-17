@@ -18,6 +18,8 @@
  */
 #include "KML_StyleMap"
 
+using namespace osgEarth_kml;
+
 void
 KML_StyleMap::scan2( const Config& conf, KMLContext& cx )
 {

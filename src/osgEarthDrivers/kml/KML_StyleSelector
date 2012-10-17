@@ -21,10 +21,14 @@
 
 #include "KML_Object"
 
-using namespace osgEarth;
-
-struct KML_StyleSelector : public KML_Object
+namespace osgEarth_kml
 {
-};
+    using namespace osgEarth;
+
+    struct KML_StyleSelector : public KML_Object
+    {
+    };
+
+} // namespace osgEarth_kml
 
 #endif // OSGEARTH_DRIVER_KML_KML_STYLESELECTOR

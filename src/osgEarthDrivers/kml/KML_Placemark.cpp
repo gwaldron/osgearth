@@ -30,6 +30,7 @@
 #include <osg/Depth>
 #include <osgDB/WriteFile>
 
+using namespace osgEarth_kml;
 using namespace osgEarth::Features;
 using namespace osgEarth::Annotation;
 

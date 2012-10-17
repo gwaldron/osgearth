@@ -22,12 +22,16 @@
 #include "KML_Common"
 #include "KML_Overlay"
 
-using namespace osgEarth;
-
-struct KML_ScreenOverlay : public KML_Overlay
+namespace osgEarth_kml
 {
-    virtual void scan( const Config& conf, KMLContext& cx );
-    virtual void build( const Config& conf, KMLContext& cx );
-};
+    using namespace osgEarth;
+
+    struct KML_ScreenOverlay : public KML_Overlay
+    {
+        virtual void scan( const Config& conf, KMLContext& cx );
+        virtual void build( const Config& conf, KMLContext& cx );
+    };
+
+} // namespace osgEarth_kml
 
 #endif // OSGEARTH_DRIVER_KML_KML_SCREENOVERLAY

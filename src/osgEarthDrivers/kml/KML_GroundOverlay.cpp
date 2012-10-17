@@ -20,6 +20,7 @@
 #include "KML_Geometry"
 #include <osgEarthAnnotation/ImageOverlay>
 
+using namespace osgEarth_kml;
 using namespace osgEarth::Annotation;
 
 void

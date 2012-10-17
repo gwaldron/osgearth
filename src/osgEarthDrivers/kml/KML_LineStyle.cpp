@@ -18,6 +18,8 @@
  */
 #include "KML_LineStyle"
 
+using namespace osgEarth_kml;
+
 void 
 KML_LineStyle::scan( const Config& conf, Style& style, KMLContext& cx )
 {

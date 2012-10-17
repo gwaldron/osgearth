@@ -18,6 +18,8 @@
  */
 #include "KML_LabelStyle"
 
+using namespace osgEarth_kml;
+
 void 
 KML_LabelStyle::scan( const Config& conf, Style& style, KMLContext& cx )
 {

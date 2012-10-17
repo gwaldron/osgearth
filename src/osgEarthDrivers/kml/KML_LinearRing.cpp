@@ -18,6 +18,8 @@
  */
 #include "KML_LinearRing"
 
+using namespace osgEarth_kml;
+
 void
 KML_LinearRing::parseStyle( const Config& conf, KMLContext& cs, Style& style )
 {

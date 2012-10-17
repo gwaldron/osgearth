@@ -22,20 +22,24 @@
 #include <osgEarth/Config>
 #include <osgEarth/MapNode>
 
-using namespace osgEarth;
-
-class EarthFileSerializer1
+namespace osgEarth_osgearth
 {
-public:
-    MapNode* deserialize( const Config& conf, const std::string& referenceURI ) const;
-};
+    using namespace osgEarth;
 
-class EarthFileSerializer2
-{
-public:
-    MapNode* deserialize( const Config& conf, const std::string& referenceURI ) const;
+    class EarthFileSerializer1
+    {
+    public:
+        MapNode* deserialize( const Config& conf, const std::string& referenceURI ) const;
+    };
 
-    Config serialize( MapNode* mapNode ) const;
-};
+    class EarthFileSerializer2
+    {
+    public:
+        MapNode* deserialize( const Config& conf, const std::string& referenceURI ) const;
+
+        Config serialize( MapNode* mapNode ) const;
+    };
+
+} // namespace osgEarth_osgearth
 
 #endif // OSGEARTH_EARTH_PLUGIN_SERIALIZER_H

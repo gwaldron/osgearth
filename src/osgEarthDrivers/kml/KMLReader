@@ -26,28 +26,32 @@
 #include <iostream>
 #include "KMLOptions"
 
-using namespace osgEarth;
-using namespace osgEarth::Drivers;
-
-class KMLReader
+namespace osgEarth_kml
 {
-public:
-    /** Initialized a KML reader that will work with the provided map node */
-    KMLReader( MapNode* mapNode, const KMLOptions* options );
+    using namespace osgEarth;
+    using namespace osgEarth::Drivers;
 
-    /** dtor */
-    virtual ~KMLReader() { }
+    class KMLReader
+    {
+    public:
+        /** Initialized a KML reader that will work with the provided map node */
+        KMLReader( MapNode* mapNode, const KMLOptions* options );
 
-    /** Reads KML from a stream and returns a node */
-    osg::Node* read( std::istream& in, const osgDB::Options* dbOptions ) ;
+        /** dtor */
+        virtual ~KMLReader() { }
 
-    /** Reads KML from a Config object */
-    osg::Node* read( const Config& conf, const osgDB::Options* dbOptions );
+        /** Reads KML from a stream and returns a node */
+        osg::Node* read( std::istream& in, const osgDB::Options* dbOptions ) ;
 
-private:
-    MapNode*          _mapNode;
-    const KMLOptions* _options;
-};
+        /** Reads KML from a Config object */
+        osg::Node* read( const Config& conf, const osgDB::Options* dbOptions );
+
+    private:
+        MapNode*          _mapNode;
+        const KMLOptions* _options;
+    };
+
+} // namespace osgEarth_kml
 
 #endif // OSGEARTH_DRIVER_KML_READER
 

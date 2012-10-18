@@ -20,6 +20,7 @@
 #define OSGEARTH_DRIVER_OCEAN_SURFACE_COMPOSITOR 1
 
 #include <osgEarth/TextureCompositor>
+#include "OceanSurface"
 
 namespace osgEarth_ocean_surface
 {
@@ -31,7 +32,7 @@ namespace osgEarth_ocean_surface
     class OceanCompositor : public TextureCompositorTechnique
     {
     public:
-        OceanCompositor() { }
+        OceanCompositor(const osgEarth::Drivers::OceanSurfaceOptions& options);
 
         /** dtor */
         virtual ~OceanCompositor() { }
@@ -48,6 +49,10 @@ namespace osgEarth_ocean_surface
                                       const TileKey&       tileKey,
                                       const TextureLayout& layout,
                                       osg::StateSet*       parentStateSet) const;
+
+    private:
+
+        osgEarth::Drivers::OceanSurfaceOptions _options;
     };
 
 } // namespace osgEarth_ocean_surface

@@ -76,14 +76,34 @@ OceanSurfaceContainer::rebuild()
         MapNode* oceanMapNode = new MapNode( oceanMap, mno );
         
         // install a custom compositor. Must do this before adding any image layers.
-        oceanMapNode->setCompositorTechnique( new OceanCompositor() );
+        oceanMapNode->setCompositorTechnique( new OceanCompositor(_options) );
 
-        // install an "elevation proxy" layer that reads elevation tiles from the
-        // parent map and turns them into encoded images for our shader to use.
-        ImageLayerOptions epo( "ocean-proxy" );
-        epo.cachePolicy() = CachePolicy::NO_CACHE;
-        epo.maxLevel() = *_options.maxLOD();
-        oceanMap->addImageLayer( new ElevationProxyImageLayer(_parentMapNode->getMap(), epo) );
+        // if the caller requested a mask layer, install that now.
+        if ( _options.maskLayer().isSet() )
+        {
+            if ( !_options.maskLayer()->maxLevel().isSet() )
+            {
+                // set the max subdivision level if it's not already specified in the 
+                // mask layer options:
+                _options.maskLayer()->maxLevel() = *_options.maxLOD();
+            }
+
+            ImageLayer* maskLayer = new ImageLayer( "ocean-mask", *_options.maskLayer() );
+            oceanMap->addImageLayer( maskLayer );
+        }
+
+        // otherwise, install a "proxy layer" that will use the elevation data in the map
+        // to determine where the ocean is. This approach is limited in that it cannot
+        // detect the difference between ocean and inland areas that are below sea level.
+        else
+        {
+            // install an "elevation proxy" layer that reads elevation tiles from the
+            // parent map and turns them into encoded images for our shader to use.
+            ImageLayerOptions epo( "ocean-proxy" );
+            epo.cachePolicy() = CachePolicy::NO_CACHE;
+            epo.maxLevel() = *_options.maxLOD();
+            oceanMap->addImageLayer( new ElevationProxyImageLayer(_parentMapNode->getMap(), epo) );
+        }
 
         this->addChild( oceanMapNode );
 
@@ -102,12 +122,18 @@ OceanSurfaceContainer::rebuild()
         _baseColor = new osg::Uniform(osg::Uniform::FLOAT_VEC4, "ocean_baseColor");
         ss->addUniform( _baseColor.get() );
 
-        // trick to prevent z-fighting..
+        _maxRange = new osg::Uniform(osg::Uniform::FLOAT, "ocean_max_range");
+        ss->addUniform( _maxRange.get() );
+
+        _fadeRange = new osg::Uniform(osg::Uniform::FLOAT, "ocean_fade_range");
+        ss->addUniform( _fadeRange.get() );
+
+        // trick to mitigate z-fighting..
         ss->setAttributeAndModes( new osg::Depth(osg::Depth::LEQUAL, 0.0, 1.0, false) );
         ss->setRenderBinDetails( 15, "RenderBin" );
 
         // load up a surface texture
-        ss->getOrCreateUniform( "ocean_has_tex1", osg::Uniform::BOOL )->set( false );
+        ss->getOrCreateUniform( "ocean_has_surface_tex", osg::Uniform::BOOL )->set( false );
         if ( _options.textureURI().isSet() )
         {
             //TODO: enable cache support here:
@@ -121,14 +147,16 @@ OceanSurfaceContainer::rebuild()
                 tex->setWrap  ( osg::Texture::WRAP_T, osg::Texture::REPEAT );
 
                 ss->setTextureAttributeAndModes( 1, tex, 1 );
-                ss->getOrCreateUniform( "ocean_tex1", osg::Uniform::SAMPLER_2D )->set( 1 );
-                ss->getOrCreateUniform( "ocean_has_tex1", osg::Uniform::BOOL )->set( true );
+                ss->getOrCreateUniform( "ocean_surface_tex", osg::Uniform::SAMPLER_2D )->set( 1 );
+                ss->getOrCreateUniform( "ocean_has_surface_tex", osg::Uniform::BOOL )->set( true );
             }
         }
 
         // remove backface culling so we can see underwater
         // (use OVERRIDE since the terrain engine sets back face culling.)
-        ss->setAttributeAndModes( new osg::CullFace(), osg::StateAttribute::OFF | osg::StateAttribute::OVERRIDE );
+        ss->setAttributeAndModes( 
+            new osg::CullFace(), 
+            osg::StateAttribute::OFF | osg::StateAttribute::OVERRIDE );
 
         apply( _options );
     }
@@ -143,6 +171,8 @@ OceanSurfaceContainer::apply( const OceanSurfaceOptions& options )
     _lowFeather->set( *options.lowFeatherOffset() );
     _highFeather->set( *options.highFeatherOffset() );
     _baseColor->set( *options.baseColor() );
+    _maxRange->set( *options.maxRange() );
+    _fadeRange->set( *options.fadeRange() );
 }
 
 

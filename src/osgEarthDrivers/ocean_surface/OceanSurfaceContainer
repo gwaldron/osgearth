@@ -52,6 +52,7 @@ namespace osgEarth_ocean_surface
         osg::observer_ptr<MapNode> _parentMapNode;
         OceanSurfaceOptions        _options;
         osg::ref_ptr<osg::Uniform> _seaLevel, _lowFeather, _highFeather;
+        osg::ref_ptr<osg::Uniform> _maxRange, _fadeRange;
         osg::ref_ptr<osg::Uniform> _baseColor;
 
         void rebuild();

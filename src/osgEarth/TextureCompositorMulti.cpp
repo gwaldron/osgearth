@@ -520,7 +520,10 @@ TextureCompositorMultiTexture::createSamplerFunction(UID layerUID,
     {
         std::stringstream buf;
 
-        buf << "uniform sampler2D "<< makeSamplerName(slot) << "; \n"
+        if ( type != osg::Shader::VERTEX )
+		    buf << "varying vec4 osg_TexCoord[" << Registry::capabilities().getMaxGPUTextureCoordSets()  << "]; \n";
+
+        buf << "uniform sampler2D "<< makeSamplerName(slot) << "; \n"			
             << "vec4 " << functionName << "() \n"
             << "{ \n";
 

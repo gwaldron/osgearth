@@ -84,17 +84,12 @@ namespace osgEarth
         /**
          * Gets a uniform corresponding to the given mode and value
          */
-        virtual osg::Uniform* getUniformForGLMode(
+        virtual osg::Uniform* createUniformForGLMode(
             osg::StateAttribute::GLMode      mode,
             osg::StateAttribute::GLModeValue value );
 
         /** dtor */
         virtual ~ShaderFactory() { }
-
-    private:
-        osg::ref_ptr<osg::Uniform> _glLightOn;
-        osg::ref_ptr<osg::Uniform> _glLightOff;
-        mutable Threading::Mutex   _modeUniformMutex;
     };
 
 

@@ -573,27 +573,16 @@ ShaderFactory::createColorFilterChainFragmentShader( const std::string& function
 
 
 osg::Uniform*
-ShaderFactory::getUniformForGLMode(osg::StateAttribute::GLMode      mode,
-                                   osg::StateAttribute::GLModeValue value)
+ShaderFactory::createUniformForGLMode(osg::StateAttribute::GLMode      mode,
+                                      osg::StateAttribute::GLModeValue value)
 {
-    if ( !_glLightOn.valid() )
-    {
-        Threading::ScopedMutexLock lock( _modeUniformMutex );
-        if ( !_glLightOn.valid() )
-        {
-            _glLightOn = new osg::Uniform(osg::Uniform::BOOL, "oe_mode_GL_LIGHTING");
-            _glLightOn->set( true );
-
-            _glLightOff = new osg::Uniform(osg::Uniform::BOOL, "oe_mode_GL_LIGHTING");
-            _glLightOff->set( false );
-        }
-    }
+    osg::Uniform* u = 0L;
 
     if ( mode == GL_LIGHTING )
     {
-        return (value & osg::StateAttribute::ON) != 0 ? _glLightOn.get() : _glLightOff.get();
+        osg::Uniform* u = new osg::Uniform(osg::Uniform::BOOL, "oe_mode_GL_LIGHTING");
+        u->set( (value & osg::StateAttribute::ON) != 0 );
     }
 
-    // unsupported.
-    return 0L;
+    return u;
 }

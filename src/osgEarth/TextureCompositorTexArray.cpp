@@ -184,7 +184,7 @@ namespace
 {
     osg::Texture2DArray*
     s_getTexture( osg::StateSet* stateSet, const TextureLayout& layout,
-                  int unit, unsigned textureSize )
+                  int unit, unsigned textureSize, osg::Texture::FilterMode minFilter, osg::Texture::FilterMode magFilter )
     {
         osg::Texture2DArray* tex = static_cast<osg::Texture2DArray*>(
             stateSet->getTextureAttribute( unit, osg::StateAttribute::TEXTURE ) );
@@ -201,8 +201,8 @@ namespace
             // configure the mipmapping
             tex->setMaxAnisotropy(16.0f);
             tex->setResizeNonPowerOfTwoHint(false);
-            tex->setFilter( osg::Texture::MAG_FILTER, osg::Texture::LINEAR );
-            tex->setFilter( osg::Texture::MIN_FILTER, osg::Texture::LINEAR_MIPMAP_LINEAR );
+            tex->setFilter( osg::Texture::MAG_FILTER, magFilter );
+            tex->setFilter( osg::Texture::MIN_FILTER, minFilter );
 
             // configure the wrapping
             tex->setWrap(osg::Texture::WRAP_S,osg::Texture::CLAMP_TO_EDGE);
@@ -290,7 +290,9 @@ TextureCompositorTexArray::isSupported()
 }
 
 TextureCompositorTexArray::TextureCompositorTexArray( const TerrainOptions& options ) :
-_lodTransitionTime( *options.lodTransitionTime() )
+_lodTransitionTime( *options.lodTransitionTime() ),
+_minFilter        ( *options.minFilter() ),
+_magFilter        ( *options.magFilter() )
 {
     //nop
 }
@@ -341,7 +343,7 @@ TextureCompositorTexArray::applyLayerUpdate(osg::StateSet*       stateSet,
 
     // access the texture array, creating or growing it if necessary:
     osg::Texture2DArray* texture = s_getTexture( stateSet, layout, 0,
-                                                 textureSize() );
+                                                 textureSize(), _minFilter, _magFilter);
     ensureSampler( stateSet, 0 );
     // assign the new image at the proper position in the texture array.
     osg::Image* image = preparedImage.getImage();

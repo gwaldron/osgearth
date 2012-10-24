@@ -78,18 +78,53 @@ NumericExpression::init()
 {
     _vars.clear();
     _rpn.clear();
-    StringTokenizer tokenizer( "", "" );
-    tokenizer.addDelims( "[],()%*/+-", true );
-    tokenizer.addQuotes( "'\"", true );
-    tokenizer.keepEmpties() = false;
+
+    StringTokenizer variablesTokenizer( "", "" );
+    variablesTokenizer.addDelims( "[]", true );
+    variablesTokenizer.addQuotes( "'\"", true );
+    variablesTokenizer.keepEmpties() = false;
+
+    StringTokenizer operandTokenizer( "", "" );
+    operandTokenizer.addDelims( ",()%*/+-", true );
+    operandTokenizer.addQuotes( "'\"", true );
+    operandTokenizer.keepEmpties() = false;
+
+    StringVector variablesTokens;
+    variablesTokenizer.tokenize( _src, variablesTokens );
 
     StringVector t;
-    tokenizer.tokenize( _src, t );
-    //tokenize(_src, t, "[],()%*/+-", "'\"", false, true);
+    bool invar = false;
+    for( unsigned i=0; i<variablesTokens.size(); ++i )
+    {
+        if ( variablesTokens[i] == "[" && !invar )
+        {
+            // Start variable, add "[" token
+            invar = true;
+            t.push_back(variablesTokens[i]);
+        }
+        else if ( variablesTokens[i] == "]" && invar )
+        {
+            // End variable, add "]" token
+            invar = false;
+            t.push_back(variablesTokens[i]);
+        }
+        else if ( invar )
+        {
+            // Variable, add variable token
+            t.push_back(variablesTokens[i]);
+        }
+        else
+        {
+            // Operands, tokenize it and add tokens
+            StringVector operandTokens;
+            operandTokenizer.tokenize( variablesTokens[i], operandTokens );
+            t.insert(t.end(), operandTokens.begin(), operandTokens.end());
+        }
+    }
 
     // identify tokens:
     AtomVector infix;
-    bool invar = false;
+    invar = false;
     for( unsigned i=0; i<t.size(); ++i ) {
         if ( t[i] == "[" && !invar ) {
             invar = true;

@@ -1,0 +1,47 @@
+/* --*-c++-*-- */
+/**
+ * Boundary Tool
+ * Copyright 2011 Pelican Mapping
+ * http://pelicanmapping.com
+ *
+ */
+#ifndef BOUNDARY_UTIL
+#define BOUNDARY_UTIL 1
+
+#include <osg/Node>
+
+class BoundaryUtil
+{
+public:
+  /* Use the vertices of the given node to calculate a boundary via the
+   * findHull() method.
+   */
+  static osg::Vec3dArray* getBoundary(osg::Node* modelNode, bool geocentric=true, bool convexHull=false);
+
+  /* Finds the convex hull for the given points using the Andrew's monotone
+   * chain algorithm. Returns an ordered set of points defining the hull
+   */
+  static osg::Vec3dArray* findHull(osg::Vec3dArray& points);
+
+  static osg::Vec3dArray* findMeshBoundary(osg::Node* modelNode, bool geocentric=true);
+
+  static bool simpleBoundaryTest(const osg::Vec3dArray& boundary);
+
+protected:
+  /* Returns an array containing the points sorted first by x and then by y */
+  static osg::Vec3dArray* hullPresortPoints(osg::Vec3dArray& points);
+
+  /* Tests if a point is Left|On|Right of an infinite line
+   *   Returns: >0 for P2 left of the line through P0 and P1
+   *            0 for P2 on the line
+   *            <0 for P2 right of the line
+   *
+   * Implementation based on method from softSurfer (www.softsurfer.com)
+   */
+  static inline float isLeft(osg::Vec3d P0, osg::Vec3d P1, osg::Vec3d P2)
+  {
+    return (P1.x() - P0.x())*(P2.y() - P0.y()) - (P2.x() - P0.x())*(P1.y() - P0.y());
+  }
+};
+
+#endif // BOUNDARY_UTIL

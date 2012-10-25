@@ -1,0 +1,48 @@
+/* --*-c++-*-- */
+/**
+ * Boundary Tool
+ * Copyright 2011 Pelican Mapping
+ * http://pelicanmapping.com
+ *
+ */
+#ifndef VERTEX_COLLECTION_VISITOR
+#define VERTEX_COLLECTION_VISITOR 1
+
+#include <osg/CoordinateSystemNode>
+#include <osg/NodeVisitor>
+
+class VertexCollectionVisitor : public osg::NodeVisitor
+{
+public:
+
+    VertexCollectionVisitor(bool geocentric = false, TraversalMode traversalMode = TRAVERSE_ALL_CHILDREN);
+    
+    virtual void reset();
+    
+    osg::Vec3dArray* getVertices() { return _vertices.get(); }
+    
+    void apply(osg::Node& node);
+    
+    void apply(osg::Transform& transform);
+    
+    void apply(osg::Geode& geode);
+    
+    inline void pushMatrix(osg::Matrix& matrix) { _matrixStack.push_back(matrix); }
+    
+    inline void popMatrix() { _matrixStack.pop_back(); }
+
+    void applyDrawable(osg::Drawable* drawable);
+    
+protected:
+    
+    typedef std::vector<osg::Matrix> MatrixStack;
+
+    osg::ref_ptr<osg::Vec3dArray>  _vertices;
+    MatrixStack _matrixStack;
+    bool _geocentric;
+    osg::ref_ptr<osg::EllipsoidModel> _ellipsoidModel;
+
+    void addVertex(osg::Vec3 vertex);
+};
+
+#endif //VERTEX_COLLECTION_VISITOR

@@ -408,7 +408,8 @@ BoundaryUtil::findMeshBoundary( osg::Node* node, bool geocentric )
         topology._rot.makeRotate( normal, osg::Vec3d(0,0,1) );
 
     // build the topology
-    node->accept( BuildTopologyVisitor(topology) );
+    BuildTopologyVisitor buildTopoVisitor(topology);
+    node->accept( buildTopoVisitor );
 
     // starting with the minimum-Y vertex (which is guaranteed to be in the boundary)
     // traverse the outside of the point set. Do this by sorting all the edges by

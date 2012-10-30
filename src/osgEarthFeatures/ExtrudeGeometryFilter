@@ -119,7 +119,7 @@ namespace osgEarth { namespace Features
             osg::Drawable*      drawable, 
             osg::StateSet*      stateSet, 
             const std::string&  name,
-            FeatureID           fid,
+            Feature*            feature,
             FeatureSourceIndex* index);
         
         bool process( 

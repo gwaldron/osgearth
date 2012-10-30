@@ -249,7 +249,7 @@ SubstituteModelFilter::process(const FeatureList&           features,
 
                     if ( context.featureIndex() && !_useDrawInstanced )
                     {
-                        context.featureIndex()->tagNode( xform, input->getFID() );
+                        context.featureIndex()->tagNode( xform, input );
                     }
 
                     // name the feature if necessary
@@ -406,7 +406,7 @@ struct ClusterVisitor : public osg::NodeVisitor
                             geode.addDrawable( newDrawable.get() );
 
                             if ( _cx.featureIndex() )
-                                _cx.featureIndex()->tagPrimitiveSets( newDrawable.get(), feature->getFID() );
+                                _cx.featureIndex()->tagPrimitiveSets( newDrawable.get(), feature );
                         }
                     }
 

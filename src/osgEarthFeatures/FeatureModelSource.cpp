@@ -61,6 +61,7 @@ FeatureModelSourceOptions::fromConfig( const Config& conf )
     conf.getIfSet( "merge_geometry",   _mergeGeometry );
     conf.getIfSet( "cluster_culling",  _clusterCulling );
     conf.getIfSet( "feature_indexing", _featureIndexing );
+    conf.getIfSet( "storing_attributes_on_feature_indexing", _storingAttributesOnFeatureIndexing );	
     conf.getIfSet( "backface_culling", _backfaceCulling );
     conf.getIfSet( "alpha_blending",   _alphaBlending );
     conf.getIfSet( "fade_in_duration", _fadeInDuration );
@@ -93,6 +94,7 @@ FeatureModelSourceOptions::getConfig() const
     conf.updateIfSet( "merge_geometry",   _mergeGeometry );
     conf.updateIfSet( "cluster_culling",  _clusterCulling );
     conf.updateIfSet( "feature_indexing", _featureIndexing );
+    conf.updateIfSet( "storing_attributes_on_feature_indexing", _storingAttributesOnFeatureIndexing );	
     conf.updateIfSet( "backface_culling", _backfaceCulling );
     conf.updateIfSet( "alpha_blending",   _alphaBlending );
     conf.updateIfSet( "fade_in_duration", _fadeInDuration );

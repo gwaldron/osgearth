@@ -635,7 +635,7 @@ FeatureModelGraph::buildLevel( const FeatureLevel& level, const GeoExtent& exten
     FeatureSourceIndexNode* index = 0L;
     if ( _session->getFeatureSource() && (_options.featureIndexing() == true) )
     {
-        index = new FeatureSourceIndexNode( _session->getFeatureSource() );
+        index = new FeatureSourceIndexNode( _session->getFeatureSource(), _options.storingAttributesOnFeatureIndexing() == true );
         group = index;
     }
     else

@@ -70,11 +70,13 @@ namespace osgEarth { namespace Drivers
         optional<float>& fadeRange() { return _fadeRange; }
         const optional<float>& fadeRange() const { return _fadeRange; }
 
-        /** URI of the intensity texture to use for the ocean surface alpha. */
+        /** URI of the texture to blend and animate into the ocean surface. */
         optional<URI>& textureURI() { return _textureURI; }
         const optional<URI>& textureURI() const { return _textureURI; }
 
-        /** Image layer configuration for an optional "ocean mask" layer */
+        /** Image layer configuration for an optional "ocean mask" layer.
+         *  This is an image layer that encodes areas of land versus ocean in the
+         *  alpha channel of the image. The mapping is: [0...1] => [land...ocean] */
         optional<ImageLayerOptions>& maskLayer() { return _maskLayerOptions; }
         const optional<ImageLayerOptions>& maskLayer() const { return _maskLayerOptions; }
 

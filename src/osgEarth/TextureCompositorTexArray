@@ -76,6 +76,8 @@ namespace osgEarth
 
     private:
         float _lodTransitionTime;
+        osg::Texture::FilterMode _minFilter;
+        osg::Texture::FilterMode _magFilter;
     };
 }
 

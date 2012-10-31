@@ -322,6 +322,7 @@ AnnotationNode::clearDecoration()
     {
         this->accept(_activeDs, false);
         _activeDs = 0L;
+        _activeDsName = "";
     }
 }
 

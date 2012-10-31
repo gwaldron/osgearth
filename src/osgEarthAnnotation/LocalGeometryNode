@@ -58,8 +58,41 @@ namespace osgEarth { namespace Annotation
 
         virtual ~LocalGeometryNode() { }
 
+        /**
+         * Gets the Style used to create thenode.
+         */
+        const Style& getStyle() const { return _style; }
+
+        /**
+         * Sets a new style for the node
+         */
+        void setStyle(const Style& style);
+
+        /**
+         * Gets the geometry used to create this node (if applicable)
+         */
+        const Geometry* getGeometry() const { return _geom.get(); }
+
+        /**
+         * Sets new geometry for this node.
+         */
+        void setGeometry( Geometry* geom );
+
+        /**
+         * Gets the external node attached to this annotation (if applicable)
+         */
+        osg::Node* getNode() { return _node; }
+
+        /**
+         * Sets an external node to attach to this annotation
+         */
+        void setNode( osg::Node* node );
+
     public:
 
+        /**
+         * Constructs an LGN from a serialized Config.
+         */
         LocalGeometryNode(
             MapNode*              mapNode,
             const Config&         conf,
@@ -69,10 +102,13 @@ namespace osgEarth { namespace Annotation
 
     protected:
 
-        optional<Style> _style;
-        bool  _draped;
-        osg::ref_ptr<Geometry> _geom;
+        Style                        _style;
+        bool                         _draped;
+        osg::ref_ptr<osg::Node>      _node;
+        osg::ref_ptr<Geometry>       _geom;
 
+        void initNode();
+        void initGeometry(const osgDB::Options*);
         void init(const osgDB::Options*);
     };
 

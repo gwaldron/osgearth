@@ -29,7 +29,7 @@ namespace osgEarth { namespace Annotation
 
     /** 
      * A PlaceNode combines an 2D icon, a label, support for mouse interaction
-     * and a popup control.
+     * and a popup control (eventually)
      */
     class OSGEARTHANNO_EXPORT PlaceNode : public OrthoNode
     {
@@ -38,6 +38,12 @@ namespace osgEarth { namespace Annotation
 
         /**
          * Constructs a new place node
+         *
+         * @param mapNode   MapNode that helps position this annotation
+         * @param position  Initial location of the annotation
+         * @param iconImage Image of the place icon
+         * @param labelText Text to place next to the icon
+         * @param style     Optional style settings.
          */
         PlaceNode(
             MapNode*           mapNode,
@@ -49,6 +55,11 @@ namespace osgEarth { namespace Annotation
         /**
          * Constructs a new place node. You can specify an icon marker by
          * adding a IconSymbol to the Style.
+         *
+         * @param mapNode   MapNode that helps position this annotation
+         * @param position  Initial location of the annotation
+         * @param labelText Text to place next to the icon
+         * @param style     Optional style settings.
          */
         PlaceNode(
             MapNode*           mapNode,
@@ -58,6 +69,11 @@ namespace osgEarth { namespace Annotation
 
         /**
          * Constuct a new place node entirely from symbology
+         *
+         * @param mapNode   MapNode that helps position this annotation
+         * @param position  Initial location of the annotation
+         * @param style     Style settings.
+         * @param dbOptions I/O options for embedded resource loading
          */
         PlaceNode(
             MapNode*              mapNode,
@@ -66,18 +82,17 @@ namespace osgEarth { namespace Annotation
             const osgDB::Options* dbOptions);
 
         /**
-         * Deserializes a place node
+         * Deserializes a place node from Config data. (internal method)
          */
         PlaceNode(
             MapNode*              mapNode,
             const Config&         conf,
             const osgDB::Options* dbOptions );
 
-        virtual ~PlaceNode() { }
-
         /**
          * Image to use for the icon
          */
+        void setIconImage(osg::Image* image);
         osg::Image* getIconImage() const { return _image.get(); }
 
         /**
@@ -87,8 +102,9 @@ namespace osgEarth { namespace Annotation
         const std::string& getText() const { return _text; }
 
         /**
-         * Style (for text)
+         * Style (for text and placement)
          */
+        void setStyle( const Style& style );
         const Style& getStyle() const { return _style; }
 
 
@@ -99,14 +115,19 @@ namespace osgEarth { namespace Annotation
         virtual void setDynamic( bool value );
 
         virtual Config getConfig() const;
+
+    protected:
+
+        virtual ~PlaceNode() { }
         
     private:
-        osg::ref_ptr<osg::Image>   _image;
-        std::string                _text;
-        Style                      _style;
-        class osg::Geode*          _geode;
+        osg::ref_ptr<osg::Image>           _image;
+        std::string                        _text;
+        Style                              _style;
+        class osg::Geode*                  _geode;
+        osg::ref_ptr<const osgDB::Options> _dbOptions;
 
-        void init(const osgDB::Options* options);
+        void init();
 
         // required by META_Node, but this object is not cloneable
         PlaceNode() { }

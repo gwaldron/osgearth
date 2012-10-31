@@ -30,6 +30,9 @@ namespace osgEarth { namespace Annotation
 
     /**
      * Base class for node that is localized at a specific geographic point.
+     *
+     * Don't use this class *directly*. If you are trying to add your own 
+     * osg::Node as an Annotation, use the LocalizedGeometryNode instead.
      */
     class OSGEARTHANNO_EXPORT LocalizedNode : public PositionedAnnotationNode
     {

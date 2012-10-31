@@ -49,7 +49,7 @@ _text    ( text ),
 _style   ( style ),
 _geode   ( 0L )
 {
-    init( 0L );
+    init();
 }
 
 PlaceNode::PlaceNode(MapNode*           mapNode,
@@ -62,7 +62,7 @@ _text    ( text ),
 _style   ( style ),
 _geode   ( 0L )
 {
-    init( 0L );
+    init();
 }
 
 PlaceNode::PlaceNode(MapNode*              mapNode,
@@ -70,14 +70,18 @@ PlaceNode::PlaceNode(MapNode*              mapNode,
                      const Style&          style,
                      const osgDB::Options* dbOptions ) :
 OrthoNode ( mapNode, position ),
-_style    ( style )
+_style    ( style ),
+_dbOptions( dbOptions )
 {
-    init( dbOptions );
+    init();
 }
 
 void
-PlaceNode::init(const osgDB::Options* dbOptions)
+PlaceNode::init()
 {
+    //reset.
+    getAttachPoint()->removeChildren(0, getAttachPoint()->getNumChildren());
+
     _geode = new osg::Geode();
     osg::Drawable* text = 0L;
 
@@ -107,7 +111,7 @@ PlaceNode::init(const osgDB::Options* dbOptions)
 
         if ( !imageURI.empty() )
         {
-            _image = imageURI.getImage( dbOptions );
+            _image = imageURI.getImage( _dbOptions.get() );
         }
     }
 
@@ -197,6 +201,14 @@ PlaceNode::init(const osgDB::Options* dbOptions)
 
     ShaderGenerator gen( Registry::stateSetCache() );
     this->accept( gen );
+
+    // re-apply annotation drawable-level stuff as neccesary.
+    AnnotationData* ad = getAnnotationData();
+    if ( ad )
+        setAnnotationData( ad );
+
+    if ( _dynamic )
+        setDynamic( _dynamic );
 }
 
 
@@ -221,6 +233,24 @@ PlaceNode::setText( const std::string& text )
             break;
         }
     }
+}
+
+
+void
+PlaceNode::setStyle(const Style& style)
+{
+    // changing the style requires a complete rebuild.
+    _style = style;
+    init();
+}
+
+
+void
+PlaceNode::setIconImage(osg::Image* image)
+{
+    // changing the icon requires a complete rebuild.
+    _image = image;
+    init();
 }
 
 
@@ -260,7 +290,8 @@ OSGEARTH_REGISTER_ANNOTATION( place, osgEarth::Annotation::PlaceNode );
 PlaceNode::PlaceNode(MapNode*              mapNode,
                      const Config&         conf,
                      const osgDB::Options* dbOptions) :
-OrthoNode( mapNode, conf )
+OrthoNode ( mapNode, conf ),
+_dbOptions( dbOptions )
 {
     conf.getObjIfSet( "style",  _style );
     conf.getIfSet   ( "text",   _text );
@@ -274,7 +305,7 @@ OrthoNode( mapNode, conf )
             _image->setFileName( imageURI->base() );
     }
 
-    init( dbOptions );
+    init();
 
     if ( conf.hasChild("position") )
         setPosition( GeoPoint(conf.child("position")) );

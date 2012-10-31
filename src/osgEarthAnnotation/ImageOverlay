@@ -47,6 +47,9 @@ namespace osgEarth { namespace Annotation
             CONTROLPOINT_UPPER_RIGHT
         };
         
+        /**
+         * Constructs an image overlay.
+         */
         ImageOverlay(MapNode* mapNode, osg::Image* image = NULL);
 
         /**

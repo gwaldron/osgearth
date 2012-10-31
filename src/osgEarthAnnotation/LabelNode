@@ -92,7 +92,7 @@ namespace osgEarth { namespace Annotation
         /**
          * Gets a copy of the text style.
          */
-        const Style style() const { return _style; }
+        const Style& style() const { return _style; }
 
         /**
          * Sets a new text style

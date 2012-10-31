@@ -38,60 +38,117 @@ LocalGeometryNode::LocalGeometryNode(MapNode*     mapNode,
                                      bool         draped ) :
 LocalizedNode( mapNode ),
 _geom        ( geom ),
+_style       ( style ),
 _draped      ( draped )
+{
+    init( 0L );
+    this->addChild( getRoot() );
+}
+
+
+LocalGeometryNode::LocalGeometryNode(MapNode*     mapNode,
+                                     osg::Node*   node,
+                                     const Style& style,
+                                     bool         draped ) :
+LocalizedNode( mapNode ),
+_node        ( node ),
+_style       ( style ),
+_draped      ( draped )
+{
+    init( 0L );
+    this->addChild( getRoot() );
+}
+
+
+void
+LocalGeometryNode::initNode()
+{
+    // reset
+    getChildAttachPoint()->removeChildren( 0, getChildAttachPoint()->getNumChildren() );
+
+    if ( _node.valid() )
+    {
+        getChildAttachPoint()->addChild( _node.get() );
+        getDrapeable()->setDraped( _draped );
+
+        // this will activate the clamping logic
+        applyStyle( _style );
+
+        setLightingIfNotSet( _style.has<ExtrusionSymbol>() );
+    }
+}
+
+
+void
+LocalGeometryNode::initGeometry(const osgDB::Options* dbOptions)
+{
+    // reset
+    getChildAttachPoint()->removeChildren( 0, getChildAttachPoint()->getNumChildren() );
+
+    if ( _geom.valid() )
+    {
+        osg::ref_ptr<Feature> feature = new Feature( _geom.get(), 0L );
+        feature->style() = _style;
+
+        GeometryCompiler compiler;
+        
+        Session* session = 0L;
+        if ( getMapNode() )
+            session = new Session(getMapNode()->getMap(), 0L, 0L, dbOptions);
+
+        FilterContext cx( session );
+
+        osg::Node* node = compiler.compile( feature.get(), cx );
+        if ( node )
+        {
+            getChildAttachPoint()->addChild( node );
+            getDrapeable()->setDraped( _draped );
+
+            // prep for clamping
+            applyStyle( _style );
+        }
+    }
+}
+
+
+void 
+LocalGeometryNode::init(const osgDB::Options* options )
+{
+    if ( _node.valid() )
+    {
+        initNode();
+    }
+    else
+    {
+        initGeometry( options );
+    }
+}
+
+
+void
+LocalGeometryNode::setStyle( const Style& style )
 {
     _style = style;
     init( 0L );
 }
 
 
-LocalGeometryNode::LocalGeometryNode(MapNode*     mapNode,
-                                     osg::Node*   content,
-                                     const Style& style,
-                                     bool         draped ) :
-LocalizedNode( mapNode ),
-_draped      ( draped )
+void
+LocalGeometryNode::setNode( osg::Node* node )
 {
-    _style = style;
-
-    if ( content )
-    {
-        getChildAttachPoint()->addChild( content );
-        getDrapeable()->setDraped( _draped );
-
-        this->addChild( getRoot() );
-
-        // this will activate the clamping logic
-        applyStyle( style );
-
-        setLightingIfNotSet( style.has<ExtrusionSymbol>() );
-    }
+    _node = node;
+    _geom = 0L;
+    initNode();
 }
 
 
 void
-LocalGeometryNode::init(const osgDB::Options* dbOptions)
+LocalGeometryNode::setGeometry( Geometry* geom )
 {
-    if ( _geom.valid() )
-    {
-        osg::ref_ptr<Feature> feature = new Feature( _geom.get(), 0L );
-        feature->style() = *_style;
-
-        GeometryCompiler compiler;
-        FilterContext cx( getMapNode() ? new Session(getMapNode()->getMap()) : 0L );
-        osg::Node* node = compiler.compile( feature.get(), cx );
-        if ( node )
-        {
-            getChildAttachPoint()->addChild( node );
-            getDrapeable()->setDraped( _draped );
-            this->addChild( getRoot() );
-
-            // prep for clamping
-            applyStyle( *_style );
-        }
-    }
+    _geom = geom;
+    _node = 0L;
+    initGeometry(0L);
 }
-
 
 //-------------------------------------------------------------------
 
@@ -128,7 +185,8 @@ LocalGeometryNode::getConfig() const
     if ( _geom.valid() )
     {
         conf.add( Config("geometry", GeometryUtils::geometryToWKT(_geom.get())) );
-        conf.addObjIfSet( "style", _style );
+        if ( !_style.empty() )
+            conf.addObj( "style", _style );
         conf.addObj( "position", getPosition() );
     }
     else

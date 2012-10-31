@@ -39,24 +39,37 @@ using namespace osgEarth::Symbology;
 ModelNode::ModelNode(MapNode*              mapNode,
                      const Style&          style,
                      const osgDB::Options* dbOptions ) :
-LocalizedNode( mapNode )
+LocalizedNode( mapNode ),
+_style       ( style ),
+_dbOptions   ( dbOptions )
 {
-    _style = style;
-    init( dbOptions );
+    init();
+    this->addChild( getTransform() );
 }
 
 
 void
-ModelNode::init(const osgDB::Options* dbOptions)
+ModelNode::setStyle(const Style& style)
 {
+    _style = style;
+    init();
+}
+
+
+void
+ModelNode::init()
+{
+    // reset.
+    this->getTransform()->removeChildren(0, this->getTransform()->getNumChildren());
+
     this->setHorizonCulling(false);
 
-    osg::ref_ptr<const ModelSymbol> sym = _style->get<ModelSymbol>();
+    osg::ref_ptr<const ModelSymbol> sym = _style.get<ModelSymbol>();
     
     // backwards-compatibility: support for MarkerSymbol (deprecated)
-    if ( !sym.valid() && _style->has<MarkerSymbol>() )
+    if ( !sym.valid() && _style.has<MarkerSymbol>() )
     {
-        osg::ref_ptr<InstanceSymbol> temp = _style->get<MarkerSymbol>()->convertToInstanceSymbol();
+        osg::ref_ptr<InstanceSymbol> temp = _style.get<MarkerSymbol>()->convertToInstanceSymbol();
         sym = dynamic_cast<const ModelSymbol*>( temp.get() );
     }
 
@@ -74,12 +87,12 @@ ModelNode::init(const osgDB::Options* dbOptions)
 
                 if ( sym->uriAliasMap()->empty() )
                 {
-                    node = uri.getNode( dbOptions );
+                    node = uri.getNode( _dbOptions.get() );
                 }
                 else
                 {
                     // install an alias map if there's one in the symbology.
-                    osg::ref_ptr<osgDB::Options> tempOptions = Registry::instance()->cloneOrCreateOptions(dbOptions);
+                    osg::ref_ptr<osgDB::Options> tempOptions = Registry::instance()->cloneOrCreateOptions(_dbOptions.get());
                     tempOptions->setReadFileCallback( new URIAliasMapReadCallback(*sym->uriAliasMap(), uri.full()) );
                     node = uri.getNode( tempOptions.get() );
                 }
@@ -103,12 +116,12 @@ ModelNode::init(const osgDB::Options* dbOptions)
                     vp->installDefaultColoringAndLightingShaders();
                     this->getOrCreateStateSet()->setAttributeAndModes( vp, 1 );
 
-                    node->addCullCallback( new UpdateLightingUniformsHelper() );
+                    // do we really need this? perhaps
+                    node->setCullCallback( new UpdateLightingUniformsHelper() );
                 }
 
                 // attach to the transform:
                 getTransform()->addChild( node );
-                this->addChild( getTransform() );
 
                 if ( sym->scale().isSet() )
                 {
@@ -129,7 +142,7 @@ ModelNode::init(const osgDB::Options* dbOptions)
                     this->setLocalRotation( rot.getRotate() );
                 }
 
-                applyStyle( *_style );
+                applyStyle( _style );
             }
             else
             {
@@ -153,15 +166,16 @@ OSGEARTH_REGISTER_ANNOTATION( model, osgEarth::Annotation::ModelNode );
 
 
 ModelNode::ModelNode(MapNode* mapNode, const Config& conf, const osgDB::Options* dbOptions) :
-LocalizedNode( mapNode, conf )
+LocalizedNode( mapNode, conf ),
+_dbOptions   ( dbOptions )
 {
     conf.getObjIfSet( "style", _style );
 
     std::string uri = conf.value("url");
     if ( !uri.empty() )
-        _style->getOrCreate<ModelSymbol>()->url() = StringExpression(uri);
+        _style.getOrCreate<ModelSymbol>()->url() = StringExpression(uri);
 
-    init( dbOptions );
+    init();
 
     if ( conf.hasChild( "position" ) )
         setPosition( GeoPoint(conf.child("position")) );
@@ -172,8 +186,10 @@ ModelNode::getConfig() const
 {
     Config conf("model");
 
-    conf.updateObjIfSet( "style",    _style );
-    conf.updateObj     ( "position", getPosition() );
+    if ( !_style.empty() )
+        conf.addObj( "style", _style );
+
+    conf.addObj( "position", getPosition() );
 
     return conf;
 }

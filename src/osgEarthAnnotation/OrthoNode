@@ -33,6 +33,9 @@ namespace osgEarth { namespace Annotation
     /**
      * Base class for an annotation node that it drawn in screen-space
      * (as an orthographic overlay)
+     *
+     * Don't use this class directly. Use one of its subclasses instead like
+     * LabelNode or PlaceNode.
      */
     class OSGEARTHANNO_EXPORT OrthoNode : public PositionedAnnotationNode, public SupportsDecluttering
     {
@@ -52,12 +55,6 @@ namespace osgEarth { namespace Annotation
         OrthoNode( 
             MapNode*        mapNode, 
             const GeoPoint& position );
-
-
-        /**
-         * dtor.
-         */
-        virtual ~OrthoNode() { }
 
         /**
          * Attaches a child node to the transforms. Use this instead of addChild.
@@ -106,6 +103,10 @@ namespace osgEarth { namespace Annotation
         virtual void traverse( osg::NodeVisitor& nv );
 
         virtual osg::BoundingSphere computeBound() const;
+
+    protected:
+        /** virtual dtor */
+        virtual ~OrthoNode() { }
 
     private:
         osg::Switch*                   _switch;

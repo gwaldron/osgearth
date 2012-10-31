@@ -36,6 +36,16 @@ namespace osgEarth
         virtual ~StateSetCache() { }
 
         /**
+         * Check whether a StateSet is eligible for sharing.
+         */
+        bool eligible( osg::StateSet* stateSet ) const;
+
+        /**
+         * Check whether a StateAttribute is eligible for sharing.
+         */
+        bool eligible( osg::StateAttribute* attr ) const;
+
+        /**
          * Traverse the node and consolidate equivalent state sets, updating
          * the cache along the way.
          */
@@ -50,7 +60,8 @@ namespace osgEarth
          */
         bool share( 
             osg::ref_ptr<osg::StateSet>& input, 
-            osg::ref_ptr<osg::StateSet>& output );
+            osg::ref_ptr<osg::StateSet>& output,
+            bool                         checkEligible =true );
 
         /**
          * Looks in the attribute cache for an attribute matching the input.
@@ -61,7 +72,8 @@ namespace osgEarth
          */
         bool share(
             osg::ref_ptr<osg::StateAttribute>& input,
-            osg::ref_ptr<osg::StateAttribute>& output );
+            osg::ref_ptr<osg::StateAttribute>& output,
+            bool                               checkEligible =true );
 
         /**
          * Number of statesets in the cache.

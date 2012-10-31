@@ -443,7 +443,7 @@ GeometryCompiler::compile(FeatureList&          workingSet,
     {
         if ( _options.shaderPolicy() == SHADERPOLICY_GENERATE )
         {
-            ShaderGenerator gen( sscache.get() );
+            ShaderGenerator gen( 0L );
             resultGroup->accept( gen );
         }
         else if ( _options.shaderPolicy() == SHADERPOLICY_DISABLE )

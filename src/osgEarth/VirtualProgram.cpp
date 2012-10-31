@@ -89,7 +89,8 @@ _inherit           ( true ),
 _useLightingShaders( true )
 {
     // because we sometimes update/change the attribute's members from within the apply() method
-    this->setDataVariance( osg::Object::DYNAMIC );
+    // gw-commented out b/c apply() is only called from draw, and the changes are mutexed anyway
+    //this->setDataVariance( osg::Object::DYNAMIC );
 
     // check the the dump env var
     if ( ::getenv(OSGEARTH_DUMP_SHADERS) != 0L )

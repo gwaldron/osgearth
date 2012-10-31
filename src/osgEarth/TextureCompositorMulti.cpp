@@ -518,22 +518,29 @@ TextureCompositorMultiTexture::createSamplerFunction(UID layerUID,
     int slot = layout.getSlot( layerUID );
     if ( slot >= 0 )
     {
-        std::stringstream buf;
-
-        buf << "uniform sampler2D "<< makeSamplerName(slot) << "; \n"
-            << "vec4 " << functionName << "() \n"
-            << "{ \n";
+        std::string src;
 
         if ( type == osg::Shader::VERTEX )
-            buf << "    return texture2D("<< makeSamplerName(slot) << ", gl_MultiTexCoord"<< slot <<".st); \n";
-        else
-            buf << "    return texture2D("<< makeSamplerName(slot) << ", osg_TexCoord["<< slot << "].st); \n";
+        {
+            src = Stringify()
+                << "uniform sampler2D "<< makeSamplerName(slot) << "; \n"
+                << "vec4 " << functionName << "() \n"
+                << "{ \n"
+                << "    return texture2D("<< makeSamplerName(slot) << ", gl_MultiTexCoord"<< slot <<".st); \n"
+                << "} \n";
+        }
+        else // if ( type != osg::Shader::FRAGMENT )
+        {
+            src = Stringify()
+                << "uniform sampler2D "<< makeSamplerName(slot) << "; \n"
+                << "varying vec4 osg_TexCoord[" << Registry::capabilities().getMaxGPUTextureCoordSets()  << "]; \n"
+                << "vec4 " << functionName << "() \n"
+                << "{ \n"
+                << "    return texture2D("<< makeSamplerName(slot) << ", osg_TexCoord["<< slot << "].st); \n"
+                << "} \n";
+        }
 
-        buf << "} \n";
-
-        std::string str;
-        str = buf.str();
-        result = new osg::Shader( type, str );
+        result = new osg::Shader( type, src );
     }
     return result;
 }

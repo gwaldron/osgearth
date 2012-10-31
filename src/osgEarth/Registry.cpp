@@ -56,7 +56,7 @@ _numGdalMutexGets   ( 0 ),
 _uidGen             ( 0 ),
 _caps               ( 0L ),
 _defaultFont        ( 0L ),
-_terrainEngineDriver( "osgterrain" )
+_terrainEngineDriver( "quadtree" )
 {
     // set up GDAL and OGR.
     OGRRegisterAll();
@@ -123,6 +123,11 @@ _terrainEngineDriver( "osgterrain" )
     }
 
     // set the default terrain engine driver from the environment
+#ifdef OSG_GLES2_AVAILABLE
+    // default to "quadtree" if we're on iOS/Android/GLES
+    _terrainEngineDriver = "quadtree";
+#endif
+
     const char* teStr = ::getenv("OSGEARTH_TERRAIN_ENGINE");
     if ( teStr )
     {

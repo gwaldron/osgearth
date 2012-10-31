@@ -97,17 +97,23 @@ namespace osgEarth
          * Installs default shaders for implementing basic coloring and lighting.
          * The default shaders come from the ShaderFactory.
          */
-        void installDefaultColoringAndLightingShaders( unsigned numTextures =0u );
+        void installDefaultColoringAndLightingShaders(
+            unsigned                           numTextures =0u,
+            osg::StateAttribute::OverrideValue qualifiers  =osg::StateAttribute::ON );
 
         /**
          * Installs default shader for basic coloring/texturing.
          */
-        void installDefaultColoringShaders( unsigned numTextures =0u );
+        void installDefaultColoringShaders( 
+            unsigned                           numTextures =0u,
+            osg::StateAttribute::OverrideValue qualifiers  =osg::StateAttribute::ON );
+
 
         /**
          * Installs default shader for basic lighting.
          */
-        void installDefaultLightingShaders();
+        void installDefaultLightingShaders(
+            osg::StateAttribute::OverrideValue qualifiers  =osg::StateAttribute::ON );
 
         /**
          * Sets whether to use lighting shaders at all - set this to false if you

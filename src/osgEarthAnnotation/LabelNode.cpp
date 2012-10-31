@@ -22,6 +22,8 @@
 #include <osgEarthAnnotation/AnnotationUtils>
 #include <osgEarthAnnotation/AnnotationRegistry>
 #include <osgEarthSymbology/Color>
+#include <osgEarth/Registry>
+#include <osgEarth/ShaderGenerator>
 #include <osgText/Text>
 #include <osg/Depth>
 #include <osgUtil/IntersectionVisitor>
@@ -89,13 +91,14 @@ LabelNode::init( const Style& style )
     osg::StateSet* stateSet = _geode->getOrCreateStateSet();
     stateSet->setAttributeAndModes( new osg::Depth(osg::Depth::ALWAYS, 0, 1, false), 1 );
 
-    AnnotationUtils::installAnnotationProgram( stateSet );
-
     setStyle( style );
 
     applyStyle( style );
 
     setLightingIfNotSet( false );
+
+    ShaderGenerator gen( Registry::stateSetCache() );
+    this->accept( gen );
 }
 
 void

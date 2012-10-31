@@ -20,6 +20,7 @@
 
 #include <osgEarthSymbology/ModelSymbol>
 
+using namespace osgEarth_kml;
 using namespace osgEarth::Symbology;
 
 void

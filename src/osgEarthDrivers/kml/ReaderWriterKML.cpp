@@ -33,6 +33,7 @@
 
 using namespace osgEarth;
 using namespace osgEarth::Drivers;
+using namespace osgEarth_kml;
 
 //---------------------------------------------------------------------------
 

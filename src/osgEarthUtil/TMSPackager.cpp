@@ -30,14 +30,15 @@ using namespace osgEarth::Util;
 using namespace osgEarth;
 
 
-TMSPackager::TMSPackager(const Profile* outProfile) :
-_outProfile                     ( outProfile ),
-_maxLevel                       ( 5 ),
-_verbose                        ( false ),
-_overwrite                      ( false ),
-_keepEmptyImageTiles            ( false ),
+TMSPackager::TMSPackager(const Profile* outProfile, osgDB::Options* imageWriteOptions) :
+_outProfile         ( outProfile ),
+_maxLevel           ( 99 ),
+_verbose            ( false ),
+_overwrite          ( false ),
+_keepEmptyImageTiles( false ),
 _subdivideSingleColorImageTiles ( false ),
-_abortOnError                   ( true )
+_abortOnError       ( true ),
+_imageWriteOptions  (imageWriteOptions)
 {
     //nop
 }
@@ -126,7 +127,7 @@ TMSPackager::packageImageTile(ImageLayer*          layer,
 
                     // dump it to disk
                     osgDB::makeDirectoryForFile( path );
-                    tileOK = osgDB::writeImageFile( *final.get(), path );
+                    tileOK = osgDB::writeImageFile( *final.get(), path, _imageWriteOptions);
 
                     if ( _verbose )
                     {

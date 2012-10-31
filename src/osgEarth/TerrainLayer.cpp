@@ -587,8 +587,8 @@ TerrainLayer::initTileSource()
 
 bool
 TerrainLayer::isKeyValid(const TileKey& key) const
-{
-    if (!key.valid() || _tileSourceInitFailed) 
+{    
+    if (!key.valid())
         return false;
 
     // Check to see if an explicity max LOD is set. Do NOT compare against the minLevel,

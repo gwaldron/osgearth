@@ -31,6 +31,7 @@ namespace osgEarth
 {
     /**
      * Uniquely identifies a single tile on the map, relative to a Profile.
+     * Profiles have an origin of 0,0 at the top left.
      */
     class OSGEARTH_EXPORT TileKey
     {
@@ -124,10 +125,10 @@ namespace osgEarth
 
         /**
          * Creates a key that represents this tile's neighbor at the same LOD. Wraps
-         * around in X and Y automatically.
+         * around in X and Y automatically. For example, xoffset=-1 yoffset=1 will
+         * give you the key for the tile SW of this tile.
          */
-        enum Direction { NORTH, SOUTH, EAST, WEST };
-        TileKey createNeighborKey( Direction dir ) const;
+        TileKey createNeighborKey( int xoffset, int yoffset ) const;
 
         /**
          * Gets the level of detail of the tile represented by this key.

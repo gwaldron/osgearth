@@ -21,12 +21,16 @@
 
 #include "KML_Object"
 
-using namespace osgEarth;
-
-struct KML_NetworkLinkControl : public KML_Object
+namespace osgEarth_kml
 {
-    virtual void scan( const Config& conf, KMLContext& cx );
-    virtual void build( const Config& conf, KMLContext& cx );
-};
+    using namespace osgEarth;
+
+    struct KML_NetworkLinkControl : public KML_Object
+    {
+        virtual void scan( const Config& conf, KMLContext& cx );
+        virtual void build( const Config& conf, KMLContext& cx );
+    };
+
+} // namespace osgEarth_kml
 
 #endif // OSGEARTH_DRIVER_KML_KML_NETWORKLINKCONTROL

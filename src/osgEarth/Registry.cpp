@@ -24,6 +24,7 @@
 #include <osgEarth/TaskService>
 #include <osgEarth/IOTypes>
 #include <osgEarth/ColorFilter>
+#include <osgEarth/StateSetCache>
 #include <osgEarthDrivers/cache_filesystem/FileSystemCache>
 #include <osg/Notify>
 #include <osg/Version>
@@ -55,7 +56,7 @@ _numGdalMutexGets   ( 0 ),
 _uidGen             ( 0 ),
 _caps               ( 0L ),
 _defaultFont        ( 0L ),
-_terrainEngineDriver( "osgterrain" )
+_terrainEngineDriver( "quadtree" )
 {
     // set up GDAL and OGR.
     OGRRegisterAll();
@@ -63,6 +64,7 @@ _terrainEngineDriver( "osgterrain" )
 
     _shaderLib = new ShaderFactory();
     _taskServiceManager = new TaskServiceManager();
+    _stateSetCache = new StateSetCache();
 
     // activate KMZ support
     osgDB::Registry::instance()->addArchiveExtension  ( "kmz" );    
@@ -121,6 +123,11 @@ _terrainEngineDriver( "osgterrain" )
     }
 
     // set the default terrain engine driver from the environment
+#ifdef OSG_GLES2_AVAILABLE
+    // default to "quadtree" if we're on iOS/Android/GLES
+    _terrainEngineDriver = "quadtree";
+#endif
+
     const char* teStr = ::getenv("OSGEARTH_TERRAIN_ENGINE");
     if ( teStr )
     {
@@ -478,6 +485,18 @@ void
 Registry::setDefaultTerrainEngineDriverName(const std::string& name)
 {
     _terrainEngineDriver = name;
+}
+
+void
+Registry::setStateSetCache( StateSetCache* cache )
+{
+    _stateSetCache = cache;
+}
+
+StateSetCache*
+Registry::getStateSetCache() const
+{
+    return _stateSetCache.get();
 }
 
 

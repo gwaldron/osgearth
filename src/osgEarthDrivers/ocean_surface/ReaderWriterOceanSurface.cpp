@@ -29,6 +29,7 @@
 #undef  LC
 #define LC "[ReaderWriterOceanSurface] "
 
+using namespace osgEarth_ocean_surface;
 using namespace osgEarth;
 using namespace osgEarth::Drivers;
 

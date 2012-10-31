@@ -26,8 +26,8 @@
 #include <osgDB/FileNameUtils>
 #include "KMLOptions"
 
-namespace osgEarth { namespace Drivers {
-
+namespace osgEarth { namespace Drivers
+{
     using namespace osgEarth;
 
     class KML // header-only (no export)

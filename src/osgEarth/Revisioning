@@ -157,8 +157,8 @@ namespace osgEarth
         struct DirtyCounter : public osg::Referenced
         {
             DirtyCounter(DirtyNotifier* owner) : _owner(owner), _count(1) { }
-            int            _count;
             DirtyNotifier* _owner;
+            int            _count;
             friend class DirtyNotifer;
         };
         osg::ref_ptr<DirtyCounter>                     _counter;

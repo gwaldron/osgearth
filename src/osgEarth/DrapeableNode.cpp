@@ -30,20 +30,12 @@ using namespace osgEarth;
 
 namespace
 {
-#if 0
-    // Custom group that limits traversals to CULL and any visitor internal to
-    // the operation of the OverlayDecorator.
-    struct OverlayTraversalGroup : public osg::Group {
-        virtual void traverse(osg::NodeVisitor& nv) {
-            if ( nv.getVisitorType() == osg::NodeVisitor::CULL_VISITOR ||  
-                 dynamic_cast<OverlayDecorator::InternalNodeVisitor*>(&nv) )
-            {
-                osg::Group::traverse(nv);
-            }
-        }
-    };
-#endif
-
+    /**
+     * When draping is enabled, the actual draped graph goes under an OverlayProxy
+     * group. It tracks the accumulated stateset and nodemask of the Drapeable
+     * itself and applies it to the draped geometry (which is installed under the
+     * MapNode's OverlayDecorator).
+     */
     struct OverlayProxy : public osg::Group
     {
         OverlayProxy( osg::Node* owner ) 

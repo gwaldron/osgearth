@@ -32,6 +32,29 @@ namespace osgEarth { namespace Features
      */
     class OSGEARTHFEATURES_EXPORT TessellateOperator
     {
+    public: // static methods
+
+        /**
+         * Tessellates a straight line into multiple segments.
+         */
+        static void tessellateLinear( 
+            const osg::Vec3d&        p0, 
+            const osg::Vec3d&        p1, 
+            unsigned                 parts, 
+            std::vector<osg::Vec3d>& out );
+
+        /**
+         * Tessellates a geographic line (great circle or rhumb) between
+         * two geographic points (long,lat,alt) into multiple segments along
+         * a spheroid.
+         */
+        static void tessellateGeo( 
+            const osg::Vec3d&        p0, 
+            const osg::Vec3d&        p1, 
+            unsigned                 parts, 
+            GeoInterpolation         interp,
+            std::vector<osg::Vec3d>& out );
+
     public:
         /**
          * Constructs a new tessellation operator.

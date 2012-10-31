@@ -28,6 +28,7 @@
 #include <sstream>
 #include <osgEarthUtil/Common>
 
+using namespace osgEarth_osgearth;
 using namespace osgEarth;
 
 #define LC "[ReaderWriterEarth] "

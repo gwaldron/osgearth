@@ -1193,7 +1193,7 @@ GeoImage::getUnitsPerPixel() const {
 }
 
 GeoImage
-GeoImage::crop( const GeoExtent& extent, bool exact, unsigned int width, unsigned int height  ) const
+GeoImage::crop( const GeoExtent& extent, bool exact, unsigned int width, unsigned int height, bool useBilinearInterpolation) const
 {
     //Check for equivalence
     if ( extent.getSRS()->isEquivalentTo( getSRS() ) )
@@ -1218,7 +1218,7 @@ GeoImage::crop( const GeoExtent& extent, bool exact, unsigned int width, unsigne
             }
 
             //Note:  Passing in the current SRS simply forces GDAL to not do any warping
-            return reproject( getSRS(), &extent, width, height);
+            return reproject( getSRS(), &extent, width, height, useBilinearInterpolation);
         }
         else
         {
@@ -1377,7 +1377,7 @@ createDataSetFromImage(const osg::Image* image, double minX, double minY, double
 static osg::Image*
 reprojectImage(osg::Image* srcImage, const std::string srcWKT, double srcMinX, double srcMinY, double srcMaxX, double srcMaxY,
                const std::string destWKT, double destMinX, double destMinY, double destMaxX, double destMaxY,
-               int width = 0, int height = 0)
+               int width = 0, int height = 0, bool useBilinearInterpolation = true)
 {
     GDAL_SCOPED_LOCK;
 	osg::Timer_t start = osg::Timer::instance()->tick();
@@ -1406,11 +1406,20 @@ reprojectImage(osg::Image* srcImage, const std::string srcWKT, double srcMinX, d
    
     GDALDataset* destDS = createMemDS(width, height, destMinX, destMinY, destMaxX, destMaxY, destWKT);
 
-    GDALReprojectImage(srcDS, NULL,
-                       destDS, NULL,
-                       //GDALResampleAlg::GRA_NearestNeighbour,
-                       GRA_Bilinear,
-                       0,0,0,0,0);                    
+    if (useBilinearInterpolation == true)
+    {
+        GDALReprojectImage(srcDS, NULL,
+                           destDS, NULL,
+                           GRA_Bilinear,
+                           0,0,0,0,0);
+    }
+    else
+    {
+        GDALReprojectImage(srcDS, NULL,
+                           destDS, NULL,
+                           GRA_NearestNeighbour,
+                           0,0,0,0,0);
+    }
 
     osg::Image* result = createImageFromDataset(destDS);
     
@@ -1617,7 +1626,7 @@ namespace
 
 
 GeoImage
-GeoImage::reproject(const SpatialReference* to_srs, const GeoExtent* to_extent, unsigned int width, unsigned int height) const
+GeoImage::reproject(const SpatialReference* to_srs, const GeoExtent* to_extent, unsigned int width, unsigned int height, bool useBilinearInterpolation) const
 {  
     GeoExtent destExtent;
     if (to_extent)
@@ -1650,7 +1659,7 @@ GeoImage::reproject(const SpatialReference* to_srs, const GeoExtent* to_extent, 
             getExtent().xMin(), getExtent().yMin(), getExtent().xMax(), getExtent().yMax(),
             to_srs->getWKT(),
             destExtent.xMin(), destExtent.yMin(), destExtent.xMax(), destExtent.yMax(),
-            width, height);
+            width, height, useBilinearInterpolation);
     }   
     return GeoImage(resultImage, destExtent);
 }

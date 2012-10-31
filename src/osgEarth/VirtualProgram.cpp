@@ -89,7 +89,8 @@ _inherit           ( true ),
 _useLightingShaders( true )
 {
     // because we sometimes update/change the attribute's members from within the apply() method
-    this->setDataVariance( osg::Object::DYNAMIC );
+    // gw-commented out b/c apply() is only called from draw, and the changes are mutexed anyway
+    //this->setDataVariance( osg::Object::DYNAMIC );
 
     // check the the dump env var
     if ( ::getenv(OSGEARTH_DUMP_SHADERS) != 0L )
@@ -111,12 +112,12 @@ _useLightingShaders( true )
 
 VirtualProgram::VirtualProgram(const VirtualProgram& rhs, const osg::CopyOp& copyop ) :
 osg::StateAttribute( rhs, copyop ),
-//osg::Program( rhs, copyop ),
 _shaderMap         ( rhs._shaderMap ),
 _mask              ( rhs._mask ),
 _functions         ( rhs._functions ),
 _inherit           ( rhs._inherit ),
-_useLightingShaders( rhs._useLightingShaders )
+_useLightingShaders( rhs._useLightingShaders ),
+_template          ( osg::clone(rhs._template.get()) )
 {
     //nop
 }
@@ -312,39 +313,41 @@ VirtualProgram::addToAccumulatedMap(ShaderMap&         accumShaderMap,
 
 
 void
-VirtualProgram::installDefaultColoringAndLightingShaders( unsigned numTextures )
+VirtualProgram::installDefaultColoringAndLightingShaders(unsigned                           numTextures,
+                                                         osg::StateAttribute::OverrideValue qual )
 {
     ShaderFactory* sf = osgEarth::Registry::instance()->getShaderFactory();
 
-    this->setShader( sf->createDefaultColoringVertexShader(numTextures) );
-    this->setShader( sf->createDefaultLightingVertexShader() );
+    this->setShader( sf->createDefaultColoringVertexShader(numTextures), qual );
+    this->setShader( sf->createDefaultLightingVertexShader(), qual );
 
-    this->setShader( sf->createDefaultColoringFragmentShader(numTextures) );
-    this->setShader( sf->createDefaultLightingFragmentShader() );
+    this->setShader( sf->createDefaultColoringFragmentShader(numTextures), qual );
+    this->setShader( sf->createDefaultLightingFragmentShader(), qual );
 
     setUseLightingShaders( true );
 }
 
 
 void
-VirtualProgram::installDefaultLightingShaders()
+VirtualProgram::installDefaultLightingShaders(osg::StateAttribute::OverrideValue qual)
 {
     ShaderFactory* sf = osgEarth::Registry::instance()->getShaderFactory();
 
-    this->setShader( sf->createDefaultLightingVertexShader() );
-    this->setShader( sf->createDefaultLightingFragmentShader() );
+    this->setShader( sf->createDefaultLightingVertexShader(), qual );
+    this->setShader( sf->createDefaultLightingFragmentShader(), qual );
 
     setUseLightingShaders( true );
 }
 
 
 void
-VirtualProgram::installDefaultColoringShaders( unsigned numTextures )
+VirtualProgram::installDefaultColoringShaders(unsigned                           numTextures,
+                                              osg::StateAttribute::OverrideValue qual )
 {
     ShaderFactory* sf = osgEarth::Registry::instance()->getShaderFactory();
 
-    this->setShader( sf->createDefaultColoringVertexShader(numTextures) );
-    this->setShader( sf->createDefaultColoringFragmentShader(numTextures) );
+    this->setShader( sf->createDefaultColoringVertexShader(numTextures), qual );
+    this->setShader( sf->createDefaultColoringFragmentShader(numTextures), qual );
 }
 
 
@@ -751,10 +754,22 @@ VirtualProgram::refreshAccumulatedFunctions( const osg::State& state )
 
                     for( FunctionLocationMap::const_iterator j = rhs.begin(); j != rhs.end(); ++j )
                     {
-                        const OrderedFunctionMap& ofm = j->second;
-                        for( OrderedFunctionMap::const_iterator k = ofm.begin(); k != ofm.end(); ++k )
+                        const OrderedFunctionMap& source = j->second;
+                        OrderedFunctionMap&       dest   = _accumulatedFunctions[j->first];
+
+                        for( OrderedFunctionMap::const_iterator k = source.begin(); k != source.end(); ++k )
                         {
-                            _accumulatedFunctions[j->first].insert( *k );
+                            // remove/override an existing function with the same name
+                            for( OrderedFunctionMap::iterator exists = dest.begin(); exists != dest.end(); ++exists )
+                            {
+                                if ( exists->second.compare( k->second ) == 0 )
+                                {
+                                    dest.erase(exists);
+                                    break;
+                                }
+                            }
+                            dest.insert( *k );
+                            //_accumulatedFunctions[j->first].insert( *k );
                         }
                     }
                 }
@@ -765,10 +780,22 @@ VirtualProgram::refreshAccumulatedFunctions( const osg::State& state )
     // add the local ones too:
     for( FunctionLocationMap::const_iterator j = _functions.begin(); j != _functions.end(); ++j )
     {
-        const OrderedFunctionMap& ofm = j->second;
-        for( OrderedFunctionMap::const_iterator k = ofm.begin(); k != ofm.end(); ++k )
+        const OrderedFunctionMap& source = j->second;
+        OrderedFunctionMap&       dest   = _accumulatedFunctions[j->first];
+
+        for( OrderedFunctionMap::const_iterator k = source.begin(); k != source.end(); ++k )
         {
-            _accumulatedFunctions[j->first].insert( *k );
+            // remove/override an existing function with the same name
+            for( OrderedFunctionMap::iterator exists = dest.begin(); exists != dest.end(); ++exists )
+            {
+                if ( exists->second.compare( k->second ) == 0 )
+                {
+                    dest.erase(exists);
+                    break;
+                }
+            }
+            dest.insert( *k );
+            //_accumulatedFunctions[j->first].insert( *k );
         }
     } 
 }

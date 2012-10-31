@@ -23,6 +23,7 @@
 #include <osg/NodeCallback>
 #include <osg/NodeVisitor>
 
+using namespace osgEarth_engine_quadtree;
 using namespace osgEarth;
 using namespace OpenThreads;
 

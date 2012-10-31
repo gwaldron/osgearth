@@ -1090,17 +1090,17 @@ HSliderControl::draw( const ControlContext& cx, DrawableList& out )
             g->setVertexArray( verts );
 
             (*verts)[0].set( rx, vph - ry, 0 );
-            (*verts)[1].set( rx + rw, vph - ry, 0 );
+            (*verts)[1].set( rx, vph - (ry + rh), 0 );
             (*verts)[2].set( rx + rw, vph - (ry + rh), 0 );
-            (*verts)[3].set( rx, vph - (ry + rh), 0 );
+            (*verts)[3].set( rx + rw, vph - ry, 0 );
             g->addPrimitiveSet( new osg::DrawArrays( GL_LINE_LOOP, 0, 4 ) );
 
             float hx = rx + rw * ( (_value-_min)/(_max-_min) );
 
             (*verts)[4].set( hx-4, vph - ry + 3, 0 );
-            (*verts)[5].set( hx+4, vph - ry + 3, 0 );
+            (*verts)[5].set( hx-4, vph - (ry + rh + 3), 0 );
             (*verts)[6].set( hx+4, vph - (ry + rh + 3), 0 );
-            (*verts)[7].set( hx-4, vph - (ry + rh + 3), 0 );
+            (*verts)[7].set( hx+4, vph - ry + 3, 0 );
             g->addPrimitiveSet( new osg::DrawArrays( GL_QUADS, 4, 4 ) );
 
             osg::Vec4Array* c = new osg::Vec4Array(1);

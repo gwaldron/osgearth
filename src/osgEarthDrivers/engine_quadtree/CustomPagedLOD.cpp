@@ -18,6 +18,7 @@
 */
 #include "CustomPagedLOD"
 
+using namespace osgEarth_engine_quadtree;
 using namespace osgEarth;
 
 #define LC "[CustomPagedLOD] "

@@ -18,6 +18,7 @@
  */
 #include "ElevationProxyImageLayer"
 
+using namespace osgEarth_ocean_surface;
 using namespace osgEarth;
 
 ElevationProxyImageLayer::ElevationProxyImageLayer( Map* sourceMap, const ImageLayerOptions& options ) :
@@ -32,6 +33,7 @@ void
 ElevationProxyImageLayer::initTileSource()
 {
     _tileSourceInitAttempted = true;
+    _tileSourceInitFailed    = true;
 }
 
 bool

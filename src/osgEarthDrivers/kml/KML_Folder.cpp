@@ -25,6 +25,8 @@
 #include "KML_NetworkLink"
 #include "KML_Placemark"
 
+using namespace osgEarth_kml;
+
 void
 KML_Folder::scan( const Config& conf, KMLContext& cx )
 {

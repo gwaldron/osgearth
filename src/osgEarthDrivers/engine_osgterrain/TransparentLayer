@@ -28,103 +28,107 @@
 #include <osgEarth/TileKey>
 #include <osg/Image>
 
-class CustomColorLayer
+namespace osgEarth_engine_osgterrain
 {
-public:
-    CustomColorLayer() { }
+    class CustomColorLayer
+    {
+    public:
+        CustomColorLayer() { }
 
-    /** dtor */
-    virtual ~CustomColorLayer() { }
+        /** dtor */
+        virtual ~CustomColorLayer() { }
 
-    CustomColorLayer(
-        const osgEarth::ImageLayer* imageLayer,
-        osg::Image* image,
-        const osgTerrain::Locator* locator,
-        int lod,
-        const osgEarth::TileKey& tileKey,
-        bool fallbackData =false )
-        : _layer(imageLayer), _locator(locator), _image(image),  _tileKey(tileKey), _lod(lod), _fallbackData(fallbackData) { }
+        CustomColorLayer(
+            const osgEarth::ImageLayer* imageLayer,
+            osg::Image* image,
+            const osgTerrain::Locator* locator,
+            int lod,
+            const osgEarth::TileKey& tileKey,
+            bool fallbackData =false )
+            : _layer(imageLayer), _locator(locator), _image(image),  _tileKey(tileKey), _lod(lod), _fallbackData(fallbackData) { }
 
-    CustomColorLayer( const CustomColorLayer& rhs ) :
-        _layer( rhs._layer.get() ),        
-        _locator( rhs._locator.get() ),
-        _image( rhs._image.get() ),
-        _tileKey( rhs._tileKey ),
-        _lod( rhs._lod ),
-        _fallbackData( rhs._fallbackData ) { }
+        CustomColorLayer( const CustomColorLayer& rhs ) :
+            _layer( rhs._layer.get() ),        
+            _locator( rhs._locator.get() ),
+            _image( rhs._image.get() ),
+            _tileKey( rhs._tileKey ),
+            _lod( rhs._lod ),
+            _fallbackData( rhs._fallbackData ) { }
 
-    osgEarth::UID getUID() const {
-        return _layer->getUID();
-    }
-
-    const osgTerrain::Locator* getLocator() const {
-        return _locator.get();
-    }
-
-    osg::Image* getImage() const { 
-        return _image.get(); }
-
-    const osgEarth::TileKey& getTileKey() const {
-        return _tileKey; }
-
-    const osgEarth::ImageLayer* getMapLayer() const {
-        return _layer.get(); }
-
-    int getLevelOfDetail() const {
-        return _lod; }
-
-    bool isFallbackData() const {
-        return _fallbackData; }
-
-    osg::BoundingSphere computeBound() const {
-        osg::BoundingSphere bs;
-        osg::Vec3d v;
-        if (getLocator()->convertLocalToModel(osg::Vec3d(0.5,0.5,0.0), v)) {
-            bs.center() = v;
+        osgEarth::UID getUID() const {
+            return _layer->getUID();
         }
-        if (getLocator()->convertLocalToModel(osg::Vec3d(0.0,0.0,0.0), v)) {
-            bs.radius() = (bs.center() - v).length();
+
+        const osgTerrain::Locator* getLocator() const {
+            return _locator.get();
         }
-        return bs;
-    }
+
+        osg::Image* getImage() const { 
+            return _image.get(); }
+
+        const osgEarth::TileKey& getTileKey() const {
+            return _tileKey; }
+
+        const osgEarth::ImageLayer* getMapLayer() const {
+            return _layer.get(); }
+
+        int getLevelOfDetail() const {
+            return _lod; }
+
+        bool isFallbackData() const {
+            return _fallbackData; }
+
+        osg::BoundingSphere computeBound() const {
+            osg::BoundingSphere bs;
+            osg::Vec3d v;
+            if (getLocator()->convertLocalToModel(osg::Vec3d(0.5,0.5,0.0), v)) {
+                bs.center() = v;
+            }
+            if (getLocator()->convertLocalToModel(osg::Vec3d(0.0,0.0,0.0), v)) {
+                bs.radius() = (bs.center() - v).length();
+            }
+            return bs;
+        }
 
 
-private:
-    osg::ref_ptr<const osgEarth::ImageLayer> _layer;
-    osg::ref_ptr<const osgTerrain::Locator>  _locator;
-    osg::ref_ptr<osg::Image>                 _image;
-    osgEarth::TileKey                        _tileKey;
-    int                                      _lod;
-    bool                                     _fallbackData;
-};
+    private:
+        osg::ref_ptr<const osgEarth::ImageLayer> _layer;
+        osg::ref_ptr<const osgTerrain::Locator>  _locator;
+        osg::ref_ptr<osg::Image>                 _image;
+        osgEarth::TileKey                        _tileKey;
+        int                                      _lod;
+        bool                                     _fallbackData;
+    };
 
-class CustomColorLayerRef : public osg::Referenced
-{
-public:
-    CustomColorLayerRef( const CustomColorLayer& layer ) : _layer(layer) { }
-    CustomColorLayer _layer;
-};
+    class CustomColorLayerRef : public osg::Referenced
+    {
+    public:
+        CustomColorLayerRef( const CustomColorLayer& layer ) : _layer(layer) { }
+        CustomColorLayer _layer;
+    };
 
-class CustomElevLayer
-{
-public:
-    CustomElevLayer() { }
+    class CustomElevLayer
+    {
+    public:
+        CustomElevLayer() { }
 
-    /** dtor */
-    virtual ~CustomElevLayer() { }
+        /** dtor */
+        virtual ~CustomElevLayer() { }
 
-    CustomElevLayer( osgTerrain::HeightFieldLayer* hfLayer, bool fallbackData =false )
-        : _hfLayer(hfLayer), _fallbackData(fallbackData) { }
+        CustomElevLayer( osgTerrain::HeightFieldLayer* hfLayer, bool fallbackData =false )
+            : _hfLayer(hfLayer), _fallbackData(fallbackData) { }
 
-    osgTerrain::HeightFieldLayer* getHFLayer() {
-        return _hfLayer.get(); }
+        osgTerrain::HeightFieldLayer* getHFLayer() {
+            return _hfLayer.get(); }
 
-    bool isFallbackData() const {
-        return _fallbackData; }
+        bool isFallbackData() const {
+            return _fallbackData; }
 
-private:
-    osg::ref_ptr<osgTerrain::HeightFieldLayer> _hfLayer;
-    bool _fallbackData;
-};
+    private:
+        osg::ref_ptr<osgTerrain::HeightFieldLayer> _hfLayer;
+        bool _fallbackData;
+    };
+
+} // namespace osgEarth_engine_osgterrain
 
 #endif // OSGEARTH_ENGINE_TRANSPARENT_LAYER

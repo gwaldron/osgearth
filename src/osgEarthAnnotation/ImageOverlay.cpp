@@ -27,6 +27,8 @@
 #include <osgEarth/ImageUtils>
 #include <osgEarth/DrapeableNode>
 #include <osgEarth/VirtualProgram>
+#include <osgEarth/Registry>
+#include <osgEarth/Capabilities>
 #include <osg/Geode>
 #include <osg/ShapeDrawable>
 #include <osg/Texture2D>
@@ -191,18 +193,17 @@ ImageOverlay::postCTOR()
 
     d->addChild( _transform );
 
-    // need a shader that supports one texture
-    VirtualProgram* vp = new VirtualProgram();
-    vp->setName( "imageoverlay");
-    vp->installDefaultColoringShaders(1);
-    //vp->installDefaultColoringAndLightingShaders(1);
-    //vp->setInheritShaders(false);
-    d->getOrCreateStateSet()->setAttributeAndModes( vp, 1 );
-    
+    if ( Registry::capabilities().supportsGLSL() )
+    {
+        // need a shader that supports one texture
+        VirtualProgram* vp = new VirtualProgram();
+        vp->setName( "imageoverlay");
+        vp->installDefaultColoringShaders(1);
+        d->getOrCreateStateSet()->setAttributeAndModes( vp, 1 );
+    }
+
     init();    
     ADJUST_UPDATE_TRAV_COUNT( this, 1 );
-
-//    getOrCreateStateSet()->setMode(GL_DEPTH_TEST, osg::StateAttribute::OFF);
 }
 
 void

@@ -13,7 +13,7 @@ is randomized, but it is randomized exactly the same way each time.
     <!-- Our features layer. The "feature_geom" driver will analyze the
          style sheet and determine how to render the feature data. -->
          
-    <model name="trees" driver="feature_geom">
+    <model name="trees" driver="feature_geom" enabled="true">
           
         <!-- Feature data set to load. This is a set of polygons representing
              the public parks in Washington DC -->
@@ -30,6 +30,9 @@ is randomized, but it is randomized exactly the same way each time.
         <!-- Disables feature indexing, since the trees are not mapped 1-to-1 to
              real features anyway. -->
         <feature_indexing>false</feature_indexing>
+        
+        <!-- Fade in new tiles over one second. -->
+         <fade_in_duration>1.0</fade_in_duration>
         
         <!-- The stylesheet will describe how to render the feature data. In this case
              we indicate model substitution with density-based scattering. The "density"

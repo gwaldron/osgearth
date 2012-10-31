@@ -43,6 +43,7 @@ namespace osgEarth
     class TaskServiceManager;
     class URIReadCallback;
     class ColorFilterRegistry;
+    class StateSetCache;
 
     /**
      * Application-wide global repository.
@@ -130,6 +131,14 @@ namespace osgEarth
          */
         ShaderFactory* getShaderFactory() const;
         void setShaderFactory( ShaderFactory* lib );
+
+        /**
+         * A default StateSetCache to use by any process that uses one.
+         * A StateSetCache assist in stateset sharing across multiple nodes.
+         */
+        StateSetCache* getStateSetCache() const;
+        void setStateSetCache( StateSetCache* cache );
+        static StateSetCache* stateSetCache() { return instance()->getStateSetCache(); }
 
         /**
          * Gets a reference to the global task service manager.
@@ -222,6 +231,8 @@ namespace osgEarth
 
         typedef std::vector<const Units*> UnitsVector;
         UnitsVector _unitsVector;
+
+        osg::ref_ptr<StateSetCache> _stateSetCache;
 
         std::string _terrainEngineDriver;
     };

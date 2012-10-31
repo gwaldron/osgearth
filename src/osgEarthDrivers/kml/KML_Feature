@@ -21,15 +21,19 @@
 
 #include "KML_Object"
 
-using namespace osgEarth;
-
-struct KML_Feature : public KML_Object
+namespace osgEarth_kml
 {
-    virtual void scan( const Config& conf, KMLContext& cx );
+    using namespace osgEarth;
 
-    virtual void scan2( const Config& conf, KMLContext& cx );
+    struct KML_Feature : public KML_Object
+    {
+        virtual void scan( const Config& conf, KMLContext& cx );
 
-    virtual void build( const Config& conf, KMLContext& cx, osg::Node* working );
-};
+        virtual void scan2( const Config& conf, KMLContext& cx );
+
+        virtual void build( const Config& conf, KMLContext& cx, osg::Node* working );
+    };
+
+} // namespace osgEarth_kml
 
 #endif // OSGEARTH_DRIVER_KML_KML_FEATURE

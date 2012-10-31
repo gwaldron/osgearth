@@ -26,12 +26,13 @@
 
 #define LC "[osgterrain_engine Plugin] "
 
+using namespace osgEarth_engine_osgterrain;
 using namespace osgEarth::Drivers;
 
-class OSGTerrainEnginePlugin : public osgDB::ReaderWriter
+class osgEarth_OSGTerrainEnginePlugin : public osgDB::ReaderWriter
 {
 public:
-    OSGTerrainEnginePlugin() {}
+    osgEarth_OSGTerrainEnginePlugin() {}
 
     virtual const char* className()
     {
@@ -136,4 +137,4 @@ public:
     }
 };
 
-REGISTER_OSGPLUGIN(osgearth_engine_osgterrain, OSGTerrainEnginePlugin)
+REGISTER_OSGPLUGIN(osgearth_engine_osgterrain, osgEarth_OSGTerrainEnginePlugin)

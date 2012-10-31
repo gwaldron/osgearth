@@ -18,6 +18,7 @@
  */
 #include "EarthFileSerializer"
 
+using namespace osgEarth_osgearth;
 using namespace osgEarth;
 
 MapNode*

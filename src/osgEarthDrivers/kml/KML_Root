@@ -21,13 +21,17 @@
 
 #include "KML_Object"
 
-struct KML_Root
+namespace osgEarth_kml
 {
-    virtual void scan( const Config& conf, KMLContext& cx );
-    virtual void scan2( const Config& conf, KMLContext& cx );
-    virtual void build( const Config& conf, KMLContext& cx );
+    struct KML_Root
+    {
+        virtual void scan( const Config& conf, KMLContext& cx );
+        virtual void scan2( const Config& conf, KMLContext& cx );
+        virtual void build( const Config& conf, KMLContext& cx );
 
-    virtual ~KML_Root() { }
-};
+        virtual ~KML_Root() { }
+    };
+
+} // namespace osgEarth_kml
 
 #endif // OSGEARTH_DRIVER_KML_KML_SCHEMA

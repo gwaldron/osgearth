@@ -23,24 +23,28 @@
 #include <osgEarth/TileKey>
 #include <osg/Node>
 
-using namespace osgEarth;
-
-/**
- * A scene graph node that holds a terrain tile (as the single child of its
- * osg::Group) and can load subtiles when they come into LOD range.
- */
-class KeyNodeFactory : public osg::Referenced
+namespace osgEarth_engine_osgterrain
 {
-public:
-    virtual osg::Node* createRootNode( const TileKey& key ) =0;
+    using namespace osgEarth;
 
-    virtual osg::Node* createNode( const TileKey& key ) =0;
+    /**
+     * A scene graph node that holds a terrain tile (as the single child of its
+     * osg::Group) and can load subtiles when they come into LOD range.
+     */
+    class KeyNodeFactory : public osg::Referenced
+    {
+    public:
+        virtual osg::Node* createRootNode( const TileKey& key ) =0;
 
-protected:
-    KeyNodeFactory();
+        virtual osg::Node* createNode( const TileKey& key ) =0;
 
-    /** dtor */
-    virtual ~KeyNodeFactory() { }
-};
+    protected:
+        KeyNodeFactory();
+
+        /** dtor */
+        virtual ~KeyNodeFactory() { }
+    };
+
+} // namespace osgEarth_engine_osgterrain
 
 #endif // OSGEARTH_ENGINE_QUAD_TILE_NODE

@@ -18,6 +18,8 @@
  */
 #include "KML_PhotoOverlay"
 
+using namespace osgEarth_kml;
+
 void
 KML_PhotoOverlay::scan( const Config& conf, KMLContext& cx )
 {

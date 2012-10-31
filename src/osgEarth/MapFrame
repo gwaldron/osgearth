@@ -21,6 +21,7 @@
 #define OSGEARTH_MAP_FRAME_H 1
 
 #include <osgEarth/Common>
+#include <osgEarth/Containers>
 #include <osgEarth/Map>
 #include <osgEarth/MapInfo>
 
@@ -113,7 +114,8 @@ namespace osgEarth
         ImageLayerVector _imageLayers;
         ElevationLayerVector _elevationLayers;
         ModelLayerVector _modelLayers;
-        MaskLayerVector _maskLayers;
+        MaskLayerVector _maskLayers;        
+
         friend class Map;
     };
 

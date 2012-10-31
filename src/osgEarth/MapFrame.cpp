@@ -53,18 +53,21 @@ _maskLayers          ( src._maskLayers )
 bool
 MapFrame::sync()
 {
+    bool changed = false;
+
     if ( _map.valid() )
     {
-        return _map->sync( *this );
+        changed = _map->sync( *this );        
     }
     else
     {
         _imageLayers.clear();
         _elevationLayers.clear();
         _modelLayers.clear();
-        _maskLayers.clear();
-        return false;
+        _maskLayers.clear();        
     }
+
+    return changed;
 }
 
 
@@ -77,7 +80,10 @@ MapFrame::getHeightField(const TileKey&                  key,
                          ElevationSamplePolicy           samplePolicy,
                          ProgressCallback*               progress) const
 {
-    if ( !_map.valid() ) return false;
+    if ( !_map.valid() ) 
+        return false;
+    
+
 
     return _elevationLayers.createHeightField(
         key,
@@ -87,7 +93,7 @@ MapFrame::getHeightField(const TileKey&                  key,
         samplePolicy, 
         out_hf, 
         out_isFallback,
-        progress );
+        progress );    
 }
 
 

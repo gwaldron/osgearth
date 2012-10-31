@@ -20,7 +20,6 @@
 #include <osgEarth/Map>
 #include <osgEarth/Registry>
 #include <osgEarth/Capabilities>
-#include <osgEarth/VirtualProgram>
 #include <osg/Depth>
 
 #define LC "[ModelLayer] "

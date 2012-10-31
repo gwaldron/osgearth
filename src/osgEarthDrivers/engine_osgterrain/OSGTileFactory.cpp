@@ -43,6 +43,7 @@
 #include <stdlib.h>
 
 using namespace OpenThreads;
+using namespace osgEarth_engine_osgterrain;
 using namespace osgEarth;
 using namespace osgEarth::Drivers;
 
@@ -418,16 +419,7 @@ OSGTileFactory::createPlaceholderTile(const MapFrame&   mapf,
     tile->setTerrainTechnique( terrain->cloneTechnique() );
     tile->setVerticalScale( _terrainOptions.verticalScale().value() );
     tile->setDataVariance( osg::Object::DYNAMIC );
-    //tile->setLocator( locator.get() );
-
-    // Attach an updatecallback to normalize the edges of TerrainTiles.
-#if 0
-    if ( hasElevation && _terrainOptions.normalizeEdges().get() )
-    {
-        tile->setUpdateCallback(new TerrainTileEdgeNormalizerUpdateCallback());
-        tile->setDataVariance(osg::Object::DYNAMIC);
-    }
-#endif
+    //tile->setLocator( locator.get() );    
 
     // Generate placeholder imagery and elevation layers. These "inherit" data from an
     // ancestor tile.
@@ -664,15 +656,6 @@ OSGTileFactory::createPopulatedTile(const MapFrame&  mapf,
     tile->setElevationLayer( hf_layer );
     //tile->setRequiresNormals( true );
     tile->setDataVariance(osg::Object::DYNAMIC);
-
-#if 0
-    //Attach an updatecallback to normalize the edges of TerrainTiles.
-    if (hasElevation && _terrainOptions.normalizeEdges().get() )
-    {
-        tile->setUpdateCallback(new TerrainTileEdgeNormalizerUpdateCallback());
-        tile->setDataVariance(osg::Object::DYNAMIC);
-    }
-#endif
 
     //Assign the terrain system to the TerrainTile.
     //It is very important the terrain system is set while the MapConfig's sourceMutex is locked.

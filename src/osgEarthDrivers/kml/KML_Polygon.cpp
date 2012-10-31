@@ -20,6 +20,8 @@
 #include "KML_LinearRing"
 #include <iterator>
 
+using namespace osgEarth_kml;
+
 void
 KML_Polygon::parseStyle(const Config& conf, KMLContext& cx, Style& style)
 {

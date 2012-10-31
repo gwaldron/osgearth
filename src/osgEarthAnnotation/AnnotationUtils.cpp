@@ -180,7 +180,7 @@ AnnotationUtils::createImageGeometry(osg::Image*       image,
     osg::StateSet* dstate = new osg::StateSet;
     dstate->setMode(GL_CULL_FACE,osg::StateAttribute::OFF);
     dstate->setMode(GL_LIGHTING,osg::StateAttribute::OFF);
-    dstate->setMode(GL_BLEND, 1);
+    //dstate->setMode(GL_BLEND, 1); // redundant. AnnotationNode sets blending.
     dstate->setTextureAttributeAndModes(0, texture,osg::StateAttribute::ON);   
 
     // set up the geoset.
@@ -250,11 +250,12 @@ AnnotationUtils::createHighlightUniform()
     return u;
 }
 
+#if 0
 void
-AnnotationUtils::installAnnotationProgram( osg::StateSet* stateSet )
+AnnotationUtils::installAnnotationProgram(osg::StateSet*                     stateSet,
+                                          osg::StateAttribute::OverrideValue qualifier)
 {
-    static Threading::Mutex           s_mutex;
-    //static osg::ref_ptr<osg::Program> s_program;
+    static Threading::Mutex             s_mutex;
     static osg::ref_ptr<VirtualProgram> s_program;
     static osg::ref_ptr<osg::Uniform>   s_samplerUniform;
     static osg::ref_ptr<osg::Uniform>   s_defaultFadeUniform;
@@ -267,6 +268,9 @@ AnnotationUtils::installAnnotationProgram( osg::StateSet* stateSet )
         {
             std::string vertSource =
                 "#version " GLSL_VERSION_STR "\n"
+#ifdef OSG_GLES2_AVAILABLE
+                "precision mediump float;\n"
+#endif
                 //NOTE: Tom commented this out; I commented it back in b/c that breaks things 
                 //( //not sure why but these arn't merging properly, osg earth color funcs decalre it anyhow for now)
                 "varying vec4 osg_FrontColor; \n"
@@ -284,33 +288,30 @@ AnnotationUtils::installAnnotationProgram( osg::StateSet* stateSet )
 #endif
                 "uniform float " << UNIFORM_FADE()      << "; \n"
                 "uniform bool  " << UNIFORM_IS_TEXT()   << "; \n"
-                //"uniform bool  " << UNIFORM_HIGHLIGHT() << "; \n"
                 "uniform sampler2D oeAnno_tex0; \n"
-                "varying vec4 osg_FrontColor; \n"
                 "varying vec4 oeAnno_texCoord; \n"
+                "varying vec4 osg_FrontColor; \n"
                 "void oeAnno_fragColoring( inout vec4 color ) \n"
                 "{ \n"
+                "    color = osg_FrontColor; \n"
                 "    if (" << UNIFORM_IS_TEXT() << ") \n"
                 "    { \n"
                 "        float alpha = texture2D(oeAnno_tex0, oeAnno_texCoord.st).a; \n"
-                "        color = vec4(osg_FrontColor.rgb, osg_FrontColor.a * alpha * " << UNIFORM_FADE() << "); \n"
+                "        color = vec4(color.rgb, color.a * alpha * " << UNIFORM_FADE() << "); \n"
                 "    } \n"
                 "    else \n"
                 "    { \n"
-                "        color = osg_FrontColor * texture2D(oeAnno_tex0, oeAnno_texCoord.st) * vec4(1,1,1," << UNIFORM_FADE() << "); \n"
+                "        color = color * texture2D(oeAnno_tex0, oeAnno_texCoord.st) * vec4(1,1,1," << UNIFORM_FADE() << "); \n"
                 "    } \n"
-                //"    if (" << UNIFORM_HIGHLIGHT() << ") \n"
-                //"    { \n"
-                //"        color = vec4(color.r*1.5, color.g*0.5, color.b*0.25, color.a); \n"
-                //"    } \n"
                 "} \n";
 
             s_program = new VirtualProgram();
             s_program->setName( PROGRAM_NAME() );
+            s_program->setInheritShaders( false );
             s_program->setUseLightingShaders( false );
             s_program->installDefaultColoringShaders();
             s_program->setFunction( "oeAnno_vertColoring", vertSource, ShaderComp::LOCATION_VERTEX_PRE_LIGHTING );
-            s_program->setFunction( "oeAnno_fragColoring", fragSource, ShaderComp::LOCATION_FRAGMENT_PRE_LIGHTING );
+            s_program->setFunction( "oeAnno_fragColoring", fragSource, ShaderComp::LOCATION_FRAGMENT_PRE_LIGHTING, 2.0f );
 
             s_samplerUniform = new osg::Uniform(osg::Uniform::SAMPLER_2D, "oeAnno_tex0");
             s_samplerUniform->set( 0 );
@@ -319,54 +320,15 @@ AnnotationUtils::installAnnotationProgram( osg::StateSet* stateSet )
 
             s_defaultIsTextUniform = new osg::Uniform(osg::Uniform::BOOL, "oeAnno_isText");
             s_defaultIsTextUniform->set( false );
-
-#if 0
-            std::string vert_source = // Stringify() <<
-                "#version 110 \n"
-                "void main() { \n"
-                "    osg_FrontColor = gl_Color; \n"
-                "    osg_TexCoord[0] = gl_MultiTexCoord0; \n"
-                "    gl_Position = gl_ModelViewProjectionMatrix * gl_Vertex; \n"
-                "} \n";
-
-            std::string frag_source = Stringify() <<
-#ifdef OSG_GLES2_AVAILABLE
-                "precision mediump float;\n"
-#endif
-                "uniform float     " << UNIFORM_FADE()      << "; \n"
-                "uniform bool      " << UNIFORM_IS_TEXT()   << "; \n"
-                "uniform bool      " << UNIFORM_HIGHLIGHT() << "; \n"
-                "uniform sampler2D tex0; \n"
-                "varying vec4 osg_TexCoord[" << Registry::instance()->getCapabilities().getMaxGPUTextureCoordSets() << "]; \n"
-                "varying vec4 osg_FrontColor; \n"
-                "void main() { \n"
-                "    vec4 color; \n"
-                "    if (" << UNIFORM_IS_TEXT() << ") { \n"
-                "        float alpha = texture2D(tex0,osg_TexCoord[0].st).a; \n"
-                "        color = vec4( osg_FrontColor.rgb, osg_FrontColor.a * alpha * " << UNIFORM_FADE() << "); \n"
-                "    } \n"
-                "    else { \n"
-                "        color = osg_FrontColor * texture2D(tex0,osg_TexCoord[0].st) * vec4(1,1,1," << UNIFORM_FADE() << "); \n"
-                "    } \n"
-                "    if (" << UNIFORM_HIGHLIGHT() << ") { \n"
-                "        color = vec4(color.r*1.5, color.g*0.5, color.b*0.25, color.a); \n"
-                "    } \n"
-                "    gl_FragColor = color; \n"
-                "} \n";
-
-            s_program = new osg::Program();
-            s_program->setName( PROGRAM_NAME() );
-            s_program->addShader( new osg::Shader(osg::Shader::VERTEX,   vert_source) );
-            s_program->addShader( new osg::Shader(osg::Shader::FRAGMENT, frag_source) );
-#endif
         }
     }
 
-    stateSet->setAttributeAndModes( s_program.get() );
+    stateSet->setAttributeAndModes( s_program.get(), qualifier );
     stateSet->addUniform( s_samplerUniform.get() );
     stateSet->addUniform( s_defaultFadeUniform.get() );
     stateSet->addUniform( s_defaultIsTextUniform.get() );
 }
+#endif
 
 //-------------------------------------------------------------------------
 
@@ -672,7 +634,7 @@ AnnotationUtils::createFullScreenQuad( const osg::Vec4& color )
 
     osg::StateSet* s = geom->getOrCreateStateSet();
     s->setMode(GL_LIGHTING,0);
-    s->setMode(GL_BLEND,1);
+    //s->setMode(GL_BLEND,1); // redundant. AnnotationNode sets blend.
     s->setMode(GL_DEPTH_TEST,0);
     s->setMode(GL_CULL_FACE,0);
     s->setAttributeAndModes( new osg::Depth(osg::Depth::ALWAYS, 0, 1, false), 1 );

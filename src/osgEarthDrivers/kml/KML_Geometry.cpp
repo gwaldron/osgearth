@@ -25,6 +25,8 @@
 #include "KML_Model"
 #include <osgEarth/StringUtils>
 
+using namespace osgEarth_kml;
+
 void 
 KML_Geometry::build( const Config& parentConf, KMLContext& cx, Style& style)
 {

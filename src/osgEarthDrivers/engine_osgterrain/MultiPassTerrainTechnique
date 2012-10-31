@@ -32,50 +32,53 @@
 
 #include <osgEarth/TextureCompositor>
 
-
-class MultiPassTerrainTechnique : public TerrainTechnique
+namespace osgEarth_engine_osgterrain
 {
-public:
+    class MultiPassTerrainTechnique : public TerrainTechnique
+    {
+    public:
 
-    MultiPassTerrainTechnique( TextureCompositor* texCompositor =0L );
+        MultiPassTerrainTechnique( TextureCompositor* texCompositor =0L );
 
-    /** Copy constructor using CopyOp to manage deep vs shallow copy.*/
-    MultiPassTerrainTechnique(const MultiPassTerrainTechnique&,const osg::CopyOp& copyop=osg::CopyOp::SHALLOW_COPY);
-    
-    META_Object( osgEarth, MultiPassTerrainTechnique );
+        /** Copy constructor using CopyOp to manage deep vs shallow copy.*/
+        MultiPassTerrainTechnique(const MultiPassTerrainTechnique&,const osg::CopyOp& copyop=osg::CopyOp::SHALLOW_COPY);
+        
+        META_Object( osgEarth, MultiPassTerrainTechnique );
 
-    virtual void init();
-    
-    virtual osgTerrain::Locator* computeMasterLocator();
-    
-    virtual osg::Vec3d computeCenterModel(osgTerrain::Locator* masterLocator);
-    
-    virtual void generateGeometry(osgTerrain::Locator* masterLocator, const osg::Vec3d& centerModel);     
+        virtual void init();
+        
+        virtual osgTerrain::Locator* computeMasterLocator();
+        
+        virtual osg::Vec3d computeCenterModel(osgTerrain::Locator* masterLocator);
+        
+        virtual void generateGeometry(osgTerrain::Locator* masterLocator, const osg::Vec3d& centerModel);     
 
-	virtual osg::Geometry* createGeometryPrototype(osgTerrain::Locator* masterLocator, const osg::Vec3d& centerModel);
+	    virtual osg::Geometry* createGeometryPrototype(osgTerrain::Locator* masterLocator, const osg::Vec3d& centerModel);
 
-	osg::Geode* createPass(unsigned int order, const CustomColorLayer* layer, osgTerrain::Locator* masterLocator, const osg::Vec3d& centerModel, osg::Geometry* geometry); 
+	    osg::Geode* createPass(unsigned int order, const CustomColorLayer* layer, osgTerrain::Locator* masterLocator, const osg::Vec3d& centerModel, osg::Geometry* geometry); 
 
-    /** Traverse the terain subgraph.*/
-    virtual void traverse(osg::NodeVisitor& nv);
+        /** Traverse the terain subgraph.*/
+        virtual void traverse(osg::NodeVisitor& nv);
 
-    /** If State is non-zero, this function releases any associated OpenGL objects for
-    * the specified graphics context. Otherwise, releases OpenGL objects
-    * for all graphics contexts. */
-    virtual void releaseGLObjects(osg::State* = 0) const;
+        /** If State is non-zero, this function releases any associated OpenGL objects for
+        * the specified graphics context. Otherwise, releases OpenGL objects
+        * for all graphics contexts. */
+        virtual void releaseGLObjects(osg::State* = 0) const;
 
 
-private:
+    private:
 
-    void updateTransparency();
-    void updateGeometry();
+        void updateTransparency();
+        void updateGeometry();
 
-    virtual ~MultiPassTerrainTechnique();
+        virtual ~MultiPassTerrainTechnique();
 
-    osg::ref_ptr<osg::MatrixTransform>  _transform;
-    osg::ref_ptr<osg::Group>            _passes;            
-    bool                                _terrainTileInitialized;
-    osg::ref_ptr<TextureCompositor>     _texCompositor;
-};
+        osg::ref_ptr<osg::MatrixTransform>  _transform;
+        osg::ref_ptr<osg::Group>            _passes;            
+        bool                                _terrainTileInitialized;
+        osg::ref_ptr<TextureCompositor>     _texCompositor;
+    };
+
+} // namespace osgEarth_engine_osgterrain
 
 #endif //OSGEARTH_ENGINE_OSGTERRAIN_MULTIPASS_TERRAIN_TECHNIQUE

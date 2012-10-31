@@ -189,7 +189,11 @@ _maxUniformBlockSize    ( 0 )
 #endif
         OE_INFO << LC << "  Max lights = " << _maxLights << std::endl;
 
-        _supportsGLSL = GL2->isGlslSupported();
+        
+        if ( ::getenv("OSGEARTH_NO_GLSL") )
+            _supportsGLSL = false;
+        else
+            _supportsGLSL = GL2->isGlslSupported();
         OE_INFO << LC << "  GLSL = " << SAYBOOL(_supportsGLSL) << std::endl;
 
         if ( _supportsGLSL )
@@ -229,11 +233,17 @@ _maxUniformBlockSize    ( 0 )
         _supportsDrawInstanced = osg::isGLExtensionOrVersionSupported( id, "GL_EXT_draw_instanced", 3.1f );
         OE_INFO << LC << "  draw instanced = " << SAYBOOL(_supportsDrawInstanced) << std::endl;
 
+        glGetIntegerv( GL_MAX_UNIFORM_BLOCK_SIZE, &_maxUniformBlockSize );
+        OE_INFO << LC << "  max uniform block size = " << _maxUniformBlockSize << std::endl;
+
         _supportsUniformBufferObjects = osg::isGLExtensionOrVersionSupported( id, "GL_ARB_uniform_buffer_object", 2.0f );
         OE_INFO << LC << "  uniform buffer objects = " << SAYBOOL(_supportsUniformBufferObjects) << std::endl;
 
-        glGetIntegerv( GL_MAX_UNIFORM_BLOCK_SIZE, &_maxUniformBlockSize );
-        OE_INFO << LC << "  max uniform block size = " << _maxUniformBlockSize << std::endl;
+        if ( _supportsUniformBufferObjects && _maxUniformBlockSize == 0 )
+        {
+            OE_INFO << LC << "  ...but disabled, since UBO block size reports zero" << std::endl;
+            _supportsUniformBufferObjects = false;
+        }
 
 
         //_supportsTexture2DLod = osg::isGLExtensionSupported( id, "GL_ARB_shader_texture_lod" );

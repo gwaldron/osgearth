@@ -37,6 +37,7 @@
 
 #define LC "[OSGTerrainEngine] "
 
+using namespace osgEarth_engine_osgterrain;
 using namespace osgEarth;
 
 //------------------------------------------------------------------------

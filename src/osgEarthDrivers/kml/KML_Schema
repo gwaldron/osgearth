@@ -22,11 +22,15 @@
 #include "KML_Common"
 #include "KML_Container"
 
-using namespace osgEarth;
-
-struct KML_Schema : public KML_Object
+namespace osgEarth_kml
 {
+    using namespace osgEarth;
 
-};
+    struct KML_Schema : public KML_Object
+    {
+
+    };
+
+} // namespace osgEarth_kml
 
 #endif // OSGEARTH_DRIVER_KML_KML_SCHEMA

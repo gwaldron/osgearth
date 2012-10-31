@@ -213,7 +213,8 @@ TerrainEngineNode::preInitialize( const Map* map, const TerrainOptions& options 
 
     // enable backface culling
     osg::StateSet* set = getOrCreateStateSet();
-    set->setAttributeAndModes( new osg::CullFace( osg::CullFace::BACK ), osg::StateAttribute::ON );
+    //set->setAttributeAndModes( new osg::CullFace( osg::CullFace::BACK ), osg::StateAttribute::ON );
+    set->setMode( GL_CULL_FACE, 1 );
 
     // elevation uniform
     _cameraElevationUniform = new osg::Uniform( osg::Uniform::FLOAT, "osgearth_CameraElevation" );

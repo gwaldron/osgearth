@@ -144,12 +144,13 @@ TileBlacklist::write(std::ostream &output) const
 
 
 TileSourceOptions::TileSourceOptions( const ConfigOptions& options ) :
-DriverConfigOptions( options ),
-_tileSize          ( 256 ),
-_noDataValue       ( (float)SHRT_MIN ),
-_noDataMinValue    ( -32000.0f ),
-_noDataMaxValue    (  32000.0f ),
-_L2CacheSize       ( 16 )
+DriverConfigOptions   ( options ),
+_tileSize             ( 256 ),
+_noDataValue          ( (float)SHRT_MIN ),
+_noDataMinValue       ( -32000.0f ),
+_noDataMaxValue       (  32000.0f ),
+_L2CacheSize          ( 16 ),
+_bilinearReprojection ( true )
 { 
     fromConfig( _conf );
 }
@@ -165,6 +166,7 @@ TileSourceOptions::getConfig() const
     conf.updateIfSet( "nodata_max", _noDataMaxValue );
     conf.updateIfSet( "blacklist_filename", _blacklistFilename);
     conf.updateIfSet( "l2_cache_size", _L2CacheSize );
+    conf.updateIfSet( "bilinear_reprojection", _bilinearReprojection );
     conf.updateObjIfSet( "profile", _profileOptions );
     return conf;
 }
@@ -187,6 +189,7 @@ TileSourceOptions::fromConfig( const Config& conf )
     conf.getIfSet( "nodata_max", _noDataMaxValue );
     conf.getIfSet( "blacklist_filename", _blacklistFilename);
     conf.getIfSet( "l2_cache_size", _L2CacheSize );
+    conf.getIfSet( "bilinear_reprojection", _bilinearReprojection );
     conf.getObjIfSet( "profile", _profileOptions );
 
     // special handling of default tile size:

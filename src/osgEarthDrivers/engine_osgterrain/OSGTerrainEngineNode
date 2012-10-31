@@ -32,106 +32,110 @@
 #include <osg/Geode>
 #include <osg/NodeCallback>
 
-using namespace osgEarth;
-
-class OSGTerrainEngineNode : public TerrainEngineNode
+namespace osgEarth_engine_osgterrain
 {
-public:
-    OSGTerrainEngineNode();
-    META_Node(osgEarth,OSGTerrainEngineNode);
-    virtual ~OSGTerrainEngineNode();
+    using namespace osgEarth;
 
-public:
-    osg::Node* createNode(const TileKey& key);
-
-public: // TerrainEngineNode overrides    
-    virtual void preInitialize( const Map* map, const TerrainOptions& options );
-    virtual void postInitialize( const Map* map, const TerrainOptions& options );
-    virtual void validateTerrainOptions( TerrainOptions& options );
-    virtual const TerrainOptions& getTerrainOptions() const { return _terrainOptions; }
-    virtual void traverse( osg::NodeVisitor& );
-    virtual osg::BoundingSphere computeBound() const;    
-
-    // for standalone tile creation outside of a terrain
-    osg::Node* createTile(const TileKey& key);
-
-public: // MapCallback adapter functions
-    void onMapInfoEstablished( const MapInfo& mapInfo ); // not virtual!
-    void onMapModelChanged( const MapModelChange& change ); // not virtual!
-
-    UID getUID() const;
-    OSGTileFactory* getTileFactory() const { return _tileFactory.get(); }
-    class TerrainNode* getTerrainNode() const { return _terrain; }
-
-public: // statics    
-    static void registerEngine( OSGTerrainEngineNode* engineNode );
-    static void unregisterEngine( UID uid );
-    static void getEngineByUID( UID uid, osg::ref_ptr<OSGTerrainEngineNode>& output );
-
-public:
-    class ElevationChangedCallback : public ElevationLayerCallback
+    class OSGTerrainEngineNode : public TerrainEngineNode
     {
     public:
-        ElevationChangedCallback( OSGTerrainEngineNode* terrain );
+        OSGTerrainEngineNode();
+        META_Node(osgEarth,OSGTerrainEngineNode);
+        virtual ~OSGTerrainEngineNode();
 
-       virtual void onVisibleChanged( TerrainLayer* layer );
+    public:
+        osg::Node* createNode(const TileKey& key);
 
-        OSGTerrainEngineNode* _terrain;
-        friend class OSGTerrainEngineNode;
+    public: // TerrainEngineNode overrides    
+        virtual void preInitialize( const Map* map, const TerrainOptions& options );
+        virtual void postInitialize( const Map* map, const TerrainOptions& options );
+        virtual void validateTerrainOptions( TerrainOptions& options );
+        virtual const TerrainOptions& getTerrainOptions() const { return _terrainOptions; }
+        virtual void traverse( osg::NodeVisitor& );
+        virtual osg::BoundingSphere computeBound() const;    
+
+        // for standalone tile creation outside of a terrain
+        osg::Node* createTile(const TileKey& key);
+
+    public: // MapCallback adapter functions
+        void onMapInfoEstablished( const MapInfo& mapInfo ); // not virtual!
+        void onMapModelChanged( const MapModelChange& change ); // not virtual!
+
+        UID getUID() const;
+        OSGTileFactory* getTileFactory() const { return _tileFactory.get(); }
+        class TerrainNode* getTerrainNode() const { return _terrain; }
+
+    public: // statics    
+        static void registerEngine( OSGTerrainEngineNode* engineNode );
+        static void unregisterEngine( UID uid );
+        static void getEngineByUID( UID uid, osg::ref_ptr<OSGTerrainEngineNode>& output );
+
+    public:
+        class ElevationChangedCallback : public ElevationLayerCallback
+        {
+        public:
+            ElevationChangedCallback( OSGTerrainEngineNode* terrain );
+
+           virtual void onVisibleChanged( TerrainLayer* layer );
+
+            OSGTerrainEngineNode* _terrain;
+            friend class OSGTerrainEngineNode;
+        };
+
+    protected:
+	    virtual void onVerticalScaleChanged();
+
+    private:
+        void init();
+        void syncMapModel();
+        void installTerrainTechnique();
+
+        /**
+         * Reloads all the tiles in the terrain due to a data model change
+         */
+        void refresh();
+
+
+        void addImageLayer( ImageLayer* layer );
+        void addElevationLayer( ElevationLayer* layer );
+
+        void removeImageLayer( ImageLayer* layerRemoved );
+        void removeElevationLayer( ElevationLayer* layerRemoved );
+
+        void moveImageLayer( unsigned int oldIndex, unsigned int newIndex );
+        void moveElevationLayer( unsigned int oldIndex, unsigned int newIndex );
+        
+        void updateElevation( Tile* tile );
+        void installShaders();
+        void updateTextureCombining();
+
+    private:
+        osg::ref_ptr<OSGTileFactory>         _tileFactory;
+        //class CustomTerrainNode* _terrain;
+        class TerrainNode*               _terrain;
+        UID                                  _uid;
+        osgEarth::Drivers::OSGTerrainOptions _terrainOptions;
+        Revision                             _shaderLibRev;
+        osg::ref_ptr<TaskServiceManager>     _taskServiceMgr;
+
+        osg::ref_ptr< ElevationChangedCallback > _elevationCallback;
+
+        // store a separate map frame for each of the traversal threads
+        MapFrame* _update_mapf; // map frame for the main/update traversal thread
+        MapFrame* _cull_mapf;   // map frame for the cull traversal thread
+
+        osg::ref_ptr<TaskService>    _tileService;
+        osg::ref_ptr<KeyNodeFactory> _keyNodeFactory;
+        osg::ref_ptr<TileBuilder>    _tileBuilder;
+
+        osg::Timer _timer;
+        unsigned   _tileCount;
+        double     _tileCreationTime;
+        bool       _isStreaming;
+
+        OSGTerrainEngineNode( const OSGTerrainEngineNode& rhs, const osg::CopyOp& op =osg::CopyOp::DEEP_COPY_ALL ) { }
     };
 
-protected:
-	virtual void onVerticalScaleChanged();
-
-private:
-    void init();
-    void syncMapModel();
-    void installTerrainTechnique();
-
-    /**
-     * Reloads all the tiles in the terrain due to a data model change
-     */
-    void refresh();
-
-
-    void addImageLayer( ImageLayer* layer );
-    void addElevationLayer( ElevationLayer* layer );
-
-    void removeImageLayer( ImageLayer* layerRemoved );
-    void removeElevationLayer( ElevationLayer* layerRemoved );
-
-    void moveImageLayer( unsigned int oldIndex, unsigned int newIndex );
-    void moveElevationLayer( unsigned int oldIndex, unsigned int newIndex );
-    
-    void updateElevation( Tile* tile );
-    void installShaders();
-    void updateTextureCombining();
-
-private:
-    osg::ref_ptr<OSGTileFactory>         _tileFactory;
-    //class CustomTerrainNode* _terrain;
-    class TerrainNode*               _terrain;
-    UID                                  _uid;
-    osgEarth::Drivers::OSGTerrainOptions _terrainOptions;
-    Revision                             _shaderLibRev;
-    osg::ref_ptr<TaskServiceManager>     _taskServiceMgr;
-
-    osg::ref_ptr< ElevationChangedCallback > _elevationCallback;
-
-    // store a separate map frame for each of the traversal threads
-    MapFrame* _update_mapf; // map frame for the main/update traversal thread
-    MapFrame* _cull_mapf;   // map frame for the cull traversal thread
-
-    osg::ref_ptr<TaskService>    _tileService;
-    osg::ref_ptr<KeyNodeFactory> _keyNodeFactory;
-    osg::ref_ptr<TileBuilder>    _tileBuilder;
-
-    osg::Timer _timer;
-    unsigned   _tileCount;
-    double     _tileCreationTime;
-    bool       _isStreaming;
-
-    OSGTerrainEngineNode( const OSGTerrainEngineNode& rhs, const osg::CopyOp& op =osg::CopyOp::DEEP_COPY_ALL ) { }
-};
+} // namespace osgEarth_engine_osgterrain
 
 #endif // OSGEARTH_ENGINE_OSGTERRAIN_ENGINE_NODE_H

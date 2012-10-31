@@ -69,7 +69,7 @@ LocalizedNode::init( MapNode* mapNode, const GeoPoint& position )
         this->getOrCreateStateSet()->setRenderingHint( osg::StateSet::TRANSPARENT_BIN );
     }
     
-    this->getOrCreateStateSet()->setMode( GL_BLEND, 1 );
+    //this->getOrCreateStateSet()->setMode( GL_BLEND, 1 );
 
     setHorizonCulling( true );
 

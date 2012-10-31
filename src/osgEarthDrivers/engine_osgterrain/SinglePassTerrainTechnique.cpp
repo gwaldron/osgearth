@@ -40,6 +40,7 @@
 
 #include <sstream>
 
+using namespace osgEarth_engine_osgterrain;
 using namespace osgEarth;
 using namespace osgEarth::Symbology;
 using namespace OpenThreads;

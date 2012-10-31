@@ -293,14 +293,19 @@ HTTPResponse::getHeadersAsConfig() const
 #define USER_AGENT "osgearth" QUOTE(OSGEARTH_MAJOR_VERSION) "." QUOTE(OSGEARTH_MINOR_VERSION)
 
 
-static optional<ProxySettings>     _proxySettings;
-static std::string                 _userAgent = USER_AGENT;
-static long                         _timeout = 0;
-
 namespace
 {
     // per-thread client map (must be global scope)
     static Threading::PerThread<HTTPClient> s_clientPerThread;
+
+    static optional<ProxySettings>     s_proxySettings;
+
+    static std::string                 s_userAgent = USER_AGENT;
+
+    static long                        s_timeout = 0;
+
+    // HTTP debugging.
+    static bool                        s_HTTP_DEBUG = false;
 }
 
 HTTPClient&
@@ -334,7 +339,7 @@ HTTPClient::initializeImpl()
     _curl_handle = curl_easy_init();
 
     //Get the user agent
-    std::string userAgent = _userAgent;
+    std::string userAgent = s_userAgent;
     const char* userAgentEnv = getenv("OSGEARTH_USERAGENT");
     if (userAgentEnv)
     {
@@ -349,6 +354,13 @@ HTTPClient::initializeImpl()
         OE_WARN << LC << "Simulating a network error with Response Code = " << _simResponseCode << std::endl;
     }
 
+    // Dumps out HTTP request/response info
+    if ( ::getenv("OSGEARTH_HTTP_DEBUG") )
+    {
+        s_HTTP_DEBUG = true;
+        OE_WARN << LC << "HTTP debugging enabled" << std::endl;
+    }
+
     OE_DEBUG << LC << "HTTPClient setting userAgent=" << userAgent << std::endl;
 
     curl_easy_setopt( _curl_handle, CURLOPT_USERAGENT, userAgent.c_str() );
@@ -357,7 +369,7 @@ HTTPClient::initializeImpl()
     curl_easy_setopt( _curl_handle, CURLOPT_MAXREDIRS, (void*)5 );
     curl_easy_setopt( _curl_handle, CURLOPT_PROGRESSFUNCTION, &CurlProgressCallback);
     curl_easy_setopt( _curl_handle, CURLOPT_NOPROGRESS, (void*)0 ); //FALSE);    
-    long timeout = _timeout;
+    long timeout = s_timeout;
     const char* timeoutEnv = getenv("OSGEARTH_HTTP_TIMEOUT");
     if (timeoutEnv)
     {        
@@ -378,27 +390,27 @@ HTTPClient::~HTTPClient()
 void
 HTTPClient::setProxySettings( const ProxySettings& proxySettings )
 {
-    _proxySettings = proxySettings;
+    s_proxySettings = proxySettings;
 }
 
 const std::string& HTTPClient::getUserAgent()
 {
-    return _userAgent;
+    return s_userAgent;
 }
 
 void  HTTPClient::setUserAgent(const std::string& userAgent)
 {
-    _userAgent = userAgent;
+    s_userAgent = userAgent;
 }
 
 long HTTPClient::getTimeout()
 {
-    return _timeout;
+    return s_timeout;
 }
 
 void HTTPClient::setTimeout( long timeout )
 {
-    _timeout = timeout;
+    s_timeout = timeout;
 }
 
 void
@@ -598,8 +610,6 @@ HTTPClient::doGet( const HTTPRequest& request, const osgDB::Options* options, Pr
 {
     initialize();
 
-    OE_TEST << LC << "doGet " << request.getURL() << std::endl;
-
     const osgDB::AuthenticationMap* authenticationMap = (options && options->getAuthenticationMap()) ? 
             options->getAuthenticationMap() :
             osgDB::Registry::instance()->getAuthenticationMap();
@@ -613,15 +623,15 @@ HTTPClient::doGet( const HTTPRequest& request, const osgDB::Options* options, Pr
     // the proxy information changes.
 
     //Try to get the proxy settings from the global settings
-    if (_proxySettings.isSet())
+    if (s_proxySettings.isSet())
     {
-        proxy_host = _proxySettings.get().hostName();
+        proxy_host = s_proxySettings.get().hostName();
         std::stringstream buf;
-        buf << _proxySettings.get().port();
+        buf << s_proxySettings.get().port();
         proxy_port = buf.str();
 
-        std::string proxy_username = _proxySettings.get().userName();
-        std::string proxy_password = _proxySettings.get().password();
+        std::string proxy_username = s_proxySettings.get().userName();
+        std::string proxy_password = s_proxySettings.get().password();
         if (!proxy_username.empty() && !proxy_password.empty())
         {
             proxy_auth = proxy_username + std::string(":") + proxy_password;
@@ -669,14 +679,18 @@ HTTPClient::doGet( const HTTPRequest& request, const osgDB::Options* options, Pr
         bufStr = buf.str();
         proxy_addr = bufStr;
     
-        OE_DEBUG << LC << "setting proxy: " << proxy_addr << std::endl;
+        if ( s_HTTP_DEBUG )
+            OE_NOTICE << LC << "Using proxy: " << proxy_addr << std::endl;
+
         //curl_easy_setopt( _curl_handle, CURLOPT_HTTPPROXYTUNNEL, 1 ); 
         curl_easy_setopt( _curl_handle, CURLOPT_PROXY, proxy_addr.c_str() );
 
         //Setup the proxy authentication if setup
         if (!proxy_auth.empty())
         {
-            OE_DEBUG << LC << "Setting up proxy authentication " << proxy_auth << std::endl;
+            if ( s_HTTP_DEBUG )
+                OE_NOTICE << LC << "Using proxy authentication " << proxy_auth << std::endl;
+
             curl_easy_setopt( _curl_handle, CURLOPT_PROXYUSERPWD, proxy_auth.c_str());
         }
     }
@@ -758,8 +772,12 @@ HTTPClient::doGet( const HTTPRequest& request, const osgDB::Options* options, Pr
         if (!proxy_addr.empty())
         {
             long connect_code = 0L;
-            curl_easy_getinfo( _curl_handle, CURLINFO_HTTP_CONNECTCODE, &connect_code );
-            OE_DEBUG << LC << "proxy connect code " << connect_code << std::endl;
+            CURLcode r = curl_easy_getinfo(_curl_handle, CURLINFO_HTTP_CONNECTCODE, &connect_code);
+            if ( r != CURLE_OK )
+            {
+                OE_WARN << LC << "Proxy connect error: " << curl_easy_strerror(r) << std::endl;
+                return HTTPResponse(0);
+            }
         }
         
         curl_easy_getinfo( _curl_handle, CURLINFO_RESPONSE_CODE, &response_code );
@@ -771,21 +789,24 @@ HTTPClient::doGet( const HTTPRequest& request, const osgDB::Options* options, Pr
         res = response_code == 408 ? CURLE_OPERATION_TIMEDOUT : CURLE_COULDNT_CONNECT;
     }
 
-    //OE_DEBUG << LC << "got response, code = " << response_code << std::endl;
+    if ( s_HTTP_DEBUG )
+    {
+        OE_NOTICE << LC << "GET(" << response_code << "): \"" << request.getURL() << "\"" << std::endl;
+    }
 
     HTTPResponse response( response_code );
    
-    if ( response_code == 200L && res != CURLE_ABORTED_BY_CALLBACK && res != CURLE_OPERATION_TIMEDOUT ) //res == 0 )
+    if ( response_code == 200L && res != CURLE_ABORTED_BY_CALLBACK && res != CURLE_OPERATION_TIMEDOUT )
     {
         // check for multipart content:
         char* content_type_cp;
         curl_easy_getinfo( _curl_handle, CURLINFO_CONTENT_TYPE, &content_type_cp );
         if ( content_type_cp == NULL )
         {
-            OE_NOTICE << LC
+            OE_WARN << LC
                 << "NULL Content-Type (protocol violation) " 
                 << "URL=" << request.getURL() << std::endl;
-            return NULL;
+            return HTTPResponse(0L);
         }
 
         // NOTE:

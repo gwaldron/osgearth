@@ -116,7 +116,8 @@ _rttBlending     ( true ),
 _updatePending   ( false ),
 _dumpRequested   ( false ),
 _rttTraversalMask( ~0 ),
-_maxHorizonDistance( DBL_MAX )
+_maxHorizonDistance( DBL_MAX ),
+_attachStencil   ( true )
 {
     // nop
 }
@@ -189,17 +190,22 @@ OverlayDecorator::initializePerViewData( PerViewData& pvd )
 
     pvd._rttCamera->attach( osg::Camera::COLOR_BUFFER, projTexture, 0, 0, _mipmapping );
 
-    // try a depth-packed buffer. failing that, try a normal one.. if the FBO doesn't support
-    // that (which is doesn't on some GPUs like Intel), it will automatically fall back on 
-    // a PBUFFER_RTT impl
-    if ( Registry::instance()->getCapabilities().supportsDepthPackedStencilBuffer() ){
+    if (_attachStencil) {
+        // try a depth-packed buffer. failing that, try a normal one.. if the FBO doesn't support
+        // that (which is doesn't on some GPUs like Intel), it will automatically fall back on 
+        // a PBUFFER_RTT impl
+        if ( Registry::instance()->getCapabilities().supportsDepthPackedStencilBuffer() )
+        {
 #ifdef OSG_GLES2_AVAILABLE 
-        pvd._rttCamera->attach( osg::Camera::PACKED_DEPTH_STENCIL_BUFFER, GL_DEPTH24_STENCIL8_EXT );
+            pvd._rttCamera->attach( osg::Camera::PACKED_DEPTH_STENCIL_BUFFER, GL_DEPTH24_STENCIL8_EXT );
 #else
-        pvd._rttCamera->attach( osg::Camera::PACKED_DEPTH_STENCIL_BUFFER, GL_DEPTH_STENCIL_EXT );
+            pvd._rttCamera->attach( osg::Camera::PACKED_DEPTH_STENCIL_BUFFER, GL_DEPTH_STENCIL_EXT );
 #endif
-    }else{
-        pvd._rttCamera->attach( osg::Camera::STENCIL_BUFFER, GL_STENCIL_INDEX );
+        }
+        else
+        {
+            pvd._rttCamera->attach( osg::Camera::STENCIL_BUFFER, GL_STENCIL_INDEX );
+        }
     }
 
     osg::StateSet* rttStateSet = pvd._rttCamera->getOrCreateStateSet();
@@ -207,17 +213,17 @@ OverlayDecorator::initializePerViewData( PerViewData& pvd )
     rttStateSet->setMode( GL_LIGHTING, osg::StateAttribute::OFF | osg::StateAttribute::PROTECTED );
 
     // install a new default shader program that replaces anything from above.
-    VirtualProgram* vp = new VirtualProgram();
-    vp->setName( "overlay rtt" );
-    vp->installDefaultColoringAndLightingShaders();
-    vp->setInheritShaders( false );
-    rttStateSet->setAttributeAndModes( vp, osg::StateAttribute::ON );
+    if ( _useShaders )
+    {
+        VirtualProgram* vp = new VirtualProgram();
+        vp->setName( "overlay rtt" );
+        vp->installDefaultColoringAndLightingShaders();
+        vp->setInheritShaders( false );
+        rttStateSet->setAttributeAndModes( vp, osg::StateAttribute::ON );
+    }
     
     if ( _rttBlending )
     {
-        //osg::BlendFunc* blendFunc = new osg::BlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
-        //osg::BlendFunc* blendFunc = new osg::BlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-
         //Setup a separate blend function for the alpha components and the RGB components.  
         //Because the destination alpha is initialized to 0 instead of 1
         osg::BlendFunc* blendFunc = 0;        
@@ -256,23 +262,23 @@ OverlayDecorator::initializePerViewData( PerViewData& pvd )
     // assemble the subgraph stateset:
     pvd._subgraphStateSet = new osg::StateSet();
 
-    // set up the subgraph to receive the projected texture:
-    pvd._subgraphStateSet->setTextureMode( *_textureUnit, GL_TEXTURE_GEN_S, osg::StateAttribute::ON );
-    pvd._subgraphStateSet->setTextureMode( *_textureUnit, GL_TEXTURE_GEN_T, osg::StateAttribute::ON );
-    pvd._subgraphStateSet->setTextureMode( *_textureUnit, GL_TEXTURE_GEN_R, osg::StateAttribute::ON );
-    pvd._subgraphStateSet->setTextureMode( *_textureUnit, GL_TEXTURE_GEN_Q, osg::StateAttribute::ON );
     pvd._subgraphStateSet->setTextureAttributeAndModes( *_textureUnit, projTexture, osg::StateAttribute::ON );
     
     if ( _useShaders )
     {            
-        // set up the shaders
+        // GPU path
         initSubgraphShaders( pvd );
     }
     else
     {
-        // FFP path:
-        pvd._texGenNode = new osg::TexGenNode();
-        pvd._texGenNode->setTexGen( new osg::TexGen() );
+        // FFP path
+        pvd._texGen = new osg::TexGen();
+        pvd._texGen->setMode( osg::TexGen::EYE_LINEAR );
+        pvd._subgraphStateSet->setTextureAttributeAndModes( *_textureUnit, pvd._texGen.get(), 1 );
+
+        osg::TexEnv* env = new osg::TexEnv();
+        env->setMode( osg::TexEnv::DECAL );
+        pvd._subgraphStateSet->setTextureAttributeAndModes( *_textureUnit, env, 1 );
     }
 }
 
@@ -286,10 +292,10 @@ OverlayDecorator::initSubgraphShaders( PerViewData& pvd )
     set->setAttributeAndModes( vp, osg::StateAttribute::ON );
 
     // sampler for projected texture:
-    set->getOrCreateUniform( "osgearth_overlay_ProjTex", osg::Uniform::SAMPLER_2D )->set( *_textureUnit );
+    set->getOrCreateUniform( "oe_overlay_ProjTex", osg::Uniform::SAMPLER_2D )->set( *_textureUnit );
 
     // the texture projection matrix uniform.
-    pvd._texGenUniform = set->getOrCreateUniform( "osgearth_overlay_TexGenMatrix", osg::Uniform::FLOAT_MAT4 );
+    pvd._texGenUniform = set->getOrCreateUniform( "oe_overlay_TexGenMatrix", osg::Uniform::FLOAT_MAT4 );
 
     // vertex shader - subgraph
     std::string vertexSource = Stringify()
@@ -297,16 +303,16 @@ OverlayDecorator::initSubgraphShaders( PerViewData& pvd )
 #ifdef OSG_GLES2_AVAILABLE
         << "precision mediump float;\n"
 #endif
-        << "uniform mat4 osgearth_overlay_TexGenMatrix; \n"
+        << "uniform mat4 oe_overlay_TexGenMatrix; \n"
         << "uniform mat4 osg_ViewMatrixInverse; \n"
         << "varying vec4 osg_TexCoord[" << Registry::capabilities().getMaxGPUTextureCoordSets() << "]; \n"
 
-        << "void osgearth_overlay_vertex(void) \n"
+        << "void oe_overlay_vertex(void) \n"
         << "{ \n"
-        << "    osg_TexCoord["<< *_textureUnit << "] = osgearth_overlay_TexGenMatrix * osg_ViewMatrixInverse * gl_ModelViewMatrix * gl_Vertex; \n"
+        << "    osg_TexCoord["<< *_textureUnit << "] = oe_overlay_TexGenMatrix * osg_ViewMatrixInverse * gl_ModelViewMatrix * gl_Vertex; \n"
         << "} \n";
 
-    vp->setFunction( "osgearth_overlay_vertex", vertexSource, ShaderComp::LOCATION_VERTEX_POST_LIGHTING );
+    vp->setFunction( "oe_overlay_vertex", vertexSource, ShaderComp::LOCATION_VERTEX_POST_LIGHTING );
 
     // fragment shader - subgraph
     std::string fragmentSource = Stringify()
@@ -314,16 +320,16 @@ OverlayDecorator::initSubgraphShaders( PerViewData& pvd )
 #ifdef OSG_GLES2_AVAILABLE
         << "precision mediump float;\n"
 #endif
-        << "uniform sampler2D osgearth_overlay_ProjTex; \n"
+        << "uniform sampler2D oe_overlay_ProjTex; \n"
         << "varying vec4 osg_TexCoord[" << Registry::capabilities().getMaxGPUTextureCoordSets() << "]; \n"
-        << "void osgearth_overlay_fragment( inout vec4 color ) \n"
+        << "void oe_overlay_fragment( inout vec4 color ) \n"
         << "{ \n"
         << "    vec2 texCoord = osg_TexCoord["<< *_textureUnit << "].xy / osg_TexCoord["<< *_textureUnit << "].q; \n"
-        << "    vec4 texel = texture2D(osgearth_overlay_ProjTex, texCoord); \n"  
+        << "    vec4 texel = texture2D(oe_overlay_ProjTex, texCoord); \n"  
         << "    color = vec4( mix( color.rgb, texel.rgb, texel.a ), color.a); \n"
         << "} \n";
 
-    vp->setFunction( "osgearth_overlay_fragment", fragmentSource, ShaderComp::LOCATION_FRAGMENT_POST_LIGHTING );
+    vp->setFunction( "oe_overlay_fragment", fragmentSource, ShaderComp::LOCATION_FRAGMENT_POST_LIGHTING );
 }
 
 void
@@ -421,6 +427,18 @@ OverlayDecorator::setOverlayBlending( bool value )
     }
 }
 
+bool
+OverlayDecorator::getAttachStencil() const
+{
+    return _attachStencil;
+}
+
+void
+OverlayDecorator::setAttachStencil( bool value )
+{
+    _attachStencil = value;
+}
+
 void
 OverlayDecorator::onInstall( TerrainEngineNode* engine )
 {
@@ -442,11 +460,13 @@ OverlayDecorator::onInstall( TerrainEngineNode* engine )
     // see whether we want shader support:
     // TODO: this is not stricty correct; you might still want to use shader overlays
     // in multipass mode, AND you might want FFP overlays in multitexture-FFP mode.
-    _useShaders = engine->getTextureCompositor()->usesShaderComposition();
+    _useShaders = 
+        Registry::capabilities().supportsGLSL() && 
+        engine->getTextureCompositor()->usesShaderComposition();
 
     if ( !_textureSize.isSet() )
     {
-        unsigned maxSize = Registry::instance()->getCapabilities().getMaxFastTextureSize();
+        unsigned maxSize = Registry::capabilities().getMaxFastTextureSize();
         _textureSize.init( osg::minimum( 4096u, maxSize ) );
 
         OE_INFO << LC << "Using texture size = " << *_textureSize << std::endl;
@@ -485,7 +505,7 @@ OverlayDecorator::updateRTTCamera( OverlayDecorator::PerViewData& pvd )
     }
     else
     {
-        pvd._texGenNode->getTexGen()->setPlanesFromMatrix( MVPT );
+        pvd._texGen->setPlanesFromMatrix( MVPT );
     }
 }
 
@@ -779,7 +799,8 @@ OverlayDecorator::cull( osgUtil::CullVisitor* cv, OverlayDecorator::PerViewData&
 }
 
 OverlayDecorator::PerViewData&
-OverlayDecorator::getPerViewData(osg::NodeVisitor* key)
+OverlayDecorator::getPerViewData(osg::Camera* key)
+//OverlayDecorator::getPerViewData(osg::NodeVisitor* key)
 {
     // first check for it:
     {
@@ -813,54 +834,47 @@ OverlayDecorator::getPerViewData(osg::NodeVisitor* key)
 void
 OverlayDecorator::traverse( osg::NodeVisitor& nv )
 {
-    bool isCull = nv.getVisitorType() == osg::NodeVisitor::CULL_VISITOR;
-
     if ( _overlayGraph.valid() && _textureUnit.isSet() )
     {
         // in the CULL traversal, find the per-view data associated with the 
         // cull visitor's current camera view and work with that:
-        if ( nv.getVisitorType() == osg::NodeVisitor::CULL_VISITOR )
+        if ( nv.getVisitorType() == nv.CULL_VISITOR )
         {
             osgUtil::CullVisitor* cv = static_cast<osgUtil::CullVisitor*>( &nv );
-            PerViewData& pvd = getPerViewData( cv );
-            if ( cv->getCurrentCamera() )
+            osg::Camera* camera = cv->getCurrentCamera();
+            if ( camera != 0L && (_rttTraversalMask & nv.getTraversalMask()) != 0 )
             {
-                if ( (_rttTraversalMask & nv.getTraversalMask()) != 0 )
-                {
-                    if (checkNeedsUpdate(pvd))
-                    {
-                        updateRTTCamera(pvd);
-                    }
+                PerViewData& pvd = getPerViewData( camera );
 
-                    if ( pvd._texGenNode.valid() ) // FFP only
-                        pvd._texGenNode->accept( nv );
-
-                    cull( cv, pvd );
-                    pvd._rttCamera->accept( nv );
-                }
-                else
+                if (checkNeedsUpdate(pvd))
                 {
-                    osg::Group::traverse(nv);
+                    updateRTTCamera(pvd);
                 }
+
+                if ( pvd._texGen.valid() )
+                {
+                    // FFP path only
+                    cv->getCurrentRenderBin()->getStage()->addPositionedTextureAttribute(
+                        *_textureUnit, cv->getModelViewMatrix(), pvd._texGen.get() );
+                }
+
+                cull( cv, pvd );
+
+                pvd._rttCamera->accept( nv );
+            }
+            else
+            {
+                osg::Group::traverse(nv);
             }
 
             // debug-- (draws the overlay at its native location as well)
             //_overlayGraph->accept(nv);
         }
 
-        else if ( nv.getVisitorType() == nv.UPDATE_VISITOR )
-        {
-            if ( _overlayGraph.valid() )
-            {
-                _overlayGraph->accept( nv );
-            }
-            osg::Group::traverse( nv );
-        }
-
         else
         {
-            // Some other type of visitor (like an intersection). Skip the RTT camera and
-            // traverse the overlay graph directly.
+            // Some other type of visitor (like update or intersection). Skip the RTT camera
+            // and traverse the overlay graph directly.
             if ( _overlayGraph.valid() )
             {
                 _overlayGraph->accept( nv );

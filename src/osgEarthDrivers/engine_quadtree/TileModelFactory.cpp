@@ -22,6 +22,7 @@
 #include <osgEarth/ImageUtils>
 #include <osgEarth/HeightFieldUtils>
 
+using namespace osgEarth_engine_quadtree;
 using namespace osgEarth;
 using namespace osgEarth::Drivers;
 using namespace OpenThreads;
@@ -147,17 +148,18 @@ namespace
 {
     struct BuildElevationData
     {
-        void init(const TileKey& key, const MapFrame& mapf, const QuadTreeTerrainEngineOptions& opt, TileModel* model) //sourceTileNodeBuilder::SourceRepo& repo)
+        void init(const TileKey& key, const MapFrame& mapf, const QuadTreeTerrainEngineOptions& opt, TileModel* model, HeightFieldCache* hfCache) //sourceTileNodeBuilder::SourceRepo& repo)
         {
             _key   = key;
             _mapf  = &mapf;
             _opt   = &opt;
             _model = model;
+            _hfCache = hfCache;
             //_repo = &repo;
         }
 
         void execute()
-        {
+        {            
             const MapInfo& mapInfo = _mapf->getMapInfo();
 
             // Request a heightfield from the map, falling back on lower resolution tiles
@@ -165,14 +167,9 @@ namespace
             osg::ref_ptr<osg::HeightField> hf;
             bool isFallback = false;
 
-            if ( _mapf->getHeightField( _key, true, hf, &isFallback ) )
-            {
-                // Treat Plate Carre specially by scaling the height values. (There is no need
-                // to do this with an empty heightfield)
-                if ( mapInfo.isPlateCarre() )
-                {
-                    HeightFieldUtils::scaleHeightFieldToDegrees( hf.get() );
-                }
+            //if ( _mapf->getHeightField( _key, true, hf, &isFallback ) )
+            if (_hfCache->getOrCreateHeightField( *_mapf, _key, true, hf, &isFallback) )
+            {                
 
                 // Put it in the repo
                 osgTerrain::HeightFieldLayer* hfLayer = new osgTerrain::HeightFieldLayer( hf.get() );
@@ -181,6 +178,34 @@ namespace
                 hfLayer->setLocator( GeoLocator::createForKey( _key, mapInfo ) );
 
                 _model->_elevationData = TileModel::ElevationData(hfLayer, isFallback);
+                
+                if ( *_opt->normalizeEdges() )
+                {
+                    // next, query the neighboring tiles to get adjacency information.
+                    for( int x=-1; x<=1; x++ )
+                    {
+                        for( int y=-1; y<=1; y++ )
+                        {
+                            if ( x != 0 || y != 0 )
+                            {
+                                TileKey nk = _key.createNeighborKey(x, y);
+                                if ( nk.valid() )
+                                {
+                                    if (_hfCache->getOrCreateHeightField( *_mapf, nk, true, hf, &isFallback) )
+                                    //if ( _mapf->getHeightField(nk, true, hf, &isFallback) )
+                                    {               
+                                        if ( mapInfo.isPlateCarre() )
+                                        {
+                                            HeightFieldUtils::scaleHeightFieldToDegrees( hf.get() );
+                                        }
+
+                                        _model->_elevationData.setNeighbor( x, y, hf.get() );
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
             }
         }
 
@@ -188,6 +213,7 @@ namespace
         const MapFrame*          _mapf;
         const QuadTreeTerrainEngineOptions* _opt;
         TileModel* _model;
+        osg::ref_ptr< HeightFieldCache> _hfCache;
     };
 }
 
@@ -200,7 +226,13 @@ _map           ( map ),
 _liveTiles     ( liveTiles ),
 _terrainOptions( terrainOptions )
 {
-    //nop
+    _hfCache = new HeightFieldCache();
+}
+
+HeightFieldCache*
+TileModelFactory::getHeightFieldCache() const
+{
+    return _hfCache;
 }
 
 
@@ -244,7 +276,7 @@ TileModelFactory::createTileModel(const TileKey&           key,
 
     // make an elevation layer.
     BuildElevationData build;
-    build.init( key, mapf, _terrainOptions, model.get() );
+    build.init( key, mapf, _terrainOptions, model.get(), _hfCache );
     build.execute();
 
 

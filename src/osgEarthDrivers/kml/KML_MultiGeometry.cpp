@@ -18,6 +18,8 @@
  */
 #include "KML_MultiGeometry"
 
+using namespace osgEarth_kml;
+
 void
 KML_MultiGeometry::parseCoords( const Config& conf, KMLContext& cx )
 {

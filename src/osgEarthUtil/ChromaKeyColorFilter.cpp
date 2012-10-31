@@ -151,7 +151,7 @@ Config
 ChromaKeyColorFilter::getConfig() const
 {
     osg::Vec3f val = getColor();
-    Config conf("rgb");
+    Config conf("chroma_key");
     conf.add( "r", val[0] );
     conf.add( "g", val[1] );
     conf.add( "b", val[2] );

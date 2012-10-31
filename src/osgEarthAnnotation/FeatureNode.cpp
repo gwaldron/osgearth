@@ -31,6 +31,7 @@
 #include <osgEarth/NodeUtils>
 #include <osgEarth/Utils>
 #include <osgEarth/Registry>
+#include <osgEarth/ShaderGenerator>
 
 #include <osg/BoundingSphere>
 #include <osg/Polytope>

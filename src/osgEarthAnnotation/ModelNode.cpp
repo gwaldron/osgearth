@@ -60,6 +60,7 @@ void
 ModelNode::init()
 {
     // reset.
+    this->clearDecoration();
     this->getTransform()->removeChildren(0, this->getTransform()->getNumChildren());
 
     this->setHorizonCulling(false);

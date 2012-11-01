@@ -114,6 +114,8 @@ LocalGeometryNode::initGeometry(const osgDB::Options* dbOptions)
 void 
 LocalGeometryNode::init(const osgDB::Options* options )
 {
+    this->clearDecoration();
+    
     if ( _node.valid() )
     {
         initNode();

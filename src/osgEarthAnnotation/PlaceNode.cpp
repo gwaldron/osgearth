@@ -80,6 +80,7 @@ void
 PlaceNode::init()
 {
     //reset.
+    this->clearDecoration();
     getAttachPoint()->removeChildren(0, getAttachPoint()->getNumChildren());
 
     _geode = new osg::Geode();

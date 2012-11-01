@@ -85,6 +85,8 @@ _geode   ( 0L )
 void
 LabelNode::init( const Style& style )
 {
+    this->clearDecoration();
+    
     _geode = new osg::Geode();
     getAttachPoint()->addChild( _geode );
 
@@ -126,6 +128,8 @@ LabelNode::setStyle( const Style& style )
         OE_WARN << LC << "Illegal state: cannot change a LabelNode that is not dynamic" << std::endl;
         return;
     }
+    
+    this->clearDecoration();   
 
     _geode->removeDrawables( 0, _geode->getNumDrawables() );
 

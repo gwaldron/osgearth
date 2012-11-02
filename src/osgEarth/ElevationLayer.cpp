@@ -498,8 +498,6 @@ ElevationLayerVector::createHeightField(const TileKey&                  key,
 
     unsigned defElevSize = 8;
 
-    if (fallback) OE_NOTICE << "Fallback" << std::endl;
-
     for( ElevationLayerVector::const_iterator i = this->begin(); i != this->end(); i++ )
     {
         ElevationLayer* layer = i->get();
@@ -548,7 +546,6 @@ ElevationLayerVector::createHeightField(const TileKey&                  key,
         //If we got no heightfields but were requested to fallback, create an empty heightfield.
         if ( fallback )
         {
-            OE_NOTICE << "Creating empty heightfield " << std::endl;
             out_result = HeightFieldUtils::createReferenceHeightField( keyToUse.getExtent(), defElevSize, defElevSize );                
             return true;
         }

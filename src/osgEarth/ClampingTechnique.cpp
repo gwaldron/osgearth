@@ -41,6 +41,7 @@ namespace
     struct CPM : public osg::CullSettings::ClampProjectionMatrixCallback
     {
         void setup( osgUtil::CullVisitor* cv ) {
+            _clampedProj.makeIdentity();
             _cv = cv;
         }
         bool clampProjectionMatrixImplementation(osg::Matrixf& projection, double& znear, double& zfar) const {
@@ -49,7 +50,7 @@ namespace
         }
         bool clampProjectionMatrixImplementation(osg::Matrixd& projection, double& znear, double& zfar) const {
             bool r = _cv->clampProjectionMatrixImplementation(projection, znear, zfar);
-            _clampedProj = projection;
+            if ( r ) _clampedProj = projection;
             return r;
         }
         
@@ -146,7 +147,7 @@ ClampingTechnique::setUpCamera(OverlayDecorator::TechRTTParams& params)
     vp->setName( "ClampingTechnique program" );
     local->_groupStateSet->setAttributeAndModes( vp, osg::StateAttribute::ON );
 
-    // sampler for projected texture:
+    // sampler for depth map texture:
     local->_groupStateSet->getOrCreateUniform(
         "oe_overlay_depthtex", 
         osg::Uniform::SAMPLER_2D )->set( _textureUnit );
@@ -176,17 +177,32 @@ ClampingTechnique::setUpCamera(OverlayDecorator::TechRTTParams& params)
         << "void oe_clamping_vertex(void) \n"
         << "{ \n"
         // transform the vertex into the depth texture's clip coordinates.
-        << "    vec4 tc = oe_overlay_eye2depthclipmat * gl_ModelViewMatrix * gl_Vertex; \n"
+        << "    vec4 v_eye_orig = gl_ModelViewMatrix * gl_Vertex; \n"
+        << "    vec4 tc = oe_overlay_eye2depthclipmat * v_eye_orig; \n"
 
         // sample the depth map.
         << "    float d = texture2DProj( oe_overlay_depthtex, tc ).r; \n"
 
         // make a fake point in depth clip space and transform it back into eye coords.
         << "    vec4 p = vec4(tc.x, tc.y, d, 1.0); \n"
-        << "    vec4 v_eye = oe_overlay_depthclip2eyemat * p; \n"
+        << "    vec4 v_eye_clamped = oe_overlay_depthclip2eyemat * p; \n"
 
-        // project it and ship it
-        << "    gl_Position = gl_ProjectionMatrix * v_eye; \n"
+        // if the clamping distance is too big, bag it.
+        << "    vec3 v_eye_orig3    = v_eye_orig.xyz/v_eye_orig.w;\n"
+        << "    vec3 v_eye_clamped3 = v_eye_clamped.xyz/v_eye_clamped.w; \n"
+        << "    float clamp_distance = length(v_eye_orig3 - v_eye_clamped3); \n"
+
+        << "    const float maxClampDistance = 10000.0; \n"
+        
+        << "    if ( clamp_distance > maxClampDistance ) \n"
+        << "    { \n"
+        << "        gl_Position = gl_ProjectionMatrix * v_eye_orig; \n"
+        // still have to populate these to nullify the depth offset code.
+        << "        oe_overlay_simvert = gl_Position; \n"
+        << "        oe_overlay_simvertrange = 1.0; \n"
+        << "    } \n"
+        << "    else \n"
+        << "    { \n"
 
         // now simulate a "closer" vertex for depth offsetting.
 
@@ -197,25 +213,24 @@ ClampingTechnique::setUpCamera(OverlayDecorator::TechRTTParams& params)
         // DO stuff, we analyze the graph and hueristically choose a "good" minimum value.
         // Perhaps that's the approach here, or perhaps we let the user manually choose 
         // something...
-        << "    const float min_offset = 10.0; \n"
+        << "        const float min_offset = 10.0; \n"
+        << "        const float max_offset = 10000.0; \n"
+        << "        const float min_range  = 1000.0; \n"
+        << "        const float max_range  = 10000000.0; \n"
 
+        << "        float range = length(v_eye_clamped3); \n"
 
-        << "    const float max_offset = 10000.0; \n"
-        << "    const float min_range = 1000.0; \n"
-        << "    const float max_range = 10000000.0; \n"
+        << "        float ratio = (clamp(range, min_range, max_range)-min_range)/(max_range-min_range);\n"
+        << "        float offset = min_offset + ratio * (max_offset-min_offset);\n"
 
-        << "    vec3 v_eye3 = v_eye.xyz/v_eye.w; \n"
-        << "    float range = length(v_eye3); \n"
+        << "        vec3 adj_vec = normalize(v_eye_clamped3); \n"
+        << "        vec3 v_eye_offset3 = v_eye_clamped3 - (adj_vec * offset); \n"
 
-        << "    float ratio = (clamp(range, min_range, max_range)-min_range)/(max_range-min_range);\n"
-        << "    float offset = min_offset + ratio * (max_offset-min_offset);\n"
-
-        << "    vec3 adj_vec = normalize(v_eye3); \n"
-        << "    v_eye3 -= adj_vec * offset; \n"
-
-        << "    vec4 v_sim_eye = vec4( v_eye3.xyz * v_eye.w, v_eye.w ); \n"
-        << "    oe_overlay_simvert = gl_ProjectionMatrix * v_sim_eye;\n"
-        << "    oe_overlay_simvertrange = range - offset; \n"
+        << "        vec4 v_sim_eye = vec4( v_eye_offset3 * v_eye_clamped.w, v_eye_clamped.w ); \n"
+        << "        oe_overlay_simvert = gl_ProjectionMatrix * v_sim_eye;\n"
+        << "        oe_overlay_simvertrange = range - offset; \n"
+        << "        gl_Position = gl_ProjectionMatrix * v_eye_clamped; \n"
+        << "    } \n"
         << "} \n";
 
     vp->setFunction( "oe_clamping_vertex", vertexSource, ShaderComp::LOCATION_VERTEX_POST_LIGHTING );
@@ -223,7 +238,6 @@ ClampingTechnique::setUpCamera(OverlayDecorator::TechRTTParams& params)
 
     // fragment shader - depth offset apply
     std::string frag =
-        "uniform sampler2D oe_overlay_depthtex; \n"
         "varying vec4 oe_overlay_simvert; \n"
         "varying float oe_overlay_simvertrange; \n"
         "void oe_clamping_fragment(inout vec4 color)\n"
@@ -284,7 +298,7 @@ ClampingTechnique::cullOverlayGroup(OverlayDecorator::TechRTTParams& params,
 
         local._camViewToDepthClipUniform->set( camViewToRttClip );
         local._depthClipToCamViewUniform->set( osg::Matrix::inverse(camViewToRttClip) );
-
+        
         // traverse the overlay nodes.
         cv->pushStateSet( local._groupStateSet.get() );
         params._group->accept( *cv );
@@ -302,16 +316,6 @@ ClampingTechnique::setTextureSize( int texSize )
     }
 }
 
-#if 0
-void
-ClampingTechnique::setTextureUnit( int texUnit )
-{
-    if ( !_explicitTextureUnit.isSet() || texUnit != _explicitTextureUnit.value() )
-    {
-        _explicitTextureUnit = texUnit;
-    }
-}
-#endif
 
 void
 ClampingTechnique::onInstall( TerrainEngineNode* engine )
@@ -327,6 +331,7 @@ ClampingTechnique::onInstall( TerrainEngineNode* engine )
         OE_INFO << LC << "Using texture size = " << *_textureSize << std::endl;
     }
 }
+
 
 void
 ClampingTechnique::onUninstall( TerrainEngineNode* engine )

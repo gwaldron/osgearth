@@ -94,6 +94,7 @@ namespace osgEarth
             osg::Group*                   _group;            // contains the overlay graphics
             osg::StateSet*                _terrainStateSet;  // same object as in PerViewData (shared across techniques)
             osg::ref_ptr<osg::Referenced> _techniqueData;    // technique sets this if needed
+            const double*                 _horizonDistance;  // points to the PVD horizon distance.
         };
 
         // One of these per view (camera). The terrain state set
@@ -102,6 +103,7 @@ namespace osgEarth
         {
             std::vector<TechRTTParams>  _techParams;
             osg::ref_ptr<osg::StateSet> _sharedTerrainStateSet;
+            double                      _sharedHorizonDistance;
         };
 
     private:

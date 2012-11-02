@@ -173,6 +173,7 @@ OverlayDecorator::initializePerViewData( PerViewData& pvd )
         params._group = _overlayGroups[i].get();
         params._terrainStateSet = pvd._sharedTerrainStateSet.get(); // share it.
         params._horizonDistance = _isGeocentric ? &pvd._sharedHorizonDistance : 0L; // share it.
+        params._terrainParent = this;
     }
 }
 
@@ -430,9 +431,13 @@ OverlayDecorator::cullTerrainAndCalculateRTTParams(osgUtil::CullVisitor* cv,
             double new_eMax;
             getMinMaxExtentInSilhouette( bc, rttLookVec, verts, eMin, new_eMax );
             eMax = std::min( eMax, new_eMax );
-            params._rttViewMatrix = osg::Matrixd::lookAt( bc, osg::Vec3d(0,0,0), osg::Vec3d(0,0,1) );
+
+            bc.normalize();
+            bc *= eyeLen;
+
 
             //TODO: resolve.... first is original; second is from the depthmaptest branch.....
+            params._rttViewMatrix = osg::Matrixd::lookAt( bc, osg::Vec3d(0,0,0), osg::Vec3d(0,0,1) );
             params._rttProjMatrix = osg::Matrixd::ortho( -eMax, eMax, -eMax, eMax, -eyeLen, bc.length() );
             //params._rttProjMatrix = osg::Matrixd::ortho2D( -eMax, eMax, -eMax, eMax );
 

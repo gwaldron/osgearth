@@ -532,6 +532,7 @@ MapNode::onModelLayerAdded( ModelLayer* layer, unsigned int index )
                 if ( layer->getOverlay() )
                 {
                     ClampableNode* draper = new ClampableNode( this );
+                    //DrapeableNode* draper = new DrapeableNode( this );
                     draper->addChild( node );
                     node = draper;
                 }

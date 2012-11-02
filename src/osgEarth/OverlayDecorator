@@ -95,6 +95,7 @@ namespace osgEarth
             osg::StateSet*                _terrainStateSet;  // same object as in PerViewData (shared across techniques)
             osg::ref_ptr<osg::Referenced> _techniqueData;    // technique sets this if needed
             const double*                 _horizonDistance;  // points to the PVD horizon distance.
+            osg::Group*                   _terrainParent;    // the terrain is in getChild(0).
         };
 
         // One of these per view (camera). The terrain state set

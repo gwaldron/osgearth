@@ -21,6 +21,7 @@
 #include <osgEarth/Registry>
 #include <osgEarth/VirtualProgram>
 
+#include <osg/Depth>
 #include <osg/PolygonMode>
 #include <osg/Texture2D>
 #include <osg/Uniform>
@@ -123,7 +124,7 @@ ClampingTechnique::setUpCamera(OverlayDecorator::TechRTTParams& params)
     osg::StateSet* rttStateSet = params._rttCamera->getOrCreateStateSet();
 
     // lighting is off. We don't want draped items to be lit.
-    rttStateSet->setMode( GL_LIGHTING, osg::StateAttribute::OFF | osg::StateAttribute::PROTECTED );
+    //rttStateSet->setMode( GL_LIGHTING, osg::StateAttribute::OFF | osg::StateAttribute::PROTECTED );
 
     rttStateSet->setMode(
         GL_BLEND, 
@@ -133,19 +134,40 @@ ClampingTechnique::setUpCamera(OverlayDecorator::TechRTTParams& params)
     rttStateSet->setAttributeAndModes(
         new osg::PolygonMode( osg::PolygonMode::FRONT_AND_BACK, osg::PolygonMode::FILL ),
         osg::StateAttribute::ON | osg::StateAttribute::PROTECTED );
+
+#if 0 //OOPS this kills things like a vertical scale shader!!
+    // installs a dirt-simple program for rendering the depth texture that
+    // skips all the normal terrain rendering stuff
+    osg::Program* depthProg = new osg::Program();
+    depthProg->addShader(new osg::Shader(
+        osg::Shader::VERTEX, 
+        "void main() { gl_Position = gl_ModelViewProjectionMatrix * gl_Vertex; }\n"));
+    depthProg->addShader(new osg::Shader(
+        osg::Shader::FRAGMENT, 
+        "void main() { gl_FragColor = vec4(1,1,1,1); }\n"));
+    rttStateSet->setAttributeAndModes(
+        depthProg,
+        osg::StateAttribute::ON | osg::StateAttribute::OVERRIDE | osg::StateAttribute::PROTECTED );
+#endif
     
     // attach the terrain to the camera.
     // todo: should probably protect this with a mutex.....
-    params._rttCamera->addChild( _engine ); // the terrain itself.
+    params._rttCamera->addChild( _engine ); //params._terrainParent->getChild(0) ); // the terrain itself.
 
-    // assemble the overlay graph stateset:
+    // assemble the overlay graph stateset.
     local->_groupStateSet = new osg::StateSet();
-    local->_groupStateSet->setTextureAttributeAndModes( _textureUnit, local->_rttTexture.get(), osg::StateAttribute::ON );
 
-    // make the shader program and its uniforms.
-    VirtualProgram* vp = new VirtualProgram();
-    vp->setName( "ClampingTechnique program" );
-    local->_groupStateSet->setAttributeAndModes( vp, osg::StateAttribute::ON );
+    local->_groupStateSet->setTextureAttributeAndModes( 
+        _textureUnit, 
+        local->_rttTexture.get(), 
+        osg::StateAttribute::ON );
+
+    // set up depth test/write parameters for the overlay geometry:
+    local->_groupStateSet->setAttributeAndModes(
+        new osg::Depth( osg::Depth::LEQUAL, 0.0, 1.0, false ),
+        osg::StateAttribute::ON );
+
+    local->_groupStateSet->setRenderingHint( osg::StateSet::TRANSPARENT_BIN );
 
     // sampler for depth map texture:
     local->_groupStateSet->getOrCreateUniform(
@@ -161,6 +183,11 @@ ClampingTechnique::setUpCamera(OverlayDecorator::TechRTTParams& params)
     local->_depthClipToCamViewUniform = local->_groupStateSet->getOrCreateUniform( 
         "oe_overlay_depthclip2eyemat", 
         osg::Uniform::FLOAT_MAT4 );
+
+    // make the shader that will do clamping and depth offsetting.
+    VirtualProgram* vp = new VirtualProgram();
+    vp->setName( "ClampingTechnique program" );
+    local->_groupStateSet->setAttributeAndModes( vp, osg::StateAttribute::ON );
 
     // vertex shader - subgraph
     std::string vertexSource = Stringify()
@@ -213,7 +240,11 @@ ClampingTechnique::setUpCamera(OverlayDecorator::TechRTTParams& params)
         // DO stuff, we analyze the graph and hueristically choose a "good" minimum value.
         // Perhaps that's the approach here, or perhaps we let the user manually choose 
         // something...
-        << "        const float min_offset = 10.0; \n"
+
+        // TODO: need to play around with these numbers.. try to find the ideal min_offset and min/max_range.
+
+        //<< "        const float min_offset = 10.0; \n"                      // good for streets near buildings
+        << "        const float min_offset = 100.0; \n"                      // good for wide river polys
         << "        const float max_offset = 10000.0; \n"
         << "        const float min_range  = 1000.0; \n"
         << "        const float max_range  = 10000000.0; \n"

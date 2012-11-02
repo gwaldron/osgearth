@@ -574,8 +574,8 @@ OverlayDecorator::traverse( osg::NodeVisitor& nv )
                 // prep and traverse the RTT camera(s):
                 for(unsigned i=0; i<_techniques.size(); ++i)
                 {
-                    _techniques[i]->preCullOverlay( pvd._techParams[i] );
-                    pvd._techParams[i]._rttCamera->accept( nv );
+                    TechRTTParams& params = pvd._techParams[i];
+                    _techniques[i]->cullOverlayGroup( params, cv );
                 }
             }
             else

@@ -27,6 +27,8 @@ SET(LIB_PUBLIC_HEADERS
     CachePolicy
     CacheSeed
     Capabilities
+    ClampableNode
+    ClampingTechnique
     ColorFilter
     Common
     CompositeTileSource
@@ -142,6 +144,8 @@ ADD_LIBRARY(${LIB_NAME} ${OSGEARTH_USER_DEFINED_DYNAMIC_OR_STATIC}
     CachePolicy.cpp
     CacheSeed.cpp
     Capabilities.cpp
+    ClampableNode.cpp
+    ClampingTechnique.cpp
     ColorFilter.cpp
     CompositeTileSource.cpp
     Config.cpp

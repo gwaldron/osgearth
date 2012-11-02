@@ -93,8 +93,9 @@ namespace osgEarth
             OverlayDecorator::TechRTTParams& params,
             osgUtil::CullVisitor*            cv );
 
-        void preCullOverlay(
-            OverlayDecorator::TechRTTParams& params);
+        void cullOverlayGroup(
+            OverlayDecorator::TechRTTParams& params,
+            osgUtil::CullVisitor*            cv );
 
         void onInstall( TerrainEngineNode* engine );
 
@@ -117,7 +118,6 @@ namespace osgEarth
         {
             osg::ref_ptr<osg::Uniform>    _texGenUniform;
             osg::ref_ptr<osg::TexGen>     _texGen;
-            osg::ref_ptr<osg::StateSet>   _subgraphStateSet;
         };
 
     private:

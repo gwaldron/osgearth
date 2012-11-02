@@ -88,11 +88,11 @@ namespace osgEarth
         // one of these per technique, per view.
         struct TechRTTParams
         {
-            osg::ref_ptr<osg::Camera>     _rttCamera;
-            osg::Matrixd                  _rttViewMatrix;
-            osg::Matrixd                  _rttProjMatrix;
-            osg::Group*                   _group;
-            osg::StateSet*                _terrainStateSet;  // same object as in PerViewData (shared)
+            osg::ref_ptr<osg::Camera>     _rttCamera;        // RTT camera.
+            osg::Matrixd                  _rttViewMatrix;    // View matrix of RTT camera
+            osg::Matrixd                  _rttProjMatrix;    // Projection matrix of RTT camera
+            osg::Group*                   _group;            // contains the overlay graphics
+            osg::StateSet*                _terrainStateSet;  // same object as in PerViewData (shared across techniques)
             osg::ref_ptr<osg::Referenced> _techniqueData;    // technique sets this if needed
         };
 
@@ -105,7 +105,6 @@ namespace osgEarth
         };
 
     private:
-        //osg::ref_ptr<osg::Node>       _overlayGraph;
         optional<int>                 _explicitTextureUnit;
         optional<int>                 _textureUnit;
         optional<int>                 _textureSize;
@@ -179,8 +178,9 @@ namespace osgEarth
             OverlayDecorator::TechRTTParams& params,
             osgUtil::CullVisitor*            cv ) { }
 
-        virtual void preCullOverlay(
-            OverlayDecorator::TechRTTParams& params) { }
+        virtual void cullOverlayGroup(
+            OverlayDecorator::TechRTTParams& params,
+            osgUtil::CullVisitor*            cv ) { }
     };
 
 } // namespace osgEarth

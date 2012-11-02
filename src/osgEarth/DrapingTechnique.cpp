@@ -26,7 +26,7 @@
 #include <osg/Texture2D>
 #include <osg/Uniform>
 
-#define LC "[DrapingOverlayTechnique] "
+#define LC "[DrapingTechnique] "
 
 //#define OE_TEST if (_dumpRequested) OE_INFO << std::setprecision(9)
 #define OE_TEST OE_NULL
@@ -274,29 +274,44 @@ DrapingTechnique::preCullTerrain(OverlayDecorator::TechRTTParams& params,
     {
         setUpCamera( params );
     }
+
+    if ( params._rttCamera.valid() )
+    {
+        LocalPerViewData& local = *static_cast<LocalPerViewData*>(params._techniqueData.get());
+        if ( local._texGen.valid() )
+        {
+            // FFP path only
+            cv->getCurrentRenderBin()->getStage()->addPositionedTextureAttribute(
+                *_textureUnit, cv->getModelViewMatrix(), local._texGen.get() );
+        }
+    }
 }
 
 
 void
-DrapingTechnique::preCullOverlay(OverlayDecorator::TechRTTParams& params)
+DrapingTechnique::cullOverlayGroup(OverlayDecorator::TechRTTParams& params,
+                                   osgUtil::CullVisitor*            cv )
 {
-    static osg::Matrix normalizeMatrix = 
-        osg::Matrix::translate(1.0,1.0,1.0) * osg::Matrix::scale(0.5,0.5,0.5);
-
-    params._rttCamera->setViewMatrix      ( params._rttViewMatrix );
-    params._rttCamera->setProjectionMatrix( params._rttProjMatrix );
-
-    osg::Matrix VPT = params._rttViewMatrix * params._rttProjMatrix * normalizeMatrix;
-
-    LocalPerViewData& local = *static_cast<LocalPerViewData*>(params._techniqueData.get());
-
-    if ( local._texGenUniform.valid() )
+    if ( params._rttCamera.valid() )
     {
-        local._texGenUniform->set( VPT );
-    }
-    else
-    {
-        local._texGen->setPlanesFromMatrix( VPT );
+        static osg::Matrix s_scaleBiasMat = 
+            osg::Matrix::translate(1.0,1.0,1.0) * 
+            osg::Matrix::scale(0.5,0.5,0.5);
+
+        params._rttCamera->setViewMatrix      ( params._rttViewMatrix );
+        params._rttCamera->setProjectionMatrix( params._rttProjMatrix );
+
+        osg::Matrix VPT = params._rttViewMatrix * params._rttProjMatrix * s_scaleBiasMat;
+
+        LocalPerViewData& local = *static_cast<LocalPerViewData*>(params._techniqueData.get());
+
+        if ( local._texGenUniform.valid() )
+            local._texGenUniform->set( VPT );
+        else
+            local._texGen->setPlanesFromMatrix( VPT );
+
+        // traverse the overlay group (via the RTT camera).
+        params._rttCamera->accept( *cv );
     }
 }
 

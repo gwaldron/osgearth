@@ -18,6 +18,8 @@
 */
 #include <osgEarth/MapNode>
 #include <osgEarth/Capabilities>
+#include <osgEarth/ClampableNode>
+#include <osgEarth/ClampingTechnique>
 #include <osgEarth/DrapeableNode>
 #include <osgEarth/DrapingTechnique>
 #include <osgEarth/MapNodeObserver>
@@ -310,20 +312,27 @@ MapNode::init()
     _overlayDecorator = new OverlayDecorator();
     _overlayDecorator->setOverlayGraphTraversalMask( terrainOptions.secondaryTraversalMask().value() );
 
-    // install some overlay techniques for the decorator to use:
-    DrapingTechnique* draping = new DrapingTechnique();
+    // install the Draping technique for overlays:
+    {
+        DrapingTechnique* draping = new DrapingTechnique();
 
-    if ( _mapNodeOptions.overlayBlending().isSet() )
-        draping->setOverlayBlending( *_mapNodeOptions.overlayBlending() );
-    if ( _mapNodeOptions.overlayTextureSize().isSet() )
-        draping->setTextureSize( *_mapNodeOptions.overlayTextureSize() );
-    if ( _mapNodeOptions.overlayMipMapping().isSet() )
-        draping->setMipMapping( *_mapNodeOptions.overlayMipMapping() );
-    if ( _mapNodeOptions.overlayAttachStencil().isSet() )
-        draping->setAttachStencil( *_mapNodeOptions.overlayAttachStencil() );
+        if ( _mapNodeOptions.overlayBlending().isSet() )
+            draping->setOverlayBlending( *_mapNodeOptions.overlayBlending() );
+        if ( _mapNodeOptions.overlayTextureSize().isSet() )
+            draping->setTextureSize( *_mapNodeOptions.overlayTextureSize() );
+        if ( _mapNodeOptions.overlayMipMapping().isSet() )
+            draping->setMipMapping( *_mapNodeOptions.overlayMipMapping() );
+        if ( _mapNodeOptions.overlayAttachStencil().isSet() )
+            draping->setAttachStencil( *_mapNodeOptions.overlayAttachStencil() );
 
-    _overlayDecorator->addTechnique( draping );
-    // ... todo: add the clamping techniqye
+        _overlayDecorator->addTechnique( draping );
+    }
+
+    // install the Clamping technique for overlays:
+    {
+        ClampingTechnique* clamping = new ClampingTechnique();
+        _overlayDecorator->addTechnique( clamping );
+    }
 
     addTerrainDecorator( _overlayDecorator );
 

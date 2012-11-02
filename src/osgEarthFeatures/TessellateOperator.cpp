@@ -61,14 +61,16 @@ TessellateOperator::tessellateGeo( const osg::Vec3d& p0, const osg::Vec3d& p1, u
         }
         else // GEOINTERP_RHUMB_LINE
         {
-            double lat1 = osg::DegreesToRadians(p0.y()), lon1 = osg::DegreesToRadians(p1.x());
+            double lat1 = osg::DegreesToRadians(p0.y()), lon1 = osg::DegreesToRadians(p0.x());
             double lat2 = osg::DegreesToRadians(p1.y()), lon2 = osg::DegreesToRadians(p1.x());
 
-            double distance = GeoMath::rhumbDistance( lat1, lon1, lat2, lon2 );
+            double totalDistance = GeoMath::rhumbDistance( lat1, lon1, lat2, lon2 );
             double bearing  = GeoMath::rhumbBearing( lat1, lon1, lat2, lon2 );
 
+            double interpDistance = t * totalDistance;
+           
             double lat3, lon3;
-            GeoMath::rhumbDestination(lat1, lon1, bearing, distance, lat3, lon3);
+            GeoMath::rhumbDestination(lat1, lon1, bearing, interpDistance, lat3, lon3);
 
             p.set( osg::RadiansToDegrees(lon3), osg::RadiansToDegrees(lat3), p0.z() + t*zdelta );
         }

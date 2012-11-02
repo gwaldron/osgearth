@@ -20,6 +20,7 @@
 #include <osgEarth/DrapeableNode>
 #include <osgEarth/CullingUtils>
 #include <osgEarth/OverlayDecorator>
+#include <osgEarth/DrapingTechnique>
 #include <osgEarth/MapNode>
 #include <osgEarth/NodeUtils>
 #include <osgUtil/IntersectionVisitor>
@@ -168,8 +169,12 @@ DrapeableNode::setMapNode( MapNode* mapNode )
     {
         if ( oldMapNode && _draped && _overlayProxyContainer->getNumParents() > 0 )
         {
-            oldMapNode->getOverlayGroup()->removeChild( _overlayProxyContainer.get() );
-            oldMapNode->updateOverlayGraph();
+            //oldMapNode->getOverlayGroup()->removeChild( _overlayProxyContainer.get() );
+            //oldMapNode->updateOverlayGraph();
+
+            osg::Group* group = oldMapNode->getOverlayDecorator()->getGroup<DrapingTechnique>();
+            if ( group )
+                group->removeChild( _overlayProxyContainer.get() );
         }
 
         _mapNode = mapNode;
@@ -187,13 +192,15 @@ DrapeableNode::applyChanges()
     {
         if ( _draped && _overlayProxyContainer->getNumParents() == 0 )
         {
-            getMapNode()->getOverlayGroup()->addChild( _overlayProxyContainer.get() );
-            getMapNode()->updateOverlayGraph();
+            osg::Group* group = getMapNode()->getOverlayDecorator()->getGroup<DrapingTechnique>();
+            if ( group )
+                group->addChild( _overlayProxyContainer.get() );
         }
         else if ( !_draped && _overlayProxyContainer->getNumParents() > 0 )
         {
-            getMapNode()->getOverlayGroup()->removeChild( _overlayProxyContainer.get() );
-            getMapNode()->updateOverlayGraph();
+            osg::Group* group = getMapNode()->getOverlayDecorator()->getGroup<DrapingTechnique>();
+            if ( group )
+                group->removeChild( _overlayProxyContainer.get() );
         }
 
         dirtyBound();

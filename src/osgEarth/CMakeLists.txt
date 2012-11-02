@@ -38,6 +38,7 @@ SET(LIB_PUBLIC_HEADERS
     DPLineSegmentIntersector
     Draggers
     DrapeableNode
+    DrapingTechnique
     DrawInstanced
     ECEF
     ElevationLayer
@@ -150,6 +151,7 @@ ADD_LIBRARY(${LIB_NAME} ${OSGEARTH_USER_DEFINED_DYNAMIC_OR_STATIC}
     Draggers.cpp
     DPLineSegmentIntersector.cpp
     DrapeableNode.cpp
+    DrapingTechnique.cpp
     DrawInstanced.cpp
     ECEF.cpp
     ElevationLayer.cpp

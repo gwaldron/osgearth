@@ -239,6 +239,44 @@ namespace osgEarth
         std::set<osg::Node*> _orphans;
     };
 
+    
+    /**
+     * Group that acts like a normal group but also notifies another
+     * object when a change occurs.
+     */
+    template<typename T>
+    class NotifierGroup : public osg::Group
+    {
+    public:
+        NotifierGroup(T* listener) : _listener(listener) { }
+
+        virtual bool addChild( osg::Node* child ) {
+            bool ok = osg::Group::addChild(child);
+            if ( ok && _listener.valid() ) _listener->onGroupChanged(this);
+            return ok;
+        }
+        virtual bool insertChild( unsigned index, osg::Node* child ) {
+            bool ok = osg::Group::insertChild(index, child);
+            if ( ok && _listener.valid() ) _listener->onGroupChanged(this);
+            return ok;
+        }
+        virtual bool removeChild( osg::Node* child ) {
+            bool ok = osg::Group::removeChild( child );
+            if ( ok && _listener.valid() ) _listener->onGroupChanged(this);
+            return ok;
+        }
+        virtual bool replaceChild( osg::Node* origChild, osg::Node* newChild ) {
+            bool ok = osg::Group::replaceChild(origChild, newChild);
+            if ( ok && _listener.valid() ) _listener->onGroupChanged(this);
+            return ok;
+        }
+
+    protected:
+        virtual ~NotifierGroup() { }
+        osg::observer_ptr<T> _listener;
+    };
+
+
     /**
      * Adjusts a node's update traversal count by a delta.
      * Only safe to call from the UPDATE thread

@@ -20,7 +20,7 @@
 #define OSGEARTH_ANNO_LOCALIZED_NODE_H 1
 
 #include <osgEarthAnnotation/AnnotationNode>
-#include <osgEarth/DrapeableNode>
+#include <osgEarth/OverlayNode>
 #include <osgEarth/GeoData>
 #include <osg/Transform>
 
@@ -107,17 +107,17 @@ namespace osgEarth { namespace Annotation
 
         const osg::Vec3f& getScale() const { return _scale; }
 
-        virtual osg::Group* getRoot() { return _draper.get(); }
+        virtual osg::Group* getRoot() { return _overlay.get(); }
 
         virtual osg::Group* getChildAttachPoint() { return _xform.get(); }
 
         virtual osg::Transform* getTransform() { return _xform.get(); }
 
-        virtual DrapeableNode* getDrapeable() { return _draper.get(); }
+        virtual OverlayNode* getOverlay() { return _overlay.get(); }
 
     protected:
         osg::ref_ptr<osg::Transform> _xform;
-        osg::ref_ptr<DrapeableNode> _draper;
+        osg::ref_ptr<OverlayNode> _overlay;
         bool _horizonCulling;
         bool _autoTransform;
         GeoPoint _mapPosition;

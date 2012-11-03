@@ -84,6 +84,7 @@ SET(LIB_PUBLIC_HEADERS
     Notify
     optional
     OverlayDecorator
+    OverlayNode
     Pickers
     Profile
     Progress
@@ -194,6 +195,7 @@ ADD_LIBRARY(${LIB_NAME} ${OSGEARTH_USER_DEFINED_DYNAMIC_OR_STATIC}
     NodeUtils.cpp
     Notify.cpp
     OverlayDecorator.cpp
+    OverlayNode.cpp
     Pickers.cpp
     Profile.cpp
     Progress.cpp

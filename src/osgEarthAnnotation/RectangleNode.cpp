@@ -357,7 +357,7 @@ RectangleNode::rebuild()
         if ( node )
         {
             getChildAttachPoint()->addChild( node );
-            getDrapeable()->setDraped( _draped );
+            getOverlay()->setActive( _draped );
         }
 
         applyStyle( _style );

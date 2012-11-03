@@ -69,7 +69,7 @@ LocalGeometryNode::initNode()
     if ( _node.valid() )
     {
         getChildAttachPoint()->addChild( _node.get() );
-        getDrapeable()->setDraped( _draped );
+        getOverlay()->setActive( _draped );
 
         // this will activate the clamping logic
         applyStyle( _style );
@@ -102,7 +102,7 @@ LocalGeometryNode::initGeometry(const osgDB::Options* dbOptions)
         if ( node )
         {
             getChildAttachPoint()->addChild( node );
-            getDrapeable()->setDraped( _draped );
+            getOverlay()->setActive( _draped );
 
             // prep for clamping
             applyStyle( _style );

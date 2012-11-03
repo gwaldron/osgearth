@@ -703,7 +703,7 @@ MapNode::onModelLayerOverlayChanged( ModelLayer* layer )
         }
         else
         {
-            draper->setDraped( layer->getOverlay() );
+            draper->setActive( layer->getOverlay() );
         }
     }
 

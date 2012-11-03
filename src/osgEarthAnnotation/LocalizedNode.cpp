@@ -19,6 +19,8 @@
 
 #include <osgEarthAnnotation/LocalizedNode>
 #include <osgEarthAnnotation/Decluttering>
+#include <osgEarth/ClampableNode>
+#include <osgEarth/DrapeableNode>
 #include <osgEarth/CullingUtils>
 #include <osgEarth/MapNode>
 #include <osg/AutoTransform>
@@ -73,8 +75,8 @@ LocalizedNode::init( MapNode* mapNode, const GeoPoint& position )
 
     setHorizonCulling( true );
 
-    _draper = new DrapeableNode( mapNode, false );
-    _draper->addChild( _xform.get() );
+    _overlay = new DrapeableNode( mapNode, false );
+    _overlay->addChild( _xform.get() );
     
     setPosition( position );
 }

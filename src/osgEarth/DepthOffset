@@ -63,7 +63,7 @@ namespace osgEarth
          * returns it. Also may install support uniforms within the graph as
          * necessary to support depth offsetting.
          */
-        static float recalculate( osg::Node* graph );
+        static float recalculate( const osg::Node* graph );
 
         /**
          * Traverses a graph and applies the necessary uniforms to statesets

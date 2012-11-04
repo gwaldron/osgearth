@@ -248,14 +248,14 @@ DepthOffsetUtils::createMinOffsetUniform( osg::Node* graph )
 }
 
 float
-DepthOffsetUtils::recalculate( osg::Node* graph )
+DepthOffsetUtils::recalculate( const osg::Node* graph )
 {
     double minDepthOffset = 0.0;
     if ( graph )
     {
         GeometryAnalysisVisitor v;
         v._analyzeSegments = true;
-        graph->accept( v );
+        const_cast<osg::Node*>(graph)->accept( v );
         double maxLen = std::max(1.0, sqrt(v._segmentAnalyzer._maxLen2));
         minDepthOffset = sqrt(maxLen)*19.0;
 

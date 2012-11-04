@@ -43,13 +43,59 @@ namespace osgEarth
          */
         ClampableNode( MapNode* mapNode, bool clamped =true );
 
+    public:
+        /**
+         * Depth Offsetting Properties.
+         *
+         * Clamped geometry alters the geometry so that verticies coincide with
+         * the terrain. This can result in z-fighting artifacts. Depth offsetting
+         * mitigates this by biasing the depth value of the geometry. The idea is
+         * similar to polygon offsetting, but is dynamic and applies to all geometry
+         * (not just polygons).
+         *
+         * Depth offsetting works by pretending the vertex is closer to the camera 
+         * than it actually is, and writing a depth value based on that simulated
+         * location. The distance we shift the vertex towards the camera is the "bias".
+         *
+         * The "range" is the distance from camera to vertex at which a given
+         * bias is applied. The minimum bias is applied to geometry at or below the
+         * minimum range; the maximum bias is applied to geometry at or above the 
+         * maximum range; and the bias is interpolated for ranges in between.
+         */
+
+        /** Sets both the bias applied at the min and max camera ranges. */
+        void setDepthOffsetBias( float minBias, float maxBias );
+        const osg::Vec2f& getDepthOffsetBias() const { return _bias; }
+
+        /** Sets whether this node should try to automatically calcuate a 
+         *  minimum bias based on an analysis of its subgraph. */
+        void setAutoDepthOffsetBias( bool value );
+        bool getAutoDepthOffsetBias() const { return _autoBias; }
+
+        /** Sets the ranges at which to apply the min and max biases. */
+        void setDepthOffsetRange( float minRange, float maxRange );
+        const osg::Vec2f& getDepthOffsetRange() const { return _range; }
+        
+        /** Automatically attempt to select a minimum bias based on an analysis
+         *  of the subgraph's geometry. */
+        void calculateDepthOffsetBiasFromSubgraph();
+
         /** Backwards compatibility */
         void setClamped( bool value ) { setActive(value); }
         bool getClamped() const { return getActive(); }
 
+    public: // osg::Node
+
+        virtual osg::BoundingSphere computeBound() const;
+
     protected:
         /** dtor */
         virtual ~ClampableNode() { }
+
+        bool _autoBias;
+        mutable osg::Vec2f _bias, _range;
+        mutable osg::ref_ptr<osg::Uniform> _biasUniform;
+        mutable osg::ref_ptr<osg::Uniform> _rangeUniform;
     };
 
 } // namespace osgEarth

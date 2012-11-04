@@ -171,17 +171,17 @@ ClampingTechnique::setUpCamera(OverlayDecorator::TechRTTParams& params)
 
     // sampler for depth map texture:
     local->_groupStateSet->getOrCreateUniform(
-        "oe_overlay_depthtex", 
+        "oe_clamp_depthtex", 
         osg::Uniform::SAMPLER_2D )->set( _textureUnit );
 
     // matrix that transforms a vert from EYE coords to the depth camera's CLIP coord.
     local->_camViewToDepthClipUniform = local->_groupStateSet->getOrCreateUniform( 
-        "oe_overlay_eye2depthclipmat", 
+        "oe_clamp_eye2depthclipmat", 
         osg::Uniform::FLOAT_MAT4 );
 
     // matrix that transforms a vert from depth-cam CLIP coords to EYE coords.
     local->_depthClipToCamViewUniform = local->_groupStateSet->getOrCreateUniform( 
-        "oe_overlay_depthclip2eyemat", 
+        "oe_clamp_depthclip2eyemat", 
         osg::Uniform::FLOAT_MAT4 );
 
     // make the shader that will do clamping and depth offsetting.
@@ -195,24 +195,30 @@ ClampingTechnique::setUpCamera(OverlayDecorator::TechRTTParams& params)
 #ifdef OSG_GLES2_AVAILABLE
         << "precision mediump float;\n"
 #endif
-        << "uniform sampler2D oe_overlay_depthtex; \n"
-        << "uniform mat4 oe_overlay_eye2depthclipmat; \n"
-        << "uniform mat4 oe_overlay_depthclip2eyemat; \n"
-        << "varying vec4 oe_overlay_simvert; \n"
-        << "varying float oe_overlay_simvertrange; \n"
+        // uniforms from this ClampingTechnique:
+        << "uniform sampler2D oe_clamp_depthtex; \n"
+        << "uniform mat4 oe_clamp_eye2depthclipmat; \n"
+        << "uniform mat4 oe_clamp_depthclip2eyemat; \n"
 
-        << "void oe_clamping_vertex(void) \n"
+        // uniforms from ClampableNode:
+        << "uniform vec2 oe_clamp_bias; \n"
+        << "uniform vec2 oe_clamp_range; \n"
+
+        << "varying vec4 oe_clamp_simvert; \n"
+        << "varying float oe_clamp_simvertrange; \n"
+
+        << "void oe_clamp_vertex(void) \n"
         << "{ \n"
         // transform the vertex into the depth texture's clip coordinates.
         << "    vec4 v_eye_orig = gl_ModelViewMatrix * gl_Vertex; \n"
-        << "    vec4 tc = oe_overlay_eye2depthclipmat * v_eye_orig; \n"
+        << "    vec4 tc = oe_clamp_eye2depthclipmat * v_eye_orig; \n"
 
         // sample the depth map.
-        << "    float d = texture2DProj( oe_overlay_depthtex, tc ).r; \n"
+        << "    float d = texture2DProj( oe_clamp_depthtex, tc ).r; \n"
 
         // make a fake point in depth clip space and transform it back into eye coords.
         << "    vec4 p = vec4(tc.x, tc.y, d, 1.0); \n"
-        << "    vec4 v_eye_clamped = oe_overlay_depthclip2eyemat * p; \n"
+        << "    vec4 v_eye_clamped = oe_clamp_depthclip2eyemat * p; \n"
 
         // if the clamping distance is too big, bag it.
         << "    vec3 v_eye_orig3    = v_eye_orig.xyz/v_eye_orig.w;\n"
@@ -225,8 +231,8 @@ ClampingTechnique::setUpCamera(OverlayDecorator::TechRTTParams& params)
         << "    { \n"
         << "        gl_Position = gl_ProjectionMatrix * v_eye_orig; \n"
         // still have to populate these to nullify the depth offset code.
-        << "        oe_overlay_simvert = gl_Position; \n"
-        << "        oe_overlay_simvertrange = 1.0; \n"
+        << "        oe_clamp_simvert = gl_Position; \n"
+        << "        oe_clamp_simvertrange = 1.0; \n"
         << "    } \n"
         << "    else \n"
         << "    { \n"
@@ -244,46 +250,46 @@ ClampingTechnique::setUpCamera(OverlayDecorator::TechRTTParams& params)
         // TODO: need to play around with these numbers.. try to find the ideal min_offset and min/max_range.
 
         //<< "        const float min_offset = 10.0; \n"                      // good for streets near buildings
-        << "        const float min_offset = 100.0; \n"                      // good for wide river polys
-        << "        const float max_offset = 10000.0; \n"
-        << "        const float min_range  = 1000.0; \n"
-        << "        const float max_range  = 10000000.0; \n"
+        //<< "        const float min_offset = 100.0; \n"                      // good for wide river polys
+        //<< "        const float max_offset = 10000.0; \n"
+        //<< "        const float min_range  = 1000.0; \n"
+        //<< "        const float max_range  = 10000000.0; \n"
 
         << "        float range = length(v_eye_clamped3); \n"
 
-        << "        float ratio = (clamp(range, min_range, max_range)-min_range)/(max_range-min_range);\n"
-        << "        float offset = min_offset + ratio * (max_offset-min_offset);\n"
+        << "        float ratio = (clamp(range, oe_clamp_range[0], oe_clamp_range[1])-oe_clamp_range[0])/(oe_clamp_range[1]-oe_clamp_range[0]);\n"
+        << "        float bias = oe_clamp_bias[0] + ratio * (oe_clamp_bias[1]-oe_clamp_bias[0]);\n"
 
         << "        vec3 adj_vec = normalize(v_eye_clamped3); \n"
-        << "        vec3 v_eye_offset3 = v_eye_clamped3 - (adj_vec * offset); \n"
+        << "        vec3 v_eye_offset3 = v_eye_clamped3 - (adj_vec * bias); \n"
 
         << "        vec4 v_sim_eye = vec4( v_eye_offset3 * v_eye_clamped.w, v_eye_clamped.w ); \n"
-        << "        oe_overlay_simvert = gl_ProjectionMatrix * v_sim_eye;\n"
-        << "        oe_overlay_simvertrange = range - offset; \n"
+        << "        oe_clamp_simvert = gl_ProjectionMatrix * v_sim_eye;\n"
+        << "        oe_clamp_simvertrange = range - bias; \n"
         << "        gl_Position = gl_ProjectionMatrix * v_eye_clamped; \n"
         << "    } \n"
         << "} \n";
 
-    vp->setFunction( "oe_clamping_vertex", vertexSource, ShaderComp::LOCATION_VERTEX_POST_LIGHTING );
+    vp->setFunction( "oe_clamp_vertex", vertexSource, ShaderComp::LOCATION_VERTEX_POST_LIGHTING );
 
 
     // fragment shader - depth offset apply
     std::string frag =
-        "varying vec4 oe_overlay_simvert; \n"
-        "varying float oe_overlay_simvertrange; \n"
-        "void oe_clamping_fragment(inout vec4 color)\n"
+        "varying vec4 oe_clamp_simvert; \n"
+        "varying float oe_clamp_simvertrange; \n"
+        "void oe_clamp_fragment(inout vec4 color)\n"
         "{ \n"
-        "    float sim_depth = 0.5 * (1.0+(oe_overlay_simvert.z/oe_overlay_simvert.w));\n"
+        "    float sim_depth = 0.5 * (1.0+(oe_clamp_simvert.z/oe_clamp_simvert.w));\n"
 
         // if the offset pushed the Z behind the eye, the projection mapping will
         // result in a z>1. We need to bring these values back down to the 
         // near clip plan (z=0). We need to check simRange too before doing this
         // so we don't draw fragments that are legitimently beyond the far clip plane.
-        "    if ( sim_depth > 1.0 && oe_overlay_simvertrange < 0.0 ) { sim_depth = 0.0; } \n"
+        "    if ( sim_depth > 1.0 && oe_clamp_simvertrange < 0.0 ) { sim_depth = 0.0; } \n"
         "    gl_FragDepth = max(0.0, sim_depth); \n"
         "}\n";
 
-    vp->setFunction( "oe_clamping_fragment", frag, ShaderComp::LOCATION_FRAGMENT_PRE_LIGHTING );
+    vp->setFunction( "oe_clamp_fragment", frag, ShaderComp::LOCATION_FRAGMENT_PRE_LIGHTING );
 }
 
 

@@ -574,6 +574,13 @@ OverlayDecorator::traverse( osg::NodeVisitor& nv )
             {
                 PerViewData& pvd = getPerViewData( camera );
 
+                //TODO:
+                // check whether we need to recalculate the RTT camera params.
+                // don't do it if the main camera hasn't moved;
+                // also, tell the ClampingTech not to re-snap the depth texture
+                // unless something has changed (e.g. camera params, terrain bounds..?
+                // what about paging..?)
+
                 // technique-specific setup prior to traversing:
                 for(unsigned i=0; i<_techniques.size(); ++i)
                 {

@@ -97,7 +97,7 @@ FeatureNode::init()
 
         // Clone the Feature before rendering as the GeometryCompiler and it's filters can change the coordinates
         // of the geometry when performing localization or converting to geocentric.
-        osg::ref_ptr< Feature > clone = new Feature(*_feature.get(), osg::CopyOp::DEEP_COPY_ALL);        
+        osg::ref_ptr< Feature > clone = new Feature(*_feature.get(), osg::CopyOp::DEEP_COPY_ALL);
 
         osg::Node* node = compiler.compile( clone.get(), *clone->style(), context );
         if ( node )

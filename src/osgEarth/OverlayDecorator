@@ -105,6 +105,7 @@ namespace osgEarth
             std::vector<TechRTTParams>  _techParams;
             osg::ref_ptr<osg::StateSet> _sharedTerrainStateSet;
             double                      _sharedHorizonDistance;
+            osg::Matrix                 _prevViewMatrix;
         };
 
     private:

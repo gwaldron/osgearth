@@ -692,18 +692,9 @@ FeatureModelGraph::buildLevel( const FeatureLevel& level, const GeoExtent& exten
 
     if ( group->getNumChildren() > 0 )
     {
-        
         // account for a min-range here. Do not address the max-range here; that happens
         // above when generating paged LOD nodes, etc.        
         float minRange = level.minRange();
-
-        /*
-        if ( _options.minRange().isSet() ) 
-            minRange = std::max(minRange, *_options.minRange());
-
-        if ( _options.layout().isSet() && _options.layout()->minRange().isSet() )
-            minRange = std::max(minRange, *_options.layout()->minRange());
-            */
 
         if ( minRange > 0.0f )
         {

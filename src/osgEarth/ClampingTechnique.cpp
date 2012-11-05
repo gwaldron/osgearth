@@ -74,7 +74,7 @@ namespace
 //---------------------------------------------------------------------------
 
 ClampingTechnique::ClampingTechnique() :
-_textureSize     ( 1024 )
+_textureSize     ( 4096 )
 {
     // use the maximum available unit.
     _textureUnit = Registry::capabilities().getMaxGPUTextureUnits() - 1;
@@ -242,19 +242,6 @@ ClampingTechnique::setUpCamera(OverlayDecorator::TechRTTParams& params)
         // remap depth offset based on camera distance to vertex. The farther you are away,
         // the more of an offset you need.
 
-        // note: this value is critical and we might want a uniform. In the annotation
-        // DO stuff, we analyze the graph and hueristically choose a "good" minimum value.
-        // Perhaps that's the approach here, or perhaps we let the user manually choose 
-        // something...
-
-        // TODO: need to play around with these numbers.. try to find the ideal min_offset and min/max_range.
-
-        //<< "        const float min_offset = 10.0; \n"                      // good for streets near buildings
-        //<< "        const float min_offset = 100.0; \n"                      // good for wide river polys
-        //<< "        const float max_offset = 10000.0; \n"
-        //<< "        const float min_range  = 1000.0; \n"
-        //<< "        const float max_range  = 10000000.0; \n"
-
         << "        float range = length(v_eye_clamped3); \n"
 
         << "        float ratio = (clamp(range, oe_clamp_range[0], oe_clamp_range[1])-oe_clamp_range[0])/(oe_clamp_range[1]-oe_clamp_range[0]);\n"
@@ -310,6 +297,7 @@ ClampingTechnique::cullOverlayGroup(OverlayDecorator::TechRTTParams& params,
 {
     if ( params._rttCamera.valid() )
     {
+        // update the RTT camera.
         params._rttCamera->setViewMatrix      ( params._rttViewMatrix );
         params._rttCamera->setProjectionMatrix( params._rttProjMatrix );
 
@@ -321,8 +309,8 @@ ClampingTechnique::cullOverlayGroup(OverlayDecorator::TechRTTParams& params,
         // create the depth texture (render the terrain to tex)
         params._rttCamera->accept( *cv );
 
-        // construct a matrix that transforms from camera view coords to texgen view coords directly.
-        // this will avoid precision loss in the 32-bit shader.
+        // construct a matrix that transforms from camera view coords to depth texture
+        // clip coords directly. This will avoid precision loss in the 32-bit shader.
         static osg::Matrix s_scaleBiasMat = 
             osg::Matrix::translate(1.0,1.0,1.0) * 
             osg::Matrix::scale(0.5,0.5,0.5);
@@ -336,7 +324,7 @@ ClampingTechnique::cullOverlayGroup(OverlayDecorator::TechRTTParams& params,
         local._camViewToDepthClipUniform->set( camViewToRttClip );
         local._depthClipToCamViewUniform->set( osg::Matrix::inverse(camViewToRttClip) );
         
-        // traverse the overlay nodes.
+        // traverse the overlay nodes, applying the clamping shader.
         cv->pushStateSet( local._groupStateSet.get() );
         params._group->accept( *cv );
         cv->popStateSet();

@@ -30,7 +30,9 @@ namespace osgEarth { namespace Util
 
     /**
      * Post processing utility for disk based TMS (Tile Map Service) repositories that takes data from a given level and "backfills" lower
-     * levels of data by mosaciing and resampling the higher lod data.  This process is useful 
+     * levels of data by mosaciing and resampling the higher lod data.  This process is useful when processing web datasets that switch from one
+     * dataset to another at distinct lods which looks fine when viewed in a 2D slippy map but look incorrect when viewed at an angle in 3D
+     * in views that contain neighboring lods.
      */
     class OSGEARTHUTIL_EXPORT TMSBackFiller
     {

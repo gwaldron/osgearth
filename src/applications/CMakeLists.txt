@@ -33,6 +33,7 @@ ADD_SUBDIRECTORY(osgearth_featureinfo)
 ADD_SUBDIRECTORY(osgearth_package)
 ADD_SUBDIRECTORY(osgearth_tfs)
 ADD_SUBDIRECTORY(osgearth_boundarygen)
+ADD_SUBDIRECTORY(osgearth_backfill)
 ADD_SUBDIRECTORY(osgearth_overlayviewer)
 ADD_SUBDIRECTORY(osgearth_version)
 

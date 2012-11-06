@@ -266,26 +266,32 @@ TileMap::getURL(const osgEarth::TileKey& tilekey, bool invertY)
         for (TileSetList::iterator itr = _tileSets.begin(); itr != _tileSets.end(); ++itr)
         { 
             if (itr->getOrder() == zoom)
-            {
+            {                
+                std::stringstream ss; 
                 std::string basePath = osgDB::getFilePath(_filename);                
-                std::stringstream ss;                               
+                if (!basePath.empty())
+                {
+                    ss << basePath << "/";
+                }
                 ss << zoom << "/" << x << "/" << y << "." << _format.getExtension();                
                 std::string ssStr;
 				ssStr = ss.str();
-                std::string result = osgDB::concatPaths( basePath, ss.str() );
-				return result;
+				return ssStr;
             }
         }
     }
     else // Just go with it. No way of knowing the max level.
     {
+        std::stringstream ss; 
         std::string basePath = osgDB::getFilePath(_filename);                
-        std::stringstream ss;                               
+        if (!basePath.empty())
+        {
+            ss << basePath << "/";
+        }
         ss << zoom << "/" << x << "/" << y << "." << _format.getExtension();                
         std::string ssStr;
         ssStr = ss.str();
-        std::string result = osgDB::concatPaths( basePath, ss.str() );        
-        return result;
+        return ssStr;
     }
 
     return "";

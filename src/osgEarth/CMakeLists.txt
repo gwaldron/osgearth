@@ -29,6 +29,7 @@ SET(LIB_PUBLIC_HEADERS
     Capabilities
     ClampableNode
     ClampingTechnique
+    ClampingTechnique2
     ColorFilter
     Common
     CompositeTileSource
@@ -147,6 +148,7 @@ ADD_LIBRARY(${LIB_NAME} ${OSGEARTH_USER_DEFINED_DYNAMIC_OR_STATIC}
     Capabilities.cpp
     ClampableNode.cpp
     ClampingTechnique.cpp
+    ClampingTechnique2.cpp
     ColorFilter.cpp
     CompositeTileSource.cpp
     Config.cpp

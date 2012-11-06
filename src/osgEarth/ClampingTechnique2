@@ -1,0 +1,80 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+* Copyright 2008-2012 Pelican Mapping
+* http://osgearth.org
+*
+* osgEarth is free software; you can redistribute it and/or modify
+* it under the terms of the GNU Lesser General Public License as published by
+* the Free Software Foundation; either version 2 of the License, or
+* (at your option) any later version.
+*
+* This program is distributed in the hope that it will be useful,
+* but WITHOUT ANY WARRANTY; without even the implied warranty of
+* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+* GNU Lesser General Public License for more details.
+*
+* You should have received a copy of the GNU Lesser General Public License
+* along with this program.  If not, see <http://www.gnu.org/licenses/>
+*/
+#ifndef OSGEARTH_OVERLAY_CLAMPING_BIN_TECHNIQUE
+#define OSGEARTH_OVERLAY_CLAMPING_BIN_TECHNIQUE
+
+#include <osgEarth/Common>
+#include <osgEarth/OverlayDecorator>
+#include <osg/TexGenNode>
+#include <osg/Uniform>
+
+namespace osgEarth
+{
+    class TerrainEngineNode;
+
+    /**
+     * Clamped geometry to the terrain using a GPU technique.
+     */
+    class OSGEARTH_EXPORT ClampingTechnique : public OverlayTechnique
+    {
+    public:
+        ClampingTechnique();
+
+        /**
+         * The size (resolution in both directions) of the depth map texture. By
+         * default, this defaults to 4096 or your hardware's maximum supported
+         * texture size, whichever is less.
+         */
+        void setTextureSize( int texSize );
+        int getTextureSize() const { return *_textureSize; }
+
+
+    public: // OverlayTechnique
+
+        void reestablish(
+            TerrainEngineNode* engine );
+
+        void preCullTerrain(
+            OverlayDecorator::TechRTTParams& params,
+            osgUtil::CullVisitor*            cv );
+
+        void cullOverlayGroup(
+            OverlayDecorator::TechRTTParams& params,
+            osgUtil::CullVisitor*            cv );
+
+        void onInstall( TerrainEngineNode* engine );
+
+        void onUninstall( TerrainEngineNode* engine );
+
+
+    protected:
+        virtual ~ClampingTechnique() { }
+
+    private:
+        int                _textureUnit;
+        optional<int>      _textureSize;
+        TerrainEngineNode* _engine;
+
+    private:
+        void setUpCamera(OverlayDecorator::TechRTTParams& params);
+    };
+
+} // namespace osgEarth
+
+#endif //OSGEARTH_OVERLAY_CLAMPING_BIN_TECHNIQUE

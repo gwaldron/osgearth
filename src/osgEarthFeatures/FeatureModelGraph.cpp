@@ -21,7 +21,9 @@
 #include <osgEarthFeatures/CropFilter>
 #include <osgEarthFeatures/FeatureSourceIndexNode>
 #include <osgEarth/Capabilities>
+#include <osgEarth/ClampableNode>
 #include <osgEarth/CullingUtils>
+#include <osgEarth/DrapeableNode>
 #include <osgEarth/ElevationLOD>
 #include <osgEarth/ElevationQuery>
 #include <osgEarth/FadeEffect>

@@ -88,6 +88,7 @@ namespace osgEarth
         // one of these per technique, per view.
         struct TechRTTParams
         {
+            osg::Camera*                  _mainCamera;       // Camera to which this per-view data is attached
             osg::ref_ptr<osg::Camera>     _rttCamera;        // RTT camera.
             osg::Matrixd                  _rttViewMatrix;    // View matrix of RTT camera
             osg::Matrixd                  _rttProjMatrix;    // Projection matrix of RTT camera
@@ -102,10 +103,11 @@ namespace osgEarth
         // if Shared almong all the techniques under a view.
         struct PerViewData
         {
-            std::vector<TechRTTParams>  _techParams;
-            osg::ref_ptr<osg::StateSet> _sharedTerrainStateSet;
-            double                      _sharedHorizonDistance;
-            osg::Matrix                 _prevViewMatrix;
+            osg::Camera*                _camera;                // Camera to which this per-view data is attached
+            std::vector<TechRTTParams>  _techParams;            // Pre-view data for each technique
+            osg::ref_ptr<osg::StateSet> _sharedTerrainStateSet; // shared state set to apply to the terrain traversal
+            double                      _sharedHorizonDistance; // horizon distnace (not used?)
+            osg::Matrix                 _prevViewMatrix;        // last frame's view matrix
         };
 
     private:
@@ -144,7 +146,7 @@ namespace osgEarth
 
     private:
         void cullTerrainAndCalculateRTTParams( osgUtil::CullVisitor* cv, PerViewData& pvd );
-        void initializePerViewData( PerViewData& );
+        void initializePerViewData( PerViewData&, osg::Camera* );
         PerViewData& getPerViewData( osg::Camera* key );
 
     public:

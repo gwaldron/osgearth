@@ -20,6 +20,7 @@
 #include <osgEarth/Capabilities>
 #include <osgEarth/ClampableNode>
 #include <osgEarth/ClampingTechnique>
+#include <osgEarth/ClampingTechnique2>
 #include <osgEarth/DrapeableNode>
 #include <osgEarth/DrapingTechnique>
 #include <osgEarth/MapNodeObserver>
@@ -326,7 +327,7 @@ MapNode::init()
 
     // install the Clamping technique for overlays:
     {
-        ClampingTechnique* clamping = new ClampingTechnique();
+        ClampingTechnique2* clamping = new ClampingTechnique2();
         _overlayDecorator->addTechnique( clamping );
     }
 
@@ -527,10 +528,14 @@ MapNode::onModelLayerAdded( ModelLayer* layer, unsigned int index )
             {
                 if ( layer->getOverlay() )
                 {
-                    ClampableNode* draper = new ClampableNode( this );
+                    //ClampableNode* draper = new ClampableNode( this );
                     //DrapeableNode* draper = new DrapeableNode( this );
-                    draper->addChild( node );
-                    node = draper;
+                    //draper->addChild( node );
+                    //node = draper;
+                    osg::Group* group = new osg::Group();
+                    group->getOrCreateStateSet()->setRenderBinDetails( 0, "osgEarth::ClampingBin" );
+                    group->addChild( node );
+                    node = group;
                 }
 
                 _models->insertChild( index, node );

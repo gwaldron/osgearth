@@ -6,7 +6,7 @@
 * osgEarth is free software; you can redistribute it and/or modify
 * it under the terms of the GNU Lesser General Public License as published by
 * the Free Software Foundation; either version 2 of the License, or
-* (at your option) any later version.
+* (at your option) any later version.Ov
 *
 * This program is distributed in the hope that it will be useful,
 * but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -31,10 +31,10 @@ namespace osgEarth
     /**
      * Clamped geometry to the terrain using a GPU technique.
      */
-    class OSGEARTH_EXPORT ClampingTechnique : public OverlayTechnique
+    class OSGEARTH_EXPORT ClampingBinTechnique : public OverlayTechnique
     {
     public:
-        ClampingTechnique();
+        ClampingBinTechnique();
 
         /**
          * The size (resolution in both directions) of the depth map texture. By
@@ -64,12 +64,16 @@ namespace osgEarth
 
 
     protected:
-        virtual ~ClampingTechnique() { }
+        virtual ~ClampingBinTechnique() { }
 
     private:
         int                _textureUnit;
         optional<int>      _textureSize;
         TerrainEngineNode* _engine;
+        Threading::PerObjectMap<osg::Camera*, osg::ref_ptr<osg::StateSet> > _perCameraStateSet;
+
+    public:
+        osg::StateSet* getStateSet(osg::Camera*);
 
     private:
         void setUpCamera(OverlayDecorator::TechRTTParams& params);

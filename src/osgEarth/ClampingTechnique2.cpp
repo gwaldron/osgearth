@@ -16,17 +16,18 @@
 * You should have received a copy of the GNU Lesser General Public License
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
-#include <osgEarth/ClampingTechnique>
+#include <osgEarth/ClampingBinTechnique>
 #include <osgEarth/Capabilities>
 #include <osgEarth/Registry>
 #include <osgEarth/VirtualProgram>
+#include <osgEarth/Utils>
 
 #include <osg/Depth>
 #include <osg/PolygonMode>
 #include <osg/Texture2D>
 #include <osg/Uniform>
 
-#define LC "[ClampingTechnique] "
+#define LC "[ClampingBinTechnique] "
 
 //#define OE_TEST if (_dumpRequested) OE_INFO << std::setprecision(9)
 #define OE_TEST OE_NULL
@@ -36,146 +37,6 @@
 using namespace osgEarth;
 
 //---------------------------------------------------------------------------
-
-// Custom bin for clamping.
-class ClampingRenderBin : public osgUtil::RenderBin
-{
-public:
-    OverlayDecorator::PerViewData _pvd;
-
-public:
-    ClampingRenderBin()
-    {
-        this->setName( OSGEARTH_CLAMPING_BIN );
-
-        osg::StateSet* stateSet = new osg::StateSet();
-
-        stateSet->setTextureAttributeAndModes( 
-            _textureUnit, 
-            local->_rttTexture.get(), 
-            osg::StateAttribute::ON );
-
-        // set up depth test/write parameters for the overlay geometry:
-        stateSet->setAttributeAndModes(
-            new osg::Depth( osg::Depth::LEQUAL, 0.0, 1.0, false ),
-            osg::StateAttribute::ON );
-
-        //stateSet->setRenderingHint( osg::StateSet::TRANSPARENT_BIN );
-
-        // sampler for depth map texture:
-        local->_groupStateSet->getOrCreateUniform(
-            "oe_clamp_depthtex", 
-            osg::Uniform::SAMPLER_2D )->set( _textureUnit );
-
-        // matrix that transforms a vert from EYE coords to the depth camera's CLIP coord.
-        local->_camViewToDepthClipUniform = local->_groupStateSet->getOrCreateUniform( 
-            "oe_clamp_eye2depthclipmat", 
-            osg::Uniform::FLOAT_MAT4 );
-
-        // matrix that transforms a vert from depth-cam CLIP coords to EYE coords.
-        local->_depthClipToCamViewUniform = local->_groupStateSet->getOrCreateUniform( 
-            "oe_clamp_depthclip2eyemat", 
-            osg::Uniform::FLOAT_MAT4 );
-
-        // make the shader that will do clamping and depth offsetting.
-        VirtualProgram* vp = new VirtualProgram();
-        vp->setName( "ClampingTechnique program" );
-        local->_groupStateSet->setAttributeAndModes( vp, osg::StateAttribute::ON );
-
-        // vertex shader - subgraph
-        std::string vertexSource = Stringify()
-            << "#version " << GLSL_VERSION_STR << "\n"
-    #ifdef OSG_GLES2_AVAILABLE
-            << "precision mediump float;\n"
-    #endif
-            // uniforms from this ClampingTechnique:
-            << "uniform sampler2D oe_clamp_depthtex; \n"
-            << "uniform mat4 oe_clamp_eye2depthclipmat; \n"
-            << "uniform mat4 oe_clamp_depthclip2eyemat; \n"
-
-            // uniforms from ClampableNode:
-            << "uniform vec2 oe_clamp_bias; \n"
-            << "uniform vec2 oe_clamp_range; \n"
-
-            << "varying vec4 oe_clamp_simvert; \n"
-            << "varying float oe_clamp_simvertrange; \n"
-
-            << "void oe_clamp_vertex(void) \n"
-            << "{ \n"
-            // transform the vertex into the depth texture's clip coordinates.
-            << "    vec4 v_eye_orig = gl_ModelViewMatrix * gl_Vertex; \n"
-            << "    vec4 tc = oe_clamp_eye2depthclipmat * v_eye_orig; \n"
-
-            // sample the depth map.
-            << "    float d = texture2DProj( oe_clamp_depthtex, tc ).r; \n"
-
-            // make a fake point in depth clip space and transform it back into eye coords.
-            << "    vec4 p = vec4(tc.x, tc.y, d, 1.0); \n"
-            << "    vec4 v_eye_clamped = oe_clamp_depthclip2eyemat * p; \n"
-
-            // if the clamping distance is too big, bag it.
-            << "    vec3 v_eye_orig3    = v_eye_orig.xyz/v_eye_orig.w;\n"
-            << "    vec3 v_eye_clamped3 = v_eye_clamped.xyz/v_eye_clamped.w; \n"
-            << "    float clamp_distance = length(v_eye_orig3 - v_eye_clamped3); \n"
-
-            << "    const float maxClampDistance = 10000.0; \n"
-            
-            << "    if ( clamp_distance > maxClampDistance ) \n"
-            << "    { \n"
-            << "        gl_Position = gl_ProjectionMatrix * v_eye_orig; \n"
-            // still have to populate these to nullify the depth offset code.
-            << "        oe_clamp_simvert = gl_Position; \n"
-            << "        oe_clamp_simvertrange = 1.0; \n"
-            << "    } \n"
-            << "    else \n"
-            << "    { \n"
-
-            // now simulate a "closer" vertex for depth offsetting.
-
-            // remap depth offset based on camera distance to vertex. The farther you are away,
-            // the more of an offset you need.
-
-            << "        float range = length(v_eye_clamped3); \n"
-
-            << "        float ratio = (clamp(range, oe_clamp_range[0], oe_clamp_range[1])-oe_clamp_range[0])/(oe_clamp_range[1]-oe_clamp_range[0]);\n"
-            << "        float bias = oe_clamp_bias[0] + ratio * (oe_clamp_bias[1]-oe_clamp_bias[0]);\n"
-
-            << "        vec3 adj_vec = normalize(v_eye_clamped3); \n"
-            << "        vec3 v_eye_offset3 = v_eye_clamped3 - (adj_vec * bias); \n"
-
-            << "        vec4 v_sim_eye = vec4( v_eye_offset3 * v_eye_clamped.w, v_eye_clamped.w ); \n"
-            << "        oe_clamp_simvert = gl_ProjectionMatrix * v_sim_eye;\n"
-            << "        oe_clamp_simvertrange = range - bias; \n"
-            << "        gl_Position = gl_ProjectionMatrix * v_eye_clamped; \n"
-            << "    } \n"
-            << "} \n";
-
-        vp->setFunction( "oe_clamp_vertex", vertexSource, ShaderComp::LOCATION_VERTEX_POST_LIGHTING );
-
-
-        // fragment shader - depth offset apply
-        std::string frag =
-            "varying vec4 oe_clamp_simvert; \n"
-            "varying float oe_clamp_simvertrange; \n"
-            "void oe_clamp_fragment(inout vec4 color)\n"
-            "{ \n"
-            "    float sim_depth = 0.5 * (1.0+(oe_clamp_simvert.z/oe_clamp_simvert.w));\n"
-
-            // if the offset pushed the Z behind the eye, the projection mapping will
-            // result in a z>1. We need to bring these values back down to the 
-            // near clip plan (z=0). We need to check simRange too before doing this
-            // so we don't draw fragments that are legitimently beyond the far clip plane.
-            "    if ( sim_depth > 1.0 && oe_clamp_simvertrange < 0.0 ) { sim_depth = 0.0; } \n"
-            "    gl_FragDepth = max(0.0, sim_depth); \n"
-            "}\n";
-
-        vp->setFunction( "oe_clamp_fragment", frag, ShaderComp::LOCATION_FRAGMENT_PRE_LIGHTING );
-    }
-};
-
-/** the static registration. */
-extern "C" void osgEarth_clamping_bin_registration(void) {}
-static osgEarthRegisterRenderBinProxy<osgEarthClampingRenderBin> s_regbin(OSGEARTH_CLAMPING_BIN);
 
 
 
@@ -215,9 +76,70 @@ namespace
     };
 }
 
+
+// Custom bin for clamping.
+namespace
+{
+    struct ClampingRenderBin : public osgUtil::RenderBin
+    {
+        struct PerViewData // : public osg::Referenced
+        {
+            osg::observer_ptr<LocalPerViewData> _techData;
+        };
+
+        // shared across ALL render bin instances.
+        typedef Threading::PerObjectMap<osg::Camera*, PerViewData> PerViewDataMap;
+        PerViewDataMap* _pvd; 
+
+        // support cloning (from RenderBin):
+        virtual osg::Object* cloneType() const { return new ClampingRenderBin(); }
+        virtual osg::Object* clone(const osg::CopyOp& copyop) const { return new ClampingRenderBin(*this,copyop); } // note only implements a clone of type.
+        virtual bool isSameKindAs(const osg::Object* obj) const { return dynamic_cast<const ClampingRenderBin*>(obj)!=0L; }
+        virtual const char* libraryName() const { return "osgEarth"; }
+        virtual const char* className() const { return "ClampingRenderBin"; }
+
+
+        // constructs the prototype for this render bin.
+        ClampingRenderBin() : osgUtil::RenderBin()
+        {
+            this->setName( OSGEARTH_CLAMPING_BIN );
+            _pvd = new PerViewDataMap();
+        }
+
+        ClampingRenderBin( const ClampingRenderBin& rhs, const osg::CopyOp& op )
+            : osgUtil::RenderBin( rhs, op ), _pvd( rhs._pvd )
+        {
+            // zero out the stateset...dont' want to share that!
+            _stateset = 0L;
+        }
+
+        // override.
+        void drawImplementation(osg::RenderInfo& renderInfo, osgUtil::RenderLeaf*& previous)
+        {
+            // find and initialize the state set for this camera.
+            if ( !_stateset.valid() )
+            {
+                osg::Camera* camera = renderInfo.getCurrentCamera();
+                PerViewData& data = _pvd->get(camera);
+                if ( data._techData.valid() )
+                {
+                    _stateset = data._techData->_groupStateSet.get();
+                }
+            }
+
+            osgUtil::RenderBin::drawImplementation( renderInfo, previous );
+        }
+    };
+}
+
+/** the static registration. */
+extern "C" void osgEarth_clamping_bin_registration(void) {}
+static osgEarthRegisterRenderBinProxy<ClampingRenderBin> s_regbin(OSGEARTH_CLAMPING_BIN);
+
+
 //---------------------------------------------------------------------------
 
-ClampingTechnique::ClampingTechnique() :
+ClampingBinTechnique::ClampingBinTechnique() :
 _textureSize     ( 4096 )
 {
     // use the maximum available unit.
@@ -226,14 +148,14 @@ _textureSize     ( 4096 )
 
 
 void
-ClampingTechnique::reestablish(TerrainEngineNode* engine)
+ClampingBinTechnique::reestablish(TerrainEngineNode* engine)
 {
     // nop.
 }
 
 
 void
-ClampingTechnique::setUpCamera(OverlayDecorator::TechRTTParams& params)
+ClampingBinTechnique::setUpCamera(OverlayDecorator::TechRTTParams& params)
 {
     // To store technique-specific per-view info:
     LocalPerViewData* local = new LocalPerViewData();
@@ -330,7 +252,7 @@ ClampingTechnique::setUpCamera(OverlayDecorator::TechRTTParams& params)
 
     // make the shader that will do clamping and depth offsetting.
     VirtualProgram* vp = new VirtualProgram();
-    vp->setName( "ClampingTechnique program" );
+    vp->setName( "ClampingBinTechnique program" );
     local->_groupStateSet->setAttributeAndModes( vp, osg::StateAttribute::ON );
 
     // vertex shader - subgraph
@@ -339,7 +261,7 @@ ClampingTechnique::setUpCamera(OverlayDecorator::TechRTTParams& params)
 #ifdef OSG_GLES2_AVAILABLE
         << "precision mediump float;\n"
 #endif
-        // uniforms from this ClampingTechnique:
+        // uniforms from this ClampingBinTechnique:
         << "uniform sampler2D oe_clamp_depthtex; \n"
         << "uniform mat4 oe_clamp_eye2depthclipmat; \n"
         << "uniform mat4 oe_clamp_depthclip2eyemat; \n"
@@ -425,18 +347,32 @@ ClampingTechnique::setUpCamera(OverlayDecorator::TechRTTParams& params)
 
 
 void
-ClampingTechnique::preCullTerrain(OverlayDecorator::TechRTTParams& params,
-                                 osgUtil::CullVisitor*             cv )
+ClampingBinTechnique::preCullTerrain(OverlayDecorator::TechRTTParams& params,
+                                  osgUtil::CullVisitor*             cv )
 {
-    if ( !params._rttCamera.valid() && params._group->getNumChildren() > 0 )
+    if ( !params._rttCamera.valid() ) //&& params._group->getNumChildren() > 0 )
     {
+        // set it up:
         setUpCamera( params );
+
+        // store our camera's stateset in the perview data.
+        ClampingRenderBin* bin = dynamic_cast<ClampingRenderBin*>( osgUtil::RenderBin::getRenderBinPrototype(OSGEARTH_CLAMPING_BIN) );
+        if ( bin )
+        {
+            ClampingRenderBin::PerViewData& data = bin->_pvd->get( cv->getCurrentCamera() );
+            LocalPerViewData* local = static_cast<LocalPerViewData*>(params._techniqueData.get());
+            data._techData = local;
+        }
+        else
+        {
+            OE_WARN << LC << "Odd, no prototype found for the clamping bin." << std::endl;
+        }
     }
 }
 
 
 void
-ClampingTechnique::cullOverlayGroup(OverlayDecorator::TechRTTParams& params,
+ClampingBinTechnique::cullOverlayGroup(OverlayDecorator::TechRTTParams& params,
                                     osgUtil::CullVisitor*            cv )
 {
     if ( params._rttCamera.valid() )
@@ -467,17 +403,16 @@ ClampingTechnique::cullOverlayGroup(OverlayDecorator::TechRTTParams& params,
 
         local._camViewToDepthClipUniform->set( camViewToRttClip );
         local._depthClipToCamViewUniform->set( osg::Matrix::inverse(camViewToRttClip) );
-        
-        // traverse the overlay nodes, applying the clamping shader.
-        cv->pushStateSet( local._groupStateSet.get() );
-        params._group->accept( *cv );
-        cv->popStateSet();
+
+        // GW: we dont' ACTUALLY cull the overlay group. That will happen naturally.
+        // setting up all the uniforms is important though, and applying the stateset to
+        // the renderbin is too.
     }
 }
 
 
 void
-ClampingTechnique::setTextureSize( int texSize )
+ClampingBinTechnique::setTextureSize( int texSize )
 {
     if ( texSize != _textureSize.value() )
     {
@@ -487,7 +422,7 @@ ClampingTechnique::setTextureSize( int texSize )
 
 
 void
-ClampingTechnique::onInstall( TerrainEngineNode* engine )
+ClampingBinTechnique::onInstall( TerrainEngineNode* engine )
 {
     // save a pointer to the terrain engine.
     _engine = engine;
@@ -503,7 +438,7 @@ ClampingTechnique::onInstall( TerrainEngineNode* engine )
 
 
 void
-ClampingTechnique::onUninstall( TerrainEngineNode* engine )
+ClampingBinTechnique::onUninstall( TerrainEngineNode* engine )
 {
     _engine = 0L;
 }

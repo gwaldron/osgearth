@@ -150,6 +150,7 @@ OverlayDecorator::onGroupChanged(osg::Group* group)
 
     for( unsigned i=0; i<_techniques.size(); ++i )
     {
+        //TODO: change to technique->getActive() or something
         _totalOverlayChildren += _overlayGroups[i]->getNumChildren();
 
         if ( _overlayGroups[i] == group )
@@ -161,11 +162,12 @@ OverlayDecorator::onGroupChanged(osg::Group* group)
 
 
 void
-OverlayDecorator::initializePerViewData( PerViewData& pvd )
+OverlayDecorator::initializePerViewData( PerViewData& pvd, osg::Camera* cam )
 {
-    pvd._techParams.resize( _overlayGroups.size() );
-
+    pvd._camera = cam;
     pvd._sharedTerrainStateSet = new osg::StateSet();
+
+    pvd._techParams.resize( _overlayGroups.size() );
 
     for(unsigned i=0; i<_overlayGroups.size(); ++i )
     {
@@ -174,6 +176,7 @@ OverlayDecorator::initializePerViewData( PerViewData& pvd )
         params._terrainStateSet = pvd._sharedTerrainStateSet.get(); // share it.
         params._horizonDistance = _isGeocentric ? &pvd._sharedHorizonDistance : 0L; // share it.
         params._terrainParent = this;
+        params._mainCamera = cam;
     }
 }
 
@@ -298,6 +301,8 @@ OverlayDecorator::cullTerrainAndCalculateRTTParams(osgUtil::CullVisitor* cv,
         for(unsigned t=0; t<pvd._techParams.size(); ++t)
         {
             TechRTTParams& params = pvd._techParams[t];
+
+            //TODO: change to tech->getActive() or something
             if ( params._group->getNumChildren() > 0 )
             {
                 params._rttViewMatrix = osg::Matrixd::lookAt( eye, eye-worldUp*hasl, osg::Vec3(0,1,0) );
@@ -388,22 +393,29 @@ OverlayDecorator::cullTerrainAndCalculateRTTParams(osgUtil::CullVisitor* cv,
     {
         TechRTTParams& params = pvd._techParams[t];
 
+        //TODO: changed to technique->getActive() or something
         // skip an empty group.
         if ( params._group->getNumChildren() == 0 )
             continue;
+
+        // time to calculate the visible polyhedron.
+        // intiailize it to the view frustum.
+        osgShadow::ConvexPolyhedron visiblePH( frustumPH );
 
         // get a bounds of the overlay graph as a whole, and convert that to a
         // bounding box. We can probably do better with a ComputeBoundsVisitor but it
         // will be slower.
         visibleOverlayBS = params._group->getBound();
-        osg::BoundingBox visibleOverlayBBox;
-        visibleOverlayBBox.expandBy( visibleOverlayBS );
+        if ( visibleOverlayBS.valid() )
+        {
+            osg::BoundingBox visibleOverlayBBox;
+            visibleOverlayBBox.expandBy( visibleOverlayBS );
 
-        // intersect that bound with the camera frustum:
-        osg::Polytope visibleOverlayPT;
-        visibleOverlayPT.setToBoundingBox( visibleOverlayBBox );
-        osgShadow::ConvexPolyhedron visiblePH( frustumPH );
-        visiblePH.cut( visibleOverlayPT );
+            // intersect that bound with the camera frustum:
+            osg::Polytope visibleOverlayPT;
+            visibleOverlayPT.setToBoundingBox( visibleOverlayBBox );
+            visiblePH.cut( visibleOverlayPT );
+        }
 
         // calculate the extents for our orthographic RTT camera (clamping it to the
         // visible horizon)
@@ -535,7 +547,7 @@ OverlayDecorator::getPerViewData(osg::Camera* key)
         {
             if ( !i->second._sharedTerrainStateSet.valid() )
             {
-                initializePerViewData( i->second );
+                initializePerViewData( i->second, key );
             }
             return i->second;
         }
@@ -551,7 +563,7 @@ OverlayDecorator::getPerViewData(osg::Camera* key)
             return i->second;
 
         PerViewData& pvd = _perViewData[key];
-        initializePerViewData(pvd);
+        initializePerViewData(pvd, key);
 
         return pvd;
     }    
@@ -561,7 +573,7 @@ OverlayDecorator::getPerViewData(osg::Camera* key)
 void
 OverlayDecorator::traverse( osg::NodeVisitor& nv )
 {
-    if (_totalOverlayChildren > 0 )
+    if ( true ) //if (_totalOverlayChildren > 0 )
     {
         // in the CULL traversal, find the per-view data associated with the 
         // cull visitor's current camera view and work with that:

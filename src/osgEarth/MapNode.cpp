@@ -20,7 +20,7 @@
 #include <osgEarth/Capabilities>
 #include <osgEarth/ClampableNode>
 #include <osgEarth/ClampingTechnique>
-#include <osgEarth/ClampingTechnique2>
+#include <osgEarth/ClampingBinTechnique>
 #include <osgEarth/DrapeableNode>
 #include <osgEarth/DrapingTechnique>
 #include <osgEarth/MapNodeObserver>

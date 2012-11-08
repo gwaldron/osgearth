@@ -207,7 +207,36 @@ FeatureModelSource::createNode(const Map*            map,
     return graph;
 }
 
+
+
 //------------------------------------------------------------------------
+
+
+osg::Group*
+FeatureNodeFactory::getOrCreateStyleGroup(const Style& style,
+                                          Session*     session)
+{
+    osg::Group* group = new osg::Group();
+
+    // apply necessary render styles.
+    const RenderSymbol* render = style.get<RenderSymbol>();
+    if ( render )
+    {
+        if ( render->depthTest().isSet() )
+        {
+            group->getOrCreateStateSet()->setMode(
+                GL_DEPTH_TEST, 
+                (render->depthTest() == true ? osg::StateAttribute::ON : osg::StateAttribute::OFF) | osg::StateAttribute::OVERRIDE );
+        }
+    }
+
+    return group;
+}
+
+
+//------------------------------------------------------------------------
+
+
 GeomFeatureNodeFactory::GeomFeatureNodeFactory( const GeometryCompilerOptions& options ) : 
 _options( options ) 
 { 

@@ -47,7 +47,7 @@ RenderSymbol::mergeConfig( const Config& conf )
 void
 RenderSymbol::parseSLD(const Config& c, Style& style)
 {
-    if ( match(c.key(), "depth-test") ) {
+    if ( match(c.key(), "render-depth-test") ) {
         style.getOrCreate<RenderSymbol>()->depthTest() = as<bool>(c.value(), true);
     }
 }

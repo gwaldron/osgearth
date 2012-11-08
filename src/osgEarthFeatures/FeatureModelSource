@@ -161,7 +161,7 @@ namespace osgEarth { namespace Features
          */
         virtual osg::Group* getOrCreateStyleGroup(
             const Style& style,
-            Session*     session ) { return new osg::Group(); }
+            Session*     session );
     };
 
     

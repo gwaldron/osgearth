@@ -31,7 +31,7 @@ Symbol::Symbol( const Config& conf )
 bool
 Symbol::match(const std::string& s, const char* reservedWord)
 {
-    if ( s.compare(reservedWord) ) return true;
+    if ( s.compare(reservedWord) == 0 ) return true;
     //if ( s == reservedWord ) return true;
     std::string temp1 = toLower(s), temp2 = toLower(reservedWord);
     replaceIn(temp1, "_", "-");

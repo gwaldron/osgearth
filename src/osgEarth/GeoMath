@@ -21,20 +21,12 @@
 #define OSGEARTH_GEOMATH_H 1
 
 #include <osgEarth/Common>
+#include <osgEarth/GeoCommon>
 #include <osgEarth/SpatialReference>
 #include <osg/CoordinateSystemNode>
 
 namespace osgEarth
 {
-    /**
-     * Types of interpolation between two geodetic locations.
-     */
-    enum GeoInterpolation
-    {
-        GEOINTERP_GREAT_CIRCLE,
-        GEOINTERP_RHUMB_LINE
-    };
-
     /**
      * Useful calculations for lat/long points.
      * Converted from http://www.movable-type.co.uk/scripts/latlong.html

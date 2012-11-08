@@ -1434,29 +1434,25 @@ EarthManipulator::handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapt
 
     if ( ea.isMultiTouchEvent() )
     {
-//OE_WARN << LC << "MULTI-TOUCH EVENT RECEIVED!" << std::endl;
         // not a mouse event; clear the mouse queue.
         resetMouse( aa );
 
-            // queue up a touch event set and figure out the current state:
-            addTouchEvents(ea);
-            TouchEvents te;
-            if ( parseTouchEvents(te) )
-           {
-//                OE_WARN << LC << "ParseTouchEvents: " << te.size() << std::endl;
-                for( TouchEvents::iterator i = te.begin(); i != te.end(); ++i )
-                {
-                    OE_WARN << LC << "P: " << i->_dx << ", " << i->_dy << std::endl;
-                    Action action = _settings->getAction(i->_eventType, i->_mbmask, 0);
-                    handleMovementAction(action._type, i->_dx, i->_dy, view);
-                    aa.requestRedraw();
-                }
-                handled = true;
+        // queue up a touch event set and figure out the current state:
+        addTouchEvents(ea);
+        TouchEvents te;
+        if ( parseTouchEvents(te) )
+        {
+            for( TouchEvents::iterator i = te.begin(); i != te.end(); ++i )
+            {
+                //OE_WARN << LC << "P: " << i->_dx << ", " << i->_dy << std::endl;
+                Action action = _settings->getAction(i->_eventType, i->_mbmask, 0);
+                handleMovementAction(action._type, i->_dx, i->_dy, view);
+                aa.requestRedraw();
             }
- //           else OE_WARN << LC << "ParseTouchEvents <= false" << std::endl;
+            handled = true;
+        }
     }
 
-//    else
     if ( !handled )
     {
         // not a touch event; clear the touch queue.
@@ -1766,14 +1762,11 @@ EarthManipulator::addTouchEvents(const osgGA::GUIEventAdapter& ea)
 bool
 EarthManipulator::parseTouchEvents( TouchEvents& output )
 {
-// OE_WARN << "queue size = " << _touchPointQueue.size() << std::endl;
-
     const float sens = 0.005f;
 
     // two-finger drag gestures:
     if (_touchPointQueue.size() == 2 )
     {
-//OE_WARN << "    size 0 = " << _touchPointQueue[0].size() << ", size 1 = " << _touchPointQueue[1].size() << std::endl;
         if (_touchPointQueue[0].size()   == 2 &&     // two fingers
             _touchPointQueue[1].size()   == 2)       // two fingers
         {
@@ -1817,9 +1810,8 @@ EarthManipulator::parseTouchEvents( TouchEvents& output )
                     ev._dx = 0.0, ev._dy = dot * sens;
                 }
 
-                if ( true ) // ???
                 {
-                    // two-finger move.
+                    // two-finger drag.
                     output.push_back(TouchEvent());
                     TouchEvent& ev = output.back();
                     ev._eventType = EVENT_MULTI_DRAG;
@@ -1829,11 +1821,9 @@ EarthManipulator::parseTouchEvents( TouchEvents& output )
             }
         }
 
-#if 1
         else if (_touchPointQueue[0].size() >= 1 &&     // one finger
                  _touchPointQueue[1].size() >= 1)       // one finger
         {
-//OE_WARN << LC << "single-touch!!!" << std::endl;
             MultiTouchPoint& p0 = _touchPointQueue[0];
             MultiTouchPoint& p1 = _touchPointQueue[1];
 
@@ -1848,7 +1838,6 @@ EarthManipulator::parseTouchEvents( TouchEvents& output )
                 ev._dy = (p1[0].y - p0[0].y) * sens;
             }
         }
-#endif
     }
 
     return output.size() > 0;

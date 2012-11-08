@@ -370,4 +370,15 @@ AnnotationNode::applyStyle( const Style& style)
         _altitude = style.get<AltitudeSymbol>();
         setAutoClamp( true );
     }
+
+    const RenderSymbol* render = style.get<RenderSymbol>();
+    if ( render )
+    {
+        if ( render->depthTest().isSet() )
+        {
+            getOrCreateStateSet()->setMode(
+                GL_DEPTH_TEST,
+                (render->depthTest() == true? 1 : 0) | osg::StateAttribute::OVERRIDE );
+        }
+    }
 }

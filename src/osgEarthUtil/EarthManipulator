@@ -702,6 +702,9 @@ namespace osgEarth { namespace Util
         virtual void handleContinuousAction( const Action& action, osg::View* view );
         virtual void handleMovementAction( const ActionType& type, double dx, double dy, osg::View* view );
 
+		// returns the defined dx and dy values for a keyboard action dir
+		void getKeyboardActionDxDy( const Action& action, double& dx, double& dy );
+
         // checks to see whether the mouse is "moving".
         bool isMouseMoving();
 

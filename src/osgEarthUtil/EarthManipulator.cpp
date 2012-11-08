@@ -1509,7 +1509,17 @@ EarthManipulator::handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapt
             
         case osgGA::GUIEventAdapter::KEYUP:
             resetMouse( aa );
-            _task->_type = TASK_NONE;
+			{
+				Action keydown_action = _settings->getAction( osgGA::GUIEventAdapter::KEYDOWN, ea.getKey(), ea.getModKeyMask() );
+				double dx = 0, dy = 0;
+				getKeyboardActionDxDy(keydown_action, dx, dy);
+
+				if( _task->_dx == dx && _task->_dy == dy )
+				{
+					// cancel current keyboard task only if the task corresponds to the direction in handleKeyboardAction
+					_task->_type = TASK_NONE;
+				}
+			}
             handled = true;
             break;
 
@@ -2279,10 +2289,11 @@ EarthManipulator::handleMouseClickAction( const Action& action )
     return false;
 }
 
-bool
-EarthManipulator::handleKeyboardAction( const Action& action, double duration )
+void
+EarthManipulator::getKeyboardActionDxDy( const Action& action, double& dx, double& dy )
 {
-    double dx = 0, dy = 0;
+    dx = 0;
+	dy = 0;
 
     switch( action._dir )
     {
@@ -2295,6 +2306,13 @@ EarthManipulator::handleKeyboardAction( const Action& action, double duration )
 
     dx *= _settings->getKeyboardSensitivity();
     dy *= _settings->getKeyboardSensitivity();
+}
+
+bool
+EarthManipulator::handleKeyboardAction( const Action& action, double duration )
+{
+    double dx = 0, dy = 0;
+    getKeyboardActionDxDy(action, dx, dy);
 
     applyOptionsToDeltas( action, dx, dy );
 

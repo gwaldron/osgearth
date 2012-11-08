@@ -18,6 +18,7 @@
  */
 #include <osgEarthSymbology/ModelSymbol>
 #include <osgEarthSymbology/ModelResource>
+#include <osgEarthSymbology/Style>
 
 using namespace osgEarth;
 using namespace osgEarth::Symbology;
@@ -62,4 +63,36 @@ InstanceResource*
 ModelSymbol::createResource() const
 {
     return new ModelResource();
+}
+
+void
+ModelSymbol::parseSLD(const Config& c, Style& style)
+{
+    if ( match(c.key(), "model") ) {
+        style.getOrCreate<ModelSymbol>()->url() = c.value();
+        style.getOrCreate<ModelSymbol>()->url()->setURIContext( c.referrer() );
+    }
+    else if ( match(c.key(), "model-placement") ) {
+        if      ( match(c.value(), "vertex") )   
+            style.getOrCreate<ModelSymbol>()->placement() = ModelSymbol::PLACEMENT_VERTEX;
+        else if ( match(c.value(), "interval") ) 
+            style.getOrCreate<ModelSymbol>()->placement() = ModelSymbol::PLACEMENT_INTERVAL;
+        else if ( match(c.value(), "random") )   
+            style.getOrCreate<ModelSymbol>()->placement() = ModelSymbol::PLACEMENT_RANDOM;
+        else if ( match(c.value(), "centroid") ) 
+            style.getOrCreate<ModelSymbol>()->placement() = ModelSymbol::PLACEMENT_CENTROID;
+    }
+    else if ( match(c.key(), "model-density") ) {
+        style.getOrCreate<ModelSymbol>()->density() = as<float>(c.value(), 1.0f);
+    }
+    else if ( match(c.key(), "model-random-seed") ) {
+        style.getOrCreate<ModelSymbol>()->randomSeed() = as<unsigned>(c.value(), 0);
+    }
+    else if ( match(c.key(), "model-scale") ) {
+        style.getOrCreate<ModelSymbol>()->scale() = NumericExpression(c.value());
+    }
+    else if ( match(c.key(), "model-heading") ) {
+        style.getOrCreate<ModelSymbol>()->heading() = NumericExpression(c.value());
+    }
+
 }

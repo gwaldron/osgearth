@@ -18,7 +18,6 @@
 */
 #include <osgEarthSymbology/StyleSheet>
 #include <osgEarthSymbology/CssUtils>
-#include <osgEarthSymbology/SLD>
 #include <algorithm>
 
 #define LC "[StyleSheet] "

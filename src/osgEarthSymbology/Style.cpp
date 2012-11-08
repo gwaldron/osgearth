@@ -18,7 +18,6 @@
 */
 #include <osgEarthSymbology/Style>
 #include <osgEarthSymbology/CssUtils>
-#include <osgEarthSymbology/SLD>
 #include <algorithm>
 
 using namespace osgEarth;
@@ -110,9 +109,26 @@ Style::combineWith( const Style& rhs ) const
 }
 
 void
-Style::fromCSS( const std::string& css )
+Style::fromSLD( const Config& sld )
 {
-    SLDReader::readStyleFromCSSParams( css, *this );
+    setName( sld.key() );
+
+    for( ConfigSet::const_iterator kid = sld.children().begin(); kid != sld.children().end(); ++kid )
+    {
+        const Config& p = *kid;
+
+        AltitudeSymbol::parseSLD (p, *this);
+        ExtrusionSymbol::parseSLD(p, *this);
+        IconSymbol::parseSLD     (p, *this);
+        LineSymbol::parseSLD     (p, *this);
+        MarkerSymbol::parseSLD   (p, *this);
+        ModelSymbol::parseSLD    (p, *this);
+        PolygonSymbol::parseSLD  (p, *this);
+        PointSymbol::parseSLD    (p, *this);
+        RenderSymbol::parseSLD   (p, *this);
+        SkinSymbol::parseSLD     (p, *this);
+        TextSymbol::parseSLD     (p, *this);
+    }
 }
 
 void
@@ -137,7 +153,9 @@ Style::mergeConfig( const Config& conf )
         ConfigSet blocks;
         CssUtils::readConfig( _origData, conf.referrer(), blocks );
         if ( blocks.size() > 0 )
-            SLDReader::readStyleFromCSSParams( blocks.front(), *this );
+        {
+            fromSLD( blocks.front() );
+        }
     }
     else
     {

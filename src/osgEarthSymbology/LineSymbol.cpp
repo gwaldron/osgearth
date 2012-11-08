@@ -17,6 +17,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 #include <osgEarthSymbology/LineSymbol>
+#include <osgEarthSymbology/Style>
 
 using namespace osgEarth;
 using namespace osgEarth::Symbology;
@@ -44,4 +45,27 @@ LineSymbol::mergeConfig( const Config& conf )
 {
     conf.getObjIfSet("stroke",       _stroke);
     conf.getIfSet   ("tessellation", _tessellation);
+}
+
+void
+LineSymbol::parseSLD(const Config& c, Style& style)
+{
+    if ( match(c.key(), "stroke") ) {
+        style.getOrCreate<LineSymbol>()->stroke()->color() = Color(c.value());
+    }
+    else if ( match(c.key(), "stroke-opacity") ) {
+        style.getOrCreate<LineSymbol>()->stroke()->color().a() = as<float>( c.value(), 1.0f );
+    }
+    else if ( match(c.key(), "stroke-width") ) {
+        style.getOrCreate<LineSymbol>()->stroke()->width() = as<float>( c.value(), 1.0f );
+    }
+    else if ( match(c.key(), "stroke-linecap") ) {
+        style.getOrCreate<LineSymbol>()->stroke()->lineCap() =
+            c.value() == "round"  ?   Stroke::LINECAP_ROUND  :
+            c.value() == "square" ?   Stroke::LINECAP_SQUARE :
+          /*value == "butt"   ?*/ Stroke::LINECAP_BUTT;
+    }
+    else if ( match(c.key(), "stroke-tessellation") ) {
+        style.getOrCreate<LineSymbol>()->tessellation() = as<unsigned>( c.value(), 0 );
+    }
 }

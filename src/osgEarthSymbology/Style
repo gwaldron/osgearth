@@ -32,6 +32,7 @@
 #include <osgEarthSymbology/AltitudeSymbol>
 #include <osgEarthSymbology/TextSymbol>
 #include <osgEarthSymbology/Skins>
+#include <osgEarthSymbology/RenderSymbol>
 #include <osgEarthSymbology/ResourceLibrary>
 
 #include <osgEarth/Config>
@@ -136,8 +137,9 @@ namespace osgEarth { namespace Symbology
         virtual Config getConfig( bool keepOrigType =true ) const;
 
         void mergeConfig( const Config& conf );
-        void fromCSS( const std::string& css );
 
+        void fromSLD(const Config&);
+        
     protected:
         std::string                 _name;
         SymbolList                  _symbols;

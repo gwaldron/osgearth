@@ -17,6 +17,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 #include <osgEarthSymbology/ExtrusionSymbol>
+#include <osgEarthSymbology/Style>
 
 using namespace osgEarth;
 using namespace osgEarth::Symbology;
@@ -59,4 +60,24 @@ ExtrusionSymbol::mergeConfig( const Config& conf )
     conf.getIfSet   ( "wall_style", _wallStyleName );
     conf.getIfSet   ( "roof_style", _roofStyleName );
     conf.getIfSet   ( "wall_gradient", _wallGradientPercentage );
+}
+
+void
+ExtrusionSymbol::parseSLD(const Config& c, Style& style)
+{
+    if ( match(c.key(), "extrusion-height") ) {
+        style.getOrCreate<ExtrusionSymbol>()->heightExpression() = NumericExpression(c.value());
+    }
+    else if ( match(c.key(), "extrusion-flatten") ) {
+        style.getOrCreate<ExtrusionSymbol>()->flatten() = as<bool>(c.value(), true);
+    }
+    else if ( match(c.key(), "extrusion-wall-style") ) {
+        style.getOrCreate<ExtrusionSymbol>()->wallStyleName() = c.value();
+    }
+    else if ( match(c.key(), "extrusion-roof-style") ) {
+        style.getOrCreate<ExtrusionSymbol>()->roofStyleName() = c.value();
+    }
+    else if ( match(c.key(), "extrusion-wall-gradient") ) {
+        style.getOrCreate<ExtrusionSymbol>()->wallGradientPercentage() = as<float>(c.value(), 0.0f);
+    }
 }

@@ -17,10 +17,11 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 
-#ifndef OSGEARTHSYMBOLOGY_GEOMETRY_SYMBOL_H
-#define OSGEARTHSYMBOLOGY_GEOMETRY_SYMBOL_H 1
+#ifndef OSGEARTHSYMBOLOGY_RENDER_SYMBOL_H
+#define OSGEARTHSYMBOLOGY_RENDER_SYMBOL_H 1
 
 #include <osgEarth/Common>
+#include <osgEarth/GeoMath>
 #include <osgEarthSymbology/Common>
 #include <osgEarthSymbology/Symbol>
 #include <osg/Referenced>
@@ -28,31 +29,31 @@
 
 namespace osgEarth { namespace Symbology
 {
-    /**
-     * Symbol that describes how to render a polygonal geometry.
+    /** 
+     * Symbol that contains general rendering settings.
      */
-    class OSGEARTHSYMBOLOGY_EXPORT PolygonSymbol : public Symbol
+    class OSGEARTHSYMBOLOGY_EXPORT RenderSymbol : public Symbol
     {
     public:
-        PolygonSymbol( const Config& conf =Config() );
+        /** construct a render symbol */
+        RenderSymbol(const Config& conf =Config());
 
-        /** dtor */
-        virtual ~PolygonSymbol() { }
-
-        /** Polygon fill properties. */
-        optional<Fill>& fill() { return _fill; }
-        const optional<Fill>& fill() const { return _fill; }
+        /** whether to perform depth buffer testing */
+        optional<bool>& depthTest() { return _depthTest; }
+        const optional<bool>& depthTest() const { return _depthTest; }
 
     public:
         virtual Config getConfig() const;
-        virtual void mergeConfig(const Config& conf);
+        virtual void mergeConfig( const Config& conf );
         static void parseSLD(const Config& c, class Style& style);
 
     protected:
-        optional<Fill> _fill;
+        optional<bool> _depthTest;
+        
+        /** dtor */
+        virtual ~RenderSymbol() { }
     };
-
 
 } } // namespace osgEarth::Symbology
 
-#endif // OSGEARTH_SYMBOLOGY_SYMBOL_H
+#endif // OSGEARTHSYMBOLOGY_RENDER_SYMBOL_H

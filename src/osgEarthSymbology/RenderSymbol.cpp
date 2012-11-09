@@ -16,22 +16,38 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
-#ifndef OSGEARTHSYMBOLOGY_STYLING_SLD_H
-#define OSGEARTHSYMBOLOGY_STYLING_SLD_H 1
-
-#include <osgEarthSymbology/Common>
+#include <osgEarthSymbology/RenderSymbol>
 #include <osgEarthSymbology/Style>
-#include <osgEarth/Config>
-#include <iostream>
 
-namespace osgEarth { namespace Symbology
+using namespace osgEarth;
+using namespace osgEarth::Symbology;
+
+RenderSymbol::RenderSymbol(const Config& conf) :
+Symbol    ( conf ),
+_depthTest( true )
 {
-    class OSGEARTHSYMBOLOGY_EXPORT SLDReader
-    {
-    public:
-        static bool readStyleFromCSSParams( const Config& conf, Symbology::Style& out_style );
-    };
+    mergeConfig(conf);
+}
 
-} } // namespace osgEarth::Features2
+Config 
+RenderSymbol::getConfig() const
+{
+    Config conf = Symbol::getConfig();
+    conf.key() = "render";
+    conf.addIfSet( "depth_test", _depthTest );
+    return conf;
+}
 
-#endif // OSGEARTHFEATURES_STYLING_SLD_H
+void 
+RenderSymbol::mergeConfig( const Config& conf )
+{
+    conf.getIfSet( "depth_test", _depthTest );
+}
+
+void
+RenderSymbol::parseSLD(const Config& c, Style& style)
+{
+    if ( match(c.key(), "render-depth-test") ) {
+        style.getOrCreate<RenderSymbol>()->depthTest() = as<bool>(c.value(), true);
+    }
+}

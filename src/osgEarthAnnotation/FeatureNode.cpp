@@ -132,6 +132,10 @@ FeatureNode::init()
 
                 clampMesh( getMapNode()->getTerrain()->getGraph() );
             }
+            else
+            {
+                setAutoClamp( false );
+            }
         }
     }
 }

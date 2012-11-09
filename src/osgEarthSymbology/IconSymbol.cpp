@@ -18,6 +18,7 @@
  */
 #include <osgEarthSymbology/IconSymbol>
 #include <osgEarthSymbology/IconResource>
+#include <osgEarthSymbology/Style>
 #include <osgEarth/ThreadingUtils>
 #include <osgEarth/Registry>
 #include <osgEarth/ImageUtils>
@@ -118,4 +119,56 @@ InstanceResource*
 IconSymbol::createResource() const 
 {
     return new IconResource();
+}
+
+
+void
+IconSymbol::parseSLD(const Config& c, Style& style)
+{
+    if ( match(c.key(), "icon") ) {
+        style.getOrCreate<IconSymbol>()->url() = c.value();
+        style.getOrCreate<IconSymbol>()->url()->setURIContext( c.referrer() );
+    }
+    else if ( match(c.key(),"icon-library") ) {
+        style.getOrCreate<IconSymbol>()->libraryName() = StringExpression(c.value());
+    }
+    else if ( match(c.key(), "icon-placement") ) {
+        if      ( match(c.value(), "vertex") )   
+            style.getOrCreate<IconSymbol>()->placement() = ModelSymbol::PLACEMENT_VERTEX;
+        else if ( match(c.value(), "interval") ) 
+            style.getOrCreate<IconSymbol>()->placement() = ModelSymbol::PLACEMENT_INTERVAL;
+        else if ( match(c.value(), "random") )   
+            style.getOrCreate<IconSymbol>()->placement() = ModelSymbol::PLACEMENT_RANDOM;
+        else if ( match(c.value(), "centroid") ) 
+            style.getOrCreate<IconSymbol>()->placement() = ModelSymbol::PLACEMENT_CENTROID;
+    }
+    else if ( match(c.key(), "icon-density") ) {
+        style.getOrCreate<IconSymbol>()->density() = as<float>(c.value(), 1.0f);
+    }
+    else if ( match(c.key(), "icon-random-seed") ) {
+        style.getOrCreate<IconSymbol>()->randomSeed() = as<unsigned>(c.value(), 0);
+    }
+    else if ( match(c.key(), "icon-scale") ) {
+        style.getOrCreate<IconSymbol>()->scale() = NumericExpression(c.value());
+    }
+    else if ( match(c.key(), "icon-align") ) {
+        if      ( match(c.value(), "left-top") )      
+            style.getOrCreate<IconSymbol>()->alignment() = IconSymbol::ALIGN_LEFT_TOP;
+        else if ( match(c.value(), "left-center") )   
+            style.getOrCreate<IconSymbol>()->alignment() = IconSymbol::ALIGN_LEFT_CENTER;
+        else if ( match(c.value(), "left-bottom") )   
+            style.getOrCreate<IconSymbol>()->alignment() = IconSymbol::ALIGN_LEFT_BOTTOM;
+        else if ( match(c.value(), "center-top")  )   
+            style.getOrCreate<IconSymbol>()->alignment() = IconSymbol::ALIGN_CENTER_TOP;
+        else if ( match(c.value(), "center-center") ) 
+            style.getOrCreate<IconSymbol>()->alignment() = IconSymbol::ALIGN_CENTER_CENTER;
+        else if ( match(c.value(), "center-bottom") ) 
+            style.getOrCreate<IconSymbol>()->alignment() = IconSymbol::ALIGN_CENTER_BOTTOM;
+        else if ( match(c.value(), "right-top") )     
+            style.getOrCreate<IconSymbol>()->alignment() = IconSymbol::ALIGN_RIGHT_TOP;
+        else if ( match(c.value(), "right-center") )  
+            style.getOrCreate<IconSymbol>()->alignment() = IconSymbol::ALIGN_RIGHT_CENTER;
+        else if ( match(c.value(), "right-bottom") )  
+            style.getOrCreate<IconSymbol>()->alignment() = IconSymbol::ALIGN_RIGHT_BOTTOM;
+    }
 }

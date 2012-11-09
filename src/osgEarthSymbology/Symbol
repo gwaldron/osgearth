@@ -35,8 +35,6 @@ namespace osgEarth { namespace Symbology
     {
     public:
         Symbol( const Config& conf =Config() );
-        
-        virtual ~Symbol() { }
 
         const URIContext& uriContext() const { return _uriContext; }
 
@@ -44,6 +42,10 @@ namespace osgEarth { namespace Symbology
 
     protected:
         URIContext _uriContext;
+
+        static bool match(const std::string& key, const char* pattern);
+
+        virtual ~Symbol() { }
     };
     typedef std::vector<osg::ref_ptr<Symbol> > SymbolList;
 

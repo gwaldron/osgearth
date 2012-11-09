@@ -17,6 +17,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 #include <osgEarthSymbology/Skins>
+#include <osgEarthSymbology/Style>
 #include <osgEarth/StringUtils>
 #include <osgEarth/ImageUtils>
 #include <osgEarth/Registry>
@@ -171,4 +172,32 @@ SkinSymbol::getConfig() const
         conf.set("tags", tagstring);
 
     return conf;
+}
+
+
+void
+SkinSymbol::parseSLD(const Config& c, Style& style)
+{
+    if ( match(c.key(), "skin-library") ) {
+        if ( !c.value().empty() ) 
+            style.getOrCreate<SkinSymbol>()->libraryName() = c.value();
+    }
+    else if ( match(c.key(), "skin-tags") ) {
+        style.getOrCreate<SkinSymbol>()->addTags( c.value() );
+    }
+    else if ( match(c.key(), "skin-tiled") ) {
+        style.getOrCreate<SkinSymbol>()->isTiled() = as<bool>( c.value(), false );
+    }
+    else if ( match(c.key(), "skin-object-height") ) {
+        style.getOrCreate<SkinSymbol>()->objectHeight() = as<float>( c.value(), 0.0f );
+    }
+    else if (match(c.key(), "skin-min-object-height") ) {
+        style.getOrCreate<SkinSymbol>()->minObjectHeight() = as<float>( c.value(), 0.0f );
+    }
+    else if (match(c.key(), "skin-max-object-height") ) {
+        style.getOrCreate<SkinSymbol>()->maxObjectHeight() = as<float>( c.value(), 0.0f );
+    }
+    else if (match(c.key(), "skin-random-seed") ) {
+        style.getOrCreate<SkinSymbol>()->randomSeed() = as<unsigned>( c.value(), 0u );
+    }
 }

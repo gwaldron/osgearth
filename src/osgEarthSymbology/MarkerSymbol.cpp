@@ -19,6 +19,7 @@
 #include <osgEarthSymbology/MarkerSymbol>
 #include <osgEarthSymbology/IconSymbol>
 #include <osgEarthSymbology/ModelSymbol>
+#include <osgEarthSymbology/Style>
 #include <osgEarth/ThreadingUtils>
 #include <osgEarth/Registry>
 #include <osgEarth/ImageUtils>
@@ -222,4 +223,56 @@ MarkerSymbol::convertToInstanceSymbol() const
         result->randomSeed() = this->randomSeed().get();
 
     return result;
+}
+
+
+void
+MarkerSymbol::parseSLD(const Config& c, Style& style)
+{
+    if ( match(c.key(), "marker") ) {
+        style.getOrCreate<MarkerSymbol>()->url() = c.value();
+        style.getOrCreate<MarkerSymbol>()->url()->setURIContext( c.referrer() );
+    }
+    else if ( match(c.key(),"marker-library") ) {
+        style.getOrCreate<MarkerSymbol>()->libraryName() = StringExpression(c.value());
+    }
+    else if ( match(c.key(), "marker-placement") ) {
+        if      ( match(c.value(), "vertex") )   
+            style.getOrCreate<MarkerSymbol>()->placement() = MarkerSymbol::PLACEMENT_VERTEX;
+        else if ( match(c.value(), "interval") ) 
+            style.getOrCreate<MarkerSymbol>()->placement() = MarkerSymbol::PLACEMENT_INTERVAL;
+        else if ( match(c.value(), "random") )   
+            style.getOrCreate<MarkerSymbol>()->placement() = MarkerSymbol::PLACEMENT_RANDOM;
+        else if ( match(c.value(), "centroid") ) 
+            style.getOrCreate<MarkerSymbol>()->placement() = MarkerSymbol::PLACEMENT_CENTROID;
+    }
+    else if ( match(c.key(), "marker-density") ) {
+        style.getOrCreate<MarkerSymbol>()->density() = as<float>(c.value(), 1.0f);
+    }
+    else if ( match(c.key(), "marker-random-seed") ) {
+        style.getOrCreate<MarkerSymbol>()->randomSeed() = as<unsigned>(c.value(), 0);
+    }
+    else if ( match(c.key(), "marker-scale") ) {
+        style.getOrCreate<MarkerSymbol>()->scale() = NumericExpression(c.value());
+    }
+    else if ( match(c.key(), "marker-icon-align") ) {
+        if      ( match(c.value(), "left-top") ) 
+            style.getOrCreate<MarkerSymbol>()->alignment() = MarkerSymbol::ALIGN_LEFT_TOP;
+        else if ( match(c.value(), "left-center") ) 
+            style.getOrCreate<MarkerSymbol>()->alignment() = MarkerSymbol::ALIGN_LEFT_CENTER;
+        else if ( match(c.value(), "left-bottom") ) 
+            style.getOrCreate<MarkerSymbol>()->alignment() = MarkerSymbol::ALIGN_LEFT_BOTTOM;
+        else if ( match(c.value(), "center-top")  ) 
+            style.getOrCreate<MarkerSymbol>()->alignment() = MarkerSymbol::ALIGN_CENTER_TOP;
+        else if ( match(c.value(), "center-center") ) 
+            style.getOrCreate<MarkerSymbol>()->alignment() = MarkerSymbol::ALIGN_CENTER_CENTER;
+        else if ( match(c.value(), "center-bottom") ) 
+            style.getOrCreate<MarkerSymbol>()->alignment() = MarkerSymbol::ALIGN_CENTER_BOTTOM;
+        else if ( match(c.value(), "right-top") ) 
+            style.getOrCreate<MarkerSymbol>()->alignment() = MarkerSymbol::ALIGN_RIGHT_TOP;
+        else if ( match(c.value(), "right-center") ) 
+            style.getOrCreate<MarkerSymbol>()->alignment() = MarkerSymbol::ALIGN_RIGHT_CENTER;
+        else if ( match(c.value(), "right-bottom") ) 
+            style.getOrCreate<MarkerSymbol>()->alignment() = MarkerSymbol::ALIGN_RIGHT_BOTTOM;
+    }
 }

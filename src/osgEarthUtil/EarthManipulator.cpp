@@ -337,6 +337,23 @@ EarthManipulator::Settings::bindScroll(ActionType action, int scrolling_motion,
         Action( action, options ) );
 }
 
+
+void
+EarthManipulator::Settings::bindPinch(ActionType action, const ActionOptions& options)
+{
+    bind(
+        InputSpec( EarthManipulator::EVENT_MULTI_PINCH, 0, 0 ),
+        Action( action, options ) );
+}
+
+void
+EarthManipulator::Settings::bindMultiDrag(ActionType action, const ActionOptions& options)
+{
+    bind(
+        InputSpec( EarthManipulator::EVENT_MULTI_DRAG, 0, 0 ),
+        Action( action, options ) );
+}
+
 const EarthManipulator::Action&
 EarthManipulator::Settings::getAction(int event_type, int input_mask, int modkey_mask) const
 {
@@ -486,6 +503,13 @@ EarthManipulator::configureDefaultSettings()
     options.add( OPTION_GOTO_RANGE_FACTOR, 2.5 );
     _settings->bindMouseDoubleClick( ACTION_GOTO, osgGA::GUIEventAdapter::RIGHT_MOUSE_BUTTON, 0L, options );
     _settings->bindMouseDoubleClick( ACTION_GOTO, osgGA::GUIEventAdapter::LEFT_MOUSE_BUTTON, osgGA::GUIEventAdapter::MODKEY_CTRL, options );
+
+    // map multi-touch pinch to a discrete zoom
+    options.clear();
+    _settings->bindPinch( ACTION_ZOOM, options );
+
+    options.clear();
+    _settings->bindMultiDrag( ACTION_ROTATE, options );
 
     //_settings->setThrowingEnabled( false );
     _settings->setLockAzimuthWhilePanning( true );
@@ -1380,6 +1404,7 @@ EarthManipulator::handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapt
         return false;
     }
 
+
     // the camera manipulator runs last after any other event handlers. So bail out
     // if the incoming event has already been handled by another handler.
     if ( ea.getHandled() )
@@ -1406,122 +1431,150 @@ EarthManipulator::handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapt
         }
     }
 
-    switch( ea.getEventType() )
-    {
-        case osgGA::GUIEventAdapter::PUSH:
-            resetMouse( aa );
-            addMouseEvent( ea );
-            _mouse_down_event = &ea;
-            aa.requestRedraw();
-            handled = true;
-            break;       
-        
-        case osgGA::GUIEventAdapter::RELEASE:
 
-            if ( _continuous )
+    if ( ea.isMultiTouchEvent() )
+    {
+        // not a mouse event; clear the mouse queue.
+        resetMouse( aa );
+
+        // queue up a touch event set and figure out the current state:
+        addTouchEvents(ea);
+        TouchEvents te;
+        if ( parseTouchEvents(te) )
+        {
+            for( TouchEvents::iterator i = te.begin(); i != te.end(); ++i )
             {
-                // bail out of continuous mode if necessary:
-                _continuous = false;
-                aa.requestContinuousUpdate( false );
+                //OE_WARN << LC << "P: " << i->_dx << ", " << i->_dy << std::endl;
+                Action action = _settings->getAction(i->_eventType, i->_mbmask, 0);
+                handleMovementAction(action._type, i->_dx, i->_dy, view);
+                aa.requestRedraw();
             }
-            else
-            {
-#if 0 // disabled - not implemented
-                // check for a mouse-throw continuation:
-                if ( _settings->getThrowingEnabled() && isMouseMoving() )
+            handled = true;
+        }
+    }
+
+    if ( !handled )
+    {
+        // not a touch event; clear the touch queue.
+        //_touchPointQueue.clear();
+
+        switch( ea.getEventType() )
+        {
+            case osgGA::GUIEventAdapter::PUSH:
+                resetMouse( aa );
+                addMouseEvent( ea );
+                _mouse_down_event = &ea;
+                aa.requestRedraw();
+                handled = true;
+                break;       
+            
+            case osgGA::GUIEventAdapter::RELEASE:
+
+                if ( _continuous )
                 {
-                    action = _last_action;
-                    if( handleMouseAction( action, aa.asView() ) )
-                    {
-                        aa.requestRedraw();
-                        aa.requestContinuousUpdate( true );
-                        _thrown = true;
-                    }
-                }
-                else 
-#endif
-                if ( isMouseClick( &ea ) )
-                {
-                    addMouseEvent( ea );
-                    if ( _mouse_down_event )
-                    {
-                        action = _settings->getAction( EVENT_MOUSE_CLICK, _mouse_down_event->getButtonMask(), _mouse_down_event->getModKeyMask() );
-                        if ( handlePointAction( action, ea.getX(), ea.getY(), aa.asView() ))
-                            aa.requestRedraw();                
-                    }
-                    resetMouse( aa );
+                    // bail out of continuous mode if necessary:
+                    _continuous = false;
+                    aa.requestContinuousUpdate( false );
                 }
                 else
                 {
-                    resetMouse( aa );
-                    addMouseEvent( ea );
+    #if 0 // disabled - not implemented
+                    // check for a mouse-throw continuation:
+                    if ( _settings->getThrowingEnabled() && isMouseMoving() )
+                    {
+                        action = _last_action;
+                        if( handleMouseAction( action, aa.asView() ) )
+                        {
+                            aa.requestRedraw();
+                            aa.requestContinuousUpdate( true );
+                            _thrown = true;
+                        }
+                    }
+                    else 
+    #endif
+                    if ( isMouseClick( &ea ) )
+                    {
+                        addMouseEvent( ea );
+                        if ( _mouse_down_event )
+                        {
+                            action = _settings->getAction( EVENT_MOUSE_CLICK, _mouse_down_event->getButtonMask(), _mouse_down_event->getModKeyMask() );
+                            if ( handlePointAction( action, ea.getX(), ea.getY(), aa.asView() ))
+                                aa.requestRedraw();
+                        }
+                        resetMouse( aa );
+                    }
+                    else
+                    {
+                        resetMouse( aa );
+                        addMouseEvent( ea );
+                    }
                 }
-            }
-            handled = true;
-            break;
-            
-        case osgGA::GUIEventAdapter::DOUBLECLICK:
-            // bail out of continuous mode if necessary:
-            _continuous = false;
-            addMouseEvent( ea );
-            if (_mouse_down_event)
-            {
-                action = _settings->getAction( ea.getEventType(), _mouse_down_event->getButtonMask(), _mouse_down_event->getModKeyMask() );
-                if ( handlePointAction( action, ea.getX(), ea.getY(), aa.asView() ) )
-                    aa.requestRedraw();
-                resetMouse( aa );
                 handled = true;
-            }
-            break;
-
-        case osgGA::GUIEventAdapter::MOVE: // MOVE not currently bindable
-            //NOP
-            break;
-
-        case osgGA::GUIEventAdapter::DRAG:
-            {
-                action = _settings->getAction( ea.getEventType(), ea.getButtonMask(), ea.getModKeyMask() );
+                break;
+                
+            case osgGA::GUIEventAdapter::DOUBLECLICK:
+                // bail out of continuous mode if necessary:
+                _continuous = false;
                 addMouseEvent( ea );
-                bool wasContinuous = _continuous;
-                _continuous = action.getBoolOption(OPTION_CONTINUOUS, false);
-                if ( handleMouseAction( action, aa.asView() ) )
-                    aa.requestRedraw();
+                if (_mouse_down_event)
+                {
+                    action = _settings->getAction( ea.getEventType(), _mouse_down_event->getButtonMask(), _mouse_down_event->getModKeyMask() );
+                    if ( handlePointAction( action, ea.getX(), ea.getY(), aa.asView() ) )
+                        aa.requestRedraw();
+                    resetMouse( aa );
+                    handled = true;
+                }
+                break;
 
-                if ( _continuous && !wasContinuous )
-                    _last_continuous_action_time = _time_s_now;
+            case osgGA::GUIEventAdapter::MOVE: // MOVE not currently bindable
+                //NOP
+                break;
 
-                aa.requestContinuousUpdate(_continuous);
-                _thrown = false;
-                handled = true;
-            }
-            break;
+            case osgGA::GUIEventAdapter::DRAG:
+                {
+                    action = _settings->getAction( ea.getEventType(), ea.getButtonMask(), ea.getModKeyMask() );
+                    addMouseEvent( ea );
+                    bool wasContinuous = _continuous;
+                    _continuous = action.getBoolOption(OPTION_CONTINUOUS, false);
+                    if ( handleMouseAction( action, aa.asView() ) )
+                        aa.requestRedraw();
 
-        case osgGA::GUIEventAdapter::KEYDOWN:
-            if ( ea.getKey() < osgGA::GUIEventAdapter::KEY_Shift_L )
-            {
+                    if ( _continuous && !wasContinuous )
+                        _last_continuous_action_time = _time_s_now;
+
+                    aa.requestContinuousUpdate(_continuous);
+                    _thrown = false;
+                    handled = true;
+                }
+                break;
+
+            case osgGA::GUIEventAdapter::KEYDOWN:
+                if ( ea.getKey() < osgGA::GUIEventAdapter::KEY_Shift_L )
+                {
+                    resetMouse( aa );
+                    action = _settings->getAction( ea.getEventType(), ea.getKey(), ea.getModKeyMask() );
+                    if ( handleKeyboardAction( action ) )
+                        aa.requestRedraw();
+                    handled = true;
+                }
+                break;
+                
+            case osgGA::GUIEventAdapter::KEYUP:
                 resetMouse( aa );
-                action = _settings->getAction( ea.getEventType(), ea.getKey(), ea.getModKeyMask() );
-                if ( handleKeyboardAction( action ) )
+                _task->_type = TASK_NONE;
+                handled = true;
+                break;
+
+            case osgGA::GUIEventAdapter::SCROLL:
+                resetMouse( aa );
+                addMouseEvent( ea );
+                action = _settings->getAction( ea.getEventType(), ea.getScrollingMotion(), ea.getModKeyMask() );
+                if ( handleScrollAction( action, 0.2 ) )
                     aa.requestRedraw();
                 handled = true;
-            }
-            break;
-            
-        case osgGA::GUIEventAdapter::KEYUP:
-            resetMouse( aa );
-            _task->_type = TASK_NONE;
-            handled = true;
-            break;
-
-        case osgGA::GUIEventAdapter::SCROLL:
-            resetMouse( aa );
-            addMouseEvent( ea );
-            action = _settings->getAction( ea.getEventType(), ea.getScrollingMotion(), ea.getModKeyMask() );
-            if ( handleScrollAction( action, 0.2 ) )
-                aa.requestRedraw();
-            handled = true;
-            break;
-        default: break;
+                break;
+            default: break;
+        }
     }
 
     // if a new task was started, request continuous updates.
@@ -1670,6 +1723,7 @@ EarthManipulator::flushMouseEventStack()
 {
     _ga_t1 = NULL;
     _ga_t0 = NULL;
+    //_touchPointQueue.clear();
 }
 
 
@@ -1678,6 +1732,115 @@ EarthManipulator::addMouseEvent(const osgGA::GUIEventAdapter& ea)
 {
     _ga_t1 = _ga_t0;
     _ga_t0 = &ea;
+    //_touchPointQueue.clear();
+}
+
+void
+EarthManipulator::addTouchEvents(const osgGA::GUIEventAdapter& ea)
+{
+    // first, push the old event to the back of the queue.
+    while ( _touchPointQueue.size() > 1 )
+        _touchPointQueue.pop_front();
+
+    // queue any new events.
+    if ( ea.isMultiTouchEvent() )
+    {
+        osgGA::GUIEventAdapter::TouchData* data = ea.getTouchData();
+
+        _touchPointQueue.push_back(MultiTouchPoint());
+        MultiTouchPoint& ev = _touchPointQueue.back();
+
+        for( unsigned i=0; i<data->getNumTouchPoints(); ++i )
+        {
+            osgGA::GUIEventAdapter::TouchData::TouchPoint tp = data->get(i);
+            ev.resize(tp.id+1);
+            ev[tp.id] = tp; // overwrites duplicates automatically.
+        }
+    }
+}
+
+bool
+EarthManipulator::parseTouchEvents( TouchEvents& output )
+{
+    const float sens = 0.005f;
+
+    // two-finger drag gestures:
+    if (_touchPointQueue.size() == 2 )
+    {
+        if (_touchPointQueue[0].size()   == 2 &&     // two fingers
+            _touchPointQueue[1].size()   == 2)       // two fingers
+        {
+            MultiTouchPoint& p0 = _touchPointQueue[0];
+            MultiTouchPoint& p1 = _touchPointQueue[1];
+
+            if (p0[0].phase != osgGA::GUIEventAdapter::TOUCH_ENDED &&
+                p1[0].phase != osgGA::GUIEventAdapter::TOUCH_ENDED &&
+                p0[1].phase == osgGA::GUIEventAdapter::TOUCH_MOVED &&
+                p1[1].phase == osgGA::GUIEventAdapter::TOUCH_MOVED)
+            {
+                // gather information about what happened:
+                float dx[2], dy[2];
+                for( int i=0; i<2; ++i )
+                {
+                    dx[i] = p1[i].x - p0[i].x;
+                    dy[i] = p1[i].y - p0[i].y;
+                }
+                osg::Vec2f vec0 = osg::Vec2f(p0[1].x,p0[1].y)-osg::Vec2f(p0[0].x,p0[0].y);
+                osg::Vec2f vec1 = osg::Vec2f(p1[1].x,p1[1].y)-osg::Vec2f(p1[0].x,p1[0].y);
+                float deltaDistance = vec1.length() - vec0.length();
+
+                vec0.normalize();
+                vec1.normalize();
+                float dot = fabs( vec0 * vec1 );
+
+                // how see if that corresponds to any touch events:
+                {
+                    // distance between the fingers changed: a pinch.
+                    output.push_back(TouchEvent());
+                    TouchEvent& ev = output.back();
+                    ev._eventType = EVENT_MULTI_PINCH;
+                    ev._dx = 0.0, ev._dy = deltaDistance * -sens;
+                }
+
+                {
+                    // angle between vectors changed: a twist.
+                    output.push_back(TouchEvent());
+                    TouchEvent& ev = output.back();
+                    ev._eventType = EVENT_MULTI_TWIST;
+                    ev._dx = 0.0, ev._dy = dot * sens;
+                }
+
+                {
+                    // two-finger drag.
+                    output.push_back(TouchEvent());
+                    TouchEvent& ev = output.back();
+                    ev._eventType = EVENT_MULTI_DRAG;
+                    ev._dx = 0.5 * (dx[0]+dx[1]) * sens;
+                    ev._dy = 0.5 * (dy[0]+dy[1]) * sens;
+                }
+            }
+        }
+
+        else if (_touchPointQueue[0].size() >= 1 &&     // one finger
+                 _touchPointQueue[1].size() >= 1)       // one finger
+        {
+            MultiTouchPoint& p0 = _touchPointQueue[0];
+            MultiTouchPoint& p1 = _touchPointQueue[1];
+
+            if (p0[0].phase != osgGA::GUIEventAdapter::TOUCH_ENDED &&
+                p1[0].phase == osgGA::GUIEventAdapter::TOUCH_MOVED )
+            {
+                output.push_back(TouchEvent());
+                TouchEvent& ev = output.back();
+                ev._eventType = EVENT_MOUSE_DRAG;
+                ev._mbmask = osgGA::GUIEventAdapter::LEFT_MOUSE_BUTTON;
+                ev._dx = (p1[0].x - p0[0].x) * sens;
+                ev._dy = (p1[0].y - p0[0].y) * sens;
+            }
+        }
+    }
+
+    return output.size() > 0;
 }
 
 void
@@ -2145,7 +2308,6 @@ EarthManipulator::handleMovementAction( const ActionType& type, double dx, doubl
 {
     switch( type )
     {
-    default:break;
     case ACTION_PAN:
         pan( dx, dy );
         break;
@@ -2169,6 +2331,7 @@ EarthManipulator::handleMovementAction( const ActionType& type, double dx, doubl
     case ACTION_EARTH_DRAG:
         drag( dx, dy, view );
         break;
+    default:break;
     }
 }
 
@@ -2324,6 +2487,22 @@ EarthManipulator::handleScrollAction( const Action& action, double duration )
 
     return handleAction( action, dx, dy, duration );
 }
+
+#if 0
+bool
+EarthManipulator::handleMultiTouchAction( const Action& action, const EarthManipulator::TouchEvent& te, osg::View* view )
+{
+    if ( action._type == ACTION_ZOOM )
+    {
+        handleMovementAction( action._type, 0.0, te._deltaDistance, view );
+        return true;
+    }
+    else
+    {
+        return false;
+    }
+}
+#endif
 
 bool
 EarthManipulator::handleAction( const Action& action, double dx, double dy, double duration )

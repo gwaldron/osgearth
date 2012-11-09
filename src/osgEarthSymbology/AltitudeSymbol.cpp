@@ -17,6 +17,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 #include <osgEarthSymbology/AltitudeSymbol>
+#include <osgEarthSymbology/Style>
 
 using namespace osgEarth;
 using namespace osgEarth::Symbology;
@@ -56,4 +57,28 @@ AltitudeSymbol::mergeConfig( const Config& conf )
     conf.getIfSet   ( "clamping_resolution",   _clampingResolution );
     conf.getObjIfSet( "vertical_offset",       _verticalOffset );
     conf.getObjIfSet( "vertical_scale",        _verticalScale );
+}
+
+void
+AltitudeSymbol::parseSLD(const Config& c, Style& style)
+{
+    if ( match(c.key(), "altitude-clamping") ) {
+        if      ( match(c.value(), "none") )     
+            style.getOrCreate<AltitudeSymbol>()->clamping() = AltitudeSymbol::CLAMP_NONE;
+        else if ( match(c.value(), "terrain") )  
+            style.getOrCreate<AltitudeSymbol>()->clamping() = AltitudeSymbol::CLAMP_TO_TERRAIN;
+        else if ( match(c.value(), "absolute") ) 
+            style.getOrCreate<AltitudeSymbol>()->clamping() = AltitudeSymbol::CLAMP_ABSOLUTE;
+        else if ( match(c.value(), "relative") ) 
+            style.getOrCreate<AltitudeSymbol>()->clamping() = AltitudeSymbol::CLAMP_RELATIVE_TO_TERRAIN;
+    }
+    else if ( match(c.key(), "altitude-resolution") ) {
+        style.getOrCreate<AltitudeSymbol>()->clampingResolution() = as<float>( c.value(), 0.0f );
+    }
+    else if ( match(c.key(), "altitude-offset") ) {
+        style.getOrCreate<AltitudeSymbol>()->verticalOffset() = NumericExpression( c.value() );
+    }
+    else if ( match(c.key(), "altitude-scale") ) {
+        style.getOrCreate<AltitudeSymbol>()->verticalScale() = NumericExpression( c.value() );
+    }
 }

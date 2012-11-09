@@ -23,6 +23,7 @@
 #include <osgEarthFeatures/FilterContext>
 #include <osgEarthSymbology/Geometry>
 #include <osgEarthSymbology/Style>
+#include <osgEarth/GeoCommon>
 #include <osgEarth/SpatialReference>
 #include <osg/Array>
 #include <osg/Shape>

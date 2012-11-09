@@ -17,6 +17,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 #include <osgEarthSymbology/PolygonSymbol>
+#include <osgEarthSymbology/Style>
 
 using namespace osgEarth;
 using namespace osgEarth::Symbology;
@@ -41,4 +42,15 @@ void
 PolygonSymbol::mergeConfig(const Config& conf )
 {
     conf.getObjIfSet( "fill", _fill );
+}
+
+void
+PolygonSymbol::parseSLD(const Config& c, Style& style)
+{
+    if ( match(c.key(), "fill") ) {
+        style.getOrCreate<PolygonSymbol>()->fill()->color() = Color(c.value());
+    }
+    else if ( match(c.key(), "fill-opacity") ) {
+        style.getOrCreate<PolygonSymbol>()->fill()->color().a() = as<float>( c.value(), 1.0f );
+    }
 }

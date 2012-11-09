@@ -297,16 +297,16 @@ Map::getCache() const
     {
         Cache* cache = 0L;
         
-        // if a cache is defined in the options, use that.
-        if ( _mapOptions.cache().isSet() )
-        {
-            cache = CacheFactory::create( _mapOptions.cache().get() );
-        }
-
-        // or, if there's a cache in the registry, install it now.
-        else if ( Registry::instance()->getCache() )
+        // if there's a cache in the registry, install it now.
+        if ( Registry::instance()->getCache() )
         {
             cache = Registry::instance()->getCache();
+        }
+
+        // or, if a cache is defined in the options, use that.
+        else if ( _mapOptions.cache().isSet() )
+        {
+            cache = CacheFactory::create( _mapOptions.cache().get() );
         }
 
         if ( cache )

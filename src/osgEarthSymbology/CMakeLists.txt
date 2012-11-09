@@ -38,6 +38,7 @@ SET(LIB_PUBLIC_HEADERS
     PointSymbol
     PolygonSymbol
     Query
+    RenderSymbol
     Resource
     ResourceCache
     ResourceLibrary
@@ -46,7 +47,6 @@ SET(LIB_PUBLIC_HEADERS
     Style
     StyleSelector
     StyleSheet
-    SLD
     Symbol
     Tags
     TextSymbol
@@ -78,6 +78,7 @@ ADD_LIBRARY(${LIB_NAME} ${OSGEARTH_USER_DEFINED_DYNAMIC_OR_STATIC}
     PointSymbol.cpp
     PolygonSymbol.cpp
     Query.cpp
+    RenderSymbol.cpp
     Resource.cpp
     ResourceCache.cpp
     ResourceLibrary.cpp
@@ -86,7 +87,6 @@ ADD_LIBRARY(${LIB_NAME} ${OSGEARTH_USER_DEFINED_DYNAMIC_OR_STATIC}
     Style.cpp
     StyleSelector.cpp
     StyleSheet.cpp
-    SLD.cpp
     Symbol.cpp
     TextSymbol.cpp
 )

@@ -74,11 +74,14 @@ namespace osgEarth { namespace Util
 
         /** Bindable event types. */
         enum EventType {
-            EVENT_MOUSE_CLICK        = osgGA::GUIEventAdapter::USER << 1,
             EVENT_MOUSE_DOUBLE_CLICK = osgGA::GUIEventAdapter::DOUBLECLICK,
             EVENT_MOUSE_DRAG         = osgGA::GUIEventAdapter::DRAG,
             EVENT_KEY_DOWN           = osgGA::GUIEventAdapter::KEYDOWN,
-            EVENT_SCROLL             = osgGA::GUIEventAdapter::SCROLL
+            EVENT_SCROLL             = osgGA::GUIEventAdapter::SCROLL,
+            EVENT_MOUSE_CLICK        = osgGA::GUIEventAdapter::USER << 1,
+            EVENT_MULTI_DRAG         = osgGA::GUIEventAdapter::USER << 2,   // drag with 2 fingers
+            EVENT_MULTI_PINCH        = osgGA::GUIEventAdapter::USER << 3,   // pinch with 2 fingers
+            EVENT_MULTI_TWIST        = osgGA::GUIEventAdapter::USER << 4    // drag 2 fingers in different directions
         };
 
         /** Bindable mouse buttons. */
@@ -324,6 +327,13 @@ namespace osgEarth { namespace Util
                 ActionType action, int scrolling_motion,
                 int modkey_mask =0L,
                 const ActionOptions& options =ActionOptions() );
+
+
+            void bindPinch(
+                ActionType action, const ActionOptions& =ActionOptions() );
+   
+            void bindMultiDrag(
+                ActionType action, const ActionOptions& =ActionOptions() );
 
             /**
              * Sets an overall mouse sensitivity factor.
@@ -691,17 +701,6 @@ namespace osgEarth { namespace Util
         // the "home" function at the moment -- look into depcrecation -GW
         void setByLookAt(const osg::Vec3d& eye, const osg::Vec3d& lv, const osg::Vec3d& up);
 
-        // Applies an action using the raw input parameters.
-        bool handleAction( const Action& action, double dx, double dy, double duration );
-
-        virtual bool handleMouseAction( const Action& action, osg::View* view );
-        virtual bool handleMouseClickAction( const Action& action );
-        virtual bool handleKeyboardAction( const Action& action, double duration_s = DBL_MAX );
-        virtual bool handleScrollAction( const Action& action, double duration_s = DBL_MAX );
-        virtual bool handlePointAction( const Action& type, float mx, float my, osg::View* view );
-        virtual void handleContinuousAction( const Action& action, osg::View* view );
-        virtual void handleMovementAction( const ActionType& type, double dx, double dy, osg::View* view );
-
         // checks to see whether the mouse is "moving".
         bool isMouseMoving();
 
@@ -778,6 +777,41 @@ namespace osgEarth { namespace Util
         const GeoPoint& centerMap() const { return _centerMap; }
 
     protected:
+        typedef osgGA::GUIEventAdapter::TouchData::TouchPoint TouchPoint;
+        typedef std::vector<TouchPoint> MultiTouchPoint; // one per ID (finger/touchpoint)
+        typedef std::deque<MultiTouchPoint> MultiTouchPointQueue;
+        MultiTouchPointQueue _touchPointQueue;
+        //struct TouchEvent {
+        //    EventType _eventType;     // derived touch/other event
+        //    float     _deltaDistance; // change in distance between 2 touches
+        //    float     _dx[2], _dy[2]; // movement of primary and secondary touch points
+        //    float     _dot;
+        //};
+        struct TouchEvent {
+            TouchEvent() : _mbmask(0) { }
+            EventType _eventType;
+            unsigned  _mbmask;
+            float     _dx, _dy;
+        };
+        typedef std::vector<TouchEvent> TouchEvents;
+        void addTouchEvents( const osgGA::GUIEventAdapter& ea );
+        bool parseTouchEvents( TouchEvents& ev );
+
+
+        // Applies an action using the raw input parameters.
+        bool handleAction( const Action& action, double dx, double dy, double duration );
+
+        virtual bool handleMouseAction( const Action& action, osg::View* view );
+        virtual bool handleMouseClickAction( const Action& action );
+        virtual bool handleKeyboardAction( const Action& action, double duration_s = DBL_MAX );
+        virtual bool handleScrollAction( const Action& action, double duration_s = DBL_MAX );
+        virtual bool handlePointAction( const Action& type, float mx, float my, osg::View* view );
+        virtual void handleContinuousAction( const Action& action, osg::View* view );
+        virtual void handleMovementAction( const ActionType& type, double dx, double dy, osg::View* view );
+        //virtual bool handleMultiTouchAction( const Action& action, const TouchEvent& te, osg::View* view );
+
+    protected:
+
         // makeshift "stack" of the last 2 incoming events.
         osg::ref_ptr<const osgGA::GUIEventAdapter> _ga_t1;
         osg::ref_ptr<const osgGA::GUIEventAdapter> _ga_t0;

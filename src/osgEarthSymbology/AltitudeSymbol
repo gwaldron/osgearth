@@ -72,7 +72,7 @@ namespace osgEarth { namespace Symbology
         optional<Clamping>& clamping() { return _clamping; }
         const optional<Clamping>& clamping() const { return _clamping; }
 
-        /** Method of clamping to use (default is CLAMPMODE_STATIC) */
+        /** Method of clamping to use (default is CLAMPMODE_MAP) */
         optional<ClampingMode>& clampingMode() { return _clampingMode; }
         const optional<ClampingMode>& clampingMode() const { return _clampingMode; }
 

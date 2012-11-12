@@ -162,9 +162,9 @@ FeatureModelSource::initialize(const osgDB::Options* dbOptions)
 }
 
 osg::Node*
-FeatureModelSource::createNode(const Map*            map,
-                               const osgDB::Options* dbOptions,
-                               ProgressCallback*     progress )
+FeatureModelSource::createNodeImplementation(const Map*            map,
+                                             const osgDB::Options* dbOptions,
+                                             ProgressCallback*     progress )
 {
     // user must provide a valid map.
     if ( !map )
@@ -243,7 +243,7 @@ _options( options )
     //nop
 }
 
-bool GeomFeatureNodeFactory::createOrUpdateNode(       
+bool GeomFeatureNodeFactory::createOrUpdateNode(
     FeatureCursor*            features,
     const Style&              style,
     const FilterContext&      context,

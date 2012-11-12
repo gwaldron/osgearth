@@ -75,6 +75,20 @@ _options( options )
 }
 
 
+osg::Node* 
+ModelSource::createNode(const Map*            map,
+                        const osgDB::Options* dbOptions,
+                        ProgressCallback*     progress )
+{
+    osg::Node* node = createNodeImplementation(map, dbOptions, progress);
+    if ( node )
+    {
+        firePostProcessors( node );
+    }
+    return node;
+}
+
+
 void 
 ModelSource::addPostProcessor( NodeOperation* op )
 {

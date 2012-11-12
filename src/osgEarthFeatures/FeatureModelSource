@@ -200,7 +200,7 @@ namespace osgEarth { namespace Features
 
         virtual void initialize( const osgDB::Options* dbOptions =0L );
 
-        virtual osg::Node* createNode(
+        virtual osg::Node* createNodeImplementation(
             const Map*            map,
             const osgDB::Options* dbOptions,
             ProgressCallback*     progress );

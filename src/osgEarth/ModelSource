@@ -88,11 +88,16 @@ namespace osgEarth
         /** dtor */
         virtual ~ModelSource() { }
 
+        osg::Node* createNode(
+            const Map*            map,
+            const osgDB::Options* dbOptions,
+            ProgressCallback*     progress );
+
         /**
          * Subclass implements this method to create a scene graph within the
          * context of the provided Map.
          */
-        virtual osg::Node* createNode(
+        virtual osg::Node* createNodeImplementation(
             const Map*            map,
             const osgDB::Options* dbOptions,
             ProgressCallback*     progress ) =0;

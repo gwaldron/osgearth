@@ -21,6 +21,7 @@
 #define OSGEARTH_CLAMPABLE_NODE_H 1
 
 #include <osgEarth/Common>
+#include <osgEarth/DepthOffset>
 #include <osgEarth/OverlayNode>
 #include <osg/Group>
 
@@ -62,6 +63,13 @@ namespace osgEarth
          * minimum range; the maximum bias is applied to geometry at or above the 
          * maximum range; and the bias is interpolated for ranges in between.
          */
+        DepthOffsetOptions& depthOffset() { dirtyDepthOffsetOptions(); return _do; }
+        const DepthOffsetOptions& depthOffset() const { return _do; }
+        
+#if 0
+        /** Sets depth offsetting on or off. */
+        void setDepthOffsetEnabled( bool value );
+        bool getDepthOffsetEnabled() const { return _depthOffsetEnabled; }
 
         /** Sets both the bias applied at the min and max camera ranges. */
         void setDepthOffsetBias( float minBias, float maxBias );
@@ -75,10 +83,11 @@ namespace osgEarth
         /** Sets the ranges at which to apply the min and max biases. */
         void setDepthOffsetRange( float minRange, float maxRange );
         const osg::Vec2f& getDepthOffsetRange() const { return _range; }
+#endif
         
         /** Automatically attempt to select a minimum bias based on an analysis
          *  of the subgraph's geometry. */
-        void calculateDepthOffsetBiasFromSubgraph();
+        void calculateMinDepthOffsetBiasFromSubgraph();
 
         /** Backwards compatibility */
         void setClamped( bool value ) { setActive(value); }
@@ -88,14 +97,21 @@ namespace osgEarth
 
         virtual osg::BoundingSphere computeBound() const;
 
+        virtual void traverse(osg::NodeVisitor& nv);
+
     protected:
         /** dtor */
         virtual ~ClampableNode() { }
 
         bool _autoBias;
-        mutable osg::Vec2f _bias, _range;
         mutable osg::ref_ptr<osg::Uniform> _biasUniform;
         mutable osg::ref_ptr<osg::Uniform> _rangeUniform;
+
+        mutable DepthOffsetOptions _do;
+        bool _doDirty;
+
+        void dirtyDepthOffsetOptions();
+        void applyDepthOffsetOptions();
     };
 
 } // namespace osgEarth

@@ -24,6 +24,7 @@
 #include <osgEarthFeatures/FeatureModelSource>
 #include <osgEarthFeatures/Session>
 #include <osgEarthSymbology/Style>
+#include <osgEarth/ClampableNode>
 #include <osgEarth/NodeUtils>
 #include <osgEarth/ThreadingUtils>
 #include <osg/Node>
@@ -167,8 +168,11 @@ namespace osgEarth { namespace Features
         bool                             _dirty;
         bool                             _pendingUpdate;
         std::vector<const FeatureLevel*> _lodmap;
+        ClampableNode*                   _clamper;
         
         osg::ref_ptr<RefNodeOperationVector> _postMergeOperations;
+
+        void checkForActiveClamping(const Style& style);
     };
 
 } } // namespace osgEarth::Features

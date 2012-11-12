@@ -37,12 +37,115 @@ using namespace osgEarth;
 
 namespace
 {
+    const char clampingVertexShader[] =
+
+        "#version " GLSL_VERSION_STR "\n"
+        GLSL_DEFAULT_PRECISION_FLOAT "\n"
+
+         // uniforms from this ClampingTechnique:
+         "uniform sampler2D oe_clamp_depthTex; \n"
+         "uniform mat4 oe_clamp_cameraView2depthClip; \n"
+         //"uniform mat4 oe_clamp_depthClip2cameraView; \n"
+         "uniform mat4 oe_clamp_depthClip2depthView; \n"
+         "uniform mat4 oe_clamp_depthView2cameraView; \n"
+
+         // uniforms from ClampableNode:
+         "uniform vec2 oe_clamp_bias; \n"
+         "uniform vec2 oe_clamp_range; \n"
+
+         "varying vec4 oe_clamp_simvert; \n"
+         "varying float oe_clamp_simvertrange; \n"
+
+         "void oe_clamp_vertex(void) \n"
+         "{ \n"
+         //   transform the vertex into the depth texture's clip coordinates.
+         "    vec4 v_view_orig = gl_ModelViewMatrix * gl_Vertex; \n"
+         "    vec4 v_depthClip = oe_clamp_cameraView2depthClip * v_view_orig; \n"
+
+         //   sample the depth map.
+         "    float d = texture2DProj( oe_clamp_depthTex, v_depthClip ).r; \n"
+
+         //   now transform into depth-view space so we can apply the height-above-ground:
+         "    vec4 p_depthClip = vec4(v_depthClip.x, v_depthClip.y, d, 1.0); \n"
+         "    vec4 p_depthView = oe_clamp_depthClip2depthView * p_depthClip; \n"
+
+              // next, apply the vert's Z value for that ground offset.
+         "    p_depthView.z += gl_Vertex.z*gl_Vertex.w; \n"
+
+              // then transform the vert back into camera view space.
+         "    vec4 v_view_clamped = oe_clamp_depthView2cameraView * p_depthView; \n"
+
+              // make a fake point in depth clip space and transform it back into view coords.
+         //"    vec4 p = vec4(tc.x, tc.y, d, 1.0); \n"
+         //"    vec4 v_eye_clamped = oe_clamp_depthClip2cameraView * p; \n"
+
+         //   if the clamping distance is too big, bag it.
+         "    vec3 v_view_orig3    = v_view_orig.xyz/v_view_orig.w;\n"
+         "    vec3 v_view_clamped3 = v_view_clamped.xyz/v_view_clamped.w; \n"
+         "    float clamp_distance = length(v_view_orig3 - v_view_clamped3); \n"
+
+         "    const float maxClampDistance = 10000.0; \n"
+
+         "    if ( clamp_distance > maxClampDistance ) \n"
+         "    { \n"
+         "        gl_Position = gl_ProjectionMatrix * v_view_orig; \n"
+                  // still have to populate these to nullify the depth offset code.
+         "        oe_clamp_simvert = gl_Position; \n"
+         "        oe_clamp_simvertrange = 1.0; \n"
+         "    } \n"
+         "    else \n"
+         "    { \n"
+         //       now simulate a "closer" vertex for depth offsetting.
+         //       remap depth offset based on camera distance to vertex. The farther you are away,
+         //       the more of an offset you need.
+
+         "        float range = length(v_view_clamped3); \n"
+
+         "        float ratio = (clamp(range, oe_clamp_range[0], oe_clamp_range[1])-oe_clamp_range[0])/(oe_clamp_range[1]-oe_clamp_range[0]);\n"
+         "        float bias = oe_clamp_bias[0] + ratio * (oe_clamp_bias[1]-oe_clamp_bias[0]);\n"
+
+         "        vec3 adj_vec = normalize(v_view_clamped3); \n"
+         "        vec3 v_view_offset3 = v_view_clamped3 - (adj_vec * bias); \n"
+
+         "        vec4 v_view_sim = vec4( v_view_offset3 * v_view_clamped.w, v_view_clamped.w ); \n"
+         "        oe_clamp_simvert = gl_ProjectionMatrix * v_view_sim;\n"
+         "        oe_clamp_simvertrange = range - bias; \n"
+         "        gl_Position = gl_ProjectionMatrix * v_view_clamped; \n"
+         "    } \n"
+         "} \n";
+
+
+    const char clampingFragmentShader[] =
+
+        "#version " GLSL_VERSION_STR "\n"
+        GLSL_DEFAULT_PRECISION_FLOAT "\n"
+
+        "varying vec4 oe_clamp_simvert; \n"
+        "varying float oe_clamp_simvertrange; \n"
+        "void oe_clamp_fragment(inout vec4 color)\n"
+        "{ \n"
+        "    float sim_depth = 0.5 * (1.0+(oe_clamp_simvert.z/oe_clamp_simvert.w));\n"
+
+             // if the offset pushed the Z behind the eye, the projection mapping will
+             // result in a z>1. We need to bring these values back down to the 
+             // near clip plan (z=0). We need to check simRange too before doing this
+             // so we don't draw fragments that are legitimently beyond the far clip plane.
+        "    if ( sim_depth > 1.0 && oe_clamp_simvertrange < 0.0 ) { sim_depth = 0.0; } \n"
+        "    gl_FragDepth = max(0.0, sim_depth); \n"
+        "}\n";
+
+}
+
+//---------------------------------------------------------------------------
+
+namespace
+{
     // Projection clamping callback that simply records the clamped matrix for
     // later use
     struct CPM : public osg::CullSettings::ClampProjectionMatrixCallback
     {
         void setup( osgUtil::CullVisitor* cv ) {
-            _clampedProj.makeIdentity();
+            _clampedDepthProjMatrix.makeIdentity();
             _cv = cv;
         }
         bool clampProjectionMatrixImplementation(osg::Matrixf& projection, double& znear, double& zfar) const {
@@ -51,12 +154,12 @@ namespace
         }
         bool clampProjectionMatrixImplementation(osg::Matrixd& projection, double& znear, double& zfar) const {
             bool r = _cv->clampProjectionMatrixImplementation(projection, znear, zfar);
-            if ( r ) _clampedProj = projection;
+            if ( r ) _clampedDepthProjMatrix = projection;
             return r;
         }
         
         osgUtil::CullVisitor* _cv;
-        mutable osg::Matrixd  _clampedProj;
+        mutable osg::Matrixd  _clampedDepthProjMatrix;
     };
 
 
@@ -68,6 +171,9 @@ namespace
         osg::ref_ptr<osg::Uniform>   _camViewToDepthClipUniform;
         osg::ref_ptr<osg::Uniform>   _depthClipToCamViewUniform;
         osg::ref_ptr<CPM>            _cpm;
+
+        osg::ref_ptr<osg::Uniform>   _depthClipToDepthViewUniform;
+        osg::ref_ptr<osg::Uniform>   _depthViewToCamViewUniform;
     };
 }
 
@@ -162,121 +268,46 @@ ClampingTechnique::setUpCamera(OverlayDecorator::TechRTTParams& params)
         local->_rttTexture.get(), 
         osg::StateAttribute::ON );
 
+#if 0
     // set up depth test/write parameters for the overlay geometry:
     local->_groupStateSet->setAttributeAndModes(
         new osg::Depth( osg::Depth::LEQUAL, 0.0, 1.0, false ),
         osg::StateAttribute::ON );
+#endif
 
     local->_groupStateSet->setRenderingHint( osg::StateSet::TRANSPARENT_BIN );
 
     // sampler for depth map texture:
     local->_groupStateSet->getOrCreateUniform(
-        "oe_clamp_depthtex", 
+        "oe_clamp_depthTex", 
         osg::Uniform::SAMPLER_2D )->set( _textureUnit );
 
     // matrix that transforms a vert from EYE coords to the depth camera's CLIP coord.
     local->_camViewToDepthClipUniform = local->_groupStateSet->getOrCreateUniform( 
-        "oe_clamp_eye2depthclipmat", 
+        "oe_clamp_cameraView2depthClip", 
         osg::Uniform::FLOAT_MAT4 );
 
     // matrix that transforms a vert from depth-cam CLIP coords to EYE coords.
     local->_depthClipToCamViewUniform = local->_groupStateSet->getOrCreateUniform( 
-        "oe_clamp_depthclip2eyemat", 
+        "oe_clamp_depthClip2cameraView", 
+        osg::Uniform::FLOAT_MAT4 );
+
+    // matrix that transforms a vert from depth clip coords to depth view coords.
+    local->_depthClipToDepthViewUniform = local->_groupStateSet->getOrCreateUniform(
+        "oe_clamp_depthClip2depthView",
+        osg::Uniform::FLOAT_MAT4 );
+
+    // matrix that transforms a vert from depth view coords to camera view coords.
+    local->_depthViewToCamViewUniform = local->_groupStateSet->getOrCreateUniform(
+        "oe_clamp_depthView2cameraView",
         osg::Uniform::FLOAT_MAT4 );
 
     // make the shader that will do clamping and depth offsetting.
     VirtualProgram* vp = new VirtualProgram();
     vp->setName( "ClampingTechnique program" );
+    vp->setFunction( "oe_clamp_vertex",   clampingVertexShader,   ShaderComp::LOCATION_VERTEX_POST_LIGHTING );
+    vp->setFunction( "oe_clamp_fragment", clampingFragmentShader, ShaderComp::LOCATION_FRAGMENT_PRE_LIGHTING );
     local->_groupStateSet->setAttributeAndModes( vp, osg::StateAttribute::ON );
-
-    // vertex shader - subgraph
-    std::string vertexSource = Stringify()
-        << "#version " << GLSL_VERSION_STR << "\n"
-#ifdef OSG_GLES2_AVAILABLE
-        << "precision mediump float;\n"
-#endif
-        // uniforms from this ClampingTechnique:
-        << "uniform sampler2D oe_clamp_depthtex; \n"
-        << "uniform mat4 oe_clamp_eye2depthclipmat; \n"
-        << "uniform mat4 oe_clamp_depthclip2eyemat; \n"
-
-        // uniforms from ClampableNode:
-        << "uniform vec2 oe_clamp_bias; \n"
-        << "uniform vec2 oe_clamp_range; \n"
-
-        << "varying vec4 oe_clamp_simvert; \n"
-        << "varying float oe_clamp_simvertrange; \n"
-
-        << "void oe_clamp_vertex(void) \n"
-        << "{ \n"
-        // transform the vertex into the depth texture's clip coordinates.
-        << "    vec4 v_eye_orig = gl_ModelViewMatrix * gl_Vertex; \n"
-        << "    vec4 tc = oe_clamp_eye2depthclipmat * v_eye_orig; \n"
-
-        // sample the depth map.
-        << "    float d = texture2DProj( oe_clamp_depthtex, tc ).r; \n"
-
-        // make a fake point in depth clip space and transform it back into eye coords.
-        << "    vec4 p = vec4(tc.x, tc.y, d, 1.0); \n"
-        << "    vec4 v_eye_clamped = oe_clamp_depthclip2eyemat * p; \n"
-
-        // if the clamping distance is too big, bag it.
-        << "    vec3 v_eye_orig3    = v_eye_orig.xyz/v_eye_orig.w;\n"
-        << "    vec3 v_eye_clamped3 = v_eye_clamped.xyz/v_eye_clamped.w; \n"
-        << "    float clamp_distance = length(v_eye_orig3 - v_eye_clamped3); \n"
-
-        << "    const float maxClampDistance = 10000.0; \n"
-        
-        << "    if ( clamp_distance > maxClampDistance ) \n"
-        << "    { \n"
-        << "        gl_Position = gl_ProjectionMatrix * v_eye_orig; \n"
-        // still have to populate these to nullify the depth offset code.
-        << "        oe_clamp_simvert = gl_Position; \n"
-        << "        oe_clamp_simvertrange = 1.0; \n"
-        << "    } \n"
-        << "    else \n"
-        << "    { \n"
-
-        // now simulate a "closer" vertex for depth offsetting.
-
-        // remap depth offset based on camera distance to vertex. The farther you are away,
-        // the more of an offset you need.
-
-        << "        float range = length(v_eye_clamped3); \n"
-
-        << "        float ratio = (clamp(range, oe_clamp_range[0], oe_clamp_range[1])-oe_clamp_range[0])/(oe_clamp_range[1]-oe_clamp_range[0]);\n"
-        << "        float bias = oe_clamp_bias[0] + ratio * (oe_clamp_bias[1]-oe_clamp_bias[0]);\n"
-
-        << "        vec3 adj_vec = normalize(v_eye_clamped3); \n"
-        << "        vec3 v_eye_offset3 = v_eye_clamped3 - (adj_vec * bias); \n"
-
-        << "        vec4 v_sim_eye = vec4( v_eye_offset3 * v_eye_clamped.w, v_eye_clamped.w ); \n"
-        << "        oe_clamp_simvert = gl_ProjectionMatrix * v_sim_eye;\n"
-        << "        oe_clamp_simvertrange = range - bias; \n"
-        << "        gl_Position = gl_ProjectionMatrix * v_eye_clamped; \n"
-        << "    } \n"
-        << "} \n";
-
-    vp->setFunction( "oe_clamp_vertex", vertexSource, ShaderComp::LOCATION_VERTEX_POST_LIGHTING );
-
-
-    // fragment shader - depth offset apply
-    std::string frag =
-        "varying vec4 oe_clamp_simvert; \n"
-        "varying float oe_clamp_simvertrange; \n"
-        "void oe_clamp_fragment(inout vec4 color)\n"
-        "{ \n"
-        "    float sim_depth = 0.5 * (1.0+(oe_clamp_simvert.z/oe_clamp_simvert.w));\n"
-
-        // if the offset pushed the Z behind the eye, the projection mapping will
-        // result in a z>1. We need to bring these values back down to the 
-        // near clip plan (z=0). We need to check simRange too before doing this
-        // so we don't draw fragments that are legitimently beyond the far clip plane.
-        "    if ( sim_depth > 1.0 && oe_clamp_simvertrange < 0.0 ) { sim_depth = 0.0; } \n"
-        "    gl_FragDepth = max(0.0, sim_depth); \n"
-        "}\n";
-
-    vp->setFunction( "oe_clamp_fragment", frag, ShaderComp::LOCATION_FRAGMENT_PRE_LIGHTING );
 }
 
 
@@ -313,17 +344,37 @@ ClampingTechnique::cullOverlayGroup(OverlayDecorator::TechRTTParams& params,
         // clip coords directly. This will avoid precision loss in the 32-bit shader.
         static osg::Matrix s_scaleBiasMat = 
             osg::Matrix::translate(1.0,1.0,1.0) * 
-            osg::Matrix::scale(0.5,0.5,0.5);
+            osg::Matrix::scale    (0.5,0.5,0.5);
 
-        osg::Matrix camViewToRttClip = 
+        static osg::Matrix s_invScaleBiasMat = osg::Matrix::inverse(
+            osg::Matrix::translate(1.0,1.0,1.0) * 
+            osg::Matrix::scale    (0.5,0.5,0.5) );
+
+        osg::Matrix cameraViewToDepthView =
             cv->getCurrentCamera()->getInverseViewMatrix() * 
-            params._rttViewMatrix                          * 
-            local._cpm->_clampedProj                       *
+            params._rttViewMatrix;
+
+        osg::Matrix depthViewToDepthClip = 
+            local._cpm->_clampedDepthProjMatrix *
             s_scaleBiasMat;
 
-        local._camViewToDepthClipUniform->set( camViewToRttClip );
-        local._depthClipToCamViewUniform->set( osg::Matrix::inverse(camViewToRttClip) );
-        
+        osg::Matrix cameraViewToDepthClip =
+            cameraViewToDepthView               *
+            depthViewToDepthClip;
+        local._camViewToDepthClipUniform->set( cameraViewToDepthClip );
+
+        //osg::Matrix depthClipToCameraView;
+        //depthClipToCameraView.invert( cameraViewToDepthClip );
+        //local._depthClipToCamViewUniform->set( depthClipToCameraView );
+
+        osg::Matrix depthClipToDepthView;
+        depthClipToDepthView.invert( depthViewToDepthClip );
+        local._depthClipToDepthViewUniform->set( depthClipToDepthView );
+
+        osg::Matrix depthViewToCameraView;
+        depthViewToCameraView.invert( cameraViewToDepthView );
+        local._depthViewToCamViewUniform->set( depthViewToCameraView );
+
         // traverse the overlay nodes, applying the clamping shader.
         cv->pushStateSet( local._groupStateSet.get() );
         params._group->accept( *cv );

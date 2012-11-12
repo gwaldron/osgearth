@@ -21,6 +21,7 @@
 #define OSGEARTH_DEPTH_ADJUSTMENT_H 1
 
 #include <osgEarth/Common>
+#include <osgEarth/Config>
 #include <osg/Group>
 #include <osg/Program>
 #include <osg/Uniform>
@@ -33,15 +34,56 @@
 * glPolygonOffset is *supposed* to do (but doesn't). You get rid of z-fighting but
 * still maintain local occlusion.
 *
-* There is a trade off. You need to set a "minimum offset" that the technique will
-* apply to the geometry. From there, it uses distance-to-vertex to ramp between that and
-* a set maximum offset. The appropriate minimum offset depends a lot on the tessellation
-* of your geometry, so it's wise to use a higher offset for geometry with longer 
+* There is a trade off. You need to set a "minimum bias" that the technique will
+* apply to the geometry. From there, it uses the camera-to-vertex distance to ramp between
+* the minimum bias and a maximum bias. The appropriate minimum bias depends a lot on the
+* tessellation of your geometry, so it's wise to use a higher offset for geometry with longer 
 * segments when in a round-earth situation. The automatic setting (the default) analyzes
 * the subgraph and picks a decent value, but you can always override this is you like.
 */
 namespace osgEarth
 {
+    /**
+     * Depth Offsetting options.
+     */
+    class OSGEARTH_EXPORT DepthOffsetOptions
+    {
+    public:
+        DepthOffsetOptions(const Config& conf =Config());
+
+    public:
+        /** whether to enable depth offsetting (when applicable) */
+        optional<bool>& enabled() { return _enabled; }
+        const optional<bool>& enabled() const { return _enabled; }
+
+        /** depth bias (in meters) applied at the minimum camera range. */
+        optional<float>& minBias() { return _minBias; }
+        const optional<float>& minBias() const { return _minBias; }
+
+        /** depth bias (in meters) applied at the maximum camera range. */
+        optional<float>& maxBias() { return _maxBias; }
+        const optional<float>& maxBias() const { return _maxBias; }
+
+        /** camera range (in meters) at which to apply the minimum depth bias. */
+        optional<float>& minRange() { return _minRange; }
+        const optional<float>& minRange() const { return _minRange; }
+
+        /** camera range (in meters) at which to apply the maximum depth bias. */
+        optional<float>& maxRange() { return _maxRange; }
+        const optional<float>& maxRange() const { return _maxRange; }
+
+    public:
+        Config getConfig() const;
+
+    private:
+        optional<bool>  _enabled;
+        optional<float> _minBias;
+        optional<float> _maxBias;
+        optional<float> _minRange;
+        optional<float> _maxRange;
+    };
+
+
     /**
      * Utilities to manage depth testing for feature data. Handy especially
      * for terrain-conforming lines.

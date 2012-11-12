@@ -1021,11 +1021,14 @@ FeatureModelGraph::createStyleGroup(const Style&         style,
             if ( node.valid() )
                 styleGroup->addChild( node.get() );
         }
+
+        // Check the style and see if we need to active GPU clamping. GPU clamping
+        // is currently all-or-nothing for a single FMG.
+        checkForActiveClamping( style );
     }
 
     return styleGroup;
 }
-
 
 
 osg::Group*
@@ -1066,6 +1069,38 @@ FeatureModelGraph::createStyleGroup(const Style&        style,
 
 
 void
+FeatureModelGraph::checkForActiveClamping( const Style& style )
+{
+    const AltitudeSymbol* alt = style.get<AltitudeSymbol>();
+    if ( alt )
+    {
+        if ((alt->clampingMode() == AltitudeSymbol::CLAMPMODE_GPU) &&
+            (alt->clamping() == AltitudeSymbol::CLAMP_TO_TERRAIN || alt->clamping() == AltitudeSymbol::CLAMP_RELATIVE_TO_TERRAIN))
+        {
+            _clamper->setActive( true );
+            //OE_INFO << LC << "Activating GPU clamping!" << std::endl;
+        }
+    }
+
+    // if we're using extrusion, don't perform depth offsetting:
+    const ExtrusionSymbol* extrusion = style.get<ExtrusionSymbol>();
+    if ( extrusion )
+    {
+        _clamper->depthOffset().enabled() = false;
+    }
+
+    // check for explicit depth offset render settings (note, this could
+    // override the automatic disable put in place by the presence of an
+    // ExtrusionSymbol above)
+    const RenderSymbol* render = style.get<RenderSymbol>();
+    if ( render && render->depthOffset().isSet() )
+    {
+        _clamper->depthOffset() = *render->depthOffset();
+    }
+}
+
+
+void
 FeatureModelGraph::traverse(osg::NodeVisitor& nv)
 {
     if ( nv.getVisitorType() == osg::NodeVisitor::EVENT_VISITOR )
@@ -1094,6 +1129,10 @@ void
 FeatureModelGraph::redraw()
 {
     removeChildren( 0, getNumChildren() );
+
+    // initialize the clamping node first, since we need it in order
+    // to build the default level
+    _clamper = new ClampableNode(0L, false);
 
     osg::Node* node = 0;
     // if there's a display schema in place, set up for quadtree paging.
@@ -1138,6 +1177,12 @@ FeatureModelGraph::redraw()
         fader->setFadeDuration( *_options.fadeInDuration() );
         fader->addChild( node );
         node = fader;
+    }
+
+    // clamper. TODO: figure out if we can optionally include this
+    {
+        _clamper->addChild( node );
+        node = _clamper;
     }
 
     addChild( node );

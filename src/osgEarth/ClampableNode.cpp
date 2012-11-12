@@ -41,51 +41,72 @@ namespace
 
 ClampableNode::ClampableNode( MapNode* mapNode, bool active ) :
 OverlayNode( mapNode, active, &getTechniqueGroup ),
-_bias      ( 100.0f, 10000.0f ),
-_range     ( 1000.0f, 10000000.f ),
-_autoBias  ( true )
+_autoBias  ( true ),
+_doDirty   ( false )
 {
     osg::StateSet* s = this->getOrCreateStateSet();
 
     _biasUniform = s->getOrCreateUniform( "oe_clamp_bias", osg::Uniform::FLOAT_VEC2 );
-    _biasUniform->set( _bias );
+    _biasUniform->set( osg::Vec2f(*_do.minBias(), *_do.maxBias()) );
 
     _rangeUniform = s->getOrCreateUniform( "oe_clamp_range", osg::Uniform::FLOAT_VEC2 );
-    _rangeUniform->set( _range );
+    _rangeUniform->set( osg::Vec2f(*_do.minRange(), *_do.maxRange()) );
 }
 
 void
-ClampableNode::setDepthOffsetBias( float minBias, float maxBias )
+ClampableNode::dirtyDepthOffsetOptions()
 {
-    _autoBias = false;
-    _bias[0] = minBias;
-    _bias[1] = maxBias;
-    _biasUniform->set( _bias );
+    if ( !_doDirty )
+    {
+        _doDirty = true;
+        ADJUST_UPDATE_TRAV_COUNT( this, 1 );
+    }
 }
 
 void
-ClampableNode::setDepthOffsetRange( float minRange, float maxRange )
+ClampableNode::traverse(osg::NodeVisitor& nv)
 {
-    _range[0] = minRange;
-    _range[1] = maxRange;
-    _rangeUniform->set( _range );
+    if ( nv.getVisitorType() == nv.UPDATE_VISITOR )
+    {
+        applyDepthOffsetOptions();
+        _doDirty = false;
+        ADJUST_UPDATE_TRAV_COUNT( this, -1 );
+    }
+    OverlayNode::traverse(nv);
 }
 
 void
-ClampableNode::calculateDepthOffsetBiasFromSubgraph()
+ClampableNode::applyDepthOffsetOptions()
 {
-    _bias[0] = DepthOffsetUtils::recalculate( this );
-    _biasUniform->set( _bias );
+    if ( _do.enabled() == true )
+    {
+        _biasUniform->set( osg::Vec2f(*_do.minBias(), *_do.maxBias()) );
+        _rangeUniform->set( osg::Vec2f(*_do.minRange(), *_do.maxRange()) );
+        dirtyBound();
+    }
+    else
+    {
+        _biasUniform->set( osg::Vec2f(0.0f, 0.0f) );
+    }
+}
+
+void
+ClampableNode::calculateMinDepthOffsetBiasFromSubgraph()
+{
+    // prompts OSG to call computeBound() on the next pass which
+    // will recalculate the minimum bias.
+    _autoBias = true;
+    dirtyBound();
 }
 
 osg::BoundingSphere
 ClampableNode::computeBound() const
 {
-    if ( _autoBias )
+    if ( _autoBias && _do.enabled() == true )
     {
-        _bias[0] = DepthOffsetUtils::recalculate( this );
-        _biasUniform->set( _bias );
+        _do.minBias() = DepthOffsetUtils::recalculate( this );
+        _biasUniform->set( osg::Vec2f(*_do.minBias(), *_do.maxBias()) );
     }
 
-    return osg::Group::computeBound();
+    return OverlayNode::computeBound();
 }

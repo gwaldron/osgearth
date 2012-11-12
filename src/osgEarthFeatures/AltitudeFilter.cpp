@@ -48,10 +48,11 @@ FilterContext
 AltitudeFilter::push( FeatureList& features, FilterContext& cx )
 {
     bool clamp = 
-        _altitude.valid() && 
-        _altitude->clamping() != AltitudeSymbol::CLAMP_NONE &&
-        cx.getSession()       != 0L &&
-        cx.profile()          != 0L;
+        _altitude.valid()                                             && 
+        _altitude->clamping()     != AltitudeSymbol::CLAMP_NONE       &&
+        _altitude->clampingMode() == AltitudeSymbol::CLAMPMODE_MAP    &&
+        cx.getSession()           != 0L                               &&
+        cx.profile()              != 0L;
 
     if ( clamp )
         pushAndClamp( features, cx );

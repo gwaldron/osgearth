@@ -170,7 +170,6 @@ OverlayNode::setMapNode( MapNode* mapNode )
         if ( oldMapNode && _active && _overlayProxyContainer->getNumParents() > 0 )
         {
             osg::Group* group = _getGroup( oldMapNode );
-            //osg::Group* group = getOverlayGroup(oldMapNode);
             if ( group )
                 group->removeChild( _overlayProxyContainer.get() );
         }
@@ -191,7 +190,6 @@ OverlayNode::applyChanges()
         if ( _active && _overlayProxyContainer->getNumParents() == 0 )
         {
             osg::Group* group = _getGroup( getMapNode() );
-            //osg::Group* group = getOverlayGroup( getMapNode() );
             if ( group )
                 group->addChild( _overlayProxyContainer.get() );
         }
@@ -209,7 +207,7 @@ OverlayNode::applyChanges()
 void
 OverlayNode::setActive( bool active )
 {    
-    if ( active != _active && getMapNode() )
+    if ( active != _active )
     {        
         _newActive = active;
         if ( !_dirty )

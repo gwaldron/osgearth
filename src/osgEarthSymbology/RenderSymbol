@@ -21,6 +21,7 @@
 #define OSGEARTHSYMBOLOGY_RENDER_SYMBOL_H 1
 
 #include <osgEarth/Common>
+#include <osgEarth/DepthOffset>
 #include <osgEarth/GeoMath>
 #include <osgEarthSymbology/Common>
 #include <osgEarthSymbology/Symbol>
@@ -42,13 +43,18 @@ namespace osgEarth { namespace Symbology
         optional<bool>& depthTest() { return _depthTest; }
         const optional<bool>& depthTest() const { return _depthTest; }
 
+        /** depth offset properties */
+        optional<DepthOffsetOptions>& depthOffset() { return _depthOffset; }
+        const optional<DepthOffsetOptions>& depthOffset() const { return _depthOffset; }
+
     public:
         virtual Config getConfig() const;
         virtual void mergeConfig( const Config& conf );
         static void parseSLD(const Config& c, class Style& style);
 
     protected:
-        optional<bool> _depthTest;
+        optional<bool>               _depthTest;
+        optional<DepthOffsetOptions> _depthOffset;
         
         /** dtor */
         virtual ~RenderSymbol() { }

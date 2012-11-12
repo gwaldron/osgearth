@@ -34,14 +34,16 @@ RenderSymbol::getConfig() const
 {
     Config conf = Symbol::getConfig();
     conf.key() = "render";
-    conf.addIfSet( "depth_test", _depthTest );
+    conf.addIfSet   ( "depth_test",   _depthTest );
+    conf.addObjIfSet( "depth_offset", _depthOffset );
     return conf;
 }
 
 void 
 RenderSymbol::mergeConfig( const Config& conf )
 {
-    conf.getIfSet( "depth_test", _depthTest );
+    conf.getIfSet   ( "depth_test",   _depthTest );
+    conf.getObjIfSet( "depth_offset", _depthOffset );
 }
 
 void
@@ -49,5 +51,20 @@ RenderSymbol::parseSLD(const Config& c, Style& style)
 {
     if ( match(c.key(), "render-depth-test") ) {
         style.getOrCreate<RenderSymbol>()->depthTest() = as<bool>(c.value(), true);
+    }
+    else if ( match(c.key(), "render-depth-offset") ) {
+        style.getOrCreate<RenderSymbol>()->depthOffset()->enabled() = as<bool>(c.value(), false);
+    }
+    else if ( match(c.key(), "render-depth-offset-min-bias") ) {
+        style.getOrCreate<RenderSymbol>()->depthOffset()->minBias() = as<float>(c.value(), 100.0f);
+    }
+    else if ( match(c.key(), "render-depth-offset-max-bias") ) {
+        style.getOrCreate<RenderSymbol>()->depthOffset()->maxBias() = as<float>(c.value(), 10000.0f);
+    }
+    else if ( match(c.key(), "render-depth-offset-min-range") ) {
+        style.getOrCreate<RenderSymbol>()->depthOffset()->minRange() = as<float>(c.value(), 1000.0f);
+    }
+    else if ( match(c.key(), "render-depth-offset-max-range") ) {
+        style.getOrCreate<RenderSymbol>()->depthOffset()->maxRange() = as<float>(c.value(), 10000000.0f);
     }
 }

@@ -30,9 +30,11 @@
 #include <map>
 
 #ifdef OSG_GLES2_AVAILABLE
-    #define GLSL_VERSION_STR "100"
+#    define GLSL_VERSION_STR             "100"
+#    define GLSL_DEFAULT_PRECISION_FLOAT "precision mediump float;"
 #else
-    #define GLSL_VERSION_STR "110" 
+#    define GLSL_VERSION_STR             "110" 
+#    define GLSL_DEFAULT_PRECISION_FLOAT ""
 #endif
 
 namespace osgEarth

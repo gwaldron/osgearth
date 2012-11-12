@@ -171,7 +171,7 @@ AnnotationUtils::createImageGeometry(osg::Image*       image,
         return 0L;
 
     osg::Texture2D* texture = new osg::Texture2D();
-    texture->setFilter(osg::Texture::MIN_FILTER,osg::Texture::LINEAR);
+    texture->setFilter(osg::Texture::MIN_FILTER,osg::Texture::LINEAR_MIPMAP_LINEAR);
     texture->setFilter(osg::Texture::MAG_FILTER,osg::Texture::LINEAR);
     texture->setResizeNonPowerOfTwoHint(false);
     texture->setImage( image );

@@ -377,9 +377,10 @@ FeatureModelGraph::setupPaging()
     osg::BoundingSphered bs = getBoundInWorldCoords( _usableMapExtent, &mapf );
 
     const FeatureProfile* featureProfile = _session->getFeatureSource()->getFeatureProfile();
-    if (featureProfile->getTiled() && 
-        !_options.layout()->tileSizeFactor().isSet() && 
-        (_options.layout()->maxRange().isSet() || _options.maxRange().isSet()))
+
+    optional<float> maxRangeOverride;
+
+    if (_options.layout()->maxRange().isSet() || _options.maxRange().isSet())
     {
         // select the max range either from the Layout or from the model layer options.
         float userMaxRange = FLT_MAX;
@@ -388,27 +389,39 @@ FeatureModelGraph::setupPaging()
         if ( _options.maxRange().isSet() )
             userMaxRange = std::min(userMaxRange, *_options.maxRange());
 
-        //Automatically compute the tileSizeFactor based on the max range
-        double width, height;
-        featureProfile->getProfile()->getTileDimensions(featureProfile->getFirstLevel(), width, height);
+        if (featureProfile->getTiled() )
+        {
+            if ( !_options.layout()->tileSizeFactor().isSet() )
+            {
+                //Automatically compute the tileSizeFactor based on the max range
+                double width, height;
+                featureProfile->getProfile()->getTileDimensions(featureProfile->getFirstLevel(), width, height);
 
-        GeoExtent ext(featureProfile->getSRS(),
-                      featureProfile->getExtent().west(),
-                      featureProfile->getExtent().south(),
-                      featureProfile->getExtent().west() + width,
-                      featureProfile->getExtent().south() + height);
-        osg::BoundingSphered bounds = getBoundInWorldCoords( ext, &mapf);
+                GeoExtent ext(featureProfile->getSRS(),
+                              featureProfile->getExtent().west(),
+                              featureProfile->getExtent().south(),
+                              featureProfile->getExtent().west() + width,
+                              featureProfile->getExtent().south() + height);
+                osg::BoundingSphered bounds = getBoundInWorldCoords( ext, &mapf);
 
-        float tileSizeFactor = userMaxRange / bounds.radius();
-        //The tilesize factor must be at least 1.0 to avoid culling the tile when you are within it's bounding sphere. 
-        tileSizeFactor = osg::maximum( tileSizeFactor, 1.0f);
-        OE_DEBUG << LC << "Computed a tilesize factor of " << tileSizeFactor << " with max range setting of " <<  userMaxRange << std::endl;
-        _options.layout()->tileSizeFactor() = tileSizeFactor * 1.5;
+                float tileSizeFactor = userMaxRange / bounds.radius();
+                //The tilesize factor must be at least 1.0 to avoid culling the tile when you are within it's bounding sphere. 
+                tileSizeFactor = osg::maximum( tileSizeFactor, 1.0f);
+                OE_DEBUG << LC << "Computed a tilesize factor of " << tileSizeFactor << " with max range setting of " <<  userMaxRange << std::endl;
+                _options.layout()->tileSizeFactor() = tileSizeFactor * 1.5;
+            }
+        }
+        else
+        {
+            // user set a max_range, but we'd not tiled. Just override the top level plod.
+            maxRangeOverride = userMaxRange;
+        }
     }
-   
 
     // calculate the max range for the top-level PLOD:
-    float maxRange = bs.radius() * _options.layout()->tileSizeFactor().value();
+    float maxRange = 
+        maxRangeOverride.isSet() ? *maxRangeOverride :
+        bs.radius() * _options.layout()->tileSizeFactor().value();
 
     // build the URI for the top-level paged LOD:
     std::string uri = s_makeURI( _uid, 0, 0, 0 );

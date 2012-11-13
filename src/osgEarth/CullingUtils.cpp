@@ -567,7 +567,8 @@ void OcclusionCullingCallback::operator()(osg::Node* node, osg::NodeVisitor* nv)
                 osg::Vec3d start = eye;
                 osg::Vec3d end = _world;
                 osgUtil::LineSegmentIntersector* i = new osgUtil::LineSegmentIntersector( start, end );
-                osgUtil::IntersectionVisitor iv;            
+                i->setIntersectionLimit( osgUtil::Intersector::LIMIT_ONE );
+                osgUtil::IntersectionVisitor iv;
                 iv.setIntersector( i );
                 _node->accept( iv );
                 osgUtil::LineSegmentIntersector::Intersections& results = i->getIntersections();

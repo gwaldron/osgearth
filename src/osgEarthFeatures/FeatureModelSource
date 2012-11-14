@@ -25,6 +25,7 @@
 #include <osgEarthFeatures/FeatureDisplayLayout>
 #include <osgEarthFeatures/GeometryCompiler>
 #include <osgEarthSymbology/Style>
+#include <osgEarth/FadeEffect>
 #include <osgEarth/ModelSource>
 #include <osgEarth/Map>
 #include <osgEarth/CachePolicy>
@@ -84,15 +85,9 @@ namespace osgEarth { namespace Features
         optional<CachePolicy>& cachePolicy() { return _cachePolicy; }
         const optional<CachePolicy>& cachePolicy() const { return _cachePolicy; }
 
-        /** Time (in seconds) to fade in the graphics */
-        optional<float>& fadeInDuration() { return _fadeInDuration; }
-        const optional<float>& fadeInDuration() const { return _fadeInDuration; }
-
-    public: // deprecated
-
-        /** @deprecated - use the ConvertTypeFilter instead */
-        optional<Symbology::Geometry::Type>& geometryTypeOverride() { return _geomTypeOverride; }
-        const optional<Symbology::Geometry::Type>& geometryTypeOverride() const { return _geomTypeOverride; }
+        /** Fading properties */
+        optional<FadeOptions>& fading() { return _fading; }
+        const optional<FadeOptions>& fading() const { return _fading; }
 
     public:
         /** A live feature source instance to use. Note, this does not serialize. */
@@ -126,13 +121,10 @@ namespace osgEarth { namespace Features
         optional<bool>                  _backfaceCulling;
         optional<bool>                  _alphaBlending;
         optional<CachePolicy>           _cachePolicy;
-        optional<float>                 _fadeInDuration;
+        optional<FadeOptions>           _fading;
 
         osg::ref_ptr<StyleSheet>        _styles;
         osg::ref_ptr<FeatureSource>     _featureSource;
-
-        /** @deprecated */
-        optional<Geometry::Type>        _geomTypeOverride;
     };
 
 

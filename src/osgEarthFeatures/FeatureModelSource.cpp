@@ -31,15 +31,13 @@ using namespace osgEarth::Symbology;
 
 FeatureModelSourceOptions::FeatureModelSourceOptions( const ConfigOptions& options ) :
 ModelSourceOptions ( options ),
-_geomTypeOverride  ( Geometry::TYPE_UNKNOWN ),
 _lit               ( true ),
 _maxGranularity_deg( 1.0 ),
 _mergeGeometry     ( false ),
 _clusterCulling    ( true ),
 _featureIndexing   ( false ),
 _backfaceCulling   ( true ),
-_alphaBlending     ( true ),
-_fadeInDuration    ( 0.0f )
+_alphaBlending     ( true )
 {
     fromConfig( _conf );
 }
@@ -53,8 +51,9 @@ FeatureModelSourceOptions::fromConfig( const Config& conf )
     conf.getObjIfSet( "styles",       _styles );
     conf.getObjIfSet( "layout",       _layout );
     conf.getObjIfSet( "paging",       _layout ); // backwards compat.. to be deprecated
-    conf.getObjIfSet( "feature_name", _featureNameExpr );
     conf.getObjIfSet( "cache_policy", _cachePolicy );
+    conf.getObjIfSet( "fading",       _fading );
+    conf.getObjIfSet( "feature_name", _featureNameExpr );
 
     conf.getIfSet( "lighting",         _lit );
     conf.getIfSet( "max_granularity",  _maxGranularity_deg );
@@ -63,15 +62,6 @@ FeatureModelSourceOptions::fromConfig( const Config& conf )
     conf.getIfSet( "feature_indexing", _featureIndexing );
     conf.getIfSet( "backface_culling", _backfaceCulling );
     conf.getIfSet( "alpha_blending",   _alphaBlending );
-    conf.getIfSet( "fade_in_duration", _fadeInDuration );
-
-    std::string gt = conf.value( "geometry_type" );
-    if ( gt == "line" || gt == "lines" || gt == "linestring" )
-        _geomTypeOverride = Geometry::TYPE_LINESTRING;
-    else if ( gt == "point" || gt == "pointset" || gt == "points" )
-        _geomTypeOverride = Geometry::TYPE_POINTSET;
-    else if ( gt == "polygon" || gt == "polygons" )
-        _geomTypeOverride = Geometry::TYPE_POLYGON;
 }
 
 Config
@@ -87,6 +77,8 @@ FeatureModelSourceOptions::getConfig() const
     conf.updateObjIfSet( "styles",       _styles );
     conf.updateObjIfSet( "layout",       _layout );
     conf.updateObjIfSet( "cache_policy", _cachePolicy );
+    conf.updateObjIfSet( "fading",       _fading );
+    conf.updateObjIfSet( "feature_name", _featureNameExpr );
 
     conf.updateIfSet( "lighting",         _lit );
     conf.updateIfSet( "max_granularity",  _maxGranularity_deg );
@@ -95,16 +87,6 @@ FeatureModelSourceOptions::getConfig() const
     conf.updateIfSet( "feature_indexing", _featureIndexing );
     conf.updateIfSet( "backface_culling", _backfaceCulling );
     conf.updateIfSet( "alpha_blending",   _alphaBlending );
-    conf.updateIfSet( "fade_in_duration", _fadeInDuration );
-
-    if ( _geomTypeOverride.isSet() ) {
-        if ( _geomTypeOverride == Geometry::TYPE_LINESTRING )
-            conf.update( "geometry_type", "line" );
-        else if ( _geomTypeOverride == Geometry::TYPE_POINTSET )
-            conf.update( "geometry_type", "point" );
-        else if ( _geomTypeOverride == Geometry::TYPE_POLYGON )
-            conf.update( "geometry_type", "polygon" );
-    }
 
     return conf;
 }

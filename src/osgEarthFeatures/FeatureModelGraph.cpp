@@ -295,7 +295,8 @@ _pendingUpdate( false )
 
     // If the user requests fade-in, install a post-merge operation that will set the 
     // proper fade time for paged nodes.
-    if ( _options.fadeInDuration().value() > 0.0f )
+    if ( _options.fading().isSet() )
+//    if ( _options.fadeInDuration().value() > 0.0f )
     {
         addPostMergeOperation( new SetupFading() );
         OE_INFO << LC << "Added fading post-merge operation" << std::endl;
@@ -1183,11 +1184,13 @@ FeatureModelGraph::redraw()
         node = lod;
     }
 
-    // If we want fading, install a fader.
-    if ( _options.fadeInDuration().value() > 0.0f )
+    // If we want fading, install fading.
+    if ( _options.fading().isSet() )
     {
         FadeEffect* fader = new FadeEffect();
-        fader->setFadeDuration( *_options.fadeInDuration() );
+        fader->setFadeDuration( *_options.fading()->duration() );
+        fader->setMaxRange( *_options.fading()->maxRange() );
+        fader->setAttenuationDistance( *_options.fading()->attenuationDistance() );
         fader->addChild( node );
         node = fader;
     }

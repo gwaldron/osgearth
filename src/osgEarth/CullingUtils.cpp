@@ -419,6 +419,58 @@ ClusterCullingFactory::create(const osg::Vec3& controlPoint,
 
 //------------------------------------------------------------------------
 
+CullNodeByEllipsoid::CullNodeByEllipsoid( const osg::EllipsoidModel* model ) :
+_minRadius( std::min(model->getRadiusPolar(), model->getRadiusEquator()) )
+{
+    //nop
+}
+
+
+void
+CullNodeByEllipsoid::operator()(osg::Node* node, osg::NodeVisitor* nv)
+{
+    if ( nv )
+    {
+        osgUtil::CullVisitor* cv = static_cast<osgUtil::CullVisitor*>(nv);
+
+        // camera location
+        osg::Vec3d vp, center, up;
+        cv->getCurrentCamera()->getViewMatrixAsLookAt(vp, center, up);
+        double vpLen2 = vp.length2();
+
+        // world bound of this model
+        osg::Matrix l2w = osg::computeLocalToWorld( nv->getNodePath() );
+        const osg::BoundingSphere& bs = node->getBound();
+        osg::BoundingSphere bsWorld( bs.center() * l2w, bs.radius() * l2w.getScale().x() );
+        double bswLen2 = bsWorld.center().length2();
+
+        double vpLen = vp.length();
+        osg::Vec3d vpToTarget = bsWorld.center() - vp;
+        
+        vp.normalize();
+        vpToTarget.normalize();
+        double theta = acos( vpToTarget * -vp );
+        double r = vpLen * sin(theta);
+        //double p = 
+
+        // "r" is the length of the shortest line between the center of the 
+        // ellipsoid and the line of light. If (r) is less than the ellipsoid's
+        // minumum radius, that means the ellipsoid is blocking the LOS.
+        // (We "tweak" r a bit: increase it by the target object's radius so we
+        // can account for the whole object, and subtract the lower point on 
+        // earth to account for the camera being underground)
+        if ( r + bsWorld.radius() > _minRadius - 11000.0 )
+        {
+            OE_NOTICE 
+                << "r=" << r << ", rad="<<bsWorld.radius()<<", min=" << _minRadius
+                << std::endl;
+            traverse(node, nv);
+        }
+    }
+}
+
+//------------------------------------------------------------------------
+
 CullNodeByHorizon::CullNodeByHorizon( const osg::Vec3d& world, const osg::EllipsoidModel* model ) :
 _world(world),
 _r(model->getRadiusPolar()),
@@ -567,7 +619,8 @@ void OcclusionCullingCallback::operator()(osg::Node* node, osg::NodeVisitor* nv)
                 osg::Vec3d start = eye;
                 osg::Vec3d end = _world;
                 osgUtil::LineSegmentIntersector* i = new osgUtil::LineSegmentIntersector( start, end );
-                osgUtil::IntersectionVisitor iv;            
+                i->setIntersectionLimit( osgUtil::Intersector::LIMIT_ONE );
+                osgUtil::IntersectionVisitor iv;
                 iv.setIntersector( i );
                 _node->accept( iv );
                 osgUtil::LineSegmentIntersector::Intersections& results = i->getIntersections();

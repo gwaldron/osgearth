@@ -20,7 +20,7 @@
 #define OSGEARTH_ANNOTATION_TRACK_NODE_H 1
 
 #include <osgEarthAnnotation/OrthoNode>
-#include <osgEarthSymbology/TextSymbol>
+#include <osgEarthSymbology/Style>
 #include <osgEarth/Containers>
 #include <osg/Image>
 #include <osgText/String>
@@ -98,17 +98,15 @@ namespace osgEarth { namespace Annotation
         /**
          * Constructs a new track node
          * @param mapNode     Map node under which this track will live
-         * @param position    Initial position (in map coordinates)
-         * @param image       Icon image to use
+         * @param position    Initial position
+         * @param style       Style containing an IconSymbol for the image
          * @param fieldSchema Schema for track label fields
          */
-        //TrackNode(
-        //    MapNode*                    mapNode,
-        //    const osg::Vec3d&           positionInMapCoords,
-        //    osg::Image*                 image,
-        //    const TrackNodeFieldSchema& fieldSchema );
-
-        virtual ~TrackNode() { }
+        TrackNode(
+            MapNode*                    mapNode,
+            const GeoPoint&             position,
+            const Style&                style,
+            const TrackNodeFieldSchema& fieldSchema );
 
         /** 
          * Sets the value of one of the field labels.
@@ -139,8 +137,11 @@ namespace osgEarth { namespace Annotation
         virtual void setAnnotationData( AnnotationData* data );
 
     protected:
-        osg::ref_ptr<osg::Image> _image;
-        class osg::Geode*        _geode;
+
+        virtual ~TrackNode() { }
+
+        Style             _style;
+        class osg::Geode* _geode;
 
         typedef fast_map<std::string, osg::Drawable*> NamedDrawables;
         NamedDrawables _namedDrawables;

@@ -92,6 +92,16 @@ namespace osgEarth
         }
     };
 
+    /**
+     * Culler that tests whether the line-of-sight vector between the camera
+     * and the node intersects the Ellipsoid, and if so, culls the node.
+     */
+    struct OSGEARTH_EXPORT CullNodeByEllipsoid : public osg::NodeCallback {
+        double _minRadius;
+        CullNodeByEllipsoid( const osg::EllipsoidModel* model );
+        void operator()(osg::Node* node, osg::NodeVisitor* nv);
+    };
+
     struct OSGEARTH_EXPORT CullNodeByHorizon : public osg::NodeCallback {
         osg::Vec3d _world;
         double _r, _r2;

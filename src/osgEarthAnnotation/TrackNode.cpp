@@ -38,8 +38,24 @@ TrackNode::TrackNode(MapNode*                    mapNode,
                      osg::Image*                 image,
                      const TrackNodeFieldSchema& fieldSchema ) :
 
+OrthoNode   ( mapNode, position )
+{
+    if ( image )
+    {
+        IconSymbol* icon = _style.getOrCreate<IconSymbol>();
+        icon->setImage( image );
+    }
+
+    init( fieldSchema );
+}
+
+TrackNode::TrackNode(MapNode*                    mapNode, 
+                     const GeoPoint&             position,
+                     const Style&                style,
+                     const TrackNodeFieldSchema& fieldSchema ) :
+
 OrthoNode   ( mapNode, position ),
-_image      ( image )
+_style      ( style )
 {
     init( fieldSchema );
 }
@@ -48,13 +64,18 @@ void
 TrackNode::init( const TrackNodeFieldSchema& schema )
 {
     _geode = new osg::Geode();
-    
-    if ( _image.valid() )
+
+    IconSymbol* icon = _style.get<IconSymbol>();
+    osg::Image* image = icon ? icon->getImage() : 0L;
+
+    if ( icon && image )
     {
         // apply the image icon.
         osg::Geometry* imageGeom = AnnotationUtils::createImageGeometry( 
-            _image.get(),             // image
-            osg::Vec2s(0,0) );        // offset
+            image,                    // image
+            osg::Vec2s(0,0),          // offset
+            0,                        // tex image unit
+            icon->heading()->eval() );
 
         if ( imageGeom )
         {

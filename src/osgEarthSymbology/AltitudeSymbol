@@ -54,15 +54,18 @@ namespace osgEarth { namespace Symbology
         };
 
         /**
-         * Clamping mode - technique we use to clamp.
+         * Clamping technique - how to clamp data.
          */
-        enum ClampingMode
+        enum Technique
         {
             /** Clamp once at load time to the map model's elevation dataset. */
-            CLAMPMODE_MAP,
+            TECHNIQUE_MAP,
 
-            /** Clamp at runtime using the GPU. */
-            CLAMPMODE_GPU
+            /** Clamp at verts continuously on the GPU. */
+            TECHNIQUE_GPU,
+
+            /** Drape the geometry using projective texturing. */
+            TECHNIQUE_DRAPE
         };
 
     public:
@@ -72,9 +75,9 @@ namespace osgEarth { namespace Symbology
         optional<Clamping>& clamping() { return _clamping; }
         const optional<Clamping>& clamping() const { return _clamping; }
 
-        /** Method of clamping to use (default is CLAMPMODE_MAP) */
-        optional<ClampingMode>& clampingMode() { return _clampingMode; }
-        const optional<ClampingMode>& clampingMode() const { return _clampingMode; }
+        /** Method of terrain following to use (default is TECHNIQUE_MAP) */
+        optional<Technique>& technique() { return _technique; }
+        const optional<Technique>& technique() const { return _technique; }
 
         /** Terrain resolution at which to perform clamping (in map units) */
         optional<float>& clampingResolution() { return _clampingResolution; }
@@ -97,7 +100,7 @@ namespace osgEarth { namespace Symbology
         virtual ~AltitudeSymbol() { }
 
         optional<Clamping>           _clamping;
-        optional<ClampingMode>       _clampingMode;
+        optional<Technique>          _technique;
         optional<float>              _clampingResolution;
         optional<NumericExpression>  _verticalOffset;
         optional<NumericExpression>  _verticalScale;

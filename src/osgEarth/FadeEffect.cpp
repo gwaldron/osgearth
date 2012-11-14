@@ -104,16 +104,16 @@ FadeEffect::FadeEffect()
         vp->setFunction( "oe_fragFadeEffect", FadeEffectFragmentShader, ShaderComp::LOCATION_FRAGMENT_PRE_LIGHTING );
 
         ss->setAttributeAndModes( vp, osg::StateAttribute::ON );
+
+        _fadeDuration = ss->getOrCreateUniform( "oe_fadeeffect_duration", osg::Uniform::FLOAT );
+        _fadeDuration->set( 1.0f );
+
+        _maxRange = ss->getOrCreateUniform( "oe_fadeeffect_maxRange", osg::Uniform::FLOAT );
+        _maxRange->set( FLT_MAX );
+
+        _attenDist = ss->getOrCreateUniform( "oe_fadeeffect_attenDist", osg::Uniform::FLOAT );
+        _attenDist->set( 0.0f );
     }
-
-    _fadeDuration = ss->getOrCreateUniform( "oe_fadeeffect_duration", osg::Uniform::FLOAT );
-    _fadeDuration->set( 1.0f );
-
-    _maxRange = ss->getOrCreateUniform( "oe_fadeeffect_maxRange", osg::Uniform::FLOAT );
-    _maxRange->set( FLT_MAX );
-
-    _attenDist = ss->getOrCreateUniform( "oe_fadeeffect_attenDist", osg::Uniform::FLOAT );
-    _attenDist->set( 0.0f );
 
     ss->setMode( GL_BLEND, 1 );
 }

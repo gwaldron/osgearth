@@ -29,10 +29,36 @@ namespace osgEarth
     class TerrainEngineNode;
 
     /**
-     * Clamped geometry to the terrain using a GPU technique.
+     * Clamps geometry to the terrain using the GPU.
+     *
+     * This overlay technique installs a shader that samples the depth
+     * of the underlying terrain and then adjusts the vertex position to
+     * the height of the terrain. It then applies a depth offset in order
+     * to mitigate Z-fighting.
+     *
+     * Approach
+     *
+     * This technique works by first setting up a nadir-view RTT camera that
+     * captures the depth component of the terrain within the view frustum of
+     * the main camera. Then the GPU uses this "depth texture" to move each
+     * vertex so it coindices with the terrain.
+     *
+     * Limitations
+     *
+     * Since this is an orthographic view, the effective resolution of depth
+     * data close to the camera may not be quite sufficient, especially when
+     * the camera is pitched up looking out over the horizon. As a reuslt, you
+     * may see the verts "jitter" slightly in the Z direciton as you camera moves.
+     *
+     * Performance takes a hit since we need to RTT the terrain in a pre-render
+     * pass.
      */
     class OSGEARTH_EXPORT ClampingTechnique : public OverlayTechnique
     {
+    public:
+        typedef osg::Group* (*TechniqueProvider)(class MapNode*);
+        static TechniqueProvider Provider;
+
     public:
         ClampingTechnique();
 

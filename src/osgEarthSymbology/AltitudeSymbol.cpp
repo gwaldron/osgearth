@@ -25,7 +25,7 @@ using namespace osgEarth::Symbology;
 AltitudeSymbol::AltitudeSymbol( const Config& conf ) :
 Symbol             ( conf ),
 _clamping          ( CLAMP_NONE ),
-_clampingMode      ( CLAMPMODE_MAP ),
+_technique         ( TECHNIQUE_MAP ),
 _clampingResolution( 0.0f ),
 _verticalScale     ( NumericExpression(1.0) ),
 _verticalOffset    ( NumericExpression(0.0) )
@@ -43,8 +43,9 @@ AltitudeSymbol::getConfig() const
     conf.addIfSet   ( "clamping",  "absolute",   _clamping, CLAMP_ABSOLUTE );
     conf.addIfSet   ( "clamping",  "relative",   _clamping, CLAMP_RELATIVE_TO_TERRAIN );
 
-    conf.addIfSet   ( "clamping_mode", "map", _clampingMode, CLAMPMODE_MAP );
-    conf.addIfSet   ( "clamping_mode", "gpu", _clampingMode, CLAMPMODE_GPU );
+    conf.addIfSet   ( "technique", "map",   _technique, TECHNIQUE_MAP );
+    conf.addIfSet   ( "technique", "gpu",   _technique, TECHNIQUE_GPU );
+    conf.addIfSet   ( "technique", "drape", _technique, TECHNIQUE_DRAPE );
 
     conf.addIfSet   ( "clamping_resolution",     _clampingResolution );
     conf.addObjIfSet( "vertical_offset",         _verticalOffset );
@@ -60,8 +61,9 @@ AltitudeSymbol::mergeConfig( const Config& conf )
     conf.getIfSet   ( "clamping",  "absolute", _clamping, CLAMP_ABSOLUTE );
     conf.getIfSet   ( "clamping",  "relative", _clamping, CLAMP_RELATIVE_TO_TERRAIN );
 
-    conf.getIfSet   ( "clamping_mode", "map", _clampingMode, CLAMPMODE_MAP );
-    conf.getIfSet   ( "clamping_mode", "gpu", _clampingMode, CLAMPMODE_GPU );
+    conf.getIfSet   ( "technique", "map",   _technique, TECHNIQUE_MAP );
+    conf.getIfSet   ( "technique", "gpu",   _technique, TECHNIQUE_GPU );
+    conf.getIfSet   ( "technique", "drape", _technique, TECHNIQUE_DRAPE );
 
     conf.getIfSet   ( "clamping_resolution",   _clampingResolution );
     conf.getObjIfSet( "vertical_offset",       _verticalOffset );
@@ -81,11 +83,13 @@ AltitudeSymbol::parseSLD(const Config& c, Style& style)
         else if ( match(c.value(), "relative") ) 
             style.getOrCreate<AltitudeSymbol>()->clamping() = CLAMP_RELATIVE_TO_TERRAIN;
     }
-    else if ( match(c.key(), "altitude-clamping-mode") ) {
+    else if ( match(c.key(), "altitude-technique") ) {
         if      ( match(c.value(), "map") )
-            style.getOrCreate<AltitudeSymbol>()->clampingMode() = CLAMPMODE_MAP;
+            style.getOrCreate<AltitudeSymbol>()->technique() = TECHNIQUE_MAP;
         else if ( match(c.value(), "gpu") )
-            style.getOrCreate<AltitudeSymbol>()->clampingMode() = CLAMPMODE_GPU;
+            style.getOrCreate<AltitudeSymbol>()->technique() = TECHNIQUE_GPU;
+        else if ( match(c.value(), "drape") )
+            style.getOrCreate<AltitudeSymbol>()->technique() = TECHNIQUE_DRAPE;
     }
     else if ( match(c.key(), "altitude-resolution") ) {
         style.getOrCreate<AltitudeSymbol>()->clampingResolution() = as<float>( c.value(), 0.0f );

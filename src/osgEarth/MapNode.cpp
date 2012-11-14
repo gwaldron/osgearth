@@ -327,9 +327,11 @@ MapNode::init()
 
     // install the Clamping technique for overlays:
     {
-        ClampingTechnique* clamping = new ClampingTechnique();
+        OverlayTechnique* clamping = new ClampingTechnique();
+        //OverlayTechnique* clamping = new ClampingBinTechnique();
         _overlayDecorator->addTechnique( clamping );
     }
+
 
     addTerrainDecorator( _overlayDecorator );
 
@@ -528,14 +530,9 @@ MapNode::onModelLayerAdded( ModelLayer* layer, unsigned int index )
             {
                 if ( layer->getOverlay() )
                 {
-                    //ClampableNode* draper = new ClampableNode( this );
-                    //DrapeableNode* draper = new DrapeableNode( this );
-                    //draper->addChild( node );
-                    //node = draper;
-                    //osg::Group* group = new osg::Group();
-                    //group->getOrCreateStateSet()->setRenderBinDetails( 0, "osgEarth::ClampingBin" );
-                    //group->addChild( node );
-                    //node = group;
+                    DrapeableNode* draper = new DrapeableNode( this );
+                    draper->addChild( node );
+                    node = draper;
                 }
 
                 _models->insertChild( index, node );

@@ -167,7 +167,7 @@ OverlayNode::setMapNode( MapNode* mapNode )
 
     if ( oldMapNode != mapNode )
     {
-        if ( oldMapNode && _active && _overlayProxyContainer->getNumParents() > 0 )
+        if ( oldMapNode && _getGroup && _active && _overlayProxyContainer->getNumParents() > 0 )
         {
             osg::Group* group = _getGroup( oldMapNode );
             if ( group )
@@ -181,11 +181,24 @@ OverlayNode::setMapNode( MapNode* mapNode )
 }
 
 void
+OverlayNode::setTechniqueProvider( OverlayNode::TechniqueProvider p )
+{
+    osg::ref_ptr<MapNode> save = getMapNode();
+    if ( save.valid() )
+        setMapNode( 0L );
+
+    _getGroup = p;
+
+    if ( save.valid() )
+        setMapNode( save.get() );
+}
+
+void
 OverlayNode::applyChanges()
 {
     _active = _newActive;
 
-    if ( getMapNode() )
+    if ( getMapNode() && _getGroup )
     {
         if ( _active && _overlayProxyContainer->getNumParents() == 0 )
         {

@@ -1088,8 +1088,8 @@ FeatureModelGraph::checkForActiveClamping( const Style& style )
     const AltitudeSymbol* alt = style.get<AltitudeSymbol>();
     if ( alt )
     {
-        if ((alt->clampingMode() == AltitudeSymbol::CLAMPMODE_GPU) &&
-            (alt->clamping() == AltitudeSymbol::CLAMP_TO_TERRAIN || alt->clamping() == AltitudeSymbol::CLAMP_RELATIVE_TO_TERRAIN))
+        if ((alt->clamping() == AltitudeSymbol::CLAMP_TO_TERRAIN || alt->clamping() == AltitudeSymbol::CLAMP_RELATIVE_TO_TERRAIN) &&
+            (alt->technique() == AltitudeSymbol::TECHNIQUE_GPU))
         {
             _clamper->setActive( true );
             //OE_INFO << LC << "Activating GPU clamping!" << std::endl;

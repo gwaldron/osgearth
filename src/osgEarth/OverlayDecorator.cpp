@@ -132,8 +132,15 @@ OverlayDecorator::addTechnique(OverlayTechnique* technique)
 
     else if ( technique )
     {
-        _overlayGroups.push_back( new NotifierGroup<OverlayDecorator>(this) );
-        _techniques.push_back( technique );
+        if ( technique->supported() )
+        {
+            _overlayGroups.push_back( new NotifierGroup<OverlayDecorator>(this) );
+            _techniques.push_back( technique );
+        }
+        else
+        {
+            _unsupportedTechniques.push_back( technique );
+        }
     }
 }
 

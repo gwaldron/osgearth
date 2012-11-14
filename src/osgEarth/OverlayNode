@@ -35,6 +35,16 @@ namespace osgEarth
     class OSGEARTH_EXPORT OverlayNode : public osg::Group, public MapNodeObserver
     {
     public:
+        // signature for the function that provides the technique group.
+        typedef osg::Group* (*TechniqueProvider)(MapNode*);      
+        
+    public:
+        /**
+         * Constructs a new overlay node.
+         */
+        OverlayNode( MapNode* mapNode, bool active, TechniqueProvider f =0L );
+
+    public:
         /**
          * Whether overlay is active. If true, the subgraph renders as a
          * terrain overlay; If false it renders normally.
@@ -47,6 +57,9 @@ namespace osgEarth
         void setMapNode( MapNode* mapNode );
 
         MapNode* getMapNode() { return _mapNode.get(); }
+
+        /** Sets the method that returns the technique group or overlay nodes */
+        void setTechniqueProvider(TechniqueProvider provider);
 
     public: // osg::Node
 
@@ -61,14 +74,6 @@ namespace osgEarth
         virtual bool replaceChild( osg::Node* origChild, osg::Node* newChild );
 
     protected:
-        // signature for the function that provides the technique group.
-        typedef osg::Group* (*TechniqueProvider)(MapNode*);
-
-        /**
-         * Constructs a new overlay node.
-         */
-        OverlayNode( MapNode* mapNode, bool active, TechniqueProvider f );
-
         /** dtor */
         virtual ~OverlayNode() { }
 

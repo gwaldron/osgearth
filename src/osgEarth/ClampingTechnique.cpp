@@ -20,6 +20,7 @@
 #include <osgEarth/Capabilities>
 #include <osgEarth/Registry>
 #include <osgEarth/VirtualProgram>
+#include <osgEarth/MapNode>
 
 #include <osg/Depth>
 #include <osg/PolygonMode>
@@ -32,6 +33,18 @@
 #define OE_TEST OE_NULL
 
 using namespace osgEarth;
+
+//---------------------------------------------------------------------------
+
+namespace
+{
+    osg::Group* s_providerImpl(MapNode* mapNode)
+    {
+        return mapNode ? mapNode->getOverlayDecorator()->getGroup<ClampingTechnique>() : 0L;
+    }
+}
+
+ClampingTechnique::TechniqueProvider ClampingTechnique::Provider = s_providerImpl;
 
 //---------------------------------------------------------------------------
 
@@ -193,8 +206,11 @@ namespace
 //---------------------------------------------------------------------------
 
 ClampingTechnique::ClampingTechnique() :
-_textureSize     ( 4096 )
+_textureSize( 4096 )
 {
+    // disable if GLSL is not supported
+    _supported = Registry::capabilities().supportsGLSL();
+
     // use the maximum available unit.
     _textureUnit = Registry::capabilities().getMaxGPUTextureUnits() - 1;
 }
@@ -349,7 +365,7 @@ void
 ClampingTechnique::cullOverlayGroup(OverlayDecorator::TechRTTParams& params,
                                     osgUtil::CullVisitor*            cv )
 {
-    if ( params._rttCamera.valid() )
+    if ( params._rttCamera.valid() && params._group->getNumChildren() > 0 )
     {
         // update the RTT camera.
         params._rttCamera->setViewMatrix      ( params._rttViewMatrix );

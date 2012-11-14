@@ -32,8 +32,6 @@
 //#define OE_TEST if (_dumpRequested) OE_INFO << std::setprecision(9)
 #define OE_TEST OE_NULL
 
-#define OSGEARTH_CLAMPING_BIN "osgEarth::ClampingBin"
-
 using namespace osgEarth;
 
 //---------------------------------------------------------------------------
@@ -170,9 +168,13 @@ ClampingBinTechnique::setUpCamera(OverlayDecorator::TechRTTParams& params)
     local->_rttTexture->setInternalFormat( GL_DEPTH_COMPONENT );
     local->_rttTexture->setFilter( osg::Texture::MIN_FILTER, osg::Texture::LINEAR );
     local->_rttTexture->setFilter( osg::Texture::MAG_FILTER, osg::Texture::LINEAR );
-    local->_rttTexture->setWrap( osg::Texture::WRAP_S, osg::Texture::CLAMP_TO_BORDER );
-    local->_rttTexture->setWrap( osg::Texture::WRAP_T, osg::Texture::CLAMP_TO_BORDER );
-    local->_rttTexture->setBorderColor( osg::Vec4(1,1,1,1) );
+
+    // this is important. geometry that is outside the depth texture will clamp to the
+    // closest edge value in the texture -- this is good when you are rendering a 
+    // primitive that has one or more of its verts off-screen.
+    local->_rttTexture->setWrap( osg::Texture::WRAP_S, osg::Texture::CLAMP_TO_EDGE );
+    local->_rttTexture->setWrap( osg::Texture::WRAP_T, osg::Texture::CLAMP_TO_EDGE );
+    //local->_rttTexture->setBorderColor( osg::Vec4(0,0,0,1) );
 
     // set up the RTT camera:
     params._rttCamera = new osg::Camera();
@@ -350,7 +352,7 @@ void
 ClampingBinTechnique::preCullTerrain(OverlayDecorator::TechRTTParams& params,
                                   osgUtil::CullVisitor*             cv )
 {
-    if ( !params._rttCamera.valid() ) //&& params._group->getNumChildren() > 0 )
+    if ( !params._rttCamera.valid() )
     {
         // set it up:
         setUpCamera( params );

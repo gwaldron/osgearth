@@ -1,6 +1,7 @@
 <!--
 osgEarth Sample
-Demonstrates use of the "feature_overlay" feature draping driver.
+
+Demonstrate the Altitude Symbol and GPU-based vertex clamping.
 -->
 
 <map name="Geometry Rasterizer Demo" type="round" version="2">
@@ -13,7 +14,7 @@ Demonstrates use of the "feature_overlay" feature draping driver.
         <url>../data/world.tif</url>
     </image>
     
-    <overlay name="world_boundaries" driver="feature_geom">
+    <model name="world_boundaries" driver="feature_geom">
 
         <!-- Configure the OGR feature driver to read the shapefile. -->             
         <features name="world" driver="ogr">
@@ -25,13 +26,15 @@ Demonstrates use of the "feature_overlay" feature draping driver.
         <styles>
             <style type="text/css">
                 world {
-                   stroke: #ffff00;
-                   stroke-opacity: 1.0;
-                   stroke-width: 3.0;
+                   stroke:             #ffff00;
+                   stroke-opacity:     1.0;
+                   stroke-width:       3.0;
+                   altitude-clamping:  terrain;
+                   altitude-technique: gpu;
                 }            
             </style>
         </styles>
         
-    </overlay>
+    </model>
   
 </map>

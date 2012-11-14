@@ -230,13 +230,17 @@ _maxUniformBlockSize    ( 0 )
         _supportsOcclusionQuery = osg::isGLExtensionSupported( id, "GL_ARB_occlusion_query" );
         OE_INFO << LC << "  occulsion query = " << SAYBOOL(_supportsOcclusionQuery) << std::endl;
 
-        _supportsDrawInstanced = osg::isGLExtensionOrVersionSupported( id, "GL_EXT_draw_instanced", 3.1f );
+        _supportsDrawInstanced = 
+            _supportsGLSL &&
+            osg::isGLExtensionOrVersionSupported( id, "GL_EXT_draw_instanced", 3.1f );
         OE_INFO << LC << "  draw instanced = " << SAYBOOL(_supportsDrawInstanced) << std::endl;
 
         glGetIntegerv( GL_MAX_UNIFORM_BLOCK_SIZE, &_maxUniformBlockSize );
         OE_INFO << LC << "  max uniform block size = " << _maxUniformBlockSize << std::endl;
 
-        _supportsUniformBufferObjects = osg::isGLExtensionOrVersionSupported( id, "GL_ARB_uniform_buffer_object", 2.0f );
+        _supportsUniformBufferObjects = 
+            _supportsGLSL &&
+            osg::isGLExtensionOrVersionSupported( id, "GL_ARB_uniform_buffer_object", 2.0f );
         OE_INFO << LC << "  uniform buffer objects = " << SAYBOOL(_supportsUniformBufferObjects) << std::endl;
 
         if ( _supportsUniformBufferObjects && _maxUniformBlockSize == 0 )

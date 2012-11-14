@@ -24,12 +24,30 @@
 #include <osg/TexGenNode>
 #include <osg/Uniform>
 
+#define OSGEARTH_CLAMPING_BIN "osgEarth::ClampingBin"
+
 namespace osgEarth
 {
     class TerrainEngineNode;
 
     /**
-     * Clamped geometry to the terrain using a GPU technique.
+     * Clamps geometry to the terrain using the GPU.
+     *
+     * Uses the same technique for GPU clamping as the ClampingTechnique.
+     * See that class's header for details.
+     *
+     * The difference is that this technique uses a custom RenderBin rather
+     * than requiring the geometry be under a special overlay group; so,
+     * rather than use a ClampableNode, you can simply say
+     *
+     *   stateSet->setRenderBinDetail(0, OSGEARTH_CLAMPING_BIN);
+     *
+     * Limitations
+     *
+     * This technique is not active yet. The issue is that the RTT camera
+     * generator in OverlayDecorator needs to know the bounds of the overlay
+     * geometry in order to make a minimum bounding polyhedron. This technique
+     * does not provide that information (yet).
      */
     class OSGEARTH_EXPORT ClampingBinTechnique : public OverlayTechnique
     {

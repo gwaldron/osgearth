@@ -139,6 +139,7 @@ namespace osgEarth
 
         typedef std::vector< osg::ref_ptr<OverlayTechnique> > Techniques;
         Techniques _techniques;
+        Techniques _unsupportedTechniques;
 
         typedef std::vector< osg::ref_ptr<osg::Group> > Groups;
         Groups _overlayGroups;
@@ -170,10 +171,13 @@ namespace osgEarth
     class OverlayTechnique : public osg::Referenced
     {
     protected:
-        OverlayTechnique() { }
+        bool _supported;
+        OverlayTechnique() : _supported(true) { }
         virtual ~OverlayTechnique() { }
 
     public:
+        virtual bool supported() { return _supported; }
+
         virtual void onInstall( TerrainEngineNode* engine ) { }
 
         virtual void onUninstall( TerrainEngineNode* engine ) { }

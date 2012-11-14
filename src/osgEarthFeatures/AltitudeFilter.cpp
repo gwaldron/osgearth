@@ -47,14 +47,14 @@ AltitudeFilter::setPropertiesFromStyle( const Style& style )
 FilterContext
 AltitudeFilter::push( FeatureList& features, FilterContext& cx )
 {
-    bool clamp = 
-        _altitude.valid()                                             && 
-        _altitude->clamping()     != AltitudeSymbol::CLAMP_NONE       &&
-        _altitude->clampingMode() == AltitudeSymbol::CLAMPMODE_MAP    &&
-        cx.getSession()           != 0L                               &&
-        cx.profile()              != 0L;
+    bool clampToMap = 
+        _altitude.valid()                                          && 
+        _altitude->clamping()  != AltitudeSymbol::CLAMP_NONE       &&
+        _altitude->technique() == AltitudeSymbol::TECHNIQUE_MAP    &&
+        cx.getSession()        != 0L                               &&
+        cx.profile()           != 0L;
 
-    if ( clamp )
+    if ( clampToMap )
         pushAndClamp( features, cx );
     else
         pushAndDontClamp( features, cx );

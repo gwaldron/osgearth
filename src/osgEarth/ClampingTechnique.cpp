@@ -35,6 +35,12 @@ using namespace osgEarth;
 
 //---------------------------------------------------------------------------
 
+// SUPPORT_Z is a placeholder - we need to come up with another method for
+// clamping verts relative to Z without needing the current Model Matrix
+// (as we would now). Leave this #undef's until further notice.
+#define SUPPORT_Z 1
+#undef  SUPPORT_Z
+
 namespace
 {
     const char clampingVertexShader[] =
@@ -45,9 +51,12 @@ namespace
          // uniforms from this ClampingTechnique:
          "uniform sampler2D oe_clamp_depthTex; \n"
          "uniform mat4 oe_clamp_cameraView2depthClip; \n"
-         //"uniform mat4 oe_clamp_depthClip2cameraView; \n"
+#ifdef SUPPORT_Z
          "uniform mat4 oe_clamp_depthClip2depthView; \n"
          "uniform mat4 oe_clamp_depthView2cameraView; \n"
+#else
+         "uniform mat4 oe_clamp_depthClip2cameraView; \n"
+#endif
 
          // uniforms from ClampableNode:
          "uniform vec2 oe_clamp_bias; \n"
@@ -67,17 +76,21 @@ namespace
 
          //   now transform into depth-view space so we can apply the height-above-ground:
          "    vec4 p_depthClip = vec4(v_depthClip.x, v_depthClip.y, d, 1.0); \n"
+
+#ifdef SUPPORT_Z
          "    vec4 p_depthView = oe_clamp_depthClip2depthView * p_depthClip; \n"
 
               // next, apply the vert's Z value for that ground offset.
-         "    p_depthView.z += gl_Vertex.z*gl_Vertex.w; \n"
+              // TODO: This calculation is not right!
+              //       I think perhaps the model matrix is not earth-aligned.
+         "    p_depthView.z += gl_Vertex.z*gl_Vertex.w/p_depthView.w; \n"
 
               // then transform the vert back into camera view space.
          "    vec4 v_view_clamped = oe_clamp_depthView2cameraView * p_depthView; \n"
-
-              // make a fake point in depth clip space and transform it back into view coords.
-         //"    vec4 p = vec4(tc.x, tc.y, d, 1.0); \n"
-         //"    vec4 v_eye_clamped = oe_clamp_depthClip2cameraView * p; \n"
+#else
+              // transform the depth-clip point back into camera view coords.
+         "    vec4 v_view_clamped = oe_clamp_depthClip2cameraView * p_depthClip; \n"
+#endif
 
          //   if the clamping distance is too big, bag it.
          "    vec3 v_view_orig3    = v_view_orig.xyz/v_view_orig.w;\n"
@@ -208,11 +221,15 @@ ClampingTechnique::setUpCamera(OverlayDecorator::TechRTTParams& params)
     local->_rttTexture = new osg::Texture2D();
     local->_rttTexture->setTextureSize( *_textureSize, *_textureSize );
     local->_rttTexture->setInternalFormat( GL_DEPTH_COMPONENT );
-    local->_rttTexture->setFilter( osg::Texture::MIN_FILTER, osg::Texture::LINEAR );
+    local->_rttTexture->setFilter( osg::Texture::MIN_FILTER, osg::Texture::NEAREST );
     local->_rttTexture->setFilter( osg::Texture::MAG_FILTER, osg::Texture::LINEAR );
-    local->_rttTexture->setWrap( osg::Texture::WRAP_S, osg::Texture::CLAMP_TO_BORDER );
-    local->_rttTexture->setWrap( osg::Texture::WRAP_T, osg::Texture::CLAMP_TO_BORDER );
-    local->_rttTexture->setBorderColor( osg::Vec4(1,1,1,1) );
+
+    // this is important. geometry that is outside the depth texture will clamp to the
+    // closest edge value in the texture -- this is good when you are rendering a 
+    // primitive that has one or more of its verts off-screen.
+    local->_rttTexture->setWrap( osg::Texture::WRAP_S, osg::Texture::CLAMP_TO_EDGE );
+    local->_rttTexture->setWrap( osg::Texture::WRAP_T, osg::Texture::CLAMP_TO_EDGE );
+    //local->_rttTexture->setBorderColor( osg::Vec4(0,0,0,1) );
 
     // set up the RTT camera:
     params._rttCamera = new osg::Camera();
@@ -268,10 +285,10 @@ ClampingTechnique::setUpCamera(OverlayDecorator::TechRTTParams& params)
         local->_rttTexture.get(), 
         osg::StateAttribute::ON );
 
-#if 0
+#if 1
     // set up depth test/write parameters for the overlay geometry:
     local->_groupStateSet->setAttributeAndModes(
-        new osg::Depth( osg::Depth::LEQUAL, 0.0, 1.0, false ),
+        new osg::Depth( osg::Depth::LEQUAL, 0.0, 1.0, true ),
         osg::StateAttribute::ON );
 #endif
 
@@ -287,10 +304,7 @@ ClampingTechnique::setUpCamera(OverlayDecorator::TechRTTParams& params)
         "oe_clamp_cameraView2depthClip", 
         osg::Uniform::FLOAT_MAT4 );
 
-    // matrix that transforms a vert from depth-cam CLIP coords to EYE coords.
-    local->_depthClipToCamViewUniform = local->_groupStateSet->getOrCreateUniform( 
-        "oe_clamp_depthClip2cameraView", 
-        osg::Uniform::FLOAT_MAT4 );
+#ifdef SUPPORT_Z
 
     // matrix that transforms a vert from depth clip coords to depth view coords.
     local->_depthClipToDepthViewUniform = local->_groupStateSet->getOrCreateUniform(
@@ -301,6 +315,15 @@ ClampingTechnique::setUpCamera(OverlayDecorator::TechRTTParams& params)
     local->_depthViewToCamViewUniform = local->_groupStateSet->getOrCreateUniform(
         "oe_clamp_depthView2cameraView",
         osg::Uniform::FLOAT_MAT4 );
+
+#else
+
+    // matrix that transforms a vert from depth-cam CLIP coords to EYE coords.
+    local->_depthClipToCamViewUniform = local->_groupStateSet->getOrCreateUniform( 
+        "oe_clamp_depthClip2cameraView", 
+        osg::Uniform::FLOAT_MAT4 );
+
+#endif
 
     // make the shader that will do clamping and depth offsetting.
     VirtualProgram* vp = new VirtualProgram();
@@ -359,13 +382,11 @@ ClampingTechnique::cullOverlayGroup(OverlayDecorator::TechRTTParams& params,
             s_scaleBiasMat;
 
         osg::Matrix cameraViewToDepthClip =
-            cameraViewToDepthView               *
+            cameraViewToDepthView *
             depthViewToDepthClip;
         local._camViewToDepthClipUniform->set( cameraViewToDepthClip );
 
-        //osg::Matrix depthClipToCameraView;
-        //depthClipToCameraView.invert( cameraViewToDepthClip );
-        //local._depthClipToCamViewUniform->set( depthClipToCameraView );
+#if SUPPORT_Z
 
         osg::Matrix depthClipToDepthView;
         depthClipToDepthView.invert( depthViewToDepthClip );
@@ -374,6 +395,14 @@ ClampingTechnique::cullOverlayGroup(OverlayDecorator::TechRTTParams& params,
         osg::Matrix depthViewToCameraView;
         depthViewToCameraView.invert( cameraViewToDepthView );
         local._depthViewToCamViewUniform->set( depthViewToCameraView );
+
+#else
+
+        osg::Matrix depthClipToCameraView;
+        depthClipToCameraView.invert( cameraViewToDepthClip );
+        local._depthClipToCamViewUniform->set( depthClipToCameraView );
+
+#endif
 
         // traverse the overlay nodes, applying the clamping shader.
         cv->pushStateSet( local._groupStateSet.get() );

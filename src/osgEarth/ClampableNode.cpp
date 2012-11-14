@@ -59,6 +59,7 @@ ClampableNode::dirtyDepthOffsetOptions()
     if ( !_doDirty )
     {
         _doDirty = true;
+        _autoBias = false;
         ADJUST_UPDATE_TRAV_COUNT( this, 1 );
     }
 }

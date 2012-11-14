@@ -66,25 +66,6 @@ namespace osgEarth
         DepthOffsetOptions& depthOffset() { dirtyDepthOffsetOptions(); return _do; }
         const DepthOffsetOptions& depthOffset() const { return _do; }
         
-#if 0
-        /** Sets depth offsetting on or off. */
-        void setDepthOffsetEnabled( bool value );
-        bool getDepthOffsetEnabled() const { return _depthOffsetEnabled; }
-
-        /** Sets both the bias applied at the min and max camera ranges. */
-        void setDepthOffsetBias( float minBias, float maxBias );
-        const osg::Vec2f& getDepthOffsetBias() const { return _bias; }
-
-        /** Sets whether this node should try to automatically calcuate a 
-         *  minimum bias based on an analysis of its subgraph. */
-        void setAutoDepthOffsetBias( bool value );
-        bool getAutoDepthOffsetBias() const { return _autoBias; }
-
-        /** Sets the ranges at which to apply the min and max biases. */
-        void setDepthOffsetRange( float minRange, float maxRange );
-        const osg::Vec2f& getDepthOffsetRange() const { return _range; }
-#endif
-        
         /** Automatically attempt to select a minimum bias based on an analysis
          *  of the subgraph's geometry. */
         void calculateMinDepthOffsetBiasFromSubgraph();

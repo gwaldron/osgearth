@@ -85,6 +85,26 @@ namespace osgEarth
 
 
     /**
+     * Controller that affects a stateset with depth offset settings.
+     * It does NOT install any shaders.
+     */
+    class OSGEARTH_EXPORT DepthOffsetOptionsAdapter
+    {
+    public:
+        DepthOffsetOptionsAdapter(osg::StateSet* stateSet);
+
+        void setOptions(const DepthOffsetOptions& options);
+        const DepthOffsetOptions& getOptions() const { return _options; }
+
+    private:
+        osg::ref_ptr<osg::StateSet> _stateSet;
+        osg::ref_ptr<osg::Uniform>  _biasUniform;
+        osg::ref_ptr<osg::Uniform>  _rangeUniform;
+        DepthOffsetOptions          _options;
+    };
+
+
+    /**
      * Utilities to manage depth testing for feature data. Handy especially
      * for terrain-conforming lines.
      */

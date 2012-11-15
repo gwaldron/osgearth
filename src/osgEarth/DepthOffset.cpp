@@ -76,6 +76,36 @@ DepthOffsetOptions::getConfig() const
 //------------------------------------------------------------------------
 
 
+DepthOffsetOptionsAdapter::DepthOffsetOptionsAdapter(osg::StateSet* stateSet) :
+_stateSet( stateSet )
+{
+    if ( _stateSet.valid() )
+    {
+        _biasUniform = _stateSet->getOrCreateUniform( "oe_clamp_bias", osg::Uniform::FLOAT_VEC2 );
+        _biasUniform->set( osg::Vec2f(*_options.minBias(), *_options.maxBias()) );
+
+        _rangeUniform = _stateSet->getOrCreateUniform( "oe_clamp_range", osg::Uniform::FLOAT_VEC2 );
+        _rangeUniform->set( osg::Vec2f(*_options.minRange(), *_options.maxRange()) );
+    }
+}
+
+
+void 
+DepthOffsetOptionsAdapter::setOptions(const DepthOffsetOptions& options)
+{
+    _options = options;
+
+    if ( _stateSet.valid() )
+    {
+        _biasUniform->set( osg::Vec2f(*_options.minBias(), *_options.maxBias()) );
+        _rangeUniform->set( osg::Vec2f(*_options.minRange(), *_options.maxRange()) );
+    }
+}
+
+
+//------------------------------------------------------------------------
+
+
 namespace
 {
     struct SegmentAnalyzer

@@ -29,6 +29,7 @@
 #include <osg/Texture2D>
 #include <osg/Texture3D>
 #include <osg/TexEnv>
+#include <osg/TexGen>
 #include <osgText/Text>
 
 #define LC "[ShaderGenerator] "
@@ -376,10 +377,38 @@ ShaderGenerator::processGeometry( osg::StateSet* ss, osg::ref_ptr<osg::StateSet>
                     }
                 }
 
-                vertHead << "varying " MEDIUMP "vec4 " TEX_COORD << t << ";\n";
-                vertBody << INDENT << TEX_COORD << t << " = gl_MultiTexCoord" << t << ";\n";
+                osg::TexGen::Mode texGenMode = osg::TexGen::OBJECT_LINEAR;
+                osg::TexGen* texGen = dynamic_cast<osg::TexGen*>(state->getTextureAttribute(t, osg::StateAttribute::TEXGEN));
+                if ( texGen )
+                {
+                    texGenMode = texGen->getMode();
+                }
 
+                vertHead << "varying " MEDIUMP "vec4 " TEX_COORD << t << ";\n";
                 fragHead << "varying " MEDIUMP "vec4 " TEX_COORD << t << ";\n";
+
+                // handle different TexGen modes.
+                switch(texGenMode)
+                {
+                case osg::TexGen::SPHERE_MAP:
+                    vertBody 
+                        //todo: consolidate.
+                        << INDENT "{\n" // scope it in case there are > 1
+                        << INDENT "vec3 v = normalize(vec3(gl_ModelViewMatrix * gl_Vertex));\n"
+                        << INDENT "vec3 n = normalize(gl_NormalMatrix * gl_Normal);\n"
+                        << INDENT "vec3 r = reflect(v, n);\n"
+                        << INDENT "float m = 2.0 * sqrt(r.x*r.x + r.y*r.y + (r.z+1.0)*(r.z+1.0));\n"
+                        << INDENT TEX_COORD << t << ".s = r.x/m + 0.5;\n"
+                        << INDENT TEX_COORD << t << ".t = r.y/m + 0.5;\n"
+                        << INDENT "}\n";
+                    break;
+
+                default:
+                    vertBody 
+                        << INDENT << TEX_COORD << t << " = gl_MultiTexCoord" << t << ";\n";
+                    break;
+                }
+
 
                 if ( dynamic_cast<osg::Texture1D*>(tex) )
                 {

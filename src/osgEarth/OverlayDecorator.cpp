@@ -37,9 +37,6 @@
 //#define OE_TEST if (_dumpRequested) OE_INFO << std::setprecision(9)
 #define OE_TEST OE_NULL
 
-//#define GROUP_COUNT    1 // change to 2 later.
-//#define GROUP_DRAPING  0
-//#define GROUP_CLAMPING 1
 
 using namespace osgEarth;
 
@@ -47,6 +44,13 @@ using namespace osgEarth;
 
 namespace
 {
+    /**
+     * Interects a finite ray with a sphere of radius R. The ray is defined
+     * by the X and Y components (in projection aka "clip" space). The function
+     * uses this information to build a ray from Z=-1 to Z=1. 
+     *
+     * Places the intersection point(s) in the output vector.
+     */
     void
     intersectClipRayWithSphere(double                   clipx, 
                                double                   clipy, 
@@ -109,6 +113,10 @@ namespace
     }
 
 
+    /**
+     * Same as above, but intersects the ray with a static 2D plane
+     * (for use in projected map mode)
+     */
     void
     intersectClipRayWithPlane(double                   clipx, 
                               double                   clipy, 
@@ -135,61 +143,25 @@ namespace
 
 
     /**
-     * This method takes a set of verts and finds the nearest and farthest distances from
-     * the points to the camera. It does this calculation in the plane defined by the
-     * look vector.
-     *
-     * IOW, all the test points are "projected" on to the plane defined by the camera point
-     * and the look (normal) vector, and then the distances from the camera point to each
-     * projected point are tested in order to find the min/max extent.
+     * Takes a set of world verts and finds their X-Y bounding box in the 
+     * plane of the camera represented by the specified view matrix.
      */
     void
-    getMinMaxExtentInSilhouette(const osg::Vec3d& cam, const osg::Vec3d& look, 
-                                std::vector<osg::Vec3d>& verts,
-                                double& out_eMin, double& out_eMax )
+    getExtentInSilhouette(const osg::Matrix& viewMatrix,
+                          std::vector<osg::Vec3d>& verts,
+                          double& xmin, double& ymin,
+                          double& xmax, double& ymax)
     {
-        double minSqrDist2D = DBL_MAX;
-        double maxSqrDist2D = -DBL_MAX;
-        osg::Plane plane( look, cam );
+        xmin = DBL_MAX, ymin = DBL_MAX, xmax = -DBL_MAX, ymax = -DBL_MAX;
 
         for( std::vector<osg::Vec3d>::iterator i = verts.begin(); i != verts.end(); ++i )
         {
-            osg::Vec3d& point = *i;
-
-            // project the vert onto the camera plane:
-            double signedDist = plane.distance( point );
-            point += (-plane.getNormal() * signedDist);
-            
-            // then calculate the 2D distance to the camera:
-            double sqrDist2D = (cam-point).length2();
-            if ( sqrDist2D > maxSqrDist2D )
-                maxSqrDist2D = sqrDist2D;
-            if ( sqrDist2D < minSqrDist2D )
-                minSqrDist2D = sqrDist2D;
+            osg::Vec3d d = (*i) * viewMatrix; // world to view
+            if ( d.x() < xmin ) xmin = d.x();
+            if ( d.x() > xmax ) xmax = d.x();
+            if ( d.y() < ymin ) ymin = d.y();
+            if ( d.y() > ymax ) ymax = d.y();
         }
-
-        out_eMin = sqrt( minSqrDist2D );
-        out_eMax = sqrt( maxSqrDist2D );
-    }
-    
-    /**
-     * Same as the method above, but extracts the verts from a bounding box.
-     */
-    void
-    getMinMaxExtentInSilhouette(const osg::Vec3d& cam, const osg::Vec3d& look, 
-                                const osg::BoundingBox& bbox,
-                                double& out_eMin, double& out_eMax )
-    {
-        std::vector<osg::Vec3d> verts(8);
-        verts[0].set( bbox.xMin(), bbox.yMin(), bbox.zMin() );
-        verts[1].set( bbox.xMin(), bbox.yMin(), bbox.zMax() );
-        verts[2].set( bbox.xMin(), bbox.yMax(), bbox.zMin() );
-        verts[3].set( bbox.xMin(), bbox.yMax(), bbox.zMax() );
-        verts[4].set( bbox.xMax(), bbox.yMin(), bbox.zMin() );
-        verts[5].set( bbox.xMax(), bbox.yMin(), bbox.zMax() );
-        verts[6].set( bbox.xMax(), bbox.yMax(), bbox.zMin() );
-        verts[7].set( bbox.xMax(), bbox.yMax(), bbox.zMax() );
-        getMinMaxExtentInSilhouette( cam, look, verts, out_eMin, out_eMax );
     }
 }
 
@@ -226,6 +198,8 @@ OverlayDecorator::addTechnique(OverlayTechnique* technique)
         }
         else
         {
+            // stick unsupported techniques in a temporary holding cell
+            // for reference management -- no harm
             _unsupportedTechniques.push_back( technique );
         }
     }
@@ -399,7 +373,7 @@ OverlayDecorator::cullTerrainAndCalculateRTTParams(osgUtil::CullVisitor* cv,
             //TODO: change to tech->getActive() or something
             if ( params._group->getNumChildren() > 0 )
             {
-                params._rttViewMatrix = osg::Matrixd::lookAt( eye, eye-worldUp*hasl, osg::Vec3(0,1,0) );
+                params._rttViewMatrix.makeLookAt( eye, eye-worldUp*hasl, osg::Vec3(0,1,0) );
             }
         }
     }
@@ -481,6 +455,7 @@ OverlayDecorator::cullTerrainAndCalculateRTTParams(osgUtil::CullVisitor* cv,
     {
         // (technically we should use the commented-out code; but since the OD probably has
         //  no local xforms above it, the inverseMVP should suffice.)
+
         //osg::Matrixd clipToWorld = inverseMVP;
         //clipToWorld.invert( cv->getCurrentCamera()->getViewMatrix() * projMatrix );
 
@@ -509,7 +484,7 @@ OverlayDecorator::cullTerrainAndCalculateRTTParams(osgUtil::CullVisitor* cv,
         }
     }
 
-    else
+    else // projected
     {
         // same deal as above, but for a projected/flat map - we intersect a phantom
         // plane instead of sphere.
@@ -518,7 +493,7 @@ OverlayDecorator::cullTerrainAndCalculateRTTParams(osgUtil::CullVisitor* cv,
 
         intersectClipRayWithPlane( -1.0, -1.0, inverseMVP, points );
         intersectClipRayWithPlane(  1.0, -1.0, inverseMVP, points );
-        intersectClipRayWithPlane(  0.0,  1.0, inverseMVP, points ); // try the top-center first for projected.
+        intersectClipRayWithPlane(  0.0,  1.0, inverseMVP, points ); // try the top-center first
         if ( points.size() < 3 )
             intersectClipRayWithPlane(  1.0,  1.0, inverseMVP, points );
         if ( points.size() < 3 )
@@ -531,10 +506,10 @@ OverlayDecorator::cullTerrainAndCalculateRTTParams(osgUtil::CullVisitor* cv,
         }
     }
 
-    // take the bounds of the overlay graph, constrained to the view frustum:
-    osg::BoundingSphere visibleOverlayBS;
-    osg::Polytope frustumPT;
-    frustumPH.getPolytope( frustumPT );
+    // set these up for later.
+    bool nearVertsCalculated = false;
+    osg::Vec3d nearVertTop   (0.5, 1.0,-1.0);
+    osg::Vec3d nearVertBottom(0.5,-1.0,-1.0);
 
     // now we need to calculate the visible bounds for each overlay group.
     for( unsigned t=0; t<pvd._techParams.size(); ++t )
@@ -553,7 +528,7 @@ OverlayDecorator::cullTerrainAndCalculateRTTParams(osgUtil::CullVisitor* cv,
         // get a bounds of the overlay graph as a whole, and convert that to a
         // bounding box. We can probably do better with a ComputeBoundsVisitor but it
         // will be slower.
-        visibleOverlayBS = params._group->getBound();
+        const osg::BoundingSphere& visibleOverlayBS = params._group->getBound();
         if ( visibleOverlayBS.valid() )
         {
             osg::BoundingBox visibleOverlayBBox;
@@ -565,10 +540,23 @@ OverlayDecorator::cullTerrainAndCalculateRTTParams(osgUtil::CullVisitor* cv,
             visiblePH.cut( visibleOverlayPT );
         }
 
-        // calculate the extents for our orthographic RTT camera (clamping it to the
-        // visible horizon)
+        // pull the point set out of the polyhedron. We're going to use the bounding
+        // box of these points to figure out how large to make the RTT extents.
         std::vector<osg::Vec3d> verts;
         visiblePH.getPoints( verts );
+
+        // (re)-insert the points on the near clip plane into the vertex list, just in
+        // case they were cut out during the optimization proceess. We need the near
+        // plane entirely within the bounds or close-up data will not get RTT'd.
+        // (we use inverseMVP here; technically inverse(VP) is more correct)
+        if ( !nearVertsCalculated )
+        {
+            nearVertTop    = nearVertTop    * inverseMVP;
+            nearVertBottom = nearVertBottom * inverseMVP;
+            nearVertsCalculated = true;
+        }
+        verts.push_back( nearVertTop );
+        verts.push_back( nearVertBottom );
 
         if ( _isGeocentric )
         {
@@ -584,56 +572,29 @@ OverlayDecorator::cullTerrainAndCalculateRTTParams(osgUtil::CullVisitor* cv,
                 eye2bc.normalize();
                 bc = eye + eye2bc * 0.5*horizonDistance;
             }
-            
-            rttLookVec = -bc;
-            rttLookVec.normalize();
 
-            double new_eMax;
-            getMinMaxExtentInSilhouette( bc, rttLookVec, verts, eMin, new_eMax );
-            eMax = std::min( eMax, new_eMax );
-
+            // position the camera directly above the geometry and make a view matrix:
             bc.normalize();
             bc *= eyeLen;
-
-
-            //TODO: resolve.... first is original; second is from the depthmaptest branch.....
-            params._rttViewMatrix = osg::Matrixd::lookAt( bc, osg::Vec3d(0,0,0), osg::Vec3d(0,0,1) );
-            params._rttProjMatrix = osg::Matrixd::ortho( -eMax, eMax, -eMax, eMax, -eyeLen, bc.length() );
-            //params._rttProjMatrix = osg::Matrixd::ortho2D( -eMax, eMax, -eMax, eMax );
-
-            OE_TEST << LC 
-                << "1/2 RTT ortho span: " << eMax << ", near=" << -eyeLen << ", far=" << bc.length() << std::endl;
-
-            OE_TEST << LC
-                << "eMax = " << eMax
-                << ", bc = " << bc.x() << ", " << bc.y() << ", " << bc.z()
-                << ", eye = " << eye.x() << ", " << eye.y() << ", " << eye.z()
-                << ", eyeLen = " << eyeLen
-                << std::endl;
-        }
-        else
-        {
-            // for a projected map, just point the RTT straight down at the camera position.
-            // TODO: this could be optimized, probably.
-            double new_eMax;
-            getMinMaxExtentInSilhouette( from, osg::Vec3d(0,0,-1), verts, eMin, new_eMax );   
-            eMax = std::min( eMax, new_eMax ); 
-            params._rttProjMatrix = osg::Matrix::ortho( -eMax, eMax, -eMax, eMax, -eyeLen, eyeLen );
-            // (note: the View matrix was set eariler)
+            params._rttViewMatrix.makeLookAt( bc, osg::Vec3d(0,0,0), osg::Vec3d(0,0,1) );
         }
 
+        // calculate an orthographic RTT projection matrix based on the view-space
+        // bounds of the vertex list (i.e. the extents surrounding the RTT camera 
+        // that bounds all the polyherdron verts in its XY plane)
+        double xmin, ymin, xmax, ymax;
+        getExtentInSilhouette(params._rttViewMatrix, verts, xmin, ymin, xmax, ymax);
+        params._rttProjMatrix.makeOrtho(xmin, xmax, ymin, ymax, -eyeLen, eyeLen);
+
+
+        // service a "dump" of the polyhedrons for dubugging purposes
+        // (see osgearth_overlayviewer)
         if ( _dumpRequested )
         {
             static const char* fn = "convexpolyhedron.osg";
 
             // camera frustum:
             {
-                //osgShadow::ConvexPolyhedron frustumPH;
-                //frustumPH.setToUnitFrustum( true, true );
-                //osg::Matrixd MVP = *cv->getModelViewMatrix() * projMatrix;
-                //osg::Matrixd inverseMVP;
-                //inverseMVP.invert(MVP);
-                //frustumPH.transform( inverseMVP, MVP );
                 frustumPH.dumpGeometry(0,0,0,fn);
             }
             osg::Node* camNode = osgDB::readNodeFile(fn);

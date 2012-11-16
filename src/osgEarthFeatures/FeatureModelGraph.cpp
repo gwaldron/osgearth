@@ -649,9 +649,10 @@ FeatureModelGraph::buildLevel( const FeatureLevel& level, const GeoExtent& exten
     // set up for feature indexing if appropriate:
     osg::ref_ptr<osg::Group> group;
     FeatureSourceIndexNode* index = 0L;
-    if ( _session->getFeatureSource() && (_options.featureIndexing() == true) )
+
+    if ( _session->getFeatureSource() && _options.featureIndexing().isSet() )
     {
-        index = new FeatureSourceIndexNode( _session->getFeatureSource(), _options.storingAttributesOnFeatureIndexing() == true );
+        index = new FeatureSourceIndexNode( _session->getFeatureSource(), *_options.featureIndexing() );
         group = index;
     }
     else

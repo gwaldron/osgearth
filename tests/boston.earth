@@ -32,7 +32,7 @@ to extruded buildings.
             <build_spatial_index>true</build_spatial_index>
         </features>
         
-        <feature_indexing>true</feature_indexing>
+        <feature_indexing/>
         
         <!--
         <fading

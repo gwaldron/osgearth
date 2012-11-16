@@ -35,7 +35,6 @@ _lit               ( true ),
 _maxGranularity_deg( 1.0 ),
 _mergeGeometry     ( false ),
 _clusterCulling    ( true ),
-_featureIndexing   ( false ),
 _backfaceCulling   ( true ),
 _alphaBlending     ( true )
 {
@@ -48,21 +47,21 @@ FeatureModelSourceOptions::fromConfig( const Config& conf )
     conf.getObjIfSet( "features", _featureOptions );
     _featureSource = conf.getNonSerializable<FeatureSource>("feature_source");
 
-    conf.getObjIfSet( "styles",       _styles );
-    conf.getObjIfSet( "layout",       _layout );
-    conf.getObjIfSet( "paging",       _layout ); // backwards compat.. to be deprecated
-    conf.getObjIfSet( "cache_policy", _cachePolicy );
-    conf.getObjIfSet( "fading",       _fading );
-    conf.getObjIfSet( "feature_name", _featureNameExpr );
+    conf.getObjIfSet( "styles",           _styles );
+    conf.getObjIfSet( "layout",           _layout );
+    conf.getObjIfSet( "paging",           _layout ); // backwards compat.. to be deprecated
+    conf.getObjIfSet( "cache_policy",     _cachePolicy );
+    conf.getObjIfSet( "fading",           _fading );
+    conf.getObjIfSet( "feature_name",     _featureNameExpr );
+    conf.getObjIfSet( "feature_indexing", _featureIndexing );
 
     conf.getIfSet( "lighting",         _lit );
     conf.getIfSet( "max_granularity",  _maxGranularity_deg );
     conf.getIfSet( "merge_geometry",   _mergeGeometry );
     conf.getIfSet( "cluster_culling",  _clusterCulling );
-    conf.getIfSet( "feature_indexing", _featureIndexing );
-    conf.getIfSet( "storing_attributes_on_feature_indexing", _storingAttributesOnFeatureIndexing );	
     conf.getIfSet( "backface_culling", _backfaceCulling );
     conf.getIfSet( "alpha_blending",   _alphaBlending );
+
 }
 
 Config
@@ -75,18 +74,17 @@ FeatureModelSourceOptions::getConfig() const
     {
         conf.addNonSerializable("feature_source", _featureSource.get());
     }
-    conf.updateObjIfSet( "styles",       _styles );
-    conf.updateObjIfSet( "layout",       _layout );
-    conf.updateObjIfSet( "cache_policy", _cachePolicy );
-    conf.updateObjIfSet( "fading",       _fading );
-    conf.updateObjIfSet( "feature_name", _featureNameExpr );
+    conf.updateObjIfSet( "styles",           _styles );
+    conf.updateObjIfSet( "layout",           _layout );
+    conf.updateObjIfSet( "cache_policy",     _cachePolicy );
+    conf.updateObjIfSet( "fading",           _fading );
+    conf.updateObjIfSet( "feature_name",     _featureNameExpr );
+    conf.updateObjIfSet( "feature_indexing", _featureIndexing );
 
     conf.updateIfSet( "lighting",         _lit );
     conf.updateIfSet( "max_granularity",  _maxGranularity_deg );
     conf.updateIfSet( "merge_geometry",   _mergeGeometry );
     conf.updateIfSet( "cluster_culling",  _clusterCulling );
-    conf.updateIfSet( "feature_indexing", _featureIndexing );
-    conf.updateIfSet( "storing_attributes_on_feature_indexing", _storingAttributesOnFeatureIndexing );	
     conf.updateIfSet( "backface_culling", _backfaceCulling );
     conf.updateIfSet( "alpha_blending",   _alphaBlending );
 

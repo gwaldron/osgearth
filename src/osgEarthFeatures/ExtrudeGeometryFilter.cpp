@@ -633,7 +633,7 @@ void
 ExtrudeGeometryFilter::addDrawable(osg::Drawable*      drawable,
                                    osg::StateSet*      stateSet,
                                    const std::string&  name,
-                                   FeatureID           fid,
+                                   Feature*            feature,
                                    FeatureSourceIndex* index )
 {
     // find the geode for the active stateset, creating a new one if necessary. NULL is a 
@@ -655,7 +655,7 @@ ExtrudeGeometryFilter::addDrawable(osg::Drawable*      drawable,
 
     if ( index )
     {
-        index->tagPrimitiveSets( drawable, fid );
+        index->tagPrimitiveSets( drawable, feature );
     }
 }
 
@@ -852,23 +852,22 @@ ExtrudeGeometryFilter::process( FeatureList& features, FilterContext& context )
                     name = input->eval( _featureNameExpr, &context );
 
                 FeatureSourceIndex* index = context.featureIndex();
-                FeatureID fid = input->getFID();
 
-                addDrawable( walls.get(), wallStateSet, name, fid, index );
+                addDrawable( walls.get(), wallStateSet, name, input, index );
 
                 if ( rooflines.valid() )
                 {
-                    addDrawable( rooflines.get(), roofStateSet, name, fid, index );
+                    addDrawable( rooflines.get(), roofStateSet, name, input, index );
                 }
 
                 if ( baselines.valid() )
                 {
-                    addDrawable( baselines.get(), 0L, name, fid, index );
+                    addDrawable( baselines.get(), 0L, name, input, index );
                 }
 
                 if ( outlines.valid() )
                 {
-                    addDrawable( outlines.get(), 0L, name, fid, index );
+                    addDrawable( outlines.get(), 0L, name, input, index );
                 }
             }   
         }

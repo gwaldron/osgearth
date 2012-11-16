@@ -109,6 +109,31 @@ namespace
     }
 
 
+    void
+    intersectClipRayWithPlane(double                   clipx, 
+                              double                   clipy, 
+                              const osg::Matrix&       clipToWorld,
+                              std::vector<osg::Vec3d>& output)
+    {
+        osg::Vec3d p0 = osg::Vec3d(clipx, clipy, -1.0) * clipToWorld; // near plane
+        osg::Vec3d p1 = osg::Vec3d(clipx, clipy,  1.0) * clipToWorld; // far plane
+
+        // zero-level plane is hard-coded here
+        osg::Vec3d planePoint(0,0,0);
+        osg::Vec3d planeNormal(0,0,1);
+
+        osg::Vec3d L = p1-p0;
+        L.normalize();
+
+        double denom = L * planeNormal;
+        if ( !osg::equivalent(denom, 0.0) )
+        {
+            double d = ((planePoint - p0) * planeNormal) / denom;
+            output.push_back( p0 + L*d );
+        }
+    }
+
+
     /**
      * This method takes a set of verts and finds the nearest and farthest distances from
      * the points to the camera. It does this calculation in the plane defined by the
@@ -459,15 +484,15 @@ OverlayDecorator::cullTerrainAndCalculateRTTParams(osgUtil::CullVisitor* cv,
         //osg::Matrixd clipToWorld = inverseMVP;
         //clipToWorld.invert( cv->getCurrentCamera()->getViewMatrix() * projMatrix );
 
-        // intersect the four corners of the frustum with a spheroid representing
+        // intersect the corners of the frustum with a spheroid representing
         // the geocentric earth. The order matters here, because we want the results to be
         // counter-clockwise when viewed from the camera.
         // NOTE: test with elevation..might need to shrink the sphere a bit as a fudge factor
         std::vector<osg::Vec3d> points;
         points.reserve(4);
         double R = std::min(_ellipsoid->getRadiusPolar(), _ellipsoid->getRadiusEquator());
-        intersectClipRayWithSphere( -1.0, -1.0, inverseMVP, R, points );
-        intersectClipRayWithSphere(  1.0, -1.0, inverseMVP, R, points );
+        intersectClipRayWithSphere( -1.0, -1.0, inverseMVP, R, points );  // bottom left
+        intersectClipRayWithSphere(  1.0, -1.0, inverseMVP, R, points );  // bottom right
         intersectClipRayWithSphere(  1.0,  1.0, inverseMVP, R, points );
         if ( points.size() < 3 )
             intersectClipRayWithSphere( -1.0,  1.0, inverseMVP, R, points );
@@ -477,6 +502,28 @@ OverlayDecorator::cullTerrainAndCalculateRTTParams(osgUtil::CullVisitor* cv,
         // plane from causing similar jumps in our projected image. (If we have less than
         // three points, that probably means we can see the horizon, in which case we'll just
         // let nature take its course.)
+        if ( points.size() >= 3 )
+        {
+            osg::Plane plane(points[0], points[1], points[2]);
+            frustumPH.cut(plane);
+        }
+    }
+
+    else
+    {
+        // same deal as above, but for a projected/flat map - we intersect a phantom
+        // plane instead of sphere.
+        std::vector<osg::Vec3d> points;
+        points.reserve(4);
+
+        intersectClipRayWithPlane( -1.0, -1.0, inverseMVP, points );
+        intersectClipRayWithPlane(  1.0, -1.0, inverseMVP, points );
+        intersectClipRayWithPlane(  0.0,  1.0, inverseMVP, points ); // try the top-center first for projected.
+        if ( points.size() < 3 )
+            intersectClipRayWithPlane(  1.0,  1.0, inverseMVP, points );
+        if ( points.size() < 3 )
+            intersectClipRayWithPlane( -1.0,  1.0, inverseMVP, points );
+
         if ( points.size() >= 3 )
         {
             osg::Plane plane(points[0], points[1], points[2]);

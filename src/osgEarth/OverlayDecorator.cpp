@@ -47,6 +47,68 @@ using namespace osgEarth;
 
 namespace
 {
+    void
+    intersectClipRayWithSphere(double                   clipx, 
+                               double                   clipy, 
+                               const osg::Matrix&       clipToWorld, 
+                               double                   R,
+                               std::vector<osg::Vec3d>& output)
+    {
+        osg::Vec3d p0 = osg::Vec3d(clipx, clipy, -1.0) * clipToWorld; // near plane
+        osg::Vec3d p1 = osg::Vec3d(clipx, clipy,  1.0) * clipToWorld; // far plane
+
+        // http://stackoverflow.com/questions/6533856/ray-sphere-intersection
+
+        osg::Vec3d d = p1-p0;
+
+        double A = d.x()*d.x() + d.y()*d.y() + d.z()*d.z();
+        double B = 2.0 * (d.x()*p0.x() + d.y()*p0.y() + d.z()*p0.z());
+        double C = p0.x()*p0.x() + p0.y()*p0.y() + p0.z()*p0.z() - R*R;
+
+        // now solve the quadratic A + B*t + C*t^2 = 0.
+        double D = B*B - 4.0*A*C;
+        if ( D >= 0 )
+        {
+            if ( osg::equivalent(D, 0.0) )
+            {
+                // one root (line it tangent to sphere)
+                double t = -B/(2.0*A);
+                if (t >= 0.0 && t <= 1.0)
+                {
+                    output.push_back( p0 + d*t );
+                }
+            }
+            else
+            {
+                // two roots (line passes through sphere twice)
+                // find the closer of the two.
+                double sqrtD = sqrt(D);
+                double t0 = (-B + sqrtD)/(2.0*A);
+                double t1 = (-B - sqrtD)/(2.0*A);
+                
+                bool t0_ok = t0 >= 0.0 && t0 <= 1.0;
+                bool t1_ok = t1 >= 0.0 && t1 <= 1.0;
+
+                if ( t0_ok || t1_ok )
+                {
+                    if ( !t1_ok )
+                    {
+                        output.push_back( p0 + d*t0 );
+                    }
+                    else if ( !t0_ok )
+                    {
+                        output.push_back( p0 + d*t1 );
+                    }
+                    else
+                    {
+                        output.push_back( p0 + d*std::min(t0,t1) );
+                    }
+                }
+            }
+        }
+    }
+
+
     /**
      * This method takes a set of verts and finds the nearest and farthest distances from
      * the points to the camera. It does this calculation in the plane defined by the
@@ -383,12 +445,44 @@ OverlayDecorator::cullTerrainAndCalculateRTTParams(osgUtil::CullVisitor* cv,
        
     // contruct the polyhedron representing the viewing frustum.
     osgShadow::ConvexPolyhedron frustumPH;
-    //MyConvexPolyhedron frustumPH;
     frustumPH.setToUnitFrustum( true, true );
     osg::Matrixd MVP = *cv->getModelViewMatrix() * projMatrix;
     osg::Matrixd inverseMVP;
     inverseMVP.invert(MVP);
     frustumPH.transform( inverseMVP, MVP );
+
+    // constrain the far plane.
+    if ( _isGeocentric )
+    {
+        // (technically we should use the commented-out code; but since the OD probably has
+        //  no local xforms above it, the inverseMVP should suffice.)
+        //osg::Matrixd clipToWorld = inverseMVP;
+        //clipToWorld.invert( cv->getCurrentCamera()->getViewMatrix() * projMatrix );
+
+        // intersect the four corners of the frustum with a spheroid representing
+        // the geocentric earth. The order matters here, because we want the results to be
+        // counter-clockwise when viewed from the camera.
+        // NOTE: test with elevation..might need to shrink the sphere a bit as a fudge factor
+        std::vector<osg::Vec3d> points;
+        points.reserve(4);
+        double R = std::min(_ellipsoid->getRadiusPolar(), _ellipsoid->getRadiusEquator());
+        intersectClipRayWithSphere( -1.0, -1.0, inverseMVP, R, points );
+        intersectClipRayWithSphere(  1.0, -1.0, inverseMVP, R, points );
+        intersectClipRayWithSphere(  1.0,  1.0, inverseMVP, R, points );
+        if ( points.size() < 3 )
+            intersectClipRayWithSphere( -1.0,  1.0, inverseMVP, R, points );
+
+        // If we got three or more points, we can use that to create a plane, and use that
+        // plane to crop the frustum. This will prevent "jumps" in the natural far clipping
+        // plane from causing similar jumps in our projected image. (If we have less than
+        // three points, that probably means we can see the horizon, in which case we'll just
+        // let nature take its course.)
+        if ( points.size() >= 3 )
+        {
+            osg::Plane plane(points[0], points[1], points[2]);
+            frustumPH.cut(plane);
+        }
+    }
 
     // take the bounds of the overlay graph, constrained to the view frustum:
     osg::BoundingSphere visibleOverlayBS;
@@ -487,12 +581,12 @@ OverlayDecorator::cullTerrainAndCalculateRTTParams(osgUtil::CullVisitor* cv,
 
             // camera frustum:
             {
-                osgShadow::ConvexPolyhedron frustumPH;
-                frustumPH.setToUnitFrustum( true, true );
-                osg::Matrixd MVP = *cv->getModelViewMatrix() * projMatrix;
-                osg::Matrixd inverseMVP;
-                inverseMVP.invert(MVP);
-                frustumPH.transform( inverseMVP, MVP );
+                //osgShadow::ConvexPolyhedron frustumPH;
+                //frustumPH.setToUnitFrustum( true, true );
+                //osg::Matrixd MVP = *cv->getModelViewMatrix() * projMatrix;
+                //osg::Matrixd inverseMVP;
+                //inverseMVP.invert(MVP);
+                //frustumPH.transform( inverseMVP, MVP );
                 frustumPH.dumpGeometry(0,0,0,fn);
             }
             osg::Node* camNode = osgDB::readNodeFile(fn);

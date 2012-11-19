@@ -44,6 +44,95 @@ using namespace osgEarth;
 
 namespace
 {
+    void setFar(osg::Matrix& m, double newFar)
+    {
+        if ( osg::equivalent(m(0,3),0.0) && osg::equivalent(m(1,3),0.0) && osg::equivalent(m(2,3),0.0) )
+        {
+            double l,r,b,t,n,f;
+            m.getOrtho(l,r,b,t,n,f);
+            m.makeOrtho(l,r,b,t,n,newFar);
+        }
+        else
+        {
+            double v,a,n,f;
+            m.getPerspective(v,a,n,f);
+            m.makePerspective(v,a,n,newFar);
+        }
+    }
+
+
+    /**
+     * Interects a finite ray with a sphere of radius R. The ray is defined
+     * by the X and Y components (in projection aka "clip" space). The function
+     * uses this information to build a ray from Z=-1 to Z=1. 
+     *
+     * Places the intersection point(s) in the output vector.
+     */
+    void
+    intersectClipRayWithSphere(double                   clipx, 
+                               double                   clipy, 
+                               const osg::Matrix&       clipToWorld, 
+                               double                   R,
+                               double&                  inout_maxDist2)
+    {
+        double dist2 = 0.0;
+
+        osg::Vec3d p0 = osg::Vec3d(clipx, clipy, -1.0) * clipToWorld; // near plane
+        osg::Vec3d p1 = osg::Vec3d(clipx, clipy,  1.0) * clipToWorld; // far plane
+
+        // http://stackoverflow.com/questions/6533856/ray-sphere-intersection
+
+        osg::Vec3d d = p1-p0;
+
+        double A = d * d;
+        double B = 2.0 * (d * p0);
+        double C = (p0 * p0) - R*R;
+
+        // now solve the quadratic A + B*t + C*t^2 = 0.
+        double D = B*B - 4.0*A*C;
+        if ( D >= 0 )
+        {
+            if ( osg::equivalent(D, 0.0) )
+            {
+                // one root (line it tangent to sphere)
+                double t = -B/(2.0*A);
+                if (t >= 0.0)
+                {
+                    osg::Vec3d v = d*t;
+                    dist2 = v.length2();
+                }
+            }
+            else
+            {
+                // two roots (line passes through sphere twice)
+                // find the closer of the two.
+                double sqrtD = sqrt(D);
+                double t0 = (-B + sqrtD)/(2.0*A);
+                double t1 = (-B - sqrtD)/(2.0*A);
+
+                if ( t0 >= 0.0 && t1 >= 0.0 )
+                {
+                    osg::Vec3d v = d*std::min(t0,t1);
+                    dist2 = v.length2();
+                }
+                else if ( t0 >= 0.0 )
+                {
+                    osg::Vec3d v = d*t0;
+                    dist2 = v.length2();
+                }
+                else if ( t1 >= 0.0 )
+                {
+                    osg::Vec3d v = d*t1;
+                    dist2 = v.length2();
+                }
+            }
+        }
+
+        if ( dist2 > inout_maxDist2 )
+            inout_maxDist2 = dist2;
+    }
+
+#if 0
     /**
      * Interects a finite ray with a sphere of radius R. The ray is defined
      * by the X and Y components (in projection aka "clip" space). The function
@@ -65,9 +154,9 @@ namespace
 
         osg::Vec3d d = p1-p0;
 
-        double A = d.x()*d.x() + d.y()*d.y() + d.z()*d.z();
-        double B = 2.0 * (d.x()*p0.x() + d.y()*p0.y() + d.z()*p0.z());
-        double C = p0.x()*p0.x() + p0.y()*p0.y() + p0.z()*p0.z() - R*R;
+        double A = d * d;
+        double B = 2.0 * (d * p0);
+        double C = (p0 * p0) - R*R;
 
         // now solve the quadratic A + B*t + C*t^2 = 0.
         double D = B*B - 4.0*A*C;
@@ -77,7 +166,7 @@ namespace
             {
                 // one root (line it tangent to sphere)
                 double t = -B/(2.0*A);
-                if (t >= 0.0 && t <= 1.0)
+                if (t >= 0.0)
                 {
                     output.push_back( p0 + d*t );
                 }
@@ -90,29 +179,56 @@ namespace
                 double t0 = (-B + sqrtD)/(2.0*A);
                 double t1 = (-B - sqrtD)/(2.0*A);
                 
-                bool t0_ok = t0 >= 0.0 && t0 <= 1.0;
-                bool t1_ok = t1 >= 0.0 && t1 <= 1.0;
+                //bool t0_ok = t0 >= 0.0; // && t0 <= 1.0;
+                //bool t1_ok = t1 >= 0.0; // && t1 <= 1.0;
 
-                if ( t0_ok || t1_ok )
+                if ( t0 >= 0.0 && t1 >= 0.0 )
                 {
-                    if ( !t1_ok )
-                    {
-                        output.push_back( p0 + d*t0 );
-                    }
-                    else if ( !t0_ok )
-                    {
-                        output.push_back( p0 + d*t1 );
-                    }
-                    else
-                    {
-                        output.push_back( p0 + d*std::min(t0,t1) );
-                    }
+                    output.push_back( p0 + d*std::min(t0,t1) );
+                }
+                else if ( t0 >= 0.0 )
+                {
+                    output.push_back( p0 + d*t0 );
+                }
+                else if ( t1 >= 0.0 )
+                {
+                    output.push_back( p0 + d*t1 );
                 }
             }
         }
     }
+#endif
 
+    /**
+     * Same as above, but intersects the ray with a static 2D plane
+     * (for use in projected map mode)
+     */
+    void
+    intersectClipRayWithPlane(double                   clipx, 
+                              double                   clipy, 
+                              const osg::Matrix&       clipToWorld,
+                              double&                  inout_maxDist2)
+    {
+        osg::Vec3d p0 = osg::Vec3d(clipx, clipy, -1.0) * clipToWorld; // near plane
+        osg::Vec3d p1 = osg::Vec3d(clipx, clipy,  1.0) * clipToWorld; // far plane
 
+        // zero-level plane is hard-coded here
+        osg::Vec3d planePoint(0,0,0);
+        osg::Vec3d planeNormal(0,0,1);
+
+        osg::Vec3d L = p1-p0;
+        L.normalize();
+
+        double denom = L * planeNormal;
+        if ( !osg::equivalent(denom, 0.0) )
+        {
+            double d = ((planePoint - p0) * planeNormal) / denom;
+            if ( d > 0.0 )
+                inout_maxDist2 = (L*d).length2();
+        }
+    }
+
+#if 0
     /**
      * Same as above, but intersects the ray with a static 2D plane
      * (for use in projected map mode)
@@ -140,6 +256,7 @@ namespace
             output.push_back( p0 + L*d );
         }
     }
+#endif
 
 
     /**
@@ -316,10 +433,7 @@ OverlayDecorator::cullTerrainAndCalculateRTTParams(osgUtil::CullVisitor* cv,
     double haslWeight;
 
     // approximate distance to the visible horizon
-    double horizonDistance; 
-
-    // distance to the horizon, projected into the RTT camera's tangent plane.
-    double horizonDistanceInRTTPlane;
+    double horizonDistance;
 
     OE_TEST << LC << "------- OD CULL ------------------------" << std::endl;
 
@@ -342,18 +456,9 @@ OverlayDecorator::cullTerrainAndCalculateRTTParams(osgUtil::CullVisitor* cv,
 
         // radius of the earth under the eyepoint
         double radius = eyeLen - hasl; 
-        horizonDistance = sqrt( 2.0 * radius * hasl ); 
+        horizonDistance = sqrt( 2.0*radius*hasl + hasl*hasl );
 
         pvd._sharedHorizonDistance = horizonDistance;
-        //OE_NOTICE << LC << "Horizon distance = " << pvd._sharedHorizonDistance << std::endl;
-    
-        // calculate the distance to the horizon, projected into the RTT camera plane.
-        // This is the maximum limit of eMax since there is no point in drawing overlay
-        // data beyond the visible horizon.
-        double pitchAngleOfHorizon_rad = acos( horizonDistance/eyeLen );
-        horizonDistanceInRTTPlane = horizonDistance * sin( pitchAngleOfHorizon_rad );
-
-        OE_TEST << LC << "RTT distance to horizon: " << horizonDistanceInRTTPlane << std::endl;
     }
     else // projected map
     {
@@ -363,15 +468,13 @@ OverlayDecorator::cullTerrainAndCalculateRTTParams(osgUtil::CullVisitor* cv,
         eyeLen = hasl * 2.0;
 
         // there is no maximum horizon distance in a projected map
-        horizonDistance = DBL_MAX;
-        horizonDistanceInRTTPlane = DBL_MAX;
+        horizonDistance = sqrt(2.0*6356752.3142*hasl + hasl*hasl);
 
         for(unsigned t=0; t<pvd._techParams.size(); ++t)
         {
             TechRTTParams& params = pvd._techParams[t];
 
-            //TODO: change to tech->getActive() or something
-            if ( params._group->getNumChildren() > 0 )
+            if ( _techniques[t]->hasData(params) )
             {
                 params._rttViewMatrix.makeLookAt( eye, eye-worldUp*hasl, osg::Vec3(0,1,0) );
             }
@@ -428,97 +531,64 @@ OverlayDecorator::cullTerrainAndCalculateRTTParams(osgUtil::CullVisitor* cv,
     cv->setCalculatedNearPlane( osg::minimum(zSavedNear, zNear) );
     cv->setCalculatedFarPlane( osg::maximum(zSavedFar, zFar) );
 
-    if ( _isGeocentric )
-    {        
-        // in geocentric mode, clamp the far clip plane to the horizon.
-        double maxDistance = (1.0 - haslWeight)  * horizonDistance  + haslWeight * hasl;
-        maxDistance = osg::clampBelow( maxDistance, _maxHorizonDistance );
-        maxDistance *= 1.5;
-        if (zFar - zNear >= maxDistance)
-            zFar = zNear + maxDistance;
+    // clamp the far plane (for RTT purposes) to the horizon distance.
+    double maxFar = std::min( horizonDistance, _maxHorizonDistance );
+    cv->clampProjectionMatrix( projMatrix, zNear, maxFar );
 
-        cv->clampProjectionMatrix( projMatrix, zNear, zFar );
-
-        OE_TEST << LC << "Horizon clamp: zNear = " << zNear << ", zFar = " << zFar << std::endl;
-    }
-       
-    // contruct the polyhedron representing the viewing frustum.
-    osgShadow::ConvexPolyhedron frustumPH;
-    frustumPH.setToUnitFrustum( true, true );
+    // prepare to calculate the ideal far plane for RTT extent resolution.
     osg::Matrixd MVP = *cv->getModelViewMatrix() * projMatrix;
     osg::Matrixd inverseMVP;
     inverseMVP.invert(MVP);
-    frustumPH.transform( inverseMVP, MVP );
+
+    double maxDist2 = 0.0;
 
     // constrain the far plane.
+    // intersect the top corners of the projection volume since those are the farthest.
     if ( _isGeocentric )
     {
-        // (technically we should use the commented-out code; but since the OD probably has
-        //  no local xforms above it, the inverseMVP should suffice.)
+        // (technically we should use inverse(view*proj), but there's likely no model matrix
+        // here yet so inverseMVP should work -GW
+        double R = eyeLen-hasl;
 
-        //osg::Matrixd clipToWorld = inverseMVP;
-        //clipToWorld.invert( cv->getCurrentCamera()->getViewMatrix() * projMatrix );
-
-        // intersect the corners of the frustum with a spheroid representing
-        // the geocentric earth. The order matters here, because we want the results to be
-        // counter-clockwise when viewed from the camera.
-        // NOTE: test with elevation..might need to shrink the sphere a bit as a fudge factor
-        std::vector<osg::Vec3d> points;
-        points.reserve(4);
-        double R = std::min(_ellipsoid->getRadiusPolar(), _ellipsoid->getRadiusEquator());
-        intersectClipRayWithSphere( -1.0, -1.0, inverseMVP, R, points );  // bottom left
-        intersectClipRayWithSphere(  1.0, -1.0, inverseMVP, R, points );  // bottom right
-        intersectClipRayWithSphere(  1.0,  1.0, inverseMVP, R, points );
-        if ( points.size() < 3 )
-            intersectClipRayWithSphere( -1.0,  1.0, inverseMVP, R, points );
-
-        // If we got three or more points, we can use that to create a plane, and use that
-        // plane to crop the frustum. This will prevent "jumps" in the natural far clipping
-        // plane from causing similar jumps in our projected image. (If we have less than
-        // three points, that probably means we can see the horizon, in which case we'll just
-        // let nature take its course.)
-        if ( points.size() >= 3 )
-        {
-            osg::Plane plane(points[0], points[1], points[2]);
-            frustumPH.cut(plane);
-        }
+        intersectClipRayWithSphere( -1.0, 1.0, inverseMVP, R, maxDist2 );
+        intersectClipRayWithSphere(  1.0, 1.0, inverseMVP, R, maxDist2 );
     }
-
     else // projected
     {
-        // same deal as above, but for a projected/flat map - we intersect a phantom
-        // plane instead of sphere.
-        std::vector<osg::Vec3d> points;
-        points.reserve(4);
-
-        intersectClipRayWithPlane( -1.0, -1.0, inverseMVP, points );
-        intersectClipRayWithPlane(  1.0, -1.0, inverseMVP, points );
-        intersectClipRayWithPlane(  0.0,  1.0, inverseMVP, points ); // try the top-center first
-        if ( points.size() < 3 )
-            intersectClipRayWithPlane(  1.0,  1.0, inverseMVP, points );
-        if ( points.size() < 3 )
-            intersectClipRayWithPlane( -1.0,  1.0, inverseMVP, points );
-
-        if ( points.size() >= 3 )
-        {
-            osg::Plane plane(points[0], points[1], points[2]);
-            frustumPH.cut(plane);
-        }
+        intersectClipRayWithPlane( -1.0, 1.0, inverseMVP, maxDist2 );
+        if ( maxDist2 == 0.0 )
+            intersectClipRayWithPlane( 1.0, 1.0, inverseMVP, maxDist2 );
+        if ( maxDist2 == 0.0 )
+            intersectClipRayWithPlane( 0.0, 1.0, inverseMVP, maxDist2 );
     }
 
-    // set these up for later.
-    bool nearVertsCalculated = false;
-    osg::Vec3d nearVertTop   (0.5, 1.0,-1.0);
-    osg::Vec3d nearVertBottom(0.5,-1.0,-1.0);
+    // clamp down the far plane:
+    if ( maxDist2 != 0.0 )
+    {
+        maxFar = std::min( zNear+sqrt(maxDist2), maxFar );
+    }
+
+    // reset the projection matrix if we changed the far:
+    if ( maxFar != zFar )
+    {
+        setFar( projMatrix, maxFar );
+        MVP = *cv->getModelViewMatrix() * projMatrix;
+        inverseMVP.invert(MVP);
+    }
+
+    // Build a polyhedron for the new frustum so we can slice it.
+    // TODO: do we really even need to slice it anymore? consider
+    osgShadow::ConvexPolyhedron frustumPH;
+    frustumPH.setToUnitFrustum(true, true);
+    frustumPH.transform( inverseMVP, MVP );
 
     // now we need to calculate the visible bounds for each overlay group.
     for( unsigned t=0; t<pvd._techParams.size(); ++t )
     {
         TechRTTParams& params = pvd._techParams[t];
 
-        //TODO: changed to technique->getActive() or something
-        // skip an empty group.
-        if ( params._group->getNumChildren() == 0 )
+        // skip empty techniques
+        if ( !_techniques[t]->hasData(params) )
             continue;
 
         // time to calculate the visible polyhedron.
@@ -544,19 +614,6 @@ OverlayDecorator::cullTerrainAndCalculateRTTParams(osgUtil::CullVisitor* cv,
         // box of these points to figure out how large to make the RTT extents.
         std::vector<osg::Vec3d> verts;
         visiblePH.getPoints( verts );
-
-        // (re)-insert the points on the near clip plane into the vertex list, just in
-        // case they were cut out during the optimization proceess. We need the near
-        // plane entirely within the bounds or close-up data will not get RTT'd.
-        // (we use inverseMVP here; technically inverse(VP) is more correct)
-        if ( !nearVertsCalculated )
-        {
-            nearVertTop    = nearVertTop    * inverseMVP;
-            nearVertBottom = nearVertBottom * inverseMVP;
-            nearVertsCalculated = true;
-        }
-        verts.push_back( nearVertTop );
-        verts.push_back( nearVertBottom );
 
         if ( _isGeocentric )
         {

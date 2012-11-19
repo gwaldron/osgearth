@@ -46,9 +46,8 @@ using namespace osgEarth::Features;
 using namespace osgEarth::Symbology;
 
 #undef USE_PROXY_NODE_FOR_TESTING
-
-//#define OE_TEST OE_NULL
-#define OE_TEST OE_NOTICE
+#define OE_TEST OE_NULL
+//#define OE_TEST OE_NOTICE
 
 //---------------------------------------------------------------------------
 
@@ -85,9 +84,7 @@ namespace
         p->setFileName( 0, uri );
 #else
         PagedLODWithNodeOperations* p = new PagedLODWithNodeOperations(postMergeOps);
-        //osg::PagedLOD* p = new osg::PagedLOD();
         p->setCenter( bs.center() );
-        //p->setRadius( bs.radius() );
         p->setRadius(std::max((float)bs.radius(),maxRange));
         p->setFileName( 0, uri );
         p->setRange( 0, minRange, maxRange );
@@ -296,7 +293,6 @@ _pendingUpdate( false )
     // If the user requests fade-in, install a post-merge operation that will set the 
     // proper fade time for paged nodes.
     if ( _options.fading().isSet() )
-//    if ( _options.fadeInDuration().value() > 0.0f )
     {
         addPostMergeOperation( new SetupFading() );
         OE_INFO << LC << "Added fading post-merge operation" << std::endl;
@@ -1093,7 +1089,6 @@ FeatureModelGraph::checkForActiveClamping( const Style& style )
             (alt->technique() == AltitudeSymbol::TECHNIQUE_GPU))
         {
             _clamper->setActive( true );
-            //OE_INFO << LC << "Activating GPU clamping!" << std::endl;
         }
     }
 

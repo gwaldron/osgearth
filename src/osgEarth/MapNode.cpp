@@ -327,9 +327,9 @@ MapNode::init()
 
     // install the Clamping technique for overlays:
     {
-        OverlayTechnique* clamping = new ClampingTechnique();
-        //OverlayTechnique* clamping = new ClampingBinTechnique();
-        _overlayDecorator->addTechnique( clamping );
+        _overlayDecorator->addTechnique( new ClampingTechnique() );
+        //_overlayDecorator->addTechnique( new ClampingBinTechnique() );
+        //...why not combine the 2 clamping techniques? use a group AND a bin?
     }
 
 

@@ -45,24 +45,8 @@ namespace osgEarth
         ClampableNode( MapNode* mapNode, bool clamped =true );
 
     public:
-        /**
-         * Depth Offsetting Properties.
-         *
-         * Clamped geometry alters the geometry so that verticies coincide with
-         * the terrain. This can result in z-fighting artifacts. Depth offsetting
-         * mitigates this by biasing the depth value of the geometry. The idea is
-         * similar to polygon offsetting, but is dynamic and applies to all geometry
-         * (not just polygons).
-         *
-         * Depth offsetting works by pretending the vertex is closer to the camera 
-         * than it actually is, and writing a depth value based on that simulated
-         * location. The distance we shift the vertex towards the camera is the "bias".
-         *
-         * The "range" is the distance from camera to vertex at which a given
-         * bias is applied. The minimum bias is applied to geometry at or below the
-         * minimum range; the maximum bias is applied to geometry at or above the 
-         * maximum range; and the bias is interpolated for ranges in between.
-         */
+        /** Depth Offsetting properties. Clamped geometry is automatically
+         *  subjected to depth offsetting to mitigate z-buffer conflicts */
         DepthOffsetOptions& depthOffset() { dirtyDepthOffsetOptions(); return _do; }
         const DepthOffsetOptions& depthOffset() const { return _do; }
         

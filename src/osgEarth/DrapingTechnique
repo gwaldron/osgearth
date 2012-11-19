@@ -86,6 +86,9 @@ namespace osgEarth
 
     public: // OverlayTechnique
 
+        virtual bool hasData(
+            OverlayDecorator::TechRTTParams& params) const;
+
         void reestablish(
             TerrainEngineNode* engine );
 

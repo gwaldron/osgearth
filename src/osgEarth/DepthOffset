@@ -27,25 +27,32 @@
 #include <osg/Uniform>
 
 /**
-* Depth offsetting mitigates z-fighting artifacts for geometry that is very close
-* together, e.g. terrain-following lines. It uses a shader program to apply a 
-* simulated eye-space offset, writing values to the z-buffer as if the geometry were
-* drawn closer to the camera than they actually are. The effect is similar to what
-* glPolygonOffset is *supposed* to do (but doesn't). You get rid of z-fighting but
-* still maintain local occlusion.
+* Depth Offsetting.
+* 
+* Geometry that coincides with the terrain can result in z-fighting artifacts.
+* Depth offsetting mitigates this by biasing the depth value of the geometry.
+* The idea is similar to polygon offsetting, but is dynamic and applies to all
+* geometry (not just polygons).
 *
-* There is a trade off. You need to set a "minimum bias" that the technique will
-* apply to the geometry. From there, it uses the camera-to-vertex distance to ramp between
-* the minimum bias and a maximum bias. The appropriate minimum bias depends a lot on the
-* tessellation of your geometry, so it's wise to use a higher offset for geometry with longer 
-* segments when in a round-earth situation. The automatic setting (the default) analyzes
-* the subgraph and picks a decent value, but you can always override this is you like.
+* Depth offsetting works by pretending the vertex is closer to the camera 
+* than it actually is, and writing a depth value based on that simulated
+* location. The distance we shift the vertex towards the camera is the "bias".
+*
+* The "range" is the distance from camera to vertex at which a given
+* bias is applied. The minimum bias is applied to geometry at or below the
+* minimum range; the maximum bias is applied to geometry at or above the 
+* maximum range; and the bias is interpolated for ranges in between.
+*
+* The tessellation granularity of the geometry affects how well depth offsetting
+* works at a given camera distance. As a rule of thumb, the closer the camera is
+* to the geometry, the more it needs to be tessellated in order for depth
+* offsetting to work properly.
 */
 namespace osgEarth
 {
     /**
-     * Depth Offsetting options.
-     */
+    * Depth Offsetting options.
+    */
     class OSGEARTH_EXPORT DepthOffsetOptions
     {
     public:

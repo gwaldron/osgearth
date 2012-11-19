@@ -178,6 +178,9 @@ namespace osgEarth
     public:
         virtual bool supported() { return _supported; }
 
+        virtual bool hasData(
+            OverlayDecorator::TechRTTParams& params) const { return true; }
+
         virtual void onInstall( TerrainEngineNode* engine ) { }
 
         virtual void onUninstall( TerrainEngineNode* engine ) { }

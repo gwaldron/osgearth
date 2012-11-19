@@ -216,6 +216,13 @@ _textureSize( 4096 )
 }
 
 
+bool
+ClampingTechnique::hasData(OverlayDecorator::TechRTTParams& params) const
+{
+    return params._group->getNumChildren() > 0;
+}
+
+
 void
 ClampingTechnique::reestablish(TerrainEngineNode* engine)
 {

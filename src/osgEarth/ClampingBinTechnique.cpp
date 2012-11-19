@@ -71,6 +71,7 @@ namespace
         osg::ref_ptr<osg::Uniform>   _camViewToDepthClipUniform;
         osg::ref_ptr<osg::Uniform>   _depthClipToCamViewUniform;
         osg::ref_ptr<CPM>            _cpm;
+        unsigned                     _renderLeafCount;
     };
 }
 
@@ -112,6 +113,12 @@ namespace
         }
 
         // override.
+        void sortImplementation()
+        {
+            copyLeavesFromStateGraphListToRenderLeafList();
+        }
+
+        // override.
         void drawImplementation(osg::RenderInfo& renderInfo, osgUtil::RenderLeaf*& previous)
         {
             // find and initialize the state set for this camera.
@@ -122,6 +129,8 @@ namespace
                 if ( data._techData.valid() )
                 {
                     _stateset = data._techData->_groupStateSet.get();
+                    LocalPerViewData* local = static_cast<LocalPerViewData*>(data._techData.get());
+                    local->_renderLeafCount = _renderLeafList.size();
                 }
             }
 
@@ -142,6 +151,14 @@ _textureSize     ( 4096 )
 {
     // use the maximum available unit.
     _textureUnit = Registry::capabilities().getMaxGPUTextureUnits() - 1;
+}
+
+
+bool 
+ClampingBinTechnique::hasData(OverlayDecorator::TechRTTParams& params) const
+{
+    LocalPerViewData* local = static_cast<LocalPerViewData*>(params._techniqueData.get());
+    return local && local->_renderLeafCount > 0;
 }
 
 
@@ -406,7 +423,7 @@ ClampingBinTechnique::cullOverlayGroup(OverlayDecorator::TechRTTParams& params,
         local._camViewToDepthClipUniform->set( camViewToRttClip );
         local._depthClipToCamViewUniform->set( osg::Matrix::inverse(camViewToRttClip) );
 
-        // GW: we dont' ACTUALLY cull the overlay group. That will happen naturally.
+        // GW: we dont' actually cull the overlay group. That will happen naturally.
         // setting up all the uniforms is important though, and applying the stateset to
         // the renderbin is too.
     }

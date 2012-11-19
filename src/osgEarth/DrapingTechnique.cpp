@@ -59,6 +59,13 @@ _attachStencil   ( true )
 }
 
 
+bool
+DrapingTechnique::hasData(OverlayDecorator::TechRTTParams& params) const
+{
+    return params._group->getNumChildren() > 0;
+}
+
+
 void
 DrapingTechnique::reestablish(TerrainEngineNode* engine)
 {
@@ -102,9 +109,9 @@ DrapingTechnique::setUpCamera(OverlayDecorator::TechRTTParams& params)
     projTexture->setSourceType( GL_UNSIGNED_BYTE );
     projTexture->setFilter( osg::Texture::MIN_FILTER, _mipmapping? osg::Texture::LINEAR_MIPMAP_LINEAR: osg::Texture::LINEAR );
     projTexture->setFilter( osg::Texture::MAG_FILTER, osg::Texture::LINEAR );
-    projTexture->setWrap( osg::Texture::WRAP_S, osg::Texture::CLAMP_TO_EDGE );
-    projTexture->setWrap( osg::Texture::WRAP_T, osg::Texture::CLAMP_TO_EDGE );
-    projTexture->setWrap( osg::Texture::WRAP_R, osg::Texture::CLAMP_TO_EDGE );
+    projTexture->setWrap( osg::Texture::WRAP_S, osg::Texture::CLAMP_TO_BORDER );
+    projTexture->setWrap( osg::Texture::WRAP_T, osg::Texture::CLAMP_TO_BORDER );
+    //projTexture->setWrap( osg::Texture::WRAP_R, osg::Texture::CLAMP_TO_EDGE );
     projTexture->setBorderColor( osg::Vec4(0,0,0,0) );
 
     // set up the RTT camera:

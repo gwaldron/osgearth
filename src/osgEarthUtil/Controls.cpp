@@ -631,7 +631,10 @@ LabelControl::LabelControl(const std::string& text,
                            const osg::Vec4f&  foreColor):
 _text    ( text ),
 _fontSize( fontSize ),
-_encoding( osgText::String::ENCODING_UNDEFINED )
+_encoding( osgText::String::ENCODING_UNDEFINED ),
+_backdropType( osgText::Text::OUTLINE ),
+_backdropImpl( osgText::Text::STENCIL_BUFFER ),
+_backdropOffset( 0.03f )
 {    
     setFont( Registry::instance()->getDefaultFont() );    
     setForeColor( foreColor );
@@ -643,7 +646,10 @@ LabelControl::LabelControl(const std::string& text,
                            float              fontSize ):
 _text    ( text ),
 _fontSize( fontSize ),
-_encoding( osgText::String::ENCODING_UNDEFINED )
+_encoding( osgText::String::ENCODING_UNDEFINED ),
+_backdropType( osgText::Text::OUTLINE ),
+_backdropImpl( osgText::Text::STENCIL_BUFFER ),
+_backdropOffset( 0.03f )
 {    	
     setFont( Registry::instance()->getDefaultFont() );   
     setForeColor( foreColor );
@@ -654,7 +660,10 @@ LabelControl::LabelControl(Control*           valueControl,
                            float              fontSize,
                            const osg::Vec4f&  foreColor):
 _fontSize( fontSize ),
-_encoding( osgText::String::ENCODING_UNDEFINED )
+_encoding( osgText::String::ENCODING_UNDEFINED ),
+_backdropType( osgText::Text::OUTLINE ),
+_backdropImpl( osgText::Text::STENCIL_BUFFER ),
+_backdropOffset( 0.03f )
 {
     setFont( Registry::instance()->getDefaultFont() );    
     setForeColor( foreColor );
@@ -668,7 +677,10 @@ LabelControl::LabelControl(Control*           valueControl,
                            const osg::Vec4f&  foreColor,
                            float              fontSize ):
 _fontSize( fontSize ),
-_encoding( osgText::String::ENCODING_UNDEFINED )
+_encoding( osgText::String::ENCODING_UNDEFINED ),
+_backdropType( osgText::Text::OUTLINE ),
+_backdropImpl( osgText::Text::STENCIL_BUFFER ),
+_backdropOffset( 0.03f )
 {    	
     setFont( Registry::instance()->getDefaultFont() );   
     setForeColor( foreColor );
@@ -725,6 +737,33 @@ LabelControl::setHaloColor( const osg::Vec4f& value )
 }
 
 void
+LabelControl::setTextBackdropImplementation(osgText::Text::BackdropImplementation value)
+{
+    if( _backdropImpl != value ) {
+        _backdropImpl = value;
+        dirty();
+    }
+}
+
+void
+LabelControl::setTextBackdropType(osgText::Text::BackdropType value)
+{
+    if( _backdropType != value ) {
+        _backdropType = value;
+        dirty();
+    }
+}
+
+void 
+LabelControl::setTextBackdropOffset(float offsetValue) 
+{
+    if ( offsetValue != _backdropOffset ) {
+        _backdropOffset = offsetValue;
+        dirty();
+    }
+}
+
+void
 LabelControl::calcSize(const ControlContext& cx, osg::Vec2f& out_size)
 {
     if ( visible() == true )
@@ -753,8 +792,9 @@ LabelControl::calcSize(const ControlContext& cx, osg::Vec2f& out_size)
 
         if ( haloColor().isSet() )
         {
-            t->setBackdropType( osgText::Text::OUTLINE );
-            t->setBackdropOffset( 0.03 );
+            t->setBackdropType( _backdropType );
+            t->setBackdropImplementation( _backdropImpl );
+            t->setBackdropOffset( _backdropOffset );
             t->setBackdropColor( haloColor().value() );
         }
 

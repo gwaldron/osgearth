@@ -305,7 +305,7 @@ ElevationLayer::assembleHeightFieldFromTileSource(const TileKey&    key,
                             heightFields.push_back( GeoHeightField(hf, parentKey.getExtent()) );
                             break;
                         }                        
-                        parentKey = layerKey.createParentKey();
+                        parentKey = parentKey.createParentKey();
                     }                    
                 }
             }

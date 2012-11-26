@@ -1446,7 +1446,14 @@ EarthManipulator::handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapt
             {
                 //OE_WARN << LC << "P: " << i->_dx << ", " << i->_dy << std::endl;
                 Action action = _settings->getAction(i->_eventType, i->_mbmask, 0);
-                handleMovementAction(action._type, i->_dx, i->_dy, view);
+
+                // here we adjust for action scale, global sensitivy
+                double dx = i->_dx, dy = i->_dy;
+                dx *= _settings->getMouseSensitivity();
+                dy *= _settings->getMouseSensitivity();
+                applyOptionsToDeltas( action, dx, dy );
+
+                handleMovementAction(action._type, dx, dy, view);
                 aa.requestRedraw();
             }
             handled = true;

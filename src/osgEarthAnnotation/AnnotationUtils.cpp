@@ -782,3 +782,32 @@ AnnotationUtils::styleRequiresAlphaBlending( const Style& style )
 
     return false;
 }
+
+
+void
+AnnotationUtils::getAltitudePolicy(const Style& style, AltitudePolicy& out)
+{
+    out.gpuAutoClamping = false;
+    out.cpuAutoClamping = false;
+    out.draping         = false;
+
+    bool compatible =
+        !style.has<ExtrusionSymbol>() &&
+        !style.has<InstanceSymbol>()  &&
+        !style.has<MarkerSymbol>()    ;      // backwards-compability
+
+    if ( compatible )
+    {
+        const AltitudeSymbol* alt = style.get<AltitudeSymbol>();
+        if ( alt )
+        {
+            if (alt->clamping() == AltitudeSymbol::CLAMP_TO_TERRAIN || 
+                alt->clamping() == AltitudeSymbol::CLAMP_RELATIVE_TO_TERRAIN )
+            {
+                out.gpuAutoClamping = alt->technique() == AltitudeSymbol::TECHNIQUE_GPU;
+                out.cpuAutoClamping = alt->technique() == AltitudeSymbol::TECHNIQUE_MAP;
+                out.draping         = alt->technique() == AltitudeSymbol::TECHNIQUE_DRAPE;
+            }
+        }
+    }
+}

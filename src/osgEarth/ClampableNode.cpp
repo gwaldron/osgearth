@@ -48,7 +48,10 @@ OverlayNode( mapNode, active, &getTechniqueGroup )
 void
 ClampableNode::init()
 {
+    // auto-bias starts out true, but if you set the depth offset options
+    // it will toggle to false.
     _autoBias = true;
+
     _doDirty  = false;
 
     osg::StateSet* s = this->getOrCreateStateSet();
@@ -99,7 +102,7 @@ ClampableNode::applyDepthOffsetOptions()
 }
 
 void
-ClampableNode::calculateMinDepthOffsetBiasFromSubgraph()
+ClampableNode::setAutoCalculateDepthOffset()
 {
     // prompts OSG to call computeBound() on the next pass which
     // will recalculate the minimum bias.

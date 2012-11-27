@@ -217,6 +217,7 @@ main(int argc, char** argv)
         geomStyle.getOrCreate<LineSymbol>()->stroke()->color() = Color::Cyan;
         geomStyle.getOrCreate<LineSymbol>()->stroke()->width() = 5.0f;
         geomStyle.getOrCreate<AltitudeSymbol>()->clamping() = AltitudeSymbol::CLAMP_TO_TERRAIN;
+        geomStyle.getOrCreate<AltitudeSymbol>()->technique() = AltitudeSymbol::TECHNIQUE_GPU;
         FeatureNode* gnode = new FeatureNode(mapNode, new Feature(geom, geoSRS, geomStyle));
         annoGroup->addChild( gnode );
 
@@ -236,6 +237,7 @@ main(int argc, char** argv)
         geomStyle.getOrCreate<LineSymbol>()->stroke()->color() = Color::Lime;
         geomStyle.getOrCreate<LineSymbol>()->stroke()->width() = 3.0f;
         geomStyle.getOrCreate<AltitudeSymbol>()->clamping() = AltitudeSymbol::CLAMP_TO_TERRAIN;
+        geomStyle.getOrCreate<AltitudeSymbol>()->technique() = AltitudeSymbol::TECHNIQUE_GPU;
         FeatureNode* gnode = new FeatureNode(mapNode, new Feature(geom, geoSRS, geomStyle));
         annoGroup->addChild( gnode );
 
@@ -254,6 +256,7 @@ main(int argc, char** argv)
         pathStyle.getOrCreate<LineSymbol>()->stroke()->color() = Color::Red;
         pathStyle.getOrCreate<LineSymbol>()->stroke()->width() = 3.0f;
         pathStyle.getOrCreate<AltitudeSymbol>()->clamping() = AltitudeSymbol::CLAMP_TO_TERRAIN;
+        pathStyle.getOrCreate<AltitudeSymbol>()->technique() = AltitudeSymbol::TECHNIQUE_GPU;
 
         Feature* pathFeature = new Feature(path, geoSRS, pathStyle);
         pathFeature->geoInterp() = GEOINTERP_GREAT_CIRCLE;

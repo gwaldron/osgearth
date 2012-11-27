@@ -159,33 +159,16 @@ Color::toHTML( Format format ) const
         w = a(), x = b(), y = g(), z = r();
     }
 
-#if 1
     return Stringify()
         << "#"
         << std::hex << std::setw(2) << std::setfill('0') << (int)(w*255.0f)
         << std::hex << std::setw(2) << std::setfill('0') << (int)(x*255.0f)
         << std::hex << std::setw(2) << std::setfill('0') << (int)(y*255.0f)
         << std::hex << std::setw(2) << std::setfill('0') << (int)(z*255.0f);
-#else
-    return Stringify()
-        << "#"
-        << std::hex << std::setw(2) << std::setfill('0')
-        << (int)(w*255.0f)
-        << (int)(x*255.0f)
-        << (int)(y*255.0f)
-        << (int)(z*255.0f);
-#endif
 }
 
 Color
 Color::brightness( float perc ) const
 {
-#if 0
-    Color c( *this );
-    rgb2hsv( c );
-    c.b() = osg::clampBetween( perc * c.b(), 0.0f, 1.0f );
-    hsv2rgb( c );
-    return c;
-#endif
     return Color(r()*perc, g()*perc, b()*perc, a());
 }

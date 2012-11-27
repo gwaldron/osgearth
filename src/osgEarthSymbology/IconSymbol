@@ -25,6 +25,7 @@
 
 namespace osgEarth { namespace Symbology
 {
+    class Style;
     class InstanceResource;
 
     /**

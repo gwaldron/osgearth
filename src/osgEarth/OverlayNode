@@ -32,7 +32,8 @@ namespace osgEarth
      * Abstract base class for a node that injects geometry into the MapNode's
      * OverlayDecorator.
      */
-    class OSGEARTH_EXPORT OverlayNode : public osg::Group, public MapNodeObserver
+    class OSGEARTH_EXPORT OverlayNode : public osg::Group, 
+                                        public MapNodeObserver
     {
     public:
         // signature for the function that provides the technique group.

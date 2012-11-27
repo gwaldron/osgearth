@@ -40,10 +40,17 @@ namespace
 //------------------------------------------------------------------------
 
 ClampableNode::ClampableNode( MapNode* mapNode, bool active ) :
-OverlayNode( mapNode, active, &getTechniqueGroup ),
-_autoBias  ( true ),
-_doDirty   ( false )
+OverlayNode( mapNode, active, &getTechniqueGroup )
 {
+    init();
+}
+
+void
+ClampableNode::init()
+{
+    _autoBias = true;
+    _doDirty  = false;
+
     osg::StateSet* s = this->getOrCreateStateSet();
 
     _biasUniform = s->getOrCreateUniform( "oe_clamp_bias", osg::Uniform::FLOAT_VEC2 );

@@ -75,6 +75,7 @@ namespace osgEarth
         mutable DepthOffsetOptions _do;
         bool _doDirty;
 
+        void init();
         void dirtyDepthOffsetOptions();
         void applyDepthOffsetOptions();
     };

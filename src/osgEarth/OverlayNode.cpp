@@ -154,10 +154,6 @@ _getGroup ( provider )
         // Can't apply it until then since we need safe access to the MapNode.
         setActive( active );
     }
-    else
-    {
-        OE_DEBUG << LC << "Creates a drapeable without a MapNode; draping will be disabled" << std::endl;
-    }
 }
 
 void

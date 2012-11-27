@@ -41,7 +41,7 @@ namespace osgEarth
         /**
          * Constructs a new drapeable node.
          */
-        DrapeableNode( MapNode* mapNode, bool draped =true );
+        DrapeableNode( MapNode* mapNode, bool active =true );
 
         /** Backwards compatibility */
         void setDraped( bool value ) { setActive(value); }

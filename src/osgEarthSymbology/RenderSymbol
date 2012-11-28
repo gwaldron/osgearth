@@ -43,6 +43,10 @@ namespace osgEarth { namespace Symbology
         optional<bool>& depthTest() { return _depthTest; }
         const optional<bool>& depthTest() const { return _depthTest; }
 
+        /** whether to force lighting on/off */
+        optional<bool>& lighting() { return _lighting; }
+        const optional<bool>& lighting() const { return _lighting; }
+
         /** depth offset properties */
         optional<DepthOffsetOptions>& depthOffset() { return _depthOffset; }
         const optional<DepthOffsetOptions>& depthOffset() const { return _depthOffset; }
@@ -54,6 +58,7 @@ namespace osgEarth { namespace Symbology
 
     protected:
         optional<bool>               _depthTest;
+        optional<bool>               _lighting;
         optional<DepthOffsetOptions> _depthOffset;
         
         /** dtor */

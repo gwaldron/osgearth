@@ -210,6 +210,13 @@ FeatureNodeFactory::getOrCreateStyleGroup(const Style& style,
                 GL_DEPTH_TEST, 
                 (render->depthTest() == true ? osg::StateAttribute::ON : osg::StateAttribute::OFF) | osg::StateAttribute::OVERRIDE );
         }
+
+        if ( render->lighting().isSet() )
+        {
+            group->getOrCreateStateSet()->setMode(
+                GL_LIGHTING,
+                (render->lighting() == true ? osg::StateAttribute::ON : osg::StateAttribute::OFF) | osg::StateAttribute::OVERRIDE );
+        }
     }
 
     return group;

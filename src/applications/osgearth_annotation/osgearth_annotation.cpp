@@ -217,6 +217,7 @@ main(int argc, char** argv)
         geomStyle.getOrCreate<LineSymbol>()->stroke()->color() = Color::Cyan;
         geomStyle.getOrCreate<LineSymbol>()->stroke()->width() = 5.0f;
         geomStyle.getOrCreate<AltitudeSymbol>()->clamping() = AltitudeSymbol::CLAMP_TO_TERRAIN;
+        geomStyle.getOrCreate<AltitudeSymbol>()->technique() = AltitudeSymbol::TECHNIQUE_GPU;
         FeatureNode* gnode = new FeatureNode(mapNode, new Feature(geom, geoSRS, geomStyle));
         annoGroup->addChild( gnode );
 
@@ -236,6 +237,7 @@ main(int argc, char** argv)
         geomStyle.getOrCreate<LineSymbol>()->stroke()->color() = Color::Lime;
         geomStyle.getOrCreate<LineSymbol>()->stroke()->width() = 3.0f;
         geomStyle.getOrCreate<AltitudeSymbol>()->clamping() = AltitudeSymbol::CLAMP_TO_TERRAIN;
+        geomStyle.getOrCreate<AltitudeSymbol>()->technique() = AltitudeSymbol::TECHNIQUE_GPU;
         FeatureNode* gnode = new FeatureNode(mapNode, new Feature(geom, geoSRS, geomStyle));
         annoGroup->addChild( gnode );
 
@@ -254,6 +256,7 @@ main(int argc, char** argv)
         pathStyle.getOrCreate<LineSymbol>()->stroke()->color() = Color::Red;
         pathStyle.getOrCreate<LineSymbol>()->stroke()->width() = 3.0f;
         pathStyle.getOrCreate<AltitudeSymbol>()->clamping() = AltitudeSymbol::CLAMP_TO_TERRAIN;
+        pathStyle.getOrCreate<AltitudeSymbol>()->technique() = AltitudeSymbol::TECHNIQUE_GPU;
 
         Feature* pathFeature = new Feature(path, geoSRS, pathStyle);
         pathFeature->geoInterp() = GEOINTERP_GREAT_CIRCLE;
@@ -272,12 +275,14 @@ main(int argc, char** argv)
     {
         Style circleStyle;
         circleStyle.getOrCreate<PolygonSymbol>()->fill()->color() = Color(Color::Cyan, 0.5);
+        circleStyle.getOrCreate<AltitudeSymbol>()->clamping() = AltitudeSymbol::CLAMP_TO_TERRAIN;
+        circleStyle.getOrCreate<AltitudeSymbol>()->technique() = AltitudeSymbol::TECHNIQUE_DRAPE;
+
         CircleNode* circle = new CircleNode(
             mapNode, 
             GeoPoint(geoSRS, -90.25, 29.98, 1000., ALTMODE_RELATIVE),
             Linear(300, Units::KILOMETERS ),
-            circleStyle,
-            false );
+            circleStyle );
         annoGroup->addChild( circle );        
 
         editorGroup->addChild( new CircleNodeEditor( circle ) );
@@ -295,8 +300,7 @@ main(int argc, char** argv)
             Linear(500, Units::MILES),
             Linear(100, Units::MILES),
             Angular(0, Units::DEGREES),
-            ellipseStyle,
-            true );
+            ellipseStyle );
         annoGroup->addChild( ellipse );
         editorGroup->addChild( new EllipseNodeEditor( ellipse ) );
     }
@@ -305,13 +309,14 @@ main(int argc, char** argv)
         // A rectangle around San Diego
         Style rectStyle;
         rectStyle.getOrCreate<PolygonSymbol>()->fill()->color() = Color(Color::Green, 0.5);
+        rectStyle.getOrCreate<AltitudeSymbol>()->clamping() = AltitudeSymbol::CLAMP_TO_TERRAIN;
+        rectStyle.getOrCreate<AltitudeSymbol>()->technique() = AltitudeSymbol::TECHNIQUE_DRAPE;
         RectangleNode* rect = new RectangleNode(
             mapNode, 
             GeoPoint(geoSRS, -117.172, 32.721),
             Linear(300, Units::KILOMETERS ),
             Linear(600, Units::KILOMETERS ),
-            rectStyle,
-            true );
+            rectStyle);
         annoGroup->addChild( rect );
 
         editorGroup->addChild( new RectangleNodeEditor( rect ) );

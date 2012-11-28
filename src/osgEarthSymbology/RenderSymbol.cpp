@@ -24,7 +24,8 @@ using namespace osgEarth::Symbology;
 
 RenderSymbol::RenderSymbol(const Config& conf) :
 Symbol    ( conf ),
-_depthTest( true )
+_depthTest( true ),
+_lighting ( true )
 {
     mergeConfig(conf);
 }
@@ -35,6 +36,7 @@ RenderSymbol::getConfig() const
     Config conf = Symbol::getConfig();
     conf.key() = "render";
     conf.addIfSet   ( "depth_test",   _depthTest );
+    conf.addIfSet   ( "lighting",     _lighting );
     conf.addObjIfSet( "depth_offset", _depthOffset );
     return conf;
 }
@@ -43,6 +45,7 @@ void
 RenderSymbol::mergeConfig( const Config& conf )
 {
     conf.getIfSet   ( "depth_test",   _depthTest );
+    conf.getIfSet   ( "lighting",     _lighting );
     conf.getObjIfSet( "depth_offset", _depthOffset );
 }
 
@@ -51,6 +54,9 @@ RenderSymbol::parseSLD(const Config& c, Style& style)
 {
     if ( match(c.key(), "render-depth-test") ) {
         style.getOrCreate<RenderSymbol>()->depthTest() = as<bool>(c.value(), true);
+    }
+    else if ( match(c.key(), "render-lighting") ) {
+        style.getOrCreate<RenderSymbol>()->lighting() = as<bool>(c.value(), false);
     }
     else if ( match(c.key(), "render-depth-offset") ) {
         style.getOrCreate<RenderSymbol>()->depthOffset()->enabled() = as<bool>(c.value(), false);

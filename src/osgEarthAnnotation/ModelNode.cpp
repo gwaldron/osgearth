@@ -43,8 +43,8 @@ LocalizedNode( mapNode ),
 _style       ( style ),
 _dbOptions   ( dbOptions )
 {
+    _xform = new osg::MatrixTransform();
     init();
-    this->addChild( getTransform() );
 }
 
 
@@ -61,7 +61,9 @@ ModelNode::init()
 {
     // reset.
     this->clearDecoration();
-    this->getTransform()->removeChildren(0, this->getTransform()->getNumChildren());
+    osgEarth::clearChildren( this );
+    osgEarth::clearChildren( _xform.get() );
+    this->addChild( _xform.get() );
 
     this->setHorizonCulling(false);
 
@@ -118,11 +120,14 @@ ModelNode::init()
                     this->getOrCreateStateSet()->setAttributeAndModes( vp, 1 );
 
                     // do we really need this? perhaps
-                    node->setCullCallback( new UpdateLightingUniformsHelper() );
+                    node->addCullCallback( new UpdateLightingUniformsHelper() );
                 }
 
                 // attach to the transform:
-                getTransform()->addChild( node );
+                _xform->addChild( node );
+
+                // insert a clamping agent if necessary:
+                replaceChild( _xform.get(), applyAltitudePolicy(_xform.get(), _style) );
 
                 if ( sym->scale().isSet() )
                 {
@@ -143,7 +148,7 @@ ModelNode::init()
                     this->setLocalRotation( rot.getRotate() );
                 }
 
-                applyStyle( _style );
+                this->applyGeneralSymbology( _style );
             }
             else
             {
@@ -170,6 +175,8 @@ ModelNode::ModelNode(MapNode* mapNode, const Config& conf, const osgDB::Options*
 LocalizedNode( mapNode, conf ),
 _dbOptions   ( dbOptions )
 {
+    _xform = new osg::MatrixTransform();
+
     conf.getObjIfSet( "style", _style );
 
     std::string uri = conf.value("url");

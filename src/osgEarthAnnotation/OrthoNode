@@ -37,7 +37,8 @@ namespace osgEarth { namespace Annotation
      * Don't use this class directly. Use one of its subclasses instead like
      * LabelNode or PlaceNode.
      */
-    class OSGEARTHANNO_EXPORT OrthoNode : public PositionedAnnotationNode, public SupportsDecluttering
+    class OSGEARTHANNO_EXPORT OrthoNode : public PositionedAnnotationNode, 
+                                          public SupportsDecluttering
     {
     public:
         META_AnnotationNode( osgEarthAnnotation, OrthoNode );

@@ -19,7 +19,7 @@
 #ifndef OSGEARTH_ANNO_MODEL_NODE_H
 #define OSGEARTH_ANNO_MODEL_NODE_H 1
 
-#include <osgEarthAnnotation/LocalGeometryNode>
+#include <osgEarthAnnotation/LocalizedNode>
 #include <osgEarth/URI>
 #include <osgEarth/CachePolicy>
 #include <osgDB/ReaderWriter>
@@ -69,10 +69,15 @@ namespace osgEarth { namespace Annotation
 
         virtual Config getConfig() const;
 
+    protected: // LocalizedNode
+
+        virtual osg::MatrixTransform* getTransform() { return _xform.get(); }
+
     protected:
 
         Style _style;
         osg::ref_ptr<const osgDB::Options> _dbOptions;
+        osg::ref_ptr<osg::MatrixTransform> _xform;
 
         void init();
 

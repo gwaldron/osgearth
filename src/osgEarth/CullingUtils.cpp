@@ -473,8 +473,15 @@ CullNodeByEllipsoid::operator()(osg::Node* node, osg::NodeVisitor* nv)
 
 CullNodeByHorizon::CullNodeByHorizon( const osg::Vec3d& world, const osg::EllipsoidModel* model ) :
 _world(world),
-_r(model->getRadiusPolar()),
-_r2(model->getRadiusPolar() * model->getRadiusPolar())
+_r    (model->getRadiusPolar()),
+_r2   (model->getRadiusPolar() * model->getRadiusPolar())
+{
+    //nop
+}
+CullNodeByHorizon::CullNodeByHorizon( osg::MatrixTransform* xform, const osg::EllipsoidModel* model ) :
+_xform(xform),
+_r    (model->getRadiusPolar()),
+_r2   (model->getRadiusPolar() * model->getRadiusPolar())
 {
     //nop
 }
@@ -490,12 +497,14 @@ CullNodeByHorizon::operator()(osg::Node* node, osg::NodeVisitor* nv)
         osg::Matrix l2w = osg::computeLocalToWorld( nv->getNodePath(), true );
         osg::Vec3d vp  = cv->getViewPoint() * l2w;
 
+        osg::Vec3d world = _xform.valid() ? _xform->getMatrix().getTrans() : _world;
+
         // same quadrant:
-        if ( vp * _world >= 0.0 )
+        if ( vp * world >= 0.0 )
         {
             double d2 = vp.length2();
             double horiz2 = d2 - _r2;
-            double dist2 = (_world-vp).length2();
+            double dist2 = (world-vp).length2();
             if ( dist2 < horiz2 )
             {
                 traverse(node, nv);
@@ -508,8 +517,8 @@ CullNodeByHorizon::operator()(osg::Node* node, osg::NodeVisitor* nv)
             // there's a horizon between them; now see if the thing is visible.
             // find the triangle formed by the viewpoint, the target point, and 
             // the center of the earth.
-            double a = (_world-vp).length();
-            double b = _world.length();
+            double a = (world-vp).length();
+            double b = world.length();
             double c = vp.length();
 
             // Heron's formula for triangle area:

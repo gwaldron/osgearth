@@ -58,7 +58,6 @@ _autoclamp  ( false ),
 _depthAdj   ( false ),
 _activeDs   ( 0L )
 {
-    //nop
     //Note: Cannot call setMapNode() here because it's a virtual function.
     //      Each subclass will be separately responsible at ctor time.
 
@@ -90,6 +89,12 @@ _activeDs   ( 0L )
         bool blending = conf.value<bool>("blending", false);
         getOrCreateStateSet()->setMode( GL_BLEND, (blending?1:0) | osg::StateAttribute::OVERRIDE );
     }
+    else
+    {
+        // blend by default.
+        this->getOrCreateStateSet()->setMode( GL_BLEND, osg::StateAttribute::ON );
+    }
+
 }
 
 AnnotationNode::~AnnotationNode()
@@ -144,7 +149,7 @@ AnnotationNode::setDynamic( bool value )
 }
 
 void
-AnnotationNode::setAutoClamp( bool value )
+AnnotationNode::setCPUAutoClamping( bool value )
 {
     if ( getMapNode() )
     {
@@ -357,7 +362,7 @@ AnnotationNode::supportsAutoClamping( const Style& style ) const
 void
 AnnotationNode::configureForAltitudeMode( const AltitudeMode& mode )
 {
-    setAutoClamp(
+    setCPUAutoClamping(
         mode == ALTMODE_RELATIVE ||
         (_altitude.valid() && _altitude->clamping() == AltitudeSymbol::CLAMP_TO_TERRAIN) );
 }
@@ -368,9 +373,14 @@ AnnotationNode::applyStyle( const Style& style)
     if ( supportsAutoClamping(style) )
     {
         _altitude = style.get<AltitudeSymbol>();
-        setAutoClamp( true );
+        setCPUAutoClamping( true );
     }
+    applyGeneralSymbology(style);
+}
 
+void
+AnnotationNode::applyGeneralSymbology(const Style& style)
+{
     const RenderSymbol* render = style.get<RenderSymbol>();
     if ( render )
     {
@@ -378,7 +388,14 @@ AnnotationNode::applyStyle( const Style& style)
         {
             getOrCreateStateSet()->setMode(
                 GL_DEPTH_TEST,
-                (render->depthTest() == true? 1 : 0) | osg::StateAttribute::OVERRIDE );
+                (render->depthTest() == true? osg::StateAttribute::ON : osg::StateAttribute::OFF) | osg::StateAttribute::OVERRIDE );
+        }
+
+        if ( render->lighting().isSet() )
+        {
+            getOrCreateStateSet()->setMode(
+                GL_LIGHTING,
+                (render->lighting() == true? osg::StateAttribute::ON : osg::StateAttribute::OFF) | osg::StateAttribute::OVERRIDE );
         }
     }
 }

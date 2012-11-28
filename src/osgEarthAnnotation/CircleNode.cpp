@@ -35,16 +35,14 @@ using namespace osgEarth::Symbology;
 CircleNode::CircleNode(MapNode*           mapNode,
                        const GeoPoint&    position,
                        const Linear&      radius,
-                       const Style&       style,
-                       bool               draped,
-                       unsigned           numSegments) :
+                       const Style&       style ) :
 
-LocalizedNode( mapNode, position, false ),
+LocalizedNode( mapNode, position ),
 _radius      ( radius ),
 _style       ( style ),
-_draped      ( draped ),
-_numSegments ( numSegments )
+_numSegments ( 0 )
 {
+    _xform = new osg::MatrixTransform();
     rebuild();
 }
 
@@ -100,15 +98,10 @@ CircleNode::rebuild()
     std::string currentDecoration = getDecoration();
     clearDecoration();
 
-    //Remove all children from this node
-    //removeChildren( 0, getNumChildren() );
-    if ( getRoot()->getNumParents() == 0 )
-    {
-        this->addChild( getRoot() );
-    }
-
-    //Remove all children from the attach point
-    getChildAttachPoint()->removeChildren( 0, getChildAttachPoint()->getNumChildren() );
+    // Reset this node.
+    osgEarth::clearChildren( this );
+    osgEarth::clearChildren( _xform.get() );
+    this->addChild( _xform.get() );
 
     // construct a local-origin circle.
     GeometryFactory factory;
@@ -119,13 +112,12 @@ CircleNode::rebuild()
         osg::ref_ptr<Feature> feature = new Feature(geom, 0L); //todo: consider the SRS
         osg::Node* node = compiler.compile( feature.get(), _style, FilterContext(0L) );
         if ( node )
-        {           
-            getChildAttachPoint()->addChild( node );
-            getOverlay()->setActive( _draped );
+        {
+            _xform->addChild( node );
+            this->replaceChild( _xform.get(), applyAltitudePolicy(_xform.get(), _style) );
         }
 
-        applyStyle( _style );
-
+        applyGeneralSymbology( _style );
         setLightingIfNotSet( false );
     }
 
@@ -143,12 +135,12 @@ CircleNode::CircleNode(MapNode*              mapNode,
                        const osgDB::Options* dbOptions) :
 LocalizedNode( mapNode, conf ),
 _radius      ( 1.0, Units::KILOMETERS ),
-_draped      ( false ),
 _numSegments ( 0 )
 {
+    _xform = new osg::MatrixTransform();
+
     conf.getObjIfSet( "radius", _radius );
     conf.getObjIfSet( "style",  _style );
-    conf.getIfSet   ( "draped", _draped );
     conf.getIfSet   ( "num_segments", _numSegments );
 
     if ( conf.hasChild("position") )
@@ -166,8 +158,6 @@ CircleNode::getConfig() const
 
     if ( _numSegments != 0 )
         conf.add( "num_segments", _numSegments );
-    if ( _draped != false )
-        conf.add( "draped", _draped );
 
     conf.addObj( "position", getPosition() );
 

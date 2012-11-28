@@ -45,16 +45,12 @@ namespace osgEarth { namespace Annotation
          * @param position    Location of the annotation, in map coordinates
          * @param radius      Circle radius
          * @param style       Style defining how the annotation will look
-         * @param draped      Whether to "drape" the annotation down on to the terrain
-         * @param numSegments Hint as to the tessellation of the annotation
          */
         CircleNode(
             MapNode*          mapNode,
             const GeoPoint&   position,
             const Distance&   radius,
-            const Style&      style,
-            bool              draped      =true,
-            unsigned          numSegments =0 );
+            const Style&      style );
 
         /**
          * Constructs a circle node from its serialized form
@@ -98,6 +94,12 @@ namespace osgEarth { namespace Annotation
          */
         void setStyle( const Style& style );
 
+
+    public: // LocalizedNode
+
+        osg::MatrixTransform* getTransform() { return _xform.get(); }
+
+
     public: // AnnotationNode overrides
 
         virtual Config getConfig() const;
@@ -113,6 +115,8 @@ namespace osgEarth { namespace Annotation
         bool            _draped;
         unsigned        _numSegments;
         Distance        _radius;
+
+        osg::ref_ptr<osg::MatrixTransform> _xform;
     };
 
 } } // namespace osgEarth::Annotation

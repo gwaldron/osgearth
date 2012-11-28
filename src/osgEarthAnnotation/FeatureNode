@@ -79,11 +79,11 @@ namespace osgEarth { namespace Annotation
         virtual Config getConfig() const;
 
     protected:
-        osg::ref_ptr<Feature>       _feature;
-        GeometryCompilerOptions     _options;
-        bool                        _draped;
-        osg::Group*                 _attachPoint;
-        osg::Polytope               _featurePolytope;
+        osg::ref_ptr<Feature>        _feature;
+        GeometryCompilerOptions      _options;
+        bool                         _draped;
+        osg::Group*                  _attachPoint;
+        osg::Polytope                _featurePolytope;
 
         FeatureNode() { }
         FeatureNode(const FeatureNode& rhs, const osg::CopyOp& op) { }

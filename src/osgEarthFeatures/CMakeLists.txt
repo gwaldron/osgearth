@@ -80,6 +80,7 @@ ADD_LIBRARY(${LIB_NAME} ${OSGEARTH_USER_DEFINED_DYNAMIC_OR_STATIC}
 	GeometryUtils.cpp
     LabelSource.cpp
     MeshClamper.cpp
+    OgrUtils.cpp
     OptimizerHints.cpp
     ResampleFilter.cpp
     ScaleFilter.cpp

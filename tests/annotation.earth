@@ -41,17 +41,26 @@ osgEarth Sample - Annotations
                 <icon>http://demo.pelicanmapping.com/icons/gmaps/yoga.png</icon>
             </place>
             
-            <circle>
+            <circle name="draped circle">
                 <position lat="34.051" long="-117.974"/>
                 <radius value="50" units="km"/>
                 <style type="text/css">
                     fill:               #ffff0080;
                     altitude-clamping:  terrain;
-                    altitude-technique: draped;
+                    altitude-technique: drape;
                 </style>
             </circle>
             
-            <ellipse>
+            <ellipse name="ellipse relative">
+                <position lat="34.051" long="-116" hat="5000"/>
+                <radius_major value="50" units="km"/>
+                <radius_minor value="40" units="km"/>
+                <style type="text/css">
+                    fill: #ffff0080;
+                </style>
+            </ellipse>
+            
+            <ellipse name="ellipse extruded">
                 <position lat="32.73" long="-119.0"/>
                 <radius_major value="50" units="km"/>
                 <radius_minor value="20" units="km"/>
@@ -62,7 +71,7 @@ osgEarth Sample - Annotations
                 </style>
             </ellipse>
             
-            <rectangle>
+            <rectangle name="absolute rectangle">
                 <position lat="32.2" long="-118" alt="1000"/>
                 <width value="50" units="nm"/>
                 <height value="25" units="nm"/>
@@ -101,18 +110,6 @@ osgEarth Sample - Annotations
                 </style>
             </feature>
             
-            <local_geometry name="3D geometry">
-                <geometry>
-                    POLYGON((0 0 0, -1000 0 25000, -5000 0 25000, 0 0 30000, 5000 0 25000, 1000 0 25000))
-                </geometry>
-                <position lat="33.4" long="-116.6" alt="0"/>
-                <style type="text/css">
-                    fill:            #00ff00;
-                    stroke:          #ffff00;
-                    render-lighting: false;
-                </style>
-            </local_geometry>
-            
             <model name="flag model">
                 <url>../data/red_flag.osg.18000.scale</url>
                 <position lat="33" long="-117.75" hat="0"/>
@@ -127,6 +124,18 @@ osgEarth Sample - Annotations
             <label text="image overlay">
                 <position lat="26" long="-81" />
             </label>
+            
+            <local_geometry name="3D geometry">
+                <geometry>
+                    POLYGON((0 0 0, -1000 0 25000, -5000 0 25000, 0 0 30000, 5000 0 25000, 1000 0 25000))
+                </geometry>
+                <position lat="33.4" long="-116.6" hat="0"/>
+                <style type="text/css">
+                    fill:            #00ff00;
+                    stroke:          #ffff00;
+                    render-lighting: false;
+                </style>
+            </local_geometry>
             
         </annotations>
         

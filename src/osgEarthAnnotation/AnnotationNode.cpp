@@ -58,7 +58,6 @@ _autoclamp  ( false ),
 _depthAdj   ( false ),
 _activeDs   ( 0L )
 {
-    //nop
     //Note: Cannot call setMapNode() here because it's a virtual function.
     //      Each subclass will be separately responsible at ctor time.
 
@@ -90,6 +89,12 @@ _activeDs   ( 0L )
         bool blending = conf.value<bool>("blending", false);
         getOrCreateStateSet()->setMode( GL_BLEND, (blending?1:0) | osg::StateAttribute::OVERRIDE );
     }
+    else
+    {
+        // blend by default.
+        this->getOrCreateStateSet()->setMode( GL_BLEND, osg::StateAttribute::ON );
+    }
+
 }
 
 AnnotationNode::~AnnotationNode()

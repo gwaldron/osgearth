@@ -24,6 +24,7 @@
 #include <osg/NodeCallback>
 #include <osg/ClusterCullingCallback>
 #include <osg/CoordinateSystemNode>
+#include <osg/MatrixTransform>
 #include <osg/Vec3d>
 #include <osg/Vec3>
 #include <osgUtil/CullVisitor>
@@ -103,9 +104,11 @@ namespace osgEarth
     };
 
     struct OSGEARTH_EXPORT CullNodeByHorizon : public osg::NodeCallback {
+        osg::observer_ptr<osg::MatrixTransform> _xform;
         osg::Vec3d _world;
         double _r, _r2;
         CullNodeByHorizon( const osg::Vec3d& world, const osg::EllipsoidModel* model );
+        CullNodeByHorizon( osg::MatrixTransform* xform, const osg::EllipsoidModel* model );
         void operator()(osg::Node* node, osg::NodeVisitor* nv );
     };
 

@@ -61,8 +61,7 @@ namespace osgEarth { namespace Annotation
             const GeoPoint&   position,
             const Linear&     width,
             const Linear&     height,
-            const Style&      style,
-            bool              draped      =true );
+            const Style&      style );
 
         virtual ~RectangleNode() { }
 
@@ -125,6 +124,9 @@ namespace osgEarth { namespace Annotation
         RectangleNode(MapNode* mapNode, const Config& conf, const osgDB::Options* options);
         virtual Config getConfig() const;
         
+    protected: // LocalizedNode
+
+        virtual osg::MatrixTransform* getTransform() { return _xform.get(); }
 
     private:
         RectangleNode() { }
@@ -132,10 +134,11 @@ namespace osgEarth { namespace Annotation
 
         void rebuild();
 
-        Style _style;
-        bool  _draped;        
+        Style  _style;
         Linear _width;
         Linear _height;
+
+        osg::ref_ptr<osg::MatrixTransform> _xform;
     };
 
 } } // namespace osgEarth::Annotation

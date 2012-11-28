@@ -43,8 +43,7 @@ namespace osgEarth { namespace Annotation
         LocalGeometryNode( 
             MapNode*     mapNode,
             Geometry*    geom, 
-            const Style& style, 
-            bool         draped     =false );
+            const Style& style );
 
         /**
          * Construcst a new localized node that renders a pre-built
@@ -53,8 +52,7 @@ namespace osgEarth { namespace Annotation
         LocalGeometryNode( 
             MapNode*     mapNode,
             osg::Node*   node, 
-            const Style& style      =Style(), 
-            bool         draped     =false );
+            const Style& style  =Style() );
 
         virtual ~LocalGeometryNode() { }
 
@@ -100,12 +98,17 @@ namespace osgEarth { namespace Annotation
 
         virtual Config getConfig() const;
 
+    protected: // LocalizedNode
+
+        virtual osg::MatrixTransform* getTransform() { return _xform.get(); }
+
     protected:
 
         Style                        _style;
-        bool                         _draped;
         osg::ref_ptr<osg::Node>      _node;
         osg::ref_ptr<Geometry>       _geom;
+
+        osg::ref_ptr<osg::MatrixTransform> _xform;
 
         void initNode();
         void initGeometry(const osgDB::Options*);

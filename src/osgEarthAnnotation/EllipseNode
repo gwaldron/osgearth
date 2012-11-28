@@ -47,8 +47,6 @@ namespace osgEarth { namespace Annotation
          * @param radiusMinor Length of 1/2 the minor axis of the ellipse
          * @param rotation    Rotation angle of the ellipse
          * @param style       Style defining how the annotation will look
-         * @param draped      Whether to "drape" the annotation down on to the terrain
-         * @param numSegments Hint as to the tessellation of the ellipse
          */
         EllipseNode( 
             MapNode*                mapNode,
@@ -56,9 +54,7 @@ namespace osgEarth { namespace Annotation
             const Distance&         radiusMajor,
             const Distance&         radiusMinor,
             const Angle&            rotationAngle,
-            const Style&            style,
-            bool                    draped      =true,
-            unsigned                numSegments =0 );
+            const Style&            style );
 
         virtual ~EllipseNode() { }
 
@@ -129,6 +125,11 @@ namespace osgEarth { namespace Annotation
         virtual Config getConfig() const;
 
 
+    public: // LocalizedNode
+
+        osg::MatrixTransform* getTransform() { return _xform.get(); }
+
+
     private:
         EllipseNode() { }
         EllipseNode(const EllipseNode& rhs, const osg::CopyOp& op) { }
@@ -141,6 +142,7 @@ namespace osgEarth { namespace Annotation
         Distance _radiusMajor;
         Distance _radiusMinor;
         unsigned int _numSegments;
+        osg::ref_ptr<osg::MatrixTransform> _xform;
     };
 
 } } // namespace osgEarth::Annotation

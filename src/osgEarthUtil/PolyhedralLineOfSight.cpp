@@ -55,12 +55,14 @@ _distance    ( Distance(50000.0, Units::METERS) )
 {
     OE_WARN << LC << "This class is under development; use at your own risk" << std::endl;
 
+    _xform = new osg::MatrixTransform();
+    this->addChild( _xform.get() );
+
     _geode = new osg::Geode();
     rebuildGeometry();
     recalculateExtent();
 
-    getChildAttachPoint()->addChild( _geode );
-    this->addChild( getRoot() );
+    _xform->addChild( _geode );
 
     _terrainCallback = new TerrainChangedCallback(this);
     

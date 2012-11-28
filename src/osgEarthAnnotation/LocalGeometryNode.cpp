@@ -34,29 +34,25 @@ using namespace osgEarth::Features;
 
 LocalGeometryNode::LocalGeometryNode(MapNode*     mapNode,
                                      Geometry*    geom,
-                                     const Style& style,
-                                     bool         draped ) :
+                                     const Style& style) :
 LocalizedNode( mapNode ),
 _geom        ( geom ),
-_style       ( style ),
-_draped      ( draped )
+_style       ( style )
 {
+    _xform = new osg::MatrixTransform();
     init( 0L );
-    this->addChild( getRoot() );
 }
 
 
 LocalGeometryNode::LocalGeometryNode(MapNode*     mapNode,
                                      osg::Node*   node,
-                                     const Style& style,
-                                     bool         draped ) :
+                                     const Style& style) :
 LocalizedNode( mapNode ),
 _node        ( node ),
-_style       ( style ),
-_draped      ( draped )
+_style       ( style )
 {
+    _xform = new osg::MatrixTransform();
     init( 0L );
-    this->addChild( getRoot() );
 }
 
 
@@ -64,16 +60,17 @@ void
 LocalGeometryNode::initNode()
 {
     // reset
-    getChildAttachPoint()->removeChildren( 0, getChildAttachPoint()->getNumChildren() );
+    osgEarth::clearChildren( this );
+    osgEarth::clearChildren( _xform.get() );
+    this->addChild( _xform.get() );
 
     if ( _node.valid() )
     {
-        getChildAttachPoint()->addChild( _node.get() );
-        getOverlay()->setActive( _draped );
+        _xform->addChild( _node );
+        // activate clamping if necessary
+        replaceChild( _xform.get(), applyAltitudePolicy(_xform.get(), _style) );
 
-        // this will activate the clamping logic
-        applyStyle( _style );
-
+        applyGeneralSymbology( _style );
         setLightingIfNotSet( _style.has<ExtrusionSymbol>() );
     }
 }
@@ -83,7 +80,9 @@ void
 LocalGeometryNode::initGeometry(const osgDB::Options* dbOptions)
 {
     // reset
-    getChildAttachPoint()->removeChildren( 0, getChildAttachPoint()->getNumChildren() );
+    osgEarth::clearChildren( this );
+    osgEarth::clearChildren( _xform.get() );
+    this->addChild( _xform.get() );
 
     if ( _geom.valid() )
     {
@@ -101,11 +100,11 @@ LocalGeometryNode::initGeometry(const osgDB::Options* dbOptions)
         osg::Node* node = compiler.compile( feature.get(), cx );
         if ( node )
         {
-            getChildAttachPoint()->addChild( node );
-            getOverlay()->setActive( _draped );
+            _xform->addChild( node );
+            // activate clamping if necessary
+            replaceChild( _xform.get(), applyAltitudePolicy(_xform.get(), _style) );
 
-            // prep for clamping
-            applyStyle( _style );
+            applyGeneralSymbology( _style );
         }
     }
 }
@@ -162,6 +161,8 @@ LocalGeometryNode::LocalGeometryNode(MapNode*              mapNode,
                                      const osgDB::Options* dbOptions) :
 LocalizedNode( mapNode, conf )
 {
+    _xform = new osg::MatrixTransform();
+
     if ( conf.hasChild("geometry") )
     {
         Config geomconf = conf.child("geometry");
@@ -169,7 +170,6 @@ LocalizedNode( mapNode, conf )
         if ( _geom.valid() )
         {
             conf.getObjIfSet( "style", _style );
-            _draped = conf.value<bool>("draped",false);
 
             init( dbOptions );
 

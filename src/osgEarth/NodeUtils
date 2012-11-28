@@ -248,6 +248,15 @@ namespace osgEarth
     }
 
     /**
+     * Remove all a group's children.
+     */
+    inline void clearChildren( osg::Group* group )
+    {
+        if ( group )
+            group->removeChildren( 0, group->getNumChildren() );
+    }
+
+    /**
      * OSG Group that keeps its children as observer_ptrs instead of ref_ptrs, and
      * removes them when they deref.
      */

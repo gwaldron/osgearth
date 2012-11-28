@@ -209,6 +209,7 @@ Feature::set( const std::string& name, const std::string& value )
     AttributeValue& a = _attrs[name];
     a.first = ATTRTYPE_STRING;
     a.second.stringValue = value;
+    a.second.set = true;
 }
 
 void
@@ -217,6 +218,7 @@ Feature::set( const std::string& name, double value )
     AttributeValue& a = _attrs[name];
     a.first = ATTRTYPE_DOUBLE;
     a.second.doubleValue = value;
+    a.second.set = true;
 }
 
 void
@@ -225,6 +227,7 @@ Feature::set( const std::string& name, int value )
     AttributeValue& a = _attrs[name];
     a.first = ATTRTYPE_INT;
     a.second.intValue = value;
+    a.second.set = true;
 }
 
 void
@@ -233,7 +236,26 @@ Feature::set( const std::string& name, bool value )
     AttributeValue& a = _attrs[name];
     a.first = ATTRTYPE_BOOL;
     a.second.boolValue = value;
+    a.second.set = true;
 }
+
+void
+Feature::setNull( const std::string& name)
+{
+    AttributeValue& a = _attrs[name];    
+    a.second.set = false;
+}
+
+void
+Feature::setNull( const std::string& name, AttributeType type)
+{
+    AttributeValue& a = _attrs[name];
+    a.first = type;    
+    a.second.set = false;
+}
+
+
+
 
 bool
 Feature::hasAttr( const std::string& name ) const
@@ -267,6 +289,13 @@ Feature::getBool( const std::string& name, bool defaultValue ) const
 {
     AttributeTable::const_iterator i = _attrs.find(toLower(name));
     return i != _attrs.end()? i->second.getBool(defaultValue) : defaultValue;
+}
+
+bool
+Feature::isSet( const std::string& name) const
+{
+    AttributeTable::const_iterator i = _attrs.find(toLower(name));
+    return i != _attrs.end()? i->second.second.set : false;
 }
 
 double
@@ -440,19 +469,47 @@ Feature::getGeoJSON()
         {
             if (itr->second.first == ATTRTYPE_INT)
             {
-                props[itr->first] = itr->second.getInt();
+                if (itr->second.second.set)
+                {
+                    props[itr->first] = itr->second.getInt();
+                }
+                else
+                {
+                    props[itr->first] = Json::nullValue;
+                }
             }
             else if (itr->second.first == ATTRTYPE_DOUBLE)
             {
-                props[itr->first] = itr->second.getDouble();
+                if (itr->second.second.set)
+                {
+                    props[itr->first] = itr->second.getDouble();
+                }
+                else
+                {
+                    props[itr->first] = Json::nullValue;
+                }
             }
             else if (itr->second.first == ATTRTYPE_BOOL)
             {
-                props[itr->first] = itr->second.getBool();
+                if (itr->second.second.set)
+                {
+                    props[itr->first] = itr->second.getBool();
+                }
+                else
+                {
+                    props[itr->first] = Json::nullValue;
+                }
             }
             else
             {
-                props[itr->first] = itr->second.getString();
+                if (itr->second.second.set)
+                {
+                    props[itr->first] = itr->second.getString();
+                }
+                else
+                {
+                    props[itr->first] = Json::nullValue;
+                }
             }            
         }
     } 

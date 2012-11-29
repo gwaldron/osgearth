@@ -85,7 +85,8 @@ namespace
 #else
         PagedLODWithNodeOperations* p = new PagedLODWithNodeOperations(postMergeOps);
         p->setCenter( bs.center() );
-        p->setRadius(std::max((float)bs.radius(),maxRange));
+        //p->setRadius(std::max((float)bs.radius(),maxRange));
+        p->setRadius( bs.radius() );
         p->setFileName( 0, uri );
         p->setRange( 0, minRange, maxRange );
         p->setPriorityOffset( 0, priOffset );

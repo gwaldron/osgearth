@@ -84,6 +84,14 @@ namespace osgEarth { namespace Symbology
         /** Remove a symbol from the collection */
         bool removeSymbol (Symbol* symbol);
 
+        /** Remove a symbol by type */
+        template<typename T>
+        bool remove()
+        {
+            Symbol* s = get<T>();
+            if ( s ) removeSymbol(s);
+        }
+
         /** Gets a typed symbol from the style (the first one found). */
         template<typename T>
         T* getSymbol()

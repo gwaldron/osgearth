@@ -47,6 +47,8 @@ using namespace osgEarth::Util;
 using namespace osgEarth::Features;
 using namespace osgEarth::Drivers;
 
+#define OGR_SCOPED_LOCK GDAL_SCOPED_LOCK
+
 /**
  * A FeatureSource that reads features from a TFS layer
  * 
@@ -58,9 +60,7 @@ public:
       FeatureSource( options ),
       _options     ( options ),
       _layerValid(false)
-    {        
-        _geojsonDriver = OGRGetDriverByName( "GeoJSON" );
-        _gmlDriver     = OGRGetDriverByName( "GML" );
+    {                
     }
 
     /** Destruct the object, cleaning up and OGR handles. */
@@ -125,9 +125,12 @@ public:
     bool getFeatures( const std::string& buffer, const std::string& mimeType, FeatureList& features )
     {        
         // find the right driver for the given mime type
+        OGR_SCOPED_LOCK;
+                
+        // find the right driver for the given mime type
         OGRSFDriverH ogrDriver =
-            isJSON(mimeType) ? _geojsonDriver :
-            isGML(mimeType)  ? _gmlDriver :
+            isJSON(mimeType) ? OGRGetDriverByName( "GeoJSON" ) :
+            isGML(mimeType)  ? OGRGetDriverByName( "GML" ) :
             0L;
 
         // fail if we can't find an appropriate OGR driver:
@@ -334,8 +337,7 @@ private:
     const TFSFeatureOptions         _options;    
     FeatureSchema                   _schema;
     osg::ref_ptr<CacheBin>          _cacheBin;
-    osg::ref_ptr<osgDB::Options>    _dbOptions;
-    OGRSFDriverH                    _geojsonDriver, _gmlDriver;
+    osg::ref_ptr<osgDB::Options>    _dbOptions;    
     TFSLayer                        _layer;
     bool                            _layerValid;
 };

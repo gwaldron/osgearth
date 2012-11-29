@@ -61,8 +61,6 @@ public:
       FeatureSource( options ),
       _options     ( options )
     {        
-        _geojsonDriver = OGRGetDriverByName( "GeoJSON" );
-        _gmlDriver     = OGRGetDriverByName( "GML" );
     }
 
     /** Destruct the object, cleaning up and OGR handles. */
@@ -184,10 +182,12 @@ public:
 
     bool getFeatures( const std::string& buffer, const std::string& mimeType, FeatureList& features )
     {
+        OGR_SCOPED_LOCK;
+                
         // find the right driver for the given mime type
         OGRSFDriverH ogrDriver =
-            isJSON(mimeType) ? _geojsonDriver :
-            isGML(mimeType)  ? _gmlDriver :
+            isJSON(mimeType) ? OGRGetDriverByName( "GeoJSON" ) :
+            isGML(mimeType)  ? OGRGetDriverByName( "GML" ) :
             0L;
 
         // fail if we can't find an appropriate OGR driver:
@@ -405,8 +405,7 @@ private:
     osg::ref_ptr< FeatureProfile >  _featureProfile;
     FeatureSchema                   _schema;
     osg::ref_ptr<CacheBin>          _cacheBin;
-    osg::ref_ptr<osgDB::Options>    _dbOptions;
-    OGRSFDriverH                    _geojsonDriver, _gmlDriver;
+    osg::ref_ptr<osgDB::Options>    _dbOptions;    
 };
 
 

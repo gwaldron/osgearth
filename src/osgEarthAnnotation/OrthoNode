@@ -95,6 +95,10 @@ namespace osgEarth { namespace Annotation
         bool getOcclusionCulling() const;
         void setOcclusionCulling( bool value );
 
+    public: // AnnotationNode
+
+        virtual void applyStyle(const Style& style);
+
     public: // MapNodeObserver
 
         virtual void setMapNode( MapNode* mapNode );

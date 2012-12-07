@@ -83,7 +83,8 @@ FeatureNode::init()
 
     // If we're doing auto-clamping on the CPU, shut off compiler map clamping
     // clamping since it would be redundant.
-    if ( ap.cpuAutoClamping )
+    // TODO: I think this is OBE now that we have "scene" clamping technique..
+    if ( ap.sceneClamping )
     {
         options.ignoreAltitudeSymbol() = true;
     }
@@ -121,7 +122,7 @@ FeatureNode::init()
         }
 
         // GPU-clamped geometry
-        else if ( ap.gpuAutoClamping )
+        else if ( ap.gpuClamping )
         {
             ClampableNode* clampable = new ClampableNode( getMapNode() );
             clampable->addChild( _attachPoint );
@@ -139,7 +140,7 @@ FeatureNode::init()
             this->addChild( _attachPoint );
 
             // CPU-clamped geometry?
-            if ( ap.cpuAutoClamping )
+            if ( ap.sceneClamping )
             {
                 // save for later when we need to reclamp the mesh on the CPU
                 _altitude = _feature->style()->get<AltitudeSymbol>();

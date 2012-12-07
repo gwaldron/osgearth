@@ -62,6 +62,10 @@ namespace osgEarth { namespace Symbology
         /** Heading. Semantically this differs from an model's heading */
         optional<NumericExpression>& heading() { return _heading; }
         const optional<NumericExpression>& heading() const { return _heading; }
+
+        /** Decluttering */
+        optional<bool>& declutter() { return _declutter; }
+        const optional<bool>& declutter() const { return _declutter; }
         
     public: // non-serialized properties (for programmatic use only)
 
@@ -80,6 +84,7 @@ namespace osgEarth { namespace Symbology
     protected:
         optional<Alignment>              _alignment;
         optional<NumericExpression>      _heading;
+        optional<bool>                   _declutter;
         mutable osg::ref_ptr<osg::Image> _image;
     };
 

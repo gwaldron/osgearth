@@ -55,40 +55,31 @@ _scale                  ( 1.0f, 1.0f, 1.0f )
 void
 LocalizedNode::init()
 {
-    // queue an update traversal for virtual initialization
-    // (init that cannot happen in the constructor)
-    ADJUST_UPDATE_TRAV_COUNT(this, 1);
-
     this->getOrCreateStateSet()->setRenderingHint( osg::StateSet::TRANSPARENT_BIN );
-
-#if 0
-    setHorizonCulling( true );
-
-    //todo: revamp
-    _overlay = new DrapeableNode( mapNode, false );
-    _overlay->addChild( _xform.get() );
-    
-    setPosition( position );
-#endif
 }
 
 
-void
-LocalizedNode::traverse(osg::NodeVisitor& nv)
+namespace
 {
-    if ( nv.getVisitorType() == nv.UPDATE_VISITOR )
+    static Threading::Mutex s_initCompleteMutex;
+}
+
+osg::BoundingSphere
+LocalizedNode::computeBound() const
+{
+    if ( !_initComplete )
     {
-        // mark this class ready!
-        _initComplete = true;
-
-        setHorizonCulling( _horizonCulling );
-        setPosition      ( _mapPosition );
-
-        // cancel the one-time update
-        ADJUST_UPDATE_TRAV_COUNT(this, -1);
+        // perform initialization that cannot happen in the CTOR
+        // (due to possible virtual function calls)
+        Threading::ScopedMutexLock lock(s_initCompleteMutex);
+        if ( !_initComplete )
+        {
+            const_cast<LocalizedNode*>(this)->_initComplete = true;
+            const_cast<LocalizedNode*>(this)->setHorizonCulling( _horizonCulling );
+            const_cast<LocalizedNode*>(this)->setPosition      ( _mapPosition );
+        }
     }
-
-    PositionedAnnotationNode::traverse( nv );
+    return PositionedAnnotationNode::computeBound();
 }
 
 
@@ -272,10 +263,9 @@ LocalizedNode::applyAltitudePolicy(osg::Node* node, const Style& style)
         node = drapable;
     }
 
-#if 0
-    //gw - not sure we support this for LocalizedNode.
+    // gw - not sure whether is makes sense to support this for LocalizedNode
     // GPU-clamped geometry
-    else if ( ap.gpuAutoClamping )
+    else if ( ap.gpuClamping )
     {
         ClampableNode* clampable = new ClampableNode( getMapNode() );
         clampable->addChild( node );
@@ -287,9 +277,9 @@ LocalizedNode::applyAltitudePolicy(osg::Node* node, const Style& style)
             clampable->depthOffset() = *render->depthOffset();
         }
     }
-#endif
 
-    else if ( ap.cpuAutoClamping )
+    // scenegraph-clamped geometry
+    else if ( ap.sceneClamping )
     {
         // save for later when we need to reclamp the mesh on the CPU
         _altitude = style.get<AltitudeSymbol>();

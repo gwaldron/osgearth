@@ -104,7 +104,7 @@ namespace osgEarth { namespace Annotation
 
     public: // osg::Node
 
-        virtual void traverse(osg::NodeVisitor& nv);
+        virtual osg::BoundingSphere computeBound() const;
 
 
     protected:

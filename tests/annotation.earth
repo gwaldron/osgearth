@@ -26,19 +26,23 @@ osgEarth Sample - Annotations
                        heading="35.27" pitch="-35" />
         </viewpoints>
         
-        <annotations declutter="true">
+        <annotations>
         
             <label text="Los Angeles">
                 <position lat="34.051" long="-117.974" alt="100" mode="relative"/>
                 <style type="text/css">
-                    text-align: center_center;
-                    text-size:  20;
+                    text-align:     center_center;
+                    text-size:      20;
+                    text-declutter: true;
                 </style>
             </label>
             
             <place text="San Diego">
                 <position lat="32.73" long="-117.17"/>
                 <icon>http://demo.pelicanmapping.com/icons/gmaps/yoga.png</icon>
+                <style type="text/css">
+                    text-declutter: true;
+                </style>
             </place>
             
             <circle name="draped circle">
@@ -136,6 +140,15 @@ osgEarth Sample - Annotations
                     render-lighting: false;
                 </style>
             </local_geometry>
+            
+            <circle name="scene-clamped circle">
+                <position lat="33.4" long="-116.6"/>
+                <radius value="5" units="km"/>
+                <style type="text/css">
+                    fill: #afafff9f;
+                    render-lighting: false;
+                </style>
+            </circle>
             
         </annotations>
         

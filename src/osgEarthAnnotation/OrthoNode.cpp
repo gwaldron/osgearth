@@ -277,6 +277,44 @@ OrthoNode::setPosition( const GeoPoint& position )
     return true;
 }
 
+void
+OrthoNode::applyStyle(const Style& style)
+{
+    // check for decluttering.
+    const TextSymbol* text = style.get<TextSymbol>();
+    if ( text && text->declutter().isSet() )
+    {
+        if ( text->declutter() == true )
+        {
+            this->getOrCreateStateSet()->setRenderBinDetails(
+                12,
+                OSGEARTH_DECLUTTER_BIN );
+        }
+        else
+        {
+            this->getOrCreateStateSet()->setRenderBinToInherit();
+        }
+    }
+
+    const IconSymbol* icon = style.get<IconSymbol>();
+    if ( icon && icon->declutter().isSet() )
+    {
+        if ( icon->declutter() == true )
+        {
+            this->getOrCreateStateSet()->setRenderBinDetails(
+                12,
+                OSGEARTH_DECLUTTER_BIN );
+        }
+        else
+        {
+            this->getOrCreateStateSet()->setRenderBinToInherit();
+        }
+    }
+
+    // up the chain
+    PositionedAnnotationNode::applyStyle( style );
+}
+
 bool
 OrthoNode::updateTransforms( const GeoPoint& p, osg::Node* patch )
 {

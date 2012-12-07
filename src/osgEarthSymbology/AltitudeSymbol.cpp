@@ -44,6 +44,7 @@ AltitudeSymbol::getConfig() const
     conf.addIfSet   ( "clamping",  "relative",   _clamping, CLAMP_RELATIVE_TO_TERRAIN );
 
     conf.addIfSet   ( "technique", "map",   _technique, TECHNIQUE_MAP );
+    conf.addIfSet   ( "technique", "scene", _technique, TECHNIQUE_SCENE );
     conf.addIfSet   ( "technique", "gpu",   _technique, TECHNIQUE_GPU );
     conf.addIfSet   ( "technique", "drape", _technique, TECHNIQUE_DRAPE );
 
@@ -62,6 +63,7 @@ AltitudeSymbol::mergeConfig( const Config& conf )
     conf.getIfSet   ( "clamping",  "relative", _clamping, CLAMP_RELATIVE_TO_TERRAIN );
 
     conf.getIfSet   ( "technique", "map",   _technique, TECHNIQUE_MAP );
+    conf.getIfSet   ( "technique", "scene", _technique, TECHNIQUE_SCENE );
     conf.getIfSet   ( "technique", "gpu",   _technique, TECHNIQUE_GPU );
     conf.getIfSet   ( "technique", "drape", _technique, TECHNIQUE_DRAPE );
 
@@ -86,6 +88,8 @@ AltitudeSymbol::parseSLD(const Config& c, Style& style)
     else if ( match(c.key(), "altitude-technique") ) {
         if      ( match(c.value(), "map") )
             style.getOrCreate<AltitudeSymbol>()->technique() = TECHNIQUE_MAP;
+        else if ( match(c.value(), "scene") )
+            style.getOrCreate<AltitudeSymbol>()->technique() = TECHNIQUE_SCENE;
         else if ( match(c.value(), "gpu") )
             style.getOrCreate<AltitudeSymbol>()->technique() = TECHNIQUE_GPU;
         else if ( match(c.value(), "drape") )

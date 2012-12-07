@@ -134,10 +134,10 @@ namespace osgEarth { namespace Annotation
 
         struct AltitudePolicy
         {
-            AltitudePolicy() : draping(false), cpuAutoClamping(false), gpuAutoClamping(false) { }
+            AltitudePolicy() : draping(false), sceneClamping(false), gpuClamping(false) { }
             bool draping;
-            bool cpuAutoClamping;
-            bool gpuAutoClamping;
+            bool sceneClamping;
+            bool gpuClamping;
         };
         static void getAltitudePolicy( const Style& style, AltitudePolicy& b );
 

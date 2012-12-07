@@ -81,22 +81,13 @@ OrthoNode( mapNode, position )
 void
 LabelNode::init( const Style& style )
 {
-    this->clearDecoration();
-    
     _geode = new osg::Geode();
-    getAttachPoint()->addChild( _geode );
+    getAttachPoint()->addChild( _geode.get() );
 
     osg::StateSet* stateSet = _geode->getOrCreateStateSet();
     stateSet->setAttributeAndModes( new osg::Depth(osg::Depth::ALWAYS, 0, 1, false), 1 );
 
     setStyle( style );
-
-    applyStyle( style );
-
-    setLightingIfNotSet( false );
-
-    ShaderGenerator gen( Registry::stateSetCache() );
-    this->accept( gen );
 }
 
 void
@@ -125,7 +116,7 @@ LabelNode::setStyle( const Style& style )
         return;
     }
     
-    this->clearDecoration();   
+    this->clearDecoration();
 
     _geode->removeDrawables( 0, _geode->getNumDrawables() );
 
@@ -142,6 +133,9 @@ LabelNode::setStyle( const Style& style )
     applyStyle( _style );
 
     setLightingIfNotSet( false );
+
+    ShaderGenerator gen( Registry::stateSetCache() );
+    this->accept( gen );
 }
 
 void

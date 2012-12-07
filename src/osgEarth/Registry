@@ -135,6 +135,8 @@ namespace osgEarth
         /**
          * A default StateSetCache to use by any process that uses one.
          * A StateSetCache assist in stateset sharing across multiple nodes.
+         * Note: A registry-wide SSC is only supported in OSG 3.1.4+. See
+         * the Registry.cpp comments for details.
          */
         StateSetCache* getStateSetCache() const;
         void setStateSetCache( StateSetCache* cache );

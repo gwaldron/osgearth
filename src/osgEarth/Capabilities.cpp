@@ -228,7 +228,7 @@ _maxUniformBlockSize    ( 0 )
         OE_INFO << LC << "  depth-packed stencil = " << SAYBOOL(_supportsDepthPackedStencilBuffer) << std::endl;
 
         _supportsOcclusionQuery = osg::isGLExtensionSupported( id, "GL_ARB_occlusion_query" );
-        OE_INFO << LC << "  occulsion query = " << SAYBOOL(_supportsOcclusionQuery) << std::endl;
+        OE_INFO << LC << "  occlusion query = " << SAYBOOL(_supportsOcclusionQuery) << std::endl;
 
         _supportsDrawInstanced = 
             _supportsGLSL &&

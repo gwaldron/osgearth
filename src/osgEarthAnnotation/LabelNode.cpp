@@ -44,8 +44,7 @@ LabelNode::LabelNode(MapNode*            mapNode,
                      const Style&        style ) :
 
 OrthoNode( mapNode, position ),
-_text    ( text ),
-_geode   ( 0L )
+_text    ( text )
 {
     init( style );
 }
@@ -56,8 +55,7 @@ LabelNode::LabelNode(MapNode*            mapNode,
                      const TextSymbol*   symbol ) :
 
 OrthoNode( mapNode, position ),
-_text    ( text ),
-_geode   ( 0L )
+_text    ( text )
 {
     Style style;
     style.add( const_cast<TextSymbol*>(symbol) );
@@ -67,8 +65,7 @@ _geode   ( 0L )
 LabelNode::LabelNode(const std::string&  text,
                      const Style&        style ) :
 OrthoNode(),
-_text    ( text ),
-_geode   ( 0L )
+_text    ( text )
 {
     init( style );
 }
@@ -76,8 +73,7 @@ _geode   ( 0L )
 LabelNode::LabelNode(MapNode*            mapNode,
                      const GeoPoint&     position,
                      const Style&        style ) :
-OrthoNode( mapNode, position ),
-_geode   ( 0L )
+OrthoNode( mapNode, position )
 {
     init( style );
 }

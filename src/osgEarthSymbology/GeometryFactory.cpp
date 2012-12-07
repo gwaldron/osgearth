@@ -34,7 +34,7 @@ Geometry*
 GeometryFactory::createCircle(const osg::Vec3d& center,
                               const Distance&   radius,
                               unsigned          numSegments,
-                              Geometry*         geomToUse)
+                              Geometry*         geomToUse) const
 {
     Geometry* geom = geomToUse ? geomToUse : new Polygon();
 
@@ -87,7 +87,7 @@ GeometryFactory::createArc(const osg::Vec3d& center,
                            const Angle&      start,
                            const Angle&      end,
                            unsigned          numSegments,
-                           Geometry*         geomToUse)
+                           Geometry*         geomToUse) const
 {
     Geometry* geom = geomToUse? geomToUse : new LineString();
 
@@ -149,7 +149,7 @@ GeometryFactory::createEllipse(const osg::Vec3d& center,
                                const Distance&   radiusMinor,
                                const Angle&      rotationAngle,
                                unsigned          numSegments,
-                               Geometry*         geomToUse)
+                               Geometry*         geomToUse) const
 {
     Geometry* geom = geomToUse ? geomToUse : new Polygon();
 
@@ -212,7 +212,7 @@ GeometryFactory::createEllipse(const osg::Vec3d& center,
 Geometry*
 GeometryFactory::createRectangle(const osg::Vec3d& center,
                                  const Distance&   width,
-                                 const Distance&   height )
+                                 const Distance&   height ) const
 {
     Geometry* geom = new Polygon();
     

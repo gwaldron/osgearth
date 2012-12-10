@@ -368,12 +368,34 @@ BuildGeometryFilter::buildPolygon(Geometry*               ring,
 
     if ( tessellate )
     {
-        osgUtil::Tessellator tess;
-        tess.setTessellationType( osgUtil::Tessellator::TESS_TYPE_GEOMETRY );
+	osgUtil::Tessellator tess;
+	tess.setTessellationType( osgUtil::Tessellator::TESS_TYPE_GEOMETRY );
         tess.setWindingType( osgUtil::Tessellator::TESS_WINDING_POSITIVE );
         //tess.setBoundaryOnly( true );
         tess.retessellatePolygons( *osgGeom );
     }
+
+    // Normal computation.
+    //
+    // We cannot accurately rely on triangles from the tessellation, since we could have
+    // very "degraded" triangles (close to a line), and the normal computation would be bad.
+    // In this case, we would have to average the normal vector over each triangle of the polygon.
+    // The Newell's formula is simpler and more direct here.
+    osg::Vec3 normal( 0.0, 0.0, 0.0 );
+    for ( size_t i = 0; i < poly->size(); ++i )
+    {
+	    osg::Vec3 pi = (*poly)[i];
+	    osg::Vec3 pj = (*poly)[ (i+1) % poly->size() ];
+	    normal[0] += ( pi[1] - pj[1] ) * ( pi[2] + pj[2] );
+	    normal[1] += ( pi[2] - pj[2] ) * ( pi[0] + pj[0] );
+	    normal[2] += ( pi[0] - pj[0] ) * ( pi[1] + pj[1] );
+    }
+    normal.normalize();
+
+    osg::Vec3Array* normals = new osg::Vec3Array();
+    normals->push_back( normal );
+    osgGeom->setNormalArray( normals );
+    osgGeom->setNormalBinding( osg::Geometry::BIND_OVERALL );
 }
 
 

@@ -78,7 +78,7 @@ _filters          ( filters )
             if ( temp.find( "select" ) != 0 )
             {
                 std::stringstream buf;
-                buf << "SELECT * FROM " << from << " WHERE " << expr;
+                buf << "SELECT * FROM \"" << from << "\" WHERE \"" << expr << "\"";
                 std::string bufStr;
                 bufStr = buf.str();
                 expr = bufStr;
@@ -87,7 +87,7 @@ _filters          ( filters )
         else
         {
             std::stringstream buf;
-            buf << "SELECT * FROM " << from;
+            buf << "SELECT * FROM \"" << from << "\"";
             expr = buf.str();
         }
 
@@ -102,7 +102,7 @@ _filters          ( filters )
             if ( temp.find( "order by" ) != 0 )
             {                
                 std::stringstream buf;
-                buf << "ORDER BY " << orderby;                
+                buf << "ORDER BY \"" << orderby  << "\"";
                 std::string bufStr;
                 bufStr = buf.str();
                 orderby = buf.str();
@@ -252,4 +252,3 @@ FeatureCursorOGR::readChunk()
 
     //OE_NOTICE << "read " << _queue.size() << " features ... " << std::endl;
 }
-

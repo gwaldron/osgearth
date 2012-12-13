@@ -313,7 +313,7 @@ ElevationQuery::getElevationImpl(const GeoPoint& point,
         tile.get(), 
         mapPoint.x(), mapPoint.y(), 
         extent.xMin(), extent.yMin(), 
-        xInterval, yInterval );
+        xInterval, yInterval, _mapf.getMapInfo().getElevationInterpolation() );
 
     osg::Timer_t end = osg::Timer::instance()->tick();
     _queries++;

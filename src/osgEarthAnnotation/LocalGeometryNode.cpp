@@ -86,18 +86,12 @@ LocalGeometryNode::initGeometry(const osgDB::Options* dbOptions)
 
     if ( _geom.valid() )
     {
-        osg::ref_ptr<Feature> feature = new Feature( _geom.get(), 0L );
-        feature->style() = _style;
-
-        GeometryCompiler compiler;
-        
         Session* session = 0L;
         if ( getMapNode() )
             session = new Session(getMapNode()->getMap(), 0L, 0L, dbOptions);
-
         FilterContext cx( session );
 
-        osg::Node* node = compiler.compile( feature.get(), cx );
+        osg::Node* node = GeometryCompiler().compile( _geom.get(), _style, cx );
         if ( node )
         {
             _xform->addChild( node );

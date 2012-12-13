@@ -78,6 +78,13 @@ OrthoNode( mapNode, position )
     init( style );
 }
 
+LabelNode::LabelNode(MapNode*            mapNode,
+                     const Style&        style ) :
+OrthoNode( mapNode, GeoPoint::INVALID )
+{
+    init( style );
+}
+
 void
 LabelNode::init( const Style& style )
 {

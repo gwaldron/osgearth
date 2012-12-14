@@ -49,6 +49,8 @@ namespace osgEarth { namespace Symbology
         };
 
     public:
+        META_Symbol(ExtrusionSymbol);
+
         ExtrusionSymbol( const Config& conf =Config() );
 
         /** dtor */

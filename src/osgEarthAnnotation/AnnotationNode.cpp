@@ -51,6 +51,10 @@ namespace osgEarth { namespace Annotation
 
 //-------------------------------------------------------------------
 
+Style AnnotationNode::s_emptyStyle;
+
+//-------------------------------------------------------------------
+
 AnnotationNode::AnnotationNode(MapNode* mapNode) :
 _mapNode    ( mapNode ),
 _dynamic    ( false ),

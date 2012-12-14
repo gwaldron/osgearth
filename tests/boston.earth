@@ -99,6 +99,7 @@ to extruded buildings.
     <model name="Streets" driver="feature_geom" enabled="true">
         <features name="streets" driver="ogr" build_spatial_index="true">
             <url>../data/boston-scl-utm19n-meters.shp</url>
+            <resample max_length="25"/>
         </features>
         
         <!--

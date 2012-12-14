@@ -68,7 +68,7 @@ namespace
      *
      * Places the intersection point(s) in the output vector.
      */
-    void
+    bool
     intersectClipRayWithSphere(double                   clipx, 
                                double                   clipy, 
                                const osg::Matrix&       clipToWorld, 
@@ -129,75 +129,16 @@ namespace
         }
 
         if ( dist2 > inout_maxDist2 )
-            inout_maxDist2 = dist2;
-    }
-
-#if 0
-    /**
-     * Interects a finite ray with a sphere of radius R. The ray is defined
-     * by the X and Y components (in projection aka "clip" space). The function
-     * uses this information to build a ray from Z=-1 to Z=1. 
-     *
-     * Places the intersection point(s) in the output vector.
-     */
-    void
-    intersectClipRayWithSphere(double                   clipx, 
-                               double                   clipy, 
-                               const osg::Matrix&       clipToWorld, 
-                               double                   R,
-                               std::vector<osg::Vec3d>& output)
-    {
-        osg::Vec3d p0 = osg::Vec3d(clipx, clipy, -1.0) * clipToWorld; // near plane
-        osg::Vec3d p1 = osg::Vec3d(clipx, clipy,  1.0) * clipToWorld; // far plane
-
-        // http://stackoverflow.com/questions/6533856/ray-sphere-intersection
-
-        osg::Vec3d d = p1-p0;
-
-        double A = d * d;
-        double B = 2.0 * (d * p0);
-        double C = (p0 * p0) - R*R;
-
-        // now solve the quadratic A + B*t + C*t^2 = 0.
-        double D = B*B - 4.0*A*C;
-        if ( D >= 0 )
         {
-            if ( osg::equivalent(D, 0.0) )
-            {
-                // one root (line it tangent to sphere)
-                double t = -B/(2.0*A);
-                if (t >= 0.0)
-                {
-                    output.push_back( p0 + d*t );
-                }
-            }
-            else
-            {
-                // two roots (line passes through sphere twice)
-                // find the closer of the two.
-                double sqrtD = sqrt(D);
-                double t0 = (-B + sqrtD)/(2.0*A);
-                double t1 = (-B - sqrtD)/(2.0*A);
-                
-                //bool t0_ok = t0 >= 0.0; // && t0 <= 1.0;
-                //bool t1_ok = t1 >= 0.0; // && t1 <= 1.0;
-
-                if ( t0 >= 0.0 && t1 >= 0.0 )
-                {
-                    output.push_back( p0 + d*std::min(t0,t1) );
-                }
-                else if ( t0 >= 0.0 )
-                {
-                    output.push_back( p0 + d*t0 );
-                }
-                else if ( t1 >= 0.0 )
-                {
-                    output.push_back( p0 + d*t1 );
-                }
-            }
+            inout_maxDist2 = dist2;
+            return true;
+        }
+        else
+        {
+            // either no intersection, or the distance was not the max.
+            return false;
         }
     }
-#endif
 
     /**
      * Same as above, but intersects the ray with a static 2D plane
@@ -227,36 +168,6 @@ namespace
                 inout_maxDist2 = (L*d).length2();
         }
     }
-
-#if 0
-    /**
-     * Same as above, but intersects the ray with a static 2D plane
-     * (for use in projected map mode)
-     */
-    void
-    intersectClipRayWithPlane(double                   clipx, 
-                              double                   clipy, 
-                              const osg::Matrix&       clipToWorld,
-                              std::vector<osg::Vec3d>& output)
-    {
-        osg::Vec3d p0 = osg::Vec3d(clipx, clipy, -1.0) * clipToWorld; // near plane
-        osg::Vec3d p1 = osg::Vec3d(clipx, clipy,  1.0) * clipToWorld; // far plane
-
-        // zero-level plane is hard-coded here
-        osg::Vec3d planePoint(0,0,0);
-        osg::Vec3d planeNormal(0,0,1);
-
-        osg::Vec3d L = p1-p0;
-        L.normalize();
-
-        double denom = L * planeNormal;
-        if ( !osg::equivalent(denom, 0.0) )
-        {
-            double d = ((planePoint - p0) * planeNormal) / denom;
-            output.push_back( p0 + L*d );
-        }
-    }
-#endif
 
 
     /**
@@ -492,9 +403,6 @@ OverlayDecorator::cullTerrainAndCalculateRTTParams(osgUtil::CullVisitor* cv,
     osg::Vec3 camLookVec = to-from;
     camLookVec.normalize();
 
-    // unit look-vector of the RTT camera:
-    osg::Vec3d rttLookVec = -worldUp;
-
     // the minimum and maximum extents of the overlay ortho projector:
     double eMin = 0.1;
     double eMax = DBL_MAX;
@@ -582,7 +490,29 @@ OverlayDecorator::cullTerrainAndCalculateRTTParams(osgUtil::CullVisitor* cv,
     frustumPH.setToUnitFrustum(true, true);
     frustumPH.transform( inverseMVP, MVP );
 
-    // now we need to calculate the visible bounds for each overlay group.
+    // extract the verts associated with the frustum's PH:
+    std::vector<osg::Vec3d> verts;
+    frustumPH.getPoints( verts );
+
+    // calculate the new RTT matrices. All techniques will share the 
+    // same set. We could probably put these in the "shared" category
+    // and use pointers..todo.
+    osg::Matrix rttViewMatrix, rttProjMatrix;
+
+    if ( _isGeocentric )
+        rttViewMatrix.makeLookAt( eye, osg::Vec3d(0,0,0), osg::Vec3d(0,0,1) );
+    else
+        rttViewMatrix.makeLookAt( eye, eye-worldUp*hasl, osg::Vec3(0,1,0) );
+
+    // calculate an orthographic RTT projection matrix based on the view-space
+    // bounds of the vertex list (i.e. the extents surrounding the RTT camera 
+    // that bounds all the polyherdron verts in its XY plane)
+    double xmin, ymin, xmax, ymax;
+    getExtentInSilhouette(rttViewMatrix, verts, xmin, ymin, xmax, ymax);
+    rttProjMatrix.makeOrtho(xmin, xmax, ymin, ymax, -eyeLen, eyeLen);
+
+
+    // now copy the RTT matrixes over to the techniques.
     for( unsigned t=0; t<pvd._techParams.size(); ++t )
     {
         TechRTTParams& params = pvd._techParams[t];
@@ -591,58 +521,8 @@ OverlayDecorator::cullTerrainAndCalculateRTTParams(osgUtil::CullVisitor* cv,
         if ( !_techniques[t]->hasData(params) )
             continue;
 
-        // time to calculate the visible polyhedron.
-        // intiailize it to the view frustum.
-        osgShadow::ConvexPolyhedron visiblePH( frustumPH );
-
-        // get a bounds of the overlay graph as a whole, and convert that to a
-        // bounding box. We can probably do better with a ComputeBoundsVisitor but it
-        // will be slower.
-        const osg::BoundingSphere& visibleOverlayBS = params._group->getBound();
-        if ( visibleOverlayBS.valid() )
-        {
-            osg::BoundingBox visibleOverlayBBox;
-            visibleOverlayBBox.expandBy( visibleOverlayBS );
-
-            // intersect that bound with the camera frustum:
-            osg::Polytope visibleOverlayPT;
-            visibleOverlayPT.setToBoundingBox( visibleOverlayBBox );
-            visiblePH.cut( visibleOverlayPT );
-        }
-
-        // pull the point set out of the polyhedron. We're going to use the bounding
-        // box of these points to figure out how large to make the RTT extents.
-        std::vector<osg::Vec3d> verts;
-        visiblePH.getPoints( verts );
-
-        if ( _isGeocentric )
-        {
-            // for a geocentric map, try to place the RTT camera position at an optimal point
-            // that will minimize the span of the RTT texture. Take the centroid of the 
-            // visible polyhedron and clamp it's distance to the eyepoint by half the horizon
-            // distance.
-            osg::BoundingBox box = visiblePH.computeBoundingBox();
-            osg::Vec3d bc = box.center();
-            osg::Vec3d eye2bc = eye - bc;
-            if ( eye2bc.length() > horizonDistance )
-            {
-                eye2bc.normalize();
-                bc = eye + eye2bc * 0.5*horizonDistance;
-            }
-
-            // position the camera directly above the geometry and make a view matrix:
-            bc.normalize();
-            bc *= eyeLen;
-            params._rttViewMatrix.makeLookAt( bc, osg::Vec3d(0,0,0), osg::Vec3d(0,0,1) );
-        }
-
-        // calculate an orthographic RTT projection matrix based on the view-space
-        // bounds of the vertex list (i.e. the extents surrounding the RTT camera 
-        // that bounds all the polyherdron verts in its XY plane)
-        double xmin, ymin, xmax, ymax;
-        getExtentInSilhouette(params._rttViewMatrix, verts, xmin, ymin, xmax, ymax);
-        params._rttProjMatrix.makeOrtho(xmin, xmax, ymin, ymax, -eyeLen, eyeLen);
-
+        params._rttViewMatrix.set( rttViewMatrix );
+        params._rttProjMatrix.set( rttProjMatrix );
 
         // service a "dump" of the polyhedrons for dubugging purposes
         // (see osgearth_overlayviewer)
@@ -662,10 +542,12 @@ OverlayDecorator::cullTerrainAndCalculateRTTParams(osgUtil::CullVisitor* cv,
             //osg::Node* overlay = osgDB::readNodeFile(fn);
             //overlay->setName("overlay");
 
+#if 0
             // visible overlay Polyherdron AFTER frustum intersection:
             visiblePH.dumpGeometry(0,0,0,fn,osg::Vec4(1,.5,1,1),osg::Vec4(1,.5,0,.25));
             osg::Node* intersection = osgDB::readNodeFile(fn);
             intersection->setName("intersection");
+#endif
 
             // RTT frustum:
             {
@@ -692,7 +574,7 @@ OverlayDecorator::cullTerrainAndCalculateRTTParams(osgUtil::CullVisitor* cv,
             g->getOrCreateStateSet()->setAttribute(new osg::Program(), 0);
             g->addChild(camNode);
             //g->addChild(overlay);
-            g->addChild(intersection);
+            //g->addChild(intersection);
             g->addChild(rttNode);
             g->addChild(dsgmt);
 

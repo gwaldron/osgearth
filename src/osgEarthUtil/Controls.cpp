@@ -816,6 +816,9 @@ LabelControl::calcSize(const ControlContext& cx, osg::Vec2f& out_size)
             (_bmax.x() - _bmin.x()) + padding().x(),
             (_bmax.y() - _bmin.y()) + padding().y() );
 
+	// If width explicitly set and > measured width of label text - use it.
+	if (width().isSet() && width().get() > _renderSize.x()) _renderSize.x() = width().get();
+	
         _drawable = t;
 
         out_size.set(
@@ -1699,6 +1702,9 @@ HBox::calcSize(const ControlContext& cx, osg::Vec2f& out_size)
             _renderSize.x() += first ? childSize.x() : childSpacing() + childSize.x();
             _renderSize.y() = osg::maximum( _renderSize.y(), childSize.y() );
         }
+	
+	// If width explicitly set and > total width of children - use it
+	if (width().isSet() && width().get() > _renderSize.x()) _renderSize.x() = width().get();
 
         _renderSize.set(
             _renderSize.x() + padding().x(),

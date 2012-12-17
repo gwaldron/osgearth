@@ -270,7 +270,7 @@ OverlayDecorator::initializePerViewData( PerViewData& pvd, osg::Camera* cam )
         TechRTTParams& params = pvd._techParams[i];
         params._group = _overlayGroups[i].get();
         params._terrainStateSet = pvd._sharedTerrainStateSet.get(); // share it.
-        params._horizonDistance = _isGeocentric ? &pvd._sharedHorizonDistance : 0L; // share it.
+        params._horizonDistance = &pvd._sharedHorizonDistance;      // share it.
         params._terrainParent = this;
         params._mainCamera = cam;
     }
@@ -368,8 +368,6 @@ OverlayDecorator::cullTerrainAndCalculateRTTParams(osgUtil::CullVisitor* cv,
         // radius of the earth under the eyepoint
         double radius = eyeLen - hasl; 
         horizonDistance = sqrt( 2.0*radius*hasl + hasl*hasl );
-
-        pvd._sharedHorizonDistance = horizonDistance;
     }
     else // projected map
     {
@@ -378,9 +376,11 @@ OverlayDecorator::cullTerrainAndCalculateRTTParams(osgUtil::CullVisitor* cv,
         worldUp.set( 0.0, 0.0, 1.0 );
         eyeLen = hasl * 2.0;
 
-        // there is no maximum horizon distance in a projected map
+        // there "horizon distance" in a projected map is infinity,
+        // so just simulate one.
         horizonDistance = sqrt(2.0*6356752.3142*hasl + hasl*hasl);
 
+#if 0 // happens later now.
         for(unsigned t=0; t<pvd._techParams.size(); ++t)
         {
             TechRTTParams& params = pvd._techParams[t];
@@ -390,7 +390,11 @@ OverlayDecorator::cullTerrainAndCalculateRTTParams(osgUtil::CullVisitor* cv,
                 params._rttViewMatrix.makeLookAt( eye, eye-worldUp*hasl, osg::Vec3(0,1,0) );
             }
         }
+#endif
     }
+    
+    // update the shared horizon distance.
+    pvd._sharedHorizonDistance = horizonDistance;
 
     // create a "weighting" that weights HASL against the camera's pitch.
     osg::Vec3d lookVector = cv->getLookVectorLocal();

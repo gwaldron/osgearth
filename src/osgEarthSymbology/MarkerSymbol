@@ -73,6 +73,8 @@ namespace osgEarth { namespace Symbology
         };
 
     public:
+        META_Symbol(MarkerSymbol);
+
         MarkerSymbol( const Config& conf =Config() );
 
         /** Since MarkerSymbol is deprecated, this conveneince function will convert to an InstanceSymbol */

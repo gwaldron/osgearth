@@ -569,6 +569,141 @@ AnnotationUtils::createHemisphere( float r, const osg::Vec4& color, float maxAng
     return installTwoPassAlpha( geode );
 }
 
+    // constucts an ellipsoidal mesh that we will use to draw the atmosphere
+osg::Geometry*
+AnnotationUtils::createEllipsoidGeometry(float majorRadius, 
+                                         float minorRadius,
+                                         const osg::Vec4f& color, 
+                                         float maxAngle,
+                                         float minLat,
+                                         float maxLat,
+                                         float minLon,
+                                         float maxLon)
+{
+    osg::EllipsoidModel em( majorRadius, minorRadius );
+
+    osg::Geometry* geom = new osg::Geometry();
+    geom->setUseVertexBufferObjects(true);
+
+    float latSpan = maxLat - minLat;
+    float lonSpan = maxLon - minLon;
+    float aspectRatio = lonSpan/latSpan;
+
+    int latSegments = std::max( 6, (int)(latSpan / maxAngle) );
+    int lonSegments = std::max( 3, (int)(latSegments * aspectRatio) );
+    //int lonSegments = 2 * latSegments;
+
+    float segmentSize = latSpan/latSegments; // degrees
+    //double segmentSize = 180.0/(double)latSegments; // degrees
+
+    osg::Vec3Array* verts = new osg::Vec3Array();
+    verts->reserve( latSegments * lonSegments );
+
+    bool genTexCoords = false; // TODO: optional
+    osg::Vec2Array* texCoords = 0;
+    if (genTexCoords)
+    {
+        texCoords = new osg::Vec2Array();
+        texCoords->reserve( latSegments * lonSegments );
+        geom->setTexCoordArray( 0, texCoords );
+    }
+
+    osg::Vec3Array* normals = 0;
+    {
+        normals = new osg::Vec3Array();
+        normals->reserve( latSegments * lonSegments );
+        geom->setNormalArray( normals );
+        geom->setNormalBinding(osg::Geometry::BIND_PER_VERTEX );
+    }
+
+    osg::DrawElementsUShort* el = new osg::DrawElementsUShort( GL_TRIANGLES );
+    el->reserve( latSegments * lonSegments * 6 );
+
+    for( int y = 0; y <= latSegments; ++y )
+    {
+        float lat = minLat + segmentSize * (float)y;
+        //double lat = -90.0 + segmentSize * (double)y;
+        for( int x = 0; x < lonSegments; ++x )
+        {
+            float lon = minLon + segmentSize * (float)x;
+            //double lon = -180.0 + segmentSize * (double)x;
+            double gx, gy, gz;
+            em.convertLatLongHeightToXYZ( osg::DegreesToRadians(lat), osg::DegreesToRadians(lon), 0.0, gx, gy, gz );
+            verts->push_back( osg::Vec3(gx, gy, gz) );
+
+            if (genTexCoords)
+            {
+                double s = (lon + 180) / 360.0;
+                double t = (lat + 90.0) / 180.0;
+                texCoords->push_back( osg::Vec2(s, t ) );
+            }
+
+            if (normals)
+            {
+                osg::Vec3 normal( gx, gy, gz);
+                normal.normalize();
+                normals->push_back( normal );
+            }
+
+            if ( y < latSegments )
+            {
+                int x_plus_1 = x < lonSegments-1 ? x+1 : 0;
+                int y_plus_1 = y+1;
+                el->push_back( y*lonSegments + x );
+                el->push_back( y*lonSegments + x_plus_1 );
+                el->push_back( y_plus_1*lonSegments + x );
+                el->push_back( y*lonSegments + x_plus_1 );
+                el->push_back( y_plus_1*lonSegments + x_plus_1 );
+                el->push_back( y_plus_1*lonSegments + x );
+            }
+        }
+    }
+
+    osg::Vec4Array* c = new osg::Vec4Array(1);
+    (*c)[0] = color;
+    geom->setColorArray( c );
+    geom->setColorBinding( osg::Geometry::BIND_OVERALL );
+
+    geom->setVertexArray( verts );
+    geom->addPrimitiveSet( el );
+
+    return geom;
+}
+
+osg::Node* 
+AnnotationUtils::createEllipsoid(float majorRadius, 
+                                 float minorRadius,
+                                 const osg::Vec4f& color, 
+                                 float maxAngle,
+                                 float minLat,
+                                 float maxLat,
+                                 float minLon,
+                                 float maxLon)
+{
+    osg::Geode* geode = new osg::Geode();
+    geode->addDrawable( createEllipsoidGeometry(majorRadius, minorRadius, color, maxAngle, minLat, maxLat, minLon, maxLon) );
+
+    if ( color.a() < 1.0f )
+    {
+        geode->getOrCreateStateSet()->setRenderingHint( osg::StateSet::TRANSPARENT_BIN );
+    }
+
+    bool solid = (maxLat-minLat >= 180.0f && maxLon-minLon >= 360.0f);
+
+    if ( solid )
+    {
+        geode->getOrCreateStateSet()->setAttributeAndModes( new osg::CullFace(osg::CullFace::BACK), 1 );
+    }
+
+    else if ( color.a() < 1.0f )
+    {
+        //geode->getOrCreateStateSet()->setAttributeAndModes( new osg::CullFace(), 0 );
+        return installTwoPassAlpha(geode);
+    }
+
+    return geode;
+}
+
 osg::Node* 
 AnnotationUtils::createEllipsoid( float xr, float yr, float zr, const osg::Vec4& color, float maxAngle )
 {

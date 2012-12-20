@@ -26,6 +26,11 @@
 #include <osg/Referenced>
 #include <vector>
 
+#define META_Symbol(name) \
+    virtual bool isSameKindAs(const Symbol* rhs) const { return dynamic_cast<const name *>(rhs)!=NULL; } \
+    virtual const char* className() const { return #name; }
+
+
 namespace osgEarth { namespace Symbology
 {
     /**
@@ -34,16 +39,20 @@ namespace osgEarth { namespace Symbology
     class OSGEARTHSYMBOLOGY_EXPORT Symbol : public osg::Referenced
     {
     public:
-        Symbol( const Config& conf =Config() );
-
         const URIContext& uriContext() const { return _uriContext; }
 
         virtual Config getConfig() const { return Config(); }
+
+    public: // META_Symbol methods
+        virtual bool isSameKindAs(const Symbol* sym) const =0;
+        virtual const char* className() const =0;
 
     protected:
         URIContext _uriContext;
 
         static bool match(const std::string& key, const char* pattern);
+
+        Symbol( const Config& conf =Config() );
 
         virtual ~Symbol() { }
     };

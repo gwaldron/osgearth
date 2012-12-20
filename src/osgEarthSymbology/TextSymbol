@@ -65,6 +65,8 @@ namespace osgEarth { namespace Symbology
             ALIGN_BASE_LINE = ALIGN_LEFT_BASE_LINE /// default.        
         };
 
+        META_Symbol(TextSymbol);
+
         TextSymbol( const Config& conf =Config() );
 
         /** dtor */

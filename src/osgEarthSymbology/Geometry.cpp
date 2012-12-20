@@ -89,6 +89,8 @@ Geometry::cloneAs( const Geometry::Type& newType ) const
             return new Polygon( *static_cast<const Polygon*>(this) );
         else
             return new Polygon( &this->asVector() );
+    case TYPE_UNKNOWN:
+        return new Geometry( &this->asVector() );
     default:
         break;
     }

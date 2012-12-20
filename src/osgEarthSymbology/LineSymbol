@@ -35,6 +35,8 @@ namespace osgEarth { namespace Symbology
     class OSGEARTHSYMBOLOGY_EXPORT LineSymbol : public Symbol
     {
     public:
+        META_Symbol(LineSymbol);
+
         LineSymbol(const Config& conf =Config());
 
         /** dtor */

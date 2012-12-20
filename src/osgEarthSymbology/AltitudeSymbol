@@ -72,6 +72,8 @@ namespace osgEarth { namespace Symbology
         };
 
     public:
+        META_Symbol(AltitudeSymbol);
+
         AltitudeSymbol( const Config& conf =Config() );
 
         /** How to clamp instances to the terrain (default is CLAMP_NONE) */

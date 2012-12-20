@@ -36,6 +36,8 @@ namespace osgEarth { namespace Symbology
     class OSGEARTHSYMBOLOGY_EXPORT ModelSymbol : public InstanceSymbol
     {
     public:
+        META_Symbol(ModelSymbol);
+
         ModelSymbol( const Config& conf =Config() );
 
         /** dtor */

@@ -71,17 +71,30 @@ namespace
          "uniform mat4 oe_clamp_depthClip2cameraView; \n"
 #endif
 
+         "uniform float oe_clamp_horizonDistance; \n"
+
          // uniforms from ClampableNode:
          "uniform vec2 oe_clamp_bias; \n"
          "uniform vec2 oe_clamp_range; \n"
 
          "varying vec4 oe_clamp_simvert; \n"
          "varying float oe_clamp_simvertrange; \n"
+         "varying float oe_clamp_alphaFactor; \n"
 
          "void oe_clamp_vertex(void) \n"
          "{ \n"
-         //   transform the vertex into the depth texture's clip coordinates.
+         //   start by mocing the vertex into view space.
          "    vec4 v_view_orig = gl_ModelViewMatrix * gl_Vertex; \n"
+
+         //   if the distance to the vertex is beyond the visible horizon,
+         //   "hide" the vertex by setting its alpha component to 0.0.
+         //   if this is the case, there's no point in continuing -- so we 
+         //   would normally branch here, but since this happens on the fly 
+         //   the shader engine will run both branches regardless. So keep going.
+         "    float vert_distance = length(v_view_orig.xyz/v_view_orig.w); \n"
+         "    oe_clamp_alphaFactor = clamp(oe_clamp_horizonDistance - vert_distance, 0.0, 1.0 ); \n"
+
+         //   transform the vertex into the depth texture's clip coordinates.
          "    vec4 v_depthClip = oe_clamp_cameraView2depthClip * v_view_orig; \n"
 
          //   sample the depth map.
@@ -105,39 +118,28 @@ namespace
          "    vec4 v_view_clamped = oe_clamp_depthClip2cameraView * p_depthClip; \n"
 #endif
 
-         //   if the clamping distance is too big, bag it.
-         "    vec3 v_view_orig3    = v_view_orig.xyz/v_view_orig.w;\n"
+
+         //   now simulate a "closer" vertex for depth offsetting.
+         //   remap depth offset based on camera distance to vertex. The farther you are away,
+         //   the more of an offset you need.
+
+         //   calculate the range to target:
          "    vec3 v_view_clamped3 = v_view_clamped.xyz/v_view_clamped.w; \n"
-         "    float clamp_distance = length(v_view_orig3 - v_view_clamped3); \n"
+         "    float range = length(v_view_clamped3); \n"
 
-         "    const float maxClampDistance = 10000.0; \n"
+         //   calculate the depth offset bias for this range:
+         "    float ratio = (clamp(range, oe_clamp_range[0], oe_clamp_range[1])-oe_clamp_range[0])/(oe_clamp_range[1]-oe_clamp_range[0]);\n"
+         "    float bias = oe_clamp_bias[0] + ratio * (oe_clamp_bias[1]-oe_clamp_bias[0]);\n"
 
-         "    if ( clamp_distance > maxClampDistance ) \n"
-         "    { \n"
-         "        gl_Position = gl_ProjectionMatrix * v_view_orig; \n"
-                  // still have to populate these to nullify the depth offset code.
-         "        oe_clamp_simvert = gl_Position; \n"
-         "        oe_clamp_simvertrange = 1.0; \n"
-         "    } \n"
-         "    else \n"
-         "    { \n"
-         //       now simulate a "closer" vertex for depth offsetting.
-         //       remap depth offset based on camera distance to vertex. The farther you are away,
-         //       the more of an offset you need.
+         //   calculate the "simluated" vertex:
+         "    vec3 adj_vec = normalize(v_view_clamped3); \n"
+         "    vec3 v_view_offset3 = v_view_clamped3 - (adj_vec * bias); \n"
 
-         "        float range = length(v_view_clamped3); \n"
+         "    vec4 v_view_sim = vec4( v_view_offset3 * v_view_clamped.w, v_view_clamped.w ); \n"
+         "    oe_clamp_simvert = gl_ProjectionMatrix * v_view_sim;\n"
+         "    oe_clamp_simvertrange = range - bias; \n"
 
-         "        float ratio = (clamp(range, oe_clamp_range[0], oe_clamp_range[1])-oe_clamp_range[0])/(oe_clamp_range[1]-oe_clamp_range[0]);\n"
-         "        float bias = oe_clamp_bias[0] + ratio * (oe_clamp_bias[1]-oe_clamp_bias[0]);\n"
-
-         "        vec3 adj_vec = normalize(v_view_clamped3); \n"
-         "        vec3 v_view_offset3 = v_view_clamped3 - (adj_vec * bias); \n"
-
-         "        vec4 v_view_sim = vec4( v_view_offset3 * v_view_clamped.w, v_view_clamped.w ); \n"
-         "        oe_clamp_simvert = gl_ProjectionMatrix * v_view_sim;\n"
-         "        oe_clamp_simvertrange = range - bias; \n"
-         "        gl_Position = gl_ProjectionMatrix * v_view_clamped; \n"
-         "    } \n"
+         "    gl_Position = gl_ProjectionMatrix * v_view_clamped; \n"
          "} \n";
 
 
@@ -148,6 +150,8 @@ namespace
 
         "varying vec4 oe_clamp_simvert; \n"
         "varying float oe_clamp_simvertrange; \n"
+        "varying float oe_clamp_alphaFactor; \n"
+
         "void oe_clamp_fragment(inout vec4 color)\n"
         "{ \n"
         "    float sim_depth = 0.5 * (1.0+(oe_clamp_simvert.z/oe_clamp_simvert.w));\n"
@@ -158,6 +162,9 @@ namespace
              // so we don't draw fragments that are legitimently beyond the far clip plane.
         "    if ( sim_depth > 1.0 && oe_clamp_simvertrange < 0.0 ) { sim_depth = 0.0; } \n"
         "    gl_FragDepth = max(0.0, sim_depth); \n"
+
+             // adjust the alpha component to "hide" geometry beyond the visible horizon.
+        "    color.a *= oe_clamp_alphaFactor; \n"
         "}\n";
 
 }
@@ -200,6 +207,8 @@ namespace
 
         osg::ref_ptr<osg::Uniform>   _depthClipToDepthViewUniform;
         osg::ref_ptr<osg::Uniform>   _depthViewToCamViewUniform;
+
+        osg::ref_ptr<osg::Uniform>   _horizonDistanceUniform;
     };
 }
 
@@ -317,6 +326,11 @@ ClampingTechnique::setUpCamera(OverlayDecorator::TechRTTParams& params)
 
     local->_groupStateSet->setRenderingHint( osg::StateSet::TRANSPARENT_BIN );
 
+    // uniform for the horizon distance (== max clamping distance)
+    local->_horizonDistanceUniform = local->_groupStateSet->getOrCreateUniform(
+        "oe_clamp_horizonDistance",
+        osg::Uniform::FLOAT );
+
     // sampler for depth map texture:
     local->_groupStateSet->getOrCreateUniform(
         "oe_clamp_depthTex", 
@@ -408,6 +422,10 @@ ClampingTechnique::cullOverlayGroup(OverlayDecorator::TechRTTParams& params,
             cameraViewToDepthView *
             depthViewToDepthClip;
         local._camViewToDepthClipUniform->set( cameraViewToDepthClip );
+
+        local._horizonDistanceUniform->set( float(*params._horizonDistance) );
+
+        //OE_NOTICE << "HD = " << std::setprecision(8) << float(*params._horizonDistance) << std::endl;
 
 #if SUPPORT_Z
 

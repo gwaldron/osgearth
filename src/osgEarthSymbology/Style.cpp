@@ -67,7 +67,18 @@ Style::operator = ( const Style& rhs )
 void Style::addSymbol(Symbol* symbol)
 {
     if ( symbol )
+    {
+        for( SymbolList::iterator i = _symbols.begin(); i != _symbols.end(); ++i )
+        {
+            if ( i->get()->isSameKindAs(symbol) )
+            {
+                (*i) = symbol;
+                return;
+            }
+        }
+
         _symbols.push_back(symbol);
+    }
 }
 
 bool Style::removeSymbol(Symbol* symbol)

@@ -108,7 +108,7 @@ public:
                 _options.url()->full() +
                 sep + 
                 "SERVICE=WFS&VERSION=1.0.0&REQUEST=GetCapabilities";
-        }
+        }        
 
         _capabilities = WFSCapabilitiesReader::read( capUrl, _dbOptions.get() );
         if ( !_capabilities.valid() )
@@ -120,6 +120,14 @@ public:
         {
             OE_INFO << "[osgEarth::WFS] Got capabilities from " << capUrl << std::endl;
         }
+    }
+
+    void saveResponse(const std::string buffer, const std::string& filename)
+    {
+        std::ofstream fout;
+        fout.open(filename.c_str(), std::ios::out | std::ios::binary);        
+        fout.write(buffer.c_str(), buffer.size());        
+        fout.close();
     }
 
 
@@ -182,13 +190,16 @@ public:
 
     bool getFeatures( const std::string& buffer, const std::string& mimeType, FeatureList& features )
     {
-        OGR_SCOPED_LOCK;
-                
+        OGR_SCOPED_LOCK;        
+
+        bool json = isJSON( mimeType );
+        bool gml  = isGML( mimeType );
+
         // find the right driver for the given mime type
         OGRSFDriverH ogrDriver =
-            isJSON(mimeType) ? OGRGetDriverByName( "GeoJSON" ) :
-            isGML(mimeType)  ? OGRGetDriverByName( "GML" ) :
-            0L;
+            json ? OGRGetDriverByName( "GeoJSON" ) :
+            gml  ? OGRGetDriverByName( "GML" ) :
+            0L;        
 
         // fail if we can't find an appropriate OGR driver:
         if ( !ogrDriver )
@@ -198,7 +209,25 @@ public:
             return false;
         }
 
-        OGRDataSourceH ds = OGROpen( buffer.c_str(), FALSE, &ogrDriver );
+        std::string tmpName;
+
+        OGRDataSourceH ds = 0;
+        //GML needs to be saved to a temp file to load from disk.  GeoJSON can be loaded directly from memory
+        if (gml)
+        {
+            std::string ext = getExtensionForMimeType( mimeType );
+            //Save the response to a temp file            
+            std::string tmpPath = getTempPath();        
+            tmpName = getTempName(tmpPath, ext);
+            saveResponse(buffer, tmpName );
+            ds = OGROpen( tmpName.c_str(), FALSE, &ogrDriver );
+        }
+        else if (json)
+        {
+            //Open GeoJSON directly from memory
+            ds = OGROpen( buffer.c_str(), FALSE, &ogrDriver );
+        }        
+
         
         if ( !ds )
         {
@@ -231,6 +260,12 @@ public:
 
         // Destroy the datasource
         OGR_DS_Destroy( ds );
+
+        //Delete the temp file if one was created
+        if (!tmpName.empty())
+        {
+            remove( tmpName.c_str() );
+        }
         
         return true;
     }
@@ -262,9 +297,9 @@ public:
     }
 
     bool isGML( const std::string& mime ) const
-    {
+    {        
         return
-            startsWith(mime, "text/xml");
+            startsWith(mime, "text/xml");            
     }
 
 
@@ -283,7 +318,7 @@ public:
     std::string createURL(const Symbology::Query& query)
     {
         std::stringstream buf;
-        buf << _options.url()->full() << "?SERVICE=WFS&VERSION=1.0.0&REQUEST=getfeature";
+        buf << _options.url()->full() << "?SERVICE=WFS&VERSION=1.0.0&REQUEST=GetFeature";
         buf << "&TYPENAME=" << _options.typeName().get();
         
         std::string outputFormat = "geojson";
@@ -315,7 +350,7 @@ public:
     {
         FeatureCursor* result = 0L;
 
-        std::string url = createURL( query );
+        std::string url = createURL( query );        
 
         // check the blacklist:
         if ( Registry::instance()->isBlacklisted(url) )

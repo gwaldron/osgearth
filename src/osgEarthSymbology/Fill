@@ -16,45 +16,41 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
-#ifndef OSGEARTHSYMBOLOGY_POINT_SYMBOL_H
-#define OSGEARTHSYMBOLOGY_POINT_SYMBOL_H 1
 
-#include <osgEarthSymbology/Symbol>
-#include <osgEarthSymbology/Fill>
+#ifndef OSGEARTHSYMBOLOGY_FILL_H
+#define OSGEARTHSYMBOLOGY_FILL_H 1
+
+#include <osgEarthSymbology/Common>
+#include <osgEarthSymbology/Color>
+#include <osgEarth/Config>
+
 
 namespace osgEarth { namespace Symbology
 {
     /**
-     * Symbol that describes how to render point geometries.
+     * Drawing parameters for a filled area.
      */
-    class OSGEARTHSYMBOLOGY_EXPORT PointSymbol : public Symbol
+    class OSGEARTHSYMBOLOGY_EXPORT Fill
     {
     public:
-        META_Symbol(PointSymbol);
+        Fill();
+        Fill( float r, float g, float b, float a );
+        Fill( const Color& color );
+        Fill( const Config& conf ) { mergeConfig(conf); }
 
-        PointSymbol( const Config& conf =Config() );
+        virtual ~Fill() { }
 
-        /** dtor */
-        virtual ~PointSymbol() { }
-
-        /** Point fill properties. */
-        optional<Fill>& fill() { return _fill; }
-        const optional<Fill>& fill() const { return _fill; }
-
-        /** Point size property */
-        optional<float>& size() { return _size; }
-        const optional<float>& size() const { return _size; }
+        Color& color() { return _color; }
+        const Color& color() const { return _color; }
 
     public:
         virtual Config getConfig() const;
         virtual void mergeConfig( const Config& conf );
-        static void parseSLD(const Config& c, class Style& style);
 
     protected:
-        optional<Fill>  _fill;
-        optional<float> _size;
+        Color _color;
     };
 
 } } // namespace osgEarth::Symbology
 
-#endif // OSGEARTHSYMBOLOGY_POINT_SYMBOL_H
+#endif // OSGEARTHSYMBOLOGY_FILL_H

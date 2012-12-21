@@ -20,7 +20,6 @@
 #include <osgEarth/Capabilities>
 #include <osgEarth/ClampableNode>
 #include <osgEarth/ClampingTechnique>
-#include <osgEarth/ClampingBinTechnique>
 #include <osgEarth/DrapeableNode>
 #include <osgEarth/DrapingTechnique>
 #include <osgEarth/MapNodeObserver>
@@ -328,8 +327,6 @@ MapNode::init()
     // install the Clamping technique for overlays:
     {
         _overlayDecorator->addTechnique( new ClampingTechnique() );
-        //_overlayDecorator->addTechnique( new ClampingBinTechnique() );
-        //...why not combine the 2 clamping techniques? use a group AND a bin?
     }
 
 

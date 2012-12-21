@@ -416,12 +416,34 @@ ShaderGenerator::processGeometry( osg::StateSet* ss, osg::ref_ptr<osg::StateSet>
                     fragBody << INDENT "texel = texture1D(" SAMPLER << t << ", " TEX_COORD << t << ".x);\n";
                     replacement->getOrCreateUniform( Stringify() << SAMPLER << t, osg::Uniform::SAMPLER_1D )->set( t );
                 }
+#if 1
                 else if ( dynamic_cast<osg::Texture2D*>(tex) )
                 {
                     fragHead << "uniform sampler2D " SAMPLER << t << ";\n";
                     fragBody << INDENT "texel = texture2D(" SAMPLER << t << ", " TEX_COORD << t << ".xy);\n";
                     replacement->getOrCreateUniform( Stringify() << SAMPLER << t, osg::Uniform::SAMPLER_2D )->set( t );
                 }
+#else // embosser
+                else if ( dynamic_cast<osg::Texture2D*>(tex) )
+                {
+                    fragHead << "uniform sampler2D " SAMPLER << t << ";\n";
+                    fragBody 
+                        << INDENT "{\n"
+                        << INDENT "float bs = 1.0/256.0;\n"
+                        << INDENT "vec4 bm = vec4(0.0);\n"
+                        << INDENT "float u = " TEX_COORD << t << ".x;\n"
+                        << INDENT "float v = " TEX_COORD << t << ".y;\n"
+                        << INDENT "texel = texture2D(" SAMPLER << t << ", vec2(u, v)); \n"
+                        << INDENT "bm = texture2D(" SAMPLER << t << ", vec2(u-bs, v-bs)) + \n"
+                        << INDENT "     texture2D(" SAMPLER << t << ", vec2(u-bs, v-bs)) - \n"
+                        << INDENT "     texel                                            - \n"
+                        << INDENT "     texture2D(" SAMPLER << t << ", vec2(u+bs, v+bs));  \n"
+                        << INDENT "texel *= vec4( 2.0*(bm.rgb+vec3(0.5,0.5,0.5)),1.0 );\n"
+                        << INDENT "}\n";
+
+                    replacement->getOrCreateUniform( Stringify() << SAMPLER << t, osg::Uniform::SAMPLER_2D )->set( t );
+                }
+#endif
                 else if ( dynamic_cast<osg::Texture3D*>(tex) )
                 {
                     fragHead << "uniform sampler3D " SAMPLER << t << ";\n";

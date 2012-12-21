@@ -26,7 +26,8 @@ AltitudeSymbol::AltitudeSymbol( const Config& conf ) :
 Symbol             ( conf ),
 _clamping          ( CLAMP_NONE ),
 _technique         ( TECHNIQUE_MAP ),
-_clampingResolution( 0.0f ),
+_binding           ( BINDING_VERTEX ),
+_resolution        ( 0.001f ),
 _verticalScale     ( NumericExpression(1.0) ),
 _verticalOffset    ( NumericExpression(0.0) )
 {
@@ -48,7 +49,10 @@ AltitudeSymbol::getConfig() const
     conf.addIfSet   ( "technique", "gpu",   _technique, TECHNIQUE_GPU );
     conf.addIfSet   ( "technique", "drape", _technique, TECHNIQUE_DRAPE );
 
-    conf.addIfSet   ( "clamping_resolution",     _clampingResolution );
+    conf.addIfSet   ( "binding", "vertex",   _binding, BINDING_VERTEX );
+    conf.addIfSet   ( "binding", "centroid", _binding, BINDING_CENTROID );
+
+    conf.addIfSet   ( "clamping_resolution",     _resolution );
     conf.addObjIfSet( "vertical_offset",         _verticalOffset );
     conf.addObjIfSet( "vertical_scale",          _verticalScale );
     return conf;
@@ -67,7 +71,10 @@ AltitudeSymbol::mergeConfig( const Config& conf )
     conf.getIfSet   ( "technique", "gpu",   _technique, TECHNIQUE_GPU );
     conf.getIfSet   ( "technique", "drape", _technique, TECHNIQUE_DRAPE );
 
-    conf.getIfSet   ( "clamping_resolution",   _clampingResolution );
+    conf.getIfSet   ( "binding", "vertex",   _binding, BINDING_VERTEX );
+    conf.getIfSet   ( "binding", "centroid", _binding, BINDING_CENTROID );
+
+    conf.getIfSet   ( "clamping_resolution",   _resolution );
     conf.getObjIfSet( "vertical_offset",       _verticalOffset );
     conf.getObjIfSet( "vertical_scale",        _verticalScale );
 }
@@ -94,6 +101,12 @@ AltitudeSymbol::parseSLD(const Config& c, Style& style)
             style.getOrCreate<AltitudeSymbol>()->technique() = TECHNIQUE_GPU;
         else if ( match(c.value(), "drape") )
             style.getOrCreate<AltitudeSymbol>()->technique() = TECHNIQUE_DRAPE;
+    }
+    else if ( match(c.key(), "altitude-binding") ) {
+        if      ( match(c.value(), "vertex") )
+            style.getOrCreate<AltitudeSymbol>()->binding() = BINDING_VERTEX;
+        else if ( match(c.value(), "centroid") )
+            style.getOrCreate<AltitudeSymbol>()->binding() = BINDING_CENTROID;
     }
     else if ( match(c.key(), "altitude-resolution") ) {
         style.getOrCreate<AltitudeSymbol>()->clampingResolution() = as<float>( c.value(), 0.0f );

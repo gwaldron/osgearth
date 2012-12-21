@@ -128,7 +128,7 @@ namespace osgEarth { namespace Annotation
 
         virtual void setStyle(const Style& style) { }
 
-        virtual const Style& getStyle() { return s_emptyStyle; }
+        virtual const Style& getStyle() const { return s_emptyStyle; }
 
 
     protected:

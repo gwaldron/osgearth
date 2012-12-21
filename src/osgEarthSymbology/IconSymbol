@@ -50,6 +50,8 @@ namespace osgEarth { namespace Symbology
         };
 
     public:
+        META_Symbol(IconSymbol);
+
         IconSymbol( const Config& conf =Config() );
 
         /** dtor */

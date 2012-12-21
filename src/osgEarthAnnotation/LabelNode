@@ -66,6 +66,13 @@ namespace osgEarth { namespace Annotation
             const Style&            style );
 
         /**
+         * Construct a label node with just a style
+         */
+        LabelNode(
+            MapNode*                mapNode,
+            const Style&            style );
+
+        /**
          * Constructs a label node that is positioned some other way,
          * typically by being in a subgraph under another transform
          * somewhere.

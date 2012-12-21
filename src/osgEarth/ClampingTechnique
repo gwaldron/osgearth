@@ -24,6 +24,8 @@
 #include <osg/TexGenNode>
 #include <osg/Uniform>
 
+#define OSGEARTH_CLAMPING_BIN "osgEarth::ClampingBin"
+
 namespace osgEarth
 {
     class TerrainEngineNode;

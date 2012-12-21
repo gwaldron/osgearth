@@ -112,6 +112,8 @@ namespace osgEarth { namespace Symbology
     class OSGEARTHSYMBOLOGY_EXPORT SkinSymbol : public Taggable<Symbol>
     {
     public:
+        META_Symbol(SkinSymbol);
+
         SkinSymbol( const Config& conf =Config() );
 
         /** dtor */

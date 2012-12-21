@@ -39,9 +39,7 @@ public:
 
 public: // TileSource interface
 
-    void initialize(
-        const osgDB::Options* dbOptions,
-        const Profile*        overrideProfile );
+    Status initialize(const osgDB::Options* dbOptions);
     
     osg::Image* createImage( 
         const TileKey&        key,

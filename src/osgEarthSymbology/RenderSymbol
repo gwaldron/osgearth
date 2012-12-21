@@ -36,6 +36,8 @@ namespace osgEarth { namespace Symbology
     class OSGEARTHSYMBOLOGY_EXPORT RenderSymbol : public Symbol
     {
     public:
+        META_Symbol(RenderSymbol);
+
         /** construct a render symbol */
         RenderSymbol(const Config& conf =Config());
 

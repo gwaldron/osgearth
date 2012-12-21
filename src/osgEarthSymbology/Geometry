@@ -53,7 +53,12 @@ namespace osgEarth { namespace Symbology
     class OSGEARTHSYMBOLOGY_EXPORT Geometry : public osgEarth::MixinVector<osg::Vec3d,osg::Referenced>
     {
     public:
+        Geometry( int capacity =0 );
+        Geometry( const Geometry& rhs );
         Geometry( const Vec3dVector* toCopy );
+
+        /** dtor - intentionally public */
+        virtual ~Geometry() { }
 
     public:
         enum Type {
@@ -182,7 +187,7 @@ namespace osgEarth { namespace Symbology
         Orientation getOrientation() const;
 
     public:
-        virtual Type getType() const =0;
+        virtual Type getType() const { return TYPE_UNKNOWN; }
         virtual Type getComponentType() const { return getType(); }
         virtual bool isValid() const { return size() >= 1; }
 
@@ -195,14 +200,7 @@ namespace osgEarth { namespace Symbology
         void push_back(double x, double y, double z) { 
             osgEarth::MixinVector<osg::Vec3d,osg::Referenced>::push_back(osg::Vec3d(x,y,z)); }
 
-        /** dtor */
-        virtual ~Geometry() { }
-
     protected:
-        Geometry( int capacity =0 );
-        Geometry( const Geometry& rhs );
-
-        Vec3dVector _data;
     };
 
     typedef std::vector< osg::ref_ptr<Geometry> > GeometryCollection;

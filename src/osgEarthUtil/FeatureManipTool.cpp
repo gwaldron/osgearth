@@ -234,6 +234,7 @@ FeatureManipTool::onHit( FeatureSourceIndexNode* index, FeatureID fid, const Eve
 
             _circleEditor = new CircleNodeEditor( _circle.get() );
             _circleEditor->getPositionDragger()->addPositionChangedCallback( new DraggerCallback(this) );
+            _circleEditor->getPositionDragger()->setModKeyMask(osgGA::GUIEventAdapter::MODKEY_ALT);
             _circleEditor->getRadiusDragger()->addPositionChangedCallback( new DraggerCallback(this) );
             _circleEditor->getOrCreateStateSet()->setAttributeAndModes( new osg::Depth(osg::Depth::ALWAYS,0,1,false) );
 

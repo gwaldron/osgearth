@@ -49,15 +49,18 @@ Dragger* _dragger;
 };
 
 /**********************************************************/
-Dragger::Dragger( MapNode* mapNode):
+Dragger::Dragger( MapNode* mapNode, int modKeyMask ):
 _mapNode( mapNode ),
 _position( mapNode->getMapSRS(), 0,0,0, ALTMODE_RELATIVE),
 _dragging(false),
-_hovered(false)
+_hovered(false),
+_modKeyMask(modKeyMask),
+_elevationDragging(false)
 {
     setNumChildrenRequiringEventTraversal( 1 );
 
     _autoClampCallback = new ClampDraggerCallback( this );
+    _projector = new osgManipulator::LineProjector;
 
     setMapNode( mapNode );
 }
@@ -191,21 +194,123 @@ bool Dragger::handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& 
         if ( picker.pick( ea.getX(), ea.getY(), hits ) )
         {
             _dragging = true;
+
+            //Check for and handle vertical dragging if necessary
+            if (_modKeyMask)
+            {
+              bool pressedAlt = ((ea.getModKeyMask() & _modKeyMask) > 0);
+              if (pressedAlt)
+              {
+                  _pointer.reset();
+
+                  // set movement range
+                  // TODO: values 0.0 and 300000.0 are rather experimental
+                  GeoPoint posStart(_position.getSRS(), _position.x(), _position.y(), 0.0, ALTMODE_ABSOLUTE);
+                  osg::Vec3d posStartXYZ;
+                  posStart.toWorld(posStartXYZ);
+
+                  GeoPoint posEnd(_position.getSRS(), _position.x(), _position.y(), 300000.0, ALTMODE_ABSOLUTE);
+                  osg::Vec3d posEndXYZ;
+                  posEnd.toWorld(posEndXYZ);
+
+                  _projector->setLine(posStartXYZ, posEndXYZ);
+
+                  // set camera
+                  osgUtil::LineSegmentIntersector::Intersections intersections;
+                  osg::Node::NodeMask intersectionMask = 0xffffffff;
+                  osgViewer::View* view = dynamic_cast<osgViewer::View*>(&aa);
+                  if (view->computeIntersections(ea.getX(),ea.getY(),intersections, intersectionMask))
+                  {
+                      for (osgUtil::LineSegmentIntersector::Intersections::iterator hitr = intersections.begin(); hitr != intersections.end(); ++hitr)
+                      {
+                          _pointer.addIntersection(hitr->nodePath, hitr->getLocalIntersectPoint());
+                      }
+
+                      bool draggerFound = false;
+                      for (osgManipulator::PointerInfo::IntersectionList::iterator piit = _pointer._hitList.begin(); piit != _pointer._hitList.end(); ++piit)
+                      {
+                          for (osg::NodePath::iterator itr = piit->first.begin(); itr != piit->first.end(); ++itr)
+                          {
+                              Dragger* dragger = dynamic_cast<Dragger*>(*itr);
+                              if (dragger==this)
+                              {
+                                draggerFound = true;
+                                  osg::Camera *rootCamera = view->getCamera();
+                                  osg::NodePath nodePath = _pointer._hitList.front().first;
+                                  osg::NodePath::reverse_iterator ritr;
+                                  for (ritr = nodePath.rbegin(); ritr != nodePath.rend(); ++ritr)
+                                  {
+                                      osg::Camera* camera = dynamic_cast<osg::Camera*>(*ritr);
+                                      if (camera && (camera->getReferenceFrame()!=osg::Transform::RELATIVE_RF || camera->getParents().empty()))
+                                      {
+                                           rootCamera = camera;
+                                           break;
+                                      }
+                                  }
+                                  _pointer.setCamera(rootCamera);
+                                  _pointer.setMousePosition(ea.getX(), ea.getY());
+
+                                  break;
+                              }
+                          }
+
+                          if (draggerFound)
+                            break;
+                      }
+                  }
+
+                  _elevationDragging = true;
+              }
+            }
+
             aa.requestRedraw();
             return true;
         }
     }
     else if (ea.getEventType() == osgGA::GUIEventAdapter::RELEASE)
     {
+        _elevationDragging = false;
+
         if ( _dragging )
         {
             _dragging = false;
             firePositionChanged();
         }
+
         aa.requestRedraw();
     }
     else if (ea.getEventType() == osgGA::GUIEventAdapter::DRAG)
     {
+        if (_elevationDragging) 
+        {
+            _pointer._hitIter = _pointer._hitList.begin();
+            _pointer.setMousePosition(ea.getX(), ea.getY());
+
+            if (_projector->project(_pointer, _startProjectedPoint)) 
+            {
+                //Get the absolute mapPoint that they've drug it to.
+                GeoPoint projectedPos;
+                projectedPos.fromWorld(_position.getSRS(), _startProjectedPoint);
+
+                // make sure point is not dragged down below
+                // TODO: think of a better solution / HeightAboveTerrain performance issues?
+                if (projectedPos.z() > 0)
+                {
+                    //If the current position is relative, we need to convert the absolute world point to relative.
+                    //If the point is absolute then just emit the absolute point.
+                    if (_position.altitudeMode() == ALTMODE_RELATIVE)
+                    {
+                        projectedPos.transformZ(ALTMODE_RELATIVE, getMapNode()->getTerrain());
+                    }
+
+                    setPosition( projectedPos );
+                    aa.requestRedraw();
+                }
+            }
+
+            return true;
+        }
+        
         if (_dragging)
         {
             osg::Vec3d world;
@@ -223,6 +328,11 @@ bool Dragger::handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& 
                     mapPoint.alt() = _position.alt();
                     mapPoint.altitudeMode() = ALTMODE_RELATIVE;
                 }
+                else
+                {
+                  mapPoint.alt() = osg::maximum(mapPoint.alt(), _position.alt());
+                }
+
                 setPosition( mapPoint );
                 aa.requestRedraw();
                 return true;
@@ -278,152 +388,9 @@ void Dragger::reclamp( const TileKey& key, osg::Node* tile, const Terrain* terra
 
 
 /**********************************************************/
-ElevationDragger::ElevationDragger(osgEarth::MapNode* mapNode, int modKeyMask)
-	: osgEarth::Dragger(mapNode),
-    _modKeyMask(modKeyMask)
-{
-    _projector = new osgManipulator::LineProjector;
-    _elevationDragging = false;
-}
-
-ElevationDragger::~ElevationDragger(void)
-{
-}
-
-bool ElevationDragger::handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& aa)
-{
-    bool ret = true;
-    if (ea.getHandled()) {
-        ret = false;
-    }
-    else
-    {
-        bool handled = false;
-        if (_modKeyMask)
-        {
-            if (ea.getEventType() == osgGA::GUIEventAdapter::PUSH)
-            {
-                ret = osgEarth::Dragger::handle(ea, aa);
-                if (ret) 
-                {
-                    bool pressedAlt = ((ea.getModKeyMask() & _modKeyMask) > 0);
-                    if (pressedAlt)
-                    {
-                        _pointer.reset();
-
-                        // set movement range
-                        // TODO: values 0.0 and 300000.0 are rather experimental
-                        GeoPoint posStart(_position.getSRS(), _position.x(), _position.y(), 0.0, ALTMODE_ABSOLUTE);
-                        osg::Vec3d posStartXYZ;
-                        posStart.toWorld(posStartXYZ);
-
-                        GeoPoint posEnd(_position.getSRS(), _position.x(), _position.y(), 300000.0, ALTMODE_ABSOLUTE);
-                        osg::Vec3d posEndXYZ;
-                        posEnd.toWorld(posEndXYZ);
-
-                        _projector->setLine(posStartXYZ, posEndXYZ);
-
-                        // set camera
-                        osgUtil::LineSegmentIntersector::Intersections intersections;
-                        osg::Node::NodeMask intersectionMask = 0xffffffff;
-                        osgViewer::View* view = dynamic_cast<osgViewer::View*>(&aa);
-                        if (view->computeIntersections(ea.getX(),ea.getY(),intersections, intersectionMask))
-                        {
-                            for (osgUtil::LineSegmentIntersector::Intersections::iterator hitr = intersections.begin(); hitr != intersections.end(); ++hitr)
-                            {
-                                _pointer.addIntersection(hitr->nodePath, hitr->getLocalIntersectPoint());
-                            }
-
-                            bool draggerFound = false;
-                            for (osgManipulator::PointerInfo::IntersectionList::iterator piit = _pointer._hitList.begin(); piit != _pointer._hitList.end(); ++piit)
-                            {
-                                for (osg::NodePath::iterator itr = piit->first.begin(); itr != piit->first.end(); ++itr)
-                                {
-                                    ElevationDragger* dragger = dynamic_cast<ElevationDragger*>(*itr);
-                                    if (dragger==this)
-                                    {
-                                      draggerFound = true;
-                                        osg::Camera *rootCamera = view->getCamera();
-                                        osg::NodePath nodePath = _pointer._hitList.front().first;
-                                        osg::NodePath::reverse_iterator ritr;
-                                        for (ritr = nodePath.rbegin(); ritr != nodePath.rend(); ++ritr)
-                                        {
-                                            osg::Camera* camera = dynamic_cast<osg::Camera*>(*ritr);
-                                            if (camera && (camera->getReferenceFrame()!=osg::Transform::RELATIVE_RF || camera->getParents().empty()))
-                                            {
-                                                 rootCamera = camera;
-                                                 break;
-                                            }
-                                        }
-                                        _pointer.setCamera(rootCamera);
-                                        _pointer.setMousePosition(ea.getX(), ea.getY());
-
-                                        break;
-                                    }
-                                }
-
-                                if (draggerFound)
-                                  break;
-                            }
-                        }
-
-                        _elevationDragging = true;
-                    }
-                }
-                handled = true;
-            }
-            else if (ea.getEventType() == osgGA::GUIEventAdapter::RELEASE)
-            {
-                _elevationDragging = false;
-            }
-            else if (ea.getEventType() == osgGA::GUIEventAdapter::DRAG) 
-            {
-                if (_elevationDragging) 
-                {
-                    _pointer._hitIter = _pointer._hitList.begin();
-                    _pointer.setMousePosition(ea.getX(), ea.getY());
-
-                    if (_projector->project(_pointer, _startProjectedPoint)) 
-                    {
-                        //Get the absolute mapPoint that they've drug it to.
-                        GeoPoint projectedPos;
-                        projectedPos.fromWorld(_position.getSRS(), _startProjectedPoint);
-
-                        // make sure point is not dragged down below
-                        // TODO: think of a better solution / HeightAboveTerrain performance issues?
-                        if (projectedPos.z() > 0)
-                        {
-                            //If the current position is relative, we need to convert the absolute world point to relative.
-                            //If the point is absolute then just emit the absolute point.
-                            if (_position.altitudeMode() == ALTMODE_RELATIVE)
-                            {
-                                projectedPos.alt() = _position.alt();
-                                projectedPos.altitudeMode() = ALTMODE_RELATIVE;
-                            }
-
-                            setPosition( projectedPos );
-                            aa.requestRedraw();
-                        }
-                    }
-
-                    handled = true;
-                }
-            }
-        }
-        
-        if (!handled) {
-            ret = osgEarth::Dragger::handle(ea, aa);
-        }
-    }
-    return ret;
-}
-
-
-
-/**********************************************************/
 
 SphereDragger::SphereDragger(MapNode* mapNode):
-ElevationDragger(mapNode),
+Dragger(mapNode),
 _pickColor(1.0f, 1.0f, 0.0f, 1.0f),
 _color(0.0f, 1.0f, 0.0f, 1.0f),
 _size( 5.0f )

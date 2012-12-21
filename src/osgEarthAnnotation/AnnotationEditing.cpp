@@ -181,6 +181,8 @@ CircleNodeEditor::updateDraggers()
             osg::RadiansToDegrees(lon),
             osg::RadiansToDegrees(lat));
 
+        draggerLocation.z() = osg::maximum(draggerLocation.z(), getPositionDragger()->getPosition().z());
+
         _radiusDragger->setPosition( draggerLocation, false );
     }
 }

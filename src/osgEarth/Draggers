@@ -49,7 +49,7 @@ namespace osgEarth
 
         typedef std::list< osg::ref_ptr<PositionChangedCallback> > PositionChangedCallbackList;
 
-        Dragger( MapNode* mapNode);
+        Dragger( MapNode* mapNode, int modKeyMask=0 );
 
         /** dtor */
         virtual ~Dragger();
@@ -61,6 +61,10 @@ namespace osgEarth
         const osgEarth::GeoPoint& getPosition() const;
 
         void setPosition( const osgEarth::GeoPoint& position, bool fireEvents=true);
+
+        void setModKeyMask(int mask) { _modKeyMask = mask; }
+
+        int getModKeyMask() const { return _modKeyMask; }
 
 
         void updateTransform(osg::Node* patch = 0);
@@ -101,33 +105,16 @@ namespace osgEarth
         bool _dragging;
         bool _hovered;
         PositionChangedCallbackList _callbacks;
-    };
-
-    /**********************************************************/
-    class OSGEARTH_EXPORT ElevationDragger : public osgEarth::Dragger
-    {
-    public:
-        ElevationDragger(osgEarth::MapNode* mapNode, int modKeyMask=0);
-
-	    virtual ~ElevationDragger(void);
-
-        void setModKeyMask(int mask) { _modKeyMask = mask; }
-
-        int getModKeyMask() const { return _modKeyMask; }
-
-    protected:
-        virtual bool handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& aa);
 
         osg::ref_ptr<  osgManipulator::LineProjector >  _projector;
         osgManipulator::PointerInfo  _pointer;
         osg::Vec3d _startProjectedPoint;
-        bool _elevationMode;
         bool _elevationDragging;
         int _modKeyMask;
     };
 
     /**********************************************************/
-    class OSGEARTH_EXPORT SphereDragger : public ElevationDragger
+    class OSGEARTH_EXPORT SphereDragger : public Dragger
     {
     public:
         SphereDragger(MapNode* mapNode);

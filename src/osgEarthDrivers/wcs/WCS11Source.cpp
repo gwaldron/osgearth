@@ -42,18 +42,15 @@ _options  ( options )
 }
 
 
-void
-WCS11Source::initialize(const osgDB::Options* dbOptions,
-                        const Profile*        overrideProfile )
-{
-    if ( !getProfile() )
-    {
-        //TODO: fetch GetCapabilities and set profile from there.
-        setProfile( osgEarth::Registry::instance()->getGlobalGeodeticProfile() );
-    }
 
+osgEarth::TileSource::Status WCS11Source::initialize(const osgDB::Options* dbOptions)
+{        
+    //TODO: fetch GetCapabilities and set profile from there.
+    setProfile( osgEarth::Registry::instance()->getGlobalGeodeticProfile() );
     _dbOptions = Registry::instance()->cloneOrCreateOptions( dbOptions );
     CachePolicy::NO_CACHE.apply( _dbOptions.get() );
+
+    return STATUS_OK;
 }
 
 

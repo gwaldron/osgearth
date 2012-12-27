@@ -245,7 +245,7 @@ FeatureManipTool::onHit( FeatureSourceIndexNode* index, FeatureID fid, const Eve
                 _verticalDragger->setColor(osg::Vec4f(0.0f, 1.0f, 1.0f, 1.0f));
                 _verticalDragger->setPickColor(osg::Vec4f(1.0f, 0.0f, 1.0f, 1.0f));
 
-                _verticalDraggerOffset = bs.radius();
+                _verticalDraggerOffset = bs.radius() * 1.1;
                 GeoPoint verticalDraggerPos(anchorMapCenter);
                 verticalDraggerPos.z() += _verticalDraggerOffset;
                 _verticalDragger->setPosition(verticalDraggerPos, false);
@@ -281,10 +281,13 @@ FeatureManipTool::handle( const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdap
     bool handled = FeatureQueryTool::handle( ea, aa );
     if ( !handled )
     {
-        if ( _workGroup.valid() && ea.getEventType() == ea.KEYDOWN && ea.getKey() == ea.KEY_C )
+        if ( _workGroup.valid() && ea.getEventType() == ea.KEYDOWN )
         {
-            commit();
-            handled = true;
+            if ( ea.getKey() == ea.KEY_C )
+            {
+                commit();
+                handled = true;
+            }
         }
     }
     return handled;

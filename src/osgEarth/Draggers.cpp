@@ -327,10 +327,6 @@ bool Dragger::handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& 
                     mapPoint.alt() = _position.alt();
                     mapPoint.altitudeMode() = ALTMODE_RELATIVE;
                 }
-                else
-                {
-                  mapPoint.alt() = osg::maximum(mapPoint.alt(), _position.alt());
-                }
 
                 setPosition( mapPoint );
                 aa.requestRedraw();

@@ -49,13 +49,15 @@ Dragger* _dragger;
 };
 
 /**********************************************************/
-Dragger::Dragger( MapNode* mapNode, int modKeyMask ):
+Dragger::Dragger( MapNode* mapNode, int modKeyMask, const DragMode& defaultMode ):
 _mapNode( mapNode ),
 _position( mapNode->getMapSRS(), 0,0,0, ALTMODE_RELATIVE),
 _dragging(false),
 _hovered(false),
 _modKeyMask(modKeyMask),
-_elevationDragging(false)
+_defaultMode(defaultMode),
+_elevationDragging(false),
+_verticalMinimum(0.0)
 {
     setNumChildrenRequiringEventTraversal( 1 );
 
@@ -196,70 +198,67 @@ bool Dragger::handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& 
             _dragging = true;
 
             //Check for and handle vertical dragging if necessary
-            if (_modKeyMask)
+            bool pressedAlt = _modKeyMask && (ea.getModKeyMask() & _modKeyMask) > 0;
+            _elevationDragging = (_defaultMode == DragMode::DRAGMODE_VERTICAL && !pressedAlt) || (_defaultMode == DragMode::DRAGMODE_HORIZONTAL && pressedAlt);
+
+            if (_elevationDragging)
             {
-              bool pressedAlt = ((ea.getModKeyMask() & _modKeyMask) > 0);
-              if (pressedAlt)
+              _pointer.reset();
+
+              // set movement range
+              // TODO: values 0.0 and 300000.0 are rather experimental
+              GeoPoint posStart(_position.getSRS(), _position.x(), _position.y(), 0.0, ALTMODE_ABSOLUTE);
+              osg::Vec3d posStartXYZ;
+              posStart.toWorld(posStartXYZ);
+
+              GeoPoint posEnd(_position.getSRS(), _position.x(), _position.y(), 300000.0, ALTMODE_ABSOLUTE);
+              osg::Vec3d posEndXYZ;
+              posEnd.toWorld(posEndXYZ);
+
+              _projector->setLine(posStartXYZ, posEndXYZ);
+
+              // set camera
+              osgUtil::LineSegmentIntersector::Intersections intersections;
+              osg::Node::NodeMask intersectionMask = 0xffffffff;
+              osgViewer::View* view = dynamic_cast<osgViewer::View*>(&aa);
+              if (view->computeIntersections(ea.getX(),ea.getY(),intersections, intersectionMask))
               {
-                  _pointer.reset();
-
-                  // set movement range
-                  // TODO: values 0.0 and 300000.0 are rather experimental
-                  GeoPoint posStart(_position.getSRS(), _position.x(), _position.y(), 0.0, ALTMODE_ABSOLUTE);
-                  osg::Vec3d posStartXYZ;
-                  posStart.toWorld(posStartXYZ);
-
-                  GeoPoint posEnd(_position.getSRS(), _position.x(), _position.y(), 300000.0, ALTMODE_ABSOLUTE);
-                  osg::Vec3d posEndXYZ;
-                  posEnd.toWorld(posEndXYZ);
-
-                  _projector->setLine(posStartXYZ, posEndXYZ);
-
-                  // set camera
-                  osgUtil::LineSegmentIntersector::Intersections intersections;
-                  osg::Node::NodeMask intersectionMask = 0xffffffff;
-                  osgViewer::View* view = dynamic_cast<osgViewer::View*>(&aa);
-                  if (view->computeIntersections(ea.getX(),ea.getY(),intersections, intersectionMask))
+                  for (osgUtil::LineSegmentIntersector::Intersections::iterator hitr = intersections.begin(); hitr != intersections.end(); ++hitr)
                   {
-                      for (osgUtil::LineSegmentIntersector::Intersections::iterator hitr = intersections.begin(); hitr != intersections.end(); ++hitr)
-                      {
-                          _pointer.addIntersection(hitr->nodePath, hitr->getLocalIntersectPoint());
-                      }
-
-                      bool draggerFound = false;
-                      for (osgManipulator::PointerInfo::IntersectionList::iterator piit = _pointer._hitList.begin(); piit != _pointer._hitList.end(); ++piit)
-                      {
-                          for (osg::NodePath::iterator itr = piit->first.begin(); itr != piit->first.end(); ++itr)
-                          {
-                              Dragger* dragger = dynamic_cast<Dragger*>(*itr);
-                              if (dragger==this)
-                              {
-                                draggerFound = true;
-                                  osg::Camera *rootCamera = view->getCamera();
-                                  osg::NodePath nodePath = _pointer._hitList.front().first;
-                                  osg::NodePath::reverse_iterator ritr;
-                                  for (ritr = nodePath.rbegin(); ritr != nodePath.rend(); ++ritr)
-                                  {
-                                      osg::Camera* camera = dynamic_cast<osg::Camera*>(*ritr);
-                                      if (camera && (camera->getReferenceFrame()!=osg::Transform::RELATIVE_RF || camera->getParents().empty()))
-                                      {
-                                           rootCamera = camera;
-                                           break;
-                                      }
-                                  }
-                                  _pointer.setCamera(rootCamera);
-                                  _pointer.setMousePosition(ea.getX(), ea.getY());
-
-                                  break;
-                              }
-                          }
-
-                          if (draggerFound)
-                            break;
-                      }
+                      _pointer.addIntersection(hitr->nodePath, hitr->getLocalIntersectPoint());
                   }
 
-                  _elevationDragging = true;
+                  bool draggerFound = false;
+                  for (osgManipulator::PointerInfo::IntersectionList::iterator piit = _pointer._hitList.begin(); piit != _pointer._hitList.end(); ++piit)
+                  {
+                      for (osg::NodePath::iterator itr = piit->first.begin(); itr != piit->first.end(); ++itr)
+                      {
+                          Dragger* dragger = dynamic_cast<Dragger*>(*itr);
+                          if (dragger==this)
+                          {
+                            draggerFound = true;
+                              osg::Camera *rootCamera = view->getCamera();
+                              osg::NodePath nodePath = _pointer._hitList.front().first;
+                              osg::NodePath::reverse_iterator ritr;
+                              for (ritr = nodePath.rbegin(); ritr != nodePath.rend(); ++ritr)
+                              {
+                                  osg::Camera* camera = dynamic_cast<osg::Camera*>(*ritr);
+                                  if (camera && (camera->getReferenceFrame()!=osg::Transform::RELATIVE_RF || camera->getParents().empty()))
+                                  {
+                                       rootCamera = camera;
+                                       break;
+                                  }
+                              }
+                              _pointer.setCamera(rootCamera);
+                              _pointer.setMousePosition(ea.getX(), ea.getY());
+
+                              break;
+                          }
+                      }
+
+                      if (draggerFound)
+                        break;
+                  }
               }
             }
 
@@ -294,7 +293,7 @@ bool Dragger::handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& 
 
                 // make sure point is not dragged down below
                 // TODO: think of a better solution / HeightAboveTerrain performance issues?
-                if (projectedPos.z() > 0)
+                if (projectedPos.z() >= _verticalMinimum)
                 {
                     //If the current position is relative, we need to convert the absolute world point to relative.
                     //If the point is absolute then just emit the absolute point.

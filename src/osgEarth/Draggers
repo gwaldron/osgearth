@@ -49,7 +49,13 @@ namespace osgEarth
 
         typedef std::list< osg::ref_ptr<PositionChangedCallback> > PositionChangedCallbackList;
 
-        Dragger( MapNode* mapNode, int modKeyMask=0 );
+        enum DragMode
+        {
+          DRAGMODE_HORIZONTAL,
+          DRAGMODE_VERTICAL
+        };
+
+        Dragger( MapNode* mapNode, int modKeyMask=0, const DragMode& defaultMode=DRAGMODE_HORIZONTAL );
 
         /** dtor */
         virtual ~Dragger();
@@ -65,6 +71,14 @@ namespace osgEarth
         void setModKeyMask(int mask) { _modKeyMask = mask; }
 
         int getModKeyMask() const { return _modKeyMask; }
+
+        void setDefaultDragMode(const DragMode& mode) { _defaultMode = mode; }
+
+        DragMode& getDefaultDragMode() { return _defaultMode; }
+
+        void setVerticalMinimum(double min) { _verticalMinimum = min; }
+
+        double getVerticalMinimim() const { return _verticalMinimum; }
 
 
         void updateTransform(osg::Node* patch = 0);
@@ -111,6 +125,8 @@ namespace osgEarth
         osg::Vec3d _startProjectedPoint;
         bool _elevationDragging;
         int _modKeyMask;
+        DragMode _defaultMode;
+        double _verticalMinimum;
     };
 
     /**********************************************************/

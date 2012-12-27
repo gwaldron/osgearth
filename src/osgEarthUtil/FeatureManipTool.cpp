@@ -281,13 +281,10 @@ FeatureManipTool::handle( const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdap
     bool handled = FeatureQueryTool::handle( ea, aa );
     if ( !handled )
     {
-        if ( _workGroup.valid() && ea.getEventType() == ea.KEYDOWN )
+        if ( _workGroup.valid() && ea.getEventType() == ea.KEYDOWN && ea.getKey() == ea.KEY_C )
         {
-            if ( ea.getKey() == ea.KEY_C )
-            {
-                commit();
-                handled = true;
-            }
+            commit();
+            handled = true;
         }
     }
     return handled;

@@ -112,6 +112,56 @@ ImageUtils::copyAsSubImage(const osg::Image* src, osg::Image* dst, int dst_start
     return true;
 }  
 
+osg::Image*
+ImageUtils::createBumpMap(const osg::Image* input)
+{
+    osg::Image* output = osg::clone(input, osg::CopyOp::DEEP_COPY_ALL);
+
+    static const float kernel[] = {
+        -1.0, -1.0, 0.0,
+        -1.0,  0.0, 1.0,
+         0.0,  1.0, 1.0 
+    };
+
+    PixelReader read(input);
+    PixelWriter write(output);
+
+    osg::Vec4f mid(0.5f,0.5f,0.5f,0.5f);
+
+    for( int t=0; t<input->t(); ++t )
+    {
+        for( int s=0; s<input->s(); ++s )
+        {
+            if ( t == 0 || t == input->t()-1 || s == 0 || s == input->s()-1 )
+            {
+                write( mid, s, t );
+            }
+            else
+            {
+                osg::Vec4f sum;
+
+                // run the emboss kernel:
+                for( int tt=0; tt<=2; ++tt )
+                    for( int ss=0; ss<=2; ++ss )
+                        sum += read(s+ss-1,t+tt-1) * kernel[tt*3+ss];
+                sum /= 9.0f;
+
+                // bias for bumpmapping:
+                sum += osg::Vec4f(0.5f,0.5f,0.5f,0.5f);
+
+                // convert to greyscale:
+                sum.r() *= 0.2989f;
+                sum.g() *= 0.5870f;
+                sum.b() *= 0.1140f;
+
+                sum.a() = read(s,t).a();
+                write( sum, s, t );
+            }
+        }
+    }
+    return output;
+}
+
 bool
 ImageUtils::resizeImage(const osg::Image* input, 
                         unsigned int out_s, unsigned int out_t, 

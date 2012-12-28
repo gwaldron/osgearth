@@ -16,25 +16,41 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
-#include <osgEarthSymbology/Symbol>
+#include <osgEarthSymbology/Fill>
 
 using namespace osgEarth;
 using namespace osgEarth::Symbology;
 
 //------------------------------------------------------------------------
 
-Symbol::Symbol( const Config& conf )
+Fill::Fill() :
+_color( 1, 1, 1, 1 )
 {
-    _uriContext = URIContext(conf.referrer());
+    //nop
 }
 
-bool
-Symbol::match(const std::string& s, const char* reservedWord)
+Fill::Fill( float r, float g, float b, float a ) :
+_color( r, g, b, a )
 {
-    if ( s.compare(reservedWord) == 0 ) return true;
-    //if ( s == reservedWord ) return true;
-    std::string temp1 = toLower(s), temp2 = toLower(reservedWord);
-    replaceIn(temp1, "_", "-");
-    replaceIn(temp2, "_", "-");
-    return temp1.compare(temp2) == 0;
+    //nop
+}
+
+Fill::Fill(const Color& color) :
+_color( color )
+{
+    //nop
+}
+
+Config
+Fill::getConfig() const
+{
+    Config conf("fill");
+    conf.add("color", _color.toHTML() );
+    return conf;
+}
+
+void
+Fill::mergeConfig( const Config& conf )
+{
+    _color = Color( conf.value("color") );
 }

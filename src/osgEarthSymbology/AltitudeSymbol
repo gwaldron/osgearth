@@ -71,6 +71,18 @@ namespace osgEarth { namespace Symbology
             TECHNIQUE_DRAPE
         };
 
+        /**
+         * Binding - at what granularity the clamping is performed
+         */
+        enum Binding
+        {
+            /** Clamp every vertex independently */
+            BINDING_VERTEX,
+
+            /** Clamp to the centroid of the entire geometry */
+            BINDING_CENTROID
+        };
+
     public:
         META_Symbol(AltitudeSymbol);
 
@@ -85,8 +97,12 @@ namespace osgEarth { namespace Symbology
         const optional<Technique>& technique() const { return _technique; }
 
         /** Terrain resolution at which to perform clamping (in map units) */
-        optional<float>& clampingResolution() { return _clampingResolution; }
-        const optional<float>& clampingResolution() const { return _clampingResolution; }
+        optional<float>& clampingResolution() { return _resolution; }
+        const optional<float>& clampingResolution() const { return _resolution; }
+
+        /** Granularity at which to clamp a geometry */
+        optional<Binding>& binding() { return _binding; }
+        const optional<Binding>& binding() const { return _binding; }
 
         /** Vertical offset of geometry after clamping */
         optional<NumericExpression>& verticalOffset() { return _verticalOffset; }
@@ -106,7 +122,8 @@ namespace osgEarth { namespace Symbology
 
         optional<Clamping>           _clamping;
         optional<Technique>          _technique;
-        optional<float>              _clampingResolution;
+        optional<Binding>            _binding;
+        optional<float>              _resolution;
         optional<NumericExpression>  _verticalOffset;
         optional<NumericExpression>  _verticalScale;
     };

@@ -218,9 +218,9 @@ namespace osgEarth { namespace Features
         virtual const char* libraryName() const { return "osgEarthFeatures"; }
 
 
-		/**
-		 * Initialize the FeatureSource.
-		 */
+        /**
+         * Initialize the FeatureSource.
+         */
         virtual void initialize( const osgDB::Options* dbOptions =0L ) { }
 
         /** Dirties the feature profile */

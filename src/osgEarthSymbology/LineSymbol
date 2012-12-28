@@ -20,12 +20,8 @@
 #ifndef OSGEARTHSYMBOLOGY_LINE_SYMBOL_H
 #define OSGEARTHSYMBOLOGY_LINE_SYMBOL_H 1
 
-#include <osgEarth/Common>
-#include <osgEarth/GeoMath>
-#include <osgEarthSymbology/Common>
 #include <osgEarthSymbology/Symbol>
-#include <osg/Referenced>
-#include <vector>
+#include <osgEarthSymbology/Stroke>
 
 namespace osgEarth { namespace Symbology
 {

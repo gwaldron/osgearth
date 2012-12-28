@@ -20,11 +20,8 @@
 #ifndef OSGEARTHSYMBOLOGY_GEOMETRY_SYMBOL_H
 #define OSGEARTHSYMBOLOGY_GEOMETRY_SYMBOL_H 1
 
-#include <osgEarth/Common>
-#include <osgEarthSymbology/Common>
 #include <osgEarthSymbology/Symbol>
-#include <osg/Referenced>
-#include <vector>
+#include <osgEarthSymbology/Fill>
 
 namespace osgEarth { namespace Symbology
 {

@@ -22,8 +22,8 @@
 
 #include <osgEarthSymbology/Symbol>
 #include <osgEarthSymbology/Expression>
-#include <osg/Referenced>
-#include <vector>
+#include <osgEarthSymbology/Fill>
+#include <osgEarthSymbology/Stroke>
 
 namespace osgEarth { namespace Symbology
 {

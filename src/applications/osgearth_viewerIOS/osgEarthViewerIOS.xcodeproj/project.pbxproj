@@ -12,6 +12,8 @@
 		90283E5D15C7091A00620EEF /* libosgdb_osgearth_engine_quadtree.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 90283E5C15C7091A00620EEF /* libosgdb_osgearth_engine_quadtree.a */; };
 		903B45DB15C0DE9F00F7702B /* EarthMultiTouchManipulator.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 903B45D915C0DE9F00F7702B /* EarthMultiTouchManipulator.cpp */; };
 		9048FB2415FA9DE50012C900 /* libosgdb_tiff.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 9048FB2315FA9DE50012C900 /* libosgdb_tiff.a */; };
+		904E22771691CC42002D66FD /* Accelerate.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 904E22751691CC42002D66FD /* Accelerate.framework */; };
+		904E22781691CC42002D66FD /* MobileCoreServices.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 904E22761691CC42002D66FD /* MobileCoreServices.framework */; };
 		9051000115B1EDFD00D9ABD3 /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 9051000015B1EDFD00D9ABD3 /* Foundation.framework */; };
 		9051000315B1EDFD00D9ABD3 /* CoreGraphics.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 9051000215B1EDFD00D9ABD3 /* CoreGraphics.framework */; };
 		9051000715B1EDFD00D9ABD3 /* OpenGLES.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 9051000615B1EDFD00D9ABD3 /* OpenGLES.framework */; };
@@ -178,6 +180,8 @@
 		903B45D915C0DE9F00F7702B /* EarthMultiTouchManipulator.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = EarthMultiTouchManipulator.cpp; sourceTree = "<group>"; };
 		903B45DA15C0DE9F00F7702B /* EarthMultiTouchManipulator.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = EarthMultiTouchManipulator.h; sourceTree = "<group>"; };
 		9048FB2315FA9DE50012C900 /* libosgdb_tiff.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libosgdb_tiff.a; path = "../../../../osg-ios-gles2/lib/libosgdb_tiff.a"; sourceTree = "<group>"; };
+		904E22751691CC42002D66FD /* Accelerate.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Accelerate.framework; path = System/Library/Frameworks/Accelerate.framework; sourceTree = SDKROOT; };
+		904E22761691CC42002D66FD /* MobileCoreServices.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = MobileCoreServices.framework; path = System/Library/Frameworks/MobileCoreServices.framework; sourceTree = SDKROOT; };
 		9051000015B1EDFD00D9ABD3 /* Foundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Foundation.framework; path = System/Library/Frameworks/Foundation.framework; sourceTree = SDKROOT; };
 		9051000215B1EDFD00D9ABD3 /* CoreGraphics.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreGraphics.framework; path = System/Library/Frameworks/CoreGraphics.framework; sourceTree = SDKROOT; };
 		9051000615B1EDFD00D9ABD3 /* OpenGLES.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = OpenGLES.framework; path = System/Library/Frameworks/OpenGLES.framework; sourceTree = SDKROOT; };
@@ -350,6 +354,8 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				904E22771691CC42002D66FD /* Accelerate.framework in Frameworks */,
+				904E22781691CC42002D66FD /* MobileCoreServices.framework in Frameworks */,
 				907D037E15B86F8700575110 /* libosgdb_shp.a in Frameworks */,
 				9048FB2415FA9DE50012C900 /* libosgdb_tiff.a in Frameworks */,
 				907D03FA15B8C31A00575110 /* libsqlite3.dylib in Frameworks */,
@@ -566,6 +572,8 @@
 		9051FFFD15B1EDFD00D9ABD3 /* Frameworks */ = {
 			isa = PBXGroup;
 			children = (
+				904E22751691CC42002D66FD /* Accelerate.framework */,
+				904E22761691CC42002D66FD /* MobileCoreServices.framework */,
 				905100CA15B2101E00D9ABD3 /* QuartzCore.framework */,
 				905100C415B20AD100D9ABD3 /* CoreImage.framework */,
 				905100C215B20AC600D9ABD3 /* ImageIO.framework */,
@@ -983,6 +991,7 @@
 				);
 				PRODUCT_NAME = osgEarth;
 				"PROVISIONING_PROFILE[sdk=iphoneos*]" = "C5A8E349-91DB-4E98-9612-789DB499534E";
+				VALID_ARCHS = armv7;
 				WRAPPER_EXTENSION = app;
 			};
 			name = Debug;
@@ -1013,6 +1022,7 @@
 				);
 				PRODUCT_NAME = osgEarth;
 				"PROVISIONING_PROFILE[sdk=iphoneos*]" = "C5A8E349-91DB-4E98-9612-789DB499534E";
+				VALID_ARCHS = armv7;
 				WRAPPER_EXTENSION = app;
 			};
 			name = Release;

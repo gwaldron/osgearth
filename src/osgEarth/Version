@@ -25,9 +25,10 @@
 extern "C" {
 
 #define OSGEARTH_MAJOR_VERSION    2
-#define OSGEARTH_MINOR_VERSION    2
-#define OSGEARTH_PATCH_VERSION    1
+#define OSGEARTH_MINOR_VERSION    3
+#define OSGEARTH_PATCH_VERSION    0
 #define OSGEARTH_SOVERSION        0
+#define OSGEARTH_RC_VERSION       0
 
 /* Convenience macro that can be used to decide whether a feature is present or not i.e.
  * #if OSGEARTH_MIN_VERSION_REQUIRED(1,4,0)

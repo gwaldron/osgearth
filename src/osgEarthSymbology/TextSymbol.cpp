@@ -17,6 +17,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 #include <osgEarthSymbology/TextSymbol>
+#include <osgEarthSymbology/Style>
 
 using namespace osgEarth;
 using namespace osgEarth::Symbology;
@@ -123,4 +124,92 @@ TextSymbol::mergeConfig( const Config& conf )
         _pixelOffset = osg::Vec2s( conf.value<short>("pixel_offset_x",0), 0 );
     if ( conf.hasValue( "pixel_offset_y" ) )
         _pixelOffset = osg::Vec2s( _pixelOffset->x(), conf.value<short>("pixel_offset_y",0) );
+}
+
+
+void
+TextSymbol::parseSLD(const Config& c, Style& style)
+{
+    if ( match(c.key(), "fill") ) {
+        style.getOrCreate<TextSymbol>()->fill()->color() = Color(c.value());
+    }
+    else if ( match(c.key(), "fill-opacity") ) {
+        style.getOrCreate<TextSymbol>()->fill()->color().a() = as<float>( c.value(), 1.0f );
+    }
+    else if ( match(c.key(), "text-size") ) {
+        style.getOrCreate<TextSymbol>()->size() = as<float>(c.value(), 32.0f);
+    }
+    else if ( match(c.key(), "text-font") ) {
+        style.getOrCreate<TextSymbol>()->font() = c.value();
+    }
+    else if ( match(c.key(), "text-halo") ) {
+        style.getOrCreate<TextSymbol>()->halo()->color() = htmlColorToVec4f( c.value() );
+    }
+    else if ( match(c.key(), "text-halo-offset") ) {
+        style.getOrCreate<TextSymbol>()->haloOffset() = as<float>(c.value(), 0.07f);
+    }
+    else if ( match(c.key(), "text-remove-duplicate-labels") ) {
+        if ( c.value() == "true" )
+            style.getOrCreate<TextSymbol>()->removeDuplicateLabels() = true;
+        else if (c.value() == "false")
+            style.getOrCreate<TextSymbol>()->removeDuplicateLabels() = false;
+    } 
+    else if ( match(c.key(), "text-align") ) {
+        if      ( match(c.value(), "left-top") ) 
+            style.getOrCreate<TextSymbol>()->alignment() = TextSymbol::ALIGN_LEFT_TOP;
+        else if ( match(c.value(), "left-center") ) 
+            style.getOrCreate<TextSymbol>()->alignment() = TextSymbol::ALIGN_LEFT_CENTER;
+        else if ( match(c.value(), "left-bottom") ) 
+            style.getOrCreate<TextSymbol>()->alignment() = TextSymbol::ALIGN_LEFT_BOTTOM;
+        else if ( match(c.value(), "center-top")  ) 
+            style.getOrCreate<TextSymbol>()->alignment() = TextSymbol::ALIGN_CENTER_TOP;
+        else if ( match(c.value(), "center-center") ) 
+            style.getOrCreate<TextSymbol>()->alignment() = TextSymbol::ALIGN_CENTER_CENTER;
+        else if ( match(c.value(), "center-bottom") ) 
+            style.getOrCreate<TextSymbol>()->alignment() = TextSymbol::ALIGN_CENTER_BOTTOM;
+        else if ( match(c.value(), "right-top") ) 
+            style.getOrCreate<TextSymbol>()->alignment() = TextSymbol::ALIGN_RIGHT_TOP;
+        else if ( match(c.value(), "right-center") ) 
+            style.getOrCreate<TextSymbol>()->alignment() = TextSymbol::ALIGN_RIGHT_CENTER;
+        else if ( match(c.value(), "right-bottom") ) 
+            style.getOrCreate<TextSymbol>()->alignment() = TextSymbol::ALIGN_RIGHT_BOTTOM;
+        else if ( match(c.value(), "left-base-line") ) 
+            style.getOrCreate<TextSymbol>()->alignment() = TextSymbol::ALIGN_LEFT_BASE_LINE;
+        else if ( match(c.value(), "center-base-line") ) 
+            style.getOrCreate<TextSymbol>()->alignment() = TextSymbol::ALIGN_CENTER_BASE_LINE;
+        else if ( match(c.value(), "right-base-line") ) 
+            style.getOrCreate<TextSymbol>()->alignment() = TextSymbol::ALIGN_RIGHT_BASE_LINE;
+        else if ( match(c.value(), "left-bottom-base-line") ) 
+            style.getOrCreate<TextSymbol>()->alignment() = TextSymbol::ALIGN_LEFT_BOTTOM_BASE_LINE;
+        else if ( match(c.value(), "center-bottom-base-line") ) 
+            style.getOrCreate<TextSymbol>()->alignment() = TextSymbol::ALIGN_CENTER_BOTTOM_BASE_LINE;
+        else if ( match(c.value(), "right-bottom-base-line") ) 
+            style.getOrCreate<TextSymbol>()->alignment() = TextSymbol::ALIGN_RIGHT_BOTTOM_BASE_LINE;
+        else if ( match(c.value(), "base-line" ) ) 
+            style.getOrCreate<TextSymbol>()->alignment() = TextSymbol::ALIGN_BASE_LINE;
+    }
+    else if ( match(c.key(), "text-content") ) {        
+        style.getOrCreate<TextSymbol>()->content() = StringExpression( c.value() );
+    }
+    else if ( match(c.key(), "text-priority") ) {
+        style.getOrCreate<TextSymbol>()->priority() = NumericExpression( c.value() );
+    }
+    else if ( match(c.key(), "text-provider") ) {
+        style.getOrCreate<TextSymbol>()->provider() = c.value();
+    }
+    else if ( match(c.key(), "text-encoding") ) {
+        if      (match(c.value(), "utf-8"))  
+            style.getOrCreate<TextSymbol>()->encoding() = TextSymbol::ENCODING_UTF8;
+        else if (match(c.value(), "utf-16")) 
+            style.getOrCreate<TextSymbol>()->encoding() = TextSymbol::ENCODING_UTF16;
+        else if (match(c.value(), "utf-32")) 
+            style.getOrCreate<TextSymbol>()->encoding() = TextSymbol::ENCODING_UTF32;
+        else if (match(c.value(), "ascii"))  
+            style.getOrCreate<TextSymbol>()->encoding() = TextSymbol::ENCODING_ASCII;
+        else 
+            style.getOrCreate<TextSymbol>()->encoding() = TextSymbol::ENCODING_ASCII;
+    }
+    else if ( match(c.key(), "text-declutter") ) {
+        style.getOrCreate<TextSymbol>()->declutter() = as<bool>(c.value(), true);
+    }
 }

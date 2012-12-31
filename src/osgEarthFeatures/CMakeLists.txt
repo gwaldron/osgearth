@@ -26,7 +26,7 @@ SET(LIB_PUBLIC_HEADERS
     FeatureCursor
     FeatureDisplayLayout
     FeatureDrawSet
-	FeatureListSource
+    FeatureListSource
     FeatureModelGraph
     FeatureModelSource
     FeatureSource
@@ -35,11 +35,12 @@ SET(LIB_PUBLIC_HEADERS
     Filter
     FilterContext
     GeometryCompiler
-	GeometryUtils
+    GeometryUtils
     LabelSource
     MeshClamper
     OgrUtils
-    OptimizerHints	
+    OptimizerHints
+    PolygonizeLines
     ResampleFilter
     ScaleFilter
     Session
@@ -80,7 +81,9 @@ ADD_LIBRARY(${LIB_NAME} ${OSGEARTH_USER_DEFINED_DYNAMIC_OR_STATIC}
 	GeometryUtils.cpp
     LabelSource.cpp
     MeshClamper.cpp
+    OgrUtils.cpp
     OptimizerHints.cpp
+    PolygonizeLines.cpp
     ResampleFilter.cpp
     ScaleFilter.cpp
     Session.cpp

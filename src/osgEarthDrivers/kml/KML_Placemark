@@ -21,6 +21,7 @@
 
 #include "KML_Feature"
 
+using namespace osgEarth_kml;
 using namespace osgEarth;
 
 struct KML_Placemark : public KML_Feature

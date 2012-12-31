@@ -87,6 +87,7 @@ MeasureToolHandler::rebuild()
 
     AltitudeSymbol* alt = new AltitudeSymbol();
     alt->clamping() = AltitudeSymbol::CLAMP_TO_TERRAIN;
+    alt->technique() = AltitudeSymbol::TECHNIQUE_GPU;
 
     // Define the path feature:
     _feature = new Feature(new LineString(), getMapNode()->getMapSRS());

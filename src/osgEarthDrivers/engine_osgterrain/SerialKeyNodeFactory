@@ -24,32 +24,36 @@
 #include "TerrainNode"
 #include "TileBuilder"
 
-using namespace osgEarth;
-
-class SerialKeyNodeFactory : public KeyNodeFactory
+namespace osgEarth_engine_osgterrain
 {
-public:
-    SerialKeyNodeFactory(
-        TileBuilder*             builder,
-        const OSGTerrainOptions& options,
-        const MapInfo&           mapInfo,
-        TerrainNode*             terrain,
-        UID                      engineUID );
+    using namespace osgEarth;
 
-    /** dtor */
-    virtual ~SerialKeyNodeFactory() { }
+    class SerialKeyNodeFactory : public KeyNodeFactory
+    {
+    public:
+        SerialKeyNodeFactory(
+            TileBuilder*             builder,
+            const OSGTerrainOptions& options,
+            const MapInfo&           mapInfo,
+            TerrainNode*             terrain,
+            UID                      engineUID );
 
-    osg::Node* createRootNode( const TileKey& key );
-    osg::Node* createNode( const TileKey& key );
+        /** dtor */
+        virtual ~SerialKeyNodeFactory() { }
 
-protected:
-    void addTile(Tile* tile, bool tileHasRealData, bool tileHasLodBlending, osg::Group* parent );
+        osg::Node* createRootNode( const TileKey& key );
+        osg::Node* createNode( const TileKey& key );
 
-    osg::ref_ptr< TileBuilder> _builder;
-    const OSGTerrainOptions& _options;
-    const MapInfo            _mapInfo;
-    osg::ref_ptr< TerrainNode > _terrain;
-    UID                      _engineUID;
-};
+    protected:
+        void addTile(Tile* tile, bool tileHasRealData, bool tileHasLodBlending, osg::Group* parent );
+
+        osg::ref_ptr< TileBuilder> _builder;
+        const OSGTerrainOptions& _options;
+        const MapInfo            _mapInfo;
+        osg::ref_ptr< TerrainNode > _terrain;
+        UID                      _engineUID;
+    };
+
+} // namespace osgEarth_engine_osgterrain
 
 #endif // OSGEARTH_ENGINE_PARALLEL_KEY_NODE_FACTORY

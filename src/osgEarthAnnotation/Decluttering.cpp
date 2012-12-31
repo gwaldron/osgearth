@@ -19,8 +19,9 @@
 #include <osgEarthAnnotation/Decluttering>
 #include <osgEarthAnnotation/AnnotationUtils>
 #include <osgEarthAnnotation/AnnotationData>
-#include <osgEarth/Utils>
 #include <osgEarth/ThreadingUtils>
+#include <osgEarth/Utils>
+#include <osgEarth/VirtualProgram>
 #include <osgUtil/RenderBin>
 #include <osgUtil/StateGraph>
 #include <osgText/Text>
@@ -29,6 +30,8 @@
 #include <algorithm>
 
 #define LC "[Declutter] "
+
+#define FADE_UNIFORM_NAME "oe_declutter_fade"
 
 using namespace osgEarth;
 using namespace osgEarth::Annotation;
@@ -103,6 +106,14 @@ namespace
     };
 
     static bool s_enabledGlobally = true;
+
+    static char* s_faderFS =
+        "#version " GLSL_VERSION_STR "\n"
+        GLSL_DEFAULT_PRECISION_FLOAT "\n"
+        "uniform float " FADE_UNIFORM_NAME ";\n"
+        "void oe_declutter_apply_fade(inout vec4 color) { \n"
+        "    color.a *= " FADE_UNIFORM_NAME ";\n"
+        "}\n";
 }
 
 //----------------------------------------------------------------------------
@@ -291,13 +302,14 @@ struct /*internal*/ DeclutterSort : public osgUtil::RenderBin::SortCallback
             }
 
             // modify the leaf's modelview matrix to correctly position it in the 2D ortho
-            // projection when it's drawn later. (Note: we need a new RefMatrix since the
-            // original might be shared ... potential optimization here)
-            // We'll also preserve the scale.
+            // projection when it's drawn later. We'll also preserve the scale.
             osg::Matrix newModelView;
             newModelView.makeTranslate( box.xMin() + offset.x(), box.yMin() + offset.y(), 0 );
             newModelView.preMultScale( leaf->_modelview->getScale() );
             
+            // Leaf modelview matrixes are shared (by objects in the traversal stack) so we 
+            // cannot just replace it unfortunately. Have to make a new one. Perhaps a nice
+            // allocation pool is in order here
             leaf->_modelview = new osg::RefMatrix( newModelView );
         }
 
@@ -411,7 +423,7 @@ struct DeclutterDraw : public osgUtil::RenderBin::DrawCallback
         : _context( context )
     {
         // create the fade uniform.
-        _fade = AnnotationUtils::createFadeUniform();
+        _fade = new osg::Uniform( osg::Uniform::FLOAT, FADE_UNIFORM_NAME );
         _fade->set( 1.0f );
     }
 
@@ -558,6 +570,15 @@ public:
         _context = new DeclutterContext();
         clearSortingFunctor();
         setDrawCallback( new DeclutterDraw(_context.get()) );
+
+        // needs its own state set for special magic.
+        osg::StateSet* stateSet = new osg::StateSet();
+        this->setStateSet( stateSet );
+
+        // set up a VP to do fading.
+        VirtualProgram* vp = new VirtualProgram();
+        vp->setFunction( "oe_declutter_apply_fade", s_faderFS, ShaderComp::LOCATION_FRAGMENT_PRE_LIGHTING );
+        stateSet->setAttributeAndModes(vp, 1);
     }
 
     void setSortingFunctor( DeclutterSortFunctor* f )

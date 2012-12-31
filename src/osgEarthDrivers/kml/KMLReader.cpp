@@ -27,6 +27,7 @@
 #include <stack>
 #include <iterator>
 
+using namespace osgEarth_kml;
 using namespace osgEarth;
 
 KMLReader::KMLReader( MapNode* mapNode, const KMLOptions* options ) :
@@ -107,16 +108,6 @@ KMLReader::read( const Config& conf, const osgDB::Options* dbOptions )
     URIResultCache* cacheUsed = URIResultCache::from(cx._dbOptions.get());
     CacheStats stats = cacheUsed->getStats();
     OE_INFO << LC << "URI Cache: " << stats._queries << " reads, " << (stats._hitRatio*100.0) << "% hits" << std::endl;
-
-    if ( Registry::capabilities().supportsGLSL() )
-    {
-        ShaderGenerator gen;
-        root->accept( gen );
-
-        VirtualProgram* vp = new VirtualProgram();
-        vp->installDefaultColoringAndLightingShaders();
-        root->getOrCreateStateSet()->setAttributeAndModes( vp, osg::StateAttribute::ON );
-    }
 
     return root;
 }

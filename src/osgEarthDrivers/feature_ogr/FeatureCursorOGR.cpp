@@ -52,18 +52,16 @@ _filters          ( filters )
 
         std::string expr;
         std::string from = OGR_FD_GetName( OGR_L_GetLayerDefn( _layerHandle ));        
-        //If the from field contains a space, quote it.
-        if (from.find(" ") != std::string::npos)
+        
+        //Quote the layer name.
+        std::string driverName = OGR_Dr_GetName( OGR_DS_GetDriver( dsHandle ) );
+        std::string delim = "'";  //Use single quotes by default
+        if (driverName.compare("PostgreSQL") == 0)
         {
-            std::string driverName = OGR_Dr_GetName( OGR_DS_GetDriver( dsHandle ) );
-            std::string delim = "'";  //Use single quotes by default
-            if (driverName.compare("PostgreSQL") == 0)
-            {
-                //PostgreSQL uses double quotes as identifier delimeters
-                delim = "\"";
-            }            
-            from = delim + from + delim;            
-        }
+            //PostgreSQL uses double quotes as identifier delimeters
+            delim = "\"";
+        }            
+        from = delim + from + delim;                    
 
         if ( query.expression().isSet() )
         {

@@ -23,6 +23,7 @@
 #include <osg/ValueObject>
 #include <osgEarth/Viewpoint>
 
+using namespace osgEarth_kml;
 using namespace osgEarth;
 
 void

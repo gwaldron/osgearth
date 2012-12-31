@@ -25,6 +25,7 @@
 
 namespace osgEarth { namespace Symbology
 {
+    class Style;
     class InstanceResource;
 
     /**
@@ -49,6 +50,8 @@ namespace osgEarth { namespace Symbology
         };
 
     public:
+        META_Symbol(IconSymbol);
+
         IconSymbol( const Config& conf =Config() );
 
         /** dtor */
@@ -61,6 +64,10 @@ namespace osgEarth { namespace Symbology
         /** Heading. Semantically this differs from an model's heading */
         optional<NumericExpression>& heading() { return _heading; }
         const optional<NumericExpression>& heading() const { return _heading; }
+
+        /** Decluttering */
+        optional<bool>& declutter() { return _declutter; }
+        const optional<bool>& declutter() const { return _declutter; }
         
     public: // non-serialized properties (for programmatic use only)
 
@@ -71,6 +78,7 @@ namespace osgEarth { namespace Symbology
     public:
         virtual Config getConfig() const;
         virtual void mergeConfig( const Config& conf );
+        static void parseSLD(const Config& c, class Style& style);
 
     public: // InstanceSymbol
         virtual InstanceResource* createResource() const;
@@ -78,6 +86,7 @@ namespace osgEarth { namespace Symbology
     protected:
         optional<Alignment>              _alignment;
         optional<NumericExpression>      _heading;
+        optional<bool>                   _declutter;
         mutable osg::ref_ptr<osg::Image> _image;
     };
 

@@ -95,6 +95,9 @@ namespace osgEarth
             double                  y,
             double*                 out_heightAboveMSL,
             double*                 out_heightAboveEllipsoid =0L) const =0;
+
+        /** dtor */
+        virtual ~TerrainHeightProvider() { }
     };
 
 

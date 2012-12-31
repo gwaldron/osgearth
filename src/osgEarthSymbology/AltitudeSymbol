@@ -32,7 +32,7 @@ namespace osgEarth { namespace Symbology
     {
     public:
         /**
-         * Controls if/how models are clamped to the terrin
+         * Controls if/how models are clamped to the terrain
          */
         enum Clamping
         {
@@ -43,26 +43,66 @@ namespace osgEarth { namespace Symbology
                 ignoring and discarding the feature's original Z value. */
             CLAMP_TO_TERRAIN,
 
+            /** Sample the terrain under the point, and ADD the terrain height to the feature's 
+                pre-existing Z value. */
+            CLAMP_RELATIVE_TO_TERRAIN,
+
             /** The feature has a attribute value that describes its height above "height zero",
                 which is typically the ellipsoid or MSL. While this will not actually modify the
                 feature's geometry, it will install ... */
-            CLAMP_ABSOLUTE,
+            CLAMP_ABSOLUTE
+        };
 
-            /** Sample the terrain under the point, and ADD the terrain height to the feature's 
-                pre-existing Z value. */
-            CLAMP_RELATIVE_TO_TERRAIN
+        /**
+         * Clamping technique - when and where to do clamping.
+         */
+        enum Technique
+        {
+            /** Clamp geometry to the map model's elevation data. */
+            TECHNIQUE_MAP,
+
+            /** Clamp geometry to the terrain's scene graph. */
+            TECHNIQUE_SCENE,
+
+            /** Clamp geometry to the terrain as they are rendered by the GPU. */
+            TECHNIQUE_GPU,
+
+            /** Clamp geometry at draw time using projective texturing. */
+            TECHNIQUE_DRAPE
+        };
+
+        /**
+         * Binding - at what granularity the clamping is performed
+         */
+        enum Binding
+        {
+            /** Clamp every vertex independently */
+            BINDING_VERTEX,
+
+            /** Clamp to the centroid of the entire geometry */
+            BINDING_CENTROID
         };
 
     public:
+        META_Symbol(AltitudeSymbol);
+
         AltitudeSymbol( const Config& conf =Config() );
 
         /** How to clamp instances to the terrain (default is CLAMP_NONE) */
         optional<Clamping>& clamping() { return _clamping; }
         const optional<Clamping>& clamping() const { return _clamping; }
 
+        /** Method of terrain following to use (default is TECHNIQUE_MAP) */
+        optional<Technique>& technique() { return _technique; }
+        const optional<Technique>& technique() const { return _technique; }
+
         /** Terrain resolution at which to perform clamping (in map units) */
-        optional<float>& clampingResolution() { return _clampingResolution; }
-        const optional<float>& clampingResolution() const { return _clampingResolution; }
+        optional<float>& clampingResolution() { return _resolution; }
+        const optional<float>& clampingResolution() const { return _resolution; }
+
+        /** Granularity at which to clamp a geometry */
+        optional<Binding>& binding() { return _binding; }
+        const optional<Binding>& binding() const { return _binding; }
 
         /** Vertical offset of geometry after clamping */
         optional<NumericExpression>& verticalOffset() { return _verticalOffset; }
@@ -75,12 +115,15 @@ namespace osgEarth { namespace Symbology
     public:
         virtual Config getConfig() const;
         virtual void mergeConfig( const Config& conf );
+        static void parseSLD(const Config& c, class Style& style);
 
     protected:
         virtual ~AltitudeSymbol() { }
 
         optional<Clamping>           _clamping;
-        optional<float>              _clampingResolution;
+        optional<Technique>          _technique;
+        optional<Binding>            _binding;
+        optional<float>              _resolution;
         optional<NumericExpression>  _verticalOffset;
         optional<NumericExpression>  _verticalScale;
     };

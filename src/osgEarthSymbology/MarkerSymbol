@@ -73,6 +73,8 @@ namespace osgEarth { namespace Symbology
         };
 
     public:
+        META_Symbol(MarkerSymbol);
+
         MarkerSymbol( const Config& conf =Config() );
 
         /** Since MarkerSymbol is deprecated, this conveneince function will convert to an InstanceSymbol */
@@ -130,6 +132,7 @@ namespace osgEarth { namespace Symbology
     public:
         virtual Config getConfig() const;
         virtual void mergeConfig( const Config& conf );
+        static void parseSLD(const Config& c, class Style& style);
 
     protected:
         optional<StringExpression>   _url;

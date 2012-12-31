@@ -40,6 +40,7 @@ SET(HEADERS_ROOT
     TFS
     TFSPackager
     TMS
+    TMSBackFiller
     TMSPackager
     UTMGraticule
     WFS
@@ -79,6 +80,7 @@ SET(SOURCES_ROOT
     TFS.cpp
     TFSPackager.cpp
     TMS.cpp
+    TMSBackFiller.cpp
     TMSPackager.cpp
     UTMGraticule.cpp
     WFS.cpp

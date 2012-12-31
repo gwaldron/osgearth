@@ -18,7 +18,6 @@
 */
 #include <osgEarthSymbology/Style>
 #include <osgEarthSymbology/CssUtils>
-#include <osgEarthSymbology/SLD>
 #include <algorithm>
 
 using namespace osgEarth;
@@ -68,7 +67,18 @@ Style::operator = ( const Style& rhs )
 void Style::addSymbol(Symbol* symbol)
 {
     if ( symbol )
+    {
+        for( SymbolList::iterator i = _symbols.begin(); i != _symbols.end(); ++i )
+        {
+            if ( i->get()->isSameKindAs(symbol) )
+            {
+                (*i) = symbol;
+                return;
+            }
+        }
+
         _symbols.push_back(symbol);
+    }
 }
 
 bool Style::removeSymbol(Symbol* symbol)
@@ -110,9 +120,26 @@ Style::combineWith( const Style& rhs ) const
 }
 
 void
-Style::fromCSS( const std::string& css )
+Style::fromSLD( const Config& sld )
 {
-    SLDReader::readStyleFromCSSParams( css, *this );
+    setName( sld.key() );
+
+    for( ConfigSet::const_iterator kid = sld.children().begin(); kid != sld.children().end(); ++kid )
+    {
+        const Config& p = *kid;
+
+        AltitudeSymbol::parseSLD (p, *this);
+        ExtrusionSymbol::parseSLD(p, *this);
+        IconSymbol::parseSLD     (p, *this);
+        LineSymbol::parseSLD     (p, *this);
+        MarkerSymbol::parseSLD   (p, *this);
+        ModelSymbol::parseSLD    (p, *this);
+        PolygonSymbol::parseSLD  (p, *this);
+        PointSymbol::parseSLD    (p, *this);
+        RenderSymbol::parseSLD   (p, *this);
+        SkinSymbol::parseSLD     (p, *this);
+        TextSymbol::parseSLD     (p, *this);
+    }
 }
 
 void
@@ -137,7 +164,9 @@ Style::mergeConfig( const Config& conf )
         ConfigSet blocks;
         CssUtils::readConfig( _origData, conf.referrer(), blocks );
         if ( blocks.size() > 0 )
-            SLDReader::readStyleFromCSSParams( blocks.front(), *this );
+        {
+            fromSLD( blocks.front() );
+        }
     }
     else
     {
@@ -151,51 +180,45 @@ Style::mergeConfig( const Config& conf )
                 if ( c.key() == "text" )
                 {
                     add( new TextSymbol(c) );
-                    //getOrCreate<TextSymbol>()->mergeConfig( c );
                 }
                 else if ( c.key() == "point" )
                 {
                     add( new PointSymbol(c) );
-                    //getOrCreate<PointSymbol>()->mergeConfig( c );
                 }
                 else if ( c.key() == "line" )
                 {
-                    //getOrCreate<LineSymbol>()->mergeConfig( c );
                     add( new LineSymbol(c) );
                 }
                 else if ( c.key() == "polygon" )
                 {
-                    //getOrCreate<PolygonSymbol>()->mergeConfig( c );
                     add( new PolygonSymbol(c) );
                 }
                 else if ( c.key() == "extrusion" )
                 {
-                    //getOrCreate<ExtrusionSymbol>()->mergeConfig( c );
                     add( new ExtrusionSymbol(c) );
                 }
                 else if ( c.key() == "altitude" )
                 {
-                    //getOrCreate<AltitudeSymbol>()->mergeConfig( c );
                     add( new AltitudeSymbol(c) );
                 }
                 else if ( c.key() == "marker" )
                 {
-                    //getOrCreate<MarkerSymbol>()->mergeConfig( c );
                     add( new MarkerSymbol(c) );
+                }
+                else if ( c.key() == "render" )
+                {
+                    add( new RenderSymbol(c) );
                 }
                 else if ( c.key() == "skin" )
                 {
-                    //getOrCreate<SkinSymbol>()->mergeConfig( c );
                     add( new SkinSymbol(c) );
                 }
                 else if ( c.key() == "model" )
                 {
-                    //getOrCreate<ModelSymbol>()->mergeConfig( c );
                     add( new ModelSymbol(c) );
                 }
                 else if ( c.key() == "icon" )
                 {
-                    //getOrCreate<IconSymbol>()->mergeConfig( c );
                     add( new IconSymbol(c) );
                 }
             }

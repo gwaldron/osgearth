@@ -22,37 +22,41 @@
 #include <osgEarth/MapFrame>
 #include <osgEarth/ImageLayer>
 
-using namespace osgEarth;
-
-/**
- * A customized ImageLayer that taps into another Map, reads elevation
- * tiles, and converts them into heightmap-encoded images.
- */
-class ElevationProxyImageLayer : public osgEarth::ImageLayer
+namespace osgEarth_ocean_surface
 {
-public:
+    using namespace osgEarth;
+
     /**
-     * Constucts a proxy layer
-     * @param sourceMap Map from which to read heightfields
+     * A customized ImageLayer that taps into another Map, reads elevation
+     * tiles, and converts them into heightmap-encoded images.
      */
-    ElevationProxyImageLayer( Map* sourceMap, const ImageLayerOptions& options );
+    class ElevationProxyImageLayer : public osgEarth::ImageLayer
+    {
+    public:
+        /**
+         * Constucts a proxy layer
+         * @param sourceMap Map from which to read heightfields
+         */
+        ElevationProxyImageLayer( Map* sourceMap, const ImageLayerOptions& options );
 
-    /** dtor */
-    virtual ~ElevationProxyImageLayer() { }
+        /** dtor */
+        virtual ~ElevationProxyImageLayer() { }
 
-public: // ImageLayer
+    public: // ImageLayer
 
-    virtual void initTileSource();
+        virtual void initTileSource();
 
-    virtual bool isKeyValid( const TileKey& key ) const;
+        virtual bool isKeyValid( const TileKey& key ) const;
 
-    virtual bool isCached( const TileKey& key ) const;
+        virtual bool isCached( const TileKey& key ) const;
 
-    virtual GeoImage createImage( const TileKey& key, ProgressCallback* progress, bool forceFallback );
+        virtual GeoImage createImage( const TileKey& key, ProgressCallback* progress, bool forceFallback );
 
-private:
-    osg::observer_ptr<Map> _sourceMap;
-    MapFrame               _mapf;
-};
+    private:
+        osg::observer_ptr<Map> _sourceMap;
+        MapFrame               _mapf;
+    };
+
+} // namespace osgEarth_ocean_surface
 
 #endif // OSGEARTH_DRIVER_OCEAN_SURFACE_ELEV_PROXY_IMAGE_LAYER

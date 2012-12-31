@@ -18,6 +18,8 @@
  */
 #include "KML_NetworkLinkControl"
 
+using namespace osgEarth_kml;
+
 void
 KML_NetworkLinkControl::scan( const Config& conf, KMLContext& cx )
 {

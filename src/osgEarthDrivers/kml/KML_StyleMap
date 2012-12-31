@@ -22,11 +22,15 @@
 #include "KML_Common"
 #include "KML_StyleSelector"
 
-using namespace osgEarth;
-
-struct KML_StyleMap : public KML_StyleSelector
+namespace osgEarth_kml
 {
-    virtual void scan2( const Config& conf, KMLContext& cx );
-};
+    using namespace osgEarth;
+
+    struct KML_StyleMap : public KML_StyleSelector
+    {
+        virtual void scan2( const Config& conf, KMLContext& cx );
+    };
+
+} // namespace osgEarth_kml
 
 #endif // OSGEARTH_DRIVER_KML_KML_STYLEMAP

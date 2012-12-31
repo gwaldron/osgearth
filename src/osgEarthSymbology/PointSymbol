@@ -19,8 +19,8 @@
 #ifndef OSGEARTHSYMBOLOGY_POINT_SYMBOL_H
 #define OSGEARTHSYMBOLOGY_POINT_SYMBOL_H 1
 
-#include <osgEarthSymbology/Common>
 #include <osgEarthSymbology/Symbol>
+#include <osgEarthSymbology/Fill>
 
 namespace osgEarth { namespace Symbology
 {
@@ -30,6 +30,8 @@ namespace osgEarth { namespace Symbology
     class OSGEARTHSYMBOLOGY_EXPORT PointSymbol : public Symbol
     {
     public:
+        META_Symbol(PointSymbol);
+
         PointSymbol( const Config& conf =Config() );
 
         /** dtor */
@@ -46,6 +48,7 @@ namespace osgEarth { namespace Symbology
     public:
         virtual Config getConfig() const;
         virtual void mergeConfig( const Config& conf );
+        static void parseSLD(const Config& c, class Style& style);
 
     protected:
         optional<Fill>  _fill;

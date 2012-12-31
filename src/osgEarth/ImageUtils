@@ -209,6 +209,11 @@ namespace osgEarth
         static bool isCompressed( const osg::Image* image );
 
         /**
+         * Generated a bump map image for the input image
+         */
+        static osg::Image* createBumpMap( const osg::Image* input );
+
+        /**
          * Reads color data out of an image, regardles of its internal pixel format.
          */
         class OSGEARTH_EXPORT PixelReader

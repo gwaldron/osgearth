@@ -26,6 +26,8 @@
 #undef  LC
 #define LC "[KML_NetworkLink] "
 
+using namespace osgEarth_kml;
+
 void
 KML_NetworkLink::build( const Config& conf, KMLContext& cx )
 {

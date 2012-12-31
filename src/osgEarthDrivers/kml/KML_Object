@@ -22,22 +22,26 @@
 #include "KML_Common"
 #include <osgEarthAnnotation/AnnotationData>
 
-using namespace osgEarth;
-using namespace osgEarth::Annotation;
-
-struct KML_Object
+namespace osgEarth_kml
 {
-    virtual void scan( const Config& conf, KMLContext& cx ) { }
-    
-    virtual void scan2( const Config& conf, KMLContext& cx ) { }
+    using namespace osgEarth;
+    using namespace osgEarth::Annotation;
 
-    virtual void build( const Config& conf, KMLContext& cx, osg::Node* working );
+    struct KML_Object
+    {
+        virtual void scan( const Config& conf, KMLContext& cx ) { }
+        
+        virtual void scan2( const Config& conf, KMLContext& cx ) { }
 
-    virtual ~KML_Object() { }
+        virtual void build( const Config& conf, KMLContext& cx, osg::Node* working );
 
-protected:
+        virtual ~KML_Object() { }
 
-    AnnotationData* getOrCreateAnnotationData( osg::Node* node );
-};
+    protected:
+
+        AnnotationData* getOrCreateAnnotationData( osg::Node* node );
+    };
+
+} // namespace osgEarth_kml
 
 #endif // OSGEARTH_DRIVER_KML_KML_OBJECT

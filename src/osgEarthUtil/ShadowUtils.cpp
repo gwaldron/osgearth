@@ -118,7 +118,7 @@ ShadowUtils::setUpShadows(osgShadow::ShadowedScene* sscene, osg::Group* root)
         }
     }
 
-    // create a virtual program to attach to the shadows scene.
+    // create a virtual program to attach to the shadowed scene.
     VirtualProgram* vp = new VirtualProgram();
     vp->setName( "shadow:terrain" );
     vp->installDefaultColoringAndLightingShaders();

@@ -18,6 +18,7 @@
 */
 #include "KeyNodeFactory"
 
+using namespace osgEarth_engine_osgterrain;
 using namespace osgEarth;
 
 #define LC "[KeyNodeFactory] "

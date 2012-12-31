@@ -19,6 +19,8 @@
 #include "KML_IconStyle"
 #include <osgEarthSymbology/IconSymbol>
 
+using namespace osgEarth_kml;
+
 void
 KML_IconStyle::scan( const Config& conf, Style& style, KMLContext& cx )
 {

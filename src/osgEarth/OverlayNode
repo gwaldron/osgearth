@@ -1,0 +1,94 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+ * Copyright 2008-2011 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+
+#ifndef OSGEARTH_OVERLAY_NODE_H
+#define OSGEARTH_OVERLAY_NODE_H 1
+
+#include <osgEarth/Common>
+#include <osgEarth/MapNodeObserver>
+#include <osg/Group>
+
+namespace osgEarth
+{
+    class MapNode;
+
+    /**
+     * Abstract base class for a node that injects geometry into the MapNode's
+     * OverlayDecorator.
+     */
+    class OSGEARTH_EXPORT OverlayNode : public osg::Group, 
+                                        public MapNodeObserver
+    {
+    public:
+        // signature for the function that provides the technique group.
+        typedef osg::Group* (*TechniqueProvider)(MapNode*);      
+        
+    public:
+        /**
+         * Constructs a new overlay node.
+         */
+        OverlayNode( MapNode* mapNode, bool active, TechniqueProvider f =0L );
+
+    public:
+        /**
+         * Whether overlay is active. If true, the subgraph renders as a
+         * terrain overlay; If false it renders normally.
+         */
+        void setActive( bool value );
+        bool getActive() const { return _active; }
+
+    public: // MapNodeObserver
+
+        void setMapNode( MapNode* mapNode );
+
+        MapNode* getMapNode() { return _mapNode.get(); }
+
+        /** Sets the method that returns the technique group or overlay nodes */
+        void setTechniqueProvider(TechniqueProvider provider);
+
+    public: // osg::Node
+
+        virtual void traverse( osg::NodeVisitor& nv );
+
+    public: // osg::Group
+
+        // override these in order to manage the proxy container.
+        virtual bool addChild( osg::Node* child );
+        virtual bool insertChild( unsigned index, osg::Node* child );
+        virtual bool removeChild( osg::Node* child );
+        virtual bool replaceChild( osg::Node* origChild, osg::Node* newChild );
+
+    protected:
+        /** dtor */
+        virtual ~OverlayNode() { }
+
+    private:
+        bool                          _active;
+        bool                          _dirty;
+        bool                          _newActive;
+        osg::ref_ptr<osg::Group>      _overlayProxyContainer;
+        osg::observer_ptr<MapNode>    _mapNode;
+        TechniqueProvider             _getGroup;
+
+        void applyChanges();
+    };
+
+} // namespace osgEarth
+
+#endif // OSGEARTH_OVERLAY_NODE_H

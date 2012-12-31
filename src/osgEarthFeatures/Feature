@@ -23,6 +23,7 @@
 #include <osgEarthFeatures/FilterContext>
 #include <osgEarthSymbology/Geometry>
 #include <osgEarthSymbology/Style>
+#include <osgEarth/GeoCommon>
 #include <osgEarth/SpatialReference>
 #include <osg/Array>
 #include <osg/Shape>
@@ -79,6 +80,9 @@ namespace osgEarth { namespace Features
         double      doubleValue;
         int         intValue;
         bool        boolValue;
+
+        //Whether the value is set.  A value of false means the value is effectively NULL
+        bool        set;
     };
 
     enum AttributeType
@@ -91,11 +95,11 @@ namespace osgEarth { namespace Features
     };
 
     struct OSGEARTHFEATURES_EXPORT AttributeValue : public std::pair<AttributeType,AttributeValueUnion>
-    {
+    {    
         std::string getString() const;
         double getDouble( double defaultValue =0.0 ) const;
         int getInt( int defaultValue =0 ) const;
-        bool getBool( bool defaultValue =false ) const;
+        bool getBool( bool defaultValue =false ) const;              
     };
 
     typedef std::map<std::string, AttributeValue> AttributeTable;
@@ -179,12 +183,21 @@ namespace osgEarth { namespace Features
         void set( const std::string& name, int value );
         void set( const std::string& name, bool value );
 
+        /** Sets the attribute to NULL */         
+        void setNull( const std::string& name );
+        void setNull( const std::string& name, AttributeType type );
+
         bool hasAttr( const std::string& name ) const;
 
         std::string getString( const std::string& name ) const;
         double getDouble( const std::string& name, double defaultValue =0.0 ) const;
         int getInt( const std::string& name, int defaultValue =0 ) const;
         bool getBool( const std::string& name, bool defaultValue =false ) const;
+
+        /**
+         * Gets whether the attribute is set, meaning it is non-NULL
+         */
+        bool isSet( const std::string& name ) const;
 
         /** Embedded style. */
         optional<Style>& style() { return _style; }

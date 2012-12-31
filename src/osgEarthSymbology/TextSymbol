@@ -22,8 +22,8 @@
 
 #include <osgEarthSymbology/Symbol>
 #include <osgEarthSymbology/Expression>
-#include <osg/Referenced>
-#include <vector>
+#include <osgEarthSymbology/Fill>
+#include <osgEarthSymbology/Stroke>
 
 namespace osgEarth { namespace Symbology
 {
@@ -64,6 +64,8 @@ namespace osgEarth { namespace Symbology
         
             ALIGN_BASE_LINE = ALIGN_LEFT_BASE_LINE /// default.        
         };
+
+        META_Symbol(TextSymbol);
 
         TextSymbol( const Config& conf =Config() );
 
@@ -125,6 +127,7 @@ namespace osgEarth { namespace Symbology
     public:
         virtual Config getConfig() const;
         virtual void mergeConfig( const Config& conf );
+        static void parseSLD(const Config& c, class Style& style);
 
     protected:
         optional<Fill>              _fill;

@@ -18,10 +18,11 @@
 */
 
 #include <osgEarthAnnotation/LocalizedNode>
-#include <osgEarthAnnotation/Decluttering>
+#include <osgEarthAnnotation/AnnotationUtils>
+#include <osgEarth/ClampableNode>
+#include <osgEarth/DrapeableNode>
 #include <osgEarth/CullingUtils>
 #include <osgEarth/MapNode>
-#include <osg/AutoTransform>
 #include <osg/MatrixTransform>
 
 #define LC "[LocalizedNode] "
@@ -31,53 +32,56 @@ using namespace osgEarth::Annotation;
 
 
 LocalizedNode::LocalizedNode(MapNode*        mapNode,
-                             const GeoPoint& position,
-                             bool            is2D ) :
+                             const GeoPoint& position) :
 PositionedAnnotationNode( mapNode ),
-_horizonCulling         ( false ),
-_autoTransform          ( is2D ),
-_scale                  ( 1.0f, 1.0f, 1.0f )
+_initComplete           ( false ),
+_horizonCulling         ( true ),
+_scale                  ( 1.0f, 1.0f, 1.0f ),
+_mapPosition            ( position )
 {
-    init( mapNode, position );
+    init();
 }
 
 LocalizedNode::LocalizedNode(MapNode* mapNode, const Config& conf) :
-PositionedAnnotationNode(mapNode, conf),
-_horizonCulling         ( false ),
-_autoTransform          ( false ),
+PositionedAnnotationNode( mapNode, conf ),
+_initComplete           ( false ),
+_horizonCulling         ( true ),
 _scale                  ( 1.0f, 1.0f, 1.0f )
 {
-    init( mapNode, GeoPoint::INVALID );
+    init();
 }
 
 
 void
-LocalizedNode::init( MapNode* mapNode, const GeoPoint& position )
+LocalizedNode::init()
 {
-    if ( _autoTransform )
-    {
-        osg::AutoTransform* at = new osg::AutoTransform();
-        at->setAutoRotateMode( osg::AutoTransform::ROTATE_TO_SCREEN );
-        at->setAutoScaleToScreen( true );
-        at->setCullingActive( false ); // just for the first pass
-        _xform = at;
-    }
-    else
-    {
-        _xform = new osg::MatrixTransform();
-
-        this->getOrCreateStateSet()->setRenderingHint( osg::StateSet::TRANSPARENT_BIN );
-    }
-    
-    this->getOrCreateStateSet()->setMode( GL_BLEND, 1 );
-
-    setHorizonCulling( true );
-
-    _draper = new DrapeableNode( mapNode, false );
-    _draper->addChild( _xform.get() );
-    
-    setPosition( position );
+    this->getOrCreateStateSet()->setRenderingHint( osg::StateSet::TRANSPARENT_BIN );
 }
+
+
+namespace
+{
+    static Threading::Mutex s_initCompleteMutex;
+}
+
+osg::BoundingSphere
+LocalizedNode::computeBound() const
+{
+    if ( !_initComplete )
+    {
+        // perform initialization that cannot happen in the CTOR
+        // (due to possible virtual function calls)
+        Threading::ScopedMutexLock lock(s_initCompleteMutex);
+        if ( !_initComplete )
+        {
+            const_cast<LocalizedNode*>(this)->_initComplete = true;
+            const_cast<LocalizedNode*>(this)->setHorizonCulling( _horizonCulling );
+            const_cast<LocalizedNode*>(this)->setPosition      ( _mapPosition );
+        }
+    }
+    return PositionedAnnotationNode::computeBound();
+}
+
 
 void
 LocalizedNode::setMapNode( MapNode* mapNode )
@@ -94,58 +98,46 @@ LocalizedNode::setMapNode( MapNode* mapNode )
         }
 
         // re-apply the position since the map has changed
-        setPosition( getPosition() );
+        setPosition( _mapPosition );
     }
 }
 
-void
-LocalizedNode::traverse( osg::NodeVisitor& nv )
-{
-    if ( _autoTransform && nv.getVisitorType() == osg::NodeVisitor::CULL_VISITOR )
-    {
-       _xform->setCullingActive( true );
-    }
-    
-    AnnotationNode::traverse( nv );
-}
 
 bool
 LocalizedNode::setPosition( const GeoPoint& pos )
 {
-    if ( getMapNode() )
+    if ( _initComplete )
     {
-        // first transform the point to the map's SRS:
-        const SpatialReference* mapSRS = getMapNode()->getMapSRS();
-        GeoPoint mapPos = mapSRS ? pos.transform(mapSRS) : pos;
-        if ( !mapPos.isValid() )
-            return false;
+        if ( getMapNode() )
+        {
+            // first transform the point to the map's SRS:
+            const SpatialReference* mapSRS = getMapNode()->getMapSRS();
+            GeoPoint mapPos = mapSRS ? pos.transform(mapSRS) : pos;
+            if ( !mapPos.isValid() )
+                return false;
 
-        _mapPosition = mapPos;
+            _mapPosition = mapPos;
+        }
+        else
+        {
+            _mapPosition = pos;
+        }
+
+        // make sure the node is set up for auto-z-update if necessary:
+        configureForAltitudeMode( _mapPosition.altitudeMode() );
+
+        // update the node.
+        return updateTransform( _mapPosition );
     }
     else
     {
         _mapPosition = pos;
+        return true;
     }
-
-    // make sure the node is set up for auto-z-update if necessary:
-    configureForAltitudeMode( _mapPosition.altitudeMode() );
-
-    // update the node.
-    if ( !updateTransforms( _mapPosition ) )
-        return false;
-
-    return true;
-}
-
-void
-LocalizedNode::setScale( const osg::Vec3f& scale )
-{
-    _scale = scale;
-    updateTransforms( getPosition() );
 }
 
 bool
-LocalizedNode::updateTransforms( const GeoPoint& p, osg::Node* patch )
+LocalizedNode::updateTransform( const GeoPoint& p, osg::Node* patch )
 {
     if ( p.isValid() )
     {
@@ -162,42 +154,19 @@ LocalizedNode::updateTransforms( const GeoPoint& p, osg::Node* patch )
         // apply the local offsets
         local2world.preMult( osg::Matrix::translate(_localOffset) );
 
-        if ( _autoTransform )
-        {
-            static_cast<osg::AutoTransform*>(_xform.get())->setPosition( local2world.getTrans() );
-            static_cast<osg::AutoTransform*>(_xform.get())->setScale( _scale );
-            static_cast<osg::AutoTransform*>(_xform.get())->setRotation( _localRotation );
-        }
-        else
-        {
-            static_cast<osg::MatrixTransform*>(_xform.get())->setMatrix( 
-                osg::Matrix::scale(_scale) * 
-                osg::Matrix::rotate(_localRotation) *
-                local2world  );
-        }
-
-        
-        CullNodeByHorizon* culler = dynamic_cast<CullNodeByHorizon*>(_xform->getCullCallback());
-        if ( culler )
-            culler->_world = local2world.getTrans();
+        getTransform()->setMatrix( 
+            osg::Matrix::scale (_scale)         * 
+            osg::Matrix::rotate(_localRotation) *
+            local2world  );
     }
     else
     {
         osg::Vec3d absPos = p.vec3d() + _localOffset;
 
-        if ( _autoTransform )
-        {
-            static_cast<osg::AutoTransform*>(_xform.get())->setPosition( absPos );
-            static_cast<osg::AutoTransform*>(_xform.get())->setScale( _scale );
-            static_cast<osg::AutoTransform*>(_xform.get())->setRotation( _localRotation );
-        }
-        else
-        {
-            static_cast<osg::MatrixTransform*>(_xform.get())->setMatrix(
-                osg::Matrix::scale(_scale) * 
-                osg::Matrix::rotate(_localRotation) *
-                osg::Matrix::translate(absPos) );
-        }
+        getTransform()->setMatrix(
+            osg::Matrix::scale    (_scale)         * 
+            osg::Matrix::rotate   (_localRotation) *
+            osg::Matrix::translate(absPos) );
     }
     
 
@@ -210,6 +179,13 @@ GeoPoint
 LocalizedNode::getPosition() const
 {
     return _mapPosition;
+}
+
+void
+LocalizedNode::setScale( const osg::Vec3f& scale )
+{
+    _scale = scale;
+    updateTransform( _mapPosition );
 }
 
 void
@@ -241,23 +217,23 @@ LocalizedNode::getLocalRotation() const
 void
 LocalizedNode::setHorizonCulling( bool value )
 {
-    if ( _horizonCulling != value )
+    _horizonCulling = value;
+
+    if ( _initComplete && getMapNode() && getMapNode()->isGeocentric() )
     {
-        _horizonCulling = value;
-
-        if ( _horizonCulling && getMapNode() && getMapNode()->isGeocentric() )
+        if ( _horizonCulling && !_cullByHorizonCB.valid() )
         {
-            osg::Vec3d world;
-            if ( _autoTransform )
-                world = static_cast<osg::AutoTransform*>(_xform.get())->getPosition();
-            else
-                world = static_cast<osg::MatrixTransform*>(_xform.get())->getMatrix().getTrans();
+            _cullByHorizonCB = new CullNodeByHorizon(
+                getTransform(),
+                getMapNode()->getMapSRS()->getEllipsoid() );
 
-            _xform->setCullCallback( new CullNodeByHorizon(world, getMapNode()->getMapSRS()->getEllipsoid()) );
+            addCullCallback( _cullByHorizonCB.get() );
         }
-        else
+
+        else if ( !_horizonCulling && _cullByHorizonCB.valid() )
         {
-            _xform->removeCullCallback( _xform->getCullCallback() );
+            removeCullCallback( _cullByHorizonCB.get() );
+            _cullByHorizonCB = 0L;
         }
     }
 }
@@ -268,6 +244,49 @@ LocalizedNode::reclamp( const TileKey& key, osg::Node* tile, const Terrain* terr
     // first verify that the control position intersects the tile:
     if ( key.getExtent().contains( _mapPosition.x(), _mapPosition.y() ) )
     {
-        updateTransforms(_mapPosition, tile);
+        updateTransform(_mapPosition, tile);
     }
+}
+
+
+osg::Node*
+LocalizedNode::applyAltitudePolicy(osg::Node* node, const Style& style)
+{
+    AnnotationUtils::AltitudePolicy ap;
+    AnnotationUtils::getAltitudePolicy( style, ap );
+
+    // Draped (projected) geometry
+    if ( ap.draping )
+    {
+        DrapeableNode* drapable = new DrapeableNode( getMapNode() );
+        drapable->addChild( node );
+        node = drapable;
+    }
+
+    // gw - not sure whether is makes sense to support this for LocalizedNode
+    // GPU-clamped geometry
+    else if ( ap.gpuClamping )
+    {
+        ClampableNode* clampable = new ClampableNode( getMapNode() );
+        clampable->addChild( node );
+        node = clampable;
+
+        const RenderSymbol* render = style.get<RenderSymbol>();
+        if ( render && render->depthOffset().isSet() )
+        {
+            clampable->depthOffset() = *render->depthOffset();
+        }
+    }
+
+    // scenegraph-clamped geometry
+    else if ( ap.sceneClamping )
+    {
+        // save for later when we need to reclamp the mesh on the CPU
+        _altitude = style.get<AltitudeSymbol>();
+
+        // activate the terrain callback:
+        setCPUAutoClamping( true );
+    }
+
+    return node;
 }

@@ -51,6 +51,7 @@ namespace osgEarth
          * the geodetic datum for the ellipsoid.
          */
         static SpatialReference* create( const std::string& init, const std::string& vinit ="" );
+        static SpatialReference* get   ( const std::string& init, const std::string& vinit ="" ) { return create(init,vinit); }
 
         /**
          * Attempts to create a spatial reference def from a pre-existing CSN, returning

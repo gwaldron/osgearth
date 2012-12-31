@@ -79,6 +79,7 @@ namespace osgEarth { namespace Util
     public: // LocalizedNode
         
         virtual bool setPosition( const GeoPoint& pos );
+        virtual osg::MatrixTransform* getTransform() { return _xform.get(); }
 
     public: // MapNodeObserver
 
@@ -102,6 +103,8 @@ namespace osgEarth { namespace Util
         unsigned               _numCols;
         osg::Geode*            _geode;
         GeoExtent              _extent;
+
+        osg::ref_ptr<osg::MatrixTransform> _xform;
 
         osg::ref_ptr< TerrainCallback > _terrainCallback;
 

@@ -32,121 +32,125 @@
 #include <queue>
 #include <vector>
 
-class TileFactory;
-
-using namespace osgEarth;
-
-/**
- */
-class TerrainNode : public osg::Group //osgTerrain::Terrain
+namespace osgEarth_engine_osgterrain
 {
-public:
-    TerrainNode(
-        const MapFrame& update_mapf,
-        const MapFrame& cull_mapf,
-        OSGTileFactory* factory,
-        bool            quickReleaseGLObjects );
+    class TileFactory;
 
-    virtual const char* libraryName() const { return "osgEarth"; }
+    using namespace osgEarth;
 
-    virtual const char* className() const { return "TerrainNode"; }
+    /**
+     */
+    class TerrainNode : public osg::Group //osgTerrain::Terrain
+    {
+    public:
+        TerrainNode(
+            const MapFrame& update_mapf,
+            const MapFrame& cull_mapf,
+            OSGTileFactory* factory,
+            bool            quickReleaseGLObjects );
 
-public:
+        virtual const char* libraryName() const { return "osgEarth"; }
 
-    OSGTileFactory* getTileFactory() { return _tileFactory.get(); }
+        virtual const char* className() const { return "TerrainNode"; }
 
-    bool getQuickReleaseGLObjects() const { return _quickReleaseGLObjects; }
+    public:
 
-    const MapFrame& getUpdateThreadMapFrame() { return _update_mapf; }
+        OSGTileFactory* getTileFactory() { return _tileFactory.get(); }
 
-    const MapFrame& getCullThreadMapFrame()   { return _cull_mapf;   }
+        bool getQuickReleaseGLObjects() const { return _quickReleaseGLObjects; }
 
-    virtual Tile* createTile( const TileKey& key, GeoLocator* locator ) const;
-    
-    void setTechniquePrototype( TerrainTechnique* tech );
+        const MapFrame& getUpdateThreadMapFrame() { return _update_mapf; }
 
-    TerrainTechnique* cloneTechnique() const;
+        const MapFrame& getCullThreadMapFrame()   { return _cull_mapf;   }
 
-    void setSampleRatio( float value );
+        virtual Tile* createTile( const TileKey& key, GeoLocator* locator ) const;
+        
+        void setTechniquePrototype( TerrainTechnique* tech );
 
-    float getSampleRatio() const { return _sampleRatio; }
+        TerrainTechnique* cloneTechnique() const;
 
-    void setVerticalScale( float value );
+        void setSampleRatio( float value );
 
-    float getVerticalScale() const { return _verticalScale; }
+        float getSampleRatio() const { return _sampleRatio; }
 
-    virtual void traverse( osg::NodeVisitor &nv );
+        void setVerticalScale( float value );
 
-protected:
+        float getVerticalScale() const { return _verticalScale; }
 
-	virtual ~TerrainNode();
+        virtual void traverse( osg::NodeVisitor &nv );
 
-    // subclass can override to notify of running tasks
-    virtual unsigned getNumActiveTasks() const { return 0; }
+    protected:
 
-    // subclass can override this to perform addition UPDATE traversal operations
-    virtual void updateTraversal( osg::NodeVisitor& nv ) { }
+	    virtual ~TerrainNode();
 
-    typedef std::map< osgTerrain::TileID, osg::ref_ptr<Tile> > TileTable;
+        // subclass can override to notify of running tasks
+        virtual unsigned getNumActiveTasks() const { return 0; }
 
-    typedef std::queue< osg::ref_ptr<Tile> >  TileQueue;
-    typedef std::list< osg::ref_ptr<Tile> >   TileList;
-    typedef std::vector< osg::ref_ptr<Tile> > TileVector;
-    typedef std::queue< osgTerrain::TileID >  TileIDQueue;
+        // subclass can override this to perform addition UPDATE traversal operations
+        virtual void updateTraversal( osg::NodeVisitor& nv ) { }
 
-    Threading::ReadWriteMutex _tilesMutex;
-    TileTable                 _tiles;
-    TileList                  _tilesToShutDown;
-    TileVector                _tilesToRelease;
-    Threading::Mutex          _tilesToReleaseMutex;
+        typedef std::map< osgTerrain::TileID, osg::ref_ptr<Tile> > TileTable;
 
-    float _sampleRatio;
-    float _verticalScale;
+        typedef std::queue< osg::ref_ptr<Tile> >  TileQueue;
+        typedef std::list< osg::ref_ptr<Tile> >   TileList;
+        typedef std::vector< osg::ref_ptr<Tile> > TileVector;
+        typedef std::queue< osgTerrain::TileID >  TileIDQueue;
 
-public:
+        Threading::ReadWriteMutex _tilesMutex;
+        TileTable                 _tiles;
+        TileList                  _tilesToShutDown;
+        TileVector                _tilesToRelease;
+        Threading::Mutex          _tilesToReleaseMutex;
 
-    void releaseGLObjectsForTiles( osg::State* state );
+        float _sampleRatio;
+        float _verticalScale;
 
-    void registerTile( Tile* newTile );
+    public:
 
-    /** Gets a thread-safe copy of the entire tile list */
-    void getTiles( TileVector& out_tiles );
+        void releaseGLObjectsForTiles( osg::State* state );
 
-    /** Fetches a tile from the repo */
-    template<typename T>
-    void getTile(const osgTerrain::TileID& id, osg::ref_ptr<T>& out_tile, bool lock =true ) const {
-        if ( lock ) {
-            Threading::ScopedReadLock lock( const_cast<TerrainNode*>(this)->_tilesMutex );
-            TileTable::const_iterator i = _tiles.find( id );
-            out_tile = i != _tiles.end()? static_cast<T*>(i->second.get()) : 0L;
+        void registerTile( Tile* newTile );
+
+        /** Gets a thread-safe copy of the entire tile list */
+        void getTiles( TileVector& out_tiles );
+
+        /** Fetches a tile from the repo */
+        template<typename T>
+        void getTile(const osgTerrain::TileID& id, osg::ref_ptr<T>& out_tile, bool lock =true ) const {
+            if ( lock ) {
+                Threading::ScopedReadLock lock( const_cast<TerrainNode*>(this)->_tilesMutex );
+                TileTable::const_iterator i = _tiles.find( id );
+                out_tile = i != _tiles.end()? static_cast<T*>(i->second.get()) : 0L;
+            }
+            else {
+                TileTable::const_iterator i = _tiles.find( id );
+                out_tile = i != _tiles.end()? static_cast<T*>(i->second.get()) : 0L;
+            }
         }
-        else {
-            TileTable::const_iterator i = _tiles.find( id );
-            out_tile = i != _tiles.end()? static_cast<T*>(i->second.get()) : 0L;
-        }
-    }
 
-protected:
+    protected:
 
-    osg::ref_ptr<OSGTileFactory> _tileFactory;
-    osg::ref_ptr<const Profile>  _profile;
+        osg::ref_ptr<OSGTileFactory> _tileFactory;
+        osg::ref_ptr<const Profile>  _profile;
 
-    bool _alwaysUpdate;
-    int  _onDemandDelay; // #frames
+        bool _alwaysUpdate;
+        int  _onDemandDelay; // #frames
 
-    void setDelay( unsigned frames );
-    void decDelay();
+        void setDelay( unsigned frames );
+        void decDelay();
 
-	bool _registeredWithReleaseGLCallback;
+	    bool _registeredWithReleaseGLCallback;
 
-    // store a separate map frame for each of the traversal threads
-    const MapFrame& _update_mapf; // map frame for the main/update traversal thread
-    const MapFrame& _cull_mapf;   // map frame for the cull traversal thread
+        // store a separate map frame for each of the traversal threads
+        const MapFrame& _update_mapf; // map frame for the main/update traversal thread
+        const MapFrame& _cull_mapf;   // map frame for the cull traversal thread
 
-    bool _quickReleaseGLObjects;
-    bool _quickReleaseCallbackInstalled;
+        bool _quickReleaseGLObjects;
+        bool _quickReleaseCallbackInstalled;
 
-    osg::ref_ptr<TerrainTechnique> _techPrototype;
-};
+        osg::ref_ptr<TerrainTechnique> _techPrototype;
+    };
+
+} // namespace osgEarth_engine_osgterrain
 
 #endif // OSGEARTH_ENGINE_OSGTERRAIN_STANDARD_TERRAIN

@@ -18,6 +18,8 @@
  */
 #include "KML_PolyStyle"
 
+using namespace osgEarth_kml;
+
 void
 KML_PolyStyle::scan( const Config& conf, Style& style, KMLContext& cx )
 {

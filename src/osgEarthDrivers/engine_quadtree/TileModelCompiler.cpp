@@ -28,6 +28,7 @@
 #include <osg/MatrixTransform>
 #include <osgUtil/DelaunayTriangulator>
 
+using namespace osgEarth_engine_quadtree;
 using namespace osgEarth;
 using namespace osgEarth::Drivers;
 using namespace osgEarth::Symbology;
@@ -1343,8 +1344,8 @@ namespace
             osg::ref_ptr< osg::HeightField > n_neighbor  = d.model->_elevationData.getNeighbor( 0, -1 );            
 
             //Recalculate the west side
-            if (w_neighbor.valid())
-            {                                
+            if (w_neighbor.valid() && w_neighbor->getNumColumns() == d.numCols && w_neighbor->getNumRows() == d.numRows)
+            {                                     
                 osg::ref_ptr< osg::Vec3Array > boundaryVerts = new osg::Vec3Array();
                 boundaryVerts->reserve( 2 * d.numRows );
 
@@ -1352,9 +1353,9 @@ namespace
                 boundaryElevations.reserve( 2 * d.numRows );
 
                 //Compute the verts for the west side
-                for (int j = 0; j < d.numRows; j++)
+                for (int j = 0; j < (int)d.numRows; j++)
                 {
-                    for (int i = d.numCols-2; i <= d.numCols-1; i++)
+                    for (int i = (int)d.numCols-2; i <= (int)d.numCols-1; i++)
                     {                          
                         osg::Vec3d ndc( (double)(i - static_cast<int>(d.numCols-1))/(double)(d.numCols-1), ((double)j)/(double)(d.numRows-1), 0.0);                                                                        
 
@@ -1371,7 +1372,7 @@ namespace
                 }   
 
                 //The boundary verts are now populated, so go through and triangulate them add add the normals to the existing normal array
-                for (int j = 0; j < d.numRows-1; j++)
+                for (int j = 0; j < (int)d.numRows-1; j++)
                 {                    
                     int i00;
                     int i01;
@@ -1428,8 +1429,8 @@ namespace
 
                         
             //Recalculate the east side
-            if (e_neighbor.valid())
-            {                
+            if (e_neighbor.valid() && e_neighbor->getNumColumns() == d.numCols && e_neighbor->getNumRows() == d.numRows)
+            {                           
                 osg::ref_ptr< osg::Vec3Array > boundaryVerts = new osg::Vec3Array();
                 boundaryVerts->reserve( 2 * d.numRows );
 
@@ -1437,7 +1438,7 @@ namespace
                 boundaryElevations.reserve( 2 * d.numRows );
 
                 //Compute the verts for the east side
-                for (int j = 0; j < d.numRows; j++)
+                for (int j = 0; j < (int)d.numRows; j++)
                 {
                     for (int i = 0; i <= 1; i++)
                     {                           
@@ -1456,7 +1457,7 @@ namespace
                 }   
 
                 //The boundary verts are now populated, so go through and triangulate them add add the normals to the existing normal array
-                for (int j = 0; j < d.numRows-1; j++)
+                for (int j = 0; j < (int)d.numRows-1; j++)
                 {                    
                     int i00;
                     int i01;
@@ -1510,8 +1511,8 @@ namespace
             }
 
             //Recalculate the north side
-            if (n_neighbor.valid())
-            {
+            if (n_neighbor.valid() && n_neighbor->getNumColumns() == d.numCols && n_neighbor->getNumRows() == d.numRows)
+            {                 
                 osg::ref_ptr< osg::Vec3Array > boundaryVerts = new osg::Vec3Array();
                 boundaryVerts->reserve( 2 * d.numCols );
 
@@ -1521,7 +1522,7 @@ namespace
                 //Compute the verts for the north side               
                 for (int j = 0; j <= 1; j++)
                 {
-                    for (int i = 0; i < d.numCols; i++)                    
+                    for (int i = 0; i < (int)d.numCols; i++)                    
                     {                           
                         osg::Vec3d ndc( (double)(i)/(double)(d.numCols-1), (double)(d.numRows -1 + j)/(double)(d.numRows-1), 0.0);
                         //osg::Vec3d ndc( (double)(i)/(double)(d.numCols-1), (double)(-static_cast<int>(j))/(double)(d.numRows-1), 0.0);                        
@@ -1539,7 +1540,7 @@ namespace
                 }   
 
                 //The boundary verts are now populated, so go through and triangulate them add add the normals to the existing normal array                
-                for (int i = 0; i < d.numCols-1; i++)
+                for (int i = 0; i < (int)d.numCols-1; i++)
                 {                    
                     int i00;                    
                     int j = d.numRows-1;
@@ -1593,8 +1594,8 @@ namespace
             }
 
             //Recalculate the south side
-            if (s_neighbor.valid())
-            {
+            if (s_neighbor.valid() && s_neighbor->getNumColumns() == d.numCols && s_neighbor->getNumRows() == d.numRows)
+            {                
                 osg::ref_ptr< osg::Vec3Array > boundaryVerts = new osg::Vec3Array();
                 boundaryVerts->reserve( 2 * d.numCols );
 
@@ -1602,9 +1603,9 @@ namespace
                 boundaryElevations.reserve( 2 * d.numCols );
 
                 //Compute the verts for the south side               
-                for (int j = d.numRows-2; j <= d.numRows-1; j++)
+                for (int j = (int)d.numRows-2; j <= (int)d.numRows-1; j++)
                 {
-                    for (int i = 0; i < d.numCols; i++)                    
+                    for (int i = 0; i < (int)d.numCols; i++)                    
                     {                           
                         osg::Vec3d ndc( (double)(i)/(double)(d.numCols-1), (double)(j - static_cast<int>(d.numRows-1))/(double)(d.numRows-1), 0.0);                                                
                         
@@ -1621,7 +1622,7 @@ namespace
                 }   
 
                 //The boundary verts are now populated, so go through and triangulate them add add the normals to the existing normal array                
-                for (int i = 0; i < d.numCols-1; i++)
+                for (int i = 0; i < (int)d.numCols-1; i++)
                 {                    
                     int i00;                    
                     int j = 0;

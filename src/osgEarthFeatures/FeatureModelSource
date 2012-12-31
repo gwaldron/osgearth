@@ -22,9 +22,11 @@
 
 #include <osgEarthFeatures/Common>
 #include <osgEarthFeatures/FeatureSource>
+#include <osgEarthFeatures/FeatureSourceIndexNode>
 #include <osgEarthFeatures/FeatureDisplayLayout>
 #include <osgEarthFeatures/GeometryCompiler>
 #include <osgEarthSymbology/Style>
+#include <osgEarth/FadeEffect>
 #include <osgEarth/ModelSource>
 #include <osgEarth/Map>
 #include <osgEarth/CachePolicy>
@@ -68,9 +70,9 @@ namespace osgEarth { namespace Features
         optional<StringExpression>& featureName() { return _featureNameExpr; }
         const optional<StringExpression>& featureName() const { return _featureNameExpr; }
 
-        /** Whether to create feature indexes (default = no) */
-        optional<bool>& featureIndexing() { return _featureIndexing; }
-        const optional<bool>& featureIndexing() const { return _featureIndexing; }
+        /** Whether to create feature indexes (unset = no) */
+        optional<FeatureSourceIndexOptions>& featureIndexing() { return _featureIndexing; }
+        const optional<FeatureSourceIndexOptions>& featureIndexing() const { return _featureIndexing; }
 
         /** Whether to activate backface culling (default = yes) */
         optional<bool>& backfaceCulling() { return _backfaceCulling; }
@@ -84,15 +86,9 @@ namespace osgEarth { namespace Features
         optional<CachePolicy>& cachePolicy() { return _cachePolicy; }
         const optional<CachePolicy>& cachePolicy() const { return _cachePolicy; }
 
-        /** Time (in seconds) to fade in the graphics */
-        optional<float>& fadeInDuration() { return _fadeInDuration; }
-        const optional<float>& fadeInDuration() const { return _fadeInDuration; }
-
-    public: // deprecated
-
-        /** @deprecated - use the ConvertTypeFilter instead */
-        optional<Symbology::Geometry::Type>& geometryTypeOverride() { return _geomTypeOverride; }
-        const optional<Symbology::Geometry::Type>& geometryTypeOverride() const { return _geomTypeOverride; }
+        /** Fading properties */
+        optional<FadeOptions>& fading() { return _fading; }
+        const optional<FadeOptions>& fading() const { return _fading; }
 
     public:
         /** A live feature source instance to use. Note, this does not serialize. */
@@ -115,24 +111,21 @@ namespace osgEarth { namespace Features
     private:
         void fromConfig( const Config& conf );
 
-        optional<FeatureSourceOptions>  _featureOptions;
-        optional<FeatureDisplayLayout>  _layout;
-        optional<StringExpression>      _featureNameExpr;
-        optional<bool>                  _lit;
-        optional<double>                _maxGranularity_deg;
-        optional<bool>                  _mergeGeometry;
-        optional<bool>                  _clusterCulling;
-        optional<bool>                  _featureIndexing;
-        optional<bool>                  _backfaceCulling;
-        optional<bool>                  _alphaBlending;
-        optional<CachePolicy>           _cachePolicy;
-        optional<float>                 _fadeInDuration;
+        optional<FeatureSourceOptions>      _featureOptions;
+        optional<FeatureDisplayLayout>      _layout;
+        optional<StringExpression>          _featureNameExpr;
+        optional<bool>                      _lit;
+        optional<double>                    _maxGranularity_deg;
+        optional<bool>                      _mergeGeometry;
+        optional<bool>                      _clusterCulling;
+        optional<bool>                      _backfaceCulling;
+        optional<bool>                      _alphaBlending;
+        optional<CachePolicy>               _cachePolicy;
+        optional<FadeOptions>               _fading;
+        optional<FeatureSourceIndexOptions> _featureIndexing;
 
-        osg::ref_ptr<StyleSheet>        _styles;
-        osg::ref_ptr<FeatureSource>     _featureSource;
-
-        /** @deprecated */
-        optional<Geometry::Type>        _geomTypeOverride;
+        osg::ref_ptr<StyleSheet>            _styles;
+        osg::ref_ptr<FeatureSource>         _featureSource;
     };
 
 
@@ -161,7 +154,7 @@ namespace osgEarth { namespace Features
          */
         virtual osg::Group* getOrCreateStyleGroup(
             const Style& style,
-            Session*     session ) { return new osg::Group(); }
+            Session*     session );
     };
 
     
@@ -200,7 +193,7 @@ namespace osgEarth { namespace Features
 
         virtual void initialize( const osgDB::Options* dbOptions =0L );
 
-        virtual osg::Node* createNode(
+        virtual osg::Node* createNodeImplementation(
             const Map*            map,
             const osgDB::Options* dbOptions,
             ProgressCallback*     progress );

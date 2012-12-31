@@ -354,6 +354,15 @@ namespace osgEarth { namespace Util { namespace Controls
         void setHaloColor( const osg::Vec4f& value );
         const optional<osg::Vec4f>& haloColor() const { return _haloColor; }
 
+        void setTextBackdropType(osgText::Text::BackdropType value);
+        const osgText::Text::BackdropType getTextBackdropType() const { return _backdropType; }
+
+        void setTextBackdropImplementation(osgText::Text::BackdropImplementation value);
+        const osgText::Text::BackdropImplementation getTextBackdropImplementation() const { return _backdropImpl; }
+
+        void setTextBackdropOffset(float offsetValue);
+        float getTextBackdropOffset() const { return _backdropOffset; }
+
     public: // Control
         virtual void calcSize( const ControlContext& context, osg::Vec2f& out_size );
         virtual void draw    ( const ControlContext& context, DrawableList& out_drawables );
@@ -366,6 +375,9 @@ namespace osgEarth { namespace Util { namespace Controls
         osg::Vec3 _bmin, _bmax;
         optional<osg::Vec4f> _haloColor;
 		osgText::String::Encoding _encoding;
+        osgText::Text::BackdropType _backdropType;
+        osgText::Text::BackdropImplementation _backdropImpl;
+        float _backdropOffset;
     };
 
     /**

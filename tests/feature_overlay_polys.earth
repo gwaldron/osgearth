@@ -16,7 +16,7 @@ on the map using the overlay technique.
         <url>../data/world.tif</url>
     </image>
     
-    <model name="countries" driver="feature_geom" overlay="true">
+    <model name="countries" driver="feature_geom">
                           
         <features name="states" driver="ogr">
             <url>../data/world.shp</url>
@@ -27,24 +27,21 @@ on the map using the overlay technique.
         
             <style type="text/css">
                 p1 {
-                   fill: #ffff80;
-                   fill-opacity: 0.4;
+                   fill:               #ffff8066;
+                   altitude-clamping:  terrain;
+                   altitude-technique: drape;
                 }       
                 p2 {
-                   fill: #80ffff;
-                   fill-opacity: 0.4;
+                   fill:               #80ffff66;
                 }   
                 p3 {
-                   fill: #ff80ff;
-                   fill-opacity: 0.4;
+                   fill:               #ff80ff66;
                 }       
                 p4 {
-                   fill: #ff8080;
-                   fill-opacity: 0.4;
+                   fill:               #ff808066;
                 }     
                 p5 {
-                   fill: #80ff80;
-                   fill-opacity: 0.4;
+                   fill:               #80ff8066;
                 }                                      
             </style>
         

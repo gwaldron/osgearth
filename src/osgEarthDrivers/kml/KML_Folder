@@ -22,15 +22,19 @@
 #include "KML_Common"
 #include "KML_Container"
 
-using namespace osgEarth;
-
-struct KML_Folder : public KML_Container
+namespace osgEarth_kml
 {
-    virtual void scan( const Config& conf, KMLContext& cx );
+    using namespace osgEarth;
 
-    virtual void scan2( const Config& conf, KMLContext& cx );
+    struct KML_Folder : public KML_Container
+    {
+        virtual void scan( const Config& conf, KMLContext& cx );
 
-    virtual void build( const Config& conf, KMLContext& cx );
-};
+        virtual void scan2( const Config& conf, KMLContext& cx );
+
+        virtual void build( const Config& conf, KMLContext& cx );
+    };
+
+} // namespace osgEarth_kml
 
 #endif // OSGEARTH_DRIVER_KML_KML_FOLDER

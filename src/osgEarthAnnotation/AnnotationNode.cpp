@@ -51,6 +51,10 @@ namespace osgEarth { namespace Annotation
 
 //-------------------------------------------------------------------
 
+Style AnnotationNode::s_emptyStyle;
+
+//-------------------------------------------------------------------
+
 AnnotationNode::AnnotationNode(MapNode* mapNode) :
 _mapNode    ( mapNode ),
 _dynamic    ( false ),
@@ -58,9 +62,11 @@ _autoclamp  ( false ),
 _depthAdj   ( false ),
 _activeDs   ( 0L )
 {
-    //nop
     //Note: Cannot call setMapNode() here because it's a virtual function.
     //      Each subclass will be separately responsible at ctor time.
+
+    // always blend.
+    this->getOrCreateStateSet()->setMode( GL_BLEND, osg::StateAttribute::ON );
 }
 
 AnnotationNode::AnnotationNode(MapNode* mapNode, const Config& conf) :
@@ -87,6 +93,12 @@ _activeDs   ( 0L )
         bool blending = conf.value<bool>("blending", false);
         getOrCreateStateSet()->setMode( GL_BLEND, (blending?1:0) | osg::StateAttribute::OVERRIDE );
     }
+    else
+    {
+        // blend by default.
+        this->getOrCreateStateSet()->setMode( GL_BLEND, osg::StateAttribute::ON );
+    }
+
 }
 
 AnnotationNode::~AnnotationNode()
@@ -141,7 +153,7 @@ AnnotationNode::setDynamic( bool value )
 }
 
 void
-AnnotationNode::setAutoClamp( bool value )
+AnnotationNode::setCPUAutoClamping( bool value )
 {
     if ( getMapNode() )
     {
@@ -322,6 +334,7 @@ AnnotationNode::clearDecoration()
     {
         this->accept(_activeDs, false);
         _activeDs = 0L;
+        _activeDsName = "";
     }
 }
 
@@ -353,7 +366,7 @@ AnnotationNode::supportsAutoClamping( const Style& style ) const
 void
 AnnotationNode::configureForAltitudeMode( const AltitudeMode& mode )
 {
-    setAutoClamp(
+    setCPUAutoClamping(
         mode == ALTMODE_RELATIVE ||
         (_altitude.valid() && _altitude->clamping() == AltitudeSymbol::CLAMP_TO_TERRAIN) );
 }
@@ -364,6 +377,29 @@ AnnotationNode::applyStyle( const Style& style)
     if ( supportsAutoClamping(style) )
     {
         _altitude = style.get<AltitudeSymbol>();
-        setAutoClamp( true );
+        setCPUAutoClamping( true );
+    }
+    applyGeneralSymbology(style);
+}
+
+void
+AnnotationNode::applyGeneralSymbology(const Style& style)
+{
+    const RenderSymbol* render = style.get<RenderSymbol>();
+    if ( render )
+    {
+        if ( render->depthTest().isSet() )
+        {
+            getOrCreateStateSet()->setMode(
+                GL_DEPTH_TEST,
+                (render->depthTest() == true? osg::StateAttribute::ON : osg::StateAttribute::OFF) | osg::StateAttribute::OVERRIDE );
+        }
+
+        if ( render->lighting().isSet() )
+        {
+            getOrCreateStateSet()->setMode(
+                GL_LIGHTING,
+                (render->lighting() == true? osg::StateAttribute::ON : osg::StateAttribute::OFF) | osg::StateAttribute::OVERRIDE );
+        }
     }
 }

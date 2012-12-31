@@ -464,6 +464,7 @@ void AddPathDialog::addPoint(const osgEarth::GeoPoint& point)
     pathStyle.getOrCreate<LineSymbol>()->stroke()->width() = 2.0f;
     pathStyle.getOrCreate<LineSymbol>()->tessellation() = 20;
     pathStyle.getOrCreate<AltitudeSymbol>()->clamping() = AltitudeSymbol::CLAMP_TO_TERRAIN;
+    pathStyle.getOrCreate<AltitudeSymbol>()->technique() = AltitudeSymbol::TECHNIQUE_GPU;
 
     _pathFeature = new osgEarth::Features::Feature(_pathLine, _mapNode->getMapSRS(), pathStyle);
     //_pathFeature->geoInterp() = GEOINTERP_GREAT_CIRCLE;
@@ -705,7 +706,8 @@ void AddPolygonDialog::refreshFeatureNode(bool geometryOnly)
       
 
       _polyFeature->style()->getOrCreate<PolygonSymbol>()->fill()->color() = _fillColor;
-      //_polyFeature->style()->getOrCreate<AltitudeSymbol>()->clamping() = _drapeCheckbox->checkState() == Qt::Checked ? AltitudeSymbol::CLAMP_TO_TERRAIN : AltitudeSymbol::CLAMP_ABSOLUTE;
+      _polyFeature->style()->getOrCreate<AltitudeSymbol>()->clamping() = _drapeCheckbox->checkState() == Qt::Checked ? AltitudeSymbol::CLAMP_TO_TERRAIN : AltitudeSymbol::CLAMP_ABSOLUTE;
+      _polyFeature->style()->getOrCreate<AltitudeSymbol>()->technique() = AltitudeSymbol::TECHNIQUE_DRAPE;
     }
 
     _polyNode->setFeature(_polyFeature);
@@ -982,7 +984,15 @@ void AddEllipseDialog::addEllipse(const osgEarth::GeoPoint& position, const Line
 {
   if (!_ellipseNode.valid())
   {
-    _ellipseNode = new osgEarth::Annotation::EllipseNode(_mapNode, position, radiusMajor, radiusMinor, rotationAngle, _ellipseStyle, _drapeCheckbox->checkState() == Qt::Checked);
+    Style style = _ellipseStyle;
+    if ( _drapeCheckbox->checkState() == Qt::Checked ) {
+        style.getOrCreate<AltitudeSymbol>()->clamping()  = AltitudeSymbol::CLAMP_TO_TERRAIN;
+        style.getOrCreate<AltitudeSymbol>()->technique() = AltitudeSymbol::TECHNIQUE_DRAPE;
+    }
+    else {
+        style.getOrCreate<AltitudeSymbol>()->clamping()  = AltitudeSymbol::CLAMP_NONE;
+    }
+    _ellipseNode = new osgEarth::Annotation::EllipseNode(_mapNode, position, radiusMajor, radiusMinor, rotationAngle, style);
     _root->addChild(_ellipseNode);
   }
   else

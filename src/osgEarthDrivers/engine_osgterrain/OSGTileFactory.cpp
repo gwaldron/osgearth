@@ -43,6 +43,7 @@
 #include <stdlib.h>
 
 using namespace OpenThreads;
+using namespace osgEarth_engine_osgterrain;
 using namespace osgEarth;
 using namespace osgEarth::Drivers;
 

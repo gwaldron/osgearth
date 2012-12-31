@@ -34,7 +34,7 @@ Geometry*
 GeometryFactory::createCircle(const osg::Vec3d& center,
                               const Distance&   radius,
                               unsigned          numSegments,
-                              Geometry*         geomToUse)
+                              Geometry*         geomToUse) const
 {
     Geometry* geom = geomToUse ? geomToUse : new Polygon();
 
@@ -87,7 +87,7 @@ GeometryFactory::createArc(const osg::Vec3d& center,
                            const Angle&      start,
                            const Angle&      end,
                            unsigned          numSegments,
-                           Geometry*         geomToUse)
+                           Geometry*         geomToUse) const
 {
     Geometry* geom = geomToUse? geomToUse : new LineString();
 
@@ -115,7 +115,7 @@ GeometryFactory::createArc(const osg::Vec3d& center,
         double lon = osg::DegreesToRadians(center.x());
         double rM  = radius.as(Units::METERS);
 
-        for( int i=numSegments-1; i >= 0; --i )
+        for( int i=numSegments; i >= 0; --i )
         {
             double angle = startRad + step*(double)i;
             double clat, clon;
@@ -128,7 +128,7 @@ GeometryFactory::createArc(const osg::Vec3d& center,
     {
         double rM = radius.as(Units::METERS);
 
-        for( int i=numSegments-1; i >= 0; --i )
+        for( int i=numSegments; i >= 0; --i )
         {
             double angle = startRad + step*(double)i;
             double x, y;
@@ -149,7 +149,7 @@ GeometryFactory::createEllipse(const osg::Vec3d& center,
                                const Distance&   radiusMinor,
                                const Angle&      rotationAngle,
                                unsigned          numSegments,
-                               Geometry*         geomToUse)
+                               Geometry*         geomToUse) const
 {
     Geometry* geom = geomToUse ? geomToUse : new Polygon();
 
@@ -212,7 +212,7 @@ GeometryFactory::createEllipse(const osg::Vec3d& center,
 Geometry*
 GeometryFactory::createRectangle(const osg::Vec3d& center,
                                  const Distance&   width,
-                                 const Distance&   height )
+                                 const Distance&   height ) const
 {
     Geometry* geom = new Polygon();
     

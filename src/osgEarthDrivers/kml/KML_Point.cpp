@@ -18,6 +18,8 @@
  */
 #include "KML_Point"
 
+using namespace osgEarth_kml;
+
 void
 KML_Point::parseCoords( const Config& conf, KMLContext& cx )
 {

@@ -443,7 +443,7 @@ GeometryCompiler::compile(FeatureList&          workingSet,
     {
         if ( _options.shaderPolicy() == SHADERPOLICY_GENERATE )
         {
-            ShaderGenerator gen( sscache.get() );
+            ShaderGenerator gen( 0L );
             resultGroup->accept( gen );
         }
         else if ( _options.shaderPolicy() == SHADERPOLICY_DISABLE )
@@ -456,6 +456,17 @@ GeometryCompiler::compile(FeatureList&          workingSet,
 
     // Optimize stateset sharing.
     sscache->optimize( resultGroup.get() );
+    
+    // todo: this helps a lot, but is currently broken for non-triangle
+    // geometries. (gw, 12-17-2012)
+#if 0
+        osgUtil::Optimizer optimizer;
+        optimizer.optimize(
+            resultGroup.get(),
+            osgUtil::Optimizer::VERTEX_PRETRANSFORM );
+            osgUtil::Optimizer::VERTEX_POSTTRANSFORM );
+#endif
+
 
 
     //osgDB::writeNodeFile( *(resultGroup.get()), "out.osg" );

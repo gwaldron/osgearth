@@ -32,10 +32,6 @@
 
 #define LC "[KML] "
 
-using namespace osgEarth;
-using namespace osgEarth::Drivers;
-using namespace osgEarth::Symbology;
-
 #define for_one( NAME, FUNC, CONF, CX ) \
 { \
     Config c = conf.child( toLower( #NAME ) ); \
@@ -63,43 +59,50 @@ using namespace osgEarth::Symbology;
     for_many( NetworkLink,   FUNC, CONF, CX ); \
     for_many( Placemark,     FUNC, CONF, CX );
 
-struct KMLContext
+namespace osgEarth_kml
 {
-    MapNode*                              _mapNode;         // reference map node
-    const KMLOptions*                     _options;         // user options
-    osg::ref_ptr<StyleSheet>              _sheet;           // entire style sheet
-    Style                                 _activeStyle;     // currently active style
-    std::stack<osg::ref_ptr<osg::Group> > _groupStack;      // resulting scene graph
-    osg::ref_ptr<const SpatialReference>  _srs;             // map's spatial reference
-    osg::ref_ptr<const osgDB::Options>    _dbOptions;       // I/O options (caching, etc)
-};
+    using namespace osgEarth;
+    using namespace osgEarth::Drivers;
+    using namespace osgEarth::Symbology;
 
-struct KMLUtils
-{
-    // parse KML's many variants on a URL link.
-    static std::string parseLink( const Config& conf )
+    struct KMLContext
     {
-        Config link = conf.child("link");
-        if ( !link.empty() )
-        {
-            if ( link.hasValue("href") )
-                return link.value("href");
-            else if ( link.hasValue("url") )
-                return link.value("url");
-            else
-                return link.value();
-        }
-        else
-        {
-            link = conf.child("url");
-            if ( link.hasValue("href") )
-                return link.value("href");
-            else
-                return link.value();
-        }
-    }
-};
+        MapNode*                              _mapNode;         // reference map node
+        const KMLOptions*                     _options;         // user options
+        osg::ref_ptr<StyleSheet>              _sheet;           // entire style sheet
+        Style                                 _activeStyle;     // currently active style
+        std::stack<osg::ref_ptr<osg::Group> > _groupStack;      // resulting scene graph
+        osg::ref_ptr<const SpatialReference>  _srs;             // map's spatial reference
+        osg::ref_ptr<const osgDB::Options>    _dbOptions;       // I/O options (caching, etc)
+    };
 
+    struct KMLUtils
+    {
+        // parse KML's many variants on a URL link.
+        static std::string parseLink( const Config& conf )
+        {
+            Config link = conf.child("link");
+            if ( !link.empty() )
+            {
+                if ( link.hasValue("href") )
+                    return link.value("href");
+                else if ( link.hasValue("url") )
+                    return link.value("url");
+                else
+                    return link.value();
+            }
+            else
+            {
+                link = conf.child("url");
+                if ( link.hasValue("href") )
+                    return link.value("href");
+                else
+                    return link.value();
+            }
+        }
+    };
+
+} // namespace osgEarth_kml
 
 #endif // OSGEARTH_DRIVER_KML_READER
 

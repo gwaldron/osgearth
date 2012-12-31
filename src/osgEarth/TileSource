@@ -57,7 +57,7 @@ namespace osgEarth
     /**
      * Configuration options for a tile source driver.
      */
-    class OSGEARTH_EXPORT TileSourceOptions : public DriverConfigOptions // no export; header only
+    class OSGEARTH_EXPORT TileSourceOptions : public DriverConfigOptions
     {
     public:
 

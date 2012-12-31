@@ -1,0 +1,133 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+* Copyright 2008-2012 Pelican Mapping
+* http://osgearth.org
+*
+* osgEarth is free software; you can redistribute it and/or modify
+* it under the terms of the GNU Lesser General Public License as published by
+* the Free Software Foundation; either version 2 of the License, or
+* (at your option) any later version.
+*
+* This program is distributed in the hope that it will be useful,
+* but WITHOUT ANY WARRANTY; without even the implied warranty of
+* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+* GNU Lesser General Public License for more details.
+*
+* You should have received a copy of the GNU Lesser General Public License
+* along with this program.  If not, see <http://www.gnu.org/licenses/>
+*/
+#ifndef OSGEARTH_OVERLAY_DRAPING_TECHNIQUE
+#define OSGEARTH_OVERLAY_DRAPING_TECHNIQUE
+
+#include <osgEarth/Common>
+#include <osgEarth/OverlayDecorator>
+#include <osg/TexGenNode>
+#include <osg/Uniform>
+
+namespace osgEarth
+{
+    class TerrainEngineNode;
+
+    /**
+     * Projects an overlay scene graph onto the main model.
+     *
+     * The OverlayDecorator is automatically installed in the MapNode and is used
+     * to display ModelLayer's whose "overlay" property is set to true.
+     *
+     * This class is similar in scope to osgSim::OverlayNode, but is optimized
+     * for use with osgEarth and geocentric terrains.
+     */
+    class OSGEARTH_EXPORT DrapingTechnique : public OverlayTechnique
+    {
+    public:
+        DrapingTechnique();
+
+        /**
+         * Explicity sets the texture unit to use. Note! When you add this class
+         * to a MapNode, it will automatically allocate a free texture unit; so you
+         * usually do NOT need to call this method.
+         */
+        void setTextureUnit( int unit );
+        int getTextureUnit() const { return *_textureUnit; }
+
+        /**
+         * The size (resolution in both directions) of the overlay texture. By
+         * default, this defaults to 4096 or your hardware's maximum supported
+         * texture size, whichever is less.
+         */
+        void setTextureSize( int texSize );
+        int getTextureSize() const { return *_textureSize; }
+
+        /**
+         * Whether mipmapping is enabled on the projected overlay texture. Mapmapping
+         * will improve the visual appearance, but will use more memory, and will affect
+         * performance for overlays that are dynamic. Mipmapping can slow things down
+         * a LOT on some GPUs (e.g. Intel GMA)
+         */
+        void setMipMapping( bool value );
+        bool getMipMapping() const { return _mipmapping; }
+
+        /**
+         * Whether to enable blending on the RTT camera graph. Default = true. You might
+         * want to disable this is you are draping polygons that cover a very large area
+         * and curve around the globe; sometimes they suffer from tessellation artifacts
+         * when draped.
+         */
+        void setOverlayBlending( bool value );
+        bool getOverlayBlending() const { return _rttBlending; }
+
+        /**
+         * Whether to attach the RTT to camera to the stencil buffer.  Default = true.
+         * Some older cards don't have very good support 
+         */
+        void setAttachStencil( bool value );
+        bool getAttachStencil() const;
+
+
+    public: // OverlayTechnique
+
+        virtual bool hasData(
+            OverlayDecorator::TechRTTParams& params) const;
+
+        void reestablish(
+            TerrainEngineNode* engine );
+
+        void preCullTerrain(
+            OverlayDecorator::TechRTTParams& params,
+            osgUtil::CullVisitor*            cv );
+
+        void cullOverlayGroup(
+            OverlayDecorator::TechRTTParams& params,
+            osgUtil::CullVisitor*            cv );
+
+        void onInstall( TerrainEngineNode* engine );
+
+        void onUninstall( TerrainEngineNode* engine );
+
+
+    protected:
+        virtual ~DrapingTechnique() { }
+
+    private:
+        optional<int>                 _explicitTextureUnit;
+        optional<int>                 _textureUnit;
+        optional<int>                 _textureSize;
+        bool                          _useShaders;
+        bool                          _mipmapping;
+        bool                          _rttBlending;
+        bool                          _attachStencil;
+
+        struct TechData : public osg::Referenced
+        {
+            osg::ref_ptr<osg::Uniform>    _texGenUniform;
+            osg::ref_ptr<osg::TexGen>     _texGen;
+        };
+
+    private:
+        
+        void setUpCamera(OverlayDecorator::TechRTTParams& params);
+    };
+
+} // namespace osgEarth
+
+#endif //OSGEARTH_OVERLAY_DRAPING_TECHNIQUE

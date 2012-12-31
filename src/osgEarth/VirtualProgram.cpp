@@ -89,7 +89,8 @@ _inherit           ( true ),
 _useLightingShaders( true )
 {
     // because we sometimes update/change the attribute's members from within the apply() method
-    this->setDataVariance( osg::Object::DYNAMIC );
+    // gw-commented out b/c apply() is only called from draw, and the changes are mutexed anyway
+    //this->setDataVariance( osg::Object::DYNAMIC );
 
     // check the the dump env var
     if ( ::getenv(OSGEARTH_DUMP_SHADERS) != 0L )
@@ -753,10 +754,22 @@ VirtualProgram::refreshAccumulatedFunctions( const osg::State& state )
 
                     for( FunctionLocationMap::const_iterator j = rhs.begin(); j != rhs.end(); ++j )
                     {
-                        const OrderedFunctionMap& ofm = j->second;
-                        for( OrderedFunctionMap::const_iterator k = ofm.begin(); k != ofm.end(); ++k )
+                        const OrderedFunctionMap& source = j->second;
+                        OrderedFunctionMap&       dest   = _accumulatedFunctions[j->first];
+
+                        for( OrderedFunctionMap::const_iterator k = source.begin(); k != source.end(); ++k )
                         {
-                            _accumulatedFunctions[j->first].insert( *k );
+                            // remove/override an existing function with the same name
+                            for( OrderedFunctionMap::iterator exists = dest.begin(); exists != dest.end(); ++exists )
+                            {
+                                if ( exists->second.compare( k->second ) == 0 )
+                                {
+                                    dest.erase(exists);
+                                    break;
+                                }
+                            }
+                            dest.insert( *k );
+                            //_accumulatedFunctions[j->first].insert( *k );
                         }
                     }
                 }
@@ -767,10 +780,22 @@ VirtualProgram::refreshAccumulatedFunctions( const osg::State& state )
     // add the local ones too:
     for( FunctionLocationMap::const_iterator j = _functions.begin(); j != _functions.end(); ++j )
     {
-        const OrderedFunctionMap& ofm = j->second;
-        for( OrderedFunctionMap::const_iterator k = ofm.begin(); k != ofm.end(); ++k )
+        const OrderedFunctionMap& source = j->second;
+        OrderedFunctionMap&       dest   = _accumulatedFunctions[j->first];
+
+        for( OrderedFunctionMap::const_iterator k = source.begin(); k != source.end(); ++k )
         {
-            _accumulatedFunctions[j->first].insert( *k );
+            // remove/override an existing function with the same name
+            for( OrderedFunctionMap::iterator exists = dest.begin(); exists != dest.end(); ++exists )
+            {
+                if ( exists->second.compare( k->second ) == 0 )
+                {
+                    dest.erase(exists);
+                    break;
+                }
+            }
+            dest.insert( *k );
+            //_accumulatedFunctions[j->first].insert( *k );
         }
     } 
 }

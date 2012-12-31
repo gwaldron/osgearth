@@ -27,54 +27,59 @@
 
 #define USE_FILELOCATIONCALLBACK OSG_MIN_VERSION_REQUIRED(2,9,5)
 
+
 #if USE_FILELOCATIONCALLBACK
 
-/**
- * A database pager callback that determines if the given filename is cached or not
- */
-class FileLocationCallback : public osgDB::FileLocationCallback
+namespace osgEarth_engine_quadtree
 {
-public:
-    FileLocationCallback() { }
-
-    /** dtor */
-    virtual ~FileLocationCallback() { }
-
-    virtual Location fileLocation(const std::string& filename, const osgDB::Options* options)
+    /**
+     * A database pager callback that determines if the given filename is cached or not
+     */
+    class FileLocationCallback : public osgDB::FileLocationCallback
     {
-        Location result = REMOTE_FILE;
-        //OE_NOTICE<<"fileLocation = "<<filename<<std::endl;
+    public:
+        FileLocationCallback() { }
 
-        unsigned int lod, x, y, id;
-        sscanf(filename.c_str(), "%d/%d/%d.%d", &lod, &x, &y, &id);
+        /** dtor */
+        virtual ~FileLocationCallback() { }
 
-        osg::ref_ptr<QuadTreeTerrainEngineNode> engine;
-        QuadTreeTerrainEngineNode::getEngineByUID( (UID)id, engine );
-
-        if ( engine.valid() )
+        virtual Location fileLocation(const std::string& filename, const osgDB::Options* options)
         {
-            const osgEarth::Profile* profile = engine->getMap()->getProfile();
-            osgEarth::TileKey mapKey( lod, x, y, profile );
+            Location result = REMOTE_FILE;
+            //OE_NOTICE<<"fileLocation = "<<filename<<std::endl;
 
-            result = LOCAL_FILE;
+            unsigned int lod, x, y, id;
+            sscanf(filename.c_str(), "%d/%d/%d.%d", &lod, &x, &y, &id);
 
-            MapFrame mapf( engine->getMap() );
-            for( unsigned i=0; i<4; ++i )
+            osg::ref_ptr<QuadTreeTerrainEngineNode> engine;
+            QuadTreeTerrainEngineNode::getEngineByUID( (UID)id, engine );
+
+            if ( engine.valid() )
             {
-                TileKey childKey = mapKey.createChildKey( i );
-                if ( !mapf.isCached( childKey ) )
+                const osgEarth::Profile* profile = engine->getMap()->getProfile();
+                osgEarth::TileKey mapKey( lod, x, y, profile );
+
+                result = LOCAL_FILE;
+
+                MapFrame mapf( engine->getMap() );
+                for( unsigned i=0; i<4; ++i )
                 {
-                    result = REMOTE_FILE;
-                    break;
+                    TileKey childKey = mapKey.createChildKey( i );
+                    if ( !mapf.isCached( childKey ) )
+                    {
+                        result = REMOTE_FILE;
+                        break;
+                    }
                 }
             }
+
+            return result;
         }
 
-        return result;
-    }
+        virtual bool useFileCache() const { return false; }
+    };
 
-    virtual bool useFileCache() const { return false; }
-};
+} // namespace osgEarth_engine_quadtree
 
 #endif // USE_FILELOCATIONCALLBACK
 

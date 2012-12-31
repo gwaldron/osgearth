@@ -19,7 +19,7 @@
 #ifndef OSGEARTH_ANNO_MODEL_NODE_H
 #define OSGEARTH_ANNO_MODEL_NODE_H 1
 
-#include <osgEarthAnnotation/LocalGeometryNode>
+#include <osgEarthAnnotation/LocalizedNode>
 #include <osgEarth/URI>
 #include <osgEarth/CachePolicy>
 #include <osgDB/ReaderWriter>
@@ -45,10 +45,23 @@ namespace osgEarth { namespace Annotation
             const Style&          style,
             const osgDB::Options* dbOptions   =0L );
 
-        virtual ~ModelNode() { }
+        /**
+         * Sets a new style and rebuilds the node.
+         */
+        void setStyle( const Style& style );
+
+        /**
+         * Gets the style last used to build this node.
+         */
+        const Style& getStyle() const { return _style; }
+
 
     public:
 
+        /**
+         * Constructs a model node from a serialized Config.
+         * (internal method).
+         */
         ModelNode(
             MapNode*              mapNode,
             const Config&         conf,
@@ -56,11 +69,19 @@ namespace osgEarth { namespace Annotation
 
         virtual Config getConfig() const;
 
+    protected: // LocalizedNode
+
+        virtual osg::MatrixTransform* getTransform() { return _xform.get(); }
+
     protected:
 
-        optional<Style> _style;
+        Style _style;
+        osg::ref_ptr<const osgDB::Options> _dbOptions;
+        osg::ref_ptr<osg::MatrixTransform> _xform;
 
-        void init(const osgDB::Options*);
+        void init();
+
+        virtual ~ModelNode() { }
     };
 
 } } // namespace osgEarth::Annotation

@@ -47,7 +47,7 @@ namespace osgEarth { namespace Util
         /**
          * Constructs a new feature dragger tool.
          */
-        FeatureManipTool( MapNode* mapNode );
+        FeatureManipTool( MapNode* mapNode, bool verticalEnabled=false );
 
         /** dtor */
         virtual ~FeatureManipTool() { }
@@ -86,7 +86,7 @@ namespace osgEarth { namespace Util
 
     public: // internal
 
-        void syncToDraggers();
+        void syncToDraggers(bool wasVertical=false);
 
     protected:
 
@@ -106,9 +106,12 @@ namespace osgEarth { namespace Util
         FeatureDrawSet                     _drawSet;
         osg::ref_ptr<osg::MatrixTransform> _manipModel;
         osg::ref_ptr<osg::Node>            _ghostModel;
+        bool                               _verticalEnabled;
         double                             _verticalOffset;
+        double                             _verticalDraggerOffset;
         osg::ref_ptr<CircleNode>           _circle;
         osg::ref_ptr<CircleNodeEditor>     _circleEditor;
+        osg::ref_ptr<SphereDragger>        _verticalDragger;
         osg::ref_ptr<osg::Group>           _workGroup;
     };
 

@@ -32,7 +32,7 @@ using namespace osgEarth;
 
 TMSPackager::TMSPackager(const Profile* outProfile, osgDB::Options* imageWriteOptions) :
 _outProfile         ( outProfile ),
-_maxLevel           ( 5 ),
+_maxLevel           ( 99 ),
 _verbose            ( false ),
 _overwrite          ( false ),
 _keepEmptyImageTiles( false ),

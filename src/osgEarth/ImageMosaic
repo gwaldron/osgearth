@@ -30,7 +30,7 @@ namespace osgEarth
     /**
      * Pairs an OSG image with TileKey parameters.
      */
-    struct TileImage
+    struct OSGEARTH_EXPORT TileImage
     {
         /**
         *Constructor
@@ -54,7 +54,7 @@ namespace osgEarth
     /**
      * Utility class for extracting a single image from a collection of image tiles
      */
-    class ImageMosaic : public osg::Referenced
+    class OSGEARTH_EXPORT ImageMosaic : public osg::Referenced
     {
     public:
         ImageMosaic();

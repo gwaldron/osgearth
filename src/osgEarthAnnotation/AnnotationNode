@@ -28,8 +28,16 @@
 #include <osgEarth/TileKey>
 #include <osg/Switch>
 
-#define META_AnnotationNode(library,type) \
-    META_Node(library,type); \
+
+#define META_AnnotationNode(library,name) \
+    META_Node(library,name) \
+    virtual bool accept(Decoration* ds, bool enable) { return ds->apply(*this, enable); }
+
+#define META_AnnotationNodeAbstract(library,name) \
+    virtual bool isSameKindAs(const osg::Object* obj) const { return dynamic_cast<const name *>(obj)!=NULL; } \
+    virtual const char* className() const { return #name; } \
+    virtual const char* libraryName() const { return #library; } \
+    virtual void accept(osg::NodeVisitor& nv) { if (nv.validNodeMask(*this)) { nv.pushOntoNodePath(this); nv.apply(*this); nv.popFromNodePath(); } } \
     virtual bool accept(Decoration* ds, bool enable) { return ds->apply(*this, enable); }
 
 // forward decs
@@ -116,6 +124,13 @@ namespace osgEarth { namespace Annotation
         const MapNode* getMapNode() const { return _mapNode.get(); }
 
 
+    public: // Style functions
+
+        virtual void setStyle(const Style& style) { }
+
+        virtual const Style& getStyle() const { return s_emptyStyle; }
+
+
     protected:
 
         osg::ref_ptr<AnnotationData> _annoData;
@@ -132,17 +147,25 @@ namespace osgEarth { namespace Annotation
 
         bool supportsAutoClamping( const Style& style ) const;
         
-        void configureForAltitudeMode( const AltitudeMode& mode );
+        /**
+         * Check the altitude symbology (if present) and configure the
+         * automatic mesh clamping if necessary.
+         */
+        virtual void configureForAltitudeMode( const AltitudeMode& mode );
 
-        // Apply general style information
+        /**
+         * Apply general style information to the node
+         */
         virtual void applyStyle( const Style&);
+        virtual void applyGeneralSymbology(const Style&);
         
         /**
-         * Sets the node to automatically re-clamp to the terrain (if applicable).
+         * Sets the node to automatically re-clamp its geometry to incoming terrain tiles
+         * as they page in (if applicable).
          * Note: you usually don't need to call this directly; it is automatically set
          * based on the symbology. But you can call it to override the automatic setting.
          */
-        virtual void setAutoClamp( bool value );
+        virtual void setCPUAutoClamping( bool value );
 
         /**
          * Whether to activate depth adjustment.
@@ -173,6 +196,7 @@ namespace osgEarth { namespace Annotation
     private:
             
         osg::observer_ptr<MapNode>   _mapNode;
+        static Style s_emptyStyle;
 
 
     public: // internal methods; do not call directly

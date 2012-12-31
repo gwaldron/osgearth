@@ -26,6 +26,11 @@
 #include <osg/Referenced>
 #include <vector>
 
+#define META_Symbol(name) \
+    virtual bool isSameKindAs(const Symbol* rhs) const { return dynamic_cast<const name *>(rhs)!=NULL; } \
+    virtual const char* className() const { return #name; }
+
+
 namespace osgEarth { namespace Symbology
 {
     /**
@@ -34,101 +39,24 @@ namespace osgEarth { namespace Symbology
     class OSGEARTHSYMBOLOGY_EXPORT Symbol : public osg::Referenced
     {
     public:
-        Symbol( const Config& conf =Config() );
-        
-        virtual ~Symbol() { }
-
         const URIContext& uriContext() const { return _uriContext; }
 
         virtual Config getConfig() const { return Config(); }
 
+    public: // META_Symbol methods
+        virtual bool isSameKindAs(const Symbol* sym) const =0;
+        virtual const char* className() const =0;
+
     protected:
         URIContext _uriContext;
+
+        static bool match(const std::string& key, const char* pattern);
+
+        Symbol( const Config& conf =Config() );
+
+        virtual ~Symbol() { }
     };
     typedef std::vector<osg::ref_ptr<Symbol> > SymbolList;
-
-    //--------------------------------------------------------------------
-    
-    /**
-     * Simple drawing parameters for a line.
-     */
-    class OSGEARTHSYMBOLOGY_EXPORT Stroke
-    {
-    public:
-        enum LineCapStyle {
-            LINECAP_DEFAULT,
-            LINECAP_BUTT,
-            LINECAP_SQUARE,
-            LINECAP_ROUND
-        };
-
-        enum LineJoinStyle {
-            LINEJOIN_DEFAULT
-        };
-
-    public:
-        Stroke();
-        Stroke( float r, float g, float b, float a );
-        Stroke( const Config& conf ) { mergeConfig(conf); }
-
-        virtual ~Stroke() { }
-
-        /** Line color. */
-        osg::Vec4f& color() { return _color; }
-        const osg::Vec4f& color() const { return _color; }
-
-        /** Capping of line ends. */
-        optional<LineCapStyle>& lineCap() { return _lineCap; }
-        const optional<LineCapStyle>& lineCap() const { return _lineCap; }
-
-        /** How to render line joints in a LineString. */
-        optional<LineJoinStyle>& lineJoin() { return _lineJoin; }
-        const optional<LineJoinStyle>& lineJoin() const { return _lineJoin; }
-
-        /** Line rendering width. */
-        optional<float>& width() { return _width; }        
-        const optional<float>& width() const { return _width; }
-
-        /** Stippling pattern. */
-        optional<unsigned short>& stipple() { return _stipple;}
-        const optional<unsigned short>& stipple() const { return _stipple; }
-
-    public:
-        virtual Config getConfig() const;            
-        virtual void mergeConfig( const Config& conf );
-
-    protected:
-        osg::Vec4f               _color;
-        optional<LineCapStyle>   _lineCap;
-        optional<LineJoinStyle>  _lineJoin;
-        optional<float>          _width;
-        optional<unsigned short> _stipple;
-    };
-
-    //--------------------------------------------------------------------
-
-    /**
-     * Simple drawing parameters for a filled area.
-     */
-    class OSGEARTHSYMBOLOGY_EXPORT Fill
-    {
-    public:
-        Fill();
-        Fill( float r, float g, float b, float a );
-        Fill( const Config& conf ) { mergeConfig(conf); }
-
-        virtual ~Fill() { }
-
-        osg::Vec4f& color() { return _color; }
-        const osg::Vec4f& color() const { return _color; }
-
-    public:
-        virtual Config getConfig() const;
-        virtual void mergeConfig( const Config& conf );
-
-    protected:
-        osg::Vec4f _color;
-    };
 
 } } // namespace osgEarth::Symbology
 

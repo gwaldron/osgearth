@@ -114,28 +114,7 @@ namespace osgEarth
         ImageLayerVector _imageLayers;
         ElevationLayerVector _elevationLayers;
         ModelLayerVector _modelLayers;
-        MaskLayerVector _maskLayers;
-
-        struct HFKey {
-            TileKey _key;
-            bool    _fallback;
-            bool    _convertToHAE;
-            ElevationSamplePolicy _samplePolicy;
-            bool operator < (const HFKey& rhs) const {
-                if ( _key < rhs._key ) return true;
-                if ( rhs._key < _key ) return false;
-                if ( _fallback != rhs._fallback ) return true;
-                if ( _convertToHAE != rhs._convertToHAE ) return true;
-                return _samplePolicy < rhs._samplePolicy;
-            }
-        };
-
-        struct HFValue {
-            osg::ref_ptr<osg::HeightField> _hf;
-            bool                           _isFallback;
-        };
-
-        mutable LRUCache<HFKey,HFValue> _hfcache;
+        MaskLayerVector _maskLayers;        
 
         friend class Map;
     };

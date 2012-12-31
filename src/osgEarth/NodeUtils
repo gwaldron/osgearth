@@ -228,6 +228,35 @@ namespace osgEarth
     }
 
     /**
+     * Replace one group with another
+     */
+    inline void replaceGroup( osg::Group* oldGroup, osg::Group* newGroup )
+    {
+        if ( oldGroup && newGroup && oldGroup->getNumParents() > 0 )
+        {
+            for(unsigned i=0; i<oldGroup->getNumChildren(); ++i)
+            {
+                newGroup->addChild( oldGroup->getChild(0) );
+            }
+
+            osg::Node::ParentList parents = oldGroup->getParents();
+            for(osg::Node::ParentList::iterator i = parents.begin(); i != parents.end(); ++i )
+            {
+                (*i)->replaceChild( oldGroup, newGroup );
+            }
+        }
+    }
+
+    /**
+     * Remove all a group's children.
+     */
+    inline void clearChildren( osg::Group* group )
+    {
+        if ( group )
+            group->removeChildren( 0, group->getNumChildren() );
+    }
+
+    /**
      * OSG Group that keeps its children as observer_ptrs instead of ref_ptrs, and
      * removes them when they deref.
      */
@@ -238,6 +267,44 @@ namespace osgEarth
         virtual void traverse( osg::NodeVisitor& nv );
         std::set<osg::Node*> _orphans;
     };
+
+    
+    /**
+     * Group that acts like a normal group but also notifies another
+     * object when a change occurs.
+     */
+    template<typename T>
+    class NotifierGroup : public osg::Group
+    {
+    public:
+        NotifierGroup(T* listener) : _listener(listener) { }
+
+        virtual bool addChild( osg::Node* child ) {
+            bool ok = osg::Group::addChild(child);
+            if ( ok && _listener.valid() ) _listener->onGroupChanged(this);
+            return ok;
+        }
+        virtual bool insertChild( unsigned index, osg::Node* child ) {
+            bool ok = osg::Group::insertChild(index, child);
+            if ( ok && _listener.valid() ) _listener->onGroupChanged(this);
+            return ok;
+        }
+        virtual bool removeChild( osg::Node* child ) {
+            bool ok = osg::Group::removeChild( child );
+            if ( ok && _listener.valid() ) _listener->onGroupChanged(this);
+            return ok;
+        }
+        virtual bool replaceChild( osg::Node* origChild, osg::Node* newChild ) {
+            bool ok = osg::Group::replaceChild(origChild, newChild);
+            if ( ok && _listener.valid() ) _listener->onGroupChanged(this);
+            return ok;
+        }
+
+    protected:
+        virtual ~NotifierGroup() { }
+        osg::observer_ptr<T> _listener;
+    };
+
 
     /**
      * Adjusts a node's update traversal count by a delta.

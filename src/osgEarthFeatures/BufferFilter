@@ -83,8 +83,8 @@ namespace osgEarth { namespace Features
         virtual FilterContext push( FeatureList& input, FilterContext& context );
 
     protected:
-        optional<double> _distance;
-        int _numQuadSegs;
+        optional<double>     _distance;
+        int                  _numQuadSegs;
         Stroke::LineCapStyle _capStyle;
     };
 

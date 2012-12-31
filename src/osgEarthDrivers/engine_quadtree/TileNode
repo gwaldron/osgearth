@@ -26,81 +26,84 @@
 #include <osg/Group>
 #include <vector>
 
-using namespace osgEarth;
-
-//------------------------------------------------------------------------
-
-/**
- * Node that represents a single quadtree terrain tile corresponding to 
- * unique TileKey.
- */
-class TileNode : public osg::Group
+namespace osgEarth_engine_quadtree
 {
-public:
-    /**
-     * Constructs a new tile node
-     */
-    TileNode( const TileKey& key, GeoLocator* keyLocator );
+    using namespace osgEarth;
+
+    //------------------------------------------------------------------------
 
     /**
-     * The tilekey associated with this tile
+     * Node that represents a single quadtree terrain tile corresponding to 
+     * unique TileKey.
      */
-    const TileKey& getKey() const { return _key; }
+    class TileNode : public osg::Group
+    {
+    public:
+        /**
+         * Constructs a new tile node
+         */
+        TileNode( const TileKey& key, GeoLocator* keyLocator );
+
+        /**
+         * The tilekey associated with this tile
+         */
+        const TileKey& getKey() const { return _key; }
+
+        /**
+         * The data model used to create this node's geometry.
+         */
+        void setTileModel( TileModel* model );
+        TileModel* getTileModel() { return _model.get(); }
+
+        /**
+         * Compiles this node's tile model into geometry.
+         * @param[in ] compiler     Compiler that will compiler the model
+         * @param[in ] releaseModel Whether to deallocate the tile model after compilation
+         * @return True upon success
+         */
+        bool compile( TileModelCompiler* compiler, bool releaseModel =true );
+
+        /**
+         * The locator for geometry in this tile
+         */
+        GeoLocator* getLocator() const { return _locator.get(); }
+
+        /**
+         * The public state set associated with the compiled tile model.
+         */
+        osg::StateSet* getPublicStateSet() const { return _publicStateSet; }
+
+
+    public: // OVERRIDES
+
+        virtual void traverse( class osg::NodeVisitor& nv );
+
+        //virtual osg::BoundingSphere computeBound() const;
+
+    protected:
+
+        virtual ~TileNode();
+
+        bool                      _cullTraversed;
+        TileKey                   _key;
+        osg::ref_ptr<GeoLocator>  _locator;
+        osg::ref_ptr<TileModel>   _model;
+        osg::StateSet*            _publicStateSet;
+    };
+
+
+    typedef std::vector< osg::ref_ptr<TileNode> > TileNodeVector;
+
 
     /**
-     * The data model used to create this node's geometry.
+     * Marker class. 
      */
-    void setTileModel( TileModel* model );
-    TileModel* getTileModel() { return _model.get(); }
+    class TileNodeGroup : public osg::Group
+    {
+    public:
+        TileNodeGroup() : osg::Group() { }
+    };
 
-    /**
-     * Compiles this node's tile model into geometry.
-     * @param[in ] compiler     Compiler that will compiler the model
-     * @param[in ] releaseModel Whether to deallocate the tile model after compilation
-     * @return True upon success
-     */
-    bool compile( TileModelCompiler* compiler, bool releaseModel =true );
-
-    /**
-     * The locator for geometry in this tile
-     */
-    GeoLocator* getLocator() const { return _locator.get(); }
-
-    /**
-     * The public state set associated with the compiled tile model.
-     */
-    osg::StateSet* getPublicStateSet() const { return _publicStateSet; }
-
-
-public: // OVERRIDES
-
-    virtual void traverse( class osg::NodeVisitor& nv );
-
-    //virtual osg::BoundingSphere computeBound() const;
-
-protected:
-
-    virtual ~TileNode();
-
-    bool                      _cullTraversed;
-    TileKey                   _key;
-    osg::ref_ptr<GeoLocator>  _locator;
-    osg::ref_ptr<TileModel>   _model;
-    osg::StateSet*            _publicStateSet;
-};
-
-
-typedef std::vector< osg::ref_ptr<TileNode> > TileNodeVector;
-
-
-/**
- * Marker class. 
- */
-class TileNodeGroup : public osg::Group
-{
-public:
-    TileNodeGroup() : osg::Group() { }
-};
-
+} // namespace osgEarth_engine_quadtree
 
 #endif // OSGEARTH_ENGINE_QUADTREE_TILE_NODE

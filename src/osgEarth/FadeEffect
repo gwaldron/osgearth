@@ -21,12 +21,45 @@
 #define OSGEARTH_FADE_EFFECT_H 1
 
 #include <osgEarth/Common>
+#include <osgEarth/Config>
 #include <osgEarth/ThreadingUtils>
 #include <osg/Group>
 #include <osg/Uniform>
 
 namespace osgEarth
 {
+    /**
+     * Options for geometry fading properties.
+     */
+    class OSGEARTH_EXPORT FadeOptions
+    {
+    public:
+        /** Construct new default fade options */
+        FadeOptions(const Config& conf =Config());
+
+        /** Time to fade in a new graph (seconds) */
+        optional<float>& duration() { return _duration; }
+        const optional<float>& duration() const { return _duration; }
+
+        /** Range at which geometry becomes invisible (m) */
+        optional<float>& maxRange() { return _maxRange; }
+        const optional<float>& maxRange() const { return _maxRange; }
+
+        /** Distance over which to fade out geometry (from max range) */
+        optional<float>& attentuationDistance() { return _attenDist; }
+        const optional<float>& attenuationDistance() const { return _attenDist; }
+
+    public:
+        virtual ~FadeOptions() { }
+        Config getConfig() const;
+
+    private:
+        optional<float> _duration;
+        optional<float> _maxRange;
+        optional<float> _attenDist;
+    };
+
+
     /**
      * Decorator node that will only display it's children when the camera is within a given elevation range
      */
@@ -45,11 +78,22 @@ namespace osgEarth
         FadeEffect();
         virtual ~FadeEffect() { }
 
+        /** Time over which to fade in the subgraph */
         void setFadeDuration( float seconds );
         float getFadeDuration() const;
 
+        /** Camera range at which subgraph is completely faded out */
+        void setMaxRange( float range );
+        float getMaxRange() const;
+
+        /** Distance over which to fade out the subgraph */
+        void setAttenuationDistance( float dist );
+        float getAttenuationDistance() const;
+
     private:
         osg::ref_ptr<osg::Uniform> _fadeDuration;
+        osg::ref_ptr<osg::Uniform> _maxRange;
+        osg::ref_ptr<osg::Uniform> _attenDist;
     };
 
 

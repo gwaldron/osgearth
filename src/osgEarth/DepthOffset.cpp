@@ -44,22 +44,97 @@ using namespace osgEarth;
 
 //------------------------------------------------------------------------
 
+
+DepthOffsetOptions::DepthOffsetOptions(const Config& conf) :
+_enabled ( true ),
+_minBias (      100.0f ),
+_maxBias (    10000.0f ),
+_minRange(     1000.0f ),
+_maxRange( 10000000.0f )
+{
+    conf.getIfSet( "enabled",   _enabled );
+    conf.getIfSet( "min_bias",  _minBias );
+    conf.getIfSet( "max_bias",  _maxBias );
+    conf.getIfSet( "min_range", _minRange );
+    conf.getIfSet( "max_range", _maxRange );
+}
+
+
+Config
+DepthOffsetOptions::getConfig() const
+{
+    Config conf("depth_offset");
+    conf.addIfSet( "enabled",   _enabled );
+    conf.addIfSet( "min_bias",  _minBias );
+    conf.addIfSet( "max_bias",  _maxBias );
+    conf.addIfSet( "min_range", _minRange );
+    conf.addIfSet( "max_range", _maxRange );
+    return conf;
+}
+
+
+//------------------------------------------------------------------------
+
+
+DepthOffsetOptionsAdapter::DepthOffsetOptionsAdapter(osg::StateSet* stateSet) :
+_stateSet( stateSet )
+{
+    if ( _stateSet.valid() )
+    {
+        _biasUniform = _stateSet->getOrCreateUniform( "oe_clamp_bias", osg::Uniform::FLOAT_VEC2 );
+        _biasUniform->set( osg::Vec2f(*_options.minBias(), *_options.maxBias()) );
+
+        _rangeUniform = _stateSet->getOrCreateUniform( "oe_clamp_range", osg::Uniform::FLOAT_VEC2 );
+        _rangeUniform->set( osg::Vec2f(*_options.minRange(), *_options.maxRange()) );
+    }
+}
+
+
+void 
+DepthOffsetOptionsAdapter::setOptions(const DepthOffsetOptions& options)
+{
+    _options = options;
+
+    if ( _stateSet.valid() )
+    {
+        _biasUniform->set( osg::Vec2f(*_options.minBias(), *_options.maxBias()) );
+        _rangeUniform->set( osg::Vec2f(*_options.minRange(), *_options.maxRange()) );
+    }
+}
+
+
+//------------------------------------------------------------------------
+
+
 namespace
 {
     struct SegmentAnalyzer
     {
-        SegmentAnalyzer() : _maxLen2(0) { }
+        SegmentAnalyzer() : _maxLen2(0), _segmentsAnalyzed(0) { }
         void operator()( const osg::Vec3& v0, const osg::Vec3& v1, bool ) {
             double len2 = (v1-v0).length2();
             if ( len2 > _maxLen2 ) _maxLen2 = len2;
+            _segmentsAnalyzed++;
         }
         double _maxLen2;
+        int    _segmentsAnalyzed;
     };
 
     struct GeometryAnalysisVisitor : public osg::NodeVisitor
     {
         GeometryAnalysisVisitor()
-            : osg::NodeVisitor(osg::NodeVisitor::TRAVERSE_ALL_CHILDREN), _analyzeSegments(true) { }
+            : osg::NodeVisitor     (osg::NodeVisitor::TRAVERSE_ALL_CHILDREN),
+              _analyzeSegments     (true),
+              _applyTextUniforms   (false),
+              _maxSegmentsToAnalyze(250) { }
+
+        void apply( osg::Node& node )
+        {
+            if ( _segmentAnalyzer._segmentsAnalyzed < _maxSegmentsToAnalyze )
+            {
+                traverse(node);
+            }
+        }
 
         void apply( osg::Geode& geode )
         {
@@ -71,14 +146,18 @@ namespace
                 {
                     d->accept( _segmentAnalyzer );
                 }
-                else if ( dynamic_cast<osgText::Text*>(d) )
+                else if ( _applyTextUniforms && dynamic_cast<osgText::Text*>(d) )
                 {
                     d->getOrCreateStateSet()->addUniform( DepthOffsetUtils::getIsTextUniform() );
                 }
             }
+            traverse((osg::Node&)geode);
         }
+
         LineFunctor<SegmentAnalyzer> _segmentAnalyzer;
+        int                          _maxSegmentsToAnalyze;
         bool                         _analyzeSegments;
+        bool                         _applyTextUniforms;
     };
 
 
@@ -248,14 +327,14 @@ DepthOffsetUtils::createMinOffsetUniform( osg::Node* graph )
 }
 
 float
-DepthOffsetUtils::recalculate( osg::Node* graph )
+DepthOffsetUtils::recalculate( const osg::Node* graph )
 {
     double minDepthOffset = 0.0;
     if ( graph )
     {
         GeometryAnalysisVisitor v;
         v._analyzeSegments = true;
-        graph->accept( v );
+        const_cast<osg::Node*>(graph)->accept( v );
         double maxLen = std::max(1.0, sqrt(v._segmentAnalyzer._maxLen2));
         minDepthOffset = sqrt(maxLen)*19.0;
 

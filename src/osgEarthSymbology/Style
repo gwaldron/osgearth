@@ -32,6 +32,7 @@
 #include <osgEarthSymbology/AltitudeSymbol>
 #include <osgEarthSymbology/TextSymbol>
 #include <osgEarthSymbology/Skins>
+#include <osgEarthSymbology/RenderSymbol>
 #include <osgEarthSymbology/ResourceLibrary>
 
 #include <osgEarth/Config>
@@ -83,6 +84,14 @@ namespace osgEarth { namespace Symbology
         /** Remove a symbol from the collection */
         bool removeSymbol (Symbol* symbol);
 
+        /** Remove a symbol by type */
+        template<typename T>
+        bool remove()
+        {
+            Symbol* s = get<T>();
+            return s ? removeSymbol(s) : false;
+        }
+
         /** Gets a typed symbol from the style (the first one found). */
         template<typename T>
         T* getSymbol()
@@ -130,14 +139,17 @@ namespace osgEarth { namespace Symbology
             }
             return sym;
         }
-        template<typename T> T* getOrCreate() { return getOrCreateSymbol<T>(); } // alias        
+
+        template<typename T> T* getOrCreate() { return getOrCreateSymbol<T>(); } // alias
+
 
         /** Serializes this object into a Config. */
         virtual Config getConfig( bool keepOrigType =true ) const;
 
         void mergeConfig( const Config& conf );
-        void fromCSS( const std::string& css );
 
+        void fromSLD(const Config&);
+        
     protected:
         std::string                 _name;
         SymbolList                  _symbols;

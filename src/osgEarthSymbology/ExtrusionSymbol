@@ -49,6 +49,8 @@ namespace osgEarth { namespace Symbology
         };
 
     public:
+        META_Symbol(ExtrusionSymbol);
+
         ExtrusionSymbol( const Config& conf =Config() );
 
         /** dtor */
@@ -88,6 +90,7 @@ namespace osgEarth { namespace Symbology
     public:
         virtual Config getConfig() const;
         virtual void mergeConfig( const Config& conf );
+        static void parseSLD(const Config& c, class Style& style);
 
     protected:
         optional<float>             _height;

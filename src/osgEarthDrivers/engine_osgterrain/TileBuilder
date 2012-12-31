@@ -26,74 +26,78 @@
 #include <osgEarth/TaskService>
 #include <osg/Group>
 
-using namespace osgEarth;
-
-class TileBuilder : public osg::Referenced
+namespace osgEarth_engine_osgterrain
 {
-public:
-    struct SourceRepo
+    using namespace osgEarth;
+
+    class TileBuilder : public osg::Referenced
     {
-        SourceRepo() { }
-
-        void add( const CustomColorLayer& layer )
+    public:
+        struct SourceRepo
         {
-            Threading::ScopedMutexLock lock(_m);
-            _colorLayers[ layer.getUID() ] = layer;
-        }
+            SourceRepo() { }
 
-        void set( const CustomElevLayer& elevLayer )
+            void add( const CustomColorLayer& layer )
+            {
+                Threading::ScopedMutexLock lock(_m);
+                _colorLayers[ layer.getUID() ] = layer;
+            }
+
+            void set( const CustomElevLayer& elevLayer )
+            {
+                // only one...no lock required
+                _elevLayer = elevLayer;
+            }
+
+            ColorLayersByUID _colorLayers;
+            CustomElevLayer _elevLayer;
+            Threading::Mutex _m;
+        };
+
+        struct Job : public osg::Referenced
         {
-            // only one...no lock required
-            _elevLayer = elevLayer;
-        }
+            Job(const TileKey& key, const Map* map) : _key(key), _mapf(map, Map::TERRAIN_LAYERS) { }
 
-        ColorLayersByUID _colorLayers;
-        CustomElevLayer _elevLayer;
-        Threading::Mutex _m;
+            TileKey           _key;
+            MapFrame          _mapf;
+            SourceRepo        _repo;
+            TaskRequestVector _tasks;
+        };
+
+    public:
+        TileBuilder(
+            const Map*               map,
+            const OSGTerrainOptions& terrainOptions,
+            TaskService*             service );
+
+        /** dtor */
+        virtual ~TileBuilder() { }
+
+        void createTile(
+            const TileKey&      key,
+            bool                parallelize,
+            osg::ref_ptr<Tile>& out_tile,
+            bool&               out_hasRealData,
+            bool&               out_hasLodBlendedLayers );
+
+        Job* createJob( const TileKey& key, Threading::MultiEvent& semaphore );
+
+        void runJob( Job* job );
+
+        void finalizeJob( 
+            Job*                job, 
+            osg::ref_ptr<Tile>& out_tile,
+            bool&               out_hasRealData,
+            bool&               out_hasLodBlending );
+
+        TaskService* getTaskService() const { return _service; }
+
+    private:
+        const Map*               _map;
+        TaskService*             _service;
+        const OSGTerrainOptions& _terrainOptions;
     };
 
-    struct Job : public osg::Referenced
-    {
-        Job(const TileKey& key, const Map* map) : _key(key), _mapf(map, Map::TERRAIN_LAYERS) { }
-
-        TileKey           _key;
-        MapFrame          _mapf;
-        SourceRepo        _repo;
-        TaskRequestVector _tasks;
-    };
-
-public:
-    TileBuilder(
-        const Map*               map,
-        const OSGTerrainOptions& terrainOptions,
-        TaskService*             service );
-
-    /** dtor */
-    virtual ~TileBuilder() { }
-
-    void createTile(
-        const TileKey&      key,
-        bool                parallelize,
-        osg::ref_ptr<Tile>& out_tile,
-        bool&               out_hasRealData,
-        bool&               out_hasLodBlendedLayers );
-
-    Job* createJob( const TileKey& key, Threading::MultiEvent& semaphore );
-
-    void runJob( Job* job );
-
-    void finalizeJob( 
-        Job*                job, 
-        osg::ref_ptr<Tile>& out_tile,
-        bool&               out_hasRealData,
-        bool&               out_hasLodBlending );
-
-    TaskService* getTaskService() const { return _service; }
-
-private:
-    const Map*               _map;
-    TaskService*             _service;
-    const OSGTerrainOptions& _terrainOptions;
-};
+} // namespace osgEarth_engine_osgterrain
 
 #endif // OSGEARTH_ENGINE_TILE_BUILDER

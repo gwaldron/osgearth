@@ -18,6 +18,8 @@
  */
 #include "KML_Object"
 
+using namespace osgEarth_kml;
+
 void
 KML_Object::build( const Config& conf, KMLContext& cx, osg::Node* working )
 {

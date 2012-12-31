@@ -20,6 +20,7 @@ SET(LIB_PUBLIC_HEADERS
     CssUtils
     Expression
     ExtrusionSymbol
+    Fill
     Geometry
     GeometryFactory
     GEOS
@@ -38,15 +39,16 @@ SET(LIB_PUBLIC_HEADERS
     PointSymbol
     PolygonSymbol
     Query
+    RenderSymbol
     Resource
     ResourceCache
     ResourceLibrary
     Skins
     StencilVolumeNode
+    Stroke
     Style
     StyleSelector
     StyleSheet
-    SLD
     Symbol
     Tags
     TextSymbol
@@ -60,6 +62,7 @@ ADD_LIBRARY(${LIB_NAME} ${OSGEARTH_USER_DEFINED_DYNAMIC_OR_STATIC}
     CssUtils.cpp
     Expression.cpp
     ExtrusionSymbol.cpp
+    Fill.cpp
     Geometry.cpp
     GeometryFactory.cpp
     GEOS.cpp
@@ -78,15 +81,16 @@ ADD_LIBRARY(${LIB_NAME} ${OSGEARTH_USER_DEFINED_DYNAMIC_OR_STATIC}
     PointSymbol.cpp
     PolygonSymbol.cpp
     Query.cpp
+    RenderSymbol.cpp
     Resource.cpp
     ResourceCache.cpp
     ResourceLibrary.cpp
     Skins.cpp
     StencilVolumeNode.cpp
+    Stroke.cpp
     Style.cpp
     StyleSelector.cpp
     StyleSheet.cpp
-    SLD.cpp
     Symbol.cpp
     TextSymbol.cpp
 )

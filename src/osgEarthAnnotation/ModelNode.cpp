@@ -22,6 +22,7 @@
 #include <osgEarthSymbology/Style>
 #include <osgEarthSymbology/InstanceSymbol>
 #include <osgEarth/Registry>
+#include <osgEarth/Capabilities>
 #include <osgEarth/ShaderGenerator>
 #include <osgEarth/VirtualProgram>
 
@@ -38,24 +39,40 @@ using namespace osgEarth::Symbology;
 ModelNode::ModelNode(MapNode*              mapNode,
                      const Style&          style,
                      const osgDB::Options* dbOptions ) :
-LocalizedNode( mapNode )
+LocalizedNode( mapNode ),
+_style       ( style ),
+_dbOptions   ( dbOptions )
 {
-    _style = style;
-    init( dbOptions );
+    _xform = new osg::MatrixTransform();
+    init();
 }
 
 
 void
-ModelNode::init(const osgDB::Options* dbOptions)
+ModelNode::setStyle(const Style& style)
 {
+    _style = style;
+    init();
+}
+
+
+void
+ModelNode::init()
+{
+    // reset.
+    this->clearDecoration();
+    osgEarth::clearChildren( this );
+    osgEarth::clearChildren( _xform.get() );
+    this->addChild( _xform.get() );
+
     this->setHorizonCulling(false);
 
-    osg::ref_ptr<const ModelSymbol> sym = _style->get<ModelSymbol>();
+    osg::ref_ptr<const ModelSymbol> sym = _style.get<ModelSymbol>();
     
     // backwards-compatibility: support for MarkerSymbol (deprecated)
-    if ( !sym.valid() && _style->has<MarkerSymbol>() )
+    if ( !sym.valid() && _style.has<MarkerSymbol>() )
     {
-        osg::ref_ptr<InstanceSymbol> temp = _style->get<MarkerSymbol>()->convertToInstanceSymbol();
+        osg::ref_ptr<InstanceSymbol> temp = _style.get<MarkerSymbol>()->convertToInstanceSymbol();
         sym = dynamic_cast<const ModelSymbol*>( temp.get() );
     }
 
@@ -73,12 +90,12 @@ ModelNode::init(const osgDB::Options* dbOptions)
 
                 if ( sym->uriAliasMap()->empty() )
                 {
-                    node = uri.getNode( dbOptions );
+                    node = uri.getNode( _dbOptions.get() );
                 }
                 else
                 {
                     // install an alias map if there's one in the symbology.
-                    osg::ref_ptr<osgDB::Options> tempOptions = Registry::instance()->cloneOrCreateOptions(dbOptions);
+                    osg::ref_ptr<osgDB::Options> tempOptions = Registry::instance()->cloneOrCreateOptions(_dbOptions.get());
                     tempOptions->setReadFileCallback( new URIAliasMapReadCallback(*sym->uriAliasMap(), uri.full()) );
                     node = uri.getNode( tempOptions.get() );
                 }
@@ -91,20 +108,26 @@ ModelNode::init(const osgDB::Options* dbOptions)
 
             if (node.valid() == true)
             {
-                // generate shader code for the loaded model:
-                ShaderGenerator gen;
-                node->accept( gen );
+                if ( Registry::capabilities().supportsGLSL() )
+                {
+                    // generate shader code for the loaded model:
+                    ShaderGenerator gen( Registry::stateSetCache() );
+                    node->accept( gen );
 
-                // need a top-level shader too:
-                VirtualProgram* vp = new VirtualProgram();
-                vp->installDefaultColoringAndLightingShaders();
-                this->getOrCreateStateSet()->setAttributeAndModes( vp, 1 );
+                    // need a top-level shader too:
+                    VirtualProgram* vp = new VirtualProgram();
+                    vp->installDefaultColoringAndLightingShaders();
+                    this->getOrCreateStateSet()->setAttributeAndModes( vp, 1 );
 
-                node->addCullCallback( new UpdateLightingUniformsHelper() );
+                    // do we really need this? perhaps
+                    node->addCullCallback( new UpdateLightingUniformsHelper() );
+                }
 
                 // attach to the transform:
-                getTransform()->addChild( node );
-                this->addChild( getTransform() );
+                _xform->addChild( node );
+
+                // insert a clamping agent if necessary:
+                replaceChild( _xform.get(), applyAltitudePolicy(_xform.get(), _style) );
 
                 if ( sym->scale().isSet() )
                 {
@@ -125,7 +148,7 @@ ModelNode::init(const osgDB::Options* dbOptions)
                     this->setLocalRotation( rot.getRotate() );
                 }
 
-                applyStyle( *_style );
+                this->applyGeneralSymbology( _style );
             }
             else
             {
@@ -149,15 +172,18 @@ OSGEARTH_REGISTER_ANNOTATION( model, osgEarth::Annotation::ModelNode );
 
 
 ModelNode::ModelNode(MapNode* mapNode, const Config& conf, const osgDB::Options* dbOptions) :
-LocalizedNode( mapNode, conf )
+LocalizedNode( mapNode, conf ),
+_dbOptions   ( dbOptions )
 {
+    _xform = new osg::MatrixTransform();
+
     conf.getObjIfSet( "style", _style );
 
     std::string uri = conf.value("url");
     if ( !uri.empty() )
-        _style->getOrCreate<ModelSymbol>()->url() = StringExpression(uri);
+        _style.getOrCreate<ModelSymbol>()->url() = StringExpression(uri);
 
-    init( dbOptions );
+    init();
 
     if ( conf.hasChild( "position" ) )
         setPosition( GeoPoint(conf.child("position")) );
@@ -168,8 +194,10 @@ ModelNode::getConfig() const
 {
     Config conf("model");
 
-    conf.updateObjIfSet( "style",    _style );
-    conf.updateObj     ( "position", getPosition() );
+    if ( !_style.empty() )
+        conf.addObj( "style", _style );
+
+    conf.addObj( "position", getPosition() );
 
     return conf;
 }

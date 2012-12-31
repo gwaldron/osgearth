@@ -181,6 +181,8 @@ CircleNodeEditor::updateDraggers()
             osg::RadiansToDegrees(lon),
             osg::RadiansToDegrees(lat));
 
+        draggerLocation.z() = osg::maximum(draggerLocation.z(), getPositionDragger()->getPosition().z());
+
         _radiusDragger->setPosition( draggerLocation, false );
     }
 }
@@ -282,10 +284,14 @@ EllipseNodeEditor::updateDraggers()
         double lat, lon;
         GeoMath::destination(osg::DegreesToRadians( location.y() ), osg::DegreesToRadians( location.x() ), osg::PI_2 - rotation, minorR, lat, lon, em->getRadiusEquator());        
 
-        _minorDragger->setPosition( GeoPoint(location.getSRS(), osg::RadiansToDegrees( lon ), osg::RadiansToDegrees( lat )), false);
+        GeoPoint minorLocation(location.getSRS(), osg::RadiansToDegrees( lon ), osg::RadiansToDegrees( lat ));
+        minorLocation.z() = osg::maximum(minorLocation.z(), getPositionDragger()->getPosition().z());
+        _minorDragger->setPosition( minorLocation, false);
 
         GeoMath::destination(osg::DegreesToRadians( location.y() ), osg::DegreesToRadians( location.x() ), -rotation, majorR, lat, lon, em->getRadiusEquator());                
-        _majorDragger->setPosition( GeoPoint(location.getSRS(), osg::RadiansToDegrees( lon ), osg::RadiansToDegrees( lat )), false);
+        GeoPoint majorLocation(location.getSRS(), osg::RadiansToDegrees( lon ), osg::RadiansToDegrees( lat ));
+        majorLocation.z() = osg::maximum(majorLocation.z(), getPositionDragger()->getPosition().z());
+        _majorDragger->setPosition( majorLocation, false);
     }
 }
 

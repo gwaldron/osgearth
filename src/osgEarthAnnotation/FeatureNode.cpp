@@ -27,10 +27,12 @@
 
 #include <osgEarthSymbology/AltitudeSymbol>
 
+#include <osgEarth/ClampableNode>
 #include <osgEarth/DrapeableNode>
 #include <osgEarth/NodeUtils>
 #include <osgEarth/Utils>
 #include <osgEarth/Registry>
+#include <osgEarth/ShaderGenerator>
 
 #include <osg/BoundingSphere>
 #include <osg/Polytope>
@@ -69,66 +71,90 @@ FeatureNode::init()
     if ( !getMapNode() )
         return;
 
-    // build the new feature geometry
+    if ( !_feature.valid() )
+        return;
+
+    // compilation options.
+    GeometryCompilerOptions options = _options;
+    
+    // figure out what kind of altitude manipulation we need to perform.
+    AnnotationUtils::AltitudePolicy ap;
+    AnnotationUtils::getAltitudePolicy( *_feature->style(), ap );
+
+    // If we're doing auto-clamping on the CPU, shut off compiler map clamping
+    // clamping since it would be redundant.
+    // TODO: I think this is OBE now that we have "scene" clamping technique..
+    if ( ap.sceneClamping )
     {
-        if ( _feature.valid() )
+        options.ignoreAltitudeSymbol() = true;
+    }
+
+    // prep the compiler:
+    GeometryCompiler compiler( options );
+    Session* session = new Session( getMapNode()->getMap() );
+    GeoExtent extent(_feature->getSRS(), _feature->getGeometry()->getBounds());
+    osg::ref_ptr<FeatureProfile> profile = new FeatureProfile( extent );
+    FilterContext context( session, profile.get(), extent );
+
+    // Clone the Feature before rendering as the GeometryCompiler and it's filters can change the coordinates
+    // of the geometry when performing localization or converting to geocentric.
+    osg::ref_ptr< Feature > clone = new Feature(*_feature.get(), osg::CopyOp::DEEP_COPY_ALL);
+
+    osg::Node* node = compiler.compile( clone.get(), *clone->style(), context );
+    if ( node )
+    {
+        if ( _feature->style().isSet() &&
+            AnnotationUtils::styleRequiresAlphaBlending( *_feature->style() ) &&
+            _feature->style()->get<ExtrusionSymbol>() )
         {
-            _feature->getWorldBoundingPolytope( getMapNode()->getMapSRS(), _featurePolytope );
+            node = AnnotationUtils::installTwoPassAlpha( node );
         }
 
-        GeometryCompilerOptions options = _options;
-        
-        // have to disable compiler clamping if we're doing auto-clamping; especially
-        // in terrain-relative mode because the auto-clamper will think the clamped
-        // coords are the relative coords.
-        bool autoClamping = !_draped && supportsAutoClamping(*_feature->style());
-        if ( autoClamping )
+        _attachPoint = new osg::Group();
+        _attachPoint->addChild( node );
+
+        // Draped (projected) geometry
+        if ( ap.draping )
         {
-            options.ignoreAltitudeSymbol() = true;
+            DrapeableNode* d = new DrapeableNode( getMapNode() );
+            d->addChild( _attachPoint );
+            this->addChild( d );
         }
 
-        // prep the compiler:
-        GeometryCompiler compiler( options );
-        Session* session = new Session( getMapNode()->getMap() );
-        GeoExtent extent(_feature->getSRS(), _feature->getGeometry()->getBounds());
-        osg::ref_ptr<FeatureProfile> profile = new FeatureProfile( extent );
-        FilterContext context( session, profile.get(), extent );
-
-        // Clone the Feature before rendering as the GeometryCompiler and it's filters can change the coordinates
-        // of the geometry when performing localization or converting to geocentric.
-        osg::ref_ptr< Feature > clone = new Feature(*_feature.get(), osg::CopyOp::DEEP_COPY_ALL);        
-
-        osg::Node* node = compiler.compile( clone.get(), *clone->style(), context );
-        if ( node )
+        // GPU-clamped geometry
+        else if ( ap.gpuClamping )
         {
-            if ( _feature->style().isSet() &&
-                AnnotationUtils::styleRequiresAlphaBlending( *_feature->style() ) &&
-                _feature->style()->get<ExtrusionSymbol>() )
+            ClampableNode* clampable = new ClampableNode( getMapNode() );
+            clampable->addChild( _attachPoint );
+            this->addChild( clampable );
+
+            const RenderSymbol* render = _feature->style()->get<RenderSymbol>();
+            if ( render && render->depthOffset().isSet() )
             {
-                node = AnnotationUtils::installTwoPassAlpha( node );
+                clampable->depthOffset() = *render->depthOffset();
             }
+        }
 
-            _attachPoint = new osg::Group();
-            _attachPoint->addChild( node );
+        else 
+        {
+            this->addChild( _attachPoint );
 
-            if ( _draped )
+            // CPU-clamped geometry?
+            if ( ap.sceneClamping )
             {
-                DrapeableNode* d = new DrapeableNode( getMapNode() );
-                d->addChild( _attachPoint );
-                this->addChild( d );
-            }
-            else
-            {
-                this->addChild( _attachPoint );
-            }
+                // save for later when we need to reclamp the mesh on the CPU
+                _altitude = _feature->style()->get<AltitudeSymbol>();
 
-            // workaround until we can auto-clamp extruded/sub'd geometries.
-            if ( autoClamping )
-            {
-                applyStyle( *_feature->style() );
+                // The polytope will ensure we only clamp to intersecting tiles:
+                _feature->getWorldBoundingPolytope( getMapNode()->getMapSRS(), _featurePolytope );
 
+                // activate the terrain callback:
+                setCPUAutoClamping( true );
+
+                // set default lighting based on whether we are extruding:
                 setLightingIfNotSet( _feature->style()->has<ExtrusionSymbol>() );
 
+                // do an initial clamp to get started.
                 clampMesh( getMapNode()->getTerrain()->getGraph() );
             }
         }
@@ -167,6 +193,8 @@ FeatureNode::getAttachPoint()
     return _attachPoint;
 }
 
+
+// This will be called by AnnotationNode when a new terrain tile comes in.
 void
 FeatureNode::reclamp( const TileKey& key, osg::Node* tile, const Terrain* )
 {

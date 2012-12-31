@@ -22,23 +22,27 @@
 #include "Common"
 #include "SerialKeyNodeFactory"
 
-using namespace osgEarth;
-
-class ParallelKeyNodeFactory : public SerialKeyNodeFactory
+namespace osgEarth_engine_osgterrain
 {
-public:
-    ParallelKeyNodeFactory(
-        TileBuilder*             builder,
-        const OSGTerrainOptions& options,
-        const MapInfo&           mapInfo,
-        TerrainNode*             terrain,
-        UID                      engineUID );
+    using namespace osgEarth;
 
-    /** dtor */
-    virtual ~ParallelKeyNodeFactory() { }
+    class ParallelKeyNodeFactory : public SerialKeyNodeFactory
+    {
+    public:
+        ParallelKeyNodeFactory(
+            TileBuilder*             builder,
+            const OSGTerrainOptions& options,
+            const MapInfo&           mapInfo,
+            TerrainNode*             terrain,
+            UID                      engineUID );
 
-    osg::Node* createRootNode( const TileKey& key );
-    osg::Node* createNode( const TileKey& key );
-};
+        /** dtor */
+        virtual ~ParallelKeyNodeFactory() { }
+
+        osg::Node* createRootNode( const TileKey& key );
+        osg::Node* createNode( const TileKey& key );
+    };
+
+} // namespace osgEarth_engine_osgterrain
 
 #endif // OSGEARTH_ENGINE_PARALLEL_KEY_NODE_FACTORY

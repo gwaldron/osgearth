@@ -21,27 +21,96 @@
 #define OSGEARTH_DEPTH_ADJUSTMENT_H 1
 
 #include <osgEarth/Common>
+#include <osgEarth/Config>
 #include <osg/Group>
 #include <osg/Program>
 #include <osg/Uniform>
 
 /**
-* Depth offsetting mitigates z-fighting artifacts for geometry that is very close
-* together, e.g. terrain-following lines. It uses a shader program to apply a 
-* simulated eye-space offset, writing values to the z-buffer as if the geometry were
-* drawn closer to the camera than they actually are. The effect is similar to what
-* glPolygonOffset is *supposed* to do (but doesn't). You get rid of z-fighting but
-* still maintain local occlusion.
+* Depth Offsetting.
+* 
+* Geometry that coincides with the terrain can result in z-fighting artifacts.
+* Depth offsetting mitigates this by biasing the depth value of the geometry.
+* The idea is similar to polygon offsetting, but is dynamic and applies to all
+* geometry (not just polygons).
 *
-* There is a trade off. You need to set a "minimum offset" that the technique will
-* apply to the geometry. From there, it uses distance-to-vertex to ramp between that and
-* a set maximum offset. The appropriate minimum offset depends a lot on the tessellation
-* of your geometry, so it's wise to use a higher offset for geometry with longer 
-* segments when in a round-earth situation. The automatic setting (the default) analyzes
-* the subgraph and picks a decent value, but you can always override this is you like.
+* Depth offsetting works by pretending the vertex is closer to the camera 
+* than it actually is, and writing a depth value based on that simulated
+* location. The distance we shift the vertex towards the camera is the "bias".
+*
+* The "range" is the distance from camera to vertex at which a given
+* bias is applied. The minimum bias is applied to geometry at or below the
+* minimum range; the maximum bias is applied to geometry at or above the 
+* maximum range; and the bias is interpolated for ranges in between.
+*
+* The tessellation granularity of the geometry affects how well depth offsetting
+* works at a given camera distance. As a rule of thumb, the closer the camera is
+* to the geometry, the more it needs to be tessellated in order for depth
+* offsetting to work properly.
 */
 namespace osgEarth
 {
+    /**
+    * Depth Offsetting options.
+    */
+    class OSGEARTH_EXPORT DepthOffsetOptions
+    {
+    public:
+        DepthOffsetOptions(const Config& conf =Config());
+
+    public:
+        /** whether to enable depth offsetting (when applicable) */
+        optional<bool>& enabled() { return _enabled; }
+        const optional<bool>& enabled() const { return _enabled; }
+
+        /** depth bias (in meters) applied at the minimum camera range. */
+        optional<float>& minBias() { return _minBias; }
+        const optional<float>& minBias() const { return _minBias; }
+
+        /** depth bias (in meters) applied at the maximum camera range. */
+        optional<float>& maxBias() { return _maxBias; }
+        const optional<float>& maxBias() const { return _maxBias; }
+
+        /** camera range (in meters) at which to apply the minimum depth bias. */
+        optional<float>& minRange() { return _minRange; }
+        const optional<float>& minRange() const { return _minRange; }
+
+        /** camera range (in meters) at which to apply the maximum depth bias. */
+        optional<float>& maxRange() { return _maxRange; }
+        const optional<float>& maxRange() const { return _maxRange; }
+
+    public:
+        Config getConfig() const;
+
+    private:
+        optional<bool>  _enabled;
+        optional<float> _minBias;
+        optional<float> _maxBias;
+        optional<float> _minRange;
+        optional<float> _maxRange;
+    };
+
+
+    /**
+     * Controller that affects a stateset with depth offset settings.
+     * It does NOT install any shaders.
+     */
+    class OSGEARTH_EXPORT DepthOffsetOptionsAdapter
+    {
+    public:
+        DepthOffsetOptionsAdapter(osg::StateSet* stateSet);
+
+        void setOptions(const DepthOffsetOptions& options);
+        const DepthOffsetOptions& getOptions() const { return _options; }
+
+    private:
+        osg::ref_ptr<osg::StateSet> _stateSet;
+        osg::ref_ptr<osg::Uniform>  _biasUniform;
+        osg::ref_ptr<osg::Uniform>  _rangeUniform;
+        DepthOffsetOptions          _options;
+    };
+
+
     /**
      * Utilities to manage depth testing for feature data. Handy especially
      * for terrain-conforming lines.
@@ -63,7 +132,7 @@ namespace osgEarth
          * returns it. Also may install support uniforms within the graph as
          * necessary to support depth offsetting.
          */
-        static float recalculate( osg::Node* graph );
+        static float recalculate( const osg::Node* graph );
 
         /**
          * Traverses a graph and applies the necessary uniforms to statesets

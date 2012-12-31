@@ -33,14 +33,18 @@ namespace osgEarth { namespace Annotation
     using namespace osgEarth::Symbology;
 
     /**
-     * A node that renders a single feature. Since no feature profile is provided,
+     * Renders a single feature. Since no feature profile is provided,
      * the feature must contain geometry that is in the same SRS as the map.
+     * The feature must also include the Style you wish to use.
      */
     class OSGEARTHANNO_EXPORT FeatureNode : public AnnotationNode
     {
     public:
         META_AnnotationNode(osgEarthAnnotation, FeatureNode);
 
+        /**
+         * Constructs a new Feautre Node.
+         */
         FeatureNode( 
             MapNode* mapNode, 
             Feature* feature, 
@@ -49,10 +53,14 @@ namespace osgEarth { namespace Annotation
 
         virtual ~FeatureNode() { }
 
+        /**
+         * The feature that this node will render.
+         */
         void setFeature( Feature* feature );
         Feature* getFeature() { return _feature.get(); }
         const Feature* getFeature() const { return _feature.get(); }
 
+        /** Whether the feature is draped on the terrain */
         bool isDraped() const { return _draped; }
 
         void init();
@@ -71,11 +79,11 @@ namespace osgEarth { namespace Annotation
         virtual Config getConfig() const;
 
     protected:
-        osg::ref_ptr<Feature>       _feature;
-        GeometryCompilerOptions     _options;
-        bool                        _draped;
-        osg::Group*                 _attachPoint;
-        osg::Polytope               _featurePolytope;
+        osg::ref_ptr<Feature>        _feature;
+        GeometryCompilerOptions      _options;
+        bool                         _draped;
+        osg::Group*                  _attachPoint;
+        osg::Polytope                _featurePolytope;
 
         FeatureNode() { }
         FeatureNode(const FeatureNode& rhs, const osg::CopyOp& op) { }

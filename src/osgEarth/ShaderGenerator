@@ -61,7 +61,9 @@ namespace osgEarth
 
         void apply( osg::Drawable* );
 
-        bool generate( osg::StateSet* stateSet, osg::ref_ptr<osg::StateSet>& replacement );
+        bool processGeometry( osg::StateSet* stateSet, osg::ref_ptr<osg::StateSet>& replacement );
+
+        bool processText( osg::StateSet* stateSet, osg::ref_ptr<osg::StateSet>& replacement );
 
         osg::ref_ptr<osg::State> _state;
 

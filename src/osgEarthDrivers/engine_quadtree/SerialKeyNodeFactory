@@ -29,42 +29,46 @@
 using namespace osgEarth;
 using namespace osgEarth::Drivers;
 
-class SerialKeyNodeFactory : public KeyNodeFactory
+namespace osgEarth_engine_quadtree
 {
-public:
-    SerialKeyNodeFactory(
-        TileModelFactory*                   modelFactory,
-        TileModelCompiler*                  modelCompiler,
-        TileNodeRegistry*                   liveTiles,
-        TileNodeRegistry*                   deadTiles,
-        const QuadTreeTerrainEngineOptions& options,
-        const MapInfo&                      mapInfo,
-        TerrainNode*                        terrain,
-        UID                                 engineUID );
+    class SerialKeyNodeFactory : public KeyNodeFactory
+    {
+    public:
+        SerialKeyNodeFactory(
+            TileModelFactory*                   modelFactory,
+            TileModelCompiler*                  modelCompiler,
+            TileNodeRegistry*                   liveTiles,
+            TileNodeRegistry*                   deadTiles,
+            const QuadTreeTerrainEngineOptions& options,
+            const MapInfo&                      mapInfo,
+            TerrainNode*                        terrain,
+            UID                                 engineUID );
 
-    /** dtor */
-    virtual ~SerialKeyNodeFactory() { }
+        /** dtor */
+        virtual ~SerialKeyNodeFactory() { }
 
 
-public: // KeyNodeFactory
+    public: // KeyNodeFactory
 
-    osg::Node* createRootNode( const TileKey& key );
+        osg::Node* createRootNode( const TileKey& key );
 
-    osg::Node* createNode( const TileKey& key );
+        osg::Node* createNode( const TileKey& key );
 
-    TileModelCompiler* getCompiler() const { return _modelCompiler.get(); }
+        TileModelCompiler* getCompiler() const { return _modelCompiler.get(); }
 
-protected:
-    void addTile(TileModel* model, bool tileHasRealData, bool tileHasLodBlending, osg::Group* parent );
+    protected:
+        void addTile(TileModel* model, bool tileHasRealData, bool tileHasLodBlending, osg::Group* parent );
 
-    osg::ref_ptr<TileModelFactory>      _modelFactory;
-    osg::ref_ptr<TileModelCompiler>     _modelCompiler;
-    osg::ref_ptr<TileNodeRegistry>      _liveTiles;
-    osg::ref_ptr<TileNodeRegistry>      _deadTiles;
-    const QuadTreeTerrainEngineOptions& _options;
-    const MapInfo                       _mapInfo;
-    osg::ref_ptr< TerrainNode >         _terrain;
-    UID                                 _engineUID;
-};
+        osg::ref_ptr<TileModelFactory>      _modelFactory;
+        osg::ref_ptr<TileModelCompiler>     _modelCompiler;
+        osg::ref_ptr<TileNodeRegistry>      _liveTiles;
+        osg::ref_ptr<TileNodeRegistry>      _deadTiles;
+        const QuadTreeTerrainEngineOptions& _options;
+        const MapInfo                       _mapInfo;
+        osg::ref_ptr< TerrainNode >         _terrain;
+        UID                                 _engineUID;
+    };
+
+} // namespace osgEarth_engine_quadtree
 
 #endif // OSGEARTH_ENGINE_QUADTREE_SERIAL_KEY_NODE_FACTORY

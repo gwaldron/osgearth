@@ -293,6 +293,21 @@ ElevationLayer::assembleHeightFieldFromTileSource(const TileKey&    key,
                 {
                     heightFields.push_back( GeoHeightField(hf, layerKey.getExtent()) );
                 }
+                else
+                { 
+                    //We couldn't get a heightfield at the given key so fall back on parent tiles
+                    TileKey parentKey = layerKey.createParentKey();
+                    while (!hf && parentKey.valid())
+                    {
+                        hf = createHeightFieldFromTileSource( parentKey, progress );
+                        if (hf)
+                        {
+                            heightFields.push_back( GeoHeightField(hf, parentKey.getExtent()) );
+                            break;
+                        }                        
+                        parentKey = parentKey.createParentKey();
+                    }                    
+                }
             }
         }
     }

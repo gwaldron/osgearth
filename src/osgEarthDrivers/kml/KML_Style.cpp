@@ -22,6 +22,8 @@
 #include "KML_LineStyle"
 #include "KML_PolyStyle"
 
+using namespace osgEarth_kml;
+
 void
 KML_Style::scan( const Config& conf, KMLContext& cx )
 {

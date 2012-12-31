@@ -528,7 +528,7 @@ namespace osgEarth { namespace QtGui
 
       if (_root.valid() && _mouseDown)
       {
-        _ellipseNode = new osgEarth::Annotation::EllipseNode(_mapNode, _position, _radiusMajor, _radiusMinor, _rotationAngle, _ellipseStyle, false);
+        _ellipseNode = new osgEarth::Annotation::EllipseNode(_mapNode, _position, _radiusMajor, _radiusMinor, _rotationAngle, _ellipseStyle);
         _root->addChild(_ellipseNode);
       }
     }

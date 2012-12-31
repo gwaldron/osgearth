@@ -142,18 +142,6 @@ namespace osgEarth
         OverlayDecorator* getOverlayDecorator() { return _overlayDecorator; }
 
         /**
-         * Accesses the group containing anything that will be "draped" on the terrain
-         * via the OverlayDecorator.
-         */
-        osg::Group* getOverlayGroup() { return _overlayModels.get(); }
-        
-        /**
-         * If you add or remove children to/fro the overlay group above, call this
-         * method to refresh the overlay graph.
-         */
-        void updateOverlayGraph();
-
-        /**
          * Gets the engine properties associated with this node. The engine
          * properties dictate how the map engine will create scene graph elements.
          */

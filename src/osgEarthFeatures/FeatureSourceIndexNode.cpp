@@ -29,6 +29,25 @@ using namespace osgEarth::Features;
 //#undef  OE_DEBUG
 //#define OE_DEBUG OE_INFO
 
+
+//-----------------------------------------------------------------------------
+
+
+FeatureSourceIndexOptions::FeatureSourceIndexOptions(const Config& conf) :
+_embedFeatures( false )
+{
+    conf.getIfSet( "embed_features", _embedFeatures );
+}
+
+Config
+FeatureSourceIndexOptions::getConfig() const
+{
+    Config conf("feature_indexing");
+    conf.addIfSet( "embed_features", _embedFeatures );
+    return conf;
+}
+
+
 //-----------------------------------------------------------------------------
 
 FeatureSourceIndexNode::Collect::Collect( FeatureIDDrawSetMap& index ) :
@@ -88,8 +107,10 @@ FeatureSourceIndexNode::Collect::apply( osg::Geode& geode )
 
 //-----------------------------------------------------------------------------
 
-FeatureSourceIndexNode::FeatureSourceIndexNode(FeatureSource* featureSource) : 
-_featureSource( featureSource )
+FeatureSourceIndexNode::FeatureSourceIndexNode(FeatureSource*                   featureSource, 
+                                               const FeatureSourceIndexOptions& options) :
+_featureSource( featureSource ), 
+_options      ( options )
 {
     //nop
 }
@@ -110,7 +131,7 @@ FeatureSourceIndexNode::reindex()
 
 // Tags all the primitive sets in a Drawable with the specified FeatureID
 void
-FeatureSourceIndexNode::tagPrimitiveSets(osg::Drawable* drawable, FeatureID fid) const
+FeatureSourceIndexNode::tagPrimitiveSets(osg::Drawable* drawable, Feature* feature) const
 {
     if ( drawable == 0L )
         return;
@@ -125,17 +146,27 @@ FeatureSourceIndexNode::tagPrimitiveSets(osg::Drawable* drawable, FeatureID fid)
     for( osg::Geometry::PrimitiveSetList::iterator p = plist.begin(); p != plist.end(); ++p )
     {
         if ( !rfid )
-            rfid = new RefFeatureID(fid);
+            rfid = new RefFeatureID(feature->getFID());
 
         p->get()->setUserData( rfid );
+
+        if ( _options.embedFeatures() == true )
+        {
+            _features[feature->getFID()] = feature;
+        }
     }
 }
 
 
 void
-FeatureSourceIndexNode::tagNode( osg::Node* node, FeatureID fid ) const
+FeatureSourceIndexNode::tagNode( osg::Node* node, Feature* feature ) const
 {
-    node->setUserData( new RefFeatureID(fid) );
+    node->setUserData( new RefFeatureID(feature->getFID()) );
+
+    if ( _options.embedFeatures() == true )
+    {
+        _features[feature->getFID()] = feature;
+    }
 }
 
 
@@ -220,4 +251,27 @@ FeatureSourceIndexNode::getDrawSet(const FeatureID& fid )
 
     FeatureIDDrawSetMap::iterator i = _drawSets.find(fid);
     return i != _drawSets.end() ? i->second : s_empty;
+}
+
+
+bool
+FeatureSourceIndexNode::getFeature(const FeatureID& fid, const Feature*& output) const
+{
+    if ( _options.embedFeatures() == true )
+    {
+        FeatureMap::const_iterator f = _features.find(fid);
+
+        if(f != _features.end())
+        {
+            output = f->second.get();
+            return output != 0L;
+        }
+    }
+    else if ( _featureSource.valid() )
+    {
+        output = _featureSource->getFeature( fid );
+        return output != 0L;
+    }
+
+    return false;
 }

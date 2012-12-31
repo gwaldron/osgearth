@@ -1,0 +1,85 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+ * Copyright 2008-2011 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+
+#ifndef OSGEARTH_CLAMPABLE_NODE_H
+#define OSGEARTH_CLAMPABLE_NODE_H 1
+
+#include <osgEarth/Common>
+#include <osgEarth/DepthOffset>
+#include <osgEarth/OverlayNode>
+#include <osg/Group>
+
+namespace osgEarth
+{
+    class MapNode;
+
+    /**
+     * Node graph that can be "clamped" on the MapNode terrain
+     * using the overlay decorator.
+     *
+     * Usage: Create this node and put it anywhere in the scene graph. The
+     * subgraph of this node will be draped on the MapNode's terrain.
+     */
+    class OSGEARTH_EXPORT ClampableNode : public OverlayNode
+    {
+    public:
+        /**
+         * Constructs a new clampable node.
+         */
+        ClampableNode( MapNode* mapNode, bool clamped =true );
+
+    public:
+        /** Depth Offsetting properties. Clamped geometry is automatically
+         *  subjected to depth offsetting to mitigate z-buffer conflicts */
+        DepthOffsetOptions& depthOffset() { dirtyDepthOffsetOptions(); return _do; }
+        const DepthOffsetOptions& depthOffset() const { return _do; }
+        
+        /** Automatically attempt to select a minimum bias based on an analysis
+         *  of the subgraph's geometry. */
+        void setAutoCalculateDepthOffset();
+
+        /** Backwards compatibility */
+        void setClamped( bool value ) { setActive(value); }
+        bool getClamped() const { return getActive(); }
+
+    public: // osg::Node
+
+        virtual osg::BoundingSphere computeBound() const;
+
+        virtual void traverse(osg::NodeVisitor& nv);
+
+    protected:
+        /** dtor */
+        virtual ~ClampableNode() { }
+
+        bool _autoBias;
+        mutable osg::ref_ptr<osg::Uniform> _biasUniform;
+        mutable osg::ref_ptr<osg::Uniform> _rangeUniform;
+
+        mutable DepthOffsetOptions _do;
+        bool _doDirty;
+
+        void init();
+        void dirtyDepthOffsetOptions();
+        void applyDepthOffsetOptions();
+    };
+
+} // namespace osgEarth
+
+#endif // OSGEARTH_CLAMPABLE_NODE_H

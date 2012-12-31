@@ -23,6 +23,7 @@
 #include <osgEarthAnnotation/OrthoNode>
 #include <osgEarthSymbology/Style>
 #include <osgEarth/MapNode>
+#include <osg/Geode>
 
 namespace osgEarth { namespace Annotation
 {
@@ -65,6 +66,13 @@ namespace osgEarth { namespace Annotation
             const Style&            style );
 
         /**
+         * Construct a label node with just a style
+         */
+        LabelNode(
+            MapNode*                mapNode,
+            const Style&            style );
+
+        /**
          * Constructs a label node that is positioned some other way,
          * typically by being in a subgraph under another transform
          * somewhere.
@@ -92,7 +100,7 @@ namespace osgEarth { namespace Annotation
         /**
          * Gets a copy of the text style.
          */
-        const Style style() const { return _style; }
+        const Style& style() const { return _style; }
 
         /**
          * Sets a new text style
@@ -110,9 +118,9 @@ namespace osgEarth { namespace Annotation
     protected:
         void init(const Style& style);
 
-        std::string       _text;
-        class osg::Geode* _geode;
-        Style             _style;
+        std::string              _text;
+        Style                    _style;
+        osg::ref_ptr<osg::Geode> _geode;
 
         /** Copy constructor */
         LabelNode( const LabelNode& rhs, const osg::CopyOp& op =osg::CopyOp::DEEP_COPY_ALL ) { }

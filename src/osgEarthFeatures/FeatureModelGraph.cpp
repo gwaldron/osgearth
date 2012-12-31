@@ -21,13 +21,14 @@
 #include <osgEarthFeatures/CropFilter>
 #include <osgEarthFeatures/FeatureSourceIndexNode>
 #include <osgEarth/Capabilities>
+#include <osgEarth/ClampableNode>
 #include <osgEarth/CullingUtils>
+#include <osgEarth/DrapeableNode>
 #include <osgEarth/ElevationLOD>
 #include <osgEarth/ElevationQuery>
 #include <osgEarth/FadeEffect>
 #include <osgEarth/NodeUtils>
 #include <osgEarth/Registry>
-#include <osgEarth/VirtualProgram>
 #include <osgEarth/ThreadingUtils>
 
 #include <osg/CullFace>
@@ -45,9 +46,8 @@ using namespace osgEarth::Features;
 using namespace osgEarth::Symbology;
 
 #undef USE_PROXY_NODE_FOR_TESTING
-
-//#define OE_TEST OE_NULL
-#define OE_TEST OE_NOTICE
+#define OE_TEST OE_NULL
+//#define OE_TEST OE_NOTICE
 
 //---------------------------------------------------------------------------
 
@@ -84,10 +84,9 @@ namespace
         p->setFileName( 0, uri );
 #else
         PagedLODWithNodeOperations* p = new PagedLODWithNodeOperations(postMergeOps);
-        //osg::PagedLOD* p = new osg::PagedLOD();
         p->setCenter( bs.center() );
-        //p->setRadius( bs.radius() );
-        p->setRadius(std::max((float)bs.radius(),maxRange));
+        //p->setRadius(std::max((float)bs.radius(),maxRange));
+        p->setRadius( bs.radius() );
         p->setFileName( 0, uri );
         p->setRange( 0, minRange, maxRange );
         p->setPriorityOffset( 0, priOffset );
@@ -200,11 +199,16 @@ namespace
 FeatureModelGraph::FeatureModelGraph(Session*                         session,
                                      const FeatureModelSourceOptions& options,
                                      FeatureNodeFactory*              factory ) :
-_session      ( session ),
-_options      ( options ),
-_factory      ( factory ),
-_dirty        ( false ),
-_pendingUpdate( false )
+_session           ( session ),
+_options           ( options ),
+_factory           ( factory ),
+_dirty             ( false ),
+_pendingUpdate     ( false ),
+_overlayInstalled  ( 0L ),
+_overlayPlaceholder( 0L ),
+_clampable         ( 0L ),
+_drapeable         ( 0L ),
+_overlayChange     ( OVERLAY_NO_CHANGE )
 {
     _uid = osgEarthFeatureModelPseudoLoader::registerGraph( this );
 
@@ -294,7 +298,7 @@ _pendingUpdate( false )
 
     // If the user requests fade-in, install a post-merge operation that will set the 
     // proper fade time for paged nodes.
-    if ( _options.fadeInDuration().value() > 0.0f )
+    if ( _options.fading().isSet() )
     {
         addPostMergeOperation( new SetupFading() );
         OE_INFO << LC << "Added fading post-merge operation" << std::endl;
@@ -378,9 +382,10 @@ FeatureModelGraph::setupPaging()
     osg::BoundingSphered bs = getBoundInWorldCoords( _usableMapExtent, &mapf );
 
     const FeatureProfile* featureProfile = _session->getFeatureSource()->getFeatureProfile();
-    if (featureProfile->getTiled() && 
-        !_options.layout()->tileSizeFactor().isSet() && 
-        (_options.layout()->maxRange().isSet() || _options.maxRange().isSet()))
+
+    optional<float> maxRangeOverride;
+
+    if (_options.layout()->maxRange().isSet() || _options.maxRange().isSet())
     {
         // select the max range either from the Layout or from the model layer options.
         float userMaxRange = FLT_MAX;
@@ -389,27 +394,39 @@ FeatureModelGraph::setupPaging()
         if ( _options.maxRange().isSet() )
             userMaxRange = std::min(userMaxRange, *_options.maxRange());
 
-        //Automatically compute the tileSizeFactor based on the max range
-        double width, height;
-        featureProfile->getProfile()->getTileDimensions(featureProfile->getFirstLevel(), width, height);
+        if (featureProfile->getTiled() )
+        {
+            if ( !_options.layout()->tileSizeFactor().isSet() )
+            {
+                //Automatically compute the tileSizeFactor based on the max range
+                double width, height;
+                featureProfile->getProfile()->getTileDimensions(featureProfile->getFirstLevel(), width, height);
 
-        GeoExtent ext(featureProfile->getSRS(),
-                      featureProfile->getExtent().west(),
-                      featureProfile->getExtent().south(),
-                      featureProfile->getExtent().west() + width,
-                      featureProfile->getExtent().south() + height);
-        osg::BoundingSphered bounds = getBoundInWorldCoords( ext, &mapf);
+                GeoExtent ext(featureProfile->getSRS(),
+                              featureProfile->getExtent().west(),
+                              featureProfile->getExtent().south(),
+                              featureProfile->getExtent().west() + width,
+                              featureProfile->getExtent().south() + height);
+                osg::BoundingSphered bounds = getBoundInWorldCoords( ext, &mapf);
 
-        float tileSizeFactor = userMaxRange / bounds.radius();
-        //The tilesize factor must be at least 1.0 to avoid culling the tile when you are within it's bounding sphere. 
-        tileSizeFactor = osg::maximum( tileSizeFactor, 1.0f);
-        OE_DEBUG << LC << "Computed a tilesize factor of " << tileSizeFactor << " with max range setting of " <<  userMaxRange << std::endl;
-        _options.layout()->tileSizeFactor() = tileSizeFactor * 1.5;
+                float tileSizeFactor = userMaxRange / bounds.radius();
+                //The tilesize factor must be at least 1.0 to avoid culling the tile when you are within it's bounding sphere. 
+                tileSizeFactor = osg::maximum( tileSizeFactor, 1.0f);
+                OE_DEBUG << LC << "Computed a tilesize factor of " << tileSizeFactor << " with max range setting of " <<  userMaxRange << std::endl;
+                _options.layout()->tileSizeFactor() = tileSizeFactor * 1.5;
+            }
+        }
+        else
+        {
+            // user set a max_range, but we'd not tiled. Just override the top level plod.
+            maxRangeOverride = userMaxRange;
+        }
     }
-   
 
     // calculate the max range for the top-level PLOD:
-    float maxRange = bs.radius() * _options.layout()->tileSizeFactor().value();
+    float maxRange = 
+        maxRangeOverride.isSet() ? *maxRangeOverride :
+        bs.radius() * _options.layout()->tileSizeFactor().value();
 
     // build the URI for the top-level paged LOD:
     std::string uri = s_makeURI( _uid, 0, 0, 0 );
@@ -634,9 +651,10 @@ FeatureModelGraph::buildLevel( const FeatureLevel& level, const GeoExtent& exten
     // set up for feature indexing if appropriate:
     osg::ref_ptr<osg::Group> group;
     FeatureSourceIndexNode* index = 0L;
-    if ( _session->getFeatureSource() && (_options.featureIndexing() == true) )
+
+    if ( _session->getFeatureSource() && _options.featureIndexing().isSet() )
     {
-        index = new FeatureSourceIndexNode( _session->getFeatureSource() );
+        index = new FeatureSourceIndexNode( _session->getFeatureSource(), *_options.featureIndexing() );
         group = index;
     }
     else
@@ -693,18 +711,9 @@ FeatureModelGraph::buildLevel( const FeatureLevel& level, const GeoExtent& exten
 
     if ( group->getNumChildren() > 0 )
     {
-        
         // account for a min-range here. Do not address the max-range here; that happens
         // above when generating paged LOD nodes, etc.        
         float minRange = level.minRange();
-
-        /*
-        if ( _options.minRange().isSet() ) 
-            minRange = std::max(minRange, *_options.minRange());
-
-        if ( _options.layout().isSet() && _options.layout()->minRange().isSet() )
-            minRange = std::max(minRange, *_options.layout()->minRange());
-            */
 
         if ( minRange > 0.0f )
         {
@@ -1029,11 +1038,14 @@ FeatureModelGraph::createStyleGroup(const Style&         style,
             if ( node.valid() )
                 styleGroup->addChild( node.get() );
         }
+
+        // Check the style and see if we need to active GPU clamping. GPU clamping
+        // is currently all-or-nothing for a single FMG.
+        checkForGlobalAltitudeStyles( style );
     }
 
     return styleGroup;
 }
-
 
 
 osg::Group*
@@ -1074,6 +1086,49 @@ FeatureModelGraph::createStyleGroup(const Style&        style,
 
 
 void
+FeatureModelGraph::checkForGlobalAltitudeStyles( const Style& style )
+{
+    const AltitudeSymbol* alt = style.get<AltitudeSymbol>();
+    if ( alt )
+    {
+        if ((alt->clamping() == AltitudeSymbol::CLAMP_TO_TERRAIN || alt->clamping() == AltitudeSymbol::CLAMP_RELATIVE_TO_TERRAIN))
+        {
+            if ( alt->technique() == AltitudeSymbol::TECHNIQUE_GPU && !_clampable )
+            {
+                _clampable = new ClampableNode( 0L );
+                _overlayChange = OVERLAY_INSTALL_CLAMPABLE;
+            }
+
+            else if ( alt->technique() == AltitudeSymbol::TECHNIQUE_DRAPE && !_drapeable )
+            {
+                _drapeable = new DrapeableNode( 0L );
+                _overlayChange = OVERLAY_INSTALL_DRAPEABLE;
+            }
+        }
+    }
+
+    if ( _clampable )
+    {
+        // if we're using extrusion, don't perform depth offsetting:
+        const ExtrusionSymbol* extrusion = style.get<ExtrusionSymbol>();
+        if ( extrusion )
+        {
+            _clampable->depthOffset().enabled() = false;
+        }
+
+        // check for explicit depth offset render settings (note, this could
+        // override the automatic disable put in place by the presence of an
+        // ExtrusionSymbol above)
+        const RenderSymbol* render = style.get<RenderSymbol>();
+        if ( render && render->depthOffset().isSet() )
+        {
+            _clampable->depthOffset() = *render->depthOffset();
+        }
+    }
+}
+
+
+void
 FeatureModelGraph::traverse(osg::NodeVisitor& nv)
 {
     if ( nv.getVisitorType() == osg::NodeVisitor::EVENT_VISITOR )
@@ -1081,6 +1136,11 @@ FeatureModelGraph::traverse(osg::NodeVisitor& nv)
         if ( !_pendingUpdate && (_dirty || _session->getFeatureSource()->outOfSyncWith(_revision)) )
         {
             _pendingUpdate = true;
+            ADJUST_UPDATE_TRAV_COUNT( this, 1 );
+        }
+
+        else if ( _overlayChange != OVERLAY_NO_CHANGE )
+        {
             ADJUST_UPDATE_TRAV_COUNT( this, 1 );
         }
     }
@@ -1093,15 +1153,86 @@ FeatureModelGraph::traverse(osg::NodeVisitor& nv)
             _pendingUpdate = false;
             ADJUST_UPDATE_TRAV_COUNT( this, -1 );
         }
+
+        else if ( _overlayChange != OVERLAY_NO_CHANGE )
+        {
+            changeOverlay();
+            _overlayChange = OVERLAY_NO_CHANGE;
+            ADJUST_UPDATE_TRAV_COUNT( this, -1 );
+        }
     }
 
     osg::Group::traverse(nv);
 }
 
+
+void
+FeatureModelGraph::runPostMergeOperations(osg::Node* node)
+{
+    if ( _postMergeOperations.valid() )
+    {
+        for( NodeOperationVector::iterator i = _postMergeOperations->begin(); i != _postMergeOperations->end(); ++i )
+        {
+            i->get()->operator()( node );
+        }
+    }
+}
+
+
+void
+FeatureModelGraph::changeOverlay()
+{
+    if (_overlayChange == OVERLAY_INSTALL_CLAMPABLE &&
+        _clampable                                  && 
+        _clampable != _overlayInstalled )
+    {
+        runPostMergeOperations( _clampable );
+        osgEarth::replaceGroup( _overlayInstalled, _clampable );
+        _overlayInstalled   = _clampable;
+        _drapeable          = 0L;
+        _overlayPlaceholder = 0L;
+        OE_INFO << LC << "Installed clampable decorator on layer " << getName() << std::endl;
+    }
+
+    else if (
+        _overlayChange == OVERLAY_INSTALL_DRAPEABLE && 
+        _drapeable                                  && 
+        _drapeable != _overlayInstalled )
+    {
+        runPostMergeOperations( _drapeable );
+        osgEarth::replaceGroup( _overlayInstalled, _drapeable );
+        _overlayInstalled   = _drapeable;
+        _overlayPlaceholder = 0L;
+        _clampable          = 0L;
+        OE_INFO << LC << "Installed drapeable decorator on layer " << getName() << std::endl;
+    }
+
+    else if (
+        _overlayChange == OVERLAY_INSTALL_PLACEHOLDER && 
+        _overlayPlaceholder                           && 
+        _overlayPlaceholder != _overlayInstalled)
+    {
+        runPostMergeOperations( _overlayPlaceholder );
+        osgEarth::replaceGroup( _overlayInstalled, _overlayPlaceholder );
+        _overlayInstalled = _overlayPlaceholder;
+        _clampable        = 0L;
+        _drapeable        = 0L;
+        OE_INFO << LC << "Installed null decorator on layer " << getName() << std::endl;
+    }
+}
+
+
 void
 FeatureModelGraph::redraw()
 {
+    // clear it out
     removeChildren( 0, getNumChildren() );
+
+    // zero out any decorators
+    _clampable          = 0L;
+    _drapeable          = 0L;
+    _overlayPlaceholder = new osg::Group();
+    _overlayInstalled   = _overlayPlaceholder;
 
     osg::Node* node = 0;
     // if there's a display schema in place, set up for quadtree paging.
@@ -1139,13 +1270,22 @@ FeatureModelGraph::redraw()
         node = lod;
     }
 
-    // If we want fading, install a fader.
-    if ( _options.fadeInDuration().value() > 0.0f )
+    // If we want fading, install fading.
+    if ( _options.fading().isSet() )
     {
         FadeEffect* fader = new FadeEffect();
-        fader->setFadeDuration( *_options.fadeInDuration() );
+        fader->setFadeDuration( *_options.fading()->duration() );
+        fader->setMaxRange( *_options.fading()->maxRange() );
+        fader->setAttenuationDistance( *_options.fading()->attenuationDistance() );
         fader->addChild( node );
         node = fader;
+    }
+
+    // overlay placeholder. this will make it easier to 
+    // replace with a clamper/draper later if necessary
+    {
+        _overlayInstalled->addChild( node );
+        node = _overlayInstalled;
     }
 
     addChild( node );

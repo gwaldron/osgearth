@@ -75,12 +75,6 @@ namespace osgEarth { namespace Annotation
         static osg::Uniform* createHighlightUniform();
 
         /**
-         * Install a program that implements fading, highligting, etc. on annotation 
-         * objects.
-         */
-        static void installAnnotationProgram( osg::StateSet* stateSet );
-
-        /**
          * Builds a graph on top of the specified that that implements a 2-pass
          * rendering scheme for self-occluding or self-intersecting geometies that
          * would not otherwise properly blend. The scheme renders the back faces
@@ -136,6 +130,23 @@ namespace osgEarth { namespace Annotation
          * @param maxAngle Maximum angle between verts (controls tessellation)
          */
         static osg::Node* createEllipsoid( float xr, float yr, float zr, const osg::Vec4& color, float maxAngle =15.0f );
+
+        static osg::Node* createEllipsoid( 
+            float xr, float yr, const osg::Vec4& color, float maxAngle =15.0f,
+            float minLat =-90.0, float maxLat=90.0, float minLon=-180.0, float maxLon=180.0);
+
+        static osg::Geometry* createEllipsoidGeometry( 
+            float major, float minor, const osg::Vec4& color, float maxAngle =15.0f,
+            float minLat =-90.0, float maxLat=90.0, float minLon=-180.0, float maxLon=180.0);
+
+        struct AltitudePolicy
+        {
+            AltitudePolicy() : draping(false), sceneClamping(false), gpuClamping(false) { }
+            bool draping;
+            bool sceneClamping;
+            bool gpuClamping;
+        };
+        static void getAltitudePolicy( const Style& style, AltitudePolicy& b );
 
 
     private:

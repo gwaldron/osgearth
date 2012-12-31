@@ -18,6 +18,8 @@
  */
 #include "KML_Overlay"
 
+using namespace osgEarth_kml;
+
 void
 KML_Overlay::scan( const Config& conf, KMLContext& cx )
 {

@@ -23,19 +23,42 @@
 #include <osgEarthFeatures/Common>
 #include <osgEarthFeatures/FeatureDrawSet>
 #include <osgEarthFeatures/FeatureSource>
+#include <osg/Config>
 #include <osg/Group>
 #include <osg/Drawable>
 
 namespace osgEarth { namespace Features
 {
     /**
+     * Options for a feature index
+     */
+    class OSGEARTHFEATURES_EXPORT FeatureSourceIndexOptions
+    {
+    public:
+        FeatureSourceIndexOptions(const Config& conf =Config());
+
+        /** Wheter to embed the actual Feature objects in the index (instead of
+         *  just the FeatureID). This is useful for feature sources that cannot
+         *  be queried by ID (e.g., streaming data like TFS) */
+        optional<bool>& embedFeatures() { return _embedFeatures; }
+        const optional<bool>& embedFeatures() const { return _embedFeatures; }
+
+    public:
+        Config getConfig() const;
+
+    private:
+        optional<bool> _embedFeatures;
+    };
+
+
+    /**
      * Interface for feature indexing.
      */
     class FeatureSourceIndex
     {
     public: // tagging functions
-        virtual void tagPrimitiveSets( osg::Drawable* drawable, FeatureID fid ) const =0;
-        virtual void tagNode( osg::Node* node, FeatureID fid ) const =0;
+        virtual void tagPrimitiveSets( osg::Drawable* drawable, Feature* feature ) const =0;
+        virtual void tagNode( osg::Node* node, Feature* feature ) const =0;
 
         virtual ~FeatureSourceIndex() { }
     };
@@ -45,12 +68,14 @@ namespace osgEarth { namespace Features
      * PrimitiveSets within the subgraph's geometry.
      */
     class OSGEARTHFEATURES_EXPORT FeatureSourceIndexNode : public osg::Group, public FeatureSourceIndex
-	{
-	public:
+    {
+    public:
         /**
          * Constructs a new index node.
          */
-		FeatureSourceIndexNode(FeatureSource* featureSource);
+        FeatureSourceIndexNode(
+            FeatureSource*                   featureSource,
+            const FeatureSourceIndexOptions& options );
 
         virtual ~FeatureSourceIndexNode() { }
 
@@ -60,15 +85,15 @@ namespace osgEarth { namespace Features
         /**
          * Tags all the primitive sets in a Drawable with the specified FeatureID.
          */
-        void tagPrimitiveSets( osg::Drawable* drawable, FeatureID fid ) const;
+        void tagPrimitiveSets( osg::Drawable* drawable, Feature* feature ) const;
 
         /**
          * Tags a node with the specified FeatureID.
          */
-        void tagNode( osg::Node* node, FeatureID fid ) const;
+        void tagNode( osg::Node* node, Feature* feature ) const;
 
 
-	public:
+    public:
         /**
          * The feature source tied to this node 
          */
@@ -87,7 +112,7 @@ namespace osgEarth { namespace Features
          * @param output Holds the result of the query, if returning true
          * @return true if successful
          */
-		bool getFID(osg::PrimitiveSet* pset, FeatureID& output) const;
+        bool getFID(osg::PrimitiveSet* pset, FeatureID& output) const;
 
         /**
          * Gets the Feature ID corresponding to a drawable and a prim index. This is
@@ -98,7 +123,7 @@ namespace osgEarth { namespace Features
          * @param output         Holds the result of the query, if returning true
          * @return true if successful
          */
-		bool getFID(osg::Drawable* drawable, int primitiveIndex, FeatureID& output) const;
+        bool getFID(osg::Drawable* drawable, int primitiveIndex, FeatureID& output) const;
 
         /**
          * Given a FeatureID, returns the collection of drawable/primitiveset combinations
@@ -109,7 +134,16 @@ namespace osgEarth { namespace Features
          */
         FeatureDrawSet& getDrawSet( const FeatureID& fid );
 
-	private:
+        /**
+         * Given a FeatureID, returns the cached feature.
+         *
+         * @param fid     Feature ID to look up
+         * @param output  cached feature 
+         * @return true if successful 
+         */
+        bool getFeature(const FeatureID& fid, const Feature*& output) const;
+
+    private:
         osg::ref_ptr<FeatureSource> _featureSource;
 
         typedef std::map<FeatureID, FeatureDrawSet> FeatureIDDrawSetMap;
@@ -122,11 +156,16 @@ namespace osgEarth { namespace Features
             FeatureIDDrawSetMap& _index;
             unsigned _psets;
         };
+        
+        FeatureSourceIndexOptions _options;
+
+        typedef std::map< FeatureID, osg::ref_ptr<const Feature> > FeatureMap;
+        mutable FeatureMap _features; // cache
 
     public:
         virtual const char* className() const { return "FeatureSourceIndexNode"; }
         virtual const char* libraryName() const { return "osgEarthFeatures"; }
-	};
+    };
 
 } } // namespace osgEarth::Features
 

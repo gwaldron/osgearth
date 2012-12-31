@@ -21,12 +21,16 @@
 
 #include "KML_Geometry"
 
-using namespace osgEarth;
-
-struct KML_Model : public KML_Geometry
+namespace osgEarth_kml
 {
-    void parseCoords( const Config& conf, KMLContext& cx );
-    void parseStyle(const Config& conf, KMLContext& cx, Style& style);
-};
+    using namespace osgEarth;
+
+    struct KML_Model : public KML_Geometry
+    {
+        void parseCoords( const Config& conf, KMLContext& cx );
+        void parseStyle(const Config& conf, KMLContext& cx, Style& style);
+    };
+
+} // namespace osgEarth_kml
 
 #endif // OSGEARTH_DRIVER_KML_KML_MODEL

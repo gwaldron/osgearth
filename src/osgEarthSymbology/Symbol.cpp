@@ -28,72 +28,13 @@ Symbol::Symbol( const Config& conf )
     _uriContext = URIContext(conf.referrer());
 }
 
-//------------------------------------------------------------------------
-
-Stroke::Stroke() :
-_color( 1, 1, 1, 1 ),
-_lineCap( LINECAP_DEFAULT ),
-_lineJoin( LINEJOIN_DEFAULT ),
-_width( 1.0f )
+bool
+Symbol::match(const std::string& s, const char* reservedWord)
 {
-    //nop
-}
-
-Stroke::Stroke( float r, float g, float b, float a ) :
-_color( r, g, b, a ),
-_lineCap( LINECAP_DEFAULT ),
-_lineJoin( LINEJOIN_DEFAULT ),
-_width( 1.0f )
-{
-    //nop
-}
-
-Config 
-Stroke::getConfig() const {
-    Config conf("stroke");
-    conf.add( "color", vec4fToHtmlColor(_color) );
-    conf.addIfSet("linecap", "butt", _lineCap, LINECAP_BUTT);
-    conf.addIfSet("linecap", "square", _lineCap, LINECAP_SQUARE);
-    conf.addIfSet("linecap", "round", _lineCap, LINECAP_ROUND);
-    conf.addIfSet("width", _width);
-    conf.addIfSet("stipple", _stipple);
-    return conf;
-}
-
-void 
-Stroke::mergeConfig( const Config& conf ) {
-    _color = htmlColorToVec4f( conf.value("color") );
-    conf.getIfSet("linecap", "butt", _lineCap, LINECAP_BUTT);
-    conf.getIfSet("linecap", "square", _lineCap, LINECAP_SQUARE);
-    conf.getIfSet("linecap", "round", _lineCap, LINECAP_ROUND);
-    conf.getIfSet("width", _width);
-    conf.getIfSet("stipple", _stipple);
-}
-
-//------------------------------------------------------------------------
-
-Fill::Fill( float r, float g, float b, float a ) :
-_color( r, g, b, a )
-{
-    //nop
-}
-
-Fill::Fill() :
-_color( 1, 1, 1, 1 )
-{
-    //nop
-}
-
-Config
-Fill::getConfig() const
-{
-    Config conf("fill");
-    conf.add("color", vec4fToHtmlColor(_color));
-    return conf;
-}
-
-void
-Fill::mergeConfig( const Config& conf )
-{
-    _color = htmlColorToVec4f(conf.value("color"));
+    if ( s.compare(reservedWord) == 0 ) return true;
+    //if ( s == reservedWord ) return true;
+    std::string temp1 = toLower(s), temp2 = toLower(reservedWord);
+    replaceIn(temp1, "_", "-");
+    replaceIn(temp2, "_", "-");
+    return temp1.compare(temp2) == 0;
 }

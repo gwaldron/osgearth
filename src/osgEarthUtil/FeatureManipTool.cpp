@@ -97,14 +97,15 @@ namespace
     // Dragger callback to simply hooks back into the DraggerTool.
     struct DraggerCallback : public Dragger::PositionChangedCallback
     {
-        DraggerCallback( FeatureManipTool* tool ) : _tool(tool) { }
+        DraggerCallback( FeatureManipTool* tool, bool isVertical=false ) : _tool(tool), _isVertical(isVertical) { }
 
         void onPositionChanged(const Dragger* sender, const osgEarth::GeoPoint& pos)
         {
-            _tool->syncToDraggers();
+            _tool->syncToDraggers(_isVertical);
         }
 
         FeatureManipTool* _tool;
+        bool _isVertical;
     };
 
     // updates the verts in a subgraph based on a pair of re-positioning transforms.
@@ -139,8 +140,10 @@ namespace
 
 //-----------------------------------------------------------------------
 
-FeatureManipTool::FeatureManipTool(MapNode* mapNode) :
-FeatureQueryTool( mapNode )
+FeatureManipTool::FeatureManipTool(MapNode* mapNode, bool verticalEnabled) :
+FeatureQueryTool( mapNode ),
+_verticalEnabled(verticalEnabled),
+_verticalDraggerOffset(0.0)
 {
     // install this object as a query callback so we will receive messages.
     this->addCallback( this );
@@ -166,14 +169,6 @@ FeatureManipTool::onHit( FeatureSourceIndexNode* index, FeatureID fid, const Eve
         osg::Vec3d anchorWorld;
         anchorWorld = args._worldPoint;
 
-        // calculate the vertical offset of the mouse's hit point from the ground
-        GeoPoint hitMap;
-        hitMap.fromWorld( _mapNode->getMapSRS(), args._worldPoint );
-        double hae;
-        _verticalOffset = 0.0;
-        if (_mapNode->getTerrain()->getHeight( hitMap.getSRS(), hitMap.x(), hitMap.y(), 0L, &hae ))
-            _verticalOffset = hitMap.z() - hae;
-
         // extract the "hit" feature from its draw set into a new draggable node.
         osg::ref_ptr<osg::Node> node;
 
@@ -187,11 +182,16 @@ FeatureManipTool::onHit( FeatureSourceIndexNode* index, FeatureID fid, const Eve
             anchorWorld = manipModel->getBound().center();
             
             // calculate the vertical offset of the anchor point from the ground
-            GeoPoint anchorMap;
-            anchorMap.fromWorld( _mapNode->getMapSRS(), anchorWorld );
+            GeoPoint anchorMapCenter;
+            anchorMapCenter.fromWorld( _mapNode->getMapSRS(), anchorWorld );
+            _verticalOffset = anchorMapCenter.z();
+
+            GeoPoint anchorMap(anchorMapCenter);
             anchorMap.z() = 0;
             anchorMap.altitudeMode() = ALTMODE_RELATIVE;
             anchorMap.transformZ( ALTMODE_ABSOLUTE, _mapNode->getTerrain() );
+
+            _verticalOffset = anchorMapCenter.z() - anchorMap.z();
 
             anchorMap.toWorld( anchorWorld );
 
@@ -207,7 +207,7 @@ FeatureManipTool::onHit( FeatureSourceIndexNode* index, FeatureID fid, const Eve
             // system around the mouse. This will allow us to move the feature without messing around
             // with its relatively-positioned verts.
             osg::Matrixd world2local_anchor;
-            anchorMap.createWorldToLocal( world2local_anchor );
+            anchorMapCenter.createWorldToLocal( world2local_anchor );
 
             osg::MatrixTransform* world2local_xform = new osg::MatrixTransform(world2local_anchor);
             world2local_xform->addChild( manipModel );
@@ -237,12 +237,32 @@ FeatureManipTool::onHit( FeatureSourceIndexNode* index, FeatureID fid, const Eve
             _circleEditor->getRadiusDragger()->addPositionChangedCallback( new DraggerCallback(this) );
             _circleEditor->getOrCreateStateSet()->setAttributeAndModes( new osg::Depth(osg::Depth::ALWAYS,0,1,false) );
 
+            // add an additional dragger for vertical dragging
+            if (_verticalEnabled)
+            {
+                _verticalDragger  = new SphereDragger( getMapNode() );
+                _verticalDragger->setDefaultDragMode(Dragger::DRAGMODE_VERTICAL);
+                _verticalDragger->setColor(osg::Vec4f(0.0f, 1.0f, 1.0f, 1.0f));
+                _verticalDragger->setPickColor(osg::Vec4f(1.0f, 0.0f, 1.0f, 1.0f));
+
+                _verticalDraggerOffset = bs.radius() * 1.1;
+                GeoPoint verticalDraggerPos(anchorMapCenter);
+                verticalDraggerPos.z() += _verticalDraggerOffset;
+                _verticalDragger->setPosition(verticalDraggerPos, false);
+                _verticalDragger->setVerticalMinimum(_verticalDraggerOffset);
+
+                _verticalDragger->addPositionChangedCallback( new DraggerCallback(this, true) );
+            }
+
             // micro-manage the render order to get things just right:
             _workGroup->getOrCreateStateSet()->setRenderBinDetails( 15, "TraversalOrderBin" );
             _workGroup->addChild( _circle.get() );
             _workGroup->addChild( _manipModel.get() );
             _workGroup->addChild( _ghostModel.get() );
             _workGroup->addChild( _circleEditor.get() );
+
+            if (_verticalDragger.valid())
+                _workGroup->addChild( _verticalDragger.get() );
         }
     }
 }
@@ -294,12 +314,27 @@ FeatureManipTool::setRotation( const Angle& rot )
 
 
 void
-FeatureManipTool::syncToDraggers()
+FeatureManipTool::syncToDraggers(bool wasVertical)
 {
     // position the feature based on the circle annotation's draggers:
     GeoPoint pos = _circleEditor->getPositionDragger()->getPosition();
     GeoPoint rad = _circleEditor->getRadiusDragger()->getPosition();
 
+    // if the vertical dragger was moved, update the vertical offset
+    if (wasVertical)
+      _verticalOffset = _verticalDragger->getPosition().z() - _verticalDraggerOffset - pos.z();
+
+    GeoPoint vPos(pos);
+    vPos.z() += _verticalOffset;
+
+    // update the vertical draggers (horizontal) position 
+    if (_verticalEnabled)
+    {
+      GeoPoint vdPos(vPos);
+      vdPos.z() += _verticalDraggerOffset;
+      _verticalDragger->setPosition(vdPos, false);
+    }
+    
     pos.makeGeographic();
     rad.makeGeographic();
 
@@ -308,7 +343,7 @@ FeatureManipTool::syncToDraggers()
         osg::DegreesToRadians(rad.y()), osg::DegreesToRadians(rad.x()) );
 
     osg::Matrixd local2world;
-    pos.createLocalToWorld( local2world );
+    vPos.createLocalToWorld( local2world );
 
     // rotate the feature:
     osg::Quat rot( osg::PI_2-bearing, osg::Vec3d(0,0,1) );

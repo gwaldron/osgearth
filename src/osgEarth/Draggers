@@ -26,6 +26,7 @@
 #include <osg/MatrixTransform>
 #include <osg/ShapeDrawable>
 #include <osgGA/GUIEventHandler>
+#include <osgManipulator/Projector>
 #include <osgEarth/Terrain>
 
 namespace osgEarth
@@ -48,7 +49,13 @@ namespace osgEarth
 
         typedef std::list< osg::ref_ptr<PositionChangedCallback> > PositionChangedCallbackList;
 
-        Dragger( MapNode* mapNode);
+        enum DragMode
+        {
+          DRAGMODE_HORIZONTAL,
+          DRAGMODE_VERTICAL
+        };
+
+        Dragger( MapNode* mapNode, int modKeyMask=0, const DragMode& defaultMode=DRAGMODE_HORIZONTAL );
 
         /** dtor */
         virtual ~Dragger();
@@ -60,6 +67,18 @@ namespace osgEarth
         const osgEarth::GeoPoint& getPosition() const;
 
         void setPosition( const osgEarth::GeoPoint& position, bool fireEvents=true);
+
+        void setModKeyMask(int mask) { _modKeyMask = mask; }
+
+        int getModKeyMask() const { return _modKeyMask; }
+
+        void setDefaultDragMode(const DragMode& mode) { _defaultMode = mode; }
+
+        DragMode& getDefaultDragMode() { return _defaultMode; }
+
+        void setVerticalMinimum(double min) { _verticalMinimum = min; }
+
+        double getVerticalMinimim() const { return _verticalMinimum; }
 
 
         void updateTransform(osg::Node* patch = 0);
@@ -100,6 +119,14 @@ namespace osgEarth
         bool _dragging;
         bool _hovered;
         PositionChangedCallbackList _callbacks;
+
+        osg::ref_ptr<  osgManipulator::LineProjector >  _projector;
+        osgManipulator::PointerInfo  _pointer;
+        osg::Vec3d _startProjectedPoint;
+        bool _elevationDragging;
+        int _modKeyMask;
+        DragMode _defaultMode;
+        double _verticalMinimum;
     };
 
     /**********************************************************/

@@ -151,7 +151,7 @@ main(int argc, char** argv)
         if ( mapNode )
         {
             // install the Feature Manipulation tool.
-            s_manipTool = new FeatureManipTool( mapNode );
+            s_manipTool = new FeatureManipTool( mapNode, true );
             viewer.addEventHandler( s_manipTool );
 
             s_manipTool->addCallback( new ToggleUIStateCallback() );

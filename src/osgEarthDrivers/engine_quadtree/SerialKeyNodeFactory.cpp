@@ -84,6 +84,7 @@ SerialKeyNodeFactory::addTile(TileModel* model, bool tileHasRealData, bool tileH
     if ( wrapInPagedLOD )
     {
         osg::BoundingSphere bs = tileNode->getBound();
+      
         float maxRange = FLT_MAX;
         
         //Compute the min range based on the 2D size of the tile
@@ -96,13 +97,28 @@ SerialKeyNodeFactory::addTile(TileModel* model, bool tileHasRealData, bool tileH
         double radius = (ur - ll).length() / 2.0;
         float minRange = (float)(radius * _options.minTileRangeFactor().value());
 
+        
         // create a PLOD so we can keep subdividing:
         osg::PagedLOD* plod = new CustomPagedLOD( _liveTiles.get(), _deadTiles.get() );
         plod->setCenter( bs.center() );
-        plod->addChild( tileNode, minRange, maxRange );
-
+        plod->addChild( tileNode );
+        plod->setRangeMode( *_options.rangeMode() );
         plod->setFileName( 1, uri );
-        plod->setRange   ( 1, 0, minRange );
+  
+
+        if (plod->getRangeMode() == osg::LOD::PIXEL_SIZE_ON_SCREEN)
+        {            
+            minRange = 0;
+            maxRange = *_options.tilePixelSize();            
+            plod->setRange( 0, minRange, maxRange  );
+            plod->setRange( 1, maxRange, FLT_MAX );            
+        }
+        else
+        {
+            plod->setRange( 0, minRange, maxRange );                
+            plod->setRange( 1, 0, minRange );        
+        }        
+                        
 
         plod->setUserData( new MapNode::TileRangeData(minRange, maxRange) );
 

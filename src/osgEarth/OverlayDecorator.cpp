@@ -473,7 +473,8 @@ OverlayDecorator::cullTerrainAndCalculateRTTParams(osgUtil::CullVisitor* cv,
     {
         // (technically we should use inverse(view*proj), but there's likely no model matrix
         // here yet so inverseMVP should work -GW
-        double R = (eyeLen-hasl); //*0.98;
+        //double R = (eyeLen-hasl)*0.98;
+        double R = std::min( _ellipsoid->getRadiusEquator(), _ellipsoid->getRadiusPolar() );
 
         intersectClipRayWithSphere( -1.0, 1.0, inverseMVP, R, maxDist2 );
         intersectClipRayWithSphere(  1.0, 1.0, inverseMVP, R, maxDist2 );
@@ -525,17 +526,15 @@ OverlayDecorator::cullTerrainAndCalculateRTTParams(osgUtil::CullVisitor* cv,
     // Proj matrix.
 
     // For now: our RTT camera z range will be based on this equation:
-    double zspan = std::max(50000.0, hasl+25000.0); //hasl*2.0);
+    double zspan = std::max(50000.0, hasl+25000.0);
 
     if ( _isGeocentric )
     {
         rttViewMatrix.makeLookAt( eye+worldUp*zspan, osg::Vec3d(0,0,0), osg::Vec3d(0,0,1) );
-        //rttViewMatrix.makeLookAt( eye, osg::Vec3d(0,0,0), osg::Vec3d(0,0,1) );
     }
     else
     {
         rttViewMatrix.makeLookAt( eye+worldUp*zspan, eye-worldUp*zspan, osg::Vec3d(0,1,0) );
-        //rttViewMatrix.makeLookAt( eye, eye-worldUp*hasl, osg::Vec3(0,1,0) );
     }
 
     // calculate an orthographic RTT projection matrix based on the view-space
@@ -543,8 +542,7 @@ OverlayDecorator::cullTerrainAndCalculateRTTParams(osgUtil::CullVisitor* cv,
     // that bounds all the polyherdron verts in its XY plane)
     double xmin, ymin, xmax, ymax, maxDist;
     getExtentInSilhouette(rttViewMatrix, eye, verts, xmin, ymin, xmax, ymax, maxDist);
-    //rttProjMatrix.makeOrtho(xmin, xmax, ymin, ymax, -eyeLen, eyeLen); // z-span too big! jitter!
-    rttProjMatrix.makeOrtho(xmin, xmax, ymin, ymax, 0.0, maxDist+zspan); //std::min(zspan*2.0,eyeLen+zspan));
+    rttProjMatrix.makeOrtho(xmin, xmax, ymin, ymax, 0.0, std::min(maxDist,eyeLen)+zspan);
 
 
     // now copy the RTT matrixes over to the techniques.

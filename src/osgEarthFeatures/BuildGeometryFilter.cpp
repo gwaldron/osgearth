@@ -175,10 +175,10 @@ BuildGeometryFilter::process( FeatureList& features, const FilterContext& contex
 
             // resolve the color:
             osg::Vec4f primaryColor =
-                polySymbol ? polySymbol->fill()->color() :
-                lineSymbol ? lineSymbol->stroke()->color() :
+                polySymbol  ? polySymbol->fill()->color() :
+                lineSymbol  ? lineSymbol->stroke()->color() :
                 pointSymbol ? pointSymbol->fill()->color() :
-                osg::Vec4f(1,1,1,1);
+                osgEarth::Symbology::Color(1,1,1,1);
             
             osg::Geometry* osgGeom = new osg::Geometry();
             osgGeom->setUseVertexBufferObjects( _useVertexBufferObjects.value() );

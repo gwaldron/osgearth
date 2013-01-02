@@ -23,6 +23,7 @@
 #include <osgEarthSymbology/Common>
 #include <osgEarthSymbology/Color>
 #include <osgEarth/Config>
+#include <osgEarth/Units>
 
 
 namespace osgEarth { namespace Symbology
@@ -51,9 +52,10 @@ namespace osgEarth { namespace Symbology
 
     public:
         Stroke();
-        Stroke( float r, float g, float b, float a );
-        Stroke( const Color& color );
-        Stroke( const Config& conf ) { mergeConfig(conf); }
+        Stroke(float r, float g, float b, float a );
+        Stroke(const Color& color );
+        Stroke(const Config& conf );
+        Stroke(const Stroke& rhs);
 
         virtual ~Stroke() { }
 
@@ -70,8 +72,12 @@ namespace osgEarth { namespace Symbology
         const optional<LineJoinStyle>& lineJoin() const { return _lineJoin; }
 
         /** Line rendering width. */
-        optional<float>& width() { return _width; }        
+        optional<float>& width() { return _width; }
         const optional<float>& width() const { return _width; }
+
+        /** Units for the width property. (default = Units::PIXELS) */
+        optional<Units>& widthUnits() { return _widthUnits; }
+        const optional<Units>& widthUnits() const { return _widthUnits; }
 
         /** Stippling pattern. */
         optional<unsigned short>& stipple() { return _stipple;}
@@ -92,8 +98,11 @@ namespace osgEarth { namespace Symbology
         optional<LineCapStyle>   _lineCap;
         optional<LineJoinStyle>  _lineJoin;
         optional<float>          _width;
+        optional<Units>          _widthUnits;
         optional<unsigned short> _stipple;
         optional<float>          _roundingRatio;
+
+        void init();
     };
 
 } } // namespace osgEarth::Symbology

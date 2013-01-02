@@ -17,7 +17,10 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 #include <osgEarthFeatures/PolygonizeLines>
+#include <osgEarthSymbology/MeshConsolidator>
+#include <osgUtil/Optimizer>
 
+#define LC "[PolygonizeLines] "
 
 using namespace osgEarth::Features;
 
@@ -27,40 +30,45 @@ namespace
 {
     typedef std::pair<osg::Vec3,osg::Vec3> Segment;
 
-    bool interesctRays(const osg::Vec3& p0, const osg::Vec3& pd,
-                       const osg::Vec3& q0, const osg::Vec3& qd,
+    // Given two rays (point + direction vector), find the intersection
+    // of those rays in 2D space and put the result in [out]. Return true
+    // if they intersect, false if they do not.
+    bool interesctRays(const osg::Vec3& p0, const osg::Vec3& pd, // point, dir
+                       const osg::Vec3& q0, const osg::Vec3& qd, // point, dir
                        osg::Vec3& out)
     {
-        //OE_NOTICE << "isect: p0=" << OV(p0) << ", pd=" << OV(pd)
-        //    << ", q0=" << OV(q0) << ", qd=" << OV(qd) << std::endl;
+        const float epsilon = 0.001f;
 
         float det = pd.y()*qd.x()-pd.x()*qd.y();
-        if ( osg::equivalent(det, 0.0f) )
+        if ( osg::equivalent(det, 0.0f, epsilon) )
             return false;
 
         float u = (qd.x()*(q0.y()-p0.y())+qd.y()*(p0.x()-q0.x()))/det;
-        if ( u < 0.0f )
+        if ( u < epsilon ) //0.0f )
             return false;
 
         float v = (pd.x()*(q0.y()-p0.y())+pd.y()*(p0.x()-q0.x()))/det;
-        if ( v < 0.0f )
+        if ( v < epsilon ) //0.0f )
             return false;
 
         out = p0 + pd*u;
         return true;
     }
 
+    // Rotate the directional vector [in] counter-clockwise by [angle] radians
+    // and return the result in [out].
     inline void rotate(const osg::Vec3& in, float angle, osg::Vec3& out)
     {
         float ca = cosf(angle), sa = sinf(angle);
         out.x() = in.x()*ca - in.y()*sa;
         out.y() = in.x()*sa + in.y()*ca;
-        out.z() = 0.0f;
+        out.z() = in.z();
     }
 
+    // Add two triangles to an EBO vector; [side] controls the winding
+    // direction.
     inline void addTris(std::vector<unsigned>& ebo, unsigned i, unsigned prev_i, unsigned current, int side)
     {
-        // build triangles for *previous* segment
         if ( side == 0 )
         {
             ebo.push_back( i-1 );
@@ -81,6 +89,8 @@ namespace
         }
     }
 
+    // Add a triangle to an EBO vector; [side] control the winding
+    // direction.
     inline void addTri(std::vector<unsigned>& ebo, unsigned i0, unsigned i1, unsigned i2, int side)
     {
         ebo.push_back( i0 );
@@ -98,11 +108,10 @@ _stroke( stroke )
 
 
 osg::Geometry*
-PolygonizeLinesOperator::operator()(const std::vector<osg::Vec3d>& input,
-                                    const osg::Matrix&             world2local) const
+PolygonizeLinesOperator::operator()(osg::Vec3Array* verts) const
 {
     // number of verts on the original line.
-    unsigned lineSize = input.size();
+    unsigned lineSize = verts->size();
 
     // cannot generate a line with less than 2 verts.
     if ( lineSize < 2 )
@@ -113,14 +122,11 @@ PolygonizeLinesOperator::operator()(const std::vector<osg::Vec3d>& input,
     float maxRoundingAngle = asin( _stroke.roundingRatio().get() );
 
     osg::Geometry*  geom  = new osg::Geometry();
-    osg::Vec3Array* verts = new osg::Vec3Array();
-    geom->setVertexArray( verts );
 
-    // first, convert the input to local coords and store them.
-    for( std::vector<osg::Vec3d>::const_iterator i = input.begin(); i != input.end(); ++i )
-    {
-        verts->push_back( (*i) * world2local );
-    }
+    // Add the input verts to the geometry. This forms the "spine" of the
+    // polygonized line. We need the spine so we can affect proper clamping,
+    // texturing and vertex attribution.
+    geom->setVertexArray( verts );
 
     // triangulate the points into a mesh.
     std::vector<unsigned> ebo;
@@ -133,23 +139,26 @@ PolygonizeLinesOperator::operator()(const std::vector<osg::Vec3d>& input,
     unsigned  eboPtr = 0;
     osg::Vec3 prevDir;
 
+    // iterate over both "sides" of the center line:
     for( int s=0; s<=1; ++s )
     {
+        // s==0 is the left side, s==1 is the right side.
         float side = s == 0 ? -1.0f : 1.0f;
 
+        // iterate over each line segment.
         for( i=0; i<lineSize-1; ++i )
         {
-            Segment   seg   ( (*verts)[i], (*verts)[i+1] );
+            Segment   seg   ( (*verts)[i], (*verts)[i+1] );             // current segment.
             osg::Vec3 dir = seg.second - seg.first;
-            dir.normalize();
-            osg::Vec3 bufVec( (side)*dir.y(), (-side)*dir.x(), 0.0f );
-            bufVec *= halfWidth;
+            dir.normalize();                                            // directional vector of segment
+            osg::Vec3 bufVec( (side)*dir.y(), (-side)*dir.x(), 0.0f );  // buffering vector (orthogonal to dir)
+            bufVec *= halfWidth;                                        // buffering size.
 
-            osg::Vec3 bufVert = (*verts)[i] + bufVec;
+            osg::Vec3 bufVert = (*verts)[i] + bufVec;                   // starting buffered vert.
 
             if ( i == 0 )
             {
-                // first vert? no corner to check, just make the buffered vert.
+                // first vert-- no corner to check, just make the buffered vert.
                 verts->push_back( bufVert );
                 prevBufVert = bufVert;
                 prevBufVertPtr = verts->size() - 1;
@@ -183,7 +192,8 @@ PolygonizeLinesOperator::operator()(const std::vector<osg::Vec3d>& input,
             else
             {
                 // does the new segment turn create a reflex angle (>180deg)?
-                bool isOutside = s == 0 ? (prevDir ^ dir).z() <= 0.0 : (prevDir ^ dir).z() >= 0.0;
+                float z = (prevDir ^ dir).z();
+                bool isOutside = s == 0 ? z <= 0.0 : z >= 0.0;
                 bool isInside = !isOutside;
 
                 // if this is an inside angle (or we're using mitered corners)
@@ -251,6 +261,7 @@ PolygonizeLinesOperator::operator()(const std::vector<osg::Vec3d>& input,
         // build triangles for the final segment.
         addTris( ebo, i, prevBufVertPtr, verts->size()-1, s );
 
+        // build the final end cap.
         if ( _stroke.lineCap() == Stroke::LINECAP_ROUND )
         {
             float angle = osg::PI_2;
@@ -293,3 +304,80 @@ PolygonizeLinesOperator::operator()(const std::vector<osg::Vec3d>& input,
     return geom;
 }
 
+
+//------------------------------------------------------------------------
+
+
+PolygonizeLinesFilter::PolygonizeLinesFilter(const Style& style) :
+_style( style )
+{
+    //nop
+}
+
+
+osg::Node*
+PolygonizeLinesFilter::push(FeatureList& input, FilterContext& cx)
+{
+    // compute the coordinate localization matrices.
+    computeLocalizers( cx );
+
+    // establish some things
+    bool                    makeECEF   = false;
+    const SpatialReference* featureSRS = 0L;
+    const SpatialReference* mapSRS     = 0L;
+
+    if ( cx.isGeoreferenced() )
+    {
+        makeECEF   = cx.getSession()->getMapInfo().isGeocentric();
+        featureSRS = cx.extent()->getSRS();
+        mapSRS     = cx.getSession()->getMapInfo().getProfile()->getSRS();
+    }
+
+    // The operator we'll use to make lines into polygons.
+    const LineSymbol* line = _style.get<LineSymbol>();
+    PolygonizeLinesOperator polygonize( line ? (*line->stroke()) : Stroke() );
+
+    // Geode to hold all the geometries.
+    osg::Geode* geode = new osg::Geode();
+
+    // iterate over all features.
+    for( FeatureList::iterator i = input.begin(); i != input.end(); ++i )
+    {
+        Feature* f = i->get();
+
+        // iterate over all the feature's geometry parts. We will treat
+        // them as lines strings.
+        GeometryIterator parts( f->getGeometry(), false );
+        while( parts.hasMore() )
+        {
+            Geometry* part = parts.next();
+
+            // skip empty geometry
+            if ( part->size() == 0 )
+                continue;
+
+            // transform the geometry into the target SRS and localize it about 
+            // a local reference point.
+            osg::Vec3Array* verts = new osg::Vec3Array();
+            transformAndLocalize( part->asVector(), featureSRS, verts, mapSRS, _world2local, makeECEF );
+
+            // turn the lines into polygons.
+            osg::Geometry* geom = polygonize( verts );
+            geode->addDrawable( geom );
+        }
+    }
+
+    // attempt to combine geometries for better performance
+    MeshConsolidator::run( *geode );
+
+    // GPU performance optimization:
+#if 0 // issue: ignores vertex attributes
+    osgUtil::Optimizer optimizer;
+    optimizer.optimize(
+        result,
+        osgUtil::Optimizer::VERTEX_PRETRANSFORM |
+        osgUtil::Optimizer::VERTEX_POSTTRANSFORM );
+#endif
+
+    return delocalize( geode );
+}

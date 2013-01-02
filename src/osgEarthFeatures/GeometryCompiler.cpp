@@ -22,6 +22,7 @@
 #include <osgEarthFeatures/AltitudeFilter>
 #include <osgEarthFeatures/CentroidFilter>
 #include <osgEarthFeatures/ExtrudeGeometryFilter>
+#include <osgEarthFeatures/PolygonizeLines>
 #include <osgEarthFeatures/ScatterFilter>
 #include <osgEarthFeatures/SubstituteModelFilter>
 #include <osgEarthFeatures/TessellateOperator>
@@ -377,6 +378,25 @@ GeometryCompiler::compile(FeatureList&          workingSet,
             extrude.setFeatureNameExpr( *_options.featureName() );
 
         osg::Node* node = extrude.push( workingSet, sharedCX );
+        if ( node )
+        {
+            resultGroup->addChild( node );
+        }
+    }
+
+    // polygonized lines.
+    else if ( line != 0L && line->stroke()->widthUnits() != Units::PIXELS )
+    {
+        if ( altRequired )
+        {
+            AltitudeFilter clamp;
+            clamp.setPropertiesFromStyle( style );
+            sharedCX = clamp.push( workingSet, sharedCX );
+            altRequired = false;
+        }
+
+        PolygonizeLinesFilter filter( style );
+        osg::Node* node = filter.push( workingSet, sharedCX );
         if ( node )
         {
             resultGroup->addChild( node );

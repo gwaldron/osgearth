@@ -34,9 +34,10 @@ namespace osgEarth { namespace Symbology
     {
     public:
         Fill();
+        Fill(const Fill& rhs);
         Fill( float r, float g, float b, float a );
         Fill( const Color& color );
-        Fill( const Config& conf ) { mergeConfig(conf); }
+        Fill( const Config& conf );
 
         virtual ~Fill() { }
 
@@ -49,6 +50,7 @@ namespace osgEarth { namespace Symbology
 
     protected:
         Color _color;
+        void init();
     };
 
 } } // namespace osgEarth::Symbology

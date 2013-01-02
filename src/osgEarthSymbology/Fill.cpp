@@ -23,22 +23,39 @@ using namespace osgEarth::Symbology;
 
 //------------------------------------------------------------------------
 
-Fill::Fill() :
-_color( 1, 1, 1, 1 )
+Fill::Fill()
 {
-    //nop
+    init();
 }
 
-Fill::Fill( float r, float g, float b, float a ) :
-_color( r, g, b, a )
+Fill::Fill( float r, float g, float b, float a )
 {
-    //nop
+    init();
+    _color.set( r, g, b, a );
 }
 
-Fill::Fill(const Color& color) :
-_color( color )
+Fill::Fill(const Color& color)
 {
-    //nop
+    init();
+    _color = color;
+}
+
+Fill::Fill(const Config& conf )
+{
+    init();
+    mergeConfig(conf);
+}
+
+Fill::Fill(const Fill& rhs)
+{
+    init();
+    mergeConfig(rhs.getConfig());
+}
+
+void
+Fill::init()
+{
+    _color.set( 1.0f, 1.0f, 1.0f, 1.0f );
 }
 
 Config

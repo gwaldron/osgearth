@@ -107,9 +107,11 @@ SerialKeyNodeFactory::addTile(TileModel* model, bool tileHasRealData, bool tileH
   
 
         if (plod->getRangeMode() == osg::LOD::PIXEL_SIZE_ON_SCREEN)
-        {            
+        {
+            static const float sqrt2 = sqrt(2.0f);
+
             minRange = 0;
-            maxRange = *_options.tilePixelSize();            
+            maxRange = (*_options.tilePixelSize()) * sqrt2;
             plod->setRange( 0, minRange, maxRange  );
             plod->setRange( 1, maxRange, FLT_MAX );            
         }

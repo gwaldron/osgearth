@@ -172,15 +172,19 @@ namespace
 
     /**
      * Takes a set of world verts and finds their X-Y bounding box in the 
-     * plane of the camera represented by the specified view matrix.
+     * plane of the camera represented by the specified view matrix. Also
+     * calculates the maximum distance from the eyepoint to a vertex (3D).
      */
     void
     getExtentInSilhouette(const osg::Matrix& viewMatrix,
+                          const osg::Vec3d& eye,
                           std::vector<osg::Vec3d>& verts,
                           double& xmin, double& ymin,
-                          double& xmax, double& ymax)
+                          double& xmax, double& ymax,
+                          double& maxDistance)
     {
         xmin = DBL_MAX, ymin = DBL_MAX, xmax = -DBL_MAX, ymax = -DBL_MAX;
+        double maxDist2 = 0.0;
 
         for( std::vector<osg::Vec3d>::iterator i = verts.begin(); i != verts.end(); ++i )
         {
@@ -189,7 +193,13 @@ namespace
             if ( d.x() > xmax ) xmax = d.x();
             if ( d.y() < ymin ) ymin = d.y();
             if ( d.y() > ymax ) ymax = d.y();
+            
+            double dist2 = ((*i)-eye).length2();
+            if ( dist2 > maxDist2 )
+                maxDist2 = dist2;
         }
+
+        maxDistance = sqrt(maxDist2);
     }
 }
 
@@ -331,8 +341,11 @@ OverlayDecorator::cullTerrainAndCalculateRTTParams(osgUtil::CullVisitor* cv,
                                                    PerViewData&          pvd)
 {
     static int s_frame = 1;
+    static osg::Vec3d zero(0.0, 0.0, 0.0);
 
-    osg::Vec3 eye = cv->getEyePoint();
+    osg::Matrixd invViewMatrix = cv->getCurrentCamera()->getInverseViewMatrix();
+    osg::Vec3d eye = zero * invViewMatrix;
+    //osg::Vec3 eye = cv->getEyePoint();
 
     double eyeLen;
     osg::Vec3d worldUp;
@@ -460,7 +473,7 @@ OverlayDecorator::cullTerrainAndCalculateRTTParams(osgUtil::CullVisitor* cv,
     {
         // (technically we should use inverse(view*proj), but there's likely no model matrix
         // here yet so inverseMVP should work -GW
-        double R = eyeLen-hasl;
+        double R = (eyeLen-hasl); //*0.98;
 
         intersectClipRayWithSphere( -1.0, 1.0, inverseMVP, R, maxDist2 );
         intersectClipRayWithSphere(  1.0, 1.0, inverseMVP, R, maxDist2 );
@@ -503,17 +516,35 @@ OverlayDecorator::cullTerrainAndCalculateRTTParams(osgUtil::CullVisitor* cv,
     // and use pointers..todo.
     osg::Matrix rttViewMatrix, rttProjMatrix;
 
+
+    // for a camera that cares about geometry (like the draping technique) it's important
+    // to include the geometry in the ortho-camera's Z range. But for a camera that just
+    // cares about the terrain depth (like the clamping technique) we want to constrain 
+    // the Ortho Z as mush as possible in order to maintain depth precision. Perhaps
+    // later we can split this out and have each technique calculation its own View and
+    // Proj matrix.
+
+    // For now: our RTT camera z range will be based on this equation:
+    double zspan = std::max(50000.0, hasl+25000.0); //hasl*2.0);
+
     if ( _isGeocentric )
-        rttViewMatrix.makeLookAt( eye, osg::Vec3d(0,0,0), osg::Vec3d(0,0,1) );
+    {
+        rttViewMatrix.makeLookAt( eye+worldUp*zspan, osg::Vec3d(0,0,0), osg::Vec3d(0,0,1) );
+        //rttViewMatrix.makeLookAt( eye, osg::Vec3d(0,0,0), osg::Vec3d(0,0,1) );
+    }
     else
-        rttViewMatrix.makeLookAt( eye, eye-worldUp*hasl, osg::Vec3(0,1,0) );
+    {
+        rttViewMatrix.makeLookAt( eye+worldUp*zspan, eye-worldUp*zspan, osg::Vec3d(0,1,0) );
+        //rttViewMatrix.makeLookAt( eye, eye-worldUp*hasl, osg::Vec3(0,1,0) );
+    }
 
     // calculate an orthographic RTT projection matrix based on the view-space
     // bounds of the vertex list (i.e. the extents surrounding the RTT camera 
     // that bounds all the polyherdron verts in its XY plane)
-    double xmin, ymin, xmax, ymax;
-    getExtentInSilhouette(rttViewMatrix, verts, xmin, ymin, xmax, ymax);
-    rttProjMatrix.makeOrtho(xmin, xmax, ymin, ymax, -eyeLen, eyeLen);
+    double xmin, ymin, xmax, ymax, maxDist;
+    getExtentInSilhouette(rttViewMatrix, eye, verts, xmin, ymin, xmax, ymax, maxDist);
+    //rttProjMatrix.makeOrtho(xmin, xmax, ymin, ymax, -eyeLen, eyeLen); // z-span too big! jitter!
+    rttProjMatrix.makeOrtho(xmin, xmax, ymin, ymax, 0.0, maxDist+zspan); //std::min(zspan*2.0,eyeLen+zspan));
 
 
     // now copy the RTT matrixes over to the techniques.

@@ -354,12 +354,13 @@ ClampingTechnique::setUpCamera(OverlayDecorator::TechRTTParams& params)
     params._rttCamera->setReferenceFrame( osg::Camera::ABSOLUTE_RF_INHERIT_VIEWPOINT );
     params._rttCamera->setClearColor( osg::Vec4f(0,0,0,0) );
     params._rttCamera->setClearMask( GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT );
-    params._rttCamera->setComputeNearFarMode( osg::CullSettings::COMPUTE_NEAR_FAR_USING_BOUNDING_VOLUMES );
+    //params._rttCamera->setComputeNearFarMode( osg::CullSettings::COMPUTE_NEAR_FAR_USING_BOUNDING_VOLUMES );
+    params._rttCamera->setComputeNearFarMode( osg::CullSettings::DO_NOT_COMPUTE_NEAR_FAR );
     params._rttCamera->setViewport( 0, 0, *_textureSize, *_textureSize );
     params._rttCamera->setRenderOrder( osg::Camera::PRE_RENDER );
     params._rttCamera->setRenderTargetImplementation( osg::Camera::FRAME_BUFFER_OBJECT );
     params._rttCamera->attach( osg::Camera::DEPTH_BUFFER, local->_rttTexture.get() );
-    params._rttCamera->setClampProjectionMatrixCallback( local->_cpm.get() );
+    //params._rttCamera->setClampProjectionMatrixCallback( local->_cpm.get() );
 
     // set up a StateSet for the RTT camera.
     osg::StateSet* rttStateSet = params._rttCamera->getOrCreateStateSet();
@@ -498,7 +499,7 @@ ClampingTechnique::cullOverlayGroup(OverlayDecorator::TechRTTParams& params,
         LocalPerViewData& local = *static_cast<LocalPerViewData*>(params._techniqueData.get());
 
         // prime our CPM with the current cull visitor:
-        local._cpm->setup( cv );
+        //local._cpm->setup( cv );
 
         // create the depth texture (render the terrain to tex)
         params._rttCamera->accept( *cv );
@@ -518,7 +519,8 @@ ClampingTechnique::cullOverlayGroup(OverlayDecorator::TechRTTParams& params,
             params._rttViewMatrix;
 
         osg::Matrix depthViewToDepthClip = 
-            local._cpm->_clampedDepthProjMatrix *
+            //local._cpm->_clampedDepthProjMatrix *
+            params._rttProjMatrix *
             s_scaleBiasMat;
 
         osg::Matrix cameraViewToDepthClip =

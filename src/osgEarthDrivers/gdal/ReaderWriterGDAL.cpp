@@ -696,38 +696,55 @@ public:
         }
 
         if (useExternalDataset == false &&
-            (!_options.url().isSet() || _options.url()->empty()) )
+            (!_options.url().isSet() || _options.url()->empty()) &&
+            (!_options.connection().isSet() || _options.connection()->empty()) )
         {
-            return Status::Error( "No URL or directory specified" );
+            return Status::Error( "No URL, directory, or connection string specified" );
         }
 
-        URI uri = _options.url().value();
+        // source connection:
+        std::string source;
+        
+        if ( _options.url().isSet() )
+            source = _options.url()->full();
+        else if ( _options.connection().isSet() )
+            source = _options.connection().value();
 
+        //URI uri = _options.url().value();
+        
         if (useExternalDataset == false)
         {
-            StringTokenizer izer( ";" );
-            StringVector exts;
-            izer.tokenize( *_options.extensions(), exts );
-
-            //std::vector<std::string> exts;
-
-            //tokenize( _options.extensions().value(), exts, ";");
-            for (unsigned int i = 0; i < exts.size(); ++i)
-            {
-                OE_DEBUG << LC << "Using Extension: " << exts[i] << std::endl;
-            }
             std::vector<std::string> files;
-            getFiles(uri.full(), exts, files);
 
-            OE_INFO << LC << "Driver found " << files.size() << " files:" << std::endl;
-            for (unsigned int i = 0; i < files.size(); ++i)
+            if ( _options.url().isSet() )
             {
-                OE_INFO << LC << "" << files[i] << std::endl;
+                // collect a list of files, filtering by extension if necessary
+                StringTokenizer izer( ";" );
+                StringVector exts;
+                izer.tokenize( *_options.extensions(), exts );
+
+                for (unsigned int i = 0; i < exts.size(); ++i)
+                {
+                    OE_DEBUG << LC << "Using Extension: " << exts[i] << std::endl;
+                }
+
+                getFiles(source, exts, files);
+
+                OE_INFO << LC << "Driver found " << files.size() << " files:" << std::endl;
+                for (unsigned int i = 0; i < files.size(); ++i)
+                {
+                    OE_INFO << LC << "" << files[i] << std::endl;
+                }
+            }
+            else
+            {
+                // just add the connection string as the single source.
+                files.push_back( source );
             }
 
             if (files.empty())
             {
-                return Status::Error( "Could not find any valid files" );
+                return Status::Error( "Could not find any valid input." );
             }
 
             //If we found more than one file, try to combine them into a single logical dataset
@@ -876,7 +893,7 @@ public:
         if ( !src_srs.valid() )
         {
             // not found in the dataset; try loading a .prj file
-            std::string prjLocation = osgDB::getNameLessExtension( uri.full() ) + std::string(".prj");
+            std::string prjLocation = osgDB::getNameLessExtension(source) + std::string(".prj");
 
             ReadResult r = URI(prjLocation).readString( _dbOptions.get() );
             if ( r.succeeded() )
@@ -887,7 +904,7 @@ public:
             if ( !src_srs.valid() )
             {
                 return Status::Error( Stringify()
-                    << "Dataset has no spatial reference information (" << uri.full() << ")" );
+                    << "Dataset has no spatial reference information (" << source << ")" );
             }
         }
 
@@ -896,8 +913,8 @@ public:
         
         bool hasGCP = _srcDS->GetGCPCount() > 0 && _srcDS->GetGCPProjection();
         bool isRotated = _geotransform[2] != 0.0 || _geotransform[4];
-        if (hasGCP) OE_DEBUG << LC << uri.full() << " has GCP georeferencing" << std::endl;
-        if (isRotated) OE_DEBUG << LC << uri.full() << " is rotated " << std::endl;
+        if (hasGCP) OE_DEBUG << LC << source << " has GCP georeferencing" << std::endl;
+        if (isRotated) OE_DEBUG << LC << source << " is rotated " << std::endl;
         bool requiresReprojection = hasGCP || isRotated;
 
         const Profile* profile = NULL;
@@ -1025,7 +1042,7 @@ public:
                 warpedSRSWKT,
                 minX, minY, maxX, maxY);
 
-            OE_INFO << LC << "" << uri.full() << " is projected, SRS = " 
+            OE_INFO << LC << "" << source << " is projected, SRS = " 
                 << warpedSRSWKT << std::endl;
                 //<< _warpedDS->GetProjectionRef() << std::endl;
         }

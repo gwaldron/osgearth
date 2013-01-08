@@ -59,6 +59,20 @@ namespace osgEarth
             const osg::Matrixd&            world2local =osg::Matrixd() );
 
         /**
+         * Transforms the points in "input" to ECEF coordinates, localizes them with
+         * the provided world2local matrix, and puts the resulting verts in "out_verts"
+         * and the resulting localized normals in "out_normals" (if "out_normals" is
+         * non-NULL).
+         */
+        static void transformAndLocalize(
+            const std::vector<osg::Vec3d>& input,
+            const SpatialReference*        inputSRS,
+            osg::Vec3Array*                out_verts,
+            osg::Vec3Array*                out_normals,
+            const SpatialReference*        outputSRS,
+            const osg::Matrixd&            world2local =osg::Matrixd() );
+
+        /**
          * Transforms a point to ECEF, and at the same time returns a quaternion that
          * rotates the point into the local tangent place at that point.
          */

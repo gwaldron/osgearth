@@ -35,35 +35,47 @@ namespace
     // if they intersect, false if they do not.
     bool interesctRays(const osg::Vec3& p0, const osg::Vec3& pd, // point, dir
                        const osg::Vec3& q0, const osg::Vec3& qd, // point, dir
-                       osg::Vec3& out)
+                       const osg::Vec3& cp,                      // control point
+                       const osg::Vec3& normal,                  // normal at control point
+                       osg::Vec3&       out)
     {
+        // make the conversion quats:
+        osg::Quat toLocal, toWorld;
+        toLocal.makeRotate( normal, osg::Vec3(0,0,1) );
+        toWorld.makeRotate( osg::Vec3(0,0,1), normal );
+
+        // convert the inputs:
+        osg::Vec3 p0r = toLocal*p0; //(p0-cp);
+        osg::Vec3 pdr = toLocal*pd;
+        osg::Vec3 q0r = toLocal*q0; //(q0-cp);
+        osg::Vec3 qdr = toLocal*qd;
+
         // this epsilon will cause us to skip invalid or colinear rays.
         const float epsilon = 0.001f;
 
-        float det = pd.y()*qd.x()-pd.x()*qd.y();
+        float det = pdr.y()*qdr.x()-pdr.x()*qdr.y();
         if ( osg::equivalent(det, 0.0f, epsilon) )
             return false;
 
-        float u = (qd.x()*(q0.y()-p0.y())+qd.y()*(p0.x()-q0.x()))/det;
+        float u = (qdr.x()*(q0r.y()-p0r.y())+qdr.y()*(p0r.x()-q0r.x()))/det;
         if ( u < epsilon )
             return false;
 
-        float v = (pd.x()*(q0.y()-p0.y())+pd.y()*(p0.x()-q0.x()))/det;
+        float v = (pdr.x()*(q0r.y()-p0r.y())+pdr.y()*(p0r.x()-q0r.x()))/det;
         if ( v < epsilon )
             return false;
 
-        out = p0 + pd*u;
+        out = /*cp +*/ (toWorld * (p0r + pdr*u));
+
         return true;
     }
 
     // Rotate the directional vector [in] counter-clockwise by [angle] radians
     // and return the result in [out].
-    inline void rotate(const osg::Vec3& in, float angle, osg::Vec3& out)
+    inline void rotate(const osg::Vec3& in, float angle, const osg::Vec3& normal, osg::Vec3& out)
     {
-        float ca = cosf(angle), sa = sinf(angle);
-        out.x() = in.x()*ca - in.y()*sa;
-        out.y() = in.x()*sa + in.y()*ca;
-        out.z() = in.z();
+        osg::Quat rot( angle, normal );
+        out = rot * in;
     }
 
     // Add two triangles to an EBO vector; [side] controls the winding
@@ -109,7 +121,8 @@ _stroke( stroke )
 
 
 osg::Geometry*
-PolygonizeLinesOperator::operator()(osg::Vec3Array* verts) const
+PolygonizeLinesOperator::operator()(osg::Vec3Array* verts, 
+                                    osg::Vec3Array* normals) const
 {
     // number of verts on the original line.
     unsigned lineSize = verts->size();
@@ -118,7 +131,7 @@ PolygonizeLinesOperator::operator()(osg::Vec3Array* verts) const
     if ( lineSize < 2 )
         return 0L;
 
-    float width            = *_stroke.width();
+    float width            = Distance(*_stroke.width(), *_stroke.widthUnits()).as(Units::METERS);
     float halfWidth        = 0.5f * width;
     float maxRoundingAngle = asin( _stroke.roundingRatio().get() );
 
@@ -130,6 +143,10 @@ PolygonizeLinesOperator::operator()(osg::Vec3Array* verts) const
     // texturing and vertex attribution.
     geom->setVertexArray( verts );
 
+    // Set up the normals array
+    geom->setNormalArray( normals );
+    geom->setNormalBinding( osg::Geometry::BIND_PER_VERTEX );
+
     // initialize the texture coordinates.
     float spineLen = 0.0f;
     osg::Vec2Array* tverts = new osg::Vec2Array( lineSize );
@@ -137,7 +154,7 @@ PolygonizeLinesOperator::operator()(osg::Vec3Array* verts) const
     (*tverts)[0].set( 0.5f, 0.0f );
     for( unsigned i=1; i<lineSize; ++i )
     {
-        Segment   seg   ( (*verts)[i-1], (*verts)[i] );             // current segment.
+        Segment   seg   ( (*verts)[i-1], (*verts)[i] );  // current segment.
         osg::Vec3 dir = seg.second - seg.first;
         spineLen += dir.length();
         (*tverts)[i].set( 0.5f, spineLen * 1.0f/width );
@@ -153,6 +170,7 @@ PolygonizeLinesOperator::operator()(osg::Vec3Array* verts) const
     unsigned  prevBufVertPtr;
     unsigned  eboPtr = 0;
     osg::Vec3 prevDir;
+    osg::Quat rot, unrot;
 
     // iterate over both "sides" of the center line:
     for( int s=0; s<=1; ++s )
@@ -163,13 +181,24 @@ PolygonizeLinesOperator::operator()(osg::Vec3Array* verts) const
         // iterate over each line segment.
         for( i=0; i<lineSize-1; ++i )
         {
-            Segment   seg   ( (*verts)[i], (*verts)[i+1] );             // current segment.
-            osg::Vec3 dir = seg.second - seg.first;
-            dir.normalize();                                            // directional vector of segment
-            osg::Vec3 bufVec( (side)*dir.y(), (-side)*dir.x(), 0.0f );  // buffering vector (orthogonal to dir)
-            bufVec *= halfWidth;                                        // buffering size.
+            // establish the normal for this point, which will help us calculate a
+            // 3D buffering vector.
+            const osg::Vec3& normal = (*normals)[i];
 
-            osg::Vec3 bufVert = (*verts)[i] + bufVec;                   // starting buffered vert.
+            // calculate the directional vector of this segment.
+            Segment   seg   ( (*verts)[i], (*verts)[i+1] );
+            osg::Vec3 dir = seg.second - seg.first;
+            dir.normalize();
+
+            // the buffering vector is orthogonal to the direction vector and the normal;
+            // flip it depending on the current side.
+            osg::Vec3 bufVec = (s==0) ? normal ^ dir : dir ^ normal;
+
+            // scale the buffering vector to half the stroke width.
+            bufVec *= halfWidth;
+
+            // calculate the starting buffered vector.
+            osg::Vec3 bufVert = (*verts)[i] + bufVec;
 
             if ( i == 0 )
             {
@@ -180,6 +209,9 @@ PolygonizeLinesOperator::operator()(osg::Vec3Array* verts) const
 
                 // first tex coord:
                 tverts->push_back( osg::Vec2f(1.0*(float)s, (*tverts)[i].y()) );
+
+                // first normal
+                normals->push_back( (*normals)[i] );
 
                 // render the front end-cap.
                 if ( _stroke.lineCap() == Stroke::LINECAP_ROUND )
@@ -193,11 +225,12 @@ PolygonizeLinesOperator::operator()(osg::Vec3Array* verts) const
                     {
                         osg::Vec3 v;
                         float a = step * (float)j;
-                        rotate( circlevec, -(side)*a, v );
+                        rotate( circlevec, -(side)*a, (*normals)[i], v );
 
                         verts->push_back( (*verts)[i] + v );
                         addTri( ebo, i, verts->size()-2, verts->size()-1, s );
                         tverts->push_back( osg::Vec2f(1.0*(float)s, (*tverts)[i].y()) );
+                        normals->push_back( (*normals)[i] );
                     }
                 }
                 else if ( _stroke.lineCap() == Stroke::LINECAP_SQUARE )
@@ -207,10 +240,12 @@ PolygonizeLinesOperator::operator()(osg::Vec3Array* verts) const
                     verts->push_back( verts->back() - dir*halfWidth );
                     addTri( ebo, i, verts->size()-2, verts->size()-1, s );
                     tverts->push_back( osg::Vec2f(1.0*(float)s, (*tverts)[i].y()) );
+                    normals->push_back( normals->back() );
 
                     verts->push_back( (*verts)[i] - dir*halfWidth );
                     addTri( ebo, i, verts->size()-2, verts->size()-1, s );
                     tverts->push_back( osg::Vec2f(1.0*(float)s, (*tverts)[i].y()) );
+                    normals->push_back( (*normals)[i] );
                 }
             }
             else
@@ -234,10 +269,10 @@ PolygonizeLinesOperator::operator()(osg::Vec3Array* verts) const
                     osg::Vec3 vec2        = (*verts)[i] - (*verts)[i+1];
                     vec2.normalize();
 
-                    // find the intersection of these two vectors. Check for the 
+                    // find the 2D intersection of these two vectors. Check for the 
                     // special case of colinearity.
                     osg::Vec3 isect;
-                    if ( interesctRays(prevBufVert, vec1, nextBufVert, vec2, isect) )
+                    if ( interesctRays(prevBufVert, vec1, nextBufVert, vec2, (*verts)[i], (*normals)[i], isect) )
                         verts->push_back(isect);
                     else
                         verts->push_back(bufVert);
@@ -245,8 +280,8 @@ PolygonizeLinesOperator::operator()(osg::Vec3Array* verts) const
                     // now that we have the current buffered point, build triangles
                     // for *previous* segment.
                     addTris( ebo, i, prevBufVertPtr, verts->size()-1, s );
-
                     tverts->push_back( osg::Vec2f(1.0*(float)s, (*tverts)[i].y()) );
+                    normals->push_back( (*normals)[i] );
                 }
 
                 else if ( _stroke.lineJoin() == Stroke::LINEJOIN_ROUND )
@@ -257,6 +292,7 @@ PolygonizeLinesOperator::operator()(osg::Vec3Array* verts) const
                     verts->push_back( start );
                     addTris( ebo, i, prevBufVertPtr, verts->size()-1, s );
                     tverts->push_back( osg::Vec2f(1.0*(float)s, (*tverts)[i].y()) );
+                    normals->push_back( (*normals)[i] );
 
                     // insert the edge-rounding points:
                     float angle = acosf( (prevBufVec * bufVec)/(halfWidth*halfWidth) );
@@ -267,11 +303,12 @@ PolygonizeLinesOperator::operator()(osg::Vec3Array* verts) const
                     {
                         osg::Vec3 v;
                         float a = step * (float)j;
-                        rotate( circlevec, side*a, v );
+                        rotate( circlevec, side*a, (*normals)[i], v );
 
                         verts->push_back( (*verts)[i] + v );
                         addTri( ebo, i, verts->size()-1, verts->size()-2, s );
                         tverts->push_back( osg::Vec2f(1.0*(float)s, (*tverts)[i].y()) );
+                        normals->push_back( (*normals)[i] );
                     }
                 }
 
@@ -285,13 +322,11 @@ PolygonizeLinesOperator::operator()(osg::Vec3Array* verts) const
             prevBufVec = bufVec;
         }
 
-        // record the final point.
+        // record the final point data.
         verts->push_back( (*verts)[i] + prevBufVec );
-
-        // build triangles for the final segment.
         addTris( ebo, i, prevBufVertPtr, verts->size()-1, s );
-
         tverts->push_back( osg::Vec2f(1.0*(float)s, (*tverts)[i].y()) );
+        normals->push_back( (*normals)[i] );
 
         if ( _stroke.lineCap() == Stroke::LINECAP_ROUND )
         {
@@ -305,10 +340,11 @@ PolygonizeLinesOperator::operator()(osg::Vec3Array* verts) const
             {
                 osg::Vec3 v;
                 float a = step * (float)j;
-                rotate( circlevec, (side)*a, v );
+                rotate( circlevec, (side)*a, (*normals)[i], v );
                 verts->push_back( (*verts)[i] + v );
                 addTri( ebo, i, verts->size()-1, verts->size()-2, s );
                 tverts->push_back( osg::Vec2f(1.0*(float)s, (*tverts)[i].y()) );
+                normals->push_back( (*normals)[i] );
             }
         }
         else if ( _stroke.lineCap() == Stroke::LINECAP_SQUARE )
@@ -318,10 +354,12 @@ PolygonizeLinesOperator::operator()(osg::Vec3Array* verts) const
             verts->push_back( verts->back() + prevDir*halfWidth );
             addTri( ebo, i, verts->size()-1, verts->size()-2, s );
             tverts->push_back( osg::Vec2f(1.0*(float)s, (*tverts)[i].y()) );
+            normals->push_back( normals->back() );
 
             verts->push_back( (*verts)[i] + prevDir*halfWidth );
             addTri( ebo, i, verts->size()-1, verts->size()-2, s );
             tverts->push_back( osg::Vec2f(1.0*(float)s, (*tverts)[i].y()) );
+            normals->push_back( (*normals)[i] );
         }
     }
 
@@ -335,15 +373,6 @@ PolygonizeLinesOperator::operator()(osg::Vec3Array* verts) const
     for(i=0; i<ebo.size(); ++i )
         primset->addElement( ebo[i] );
     geom->addPrimitiveSet( primset );
-
-    // generate the normals
-    {
-        osg::Vec3Array* normals = new osg::Vec3Array();
-        normals->reserve( verts->size() );
-        normals->assign( normals->size(), osg::Vec3(0,0,1) );
-        geom->setNormalArray( normals );
-        geom->setNormalBinding( osg::Geometry::BIND_PER_VERTEX );
-    }
 
     // generate colors
     {
@@ -422,11 +451,12 @@ PolygonizeLinesFilter::push(FeatureList& input, FilterContext& cx)
 
             // transform the geometry into the target SRS and localize it about 
             // a local reference point.
-            osg::Vec3Array* verts = new osg::Vec3Array();
-            transformAndLocalize( part->asVector(), featureSRS, verts, mapSRS, _world2local, makeECEF );
+            osg::Vec3Array* verts   = new osg::Vec3Array();
+            osg::Vec3Array* normals = new osg::Vec3Array();
+            transformAndLocalize( part->asVector(), featureSRS, verts, normals, mapSRS, _world2local, makeECEF );
 
             // turn the lines into polygons.
-            osg::Geometry* geom = polygonize( verts );
+            osg::Geometry* geom = polygonize( verts, normals );
             geode->addDrawable( geom );
         }
     }

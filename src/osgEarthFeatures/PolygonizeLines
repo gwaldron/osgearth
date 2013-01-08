@@ -49,11 +49,15 @@ namespace osgEarth { namespace Features
         /**
          * Run the polygonizer.
          *
-         * @param[in ] input  Line string geometry to polygonize. The polygonizer
-         *                    will add this array to the resulting geometry.
+         * @param[in ] verts   Line string geometry to polygonize. The polygonizer
+         *                     will add this array to the resulting geometry.
+         * @param[in ] normals Localized normals associated with the input verts.
+         *                     Used to determine the plane in which to polygonize each
+         *                     line segment. Optional; can be NULL
+         *
          * @return Triangulated geometry, including primitive set
          */
-        osg::Geometry* operator()(osg::Vec3Array* input) const;
+        osg::Geometry* operator()(osg::Vec3Array* verts, osg::Vec3Array* normals) const;
 
     protected:
         Stroke _stroke;

@@ -165,6 +165,15 @@ namespace osgEarth { namespace Features
             bool                           toECEF );
 
         void transformAndLocalize(
+            const std::vector<osg::Vec3d>& input,
+            const SpatialReference*        inputSRS,
+            osg::Vec3Array*                out_verts,
+            osg::Vec3Array*                out_normals,
+            const SpatialReference*        outputSRS,
+            const osg::Matrixd&            world2local,
+            bool                           toECEF );
+
+        void transformAndLocalize(
             const osg::Vec3d&              input,
             const SpatialReference*        inputSRS,
             osg::Vec3d&                    output,

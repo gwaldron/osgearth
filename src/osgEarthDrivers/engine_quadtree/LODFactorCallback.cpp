@@ -18,11 +18,11 @@
  */
 #include "LODFactorCallback"
 
+#include <osgEarth/CullingUtils>
 #include <osg/Math>
 #include <osg/PagedLOD>
 #include <osg/StateSet>
 #include <osg/Uniform>
-#include <osgUtil/CullVisitor>
 
 using namespace osgEarth_engine_quadtree;
 
@@ -36,7 +36,7 @@ void LODFactorCallback::operator()(osg::Node* node, osg::NodeVisitor* nv)
 {
     // test the type since this is not always a PagedLOD.
     osg::PagedLOD* lod = static_cast<osg::PagedLOD*>(node);
-    osgUtil::CullVisitor* cv = static_cast<osgUtil::CullVisitor*>(nv);
+    osgUtil::CullVisitor* cv = osgEarth::Culling::asCullVisitor(nv);
     osg::LOD::RangeMode rangeMode = lod->getRangeMode();
     float requiredRange = 0.0f;
     float rangeFactor = 1.0f;

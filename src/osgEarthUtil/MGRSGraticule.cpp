@@ -137,11 +137,14 @@ MGRSGraticule::buildSQIDTiles( const std::string& gzd )
     textGeode->getOrCreateStateSet()->setRenderBinDetails( 9999, "DepthSortedBin" );    
     textGeode->getOrCreateStateSet()->setAttributeAndModes( _depthAttribute, 1 );
 
+    const SpatialReference* ecefSRS = extent.getSRS()->getECEF();
     osg::Vec3d centerMap, centerECEF;
     extent.getCentroid(centerMap.x(), centerMap.y());
-    extent.getSRS()->transformToECEF(centerMap, centerECEF);
+    extent.getSRS()->transform(centerMap, ecefSRS, centerECEF);
+    //extent.getSRS()->transformToECEF(centerMap, centerECEF);
 
-    osg::Matrix local2world = ECEF::createLocalToWorld(centerECEF);
+    osg::Matrix local2world;
+    ecefSRS->createLocalToWorld( centerECEF, local2world ); //= ECEF::createLocalToWorld(centerECEF);
     osg::Matrix world2local;
     world2local.invert(local2world);
 
@@ -246,7 +249,8 @@ MGRSGraticule::buildSQIDTiles( const std::string& gzd )
                 osg::Vec3d sqidTextMap = (nw + se) * 0.5;
                 sqidTextMap.z() += 1000.0;
                 osg::Vec3d sqidTextECEF;
-                extent.getSRS()->transformToECEF(sqidTextMap, sqidTextECEF);
+                extent.getSRS()->transform(sqidTextMap, ecefSRS, sqidTextECEF);
+                //extent.getSRS()->transformToECEF(sqidTextMap, sqidTextECEF);
                 osg::Vec3d sqidLocal;
                 sqidLocal = sqidTextECEF * world2local;
 
@@ -256,7 +260,8 @@ MGRSGraticule::buildSQIDTiles( const std::string& gzd )
                     textSym->size() = utmWidth/3.0;        
                     osgText::Text* d = ts.create( mgrsCoord.sqid );
 
-                    osg::Matrixd textLocal2World = ECEF::createLocalToWorld( sqidTextECEF );
+                    osg::Matrixd textLocal2World;
+                    ecefSRS->createLocalToWorld( sqidTextECEF, textLocal2World );
 
                     d->setPosition( sqidLocal );
                     textGeode->addDrawable( d );
@@ -315,7 +320,8 @@ MGRSGraticule::buildSQIDTiles( const std::string& gzd )
                     {
                         sqidTextMap.z() += 1000.0;
                         osg::Vec3d sqidTextECEF;
-                        extent.getSRS()->transformToECEF(sqidTextMap, sqidTextECEF);
+                        extent.getSRS()->transform(sqidTextMap, ecefSRS, sqidTextECEF);
+                        //extent.getSRS()->transformToECEF(sqidTextMap, sqidTextECEF);
                         osg::Vec3d sqidLocal = sqidTextECEF * world2local;
 
                         MGRSCoord mgrsCoord;
@@ -323,7 +329,8 @@ MGRSGraticule::buildSQIDTiles( const std::string& gzd )
                         {
                             textSym->size() = 33000.0;
                             osgText::Text* d = ts.create( mgrsCoord.sqid );
-                            osg::Matrixd textLocal2World = ECEF::createLocalToWorld( sqidTextECEF );
+                            osg::Matrixd textLocal2World;
+                            ecefSRS->createLocalToWorld( sqidTextECEF, textLocal2World );
                             d->setPosition( sqidLocal );
                             textGeode->addDrawable( d );
                         }
@@ -370,7 +377,8 @@ MGRSGraticule::buildSQIDTiles( const std::string& gzd )
                     {
                         sqidTextMap.z() += 1000.0;
                         osg::Vec3d sqidTextECEF;
-                        extent.getSRS()->transformToECEF(sqidTextMap, sqidTextECEF);
+                        extent.getSRS()->transform(sqidTextMap, ecefSRS, sqidTextECEF);
+                        //extent.getSRS()->transformToECEF(sqidTextMap, sqidTextECEF);
                         osg::Vec3d sqidLocal = sqidTextECEF * world2local;
 
                         MGRSCoord mgrsCoord;
@@ -378,7 +386,8 @@ MGRSGraticule::buildSQIDTiles( const std::string& gzd )
                         {
                             textSym->size() = 33000.0;
                             osgText::Text* d = ts.create( mgrsCoord.sqid );
-                            osg::Matrixd textLocal2World = ECEF::createLocalToWorld( sqidTextECEF );
+                            osg::Matrixd textLocal2World;
+                            ecefSRS->createLocalToWorld( sqidTextECEF, textLocal2World );
                             d->setPosition( sqidLocal );
                             textGeode->addDrawable( d );
                         }
@@ -438,7 +447,8 @@ MGRSGraticule::buildSQIDTiles( const std::string& gzd )
                     {
                         sqidTextMap.z() += 1000.0;
                         osg::Vec3d sqidTextECEF;
-                        extent.getSRS()->transformToECEF(sqidTextMap, sqidTextECEF);
+                        extent.getSRS()->transform(sqidTextMap, ecefSRS, sqidTextECEF);
+                        //extent.getSRS()->transformToECEF(sqidTextMap, sqidTextECEF);
                         osg::Vec3d sqidLocal = sqidTextECEF * world2local;
 
                         MGRSCoord mgrsCoord;
@@ -446,7 +456,8 @@ MGRSGraticule::buildSQIDTiles( const std::string& gzd )
                         {
                             textSym->size() = 33000.0;
                             osgText::Text* d = ts.create( mgrsCoord.sqid );
-                            osg::Matrixd textLocal2World = ECEF::createLocalToWorld( sqidTextECEF );
+                            osg::Matrixd textLocal2World;
+                            ecefSRS->createLocalToWorld( sqidTextECEF, textLocal2World );
                             d->setPosition( sqidLocal );
                             textGeode->addDrawable( d );
                         }
@@ -493,7 +504,8 @@ MGRSGraticule::buildSQIDTiles( const std::string& gzd )
                     {
                         sqidTextMap.z() += 1000.0;
                         osg::Vec3d sqidTextECEF;
-                        extent.getSRS()->transformToECEF(sqidTextMap, sqidTextECEF);
+                        extent.getSRS()->transform(sqidTextMap, ecefSRS, sqidTextECEF);
+                        //extent.getSRS()->transformToECEF(sqidTextMap, sqidTextECEF);
                         osg::Vec3d sqidLocal = sqidTextECEF * world2local;
 
                         MGRSCoord mgrsCoord;
@@ -501,7 +513,8 @@ MGRSGraticule::buildSQIDTiles( const std::string& gzd )
                         {
                             textSym->size() = 33000.0;
                             osgText::Text* d = ts.create( mgrsCoord.sqid );
-                            osg::Matrixd textLocal2World = ECEF::createLocalToWorld( sqidTextECEF );
+                            osg::Matrixd textLocal2World;
+                            ecefSRS->createLocalToWorld( sqidTextECEF, textLocal2World );
                             d->setPosition( sqidLocal );
                             textGeode->addDrawable( d );
                         }

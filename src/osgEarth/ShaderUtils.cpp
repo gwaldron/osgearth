@@ -19,7 +19,7 @@
 #include <osgEarth/ShaderUtils>
 #include <osgEarth/Registry>
 #include <osgEarth/Capabilities>
-#include <osgUtil/CullVisitor>
+#include <osgEarth/CullingUtils>
 #include <list>
 
 using namespace osgEarth;
@@ -397,7 +397,7 @@ UpdateLightingUniformsHelper::~UpdateLightingUniformsHelper()
 void
 UpdateLightingUniformsHelper::cullTraverse( osg::Node* node, osg::NodeVisitor* nv )
 {
-    osgUtil::CullVisitor* cv = dynamic_cast<osgUtil::CullVisitor*>( nv );
+    osgUtil::CullVisitor* cv = Culling::asCullVisitor(nv);
     if ( cv )
     {
         StateSetStack stateSetStack;

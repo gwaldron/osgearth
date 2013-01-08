@@ -37,6 +37,7 @@ namespace
                        const osg::Vec3& q0, const osg::Vec3& qd, // point, dir
                        osg::Vec3& out)
     {
+        // this epsilon will cause us to skip invalid or colinear rays.
         const float epsilon = 0.001f;
 
         float det = pd.y()*qd.x()-pd.x()*qd.y();
@@ -44,11 +45,11 @@ namespace
             return false;
 
         float u = (qd.x()*(q0.y()-p0.y())+qd.y()*(p0.x()-q0.x()))/det;
-        if ( u < epsilon ) //0.0f )
+        if ( u < epsilon )
             return false;
 
         float v = (pd.x()*(q0.y()-p0.y())+pd.y()*(p0.x()-q0.x()))/det;
-        if ( v < epsilon ) //0.0f )
+        if ( v < epsilon )
             return false;
 
         out = p0 + pd*u;
@@ -121,12 +122,26 @@ PolygonizeLinesOperator::operator()(osg::Vec3Array* verts) const
     float halfWidth        = 0.5f * width;
     float maxRoundingAngle = asin( _stroke.roundingRatio().get() );
 
-    osg::Geometry*  geom  = new osg::Geometry();
+    osg::Geometry* geom  = new osg::Geometry();
+    geom->setUseVertexBufferObjects( true );
 
     // Add the input verts to the geometry. This forms the "spine" of the
     // polygonized line. We need the spine so we can affect proper clamping,
     // texturing and vertex attribution.
     geom->setVertexArray( verts );
+
+    // initialize the texture coordinates.
+    float spineLen = 0.0f;
+    osg::Vec2Array* tverts = new osg::Vec2Array( lineSize );
+    geom->setTexCoordArray( 0, tverts );
+    (*tverts)[0].set( 0.5f, 0.0f );
+    for( unsigned i=1; i<lineSize; ++i )
+    {
+        Segment   seg   ( (*verts)[i-1], (*verts)[i] );             // current segment.
+        osg::Vec3 dir = seg.second - seg.first;
+        spineLen += dir.length();
+        (*tverts)[i].set( 0.5f, spineLen * 1.0f/width );
+    }
 
     // triangulate the points into a mesh.
     std::vector<unsigned> ebo;
@@ -163,6 +178,9 @@ PolygonizeLinesOperator::operator()(osg::Vec3Array* verts) const
                 prevBufVert = bufVert;
                 prevBufVertPtr = verts->size() - 1;
 
+                // first tex coord:
+                tverts->push_back( osg::Vec2f(1.0*(float)s, (*tverts)[i].y()) );
+
                 // render the front end-cap.
                 if ( _stroke.lineCap() == Stroke::LINECAP_ROUND )
                 {
@@ -176,17 +194,23 @@ PolygonizeLinesOperator::operator()(osg::Vec3Array* verts) const
                         osg::Vec3 v;
                         float a = step * (float)j;
                         rotate( circlevec, -(side)*a, v );
+
                         verts->push_back( (*verts)[i] + v );
                         addTri( ebo, i, verts->size()-2, verts->size()-1, s );
+                        tverts->push_back( osg::Vec2f(1.0*(float)s, (*tverts)[i].y()) );
                     }
                 }
                 else if ( _stroke.lineCap() == Stroke::LINECAP_SQUARE )
                 {
                     float cornerWidth = sqrt(2.0*halfWidth*halfWidth);
+
                     verts->push_back( verts->back() - dir*halfWidth );
                     addTri( ebo, i, verts->size()-2, verts->size()-1, s );
+                    tverts->push_back( osg::Vec2f(1.0*(float)s, (*tverts)[i].y()) );
+
                     verts->push_back( (*verts)[i] - dir*halfWidth );
                     addTri( ebo, i, verts->size()-2, verts->size()-1, s );
+                    tverts->push_back( osg::Vec2f(1.0*(float)s, (*tverts)[i].y()) );
                 }
             }
             else
@@ -221,14 +245,18 @@ PolygonizeLinesOperator::operator()(osg::Vec3Array* verts) const
                     // now that we have the current buffered point, build triangles
                     // for *previous* segment.
                     addTris( ebo, i, prevBufVertPtr, verts->size()-1, s );
+
+                    tverts->push_back( osg::Vec2f(1.0*(float)s, (*tverts)[i].y()) );
                 }
 
                 else if ( _stroke.lineJoin() == Stroke::LINEJOIN_ROUND )
                 {
                     // for a rounded corner, first create the first rim point:
                     osg::Vec3 start = (*verts)[i] + prevBufVec;
+
                     verts->push_back( start );
                     addTris( ebo, i, prevBufVertPtr, verts->size()-1, s );
+                    tverts->push_back( osg::Vec2f(1.0*(float)s, (*tverts)[i].y()) );
 
                     // insert the edge-rounding points:
                     float angle = acosf( (prevBufVec * bufVec)/(halfWidth*halfWidth) );
@@ -240,8 +268,10 @@ PolygonizeLinesOperator::operator()(osg::Vec3Array* verts) const
                         osg::Vec3 v;
                         float a = step * (float)j;
                         rotate( circlevec, side*a, v );
+
                         verts->push_back( (*verts)[i] + v );
                         addTri( ebo, i, verts->size()-1, verts->size()-2, s );
+                        tverts->push_back( osg::Vec2f(1.0*(float)s, (*tverts)[i].y()) );
                     }
                 }
 
@@ -261,7 +291,8 @@ PolygonizeLinesOperator::operator()(osg::Vec3Array* verts) const
         // build triangles for the final segment.
         addTris( ebo, i, prevBufVertPtr, verts->size()-1, s );
 
-        // build the final end cap.
+        tverts->push_back( osg::Vec2f(1.0*(float)s, (*tverts)[i].y()) );
+
         if ( _stroke.lineCap() == Stroke::LINECAP_ROUND )
         {
             float angle = osg::PI_2;
@@ -269,6 +300,7 @@ PolygonizeLinesOperator::operator()(osg::Vec3Array* verts) const
             float step = angle/(float)steps;
             osg::Vec3 circlevec = verts->back() - (*verts)[i];
 
+            // tessellate half of a rounded end camp:
             for( int j=1; j<=steps; ++j )
             {
                 osg::Vec3 v;
@@ -276,15 +308,20 @@ PolygonizeLinesOperator::operator()(osg::Vec3Array* verts) const
                 rotate( circlevec, (side)*a, v );
                 verts->push_back( (*verts)[i] + v );
                 addTri( ebo, i, verts->size()-1, verts->size()-2, s );
+                tverts->push_back( osg::Vec2f(1.0*(float)s, (*tverts)[i].y()) );
             }
         }
         else if ( _stroke.lineCap() == Stroke::LINECAP_SQUARE )
         {
             float cornerWidth = sqrt(2.0*halfWidth*halfWidth);
+
             verts->push_back( verts->back() + prevDir*halfWidth );
             addTri( ebo, i, verts->size()-1, verts->size()-2, s );
+            tverts->push_back( osg::Vec2f(1.0*(float)s, (*tverts)[i].y()) );
+
             verts->push_back( (*verts)[i] + prevDir*halfWidth );
             addTri( ebo, i, verts->size()-1, verts->size()-2, s );
+            tverts->push_back( osg::Vec2f(1.0*(float)s, (*tverts)[i].y()) );
         }
     }
 
@@ -294,12 +331,39 @@ PolygonizeLinesOperator::operator()(osg::Vec3Array* verts) const
         verts->size() > 0xFF   ? (osg::DrawElements*)new osg::DrawElementsUShort( GL_TRIANGLES ) :
                                  (osg::DrawElements*)new osg::DrawElementsUByte ( GL_TRIANGLES );
 
-    // todo: copy from ebo
     primset->reserveElements( ebo.size() );
     for(i=0; i<ebo.size(); ++i )
         primset->addElement( ebo[i] );
-
     geom->addPrimitiveSet( primset );
+
+    // generate the normals
+    {
+        osg::Vec3Array* normals = new osg::Vec3Array();
+        normals->reserve( verts->size() );
+        normals->assign( normals->size(), osg::Vec3(0,0,1) );
+        geom->setNormalArray( normals );
+        geom->setNormalBinding( osg::Geometry::BIND_PER_VERTEX );
+    }
+
+    // generate colors
+    {
+        osg::Vec4Array* colors = new osg::Vec4Array( verts->size() );
+        colors->assign( colors->size(), _stroke.color() );
+        geom->setColorArray( colors );
+        geom->setColorBinding( osg::Geometry::BIND_PER_VERTEX );
+        //colors->push_back( _stroke.color() );
+        //geom->setColorArray( colors );
+        //geom->setColorBinding( osg::Geometry::BIND_OVERALL );
+    }
+
+#if 0
+    //TESTING
+    osg::Image* image = osgDB::readImageFile("E:/data/textures/road.jpg");
+    osg::Texture2D* tex = new osg::Texture2D(image);
+    tex->setWrap( osg::Texture::WRAP_S, osg::Texture::CLAMP_TO_EDGE );
+    tex->setWrap( osg::Texture::WRAP_T, osg::Texture::REPEAT );
+    geom->getOrCreateStateSet()->setTextureAttributeAndModes(0, tex, 1);
+#endif
 
     return geom;
 }

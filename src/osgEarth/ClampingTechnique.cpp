@@ -18,6 +18,7 @@
 */
 #include <osgEarth/ClampingTechnique>
 #include <osgEarth/Capabilities>
+#include <osgEarth/CullingUtils>
 #include <osgEarth/Registry>
 #include <osgEarth/VirtualProgram>
 #include <osgEarth/MapNode>
@@ -49,7 +50,6 @@ namespace
 }
 
 ClampingTechnique::TechniqueProvider ClampingTechnique::Provider = s_providerImpl;
-
 
 //--------------------------------------------------------------------------
 
@@ -179,29 +179,6 @@ namespace
 
 namespace
 {
-    // Projection clamping callback that simply records the clamped matrix for
-    // later use
-    struct CPM : public osg::CullSettings::ClampProjectionMatrixCallback
-    {
-        void setup( osgUtil::CullVisitor* cv ) {
-            _clampedDepthProjMatrix.makeIdentity();
-            _cv = cv;
-        }
-        bool clampProjectionMatrixImplementation(osg::Matrixf& projection, double& znear, double& zfar) const {
-            return _cv->clampProjectionMatrixImplementation(projection, znear, zfar);
-            OE_WARN << "NO!" << std::endl;
-        }
-        bool clampProjectionMatrixImplementation(osg::Matrixd& projection, double& znear, double& zfar) const {
-            bool r = _cv->clampProjectionMatrixImplementation(projection, znear, zfar);
-            if ( r ) _clampedDepthProjMatrix = projection;
-            return r;
-        }
-        
-        osgUtil::CullVisitor* _cv;
-        mutable osg::Matrixd  _clampedDepthProjMatrix;
-    };
-
-
     // Additional per-view data stored by the clamping technique.
     struct LocalPerViewData : public osg::Referenced
     {
@@ -209,7 +186,6 @@ namespace
         osg::ref_ptr<osg::StateSet>  _groupStateSet;
         osg::ref_ptr<osg::Uniform>   _camViewToDepthClipUniform;
         osg::ref_ptr<osg::Uniform>   _depthClipToCamViewUniform;
-        osg::ref_ptr<CPM>            _cpm;
 
         osg::ref_ptr<osg::Uniform>   _depthClipToDepthViewUniform;
         osg::ref_ptr<osg::Uniform>   _depthViewToCamViewUniform;
@@ -332,9 +308,6 @@ ClampingTechnique::setUpCamera(OverlayDecorator::TechRTTParams& params)
     LocalPerViewData* local = new LocalPerViewData();
     params._techniqueData = local;
 
-    // set up a callback to extract the overlay projection matrix.
-    local->_cpm = new CPM();
-
     // create the projected texture:
     local->_rttTexture = new osg::Texture2D();
     local->_rttTexture->setTextureSize( *_textureSize, *_textureSize );
@@ -354,13 +327,11 @@ ClampingTechnique::setUpCamera(OverlayDecorator::TechRTTParams& params)
     params._rttCamera->setReferenceFrame( osg::Camera::ABSOLUTE_RF_INHERIT_VIEWPOINT );
     params._rttCamera->setClearColor( osg::Vec4f(0,0,0,0) );
     params._rttCamera->setClearMask( GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT );
-    //params._rttCamera->setComputeNearFarMode( osg::CullSettings::COMPUTE_NEAR_FAR_USING_BOUNDING_VOLUMES );
     params._rttCamera->setComputeNearFarMode( osg::CullSettings::DO_NOT_COMPUTE_NEAR_FAR );
     params._rttCamera->setViewport( 0, 0, *_textureSize, *_textureSize );
     params._rttCamera->setRenderOrder( osg::Camera::PRE_RENDER );
     params._rttCamera->setRenderTargetImplementation( osg::Camera::FRAME_BUFFER_OBJECT );
     params._rttCamera->attach( osg::Camera::DEPTH_BUFFER, local->_rttTexture.get() );
-    //params._rttCamera->setClampProjectionMatrixCallback( local->_cpm.get() );
 
     // set up a StateSet for the RTT camera.
     osg::StateSet* rttStateSet = params._rttCamera->getOrCreateStateSet();
@@ -533,7 +504,6 @@ ClampingTechnique::cullOverlayGroup(OverlayDecorator::TechRTTParams& params,
         //OE_NOTICE << "HD = " << std::setprecision(8) << float(*params._horizonDistance) << std::endl;
 
 #if SUPPORT_Z
-
         osg::Matrix depthClipToDepthView;
         depthClipToDepthView.invert( depthViewToDepthClip );
         local._depthClipToDepthViewUniform->set( depthClipToDepthView );
@@ -541,20 +511,30 @@ ClampingTechnique::cullOverlayGroup(OverlayDecorator::TechRTTParams& params,
         osg::Matrix depthViewToCameraView;
         depthViewToCameraView.invert( cameraViewToDepthView );
         local._depthViewToCamViewUniform->set( depthViewToCameraView );
-
 #else
 
         osg::Matrix depthClipToCameraView;
         depthClipToCameraView.invert( cameraViewToDepthClip );
         local._depthClipToCamViewUniform->set( depthClipToCameraView );
-
 #endif
 
         if ( params._group->getNumChildren() > 0 )
         {
             // traverse the overlay nodes, applying the clamping shader.
             cv->pushStateSet( local._groupStateSet.get() );
-            params._group->accept( *cv );
+
+            // Since the vertex shader is moving the verts to clamp them to the terrain,
+            // OSG will not be able to properly cull the geometry. (Specifically: OSG may
+            // cull geometry which is invisible when NOT clamped, but becomes visible after
+            // GPU clamping.) We work around that by using a Proxy cull visitor that will 
+            // use the RTT camera's matrixes for frustum culling (instead of the main camera's).
+            ProxyCullVisitor pcv( cv, params._rttProjMatrix, params._rttViewMatrix );
+
+            // cull the clampable geometry.
+            params._group->accept( pcv );
+            //params._group->accept( *cv ); // old way - direct traversal
+
+            // done; pop the clamping shaders.
             cv->popStateSet();
         }
     }

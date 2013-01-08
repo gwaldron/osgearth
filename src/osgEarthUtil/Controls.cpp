@@ -31,6 +31,7 @@
 #include <osgEarth/Common>
 #include <osgEarth/Registry>
 #include <osgEarth/Utils>
+#include <osgEarth/CullingUtils>
 
 using namespace osgEarth;
 using namespace osgEarth::Symbology;
@@ -2142,7 +2143,7 @@ ControlNode::traverse( osg::NodeVisitor& nv )
     {
         static osg::Vec3d s_zero(0,0,0);
         static osg::Vec4d s_zero_w(0,0,0,1);
-        osgUtil::CullVisitor* cv = static_cast<osgUtil::CullVisitor*>( &nv );
+        osgUtil::CullVisitor* cv = Culling::asCullVisitor(nv);
 
         // pull up the per-view data for this view:
         PerViewData& data = _perViewData[cv->getCurrentCamera()->getView()];

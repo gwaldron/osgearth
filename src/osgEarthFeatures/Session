@@ -74,6 +74,9 @@ namespace osgEarth { namespace Features
          */
         const MapInfo& getMapInfo() const { return _mapInfo; }
 
+        /** Gets the SRS of the map behind this session */
+        const SpatialReference* getMapSRS() const { return _mapInfo.getSRS(); }
+
         /**
          * Gets the map related to this session. Be carefull, this is held by an osg::observer_ptr and may be NULL
          */

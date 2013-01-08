@@ -96,8 +96,11 @@ Terrain::getHeight(osg::Node*              patch,
 
     if ( isGeocentric() )
     {
-        getSRS()->transformToECEF(start, start);
-        getSRS()->transformToECEF(end, end);
+        const SpatialReference* ecef = getSRS()->getECEF();
+        getSRS()->transform(start, ecef, start);
+        getSRS()->transform(end,   ecef, end);
+        //getSRS()->transformToECEF(start, start);
+        //getSRS()->transformToECEF(end, end);
     }
 
     osgUtil::LineSegmentIntersector* lsi = new osgUtil::LineSegmentIntersector(start, end);

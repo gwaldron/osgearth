@@ -153,7 +153,54 @@ namespace osgEarth
         double _maxRange2;
     };
 
+    /**
+     * Culling utilities.
+     */
+    struct OSGEARTH_EXPORT Culling
+    {
+        static osgUtil::CullVisitor* asCullVisitor(osg::NodeVisitor* nv);
+        static osgUtil::CullVisitor* asCullVisitor(osg::NodeVisitor& nv) { return asCullVisitor(&nv); }
+    };
 
+    /**
+     * Node Visitor that proxies the CullVisitor but uses a separate
+     * frustum for bounds-culling.
+     */
+    class ProxyCullVisitor : public osg::NodeVisitor, public osg::CullStack
+    {
+    private:
+        osgUtil::CullVisitor* _cv;
+        osg::Polytope         _proxyFrustum;
+        osg::Polytope         _proxyProjFrustum;
+        osg::Matrix           _proxyModelViewMatrix;
+        osg::Matrix           _proxyProjMatrix;
+
+    public:
+        ProxyCullVisitor( osgUtil::CullVisitor* cv, const osg::Matrix& proj, const osg::Matrix& view );
+
+        // access to the underlying cull visitor.
+        osgUtil::CullVisitor* getCullVisitor() { return _cv; }
+
+    public: // proxy functions:
+        osg::Vec3 getEyePoint() const;
+        osg::Vec3 getViewPoint() const;
+        float getDistanceToEyePoint(const osg::Vec3& pos, bool useLODScale) const;
+        float getDistanceFromEyePoint(const osg::Vec3& pos, bool useLODScale) const;
+        float getDistanceToViewPoint(const osg::Vec3& pos, bool useLODScale) const;
+
+    protected: // custom culling functions:
+
+        bool isCulledByProxyFrustum(osg::Node& node);
+        bool isCulledByProxyFrustum(const osg::BoundingBox& bbox);
+        
+        osgUtil::CullVisitor::value_type distance(const osg::Vec3& coord,const osg::Matrix& matrix);
+
+        void handle_cull_callbacks_and_traverse(osg::Node& node);
+
+        void apply(osg::Node& node);
+        void apply(osg::Transform& node);
+        void apply(osg::Geode& node);
+    };
 }
 
 #endif // OSGEARTH_CULLING_UTILS_H

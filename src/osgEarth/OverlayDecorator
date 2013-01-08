@@ -81,9 +81,19 @@ namespace osgEarth
 
     protected:
         virtual ~OverlayDecorator() { }
-        
+
+        //// Root group for an overlay technique
+        //struct OverlayRootGroup : public osg::Group
+        //{
+        //    OverlayRootGroup();
+        //    osg::Polytope& cullingFrustum() { return _cb->_cullingFrustum; }
+        //    osg::ref_ptr<osg::NodeCallback> _cb;
+        //    mutable Threading::Mutex        _mutex;
+        //    osg::BoundingSphere computeBound() const; // override
+        //};
 
     public:
+
         // RTT camera parameters for an overlay technique. There will be
         // one of these per technique, per view.
         struct TechRTTParams

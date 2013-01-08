@@ -164,7 +164,7 @@ OrthoNode::traverse( osg::NodeVisitor& nv )
 
     if ( nv.getVisitorType() == osg::NodeVisitor::CULL_VISITOR )
     {
-        cv = static_cast<osgUtil::CullVisitor*>( &nv );
+        cv = Culling::asCullVisitor(nv);
 
         // make sure that we're NOT using the AutoTransform if this node is in the decluttering bin;
         // the decluttering bin automatically manages screen space transformation.

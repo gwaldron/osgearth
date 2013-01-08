@@ -17,9 +17,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 #include <osgEarth/ElevationLOD>
+#include <osgEarth/CullingUtils>
 #include <osgEarth/GeoData>
-
-#include <osgUtil/CullVisitor>
 #include <osg/CoordinateSystemNode>
 
 using namespace osgEarth;
@@ -74,7 +73,7 @@ void ElevationLOD::traverse( osg::NodeVisitor& nv)
 {
     if (nv.getVisitorType() ==  osg::NodeVisitor::CULL_VISITOR)
     {
-        osgUtil::CullVisitor* cv = static_cast<osgUtil::CullVisitor*>( &nv );
+        osgUtil::CullVisitor* cv = Culling::asCullVisitor(nv);
         osg::Vec3d eye, center, up;        
         eye = cv->getViewPoint();
 

@@ -18,14 +18,15 @@
 */
 #include <osgEarthUtil/SkyNode>
 #include <osgEarthUtil/StarData>
+#include <osgEarthUtil/LatLongFormatter>
 
 #include <osgEarth/VirtualProgram>
-#include <osgEarthUtil/LatLongFormatter>
 #include <osgEarth/NodeUtils>
 #include <osgEarth/MapNode>
 #include <osgEarth/Utils>
 #include <osgEarth/Registry>
 #include <osgEarth/Capabilities>
+#include <osgEarth/CullingUtils>
 
 #include <osg/MatrixTransform>
 #include <osg/ShapeDrawable>
@@ -785,7 +786,7 @@ SkyNode::computeBound() const
 void
 SkyNode::traverse( osg::NodeVisitor& nv )
 {
-    osgUtil::CullVisitor* cv = dynamic_cast<osgUtil::CullVisitor*>( &nv );
+    osgUtil::CullVisitor* cv = Culling::asCullVisitor(nv);
     if ( cv )
     {
         // If there's a custom projection matrix clamper installed, remove it temporarily.

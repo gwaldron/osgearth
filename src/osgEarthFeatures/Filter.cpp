@@ -80,8 +80,8 @@ FeaturesToNodeFilter::computeLocalizers( const FilterContext& context )
             {
                 osg::Vec3d centroid, centroidECEF;
                 geodExtent.getCentroid( centroid.x(), centroid.y() );
-                geogSRS->transformToECEF( centroid, centroidECEF );
-                _local2world = ECEF::createLocalToWorld( centroidECEF );
+                geogSRS->transform( centroid, geogSRS->getECEF(), centroidECEF );
+                geogSRS->getECEF()->createLocalToWorld( centroidECEF, _local2world );
                 _world2local.invert( _local2world );
             }
         }
@@ -117,7 +117,7 @@ FeaturesToNodeFilter::transformAndLocalize(const std::vector<osg::Vec3d>& input,
 
     if ( toECEF )
     {
-        ECEF::transformAndLocalize( input, inputSRS, output, world2local );
+        ECEF::transformAndLocalize( input, inputSRS, output, outputSRS, world2local );
     }
     else if ( inputSRS )
     {
@@ -148,7 +148,7 @@ FeaturesToNodeFilter::transformAndLocalize(const osg::Vec3d&              input,
 {
     if ( toECEF )
     {
-        ECEF::transformAndLocalize( input, inputSRS, output, world2local );
+        ECEF::transformAndLocalize( input, inputSRS, output, outputSRS, world2local );
     }
     else if ( inputSRS )
     {

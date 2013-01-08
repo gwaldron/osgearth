@@ -31,6 +31,7 @@ namespace osgEarth
         /**
          * Creates a "localization" matrix for double-precision geocentric
          * coordinates. The matrix is ceneterd at the specified ECEF reference point.
+         * @deprecated - use SpatialReference::createLocalToWorld
          */
         static osg::Matrixd createLocalToWorld( 
             const osg::Vec3d& ecefRefPoint );
@@ -43,6 +44,7 @@ namespace osgEarth
             const osg::Vec3d&       input,
             const SpatialReference* inputSRS,
             osg::Vec3d&             output,
+            const SpatialReference* outputSRS,
             const osg::Matrixd&     world2local =osg::Matrixd() );
 
         /**
@@ -53,6 +55,7 @@ namespace osgEarth
             const std::vector<osg::Vec3d>& input,
             const SpatialReference*        inputSRS,
             osg::Vec3Array*                output,
+            const SpatialReference*        outputSRS,
             const osg::Matrixd&            world2local =osg::Matrixd() );
 
         /**
@@ -61,10 +64,10 @@ namespace osgEarth
          */
         static void transformAndGetRotationMatrix(
             const osg::Vec3d&       input,
-            const SpatialReference* input_srs,
+            const SpatialReference* inputSRS,
             osg::Vec3d&             out_ecef_point,
+            const SpatialReference* outputSRS,
             osg::Matrixd&           out_rotation );
-
     };
 }
 

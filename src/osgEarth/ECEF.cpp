@@ -18,6 +18,7 @@
  */
 
 #include <osgEarth/ECEF>
+#include <osgEarth/Notify>
 
 using namespace osgEarth;
 
@@ -25,7 +26,7 @@ using namespace osgEarth;
 
 // --------------------------------------------------------------------------
 
-
+#if 1
 osg::Matrixd
 ECEF::createLocalToWorld( const osg::Vec3d& input )
 {
@@ -65,15 +66,18 @@ ECEF::createLocalToWorld( const osg::Vec3d& input )
 
     return localToWorld;
 }
+#endif
 
 void
 ECEF::transformAndLocalize(const osg::Vec3d&       input,
                            const SpatialReference* inputSRS,
                            osg::Vec3d&             output,
+                           const SpatialReference* outputSRS,
                            const osg::Matrixd&     world2local)
 {
     osg::Vec3d ecef;
-    inputSRS->transformToECEF( input, ecef );
+    //inputSRS->transformToECEF( input, ecef );
+    inputSRS->transform( input, outputSRS->getECEF(), ecef );
     output = ecef * world2local;
 }
 
@@ -82,13 +86,17 @@ void
 ECEF::transformAndLocalize(const std::vector<osg::Vec3d>& input,
                            const SpatialReference*        inputSRS,
                            osg::Vec3Array*                output,
+                           const SpatialReference*        outputSRS,
                            const osg::Matrixd&            world2local )
 {
+    const SpatialReference* ecefSRS = outputSRS->getECEF();
     output->reserve( output->size() + input.size() );
+
     for( std::vector<osg::Vec3d>::const_iterator i = input.begin(); i != input.end(); ++i )
     {
         osg::Vec3d ecef;
-        inputSRS->transformToECEF( *i, ecef );
+        inputSRS->transform( *i, ecefSRS, ecef );
+        //inputSRS->transformToECEF( *i, ecef );
         output->push_back( ecef * world2local );
     }
 }
@@ -97,24 +105,25 @@ void
 ECEF::transformAndGetRotationMatrix(const osg::Vec3d&       input,
                                     const SpatialReference* inputSRS,
                                     osg::Vec3d&             out_point,
+                                    const SpatialReference* outputSRS,
                                     osg::Matrixd&           out_rotation )
 {
-    osg::Vec3d geod_point;
+    const SpatialReference* geoSRS  = inputSRS->getGeographicSRS();
+    const SpatialReference* ecefSRS = outputSRS->getECEF();
+
+    // first transform the geographic (lat/long):
+    osg::Vec3d geoPoint;
     if ( !inputSRS->isGeographic() )
-        inputSRS->transform( input, inputSRS->getGeographicSRS(), geod_point );
+        inputSRS->transform( input, geoSRS, geoPoint );
     else
-        geod_point = input;
+        geoPoint = input;
 
-    const osg::EllipsoidModel* em = inputSRS->getEllipsoid();
-    
-    em->convertLatLongHeightToXYZ(
-        osg::DegreesToRadians( geod_point.y() ),
-        osg::DegreesToRadians( geod_point.x() ),
-        geod_point.z(),
-        out_point.x(), out_point.y(), out_point.z() );
-
-    em->computeCoordinateFrame(
-        osg::DegreesToRadians( geod_point.y() ),
-        osg::DegreesToRadians( geod_point.x() ),
+    // use that information to calculate a rotation matrix:
+    ecefSRS->getEllipsoid()->computeCoordinateFrame(
+        osg::DegreesToRadians( geoPoint.y() ),
+        osg::DegreesToRadians( geoPoint.x() ),
         out_rotation );
+
+    // then convert that to ECEF.
+    geoSRS->transform(geoPoint, ecefSRS, out_point);
 }

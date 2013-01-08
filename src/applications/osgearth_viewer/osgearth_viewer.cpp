@@ -21,11 +21,13 @@
 #include <osgViewer/Viewer>
 #include <osgEarthUtil/EarthManipulator>
 #include <osgEarthUtil/ExampleResources>
+#include <osgEarthAnnotation/ModelNode>
 
 #define LC "[viewer] "
 
 using namespace osgEarth;
 using namespace osgEarth::Util;
+using namespace osgEarth::Annotation;
 
 int
 main(int argc, char** argv)
@@ -48,7 +50,20 @@ main(int argc, char** argv)
     osg::Node* node = MapNodeHelper().load( arguments, &viewer );
     if ( node )
     {
-        viewer.setSceneData( node );
+        osg::Group* g = new osg::Group();
+
+        osg::Node* model = osgDB::readNodeFile( "E:/data/models/red_flag.osg.1000.scale" );
+        Style style;
+        style.getOrCreate<ModelSymbol>()->setModel( model );
+        //style.getOrCreate<ModelSymbol>()->url()->setLiteral( "E:/data/models/red_flag.osg.1000.scale" );
+
+        ModelNode* anno = new ModelNode(MapNode::get(node), style );
+        anno->setPosition( GeoPoint(SpatialReference::create("wgs84"), -121.76, 46.853) );
+
+        g->addChild( node );
+        g->addChild( anno );
+
+        viewer.setSceneData( g );
 
         // configure the near/far so we don't clip things that are up close
         viewer.getCamera()->setNearFarRatio(0.00002);

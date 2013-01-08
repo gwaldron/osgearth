@@ -56,7 +56,7 @@ void
 Stroke::init()
 {
     _color.set         ( 1.0f, 1.0f, 1.0f, 1.0f );
-    _lineCap.init      ( LINECAP_ROUND );
+    _lineCap.init      ( LINECAP_FLAT );
     _lineJoin.init     ( LINEJOIN_ROUND );
     _width.init        ( 1.0f );
     _widthUnits.init   ( Units::PIXELS );

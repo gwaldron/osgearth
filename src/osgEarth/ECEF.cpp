@@ -26,7 +26,6 @@ using namespace osgEarth;
 
 // --------------------------------------------------------------------------
 
-#if 1
 osg::Matrixd
 ECEF::createLocalToWorld( const osg::Vec3d& input )
 {
@@ -66,7 +65,6 @@ ECEF::createLocalToWorld( const osg::Vec3d& input )
 
     return localToWorld;
 }
-#endif
 
 void
 ECEF::transformAndLocalize(const osg::Vec3d&       input,
@@ -98,6 +96,35 @@ ECEF::transformAndLocalize(const std::vector<osg::Vec3d>& input,
         inputSRS->transform( *i, ecefSRS, ecef );
         //inputSRS->transformToECEF( *i, ecef );
         output->push_back( ecef * world2local );
+    }
+}
+
+
+void
+ECEF::transformAndLocalize(const std::vector<osg::Vec3d>& input,
+                           const SpatialReference*        inputSRS,
+                           osg::Vec3Array*                out_verts,
+                           osg::Vec3Array*                out_normals,
+                           const SpatialReference*        outputSRS,
+                           const osg::Matrixd&            world2local )
+{
+    const SpatialReference* ecefSRS = outputSRS->getECEF();
+    out_verts->reserve( out_verts->size() + input.size() );
+
+    if ( out_normals )
+        out_normals->reserve( out_verts->size() );
+
+    for( std::vector<osg::Vec3d>::const_iterator i = input.begin(); i != input.end(); ++i )
+    {
+        osg::Vec3d ecef;
+        inputSRS->transform( *i, ecefSRS, ecef );
+        out_verts->push_back( ecef * world2local );
+
+        if ( out_normals )
+        {
+            ecef.normalize();
+            out_normals->push_back( osg::Matrix::transform3x3(ecef, world2local) );
+        }
     }
 }
 

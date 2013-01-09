@@ -232,7 +232,8 @@ _auto_vp_duration( rhs._auto_vp_duration ),
 _min_vp_duration_s( rhs._min_vp_duration_s ),
 _max_vp_duration_s( rhs._max_vp_duration_s ),
 _camProjType( rhs._camProjType ),
-_camFrustOffsets( rhs._camFrustOffsets )
+_camFrustOffsets( rhs._camFrustOffsets ),
+_breakTetherActions( rhs._breakTetherActions )
 {
     //NOP
 }

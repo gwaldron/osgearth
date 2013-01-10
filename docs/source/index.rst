@@ -14,10 +14,11 @@ Table of Contents
 
    startup
    community
-   concepts
    user
    developer
+   data
    howto
+   faq
 
 
 Indices and tables

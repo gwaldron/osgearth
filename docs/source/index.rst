@@ -3,8 +3,9 @@
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
-osgEarth - Documentation
-========================
+osgEarth - a C++ Terrain SDK
+============================
+Welcome to the osgEarth_ documentation project.
 
 Table of Contents
 -----------------
@@ -21,9 +22,5 @@ Table of Contents
    faq
 
 
-Indices and tables
-==================
-
-* :ref:`genindex`
-* :ref:`modindex`
-* :ref:`search`
+.. _osgEarth: http://osgearth.org
+.. _GitHub:   http://github.com/gwaldron/osgearth

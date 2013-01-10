@@ -3,18 +3,20 @@
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
-osgEarth - a C++ Terrain Rendering SDK
-======================================
+osgEarth - Documentation
+========================
 
-Contents:
-
+Table of Contents:
 .. toctree::
    :maxdepth: 2
-   
-   install
-   howtos
 
-osgEarth is a C++ terrain rendering toolkit. Just create a simple XML file, point it at your imagery, elevation, and vector data, load it into your favorite  OpenSceneGraph application, and go! osgEarth supports all kinds of data and comes with lots of examples to help you get up and running quickly and easily.
+   about
+   startup
+   community
+   concepts
+   user
+   developer
+   howto
 
 
 Indices and tables
@@ -23,4 +25,3 @@ Indices and tables
 * :ref:`genindex`
 * :ref:`modindex`
 * :ref:`search`
-

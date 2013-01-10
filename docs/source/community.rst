@@ -1,7 +1,7 @@
 Community
 =========
 
-Dicsussion Forum
+Discussion Forum
 ----------------
 
 OSG Forum

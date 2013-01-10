@@ -6,12 +6,12 @@
 osgEarth - Documentation
 ========================
 
-Table of Contents:
+Table of Contents
+-----------------
 
 .. toctree::
    :maxdepth: 2
 
-   about
    startup
    community
    concepts

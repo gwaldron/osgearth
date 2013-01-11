@@ -95,13 +95,24 @@ Color Color::Magenta  ( 0xc000c0ff );
 Color Color::Cyan     ( 0x00ffffff );
 Color Color::Brown    ( 0xaa5500ff );
 
-Color::Color( unsigned rgba )
+Color::Color( unsigned v, Format format )
 {
-    set(
-        (float)(rgba>>24)/255.0f, 
-        (float)((rgba&0xFF0000)>>16)/255.0f, 
-        (float)((rgba&0xFF00)>>8)/255.0f,
-        (float)(rgba&0xFF)/255.0f );
+    if ( format == RGBA )
+    {
+        set(
+            (float)(v>>24)/255.0f, 
+            (float)((v&0xFF0000)>>16)/255.0f, 
+            (float)((v&0xFF00)>>8)/255.0f,
+            (float)(v&0xFF)/255.0f );
+    }
+    else // format == ABGR
+    {
+        set(
+            (float)(v&0xFF)/255.0f,
+            (float)((v&0xFF00)>>8)/255.0f,
+            (float)((v&0xFF0000)>>16)/255.0f, 
+            (float)(v>>24)/255.0f );
+    }
 }
 
 Color::Color( const Color& rhs, float a ) :
@@ -171,4 +182,25 @@ Color
 Color::brightness( float perc ) const
 {
     return Color(r()*perc, g()*perc, b()*perc, a());
+}
+
+unsigned
+Color::as( Format format ) const
+{
+    if ( format == RGBA )
+    {
+        return 
+            (((unsigned)(r()*255.0)) << 24) |
+            (((unsigned)(g()*255.0)) << 16) |
+            (((unsigned)(b()*255.0)) << 8 ) |
+            (((unsigned)(a()*255.0)));
+    }
+    else // format == ABGR
+    {
+        return 
+            (((unsigned)(a()*255.0)) << 24) |
+            (((unsigned)(b()*255.0)) << 16) |
+            (((unsigned)(g()*255.0)) << 8 ) |
+            (((unsigned)(r()*255.0)));
+    }
 }

@@ -75,9 +75,9 @@ SubstituteModelFilter::findResource(const URI&            uri,
 {
     // find the corresponding marker in the cache
     InstanceResource* instance = 0L;
-    InstanceCache::Record rec = _instanceCache.get( uri );
 
-    if ( rec.valid() )
+    InstanceCache::Record rec;
+    if ( _instanceCache.get(uri, rec) )
     {
         // found it in the cache:
         instance = rec.value();

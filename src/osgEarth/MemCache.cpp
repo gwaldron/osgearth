@@ -42,7 +42,8 @@ namespace
         ReadResult readObject(const std::string& key,
                               double             maxAge )
         {
-            MemCacheLRU::Record rec = _lru.get(key);
+            MemCacheLRU::Record rec;
+            _lru.get(key, rec);
 
             // clone required since the cache is in memory
 

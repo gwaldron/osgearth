@@ -34,7 +34,8 @@ Consider using osgEarth_ if you need to:
     - Deal with data that may change over time
     - Integrate with a commercial data provider
 
--------------------
+----
+
 Community Resources
 -------------------
 
@@ -74,7 +75,8 @@ to testing, adding features, and fixing bugs.
     We are based in the US but we work with clients all over the world.
     `Contact us`_ if you need help!
     
--------    
+----
+
 License
 -------
 
@@ -96,7 +98,8 @@ This means that:
        
 That's it.
 
------------       
+----
+
 Maintainers
 -----------
 

@@ -59,13 +59,13 @@ This means that:
 Maintainers
 -----------
 
-The copyright holder for osgEarth_ is `Pelican Mapping`_ Inc.
-We are located in the Washington, DC area.
+`Pelican Mapping`_ maintains osgEarth_. We are located in the Washington, DC area.
 
 Pelican is Glenn_, Jason_, Jeff_, and Paul_.
 
 
 .. _osgEarth:        http://osgEarth.org
+.. _OpenSceneGraph:  http://openscenegraph.org
 .. _Pelican Mapping: http://pelicanmapping.com
 .. _LGPL:            http://www.gnu.org/copyleft/lesser.html
 .. _Glenn:           http://twitter.com/#!/glennwaldron

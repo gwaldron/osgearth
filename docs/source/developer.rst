@@ -12,3 +12,6 @@ Shader Composition
 
 Building a Custom Driver
 ------------------------
+
+Qt Integration
+--------------

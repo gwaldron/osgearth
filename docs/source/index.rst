@@ -7,6 +7,11 @@ osgEarth - a C++ Terrain SDK
 ============================
 Welcome to the osgEarth_ documentation project.
 
+osgEarth_ is a big SDK with a LOT of functionality.  Keeping up on the documentation is
+not easy! So now we've moved the docs right into the osgEarth Git repository to make
+it easier for the osgEarth team and user community to help. Check the links at the 
+bottom of the sidebar.
+
 Table of Contents
 -----------------
 
@@ -15,7 +20,6 @@ Table of Contents
 
    about
    startup
-   community
    user
    developer
    data

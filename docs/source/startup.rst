@@ -1,5 +1,5 @@
-Getting Started
-===============
+Building osgEarth
+=================
 
 osgEarth is a cross-platform library. It uses the CMake_ build system.
 You will need **version 2.8** or newer. 
@@ -46,7 +46,7 @@ but some functionality will be missing:
     * V8_ - Google's JavaScript engine. Include this if you want to embed JavaScript code
       in your earth files.
       
-**Optional: get pre-build dependencies for Win32**
+**Optional: get pre-built dependencies**
 
     * AlphaPixel_ has pre-built OSG_ and 3rd-party dependencies for various architectures.
     * `Mike Weiblen`_ has some pre-built OSG_ binaries and dependencies too.
@@ -63,14 +63,17 @@ once you get OSG built the process should be familiar.
 
 Here are a few tips.
 
-* Always do an "out-of-source" build with CMake. That is, use a build directory
-  that is separate from the source code. This makes it easier to maintain separate
-  versions and to keep GIT updates clean.
-* For optional dependencies (like GEOS_ or V8_), just leave the CMake field blank
-  if you are not using it.
-* For the OSG dependencies, just input the **OSG_DIR** variable, and when you generate
-  CMake will automatically find all the other OSG directories.
-* As always, check `the forum`_ if you have problems!
+    * Always do an "out-of-source" build with CMake. That is, use a build directory
+      that is separate from the source code. This makes it easier to maintain separate
+      versions and to keep GIT updates clean.
+      
+    * For optional dependencies (like GEOS_ or V8_), just leave the CMake field blank
+      if you are not using it.
+      
+    * For the OSG dependencies, just input the **OSG_DIR** variable, and when you generate
+      CMake will automatically find all the other OSG directories.
+      
+    * As always, check `the forum`_ if you have problems!
   
 **Good luck!!**
 

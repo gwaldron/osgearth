@@ -286,7 +286,7 @@ public:
             // Each cursor requires its own DS handle so that multi-threaded access will work.
             // The cursor impl will dispose of the new DS handle.
 
-	        OGRDataSourceH dsHandle = OGROpenShared( _source.c_str(), 0, &_ogrDriverHandle );
+	        OGRDataSourceH dsHandle = OGROpen( _source.c_str(), 0, &_ogrDriverHandle );
 	        if ( dsHandle )
 	        {
                 OGRLayerH layerHandle = OGR_DS_GetLayer( dsHandle, _layerIndex );

@@ -18,7 +18,7 @@
  */
 #include <osgEarthUtil/SpatialData>
 #include <osgEarth/Registry>
-#include <osgUtil/CullVisitor>
+#include <osgEarth/CullingUtils>
 #include <osg/PolygonOffset>
 #include <osg/Polytope>
 #include <osg/Geometry>
@@ -318,7 +318,7 @@ GeoCell::traverse( osg::NodeVisitor& nv )
 
             // custom BSP culling function. this checks that the set of boundary points
             // for this cell intersects the viewing frustum.
-            osgUtil::CullVisitor* cv = dynamic_cast<osgUtil::CullVisitor*>( &nv );
+            osgUtil::CullVisitor* cv = Culling::asCullVisitor(nv);
             if ( cv && !intersects( cv->getCurrentCullingSet().getFrustum() ) )
             {
                 return;

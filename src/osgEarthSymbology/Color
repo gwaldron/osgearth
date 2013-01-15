@@ -52,8 +52,8 @@ namespace osgEarth { namespace Symbology
         Color( float r, float g, float b, float a = 1.0f )
             : osg::Vec4f(r, g, b, a) { }
 
-        /** RGBA constructor */
-        Color( unsigned rgba );
+        /** RGBA/ABGR constructor */
+        Color( unsigned value, Format format =RGBA );
 
         /**
          * Construct a color from a hex string in one of the following formats, (with or
@@ -68,6 +68,9 @@ namespace osgEarth { namespace Symbology
 
         /** Encode the color at an HTML color string (e.g., "#FF004F78") */
         std::string toHTML( Format format =RGBA ) const;
+
+        /** Dump out the color as a 32-bit integer */
+        unsigned as( Format format ) const;
 
         /** Lighten/darken the color by factor */
         Color brightness( float factor ) const;

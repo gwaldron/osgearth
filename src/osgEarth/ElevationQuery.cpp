@@ -276,9 +276,11 @@ ElevationQuery::getElevationImpl(const GeoPoint& point,
     // fallback on a lower resolution, this cache will hold the final resolution heightfield
     // instead of trying to fetch the higher resolution one each item.
 
-    TileCache::Record record = _tileCache.get( key );
-    if ( record.valid() )
+    TileCache::Record record;
+    if ( _tileCache.get(key, record) )
+    {
         tile = record.value().get();
+    }
 
     // if we didn't find it, build it.
     if ( !tile.valid() )

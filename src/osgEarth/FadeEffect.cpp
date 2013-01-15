@@ -20,7 +20,7 @@
 #include <osgEarth/VirtualProgram>
 #include <osgEarth/Registry>
 #include <osgEarth/Capabilities>
-#include <osgUtil/CullVisitor>
+#include <osgEarth/CullingUtils>
 
 using namespace osgEarth;
 
@@ -208,7 +208,7 @@ FadeLOD::traverse( osg::NodeVisitor& nv )
 {
     if ( nv.getVisitorType() == nv.CULL_VISITOR )
     {
-        osgUtil::CullVisitor* cv = dynamic_cast<osgUtil::CullVisitor*>(&nv);
+        osgUtil::CullVisitor* cv = Culling::asCullVisitor(nv);
         PerViewData& data = _perViewData.get(cv);
         if ( !data._opacity.valid() )
         {

@@ -64,12 +64,12 @@ namespace osgEarth_engine_quadtree
         }
 
         bool getOrCreateHeightField( 
-                const MapFrame&                       frame,  
+                const MapFrame&                 frame,
                 const TileKey&                  key,
                 bool                            fallback,
-                osg::ref_ptr<osg::HeightField>& out_hf,            
-                bool*                           out_isFallback =0L,   
-                bool                            convertToHAE   =true,         
+                osg::ref_ptr<osg::HeightField>& out_hf,
+                bool*                           out_isFallback =0L,
+                bool                            convertToHAE   =true,
                 ElevationSamplePolicy           samplePolicy   =SAMPLE_FIRST_VALID,
                 ProgressCallback*               progress       =0L ) const
         {                
@@ -79,16 +79,16 @@ namespace osgEarth_engine_quadtree
             cachekey._fallback     = fallback;
             cachekey._convertToHAE = convertToHAE;
             cachekey._samplePolicy = samplePolicy;
-            LRUCache<HFKey,HFValue>::Record rec = _cache.get( cachekey );        
 
             bool hit = false;
-            if ( rec.valid() )
+            LRUCache<HFKey,HFValue>::Record rec;
+            if ( _cache.get(cachekey, rec) )
             {
                 out_hf = rec.value()._hf.get();
                 if ( out_isFallback )
-                    *out_isFallback = rec.value()._isFallback;                        
-                return true;            
-            }                
+                    *out_isFallback = rec.value()._isFallback;
+                return true;
+            }
 
             bool isFallback;
 

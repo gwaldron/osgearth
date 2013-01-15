@@ -21,11 +21,13 @@
 #include <osgViewer/Viewer>
 #include <osgEarthUtil/EarthManipulator>
 #include <osgEarthUtil/ExampleResources>
+#include <osgEarthAnnotation/ModelNode>
 
 #define LC "[viewer] "
 
 using namespace osgEarth;
 using namespace osgEarth::Util;
+using namespace osgEarth::Annotation;
 
 int
 main(int argc, char** argv)

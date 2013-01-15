@@ -22,6 +22,7 @@
 #include <osgEarth/NodeUtils>
 #include <osgEarth/Registry>
 #include <osgEarth/Capabilities>
+#include <osgEarth/CullingUtils>
 
 #include <osg/AutoTransform>
 #include <osg/ComputeBoundsVisitor>
@@ -94,7 +95,7 @@ namespace
         {
             if ( osg::equivalent(D, 0.0) )
             {
-                // one root (line it tangent to sphere)
+                // one root (line is tangent to sphere)
                 double t = -B/(2.0*A);
                 if (t >= 0.0)
                 {
@@ -172,15 +173,19 @@ namespace
 
     /**
      * Takes a set of world verts and finds their X-Y bounding box in the 
-     * plane of the camera represented by the specified view matrix.
+     * plane of the camera represented by the specified view matrix. Also
+     * calculates the maximum distance from the eyepoint to a vertex (3D).
      */
     void
     getExtentInSilhouette(const osg::Matrix& viewMatrix,
+                          const osg::Vec3d& eye,
                           std::vector<osg::Vec3d>& verts,
                           double& xmin, double& ymin,
-                          double& xmax, double& ymax)
+                          double& xmax, double& ymax,
+                          double& maxDistance)
     {
         xmin = DBL_MAX, ymin = DBL_MAX, xmax = -DBL_MAX, ymax = -DBL_MAX;
+        double maxDist2 = 0.0;
 
         for( std::vector<osg::Vec3d>::iterator i = verts.begin(); i != verts.end(); ++i )
         {
@@ -189,7 +194,13 @@ namespace
             if ( d.x() > xmax ) xmax = d.x();
             if ( d.y() < ymin ) ymin = d.y();
             if ( d.y() > ymax ) ymax = d.y();
+            
+            double dist2 = ((*i)-eye).length2();
+            if ( dist2 > maxDist2 )
+                maxDist2 = dist2;
         }
+
+        maxDistance = sqrt(maxDist2);
     }
 }
 
@@ -331,11 +342,17 @@ OverlayDecorator::cullTerrainAndCalculateRTTParams(osgUtil::CullVisitor* cv,
                                                    PerViewData&          pvd)
 {
     static int s_frame = 1;
+    static osg::Vec3d zero(0.0, 0.0, 0.0);
 
-    osg::Vec3 eye = cv->getEyePoint();
+    osg::Matrixd invViewMatrix = cv->getCurrentCamera()->getInverseViewMatrix();
+    osg::Vec3d eye = zero * invViewMatrix;
+    //osg::Vec3 eye = cv->getEyePoint();
 
     double eyeLen;
     osg::Vec3d worldUp;
+
+    // Radius at eyepoint (geocentric)
+    double R;
 
     // height above sea level
     double hasl;
@@ -350,8 +367,12 @@ OverlayDecorator::cullTerrainAndCalculateRTTParams(osgUtil::CullVisitor* cv,
 
     if ( _isGeocentric )
     {
+        eyeLen = eye.length();
+
         double lat, lon;
         _ellipsoid->convertXYZToLatLongHeight( eye.x(), eye.y(), eye.z(), lat, lon, hasl );
+
+        R = eyeLen - hasl;
         
         //Actually sample the terrain to get the height and adjust the eye position so it's a tighter fit to the real data.
         double height;
@@ -363,9 +384,9 @@ OverlayDecorator::cullTerrainAndCalculateRTTParams(osgUtil::CullVisitor* cv,
 
         worldUp = _ellipsoid->computeLocalUpVector(eye.x(), eye.y(), eye.z());
 
-        eyeLen = eye.length();
 
         // radius of the earth under the eyepoint
+        // gw: wrong. use R instead.
         double radius = eyeLen - hasl; 
         horizonDistance = sqrt( 2.0*radius*hasl + hasl*hasl );
     }
@@ -379,18 +400,6 @@ OverlayDecorator::cullTerrainAndCalculateRTTParams(osgUtil::CullVisitor* cv,
         // there "horizon distance" in a projected map is infinity,
         // so just simulate one.
         horizonDistance = sqrt(2.0*6356752.3142*hasl + hasl*hasl);
-
-#if 0 // happens later now.
-        for(unsigned t=0; t<pvd._techParams.size(); ++t)
-        {
-            TechRTTParams& params = pvd._techParams[t];
-
-            if ( _techniques[t]->hasData(params) )
-            {
-                params._rttViewMatrix.makeLookAt( eye, eye-worldUp*hasl, osg::Vec3(0,1,0) );
-            }
-        }
-#endif
     }
     
     // update the shared horizon distance.
@@ -406,10 +415,6 @@ OverlayDecorator::cullTerrainAndCalculateRTTParams(osgUtil::CullVisitor* cv,
     mvMatrix.getLookAt( from, to, up, eyeLen);
     osg::Vec3 camLookVec = to-from;
     camLookVec.normalize();
-
-    // the minimum and maximum extents of the overlay ortho projector:
-    double eMin = 0.1;
-    double eMax = DBL_MAX;
 
     // Save and reset the current near/far planes before traversing the subgraph.
     // We do this because we want a projection matrix that includes ONLY the clip
@@ -458,10 +463,6 @@ OverlayDecorator::cullTerrainAndCalculateRTTParams(osgUtil::CullVisitor* cv,
     // intersect the top corners of the projection volume since those are the farthest.
     if ( _isGeocentric )
     {
-        // (technically we should use inverse(view*proj), but there's likely no model matrix
-        // here yet so inverseMVP should work -GW
-        double R = eyeLen-hasl;
-
         intersectClipRayWithSphere( -1.0, 1.0, inverseMVP, R, maxDist2 );
         intersectClipRayWithSphere(  1.0, 1.0, inverseMVP, R, maxDist2 );
     }
@@ -503,17 +504,32 @@ OverlayDecorator::cullTerrainAndCalculateRTTParams(osgUtil::CullVisitor* cv,
     // and use pointers..todo.
     osg::Matrix rttViewMatrix, rttProjMatrix;
 
+
+    // for a camera that cares about geometry (like the draping technique) it's important
+    // to include the geometry in the ortho-camera's Z range. But for a camera that just
+    // cares about the terrain depth (like the clamping technique) we want to constrain 
+    // the Ortho Z as mush as possible in order to maintain depth precision. Perhaps
+    // later we can split this out and have each technique calculation its own View and
+    // Proj matrix.
+
+    // For now: our RTT camera z range will be based on this equation:
+    double zspan = std::max(50000.0, hasl+25000.0);
+
     if ( _isGeocentric )
-        rttViewMatrix.makeLookAt( eye, osg::Vec3d(0,0,0), osg::Vec3d(0,0,1) );
+    {
+        rttViewMatrix.makeLookAt( eye+worldUp*zspan, osg::Vec3d(0,0,0), osg::Vec3d(0,0,1) );
+    }
     else
-        rttViewMatrix.makeLookAt( eye, eye-worldUp*hasl, osg::Vec3(0,1,0) );
+    {
+        rttViewMatrix.makeLookAt( eye+worldUp*zspan, eye-worldUp*zspan, osg::Vec3d(0,1,0) );
+    }
 
     // calculate an orthographic RTT projection matrix based on the view-space
     // bounds of the vertex list (i.e. the extents surrounding the RTT camera 
     // that bounds all the polyherdron verts in its XY plane)
-    double xmin, ymin, xmax, ymax;
-    getExtentInSilhouette(rttViewMatrix, verts, xmin, ymin, xmax, ymax);
-    rttProjMatrix.makeOrtho(xmin, xmax, ymin, ymax, -eyeLen, eyeLen);
+    double xmin, ymin, xmax, ymax, maxDist;
+    getExtentInSilhouette(rttViewMatrix, eye, verts, xmin, ymin, xmax, ymax, maxDist);
+    rttProjMatrix.makeOrtho(xmin, xmax, ymin, ymax, 0.0, std::min(maxDist,eyeLen)+zspan);
 
 
     // now copy the RTT matrixes over to the techniques.
@@ -631,7 +647,7 @@ OverlayDecorator::traverse( osg::NodeVisitor& nv )
         // cull visitor's current camera view and work with that:
         if ( nv.getVisitorType() == nv.CULL_VISITOR )
         {
-            osgUtil::CullVisitor* cv = static_cast<osgUtil::CullVisitor*>( &nv );
+            osgUtil::CullVisitor* cv = Culling::asCullVisitor(nv);
             osg::Camera* camera = cv->getCurrentCamera();
 
             if ( camera != 0L && (_rttTraversalMask & nv.getTraversalMask()) != 0 )
@@ -660,6 +676,27 @@ OverlayDecorator::traverse( osg::NodeVisitor& nv )
                     TechRTTParams& params = pvd._techParams[i];
                     _techniques[i]->cullOverlayGroup( params, cv );
                 }
+
+#if 0
+                // new CullVisitor to traverse the subgroups:
+                MyCullVisitor* mcv = static_cast<MyCullVisitor*>(cv);
+
+                // prep and traverse the RTT camera(s):
+                for(unsigned i=0; i<_techniques.size(); ++i)
+                {
+                    TechRTTParams& params = pvd._techParams[i];
+
+                    //mcv->_mvp = params._rttViewMatrix * params._rttProjMatrix;
+                    mcv->_cullingFrustum->setToUnitFrustum( true, true );
+                    mcv->_cullingFrustum->transformProvidingInverse( params._rttProjMatrix );
+                    //mcv->_cullingFrustum->transformProvidingInverse( params._rttViewMatrix * params._rttProjMatrix );
+
+                    _techniques[i]->cullOverlayGroup( params, cv );
+                    //_techniques[i]->cullOverlayGroup( params, cullVisitor.get() );
+                }
+                
+                static_cast<MyCullVisitor*>(cv)->_cullingFrustum.unset();
+#endif
             }
             else
             {

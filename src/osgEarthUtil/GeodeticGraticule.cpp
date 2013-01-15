@@ -352,8 +352,11 @@ GeodeticGraticule::buildTile( const TileKey& key, Map* map ) const
     // get the geocentric tile center:
     osg::Vec3d tileCenter;
     tileExtent.getCentroid( tileCenter.x(), tileCenter.y() );
+
+    const SpatialReference* ecefSRS = tileExtent.getSRS()->getECEF();
     osg::Vec3d centerECEF;
-    tileExtent.getSRS()->transformToECEF( tileCenter, centerECEF );
+    tileExtent.getSRS()->transform( tileCenter, ecefSRS, centerECEF );
+    //tileExtent.getSRS()->transformToECEF( tileCenter, centerECEF );
 
     osg::NodeCallback* ccc = 0L;
     // set up cluster culling.

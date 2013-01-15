@@ -22,6 +22,7 @@
 #include <osgEarthFeatures/AltitudeFilter>
 #include <osgEarthFeatures/CentroidFilter>
 #include <osgEarthFeatures/ExtrudeGeometryFilter>
+#include <osgEarthFeatures/PolygonizeLines>
 #include <osgEarthFeatures/ScatterFilter>
 #include <osgEarthFeatures/SubstituteModelFilter>
 #include <osgEarthFeatures/TessellateOperator>
@@ -47,6 +48,37 @@ namespace
     osg::ref_ptr<LineSymbol>    s_defaultLineSymbol    = new LineSymbol();
     osg::ref_ptr<PolygonSymbol> s_defaultPolygonSymbol = new PolygonSymbol();
     osg::ref_ptr<osg::Program>  s_nullProgram          = new osg::Program();
+
+
+    /**
+     * Visitor that will exaggerate the bounding box of each Drawable
+     * in the scene graph to encompass a local high and low mark. We use this
+     * to support GPU-clamping, which will move vertex positions in the 
+     * GPU code. Since OSG is not aware of this movement, it may inadvertenly
+     * cull geometry which is actually visible.
+     */
+    struct OverlayGeometryAdjuster : public osg::NodeVisitor
+    {
+        float _low, _high;
+
+        OverlayGeometryAdjuster(float low, float high)
+            : osg::NodeVisitor(osg::NodeVisitor::TRAVERSE_ALL_CHILDREN), _low(low), _high(high) { }
+
+        void apply(osg::Geode& geode)
+        {
+            for( unsigned i=0; i<geode.getNumDrawables(); ++i )
+            {
+                osg::Drawable* d = geode.getDrawable(i);
+                osg::BoundingBox bbox = d->getBound();
+                if ( bbox.zMin() > _low )
+                    bbox.expandBy( osg::Vec3f(bbox.xMin(), bbox.yMin(), _low) );
+                if ( bbox.zMax() < _high )
+                    bbox.expandBy( osg::Vec3f(bbox.xMax(), bbox.yMax(), _high) );
+                d->setInitialBound( bbox );
+                d->dirtyBound();
+            }
+        }
+    };
 }
 
 //-----------------------------------------------------------------------
@@ -383,6 +415,25 @@ GeometryCompiler::compile(FeatureList&          workingSet,
         }
     }
 
+    // polygonized lines.
+    else if ( line != 0L && line->stroke()->widthUnits() != Units::PIXELS )
+    {
+        if ( altRequired )
+        {
+            AltitudeFilter clamp;
+            clamp.setPropertiesFromStyle( style );
+            sharedCX = clamp.push( workingSet, sharedCX );
+            altRequired = false;
+        }
+
+        PolygonizeLinesFilter filter( style );
+        osg::Node* node = filter.push( workingSet, sharedCX );
+        if ( node )
+        {
+            resultGroup->addChild( node );
+        }
+    }
+
     // simple geometry
     else if ( point || line || polygon )
     {
@@ -467,6 +518,17 @@ GeometryCompiler::compile(FeatureList&          workingSet,
             osgUtil::Optimizer::VERTEX_POSTTRANSFORM );
 #endif
 
+#if 0
+    // if necessary, modify the bounding boxes of the underlying Geometry
+    // drawables so they will work with clamping.
+    if (altitude &&
+        (altitude->clamping() == AltitudeSymbol::CLAMP_TO_TERRAIN || altitude->clamping() == AltitudeSymbol::CLAMP_RELATIVE_TO_TERRAIN) &&
+        altitude->technique() == AltitudeSymbol::TECHNIQUE_GPU)
+    {
+        OverlayGeometryAdjuster adjuster( -10000.0f, 10000.0f );
+        resultGroup->accept( adjuster );
+    }
+#endif
 
 
     //osgDB::writeNodeFile( *(resultGroup.get()), "out.osg" );

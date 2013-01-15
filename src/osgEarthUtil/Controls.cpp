@@ -31,6 +31,7 @@
 #include <osgEarth/Common>
 #include <osgEarth/Registry>
 #include <osgEarth/Utils>
+#include <osgEarth/CullingUtils>
 
 using namespace osgEarth;
 using namespace osgEarth::Symbology;
@@ -703,10 +704,10 @@ LabelControl::setText( const std::string& value )
 void
 LabelControl::setEncoding( osgText::String::Encoding value )
 {
-	if ( value != _encoding ) {
-		_encoding = value;
-		dirty();
-	}
+    if ( value != _encoding ) {
+        _encoding = value;
+        dirty();
+    }
 }
 
 void
@@ -780,7 +781,7 @@ LabelControl::calcSize(const ControlContext& cx, osg::Vec2f& out_size)
         t->getOrCreateStateSet()->setAttributeAndModes( program, osg::StateAttribute::ON );
 #endif
 
-		t->setText( _text, _encoding );
+        t->setText( _text, _encoding );
         // yes, object coords. screen coords won't work becuase the bounding box will be wrong.
         t->setCharacterSizeMode( osgText::Text::OBJECT_COORDS );
         t->setCharacterSize( _fontSize );
@@ -816,9 +817,9 @@ LabelControl::calcSize(const ControlContext& cx, osg::Vec2f& out_size)
             (_bmax.x() - _bmin.x()) + padding().x(),
             (_bmax.y() - _bmin.y()) + padding().y() );
 
-	// If width explicitly set and > measured width of label text - use it.
-	if (width().isSet() && width().get() > _renderSize.x()) _renderSize.x() = width().get();
-	
+    // If width explicitly set and > measured width of label text - use it.
+    if (width().isSet() && width().get() > _renderSize.x()) _renderSize.x() = width().get();
+    
         _drawable = t;
 
         out_size.set(
@@ -847,6 +848,50 @@ LabelControl::draw( const ControlContext& cx, DrawableList& out )
         t->setPosition( osg::Vec3( _renderPos.x(), vph - _renderPos.y(), 0 ) );
         out.push_back( _drawable.get() );
     }
+}
+
+// ---------------------------------------------------------------------------
+
+ButtonControl::ButtonControl(const std::string&   text,
+                             float                fontSize,
+                             const osg::Vec4f&    foreColor,
+                             const osg::Vec4f&    backColor,
+                             const osg::Vec4f&    activeColor,
+                             ControlEventHandler* handler) :
+LabelControl(text, fontSize, foreColor)
+{
+    setBackColor( backColor );
+    setActiveColor( activeColor );
+    setPadding( 6.0f );
+    if ( handler )
+        this->addEventHandler( handler );
+}
+
+ButtonControl::ButtonControl(const std::string&   text,
+                             const osg::Vec4f&    foreColor,
+                             const osg::Vec4f&    backColor,
+                             const osg::Vec4f&    activeColor,
+                             float                fontSize,
+                             ControlEventHandler* handler) :
+LabelControl(text, foreColor, fontSize)
+{
+    setBackColor( backColor );
+    setActiveColor( activeColor );
+    setPadding( 6.0f );
+    if ( handler )
+        this->addEventHandler( handler );
+}
+
+ButtonControl::ButtonControl(const std::string&   text,
+                             ControlEventHandler* handler) :
+LabelControl(text)
+{
+    setForeColor( Color::White );
+    setBackColor( Color::DarkGray );
+    setActiveColor( Color::Blue );
+    setPadding( 6.0f );
+    if ( handler )
+        this->addEventHandler( handler );
 }
 
 // ---------------------------------------------------------------------------
@@ -1028,19 +1073,19 @@ _min(min),
 _max(max),
 _value(value)
 {
-   //if ( _max <= _min )
-   //    _max = _min+1.0f;
-   //if ( _value < _min )
-   //    _value = _min;
-   //if ( _value > _max )
-   //    _value = _max;
+    //if ( _max <= _min )
+    //    _max = _min+1.0f;
+    //if ( _value < _min )
+    //    _value = _min;
+    //if ( _value > _max )
+    //    _value = _max;
 
-   setHorizFill( true );
-   setVertAlign( ALIGN_CENTER );
-   setHeight( 20.0f );
+    setHorizFill( true );
+    setVertAlign( ALIGN_CENTER );
+    setHeight( 20.0f );
 
-   if ( handler )
-    addEventHandler( handler );
+    if ( handler )
+        addEventHandler( handler );
 }
 
 void
@@ -1359,7 +1404,7 @@ RoundedFrame::draw( const ControlContext& cx, DrawableList& out )
 // ---------------------------------------------------------------------------
 
 Container::Container() :
-_spacing( 1 )
+_spacing( 5.0f )
 {
     //nop
 }
@@ -1702,9 +1747,9 @@ HBox::calcSize(const ControlContext& cx, osg::Vec2f& out_size)
             _renderSize.x() += first ? childSize.x() : childSpacing() + childSize.x();
             _renderSize.y() = osg::maximum( _renderSize.y(), childSize.y() );
         }
-	
-	// If width explicitly set and > total width of children - use it
-	if (width().isSet() && width().get() > _renderSize.x()) _renderSize.x() = width().get();
+    
+    // If width explicitly set and > total width of children - use it
+    if (width().isSet() && width().get() > _renderSize.x()) _renderSize.x() = width().get();
 
         _renderSize.set(
             _renderSize.x() + padding().x(),
@@ -1764,16 +1809,6 @@ HBox::calcPos(const ControlContext& cx, const osg::Vec2f& cursor, const osg::Vec
 
     osg::Vec2f childCursor = _renderPos;
 
-#if 0
-    // collect all the members
-    for( ControlList::const_iterator i = _controls.begin(); i != _controls.end(); ++i )
-    {
-        Control* child = i->get();
-        child->calcPos( cx, childCursor, _renderSize - padding().size() ); // GW1
-        childCursor.x() += child->margin().left() + child->renderSize().x() + child->margin().right() + childSpacing();
-    }
-#endif
-
     osg::Vec2f renderArea = _renderSize - padding().size();
     for( ControlList::const_iterator i = _controls.begin(); i != _controls.end(); ++i )
     {
@@ -1797,7 +1832,8 @@ HBox::draw( const ControlContext& cx, DrawableList& out )
 
 Grid::Grid()
 {
-    //nop
+    setChildHorizAlign( ALIGN_LEFT );
+    setChildVertAlign( ALIGN_CENTER );
 }
 
 Grid::Grid( const Alignment& halign, const Alignment& valign, const Gutter& padding, float spacing ) :
@@ -2142,7 +2178,7 @@ ControlNode::traverse( osg::NodeVisitor& nv )
     {
         static osg::Vec3d s_zero(0,0,0);
         static osg::Vec4d s_zero_w(0,0,0,1);
-        osgUtil::CullVisitor* cv = static_cast<osgUtil::CullVisitor*>( &nv );
+        osgUtil::CullVisitor* cv = Culling::asCullVisitor(nv);
 
         // pull up the per-view data for this view:
         PerViewData& data = _perViewData[cv->getCurrentCamera()->getView()];
@@ -2546,12 +2582,12 @@ ControlCanvas::~ControlCanvas()
     EventHandlersMap::iterator itr;
     for (itr = _eventHandlersMap.begin(); itr != _eventHandlersMap.end(); ++itr)
     {
-		osgGA::GUIEventHandler* pGUIEventHandler = itr->first.get();
-		osgViewer::View* pView = itr->second.get();
-		if ( (pView != NULL) && (pGUIEventHandler != NULL) )
-		{
-			pView->removeEventHandler(pGUIEventHandler);
-		}
+        osgGA::GUIEventHandler* pGUIEventHandler = itr->first.get();
+        osgViewer::View* pView = itr->second.get();
+        if ( (pView != NULL) && (pGUIEventHandler != NULL) )
+        {
+            pView->removeEventHandler(pGUIEventHandler);
+        }
     }
 }
 
@@ -2604,17 +2640,17 @@ ControlCanvas::handle( const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter
     if ( !_context._vp )
         return false;
 
-	for (ControlList::reverse_iterator i = _controls.rbegin(); i != _controls.rend(); ++i)
-	{
-		Control* control = i->get();
-		if (control->isDirty())
-		{
-			aa.requestRedraw();
-			break;
-		}
-	}
+    for (ControlList::reverse_iterator i = _controls.rbegin(); i != _controls.rend(); ++i)
+    {
+        Control* control = i->get();
+        if (control->isDirty())
+        {
+            aa.requestRedraw();
+            break;
+        }
+    }
 
-	bool handled = false;
+    bool handled = false;
     //Send a frame event to all controls
     if ( ea.getEventType() == osgGA::GUIEventAdapter::FRAME )
     {

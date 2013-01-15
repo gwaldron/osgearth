@@ -16,11 +16,13 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
-#ifndef OSGEARTHFEATURES_FILTER_H
-#define OSGEARTHFEATURES_FILTER_H 1
+#ifndef OSGEARTHFEATURES_POLYGONIZE_LINES_H
+#define OSGEARTHFEATURES_POLYGONIZE_LINES_H 1
 
 #include <osgEarthFeatures/Common>
+#include <osgEarthFeatures/Filter>
 #include <osgEarthSymbology/Stroke>
+#include <osg/Array>
 #include <osg/Geometry>
 
 namespace osgEarth { namespace Features
@@ -46,17 +48,44 @@ namespace osgEarth { namespace Features
 
         /**
          * Run the polygonizer.
-         * @param[in ] input       Line string to polygonize
-         * @param[in ] world2local Localization matrix
+         *
+         * @param[in ] verts   Line string geometry to polygonize. The polygonizer
+         *                     will add this array to the resulting geometry.
+         * @param[in ] normals Localized normals associated with the input verts.
+         *                     Used to determine the plane in which to polygonize each
+         *                     line segment. Optional; can be NULL
+         *
+         * @return Triangulated geometry, including primitive set
          */
-        osg::Geometry* operator()(
-            const std::vector<osg::Vec3d>& input,
-            const osg::Matrix&             world2local) const;
+        osg::Geometry* operator()(osg::Vec3Array* verts, osg::Vec3Array* normals) const;
 
     protected:
         Stroke _stroke;
     };
 
+
+
+    /**
+     * Feature Filter that generates polygonized line geometry.
+     */
+    class OSGEARTHFEATURES_EXPORT PolygonizeLinesFilter : public FeaturesToNodeFilter
+    {
+    public:
+
+        /** Constructs the filter with Style information */
+        PolygonizeLinesFilter(const Style& style);
+
+
+    public: // FeaturesToNodeFilter
+
+        /** Pushes a list of features through the filter. */
+        osg::Node* push( FeatureList& input, FilterContext& context );
+
+    protected:
+
+        Style _style;
+    };
+
 } } // namespace osgEarth::Features
 
-#endif // OSGEARTHFEATURES_FILTER_H
+#endif // OSGEARTHFEATURES_POLYGONIZE_LINES_H

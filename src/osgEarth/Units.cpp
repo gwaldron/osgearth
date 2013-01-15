@@ -20,8 +20,65 @@
 #include <osgEarth/Units>
 #include <osgEarth/Registry>
 #include <osg/Math>
+#include <algorithm>
+#include <cctype>
 
 using namespace osgEarth;
+
+//------------------------------------------------------------------------
+
+namespace
+{
+    template<typename T>
+    bool
+    parseValueAndUnits(const std::string& input, 
+                       T&                 out_value, 
+                       Units&             out_units,
+                       const Units&       defaultUnits )
+    {
+        if ( input.empty() )
+            return false;
+
+        std::string valueStr, unitsStr;
+
+        std::string::const_iterator i = std::find_if( input.begin(), input.end(), ::isalpha );
+        if ( i == input.end() )
+        {
+            // to units found; use default
+            out_units = defaultUnits;
+            out_value = as<T>(input, (T)0.0);
+            return true;
+        }
+
+        else
+        {
+            valueStr = std::string( input.begin(), i );
+            unitsStr = std::string( i, input.end() );
+
+            if ( !valueStr.empty() )
+            {
+                out_value = as<T>(valueStr, (T)0);
+            }
+
+            if ( !unitsStr.empty() )
+            {
+                Units units;
+                if ( Units::parse(unitsStr, units) )
+                    out_units = units;
+            }
+            else
+            {
+                out_units = defaultUnits;
+            }
+
+            return !valueStr.empty() && !unitsStr.empty();
+        }
+    }
+}
+
+//------------------------------------------------------------------------
+
+
 
 Units::Units( const std::string& name, const std::string& abbr, const Units::Type& type, double toBase ) :
 _name  ( name ),
@@ -53,6 +110,25 @@ Units::parse( const std::string& name, Units& output )
     }
     return false;
 }
+
+bool
+Units::parse( const std::string& input, float& out_value, Units& out_units, const Units& defaultUnits )
+{
+    return parseValueAndUnits(input, out_value, out_units, defaultUnits);
+}
+
+bool
+Units::parse( const std::string& input, double& out_value, Units& out_units, const Units& defaultUnits )
+{
+    return parseValueAndUnits(input, out_value, out_units, defaultUnits);
+}
+
+bool
+Units::parse( const std::string& input, int& out_value, Units& out_units, const Units& defaultUnits )
+{
+    return parseValueAndUnits(input, out_value, out_units, defaultUnits);
+}
+
 
 const Units Units::CENTIMETERS       ( "centimeters",    "cm",  Units::TYPE_LINEAR, 0.01 ); 
 OSGEARTH_REGISTER_UNITS( CENTIMETERS, &Units::CENTIMETERS );
@@ -156,3 +232,6 @@ OSGEARTH_REGISTER_UNITS( DATA_MILES_PER_HOUR, &Units::DATA_MILES_PER_HOUR );
 const Units Units::KNOTS                ( "nautical miles per hour", "kts",  Units::NAUTICAL_MILES, Units::HOURS );
 OSGEARTH_REGISTER_UNITS( KNOTS, &Units::KNOTS );
 
+
+const Units Units::PIXELS               ( "pixels", "px", Units::TYPE_SCREEN_SIZE, 1.0 );
+OSGEARTH_REGISTER_UNITS( PIXELS, &Units::PIXELS );

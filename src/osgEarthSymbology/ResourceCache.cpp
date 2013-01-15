@@ -40,8 +40,8 @@ ResourceCache::getStateSet( SkinResource* skin )
         {
             Threading::ScopedReadLock shared( _mutex );
 
-            SkinCache::Record rec = _skinCache.get( skin );
-            if ( rec.valid() )
+            SkinCache::Record rec;
+            if ( _skinCache.get(skin, rec) )
             {
                 result = rec.value();
             }
@@ -53,8 +53,8 @@ ResourceCache::getStateSet( SkinResource* skin )
             Threading::ScopedWriteLock exclusive( _mutex );
             
             // double check to avoid race condition
-            SkinCache::Record rec = _skinCache.get( skin );
-            if ( rec.valid() )
+            SkinCache::Record rec;
+            if ( _skinCache.get(skin, rec) )
             {
                 result = rec.value();
             }
@@ -70,8 +70,8 @@ ResourceCache::getStateSet( SkinResource* skin )
 
     else
     {
-        SkinCache::Record rec = _skinCache.get( skin );
-        if ( rec.valid() )
+        SkinCache::Record rec;
+        if ( _skinCache.get(skin, rec) )
         {
             result = rec.value();
         }
@@ -97,8 +97,8 @@ ResourceCache::getInstanceNode( InstanceResource* res )
         {
             Threading::ScopedReadLock shared( _mutex );
 
-            InstanceCache::Record rec = _instanceCache.get( res );
-            if ( rec.valid() )
+            InstanceCache::Record rec;
+            if ( _instanceCache.get(res, rec) )
             {
                 result = rec.value();
             }
@@ -110,8 +110,8 @@ ResourceCache::getInstanceNode( InstanceResource* res )
             Threading::ScopedWriteLock exclusive( _mutex );
             
             // double check to avoid race condition
-            InstanceCache::Record rec = _instanceCache.get( res );
-            if ( rec.valid() )
+            InstanceCache::Record rec;
+            if ( _instanceCache.get(res, rec) )
             {
                 result = rec.value();
             }
@@ -127,8 +127,8 @@ ResourceCache::getInstanceNode( InstanceResource* res )
 
     else
     {
-        InstanceCache::Record rec = _instanceCache.get( res );
-        if ( rec.valid() )
+        InstanceCache::Record rec;
+        if ( _instanceCache.get(res, rec) )
         {
             result = rec.value();
         }
@@ -155,8 +155,8 @@ ResourceCache::getMarkerNode( MarkerResource* marker )
         {
             Threading::ScopedReadLock shared( _mutex );
 
-            MarkerCache::Record rec = _markerCache.get( marker );
-            if ( rec.valid() )
+            MarkerCache::Record rec;
+            if ( _markerCache.get(marker, rec) )
             {
                 result = rec.value();
             }
@@ -168,8 +168,8 @@ ResourceCache::getMarkerNode( MarkerResource* marker )
             Threading::ScopedWriteLock exclusive( _mutex );
             
             // double check to avoid race condition
-            MarkerCache::Record rec = _markerCache.get( marker );
-            if ( rec.valid() )
+            MarkerCache::Record rec;
+            if ( _markerCache.get( marker, rec ) )
             {
                 result = rec.value();
             }
@@ -185,8 +185,8 @@ ResourceCache::getMarkerNode( MarkerResource* marker )
 
     else
     {
-        MarkerCache::Record rec = _markerCache.get( marker );
-        if ( rec.valid() )
+        MarkerCache::Record rec;
+        if ( _markerCache.get( marker, rec ) )
         {
             result = rec.value();
         }

@@ -99,10 +99,12 @@ public:
         StringExpression  contentExpr ( *text->content() );
         NumericExpression priorityExpr( *text->priority() );
 
-        bool makeECEF = false;
+        //bool makeECEF = false;
+        const SpatialReference* ecef = 0L;
         if ( context.isGeoreferenced() )
         {
-            makeECEF = context.getSession()->getMapInfo().isGeocentric();
+            //makeECEF = context.getSession()->getMapInfo().isGeocentric();
+            ecef = context.getSession()->getMapSRS()->getECEF();
         }
 
         for( FeatureList::const_iterator i = input.begin(); i != input.end(); ++i )
@@ -117,9 +119,10 @@ public:
 
             osg::Vec3d centroid  = geom->getBounds().center();
 
-            if ( makeECEF )
+            if ( ecef )
             {
-                context.profile()->getSRS()->transformToECEF( centroid, centroid );
+                context.profile()->getSRS()->transform( centroid, ecef, centroid );
+                //context.profile()->getSRS()->transformToECEF( centroid, centroid );
             }
 
             const std::string& value = feature->eval( contentExpr, &context );
@@ -149,11 +152,12 @@ public:
                 xform->addChild( node );
 
                 // for a geocentric map, do a simple dot product cull.
-                if ( makeECEF )
+                if ( ecef )
                 {
                     xform->setCullCallback( new CullNodeByHorizon(
                         centroid, 
-                        context.getSession()->getMapInfo().getProfile()->getSRS()->getEllipsoid()) );
+                        ecef->getEllipsoid() ) );
+                        //context.getSession()->getMapSRS()->getEllipsoid() ) ); //getMapInfo().getProfile()->getSRS()->getEllipsoid()) );
                     group->addChild( xform );
                 }
                 else

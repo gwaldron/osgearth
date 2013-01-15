@@ -1681,7 +1681,9 @@ GeoHeightField GeoHeightField::INVALID( 0L, GeoExtent::INVALID );
 
 GeoHeightField::GeoHeightField() :
 _heightField( 0L ),
-_extent     ( GeoExtent::INVALID )
+_extent     ( GeoExtent::INVALID ),
+_minHeight  ( 0.0f ),
+_maxHeight  ( 0.0f )
 {
     //nop
 }
@@ -1691,7 +1693,6 @@ GeoHeightField::GeoHeightField(osg::HeightField* heightField,
 _heightField( heightField ),
 _extent     ( extent )
 {
-
     if ( _heightField.valid() && extent.isInvalid() )
     {
         OE_WARN << LC << "Created with a valid heightfield AND INVALID extent" << std::endl;
@@ -1706,6 +1707,15 @@ _extent     ( extent )
         _heightField->setXInterval( (maxx - minx)/(double)(_heightField->getNumColumns()-1) );
         _heightField->setYInterval( (maxy - miny)/(double)(_heightField->getNumRows()-1) );
         _heightField->setBorderWidth( 0 );
+
+        _minHeight = FLT_MAX, _maxHeight = -FLT_MAX;
+        const osg::HeightField::HeightList& heights = _heightField->getHeightList();
+        for( unsigned i=0; i<heights.size(); ++i )
+        {
+            float h = heights[i];
+            if ( h > _maxHeight ) _maxHeight = h;
+            if ( h < _minHeight ) _minHeight = h;
+        }
     }
 }
 
@@ -1783,8 +1793,6 @@ GeoHeightField::createSubSample( const GeoExtent& destEx, ElevationInterpolation
 
     int w = _heightField->getNumColumns();
     int h = _heightField->getNumRows();
-    //double dx = _heightField->getXInterval() * div;
-    //double dy = _heightField->getYInterval() * div;
     double xInterval = _extent.width() / (double)(_heightField->getNumColumns()-1);
     double yInterval = _extent.height() / (double)(_heightField->getNumRows()-1);
     double dx = xInterval * div;
@@ -1815,17 +1823,6 @@ GeoHeightField::createSubSample( const GeoExtent& destEx, ElevationInterpolation
             dest->setHeight( col, row, height );
         }
     }
-
-#if 0
-    for( x = destEx.xMin(), col=0; col < w; x += dx, col++ )
-    {
-        for( y = destEx.yMin(), row=0; row < h; y += dy, row++ )
-        {
-            float height = HeightFieldUtils::getHeightAtLocation( _heightField.get(), x, y, _extent.xMin(), _extent.yMin(), xInterval, yInterval, interpolation);
-            dest->setHeight( col, row, height );
-        }
-    }
-#endif
 
     osg::Vec3d orig( destEx.xMin(), destEx.yMin(), _heightField->getOrigin().z() );
     dest->setOrigin( orig );

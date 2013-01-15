@@ -79,7 +79,7 @@ namespace
 
                         if ( i >= 0 && i < (int)ownerPath.size()-1 )
                         {
-                            osgUtil::CullVisitor* cv = static_cast<osgUtil::CullVisitor*>(&nv);
+                            osgUtil::CullVisitor* cv = Culling::asCullVisitor(nv);
 
                             int pushes = 0;
                             for( int k = i+1; k < (int)ownerPath.size(); ++k )

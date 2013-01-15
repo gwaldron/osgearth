@@ -60,6 +60,9 @@ namespace osgEarth { namespace Drivers
         optional<URI>& url() { return _url; }
         const optional<URI>& url() const { return _url; }
 
+        optional<std::string>& connection() { return _connection; }
+        const optional<std::string>& connection() const { return _connection; }
+
         optional<std::string>& extensions() { return _extensions; }
         const optional<std::string>& extensions() const { return _extensions; }
         
@@ -111,6 +114,7 @@ namespace osgEarth { namespace Drivers
         {
             Config conf = TileSourceOptions::getConfig();
             conf.updateIfSet( "url", _url );
+            conf.updateIfSet( "connection", _connection );
             conf.updateIfSet( "extensions", _extensions );
 
             if ( _interpolation.isSet() ) {
@@ -138,6 +142,7 @@ namespace osgEarth { namespace Drivers
 
         void fromConfig( const Config& conf ) {
             conf.getIfSet( "url", _url );
+            conf.getIfSet( "connection", _connection );
             conf.getIfSet( "extensions", _extensions );
             std::string in = conf.value( "interpolation" );
             if ( in == "nearest" ) _interpolation = osgEarth::INTERP_NEAREST;
@@ -154,6 +159,7 @@ namespace osgEarth { namespace Drivers
         }
 
         optional<URI>                    _url;
+        optional<std::string>            _connection;
         optional<std::string>            _extensions;
         optional<ElevationInterpolation> _interpolation;
         optional<bool>                   _interpolateImagery;

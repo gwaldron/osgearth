@@ -288,10 +288,31 @@ namespace
 //----------------------------------------------------------------------------
 
 
+osgUtil::CullVisitor*
+Culling::asCullVisitor(osg::NodeVisitor* nv)
+{
+    if ( !nv )
+        return 0L;
+
+    osgUtil::CullVisitor* cv = dynamic_cast<osgUtil::CullVisitor*>( nv );
+    if ( cv )
+        return cv;
+
+    ProxyCullVisitor* pcv = dynamic_cast<ProxyCullVisitor*>( nv );
+    if ( pcv )
+        return pcv->getCullVisitor();
+
+    return 0L;
+}
+
+
+//----------------------------------------------------------------------------
+
+
 bool 
 SuperClusterCullingCallback::cull(osg::NodeVisitor* nv, osg::Drawable* , osg::State*) const
 {
-    osgUtil::CullVisitor* cv = dynamic_cast<osgUtil::CullVisitor*>(nv);
+    osgUtil::CullVisitor* cv = Culling::asCullVisitor(nv);
 
     if (!cv) return false;
 
@@ -431,7 +452,7 @@ CullNodeByEllipsoid::operator()(osg::Node* node, osg::NodeVisitor* nv)
 {
     if ( nv )
     {
-        osgUtil::CullVisitor* cv = static_cast<osgUtil::CullVisitor*>(nv);
+        osgUtil::CullVisitor* cv = Culling::asCullVisitor(nv);
 
         // camera location
         osg::Vec3d vp, center, up;
@@ -491,7 +512,7 @@ CullNodeByHorizon::operator()(osg::Node* node, osg::NodeVisitor* nv)
 {
     if ( nv )
     {
-        osgUtil::CullVisitor* cv = static_cast<osgUtil::CullVisitor*>( nv );
+        osgUtil::CullVisitor* cv = Culling::asCullVisitor(nv);
 
         // get the viewpoint. It will be relative to the current reference location (world).
         osg::Matrix l2w = osg::computeLocalToWorld( nv->getNodePath(), true );
@@ -548,7 +569,7 @@ void
 CullNodeByNormal::operator()(osg::Node* node, osg::NodeVisitor* nv)
 {
     osg::Vec3d eye, center, up;
-    osgUtil::CullVisitor* cv = static_cast<osgUtil::CullVisitor*>( nv );
+    osgUtil::CullVisitor* cv = Culling::asCullVisitor(nv);
 
     cv->getCurrentCamera()->getViewMatrixAsLookAt(eye,center,up);
 
@@ -568,12 +589,9 @@ CullNodeByNormal::operator()(osg::Node* node, osg::NodeVisitor* nv)
 void
 DisableSubgraphCulling::operator()(osg::Node* n, osg::NodeVisitor* v)
 {
-    osgUtil::CullVisitor* cv = static_cast<osgUtil::CullVisitor*>(v);
+    osgUtil::CullVisitor* cv = Culling::asCullVisitor(v);
     cv->getCurrentCullingSet().setCullingMask( osg::CullSettings::NO_CULLING );
-    //osg::CullSettings::ComputeNearFarMode mode = cv->getComputeNearFarMode();
-    //cv->setComputeNearFarMode( osg::CullSettings::DO_NOT_COMPUTE_NEAR_FAR );
     traverse(n, v);
-    //cv->setComputeNearFarMode( mode );
 }
 
 
@@ -614,7 +632,7 @@ void OcclusionCullingCallback::operator()(osg::Node* node, osg::NodeVisitor* nv)
     if (nv->getVisitorType() == osg::NodeVisitor::CULL_VISITOR)
     {
         osg::Vec3d eye, center, up;
-        osgUtil::CullVisitor* cv = static_cast<osgUtil::CullVisitor*>( nv );
+        osgUtil::CullVisitor* cv = Culling::asCullVisitor(nv);
 
         cv->getCurrentCamera()->getViewMatrixAsLookAt(eye,center,up);
 
@@ -653,4 +671,236 @@ void OcclusionCullingCallback::operator()(osg::Node* node, osg::NodeVisitor* nv)
     {
         traverse( node, nv );
     }
+}
+
+//------------------------------------------------------------------------
+
+ProxyCullVisitor::ProxyCullVisitor( osgUtil::CullVisitor* cv, const osg::Matrix& proj, const osg::Matrix& view ) :
+osg::NodeVisitor( osg::NodeVisitor::CULL_VISITOR, osg::NodeVisitor::TRAVERSE_ACTIVE_CHILDREN ),
+_cv             ( cv )
+{
+    // set up the initial proxy frustum for culling:
+    _proxyProjFrustum.setToUnitFrustum( true, true );
+    _proxyProjFrustum.transformProvidingInverse( proj );
+    _proxyModelViewMatrix = view;
+    _proxyFrustum.setAndTransformProvidingInverse( _proxyProjFrustum, view );
+
+    // copy NodeVisitor values over to this visitor:
+    const osg::NodePath& path = _cv->getNodePath();
+    for( osg::NodePath::const_reverse_iterator i = path.rbegin(); i != path.rend(); ++i )
+        this->pushOntoNodePath( *i );
+
+    this->setFrameStamp( const_cast<osg::FrameStamp*>(_cv->getFrameStamp()) );
+    this->setTraversalNumber( _cv->getTraversalNumber() );
+    this->setTraversalMask( _cv->getTraversalMask() );
+    this->setNodeMaskOverride( _cv->getNodeMaskOverride() );
+    this->setDatabaseRequestHandler( _cv->getDatabaseRequestHandler() );
+    this->setImageRequestHandler( _cv->getImageRequestHandler() );
+    this->setUserData( _cv->getUserData() );
+    this->setComputeNearFarMode( _cv->getComputeNearFarMode() );
+}
+
+osg::Vec3 
+ProxyCullVisitor::getEyePoint() const { 
+    return _cv->getEyePoint();
+}
+
+osg::Vec3 
+ProxyCullVisitor::getViewPoint() const { 
+    return _cv->getViewPoint();
+}
+
+float 
+ProxyCullVisitor::getDistanceToEyePoint(const osg::Vec3& pos, bool useLODScale) const { 
+    return _cv->getDistanceToEyePoint(pos, useLODScale);
+}
+
+float 
+ProxyCullVisitor::getDistanceFromEyePoint(const osg::Vec3& pos, bool useLODScale) const {
+    return _cv->getDistanceFromEyePoint(pos, useLODScale);
+}
+
+float 
+ProxyCullVisitor::getDistanceToViewPoint(const osg::Vec3& pos, bool useLODScale) const { 
+    return _cv->getDistanceToViewPoint(pos, useLODScale);
+}
+
+bool 
+ProxyCullVisitor::isCulledByProxyFrustum(osg::Node& node)
+{
+    return node.isCullingActive() && !_proxyFrustum.contains(node.getBound());
+}
+
+bool 
+ProxyCullVisitor::isCulledByProxyFrustum(const osg::BoundingBox& bbox)
+{
+    return !_proxyFrustum.contains(bbox);
+}
+
+osgUtil::CullVisitor::value_type 
+ProxyCullVisitor::distance(const osg::Vec3& coord,const osg::Matrix& matrix)
+{
+    return -((osgUtil::CullVisitor::value_type)coord[0]*(osgUtil::CullVisitor::value_type)matrix(0,2)+(osgUtil::CullVisitor::value_type)coord[1]*(osgUtil::CullVisitor::value_type)matrix(1,2)+(osgUtil::CullVisitor::value_type)coord[2]*(osgUtil::CullVisitor::value_type)matrix(2,2)+matrix(3,2));
+}
+
+void 
+ProxyCullVisitor::handle_cull_callbacks_and_traverse(osg::Node& node)
+{
+    osg::NodeCallback* callback = node.getCullCallback();
+    if (callback) (*callback)(&node,this);
+    else traverse(node);
+}
+
+void 
+ProxyCullVisitor::apply(osg::Node& node)
+{
+    //OE_INFO << "Node: " << node.className() << std::endl;
+
+    if ( isCulledByProxyFrustum(node) )
+        return;
+
+    _cv->pushOntoNodePath( &node );
+
+    _cv->pushCurrentMask();
+    osg::StateSet* node_state = node.getStateSet();
+    if (node_state) _cv->pushStateSet(node_state);
+    handle_cull_callbacks_and_traverse(node);
+    if (node_state) _cv->popStateSet();
+    _cv->popCurrentMask();
+
+    _cv->popFromNodePath();
+}
+
+void 
+ProxyCullVisitor::apply(osg::Transform& node)
+{
+    //OE_INFO << "Transform!" << std::endl;
+
+    if ( isCulledByProxyFrustum(node) )
+        return;
+
+    _cv->pushOntoNodePath( &node);
+
+    _cv->pushCurrentMask();
+    osg::StateSet* node_state = node.getStateSet();
+    if (node_state) _cv->pushStateSet(node_state);
+
+    // push the current proxy data:
+    osg::Polytope savedF  = _proxyFrustum;
+    osg::Matrix   savedMV = _proxyModelViewMatrix;
+
+    // calculate the new proxy frustum:
+    node.computeLocalToWorldMatrix(_proxyModelViewMatrix, this);
+    _proxyFrustum.setAndTransformProvidingInverse( _proxyProjFrustum, _proxyModelViewMatrix );
+
+    osg::ref_ptr<osg::RefMatrix> matrix = createOrReuseMatrix(*_cv->getModelViewMatrix());
+    node.computeLocalToWorldMatrix(*matrix,this);
+    _cv->pushModelViewMatrix(matrix.get(), node.getReferenceFrame());
+
+    // traverse children:
+    handle_cull_callbacks_and_traverse(node);
+
+    // restore the previous proxy frustum and MVM
+    _proxyFrustum         = savedF;
+    _proxyModelViewMatrix = savedMV;
+
+    _cv->popModelViewMatrix();
+    if (node_state) _cv->popStateSet();
+    _cv->popCurrentMask();
+
+    _cv->popFromNodePath();
+}
+
+void 
+ProxyCullVisitor::apply(osg::Geode& node)
+{
+    //OE_INFO << "Geode!" << std::endl;
+
+    if ( isCulledByProxyFrustum(node) )
+        return;
+
+    _cv->pushOntoNodePath( &node );
+
+    // push the node's state.
+    osg::StateSet* node_state = node.getStateSet();
+    if (node_state) _cv->pushStateSet(node_state);
+
+    // traverse any call callbacks and traverse any children.
+    handle_cull_callbacks_and_traverse(node);
+
+    osg::RefMatrix& matrix = *_cv->getModelViewMatrix();
+    for(unsigned int i=0;i<node.getNumDrawables();++i)
+    {
+        osg::Drawable* drawable = node.getDrawable(i);
+        const osg::BoundingBox& bb =drawable->getBound();
+
+        if( drawable->getCullCallback() )
+        {
+            if( drawable->getCullCallback()->cull( _cv, drawable, &_cv->getRenderInfo() ) == true )
+                continue;
+        }
+
+        //else
+        {
+            if (node.isCullingActive() && isCulledByProxyFrustum(bb)) continue;
+        }
+
+
+        if ( _cv->getComputeNearFarMode() && bb.valid())
+        {
+            if (!_cv->updateCalculatedNearFar(matrix,*drawable,false)) continue;
+        }
+
+        // need to track how push/pops there are, so we can unravel the stack correctly.
+        unsigned int numPopStateSetRequired = 0;
+
+        // push the geoset's state on the geostate stack.
+        osg::StateSet* stateset = drawable->getStateSet();
+        if (stateset)
+        {
+            ++numPopStateSetRequired;
+            _cv->pushStateSet(stateset);
+        }
+
+        osg::CullingSet& cs = _cv->getCurrentCullingSet();
+        if (!cs.getStateFrustumList().empty())
+        {
+            osg::CullingSet::StateFrustumList& sfl = cs.getStateFrustumList();
+            for(osg::CullingSet::StateFrustumList::iterator itr = sfl.begin();
+                itr != sfl.end();
+                ++itr)
+            {
+                if (itr->second.contains(bb))
+                {
+                    ++numPopStateSetRequired;
+                    _cv->pushStateSet(itr->first.get());
+                }
+            }
+        }
+
+        float depth = bb.valid() ? distance(bb.center(),matrix) : 0.0f;
+
+        if (osg::isNaN(depth))
+        {
+            for (osg::NodePath::const_iterator i = getNodePath().begin(); i != getNodePath().end(); ++i)
+            {
+                OSG_DEBUG << "        \"" << (*i)->getName() << "\"" << std::endl;
+            }
+        }
+        else
+        {
+            _cv->addDrawableAndDepth(drawable,&matrix,depth);
+        }
+
+        for(unsigned int i=0;i< numPopStateSetRequired; ++i)
+        {
+            _cv->popStateSet();
+        }
+
+    }
+
+    // pop the node's state off the geostate stack.
+    if (node_state) _cv->popStateSet();
+
+    _cv->popFromNodePath();
 }

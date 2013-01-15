@@ -47,17 +47,21 @@ KML_NetworkLink::build( const Config& conf, KMLContext& cx )
         if ( llaBoxConf.empty() )
             return;
 
+        const SpatialReference* geoSRS = cx._mapNode->getMapSRS()->getGeographicSRS();
+
         GeoExtent llaExtent(
-            cx._mapNode->getMap()->getProfile()->getSRS()->getGeographicSRS(),
+            geoSRS,
             llaBoxConf.value<double>("west",  0.0),
             llaBoxConf.value<double>("south", 0.0),
             llaBoxConf.value<double>("east",  0.0),
             llaBoxConf.value<double>("north", 0.0) );
 
+        // find the ECEF LOD center point:
         double x, y;
         llaExtent.getCentroid( x, y );
         osg::Vec3d lodCenter;
-        llaExtent.getSRS()->transformToECEF( osg::Vec3d(x,y,0), lodCenter );
+        llaExtent.getSRS()->transform( osg::Vec3d(x,y,0), geoSRS->getECEF(), lodCenter );
+        //llaExtent.getSRS()->transformToECEF( osg::Vec3d(x,y,0), lodCenter );
 
         // figure the tile radius:
         double d = 0.5 * GeoMath::distance(

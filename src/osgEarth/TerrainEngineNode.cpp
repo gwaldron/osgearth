@@ -18,6 +18,7 @@
  */
 #include <osgEarth/TerrainEngineNode>
 #include <osgEarth/Capabilities>
+#include <osgEarth/CullingUtils>
 #include <osgEarth/Registry>
 #include <osgEarth/TextureCompositor>
 #include <osgEarth/NodeUtils>
@@ -413,7 +414,7 @@ TerrainEngineNode::traverse( osg::NodeVisitor& nv )
             if ( !_terrainInterface->_updateOperationQueue.valid() ) // double check pattern
             {
                 //TODO: think, will this work with >1 view?
-                osgUtil::CullVisitor* cv = dynamic_cast<osgUtil::CullVisitor*>( &nv );
+                osgUtil::CullVisitor* cv = Culling::asCullVisitor(nv);
                 if ( cv->getCurrentCamera() )
                 {
                     osgViewer::View* view = dynamic_cast<osgViewer::View*>(cv->getCurrentCamera()->getView());
@@ -435,7 +436,7 @@ TerrainEngineNode::traverse( osg::NodeVisitor& nv )
         {
             _updateLightingUniformsHelper.cullTraverse( this, &nv );
 
-            osgUtil::CullVisitor* cv = dynamic_cast<osgUtil::CullVisitor*>( &nv );
+            osgUtil::CullVisitor* cv = Culling::asCullVisitor(nv);
             if ( cv )
             {
                 osg::Vec3d eye = cv->getEyePoint();

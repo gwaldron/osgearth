@@ -23,34 +23,44 @@ using namespace osgEarth::Symbology;
 
 //------------------------------------------------------------------------
 
-Stroke::Stroke() :
-_color        ( 1, 1, 1, 1 ),
-_lineCap      ( LINECAP_ROUND ),
-_lineJoin     ( LINEJOIN_ROUND ),
-_width        ( 1.0f ),
-_roundingRatio( 0.4f )
+Stroke::Stroke()
 {
-    //nop
+    init();
 }
 
-Stroke::Stroke( float r, float g, float b, float a ) :
-_color        ( r, g, b, a ),
-_lineCap      ( LINECAP_ROUND ),
-_lineJoin     ( LINEJOIN_ROUND ),
-_width        ( 1.0f ),
-_roundingRatio( 0.4f )
+Stroke::Stroke( float r, float g, float b, float a )
 {
-    //nop
+    init();
+    _color.set( r, g, b, a );
 }
 
-Stroke::Stroke(const Color& color) :
-_color        ( color ),
-_lineCap      ( LINECAP_ROUND ),
-_lineJoin     ( LINEJOIN_ROUND ),
-_width        ( 1.0f ),
-_roundingRatio( 0.4f )
+Stroke::Stroke(const Color& color)
 {
-    //nop
+    init();
+    _color = color;
+}
+
+Stroke::Stroke(const Config& conf)
+{
+    init();
+    mergeConfig( conf );
+}
+
+Stroke::Stroke(const Stroke& rhs)
+{
+    init();
+    mergeConfig( rhs.getConfig() );
+}
+
+void
+Stroke::init()
+{
+    _color.set         ( 1.0f, 1.0f, 1.0f, 1.0f );
+    _lineCap.init      ( LINECAP_FLAT );
+    _lineJoin.init     ( LINEJOIN_ROUND );
+    _width.init        ( 1.0f );
+    _widthUnits.init   ( Units::PIXELS );
+    _roundingRatio.init( 0.4f );
 }
 
 Config 
@@ -65,6 +75,8 @@ Stroke::getConfig() const {
     conf.addIfSet("width", _width);
     conf.addIfSet("stipple", _stipple);
     conf.addIfSet("rounding_ratio", _roundingRatio);
+    if ( _widthUnits.isSet() )
+        conf.add( "width_units", _widthUnits->getAbbr() );
     return conf;
 }
 
@@ -80,4 +92,6 @@ Stroke::mergeConfig( const Config& conf ) {
     conf.getIfSet("width", _width);
     conf.getIfSet("stipple", _stipple);
     conf.getIfSet("rounding_ratio", _roundingRatio);
+    if ( conf.hasValue("width_units" ) )
+        Units::parse( conf.value("width_units"), _widthUnits.mutable_value() );
 }

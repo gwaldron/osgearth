@@ -141,7 +141,7 @@ namespace osgEarth
             osg::Vec3d&       out_local,
             double*           out_geodeticZ =0L ) const;
 
-
+#if 0
 
     public:  // ECEF transformations.
 
@@ -178,7 +178,7 @@ namespace osgEarth
          * The points are transformed in place.
          */
         bool transformFromECEF( std::vector<osg::Vec3d>& points ) const;
-
+#endif
 
     public: // extent transformations.
         
@@ -214,6 +214,9 @@ namespace osgEarth
 
         /** True if this is a projected SRS (i.e. local coordinate system) */
         virtual bool isProjected() const;
+
+        /** True if this is an ECEF system (geocentric/meters) */
+        virtual bool isECEF() const;
 
         /** Tests whether this SRS represents a Mercator projection. */
         bool isMercator() const;
@@ -287,6 +290,9 @@ namespace osgEarth
             which Z is expressed as height above the geodetic ellipsoid). */
         const SpatialReference* getGeodeticSRS() const;
 
+        /** Gets the ECEF reference system associated with this SRS' ellipsoid. */
+        const SpatialReference* getECEF() const;
+
         /** Gets the vertical datum. If null, this SRS uses a default geodetic vertical datum */
         const VerticalDatum* getVerticalDatum() const;
 
@@ -307,7 +313,7 @@ namespace osgEarth
         /** Creates a UTM (universal transverse mercator) projection in the UTM zone
             containing the specified longitude. NOTE: this is slightly faster than using
             basic tmerc (transverse mercator) above. */
-        const SpatialReference* createUTMFromLonLat( const Angular& lon, const Angular& lat ) const;
+        const SpatialReference* createUTMFromLonLat( const Angle& lon, const Angle& lat ) const;
 
         /** Creates a copy of this SRS, but flags the new SRS so that it will operate in
             Plate Carre mode for the purposes of world coordinate conversion. The SRS is
@@ -357,6 +363,7 @@ namespace osgEarth
         bool _is_user_defined;
         bool _is_ltp;
         bool _is_plate_carre;
+        bool _is_ecef;
         unsigned _ellipsoidId;
         std::string _name;
         Key _key;
@@ -368,6 +375,7 @@ namespace osgEarth
         osg::ref_ptr<osg::EllipsoidModel> _ellipsoid;
         osg::ref_ptr<SpatialReference>    _geo_srs;
         osg::ref_ptr<SpatialReference>    _geodetic_srs;  // _geo_srs with a NULL vdatum.
+        osg::ref_ptr<SpatialReference>    _ecef_srs;
         osg::ref_ptr<VerticalDatum>       _vdatum;
 
         typedef std::map<std::string,void*> TransformHandleCache;

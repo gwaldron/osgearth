@@ -57,7 +57,13 @@ LineSymbol::parseSLD(const Config& c, Style& style)
         style.getOrCreate<LineSymbol>()->stroke()->color().a() = as<float>( c.value(), 1.0f );
     }
     else if ( match(c.key(), "stroke-width") ) {
-        style.getOrCreate<LineSymbol>()->stroke()->width() = as<float>( c.value(), 1.0f );
+        float width;
+        Units units;
+        if ( Units::parse(c.value(), width, units, Units::PIXELS) )
+        {
+            style.getOrCreate<LineSymbol>()->stroke()->width() = width;
+            style.getOrCreate<LineSymbol>()->stroke()->widthUnits() = units;
+        }
     }
     else if ( match(c.key(), "stroke-linecap") ) {
         style.getOrCreate<LineSymbol>()->stroke()->lineCap() =

@@ -68,11 +68,28 @@ namespace osgEarth
         static const Units DATA_MILES_PER_HOUR;
         static const Units KNOTS;
 
-        enum Type { TYPE_LINEAR, TYPE_ANGULAR, TYPE_TEMPORAL, TYPE_SPEED, TYPE_INVALID };
+        // screen
+        static const Units PIXELS;
+
+        // unit types.
+        enum Type
+        { 
+            TYPE_LINEAR, 
+            TYPE_ANGULAR, 
+            TYPE_TEMPORAL, 
+            TYPE_SPEED, 
+            TYPE_SCREEN_SIZE,
+            TYPE_INVALID
+        };
 
     public:
 
         static bool parse( const std::string& input, Units& output );
+
+        // parses a value+units string (like "15cm" or "24px")
+        static bool parse( const std::string& input, double& out_value, Units& out_units, const Units& defaultUnits );
+        static bool parse( const std::string& input, float& out_value, Units& out_units, const Units& defaultUnits );
+        static bool parse( const std::string& input, int& out_value, Units& out_units, const Units& defaultUnits );
 
         static bool convert( const Units& from, const Units& to, double input, double& output ) {
             if ( canConvert(from, to) ) {
@@ -127,9 +144,11 @@ namespace osgEarth
 
         bool isSpeed() const { return _type == TYPE_SPEED; }
 
+        bool isScreenSize() const { return _type == TYPE_SCREEN_SIZE; }
+
     public:
 
-        // Make a new unit definition (LINEAR, ANGULAR, TEMPORAL)
+        // Make a new unit definition (LINEAR, ANGULAR, TEMPORAL, SCREEN)
         Units( const std::string& name, const std::string& abbr, const Type& type, double toBase );
 
         // Maks a new unit definition (SPEED)
@@ -272,6 +291,13 @@ namespace osgEarth
         Speed(double value) : qualified_double<Speed>(value, Units::METERS_PER_SECOND) { }
         Speed(double value, const Units& units) : qualified_double<Speed>(value, units) { }
         Speed(const Config& conf) : qualified_double<Speed>(conf, Units::METERS_PER_SECOND) { }
+    };
+
+    struct ScreenSize : public qualified_double<ScreenSize> {
+        ScreenSize() : qualified_double<ScreenSize>(0, Units::PIXELS) { }
+        ScreenSize(double value) : qualified_double<ScreenSize>(value, Units::PIXELS) { }
+        ScreenSize(double value, const Units& units) : qualified_double<ScreenSize>(value, units) { }
+        ScreenSize(const Config& conf) : qualified_double<ScreenSize>(conf, Units::PIXELS) { }
     };
 
 }

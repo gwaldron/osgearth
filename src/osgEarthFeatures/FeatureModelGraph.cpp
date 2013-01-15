@@ -367,8 +367,11 @@ FeatureModelGraph::getBoundInWorldCoords(const GeoExtent& extent,
 
     if ( _session->getMapInfo().isGeocentric() )
     {
-        workingExtent.getSRS()->transformToECEF( center, center );
-        workingExtent.getSRS()->transformToECEF( corner, corner );
+        const SpatialReference* ecefSRS = workingExtent.getSRS()->getECEF();
+        workingExtent.getSRS()->transform( center, ecefSRS, center );
+        workingExtent.getSRS()->transform( corner, ecefSRS, corner );
+        //workingExtent.getSRS()->transformToECEF( center, center );
+        //workingExtent.getSRS()->transformToECEF( corner, corner );
     }
 
     return osg::BoundingSphered( center, (center-corner).length() );
@@ -737,8 +740,10 @@ FeatureModelGraph::buildLevel( const FeatureLevel& level, const GeoExtent& exten
                     // get the geocentric tile center:
                     osg::Vec3d tileCenter;
                     ccExtent.getCentroid( tileCenter.x(), tileCenter.y() );
+
                     osg::Vec3d centerECEF;
-                    ccExtent.getSRS()->transformToECEF( tileCenter, centerECEF );
+                    ccExtent.getSRS()->transform( tileCenter, _session->getMapSRS()->getECEF(), centerECEF );
+                    //ccExtent.getSRS()->transformToECEF( tileCenter, centerECEF );
 
                     osg::NodeCallback* ccc = ClusterCullingFactory::create2( group.get(), centerECEF );
                     if ( ccc )

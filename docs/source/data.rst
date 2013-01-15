@@ -14,7 +14,7 @@ Help us add useful sources of Free data to this list.
       transportation, structures, and land cover products for the US.
     
     * `NASA EOSDIS`_ - NASA's Global Imagery Browse Services (GIBS) replaces the agency's old
-       `JPL OnEarth`_ site for global imagery products like MODIS.
+      `JPL OnEarth`_ site for global imagery products like MODIS.
        
     * `NASA BlueMarble`_ - NASA's whole-earth imagery (including topography and bathymetry maps)
     
@@ -107,7 +107,9 @@ Tips for Preparing your own Data
         
 **Building tile sets**
 
-    The best way to speed up imagery and elevation loading in osgEarth is to build **tile sets**.
+    Another way to speed up imagery and elevation loading in osgEarth is to build **tile sets**.
+    In fact, if you want to serve your data over the network, this is the only way!
+    
     This process takes the source data and chops it up into a quad-tree hierarchy of discrete
     *tiles* that osgEarth can load very quickly. Normally, if you load a GeoTIFF (for example),
     osgEarth has to create the tiles at runtime in order to build the globe; Doing this beforehand

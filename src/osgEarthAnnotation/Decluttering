@@ -76,7 +76,8 @@ namespace osgEarth { namespace Annotation
               _minAnimScale         ( 0.45f ),
               _inAnimTime           ( 0.40f ),
               _outAnimTime          ( 0.00f ),
-              _sortByPriority       ( false )
+              _sortByPriority       ( false ),
+              _maxObjects           ( INT_MAX )
         {
             fromConfig(conf);
         }
@@ -103,16 +104,21 @@ namespace osgEarth { namespace Annotation
         optional<bool>& sortByPriority() { return _sortByPriority; }
         const optional<bool>& sortByPriority() const { return _sortByPriority; }
 
+        /** Maximum number of objects to draw after sorting */
+        optional<unsigned>& maxObjects() { return _maxObjects; }
+        const optional<unsigned>& maxObjects() const { return _maxObjects; }
+
     public:
 
         Config getConfig() const;
 
     protected:
-        optional<float> _minAnimAlpha;
-        optional<float> _minAnimScale;
-        optional<float> _inAnimTime;
-        optional<float> _outAnimTime;
-        optional<bool>  _sortByPriority;
+        optional<float>    _minAnimAlpha;
+        optional<float>    _minAnimScale;
+        optional<float>    _inAnimTime;
+        optional<float>    _outAnimTime;
+        optional<bool>     _sortByPriority;
+        optional<unsigned> _maxObjects;
 
         void fromConfig( const Config& conf );
     };

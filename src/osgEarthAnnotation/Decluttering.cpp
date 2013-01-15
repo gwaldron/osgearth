@@ -126,6 +126,7 @@ DeclutteringOptions::fromConfig( const Config& conf )
     conf.getIfSet( "in_animation_time",   _inAnimTime );
     conf.getIfSet( "out_animation_time",  _outAnimTime );
     conf.getIfSet( "sort_by_priority",    _sortByPriority );
+    conf.getIfSet( "max_objects",         _maxObjects );
 }
 
 Config
@@ -137,6 +138,7 @@ DeclutteringOptions::getConfig() const
     conf.addIfSet( "in_animation_time",   _inAnimTime );
     conf.addIfSet( "out_animation_time",  _outAnimTime );
     conf.addIfSet( "sort_by_priority",    _sortByPriority );
+    conf.addIfSet( "max_objects",         _maxObjects );
     return conf;
 }
 
@@ -195,7 +197,6 @@ struct /*internal*/ DeclutterSort : public osgUtil::RenderBin::SortCallback
             // default behavior:
             bin->copyLeavesFromStateGraphListToRenderLeafList();
             std::sort( leaves.begin(), leaves.end(), SortFrontToBackPreservingGeodeTraversalOrder() );
-            //bin->sortFrontToBack();
         }
 
         // nothing to sort? bail out
@@ -228,9 +229,13 @@ struct /*internal*/ DeclutterSort : public osgUtil::RenderBin::SortCallback
         std::set<const osg::Node*> culledParents;
 
         const DeclutteringOptions& options = _context->_options;
+        unsigned limit = *options.maxObjects();
 
         // Go through each leaf and test for visibility.
-        for( osgUtil::RenderBin::RenderLeafList::iterator i = leaves.begin(); i != leaves.end(); ++i )
+        // Enforce the "max objects" limit along the way.
+        for(osgUtil::RenderBin::RenderLeafList::iterator i = leaves.begin(); 
+            i != leaves.end() && local._passed.size() < limit; 
+            ++i )
         {
             bool visible = true;
 

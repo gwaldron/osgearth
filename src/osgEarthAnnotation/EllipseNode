@@ -47,6 +47,9 @@ namespace osgEarth { namespace Annotation
          * @param radiusMinor Length of 1/2 the minor axis of the ellipse
          * @param rotation    Rotation angle of the ellipse
          * @param style       Style defining how the annotation will look
+         * @param arcStart    Optional start of arc (default to 0.0 degrees)
+         * @param arcStop     Optional end of arc (default to 360.0 degrees)
+         * @param pie         Optionally make pie shape instead of arc
          */
         EllipseNode( 
             MapNode*                mapNode,
@@ -54,7 +57,10 @@ namespace osgEarth { namespace Annotation
             const Distance&         radiusMajor,
             const Distance&         radiusMinor,
             const Angle&            rotationAngle,
-            const Style&            style );
+            const Style&            style,
+            const Angle&            arcStart = Angle(0.0, Units::DEGREES),
+            const Angle&            arcEnd = Angle(360.0, Units::DEGREES),
+            const bool              pie = false);
 
         virtual ~EllipseNode() { }
 
@@ -103,7 +109,6 @@ namespace osgEarth { namespace Annotation
          */
         void setNumSegments(unsigned int numSegments );
 
-
         /**
          * Gets the style
          */
@@ -113,6 +118,36 @@ namespace osgEarth { namespace Annotation
          * Sets the style
          */
         void setStyle( const Style& style );
+
+        /**
+         * Gets the start degrees of this (arc) circle
+         */
+        const Angle& getArcStart(void) const;
+
+        /**
+         * Sets the start degrees of this (arc) circle
+         */
+        void setArcStart(const Angle& arcStart);
+
+        /**
+         * Gets the end degrees of this (arc) circle
+         */
+        const Angle& getArcEnd(void) const;
+
+        /**
+         * Sets the end degrees of this (arc) circle
+         */
+        void setArcEnd(const Angle& arcEnd);
+
+        /**
+         * Gets the pie flag
+         */
+        const bool& getPie(void) const;
+
+        /**
+         * Sets the pie flag
+         */
+        void setPie(const bool& pie);
 
         /**
          * Gets draped property
@@ -141,6 +176,9 @@ namespace osgEarth { namespace Annotation
         Angle _rotationAngle;
         Distance _radiusMajor;
         Distance _radiusMinor;
+        Angle _arcStart;
+        Angle _arcEnd;
+        bool  _pie;
         unsigned int _numSegments;
         osg::ref_ptr<osg::MatrixTransform> _xform;
     };

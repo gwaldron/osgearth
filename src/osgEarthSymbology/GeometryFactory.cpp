@@ -87,7 +87,8 @@ GeometryFactory::createArc(const osg::Vec3d& center,
                            const Angle&      start,
                            const Angle&      end,
                            unsigned          numSegments,
-                           Geometry*         geomToUse) const
+                           Geometry*         geomToUse,
+                           bool              pie) const
 {
     Geometry* geom = geomToUse? geomToUse : new LineString();
 
@@ -138,6 +139,11 @@ GeometryFactory::createArc(const osg::Vec3d& center,
         }
     }
 
+    if (pie && (geom->getTotalPointCount() > 0) && ((startRad + 2*osg::PI) != endRad))
+    {
+        geom->push_back(center);
+        geom->push_back(geom->at(0));
+    }
     geom->rewind(Geometry::ORIENTATION_CCW);
 
     return geom;
@@ -204,6 +210,90 @@ GeometryFactory::createEllipse(const osg::Vec3d& center,
 
             geom->push_back( osg::Vec3d(x, y, center.z()) );
         }
+    }
+
+    return geom;
+}
+
+Geometry*
+GeometryFactory::createEllipticalArc(const osg::Vec3d& center,
+                                     const Distance&   radiusMajor,
+                                     const Distance&   radiusMinor,
+                                     const Angle&      rotationAngle,
+                                     const Angle&      start,
+                                     const Angle&      end,
+                                     unsigned          numSegments,
+                                     Geometry*         geomToUse,
+                                     bool              pie) const
+{
+    Geometry* geom = geomToUse ? geomToUse : new LineString();
+
+    if ( numSegments == 0 )
+    {
+        // automatically calculate
+        double ravgM = 0.5*(radiusMajor.as(Units::METERS) + radiusMinor.as(Units::METERS));
+        double segLen = ravgM / 8.0;
+        double circumference = 2*osg::PI*ravgM;
+        numSegments = (unsigned)::ceil(circumference / segLen);
+    }
+
+    double startRad = std::min( start.as(Units::RADIANS), end.as(Units::RADIANS) ) - osg::PI_2;
+    double endRad   = std::max( start.as(Units::RADIANS), end.as(Units::RADIANS) ) - osg::PI_2;
+
+    if ( endRad == startRad )
+    {
+        endRad += 2*osg::PI;
+    }
+
+    double span     = endRad - startRad;
+    double step     = span/(double)numSegments;
+
+    if ( _srs.valid() && _srs->isGeographic() )
+    {
+        double earthRadius = _srs->getEllipsoid()->getRadiusEquator();
+        double lat = osg::DegreesToRadians(center.y());
+        double lon = osg::DegreesToRadians(center.x());
+        double a = radiusMajor.as(Units::METERS);
+        double b = radiusMinor.as(Units::METERS);
+        double g = rotationAngle.as(Units::RADIANS) - osg::PI_2;
+
+        for( unsigned i=0; i<=numSegments; i++ )
+        {
+            double angle = startRad + step*(double)i;
+            double t = angle - osg::PI_2;
+            double clat, clon;
+
+            double rA = (b*b-a*a)*cos(2*t - 2*g) + a*a + b*b;
+            double q = sqrt(2.0)*a*b*sqrt(rA);
+            double r = q/rA;
+
+            GeoMath::destination( lat, lon, angle, r, clat, clon, earthRadius );
+            geom->push_back( osg::Vec3d(osg::RadiansToDegrees(clon), osg::RadiansToDegrees(clat), center.z()) );
+        }
+    }
+    else
+    {
+        double a = radiusMajor.as(Units::METERS);
+        double b = radiusMinor.as(Units::METERS);
+        double g = rotationAngle.as(Units::RADIANS) - osg::PI_2;
+        double sing = sin(g), cosg = cos(g);
+
+        for( unsigned i=0; i<=numSegments; i++ )
+        {
+            double angle = startRad + step*(double)i;
+            double t = angle - osg::PI_2;
+            double cost = cos(t), sint = sin(t);
+            double x = center.x() + a*cost*cosg - b*sint*sing;
+            double y = center.y() + a*cost*sing + b*sint*cosg;
+
+            geom->push_back( osg::Vec3d(x, y, center.z()) );
+        }
+    }
+
+    if (pie && (geom->getTotalPointCount() > 0) && ((startRad + 2*osg::PI) != endRad))
+    {
+        geom->push_back(center);
+        geom->push_back(geom->at(0));
     }
 
     return geom;

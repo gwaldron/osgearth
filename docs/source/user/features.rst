@@ -193,7 +193,7 @@ functions (min, max), and grouping with parentheses. It also works for string va
 There are no operators, but you can still embed attributes.
 
 If simple expressions are not enough, you can embed JavaScript code -- please see the
-section on *Scripting* for more information.
+section on Scripting_ for more information.
 
 Style Selectors
 ~~~~~~~~~~~~~~~

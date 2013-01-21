@@ -1,8 +1,8 @@
-References
-==========
+Reference Guides
+================
 
 .. toctree:
    :maxdepth: 1
    
-   references/earthfile
-   references/symbology
+   earthfile
+   symbology

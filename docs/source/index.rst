@@ -20,11 +20,11 @@ Table of Contents
 
    about
    startup
-   user
+   user/index
    developer
    data
    howto
-   references
+   references/index
    faq
 
 

@@ -52,10 +52,10 @@ Altitude Symbol
 
 The *altitude symbol* controls a feature's interaction with the terrain.
 
-+-----------------------+-----------------------------------------------------+--------------+
-| Property              | Description                                         | Notes        |
-+======================+======================================================+==============+
-| altitude-clamping     | How data interacts with the terrain.                               |
++-----------------------+--------------------------------------------------------------------+
+| Property              | Description                                                        |
++==================== ==+====================================================================+
+| altitude-clamping     | Controls terrain following behavior.                               |
 |                       |   :none:     no clamping                                           |
 |                       |   :terrain:  clamp to terrain and discard Z values                 |
 |                       |   :relative: clamp to terrain and retain Z value                   |

@@ -24,6 +24,7 @@ Table of Contents
    developer
    data
    howto
+   references
    faq
 
 

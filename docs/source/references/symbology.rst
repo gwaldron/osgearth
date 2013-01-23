@@ -363,7 +363,8 @@ The *text symbol* (SDK: ``TextSymbol``) controls the existance and appearance of
 |                         |   * ``right-bottom-base-line``                                     |
 |                         |   * ``base-line``                                                  |
 +-------------------------+--------------------------------------------------------------------+
-| text-content            | The actual text string to display (string-expr)                    | +-------------------------+--------------------------------------------------------------------+
+| text-content            | The actual text string to display (string-expr)                    |
++-------------------------+--------------------------------------------------------------------+
 | text-encoding           | Character encoding of the text content:                            |
 |                         |   * ``utf-8``                                                      |
 |                         |   * ``utf-16``                                                     |

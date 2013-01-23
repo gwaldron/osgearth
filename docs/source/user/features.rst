@@ -169,9 +169,8 @@ the feature geometry. In this case:
     :render-lighting: Disable OpenGL lighting on the polygon.
 
 This is only a small sample of available symbology.
-Please refer to the `Symboloby Reference Guide`_ for a complete listing.
+For a complete listing, please refer to: :doc:`/references/symbology`.
 
-.. _Symbology Reference Guide:  ../references/symbology
 
 Expressions
 ~~~~~~~~~~~

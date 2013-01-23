@@ -31,16 +31,16 @@ Value Types
 These are the basic value types. In the symbol tables on this page, each
 property includes the value type in parantheses following its description.
 
-                          format #RRGGBB or #RRGGBBAA. (Example: #FFCC007F)
   :float:                 Floating-point number
   :float with units:      Floating-point number with unit designator, e.g.
                           20px (20 pixels) or 10m (10 meters)
-  :HTML Color:            Color string in hex format, as used in HTML; in the
+  :HTML_Color:            Color string in hex format, as used in HTML; in the
+                          format #RRGGBB or #RRGGBBAA. (Example: #FFCC007F)
   :integer:               Integral number
-  :numeric-expr:          Expression (simple or JavaScript) resolving to a number
+  :numeric_expr:          Expression (simple or JavaScript) resolving to a number
   :string:                Simple text string
-  :string-expr:           Expression (simple or JacaScript) resolving to a text string
-  :uri-string:            String denoting a resource location (like a URL or file path).
+  :string_expr:           Expression (simple or JacaScript) resolving to a text string
+  :uri_string:            String denoting a resource location (like a URL or file path).
                           URIs can be absolute or relative; relative URIs are always
                           relative to the location of the *referrer*, i.e. the entity
                           that requested the resource. (For example, a relative URI within
@@ -51,7 +51,7 @@ property includes the value type in parantheses following its description.
 Geometry
 --------
 
-Basic *geometry symbols* (SDK: ``LineSymbol``, ``PolygonSymbol``, and ``PointSymbol)
+Basic *geometry symbols* (SDK: ``LineSymbol``, ``PolygonSymbol``, ``PointSymbol``)
 control the color and style of the vector data.
 
 +-----------------------+---------------------------------------+----------------------------+
@@ -232,15 +232,15 @@ Icons are used for different things, the most common being:
 +-------------------------+--------------------------------------------------------------------+
 | icon-align              | Sets the icon's location relative to its anchor point. The valid   |
 |                         | values are in the form "horizontal-vertical", and are:             |
-|                         | * ``left-top``                                                     |
-|                         | * ``left-center``                                                  |
-|                         | * ``left-bottom``                                                  |
-|                         | * ``center-top``                                                   |
-|                         | * ``center-center``                                                |
-|                         | * ``center-bottom``                                                |
-|                         | * ``right-top``                                                    |
-|                         | * ``right-center``                                                 |
-|                         | * ``right-bottom``                                                 |
+|                         |   * ``left-top``                                                   |
+|                         |   * ``left-center``                                                |
+|                         |   * ``left-bottom``                                                |
+|                         |   * ``center-top``                                                 |
+|                         |   * ``center-center``                                              |
+|                         |   * ``center-bottom``                                              |
+|                         |   * ``right-top``                                                  |
+|                         |   * ``right-center``                                               |
+|                         |   * ``right-bottom``                                               |
 +-------------------------+--------------------------------------------------------------------+
 | icon-random-seed        | For random placement operations, set this seed so that the         |
 |                         | randomization is repeatable each time you run the app. (integer)   |
@@ -317,11 +317,11 @@ as some osgEarth-specific settings that are not specific to any other symbol typ
 | render-depth-offset-min-range | Sets the range (distance from viewer) at which to apply the  |
 |                               | minimum depth offsetting bias. The bias graduates between its|
 |                               | min and max values over the specified range.                 |
-+----------------------------------------------------------------------------------------------+
++-------------------------------+--------------------------------------------------------------+
 | render-depth-offset-max-range | Sets the range (distance from viewer) at which to apply the  |
 |                               | maximum depth offsetting bias. The bias graduates between its|
 |                               | min and max values over the specified range.                 |
-+----------------------------------------------------------------------------------------------+
++-------------------------------+--------------------------------------------------------------+
 
 
 
@@ -346,29 +346,29 @@ The *text symbol* (SDK: ``TextSymbol``) controls the existance and appearance of
 | text-halo-offset        | Outline thickness (float, pixels)                                  |
 +-------------------------+--------------------------------------------------------------------+
 | text-align              | Alignment of the text string relative to its anchor point:         |
-|                         | * ``left-top``                                                     |
-|                         | * ``left-center``                                                  |
-|                         | * ``left-bottom``                                                  |
-|                         | * ``left-base-line``                                               |
-|                         | * ``left-bottom-base-line``                                        |
-|                         | * ``center-top``                                                   |
-|                         | * ``center-center``                                                |
-|                         | * ``center-bottom``                                                |
-|                         | * ``center-base-line``                                             |
-|                         | * ``center-bottom-base-line``                                      |
-|                         | * ``right-top``                                                    |
-|                         | * ``right-center``                                                 |
-|                         | * ``right-bottom``                                                 |
-|                         | * ``right-base-line``                                              |
-|                         | * ``right-bottom-base-line``                                       |
-|                         | * ``base-line``                                                    |
+|                         |   * ``left-top``                                                   |
+|                         |   * ``left-center``                                                |
+|                         |   * ``left-bottom``                                                |
+|                         |   * ``left-base-line``                                             |
+|                         |   * ``left-bottom-base-line``                                      |
+|                         |   * ``center-top``                                                 |
+|                         |   * ``center-center``                                              |
+|                         |   * ``center-bottom``                                              |
+|                         |   * ``center-base-line``                                           |
+|                         |   * ``center-bottom-base-line``                                    |
+|                         |   * ``right-top``                                                  |
+|                         |   * ``right-center``                                               |
+|                         |   * ``right-bottom``                                               |
+|                         |   * ``right-base-line``                                            |
+|                         |   * ``right-bottom-base-line``                                     |
+|                         |   * ``base-line``                                                  |
 +-------------------------+--------------------------------------------------------------------+
 | text-content            | The actual text string to display (string-expr)                    | +-------------------------+--------------------------------------------------------------------+
 | text-encoding           | Character encoding of the text content:                            |
-|                         | * ``utf-8``                                                        |
-|                         | * ``utf-16``                                                       |
-|                         | * ``utf-32``                                                       |
-|                         | * ``ascii``                                                        |
+|                         |   * ``utf-8``                                                      |
+|                         |   * ``utf-16``                                                     |
+|                         |   * ``utf-32``                                                     |
+|                         |   * ``ascii``                                                      |
 +-------------------------+--------------------------------------------------------------------+
 | text-declutter          | Activate *decluttering* for this icon. osgEarth will attempt to    |
 |                         | automatically show or hide things so they don't overlap on the     |

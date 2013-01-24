@@ -91,6 +91,16 @@ AltitudeSymbol::parseSLD(const Config& c, Style& style)
             style.getOrCreate<AltitudeSymbol>()->clamping() = CLAMP_ABSOLUTE;
         else if ( match(c.value(), "relative") ) 
             style.getOrCreate<AltitudeSymbol>()->clamping() = CLAMP_RELATIVE_TO_TERRAIN;
+        else if ( match(c.value(), "terrain-drape") )
+        {
+            style.getOrCreate<AltitudeSymbol>()->clamping()  = CLAMP_TO_TERRAIN;
+            style.getOrCreate<AltitudeSymbol>()->technique() = TECHNIQUE_DRAPE;
+        }
+        else if ( match(c.value(), "terrain-gpu") )
+        {
+            style.getOrCreate<AltitudeSymbol>()->clamping()  = CLAMP_TO_TERRAIN;
+            style.getOrCreate<AltitudeSymbol>()->technique() = TECHNIQUE_GPU;
+        }
     }
     else if ( match(c.key(), "altitude-technique") ) {
         if      ( match(c.value(), "map") )

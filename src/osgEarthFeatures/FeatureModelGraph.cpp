@@ -92,6 +92,7 @@ namespace
         p->setPriorityOffset( 0, priOffset );
         p->setPriorityScale( 0, priScale );
 #endif
+
         return p;
     }
 }
@@ -570,7 +571,8 @@ FeatureModelGraph::load( unsigned lod, unsigned tileX, unsigned tileY, const std
     }
     else
     {
-        RemoveEmptyGroupsVisitor::run( result );
+        // For some unknown reason, this breaks when I insert an LOD. -gw
+        //RemoveEmptyGroupsVisitor::run( result );
     }
 
     if ( result->getNumChildren() == 0 )
@@ -715,17 +717,23 @@ FeatureModelGraph::buildLevel( const FeatureLevel& level, const GeoExtent& exten
     if ( group->getNumChildren() > 0 )
     {
         // account for a min-range here. Do not address the max-range here; that happens
-        // above when generating paged LOD nodes, etc.        
+        // above when generating paged LOD nodes, etc.
         float minRange = level.minRange();
 
+#if 1
         if ( minRange > 0.0f )
         {
             // minRange can't be less than the tile geometry's radius.
-            minRange = std::max(minRange, (float)group->getBound().radius());
-            osg::LOD* lod = new osg::LOD();
-            lod->addChild( group.get(), minRange, FLT_MAX );
+            //minRange = std::max(minRange, (float)group->getBound().radius());
+            //osg::LOD* lod = new osg::LOD();
+            //lod->addChild( group.get(), minRange, FLT_MAX );
+
+            ElevationLOD* lod = new ElevationLOD( _session->getMapSRS() );
+            lod->setMinElevation( minRange );
+            lod->addChild( group.get() );
             group = lod;
-        }        
+        }
+#endif
 
         if ( _session->getMapInfo().isGeocentric() && _options.clusterCulling() == true )
         {
@@ -1270,6 +1278,7 @@ FeatureModelGraph::redraw()
     //If they've specified a min/max range, setup an LOD
     if ( minRange != -FLT_MAX || maxRange != FLT_MAX )
     {        
+        // todo: revisit this, make sure this is still right.
         ElevationLOD *lod = new ElevationLOD(_session->getMapInfo().getSRS(), minRange, maxRange );
         lod->addChild( node );
         node = lod;

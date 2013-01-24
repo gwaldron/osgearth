@@ -24,28 +24,52 @@
 using namespace osgEarth;
 
 
+ElevationLOD::ElevationLOD() :
+_minElevation( -DBL_MAX ),
+_maxElevation( DBL_MAX ),
+_minRange    ( 0.0f ),
+_maxRange    ( FLT_MAX )
+{
+    //nop
+}
+
+ElevationLOD::ElevationLOD( const ElevationLOD& rhs, const osg::CopyOp& op) :
+_minElevation( rhs._minElevation ),
+_maxElevation( rhs._maxElevation ),
+_minRange    ( rhs._minRange ),
+_maxRange    ( rhs._maxRange ),
+_srs         ( rhs._srs.get() )
+{
+    //nop
+}
 
 ElevationLOD::ElevationLOD(const SpatialReference* srs):
-_minElevation(-DBL_MAX),
-_maxElevation(DBL_MAX),
-_srs( srs )
+_minElevation( -DBL_MAX ),
+_maxElevation( DBL_MAX ),
+_minRange    ( 0.0f ),
+_maxRange    ( FLT_MAX ),
+_srs         ( srs )
 {
+    //nop
 }
 
 ElevationLOD::ElevationLOD(const SpatialReference* srs, double minElevation, double maxElevation):
-_minElevation( minElevation ),
-_maxElevation( maxElevation ),
-_srs( srs )
+_minRange    ( 0.0f ),
+_maxRange    ( FLT_MAX ),
+_srs         ( srs )
 {
+    _minElevation = minElevation;
+    _maxElevation = maxElevation;
 }
 
 ElevationLOD::~ElevationLOD()
 {
+    //nop
 }
 
 double ElevationLOD::getMinElevation() const
 {
-    return _minElevation;
+    return *_minElevation;
 }
         
 void ElevationLOD::setMinElevation( double minElevation )
@@ -55,7 +79,7 @@ void ElevationLOD::setMinElevation( double minElevation )
 
 double ElevationLOD::getMaxElevation() const
 {
-    return _maxElevation;
+    return *_maxElevation;
 }
 
 void ElevationLOD::setMaxElevation(double maxElevation )
@@ -69,32 +93,82 @@ void ElevationLOD::setElevations( double minElevation, double maxElevation )
     _maxElevation = maxElevation;
 }
 
+void ElevationLOD::setMinRange(float value)
+{
+    _minRange = value;
+}
+
+float ElevationLOD::getMinRange() const
+{
+    return *_minRange;
+}
+
+void ElevationLOD::setMaxRange(float value)
+{
+    _maxRange = value;
+}
+
+float ElevationLOD::getMaxRange() const
+{
+    return *_maxRange;
+}
+
 void ElevationLOD::traverse( osg::NodeVisitor& nv)
 {
-    if (nv.getVisitorType() ==  osg::NodeVisitor::CULL_VISITOR)
+    if (nv.getVisitorType()   == osg::NodeVisitor::CULL_VISITOR &&
+        nv.getTraversalMode() == osg::NodeVisitor::TRAVERSE_ACTIVE_CHILDREN )
     {
         osgUtil::CullVisitor* cv = Culling::asCullVisitor(nv);
-        osg::Vec3d eye, center, up;        
-        eye = cv->getViewPoint();
+        osg::Vec3d eye = cv->getViewPoint();
 
-        float height = eye.z();
-        if (_srs)
+        bool rangeOK = true;
+        bool elevationOK = true;
+
+        // first test the range:
+        if ( _minRange.isSet() || _maxRange.isSet() )
         {
-            GeoPoint mapPoint;
-            mapPoint.fromWorld( _srs, eye );        
-            height = mapPoint.z();
+            float range = nv.getDistanceToViewPoint( getBound().center(), true );
+            rangeOK =
+                (!_minRange.isSet() || (range >= *_minRange)) &&
+                (!_maxRange.isSet() || (range <= *_maxRange));
         }
 
-        //OE_NOTICE << "Height " << height << std::endl;
+        if ( rangeOK )
+        {
+            if ( _minElevation.isSet() || _maxElevation.isSet() )
+            {
+                // then test the elevation:
+                // TODO: this doesn't change during the entire traversal. So it's kind of
+                // a waste to calculate it for every single ElevationLOD node. Think of a
+                // more efficient way to do this.
+                float height = eye.z();
+                if ( _srs && !_srs->isProjected() )
+                {
+                    GeoPoint mapPoint;
+                    mapPoint.fromWorld( _srs.get(), eye );
+                    height = mapPoint.z();
+                }
 
-        if (height >= _minElevation && height <= _maxElevation)
-        {
-            osg::Group::traverse( nv );
+                //OE_NOTICE << "Height " << height << std::endl;
+
+                // account for the LOD scale
+                height *= cv->getLODScale();
+
+                elevationOK =
+                    (!_minElevation.isSet() || (height >= *_minElevation)) &&
+                    (!_maxElevation.isSet() || (height <= *_maxElevation));
+            }
+
+            //OE_INFO << "ElevationOK = " << elevationOK << std::endl;
+
+            if ( elevationOK )
+            {
+                std::for_each(_children.begin(),_children.end(),osg::NodeAcceptOp(nv));
+                //osg::Group::traverse( nv );
+            }
         }
-        else
-        {
-            //OE_NOTICE << "Elevation " << height << " outside of range " << _minElevation << " to " << _maxElevation << std::endl;
-        }
+
+        //OE_INFO << "pass = " << (rangeOK && elevationOK) << std::endl;
     }
     else
     {

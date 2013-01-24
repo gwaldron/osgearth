@@ -218,6 +218,7 @@ TerrainEngineNode::preInitialize( const Map* map, const TerrainOptions& options 
     set->setMode( GL_CULL_FACE, 1 );
 
     // elevation uniform
+    // NOTE: wrong...this should be per-CullVisitor...consider putting in the Culling::CullUserData
     _cameraElevationUniform = new osg::Uniform( osg::Uniform::FLOAT, "osgearth_CameraElevation" );
     _cameraElevationUniform->set( 0.0f );
     set->addUniform( _cameraElevationUniform.get() );

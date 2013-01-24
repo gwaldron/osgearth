@@ -44,7 +44,7 @@ Shows how to create a multi-LOD setup for GPU-clamped geometry.
                     altitude-technique:  gpu;
                 }           
                 mid {
-                    stroke:              #ffff009f;
+                    stroke:              #ff0000;
                     stroke-width:        3;
                     altitude-clamping:   terrain;
                     altitude-technique:  gpu;

@@ -20,6 +20,7 @@
 #include <osgEarth/Capabilities>
 #include <osgEarth/ClampableNode>
 #include <osgEarth/ClampingTechnique>
+#include <osgEarth/CullingUtils>
 #include <osgEarth/DrapeableNode>
 #include <osgEarth/DrapingTechnique>
 #include <osgEarth/MapNodeObserver>
@@ -677,9 +678,47 @@ MapNode::traverse( osg::NodeVisitor& nv )
             RemoveBlacklistedFilenamesVisitor v;
             _terrainEngine->accept( v );
         }
+
+        // traverse:
+        std::for_each( _children.begin(), _children.end(), osg::NodeAcceptOp(nv) );
     }
 
-    osg::Group::traverse( nv );
+    else if ( nv.getVisitorType() == nv.CULL_VISITOR )
+    {
+        osgUtil::CullVisitor* cv = Culling::asCullVisitor(nv);
+        if ( cv )
+        {
+            // insert new user data:
+            osg::ref_ptr<osg::Referenced> oldUserData = cv->getUserData();
+            Culling::CullUserData* ud = new Culling::CullUserData(); // reuse instead?
+            cv->setUserData( ud );
+
+            // calculate camera elevation:
+            osg::Vec3d eye = cv->getViewPoint();
+            const SpatialReference* srs = getMapSRS();
+            if ( srs && !srs->isProjected() )
+            {
+                GeoPoint ecef;
+                ecef.fromWorld( srs, eye );
+                ud->_cameraAltitude = ecef.alt();
+            }
+            else
+            {
+                ud->_cameraAltitude = eye.z();
+            }
+
+            // traverse:
+            std::for_each( _children.begin(), _children.end(), osg::NodeAcceptOp(nv) );
+
+            // restore:
+            cv->setUserData( oldUserData.get() );
+        }
+    }
+
+    else
+    {
+        osg::Group::traverse( nv );
+    }
 }
 
 void

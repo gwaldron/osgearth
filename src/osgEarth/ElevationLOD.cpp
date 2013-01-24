@@ -118,11 +118,8 @@ void ElevationLOD::traverse( osg::NodeVisitor& nv)
     if (nv.getVisitorType()   == osg::NodeVisitor::CULL_VISITOR &&
         nv.getTraversalMode() == osg::NodeVisitor::TRAVERSE_ACTIVE_CHILDREN )
     {
-        osgUtil::CullVisitor* cv = Culling::asCullVisitor(nv);
-        osg::Vec3d eye = cv->getViewPoint();
-
-        bool rangeOK = true;
-        bool elevationOK = true;
+        bool rangeOK     = true;
+        bool altitudeOK  = true;
 
         // first test the range:
         if ( _minRange.isSet() || _maxRange.isSet() )
@@ -137,38 +134,46 @@ void ElevationLOD::traverse( osg::NodeVisitor& nv)
         {
             if ( _minElevation.isSet() || _maxElevation.isSet() )
             {
-                // then test the elevation:
-                // TODO: this doesn't change during the entire traversal. So it's kind of
-                // a waste to calculate it for every single ElevationLOD node. Think of a
-                // more efficient way to do this.
-                float height = eye.z();
-                if ( _srs && !_srs->isProjected() )
+                double alt;
+
+                // first see if we have a precalculated elevation:
+                osgUtil::CullVisitor*  cv = Culling::asCullVisitor(nv);
+                Culling::CullUserData* ud = Culling::getCullUserData(cv);
+                if ( ud && ud->_cameraAltitude.isSet() )
                 {
-                    GeoPoint mapPoint;
-                    mapPoint.fromWorld( _srs.get(), eye );
-                    height = mapPoint.z();
+                    // yes; use it
+                    alt = ud->_cameraAltitude.get();
+                }
+                else
+                {
+                    // no; need to calculate elevation here:
+                    osg::Vec3d eye = cv->getViewPoint();
+
+                    if ( _srs && !_srs->isProjected() )
+                    {
+                        GeoPoint mapPoint;
+                        mapPoint.fromWorld( _srs.get(), eye );
+                        alt = mapPoint.z();
+                    }
+                    else
+                    {
+                        alt = eye.z();
+                    }
                 }
 
-                //OE_NOTICE << "Height " << height << std::endl;
-
                 // account for the LOD scale
-                height *= cv->getLODScale();
+                alt *= cv->getLODScale();
 
-                elevationOK =
-                    (!_minElevation.isSet() || (height >= *_minElevation)) &&
-                    (!_maxElevation.isSet() || (height <= *_maxElevation));
+                altitudeOK =
+                    (!_minElevation.isSet() || (alt >= *_minElevation)) &&
+                    (!_maxElevation.isSet() || (alt <= *_maxElevation));
             }
 
-            //OE_INFO << "ElevationOK = " << elevationOK << std::endl;
-
-            if ( elevationOK )
+            if ( altitudeOK )
             {
                 std::for_each(_children.begin(),_children.end(),osg::NodeAcceptOp(nv));
-                //osg::Group::traverse( nv );
             }
         }
-
-        //OE_INFO << "pass = " << (rangeOK && elevationOK) << std::endl;
     }
     else
     {

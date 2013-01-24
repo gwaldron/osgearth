@@ -158,6 +158,12 @@ struct osgEarthFeatureModelPseudoLoader : public osgDB::ReaderWriter
         FMGRegistry::const_iterator i = _fmgRegistry.find( uid );
         return i != _fmgRegistry.end() ? i->second.get() : 0L;
     }
+
+    /** User data structure for traversing the feature graph. */
+    struct CullUserData : public osg::Referenced
+    {
+        double _cameraElevation;
+    };
 };
 
 REGISTER_OSGPLUGIN(osgearth_pseudo_fmg, osgEarthFeatureModelPseudoLoader);
@@ -1144,7 +1150,7 @@ FeatureModelGraph::checkForGlobalAltitudeStyles( const Style& style )
 void
 FeatureModelGraph::traverse(osg::NodeVisitor& nv)
 {
-    if ( nv.getVisitorType() == osg::NodeVisitor::EVENT_VISITOR )
+    if ( nv.getVisitorType() == nv.EVENT_VISITOR )
     {
         if ( !_pendingUpdate && (_dirty || _session->getFeatureSource()->outOfSyncWith(_revision)) )
         {
@@ -1158,7 +1164,7 @@ FeatureModelGraph::traverse(osg::NodeVisitor& nv)
         }
     }
 
-    else if ( nv.getVisitorType() == osg::NodeVisitor::UPDATE_VISITOR )
+    else if ( nv.getVisitorType() == nv.UPDATE_VISITOR )
     {
         if ( _pendingUpdate )
         {

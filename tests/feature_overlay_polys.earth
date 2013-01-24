@@ -28,8 +28,7 @@ on the map using the overlay technique.
             <style type="text/css">
                 p1 {
                    fill:               #ffff8066;
-                   altitude-clamping:  terrain;
-                   altitude-technique: drape;
+                   altitude-clamping:  terrain-drape;
                 }       
                 p2 {
                    fill:               #80ffff66;

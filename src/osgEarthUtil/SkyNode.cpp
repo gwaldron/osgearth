@@ -773,6 +773,9 @@ SkyNode::initialize( Map *map, const std::string& starFile )
 
     makeStars(starFile);
 
+    // automatically compute ambient lighting based on the eyepoint
+    _autoAmbience = true;
+
     //Set a default time
     setDateTime( 2011, 3, 6, 18 );
 }
@@ -798,6 +801,20 @@ SkyNode::traverse( osg::NodeVisitor& nv )
         PerViewDataMap::iterator i = _perViewData.find( view );
         if ( i != _perViewData.end() )
         {
+            if ( _autoAmbience )
+            {
+                const float minAmb = 0.3f;
+                const float maxAmb = 1.0f;
+                const float minDev = -0.2f;
+                const float maxDev = 0.75f;
+                osg::Vec3 eye = cv->getViewPoint(); eye.normalize();
+                osg::Vec3 sun = i->second._lightPos; sun.normalize();
+                float dev = osg::clampBetween(eye*sun, minDev, maxDev);
+                float r   = (dev-minDev)/(maxDev-minDev);
+                float amb = minAmb + r*(maxAmb-minAmb);
+                i->second._light->setAmbient( osg::Vec4(amb,amb,amb,1.0) );
+                //OE_INFO << "dev=" << dev << ", amb=" << amb << std::endl;
+            }
 #if 0
             // adjust the light color based on the eye point and the sun position.
             float aMin =  0.1f;
@@ -943,11 +960,24 @@ SkyNode::getAmbientBrightness( osg::View* view ) const
     return _defaultPerViewData._light->getAmbient().r();
 }
 
+void
+SkyNode::setAutoAmbience( bool value )
+{
+    _autoAmbience = value;
+}
+
+bool
+SkyNode::getAutoAmbience() const
+{
+    return _autoAmbience;
+}
+
 void 
 SkyNode::setAmbientBrightness( PerViewData& data, float value )
 {
     value = osg::clampBetween( value, 0.0f, 1.0f );
     data._light->setAmbient( osg::Vec4f(value, value, value, 1.0f) );
+    _autoAmbience = false;
 }
 
 void

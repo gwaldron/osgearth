@@ -534,7 +534,8 @@ MapNodeHelper::parse(MapNode*             mapNode,
     {
         double hours = skyConf.value( "hours", 12.0 );
         SkyNode* sky = new SkyNode( mapNode->getMap() );
-        sky->setAmbientBrightness( ambientBrightness );
+        //sky->setAmbientBrightness( ambientBrightness );
+        sky->setAutoAmbience( true );
         sky->setDateTime( 2011, 3, 6, hours );
         sky->attach( view );
         root->addChild( sky );

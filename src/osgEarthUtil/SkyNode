@@ -114,6 +114,10 @@ namespace osgEarth { namespace Util
         void setAmbientBrightness( float value, osg::View* view =0L );
         float getAmbientBrightness( osg::View* view =0L ) const;
 
+        /** Enables or disables automatic ambience */
+        void setAutoAmbience(bool value);
+        bool getAutoAmbience() const;
+
         /** Whether the moon is visible */
         void setMoonVisible( bool value, osg::View* view =0L );
         bool getMoonVisible( osg::View* view =0L ) const;
@@ -185,6 +189,7 @@ namespace osgEarth { namespace Util
         osg::ref_ptr<osg::Uniform> _starPointSize;
 
         osg::Vec3d _moonPosition;
+        bool _autoAmbience;
 
         osg::ref_ptr< const osg::EllipsoidModel > _ellipsoidModel;
 

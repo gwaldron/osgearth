@@ -20,7 +20,6 @@ Demonstrate the Altitude Symbol and GPU-based vertex clamping.
         <features name="world" driver="ogr">
             <url>../data/world.shp</url>
             <build_spatial_index>true</build_spatial_index>
-            <convert type="line"/>
         </features>
                 
         <styles>
@@ -29,8 +28,7 @@ Demonstrate the Altitude Symbol and GPU-based vertex clamping.
                    stroke:             #ffff00;
                    stroke-opacity:     1.0;
                    stroke-width:       3.0;
-                   altitude-clamping:  terrain;
-                   altitude-technique: gpu;
+                   altitude-clamping:  terrain-gpu;
                 }            
             </style>
         </styles>

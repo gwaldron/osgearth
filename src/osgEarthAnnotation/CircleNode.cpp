@@ -35,11 +35,17 @@ using namespace osgEarth::Symbology;
 CircleNode::CircleNode(MapNode*           mapNode,
                        const GeoPoint&    position,
                        const Linear&      radius,
-                       const Style&       style ) :
+                       const Style&       style,
+                       const Angle&       arcStart,
+                       const Angle&       arcEnd,
+                       const bool         pie):
 
 LocalizedNode( mapNode, position ),
 _radius      ( radius ),
 _style       ( style ),
+_arcStart    ( arcStart ),
+_arcEnd      ( arcEnd ),
+_pie         ( pie ),
 _numSegments ( 0 )
 {
     _xform = new osg::MatrixTransform();
@@ -92,6 +98,45 @@ CircleNode::setStyle( const Style& style )
     rebuild();
 }
 
+const Angle&
+CircleNode::getArcStart(void) const
+{
+	return (_arcStart);
+}
+
+void
+CircleNode::setArcStart(const Angle& arcStart)
+{
+	_arcStart = arcStart;
+	rebuild();
+}
+
+const Angle&
+CircleNode::getArcEnd(void) const
+{
+	return (_arcEnd);
+}
+
+void
+CircleNode::setArcEnd(const Angle& arcEnd)
+{
+	_arcEnd = arcEnd;
+	rebuild();
+}
+
+const bool&
+CircleNode::getPie(void) const
+{
+	return (_pie);
+}
+
+void
+CircleNode::setPie(const bool& pie)
+{
+    _pie = pie;
+    rebuild();
+}
+
 void
 CircleNode::rebuild()
 {
@@ -105,7 +150,15 @@ CircleNode::rebuild()
 
     // construct a local-origin circle.
     GeometryFactory factory;
-    Geometry* geom = factory.createCircle(osg::Vec3d(0,0,0), _radius, _numSegments);
+    Geometry* geom = NULL;
+    if (abs(_arcEnd.as(Units::DEGREES) - _arcStart.as(Units::DEGREES)) >= 360.0)
+    {
+        geom = factory.createCircle(osg::Vec3d(0,0,0), _radius, _numSegments);
+    }
+    else
+    {
+        geom = factory.createArc(osg::Vec3d(0,0,0), _radius, _arcStart, _arcEnd, _numSegments, 0L, _pie);
+    }
     if ( geom )
     {
         GeometryCompiler compiler;

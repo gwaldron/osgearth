@@ -34,12 +34,18 @@ EllipseNode::EllipseNode(MapNode*          mapNode,
                          const Linear&     radiusMajor,
                          const Linear&     radiusMinor,
                          const Angular&    rotationAngle,
-                         const Style&      style ) :
+                         const Style&      style,
+                         const Angle&      arcStart,
+                         const Angle&      arcEnd,
+                         const bool        pie) :
 LocalizedNode ( mapNode, position ),
 _radiusMajor  ( radiusMajor ),
 _radiusMinor  ( radiusMinor ),
 _rotationAngle( rotationAngle ),
 _style        ( style ),
+_arcStart     ( arcStart ),
+_arcEnd       ( arcEnd ),
+_pie          ( pie ),
 _numSegments  ( 0 )
 {
     _xform = new osg::MatrixTransform();
@@ -127,7 +133,44 @@ EllipseNode::setRotationAngle(const Angular& rotationAngle)
         rebuild();
     }
 }
+const Angle&
+EllipseNode::getArcStart(void) const
+{
+    return (_arcStart);
+}
 
+void
+EllipseNode::setArcStart(const Angle& arcStart)
+{
+    _arcStart = arcStart;
+    rebuild();
+}
+
+const Angle&
+EllipseNode::getArcEnd(void) const
+{
+    return (_arcEnd);
+}
+
+void
+EllipseNode::setArcEnd(const Angle& arcEnd)
+{
+    _arcEnd = arcEnd;
+    rebuild();
+}
+
+const bool&
+EllipseNode::getPie(void) const
+{
+	return (_pie);
+}
+
+void
+EllipseNode::setPie(const bool& pie)
+{
+	_pie = pie;
+	rebuild();
+}
 
 void
 EllipseNode::rebuild()
@@ -142,7 +185,16 @@ EllipseNode::rebuild()
 
     // construct a local-origin ellipse.
     GeometryFactory factory;
-    Geometry* geom = factory.createEllipse(osg::Vec3d(0,0,0), _radiusMajor, _radiusMinor, _rotationAngle, _numSegments);
+    Geometry* geom = NULL;
+
+    if (abs(_arcEnd.as(Units::DEGREES) - _arcStart.as(Units::DEGREES)) >= 360.0)
+    {
+        geom = factory.createEllipse(osg::Vec3d(0,0,0), _radiusMajor, _radiusMinor, _rotationAngle, _numSegments);
+    }
+    else
+    {
+        geom = factory.createEllipticalArc(osg::Vec3d(0,0,0), _radiusMajor, _radiusMinor, _rotationAngle, _arcStart, _arcEnd, _numSegments, 0L, _pie);
+    }
     if ( geom )
     {
         GeometryCompiler compiler;

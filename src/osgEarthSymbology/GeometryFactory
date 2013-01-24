@@ -66,6 +66,7 @@ namespace osgEarth { namespace Symbology
          * @param start  Starting angle of the arc
          * @param end    Ending angle of the arc
          * @param numSegments Number of circumference segments, or zero to automatically calculate it
+         * @param pie    Indicates to create a pie shape rather than an arc.
          */
         Geometry* createArc(
             const osg::Vec3d& center,
@@ -73,7 +74,8 @@ namespace osgEarth { namespace Symbology
             const Angle&      startAngle,
             const Angle&      endAngle,
             unsigned          numSegments =0,
-            Geometry*         geomToUse   =0L) const;
+            Geometry*         geomToUse   =0L,
+            bool              pie = false) const;
 
         /**
          * Creates a ellipse geometry.
@@ -91,6 +93,29 @@ namespace osgEarth { namespace Symbology
             const Angle&      rotationAngle,
             unsigned          numSegments =0,
             Geometry*         geomToUse   =0L) const;
+
+        /**
+         * Creates a ellipse geometry.
+         * @param center Center point (must be in map SRS if a map was provided in ctor)
+         * @param radiusMajor Major radius (X-axis) length
+         * @param radiusMinor Minor radius (Y-axis) length
+         * @param rotationAngle with respect to the X-axis
+         * @param start  Starting angle of the arc
+         * @param end    Ending angle of the arc
+         * @param numSegments Number of circumference segments, or zero to automatically calculate it
+         * @param geomToUse Use this geometry instead of creating a Polygon.
+         * @param pie    Indicates to create a pie shape rather than an arc.
+         */
+        Geometry* createEllipticalArc(
+            const osg::Vec3d& center,
+            const Distance&   radiusMajor,
+            const Distance&   radiusMinor,
+            const Angle&      rotationAngle,
+            const Angle&      startAngle,
+            const Angle&      endAngle,
+            unsigned          numSegments =0,
+            Geometry*         geomToUse   =0L,
+            bool              pie = false) const;
 
         /**
          * Creates a rectangle geometry

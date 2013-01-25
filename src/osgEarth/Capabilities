@@ -105,6 +105,8 @@ namespace osgEarth
         /** maximum size of a uniform buffer block, in bytes */
         int getMaxUniformBlockSize() const { return _maxUniformBlockSize; }
 
+        /** whether to prefer display lists over VBOs for static geometry. */
+        bool preferDisplayListsForStaticGeometry() const { return _preferDLforStaticGeom; }
 
     protected:
         Capabilities();
@@ -134,6 +136,7 @@ namespace osgEarth
         bool _supportsDrawInstanced;
         bool _supportsUniformBufferObjects;
         int  _maxUniformBlockSize;
+        bool _preferDLforStaticGeom;
         std::string _vendor;
         std::string _renderer;
         std::string _version;

@@ -47,6 +47,8 @@ using namespace osgEarth::Symbology;
 
 #define USE_SINGLE_COLOR 0
 
+#define USE_VBOS false
+
 namespace
 {
     void applyLineAndPointSymbology( osg::StateSet* stateSet, const LineSymbol* line, const PointSymbol* point )

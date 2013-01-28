@@ -23,6 +23,7 @@
 #include <osgEarthFeatures/FeatureSource>
 #include <osgEarth/FileUtils>
 #include <osgEarth/StringUtils>
+#include <osgEarth/Registry>
 #include <osg/AutoTransform>
 #include <osg/Depth>
 #include <osg/TextureRectangle>
@@ -51,7 +52,8 @@ _dbOptions     ( dbOptions )
         _dbOptions = map->getDBOptions();
 
     // a new cache to optimize state changes.
-    _stateSetCache = new StateSetCache();
+    //_stateSetCache = new StateSetCache();
+    _stateSetCache = Registry::instance()->getStateSetCache();
 }
 
 Session::~Session()

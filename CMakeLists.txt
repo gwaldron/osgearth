@@ -43,6 +43,9 @@ SET(OPENTHREADS_SONAMES TRUE)
 
 SET(OpenThreads_SOURCE_DIR ${OSGEARTH_SOURCE_DIR})
 
+# Good place to look for the OSG 3rd party libs
+SET(THIRD_PARTY_DIR "" CACHE PATH "OSG 3rd-party dependency folder")
+
 # We have some custom .cmake scripts not in the official distribution.
 # Maybe this can be used override existing behavior if needed?
 SET(CMAKE_MODULE_PATH "${OSGEARTH_SOURCE_DIR}/CMakeModules;${CMAKE_MODULE_PATH}")
@@ -108,7 +111,7 @@ FIND_PACKAGE(Sqlite3)
 FIND_PACKAGE(ZLIB)
 FIND_PACKAGE(V8)
 
-FIND_PACKAGE(Qt4 4.6)
+FIND_PACKAGE(Qt4)
 IF (QT4_FOUND)
     INCLUDE(${QT_USE_FILE})
     SET(QT_ALL_LIBRARIES ${QT_LIBRARIES} ${QT_QTCORE_LIBRARY} ${QT_QTWEBKIT_LIBRARY} ${QT_QTNETWORK_LIBRARY} ${QT_QTXML_LIBRARY} ${QT_QTOPENGL_LIBRARY})

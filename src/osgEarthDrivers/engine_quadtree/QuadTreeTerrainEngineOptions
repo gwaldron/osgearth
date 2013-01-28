@@ -34,6 +34,7 @@ namespace osgEarth { namespace Drivers
             _quickRelease( true ),
             _lodFallOff  ( 0.0 ),
             _normalizeEdges( false ),
+            _morphLODs     ( false ),
             _rangeMode( osg::LOD::DISTANCE_FROM_EYE_POINT ),
             _tilePixelSize( 256 )
         {
@@ -57,6 +58,9 @@ namespace osgEarth { namespace Drivers
         optional<bool>& normalizeEdges() { return _normalizeEdges; }
         const optional<bool>& normalizeEdges() const { return _normalizeEdges; }
 
+        optional<bool>& morphLODs() { return _morphLODs; }
+        const optional<bool>& morphLODs() const { return _morphLODs; }
+
         optional<osg::LOD::RangeMode>& rangeMode() { return _rangeMode;}
         const optional<osg::LOD::RangeMode>& rangeMode() const { return _rangeMode;}
 
@@ -70,6 +74,7 @@ namespace osgEarth { namespace Drivers
             conf.updateIfSet( "quick_release_gl_objects", _quickRelease );
             conf.updateIfSet( "lod_fall_off", _lodFallOff );
             conf.updateIfSet( "normalize_edges", _normalizeEdges);
+            conf.updateIfSet( "morph_lods", _morphLODs );
             conf.updateIfSet( "tile_pixel_size", _tilePixelSize );
             conf.updateIfSet( "range_mode", "PIXEL_SIZE_ON_SCREEN", _rangeMode, osg::LOD::PIXEL_SIZE_ON_SCREEN );
             conf.updateIfSet( "range_mode", "DISTANCE_FROM_EYE_POINT", _rangeMode, osg::LOD::DISTANCE_FROM_EYE_POINT);
@@ -88,6 +93,7 @@ namespace osgEarth { namespace Drivers
             conf.getIfSet( "quick_release_gl_objects", _quickRelease );
             conf.getIfSet( "lod_fall_off", _lodFallOff );
             conf.getIfSet( "normalize_edges", _normalizeEdges );
+            conf.getIfSet( "morph_lods", _morphLODs );
             conf.getIfSet( "tile_pixel_size", _tilePixelSize );
 
             conf.getIfSet( "range_mode", "PIXEL_SIZE_ON_SCREEN", _rangeMode, osg::LOD::PIXEL_SIZE_ON_SCREEN );
@@ -98,6 +104,7 @@ namespace osgEarth { namespace Drivers
         optional<bool>  _quickRelease;
         optional<float> _lodFallOff;
         optional<bool> _normalizeEdges;
+        optional<bool> _morphLODs;
         optional<osg::LOD::RangeMode> _rangeMode;
         optional<float> _tilePixelSize;
     };

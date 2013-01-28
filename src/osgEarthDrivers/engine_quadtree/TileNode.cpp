@@ -38,6 +38,10 @@ _locator          ( keyLocator ),
 _publicStateSet   ( 0L )
 {
     this->setName( key.str() );
+
+    _born = new osg::Uniform(osg::Uniform::FLOAT, "oe_birthTime");
+    _born->set( -1.0f );
+    this->getOrCreateStateSet()->addUniform( _born );
 }
 
 
@@ -88,6 +92,11 @@ TileNode::traverse( osg::NodeVisitor& nv )
         {
             if (ccc->cull(&nv,0,static_cast<osg::State *>(0))) return;
         }
+
+        float bt;
+        _born->get( bt );
+        if ( bt < 0.0f )
+            _born->set( nv.getFrameStamp() ? (float)nv.getFrameStamp()->getReferenceTime() : 0.0f );
     }
 
     osg::Group::traverse( nv );

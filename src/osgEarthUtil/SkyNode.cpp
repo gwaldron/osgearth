@@ -815,30 +815,6 @@ SkyNode::traverse( osg::NodeVisitor& nv )
                 i->second._light->setAmbient( osg::Vec4(amb,amb,amb,1.0) );
                 //OE_INFO << "dev=" << dev << ", amb=" << amb << std::endl;
             }
-#if 0
-            // adjust the light color based on the eye point and the sun position.
-            float aMin =  0.1f;
-            float aMax =  0.9f;
-            float dMin = -0.5f;
-            float dMax =  0.5f;
-
-            osg::Vec3 eye = cv->getViewPoint();
-            eye.normalize();
-
-            osg::Vec3 sun = i->second._lightPos;
-            sun.normalize();
-
-            // clamp to valid range:
-            float d = osg::clampBetween(eye * sun, dMin, dMax);
-
-            // remap to [0..1]:
-            d = (d-dMin) / (dMax-dMin);
-
-            // map to ambient level:
-            float diff = aMin + d * (aMax-aMin);
-
-            i->second._light->setDiffuse( osg::Vec4(diff,diff,diff,1.0) );
-#endif
 
             i->second._cullContainer->accept( nv );
         }

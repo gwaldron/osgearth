@@ -89,6 +89,7 @@ namespace osgEarth_engine_quadtree
         osg::ref_ptr<GeoLocator>  _locator;
         osg::ref_ptr<TileModel>   _model;
         osg::StateSet*            _publicStateSet;
+        osg::Uniform*             _born;
     };
 
 

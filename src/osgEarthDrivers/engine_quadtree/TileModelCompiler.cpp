@@ -21,6 +21,7 @@
 #include <osgEarth/Locators>
 #include <osgEarth/Registry>
 #include <osgEarth/Capabilities>
+#include <osgEarth/HeightFieldUtils>
 #include <osgEarth/TextureCompositor>
 #include <osgEarthSymbology/Geometry>
 #include <osgEarthSymbology/MeshConsolidator>
@@ -115,7 +116,6 @@ namespace
             skirt            = 0L;
             stitching_skirts = 0L;
             ss_verts         = 0L;
-            //skirtHeight      = 0.0f;
             scaleHeight      = 1.0f;
             createSkirt      = false;
             i_sampleFactor   = 1.0f;
@@ -141,6 +141,7 @@ namespace
         osg::Vec3Array*               surfaceVerts;
         osg::Vec3Array*               normals;
         osg::Vec4Array*               surfaceElevData;
+        osg::FloatArray*              surfaceMorphData;
         unsigned                      numVerticesInSurface;
         osg::Vec2Array*               unifiedSurfaceTexCoords;
         osg::ref_ptr<osg::FloatArray> elevations;
@@ -323,7 +324,13 @@ namespace
         d.surface->setVertexAttribArray( osg::Drawable::ATTRIBUTE_6, d.surfaceElevData );
         d.surface->setVertexAttribBinding( osg::Drawable::ATTRIBUTE_6, osg::Geometry::BIND_PER_VERTEX );
         d.surface->setVertexAttribNormalize( osg::Drawable::ATTRIBUTE_6, false );
-        
+
+        d.surfaceMorphData = new osg::FloatArray();
+        d.surfaceMorphData->reserve( d.numVerticesInSurface );
+        d.surface->setVertexAttribArray( osg::Drawable::ATTRIBUTE_7, d.surfaceMorphData );
+        d.surface->setVertexAttribBinding( osg::Drawable::ATTRIBUTE_7, osg::Geometry::BIND_PER_VERTEX );
+        d.surface->setVertexAttribNormalize( osg::Drawable::ATTRIBUTE_7, false );
+
         // temporary data structures for triangulation support
         d.elevations = new osg::FloatArray();
         d.elevations->reserve( d.numVerticesInSurface );
@@ -610,6 +617,17 @@ namespace
 
                     // store the unit extrusion vector and the raw height value.
                     (*d.surfaceElevData).push_back( osg::Vec4f(model_one.x(), model_one.y(), model_one.z(), heightValue) );
+
+                    float oldHeightValue = heightValue;
+                    if ( i>0 && j>0 && i<d.numCols-1 && j<d.numRows-1 && (i%2 == 1 || j%2 == 1) )
+                    {
+                        oldHeightValue = HeightFieldUtils::getInterpolatedHeight(
+                            elevationLayer->getHeightField(),
+                            i_equiv,
+                            j_equiv );
+                    }
+
+                    d.surfaceMorphData->push_back( oldHeightValue );
                 }
             }
         }
@@ -990,10 +1008,12 @@ namespace
         osg::Vec3Array* skirtVerts = new osg::Vec3Array();
         osg::Vec3Array* skirtNormals = new osg::Vec3Array();
         osg::Vec4Array* skirtElevData = new osg::Vec4Array();
+        osg::FloatArray* skirtMorphData = new osg::FloatArray();
 
         skirtVerts->reserve( d.numVerticesInSkirt );
         skirtNormals->reserve( d.numVerticesInSkirt );
         skirtElevData->reserve( d.numVerticesInSkirt );
+        skirtMorphData->reserve( d.numVerticesInSkirt );
 
         Indices skirtBreaks;
         skirtBreaks.reserve( d.numVerticesInSkirt );
@@ -1022,6 +1042,9 @@ namespace
                 const osg::Vec4f& elevData = (*d.surfaceElevData)[orig_i];
                 skirtElevData->push_back( elevData );
                 skirtElevData->push_back( elevData - osg::Vec4f(0,0,0,skirtHeight) );
+                const float& morphData = (*d.surfaceMorphData)[orig_i];
+                skirtMorphData->push_back( morphData );
+                skirtMorphData->push_back( morphData - skirtHeight );
 
                 if ( compositor->requiresUnitTextureSpace() )
                 {
@@ -1065,6 +1088,9 @@ namespace
                 const osg::Vec4f& elevData = (*d.surfaceElevData)[orig_i];
                 skirtElevData->push_back( elevData );
                 skirtElevData->push_back( elevData - osg::Vec4f(0,0,0,skirtHeight) );
+                const float& morphData = (*d.surfaceMorphData)[orig_i];
+                skirtMorphData->push_back( morphData );
+                skirtMorphData->push_back( morphData - skirtHeight );
 
                 if ( compositor->requiresUnitTextureSpace() )
                 {
@@ -1108,6 +1134,9 @@ namespace
                 const osg::Vec4f& elevData = (*d.surfaceElevData)[orig_i];
                 skirtElevData->push_back( elevData );
                 skirtElevData->push_back( elevData - osg::Vec4f(0,0,0,skirtHeight) );
+                const float& morphData = (*d.surfaceMorphData)[orig_i];
+                skirtMorphData->push_back( morphData );
+                skirtMorphData->push_back( morphData - skirtHeight );
 
                 if ( compositor->requiresUnitTextureSpace() )
                 {
@@ -1151,6 +1180,9 @@ namespace
                 const osg::Vec4f& elevData = (*d.surfaceElevData)[orig_i];
                 skirtElevData->push_back( elevData );
                 skirtElevData->push_back( elevData - osg::Vec4f(0,0,0,skirtHeight) );
+                const float& morphData = (*d.surfaceMorphData)[orig_i];
+                skirtMorphData->push_back( morphData );
+                skirtMorphData->push_back( morphData - skirtHeight );
 
                 if ( compositor->requiresUnitTextureSpace() )
                 {
@@ -1182,6 +1214,10 @@ namespace
         d.skirt->setVertexAttribArray    (osg::Drawable::ATTRIBUTE_6, skirtElevData );
         d.skirt->setVertexAttribBinding  (osg::Drawable::ATTRIBUTE_6, osg::Geometry::BIND_PER_VERTEX);
         d.skirt->setVertexAttribNormalize(osg::Drawable::ATTRIBUTE_6, false);
+
+        d.skirt->setVertexAttribArray    (osg::Drawable::ATTRIBUTE_7, skirtMorphData );
+        d.skirt->setVertexAttribBinding  (osg::Drawable::ATTRIBUTE_7, osg::Geometry::BIND_PER_VERTEX);
+        d.skirt->setVertexAttribNormalize(osg::Drawable::ATTRIBUTE_7, false);
 
 
         // GW: not sure why this break stuff is here...?

@@ -40,6 +40,15 @@ namespace osgEarth
             ElevationInterpolation interpoltion = INTERP_BILINEAR);
         
         /**
+         * Gets the height value at the specified column and row, but instead of reading
+         * the actual height, interpolates a height based on the neighbors.
+         */
+        static float getInterpolatedHeight(
+            const osg::HeightField* hf, 
+            unsigned c, unsigned r, 
+            ElevationInterpolation interpoltion = INTERP_BILINEAR);
+        
+        /**
          * Gets the interpolated height value at the specific geolocation.
          */
         static float getHeightAtLocation(

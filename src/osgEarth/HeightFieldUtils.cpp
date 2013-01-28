@@ -183,6 +183,33 @@ HeightFieldUtils::getHeightAtPixel(const osg::HeightField* hf, double c, double 
 }
 
 float
+HeightFieldUtils::getInterpolatedHeight(const osg::HeightField* hf, 
+                                        unsigned c, unsigned r, 
+                                        ElevationInterpolation interpolation)
+{
+    int count = 0;
+    float total = 0.0f;
+    if ( c > 0 ) {
+        total += hf->getHeight(c-1, r);
+        count++;
+    }
+    if ( c < hf->getNumColumns()-1 ) {
+        total += hf->getHeight(c+1, r);
+        count++;
+    }
+    if ( r > 0 ) {
+        total += hf->getHeight(c, r-1);
+        count++;
+    }
+    if ( r < hf->getNumRows()-1 ) {
+        total += hf->getHeight(c, r+1);
+        count++;
+    }
+    total /= (float)count;
+    return total;
+}
+
+float
 HeightFieldUtils::getHeightAtLocation(const osg::HeightField* hf, double x, double y, double llx, double lly, double dx, double dy, ElevationInterpolation interpolation)
 {
     //Determine the pixel to sample

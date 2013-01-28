@@ -73,6 +73,16 @@ namespace osgEarth_engine_quadtree
                 _neighbors[index] = hf;
             }
 
+            osg::HeightField* getParent() const
+            {
+                return _parent;
+            }
+
+            void setParent(osg::HeightField* hf)
+            {
+                _parent = hf;
+            }
+
         private:
             static int getNeighborIndex(int xoffset, int yoffset)
             {
@@ -83,6 +93,7 @@ namespace osgEarth_engine_quadtree
             osg::ref_ptr<osgTerrain::HeightFieldLayer> _hfLayer;
             bool _fallbackData;
             osg::ref_ptr<osg::HeightField> _neighbors[8];
+            osg::ref_ptr<osg::HeightField> _parent;
         };
 
 

@@ -21,7 +21,7 @@ Table of Contents
    about
    startup
    user/index
-   developer
+   developer/index
    data
    howto
    references/index

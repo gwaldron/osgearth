@@ -19,6 +19,8 @@
 #include "TileModelCompiler"
 
 #include <osgEarth/Locators>
+#include <osgEarth/Registry>
+#include <osgEarth/Capabilities>
 #include <osgEarth/TextureCompositor>
 #include <osgEarthSymbology/Geometry>
 #include <osgEarthSymbology/MeshConsolidator>
@@ -121,7 +123,10 @@ namespace
             unifiedSkirtTexCoords       = 0L;
             unifiedStitchSkirtTexCoords = 0L;
             unifiedSurfaceTexCoords     = 0L;
+            useVBOs = !Registry::capabilities().preferDisplayListsForStaticGeometry();
         }
+
+        bool                     useVBOs;
 
         const TileModel*         model;                         // the tile's data model
         const MaskLayerVector&   maskLayers;                    // map-global masking layer set
@@ -229,7 +234,7 @@ namespace
               if (x_match && y_match)
               {
                 osg::Geometry* mask_geom = new osg::Geometry();
-                mask_geom->setUseVertexBufferObjects(true);
+                mask_geom->setUseVertexBufferObjects(d.useVBOs);
                 d.surfaceGeode->addDrawable(mask_geom);
                 d.maskRecords.push_back( MaskRecord(boundary, min_ndc, max_ndc, mask_geom) );
               }
@@ -239,7 +244,7 @@ namespace
         if (d.maskRecords.size() > 0)
         {
           d.stitching_skirts = new osg::Geometry();
-          d.stitching_skirts->setUseVertexBufferObjects(true);
+          d.stitching_skirts->setUseVertexBufferObjects(d.useVBOs);
           d.surfaceGeode->addDrawable( d.stitching_skirts );
 
           d.ss_verts = new osg::Vec3Array();
@@ -1775,8 +1780,6 @@ _texCompositor         ( texCompositor ),
 _optimizeTriOrientation( optimizeTriOrientation ),
 _options               ( options )
 {
-    //nop
-
     _cullByTraversalMask = new CullByTraversalMask(*options.secondaryTraversalMask());
 }
 
@@ -1797,7 +1800,7 @@ TileModelCompiler::compile(const TileModel* model,
 
     // A Geode/Geometry for the surface:
     d.surface = new osg::Geometry();
-    d.surface->setUseVertexBufferObjects(true);
+    d.surface->setUseVertexBufferObjects(d.useVBOs);
     d.surfaceGeode = new osg::Geode();
     d.surfaceGeode->addDrawable( d.surface );
     d.surfaceGeode->setNodeMask( *_options.primaryTraversalMask() );
@@ -1812,12 +1815,7 @@ TileModelCompiler::compile(const TileModel* model,
     if ( d.createSkirt )
     {
         d.skirt = new osg::Geometry();
-        d.skirt->setUseVertexBufferObjects(true);
-
-        //d.skirtGeode = new osg::Geode();
-        //d.skirtGeode->addDrawable( d.skirt );
-        //d.skirtGeode->setNodeMask( *_options.secondaryTraversalMask() );
-        //xform->addChild( d.skirtGeode );
+        d.skirt->setUseVertexBufferObjects(d.useVBOs);
 
         // slightly faster than a separate geode:
         d.skirt->setDataVariance( osg::Object::DYNAMIC ); // since we're using a custom cull callback

@@ -115,7 +115,8 @@ _supportsDepthPackedStencilBuffer( false ),
 _supportsOcclusionQuery ( false ),
 _supportsDrawInstanced  ( false ),
 _supportsUniformBufferObjects( false ),
-_maxUniformBlockSize    ( 0 )
+_maxUniformBlockSize    ( 0 ),
+_preferDLforStaticGeom  ( true )
 {
     // little hack to force the osgViewer library to link so we can create a graphics context
     osgViewerGetVersion();
@@ -252,6 +253,33 @@ _maxUniformBlockSize    ( 0 )
 
         //_supportsTexture2DLod = osg::isGLExtensionSupported( id, "GL_ARB_shader_texture_lod" );
         //OE_INFO << LC << "  texture2DLod = " << SAYBOOL(_supportsTexture2DLod) << std::endl;
+
+        // NVIDIA:
+        bool isNVIDIA = _vendor.find("NVIDIA") == 0;
+
+        // NVIDIA has h/w acceleration of some kind for display lists, supposedly.
+        // In any case they do benchmark much faster in osgEarth for static geom.
+        // BUT unfortunately, they dont' seem to work too well with shaders. Colors
+        // change randomly, etc. Might work OK for textured geometry but not for 
+        // untextured. TODO: investigate.
+#if 1
+        _preferDLforStaticGeom = false;
+        if ( ::getenv("OSGEARTH_TRY_DISPLAY_LISTS") )
+        {
+            _preferDLforStaticGeom = true;
+        }
+#else
+        if ( ::getenv("OSGEARTH_ALWAYS_USE_VBOS") )
+        {
+            _preferDLforStaticGeom = false;
+        }
+        else
+        {
+            _preferDLforStaticGeom = isNVIDIA;
+        }
+#endif
+
+        OE_INFO << LC << "  prefer DL for static geom = " << SAYBOOL(_preferDLforStaticGeom) << std::endl;
 
         // ATI workarounds:
         bool isATI = _vendor.find("ATI ") == 0;

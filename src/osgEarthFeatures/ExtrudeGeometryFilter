@@ -82,6 +82,12 @@ namespace osgEarth { namespace Features
         void setFeatureNameExpr( const StringExpression& expr ) { _featureNameExpr = expr; }
         const StringExpression& getFeatureNameExpr() const { return _featureNameExpr; }
 
+        /**
+         * Whether or not to use vertex buffer objects
+         */
+        optional<bool>& useVertexBufferObjects() { return _useVertexBufferObjects;}
+        const optional<bool>& useVertexBufferObjects() const { return _useVertexBufferObjects;}
+
 
     protected:
 
@@ -100,6 +106,7 @@ namespace osgEarth { namespace Features
         optional<NumericExpression>    _heightOffsetExpr;
         optional<NumericExpression>    _heightExpr;
         bool                           _makeStencilVolume;
+        optional<bool>                 _useVertexBufferObjects;
 
         Style                          _style;
         bool                           _styleDirty;

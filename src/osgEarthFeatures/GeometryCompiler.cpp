@@ -94,6 +94,7 @@ _useVertexBufferObjects( true ),
 _shaderPolicy      ( SHADERPOLICY_GENERATE )
 {
     fromConfig(_conf);
+    _useVertexBufferObjects = !Registry::capabilities().preferDisplayListsForStaticGeometry();
 }
 
 void
@@ -407,6 +408,8 @@ GeometryCompiler::compile(FeatureList&          workingSet,
         // apply per-feature naming if requested.
         if ( _options.featureName().isSet() )
             extrude.setFeatureNameExpr( *_options.featureName() );
+        if ( _options.useVertexBufferObjects().isSet())
+            extrude.useVertexBufferObjects() = *_options.useVertexBufferObjects();
 
         osg::Node* node = extrude.push( workingSet, sharedCX );
         if ( node )

@@ -85,10 +85,10 @@ The steps to buld for use on devices are as follows:
 
 #. **Open generated Xcode project and build**
      | For now do not build application targets as they will generate errors (CMake can not currently generate valid application targets for iOS)
-     | Select ‘OSGEARTH’ project in navigator view (top of tree on left)
-     | Select ‘Add Target’
-     | Select ‘Aggregate Target’ in the ‘Other’ section, name it lib-build (or whatever)
-     | Select new target and select ‘Build Phases’, ‘Target Dependancies’, ‘+’
+     | Select *OSGEARTH* project in navigator view (top of tree on left)
+     | Select *Add Target*
+     | Select *Aggregate Target* in the *Other* section, name it lib-build (or whatever)
+     | Select new target and select *Build Phases*, *Target Dependancies*, *+*
      | Select all the libs and plugins 
      | Select the new target as the current build target (combo box to right of the play/run button)
      | Build
@@ -96,8 +96,8 @@ The steps to buld for use on devices are as follows:
 #. **Open and build example project**
      | ``osgearth-ios/src/applications/osgearth_viewerIOS/osgEarthViewerIOS.xcodeproj``
      | 
-     | Edit ‘Header Search Paths’ in build settings point to your osg and osgearth folders
-     | Edit ‘Library Search Paths’ in build settings point to your osg and osgearth folders
+     | Edit *Header Search Paths* in build settings point to your osg and osgearth folders
+     | Edit *Library Search Paths* in build settings point to your osg and osgearth folders
      | Link to Accelerate.framework (fix sent)
      | Link to MobileCoreServices.framework (fix sent)
      | remove armv7s build if you are using freetypes

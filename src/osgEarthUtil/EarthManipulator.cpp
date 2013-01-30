@@ -901,9 +901,6 @@ EarthManipulator::setViewpoint( const Viewpoint& vp, double duration_s )
         
         _thrown = false;
         _task->_type = TASK_NONE;
-
-        // recalculate the center point.
-        recalculateCenter();
     }
     else
     {
@@ -963,8 +960,6 @@ EarthManipulator::setViewpoint( const Viewpoint& vp, double duration_s )
         osg::Matrix new_rot = osg::Matrixd( azim_q * pitch_q );
 
         _rotation = osg::Matrixd::inverse(new_rot).getRotate();
-
-        recalculateCenter();
     }
 }
 

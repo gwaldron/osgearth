@@ -591,7 +591,7 @@ ShaderFactory::createUniformForGLMode(osg::StateAttribute::GLMode      mode,
 
     if ( mode == GL_LIGHTING )
     {
-        osg::Uniform* u = new osg::Uniform(osg::Uniform::BOOL, "oe_mode_GL_LIGHTING");
+        u = new osg::Uniform(osg::Uniform::BOOL, "oe_mode_GL_LIGHTING");
         u->set( (value & osg::StateAttribute::ON) != 0 );
     }
 

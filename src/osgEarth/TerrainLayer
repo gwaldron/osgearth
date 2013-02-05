@@ -311,6 +311,11 @@ namespace osgEarth
                 _runtimeOptions->cachePolicy()->usage() == CachePolicy::USAGE_CACHE_ONLY;
         }
 
+    public: // Layer interface
+
+        virtual SequenceControl* getSequenceControl();
+
+
     public:
         
         /**

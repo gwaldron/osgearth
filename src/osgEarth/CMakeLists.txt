@@ -108,6 +108,7 @@ SET(LIB_PUBLIC_HEADERS
     TextureCompositorTexArray
     TileKey
     TileSource
+    TimeControl
     ThreadingUtils
     Units
     URI
@@ -219,6 +220,7 @@ ADD_LIBRARY(${LIB_NAME} ${OSGEARTH_USER_DEFINED_DYNAMIC_OR_STATIC}
     TextureCompositorTexArray.cpp
     TileKey.cpp
     TileSource.cpp
+    TimeControl.cpp
     ThreadingUtils.cpp
     Units.cpp
     URI.cpp

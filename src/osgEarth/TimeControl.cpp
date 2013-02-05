@@ -16,42 +16,6 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
+#include <osgEarth/TimeControl>
 
-#ifndef OSGEARTH_LAYER_H
-#define OSGEARTH_LAYER_H 1
-
-#include <osgEarth/Common>
-
-namespace osgEarth
-{
-    class SequenceControl;
-
-    /**
-     * Base class for all Map layers. 
-     */
-    class OSGEARTH_EXPORT Layer : public osg::Referenced
-    {
-    public:
-        Layer();
-
-        /** dtor */
-        virtual ~Layer() { }
-
-        /**
-         * Gets this layer's unique ID.
-         */
-        const UID getUID() const { return _uid; }
-
-        /**
-         * Sequence controller if the layer has one.
-         */
-        virtual SequenceControl* getSequenceControl() { return 0L; }
-
-
-    private:
-        UID _uid;
-    };
-
-} // namespace osgEarth
-
-#endif // OSGEARTH_IMAGE_TERRAIN_LAYER_H
+using namespace osgEarth;

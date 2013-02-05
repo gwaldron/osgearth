@@ -250,6 +250,7 @@ namespace osgEarth
 
         CacheBin* getCacheBin( const Profile* profile );
 
+
     protected:
 
         // Creates an image that's in the same profile as the provided key.

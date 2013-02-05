@@ -150,6 +150,15 @@ namespace osgEarth
         return str;
     }
 
+    // snips a substring and parses it.
+    template<typename T> inline bool
+    as(const std::string& in, unsigned start, unsigned len, T default_value) 
+    {
+        std::string buf;
+        std::copy( in.begin()+start, in.begin()+start+len, std::back_inserter(buf) );
+        return as<T>(buf, default_value);
+    }
+
     // converts a primitive to a string
     // TODO: precision??
     template<typename T> inline std::string

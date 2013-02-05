@@ -20,6 +20,7 @@
 #include <osgEarth/TileSource>
 #include <osgEarth/Registry>
 #include <osgEarth/StringUtils>
+#include <osgEarth/TimeControl>
 #include <osgEarth/URI>
 #include <osgDB/WriteFile>
 #include <osg/Version>
@@ -681,3 +682,8 @@ TerrainLayer::storeProxySettings(osgDB::Options* opt)
     }
 }
 
+SequenceControl*
+TerrainLayer::getSequenceControl()
+{
+    return dynamic_cast<SequenceControl*>( getTileSource() );
+}

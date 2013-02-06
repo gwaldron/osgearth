@@ -564,10 +564,15 @@ public: // SequenceControl
     /** Index of current frame */
     int getCurrentSequenceFrameIndex( const osg::FrameStamp* fs ) const
     {
+        if ( _seqFrameInfoVec.size() == 0 )
+            return 0;
+
         double len = _options.secondsPerFrame().value() * (double)_timesVec.size();
         double t   = fmod( fs->getSimulationTime(), len ) / len;
-
-        return osg::clampBetween((unsigned)(t * (double)_seqFrameInfoVec.size()), 0u, _seqFrameInfoVec.size()-1);
+        return osg::clampBetween(
+            (int)(t * (double)_seqFrameInfoVec.size()), 
+            (int)0, 
+            (int)_seqFrameInfoVec.size()-1);
     }
 
 

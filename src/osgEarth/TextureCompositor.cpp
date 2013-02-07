@@ -440,7 +440,7 @@ TextureCompositor::requiresUnitTextureSpace() const
 bool
 TextureCompositor::usesShaderComposition() const
 {
-    return _impl.valid() ? _impl->usesShaderComposition() : false;
+    return _impl.valid() ? _impl->usesShaderComposition() : true;
 }
 
 void

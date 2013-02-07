@@ -72,6 +72,15 @@ MapFrame::sync()
 
 
 bool
+MapFrame::needsSync() const
+{
+    return
+        (_map.valid()) &&
+        (_map->getDataModelRevision() != _mapDataModelRevision || !_initialized);
+}
+
+
+bool
 MapFrame::getHeightField(const TileKey&                  key,
                          bool                            fallback,
                          osg::ref_ptr<osg::HeightField>& out_hf,

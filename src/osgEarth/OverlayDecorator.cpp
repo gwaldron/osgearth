@@ -315,8 +315,9 @@ OverlayDecorator::onInstall( TerrainEngineNode* engine )
 
     //todo: need this? ... probably not anymore
     _useShaders = 
-        Registry::capabilities().supportsGLSL() && 
-        engine->getTextureCompositor()->usesShaderComposition();
+        Registry::capabilities().supportsGLSL() && (
+            !engine->getTextureCompositor() ||
+            engine->getTextureCompositor()->usesShaderComposition() );
 
     for(Techniques::iterator t = _techniques.begin(); t != _techniques.end(); ++t )
     {

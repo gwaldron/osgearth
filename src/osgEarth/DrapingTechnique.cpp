@@ -220,44 +220,41 @@ DrapingTechnique::setUpCamera(OverlayDecorator::TechRTTParams& params)
         params._terrainStateSet->setAttributeAndModes( vp, osg::StateAttribute::ON );
 
         // sampler for projected texture:
-        params._terrainStateSet->getOrCreateUniform( "oe_overlay_ProjTex", osg::Uniform::SAMPLER_2D )->set( *_textureUnit );
+        params._terrainStateSet->getOrCreateUniform(
+            "oe_overlay_tex", osg::Uniform::SAMPLER_2D )->set( *_textureUnit );
 
         // the texture projection matrix uniform.
-        local->_texGenUniform = params._terrainStateSet->getOrCreateUniform( "oe_overlay_TexGenMatrix", osg::Uniform::FLOAT_MAT4 );
+        local->_texGenUniform = params._terrainStateSet->getOrCreateUniform(
+            "oe_overlay_texmatrix", osg::Uniform::FLOAT_MAT4 );
 
         // vertex shader - subgraph
-        std::string vertexSource = Stringify()
-            << "#version " << GLSL_VERSION_STR << "\n"
-#ifdef OSG_GLES2_AVAILABLE
-            << "precision mediump float;\n"
-#endif
-            << "uniform mat4 oe_overlay_TexGenMatrix; \n"
-            << "uniform mat4 osg_ViewMatrixInverse; \n"
-            << "varying vec4 osg_TexCoord[" << Registry::capabilities().getMaxGPUTextureCoordSets() << "]; \n"
+        std::string vs =
+            "#version " GLSL_VERSION_STR "\n"
+            GLSL_DEFAULT_PRECISION_FLOAT "\n"
+            "uniform mat4 oe_overlay_texmatrix; \n"
+            "varying vec4 oe_overlay_texcoord; \n"
 
-            << "void oe_overlay_vertex(void) \n"
-            << "{ \n"
-            << "    osg_TexCoord["<< *_textureUnit << "] = oe_overlay_TexGenMatrix * osg_ViewMatrixInverse * gl_ModelViewMatrix * gl_Vertex; \n"
-            << "} \n";
+            "void oe_overlay_vertex(void) \n"
+            "{ \n"
+            "    oe_overlay_texcoord = oe_overlay_texmatrix * gl_ModelViewMatrix * gl_Vertex; \n"
+            "} \n";
 
-        vp->setFunction( "oe_overlay_vertex", vertexSource, ShaderComp::LOCATION_VERTEX_POST_LIGHTING );
+        vp->setFunction( "oe_overlay_vertex", vs, ShaderComp::LOCATION_VERTEX_POST_LIGHTING );
 
         // fragment shader - subgraph
-        std::string fragmentSource = Stringify()
-            << "#version " << GLSL_VERSION_STR << "\n"
-#ifdef OSG_GLES2_AVAILABLE
-            << "precision mediump float;\n"
-#endif
-            << "uniform sampler2D oe_overlay_ProjTex; \n"
-            << "varying vec4 osg_TexCoord[" << Registry::capabilities().getMaxGPUTextureCoordSets() << "]; \n"
-            << "void oe_overlay_fragment( inout vec4 color ) \n"
-            << "{ \n"
-            << "    vec2 texCoord = osg_TexCoord["<< *_textureUnit << "].xy / osg_TexCoord["<< *_textureUnit << "].q; \n"
-            << "    vec4 texel = texture2D(oe_overlay_ProjTex, texCoord); \n"  
-            << "    color = vec4( mix( color.rgb, texel.rgb, texel.a ), color.a); \n"
-            << "} \n";
+        std::string fs =
+            "#version " GLSL_VERSION_STR "\n"
+            GLSL_DEFAULT_PRECISION_FLOAT "\n"
+            "uniform sampler2D oe_overlay_tex; \n"
+            "varying vec4      oe_overlay_texcoord; \n"
 
-        vp->setFunction( "oe_overlay_fragment", fragmentSource, ShaderComp::LOCATION_FRAGMENT_POST_LIGHTING );
+            "void oe_overlay_fragment( inout vec4 color ) \n"
+            "{ \n"
+            "    vec4 texel = texture2DProj(oe_overlay_tex, oe_overlay_texcoord); \n"
+            "    color = vec4( mix( color.rgb, texel.rgb, texel.a ), color.a); \n"
+            "} \n";
+
+        vp->setFunction( "oe_overlay_fragment", fs, ShaderComp::LOCATION_FRAGMENT_POST_LIGHTING );
     }
     else
     {
@@ -301,6 +298,7 @@ DrapingTechnique::cullOverlayGroup(OverlayDecorator::TechRTTParams& params,
 {
     if ( params._rttCamera.valid() )
     {
+        // this xforms from clip [-1..1] to texture [0..1] space
         static osg::Matrix s_scaleBiasMat = 
             osg::Matrix::translate(1.0,1.0,1.0) * 
             osg::Matrix::scale(0.5,0.5,0.5);
@@ -313,9 +311,16 @@ DrapingTechnique::cullOverlayGroup(OverlayDecorator::TechRTTParams& params,
         LocalPerViewData& local = *static_cast<LocalPerViewData*>(params._techniqueData.get());
 
         if ( local._texGenUniform.valid() )
-            local._texGenUniform->set( VPT );
+        {
+            // premultiply the inv view matrix so we don't have
+            // precision problems in the shader (and it's faster too)
+            local._texGenUniform->set( cv->getCurrentCamera()->getInverseViewMatrix() * VPT );
+        }
         else
+        {
+            // FFP path
             local._texGen->setPlanesFromMatrix( VPT );
+        }
 
         // traverse the overlay group (via the RTT camera).
         params._rttCamera->accept( *cv );
@@ -384,8 +389,9 @@ DrapingTechnique::onInstall( TerrainEngineNode* engine )
     // TODO: this is not stricty correct; you might still want to use shader overlays
     // in multipass mode, AND you might want FFP overlays in multitexture-FFP mode.
     _useShaders = 
-        Registry::capabilities().supportsGLSL() && 
-        engine->getTextureCompositor()->usesShaderComposition();
+        Registry::capabilities().supportsGLSL() && (
+            !engine->getTextureCompositor() ||
+            engine->getTextureCompositor()->usesShaderComposition() );
 
     if ( !_textureSize.isSet() )
     {

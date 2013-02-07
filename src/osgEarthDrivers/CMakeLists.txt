@@ -71,6 +71,7 @@ ENDIF(SQLITE3_FOUND)
 
 ADD_SUBDIRECTORY(engine_osgterrain)
 ADD_SUBDIRECTORY(engine_quadtree)
+ADD_SUBDIRECTORY(engine_mp)
 
 IF(V8_FOUND)
   ADD_SUBDIRECTORY(script_engine_v8)

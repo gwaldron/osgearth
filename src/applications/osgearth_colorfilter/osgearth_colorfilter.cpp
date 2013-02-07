@@ -706,41 +706,44 @@ main(int argc, char** argv)
         {
             ImageLayer* layer = mapNode->getMap()->getImageLayerAt( i );
 
-            if ( useHSL )
+            if ( layer->getEnabled() && layer->getVisible() )
             {
-                HSLColorFilter* filter = new HSLColorFilter();
-                layer->addColorFilter( filter );
-                HSL::addControls( filter, box, i );
-            }
-            else if ( useRGB )
-            {
-                RGBColorFilter* filter = new RGBColorFilter();
-                layer->addColorFilter( filter );
-                RGB::addControls( filter, box, i );
-            }
-            else if ( useCMYK )
-            {
-                CMYKColorFilter* filter = new CMYKColorFilter();
-                layer->addColorFilter( filter );
-                CMYK::addControls( filter, box, i );
-            }
-            else if ( useBC )
-            {
-                BrightnessContrastColorFilter* filter = new BrightnessContrastColorFilter();
-                layer->addColorFilter( filter );
-                BC::addControls( filter, box, i );
-            }
-            else if ( useGamma )
-            {
-                GammaColorFilter* filter = new GammaColorFilter();
-                layer->addColorFilter( filter );
-                GAMMA::addControls( filter, box, i );
-            }
-            else if ( useChromaKey )
-            {
-                ChromaKeyColorFilter* filter = new ChromaKeyColorFilter();
-                layer->addColorFilter( filter );
-                CHROMAKEY::addControls( filter, box , i );
+                if ( useHSL )
+                {
+                    HSLColorFilter* filter = new HSLColorFilter();
+                    layer->addColorFilter( filter );
+                    HSL::addControls( filter, box, i );
+                }
+                else if ( useRGB )
+                {
+                    RGBColorFilter* filter = new RGBColorFilter();
+                    layer->addColorFilter( filter );
+                    RGB::addControls( filter, box, i );
+                }
+                else if ( useCMYK )
+                {
+                    CMYKColorFilter* filter = new CMYKColorFilter();
+                    layer->addColorFilter( filter );
+                    CMYK::addControls( filter, box, i );
+                }
+                else if ( useBC )
+                {
+                    BrightnessContrastColorFilter* filter = new BrightnessContrastColorFilter();
+                    layer->addColorFilter( filter );
+                    BC::addControls( filter, box, i );
+                }
+                else if ( useGamma )
+                {
+                    GammaColorFilter* filter = new GammaColorFilter();
+                    layer->addColorFilter( filter );
+                    GAMMA::addControls( filter, box, i );
+                }
+                else if ( useChromaKey )
+                {
+                    ChromaKeyColorFilter* filter = new ChromaKeyColorFilter();
+                    layer->addColorFilter( filter );
+                    CHROMAKEY::addControls( filter, box , i );
+                }
             }
         }
     }

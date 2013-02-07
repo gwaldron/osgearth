@@ -133,35 +133,6 @@ namespace
             {
                 return false;
             }
-
-#if 0 // no longer necessary with MP.
-            GeoLocator* locator = 0L;
-
-            if ( !geoImage.valid() )
-            {
-                // no image found, so make an empty one (one pixel alpha).
-                geoImage = GeoImage( ImageUtils::createEmptyImage(), _key.getExtent() );
-                locator = GeoLocator::createForKey( _key, *_mapInfo );
-                isFallbackData = true;
-            }
-            else
-            {
-                if ( useMercatorFastPath )
-                    locator = new MercatorLocator(geoImage.getExtent());
-                else
-                    locator = GeoLocator::createForExtent(geoImage.getExtent(), *_mapInfo);
-            }
-
-            // add the color layer to the repo.
-            _model->_colorData[_layer->getUID()] = TileModel::ColorData(
-                _layer,
-                _order,
-                geoImage.getImage(),
-                locator,
-                _key.getLevelOfDetail(),
-                _key,
-                isFallbackData );
-#endif
         }
 
         TileKey        _key;
@@ -334,38 +305,6 @@ TileModelFactory::createTileModel(const TileKey&           key,
         model->_elevationData = TileModel::ElevationData( hfLayer, true );
     }
 
-#if 0 // OBE. No longer need empty tiles in the MP scheme. -gw
-
-    // Now, if there are any color layers that did not get built, create them with an empty
-    // image so the shaders have something to draw.
-    osg::ref_ptr<osg::Image> emptyImage;
-    osgTerrain::Locator* locator = model->_elevationData.getHFLayer()->getLocator();
-
-    for( ImageLayerVector::const_iterator i = mapf.imageLayers().begin(); i != mapf.imageLayers().end(); ++i )
-    {
-        ImageLayer* layer = i->get();
-
-        if ( layer->getEnabled() && !layer->isKeyValid(key) )
-        {
-            if ( !emptyImage.valid() )
-                emptyImage = ImageUtils::createEmptyImage();
-
-            model->_colorData[i->get()->getUID()] = TileModel::ColorData(
-                layer,
-                emptyImage.get(),
-                locator,
-                key.getLevelOfDetail(),
-                key,
-                true );
-        }
-    }
-#endif
-
-    // Ready to create the actual tile.
-    //AssembleTile assemble;
-    //assemble.init( key, mapInfo, _terrainOptions, model.get(), mapf.terrainMaskLayers() );
-    //assemble.execute();
-
     // if we're using LOD blending, find and add the parent's state set.
     if ( out_hasLodBlendedLayers && key.getLevelOfDetail() > 0 && _liveTiles.valid() )
     {
@@ -395,5 +334,4 @@ TileModelFactory::createTileModel(const TileKey&           key,
     }
 
     out_model = model.release();
-    //out_tile = assemble._node;
 }

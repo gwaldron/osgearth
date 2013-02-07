@@ -26,16 +26,19 @@ namespace osgEarth { namespace Drivers
 {
     using namespace osgEarth;
 
+    /**
+     * Options for configuring the MP Engine driver.
+     */
     class MPTerrainEngineOptions : public TerrainOptions // NO EXPORT (header-only)
     {
     public:
         MPTerrainEngineOptions( const ConfigOptions& options =ConfigOptions() ) : TerrainOptions( options ),
-            _skirtRatio  ( 0.05 ),
-            _quickRelease( true ),
-            _lodFallOff  ( 0.0 ),
+            _skirtRatio    ( 0.05 ),
+            _quickRelease  ( true ),
+            _lodFallOff    ( 0.0 ),
             _normalizeEdges( false ),
-            _rangeMode( osg::LOD::DISTANCE_FROM_EYE_POINT ),
-            _tilePixelSize( 256 )
+            _rangeMode     ( osg::LOD::DISTANCE_FROM_EYE_POINT ),
+            _tilePixelSize ( 256 )
         {
             setDriver( "mp" );
             fromConfig( _conf );
@@ -94,12 +97,12 @@ namespace osgEarth { namespace Drivers
             conf.getIfSet( "range_mode", "DISTANCE_FROM_EYE_POINT", _rangeMode, osg::LOD::DISTANCE_FROM_EYE_POINT);
         }
 
-        optional<float> _skirtRatio;
-        optional<bool>  _quickRelease;
-        optional<float> _lodFallOff;
-        optional<bool> _normalizeEdges;
+        optional<float>               _skirtRatio;
+        optional<bool>                _quickRelease;
+        optional<float>               _lodFallOff;
+        optional<bool>                _normalizeEdges;
         optional<osg::LOD::RangeMode> _rangeMode;
-        optional<float> _tilePixelSize;
+        optional<float>               _tilePixelSize;
     };
 
 } } // namespace osgEarth::Drivers

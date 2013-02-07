@@ -17,6 +17,7 @@
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
 #include "TileModelCompiler"
+#include "MPGeometry"
 
 #include <osgEarth/Locators>
 #include <osgEarth/Registry>
@@ -37,266 +38,6 @@ using namespace osgEarth::Drivers;
 using namespace osgEarth::Symbology;
 
 #define LC "[TileModelCompiler] "
-
-#define MG 1
-
-#ifdef MG
-namespace
-{
-    // Per-tile record of texture information for a geometry.
-    struct LayerRenderData
-    {
-        osgEarth::UID                  _layerID;
-        osg::ref_ptr<const ImageLayer> _imageLayer;
-        osg::ref_ptr<osg::Texture>     _tex;
-        osg::ref_ptr<osg::Vec2Array>   _texCoords;
-
-        // in support of std::find
-        bool operator == (const osgEarth::UID& rhs) const {
-            return _layerID == rhs;
-        }
-    };
-
-
-    // Geometry that will draw its primitives multiple times,
-    // once for each texture set.
-    class MultipassGeometry : public osg::Geometry
-    {
-    public:
-        mutable MapFrame                     _map;
-        mutable std::vector<LayerRenderData> _layers;
-        mutable Threading::Mutex             _mapSyncMutex;
-        mutable osg::ref_ptr<osg::Uniform>   _layerUIDUniform;
-        mutable osg::ref_ptr<osg::Uniform>   _opacityUniform;
-
-        int                                  _textureImageUnit;
-
-    public:
-        MultipassGeometry(const Map* map, int textureImageUnit) : 
-          osg::Geometry    ( ), 
-          _map             (map, Map::IMAGE_LAYERS),
-          _textureImageUnit( textureImageUnit )
-        {
-            _opacityUniform = new osg::Uniform( osg::Uniform::FLOAT, "oe_layer_opacity" );
-            _opacityUniform->set( 1.0f );
-
-            _layerUIDUniform = new osg::Uniform( osg::Uniform::INT, "oe_layer_uid" );
-            _layerUIDUniform->set( 0 );
-        }
-
-
-        inline void renderPrimitiveSets(osg::State& state, bool usingVBOs) const
-        {
-            // check the map frame to see if it's up to date
-            if ( _map.needsSync() )
-            {
-                // this lock protects a MapFrame sync when we have multiple DRAW threads.
-                Threading::ScopedMutexLock exclusive( _mapSyncMutex );
-
-                if ( _map.needsSync() && _map.sync() ) // always double check
-                {
-                    // This should only happen is the layer ordering changes;
-                    // If layers are added or removed, the Tile gets rebuilt and
-                    // the point is moot.
-                    std::vector<LayerRenderData> reordered;
-                    const ImageLayerVector& layers = _map.imageLayers();
-                    reordered.reserve( layers.size() );
-                    for( ImageLayerVector::const_iterator i = layers.begin(); i != layers.end(); ++i )
-                    {
-                        std::vector<LayerRenderData>::iterator j = std::find( _layers.begin(), _layers.end(), i->get()->getUID() );
-                        if ( j != _layers.end() )
-                            reordered.push_back( *j );
-                    }
-                    _layers.swap( reordered );
-                }
-            }
-
-
-            // loop over each layer.
-            if ( _layers.size() == 0 )
-            {
-                // draw the primitives themselves.
-                for(unsigned int primitiveSetNum=0; primitiveSetNum!=_primitives.size(); ++primitiveSetNum)
-                {
-                    const osg::PrimitiveSet* primitiveset = _primitives[primitiveSetNum].get();
-                    primitiveset->draw(state, usingVBOs);
-                }
-            }
-            else
-            {
-                float opacity      =  1.0f;
-                float prev_opacity = -1.0f;
-                osg::ref_ptr<osg::GL2Extensions> ext = osg::GL2Extensions::Get( state.getContextID(), true );
-                const osg::Program::PerContextProgram* pcp = state.getLastAppliedProgramObject();
-                GLint opacityLocation;
-                GLint uidLocation;
-            
-                // yes, it's possible that the PCP is not set up yet.
-                if ( pcp )
-                {
-                    opacityLocation = pcp->getUniformLocation( _opacityUniform->getNameID() );
-                    uidLocation     = pcp->getUniformLocation( _layerUIDUniform->getNameID() );
-                }
-
-                // we are only using unit 0.
-                state.setActiveTextureUnit( _textureImageUnit );
-
-                // interate over all the image layers
-                for(unsigned i=0; i<_layers.size(); ++i)
-                {
-                    const LayerRenderData& layer = _layers[i];
-
-                    if ( layer._imageLayer->getVisible() )
-                    {
-                        // bind the texture for this layer:
-                        layer._tex->apply( state );
-
-                        // bind the texture coordinates for this layer.
-                        // TODO: can probably optimize this by sharing or using texture matrixes.
-                        // State::setTexCoordPointer does some redundant work under the hood.
-                        state.setTexCoordPointer( _textureImageUnit, layer._texCoords.get() );
-
-                        // apply uniform values:
-                        if ( pcp )
-                        {
-                            // apply opacity:
-                            float opacity = layer._imageLayer->getOpacity();
-                            if ( opacity != prev_opacity )
-                            {
-                                _opacityUniform->set( opacity );
-                                _opacityUniform->apply( ext, opacityLocation );
-                                prev_opacity = opacity;
-                            }
-
-                            // assign the layer UID:
-                            _layerUIDUniform->set( layer._layerID );
-                            _layerUIDUniform->apply( ext, uidLocation );
-                        }
-
-                        // draw the primitive sets.
-                        for(unsigned int primitiveSetNum=0; primitiveSetNum!=_primitives.size(); ++primitiveSetNum)
-                        {
-                            const osg::PrimitiveSet* primitiveset = _primitives[primitiveSetNum].get();
-                            primitiveset->draw(state, usingVBOs);
-                        }
-                    }
-                }
-            }
-        }
-
-    public: // osg::Geometry overrides
-
-        // override so we can properly release the GL buffer objects
-        // that are not tracked by the geometry
-        void releaseGLObjects(osg::State* state) const
-        {
-            osg::Geometry::releaseGLObjects( state );
-
-            for(unsigned i=0; i<_layers.size(); ++i)
-            {
-                const LayerRenderData& layer = _layers[i];
-                if ( layer._tex.valid() )
-                    layer._tex->releaseGLObjects( state );
-                if ( layer._texCoords.valid() )
-                    layer._texCoords->releaseGLObjects( state );
-            }
-        }
-
-        void compileGLObjects( osg::RenderInfo& renderInfo ) const
-        {
-            osg::Geometry::compileGLObjects( renderInfo );
-            //TODO? or just ignore it
-        }
-
-
-        // copied mostly from osg::Geometry, with all the non-fast-path
-        // stuff stripped out
-        void drawImplementation(osg::RenderInfo& renderInfo) const
-        {
-            osg::State& state = *renderInfo.getState();
-
-            bool usingVertexBufferObjects = _useVertexBufferObjects && state.isVertexBufferObjectSupported();
-            bool handleVertexAttributes = !_vertexAttribList.empty();
-
-            osg::ArrayDispatchers& arrayDispatchers = state.getArrayDispatchers();
-
-            arrayDispatchers.reset();
-            arrayDispatchers.setUseVertexAttribAlias(state.getUseVertexAttributeAliasing());
-            arrayDispatchers.setUseGLBeginEndAdapter(false);
-
-            arrayDispatchers.activateNormalArray(_normalData.binding, _normalData.array.get(), _normalData.indices.get());
-            arrayDispatchers.activateColorArray(_colorData.binding, _colorData.array.get(), _colorData.indices.get());
-            arrayDispatchers.activateSecondaryColorArray(_secondaryColorData.binding, _secondaryColorData.array.get(), _secondaryColorData.indices.get());
-            arrayDispatchers.activateFogCoordArray(_fogCoordData.binding, _fogCoordData.array.get(), _fogCoordData.indices.get());
-
-            if (handleVertexAttributes)
-            {
-                for(unsigned int unit=0;unit<_vertexAttribList.size();++unit)
-                {
-                    arrayDispatchers.activateVertexAttribArray(_vertexAttribList[unit].binding, unit, _vertexAttribList[unit].array.get(), _vertexAttribList[unit].indices.get());
-                }
-            }
-
-            // dispatch any attributes that are bound overall
-            arrayDispatchers.dispatch(BIND_OVERALL,0);
-            state.lazyDisablingOfVertexAttributes();
-
-            // set up arrays
-            if( _vertexData.array.valid() )
-                state.setVertexPointer(_vertexData.array.get());
-
-            if (_normalData.binding==BIND_PER_VERTEX && _normalData.array.valid())
-                state.setNormalPointer(_normalData.array.get());
-
-            if (_colorData.binding==BIND_PER_VERTEX && _colorData.array.valid())
-                state.setColorPointer(_colorData.array.get());
-
-            if (_secondaryColorData.binding==BIND_PER_VERTEX && _secondaryColorData.array.valid())
-                state.setSecondaryColorPointer(_secondaryColorData.array.get());
-
-            if (_fogCoordData.binding==BIND_PER_VERTEX && _fogCoordData.array.valid())
-                state.setFogCoordPointer(_fogCoordData.array.get());
-
-            for(unsigned int unit=0;unit<_texCoordList.size();++unit)
-            {
-                const osg::Array* array = _texCoordList[unit].array.get();
-                if (array) state.setTexCoordPointer(unit,array);
-            }
-
-            if( handleVertexAttributes )
-            {
-                for(unsigned int index = 0; index < _vertexAttribList.size(); ++index )
-                {
-                    const osg::Array* array = _vertexAttribList[index].array.get();
-                    const AttributeBinding ab = _vertexAttribList[index].binding;
-                    if( ab == BIND_PER_VERTEX && array )
-                    {
-                        state.setVertexAttribPointer( index, array, _vertexAttribList[index].normalize );
-                    }
-                }
-            }
-
-            state.applyDisablingOfVertexAttributes();
-
-            // draw.
-            renderPrimitiveSets(state, usingVertexBufferObjects);
-
-            // unbind the VBO's if any are used.
-            state.unbindVertexBufferObject();
-            state.unbindElementBufferObject();
-        }
-        
-
-    public:
-        META_Object(osgEarth, MultipassGeometry);
-        MultipassGeometry() : osg::Geometry(), _map(0L) { }
-        MultipassGeometry(const MultipassGeometry& rhs, const osg::CopyOp& cop) : osg::Geometry(rhs, cop), _map(rhs._map) { }
-        virtual ~MultipassGeometry() { }
-    };
-}
-#else
-#    define MultipassGeometry osg::Geometry
-#endif
 
 
 //------------------------------------------------------------------------
@@ -352,10 +93,10 @@ namespace
     {
         osg::ref_ptr<osg::Vec3dArray> _boundary;
         osg::Vec3d                    _ndcMin, _ndcMax;
-        MultipassGeometry*            _geom;
+        MPGeometry*                   _geom;
         osg::ref_ptr<osg::Vec3Array>  _internal;
 
-        MaskRecord(osg::Vec3dArray* boundary, osg::Vec3d& ndcMin, osg::Vec3d& ndcMax, MultipassGeometry* geom) 
+        MaskRecord(osg::Vec3dArray* boundary, osg::Vec3d& ndcMin, osg::Vec3d& ndcMax, MPGeometry* geom) 
             : _boundary(boundary), _ndcMin(ndcMin), _ndcMax(ndcMax), _geom(geom), _internal(new osg::Vec3Array()) { }
     };
 
@@ -396,7 +137,7 @@ namespace
 
         // surface data:
         osg::Geode*                   surfaceGeode;
-        MultipassGeometry*            surface;
+        MPGeometry*                   surface;
         osg::Vec3Array*               surfaceVerts;
         osg::Vec3Array*               normals;
         osg::Vec4Array*               surfaceElevData;
@@ -406,7 +147,7 @@ namespace
         osg::BoundingSphere           surfaceBound;
 
         // skirt data:
-        MultipassGeometry*       skirt;
+        MPGeometry*              skirt;
         unsigned                 numVerticesInSkirt;
         bool                     createSkirt;
 
@@ -421,7 +162,7 @@ namespace
         
         // for masking/stitching:
         MaskRecordVector         maskRecords;
-        MultipassGeometry*       stitching_skirts;
+        MPGeometry*              stitching_skirts;
         osg::Vec3Array*          ss_verts;
     };
 
@@ -488,7 +229,7 @@ namespace
               if (x_match && y_match)
               {
                 //osg::Geometry* mask_geom = new osg::Geometry();
-                MultipassGeometry* mask_geom = new MultipassGeometry( d.model->_map.get(), d.textureImageUnit );
+                MPGeometry* mask_geom = new MPGeometry( d.model->_map.get(), d.textureImageUnit );
                 mask_geom->setUseVertexBufferObjects(d.useVBOs);
                 d.surfaceGeode->addDrawable(mask_geom);
                 d.maskRecords.push_back( MaskRecord(boundary, min_ndc, max_ndc, mask_geom) );
@@ -499,7 +240,7 @@ namespace
         if (d.maskRecords.size() > 0)
         {
           //d.stitching_skirts = new osg::Geometry();
-          d.stitching_skirts = new MultipassGeometry( d.model->_map.get(), d.textureImageUnit );
+          d.stitching_skirts = new MPGeometry( d.model->_map.get(), d.textureImageUnit );
           d.stitching_skirts->setUseVertexBufferObjects(d.useVBOs);
           d.surfaceGeode->addDrawable( d.stitching_skirts );
 
@@ -1871,7 +1612,7 @@ namespace
 
             unsigned order = r->_layer.getOrder();
 
-            LayerRenderData layer;
+            MPGeometry::Layer layer;
             layer._layerID    = r->_layer.getUID();
             layer._imageLayer = r->_layer.getMapLayer();
             layer._tex        = tex;
@@ -1943,8 +1684,7 @@ TileModelCompiler::compile(const TileModel* model,
     osg::MatrixTransform* xform = new osg::MatrixTransform( osg::Matrix::translate(d.centerModel) );
 
     // A Geode/Geometry for the surface:
-    //d.surface = new osg::Geometry();
-    d.surface = new MultipassGeometry( model->_map.get(), _textureImageUnit );
+    d.surface = new MPGeometry( model->_map.get(), _textureImageUnit );
     d.surface->setUseVertexBufferObjects(d.useVBOs);
     d.surfaceGeode = new osg::Geode();
     d.surfaceGeode->addDrawable( d.surface );
@@ -1959,8 +1699,7 @@ TileModelCompiler::compile(const TileModel* model,
 
     if ( d.createSkirt )
     {
-        //d.skirt = new osg::Geometry();
-        d.skirt = new MultipassGeometry( model->_map.get(), _textureImageUnit );
+        d.skirt = new MPGeometry( model->_map.get(), _textureImageUnit );
         d.skirt->setUseVertexBufferObjects(d.useVBOs);
 
         // slightly faster than a separate geode:

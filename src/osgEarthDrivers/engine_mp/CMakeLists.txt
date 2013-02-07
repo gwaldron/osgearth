@@ -5,6 +5,7 @@ SET(TARGET_SRC
     CustomPagedLOD.cpp
     KeyNodeFactory.cpp
     LODFactorCallback.cpp
+    MPGeometry.cpp
     MPTerrainEngineNode.cpp
     MPTerrainEngineDriver.cpp
     SerialKeyNodeFactory.cpp
@@ -22,6 +23,7 @@ SET(TARGET_H
     FileLocationCallback
     KeyNodeFactory
     LODFactorCallback
+    MPGeometry
     MPTerrainEngineNode
     MPTerrainEngineOptions
     QuickReleaseGLObjects

@@ -18,6 +18,7 @@
  */
 
 #include <osgEarth/ImageUtils>
+#include <osgEarth/ThreadingUtils>
 #include <osg/Notify>
 #include <osg/Texture>
 #include <osg/ImageSequence>
@@ -435,25 +436,28 @@ ImageUtils::sharpenImage( const osg::Image* input )
     return output;
 }
 
+namespace
+{
+    static Threading::Mutex         s_emptyImageMutex;
+    static osg::ref_ptr<osg::Image> s_emptyImage;
+}
 
 osg::Image*
 ImageUtils::createEmptyImage()
 {
-    static OpenThreads::Mutex s_mutex;
-    static osg::ref_ptr< osg::Image> s_image;
-    if (!s_image.valid())
+    if (!s_emptyImage.valid())
     {
-        OpenThreads::ScopedLock< OpenThreads::Mutex > lock( s_mutex );
-        if (!s_image.valid())
+        Threading::ScopedMutexLock exclusive( s_emptyImageMutex );
+        if (!s_emptyImage.valid())
         {
-            s_image = new osg::Image;
-            s_image->allocateImage(1,1,1, GL_RGBA, GL_UNSIGNED_BYTE);
-            s_image->setInternalTextureFormat( GL_RGB8A_INTERNAL );
-            unsigned char *data = s_image->data(0,0);
+            s_emptyImage = new osg::Image;
+            s_emptyImage->allocateImage(1,1,1, GL_RGBA, GL_UNSIGNED_BYTE);
+            s_emptyImage->setInternalTextureFormat( GL_RGB8A_INTERNAL );
+            unsigned char *data = s_emptyImage->data(0,0);
             memset(data, 0, 4);
         }     
     }
-    return s_image.get();
+    return s_emptyImage.get();
 }
 
 bool
@@ -473,6 +477,18 @@ ImageUtils::isEmptyImage(const osg::Image* image, float alphaThreshold)
         }
     }
     return true;    
+}
+
+
+osg::Image*
+ImageUtils::createOnePixelImage(const osg::Vec4& color)
+{
+    osg::Image* image = new osg::Image;
+    image->allocateImage(1,1,1, GL_RGBA, GL_UNSIGNED_BYTE);
+    image->setInternalTextureFormat( GL_RGB8A_INTERNAL );
+    PixelWriter write(image);
+    write(color, 0, 0);
+    return image;
 }
 
 bool

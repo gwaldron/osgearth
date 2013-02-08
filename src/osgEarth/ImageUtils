@@ -151,6 +151,11 @@ namespace osgEarth
         static osg::Image* createEmptyImage();
 
         /**
+         * Creates a one-pixel image.
+         */
+        static osg::Image* createOnePixelImage(const osg::Vec4& color);
+
+        /**
          * Tests an image to see whether it's "empty", i.e. completely transparent,
          * within an alpha threshold.
          */

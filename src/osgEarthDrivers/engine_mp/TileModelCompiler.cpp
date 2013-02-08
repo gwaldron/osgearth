@@ -396,7 +396,7 @@ namespace
                     r._skirtTexCoords = new osg::Vec2Array();
                     r._skirtTexCoords->reserve( d.numVerticesInSkirt );
                     r._ownsSkirtTexCoords = true;
-                
+
                     r._stitchTexCoords = new osg::Vec2Array();
                     r._stitchSkirtTexCoords = new osg::Vec2Array();
                 }
@@ -1624,7 +1624,7 @@ namespace
             // the skirt:
             layer._texCoords  = r->_skirtTexCoords;
             d.skirt->_layers[order] = layer;
-            
+
             // the mask geometries:
             for ( MaskRecordVector::iterator mr = d.maskRecords.begin(); mr != d.maskRecords.end(); ++mr )
             {

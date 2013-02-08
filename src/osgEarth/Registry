@@ -220,9 +220,13 @@ namespace osgEarth
 
         osg::ref_ptr<TaskServiceManager> _taskServiceManager;
 
-        int _uidGen;
+        // unique ID generator:
+        int                      _uidGen;
+        mutable Threading::Mutex _uidGenMutex;
 
+        // system capabilities:
         osg::ref_ptr< Capabilities > _caps;
+        mutable Threading::Mutex     _capsMutex;
         void initCapabilities();
 
         osg::ref_ptr<osgDB::Options> _defaultOptions;
@@ -232,7 +236,8 @@ namespace osgEarth
         osg::ref_ptr<osgText::Font> _defaultFont;
 
         typedef std::vector<const Units*> UnitsVector;
-        UnitsVector _unitsVector;
+        UnitsVector                       _unitsVector;
+        mutable Threading::ReadWriteMutex _unitsVectorMutex;
 
         osg::ref_ptr<StateSetCache> _stateSetCache;
 

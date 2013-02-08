@@ -36,6 +36,9 @@ _textureImageUnit( textureImageUnit )
 
     _layerUIDUniform = new osg::Uniform( osg::Uniform::INT, "oe_layer_uid" );
     _layerUIDUniform->set( 0 );
+
+    _layerOrderUniform = new osg::Uniform( osg::Uniform::INT, "oe_layer_order" );
+    _layerOrderUniform->set( 0 );
 }
 
 
@@ -86,12 +89,14 @@ MPGeometry::renderPrimitiveSets(osg::State& state,
         const osg::Program::PerContextProgram* pcp = state.getLastAppliedProgramObject();
         GLint opacityLocation;
         GLint uidLocation;
+        GLint orderLocation;
 
         // yes, it's possible that the PCP is not set up yet.
         if ( pcp )
         {
             opacityLocation = pcp->getUniformLocation( _opacityUniform->getNameID() );
             uidLocation     = pcp->getUniformLocation( _layerUIDUniform->getNameID() );
+            orderLocation   = pcp->getUniformLocation( _layerOrderUniform->getNameID() );
         }
 
         // activate the image unit.
@@ -128,6 +133,10 @@ MPGeometry::renderPrimitiveSets(osg::State& state,
                     // assign the layer UID:
                     _layerUIDUniform->set( layer._layerID );
                     _layerUIDUniform->apply( ext, uidLocation );
+
+                    // assign the layer order:
+                    _layerOrderUniform->set( (int)i );
+                    _layerOrderUniform->apply( ext, orderLocation );
                 }
 
                 // draw the primitive sets.
@@ -162,7 +171,13 @@ void
 MPGeometry::compileGLObjects( osg::RenderInfo& renderInfo ) const
 {
     osg::Geometry::compileGLObjects( renderInfo );
-    //TODO? or just ignore it?
+
+    for(unsigned i=0; i<_layers.size(); ++i)
+    {
+        const Layer& layer = _layers[i];
+        if ( layer._tex.valid() )
+            layer._tex->apply( *renderInfo.getState() );
+    }
 }
 
 

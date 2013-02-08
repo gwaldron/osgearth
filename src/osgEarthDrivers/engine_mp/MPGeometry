@@ -60,6 +60,7 @@ namespace osgEarth_engine_mp
         mutable std::vector<Layer>           _layers;
         mutable Threading::Mutex             _mapSyncMutex;
         mutable osg::ref_ptr<osg::Uniform>   _layerUIDUniform;
+        mutable osg::ref_ptr<osg::Uniform>   _layerOrderUniform;
         mutable osg::ref_ptr<osg::Uniform>   _opacityUniform;
         int                                  _textureImageUnit;
 

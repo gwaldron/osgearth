@@ -479,13 +479,17 @@ MPTerrainEngineNode::updateShaders()
         GLSL_DEFAULT_PRECISION_FLOAT "\n"
         "varying vec4      oe_layer_tc; \n"
         "uniform sampler2D oe_layer_tex; \n"
-        "uniform int       oe_layer_uid; \n"
+        "uniform int       oe_layer_order; \n"
         "uniform float     oe_layer_opacity; \n"
         "__COLOR_FILTER_HEAD__"
         "void osgearth_frag_applyColoring( inout vec4 color ) \n"
         "{ \n"
         "    vec4 texel = texture2D(oe_layer_tex, oe_layer_tc.st);\n"
-        "    color = vec4(texel.rgb, color.a * texel.a * oe_layer_opacity); \n"
+        "    float alpha = texel.a * oe_layer_opacity; \n"
+        "    if (oe_layer_order == 0) \n"
+        "        color = vec4(color.rgb * (1.0 - alpha) + (texel.rgb * alpha), 1.0); \n"
+        "    else \n"
+        "        color = vec4(texel.rgb, color.a * alpha); \n"
         "    __COLOR_FILTER_BODY__"
         "} \n";
 
@@ -493,7 +497,7 @@ MPTerrainEngineNode::updateShaders()
     // image unit:
     replaceIn( vs, "__GL_MULTITEXCOORD__", Stringify() << "gl_MultiTexCoord" << _textureImageUnit );
 
-    // assemble color filter components
+    // assemble color filter code snippets.
     {
         std::stringstream cf_head;
         std::stringstream cf_body;
@@ -560,9 +564,15 @@ MPTerrainEngineNode::updateShaders()
     terrainStateSet->getOrCreateUniform(
         "oe_layer_opacity", osg::Uniform::FLOAT )->set( 1.0f );
 
-    // uniform that communicates the layer UID to the shaders
+    // uniform that conveys the layer UID to the shaders; necessary
+    // for per-layer branching (like color filters)
     terrainStateSet->getOrCreateUniform(
         "oe_layer_uid", osg::Uniform::INT )->set( 0 );
+
+    // uniform that conveys the render order, since the shaders
+    // need to know which is the first layer in order to blend properly
+    terrainStateSet->getOrCreateUniform(
+        "oe_layer_order", osg::Uniform::INT )->set( 0 );
 
     // install a default texture to use when no data is available
     // for a terrain tile.

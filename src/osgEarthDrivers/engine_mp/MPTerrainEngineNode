@@ -94,6 +94,7 @@ namespace osgEarth_engine_mp
 
         // Reloads all the tiles in the terrain due to a data model change
         void refresh();
+        void createTerrain();
 
         void addImageLayer( ImageLayer* layer );
         void addElevationLayer( ElevationLayer* layer );

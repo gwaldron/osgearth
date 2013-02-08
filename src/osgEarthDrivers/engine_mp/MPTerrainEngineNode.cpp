@@ -240,16 +240,29 @@ MPTerrainEngineNode::computeBound() const
 void
 MPTerrainEngineNode::refresh()
 {
-    //Clear out the hf cache
-    if (_tileModelFactory)
-    {
-        _tileModelFactory->getHeightFieldCache()->clear();
-    }
-
-    // rebuilds the terrain graph entirely.
-
+    // remove the old one:
     this->removeChild( _terrain );
 
+    // and create a new one.
+    createTerrain();
+}
+
+void
+MPTerrainEngineNode::onMapInfoEstablished( const MapInfo& mapInfo )
+{
+    OE_INFO << LC << "Sample ratio = " << _terrainOptions.heightFieldSampleRatio().value() << std::endl;
+
+    createTerrain();
+}
+
+void
+MPTerrainEngineNode::createTerrain()
+{
+    // scrub the heightfield cache.
+    if (_tileModelFactory)
+        _tileModelFactory->getHeightFieldCache()->clear();
+
+    // New terrain
     _terrain = new TerrainNode( _deadTiles.get() );
     this->addChild( _terrain );
 
@@ -267,46 +280,16 @@ MPTerrainEngineNode::refresh()
     for( unsigned i=0; i<keys.size(); ++i )
     {
         osg::Node* node = factory->createRootNode( keys[i] );
-        OE_INFO_CONTINUE << "." << std::endl;
+        OE_INFO_CONTINUE << "." << std::flush;
         if ( node )
             _terrain->addChild( node );
         else
             OE_WARN << LC << "Couldn't make tile for root key: " << keys[i].str() << std::endl;
     }
 
-    // re-write the shaders since we rebuilt the data model.
+    OE_INFO_CONTINUE << "done." << std::endl;
+
     updateShaders();
-}
-
-void
-MPTerrainEngineNode::onMapInfoEstablished( const MapInfo& mapInfo )
-{
-    // create the root terrain node.
-    _terrain = new TerrainNode( _deadTiles.get() );
-    this->addChild( _terrain );
-
-    OE_INFO << LC << "Sample ratio = " << _terrainOptions.heightFieldSampleRatio().value() << std::endl;
-
-    // KNF is what generates nodes given TileKeys.
-    KeyNodeFactory* factory = getKeyNodeFactory();
-
-    // Build the first level of the terrain.
-    // Collect the tile keys comprising the root tiles of the terrain.
-    std::vector< TileKey > keys;
-    _update_mapf->getProfile()->getRootKeys( keys );
-
-    for( unsigned i=0; i<keys.size(); ++i )
-    {
-        osg::Node* node = factory->createRootNode( keys[i] );
-        if ( node )
-            _terrain->addChild( node );
-        else
-            OE_WARN << LC << "Couldn't make tile for root key: " << keys[i].str() << std::endl;
-    }
-
-    // we just added the root tiles, so mark the bound in need of recomputation.
-    // (probably redundant)
-    this->dirtyBound();
 }
 
 

@@ -14,6 +14,7 @@ SET(HEADERS_ROOT
     Common
     Controls
     ClampCallback
+    DataScanner
     EarthManipulator
     ElevationManager
     ExampleResources
@@ -58,6 +59,7 @@ SET(SOURCES_ROOT
     AutoClipPlaneHandler.cpp
     ClampCallback.cpp
     Controls.cpp
+    DataScanner.cpp
     EarthManipulator.cpp
     ElevationManager.cpp
     ExampleResources.cpp

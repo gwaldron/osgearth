@@ -23,6 +23,7 @@
 #include <osgEarthUtil/MGRSFormatter>
 #include <osgEarthUtil/MouseCoordsTool>
 #include <osgEarthUtil/AutoClipPlaneHandler>
+#include <osgEarthUtil/DataScanner>
 
 #include <osgEarthAnnotation/AnnotationData>
 #include <osgEarthAnnotation/AnnotationRegistry>
@@ -412,16 +413,11 @@ MapNodeHelper::load(osg::ArgumentParser& args,
 
     if ( !node )
     {
-        OE_WARN << LC << "Unable to load an earth file from the command line." << std::endl;
-        return 0L;
-        //node = osgDB::readNodeFile( "gdal_tiff.earth" );
-        //if ( !node )
-        //{
-        //    return 0L;
-        //}
+        OE_WARN << LC << "No earth file from the command line; making one." << std::endl;
+        node = new MapNode();
     }
 
-    osg::ref_ptr<MapNode> mapNode = MapNode::findMapNode(node);
+    osg::ref_ptr<MapNode> mapNode = MapNode::get(node);
     if ( !mapNode.valid() )
     {
         OE_WARN << LC << "Loaded scene graph does not contain a MapNode - aborting" << std::endl;
@@ -465,7 +461,6 @@ MapNodeHelper::parse(MapNode*             mapNode,
     osg::ref_ptr<osgDB::Options> dbOptions = Registry::instance()->cloneOrCreateOptions();
 
     // parse out custom example arguments first:
-
     bool useSky        = args.read("--sky");
     bool useOcean      = args.read("--ocean");
     bool useMGRS       = args.read("--mgrs");
@@ -480,6 +475,12 @@ MapNodeHelper::parse(MapNode*             mapNode,
 
     std::string kmlFile;
     args.read( "--kml", kmlFile );
+
+    std::string imageFolder;
+    args.read( "--images", imageFolder );
+
+    std::string imageExtensions;
+    args.read("--image-extensions", imageExtensions);
 
     // install a canvas for any UI controls we plan to create:
     ControlCanvas* canvas = ControlCanvas::get(view, false);
@@ -632,17 +633,27 @@ MapNodeHelper::parse(MapNode*             mapNode,
     // Install an auto clip plane clamper
     if ( useAutoClip )
     {
-#if 0
-        HorizonClipNode* hcn = new HorizonClipNode( mapNode );
-        if ( mapNode->getNumParents() == 1 )
-        {
-            osg::Group* parent = mapNode->getParent(0);
-            hcn->addChild( mapNode );
-            parent->replaceChild( mapNode, hcn );
-        }
-#else
         mapNode->addCullCallback( new AutoClipPlaneCullCallback(mapNode) );
-#endif
+    }
+
+    // Scan for images if necessary.
+    if ( !imageFolder.empty() )
+    {
+        std::vector<std::string> extensions;
+        if ( !imageExtensions.empty() )
+            StringTokenizer( imageExtensions, extensions, ",;", "", false, true );
+        if ( extensions.empty() )
+            extensions.push_back( "tif" );
+
+        OE_INFO << LC << "Loading images from " << imageFolder << "..." << std::endl;
+        ImageLayerVector imageLayers;
+        DataScanner scanner;
+        scanner.findImageLayers( imageFolder, extensions, imageLayers );
+        for( ImageLayerVector::iterator i = imageLayers.begin(); i != imageLayers.end(); ++i )
+        {
+            mapNode->getMap()->addImageLayer( i->get() );
+        }
+        OE_INFO << LC << "...found " << imageLayers.size() << " image layers." << std::endl;
     }
 
     root->addChild( canvas );

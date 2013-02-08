@@ -94,7 +94,7 @@ MPGeometry::renderPrimitiveSets(osg::State& state,
             uidLocation     = pcp->getUniformLocation( _layerUIDUniform->getNameID() );
         }
 
-        // we are only using unit 0.
+        // activate the image unit.
         state.setActiveTextureUnit( _textureImageUnit );
 
         // interate over all the image layers
@@ -117,6 +117,7 @@ MPGeometry::renderPrimitiveSets(osg::State& state,
                 {
                     // apply opacity:
                     float opacity = layer._imageLayer->getOpacity();
+
                     if ( opacity != prev_opacity )
                     {
                         _opacityUniform->set( opacity );

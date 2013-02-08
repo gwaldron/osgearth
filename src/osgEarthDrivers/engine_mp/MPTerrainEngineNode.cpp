@@ -251,9 +251,9 @@ MPTerrainEngineNode::refresh()
     this->removeChild( _terrain );
 
     _terrain = new TerrainNode( _deadTiles.get() );
+    this->addChild( _terrain );
 
-    const MapInfo& mapInfo = _update_mapf->getMapInfo();
-
+    // Factory to create the root keys:
     KeyNodeFactory* factory = getKeyNodeFactory();
 
     // Build the first level of the terrain.
@@ -261,20 +261,13 @@ MPTerrainEngineNode::refresh()
     std::vector< TileKey > keys;
     _update_mapf->getProfile()->getRootKeys( keys );
 
-    //OBE: blending is always applied in updateShaders().
-    //if (_terrainOptions.enableBlending().value())
-    //{
-    //    _terrain->getOrCreateStateSet()->setMode(
-    //        GL_BLEND,
-    //        osg::StateAttribute::ON); 
-    //}
-
-    this->addChild( _terrain );
-
     // create a root node for each root tile key.
+    OE_INFO << LC << "Creating root keys (" << keys.size() << ")" << std::flush;
+
     for( unsigned i=0; i<keys.size(); ++i )
     {
         osg::Node* node = factory->createRootNode( keys[i] );
+        OE_INFO_CONTINUE << "." << std::endl;
         if ( node )
             _terrain->addChild( node );
         else
@@ -587,6 +580,16 @@ MPTerrainEngineNode::updateShaders()
     // uniform that communicates the layer UID to the shaders
     terrainStateSet->getOrCreateUniform(
         "oe_layer_uid", osg::Uniform::INT )->set( 0 );
+
+    // install a default texture to use when no data is available
+    // for a terrain tile.
+    osg::Image* image = ImageUtils::createOnePixelImage(osg::Vec4(0.7f,0.75f,1.0f,1.0f));
+    osg::Texture2D* tex = new osg::Texture2D(image);
+    tex->setFilter( osg::Texture::MAG_FILTER, osg::Texture::LINEAR );
+    tex->setFilter( osg::Texture::MIN_FILTER, osg::Texture::LINEAR ); //_MIPMAP_LINEAR );
+    tex->setWrap( osg::Texture::WRAP_S, osg::Texture::CLAMP_TO_EDGE );
+    tex->setWrap( osg::Texture::WRAP_T, osg::Texture::CLAMP_TO_EDGE );
+    terrainStateSet->setTextureAttributeAndModes( _textureImageUnit, tex, 1 );
 }
 
 

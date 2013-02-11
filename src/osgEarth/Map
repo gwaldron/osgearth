@@ -166,7 +166,25 @@ namespace osgEarth
          */
         void addMapCallback( MapCallback* callback ) const;
 
+        /**
+         * Removes a callback previously added with addMapCallback.
+         */
         void removeMapCallback( MapCallback* callback );
+
+        /**
+         * Begin a batch-update operation. Call this if you intend to add multiple
+         * layers at once; then call endUpdate() to complete the operation.
+         * Between calls to beginUpdate() and endUpdate(), Map will not invoke
+         * any callbacks you added wtih addMapCallback.
+         */
+        void beginUpdate();
+
+        /**
+         * Complete a batch update operation that started with a call to
+         * beginUpdate(). Fires all callbacks for operations that occurred
+         * since the call to beginUpdate().
+         */
+        void endUpdate();
 
         /**
          * Adds an image layer to the map.

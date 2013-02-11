@@ -653,9 +653,15 @@ MapNodeHelper::parse(MapNode*             mapNode,
         ImageLayerVector imageLayers;
         DataScanner scanner;
         scanner.findImageLayers( imageFolder, extensions, imageLayers );
-        for( ImageLayerVector::iterator i = imageLayers.begin(); i != imageLayers.end(); ++i )
+
+        if ( imageLayers.size() > 0 )
         {
-            mapNode->getMap()->addImageLayer( i->get() );
+            mapNode->getMap()->beginUpdate();
+            for( ImageLayerVector::iterator i = imageLayers.begin(); i != imageLayers.end(); ++i )
+            {
+                mapNode->getMap()->addImageLayer( i->get() );
+            }
+            mapNode->getMap()->endUpdate();
         }
         OE_INFO << LC << "...found " << imageLayers.size() << " image layers." << std::endl;
     }

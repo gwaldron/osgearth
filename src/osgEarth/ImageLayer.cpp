@@ -695,6 +695,12 @@ ImageLayer::createImageFromTileSource(const TileKey&    key,
     {
         result = source->createImage( key, op.get(), progress );
     }
+
+    // Process images with full alpha to properly support MP blending.
+    if ( result != 0L )
+    {
+        ImageUtils::featherAlphaRegions( result.get() );
+    }
     
     // If image creation failed (but was not intentionally canceled),
     // blacklist this tile for future requests.
@@ -703,8 +709,6 @@ ImageLayer::createImageFromTileSource(const TileKey&    key,
         source->getBlacklist()->add( key.getTileId() );
     }
 
-    //return result.release();
-    //return GeoImage(result.get(), finalKey.getExtent());
     return GeoImage(result.get(), key.getExtent());
 }
 

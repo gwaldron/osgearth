@@ -479,6 +479,7 @@ MPTerrainEngineNode::updateShaders()
         GLSL_DEFAULT_PRECISION_FLOAT "\n"
         "varying vec4      oe_layer_tc; \n"
         "uniform sampler2D oe_layer_tex; \n"
+        "uniform int       oe_layer_uid; \n"
         "uniform int       oe_layer_order; \n"
         "uniform float     oe_layer_opacity; \n"
         "__COLOR_FILTER_HEAD__"
@@ -573,16 +574,6 @@ MPTerrainEngineNode::updateShaders()
     // need to know which is the first layer in order to blend properly
     terrainStateSet->getOrCreateUniform(
         "oe_layer_order", osg::Uniform::INT )->set( 0 );
-
-    // install a default texture to use when no data is available
-    // for a terrain tile.
-    osg::Image* image = ImageUtils::createOnePixelImage(osg::Vec4(0.7f,0.75f,1.0f,1.0f));
-    osg::Texture2D* tex = new osg::Texture2D(image);
-    tex->setFilter( osg::Texture::MAG_FILTER, osg::Texture::LINEAR );
-    tex->setFilter( osg::Texture::MIN_FILTER, osg::Texture::LINEAR ); //_MIPMAP_LINEAR );
-    tex->setWrap( osg::Texture::WRAP_S, osg::Texture::CLAMP_TO_EDGE );
-    tex->setWrap( osg::Texture::WRAP_T, osg::Texture::CLAMP_TO_EDGE );
-    terrainStateSet->setTextureAttributeAndModes( _textureImageUnit, tex, 1 );
 }
 
 

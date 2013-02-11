@@ -607,6 +607,80 @@ ImageUtils::hasAlphaChannel(const osg::Image* image)
         image->getPixelFormat() == GL_LUMINANCE_ALPHA );
 }
 
+
+bool
+ImageUtils::hasTransparency(const osg::Image* image, float threshold)
+{
+    if ( !image ) return false;
+    PixelReader read(image);
+    for( int t=0; t<image->t(); ++t )
+        for( int s=0; s<image->s(); ++s )
+            if ( read(s, t).a() < threshold )
+                return true;
+    return false;
+}
+
+
+void
+ImageUtils::featherAlphaRegions(osg::Image* image, float maxAlpha)
+{
+    PixelReader read(image);
+    PixelWriter write(image);
+
+    int ns = image->s();
+    int nt = image->t();
+
+    osg::Vec4 n;
+
+    for( int s=0; s<ns; ++s )
+    {
+        for( int t=0; t<nt; ++t )
+        {
+            osg::Vec4 pixel = read(s, t);
+            if ( pixel.a() <= maxAlpha )
+            {
+                osg::Vec4 rgb;
+                int count = 0;
+                if ( s > 0 ) {
+                    n = read( s-1, t );
+                    if ( n.a() > maxAlpha ) {
+                        rgb += n;
+                        count++;
+                    }
+                }
+                if ( s < ns-1 ) {
+                    n = read( s+1, t );
+                    if ( n.a() > maxAlpha ) {
+                        rgb += n;
+                        count++;
+                    }
+                }
+                if ( t > 0 ) {
+                    n = read( s, t-1 );
+                    if ( n.a() > maxAlpha ) {
+                        rgb += n;
+                        count++;
+                    }
+                }
+                if ( t < nt-1 ) {
+                    n = read( s, t+1 );
+                    if ( n.a() > maxAlpha ) {
+                        rgb += n;
+                        count++;
+                    }
+                }
+
+                if ( count > 0 )
+                {
+                    rgb /= (float)count;
+                    write(osg::Vec4(rgb.r(), rgb.g(), rgb.b(), pixel.a()), s, t);
+                }
+            }
+        }
+    }
+}
+
+
 bool
 ImageUtils::isCompressed(const osg::Image *image)
 {

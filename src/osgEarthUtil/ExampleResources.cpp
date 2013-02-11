@@ -37,6 +37,7 @@
 #include <osgGA/StateSetManipulator>
 #include <osgViewer/ViewerEventHandlers>
 #include <osgDB/FileNameUtils>
+#include <osgDB/WriteFile>
 
 #define KML_PUSHPIN_URL "http://demo.pelicanmapping.com/icons/pushpin_yellow.png"
 
@@ -482,6 +483,9 @@ MapNodeHelper::parse(MapNode*             mapNode,
     std::string imageExtensions;
     args.read("--image-extensions", imageExtensions);
 
+    std::string outEarth;
+    args.read("--out-earth", outEarth);
+
     // install a canvas for any UI controls we plan to create:
     ControlCanvas* canvas = ControlCanvas::get(view, false);
 
@@ -656,6 +660,13 @@ MapNodeHelper::parse(MapNode*             mapNode,
         OE_INFO << LC << "...found " << imageLayers.size() << " image layers." << std::endl;
     }
 
+    // Dump out an earth file if so directed.
+    if ( !outEarth.empty() )
+    {
+        OE_NOTICE << LC << "Writing earth file: " << outEarth << std::endl;
+        osgDB::writeNodeFile( *mapNode, outEarth );
+    }
+
     root->addChild( canvas );
 }
 
@@ -676,13 +687,16 @@ std::string
 MapNodeHelper::usage() const
 {
     return Stringify()
-        << "    --sky                : add a sky model\n"
-        << "    --ocean              : add an ocean model\n"
-        << "    --kml <file.kml>     : load a KML or KMZ file\n"
-        << "    --coords             : display map coords under mouse\n"
-        << "    --dms                : dispay deg/min/sec coords under mouse\n"
-        << "    --dd                 : display decimal degrees coords under mouse\n"
-        << "    --mgrs               : show MGRS coords under mouse\n"
-        << "    --ortho              : use an orthographic camera\n"
-        << "    --autoclip           : installs an auto-clip plane callback\n";
+        << "  --sky                         : add a sky model\n"
+        << "  --ocean                       : add an ocean model\n"
+        << "  --kml <file.kml>              : load a KML or KMZ file\n"
+        << "  --coords                      : display map coords under mouse\n"
+        << "  --dms                         : dispay deg/min/sec coords under mouse\n"
+        << "  --dd                          : display decimal degrees coords under mouse\n"
+        << "  --mgrs                        : show MGRS coords under mouse\n"
+        << "  --ortho                       : use an orthographic camera\n"
+        << "  --autoclip                    : installs an auto-clip plane callback\n"
+        << "  --images [path]               : finds and loads image layers from folder [path]\n"
+        << "  --image-extensions [ext,...]  : with --images, extensions to use\n"
+        << "  --out [earthfile]             : write the loaded map to an earth file\n";
 }

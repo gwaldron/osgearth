@@ -23,6 +23,7 @@
 #include <osgEarth/Registry>
 #include <osgEarth/Capabilities>
 #include <osgEarth/MapFrame>
+#include <osgEarth/ImageUtils>
 #include <osgEarthSymbology/Geometry>
 #include <osgEarthSymbology/MeshConsolidator>
 
@@ -1606,16 +1607,16 @@ namespace
             tex->setMaxAnisotropy( 16.0f );
             tex->setResizeNonPowerOfTwoHint(false);
             tex->setFilter( osg::Texture::MAG_FILTER, osg::Texture::LINEAR );
-            tex->setFilter( osg::Texture::MIN_FILTER, osg::Texture::LINEAR_MIPMAP_LINEAR );
+            tex->setFilter( osg::Texture::MIN_FILTER, osg::Texture::NEAREST_MIPMAP_LINEAR );
             tex->setWrap( osg::Texture::WRAP_S, osg::Texture::CLAMP_TO_EDGE );
             tex->setWrap( osg::Texture::WRAP_T, osg::Texture::CLAMP_TO_EDGE );
 
             unsigned order = r->_layer.getOrder();
 
             MPGeometry::Layer layer;
-            layer._layerID    = r->_layer.getUID();
-            layer._imageLayer = r->_layer.getMapLayer();
-            layer._tex        = tex;
+            layer._layerID        = r->_layer.getUID();
+            layer._imageLayer     = r->_layer.getMapLayer();
+            layer._tex            = tex;
 
             // the surface:
             layer._texCoords  = r->_texCoords;

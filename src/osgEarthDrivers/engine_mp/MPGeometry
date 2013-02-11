@@ -48,6 +48,7 @@ namespace osgEarth_engine_mp
             osg::ref_ptr<const ImageLayer> _imageLayer;
             osg::ref_ptr<osg::Texture>     _tex;
             osg::ref_ptr<osg::Vec2Array>   _texCoords;
+            float                          _alphaThreshold;
 
             // in support of std::find
             inline bool operator == (const osgEarth::UID& rhs) const {

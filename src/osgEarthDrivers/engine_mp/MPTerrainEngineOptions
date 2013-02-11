@@ -36,7 +36,7 @@ namespace osgEarth { namespace Drivers
             _skirtRatio    ( 0.05 ),
             _quickRelease  ( true ),
             _lodFallOff    ( 0.0 ),
-            _normalizeEdges( false ),
+            _normalizeEdges( true ),
             _rangeMode     ( osg::LOD::DISTANCE_FROM_EYE_POINT ),
             _tilePixelSize ( 256 )
         {

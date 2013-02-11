@@ -83,10 +83,12 @@ MPGeometry::renderPrimitiveSets(osg::State& state,
     }
     else
     {
-        float opacity      =  1.0f;
-        float prev_opacity = -1.0f;
+        float prev_opacity        = -1.0f;
+        float prev_alphaThreshold = -1.0f;
+
         osg::ref_ptr<osg::GL2Extensions> ext = osg::GL2Extensions::Get( state.getContextID(), true );
         const osg::Program::PerContextProgram* pcp = state.getLastAppliedProgramObject();
+
         GLint opacityLocation;
         GLint uidLocation;
         GLint orderLocation;
@@ -122,7 +124,6 @@ MPGeometry::renderPrimitiveSets(osg::State& state,
                 {
                     // apply opacity:
                     float opacity = layer._imageLayer->getOpacity();
-
                     if ( opacity != prev_opacity )
                     {
                         _opacityUniform->set( opacity );
@@ -147,6 +148,9 @@ MPGeometry::renderPrimitiveSets(osg::State& state,
                 }
             }
         }
+
+        // prevent texture leakage
+        glBindTexture( GL_TEXTURE_2D, 0 );
     }
 }
 

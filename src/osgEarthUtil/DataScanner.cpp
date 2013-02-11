@@ -29,40 +29,39 @@ using namespace osgEarth::Drivers;
 
 namespace
 {
-    void traverseFolder(const std::string&              path,
-                        const std::vector<std::string>& extensions,
-                        ImageLayerVector&               out_imageLayers)
+    void traverse(const std::string&              path,
+                  const std::vector<std::string>& extensions,
+                  ImageLayerVector&               out_imageLayers)
     {
-        if ( !osgDB::fileExists(path) || osgDB::fileType(path) != osgDB::DIRECTORY )
-            return;
-
-        osgDB::DirectoryContents files = osgDB::getDirectoryContents(path);
-        for( osgDB::DirectoryContents::const_iterator f = files.begin(); f != files.end(); ++f )
+        if ( osgDB::fileType(path) == osgDB::DIRECTORY )
         {
-            if ( f->compare(".") == 0 || f->compare("..") == 0 )
-                continue;
-
-            std::string filepath = osgDB::concatPaths( path, *f );
-
-            if ( osgDB::fileType(filepath) == osgDB::DIRECTORY )
+            osgDB::DirectoryContents files = osgDB::getDirectoryContents(path);
+            for( osgDB::DirectoryContents::const_iterator f = files.begin(); f != files.end(); ++f )
             {
-                traverseFolder(filepath, extensions, out_imageLayers);
+                if ( f->compare(".") == 0 || f->compare("..") == 0 )
+                    continue;
+
+                std::string filepath = osgDB::concatPaths( path, *f );
+                traverse( filepath, extensions, out_imageLayers );
             }
-            else
+        }
+
+        else if ( osgDB::fileType(path) == osgDB::REGULAR_FILE )
+        {
+            const std::string ext = osgDB::getLowerCaseFileExtension(path);
+
+            if ( std::find(extensions.begin(), extensions.end(), ext) != extensions.end() )
             {
-                const std::string ext = osgDB::getLowerCaseFileExtension(filepath);
-                if ( std::find(extensions.begin(), extensions.end(), ext) != extensions.end() )
-                {
-                    GDALOptions gdal;
-                    gdal.url() = filepath;
+                GDALOptions gdal;
+                gdal.url() = path;
+                gdal.interpolation() = INTERP_NEAREST;
 
-                    ImageLayerOptions options( filepath, gdal );
-                    options.cachePolicy() = CachePolicy::NO_CACHE;
+                ImageLayerOptions options( path, gdal );
+                options.cachePolicy() = CachePolicy::NO_CACHE;
 
-                    ImageLayer* layer = new ImageLayer(options);
-                    out_imageLayers.push_back( layer );
-                    OE_INFO << LC << "Found " << filepath << std::endl;
-                }
+                ImageLayer* layer = new ImageLayer(options);
+                out_imageLayers.push_back( layer );
+                OE_INFO << LC << "Found " << path << std::endl;
             }
         }
     }
@@ -74,5 +73,5 @@ DataScanner::findImageLayers(const std::string&              absRootPath,
                              const std::vector<std::string>& extensions,
                              ImageLayerVector&               out_imageLayers) const
 {
-    traverseFolder( absRootPath, extensions, out_imageLayers );
+    traverse( absRootPath, extensions, out_imageLayers );
 }

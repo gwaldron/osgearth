@@ -704,5 +704,5 @@ MapNodeHelper::usage() const
         << "  --autoclip                    : installs an auto-clip plane callback\n"
         << "  --images [path]               : finds and loads image layers from folder [path]\n"
         << "  --image-extensions [ext,...]  : with --images, extensions to use\n"
-        << "  --out [earthfile]             : write the loaded map to an earth file\n";
+        << "  --out-earth [file]            : write the loaded map to an earth file\n";
 }

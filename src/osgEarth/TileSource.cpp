@@ -219,13 +219,15 @@ _status ( Status::Error("Not initialized") )
 {
     this->setThreadSafeRefUnref( true );
 
-    if ( *options.L2CacheSize() > 0 )
+    int l2CacheSize = 0;
+    char const* l2env = ::getenv( "OSGEARTH_L2_CACHE_SIZE" );
+    if ( l2env )
+    {
+        l2CacheSize = as<int>( std::string(l2env), 0 );
+    }
+    else if ( *options.L2CacheSize() > 0 )
     {
         _memCache = new MemCache( *options.L2CacheSize() );
-    }
-    else
-    {
-        OE_INFO << LC << "L2 Cache disabled" << std::endl;
     }
 
     if (_options.blacklistFilename().isSet())

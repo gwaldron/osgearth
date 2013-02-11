@@ -333,13 +333,11 @@ Map::setCache( Cache* cache )
         for (ImageLayerVector::iterator i = _imageLayers.begin(); i != _imageLayers.end(); ++i)
         {
             i->get()->setDBOptions( _dbOptions.get() );
-            //i->get()->setCache( _cache.get() );
         }
 
         for (ElevationLayerVector::iterator i = _elevationLayers.begin(); i != _elevationLayers.end(); ++i)
         {
             i->get()->setDBOptions( _dbOptions.get() );
-            //i->get()->setCache( _cache.get() );
         }
     }
 }
@@ -358,7 +356,29 @@ Map::removeMapCallback( MapCallback* cb )
     if (i != _mapCallbacks.end())
     {
         _mapCallbacks.erase( i );
-    }    
+    }
+}
+
+void
+Map::beginUpdate()
+{
+    MapModelChange msg( MapModelChange::BEGIN_BATCH_UPDATE, _dataModelRevision );
+
+    for( MapCallbackList::iterator i = _mapCallbacks.begin(); i != _mapCallbacks.end(); i++ )
+    {
+        i->get()->onMapModelChanged( msg );
+    }
+}
+
+void
+Map::endUpdate()
+{
+    MapModelChange msg( MapModelChange::END_BATCH_UPDATE, _dataModelRevision );
+ 
+    for( MapCallbackList::iterator i = _mapCallbacks.begin(); i != _mapCallbacks.end(); i++ )
+    {
+        i->get()->onMapModelChanged( msg );
+    }
 }
 
 void

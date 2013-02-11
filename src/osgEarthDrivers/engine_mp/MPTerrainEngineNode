@@ -113,6 +113,9 @@ namespace osgEarth_engine_mp
         class TerrainNode* _terrain;
         UID                _uid;
         Revision           _shaderLibRev;
+        bool               _batchUpdateInProgress;
+        bool               _refreshRequired;
+        bool               _shaderUpdateRequired;
 
         osg::ref_ptr< ElevationChangedCallback > _elevationCallback;
 

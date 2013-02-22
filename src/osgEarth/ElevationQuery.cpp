@@ -25,8 +25,6 @@ void
 ElevationQuery::postCTOR()
 {
     _tileSize         = 0;
-    _maxDataLevel     = 0;
-    //_technique        = TECHNIQUE_PARAMETRIC;
     _maxLevelOverride = -1;
     _queries          = 0.0;
     _totalTime        = 0.0;
@@ -39,10 +37,9 @@ ElevationQuery::postCTOR()
 void
 ElevationQuery::sync()
 {
-    if ( _mapf.sync() || _tileSize == 0 || _maxDataLevel == 0 )
+    if ( _mapf.sync() || _tileSize == 0  )
     {
-        _tileSize = 0;
-        _maxDataLevel = 0;
+        _tileSize = 0;        
 
         for( ElevationLayerVector::const_iterator i = _mapf.elevationLayers().begin(); i != _mapf.elevationLayers().end(); ++i )
         {
@@ -50,11 +47,6 @@ ElevationQuery::sync()
             int layerTileSize = i->get()->getTileSize();
             if ( layerTileSize > _tileSize )
                 _tileSize = layerTileSize;
-
-            // we also need the maximum available data level.
-            unsigned int layerMaxDataLevel = i->get()->getMaxDataLevel();
-            if ( layerMaxDataLevel > _maxDataLevel )
-                _maxDataLevel = layerMaxDataLevel;
         }
     }
 }
@@ -86,12 +78,8 @@ ElevationQuery::getMaxLevel( double x, double y, const SpatialReference* srs, co
             }
 
             //Need to convert the layer max of this TileSource to that of the actual profile
-            layerMax = profile->getEquivalentLOD( ts->getProfile(), layerMax );
+            layerMax = profile->getEquivalentLOD( ts->getProfile(), layerMax );            
         }
-        else
-        {
-            layerMax = i->get()->getMaxDataLevel();
-        }        
 
         if ( i->get()->getTerrainLayerRuntimeOptions().maxLevel().isSet() )
             layerMax = std::min( layerMax, *i->get()->getTerrainLayerRuntimeOptions().maxLevel() );
@@ -124,20 +112,20 @@ ElevationQuery::getMaxLevel( double x, double y, const SpatialReference* srs, co
             }
 
             //Need to convert the layer max of this TileSource to that of the actual profile
-            layerMax = profile->getEquivalentLOD( ts->getProfile(), layerMax );
-        }
-        else
-        {
-            layerMax = i->get()->getMaxDataLevel();
-        }
-        
+            layerMax = profile->getEquivalentLOD( ts->getProfile(), layerMax );            
+        }        
         
         if ( i->get()->getTerrainLayerRuntimeOptions().maxLevel().isSet() )
             layerMax = std::min( layerMax, *i->get()->getTerrainLayerRuntimeOptions().maxLevel() );
 
         if (layerMax > maxLevel)
             maxLevel = layerMax;
-    }    
+    } 
+
+    if (maxLevel == 0) 
+    {
+        //This means we had no data extents on any of our layers and no max levels are set
+    }
 
     return maxLevel;
 }
@@ -227,14 +215,13 @@ ElevationQuery::getElevationImpl(const GeoPoint& point,
                                  double*         out_actualResolution)
 {
     osg::Timer_t start = osg::Timer::instance()->tick();
-
-    if ( _maxDataLevel == 0 || _tileSize == 0 )
+    
+    if ( _mapf.elevationLayers().empty() )
     {
         // this means there are no heightfields.
         out_elevation = 0.0;
         return true;
     }
-
     
     //This is the max resolution that we actually have data at this point
     unsigned int bestAvailLevel = getMaxLevel( point.x(), point.y(), point.getSRS(), _mapf.getProfile());

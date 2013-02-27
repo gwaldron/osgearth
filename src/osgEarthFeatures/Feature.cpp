@@ -356,8 +356,7 @@ Feature::eval( StringExpression& expr, FilterContext const* context ) const
         }
       }
 
-      if (!val.empty())
-        expr.set( *i, val );
+      expr.set( *i, val );
     }
 
     return expr.eval();

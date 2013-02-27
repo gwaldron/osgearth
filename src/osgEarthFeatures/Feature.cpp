@@ -356,10 +356,6 @@ Feature::eval( StringExpression& expr, FilterContext const* context ) const
         }
       }
 
-<<<<<<< HEAD
-=======
-      //if (!val.empty())
->>>>>>> c5138a095e8cee21dd087f24484107f3200d0ee0
       expr.set( *i, val );
     }
 

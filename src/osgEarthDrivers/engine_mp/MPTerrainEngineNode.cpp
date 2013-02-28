@@ -278,6 +278,13 @@ MPTerrainEngineNode::createTerrain()
     _terrain = new TerrainNode( _deadTiles.get() );
     this->addChild( _terrain );
 
+    // Enable blending on the terrain node; this will result in the underlying
+    // "empty" globe being transparent instead of white.
+    if (_terrainOptions.enableBlending().value())
+    {
+        _terrain->getOrCreateStateSet()->setMode(GL_BLEND , osg::StateAttribute::ON);
+    }
+
     // Factory to create the root keys:
     KeyNodeFactory* factory = getKeyNodeFactory();
 

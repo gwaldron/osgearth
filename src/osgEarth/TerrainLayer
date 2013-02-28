@@ -88,13 +88,7 @@ namespace osgEarth
          */
         optional<double>& maxResolution() { return _maxResolution; }
         const optional<double>& maxResolution() const { return _maxResolution; }
-
-        /**
-         * The maximum level that data should be queried for this layer.
-         */
-        optional<unsigned int>& maxDataLevel() { return _maxDataLevel; }
-        const optional<unsigned int>& maxDataLevel() const { return _maxDataLevel; }
-
+        
         /**
          * Whether to use this layer with the map. Setting this to false means that 
          * the layer will remain in its map model but will not be used by the 
@@ -185,8 +179,7 @@ namespace osgEarth
         optional<bool>              _enabled;
         optional<bool>              _visible;
         optional<unsigned>          _reprojectedTileSize;
-        optional<double>            _edgeBufferRatio;
-        optional<unsigned>          _maxDataLevel;
+        optional<double>            _edgeBufferRatio;        
 
         optional<std::string>       _cacheId;
         optional<std::string>       _cacheFormat;
@@ -263,12 +256,7 @@ namespace osgEarth
          * Gets the tile size of the this MapLayer
          */
         unsigned int getTileSize() const;
-
-        /**
-         * Gets the maximum data level of this MapLayer
-         */
-        unsigned int getMaxDataLevel() const;
-
+        
         /**
          * Whether the layer represents dynamic data, i.e. tile data that can change.
          */
@@ -330,8 +318,7 @@ namespace osgEarth
                 _empty        ( rhs._empty ),
                 _cacheBinId   ( rhs._cacheBinId ),
                 _sourceName   ( rhs._sourceName ),
-                _sourceDriver ( rhs._sourceDriver ),
-                _maxDataLevel ( rhs._maxDataLevel ),
+                _sourceDriver ( rhs._sourceDriver ),                
                 _sourceProfile( rhs._sourceProfile ),
                 _cacheProfile ( rhs._cacheProfile ) { }
 
@@ -340,8 +327,7 @@ namespace osgEarth
                 _empty = conf.empty();
                 conf.getIfSet   ( "cachebin_id",    _cacheBinId );
                 conf.getIfSet   ( "source_name",    _sourceName );
-                conf.getIfSet   ( "source_driver",  _sourceDriver );
-                conf.getIfSet   ( "max_data_level", _maxDataLevel );
+                conf.getIfSet   ( "source_driver",  _sourceDriver );                
                 conf.getObjIfSet( "source_profile", _sourceProfile );
                 conf.getObjIfSet( "cache_profile",  _cacheProfile );
             }
@@ -351,8 +337,7 @@ namespace osgEarth
                 Config conf( "osgearth_terrainlayer_cachebin" );
                 conf.addIfSet   ( "cachebin_id",    _cacheBinId );
                 conf.addIfSet   ( "source_name",    _sourceName );
-                conf.addIfSet   ( "source_driver",  _sourceDriver );
-                conf.addIfSet   ( "max_data_level", _maxDataLevel );
+                conf.addIfSet   ( "source_driver",  _sourceDriver );                
                 conf.addObjIfSet( "source_profile", _sourceProfile );
                 conf.addObjIfSet( "cache_profile",  _cacheProfile );
                 return conf;
@@ -361,8 +346,7 @@ namespace osgEarth
             bool                     _empty;
             optional<std::string>    _cacheBinId;
             optional<std::string>    _sourceName;
-            optional<std::string>    _sourceDriver;
-            optional<unsigned>       _maxDataLevel;
+            optional<std::string>    _sourceDriver;            
             optional<ProfileOptions> _sourceProfile;
             optional<ProfileOptions> _cacheProfile;
         };

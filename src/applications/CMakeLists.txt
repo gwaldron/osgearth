@@ -70,6 +70,7 @@ ADD_SUBDIRECTORY(osgearth_colorfilter)
 ADD_SUBDIRECTORY(osgearth_contour)
 ADD_SUBDIRECTORY(osgearth_verticalscale)
 ADD_SUBDIRECTORY(osgearth_sequencecontrol)
+ADD_SUBDIRECTORY(osgearth_minimap)
 
 IF(NOT ${OPENSCENEGRAPH_VERSION} VERSION_LESS "3.1.0")
     ADD_SUBDIRECTORY(osgearth_shadow)

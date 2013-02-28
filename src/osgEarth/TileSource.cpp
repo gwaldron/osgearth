@@ -400,40 +400,6 @@ TileSource::getProfile() const
     return _profile.get();
 }
 
-unsigned
-TileSource::getMaxDataLevel() const
-{
-    optional<unsigned> maxDataLevel;
-
-    for (DataExtentList::const_iterator itr = _dataExtents.begin(); itr != _dataExtents.end(); ++itr)
-    {
-        if ( itr->maxLevel().isSet() && itr->maxLevel() > *maxDataLevel )
-        {
-            maxDataLevel = itr->maxLevel().get();
-        }
-    }
-
-    // return "23" if no max is found
-    return maxDataLevel.isSet() ? *maxDataLevel : 23u;
-}
-
-unsigned
-TileSource::getMinDataLevel() const
-{
-    optional<unsigned> minDataLevel;
-
-    for (DataExtentList::const_iterator itr = _dataExtents.begin(); itr != _dataExtents.end(); ++itr)
-    {
-        if ( itr->minLevel().isSet() && itr->minLevel() < *minDataLevel )
-        {
-            minDataLevel = itr->minLevel().get();
-        }
-    }
-
-    return minDataLevel.isSet() ? *minDataLevel : 0;
-}
-
-
 bool
 TileSource::hasDataAtLOD( unsigned lod ) const
 {

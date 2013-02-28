@@ -15,8 +15,7 @@ SET(HEADERS_ROOT
     Controls
     ClampCallback
     DataScanner
-    EarthManipulator
-    ElevationManager
+    EarthManipulator    
     ExampleResources
     Export
     FeatureManipTool
@@ -60,8 +59,7 @@ SET(SOURCES_ROOT
     ClampCallback.cpp
     Controls.cpp
     DataScanner.cpp
-    EarthManipulator.cpp
-    ElevationManager.cpp
+    EarthManipulator.cpp    
     ExampleResources.cpp
     FeatureManipTool.cpp
     FeatureQueryTool.cpp

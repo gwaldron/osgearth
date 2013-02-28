@@ -129,7 +129,7 @@ public:
     osg::Image* createImage(const TileKey&        key,
                             ProgressCallback*     progress )
     {
-        if (_tileMap.valid() && key.getLevelOfDetail() <= getMaxDataLevel() )
+        if (_tileMap.valid() && key.getLevelOfDetail() <= _tileMap->getMaxLevel() )
         {
             std::string image_url = _tileMap->getURL( key, _invertY );
                 

@@ -693,6 +693,26 @@ namespace osgEarth
          */
         osg::HeightField* takeHeightField();
 
+        /**
+         * Gets the X interval of this GeoHeightField
+         */
+        double getXInterval() const;
+
+        /**
+         * Gets the Y interval of this GeoHeightField
+         */
+        double getYInterval() const;
+
+
+        //Sort GeoHeightField's by resolution
+        struct SortByResolutionFunctor
+        {
+            inline bool operator() (const GeoHeightField& lhs, const GeoHeightField& rhs) const
+            {                
+                return lhs.getXInterval() < rhs.getXInterval();                
+            }
+        };
+
     protected:
         osg::ref_ptr<osg::HeightField> _heightField;
         GeoExtent                      _extent;
@@ -700,6 +720,10 @@ namespace osgEarth
     };
 
 	typedef std::vector<GeoHeightField> GeoHeightFieldVector;
+
+
+
+
 }
 
 #endif // OSGEARTH_GEODATA_H

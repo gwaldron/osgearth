@@ -317,11 +317,11 @@ ElevationLayer::assembleHeightFieldFromTileSource(const TileKey&    key,
                                 break;
                             }                        
                             parentKey = parentKey.createParentKey();
-                        }
+                        }                        
                         else
-                        {
+                        {                            
                             break;
-                        }
+                        }                        
                     }                    
                 }
             }
@@ -340,7 +340,10 @@ ElevationLayer::assembleHeightFieldFromTileSource(const TileKey&    key,
                 width = itr->getHeightField()->getNumColumns();
             if (itr->getHeightField()->getNumRows() > height) 
                 height = itr->getHeightField()->getNumRows();                        
-        }     
+        }
+
+        //Now sort the heightfields by resolution to make sure we're sampling the highest resolution one first.
+        std::sort( heightFields.begin(), heightFields.end(), GeoHeightField::SortByResolutionFunctor());        
 
         result = new osg::HeightField();
         result->allocate(width, height);

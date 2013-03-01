@@ -178,6 +178,16 @@ FeatureNode::setFeature( Feature* feature )
     init();
 }
 
+void
+FeatureNode::setStyle(const Style& style)
+{
+    if ( _feature.valid() )
+    {
+        _feature->style() = style;
+        init();
+    }
+}
+
 osg::Group*
 FeatureNode::getAttachPoint()
 {

@@ -400,6 +400,10 @@ MapNodeHelper::load(osg::ArgumentParser& args,
                     osgViewer::View*     view,
                     Control*             userControl ) const
 {
+    // do this first before scanning for an earth file
+    std::string outEarth;
+    args.read( "--out-earth", outEarth );
+
     // read in the Earth file:
     osg::Node* node = 0L;
     for( int i=0; i<args.argc(); ++i )
@@ -439,6 +443,13 @@ MapNodeHelper::load(osg::ArgumentParser& args,
 
     // parses common cmdline arguments.
     parse( mapNode.get(), args, view, root, userControl );
+
+    // Dump out an earth file if so directed.
+    if ( !outEarth.empty() )
+    {
+        OE_NOTICE << LC << "Writing earth file: " << outEarth << std::endl;
+        osgDB::writeNodeFile( *mapNode, outEarth );
+    }
 
     // configures the viewer with some stock goodies
     configureView( view );
@@ -482,9 +493,6 @@ MapNodeHelper::parse(MapNode*             mapNode,
 
     std::string imageExtensions;
     args.read("--image-extensions", imageExtensions);
-
-    std::string outEarth;
-    args.read("--out-earth", outEarth);
 
     // install a canvas for any UI controls we plan to create:
     ControlCanvas* canvas = ControlCanvas::get(view, false);
@@ -666,13 +674,6 @@ MapNodeHelper::parse(MapNode*             mapNode,
         OE_INFO << LC << "...found " << imageLayers.size() << " image layers." << std::endl;
     }
 
-    // Dump out an earth file if so directed.
-    if ( !outEarth.empty() )
-    {
-        OE_NOTICE << LC << "Writing earth file: " << outEarth << std::endl;
-        osgDB::writeNodeFile( *mapNode, outEarth );
-    }
-
     root->addChild( canvas );
 }
 
@@ -704,5 +705,5 @@ MapNodeHelper::usage() const
         << "  --autoclip                    : installs an auto-clip plane callback\n"
         << "  --images [path]               : finds and loads image layers from folder [path]\n"
         << "  --image-extensions [ext,...]  : with --images, extensions to use\n"
-        << "  --out [earthfile]             : write the loaded map to an earth file\n";
+        << "  --out-earth [file]            : write the loaded map to an earth file\n";
 }

@@ -1853,3 +1853,17 @@ GeoHeightField::takeHeightField()
 {
     return _heightField.release();
 }
+
+double
+GeoHeightField::getXInterval() const
+{
+    return _extent.width()  / (double)(_heightField->getNumColumns()-1);        
+}
+
+double
+GeoHeightField::getYInterval() const
+{
+    return _extent.height() / (double)(_heightField->getNumRows()-1);
+}
+
+

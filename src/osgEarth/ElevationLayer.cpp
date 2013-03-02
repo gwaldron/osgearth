@@ -277,6 +277,10 @@ ElevationLayer::assembleHeightFieldFromTileSource(const TileKey&    key,
     std::vector< TileKey > intersectingTiles;
     getProfile()->getIntersectingTiles( key, intersectingTiles );
 
+
+    //Maintain a list of heightfield tiles that have been added to the list already.
+    std::set< osgTerrain::TileID > existingTiles; 
+
     // collect heightfield for each intersecting key. Note, we're hitting the
     // underlying tile source here, so there's no vetical datum shifts happening yet.
     // we will do that later.
@@ -295,17 +299,29 @@ ElevationLayer::assembleHeightFieldFromTileSource(const TileKey&    key,
                 }
                 else
                 { 
-                    //We couldn't get a heightfield at the given key so fall back on parent tiles
+                    // We couldn't get a heightfield at the given key so fall back on parent tiles
                     TileKey parentKey = layerKey.createParentKey();
                     while (!hf && parentKey.valid())
                     {
-                        hf = createHeightFieldFromTileSource( parentKey, progress );
-                        if (hf)
+                        // Make sure we haven't already added this heightfield to the list.
+                        // This could happen if you have multiple high resolution tiles that dont' have data.
+                        // So if you have four level 5 tiles with no data, they will fall back on the same level 4 tile.
+                        // This existingTiles check makes sure we don't process and add the same tile multiple times
+                        if (existingTiles.find(parentKey.getTileId()) == existingTiles.end()) 
                         {
-                            heightFields.push_back( GeoHeightField(hf, parentKey.getExtent()) );
+                            hf = createHeightFieldFromTileSource( parentKey, progress );
+                            if (hf)
+                            {
+                                heightFields.push_back( GeoHeightField(hf, parentKey.getExtent()) );                                
+                                existingTiles.insert(parentKey.getTileId());
+                                break;
+                            }                        
+                            parentKey = parentKey.createParentKey();
+                        }                        
+                        else
+                        {                            
                             break;
                         }                        
-                        parentKey = parentKey.createParentKey();
                     }                    
                 }
             }
@@ -323,8 +339,11 @@ ElevationLayer::assembleHeightFieldFromTileSource(const TileKey&    key,
             if (itr->getHeightField()->getNumColumns() > width)
                 width = itr->getHeightField()->getNumColumns();
             if (itr->getHeightField()->getNumRows() > height) 
-                height = itr->getHeightField()->getNumRows();
+                height = itr->getHeightField()->getNumRows();                        
         }
+
+        //Now sort the heightfields by resolution to make sure we're sampling the highest resolution one first.
+        std::sort( heightFields.begin(), heightFields.end(), GeoHeightField::SortByResolutionFunctor());        
 
         result = new osg::HeightField();
         result->allocate(width, height);

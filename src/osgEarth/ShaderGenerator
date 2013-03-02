@@ -32,6 +32,11 @@ namespace osgEarth
      * Utility class that will traverse a scene graph and generate a
      * set of VirtualProgram attributes to render it as best it can using
      * shaders.
+     *
+     * Usage:
+     *
+     *   ShaderGenerator gen;
+     *   graph->accept( gen );
      */
     class OSGEARTH_EXPORT ShaderGenerator : public osg::NodeVisitor
     {

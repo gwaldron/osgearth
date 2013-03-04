@@ -1,0 +1,15 @@
+<!-- 
+Simple basemap
+-->
+
+<map name="simple_basemap" type="geocentric" version="2">
+
+    <image driver="gdal" name="world-tiff">
+        <url>./world.tif</url>
+    </image>
+    
+    <options>
+        <terrain driver="mp" />
+    </options>
+
+</map>

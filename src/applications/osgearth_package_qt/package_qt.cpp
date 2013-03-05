@@ -40,8 +40,19 @@ using namespace PackageQt;
 using namespace osgEarth::Util;
 using namespace osgEarth::Util::Controls;
 
-#define BASEMAP_URL "./data/base.earth"
 
+/** Finds an argument with the specified extension. */
+std::string
+findArgumentWithExtension( osg::ArgumentParser& args, const std::string& ext )
+{
+    for( int i=0; i<args.argc(); ++i )
+    {
+        std::string arg( args.argv()[i] );
+        if ( endsWith( toLower(trim(arg)), ".earth" ) )
+            return arg;
+    }
+    return "";
+}
 
 int main(int argc, char** argv)
 {
@@ -67,16 +78,13 @@ int main(int argc, char** argv)
     osgEarth::setNotifyLevel( osg::INFO );
   }
 
-
   osg::DisplaySettings::instance()->setMinimumNumStencilBits(8);
-
 
   #ifdef Q_WS_X11
   XInitThreads();
-#endif
+  #endif
 
   QApplication app(argc, argv);
-
 
   osg::ref_ptr<osg::Group> root = new osg::Group();
 
@@ -89,18 +97,11 @@ int main(int argc, char** argv)
   if (views.size() > 0)
     mainView = views[0];
 
-
-  //create the SceneController and load base earth file
-  SceneController controller(root, mainView);
-  osg::Node* earthNode =  controller.loadEarthFile(BASEMAP_URL);
-
-  if (!earthNode)
-  {
-    //TODO: Better fallback method
-    std::cout << "Unable to load basemap." << std::endl;
-    return -1;
-  }
-  
+  //create the SceneController, if no earth file is specified a blank
+  //globe will be loaded
+  osg::ArgumentParser args(&argc,argv);
+  std::string earthFile = findArgumentWithExtension(args, ".earth");
+  SceneController controller(root, mainView, earthFile);
 
   //create the TMSExporter and main window
   TMSExporter exporter;

@@ -34,7 +34,7 @@ namespace PackageQt
   {
   public:
 
-    SceneController(osg::Group* root, osgViewer::View* view);
+    SceneController(osg::Group* root, osgViewer::View* view, const std::string& url="");
 
     osg::Node* loadEarthFile(const std::string& url);
 

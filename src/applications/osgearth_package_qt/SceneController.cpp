@@ -33,7 +33,7 @@ using namespace PackageQt;
 
 #define LC "[SceneController] "
 
-SceneController::SceneController(osg::Group* root, osgViewer::View* view)
+SceneController::SceneController(osg::Group* root, osgViewer::View* view, const std::string& url)
 : _root(root), _view(view)
 {
   if (_root.valid() && _view.valid())
@@ -48,6 +48,8 @@ SceneController::SceneController(osg::Group* root, osgViewer::View* view)
 
     root->addChild(_canvas);
   }
+
+  loadEarthFile(url);
 }
 
 osg::Node* SceneController::loadEarthFile(const std::string& url)
@@ -56,7 +58,10 @@ osg::Node* SceneController::loadEarthFile(const std::string& url)
     return 0L;
 
   if (_earthNode.valid())
+  {
     _root->removeChild(_earthNode);
+    _earthNode = 0L;
+  }
 
   if (_sky.valid())
   {
@@ -67,7 +72,12 @@ osg::Node* SceneController::loadEarthFile(const std::string& url)
   if (_controlContainer.valid())
     _controlContainer->clearControls();
 
-  _earthNode = osgDB::readNodeFile( url );
+  if (url.length() > 0)
+    _earthNode = osgDB::readNodeFile( url );
+
+  //Load a blank globe if needed
+  if (!_earthNode.valid())
+    _earthNode = new osgEarth::MapNode(new osgEarth::Map());
 
   if (_earthNode.valid())
   {

@@ -707,10 +707,22 @@ MapNode::traverse( osg::NodeVisitor& nv )
                 ud->_cameraAltitude = eye.z();
             }
 
+            // window scale matrix:
+            osg::ref_ptr<osg::StateSet> tempSS = new osg::StateSet();
+            osg::Matrix  m4 = cv->getWindowMatrix();
+            osg::Matrix3 m3( m4(0,0), m4(1,0), m4(2,0),
+                             m4(0,1), m4(1,1), m4(2,1),
+                             m4(0,2), m4(1,2), m4(2,2) );
+            osg::Uniform* W = new osg::Uniform(osg::Uniform::FLOAT_MAT3, "oe_WindowScaleMatrix");
+            W->set( m3 );
+            tempSS->addUniform( W, 1 | osg::StateAttribute::OVERRIDE );
+            cv->pushStateSet( tempSS.get() );
+
             // traverse:
             std::for_each( _children.begin(), _children.end(), osg::NodeAcceptOp(nv) );
 
             // restore:
+            cv->popStateSet();
             cv->setUserData( oldUserData.get() );
         }
     }

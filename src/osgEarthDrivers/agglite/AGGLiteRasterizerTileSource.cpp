@@ -22,7 +22,7 @@
 #include <osgEarthFeatures/TransformFilter>
 #include <osgEarthFeatures/BufferFilter>
 #include <osgEarthSymbology/Style>
-//TODO: replace this with ImageRasterizer
+//TODO: replace this with GeometryRasterizer
 #include <osgEarthSymbology/AGG.h>
 #include <osgEarth/Registry>
 #include <osgEarth/FileUtils>
@@ -35,7 +35,6 @@
 #include <osgDB/WriteFile>
 
 #include "AGGLiteOptions"
-//#include "agg.h"
 
 #include <sstream>
 #include <OpenThreads/Mutex>
@@ -77,7 +76,6 @@ public:
         agg::rendering_buffer rbuf( image->data(), image->s(), image->t(), image->s()*4 );
         agg::renderer<agg::span_abgr32> ren(rbuf);
         ren.clear(agg::rgba8(0,0,0,0));
-        //ren.clear(agg::rgba8(255,255,255,0));
         return true;
     }
 
@@ -115,8 +113,6 @@ public:
         // initialize:
         double xmin = imageExtent.xMin();
         double ymin = imageExtent.yMin();
-        //double s = (double)image->s();
-        //double t = (double)image->t();
         double xf = (double)image->s() / imageExtent.width();
         double yf = (double)image->t() / imageExtent.height();
 
@@ -203,18 +199,25 @@ public:
                 {
                     lineWidth = masterLine->stroke()->width().value();
 
+                    // if the width units are specified, process them:
                     if ( masterLine->stroke()->widthUnits().isSet() )
                     {
                         const Units& featureUnits = featureSRS->getUnits();
                         const Units& strokeUnits  = masterLine->stroke()->widthUnits().value();
+
+                        // if the units are different than those of the feature data, we need to
+                        // do a units conversion.
                         if ( featureUnits != strokeUnits )
                         {
                             if ( Units::canConvert(strokeUnits, featureUnits) )
                             {
+                                // linear to linear, no problem
                                 lineWidth = strokeUnits.convertTo( featureUnits, lineWidth );
                             }
                             else if ( strokeUnits.isLinear() && featureUnits.isAngular() )
                             {
+                                // linear to angular? approximate degrees per meter at the 
+                                // latitude of the tile's centroid.
                                 lineWidth = masterLine->stroke()->widthUnits()->convertTo(Units::METERS, lineWidth);
                                 double circ = featureSRS->getEllipsoid()->getRadiusEquator() * 2.0 * osg::PI;
                                 double x, y;
@@ -223,21 +226,21 @@ public:
                                 lineWidth = osg::RadiansToDegrees(radians);
                             }
                         }
-                    }                                
-                    
-                    // enfore a minimum width:
+                    }
+
+                    // enfore a minimum width of one pixel.
                     GeoExtent imageExtentInFeatureSRS = imageExtent.transform(featureSRS);
                     double pixelWidth = imageExtentInFeatureSRS.width() / (double)image->s();
-                    lineWidth = osg::clampAbove(lineWidth, pixelWidth);
+                    float minPixels = masterLine->stroke()->minPixels().getOrUse( 1.0f );
+                    lineWidth = osg::clampAbove(lineWidth, pixelWidth*minPixels);
                 }
             }
 
-            buffer.distance() = lineWidth * 0.5;
-
+            buffer.distance() = lineWidth * 0.5;   // since the distance is for one side
             buffer.push( linesToBuffer, context );
         }
 
-        // First, transform the features into the map's SRS:
+        // Transform the features into the map's SRS:
         TransformFilter xform( imageExtent.getSRS() );
         xform.setLocalizeCoordinates( false );
         context = xform.push( features, context );
@@ -335,7 +338,7 @@ public:
         }
 
         bd->_pass++;
-        return true;            
+        return true;
     }
 
     //override

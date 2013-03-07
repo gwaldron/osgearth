@@ -143,6 +143,8 @@ PolygonizeLinesOperator::operator()(osg::Vec3Array* verts,
     float width            = Distance(*_stroke.width(), *_stroke.widthUnits()).as(Units::METERS);
     float halfWidth        = 0.5f * width;
     float maxRoundingAngle = asin( _stroke.roundingRatio().get() );
+    float minPixelSize     = _stroke.minPixels().getOrUse( 0.0f );
+    bool  autoScale        = minPixelSize > 0.0f;
 
     osg::Geometry* geom  = new osg::Geometry();
     geom->setUseVertexBufferObjects( true );
@@ -158,7 +160,7 @@ PolygonizeLinesOperator::operator()(osg::Vec3Array* verts,
 
     // Set up the buffering vector attribute array.
     osg::Vec3Array* spine = 0L;
-    if ( _makeScalable )
+    if ( autoScale )
     {
         spine = new osg::Vec3Array( *verts );
         geom->setVertexAttribArray    ( osg::Drawable::ATTRIBUTE_6, spine );
@@ -435,7 +437,7 @@ PolygonizeLinesOperator::operator()(osg::Vec3Array* verts,
 PolygonizeLinesFilter::PolygonizeLinesFilter(const Style& style) :
 _style( style )
 {
-    _makeScalable = true;
+    //nop
 }
 
 
@@ -460,7 +462,6 @@ PolygonizeLinesFilter::push(FeatureList& input, FilterContext& cx)
     // The operator we'll use to make lines into polygons.
     const LineSymbol* line = _style.get<LineSymbol>();
     PolygonizeLinesOperator polygonize( line ? (*line->stroke()) : Stroke() );
-    polygonize._makeScalable = _makeScalable;
 
     // Geode to hold all the geometries.
     osg::Geode* geode = new osg::Geode();
@@ -505,8 +506,9 @@ PolygonizeLinesFilter::push(FeatureList& input, FilterContext& cx)
         osgUtil::Optimizer::VERTEX_POSTTRANSFORM );
 #endif
 
-    // If we have buffering vectors, we needs a shader.
-    if ( _makeScalable )
+    // If we're auto-scaling, we need a shader
+    float minPixels = line ? line->stroke()->minPixels().getOrUse( 0.0f ) : 0.0f;
+    if ( minPixels )
     {
         osg::StateSet* stateSet = geode->getOrCreateStateSet();
 
@@ -516,18 +518,35 @@ PolygonizeLinesFilter::push(FeatureList& input, FilterContext& cx)
             GLSL_DEFAULT_PRECISION_FLOAT "\n"
             "attribute vec3   oe_polyline_center; \n"
             "uniform   float  oe_polyline_scale;  \n"
+            "uniform   float  oe_polyline_min_pixels; \n"
+            "uniform   mat3   oe_WindowScaleMatrix; \n"
+
             "void oe_polyline_scalelines() \n"
             "{ \n"
-            "   if ( oe_polyline_scale != 1.0 ) \n"
+            "   if ( oe_polyline_scale != 1.0 || oe_polyline_min_pixels > 0.0 ) \n"
             "   { \n"
             "       vec4  center  = vec4(oe_polyline_center*gl_Vertex.w, gl_Vertex.w); \n"
             "       vec4  vector  = gl_Vertex - center; \n"
-            "       if ( length(vector.xyz) > 0.0 ) { \n"
-            "           vec4 vert_out = center + vector*oe_polyline_scale; \n"
-            "           gl_Position = gl_ModelViewProjectionMatrix * vert_out; \n"
-            "       } \n"
-            "   } \n"
-            "}\n";
+            "       if ( length(vector.xyz) > 0.0 ) \n"
+            "       { \n"
+            "           float scale = oe_polyline_scale; \n"
+
+            "           vec4 vertex_clip = gl_ModelViewProjectionMatrix * gl_Vertex; \n"
+            "           vec4 center_clip = gl_ModelViewProjectionMatrix * center; \n"
+            "           vec4 vector_clip = vertex_clip - center_clip; \n"
+
+            "           if ( oe_polyline_min_pixels > 0.0 ) \n"
+            "           { \n"
+            "               vec3 vector_win = oe_WindowScaleMatrix * (vertex_clip.xyz/vertex_clip.w - center_clip.xyz/center_clip.w); \n"
+            "               float min_scale = max( (0.5*oe_polyline_min_pixels)/length(vector_win.xy), 1.0 ); \n"
+            "               scale = max( scale, min_scale ); \n"
+            "           } \n"
+
+            "           gl_Position = center_clip + vector_clip*scale; \n"
+            "        } \n"
+            "    } \n"
+            "} \n";
+
         vp->setFunction( "oe_polyline_scalelines", vs, ShaderComp::LOCATION_VERTEX_PRE_COLORING );
         vp->addBindAttribLocation( "oe_polyline_center", osg::Drawable::ATTRIBUTE_6 );
         stateSet->setAttributeAndModes( vp, 1 );
@@ -535,9 +554,14 @@ PolygonizeLinesFilter::push(FeatureList& input, FilterContext& cx)
         // add the default scaling uniform.
         // good way to test:
         //    osgearth_viewer earthfile --uniform oe_polyline_scale 1.0 10.0
-        osg::Uniform* scaleUniform = new osg::Uniform(osg::Uniform::FLOAT, "oe_polyline_scale");
-        scaleUniform->set( 1.0f );
-        stateSet->addUniform( scaleUniform, 1 );
+        osg::Uniform* scaleU = new osg::Uniform(osg::Uniform::FLOAT, "oe_polyline_scale");
+        scaleU->set( 1.0f );
+        stateSet->addUniform( scaleU, 1 );
+
+        // the default "min pixels" uniform.
+        osg::Uniform* minPixelsU = new osg::Uniform(osg::Uniform::FLOAT, "oe_polyline_min_pixels");
+        minPixelsU->set( minPixels );
+        stateSet->addUniform( minPixelsU, 1 );
     }
 
     return delocalize( geode );

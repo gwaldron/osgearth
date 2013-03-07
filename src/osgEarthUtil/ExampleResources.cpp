@@ -685,21 +685,29 @@ MapNodeHelper::parse(MapNode*             mapNode,
     }
 
     // Generic named value uniform with min/max.
+    VBox* uniformBox = 0L;
     while( args.find( "--uniform" ) >= 0 )
     {
         std::string name;
         float minval, maxval;
         if ( args.read( "--uniform", name, minval, maxval ) )
         {
+            if ( uniformBox == 0L )
+            {
+                uniformBox = new VBox();
+                uniformBox->setBackColor(0,0,0,0.5);
+                uniformBox->setAbsorbEvents( true );
+                canvas->addControl( uniformBox );
+            }
             osg::Uniform* uniform = new osg::Uniform(osg::Uniform::FLOAT, name);
             uniform->set( minval );
             root->getOrCreateStateSet()->addUniform( uniform, osg::StateAttribute::OVERRIDE );
-            HBox* vbox = new HBox();
-            vbox->setAbsorbEvents( true );
-            vbox->addControl( new LabelControl(name) );
-            HSliderControl* hs = vbox->addControl( new HSliderControl(minval, maxval, minval, new ApplyValueUniform(uniform)));
+            HBox* box = new HBox();
+            box->addControl( new LabelControl(name) );
+            HSliderControl* hs = box->addControl( new HSliderControl(minval, maxval, minval, new ApplyValueUniform(uniform)));
             hs->setHorizFill(true, 200);
-            canvas->addControl( vbox );
+            box->addControl( new LabelControl(hs) );
+            uniformBox->addControl( box );
             OE_INFO << LC << "Installed uniform controller for " << name << std::endl;
         }
     }

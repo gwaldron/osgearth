@@ -11,7 +11,7 @@ Demonstrates use of the "agglite" feature rasterization driver.
         <url>../data/world.tif</url>
     </image>
     
-    <image name="world_boundaries" driver="agglite" cache_enabled="false">
+    <image name="world_boundaries" driver="agglite">
 
         <!-- Configure the OGR feature driver to read the shapefile. -->             
         <features name="world" driver="ogr">
@@ -21,21 +21,19 @@ Demonstrates use of the "agglite" feature rasterization driver.
         
         <!-- Treat the geometry as lines. -->
         <geometry_type>line</geometry_type>
-                
-        <!-- This means the "stroke-width" in the style is (approximately) in pixels. -->
-        <relative_line_size>true</relative_line_size>
         
         <lod_blending>true</lod_blending>
                 
         <styles>
             <style type="text/css">
                 world {
-                   stroke: #ffffff;
-                   stroke-opacity: 1.0;
-                   stroke-width:   1.0;
+                   stroke:       #ffffffff;
+                   stroke-width: 1km;
                 }            
             </style>
         </styles>
+		
+		<cache_policy usage="no_cache"/>
         
     </image>
   

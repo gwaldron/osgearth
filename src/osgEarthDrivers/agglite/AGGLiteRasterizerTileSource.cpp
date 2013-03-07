@@ -221,11 +221,14 @@ public:
                                 context.profile()->getExtent().getCentroid(x, y);
                                 double radians = (lineWidth/circ) * cos(osg::DegreesToRadians(y));
                                 lineWidth = osg::RadiansToDegrees(radians);
-                                lineWidth = osg::clampAbove(lineWidth, trans_xf);
-                                OE_INFO << LC << "line width = " << lineWidth << " degrees" << std::endl;
                             }
                         }
-                    }
+                    }                                
+                    
+                    // enfore a minimum width:
+                    GeoExtent imageExtentInFeatureSRS = imageExtent.transform(featureSRS);
+                    double pixelWidth = imageExtentInFeatureSRS.width() / (double)image->s();
+                    lineWidth = osg::clampAbove(lineWidth, pixelWidth);
                 }
             }
 

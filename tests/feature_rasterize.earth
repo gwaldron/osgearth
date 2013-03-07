@@ -18,17 +18,19 @@ Demonstrates use of the "agglite" feature rasterization driver.
             <url>../data/world.shp</url>
             <build_spatial_index>true</build_spatial_index>
         </features>
-        
-        <!-- Treat the geometry as lines. -->
-        <geometry_type>line</geometry_type>
-        
-        <lod_blending>true</lod_blending>
-                
+		
         <styles>
+			<selector class="outline"/>
+			<selector class="line"/>
+		
             <style type="text/css">
-                world {
-                   stroke:       #ffffffff;
-                   stroke-width: 1km;
+				outline {
+					stroke:		   #ffffff;
+					stroke-width:  5px;
+				}
+                line {
+                   stroke:         #ff0000;
+                   stroke-width:   2.5px;
                 }            
             </style>
         </styles>

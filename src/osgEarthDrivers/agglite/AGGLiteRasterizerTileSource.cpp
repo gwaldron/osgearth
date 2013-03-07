@@ -199,8 +199,12 @@ public:
                 {
                     lineWidth = masterLine->stroke()->width().value();
 
+                    GeoExtent imageExtentInFeatureSRS = imageExtent.transform(featureSRS);
+                    double pixelWidth = imageExtentInFeatureSRS.width() / (double)image->s();
+
                     // if the width units are specified, process them:
-                    if ( masterLine->stroke()->widthUnits().isSet() )
+                    if (masterLine->stroke()->widthUnits().isSet() &&
+                        masterLine->stroke()->widthUnits().get() != Units::PIXELS)
                     {
                         const Units& featureUnits = featureSRS->getUnits();
                         const Units& strokeUnits  = masterLine->stroke()->widthUnits().value();
@@ -226,13 +230,16 @@ public:
                                 lineWidth = osg::RadiansToDegrees(radians);
                             }
                         }
+
+                        // enfore a minimum width of one pixel.
+                        float minPixels = masterLine->stroke()->minPixels().getOrUse( 1.0f );
+                        lineWidth = osg::clampAbove(lineWidth, pixelWidth*minPixels);
                     }
 
-                    // enfore a minimum width of one pixel.
-                    GeoExtent imageExtentInFeatureSRS = imageExtent.transform(featureSRS);
-                    double pixelWidth = imageExtentInFeatureSRS.width() / (double)image->s();
-                    float minPixels = masterLine->stroke()->minPixels().getOrUse( 1.0f );
-                    lineWidth = osg::clampAbove(lineWidth, pixelWidth*minPixels);
+                    else // pixels
+                    {
+                        lineWidth *= pixelWidth;
+                    }
                 }
             }
 

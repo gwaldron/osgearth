@@ -11,7 +11,7 @@ Demonstrates use of the "agglite" feature rasterization driver.
         <url>../data/world.tif</url>
     </image>
     
-    <image name="world_boundaries" driver="agglite">
+    <image name="world_boundaries" driver="agglite" cache_enabled="false">
 
         <!-- Configure the OGR feature driver to read the shapefile. -->             
         <features name="world" driver="ogr">
@@ -32,7 +32,7 @@ Demonstrates use of the "agglite" feature rasterization driver.
                 world {
                    stroke: #ffffff;
                    stroke-opacity: 1.0;
-                   stroke-width: 0.75;
+                   stroke-width:   1.0;
                 }            
             </style>
         </styles>

@@ -172,7 +172,8 @@ public:
         if ( linesToBuffer.size() > 0 )
         {
             //We are buffering in the features native extent, so we need to use the transform extent to get the proper "resolution" for the image
-            GeoExtent transformedExtent = imageExtent.transform(context.profile()->getSRS());
+            const SpatialReference* featureSRS = context.profile()->getSRS();
+            GeoExtent transformedExtent = imageExtent.transform(featureSRS);
 
             double trans_xf = (double)image->s() / transformedExtent.width();
             double trans_yf = (double)image->t() / transformedExtent.height();
@@ -193,21 +194,42 @@ public:
 
             // now run the buffer operation on all lines:
             BufferFilter buffer;
-            float lineWidth = 0.5;
+            double lineWidth = 1.0;
             if ( masterLine )
             {
                 buffer.capStyle() = masterLine->stroke()->lineCap().value();
 
                 if ( masterLine->stroke()->width().isSet() )
+                {
                     lineWidth = masterLine->stroke()->width().value();
+
+                    if ( masterLine->stroke()->widthUnits().isSet() )
+                    {
+                        const Units& featureUnits = featureSRS->getUnits();
+                        const Units& strokeUnits  = masterLine->stroke()->widthUnits().value();
+                        if ( featureUnits != strokeUnits )
+                        {
+                            if ( Units::canConvert(strokeUnits, featureUnits) )
+                            {
+                                lineWidth = strokeUnits.convertTo( featureUnits, lineWidth );
+                            }
+                            else if ( strokeUnits.isLinear() && featureUnits.isAngular() )
+                            {
+                                lineWidth = masterLine->stroke()->widthUnits()->convertTo(Units::METERS, lineWidth);
+                                double circ = featureSRS->getEllipsoid()->getRadiusEquator() * 2.0 * osg::PI;
+                                double x, y;
+                                context.profile()->getExtent().getCentroid(x, y);
+                                double radians = (lineWidth/circ) * cos(osg::DegreesToRadians(y));
+                                lineWidth = osg::RadiansToDegrees(radians);
+                                lineWidth = osg::clampAbove(lineWidth, trans_xf);
+                                OE_INFO << LC << "line width = " << lineWidth << " degrees" << std::endl;
+                            }
+                        }
+                    }
+                }
             }
 
-            // "relative line size" means that the line width is expressed in (approx) pixels
-            // rather than in map units
-            if ( _options.relativeLineSize() == true )
-                buffer.distance() = xres * lineWidth;
-            else
-                buffer.distance() = lineWidth;
+            buffer.distance() = lineWidth * 0.5;
 
             buffer.push( linesToBuffer, context );
         }
@@ -249,7 +271,6 @@ public:
         for(FeatureList::iterator i = features.begin(); i != features.end(); i++)
         {
             Feature* feature = i->get();
-            //bool first = bd->_pass == 0 && i == features.begin();
 
             Geometry* geometry = feature->getGeometry();
 
@@ -300,10 +321,6 @@ public:
                     double x0 = xf*(p0.x()-xmin);
                     double y0 = yf*(p0.y()-ymin);
 
-                    //const osg::Vec3d& p1 = p+1 != g->end()? *(p+1) : g->front();
-                    //double x1 = xf*(p1.x()-xmin);
-                    //double y1 = yf*(p1.y()-ymin);
-
                     if ( p == g->begin() )
                         ras.move_to_d( x0, y0 );
                     else
@@ -321,13 +338,13 @@ public:
     //override
     bool postProcess( osg::Image* image, osg::Referenced* data )
     {
-		//convert from ABGR to RGBA
-		unsigned char* pixel = image->data();
-		for(int i=0; i<image->s()*image->t()*4; i+=4, pixel+=4)
-		{
-			std::swap( pixel[0], pixel[3] );
-			std::swap( pixel[1], pixel[2] );
-		}
+        //convert from ABGR to RGBA
+        unsigned char* pixel = image->data();
+        for(int i=0; i<image->s()*image->t()*4; i+=4, pixel+=4)
+        {
+            std::swap( pixel[0], pixel[3] );
+            std::swap( pixel[1], pixel[2] );
+        }
         return true;
     }
 

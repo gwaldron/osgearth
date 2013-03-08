@@ -25,7 +25,7 @@
 //#include <osgEarth/StringUtils>
 #include <osgEarthUtil/Controls>
 #include <osgEarthUtil/ExampleResources>
-#include <osgEarthUtil/SkyNode>
+//#include <osgEarthUtil/SkyNode>
 
 
 
@@ -63,11 +63,11 @@ osg::Node* SceneController::loadEarthFile(const std::string& url)
     _earthNode = 0L;
   }
 
-  if (_sky.valid())
-  {
-    _root->removeChild(_sky);
-    _sky = 0L;
-  }
+  //if (_sky.valid())
+  //{
+  //  _root->removeChild(_sky);
+  //  _sky = 0L;
+  //}
 
   if (_controlContainer.valid())
     _controlContainer->clearControls();
@@ -86,29 +86,29 @@ osg::Node* SceneController::loadEarthFile(const std::string& url)
     {
       _map = _mapNode->getMap();
 
-      const osgEarth::Config& externals = _mapNode->externalConfig();
+      //const osgEarth::Config& externals = _mapNode->externalConfig();
 
-      if (_map->isGeocentric())
-      {
-        // Sky model.
-        osgEarth::Config skyConf = externals.child("sky");
+      //if (_map->isGeocentric())
+      //{
+      //  // Sky model.
+      //  osgEarth::Config skyConf = externals.child("sky");
 
-        double hours = skyConf.value("hours", 12.0);
+      //  double hours = skyConf.value("hours", 12.0);
 
-        _sky = new osgEarth::Util::SkyNode(_map);
-        _sky->setAutoAmbience( true );
-        _sky->setDateTime(2011, 3, 6, hours);
-        _sky->attach(_view);
+      //  _sky = new osgEarth::Util::SkyNode(_map);
+      //  _sky->setAutoAmbience( true );
+      //  _sky->setDateTime(2011, 3, 6, hours);
+      //  _sky->attach(_view);
 
-        _root->addChild(_sky);
+      //  _root->addChild(_sky);
 
-        if (_controlContainer.valid())
-        {
-          osgEarth::Util::Controls::Control* c = osgEarth::Util::SkyControlFactory().create(_sky, _view);
-          if ( c )
-              _controlContainer->addControl( c );
-        }
-      }
+      //  if (_controlContainer.valid())
+      //  {
+      //    osgEarth::Util::Controls::Control* c = osgEarth::Util::SkyControlFactory().create(_sky, _view);
+      //    if ( c )
+      //        _controlContainer->addControl( c );
+      //  }
+      //}
     }
 
     _root->addChild(_earthNode);

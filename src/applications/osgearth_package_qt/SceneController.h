@@ -52,7 +52,7 @@ namespace PackageQt
     osg::ref_ptr<osg::Node> _earthNode;
     osg::ref_ptr<osgEarth::MapNode> _mapNode;
     osg::ref_ptr<osgEarth::Map> _map;
-    osg::ref_ptr<osgEarth::Util::SkyNode> _sky;
+    //osg::ref_ptr<osgEarth::Util::SkyNode> _sky;
   };
 }
 

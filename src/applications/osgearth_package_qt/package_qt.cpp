@@ -18,6 +18,7 @@
 */
 
 #include <osg/Notify>
+#include <osgDB/FileUtils>
 #include <osgEarth/ImageUtils>
 #include <osgEarth/MapNode>
 #include <osgEarthQt/ViewerWidget>
@@ -60,7 +61,12 @@ int main(int argc, char** argv)
 
   //setup log file
   char *appData = getenv("APPDATA");
-  std::string logPath = std::string(appData) + "\\osgEarthPackageQt\\log.txt";
+
+  std::string logDir = std::string(appData) + "\\osgEarthPackageQt";
+  if (!osgDB::fileExists(logDir))
+    osgDB::makeDirectory(logDir);
+
+  std::string logPath = logDir + "\\log.txt";
   std::ofstream* log = new std::ofstream( logPath.c_str() );
   std::cout.rdbuf( log->rdbuf() );
   std::cerr.rdbuf( log->rdbuf() );

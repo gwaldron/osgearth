@@ -51,13 +51,12 @@ const char* vertexShader =
     "attribute vec4  osgearth_elevData; \n"
     "uniform   float verticalScale;     \n"
 
-    "void applyVerticalScale() \n"
+    "void applyVerticalScale(inout vec4 VertexMODEL) \n"
     "{ \n"
-    "    vec3  upVector = osgearth_elevData.xyz;                     \n"
-    "    float elev     = osgearth_elevData.w;                       \n"
-    "    vec3  offset   = upVector * elev * (verticalScale - 1.0);   \n"
-    "    vec4  vertex   = gl_Vertex + vec4(offset/gl_Vertex.w, 0.0); \n"
-    "    gl_Position    = gl_ModelViewProjectionMatrix * vertex;     \n"
+    "    vec3  upVector = osgearth_elevData.xyz;                   \n"
+    "    float elev     = osgearth_elevData.w;                     \n"
+    "    vec3  offset   = upVector * elev * (verticalScale - 1.0); \n"
+    "    VertexMODEL   += vec4(offset/VertexMODEL.w, 0.0); \n"
     "} \n";
 
 
@@ -69,8 +68,7 @@ osg::StateSet* createStateSet()
     // Install the shaders. We also bind osgEarth's elevation data attribute, which the 
     // terrain engine automatically generates at the specified location.
     VirtualProgram* vp = new VirtualProgram();
-    vp->installDefaultColoringAndLightingShaders();
-    vp->setFunction( "applyVerticalScale", vertexShader, ShaderComp::LOCATION_VERTEX_PRE_LIGHTING );
+    vp->setFunction( "applyVerticalScale", vertexShader, ShaderComp::LOCATION_VERTEX_MODEL );
     vp->addBindAttribLocation( "osgearth_elevData", osg::Drawable::ATTRIBUTE_6 );
     stateSet->setAttributeAndModes( vp, osg::StateAttribute::ON );
 

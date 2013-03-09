@@ -507,14 +507,10 @@ MPTerrainEngineNode::updateShaders()
         std::string vs =
             "#version " GLSL_VERSION_STR "\n"
             GLSL_DEFAULT_PRECISION_FLOAT "\n"
-            "varying vec4 osg_FrontColor; \n"
-            "varying vec4 osg_FrontSecondaryColor; \n"
             "varying vec4 oe_layer_tc;\n"
-            "void osgearth_vert_setupColoring() \n"
+            "void oe_mp_setupColoring(inout vec4 VertexModel) \n"
             "{ \n"
-            "    osg_FrontColor          = gl_Color; \n"
-            "    osg_FrontSecondaryColor = vec4(0.0);\n"
-            "    oe_layer_tc             = __GL_MULTITEXCOORD__;\n"
+            "    oe_layer_tc = __GL_MULTITEXCOORD__;\n"
             "}\n";
 
         // Fragment shader template:
@@ -527,7 +523,7 @@ MPTerrainEngineNode::updateShaders()
             "uniform int       oe_layer_order; \n"
             "uniform float     oe_layer_opacity; \n"
             "__COLOR_FILTER_HEAD__"
-            "void osgearth_frag_applyColoring( inout vec4 color ) \n"
+            "void oe_mp_applyColoring( inout vec4 color ) \n"
             "{ \n"
             "    vec4 texel = texture2D(oe_layer_tex, oe_layer_tc.st);\n"
             "    float alpha = texel.a * oe_layer_opacity; \n"
@@ -583,15 +579,18 @@ MPTerrainEngineNode::updateShaders()
             replaceIn( fs, "__COLOR_FILTER_BODY__", cf_body_str );
         }
 
-        vp->setShader(
-            "osgearth_vert_setupColoring",
-            new osg::Shader( osg::Shader::VERTEX, vs ),
-            osg::StateAttribute::ON | osg::StateAttribute::PROTECTED );
+        vp->setFunction( "oe_mp_setupColoring", vs, ShaderComp::LOCATION_VERTEX_MODEL,      0.0 );
+        vp->setFunction( "oe_mp_applyColoring", fs, ShaderComp::LOCATION_FRAGMENT_COLORING, 0.0 );
 
-        vp->setShader(
-            "osgearth_frag_applyColoring",
-            new osg::Shader( osg::Shader::FRAGMENT, fs ),
-            osg::StateAttribute::ON | osg::StateAttribute::PROTECTED );
+        //vp->setShader(
+        //    "osgearth_vert_setupColoring",
+        //    new osg::Shader( osg::Shader::VERTEX, vs ),
+        //    osg::StateAttribute::ON | osg::StateAttribute::PROTECTED );
+
+        //vp->setShader(
+        //    "osgearth_frag_applyColoring",
+        //    new osg::Shader( osg::Shader::FRAGMENT, fs ),
+        //    osg::StateAttribute::ON | osg::StateAttribute::PROTECTED );
 
         // required for multipass tile rendering to work
         terrainStateSet->setAttributeAndModes(

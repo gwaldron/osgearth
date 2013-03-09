@@ -513,6 +513,8 @@ PolygonizeLinesFilter::push(FeatureList& input, FilterContext& cx)
         osg::StateSet* stateSet = geode->getOrCreateStateSet();
 
         VirtualProgram* vp = new VirtualProgram();
+        vp->setName( "osgEarth::PolygonizeLines" );
+
         const char* vs =
             "#version " GLSL_VERSION_STR "\n"
             GLSL_DEFAULT_PRECISION_FLOAT "\n"
@@ -521,18 +523,18 @@ PolygonizeLinesFilter::push(FeatureList& input, FilterContext& cx)
             "uniform   float  oe_polyline_min_pixels; \n"
             "uniform   mat3   oe_WindowScaleMatrix; \n"
 
-            "void oe_polyline_scalelines() \n"
+            "void oe_polyline_scalelines(inout vec4 VertexMODEL) \n"
             "{ \n"
             "   if ( oe_polyline_scale != 1.0 || oe_polyline_min_pixels > 0.0 ) \n"
             "   { \n"
-            "       vec4  center  = vec4(oe_polyline_center*gl_Vertex.w, gl_Vertex.w); \n"
-            "       vec4  vector  = gl_Vertex - center; \n"
-            "       if ( length(vector.xyz) > 0.0 ) \n"
+            "       vec4  center_model = vec4(oe_polyline_center*VertexMODEL.w, VertexMODEL.w); \n"
+            "       vec4  vector_model = VertexMODEL - center_model; \n"
+            "       if ( length(vector_model.xyz) > 0.0 ) \n"
             "       { \n"
             "           float scale = oe_polyline_scale; \n"
 
-            "           vec4 vertex_clip = gl_ModelViewProjectionMatrix * gl_Vertex; \n"
-            "           vec4 center_clip = gl_ModelViewProjectionMatrix * center; \n"
+            "           vec4 vertex_clip = gl_ModelViewProjectionMatrix * VertexMODEL; \n"
+            "           vec4 center_clip = gl_ModelViewProjectionMatrix * center_model; \n"
             "           vec4 vector_clip = vertex_clip - center_clip; \n"
 
             "           if ( oe_polyline_min_pixels > 0.0 ) \n"
@@ -542,12 +544,12 @@ PolygonizeLinesFilter::push(FeatureList& input, FilterContext& cx)
             "               scale = max( scale, min_scale ); \n"
             "           } \n"
 
-            "           gl_Position = center_clip + vector_clip*scale; \n"
+            "           VertexMODEL = center_model + vector_model*scale; \n"
             "        } \n"
             "    } \n"
             "} \n";
 
-        vp->setFunction( "oe_polyline_scalelines", vs, ShaderComp::LOCATION_VERTEX_PRE_COLORING );
+        vp->setFunction( "oe_polyline_scalelines", vs, ShaderComp::LOCATION_VERTEX_MODEL );
         vp->addBindAttribLocation( "oe_polyline_center", osg::Drawable::ATTRIBUTE_6 );
         stateSet->setAttributeAndModes( vp, 1 );
 

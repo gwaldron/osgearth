@@ -164,7 +164,6 @@ DrapingTechnique::setUpCamera(OverlayDecorator::TechRTTParams& params)
     {
         VirtualProgram* vp = new VirtualProgram();
         vp->setName( "DrapingTechnique RTT" );
-        vp->installDefaultColoringAndLightingShaders();
         vp->setInheritShaders( false );
         rttStateSet->setAttributeAndModes( vp, osg::StateAttribute::ON );
     }
@@ -234,12 +233,12 @@ DrapingTechnique::setUpCamera(OverlayDecorator::TechRTTParams& params)
             "uniform mat4 oe_overlay_texmatrix; \n"
             "varying vec4 oe_overlay_texcoord; \n"
 
-            "void oe_overlay_vertex(void) \n"
+            "void oe_overlay_vertex(inout vec4 VertexVIEW) \n"
             "{ \n"
-            "    oe_overlay_texcoord = oe_overlay_texmatrix * gl_ModelViewMatrix * gl_Vertex; \n"
+            "    oe_overlay_texcoord = oe_overlay_texmatrix * VertexVIEW; \n"
             "} \n";
 
-        vp->setFunction( "oe_overlay_vertex", vs, ShaderComp::LOCATION_VERTEX_POST_LIGHTING );
+        vp->setFunction( "oe_overlay_vertex", vs, ShaderComp::LOCATION_VERTEX_VIEW );
 
         // fragment shader - subgraph
         std::string fs =
@@ -254,7 +253,7 @@ DrapingTechnique::setUpCamera(OverlayDecorator::TechRTTParams& params)
             "    color = vec4( mix( color.rgb, texel.rgb, texel.a ), color.a); \n"
             "} \n";
 
-        vp->setFunction( "oe_overlay_fragment", fs, ShaderComp::LOCATION_FRAGMENT_POST_LIGHTING );
+        vp->setFunction( "oe_overlay_fragment", fs, ShaderComp::LOCATION_FRAGMENT_COLORING );
     }
     else
     {

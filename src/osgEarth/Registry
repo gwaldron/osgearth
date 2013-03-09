@@ -129,8 +129,9 @@ namespace osgEarth
          * shader factory if you want to alter any of osgEarth's baseline shaders
          * (advanced usage).
          */
-        ShaderFactory* getShaderFactory() const;
+        const ShaderFactory* getShaderFactory() const;
         void setShaderFactory( ShaderFactory* lib );
+        static const ShaderFactory* shaderFactory() { return instance()->getShaderFactory(); }
 
         /**
          * A default StateSetCache to use by any process that uses one.

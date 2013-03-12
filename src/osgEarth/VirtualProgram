@@ -59,15 +59,6 @@ namespace osgEarth
 
             // fragment is being lit.
             LOCATION_FRAGMENT_LIGHTING = 4
-
-            // deprecrated and removed.
-            //LOCATION_VERTEX_PRE_COLORING    =0,   LOCATION_VERTEX_PRE_TEXTURING =0, // alias
-            //LOCATION_VERTEX_PRE_LIGHTING    =1,
-            //LOCATION_VERTEX_POST_LIGHTING   =2,
-
-            //LOCATION_FRAGMENT_PRE_COLORING  =3,   LOCATION_FRAGMENT_PRE_TEXTURING =3, // alias
-            //LOCATION_FRAGMENT_PRE_LIGHTING  =4,
-            //LOCATION_FRAGMENT_POST_LIGHTING =5
         };
 
         // set of user functions, ordered by priority.

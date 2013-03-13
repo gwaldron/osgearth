@@ -25,7 +25,9 @@ MapNodeCullData::MapNodeCullData()
     _stateSet = new osg::StateSet();
 
     _windowScaleMatrix = new osg::Uniform(osg::Uniform::FLOAT_MAT3, "oe_WindowScaleMatrix");
-    _windowScaleMatrix->set( osg::Matrix::identity() );
+    osg::Matrix3 identity;
+    identity.makeIdentity();
+    _windowScaleMatrix->set( identity );
     _stateSet->addUniform( _windowScaleMatrix.get() );
 
     _cameraAltitude = 0.0;

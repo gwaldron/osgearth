@@ -203,11 +203,14 @@ to query. You can then call this sampler function from your shader. Here's an ex
     osgEarth::VirtualProgram* vp;
 
     // first get a reference to the texture compositor.
-    osgEarth::TerrainEngine* engine = mapNode->getTerrainEngine();
+    osgEarth::TerrainEngineNode* engine = mapNode->getTerrainEngine();
     osgEarth::TextureCompositor* comp = engine->getTextureCompositor();
 
+	// next, find our layer
+	layer = mapNode->getMap()->getImageLayerByName("MyLayer");
+
     // next, request a sampling shader for the layer in question.
-    osg::Shader* sampler = comp->createSamplerFunction( layer, "sampleMyLayer", osg::Shader::FRAGMENT );
+    osg::Shader* sampler = comp->createSamplerFunction( layer->getUID(), "sampleMyLayer", osg::Shader::FRAGMENT );
 
     // add it to your VirtualProgram:
     vp->setShader( "sampleMyLayer", sampler );

@@ -191,6 +191,10 @@ VirtualProgram::setShader(const std::string&                 shaderID,
     if ( !shader || shader->getType() ==  osg::Shader::UNDEFINED ) 
         return NULL;
 
+    // pre-processes the shader's source to include GLES uniforms as necessary
+    // (no-op on non-GLES)
+    ShaderPreProcessor::run( shader );
+
     shader->setName( shaderID );
     _shaderMap[shaderID] = ShaderEntry(shader, ov);
 

@@ -231,6 +231,8 @@ osg_LightProducts::osg_LightProducts(int id)
 std::string 
 osg_LightProducts::glslDefinition()
 {
+    //Note: it's important that there be NO linefeeds in here, since that would
+    // break the shader merging code.
     return
         "struct osg_LightProducts {"
         " vec4 ambient;"
@@ -335,6 +337,8 @@ void osg_LightSourceParameters::applyState(osg::StateSet* stateset)
 std::string
 osg_LightSourceParameters::glslDefinition()
 {
+    //Note: it's important that there be NO linefeeds in here, since that would
+    // break the shader merging code.
     return
         "struct osg_LightSourceParameters {"
         " vec4 ambient;"

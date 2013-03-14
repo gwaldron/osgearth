@@ -42,7 +42,7 @@ namespace
         return Stringify() << "osgearth_tex" << slot;
     }
 
-    static osg::Shader*
+    static std::string
     s_createTextureVertexShader( const TextureLayout& layout, bool blending )
     {
         std::stringstream buf;
@@ -67,7 +67,7 @@ namespace
             buf << "uniform mat4 osgearth_TexBlendMatrix[" << Registry::capabilities().getMaxGPUTextureCoordSets() << "]; \n";
         }
 
-        buf << "void osgearth_vert_setupColoring() \n"
+        buf << "void oe_multicomp_vertex(inout vec4 VertexMODEL) \n"
             << "{ \n"
             << "    osg_FrontColor = gl_Color; \n"
             << "    osg_FrontSecondaryColor = vec4(0.0); \n";
@@ -99,10 +99,11 @@ namespace
 
         std::string str;
         str = buf.str();
-        return new osg::Shader( osg::Shader::VERTEX, str );
+        return str;
+        //return new osg::Shader( osg::Shader::VERTEX, str );
     }
 
-    static osg::Shader*
+    static std::string
     s_createTextureFragShaderFunction( const TextureLayout& layout, int maxSlots, bool blending, float fadeInDuration )
     {
         const TextureLayout::RenderOrderVector& order = layout.getRenderOrder();
@@ -149,7 +150,7 @@ namespace
         }
 
         // the main texturing function:
-        buf << "void osgearth_frag_applyColoring( inout vec4 color ) \n"
+        buf << "void oe_multicomp_fragment( inout vec4 color ) \n"
             << "{ \n"
             << "    vec3 color3 = color.rgb; \n"
             << "    vec4 texel; \n"
@@ -219,8 +220,9 @@ namespace
 
         std::string str;
         str = buf.str();
+        return str;
         //OE_INFO << std::endl << str;
-        return new osg::Shader( osg::Shader::FRAGMENT, str );
+        //return new osg::Shader( osg::Shader::FRAGMENT, str );
     }
 }
 
@@ -406,15 +408,27 @@ TextureCompositorMultiTexture::updateMasterStateSet(osg::StateSet*       stateSe
         // Why are these marked as PROTECTED? See the comments in MapNode.cpp for the answer.
         // (Where it sets up the top-level VirtualProgram)
 
-        vp->setShader(
-            "osgearth_vert_setupColoring",
+        vp->setFunction(
+            "oe_multicomp_vertex",
             s_createTextureVertexShader(layout, hasBlending),
-            osg::StateAttribute::ON | osg::StateAttribute::PROTECTED );
+            ShaderComp::LOCATION_VERTEX_MODEL,
+            0.0 );
 
-        vp->setShader(
-            "osgearth_frag_applyColoring",
+        vp->setFunction(
+            "oe_multicomp_fragment",
             s_createTextureFragShaderFunction(layout, maxUnits, hasBlending, _lodTransitionTime),
-            osg::StateAttribute::ON | osg::StateAttribute::PROTECTED );
+            ShaderComp::LOCATION_FRAGMENT_COLORING,
+            0.0 );
+
+        //vp->setShader(
+        //    "osgearth_vert_setupColoring",
+        //    s_createTextureVertexShader(layout, hasBlending),
+        //    osg::StateAttribute::ON | osg::StateAttribute::PROTECTED );
+
+        //vp->setShader(
+        //    "osgearth_frag_applyColoring",
+        //    s_createTextureFragShaderFunction(layout, maxUnits, hasBlending, _lodTransitionTime),
+        //    osg::StateAttribute::ON | osg::StateAttribute::PROTECTED );
     }
 
     else

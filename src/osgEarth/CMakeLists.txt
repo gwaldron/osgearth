@@ -109,6 +109,7 @@ SET(LIB_PUBLIC_HEADERS
     TileKey
     TileSource
     TimeControl
+    TraversalData
     ThreadingUtils
     Units
     URI
@@ -221,6 +222,7 @@ ADD_LIBRARY(${LIB_NAME} ${OSGEARTH_USER_DEFINED_DYNAMIC_OR_STATIC}
     TileKey.cpp
     TileSource.cpp
     TimeControl.cpp
+    TraversalData.cpp
     ThreadingUtils.cpp
     Units.cpp
     URI.cpp

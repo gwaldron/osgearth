@@ -63,11 +63,10 @@ namespace
 
         "varying float oe_fadeeffect_opacity; \n"
 
-        "void oe_vertFadeEffect() \n"
+        "void oe_vertFadeEffect(inout vec4 VertexView) \n"
         "{ \n"
         "    float t = (osg_FrameTime-oe_fadeeffect_startTime)/oe_fadeeffect_duration; \n"
-        "    vec4 v_view = gl_ModelViewMatrix * gl_Vertex; \n"
-        "    float r = (oe_fadeeffect_maxRange - (-v_view.z))/oe_fadeeffect_attenDist; \n"
+        "    float r = (oe_fadeeffect_maxRange - (-VertexView.z))/oe_fadeeffect_attenDist; \n"
         "    oe_fadeeffect_opacity = clamp(t, 0.0, 1.0) * clamp(r, 0.0, 1.0); \n"
         "} \n";
 
@@ -100,8 +99,8 @@ FadeEffect::FadeEffect()
     {
         VirtualProgram* vp = new VirtualProgram();
 
-        vp->setFunction( "oe_vertFadeEffect", FadeEffectVertexShader,   ShaderComp::LOCATION_VERTEX_POST_LIGHTING );
-        vp->setFunction( "oe_fragFadeEffect", FadeEffectFragmentShader, ShaderComp::LOCATION_FRAGMENT_PRE_LIGHTING );
+        vp->setFunction( "oe_vertFadeEffect", FadeEffectVertexShader,   ShaderComp::LOCATION_VERTEX_VIEW );
+        vp->setFunction( "oe_fragFadeEffect", FadeEffectFragmentShader, ShaderComp::LOCATION_FRAGMENT_COLORING );
 
         ss->setAttributeAndModes( vp, osg::StateAttribute::ON );
 
@@ -194,7 +193,7 @@ _maxFadeExtent ( 0.0f )
         vp->setFunction(
             "oe_fragFadeLOD",
             FadeLODFragmentShader,
-            ShaderComp::LOCATION_FRAGMENT_PRE_LIGHTING );
+            ShaderComp::LOCATION_FRAGMENT_COLORING );
 
         osg::StateSet* ss = getOrCreateStateSet();
 

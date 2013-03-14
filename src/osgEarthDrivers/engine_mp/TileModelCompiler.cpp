@@ -32,6 +32,7 @@
 #include <osg/MatrixTransform>
 #include <osg/GL2Extensions>
 #include <osgUtil/DelaunayTriangulator>
+#include <osgUtil/Optimizer>
 
 using namespace osgEarth_engine_mp;
 using namespace osgEarth;
@@ -1704,7 +1705,7 @@ TileModelCompiler::compile(const TileModel* model,
         d.skirt->setUseVertexBufferObjects(d.useVBOs);
 
         // slightly faster than a separate geode:
-        d.skirt->setDataVariance( osg::Object::DYNAMIC ); // since we're using a custom cull callback
+        //d.skirt->setDataVariance( osg::Object::DYNAMIC ); // since we're using a custom cull callback
         d.skirt->setCullCallback( _cullByTraversalMask.get() );
         d.surfaceGeode->addDrawable( d.skirt );
     }
@@ -1765,7 +1766,6 @@ TileModelCompiler::compile(const TileModel* model,
         MeshConsolidator::convertToTriangles( *((*mr)._geom) );
     }
     
-   
     if (osgDB::Registry::instance()->getBuildKdTreesHint()==osgDB::ReaderWriter::Options::BUILD_KDTREES &&
         osgDB::Registry::instance()->getKdTreeBuilder())
     {            

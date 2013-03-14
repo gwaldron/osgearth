@@ -79,6 +79,13 @@ namespace osgEarth { namespace Symbology
         optional<Units>& widthUnits() { return _widthUnits; }
         const optional<Units>& widthUnits() const { return _widthUnits; }
 
+        /** Minimum with of a line in pixels (default = 0.0, no minimum).
+            This typically only applies to lines with map unit width, and
+            tells the renderer to maintain a minimum pixel width so that 
+            the geometry is always visible. */
+        optional<float>& minPixels() { return _minPixels; }
+        const optional<float>& minPixels() const { return _minPixels; }
+
         /** Stippling pattern. */
         optional<unsigned short>& stipple() { return _stipple;}
         const optional<unsigned short>& stipple() const { return _stipple; }
@@ -101,6 +108,7 @@ namespace osgEarth { namespace Symbology
         optional<Units>          _widthUnits;
         optional<unsigned short> _stipple;
         optional<float>          _roundingRatio;
+        optional<float>          _minPixels;
 
         void init();
     };

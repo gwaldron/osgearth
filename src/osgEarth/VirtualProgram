@@ -44,12 +44,21 @@ namespace osgEarth
         // User function injection points.
         enum FunctionLocation
         {
-            LOCATION_VERTEX_PRE_COLORING    =0,   LOCATION_VERTEX_PRE_TEXTURING =0, // alias
-            LOCATION_VERTEX_PRE_LIGHTING    =1,
-            LOCATION_VERTEX_POST_LIGHTING   =2,
-            LOCATION_FRAGMENT_PRE_COLORING  =3,   LOCATION_FRAGMENT_PRE_TEXTURING =3, // alias
-            LOCATION_FRAGMENT_PRE_LIGHTING  =4,
-            LOCATION_FRAGMENT_POST_LIGHTING =5
+            // vertex is in model space (equivalent to gl_Vertex).
+            LOCATION_VERTEX_MODEL = 0,
+
+            // vertex is in view(aka eye) coordinates, with the camera at 0,0,0 
+            // looking down the -Z axis.
+            LOCATION_VERTEX_VIEW = 1,
+
+            // vertex is in post-perspective coordinates; [-w..w] along each axis
+            LOCATION_VERTEX_CLIP = 2,
+
+            // fragment is being colored.
+            LOCATION_FRAGMENT_COLORING = 3,
+
+            // fragment is being lit.
+            LOCATION_FRAGMENT_LIGHTING = 4
         };
 
         // set of user functions, ordered by priority.
@@ -94,34 +103,6 @@ namespace osgEarth
             const std::string&           source, 
             ShaderComp::FunctionLocation loc,
             float                        priority =1.0f );
-
-        /**
-         * Installs default shaders for implementing basic coloring and lighting.
-         * The default shaders come from the ShaderFactory.
-         */
-        void installDefaultColoringAndLightingShaders(
-            unsigned                           numTextures =0u,
-            osg::StateAttribute::OverrideValue qualifiers  =osg::StateAttribute::ON );
-
-        /**
-         * Installs default shader for basic coloring/texturing.
-         */
-        void installDefaultColoringShaders( 
-            unsigned                           numTextures =0u,
-            osg::StateAttribute::OverrideValue qualifiers  =osg::StateAttribute::ON );
-
-
-        /**
-         * Installs default shader for basic lighting.
-         */
-        void installDefaultLightingShaders(
-            osg::StateAttribute::OverrideValue qualifiers  =osg::StateAttribute::ON );
-
-        /**
-         * Sets whether to use lighting shaders at all - set this to false if you
-         * don't want lighting shaders (normal or inherited) included in the program.
-         */
-        void setUseLightingShaders(bool value);
 
         /**
          * Whether this VP should inherit shaders from parent state sets. This is

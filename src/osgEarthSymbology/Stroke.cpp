@@ -61,6 +61,7 @@ Stroke::init()
     _width.init        ( 1.0f );
     _widthUnits.init   ( Units::PIXELS );
     _roundingRatio.init( 0.4f );
+    _minPixels.init    ( 0.0f );
 }
 
 Config 
@@ -77,6 +78,7 @@ Stroke::getConfig() const {
     conf.addIfSet("rounding_ratio", _roundingRatio);
     if ( _widthUnits.isSet() )
         conf.add( "width_units", _widthUnits->getAbbr() );
+    conf.addIfSet("min_pixels", _minPixels );
     return conf;
 }
 
@@ -94,4 +96,5 @@ Stroke::mergeConfig( const Config& conf ) {
     conf.getIfSet("rounding_ratio", _roundingRatio);
     if ( conf.hasValue("width_units" ) )
         Units::parse( conf.value("width_units"), _widthUnits.mutable_value() );
+    conf.getIfSet("min_pixels", _minPixels );
 }

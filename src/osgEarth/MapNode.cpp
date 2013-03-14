@@ -27,6 +27,8 @@
 #include <osgEarth/MaskNode>
 #include <osgEarth/NodeUtils>
 #include <osgEarth/Registry>
+#include <osgEarth/ShaderFactory>
+#include <osgEarth/TraversalData>
 #include <osgEarth/VirtualProgram>
 #include <osgEarth/OverlayDecorator>
 #include <osgEarth/TerrainEngineNode>
@@ -237,7 +239,7 @@ MapNode::init()
     // Since we have global uniforms in the stateset, mark it dynamic so it is immune to
     // multi-threaded overlap
     // TODO: do we need this anymore? there are no more global uniforms in here.. gw
-    getOrCreateStateSet()->setDataVariance(osg::Object::DYNAMIC);
+    //getOrCreateStateSet()->setDataVariance(osg::Object::DYNAMIC);
 
     _modelLayerCallback = new MapModelLayerCallback(this);
 
@@ -375,7 +377,7 @@ MapNode::init()
 
         VirtualProgram* vp = new VirtualProgram();
         vp->setName( "MapNode" );
-        vp->installDefaultColoringAndLightingShaders( 0, osg::StateAttribute::ON | osg::StateAttribute::OVERRIDE );
+        Registry::instance()->getShaderFactory()->installLightingShaders( vp );
         ss->setAttributeAndModes( vp, osg::StateAttribute::ON );
     }
 
@@ -688,27 +690,36 @@ MapNode::traverse( osg::NodeVisitor& nv )
         osgUtil::CullVisitor* cv = Culling::asCullVisitor(nv);
         if ( cv )
         {
-            // insert new user data:
+            // insert traversal data for this camera:
             osg::ref_ptr<osg::Referenced> oldUserData = cv->getUserData();
-            Culling::CullUserData* ud = new Culling::CullUserData(); // reuse instead?
-            cv->setUserData( ud );
+            MapNodeCullData* cullData = getCullData( cv->getCurrentCamera() );
+            cv->setUserData( cullData );
 
-            // calculate camera elevation:
+            // calculate altitude:
             osg::Vec3d eye = cv->getViewPoint();
             const SpatialReference* srs = getMapSRS();
             if ( srs && !srs->isProjected() )
             {
                 GeoPoint ecef;
                 ecef.fromWorld( srs, eye );
-                ud->_cameraAltitude = ecef.alt();
+                cullData->_cameraAltitude = ecef.alt();
             }
             else
             {
-                ud->_cameraAltitude = eye.z();
+                cullData->_cameraAltitude = eye.z();
             }
 
+            // window scale matrix:
+            osg::Matrix  m4 = cv->getWindowMatrix();
+            osg::Matrix3 m3( m4(0,0), m4(1,0), m4(2,0),
+                             m4(0,1), m4(1,1), m4(2,1),
+                             m4(0,2), m4(1,2), m4(2,2) );
+            cullData->_windowScaleMatrix->set( m3 );
+
             // traverse:
+            cv->pushStateSet( cullData->_stateSet.get() );
             std::for_each( _children.begin(), _children.end(), osg::NodeAcceptOp(nv) );
+            cv->popStateSet();
 
             // restore:
             cv->setUserData( oldUserData.get() );
@@ -734,9 +745,33 @@ MapNode::onModelLayerOverlayChanged( ModelLayer* layer )
             overlay->addChild( node.get() );
             _models->replaceChild( node.get(), overlay );
         }
-        else
+        else if ( overlay )
         {
             overlay->setActive( layer->getOverlay() );
         }
+    }
+}
+
+MapNodeCullData*
+MapNode::getCullData(osg::Camera* key) const
+{
+    // first look it up:
+    {
+        Threading::ScopedReadLock shared( _cullDataMutex );
+        CullDataMap::const_iterator i = _cullData.find( key );
+        if ( i != _cullData.end() )
+            return i->second.get();
+    }
+    // if it's not there, make it, but double-check.
+    {
+        Threading::ScopedWriteLock exclusive( _cullDataMutex );
+        
+        CullDataMap::const_iterator i = _cullData.find( key );
+        if ( i != _cullData.end() )
+            return i->second.get();
+
+        MapNodeCullData* cullData = new MapNodeCullData();
+        _cullData[key] = cullData;
+        return cullData;
     }
 }

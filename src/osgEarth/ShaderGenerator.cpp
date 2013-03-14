@@ -141,7 +141,8 @@ osg::NodeVisitor( osg::NodeVisitor::TRAVERSE_ALL_CHILDREN )
     _state = new StateEx();
     _stateSetCache = new StateSetCache();
     _defaultVP = new VirtualProgram();
-    _defaultVP->installDefaultColoringAndLightingShaders();
+    Registry::instance()->getShaderFactory()->installLightingShaders( _defaultVP.get() );
+    //_defaultVP->installDefaultColoringAndLightingShaders();
 }
 
 
@@ -151,7 +152,8 @@ osg::NodeVisitor( osg::NodeVisitor::TRAVERSE_ALL_CHILDREN )
     _state = new StateEx();
     _stateSetCache = cache ? cache : new StateSetCache();
     _defaultVP = new VirtualProgram();
-    _defaultVP->installDefaultColoringAndLightingShaders();
+    Registry::instance()->getShaderFactory()->installLightingShaders( _defaultVP.get() );
+    //_defaultVP->installDefaultColoringAndLightingShaders();
 }
 
 
@@ -268,7 +270,7 @@ ShaderGenerator::processText( osg::StateSet* ss, osg::ref_ptr<osg::StateSet>& re
     std::string vertSrc =
         "#version " GLSL_VERSION_STR "\n" GLSL_PRECISION "\n"
         "varying " MEDIUMP "vec4 " TEX_COORD_TEXT ";\n"
-        "void " VERTEX_FUNCTION "()\n"
+        "void " VERTEX_FUNCTION "(inout vec4 vertex_view)\n"
         "{ \n"
         INDENT TEX_COORD_TEXT " = gl_MultiTexCoord0;\n"
         "} \n";
@@ -287,9 +289,8 @@ ShaderGenerator::processText( osg::StateSet* ss, osg::ref_ptr<osg::StateSet>& re
         vp = osg::clone( _defaultVP.get() );
     replacement->setAttributeAndModes( vp, osg::StateAttribute::ON );
 
-    vp->setUseLightingShaders( false );
-    vp->setFunction( VERTEX_FUNCTION,   vertSrc, ShaderComp::LOCATION_VERTEX_PRE_LIGHTING );
-    vp->setFunction( FRAGMENT_FUNCTION, fragSrc, ShaderComp::LOCATION_FRAGMENT_PRE_LIGHTING );
+    vp->setFunction( VERTEX_FUNCTION,   vertSrc, ShaderComp::LOCATION_VERTEX_VIEW );
+    vp->setFunction( FRAGMENT_FUNCTION, fragSrc, ShaderComp::LOCATION_FRAGMENT_COLORING );
     replacement->getOrCreateUniform( SAMPLER_TEXT, osg::Uniform::SAMPLER_2D )->set( 0 );
 
     return replacement.valid();
@@ -323,9 +324,8 @@ ShaderGenerator::processGeometry( osg::StateSet* ss, osg::ref_ptr<osg::StateSet>
         if ( !replacement.valid() ) 
             replacement = osg::clone(ss, osg::CopyOp::DEEP_COPY_ALL);
 
-        ShaderFactory* sf = Registry::instance()->getShaderFactory();
         osg::StateAttribute::GLModeValue value = state->getMode(GL_LIGHTING); // from the state, not the ss.
-        replacement->addUniform( sf->createUniformForGLMode(GL_LIGHTING, value) );
+        replacement->addUniform( Registry::shaderFactory()->createUniformForGLMode(GL_LIGHTING, value) );
     }
 
     // if the stateset changes any texture attributes, we need a new virtual program:
@@ -351,7 +351,7 @@ ShaderGenerator::processGeometry( osg::StateSet* ss, osg::ref_ptr<osg::StateSet>
         fragHead << "#version " GLSL_VERSION_STR "\n" GLSL_PRECISION;
 
         // function declarations:
-        vertBody << "void " VERTEX_FUNCTION "()\n{\n";
+        vertBody << "void " VERTEX_FUNCTION "(inout vec4 vertex_view)\n{\n";
 
         fragBody << "void " FRAGMENT_FUNCTION "(inout vec4 color)\n{\n";
 
@@ -394,7 +394,7 @@ ShaderGenerator::processGeometry( osg::StateSet* ss, osg::ref_ptr<osg::StateSet>
                     vertBody 
                         //todo: consolidate.
                         << INDENT "{\n" // scope it in case there are > 1
-                        << INDENT "vec3 v = normalize(vec3(gl_ModelViewMatrix * gl_Vertex));\n"
+                        << INDENT "vec3 v = normalize(vec3(vertex_view));\n"
                         << INDENT "vec3 n = normalize(gl_NormalMatrix * gl_Normal);\n"
                         << INDENT "vec3 r = reflect(v, n);\n"
                         << INDENT "float m = 2.0 * sqrt(r.x*r.x + r.y*r.y + (r.z+1.0)*(r.z+1.0));\n"
@@ -496,8 +496,8 @@ ShaderGenerator::processGeometry( osg::StateSet* ss, osg::ref_ptr<osg::StateSet>
         fragSrc = fragHead.str();
 
         // inject the shaders:
-        vp->setFunction( VERTEX_FUNCTION,   vertSrc, ShaderComp::LOCATION_VERTEX_PRE_LIGHTING );
-        vp->setFunction( FRAGMENT_FUNCTION, fragSrc, ShaderComp::LOCATION_FRAGMENT_PRE_LIGHTING );
+        vp->setFunction( VERTEX_FUNCTION,   vertSrc, ShaderComp::LOCATION_VERTEX_VIEW );
+        vp->setFunction( FRAGMENT_FUNCTION, fragSrc, ShaderComp::LOCATION_FRAGMENT_COLORING );
     }
 
     return replacement.valid();

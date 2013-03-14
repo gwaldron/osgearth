@@ -30,6 +30,7 @@ namespace osgEarth
 {
     class OverlayDecorator;
     class Terrain;
+    class MapNodeCullData;
 
     /**
      * OSG Node that forms the root of an osgEarth map. This node is a "view" component
@@ -227,9 +228,14 @@ namespace osgEarth
     private:
 
         osg::ref_ptr< ModelLayerCallback > _modelLayerCallback;
-        osg::ref_ptr< MapCallback > _mapCallback;
+        osg::ref_ptr< MapCallback >        _mapCallback;
     
         void init();
+
+        MapNodeCullData* getCullData(osg::Camera* camera) const;
+        typedef std::map<osg::Camera*, osg::ref_ptr<MapNodeCullData> > CullDataMap;
+        mutable CullDataMap _cullData;
+        mutable Threading::ReadWriteMutex _cullDataMutex;
     };
 
 } // namespace osgEarth

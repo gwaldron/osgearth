@@ -125,9 +125,9 @@ DrawInstanced::createDrawInstancedProgram()
         buf << "uniform mat4 oe_di_modelMatrix[" << MAX_COUNT_ARRAY << "];\n";
     }
 
-    buf << "void oe_di_setPosition()\n"
+    buf << "void oe_di_setPosition(inout vec4 VertexModel)\n"
         << "{\n"
-        << "    gl_Position = gl_ModelViewProjectionMatrix * oe_di_modelMatrix[gl_InstanceID] * gl_Vertex; \n"
+        << "    VertexModel = oe_di_modelMatrix[gl_InstanceID] * VertexModel; \n"
         << "}\n";
 
     std::string src;
@@ -136,7 +136,7 @@ DrawInstanced::createDrawInstancedProgram()
     vp->setFunction(
         "oe_di_setPosition",
         src,
-        ShaderComp::LOCATION_VERTEX_PRE_COLORING );
+        ShaderComp::LOCATION_VERTEX_MODEL );
 
     return vp;
 }

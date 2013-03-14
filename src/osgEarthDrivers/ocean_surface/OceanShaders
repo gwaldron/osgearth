@@ -48,16 +48,18 @@ namespace
         "varying float ocean_v_range; \n"                  // distance from camera to current vertex
         "varying float ocean_v_enorm; \n"                  // normalized terrain height at vertex [0..1]
 
-        "void osgearth_vert_setupColoring() \n"
+        "void oe_ocean_vertex(inout vec4 VertexMODEL) \n"
         "{ \n"
         "   osg_FrontColor = gl_Color; \n"
 
         // adjust our vert for the sea level - extrude along the normal vector 
         // (this must be done in modelview space to preserve precision)
-        "   vec4 mvVertex = gl_ModelViewMatrix * gl_Vertex; \n"
+        "   vec4 mvVertex = VertexMODEL; \n"
         "   vec3 mvNormal = gl_NormalMatrix * gl_Normal; \n"
         "   vec4 mvVertex2 = vec4(mvVertex.xyz + (mvNormal * ocean_seaLevel), mvVertex.w ); \n"
-        "   gl_Position = gl_ProjectionMatrix * mvVertex2; \n"
+
+        "   VertexMODEL = mvVertex2; \n"
+        //"   gl_Position = gl_ProjectionMatrix * mvVertex2; \n"
 
         // read normalized [0..1] elevation data from the height texture:
         "   ocean_v_enorm = texture2D( ocean_data, gl_MultiTexCoord0.st ).r; \n"
@@ -110,7 +112,7 @@ namespace
         "uniform float ocean_max_range; \n"              // maximum visible distance of the ocean
         "uniform float ocean_fade_range; \n"             // distance over which to fade in the ocean
 
-        "void osgearth_frag_applyColoring(inout vec4 color) \n"
+        "void oe_ocean_fragment(inout vec4 color) \n"
         "{ \n"
         "    color = ocean_baseColor; \n"
 
@@ -171,16 +173,18 @@ namespace
         "varying float ocean_v_msl; \n"
         "varying float ocean_v_range; \n"
 
-        "void osgearth_vert_setupColoring() \n"
+        "void oe_ocean_vertex(inout vec4 VertexMODEL) \n"
         "{ \n"
         "   osg_FrontColor = gl_Color; \n"
 
         // adjust our vert for the sea level - extrude along the normal vector 
         // (this must be done in modelview space to preserve precision)
-        "   vec4 mvVertex = gl_ModelViewMatrix * gl_Vertex; \n"
+        "   vec4 mvVertex = VertexMODEL; \n"
         "   vec3 mvNormal = gl_NormalMatrix * gl_Normal; \n"
         "   vec4 mvVertex2 = vec4(mvVertex.xyz + (mvNormal * ocean_seaLevel), mvVertex.w ); \n"
-        "   gl_Position = gl_ProjectionMatrix * mvVertex2; \n"
+
+        "   VertexMODEL = mvVertex2; \n"
+        //"   gl_Position = gl_ProjectionMatrix * mvVertex2; \n"
 
         // ocean mask texture coordinate:
         "   ocean_mask_tex_coord = gl_MultiTexCoord0; \n"
@@ -233,7 +237,7 @@ namespace
         "uniform float ocean_max_range; \n"              // maximum visible distance of the ocean
         "uniform float ocean_fade_range; \n"             // distance over which to fade in the ocean
 
-        "void osgearth_frag_applyColoring(inout vec4 color) \n"
+        "void oe_ocean_fragment(inout vec4 color) \n"
         "{ \n"
         "    color = ocean_baseColor; \n"
 

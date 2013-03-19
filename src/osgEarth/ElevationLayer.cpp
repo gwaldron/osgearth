@@ -520,7 +520,7 @@ ElevationLayerVector::createHeightField(const TileKey&                  key,
     for( ElevationLayerVector::const_iterator i = this->begin(); i != this->end(); i++ )
     {
         ElevationLayer* layer = i->get();
-        if ( layer->getVisible() )
+        if ( layer->getVisible() && layer->isKeyValid( keyToUse ) )
         {
             GeoHeightField geoHF = layer->createHeightField( keyToUse, progress );
 

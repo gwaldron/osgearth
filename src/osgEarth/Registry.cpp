@@ -25,6 +25,7 @@
 #include <osgEarth/IOTypes>
 #include <osgEarth/ColorFilter>
 #include <osgEarth/StateSetCache>
+#include <osgEarth/HTTPClient>
 #include <osgEarthDrivers/cache_filesystem/FileSystemCache>
 #include <osg/Notify>
 #include <osg/Version>
@@ -33,7 +34,6 @@
 #include <ogr_api.h>
 #include <stdlib.h>
 #include <locale>
-#include <curl/curl.h>
 
 using namespace osgEarth;
 using namespace osgEarth::Drivers;
@@ -64,7 +64,7 @@ _terrainEngineDriver( "quadtree" )
     GDALAllRegister();
 
     // global initialization for CURL (not thread safe)
-    curl_global_init(CURL_GLOBAL_ALL);
+    HTTPClient::globalInit();
 
     // generates the basic shader code for the terrain engine and model layers.
     _shaderLib = new ShaderFactory();

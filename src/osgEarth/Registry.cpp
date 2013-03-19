@@ -33,6 +33,7 @@
 #include <ogr_api.h>
 #include <stdlib.h>
 #include <locale>
+#include <curl/curl.h>
 
 using namespace osgEarth;
 using namespace osgEarth::Drivers;
@@ -61,6 +62,9 @@ _terrainEngineDriver( "quadtree" )
     // set up GDAL and OGR.
     OGRRegisterAll();
     GDALAllRegister();
+
+    // global initialization for CURL (not thread safe)
+    curl_global_init(CURL_GLOBAL_ALL);
 
     // generates the basic shader code for the terrain engine and model layers.
     _shaderLib = new ShaderFactory();

@@ -26,7 +26,7 @@ using namespace osgEarth::Symbology;
 using namespace osgEarth::Features;
 
 /****************************************************************/
-AddPointHandler::AddPointHandler(Feature* feature, FeatureListSource* source, const osgEarth::SpatialReference* mapSRS):
+AddPointHandler::AddPointHandler(Feature* feature, FeatureSource* source, const osgEarth::SpatialReference* mapSRS):
 _feature(feature),
 _source( source ),
 _mapSRS( mapSRS ),

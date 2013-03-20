@@ -24,16 +24,24 @@
 using namespace PackageQt;
 
 
-ExportDialog::ExportDialog()
+ExportDialog::ExportDialog(const std::string& boundsString)
 {
-  initUi();
+  initUi(boundsString);
 }
 
-void ExportDialog::initUi()
+void ExportDialog::initUi(const std::string& boundsString)
 {
 	_ui.setupUi(this);
 
   _ui.errorLabel->setStyleSheet("color: red");
+
+  if (boundsString.length() > 0)
+  {
+    _ui.boundsLabel->setText(tr(boundsString.c_str()));
+    _ui.boundsLabel->setEnabled(true);
+    _ui.boundsCheckBox->setEnabled(true);
+    _ui.boundsCheckBox->setChecked(true);
+  }
 
   QObject::connect(_ui.exportPathBrowseButton, SIGNAL(clicked()), this, SLOT(showExportBrowse()));
   QObject::connect(_ui.earthFileCheckBox, SIGNAL(toggled(bool)), this, SLOT(updateEarthFilePathEdit()));

@@ -29,6 +29,7 @@
 #include <osgEarthDrivers/gdal/GDALOptions>
 #include <osgEarth/GeoData>
 #include <osgEarth/Map>
+#include <osgEarth/Progress>
 
 #include <osgDB/FileNameUtils>
 
@@ -36,12 +37,61 @@
 #include <QDockWidget>
 #include <QtGui>
 #include <QMainWindow>
+#include <QMetaObject>
+#include <QProgressDialog>
 #include <QToolBar>
 
 #include "SceneController.h"
 #include "TMSExporter.h"
 #include "ExportDialog"
 #include "WaitDialog"
+
+namespace
+{
+  class ExportProgressCallback : public osgEarth::ProgressCallback
+  {
+  public:
+    ExportProgressCallback(QProgressDialog* dialog)
+      : _dialog(dialog)
+    {
+    }
+
+    virtual ~ExportProgressCallback() { }
+
+    bool reportProgress(double current, double total, unsigned currentStage, unsigned totalStages, const std::string& msg)
+    {
+      if (_dialog)
+      {
+        QMetaObject::invokeMethod(_dialog, "setValue", Qt::QueuedConnection, Q_ARG(int, (current / total) * 100));
+
+        if (_dialog->wasCanceled())
+          return true;
+      }
+
+      return false;
+    }
+
+    void onCompleted()
+    {
+      QMetaObject::invokeMethod(_dialog, "close", Qt::QueuedConnection);
+    }
+
+  private:
+    QProgressDialog* _dialog;
+  };
+
+  struct SceneBoundsSetCallback : public PackageQt::BoundsSetCallback
+  {
+    SceneBoundsSetCallback(QAction* toggleAction) : _action(toggleAction) { }
+
+    void boundsSet(const osg::Vec2d& ll, const osg::Vec2d& ur)
+    {
+      QMetaObject::invokeMethod(_action, "setChecked", Qt::QueuedConnection, Q_ARG(bool, false));
+    }
+
+    QAction* _action;
+  };
+}
 
 namespace PackageQt
 {
@@ -71,7 +121,7 @@ public:
     }
 
 
-    private slots:
+private slots:
 
     void openEarthFile()
     {
@@ -124,27 +174,59 @@ public:
     {
         if (_exporter)
         {
-          PackageQt::ExportDialog exportDialog;
+          PackageQt::ExportDialog exportDialog(_controller->getBoundsString());
 	        if (exportDialog.exec() == QDialog::Accepted)
 	        {
-            PackageQt::WaitDialog msg(tr("Exporting. Please wait."));
-            msg.show();
-            msg.repaint();
+            //QProgressDialog* progress = new QProgressDialog(tr("Exporting. Please wait."), tr("Cancel"), 0, 100, this, Qt::CustomizeWindowHint|Qt::WindowTitleHint|Qt::WindowStaysOnTopHint);
+            QProgressDialog* progress = new QProgressDialog(tr("Processing layers..."), QString(), 0, 100, this, Qt::CustomizeWindowHint|Qt::WindowTitleHint|Qt::WindowStaysOnTopHint);
+            progress->setAttribute(Qt::WA_DeleteOnClose, true);
+            progress->setWindowTitle(tr("Exporting"));
+            progress->setValue(0);
+            _exporter->setProgressCallback(new ExportProgressCallback(progress));
+
+            progress->setWindowModality(Qt::WindowModal);
+            progress->show();
 
             _exporter->setKeepEmpties(exportDialog.keepEmpties());
             _exporter->setMaxLevel(exportDialog.getMaxLevel());
 
-            _exporter->exportTMS(
+            osg::Vec2d ll = _controller->getBoundsLL();
+            osg::Vec2d ur = _controller->getBoundsUR();
+
+            std::vector<osgEarth::Bounds> bounds;
+            if (exportDialog.useBounds() && (ur - ll).length() > 0.0)
+              bounds.push_back(osgEarth::Bounds(ll.x(), ll.y(), ur.x(), ur.y()));
+
+            _exportThread = new TMSExporterWorkerThread(
+              _exporter, 
               _controller->mapNode(),
               exportDialog.getExportPath(),
-              std::vector<osgEarth::Bounds>(),
+              bounds,
               (exportDialog.exportEarthFile() ? exportDialog.getEarthFilePath() : ""),
               exportDialog.overwriteExisting(),
               (exportDialog.overrideExtension() ? exportDialog.getExtension() : ""));
 
-            msg.hide();
+            _exportThread->start();
           }
         }
+    }
+
+    void getBoundingBox(bool checked)
+    {
+      if (!_controller)
+        return;
+
+      if (checked)
+        _controller->captureBounds(new SceneBoundsSetCallback(_bboxAction));
+      else
+        _controller->endBoundsCapture();
+
+    }
+
+    void clearBoundingBox()
+    {
+      if (_controller)
+        _controller->clearBounds();
     }
 
 protected:
@@ -182,12 +264,6 @@ private:
     {
       if (_controller)
       {
-        // create catalog widget
-        //osgEarth::QtGui::MapCatalogWidget* layerCatalog = new osgEarth::QtGui::MapCatalogWidget(_manager, osgEarth::QtGui::MapCatalogWidget::ALL_LAYERS);
-        //layerCatalog->setActiveViews(_views);
-        //layerCatalog->setHideEmptyGroups(true);
-        //_catalogDock->setWidget(layerCatalog);
-
         // create a second catalog widget for viewpoints
         osgEarth::QtGui::MapCatalogWidget* vpCatalog = new osgEarth::QtGui::MapCatalogWidget(_manager, osgEarth::QtGui::MapCatalogWidget::VIEWPOINTS);
         vpCatalog->setActiveViews(_views);
@@ -225,6 +301,15 @@ private:
         _exportAction = new QAction(QIcon(":/images/export.png"), tr(""), this);
         _exportAction->setToolTip(tr("Export"));
         connect(_exportAction, SIGNAL(triggered()), this, SLOT(exportRepo()));
+
+        _bboxAction = new QAction(QIcon(":/images/bbox.png"), tr(""), this);
+        _bboxAction->setToolTip(tr("Specify bounding box"));
+        _bboxAction->setCheckable(true);
+        connect(_bboxAction, SIGNAL(triggered(bool)), this, SLOT(getBoundingBox(bool)));
+
+        _bboxClearAction = new QAction(QIcon(":/images/bbox_clear.png"), tr(""), this);
+        _bboxClearAction->setToolTip(tr("Clear bounding box"));
+        connect(_bboxClearAction, SIGNAL(triggered()), this, SLOT(clearBoundingBox()));
     }
 
 	  void createToolbars()
@@ -237,15 +322,14 @@ private:
         _fileToolbar->addAction(_addImageLayerAction);
         _fileToolbar->addAction(_addElevationLayerAction);
         _fileToolbar->addSeparator();
+        _fileToolbar->addAction(_bboxAction);
+        _fileToolbar->addAction(_bboxClearAction);
+        _fileToolbar->addSeparator();
         _fileToolbar->addAction(_exportAction);
     }
 
     void createDockWidgets()
     {
-      //_catalogDock = new QDockWidget(QWidget::tr("Layers"));
-      //_catalogDock->setAllowedAreas(Qt::LeftDockWidgetArea | Qt::RightDockWidgetArea);
-      //addDockWidget(Qt::LeftDockWidgetArea, _catalogDock);
-
       _elevLayersDock = new QDockWidget(QWidget::tr("Elevation Layers"));
       _elevLayersDock->setAllowedAreas(Qt::LeftDockWidgetArea | Qt::RightDockWidgetArea);
       addDockWidget(Qt::LeftDockWidgetArea, _elevLayersDock);
@@ -261,6 +345,7 @@ private:
 	
     PackageQt::SceneController* _controller;
     PackageQt::TMSExporter* _exporter;
+    osg::ref_ptr<TMSExporterWorkerThread> _exportThread;
 
     osg::ref_ptr<osgEarth::QtGui::DataManager> _manager;
     osgEarth::QtGui::ViewerWidget* _viewerWidget;
@@ -271,9 +356,10 @@ private:
     QAction *_addImageLayerAction;
     QAction *_addElevationLayerAction;
     QAction *_exportAction;
+    QAction *_bboxAction;
+    QAction *_bboxClearAction;
     QToolBar *_fileToolbar;
     
-    QDockWidget *_catalogDock;
     QDockWidget *_vpDock;
     QDockWidget *_elevLayersDock;
     QDockWidget *_imgLayersDock;

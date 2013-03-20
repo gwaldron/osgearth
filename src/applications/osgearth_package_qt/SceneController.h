@@ -24,12 +24,18 @@
 
 #include <osgEarth/Map>
 #include <osgEarth/MapNode>
+#include <osgEarthAnnotation/FeatureNode>
 #include <osgEarthUtil/Controls>
 #include <osgEarthUtil/ExampleResources>
-#include <osgEarthUtil/SkyNode>
+//#include <osgEarthUtil/SkyNode>
 
 namespace PackageQt
 {
+  struct BoundsSetCallback : public osg::Referenced
+  {
+    virtual void boundsSet(const osg::Vec2d& ll, const osg::Vec2d& ur) { }
+  };
+
   class SceneController
   {
   public:
@@ -42,17 +48,34 @@ namespace PackageQt
     osgEarth::MapNode* mapNode() { return _mapNode.get(); }
     osgEarth::Map* map() { return _map.get(); }
 
+    void captureBounds(BoundsSetCallback* callback=0L);
+    void endBoundsCapture();
+    void clearBounds();
+
+    void setBounds(const osgEarth::GeoPoint& p1, const osgEarth::GeoPoint& p2);
+    const osg::Vec2d &getBoundsLL() { return _boundsLL; }
+    const osg::Vec2d &getBoundsUR() { return _boundsUR; }
+    std::string getBoundsString();
+
   private:
 
     osg::ref_ptr<osg::Group> _root;
     osg::ref_ptr<osgViewer::View> _view;
     osg::ref_ptr<osgEarth::Util::Controls::ControlCanvas> _canvas;
     osg::ref_ptr<osgEarth::Util::Controls::Container> _controlContainer;
+    osg::ref_ptr<osg::Group> _annoRoot;
 
     osg::ref_ptr<osg::Node> _earthNode;
     osg::ref_ptr<osgEarth::MapNode> _mapNode;
     osg::ref_ptr<osgEarth::Map> _map;
     //osg::ref_ptr<osgEarth::Util::SkyNode> _sky;
+
+    osgEarth::Symbology::Style _boundsStyle;
+    osg::Vec2d _boundsLL;
+    osg::Vec2d _boundsUR;
+    osg::ref_ptr<osgEarth::Annotation::FeatureNode> _bboxNode;
+    osg::ref_ptr<osgGA::GUIEventHandler> _guiHandler;
+    osg::ref_ptr<BoundsSetCallback> _boundsCallback;
   };
 }
 

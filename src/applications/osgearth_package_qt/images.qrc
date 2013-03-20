@@ -6,5 +6,7 @@
         <file>images/save.png</file>
         <file>images/delete.png</file>
         <file>images/export.png</file>
+        <file>images/bbox.png</file>
+        <file>images/bbox_clear.png</file>
     </qresource>
 </RCC>

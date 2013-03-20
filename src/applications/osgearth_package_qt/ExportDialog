@@ -29,7 +29,7 @@ namespace PackageQt
 	  Q_OBJECT
 
 	  public:
-      ExportDialog();
+      ExportDialog(const std::string& boundsString="");
 
       std::string getExportPath() const { return _ui.exportPathEdit->text().toUtf8().data(); }
 
@@ -46,6 +46,8 @@ namespace PackageQt
 
       bool keepEmpties() const { return _ui.keepEmptiesCheckBox->isChecked(); }
 
+      bool useBounds() const { return _ui.boundsCheckBox->isChecked(); }
+
 	  private slots:
 		  void showExportBrowse();
       void updateEarthFilePathEdit();
@@ -56,7 +58,7 @@ namespace PackageQt
 	  private:		
 		  Ui::ExportDialog _ui;
       
-		  void initUi();
+		  void initUi(const std::string& boundsString);
   };
 }
 

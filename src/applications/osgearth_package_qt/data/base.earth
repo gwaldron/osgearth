@@ -8,8 +8,4 @@ Simple basemap
         <url>./world.tif</url>
     </image>
     
-    <options>
-        <terrain driver="mp" />
-    </options>
-
 </map>

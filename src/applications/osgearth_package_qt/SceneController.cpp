@@ -23,6 +23,7 @@
 #include <osgEarth/Map>
 #include <osgEarth/MapNode>
 //#include <osgEarth/StringUtils>
+#include <osgEarthAnnotation/FeatureNode>
 #include <osgEarthUtil/Controls>
 #include <osgEarthUtil/ExampleResources>
 //#include <osgEarthUtil/SkyNode>
@@ -33,12 +34,93 @@ using namespace PackageQt;
 
 #define LC "[SceneController] "
 
+namespace
+{
+  struct BoundingBoxMouseHandler : public osgGA::GUIEventHandler
+  {
+    BoundingBoxMouseHandler(SceneController* controller, bool startCapture=false)
+      : _controller(controller), _mouseDown(false), _capturing(startCapture)
+    {
+    }
+
+    void startCapture()
+    {
+      _capturing = true;
+    }
+
+    void stopCapture()
+    {
+      _capturing = false;
+    }
+
+    bool handle( const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& aa )
+    {
+      if (!_capturing || !_controller)
+        return false;
+
+      osgViewer::View* view = static_cast<osgViewer::View*>(aa.asView());
+
+      if ( ea.getEventType() == osgGA::GUIEventAdapter::PUSH  && ea.getButton() == osgGA::GUIEventAdapter::LEFT_MOUSE_BUTTON)
+      {
+        osg::Vec3d world;
+        if (_controller->mapNode()->getTerrain()->getWorldCoordsUnderMouse(aa.asView(), ea.getX(), ea.getY(), world))
+        {
+          osgEarth::GeoPoint mapPoint;
+          mapPoint.fromWorld( _controller->mapNode()->getMapSRS(), world );
+          _startPoint = mapPoint;
+        }
+
+        std::cout << "BBox DOWN" << std::endl;
+
+        _mouseDown = true;
+
+        ea.setHandled(true);
+        return true;
+      }
+      else if (ea.getEventType() == osgGA::GUIEventAdapter::DRAG && _mouseDown)
+      {
+        osg::Vec3d world;
+        if (_controller->mapNode()->getTerrain()->getWorldCoordsUnderMouse(aa.asView(), ea.getX(), ea.getY(), world))
+        {
+          osgEarth::GeoPoint mapPoint;
+          mapPoint.fromWorld( _controller->mapNode()->getMapSRS(), world );
+          _controller->setBounds(_startPoint, mapPoint);
+        }
+
+        std::cout << "BBox MOVE" << std::endl;
+
+        ea.setHandled(true);
+        return true;
+      }
+      else if (ea.getEventType() == osgGA::GUIEventAdapter::RELEASE && ea.getButton() == osgGA::GUIEventAdapter::LEFT_MOUSE_BUTTON && _mouseDown)
+      {
+        _mouseDown = false;
+        _capturing = false;
+        _controller->endBoundsCapture();
+
+        std::cout << "BBox UP" << std::endl;
+
+        ea.setHandled(true);
+        return true;
+      }
+
+      return false;
+    }
+
+
+    SceneController* _controller;
+    bool _capturing;
+    bool _mouseDown;
+    osgEarth::GeoPoint _startPoint;
+  };
+}
+
 SceneController::SceneController(osg::Group* root, osgViewer::View* view, const std::string& url)
 : _root(root), _view(view)
 {
   if (_root.valid() && _view.valid())
   {
-    // install a canvas for any UI controls we plan to create
+    //install a canvas for any UI controls we plan to create
     _canvas = osgEarth::Util::Controls::ControlCanvas::get(_view, false);
 
     _controlContainer = _canvas->addControl( new osgEarth::Util::Controls::VBox() );
@@ -47,7 +129,21 @@ SceneController::SceneController(osg::Group* root, osgViewer::View* view, const 
     _controlContainer->setVertAlign( osgEarth::Util::Controls::Control::ALIGN_BOTTOM );
 
     root->addChild(_canvas);
+
+    //create the root group for annotations
+    _annoRoot = new osg::Group();
+    root->addChild(_annoRoot);
   }
+
+  //Setup bounding box style
+  osgEarth::Symbology::LineSymbol* ls = _boundsStyle.getOrCreate<osgEarth::Symbology::LineSymbol>();
+  ls->stroke()->color() = osgEarth::Symbology::Color::Red;
+  ls->stroke()->width() = 3.0f;
+  ls->stroke()->stipple() = 0x0F0F;
+  //ls->tessellation() = 20;
+  _boundsStyle.getOrCreate<osgEarth::Symbology::AltitudeSymbol>()->clamping() = osgEarth::Symbology::AltitudeSymbol::CLAMP_TO_TERRAIN;
+  _boundsStyle.getOrCreate<osgEarth::Symbology::AltitudeSymbol>()->technique() = osgEarth::Symbology::AltitudeSymbol::TECHNIQUE_GPU;
+
 
   loadEarthFile(url);
 }
@@ -118,4 +214,82 @@ osg::Node* SceneController::loadEarthFile(const std::string& url)
   }
 
   return _earthNode.get();
+}
+
+void SceneController::captureBounds(BoundsSetCallback* callback)
+{
+  _boundsCallback = callback;
+
+  if (!_guiHandler.valid())
+  {
+    _guiHandler = new BoundingBoxMouseHandler(this, true);
+    _view->addEventHandler(_guiHandler.get());
+  }
+  else
+  {
+    dynamic_cast<BoundingBoxMouseHandler *>(_guiHandler.get())->startCapture();
+  }
+}
+
+void SceneController::endBoundsCapture()
+{
+  if (_guiHandler.valid())
+    dynamic_cast<BoundingBoxMouseHandler *>(_guiHandler.get())->stopCapture();
+
+  if (_boundsCallback.valid())
+    _boundsCallback->boundsSet(_boundsLL, _boundsUR);
+}
+
+void SceneController::clearBounds()
+{
+  if (_bboxNode.valid())
+  {
+    _annoRoot->removeChild(_bboxNode.get());
+    _bboxNode = 0L;
+  }
+
+  _boundsLL.set(0., 0.);
+  _boundsUR.set(0., 0.);
+}
+
+void SceneController::setBounds(const osgEarth::GeoPoint& p1, const osgEarth::GeoPoint& p2)
+{
+  _boundsLL.set(osg::minimum(p1.x(), p2.x()), osg::minimum(p1.y(), p2.y()));
+  _boundsUR.set(osg::maximum(p1.x(), p2.x()), osg::maximum(p1.y(), p2.y()));
+
+  if (_annoRoot.valid())
+  {
+    //TODO: use correct coords here
+    osgEarth::Symbology::Geometry* geom = new osgEarth::Symbology::Polygon();
+    geom->push_back(_boundsLL.x(), _boundsLL.y());
+    geom->push_back(_boundsUR.x(), _boundsLL.y());
+    geom->push_back(_boundsUR.x(), _boundsUR.y());
+    geom->push_back(_boundsLL.x(), _boundsUR.y());
+
+    osgEarth::Features::Feature* feature = new osgEarth::Features::Feature(geom, _mapNode->getMapSRS()->getGeographicSRS(), _boundsStyle);
+
+    if (!_bboxNode.valid())
+    {
+      _bboxNode = new osgEarth::Annotation::FeatureNode(_mapNode, feature);
+      _bboxNode->getOrCreateStateSet()->setMode(GL_LIGHTING, osg::StateAttribute::OFF);
+      _annoRoot->addChild( _bboxNode.get() );
+    }
+    else
+    {
+      _bboxNode->setFeature(feature);
+    }
+  }
+}
+
+std::string SceneController::getBoundsString()
+{
+  std::string str = "";
+  if ((_boundsUR - _boundsLL).length() > 0.0)
+  {
+    std::stringstream ss;
+    ss << "LL( " << _boundsLL.y() << ", " << _boundsLL.x() << " ) UR( " << _boundsUR.y() << ", " << _boundsUR.x() << " )";
+    str = ss.str();
+  }
+
+  return str;
 }

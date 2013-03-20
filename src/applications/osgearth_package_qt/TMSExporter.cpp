@@ -50,12 +50,13 @@ TMSExporter::TMSExporter(const std::string& log)
 }
 
 /** Packages an image layer as a TMS folder. */
-bool TMSExporter::exportTMS(MapNode* mapNode, const std::string& path, std::vector< Bounds >& bounds, const std::string& outEarth, bool overwrite, const std::string& extension)
+int TMSExporter::exportTMS(MapNode* mapNode, const std::string& path, std::vector< Bounds >& bounds, const std::string& outEarth, bool overwrite, const std::string& extension)
 {
   if ( !mapNode )
   {
     _errorMessage = "Invalid MapNode";
-    return false;
+    if (_progress.valid()) _progress->onCompleted();
+    return 0;
   }
 
   // folder to which to write the TMS archive.
@@ -68,7 +69,8 @@ bool TMSExporter::exportTMS(MapNode* mapNode, const std::string& path, std::vect
   if ( !osgDB::fileExists(rootFolder) )
   {
     _errorMessage = "Failed to create root output folder";
-    return false;
+    if (_progress.valid()) _progress->onCompleted();
+    return 0;
   }
 
   Map* map = mapNode->getMap();
@@ -116,13 +118,18 @@ bool TMSExporter::exportTMS(MapNode* mapNode, const std::string& path, std::vect
   std::string outEarthFile = osgDB::concatPaths(rootFolder, outEarthName);
 
 
-  // package any image layers that are enabled:
+  // get the image and elevation layers in the map
   ImageLayerVector imageLayers;
   map->getImageLayers( imageLayers );
 
-  unsigned counter = 0;
-  
-  for( ImageLayerVector::iterator i = imageLayers.begin(); i != imageLayers.end(); ++i, ++counter )
+  ElevationLayerVector elevationLayers;
+  map->getElevationLayers( elevationLayers );
+
+  int totalLayers = imageLayers.size() + elevationLayers.size();
+
+  // package any image layers that are enabled and visible
+  unsigned imageCount = 0;
+  for( ImageLayerVector::iterator i = imageLayers.begin(); i != imageLayers.end(); ++i, ++imageCount )
   {
       ImageLayer* layer = i->get();
       //if ( layer->getImageLayerOptions().enabled() == true )
@@ -130,7 +137,7 @@ bool TMSExporter::exportTMS(MapNode* mapNode, const std::string& path, std::vect
       {
           std::string layerFolder = toLegalFileName( layer->getName() );
           if ( layerFolder.empty() )
-              layerFolder = Stringify() << "image_layer_" << counter;
+              layerFolder = Stringify() << "image_layer_" << imageCount;
 
           if ( verbose )
           {
@@ -166,14 +173,18 @@ bool TMSExporter::exportTMS(MapNode* mapNode, const std::string& path, std::vect
       {
           OE_NOTICE << LC << "Skipping disabled layer \"" << layer->getName() << "\"" << std::endl;
       }
+
+      if ( _progress.valid() && (_progress->isCanceled() || _progress.valid() && _progress->reportProgress(imageCount + 1, totalLayers)) )
+      {
+          //Canceled
+          _progress->onCompleted();
+          return imageCount;
+      }
   }
 
-  // package any elevation layers that are enabled:
-  counter = 0;
-  ElevationLayerVector elevationLayers;
-  map->getElevationLayers( elevationLayers );
-
-  for( ElevationLayerVector::iterator i = elevationLayers.begin(); i != elevationLayers.end(); ++i, ++counter )
+  // package any elevation layers that are enabled and visible
+  int elevCount = 0;
+  for( ElevationLayerVector::iterator i = elevationLayers.begin(); i != elevationLayers.end(); ++i, ++elevCount )
   {
       ElevationLayer* layer = i->get();
       //if ( layer->getElevationLayerOptions().enabled() == true )
@@ -181,7 +192,7 @@ bool TMSExporter::exportTMS(MapNode* mapNode, const std::string& path, std::vect
       {
           std::string layerFolder = toLegalFileName( layer->getName() );
           if ( layerFolder.empty() )
-              layerFolder = Stringify() << "elevation_layer_" << counter;
+              layerFolder = Stringify() << "elevation_layer_" << elevCount;
 
           if ( verbose )
           {
@@ -218,6 +229,13 @@ bool TMSExporter::exportTMS(MapNode* mapNode, const std::string& path, std::vect
       {
           OE_NOTICE << LC << "Skipping disabled layer \"" << layer->getName() << "\"" << std::endl;
       }
+
+      if ( _progress.valid() && (_progress->isCanceled() || _progress->reportProgress(elevCount + 1 + imageCount, totalLayers)) )
+      {
+          //Canceled
+          _progress->onCompleted();
+          return elevCount + imageCount;
+      }
   }
 
   // Finally, write an earth file if requested:
@@ -235,6 +253,8 @@ bool TMSExporter::exportTMS(MapNode* mapNode, const std::string& path, std::vect
       }
   }
 
-  return true;
+  if (_progress.valid()) _progress->onCompleted();
+
+  return elevCount + imageCount;
 }
 

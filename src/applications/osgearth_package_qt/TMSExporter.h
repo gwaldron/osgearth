@@ -24,6 +24,7 @@
 
 #include <osgEarth/Map>
 #include <osgEarth/MapNode>
+#include <osgEarth/Progress>
 
 namespace PackageQt
 {
@@ -33,7 +34,7 @@ namespace PackageQt
 
     TMSExporter(const std::string& log="log.txt");
 
-    bool exportTMS(osgEarth::MapNode* mapNode, const std::string& path, std::vector< osgEarth::Bounds >& bounds, const std::string& outEarth="", bool overwrite=false, const std::string& extension="");
+    int exportTMS(osgEarth::MapNode* mapNode, const std::string& path, std::vector< osgEarth::Bounds >& bounds, const std::string& outEarth="", bool overwrite=false, const std::string& extension="");
 
     std::string getDBOptions() { return _dbOptions; }
     void setDBOptions(const std::string& options) { _dbOptions = options; }
@@ -45,12 +46,41 @@ namespace PackageQt
 
     std::string getErrorMessage() { return _errorMessage; }
 
+    void setProgressCallback(osgEarth::ProgressCallback* progress) { _progress = progress ? progress : new osgEarth::ProgressCallback; }
+
   private:
 
     std::string _dbOptions;
     unsigned _maxLevel;
     bool _keepEmpties;
     std::string _errorMessage;
+    osg::ref_ptr<osgEarth::ProgressCallback> _progress;
+  };
+
+
+  class TMSExporterWorkerThread : public osg::Referenced, public OpenThreads::Thread
+  {
+  public:
+    TMSExporterWorkerThread(TMSExporter* exporter, osgEarth::MapNode* mapNode, const std::string& path, std::vector< osgEarth::Bounds >& bounds, const std::string& outEarth="", bool overwrite=false, const std::string& extension="")
+      : OpenThreads::Thread(), _exporter(exporter), _mapNode(mapNode), _path(path), _bounds(bounds), _outEarth(outEarth), _overwrite(overwrite), _extension(extension)
+    { }
+
+    void run()
+    {
+      if (_exporter)
+      {
+        _exporter->exportTMS(_mapNode, _path, _bounds, _outEarth, _overwrite, _extension);
+      }
+    }
+
+  private:
+    TMSExporter* _exporter;
+    osg::ref_ptr<osgEarth::MapNode> _mapNode;
+    std::string _path;
+    std::vector< osgEarth::Bounds > _bounds;
+    std::string _outEarth;
+    bool _overwrite;
+    std::string _extension;
   };
 }
 

@@ -90,7 +90,7 @@ namespace osgEarth
          * Resizes a heightfield, keeping the corner values the same and
          * resampling the internal posts.
          */
-        static osg::HeightField* resizeHeightField(
+        static osg::HeightField* resampleHeightField(
             osg::HeightField* input,
             int newX,
             int newY,

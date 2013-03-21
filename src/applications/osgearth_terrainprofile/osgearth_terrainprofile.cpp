@@ -304,14 +304,18 @@ public:
           Feature* feature = new Feature(line, _mapNode->getMapSRS());
           feature->geoInterp() = GEOINTERP_GREAT_CIRCLE;    
 
-          //Define a style for the line
+          // Define a style for the line
           Style style;
           LineSymbol* ls = style.getOrCreateSymbol<LineSymbol>();
           ls->stroke()->color() = Color::Yellow;
           ls->stroke()->width() = 2.0f;
           ls->tessellation() = 20;
 
+          // Setup the AltitudeSymbol to clamp to the terrain and use TECHNIQUE_SCENE to do automatic
+          // clamping to the scene graph when the terrain changes.
           style.getOrCreate<AltitudeSymbol>()->clamping() = AltitudeSymbol::CLAMP_TO_TERRAIN;
+          style.getOrCreate<AltitudeSymbol>()->technique() = AltitudeSymbol::TECHNIQUE_SCENE;
+
 
           feature->style() = style;
 

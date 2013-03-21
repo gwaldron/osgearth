@@ -500,16 +500,10 @@ Registry::setStateSetCache( StateSetCache* cache )
     _stateSetCache = cache;
 }
 
-// A registry-wide StateSetCache is ONLY supported in OSG 3.1.4+
-// because of a mutex introduced in OSG changeset 13171.
 StateSetCache*
 Registry::getStateSetCache() const
 {
-#if OSG_MIN_VERSION_REQUIRED(3,1,4)
     return _stateSetCache.get();
-#else
-    return 0L;
-#endif
 }
 
 

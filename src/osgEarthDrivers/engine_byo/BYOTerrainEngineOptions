@@ -20,6 +20,7 @@
 #define OSGEARTH_ENGINE_BYO_OPTIONS 1
 
 #include <osgEarth/Common>
+#include <osgEarth/ShaderUtils>
 #include <osgEarth/TerrainOptions>
 #include <osgEarth/URI>
 
@@ -33,7 +34,9 @@ namespace osgEarth { namespace Drivers
     class BYOTerrainEngineOptions : public TerrainOptions // NO EXPORT (header-only)
     {
     public:
-        BYOTerrainEngineOptions( const ConfigOptions& options =ConfigOptions() ) : TerrainOptions( options )
+        BYOTerrainEngineOptions( const ConfigOptions& options =ConfigOptions() ) 
+            : TerrainOptions( options ),
+              _shaderPolicy ( SHADERPOLICY_GENERATE )
         {
             setDriver( "byo" );
             fromConfig( _conf );
@@ -46,6 +49,9 @@ namespace osgEarth { namespace Drivers
         optional<URI>& url() { return _uri; }
         const optional<URI>& url() const { return _uri; }
 
+        optional<ShaderPolicy>& shaderPolicy() { return _shaderPolicy; }
+        const optional<ShaderPolicy>& shaderPolicy() const { return _shaderPolicy; }
+
     public: // non-serializable
         void setNode(osg::Node* node);
         osg::Node* getNode() { return _node.get(); }
@@ -54,6 +60,9 @@ namespace osgEarth { namespace Drivers
         virtual Config getConfig() const {
             Config conf = TerrainOptions::getConfig();
             conf.updateIfSet( "url", _uri );
+            conf.updateIfSet( "shader_policy", "disable",  _shaderPolicy, SHADERPOLICY_DISABLE );
+            conf.updateIfSet( "shader_policy", "inherit",  _shaderPolicy, SHADERPOLICY_INHERIT );
+            conf.updateIfSet( "shader_policy", "generate", _shaderPolicy, SHADERPOLICY_GENERATE );
             conf.updateNonSerializable( "node", _node.get() );
             return conf;
         }
@@ -66,10 +75,14 @@ namespace osgEarth { namespace Drivers
     private:
         void fromConfig( const Config& conf ) {
             conf.getIfSet( "url", _uri );
+            conf.getIfSet( "shader_policy", "disable",  _shaderPolicy, SHADERPOLICY_DISABLE );
+            conf.getIfSet( "shader_policy", "inherit",  _shaderPolicy, SHADERPOLICY_INHERIT );
+            conf.getIfSet( "shader_policy", "generate", _shaderPolicy, SHADERPOLICY_GENERATE );
             _node = conf.getNonSerializable<osg::Node>( "node" );
         }
 
         optional<URI>           _uri;
+        optional<ShaderPolicy>  _shaderPolicy;
         osg::ref_ptr<osg::Node> _node;
     };
 

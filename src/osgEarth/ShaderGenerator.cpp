@@ -25,14 +25,21 @@
 
 #include <osg/Drawable>
 #include <osg/Geode>
+#include <osg/PagedLOD>
+#include <osg/ProxyNode>
 #include <osg/Texture1D>
 #include <osg/Texture2D>
 #include <osg/Texture3D>
 #include <osg/TexEnv>
 #include <osg/TexGen>
+#include <osgDB/FileNameUtils>
+#include <osgDB/FileUtils>
+#include <osgDB/ReadFile>
 #include <osgText/Text>
 
 #define LC "[ShaderGenerator] "
+
+#define SHADERGEN_PL_EXTENSION "osgearth_shadergen"
 
 using namespace osgEarth;
 
@@ -65,6 +72,52 @@ using namespace osgEarth;
 
 // other stuff
 #define INDENT "    "
+
+//------------------------------------------------------------------------
+
+struct OSGEarthShaderGenPseudoLoader : public osgDB::ReaderWriter
+{
+    OSGEarthShaderGenPseudoLoader()
+    {
+        this->supportsExtension( SHADERGEN_PL_EXTENSION, "ShaderGen pseudoloader" );
+    }
+
+    const char* className()
+    {
+        return "OSGEarth ShaderGen pseudoloader";
+    }
+
+    bool acceptsExtension(const std::string& extension) const
+    {
+        return osgDB::equalCaseInsensitive( extension, SHADERGEN_PL_EXTENSION );
+    }
+
+    ReadResult readObject(const std::string& filename, const osgDB::Options* options) const
+    {
+        return readNode( filename, options );
+    }
+
+    ReadResult readNode(const std::string& filename, const osgDB::Options* options) const
+    {
+        if ( !acceptsExtension(osgDB::getFileExtension(filename)) )
+            return ReadResult::FILE_NOT_HANDLED;
+
+        std::string stripped = osgDB::getNameLessExtension(filename);
+
+        OE_INFO << LC << "Loading " << stripped << " and generating shaders." << std::endl;
+        
+        osg::ref_ptr<osg::Node> node = osgDB::readNodeFile(stripped, options);
+        if ( node )
+        {
+            ShaderGenerator gen( Registry::stateSetCache() );
+            node->accept( gen );
+        }
+
+        return node.valid() ? ReadResult(node.release()) : ReadResult::ERROR_IN_READING_FILE;
+    }
+};
+
+REGISTER_OSGPLUGIN(SHADERGEN_PL_EXTENSION, OSGEarthShaderGenPseudoLoader)
 
 //------------------------------------------------------------------------
 
@@ -139,10 +192,10 @@ ShaderGenerator::ShaderGenerator() :
 osg::NodeVisitor( osg::NodeVisitor::TRAVERSE_ALL_CHILDREN )
 {
     _state = new StateEx();
-    _stateSetCache = new StateSetCache();
+    //_stateSetCache = new StateSetCache();
+    _stateSetCache = 0L;
     _defaultVP = new VirtualProgram();
     Registry::instance()->getShaderFactory()->installLightingShaders( _defaultVP.get() );
-    //_defaultVP->installDefaultColoringAndLightingShaders();
 }
 
 
@@ -150,10 +203,9 @@ ShaderGenerator::ShaderGenerator( StateSetCache* cache ) :
 osg::NodeVisitor( osg::NodeVisitor::TRAVERSE_ALL_CHILDREN )
 {
     _state = new StateEx();
-    _stateSetCache = cache ? cache : new StateSetCache();
+    _stateSetCache = cache; // ? cache : new StateSetCache();
     _defaultVP = new VirtualProgram();
     Registry::instance()->getShaderFactory()->installLightingShaders( _defaultVP.get() );
-    //_defaultVP->installDefaultColoringAndLightingShaders();
 }
 
 
@@ -168,6 +220,10 @@ ShaderGenerator::apply( osg::Node& node )
         osg::ref_ptr<osg::StateSet> replacement;
         if ( processGeometry(ss.get(), replacement) )
         {
+            // optimize state set sharing
+            if ( _stateSetCache.valid() )
+                _stateSetCache->share(replacement, replacement);
+
             _state->popStateSet();
             node.setStateSet( replacement.get() );
             _state->pushStateSet( replacement.get() );
@@ -195,7 +251,13 @@ ShaderGenerator::apply( osg::Geode& geode )
         if ( processGeometry(ss.get(), replacement) )
         {
             _state->popStateSet();
+            
+            // optimize state set sharing
+            if ( _stateSetCache.valid() )
+                _stateSetCache->share(replacement, replacement);
+
             geode.setStateSet( replacement.get() );
+
             _state->pushStateSet( replacement.get() );
         }
     }
@@ -240,8 +302,54 @@ ShaderGenerator::apply( osg::Drawable* drawable )
             }
 
             _state->popStateSet();
+
+            // optimize state set sharing
+            if ( _stateSetCache.valid() && replacement.valid() )
+            {
+                if ( _stateSetCache->share(replacement, replacement) )
+                    drawable->setStateSet( replacement.get() );
+            }
         }
     }
+}
+
+
+void
+ShaderGenerator::apply(osg::PagedLOD& node)
+{
+    for( unsigned i=0; i<node.getNumFileNames(); ++i )
+    {
+        const std::string& filename = node.getFileName( i );
+        if (!filename.empty() && 
+            osgDB::getLowerCaseFileExtension(filename).compare(SHADERGEN_PL_EXTENSION) != 0 )
+        {
+            node.setFileName( i, Stringify() << filename << "." << SHADERGEN_PL_EXTENSION );
+        }
+    }
+
+    apply( static_cast<osg::LOD&>(node) );
+}
+
+
+void
+ShaderGenerator::apply(osg::ProxyNode& node)
+{
+    if ( node.getLoadingExternalReferenceMode() != osg::ProxyNode::LOAD_IMMEDIATELY )
+    {
+        // rewrite the filenames to include the shadergen pseudo-loader extension so
+        // that dynamically loaded children will have the same shadergen applied.
+        for( unsigned i=0; i<node.getNumFileNames(); ++i )
+        {
+            const std::string& filename = node.getFileName( i );
+            if (!filename.empty() && 
+                osgDB::getLowerCaseFileExtension(filename).compare(SHADERGEN_PL_EXTENSION) != 0 )
+            {
+                node.setFileName( i, Stringify() << filename << "." << SHADERGEN_PL_EXTENSION );
+            }
+        }
+    }
+
+    apply( static_cast<osg::Group&>(node) );
 }
 
 
@@ -316,7 +424,8 @@ ShaderGenerator::processGeometry( osg::StateSet* ss, osg::ref_ptr<osg::StateSet>
 
     // see if the current state set contains a VirtualProgram already. If so,
     // we will add to it if necessary.
-    VirtualProgram* vp = dynamic_cast<VirtualProgram*>( ss->getAttribute(VirtualProgram::SA_TYPE) );
+    osg::ref_ptr<VirtualProgram> vp = 
+        dynamic_cast<VirtualProgram*>( ss->getAttribute(VirtualProgram::SA_TYPE) );
 
     // Check whether the lighting state has changed and install a mode uniform.
     if ( ss->getMode(GL_LIGHTING) != osg::StateAttribute::INHERIT )

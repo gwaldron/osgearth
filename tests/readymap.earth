@@ -25,7 +25,9 @@ http://readymap.org
     </elevation>
     
     <options>
-      <terrain normalize_edges="true"/>
+      <terrain normalize_edges="true" 
+	           sample_ratio="0.25"
+			   min_tile_range_factor="9"/>
     </options>
     
 </map>

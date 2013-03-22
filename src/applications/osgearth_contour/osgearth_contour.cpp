@@ -49,7 +49,7 @@ const char* vertexShader =
     "uniform   float contour_xferMax; \n"
     "varying   float contour_lookup; \n"
 
-    "void setupContour() \n"
+    "void setupContour(inout vec4 VertexModel) \n"
     "{ \n"
     "    float height = osgearth_elevData[3]; \n"
     "    float height_normalized = (height-contour_xferMin)/contour_xferRange; \n"
@@ -92,9 +92,8 @@ osg::StateSet* createStateSet( osg::TransferFunction1D* xfer, int unit )
     // Install the shaders. We also bind osgEarth's elevation data attribute, which the 
     // terrain engine automatically generates at the specified location.
     VirtualProgram* vp = new VirtualProgram();
-    vp->installDefaultColoringAndLightingShaders();
-    vp->setFunction( "setupContour", vertexShader,   ShaderComp::LOCATION_VERTEX_PRE_LIGHTING );
-    vp->setFunction( "colorContour", fragmentShader, ShaderComp::LOCATION_FRAGMENT_PRE_LIGHTING );
+    vp->setFunction( "setupContour", vertexShader,   ShaderComp::LOCATION_VERTEX_MODEL);
+    vp->setFunction( "colorContour", fragmentShader, ShaderComp::LOCATION_FRAGMENT_COLORING );
     vp->addBindAttribLocation( "osgearth_elevData", osg::Drawable::ATTRIBUTE_6 );
     stateSet->setAttributeAndModes( vp, osg::StateAttribute::ON );
 

@@ -151,6 +151,11 @@ namespace osgEarth
         static osg::Image* createEmptyImage();
 
         /**
+         * Creates a one-pixel image.
+         */
+        static osg::Image* createOnePixelImage(const osg::Vec4& color);
+
+        /**
          * Tests an image to see whether it's "empty", i.e. completely transparent,
          * within an alpha threshold.
          */
@@ -202,6 +207,21 @@ namespace osgEarth
          * Checks whether the image has an alpha component 
          */
         static bool hasAlphaChannel( const osg::Image* image );
+
+        /**
+         * Checks whether an image has transparency; i.e. whether
+         * there are any pixels with an alpha component whole value
+         * falls below the specified threshold.
+         */
+        static bool hasTransparency(const osg::Image* image, float alphaThreshold =1.0f);
+
+        /**
+         * Finds pixels with 100% alpha and sets their color to match that
+         * or neighboring non-alpha pixels. This facilitates MP blending.
+         * Specify "maxAlpha" as the maximum value to consider when searching
+         * for fully-transparent pixels.
+         */
+        static void featherAlphaRegions(osg::Image* image, float maxAlpha =0.0f);
 
         /**
          * Checks whether the given image is compressed
@@ -295,7 +315,7 @@ namespace osgEarth
             /**
              * Traverse an image, and call this method on the superclass:
              *
-             *   bool operator(const osg::Vec4& pixel);
+             *   bool operator(osg::Vec4& pixel);
              *
              * If that method returns true, write the value back at the same location.
              */

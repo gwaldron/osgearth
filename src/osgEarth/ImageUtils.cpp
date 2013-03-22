@@ -18,6 +18,7 @@
  */
 
 #include <osgEarth/ImageUtils>
+#include <osgEarth/ThreadingUtils>
 #include <osg/Notify>
 #include <osg/Texture>
 #include <osg/ImageSequence>
@@ -435,25 +436,28 @@ ImageUtils::sharpenImage( const osg::Image* input )
     return output;
 }
 
+namespace
+{
+    static Threading::Mutex         s_emptyImageMutex;
+    static osg::ref_ptr<osg::Image> s_emptyImage;
+}
 
 osg::Image*
 ImageUtils::createEmptyImage()
 {
-    static OpenThreads::Mutex s_mutex;
-    static osg::ref_ptr< osg::Image> s_image;
-    if (!s_image.valid())
+    if (!s_emptyImage.valid())
     {
-        OpenThreads::ScopedLock< OpenThreads::Mutex > lock( s_mutex );
-        if (!s_image.valid())
+        Threading::ScopedMutexLock exclusive( s_emptyImageMutex );
+        if (!s_emptyImage.valid())
         {
-            s_image = new osg::Image;
-            s_image->allocateImage(1,1,1, GL_RGBA, GL_UNSIGNED_BYTE);
-            s_image->setInternalTextureFormat( GL_RGB8A_INTERNAL );
-            unsigned char *data = s_image->data(0,0);
+            s_emptyImage = new osg::Image;
+            s_emptyImage->allocateImage(1,1,1, GL_RGBA, GL_UNSIGNED_BYTE);
+            s_emptyImage->setInternalTextureFormat( GL_RGB8A_INTERNAL );
+            unsigned char *data = s_emptyImage->data(0,0);
             memset(data, 0, 4);
         }     
     }
-    return s_image.get();
+    return s_emptyImage.get();
 }
 
 bool
@@ -473,6 +477,18 @@ ImageUtils::isEmptyImage(const osg::Image* image, float alphaThreshold)
         }
     }
     return true;    
+}
+
+
+osg::Image*
+ImageUtils::createOnePixelImage(const osg::Vec4& color)
+{
+    osg::Image* image = new osg::Image;
+    image->allocateImage(1,1,1, GL_RGBA, GL_UNSIGNED_BYTE);
+    image->setInternalTextureFormat( GL_RGB8A_INTERNAL );
+    PixelWriter write(image);
+    write(color, 0, 0);
+    return image;
 }
 
 bool
@@ -590,6 +606,80 @@ ImageUtils::hasAlphaChannel(const osg::Image* image)
         image->getPixelFormat() == GL_BGRA ||
         image->getPixelFormat() == GL_LUMINANCE_ALPHA );
 }
+
+
+bool
+ImageUtils::hasTransparency(const osg::Image* image, float threshold)
+{
+    if ( !image ) return false;
+    PixelReader read(image);
+    for( int t=0; t<image->t(); ++t )
+        for( int s=0; s<image->s(); ++s )
+            if ( read(s, t).a() < threshold )
+                return true;
+    return false;
+}
+
+
+void
+ImageUtils::featherAlphaRegions(osg::Image* image, float maxAlpha)
+{
+    PixelReader read(image);
+    PixelWriter write(image);
+
+    int ns = image->s();
+    int nt = image->t();
+
+    osg::Vec4 n;
+
+    for( int s=0; s<ns; ++s )
+    {
+        for( int t=0; t<nt; ++t )
+        {
+            osg::Vec4 pixel = read(s, t);
+            if ( pixel.a() <= maxAlpha )
+            {
+                osg::Vec4 rgb;
+                int count = 0;
+                if ( s > 0 ) {
+                    n = read( s-1, t );
+                    if ( n.a() > maxAlpha ) {
+                        rgb += n;
+                        count++;
+                    }
+                }
+                if ( s < ns-1 ) {
+                    n = read( s+1, t );
+                    if ( n.a() > maxAlpha ) {
+                        rgb += n;
+                        count++;
+                    }
+                }
+                if ( t > 0 ) {
+                    n = read( s, t-1 );
+                    if ( n.a() > maxAlpha ) {
+                        rgb += n;
+                        count++;
+                    }
+                }
+                if ( t < nt-1 ) {
+                    n = read( s, t+1 );
+                    if ( n.a() > maxAlpha ) {
+                        rgb += n;
+                        count++;
+                    }
+                }
+
+                if ( count > 0 )
+                {
+                    rgb /= (float)count;
+                    write(osg::Vec4(rgb.r(), rgb.g(), rgb.b(), pixel.a()), s, t);
+                }
+            }
+        }
+    }
+}
+
 
 bool
 ImageUtils::isCompressed(const osg::Image *image)

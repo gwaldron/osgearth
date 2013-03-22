@@ -25,6 +25,7 @@
 #include <osgEarth/IOTypes>
 #include <osgEarth/ColorFilter>
 #include <osgEarth/StateSetCache>
+#include <osgEarth/HTTPClient>
 #include <osgEarthDrivers/cache_filesystem/FileSystemCache>
 #include <osg/Notify>
 #include <osg/Version>
@@ -62,12 +63,21 @@ _terrainEngineDriver( "quadtree" )
     OGRRegisterAll();
     GDALAllRegister();
 
+    // global initialization for CURL (not thread safe)
+    HTTPClient::globalInit();
+
+    // generates the basic shader code for the terrain engine and model layers.
     _shaderLib = new ShaderFactory();
+
+    // thread pool for general use
     _taskServiceManager = new TaskServiceManager();
+
+    // optimizes sharing of state attributes and state sets for
+    // performance boost
     _stateSetCache = new StateSetCache();
 
     // activate KMZ support
-    osgDB::Registry::instance()->addArchiveExtension  ( "kmz" );    
+    osgDB::Registry::instance()->addArchiveExtension  ( "kmz" );
     osgDB::Registry::instance()->addFileExtensionAlias( "kmz", "kml" );
 
     osgDB::Registry::instance()->addMimeTypeExtensionMapping( "application/vnd.google-earth.kml+xml", "kml" );
@@ -122,12 +132,6 @@ _terrainEngineDriver( "quadtree" )
         OE_INFO << LC << "NO-CACHE MODE set from environment variable" << std::endl;
     }
 
-    // set the default terrain engine driver from the environment
-#ifdef OSG_GLES2_AVAILABLE
-    // default to "quadtree" if we're on iOS/Android/GLES
-    _terrainEngineDriver = "quadtree";
-#endif
-
     const char* teStr = ::getenv("OSGEARTH_TERRAIN_ENGINE");
     if ( teStr )
     {
@@ -135,7 +139,6 @@ _terrainEngineDriver( "quadtree" )
     }
 
     // load a default font
-
     const char* envFont = ::getenv("OSGEARTH_DEFAULT_FONT");
     if ( envFont )
     {
@@ -147,6 +150,9 @@ _terrainEngineDriver( "quadtree" )
         _defaultFont = osgText::readFontFile("arial.ttf");
 #endif
     }
+
+    // register the system stock Units.
+    Units::registerAll( this );
 }
 
 Registry::~Registry()
@@ -386,16 +392,15 @@ Registry::setCapabilities( Capabilities* caps )
     _caps = caps;
 }
 
-static OpenThreads::Mutex s_initCapsMutex;
 void
 Registry::initCapabilities()
 {
-    ScopedLock<Mutex> lock( s_initCapsMutex ); // double-check pattern (see getCapabilities)
+    ScopedLock<Mutex> lock( _capsMutex ); // double-check pattern (see getCapabilities)
     if ( !_caps.valid() )
         _caps = new Capabilities();
 }
 
-ShaderFactory*
+const ShaderFactory*
 Registry::getShaderFactory() const
 {
     return _shaderLib.get();
@@ -438,8 +443,7 @@ UID
 Registry::createUID()
 {
     //todo: use OpenThreads::Atomic for this
-    static Mutex s_uidGenMutex;
-    ScopedLock<Mutex> lock( s_uidGenMutex );
+    ScopedLock<Mutex> exclusive( _uidGenMutex );
     return (UID)( _uidGen++ );
 }
 
@@ -463,12 +467,15 @@ Registry::cloneOrCreateOptions( const osgDB::Options* input ) const
 void
 Registry::registerUnits( const Units* units )
 {
+    Threading::ScopedWriteLock exclusive( _unitsVectorMutex );
     _unitsVector.push_back(units);
 }
 
 const Units*
 Registry::getUnits(const std::string& name) const
 {
+    Threading::ScopedReadLock shared( _unitsVectorMutex );
+
     std::string lower = toLower(name);
     for( UnitsVector::const_iterator i = _unitsVector.begin(); i != _unitsVector.end(); ++i )
     {
@@ -493,16 +500,10 @@ Registry::setStateSetCache( StateSetCache* cache )
     _stateSetCache = cache;
 }
 
-// A registry-wide StateSetCache is ONLY supported in OSG 3.1.4+
-// because of a mutex introduced in OSG changeset 13171.
 StateSetCache*
 Registry::getStateSetCache() const
 {
-#if OSG_MIN_VERSION_REQUIRED(3,1,4)
     return _stateSetCache.get();
-#else
-    return 0L;
-#endif
 }
 
 

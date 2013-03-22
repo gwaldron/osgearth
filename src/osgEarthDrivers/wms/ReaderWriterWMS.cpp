@@ -20,6 +20,7 @@
 #include <osgEarth/TileSource>
 #include <osgEarth/ImageToHeightFieldConverter>
 #include <osgEarth/Registry>
+#include <osgEarth/TimeControl>
 #include <osgEarth/XmlUtils>
 #include <osgEarthUtil/WMS>
 #include <osgDB/FileNameUtils>
@@ -43,30 +44,43 @@ using namespace osgEarth;
 using namespace osgEarth::Util;
 using namespace osgEarth::Drivers;
 
-// All looping ImageSequences deriving from this class will by in sync due to
-// a shared reference time.
-class SyncImageSequence : public osg::ImageSequence {
-public:
-    SyncImageSequence()
-    { 
-    }
+//----------------------------------------------------------------------------
 
-    virtual void update(osg::NodeVisitor* nv) {
-        setReferenceTime( 0.0 );
-        osg::ImageSequence::update( nv );
-    }
-};
+namespace
+{
+    // All looping ImageSequences deriving from this class will be in sync due to
+    // a shared reference time.
+    struct SyncImageSequence : public osg::ImageSequence
+    {
+        SyncImageSequence() : osg::ImageSequence() { }
 
+        virtual void update(osg::NodeVisitor* nv)
+        {
+            setReferenceTime( 0.0 );
+            osg::ImageSequence::update( nv );
+        }
+    };
+}
 
-class WMSSource : public TileSource
+//----------------------------------------------------------------------------
+
+class WMSSource : public TileSource, public SequenceControl
 {
 public:
 	WMSSource( const TileSourceOptions& options ) : TileSource( options ), _options(options)
     {
+        _isPlaying     = false;
+
         if ( _options.times().isSet() )
         {
             StringTokenizer( *_options.times(), _timesVec, ",", "", false, true );
             OE_INFO << LC << "WMS-T: found " << _timesVec.size() << " times." << std::endl;
+
+            for( unsigned i=0; i<_timesVec.size(); ++i )
+            {
+                _seqFrameInfoVec.push_back(SequenceFrameInfo());
+                _seqFrameInfoVec.back().timeIdentifier = _timesVec[i];
+            }
         }
 
         // localize it since we might override them:
@@ -425,10 +439,11 @@ public:
     osg::Image* createImageSequence( const TileKey& key, ProgressCallback* progress )
     {
         osg::ImageSequence* seq = new SyncImageSequence();
-
+        
         seq->setLoopingMode( osg::ImageStream::LOOPING );
         seq->setLength( _options.secondsPerFrame().value() * (double)_timesVec.size() );
-        seq->play();
+        if ( this->isSequencePlaying() )
+            seq->play();
 
         for( unsigned int r=0; r<_timesVec.size(); ++r )
         {
@@ -451,6 +466,7 @@ public:
             }
         }
 
+        _sequenceCache.insert( seq );
         return seq;
     }
 
@@ -504,15 +520,75 @@ public:
         return _formatToUse;
     }
 
+
+public: // SequenceControl
+
+    /** Whether the implementation supports these methods */
+    bool supportsSequenceControl() const
+    {
+        return _timesVec.size() > 1;
+    }
+
+    /** Starts playback */
+    void playSequence()
+    {
+        //todo
+        _isPlaying = true;
+    }
+
+    /** Stops playback */
+    void pauseSequence()
+    {
+        //todo
+        _isPlaying = false;
+    }
+
+    /** Seek to a specific frame */
+    void seekToSequenceFrame(unsigned frame)
+    {
+        //todo
+    }
+
+    /** Whether the object is in playback mode */
+    bool isSequencePlaying() const
+    {
+        return _isPlaying;
+    }
+
+    /** Gets data about the current frame in the sequence */
+    const std::vector<SequenceFrameInfo>& getSequenceFrameInfo() const
+    {
+        return _seqFrameInfoVec;
+    }
+
+    /** Index of current frame */
+    int getCurrentSequenceFrameIndex( const osg::FrameStamp* fs ) const
+    {
+        if ( _seqFrameInfoVec.size() == 0 )
+            return 0;
+
+        double len = _options.secondsPerFrame().value() * (double)_timesVec.size();
+        double t   = fmod( fs->getSimulationTime(), len ) / len;
+        return osg::clampBetween(
+            (int)(t * (double)_seqFrameInfoVec.size()), 
+            (int)0, 
+            (int)_seqFrameInfoVec.size()-1);
+    }
+
+
 private:
-    const WMSOptions _options;
-    std::string _formatToUse;
-    std::string _srsToUse;
-    osg::ref_ptr<TileService> _tileService;
-    osg::ref_ptr<const Profile> _profile;
-    std::string _prototype;
-    std::vector<std::string> _timesVec;
-    osg::ref_ptr<osgDB::Options> _dbOptions;
+    const WMSOptions                 _options;
+    std::string                      _formatToUse;
+    std::string                      _srsToUse;
+    osg::ref_ptr<TileService>        _tileService;
+    osg::ref_ptr<const Profile>      _profile;
+    std::string                      _prototype;
+    std::vector<std::string>         _timesVec;
+    osg::ref_ptr<osgDB::Options>     _dbOptions;
+    bool                             _isPlaying;
+    std::vector<SequenceFrameInfo>   _seqFrameInfoVec;
+
+    mutable Threading::ThreadSafeObserverSet<osg::ImageSequence> _sequenceCache;
 };
 
 

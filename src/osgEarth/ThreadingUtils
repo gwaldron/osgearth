@@ -468,6 +468,65 @@ namespace osgEarth { namespace Threading
 
     private:
         std::map<KEY,osg::observer_ptr<DATA> >    _data;
+        osgEarth::Threading::ReadWriteMutex       _mutex;
+    };
+
+
+    /** Template for thread safe observer set */
+    template<typename T>
+    struct ThreadSafeObserverSet
+    {
+        typedef void (*Functor)(T*);
+        typedef void (*ConstFunctor)(const T*);
+
+        void iterate( const Functor& f )
+        {
+            osgEarth::Threading::ScopedWriteLock lock(_mutex);
+            for( typename std::set<T>::iterator i = _data.begin(); i != _data.end(); )
+            {
+                if ( i->valid() )
+                {
+                    f( i->get() );
+                    ++i;
+                }
+                else
+                {
+                    i = _data.erase( i );
+                }
+            }
+        }
+
+        void iterate( const ConstFunctor& f )
+        {
+            osgEarth::Threading::ScopedReadLock lock(_mutex);
+            for( typename std::set<T>::iterator i = _data.begin(); i != _data.end(); )
+            {
+                if ( i->valid() )
+                {
+                    f( i->get() );
+                    ++i;
+                }
+                else
+                {
+                    i = _data.erase( i );
+                }
+            }
+        }
+
+        void insert(T* obj)
+        {
+            osgEarth::Threading::ScopedWriteLock lock(_mutex);
+            _data.insert( obj );
+        }
+
+        void remove(T* obj)
+        {
+            osgEarth::Threading::ScopedWriteLock lock(_mutex);
+            _data.erase( obj );
+        }
+
+    private:
+        std::set<osg::observer_ptr<T> >      _data;
         osgEarth::Threading::ReadWriteMutex  _mutex;
     };
 

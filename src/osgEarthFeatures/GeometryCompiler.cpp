@@ -44,12 +44,6 @@ using namespace osgEarth::Symbology;
 
 namespace
 {
-    osg::ref_ptr<PointSymbol>   s_defaultPointSymbol   = new PointSymbol();
-    osg::ref_ptr<LineSymbol>    s_defaultLineSymbol    = new LineSymbol();
-    osg::ref_ptr<PolygonSymbol> s_defaultPolygonSymbol = new PolygonSymbol();
-    osg::ref_ptr<osg::Program>  s_nullProgram          = new osg::Program();
-
-
     /**
      * Visitor that will exaggerate the bounding box of each Drawable
      * in the scene graph to encompass a local high and low mark. We use this
@@ -220,15 +214,10 @@ GeometryCompiler::compile(FeatureList&          workingSet,
         sharedCX.extent() = sharedCX.profile()->getExtent();
     }
 
-    // only localize coordinates if the map is geocentric AND the extent is
-    // less than 180 degrees.
-    bool localize = false;
-    if ( sharedCX.isGeoreferenced() )
-    {
-        const MapInfo& mi = sharedCX.getSession()->getMapInfo();
-        GeoExtent workingExtent = sharedCX.extent()->transform( sharedCX.profile()->getSRS()->getGeographicSRS() );
-        localize = mi.isGeocentric() && workingExtent.width() < 180.0;
-    }
+    // ref_ptr's to hold defaults in case we need them.
+    osg::ref_ptr<PointSymbol>   defaultPoint;
+    osg::ref_ptr<LineSymbol>    defaultLine;
+    osg::ref_ptr<PolygonSymbol> defaultPolygon;
 
     // go through the Style and figure out which filters to use.
     const PointSymbol*     point     = style.get<PointSymbol>();
@@ -261,13 +250,20 @@ GeometryCompiler::compile(FeatureList&          workingSet,
             {
             case Geometry::TYPE_LINESTRING:
             case Geometry::TYPE_RING:
-                line = s_defaultLineSymbol.get(); break;
+                defaultLine = new LineSymbol();
+                line = defaultLine.get();
+                break;
             case Geometry::TYPE_POINTSET:
-                point = s_defaultPointSymbol.get(); break;
+                defaultPoint = new PointSymbol();
+                point = defaultPoint.get();
+                break;
             case Geometry::TYPE_POLYGON:
-                polygon = s_defaultPolygonSymbol.get(); break;
-            case Geometry::TYPE_UNKNOWN: break;
-            case Geometry::TYPE_MULTI: break;
+                defaultPolygon = new PolygonSymbol();
+                polygon = defaultPolygon.get();
+                break;
+            case Geometry::TYPE_MULTI:
+            case Geometry::TYPE_UNKNOWN:
+                break;
             }
         }
     }
@@ -497,13 +493,13 @@ GeometryCompiler::compile(FeatureList&          workingSet,
     {
         if ( _options.shaderPolicy() == SHADERPOLICY_GENERATE )
         {
-            ShaderGenerator gen( 0L );
+            ShaderGenerator gen( 0L );  // no ss cache because we will optimize later
             resultGroup->accept( gen );
         }
         else if ( _options.shaderPolicy() == SHADERPOLICY_DISABLE )
         {
             resultGroup->getOrCreateStateSet()->setAttributeAndModes(
-                s_nullProgram,
+                new osg::Program(),
                 osg::StateAttribute::OFF | osg::StateAttribute::OVERRIDE );
         }
     }

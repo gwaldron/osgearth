@@ -34,47 +34,22 @@ namespace osgEarth
     public:
         /** Creates a vertex shader main(). */
         virtual osg::Shader* createVertexShaderMain(
-            const ShaderComp::FunctionLocationMap& functions =ShaderComp::FunctionLocationMap(),
-            bool useLightingShaders =true ) const;
+            const ShaderComp::FunctionLocationMap& functions) const;
 
         /** Creates a fragment shader main(). */
-        virtual osg::Shader* createFragmentShaderMain( 
-            const ShaderComp::FunctionLocationMap& functions =ShaderComp::FunctionLocationMap(),
-            bool useLightingShaders =true ) const;
+        virtual osg::Shader* createFragmentShaderMain(
+            const ShaderComp::FunctionLocationMap& functions) const;
 
         /**
          * Gets the uniform/shader name of the sampler corresponding the the provider
          * texture image unit
          */
         virtual std::string getSamplerName( unsigned texImageUnit ) const;
-        
-        /**
-         * Creates the function that sets up default texcoords in the vertex shader.
-         * The name/prototype is:
-         *    void osgearth_vert_setupColoring(); 
-         */
-        virtual osg::Shader* createDefaultColoringVertexShader( unsigned numTexCoordSets ) const;
 
         /**
-         * Creates the function that applies texture data in the fragment shader.
-         * The name/prototype is:
-         *    osgearth_frag_applyColoring( inout vec4 color );
+         * Install lighting shaders in a VirtualProgram.
          */
-        virtual osg::Shader* createDefaultColoringFragmentShader( unsigned numTexCoordSets ) const;
-
-        /**
-         * Creates the function that applies lighting calculations in the vertex shader.
-         * The name/prototype is:
-         *    void osgearth_vert_setupLighting();
-         */
-        virtual osg::Shader* createDefaultLightingVertexShader() const;
-
-        /**
-         * Creates the function that applies lighting coloring in the fragment shader.
-         * The name/prototype is:
-         *    void osgearth_frag_applyLighting( inout vec4 color ); 
-         */
-        virtual osg::Shader* createDefaultLightingFragmentShader() const;
+        virtual void installLightingShaders(VirtualProgram* vp) const;
 
         /**
          * Builds a shader that executes an image filter chain.
@@ -86,7 +61,7 @@ namespace osgEarth
          */
         virtual osg::Uniform* createUniformForGLMode(
             osg::StateAttribute::GLMode      mode,
-            osg::StateAttribute::GLModeValue value );
+            osg::StateAttribute::GLModeValue value ) const;
 
         /** dtor */
         virtual ~ShaderFactory() { }

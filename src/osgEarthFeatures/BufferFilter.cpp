@@ -112,7 +112,7 @@ BufferFilter::push( FeatureList& input, FilterContext& context )
         else
         {
             i = input.erase( i );
-            OE_INFO << LC << "feature " << feature->getFID() << " yielded no geometry" << std::endl;
+            OE_DEBUG << LC << "feature " << feature->getFID() << " yielded no geometry" << std::endl;
         }
     }
 

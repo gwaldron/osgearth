@@ -219,13 +219,15 @@ _status ( Status::Error("Not initialized") )
 {
     this->setThreadSafeRefUnref( true );
 
-    if ( *options.L2CacheSize() > 0 )
+    int l2CacheSize = 0;
+    char const* l2env = ::getenv( "OSGEARTH_L2_CACHE_SIZE" );
+    if ( l2env )
+    {
+        l2CacheSize = as<int>( std::string(l2env), 0 );
+    }
+    else if ( *options.L2CacheSize() > 0 )
     {
         _memCache = new MemCache( *options.L2CacheSize() );
-    }
-    else
-    {
-        OE_INFO << LC << "L2 Cache disabled" << std::endl;
     }
 
     if (_options.blacklistFilename().isSet())
@@ -397,40 +399,6 @@ TileSource::getProfile() const
 {
     return _profile.get();
 }
-
-unsigned
-TileSource::getMaxDataLevel() const
-{
-    optional<unsigned> maxDataLevel;
-
-    for (DataExtentList::const_iterator itr = _dataExtents.begin(); itr != _dataExtents.end(); ++itr)
-    {
-        if ( itr->maxLevel().isSet() && itr->maxLevel() > *maxDataLevel )
-        {
-            maxDataLevel = itr->maxLevel().get();
-        }
-    }
-
-    // return "23" if no max is found
-    return maxDataLevel.isSet() ? *maxDataLevel : 23u;
-}
-
-unsigned
-TileSource::getMinDataLevel() const
-{
-    optional<unsigned> minDataLevel;
-
-    for (DataExtentList::const_iterator itr = _dataExtents.begin(); itr != _dataExtents.end(); ++itr)
-    {
-        if ( itr->minLevel().isSet() && itr->minLevel() < *minDataLevel )
-        {
-            minDataLevel = itr->minLevel().get();
-        }
-    }
-
-    return minDataLevel.isSet() ? *minDataLevel : 0;
-}
-
 
 bool
 TileSource::hasDataAtLOD( unsigned lod ) const

@@ -54,18 +54,14 @@ const char* vertexShader =
     "uniform   float osg_FrameTime;      \n"
     "uniform   float oe_birthTime;       \n"
 
-    "void applyVerticalScale() \n"
+    "void applyVerticalScale(inout vec4 VertexMODEL) \n"
     "{ \n"
     "    vec3  upVector  = osgearth_elevData.xyz; \n"
     "    float elevNew   = osgearth_elevData.w; \n"
     "    float elevOld   = osgearth_morphData; \n"
     "    float r         = 1.0 - clamp(osg_FrameTime-oe_birthTime, 0.0, 0.5)/0.5; \n"
-    //"    float r        = sin(osg_FrameTime); \n"
-    //"    float e        = r*elev; \n" //elev + r*(elev-elev2); \n"
-    //"    vec3  offset   = upVector * e * (verticalScale - 1.0);   \n"
     "    vec3  offset   = upVector * r * (elevOld - elevNew); \n"
-    "    vec4  vertex   = gl_Vertex + vec4(offset/gl_Vertex.w, 0.0); \n"
-    "    gl_Position    = gl_ModelViewProjectionMatrix * vertex;     \n"
+    "    VertexMODEL    = VertexMODEL + vec4(offset/VertexMODEL.w, 0.0); \n"
     "} \n";
 
 
@@ -77,8 +73,7 @@ osg::StateSet* createStateSet()
     // Install the shaders. We also bind osgEarth's elevation data attribute, which the 
     // terrain engine automatically generates at the specified location.
     VirtualProgram* vp = new VirtualProgram();
-    vp->installDefaultColoringAndLightingShaders();
-    vp->setFunction( "applyVerticalScale", vertexShader, ShaderComp::LOCATION_VERTEX_PRE_LIGHTING );
+    vp->setFunction( "applyVerticalScale", vertexShader, ShaderComp::LOCATION_VERTEX_MODEL );
     vp->addBindAttribLocation( "osgearth_elevData", osg::Drawable::ATTRIBUTE_6 );
     vp->addBindAttribLocation( "osgearth_morphData", osg::Drawable::ATTRIBUTE_7 );
     stateSet->setAttributeAndModes( vp, osg::StateAttribute::ON );
@@ -118,9 +113,8 @@ int main(int argc, char** argv)
     // create a viewer:
     osgViewer::Viewer viewer(arguments);
 
-    // Tell osgEarth to use the "quadtree" terrain driver by default.
-    // Elevation data attribution is only available in this driver!
-    osgEarth::Registry::instance()->setDefaultTerrainEngineDriverName( "quadtree" );
+    // Tell osgEarth to use the "mp" terrain driver by default.
+    osgEarth::Registry::instance()->setDefaultTerrainEngineDriverName( "mp" );
 
     // install our default manipulator (do this before calling load)
     viewer.setCameraManipulator( new EarthManipulator() );

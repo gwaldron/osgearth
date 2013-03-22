@@ -30,14 +30,6 @@ namespace osgEarth { namespace Drivers
     class AGGLiteOptions : public FeatureTileSourceOptions // NO EXPORT; header only
     {
     public:
-        /**
-         * If true, the rasterizer will adjust the line width based on the tile extent, having
-         * the effect of making lines appear approximately the same width at all scales.
-         * (Default = true)
-         */
-        optional<bool>& relativeLineSize() { return _relativeLineSize; }
-        const optional<bool>& relativeLineSize() const { return _relativeLineSize; }
-
         /** 
          * Whether to downsample line features to that they are no higher resolution than
          * the target image resolution. Defaults to true, but you can disable this (for a possible
@@ -50,8 +42,7 @@ namespace osgEarth { namespace Drivers
     public:
         AGGLiteOptions( const TileSourceOptions& options =TileSourceOptions() )
             : FeatureTileSourceOptions( options ),
-              _relativeLineSize(true), 
-              _optimizeLineSampling(true)
+              _optimizeLineSampling   ( true )
         {
             setDriver( "agglite" );
             fromConfig( _conf );
@@ -63,7 +54,6 @@ namespace osgEarth { namespace Drivers
     public:
         Config getConfig() const {
             Config conf = FeatureTileSourceOptions::getConfig();
-            conf.updateIfSet("relative_line_size", _relativeLineSize);
             conf.updateIfSet("optimize_line_sampling", _optimizeLineSampling);
             return conf;
         }
@@ -76,11 +66,9 @@ namespace osgEarth { namespace Drivers
 
     private:
         void fromConfig( const Config& conf ) {
-            conf.getIfSet( "relative_line_size", _relativeLineSize );
             conf.getIfSet( "optimize_line_sampling", _optimizeLineSampling );
         }
 
-        optional<bool> _relativeLineSize;
         optional<bool> _optimizeLineSampling;
     };
 

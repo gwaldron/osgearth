@@ -164,7 +164,7 @@ GeoMath::interpolate(double lat1Rad, double lon1Rad,
                      double t,
                      double& out_latRad, double& out_lonRad)
 {
-    static osg::EllipsoidModel em;
+    static osg::EllipsoidModel em; // questionable. make non-static?
 
     osg::Vec3d v0, v1;
 

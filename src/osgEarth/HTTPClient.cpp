@@ -295,6 +295,8 @@ HTTPResponse::getHeadersAsConfig() const
 
 namespace
 {
+    // TODO: consider moving this stuff into the osgEarth::Registry;
+    // don't like it here in the global scope
     // per-thread client map (must be global scope)
     static Threading::PerThread<HTTPClient> s_clientPerThread;
 
@@ -411,6 +413,12 @@ long HTTPClient::getTimeout()
 void HTTPClient::setTimeout( long timeout )
 {
     s_timeout = timeout;
+}
+
+void
+HTTPClient::globalInit()
+{
+    curl_global_init(CURL_GLOBAL_ALL);
 }
 
 void

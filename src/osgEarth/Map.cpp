@@ -83,6 +83,12 @@ _dataModelRevision   ( 0 )
     // store the IO information in the top-level DB Options:
     _mapOptions.cachePolicy()->apply( _dbOptions.get() );
     URIContext( _mapOptions.referrer() ).apply( _dbOptions.get() );
+
+    // apply an express tile size if there is one.
+    if ( _mapOptions.elevationTileSize().isSet() )
+    {
+        _elevationLayers.setExpressTileSize( *_mapOptions.elevationTileSize() );
+    }
 }
 
 Map::~Map()
@@ -333,13 +339,11 @@ Map::setCache( Cache* cache )
         for (ImageLayerVector::iterator i = _imageLayers.begin(); i != _imageLayers.end(); ++i)
         {
             i->get()->setDBOptions( _dbOptions.get() );
-            //i->get()->setCache( _cache.get() );
         }
 
         for (ElevationLayerVector::iterator i = _elevationLayers.begin(); i != _elevationLayers.end(); ++i)
         {
             i->get()->setDBOptions( _dbOptions.get() );
-            //i->get()->setCache( _cache.get() );
         }
     }
 }
@@ -358,7 +362,29 @@ Map::removeMapCallback( MapCallback* cb )
     if (i != _mapCallbacks.end())
     {
         _mapCallbacks.erase( i );
-    }    
+    }
+}
+
+void
+Map::beginUpdate()
+{
+    MapModelChange msg( MapModelChange::BEGIN_BATCH_UPDATE, _dataModelRevision );
+
+    for( MapCallbackList::iterator i = _mapCallbacks.begin(); i != _mapCallbacks.end(); i++ )
+    {
+        i->get()->onMapModelChanged( msg );
+    }
+}
+
+void
+Map::endUpdate()
+{
+    MapModelChange msg( MapModelChange::END_BATCH_UPDATE, _dataModelRevision );
+ 
+    for( MapCallbackList::iterator i = _mapCallbacks.begin(); i != _mapCallbacks.end(); i++ )
+    {
+        i->get()->onMapModelChanged( msg );
+    }
 }
 
 void
@@ -1068,6 +1094,8 @@ Map::sync( MapFrame& frame ) const
                 frame._elevationLayers.reserve( _elevationLayers.size() );
             frame._elevationLayers.clear();
             std::copy( _elevationLayers.begin(), _elevationLayers.end(), std::back_inserter(frame._elevationLayers) );
+            if ( _mapOptions.elevationTileSize().isSet() )
+                frame._elevationLayers.setExpressTileSize( *_mapOptions.elevationTileSize() );
         }
 
         if ( frame._parts & MODEL_LAYERS )

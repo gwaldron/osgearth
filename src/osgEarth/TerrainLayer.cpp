@@ -20,6 +20,7 @@
 #include <osgEarth/TileSource>
 #include <osgEarth/Registry>
 #include <osgEarth/StringUtils>
+#include <osgEarth/TimeControl>
 #include <osgEarth/URI>
 #include <osgDB/WriteFile>
 #include <osg/Version>
@@ -84,8 +85,7 @@ TerrainLayerOptions::getConfig( bool isolate ) const
     conf.updateIfSet( "loading_weight", _loadingWeight );
     conf.updateIfSet( "enabled", _enabled );
     conf.updateIfSet( "visible", _visible );
-    conf.updateIfSet( "edge_buffer_ratio", _edgeBufferRatio);
-    conf.updateIfSet( "max_data_level", _maxDataLevel);
+    conf.updateIfSet( "edge_buffer_ratio", _edgeBufferRatio);    
     conf.updateIfSet( "reprojected_tilesize", _reprojectedTileSize);
 
     conf.updateIfSet( "vdatum", _vertDatum );
@@ -113,8 +113,7 @@ TerrainLayerOptions::fromConfig( const Config& conf )
     conf.getIfSet( "loading_weight", _loadingWeight );
     conf.getIfSet( "enabled", _enabled );
     conf.getIfSet( "visible", _visible );
-    conf.getIfSet( "edge_buffer_ratio", _edgeBufferRatio);
-    conf.getIfSet( "max_data_level", _maxDataLevel);
+    conf.getIfSet( "edge_buffer_ratio", _edgeBufferRatio);    
     conf.getIfSet( "reprojected_tilesize", _reprojectedTileSize);
 
     conf.getIfSet( "vdatum", _vertDatum );
@@ -329,27 +328,6 @@ TerrainLayer::getProfile() const
     return _profile.get();
 }
 
-unsigned int
-TerrainLayer::getMaxDataLevel() const
-{
-    //Try the setting first
-
-    if ( _runtimeOptions->maxDataLevel().isSet() )
-    {
-        return _runtimeOptions->maxDataLevel().get();
-    }
-
-    //Try the TileSource
-    TileSource* ts = getTileSource();
-    if ( ts )
-    {
-        return ts->getMaxDataLevel();
-    }
-
-    //Just default
-    return 20;
-}
-
 unsigned
 TerrainLayer::getTileSize() const
 {
@@ -438,10 +416,7 @@ TerrainLayer::getCacheBin( const Profile* profile, const std::string& binId )
                 {
                     // in cacheonly mode, create a profile from the first cache bin accessed
                     // (they SHOULD all be the same...)
-                    _profile = Profile::create( *meta._sourceProfile );
-
-                    // copy the max data level from the cache
-                    _runtimeOptions->maxDataLevel() = *meta._maxDataLevel;
+                    _profile = Profile::create( *meta._sourceProfile );                    
                 }
             }
 
@@ -453,8 +428,7 @@ TerrainLayer::getCacheBin( const Profile* profile, const std::string& binId )
                 {
                     // no existing metadata; create some.
                     meta._cacheBinId    = binId;
-                    meta._sourceName    = this->getName();
-                    meta._maxDataLevel  = getMaxDataLevel();
+                    meta._sourceName    = this->getName();                    
                     meta._sourceDriver  = getTileSource()->getOptions().getDriver();
                     meta._sourceProfile = getProfile()->toProfileOptions();
                     meta._cacheProfile  = profile->toProfileOptions();
@@ -681,3 +655,8 @@ TerrainLayer::storeProxySettings(osgDB::Options* opt)
     }
 }
 
+SequenceControl*
+TerrainLayer::getSequenceControl()
+{
+    return dynamic_cast<SequenceControl*>( getTileSource() );
+}

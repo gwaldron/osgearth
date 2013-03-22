@@ -357,6 +357,7 @@ DepthOffsetUtils::prepareGraph( osg::Node* graph )
 
 namespace
 {
+    // dubious. refactor static-init stuff away please.
     static osg::ref_ptr<osg::Uniform> s_isTextUniform;
     static Threading::Mutex           s_isTextUniformMutex;
 }
@@ -378,6 +379,7 @@ DepthOffsetUtils::getIsTextUniform()
 
 namespace
 {    
+    // please refactor away the static-init stuff.
     static osg::ref_ptr<osg::Uniform> s_isNotTextUniform;
     static Threading::Mutex           s_isNotTextUniformMutex;
 }
@@ -399,6 +401,7 @@ DepthOffsetUtils::getIsNotTextUniform()
  
 namespace
 {
+    // todo: refactor away the static init stuff
     static osg::ref_ptr<osg::Program> s_depthOffsetProgram;
     static Threading::Mutex           s_depthOffsetProgramMutex;
 }

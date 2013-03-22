@@ -861,7 +861,7 @@ OSGTerrainEngineNode::installShaders()
 
         VirtualProgram* vp = new VirtualProgram();
         vp->setName( "engine_osgterrain:EngineNode" );
-        vp->installDefaultColoringAndLightingShaders(numLayers);
+        //vp->installDefaultColoringAndLightingShaders(numLayers);
 
         getOrCreateStateSet()->setAttributeAndModes( vp, osg::StateAttribute::ON );
     }
@@ -883,7 +883,7 @@ OSGTerrainEngineNode::updateTextureCombining()
 
             VirtualProgram* vp = new VirtualProgram() ;
             vp->setName( "engine_osgterrain:TerrainNode" );
-            vp->installDefaultColoringShaders(numImageLayers);
+            //vp->installDefaultColoringShaders(numImageLayers);
 
             terrainStateSet->setAttributeAndModes( vp, osg::StateAttribute::ON );
 

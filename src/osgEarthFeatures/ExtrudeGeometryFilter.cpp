@@ -830,7 +830,7 @@ ExtrudeGeometryFilter::process( FeatureList& features, FilterContext& context )
 
                     // mark this geometry as DYNAMIC because otherwise the OSG optimizer will destroy it.
                     // TODO: why??
-                    rooflines->setDataVariance( osg::Object::DYNAMIC );
+                    //rooflines->setDataVariance( osg::Object::DYNAMIC );
 
                     if ( roofSkin )
                     {

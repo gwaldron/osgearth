@@ -199,7 +199,7 @@ bool Dragger::handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& 
 
             //Check for and handle vertical dragging if necessary
             bool pressedAlt = _modKeyMask && (ea.getModKeyMask() & _modKeyMask) > 0;
-            _elevationDragging = (_defaultMode == DRAGMODE_VERTICAL && !pressedAlt) || (_defaultMode == DRAGMODE_HORIZONTAL && pressedAlt);
+            _elevationDragging = (_defaultMode == Dragger::DRAGMODE_VERTICAL && !pressedAlt) || (_defaultMode == Dragger::DRAGMODE_HORIZONTAL && pressedAlt);
 
             if (_elevationDragging)
             {

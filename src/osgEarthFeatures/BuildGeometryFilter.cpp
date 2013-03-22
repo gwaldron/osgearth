@@ -47,8 +47,6 @@ using namespace osgEarth::Symbology;
 
 #define USE_SINGLE_COLOR 0
 
-#define USE_VBOS false
-
 namespace
 {
     void applyLineAndPointSymbology( osg::StateSet* stateSet, const LineSymbol* line, const PointSymbol* point )
@@ -177,10 +175,10 @@ BuildGeometryFilter::process( FeatureList& features, const FilterContext& contex
 
             // resolve the color:
             osg::Vec4f primaryColor =
-                polySymbol  ? polySymbol->fill()->color() :
-                lineSymbol  ? lineSymbol->stroke()->color() :
-                pointSymbol ? pointSymbol->fill()->color() :
-                osgEarth::Symbology::Color(1,1,1,1);
+                polySymbol ? osg::Vec4f(polySymbol->fill()->color()) :
+                lineSymbol ? osg::Vec4f(lineSymbol->stroke()->color()) :
+                pointSymbol ? osg::Vec4f(pointSymbol->fill()->color()) :
+                osg::Vec4f(1,1,1,1);
             
             osg::Geometry* osgGeom = new osg::Geometry();
             osgGeom->setUseVertexBufferObjects( _useVertexBufferObjects.value() );

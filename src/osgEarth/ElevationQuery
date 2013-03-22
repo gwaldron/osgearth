@@ -133,13 +133,17 @@ namespace osgEarth
          */
         double getAverageQueryTime() const { return _queries > 0.0 ? _totalTime/_queries : 0.0; }
 
+        /**
+         * Gets the maximum level of data available at the given point.  If the layers have DataExtents provided they
+         * will be queried.  This allows certain areas on the earth to have higher levels of detail
+         * than others and avoids unnecessary queries where there isn't high resolution data available.
+         */
         unsigned int getMaxLevel(double x, double y, const SpatialReference* srs, const Profile* profile ) const;
 
     private:
         MapFrame  _mapf;
         unsigned  _maxCacheSize;
-        int       _tileSize;
-        unsigned  _maxDataLevel;
+        int       _tileSize;        
         int       _maxLevelOverride;
 
         typedef LRUCache< TileKey, osg::ref_ptr<osg::HeightField> > TileCache;

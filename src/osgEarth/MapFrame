@@ -54,6 +54,11 @@ namespace osgEarth
          */
         bool sync();
 
+        /**
+         * True is a sync() would acquire new data.
+         */
+        bool needsSync() const;
+
         /** Accesses the profile/rendering info about the source map. */
         const MapInfo& getMapInfo() const { return _mapInfo; }
 

@@ -165,9 +165,14 @@ StateSetCache::optimize(osg::Node* node)
         ShareStateAttributes v1( this );
         node->accept( v1 );
 
+        
+#if OSG_MIN_VERSION_REQUIRED(3,1,4)
         // replace all equivalent static statesets with a single instance
+        // only supported in OSG 3.1.4+ because of the Uniform mutex 
+        // protection.
         ShareStateSets v2( this );
         node->accept( v2 );
+#endif
     }
 }
 
@@ -175,6 +180,7 @@ StateSetCache::optimize(osg::Node* node)
 bool
 StateSetCache::eligible(osg::StateSet* stateSet) const
 {
+#if OSG_MIN_VERSION_REQUIRED(3,1,4)
     if ( !stateSet )
         return false;
 
@@ -192,6 +198,9 @@ StateSetCache::eligible(osg::StateSet* stateSet) const
     }
 
     return true;
+#else
+    return false;
+#endif
 }
 
 
@@ -221,29 +230,42 @@ StateSetCache::share(osg::ref_ptr<osg::StateSet>& input,
                      osg::ref_ptr<osg::StateSet>& output,
                      bool                         checkEligible)
 {
+    bool shared     = false;
+    bool shareattrs = true;
+
     if ( !checkEligible || eligible(input.get()) )
     {
         Threading::ScopedMutexLock lock( _mutex );
+        shareattrs = false;
 
         std::pair<StateSetSet::iterator,bool> result = _stateSetCache.insert( input );
         if ( result.second )
         {
             // first use
             output = input.get();
-            return false;
+            shareattrs = true;
+            shared = false;
         }
         else
         {
             // found a share!
             output = result.first->get();
-            return true;
+            shared = true;
         }
     }
     else
     {
         output = input.get();
-        return false;
+        shared = false;
     }
+
+    if ( shareattrs )
+    {
+        ShareStateAttributes sa(this);
+        sa.applyStateSet( input.get() );
+    }
+
+    return shared;
 }
 
 

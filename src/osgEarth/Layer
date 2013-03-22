@@ -24,6 +24,8 @@
 
 namespace osgEarth
 {
+    class SequenceControl;
+
     /**
      * Base class for all Map layers. 
      */
@@ -39,6 +41,12 @@ namespace osgEarth
          * Gets this layer's unique ID.
          */
         const UID getUID() const { return _uid; }
+
+        /**
+         * Sequence controller if the layer has one.
+         */
+        virtual SequenceControl* getSequenceControl() { return 0L; }
+
 
     private:
         UID _uid;

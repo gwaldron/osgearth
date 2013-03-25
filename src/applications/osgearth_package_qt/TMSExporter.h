@@ -25,9 +25,12 @@
 #include <osgEarth/Map>
 #include <osgEarth/MapNode>
 #include <osgEarth/Progress>
+#include <osgEarth/TaskService>
 
 namespace PackageQt
 {
+  class PackageLayerProgressCallback;
+
   class TMSExporter
   {
   public:
@@ -48,12 +51,23 @@ namespace PackageQt
 
     void setProgressCallback(osgEarth::ProgressCallback* progress) { _progress = progress ? progress : new osgEarth::ProgressCallback; }
 
+  protected:
+    friend class PackageLayerProgressCallback;
+
+    void packageTaskComplete();
+
   private:
 
     std::string _dbOptions;
     unsigned _maxLevel;
     bool _keepEmpties;
     std::string _errorMessage;
+
+    OpenThreads::Mutex _m;
+
+    osg::ref_ptr<osgEarth::TaskService> _taskService;
+    int _totalTasks;
+    int _completedTasks;
     osg::ref_ptr<osgEarth::ProgressCallback> _progress;
   };
 
@@ -81,6 +95,32 @@ namespace PackageQt
     std::string _outEarth;
     bool _overwrite;
     std::string _extension;
+  };
+
+
+  class PackageLayerProgressCallback : public osgEarth::ProgressCallback
+  {
+  public:
+    PackageLayerProgressCallback(TMSExporter* exporter)
+      : _exporter(exporter)
+    {
+    }
+
+    virtual ~PackageLayerProgressCallback() { }
+
+    bool reportProgress(double current, double total, unsigned currentStage, unsigned totalStages, const std::string& msg)
+    {
+      return false;
+    }
+
+    void onCompleted()
+    {
+      if (_exporter)
+        _exporter->packageTaskComplete();
+    }
+
+  private:
+    TMSExporter* _exporter;
   };
 }
 

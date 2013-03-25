@@ -40,6 +40,11 @@ _publicStateSet   ( 0L )
 {
     this->setName( key.str() );
 
+    // born-on date uniform.
+    _born = new osg::Uniform(osg::Uniform::FLOAT, "oe_birthTime");
+    _born->set( -1.0f );
+    this->getOrCreateStateSet()->addUniform( _born );
+
     osg::Uniform* keyu = new osg::Uniform(osg::Uniform::FLOAT_VEC3, "oe_tilekey");
     keyu->setDataVariance( osg::Object::STATIC );
     unsigned tw, th;
@@ -95,6 +100,13 @@ TileNode::traverse( osg::NodeVisitor& nv )
         if (ccc)
         {
             if (ccc->cull(&nv,0,static_cast<osg::State *>(0))) return;
+        }
+
+        float bt;
+        _born->get( bt );
+        if ( bt < 0.0f )
+        {
+            _born->set( nv.getFrameStamp() ? (float)nv.getFrameStamp()->getReferenceTime() : 0.0f );
         }
     }
 

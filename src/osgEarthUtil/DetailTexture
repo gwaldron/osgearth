@@ -1,0 +1,79 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+* Copyright 2008-2012 Pelican Mapping
+* http://osgearth.org
+*
+* osgEarth is free software; you can redistribute it and/or modify
+* it under the terms of the GNU Lesser General Public License as published by
+* the Free Software Foundation; either version 2 of the License, or
+* (at your option) any later version.
+*
+* This program is distributed in the hope that it will be useful,
+* but WITHOUT ANY WARRANTY; without even the implied warranty of
+* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+* GNU Lesser General Public License for more details.
+*
+* You should have received a copy of the GNU Lesser General Public License
+* along with this program.  If not, see <http://www.gnu.org/licenses/>
+*/
+#ifndef OSGEARTHUTIL_DETAIL_TEXTURE_H
+#define OSGEARTHUTIL_DETAIL_TEXTURE_H
+
+#include <osgEarthUtil/Common>
+#include <osg/Image>
+#include <osg/Uniform>
+#include <osg/Node>
+#include <osg/Texture2D>
+#include <osg/observer_ptr>
+
+namespace osgEarth {
+    class VirtualProgram;
+}
+
+namespace osgEarth { namespace Util
+{
+    /**
+     * Controller that applies a detail texture to the terrain.
+     */
+    class OSGEARTHUTIL_EXPORT DetailTexture
+    {
+    public:
+        /** construct a new detail texture controller */
+        DetailTexture();
+        virtual ~DetailTexture();
+
+        /** Attach the detail texture to the terrain renderer. Set to
+            NULL to detach an existing detail texture. */
+        void setTerrainNode( osg::Node* node );
+
+        /** Sets the LOD at which to start detailing */
+        void setBaseLOD( unsigned lod );
+        unsigned getBaseLOD() const { return _baseLOD; }
+
+        /** Sets the intensity (0=none, 1=full) */
+        void setIntensity( float value );
+        float getIntensity() const { return _intensity; }
+
+        /** Sets the image to use as the detail texture */
+        void setImage( const osg::Image* image );
+        const osg::Image* getImage() const { return _texture->getImage(); }
+
+        /** Sets the GPU texture image unit to use for the texture (default=1) */
+        void setImageUnit( unsigned unit );
+        unsigned getImageUnit() const { return _unit; }
+
+    protected:
+        osg::observer_ptr<osg::Node> _terrain;
+        unsigned                     _unit;
+        float                        _intensity;
+        unsigned                     _baseLOD;
+
+        osg::ref_ptr<osg::Uniform>   _intensityUniform;
+        osg::ref_ptr<osg::Uniform>   _baseLODUniform;
+        osg::ref_ptr<osg::Uniform>   _samplerUniform;
+        osg::ref_ptr<osg::Texture2D> _texture;
+    };
+
+} } // namespace osgEarth::Util
+
+#endif // OSGEARTHUTIL_DATA_SCANNER_H

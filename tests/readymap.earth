@@ -28,7 +28,7 @@ http://readymap.org
     
     <options>	
 		<elevation_tile_size>8</elevation_tile_size>
-        <terrain normalize_edges="true" min_level="14"/>
+        <terrain normalize_edges="true" min_level="16"/>
     </options>
     
 </map>

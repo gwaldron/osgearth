@@ -21,9 +21,12 @@
 #define OSGEARTH_CAPABILITIES_H 1
 
 #include <osgEarth/Common>
+#include <osg/Uniform>
 
 namespace osgEarth
 {
+    class VirtualProgram;
+
     /**
      * Stores information about the hardware and graphics system capbilities.
      * The osgEarth::Registry stores a singleton Capabilities object that you can 

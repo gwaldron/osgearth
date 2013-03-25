@@ -22,95 +22,59 @@
  */
 #include <osg/Notify>
 #include <osgViewer/Viewer>
-#include <osgEarth/VirtualProgram>
-#include <osgEarth/Registry>
 #include <osgEarth/URI>
-#include <osgEarth/TerrainEngineNode>
 #include <osgEarthUtil/EarthManipulator>
 #include <osgEarthUtil/ExampleResources>
-#include <osgEarthUtil/Controls>
+#include <osgEarthUtil/DetailTexture>
 #include <osg/Image>
-#include <osg/Texture>
-#include <osg/Uniform>
 
 using namespace osgEarth;
 using namespace osgEarth::Util;
-
-//-------------------------------------------------------------------------
-
-const char* vertexShader =
-    "uniform vec3  oe_tilekey; \n"
-    "varying vec4  oe_layer_tilec; \n"
-    "uniform float dt_L0; \n"
-    "varying vec2  dt_texcoord; \n"
-
-    "int dt_ipow(in int x, in int y) { \n"
-    "   int r = 1; \n"
-    "   while( y > 0 ) { \n"
-    "       r *= x; \n"
-    "       --y; \n"
-    "   } \n"
-    "   return r; \n"
-    "}\n"
-
-    "void setupDetailTex(inout vec4 VertexMODEL) \n"
-    "{ \n"
-    "    float L = oe_tilekey.z; \n"
-
-    "    float dL = L - dt_L0; \n"
-    "    float twoPowDeltaL = float(dt_ipow(2, int(abs(dL)))); \n"
-    "    float factor = dL >= 0.0 ? twoPowDeltaL : 1.0/twoPowDeltaL; \n"
-
-    "    vec2 a = floor(oe_tilekey.xy / factor); \n"
-    "    vec2 b = a * factor; \n"
-    "    vec2 c = (a+1.0) * factor; \n"
-    "    vec2 offset = (oe_tilekey.xy-b)/(c-b); \n"
-    "    vec2 scale = vec2(1.0/factor); \n"
-
-    "    dt_texcoord = (oe_layer_tilec.st * scale) + offset; \n"
-    "} \n";
-
-const char* fragmentShader =
-    "uniform vec3      oe_tilekey; \n"
-    "uniform float     dt_L0; \n"
-    "uniform sampler2D dt_tex; \n"
-    "uniform float     dt_effect; \n"
-    "varying vec2      dt_texcoord; \n"
-    "void applyDetailTex(inout vec4 color) \n"
-    "{ \n"
-    "    if ( oe_tilekey.z >= dt_L0 ) \n"
-    "    { \n"
-    "        vec4 texel = texture2D(dt_tex, dt_texcoord); \n"
-    "        if ( oe_tilekey.z >= dt_L0+3.0 ) \n"
-    "        { \n"
-    "            texel = mix(texel, texture2D(dt_tex, dt_texcoord*12.0), 0.5); \n"
-    "        } \n"
-    "        texel.rgb -= 0.5; \n"
-    "        color.rgb = clamp( color.rgb + (texel.rgb*dt_effect), 0.0, 1.0 ); \n"
-    "    } \n"
-    "} \n";
-
-
-// Build the stateset necessary for scaling elevation data.
-osg::StateSet* createStateSet()
-{
-    osg::StateSet* stateSet = new osg::StateSet();
-
-    VirtualProgram* vp = new VirtualProgram();
-    vp->setFunction( "setupDetailTex", vertexShader, ShaderComp::LOCATION_VERTEX_MODEL );
-    vp->setFunction( "applyDetailTex", fragmentShader, ShaderComp::LOCATION_FRAGMENT_COLORING );
-    stateSet->setAttributeAndModes( vp, osg::StateAttribute::ON );
-    stateSet->getOrCreateUniform( "dt_effect", osg::Uniform::FLOAT )->set( 1.0f );
-
-    return stateSet;
-};
-
+namespace ui = osgEarth::Util::Controls;
 
 int 
 usage(const char* msg)
 {
     OE_NOTICE << msg << std::endl;
+    OE_NOTICE <<
+        "Usage:\n"
+        "    --image <filename>                  : detail texture image file\n"
+        "    --lod <lod>                         : LOD at which to start detail texturing\n"
+        "    --uniform oe_dtex_intensity 0 1     : control the intensity of the detail texture\n"
+        << std::endl;
     return 0;
+}
+
+
+struct App
+{
+    DetailTexture dt;
+};
+
+
+// Build a slider to adjust the vertical scale
+ui::Control* createUI( App& app )
+{
+    struct SetIntensity : public ui::ControlEventHandler {
+        App& _app;
+        SetIntensity(App& app) : _app(app) {}
+        void onValueChanged(ui::Control*, float value) {
+            _app.dt.setIntensity(value);
+        }
+    };
+
+    ui::VBox* vbox = new VBox();
+
+    vbox->addControl( new LabelControl(Stringify() << "Detail texture starts at LOD: " << app.dt.getBaseLOD()) );
+
+    ui::HBox* hbox = vbox->addControl( new ui::HBox() );
+    hbox->setChildVertAlign( ui::Control::ALIGN_CENTER );
+    hbox->addControl( new ui::LabelControl("Intensity:") );
+    ui::HSliderControl* intensity = hbox->addControl( new ui::HSliderControl(0.0, 1.0, 0.25, new SetIntensity(app)) );
+    intensity->setHorizFill( true, 200 );
+    hbox->addControl( new ui::LabelControl(intensity) );
+
+    return vbox;
 }
 
 
@@ -118,43 +82,48 @@ int main(int argc, char** argv)
 {
     osg::ArgumentParser arguments(&argc, argv);
 
+    if (arguments.read("--help"))
+        return usage(argv[0]);
+
     // create a viewer:
     osgViewer::Viewer viewer(arguments);
 
-    // Tell osgEarth to use the "mp" terrain driver by default.
+    // Tell osgEarth to use the "mp" terrain driver.
     osgEarth::Registry::instance()->setDefaultTerrainEngineDriverName( "mp" );
 
     // install our default manipulator (do this before calling load)
     viewer.setCameraManipulator( new EarthManipulator() );
 
+    // Set up the app and read options:
+    App app;
+
+    std::string filename( "../data/noise3.png" );
+    arguments.read( "--image", filename );
+    osg::Image* image = URI(filename).getImage();
+    if ( !image )
+        return usage( "Failed to load image" );
+    app.dt.setImage( image );
+
+    unsigned startLOD;
+    if ( arguments.read("--lod", startLOD) )
+        app.dt.setBaseLOD(startLOD);
+
+    // Create the UI:
+    ui::Control* demoui = createUI(app);
+
     // load an earth file, and support all or our example command-line options
     // and earth file <external> tags    
-    osg::Node* node = MapNodeHelper().load( arguments, &viewer );
+    osg::Node* node = MapNodeHelper().load( arguments, &viewer, demoui );
     if ( node )
     {
         MapNode* mapNode = MapNode::findMapNode(node);
         if ( !mapNode )
             return -1;
 
-        // install the shader program and install our controller uniform:
-        osg::Group* root = new osg::Group();
-        osg::StateSet* ss = createStateSet();
-        root->setStateSet( ss );
+        // attach the detailer to the terrain.
+        app.dt.setTerrainNode( mapNode->getTerrainEngine() );
 
-        osg::Image* image = URI("../data/noise3.png").getImage();
-        if ( !image )
-            return usage( "Failed to load image" );
-
-        osg::Texture2D* dtex = new osg::Texture2D(image);
-        dtex->setWrap(osg::Texture::WRAP_S, osg::Texture::REPEAT);
-        dtex->setWrap(osg::Texture::WRAP_T, osg::Texture::REPEAT);
-        ss->setTextureAttributeAndModes(1, dtex, 1);
-        ss->getOrCreateUniform("dt_tex", osg::Uniform::SAMPLER_2D)->set(1);
-        ss->getOrCreateUniform("dt_L0", osg::Uniform::FLOAT)->set(10.0f);
-
-        root->addChild( node );
-
-        viewer.setSceneData( root );
+        viewer.setSceneData( node );
         viewer.run();
     }
     else

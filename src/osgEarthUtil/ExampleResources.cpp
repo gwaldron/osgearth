@@ -440,10 +440,13 @@ MapNodeHelper::load(osg::ArgumentParser& args,
     }
 
     // warn about not having an earth manip
-    EarthManipulator* manip = dynamic_cast<EarthManipulator*>(view->getCameraManipulator());
-    if ( manip == 0L )
+    if ( view )
     {
-        OE_WARN << LC << "Helper used before installing an EarthManipulator" << std::endl;
+        EarthManipulator* manip = dynamic_cast<EarthManipulator*>(view->getCameraManipulator());
+        if ( manip == 0L )
+        {
+            OE_WARN << LC << "Helper used before installing an EarthManipulator" << std::endl;
+        }
     }
 
     // a root node to hold everything:
@@ -452,7 +455,10 @@ MapNodeHelper::load(osg::ArgumentParser& args,
     root->addChild( mapNode.get() );
 
     // parses common cmdline arguments.
-    parse( mapNode.get(), args, view, root, userControl );
+    if ( view )
+    {
+        parse( mapNode.get(), args, view, root, userControl );
+    }
 
     // Dump out an earth file if so directed.
     if ( !outEarth.empty() )
@@ -462,7 +468,10 @@ MapNodeHelper::load(osg::ArgumentParser& args,
     }
 
     // configures the viewer with some stock goodies
-    configureView( view );
+    if ( view )
+    {
+        configureView( view );
+    }
 
     return root;
 }

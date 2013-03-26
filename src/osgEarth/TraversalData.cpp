@@ -16,29 +16,19 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
-#include <osgEarth/ThreadingUtils>
+#include <osgEarth/TraversalData>
 
-#ifdef _WIN32
-    extern "C" unsigned long __stdcall GetCurrentThreadId();
-#else
-#   include <unistd.h>
-#   include <sys/syscall.h>
-#endif
+using namespace osgEarth;
 
-using namespace osgEarth::Threading;
-
-//------------------------------------------------------------------------
-
-unsigned osgEarth::Threading::getCurrentThreadId()
+MapNodeCullData::MapNodeCullData()
 {
-  /*   OpenThreads::Thread* t = OpenThreads::Thread::CurrentThread();
-   return t ? t->getThreadId() : 0u;*/
-  
-#ifdef _WIN32
-  return (unsigned)::GetCurrentThreadId();
-#elif __APPLE__
-  return ::syscall(SYS_thread_selfid);
-#else
-  return (unsigned)::syscall(SYS_gettid);
-#endif
+    _stateSet = new osg::StateSet();
+
+    _windowScaleMatrix = new osg::Uniform(osg::Uniform::FLOAT_MAT3, "oe_WindowScaleMatrix");
+    osg::Matrix3 identity;
+    identity.makeIdentity();
+    _windowScaleMatrix->set( identity );
+    _stateSet->addUniform( _windowScaleMatrix.get() );
+
+    _cameraAltitude = 0.0;
 }

@@ -86,6 +86,16 @@ namespace
 
         osg::observer_ptr<osg::Node> _node;
     };
+
+    // sets a user-specified uniform.
+    struct ApplyValueUniform : public ControlEventHandler
+    {
+        osg::ref_ptr<osg::Uniform> _u;
+        ApplyValueUniform(osg::Uniform* u) :_u(u) { }
+        void onValueChanged(Control* c, double value) {
+            _u->set( float(value) );
+        }
+    };
 }
 
 //------------------------------------------------------------------------
@@ -430,10 +440,13 @@ MapNodeHelper::load(osg::ArgumentParser& args,
     }
 
     // warn about not having an earth manip
-    EarthManipulator* manip = dynamic_cast<EarthManipulator*>(view->getCameraManipulator());
-    if ( manip == 0L )
+    if ( view )
     {
-        OE_WARN << LC << "Helper used before installing an EarthManipulator" << std::endl;
+        EarthManipulator* manip = dynamic_cast<EarthManipulator*>(view->getCameraManipulator());
+        if ( manip == 0L )
+        {
+            OE_WARN << LC << "Helper used before installing an EarthManipulator" << std::endl;
+        }
     }
 
     // a root node to hold everything:
@@ -442,7 +455,10 @@ MapNodeHelper::load(osg::ArgumentParser& args,
     root->addChild( mapNode.get() );
 
     // parses common cmdline arguments.
-    parse( mapNode.get(), args, view, root, userControl );
+    if ( view )
+    {
+        parse( mapNode.get(), args, view, root, userControl );
+    }
 
     // Dump out an earth file if so directed.
     if ( !outEarth.empty() )
@@ -452,7 +468,10 @@ MapNodeHelper::load(osg::ArgumentParser& args,
     }
 
     // configures the viewer with some stock goodies
-    configureView( view );
+    if ( view )
+    {
+        configureView( view );
+    }
 
     return root;
 }
@@ -672,6 +691,34 @@ MapNodeHelper::parse(MapNode*             mapNode,
             mapNode->getMap()->endUpdate();
         }
         OE_INFO << LC << "...found " << imageLayers.size() << " image layers." << std::endl;
+    }
+
+    // Generic named value uniform with min/max.
+    VBox* uniformBox = 0L;
+    while( args.find( "--uniform" ) >= 0 )
+    {
+        std::string name;
+        float minval, maxval;
+        if ( args.read( "--uniform", name, minval, maxval ) )
+        {
+            if ( uniformBox == 0L )
+            {
+                uniformBox = new VBox();
+                uniformBox->setBackColor(0,0,0,0.5);
+                uniformBox->setAbsorbEvents( true );
+                canvas->addControl( uniformBox );
+            }
+            osg::Uniform* uniform = new osg::Uniform(osg::Uniform::FLOAT, name);
+            uniform->set( minval );
+            root->getOrCreateStateSet()->addUniform( uniform, osg::StateAttribute::OVERRIDE );
+            HBox* box = new HBox();
+            box->addControl( new LabelControl(name) );
+            HSliderControl* hs = box->addControl( new HSliderControl(minval, maxval, minval, new ApplyValueUniform(uniform)));
+            hs->setHorizFill(true, 200);
+            box->addControl( new LabelControl(hs) );
+            uniformBox->addControl( box );
+            OE_INFO << LC << "Installed uniform controller for " << name << std::endl;
+        }
     }
 
     root->addChild( canvas );

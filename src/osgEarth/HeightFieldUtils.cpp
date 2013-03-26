@@ -270,14 +270,17 @@ HeightFieldUtils::createSubSample(osg::HeightField* input, const GeoExtent& inpu
 }
 
 osg::HeightField*
-HeightFieldUtils::resizeHeightField(osg::HeightField* input, int newColumns, int newRows,
-                                    ElevationInterpolation interp)
+HeightFieldUtils::resampleHeightField(osg::HeightField*      input,
+                                      int                    newColumns, 
+                                      int                    newRows,
+                                      ElevationInterpolation interp)
 {
     if ( newColumns <= 1 && newRows <= 1 )
         return 0L;
 
     if ( newColumns == input->getNumColumns() && newRows == (int)input->getNumRows() )
-        return new osg::HeightField( *input, osg::CopyOp::DEEP_COPY_ALL );
+        return input;
+        //return new osg::HeightField( *input, osg::CopyOp::DEEP_COPY_ALL );
 
     double spanX = (input->getNumColumns()-1) * input->getXInterval();
     double spanY = (input->getNumRows()-1) * input->getYInterval();

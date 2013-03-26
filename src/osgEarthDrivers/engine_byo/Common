@@ -16,29 +16,9 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
-#include <osgEarth/ThreadingUtils>
+#ifndef OSGEARTH_ENGINE_BYO_COMMON_H
+#define OSGEARTH_ENGINE_BYO_COMMON_H 1
 
-#ifdef _WIN32
-    extern "C" unsigned long __stdcall GetCurrentThreadId();
-#else
-#   include <unistd.h>
-#   include <sys/syscall.h>
-#endif
+#include <osgEarth/Common>
 
-using namespace osgEarth::Threading;
-
-//------------------------------------------------------------------------
-
-unsigned osgEarth::Threading::getCurrentThreadId()
-{
-  /*   OpenThreads::Thread* t = OpenThreads::Thread::CurrentThread();
-   return t ? t->getThreadId() : 0u;*/
-  
-#ifdef _WIN32
-  return (unsigned)::GetCurrentThreadId();
-#elif __APPLE__
-  return ::syscall(SYS_thread_selfid);
-#else
-  return (unsigned)::syscall(SYS_gettid);
-#endif
-}
+#endif // OSGEARTH_ENGINE_BYO_COMMON_H

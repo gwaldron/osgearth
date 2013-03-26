@@ -87,10 +87,10 @@ namespace
          "varying float oe_clamp_simvertrange; \n"
          "varying float oe_clamp_alphaFactor; \n"
 
-         "void oe_clamp_vertex(void) \n"
+         "void oe_clamp_vertex(inout vec4 VertexVIEW) \n"
          "{ \n"
          //   start by mocing the vertex into view space.
-         "    vec4 v_view_orig = gl_ModelViewMatrix * gl_Vertex; \n"
+         "    vec4 v_view_orig = VertexVIEW; \n"
 
          //   if the distance to the vertex is beyond the visible horizon,
          //   "hide" the vertex by setting its alpha component to 0.0.
@@ -145,7 +145,8 @@ namespace
          "    oe_clamp_simvert = gl_ProjectionMatrix * v_view_sim;\n"
          "    oe_clamp_simvertrange = range - bias; \n"
 
-         "    gl_Position = gl_ProjectionMatrix * v_view_clamped; \n"
+         "    VertexVIEW = v_view_clamped; \n"
+         //"    gl_Position = gl_ProjectionMatrix * v_view_clamped; \n"
          "} \n";
 
 
@@ -423,8 +424,8 @@ ClampingTechnique::setUpCamera(OverlayDecorator::TechRTTParams& params)
     // make the shader that will do clamping and depth offsetting.
     VirtualProgram* vp = new VirtualProgram();
     vp->setName( "ClampingTechnique program" );
-    vp->setFunction( "oe_clamp_vertex",   clampingVertexShader,   ShaderComp::LOCATION_VERTEX_POST_LIGHTING );
-    vp->setFunction( "oe_clamp_fragment", clampingFragmentShader, ShaderComp::LOCATION_FRAGMENT_PRE_LIGHTING );
+    vp->setFunction( "oe_clamp_vertex",   clampingVertexShader,   ShaderComp::LOCATION_VERTEX_VIEW );
+    vp->setFunction( "oe_clamp_fragment", clampingFragmentShader, ShaderComp::LOCATION_FRAGMENT_COLORING );
     local->_groupStateSet->setAttributeAndModes( vp, osg::StateAttribute::ON );
 }
 

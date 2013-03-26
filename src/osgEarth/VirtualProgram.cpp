@@ -38,9 +38,6 @@ using namespace osgEarth::ShaderComp;
 
 //------------------------------------------------------------------------
 
-#define VERTEX_MAIN             "osgearth_vert_main"
-#define FRAGMENT_MAIN           "osgearth_frag_main"
-
 // environment variable control
 #define OSGEARTH_DUMP_SHADERS  "OSGEARTH_DUMP_SHADERS"
 #define OSGEARTH_MERGE_SHADERS "OSGEARTH_MERGE_SHADERS"
@@ -194,6 +191,10 @@ VirtualProgram::setShader(const std::string&                 shaderID,
     if ( !shader || shader->getType() ==  osg::Shader::UNDEFINED ) 
         return NULL;
 
+    // pre-processes the shader's source to include GLES uniforms as necessary
+    // (no-op on non-GLES)
+    ShaderPreProcessor::run( shader );
+
     shader->setName( shaderID );
     _shaderMap[shaderID] = ShaderEntry(shader, ov);
 
@@ -252,7 +253,7 @@ VirtualProgram::setFunction(const std::string& functionName,
     
     ofm.insert( std::pair<float,std::string>( priority, functionName ) );
 
-    osg::Shader::Type type = (int)location <= (int)LOCATION_VERTEX_POST_LIGHTING ?
+    osg::Shader::Type type = (int)location <= (int)LOCATION_VERTEX_CLIP ?
         osg::Shader::VERTEX : osg::Shader::FRAGMENT;
 
     setShader( functionName, new osg::Shader(type, shaderSource) );
@@ -271,6 +272,13 @@ VirtualProgram::removeShader( const std::string& shaderID )
             if ( j->second == shaderID )
             {
                 ofm.erase( j );
+
+                // if the function map for this location is now empty,
+                // remove the location map altogether.
+                if ( ofm.size() == 0 )
+                {
+                    _functions.erase( i );
+                }
                 break;
             }
         }
@@ -313,45 +321,6 @@ VirtualProgram::addToAccumulatedMap(ShaderMap&         accumShaderMap,
 
 
 void
-VirtualProgram::installDefaultColoringAndLightingShaders(unsigned                           numTextures,
-                                                         osg::StateAttribute::OverrideValue qual )
-{
-    ShaderFactory* sf = osgEarth::Registry::instance()->getShaderFactory();
-
-    this->setShader( sf->createDefaultColoringVertexShader(numTextures), qual );
-    this->setShader( sf->createDefaultLightingVertexShader(), qual );
-
-    this->setShader( sf->createDefaultColoringFragmentShader(numTextures), qual );
-    this->setShader( sf->createDefaultLightingFragmentShader(), qual );
-
-    setUseLightingShaders( true );
-}
-
-
-void
-VirtualProgram::installDefaultLightingShaders(osg::StateAttribute::OverrideValue qual)
-{
-    ShaderFactory* sf = osgEarth::Registry::instance()->getShaderFactory();
-
-    this->setShader( sf->createDefaultLightingVertexShader(), qual );
-    this->setShader( sf->createDefaultLightingFragmentShader(), qual );
-
-    setUseLightingShaders( true );
-}
-
-
-void
-VirtualProgram::installDefaultColoringShaders(unsigned                           numTextures,
-                                              osg::StateAttribute::OverrideValue qual )
-{
-    ShaderFactory* sf = osgEarth::Registry::instance()->getShaderFactory();
-
-    this->setShader( sf->createDefaultColoringVertexShader(numTextures), qual );
-    this->setShader( sf->createDefaultColoringFragmentShader(numTextures), qual );
-}
-
-
-void
 VirtualProgram::setInheritShaders( bool value )
 {
     if ( _inherit != value )
@@ -363,16 +332,16 @@ VirtualProgram::setInheritShaders( bool value )
 }
 
 
-void
-VirtualProgram::setUseLightingShaders( bool value )
-{
-    if ( _useLightingShaders != value )
-    {
-        _useLightingShaders = value;
-        _programCache.clear();
-        _accumulatedFunctions.clear();
-    }
-}
+//void
+//VirtualProgram::setUseLightingShaders( bool value )
+//{
+//    if ( _useLightingShaders != value )
+//    {
+//        _useLightingShaders = value;
+//        _programCache.clear();
+//        _accumulatedFunctions.clear();
+//    }
+//}
 
 
 namespace
@@ -531,15 +500,12 @@ VirtualProgram::buildProgram(osg::State&        state,
     // build a new set of accumulated functions, to support the creation of main()
     refreshAccumulatedFunctions( state );
 
-    // No matching program in the cache; make it.
-    ShaderFactory* sf = osgEarth::Registry::instance()->getShaderFactory();
-
     // create the MAINs. Save the old ones so we can replace them in the cache.
     osg::ref_ptr<osg::Shader> oldVertMain = _vertMain.get();
-    _vertMain = sf->createVertexShaderMain( _accumulatedFunctions, _useLightingShaders );
+    _vertMain = Registry::shaderFactory()->createVertexShaderMain( _accumulatedFunctions );
 
     osg::ref_ptr<osg::Shader> oldFragMain = _fragMain.get();
-    _fragMain = sf->createFragmentShaderMain( _accumulatedFunctions, _useLightingShaders );
+    _fragMain = Registry::shaderFactory()->createFragmentShaderMain( _accumulatedFunctions );
 
     // rebuild the shader list now that we've changed the shader map.
     ShaderVector keyVector;

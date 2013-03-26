@@ -582,7 +582,7 @@ public:
 
         // set up a VP to do fading.
         VirtualProgram* vp = new VirtualProgram();
-        vp->setFunction( "oe_declutter_apply_fade", s_faderFS, ShaderComp::LOCATION_FRAGMENT_PRE_LIGHTING );
+        vp->setFunction( "oe_declutter_apply_fade", s_faderFS, ShaderComp::LOCATION_FRAGMENT_COLORING );
         stateSet->setAttributeAndModes(vp, 1);
     }
 

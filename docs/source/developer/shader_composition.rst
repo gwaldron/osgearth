@@ -18,12 +18,8 @@ Framework Basics
 ----------------
 
 osgEarth installs default shaders for rendering. The default shaders are shown
-below. Note the following function types:
-
-* **built-in functions**: functions that osgEarth installs by default
-  (but that you can override)
-* **user functions**: functions that you "inject" into the shader either
-  before (pre) or after (post) the built-ins.
+below. The ``LOCATION_*`` designators allow you to inject functions at
+various points in the shader's execution.
 
 Here is the pseudo-code for osgEarth's built-in shaders::
 
@@ -31,25 +27,25 @@ Here is the pseudo-code for osgEarth's built-in shaders::
 
     void main(void)
     {
-        gl_Position = gl_ModelViewProjectionMatrix * gl_Vertex;
+        vec4 vertex = gl_Vertex;
+
+        // "LOCATION_VERTEX_MODEL" user functions are called here:
+        model_func_1(vertex);
         ...
 
-        // "LOCATION_VERTEX_PRE_TEXTURING" user functions are called here:
-        pre_tex_func_1(...);
+        vertex = gl_ModelViewMatrix * vertex;
+
+        // "LOCATION_VERTEX_VIEW" user functions are called here:
+        view_func_1(vertex);
         ...
 
-        // the built-in functions are called next:
-        osgearth_vert_setupTexturing();
-
-        // "LOCATION_VERTEX_PRE_LIGHTING" user functions are called here:
-        pre_light_func_1(...);
+        vertes = gl_ProjectionMatrix * vertex;
+        
+        // "LOCATION_VERTEX_CLIP" user functions are called last:
+        clip_func_1(vertex);
         ...
-
-        if ( lighting_enabled )
-            osgearth_vert_setupLighting();
-
-        // "LOCATION_VERTEX_POST_LIGHTING" user functions are called last:
-        post_light_func_1(...);
+        
+        gl_Position = vertex;
     }  
 
 
@@ -57,26 +53,15 @@ Here is the pseudo-code for osgEarth's built-in shaders::
 
     void main(void)
     {
-        vec4 color = vec4(1,1,1,1);
+        vec4 color = gl_Color;
         ...
 
-        // "LOCATION_FRAGMENT_PRE_TEXTURING" user functions are called here:
-        pre_tex_func_1(color);
+        // "LOCATION_FRAGMENT_COLORING" user functions are called here:
+        coloring_func_1(color);
         ...
 
-        // then the built-in osgEarth functions are called:
-        osgearth_frag_applyTexturing(color);
-
-        // "LOCATION_FRAGMENT_PRE_LIGHTING" user functions are called here:
-        pre_light_func_1(...);
-        ...
-
-        if (osgearth_lighting_enabled)
-            osgearth_frag_applyLighting(color);
-        ...
-
-        // "LOCATION_FRAGMENT_POST_LIGHTING" user functions are called last:
-        post_light_func_1(color);
+        // "LOCATION_FRAGMENT_LIGHTING" user functions are called here:
+        lighting_func_1(color);
         ...
 
         gl_FragColor = color;
@@ -102,22 +87,25 @@ Integrating Custom Shaders
 There are two ways to use shader composition in osgEarth.
 
 * Injecting user functions
-* Overriding osgEarth's built-in functions with a custom !ShaderFactory
+* Overriding osgEarth's built-in functions with a custom ``ShaderFactory``
 
  
 Injecting User Functions
 ~~~~~~~~~~~~~~~~~~~~~~~~
 
-In the core shader code above, you see "user functions" (e.g., "pre_tex_func_1()" etc). These don't exist in the default shaders that osgEarth generates; rather, they represent code that you as the developer can "inject" into various locations in the built-in shaders.
+In the core shader code above, osgEarth calls into user functions.
+These don't exist in the default shaders that osgEarth generates;
+rather, they represent code that you as the developer can "inject"
+into various locations in the built-in shaders.
 
 For example, let's use User Functions to create a simple "haze" effect.
 (NOTE: see this example in its entirety in osgearth_shadercomp.cpp)::
 
     static char s_hazeVertShader[] =
         "varying vec3 v_pos; \n"
-        "void setup_haze() \n"
+        "void setup_haze(inout vec4 vertexVIEW) \n"
         "{ \n"
-        "    v_pos = vec3(gl_ModelViewMatrix * gl_Vertex); \n"
+        "    v_pos = vec3(vertexVIEW); \n"
         "} \n";
 
     static char s_hazeFragShader[] =
@@ -133,8 +121,8 @@ For example, let's use User Functions to create a simple "haze" effect.
     {
         osgEarth::VirtualProgram* vp = new osgEarth::VirtualProgram();
 
-        vp->setFunction( "setup_haze", s_hazeVertShader, osgEarth::ShaderComp::LOCATION_VERTEX_POST_LIGHTING);
-        vp->setFunction( "apply_haze", s_hazeFragShader, osgEarth::ShaderComp::LOCATION_FRAGMENT_POST_LIGHTING);
+        vp->setFunction( "setup_haze", s_hazeVertShader, osgEarth::ShaderComp::LOCATION_VERTEX_VIEW);
+        vp->setFunction( "apply_haze", s_hazeFragShader, osgEarth::ShaderComp::LOCATION_FRAGMENT_LIGHTING);
 
         return vp;
     }
@@ -146,25 +134,32 @@ In this example, the function ``setup_haze`` is called from the core vertex shad
 after the built-in vertex functions. The ``apply_haze`` function gets called from
 the core fragment shader after the built-in fragment functions.
 
-There are SIX injection points, as follows:
+There are FIVE injection points, as follows:
 
-+------------------------------------------------+-------------+-----------------------------+
-| Location                                       | Shader Type | Signature                   |
-+================================================+=============+=============================+
-| ShaderComp::LOCATION_VERTEX_PRE_TEXTURING      | VERTEX      | void func(void)             |
-+------------------------------------------------+-------------+-----------------------------+
-| ShaderComp::LOCATION_VERTEX_PRE_LIGHTING       | VERTEX      | void func(void)             |
-+------------------------------------------------+-------------+-----------------------------+
-| ShaderComp::LOCATION_VERTEX_POST_LIGHTING      | VERTEX      | void func(void)             |
-+------------------------------------------------+-------------+-----------------------------+
-| ShaderComp::LOCATION_FRAGMENT_PRE_TEXTURING    | FRAGMENT    | void func(inout vec4 color) |
-+------------------------------------------------+-------------+-----------------------------+
-| ShaderComp::LOCATION_FRAGMENT_PRE_LIGHTING     | FRAGMENT    | void func(inout vec4 color) |
-+------------------------------------------------+-------------+-----------------------------+
-| ShaderComp::LOCATION_FRAGMENT_PRE_LIGHTING     | FRAGMENT    | void func(inout vec4 color) |
-+------------------------------------------------+-------------+-----------------------------+
++----------------------------------------+-------------+------------------------------+
+| Location                               | Shader Type | Signature                    |
++========================================+=============+==============================+
+| ShaderComp::LOCATION_VERTEX_MODEL      | VERTEX      | void func(inout vec4 vertex) |
++----------------------------------------+-------------+------------------------------+
+| ShaderComp::LOCATION_VERTEX_VIEW       | VERTEX      | void func(inout vec4 vertex) |
++----------------------------------------+-------------+------------------------------+
+| ShaderComp::LOCATION_VERTEX_CLIP       | VERTEX      | void func(inout vec4 vertex) |
++----------------------------------------+-------------+------------------------------+
+| ShaderComp::LOCATION_FRAGMENT_COLORING | FRAGMENT    | void func(inout vec4 color)  |
++----------------------------------------+-------------+------------------------------+
+| ShaderComp::LOCATION_FRAGMENT_LIGHTING | FRAGMENT    | void func(inout vec4 color)  |
++----------------------------------------+-------------+------------------------------+
 
-As you can see, user functions literally let you inject code into the main shaders seamlessly.
+Each VERTEX locations let you operate on the vertex in a particular *coordinate space*. 
+You can alter the vertex, but you *must* leave it in the same space.
+
+:MODEL:  Vertex is the raw, untransformed values from the geometry.
+:VIEW:   Vertex is relative to the eyepoint, which lies at the origin (0,0,0) and 
+         points down the -Z axis. In VIEW space, the orginal vertex has been
+         transformed by ``gl_ModelViewMatrix``.
+:CLIP:   Post-projected clip space. CLIP space lies in the [-w..w] range along all
+         three axis, and is the result of transforming the original vertex by
+         ``gl_ModelViewProjectionMatrix``.
 
 
 Customizing the Shader Factory
@@ -208,11 +203,14 @@ to query. You can then call this sampler function from your shader. Here's an ex
     osgEarth::VirtualProgram* vp;
 
     // first get a reference to the texture compositor.
-    osgEarth::TerrainEngine* engine = mapNode->getTerrainEngine();
+    osgEarth::TerrainEngineNode* engine = mapNode->getTerrainEngine();
     osgEarth::TextureCompositor* comp = engine->getTextureCompositor();
 
+	// next, find our layer
+	layer = mapNode->getMap()->getImageLayerByName("MyLayer");
+
     // next, request a sampling shader for the layer in question.
-    osg::Shader* sampler = comp->createSamplerFunction( layer, "sampleMyLayer", osg::Shader::FRAGMENT );
+    osg::Shader* sampler = comp->createSamplerFunction( layer->getUID(), "sampleMyLayer", osg::Shader::FRAGMENT );
 
     // add it to your VirtualProgram:
     vp->setShader( "sampleMyLayer", sampler );

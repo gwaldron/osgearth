@@ -121,7 +121,7 @@ ShadowUtils::setUpShadows(osgShadow::ShadowedScene* sscene, osg::Group* root)
     // create a virtual program to attach to the shadowed scene.
     VirtualProgram* vp = new VirtualProgram();
     vp->setName( "shadow:terrain" );
-    vp->installDefaultColoringAndLightingShaders();
+    //vp->installDefaultColoringAndLightingShaders();
 
     ssStateSet->setAttributeAndModes( vp, 1 );
 
@@ -137,9 +137,9 @@ ShadowUtils::setUpShadows(osgShadow::ShadowedScene* sscene, osg::Group* root)
         buf << "varying vec4 oe_shadow_TexCoord1;\n";
 
 
-    buf << "void oe_shadow_setupShadowCoords()\n";
+    buf << "void oe_shadow_setupShadowCoords(inout vec4 VertexVIEW)\n";
     buf << "{\n";
-    buf << "    vec4 position4 = gl_ModelViewMatrix * gl_Vertex;\n";
+    buf << "    vec4 position4 = VertexVIEW;\n";
     buf << "    oe_shadow_TexCoord0.s = dot( position4, gl_EyePlaneS[" << su <<"]);\n";
     buf << "    oe_shadow_TexCoord0.t = dot( position4, gl_EyePlaneT[" << su <<"]);\n";
     buf << "    oe_shadow_TexCoord0.p = dot( position4, gl_EyePlaneR[" << su <<"]);\n";
@@ -162,7 +162,7 @@ ShadowUtils::setUpShadows(osgShadow::ShadowedScene* sscene, osg::Group* root)
     vp->setFunction(
         "oe_shadow_setupShadowCoords", 
         setupShadowCoords, 
-        ShaderComp::LOCATION_VERTEX_POST_LIGHTING,
+        ShaderComp::LOCATION_VERTEX_VIEW,
         -1.0 );
 
     std::stringstream buf2;
@@ -207,7 +207,7 @@ ShadowUtils::setUpShadows(osgShadow::ShadowedScene* sscene, osg::Group* root)
     vp->setFunction(
         "oe_shadow_applyLighting",
         fragApplyLighting,
-        osgEarth::ShaderComp::LOCATION_FRAGMENT_POST_LIGHTING );
+        osgEarth::ShaderComp::LOCATION_FRAGMENT_LIGHTING );
 
     setShadowUnit(sscene, su);
 

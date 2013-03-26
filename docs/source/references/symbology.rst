@@ -64,6 +64,11 @@ control the color and style of the vector data.
 +-----------------------+---------------------------------------+----------------------------+
 | stroke-width          | Line width                            | float with units           |
 +-----------------------+---------------------------------------+----------------------------+
+| stroke-min-pixels     | Minimum rendering width; Prevents a   | float (pixels)             |
+|                       | line from getting thinner than this   |                            |
+|                       | value in pixels. Only applies when    |                            |
+|                       | the ``stroke-width`` is NOT in pixels |                            |
++-----------------------+---------------------------------------+----------------------------+
 | stroke-tessellation   | Number of times to subdivide a line   | integer                    |
 +-----------------------+---------------------------------------+----------------------------+
 | stroke-linejoin       | Join style for polygonized lines.     | miter, round               |

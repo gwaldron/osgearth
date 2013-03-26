@@ -416,6 +416,12 @@ void HTTPClient::setTimeout( long timeout )
 }
 
 void
+HTTPClient::globalInit()
+{
+    curl_global_init(CURL_GLOBAL_ALL);
+}
+
+void
 HTTPClient::readOptions(const osgDB::Options* options, std::string& proxy_host, std::string& proxy_port) const
 {
     // try to set proxy host/port by reading the CURL proxy options

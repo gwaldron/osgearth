@@ -115,9 +115,10 @@ ModelNode::init()
                     node->accept( gen );
 
                     // need a top-level shader too:
-                    VirtualProgram* vp = new VirtualProgram();
-                    vp->installDefaultColoringAndLightingShaders();
-                    this->getOrCreateStateSet()->setAttributeAndModes( vp, 1 );
+                    // gw: why?
+                    //VirtualProgram* vp = new VirtualProgram();
+                    //vp->installDefaultColoringAndLightingShaders();
+                    //this->getOrCreateStateSet()->setAttributeAndModes( vp, 1 );
 
                     // do we really need this? perhaps
                     node->addCullCallback( new UpdateLightingUniformsHelper() );

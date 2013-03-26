@@ -60,10 +60,9 @@ namespace TEST_1
     char s_hazeVertShader[] =
         "#version " GLSL_VERSION_STR "\n"
         "varying vec3 v_pos; \n"
-        "uniform mat4 gl_ModelViewMatrix; \n"
-        "void setup_haze() \n"
+        "void setup_haze(inout vec4 VertexVIEW) \n"
         "{ \n"
-        "    v_pos = vec3(gl_ModelViewMatrix * gl_Vertex); \n"
+        "    v_pos = vec3(VertexVIEW); \n"
         "} \n";
 
     char s_hazeFragShader[] =
@@ -78,8 +77,8 @@ namespace TEST_1
     osg::StateAttribute* createHaze()
     {
         osgEarth::VirtualProgram* vp = new osgEarth::VirtualProgram();
-        vp->setFunction( "setup_haze", s_hazeVertShader, osgEarth::ShaderComp::LOCATION_VERTEX_POST_LIGHTING );
-        vp->setFunction( "apply_haze", s_hazeFragShader, osgEarth::ShaderComp::LOCATION_FRAGMENT_POST_LIGHTING );
+        vp->setFunction( "setup_haze", s_hazeVertShader, osgEarth::ShaderComp::LOCATION_VERTEX_VIEW );
+        vp->setFunction( "apply_haze", s_hazeFragShader, osgEarth::ShaderComp::LOCATION_FRAGMENT_LIGHTING );
         return vp;
     }
 
@@ -137,12 +136,11 @@ namespace TEST_5
 
 #if 0
         osg::Program* p = new osg::Program();
-        p->addShader( new osg::Shader(osg::Shader::VERTEX, s_vert) );
+        p->addShader( new osg::Shader(osg::Shader::VERTEX,   s_vert) );
         p->addShader( new osg::Shader(osg::Shader::FRAGMENT, s_frag) );
 #else
         VirtualProgram* p = new VirtualProgram();
-        p->installDefaultColoringAndLightingShaders();
-        p->setFunction("test", s_vp, ShaderComp::LOCATION_FRAGMENT_POST_LIGHTING);
+        p->setFunction("test", s_vp, ShaderComp::LOCATION_FRAGMENT_LIGHTING);
 #endif
 
         n1->getOrCreateStateSet()->setAttributeAndModes( p, 1 );

@@ -62,6 +62,10 @@ namespace osgEarth
 
         void apply( osg::Geode& );
 
+        void apply( osg::PagedLOD& );
+
+        void apply( osg::ProxyNode& );
+
     protected:
 
         void apply( osg::Drawable* );
@@ -79,4 +83,4 @@ namespace osgEarth
 
 } // namespace osgEarth
 
-#endif // OSGEARTH_DRAPEABLE_NODE_H
+#endif // OSGEARTH_SHADER_GENERATOR_H

@@ -57,7 +57,7 @@ _numGdalMutexGets   ( 0 ),
 _uidGen             ( 0 ),
 _caps               ( 0L ),
 _defaultFont        ( 0L ),
-_terrainEngineDriver( "quadtree" )
+_terrainEngineDriver( "mp" )
 {
     // set up GDAL and OGR.
     OGRRegisterAll();

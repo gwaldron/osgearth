@@ -45,6 +45,7 @@ _publicStateSet   ( 0L )
     _born->set( -1.0f );
     this->getOrCreateStateSet()->addUniform( _born );
 
+    // TileKey uniform. Swap the Y index.
     osg::Uniform* keyu = new osg::Uniform(osg::Uniform::FLOAT_VEC3, "oe_tilekey");
     keyu->setDataVariance( osg::Object::STATIC );
     unsigned tw, th;
@@ -102,6 +103,7 @@ TileNode::traverse( osg::NodeVisitor& nv )
             if (ccc->cull(&nv,0,static_cast<osg::State *>(0))) return;
         }
 
+        // set the birth time if not already set.
         float bt;
         _born->get( bt );
         if ( bt < 0.0f )

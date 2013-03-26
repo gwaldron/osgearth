@@ -46,7 +46,7 @@ void ExportDialog::initUi(const std::string& boundsString)
   QObject::connect(_ui.exportPathBrowseButton, SIGNAL(clicked()), this, SLOT(showExportBrowse()));
   QObject::connect(_ui.earthFileCheckBox, SIGNAL(toggled(bool)), this, SLOT(updateEarthFilePathEdit()));
 	QObject::connect(_ui.maxLevelCheckBox, SIGNAL(toggled(bool)), this, SLOT(updateMaxLevelSpinBox()));
-  QObject::connect(_ui.extensionCheckBox, SIGNAL(toggled(bool)), this, SLOT(updateExtensionComboBox()));
+//  QObject::connect(_ui.extensionCheckBox, SIGNAL(toggled(bool)), this, SLOT(updateExtensionComboBox()));
   QObject::connect(_ui.okButton, SIGNAL(clicked()), this, SLOT(validateAndAccept()));
 }
 
@@ -80,10 +80,10 @@ void ExportDialog::updateMaxLevelSpinBox()
   _ui.maxLevelSpinBox->setEnabled(_ui.maxLevelCheckBox->isChecked());
 }
 
-void ExportDialog::updateExtensionComboBox()
-{
-  _ui.extensionComboBox->setEnabled(_ui.extensionCheckBox->isChecked());
-}
+//void ExportDialog::updateExtensionComboBox()
+//{
+//  _ui.extensionComboBox->setEnabled(_ui.extensionCheckBox->isChecked());
+//}
 
 void ExportDialog::validateAndAccept()
 {

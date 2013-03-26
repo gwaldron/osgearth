@@ -39,8 +39,8 @@ namespace PackageQt
       bool maxLevelEnabled() const { return _ui.maxLevelCheckBox->isChecked(); }
       int getMaxLevel() const { return _ui.maxLevelCheckBox->isChecked() ? _ui.maxLevelSpinBox->value() : ~0; }
 
-      bool overrideExtension() const { return _ui.extensionCheckBox->isChecked(); }
-      std::string getExtension() const { return _ui.extensionComboBox->currentText().toUtf8().data(); }
+      //bool overrideExtension() const { return _ui.extensionCheckBox->isChecked(); }
+      //std::string getExtension() const { return _ui.extensionComboBox->currentText().toUtf8().data(); }
 
       bool overwriteExisting() const { return _ui.overwriteCheckBox->isChecked(); }
 
@@ -52,7 +52,7 @@ namespace PackageQt
 		  void showExportBrowse();
       void updateEarthFilePathEdit();
       void updateMaxLevelSpinBox();
-      void updateExtensionComboBox();
+      //void updateExtensionComboBox();
       void validateAndAccept();
 
 	  private:		

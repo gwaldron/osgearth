@@ -220,7 +220,7 @@ private slots:
               bounds,
               (exportDialog.exportEarthFile() ? exportDialog.getEarthFilePath() : ""),
               exportDialog.overwriteExisting(),
-              (exportDialog.overrideExtension() ? exportDialog.getExtension() : ""));
+              "" /*(exportDialog.overrideExtension() ? exportDialog.getExtension() : "")*/);
 
             _exportThread->start();
           }

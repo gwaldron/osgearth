@@ -114,7 +114,7 @@ IconResource::createNodeFromURI( const URI& uri, const osgDB::Options* dbOptions
 {
     osg::Node* node = 0L;
 
-    ReadResult r = uri.readObject( dbOptions );
+    ReadResult r = uri.readImage( dbOptions );
     if ( r.succeeded() )
     {
         if ( r.getImage() )

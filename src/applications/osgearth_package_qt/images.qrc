@@ -8,5 +8,7 @@
         <file>images/export.png</file>
         <file>images/bbox.png</file>
         <file>images/bbox_clear.png</file>
+        <file>images/add_elevation_folder.png</file>
+        <file>images/add_image_folder.png</file>
     </qresource>
 </RCC>

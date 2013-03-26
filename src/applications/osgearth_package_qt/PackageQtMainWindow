@@ -142,33 +142,49 @@ private slots:
 
     void addImageLayer()
     {
-      QString filePath = QFileDialog::getOpenFileName(this, tr("Add an image layer"), "", tr("Images (*.tif *.ecw);;All files (*.*)"));
-      if (!filePath.isNull())
+      QStringList filePaths = QFileDialog::getOpenFileNames(this, tr("Add an image layer"), "", tr("Images (*.tif *.ecw);;All files (*.*)"));
+      for (int i = 0; i < filePaths.size(); i++)
       {
-        osgEarth::Drivers::GDALOptions layerOpt;
-        layerOpt.url() = osgEarth::URI(filePath.toStdString());
-        
-        std::string fileName = osgDB::getSimpleFileName(filePath.toStdString());
-        osg::ref_ptr<osgEarth::ImageLayer> newLayer = new osgEarth::ImageLayer(osgEarth::ImageLayerOptions(fileName, layerOpt));
+        QString filePath = filePaths.at(i);
+        if (!filePath.isNull())
+        {
+          osgEarth::Drivers::GDALOptions layerOpt;
+          layerOpt.url() = osgEarth::URI(filePath.toStdString());
+          
+          std::string fileName = osgDB::getSimpleFileName(filePath.toStdString());
+          osg::ref_ptr<osgEarth::ImageLayer> newLayer = new osgEarth::ImageLayer(osgEarth::ImageLayerOptions(fileName, layerOpt));
 
-        _manager->map()->addImageLayer(newLayer.get());
+          _manager->map()->addImageLayer(newLayer.get());
+        }
       }
     }
+
+    //void addImageFolder()
+    //{
+    //}
 
     void addElevationLayer()
     {
-      QString filePath = QFileDialog::getOpenFileName(this, tr("Add an elevation layer"), "", tr("Elevation files (*.tif);;All files (*.*)"));
-      if (!filePath.isNull())
+      QStringList filePaths = QFileDialog::getOpenFileNames(this, tr("Add an elevation layer"), "", tr("Elevation files (*.tif *.dt*);;All files (*.*)"));
+      for (int i=0; i < filePaths.size(); i++)
       {
-        osgEarth::Drivers::GDALOptions layerOpt;
-        layerOpt.url() = osgEarth::URI(filePath.toStdString());
-        
-        std::string fileName = osgDB::getSimpleFileName(filePath.toStdString());
-        osg::ref_ptr<osgEarth::ElevationLayer> newLayer = new osgEarth::ElevationLayer(osgEarth::ElevationLayerOptions  (fileName, layerOpt));
+        QString filePath = filePaths.at(i);
+        if (!filePath.isNull())
+        {
+          osgEarth::Drivers::GDALOptions layerOpt;
+          layerOpt.url() = osgEarth::URI(filePath.toStdString());
+          
+          std::string fileName = osgDB::getSimpleFileName(filePath.toStdString());
+          osg::ref_ptr<osgEarth::ElevationLayer> newLayer = new osgEarth::ElevationLayer(osgEarth::ElevationLayerOptions(fileName, layerOpt));
 
-        _manager->map()->addElevationLayer(newLayer.get());
+          _manager->map()->addElevationLayer(newLayer.get());
+        }
       }
     }
+
+    //void addElevationFolder()
+    //{
+    //}
 
     void exportRepo()
     {
@@ -293,10 +309,20 @@ private:
         connect(_addImageLayerAction, SIGNAL(triggered()), this, SLOT(addImageLayer()));
         _addImageLayerAction->setDisabled(!_manager.valid());
 
+        //_addImageFolderAction = new QAction(QIcon(":/images/add_image_folder.png"), tr("&Add Folder of Imagery"), this);
+        //_addImageFolderAction->setToolTip(tr("Add folder of imagery"));
+        //connect(_addImageFolderAction, SIGNAL(triggered()), this, SLOT(addImageFolder()));
+        //_addImageFolderAction->setDisabled(!_manager.valid());
+
         _addElevationLayerAction = new QAction(QIcon(":/images/add_elevation.png"), tr("&Add Elevation"), this);
         _addElevationLayerAction->setToolTip(tr("Add elevation"));
         connect(_addElevationLayerAction, SIGNAL(triggered()), this, SLOT(addElevationLayer()));
         _addElevationLayerAction->setDisabled(!_manager.valid());
+
+        //_addElevationFolderAction = new QAction(QIcon(":/images/add_elevation_folder.png"), tr("&Add Folder of Elevation"), this);
+        //_addElevationFolderAction->setToolTip(tr("Add folder of elevation"));
+        //connect(_addElevationFolderAction, SIGNAL(triggered()), this, SLOT(addElevationFolder()));
+        //_addElevationFolderAction->setDisabled(!_manager.valid());
 
         _exportAction = new QAction(QIcon(":/images/export.png"), tr(""), this);
         _exportAction->setToolTip(tr("Export"));
@@ -320,7 +346,9 @@ private:
         _fileToolbar->addAction(_openEarthFileAction);
         _fileToolbar->addSeparator();
         _fileToolbar->addAction(_addImageLayerAction);
+        //_fileToolbar->addAction(_addImageFolderAction);
         _fileToolbar->addAction(_addElevationLayerAction);
+        //_fileToolbar->addAction(_addElevationFolderAction);
         _fileToolbar->addSeparator();
         _fileToolbar->addAction(_bboxAction);
         _fileToolbar->addAction(_bboxClearAction);
@@ -354,7 +382,9 @@ private:
 
     QAction *_openEarthFileAction;
     QAction *_addImageLayerAction;
+    //QAction *_addImageFolderAction;
     QAction *_addElevationLayerAction;
+    //QAction *_addElevationFolderAction;
     QAction *_exportAction;
     QAction *_bboxAction;
     QAction *_bboxClearAction;

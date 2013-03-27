@@ -1058,7 +1058,7 @@ public:
         if (_options.maxDataLevel().isSet())
         {
             _maxDataLevel = _options.maxDataLevel().value();
-            OE_INFO << "Using override max data level " << _maxDataLevel << std::endl;
+            OE_INFO << _options.url().value().full() << " using override max data level " << _maxDataLevel << std::endl;
         }
         else
         {
@@ -1077,7 +1077,7 @@ public:
                 }
             }
 
-            OE_NOTICE << LC << "Max Data Level: " << _maxDataLevel << std::endl;
+            OE_NOTICE << LC << _options.url().value().full() << " max Data Level: " << _maxDataLevel << std::endl;
         }
 
         osg::ref_ptr< SpatialReference > srs = SpatialReference::create( warpedSRSWKT );

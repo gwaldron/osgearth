@@ -27,8 +27,9 @@ http://readymap.org
     </elevation>
     
     <options>	
+		<elevation_interpolation>triangulate</elevation_interpolation>
 		<elevation_tile_size>8</elevation_tile_size>
-        <terrain normalize_edges="true" min_level="16"/>
+        <!-- <terrain normalize_edges="true" min_level="16"/> -->
     </options>
     
 </map>

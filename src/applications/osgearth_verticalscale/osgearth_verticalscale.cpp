@@ -40,28 +40,30 @@ using namespace osgEarth::Util;
 // can give it any name you want, as long as it's bound to the proper
 // attribute location (see code). 
 //
-// The attribute contains a vec4 which holds the unit "up vector" in 
-// indexes[0,1,2] and the original raw height in index[3].
+// The attribute contains a vec4 which holds the "up vector", the length of
+// which is the elevation, in indexes[0,1,2]. The "old" height value is in
+// index[3].
 //
 // Here, we use the vertical scale uniform to move the vertex up or down
 // along its up vector, thereby scaling the terrain's elevation. The code
 // is intentionally verbose for clarity.
 
 const char* vertexShader =
-    "attribute vec4  osgearth_elevData;  \n"
-    "attribute float osgearth_morphData; \n"
+    "attribute vec4  oe_attribs;         \n"
+    "attribute vec4  oe_attribs2;        \n"
     "uniform   float verticalScale;      \n"
     "uniform   float osg_FrameTime;      \n"
     "uniform   float oe_birthTime;       \n"
 
     "void applyVerticalScale(inout vec4 VertexMODEL) \n"
     "{ \n"
-    "    vec3  upVector  = osgearth_elevData.xyz; \n"
-    "    float elevNew   = osgearth_elevData.w; \n"
-    "    float elevOld   = osgearth_morphData; \n"
-    "    float r         = 1.0 - clamp(osg_FrameTime-oe_birthTime, 0.0, 0.5)/0.5; \n"
-    "    vec3  offset   = upVector * r * (elevOld - elevNew); \n"
-    "    VertexMODEL    = VertexMODEL + vec4(offset/VertexMODEL.w, 0.0); \n"
+    "    const float dt  = 0.5; \n"
+    "    vec3  upVector  = oe_attribs.xyz; \n"
+    "    float elev      = oe_attribs.w; \n"
+    "    float elevOld   = oe_attribs2.x; \n"
+    "    float r         = 1.0 - clamp(osg_FrameTime-(oe_birthTime+1.0), 0.0, dt)/dt; \n"
+    "    vec3  offset    = upVector * r * (elevOld - elev); \n"
+    "    VertexMODEL     = VertexMODEL + vec4(offset/VertexMODEL.w, 0.0); \n"
     "} \n";
 
 
@@ -74,8 +76,8 @@ osg::StateSet* createStateSet()
     // terrain engine automatically generates at the specified location.
     VirtualProgram* vp = new VirtualProgram();
     vp->setFunction( "applyVerticalScale", vertexShader, ShaderComp::LOCATION_VERTEX_MODEL );
-    vp->addBindAttribLocation( "osgearth_elevData", osg::Drawable::ATTRIBUTE_6 );
-    vp->addBindAttribLocation( "osgearth_morphData", osg::Drawable::ATTRIBUTE_7 );
+    vp->addBindAttribLocation( "oe_attribs",  osg::Drawable::ATTRIBUTE_6 );
+    vp->addBindAttribLocation( "oe_attribs2", osg::Drawable::ATTRIBUTE_7 );
     stateSet->setAttributeAndModes( vp, osg::StateAttribute::ON );
 
     return stateSet;

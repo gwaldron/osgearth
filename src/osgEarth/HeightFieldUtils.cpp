@@ -182,9 +182,10 @@ HeightFieldUtils::getHeightAtPixel(const osg::HeightField* hf, double c, double 
     return result;
 }
 
-float
+bool
 HeightFieldUtils::getInterpolatedHeight(const osg::HeightField* hf, 
                                         unsigned c, unsigned r, 
+                                        float& out_height,
                                         ElevationInterpolation interpolation)
 {
     int count = 0;
@@ -205,8 +206,13 @@ HeightFieldUtils::getInterpolatedHeight(const osg::HeightField* hf,
         total += hf->getHeight(c, r+1);
         count++;
     }
-    total /= (float)count;
-    return total;
+    if ( count > 0 )
+        total /= (float)count;
+    else
+        return false;
+
+    out_height = total;
+    return true;
 }
 
 float
@@ -328,7 +334,7 @@ HeightFieldUtils::resampleHeightField(osg::HeightField*      input,
         {
             double nx = (double)x / (double)(newColumns-1);
             double ny = (double)y / (double)(newRows-1);
-            float h = getHeightAtNormalizedLocation( input, nx, ny );
+            float h = getHeightAtNormalizedLocation( input, nx, ny, interp );
             output->setHeight( x, y, h );
         }
     }

@@ -43,9 +43,10 @@ namespace osgEarth
          * Gets the height value at the specified column and row, but instead of reading
          * the actual height, interpolates a height based on the neighbors.
          */
-        static float getInterpolatedHeight(
+        static bool getInterpolatedHeight(
             const osg::HeightField* hf, 
             unsigned c, unsigned r, 
+            float& out_height,
             ElevationInterpolation interpoltion = INTERP_BILINEAR);
         
         /**

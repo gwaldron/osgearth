@@ -104,6 +104,8 @@ TileNode::traverse( osg::NodeVisitor& nv )
         }
 
         // set the birth time if not already set.
+        const osg::FrameStamp* fs = nv.getFrameStamp();
+
         float bt;
         _born->get( bt );
         if ( bt < 0.0f )

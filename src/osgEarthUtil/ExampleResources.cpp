@@ -38,6 +38,7 @@
 #include <osgViewer/ViewerEventHandlers>
 #include <osgDB/FileNameUtils>
 #include <osgDB/WriteFile>
+#include <osg/GLExtensions>
 
 #define KML_PUSHPIN_URL "http://demo.pelicanmapping.com/icons/pushpin_yellow.png"
 
@@ -681,6 +682,17 @@ MapNodeHelper::parse(MapNode*             mapNode,
 void
 MapNodeHelper::configureView( osgViewer::View* view ) const
 {
+    #if __APPLE__
+    std::string ext_str = osg::getGLExtensionDisableString();
+    if(ext_str != "Nothing defined") {
+        ext_str += " ";
+    }
+    
+    ext_str = "GL_EXT_timer_query GL_ARB_timer_query";
+    
+    osg::setGLExtensionDisableString(ext_str);
+    #endif
+	
     // add some stock OSG handlers:
     view->addEventHandler(new osgViewer::StatsHandler());
     view->addEventHandler(new osgViewer::WindowSizeHandler());

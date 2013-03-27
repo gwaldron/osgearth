@@ -115,7 +115,7 @@ typedef struct
 } BandProperty;
 
 static void
-getFiles(const std::string &file, const std::vector<std::string> &exts, std::vector<std::string> &files)
+getFiles(const std::string &file, const std::vector<std::string> &exts, const std::vector<std::string> &blackExts, std::vector<std::string> &files)
 {
     if (osgDB::fileType(file) == osgDB::DIRECTORY)
     {
@@ -124,11 +124,12 @@ getFiles(const std::string &file, const std::vector<std::string> &exts, std::vec
         {
             if (*itr == "." || *itr == "..") continue;
             std::string f = osgDB::concatPaths(file, *itr);
-            getFiles(f, exts, files);
+            getFiles(f, exts, blackExts, files);
         }
     }
     else
     {
+		std::string ext = osgDB::getFileExtension(file);
         bool fileValid = false;
         //If we have no _extensions specified, assume we should try everything
         if (exts.size() == 0)
@@ -138,7 +139,6 @@ getFiles(const std::string &file, const std::vector<std::string> &exts, std::vec
         else
         {
             //Only accept files with the given _extensions
-            std::string ext = osgDB::getFileExtension(file);
             for (unsigned int i = 0; i < exts.size(); ++i)
             {
                 if (osgDB::equalCaseInsensitive(ext, exts[i]))
@@ -147,7 +147,17 @@ getFiles(const std::string &file, const std::vector<std::string> &exts, std::vec
                     break;
                 }
             }
-        }
+		}
+
+		//Ignore any files that have blacklisted extensions
+        for (unsigned int i = 0; i < blackExts.size(); ++i)
+        {
+			if (osgDB::equalCaseInsensitive(ext, blackExts[i]))
+			{
+				fileValid = false;
+				break;
+			}
+		}
         
         if (fileValid)
         {
@@ -723,12 +733,20 @@ public:
                 StringVector exts;
                 izer.tokenize( *_options.extensions(), exts );
 
+				StringVector blackExts;
+				izer.tokenize( *_options.blackExtensions(), blackExts );
+
                 for (unsigned int i = 0; i < exts.size(); ++i)
                 {
                     OE_DEBUG << LC << "Using Extension: " << exts[i] << std::endl;
                 }
 
-                getFiles(source, exts, files);
+				for (unsigned int i = 0; i < blackExts.size(); ++i)
+				{
+					OE_DEBUG << LC << "Blacklisting Extension: " << blackExts[i] << std::endl;
+				}
+
+                getFiles(source, exts, blackExts, files);
 
                 OE_INFO << LC << "Driver found " << files.size() << " files:" << std::endl;
                 for (unsigned int i = 0; i < files.size(); ++i)

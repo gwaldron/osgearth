@@ -1,0 +1,14 @@
+<RCC>
+    <qresource prefix="/">
+        <file>images/add_elevation.png</file>
+        <file>images/add_image.png</file>
+        <file>images/earth.png</file>
+        <file>images/save.png</file>
+        <file>images/delete.png</file>
+        <file>images/export.png</file>
+        <file>images/bbox.png</file>
+        <file>images/bbox_clear.png</file>
+        <file>images/add_elevation_folder.png</file>
+        <file>images/add_image_folder.png</file>
+    </qresource>
+</RCC>

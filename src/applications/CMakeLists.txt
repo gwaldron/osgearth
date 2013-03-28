@@ -36,6 +36,9 @@ ADD_SUBDIRECTORY(osgearth_boundarygen)
 ADD_SUBDIRECTORY(osgearth_backfill)
 ADD_SUBDIRECTORY(osgearth_overlayviewer)
 ADD_SUBDIRECTORY(osgearth_version)
+IF (QT4_FOUND AND NOT ANDROID AND OSGEARTH_USE_QT)
+    ADD_SUBDIRECTORY(osgearth_package_qt)
+ENDIF()
 
 
 SET(TARGET_DEFAULT_LABEL_PREFIX "Sample")

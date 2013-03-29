@@ -24,13 +24,13 @@ Fundamentally the Earth File allows you to specify:
 A Simple Earth File
 -------------------
 Here is a very simple example that reads data from a GeoTIFF file on the local
-file system and renders it as a geocentric round Earth scene:
+file system and renders it as a geocentric round Earth scene::
 
-<map name="MyMap" type="geocentric" version="2">
-    <image name="bluemarble" driver="gdal">
-        <url>world.tif</url>
-    </image>
-</map>
+    <map name="MyMap" type="geocentric" version="2">
+        <image name="bluemarble" driver="gdal">
+            <url>world.tif</url>
+        </image>
+    </map>
 
 This Earth File creates a geocentric Map named ``MyMap`` with a single
 GeoTIFF image source called ``bluemarble``. The ``driver`` attribute
@@ -42,7 +42,7 @@ Some of the sub-elements (under ``image``) are particular to the selected
 driver. To learn more about drivers and how to configure each one, please
 refer to the `Driver Reference Guide`_.
 
-    * Note: the ``version`` number is required!
+    *Note: the ``version`` number is required!*
 
 
 Multiple Image Layers
@@ -73,7 +73,7 @@ The above map provides two images from local data sources using the GDAL driver.
 Order is important when defining multiple image sources: osgEarth renders them
 in the order in which they appear in the Earth File.
 
-    * Note: relative paths within an Earth File are interpreted
+    *Tip: relative paths within an Earth File are interpreted
     as being relative to the Earth File itself.*
 
 
@@ -107,7 +107,7 @@ followed by the high-resolution inset.
 
 Some osgEarth drivers can generate elevation grids as well as imagery.
 
-    * Note: osgEarth only supports single-channel 16-bit integer or 32-bit
+    *Note: osgEarth only supports single-channel 16-bit integer or 32-bit
     floating point data for use in elevation layers.*
 
 

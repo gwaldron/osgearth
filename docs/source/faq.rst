@@ -65,20 +65,21 @@ Community
 	can, but if you need to make changes, bug fixes, etc., you will need your own clone
 	in order to issue Pull Requests.
 	
-		1. Create your own GitHub account and log in.
-		2. Clone the osgEarth repo.
-		3. Work from your clone. Update it from the main repository peridocially.
+	1. Create your own GitHub account and log in.
+	2. Clone the osgEarth repo.
+	3. Work from your clone. Update it from the main repository peridocially.
 	
 **How do I submit changes to osgEarth?**
 
-    We accept contributions and bug fixes through GitHub's *pull request* mechanism.
+	We accept contributions and bug fixes through GitHub's *pull request* mechanism.
+
 	First you need your own GitHub account and a clone of the repo (see above). Next,
 	follow these guidelines:
 	
-		1. Create a *branch* in which to make your changes.
-		2. Make the change.
-		3. Issue a *pull request* against the main osgEarth repository.
-		4. We will review the *PR* for inclusion.
+	1. Create a *branch* in which to make your changes.
+	2. Make the change.
+	3. Issue a *pull request* against the main osgEarth repository.
+	4. We will review the *PR* for inclusion.
 
 	If we decide NOT to include your submission, you can still keep it in your cloned
 	repository and use it yourself. Doing so maintains compliance with the osgEarth

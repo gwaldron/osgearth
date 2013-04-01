@@ -85,4 +85,4 @@ IF (QT4_FOUND AND NOT ANDROID AND OSGEARTH_USE_QT)
     ADD_SUBDIRECTORY(osgearth_qt_windows)
 ENDIF()
 
-ADD_SUBDIRECTORY(osgearth_silverlining)
+#ADD_SUBDIRECTORY(osgearth_silverlining)

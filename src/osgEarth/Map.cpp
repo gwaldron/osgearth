@@ -83,6 +83,12 @@ _dataModelRevision   ( 0 )
     // store the IO information in the top-level DB Options:
     _mapOptions.cachePolicy()->apply( _dbOptions.get() );
     URIContext( _mapOptions.referrer() ).apply( _dbOptions.get() );
+
+    // apply an express tile size if there is one.
+    if ( _mapOptions.elevationTileSize().isSet() )
+    {
+        _elevationLayers.setExpressTileSize( *_mapOptions.elevationTileSize() );
+    }
 }
 
 Map::~Map()
@@ -1088,6 +1094,8 @@ Map::sync( MapFrame& frame ) const
                 frame._elevationLayers.reserve( _elevationLayers.size() );
             frame._elevationLayers.clear();
             std::copy( _elevationLayers.begin(), _elevationLayers.end(), std::back_inserter(frame._elevationLayers) );
+            if ( _mapOptions.elevationTileSize().isSet() )
+                frame._elevationLayers.setExpressTileSize( *_mapOptions.elevationTileSize() );
         }
 
         if ( frame._parts & MODEL_LAYERS )

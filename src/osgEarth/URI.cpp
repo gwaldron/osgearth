@@ -425,10 +425,15 @@ namespace
                     // not in the cache, so proceed to read it from the network.
                     if ( result.empty() )
                     {
+                        // Need to do this to support nested PLODs and Proxynodes.
+                        osg::ref_ptr<osgDB::Options> remoteOptions =
+                            Registry::instance()->cloneOrCreateOptions( localOptions );
+                        remoteOptions->getDatabasePathList().push_front( osgDB::getFilePath(uri.full()) );
+
                         // try to use the callback if it's set. Callback ignores the caching policy.
                         if ( cb )
                         {                
-                            result = reader.fromCallback( cb, uri.full(), localOptions );
+                            result = reader.fromCallback( cb, uri.full(), remoteOptions.get() );
 
                             if ( result.code() != ReadResult::RESULT_NOT_IMPLEMENTED )
                             {
@@ -442,7 +447,7 @@ namespace
                             // still no data, go to the source:
                             if ( result.empty() && cp->usage() != CachePolicy::USAGE_CACHE_ONLY )
                             {
-                                result = reader.fromHTTP( uri.full(), localOptions, progress );
+                                result = reader.fromHTTP( uri.full(), remoteOptions.get(), progress );
                             }
 
                             // write the result to the cache if possible:

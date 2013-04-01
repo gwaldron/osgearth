@@ -54,7 +54,6 @@ namespace osgEarth
 
     public:
         LoadingPolicy( const Config& conf =Config() );
-        LoadingPolicy( const Mode& mode );
         virtual ~LoadingPolicy() { }
 
     public: // Configrable
@@ -220,6 +219,14 @@ namespace osgEarth
         const optional<unsigned>& minLOD() const { return _minLOD; }
 
         /**
+         * The lowest LOD to display. By default, the terrain begins at LOD 0. Set this
+         * to start the terrain tile mesh at a higher LOD. Don't set this TOO high though
+         * or you will run into memory problems.
+         */
+        optional<unsigned>& firstLOD() { return _firstLOD; }
+        const optional<unsigned>& firstLOD() const { return _firstLOD; }
+
+        /**
          * Whether to explicity enable or disable GL lighting on the map node.
          */
         optional<bool>& enableLighting() { return _enableLighting; }
@@ -293,6 +300,7 @@ namespace osgEarth
         optional<CompositingTechnique> _compositingTech;
         optional<unsigned> _minLOD;
         optional<unsigned> _maxLOD;
+        optional<unsigned> _firstLOD;
         optional<bool> _enableLighting;
         optional<float> _attenuationDistance;
         optional<bool> _lodBlending;

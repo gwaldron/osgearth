@@ -31,12 +31,14 @@ using namespace osgEarth::Threading;
 
 unsigned osgEarth::Threading::getCurrentThreadId()
 {
- /*   OpenThreads::Thread* t = OpenThreads::Thread::CurrentThread();
-    return t ? t->getThreadId() : 0u;*/
-
+  /*   OpenThreads::Thread* t = OpenThreads::Thread::CurrentThread();
+   return t ? t->getThreadId() : 0u;*/
+  
 #ifdef _WIN32
-        return (unsigned)::GetCurrentThreadId();
+  return (unsigned)::GetCurrentThreadId();
+#elif __APPLE__
+  return ::syscall(SYS_thread_selfid);
 #else
-        return (unsigned)::syscall(SYS_gettid);
+  return (unsigned)::syscall(SYS_gettid);
 #endif
 }

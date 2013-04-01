@@ -18,6 +18,8 @@
 */
 #include "BYOTerrainEngineNode"
 #include "BYOTerrainEngineOptions"
+#include <osgEarth/ShaderGenerator>
+#include <osgEarth/Registry>
 
 #define LC "[BYOTerrainEngineNode] "
 
@@ -49,9 +51,27 @@ BYOTerrainEngineNode::preInitialize( const Map* map, const TerrainOptions& optio
     }
     else if ( myoptions.url().isSet() )
     {
-        osg::Node* node = myoptions.url()->getNode();
+        OE_INFO << LC << "Loading terrain from " << myoptions.url()->full() << std::endl;
+
+        // no caching for this terrain.
+        osg::ref_ptr<osgDB::Options> dbOptions = Registry::instance()->cloneOrCreateOptions();
+        CachePolicy::NO_CACHE.apply( dbOptions.get() );
+
+        osg::Node* node = myoptions.url()->getNode( dbOptions.get() );
         if ( node )
         {
+            if ( myoptions.shaderPolicy() == SHADERPOLICY_GENERATE )
+            {
+                ShaderGenerator gen( Registry::stateSetCache() );
+                node->accept( gen );
+            }
+            else if ( myoptions.shaderPolicy() == SHADERPOLICY_DISABLE )
+            {
+                node->getOrCreateStateSet()->setAttributeAndModes(
+                    new osg::Program(),
+                    osg::StateAttribute::OFF | osg::StateAttribute::OVERRIDE );
+            }
+
             this->addChild( node );
         }
     }

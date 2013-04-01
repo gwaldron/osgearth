@@ -291,7 +291,7 @@ MPTerrainEngineNode::createTerrain()
     // Build the first level of the terrain.
     // Collect the tile keys comprising the root tiles of the terrain.
     std::vector< TileKey > keys;
-    _update_mapf->getProfile()->getRootKeys( keys );
+    _update_mapf->getProfile()->getAllKeysAtLOD( *_terrainOptions.firstLOD(), keys );
 
     // create a root node for each root tile key.
     OE_INFO << LC << "Creating root keys (" << keys.size() << ")" << std::flush;

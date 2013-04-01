@@ -493,7 +493,7 @@ GeometryCompiler::compile(FeatureList&          workingSet,
     {
         if ( _options.shaderPolicy() == SHADERPOLICY_GENERATE )
         {
-            ShaderGenerator gen( 0L );
+            ShaderGenerator gen( 0L );  // no ss cache because we will optimize later
             resultGroup->accept( gen );
         }
         else if ( _options.shaderPolicy() == SHADERPOLICY_DISABLE )

@@ -164,12 +164,10 @@ ImageLayerTileProcessor::init(const ImageLayerOptions& options,
 
     if ( _options.noDataImageFilename().isSet() && !_options.noDataImageFilename()->empty() )
     {
-        URI noDataURI( *_options.noDataImageFilename() );
-        _noDataImage = noDataURI.getImage( dbOptions );
-        //_noDataImage = URI( *_options.noDataImageFilename() ).readImage(dbOptions).getImage();
+        _noDataImage = _options.noDataImageFilename()->getImage( dbOptions );
         if ( !_noDataImage.valid() )
         {
-            OE_WARN << "Failed to read nodata image from \"" << _options.noDataImageFilename().value() << "\"" << std::endl;
+            OE_WARN << "Failed to read nodata image from \"" << _options.noDataImageFilename()->full() << "\"" << std::endl;
         }
     }
 }

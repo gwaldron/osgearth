@@ -172,9 +172,14 @@ namespace osgEarth
 
         /**
          * Gets the tile keys that comprise the tiles at the root (LOD 0) of this
-         * profile.
+         * profile. Same as calling getAllKeysAtLOD(0).
          */
         void getRootKeys(std::vector<TileKey>& out_keys ) const;
+
+        /**
+         * Gets all the tile keys at the specified LOD.
+         */
+        void getAllKeysAtLOD(unsigned lod, std::vector<TileKey>& out_keys) const;
 
         /** 
          * Calculates an extent given a tile location in this profile.

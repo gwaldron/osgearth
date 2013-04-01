@@ -370,11 +370,6 @@ MapNode::init()
     // Install top-level shader programs:
     if ( Registry::capabilities().supportsGLSL() )
     {
-        // Note. We use OVERRIDE here so that child object that use the ShaderGenerator
-        // don't have to worry about installing default shaders. The usage pattern is
-        // to use PROTECTED mode if you want to override the defaults in (say) a ModelLayer
-        // or in a TextureCompositor.
-
         VirtualProgram* vp = new VirtualProgram();
         vp->setName( "MapNode" );
         Registry::instance()->getShaderFactory()->installLightingShaders( vp );

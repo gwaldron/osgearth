@@ -11,7 +11,7 @@ The *map* is the top-level element in an earth file.
          type    = "geocentric"
          version = "2" >
          
-        <`options   <#MapOptions>`_>
+        <`options   <MapOptions>`_>
         <`image     <#ImageLayer>`_>
         <`elevation <#ElevationLayer>`_>
         <`model     <#ModelLayer>`_>
@@ -307,10 +307,11 @@ tiling scheme that it should use to render map tiles.
 +=======================+====================================================================+
 | srs                   | Spatial reference system of the map. This can be a WKT string, an  |
 |                       | ESPG code, a PROJ4 initialization string, or a stock profile name. |
-|                       | Please refer to `spatialreference`_ for details.                   |
+|                       | Please refer to :doc:`/user/spatialreference` for details.         |
 +-----------------------+--------------------------------------------------------------------+
 | vdatum                | Vertical datum of the profile, which describes how to treat        |
-|                       | Z values. Please refer to `spatialreference`_ for details.         |
+|                       | Z values. Please refer to :doc:`/user/spatialreference` for        |
+|                       | details.                                                           |
 +-----------------------+--------------------------------------------------------------------+
 | xmin, xmax, ymin, ymax| Geospatial extent of the map. The units are those defined by the   |
 |                       | SRS above (usually meters for a projected map, degrees for a       |
@@ -401,5 +402,5 @@ color data in a layer before the osgEarth engine composites it into the terrain.
             <gamma rgb="1.3">
             ...
             
-You can chain multiple color filters together. Please refer to colorfilters_ for
+You can chain multiple color filters together. Please refer to :doc:`/references/colorfilters` for
 details on color filters.

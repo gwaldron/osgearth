@@ -7,6 +7,8 @@ repository you will find dozens of sample earth files in the ``tests`` folder,
 covering various topics and demonstrating various features. We encourage you to
 explore and try them out!
 
+    Also see: :ref:`/references/earthfiles`
+
 
 Contents of an Earth File
 -------------------------

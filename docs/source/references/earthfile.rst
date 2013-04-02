@@ -11,11 +11,11 @@ The *map* is the top-level element in an earth file.
          type    = "geocentric"
          version = "2" >
          
-        <`options   <MapOptions>`_>
-        <`image     <#ImageLayer>`_>
-        <`elevation <#ElevationLayer>`_>
-        <`model     <#ModelLayer>`_>
-        <`mask      <#MaskLayer>`_>
+        <`options   <#map-options>`_>
+        <`image     <#image-layer>`_>
+        <`elevation <#elevation-layer>`_>
+        <`model     <#model-layer>`_>
+        <`mask      <#mask-layer>`_>
         
 
 +------------------------+--------------------------------------------------------------------+
@@ -47,11 +47,11 @@ the entire map.
                  elevation_tile_size     = "8"
                  overlay_texture_size    = "4096" >
 
-            <`profile <#Profile>`_>
-            <`proxy <#ProxySettings>`_>
-            <`cache <#Cache>`_>
-            <`cache_policy <#CachePolicy>`_>
-            <`terrain <#TerrainOptions>`_>
+            <`profile <#profile>`_>
+            <`proxy <#proxy-settings>`_>
+            <`cache <#cache>`_>
+            <`cache_policy <#cache-policy>`_>
+            <`terrain <#terrain-options>`_>
 
 +------------------------+--------------------------------------------------------------------+
 | Property               | Description                                                        |
@@ -165,9 +165,9 @@ An *image layer* is a raster image overlaid on the map's geometry.
                enabled        = "true"
                visible        = "true" >
 
-            <`cache_policy <#CachePolicy>`_>
-            <`color_filters <#ColorFilterChain>`_>
-            <`proxy <#ProxySettings>`_>
+            <`cache_policy <#cache-policy>`_>
+            <`color_filters <#color-filters>`_>
+            <`proxy <#proxy-settings>`_>
 
 
 +-----------------------+--------------------------------------------------------------------+
@@ -388,7 +388,7 @@ Hopefully the properties are self-explanatory.
 
 
 
-.. _ColorFilterChain:
+.. _ColorFilters:
 
 Color Filters
 ~~~~~~~~~~~~~

@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2012 Pelican Mapping
+ * Copyright 2008-2013 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -32,16 +32,6 @@ namespace osgEarth
      * give it the DEM resolution at which you want an elevation point, and it will
      * access the necessary tile and sample it.
      *
-     * EQ supports two types of sampling:
-     *
-     * PARAMTERIC - EQ will sample the actual heightfield directly. This method is the
-     *   fastest since it does not require geometry intersection testing.
-     *
-     * GEOMETRIC - EQ will create a temporary tesselated terrain tile and do an 
-     *   intersection test (using osgUtil::IntersectionVisitor). This method is slower
-     *   but more visually correlated. (TODO: not really true anymore. This method
-     *   will require a re-do in osgEarth 2.2 or 3.0)
-     *
      * NOTE: EQ does NOT take into account rendering properties like vertical scale or
      * skirts. If you need a vertical scale, for example, simply scale the resulting
      * elevation value.
@@ -50,16 +40,19 @@ namespace osgEarth
     {
     public:
         /**
-         * Constructs a new elevation manager. If you are not using a MapNode,
-         * use this constructor to perform elevation queries against a Map. If
-         * you *do* have a MapNode, use the other CTOR that takes a MapNode.
+         * Constructs a new elevation manager.
          *
          * @param map
          *      Map against which to perform elevation queries.
-         * @param technique
-         *      Technique to use for elevation data sampling.
          */
         ElevationQuery( const Map* map );
+        
+        /**
+         * Constructs a new elevation manager.
+         *
+         * @param mapFrame
+         *      Map frame against which to perform elevation queries.
+         */
         ElevationQuery( const MapFrame& mapFrame );
 
         /** dtor */

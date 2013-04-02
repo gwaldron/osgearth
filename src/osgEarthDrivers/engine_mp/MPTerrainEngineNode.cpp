@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2008-2012 Pelican Mapping
+* Copyright 2008-2013 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -291,7 +291,7 @@ MPTerrainEngineNode::createTerrain()
     // Build the first level of the terrain.
     // Collect the tile keys comprising the root tiles of the terrain.
     std::vector< TileKey > keys;
-    _update_mapf->getProfile()->getRootKeys( keys );
+    _update_mapf->getProfile()->getAllKeysAtLOD( *_terrainOptions.firstLOD(), keys );
 
     // create a root node for each root tile key.
     OE_INFO << LC << "Creating root keys (" << keys.size() << ")" << std::flush;
@@ -532,9 +532,16 @@ MPTerrainEngineNode::updateShaders()
             "    if (oe_layer_order == 0) \n"
             "        color = vec4(color.rgb * (1.0 - alpha) + (texel.rgb * alpha), 1.0); \n"
             "    else \n"
-            "        color = vec4(texel.rgb, color.a * alpha); \n"
+            "        color = vec4( __TEXEL_RGB__, color.a * alpha ); \n"
             "    __COLOR_FILTER_BODY__"
             "} \n";
+
+        // check for premult alpha.
+        if ( _terrainOptions.premultipliedAlpha() == true )
+            replaceIn( fs, "__TEXEL_RGB__", "texel.rgb * color.a * alpha" );
+        else
+            replaceIn( fs, "__TEXEL_RGB__", "texel.rgb" );
+
 
         // install the gl_MultiTexCoord* variable that uses the proper texture
         // image unit:
@@ -590,9 +597,11 @@ MPTerrainEngineNode::updateShaders()
             new osg::Depth(osg::Depth::LEQUAL, 0, 1, true) );
 
         // blend multipass image layers
-        terrainStateSet->setAttributeAndModes(
-            new osg::BlendFunc(GL_SRC_ALPHA,GL_ONE_MINUS_SRC_ALPHA), 1);
-        
+        terrainStateSet->setAttributeAndModes( 
+            _terrainOptions.premultipliedAlpha() == true ?
+                new osg::BlendFunc(GL_ONE,GL_ONE_MINUS_SRC_ALPHA) :   // premultiplied alpha
+                new osg::BlendFunc(GL_SRC_ALPHA,GL_ONE_MINUS_SRC_ALPHA), 1 );
+
         // binding for the terrain texture
         terrainStateSet->getOrCreateUniform( 
             "oe_layer_tex", osg::Uniform::SAMPLER_2D )->set( _textureImageUnit );

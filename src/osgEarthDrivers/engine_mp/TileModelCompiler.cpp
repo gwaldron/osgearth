@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2008-2012 Pelican Mapping
+* Copyright 2008-2013 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -1706,7 +1706,8 @@ namespace
         unsigned size = d.renderLayers.size();
 
         d.surface->_layers.resize( size );
-        d.skirt->_layers.resize( size );
+        if ( d.skirt )
+            d.skirt->_layers.resize( size );
         for ( MaskRecordVector::iterator mr = d.maskRecords.begin(); mr != d.maskRecords.end(); ++mr )
             mr->_geom->_layers.resize( size );
         if ( d.stitching_skirts )
@@ -1739,8 +1740,11 @@ namespace
             d.surface->_layers[order] = layer;
 
             // the skirt:
-            layer._texCoords  = r->_skirtTexCoords;
-            d.skirt->_layers[order] = layer;
+            if ( d.skirt )
+            {
+                layer._texCoords  = r->_skirtTexCoords;
+                d.skirt->_layers[order] = layer;
+            }
 
             // the mask geometries:
             for ( MaskRecordVector::iterator mr = d.maskRecords.begin(); mr != d.maskRecords.end(); ++mr )

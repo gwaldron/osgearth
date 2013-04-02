@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2012 Pelican Mapping
+ * Copyright 2008-2013 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -74,21 +74,21 @@ ShaderFactory::createVertexShaderMain(const FunctionLocationMap& functions) cons
     if ( modelStage )
     {
         for( OrderedFunctionMap::const_iterator i = modelStage->begin(); i != modelStage->end(); ++i )
-            buf << "void " << i->second << "(inout vec4 view_vertex); \n";
+            buf << "void " << i->second << "(inout vec4 VertexMODEL); \n";
     }
 
     // prototypes for view stage methods:
     if ( viewStage )
     {
         for( OrderedFunctionMap::const_iterator i = viewStage->begin(); i != viewStage->end(); ++i )
-            buf << "void " << i->second << "(inout vec4 view_vertex); \n";
+            buf << "void " << i->second << "(inout vec4 VertexVIEW); \n";
     }
 
     // prototypes for clip stage methods:
     if ( clipStage )
     {
         for( OrderedFunctionMap::const_iterator i = clipStage->begin(); i != clipStage->end(); ++i )
-            buf << "void " << i->second << "(inout vec4 clip_vertex); \n";
+            buf << "void " << i->second << "(inout vec4 VertexCLIP); \n";
     }
 
     // main:

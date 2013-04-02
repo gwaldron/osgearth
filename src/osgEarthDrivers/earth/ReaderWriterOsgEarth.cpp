@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2012 Pelican Mapping
+ * Copyright 2008-2013 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -175,18 +175,19 @@ class ReaderWriterEarth : public osgDB::ReaderWriter
             if ( !conf.empty() )
             {
                 // see if we were given a reference URI to use:
-                std::string refURI = uriContext.referrer();                                
+                std::string refURI = uriContext.referrer();
 
-                if ( conf.value("version") == "2" )
-                {
-                    OE_INFO << LC << "Detected a version 2.x earth file" << std::endl;
-                    EarthFileSerializer2 ser;
-                    mapNode = ser.deserialize( conf, refURI );
-                }
-                else
+                if ( conf.value("version") == "1" )
                 {
                     OE_INFO << LC << "Detected a version 1.x earth file" << std::endl;
                     EarthFileSerializer1 ser;
+                    mapNode = ser.deserialize( conf, refURI );
+                }
+
+                else
+                {
+                    OE_INFO << LC << "No earth file version; assuming version='2'" << std::endl;
+                    EarthFileSerializer2 ser;
                     mapNode = ser.deserialize( conf, refURI );
                 }
             }

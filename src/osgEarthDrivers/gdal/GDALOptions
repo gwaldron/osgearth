@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2012 Pelican Mapping
+ * Copyright 2008-2013 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -66,6 +66,9 @@ namespace osgEarth { namespace Drivers
         optional<std::string>& extensions() { return _extensions; }
         const optional<std::string>& extensions() const { return _extensions; }
         
+        optional<std::string>& blackExtensions() { return _blackExtensions; }
+        const optional<std::string>& blackExtensions() const { return _blackExtensions; }
+        
         optional<ElevationInterpolation>& interpolation() { return _interpolation; }
         const optional<ElevationInterpolation>& interpolation() const { return _interpolation; }
 
@@ -116,6 +119,7 @@ namespace osgEarth { namespace Drivers
             conf.updateIfSet( "url", _url );
             conf.updateIfSet( "connection", _connection );
             conf.updateIfSet( "extensions", _extensions );
+            conf.updateIfSet( "black_extensions", _blackExtensions );
 
             if ( _interpolation.isSet() ) {
                 if ( _interpolation.value() == osgEarth::INTERP_NEAREST ) conf.update( "interpolation", "nearest" );
@@ -144,6 +148,7 @@ namespace osgEarth { namespace Drivers
             conf.getIfSet( "url", _url );
             conf.getIfSet( "connection", _connection );
             conf.getIfSet( "extensions", _extensions );
+            conf.getIfSet( "black_extensions", _blackExtensions );
             std::string in = conf.value( "interpolation" );
             if ( in == "nearest" ) _interpolation = osgEarth::INTERP_NEAREST;
             else if ( in == "average" ) _interpolation = osgEarth::INTERP_AVERAGE;
@@ -161,6 +166,7 @@ namespace osgEarth { namespace Drivers
         optional<URI>                    _url;
         optional<std::string>            _connection;
         optional<std::string>            _extensions;
+        optional<std::string>			 _blackExtensions;
         optional<ElevationInterpolation> _interpolation;
         optional<bool>                   _interpolateImagery;
         optional<unsigned int>           _maxDataLevel;

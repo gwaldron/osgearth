@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2012 Pelican Mapping
+ * Copyright 2008-2013 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -405,14 +405,22 @@ Profile::overrideSRS( const SpatialReference* srs ) const
 void
 Profile::getRootKeys( std::vector<TileKey>& out_keys ) const
 {
+    getAllKeysAtLOD(0, out_keys);
+}
+
+void
+Profile::getAllKeysAtLOD( unsigned lod, std::vector<TileKey>& out_keys ) const
+{
     out_keys.clear();
 
-    for (unsigned int c = 0; c < _numTilesWideAtLod0; ++c)
+    unsigned tx, ty;
+    getNumTiles( lod, tx, ty );
+
+    for(unsigned c=0; c<tx; ++c)
     {
-        for (unsigned int r = 0; r < _numTilesHighAtLod0; ++r)
+        for(unsigned r=0; r<ty; ++r)
         {
-            //TODO: upgrade to support multi-face profile:
-            out_keys.push_back( TileKey(0, c, r, this) ); // lod, x, y, profile
+            out_keys.push_back( TileKey(lod, c, r, this) );
         }
     }
 }

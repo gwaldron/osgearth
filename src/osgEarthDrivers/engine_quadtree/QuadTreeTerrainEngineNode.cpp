@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2008-2012 Pelican Mapping
+* Copyright 2008-2013 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -253,7 +253,7 @@ QuadTreeTerrainEngineNode::refresh()
     // Build the first level of the terrain.
     // Collect the tile keys comprising the root tiles of the terrain.
     std::vector< TileKey > keys;
-    _update_mapf->getProfile()->getRootKeys( keys );
+    _update_mapf->getProfile()->getAllKeysAtLOD( *_terrainOptions.firstLOD(), keys );
 
     if (_terrainOptions.enableBlending().value())
     {
@@ -302,7 +302,7 @@ QuadTreeTerrainEngineNode::onMapInfoEstablished( const MapInfo& mapInfo )
     // Build the first level of the terrain.
     // Collect the tile keys comprising the root tiles of the terrain.
     std::vector< TileKey > keys;
-    _update_mapf->getProfile()->getRootKeys( keys );
+    _update_mapf->getProfile()->getAllKeysAtLOD( *_terrainOptions.firstLOD(), keys );
 
     for( unsigned i=0; i<keys.size(); ++i )
     {

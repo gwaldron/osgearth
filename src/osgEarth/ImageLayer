@@ -1,5 +1,5 @@
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2012 Pelican Mapping
+ * Copyright 2008-2013 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -24,6 +24,7 @@
 #include <osgEarth/ColorFilter>
 #include <osgEarth/TileSource>
 #include <osgEarth/TerrainLayer>
+#include <osgEarth/URI>
 
 namespace osgEarth
 {
@@ -71,8 +72,8 @@ namespace osgEarth
         /**
          * Gets or sets the nodata image for this MapLayer
          */
-        optional<std::string>& noDataImageFilename() { return _noDataImageFilename; }
-        const optional<std::string>& noDataImageFilename() const { return _noDataImageFilename; }
+        optional<URI>& noDataImageFilename() { return _noDataImageFilename; }
+        const optional<URI>& noDataImageFilename() const { return _noDataImageFilename; }
 
         /**
          * Gets the transparent color of this TileSource
@@ -102,13 +103,13 @@ namespace osgEarth
         void fromConfig( const Config& conf );
         void setDefaults();
 
-        optional<float>  _opacity;
-        optional<float>  _minRange;
-        optional<float>  _maxRange;
+        optional<float>       _opacity;
+        optional<float>       _minRange;
+        optional<float>       _maxRange;
         optional<osg::Vec4ub> _transparentColor;
-        optional<std::string> _noDataImageFilename;
-        optional<bool> _lodBlending;
-        ColorFilterChain _colorFilters;
+        optional<URI>         _noDataImageFilename;
+        optional<bool>        _lodBlending;
+        ColorFilterChain      _colorFilters;
     };
 
     //--------------------------------------------------------------------

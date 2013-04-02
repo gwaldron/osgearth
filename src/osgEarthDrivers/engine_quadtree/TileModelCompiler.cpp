@@ -621,10 +621,15 @@ namespace
                     float oldHeightValue = heightValue;
                     if ( i>0 && j>0 && i<d.numCols-1 && j<d.numRows-1 && (i%2 == 1 || j%2 == 1) )
                     {
-                        oldHeightValue = HeightFieldUtils::getInterpolatedHeight(
+                        float h;
+                        if ( HeightFieldUtils::getInterpolatedHeight(
                             elevationLayer->getHeightField(),
                             i_equiv,
-                            j_equiv );
+                            j_equiv,
+                            h ) )
+                        {
+                            oldHeightValue = h;
+                        }
                     }
 
                     d.surfaceMorphData->push_back( oldHeightValue );

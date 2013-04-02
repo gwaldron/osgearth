@@ -11,7 +11,7 @@ The *map* is the top-level element in an earth file.
          type    = "geocentric"
          version = "2" >
          
-        <`options   <#map-options>`_>
+        <:ref:`options <MapOptions>`>
         <`image     <#image-layer>`_>
         <`elevation <#elevation-layer>`_>
         <`model     <#model-layer>`_>

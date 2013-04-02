@@ -11,11 +11,11 @@ The *map* is the top-level element in an earth file.
          type    = "geocentric"
          version = "2" >
          
-        <:ref:`options <MapOptions>`>
-        <`image     <#image-layer>`_>
-        <`elevation <#elevation-layer>`_>
-        <`model     <#model-layer>`_>
-        <`mask      <#mask-layer>`_>
+        <:ref:`options   <MapOptions>`>
+        <:ref:`image     <ImageLayer>`>
+        <:ref:`elevation <ElevationLayer>`>
+        <:ref:`model     <ModelLayer>`>
+        <:ref:`mask      <MaskLayer>`>
         
 
 +------------------------+--------------------------------------------------------------------+
@@ -47,11 +47,11 @@ the entire map.
                  elevation_tile_size     = "8"
                  overlay_texture_size    = "4096" >
 
-            <`profile <#profile>`_>
-            <`proxy <#proxy-settings>`_>
-            <`cache <#cache>`_>
-            <`cache_policy <#cache-policy>`_>
-            <`terrain <#terrain-options>`_>
+            <:ref:`profile <Profile>`>
+            <:ref:`proxy <ProxySettings>`>
+            <:ref:`cache <Cache>`>
+            <:ref:`cache_policy <CachePolicy>`>
+            <:ref:`terrain <TerrainOptions>`>
 
 +------------------------+--------------------------------------------------------------------+
 | Property               | Description                                                        |
@@ -165,9 +165,9 @@ An *image layer* is a raster image overlaid on the map's geometry.
                enabled        = "true"
                visible        = "true" >
 
-            <`cache_policy <#cache-policy>`_>
-            <`color_filters <#color-filters>`_>
-            <`proxy <#proxy-settings>`_>
+            <:ref:`cache_policy <CachePolicy>`>
+            <:ref:`color_filters <ColorFilterChain>`>
+            <:ref:`proxy <ProxySettings>`>
 
 
 +-----------------------+--------------------------------------------------------------------+
@@ -386,9 +386,7 @@ Hopefully the properties are self-explanatory.
 
 
 
-
-
-.. _ColorFilters:
+.. _ColorFilterChain:
 
 Color Filters
 ~~~~~~~~~~~~~

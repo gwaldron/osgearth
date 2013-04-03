@@ -1090,10 +1090,11 @@ Map::sync( MapFrame& frame ) const
 
         if ( frame._parts & ELEVATION_LAYERS )
         {
-            if ( !frame._initialized )
-                frame._elevationLayers.reserve( _elevationLayers.size() );
-            frame._elevationLayers.clear();
-            std::copy( _elevationLayers.begin(), _elevationLayers.end(), std::back_inserter(frame._elevationLayers) );
+            frame._elevationLayers = _elevationLayers;
+            //if ( !frame._initialized )
+            //    frame._elevationLayers.reserve( _elevationLayers.size() );
+            //frame._elevationLayers.clear();
+            //std::copy( _elevationLayers.begin(), _elevationLayers.end(), std::back_inserter(frame._elevationLayers) );
             if ( _mapOptions.elevationTileSize().isSet() )
                 frame._elevationLayers.setExpressTileSize( *_mapOptions.elevationTileSize() );
         }

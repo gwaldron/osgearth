@@ -38,7 +38,8 @@ namespace osgEarth { namespace Drivers
             _lodFallOff    ( 0.0 ),
             _normalizeEdges( true ),
             _rangeMode     ( osg::LOD::DISTANCE_FROM_EYE_POINT ),
-            _tilePixelSize ( 256 )
+            _tilePixelSize ( 256 ),
+            _premultAlpha  ( false )
         {
             setDriver( "mp" );
             fromConfig( _conf );
@@ -66,6 +67,9 @@ namespace osgEarth { namespace Drivers
         optional<float>& tilePixelSize() { return _tilePixelSize; }
         const optional<float>& tilePixelSize() const { return _tilePixelSize; }
 
+        optional<bool>& premultipliedAlpha() { return _premultAlpha; }
+        const optional<bool>& premultipliedAlpha() const { return _premultAlpha; }
+
     protected:
         virtual Config getConfig() const {
             Config conf = TerrainOptions::getConfig();
@@ -76,6 +80,7 @@ namespace osgEarth { namespace Drivers
             conf.updateIfSet( "tile_pixel_size", _tilePixelSize );
             conf.updateIfSet( "range_mode", "PIXEL_SIZE_ON_SCREEN", _rangeMode, osg::LOD::PIXEL_SIZE_ON_SCREEN );
             conf.updateIfSet( "range_mode", "DISTANCE_FROM_EYE_POINT", _rangeMode, osg::LOD::DISTANCE_FROM_EYE_POINT);
+            conf.updateIfSet( "premultiplied_alpha", _premultAlpha );
 
             return conf;
         }
@@ -95,6 +100,7 @@ namespace osgEarth { namespace Drivers
 
             conf.getIfSet( "range_mode", "PIXEL_SIZE_ON_SCREEN", _rangeMode, osg::LOD::PIXEL_SIZE_ON_SCREEN );
             conf.getIfSet( "range_mode", "DISTANCE_FROM_EYE_POINT", _rangeMode, osg::LOD::DISTANCE_FROM_EYE_POINT);
+            conf.getIfSet( "premultiplied_alpha", _premultAlpha );
         }
 
         optional<float>               _skirtRatio;
@@ -103,6 +109,7 @@ namespace osgEarth { namespace Drivers
         optional<bool>                _normalizeEdges;
         optional<osg::LOD::RangeMode> _rangeMode;
         optional<float>               _tilePixelSize;
+        optional<bool>                _premultAlpha;
     };
 
 } } // namespace osgEarth::Drivers

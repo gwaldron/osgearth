@@ -530,9 +530,16 @@ MPTerrainEngineNode::updateShaders()
             "    if (oe_layer_order == 0) \n"
             "        color = vec4(color.rgb * (1.0 - alpha) + (texel.rgb * alpha), 1.0); \n"
             "    else \n"
-            "        color = vec4(texel.rgb, color.a * alpha); \n"
+            "        color = vec4( __TEXEL_RGB__, color.a * alpha ); \n"
             "    __COLOR_FILTER_BODY__"
             "} \n";
+
+        // check for premult alpha.
+        if ( _terrainOptions.premultipliedAlpha() == true )
+            replaceIn( fs, "__TEXEL_RGB__", "texel.rgb * color.a * alpha" );
+        else
+            replaceIn( fs, "__TEXEL_RGB__", "texel.rgb" );
+
 
         // install the gl_MultiTexCoord* variable that uses the proper texture
         // image unit:
@@ -582,24 +589,16 @@ MPTerrainEngineNode::updateShaders()
         vp->setFunction( "oe_mp_setupColoring", vs, ShaderComp::LOCATION_VERTEX_MODEL,      0.0 );
         vp->setFunction( "oe_mp_applyColoring", fs, ShaderComp::LOCATION_FRAGMENT_COLORING, 0.0 );
 
-        //vp->setShader(
-        //    "osgearth_vert_setupColoring",
-        //    new osg::Shader( osg::Shader::VERTEX, vs ),
-        //    osg::StateAttribute::ON | osg::StateAttribute::PROTECTED );
-
-        //vp->setShader(
-        //    "osgearth_frag_applyColoring",
-        //    new osg::Shader( osg::Shader::FRAGMENT, fs ),
-        //    osg::StateAttribute::ON | osg::StateAttribute::PROTECTED );
-
         // required for multipass tile rendering to work
         terrainStateSet->setAttributeAndModes(
             new osg::Depth(osg::Depth::LEQUAL, 0, 1, true) );
 
         // blend multipass image layers
-        terrainStateSet->setAttributeAndModes(
-            new osg::BlendFunc(GL_SRC_ALPHA,GL_ONE_MINUS_SRC_ALPHA), 1);
-        
+        terrainStateSet->setAttributeAndModes( 
+            _terrainOptions.premultipliedAlpha() == true ?
+                new osg::BlendFunc(GL_ONE,GL_ONE_MINUS_SRC_ALPHA) :   // premultiplied alpha
+                new osg::BlendFunc(GL_SRC_ALPHA,GL_ONE_MINUS_SRC_ALPHA), 1 );
+
         // binding for the terrain texture
         terrainStateSet->getOrCreateUniform( 
             "oe_layer_tex", osg::Uniform::SAMPLER_2D )->set( _textureImageUnit );

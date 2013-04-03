@@ -610,7 +610,7 @@ MPTerrainEngineNode::updateShaders()
             if ( _terrainOptions.premultipliedAlpha() == true )
             {
                 // re-PMA the color after it passes through the color filters.
-                cf_body << I << "if (color.a > 0.0) color.rgb *= color.a; \n";
+                cf_body << I << "color.rgb *= color.a; \n";
             }
 
             if ( haveColorFilters )

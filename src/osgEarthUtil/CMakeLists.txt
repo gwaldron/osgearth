@@ -15,7 +15,7 @@ SET(HEADERS_ROOT
     Controls
     ClampCallback
     DataScanner
-    EarthManipulator    
+    EarthManipulator
     ExampleResources
     Export
     FeatureManipTool
@@ -96,6 +96,7 @@ SET(HEADERS_COLORFILTER
     BrightnessContrastColorFilter
     CMYKColorFilter
     GammaColorFilter
+    GLSLColorFilter
     HSLColorFilter
     RGBColorFilter
     ChromaKeyColorFilter
@@ -107,6 +108,7 @@ SET(SOURCES_COLORFILTER
     BrightnessContrastColorFilter.cpp
     CMYKColorFilter.cpp
     GammaColorFilter.cpp
+    GLSLColorFilter.cpp
     HSLColorFilter.cpp
     RGBColorFilter.cpp
     ChromaKeyColorFilter.cpp

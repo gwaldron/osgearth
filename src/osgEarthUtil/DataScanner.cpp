@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2008-2012 Pelican Mapping
+* Copyright 2008-2013 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -54,7 +54,7 @@ namespace
             {
                 GDALOptions gdal;
                 gdal.url() = path;
-                gdal.interpolation() = INTERP_NEAREST;
+                //gdal.interpolation() = INTERP_NEAREST;
 
                 ImageLayerOptions options( path, gdal );
                 options.cachePolicy() = CachePolicy::NO_CACHE;

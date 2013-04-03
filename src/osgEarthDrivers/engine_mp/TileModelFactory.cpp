@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2008-2012 Pelican Mapping
+* Copyright 2008-2013 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -116,6 +116,14 @@ namespace
                     locator = new MercatorLocator(geoImage.getExtent());
                 else
                     locator = GeoLocator::createForExtent(geoImage.getExtent(), *_mapInfo);
+
+                // convert the image to PMA. This must be done in the CPU; for some
+                // reason (which we could not determine) it fails to try this after the
+                // texture lookup in the shader.
+                if ( _opt->premultipliedAlpha() == true )
+                {
+                    ImageUtils::convertToPremultipliedAlpha( geoImage.getImage() );
+                }
 
                 // add the color layer to the repo.
                 _model->_colorData[_layer->getUID()] = TileModel::ColorData(

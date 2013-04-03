@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2012 Pelican Mapping
+ * Copyright 2008-2013 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -815,6 +815,12 @@ ImageLayer::assembleImageFromTileSource(const TileKey&    key,
             *_runtimeOptions.reprojectedTileSize(),
             *_runtimeOptions.reprojectedTileSize(),
             *_runtimeOptions.driver()->bilinearReprojection());
+    }
+
+    // Process images with full alpha to properly support MP blending.
+    if ( result.valid() )
+    {
+        ImageUtils::featherAlphaRegions( result.getImage() );
     }
 
     return result;

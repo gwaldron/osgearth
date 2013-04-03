@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2012 Pelican Mapping
+ * Copyright 2008-2013 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -216,12 +216,17 @@ namespace osgEarth
         static bool hasTransparency(const osg::Image* image, float alphaThreshold =1.0f);
 
         /**
-         * Finds pixels with 100% alpha and sets their color to match that
-         * or neighboring non-alpha pixels. This facilitates MP blending.
-         * Specify "maxAlpha" as the maximum value to consider when searching
-         * for fully-transparent pixels.
+         * Finds pixels with alpha less than [maxAlpha] and sets their color
+         * to match that or neighboring non-alpha pixels. This facilitates multipass
+         * blending or abutting tiles by overlapping them slightly. Specify "maxAlpha"
+         * as the maximum value to consider when searching for fully-transparent pixels.
          */
         static void featherAlphaRegions(osg::Image* image, float maxAlpha =0.0f);
+
+        /**
+         * Converts an image (in place) to premultiplied-alpha format.
+         */
+        static void convertToPremultipliedAlpha(osg::Image* image);
 
         /**
          * Checks whether the given image is compressed

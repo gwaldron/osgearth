@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2012 Pelican Mapping
+ * Copyright 2008-2013 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -39,7 +39,7 @@ namespace osgEarth { namespace Drivers
             _normalizeEdges( true ),
             _rangeMode     ( osg::LOD::DISTANCE_FROM_EYE_POINT ),
             _tilePixelSize ( 256 ),
-            _premultAlpha  ( false )
+            _premultAlpha  ( true )
         {
             setDriver( "mp" );
             fromConfig( _conf );

@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2008-2012 Pelican Mapping
+* Copyright 2008-2013 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -1609,9 +1609,11 @@ namespace
             tex->setMaxAnisotropy( 16.0f );
             tex->setResizeNonPowerOfTwoHint(false);
             tex->setFilter( osg::Texture::MAG_FILTER, osg::Texture::LINEAR );
-            tex->setFilter( osg::Texture::MIN_FILTER, osg::Texture::NEAREST_MIPMAP_LINEAR );
+            tex->setFilter( osg::Texture::MIN_FILTER, osg::Texture::LINEAR_MIPMAP_LINEAR );
+            //tex->setFilter( osg::Texture::MIN_FILTER, osg::Texture::LINEAR );
             tex->setWrap( osg::Texture::WRAP_S, osg::Texture::CLAMP_TO_EDGE );
             tex->setWrap( osg::Texture::WRAP_T, osg::Texture::CLAMP_TO_EDGE );
+            tex->setWrap( osg::Texture::WRAP_R, osg::Texture::CLAMP_TO_EDGE );
 
             unsigned order = r->_layer.getOrder();
 

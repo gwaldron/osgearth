@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2012 Pelican Mapping
+ * Copyright 2008-2013 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -624,7 +624,7 @@ ImageUtils::hasTransparency(const osg::Image* image, float threshold)
 void
 ImageUtils::featherAlphaRegions(osg::Image* image, float maxAlpha)
 {
-    PixelReader read(image);
+    PixelReader read (image);
     PixelWriter write(image);
 
     int ns = image->s();
@@ -632,50 +632,71 @@ ImageUtils::featherAlphaRegions(osg::Image* image, float maxAlpha)
 
     osg::Vec4 n;
 
-    for( int s=0; s<ns; ++s )
+    for( int t=0; t<nt; ++t )
     {
-        for( int t=0; t<nt; ++t )
+        bool rowdone = false;
+        for( int s=0; s<ns && !rowdone; ++s )
         {
             osg::Vec4 pixel = read(s, t);
             if ( pixel.a() <= maxAlpha )
             {
-                osg::Vec4 rgb;
-                int count = 0;
-                if ( s > 0 ) {
-                    n = read( s-1, t );
-                    if ( n.a() > maxAlpha ) {
-                        rgb += n;
-                        count++;
-                    }
-                }
+                bool wrote = false;
                 if ( s < ns-1 ) {
                     n = read( s+1, t );
                     if ( n.a() > maxAlpha ) {
-                        rgb += n;
-                        count++;
+                        write( n, s, t );
+                        wrote = true;
                     }
                 }
-                if ( t > 0 ) {
-                    n = read( s, t-1 );
+                if ( !wrote && s > 0 ) {
+                    n = read( s-1, t );
                     if ( n.a() > maxAlpha ) {
-                        rgb += n;
-                        count++;
+                        write( n, s, t );
+                        rowdone = true;
                     }
                 }
+            }
+        }
+    }
+
+    for( int s=0; s<ns; ++s )
+    {
+        bool coldone = false;
+        for( int t=0; t<nt && !coldone; ++t )
+        {
+            osg::Vec4 pixel = read(s, t);
+            if ( pixel.a() <= maxAlpha )
+            {
+                bool wrote = false;
                 if ( t < nt-1 ) {
                     n = read( s, t+1 );
                     if ( n.a() > maxAlpha ) {
-                        rgb += n;
-                        count++;
+                        write( n, s, t );
+                        wrote = true;
                     }
                 }
-
-                if ( count > 0 )
-                {
-                    rgb /= (float)count;
-                    write(osg::Vec4(rgb.r(), rgb.g(), rgb.b(), pixel.a()), s, t);
+                if ( !wrote && t > 0 ) {
+                    n = read( s, t-1 );
+                    if ( n.a() > maxAlpha ) {
+                        write( n, s, t );
+                        coldone = true;
+                    }
                 }
             }
+        }
+    }
+}
+
+
+void
+ImageUtils::convertToPremultipliedAlpha(osg::Image* image)
+{
+    PixelReader read(image);
+    PixelWriter write(image);
+    for(int s=0; s<image->s(); ++s) {
+        for( int t=0; t<image->t(); ++t ) {
+            osg::Vec4f c = read(s, t);
+            write( osg::Vec4f(c.r()*c.a(), c.g()*c.a(), c.b()*c.a(), c.a()), s, t);
         }
     }
 }

@@ -817,5 +817,11 @@ ImageLayer::assembleImageFromTileSource(const TileKey&    key,
             *_runtimeOptions.driver()->bilinearReprojection());
     }
 
+    // Process images with full alpha to properly support MP blending.
+    if ( result.valid() )
+    {
+        ImageUtils::featherAlphaRegions( result.getImage() );
+    }
+
     return result;
 }

@@ -117,6 +117,14 @@ namespace
                 else
                     locator = GeoLocator::createForExtent(geoImage.getExtent(), *_mapInfo);
 
+                // convert the image to PMA. This must be done in the CPU; for some
+                // reason (which we could not determine) it fails to try this after the
+                // texture lookup in the shader.
+                if ( _opt->premultipliedAlpha() == true )
+                {
+                    ImageUtils::convertToPremultipliedAlpha( geoImage.getImage() );
+                }
+
                 // add the color layer to the repo.
                 _model->_colorData[_layer->getUID()] = TileModel::ColorData(
                     _layer,

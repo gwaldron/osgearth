@@ -54,7 +54,7 @@ namespace
             {
                 GDALOptions gdal;
                 gdal.url() = path;
-                gdal.interpolation() = INTERP_NEAREST;
+                //gdal.interpolation() = INTERP_NEAREST;
 
                 ImageLayerOptions options( path, gdal );
                 options.cachePolicy() = CachePolicy::NO_CACHE;

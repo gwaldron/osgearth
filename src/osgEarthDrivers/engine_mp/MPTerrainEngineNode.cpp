@@ -508,51 +508,79 @@ MPTerrainEngineNode::updateShaders()
             "#version " GLSL_VERSION_STR "\n"
             GLSL_DEFAULT_PRECISION_FLOAT "\n"
             "varying vec4 oe_layer_tc;\n"
-            "void oe_mp_setupColoring(inout vec4 VertexModel) \n"
+            "void oe_mp_setup_coloring(inout vec4 VertexModel) \n"
             "{ \n"
             "    oe_layer_tc = __GL_MULTITEXCOORD__;\n"
             "}\n";
 
-        // Fragment shader template:
+        // Fragment shader for normal blending:
         std::string fs =
             "#version " GLSL_VERSION_STR "\n"
             GLSL_DEFAULT_PRECISION_FLOAT "\n"
-            "varying vec4      oe_layer_tc; \n"
+            "varying vec4 oe_layer_tc; \n"
+            "uniform int oe_layer_order; \n"
             "uniform sampler2D oe_layer_tex; \n"
-            "uniform int       oe_layer_uid; \n"
-            "uniform int       oe_layer_order; \n"
-            "uniform float     oe_layer_opacity; \n"
-            "__COLOR_FILTER_HEAD__"
-            "void oe_mp_applyColoring( inout vec4 color ) \n"
+            "uniform float oe_layer_opacity; \n"
+            "void oe_mp_apply_coloring( inout vec4 color ) \n"
             "{ \n"
             "    vec4 texel = texture2D(oe_layer_tex, oe_layer_tc.st);\n"
-            "    float alpha = texel.a * oe_layer_opacity; \n"
-            "    if (oe_layer_order == 0) \n"
-            "        color = vec4(color.rgb * (1.0 - alpha) + (texel.rgb * alpha), 1.0); \n"
-            "    else \n"
-            "        color = vec4( __TEXEL_RGB__, color.a * alpha ); \n"
-            "    __COLOR_FILTER_BODY__"
+            "    float add_alpha = color.a * oe_layer_opacity; \n"
+            "    color = vec4(texel.rgb, texel.a * add_alpha ); \n"
             "} \n";
 
-        // check for premult alpha.
-        if ( _terrainOptions.premultipliedAlpha() == true )
-            replaceIn( fs, "__TEXEL_RGB__", "texel.rgb * color.a * alpha" );
-        else
-            replaceIn( fs, "__TEXEL_RGB__", "texel.rgb" );
+        // Fragment shader with pre-multiplied alpha blending:
+        std::string fs_pma =
+            "#version " GLSL_VERSION_STR "\n"
+            GLSL_DEFAULT_PRECISION_FLOAT "\n"
+            "varying vec4 oe_layer_tc; \n"
+            "uniform sampler2D oe_layer_tex; \n"
+            "uniform int oe_layer_order; \n"
+            "uniform float oe_layer_opacity; \n"
+            "void oe_mp_apply_coloring_pma( inout vec4 color ) \n"
+            "{ \n"
+            "    vec4 texelpma = texture2D(oe_layer_tex, oe_layer_tc.st); \n"
+            "    color = vec4(texelpma.rgb * oe_layer_opacity, texelpma.a * oe_layer_opacity ); \n"
+            "} \n";
+
+        // Color filter frag function:
+        std::string fs_colorfilters =
+            "#version " GLSL_VERSION_STR "\n"
+            GLSL_DEFAULT_PRECISION_FLOAT "\n"
+            "uniform int oe_layer_uid; \n"
+            "__COLOR_FILTER_HEAD__"
+            "void oe_mp_apply_filters(inout vec4 color) \n"
+            "{ \n"
+                "__COLOR_FILTER_BODY__"
+            "} \n";
 
 
         // install the gl_MultiTexCoord* variable that uses the proper texture
         // image unit:
         replaceIn( vs, "__GL_MULTITEXCOORD__", Stringify() << "gl_MultiTexCoord" << _textureImageUnit );
 
+        vp->setFunction( "oe_mp_setup_coloring", vs, ShaderComp::LOCATION_VERTEX_MODEL, 0.0 );
+
+        if ( _terrainOptions.premultipliedAlpha() == true )
+            vp->setFunction( "oe_mp_apply_coloring_pma", fs_pma, ShaderComp::LOCATION_FRAGMENT_COLORING, 0.0 );
+        else
+            vp->setFunction( "oe_mp_apply_coloring", fs, ShaderComp::LOCATION_FRAGMENT_COLORING, 0.0 );
+
+
         // assemble color filter code snippets.
+        bool haveColorFilters = false;
         {
             std::stringstream cf_head;
             std::stringstream cf_body;
+            const char* I = "    ";
+
+            if ( _terrainOptions.premultipliedAlpha() == true )
+            {
+                // un-PMA the color before passing it to the color filters.
+                cf_body << I << "if (color.a > 0.0) color.rgb /= color.a; \n";
+            }
 
             // second, install the per-layer color filter functions.
             bool ifStarted = false;
-            const char* I = "    ";
             int numImageLayers = _update_mapf->imageLayers().size();
             for( int i=0; i<numImageLayers; ++i )
             {
@@ -562,6 +590,7 @@ MPTerrainEngineNode::updateShaders()
                     const ColorFilterChain& chain = layer->getColorFilters();
                     if ( chain.size() > 0 )
                     {
+                        haveColorFilters = true;
                         if ( ifStarted ) cf_body << I << "else if ";
                         else             cf_body << I << "if ";
                         cf_body << "(oe_layer_uid == " << layer->getUID() << ") {\n";
@@ -578,26 +607,45 @@ MPTerrainEngineNode::updateShaders()
                 }
             }
 
-            std::string cf_head_str, cf_body_str;
-            cf_head_str = cf_head.str();
-            cf_body_str = cf_body.str();
+            if ( _terrainOptions.premultipliedAlpha() == true )
+            {
+                // re-PMA the color after it passes through the color filters.
+                cf_body << I << "if (color.a > 0.0) color.rgb *= color.a; \n";
+            }
 
-            replaceIn( fs, "__COLOR_FILTER_HEAD__", cf_head_str );
-            replaceIn( fs, "__COLOR_FILTER_BODY__", cf_body_str );
+            if ( haveColorFilters )
+            {
+                std::string cf_head_str, cf_body_str;
+                cf_head_str = cf_head.str();
+                cf_body_str = cf_body.str();
+
+                replaceIn( fs_colorfilters, "__COLOR_FILTER_HEAD__", cf_head_str );
+                replaceIn( fs_colorfilters, "__COLOR_FILTER_BODY__", cf_body_str );
+
+                vp->setFunction( "oe_mp_apply_filters", fs_colorfilters, ShaderComp::LOCATION_FRAGMENT_COLORING, 0.0 );
+            }
         }
 
-        vp->setFunction( "oe_mp_setupColoring", vs, ShaderComp::LOCATION_VERTEX_MODEL,      0.0 );
-        vp->setFunction( "oe_mp_applyColoring", fs, ShaderComp::LOCATION_FRAGMENT_COLORING, 0.0 );
+
+
+        if ( _terrainOptions.premultipliedAlpha() == true )
+        {
+            // activate PMA blending.
+            terrainStateSet->setAttributeAndModes( 
+                new osg::BlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA),
+                osg::StateAttribute::ON );
+        }
+        else
+        {
+            // activate standard mix blending.
+            terrainStateSet->setAttributeAndModes( 
+                new osg::BlendFunc(GL_SRC_ALPHA,GL_ONE_MINUS_SRC_ALPHA),
+                osg::StateAttribute::ON );
+        }
 
         // required for multipass tile rendering to work
         terrainStateSet->setAttributeAndModes(
             new osg::Depth(osg::Depth::LEQUAL, 0, 1, true) );
-
-        // blend multipass image layers
-        terrainStateSet->setAttributeAndModes( 
-            _terrainOptions.premultipliedAlpha() == true ?
-                new osg::BlendFunc(GL_ONE,GL_ONE_MINUS_SRC_ALPHA) :   // premultiplied alpha
-                new osg::BlendFunc(GL_SRC_ALPHA,GL_ONE_MINUS_SRC_ALPHA), 1 );
 
         // binding for the terrain texture
         terrainStateSet->getOrCreateUniform( 

@@ -39,7 +39,7 @@ namespace osgEarth { namespace Drivers
             _normalizeEdges( true ),
             _rangeMode     ( osg::LOD::DISTANCE_FROM_EYE_POINT ),
             _tilePixelSize ( 256 ),
-            _premultAlpha  ( false )
+            _premultAlpha  ( true )
         {
             setDriver( "mp" );
             fromConfig( _conf );

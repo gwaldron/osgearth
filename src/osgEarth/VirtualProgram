@@ -190,8 +190,8 @@ namespace osgEarth
         unsigned int                 _mask;
         AttribBindingList            _attribBindingList;
         bool                         _useLightingShaders;
-        osg::ref_ptr<osg::Shader>    _vertMain;
-        osg::ref_ptr<osg::Shader>    _fragMain;
+        //osg::ref_ptr<osg::Shader>    _vertMain;
+        //osg::ref_ptr<osg::Shader>    _fragMain;
 
         ShaderComp::FunctionLocationMap _functions;
         ShaderComp::FunctionLocationMap _accumulatedFunctions;

@@ -527,9 +527,10 @@ VirtualProgram::buildProgram(osg::State&        state,
     osg::Program* program = new osg::Program();
     program->setName(getName());
     addShadersToProgram( buildVector, accumAttribBindings, program );
-    //addShadersToProgram( vec, accumAttribBindings, program );
     addTemplateDataToProgram( program );
 
+
+#if 0 // gw - obe, don't do this anymore
 
     // Since we replaced the "mains", we have to go through the cache and update all its
     // entries to point at the new mains instead of the old ones.
@@ -556,6 +557,7 @@ VirtualProgram::buildProgram(osg::State&        state,
 
         _programCache = newProgramCache;
     }
+#endif
 
     // finally, put own new program in the cache.
     _programCache[ keyVector ] = program;

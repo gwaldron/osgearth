@@ -143,6 +143,9 @@ private slots:
     void addImageLayer()
     {
       QStringList filePaths = QFileDialog::getOpenFileNames(this, tr("Add an image layer"), "", tr("Images (*.tif *.ecw);;All files (*.*)"));
+
+      _manager->map()->beginUpdate();
+
       for (int i = 0; i < filePaths.size(); i++)
       {
         QString filePath = filePaths.at(i);
@@ -157,6 +160,8 @@ private slots:
           _manager->map()->addImageLayer(newLayer.get());
         }
       }
+
+      _manager->map()->endUpdate();
     }
 
     //void addImageFolder()
@@ -166,6 +171,9 @@ private slots:
     void addElevationLayer()
     {
       QStringList filePaths = QFileDialog::getOpenFileNames(this, tr("Add an elevation layer"), "", tr("Elevation files (*.tif *.dt*);;All files (*.*)"));
+      
+      _manager->map()->beginUpdate();
+
       for (int i=0; i < filePaths.size(); i++)
       {
         QString filePath = filePaths.at(i);
@@ -180,6 +188,8 @@ private slots:
           _manager->map()->addElevationLayer(newLayer.get());
         }
       }
+
+      _manager->map()->endUpdate();
     }
 
     //void addElevationFolder()

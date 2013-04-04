@@ -61,9 +61,17 @@ TerrainNode::traverse( osg::NodeVisitor &nv )
             osg::Camera* cam = findFirstParentOfType<osg::Camera>( this );
             if ( cam )
             {
+                // get the installed PDC so we can nest them:
+                osg::Camera::DrawCallback* cbToNest = cam->getPostDrawCallback();
+
+                // if it's another QR callback, we'll just replace it.
+                QuickReleaseGLObjects* previousQR = dynamic_cast<QuickReleaseGLObjects*>(cbToNest);
+                if ( previousQR )
+                    cbToNest = previousQR->_next.get();
+
                 cam->setPostDrawCallback( new QuickReleaseGLObjects(
                     _tilesToQuickRelease.get(),
-                    cam->getPostDrawCallback() ) );
+                    cbToNest ) );
 
                 _quickReleaseCallbackInstalled = true;
                 OE_INFO << LC << "Quick release enabled" << std::endl;

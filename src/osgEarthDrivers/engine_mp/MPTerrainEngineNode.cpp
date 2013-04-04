@@ -518,14 +518,22 @@ MPTerrainEngineNode::updateShaders()
             "#version " GLSL_VERSION_STR "\n"
             GLSL_DEFAULT_PRECISION_FLOAT "\n"
             "varying vec4 oe_layer_tc; \n"
-            "uniform int oe_layer_order; \n"
             "uniform sampler2D oe_layer_tex; \n"
+            "uniform int oe_layer_uid; \n"
+            "uniform int oe_layer_order; \n"
             "uniform float oe_layer_opacity; \n"
             "void oe_mp_apply_coloring( inout vec4 color ) \n"
             "{ \n"
-            "    vec4 texel = texture2D(oe_layer_tex, oe_layer_tc.st);\n"
-            "    float add_alpha = color.a * oe_layer_opacity; \n"
-            "    color = vec4(texel.rgb, texel.a * add_alpha ); \n"
+            "    vec4 texel; \n"
+            "    if ( oe_layer_uid >= 0 ) \n"
+            "        texel = texture2D(oe_layer_tex, oe_layer_tc.st); \n"
+            "    else \n"
+            "        texel = color; \n"
+            "    texel.a *= oe_layer_opacity; \n"
+            "    if (oe_layer_order == 0 ) \n"
+            "        color = vec4(color.rgb*(1.0-texel.a) + texel.rgb*texel.a, color.a); \n"
+            "    else \n"
+            "        color = texel; \n"
             "} \n";
 
         // Fragment shader with pre-multiplied alpha blending:
@@ -534,12 +542,28 @@ MPTerrainEngineNode::updateShaders()
             GLSL_DEFAULT_PRECISION_FLOAT "\n"
             "varying vec4 oe_layer_tc; \n"
             "uniform sampler2D oe_layer_tex; \n"
+            "uniform int oe_layer_uid; \n"
             "uniform int oe_layer_order; \n"
             "uniform float oe_layer_opacity; \n"
             "void oe_mp_apply_coloring_pma( inout vec4 color ) \n"
             "{ \n"
-            "    vec4 texelpma = texture2D(oe_layer_tex, oe_layer_tc.st); \n"
-            "    color = vec4(texelpma.rgb * oe_layer_opacity, texelpma.a * oe_layer_opacity ); \n"
+            "    vec4 texelpma; \n"
+
+            // a UID < 0 means no texture.
+            "    if ( oe_layer_uid >= 0 ) \n"
+            "        texelpma = texture2D(oe_layer_tex, oe_layer_tc.st) * oe_layer_opacity; \n"
+            "    else \n"
+            "        texelpma = color * color.a * oe_layer_opacity; \n" // to PMA.
+
+            // first layer must PMA-blend with the globe color.
+            "    if (oe_layer_order == 0) { \n"
+            "        color *= color.a; \n"
+            "        color = vec4(texelpma.rgb + color.rgb*(1.0-texelpma.a), color.a); \n"
+            "    } \n"
+
+            "    else { \n"
+            "        color = texelpma; \n"
+            "    } \n"
             "} \n";
 
         // Color filter frag function:
@@ -657,8 +681,9 @@ MPTerrainEngineNode::updateShaders()
 
         // uniform that conveys the layer UID to the shaders; necessary
         // for per-layer branching (like color filters)
+        // UID -1 => no image layer (no texture)
         terrainStateSet->getOrCreateUniform(
-            "oe_layer_uid", osg::Uniform::INT )->set( 0 );
+            "oe_layer_uid", osg::Uniform::INT )->set( -1 );
 
         // uniform that conveys the render order, since the shaders
         // need to know which is the first layer in order to blend properly

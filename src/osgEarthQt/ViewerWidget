@@ -74,9 +74,10 @@ namespace osgEarth { namespace QtGui
 
         QTimer _timer;
 
+        void installFrameTimer();
+
         void createViewer();
         void reconfigure( osgViewer::View* );
-        void installFrameTimer();
         void paintEvent( QPaintEvent* );
 
         osg::observer_ptr<osgViewer::ViewerBase> _viewer;

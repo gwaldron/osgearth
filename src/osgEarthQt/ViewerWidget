@@ -37,6 +37,8 @@ namespace osgEarth { namespace QtGui
      */
     class OSGEARTHQT_EXPORT ViewerWidget : public osgQt::GLWidget
     {
+        Q_OBJECT;
+
     public:
         /**
          * Constructs a new ViewerWidget, creating an underlying viewer.
@@ -69,6 +71,14 @@ namespace osgEarth { namespace QtGui
         }
 
         virtual ~ViewerWidget();
+
+    public slots:
+        
+        /**
+         * Change the underlying timer's interval
+         */
+        void setTimerInterval( int milliseconds );
+
 
     protected:
 

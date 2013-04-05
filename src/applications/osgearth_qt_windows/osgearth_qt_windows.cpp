@@ -75,7 +75,7 @@ struct MyMainWindow : public QMainWindow, public ViewController
 
         // timer fires a paint event.
         connect(&_timer, SIGNAL(timeout()), this, SLOT(update()));
-        _timer.start(15);
+        _timer.start(20);
     }
 
     void paintEvent(QPaintEvent* e)

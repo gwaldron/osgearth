@@ -186,7 +186,9 @@ class ReaderWriterEarth : public osgDB::ReaderWriter
 
                 else
                 {
-                    OE_INFO << LC << "No earth file version; assuming version='2'" << std::endl;
+                    if ( conf.value("version") != "2" )
+                        OE_INFO << LC << "No valid earth file version; assuming version='2'" << std::endl;
+
                     EarthFileSerializer2 ser;
                     mapNode = ser.deserialize( conf, refURI );
                 }

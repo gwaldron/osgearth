@@ -103,7 +103,7 @@ class PackageQtMainWindow : public QMainWindow
 public:
 
   PackageQtMainWindow(osgEarth::QtGui::ViewerWidget* viewerWidget, PackageQt::SceneController* controller, PackageQt::TMSExporter* exporter)
-        : _viewerWidget(viewerWidget), _controller(controller), _exporter(exporter), _compositeViewerWidget(0L)
+        : _viewerWidget(viewerWidget), _controller(controller), _exporter(exporter), _compositeViewerWidget(0L), _lastDir("")
     {
         _manager = new osgEarth::QtGui::DataManager(_controller->mapNode());
 
@@ -125,9 +125,11 @@ private slots:
 
     void openEarthFile()
     {
-      QString filePath = QFileDialog::getOpenFileName(this, tr("Open an earth file"), "", tr("Earth files (*.earth)"));
+      QString filePath = QFileDialog::getOpenFileName(this, tr("Open an earth file"), _lastDir, tr("Earth files (*.earth)"));
       if (!filePath.isNull())
       {
+        _lastDir = QFileInfo(filePath).path();
+
         PackageQt::WaitDialog msg(tr("Loading .earth file. Please wait."));
         msg.show();
         msg.repaint();
@@ -142,7 +144,9 @@ private slots:
 
     void addImageLayer()
     {
-      QStringList filePaths = QFileDialog::getOpenFileNames(this, tr("Add an image layer"), "", tr("Images (*.tif *.ecw);;All files (*.*)"));
+      bool pathSet = false;
+
+      QStringList filePaths = QFileDialog::getOpenFileNames(this, tr("Add an image layer"), _lastDir, tr("Images (*.tif *.ecw);;All files (*.*)"));
 
       _manager->map()->beginUpdate();
 
@@ -151,6 +155,12 @@ private slots:
         QString filePath = filePaths.at(i);
         if (!filePath.isNull())
         {
+          if (!pathSet)
+          {
+            _lastDir = QFileInfo(filePath).path();
+            pathSet = true;
+          }
+
           osgEarth::Drivers::GDALOptions layerOpt;
           layerOpt.url() = osgEarth::URI(filePath.toStdString());
           
@@ -170,7 +180,9 @@ private slots:
 
     void addElevationLayer()
     {
-      QStringList filePaths = QFileDialog::getOpenFileNames(this, tr("Add an elevation layer"), "", tr("Elevation files (*.tif *.dt*);;All files (*.*)"));
+      bool pathSet = false;
+
+      QStringList filePaths = QFileDialog::getOpenFileNames(this, tr("Add an elevation layer"), _lastDir, tr("Elevation files (*.tif *.dt*);;All files (*.*)"));
       
       _manager->map()->beginUpdate();
 
@@ -179,6 +191,12 @@ private slots:
         QString filePath = filePaths.at(i);
         if (!filePath.isNull())
         {
+          if (!pathSet)
+          {
+            _lastDir = QFileInfo(filePath).path();
+            pathSet = true;
+          }
+
           osgEarth::Drivers::GDALOptions layerOpt;
           layerOpt.url() = osgEarth::URI(filePath.toStdString());
           
@@ -200,7 +218,7 @@ private slots:
     {
         if (_exporter)
         {
-          PackageQt::ExportDialog exportDialog(_controller->getBoundsString());
+          PackageQt::ExportDialog exportDialog(_lastDir.toStdString(), _controller->getBoundsString());
 	        if (exportDialog.exec() == QDialog::Accepted)
 	        {
             //QProgressDialog* progress = new QProgressDialog(tr("Exporting. Please wait."), tr("Cancel"), 0, 100, this, Qt::CustomizeWindowHint|Qt::WindowTitleHint|Qt::WindowStaysOnTopHint);
@@ -403,6 +421,8 @@ private:
     QDockWidget *_vpDock;
     QDockWidget *_elevLayersDock;
     QDockWidget *_imgLayersDock;
+
+    QString _lastDir;
 };
 
 }

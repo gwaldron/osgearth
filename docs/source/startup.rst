@@ -18,8 +18,6 @@ Get the Source Code
     To clone the repository, point your client at::
 
         git://github.com/gwaldron/osgearth.git
-    
-    The latest tagged release is **Version 2.3**. The git tag is **osgearth-2.3**.
 
 **Option 2: download a tagged version**
 

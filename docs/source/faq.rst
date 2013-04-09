@@ -7,13 +7,20 @@ Miscellaneous
 **How do make the globe transparent so I can see underground?**
 
 	By default, the globe will be opaque white when there are no image layers, or when all the image
-	layers have their opacities set to zero. To make the underlying globe transparent, you need to 
-	enable *terrain blending*, like so::
+	layers have their opacities set to zero. To make the underlying globe transparent, set the 
+	base color of the terrain to a transparent color like so:
 	
 		<map>
 		  <options>
-		    <terrain blending="true" ...
+		    <terrain color="#ffffff00" ...
 			
+	If you are using a legacy terrain driver (like ``quadtree``) you will need to use a 
+	different technique: activating terrain blending, like this::
+	
+	    <map>
+	      <options>
+	        <terrain blending="true" ...
+
 
 Other Terrain Technologies
 --------------------------
@@ -67,13 +74,14 @@ Community
 	
 	1. Create your own GitHub account and log in.
 	2. Clone the osgEarth repo.
-	3. Work from your clone. Update it from the main repository peridocially.
+	3. Work from your clone. Sync it to the main repository peridocially to get the
+	   latest changes.
 	
 **How do I submit changes to osgEarth?**
 
-	We accept contributions and bug fixes through GitHub's *pull request* mechanism.
+	We accept contributions and bug fixes through GitHub's `Pull Request`_ mechanism.
 
-	First you need your own GitHub account and a clone of the repo (see above). Next,
+	First you need your own GitHub account and a fork of the repo (see above). Next,
 	follow these guidelines:
 	
 	1. Create a *branch* in which to make your changes.
@@ -85,6 +93,9 @@ Community
 	repository and use it yourself. Doing so maintains compliance with the osgEarth
 	license since your changes are still available to the public - even if they are
 	not merged into the master repository.
+	
+.. _Pull Request:   https://help.github.com/articles/using-pull-requests
+
 	
 Licensing
 ---------

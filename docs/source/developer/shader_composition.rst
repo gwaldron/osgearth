@@ -188,48 +188,6 @@ This is because osgEarth's image layer composition mechanisms override these met
 themselves to perform layer rendering.
 
 
-Sampling Image Layers
----------------------
-
-What if you want to access one of the Map's image layers from your shader?
-Since osgEarth internally manages image layers, texture units, and composition,
-it is not as simple of calling GLSL's ``texture2D()`` function. Here's how to do it.
-
-Use the ``TextureCompositor`` to create a sampler function for the layer you want
-to query. You can then call this sampler function from your shader. Here's an example::
-
-    // assume "layer" is the image layer you want to sample, and "vp" is a VirtualProgram state attribute:
-    osgEarth::ImageLayer* layer;
-    osgEarth::VirtualProgram* vp;
-
-    // first get a reference to the texture compositor.
-    osgEarth::TerrainEngineNode* engine = mapNode->getTerrainEngine();
-    osgEarth::TextureCompositor* comp = engine->getTextureCompositor();
-
-	// next, find our layer
-	layer = mapNode->getMap()->getImageLayerByName("MyLayer");
-
-    // next, request a sampling shader for the layer in question.
-    osg::Shader* sampler = comp->createSamplerFunction( layer->getUID(), "sampleMyLayer", osg::Shader::FRAGMENT );
-
-    // add it to your VirtualProgram:
-    vp->setShader( "sampleMyLayer", sampler );
-
-Then in your shader code, you can call the "sampleMyLayer" function::
-
-    // FRAGMENT SHADER
-    void sampleMyLayer(void);  // declaration
-    ...
-    void someFunction()
-    {
-        ...
-        vec4 texel = sampleMyLayer();
-    }
-
-The sampler function will automatically sample the proper sampler with the current
-texture coordinate.
-
-
 System Uniforms
 ---------------
 
@@ -237,6 +195,5 @@ In addition the the OSG system uniforms (which all start with "osg_"), osgEarth
 provides various uniforms. They are:
 
   :osgearth_LightingEnabled:     whether GL lighting is enabled (bool)
-  :osgearth_ImageLayerEnabled:   whether image layer N is enabled (bool[])
   :osgearth_CameraElevation:     distance from camera to ellipsoid/Z=0 (float)
 

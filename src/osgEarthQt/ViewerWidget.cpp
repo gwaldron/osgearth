@@ -89,11 +89,21 @@ ViewerWidget::~ViewerWidget()
 }
 
 
+void
+ViewerWidget::setTimerInterval(int milliseconds)
+{
+    if ( _timer.interval() != milliseconds )
+    {
+        _timer.start( milliseconds );
+    }
+}
+
+
 void ViewerWidget::installFrameTimer()
 {    
     // start the frame timer.
     connect(&_timer, SIGNAL(timeout()), this, SLOT(update()));
-    _timer.start(15);
+    _timer.start(20);
 }
 
 

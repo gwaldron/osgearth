@@ -38,7 +38,7 @@ MultiViewerWidget::MultiViewerWidget(osg::Node* scene)
   initialize();
 
   connect(&_timer, SIGNAL(timeout()), this, SLOT(update()));
-  _timer.start(15);
+  _timer.start(20);
 }
 
 void MultiViewerWidget::initialize()

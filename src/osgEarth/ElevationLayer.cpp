@@ -487,6 +487,7 @@ ElevationLayerVector::ElevationLayerVector()
 
 
 ElevationLayerVector::ElevationLayerVector(const ElevationLayerVector& rhs) :
+osg::MixinVector< osg::ref_ptr<ElevationLayer> >( rhs ),
 _expressTileSize( rhs._expressTileSize )
 {
     //nop

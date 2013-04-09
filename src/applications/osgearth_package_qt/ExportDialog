@@ -29,7 +29,7 @@ namespace PackageQt
 	  Q_OBJECT
 
 	  public:
-      ExportDialog(const std::string& boundsString="");
+      ExportDialog(const std::string& dir="", const std::string& boundsString="");
 
       std::string getExportPath() const { return _ui.exportPathEdit->text().toUtf8().data(); }
 
@@ -58,7 +58,7 @@ namespace PackageQt
 	  private:		
 		  Ui::ExportDialog _ui;
       
-		  void initUi(const std::string& boundsString);
+		  void initUi(const std::string& dir, const std::string& boundsString);
   };
 }
 

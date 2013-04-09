@@ -6,3 +6,4 @@ Reference Guides
    
    earthfile
    symbology
+   colorfilters

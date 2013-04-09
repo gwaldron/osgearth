@@ -259,7 +259,7 @@ namespace
      * Calculates the sample rate and allocates all the vertex, normal, and color
      * arrays for the tile.
      */
-    void setupGeometryAttributes( Data& d, double sampleRatio )
+    void setupGeometryAttributes( Data& d, double sampleRatio, const osg::Vec4& color )
     {
         d.numRows = 8;
         d.numCols = 8;
@@ -311,7 +311,7 @@ namespace
 
         // allocate and assign color
         osg::Vec4Array* colors = new osg::Vec4Array(1);
-        (*colors)[0].set(1.0f,1.0f,1.0f,1.0f);
+        (*colors)[0] = color;
         d.surface->setColorArray( colors );
         d.surface->setColorBinding( osg::Geometry::BIND_OVERALL );
 
@@ -1059,6 +1059,12 @@ namespace
         d.skirt->setNormalArray( skirtNormals );
         d.skirt->setNormalBinding( osg::Geometry::BIND_PER_VERTEX );
 
+        if ( d.surface->getColorArray() )
+        {
+            d.skirt->setColorArray( d.surface->getColorArray() );
+            d.skirt->setColorBinding( osg::Geometry::BIND_OVERALL );
+        }
+
         d.skirt->setVertexAttribArray    (osg::Drawable::ATTRIBUTE_6, skirtElevData );
         d.skirt->setVertexAttribBinding  (osg::Drawable::ATTRIBUTE_6, osg::Geometry::BIND_PER_VERTEX);
         d.skirt->setVertexAttribNormalize(osg::Drawable::ATTRIBUTE_6, false);
@@ -1732,7 +1738,7 @@ TileModelCompiler::compile(const TileModel* model,
     if ( sampleRatio <= 0.0f )
         sampleRatio = osg::clampBetween( model->_tileKey.getLevelOfDetail()/20.0, 0.0625, 1.0 );
 
-    setupGeometryAttributes( d, sampleRatio );
+    setupGeometryAttributes( d, sampleRatio, *_options.color() );
 
     // set up the list of layers to render and their shared arrays.
     setupTextureAttributes( d, _cache );

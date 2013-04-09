@@ -23,6 +23,7 @@ set(LIB_MOC_HDRS
     MapCatalogWidget
     TerrainProfileGraph
     TerrainProfileWidget
+    ViewerWidget
 )
 
 # Qt resource files

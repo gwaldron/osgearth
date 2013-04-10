@@ -33,3 +33,4 @@ Version 2.4 (April 2013)
 * New "first_lod" property lets you force a minimum LOD to start at
 * Better support for tiled data layers
 * Lots of bug fixes and performance improvements
+* New documentation site stored in the osgEarth repo (docs.osgearth.org)

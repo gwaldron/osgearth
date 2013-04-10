@@ -10,3 +10,4 @@ load and display external 3D models.
    feature_geom
    feature_stencil
    simple
+   

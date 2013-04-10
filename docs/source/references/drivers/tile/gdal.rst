@@ -39,7 +39,7 @@ Properties:
     
 Also see:
 
-    `gdal_tiff.earth` sample in the repo ``tests`` folder.
+    ``gdal_tiff.earth`` sample in the repo ``tests`` folder.
 
 
 

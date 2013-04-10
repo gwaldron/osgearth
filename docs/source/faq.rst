@@ -4,7 +4,7 @@ FAQ
 **Sections:**
 
 * `Common Usage`_
-* `Other Terrain Technologies`_
+* `Other Terrain Formats`_
 * `Community and Support`_
 * `Licensing`_
 
@@ -45,18 +45,20 @@ How do I place a 3D model on the map?
         point.createLocalToWorld( matrix );
         myMatrixTransform->setMatrix( matrix );
 
+    Look at the ``osgearth_annotation.cpp`` sample for more inspiration.
+    
 
 How do make the terrain transparent?
 ....................................
 
-	By default, the globe will be opaque white when there are no image layers, or when all the image
-	layers have their opacities set to zero. To make the underlying globe transparent, set the 
-	base color of the terrain to a transparent color like so:
-	
-		<map>
-		  <options>
-		    <terrain color="#ffffff00" ...
-		    
+    By default, the globe will be opaque white when there are no image layers, or when all the image
+    layers have their opacities set to zero. To make the underlying globe transparent, set the 
+    base color of the terrain to a transparent color like so::
+
+        <map>
+            <options>
+                <terrain color="#ffffff00" ...
+
     In code, this option is found in the ``MPTerrainEngineOptions`` class::
     
         #include <osgEarthDrivers/engine_mp/MPTerrainEngineOptions>
@@ -66,8 +68,8 @@ How do make the terrain transparent?
         options.color() = osg::Vec4(1,1,1,0);
 
 
-Other Terrain Technologies
---------------------------
+Other Terrain Formats
+---------------------
 
 Does osgEarth work with VirtualPlanetBuilder?
 .............................................

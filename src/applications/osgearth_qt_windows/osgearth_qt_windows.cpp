@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2008-2012 Pelican Mapping
+* Copyright 2008-2013 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -75,7 +75,7 @@ struct MyMainWindow : public QMainWindow, public ViewController
 
         // timer fires a paint event.
         connect(&_timer, SIGNAL(timeout()), this, SLOT(update()));
-        _timer.start(15);
+        _timer.start(20);
     }
 
     void paintEvent(QPaintEvent* e)

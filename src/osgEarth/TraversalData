@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2012 Pelican Mapping
+ * Copyright 2008-2013 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -22,10 +22,13 @@
 #include <osgEarth/Common>
 #include <osgEarth/ThreadingUtils>
 #include <osg/NodeVisitor>
+#include <osg/observer_ptr>
 #include <map>
 
 namespace osgEarth
 {
+    class MapNode;
+
     class TraversalData : public osg::Referenced
     {
     public:
@@ -62,6 +65,7 @@ namespace osgEarth
         MapNodeCullData();
 
     public:
+        osg::observer_ptr<class MapNode>  _mapNode;
         osg::ref_ptr<osg::StateSet> _stateSet;
         osg::ref_ptr<osg::Uniform>  _windowScaleMatrix;
         double                      _cameraAltitude;

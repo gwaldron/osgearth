@@ -6,6 +6,7 @@ User Guide
    
    earthfiles
    maps
+   caching
    spatialreference
    profiles
    imagery

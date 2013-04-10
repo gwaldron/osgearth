@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2008-2012 Pelican Mapping
+* Copyright 2008-2013 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -70,36 +70,29 @@ MPGeometry::renderPrimitiveSets(osg::State& state,
         }
     }
 
+    unsigned layersDrawn = 0;
 
-    // loop over each layer.
-    if ( _layers.size() == 0 )
+
+    osg::ref_ptr<osg::GL2Extensions> ext = osg::GL2Extensions::Get( state.getContextID(), true );
+    const osg::Program::PerContextProgram* pcp = state.getLastAppliedProgramObject();
+
+    GLint opacityLocation;
+    GLint uidLocation;
+    GLint orderLocation;
+
+    // yes, it's possible that the PCP is not set up yet.
+    // TODO: can we optimize this so we don't need to get uni locations every time?
+    if ( pcp )
     {
-        // draw the primitives themselves.
-        for(unsigned int primitiveSetNum=0; primitiveSetNum!=_primitives.size(); ++primitiveSetNum)
-        {
-            const osg::PrimitiveSet* primitiveset = _primitives[primitiveSetNum].get();
-            primitiveset->draw(state, usingVBOs);
-        }
+        opacityLocation = pcp->getUniformLocation( _opacityUniform->getNameID() );
+        uidLocation     = pcp->getUniformLocation( _layerUIDUniform->getNameID() );
+        orderLocation   = pcp->getUniformLocation( _layerOrderUniform->getNameID() );
     }
-    else
+
+    if ( _layers.size() > 0 )
     {
         float prev_opacity        = -1.0f;
         float prev_alphaThreshold = -1.0f;
-
-        osg::ref_ptr<osg::GL2Extensions> ext = osg::GL2Extensions::Get( state.getContextID(), true );
-        const osg::Program::PerContextProgram* pcp = state.getLastAppliedProgramObject();
-
-        GLint opacityLocation;
-        GLint uidLocation;
-        GLint orderLocation;
-
-        // yes, it's possible that the PCP is not set up yet.
-        if ( pcp )
-        {
-            opacityLocation = pcp->getUniformLocation( _opacityUniform->getNameID() );
-            uidLocation     = pcp->getUniformLocation( _layerUIDUniform->getNameID() );
-            orderLocation   = pcp->getUniformLocation( _layerOrderUniform->getNameID() );
-        }
 
         // activate the image unit.
         state.setActiveTextureUnit( _textureImageUnit );
@@ -136,7 +129,7 @@ MPGeometry::renderPrimitiveSets(osg::State& state,
                     _layerUIDUniform->apply( ext, uidLocation );
 
                     // assign the layer order:
-                    _layerOrderUniform->set( (int)i );
+                    _layerOrderUniform->set( (int)layersDrawn );
                     _layerOrderUniform->apply( ext, orderLocation );
                 }
 
@@ -146,11 +139,33 @@ MPGeometry::renderPrimitiveSets(osg::State& state,
                     const osg::PrimitiveSet* primitiveset = _primitives[primitiveSetNum].get();
                     primitiveset->draw(state, usingVBOs);
                 }
+
+                ++layersDrawn;
             }
         }
 
         // prevent texture leakage
         glBindTexture( GL_TEXTURE_2D, 0 );
+    }
+
+    // if we didn't draw anything, draw the raw tiles anyway with no texture.
+    if ( layersDrawn == 0 )
+    {
+        _opacityUniform->set( 1.0f );
+        _opacityUniform->apply( ext, opacityLocation );
+
+        _layerUIDUniform->set( (int)-1 ); // indicates a non-textured layer
+        _layerUIDUniform->apply( ext, uidLocation );
+
+        _layerOrderUniform->set( (int)0 );
+        _layerOrderUniform->apply( ext, orderLocation );
+
+        // draw the primitives themselves.
+        for(unsigned int primitiveSetNum=0; primitiveSetNum!=_primitives.size(); ++primitiveSetNum)
+        {
+            const osg::PrimitiveSet* primitiveset = _primitives[primitiveSetNum].get();
+            primitiveset->draw(state, usingVBOs);
+        }
     }
 }
 

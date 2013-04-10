@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2008-2012 Pelican Mapping
+* Copyright 2008-2013 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -89,11 +89,21 @@ ViewerWidget::~ViewerWidget()
 }
 
 
+void
+ViewerWidget::setTimerInterval(int milliseconds)
+{
+    if ( _timer.interval() != milliseconds )
+    {
+        _timer.start( milliseconds );
+    }
+}
+
+
 void ViewerWidget::installFrameTimer()
 {    
     // start the frame timer.
     connect(&_timer, SIGNAL(timeout()), this, SLOT(update()));
-    _timer.start(15);
+    _timer.start(20);
 }
 
 

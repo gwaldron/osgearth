@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2008-2012 Pelican Mapping
+* Copyright 2008-2013 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -190,8 +190,8 @@ namespace osgEarth
         unsigned int                 _mask;
         AttribBindingList            _attribBindingList;
         bool                         _useLightingShaders;
-        osg::ref_ptr<osg::Shader>    _vertMain;
-        osg::ref_ptr<osg::Shader>    _fragMain;
+        //osg::ref_ptr<osg::Shader>    _vertMain;
+        //osg::ref_ptr<osg::Shader>    _fragMain;
 
         ShaderComp::FunctionLocationMap _functions;
         ShaderComp::FunctionLocationMap _accumulatedFunctions;

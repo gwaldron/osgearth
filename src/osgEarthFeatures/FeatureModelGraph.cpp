@@ -1,6 +1,6 @@
 /* --*-c++-*-- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2012 Pelican Mapping
+ * Copyright 2008-2013 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -814,11 +814,13 @@ FeatureModelGraph::build(const Style&        defaultStyle,
 
                 // Get the Group that parents all features of this particular style. Note, this
                 // might be NULL if the factory does not support style groups.
-                osg::Group* styleGroup = _factory->getOrCreateStyleGroup(*feature->style(), _session.get());
+                osg::Group* styleGroup = getOrCreateStyleGroupFromFactory( *feature->style() );
                 if ( styleGroup )
                 {
                     if ( !group->containsNode( styleGroup ) )
+                    {
                         group->addChild( styleGroup );
+                    }
                 }
 
                 if ( _factory->createOrUpdateNode( cursor.get(), *feature->style(), context, node ) )
@@ -1051,16 +1053,12 @@ FeatureModelGraph::createStyleGroup(const Style&         style,
         if ( _factory->createOrUpdateNode( newCursor.get(), style, context, node ) )
         {
             if ( !styleGroup )
-                styleGroup = _factory->getOrCreateStyleGroup( style, _session.get() );
+                styleGroup = getOrCreateStyleGroupFromFactory( style );
 
             // if it returned a node, add it. (it doesn't necessarily have to)
             if ( node.valid() )
                 styleGroup->addChild( node.get() );
         }
-
-        // Check the style and see if we need to active GPU clamping. GPU clamping
-        // is currently all-or-nothing for a single FMG.
-        checkForGlobalAltitudeStyles( style );
     }
 
     return styleGroup;
@@ -1110,7 +1108,8 @@ FeatureModelGraph::checkForGlobalAltitudeStyles( const Style& style )
     const AltitudeSymbol* alt = style.get<AltitudeSymbol>();
     if ( alt )
     {
-        if ((alt->clamping() == AltitudeSymbol::CLAMP_TO_TERRAIN || alt->clamping() == AltitudeSymbol::CLAMP_RELATIVE_TO_TERRAIN))
+        if (alt->clamping() == AltitudeSymbol::CLAMP_TO_TERRAIN || 
+            alt->clamping() == AltitudeSymbol::CLAMP_RELATIVE_TO_TERRAIN)
         {
             if ( alt->technique() == AltitudeSymbol::TECHNIQUE_GPU && !_clampable )
             {
@@ -1144,6 +1143,19 @@ FeatureModelGraph::checkForGlobalAltitudeStyles( const Style& style )
             _clampable->depthOffset() = *render->depthOffset();
         }
     }
+}
+
+
+osg::Group*
+FeatureModelGraph::getOrCreateStyleGroupFromFactory(const Style& style)
+{
+    osg::Group* styleGroup = _factory->getOrCreateStyleGroup( style, _session.get() );
+
+    // Check the style and see if we need to active GPU clamping. GPU clamping
+    // is currently all-or-nothing for a single FMG.
+    checkForGlobalAltitudeStyles( style );
+
+    return styleGroup;
 }
 
 

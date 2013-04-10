@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2008-2012 Pelican Mapping
+* Copyright 2008-2013 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -259,7 +259,7 @@ namespace
      * Calculates the sample rate and allocates all the vertex, normal, and color
      * arrays for the tile.
      */
-    void setupGeometryAttributes( Data& d, double sampleRatio )
+    void setupGeometryAttributes( Data& d, double sampleRatio, const osg::Vec4& color )
     {
         d.numRows = 8;
         d.numCols = 8;
@@ -311,7 +311,7 @@ namespace
 
         // allocate and assign color
         osg::Vec4Array* colors = new osg::Vec4Array(1);
-        (*colors)[0].set(1.0f,1.0f,1.0f,1.0f);
+        (*colors)[0] = color;
         d.surface->setColorArray( colors );
         d.surface->setColorBinding( osg::Geometry::BIND_OVERALL );
 
@@ -1059,6 +1059,12 @@ namespace
         d.skirt->setNormalArray( skirtNormals );
         d.skirt->setNormalBinding( osg::Geometry::BIND_PER_VERTEX );
 
+        if ( d.surface->getColorArray() )
+        {
+            d.skirt->setColorArray( d.surface->getColorArray() );
+            d.skirt->setColorBinding( osg::Geometry::BIND_OVERALL );
+        }
+
         d.skirt->setVertexAttribArray    (osg::Drawable::ATTRIBUTE_6, skirtElevData );
         d.skirt->setVertexAttribBinding  (osg::Drawable::ATTRIBUTE_6, osg::Geometry::BIND_PER_VERTEX);
         d.skirt->setVertexAttribNormalize(osg::Drawable::ATTRIBUTE_6, false);
@@ -1592,7 +1598,8 @@ namespace
         unsigned size = d.renderLayers.size();
 
         d.surface->_layers.resize( size );
-        d.skirt->_layers.resize( size );
+        if ( d.skirt )
+            d.skirt->_layers.resize( size );
         for ( MaskRecordVector::iterator mr = d.maskRecords.begin(); mr != d.maskRecords.end(); ++mr )
             mr->_geom->_layers.resize( size );
         if ( d.stitching_skirts )
@@ -1608,9 +1615,11 @@ namespace
             tex->setMaxAnisotropy( 16.0f );
             tex->setResizeNonPowerOfTwoHint(false);
             tex->setFilter( osg::Texture::MAG_FILTER, osg::Texture::LINEAR );
-            tex->setFilter( osg::Texture::MIN_FILTER, osg::Texture::NEAREST_MIPMAP_LINEAR );
+            tex->setFilter( osg::Texture::MIN_FILTER, osg::Texture::LINEAR_MIPMAP_LINEAR );
+            //tex->setFilter( osg::Texture::MIN_FILTER, osg::Texture::LINEAR );
             tex->setWrap( osg::Texture::WRAP_S, osg::Texture::CLAMP_TO_EDGE );
             tex->setWrap( osg::Texture::WRAP_T, osg::Texture::CLAMP_TO_EDGE );
+            tex->setWrap( osg::Texture::WRAP_R, osg::Texture::CLAMP_TO_EDGE );
 
             unsigned order = r->_layer.getOrder();
 
@@ -1624,8 +1633,11 @@ namespace
             d.surface->_layers[order] = layer;
 
             // the skirt:
-            layer._texCoords  = r->_skirtTexCoords;
-            d.skirt->_layers[order] = layer;
+            if ( d.skirt )
+            {
+                layer._texCoords  = r->_skirtTexCoords;
+                d.skirt->_layers[order] = layer;
+            }
 
             // the mask geometries:
             for ( MaskRecordVector::iterator mr = d.maskRecords.begin(); mr != d.maskRecords.end(); ++mr )
@@ -1726,7 +1738,7 @@ TileModelCompiler::compile(const TileModel* model,
     if ( sampleRatio <= 0.0f )
         sampleRatio = osg::clampBetween( model->_tileKey.getLevelOfDetail()/20.0, 0.0625, 1.0 );
 
-    setupGeometryAttributes( d, sampleRatio );
+    setupGeometryAttributes( d, sampleRatio, *_options.color() );
 
     // set up the list of layers to render and their shared arrays.
     setupTextureAttributes( d, _cache );

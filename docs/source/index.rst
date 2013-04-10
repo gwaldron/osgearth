@@ -26,6 +26,7 @@ Table of Contents
    howto
    references/index
    faq
+   releasenotes
 
 
 .. _osgEarth: http://osgearth.org

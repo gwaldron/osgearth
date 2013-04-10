@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2012 Pelican Mapping
+ * Copyright 2008-2013 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -63,6 +63,8 @@ osg::AutoTransform()
 {
     // deactivate culling for the first traversal. We will reactivate it later.
     setCullingActive( false );
+    setMinimumScale ( 1.0 );
+    setMinPixelWidthAtScaleOne( 10 );
 }
 
 void

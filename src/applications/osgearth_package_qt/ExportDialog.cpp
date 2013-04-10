@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2008-2012 Pelican Mapping
+* Copyright 2008-2013 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -24,16 +24,18 @@
 using namespace PackageQt;
 
 
-ExportDialog::ExportDialog(const std::string& boundsString)
+ExportDialog::ExportDialog(const std::string& dir, const std::string& boundsString)
 {
-  initUi(boundsString);
+  initUi(dir, boundsString);
 }
 
-void ExportDialog::initUi(const std::string& boundsString)
+void ExportDialog::initUi(const std::string& dir, const std::string& boundsString)
 {
 	_ui.setupUi(this);
 
   _ui.errorLabel->setStyleSheet("color: red");
+
+  _ui.exportPathEdit->setText(tr(dir.c_str()));
 
   if (boundsString.length() > 0)
   {

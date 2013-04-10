@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2008-2012 Pelican Mapping
+* Copyright 2008-2013 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -370,11 +370,6 @@ MapNode::init()
     // Install top-level shader programs:
     if ( Registry::capabilities().supportsGLSL() )
     {
-        // Note. We use OVERRIDE here so that child object that use the ShaderGenerator
-        // don't have to worry about installing default shaders. The usage pattern is
-        // to use PROTECTED mode if you want to override the defaults in (say) a ModelLayer
-        // or in a TextureCompositor.
-
         VirtualProgram* vp = new VirtualProgram();
         vp->setName( "MapNode" );
         Registry::instance()->getShaderFactory()->installLightingShaders( vp );
@@ -694,6 +689,8 @@ MapNode::traverse( osg::NodeVisitor& nv )
             osg::ref_ptr<osg::Referenced> oldUserData = cv->getUserData();
             MapNodeCullData* cullData = getCullData( cv->getCurrentCamera() );
             cv->setUserData( cullData );
+
+            cullData->_mapNode = this;
 
             // calculate altitude:
             osg::Vec3d eye = cv->getViewPoint();

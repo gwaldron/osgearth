@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2008-2012 Pelican Mapping
+* Copyright 2008-2013 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -423,7 +423,7 @@ ClampingTechnique::setUpCamera(OverlayDecorator::TechRTTParams& params)
 
     // make the shader that will do clamping and depth offsetting.
     VirtualProgram* vp = new VirtualProgram();
-    vp->setName( "ClampingTechnique program" );
+    vp->setName( "ClampingTechnique" );
     vp->setFunction( "oe_clamp_vertex",   clampingVertexShader,   ShaderComp::LOCATION_VERTEX_VIEW );
     vp->setFunction( "oe_clamp_fragment", clampingFragmentShader, ShaderComp::LOCATION_FRAGMENT_COLORING );
     local->_groupStateSet->setAttributeAndModes( vp, osg::StateAttribute::ON );

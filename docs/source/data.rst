@@ -96,8 +96,8 @@ Tips for Preparing your own Data
 
     **Build overviews**
     
-    Adding overviews (also called ''pyramids'' or ''rsets'') will greatly increase
-    the peformance of a datasource in osgEarth.  You can use the
+    Adding overviews (also called ''pyramids'' or ''rsets'') can sometimes increase
+    the performance of a datasource in osgEarth.  You can use the
     `gdaladdo <http://gdal.org/gdaladdo.html>`_ utility to add overviews to a dataset.
     
     For example::

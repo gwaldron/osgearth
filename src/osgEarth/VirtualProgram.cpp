@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2012 Pelican Mapping
+ * Copyright 2008-2013 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -85,10 +85,6 @@ _mask              ( mask ),
 _inherit           ( true ),
 _useLightingShaders( true )
 {
-    // because we sometimes update/change the attribute's members from within the apply() method
-    // gw-commented out b/c apply() is only called from draw, and the changes are mutexed anyway
-    //this->setDataVariance( osg::Object::DYNAMIC );
-
     // check the the dump env var
     if ( ::getenv(OSGEARTH_DUMP_SHADERS) != 0L )
     {
@@ -326,22 +322,11 @@ VirtualProgram::setInheritShaders( bool value )
     if ( _inherit != value )
     {
         _inherit = value;
+        // not particularly thread safe if called after use.. meh
         _programCache.clear();
         _accumulatedFunctions.clear();
     }
 }
-
-
-//void
-//VirtualProgram::setUseLightingShaders( bool value )
-//{
-//    if ( _useLightingShaders != value )
-//    {
-//        _useLightingShaders = value;
-//        _programCache.clear();
-//        _accumulatedFunctions.clear();
-//    }
-//}
 
 
 namespace
@@ -500,36 +485,37 @@ VirtualProgram::buildProgram(osg::State&        state,
     // build a new set of accumulated functions, to support the creation of main()
     refreshAccumulatedFunctions( state );
 
-    // create the MAINs. Save the old ones so we can replace them in the cache.
-    osg::ref_ptr<osg::Shader> oldVertMain = _vertMain.get();
-    _vertMain = Registry::shaderFactory()->createVertexShaderMain( _accumulatedFunctions );
+    // create new MAINs for this function stack.
+    osg::Shader* vertMain = Registry::shaderFactory()->createVertexShaderMain( _accumulatedFunctions );
+    osg::Shader* fragMain = Registry::shaderFactory()->createFragmentShaderMain( _accumulatedFunctions );
 
-    osg::ref_ptr<osg::Shader> oldFragMain = _fragMain.get();
-    _fragMain = Registry::shaderFactory()->createFragmentShaderMain( _accumulatedFunctions );
-
-    // rebuild the shader list now that we've changed the shader map.
+    // build a new "key vector" now that we've changed the shader map.
+    // we call is a key vector because it uniquely identifies this shader program
+    // based on its accumlated function set.
     ShaderVector keyVector;
     for( ShaderMap::iterator i = accumShaderMap.begin(); i != accumShaderMap.end(); ++i )
     {
         keyVector.push_back( i->second.first.get() );
     }
 
-    // finally, add the mains (AFTER building the key vector)
+    // finally, add the mains (AFTER building the key vector .. we don't want or
+    // need to mains in the key vector since they are completely derived from the
+    // other elements of the key vector.)
     ShaderVector buildVector( keyVector );
-    buildVector.push_back( _vertMain.get() );
-    buildVector.push_back( _fragMain.get() );
+    buildVector.push_back( vertMain );
+    buildVector.push_back( fragMain );
 
-
-    // Create a new program and add all our shaders.
     if ( s_dumpShaders )
         OE_NOTICE << LC << "---------PROGRAM: " << getName() << " ---------------\n" << std::endl;
 
+    // Create the new program.
     osg::Program* program = new osg::Program();
     program->setName(getName());
     addShadersToProgram( buildVector, accumAttribBindings, program );
-    //addShadersToProgram( vec, accumAttribBindings, program );
     addTemplateDataToProgram( program );
 
+
+#if 0 // gw - obe, don't do this anymore
 
     // Since we replaced the "mains", we have to go through the cache and update all its
     // entries to point at the new mains instead of the old ones.
@@ -556,6 +542,7 @@ VirtualProgram::buildProgram(osg::State&        state,
 
         _programCache = newProgramCache;
     }
+#endif
 
     // finally, put own new program in the cache.
     _programCache[ keyVector ] = program;

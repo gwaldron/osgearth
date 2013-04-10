@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2012 Pelican Mapping
+ * Copyright 2008-2013 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -88,6 +88,9 @@ namespace osgEarth_engine_mp
     protected:
         virtual void onVerticalScaleChanged();
 
+        // override from TerrainEngineNode
+        virtual void updateTextureCombining() { updateShaders(); }
+
     private:
         void init();
         void syncMapModel();
@@ -105,7 +108,7 @@ namespace osgEarth_engine_mp
         void moveImageLayer( unsigned int oldIndex, unsigned int newIndex );
         void moveElevationLayer( unsigned int oldIndex, unsigned int newIndex );
         
-        void updateShaders();
+        void updateShaders(); 
 
     private:
         osgEarth::Drivers::MPTerrainEngineOptions _terrainOptions;

@@ -15,7 +15,7 @@ SET(HEADERS_ROOT
     Controls
     ClampCallback
     DataScanner
-    EarthManipulator    
+    EarthManipulator
     ExampleResources
     Export
     FeatureManipTool
@@ -29,7 +29,6 @@ SET(HEADERS_ROOT
     MGRSFormatter
     MGRSGraticule
     MouseCoordsTool
-    ObjectPlacer
     ObjectLocator
     PolyhedralLineOfSight
     RadialLineOfSight
@@ -70,7 +69,6 @@ SET(SOURCES_ROOT
     MGRSFormatter.cpp
     MGRSGraticule.cpp
     MouseCoordsTool.cpp
-    ObjectPlacer.cpp
     ObjectLocator.cpp
     PolyhedralLineOfSight.cpp
     RadialLineOfSight.cpp
@@ -98,6 +96,7 @@ SET(HEADERS_COLORFILTER
     BrightnessContrastColorFilter
     CMYKColorFilter
     GammaColorFilter
+    GLSLColorFilter
     HSLColorFilter
     RGBColorFilter
     ChromaKeyColorFilter
@@ -109,6 +108,7 @@ SET(SOURCES_COLORFILTER
     BrightnessContrastColorFilter.cpp
     CMYKColorFilter.cpp
     GammaColorFilter.cpp
+    GLSLColorFilter.cpp
     HSLColorFilter.cpp
     RGBColorFilter.cpp
     ChromaKeyColorFilter.cpp

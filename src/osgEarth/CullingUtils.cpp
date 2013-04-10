@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2012 Pelican Mapping
+ * Copyright 2008-2013 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -686,9 +686,7 @@ _cv             ( cv )
     _proxyFrustum.setAndTransformProvidingInverse( _proxyProjFrustum, view );
 
     // copy NodeVisitor values over to this visitor:
-    const osg::NodePath& path = _cv->getNodePath();
-    for( osg::NodePath::const_reverse_iterator i = path.rbegin(); i != path.rend(); ++i )
-        this->pushOntoNodePath( *i );
+    _nodePath = _cv->getNodePath();
 
     this->setFrameStamp( const_cast<osg::FrameStamp*>(_cv->getFrameStamp()) );
     this->setTraversalNumber( _cv->getTraversalNumber() );

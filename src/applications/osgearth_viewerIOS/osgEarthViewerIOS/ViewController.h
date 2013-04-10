@@ -6,6 +6,7 @@
 //
 
 #import <UIKit/UIKit.h>
+#import <QuartzCore/QuartzCore.h>
 
 #include <osgViewer/Viewer>
 

@@ -186,7 +186,8 @@ osgEarth require an SRS. Here's how you create on in code::
 That will give you an SRS. The ``get()`` function will accept any of the SRS
 representations we discussed above: WKT, PROJ4, EPSG, or Aliases.
 
-If you need an SRS with a vertical datum, express that as a second parameter::
+If you need an SRS with a vertical datum, express that as a second parameter.
+osgEarth support ``egm84``, ``egm96``, and ``egm2008``. Use it like this::
 
     srs = SpatialReference::get("epsg:4326", "egm96");
 

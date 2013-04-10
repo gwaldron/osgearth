@@ -1,5 +1,5 @@
-Earth File Reference Guide
---------------------------
+Earth File Reference
+====================
 
 Map
 ~~~

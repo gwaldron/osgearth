@@ -111,6 +111,7 @@ LabelNode::setText( const std::string& text )
     {
         d->setText( text );
         d->dirtyDisplayList();
+        _text = text;
     }
 }
 

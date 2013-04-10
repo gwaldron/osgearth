@@ -1,5 +1,5 @@
-Symbology Reference Guide
-=========================
+Symbology Reference
+===================
 
 osgEarth renders *features* and *annotations* using *stylesheets*.
 This document lists all the symbol properties available for use in a

@@ -3,10 +3,11 @@ Building osgEarth
 osgEarth is a cross-platform library. It uses the  CMake cross-platform build system, version 2.8 or newer. This is the same build system that  OpenSceneGraph uses.
 
 Get the source code
-----------------
+-------------------
 #Option 1: Use GIT
 
-osgEarth source is hosted on GitHub. You will need a git client to access it. We recommend  TortoiseGit for Windows users.
+osgEarth source is hosted on GitHub. You will need a git client to access it.
+We recommend  TortoiseGit for Windows users.
 
 To clone the repository, point your client at git://github.com/gwaldron/osgearth.git
 

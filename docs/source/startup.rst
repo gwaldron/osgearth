@@ -5,14 +5,15 @@ osgEarth is a cross-platform library. It uses the CMake_ build system.
 You will need **version 2.8** or newer. 
 (This is the same build system that OpenSceneGraph_ uses.)
 
-NOTE: To build osgEarth for iOS see :doc:`ios`
+    NOTE: To build osgEarth for iOS see :doc:`ios`
+    
 
 Get the Source Code
 -------------------
 
 **Option 1: use GIT**
 
-    osgEarth is hosted on GitHub_. You will nee da *git* client to access it.
+    osgEarth is hosted on GitHub_. You will need a *git* client to access it.
     We recommend TortoiseGit_ for Windows users.
 
     To clone the repository, point your client at::
@@ -24,6 +25,7 @@ Get the Source Code
     To download a tarball or ZIP archive of the source code, visit the
     `osgEarth Tags`_ and select the one you want. The latest official release
     will be at the top.
+
 
 Get the Dependencies
 --------------------
@@ -51,7 +53,7 @@ but some functionality will be missing:
     * AlphaPixel_ has pre-built OSG_ and 3rd-party dependencies for various architectures.
     * `Mike Weiblen`_ has some pre-built OSG_ binaries and dependencies too.
     * FWTools_ has pre-built GDAL binaries with all the fixins.
-    * Pre-built `GDAL binaries` for various architectures.
+    * Pre-built `GDAL binaries`_ for various architectures.
     
 Build it
 --------

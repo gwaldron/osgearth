@@ -57,8 +57,14 @@ using namespace osgEarth::Util;
 - (void)loadOsgEarthDemoScene{
 
     // install our default manipulator (do this before calling load)
-    _viewer->setCameraManipulator( new osgEarth::Util::EarthManipulator() );
+    //    _viewer->setCameraManipulator( new osgEarth::Util::EarthManipulator() );
     
+    // This chunk inverts the Y axis.
+    osgEarth::Util::EarthManipulator* manip = new osgEarth::Util::EarthManipulator();
+    osgEarth::Util::EarthManipulator::ActionOptions options;
+    options.add(osgEarth::Util::EarthManipulator::OPTION_SCALE_Y, -1.0);
+    manip->getSettings()->bindMouse(osgEarth::Util::EarthManipulator::ACTION_PAN, osgGA::GUIEventAdapter::LEFT_MOUSE_BUTTON, 0L, options);
+    _viewer->setCameraManipulator( manip );
     
     osg::Node* node = osgDB::readNodeFile(osgDB::findDataFile("tests/" + _file));
     if ( !node )
@@ -75,8 +81,8 @@ using namespace osgEarth::Util;
     }
     
     // warn about not having an earth manip
-    osgEarth::Util::EarthManipulator* manip = dynamic_cast<osgEarth::Util::EarthManipulator*>(_viewer->getCameraManipulator());
-    if ( manip == 0L )
+    osgEarth::Util::EarthManipulator* manip_temp = dynamic_cast<osgEarth::Util::EarthManipulator*>(_viewer->getCameraManipulator());
+    if ( manip_temp == 0L )
     {
         OSG_WARN << "Helper used before installing an EarthManipulator" << std::endl;
     }
@@ -95,7 +101,7 @@ using namespace osgEarth::Util;
     root->getOrCreateStateSet()->setMode(GL_LIGHTING, osg::StateAttribute::ON | osg::StateAttribute::OVERRIDE);//comment out to disable lighting
     
     double hours = 12.0f;
-    float ambientBrightness = 0.4f;
+    float ambientBrightness = 1.0f;
     osgEarth::Util::SkyNode* sky = new osgEarth::Util::SkyNode( mapNode->getMap() );
     sky->setAmbientBrightness( ambientBrightness );
     sky->setDateTime( 1984, 11, 8, hours );
@@ -138,7 +144,7 @@ using namespace osgEarth::Util;
 	traits->alpha = 8;
     //traits->samples = 4;
     //traits->sampleBuffers = 2;
-	traits->stencil = 1;
+	traits->stencil = 0;
 	traits->windowDecoration = false;
 	traits->doubleBuffer = true;
 	traits->sharedContext = 0;
@@ -175,9 +181,9 @@ using namespace osgEarth::Util;
     
     // osgEarth benefits from pre-compilation of GL objects in the pager. In newer versions of
     // OSG, this activates OSG's IncrementalCompileOpeartion in order to avoid frame breaks.
-    _viewer->getDatabasePager()->setDoPreCompile( true );
-    _viewer->getDatabasePager()->setTargetMaximumNumberOfPageLOD(0);
-    _viewer->getDatabasePager()->setUnrefImageDataAfterApplyPolicy(true,true);
+//    _viewer->getDatabasePager()->setDoPreCompile( true );
+//   _viewer->getDatabasePager()->setTargetMaximumNumberOfPageLOD(0);
+//    _viewer->getDatabasePager()->setUnrefImageDataAfterApplyPolicy(true,true);
 
   
     _isAnimating=false;

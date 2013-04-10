@@ -7,3 +7,4 @@ Reference Guides
    earthfile
    symbology
    colorfilters
+   envvars

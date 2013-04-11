@@ -10,7 +10,36 @@ used to control the camera and is optimized for viewing geospatial data.
 
 **Sample Usage**
 ::
-    osgearth_viewer earthfile.earth
+    osgearth_viewer earthfile.earth [options]
+
+
++----------------------------+--------------------------------------------------------------------+
+| Option                     | Description                                                        |
++============================+====================================================================+
+| ``--sky``                  | Installs a SkyNode (sun, moon, stars and atmosphere..globe only)   |
++----------------------------+--------------------------------------------------------------------+
+| ``--ocean``                | Installs a sample ocean surface node                               |
++----------------------------+--------------------------------------------------------------------+
+| ``--kml [file.kml]``       | Loads a KML or KMZ file                                            |
++----------------------------+--------------------------------------------------------------------+
+| ``--coords``               | Displays map coords under mouse                                    |
++----------------------------+--------------------------------------------------------------------+
+| ``--dms``                  | Displays map coords as degrees/mins/seconds                        |
++----------------------------+--------------------------------------------------------------------+
+| ``--dd``                   | Displays map coords as decimal degrees                             |
++----------------------------+--------------------------------------------------------------------+
+| ``--mgrs``                 | Displays map coords as MGRS                                        |
++----------------------------+--------------------------------------------------------------------+
+| ``--ortho``                | Installs an orthographic camera projection                         |
++----------------------------+--------------------------------------------------------------------+
+| ``--autoclip``             | Installs an automatic clip plane handler                           |
++----------------------------+--------------------------------------------------------------------+
+| ``--images [path]``        | Finds images in [path] and loads them as image layers              |
++----------------------------+--------------------------------------------------------------------+
+| ``--image-extensions [*]`` | With ``--images``, only considers the listed extensions            |
++----------------------------+--------------------------------------------------------------------+
+| ``--out-earth [out.earth]``| With ``--images``, writes out an earth file                        |
++----------------------------+--------------------------------------------------------------------+
 
 
 osgearth_version
@@ -78,7 +107,7 @@ osgearth_package creates a redistributable `TMS`_ based package from an earth fi
 +------------------------------------+--------------------------------------------------------------------+
 | ``--out path``                     | root output folder of the TMS repo (required)                      |
 +------------------------------------+--------------------------------------------------------------------+
-| ``--bounds xmin ymin xmax ymax]*`` | bounds to package (in map coordinates; default=entire map)         |
+| ``--bounds xmin ymin xmax ymax``   | bounds to package (in map coordinates; default=entire map)         |
 |                                    | You can provide multiple bounds                                    |
 +------------------------------------+--------------------------------------------------------------------+
 | ``--max-level level``              | max LOD level for tiles (all layers; default=inf)                  |

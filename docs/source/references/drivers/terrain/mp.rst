@@ -27,4 +27,4 @@ Properties:
                                 memory run-up when traversing a paged terrain at high
                                 speed.
     
-.. include:: terrain_options_shared
+.. include:: terrain_options_shared.rst

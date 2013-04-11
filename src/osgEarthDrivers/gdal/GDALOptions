@@ -60,24 +60,54 @@ namespace osgEarth { namespace Drivers
         optional<URI>& url() { return _url; }
         const optional<URI>& url() const { return _url; }
 
+        /*
+         * If the data source is a database (e.g., PostGIS), the connection
+         * string to use to open the database table.
+         */
         optional<std::string>& connection() { return _connection; }
         const optional<std::string>& connection() const { return _connection; }
 
+        /*
+         * One or more file extensions, separated by semicolons, to load when
+         * url points to a folder and you are trying to load multiple files.
+         */
         optional<std::string>& extensions() { return _extensions; }
         const optional<std::string>& extensions() const { return _extensions; }
         
+        /**
+         * Set of file extensions to ignore (opposite of extensions)
+         */
         optional<std::string>& blackExtensions() { return _blackExtensions; }
         const optional<std::string>& blackExtensions() const { return _blackExtensions; }
         
+        /**
+         * Interpolation method to use when resampling source data; options are
+         * nearest, average, and bilinear.  Only effects elevation data
+         * unless interp_imagery is also set to true.
+         */
         optional<ElevationInterpolation>& interpolation() { return _interpolation; }
         const optional<ElevationInterpolation>& interpolation() const { return _interpolation; }
 
+        /*
+         * Maximum level of detail of available data
+         */
         optional<unsigned int>& maxDataLevel() { return _maxDataLevel;}
         const optional<unsigned int>& maxDataLevel() const { return _maxDataLevel;}
 
+        /*
+         * Some GDAL-supported formats support sub-datasets; use this property
+         * to specify such a data source
+         */
         optional<unsigned int>& subDataSet() { return _subDataSet;}
         const optional<unsigned int>& subDataSet() const { return _subDataSet;}
 
+        /**
+         * Set to true to also sample imagery using the method specified by "interpolation"
+         * By default imagery is sampled using nearest sampling.  This takes advantage of
+         * any built in overviews or wavelet compression in the source file but can 
+         * cause artifacts on neighboring tiles.  Interpolating the imagery can look nicer
+         * but will be much slower.
+         */
         optional<bool>& interpolateImagery() { return _interpolateImagery;}
         const optional<bool>& interpolateImagery() const { return _interpolateImagery;}
 

@@ -9,6 +9,8 @@ FAQ
 * `Licensing`_
 
 
+----
+
 Common Usage
 ------------
 
@@ -68,6 +70,8 @@ How do make the terrain transparent?
         options.color() = osg::Vec4(1,1,1,0);
 
 
+----
+
 Other Terrain Formats
 ---------------------
 
@@ -110,6 +114,8 @@ Can osgEarth load TerraPage or MetaFlight?
 
 .. _VirtualPlanetBuilder:	http://www.openscenegraph.com/index.php/documentation/tools/virtual-planet-builder
 
+
+----
 
 Community and Support
 ---------------------
@@ -159,7 +165,9 @@ Can I hire someone to help me with osgEarth?
     
 .. _contact form:   http://pelicanmapping.com/?page_id=2
 
-	
+
+----
+
 Licensing
 ---------
 

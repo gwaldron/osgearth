@@ -4,6 +4,7 @@ User Guide
 .. toctree::
    :maxdepth: 2
    
+   tools
    earthfiles
    maps
    caching

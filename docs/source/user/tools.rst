@@ -65,11 +65,77 @@ The most common usage of osgearth_cache is to populate a cache in a non-interact
 
 osgearth_package
 ----------------
-todo
+osgearth_package creates a redistributable `TMS`_ based package from an earth file.
+
+**Sample Usage**
+::
+    osgearth_package --tms file.earth --out package
+
++------------------------------------+--------------------------------------------------------------------+
+| Argument                           | Description                                                        |
++====================================+====================================================================+
+| ``--tms``                          | make a TMS repo                                                    |
++------------------------------------+--------------------------------------------------------------------+
+| ``--out path``                     | root output folder of the TMS repo (required)                      |
++------------------------------------+--------------------------------------------------------------------+
+| ``--bounds xmin ymin xmax ymax]*`` | bounds to package (in map coordinates; default=entire map)         |
+|                                    | You can provide multiple bounds                                    |
++------------------------------------+--------------------------------------------------------------------+
+| ``--max-level level``              | max LOD level for tiles (all layers; default=inf)                  |
++------------------------------------+--------------------------------------------------------------------+
+| ``--out-earth earthfile``          | export an earth file referencing the new repo                      |
++------------------------------------+--------------------------------------------------------------------+
+| ``--ext extension``                | overrides the image file extension (e.g. jpg)                      |
++------------------------------------+--------------------------------------------------------------------+
+| ``--overwrite``                    | overwrite existing tiles                                           |
++------------------------------------+--------------------------------------------------------------------+
+| ``--keep-empties``                 | writes out fully transparent image tiles (normally discarded)      |
++------------------------------------+--------------------------------------------------------------------+
+| ``--db-options``                   | db options string to pass to the image writer                      |
+|                                    | in quotes (e.g., "JPEG_QUALITY 60")                                |
++------------------------------------+--------------------------------------------------------------------+
 
 osgearth_tfs
 ------------
-todo
+osgearth_tfs generates a TFS dataset from a feature source such as a shapefile.  By pre-processing your features
+into the gridded structure provided by TFS you can significantly increase performance of large datasets.
+In addition, the TFS package generated can be served by any standard web server, web enabling your dataset.
+
+**Sample Usage**
+::
+    osgearth_tfs filename
+
++----------------------------------+--------------------------------------------------------------------+
+| Argument                         | Description                                                        |
++==================================+====================================================================+
+| ``filename``                     | Shapefile (or other feature source data file )                     |
++----------------------------------+--------------------------------------------------------------------+
+| ``--first-level level``          | The first level where features will be added to the quadtree       |
++----------------------------------+--------------------------------------------------------------------+
+| ``--max-level level``            | The maximum level of the feature quadtree                          | 
++----------------------------------+--------------------------------------------------------------------+
+| ``--max-features``               | The maximum number of features per tile                            |
++----------------------------------+--------------------------------------------------------------------+
+| ``--out``                        | The destination directory                                          |
++----------------------------------+--------------------------------------------------------------------+
+| ``--layer``                      | The name of the layer to be written to the metadata document       |
++----------------------------------+--------------------------------------------------------------------+
+| ``--description``                | The abstract/description of the layer to be written                |
+|                                  | to the metadata document                                           |
++----------------------------------+--------------------------------------------------------------------+
+| ``--expression``                 | The expression to run on the feature source,                       |
+|                                  | specific to the feature source                                     |
++----------------------------------+--------------------------------------------------------------------+
+| ``--order-by``                   | Sort the features, if not already included in the expression.      |
+|                                  | Append DESC for descending order!                                  |
++----------------------------------+--------------------------------------------------------------------+
+| ``--crop``                       | Crops features instead of doing a centroid check.                  |
+|                                  | Features can be added to multiple tiles when cropping is enabled   |
++----------------------------------+--------------------------------------------------------------------+
+| ``--dest-srs``                   | The destination SRS string in any format osgEarth can              |
+|                                  | understand (wkt, proj4, epsg).                                     |
+|                                  | If none is specific the source data SRS will be used.              |
++----------------------------------+--------------------------------------------------------------------+
 
 osgearth_backfill
 -----------------
@@ -100,12 +166,28 @@ a specified higher level of detail.  For example, you can specify a max level of
 
 osgearth_boundarygen
 -----------------
-todo
+osgearth_boundarygen generates boundary geometry that you can use with an osgEarth <mask> layer in order to 
+stich an external model into the terrain.
+
+**Sample Usage**
+::
+    osgearth_boundarygen model_file
+
++----------------------------------+--------------------------------------------------------------------+
+| Argument                         | Description                                                        |
++==================================+====================================================================+
+| ``--out file_name``              | output file for boundary geometry( default is boundary.txt)        |
++----------------------------------+--------------------------------------------------------------------+
+| ``--no-geocentric``              | Skip geocentric reprojection (for flat databases)                  |
++----------------------------------+--------------------------------------------------------------------+
+| ``--convex-hull``                | calculate a convex hull instead of a full boundary                 |
++----------------------------------+--------------------------------------------------------------------+
+| ``--verbose``                    | print progress to console                                          |
++----------------------------------+--------------------------------------------------------------------+
+| ``--view``                       | show result in 3D window                                           |
++----------------------------------+--------------------------------------------------------------------+
 
 
-osgearth_featureinfo
---------------------
-todo
 
 osgearth_overlayviewer
 ----------------------

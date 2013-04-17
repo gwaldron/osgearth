@@ -1615,8 +1615,7 @@ namespace
             tex->setMaxAnisotropy( 16.0f );
             tex->setResizeNonPowerOfTwoHint(false);
             tex->setFilter( osg::Texture::MAG_FILTER, osg::Texture::LINEAR );
-            tex->setFilter( osg::Texture::MIN_FILTER, osg::Texture::LINEAR_MIPMAP_LINEAR );
-            //tex->setFilter( osg::Texture::MIN_FILTER, osg::Texture::LINEAR );
+            tex->setFilter( osg::Texture::MIN_FILTER, osg::Texture::LINEAR );
             tex->setWrap( osg::Texture::WRAP_S, osg::Texture::CLAMP_TO_EDGE );
             tex->setWrap( osg::Texture::WRAP_T, osg::Texture::CLAMP_TO_EDGE );
             tex->setWrap( osg::Texture::WRAP_R, osg::Texture::CLAMP_TO_EDGE );

@@ -1385,7 +1385,7 @@ reprojectImage(osg::Image* srcImage, const std::string srcWKT, double srcMinX, d
     //Create a dataset from the source image
     GDALDataset* srcDS = createDataSetFromImage(srcImage, srcMinX, srcMinY, srcMaxX, srcMaxY, srcWKT);
 
-	OE_DEBUG << "Source image is " << srcImage->s() << "x" << srcImage->t() << std::endl;
+	OE_INFO << LC << "Source image is " << srcImage->s() << "x" << srcImage->t() << std::endl;
 
 
     if (width == 0 || height == 0)

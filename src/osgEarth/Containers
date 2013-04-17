@@ -125,14 +125,10 @@ namespace osgEarth
             Record(const T& value) : _value(value), _valid(true) { }
             const bool valid() const { return _valid; }
             const T& value() const { return _value; }
-            //Record(const T* value) : _value(value) { }
-            //const bool valid() const { return _value != 0L; }
-            //const T& value() const { return *_value; }
         private:
             bool _valid;
             T    _value;
             friend class LRUCache;
-            //const T* _value;
         };
 
     protected:

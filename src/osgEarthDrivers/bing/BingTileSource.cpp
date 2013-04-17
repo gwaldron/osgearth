@@ -161,6 +161,8 @@ public:
         }
 
         // request the actual tile
+        //OE_INFO << "key = " << key.str() << ", URL = " << location->value() << std::endl;
+
         osg::Image* image = URI(location->value()).getImage(_dbOptions.get(), progress);
         return image;
     }

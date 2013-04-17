@@ -351,7 +351,7 @@ namespace
             if ( locator )
             {
                 // if we have no mask records, we can use the texture coordinate array cache.
-                if ( d.maskRecords.size() == 0 )
+                if ( d.maskRecords.size() == 0 && locator->isLinear() )
                 {
                     const GeoExtent& locex = locator->getDataExtent();
                     const GeoExtent& keyex = d.model->_tileKey.getExtent();
@@ -388,7 +388,7 @@ namespace
                     r._skirtTexCoords = skirtTexCoords.get();
                 }
 
-                else // if ( d.maskRecords.size() > 0 )
+                else
                 {
                     // cannot use the tex coord array cache if there are masking records.
                     r._texCoords = new osg::Vec2Array();
@@ -399,8 +399,11 @@ namespace
                     r._skirtTexCoords->reserve( d.numVerticesInSkirt );
                     r._ownsSkirtTexCoords = true;
 
-                    r._stitchTexCoords = new osg::Vec2Array();
-                    r._stitchSkirtTexCoords = new osg::Vec2Array();
+                    if ( d.maskRecords.size() > 0 )
+                    {
+                        r._stitchTexCoords = new osg::Vec2Array();
+                        r._stitchSkirtTexCoords = new osg::Vec2Array();
+                    }
                 }
 
                 r._locator = locator;

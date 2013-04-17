@@ -406,6 +406,10 @@ ImageLayer::createImageInNativeProfile( const TileKey& key, ProgressCallback* pr
         // find the intersection of keys.
         std::vector<TileKey> nativeKeys;
         nativeProfile->getIntersectingTiles(key.getExtent(), nativeKeys);
+
+        //OE_INFO << "KEY = " << key.str() << ":" << std::endl;
+        //for(int i=0; i<nativeKeys.size(); ++i)
+        //    OE_INFO << "    " << nativeKeys[i].str() << std::endl;
         
         // build a mosaic of the images from the native profile keys:
         bool foundAtLeastOneRealTile = false;
@@ -445,11 +449,15 @@ ImageLayer::createImageInNativeProfile( const TileKey& key, ProgressCallback* pr
                 mosaic.createImage(), 
                 GeoExtent( nativeProfile->getSRS(), rxmin, rymin, rxmax, rymax ) );
 
+            return result;
+
+#if 0 // let's try this.
             // calculate a tigher extent that matches the original input key:
             GeoExtent tightExtent = nativeProfile->clampAndTransformExtent( key.getExtent() );
 
             // a non-exact crop is critical here to avoid resampling the data
             return result.crop( tightExtent, false, 0, 0, *_runtimeOptions.driver()->bilinearReprojection() );
+#endif
         }
 
         else // all fallback data

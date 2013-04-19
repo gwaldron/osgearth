@@ -47,7 +47,6 @@ const char* vertexShader =
     "uniform   float contour_xferMin; \n"
     "uniform   float contour_xferRange; \n"
     "uniform   float contour_xferMax; \n"
-    "varying   float contour_lookup; \n"
 
     "void setupContour(inout vec4 VertexModel) \n"
     "{ \n"
@@ -143,12 +142,11 @@ int main(int argc, char** argv)
         int unit;
         mapNode->getTerrainEngine()->getTextureCompositor()->reserveTextureImageUnit(unit);
 
-        // install the contour shaders:
-        osg::Group* root = new osg::Group();
-        root->setStateSet( createStateSet(xfer.get(), unit) );
-        root->addChild( node );
+        // install the contour shaders on the terrain engine because we don't want
+        // them affecting any model layers.
+        mapNode->getTerrainEngine()->setStateSet( createStateSet(xfer.get(), unit) );
         
-        viewer.setSceneData( root );
+        viewer.setSceneData( node );
         viewer.run();
     }
     else

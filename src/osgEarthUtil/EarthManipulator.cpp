@@ -431,8 +431,9 @@ EarthManipulator::Settings::setCameraFrustumOffsets( const osg::Vec2s& value )
 
 EarthManipulator::EarthManipulator() :
 osgGA::CameraManipulator(),
-_last_action      ( ACTION_NULL ),
-_frame_count      ( 0 )
+_last_action           ( ACTION_NULL ),
+_frame_count           ( 0 ),
+_findNodeTraversalMask ( 0x01 )
 {
     reinitialize();
     configureDefaultSettings();
@@ -442,7 +443,8 @@ EarthManipulator::EarthManipulator( const EarthManipulator& rhs ) :
 osgGA::CameraManipulator( rhs ),
 _last_action            ( ACTION_NULL ),
 _frame_count            ( 0 ),
-_settings               ( new Settings(*rhs.getSettings()) )
+_settings               ( new Settings(*rhs.getSettings()) ),
+_findNodeTraversalMask  ( rhs._findNodeTraversalMask )
 {
     reinitialize();
 }
@@ -454,7 +456,7 @@ EarthManipulator::~EarthManipulator()
     if (safeNode && _terrainCallback)
     {
         // find a map node.
-        MapNode* mapNode = MapNode::findMapNode( safeNode.get(), 0x01 );
+        MapNode* mapNode = MapNode::findMapNode( safeNode.get(), _findNodeTraversalMask );
         if ( mapNode )
         {             
             mapNode->getTerrain()->removeTerrainCallback( _terrainCallback );
@@ -589,7 +591,7 @@ EarthManipulator::established()
             return false;
 
         // find a map node.
-        MapNode* mapNode = MapNode::findMapNode( safeNode.get(), 0x01 );
+        MapNode* mapNode = MapNode::findMapNode( safeNode.get(), _findNodeTraversalMask );
         if ( mapNode )
         {
             _terrainCallback = new ManipTerrainCallback( this );
@@ -597,7 +599,7 @@ EarthManipulator::established()
         }
 
         // find a CSN node - if there is one, we want to attach the manip to that
-        _csn = findRelativeNodeOfType<osg::CoordinateSystemNode>( safeNode.get(), 0x01 );
+        _csn = findRelativeNodeOfType<osg::CoordinateSystemNode>( safeNode.get(), _findNodeTraversalMask );
 
         if ( _csn.valid() )
         {

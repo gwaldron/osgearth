@@ -854,6 +854,8 @@ SkyNode::traverse( osg::NodeVisitor& nv )
         // Create a new stateset that contains the osg_ViewMatrix and osg_ViewMatrixInverse uniforms.  These are not 
         // set per camera in OSG, but per view.  In the case of an RTT camera the values of these uniforms will be incorrect
         // and not apply to the current camera.
+        // This actually seems to be dependenant on how you setup your RTT and needs some more investigation.
+        /*
         osg::ref_ptr< osg::StateSet > stateSet = new osg::StateSet;
         
         //Apply the uniforms                        
@@ -865,11 +867,12 @@ SkyNode::traverse( osg::NodeVisitor& nv )
         osg_ViewMatrixInverse->set( osg::Matrix::inverse(cv->getCurrentCamera()->getViewMatrix()) );                                     
         stateSet->addUniform( osg_ViewMatrixInverse);
         
-        cv->pushStateSet( stateSet.get() );        
+        cv->pushStateSet( stateSet.get() );   
+        */
 
         itr->second._cullContainer->accept( nv );
 
-        cv->popStateSet();        
+        //cv->popStateSet();        
 
         // restore a custom clamper.
         if ( cb.valid() ) cv->setClampProjectionMatrixCallback( cb.get() );

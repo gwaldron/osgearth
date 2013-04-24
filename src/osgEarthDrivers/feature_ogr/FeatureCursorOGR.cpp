@@ -129,7 +129,7 @@ _filters          ( filters )
         }
 
 
-        OE_NOTICE << LC << "SQL: " << expr << std::endl;
+        OE_DEBUG << LC << "SQL: " << expr << std::endl;
         _resultSetHandle = OGR_DS_ExecuteSQL( _dsHandle, expr.c_str(), _spatialFilter, 0L );
 
         if ( _resultSetHandle )

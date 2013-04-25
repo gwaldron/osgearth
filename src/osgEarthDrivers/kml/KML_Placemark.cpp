@@ -198,9 +198,12 @@ KML_Placemark::build( const Config& conf, KMLContext& cx )
                         !extruded &&
                         (!altitude || altitude->clamping() == AltitudeSymbol::CLAMP_TO_TERRAIN);
 
+                    if ( draped && style.get<LineSymbol>() && !style.get<PolygonSymbol>() )
+                        draped = false;
+
                     // turn off the clamping if we're draping.
                     if ( draped && altitude )
-                        altitude->clamping() = AltitudeSymbol::CLAMP_NONE;
+                        altitude->technique() = AltitudeSymbol::TECHNIQUE_DRAPE;
 
                     GeometryCompilerOptions compilerOptions;
 

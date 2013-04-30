@@ -120,6 +120,9 @@ osgearth_package creates a redistributable `TMS`_ based package from an earth fi
 +------------------------------------+--------------------------------------------------------------------+
 | ``--keep-empties``                 | writes out fully transparent image tiles (normally discarded)      |
 +------------------------------------+--------------------------------------------------------------------+
+| ``--continue-single-color``        | continues to subdivide single color tiles,                         |
+|                                    | subdivision typicall stops on single color images                  |
++------------------------------------+--------------------------------------------------------------------+
 | ``--db-options``                   | db options string to pass to the image writer                      |
 |                                    | in quotes (e.g., "JPEG_QUALITY 60")                                |
 +------------------------------------+--------------------------------------------------------------------+

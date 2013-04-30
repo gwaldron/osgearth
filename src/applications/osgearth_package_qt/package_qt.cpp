@@ -19,6 +19,8 @@
 
 #include <osg/Notify>
 #include <osgDB/FileUtils>
+#include <osgGA/StateSetManipulator>
+#include <osgViewer/ViewerEventHandlers>
 #include <osgEarth/ImageUtils>
 #include <osgEarth/MapNode>
 #include <osgEarthQt/ViewerWidget>
@@ -104,7 +106,11 @@ int main(int argc, char** argv)
     mainView = views[0];
 
   if (mainView.valid())
+  {
     mainView->getCamera()->setNearFarRatio(0.00002);
+    mainView->addEventHandler( new osgGA::StateSetManipulator(mainView->getCamera()->getOrCreateStateSet()) );
+    mainView->addEventHandler( new osgViewer::StatsHandler() );
+  }
 
   //create the SceneController, if no earth file is specified a blank
   //globe will be loaded

@@ -53,15 +53,20 @@ _filters          ( filters )
         std::string expr;
         std::string from = OGR_FD_GetName( OGR_L_GetLayerDefn( _layerHandle ));        
         
-        //Quote the layer name.
-        std::string driverName = OGR_Dr_GetName( OGR_DS_GetDriver( dsHandle ) );
-        std::string delim = "'";  //Use single quotes by default
-        if (driverName.compare("PostgreSQL") == 0)
-        {
-            //PostgreSQL uses double quotes as identifier delimeters
-            delim = "\"";
-        }            
-        from = delim + from + delim;                    
+        
+        std::string driverName = OGR_Dr_GetName( OGR_DS_GetDriver( dsHandle ) );             
+        // Quote the layer name if it is a shapefile, so we can handle any weird filenames like those with spaces or hyphens.
+        // Or quote any layers containing spaces for PostgreSQL
+        if (driverName == "ESRI Shapefile" || from.find(" ") != std::string::npos)
+        {                        
+            std::string delim = "'";  //Use single quotes by default
+            if (driverName.compare("PostgreSQL") == 0)
+            {
+                //PostgreSQL uses double quotes as identifier delimeters
+                delim = "\"";
+            }            
+            from = delim + from + delim;                    
+        }
 
         if ( query.expression().isSet() )
         {

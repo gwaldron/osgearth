@@ -64,6 +64,7 @@ usage( const std::string& msg = "" )
         << "            [--ext <extension>]             : overrides the image file extension (e.g. jpg)\n"
         << "            [--overwrite]                   : overwrite existing tiles\n"
         << "            [--keep-empties]                : writes out fully transparent image tiles (normally discarded)\n"
+        << "            [--continue-single-color]       : continues to subdivide single color tiles, subdivision typicall stops on single color images\n"
         << "            [--db-options]                : db options string to pass to the image writer in quotes (e.g., \"JPEG_QUALITY 60\")\n"
         << std::endl
         << "         [--quiet]               : suppress progress output" << std::endl;
@@ -156,6 +157,8 @@ makeTMS( osg::ArgumentParser& args )
     // whether to keep 'empty' tiles
     bool keepEmpties = args.read("--keep-empties");    
 
+    bool continueSingleColor = args.read("--continue-single-color");
+
     // load up the map
     osg::ref_ptr<MapNode> mapNode = MapNode::load( args );
     if ( !mapNode.valid() )
@@ -174,6 +177,7 @@ makeTMS( osg::ArgumentParser& args )
     packager.setVerbose( verbose );
     packager.setOverwrite( overwrite );
     packager.setKeepEmptyImageTiles( keepEmpties );
+    packager.setSubdivideSingleColorImageTiles( continueSingleColor );
 
     if ( maxLevel != ~0 )
         packager.setMaxLevel( maxLevel );

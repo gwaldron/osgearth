@@ -788,36 +788,91 @@ SkyNode::computeBound() const
 
 void
 SkyNode::traverse( osg::NodeVisitor& nv )
-{
-    osgUtil::CullVisitor* cv = Culling::asCullVisitor(nv);
+{    
+    osgUtil::CullVisitor* cv = Culling::asCullVisitor(nv);    
     if ( cv )
     {
+
         // If there's a custom projection matrix clamper installed, remove it temporarily.
         // We dont' want it mucking with our sky elements.
         osg::ref_ptr<osg::CullSettings::ClampProjectionMatrixCallback> cb = cv->getClampProjectionMatrixCallback();
         cv->setClampProjectionMatrixCallback( 0L );
 
         osg::View* view = cv->getCurrentCamera()->getView();
-        PerViewDataMap::iterator i = _perViewData.find( view );
-        if ( i != _perViewData.end() )
-        {
-            if ( _autoAmbience )
-            {
-                const float minAmb = 0.3f;
-                const float maxAmb = 1.0f;
-                const float minDev = -0.2f;
-                const float maxDev = 0.75f;
-                osg::Vec3 eye = cv->getViewPoint(); eye.normalize();
-                osg::Vec3 sun = i->second._lightPos; sun.normalize();
-                float dev = osg::clampBetween(eye*sun, minDev, maxDev);
-                float r   = (dev-minDev)/(maxDev-minDev);
-                float amb = minAmb + r*(maxAmb-minAmb);
-                i->second._light->setAmbient( osg::Vec4(amb,amb,amb,1.0) );
-                //OE_INFO << "dev=" << dev << ", amb=" << amb << std::endl;
-            }
 
-            i->second._cullContainer->accept( nv );
+                
+        //Try to find the per view data for camera's view if there is one.
+        PerViewDataMap::iterator itr = _perViewData.find( view );
+        
+        if ( itr == _perViewData.end() )
+        {
+            // If we don't find any per view data, just use the first one that is stored.
+            // This needs to be reworked to be per camera and also to automatically create a 
+            // new data structure on demand since camera's can be added/removed on the fly.
+            itr = _perViewData.begin();
         }
+        
+
+        if ( _autoAmbience )
+        {
+            const float minAmb = 0.3f;
+            const float maxAmb = 1.0f;
+            const float minDev = -0.2f;
+            const float maxDev = 0.75f;
+            osg::Vec3 eye = cv->getViewPoint(); eye.normalize();
+            osg::Vec3 sun = itr->second._lightPos; sun.normalize();
+            float dev = osg::clampBetween(eye*sun, minDev, maxDev);
+            float r   = (dev-minDev)/(maxDev-minDev);
+            float amb = minAmb + r*(maxAmb-minAmb);
+            itr->second._light->setAmbient( osg::Vec4(amb,amb,amb,1.0) );
+            //OE_INFO << "dev=" << dev << ", amb=" << amb << std::endl;
+        }
+#if 0
+        // adjust the light color based on the eye point and the sun position.
+        float aMin =  0.1f;
+        float aMax =  0.9f;
+        float dMin = -0.5f;
+        float dMax =  0.5f;
+
+        osg::Vec3 eye = cv->getViewPoint();
+        eye.normalize();
+
+        osg::Vec3 sun = i->second._lightPos;
+        sun.normalize();
+
+        // clamp to valid range:
+        float d = osg::clampBetween(eye * sun, dMin, dMax);
+
+        // remap to [0..1]:
+        d = (d-dMin) / (dMax-dMin);
+
+        // map to ambient level:
+        float diff = aMin + d * (aMax-aMin);
+
+        i->second._light->setDiffuse( osg::Vec4(diff,diff,diff,1.0) );
+#endif
+        // Create a new stateset that contains the osg_ViewMatrix and osg_ViewMatrixInverse uniforms.  These are not 
+        // set per camera in OSG, but per view.  In the case of an RTT camera the values of these uniforms will be incorrect
+        // and not apply to the current camera.
+        // This actually seems to be dependenant on how you setup your RTT and needs some more investigation.
+        /*
+        osg::ref_ptr< osg::StateSet > stateSet = new osg::StateSet;
+        
+        //Apply the uniforms                        
+        osg::Uniform* osg_ViewMatrix = stateSet->getOrCreateUniform("osg_ViewMatrix", osg::Uniform::FLOAT_MAT4);
+        osg_ViewMatrix->set( cv->getCurrentCamera()->getViewMatrix() );       
+        stateSet->addUniform( osg_ViewMatrix );
+
+        osg::Uniform* osg_ViewMatrixInverse = stateSet->getOrCreateUniform("osg_ViewMatrixInverse", osg::Uniform::FLOAT_MAT4);
+        osg_ViewMatrixInverse->set( osg::Matrix::inverse(cv->getCurrentCamera()->getViewMatrix()) );                                     
+        stateSet->addUniform( osg_ViewMatrixInverse);
+        
+        cv->pushStateSet( stateSet.get() );   
+        */
+
+        itr->second._cullContainer->accept( nv );
+
+        //cv->popStateSet();        
 
         // restore a custom clamper.
         if ( cb.valid() ) cv->setClampProjectionMatrixCallback( cb.get() );

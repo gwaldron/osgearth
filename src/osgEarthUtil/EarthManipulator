@@ -636,7 +636,16 @@ namespace osgEarth { namespace Util
          */
         void  setRotation( const osg::Quat& rotation) { _rotation = rotation; }
 
+        /**
+         * Gets the traversal node mask used to find root MapNode and CoordinateSystemNodes. Default is 0x1.
+         */
+        osg::Node::NodeMask getFindNodeTraversalMask( ) { return _findNodeTraversalMask; }
 
+        /**
+         * Sets the traversal node mask used to find root MapNode and CoordinateSystemNode. Default is 0x1. 
+         * Use this method if you change MapNode or CoordinateSystemNode mask and want manipulator to work with them correctly.  
+         */
+        void  setFindNodeTraversalMask( const osg::Node::NodeMask & nodeMask ) { _findNodeTraversalMask = nodeMask; }
 
     public: // osgGA::MatrixManipulator
 
@@ -922,6 +931,8 @@ namespace osgEarth { namespace Util
 
         osg::ref_ptr< TerrainCallback > _terrainCallback;
 
+        // Traversal mask used in established and dtor methods to find MapNode and CoordinateSystemNode
+        osg::Node::NodeMask  _findNodeTraversalMask;
     };
 
 } } // namespace osgEarth::Util

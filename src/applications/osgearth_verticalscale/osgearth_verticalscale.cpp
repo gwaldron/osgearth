@@ -29,82 +29,62 @@
 #include <osgEarthUtil/EarthManipulator>
 #include <osgEarthUtil/ExampleResources>
 #include <osgEarthUtil/Controls>
+#include <osgEarthUtil/VerticalScale>
 
 using namespace osgEarth;
 using namespace osgEarth::Util;
 
 //-------------------------------------------------------------------------
 
-// In the vertex shader, we use a vertex attribute that's genreated by the
-// terrain engine. In this example it's called "osgearth_elevData" but you 
-// can give it any name you want, as long as it's bound to the proper
-// attribute location (see code). 
-//
-// The attribute contains a vec4 which holds the "up vector", the length of
-// which is the elevation, in indexes[0,1,2]. The "old" height value is in
-// index[3].
-//
-// Here, we use the vertical scale uniform to move the vertex up or down
-// along its up vector, thereby scaling the terrain's elevation. The code
-// is intentionally verbose for clarity.
 
-const char* vertexShader =
-    "attribute vec4  oe_attribs;         \n"
-    "attribute vec4  oe_attribs2;        \n"
-    "uniform   float verticalScale;      \n"
-    "uniform   float osg_FrameTime;      \n"
-    "uniform   float oe_birthTime;       \n"
-
-    "void applyVerticalScale(inout vec4 VertexMODEL) \n"
-    "{ \n"
-    "    const float dt  = 0.5; \n"
-    "    vec3  upVector  = oe_attribs.xyz; \n"
-    "    float elev      = oe_attribs.w; \n"
-    "    float elevOld   = oe_attribs2.x; \n"
-    "    float r         = 1.0 - clamp(osg_FrameTime-(oe_birthTime+1.0), 0.0, dt)/dt; \n"
-    "    vec3  offset    = upVector * r * (elevOld - elev); \n"
-    "    VertexMODEL     = VertexMODEL + vec4(offset/VertexMODEL.w, 0.0); \n"
-    "} \n";
+using namespace osgEarth;
+using namespace osgEarth::Util;
+using namespace osgEarth::Symbology;
+namespace ui = osgEarth::Util::Controls;
 
 
-// Build the stateset necessary for scaling elevation data.
-osg::StateSet* createStateSet()
+int 
+usage(const char* msg)
 {
-    osg::StateSet* stateSet = new osg::StateSet();
+    OE_NOTICE << msg << std::endl;
+    return 0;
+}
 
-    // Install the shaders. We also bind osgEarth's elevation data attribute, which the 
-    // terrain engine automatically generates at the specified location.
-    VirtualProgram* vp = new VirtualProgram();
-    vp->setFunction( "applyVerticalScale", vertexShader, ShaderComp::LOCATION_VERTEX_MODEL );
-    vp->addBindAttribLocation( "oe_attribs",  osg::Drawable::ATTRIBUTE_6 );
-    vp->addBindAttribLocation( "oe_attribs2", osg::Drawable::ATTRIBUTE_7 );
-    stateSet->setAttributeAndModes( vp, osg::StateAttribute::ON );
 
-    return stateSet;
+struct App
+{
+    VerticalScale scaler;
 };
 
 
+struct SetScale : public ui::ControlEventHandler {
+    App& _app;
+    SetScale(App& app) : _app(app) {}
+    void onValueChanged(ui::Control*, float value) {
+        _app.scaler.setScale(value);
+    }
+};
+
+
+
 // Build a slider to adjust the vertical scale
-osgEarth::Util::Controls::Control* createUI( osg::Uniform* scaler )
+ui::Control* createUI( App& app )
 {
-    using namespace osgEarth::Util::Controls;
+    ui::VBox* vbox = new VBox();
+    vbox->setAbsorbEvents( true );
 
-    struct ApplyVerticalScale : public ControlEventHandler {
-        osg::Uniform* _u;
-        ApplyVerticalScale(osg::Uniform* u) : _u(u) { }
-        void onValueChanged(Control*, float value) {
-            _u->set( value );
-        }
-    };
+    vbox->addControl( new LabelControl(Stringify() << "Vertical Scale Example", Color::Yellow) );
 
-    HBox* hbox = new HBox();
-    hbox->setChildVertAlign( Control::ALIGN_CENTER );
-    hbox->addControl( new LabelControl("Scale:") );
-    HSliderControl* slider = hbox->addControl( new HSliderControl(0.0, 5.0, 1.0, new ApplyVerticalScale(scaler)) );
-    slider->setHorizFill( true, 200 );
-    hbox->addControl( new LabelControl(slider) );
+    Grid* grid = vbox->addControl( new Grid() );
 
-    return hbox;
+    int r = 0;
+    grid->setControl( 0, r, new ui::LabelControl("Scale:") );
+    grid->setControl( 1, r, new ui::HSliderControl(0.0, 10.0, 1.0, new SetScale(app)) );
+    grid->setControl( 2, r, new ui::LabelControl(grid->getControl(1, r)) );
+
+    grid->getControl(1, r)->setHorizFill( true, 200 );
+
+    return vbox;
 }
 
 
@@ -112,45 +92,39 @@ int main(int argc, char** argv)
 {
     osg::ArgumentParser arguments(&argc, argv);
 
+    if (arguments.read("--help"))
+        return usage(argv[0]);
+
     // create a viewer:
     osgViewer::Viewer viewer(arguments);
-
-    // Tell osgEarth to use the "mp" terrain driver by default.
-    osgEarth::Registry::instance()->setDefaultTerrainEngineDriverName( "mp" );
 
     // install our default manipulator (do this before calling load)
     viewer.setCameraManipulator( new EarthManipulator() );
 
-    osg::Uniform* verticalScale = new osg::Uniform(osg::Uniform::FLOAT, "verticalScale");
-    verticalScale->set( 1.0f );
-    osgEarth::Util::Controls::Control* ui = createUI( verticalScale );
+    // Set up the app and read available options:
+    App app;
+
+    // Create the UI:
+    ui::Control* demo_ui = createUI(app);
 
     // load an earth file, and support all or our example command-line options
     // and earth file <external> tags    
-    osg::Node* node = MapNodeHelper().load( arguments, &viewer, ui );
+    osg::Node* node = MapNodeHelper().load( arguments, &viewer, demo_ui );
     if ( node )
     {
-        MapNode* mapNode = MapNode::findMapNode(node);
+        MapNode* mapNode = MapNode::get(node);
         if ( !mapNode )
             return -1;
 
-        if ( mapNode->getMap()->getNumElevationLayers() == 0 )
-            OE_WARN << "No elevation layers! Scaling will be very boring." << std::endl;
+        // attach the controller to the terrain.
+        app.scaler.setTerrainNode( mapNode->getTerrainEngine() );
 
-        // install the shader program and install our controller uniform:
-        osg::Group* root = new osg::Group();
-        root->setStateSet( createStateSet() );
-        root->getStateSet()->addUniform( verticalScale );
-        root->addChild( node );
-
-        viewer.setSceneData( root );
+        viewer.setSceneData( node );
         viewer.run();
     }
     else
     {
-        OE_NOTICE 
-            << "\nUsage: " << argv[0] << " file.earth" << std::endl
-            << MapNodeHelper().usage() << std::endl;
+        return usage("no earth file");
     }
 
     return 0;

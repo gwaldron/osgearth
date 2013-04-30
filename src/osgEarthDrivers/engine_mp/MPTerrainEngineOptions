@@ -21,10 +21,12 @@
 
 #include <osgEarth/Common>
 #include <osgEarth/TerrainOptions>
+#include <osgEarthSymbology/Color>
 
 namespace osgEarth { namespace Drivers
 {
     using namespace osgEarth;
+    using namespace osgEarth::Symbology;
 
     /**
      * Options for configuring the MP Engine driver.
@@ -39,7 +41,8 @@ namespace osgEarth { namespace Drivers
             _normalizeEdges( true ),
             _rangeMode     ( osg::LOD::DISTANCE_FROM_EYE_POINT ),
             _tilePixelSize ( 256 ),
-            _premultAlpha  ( false )
+            _premultAlpha  ( true ),
+            _color         ( Color::White )
         {
             setDriver( "mp" );
             fromConfig( _conf );
@@ -70,6 +73,9 @@ namespace osgEarth { namespace Drivers
         optional<bool>& premultipliedAlpha() { return _premultAlpha; }
         const optional<bool>& premultipliedAlpha() const { return _premultAlpha; }
 
+        optional<Color>& color() { return _color; }
+        const optional<Color>& color() const { return _color; }
+
     protected:
         virtual Config getConfig() const {
             Config conf = TerrainOptions::getConfig();
@@ -81,6 +87,7 @@ namespace osgEarth { namespace Drivers
             conf.updateIfSet( "range_mode", "PIXEL_SIZE_ON_SCREEN", _rangeMode, osg::LOD::PIXEL_SIZE_ON_SCREEN );
             conf.updateIfSet( "range_mode", "DISTANCE_FROM_EYE_POINT", _rangeMode, osg::LOD::DISTANCE_FROM_EYE_POINT);
             conf.updateIfSet( "premultiplied_alpha", _premultAlpha );
+            conf.updateIfSet( "color", _color );
 
             return conf;
         }
@@ -101,6 +108,7 @@ namespace osgEarth { namespace Drivers
             conf.getIfSet( "range_mode", "PIXEL_SIZE_ON_SCREEN", _rangeMode, osg::LOD::PIXEL_SIZE_ON_SCREEN );
             conf.getIfSet( "range_mode", "DISTANCE_FROM_EYE_POINT", _rangeMode, osg::LOD::DISTANCE_FROM_EYE_POINT);
             conf.getIfSet( "premultiplied_alpha", _premultAlpha );
+            conf.getIfSet( "color", _color );
         }
 
         optional<float>               _skirtRatio;
@@ -110,6 +118,7 @@ namespace osgEarth { namespace Drivers
         optional<osg::LOD::RangeMode> _rangeMode;
         optional<float>               _tilePixelSize;
         optional<bool>                _premultAlpha;
+        optional<Color>               _color;
     };
 
 } } // namespace osgEarth::Drivers

@@ -43,7 +43,7 @@ namespace osgEarth { namespace Annotation {
          * @param mapSRS
          *      The srs of the Map
          */
-        AddPointHandler(osgEarth::Features::Feature* feature, osgEarth::Features::FeatureListSource* source, const osgEarth::SpatialReference* mapSRS);
+        AddPointHandler(osgEarth::Features::Feature* feature, osgEarth::Features::FeatureSource* source, const osgEarth::SpatialReference* mapSRS);
 
         bool handle( const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& aa );
 
@@ -67,7 +67,7 @@ namespace osgEarth { namespace Annotation {
         osgGA::GUIEventAdapter::MouseButtonMask _mouseButton;
         bool _mouseDown;
         bool _firstMove;
-        osg::ref_ptr< osgEarth::Features::FeatureListSource > _source;
+        osg::ref_ptr< osgEarth::Features::FeatureSource > _source;
         osg::ref_ptr< osgEarth::Features::Feature > _feature;
         osg::ref_ptr<const SpatialReference> _mapSRS;
         osg::Node::NodeMask _intersectionMask;

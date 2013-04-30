@@ -1,5 +1,0 @@
-Qt Integration
-==============
-
-TBD.
-

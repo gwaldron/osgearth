@@ -17,6 +17,7 @@ SET(HEADERS_ROOT
     DataScanner
     DetailTexture
     EarthManipulator
+    ElevationMorph
     ExampleResources
     Export
     FeatureManipTool
@@ -43,6 +44,7 @@ SET(HEADERS_ROOT
     TMSBackFiller
     TMSPackager
     UTMGraticule
+    VerticalScale
     WFS
     WMS
 )
@@ -61,6 +63,7 @@ SET(SOURCES_ROOT
     DataScanner.cpp
     DetailTexture.cpp
     EarthManipulator.cpp
+    ElevationMorph.cpp
     ExampleResources.cpp
     FeatureManipTool.cpp
     FeatureQueryTool.cpp
@@ -83,6 +86,7 @@ SET(SOURCES_ROOT
     TMSBackFiller.cpp
     TMSPackager.cpp
     UTMGraticule.cpp
+    VerticalScale.cpp
     WFS.cpp
     WMS.cpp
 )
@@ -98,6 +102,7 @@ SET(HEADERS_COLORFILTER
     BrightnessContrastColorFilter
     CMYKColorFilter
     GammaColorFilter
+    GLSLColorFilter
     HSLColorFilter
     RGBColorFilter
     ChromaKeyColorFilter
@@ -109,6 +114,7 @@ SET(SOURCES_COLORFILTER
     BrightnessContrastColorFilter.cpp
     CMYKColorFilter.cpp
     GammaColorFilter.cpp
+    GLSLColorFilter.cpp
     HSLColorFilter.cpp
     RGBColorFilter.cpp
     ChromaKeyColorFilter.cpp

@@ -41,17 +41,9 @@ _publicStateSet   ( 0L )
     this->setName( key.str() );
 
     // born-on date uniform.
-    _born = new osg::Uniform(osg::Uniform::FLOAT, "oe_birthTime");
+    _born = new osg::Uniform(osg::Uniform::FLOAT, "oe_tile_birthtime");
     _born->set( -1.0f );
     this->getOrCreateStateSet()->addUniform( _born );
-
-    // TileKey uniform. Swap the Y index.
-    osg::Uniform* keyu = new osg::Uniform(osg::Uniform::FLOAT_VEC3, "oe_tilekey");
-    keyu->setDataVariance( osg::Object::STATIC );
-    unsigned tw, th;
-    key.getProfile()->getNumTiles(key.getLOD(), tw, th);
-    keyu->set( osg::Vec3f(key.getTileX(), th-key.getTileY()-1.0, key.getLOD()) );
-    this->getOrCreateStateSet()->addUniform( keyu );
 }
 
 
@@ -83,6 +75,20 @@ TileNode::compile( TileModelCompiler* compiler, bool releaseModel )
 
     this->removeChildren( 0, this->getNumChildren() );
     this->addChild( node );
+
+    // TileKey uniform. Swap the Y index.
+    osg::Uniform* keyu = new osg::Uniform(osg::Uniform::FLOAT_VEC4, "oe_tile_key");
+    keyu->setDataVariance( osg::Object::STATIC );
+    unsigned tw, th;
+    _key.getProfile()->getNumTiles(_key.getLOD(), tw, th);
+    
+    keyu->set( osg::Vec4f(
+        _key.getTileX(),
+        th-_key.getTileY()-1.0,
+        _key.getLOD(),
+        this->getBound().radius() ) );
+
+    this->getOrCreateStateSet()->addUniform( keyu );
 
     // release the memory associated with the tile model.
     if ( releaseModel )

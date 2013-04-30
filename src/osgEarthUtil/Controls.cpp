@@ -1874,6 +1874,17 @@ Grid::cell(int col, int row)
     return _rows[row][col];
 }
 
+Control*
+Grid::getControl(int col, int row)
+{
+    if ( row < (int)_rows.size() && col < (int)_rows[row].size() )
+    {
+        osg::ref_ptr<Control>& c = cell(col, row);
+        return c.get();
+    }
+    else return 0L;
+}
+
 void
 Grid::expandToInclude( int col, int row )
 {

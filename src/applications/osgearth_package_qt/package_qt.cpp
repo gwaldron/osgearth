@@ -103,6 +103,9 @@ int main(int argc, char** argv)
   if (views.size() > 0)
     mainView = views[0];
 
+  if (mainView.valid())
+    mainView->getCamera()->setNearFarRatio(0.00002);
+
   //create the SceneController, if no earth file is specified a blank
   //globe will be loaded
   osg::ArgumentParser args(&argc,argv);

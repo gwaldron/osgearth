@@ -43,7 +43,7 @@ _dataModelRevision   ( 0 )
         OE_INFO << LC << "CACHE-ONLY MODE activated from map" << std::endl;
     }
 
-    // if the map was a cache policy set, make this the system-wide default, UNLESS
+    // if the map has a cache policy set, make this the system-wide default, UNLESS
     // there ALREADY IS a registry default, in which case THAT will override THIS one.
     // (In other words, whichever one is set first wins. And of course, if the registry
     // has an override set, that will cancel out all of this.)
@@ -1090,10 +1090,11 @@ Map::sync( MapFrame& frame ) const
 
         if ( frame._parts & ELEVATION_LAYERS )
         {
-            if ( !frame._initialized )
-                frame._elevationLayers.reserve( _elevationLayers.size() );
-            frame._elevationLayers.clear();
-            std::copy( _elevationLayers.begin(), _elevationLayers.end(), std::back_inserter(frame._elevationLayers) );
+            frame._elevationLayers = _elevationLayers;
+            //if ( !frame._initialized )
+            //    frame._elevationLayers.reserve( _elevationLayers.size() );
+            //frame._elevationLayers.clear();
+            //std::copy( _elevationLayers.begin(), _elevationLayers.end(), std::back_inserter(frame._elevationLayers) );
             if ( _mapOptions.elevationTileSize().isSet() )
                 frame._elevationLayers.setExpressTileSize( *_mapOptions.elevationTileSize() );
         }

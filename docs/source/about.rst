@@ -1,8 +1,8 @@
 About the Project
 =================
 
-Introduction - what is osgEarth?
---------------------------------
+Introduction
+------------
 
 osgEarth_ is a 3D mapping SDK for OpenSceneGraph_ applications.
 It's different than traditional terrain engines in an important way:

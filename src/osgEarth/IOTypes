@@ -95,6 +95,10 @@ namespace osgEarth
         ReadResult( osg::Object* result, const Config& meta )
             : _code(RESULT_OK), _result(result), _meta(meta), _fromCache(false) { }
 
+        /** Construct a result with data, possible with an error code */
+        ReadResult( Code code, osg::Object* result, const Config& meta )
+            : _code(code), _result(result), _meta(meta), _fromCache(false) { }
+
         /** Copy construct */
         ReadResult( const ReadResult& rhs )
             : _code(rhs._code), _result(rhs._result.get()), _meta(rhs._meta), _fromCache(rhs._fromCache) { }
@@ -148,7 +152,7 @@ namespace osgEarth
                 code == RESULT_OK              ? "OK" :
                 code == RESULT_CANCELED        ? "Read canceled" :
                 code == RESULT_NOT_FOUND       ? "Target not found" :
-                code == RESULT_SERVER_ERROR    ? "Server error" :
+                code == RESULT_SERVER_ERROR    ? "Server reported error" :
                 code == RESULT_TIMEOUT         ? "Read timed out" :
                 code == RESULT_NO_READER       ? "No suitable ReaderWriter found" :
                 code == RESULT_READER_ERROR    ? "ReaderWriter error" :

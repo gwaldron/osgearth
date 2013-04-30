@@ -29,7 +29,7 @@ using namespace osgEarth::Util;
 namespace
 {
     const char* vs =
-        "uniform vec3  oe_tilekey; \n"
+        "uniform vec4  oe_tile_key; \n"
         "varying vec4  oe_layer_tilec; \n"
         "uniform float oe_dtex_L0; \n"
         "varying vec2  oe_dtex_tc; \n"
@@ -45,21 +45,21 @@ namespace
 
         "void oe_dtex_vertex(inout vec4 VertexMODEL) \n"
         "{ \n"
-        "    float dL = oe_tilekey.z - oe_dtex_L0; \n"
+        "    float dL = oe_tile_key.z - oe_dtex_L0; \n"
         "    float twoPowDeltaL = float(oe_dtex_ipow(2, int(abs(dL)))); \n"
         "    float factor = dL >= 0.0 ? twoPowDeltaL : 1.0/twoPowDeltaL; \n"
 
-        "    vec2 a = floor(oe_tilekey.xy / factor); \n"
+        "    vec2 a = floor(oe_tile_key.xy / factor); \n"
         "    vec2 b = a * factor; \n"
         "    vec2 c = (a+1.0) * factor; \n"
-        "    vec2 offset = (oe_tilekey.xy-b)/(c-b); \n"
+        "    vec2 offset = (oe_tile_key.xy-b)/(c-b); \n"
         "    vec2 scale = vec2(1.0/factor); \n"
 
         "    oe_dtex_tc = (oe_layer_tilec.st * scale) + offset; \n"
         "} \n";
 
     const char* fs =
-        "uniform vec3      oe_tilekey; \n"
+        "uniform vec4      oe_tile_key; \n"
         "uniform float     oe_dtex_L0; \n"
         "uniform sampler2D oe_dtex_tex; \n"
         "uniform float     oe_dtex_intensity; \n"
@@ -67,16 +67,16 @@ namespace
 
         "void oe_dtex_fragment(inout vec4 color) \n"
         "{ \n"
-        "    if ( oe_tilekey.z >= oe_dtex_L0 ) \n"
+        "    if ( oe_tile_key.z >= oe_dtex_L0 ) \n"
         "    { \n"
         "        vec4 texel = texture2D(oe_dtex_tex, oe_dtex_tc); \n"
-        "        if ( oe_tilekey.z >= oe_dtex_L0+3.0 ) \n"
+        "        if ( oe_tile_key.z >= oe_dtex_L0+3.0 ) \n"
         "        { \n"
         "            texel += texture2D(oe_dtex_tex, oe_dtex_tc*8.0)-0.5; \n"
-        "            if ( oe_tilekey.z >= oe_dtex_L0+6.0 ) \n"
+        "            if ( oe_tile_key.z >= oe_dtex_L0+6.0 ) \n"
         "            { \n"
         "                texel += texture2D(oe_dtex_tex, oe_dtex_tc*32.0)-0.5; \n"
-        "                if ( oe_tilekey.z >= oe_dtex_L0+9.0 ) \n"
+        "                if ( oe_tile_key.z >= oe_dtex_L0+9.0 ) \n"
         "                { \n"
         "                    texel += texture2D(oe_dtex_tex, oe_dtex_tc*64.0)-0.5; \n"
         "                } \n"
@@ -106,12 +106,15 @@ _intensity( 0.25f )
     _texture = new osg::Texture2D();
     _texture->setWrap( osg::Texture::WRAP_S, osg::Texture::REPEAT );
     _texture->setWrap( osg::Texture::WRAP_T, osg::Texture::REPEAT );
+    _texture->setFilter( osg::Texture::MIN_FILTER, osg::Texture::LINEAR );
+    _texture->setFilter( osg::Texture::MAG_FILTER, osg::Texture::LINEAR );
+    _texture->setResizeNonPowerOfTwoHint( false );
 }
 
 
 DetailTexture::~DetailTexture()
 {
-    //nop
+    setTerrainNode(0L);
 }
 
 
@@ -172,5 +175,6 @@ DetailTexture::setTerrainNode(osg::Node* node)
     else
     {
         //todo - remove
+        OE_WARN << LC << "Remove NYI!" << std::endl;
     }
 }

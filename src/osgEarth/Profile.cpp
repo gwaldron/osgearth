@@ -586,12 +586,15 @@ Profile::addIntersectingTiles(const GeoExtent& key_ext, std::vector<TileKey>& ou
 
     double keyWidth = key_ext.width();
     double keyHeight = key_ext.height();
-    double keyArea = keyWidth * keyHeight;
 
     // bail out if the key has a null extent. This might happen is the original key represents an
     // area in one profile that is out of bounds in this profile.
-    if ( keyArea <= 0.0 )
+    if ( keyWidth <= 0.0 && keyHeight <= 0.0 )
         return;
+
+    double keySpan = std::min( keyWidth, keyHeight );
+    double keyArea = keyWidth * keyHeight;
+    double keyAvg  = 0.5*(keyWidth+keyHeight);
 
     int destLOD = 1;
     double destTileWidth, destTileHeight;
@@ -619,8 +622,9 @@ Profile::addIntersectingTiles(const GeoExtent& key_ext, std::vector<TileKey>& ou
     {
         currLOD++;
         double w, h;
-        getTileDimensions(currLOD, w,h);
-        if ( w < keyWidth || h < keyHeight ) break;
+        getTileDimensions(currLOD, w, h);
+        if ( w < keyAvg || h < keyAvg ) break;
+        //if ( w < keyWidth || h < keyHeight ) break;
         //double a = w * h;
         //if (a < keyArea) break;
         destLOD = currLOD;

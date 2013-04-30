@@ -690,6 +690,8 @@ MapNode::traverse( osg::NodeVisitor& nv )
             MapNodeCullData* cullData = getCullData( cv->getCurrentCamera() );
             cv->setUserData( cullData );
 
+            cullData->_mapNode = this;
+
             // calculate altitude:
             osg::Vec3d eye = cv->getViewPoint();
             const SpatialReference* srs = getMapSRS();

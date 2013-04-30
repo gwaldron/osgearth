@@ -88,9 +88,6 @@ int main(int argc, char** argv)
     // create a viewer:
     osgViewer::Viewer viewer(arguments);
 
-    // Tell osgEarth to use the "mp" terrain driver.
-    osgEarth::Registry::instance()->setDefaultTerrainEngineDriverName( "mp" );
-
     // install our default manipulator (do this before calling load)
     viewer.setCameraManipulator( new EarthManipulator() );
 

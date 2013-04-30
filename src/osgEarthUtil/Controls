@@ -682,6 +682,8 @@ namespace osgEarth { namespace Util { namespace Controls
         T* setControl( int col, int row, T* control ) {
             return dynamic_cast<T*>( setControlImpl(col, row, control)); }
 
+        Control* getControl(int col, int row);
+
         unsigned getNumRows() const { return _rows.size(); }
         unsigned getNumColumns() const { return _colWidths.size(); }
 

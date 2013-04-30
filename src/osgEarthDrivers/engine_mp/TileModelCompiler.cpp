@@ -264,7 +264,7 @@ namespace
      * Calculates the sample rate and allocates all the vertex, normal, and color
      * arrays for the tile.
      */
-    void setupGeometryAttributes( Data& d, double sampleRatio )
+    void setupGeometryAttributes( Data& d, double sampleRatio, const osg::Vec4& color )
     {
         d.numRows = 8;
         d.numCols = 8;
@@ -316,7 +316,7 @@ namespace
 
         // allocate and assign color
         osg::Vec4Array* colors = new osg::Vec4Array(1);
-        (*colors)[0].set(1.0f,1.0f,1.0f,1.0f);
+        (*colors)[0] = color;
         d.surface->setColorArray( colors );
         d.surface->setColorBinding( osg::Geometry::BIND_OVERALL );
 
@@ -363,7 +363,7 @@ namespace
             if ( locator )
             {
                 // if we have no mask records, we can use the texture coordinate array cache.
-                if ( d.maskRecords.size() == 0 )
+                if ( d.maskRecords.size() == 0 && locator->isLinear() )
                 {
                     const GeoExtent& locex = locator->getDataExtent();
                     const GeoExtent& keyex = d.model->_tileKey.getExtent();
@@ -418,7 +418,7 @@ namespace
                     r._skirtTexCoords = skirtTexCoords.get();
                 }
 
-                else // if ( d.maskRecords.size() > 0 )
+                else
                 {
                     // cannot use the tex coord array cache if there are masking records.
                     r._texCoords = new osg::Vec2Array();
@@ -433,8 +433,11 @@ namespace
                     r._skirtTexCoords->reserve( d.numVerticesInSkirt );
                     r._ownsSkirtTexCoords = true;
 
-                    r._stitchTexCoords = new osg::Vec2Array();
-                    r._stitchSkirtTexCoords = new osg::Vec2Array();
+                    if ( d.maskRecords.size() > 0 )
+                    {
+                        r._stitchTexCoords = new osg::Vec2Array();
+                        r._stitchSkirtTexCoords = new osg::Vec2Array();
+                    }
                 }
 
                 r._locator = locator;
@@ -558,9 +561,10 @@ namespace
 
                     (*d.normals).push_back(model_one);
 
+                    // calculate the previous LOD height value for
+                    // odd-numbered posts.
                     float oldHeightValue = heightValue;
 
-#if 1
                     if ( i>0 && j>0 && i<d.numCols-1 && j<d.numRows-1 )
                     {
                         bool oddCol = i%2 == 1;
@@ -587,31 +591,21 @@ namespace
                                 hf->getHeight( i_equiv, j_equiv+1 ) );
                         }
                     }
-#else
-                    if ( i>0 && j>0 && i<d.numCols-1 && j<d.numRows-1 && (i%2 == 1 || j%2 == 1) )
-                    {
-                        float h;
-                        if ( HeightFieldUtils::getInterpolatedHeight( 
-                                elevationLayer->getHeightField(), 
-                                i_equiv, j_equiv,
-                                h ) )
-                        {
-                            oldHeightValue = h;
-                        }
-                    }
-#endif
 
+                    // first attribute set has the unit extrusion vector and the
+                    // raw height value.
                     (*d.surfaceAttribs).push_back( osg::Vec4f(
                         model_one.x(),
                         model_one.y(),
                         model_one.z(),
                         heightValue) );
 
+                    // second attribute set has the old height value in "w"
                     (*d.surfaceAttribs2).push_back( osg::Vec4f(
-                        oldHeightValue,
                         0.0f,
                         0.0f,
-                        0.0f ) );
+                        0.0f,
+                        oldHeightValue ) );
                 }
             }
         }
@@ -1169,6 +1163,12 @@ namespace
         d.skirt->setNormalArray( skirtNormals );
         d.skirt->setNormalBinding( osg::Geometry::BIND_PER_VERTEX );
 
+        if ( d.surface->getColorArray() )
+        {
+            d.skirt->setColorArray( d.surface->getColorArray() );
+            d.skirt->setColorBinding( osg::Geometry::BIND_OVERALL );
+        }
+
         d.skirt->setVertexAttribArray    (osg::Drawable::ATTRIBUTE_6, skirtAttribs );
         d.skirt->setVertexAttribBinding  (osg::Drawable::ATTRIBUTE_6, osg::Geometry::BIND_PER_VERTEX);
         d.skirt->setVertexAttribNormalize(osg::Drawable::ATTRIBUTE_6, false);
@@ -1176,7 +1176,6 @@ namespace
         d.skirt->setVertexAttribArray    (osg::Drawable::ATTRIBUTE_7, skirtAttribs2 );
         d.skirt->setVertexAttribBinding  (osg::Drawable::ATTRIBUTE_7, osg::Geometry::BIND_PER_VERTEX);
         d.skirt->setVertexAttribNormalize(osg::Drawable::ATTRIBUTE_7, false);
-
 
         // GW: not sure why this break stuff is here...?
 #if 0
@@ -1723,9 +1722,10 @@ namespace
             tex->setMaxAnisotropy( 16.0f );
             tex->setResizeNonPowerOfTwoHint(false);
             tex->setFilter( osg::Texture::MAG_FILTER, osg::Texture::LINEAR );
-            tex->setFilter( osg::Texture::MIN_FILTER, osg::Texture::NEAREST_MIPMAP_LINEAR );
+            tex->setFilter( osg::Texture::MIN_FILTER, osg::Texture::LINEAR );
             tex->setWrap( osg::Texture::WRAP_S, osg::Texture::CLAMP_TO_EDGE );
             tex->setWrap( osg::Texture::WRAP_T, osg::Texture::CLAMP_TO_EDGE );
+            tex->setWrap( osg::Texture::WRAP_R, osg::Texture::CLAMP_TO_EDGE );
 
             unsigned order = r->_layer.getOrder();
 
@@ -1846,7 +1846,7 @@ TileModelCompiler::compile(const TileModel* model,
     if ( sampleRatio <= 0.0f )
         sampleRatio = osg::clampBetween( model->_tileKey.getLevelOfDetail()/20.0, 0.0625, 1.0 );
 
-    setupGeometryAttributes( d, sampleRatio );
+    setupGeometryAttributes( d, sampleRatio, *_options.color() );
 
     // set up the list of layers to render and their shared arrays.
     setupTextureAttributes( d, _cache );

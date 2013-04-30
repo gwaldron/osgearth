@@ -98,8 +98,6 @@ osgGA::GUIEventAdapter* EarthMultiTouchManipulator::handleMultiTouchDrag(osgGA::
 
 bool EarthMultiTouchManipulator::handle( const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& us )
 {
-
-    bool handled(false);
     
     osg::ref_ptr<osgGA::GUIEventAdapter> touchAdpt = NULL;
 

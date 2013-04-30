@@ -5,4 +5,7 @@ Reference Guides
    :maxdepth: 1
    
    earthfile
+   drivers/index
    symbology
+   colorfilters
+   envvars

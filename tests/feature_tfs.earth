@@ -1,0 +1,45 @@
+<!--
+osgEarth Sample - TFS
+
+This example shows how to use the TFS driver.
+-->
+<map name="TFS" type="geocentric" version="2">
+
+    <model name="buildings" driver="feature_geom">
+    
+        <features name="buildings" driver="tfs">		                
+			<url>http://readymap.org/readymap/features/tfs/4/</url>
+            <format>json</format>            
+        </features>
+        
+        <layout>        
+            <tile_size_factor>5.0</tile_size_factor>
+        </layout>
+        
+        <styles>                
+            <style type="text/css">
+                buildings {
+                    extrusion-height:  15;
+                    extrusion-flatten: true;
+                    fill:              #ff7f2f;
+                    altitude-clamping: terrain;
+                }            
+            </style>
+        </styles>  
+        
+        <lighting>true</lighting>
+    </model>
+                    
+ 
+
+    <image name="esri imagery" driver="arcgis">
+        <url>http://server.arcgisonline.com/ArcGIS/rest/services/ESRI_Imagery_World_2D/MapServer</url>
+        <nodata_image>http://server.arcgisonline.com/ArcGIS/rest/services/ESRI_Imagery_World_2D/MapServer/tile/100/0/0.jpeg</nodata_image>
+    </image>
+    
+    <external>
+        <sky hours="20.0"/>
+        <viewpoint name="Mexico Buildings" height="0" lat="19.42" long="-99.163" pitch="-89" range="5000"/>
+    </external>
+  
+</map>

@@ -1,0 +1,65 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+* Copyright 2008-2012 Pelican Mapping
+* http://osgearth.org
+*
+* osgEarth is free software; you can redistribute it and/or modify
+* it under the terms of the GNU Lesser General Public License as published by
+* the Free Software Foundation; either version 2 of the License, or
+* (at your option) any later version.
+*
+* This program is distributed in the hope that it will be useful,
+* but WITHOUT ANY WARRANTY; without even the implied warranty of
+* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+* GNU Lesser General Public License for more details.
+*
+* You should have received a copy of the GNU Lesser General Public License
+* along with this program.  If not, see <http://www.gnu.org/licenses/>
+*/
+#ifndef OSGEARTHUTIL_ELEVATION_MORPH_H
+#define OSGEARTHUTIL_ELEVATION_MORPH_H
+
+#include <osgEarthUtil/Common>
+#include <osg/Uniform>
+#include <osg/Node>
+#include <osg/observer_ptr>
+
+namespace osgEarth { namespace Util
+{
+    /**
+     * Controller that applies an elevation LOD morphing shader
+     * to the terrain.
+     */
+    class OSGEARTHUTIL_EXPORT ElevationMorph
+    {
+    public:
+        /** construct a new detail texture controller */
+        ElevationMorph();
+        virtual ~ElevationMorph();
+
+        /** Attach the controller to the terrain renderer. Set to
+            NULL to detach. */
+        void setTerrainNode( osg::Node* node );
+
+        /** Sets the delay (in seconds) between the time the tile appears
+            and when it starts morphing */
+        void setDelay( float value );
+        float getDelay() const { return _delay; }
+
+        /** Sets the duration of the morph */
+        void setDuration( float value );
+        float getDuration() const { return _duration; }
+
+    protected:
+        osg::observer_ptr<osg::Node> _terrain;
+
+        float                        _delay;
+        float                        _duration;
+
+        osg::ref_ptr<osg::Uniform>   _delayUniform;
+        osg::ref_ptr<osg::Uniform>   _durationUniform;
+    };
+
+} } // namespace osgEarth::Util
+
+#endif // OSGEARTHUTIL_ELEVATION_MORPH_H

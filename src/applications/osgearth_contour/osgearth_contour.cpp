@@ -47,7 +47,6 @@ const char* vertexShader =
     "uniform   float contour_xferMin; \n"
     "uniform   float contour_xferRange; \n"
     "uniform   float contour_xferMax; \n"
-    "varying   float contour_lookup; \n"
 
     "void setupContour(inout vec4 VertexModel) \n"
     "{ \n"
@@ -91,6 +90,9 @@ osg::StateSet* createStateSet( osg::TransferFunction1D* xfer, int unit )
 
     // Install the shaders. We also bind osgEarth's elevation data attribute, which the 
     // terrain engine automatically generates at the specified location.
+    // (By the way: if you want to draw image layers on top of the contoured terrain,
+    // set the "priority" parameter to setFunction() to a negative number so that it draws
+    // before the terrain's layers.)
     VirtualProgram* vp = new VirtualProgram();
     vp->setFunction( "setupContour", vertexShader,   ShaderComp::LOCATION_VERTEX_MODEL);
     vp->setFunction( "colorContour", fragmentShader, ShaderComp::LOCATION_FRAGMENT_COLORING );
@@ -111,10 +113,6 @@ int main(int argc, char** argv)
 
     // create a viewer:
     osgViewer::Viewer viewer(arguments);
-
-    // Tell osgEarth to use the "quadtree" terrain driver by default.
-    // Elevation data attribution is only available in this driver!
-    osgEarth::Registry::instance()->setDefaultTerrainEngineDriverName( "quadtree" );
 
     // install our default manipulator (do this before calling load)
     viewer.setCameraManipulator( new EarthManipulator() );
@@ -144,12 +142,11 @@ int main(int argc, char** argv)
         int unit;
         mapNode->getTerrainEngine()->getTextureCompositor()->reserveTextureImageUnit(unit);
 
-        // install the contour shaders:
-        osg::Group* root = new osg::Group();
-        root->setStateSet( createStateSet(xfer.get(), unit) );
-        root->addChild( node );
+        // install the contour shaders on the terrain engine because we don't want
+        // them affecting any model layers.
+        mapNode->getTerrainEngine()->setStateSet( createStateSet(xfer.get(), unit) );
         
-        viewer.setSceneData( root );
+        viewer.setSceneData( node );
         viewer.run();
     }
     else

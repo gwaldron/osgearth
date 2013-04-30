@@ -536,7 +536,7 @@ TextureCompositor::init()
     {
         _tech = TerrainOptions::COMPOSITING_MULTITEXTURE_GPU;
         _impl = new TextureCompositorMultiTexture( true, _options );
-        OE_INFO << LC << "Compositing technique = MULTITEXTURE/GPU" << std::endl;
+        //OE_INFO << LC << "Compositing technique = MULTITEXTURE/GPU" << std::endl;
     }
 
 #if OSG_VERSION_GREATER_OR_EQUAL( 2, 9, 8 )
@@ -547,7 +547,7 @@ TextureCompositor::init()
     {
         _tech = TerrainOptions::COMPOSITING_TEXTURE_ARRAY;
         _impl = new TextureCompositorTexArray( _options );
-        OE_INFO << LC << "Compositing technique = TEXTURE ARRAY" << std::endl;
+        //OE_INFO << LC << "Compositing technique = TEXTURE ARRAY" << std::endl;
     }
 
 #endif // OSG_VERSION_GREATER_OR_EQUAL( 2, 9, 8 )
@@ -558,7 +558,7 @@ TextureCompositor::init()
     {
         _tech = TerrainOptions::COMPOSITING_MULTITEXTURE_FFP;
         _impl = new TextureCompositorMultiTexture( false, _options );
-        OE_INFO << LC << "Compositing technique = MULTITEXTURE/FFP" << std::endl;
+        //OE_INFO << LC << "Compositing technique = MULTITEXTURE/FFP" << std::endl;
     }
 
     // Fallback of last resort. The implementation is actually a NO-OP for multipass mode.
@@ -566,6 +566,6 @@ TextureCompositor::init()
     {
         _tech = TerrainOptions::COMPOSITING_MULTIPASS;
         _impl = 0L;
-        OE_INFO << LC << "Compositing technique = MULTIPASS" << std::endl;
+        //OE_INFO << LC << "Compositing technique = MULTIPASS" << std::endl;
     }
 }

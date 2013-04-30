@@ -56,6 +56,9 @@ namespace osgEarth
 
         virtual bool isEquivalentTo( const GeoLocator& rhs ) const;
 
+        // generates linear (evenly-spaced) coordinates
+        virtual bool isLinear() const { return true; }
+
     public: // better-sounding functions.
 
         bool modelToUnit(const osg::Vec3d& model, osg::Vec3d& unit) const {
@@ -100,6 +103,9 @@ namespace osgEarth
         //virtual GeoLocator* cloneAndCrop( const osgTerrain::Locator& prototype, const GeoExtent& displayExtent );
 
         virtual GeoLocator* getGeographicFromGeocentric() const;
+
+        // does NOT generate linear coordinates
+        virtual bool isLinear() const { return false; }
 
     private:
         GeoExtent _geoDataExtent;

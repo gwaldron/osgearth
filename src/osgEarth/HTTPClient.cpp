@@ -803,30 +803,30 @@ HTTPClient::doGet( const HTTPRequest& request, const osgDB::Options* options, Pr
     }
 
     HTTPResponse response( response_code );
-   
-    if ( response_code == 200L && res != CURLE_ABORTED_BY_CALLBACK && res != CURLE_OPERATION_TIMEDOUT )
+    
+    // read the response content type:
+    char* content_type_cp;
+    curl_easy_getinfo( _curl_handle, CURLINFO_CONTENT_TYPE, &content_type_cp );
+    if ( content_type_cp == NULL )
+    {
+        OE_WARN << LC
+            << "NULL Content-Type (protocol violation) " 
+            << "URL=" << request.getURL() << std::endl;
+        return HTTPResponse(0L);
+    }
+    response._mimeType = content_type_cp;
+
+
+    if ( /*response_code == 200L &&*/ res != CURLE_ABORTED_BY_CALLBACK && res != CURLE_OPERATION_TIMEDOUT )
     {
         // check for multipart content:
-        char* content_type_cp;
-        curl_easy_getinfo( _curl_handle, CURLINFO_CONTENT_TYPE, &content_type_cp );
-        if ( content_type_cp == NULL )
-        {
-            OE_WARN << LC
-                << "NULL Content-Type (protocol violation) " 
-                << "URL=" << request.getURL() << std::endl;
-            return HTTPResponse(0L);
-        }
-
-        // NOTE:
-        //   WCS 1.1 specified a "multipart/mixed" response, but ArcGIS Server gives a "multipart/related"
-        //   content type ...
+        //char* content_type_cp;
+        //curl_easy_getinfo( _curl_handle, CURLINFO_CONTENT_TYPE, &content_type_cp );
 
         std::string content_type( content_type_cp );
 
-        //OE_DEBUG << LC << "content-type = \"" << content_type << "\"" << std::endl;
-
-        if ( content_type.length() > 9 && ::strstr( content_type.c_str(), "multipart" ) == content_type.c_str() )
-        //if ( content_type == "multipart/mixed; boundary=wcs" ) //todo: parse this.
+        if (response._mimeType.length() > 9 && 
+            ::strstr( response._mimeType.c_str(), "multipart" ) == response._mimeType.c_str() )
         {
             OE_DEBUG << LC << "detected multipart data; decoding..." << std::endl;
 
@@ -836,12 +836,12 @@ HTTPClient::doGet( const HTTPRequest& request, const osgDB::Options* options, Pr
         else
         {
             // store headers that we care about
-            part->_headers[IOMetadata::CONTENT_TYPE] = content_type;
+            part->_headers[IOMetadata::CONTENT_TYPE] = response._mimeType;
 
             response._parts.push_back( part.get() );
         }
     }
-    else if (res == CURLE_ABORTED_BY_CALLBACK || res == CURLE_OPERATION_TIMEDOUT)
+    else  /*if (res == CURLE_ABORTED_BY_CALLBACK || res == CURLE_OPERATION_TIMEDOUT) */
     {        
         //If we were aborted by a callback, then it was cancelled by a user
         response._cancelled = true;
@@ -849,11 +849,11 @@ HTTPClient::doGet( const HTTPRequest& request, const osgDB::Options* options, Pr
 
     // Store the mime-type, if any. (Note: CURL manages the buffer returned by
     // this call.)
-    char* ctbuf = NULL;
-    if ( curl_easy_getinfo(_curl_handle, CURLINFO_CONTENT_TYPE, &ctbuf) == 0 && ctbuf )
-    {
-        response._mimeType = ctbuf;
-    }
+    //char* ctbuf = NULL;
+    //if ( curl_easy_getinfo(_curl_handle, CURLINFO_CONTENT_TYPE, &ctbuf) == 0 && ctbuf )
+    //{
+    //    response._mimeType = ctbuf;
+    //}
 
     return response;
 }
@@ -1127,6 +1127,17 @@ HTTPClient::doReadString(const std::string&    location,
     {
         result = ReadResult( new StringObject(response.getPartAsString(0)), response.getHeadersAsConfig());
     }
+
+    else if ( response.getCode() >= 400 && response.getCode() < 500 && response.getCode() != 404 )
+    {
+        // for request errors, return an error result with the part data intact
+        // so the user can parse it as needed. We only do this for readString.
+        result = ReadResult( 
+            ReadResult::RESULT_SERVER_ERROR,
+            new StringObject(response.getPartAsString(0)), 
+            response.getHeadersAsConfig() );
+    }
+
     else
     {
         result = ReadResult(

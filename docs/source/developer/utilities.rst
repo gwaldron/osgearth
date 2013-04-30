@@ -71,12 +71,6 @@ Example::
 .. _Military Grid Reference System: http://en.wikipedia.org/wiki/Military_grid_reference_system
 
 
-Graticules
-----------
-
-LineOfSight
------------
-
 MouseCoordsTool
 ---------------
 
@@ -113,14 +107,4 @@ mouse to a *Qt* status bar::
 For your convenience, ``MouseCoordsTool`` also comes with a stock callback that will
 print the coords to ``osgEarthUtil::Controls::LabelControl``. You can even pass a
 ``LabelControl`` to the contructor to make it even easier.
-
-
-ObjectLocator
--------------
-
-SkyNode
--------
-
-TerrainProfile
---------------
 

@@ -1,5 +1,5 @@
-Earth File Reference Guide
---------------------------
+Earth File Reference
+====================
 
 Map
 ~~~
@@ -294,7 +294,7 @@ tiling scheme that it should use to render map tiles.
 .. parsed-literal::
 
     <profile srs    = "+proj=utm +zone=17 +ellps=GRS80 +datum=NAD83 +units=m +no_defs"
-             vdatum = "nad83"
+             vdatum = "egm96"
              xmin   = "560725.500"
              xmax   = "573866.500"
              ymin   = "4385762.500"

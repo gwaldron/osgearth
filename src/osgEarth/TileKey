@@ -161,6 +161,8 @@ namespace osgEarth
 
         unsigned int getTileX() const { return _x; }
         unsigned int getTileY() const { return _y; }
+
+        unsigned getQuadrant() const;
         
 		static inline int getLOD(const osgTerrain::TileID& id)
 		{

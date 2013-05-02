@@ -81,6 +81,19 @@ TileKey::getTileXY(unsigned int& out_tile_x,
     out_tile_y = _y;
 }
 
+unsigned
+TileKey::getQuadrant() const
+{
+    if ( _lod == 0 )
+        return 0;
+    bool xsame = ((_x >> 1) << 1) == _x;
+    bool ysame = ((_y >> 1) << 1) == _y;
+    return 
+        xsame && ysame ? 0 :
+        xsame          ? 2 :
+        ysame          ? 1 : 3;
+}
+
 osgTerrain::TileID
 TileKey::getTileId() const
 {

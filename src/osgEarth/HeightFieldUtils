@@ -102,6 +102,7 @@ namespace osgEarth
          */
         static osg::HeightField* resampleHeightField(
             osg::HeightField* input,
+            const GeoExtent& inputEx,
             int newX,
             int newY,
             ElevationInterpolation interp = INTERP_BILINEAR );

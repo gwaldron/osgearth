@@ -565,30 +565,49 @@ namespace
                     // odd-numbered posts.
                     float oldHeightValue = heightValue;
 
-                    if ( i>0 && j>0 && i<d.numCols-1 && j<d.numRows-1 )
+                    // only works with odd-numbered tile size
+                    if ( d.model->_tileKey.getLOD() > 0 && (d.numCols&1) && (d.numRows&1) )
                     {
                         bool oddCol = i%2 == 1;
                         bool oddRow = j%2 == 1;
 
-                        osg::HeightField* hf = elevationLayer->getHeightField();
+                        osg::HeightField* parent = d.model->_elevationData.getParent();
+                        if ( parent )
+                        {
+                            unsigned q = d.model->_tileKey.getQuadrant();
+                            int xoffset = q == 1 || q == 3 ? parent->getNumColumns()/2 : 0;
+                            int yoffset = q == 0 || q == 1 ? parent->getNumRows()/2 : 0;
+                            int ip = xoffset + i/2;
+                            int jp = yoffset + j/2;
 
-                        if ( oddCol && oddRow )
-                        {
-                            oldHeightValue = 0.5 * (
-                                hf->getHeight( i_equiv-1, j_equiv-1 ) +
-                                hf->getHeight( i_equiv+1, j_equiv+1 ) );
-                        }
-                        else if ( oddCol )
-                        {
-                            oldHeightValue = 0.5 * (
-                                hf->getHeight( i_equiv-1, j_equiv ) +
-                                hf->getHeight( i_equiv+1, j_equiv ) );
-                        }
-                        else if ( oddRow )
-                        {
-                            oldHeightValue = 0.5 * (
-                                hf->getHeight( i_equiv, j_equiv-1 ) +
-                                hf->getHeight( i_equiv, j_equiv+1 ) );
+                            if ( oddCol && oddRow )
+                            {
+                                float h1 = parent->getHeight( ip,   jp );
+                                float h2 = parent->getHeight( ip+1, jp+1 );
+                                float h3 = parent->getHeight( ip+1, jp );
+                                float h4 = parent->getHeight( ip,   jp+1 );
+
+                                if ( fabs(h2-h1) < fabs(h4-h3) )
+                                    oldHeightValue = 0.5 * (h1+h2);
+                                else
+                                    oldHeightValue = 0.5 * (h3+h4);
+                            }
+                            else if ( oddCol )
+                            {
+                                oldHeightValue = 0.5 * (
+                                    parent->getHeight( ip,   jp ) +
+                                    parent->getHeight( ip+1, jp ) );
+                            }
+                            else if ( oddRow )
+                            {
+                                oldHeightValue = 0.5 * (
+                                    parent->getHeight( ip, jp ) +
+                                    parent->getHeight( ip, jp+1 ) );
+                            }
+                            else
+                            {
+                                oldHeightValue = parent->getHeight( ip, jp );
+                            }
                         }
                     }
 
@@ -1281,7 +1300,7 @@ namespace
                         osg::Vec3f& v01 = (*d.surfaceVerts)[i01];
                         osg::Vec3f& v11 = (*d.surfaceVerts)[i11];
 
-                        if (!optimizeTriangleOrientation || (e00-e11)<fabsf(e01-e10))
+                        if (!optimizeTriangleOrientation || fabsf(e00-e11)<fabsf(e01-e10))
                         {
                             elements->addElement(i01);
                             elements->addElement(i00);

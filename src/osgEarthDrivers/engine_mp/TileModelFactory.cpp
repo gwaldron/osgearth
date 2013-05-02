@@ -188,8 +188,10 @@ namespace
                 hfLayer->setLocator( GeoLocator::createForKey( _key, mapInfo ) );
 
                 _model->_elevationData = TileModel::ElevationData(hfLayer, isFallback);
-                
+
+#if 1
                 if ( *_opt->normalizeEdges() )
+#endif
                 {
                     // next, query the neighboring tiles to get adjacency information.
                     for( int x=-1; x<=1; x++ )
@@ -202,8 +204,7 @@ namespace
                                 if ( nk.valid() )
                                 {
                                     if (_hfCache->getOrCreateHeightField( *_mapf, nk, true, hf, &isFallback) )
-                                    //if ( _mapf->getHeightField(nk, true, hf, &isFallback) )
-                                    {               
+                                    {
                                         if ( mapInfo.isPlateCarre() )
                                         {
                                             HeightFieldUtils::scaleHeightFieldToDegrees( hf.get() );
@@ -213,6 +214,20 @@ namespace
                                     }
                                 }
                             }
+                        }
+                    }
+
+                    // parent too.
+                    if ( _key.getLOD() > 0 )
+                    {
+                        if ( _hfCache->getOrCreateHeightField( *_mapf, _key.createParentKey(), true, hf, &isFallback) )
+                        {
+                            if ( mapInfo.isPlateCarre() )
+                            {
+                                HeightFieldUtils::scaleHeightFieldToDegrees( hf.get() );
+                            }
+
+                            _model->_elevationData.setParent( hf.get() );
                         }
                     }
                 }

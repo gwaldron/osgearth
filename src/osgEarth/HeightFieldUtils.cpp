@@ -304,6 +304,7 @@ HeightFieldUtils::createSubSample(osg::HeightField* input, const GeoExtent& inpu
 
 osg::HeightField*
 HeightFieldUtils::resampleHeightField(osg::HeightField*      input,
+                                      const GeoExtent&       extent,
                                       int                    newColumns, 
                                       int                    newRows,
                                       ElevationInterpolation interp)
@@ -315,8 +316,8 @@ HeightFieldUtils::resampleHeightField(osg::HeightField*      input,
         return input;
         //return new osg::HeightField( *input, osg::CopyOp::DEEP_COPY_ALL );
 
-    double spanX = (input->getNumColumns()-1) * input->getXInterval();
-    double spanY = (input->getNumRows()-1) * input->getYInterval();
+    double spanX = extent.width(); //(input->getNumColumns()-1) * input->getXInterval();
+    double spanY = extent.height(); //(input->getNumRows()-1) * input->getYInterval();
     const osg::Vec3& origin = input->getOrigin();
 
     double stepX = spanX/(double)(newColumns-1);

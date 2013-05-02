@@ -623,6 +623,7 @@ ElevationLayerVector::createHeightField(const TileKey&                  key,
         {
             out_result = HeightFieldUtils::resampleHeightField(
                 out_result.get(),
+                key.getExtent(),
                 *_expressTileSize,
                 *_expressTileSize,
                 interpolation );

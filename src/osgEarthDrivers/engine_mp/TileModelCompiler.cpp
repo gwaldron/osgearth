@@ -561,27 +561,34 @@ namespace
 
                     (*d.normals).push_back(model_one);
 
-                    // calculate the previous LOD height value for
-                    // odd-numbered posts.
+                    // Calculate and store the "old height", i.e the height value from
+                    // the parent LOD.
                     float oldHeightValue = heightValue;
 
-                    // only works with odd-numbered tile size
+                    // This only works if the tile size is an odd number in both directions.
                     if ( d.model->_tileKey.getLOD() > 0 && (d.numCols&1) && (d.numRows&1) )
                     {
-                        bool oddCol = i%2 == 1;
-                        bool oddRow = j%2 == 1;
-
+                        // Access the parent tile:
                         osg::HeightField* parent = d.model->_elevationData.getParent();
                         if ( parent )
                         {
+                            // calculate the indicies of the same location in the 
+                            // parent heightfield:
                             unsigned q = d.model->_tileKey.getQuadrant();
                             int xoffset = q == 1 || q == 3 ? parent->getNumColumns()/2 : 0;
                             int yoffset = q == 0 || q == 1 ? parent->getNumRows()/2 : 0;
                             int ip = xoffset + i/2;
                             int jp = yoffset + j/2;
 
+                            // the interpolation will be different depending on whether
+                            // the col and row numbers are odd:
+                            bool oddCol = i%2 == 1;
+                            bool oddRow = j%2 == 1;
+
                             if ( oddCol && oddRow )
                             {
+                                // find the diagonal with the lesser slope and
+                                // interpolate along that diagonal:
                                 float h1 = parent->getHeight( ip,   jp );
                                 float h2 = parent->getHeight( ip+1, jp+1 );
                                 float h3 = parent->getHeight( ip+1, jp );
@@ -594,18 +601,21 @@ namespace
                             }
                             else if ( oddCol )
                             {
+                                // interpolate horizontally:
                                 oldHeightValue = 0.5 * (
                                     parent->getHeight( ip,   jp ) +
                                     parent->getHeight( ip+1, jp ) );
                             }
                             else if ( oddRow )
                             {
+                                // interpolate vertically:
                                 oldHeightValue = 0.5 * (
                                     parent->getHeight( ip, jp ) +
                                     parent->getHeight( ip, jp+1 ) );
                             }
                             else
                             {
+                                // use the parent's value.
                                 oldHeightValue = parent->getHeight( ip, jp );
                             }
                         }
@@ -1354,21 +1364,26 @@ namespace
         if (recalcNormals && normalizeEdges)
         {            
             OE_DEBUG << "Normalizing edges" << std::endl;
+
             //Compute the edge normals if we have neighbor data
             //Get all the neighbors
-            osg::ref_ptr< osg::HeightField > w_neighbor  = d.model->_elevationData.getNeighbor( -1, 0 );
-            osg::ref_ptr< osg::HeightField > e_neighbor  = d.model->_elevationData.getNeighbor( 1, 0 );            
-            osg::ref_ptr< osg::HeightField > s_neighbor  = d.model->_elevationData.getNeighbor( 0, 1 );
-            osg::ref_ptr< osg::HeightField > n_neighbor  = d.model->_elevationData.getNeighbor( 0, -1 );
-            
-            //Recalculate the west side
-            if (w_neighbor.valid() && w_neighbor->getNumColumns() == d.originalNumCols && w_neighbor->getNumRows() == d.originalNumRows)            
-            {                                     
-                osg::ref_ptr< osg::Vec3Array > boundaryVerts = new osg::Vec3Array();
-                boundaryVerts->reserve( 2 * d.numRows );
+            osg::HeightField* w_neighbor  = d.model->_elevationData.getNeighbor( -1, 0 );
+            osg::HeightField* e_neighbor  = d.model->_elevationData.getNeighbor( 1, 0 );
+            osg::HeightField* s_neighbor  = d.model->_elevationData.getNeighbor( 0, 1 );
+            osg::HeightField* n_neighbor  = d.model->_elevationData.getNeighbor( 0, -1 );
 
-                std::vector< float > boundaryElevations;
-                boundaryElevations.reserve( 2 * d.numRows );
+            // Utility arrays:
+            std::vector<osg::Vec3> boundaryVerts;
+            boundaryVerts.reserve( 2 * std::max(d.numRows, d.numCols) );
+
+            std::vector< float > boundaryElevations;
+            boundaryElevations.reserve( 2 * std::max(d.numRows, d.numCols) );
+
+            //Recalculate the west side
+            if (w_neighbor && w_neighbor->getNumColumns() == d.originalNumCols && w_neighbor->getNumRows() == d.originalNumRows)
+            {
+                boundaryVerts.clear();
+                boundaryElevations.clear();
                 
                 //Compute the verts for the west side
                 for (int j = 0; j < (int)d.numRows; j++)
@@ -1383,13 +1398,13 @@ namespace
 
                         //TODO:  Should probably use an interpolated method here
                         float heightValue = w_neighbor->getHeight( i_equiv, j_equiv );
-                        ndc.z() = heightValue;                        
+                        ndc.z() = heightValue;
 
                         osg::Vec3d model;
                         d.model->_tileLocator->unitToModel( ndc, model );
                         osg::Vec3d v = model - d.centerModel;
-                        boundaryVerts->push_back( v );
-                        boundaryElevations.push_back( heightValue );                        
+                        boundaryVerts.push_back( v );
+                        boundaryElevations.push_back( heightValue );
                     }
                 }   
 
@@ -1416,48 +1431,48 @@ namespace
                     i00 = d.indices[i00];
                     i01 = d.indices[i01];
 
-                    int baseIndex = 2 * j;
-                    osg::Vec3f& v00 = (*boundaryVerts)[baseIndex    ];
-                    osg::Vec3f& v10 = (*boundaryVerts)[baseIndex + 1];
-                    osg::Vec3f& v01 = (*boundaryVerts)[baseIndex + 2];
-                    osg::Vec3f& v11 = (*boundaryVerts)[baseIndex + 3];
+                    if ( i00 >= 0 && i01 >= 0 )
+                    {
+                        int baseIndex = 2 * j;
+                        osg::Vec3f& v00 = boundaryVerts[baseIndex    ];
+                        osg::Vec3f& v10 = boundaryVerts[baseIndex + 1];
+                        osg::Vec3f& v01 = boundaryVerts[baseIndex + 2];
+                        osg::Vec3f& v11 = boundaryVerts[baseIndex + 3];
 
-                    float e00 = boundaryElevations[baseIndex];
-                    float e10 = boundaryElevations[baseIndex + 1];
-                    float e01 = boundaryElevations[baseIndex + 2];
-                    float e11 = boundaryElevations[baseIndex + 3];
+                        float e00 = boundaryElevations[baseIndex];
+                        float e10 = boundaryElevations[baseIndex + 1];
+                        float e01 = boundaryElevations[baseIndex + 2];
+                        float e11 = boundaryElevations[baseIndex + 3];
 
-                   
-                    if (!optimizeTriangleOrientation || (e00-e11)<fabsf(e01-e10))
-                    {                            
-                        osg::Vec3 normal1 = (v00-v01) ^ (v11-v01);
-                        (*d.normals)[i01] += normal1;                        
+                       
+                        if (!optimizeTriangleOrientation || fabsf(e00-e11)<fabsf(e01-e10))
+                        {                            
+                            osg::Vec3 normal1 = (v00-v01) ^ (v11-v01);
+                            (*d.normals)[i01] += normal1;                        
 
-                        osg::Vec3 normal2 = (v10-v00) ^ (v11-v00);
-                        (*d.normals)[i00] += normal2;                        
-                        (*d.normals)[i01] += normal2;                                                
-                    }
-                    else
-                    {                            
-                        osg::Vec3 normal1 = (v00-v01) ^ (v10-v01);
-                        (*d.normals)[i00] += normal1;                                               
+                            osg::Vec3 normal2 = (v10-v00) ^ (v11-v00);
+                            (*d.normals)[i00] += normal2;                        
+                            (*d.normals)[i01] += normal2;                                                
+                        }
+                        else
+                        {                            
+                            osg::Vec3 normal1 = (v00-v01) ^ (v10-v01);
+                            (*d.normals)[i00] += normal1;                                               
 
-                        osg::Vec3 normal2 = (v10-v01) ^ (v11-v01);
-                        (*d.normals)[i00] += normal2;                                               
-                        (*d.normals)[i01] += normal2;                        
+                            osg::Vec3 normal2 = (v10-v01) ^ (v11-v01);
+                            (*d.normals)[i00] += normal2;                                               
+                            (*d.normals)[i01] += normal2;                        
+                        }
                     }
                 }
             }
 
                         
             //Recalculate the east side
-            if (e_neighbor.valid() && e_neighbor->getNumColumns() == d.originalNumCols && e_neighbor->getNumRows() == d.originalNumRows)            
-            {                           
-                osg::ref_ptr< osg::Vec3Array > boundaryVerts = new osg::Vec3Array();
-                boundaryVerts->reserve( 2 * d.numRows );
-
-                std::vector< float > boundaryElevations;
-                boundaryElevations.reserve( 2 * d.numRows );
+            if (e_neighbor && e_neighbor->getNumColumns() == d.originalNumCols && e_neighbor->getNumRows() == d.originalNumRows)            
+            {
+                boundaryVerts.clear();
+                boundaryElevations.clear();
 
                 //Compute the verts for the east side
                 for (int j = 0; j < (int)d.numRows; j++)
@@ -1471,19 +1486,19 @@ namespace
                         
                         //TODO:  Should probably use an interpolated method here
                         float heightValue = e_neighbor->getHeight( i_equiv, j_equiv );
-                        ndc.z() = heightValue;                        
+                        ndc.z() = heightValue;
 
                         osg::Vec3d model;
                         d.model->_tileLocator->unitToModel( ndc, model );
                         osg::Vec3d v = model - d.centerModel;
-                        boundaryVerts->push_back( v );
-                        boundaryElevations.push_back( heightValue );                        
+                        boundaryVerts.push_back( v );
+                        boundaryElevations.push_back( heightValue );
                     }
                 }   
 
                 //The boundary verts are now populated, so go through and triangulate them add add the normals to the existing normal array
                 for (int j = 0; j < (int)d.numRows-1; j++)
-                {                    
+                {
                     int i00;
                     int i01;
                     int i = d.numCols-1;
@@ -1502,47 +1517,47 @@ namespace
                     i00 = d.indices[i00];
                     i01 = d.indices[i01];
 
-                    int baseIndex = 2 * j;
-                    osg::Vec3f& v00 = (*boundaryVerts)[baseIndex    ];
-                    osg::Vec3f& v10 = (*boundaryVerts)[baseIndex + 1];
-                    osg::Vec3f& v01 = (*boundaryVerts)[baseIndex + 2];
-                    osg::Vec3f& v11 = (*boundaryVerts)[baseIndex + 3];
+                    if ( i00 >= 0 && i01 >= 0 )
+                    {
+                        int baseIndex = 2 * j;
+                        osg::Vec3f& v00 = boundaryVerts[baseIndex    ];
+                        osg::Vec3f& v10 = boundaryVerts[baseIndex + 1];
+                        osg::Vec3f& v01 = boundaryVerts[baseIndex + 2];
+                        osg::Vec3f& v11 = boundaryVerts[baseIndex + 3];
 
-                    float e00 = boundaryElevations[baseIndex];
-                    float e10 = boundaryElevations[baseIndex + 1];
-                    float e01 = boundaryElevations[baseIndex + 2];
-                    float e11 = boundaryElevations[baseIndex + 3];
+                        float e00 = boundaryElevations[baseIndex];
+                        float e10 = boundaryElevations[baseIndex + 1];
+                        float e01 = boundaryElevations[baseIndex + 2];
+                        float e11 = boundaryElevations[baseIndex + 3];
 
-                   
-                    if (!optimizeTriangleOrientation || (e00-e11)<fabsf(e01-e10))
-                    {                            
-                        osg::Vec3 normal1 = (v00-v01) ^ (v11-v01);                       
-                        (*d.normals)[i00] += normal1;                        
-                        (*d.normals)[i01] += normal1;
+                       
+                        if (!optimizeTriangleOrientation || fabsf(e00-e11)<fabsf(e01-e10))
+                        {                            
+                            osg::Vec3 normal1 = (v00-v01) ^ (v11-v01);                       
+                            (*d.normals)[i00] += normal1;                        
+                            (*d.normals)[i01] += normal1;
 
-                        osg::Vec3 normal2 = (v10-v00) ^ (v11-v00);                        
-                        (*d.normals)[i00] += normal2;                                                
-                    }
-                    else
-                    {                            
-                        osg::Vec3 normal1 = (v00-v01) ^ (v10-v01);
-                        (*d.normals)[i00] += normal1;                        
-                        (*d.normals)[i01] += normal1;                                                                        
+                            osg::Vec3 normal2 = (v10-v00) ^ (v11-v00);                        
+                            (*d.normals)[i00] += normal2;                                                
+                        }
+                        else
+                        {                            
+                            osg::Vec3 normal1 = (v00-v01) ^ (v10-v01);
+                            (*d.normals)[i00] += normal1;                        
+                            (*d.normals)[i01] += normal1;                                                                        
 
-                        osg::Vec3 normal2 = (v10-v01) ^ (v11-v01);
-                        (*d.normals)[i01] += normal2;                        
+                            osg::Vec3 normal2 = (v10-v01) ^ (v11-v01);
+                            (*d.normals)[i01] += normal2;                        
+                        }
                     }
                 }
             }
 
             //Recalculate the north side
-            if (n_neighbor.valid() && n_neighbor->getNumColumns() == d.originalNumCols && n_neighbor->getNumRows() == d.originalNumRows)            
-            {                 
-                osg::ref_ptr< osg::Vec3Array > boundaryVerts = new osg::Vec3Array();
-                boundaryVerts->reserve( 2 * d.numCols );
-
-                std::vector< float > boundaryElevations;
-                boundaryElevations.reserve( 2 * d.numCols );
+            if (n_neighbor && n_neighbor->getNumColumns() == d.originalNumCols && n_neighbor->getNumRows() == d.originalNumRows)            
+            {
+                boundaryVerts.clear();
+                boundaryElevations.clear();
 
                 //Compute the verts for the north side               
                 for (int j = 0; j <= 1; j++)
@@ -1556,13 +1571,13 @@ namespace
                         
                         //TODO:  Should probably use an interpolated method here
                         float heightValue = n_neighbor->getHeight( i_equiv, j_equiv );
-                        ndc.z() = heightValue;                        
+                        ndc.z() = heightValue;
 
                         osg::Vec3d model;
                         d.model->_tileLocator->unitToModel( ndc, model );
                         osg::Vec3d v = model - d.centerModel;
-                        boundaryVerts->push_back( v );
-                        boundaryElevations.push_back( heightValue );                        
+                        boundaryVerts.push_back( v );
+                        boundaryElevations.push_back( heightValue );
                     }
                 }   
 
@@ -1587,47 +1602,48 @@ namespace
                     i00 = d.indices[i00];
                     i10 = d.indices[i10];
 
-                    int baseIndex = i;
-                    osg::Vec3f& v00 = (*boundaryVerts)[baseIndex    ];
-                    osg::Vec3f& v10 = (*boundaryVerts)[baseIndex + 1];
-                    osg::Vec3f& v01 = (*boundaryVerts)[baseIndex + d.numCols];
-                    osg::Vec3f& v11 = (*boundaryVerts)[baseIndex + d.numCols + 1];
 
-                    float e00 = boundaryElevations[baseIndex];
-                    float e10 = boundaryElevations[baseIndex + 1];
-                    float e01 = boundaryElevations[baseIndex + d.numCols];
-                    float e11 = boundaryElevations[baseIndex + d.numCols + 1];
+                    if ( i00 >= 0 && i10 >= 0 )
+                    {
+                        int baseIndex = i;
+                        osg::Vec3f& v00 = boundaryVerts[baseIndex    ];
+                        osg::Vec3f& v10 = boundaryVerts[baseIndex + 1];
+                        osg::Vec3f& v01 = boundaryVerts[baseIndex + d.numCols];
+                        osg::Vec3f& v11 = boundaryVerts[baseIndex + d.numCols + 1];
 
-                   
-                    if (!optimizeTriangleOrientation || (e00-e11)<fabsf(e01-e10))
-                    {                            
-                        osg::Vec3 normal1 = (v00-v01) ^ (v11-v01);                       
-                        (*d.normals)[i00] += normal1;                        
-                        (*d.normals)[i10] += normal1;
+                        float e00 = boundaryElevations[baseIndex];
+                        float e10 = boundaryElevations[baseIndex + 1];
+                        float e01 = boundaryElevations[baseIndex + d.numCols];
+                        float e11 = boundaryElevations[baseIndex + d.numCols + 1];
 
-                        osg::Vec3 normal2 = (v10-v00) ^ (v11-v00);                        
-                        (*d.normals)[i10] += normal2;                                                
-                    }
-                    else
-                    {                            
-                        osg::Vec3 normal1 = (v00-v01) ^ (v10-v01);
-                        (*d.normals)[i00] += normal1;                                                
+                       
+                        if (!optimizeTriangleOrientation || fabsf(e00-e11)<fabsf(e01-e10))
+                        {                            
+                            osg::Vec3 normal1 = (v00-v01) ^ (v11-v01);                       
+                            (*d.normals)[i00] += normal1;                        
+                            (*d.normals)[i10] += normal1;
 
-                        osg::Vec3 normal2 = (v10-v01) ^ (v11-v01);
-                        (*d.normals)[i00] += normal2;                                                
-                        (*d.normals)[i10] += normal2;                        
+                            osg::Vec3 normal2 = (v10-v00) ^ (v11-v00);                        
+                            (*d.normals)[i10] += normal2;                                                
+                        }
+                        else
+                        {                            
+                            osg::Vec3 normal1 = (v00-v01) ^ (v10-v01);
+                            (*d.normals)[i00] += normal1;                                                
+
+                            osg::Vec3 normal2 = (v10-v01) ^ (v11-v01);
+                            (*d.normals)[i00] += normal2;                                                
+                            (*d.normals)[i10] += normal2;                        
+                        }
                     }
                 }
             }
 
             //Recalculate the south side
-            if (s_neighbor.valid() && s_neighbor->getNumColumns() == d.originalNumCols && s_neighbor->getNumRows() == d.originalNumRows)            
-            {                
-                osg::ref_ptr< osg::Vec3Array > boundaryVerts = new osg::Vec3Array();
-                boundaryVerts->reserve( 2 * d.numCols );
-
-                std::vector< float > boundaryElevations;
-                boundaryElevations.reserve( 2 * d.numCols );
+            if (s_neighbor && s_neighbor->getNumColumns() == d.originalNumCols && s_neighbor->getNumRows() == d.originalNumRows)            
+            {
+                boundaryVerts.clear();
+                boundaryElevations.clear();
 
                 //Compute the verts for the south side               
                 for (int j = (int)d.numRows-2; j <= (int)d.numRows-1; j++)
@@ -1641,13 +1657,13 @@ namespace
                         
                         //TODO:  Should probably use an interpolated method here
                         float heightValue = s_neighbor->getHeight( i_equiv, j_equiv );                        
-                        ndc.z() = heightValue;                        
+                        ndc.z() = heightValue;
 
                         osg::Vec3d model;
                         d.model->_tileLocator->unitToModel( ndc, model );
                         osg::Vec3d v = model - d.centerModel;
-                        boundaryVerts->push_back( v );
-                        boundaryElevations.push_back( heightValue );                        
+                        boundaryVerts.push_back( v );
+                        boundaryElevations.push_back( heightValue ); 
                     }
                 }   
 
@@ -1674,35 +1690,39 @@ namespace
                     i00 = d.indices[i00];
                     i10 = d.indices[i10];
 
-                    int baseIndex = i;
-                    osg::Vec3f& v00 = (*boundaryVerts)[baseIndex    ];
-                    osg::Vec3f& v10 = (*boundaryVerts)[baseIndex + 1];
-                    osg::Vec3f& v01 = (*boundaryVerts)[baseIndex + d.numCols];
-                    osg::Vec3f& v11 = (*boundaryVerts)[baseIndex + d.numCols + 1];
 
-                    float e00 = boundaryElevations[baseIndex];
-                    float e10 = boundaryElevations[baseIndex + 1];
-                    float e01 = boundaryElevations[baseIndex + d.numCols];
-                    float e11 = boundaryElevations[baseIndex + d.numCols + 1];
+                    if ( i00 >= 0 && i10 >= 0 )
+                    {
+                        int baseIndex = i;
+                        osg::Vec3f& v00 = boundaryVerts[baseIndex    ];
+                        osg::Vec3f& v10 = boundaryVerts[baseIndex + 1];
+                        osg::Vec3f& v01 = boundaryVerts[baseIndex + d.numCols];
+                        osg::Vec3f& v11 = boundaryVerts[baseIndex + d.numCols + 1];
 
-                   
-                    if (!optimizeTriangleOrientation || (e00-e11)<fabsf(e01-e10))
-                    {                            
-                        osg::Vec3 normal1 = (v00-v01) ^ (v11-v01);                       
-                        (*d.normals)[i00] += normal1;                                                
+                        float e00 = boundaryElevations[baseIndex];
+                        float e10 = boundaryElevations[baseIndex + 1];
+                        float e01 = boundaryElevations[baseIndex + d.numCols];
+                        float e11 = boundaryElevations[baseIndex + d.numCols + 1];
 
-                        osg::Vec3 normal2 = (v10-v00) ^ (v11-v00);                        
-                        (*d.normals)[i00] += normal2;                                                
-                        (*d.normals)[i10] += normal2;                                                
-                    }
-                    else
-                    {                            
-                        osg::Vec3 normal1 = (v00-v01) ^ (v10-v01);
-                        (*d.normals)[i00] += normal1;                                                
-                        (*d.normals)[i10] += normal1;                                                
+                       
+                        if (!optimizeTriangleOrientation || fabsf(e00-e11)<fabsf(e01-e10))
+                        {                            
+                            osg::Vec3 normal1 = (v00-v01) ^ (v11-v01);                       
+                            (*d.normals)[i00] += normal1;                                                
 
-                        osg::Vec3 normal2 = (v10-v01) ^ (v11-v01);                        
-                        (*d.normals)[i10] += normal2;                        
+                            osg::Vec3 normal2 = (v10-v00) ^ (v11-v00);                        
+                            (*d.normals)[i00] += normal2;                                                
+                            (*d.normals)[i10] += normal2;                                                
+                        }
+                        else
+                        {                            
+                            osg::Vec3 normal1 = (v00-v01) ^ (v10-v01);
+                            (*d.normals)[i00] += normal1;                                                
+                            (*d.normals)[i10] += normal1;                                                
+
+                            osg::Vec3 normal2 = (v10-v01) ^ (v11-v01);                        
+                            (*d.normals)[i10] += normal2;                        
+                        }
                     }
                 }
             }            

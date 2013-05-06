@@ -75,10 +75,11 @@ void
 ImageLayerOptions::fromConfig( const Config& conf )
 {
     conf.getIfSet( "nodata_image", _noDataImageFilename );
-    conf.getIfSet( "opacity", _opacity );
-    conf.getIfSet( "min_range", _minRange );
-    conf.getIfSet( "max_range", _maxRange );
+    conf.getIfSet( "opacity",      _opacity );
+    conf.getIfSet( "min_range",    _minRange );
+    conf.getIfSet( "max_range",    _maxRange );
     conf.getIfSet( "lod_blending", _lodBlending );
+    conf.getIfSet( "shared",       _shared );
 
     if ( conf.hasValue( "transparent_color" ) )
         _transparentColor = stringToColor( conf.value( "transparent_color" ), osg::Vec4ub(0,0,0,0));
@@ -96,10 +97,11 @@ ImageLayerOptions::getConfig( bool isolate ) const
     Config conf = TerrainLayerOptions::getConfig( isolate );
 
     conf.updateIfSet( "nodata_image", _noDataImageFilename );
-    conf.updateIfSet( "opacity", _opacity );
-    conf.updateIfSet( "min_range", _minRange );
-    conf.updateIfSet( "max_range", _maxRange );
+    conf.updateIfSet( "opacity",      _opacity );
+    conf.updateIfSet( "min_range",    _minRange );
+    conf.updateIfSet( "max_range",    _maxRange );
     conf.updateIfSet( "lod_blending", _lodBlending );
+    conf.updateIfSet( "shared",       _shared );
 
     if (_transparentColor.isSet())
         conf.update("transparent_color", colorToString( _transparentColor.value()));

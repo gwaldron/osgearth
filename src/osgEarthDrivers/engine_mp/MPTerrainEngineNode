@@ -134,7 +134,7 @@ namespace osgEarth_engine_mp
         osg::Timer _timer;
         unsigned   _tileCount;
         double     _tileCreationTime;
-        int        _textureImageUnit;
+        int        _imageUnit;
 
         osg::Uniform* _verticalScaleUniform;
 

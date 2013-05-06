@@ -117,6 +117,11 @@ int main(int argc, char** argv)
         if ( !mapNode )
             return -1;
 
+        // bind a texture image unit for our detail texture.
+        int unit = 1;
+        if ( mapNode->getTerrainEngine()->getTextureCompositor()->reserveTextureImageUnit(unit) )
+            app.dt.setImageUnit( unit );
+
         // attach the detailer to the terrain.
         app.dt.setTerrainNode( mapNode->getTerrainEngine() );
 

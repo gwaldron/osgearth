@@ -340,6 +340,7 @@ TextureCompositor::reserveTextureImageUnit( int& out_unit )
             {
                 out_unit = i;
                 _reservedUnits.insert( i );
+                OE_INFO << LC << "Reserved image unit " << i << std::endl;
                 return true;
             }
         }
@@ -353,6 +354,7 @@ void
 TextureCompositor::releaseTextureImageUnit( int unit )
 {
     _reservedUnits.erase( unit );
+    OE_INFO << LC << "Released image unit " << unit << std::endl;
 
     if ( _tech == TerrainOptions::COMPOSITING_MULTITEXTURE_GPU )
     {

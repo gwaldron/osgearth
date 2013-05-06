@@ -64,12 +64,12 @@ namespace osgEarth_engine_mp
         mutable osg::ref_ptr<osg::Uniform>   _layerUIDUniform;
         mutable osg::ref_ptr<osg::Uniform>   _layerOrderUniform;
         mutable osg::ref_ptr<osg::Uniform>   _opacityUniform;
-        int                                  _textureImageUnit;
+        int                                  _imageUnit;
 
     public:
         
         // construct a new MPGeometry.
-        MPGeometry(const Map* map, int textureImageUnit);
+        MPGeometry(const Map* map, int primaryImageUnit);
 
         // render all passes of the geometry.
         void renderPrimitiveSets(osg::State& state, bool usingVBOs) const;

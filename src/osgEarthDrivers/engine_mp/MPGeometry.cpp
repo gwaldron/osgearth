@@ -26,10 +26,10 @@ using namespace osgEarth;
 
 //----------------------------------------------------------------------------
 
-MPGeometry::MPGeometry(const Map* map, int textureImageUnit) : 
+MPGeometry::MPGeometry(const Map* map, int imageUnit) : 
 osg::Geometry    ( ), 
-_map             (map, Map::IMAGE_LAYERS),
-_textureImageUnit( textureImageUnit )
+_map             ( map, Map::IMAGE_LAYERS ),
+_imageUnit       ( imageUnit )
 {
     _opacityUniform = new osg::Uniform( osg::Uniform::FLOAT, "oe_layer_opacity" );
     _opacityUniform->set( 1.0f );
@@ -94,8 +94,28 @@ MPGeometry::renderPrimitiveSets(osg::State& state,
         float prev_opacity        = -1.0f;
         float prev_alphaThreshold = -1.0f;
 
-        // activate the image unit.
-        state.setActiveTextureUnit( _textureImageUnit );
+        // first bind any shared layers
+        // TODO: optimize by pre-storing shared indexes
+        for(unsigned i=0; i<_layers.size(); ++i)
+        {
+            const Layer& layer = _layers[i];
+
+            // a "shared" layer binds to a secondary texture unit so that other layers
+            // can see it and use it.
+            if ( layer._imageLayer->isShared() )
+            {
+                int sharedUnit = 3; // layer._imageLayer->shareImageUnit().get();
+                {
+                    state.setActiveTextureUnit( sharedUnit );
+                    state.setTexCoordPointer( sharedUnit, layer._texCoords.get() );
+                    // bind the texture for this layer to the active share unit.
+                    layer._tex->apply( state );
+                }
+            }
+        }
+
+        // track the active image unit.
+        int activeImageUnit = -1;
 
         // interate over all the image layers
         for(unsigned i=0; i<_layers.size(); ++i)
@@ -103,15 +123,24 @@ MPGeometry::renderPrimitiveSets(osg::State& state,
             const Layer& layer = _layers[i];
 
             if ( layer._imageLayer->getVisible() )
-            {
+            {       
+                // activate the visible unit if necessary:
+                if ( activeImageUnit != _imageUnit )
+                {
+                    state.setActiveTextureUnit( _imageUnit );
+                    activeImageUnit = _imageUnit;
+                }
+
                 // bind the texture for this layer:
                 layer._tex->apply( state );
 
                 // bind the texture coordinates for this layer.
                 // TODO: can probably optimize this by sharing or using texture matrixes.
                 // State::setTexCoordPointer does some redundant work under the hood.
-                state.setTexCoordPointer( _textureImageUnit,   layer._texCoords.get() );
-                state.setTexCoordPointer( _textureImageUnit+1, layer._tileCoords.get() );
+                state.setTexCoordPointer( _imageUnit, layer._texCoords.get() );
+
+                //todo: move this outside the loop
+                state.setTexCoordPointer( _imageUnit+1, layer._tileCoords.get() );
 
                 // apply uniform values:
                 if ( pcp )

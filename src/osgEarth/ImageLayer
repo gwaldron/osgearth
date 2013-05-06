@@ -93,6 +93,19 @@ namespace osgEarth
         ColorFilterChain& colorFilters() { return _colorFilters; }
         const ColorFilterChain& colorFilters() const { return _colorFilters; }
 
+        /**
+         * A shared image layer is bound to its own texture image units at render
+         * so that all layers have access to its sampler.
+         */
+        optional<bool>& shared() { return _shared; }
+        const optional<bool>& shared() const { return _shared; }
+
+        /*
+        optional<int>& sharedUnitBinding() { return _sharedUnitBinding; }
+        const optional<int>& sharedUnitBinding() const { return _sharedUnitBinding; }
+        */
+
+
     public:
 
         virtual Config getConfig() const { return getConfig(false); }
@@ -110,6 +123,7 @@ namespace osgEarth
         optional<URI>         _noDataImageFilename;
         optional<bool>        _lodBlending;
         ColorFilterChain      _colorFilters;
+        optional<bool>        _shared;
     };
 
     //--------------------------------------------------------------------
@@ -196,7 +210,6 @@ namespace osgEarth
         /** Override: see TerrainLayer */
         virtual void setTargetProfileHint( const Profile* profile );
 
-
         /**
          * Add a color filter (to the end of the chain)
          */
@@ -231,6 +244,14 @@ namespace osgEarth
 
         float getMaxVisibleRange() const { return *_runtimeOptions.maxVisibleRange();}
         void setMaxVisibleRange( float maxVisibleRange );
+
+        // whether this layer is marked for render sharing
+        bool isShared() const { return *_runtimeOptions.shared() == true; }
+
+        // when isShared() == true, the engine will call this function to bind the
+        // shared layer to a texture image unit.
+        optional<int>& shareImageUnit() { return _shareImageUnit; }
+        const optional<int>& shareImageUnit() const { return _shareImageUnit; }
 
 
     public: // methods
@@ -274,6 +295,7 @@ namespace osgEarth
         osg::ref_ptr<TileSource::ImageOperation> _preCacheOp;
         osg::ref_ptr<osg::Image>                 _emptyImage;
         ImageLayerCallbackList                   _callbacks;
+        optional<int>                            _shareImageUnit;
 
         virtual void fireCallback( TerrainLayerCallbackMethodPtr method );
         virtual void fireCallback( ImageLayerCallbackMethodPtr method );

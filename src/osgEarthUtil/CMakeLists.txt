@@ -38,7 +38,6 @@ SET(HEADERS_ROOT
     RTree
     SkyNode
     SpatialData
-    SpatialIndexing
     StarData
     TerrainProfile
     TFS
@@ -82,7 +81,6 @@ SET(SOURCES_ROOT
     PolyhedralLineOfSight.cpp
     RadialLineOfSight.cpp
     SpatialData.cpp
-    SpatialIndexing.cpp
     SkyNode.cpp
     TerrainProfile.cpp
     TFS.cpp

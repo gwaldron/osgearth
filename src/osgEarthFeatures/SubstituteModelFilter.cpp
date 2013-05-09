@@ -62,7 +62,8 @@ _style                ( style ),
 _cluster              ( false ),
 _useDrawInstanced     ( false ),
 _merge                ( true ),
-_normalScalingRequired( false )
+_normalScalingRequired( false ),
+_instanceCache        ( false )     // cache per object so MT not required
 {
     //NOP
 }
@@ -76,11 +77,14 @@ SubstituteModelFilter::findResource(const URI&            uri,
     // find the corresponding marker in the cache
     InstanceResource* instance = 0L;
 
+    //OE_INFO << LC << "Looking for: " << uri.full() << std::endl;
+
     InstanceCache::Record rec;
     if ( _instanceCache.get(uri, rec) )
     {
         // found it in the cache:
         instance = rec.value();
+        //OE_INFO << LC << "   found it in the cache." << std::endl;
     }
     else if ( _resourceLib.valid() )
     {
@@ -90,7 +94,8 @@ SubstituteModelFilter::findResource(const URI&            uri,
     else
     {
         // create it on the fly:
-        OE_DEBUG << "New resource (not in the cache!)" << std::endl;
+        //OE_INFO << LC << "   new resource; make it and cache it" << std::endl;
+        OE_INFO << LC << "New resource: " << uri.full() << std::endl;
         instance = symbol->createResource();
         instance->uri() = uri;
         _instanceCache.insert( uri, instance );
@@ -166,18 +171,6 @@ SubstituteModelFilter::process(const FeatureList&           features,
         }
         
         osg::Matrixd rotationMatrix;
-#if 0
-        if ( symbol->orientation().isSet() )
-        {
-            osg::Vec3d hpr = *symbol->orientation();
-            //Rotation in HPR
-            //Apply the rotation            
-            rotationMatrix.makeRotate( 
-                osg::DegreesToRadians(hpr.y()), osg::Vec3(1,0,0),
-                osg::DegreesToRadians(hpr.x()), osg::Vec3(0,0,1),
-                osg::DegreesToRadians(hpr.z()), osg::Vec3(0,1,0) );
-        }
-#endif
 
         if ( modelSymbol && modelSymbol->heading().isSet() )
         {

@@ -30,6 +30,7 @@
 #include <osg/Texture1D>
 #include <osg/Texture2D>
 #include <osg/Texture3D>
+#include <osg/TextureRectangle>
 #include <osg/TexEnv>
 #include <osg/TexGen>
 #include <osgDB/FileNameUtils>
@@ -532,6 +533,7 @@ ShaderGenerator::processGeometry( osg::StateSet* ss, osg::ref_ptr<osg::StateSet>
                     fragBody << INDENT "texel = texture2D(" SAMPLER << t << ", " TEX_COORD << t << ".xy);\n";
                     replacement->getOrCreateUniform( Stringify() << SAMPLER << t, osg::Uniform::SAMPLER_2D )->set( t );
                 }
+
 #else // embosser
                 else if ( dynamic_cast<osg::Texture2D*>(tex) )
                 {
@@ -553,6 +555,29 @@ ShaderGenerator::processGeometry( osg::StateSet* ss, osg::ref_ptr<osg::StateSet>
                     replacement->getOrCreateUniform( Stringify() << SAMPLER << t, osg::Uniform::SAMPLER_2D )->set( t );
                 }
 #endif
+
+#if 0 // works, but requires a higher version of GL?
+                else if ( dynamic_cast<osg::TextureRectangle*>(tex) )
+                {
+                    fragHead << "uniform sampler2Drect " SAMPLER << t << ";\n";
+                    fragBody << INDENT "texel = texture2Drect(" SAMPLER << t << ", " TEX_COORD << t << ".xy);\n";
+                    replacement->getOrCreateUniform( Stringify() << SAMPLER << t, osg::Uniform::SAMPLER_2D_RECT )->set( t );
+                }
+#endif
+                // doesn't work. why?
+                else if ( dynamic_cast<osg::TextureRectangle*>(tex) )
+                {
+                    osg::Image* image = static_cast<osg::TextureRectangle*>(tex)->getImage();
+
+                    vertBody 
+                        << INDENT << TEX_COORD << t << ".x /= " << (image->s()-1) << ".0;\n"
+                        << INDENT << TEX_COORD << t << ".y /= " << (image->t()-1) << ".0;\n";
+
+                    fragHead << "uniform sampler2D " SAMPLER << t << ";\n";
+                    fragBody << INDENT "texel = texture2D(" SAMPLER << t << ", " TEX_COORD << t << ".xy);\n";
+                    replacement->getOrCreateUniform( Stringify() << SAMPLER << t, osg::Uniform::SAMPLER_2D )->set( t );
+                }
+
                 else if ( dynamic_cast<osg::Texture3D*>(tex) )
                 {
                     fragHead << "uniform sampler3D " SAMPLER << t << ";\n";

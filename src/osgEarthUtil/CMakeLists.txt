@@ -24,6 +24,7 @@ SET(HEADERS_ROOT
     FeatureQueryTool
     Formatter
     GeodeticGraticule
+    HTM
     LatLongFormatter
     LineOfSight
     LinearLineOfSight
@@ -34,8 +35,10 @@ SET(HEADERS_ROOT
     ObjectLocator
     PolyhedralLineOfSight
     RadialLineOfSight
+    RTree
     SkyNode
     SpatialData
+    SpatialIndexing
     StarData
     TerrainProfile
     TFS
@@ -68,6 +71,7 @@ SET(SOURCES_ROOT
     FeatureManipTool.cpp
     FeatureQueryTool.cpp
     GeodeticGraticule.cpp
+    HTM.cpp
     LatLongFormatter.cpp
     LinearLineOfSight.cpp
     MeasureTool.cpp
@@ -78,6 +82,7 @@ SET(SOURCES_ROOT
     PolyhedralLineOfSight.cpp
     RadialLineOfSight.cpp
     SpatialData.cpp
+    SpatialIndexing.cpp
     SkyNode.cpp
     TerrainProfile.cpp
     TFS.cpp

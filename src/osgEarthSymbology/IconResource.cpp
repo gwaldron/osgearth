@@ -135,7 +135,7 @@ IconResource::mergeConfig( const Config& conf )
 Config
 IconResource::getConfig() const
 {
-    Config conf = Resource::getConfig();
+    Config conf = InstanceResource::getConfig();
     conf.key() = "icon";
     //nop
     return conf;

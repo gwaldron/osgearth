@@ -56,7 +56,7 @@ namespace osgEarth { namespace Symbology
         /**
          * Fetches the StateSet implementation corresponding to a Skin.
          */
-        osg::StateSet* getStateSet( SkinResource* skin );
+        bool getStateSet( SkinResource* skin, osg::ref_ptr<osg::StateSet>& output );
 
         /**
          * Get the statistics collected from the skin cache.
@@ -67,26 +67,28 @@ namespace osgEarth { namespace Symbology
          * Gets a node corresponding to a marker.
          * @deprecated
          */
-        osg::Node* getMarkerNode( MarkerResource* marker );
+        bool getMarkerNode( MarkerResource* marker, osg::ref_ptr<osg::Node>& output );
 
         /**
          * Gets a node corresponding to an instance resource.
          */
-        osg::Node* getInstanceNode( InstanceResource* instance );
+        bool getInstanceNode( InstanceResource* instance, osg::ref_ptr<osg::Node>& output );
 
     protected:
         osg::ref_ptr<const osgDB::Options> _dbOptions;
         bool                               _threadSafe;
-        Threading::ReadWriteMutex          _mutex;
 
-        typedef LRUCache<SkinResource*, osg::ref_ptr<osg::StateSet> > SkinCache;
+        typedef LRUCache<std::string, osg::ref_ptr<osg::StateSet> > SkinCache;
         SkinCache _skinCache;
+        Threading::ReadWriteMutex _skinMutex;
 
-        typedef LRUCache<MarkerResource*, osg::ref_ptr<osg::Node> > MarkerCache;
+        typedef LRUCache<std::string, osg::ref_ptr<osg::Node> > MarkerCache;
         MarkerCache _markerCache;
+        Threading::ReadWriteMutex _markerMutex;
 
-        typedef LRUCache<InstanceResource*, osg::ref_ptr<osg::Node> > InstanceCache;
+        typedef LRUCache<std::string, osg::ref_ptr<osg::Node> > InstanceCache;
         InstanceCache _instanceCache;
+        Threading::ReadWriteMutex _instanceMutex;
     };
 
 } } // namespace osgEarth::Symbology

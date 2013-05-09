@@ -68,41 +68,36 @@ _instanceCache        ( false )     // cache per object so MT not required
     //NOP
 }
 
-InstanceResource*
+bool
 SubstituteModelFilter::findResource(const URI&            uri,
-                                    const InstanceSymbol* symbol, 
+                                    const InstanceSymbol* symbol,
                                     FilterContext&        context, 
-                                    std::set<URI>&        missing ) 
+                                    std::set<URI>&        missing,
+                                    osg::ref_ptr<InstanceResource>& output )
 {
-    // find the corresponding marker in the cache
-    InstanceResource* instance = 0L;
-
-    //OE_INFO << LC << "Looking for: " << uri.full() << std::endl;
+    // be careful about refptrs here since _instanceCache is an LRU.
 
     InstanceCache::Record rec;
     if ( _instanceCache.get(uri, rec) )
     {
         // found it in the cache:
-        instance = rec.value();
-        //OE_INFO << LC << "   found it in the cache." << std::endl;
+        output = rec.value().get();
     }
     else if ( _resourceLib.valid() )
     {
         // look it up in the resource library:
-        instance = _resourceLib->getInstance( uri.base(), context.getDBOptions() );
+        output = _resourceLib->getInstance( uri.base(), context.getDBOptions() );
     }
     else
     {
         // create it on the fly:
-        //OE_INFO << LC << "   new resource; make it and cache it" << std::endl;
-        OE_INFO << LC << "New resource: " << uri.full() << std::endl;
-        instance = symbol->createResource();
-        instance->uri() = uri;
-        _instanceCache.insert( uri, instance );
+        output = symbol->createResource();
+        output->uri() = uri;
+        _instanceCache.insert( uri, output.get() );
     }
 
     // failed to find the instance.
-    if ( instance == 0L )
+    if ( !output.valid() )
     {
         if ( missing.find(uri) == missing.end() )
         {
@@ -111,7 +106,7 @@ SubstituteModelFilter::findResource(const URI&            uri,
         }
     }
 
-    return instance;
+    return output.valid();
 }
 
 bool
@@ -142,7 +137,6 @@ SubstituteModelFilter::process(const FeatureList&           features,
     if ( modelSymbol )
         headingEx = *modelSymbol->heading();
 
-
     for( FeatureList::const_iterator f = features.begin(); f != features.end(); ++f )
     {
         Feature* input = f->get();
@@ -152,8 +146,8 @@ SubstituteModelFilter::process(const FeatureList&           features,
         URI instanceURI( input->eval(uriEx, &context), uriEx.uriContext() );
 
         // find the corresponding marker in the cache
-        InstanceResource* instance = findResource( instanceURI, symbol, context, missing );
-        if ( !instance )
+        osg::ref_ptr<InstanceResource> instance;
+        if ( !findResource(instanceURI, symbol, context, missing, instance) )
             continue;
 
         // evalute the scale expression (if there is one)
@@ -181,11 +175,12 @@ SubstituteModelFilter::process(const FeatureList&           features,
         // how that we have a marker source, create a node for it
         std::pair<URI,float> key( instanceURI, scale );
 
-        osg::ref_ptr<osg::Node> model;
-        //osg::ref_ptr<osg::Node>& model = uniqueModels[key];
+        // cache nodes per instance.
+        osg::ref_ptr<osg::Node>& model = uniqueModels[key];
         if ( !model.valid() )
         {
-            model = context.resourceCache()->getInstanceNode( instance );
+            //model = instance->createNode( context.getDBOptions() );
+            context.resourceCache()->getInstanceNode( instance.get(), model );
 
             if ( scale != 1.0f && dynamic_cast<osg::AutoTransform*>( model.get() ) )
             {
@@ -466,8 +461,8 @@ SubstituteModelFilter::cluster(const FeatureList&           features,
         osg::ref_ptr<osg::Node> model = context.getSession()->getObject<osg::Node>( instanceURI.full() );
         if ( !model.valid() )
         {
-            InstanceResource* instance = findResource( instanceURI, symbol, context, missing );
-            if ( !instance )
+            osg::ref_ptr<InstanceResource> instance;
+            if ( !findResource( instanceURI, symbol, context, missing, instance) )
                 continue;
 
             model = instance->createNode( context.getSession()->getDBOptions() );

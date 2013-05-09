@@ -17,6 +17,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 #include <osgEarthFeatures/FilterContext>
+#include <osgEarthSymbology/ResourceCache>
 #include <osgEarth/Registry>
 
 using namespace osgEarth;
@@ -118,6 +119,12 @@ FilterContext::fromMap( const osg::Vec3d& point ) const
     //if ( _isGeocentric )
     //    _extent->getSRS()->transformToECEF( point, world );
     return toLocal(world);
+}
+
+ResourceCache*
+FilterContext::resourceCache()
+{
+    return _resourceCache.get();
 }
 
 std::string

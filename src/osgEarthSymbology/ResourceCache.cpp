@@ -23,47 +23,52 @@ using namespace osgEarth::Symbology;
 
 ResourceCache::ResourceCache(const osgDB::Options* dbOptions,
                              bool                  threadSafe ) :
-_dbOptions ( dbOptions ),
-_threadSafe( threadSafe )
+_dbOptions    ( dbOptions ),
+_threadSafe   ( threadSafe ),
+_skinCache    ( false ),
+_markerCache  ( false ),
+_instanceCache( false )
 {
     //nop
 }
 
-osg::StateSet*
-ResourceCache::getStateSet( SkinResource* skin )
+bool
+ResourceCache::getStateSet(SkinResource*                skin,
+                           osg::ref_ptr<osg::StateSet>& output)
 {
-    osg::StateSet* result = 0L;
+    output = 0L;
+    std::string key = skin->getConfig().toJSON(false);
 
     if ( _threadSafe )
     {
         // first check if it exists
         {
-            Threading::ScopedReadLock shared( _mutex );
+            Threading::ScopedReadLock shared( _skinMutex );
 
             SkinCache::Record rec;
-            if ( _skinCache.get(skin, rec) )
+            if ( _skinCache.get(key, rec) )
             {
-                result = rec.value();
+                output = rec.value().get();
             }
         }
 
         // no? exclusive lock and create it.
-        if ( !result )
+        if ( !output.valid() )
         {
-            Threading::ScopedWriteLock exclusive( _mutex );
+            Threading::ScopedWriteLock exclusive( _skinMutex );
             
             // double check to avoid race condition
             SkinCache::Record rec;
-            if ( _skinCache.get(skin, rec) )
+            if ( _skinCache.get(key, rec) )
             {
-                result = rec.value();
+                output = rec.value().get();
             }
             else
             {
                 // still not there, make it.
-                result = skin->createStateSet( _dbOptions.get() );
-                if ( result )
-                    _skinCache.insert( skin, result );
+                output = skin->createStateSet( _dbOptions.get() );
+                if ( output.valid() )
+                    _skinCache.insert( key, output.get() );
             }
         }
     }
@@ -71,56 +76,59 @@ ResourceCache::getStateSet( SkinResource* skin )
     else
     {
         SkinCache::Record rec;
-        if ( _skinCache.get(skin, rec) )
+        if ( _skinCache.get(key, rec) )
         {
-            result = rec.value();
+            output = rec.value();
         }
         else
         {
-            result = skin->createStateSet( _dbOptions.get() );
-            if ( result )
-                _skinCache.insert( skin, result );
+            output = skin->createStateSet( _dbOptions.get() );
+            if ( output.valid() )
+                _skinCache.insert( key, output.get() );
         }
     }
 
-    return result;
+    return output.valid();
 }
 
-osg::Node*
-ResourceCache::getInstanceNode( InstanceResource* res )
+
+bool
+ResourceCache::getInstanceNode(InstanceResource*        res,
+                               osg::ref_ptr<osg::Node>& output)
 {
-    osg::Node* result = 0L;
+    output = 0L;
+    std::string key = res->getConfig().toJSON(false);
 
     if ( _threadSafe )
     {
         // first check if it exists
         {
-            Threading::ScopedReadLock shared( _mutex );
+            Threading::ScopedReadLock shared( _instanceMutex );
 
             InstanceCache::Record rec;
-            if ( _instanceCache.get(res, rec) )
+            if ( _instanceCache.get(key, rec) )
             {
-                result = rec.value();
+                output = rec.value().get();
             }
         }
 
         // no? exclusive lock and create it.
-        if ( !result )
+        if ( !output.valid() )
         {
-            Threading::ScopedWriteLock exclusive( _mutex );
+            Threading::ScopedWriteLock exclusive( _instanceMutex );
             
             // double check to avoid race condition
             InstanceCache::Record rec;
-            if ( _instanceCache.get(res, rec) )
+            if ( _instanceCache.get(key, rec) )
             {
-                result = rec.value();
+                output = rec.value().get();
             }
             else
             {
                 // still not there, make it.
-                result = res->createNode( _dbOptions.get() );
-                if ( result )
-                    _instanceCache.insert( res, result );
+                output = res->createNode( _dbOptions.get() );
+                if ( output.valid() )
+                    _instanceCache.insert( key, output.get() );
             }
         }
     }
@@ -128,57 +136,59 @@ ResourceCache::getInstanceNode( InstanceResource* res )
     else
     {
         InstanceCache::Record rec;
-        if ( _instanceCache.get(res, rec) )
+        if ( _instanceCache.get(key, rec) )
         {
-            result = rec.value();
+            output = rec.value().get();
         }
         else
         {
-            result = res->createNode( _dbOptions.get() );
-            if ( result )
-                _instanceCache.insert( res, result );
+            output = res->createNode( _dbOptions.get() );
+            if ( output.valid() )
+                _instanceCache.insert( key, output.get() );
         }
     }
 
-    return result;
+    return output.valid();
 }
 
 
-osg::Node*
-ResourceCache::getMarkerNode( MarkerResource* marker )
+bool
+ResourceCache::getMarkerNode(MarkerResource*          marker,
+                             osg::ref_ptr<osg::Node>& output)
 {
-    osg::Node* result = 0L;
+    output = 0L;
+    std::string key = marker->getConfig().toJSON(false);
 
     if ( _threadSafe )
     {
         // first check if it exists
         {
-            Threading::ScopedReadLock shared( _mutex );
+            Threading::ScopedReadLock shared( _markerMutex );
 
             MarkerCache::Record rec;
-            if ( _markerCache.get(marker, rec) )
+            if ( _markerCache.get(key, rec) )
             {
-                result = rec.value();
+                output = rec.value().get();
             }
         }
 
         // no? exclusive lock and create it.
-        if ( !result )
+        if ( !output.valid() )
         {
-            Threading::ScopedWriteLock exclusive( _mutex );
+            Threading::ScopedWriteLock exclusive( _markerMutex );
             
             // double check to avoid race condition
             MarkerCache::Record rec;
-            if ( _markerCache.get( marker, rec ) )
+            if ( _markerCache.get( key, rec ) )
             {
-                result = rec.value();
+                output = rec.value().get();
             }
             else
             {
                 // still not there, make it.
-                result = marker->createNode( _dbOptions.get() );
-                if ( result )
-                    _markerCache.insert( marker, result );
+                output = marker->createNode( _dbOptions.get() );
+                if ( output.valid() )
+                    _markerCache.insert( key, output.get() );
             }
         }
     }
@@ -186,17 +196,17 @@ ResourceCache::getMarkerNode( MarkerResource* marker )
     else
     {
         MarkerCache::Record rec;
-        if ( _markerCache.get( marker, rec ) )
+        if ( _markerCache.get( key, rec ) )
         {
-            result = rec.value();
+            output = rec.value().get();
         }
         else
         {
-            result = marker->createNode( _dbOptions.get() );
-            if ( result )
-                _markerCache.insert( marker, result );
+            output = marker->createNode( _dbOptions.get() );
+            if ( output.valid() )
+                _markerCache.insert( key, output.get() );
         }
     }
 
-    return result;
+    return output.valid();
 }

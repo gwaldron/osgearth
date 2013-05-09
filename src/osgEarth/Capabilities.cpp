@@ -115,6 +115,7 @@ _supportsDepthPackedStencilBuffer( false ),
 _supportsOcclusionQuery ( false ),
 _supportsDrawInstanced  ( false ),
 _supportsUniformBufferObjects( false ),
+_supportsNonPowerOfTwoTextures( false ),
 _maxUniformBlockSize    ( 0 ),
 _preferDLforStaticGeom  ( true )
 {
@@ -249,6 +250,10 @@ _preferDLforStaticGeom  ( true )
             OE_INFO << LC << "  ...but disabled, since UBO block size reports zero" << std::endl;
             _supportsUniformBufferObjects = false;
         }
+
+        _supportsNonPowerOfTwoTextures =
+            osg::isGLExtensionSupported( id, "GL_ARB_texture_non_power_of_two" );
+        OE_INFO << LC << "  NPOT textures = " << SAYBOOL(_supportsNonPowerOfTwoTextures) << std::endl;
 
 
         //_supportsTexture2DLod = osg::isGLExtensionSupported( id, "GL_ARB_shader_texture_lod" );

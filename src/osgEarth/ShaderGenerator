@@ -37,6 +37,9 @@ namespace osgEarth
      *
      *   ShaderGenerator gen;
      *   graph->accept( gen );
+     *
+     * If osgEarth detects a lack of GLSL support, the ShaderGenerator
+     * will do nothing.
      */
     class OSGEARTH_EXPORT ShaderGenerator : public osg::NodeVisitor
     {
@@ -79,6 +82,8 @@ namespace osgEarth
         osg::ref_ptr<StateSetCache> _stateSetCache;
 
         osg::ref_ptr<VirtualProgram> _defaultVP;
+
+        bool _active;
     };
 
 } // namespace osgEarth

@@ -181,7 +181,8 @@ SubstituteModelFilter::process(const FeatureList&           features,
         // how that we have a marker source, create a node for it
         std::pair<URI,float> key( instanceURI, scale );
 
-        osg::ref_ptr<osg::Node>& model = uniqueModels[key];
+        osg::ref_ptr<osg::Node> model;
+        //osg::ref_ptr<osg::Node>& model = uniqueModels[key];
         if ( !model.valid() )
         {
             model = context.resourceCache()->getInstanceNode( instance );

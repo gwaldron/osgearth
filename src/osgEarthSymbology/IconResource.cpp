@@ -98,6 +98,9 @@ namespace
         texture->setFilter(osg::Texture::MAG_FILTER, osg::Texture::LINEAR);
         texture->setWrap  (osg::Texture::WRAP_S,     osg::Texture::CLAMP_TO_EDGE );
         texture->setWrap  (osg::Texture::WRAP_T,     osg::Texture::CLAMP_TO_EDGE );
+        if ( Registry::capabilities().supportsNonPowerOfTwoTextures() )
+            texture->setResizeNonPowerOfTwoHint( false );
+
         stateSet->setTextureAttributeAndModes(0, texture, osg::StateAttribute::ON);
 
         stateSet->setMode( GL_BLEND, 1 );

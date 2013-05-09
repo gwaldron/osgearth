@@ -105,6 +105,9 @@ namespace osgEarth
         /** whether the GPU supports Uniform Buffer Objects */
         bool supportsUniformBufferObjects() const { return _supportsUniformBufferObjects; }
 
+        /** whether the GPU can handle non-power-of-two textures. */
+        bool supportsNonPowerOfTwoTextures() const { return _supportsNonPowerOfTwoTextures; }
+
         /** maximum size of a uniform buffer block, in bytes */
         int getMaxUniformBlockSize() const { return _maxUniformBlockSize; }
 
@@ -138,6 +141,7 @@ namespace osgEarth
         bool _supportsOcclusionQuery;
         bool _supportsDrawInstanced;
         bool _supportsUniformBufferObjects;
+        bool _supportsNonPowerOfTwoTextures;
         int  _maxUniformBlockSize;
         bool _preferDLforStaticGeom;
         std::string _vendor;

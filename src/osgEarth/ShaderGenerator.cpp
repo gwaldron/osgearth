@@ -192,27 +192,37 @@ namespace
 ShaderGenerator::ShaderGenerator() :
 osg::NodeVisitor( osg::NodeVisitor::TRAVERSE_ALL_CHILDREN )
 {
-    _state = new StateEx();
-    //_stateSetCache = new StateSetCache();
-    _stateSetCache = 0L;
-    _defaultVP = new VirtualProgram();
-    Registry::instance()->getShaderFactory()->installLightingShaders( _defaultVP.get() );
+    _active = Registry::capabilities().supportsGLSL();
+    if ( _active )
+    {
+        _state = new StateEx();
+        //_stateSetCache = new StateSetCache();
+        _stateSetCache = 0L;
+        _defaultVP = new VirtualProgram();
+        Registry::instance()->getShaderFactory()->installLightingShaders( _defaultVP.get() );
+    }
 }
 
 
 ShaderGenerator::ShaderGenerator( StateSetCache* cache ) :
 osg::NodeVisitor( osg::NodeVisitor::TRAVERSE_ALL_CHILDREN )
 {
-    _state = new StateEx();
-    _stateSetCache = cache; // ? cache : new StateSetCache();
-    _defaultVP = new VirtualProgram();
-    Registry::instance()->getShaderFactory()->installLightingShaders( _defaultVP.get() );
+    _active = Registry::capabilities().supportsGLSL();
+    if ( _active )
+    {
+        _state = new StateEx();
+        _stateSetCache = cache; // ? cache : new StateSetCache();
+        _defaultVP = new VirtualProgram();
+        Registry::instance()->getShaderFactory()->installLightingShaders( _defaultVP.get() );
+    }
 }
 
 
 void 
 ShaderGenerator::apply( osg::Node& node )
 {
+    if ( !_active ) return;
+
     osg::ref_ptr<osg::StateSet> ss = node.getStateSet();
     if ( ss.valid() )
     {
@@ -243,6 +253,8 @@ ShaderGenerator::apply( osg::Node& node )
 void 
 ShaderGenerator::apply( osg::Geode& geode )
 {
+    if ( !_active ) return;
+
     osg::ref_ptr<osg::StateSet> ss = geode.getStateSet();
     if ( ss.valid() )
     {
@@ -318,6 +330,8 @@ ShaderGenerator::apply( osg::Drawable* drawable )
 void
 ShaderGenerator::apply(osg::PagedLOD& node)
 {
+    if ( !_active ) return;
+
     for( unsigned i=0; i<node.getNumFileNames(); ++i )
     {
         const std::string& filename = node.getFileName( i );
@@ -335,6 +349,8 @@ ShaderGenerator::apply(osg::PagedLOD& node)
 void
 ShaderGenerator::apply(osg::ProxyNode& node)
 {
+    if ( !_active ) return;
+
     if ( node.getLoadingExternalReferenceMode() != osg::ProxyNode::LOAD_IMMEDIATELY )
     {
         // rewrite the filenames to include the shadergen pseudo-loader extension so

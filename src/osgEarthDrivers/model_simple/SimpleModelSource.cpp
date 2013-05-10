@@ -23,6 +23,7 @@
 #include <osgEarth/Map>
 #include <osgEarth/ShaderGenerator>
 #include <osgEarth/FileUtils>
+#include <osgEarth/AutoScale>
 #include <osg/LOD>
 #include <osg/Notify>
 #include <osg/MatrixTransform>
@@ -166,7 +167,12 @@ public:
                     new osg::Program(),
                     osg::StateAttribute::OFF | osg::StateAttribute::OVERRIDE );
             }
+
+            // autoscale??
+            result->getOrCreateStateSet()->setRenderBinDetails( 0, osgEarth::AUTO_SCALE_BIN );
+            result->getOrCreateStateSet()->setNestRenderBins( false );
         }
+
 
         return result.release();
     }

@@ -65,6 +65,12 @@ namespace osgEarth { namespace Symbology
             ALIGN_BASE_LINE = ALIGN_LEFT_BASE_LINE /// default.        
         };
 
+        enum Layout {
+            LAYOUT_LEFT_TO_RIGHT,
+            LAYOUT_RIGHT_TO_LEFT,
+            LAYOUT_VERTICAL
+        };
+
         META_Symbol(TextSymbol);
 
         TextSymbol( const Config& conf =Config() );
@@ -108,6 +114,10 @@ namespace osgEarth { namespace Symbology
         optional<Alignment>& alignment() { return _alignment; }
         const optional<Alignment>& alignment() const { return _alignment; }
 
+        /** Layout of the label*/
+        optional<Layout>& layout() { return _layout; }
+        const optional<Layout>& layout() const { return _layout; }
+
         /** Whether to remove duplicates when drawing multiple labels. */
         optional<bool>& removeDuplicateLabels() { return _removeDuplicateLabels; }
         const optional<bool>& removeDuplicateLabels() const { return _removeDuplicateLabels; }
@@ -142,6 +152,7 @@ namespace osgEarth { namespace Symbology
         optional<std::string>       _provider;
         optional<Encoding>          _encoding;
         optional<Alignment>         _alignment;
+        optional<Layout>         _layout;
         optional<bool>              _declutter;
     };
 

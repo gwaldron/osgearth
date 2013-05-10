@@ -1363,7 +1363,7 @@ namespace
         
         if (recalcNormals && normalizeEdges)
         {            
-            OE_DEBUG << "Normalizing edges" << std::endl;
+            //OE_DEBUG << LC << "Normalizing edges" << std::endl;
 
             //Compute the edge normals if we have neighbor data
             //Get all the neighbors

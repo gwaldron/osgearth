@@ -35,7 +35,6 @@ SET(HEADERS_ROOT
     ObjectLocator
     PolyhedralLineOfSight
     RadialLineOfSight
-    RTree
     SkyNode
     SpatialData
     StarData

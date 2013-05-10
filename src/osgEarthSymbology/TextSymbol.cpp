@@ -30,6 +30,7 @@ _haloOffset           ( 0.07f ),
 _size                 ( 16.0f ),
 _removeDuplicateLabels( false ),
 _alignment            ( ALIGN_BASE_LINE ),
+_layout               ( LAYOUT_LEFT_TO_RIGHT ),
 _provider             ( "annotation" ),
 _encoding             ( ENCODING_ASCII ),
 _declutter            ( true )
@@ -72,6 +73,10 @@ TextSymbol::getConfig() const
     conf.addIfSet( "alignment", "center_bottom_base_line", _alignment, ALIGN_CENTER_BOTTOM_BASE_LINE );
     conf.addIfSet( "alignment", "right_bottom_base_line",  _alignment, ALIGN_RIGHT_BOTTOM_BASE_LINE );
     conf.addIfSet( "alignment", "base_line",               _alignment, ALIGN_BASE_LINE );
+
+    conf.addIfSet( "layout", "ltr",  _layout, LAYOUT_LEFT_TO_RIGHT );
+    conf.addIfSet( "layout", "rtl",  _layout, LAYOUT_RIGHT_TO_LEFT );
+    conf.addIfSet( "layout", "vertical",  _layout, LAYOUT_VERTICAL );
 
     conf.addIfSet( "declutter", _declutter );
 
@@ -116,6 +121,10 @@ TextSymbol::mergeConfig( const Config& conf )
     conf.getIfSet( "alignment", "center_bottom_base_line", _alignment, ALIGN_CENTER_BOTTOM_BASE_LINE );
     conf.getIfSet( "alignment", "right_bottom_base_line",  _alignment, ALIGN_RIGHT_BOTTOM_BASE_LINE );
     conf.getIfSet( "alignment", "base_line" ,              _alignment, ALIGN_BASE_LINE );
+
+    conf.getIfSet( "layout", "ltr",  _layout, LAYOUT_LEFT_TO_RIGHT );
+    conf.getIfSet( "layout", "rtl",  _layout, LAYOUT_RIGHT_TO_LEFT );
+    conf.getIfSet( "layout", "vertical",  _layout, LAYOUT_VERTICAL );
 
     conf.getIfSet( "declutter", _declutter );
 
@@ -187,6 +196,14 @@ TextSymbol::parseSLD(const Config& c, Style& style)
             style.getOrCreate<TextSymbol>()->alignment() = TextSymbol::ALIGN_RIGHT_BOTTOM_BASE_LINE;
         else if ( match(c.value(), "base-line" ) ) 
             style.getOrCreate<TextSymbol>()->alignment() = TextSymbol::ALIGN_BASE_LINE;
+    }
+    else if ( match(c.key(), "text-layout") ) {
+        if ( match(c.value(), "ltr") )
+            style.getOrCreate<TextSymbol>()->layout() = TextSymbol::LAYOUT_LEFT_TO_RIGHT;
+        else if ( match(c.value(), "rtl" ) )
+            style.getOrCreate<TextSymbol>()->layout() = TextSymbol::LAYOUT_RIGHT_TO_LEFT;
+        else if ( match(c.value(), "vertical" ) )
+            style.getOrCreate<TextSymbol>()->layout() = TextSymbol::LAYOUT_VERTICAL;
     }
     else if ( match(c.key(), "text-content") ) {        
         style.getOrCreate<TextSymbol>()->content() = StringExpression( c.value() );

@@ -87,7 +87,19 @@ AnnotationUtils::createTextDrawable(const std::string& text,
     }
 
     t->setText( text, text_encoding );
-
+    if ( symbol && symbol->layout().isSet() )
+    {
+        if(symbol->layout().value() == TextSymbol::LAYOUT_RIGHT_TO_LEFT)
+        {
+            t->setLayout(osgText::TextBase::RIGHT_TO_LEFT);
+        }else if(symbol->layout().value() == TextSymbol::LAYOUT_LEFT_TO_RIGHT)
+        {
+            t->setLayout(osgText::TextBase::LEFT_TO_RIGHT);
+        }else if(symbol->layout().value() == TextSymbol::LAYOUT_VERTICAL)
+        {
+            t->setLayout(osgText::TextBase::VERTICAL);
+        }
+    }
     if ( symbol && symbol->pixelOffset().isSet() )
     {
         t->setPosition( osg::Vec3(

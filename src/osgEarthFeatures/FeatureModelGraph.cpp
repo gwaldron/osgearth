@@ -1007,6 +1007,7 @@ FeatureModelGraph::queryAndSortIntoStyleGroups(const Query&            query,
         if ( styleString.length() > 0 && styleString.at(0) == '{' )
         {
             Config conf( "style", styleString );
+            conf.setReferrer( styleExpr.uriContext().referrer() );
             conf.set( "type", "text/css" );
             combinedStyle = Style(conf);
         }

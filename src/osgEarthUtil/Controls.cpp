@@ -2568,8 +2568,8 @@ ControlCanvas::init( osgViewer::View* view, bool registerCanvas )
     ss->setMode( GL_LIGHTING, osg::StateAttribute::OFF | osg::StateAttribute::OVERRIDE );
     ss->setMode( GL_BLEND, osg::StateAttribute::ON | osg::StateAttribute::OVERRIDE );
     ss->setAttributeAndModes( new osg::Depth( osg::Depth::ALWAYS, 0, 1, false ) );
-    ss->setRenderBinMode( osg::StateSet::USE_RENDERBIN_DETAILS );
-    ss->setBinName( OSGEARTH_CONTROLS_BIN );
+    //ss->setRenderBinMode( osg::StateSet::USE_RENDERBIN_DETAILS );
+    //ss->setBinName( OSGEARTH_CONTROLS_BIN );
 
     // keeps the control bin shaders from "leaking out" into the scene graph :/
     ss->setAttributeAndModes( new osg::Program(), osg::StateAttribute::OFF | osg::StateAttribute::PROTECTED );

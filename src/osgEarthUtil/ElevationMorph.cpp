@@ -42,8 +42,8 @@ namespace
     // in your terrain tile. (See MapOptions::elevation_tile_size).
 
     const char* vs =
-        "attribute vec4 oe_morph_attribs; \n"
-        "attribute vec4 oe_morph_attribs2; \n"
+        "attribute vec4 oe_terrain_attr; \n"
+        "attribute vec4 oe_terrain_attr2; \n"
         "uniform float oe_min_tile_range_factor; \n"
         "uniform vec4 oe_tile_key; \n"
         "uniform float osg_FrameTime; \n"
@@ -62,9 +62,9 @@ namespace
         "    float r_dist     = ((a-near)/(far-near)); \n"
         "    float r_time     = 1.0 - clamp(osg_FrameTime-(oe_tile_birthtime+oe_morph_delay), 0.0, oe_morph_duration)/oe_morph_duration; \n"
         "    float r          = max(r_dist, r_time); \n"
-        "    vec3  upVector   = oe_morph_attribs.xyz; \n"
-        "    float elev       = oe_morph_attribs.w; \n"
-        "    float elevOld    = oe_morph_attribs2.w; \n"
+        "    vec3  upVector   = oe_terrain_attr.xyz; \n"
+        "    float elev       = oe_terrain_attr.w; \n"
+        "    float elevOld    = oe_terrain_attr2.w; \n"
         "    vec3  offset     = upVector * r * (elevOld - elev); \n"
         "    VertexMODEL      = VertexMODEL + vec4(offset/VertexMODEL.w, 0.0); \n"
         "} \n";
@@ -122,8 +122,8 @@ ElevationMorph::setTerrainNode(osg::Node* node)
             ss->setAttributeAndModes( vp, 1 );
         }
         vp->setFunction( "oe_morph_vertex", vs, ShaderComp::LOCATION_VERTEX_MODEL );
-        vp->addBindAttribLocation( "oe_morph_attribs",  osg::Drawable::ATTRIBUTE_6 );
-        vp->addBindAttribLocation( "oe_morph_attribs2", osg::Drawable::ATTRIBUTE_7 );
+        //vp->addBindAttribLocation( "oe_morph_attribs",  osg::Drawable::ATTRIBUTE_6 );
+        //vp->addBindAttribLocation( "oe_morph_attribs2", osg::Drawable::ATTRIBUTE_7 );
     }
     else
     {

@@ -78,11 +78,7 @@ you can attach one to any node in the scene graph. Shaders that belong to a
 (i.e., higher up in the scene graph). In the way you can override individual shader
 functions in osgEarth.
 
-    **Important Note!** Shader variables starting with the prefix ``oe_`` or ``osgearth_``
-    are reserved for osgEarth internal use.
-
 The sections below on integration will demonstrate how to use ``VirtualProgram``.
-
 
 
 Integrating Custom Shaders
@@ -164,6 +160,34 @@ You can alter the vertex, but you *must* leave it in the same space.
 :CLIP:   Post-projected clip space. CLIP space lies in the [-w..w] range along all
          three axis, and is the result of transforming the original vertex by
          ``gl_ModelViewProjectionMatrix``.
+         
+         
+Shader Variables
+----------------
+
+There are some built-in shader variables that osgEarth installs and that you can 
+access from your shader functions.
+
+    *Important: Shader variables starting with the prefix ``oe_`` or ``osgearth_``
+    are reserved for osgEarth internal use.*
+
+Uniforms:
+
+  :oe_tile_key:          (vec4) elements 0-2 hold the x, y, and LOD tile key values;
+                         element 3 holds the tile's bounding sphere radius (in meters)
+  :oe_layer_tex:         (sampler2D) texture applied to the current tile
+  :oe_layer_texc:        (vec4) texture coordinate for current tile
+  :oe_layer_tilec:       (vec4) unit coordinates for the current tile (0..1 in x and y)
+  :oe_layer_uid:         (int) Unique ID of the active layer
+  :oe_layer_order:       (int) Render order of the active layer
+  :oe_layer_opacity:     (float) Opacity [0..1] of the active layer
+
+Vertex attributes:
+
+  :oe_terrain_attr:      (vec4) elements 0-2 hold the unit height vector for a terrain
+                         vertex, and element 3 holds the raw terrain elevation value
+  :oe_terrain_attr2:     (vec4) element 0 holds the *parent* tile's elevation value;
+                         elements 1-3 are currently unused.
 
 
 Customizing the Shader Factory

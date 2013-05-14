@@ -41,8 +41,11 @@ namespace osgEarth
         /** maximum # of texture image units exposed in a GPU fragment shader */
         int getMaxGPUTextureUnits() const { return _maxGPUTextureUnits; }
 
-        /** maximum # of texture coordinate sets available in a GPU fragment shader */
+        /** maximum # of texture coordinate indices available in a GPU fragment shader */
         int getMaxGPUTextureCoordSets() const { return _maxGPUTextureCoordSets; }
+
+        /** maximum # of vertex attributes available in a shader */
+        int getMaxGPUAttribs() const { return _maxGPUAttribs; }
 
         /** maximum supported size (in pixels) of a texture */
         int getMaxTextureSize() const { return _maxTextureSize; }
@@ -124,6 +127,7 @@ namespace osgEarth
         int  _maxFFPTextureUnits;
         int  _maxGPUTextureUnits;
         int  _maxGPUTextureCoordSets;
+        int  _maxGPUAttribs;
         int  _maxTextureSize;
         int  _maxFastTextureSize;
         int  _maxLights;

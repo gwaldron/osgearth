@@ -36,6 +36,8 @@ using namespace osgEarth::ShaderComp;
 #define OE_TEST OE_NULL
 //#define OE_TEST OE_NOTICE
 
+//#define USE_ATTRIB_ALIASES
+
 //------------------------------------------------------------------------
 
 // environment variable control
@@ -162,8 +164,12 @@ VirtualProgram::compare(const osg::StateAttribute& sa) const
 void
 VirtualProgram::addBindAttribLocation( const std::string& name, GLuint index )
 {
+#ifdef USE_ATTRIB_ALIASES
     _attribAliases[name] = Stringify() << "oe_attrib_" << index;
     _attribBindingList[_attribAliases[name]] = index;
+#else
+    _attribBindingList[name] = index;
+#endif
 }
 
 void
@@ -440,6 +446,7 @@ VirtualProgram::addShadersToProgram(const ShaderVector&      shaders,
                                     const AttribAliasMap&    attribAliases,
                                     osg::Program*            program )
 {
+#ifdef USE_ATTRIB_ALIASES
     // apply any vertex attribute aliases. But first, sort them from longest to shortest 
     // so we don't get any overlap and bad replacements.
     AttribAliasVector sortedAliases;
@@ -452,6 +459,7 @@ VirtualProgram::addShadersToProgram(const ShaderVector&      shaders,
         osg::Shader* shader = i->get();
         applyAttributeAliases( shader, sortedAliases );
     }
+#endif
 
     // merge the shaders if necessary.
     if ( s_mergeShaders )

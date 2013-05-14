@@ -42,13 +42,13 @@ namespace
     // along its extrusion vector.
 
     const char* vs =
-        "attribute vec4 oe_vertscale_attribs; \n"
+        "attribute vec4 oe_terrain_attr; \n"
         "uniform float oe_vertscale_scale; \n"
 
         "void oe_vertscale_vertex(inout vec4 VertexMODEL) \n"
         "{ \n"
-        "    vec3  upVector  = oe_vertscale_attribs.xyz; \n"
-        "    float elev      = oe_vertscale_attribs.w; \n"
+        "    vec3  upVector  = oe_terrain_attr.xyz; \n"
+        "    float elev      = oe_terrain_attr.w; \n"
         "    vec3  offset    = upVector * elev * (oe_vertscale_scale-1.0); \n"
         "    VertexMODEL    += vec4(offset/VertexMODEL.w, 0.0); \n"
         "} \n";
@@ -93,7 +93,7 @@ VerticalScale::setTerrainNode(osg::Node* node)
             ss->setAttributeAndModes( vp, 1 );
         }
         vp->setFunction( "oe_vertscale_vertex", vs, ShaderComp::LOCATION_VERTEX_MODEL );
-        vp->addBindAttribLocation( "oe_vertscale_attribs",  osg::Drawable::ATTRIBUTE_6 );
+        //vp->addBindAttribLocation( "oe_vertscale_attribs",  osg::Drawable::ATTRIBUTE_6 );
     }
     else
     {

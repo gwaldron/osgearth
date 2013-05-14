@@ -112,8 +112,6 @@ public:
                 (*_options.location()).y(), 
                 (*_options.location()).z(),
                 ALTMODE_ABSOLUTE );
-
-            OE_NOTICE << "Read location " << geoPoint.vec3d() << std::endl;
             
             osg::Matrixd matrix;
             geoPoint.createLocalToWorld( matrix );
@@ -167,10 +165,6 @@ public:
                     new osg::Program(),
                     osg::StateAttribute::OFF | osg::StateAttribute::OVERRIDE );
             }
-
-            // autoscale??
-            result->getOrCreateStateSet()->setRenderBinDetails( 0, osgEarth::AUTO_SCALE_BIN );
-            result->getOrCreateStateSet()->setNestRenderBins( false );
         }
 
 

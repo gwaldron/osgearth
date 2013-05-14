@@ -24,6 +24,18 @@
 
 namespace osgEarth
 {
+    /**
+     * Usage: set your render bin to AUTO_SCALE_BIN and your
+     * geometry will automatically draw at one pixel per meter.
+     *
+     * To enable:
+     *
+     *    node->getOrCreateStateSet()->setRenderBinDetails(0, osgEarth::AUTO_SCALE_BIN);
+     *
+     * And to disable:
+     *
+     *    node->getOrCreateStateSet()->setRenderBinToInherit();
+     */
     extern OSGEARTH_EXPORT const std::string AUTO_SCALE_BIN;
 }
 

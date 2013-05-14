@@ -54,6 +54,10 @@ namespace osgEarth { namespace Symbology
         /** roll in degrees */
         optional<NumericExpression>& roll() { return _roll; }
         const optional<NumericExpression>& roll() const { return _roll; }
+
+        /** whether to automatically scale the model from meters to pixels */
+        optional<bool>& autoScale() { return _autoScale; }
+        const optional<bool>& autoScale() const { return _autoScale; }
         
     public: // non-serialized properties (for programmatic use only)
 
@@ -74,6 +78,7 @@ namespace osgEarth { namespace Symbology
         optional<NumericExpression>  _heading;
         optional<NumericExpression>  _pitch;
         optional<NumericExpression>  _roll;
+        optional<bool>               _autoScale;
         osg::ref_ptr<osg::Node>      _node;
     };
 

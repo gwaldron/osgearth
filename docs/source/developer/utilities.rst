@@ -5,6 +5,25 @@ The osgEarth *Utils* namespace includes a variety of useful classes for interact
 with the map. None of these are strictly necessary for using osgEarth, but they do
 make it easier to perform some common operations.
 
+
+AutoScale
+---------
+
+*AutoScale* is a special *Render Bin* that will scale geometry from meters to pixels.
+That is: if you have an object that is 10 meters across, *AutoScale* will draw it in
+the space of 10 pixels (at scale 1.0) regardless of its distance from the camera.
+The effect is similar to OSG's ``AutoTransform::setAutoScaleToScreen`` method but is
+done in a shader and does not require any special nodes.
+
+To activate auto-scaling on a node::
+
+    node->getOrCreateStateSet()->setRenderBinDetails( 0, osgEarth::AUTO_SCALE_BIN );
+    
+And to deactivate it:
+
+    node->getOrCreateStateSet()->setRenderBinToInherit();
+
+
 DataScanner
 -----------
 

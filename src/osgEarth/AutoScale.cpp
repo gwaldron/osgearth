@@ -20,6 +20,8 @@
 #include <osgEarth/ThreadingUtils>
 #include <osgEarth/Utils>
 #include <osgEarth/VirtualProgram>
+#include <osgEarth/Registry>
+#include <osgEarth/ShaderFactory>
 #include <osgUtil/RenderBin>
 
 #define LC "[AutoScale] "
@@ -34,37 +36,85 @@ namespace
     const char* vs =
         "#version " GLSL_VERSION_STR "\n"
         GLSL_DEFAULT_PRECISION_FLOAT "\n"
-        "uniform float oe_autoscale_v; \n"      // viewport width / 2.
-        "uniform float oe_autoscale_f; \n"      // horizontal FOV / 2.
-        "uniform vec3  oe_autoscale_c; \n"
+
+        "uniform float oe_autoscale_zp; \n"
+        "uniform float oe_autoscale_scale; \n"
+
+
+        "vec3 oe_autoscale_multquat( in vec3 v, in vec4 quat ) \n"
+        "{ \n"
+        "    vec3 uv, uuv; \n"
+        "    uv = cross(quat.xyz, v); \n"
+        "    uuv = cross(quat.xyz, uv); \n"
+        "    uv *= (2.0 * quat.w); \n"
+        "    uuv *= 2.0; \n"
+        "    return v + uv + uuv; \n"
+        "} \n"
+
+        "vec4 oe_autoscale_makequat( in vec3 a, in vec3 b ) \n"
+        "{ \n"
+        "    float dotProdPlus1 = 1.0 + dot(a, b); \n"
+
+        "    if ( dotProdPlus1 < 0.000001 ) { \n"
+        "        if (abs(a.x) < 0.6) { \n"
+        "            float n = sqrt(1.0 - a.x*a.x); \n"
+        "            return vec4(0.0, a.z/n, -a.y/n, 0.0); \n"
+        "        } \n"
+        "        else if (abs(a.y) < 0.6) { \n"
+        "            float n = sqrt(1.0 - a.y*a.y); \n"
+        "            return vec4(-a.z/n, 0.0, a.x/n, 0.0); \n"
+        "        } \n"
+        "        else { \n"
+        "            float n = sqrt(1.0 - a.z*a.z); \n"
+        "            return vec4(a.y/n, -a.x/n, 0.0, 0.0); \n"
+        "        } \n"
+        "    } \n"
+        "    else { \n"
+        "        float s = sqrt(0.5 * dotProdPlus1); \n"
+        "        vec3 tmp = cross(a, b/(2.0*s)); \n"
+        "        return vec4(tmp, s); \n"
+        "    } \n"
+        "} \n"
+
+        "void oe_autoscale_rotate( inout vec4 VertexVIEW ) \n"
+        "{ \n"
+        "    float s = oe_autoscale_scale; \n"
+        "    mat4 m2; \n"
+        "    m2[0] = vec4( s,   0.0,  0.0, 0.0 ); \n"
+        "    m2[1] = vec4( 0.0, 0.0, -s,   0.0 ); \n"
+        "    m2[2] = vec4( 0.0, s,    0.0, 0.0 ); \n"
+        "    m2[3] = gl_ModelViewMatrix[3]; \n"
+        "    VertexVIEW = m2 * gl_Vertex; \n"
+        "} \n"
 
         "void oe_autoscale_vertex( inout vec4 VertexVIEW ) \n"
         "{ \n"
-        "    VertexVIEW.xyz /= VertexVIEW.w; \n"
-        "    float tanf    = tan(oe_autoscale_f); \n"
+        //"    oe_autoscale_rotate(VertexVIEW); \n"
+
         "    float z       = -VertexVIEW.z; \n"
-        "    float zp      = oe_autoscale_v / tanf; \n"
-        "    VertexVIEW.z *= (zp/z); \n"
-        "    vec3 push     = normalize(VertexVIEW.xyz); \n"
-        "    float newf    = atan(oe_autoscale_v/zp); \n"
-        "    float a       = z/cos(newf); \n"
-        "    VertexVIEW.xyz = push * a * VertexVIEW.w; \n"
+
+        "    vec4  cp       = gl_ModelViewMatrix * vec4(0.0,0.0,0.0,1.0); \n" // control point into view space
+        "    float d        = length(cp.xyz); \n"
+        "    vec3  cpn      = cp.xyz/d; \n"
+        "    vec3  off      = VertexVIEW.xyz - cp.xyz; \n"
+
+        "    float dp = (d * oe_autoscale_zp) / z; \n"
+        "    cp.xyz   = cpn * dp; \n"
+
+        "    VertexVIEW.z *= (oe_autoscale_zp/z); \n"
+        "    VertexVIEW.xy = cp.xy + off.xy; \n"
+
+        "    vec3 push      = normalize(VertexVIEW.xyz); \n"
+        "    VertexVIEW.xyz = push * z; \n"
         "} \n";
 
 
     class AutoScaleRenderBin : public osgUtil::RenderBin
     {
     public:
-        struct PerCameraData
-        {
-        };
-
-        // shared across ALL render bin instances.
-        typedef Threading::PerObjectMap<osg::Camera*, PerCameraData> PerCameraDataMap;
-        PerCameraDataMap* _pvd;
-
-        osg::ref_ptr<osg::Uniform>  _viewportWidth;
-        osg::ref_ptr<osg::Uniform>  _hfovDiv2;
+        osg::ref_ptr<osg::Uniform>  _zp;
+        osg::ref_ptr<osg::Uniform>  _scale;
+        osg::ref_ptr<osg::Uniform>  _lighting;
 
         // support cloning (from RenderBin):
         virtual osg::Object* cloneType() const { return new AutoScaleRenderBin(); }
@@ -78,31 +128,30 @@ namespace
         AutoScaleRenderBin() : osgUtil::RenderBin()
         {
             this->setName( osgEarth::AUTO_SCALE_BIN );
-            _pvd = new PerCameraDataMap();
 
             _stateset = new osg::StateSet();
 
             VirtualProgram* vp = new VirtualProgram();
-            vp->setFunction( "oe_autoscale_vertex", vs, ShaderComp::LOCATION_VERTEX_VIEW );
+            vp->setFunction( "oe_autoscale_rotate", vs, ShaderComp::LOCATION_VERTEX_VIEW );
             _stateset->setAttributeAndModes( vp, 1 );
 
-            _viewportWidth = _stateset->getOrCreateUniform("oe_autoscale_v", osg::Uniform::FLOAT);
-            _hfovDiv2      = _stateset->getOrCreateUniform("oe_autoscale_f", osg::Uniform::FLOAT);
+            _zp    = _stateset->getOrCreateUniform("oe_autoscale_zp",    osg::Uniform::FLOAT);
+            //_scale = _stateset->getOrCreateUniform("oe_autoscale_scale", osg::Uniform::FLOAT);
+            //_scale->set( 50.0f );
+                
+            //_lighting = Registry::instance()->shaderFactory()->createUniformForGLMode(
+            //    GL_LIGHTING,
+            //    osg::StateAttribute::OFF );
+            //_stateset->addUniform( _lighting.get() );
         }
 
         AutoScaleRenderBin( const AutoScaleRenderBin& rhs, const osg::CopyOp& op )
             : osgUtil::RenderBin( rhs, op ),
-              _pvd          ( rhs._pvd ),
-              _viewportWidth( rhs._viewportWidth.get() ),
-              _hfovDiv2     ( rhs._hfovDiv2.get() )
+              _zp  ( rhs._zp.get() ),
+              _scale ( rhs._scale.get() ),
+              _lighting( rhs._lighting.get() )
         {
             //nop
-        }
-
-        // override.
-        void sortImplementation()
-        {
-            copyLeavesFromStateGraphListToRenderLeafList();
         }
 
         /**
@@ -114,40 +163,31 @@ namespace
          */
         void drawImplementation( osg::RenderInfo& renderInfo, osgUtil::RenderLeaf*& previous)
         {
-            osg::State& state = *renderInfo.getState();
-
-            unsigned int numToPop = (previous ? osgUtil::StateGraph::numToPop(previous->_parent) : 0);
-            if (numToPop>1) --numToPop;
-            unsigned int insertStateSetPosition = state.getStateSetStackSize() - numToPop;
-
-            //if (_stateset.valid() )
-            {
-                state.insertStateSet(insertStateSetPosition, _stateset.get());
-            }
+            //OE_NOTICE << LC << "AUTOSCALE: leaves = " << getNumLeaves(this) << std::endl;
 
             // apply a window-space projection matrix.
             const osg::Viewport* vp = renderInfo.getCurrentCamera()->getViewport();
             if ( vp )
             {
-                _viewportWidth->set( 0.5f*(float)vp->width() );
-                _hfovDiv2->set( osg::DegreesToRadians(45.0f) );
-            }
+                float vpw = 0.5f*(float)vp->width();
 
-            // render the list
-            osgUtil::RenderBin::RenderLeafList& leaves = this->getRenderLeafList();
-            for(osgUtil::RenderBin::RenderLeafList::reverse_iterator rlitr = leaves.rbegin();
-                rlitr!= leaves.rend();
-                ++rlitr)
-            {
-                osgUtil::RenderLeaf* leaf = *rlitr;
-                leaf->render( renderInfo, previous );
-                previous = leaf;
-            }
+                double fovy, aspectRatio, n, f;
+                renderInfo.getCurrentCamera()->getProjectionMatrixAsPerspective(fovy, aspectRatio, n, f);
+                float hfovd2 = (float)(0.5*fovy*aspectRatio);
 
-            //if ( this->getStateSet() ) // always true
-            {
-                state.removeStateSet(insertStateSetPosition);
+                _zp->set( vpw / tanf(osg::DegreesToRadians(hfovd2)) );
             }
+    
+            osgUtil::RenderBin::drawImplementation(renderInfo, previous);
+        }
+
+        // debugging - counts the total # of leaves in this bin and its children
+        static unsigned getNumLeaves(osgUtil::RenderBin* bin)
+        {
+            unsigned here = bin->getRenderLeafList().size();
+            for( RenderBinList::iterator i = bin->getRenderBinList().begin(); i != bin->getRenderBinList().end(); ++i )
+                here += getNumLeaves( i->second.get() );
+            return here;
         }
     };
 }

@@ -308,6 +308,13 @@ ShaderGenerator::apply( osg::Drawable* drawable )
             }
             else
             {
+                osg::Geometry* geom = drawable->asGeometry();
+                if ( geom )
+                {
+                    geom->setUseVertexBufferObjects(true);
+                    geom->setUseDisplayList(false);
+                }
+
                 if ( processGeometry(ss.get(), replacement) )
                 {
                     drawable->setStateSet(replacement.get());

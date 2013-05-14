@@ -78,7 +78,11 @@ you can attach one to any node in the scene graph. Shaders that belong to a
 (i.e., higher up in the scene graph). In the way you can override individual shader
 functions in osgEarth.
 
+    **Important Note!** Shader variables starting with the prefix ``oe_`` or ``osgearth_``
+    are reserved for osgEarth internal use.
+
 The sections below on integration will demonstrate how to use ``VirtualProgram``.
+
 
 
 Integrating Custom Shaders

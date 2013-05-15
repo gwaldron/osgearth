@@ -290,18 +290,18 @@ ShaderFactory::createColorFilterChainFragmentShader(const std::string&      func
     for( ColorFilterChain::const_iterator i = chain.begin(); i != chain.end(); ++i )
     {
         ColorFilter* filter = i->get();
-        buf << "void " << filter->getEntryPointFunctionName() << "(in int slot, inout vec4 color);\n";
+        buf << "void " << filter->getEntryPointFunctionName() << "(inout vec4 color);\n";
     }
 
     // write out the main function:
-    buf << "void " << function << "(in int slot, inout vec4 color) \n"
+    buf << "void " << function << "(inout vec4 color) \n"
         << "{ \n";
 
     // write out the function calls. if there are none, it's a NOP.
     for( ColorFilterChain::const_iterator i = chain.begin(); i != chain.end(); ++i )
     {
         ColorFilter* filter = i->get();
-        buf << INDENT << filter->getEntryPointFunctionName() << "(slot, color);\n";
+        buf << INDENT << filter->getEntryPointFunctionName() << "(color);\n";
     }
         
     buf << "} \n";

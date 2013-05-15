@@ -36,7 +36,7 @@ namespace
         "#version 110\n"
         "uniform vec3 __UNIFORM_NAME__;\n"
 
-        "void __ENTRY_POINT__(in int slot, inout vec4 color)\n"
+        "void __ENTRY_POINT__(inout vec4 color)\n"
         "{\n"
         "    color.rgb = clamp(color.rgb + __UNIFORM_NAME__.rgb, 0.0, 1.0); \n"
         "} \n";

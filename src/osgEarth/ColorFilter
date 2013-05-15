@@ -42,7 +42,7 @@ namespace osgEarth
          * The name of the function to call in the custom shader. This function
          * must have the signature:
          *
-         *    void function(in int slot, inout vec4 color)
+         *    void function(inout vec4 color)
          *
          * Failure to match this signature will result in a shader compilation error.
          *

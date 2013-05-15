@@ -146,7 +146,7 @@ namespace
         // install the color filter chain prototypes:
         for( int i=0; i<maxSlots && i <(int)slots.size(); ++i )
         {
-            buf << "void osgearth_runColorFilters_" << i << "(in int slot, inout vec4 color);\n";
+            buf << "void osgearth_runColorFilters_" << i << "(inout vec4 color);\n";
         }
 
         // the main texturing function:
@@ -202,7 +202,7 @@ namespace
 
             buf
                 // color filter:
-                << "            osgearth_runColorFilters_" << i << "(" << slot << ", texel); \n"
+                << "            osgearth_runColorFilters_" << i << "(texel); \n"
 
                 // adjust for opacity
                 << "            float opacity =  texel.a * osgearth_ImageLayerOpacity[" << i << "];\n"

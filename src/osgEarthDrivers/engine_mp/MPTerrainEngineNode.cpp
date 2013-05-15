@@ -686,8 +686,8 @@ MPTerrainEngineNode::updateShaders()
                         for( ColorFilterChain::const_iterator j = chain.begin(); j != chain.end(); ++j )
                         {
                             const ColorFilter* filter = j->get();
-                            cf_head << "void " << filter->getEntryPointFunctionName() << "(in int slot, inout vec4 color);\n";
-                            cf_body << I << I << filter->getEntryPointFunctionName() << "(" << _primaryUnit << ", color);\n";
+                            cf_head << "void " << filter->getEntryPointFunctionName() << "(inout vec4 color);\n";
+                            cf_body << I << I << filter->getEntryPointFunctionName() << "(color);\n";
                             filter->install( terrainStateSet );
                         }
                         cf_body << I << "}\n";

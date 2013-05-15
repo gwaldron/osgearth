@@ -37,7 +37,7 @@ namespace
         "uniform vec3  __COLOR_UNIFORM_NAME__;\n"
         "uniform float __DISTANCE_UNIFORM_NAME__;\n"
 
-        "void __ENTRY_POINT__(in int slot, inout vec4 color)\n"
+        "void __ENTRY_POINT__(inout vec4 color)\n"
         "{ \n"
         "    float dist = distance(color.rgb, __COLOR_UNIFORM_NAME__); \n"
         "    if (dist <= __DISTANCE_UNIFORM_NAME__) color.a = 0.0;\n"

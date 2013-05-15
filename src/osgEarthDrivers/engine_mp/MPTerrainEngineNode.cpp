@@ -136,7 +136,8 @@ _terrain              ( 0L ),
 _update_mapf          ( 0L ),
 _tileCount            ( 0 ),
 _tileCreationTime     ( 0.0 ),
-_imageUnit            ( 0 ),
+_primaryUnit          ( 0 ),
+_secondaryUnit        ( 1 ),
 _batchUpdateInProgress( false ),
 _refreshRequired      ( false ),
 _shaderUpdateRequired ( false )
@@ -204,7 +205,9 @@ MPTerrainEngineNode::postInitialize( const Map* map, const TerrainOptions& optio
     if ( _terrain )
     {
         // reserve a GPU image unit and two attribute indexes.
-        this->getTextureCompositor()->reserveTextureImageUnit( _imageUnit );
+        this->getTextureCompositor()->reserveTextureImageUnit( _primaryUnit );
+        this->getTextureCompositor()->reserveTextureImageUnit( _secondaryUnit );
+
         //this->getTextureCompositor()->reserveAttribIndex( _attribIndex1 );
         //this->getTextureCompositor()->reserveAttribIndex( _attribIndex2 );
     }
@@ -345,7 +348,7 @@ MPTerrainEngineNode::getKeyNodeFactory()
         // A compiler specific to this thread:
         TileModelCompiler* compiler = new TileModelCompiler(
             _update_mapf->terrainMaskLayers(),
-            _imageUnit,
+            _primaryUnit,
             optimizeTriangleOrientation,
             _terrainOptions );
 
@@ -466,6 +469,7 @@ MPTerrainEngineNode::addImageLayer( ImageLayer* layerAdded )
                 if ( getTextureCompositor()->reserveTextureImageUnit(temp) )
                 {
                     unit = temp;
+                    OE_INFO << LC << "Image unit " << temp << " assigned to shared layer " << layerAdded->getName() << std::endl;
                 }
                 else
                 {
@@ -639,8 +643,8 @@ MPTerrainEngineNode::updateShaders()
 
         // install the gl_MultiTexCoord* variable that uses the proper texture
         // image unit:
-        replaceIn( vs, "__GL_MULTITEXCOORD1__", Stringify() << "gl_MultiTexCoord" << _imageUnit );
-        replaceIn( vs, "__GL_MULTITEXCOORD2__", Stringify() << "gl_MultiTexCoord" << _imageUnit+1 );
+        replaceIn( vs, "__GL_MULTITEXCOORD1__", Stringify() << "gl_MultiTexCoord" << _primaryUnit );
+        replaceIn( vs, "__GL_MULTITEXCOORD2__", Stringify() << "gl_MultiTexCoord" << _secondaryUnit );
 
         vp->setFunction( "oe_mp_setup_coloring", vs, ShaderComp::LOCATION_VERTEX_MODEL, 0.0 );
 
@@ -663,7 +667,7 @@ MPTerrainEngineNode::updateShaders()
                 cf_body << I << "if (color.a > 0.0) color.rgb /= color.a; \n";
             }
 
-            // second, install the per-layer color filter functions.
+            // second, install the per-layer color filter functions AND shared layer bindings.
             bool ifStarted = false;
             int numImageLayers = _update_mapf->imageLayers().size();
             for( int i=0; i<numImageLayers; ++i )
@@ -671,6 +675,7 @@ MPTerrainEngineNode::updateShaders()
                 ImageLayer* layer = _update_mapf->getImageLayerAt(i);
                 if ( layer->getEnabled() )
                 {
+                    // install Color Filter function calls:
                     const ColorFilterChain& chain = layer->getColorFilters();
                     if ( chain.size() > 0 )
                     {
@@ -682,7 +687,7 @@ MPTerrainEngineNode::updateShaders()
                         {
                             const ColorFilter* filter = j->get();
                             cf_head << "void " << filter->getEntryPointFunctionName() << "(in int slot, inout vec4 color);\n";
-                            cf_body << I << I << filter->getEntryPointFunctionName() << "(" << _imageUnit << ", color);\n";
+                            cf_body << I << I << filter->getEntryPointFunctionName() << "(" << _primaryUnit << ", color);\n";
                             filter->install( terrainStateSet );
                         }
                         cf_body << I << "}\n";
@@ -733,7 +738,7 @@ MPTerrainEngineNode::updateShaders()
 
         // binding for the terrain texture
         terrainStateSet->getOrCreateUniform( 
-            "oe_layer_tex", osg::Uniform::SAMPLER_2D )->set( _imageUnit );
+            "oe_layer_tex", osg::Uniform::SAMPLER_2D )->set( _primaryUnit );
 
         // uniform that controls per-layer opacity
         terrainStateSet->getOrCreateUniform(

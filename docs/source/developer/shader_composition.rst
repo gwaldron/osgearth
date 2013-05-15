@@ -190,6 +190,22 @@ Vertex attributes:
                          elements 1-3 are currently unused.
 
 
+Shared Image Layers
+-------------------
+
+By default, osgEarth gives you access to the layer it's currently drawing (via the
+``oe_layer_tex`` uniform; see above). But sometimes you want to access more than one
+layer at a time. For example, you might have a masking layer that indicates land vs.
+water. You may not actually want to *draw* this layer, but you want to use it to modulate
+another visible layer.
+
+You can do this using *shared image layers*. In the ``Map``, mark an image layer as
+*shared* (using ``ImageLayerOptions::shared()``) and the renderer will make it available
+to all the other layers in a secondary sampler.
+
+    Please refer to ``osgearth_sharedlayer.cpp`` for a usage example!
+
+
 Customizing the Shader Factory
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

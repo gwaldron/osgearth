@@ -81,6 +81,23 @@ namespace
 // same type as PROGRAM (for proper state sorting)
 const osg::StateAttribute::Type VirtualProgram::SA_TYPE = osg::StateAttribute::PROGRAM;
 
+VirtualProgram* 
+VirtualProgram::getOrCreate(osg::StateSet* stateset)
+{
+    if ( !stateset )
+        return 0L;
+
+    VirtualProgram* vp = dynamic_cast<VirtualProgram*>( stateset->getAttribute(SA_TYPE) );
+    if ( !vp )
+    {
+        vp = new VirtualProgram();
+        stateset->setAttributeAndModes( vp, 1 );
+    }
+    return vp;
+}
+
+//------------------------------------------------------------------------
+
 
 VirtualProgram::VirtualProgram( unsigned mask ) : 
 _mask              ( mask ),

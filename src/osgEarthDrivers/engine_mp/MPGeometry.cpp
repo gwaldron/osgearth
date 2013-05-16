@@ -104,7 +104,7 @@ MPGeometry::renderPrimitiveSets(osg::State& state,
             // can see it and use it.
             if ( layer._imageLayer->isShared() )
             {
-                int sharedUnit = 3; // layer._imageLayer->shareImageUnit().get();
+                int sharedUnit = layer._imageLayer->shareImageUnit().get(); //3; // layer._imageLayer->shareImageUnit().get();
                 {
                     state.setActiveTextureUnit( sharedUnit );
                     state.setTexCoordPointer( sharedUnit, layer._texCoords.get() );

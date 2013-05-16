@@ -77,6 +77,8 @@ ADD_SUBDIRECTORY(osgearth_sequencecontrol)
 ADD_SUBDIRECTORY(osgearth_minimap)
 ADD_SUBDIRECTORY(osgearth_detailtex)
 ADD_SUBDIRECTORY(osgearth_lodmorph)
+ADD_SUBDIRECTORY(osgearth_sharedlayer)
+
 
 IF(NOT ${OPENSCENEGRAPH_VERSION} VERSION_LESS "3.1.0")
     ADD_SUBDIRECTORY(osgearth_shadow)

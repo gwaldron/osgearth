@@ -47,6 +47,46 @@ The ``extensions`` parameter lets you filter files by extension. For example, pa
 with a comma.
 
 
+DetailTexture
+-------------
+
+``DetailTexture`` is a terrain controller that will apply a non-geospatial texture
+cross the terrain. This is an old trick that you can use to generate "noise" that makes
+a low resolution terrain appear more detailed::
+
+    DetailTexture detail;
+    detail.setImage( osgDB::readImageFile("mytexture.jpg") );
+    detail.setIntensity( 0.5f );
+    detail.setImageUnit( 4 );
+    detail.setTerrainNode( mapnode->getTerrainEngine() );
+
+Try the example. Zoom in fairly close to the terrain to see the effect::
+
+    osgearth_detailtex readymap.earth
+
+
+
+ElevationMorph
+--------------
+
+``ElevationMorph`` is a terrain controller that will attempt to smoothly morph vertices
+from one LOD to the next as you zoom in or out. Basic usage is::
+
+    ElevationMorph morph;
+    morph.setTerrainNode( mapnode->getTerrainEngine() );
+
+Caveats: It requires that the terrain elevation tile size dimensions be odd-numbered
+(e.g., 15x15). You can use the ``MapOptions::elevationTileSize`` property to configure
+this, or set ``elevation_tile_size`` in your earth file::
+
+    <map>
+        <options elevation_tile_size="15" ...
+
+For a demo, run this example and zoom into a mountainous area::
+
+    osgearth_lodmorph readymap.earth
+
+
 Formatters
 ----------
 

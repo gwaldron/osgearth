@@ -35,7 +35,7 @@ namespace
     static const char* s_localShaderSource =
         "#version " GLSL_VERSION_STR "\n"
         GLSL_DEFAULT_PRECISION_FLOAT "\n"
-        "void __ENTRY_POINT__(in int slot, inout vec4 color)\n"
+        "void __ENTRY_POINT__(inout vec4 color)\n"
         "{\n"
         "__CODE__ \n"
         "} \n";

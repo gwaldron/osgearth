@@ -163,7 +163,7 @@ You can alter the vertex, but you *must* leave it in the same space.
          
          
 Shader Variables
-----------------
+~~~~~~~~~~~~~~~~
 
 There are some built-in shader variables that osgEarth installs and that you can 
 access from your shader functions.
@@ -190,6 +190,22 @@ Vertex attributes:
                          elements 1-3 are currently unused.
 
 
+Shared Image Layers
+~~~~~~~~~~~~~~~~~~~
+
+By default, osgEarth gives you access to the layer it's currently drawing (via the
+``oe_layer_tex`` uniform; see above). But sometimes you want to access more than one
+layer at a time. For example, you might have a masking layer that indicates land vs.
+water. You may not actually want to *draw* this layer, but you want to use it to modulate
+another visible layer.
+
+You can do this using *shared image layers*. In the ``Map``, mark an image layer as
+*shared* (using ``ImageLayerOptions::shared()``) and the renderer will make it available
+to all the other layers in a secondary sampler.
+
+    Please refer to ``osgearth_sharedlayer.cpp`` for a usage example!
+
+
 Customizing the Shader Factory
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -214,14 +230,3 @@ This method is good for replacing osgEarth's built-in lighting shader code.
 HOWEVER: be aware that override the built-in texturing functions may not work.
 This is because osgEarth's image layer composition mechanisms override these methods
 themselves to perform layer rendering.
-
-
-System Uniforms
----------------
-
-In addition the the OSG system uniforms (which all start with "osg_"), osgEarth
-provides various uniforms. They are:
-
-  :osgearth_LightingEnabled:     whether GL lighting is enabled (bool)
-  :osgearth_CameraElevation:     distance from camera to ellipsoid/Z=0 (float)
-

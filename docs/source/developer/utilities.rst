@@ -54,11 +54,11 @@ DetailTexture
 cross the terrain. This is an old trick that you can use to generate "noise" that makes
 a low resolution terrain appear more detailed::
 
-    DetailTexture detail;
-    detail.setImage( osgDB::readImageFile("mytexture.jpg") );
-    detail.setIntensity( 0.5f );
-    detail.setImageUnit( 4 );
-    detail.setTerrainNode( mapnode->getTerrainEngine() );
+    DetailTexture* detail = new DetailTexture();
+    detail->setImage( osgDB::readImageFile("mytexture.jpg") );
+    detail->setIntensity( 0.5f );
+    detail->setImageUnit( 4 );
+    mapnode->getTerrainEngine()->addEffect( detail );
 
 Try the example. Zoom in fairly close to the terrain to see the effect::
 
@@ -72,8 +72,8 @@ ElevationMorph
 ``ElevationMorph`` is a terrain controller that will attempt to smoothly morph vertices
 from one LOD to the next as you zoom in or out. Basic usage is::
 
-    ElevationMorph morph;
-    morph.setTerrainNode( mapnode->getTerrainEngine() );
+    ElevationMorph* morph = new ElevationMorph();
+    mapnode->getTerrainEngine()->addEffect( morph );
 
 Caveats: It requires that the terrain elevation tile size dimensions be odd-numbered
 (e.g., 15x15). You can use the ``MapOptions::elevationTileSize`` property to configure
@@ -167,3 +167,16 @@ For your convenience, ``MouseCoordsTool`` also comes with a stock callback that 
 print the coords to ``osgEarthUtil::Controls::LabelControl``. You can even pass a
 ``LabelControl`` to the contructor to make it even easier.
 
+
+VerticalScale
+-------------
+
+``VerticalScale`` scales the height values of the terrain. Basic usage is::
+
+    VerticalScale* scale = new VerticalScale();
+    scale->setScale( 2.0 );
+    mapnode->getTerrainEngine()->addEffect( scale );
+
+For a demo, run this example::
+
+    osgearth_verticalscale readymap.earth

@@ -44,7 +44,7 @@ usage(const char* msg)
 
 struct App
 {
-    ElevationMorph morph;
+    ElevationMorph* morph;
 };
 
 
@@ -52,7 +52,7 @@ struct SetDelay : public ui::ControlEventHandler {
     App& _app;
     SetDelay(App& app) : _app(app) {}
     void onValueChanged(ui::Control*, float value) {
-        _app.morph.setDelay(value);
+        _app.morph->setDelay(value);
     }
 };
 
@@ -61,7 +61,7 @@ struct SetDuration : public ui::ControlEventHandler {
     App& _app;
     SetDuration(App& app) : _app(app) { }
     void onValueChanged(ui::Control*, float value) {
-        _app.morph.setDuration(value);
+        _app.morph->setDuration(value);
     }
 };
 
@@ -122,8 +122,9 @@ int main(int argc, char** argv)
         if ( !mapNode )
             return -1;
 
-        // attach the controller to the terrain.
-        app.morph.setTerrainNode( mapNode->getTerrainEngine() );
+        // attach the effect to the terrain.
+        app.morph = new ElevationMorph();
+        mapNode->getTerrainEngine()->addEffect(app.morph);
 
         viewer.setSceneData( node );
         viewer.run();

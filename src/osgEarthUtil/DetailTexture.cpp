@@ -20,6 +20,7 @@
 #include <osgEarth/Registry>
 #include <osgEarth/Capabilities>
 #include <osgEarth/VirtualProgram>
+#include <osgEarth/TerrainEngineNode>
 
 #define LC "[DetailTexture] "
 
@@ -90,9 +91,10 @@ namespace
 
 
 DetailTexture::DetailTexture() :
-_unit     ( 1 ),
-_baseLOD  ( 10 ),
-_intensity( 0.25f )
+TerrainEffect(),
+_unit        ( 1 ),
+_baseLOD     ( 10 ),
+_intensity   ( 0.25f )
 {
     _samplerUniform   = new osg::Uniform(osg::Uniform::SAMPLER_2D, "oe_dtex_tex");
     _samplerUniform->set( (int)_unit );
@@ -114,7 +116,7 @@ _intensity( 0.25f )
 
 DetailTexture::~DetailTexture()
 {
-    setTerrainNode(0L);
+    //nop
 }
 
 
@@ -151,30 +153,27 @@ DetailTexture::setImage(const osg::Image* image)
 
 
 void
-DetailTexture::setTerrainNode(osg::Node* node)
+DetailTexture::onInstall(TerrainEngineNode* engine)
 {
-    if ( node )
+    if ( engine )
     {
-        osg::StateSet* ss = node->getOrCreateStateSet();
+        osg::StateSet* stateset = engine->getOrCreateStateSet();
 
-        ss->addUniform( _baseLODUniform.get() );
-        ss->addUniform( _samplerUniform.get() );
-        ss->addUniform( _intensityUniform.get() );
+        stateset->addUniform( _baseLODUniform.get() );
+        stateset->addUniform( _samplerUniform.get() );
+        stateset->addUniform( _intensityUniform.get() );
 
-        ss->setTextureAttributeAndModes( _unit, _texture.get() );
+        stateset->setTextureAttributeAndModes( _unit, _texture.get() );
 
-        VirtualProgram* vp = dynamic_cast<VirtualProgram*>(ss->getAttribute(VirtualProgram::SA_TYPE));
-        if ( !vp )
-        {
-            vp = new VirtualProgram();
-            ss->setAttributeAndModes( vp, 1 );
-        }
+        VirtualProgram* vp = VirtualProgram::getOrCreate(stateset);
         vp->setFunction( "oe_dtex_vertex",   vs, ShaderComp::LOCATION_VERTEX_MODEL );
         vp->setFunction( "oe_dtex_fragment", fs, ShaderComp::LOCATION_FRAGMENT_COLORING );
     }
-    else
-    {
-        //todo - remove
-        OE_WARN << LC << "Remove NYI!" << std::endl;
-    }
+}
+
+
+void
+DetailTexture::onUninstall(TerrainEngineNode* engine)
+{
+    OE_WARN << LC << "Uninstall NYI" << std::endl;
 }

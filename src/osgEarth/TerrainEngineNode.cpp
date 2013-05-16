@@ -70,6 +70,30 @@ _engine( engine )
 }
 
 
+void
+TerrainEngineNode::addEffect(TerrainEffect* effect)
+{
+    if ( effect )
+    {
+        effects_.push_back( effect );
+        effect->onInstall( this );
+    }
+}
+
+
+void
+TerrainEngineNode::removeEffect(TerrainEffect* effect)
+{
+    if ( effect )
+    {
+        effect->onUninstall(this);
+        TerrainEffectVector::iterator i = std::find(effects_.begin(), effects_.end(), effect);
+        if ( i != effects_.end() )
+            effects_.erase( i );
+    }
+}
+
+
 TextureCompositor*
 TerrainEngineNode::getTextureCompositor() const
 {

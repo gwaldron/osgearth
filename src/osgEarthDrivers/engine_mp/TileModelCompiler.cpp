@@ -80,7 +80,7 @@ namespace
     {
         TileModel::ColorData           _layer;
         osg::ref_ptr<const GeoLocator> _locator;
-        osg::ref_ptr<osg::Vec2Array>   _tileCoords;
+        //osg::ref_ptr<osg::Vec2Array>   _tileCoords;
         osg::ref_ptr<osg::Vec2Array>   _texCoords;
         osg::ref_ptr<osg::Vec2Array>   _skirtTexCoords;
         osg::ref_ptr<osg::Vec2Array>   _stitchTexCoords;
@@ -129,6 +129,7 @@ namespace
             j_sampleFactor   = 1.0f;
             useVBOs = !Registry::capabilities().preferDisplayListsForStaticGeometry();
             textureImageUnit = 0;
+            renderTileCoords = 0L;
         }
 
         bool                     useVBOs;
@@ -140,6 +141,7 @@ namespace
         osg::Vec3d               centerModel;                   // tile center in model (world) coords
 
         RenderLayerVector        renderLayers;
+        osg::Vec2Array*          renderTileCoords;
 
         // surface data:
         osg::Geode*                   surfaceGeode;
@@ -351,6 +353,23 @@ namespace
         // array, saving on memory.
         d.renderLayers.reserve( d.model->_colorData.size() );
 
+        // unit tile coords - [0..1] always across the tile.
+        osg::Vec4d idmat;
+        idmat[0] = 0.0;
+        idmat[1] = 0.0;
+        idmat[2] = 1.0;
+        idmat[3] = 1.0;
+
+        osg::ref_ptr<osg::Vec2Array>& tileCoords = cache._surfaceTexCoordArrays.get( idmat, d.numCols, d.numRows );
+        if ( !tileCoords.valid() )
+        {
+            // Note: anything in the cache must have its own VBO. No sharing!
+            tileCoords = new osg::Vec2Array();
+            tileCoords->setVertexBufferObject( new osg::VertexBufferObject() );
+            tileCoords->reserve( d.numVerticesInSurface );
+        }
+        d.renderTileCoords = tileCoords.get();
+
         // build a list of "render layers", in rendering order, sharing texture coordinate
         // arrays wherever possible.
         for( TileModel::ColorDataByUID::const_iterator i = d.model->_colorData.begin(); i != d.model->_colorData.end(); ++i )
@@ -367,12 +386,6 @@ namespace
                 {
                     const GeoExtent& locex = locator->getDataExtent();
                     const GeoExtent& keyex = d.model->_tileKey.getExtent();
-
-                    osg::Vec4d idmat;
-                    idmat[0] = 0.0;
-                    idmat[1] = 0.0;
-                    idmat[2] = 1.0;
-                    idmat[3] = 1.0;
 
                     osg::Vec4d mat;
                     mat[0] = (keyex.xMin() - locex.xMin())/locex.width();
@@ -394,18 +407,6 @@ namespace
                     }
                     r._texCoords = surfaceTexCoords.get();
 
-                    // unit tile coords - [0..1] always across the tile.
-                    osg::ref_ptr<osg::Vec2Array>& tileCoords = cache._surfaceTexCoordArrays.get( idmat, d.numCols, d.numRows );
-                    if ( !tileCoords.valid() )
-                    {
-                        // Note: anything in the cache must have its own VBO. No sharing!
-                        tileCoords = new osg::Vec2Array();
-                        tileCoords->setVertexBufferObject( new osg::VertexBufferObject() );
-                        tileCoords->reserve( d.numVerticesInSurface );
-                        r._ownsTileCoords = true;
-                    }
-                    r._tileCoords = tileCoords.get();
-
                     osg::ref_ptr<osg::Vec2Array>& skirtTexCoords = cache._skirtTexCoordArrays.get( mat, d.numCols, d.numRows );
                     if ( !skirtTexCoords.valid() )
                     {
@@ -425,9 +426,9 @@ namespace
                     r._texCoords->reserve( d.numVerticesInSurface );
                     r._ownsTexCoords = true;
 
-                    r._tileCoords = new osg::Vec2Array();
-                    r._tileCoords->reserve( d.numVerticesInSurface );
-                    r._ownsTileCoords = true;
+                    //r._tileCoords = new osg::Vec2Array();
+                    //r._tileCoords->reserve( d.numVerticesInSurface );
+                    //r._ownsTileCoords = true;
 
                     r._skirtTexCoords = new osg::Vec2Array();
                     r._skirtTexCoords->reserve( d.numVerticesInSkirt );
@@ -542,12 +543,9 @@ namespace
                                 r->_texCoords->push_back( osg::Vec2( ndc.x(), ndc.y() ) );
                             }
                         }
-
-                        if ( r->_ownsTileCoords )
-                        {
-                            r->_tileCoords->push_back( osg::Vec2(ndc.x(), ndc.y()) );
-                        }
                     }
+
+                    d.renderTileCoords->push_back( osg::Vec2(ndc.x(), ndc.y()) );
 
                     // record the raw elevation value in our float array for later
                     (*d.elevations).push_back(ndc.z());
@@ -1750,6 +1748,9 @@ namespace
             mr->_geom->_layers.resize( size );
         if ( d.stitching_skirts )
             d.stitching_skirts->_layers.resize( size );
+        
+        if ( d.renderTileCoords )
+            d.surface->_tileCoords = d.renderTileCoords;
 
         // install the render data for each layer:
         for( RenderLayerVector::const_iterator r = d.renderLayers.begin(); r != d.renderLayers.end(); ++r )
@@ -1775,7 +1776,6 @@ namespace
 
             // the surface:
             layer._texCoords  = r->_texCoords;
-            layer._tileCoords = r->_tileCoords;
             d.surface->_layers[order] = layer;
 
             // the skirt:
@@ -1906,6 +1906,7 @@ TileModelCompiler::compile(const TileModel* model,
 
     // installs the per-layer rendering data into the Geometry objects.
     installRenderData( d );
+
 
     // lastly, optimize the results.
     // unnecessary (I think) since tessellateSurfaceGeometry already makes an optimal

@@ -101,6 +101,7 @@ SET(LIB_PUBLIC_HEADERS
     StringUtils
     TaskService
     Terrain
+    TerrainEffect
     TerrainLayer
     TerrainOptions
     TerrainEngineNode

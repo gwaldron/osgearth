@@ -20,31 +20,22 @@
 #define OSGEARTHUTIL_DETAIL_TEXTURE_H
 
 #include <osgEarthUtil/Common>
+#include <osgEarth/TerrainEffect>
 #include <osg/Image>
 #include <osg/Uniform>
 #include <osg/Node>
 #include <osg/Texture2D>
-#include <osg/observer_ptr>
-
-namespace osgEarth {
-    class VirtualProgram;
-}
 
 namespace osgEarth { namespace Util
 {
     /**
      * Controller that applies a detail texture to the terrain.
      */
-    class OSGEARTHUTIL_EXPORT DetailTexture
+    class OSGEARTHUTIL_EXPORT DetailTexture : public TerrainEffect
     {
     public:
         /** construct a new detail texture controller */
         DetailTexture();
-        virtual ~DetailTexture();
-
-        /** Attach the detail texture to the terrain renderer. Set to
-            NULL to detach an existing detail texture. */
-        void setTerrainNode( osg::Node* node );
 
         /** Sets the LOD at which to start detailing */
         void setBaseLOD( unsigned lod );
@@ -62,9 +53,15 @@ namespace osgEarth { namespace Util
         void setImageUnit( unsigned unit );
         unsigned getImageUnit() const { return _unit; }
 
+    public: // TerrainEffect interface
+
+        void onInstall(TerrainEngineNode* engine);
+        void onUninstall(TerrainEngineNode* engine);
+
     protected:
-        osg::observer_ptr<osg::Node> _terrain;
-        unsigned                     _unit;
+        virtual ~DetailTexture();
+
+        int                          _unit;
         float                        _intensity;
         unsigned                     _baseLOD;
 

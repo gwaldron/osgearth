@@ -53,7 +53,7 @@ usage(const char* msg)
 
 struct App
 {
-    VerticalScale scaler;
+    VerticalScale* scaler;
 };
 
 
@@ -61,7 +61,7 @@ struct SetScale : public ui::ControlEventHandler {
     App& _app;
     SetScale(App& app) : _app(app) {}
     void onValueChanged(ui::Control*, float value) {
-        _app.scaler.setScale(value);
+        _app.scaler->setScale(value);
     }
 };
 
@@ -116,8 +116,9 @@ int main(int argc, char** argv)
         if ( !mapNode )
             return -1;
 
-        // attach the controller to the terrain.
-        app.scaler.setTerrainNode( mapNode->getTerrainEngine() );
+        // attach the effect to the terrain.
+        app.scaler = new VerticalScale();
+        mapNode->getTerrainEngine()->addEffect( app.scaler );
 
         viewer.setSceneData( node );
         viewer.run();

@@ -65,6 +65,7 @@ namespace osgEarth_engine_mp
         mutable osg::ref_ptr<osg::Uniform>   _layerOrderUniform;
         mutable osg::ref_ptr<osg::Uniform>   _opacityUniform;
         int                                  _imageUnit;
+        osg::ref_ptr<osg::Vec2Array>         _tileCoords;
 
     public:
         

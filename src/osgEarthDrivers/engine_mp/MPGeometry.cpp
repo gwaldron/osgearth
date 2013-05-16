@@ -89,6 +89,9 @@ MPGeometry::renderPrimitiveSets(osg::State& state,
         orderLocation   = pcp->getUniformLocation( _layerOrderUniform->getNameID() );
     }
 
+    // activate the tile coordinate set - same for all layers
+    state.setTexCoordPointer( _imageUnit+1, _tileCoords.get() );
+
     if ( _layers.size() > 0 )
     {
         float prev_opacity        = -1.0f;
@@ -104,7 +107,7 @@ MPGeometry::renderPrimitiveSets(osg::State& state,
             // can see it and use it.
             if ( layer._imageLayer->isShared() )
             {
-                int sharedUnit = layer._imageLayer->shareImageUnit().get(); //3; // layer._imageLayer->shareImageUnit().get();
+                int sharedUnit = layer._imageLayer->shareImageUnit().get();
                 {
                     state.setActiveTextureUnit( sharedUnit );
                     state.setTexCoordPointer( sharedUnit, layer._texCoords.get() );
@@ -138,9 +141,6 @@ MPGeometry::renderPrimitiveSets(osg::State& state,
                 // TODO: can probably optimize this by sharing or using texture matrixes.
                 // State::setTexCoordPointer does some redundant work under the hood.
                 state.setTexCoordPointer( _imageUnit, layer._texCoords.get() );
-
-                //todo: move this outside the loop
-                state.setTexCoordPointer( _imageUnit+1, layer._tileCoords.get() );
 
                 // apply uniform values:
                 if ( pcp )

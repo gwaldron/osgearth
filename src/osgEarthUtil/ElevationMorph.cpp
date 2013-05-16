@@ -20,6 +20,7 @@
 #include <osgEarth/Registry>
 #include <osgEarth/Capabilities>
 #include <osgEarth/VirtualProgram>
+#include <osgEarth/TerrainEngineNode>
 
 #define LC "[ElevationMorph] "
 
@@ -72,8 +73,9 @@ namespace
 
 
 ElevationMorph::ElevationMorph() :
-_delay    ( 0.0f ),
-_duration ( 0.25f )
+TerrainEffect(),
+_delay       ( 0.0f ),
+_duration    ( 0.25f )
 {
     _delayUniform = new osg::Uniform(osg::Uniform::FLOAT, "oe_morph_delay");
     _delayUniform->set( (float)_delay );
@@ -85,7 +87,7 @@ _duration ( 0.25f )
 
 ElevationMorph::~ElevationMorph()
 {
-    setTerrainNode(0L);
+    //nop
 }
 
 
@@ -106,28 +108,24 @@ ElevationMorph::setDuration(float duration)
 
 
 void
-ElevationMorph::setTerrainNode(osg::Node* node)
+ElevationMorph::onInstall(TerrainEngineNode* engine)
 {
-    if ( node )
+    if ( engine )
     {
-        osg::StateSet* ss = node->getOrCreateStateSet();
+        osg::StateSet* stateset = engine->getOrCreateStateSet();
 
-        ss->addUniform( _delayUniform.get() );
-        ss->addUniform( _durationUniform.get() );
+        stateset->addUniform( _delayUniform.get() );
+        stateset->addUniform( _durationUniform.get() );
 
-        VirtualProgram* vp = dynamic_cast<VirtualProgram*>(ss->getAttribute(VirtualProgram::SA_TYPE));
-        if ( !vp )
-        {
-            vp = new VirtualProgram();
-            ss->setAttributeAndModes( vp, 1 );
-        }
+        VirtualProgram* vp = VirtualProgram::getOrCreate(stateset);
         vp->setFunction( "oe_morph_vertex", vs, ShaderComp::LOCATION_VERTEX_MODEL );
-        //vp->addBindAttribLocation( "oe_morph_attribs",  osg::Drawable::ATTRIBUTE_6 );
-        //vp->addBindAttribLocation( "oe_morph_attribs2", osg::Drawable::ATTRIBUTE_7 );
-    }
-    else
-    {
-        //todo - remove
-        OE_WARN << LC << "Remove NYI." << std::endl;
     }
 }
+
+
+void
+ElevationMorph::onUninstall(TerrainEngineNode* engine)
+{
+    OE_WARN << LC << "Uninstall NYI." << std::endl;
+}
+

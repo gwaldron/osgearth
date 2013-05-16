@@ -112,8 +112,8 @@ namespace osgEarth { namespace Drivers
 
     private:
         void fromConfig( const Config& conf ) {
-            conf.getIfSet( "minElevation", _minElevation );
-            conf.getIfSet( "maxElevation", _maxElevation );
+            conf.getIfSet( "min_elevation", _minElevation );
+            conf.getIfSet( "max_elevation", _maxElevation );
             conf.getIfSet( "octaves", _octaves );
             conf.getIfSet( "frequency", _frequency );
             conf.getIfSet( "persistence", _persistence );

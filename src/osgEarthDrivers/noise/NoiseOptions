@@ -1,0 +1,136 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+ * Copyright 2008-2013 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+#ifndef OSGEARTH_DRIVER_NOISE_DRIVEROPTIONS
+#define OSGEARTH_DRIVER_NOISE_DRIVEROPTIONS 1
+
+#include <osgEarth/Common>
+#include <osgEarth/TileSource>
+
+namespace osgEarth { namespace Drivers
+{
+    using namespace osgEarth;
+
+    /**
+     * Options for the Noise driver
+     * See http://libnoise.sourceforge.net/docs/classnoise_1_1module_1_1Perlin.html for documentation
+     * on specific noise settings.
+     */
+    class NoiseOptions : public TileSourceOptions // NO EXPORT; header only
+    {
+    public:                
+        /**
+         * The minimum elevation to generate
+         */
+        optional<float>& minElevation() { return _minElevation; }
+        const optional<float>& minElevation() const { return _minElevation; }        
+
+        /**
+         * The maximum elevation to generate
+         */
+        optional<float>& maxElevation() { return _maxElevation; }
+        const optional<float>& maxElevation() const { return _maxElevation; }        
+
+        /**
+         * The number of octaves in the noise generator
+         */
+        optional<int>& octaves() { return _octaves; }
+        const optional<int>& octaves() const { return _octaves; }        
+
+        /**
+         * The frequency of the noise generator 
+         */
+        optional<double>& frequency() { return _frequency; }
+        const optional<double>& frequency() const { return _frequency; }        
+
+        /**
+         * The persistence of the noise generator 
+         */
+        optional<double>& persistence() { return _persistence; }
+        const optional<double>& persistence() const { return _persistence; }        
+
+        /**
+         * The lacunarity of the noise generator
+         */
+        optional<double>& lacunarity() { return _lacunarity; }
+        const optional<double>& lacunarity() const { return _lacunarity; } 
+
+        /**
+         * The seed of the noise generator
+         */
+        optional<int>& seed() { return _seed; }
+        const optional<int>& seed() const { return _seed; }
+
+
+
+    public:
+        NoiseOptions( const TileSourceOptions& opt =TileSourceOptions() ) :
+            TileSourceOptions( opt ),
+            _minElevation(0.0f),
+            _maxElevation(9000.0f)            
+        {
+            setDriver( "noise" );
+            fromConfig( _conf );
+        }
+
+        /** dtor */
+        virtual ~NoiseOptions() { }
+
+    public:
+        Config getConfig() const {
+            Config conf = TileSourceOptions::getConfig();
+            conf.updateIfSet("min_elevation", _minElevation);
+            conf.updateIfSet("max_elevation", _maxElevation);
+            conf.updateIfSet("octaves", _octaves);
+            conf.updateIfSet("frequency", _frequency);
+            conf.updateIfSet("persistence", _persistence);
+            conf.updateIfSet("lacunarity", _lacunarity);
+            conf.updateIfSet("seed", _seed);
+            return conf;
+        }
+
+    protected:
+        void mergeConfig( const Config& conf ) {
+            TileSourceOptions::mergeConfig( conf );            
+            fromConfig( conf );
+        }
+
+    private:
+        void fromConfig( const Config& conf ) {
+            conf.getIfSet( "minElevation", _minElevation );
+            conf.getIfSet( "maxElevation", _maxElevation );
+            conf.getIfSet( "octaves", _octaves );
+            conf.getIfSet( "frequency", _frequency );
+            conf.getIfSet( "persistence", _persistence );
+            conf.getIfSet( "lacunarity", _lacunarity );
+            conf.getIfSet( "seed", _seed );
+        }
+
+        optional<float>  _minElevation;
+        optional<float>  _maxElevation;
+        optional<int>    _octaves;
+        optional<double> _frequency;
+        optional<double> _persistence;
+        optional<double> _lacunarity ;
+        optional<int>    _seed;
+    };
+
+} } // namespace osgEarth::Drivers
+
+#endif // OSGEARTH_DRIVER_NOISE_DRIVEROPTIONS
+

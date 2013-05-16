@@ -45,19 +45,21 @@ TerrainLayerOptions( name, driverOptions )
 void
 ElevationLayerOptions::setDefaults()
 {
-    //NOP
+    _offset = false;
 }
 
 Config
 ElevationLayerOptions::getConfig( bool isolate ) const
 {
-    return TerrainLayerOptions::getConfig( isolate );
+    Config conf = TerrainLayerOptions::getConfig( isolate );
+    conf.updateIfSet("offset", _offset);
+    return conf;
 }
 
 void
 ElevationLayerOptions::fromConfig( const Config& conf )
 {
-    //NOP
+    conf.getIfSet( "offset", _offset );
 }
 
 void
@@ -518,6 +520,8 @@ ElevationLayerVector::createHeightField(const TileKey&                  key,
     //Get a HeightField for each of the enabled layers
     GeoHeightFieldVector heightFields;
 
+    GeoHeightFieldVector offsetHeightFields;
+
     //The number of fallback heightfields we have
     int numFallbacks = 0;
 
@@ -542,6 +546,7 @@ ElevationLayerVector::createHeightField(const TileKey&                  key,
     for( ElevationLayerVector::const_iterator i = this->begin(); i != this->end(); i++ )
     {
         ElevationLayer* layer = i->get();
+
         if ( layer->getVisible() && layer->isKeyValid( keyToUse ) )
         {
             GeoHeightField geoHF = layer->createHeightField( keyToUse, progress );
@@ -572,7 +577,16 @@ ElevationLayerVector::createHeightField(const TileKey&                  key,
 
             if ( geoHF.valid() )
             {
-                heightFields.push_back( geoHF );
+                //If the layer is offset, add it to the list of offset heightfields
+                if (*layer->getElevationLayerOptions().offset())
+                {                    
+                    offsetHeightFields.push_back( geoHF );
+                }
+                //Otherwise add it to the list of regular heightfields
+                else
+                {
+                    heightFields.push_back( geoHF );
+                }
             }
         }
     }
@@ -584,7 +598,7 @@ ElevationLayerVector::createHeightField(const TileKey&                  key,
         //OE_NOTICE << "Num fallbacks=" << numFallbacks << " numHeightFields=" << heightFields.size() << " is fallback " << *out_isFallback << std::endl;
     }   
 
-    if ( heightFields.size() == 0 )
+    if ( heightFields.size() == 0 && offsetHeightFields.size() == 0 )
     {            
         //If we got no heightfields but were requested to fallback, create an empty heightfield.
         if ( fallback )
@@ -763,6 +777,37 @@ ElevationLayerVector::createHeightField(const TileKey&                  key,
         out_result->setXInterval( dx );
         out_result->setYInterval( dy );
         out_result->setBorderWidth( 0 );
+    }
+
+    // Add any "offset" elevation layers to the resulting heightfield
+    if (out_result.valid() && offsetHeightFields.size() )
+    {        
+        // calculate the post spacings.
+        double minx, miny, maxx, maxy;
+        key.getExtent().getBounds(minx, miny, maxx, maxy);
+        double dx = (maxx - minx)/(double)(out_result->getNumColumns()-1);
+        double dy = (maxy - miny)/(double)(out_result->getNumRows()-1);
+
+        const SpatialReference* keySRS = keyToUse.getProfile()->getSRS();
+
+        for( GeoHeightFieldVector::iterator itr = offsetHeightFields.begin(); itr != offsetHeightFields.end(); ++itr )
+        {
+            for (unsigned int c = 0; c < out_result->getNumColumns(); c++)
+            {
+                double x = minx + (dx * (double)c);
+                for (unsigned int r = 0; r < out_result->getNumRows(); r++)
+                {                         
+                    double y = miny + (dy * (double)r);
+                    float elevation = 0.0;                    
+                    if (itr->getElevation(keySRS, x, y, interpolation, keySRS, elevation))
+                    {                    
+                        double h = out_result->getHeight( c, r );                        
+                        h += elevation;                                     
+                        out_result->setHeight( c, r, h );
+                    }                                
+                }
+            }
+        }
     }
 
     return out_result.valid();

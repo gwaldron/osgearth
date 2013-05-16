@@ -83,6 +83,12 @@ public:
 
         return STATUS_OK;
     }
+    
+    /** Tell the terrain engine not to cache tiles form this source. */
+    CachePolicy getCachePolicyHint() const
+    {
+        return CachePolicy::NO_CACHE;
+    }
 
     osg::Image* createImage(const TileKey&        key,
                             ProgressCallback*     progress )
@@ -94,7 +100,7 @@ public:
                                         ProgressCallback*     progress )
     {       
         osg::HeightField* hf = new osg::HeightField();
-        hf->allocate(32,32);                        
+        hf->allocate( getPixelsPerTile(), getPixelsPerTile() );
 
         double dx = key.getExtent().width() / (double)(hf->getNumColumns()-1);
         double dy = key.getExtent().height() / (double)(hf->getNumRows()-1);                        

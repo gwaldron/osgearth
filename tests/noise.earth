@@ -3,7 +3,7 @@ osgEarth Sample - Noise Driver
 Demonstrates the use of libnoise to procedurally generate a fractal landscape
 -->
 
-<map version="2">               
-    <heightfield driver="noise" name="noise">                    
+<map version="2">
+    <heightfield driver="noise" name="noise">
     </heightfield>
 </map>

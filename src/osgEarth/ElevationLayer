@@ -120,6 +120,11 @@ namespace osgEarth
             const TileKey&    key,
             ProgressCallback* progress =0L );
 
+        /**
+         * Whether the given key is valid for this layer
+         */
+        virtual bool isKeyValid(const TileKey& key) const;
+
     protected:
         
         // creates a geoHF directly from the tile source

@@ -20,6 +20,7 @@
 #include <osgEarth/TileSource>
 #include <osgEarth/Registry>
 #include <osgEarth/URI>
+#include <osgEarth/ImageUtils>
 
 #include <osg/Notify>
 #include <osgDB/FileNameUtils>
@@ -93,7 +94,29 @@ public:
     osg::Image* createImage(const TileKey&        key,
                             ProgressCallback*     progress )
     {
-        return 0;
+        osg::Image* image = new osg::Image();
+        image->allocateImage( getPixelsPerTile(), getPixelsPerTile(), 1, GL_RGB, GL_UNSIGNED_BYTE );
+
+        double dx = key.getExtent().width()  / (double)(image->s()-1);
+        double dy = key.getExtent().height() / (double)(image->t()-1);
+
+        double scale = *_options.maxElevation() - *_options.minElevation();
+
+        ImageUtils::PixelWriter write(image);
+        for(int s=0; s<image->s(); ++s)
+        {
+            for(int t=0; t<image->t(); ++t)
+            {
+                double lon = key.getExtent().xMin() + (double)s * dx;
+                double lat = key.getExtent().yMin() + (double)t * dy;
+                double n = _noise.GetValue(lon, lat, 0.75);
+                n = osg::clampBetween( (n + 1.0) / 2.0, 0.0, 1.0 );
+
+                write(osg::Vec4f(n,n,n,1), s, t);
+            }
+        }
+
+        return image;
     }
 
     osg::HeightField* createHeightField(const TileKey&        key,

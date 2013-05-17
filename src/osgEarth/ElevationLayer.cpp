@@ -478,6 +478,21 @@ ElevationLayer::createHeightField(const TileKey&    key,
 }
 
 
+bool
+ElevationLayer::isKeyValid(const TileKey& key) const
+{
+    if (!key.valid())
+        return false;
+
+    if ( _runtimeOptions.minLevel().isSet() && key.getLOD() < _runtimeOptions.minLevel().value() ) 
+    {
+        return false;
+    }
+
+    return TerrainLayer::isKeyValid(key);
+}
+
+
 //------------------------------------------------------------------------
 
 #undef  LC
@@ -547,7 +562,7 @@ ElevationLayerVector::createHeightField(const TileKey&                  key,
     {
         ElevationLayer* layer = i->get();
 
-        if ( layer->getVisible() && layer->isKeyValid( keyToUse ) )
+        if ( layer->getEnabled() && layer->getVisible() && layer->isKeyValid( keyToUse ) )
         {
             GeoHeightField geoHF = layer->createHeightField( keyToUse, progress );
 
@@ -598,8 +613,8 @@ ElevationLayerVector::createHeightField(const TileKey&                  key,
         //OE_NOTICE << "Num fallbacks=" << numFallbacks << " numHeightFields=" << heightFields.size() << " is fallback " << *out_isFallback << std::endl;
     }   
 
-    if ( heightFields.size() == 0 && offsetHeightFields.size() == 0 )
-    {            
+    if ( heightFields.size() == 0 ) //&& offsetHeightFields.size() == 0 )
+    {
         //If we got no heightfields but were requested to fallback, create an empty heightfield.
         if ( fallback )
         {
@@ -610,6 +625,7 @@ ElevationLayerVector::createHeightField(const TileKey&                  key,
                 defaultSize, 
                 defaultSize );
 
+            if ( offsetHeightFields.size() == 0 )
             return true;
         }
         else

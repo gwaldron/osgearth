@@ -130,6 +130,7 @@ namespace
             useVBOs = !Registry::capabilities().preferDisplayListsForStaticGeometry();
             textureImageUnit = 0;
             renderTileCoords = 0L;
+            ownsTileCoords   = false;
         }
 
         bool                     useVBOs;
@@ -142,6 +143,7 @@ namespace
 
         RenderLayerVector        renderLayers;
         osg::Vec2Array*          renderTileCoords;
+        bool                     ownsTileCoords;
 
         // surface data:
         osg::Geode*                   surfaceGeode;
@@ -367,6 +369,7 @@ namespace
             tileCoords = new osg::Vec2Array();
             tileCoords->setVertexBufferObject( new osg::VertexBufferObject() );
             tileCoords->reserve( d.numVerticesInSurface );
+            d.ownsTileCoords = true;
         }
         d.renderTileCoords = tileCoords.get();
 
@@ -493,7 +496,7 @@ namespace
                 if ( elevationLayer )
                 {
                     validValue = elevationLayer->getValidValue(i_equiv,j_equiv, heightValue);
-                    ndc.z() = heightValue; //*scaleHeight; // scaling will be done in the shader
+                    ndc.z() = heightValue;
                 }
 
                 // First check whether the sampling point falls within a mask's bounding box.
@@ -545,7 +548,10 @@ namespace
                         }
                     }
 
-                    d.renderTileCoords->push_back( osg::Vec2(ndc.x(), ndc.y()) );
+                    if ( d.ownsTileCoords )
+                    {
+                        d.renderTileCoords->push_back( osg::Vec2(ndc.x(), ndc.y()) );
+                    }
 
                     // record the raw elevation value in our float array for later
                     (*d.elevations).push_back(ndc.z());
@@ -568,7 +574,7 @@ namespace
                     {
                         // Access the parent tile:
                         osg::HeightField* parent = d.model->_elevationData.getParent();
-                        if ( parent )
+                        if ( parent && parent->getNumRows() == d.numRows && parent->getNumColumns() == d.numCols )
                         {
                             // calculate the indicies of the same location in the 
                             // parent heightfield:

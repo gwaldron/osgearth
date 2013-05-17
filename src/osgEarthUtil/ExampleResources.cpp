@@ -219,6 +219,8 @@ namespace
     };
 }
 
+#undef USE_AMBIENT_SLIDER
+
 Control*
 SkyControlFactory::create(SkyNode*         sky,
                           osgViewer::View* view) const
@@ -240,10 +242,12 @@ SkyControlFactory::create(SkyNode*         sky,
 
     grid->setControl(2, 0, new LabelControl(skySlider) );
 
+#if USE_AMBIENT_SLIDER
     grid->setControl(0, 1, new LabelControl("Ambient: ", 16) );
     HSliderControl* ambient = grid->setControl(1, 1, new HSliderControl(0.0f, 1.0f, sky->getAmbientBrightness()));
     ambient->addEventHandler( new AmbientBrightnessHandler(sky) );
     grid->setControl(2, 1, new LabelControl(ambient) );
+#endif
 
     return grid;
 }
@@ -517,6 +521,7 @@ MapNodeHelper::parse(MapNode*             mapNode,
     ControlCanvas* canvas = ControlCanvas::get(view, false);
 
     Container* mainContainer = canvas->addControl( new VBox() );
+    mainContainer->setAbsorbEvents( true );
     mainContainer->setBackColor( Color(Color::Black, 0.8) );
     mainContainer->setHorizAlign( Control::ALIGN_LEFT );
     mainContainer->setVertAlign( Control::ALIGN_BOTTOM );

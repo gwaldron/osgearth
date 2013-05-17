@@ -24,6 +24,7 @@
 #include <osg/GL2Extensions>
 #include <osg/Texture>
 #include <osgViewer/Version>
+#include <OpenThreads/Thread>
 
 using namespace osgEarth;
 
@@ -118,7 +119,8 @@ _supportsDrawInstanced  ( false ),
 _supportsUniformBufferObjects( false ),
 _supportsNonPowerOfTwoTextures( false ),
 _maxUniformBlockSize    ( 0 ),
-_preferDLforStaticGeom  ( true )
+_preferDLforStaticGeom  ( true ),
+_numProcessors          ( 1 )
 {
     // little hack to force the osgViewer library to link so we can create a graphics context
     osgViewerGetVersion();
@@ -127,6 +129,9 @@ _preferDLforStaticGeom  ( true )
     bool enableATIworkarounds = true;
     if ( ::getenv( "OSGEARTH_DISABLE_ATI_WORKAROUNDS" ) != 0L )
         enableATIworkarounds = false;
+
+    // logical CPUs (cores)
+    _numProcessors = OpenThreads::GetNumberOfProcessors();
 
     // create a graphics context so we can query OpenGL support:
     MyGraphicsContext mgc;

@@ -117,6 +117,9 @@ namespace osgEarth
         /** whether to prefer display lists over VBOs for static geometry. */
         bool preferDisplayListsForStaticGeometry() const { return _preferDLforStaticGeom; }
 
+        /** number of logical CPUs available. */
+        int getNumProcessors() const { return _numProcessors; }
+
     protected:
         Capabilities();
 
@@ -148,6 +151,7 @@ namespace osgEarth
         bool _supportsNonPowerOfTwoTextures;
         int  _maxUniformBlockSize;
         bool _preferDLforStaticGeom;
+        int  _numProcessors;
         std::string _vendor;
         std::string _renderer;
         std::string _version;

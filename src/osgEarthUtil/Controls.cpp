@@ -203,7 +203,7 @@ Control::init()
     _vfill = false;    
     _visible = true;
     _active = false;
-    _absorbEvents = false;
+    _absorbEvents = true;
     _dirty = true;
 }
 

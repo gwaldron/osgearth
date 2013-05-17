@@ -816,7 +816,7 @@ SkyNode::traverse( osg::NodeVisitor& nv )
         if ( _autoAmbience )
         {
             const float minAmb = 0.3f;
-            const float maxAmb = 1.0f;
+            const float maxAmb = 0.92f;
             const float minDev = -0.2f;
             const float maxDev = 0.75f;
             osg::Vec3 eye = cv->getViewPoint(); eye.normalize();

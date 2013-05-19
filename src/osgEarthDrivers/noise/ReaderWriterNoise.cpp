@@ -94,30 +94,36 @@ public:
     osg::Image* createImage(const TileKey&        key,
                             ProgressCallback*     progress )
     {
-        osg::Image* image = new osg::Image();
-        image->allocateImage( getPixelsPerTile(), getPixelsPerTile(), 1, GL_RGB, GL_UNSIGNED_BYTE );
-
-        double dx = key.getExtent().width()  / (double)(image->s()-1);
-        double dy = key.getExtent().height() / (double)(image->t()-1);
-
-        double scale = *_options.maxElevation() - *_options.minElevation();
-
-        ImageUtils::PixelWriter write(image);
-        for(int s=0; s<image->s(); ++s)
+        if ( _options.normalMap() == true )
         {
-            for(int t=0; t<image->t(); ++t)
-            {
-                double lon = key.getExtent().xMin() + (double)s * dx;
-                double lat = key.getExtent().yMin() + (double)t * dy;
-                double n = _noise.GetValue(lon, lat, 0.75);
-                n = osg::clampBetween( (n + 1.0) / 2.0, 0.0, 1.0 );
-
-                write(osg::Vec4f(n,n,n,1), s, t);
-            }
+            return createNormalMap(key, progress);
         }
+        else
+        {
+            osg::Image* image = new osg::Image();
+            image->allocateImage( getPixelsPerTile(), getPixelsPerTile(), 1, GL_RGB, GL_UNSIGNED_BYTE );
 
-        return image;
+            double dx = key.getExtent().width()  / (double)(image->s()-1);
+            double dy = key.getExtent().height() / (double)(image->t()-1);
+
+            ImageUtils::PixelWriter write(image);
+            for(int s=0; s<image->s(); ++s)
+            {
+                for(int t=0; t<image->t(); ++t)
+                {
+                    double lon = key.getExtent().xMin() + (double)s * dx;
+                    double lat = key.getExtent().yMin() + (double)t * dy;
+                    double n = _noise.GetValue(lon, lat, 0.75);
+                    n = osg::clampBetween( (n + 1.0) / 2.0, 0.0, 1.0 );
+
+                    write(osg::Vec4f(n,n,n,1), s, t);
+                }
+            }
+
+            return image;
+        }
     }
+
 
     osg::HeightField* createHeightField(const TileKey&        key,
                                         ProgressCallback*     progress )
@@ -126,7 +132,7 @@ public:
         hf->allocate( getPixelsPerTile(), getPixelsPerTile() );
 
         double dx = key.getExtent().width() / (double)(hf->getNumColumns()-1);
-        double dy = key.getExtent().height() / (double)(hf->getNumRows()-1);                        
+        double dy = key.getExtent().height() / (double)(hf->getNumRows()-1);
 
         double scale = *_options.maxElevation() - *_options.minElevation();
 
@@ -147,8 +153,86 @@ public:
             }
         }     
 
-        return hf;        
+        return hf;
     }
+
+
+    osg::Image* createNormalMap(const TileKey& key, ProgressCallback* progress)
+    {
+        osg::Image* image = 0L;
+
+        // start by building a heightfield
+        osg::ref_ptr<osg::HeightField> hf = createHeightField(key, progress);
+        if ( hf.valid() )
+        {
+            // set up the image
+            image = new osg::Image();
+            image->allocateImage( hf->getNumColumns(), hf->getNumRows(), 1, GL_RGB, GL_UNSIGNED_BYTE );
+            ImageUtils::PixelWriter write(image);
+
+            // calculate the tangent space transformation matrix:
+            osg::Matrix tm;
+
+            // figure out the spacing between pixels in the same units as the height value:
+            const GeoExtent& ex = key.getExtent();
+            double dx = ex.width()/(double)(image->s()-1), dy = ex.height()/(double)(image->t()-1);
+            const SpatialReference* srs  = ex.getSRS();
+            if ( srs->isGeographic() )
+            {
+                const SpatialReference* ecef = srs->getECEF();
+                dx = srs->transformUnits(dx, ecef, ex.south()+0.5*dy);
+                dy = srs->transformUnits(dy, ecef, ex.south()+0.5*dy);
+
+                osg::Vec3d m;
+                ex.getCentroid(m.x(), m.y());
+                srs->transform(m, ecef, m);
+                m.normalize();
+                tm.makeRotate(osg::Vec3d(0,0,1), m);
+                //tm = osg::Matrix::inverse(tm);
+            }
+
+            for(int s=0; s<image->s(); ++s)
+            {
+                for(int t=0; t<image->t(); ++t)
+                {
+                    if ( s == 0 || t == 0 || s == image->s()-1 || t == image->t()-1 )
+                    {
+                        //TODO: deal with the edges properly.
+                        write(osg::Vec4f(0,0,1,1), s, t);
+                    }
+                    else
+                    {
+                        // cross the EW and NS vectors to get the normal:
+                        osg::Vec3 west (-dx,   0, hf->getHeight(s-1, t));
+                        osg::Vec3 east ( dx,   0, hf->getHeight(s+1, t));
+                        osg::Vec3 north(  0,  dy, hf->getHeight(s, t+1));
+                        osg::Vec3 south(  0, -dy, hf->getHeight(s, t-1));
+
+                        osg::Vec3 H = east-west;
+                        osg::Vec3 V = north-south;
+                        osg::Vec3 normal = H ^ V;
+
+                        normal.normalize();
+
+                        if ( normal.z() < 0 )
+                            OE_WARN << "DOING it WRONG" << std::endl;
+
+                        // encode as: x[-1..1]=>r[0..255]; y[-1..1]=>g[0..255]; z[0..1]=>[0..255]
+                        normal.x() = normal.x()*0.5f + 0.5f;
+                        normal.y() = normal.y()*0.5f + 0.5f;
+                        normal.z() = normal.z()*0.5f + 0.5f;
+
+                        normal.normalize();
+
+                        write(osg::Vec4f(normal,1), s, t);
+                    }
+                }
+            }
+        }
+
+        return image;
+    }
+
     
 private:    
     module::Perlin               _noise;

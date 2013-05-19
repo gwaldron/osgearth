@@ -1370,19 +1370,31 @@ SpatialReference::transformFromECEF(std::vector<osg::Vec3d>& points) const
 
 double
 SpatialReference::transformUnits(double                  input,
-                                 const SpatialReference* outSRS ) const
+                                 const SpatialReference* outSRS,
+                                 double                  latitude) const
 {
     if ( this->isProjected() && outSRS->isGeographic() )
     {
         double metersPerEquatorialDegree = (outSRS->getEllipsoid()->getRadiusEquator() * 2.0 * osg::PI) / 360.0;
-        double inputDegrees = getUnits().convertTo(Units::METERS, input) / metersPerEquatorialDegree;
+        double inputDegrees = getUnits().convertTo(Units::METERS, input) / (metersPerEquatorialDegree * cos(osg::DegreesToRadians(latitude)));
+        return Units::DEGREES.convertTo( outSRS->getUnits(), inputDegrees );
+    }
+    else if ( this->isECEF() && outSRS->isGeographic() )
+    {
+        double metersPerEquatorialDegree = (outSRS->getEllipsoid()->getRadiusEquator() * 2.0 * osg::PI) / 360.0;
+        double inputDegrees = input / (metersPerEquatorialDegree * cos(osg::DegreesToRadians(latitude)));
         return Units::DEGREES.convertTo( outSRS->getUnits(), inputDegrees );
     }
     else if ( this->isGeographic() && outSRS->isProjected() )
     {
         double metersPerEquatorialDegree = (outSRS->getEllipsoid()->getRadiusEquator() * 2.0 * osg::PI) / 360.0;
-        double inputMeters = getUnits().convertTo(Units::DEGREES, input) * metersPerEquatorialDegree;
+        double inputMeters = getUnits().convertTo(Units::DEGREES, input) * (metersPerEquatorialDegree * cos(osg::DegreesToRadians(latitude)));
         return Units::METERS.convertTo( outSRS->getUnits(), inputMeters );
+    }
+    else if ( this->isGeographic() && outSRS->isECEF() )
+    {
+        double metersPerEquatorialDegree = (outSRS->getEllipsoid()->getRadiusEquator() * 2.0 * osg::PI) / 360.0;
+        return getUnits().convertTo(Units::DEGREES, input) * (metersPerEquatorialDegree * cos(osg::DegreesToRadians(latitude)));
     }
     else // both projected or both geographic.
     {

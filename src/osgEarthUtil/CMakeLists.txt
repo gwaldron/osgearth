@@ -32,6 +32,7 @@ SET(HEADERS_ROOT
     MGRSFormatter
     MGRSGraticule
     MouseCoordsTool
+    NormalMap
     ObjectLocator
     PolyhedralLineOfSight
     RadialLineOfSight
@@ -76,6 +77,7 @@ SET(SOURCES_ROOT
     MGRSFormatter.cpp
     MGRSGraticule.cpp
     MouseCoordsTool.cpp
+    NormalMap.cpp
     ObjectLocator.cpp
     PolyhedralLineOfSight.cpp
     RadialLineOfSight.cpp

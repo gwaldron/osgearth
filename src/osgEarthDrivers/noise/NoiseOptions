@@ -76,13 +76,20 @@ namespace osgEarth { namespace Drivers
         optional<int>& seed() { return _seed; }
         const optional<int>& seed() const { return _seed; }
 
+        /**
+         * Whether to convert the image into a normal map (images only)
+         */
+        optional<bool>& normalMap() { return _normalMap; }
+        const optional<bool>& normalMap() const { return _normalMap; }
+
 
 
     public:
         NoiseOptions( const TileSourceOptions& opt =TileSourceOptions() ) :
             TileSourceOptions( opt ),
             _minElevation(0.0f),
-            _maxElevation(9000.0f)            
+            _maxElevation(9000.0f),
+            _normalMap   (false)
         {
             setDriver( "noise" );
             fromConfig( _conf );
@@ -101,6 +108,7 @@ namespace osgEarth { namespace Drivers
             conf.updateIfSet("persistence", _persistence);
             conf.updateIfSet("lacunarity", _lacunarity);
             conf.updateIfSet("seed", _seed);
+            conf.updateIfSet("normal_map", _normalMap);
             return conf;
         }
 
@@ -119,6 +127,7 @@ namespace osgEarth { namespace Drivers
             conf.getIfSet( "persistence", _persistence );
             conf.getIfSet( "lacunarity", _lacunarity );
             conf.getIfSet( "seed", _seed );
+            conf.getIfSet( "normal_map", _normalMap );
         }
 
         optional<float>  _minElevation;
@@ -126,8 +135,9 @@ namespace osgEarth { namespace Drivers
         optional<int>    _octaves;
         optional<double> _frequency;
         optional<double> _persistence;
-        optional<double> _lacunarity ;
+        optional<double> _lacunarity;
         optional<int>    _seed;
+        optional<bool>   _normalMap;
     };
 
 } } // namespace osgEarth::Drivers

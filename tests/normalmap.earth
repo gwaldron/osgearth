@@ -1,0 +1,22 @@
+<!-- 
+osgEarth Sample - Noise Driver
+Demonstrates the use of libnoise to procedurally generate a fractal landscape
+-->
+
+<map>
+	<options lighting="false" elevation_tile_size="15">
+	    <terrain min_lod="20"/>
+	</options>
+    
+    <image name="readymap_imagery" driver="tms" visible="true">
+        <url>http://readymap.org/readymap/tiles/1.0.0/7/</url>
+    </image>
+	        
+    <elevation name="readymap_elevation" driver="tms">
+        <url>http://readymap.org/readymap/tiles/1.0.0/9/</url>
+    </elevation>
+			   
+	<image name="normalmap" driver="noise" frequency="1200" octaves="20"
+	       tile_size="127" min_elevation="0" max_elevation="5" 
+	       normal_map="true" shared="true" visible="false" enabled="true"/>
+</map>

@@ -24,6 +24,7 @@
 #include <osgEarthUtil/MouseCoordsTool>
 #include <osgEarthUtil/AutoClipPlaneHandler>
 #include <osgEarthUtil/DataScanner>
+#include <osgEarthUtil/NormalMap>
 
 #include <osgEarthAnnotation/AnnotationData>
 #include <osgEarthAnnotation/AnnotationRegistry>
@@ -219,7 +220,8 @@ namespace
     };
 }
 
-#undef USE_AMBIENT_SLIDER
+//#undef USE_AMBIENT_SLIDER
+#define USE_AMBIENT_SLIDER 1
 
 Control*
 SkyControlFactory::create(SkyNode*         sky,
@@ -242,7 +244,7 @@ SkyControlFactory::create(SkyNode*         sky,
 
     grid->setControl(2, 0, new LabelControl(skySlider) );
 
-#if USE_AMBIENT_SLIDER
+#ifdef USE_AMBIENT_SLIDER
     grid->setControl(0, 1, new LabelControl("Ambient: ", 16) );
     HSliderControl* ambient = grid->setControl(1, 1, new HSliderControl(0.0f, 1.0f, sky->getAmbientBrightness()));
     ambient->addEventHandler( new AmbientBrightnessHandler(sky) );
@@ -538,6 +540,7 @@ MapNodeHelper::parse(MapNode*             mapNode,
     const Config& annoConf        = externals.child("annotations");
     const Config& declutterConf   = externals.child("decluttering");
     Config        viewpointsConf  = externals.child("viewpoints");
+    const Config& normalMapConf   = externals.child("normal_map");
 
     // backwards-compatibility: read viewpoints at the top level:
     const ConfigSet& old_viewpoints = externals.children("viewpoint");
@@ -696,6 +699,16 @@ MapNodeHelper::parse(MapNode*             mapNode,
             mapNode->getMap()->endUpdate();
         }
         OE_INFO << LC << "...found " << imageLayers.size() << " image layers." << std::endl;
+    }
+
+    // Install a normal map layer.
+    if ( !normalMapConf.empty() )
+    {
+        osg::ref_ptr<NormalMap> effect = new NormalMap(normalMapConf, mapNode->getMap());
+        if ( effect->getNormalMapLayer() )
+        {
+            mapNode->getTerrainEngine()->addEffect( effect.get() );
+        }
     }
 
     // Generic named value uniform with min/max.

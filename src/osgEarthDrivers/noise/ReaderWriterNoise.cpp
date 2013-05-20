@@ -80,7 +80,7 @@ public:
             _noise.SetLacunarity( *_options.lacunarity() );
         }        
         
-        setProfile( osgEarth::Registry::instance()->getGlobalGeodeticProfile() );        
+        setProfile( osgEarth::Registry::instance()->getGlobalGeodeticProfile() );
 
         return STATUS_OK;
     }
@@ -94,30 +94,36 @@ public:
     osg::Image* createImage(const TileKey&        key,
                             ProgressCallback*     progress )
     {
-        osg::Image* image = new osg::Image();
-        image->allocateImage( getPixelsPerTile(), getPixelsPerTile(), 1, GL_RGB, GL_UNSIGNED_BYTE );
-
-        double dx = key.getExtent().width()  / (double)(image->s()-1);
-        double dy = key.getExtent().height() / (double)(image->t()-1);
-
-        double scale = *_options.maxElevation() - *_options.minElevation();
-
-        ImageUtils::PixelWriter write(image);
-        for(int s=0; s<image->s(); ++s)
+        if ( _options.normalMap() == true )
         {
-            for(int t=0; t<image->t(); ++t)
-            {
-                double lon = key.getExtent().xMin() + (double)s * dx;
-                double lat = key.getExtent().yMin() + (double)t * dy;
-                double n = _noise.GetValue(lon, lat, 0.75);
-                n = osg::clampBetween( (n + 1.0) / 2.0, 0.0, 1.0 );
-
-                write(osg::Vec4f(n,n,n,1), s, t);
-            }
+            return createNormalMap(key, progress);
         }
+        else
+        {
+            osg::Image* image = new osg::Image();
+            image->allocateImage( getPixelsPerTile(), getPixelsPerTile(), 1, GL_RGB, GL_UNSIGNED_BYTE );
 
-        return image;
+            double dx = key.getExtent().width()  / (double)(image->s()-1);
+            double dy = key.getExtent().height() / (double)(image->t()-1);
+
+            ImageUtils::PixelWriter write(image);
+            for(int s=0; s<image->s(); ++s)
+            {
+                for(int t=0; t<image->t(); ++t)
+                {
+                    double lon = key.getExtent().xMin() + (double)s * dx;
+                    double lat = key.getExtent().yMin() + (double)t * dy;
+                    double n = _noise.GetValue(lon, lat, 0.75);
+                    n = osg::clampBetween( (n + 1.0) / 2.0, 0.0, 1.0 );
+
+                    write(osg::Vec4f(n,n,n,1), s, t);
+                }
+            }
+
+            return image;
+        }
     }
+
 
     osg::HeightField* createHeightField(const TileKey&        key,
                                         ProgressCallback*     progress )
@@ -126,7 +132,7 @@ public:
         hf->allocate( getPixelsPerTile(), getPixelsPerTile() );
 
         double dx = key.getExtent().width() / (double)(hf->getNumColumns()-1);
-        double dy = key.getExtent().height() / (double)(hf->getNumRows()-1);                        
+        double dy = key.getExtent().height() / (double)(hf->getNumRows()-1);
 
         double scale = *_options.maxElevation() - *_options.minElevation();
 
@@ -147,10 +153,69 @@ public:
             }
         }     
 
-        return hf;        
+        return hf;
     }
-    
-private:    
+
+
+    osg::Image* createNormalMap(const TileKey& key, ProgressCallback* progress)
+    {
+        // set up the image and prepare to write to it.
+        osg::Image* image = new osg::Image();
+        image->allocateImage( getPixelsPerTile(), getPixelsPerTile(), 1, GL_RGB, GL_UNSIGNED_BYTE );
+        ImageUtils::PixelWriter write(image);
+
+        // figure out the spacing between pixels in the same units as the height value:
+        const GeoExtent& ex = key.getExtent();
+        double dx = ex.width()  / (double)(image->s()-1);
+        double dy = ex.height() / (double)(image->t()-1);
+        double udx = dx;
+        double udy = dy;
+        const SpatialReference* srs  = ex.getSRS();
+        if ( srs->isGeographic() )
+        {
+            const SpatialReference* ecef = srs->getECEF();
+            udx = srs->transformUnits(dx, ecef, ex.south()+0.5*dy);
+            udy = srs->transformUnits(dy, ecef, ex.south()+0.5*dy);
+        }
+
+        double a = *_options.minElevation();
+        double b = *_options.maxElevation() - *_options.minElevation();
+        double z = 0.75;
+
+        for(int s=0; s<image->s(); ++s)
+        {
+            for(int t=0; t<image->t(); ++t)
+            {
+                double x = key.getExtent().xMin() + (double)s * dx;
+                double y = key.getExtent().yMin() + (double)t * dy;
+
+                // sample the surrounding locations. Obviously we could optimize
+                // this so we only sample each location once per image.
+                osg::Vec3 west (-udx, 0, a + b*(0.5*(_noise.GetValue(x-dx, y, z)+1.0)));
+                osg::Vec3 east ( udx, 0, a + b*(0.5*(_noise.GetValue(x+dx, y, z)+1.0)));
+                osg::Vec3 north( 0, udy, a + b*(0.5*(_noise.GetValue(x, y+dy, z)+1.0)));
+                osg::Vec3 south( 0,-udy, a + b*(0.5*(_noise.GetValue(x, y-dy, z)+1.0)));
+
+                // calculate the normal at the center point.
+                osg::Vec3 normal = (east-west) ^ (north-south);
+                normal.normalize();
+
+                // encode as: xyz[-1..1]=>r[0..255]. (In reality Z will always fall 
+                // between [0..1] but a uniform encoding makes the shader code simpler.)
+                normal.x() = normal.x()*0.5f + 0.5f;
+                normal.y() = normal.y()*0.5f + 0.5f;
+                normal.z() = normal.z()*0.5f + 0.5f;
+                normal.normalize();
+
+                write(osg::Vec4f(normal,1), s, t);
+            }
+        }
+
+        return image;
+    }
+
+
+private:
     module::Perlin               _noise;
     const NoiseOptions           _options;
     osg::ref_ptr<osgDB::Options> _dbOptions;

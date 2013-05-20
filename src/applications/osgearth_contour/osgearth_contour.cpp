@@ -44,9 +44,10 @@ using namespace osgEarth::Util;
 
 const char* vertexShader =
     "attribute vec4  osgearth_elevData; \n"
-    "uniform   float contour_xferMin; \n"
-    "uniform   float contour_xferRange; \n"
-    "uniform   float contour_xferMax; \n"
+    "uniform float contour_xferMin; \n"
+    "uniform float contour_xferRange; \n"
+    "uniform float contour_xferMax; \n"
+    "varying float contour_lookup; \n"
 
     "void setupContour(inout vec4 VertexModel) \n"
     "{ \n"
@@ -62,8 +63,8 @@ const char* vertexShader =
 // imagery, this will overwrite it.
 
 const char* fragmentShader =
-    "uniform   sampler1D contour_colorMap; \n"
-    "varying   float     contour_lookup; \n"
+    "uniform sampler1D contour_colorMap; \n"
+    "varying float contour_lookup; \n"
 
     "void colorContour( inout vec4 color ) \n"
     "{ \n"

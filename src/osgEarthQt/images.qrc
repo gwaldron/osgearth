@@ -14,5 +14,6 @@
         <file>images/draw_line_bg.png</file>
         <file>images/draw_poly.png</file>
         <file>images/draw_poly_bg.png</file>
+        <file>images/close.png</file>
     </qresource>
 </RCC>

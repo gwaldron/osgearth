@@ -358,6 +358,12 @@ void ElevationLayerControlWidget::initUi()
     // create name label
     QLabel* label = new QLabel(tr(!_layer->getName().empty() ? _layer->getName().c_str() : "Elevation Layer"));
     _headerTitleBoxLayout->addWidget(label);
+
+    if (!_layer->getProfile())
+    {
+      _headerBox->setStyleSheet("background-color: #FF6666; color: white;");
+      _visibleCheckBox->setEnabled(false);
+    }
   }
   else
   {
@@ -396,7 +402,7 @@ osgEarth::UID ElevationLayerControlWidget::getUID()
 
 Action* ElevationLayerControlWidget::getDoubleClickAction(const ViewVector& views)
 {
-  if (!_doubleClick.valid() && _layer.valid())
+  if (!_doubleClick.valid() && _layer.valid() && _layer->getProfile())
   {
     const osgEarth::GeoExtent llExt = _layer->getProfile()->getLatLongExtent();
 
@@ -463,7 +469,7 @@ void ImageLayerControlWidget::initUi()
 
     if (!_layer->getProfile())
     {
-      _headerBox->setStyleSheet("background-color: #FF6666;");
+      _headerBox->setStyleSheet("background-color: #FF6666; color: white;");
       _visibleCheckBox->setEnabled(false);
       _opacitySlider->setEnabled(false);
     }

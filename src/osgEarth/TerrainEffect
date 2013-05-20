@@ -21,6 +21,7 @@
 #define OSGEARTH_TERRAIN_EFFECT_H 1
 
 #include <osgEarth/Common>
+#include <osgEarth/Config>
 
 namespace osgEarth
 {
@@ -41,6 +42,10 @@ namespace osgEarth
 
         /** Called by the terrain engine when you uninstall the effect */
         virtual void onUninstall(TerrainEngineNode* engine) { }
+
+    public: // serialization
+
+        virtual Config getConfig() const { return Config(); }
 
     protected:
         TerrainEffect() { }

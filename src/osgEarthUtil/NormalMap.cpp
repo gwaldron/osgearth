@@ -41,7 +41,7 @@ namespace
         "    vec3 t = normalize(gl_NormalMatrix * tangent); \n"
         "    vec3 b = cross(n, t); \n"
 
-        "    vec3 tmp = gl_LightSource[0].position.xyz; \n" // - VertexVIEW.xyz; \n"
+        "    vec3 tmp = gl_LightSource[0].position.xyz; \n"
         "    light.x = dot(tmp, t); \n"
         "    light.y = dot(tmp, b); \n"
         "    light.z = dot(tmp, n); \n"
@@ -61,15 +61,16 @@ namespace
 
         "void oe_normalmap_fragment(inout vec4 color) \n"
         "{\n"
-
         "    vec3  L = normalize(light); \n"
         "    vec3  V = normalize(view); \n"
         "    vec3  N = normalize( texture2D(oe_normalmap_tex, oe_layer_tilec.st).xyz * 2.0 - 1.0 ); \n"
         "    float D = max(dot(L, N), 0.0); \n"
+        //"    float S = pow(clamp(dot(reflect(-L,N),V),0.0,1.0), gl_FrontMaterial.shininess); \n"
         "    vec4  diffuse  = gl_FrontLightProduct[0].diffuse * D; \n"
-        "    vec4  ambient  = vec4(0.1); \n" //gl_FrontLightProduct[0].ambient; \n"
-        //"    vec4  specular = gl_FrontLightProduct[0].specular * pow(clamp(dot(reflect(-L,N),V),0.0,1.0), gl_FrontMaterial.shininess); \n"
-        "    color.rgb *= clamp(diffuse.rgb + ambient.rgb, 0.0, 1.0); \n" // + specular.rgb; \n"
+        "    vec4  ambient  = gl_FrontLightProduct[0].ambient; \n"
+        //"    vec4  specular = gl_FrontLightProduct[0].specular * S; \n"
+        //"    color.rgb *= clamp(diffuse.rgb + ambient.rgb + specular.rgb, 0.0, 1.0); \n"
+        "    color.rgb *= clamp(diffuse.rgb + ambient.rgb, 0.0, 1.0); \n"
         "}\n";
 }
 
@@ -78,8 +79,15 @@ NormalMap::NormalMap() :
 TerrainEffect(),
 _intensity( 1.0f )
 {
+    init();
+}
+
+
+void
+NormalMap::init()
+{
     _intensityUniform = new osg::Uniform(osg::Uniform::FLOAT, "oe_normalmap_intensity");
-    _intensityUniform->set( _intensity );
+    _intensityUniform->set( _intensity.get() );
 }
 
 
@@ -92,7 +100,7 @@ NormalMap::~NormalMap()
 void
 NormalMap::setIntensity(float i)
 {
-    if ( i != _intensity )
+    if ( i != _intensity.get() )
     {
         _intensity = i;
         _intensityUniform->set( i );
@@ -128,3 +136,39 @@ NormalMap::onUninstall(TerrainEngineNode* engine)
     OE_WARN << LC << "Uninstall NYI." << std::endl;
 }
 
+
+
+NormalMap::NormalMap(const Config& conf, Map* map) :
+TerrainEffect(),
+_intensity   (1.0)
+{
+    mergeConfig(conf);
+
+    if ( map && _layerName.isSet() )
+    {
+        setNormalMapLayer( map->getImageLayerByName(*_layerName) );
+    }
+
+    init();
+}
+
+void
+NormalMap::mergeConfig(const Config& conf)
+{
+    conf.getIfSet( "layer",     _layerName );
+    conf.getIfSet( "intensity", _intensity );
+}
+
+Config
+NormalMap::getConfig() const
+{
+    optional<std::string> layername;
+
+    if ( _layer.valid() && !_layer->getName().empty() )
+        layername = _layer->getName();
+
+    Config conf("normal_map");
+    conf.addIfSet( "layer",     layername );
+    conf.addIfSet( "intentisy", _intensity );
+    return conf;
+}

@@ -24,6 +24,10 @@
 #include <osgEarth/ImageLayer>
 #include <osg/observer_ptr>
 
+namespace osgEarth {
+    class Map;
+}
+
 namespace osgEarth { namespace Util
 {
     /**
@@ -44,19 +48,28 @@ namespace osgEarth { namespace Util
 
         /** Sets the intentisy level of the normal effect */
         void setIntensity(float i);
-        float getIntensity() const { return _intensity; }
+        float getIntensity() const { return _intensity.get(); }
 
     public: // TerrainEffect interface
 
         void onInstall(TerrainEngineNode* engine);
         void onUninstall(TerrainEngineNode* engine);
 
+    public: // serialization
+
+        NormalMap(const Config& conf, Map* map);
+        void mergeConfig(const Config& conf);
+        virtual Config getConfig() const;
+
     protected:
         virtual ~NormalMap();
+        void init();
+
+        optional<float>       _intensity;
+        optional<std::string> _layerName;
 
         osg::observer_ptr<ImageLayer> _layer;
-        float _intensity;
-        osg::ref_ptr<osg::Uniform> _intensityUniform;
+        osg::ref_ptr<osg::Uniform>    _intensityUniform;
     };
 
 } } // namespace osgEarth::Util

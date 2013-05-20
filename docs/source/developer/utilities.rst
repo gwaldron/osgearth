@@ -168,6 +168,48 @@ print the coords to ``osgEarthUtil::Controls::LabelControl``. You can even pass 
 ``LabelControl`` to the contructor to make it even easier.
 
 
+NormalMap
+---------
+
+The ``NormalMap`` effect will use an ``ImageLayer`` as a bump map texture, adding
+apparent detail to the terrain. 
+
+A *normal map* is a kind of *bump map* in which each texel represents an XYZ normal
+vector instead of an RGB color value. The GPU can then use this information to apply
+lighting to the terrain on a per-pixel basis instead of per-vertex, rendering a
+more detailed-looking surface with the same number of triangles.
+
+First you need to create a normal map layer. You can use the **noise** driver to do
+this. The setup looks like this in the earth file::
+
+    <image name="bump" driver="noise" shared="true" visible="false">
+        <normal_map>true</normal_map>
+    </image>
+    
+The **noise driver** generates Perlin noise; this will will the image with pseudo-
+random normal vectors. (Setting ``normal_map`` to ``true`` is what tells the driver
+to make normal vectors instead of RGB values. You should also set ``shared`` to 
+``true``; this will make the normal map available to the shader pipeline so that it
+can do the custom lighting calculations.)
+
+Once you have the image layer set up, install the ``NormalMap`` terrain effect and 
+point it at our normal map layer. From the earth file::
+
+    <map>
+        ...
+        <external>
+            <normal_map layer="bump"/>
+        </external>
+
+Or from code::
+
+    NormalMap* normalMap = new NormalMap();
+    normalMap->setNormalMapLayer( myBumpLayer );
+    mapnode->getTerrainEngine()->addEffect( normalMap );
+    
+Please refer to the **normalmap.earth** example for a demo.
+
+
 VerticalScale
 -------------
 

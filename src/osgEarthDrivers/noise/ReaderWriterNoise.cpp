@@ -80,7 +80,7 @@ public:
             _noise.SetLacunarity( *_options.lacunarity() );
         }        
         
-        setProfile( osgEarth::Registry::instance()->getGlobalGeodeticProfile() );        
+        setProfile( osgEarth::Registry::instance()->getGlobalGeodeticProfile() );
 
         return STATUS_OK;
     }
@@ -159,82 +159,63 @@ public:
 
     osg::Image* createNormalMap(const TileKey& key, ProgressCallback* progress)
     {
-        osg::Image* image = 0L;
+        // set up the image and prepare to write to it.
+        osg::Image* image = new osg::Image();
+        image->allocateImage( getPixelsPerTile(), getPixelsPerTile(), 1, GL_RGB, GL_UNSIGNED_BYTE );
+        ImageUtils::PixelWriter write(image);
 
-        // start by building a heightfield
-        osg::ref_ptr<osg::HeightField> hf = createHeightField(key, progress);
-        if ( hf.valid() )
+        // figure out the spacing between pixels in the same units as the height value:
+        const GeoExtent& ex = key.getExtent();
+        double dx = ex.width()  / (double)(image->s()-1);
+        double dy = ex.height() / (double)(image->t()-1);
+        double udx = dx;
+        double udy = dy;
+        const SpatialReference* srs  = ex.getSRS();
+        if ( srs->isGeographic() )
         {
-            // set up the image
-            image = new osg::Image();
-            image->allocateImage( hf->getNumColumns(), hf->getNumRows(), 1, GL_RGB, GL_UNSIGNED_BYTE );
-            ImageUtils::PixelWriter write(image);
+            const SpatialReference* ecef = srs->getECEF();
+            udx = srs->transformUnits(dx, ecef, ex.south()+0.5*dy);
+            udy = srs->transformUnits(dy, ecef, ex.south()+0.5*dy);
+        }
 
-            // calculate the tangent space transformation matrix:
-            osg::Matrix tm;
+        double a = *_options.minElevation();
+        double b = *_options.maxElevation() - *_options.minElevation();
+        double z = 0.75;
 
-            // figure out the spacing between pixels in the same units as the height value:
-            const GeoExtent& ex = key.getExtent();
-            double dx = ex.width()/(double)(image->s()-1), dy = ex.height()/(double)(image->t()-1);
-            const SpatialReference* srs  = ex.getSRS();
-            if ( srs->isGeographic() )
+        for(int s=0; s<image->s(); ++s)
+        {
+            for(int t=0; t<image->t(); ++t)
             {
-                const SpatialReference* ecef = srs->getECEF();
-                dx = srs->transformUnits(dx, ecef, ex.south()+0.5*dy);
-                dy = srs->transformUnits(dy, ecef, ex.south()+0.5*dy);
+                double x = key.getExtent().xMin() + (double)s * dx;
+                double y = key.getExtent().yMin() + (double)t * dy;
 
-                osg::Vec3d m;
-                ex.getCentroid(m.x(), m.y());
-                srs->transform(m, ecef, m);
-                m.normalize();
-                tm.makeRotate(osg::Vec3d(0,0,1), m);
-                //tm = osg::Matrix::inverse(tm);
-            }
+                // sample the surrounding locations. Obviously we could optimize
+                // this so we only sample each location once per image.
+                osg::Vec3 west (-udx, 0, a + b*(0.5*(_noise.GetValue(x-dx, y, z)+1.0)));
+                osg::Vec3 east ( udx, 0, a + b*(0.5*(_noise.GetValue(x+dx, y, z)+1.0)));
+                osg::Vec3 north( 0, udy, a + b*(0.5*(_noise.GetValue(x, y+dy, z)+1.0)));
+                osg::Vec3 south( 0,-udy, a + b*(0.5*(_noise.GetValue(x, y-dy, z)+1.0)));
 
-            for(int s=0; s<image->s(); ++s)
-            {
-                for(int t=0; t<image->t(); ++t)
-                {
-                    if ( s == 0 || t == 0 || s == image->s()-1 || t == image->t()-1 )
-                    {
-                        //TODO: deal with the edges properly.
-                        write(osg::Vec4f(0,0,1,1), s, t);
-                    }
-                    else
-                    {
-                        // cross the EW and NS vectors to get the normal:
-                        osg::Vec3 west (-dx,   0, hf->getHeight(s-1, t));
-                        osg::Vec3 east ( dx,   0, hf->getHeight(s+1, t));
-                        osg::Vec3 north(  0,  dy, hf->getHeight(s, t+1));
-                        osg::Vec3 south(  0, -dy, hf->getHeight(s, t-1));
+                // calculate the normal at the center point.
+                osg::Vec3 normal = (east-west) ^ (north-south);
+                normal.normalize();
 
-                        osg::Vec3 H = east-west;
-                        osg::Vec3 V = north-south;
-                        osg::Vec3 normal = H ^ V;
+                // encode as: xyz[-1..1]=>r[0..255]. (In reality Z will always fall 
+                // between [0..1] but a uniform encoding makes the shader code simpler.)
+                normal.x() = normal.x()*0.5f + 0.5f;
+                normal.y() = normal.y()*0.5f + 0.5f;
+                normal.z() = normal.z()*0.5f + 0.5f;
+                normal.normalize();
 
-                        normal.normalize();
-
-                        if ( normal.z() < 0 )
-                            OE_WARN << "DOING it WRONG" << std::endl;
-
-                        // encode as: x[-1..1]=>r[0..255]; y[-1..1]=>g[0..255]; z[0..1]=>[0..255]
-                        normal.x() = normal.x()*0.5f + 0.5f;
-                        normal.y() = normal.y()*0.5f + 0.5f;
-                        normal.z() = normal.z()*0.5f + 0.5f;
-
-                        normal.normalize();
-
-                        write(osg::Vec4f(normal,1), s, t);
-                    }
-                }
+                write(osg::Vec4f(normal,1), s, t);
             }
         }
 
         return image;
     }
 
-    
-private:    
+
+private:
     module::Perlin               _noise;
     const NoiseOptions           _options;
     osg::ref_ptr<osgDB::Options> _dbOptions;

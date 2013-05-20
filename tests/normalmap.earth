@@ -4,35 +4,36 @@ Demonstrates the application of a normal map to add terrain detail.
 -->
 
 <map>
-	<options lighting="false" elevation_tile_size="15">
-	    <terrain min_lod="20"/>
-	</options>
+    <options elevation_tile_size="15">
+        <terrain min_lod="20"/>
+    </options>
     
     <image name="readymap_imagery" driver="tms" visible="true">
         <url>http://readymap.org/readymap/tiles/1.0.0/7/</url>
     </image>
-	        
+            
     <elevation name="readymap_elevation" driver="tms">
         <url>http://readymap.org/readymap/tiles/1.0.0/9/</url>
     </elevation>
-			   
+               
     <!--
-	The normal map layer using the 'noise' driver to generate bump map textures.
-	Note that we set visible='false' since we don't actually want to display this
-	layer in its raw form -- rather, the shared='true' will make it available to
-	the <normal_map> effect below.
-	-->
-	<image name="normalmap" driver="noise" shared="true" visible="false" tile_size="127">
-		<frequency>1200</frequency>
-		<min_elevation>0</min_elevation>
-		<max_elevation>5</max_elevation>
-		<normal_map>true</normal_map>
-	</image>
-		   
+    The normal map layer using the 'noise' driver to generate bump map textures.
+    Note that we set visible='false' since we don't actually want to display this
+    layer in its raw form - rather, the shared='true' will make it available to
+    the <normal_map> effect below.
+    -->
+    <image name="normalmap" driver="noise" shared="true" visible="false" tile_size="63">
+        <frequency>1200</frequency>
+        <min_elevation>0</min_elevation>
+        <max_elevation>5</max_elevation>
+        <normal_map>true</normal_map>
+    </image>
+           
     <!--
-	Install the normal map terrain effect and point it at our normal map layer.
-	-->
+    Install the normal map terrain effect and point it at our normal map layer.
+    -->
     <external>
         <normal_map layer="normalmap"/>
+        <sky hours="14.0"/>
     </external>
 </map>

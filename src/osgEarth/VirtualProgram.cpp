@@ -101,8 +101,7 @@ VirtualProgram::getOrCreate(osg::StateSet* stateset)
 
 VirtualProgram::VirtualProgram( unsigned mask ) : 
 _mask              ( mask ),
-_inherit           ( true ),
-_useLightingShaders( true )
+_inherit           ( true )
 {
     // check the the dump env var
     if ( ::getenv(OSGEARTH_DUMP_SHADERS) != 0L )
@@ -129,7 +128,6 @@ _shaderMap         ( rhs._shaderMap ),
 _mask              ( rhs._mask ),
 _functions         ( rhs._functions ),
 _inherit           ( rhs._inherit ),
-_useLightingShaders( rhs._useLightingShaders ),
 _template          ( osg::clone(rhs._template.get()) )
 {
     //nop

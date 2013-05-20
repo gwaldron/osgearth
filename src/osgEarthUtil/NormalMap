@@ -46,9 +46,9 @@ namespace osgEarth { namespace Util
         void setNormalMapLayer(ImageLayer* layer) { _layer = layer; }
         ImageLayer* getNormalMapLayer() { return _layer.get(); }
 
-        /** Sets the intentisy level of the normal effect */
-        void setIntensity(float i);
-        float getIntensity() const { return _intensity.get(); }
+        /** Sets the LOD at which to start normal mapping */
+        void setStartLOD(unsigned lod);
+        unsigned getStartLOD() const { return *_startLOD; }
 
     public: // TerrainEffect interface
 
@@ -65,11 +65,11 @@ namespace osgEarth { namespace Util
         virtual ~NormalMap();
         void init();
 
-        optional<float>       _intensity;
+        optional<unsigned>    _startLOD;
         optional<std::string> _layerName;
 
         osg::observer_ptr<ImageLayer> _layer;
-        osg::ref_ptr<osg::Uniform>    _intensityUniform;
+        osg::ref_ptr<osg::Uniform>    _startLODUniform;
     };
 
 } } // namespace osgEarth::Util

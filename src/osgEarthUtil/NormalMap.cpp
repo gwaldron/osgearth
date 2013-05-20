@@ -30,10 +30,10 @@ using namespace osgEarth::Util;
 namespace
 {
     const char* vs =
-        "varying vec3 light; \n"
-        "varying vec3 view; \n"
+        "varying vec3 oe_nmap_light; \n"
+        //"varying vec3 oe_nmap_view; \n"
 
-        "void oe_normalmap_vertex(inout vec4 VertexVIEW) \n"
+        "void oe_lighting_vertex(inout vec4 VertexVIEW) \n"
         "{ \n"
         "    vec3 tangent = normalize(cross(gl_Normal, vec3(0,-1,0))); \n"
 
@@ -42,42 +42,38 @@ namespace
         "    vec3 b = cross(n, t); \n"
 
         "    vec3 tmp = gl_LightSource[0].position.xyz; \n"
-        "    light.x = dot(tmp, t); \n"
-        "    light.y = dot(tmp, b); \n"
-        "    light.z = dot(tmp, n); \n"
+        "    oe_nmap_light.x = dot(tmp, t); \n"
+        "    oe_nmap_light.y = dot(tmp, b); \n"
+        "    oe_nmap_light.z = dot(tmp, n); \n"
 
-        "    tmp = -VertexVIEW.xyz; \n"
-        "    view.x = dot(tmp, t); \n"
-        "    view.y = dot(tmp, b); \n"
-        "    view.z = dot(tmp, n); \n"
+        //"    tmp = -VertexVIEW.xyz; \n"
+        //"    oe_nmap_view.x = dot(tmp, t); \n"
+        //"    oe_nmap_view.y = dot(tmp, b); \n"
+        //"    oe_nmap_view.z = dot(tmp, n); \n"
         "} \n";
 
     const char* fs =
-        "uniform sampler2D oe_normalmap_tex; \n"
-        "uniform float oe_normalmap_intensity; \n"
-        "varying vec4 oe_layer_tilec; \n"
-        "varying vec3 light; \n"
-        "varying vec3 view; \n"
+        "uniform sampler2D oe_nmap_tex; \n"
+        "uniform float oe_nmap_startlod; \n"
 
-        "void oe_normalmap_fragment(inout vec4 color) \n"
+        "varying vec4 oe_tile_key; \n"
+        "varying vec4 oe_layer_tilec; \n"
+        "varying vec3 oe_nmap_light; \n"
+
+        "void oe_lighting_fragment(inout vec4 color) \n"
         "{\n"
-        "    vec3  L = normalize(light); \n"
-        "    vec3  V = normalize(view); \n"
-        "    vec3  N = normalize( texture2D(oe_normalmap_tex, oe_layer_tilec.st).xyz * 2.0 - 1.0 ); \n"
+        "    vec3  L = normalize(oe_nmap_light); \n"
+        "    vec3  N = normalize( texture2D(oe_nmap_tex, oe_layer_tilec.st).xyz * 2.0 - 1.0 ); \n"
         "    float D = max(dot(L, N), 0.0); \n"
-        //"    float S = pow(clamp(dot(reflect(-L,N),V),0.0,1.0), gl_FrontMaterial.shininess); \n"
         "    vec4  diffuse  = gl_FrontLightProduct[0].diffuse * D; \n"
         "    vec4  ambient  = gl_FrontLightProduct[0].ambient; \n"
-        //"    vec4  specular = gl_FrontLightProduct[0].specular * S; \n"
-        //"    color.rgb *= clamp(diffuse.rgb + ambient.rgb + specular.rgb, 0.0, 1.0); \n"
         "    color.rgb *= clamp(diffuse.rgb + ambient.rgb, 0.0, 1.0); \n"
         "}\n";
 }
 
 
 NormalMap::NormalMap() :
-TerrainEffect(),
-_intensity( 1.0f )
+TerrainEffect()
 {
     init();
 }
@@ -86,25 +82,22 @@ _intensity( 1.0f )
 void
 NormalMap::init()
 {
-    _intensityUniform = new osg::Uniform(osg::Uniform::FLOAT, "oe_normalmap_intensity");
-    _intensityUniform->set( _intensity.get() );
+    _startLODUniform = new osg::Uniform(osg::Uniform::FLOAT, "oe_nmap_startlod");
+    _startLODUniform->set( 0.0f );
+}
+
+
+void
+NormalMap::setStartLOD(unsigned value)
+{
+    _startLOD = value;
+    _startLODUniform->set( (float)value );
 }
 
 
 NormalMap::~NormalMap()
 {
     //nop
-}
-
-
-void
-NormalMap::setIntensity(float i)
-{
-    if ( i != _intensity.get() )
-    {
-        _intensity = i;
-        _intensityUniform->set( i );
-    }
 }
 
 void
@@ -117,15 +110,17 @@ NormalMap::onInstall(TerrainEngineNode* engine)
         {
             OE_NOTICE << LC << "Installing layer " << _layer->getName() << " as normal map" << std::endl;
             int unit = *_layer->shareImageUnit();
-            stateset->getOrCreateUniform("oe_normalmap_tex", osg::Uniform::SAMPLER_2D)->set(unit);
+            stateset->getOrCreateUniform("oe_nmap_tex", osg::Uniform::SAMPLER_2D)->set(unit);
         }
         
-        stateset->addUniform( _intensityUniform.get() );
+        stateset->addUniform( _startLODUniform.get() );
 
         VirtualProgram* vp = VirtualProgram::getOrCreate(stateset);
 
-        vp->setFunction( "oe_normalmap_vertex",   vs, ShaderComp::LOCATION_VERTEX_VIEW );
-        vp->setFunction( "oe_normalmap_fragment", fs, ShaderComp::LOCATION_FRAGMENT_LIGHTING );
+        // these special (built-in) function names are for the main lighting shaders.
+        // using them here will override the default lighting.
+        vp->setFunction( "oe_lighting_vertex",   vs, ShaderComp::LOCATION_VERTEX_VIEW, 0.0 );
+        vp->setFunction( "oe_lighting_fragment", fs, ShaderComp::LOCATION_FRAGMENT_LIGHTING, 0.0 );
     }
 }
 
@@ -140,7 +135,7 @@ NormalMap::onUninstall(TerrainEngineNode* engine)
 
 NormalMap::NormalMap(const Config& conf, Map* map) :
 TerrainEffect(),
-_intensity   (1.0)
+_startLOD( 0 )
 {
     mergeConfig(conf);
 
@@ -155,8 +150,9 @@ _intensity   (1.0)
 void
 NormalMap::mergeConfig(const Config& conf)
 {
-    conf.getIfSet( "layer",     _layerName );
-    conf.getIfSet( "intensity", _intensity );
+    conf.getIfSet( "layer",       _layerName );
+    conf.getIfSet( "start_level", _startLOD );
+    conf.getIfSet( "start_lod",   _startLOD );
 }
 
 Config
@@ -168,7 +164,7 @@ NormalMap::getConfig() const
         layername = _layer->getName();
 
     Config conf("normal_map");
-    conf.addIfSet( "layer",     layername );
-    conf.addIfSet( "intentisy", _intensity );
+    conf.addIfSet( "layer",       layername );
+    conf.addIfSet( "start_level", _startLOD );
     return conf;
 }

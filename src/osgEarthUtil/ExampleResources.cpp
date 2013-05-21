@@ -511,7 +511,7 @@ MapNodeHelper::parse(MapNode*             mapNode,
     bool useOrtho      = args.read("--ortho");
     bool useAutoClip   = args.read("--autoclip");
 
-    float ambientBrightness = 0.4f;
+    float ambientBrightness = 0.2f;
     args.read("--ambientBrightness", ambientBrightness);
 
     std::string kmlFile;

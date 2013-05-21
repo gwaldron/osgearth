@@ -97,5 +97,18 @@ VerticalScale::onInstall(TerrainEngineNode* engine)
 void
 VerticalScale::onUninstall(TerrainEngineNode* engine)
 {
-    OE_WARN << LC << "Uninstall NYI" << std::endl;
+    if ( engine )
+    {
+        osg::StateSet* stateset = engine->getStateSet();
+        if ( stateset )
+        {
+            stateset->removeUniform( _scaleUniform.get() );
+
+            VirtualProgram* vp = VirtualProgram::get(stateset);
+            if ( vp )
+            {
+                vp->removeShader( "oe_vertscale_vertex" );
+            }
+        }
+    }
 }

@@ -96,6 +96,15 @@ VirtualProgram::getOrCreate(osg::StateSet* stateset)
     return vp;
 }
 
+VirtualProgram* 
+VirtualProgram::get(osg::StateSet* stateset)
+{
+    if ( !stateset )
+        return 0L;
+
+    return dynamic_cast<VirtualProgram*>( stateset->getAttribute(SA_TYPE) );
+}
+
 //------------------------------------------------------------------------
 
 

@@ -175,5 +175,18 @@ DetailTexture::onInstall(TerrainEngineNode* engine)
 void
 DetailTexture::onUninstall(TerrainEngineNode* engine)
 {
-    OE_WARN << LC << "Uninstall NYI" << std::endl;
+    osg::StateSet* stateset = engine->getStateSet();
+    if ( stateset )
+    {
+        stateset->removeUniform( _baseLODUniform.get() );
+        stateset->removeUniform( _samplerUniform.get() );
+        stateset->removeUniform( _intensityUniform.get() );
+
+        VirtualProgram* vp = VirtualProgram::get(stateset);
+        if ( vp )
+        {
+            vp->removeShader( "oe_dtex_vertex" );
+            vp->removeShader( "oe_dtex_fragment" );
+        }
+    }
 }

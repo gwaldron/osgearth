@@ -126,6 +126,20 @@ ElevationMorph::onInstall(TerrainEngineNode* engine)
 void
 ElevationMorph::onUninstall(TerrainEngineNode* engine)
 {
-    OE_WARN << LC << "Uninstall NYI." << std::endl;
+    if ( engine )
+    {
+        osg::StateSet* stateset = engine->getStateSet();
+        if ( stateset )
+        {
+            stateset->removeUniform( _delayUniform.get() );
+            stateset->removeUniform( _durationUniform.get() );
+
+            VirtualProgram* vp = VirtualProgram::get(stateset);
+            if ( vp )
+            {
+                vp->removeShader( "oe_morph_vertex" );
+            }
+        }
+    }
 }
 

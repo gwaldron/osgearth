@@ -31,43 +31,59 @@ namespace
 {
     const char* vs =
         "varying vec3 oe_nmap_light; \n"
-        //"varying vec3 oe_nmap_view; \n"
+        "varying vec3 oe_nmap_view; \n"
+        "uniform bool oe_mode_GL_LIGHTING; \n"
 
         "void oe_lighting_vertex(inout vec4 VertexVIEW) \n"
         "{ \n"
-        "    vec3 tangent = normalize(cross(gl_Normal, vec3(0,-1,0))); \n"
+        "    if (oe_mode_GL_LIGHTING) \n"
+        "    { \n"
+        "        vec3 tangent = normalize(cross(gl_Normal, vec3(0,-1,0))); \n"
 
-        "    vec3 n = normalize(gl_NormalMatrix * gl_Normal); \n"
-        "    vec3 t = normalize(gl_NormalMatrix * tangent); \n"
-        "    vec3 b = cross(n, t); \n"
+        "        vec3 n = normalize(gl_NormalMatrix * gl_Normal); \n"
+        "        vec3 t = normalize(gl_NormalMatrix * tangent); \n"
+        "        vec3 b = cross(n, t); \n"
 
-        "    vec3 tmp = gl_LightSource[0].position.xyz; \n"
-        "    oe_nmap_light.x = dot(tmp, t); \n"
-        "    oe_nmap_light.y = dot(tmp, b); \n"
-        "    oe_nmap_light.z = dot(tmp, n); \n"
+        "        vec3 tmp = gl_LightSource[0].position.xyz; \n"
+        "        oe_nmap_light.x = dot(tmp, t); \n"
+        "        oe_nmap_light.y = dot(tmp, b); \n"
+        "        oe_nmap_light.z = dot(tmp, n); \n"
 
-        //"    tmp = -VertexVIEW.xyz; \n"
-        //"    oe_nmap_view.x = dot(tmp, t); \n"
-        //"    oe_nmap_view.y = dot(tmp, b); \n"
-        //"    oe_nmap_view.z = dot(tmp, n); \n"
+        "        tmp = -VertexVIEW.xyz; \n"
+        "        oe_nmap_view.x = dot(tmp, t); \n"
+        "        oe_nmap_view.y = dot(tmp, b); \n"
+        "        oe_nmap_view.z = dot(tmp, n); \n"
+        "    } \n"
         "} \n";
 
     const char* fs =
         "uniform sampler2D oe_nmap_tex; \n"
         "uniform float oe_nmap_startlod; \n"
+        "uniform vec4 oe_tile_key; \n"
+        "uniform bool oe_mode_GL_LIGHTING; \n"
 
-        "varying vec4 oe_tile_key; \n"
         "varying vec4 oe_layer_tilec; \n"
         "varying vec3 oe_nmap_light; \n"
+        "varying vec3 oe_nmap_view; \n"
 
         "void oe_lighting_fragment(inout vec4 color) \n"
         "{\n"
-        "    vec3  L = normalize(oe_nmap_light); \n"
-        "    vec3  N = normalize( texture2D(oe_nmap_tex, oe_layer_tilec.st).xyz * 2.0 - 1.0 ); \n"
-        "    float D = max(dot(L, N), 0.0); \n"
-        "    vec4  diffuse  = gl_FrontLightProduct[0].diffuse * D; \n"
-        "    vec4  ambient  = gl_FrontLightProduct[0].ambient; \n"
-        "    color.rgb *= clamp(diffuse.rgb + ambient.rgb, 0.0, 1.0); \n"
+        "    if (oe_mode_GL_LIGHTING) \n"
+        "    { \n"
+        "        vec3 L = normalize(oe_nmap_light); \n"
+        "        vec3 N = normalize(texture2D(oe_nmap_tex, oe_layer_tilec.st).xyz * 2.0 - 1.0); \n"
+        "        vec3 V = normalize(oe_nmap_view); \n"
+
+        "        vec4 ambient  = gl_LightSource[0].ambient * gl_FrontMaterial.ambient; \n"
+
+        "        float D = max(dot(L, N), 0.0); \n"
+        "        vec4 diffuse  = gl_LightSource[0].diffuse * gl_FrontMaterial.diffuse * D; \n"
+
+        //"        float S = pow(clamp(dot(reflect(-L,N),V),0.0,1.0), gl_FrontMaterial.shininess); \n"
+        //"        vec4 specular = gl_LightSource[0].specular * gl_FrontMaterial.specular * S; \n"
+
+        "        color.rgb = (ambient.rgb*color.rgb) + (diffuse.rgb*color.rgb); \n" // + specular.rgb; \n"
+        "    } \n"
         "}\n";
 }
 
@@ -110,7 +126,8 @@ NormalMap::onInstall(TerrainEngineNode* engine)
         {
             OE_NOTICE << LC << "Installing layer " << _layer->getName() << " as normal map" << std::endl;
             int unit = *_layer->shareImageUnit();
-            stateset->getOrCreateUniform("oe_nmap_tex", osg::Uniform::SAMPLER_2D)->set(unit);
+            _samplerUniform = stateset->getOrCreateUniform("oe_nmap_tex", osg::Uniform::SAMPLER_2D);
+            _samplerUniform->set(unit);
         }
         
         stateset->addUniform( _startLODUniform.get() );
@@ -128,7 +145,21 @@ NormalMap::onInstall(TerrainEngineNode* engine)
 void
 NormalMap::onUninstall(TerrainEngineNode* engine)
 {
-    OE_WARN << LC << "Uninstall NYI." << std::endl;
+    if ( engine )
+    {
+        osg::StateSet* stateset = engine->getStateSet();
+        if ( stateset )
+        {
+            stateset->removeUniform( _samplerUniform.get() );
+            stateset->removeUniform( _startLODUniform.get() );
+            VirtualProgram* vp = VirtualProgram::get(stateset);
+            if ( vp )
+            {
+                vp->removeShader( "oe_lighting_vertex" );
+                vp->removeShader( "oe_lighting_fragment" );
+            }
+        }
+    }
 }
 
 

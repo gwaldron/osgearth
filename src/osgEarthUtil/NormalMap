@@ -69,6 +69,7 @@ namespace osgEarth { namespace Util
         optional<std::string> _layerName;
 
         osg::observer_ptr<ImageLayer> _layer;
+        osg::ref_ptr<osg::Uniform>    _samplerUniform;
         osg::ref_ptr<osg::Uniform>    _startLODUniform;
     };
 

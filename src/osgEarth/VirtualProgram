@@ -86,6 +86,7 @@ namespace osgEarth
         static const osg::StateAttribute::Type SA_TYPE;
 
         static VirtualProgram* getOrCreate(osg::StateSet* on);
+        static VirtualProgram* get        (osg::StateSet* on);
 
         typedef osg::Program::AttribBindingList AttribBindingList;
 

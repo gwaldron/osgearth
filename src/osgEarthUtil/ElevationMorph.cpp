@@ -77,33 +77,50 @@ TerrainEffect(),
 _delay       ( 0.0f ),
 _duration    ( 0.25f )
 {
-    _delayUniform = new osg::Uniform(osg::Uniform::FLOAT, "oe_morph_delay");
-    _delayUniform->set( (float)_delay );
-
-    _durationUniform = new osg::Uniform(osg::Uniform::FLOAT, "oe_morph_duration");
-    _durationUniform->set( (float)_duration );
+    init();
 }
 
 
-ElevationMorph::~ElevationMorph()
+ElevationMorph::ElevationMorph(const Config& conf) :
+TerrainEffect(),
+_delay       ( 0.0f ),
+_duration    ( 0.25f )
 {
-    //nop
+    mergeConfig(conf);
+    init();
+}
+
+
+void
+ElevationMorph::init()
+{
+    _delayUniform = new osg::Uniform(osg::Uniform::FLOAT, "oe_morph_delay");
+    _delayUniform->set( (float)*_delay );
+
+    _durationUniform = new osg::Uniform(osg::Uniform::FLOAT, "oe_morph_duration");
+    _durationUniform->set( (float)*_duration );
 }
 
 
 void
 ElevationMorph::setDelay(float delay)
 {
-    _delay = osg::clampAbove( delay, 0.0f );
-    _delayUniform->set( _delay );
+    if ( delay != _delay.get() )
+    {
+        _delay = osg::clampAbove( delay, 0.0f );
+        _delayUniform->set( _delay.get() );
+    }
 }
 
 
 void
 ElevationMorph::setDuration(float duration)
 {
-    _duration = osg::clampAbove( duration, 0.0f );
-    _durationUniform->set( _duration );
+    if ( duration != _duration.get() )
+    {
+        _duration = osg::clampAbove( duration, 0.0f );
+        _durationUniform->set( _duration.get() );
+    }
 }
 
 
@@ -143,3 +160,22 @@ ElevationMorph::onUninstall(TerrainEngineNode* engine)
     }
 }
 
+
+//-------------------------------------------------------------
+
+
+void
+ElevationMorph::mergeConfig(const Config& conf)
+{
+    conf.getIfSet( "delay",    _delay );
+    conf.getIfSet( "duration", _duration );
+}
+
+Config
+ElevationMorph::getConfig() const
+{
+    Config conf("elevation_morph");
+    conf.addIfSet( "delay",    _delay );
+    conf.addIfSet( "duration", _duration );
+    return conf;
+}

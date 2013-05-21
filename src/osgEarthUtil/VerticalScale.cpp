@@ -60,22 +60,34 @@ VerticalScale::VerticalScale() :
 TerrainEffect(),
 _scale       ( 1.0f )
 {
-    _scaleUniform = new osg::Uniform(osg::Uniform::FLOAT, "oe_vertscale_scale");
-    _scaleUniform->set( _scale );
+    init();
+}
+
+VerticalScale::VerticalScale(const Config& conf) :
+TerrainEffect(),
+_scale       ( 1.0f )
+{
+    mergeConfig(conf);
+    init();
 }
 
 
-VerticalScale::~VerticalScale()
+void
+VerticalScale::init()
 {
-    //nop
+    _scaleUniform = new osg::Uniform(osg::Uniform::FLOAT, "oe_vertscale_scale");
+    _scaleUniform->set( _scale.get() );
 }
 
 
 void
 VerticalScale::setScale(float scale)
 {
-    _scale = scale;
-    _scaleUniform->set( _scale );
+    if ( scale != _scale.get() )
+    {
+        _scale = scale;
+        _scaleUniform->set( _scale.get() );
+    }
 }
 
 
@@ -111,4 +123,23 @@ VerticalScale::onUninstall(TerrainEngineNode* engine)
             }
         }
     }
+}
+
+
+
+//-------------------------------------------------------------
+
+
+void
+VerticalScale::mergeConfig(const Config& conf)
+{
+    conf.getIfSet( "scale", _scale );
+}
+
+Config
+VerticalScale::getConfig() const
+{
+    Config conf("vertical_scale");
+    conf.addIfSet( "scale", _scale );
+    return conf;
 }

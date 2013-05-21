@@ -21,9 +21,9 @@
 
 #include <osgEarthUtil/Common>
 #include <osgEarth/TerrainEffect>
+#include <osgEarth/URI>
 #include <osg/Image>
 #include <osg/Uniform>
-#include <osg/Node>
 #include <osg/Texture2D>
 
 namespace osgEarth { namespace Util
@@ -38,35 +38,38 @@ namespace osgEarth { namespace Util
         DetailTexture();
 
         /** Sets the LOD at which to start detailing */
-        void setBaseLOD( unsigned lod );
-        unsigned getBaseLOD() const { return _baseLOD; }
+        void setStartLOD( unsigned lod );
+        unsigned getStartLOD() const { return _startLOD.get(); }
 
         /** Sets the intensity (0=none, 1=full) */
         void setIntensity( float value );
-        float getIntensity() const { return _intensity; }
+        float getIntensity() const { return _intensity.get(); }
 
         /** Sets the image to use as the detail texture */
         void setImage( const osg::Image* image );
         const osg::Image* getImage() const { return _texture->getImage(); }
-
-        /** Sets the GPU texture image unit to use for the texture (default=1) */
-        void setImageUnit( unsigned unit );
-        unsigned getImageUnit() const { return _unit; }
 
     public: // TerrainEffect interface
 
         void onInstall(TerrainEngineNode* engine);
         void onUninstall(TerrainEngineNode* engine);
 
-    protected:
-        virtual ~DetailTexture();
+    public: // serialization
 
-        int                          _unit;
-        float                        _intensity;
-        unsigned                     _baseLOD;
+        DetailTexture(const Config& conf);
+        void mergeConfig(const Config& conf);
+        virtual Config getConfig() const;
+
+    protected:
+        virtual ~DetailTexture() { }
+        void init();
+
+        optional<float>    _intensity;
+        optional<unsigned> _startLOD;
+        optional<URI>      _imageURI;
 
         osg::ref_ptr<osg::Uniform>   _intensityUniform;
-        osg::ref_ptr<osg::Uniform>   _baseLODUniform;
+        osg::ref_ptr<osg::Uniform>   _startLODUniform;
         osg::ref_ptr<osg::Uniform>   _samplerUniform;
         osg::ref_ptr<osg::Texture2D> _texture;
     };

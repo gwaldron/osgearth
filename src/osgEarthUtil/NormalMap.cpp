@@ -89,8 +89,23 @@ namespace
 
 
 NormalMap::NormalMap() :
-TerrainEffect()
+TerrainEffect(),
+_startLOD    ( 0 )
 {
+    init();
+}
+
+NormalMap::NormalMap(const Config& conf, Map* map) :
+TerrainEffect(),
+_startLOD    ( 0 )
+{
+    mergeConfig(conf);
+
+    if ( map && _layerName.isSet() )
+    {
+        setNormalMapLayer( map->getImageLayerByName(*_layerName) );
+    }
+
     init();
 }
 
@@ -163,20 +178,7 @@ NormalMap::onUninstall(TerrainEngineNode* engine)
 }
 
 
-
-NormalMap::NormalMap(const Config& conf, Map* map) :
-TerrainEffect(),
-_startLOD( 0 )
-{
-    mergeConfig(conf);
-
-    if ( map && _layerName.isSet() )
-    {
-        setNormalMapLayer( map->getImageLayerByName(*_layerName) );
-    }
-
-    init();
-}
+//-------------------------------------------------------------
 
 void
 NormalMap::mergeConfig(const Config& conf)

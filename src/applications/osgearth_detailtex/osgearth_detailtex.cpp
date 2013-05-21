@@ -65,7 +65,7 @@ ui::Control* createUI( App& app )
 
     ui::VBox* vbox = new VBox();
 
-    vbox->addControl( new LabelControl(Stringify() << "Detail texture starts at LOD: " << app.dt->getBaseLOD()) );
+    vbox->addControl( new LabelControl(Stringify() << "Detail texture starts at LOD: " << app.dt->getStartLOD()) );
 
     ui::HBox* hbox = vbox->addControl( new ui::HBox() );
     hbox->setChildVertAlign( ui::Control::ALIGN_CENTER );
@@ -104,7 +104,7 @@ int main(int argc, char** argv)
 
     unsigned startLOD;
     if ( arguments.read("--lod", startLOD) )
-        app.dt->setBaseLOD(startLOD);
+        app.dt->setStartLOD(startLOD);
 
     // Create the UI:
     ui::Control* demoui = createUI(app);
@@ -118,13 +118,8 @@ int main(int argc, char** argv)
         if ( !mapNode )
             return -1;
 
-        // bind a texture image unit for our detail texture.
+        // install our detail texturer.
         TerrainEngineNode* terrain = mapNode->getTerrainEngine();
-        int unit = 1;
-        if ( terrain->getTextureCompositor()->reserveTextureImageUnit(unit) )
-            app.dt->setImageUnit( unit );
-
-        // attach the detailer to the terrain.
         terrain->addEffect( app.dt );
 
         viewer.setSceneData( node );

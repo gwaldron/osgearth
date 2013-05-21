@@ -24,7 +24,11 @@
 #include <osgEarthUtil/MouseCoordsTool>
 #include <osgEarthUtil/AutoClipPlaneHandler>
 #include <osgEarthUtil/DataScanner>
+
 #include <osgEarthUtil/NormalMap>
+#include <osgEarthUtil/DetailTexture>
+#include <osgEarthUtil/ElevationMorph>
+#include <osgEarthUtil/VerticalScale>
 
 #include <osgEarthAnnotation/AnnotationData>
 #include <osgEarthAnnotation/AnnotationRegistry>
@@ -540,7 +544,12 @@ MapNodeHelper::parse(MapNode*             mapNode,
     const Config& annoConf        = externals.child("annotations");
     const Config& declutterConf   = externals.child("decluttering");
     Config        viewpointsConf  = externals.child("viewpoints");
+
+    // some terrain effects.
     const Config& normalMapConf   = externals.child("normal_map");
+    const Config& detailTexConf   = externals.child("detail_texture");
+    const Config& elevMorphConf   = externals.child("elevation_morph");
+    const Config& vertScaleConf   = externals.child("vertical_scale");
 
     // backwards-compatibility: read viewpoints at the top level:
     const ConfigSet& old_viewpoints = externals.children("viewpoint");
@@ -709,6 +718,28 @@ MapNodeHelper::parse(MapNode*             mapNode,
         {
             mapNode->getTerrainEngine()->addEffect( effect.get() );
         }
+    }
+
+    // Install a detail texturer
+    if ( !detailTexConf.empty() )
+    {
+        osg::ref_ptr<DetailTexture> effect = new DetailTexture(detailTexConf);
+        if ( effect->getImage() )
+        {
+            mapNode->getTerrainEngine()->addEffect( effect.get() );
+        }
+    }
+
+    // Install elevation morphing
+    if ( !elevMorphConf.empty() )
+    {
+        mapNode->getTerrainEngine()->addEffect( new ElevationMorph(elevMorphConf) );
+    }
+
+    // Install vertical scaler
+    if ( !vertScaleConf.empty() )
+    {
+        mapNode->getTerrainEngine()->addEffect( new VerticalScale(vertScaleConf) );
     }
 
     // Generic named value uniform with min/max.

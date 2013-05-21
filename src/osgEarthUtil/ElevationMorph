@@ -40,22 +40,29 @@ namespace osgEarth { namespace Util
         /** Sets the delay (in seconds) between the time the tile appears
             and when it starts morphing */
         void setDelay( float value );
-        float getDelay() const { return _delay; }
+        float getDelay() const { return _delay.get(); }
 
         /** Sets the duration of the morph */
         void setDuration( float value );
-        float getDuration() const { return _duration; }
+        float getDuration() const { return _duration.get(); }
 
     public: // TerrainEffect interface
 
         void onInstall(TerrainEngineNode* engine);
         void onUninstall(TerrainEngineNode* engine);
 
-    protected:
-        virtual ~ElevationMorph();
+    public: // serialization
 
-        float                        _delay;
-        float                        _duration;
+        ElevationMorph(const Config& conf);
+        void mergeConfig(const Config& conf);
+        virtual Config getConfig() const;
+
+    protected:
+        virtual ~ElevationMorph() { }
+        void init();
+
+        optional<float>              _delay;
+        optional<float>              _duration;
         osg::ref_ptr<osg::Uniform>   _delayUniform;
         osg::ref_ptr<osg::Uniform>   _durationUniform;
     };

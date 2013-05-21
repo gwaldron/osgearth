@@ -39,17 +39,24 @@ namespace osgEarth { namespace Util
 
         /** Sets the scale factor. (1=default) */
         void setScale( float value );
-        float getScale() const { return _scale; }
+        float getScale() const { return _scale.get(); }
 
     public: // TerrainEffect interface
 
         void onInstall(TerrainEngineNode* engine);
         void onUninstall(TerrainEngineNode* engine);
 
-    protected:
-        virtual ~VerticalScale();
+    public: // serialization
 
-        float                        _scale;
+        VerticalScale(const Config& conf);
+        void mergeConfig(const Config& conf);
+        virtual Config getConfig() const;
+
+    protected:
+        virtual ~VerticalScale() { }
+        void init();
+
+        optional<float>              _scale;
         osg::ref_ptr<osg::Uniform>   _scaleUniform;
     };
 

@@ -579,15 +579,15 @@ namespace
                             // calculate the indicies of the same location in the 
                             // parent heightfield:
                             unsigned q = d.model->_tileKey.getQuadrant();
-                            int xoffset = q == 1 || q == 3 ? parent->getNumColumns()/2 : 0;
-                            int yoffset = q == 0 || q == 1 ? parent->getNumRows()/2 : 0;
-                            int ip = xoffset + i/2;
-                            int jp = yoffset + j/2;
+                            int xoffset = q == 1 || q == 3 ? (parent->getNumColumns() >> 1) : 0;
+                            int yoffset = q == 0 || q == 1 ? (parent->getNumRows()    >> 1) : 0;
+                            int ip = xoffset + (i >> 1);
+                            int jp = yoffset + (j >> 1);
 
                             // the interpolation will be different depending on whether
                             // the col and row numbers are odd:
-                            bool oddCol = i%2 == 1;
-                            bool oddRow = j%2 == 1;
+                            bool oddCol = i & 0x1;
+                            bool oddRow = j & 0x1;
 
                             if ( oddCol && oddRow )
                             {

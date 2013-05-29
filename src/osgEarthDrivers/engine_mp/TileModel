@@ -25,6 +25,7 @@
 #include <osgEarth/Map>
 #include <osgEarth/ImageLayer>
 #include <osgEarth/TileKey>
+#include <osgEarth/Locators>
 #include <osgTerrain/Locator>
 #include <osgTerrain/Layer>
 #include <osg/Image>
@@ -55,12 +56,25 @@ namespace osgEarth_engine_mp
         {
         public:
             ElevationData() { }
-            virtual ~ElevationData() { }
-            ElevationData( osgTerrain::HeightFieldLayer* hfLayer, bool fallbackData =false )
-                : _hfLayer(hfLayer), _fallbackData(fallbackData) { }
+            ElevationData(const ElevationData& rhs);
 
-            osgTerrain::HeightFieldLayer* getHFLayer() const { return _hfLayer.get(); }
+            virtual ~ElevationData() { }
+
+            ElevationData(
+                osg::HeightField* hf,
+                GeoLocator*       locator,
+                bool              fallbackData);
+
+            //osgTerrain::HeightFieldLayer* getHFLayer() const { return _hfLayer.get(); }
+            osg::HeightField* getHeightField() const { return _hf.get(); }
+            GeoLocator* getLocator() const { return _locator.get(); }
             bool isFallbackData() const { return _fallbackData; }
+
+            // get a height value using a normalized coord and a locator.
+            bool getHeight( const osg::Vec3d& ndc, const GeoLocator* ndcLocator, float& output ) const;
+
+            // get a normal vector.
+            bool getNormal( const osg::Vec3d& ndc, const GeoLocator* ndcLocator, osg::Vec3& output ) const;
             
             osg::HeightField* getNeighbor(int xoffset, int yoffset) const
             {
@@ -91,8 +105,10 @@ namespace osgEarth_engine_mp
                 if (index > 4) index--;
                 return index;
             }
-            osg::ref_ptr<osgTerrain::HeightFieldLayer> _hfLayer;
-            bool _fallbackData;
+            //osg::ref_ptr<osgTerrain::HeightFieldLayer> _hfLayer;
+            osg::ref_ptr<osg::HeightField> _hf;
+            osg::ref_ptr<GeoLocator>       _locator;
+            bool                           _fallbackData;
             osg::ref_ptr<osg::HeightField> _neighbors[8];
             osg::ref_ptr<osg::HeightField> _parent;
         };
@@ -102,6 +118,7 @@ namespace osgEarth_engine_mp
         {
         public:
             ColorData() { }
+            ColorData(const ColorData& rhs);
 
             /** dtor */
             virtual ~ColorData() { }
@@ -110,20 +127,10 @@ namespace osgEarth_engine_mp
                 const osgEarth::ImageLayer* imageLayer,
                 unsigned                    order,
                 osg::Image*                 image,
-                const osgTerrain::Locator*  locator,
-                int                         lod,
+                GeoLocator*                 locator,
                 const osgEarth::TileKey&    tileKey,
-                bool                        fallbackData =false )
-                  : _layer(imageLayer), _order(order), _locator(locator), _image(image),  _tileKey(tileKey), _lod(lod), _fallbackData(fallbackData) { }
+                bool                        fallbackData =false );
 
-            ColorData( const ColorData& rhs ) :
-                _layer( rhs._layer.get() ),
-                _order( rhs._order ),
-                _locator( rhs._locator.get() ),
-                _image( rhs._image.get() ),
-                _tileKey( rhs._tileKey ),
-                _lod( rhs._lod ),
-                _fallbackData( rhs._fallbackData ) { }
 
             osgEarth::UID getUID() const {
                 return _layer->getUID();
@@ -133,7 +140,7 @@ namespace osgEarth_engine_mp
                 return _order;
             }
 
-            const osgTerrain::Locator* getLocator() const {
+            const GeoLocator* getLocator() const {
                 return _locator.get();
             }
 
@@ -146,8 +153,8 @@ namespace osgEarth_engine_mp
             const osgEarth::ImageLayer* getMapLayer() const {
                 return _layer.get(); }
 
-            int getLevelOfDetail() const {
-                return _lod; }
+            //int getLevelOfDetail() const {
+            //    return _lod; }
 
             bool isFallbackData() const {
                 return _fallbackData; }
@@ -165,12 +172,11 @@ namespace osgEarth_engine_mp
             }
 
 
-        private:
             osg::ref_ptr<const osgEarth::ImageLayer> _layer;
-            osg::ref_ptr<const osgTerrain::Locator>  _locator;
+            osg::ref_ptr<GeoLocator>                 _locator;
             osg::ref_ptr<osg::Image>                 _image;
             osgEarth::TileKey                        _tileKey;
-            int                                      _lod;
+            //int                                      _lod;
             bool                                     _fallbackData;
             unsigned                                 _order;
         };
@@ -188,7 +194,17 @@ namespace osgEarth_engine_mp
 
     public:
         TileModel() { }
+        TileModel(const TileModel& rhs);
         virtual ~TileModel() { }
+
+        /**
+         * Creates a TileModel representing a quadrant of this tile model.
+         * Used for upsampling.
+         */
+        TileModel* createQuadrant(unsigned q) const;
+
+        /** Whether there is a heightfield */
+        bool hasElevation() const { return _elevationData.getHeightField() != 0L; }
 
         osg::ref_ptr<const Map>     _map; // observer_ptr?
         TileKey                     _tileKey;

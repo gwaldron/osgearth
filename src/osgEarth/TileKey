@@ -104,6 +104,11 @@ namespace osgEarth
          */
         const bool valid() const { return _profile.valid(); }
 
+        /**
+         * Get the quadrant relative to this key's parent.
+         */
+        unsigned getQuadrant() const;
+
     public:
         /**
          * Gets a reference to the child key of this key in the specified
@@ -162,17 +167,10 @@ namespace osgEarth
         unsigned int getTileX() const { return _x; }
         unsigned int getTileY() const { return _y; }
 
-        unsigned getQuadrant() const;
-        
-		static inline int getLOD(const osgTerrain::TileID& id)
-		{
-			//The name of the lod changed after OSG 2.6 from layer to level
-#if (OPENSCENEGRAPH_MAJOR_VERSION == 2 && OPENSCENEGRAPH_MINOR_VERSION < 7)
-			return id.layer;
-#else
-			return id.level;
-#endif
-		}
+        static inline int getLOD(const osgTerrain::TileID& id)
+        {
+            return id.level;
+        }
 
     protected:
         std::string _key;

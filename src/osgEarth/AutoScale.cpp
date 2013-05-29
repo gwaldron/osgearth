@@ -38,8 +38,9 @@ namespace
         GLSL_DEFAULT_PRECISION_FLOAT "\n"
 
         "uniform float oe_autoscale_zp; \n"
-        "uniform float oe_autoscale_scale; \n"
 
+#if 0
+        "uniform float oe_autoscale_scale; \n"
 
         "vec3 oe_autoscale_multquat( in vec3 v, in vec4 quat ) \n"
         "{ \n"
@@ -86,6 +87,7 @@ namespace
         "    m2[3] = gl_ModelViewMatrix[3]; \n"
         "    VertexVIEW = m2 * gl_Vertex; \n"
         "} \n"
+#endif
 
         "void oe_autoscale_vertex( inout vec4 VertexVIEW ) \n"
         "{ \n"
@@ -113,8 +115,6 @@ namespace
     {
     public:
         osg::ref_ptr<osg::Uniform>  _zp;
-        osg::ref_ptr<osg::Uniform>  _scale;
-        osg::ref_ptr<osg::Uniform>  _lighting;
 
         // support cloning (from RenderBin):
         virtual osg::Object* cloneType() const { return new AutoScaleRenderBin(); }
@@ -127,31 +127,25 @@ namespace
         // constructs the prototype for this render bin.
         AutoScaleRenderBin() : osgUtil::RenderBin()
         {
+            //OE_NOTICE << LC << "AUTOSCALE: created bin." << std::endl;
+
             this->setName( osgEarth::AUTO_SCALE_BIN );
 
             _stateset = new osg::StateSet();
 
             VirtualProgram* vp = new VirtualProgram();
-            vp->setFunction( "oe_autoscale_rotate", vs, ShaderComp::LOCATION_VERTEX_VIEW );
-            _stateset->setAttributeAndModes( vp, 1 );
+            vp->setFunction( "oe_autoscale_vertex", vs, ShaderComp::LOCATION_VERTEX_VIEW );
+            _stateset->setAttributeAndModes( vp, osg::StateAttribute::ON );
 
-            _zp    = _stateset->getOrCreateUniform("oe_autoscale_zp",    osg::Uniform::FLOAT);
-            //_scale = _stateset->getOrCreateUniform("oe_autoscale_scale", osg::Uniform::FLOAT);
-            //_scale->set( 50.0f );
-                
-            //_lighting = Registry::instance()->shaderFactory()->createUniformForGLMode(
-            //    GL_LIGHTING,
-            //    osg::StateAttribute::OFF );
-            //_stateset->addUniform( _lighting.get() );
+            _zp = _stateset->getOrCreateUniform("oe_autoscale_zp", osg::Uniform::FLOAT);
         }
 
         AutoScaleRenderBin( const AutoScaleRenderBin& rhs, const osg::CopyOp& op )
             : osgUtil::RenderBin( rhs, op ),
-              _zp  ( rhs._zp.get() ),
-              _scale ( rhs._scale.get() ),
-              _lighting( rhs._lighting.get() )
+              _zp      ( rhs._zp.get() )
         {
             //nop
+            //OE_NOTICE << LC << "AUTOSCALE: cloned bin." << std::endl;
         }
 
         /**

@@ -21,7 +21,6 @@
 
 #include <osgEarth/Common>
 #include <osgEarth/IOTypes>
-#include <osgEarth/Progress>
 #include <osg/ref_ptr>
 #include <osg/Referenced>
 #include <osgDB/ReaderWriter>
@@ -33,6 +32,8 @@
 
 namespace osgEarth
 {
+    class ProgressCallback;
+
     /**
      * Proxy server configuration.
      */

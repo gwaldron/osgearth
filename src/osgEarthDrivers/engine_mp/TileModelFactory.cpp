@@ -39,7 +39,7 @@ namespace
                    ImageLayer*                         layer, 
                    unsigned                            order,
                    const MapInfo&                      mapInfo,
-                   const MPTerrainEngineOptions& opt, 
+                   const MPTerrainEngineOptions&       opt, 
                    TileModel*                          model )
         {
             _key      = key;
@@ -131,7 +131,6 @@ namespace
                     _order,
                     geoImage.getImage(),
                     locator,
-                    _key.getLevelOfDetail(),
                     _key,
                     isFallbackData );
 
@@ -179,8 +178,8 @@ namespace
 
             //if ( _mapf->getHeightField( _key, true, hf, &isFallback ) )
             if (_hfCache->getOrCreateHeightField( *_mapf, _key, true, hf, &isFallback) )
-            {                
-
+            {
+#if 0
                 // Put it in the repo
                 osgTerrain::HeightFieldLayer* hfLayer = new osgTerrain::HeightFieldLayer( hf.get() );
 
@@ -188,6 +187,12 @@ namespace
                 hfLayer->setLocator( GeoLocator::createForKey( _key, mapInfo ) );
 
                 _model->_elevationData = TileModel::ElevationData(hfLayer, isFallback);
+#else
+                _model->_elevationData = TileModel::ElevationData(
+                    hf,
+                    GeoLocator::createForKey( _key, mapInfo ),
+                    isFallback );
+#endif
 
 #if 1
                 if ( *_opt->normalizeEdges() )
@@ -314,19 +319,25 @@ TileModelFactory::createTileModel(const TileKey&           key,
 
 
     // Bail out now if there's no data to be had.
-    if ( model->_colorData.size() == 0 && !model->_elevationData.getHFLayer() )
+    if ( model->_colorData.size() == 0 && !model->_elevationData.getHeightField() ) //.getHFLayer() )
     {
         return;
     }
 
     // OK we are making a tile, so if there's no heightfield yet, make an empty one.
-    if ( !model->_elevationData.getHFLayer() )
+    if ( !model->_elevationData.getHeightField() ) //getHFLayer() )
     {
         osg::HeightField* hf = HeightFieldUtils::createReferenceHeightField( key.getExtent(), 8, 8 );
-        osgTerrain::HeightFieldLayer* hfLayer = new osgTerrain::HeightFieldLayer( hf );
-        hfLayer->setLocator( GeoLocator::createForKey(key, mapInfo) );
-        model->_elevationData = TileModel::ElevationData( hfLayer, true );
+        model->_elevationData = TileModel::ElevationData(
+            hf,
+            GeoLocator::createForKey(key, mapInfo),
+            true );
+        //osgTerrain::HeightFieldLayer* hfLayer = new osgTerrain::HeightFieldLayer( hf );
+        //hfLayer->setLocator( GeoLocator::createForKey(key, mapInfo) );
+        //model->_elevationData = TileModel::ElevationData( hfLayer, true );
     }
+
+#if 0 // TODO: reimplement this!
 
     // if we're using LOD blending, find and add the parent's state set.
     if ( out_hasLodBlendedLayers && key.getLevelOfDetail() > 0 && _liveTiles.valid() )
@@ -337,6 +348,7 @@ TileModelFactory::createTileModel(const TileKey&           key,
             model->_parentStateSet = parent->getPublicStateSet();
         }
     }
+#endif
 
     if (!out_hasRealData)
     {

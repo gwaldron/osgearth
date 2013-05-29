@@ -25,6 +25,7 @@
 #include "TileModelFactory"
 #include "TileNodeRegistry"
 #include <osgEarth/MapInfo>
+#include <osgEarth/Progress>
 
 using namespace osgEarth;
 using namespace osgEarth::Drivers;
@@ -39,7 +40,7 @@ namespace osgEarth_engine_mp
             TileModelCompiler*                  modelCompiler,
             TileNodeRegistry*                   liveTiles,
             TileNodeRegistry*                   deadTiles,
-            const MPTerrainEngineOptions& options,
+            const MPTerrainEngineOptions&       options,
             const MapInfo&                      mapInfo,
             TerrainNode*                        terrain,
             UID                                 engineUID );
@@ -52,18 +53,18 @@ namespace osgEarth_engine_mp
 
         osg::Node* createRootNode( const TileKey& key );
 
-        osg::Node* createNode( const TileKey& key );
+        osg::Node* createNode( const TileKey& key, ProgressCallback* progress );
 
         TileModelCompiler* getCompiler() const { return _modelCompiler.get(); }
 
     protected:
-        void addTile(TileModel* model, bool tileHasRealData, bool tileHasLodBlending, osg::Group* parent );
+        osg::Node* createTile(TileModel* model, bool tileHasRealData, bool tileHasLodBlending); //, osg::Group* parent );
 
         osg::ref_ptr<TileModelFactory>      _modelFactory;
         osg::ref_ptr<TileModelCompiler>     _modelCompiler;
         osg::ref_ptr<TileNodeRegistry>      _liveTiles;
         osg::ref_ptr<TileNodeRegistry>      _deadTiles;
-        const MPTerrainEngineOptions& _options;
+        const MPTerrainEngineOptions&       _options;
         const MapInfo                       _mapInfo;
         osg::ref_ptr< TerrainNode >         _terrain;
         UID                                 _engineUID;

@@ -21,6 +21,7 @@
 
 #include "Common"
 #include "TileModel"
+#include "TileNode"
 #include "MPTerrainEngineOptions"
 
 #include <osgEarth/Map>
@@ -83,19 +84,17 @@ namespace osgEarth_engine_mp
             const MPTerrainEngineOptions& options);
 
         /**
-         * Compiles a tile model into an OSG scene graph. The scene graph will
-         * include a MatrixTransform to localize the tile data.
+         * Compiles a tile model into a TileNode.
          */
-        bool compile(
-            const TileModel* model,
-            osg::Node*&      out_node,
-            osg::StateSet*&  out_stateSet );
+        TileNode* compile(
+            const TileModel* model, 
+            const TileModel* parentModel =0L );
 
     protected:
         const MaskLayerVector&                    _masks;
         int                                       _textureImageUnit;
         bool                                      _optimizeTriOrientation;
-        const MPTerrainEngineOptions&       _options;
+        const MPTerrainEngineOptions&             _options;
         osg::ref_ptr<osg::Drawable::CullCallback> _cullByTraversalMask;
         CompilerCache                             _cache;
     };

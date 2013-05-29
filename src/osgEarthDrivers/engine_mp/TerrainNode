@@ -27,7 +27,6 @@ namespace osgEarth_engine_mp
     class TileFactory;
 
     using namespace osgEarth;
-    using namespace osgEarth::Drivers;
 
     /**
      * Parent node for the TileNode mp hierarchy.

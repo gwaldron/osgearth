@@ -20,6 +20,7 @@
 #include <osgEarth/ImageUtils>
 #include <osgEarth/StringUtils>
 #include <osgEarth/Registry>
+#include <osgEarth/Progress>
 #include <osgDB/FileNameUtils>
 
 #define LC "[CompositeTileSource] "

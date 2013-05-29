@@ -23,7 +23,6 @@
 #include <osgEarth/Common>
 #include <osgEarth/Config>
 #include <osgEarth/NodeUtils>
-#include <osgEarth/Progress>
 #include <osgEarth/Revisioning>
 #include <osgEarth/ThreadingUtils>
 #include <osg/Referenced>
@@ -31,6 +30,7 @@
 namespace osgEarth
 {   
     class Map;
+    class ProgressCallback;
     
     /**
      * Configuration options for a models source.

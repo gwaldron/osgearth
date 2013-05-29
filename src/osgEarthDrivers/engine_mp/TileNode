@@ -21,28 +21,24 @@
 
 #include "Common"
 #include "TileModel"
-#include "TileModelCompiler"
-#include <osgEarth/Locators>
-#include <osg/Group>
-#include <vector>
+#include <osg/MatrixTransform>
 
 namespace osgEarth_engine_mp
 {
     using namespace osgEarth;
 
-    //------------------------------------------------------------------------
-
     /**
-     * Node that represents a single mp terrain tile corresponding to 
-     * unique TileKey.
+     * Node that represents a single terrain tile that was compiled from
+     * a TileModel (and corresponds to one TileKey). The matrixtransform
+     * localizes the TileNode within the terrain.
      */
-    class TileNode : public osg::Group
+    class TileNode : public osg::MatrixTransform
     {
     public:
         /**
          * Constructs a new tile node
          */
-        TileNode( const TileKey& key, GeoLocator* keyLocator );
+        TileNode( const TileKey& key, const TileModel* model );
 
         /**
          * The tilekey associated with this tile
@@ -50,46 +46,39 @@ namespace osgEarth_engine_mp
         const TileKey& getKey() const { return _key; }
 
         /**
-         * The data model used to create this node's geometry.
+         * Whether the tile consists of "real" data
+         * (versus upsampled fallback data).
          */
-        void setTileModel( TileModel* model );
-        TileModel* getTileModel() { return _model.get(); }
+        void setHasRealData( bool value ) { _realData = value; }
+        bool hasRealData() const { return _realData; }
 
         /**
-         * Compiles this node's tile model into geometry.
-         * @param[in ] compiler     Compiler that will compiler the model
-         * @param[in ] releaseModel Whether to deallocate the tile model after compilation
-         * @return True upon success
+         * True if this is a valid tile node.
+         * Subclass may override (see InvalidTileNode)
          */
-        bool compile( TileModelCompiler* compiler, bool releaseModel =true );
+        virtual bool isValid() const { return true; }
 
         /**
-         * The locator for geometry in this tile
+         * Access the source data model that built this tile.
          */
-        GeoLocator* getLocator() const { return _locator.get(); }
-
-        /**
-         * The public state set associated with the compiled tile model.
-         */
-        osg::StateSet* getPublicStateSet() const { return _publicStateSet; }
+        const TileModel* getTileModel() { return _model.get(); }
 
 
     public: // OVERRIDES
 
         virtual void traverse( class osg::NodeVisitor& nv );
 
-        //virtual osg::BoundingSphere computeBound() const;
+        osg::BoundingSphere computeBound() const;
 
     protected:
 
-        virtual ~TileNode();
+        virtual ~TileNode() { }
 
-        bool                      _cullTraversed;
-        TileKey                   _key;
-        osg::ref_ptr<GeoLocator>  _locator;
-        osg::ref_ptr<TileModel>   _model;
-        osg::StateSet*            _publicStateSet;
-        osg::Uniform*             _born;
+        TileKey                 _key;
+        bool                    _realData;
+        osg::Uniform*           _bornUniform;
+        mutable osg::Uniform*   _keyUniform;
+        osg::ref_ptr<const TileModel> _model;
     };
 
 
@@ -97,13 +86,18 @@ namespace osgEarth_engine_mp
 
 
     /**
-     * Marker class. 
+     * Marker class - the engine will return one of these when a TileNode
+     * load fails permanently. It will also blacklist the TileKey.
      */
-    class TileNodeGroup : public osg::Group
+    class InvalidTileNode : public TileNode
     {
     public:
-        TileNodeGroup() : osg::Group() { }
+        InvalidTileNode(const TileKey& key) : TileNode(key, 0L) { }
+        bool isValid() const { return false; }
+    protected:
+        virtual ~InvalidTileNode() { }
     };
+
 
 } // namespace osgEarth_engine_mp
 

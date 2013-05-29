@@ -30,8 +30,8 @@ using namespace osgEarth::Util;
 namespace
 {
     // This shader will morph elevation from old heights to new heights as
-    // installed in the terrain tile's vertex attributes. attribs[3] holds
-    // the new value; attribs2[3] holds the old one. 
+    // installed in the terrain tile's vertex attributes. oe_terrain_attr[3] holds
+    // the new value; oe_terrain_attr[3] holds the old one. 
     //
     // We use two methods: distance to vertex and time. The morph ratio is
     // a function of the distance from the camera to the vertex (taking into
@@ -54,15 +54,16 @@ namespace
 
         "void oe_morph_vertex(inout vec4 VertexMODEL) \n"
         "{ \n"
-        "    float far        = oe_min_tile_range_factor; \n"
-        "    float near       = far * 0.85; \n"
-        "    vec4  VertexVIEW = gl_ModelViewMatrix * VertexMODEL; \n"
         "    float radius     = oe_tile_key.w; \n"
-        "    float d          = length(VertexVIEW.xyz/VertexVIEW.w) - radius; \n"
-        "    float a          = clamp( d/radius, near, far ); \n"
-        "    float r_dist     = ((a-near)/(far-near)); \n"
+        "    float near       = oe_min_tile_range_factor*radius; \n"
+        "    float far        = near + radius; \n"
+        "    vec4  VertexVIEW = gl_ModelViewMatrix * VertexMODEL; \n"
+        "    float d          = length(VertexVIEW.xyz/VertexVIEW.w); \n"
+        "    float r_dist     = clamp((d-near)/(far-near), 0.0, 1.0); \n"
+
         "    float r_time     = 1.0 - clamp(osg_FrameTime-(oe_tile_birthtime+oe_morph_delay), 0.0, oe_morph_duration)/oe_morph_duration; \n"
         "    float r          = max(r_dist, r_time); \n"
+
         "    vec3  upVector   = oe_terrain_attr.xyz; \n"
         "    float elev       = oe_terrain_attr.w; \n"
         "    float elevOld    = oe_terrain_attr2.w; \n"

@@ -19,6 +19,7 @@
 #include <osgEarth/HTTPClient>
 #include <osgEarth/Registry>
 #include <osgEarth/Version>
+#include <osgEarth/Progress>
 #include <osgDB/ReadFile>
 #include <osgDB/Registry>
 #include <osgDB/FileNameUtils>

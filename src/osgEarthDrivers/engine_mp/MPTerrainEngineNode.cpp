@@ -28,6 +28,7 @@
 #include <osgEarth/VirtualProgram>
 #include <osgEarth/ShaderFactory>
 #include <osgEarth/MapModelChange>
+#include <osgEarth/Progress>
 
 #include <osg/TexEnv>
 #include <osg/TexEnvCombine>
@@ -369,7 +370,39 @@ MPTerrainEngineNode::getKeyNodeFactory()
 
 
 osg::Node*
-MPTerrainEngineNode::createNode( const TileKey& key )
+MPTerrainEngineNode::createUpsampledNode(const TileKey&    key,
+                                         ProgressCallback* progress)
+{
+    // if the engine has been disconnected from the scene graph, bail out and don't
+    // create any more tiles
+    if ( getNumParents() == 0 )
+        return 0L;
+
+    osg::Node* result = 0L;
+
+    // locate the parent tile in the live tile registry.
+    TileKey parentKey = key.createParentKey();
+    osg::ref_ptr<TileNode> parent;
+    if ( _liveTiles->get( parentKey, parent ) )
+    {
+        osg::ref_ptr<TileModel> upsampledModel = parent->getTileModel()->createQuadrant( key.getQuadrant() );
+        if ( upsampledModel.valid() )
+        {
+            result = getKeyNodeFactory()->getCompiler()->compile( upsampledModel );
+        }
+    }
+    else
+    {
+        OE_WARN << LC << "createUpsampledNode failed b/c parent key " << parentKey.str() << " not found in reg." << std::endl;
+    }
+
+    return result;
+}
+
+
+osg::Node*
+MPTerrainEngineNode::createNode(const TileKey&    key,
+                                ProgressCallback* progress)
 {
     // if the engine has been disconnected from the scene graph, bail out and don't
     // create any more tiles
@@ -378,14 +411,14 @@ MPTerrainEngineNode::createNode( const TileKey& key )
 
     OE_DEBUG << LC << "Create node for \"" << key.str() << "\"" << std::endl;
 
-    osg::Node* result =  getKeyNodeFactory()->createNode( key );
+    osg::Node* result =  getKeyNodeFactory()->createNode( key, progress );
     return result;
 }
 
 osg::Node*
 MPTerrainEngineNode::createTile( const TileKey& key )
 {
-    return getKeyNodeFactory()->createNode( key );
+    return getKeyNodeFactory()->createNode( key, 0L );
 }
 
 
@@ -757,39 +790,4 @@ MPTerrainEngineNode::updateShaders()
 
         _shaderUpdateRequired = false;
     }
-}
-
-
-namespace
-{
-    class UpdateElevationVisitor : public osg::NodeVisitor
-    {
-    public:
-        UpdateElevationVisitor( TileModelCompiler* compiler ):
-          osg::NodeVisitor(osg::NodeVisitor::TRAVERSE_ALL_CHILDREN),
-          _compiler(compiler)
-          {}
-
-          void apply(osg::Node& node)
-          {
-              TileNode* tile = dynamic_cast<TileNode*>(&node);
-              if (tile)
-              {
-                  tile->compile( _compiler );
-              }
-
-              traverse(node);
-          }
-
-          TileModelCompiler* _compiler;
-    };
-}
-
-
-void
-MPTerrainEngineNode::onVerticalScaleChanged()
-{
-    _terrainOptions.verticalScale() = getVerticalScale();
-    UpdateElevationVisitor visitor( getKeyNodeFactory()->getCompiler() );
-    this->accept(visitor);
 }

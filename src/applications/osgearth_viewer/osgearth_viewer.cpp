@@ -35,6 +35,7 @@ usage(const char* name)
     OE_NOTICE 
         << "\nUsage: " << name << " file.earth" << std::endl
         << MapNodeHelper().usage() << std::endl;
+
     return 0;
 }
 

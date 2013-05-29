@@ -23,6 +23,7 @@
 #include <osgEarth/ImageUtils>
 #include <osgEarth/Registry>
 #include <osgEarth/StringUtils>
+#include <osgEarth/Progress>
 #include <osgEarth/URI>
 #include <osg/Version>
 #include <osgDB/WriteFile>
@@ -409,6 +410,7 @@ ImageLayer::createImageInNativeProfile( const TileKey& key, ProgressCallback* pr
         std::vector<TileKey> nativeKeys;
         nativeProfile->getIntersectingTiles(key.getExtent(), nativeKeys);
 
+
         //OE_INFO << "KEY = " << key.str() << ":" << std::endl;
         //for(int i=0; i<nativeKeys.size(); ++i)
         //    OE_INFO << "    " << nativeKeys[i].str() << std::endl;
@@ -451,9 +453,10 @@ ImageLayer::createImageInNativeProfile( const TileKey& key, ProgressCallback* pr
                 mosaic.createImage(), 
                 GeoExtent( nativeProfile->getSRS(), rxmin, rymin, rxmax, rymax ) );
 
+#if 1
             return result;
 
-#if 0 // let's try this.
+#else // let's try this.
             // calculate a tigher extent that matches the original input key:
             GeoExtent tightExtent = nativeProfile->clampAndTransformExtent( key.getExtent() );
 

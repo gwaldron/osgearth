@@ -31,7 +31,7 @@ http://readymap.org
 	
 	<external>
 	    <elevation_morph>
-			<duration>3.0</duration>
+			<duration>1.0</duration>
 		</elevation_morph>
 	</external>
     

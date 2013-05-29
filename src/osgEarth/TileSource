@@ -32,7 +32,6 @@
 #include <osgEarth/TileKey>
 #include <osgEarth/Profile>
 #include <osgEarth/MemCache>
-#include <osgEarth/Progress>
 #include <osgEarth/ThreadingUtils>
 
 #include <osg/Referenced>
@@ -54,6 +53,8 @@
 
 namespace osgEarth
 {
+    class ProgressCallback;
+
     /**
      * Configuration options for a tile source driver.
      */

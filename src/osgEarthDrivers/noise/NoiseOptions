@@ -82,6 +82,18 @@ namespace osgEarth { namespace Drivers
         optional<bool>& normalMap() { return _normalMap; }
         const optional<bool>& normalMap() const { return _normalMap; }
 
+        /**
+         * Scale factor for elevation noise 
+         */
+        optional<double>& scale() { return _scale; }
+        const optional<double>& scale() const { return _scale; } 
+
+        /**
+         * Bias (offset) for elevation noise 
+         */
+        optional<double>& bias() { return _bias; }
+        const optional<double>& bias() const { return _bias; } 
+
 
 
     public:
@@ -89,7 +101,13 @@ namespace osgEarth { namespace Drivers
             TileSourceOptions( opt ),
             _minElevation(0.0f),
             _maxElevation(9000.0f),
-            _normalMap   (false)
+            _normalMap   (false),
+            _scale       (1.0),
+            _bias        (0.0),
+            _octaves     (6),
+            _frequency   (1.0),
+            _persistence (0.5),
+            _lacunarity  (2.0)
         {
             setDriver( "noise" );
             fromConfig( _conf );
@@ -109,12 +127,14 @@ namespace osgEarth { namespace Drivers
             conf.updateIfSet("lacunarity", _lacunarity);
             conf.updateIfSet("seed", _seed);
             conf.updateIfSet("normal_map", _normalMap);
+            conf.updateIfSet("scale", _scale );
+            conf.updateIfSet("bias", _bias );
             return conf;
         }
 
     protected:
         void mergeConfig( const Config& conf ) {
-            TileSourceOptions::mergeConfig( conf );            
+            TileSourceOptions::mergeConfig( conf );
             fromConfig( conf );
         }
 
@@ -128,6 +148,8 @@ namespace osgEarth { namespace Drivers
             conf.getIfSet( "lacunarity", _lacunarity );
             conf.getIfSet( "seed", _seed );
             conf.getIfSet( "normal_map", _normalMap );
+            conf.getIfSet( "scale", _scale );
+            conf.getIfSet( "bias", _bias );
         }
 
         optional<float>  _minElevation;
@@ -138,6 +160,8 @@ namespace osgEarth { namespace Drivers
         optional<double> _lacunarity;
         optional<int>    _seed;
         optional<bool>   _normalMap;
+        optional<double> _scale;
+        optional<double> _bias;
     };
 
 } } // namespace osgEarth::Drivers

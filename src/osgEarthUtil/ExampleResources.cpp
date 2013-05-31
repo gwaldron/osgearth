@@ -29,6 +29,7 @@
 #include <osgEarthUtil/DetailTexture>
 #include <osgEarthUtil/ElevationMorph>
 #include <osgEarthUtil/VerticalScale>
+#include <osgEarthUtil/ContourMap>
 
 #include <osgEarthAnnotation/AnnotationData>
 #include <osgEarthAnnotation/AnnotationRegistry>
@@ -46,8 +47,10 @@
 
 #define KML_PUSHPIN_URL "http://demo.pelicanmapping.com/icons/pushpin_yellow.png"
 
-#define VP_DURATION 4.5 // time to fly to a viewpoint
-
+#define VP_DURATION          4.5     // time to fly to a viewpoint
+#define VP_MIN_DURATION      2.0     // minimum fly time.
+#define VP_METERS_PER_SECOND 2500.0  // fly speed
+#define VP_MAX_DURATION      8.0     // maximum fly time.
 
 using namespace osgEarth;
 using namespace osgEarth::Util;
@@ -60,6 +63,17 @@ using namespace osgEarth::Annotation;
 /** Shared event handlers. */
 namespace
 {
+    void flyToViewpoint(EarthManipulator* manip, const Viewpoint& vp)
+    {
+        Viewpoint currentVP = manip->getViewpoint();
+        GeoPoint vp0(currentVP.getSRS(), currentVP.getFocalPoint(), ALTMODE_ABSOLUTE);
+        GeoPoint vp1(vp.getSRS(), vp.getFocalPoint(), ALTMODE_ABSOLUTE);
+        double distance = vp0.distanceTo(vp1);
+        double duration = osg::clampBetween(distance / VP_METERS_PER_SECOND, VP_MIN_DURATION, VP_MAX_DURATION);
+        manip->setViewpoint( vp, duration );
+    }
+
+
     // flies to a viewpoint in response to control event (click)
     struct ClickViewpointHandler : public ControlEventHandler
     {
@@ -72,7 +86,8 @@ namespace
         virtual void onClick( class Control* control )
         {
             if ( _manip )
-                _manip->setViewpoint( _vp, VP_DURATION );
+                flyToViewpoint(_manip, _vp);
+                //_manip->setViewpoint( _vp, VP_DURATION );
         }
     };
 
@@ -117,12 +132,15 @@ namespace
         {
             if ( ea.getEventType() == ea.KEYDOWN )
             {
-                int index = (int)ea.getKey() - (int)'1';
-                if ( index >= 0 && index < (int)_viewpoints.size() )
+                if ( !_viewpoints.empty() )
                 {
-                    _manip->setViewpoint( _viewpoints[index], VP_DURATION );
+                    int index = (int)ea.getKey() - (int)'1';
+                    if ( index >= 0 && index < (int)_viewpoints.size() )
+                    {
+                        flyToViewpoint( _manip, _viewpoints[index] );
+                    }
                 }
-                else if ( ea.getKey() == 'v' )
+                if ( ea.getKey() == 'v' )
                 {
                     XmlDocument xml( _manip->getViewpoint().getConfig() );
                     xml.store( std::cout );
@@ -166,9 +184,9 @@ ViewpointControlFactory::create(const std::vector<Viewpoint>& viewpoints,
             vpc->addEventHandler( new ClickViewpointHandler(vp, view->getCameraManipulator()) );
             grid->setControl( 1, i, vpc );
         }
-
-        view->addEventHandler( new ViewpointHandler(viewpoints, view) );
     }
+
+    view->addEventHandler( new ViewpointHandler(viewpoints, view) );
 
     return grid;
 }
@@ -550,6 +568,7 @@ MapNodeHelper::parse(MapNode*             mapNode,
     const Config& detailTexConf   = externals.child("detail_texture");
     const Config& elevMorphConf   = externals.child("elevation_morph");
     const Config& vertScaleConf   = externals.child("vertical_scale");
+    const Config& contourMapConf  = externals.child("contour_map");
 
     // backwards-compatibility: read viewpoints at the top level:
     const ConfigSet& old_viewpoints = externals.children("viewpoint");
@@ -739,6 +758,12 @@ MapNodeHelper::parse(MapNode*             mapNode,
     if ( !vertScaleConf.empty() )
     {
         mapNode->getTerrainEngine()->addEffect( new VerticalScale(vertScaleConf) );
+    }
+
+    // Install a contour map effect.
+    if ( !contourMapConf.empty() )
+    {
+        mapNode->getTerrainEngine()->addEffect( new ContourMap(contourMapConf) );
     }
 
     // Generic named value uniform with min/max.

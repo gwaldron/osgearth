@@ -1,9 +1,28 @@
 <!-- 
 osgEarth Sample - Noise Driver
-Demonstrates the use of libnoise to procedurally generate a fractal landscape
+
+Demonstrates the use of libnoise to procedurally generate a
+fictional fractal landscape.
+
+We use a contour map to better visualize the terrain.
 -->
 
 <map version="2">
-    <heightfield driver="noise" name="noise">
-    </heightfield>
+
+    <elevation driver="noise" name="noisy_terrain"
+               frequency  ="1.5e-6"
+               octaves    ="12"
+               persistence="0.46"
+               lacunarity ="3.0"
+               scale      ="5000" />
+               
+
+    <options
+        elevation_tile_size="31"
+        lighting="true"/>
+
+    <external>
+        <contour_map/>
+        <sky hours="20.0"/>
+    </external>
 </map>

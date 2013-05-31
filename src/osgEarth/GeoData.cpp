@@ -433,6 +433,35 @@ GeoPoint::createWorldToLocal( osg::Matrixd& out_w2l ) const
     return _srs->createWorldToLocal( _p, out_w2l );
 }
 
+
+double
+GeoPoint::distanceTo(const GeoPoint& rhs) const
+{
+    if ( getSRS()->isProjected() && rhs.getSRS()->isProjected() )
+    {
+        if ( getSRS()->isEquivalentTo(rhs.getSRS()) )
+        {
+            return (vec3d() - rhs.vec3d()).length();
+        }
+        else
+        {
+            GeoPoint rhsT = transform(rhs.getSRS());
+            return (vec3d() - rhsT.vec3d()).length();
+        }
+    }
+    else
+    {
+        GeoPoint p1 = transform( getSRS()->getGeographicSRS() );
+        GeoPoint p2 = rhs.transform( getSRS()->getGeodeticSRS() );
+
+        return GeoMath::distance(
+            osg::DegreesToRadians(p1.y()), osg::DegreesToRadians(p1.x()),
+            osg::DegreesToRadians(p2.y()), osg::DegreesToRadians(p2.x()),
+            getSRS()->getGeographicSRS()->getEllipsoid()->getRadiusEquator() );
+    }
+}
+
+
 //------------------------------------------------------------------------
 
 #undef  LC
@@ -577,6 +606,13 @@ _north ( rhs._north ),
 _circle( rhs._circle )
 {
     //NOP
+}
+
+bool
+GeoExtent::getCentroid(GeoPoint& out) const
+{
+    out = GeoPoint(_srs, getCentroid(), ALTMODE_ABSOLUTE);
+    return true;
 }
 
 bool

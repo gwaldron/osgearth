@@ -54,6 +54,7 @@ public:
         _dbOptions = Registry::instance()->cloneOrCreateOptions( dbOptions );
         CachePolicy::NO_CACHE.apply( _dbOptions.get() );
 
+#if 0
         //Setup the noise module with the specified options
         if ( _options.seed().isSet() )
         {
@@ -79,6 +80,7 @@ public:
         {
             _noise.SetLacunarity( *_options.lacunarity() );
         }        
+#endif
         
         setProfile( osgEarth::Registry::instance()->getGlobalGeodeticProfile() );
 
@@ -91,9 +93,22 @@ public:
         return CachePolicy::NO_CACHE;
     }
 
+    inline double sample(module::Perlin& noise, double x, double y, double z)
+    {
+        return noise.GetValue(x, y, z);
+    }
+
+    inline double sample(module::Perlin& noise, const osg::Vec3d& v)
+    {
+        return noise.GetValue(v.x(), v.y(), v.z());
+    }
+
+#if 0
     osg::Image* createImage(const TileKey&        key,
                             ProgressCallback*     progress )
     {
+        //_noise.SetOctaveCount( key.getLOD() + 1 );
+
         if ( _options.normalMap() == true )
         {
             return createNormalMap(key, progress);
@@ -123,18 +138,79 @@ public:
             return image;
         }
     }
+#else
+    osg::Image* createImage(const TileKey&        key,
+                            ProgressCallback*     progress )
+    {
+        if ( _options.normalMap() == true )
+        {
+            return createNormalMap(key, progress);
+        }
+        else
+        {
+            module::Perlin noise;
+            noise.SetFrequency  ( _options.frequency().get() ); //1.5e-7 );
+            noise.SetPersistence( _options.persistence().get() );
+            noise.SetLacunarity ( _options.lacunarity().get() );
+            noise.SetOctaveCount( _options.octaves().get() );
+
+            const SpatialReference* srs = key.getProfile()->getSRS();
+
+            osg::Image* image = new osg::Image();
+            image->allocateImage( getPixelsPerTile(), getPixelsPerTile(), 1, GL_RGB, GL_UNSIGNED_BYTE );
+
+            double dx = key.getExtent().width()  / (double)(image->s()-1);
+            double dy = key.getExtent().height() / (double)(image->t()-1);
+
+            ImageUtils::PixelWriter write(image);
+            for(int s=0; s<image->s(); ++s)
+            {
+                for(int t=0; t<image->t(); ++t)
+                {
+                    double lon = key.getExtent().xMin() + (double)s * dx;
+                    double lat = key.getExtent().yMin() + (double)t * dy;
+
+                    osg::Vec3d world(lon, lat, 0.0);
+                    if ( srs->isGeographic() )
+                        srs->transform(world, srs->getECEF(), world);
+
+                    double n = noise.GetValue(world.x(), world.y(), world.z());
+                    //double n = _noise.GetValue(lon, lat, 0.75);
+
+                    // scale and bias from[-1..1] to [0..1] for coloring. It should be noted that
+                    // the Perlin noise function can generate values outside this range, hence
+                    // the clamp!
+                    n = osg::clampBetween( (n+1.0)*0.5, 0.0, 1.0 );
+
+                    write(osg::Vec4f(n,n,n,1), s, t);
+                }
+            }
+
+            return image;
+        }
+    }
+#endif
 
 
     osg::HeightField* createHeightField(const TileKey&        key,
                                         ProgressCallback*     progress )
-    {       
+    {
+        module::Perlin noise;
+        noise.SetFrequency  ( _options.frequency().get() ); //1.5e-7 );
+        noise.SetPersistence( _options.persistence().get() );
+        noise.SetLacunarity ( _options.lacunarity().get() );
+        noise.SetOctaveCount( _options.octaves().get() );
+
+        const SpatialReference* srs = key.getProfile()->getSRS();
+
         osg::HeightField* hf = new osg::HeightField();
         hf->allocate( getPixelsPerTile(), getPixelsPerTile() );
 
         double dx = key.getExtent().width() / (double)(hf->getNumColumns()-1);
         double dy = key.getExtent().height() / (double)(hf->getNumRows()-1);
 
-        double scale = *_options.maxElevation() - *_options.minElevation();
+        double bias  = _options.bias().get();
+        double scale = _options.scale().get();
 
         //Initialize the heightfield
         for (unsigned int c = 0; c < hf->getNumColumns(); c++) 
@@ -143,13 +219,19 @@ public:
             {                
                 double lon = key.getExtent().xMin() + (double)c * dx;
                 double lat = key.getExtent().yMin() + (double)r * dy;
-                double n = _noise.GetValue(lon, lat, 0.75);             
-                //Normalize the noise value between 0 and 1 instead of between -1 and 1
-                n = (n + 1.0) / 2.0;
 
-                //Scale the noise value which is between -1 and 1 between the min and max elevations
-                double h = *_options.minElevation() + scale * n;
+                osg::Vec3d world(lon, lat, 0.0);
+                if ( srs->isGeographic() )
+                    srs->transform(world, srs->getECEF(), world);
+
+                double n = noise.GetValue(world.x(), world.y(), world.z());
+
+                //Scale the noise value which is between -1 and 1...ish
+                double h = bias + scale * n;
                 hf->setHeight( c, r, h );
+
+                // NOTE! The elevation engine treats extreme values (>32000, etc)
+                // as "no data" so be careful with your scale.
             }
         }     
 
@@ -159,42 +241,81 @@ public:
 
     osg::Image* createNormalMap(const TileKey& key, ProgressCallback* progress)
     {
+        module::Perlin noise;
+        noise.SetFrequency  ( _options.frequency().get() );
+        noise.SetPersistence( _options.persistence().get() );
+        noise.SetLacunarity ( _options.lacunarity().get() );
+        noise.SetOctaveCount( _options.octaves().get() );
+
         // set up the image and prepare to write to it.
         osg::Image* image = new osg::Image();
         image->allocateImage( getPixelsPerTile(), getPixelsPerTile(), 1, GL_RGB, GL_UNSIGNED_BYTE );
         ImageUtils::PixelWriter write(image);
 
-        // figure out the spacing between pixels in the same units as the height value:
-        const GeoExtent& ex = key.getExtent();
+        const GeoExtent&        ex     = key.getExtent();
+        const SpatialReference* srs    = ex.getSRS();
+        bool                    isGeo  = srs->isGeographic();
+        const SpatialReference* ecef   = srs->getECEF();
+
         double dx = ex.width()  / (double)(image->s()-1);
         double dy = ex.height() / (double)(image->t()-1);
+
+#if 0
+        double w0, h0;
+        key.getProfile()->getTileDimensions(0, w0, h0);
+        double dx0 = w0/(double)(image->s()-1);
+        double scale = dx0;
+        if ( isGeo )
+        {
+            scale = srs->transformUnits(scale, ecef, ex.south()+0.5*dy);
+        }
+#endif
+
+        double scale  = _options.scale().get();
+        double bias   = _options.bias().get();
+
+        // figure out the spacing between pixels in the same units as the height value:
         double udx = dx;
         double udy = dy;
-        const SpatialReference* srs  = ex.getSRS();
-        if ( srs->isGeographic() )
+        if ( isGeo )
         {
-            const SpatialReference* ecef = srs->getECEF();
             udx = srs->transformUnits(dx, ecef, ex.south()+0.5*dy);
             udy = srs->transformUnits(dy, ecef, ex.south()+0.5*dy);
         }
 
-        double a = *_options.minElevation();
-        double b = *_options.maxElevation() - *_options.minElevation();
-        double z = 0.75;
+        double z = 0.0;
+        std::vector<osg::Vec3d> v(4);
+        double samples[4];
 
         for(int s=0; s<image->s(); ++s)
         {
             for(int t=0; t<image->t(); ++t)
             {
-                double x = key.getExtent().xMin() + (double)s * dx;
-                double y = key.getExtent().yMin() + (double)t * dy;
+                double x = ex.xMin() + (double)s * dx;
+                double y = ex.yMin() + (double)t * dy;
 
-                // sample the surrounding locations. Obviously we could optimize
-                // this so we only sample each location once per image.
-                osg::Vec3 west (-udx, 0, a + b*(0.5*(_noise.GetValue(x-dx, y, z)+1.0)));
-                osg::Vec3 east ( udx, 0, a + b*(0.5*(_noise.GetValue(x+dx, y, z)+1.0)));
-                osg::Vec3 north( 0, udy, a + b*(0.5*(_noise.GetValue(x, y+dy, z)+1.0)));
-                osg::Vec3 south( 0,-udy, a + b*(0.5*(_noise.GetValue(x, y-dy, z)+1.0)));
+                if ( isGeo )
+                {
+                    v[0].set(x-dx, y, z);
+                    v[1].set(x+dx, y, z);
+                    v[2].set(x, y+dy, z);
+                    v[3].set(x, y-dy, z);
+                    srs->transform(v, ecef);
+                    for(int i=0; i<4; ++i )
+                        samples[i] = bias + scale * sample(noise, v[i]);
+                }
+                else
+                {
+                    samples[0] = bias + scale * sample(noise, osg::Vec3d(x-dx, y, z));
+                    samples[1] = bias + scale * sample(noise, osg::Vec3d(x+dx, y, z));
+                    samples[2] = bias + scale * sample(noise, osg::Vec3d(x, y+dy, z));
+                    samples[3] = bias + scale * sample(noise, osg::Vec3d(x, y-dy, z));
+                }
+
+                osg::Vec3d west (-udx,    0, samples[0]);
+                osg::Vec3d east ( udx,    0, samples[1]);
+                osg::Vec3d north(   0,  udy, samples[2]);
+                osg::Vec3d south(   0, -udy, samples[3]);
 
                 // calculate the normal at the center point.
                 osg::Vec3 normal = (east-west) ^ (north-south);
@@ -216,7 +337,7 @@ public:
 
 
 private:
-    module::Perlin               _noise;
+    //module::Perlin               _noise;
     const NoiseOptions           _options;
     osg::ref_ptr<osgDB::Options> _dbOptions;
 };

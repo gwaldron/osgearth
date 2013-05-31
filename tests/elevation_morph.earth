@@ -15,7 +15,7 @@ http://readymap.org
     
     <options>
 		<!-- elevation_tile_size must be an odd number for morphing. -->
-        <elevation_tile_size>15</elevation_tile_size>
+        <elevation_tile_size>31</elevation_tile_size>
 		
 		<!-- extend the min_lod so we can see MORE morphing. -->
         <terrain lighting="false" first_lod="1" min_lod="19"/>

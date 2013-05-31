@@ -397,7 +397,8 @@ ShaderGenerator::processText( osg::StateSet* ss, osg::ref_ptr<osg::StateSet>& re
     // we will add to it if necessary.
     VirtualProgram* vp = dynamic_cast<VirtualProgram*>( ss->getAttribute(VirtualProgram::SA_TYPE) );
 
-    replacement = osg::clone(ss, osg::CopyOp::DEEP_COPY_ALL);
+    replacement = osg::clone(ss, osg::CopyOp::SHALLOW_COPY);
+    //replacement = osg::clone(ss, osg::CopyOp::DEEP_COPY_ALL);
 
     std::string vertSrc =
         "#version " GLSL_VERSION_STR "\n" GLSL_PRECISION "\n"
@@ -454,8 +455,10 @@ ShaderGenerator::processGeometry( osg::StateSet* ss, osg::ref_ptr<osg::StateSet>
     // Check whether the lighting state has changed and install a mode uniform.
     if ( ss->getMode(GL_LIGHTING) != osg::StateAttribute::INHERIT )
     {
-        if ( !replacement.valid() ) 
-            replacement = osg::clone(ss, osg::CopyOp::DEEP_COPY_ALL);
+        if ( !replacement.valid() )
+            replacement = osg::clone(ss, osg::CopyOp::SHALLOW_COPY);
+        //if ( !replacement.valid() ) 
+        //    replacement = osg::clone(ss, osg::CopyOp::DEEP_COPY_ALL);
 
         osg::StateAttribute::GLModeValue value = state->getMode(GL_LIGHTING); // from the state, not the ss.
         replacement->addUniform( Registry::shaderFactory()->createUniformForGLMode(GL_LIGHTING, value) );
@@ -464,8 +467,10 @@ ShaderGenerator::processGeometry( osg::StateSet* ss, osg::ref_ptr<osg::StateSet>
     // if the stateset changes any texture attributes, we need a new virtual program:
     if (ss->getTextureAttributeList().size() > 0)
     {
-        if ( !replacement.valid() ) 
-            replacement = osg::clone(ss, osg::CopyOp::DEEP_COPY_ALL);
+        if ( !replacement.valid() )
+            replacement = osg::clone(ss, osg::CopyOp::SHALLOW_COPY);
+        //if ( !replacement.valid() ) 
+        //    replacement = osg::clone(ss, osg::CopyOp::DEEP_COPY_ALL);
 
         // work off the state's accumulated texture attribute set:
         int texCount = state->getNumTextureAttributes();

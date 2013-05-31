@@ -13,6 +13,7 @@ SET(HEADERS_ROOT
     AutoClipPlaneHandler
     Common
     Controls
+    ContourMap
     ClampCallback
     DataScanner
     DetailTexture
@@ -62,6 +63,7 @@ SET(SOURCES_ROOT
     AutoClipPlaneHandler.cpp
     ClampCallback.cpp
     Controls.cpp
+    ContourMap.cpp
     DataScanner.cpp
     DetailTexture.cpp
     EarthManipulator.cpp

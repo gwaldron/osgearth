@@ -142,6 +142,13 @@ WFSCapabilitiesReader::read(std::istream &in)
                 featureType->setFirstLevel( as<int>(firstLevelStr, 0));
             }
 
+            // Read the SRS            
+            std::string srsText = e_featureType->getSubElementText(ELEM_SRS);
+            if (srsText.compare("") != 0)
+            {                
+                featureType->setSRS( srsText );                
+            }
+
             osg::ref_ptr<XmlElement> e_bb = e_featureType->getSubElement( ELEM_LATLONGBOUNDINGBOX );
             if (e_bb.valid())
             {
@@ -149,9 +156,9 @@ WFSCapabilitiesReader::read(std::istream &in)
                 minX = as<double>(e_bb->getAttr( ATTR_MINX ), 0);
                 minY = as<double>(e_bb->getAttr( ATTR_MINY ), 0);
                 maxX = as<double>(e_bb->getAttr( ATTR_MAXX ), 0);
-                maxY = as<double>(e_bb->getAttr( ATTR_MAXY ), 0);
-                featureType->setExtent( GeoExtent(SpatialReference::create( "epsg:4326"), minX, minY, maxX, maxY));
-            }
+                maxY = as<double>(e_bb->getAttr( ATTR_MAXY ), 0);                
+                featureType->setExtent( GeoExtent( osgEarth::SpatialReference::create( srsText ), minX, minY, maxX, maxY) );
+            }                       
 
             capabilities->getFeatureTypes().push_back( featureType );
         }        

@@ -54,34 +54,6 @@ public:
         _dbOptions = Registry::instance()->cloneOrCreateOptions( dbOptions );
         CachePolicy::NO_CACHE.apply( _dbOptions.get() );
 
-#if 0
-        //Setup the noise module with the specified options
-        if ( _options.seed().isSet() )
-        {
-            _noise.SetSeed( *_options.seed() );
-        }
-
-        if ( _options.octaves().isSet() )
-        {
-            _noise.SetOctaveCount( *_options.octaves());
-        }
-
-        if ( _options.frequency().isSet() )
-        {
-            _noise.SetFrequency( *_options.frequency() );
-        }
-
-        if ( _options.persistence().isSet() )
-        {
-            _noise.SetPersistence( *_options.persistence() );
-        }
-
-        if ( _options.lacunarity().isSet() )
-        {
-            _noise.SetLacunarity( *_options.lacunarity() );
-        }        
-#endif
-        
         setProfile( osgEarth::Registry::instance()->getGlobalGeodeticProfile() );
 
         return STATUS_OK;
@@ -103,42 +75,21 @@ public:
         return noise.GetValue(v.x(), v.y(), v.z());
     }
 
-#if 0
-    osg::Image* createImage(const TileKey&        key,
-                            ProgressCallback*     progress )
+    inline double turbulence(module::Perlin& noise, const osg::Vec3d& v, double f )
     {
-        //_noise.SetOctaveCount( key.getLOD() + 1 );
-
-        if ( _options.normalMap() == true )
-        {
-            return createNormalMap(key, progress);
-        }
-        else
-        {
-            osg::Image* image = new osg::Image();
-            image->allocateImage( getPixelsPerTile(), getPixelsPerTile(), 1, GL_RGB, GL_UNSIGNED_BYTE );
-
-            double dx = key.getExtent().width()  / (double)(image->s()-1);
-            double dy = key.getExtent().height() / (double)(image->t()-1);
-
-            ImageUtils::PixelWriter write(image);
-            for(int s=0; s<image->s(); ++s)
-            {
-                for(int t=0; t<image->t(); ++t)
-                {
-                    double lon = key.getExtent().xMin() + (double)s * dx;
-                    double lat = key.getExtent().yMin() + (double)t * dy;
-                    double n = _noise.GetValue(lon, lat, 0.75);
-                    n = osg::clampBetween( (n + 1.0) / 2.0, 0.0, 1.0 );
-
-                    write(osg::Vec4f(n,n,n,1), s, t);
-                }
-            }
-
-            return image;
-        }
+        double t = -0.5;
+        for( ; f<getPixelsPerTile()/2; f *= 2 ) 
+            t += abs(noise.GetValue(v.x(), v.y(), v.z())/f);
+        return t;
     }
-#else
+
+    inline double stripes(double x, double f)
+    {
+        double t = 0.5 + 0.5 * asin(f * 2*osg::PI * x);
+        return t * t - 0.5;
+    }
+
+
     osg::Image* createImage(const TileKey&        key,
                             ProgressCallback*     progress )
     {
@@ -149,7 +100,7 @@ public:
         else
         {
             module::Perlin noise;
-            noise.SetFrequency  ( _options.frequency().get() ); //1.5e-7 );
+            noise.SetFrequency  ( _options.frequency().get() );
             noise.SetPersistence( _options.persistence().get() );
             noise.SetLacunarity ( _options.lacunarity().get() );
             noise.SetOctaveCount( _options.octaves().get() );
@@ -175,7 +126,9 @@ public:
                         srs->transform(world, srs->getECEF(), world);
 
                     double n = noise.GetValue(world.x(), world.y(), world.z());
-                    //double n = _noise.GetValue(lon, lat, 0.75);
+                    //world.normalize();
+                    //double n = 0.1 * stripes(world.x() + 2.0*turbulence(noise, world, 1.0), 1.6);
+                    //double n = -.10 * turbulence(noise, world, 0.2);
 
                     // scale and bias from[-1..1] to [0..1] for coloring. It should be noted that
                     // the Perlin noise function can generate values outside this range, hence
@@ -189,14 +142,13 @@ public:
             return image;
         }
     }
-#endif
 
 
     osg::HeightField* createHeightField(const TileKey&        key,
                                         ProgressCallback*     progress )
     {
         module::Perlin noise;
-        noise.SetFrequency  ( _options.frequency().get() ); //1.5e-7 );
+        noise.SetFrequency  ( _options.frequency().get() );
         noise.SetPersistence( _options.persistence().get() );
         noise.SetLacunarity ( _options.lacunarity().get() );
         noise.SetOctaveCount( _options.octaves().get() );
@@ -226,8 +178,12 @@ public:
 
                 double n = noise.GetValue(world.x(), world.y(), world.z());
 
-                //Scale the noise value which is between -1 and 1...ish
-                double h = bias + scale * n;
+                // Scale the noise value which is between -1 and 1...ish
+                double h = osg::clampBetween(
+                    (float)(bias + scale * n),
+                    *_options.minElevation(),
+                    *_options.maxElevation() );
+
                 hf->setHeight( c, r, h );
 
                 // NOTE! The elevation engine treats extreme values (>32000, etc)
@@ -259,17 +215,6 @@ public:
 
         double dx = ex.width()  / (double)(image->s()-1);
         double dy = ex.height() / (double)(image->t()-1);
-
-#if 0
-        double w0, h0;
-        key.getProfile()->getTileDimensions(0, w0, h0);
-        double dx0 = w0/(double)(image->s()-1);
-        double scale = dx0;
-        if ( isGeo )
-        {
-            scale = srs->transformUnits(scale, ecef, ex.south()+0.5*dy);
-        }
-#endif
 
         double scale  = _options.scale().get();
         double bias   = _options.bias().get();

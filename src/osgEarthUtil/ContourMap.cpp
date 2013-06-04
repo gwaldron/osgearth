@@ -157,7 +157,7 @@ ContourMap::onInstall(TerrainEngineNode* engine)
         VirtualProgram* vp = VirtualProgram::getOrCreate(stateset);
 
         vp->setFunction( "oe_contour_vertex",   vs, ShaderComp::LOCATION_VERTEX_MODEL);
-        vp->setFunction( "oe_contour_fragment", fs, ShaderComp::LOCATION_FRAGMENT_COLORING, -1.0);
+        vp->setFunction( "oe_contour_fragment", fs, ShaderComp::LOCATION_FRAGMENT_COLORING ); //, -1.0);
 
         // Install some uniforms that tell the shader the height range of the color map.
         stateset->addUniform( _xferMin.get() );

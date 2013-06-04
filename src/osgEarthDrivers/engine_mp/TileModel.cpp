@@ -50,16 +50,17 @@ _parent      ( rhs._parent )
 }
 
 bool
-TileModel::ElevationData::getHeight(const osg::Vec3d& ndc,
-                                    const GeoLocator* ndcLocator,
-                                    float&            output ) const
+TileModel::ElevationData::getHeight(const osg::Vec3d&      ndc,
+                                    const GeoLocator*      ndcLocator,
+                                    float&                 output,
+                                    ElevationInterpolation interp ) const
 {
     if ( !_locator.valid() || !ndcLocator )
         return false;
 
     osg::Vec3d hf_ndc;
     GeoLocator::convertLocalCoordBetween( *ndcLocator, ndc, *_locator.get(), hf_ndc );
-    output = HeightFieldUtils::getHeightAtNormalizedLocation( _hf.get(), hf_ndc.x(), hf_ndc.y() );
+    output = HeightFieldUtils::getHeightAtNormalizedLocation( _hf.get(), hf_ndc.x(), hf_ndc.y(), interp );
     return true;
 }
 

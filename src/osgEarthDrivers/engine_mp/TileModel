@@ -71,7 +71,7 @@ namespace osgEarth_engine_mp
             bool isFallbackData() const { return _fallbackData; }
 
             // get a height value using a normalized coord and a locator.
-            bool getHeight( const osg::Vec3d& ndc, const GeoLocator* ndcLocator, float& output ) const;
+            bool getHeight( const osg::Vec3d& ndc, const GeoLocator* ndcLocator, float& output, ElevationInterpolation interp ) const;
 
             // get a normal vector.
             bool getNormal( const osg::Vec3d& ndc, const GeoLocator* ndcLocator, osg::Vec3& output ) const;

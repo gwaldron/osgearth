@@ -194,17 +194,20 @@ SubstituteModelFilter::process(const FeatureList&           features,
             context.resourceCache()->getInstanceNode( instance.get(), model );
 
             // if icon decluttering is off, install an AutoTransform.
-            if ( iconSymbol && iconSymbol->declutter() == false )
+            if ( iconSymbol )
             {
-                osg::AutoTransform* at = new osg::AutoTransform();
-                at->setAutoRotateMode( osg::AutoTransform::ROTATE_TO_SCREEN );
-                at->setAutoScaleToScreen( true );
-                at->addChild( model );
-                model = at;
-            }
-            else
-            {
-                Decluttering::setEnabled( model->getOrCreateStateSet(), true );
+                if ( iconSymbol->declutter() == true )
+                {
+                    Decluttering::setEnabled( model->getOrCreateStateSet(), true );
+                }
+                else if ( dynamic_cast<osg::AutoTransform*>(model.get()) == 0L )
+                {
+                    osg::AutoTransform* at = new osg::AutoTransform();
+                    at->setAutoRotateMode( osg::AutoTransform::ROTATE_TO_SCREEN );
+                    at->setAutoScaleToScreen( true );
+                    at->addChild( model );
+                    model = at;
+                }
             }
 
 #if 0
@@ -280,10 +283,19 @@ SubstituteModelFilter::process(const FeatureList&           features,
         }
     }
 
-    // activate decluttering for icons if necessary:
-    if ( iconSymbol && iconSymbol->declutter() == true )
+    if ( iconSymbol )
     {
-        Decluttering::setEnabled( attachPoint->getOrCreateStateSet(), true );
+        // activate decluttering for icons if requested
+        if ( iconSymbol->declutter() == true )
+        {
+            Decluttering::setEnabled( attachPoint->getOrCreateStateSet(), true );
+        }
+
+        // activate horizon culling if we are in geocentric space
+        if ( context.getSession() && context.getSession()->getMapInfo().isGeocentric() )
+        {
+            HorizonCullingProgram::install( attachPoint->getOrCreateStateSet() );
+        }
     }
 
     // active DrawInstanced if required:
@@ -292,8 +304,7 @@ SubstituteModelFilter::process(const FeatureList&           features,
         DrawInstanced::convertGraphToUseDrawInstanced( attachPoint );
 
         // install a shader program to render draw-instanced.
-        VirtualProgram* p = DrawInstanced::createDrawInstancedProgram();
-        attachPoint->getOrCreateStateSet()->setAttributeAndModes( p, osg::StateAttribute::ON );
+        DrawInstanced::install( attachPoint->getOrCreateStateSet() );
     }
 
 #if 0 // now called from GeometryCompiler

@@ -99,11 +99,13 @@ ConvertToDrawInstanced::apply( osg::Geode& geode )
 }
 
 
-VirtualProgram*
-DrawInstanced::createDrawInstancedProgram()
+void
+DrawInstanced::install(osg::StateSet* stateset)
 {
-    VirtualProgram* vp = new VirtualProgram();
-    vp->setName( "DrawInstanced" );
+    if ( !stateset )
+        return;
+
+    VirtualProgram* vp = VirtualProgram::getOrCreate(stateset);
 
     std::stringstream buf;
 
@@ -137,8 +139,21 @@ DrawInstanced::createDrawInstancedProgram()
         "oe_di_setPosition",
         src,
         ShaderComp::LOCATION_VERTEX_MODEL );
+}
 
-    return vp;
+
+void
+DrawInstanced::remove(osg::StateSet* stateset)
+{
+    if ( !stateset )
+        return;
+
+    VirtualProgram* vp = VirtualProgram::get(stateset);
+    if ( !vp )
+        return;
+
+    vp->removeShader( "oe_di_setPosition" );
+    vp->getTemplate()->removeBindUniformBlock( "oe_di_modelData" );
 }
 
 

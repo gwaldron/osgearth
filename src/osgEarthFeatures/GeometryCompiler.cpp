@@ -512,13 +512,6 @@ GeometryCompiler::compile(FeatureList&          workingSet,
         }
     }
 
-    // Horizon culling program - install this if the map is geocentric and if we
-    // have depth testing disabled.
-    if ( sharedCX.getSession() && sharedCX.getSession()->getMapInfo().isGeocentric() )
-    {
-        HorizonCullingProgram::install( resultGroup->getOrCreateStateSet() );
-    }
-
     // Optimize stateset sharing.
     sscache->optimize( resultGroup.get() );
     

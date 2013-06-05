@@ -25,6 +25,8 @@
 #include <osgEarth/DrawInstanced>
 #include <osgEarth/Registry>
 #include <osgEarth/Capabilities>
+#include <osgEarth/Decluttering>
+#include <osgEarth/CullingUtils>
 
 #include <osg/AutoTransform>
 #include <osg/Drawable>
@@ -53,6 +55,16 @@ using namespace osgEarth::Symbology;
 namespace
 {
     static osg::Node* s_defaultModel =0L;
+
+    struct SetSmallFeatureCulling : public osg::NodeCallback
+    {
+        bool _value;
+        SetSmallFeatureCulling(bool value) : _value(value) { }
+        void operator()(osg::Node* node, osg::NodeVisitor* nv) {
+            Culling::asCullVisitor(nv)->setSmallFeatureCullingPixelSize(-1.0f);
+            traverse(node, nv);
+        }
+    };
 }
 
 //------------------------------------------------------------------------
@@ -179,9 +191,23 @@ SubstituteModelFilter::process(const FeatureList&           features,
         osg::ref_ptr<osg::Node>& model = uniqueModels[key];
         if ( !model.valid() )
         {
-            //model = instance->createNode( context.getDBOptions() );
             context.resourceCache()->getInstanceNode( instance.get(), model );
 
+            // if icon decluttering is off, install an AutoTransform.
+            if ( iconSymbol && iconSymbol->declutter() == false )
+            {
+                osg::AutoTransform* at = new osg::AutoTransform();
+                at->setAutoRotateMode( osg::AutoTransform::ROTATE_TO_SCREEN );
+                at->setAutoScaleToScreen( true );
+                at->addChild( model );
+                model = at;
+            }
+            else
+            {
+                Decluttering::setEnabled( model->getOrCreateStateSet(), true );
+            }
+
+#if 0
             if ( scale != 1.0f && dynamic_cast<osg::AutoTransform*>( model.get() ) )
             {
                 // clone the old AutoTransform, set the new scale, and copy over its children.
@@ -196,6 +222,7 @@ SubstituteModelFilter::process(const FeatureList&           features,
                 newAT->addChild( scaler );
                 model = newAT;
             }
+#endif
         }
 
         if ( model.valid() )
@@ -253,6 +280,13 @@ SubstituteModelFilter::process(const FeatureList&           features,
         }
     }
 
+    // activate decluttering for icons if necessary:
+    if ( iconSymbol && iconSymbol->declutter() == true )
+    {
+        Decluttering::setEnabled( attachPoint->getOrCreateStateSet(), true );
+    }
+
+    // active DrawInstanced if required:
     if ( _useDrawInstanced && Registry::capabilities().supportsDrawInstanced() )
     {
         DrawInstanced::convertGraphToUseDrawInstanced( attachPoint );
@@ -441,7 +475,6 @@ SubstituteModelFilter::cluster(const FeatureList&           features,
                                FilterContext&               context )
 {
     ModelBins modelBins;
-    //ModelToFeatures modelToFeatures;
 
     std::set<URI> missing;
 

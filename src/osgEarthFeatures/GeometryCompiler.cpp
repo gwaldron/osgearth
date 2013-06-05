@@ -27,6 +27,7 @@
 #include <osgEarthFeatures/SubstituteModelFilter>
 #include <osgEarthFeatures/TessellateOperator>
 #include <osgEarth/AutoScale>
+#include <osgEarth/CullingUtils>
 #include <osgEarth/Registry>
 #include <osgEarth/Capabilities>
 #include <osgEarth/ShaderGenerator>
@@ -509,6 +510,13 @@ GeometryCompiler::compile(FeatureList&          workingSet,
                 new osg::Program(),
                 osg::StateAttribute::OFF | osg::StateAttribute::OVERRIDE );
         }
+    }
+
+    // Horizon culling program - install this if the map is geocentric and if we
+    // have depth testing disabled.
+    if ( sharedCX.getSession() && sharedCX.getSession()->getMapInfo().isGeocentric() )
+    {
+        HorizonCullingProgram::install( resultGroup->getOrCreateStateSet() );
     }
 
     // Optimize stateset sharing.

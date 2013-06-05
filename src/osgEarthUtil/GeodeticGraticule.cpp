@@ -22,8 +22,8 @@
 #include <osgEarthFeatures/GeometryCompiler>
 #include <osgEarthSymbology/Geometry>
 #include <osgEarthAnnotation/LabelNode>
-#include <osgEarthAnnotation/Decluttering>
 
+#include <osgEarth/Decluttering>
 #include <osgEarth/Registry>
 #include <osgEarth/NodeUtils>
 #include <osgEarth/Utils>

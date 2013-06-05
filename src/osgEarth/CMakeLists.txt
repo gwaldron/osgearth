@@ -37,6 +37,7 @@ SET(LIB_PUBLIC_HEADERS
     Containers
     Cube
     CullingUtils
+    Decluttering
     DepthOffset
     DPLineSegmentIntersector
     Draggers
@@ -157,6 +158,7 @@ ADD_LIBRARY(${LIB_NAME} ${OSGEARTH_USER_DEFINED_DYNAMIC_OR_STATIC}
     Config.cpp
     Cube.cpp
     CullingUtils.cpp
+    Decluttering.cpp
     DepthOffset.cpp
     Draggers.cpp
     DPLineSegmentIntersector.cpp

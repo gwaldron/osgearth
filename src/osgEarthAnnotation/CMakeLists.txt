@@ -17,7 +17,6 @@ set(LIB_PUBLIC_HEADERS
     AnnotationUtils
     CircleNode
     Common
-    Decluttering
     Decoration
     EllipseNode
     Export
@@ -31,7 +30,7 @@ set(LIB_PUBLIC_HEADERS
     ModelNode
     OrthoNode
     PlaceNode
-	RectangleNode
+    RectangleNode
     ScaleDecoration
     TrackNode
 )
@@ -44,7 +43,6 @@ set(LIB_COMMON_FILES
     AnnotationRegistry.cpp
     AnnotationUtils.cpp
     CircleNode.cpp
-    Decluttering.cpp
     Decoration.cpp
     EllipseNode.cpp
     FeatureNode.cpp
@@ -54,8 +52,8 @@ set(LIB_COMMON_FILES
     ImageOverlayEditor.cpp
     LabelNode.cpp
     LocalizedNode.cpp
-	RectangleNode.cpp
-	ModelNode.cpp
+    RectangleNode.cpp
+    ModelNode.cpp
     OrthoNode.cpp
     PlaceNode.cpp
     TrackNode.cpp
@@ -64,14 +62,14 @@ set(LIB_COMMON_FILES
 if( NOT ${OPENSCENEGRAPH_VERSION} VERSION_LESS "2.9.6" )
 
     set(LIB_PUBLIC_HEADERS ${LIB_PUBLIC_HEADERS}
-	    AnnotationEditing
-	    FeatureEditing
-	    ImageOverlayEditor
+        AnnotationEditing
+        FeatureEditing
+        ImageOverlayEditor
     )
-    	
+        
     set(LIB_COMMON_FILES ${LIB_COMMON_FILES} 
-	    AnnotationEditing.cpp
-	    FeatureEditing.cpp
+        AnnotationEditing.cpp
+        FeatureEditing.cpp
         ImageOverlayEditor.cpp
     )
         
@@ -80,7 +78,7 @@ endif()
 
 ADD_LIBRARY( ${LIB_NAME} ${OSGEARTH_USER_DEFINED_DYNAMIC_OR_STATIC}
     ${LIB_PUBLIC_HEADERS}  
-	${LIB_COMMON_FILES}
+    ${LIB_COMMON_FILES}
 )
 
 

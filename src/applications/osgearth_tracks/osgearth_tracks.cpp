@@ -23,6 +23,7 @@
 #include <osgEarth/GeoMath>
 #include <osgEarth/Units>
 #include <osgEarth/StringUtils>
+#include <osgEarth/Decluttering>
 #include <osgEarthUtil/ExampleResources>
 #include <osgEarthUtil/EarthManipulator>
 #include <osgEarthUtil/MGRSFormatter>
@@ -30,7 +31,6 @@
 #include <osgEarthUtil/AnnotationEvents>
 #include <osgEarthUtil/HTM>
 #include <osgEarthAnnotation/TrackNode>
-#include <osgEarthAnnotation/Decluttering>
 #include <osgEarthAnnotation/AnnotationData>
 #include <osgEarthSymbology/Color>
 

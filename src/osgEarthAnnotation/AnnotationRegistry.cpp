@@ -17,7 +17,7 @@
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
 #include <osgEarthAnnotation/AnnotationRegistry>
-#include <osgEarthAnnotation/Decluttering>
+#include <osgEarth/Decluttering>
 
 using namespace osgEarth;
 using namespace osgEarth::Annotation;

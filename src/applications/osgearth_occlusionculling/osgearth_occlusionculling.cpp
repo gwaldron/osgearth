@@ -18,6 +18,7 @@
 */
 
 #include <osgEarth/MapNode>
+#include <osgEarth/Decluttering>
 #include <osgEarth/ECEF>
 
 #include <osgEarthUtil/EarthManipulator>
@@ -33,7 +34,6 @@
 #include <osgEarthAnnotation/RectangleNode>
 #include <osgEarthAnnotation/EllipseNode>
 #include <osgEarthAnnotation/PlaceNode>
-#include <osgEarthAnnotation/Decluttering>
 
 #include <osgViewer/Viewer>
 #include <osgViewer/ViewerEventHandlers>

@@ -56,7 +56,7 @@ usage( const std::string& msg = "" )
         << "USAGE: osgearth_package <earth_file>" << std::endl
         << std::endl
         << "         --tms                              : make a TMS repo\n"
-        << "            <earth_file>                    : earth file defining layers to export (requied)\n"
+        << "            <earth_file>                    : earth file defining layers to export (required)\n"
         << "            --out <path>                    : root output folder of the TMS repo (required)\n"
         << "            [--bounds xmin ymin xmax ymax]* : bounds to package (in map coordinates; default=entire map)\n"
         << "            [--max-level <num>]             : max LOD level for tiles (all layers; default=inf)\n"

@@ -94,7 +94,7 @@ public:
         std::string fs =
             "uniform sampler2D mask_layer_tex; \n"
             "varying vec4 mask_layer_texc; \n"
-            "void my_color_filter(in int slot, inout vec4 color) \n"
+            "void my_color_filter(inout vec4 color) \n"
             "{ \n"
             "    vec4 mask_texel = texture2D(mask_layer_tex, mask_layer_texc.st); \n"
             "    if ( mask_texel.a >= 0.5 ) \n"

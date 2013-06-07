@@ -18,6 +18,7 @@
 */
 #include "TilePagedLOD"
 #include "TileNodeRegistry"
+#include <osg/Version>
 
 using namespace osgEarth_engine_mp;
 using namespace osgEarth;
@@ -113,9 +114,19 @@ TilePagedLOD::removeExpiredChildren(double         expiryTime,
     if (_children.size()>_numChildrenThatCannotBeExpired)
     {
         unsigned cindex = _children.size() - 1;
+
+        double   minExpiryTime   = 0.0;
+        unsigned minExpiryFrames = 0;
+
+        // these were added in osg 3.1.0+
+#if OSG_VERSION_GREATER_OR_EQUAL(3,1,0)
+        minExpiryTime   = _perRangeDataList[cindex]._minExpiryTime;
+        minExpiryFrames = _perRangeDataList[cindex]._minExpiryFrames;
+#endif
+
         if (!_perRangeDataList[cindex]._filename.empty() &&
-            _perRangeDataList[cindex]._timeStamp + _perRangeDataList[cindex]._minExpiryTime < expiryTime &&
-            _perRangeDataList[cindex]._frameNumber + _perRangeDataList[cindex]._minExpiryFrames < expiryFrame)
+            _perRangeDataList[cindex]._timeStamp   + minExpiryTime   < expiryTime &&
+            _perRangeDataList[cindex]._frameNumber + minExpiryFrames < expiryFrame)
         {
             osg::Node* nodeToRemove = _children[cindex].get();
             removedChildren.push_back(nodeToRemove);

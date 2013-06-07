@@ -142,9 +142,11 @@ HTMNode::HTMNode(HTMGroup*         root,
     }
 }
 
-bool
+HTMNode*
 HTMNode::insert(osg::Node* node)
 {
+    HTMNode* leaf = this;
+
     dirtyBound();
 
     _data.push_back( node );
@@ -164,7 +166,7 @@ HTMNode::insert(osg::Node* node)
             HTMNode* child = dynamic_cast<HTMNode*>(_children[i].get());
             if ( child && child->contains(p) )
             {
-                child->insert(node);
+                leaf = child->insert(node);
                 break;
             }
         }
@@ -175,7 +177,105 @@ HTMNode::insert(osg::Node* node)
     dynamic_cast<osgText::Text*>(dynamic_cast<osg::Geode*>(_clusterNode.get())->getDrawable(0))
         ->setText( Stringify() << _dataCount );
 
-    return true;
+    return leaf;
+}
+
+bool
+HTMNode::remove(osg::Node* node)
+{
+    NodeList::iterator i = std::find( _data.begin(), _data.end(), node );
+    if ( i != _data.end() )
+    {
+        dirtyBound();
+
+        _data.erase( i );
+        _dataCount--;
+
+        bool found = false;
+        for(unsigned i=0; i<_children.size() && !found; ++i)
+        {
+            HTMNode* child = dynamic_cast<HTMNode*>(_children[i].get());
+            if ( child )
+            {
+                found = child->remove( node );
+            }
+        }
+
+        return found;
+    }
+    else
+    {
+        return false;
+    }
+}
+
+HTMNode*
+HTMNode::findLeaf(osg::Node* node)
+{
+    HTMNode* leaf = 0L;
+
+    NodeList::iterator i = std::find( _data.begin(), _data.end(), node );
+    if ( i != _data.end() )
+    {
+        leaf = this;
+        for(unsigned i=0; i<_children.size(); ++i)
+        {
+            HTMNode* child = dynamic_cast<HTMNode*>(_children[i].get());
+            HTMNode* leaf2 = child->findLeaf( node );
+            if ( leaf2 )
+            {
+                leaf = leaf2;
+                break;
+            }
+        }
+    }
+
+    return leaf;
+}
+
+bool
+HTMNode::refresh(osg::Node* node)
+{
+    const osg::Vec3d& p = node->getBound().center();
+
+    if ( contains(p) )
+    {
+        // already in this node; if there are children, re-insert
+        // into the new child.
+        if ( _children.size() > 0 )
+        {
+            for(unsigned i=0; i<_children.size(); ++i)
+            {
+                HTMNode* child = dynamic_cast<HTMNode*>(_children[i].get());
+                if ( child && child->contains(p) )
+                {
+                    child->insert(node);
+                    break;
+                }
+            }
+        }
+        return true; // done.
+    }
+    else
+    {
+        std::remove( _data.begin(), _data.end(), node );
+        _dataCount--;
+
+        HTMNode* parentNode = dynamic_cast<HTMNode*>( getParent(0) );
+        if ( parentNode )
+        {
+            return parentNode->refresh( node );
+        }
+        HTMGroup* parentGroup = dynamic_cast<HTMGroup*>( getParent(0) );
+        if ( parentGroup )
+        {
+            return parentGroup->addChild( node );
+        }
+
+        // should never get here
+        OE_WARN << LC << "trouble." << std::endl;
+        return false;
+    }
 }
 
 void
@@ -423,7 +523,7 @@ HTMGroup::insert(osg::Node* node)
         {
             child->insert(node);
             inserted = true;
-            _dataCount++;
+            //_dataCount++;
             break;
         }
     }
@@ -434,8 +534,34 @@ HTMGroup::insert(osg::Node* node)
 bool
 HTMGroup::remove(osg::Node* node)
 {
-    //todo
-    return false;
+    bool found = false;
+
+    for(unsigned i=0; i<8 && !found; ++i)
+    {
+        HTMNode* child = static_cast<HTMNode*>(_children[i].get());
+        found = child->remove( node );
+    }
+
+    return found;
+}
+
+bool
+HTMGroup::refresh(osg::Node* node)
+{
+    HTMNode* leaf = 0L;
+
+    for(unsigned i=0; i<8 && !leaf; ++i)
+    {
+        HTMNode* child = static_cast<HTMNode*>(_children[i].get());
+        leaf = child->findLeaf( node );
+        if ( leaf )
+        {
+            leaf->refresh( node );
+            break;
+        }
+    }
+
+    return leaf != 0L;
 }
 
 void 

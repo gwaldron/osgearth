@@ -506,7 +506,7 @@ namespace
 
                 if ( hf )
                 {
-                    validValue = d.model->_elevationData.getHeight( ndc, d.model->_tileLocator, heightValue );
+                    validValue = d.model->_elevationData.getHeight( ndc, d.model->_tileLocator, heightValue, INTERP_TRIANGULATE );
                 }
                 //if ( hfLocator )
                 //{
@@ -616,7 +616,7 @@ namespace
                     // This only works if the tile size is an odd number in both directions.
                     if (d.model->_tileKey.getLOD() > 0 && (d.numCols&1) && (d.numRows&1) && d.parentModel )
                     {
-                        d.parentModel->_elevationData.getHeight( ndc, d.model->_tileLocator.get(), oldHeightValue );
+                        d.parentModel->_elevationData.getHeight( ndc, d.model->_tileLocator.get(), oldHeightValue, INTERP_TRIANGULATE );
                         d.parentModel->_elevationData.getNormal( ndc, d.model->_tileLocator.get(), oldNormal );
                     }
                     else
@@ -763,7 +763,7 @@ namespace
                         if ( hasElev )
                         {
                             float value = 0.0f;
-                            if ( d.model->_elevationData.getHeight( ndc, d.model->_tileLocator.get(), value ) )
+                            if ( d.model->_elevationData.getHeight( ndc, d.model->_tileLocator.get(), value, INTERP_BILINEAR ) )
                                 ndc.z() = value * d.scaleHeight;
                         }
 
@@ -777,7 +777,7 @@ namespace
                         if ( hasElev )
                         {
                             float value = 0.0f;
-                            if ( d.model->_elevationData.getHeight( ndc, d.model->_tileLocator.get(), value ) )
+                            if ( d.model->_elevationData.getHeight( ndc, d.model->_tileLocator.get(), value, INTERP_BILINEAR ) )
                                 ndc.z() = value * d.scaleHeight;
                         }
 
@@ -793,7 +793,7 @@ namespace
                         if ( hasElev )
                         {
                             float value = 0.0f;
-                            if ( d.model->_elevationData.getHeight( ndc, d.model->_tileLocator.get(), value ) )
+                            if ( d.model->_elevationData.getHeight( ndc, d.model->_tileLocator.get(), value, INTERP_BILINEAR ) )
                                 ndc.z() = value * d.scaleHeight;
                         }
 
@@ -819,7 +819,7 @@ namespace
                         if ( hasElev )
                         {
                             float value = 0.0f;
-                            if ( d.model->_elevationData.getHeight( ndc, d.model->_tileLocator.get(), value ) )
+                            if ( d.model->_elevationData.getHeight( ndc, d.model->_tileLocator.get(), value, INTERP_BILINEAR ) )
                                 ndc.z() = value * d.scaleHeight;
                         }
 

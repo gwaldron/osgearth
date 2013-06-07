@@ -211,6 +211,16 @@ namespace osgEarth
         void apply(osg::Transform& node);
         void apply(osg::Geode& node);
     };
+
+    /**
+     * Horizon culling in a shader program.
+     */
+    class OSGEARTH_EXPORT HorizonCullingProgram
+    {
+    public:
+        static void install( osg::StateSet* stateset );
+        static void remove ( osg::StateSet* stateset );
+    };
 }
 
 #endif // OSGEARTH_CULLING_UTILS_H

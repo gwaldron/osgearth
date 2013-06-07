@@ -17,9 +17,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 #include <osgEarthFeatures/LabelSource>
-#include <osgEarth/DepthOffset>
 #include <osgEarthAnnotation/LabelNode>
-#include <osgEarthAnnotation/Decluttering>
+#include <osgEarth/DepthOffset>
 #include <osgDB/FileNameUtils>
 #include <osgUtil/Optimizer>
 
@@ -62,25 +61,6 @@ public:
         TextSymbol* text = styleCopy.get<TextSymbol>();
 
         osg::Group* group = new osg::Group();
-
-#if 0
-        //TODO: revise; decluttering is enabled by the LabelNode now -gw
-
-        // check for decluttering
-        if ( text->declutter().isSet() )
-        {
-            Decluttering::setEnabled( group->getOrCreateStateSet(), *text->declutter() );
-        }
-#endif
-
-#if 0
-        if ( text->priority().isSet() )
-        {
-            DeclutteringOptions dco = Decluttering::getOptions();
-            dco.sortByPriority() = text->priority().isSet();
-            Decluttering::setOptions( dco );
-        }
-#endif
         
         StringExpression  contentExpr ( *text->content() );
         NumericExpression priorityExpr( *text->priority() );

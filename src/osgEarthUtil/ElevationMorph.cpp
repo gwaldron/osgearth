@@ -51,34 +51,12 @@ namespace
         "uniform float oe_tile_birthtime; \n"
         "uniform float oe_morph_delay; \n"
         "uniform float oe_morph_duration; \n"
-#if 0
-        "void oe_morph_vertex(inout vec4 VertexMODEL) \n"
-        "{ \n"
-        "    float radiusT    = oe_tile_key.w; \n"           // radius of the current tile.
-        "    float radiusP    = radiusT * 2.0; \n"
-        "    float radiusPS   = radiusP / 1.41421; \n" // shrunken radius of the parent tile, which control visibility
-        "    float near       = oe_min_tile_range_factor*radiusP; \n"
-        "    float far        = oe_min_tile_range_factor*radiusP + radiusP; \n"
-        "    vec4  VertexVIEW = gl_ModelViewMatrix * VertexMODEL; \n"
-        "    float d          = length(VertexVIEW.xyz/VertexVIEW.w); \n"
-        "    float r_dist     = clamp((d-near)/(far-near), 0.0, 1.0); \n"
 
-        "    float r_time     = 1.0 - clamp(osg_FrameTime-(oe_tile_birthtime+oe_morph_delay), 0.0, oe_morph_duration)/oe_morph_duration; \n"
-        "    float r          = max(r_dist, r_time); \n"
-
-        "    vec3  upVector   = oe_terrain_attr.xyz; \n"
-        "    float elev       = oe_terrain_attr.w; \n"
-        "    float elevOld    = oe_terrain_attr2.w; \n"
-        "    vec3  offset     = upVector * r * (elevOld - elev); \n"
-        "    VertexMODEL      = VertexMODEL + vec4(offset/VertexMODEL.w, 0.0); \n"
-        "} \n";
-
-#else
         "void oe_morph_vertex(inout vec4 VertexMODEL) \n"
         "{ \n"
         "    float radius     = oe_tile_key.w; \n"
         "    float near       = oe_min_tile_range_factor*radius; \n"
-        "    float far        = near + radius; \n"
+        "    float far        = near + radius*2.0; \n"
         "    vec4  VertexVIEW = gl_ModelViewMatrix * VertexMODEL; \n"
         "    float d          = length(VertexVIEW.xyz/VertexVIEW.w); \n"
         "    float r_dist     = clamp((d-near)/(far-near), 0.0, 1.0); \n"
@@ -92,7 +70,6 @@ namespace
         "    vec3  offset     = upVector * r * (elevOld - elev); \n"
         "    VertexMODEL      = VertexMODEL + vec4(offset/VertexMODEL.w, 0.0); \n"
         "} \n";
-#endif
 }
 
 

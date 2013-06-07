@@ -104,17 +104,18 @@ namespace
         stateSet->setTextureAttributeAndModes(0, texture, osg::StateAttribute::ON);
 
         stateSet->setMode( GL_BLEND, 1 );
-        stateSet->setRenderBinDetails( 95, "RenderBin" );
+        stateSet->setRenderBinDetails( 95, "DepthSortedBin" );
         stateSet->setAttributeAndModes( new osg::Depth(osg::Depth::ALWAYS,false), 1 );
 
         osg::Geode* geode = new osg::Geode;
         geode->addDrawable( geometry );
 
-        osg::AutoTransform* at = new osg::AutoTransform;
-        at->setAutoScaleToScreen( true );
-        at->setAutoRotateMode( osg::AutoTransform::ROTATE_TO_SCREEN );
-        at->addChild( geode );
-        return at;
+        return geode;
+        //osg::AutoTransform* at = new osg::AutoTransform;
+        //at->setAutoScaleToScreen( true );
+        //at->setAutoRotateMode( osg::AutoTransform::ROTATE_TO_SCREEN );
+        //at->addChild( geode );
+        //return at;
     }
 }
 

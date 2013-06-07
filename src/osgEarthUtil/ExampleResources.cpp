@@ -33,7 +33,7 @@
 
 #include <osgEarthAnnotation/AnnotationData>
 #include <osgEarthAnnotation/AnnotationRegistry>
-#include <osgEarthAnnotation/Decluttering>
+#include <osgEarth/Decluttering>
 
 #include <osgEarth/XmlUtils>
 #include <osgEarth/StringUtils>

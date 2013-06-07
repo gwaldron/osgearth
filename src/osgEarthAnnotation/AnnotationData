@@ -22,6 +22,7 @@
 #include <osgEarthAnnotation/Common>
 #include <osg/Referenced>
 #include <osgEarth/Viewpoint>
+#include <osgEarth/Decluttering>
 
 namespace osgEarth { namespace Annotation
 {	
@@ -31,7 +32,8 @@ namespace osgEarth { namespace Annotation
      * Stores annotation metadata/extra information that can be stored in a node's
      * UserData container.
      */
-    class OSGEARTHANNO_EXPORT AnnotationData : public osg::Referenced
+    class OSGEARTHANNO_EXPORT AnnotationData : public osg::Referenced,
+                                               public osgEarth::PriorityProvider
     {
     public:
         /**
@@ -58,12 +60,6 @@ namespace osgEarth { namespace Annotation
         const std::string& getDescription() const { return _description; }
 
         /**
-         * Priority of the item
-         */
-        void setPriority( float value ) { _priority = value; }
-        float getPriority() const { return _priority; }
-
-        /**
          * Viewpoint associated with this annotation.
          */
         void setViewpoint( const Viewpoint& vp ) {
@@ -75,6 +71,15 @@ namespace osgEarth { namespace Annotation
         const Viewpoint* getViewpoint() const {
             return _viewpoint;
         }
+
+    public: // PriorityProvider interface
+
+        /**
+         * Priority of the item
+         */
+        void setPriority( float value ) { _priority = value; }
+        float getPriority() const { return _priority; }
+
 
     public: // serialization
 

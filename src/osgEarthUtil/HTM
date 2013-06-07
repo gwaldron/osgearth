@@ -28,6 +28,8 @@
 
 namespace osgEarth { namespace Util
 {
+    class HTMNode;
+
     /**
      * Hierarchical Triangular Mesh group
      * http://www.geog.ucsb.edu/~hu/papers/spatialIndex.pdf
@@ -56,7 +58,7 @@ namespace osgEarth { namespace Util
             merging them back into a single cell. */
         unsigned getMergeThreshold() const { return _mergeThreshold; }
 
-        /** enble or disable clustering (experimental) */
+        /** enable or disable clustering (experimental) */
         void setCluster( bool value ) { _cluster = value; }
         bool getCluster() const       { return _cluster; }
 
@@ -64,6 +66,11 @@ namespace osgEarth { namespace Util
         void setDebug() { _debug = true; }
         bool getDebug() const { return _debug; }
 
+        /** check a node to see whether we need to move it. */
+        bool refresh(osg::Node* node);
+
+        /** removes a node from the group. */
+        bool remove(osg::Node* node);
 
     public: // osg::Group
 
@@ -88,13 +95,15 @@ namespace osgEarth { namespace Util
         virtual ~HTMGroup() { }
 
         bool insert(osg::Node* node);
-        bool remove(osg::Node* node);
 
         unsigned _dataCount;
         bool     _debug;
         bool     _cluster;
         unsigned _splitThreshold;
         unsigned _mergeThreshold;
+
+        typedef std::map<osg::Node*, HTMNode*> NodeMap;
+        NodeMap _nodeTable;
     };
 
 
@@ -113,9 +122,11 @@ namespace osgEarth { namespace Util
     protected:
         virtual ~HTMNode() { }
 
-        bool insert(osg::Node* node);
+        HTMNode* insert(osg::Node* node);
 
         bool remove(osg::Node* node);
+
+        bool refresh(osg::Node* node);
 
         void split();
 
@@ -132,6 +143,8 @@ namespace osgEarth { namespace Util
         unsigned dataCount() const {
             return _dataCount;
         }
+
+        HTMNode* findLeaf(osg::Node*);
 
         // test whether the node's triangle lies entirely withing a frustum
         bool entirelyWithin(const osg::Polytope& tope) const;

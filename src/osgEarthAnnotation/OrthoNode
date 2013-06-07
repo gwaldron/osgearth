@@ -20,7 +20,7 @@
 #define OSGEARTH_ANNO_ORTHO_NODE_H 1
 
 #include <osgEarthAnnotation/AnnotationNode>
-#include <osgEarthAnnotation/Decluttering>
+#include <osgEarth/Decluttering>
 #include <osgEarth/SpatialReference>
 #include <osgEarth/CullingUtils>
 #include <osg/AutoTransform>

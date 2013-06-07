@@ -20,7 +20,6 @@
 #include <osgEarthAnnotation/OrthoNode>
 #include <osgEarthAnnotation/AnnotationUtils>
 #include <osgEarthAnnotation/AnnotationSettings>
-#include <osgEarthAnnotation/Decluttering>
 #include <osgEarthSymbology/Color>
 #include <osgEarth/ThreadingUtils>
 #include <osgEarth/CullingUtils>

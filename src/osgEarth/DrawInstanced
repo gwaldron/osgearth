@@ -64,7 +64,8 @@ namespace osgEarth
          * visitor first.
          * Called by convertGraphToUseDrawInstanced().
          */
-        extern OSGEARTH_EXPORT VirtualProgram* createDrawInstancedProgram();
+        extern OSGEARTH_EXPORT void install(osg::StateSet* stateset);
+        extern OSGEARTH_EXPORT void remove (osg::StateSet* stateset);
 
 
         /**

@@ -18,7 +18,6 @@
 */
 
 #include <osgEarthAnnotation/LabelNode>
-#include <osgEarthAnnotation/Decluttering>
 #include <osgEarthAnnotation/AnnotationUtils>
 #include <osgEarthAnnotation/AnnotationRegistry>
 #include <osgEarthSymbology/Color>

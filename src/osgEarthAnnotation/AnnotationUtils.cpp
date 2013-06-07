@@ -18,7 +18,6 @@
 */
 
 #include <osgEarthAnnotation/AnnotationUtils>
-#include <osgEarthAnnotation/Decluttering>
 #include <osgEarthSymbology/Color>
 #include <osgEarthSymbology/MeshSubdivider>
 #include <osgEarth/ThreadingUtils>
@@ -155,29 +154,6 @@ AnnotationUtils::createTextDrawable(const std::string& text,
     // need to be marked DYNAMIC
     if ( t->getStateSet() )
       t->getStateSet()->setRenderBinToInherit();
-    //osg::StateSet* stateSet = new osg::StateSet();
-    //t->setStateSet( stateSet );
-
-#if 0 // OBE: the decluttering bin is now set higher up (in OrthoNode)
-    //osg::StateSet* stateSet = t->getOrCreateStateSet();
-
-    if ( symbol && symbol->declutter().isSet() )
-    {
-        Decluttering::setEnabled( stateSet, *symbol->declutter() );
-    }
-    else
-    {
-        stateSet->setRenderBinToInherit();
-    }
-#endif
-
-#if 0 // OBE: shadergenerator now takes care of all this
-    // add the static "isText=true" uniform; this is a hint for the annotation shaders
-    // if they get installed.
-    //static osg::ref_ptr<osg::Uniform> s_isTextUniform = new osg::Uniform(osg::Uniform::BOOL, UNIFORM_IS_TEXT());
-    //s_isTextUniform->set( true );
-    //stateSet->addUniform( s_isTextUniform.get() );
-#endif
 
     return t;
 }

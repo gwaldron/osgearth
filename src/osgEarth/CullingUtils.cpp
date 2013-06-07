@@ -18,6 +18,7 @@
  */
 #include <osgEarth/CullingUtils>
 #include <osgEarth/LineFunctor>
+#include <osgEarth/VirtualProgram>
 #include <osg/ClusterCullingCallback>
 #include <osg/PrimitiveSet>
 #include <osg/Geode>
@@ -901,4 +902,69 @@ ProxyCullVisitor::apply(osg::Geode& node)
     if (node_state) _cv->popStateSet();
 
     _cv->popFromNodePath();
+}
+
+//-------------------------------------------------------------------------
+
+namespace
+{
+    const char* horizon_vs =
+        "#version " GLSL_VERSION_STR "\n"
+        GLSL_DEFAULT_PRECISION_FLOAT "\n"
+        "uniform mat4 osg_ViewMatrix; \n"
+        "varying float oe_horizon_alpha; \n"
+        "void oe_horizon_vertex(inout vec4 VertexVIEW) \n"
+        "{ \n"
+        "    const float scale     = 0.001; \n"                 // scale factor keeps dots&crosses in SP range
+        "    const float radiusMax = 6371000.0 * scale; \n"
+        "    vec3  originVIEW = (osg_ViewMatrix * vec4(0,0,0,1)).xyz * scale; \n"
+        "    vec3  x1 = vec3(0,0,0) - originVIEW; \n"              // vector from origin -> camera
+        "    vec3  x2 = (VertexVIEW.xyz * scale) - originVIEW; \n" // vector from origin -> vertex
+        "    vec3  v  = x2-x1; \n"
+        "    float vlen = length(v); \n"
+        "    float t = -dot(x1,v)/(vlen*vlen); \n"
+        "    bool visible = false; \n"
+        "    if ( t > 1.0 || t < 0.0 ) { \n"
+        "        oe_horizon_alpha = 1.0; \n"
+        "    } \n"
+        "    else { \n"
+        "        float d = length(cross(x1,x2)) / vlen; \n"
+        "        oe_horizon_alpha = d >= radiusMax ? 1.0 : 0.0; \n"
+        "    } \n"
+        "} \n";
+
+    const char* horizon_fs =
+        "#version " GLSL_VERSION_STR "\n"
+        GLSL_DEFAULT_PRECISION_FLOAT "\n"
+        "varying float oe_horizon_alpha; \n"
+        "void oe_horizon_fragment(inout vec4 color) \n"
+        "{ \n"
+        "    color.a *= oe_horizon_alpha; \n"
+        "} \n";
+}
+
+
+void
+HorizonCullingProgram::install(osg::StateSet* stateset)
+{
+    if ( stateset )
+    {
+        VirtualProgram* vp = VirtualProgram::getOrCreate(stateset);
+        vp->setFunction( "oe_horizon_vertex",   horizon_vs, ShaderComp::LOCATION_VERTEX_VIEW );
+        vp->setFunction( "oe_horizon_fragment", horizon_fs, ShaderComp::LOCATION_FRAGMENT_COLORING );
+    }
+}
+
+void
+HorizonCullingProgram::remove(osg::StateSet* stateset)
+{
+    if ( stateset )
+    {
+        VirtualProgram* vp = VirtualProgram::get(stateset);
+        if ( vp )
+        {
+            vp->removeShader( "oe_horizon_vertex" );
+            vp->removeShader( "oe_horizon_fragment" );
+        }
+    }
 }

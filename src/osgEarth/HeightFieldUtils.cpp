@@ -80,8 +80,6 @@ HeightFieldUtils::getHeightAtPixel(const osg::HeightField* hf, double c, double 
             return NO_DATA_VALUE;
         }
 
-        double dx = c - (double)colMin;
-        double dy = r - (double)rowMin;
 
         //The quad consisting of the 4 corner points can be made into two triangles.
         //The "left" triangle is ll, ur, ul
@@ -89,6 +87,55 @@ HeightFieldUtils::getHeightAtPixel(const osg::HeightField* hf, double c, double 
 
         //Determine which triangle the point falls in.
         osg::Vec3d v0, v1, v2;
+
+        bool orientation = fabs(llHeight-urHeight) < fabs(ulHeight-lrHeight);
+        if ( orientation )
+        {
+            double dx = c - (double)colMin;
+            double dy = r - (double)rowMin;
+
+            // divide along ll->ur
+            if (dx > dy)
+            {
+                //The point lies in the right triangle
+                v0.set(colMin, rowMin, llHeight);
+                v1.set(colMax, rowMin, lrHeight);
+                v2.set(colMax, rowMax, urHeight);
+            }
+            else
+            {
+                //The point lies in the left triangle
+                v0.set(colMin, rowMin, llHeight);
+                v1.set(colMax, rowMax, urHeight);
+                v2.set(colMin, rowMax, ulHeight);
+            }
+        }
+        else
+        {
+            double dx = c - (double)colMin;
+            double dy = (double)rowMax - r;
+
+            // divide along ul->lr
+            if (dx > dy)
+            {
+                //The point lies in the right triangle
+                v0.set(colMax, rowMin, lrHeight);
+                v1.set(colMax, rowMax, urHeight);
+                v2.set(colMin, rowMax, ulHeight);
+            }
+            else
+            {
+                //The point lies in the left triangle
+                v0.set(colMin, rowMin, llHeight);
+                v1.set(colMax, rowMin, lrHeight);
+                v2.set(colMin, rowMax, ulHeight);
+            }
+        }
+
+#if 0
+        double dx = c - (double)colMin;
+        double dy = r - (double)rowMin;
+
         if (dx > dy)
         {
             //The point lies in the right triangle
@@ -103,6 +150,7 @@ HeightFieldUtils::getHeightAtPixel(const osg::HeightField* hf, double c, double 
             v1.set(colMax, rowMax, urHeight);
             v2.set(colMin, rowMax, ulHeight);
         }
+#endif
 
         //Compute the normal
         osg::Vec3d n = (v1 - v0) ^ (v2 - v0);

@@ -25,6 +25,8 @@
 #include <osgEarth/DrawInstanced>
 #include <osgEarth/Registry>
 #include <osgEarth/Capabilities>
+#include <osgEarth/Decluttering>
+#include <osgEarth/CullingUtils>
 
 #include <osg/AutoTransform>
 #include <osg/Drawable>
@@ -53,6 +55,16 @@ using namespace osgEarth::Symbology;
 namespace
 {
     static osg::Node* s_defaultModel =0L;
+
+    struct SetSmallFeatureCulling : public osg::NodeCallback
+    {
+        bool _value;
+        SetSmallFeatureCulling(bool value) : _value(value) { }
+        void operator()(osg::Node* node, osg::NodeVisitor* nv) {
+            Culling::asCullVisitor(nv)->setSmallFeatureCullingPixelSize(-1.0f);
+            traverse(node, nv);
+        }
+    };
 }
 
 //------------------------------------------------------------------------
@@ -179,9 +191,26 @@ SubstituteModelFilter::process(const FeatureList&           features,
         osg::ref_ptr<osg::Node>& model = uniqueModels[key];
         if ( !model.valid() )
         {
-            //model = instance->createNode( context.getDBOptions() );
             context.resourceCache()->getInstanceNode( instance.get(), model );
 
+            // if icon decluttering is off, install an AutoTransform.
+            if ( iconSymbol )
+            {
+                if ( iconSymbol->declutter() == true )
+                {
+                    Decluttering::setEnabled( model->getOrCreateStateSet(), true );
+                }
+                else if ( dynamic_cast<osg::AutoTransform*>(model.get()) == 0L )
+                {
+                    osg::AutoTransform* at = new osg::AutoTransform();
+                    at->setAutoRotateMode( osg::AutoTransform::ROTATE_TO_SCREEN );
+                    at->setAutoScaleToScreen( true );
+                    at->addChild( model );
+                    model = at;
+                }
+            }
+
+#if 0
             if ( scale != 1.0f && dynamic_cast<osg::AutoTransform*>( model.get() ) )
             {
                 // clone the old AutoTransform, set the new scale, and copy over its children.
@@ -196,6 +225,7 @@ SubstituteModelFilter::process(const FeatureList&           features,
                 newAT->addChild( scaler );
                 model = newAT;
             }
+#endif
         }
 
         if ( model.valid() )
@@ -253,13 +283,28 @@ SubstituteModelFilter::process(const FeatureList&           features,
         }
     }
 
+    if ( iconSymbol )
+    {
+        // activate decluttering for icons if requested
+        if ( iconSymbol->declutter() == true )
+        {
+            Decluttering::setEnabled( attachPoint->getOrCreateStateSet(), true );
+        }
+
+        // activate horizon culling if we are in geocentric space
+        if ( context.getSession() && context.getSession()->getMapInfo().isGeocentric() )
+        {
+            HorizonCullingProgram::install( attachPoint->getOrCreateStateSet() );
+        }
+    }
+
+    // active DrawInstanced if required:
     if ( _useDrawInstanced && Registry::capabilities().supportsDrawInstanced() )
     {
         DrawInstanced::convertGraphToUseDrawInstanced( attachPoint );
 
         // install a shader program to render draw-instanced.
-        VirtualProgram* p = DrawInstanced::createDrawInstancedProgram();
-        attachPoint->getOrCreateStateSet()->setAttributeAndModes( p, osg::StateAttribute::ON );
+        DrawInstanced::install( attachPoint->getOrCreateStateSet() );
     }
 
 #if 0 // now called from GeometryCompiler
@@ -441,7 +486,6 @@ SubstituteModelFilter::cluster(const FeatureList&           features,
                                FilterContext&               context )
 {
     ModelBins modelBins;
-    //ModelToFeatures modelToFeatures;
 
     std::set<URI> missing;
 

@@ -16,9 +16,8 @@
 * You should have received a copy of the GNU Lesser General Public License
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
-#include <osgEarthAnnotation/Decluttering>
-#include <osgEarthAnnotation/AnnotationUtils>
-#include <osgEarthAnnotation/AnnotationData>
+#include <osgEarth/Decluttering>
+//#include <osgEarthAnnotation/AnnotationData>
 #include <osgEarth/ThreadingUtils>
 #include <osgEarth/Utils>
 #include <osgEarth/VirtualProgram>
@@ -34,7 +33,6 @@
 #define FADE_UNIFORM_NAME "oe_declutter_fade"
 
 using namespace osgEarth;
-using namespace osgEarth::Annotation;
 
 //----------------------------------------------------------------------------
 
@@ -566,10 +564,10 @@ struct DeclutterDraw : public osgUtil::RenderBin::DrawCallback
  * This wants to be in the global scope for the dynamic registration to work,
  * hence the annoyinging long class name
  */
-class osgEarthAnnotationDeclutterRenderBin : public osgUtil::RenderBin
+class osgEarthDeclutterRenderBin : public osgUtil::RenderBin
 {
 public:
-    osgEarthAnnotationDeclutterRenderBin()
+    osgEarthDeclutterRenderBin()
     {
         this->setName( OSGEARTH_DECLUTTER_BIN );
         _context = new DeclutterContext();
@@ -668,7 +666,7 @@ void
 Decluttering::setSortFunctor( DeclutterSortFunctor* functor )
 {
     // pull our prototype
-    osgEarthAnnotationDeclutterRenderBin* bin = dynamic_cast<osgEarthAnnotationDeclutterRenderBin*>(
+    osgEarthDeclutterRenderBin* bin = dynamic_cast<osgEarthDeclutterRenderBin*>(
         osgUtil::RenderBin::getRenderBinPrototype( OSGEARTH_DECLUTTER_BIN ) );
 
     if ( bin )
@@ -681,7 +679,7 @@ void
 Decluttering::clearSortFunctor()
 {
     // pull our prototype
-    osgEarthAnnotationDeclutterRenderBin* bin = dynamic_cast<osgEarthAnnotationDeclutterRenderBin*>(
+    osgEarthDeclutterRenderBin* bin = dynamic_cast<osgEarthDeclutterRenderBin*>(
         osgUtil::RenderBin::getRenderBinPrototype( OSGEARTH_DECLUTTER_BIN ) );
 
     if ( bin )
@@ -694,7 +692,7 @@ void
 Decluttering::setOptions( const DeclutteringOptions& options )
 {
     // pull our prototype
-    osgEarthAnnotationDeclutterRenderBin* bin = dynamic_cast<osgEarthAnnotationDeclutterRenderBin*>(
+    osgEarthDeclutterRenderBin* bin = dynamic_cast<osgEarthDeclutterRenderBin*>(
         osgUtil::RenderBin::getRenderBinPrototype( OSGEARTH_DECLUTTER_BIN ) );
 
     if ( bin )
@@ -717,7 +715,7 @@ Decluttering::getOptions()
     static DeclutteringOptions s_defaultOptions;
 
     // pull our prototype
-    osgEarthAnnotationDeclutterRenderBin* bin = dynamic_cast<osgEarthAnnotationDeclutterRenderBin*>(
+    osgEarthDeclutterRenderBin* bin = dynamic_cast<osgEarthDeclutterRenderBin*>(
         osgUtil::RenderBin::getRenderBinPrototype( OSGEARTH_DECLUTTER_BIN ) );
 
     if ( bin )
@@ -736,10 +734,10 @@ bool
 DeclutterByPriority::operator()(const osgUtil::RenderLeaf* lhs, const osgUtil::RenderLeaf* rhs ) const
 {
     float diff = 0.0f;
-    const AnnotationData* lhsData = dynamic_cast<const AnnotationData*>(lhs->getDrawable()->getUserData());
+    const PriorityProvider* lhsData = dynamic_cast<const PriorityProvider*>(lhs->getDrawable()->getUserData());
     if ( lhsData )
     {
-        const AnnotationData* rhsData = dynamic_cast<const AnnotationData*>(rhs->getDrawable()->getUserData());
+        const PriorityProvider* rhsData = dynamic_cast<const PriorityProvider*>(rhs->getDrawable()->getUserData());
         if ( rhsData )
         {
             diff = lhsData->getPriority() - rhsData->getPriority();
@@ -763,4 +761,4 @@ DeclutterByPriority::operator()(const osgUtil::RenderLeaf* lhs, const osgUtil::R
 
 /** the actual registration. */
 extern "C" void osgEarth_declutter(void) {}
-static osgEarthRegisterRenderBinProxy<osgEarthAnnotationDeclutterRenderBin> s_regbin(OSGEARTH_DECLUTTER_BIN);
+static osgEarthRegisterRenderBinProxy<osgEarthDeclutterRenderBin> s_regbin(OSGEARTH_DECLUTTER_BIN);

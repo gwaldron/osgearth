@@ -62,7 +62,8 @@ public:
         CachePolicy::NO_CACHE.apply( _dbOptions.get() );
 
         //Set the profile
-        setProfile( osgEarth::Registry::instance()->getSphericalMercatorProfile() );        
+        const osgEarth::Profile* profile = osgEarth::Registry::instance()->getSphericalMercatorProfile();
+        setProfile( profile );              
 
 #if 0
         //Open the database
@@ -121,6 +122,8 @@ public:
 
         computeLevels();
 
+        _emptyImage = ImageUtils::createEmptyImage( 256, 256 );
+        
         return STATUS_OK;
     }    
 
@@ -134,8 +137,7 @@ public:
 
         if (z < (int)_minLevel)
         {
-            //Return an empty image to make it continue subdividing
-            return ImageUtils::createEmptyImage();
+            return _emptyImage.get();            
         }
 
         if (z > (int)_maxLevel)
@@ -265,6 +267,7 @@ private:
     sqlite3* _database;
     unsigned int _minLevel;
     unsigned int _maxLevel;
+    osg::ref_ptr< osg::Image> _emptyImage;
 
     osg::ref_ptr<osgDB::ReaderWriter> _rw;
     osg::ref_ptr<osgDB::Options> _dbOptions;

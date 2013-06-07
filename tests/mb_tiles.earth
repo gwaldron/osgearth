@@ -10,7 +10,9 @@ This example shows how to access an MBTiles dataset.  The MBTiles datasets are v
         <url>../data/world.tif</url>
     </image>	
 	  
-    <!--Add the haiti mbtiles dataset.  You may need to change the path to point to your download location-->	  
+    <!--
+    Add the haiti mbtiles dataset available at http://maps.internews.eu/v2/haiti-terrain-grey.mbtiles.
+    You may need to change the path to point to your download location-->	  
     <image name="haiti" driver="mbtiles">
         <filename>../data/haiti-terrain-grey.mbtiles</filename>
 		<format>jpg</format>

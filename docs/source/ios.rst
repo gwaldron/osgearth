@@ -18,7 +18,7 @@ The steps to buld for use on devices are as follows:
 #. **Javascript Support**
      | Unlike osgEarth on the desktop which uses the V8 engine, osgEarth on iOS depends on the JavaScriptCore engine for scripting support.
      | The JavaScriptCore code with projects for iOS can be found on GitHub here: https://github.com/phoboslab/JavaScriptCore-iOS
-     | As noted on that page, a prebuilt library can be found in the source tree of the `Ejecta project <https://github.com/phoboslab/Ejecta/tree/master/Source/lib>'_
+     | As noted on that page, a prebuilt library can be found in the source tree of the `Ejecta project <https://github.com/phoboslab/Ejecta/tree/master/Source/lib>`_
 
 #. **Download OSG trunk**
    ::

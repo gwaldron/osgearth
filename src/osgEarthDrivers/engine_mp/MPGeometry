@@ -49,6 +49,8 @@ namespace osgEarth_engine_mp
             osg::ref_ptr<osg::Texture>     _tex;
             osg::ref_ptr<osg::Vec2Array>   _texCoords;
             osg::ref_ptr<osg::Vec2Array>   _tileCoords;
+            osg::ref_ptr<osg::Texture>     _texParent;
+            osg::Matrixd                   _texMatParent;
             float                          _alphaThreshold;
 
             // in support of std::find
@@ -64,13 +66,19 @@ namespace osgEarth_engine_mp
         mutable osg::ref_ptr<osg::Uniform>   _layerUIDUniform;
         mutable osg::ref_ptr<osg::Uniform>   _layerOrderUniform;
         mutable osg::ref_ptr<osg::Uniform>   _opacityUniform;
-        int                                  _imageUnit;
-        osg::ref_ptr<osg::Vec2Array>         _tileCoords;
+        int                                  _imageUnit;          // image unit for primary texture
+        osg::ref_ptr<osg::Vec2Array>         _tileCoords;         // [0..1] unified tile coordinates
+
+        mutable osg::ref_ptr<osg::Uniform>   _texMatParentUniform; // texture matrix for parent texture
+        int                                  _imageUnitParent;     // image unit for secondary (parent) texture
 
     public:
         
         // construct a new MPGeometry.
         MPGeometry(const Map* map, int primaryImageUnit);
+
+        // sets an image unit to use for parent texture blending.
+        void setParentImageUnit(int value) { _imageUnitParent = value; }
 
         // render all passes of the geometry.
         void renderPrimitiveSets(osg::State& state, bool usingVBOs) const;

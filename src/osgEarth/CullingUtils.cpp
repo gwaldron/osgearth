@@ -968,3 +968,30 @@ HorizonCullingProgram::remove(osg::StateSet* stateset)
         }
     }
 }
+
+//----------------------------------------------------------------
+
+LODScaleGroup::LODScaleGroup() :
+_scaleFactor( 1.0f )
+{
+    //nop
+}
+
+void
+LODScaleGroup::traverse(osg::NodeVisitor& nv)
+{
+    if ( nv.getVisitorType() == nv.CULL_VISITOR )
+    {
+        osg::CullStack* cs = dynamic_cast<osg::CullStack*>( &nv );
+        if ( cs )
+        {
+            float lodscale = cs->getLODScale();
+            cs->setLODScale( lodscale * _scaleFactor );
+            std::for_each( _children.begin(), _children.end(), osg::NodeAcceptOp(nv));
+            cs->setLODScale( lodscale );
+            return;
+        }
+    }
+
+    osg::Group::traverse( nv );
+}

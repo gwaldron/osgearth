@@ -39,6 +39,10 @@ _imageUnit       ( imageUnit )
 
     _layerOrderUniform = new osg::Uniform( osg::Uniform::INT, "oe_layer_order" );
     _layerOrderUniform->set( 0 );
+
+    _texMatParentUniform = new osg::Uniform(osg::Uniform::FLOAT_MAT4, "oe_layer_parent_matrix");
+
+    _imageUnitParent = _imageUnit + 1; // temp
 }
 
 
@@ -79,14 +83,16 @@ MPGeometry::renderPrimitiveSets(osg::State& state,
     GLint opacityLocation;
     GLint uidLocation;
     GLint orderLocation;
+    GLint texMatParentLocation;
 
     // yes, it's possible that the PCP is not set up yet.
     // TODO: can we optimize this so we don't need to get uni locations every time?
     if ( pcp )
     {
-        opacityLocation = pcp->getUniformLocation( _opacityUniform->getNameID() );
-        uidLocation     = pcp->getUniformLocation( _layerUIDUniform->getNameID() );
-        orderLocation   = pcp->getUniformLocation( _layerOrderUniform->getNameID() );
+        opacityLocation      = pcp->getUniformLocation( _opacityUniform->getNameID() );
+        uidLocation          = pcp->getUniformLocation( _layerUIDUniform->getNameID() );
+        orderLocation        = pcp->getUniformLocation( _layerOrderUniform->getNameID() );
+        texMatParentLocation = pcp->getUniformLocation( _texMatParentUniform->getNameID() );
     }
 
     // activate the tile coordinate set - same for all layers
@@ -113,6 +119,8 @@ MPGeometry::renderPrimitiveSets(osg::State& state,
                     state.setTexCoordPointer( sharedUnit, layer._texCoords.get() );
                     // bind the texture for this layer to the active share unit.
                     layer._tex->apply( state );
+
+                    // no texture LOD blending for shared layers for now. maybe later.
                 }
             }
         }
@@ -136,6 +144,14 @@ MPGeometry::renderPrimitiveSets(osg::State& state,
 
                 // bind the texture for this layer:
                 layer._tex->apply( state );
+
+                // if we're using a parent texture for blending, activate that now
+                if ( layer._texParent.valid() )
+                {
+                    state.setActiveTextureUnit( _imageUnitParent );
+                    activeImageUnit = _imageUnitParent;
+                    layer._texParent->apply( state );
+                }
 
                 // bind the texture coordinates for this layer.
                 // TODO: can probably optimize this by sharing or using texture matrixes.
@@ -161,6 +177,13 @@ MPGeometry::renderPrimitiveSets(osg::State& state,
                     // assign the layer order:
                     _layerOrderUniform->set( (int)layersDrawn );
                     _layerOrderUniform->apply( ext, orderLocation );
+
+                    // assign the parent texture matrix
+                    if ( layer._texParent.valid() )
+                    {
+                        _texMatParentUniform->set( layer._texMatParent );
+                        _texMatParentUniform->apply( ext, texMatParentLocation );
+                    }
                 }
 
                 // draw the primitive sets.
@@ -208,9 +231,14 @@ MPGeometry::releaseGLObjects(osg::State* state) const
     for(unsigned i=0; i<_layers.size(); ++i)
     {
         const Layer& layer = _layers[i];
-        if ( layer._tex.valid() )
-            layer._tex->releaseGLObjects( state );
-        if ( layer._texCoords.valid() )
+
+        //Moved to TileModel since that's where the texture is created. Releasing it
+        // here could break texture sharing.
+        //if ( layer._tex.valid() )
+        //    layer._tex->releaseGLObjects( state );
+
+        // Check the refcount since texcoords can be cached/shared.
+        if ( layer._texCoords.valid() && layer._texCoords->referenceCount() == 1 )
             layer._texCoords->releaseGLObjects( state );
     }
 }

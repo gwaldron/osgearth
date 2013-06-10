@@ -90,23 +90,42 @@ TileModel::ColorData::ColorData(const osgEarth::ImageLayer* layer,
                                 bool                        fallbackData) :
 _layer       ( layer ),
 _order       ( order ),
-_image       ( image ),
+//_image       ( image ),
 _locator     ( locator ),
 _tileKey     ( tileKey ),
 _fallbackData( fallbackData )
 {
-    //nop
+    _texture = new osg::Texture2D( image );
+    _texture->setUnRefImageDataAfterApply( true );
+    _texture->setMaxAnisotropy( 16.0f );
+    _texture->setResizeNonPowerOfTwoHint(false);
+    _texture->setFilter( osg::Texture::MAG_FILTER, osg::Texture::LINEAR );
+    _texture->setFilter( osg::Texture::MIN_FILTER, osg::Texture::LINEAR );
+    _texture->setWrap( osg::Texture::WRAP_S, osg::Texture::CLAMP_TO_EDGE );
+    _texture->setWrap( osg::Texture::WRAP_T, osg::Texture::CLAMP_TO_EDGE );
+    _texture->setWrap( osg::Texture::WRAP_R, osg::Texture::CLAMP_TO_EDGE );
+    //_image = 0L;
 }
 
 TileModel::ColorData::ColorData(const TileModel::ColorData& rhs) :
 _layer       ( rhs._layer.get() ),
 _locator     ( rhs._locator.get() ),
-_image       ( rhs._image.get() ),
+//_image       ( rhs._image.get() ),
+_texture     ( rhs._texture.get() ),
 _tileKey     ( rhs._tileKey ),
 _fallbackData( rhs._fallbackData ),
 _order       ( rhs._order )
 {
     //nop
+}
+
+void
+TileModel::ColorData::releaseGLObjects(osg::State* state) const
+{
+    if ( _texture.valid() && _texture->referenceCount() == 1 )
+    {
+        _texture->releaseGLObjects( state );
+    }
 }
 
 //------------------------------------------------------------------
@@ -136,4 +155,31 @@ TileModel::createQuadrant(unsigned q) const
     model->_tileLocator = _tileLocator->createSameTypeForKey( childKey, MapInfo(_map.get()) );
 
     return model;
+}
+
+
+void
+TileModel::setParentTileModel(const TileModel* parent)
+{
+    _parentModel = parent;
+}
+//    osg::Matrixf scaleBias;
+//    scaleBias(0,0) = 0.5f;
+//    scaleBias(1,1) = 0.0f;
+//    scaleBias(3,0) = (float)(    _key.getTileX() & 0x1) * 0.5f;
+//    scaleBias(3,1) = (float)(1 - _key.getTileY() & 0x1) * 0.5f;
+//
+//    for(ColorDataByUID::const_iterator i = _colorData.begin(); i != _colorData.end(); ++i )
+//    {
+//        ColorData& c = i->second;
+//        c._scaleBiasMatrix = scaleBias;
+//    }
+//}
+
+
+void
+TileModel::releaseGLObjects(osg::State* state) const
+{
+    for(ColorDataByUID::const_iterator i = _colorData.begin(); i != _colorData.end(); ++i )
+        i->second.releaseGLObjects( state );
 }

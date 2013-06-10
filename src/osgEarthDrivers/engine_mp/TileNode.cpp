@@ -50,6 +50,21 @@ _model( model )
     _bornUniform = new osg::Uniform(osg::Uniform::FLOAT, "oe_tile_birthtime");
     _bornUniform->set( -1.0f );
     stateset->addUniform( _bornUniform );
+
+#if 0
+    // Texture matrix uniform that transforms texture coordinates from the 
+    // parent tile into the quadrant of this tile.
+    _tileParentMatrixUniform = new osg::Uniform(osg::Uniform::FLOAT_MAT4, "oe_tile_parent_matrix");
+    unsigned q = key.getQuadrant();
+    osg::Matrixf scaleBias;
+    model->createScaleBiasMatrix(scaleBias);
+    scaleBias(0,0) = 0.5f;
+    scaleBias(1,1) = 0.5f;
+    scaleBias(3,0) = (float)(key.getTileX() & 0x1) * 0.5f;
+    scaleBias(3,1) = (float)(1 - key.getTileY() & 0x1) * 0.5f;
+    _tileParentMatrixUniform->set( scaleBias );
+    stateset->addUniform( _tileParentMatrixUniform );
+#endif
 }
 
 
@@ -96,4 +111,12 @@ TileNode::traverse( osg::NodeVisitor& nv )
     }
 
     osg::MatrixTransform::traverse( nv );
+}
+
+
+void
+TileNode::releaseGLObjects(osg::State* state) const
+{
+    if ( _model.valid() )
+        _model->releaseGLObjects( state );
 }

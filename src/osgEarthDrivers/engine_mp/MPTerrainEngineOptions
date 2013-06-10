@@ -42,7 +42,8 @@ namespace osgEarth { namespace Drivers
             _rangeMode     ( osg::LOD::DISTANCE_FROM_EYE_POINT ),
             _tilePixelSize ( 256 ),
             _premultAlpha  ( true ),
-            _color         ( Color::White )
+            _color         ( Color::White ),
+            _lodBlending   ( false )
         {
             setDriver( "mp" );
             fromConfig( _conf );
@@ -76,6 +77,9 @@ namespace osgEarth { namespace Drivers
         optional<Color>& color() { return _color; }
         const optional<Color>& color() const { return _color; }
 
+        optional<bool>& lodBlending() { return _lodBlending; }
+        const optional<bool>& lodBlending() const { return _lodBlending; }
+
     protected:
         virtual Config getConfig() const {
             Config conf = TerrainOptions::getConfig();
@@ -88,6 +92,7 @@ namespace osgEarth { namespace Drivers
             conf.updateIfSet( "range_mode", "DISTANCE_FROM_EYE_POINT", _rangeMode, osg::LOD::DISTANCE_FROM_EYE_POINT);
             conf.updateIfSet( "premultiplied_alpha", _premultAlpha );
             conf.updateIfSet( "color", _color );
+            conf.updateIfSet( "lod_blending", _lodBlending );
 
             return conf;
         }
@@ -109,6 +114,7 @@ namespace osgEarth { namespace Drivers
             conf.getIfSet( "range_mode", "DISTANCE_FROM_EYE_POINT", _rangeMode, osg::LOD::DISTANCE_FROM_EYE_POINT);
             conf.getIfSet( "premultiplied_alpha", _premultAlpha );
             conf.getIfSet( "color", _color );
+            conf.getIfSet( "lod_blending", _lodBlending );
         }
 
         optional<float>               _skirtRatio;
@@ -119,6 +125,7 @@ namespace osgEarth { namespace Drivers
         optional<float>               _tilePixelSize;
         optional<bool>                _premultAlpha;
         optional<Color>               _color;
+        optional<bool>                _lodBlending;
     };
 
 } } // namespace osgEarth::Drivers

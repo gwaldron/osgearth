@@ -1208,7 +1208,7 @@ HSliderControl::handle( const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapte
     {
         float relX = ea.getX() - _renderPos.x();
 
-        setValue( _min + (_max-_min) * ( relX/_renderSize.x() ) );
+        setValue( osg::clampBetween(_min + (_max-_min) * ( relX/_renderSize.x() ), _min, _max) );
         aa.requestRedraw();
 
         return true;

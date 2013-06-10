@@ -61,10 +61,11 @@ namespace
                 _layer->getProfile()                    &&
                 _layer->getProfile()->getSRS()->isSphericalMercator();
 
-            // fetch the image from the layer, falling back on parent keys utils we are 
+            // fetch the image from the layer, falling back on parent keys until we are 
             // able to find one that works.
 
-            bool autoFallback = _key.getLevelOfDetail() <= 1;
+            //bool autoFallback = _key.getLevelOfDetail() <= 1;
+            bool autoFallback = false;
 
             TileKey imageKey( _key );
             TileSource*    tileSource   = _layer->getTileSource();
@@ -319,36 +320,20 @@ TileModelFactory::createTileModel(const TileKey&           key,
 
 
     // Bail out now if there's no data to be had.
-    if ( model->_colorData.size() == 0 && !model->_elevationData.getHeightField() ) //.getHFLayer() )
+    if ( model->_colorData.size() == 0 && !model->_elevationData.getHeightField() )
     {
         return;
     }
 
     // OK we are making a tile, so if there's no heightfield yet, make an empty one.
-    if ( !model->_elevationData.getHeightField() ) //getHFLayer() )
+    if ( !model->_elevationData.getHeightField() )
     {
         osg::HeightField* hf = HeightFieldUtils::createReferenceHeightField( key.getExtent(), 8, 8 );
         model->_elevationData = TileModel::ElevationData(
             hf,
             GeoLocator::createForKey(key, mapInfo),
             true );
-        //osgTerrain::HeightFieldLayer* hfLayer = new osgTerrain::HeightFieldLayer( hf );
-        //hfLayer->setLocator( GeoLocator::createForKey(key, mapInfo) );
-        //model->_elevationData = TileModel::ElevationData( hfLayer, true );
     }
-
-#if 0 // TODO: reimplement this!
-
-    // if we're using LOD blending, find and add the parent's state set.
-    if ( out_hasLodBlendedLayers && key.getLevelOfDetail() > 0 && _liveTiles.valid() )
-    {
-        osg::ref_ptr<TileNode> parent;
-        if ( _liveTiles->get( key.createParentKey(), parent ) )
-        {
-            model->_parentStateSet = parent->getPublicStateSet();
-        }
-    }
-#endif
 
     if (!out_hasRealData)
     {
@@ -367,6 +352,11 @@ TileModelFactory::createTileModel(const TileKey&           key,
     {
         out_hasRealData = true;
     }
+
+    // look up the parent model and cache it.
+    osg::ref_ptr<TileNode> parentTile;
+    if ( _liveTiles->get(key.createParentKey(), parentTile) )
+        model->_parentModel = parentTile->getTileModel();
 
     out_model = model.release();
 }

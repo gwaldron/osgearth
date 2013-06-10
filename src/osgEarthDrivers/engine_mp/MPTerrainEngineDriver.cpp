@@ -33,11 +33,6 @@ using namespace osgEarth_engine_mp;
 
 /**
  * osgEarth driver for the MP terrain engine.
- *
- * TODO LIST:
- * - integrate support for Quick Release of GL objects
- * - integrate support for LOD Blending (access to parent state set)
- * - consider TileNodeCompiler cacheing of TexCoord arrays and other tile-shareable data
  */
 class osgEarth_MPTerrainEngineDriver : public osgDB::ReaderWriter
 {

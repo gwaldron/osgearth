@@ -4,7 +4,6 @@ SET(TARGET_COMMON_LIBRARIES ${TARGET_COMMON_LIBRARIES} osgEarthSymbology)
 SET(TARGET_SRC
     TilePagedLOD.cpp
     KeyNodeFactory.cpp
-    LODFactorCallback.cpp
     MPGeometry.cpp
     MPTerrainEngineNode.cpp
     MPTerrainEngineDriver.cpp
@@ -24,7 +23,6 @@ SET(TARGET_H
     DynamicLODScaleCallback
     FileLocationCallback
     KeyNodeFactory
-    LODFactorCallback
     MPGeometry
     MPTerrainEngineNode
     MPTerrainEngineOptions

@@ -321,7 +321,7 @@ VirtualProgram::removeShader( const std::string& shaderID )
                 {
                     _functions.erase( i );
                 }
-                break;
+                return;
             }
         }
     }

@@ -72,6 +72,7 @@ namespace osgEarth { namespace Util
         osg::ref_ptr<osg::Uniform>   _startLODUniform;
         osg::ref_ptr<osg::Uniform>   _samplerUniform;
         osg::ref_ptr<osg::Texture2D> _texture;
+        int                          _unit;
     };
 
 } } // namespace osgEarth::Util

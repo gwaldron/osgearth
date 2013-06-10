@@ -160,6 +160,50 @@ You can alter the vertex, but you *must* leave it in the same space.
 :CLIP:   Post-projected clip space. CLIP space lies in the [-w..w] range along all
          three axis, and is the result of transforming the original vertex by
          ``gl_ModelViewProjectionMatrix``.
+         
+         
+Shader Variables
+~~~~~~~~~~~~~~~~
+
+There are some built-in shader variables that osgEarth installs and that you can 
+access from your shader functions.
+
+    *Important: Shader variables starting with the prefix ``oe_`` or ``osgearth_``
+    are reserved for osgEarth internal use.*
+
+Uniforms:
+
+  :oe_tile_key:          (vec4) elements 0-2 hold the x, y, and LOD tile key values;
+                         element 3 holds the tile's bounding sphere radius (in meters)
+  :oe_layer_tex:         (sampler2D) texture applied to the current tile
+  :oe_layer_texc:        (vec4) texture coordinate for current tile
+  :oe_layer_tilec:       (vec4) unit coordinates for the current tile (0..1 in x and y)
+  :oe_layer_uid:         (int) Unique ID of the active layer
+  :oe_layer_order:       (int) Render order of the active layer
+  :oe_layer_opacity:     (float) Opacity [0..1] of the active layer
+
+Vertex attributes:
+
+  :oe_terrain_attr:      (vec4) elements 0-2 hold the unit height vector for a terrain
+                         vertex, and element 3 holds the raw terrain elevation value
+  :oe_terrain_attr2:     (vec4) element 0 holds the *parent* tile's elevation value;
+                         elements 1-3 are currently unused.
+
+
+Shared Image Layers
+~~~~~~~~~~~~~~~~~~~
+
+By default, osgEarth gives you access to the layer it's currently drawing (via the
+``oe_layer_tex`` uniform; see above). But sometimes you want to access more than one
+layer at a time. For example, you might have a masking layer that indicates land vs.
+water. You may not actually want to *draw* this layer, but you want to use it to modulate
+another visible layer.
+
+You can do this using *shared image layers*. In the ``Map``, mark an image layer as
+*shared* (using ``ImageLayerOptions::shared()``) and the renderer will make it available
+to all the other layers in a secondary sampler.
+
+    Please refer to ``osgearth_sharedlayer.cpp`` for a usage example!
 
 
 Customizing the Shader Factory
@@ -186,14 +230,3 @@ This method is good for replacing osgEarth's built-in lighting shader code.
 HOWEVER: be aware that override the built-in texturing functions may not work.
 This is because osgEarth's image layer composition mechanisms override these methods
 themselves to perform layer rendering.
-
-
-System Uniforms
----------------
-
-In addition the the OSG system uniforms (which all start with "osg_"), osgEarth
-provides various uniforms. They are:
-
-  :osgearth_LightingEnabled:     whether GL lighting is enabled (bool)
-  :osgearth_CameraElevation:     distance from camera to ellipsoid/Z=0 (float)
-

@@ -93,7 +93,7 @@ namespace osgEarth { namespace Features
         bool process(const FeatureList& features, const InstanceSymbol* symbol, Session* session, osg::Group* ap, FilterContext& context );
         bool cluster(const FeatureList& features, const InstanceSymbol* symbol, Session* session, osg::Group* ap, FilterContext& context );
         
-        InstanceResource* findResource( const URI& instanceURI, const InstanceSymbol* symbol, FilterContext& context, std::set<URI>& missing ) ;
+        bool findResource( const URI& instanceURI, const InstanceSymbol* symbol, FilterContext& context, std::set<URI>& missing, osg::ref_ptr<InstanceResource>& output );
     };
 
 } } // namespace osgEarth::Features

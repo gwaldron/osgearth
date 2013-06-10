@@ -21,6 +21,7 @@
 
 #include "Common"
 #include <osgEarth/TileKey>
+#include <osgEarth/Progress>
 #include <osg/Node>
 
 using namespace osgEarth;
@@ -41,7 +42,7 @@ namespace osgEarth_engine_mp
         /**
         * Creates a node for a tile key.
         */
-        virtual osg::Node* createNode( const TileKey& key ) =0;
+        virtual osg::Node* createNode( const TileKey& key, ProgressCallback* progress) =0;
 
         virtual class TileModelCompiler* getCompiler() const =0;
 

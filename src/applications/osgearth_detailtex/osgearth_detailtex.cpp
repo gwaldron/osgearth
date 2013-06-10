@@ -48,7 +48,7 @@ usage(const char* msg)
 
 struct App
 {
-    DetailTexture dt;
+    DetailTexture* dt;
 };
 
 
@@ -59,13 +59,13 @@ ui::Control* createUI( App& app )
         App& _app;
         SetIntensity(App& app) : _app(app) {}
         void onValueChanged(ui::Control*, float value) {
-            _app.dt.setIntensity(value);
+            _app.dt->setIntensity(value);
         }
     };
 
     ui::VBox* vbox = new VBox();
 
-    vbox->addControl( new LabelControl(Stringify() << "Detail texture starts at LOD: " << app.dt.getBaseLOD()) );
+    vbox->addControl( new LabelControl(Stringify() << "Detail texture starts at LOD: " << app.dt->getStartLOD()) );
 
     ui::HBox* hbox = vbox->addControl( new ui::HBox() );
     hbox->setChildVertAlign( ui::Control::ALIGN_CENTER );
@@ -93,17 +93,18 @@ int main(int argc, char** argv)
 
     // Set up the app and read options:
     App app;
+    app.dt = new DetailTexture();
 
     std::string filename( "../data/noise3.png" );
     arguments.read( "--image", filename );
     osg::Image* image = URI(filename).getImage();
     if ( !image )
         return usage( "Failed to load image" );
-    app.dt.setImage( image );
+    app.dt->setImage( image );
 
     unsigned startLOD;
     if ( arguments.read("--lod", startLOD) )
-        app.dt.setBaseLOD(startLOD);
+        app.dt->setStartLOD(startLOD);
 
     // Create the UI:
     ui::Control* demoui = createUI(app);
@@ -117,8 +118,9 @@ int main(int argc, char** argv)
         if ( !mapNode )
             return -1;
 
-        // attach the detailer to the terrain.
-        app.dt.setTerrainNode( mapNode->getTerrainEngine() );
+        // install our detail texturer.
+        TerrainEngineNode* terrain = mapNode->getTerrainEngine();
+        terrain->addEffect( app.dt );
 
         viewer.setSceneData( node );
         viewer.run();

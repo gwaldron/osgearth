@@ -70,6 +70,17 @@ namespace osgEarth
             ElevationInterpolation interp = INTERP_BILINEAR);
 
         /**
+         * Gets the normal vector at the specified "normalized unit location".
+         * i.e., nx => [0.0, 1.0], ny => [0.0, 1.0] where 0.0 and 1.0 are the opposing
+         * endposts of the heightfield.
+         */
+        static bool getNormalAtNormalizedLocation(
+            const osg::HeightField* hf,
+            double nx, double ny,
+            osg::Vec3& output,
+            ElevationInterpolation interp = INTERP_BILINEAR);
+
+        /**
          * Scales all the height values in a heightfield from scalar units to "linear degrees".
          * The only purpose of this is to show reasonable height values in a projected
          * Plate Carre map (in which vertical units are not well defined).
@@ -123,8 +134,8 @@ namespace osgEarth
          * the ellipsoid model.
          */
         static osg::NodeCallback* createClusterCullingCallback(
-            osg::HeightField*    grid, 
-            osg::EllipsoidModel* em, 
+            osg::HeightField*          grid, 
+            const osg::EllipsoidModel* em, 
             float verticalScale =1.0f );
     };
 

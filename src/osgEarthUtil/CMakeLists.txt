@@ -13,6 +13,7 @@ SET(HEADERS_ROOT
     AutoClipPlaneHandler
     Common
     Controls
+    ContourMap
     ClampCallback
     DataScanner
     DetailTexture
@@ -24,6 +25,7 @@ SET(HEADERS_ROOT
     FeatureQueryTool
     Formatter
     GeodeticGraticule
+    HTM
     LatLongFormatter
     LineOfSight
     LinearLineOfSight
@@ -31,6 +33,7 @@ SET(HEADERS_ROOT
     MGRSFormatter
     MGRSGraticule
     MouseCoordsTool
+    NormalMap
     ObjectLocator
     PolyhedralLineOfSight
     RadialLineOfSight
@@ -60,6 +63,7 @@ SET(SOURCES_ROOT
     AutoClipPlaneHandler.cpp
     ClampCallback.cpp
     Controls.cpp
+    ContourMap.cpp
     DataScanner.cpp
     DetailTexture.cpp
     EarthManipulator.cpp
@@ -68,12 +72,14 @@ SET(SOURCES_ROOT
     FeatureManipTool.cpp
     FeatureQueryTool.cpp
     GeodeticGraticule.cpp
+    HTM.cpp
     LatLongFormatter.cpp
     LinearLineOfSight.cpp
     MeasureTool.cpp
     MGRSFormatter.cpp
     MGRSGraticule.cpp
     MouseCoordsTool.cpp
+    NormalMap.cpp
     ObjectLocator.cpp
     PolyhedralLineOfSight.cpp
     RadialLineOfSight.cpp

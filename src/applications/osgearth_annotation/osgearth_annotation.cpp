@@ -18,6 +18,7 @@
 */
 
 #include <osgEarth/MapNode>
+#include <osgEarth/Decluttering>
 #include <osgEarth/ECEF>
 
 #include <osgEarthUtil/EarthManipulator>
@@ -36,7 +37,6 @@
 #include <osgEarthAnnotation/LabelNode>
 #include <osgEarthAnnotation/LocalGeometryNode>
 #include <osgEarthAnnotation/FeatureNode>
-#include <osgEarthAnnotation/Decluttering>
 #include <osgEarthAnnotation/HighlightDecoration>
 #include <osgEarthAnnotation/ScaleDecoration>
 

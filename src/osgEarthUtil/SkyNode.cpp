@@ -568,9 +568,6 @@ namespace
         "varying vec3 atmos_rayleighColor; \n"
 
         "const float fExposure = 4.0; \n";
-
-    //static char s_atmosphereFragmentShared[] =
-    //    "void applyFragLighting( inout color )
         
     static char s_atmosphereFragmentMain[] =
         "void main(void) \n"			
@@ -694,7 +691,7 @@ namespace
                 << "{ \n"
                 << "    float b1 = 1.0-(2.0*abs(gl_PointCoord.s-0.5)); \n"
                 << "    float b2 = 1.0-(2.0*abs(gl_PointCoord.t-0.5)); \n"
-                << "    float i = b1*b1 * b2*b2; \n" //b1*b1*b1 * b2*b2*b2; \n"
+                << "    float i = b1*b1 * b2*b2; \n"
                 << "    gl_FragColor = osg_FrontColor * i * visibility; \n"
                 << "} \n";
         }
@@ -741,7 +738,7 @@ SkyNode::initialize( Map *map, const std::string& starFile )
     _defaultPerViewData._lightPos.set( osg::Vec3f(0.0f, 1.0f, 0.0f) );
     _defaultPerViewData._light = new osg::Light( 0 );  
     _defaultPerViewData._light->setPosition( osg::Vec4( _defaultPerViewData._lightPos, 0 ) );
-    _defaultPerViewData._light->setAmbient( osg::Vec4(0.4f, 0.4f, 0.4f ,1.0) );
+    _defaultPerViewData._light->setAmbient( osg::Vec4(0.2f, 0.2f, 0.2f, 2.0) );
     _defaultPerViewData._light->setDiffuse( osg::Vec4(1,1,1,1) );
     _defaultPerViewData._light->setSpecular( osg::Vec4(0,0,0,1) );
     _defaultPerViewData._starsVisible = true;
@@ -774,7 +771,7 @@ SkyNode::initialize( Map *map, const std::string& starFile )
     makeStars(starFile);
 
     // automatically compute ambient lighting based on the eyepoint
-    _autoAmbience = true;
+    _autoAmbience = false;
 
     //Set a default time
     setDateTime( 2011, 3, 6, 18 );
@@ -815,8 +812,8 @@ SkyNode::traverse( osg::NodeVisitor& nv )
 
         if ( _autoAmbience )
         {
-            const float minAmb = 0.3f;
-            const float maxAmb = 1.0f;
+            const float minAmb = 0.2f;
+            const float maxAmb = 0.92f;
             const float minDev = -0.2f;
             const float maxDev = 0.75f;
             osg::Vec3 eye = cv->getViewPoint(); eye.normalize();
@@ -827,52 +824,8 @@ SkyNode::traverse( osg::NodeVisitor& nv )
             itr->second._light->setAmbient( osg::Vec4(amb,amb,amb,1.0) );
             //OE_INFO << "dev=" << dev << ", amb=" << amb << std::endl;
         }
-#if 0
-        // adjust the light color based on the eye point and the sun position.
-        float aMin =  0.1f;
-        float aMax =  0.9f;
-        float dMin = -0.5f;
-        float dMax =  0.5f;
-
-        osg::Vec3 eye = cv->getViewPoint();
-        eye.normalize();
-
-        osg::Vec3 sun = i->second._lightPos;
-        sun.normalize();
-
-        // clamp to valid range:
-        float d = osg::clampBetween(eye * sun, dMin, dMax);
-
-        // remap to [0..1]:
-        d = (d-dMin) / (dMax-dMin);
-
-        // map to ambient level:
-        float diff = aMin + d * (aMax-aMin);
-
-        i->second._light->setDiffuse( osg::Vec4(diff,diff,diff,1.0) );
-#endif
-        // Create a new stateset that contains the osg_ViewMatrix and osg_ViewMatrixInverse uniforms.  These are not 
-        // set per camera in OSG, but per view.  In the case of an RTT camera the values of these uniforms will be incorrect
-        // and not apply to the current camera.
-        // This actually seems to be dependenant on how you setup your RTT and needs some more investigation.
-        /*
-        osg::ref_ptr< osg::StateSet > stateSet = new osg::StateSet;
-        
-        //Apply the uniforms                        
-        osg::Uniform* osg_ViewMatrix = stateSet->getOrCreateUniform("osg_ViewMatrix", osg::Uniform::FLOAT_MAT4);
-        osg_ViewMatrix->set( cv->getCurrentCamera()->getViewMatrix() );       
-        stateSet->addUniform( osg_ViewMatrix );
-
-        osg::Uniform* osg_ViewMatrixInverse = stateSet->getOrCreateUniform("osg_ViewMatrixInverse", osg::Uniform::FLOAT_MAT4);
-        osg_ViewMatrixInverse->set( osg::Matrix::inverse(cv->getCurrentCamera()->getViewMatrix()) );                                     
-        stateSet->addUniform( osg_ViewMatrixInverse);
-        
-        cv->pushStateSet( stateSet.get() );   
-        */
 
         itr->second._cullContainer->accept( nv );
-
-        //cv->popStateSet();        
 
         // restore a custom clamper.
         if ( cb.valid() ) cv->setClampProjectionMatrixCallback( cb.get() );

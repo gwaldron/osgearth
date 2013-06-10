@@ -55,10 +55,15 @@ public:
     }
 
     // override
-      void initialize( const osgDB::Options* dbOptions, const Profile* overrideProfile)
+    Status initialize(const osgDB::Options* dbOptions)
     {
+        // no caching of source tiles
+        _dbOptions = Registry::instance()->cloneOrCreateOptions( dbOptions );
+        CachePolicy::NO_CACHE.apply( _dbOptions.get() );
+
         //Set the profile
-        setProfile( osgEarth::Registry::instance()->getGlobalMercatorProfile() );
+        const osgEarth::Profile* profile = osgEarth::Registry::instance()->getSphericalMercatorProfile();
+        setProfile( profile );              
 
 #if 0
         //Open the database
@@ -74,9 +79,10 @@ public:
         int flags = SQLITE_OPEN_READONLY;
         int rc = sqlite3_open_v2( _options.filename()->c_str(), &_database, flags, 0L );
         if ( rc != 0 )
-        {
-            OE_WARN << LC << "Failed to open database \"" << *_options.filename() << "\": " << sqlite3_errmsg(_database) << std::endl;
-            return;
+        {                        
+            std::stringstream buf;
+            buf << "Failed to open database \"" << *_options.filename() << "\": " << sqlite3_errmsg(_database);
+            return Status::Error(buf.str());
         }
 
         //Print out some metadata
@@ -115,6 +121,10 @@ public:
         _rw = osgDB::Registry::instance()->getReaderWriterForExtension( _tileFormat );
 
         computeLevels();
+
+        _emptyImage = ImageUtils::createEmptyImage( 256, 256 );
+        
+        return STATUS_OK;
     }    
 
     // override
@@ -127,8 +137,7 @@ public:
 
         if (z < (int)_minLevel)
         {
-            //Return an empty image to make it continue subdividing
-            return ImageUtils::createEmptyImage();
+            return _emptyImage.get();            
         }
 
         if (z > (int)_maxLevel)
@@ -171,7 +180,7 @@ public:
             osgDB::ReaderWriter::ReadResult rr = _rw->readImage( imageBufStream );
             if (rr.validImage())
             {
-                result = rr.takeImage();            
+                result = rr.takeImage();                
             }
         }
         else
@@ -237,7 +246,7 @@ public:
         {                     
             _minLevel = sqlite3_column_int( select, 0 );
             _maxLevel = sqlite3_column_int( select, 1 );
-            //OE_NOTICE << "Min=" << _minLevel << " Max=" << _maxLevel << std::endl;
+            OE_NOTICE << "Min=" << _minLevel << " Max=" << _maxLevel << std::endl;
         }
         else
         {
@@ -258,8 +267,10 @@ private:
     sqlite3* _database;
     unsigned int _minLevel;
     unsigned int _maxLevel;
+    osg::ref_ptr< osg::Image> _emptyImage;
 
     osg::ref_ptr<osgDB::ReaderWriter> _rw;
+    osg::ref_ptr<osgDB::Options> _dbOptions;
     std::string _tileFormat;
 
 };

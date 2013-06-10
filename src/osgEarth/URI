@@ -25,7 +25,6 @@
 #include <osgEarth/Containers>
 #include <osgEarth/FileUtils>
 #include <osgEarth/IOTypes>
-#include <osgEarth/Progress>
 #include <osg/Image>
 #include <osg/Node>
 #include <osgDB/ReaderWriter>
@@ -35,6 +34,7 @@
 namespace osgEarth
 {
     class URI;
+    class ProgressCallback;
 
     /**
      * Context for resolving relative URIs.

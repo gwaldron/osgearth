@@ -80,8 +80,6 @@ HeightFieldUtils::getHeightAtPixel(const osg::HeightField* hf, double c, double 
             return NO_DATA_VALUE;
         }
 
-        double dx = c - (double)colMin;
-        double dy = r - (double)rowMin;
 
         //The quad consisting of the 4 corner points can be made into two triangles.
         //The "left" triangle is ll, ur, ul
@@ -89,6 +87,55 @@ HeightFieldUtils::getHeightAtPixel(const osg::HeightField* hf, double c, double 
 
         //Determine which triangle the point falls in.
         osg::Vec3d v0, v1, v2;
+
+        bool orientation = fabs(llHeight-urHeight) < fabs(ulHeight-lrHeight);
+        if ( orientation )
+        {
+            double dx = c - (double)colMin;
+            double dy = r - (double)rowMin;
+
+            // divide along ll->ur
+            if (dx > dy)
+            {
+                //The point lies in the right triangle
+                v0.set(colMin, rowMin, llHeight);
+                v1.set(colMax, rowMin, lrHeight);
+                v2.set(colMax, rowMax, urHeight);
+            }
+            else
+            {
+                //The point lies in the left triangle
+                v0.set(colMin, rowMin, llHeight);
+                v1.set(colMax, rowMax, urHeight);
+                v2.set(colMin, rowMax, ulHeight);
+            }
+        }
+        else
+        {
+            double dx = c - (double)colMin;
+            double dy = (double)rowMax - r;
+
+            // divide along ul->lr
+            if (dx > dy)
+            {
+                //The point lies in the right triangle
+                v0.set(colMax, rowMin, lrHeight);
+                v1.set(colMax, rowMax, urHeight);
+                v2.set(colMin, rowMax, ulHeight);
+            }
+            else
+            {
+                //The point lies in the left triangle
+                v0.set(colMin, rowMin, llHeight);
+                v1.set(colMax, rowMin, lrHeight);
+                v2.set(colMin, rowMax, ulHeight);
+            }
+        }
+
+#if 0
+        double dx = c - (double)colMin;
+        double dy = r - (double)rowMin;
+
         if (dx > dy)
         {
             //The point lies in the right triangle
@@ -103,6 +150,7 @@ HeightFieldUtils::getHeightAtPixel(const osg::HeightField* hf, double c, double 
             v1.set(colMax, rowMax, urHeight);
             v2.set(colMin, rowMax, ulHeight);
         }
+#endif
 
         //Compute the normal
         osg::Vec3d n = (v1 - v0) ^ (v2 - v0);
@@ -229,11 +277,34 @@ HeightFieldUtils::getHeightAtNormalizedLocation(const osg::HeightField* input,
                                                 double nx, double ny,
                                                 ElevationInterpolation interp)
 {
-    double px = nx * (double)(input->getNumColumns() - 1);
-    double py = ny * (double)(input->getNumRows() - 1);
+    double px = osg::clampBetween(nx, 0.0, 1.0) * (double)(input->getNumColumns() - 1);
+    double py = osg::clampBetween(ny, 0.0, 1.0) * (double)(input->getNumRows() - 1);
     return getHeightAtPixel( input, px, py, interp );
 }
 
+bool
+HeightFieldUtils::getNormalAtNormalizedLocation(const osg::HeightField* input,
+                                                double nx, double ny,
+                                                osg::Vec3& output,
+                                                ElevationInterpolation interp)
+{
+    double dx = 1.0/(double)(input->getNumColumns()-1);
+    double dy = 1.0/(double)(input->getNumRows()-1);
+
+    double xmin = osg::clampAbove( nx-dx, 0.0 );
+    double xmax = osg::clampBelow( nx+dx, 1.0 );
+    double ymin = osg::clampAbove( ny-dx, 0.0 );
+    double ymax = osg::clampBelow( ny+dy, 1.0 );
+
+    osg::Vec3 west (xmin, ny, getHeightAtNormalizedLocation(input, xmin, ny, interp));
+    osg::Vec3 east (xmax, ny, getHeightAtNormalizedLocation(input, xmax, ny, interp));
+    osg::Vec3 south(nx, ymin, getHeightAtNormalizedLocation(input, nx, ymin, interp));
+    osg::Vec3 north(nx, ymax, getHeightAtNormalizedLocation(input, nx, ymax, interp));
+
+    output = (west-east) ^ (north-south);
+    output.normalize();
+    return true;
+}
 
 void
 HeightFieldUtils::scaleHeightFieldToDegrees( osg::HeightField* hf )
@@ -428,7 +499,9 @@ HeightFieldUtils::resolveInvalidHeights(osg::HeightField* grid,
 }
 
 osg::NodeCallback*
-HeightFieldUtils::createClusterCullingCallback( osg::HeightField* grid, osg::EllipsoidModel* et, float verticalScale )
+HeightFieldUtils::createClusterCullingCallback(osg::HeightField*          grid, 
+                                               const osg::EllipsoidModel* et, 
+                                               float                      verticalScale )
 {
     //This code is a very slightly modified version of the DestinationTile::createClusterCullingCallback in VirtualPlanetBuilder.
     if ( !grid || !et )

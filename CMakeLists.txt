@@ -111,6 +111,7 @@ FIND_PACKAGE(Sqlite3)
 FIND_PACKAGE(ZLIB)
 FIND_PACKAGE(V8)
 FIND_PACKAGE(JavaScriptCore)
+FIND_PACKAGE(LibNoise)
 
 FIND_PACKAGE(Qt4)
 IF (QT4_FOUND)
@@ -381,6 +382,11 @@ CONFIGURE_FILE(
 ADD_CUSTOM_TARGET(uninstall
   "${CMAKE_COMMAND}" -P "${CMAKE_CURRENT_BINARY_DIR}/cmake_uninstall.cmake")
 
+
+
+#------------------------------------------------------------------------------
+# Docs.
+add_subdirectory(docs)
 
 
 

@@ -20,6 +20,7 @@
 #include <osgEarth/Registry>
 #include <osgEarth/Capabilities>
 #include <osgEarth/VirtualProgram>
+#include <osgEarth/TerrainEngineNode>
 
 #define LC "[ElevationMorph] "
 
@@ -29,8 +30,8 @@ using namespace osgEarth::Util;
 namespace
 {
     // This shader will morph elevation from old heights to new heights as
-    // installed in the terrain tile's vertex attributes. attribs[3] holds
-    // the new value; attribs2[3] holds the old one. 
+    // installed in the terrain tile's vertex attributes. oe_terrain_attr[3] holds
+    // the new value; oe_terrain_attr[3] holds the old one. 
     //
     // We use two methods: distance to vertex and time. The morph ratio is
     // a function of the distance from the camera to the vertex (taking into
@@ -42,8 +43,8 @@ namespace
     // in your terrain tile. (See MapOptions::elevation_tile_size).
 
     const char* vs =
-        "attribute vec4 oe_morph_attribs; \n"
-        "attribute vec4 oe_morph_attribs2; \n"
+        "attribute vec4 oe_terrain_attr; \n"
+        "attribute vec4 oe_terrain_attr2; \n"
         "uniform float oe_min_tile_range_factor; \n"
         "uniform vec4 oe_tile_key; \n"
         "uniform float osg_FrameTime; \n"
@@ -53,18 +54,19 @@ namespace
 
         "void oe_morph_vertex(inout vec4 VertexMODEL) \n"
         "{ \n"
-        "    float far        = oe_min_tile_range_factor; \n"
-        "    float near       = far * 0.85; \n"
-        "    vec4  VertexVIEW = gl_ModelViewMatrix * VertexMODEL; \n"
         "    float radius     = oe_tile_key.w; \n"
-        "    float d          = length(VertexVIEW.xyz/VertexVIEW.w) - radius; \n"
-        "    float a          = clamp( d/radius, near, far ); \n"
-        "    float r_dist     = ((a-near)/(far-near)); \n"
+        "    float near       = oe_min_tile_range_factor*radius; \n"
+        "    float far        = near + radius*2.0; \n"
+        "    vec4  VertexVIEW = gl_ModelViewMatrix * VertexMODEL; \n"
+        "    float d          = length(VertexVIEW.xyz/VertexVIEW.w); \n"
+        "    float r_dist     = clamp((d-near)/(far-near), 0.0, 1.0); \n"
+
         "    float r_time     = 1.0 - clamp(osg_FrameTime-(oe_tile_birthtime+oe_morph_delay), 0.0, oe_morph_duration)/oe_morph_duration; \n"
         "    float r          = max(r_dist, r_time); \n"
-        "    vec3  upVector   = oe_morph_attribs.xyz; \n"
-        "    float elev       = oe_morph_attribs.w; \n"
-        "    float elevOld    = oe_morph_attribs2.w; \n"
+
+        "    vec3  upVector   = oe_terrain_attr.xyz; \n"
+        "    float elev       = oe_terrain_attr.w; \n"
+        "    float elevOld    = oe_terrain_attr2.w; \n"
         "    vec3  offset     = upVector * r * (elevOld - elev); \n"
         "    VertexMODEL      = VertexMODEL + vec4(offset/VertexMODEL.w, 0.0); \n"
         "} \n";
@@ -72,62 +74,109 @@ namespace
 
 
 ElevationMorph::ElevationMorph() :
-_delay    ( 0.0f ),
-_duration ( 0.25f )
+TerrainEffect(),
+_delay       ( 0.0f ),
+_duration    ( 0.25f )
 {
-    _delayUniform = new osg::Uniform(osg::Uniform::FLOAT, "oe_morph_delay");
-    _delayUniform->set( (float)_delay );
-
-    _durationUniform = new osg::Uniform(osg::Uniform::FLOAT, "oe_morph_duration");
-    _durationUniform->set( (float)_duration );
+    init();
 }
 
 
-ElevationMorph::~ElevationMorph()
+ElevationMorph::ElevationMorph(const Config& conf) :
+TerrainEffect(),
+_delay       ( 0.0f ),
+_duration    ( 0.25f )
 {
-    setTerrainNode(0L);
+    mergeConfig(conf);
+    init();
+}
+
+
+void
+ElevationMorph::init()
+{
+    _delayUniform = new osg::Uniform(osg::Uniform::FLOAT, "oe_morph_delay");
+    _delayUniform->set( (float)*_delay );
+
+    _durationUniform = new osg::Uniform(osg::Uniform::FLOAT, "oe_morph_duration");
+    _durationUniform->set( (float)*_duration );
 }
 
 
 void
 ElevationMorph::setDelay(float delay)
 {
-    _delay = osg::clampAbove( delay, 0.0f );
-    _delayUniform->set( _delay );
+    if ( delay != _delay.get() )
+    {
+        _delay = osg::clampAbove( delay, 0.0f );
+        _delayUniform->set( _delay.get() );
+    }
 }
 
 
 void
 ElevationMorph::setDuration(float duration)
 {
-    _duration = osg::clampAbove( duration, 0.0f );
-    _durationUniform->set( _duration );
+    if ( duration != _duration.get() )
+    {
+        _duration = osg::clampAbove( duration, 0.0f );
+        _durationUniform->set( _duration.get() );
+    }
 }
 
 
 void
-ElevationMorph::setTerrainNode(osg::Node* node)
+ElevationMorph::onInstall(TerrainEngineNode* engine)
 {
-    if ( node )
+    if ( engine )
     {
-        osg::StateSet* ss = node->getOrCreateStateSet();
+        osg::StateSet* stateset = engine->getOrCreateStateSet();
 
-        ss->addUniform( _delayUniform.get() );
-        ss->addUniform( _durationUniform.get() );
+        stateset->addUniform( _delayUniform.get() );
+        stateset->addUniform( _durationUniform.get() );
 
-        VirtualProgram* vp = dynamic_cast<VirtualProgram*>(ss->getAttribute(VirtualProgram::SA_TYPE));
-        if ( !vp )
-        {
-            vp = new VirtualProgram();
-            ss->setAttributeAndModes( vp, 1 );
-        }
+        VirtualProgram* vp = VirtualProgram::getOrCreate(stateset);
         vp->setFunction( "oe_morph_vertex", vs, ShaderComp::LOCATION_VERTEX_MODEL );
-        vp->addBindAttribLocation( "oe_morph_attribs",  osg::Drawable::ATTRIBUTE_6 );
-        vp->addBindAttribLocation( "oe_morph_attribs2", osg::Drawable::ATTRIBUTE_7 );
     }
-    else
+}
+
+
+void
+ElevationMorph::onUninstall(TerrainEngineNode* engine)
+{
+    if ( engine )
     {
-        //todo - remove
-        OE_WARN << LC << "Remove NYI." << std::endl;
+        osg::StateSet* stateset = engine->getStateSet();
+        if ( stateset )
+        {
+            stateset->removeUniform( _delayUniform.get() );
+            stateset->removeUniform( _durationUniform.get() );
+
+            VirtualProgram* vp = VirtualProgram::get(stateset);
+            if ( vp )
+            {
+                vp->removeShader( "oe_morph_vertex" );
+            }
+        }
     }
+}
+
+
+//-------------------------------------------------------------
+
+
+void
+ElevationMorph::mergeConfig(const Config& conf)
+{
+    conf.getIfSet( "delay",    _delay );
+    conf.getIfSet( "duration", _duration );
+}
+
+Config
+ElevationMorph::getConfig() const
+{
+    Config conf("elevation_morph");
+    conf.addIfSet( "delay",    _delay );
+    conf.addIfSet( "duration", _duration );
+    return conf;
 }

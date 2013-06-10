@@ -18,7 +18,6 @@
 */
 
 #include <osgEarthAnnotation/AnnotationUtils>
-#include <osgEarthAnnotation/Decluttering>
 #include <osgEarthSymbology/Color>
 #include <osgEarthSymbology/MeshSubdivider>
 #include <osgEarth/ThreadingUtils>
@@ -66,6 +65,22 @@ AnnotationUtils::UNIFORM_FADE()
   return s;
 }
 
+osgText::String::Encoding
+AnnotationUtils::convertTextSymbolEncoding (const TextSymbol::Encoding encoding) {
+	osgText::String::Encoding text_encoding = osgText::String::ENCODING_UNDEFINED;
+
+	switch(encoding)
+	{
+	case TextSymbol::ENCODING_ASCII: text_encoding = osgText::String::ENCODING_ASCII; break;
+	case TextSymbol::ENCODING_UTF8: text_encoding = osgText::String::ENCODING_UTF8; break;
+	case TextSymbol::ENCODING_UTF16: text_encoding = osgText::String::ENCODING_UTF16; break;
+	case TextSymbol::ENCODING_UTF32: text_encoding = osgText::String::ENCODING_UTF32; break;
+	default: text_encoding = osgText::String::ENCODING_UNDEFINED; break;
+	}
+
+	return text_encoding;
+}
+
 osg::Drawable* 
 AnnotationUtils::createTextDrawable(const std::string& text,
                                     const TextSymbol*  symbol,
@@ -73,21 +88,28 @@ AnnotationUtils::createTextDrawable(const std::string& text,
                                     
 {
     osgText::Text* t = new osgText::Text();
-    osgText::String::Encoding text_encoding = osgText::String::ENCODING_UNDEFINED;
+    
+	osgText::String::Encoding text_encoding = osgText::String::ENCODING_UNDEFINED;
     if ( symbol && symbol->encoding().isSet() )
     {
-        switch(symbol->encoding().value())
+		text_encoding = convertTextSymbolEncoding(symbol->encoding().value());
+    }
+    
+	t->setText( text, text_encoding );
+
+    if ( symbol && symbol->layout().isSet() )
+    {
+        if(symbol->layout().value() == TextSymbol::LAYOUT_RIGHT_TO_LEFT)
         {
-        case TextSymbol::ENCODING_ASCII: text_encoding = osgText::String::ENCODING_ASCII; break;
-        case TextSymbol::ENCODING_UTF8: text_encoding = osgText::String::ENCODING_UTF8; break;
-        case TextSymbol::ENCODING_UTF16: text_encoding = osgText::String::ENCODING_UTF16; break;
-        case TextSymbol::ENCODING_UTF32: text_encoding = osgText::String::ENCODING_UTF32; break;
-        default: text_encoding = osgText::String::ENCODING_UNDEFINED; break;
+            t->setLayout(osgText::TextBase::RIGHT_TO_LEFT);
+        }else if(symbol->layout().value() == TextSymbol::LAYOUT_LEFT_TO_RIGHT)
+        {
+            t->setLayout(osgText::TextBase::LEFT_TO_RIGHT);
+        }else if(symbol->layout().value() == TextSymbol::LAYOUT_VERTICAL)
+        {
+            t->setLayout(osgText::TextBase::VERTICAL);
         }
     }
-
-    t->setText( text, text_encoding );
-
     if ( symbol && symbol->pixelOffset().isSet() )
     {
         t->setPosition( osg::Vec3(
@@ -143,29 +165,6 @@ AnnotationUtils::createTextDrawable(const std::string& text,
     // need to be marked DYNAMIC
     if ( t->getStateSet() )
       t->getStateSet()->setRenderBinToInherit();
-    //osg::StateSet* stateSet = new osg::StateSet();
-    //t->setStateSet( stateSet );
-
-#if 0 // OBE: the decluttering bin is now set higher up (in OrthoNode)
-    //osg::StateSet* stateSet = t->getOrCreateStateSet();
-
-    if ( symbol && symbol->declutter().isSet() )
-    {
-        Decluttering::setEnabled( stateSet, *symbol->declutter() );
-    }
-    else
-    {
-        stateSet->setRenderBinToInherit();
-    }
-#endif
-
-#if 0 // OBE: shadergenerator now takes care of all this
-    // add the static "isText=true" uniform; this is a hint for the annotation shaders
-    // if they get installed.
-    //static osg::ref_ptr<osg::Uniform> s_isTextUniform = new osg::Uniform(osg::Uniform::BOOL, UNIFORM_IS_TEXT());
-    //s_isTextUniform->set( true );
-    //stateSet->addUniform( s_isTextUniform.get() );
-#endif
 
     return t;
 }

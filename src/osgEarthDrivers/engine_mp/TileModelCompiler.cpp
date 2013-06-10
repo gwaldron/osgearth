@@ -80,7 +80,7 @@ namespace
     {
         TileModel::ColorData           _layer;
         osg::ref_ptr<const GeoLocator> _locator;
-        osg::ref_ptr<osg::Vec2Array>   _tileCoords;
+        //osg::ref_ptr<osg::Vec2Array>   _tileCoords;
         osg::ref_ptr<osg::Vec2Array>   _texCoords;
         osg::ref_ptr<osg::Vec2Array>   _skirtTexCoords;
         osg::ref_ptr<osg::Vec2Array>   _stitchTexCoords;
@@ -129,6 +129,9 @@ namespace
             j_sampleFactor   = 1.0f;
             useVBOs = !Registry::capabilities().preferDisplayListsForStaticGeometry();
             textureImageUnit = 0;
+            renderTileCoords = 0L;
+            ownsTileCoords   = false;
+            parentModel      = 0L;
         }
 
         bool                     useVBOs;
@@ -136,10 +139,14 @@ namespace
 
         const TileModel*         model;                         // the tile's data model
         const MaskLayerVector&   maskLayers;                    // map-global masking layer set
-        osg::ref_ptr<GeoLocator> geoLocator;                    // tile locator adjusted to geocentric
+        osg::ref_ptr<GeoLocator> geoLocator;                    // tile locator adjusted to geographic
         osg::Vec3d               centerModel;                   // tile center in model (world) coords
 
+        const TileModel*         parentModel;
+
         RenderLayerVector        renderLayers;
+        osg::Vec2Array*          renderTileCoords;
+        bool                     ownsTileCoords;
 
         // surface data:
         osg::Geode*                   surfaceGeode;
@@ -272,11 +279,12 @@ namespace
         d.originalNumCols = 8;        
 
         // read the row/column count and skirt size from the model:
-        osgTerrain::HeightFieldLayer* hflayer = d.model->_elevationData.getHFLayer();
-        if (hflayer)
+        osg::HeightField* hf = d.model->_elevationData.getHeightField();
+        //osgTerrain::HeightFieldLayer* hflayer = d.model->_elevationData.getHFLayer();
+        if ( hf ) //hflayer)
         {
-            d.numCols = hflayer->getNumColumns();
-            d.numRows = hflayer->getNumRows();         
+            d.numCols = hf->getNumColumns(); //hflayer->getNumColumns();
+            d.numRows = hf->getNumRows(); //hflayer->getNumRows();         
             d.originalNumCols = d.numCols;
             d.originalNumRows = d.numRows;
         }
@@ -351,6 +359,24 @@ namespace
         // array, saving on memory.
         d.renderLayers.reserve( d.model->_colorData.size() );
 
+        // unit tile coords - [0..1] always across the tile.
+        osg::Vec4d idmat;
+        idmat[0] = 0.0;
+        idmat[1] = 0.0;
+        idmat[2] = 1.0;
+        idmat[3] = 1.0;
+
+        osg::ref_ptr<osg::Vec2Array>& tileCoords = cache._surfaceTexCoordArrays.get( idmat, d.numCols, d.numRows );
+        if ( !tileCoords.valid() )
+        {
+            // Note: anything in the cache must have its own VBO. No sharing!
+            tileCoords = new osg::Vec2Array();
+            tileCoords->setVertexBufferObject( new osg::VertexBufferObject() );
+            tileCoords->reserve( d.numVerticesInSurface );
+            d.ownsTileCoords = true;
+        }
+        d.renderTileCoords = tileCoords.get();
+
         // build a list of "render layers", in rendering order, sharing texture coordinate
         // arrays wherever possible.
         for( TileModel::ColorDataByUID::const_iterator i = d.model->_colorData.begin(); i != d.model->_colorData.end(); ++i )
@@ -359,20 +385,14 @@ namespace
             RenderLayer r;
             r._layer = colorLayer;
 
-            const GeoLocator* locator = dynamic_cast<const GeoLocator*>( r._layer.getLocator() );
+            const GeoLocator* locator = r._layer.getLocator();
             if ( locator )
             {
                 // if we have no mask records, we can use the texture coordinate array cache.
-                if ( d.maskRecords.size() == 0 && locator->isLinear() )
+                if ( d.maskLayers.size() == 0 && locator->isLinear() )
                 {
                     const GeoExtent& locex = locator->getDataExtent();
                     const GeoExtent& keyex = d.model->_tileKey.getExtent();
-
-                    osg::Vec4d idmat;
-                    idmat[0] = 0.0;
-                    idmat[1] = 0.0;
-                    idmat[2] = 1.0;
-                    idmat[3] = 1.0;
 
                     osg::Vec4d mat;
                     mat[0] = (keyex.xMin() - locex.xMin())/locex.width();
@@ -394,18 +414,6 @@ namespace
                     }
                     r._texCoords = surfaceTexCoords.get();
 
-                    // unit tile coords - [0..1] always across the tile.
-                    osg::ref_ptr<osg::Vec2Array>& tileCoords = cache._surfaceTexCoordArrays.get( idmat, d.numCols, d.numRows );
-                    if ( !tileCoords.valid() )
-                    {
-                        // Note: anything in the cache must have its own VBO. No sharing!
-                        tileCoords = new osg::Vec2Array();
-                        tileCoords->setVertexBufferObject( new osg::VertexBufferObject() );
-                        tileCoords->reserve( d.numVerticesInSurface );
-                        r._ownsTileCoords = true;
-                    }
-                    r._tileCoords = tileCoords.get();
-
                     osg::ref_ptr<osg::Vec2Array>& skirtTexCoords = cache._skirtTexCoordArrays.get( mat, d.numCols, d.numRows );
                     if ( !skirtTexCoords.valid() )
                     {
@@ -425,9 +433,9 @@ namespace
                     r._texCoords->reserve( d.numVerticesInSurface );
                     r._ownsTexCoords = true;
 
-                    r._tileCoords = new osg::Vec2Array();
-                    r._tileCoords->reserve( d.numVerticesInSurface );
-                    r._ownsTileCoords = true;
+                    //r._tileCoords = new osg::Vec2Array();
+                    //r._tileCoords->reserve( d.numVerticesInSurface );
+                    //r._ownsTileCoords = true;
 
                     r._skirtTexCoords = new osg::Vec2Array();
                     r._skirtTexCoords->reserve( d.numVerticesInSkirt );
@@ -443,9 +451,10 @@ namespace
                 r._locator = locator;
                 if ( locator->getCoordinateSystemType() == osgTerrain::Locator::GEOCENTRIC )
                 {
-                    const GeoLocator* geo = dynamic_cast<const GeoLocator*>(locator);
-                    if ( geo )
-                        r._locator = geo->getGeographicFromGeocentric();
+                    r._locator = locator->getGeographicFromGeocentric();
+                    //const GeoLocator* geo = dynamic_cast<const GeoLocator*>(locator);
+                    //if ( geo )
+                    //    r._locator = geo->getGeographicFromGeocentric();
                 }
 
                 d.renderLayers.push_back( r );
@@ -470,7 +479,18 @@ namespace
     {
         d.surfaceBound.init();
 
-        osgTerrain::HeightFieldLayer* elevationLayer = d.model->_elevationData.getHFLayer();
+        //osgTerrain::HeightFieldLayer* elevationLayer = d.model->_elevationData.getHFLayer();
+
+        osg::HeightField* hf            = d.model->_elevationData.getHeightField();
+        GeoLocator*       hfLocator     = d.model->_elevationData.getLocator();
+
+        //if ( hfLocator )
+        //{
+        //    d.hfGeoLocator = hfLocator->getCoordinateSystemType() == GeoLocator::GEOCENTRIC ?
+        //        hfLocator->getGeographicFromGeocentric() :
+        //        hfLocator;
+        //}
+        //bool hfEquivToTile = hfLocator.valid() ? d.geoLocator->isEquivalentTo( *d.hfGeoLocator.get() ) : false;
 
         // populate vertex and tex coord arrays    
         for(unsigned j=0; j < d.numRows; ++j)
@@ -480,6 +500,26 @@ namespace
                 unsigned int iv = j*d.numCols + i;
                 osg::Vec3d ndc( ((double)i)/(double)(d.numCols-1), ((double)j)/(double)(d.numRows-1), 0.0);
 
+                // raw height:
+                float heightValue = 0.0f;
+                bool  validValue  = true;
+
+                if ( hf )
+                {
+                    validValue = d.model->_elevationData.getHeight( ndc, d.model->_tileLocator, heightValue, INTERP_TRIANGULATE );
+                }
+                //if ( hfLocator )
+                //{
+                //    osg::Vec3d hf_ndc( ndc );
+                //    if ( !hfEquivToTile )
+                //    {
+                //        osgTerrain::Locator::convertLocalCoordBetween( *d.geoLocator.get(), ndc, *hfLocator, hf_ndc );
+                //    }
+                //    heightValue = HeightFieldUtils::getHeightAtNormalizedLocation( hf, hf_ndc.x(), hf_ndc.y() );
+                //}
+                ndc.z() = heightValue;
+
+#if 0
                 bool validValue = true;
 
                 // use the sampling factor to determine the lookup index:
@@ -492,7 +532,12 @@ namespace
                 if ( elevationLayer )
                 {
                     validValue = elevationLayer->getValidValue(i_equiv,j_equiv, heightValue);
-                    ndc.z() = heightValue; //*scaleHeight; // scaling will be done in the shader
+                    ndc.z() = heightValue;
+                }
+#endif
+                if ( !validValue )
+                {
+                    d.indices[iv] = -1;
                 }
 
                 // First check whether the sampling point falls within a mask's bounding box.
@@ -542,11 +587,11 @@ namespace
                                 r->_texCoords->push_back( osg::Vec2( ndc.x(), ndc.y() ) );
                             }
                         }
+                    }
 
-                        if ( r->_ownsTileCoords )
-                        {
-                            r->_tileCoords->push_back( osg::Vec2(ndc.x(), ndc.y()) );
-                        }
+                    if ( d.ownsTileCoords )
+                    {
+                        d.renderTileCoords->push_back( osg::Vec2(ndc.x(), ndc.y()) );
                     }
 
                     // record the raw elevation value in our float array for later
@@ -563,27 +608,50 @@ namespace
 
                     // Calculate and store the "old height", i.e the height value from
                     // the parent LOD.
-                    float oldHeightValue = heightValue;
+                    float     oldHeightValue = heightValue;
+                    osg::Vec3 oldNormal;
+
+#if 1
+
+                    // This only works if the tile size is an odd number in both directions.
+                    if (d.model->_tileKey.getLOD() > 0 && (d.numCols&1) && (d.numRows&1) && d.parentModel )
+                    {
+                        d.parentModel->_elevationData.getHeight( ndc, d.model->_tileLocator.get(), oldHeightValue, INTERP_TRIANGULATE );
+                        d.parentModel->_elevationData.getNormal( ndc, d.model->_tileLocator.get(), oldNormal );
+                    }
+                    else
+                    {
+                        d.model->_elevationData.getNormal(ndc, d.model->_tileLocator.get(), oldNormal);
+                    }
+
+                    // convert that old normal to tile space.
+                    osg::Vec3d oldNormal_model;
+                    d.model->_tileLocator->unitToModel( oldNormal, oldNormal_model );
+                    oldNormal = oldNormal_model -= model;
+                    oldNormal.normalize();
+
+#else
 
                     // This only works if the tile size is an odd number in both directions.
                     if ( d.model->_tileKey.getLOD() > 0 && (d.numCols&1) && (d.numRows&1) )
                     {
                         // Access the parent tile:
                         osg::HeightField* parent = d.model->_elevationData.getParent();
-                        if ( parent )
+
+                        if ( parent && parent->getNumRows() == d.numRows && parent->getNumColumns() == d.numCols )
                         {
                             // calculate the indicies of the same location in the 
                             // parent heightfield:
                             unsigned q = d.model->_tileKey.getQuadrant();
-                            int xoffset = q == 1 || q == 3 ? parent->getNumColumns()/2 : 0;
-                            int yoffset = q == 0 || q == 1 ? parent->getNumRows()/2 : 0;
-                            int ip = xoffset + i/2;
-                            int jp = yoffset + j/2;
+                            int xoffset = q == 1 || q == 3 ? (parent->getNumColumns() >> 1) : 0;
+                            int yoffset = q == 0 || q == 1 ? (parent->getNumRows()    >> 1) : 0;
+                            int ip = xoffset + (i >> 1);
+                            int jp = yoffset + (j >> 1);
 
                             // the interpolation will be different depending on whether
                             // the col and row numbers are odd:
-                            bool oddCol = i%2 == 1;
-                            bool oddRow = j%2 == 1;
+                            bool oddCol = i & 0x1;
+                            bool oddRow = j & 0x1;
 
                             if ( oddCol && oddRow )
                             {
@@ -620,6 +688,7 @@ namespace
                             }
                         }
                     }
+#endif
 
                     // first attribute set has the unit extrusion vector and the
                     // raw height value.
@@ -631,13 +700,21 @@ namespace
 
                     // second attribute set has the old height value in "w"
                     (*d.surfaceAttribs2).push_back( osg::Vec4f(
-                        0.0f,
-                        0.0f,
-                        0.0f,
+                        oldNormal.x(),
+                        oldNormal.y(),
+                        oldNormal.z(),
+                        //0.0f,
+                        //0.0f,
+                        //0.0f,
                         oldHeightValue ) );
                 }
             }
         }
+
+        //if ( d.renderLayers[0]._texCoords->size() < d.surfaceVerts->size() )
+        //{
+        //    OE_WARN << LC << "not good. mask error." << std::endl;
+        //}
     }
 
 
@@ -648,7 +725,7 @@ namespace
      */
     void createMaskGeometry( Data& d )
     {
-        osgTerrain::HeightFieldLayer* elevationLayer = d.model->_elevationData.getHFLayer();
+        bool hasElev = d.model->hasElevation();
 
         for (MaskRecordVector::iterator mr = d.maskRecords.begin(); mr != d.maskRecords.end(); ++mr)
         {
@@ -682,14 +759,12 @@ namespace
                     {
                         osg::Vec3d ndc( ((double)(i + min_i))/(double)(d.numCols-1), ((double)min_j)/(double)(d.numRows-1), 0.0);
 
-                        if (elevationLayer)
+                        //if (elevationLayer)
+                        if ( hasElev )
                         {
-                            unsigned i_equiv = d.i_sampleFactor==1.0 ? i + min_i : (unsigned) (double(i + min_i)*d.i_sampleFactor);
-                            unsigned j_equiv = d.j_sampleFactor==1.0 ? min_j : (unsigned) (double(min_j)*d.j_sampleFactor);
-
                             float value = 0.0f;
-                            if (elevationLayer->getValidValue(i_equiv,j_equiv, value))
-                                ndc.z() = value*d.scaleHeight;
+                            if ( d.model->_elevationData.getHeight( ndc, d.model->_tileLocator.get(), value, INTERP_BILINEAR ) )
+                                ndc.z() = value * d.scaleHeight;
                         }
 
                         (*maskSkirtPoly)[i] = ndc;
@@ -699,14 +774,11 @@ namespace
                     {
                         osg::Vec3d ndc( ((double)(i + min_i))/(double)(d.numCols-1), ((double)max_j)/(double)(d.numRows-1), 0.0);
 
-                        if (elevationLayer)
+                        if ( hasElev )
                         {
-                            unsigned i_equiv = d.i_sampleFactor==1.0 ? i + min_i : (unsigned) (double(i + min_i)*d.i_sampleFactor);
-                            unsigned j_equiv = d.j_sampleFactor==1.0 ? max_j : (unsigned) (double(max_j)*d.j_sampleFactor);
-
                             float value = 0.0f;
-                            if (elevationLayer->getValidValue(i_equiv,j_equiv, value))
-                                ndc.z() = value*d.scaleHeight;
+                            if ( d.model->_elevationData.getHeight( ndc, d.model->_tileLocator.get(), value, INTERP_BILINEAR ) )
+                                ndc.z() = value * d.scaleHeight;
                         }
 
                         (*maskSkirtPoly)[i + (2 * num_i + num_j - 3) - 2 * i] = ndc;
@@ -718,6 +790,14 @@ namespace
                     {
                         osg::Vec3d ndc( ((double)max_i)/(double)(d.numCols-1), ((double)(min_j + j + 1))/(double)(d.numRows-1), 0.0);
 
+                        if ( hasElev )
+                        {
+                            float value = 0.0f;
+                            if ( d.model->_elevationData.getHeight( ndc, d.model->_tileLocator.get(), value, INTERP_BILINEAR ) )
+                                ndc.z() = value * d.scaleHeight;
+                        }
+
+#if 0
                         if (elevationLayer)
                         {
                             unsigned int i_equiv = d.i_sampleFactor==1.0 ? max_i : (unsigned int) (double(max_i)*d.i_sampleFactor);
@@ -727,6 +807,7 @@ namespace
                             if (elevationLayer->getValidValue(i_equiv,j_equiv, value))
                                 ndc.z() = value*d.scaleHeight;
                         }
+#endif
 
                         (*maskSkirtPoly)[j + num_i] = ndc;
                     }
@@ -735,14 +816,11 @@ namespace
                     {
                         osg::Vec3d ndc( ((double)min_i)/(double)(d.numCols-1), ((double)(min_j + j + 1))/(double)(d.numRows-1), 0.0);
 
-                        if (elevationLayer)
+                        if ( hasElev )
                         {
-                            unsigned int i_equiv = d.i_sampleFactor==1.0 ? min_i : (unsigned int) (double(min_i)*d.i_sampleFactor);
-                            unsigned int j_equiv = d.j_sampleFactor==1.0 ? min_j + j + 1 : (unsigned int) (double(min_j + j + 1)*d.j_sampleFactor);
-
                             float value = 0.0f;
-                            if (elevationLayer->getValidValue(i_equiv,j_equiv, value))
-                                ndc.z() = value*d.scaleHeight;
+                            if ( d.model->_elevationData.getHeight( ndc, d.model->_tileLocator.get(), value, INTERP_BILINEAR ) )
+                                ndc.z() = value * d.scaleHeight;
                         }
 
                         (*maskSkirtPoly)[j + (2 * num_i + 2 * num_j - 5) - 2 * j] = ndc;
@@ -1226,7 +1304,7 @@ namespace
     void tessellateSurfaceGeometry( Data& d, bool optimizeTriangleOrientation, bool normalizeEdges )
     {    
         bool swapOrientation = !(d.model->_tileLocator->orientationOpenGL());
-        bool recalcNormals   = d.model->_elevationData.getHFLayer() != 0L;
+        bool recalcNormals   = d.model->hasElevation(); //d.model->_elevationData.getHFLayer() != 0L;
 
         osg::DrawElements* elements;
 
@@ -1363,7 +1441,7 @@ namespace
         
         if (recalcNormals && normalizeEdges)
         {            
-            OE_DEBUG << "Normalizing edges" << std::endl;
+            //OE_DEBUG << LC << "Normalizing edges" << std::endl;
 
             //Compute the edge normals if we have neighbor data
             //Get all the neighbors
@@ -1750,6 +1828,9 @@ namespace
             mr->_geom->_layers.resize( size );
         if ( d.stitching_skirts )
             d.stitching_skirts->_layers.resize( size );
+        
+        if ( d.renderTileCoords )
+            d.surface->_tileCoords = d.renderTileCoords;
 
         // install the render data for each layer:
         for( RenderLayerVector::const_iterator r = d.renderLayers.begin(); r != d.renderLayers.end(); ++r )
@@ -1775,7 +1856,6 @@ namespace
 
             // the surface:
             layer._texCoords  = r->_texCoords;
-            layer._tileCoords = r->_tileCoords;
             d.surface->_layers[order] = layer;
 
             // the skirt:
@@ -1830,19 +1910,21 @@ _textureImageUnit      ( texImageUnit )
 }
 
 
-bool
+TileNode*
 TileModelCompiler::compile(const TileModel* model,
-                           osg::Node*&      out_node,
-                           osg::StateSet*&  out_stateSet)
+                           const TileModel* parentModel)
 {
+    TileNode* tile = new TileNode( model->_tileKey, model );
+
     // Working data for the build.
     Data d(model, _masks);
 
+    d.parentModel = parentModel;
     d.scaleHeight = *_options.verticalScale();
 
-    // build the transform matrix for this tile:
+    // build the localization matrix for this tile:
     model->_tileLocator->unitToModel( osg::Vec3(0.5f, 0.5f, 0.0), d.centerModel );
-    osg::MatrixTransform* xform = new osg::MatrixTransform( osg::Matrix::translate(d.centerModel) );
+    tile->setMatrix( osg::Matrix::translate(d.centerModel) );
 
     // A Geode/Geometry for the surface:
     d.surface = new MPGeometry( model->_map.get(), _textureImageUnit );
@@ -1851,7 +1933,7 @@ TileModelCompiler::compile(const TileModel* model,
     d.surfaceGeode->addDrawable( d.surface );
     d.surfaceGeode->setNodeMask( *_options.primaryTraversalMask() );
 
-    xform->addChild( d.surfaceGeode );
+    tile->addChild( d.surfaceGeode );
 
     // A Geode/Geometry for the skirt. This is good for traversal masking (e.g. shadows)
     // but bad since we're not combining the entire tile into a single geometry.
@@ -1907,6 +1989,7 @@ TileModelCompiler::compile(const TileModel* model,
     // installs the per-layer rendering data into the Geometry objects.
     installRenderData( d );
 
+
     // lastly, optimize the results.
     // unnecessary (I think) since tessellateSurfaceGeometry already makes an optimal
     // triangle set
@@ -1929,10 +2012,8 @@ TileModelCompiler::compile(const TileModel* model,
         osgDB::Registry::instance()->getKdTreeBuilder())
     {            
         osg::ref_ptr<osg::KdTreeBuilder> builder = osgDB::Registry::instance()->getKdTreeBuilder()->clone();
-        xform->accept(*builder);
+        tile->accept(*builder);
     }
 
-    out_node     = xform;
-    out_stateSet = 0L;
-    return true;
+    return tile;
 }

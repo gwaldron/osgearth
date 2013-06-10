@@ -20,6 +20,7 @@
 #define OSGEARTHUTIL_VERTICAL_SCALE_H
 
 #include <osgEarthUtil/Common>
+#include <osgEarth/TerrainEffect>
 #include <osg/Uniform>
 #include <osg/Node>
 #include <osg/observer_ptr>
@@ -28,27 +29,34 @@
 namespace osgEarth { namespace Util
 {
     /**
-     * Controller that scales the terrain height.
+     * Terrain effect that scales the terrain height.
      */
-    class OSGEARTHUTIL_EXPORT VerticalScale
+    class OSGEARTHUTIL_EXPORT VerticalScale : public TerrainEffect
     {
     public:
         /** construct a new vertical scaling controller */
         VerticalScale();
-        virtual ~VerticalScale();
-
-        /** Attach the vertical scaler to the terrain renderer. Set to
-            NULL to detach. */
-        void setTerrainNode( osg::Node* node );
 
         /** Sets the scale factor. (1=default) */
         void setScale( float value );
-        float getScale() const { return _scale; }
+        float getScale() const { return _scale.get(); }
+
+    public: // TerrainEffect interface
+
+        void onInstall(TerrainEngineNode* engine);
+        void onUninstall(TerrainEngineNode* engine);
+
+    public: // serialization
+
+        VerticalScale(const Config& conf);
+        void mergeConfig(const Config& conf);
+        virtual Config getConfig() const;
 
     protected:
-        osg::observer_ptr<osg::Node> _terrain;
-        float                        _scale;
+        virtual ~VerticalScale() { }
+        void init();
 
+        optional<float>              _scale;
         osg::ref_ptr<osg::Uniform>   _scaleUniform;
     };
 

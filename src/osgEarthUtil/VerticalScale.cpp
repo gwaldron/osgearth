@@ -20,6 +20,7 @@
 #include <osgEarth/Registry>
 #include <osgEarth/Capabilities>
 #include <osgEarth/VirtualProgram>
+#include <osgEarth/TerrainEngineNode>
 
 #define LC "[VerticalScale] "
 
@@ -42,13 +43,13 @@ namespace
     // along its extrusion vector.
 
     const char* vs =
-        "attribute vec4 oe_vertscale_attribs; \n"
+        "attribute vec4 oe_terrain_attr; \n"
         "uniform float oe_vertscale_scale; \n"
 
         "void oe_vertscale_vertex(inout vec4 VertexMODEL) \n"
         "{ \n"
-        "    vec3  upVector  = oe_vertscale_attribs.xyz; \n"
-        "    float elev      = oe_vertscale_attribs.w; \n"
+        "    vec3  upVector  = oe_terrain_attr.xyz; \n"
+        "    float elev      = oe_terrain_attr.w; \n"
         "    vec3  offset    = upVector * elev * (oe_vertscale_scale-1.0); \n"
         "    VertexMODEL    += vec4(offset/VertexMODEL.w, 0.0); \n"
         "} \n";
@@ -56,48 +57,89 @@ namespace
 
 
 VerticalScale::VerticalScale() :
-_scale( 1.0f )
+TerrainEffect(),
+_scale       ( 1.0f )
 {
-    _scaleUniform = new osg::Uniform(osg::Uniform::FLOAT, "oe_vertscale_scale");
-    _scaleUniform->set( _scale );
+    init();
+}
+
+VerticalScale::VerticalScale(const Config& conf) :
+TerrainEffect(),
+_scale       ( 1.0f )
+{
+    mergeConfig(conf);
+    init();
 }
 
 
-VerticalScale::~VerticalScale()
+void
+VerticalScale::init()
 {
-    setTerrainNode(0L);
+    _scaleUniform = new osg::Uniform(osg::Uniform::FLOAT, "oe_vertscale_scale");
+    _scaleUniform->set( _scale.get() );
 }
 
 
 void
 VerticalScale::setScale(float scale)
 {
-    _scale = scale;
-    _scaleUniform->set( _scale );
+    if ( scale != _scale.get() )
+    {
+        _scale = scale;
+        _scaleUniform->set( _scale.get() );
+    }
 }
 
 
 void
-VerticalScale::setTerrainNode(osg::Node* node)
+VerticalScale::onInstall(TerrainEngineNode* engine)
 {
-    if ( node )
+    if ( engine )
     {
-        osg::StateSet* ss = node->getOrCreateStateSet();
+        osg::StateSet* stateset = engine->getOrCreateStateSet();
 
-        ss->addUniform( _scaleUniform.get() );
+        stateset->addUniform( _scaleUniform.get() );
 
-        VirtualProgram* vp = dynamic_cast<VirtualProgram*>(ss->getAttribute(VirtualProgram::SA_TYPE));
-        if ( !vp )
-        {
-            vp = new VirtualProgram();
-            ss->setAttributeAndModes( vp, 1 );
-        }
+        VirtualProgram* vp = VirtualProgram::getOrCreate(stateset);
         vp->setFunction( "oe_vertscale_vertex", vs, ShaderComp::LOCATION_VERTEX_MODEL );
-        vp->addBindAttribLocation( "oe_vertscale_attribs",  osg::Drawable::ATTRIBUTE_6 );
     }
-    else
+}
+
+
+void
+VerticalScale::onUninstall(TerrainEngineNode* engine)
+{
+    if ( engine )
     {
-        //todo - remove
-        OE_WARN << LC << "Remove NYI!" << std::endl;
+        osg::StateSet* stateset = engine->getStateSet();
+        if ( stateset )
+        {
+            stateset->removeUniform( _scaleUniform.get() );
+
+            VirtualProgram* vp = VirtualProgram::get(stateset);
+            if ( vp )
+            {
+                vp->removeShader( "oe_vertscale_vertex" );
+            }
+        }
     }
+}
+
+
+
+//-------------------------------------------------------------
+
+
+void
+VerticalScale::mergeConfig(const Config& conf)
+{
+    conf.getIfSet( "scale", _scale );
+}
+
+Config
+VerticalScale::getConfig() const
+{
+    Config conf("vertical_scale");
+    conf.addIfSet( "scale", _scale );
+    return conf;
 }

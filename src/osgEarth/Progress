@@ -86,7 +86,7 @@ namespace osgEarth
         /**
          * Whether cancelation was requested
          */
-        bool isCanceled() const { return _canceled; }
+        virtual bool isCanceled() const { return _canceled; }
 
         std::string& message() { return _message; }
 
@@ -102,9 +102,9 @@ namespace osgEarth
 
     protected:
         volatile unsigned _numStages;
-        volatile bool     _canceled;
         std::string       _message;
-        volatile bool     _needsRetry;
+        mutable  bool     _needsRetry;
+        mutable  bool     _canceled;
     };
 
 

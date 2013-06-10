@@ -35,6 +35,8 @@ namespace osgEarth { namespace Symbology
     public:
         GeometryRasterizer( int width, int height, const Style& style =Style() );
 
+        GeometryRasterizer( osg::Image* image, const Style& style =Style() );
+
         /** dtor */
         virtual ~GeometryRasterizer() { }
 

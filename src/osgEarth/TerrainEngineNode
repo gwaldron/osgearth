@@ -22,6 +22,7 @@
 #include <osgEarth/Map>
 #include <osgEarth/MapFrame>
 #include <osgEarth/Terrain>
+#include <osgEarth/TerrainEffect>
 #include <osgEarth/TextureCompositor>
 #include <osgEarth/ShaderUtils>
 #include <osg/CoordinateSystemNode>
@@ -30,6 +31,8 @@
 
 namespace osgEarth
 {
+    class TerrainEffect;
+
     /**
      * TerrainEngineNode is the base class and interface for map engine implementations.
      *
@@ -52,18 +55,29 @@ namespace osgEarth
         /** Accesses the compositor that controls the rendering of image layers */
         TextureCompositor* getTextureCompositor() const;
 
+        /** Adds a terrain effect */
+        void addEffect( TerrainEffect* effect );
+
+        /** Removes a terrain effect */
+        void removeEffect( TerrainEffect* effect );
+
+
     public: // Runtime properties
 
-        /** Sets the scale factor to apply to elevation height values. Default is 1.0 */
+        /** Sets the scale factor to apply to elevation height values. Default is 1.0
+          * @deprecated */
         void setVerticalScale( float value );
 
-        /** Gets the scale factor to apply to elevation height values. */
+        /** Gets the scale factor to apply to elevation height values.
+          * #deprecated */
         float getVerticalScale() const { return _verticalScale; }
 
-        /** Sets the sampling ratio for elevation grid data. Default is 1.0. */
+        /** Sets the sampling ratio for elevation grid data. Default is 1.0.
+          * @deprecated */
         void setElevationSamplingRatio( float value );
 
-        /** Gets the sampling ratio for elevation grid data. */
+        /** Gets the sampling ratio for elevation grid data.
+          * @depreceated */
         float getElevationSamplingRatio() const { return _elevationSamplingRatio; }
 
     protected:
@@ -154,6 +168,21 @@ namespace osgEarth
             INIT_POSTINIT_COMPLETE
         };
         InitStage _initStage;
+
+        typedef std::vector<osg::ref_ptr<TerrainEffect> > TerrainEffectVector;
+        TerrainEffectVector effects_;
+
+    public:
+
+        /** Access a typed effect. */
+        template<typename T>
+        T* getEffect() {
+            for(TerrainEffectVector::iterator i = effects_.begin(); i != effects_.end(); ++i ) {
+                T* e = dynamic_cast<T*>(i->get());
+                if ( e ) return e;
+            }
+            return 0L;
+        }
     };
 
     /**

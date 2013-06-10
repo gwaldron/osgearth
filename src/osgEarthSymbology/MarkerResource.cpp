@@ -107,9 +107,6 @@ MarkerResource::getConfig() const
 {
     Config conf = Resource::getConfig();
     conf.key() = "marker";
-
-    conf.updateIfSet( "url", _markerURI );
-
     return conf;
 }
 

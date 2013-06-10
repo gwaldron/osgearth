@@ -24,8 +24,8 @@
 #include <osgEarthAnnotation/PlaceNode>
 #include <osgEarthAnnotation/LabelNode>
 #include <osgEarthAnnotation/ModelNode>
-#include <osgEarthAnnotation/Decluttering>
 #include <osgEarthAnnotation/LocalGeometryNode>
+#include <osgEarth/Decluttering>
 
 #include <osg/Depth>
 #include <osgDB/WriteFile>

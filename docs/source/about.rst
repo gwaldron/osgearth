@@ -45,13 +45,21 @@ to testing, adding features, and fixing bugs.
 **Support Forum**
 
     The best way to interact with the osgEarth team and the user community is
-    through the `support forum`_. Here are a couple guidelines for using the
-    board:
+    through the `support forum`_. **Please read** and follow these guidelines for
+    using the forum:
 
-    * Please sign up for an account and use your real name. You can participate
-      anonymously, but using your real name helps build a stronger community.
+    * Sign up for an account and use your real name. You can participate
+      anonymously, but using your real name helps build a stronger community
+      (and makes it more likely that we will get to your question sooner).
+      
     * Limit yourself to *one topic* per post. Asking multiple questions in one
       post makes it too hard to keep track of responses.
+      
+    * Always include as much supporting information as possible. Post an
+      *earth file* or *short code snippet*. Post the output to ``osgearth_version --caps``.
+      Post the output to ``gdalinfo`` if you are having trouble with a GeoTIFF
+      or other data file. List everything you have tried so far.
+      
     * Be patient!
 
 **OSG Forum**
@@ -63,8 +71,8 @@ to testing, adding features, and fixing bugs.
     
 **Social Media**
 
-* Follow `@pelicanmapping`_ on twitter for updates.
-* Add our `Google+ Page`_ to your circles for gallery shots.
+    * Follow `@pelicanmapping`_ on twitter for updates.
+    * Add our `Google+ Page`_ to your circles for gallery shots.
 
 **Professional Services**
 
@@ -93,6 +101,12 @@ This means that:
     3. If you redistribute the osgEarth_ *source code* in any form, you must
        include the associated copyright notices and license information
        unaltered and intact.
+       
+    4. *iOS / static linking exception*: The LGPL requires that anything statically
+       linked to an LGPL library (like osgEarth) also be released under the LGPL.
+       We grant an exception to the LGPL in this case. If you statically link 
+       osgEarth with your proprietary code, you are *NOT* required to release your
+       own code under the LGPL.
        
 That's it.
 

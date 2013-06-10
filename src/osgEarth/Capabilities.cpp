@@ -24,6 +24,7 @@
 #include <osg/GL2Extensions>
 #include <osg/Texture>
 #include <osgViewer/Version>
+#include <OpenThreads/Thread>
 
 using namespace osgEarth;
 
@@ -99,6 +100,7 @@ Capabilities::Capabilities() :
 _maxFFPTextureUnits     ( 1 ),
 _maxGPUTextureUnits     ( 1 ),
 _maxGPUTextureCoordSets ( 1 ),
+_maxGPUAttribs          ( 1 ),
 _maxTextureSize         ( 256 ),
 _maxFastTextureSize     ( 256 ),
 _maxLights              ( 1 ),
@@ -115,8 +117,10 @@ _supportsDepthPackedStencilBuffer( false ),
 _supportsOcclusionQuery ( false ),
 _supportsDrawInstanced  ( false ),
 _supportsUniformBufferObjects( false ),
+_supportsNonPowerOfTwoTextures( false ),
 _maxUniformBlockSize    ( 0 ),
-_preferDLforStaticGeom  ( true )
+_preferDLforStaticGeom  ( true ),
+_numProcessors          ( 1 )
 {
     // little hack to force the osgViewer library to link so we can create a graphics context
     osgViewerGetVersion();
@@ -125,6 +129,9 @@ _preferDLforStaticGeom  ( true )
     bool enableATIworkarounds = true;
     if ( ::getenv( "OSGEARTH_DISABLE_ATI_WORKAROUNDS" ) != 0L )
         enableATIworkarounds = false;
+
+    // logical CPUs (cores)
+    _numProcessors = OpenThreads::GetNumberOfProcessors();
 
     // create a graphics context so we can query OpenGL support:
     MyGraphicsContext mgc;
@@ -153,13 +160,18 @@ _preferDLforStaticGeom  ( true )
         OE_INFO << LC << "  Max GPU texture units = " << _maxGPUTextureUnits << std::endl;
 
         glGetIntegerv( GL_MAX_TEXTURE_COORDS_ARB, &_maxGPUTextureCoordSets );
+        OE_INFO << LC << "  Max GPU texture coord indices = " << _maxGPUTextureCoordSets << std::endl;
+
+        glGetIntegerv( GL_MAX_VERTEX_ATTRIBS, &_maxGPUAttribs );
+        OE_INFO << LC << "  Max GPU attributes = " << _maxGPUAttribs << std::endl;
+
+#if 0
 #if defined(OSG_GLES2_AVAILABLE)
         int maxVertAttributes = 0;
         glGetIntegerv(GL_MAX_VERTEX_ATTRIBS, &maxVertAttributes);
         _maxGPUTextureCoordSets = maxVertAttributes - 5; //-5 for vertex, normal, color, tangent and binormal
 #endif
-        OE_INFO << LC << "  Max GPU texture coordinate sets = " << _maxGPUTextureCoordSets << std::endl;
-
+#endif
 
         glGetIntegerv( GL_DEPTH_BITS, &_depthBits );
         OE_INFO << LC << "  Depth buffer bits = " << _depthBits << std::endl;
@@ -249,6 +261,10 @@ _preferDLforStaticGeom  ( true )
             OE_INFO << LC << "  ...but disabled, since UBO block size reports zero" << std::endl;
             _supportsUniformBufferObjects = false;
         }
+
+        _supportsNonPowerOfTwoTextures =
+            osg::isGLExtensionSupported( id, "GL_ARB_texture_non_power_of_two" );
+        OE_INFO << LC << "  NPOT textures = " << SAYBOOL(_supportsNonPowerOfTwoTextures) << std::endl;
 
 
         //_supportsTexture2DLod = osg::isGLExtensionSupported( id, "GL_ARB_shader_texture_lod" );

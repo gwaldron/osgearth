@@ -44,9 +44,10 @@ using namespace osgEarth::Util;
 
 const char* vertexShader =
     "attribute vec4  osgearth_elevData; \n"
-    "uniform   float contour_xferMin; \n"
-    "uniform   float contour_xferRange; \n"
-    "uniform   float contour_xferMax; \n"
+    "uniform float contour_xferMin; \n"
+    "uniform float contour_xferRange; \n"
+    "uniform float contour_xferMax; \n"
+    "varying float contour_lookup; \n"
 
     "void setupContour(inout vec4 VertexModel) \n"
     "{ \n"
@@ -62,8 +63,8 @@ const char* vertexShader =
 // imagery, this will overwrite it.
 
 const char* fragmentShader =
-    "uniform   sampler1D contour_colorMap; \n"
-    "varying   float     contour_lookup; \n"
+    "uniform sampler1D contour_colorMap; \n"
+    "varying float contour_lookup; \n"
 
     "void colorContour( inout vec4 color ) \n"
     "{ \n"
@@ -95,7 +96,7 @@ osg::StateSet* createStateSet( osg::TransferFunction1D* xfer, int unit )
     // before the terrain's layers.)
     VirtualProgram* vp = new VirtualProgram();
     vp->setFunction( "setupContour", vertexShader,   ShaderComp::LOCATION_VERTEX_MODEL);
-    vp->setFunction( "colorContour", fragmentShader, ShaderComp::LOCATION_FRAGMENT_COLORING );
+    vp->setFunction( "colorContour", fragmentShader, ShaderComp::LOCATION_FRAGMENT_COLORING, -1.0 );
     vp->addBindAttribLocation( "osgearth_elevData", osg::Drawable::ATTRIBUTE_6 );
     stateSet->setAttributeAndModes( vp, osg::StateAttribute::ON );
 
@@ -131,11 +132,15 @@ int main(int argc, char** argv)
 
         // Set up a transfer function for the elevation contours.
         osg::ref_ptr<osg::TransferFunction1D> xfer = new osg::TransferFunction1D();
-        xfer->setColor( -3000.0f, osg::Vec4f(0,0,0.5,1), false );
-        xfer->setColor(   -10.0f, osg::Vec4f(0,0,0,1),   false );
-        xfer->setColor(    10.0f, osg::Vec4f(0,1,0,1),   false );
-        xfer->setColor(  1500.0f, osg::Vec4f(1,0,0,1),   false );
-        xfer->setColor(  3000.0f, osg::Vec4f(1,1,1,1),   false );
+        float s = 3000.0f;
+        xfer->setColor( -1.0000 * s, osg::Vec4f(0, 0, 0.5, 1), false);
+        xfer->setColor( -0.2500 * s, osg::Vec4f(0, 0, 1, 1), false);
+        xfer->setColor(  0.0000 * s, osg::Vec4f(0, .5, 1, 1), false);
+        xfer->setColor(  0.0625 * s, osg::Vec4f(.94,.94,.25,1), false);
+        xfer->setColor(  0.1250 * s, osg::Vec4f(.125,.62,0,1), false);
+        xfer->setColor(  0.3750 * s, osg::Vec4f(.87,.87,0,1), false);
+        xfer->setColor(  0.7500 * s, osg::Vec4f(.5,.5,.5,1), false);
+        xfer->setColor(  1.0000 * s, osg::Vec4f(1,1,1,1), false);
         xfer->updateImage();
 
         // request an available texture unit:

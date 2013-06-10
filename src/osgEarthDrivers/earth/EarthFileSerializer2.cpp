@@ -67,11 +67,10 @@ EarthFileSerializer2::deserialize( const Config& conf, const std::string& refere
         for( ConfigSet::const_iterator i = heightfields.begin(); i != heightfields.end(); i++ )
         {
             Config layerDriverConf = *i;
-            layerDriverConf.add( "default_tile_size", "16" );
+            layerDriverConf.add( "default_tile_size", "15" );
 
             ElevationLayerOptions layerOpt( layerDriverConf );
             layerOpt.name() = layerDriverConf.value( "name" );
-            //layerOpt.driver() = TileSourceOptions( layerDriverConf );
 
             map->addElevationLayer( new ElevationLayer(layerOpt) );
         }

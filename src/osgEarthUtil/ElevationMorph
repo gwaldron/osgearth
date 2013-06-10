@@ -20,6 +20,7 @@
 #define OSGEARTHUTIL_ELEVATION_MORPH_H
 
 #include <osgEarthUtil/Common>
+#include <osgEarth/TerrainEffect>
 #include <osg/Uniform>
 #include <osg/Node>
 #include <osg/observer_ptr>
@@ -27,35 +28,41 @@
 namespace osgEarth { namespace Util
 {
     /**
-     * Controller that applies an elevation LOD morphing shader
+     * Terrain effect that applies an elevation LOD morphing shader
      * to the terrain.
      */
-    class OSGEARTHUTIL_EXPORT ElevationMorph
+    class OSGEARTHUTIL_EXPORT ElevationMorph : public TerrainEffect
     {
     public:
         /** construct a new detail texture controller */
         ElevationMorph();
-        virtual ~ElevationMorph();
-
-        /** Attach the controller to the terrain renderer. Set to
-            NULL to detach. */
-        void setTerrainNode( osg::Node* node );
 
         /** Sets the delay (in seconds) between the time the tile appears
             and when it starts morphing */
         void setDelay( float value );
-        float getDelay() const { return _delay; }
+        float getDelay() const { return _delay.get(); }
 
         /** Sets the duration of the morph */
         void setDuration( float value );
-        float getDuration() const { return _duration; }
+        float getDuration() const { return _duration.get(); }
+
+    public: // TerrainEffect interface
+
+        void onInstall(TerrainEngineNode* engine);
+        void onUninstall(TerrainEngineNode* engine);
+
+    public: // serialization
+
+        ElevationMorph(const Config& conf);
+        void mergeConfig(const Config& conf);
+        virtual Config getConfig() const;
 
     protected:
-        osg::observer_ptr<osg::Node> _terrain;
+        virtual ~ElevationMorph() { }
+        void init();
 
-        float                        _delay;
-        float                        _duration;
-
+        optional<float>              _delay;
+        optional<float>              _duration;
         osg::ref_ptr<osg::Uniform>   _delayUniform;
         osg::ref_ptr<osg::Uniform>   _durationUniform;
     };

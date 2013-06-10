@@ -57,6 +57,13 @@ _style( style )
     _state = new AggState( _image.get() );
 }
 
+GeometryRasterizer::GeometryRasterizer( osg::Image* image, const Style& style ) :
+_image( image ),
+_style( style )
+{
+    _state = new AggState( _image.get() );
+}
+
 osg::Image*
 GeometryRasterizer::finalize()
 {
@@ -82,11 +89,9 @@ GeometryRasterizer::draw( const Geometry* geom, const osg::Vec4f& c )
     osg::Vec4f color = c;
     osg::ref_ptr<const Geometry> geomToRender = geom;
 
-    if ( geom->getType() == Geometry::TYPE_POLYGON )
+    if ( _style.has<PolygonSymbol>() )
     {
-        const PolygonSymbol* ps = _style.getSymbol<const PolygonSymbol>();
-        if ( ps )
-            color = ps->fill()->color();
+        color = _style.get<const PolygonSymbol>()->fill()->color();
     }
     else
     {

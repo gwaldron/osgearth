@@ -1127,12 +1127,12 @@ SpatialReference::transformXYPointArrays(double*  x,
     TransformHandleCache::const_iterator itr = _transformHandleCache.find(out_srs->getWKT());
     if (itr != _transformHandleCache.end())
     {
-        OE_DEBUG << "using cached transform handle" << std::endl;
+        //OE_DEBUG << LC << "using cached transform handle" << std::endl;
         xform_handle = itr->second;
     }
     else
     {
-        OE_DEBUG << "allocating new OCT Transform" << std::endl;
+        OE_DEBUG << LC << "allocating new OCT Transform" << std::endl;
         xform_handle = OCTNewCoordinateTransformation( _handle, out_srs->_handle);
         const_cast<SpatialReference*>(this)->_transformHandleCache[out_srs->getWKT()] = xform_handle;
     }
@@ -1370,19 +1370,31 @@ SpatialReference::transformFromECEF(std::vector<osg::Vec3d>& points) const
 
 double
 SpatialReference::transformUnits(double                  input,
-                                 const SpatialReference* outSRS ) const
+                                 const SpatialReference* outSRS,
+                                 double                  latitude) const
 {
     if ( this->isProjected() && outSRS->isGeographic() )
     {
         double metersPerEquatorialDegree = (outSRS->getEllipsoid()->getRadiusEquator() * 2.0 * osg::PI) / 360.0;
-        double inputDegrees = getUnits().convertTo(Units::METERS, input) / metersPerEquatorialDegree;
+        double inputDegrees = getUnits().convertTo(Units::METERS, input) / (metersPerEquatorialDegree * cos(osg::DegreesToRadians(latitude)));
+        return Units::DEGREES.convertTo( outSRS->getUnits(), inputDegrees );
+    }
+    else if ( this->isECEF() && outSRS->isGeographic() )
+    {
+        double metersPerEquatorialDegree = (outSRS->getEllipsoid()->getRadiusEquator() * 2.0 * osg::PI) / 360.0;
+        double inputDegrees = input / (metersPerEquatorialDegree * cos(osg::DegreesToRadians(latitude)));
         return Units::DEGREES.convertTo( outSRS->getUnits(), inputDegrees );
     }
     else if ( this->isGeographic() && outSRS->isProjected() )
     {
         double metersPerEquatorialDegree = (outSRS->getEllipsoid()->getRadiusEquator() * 2.0 * osg::PI) / 360.0;
-        double inputMeters = getUnits().convertTo(Units::DEGREES, input) * metersPerEquatorialDegree;
+        double inputMeters = getUnits().convertTo(Units::DEGREES, input) * (metersPerEquatorialDegree * cos(osg::DegreesToRadians(latitude)));
         return Units::METERS.convertTo( outSRS->getUnits(), inputMeters );
+    }
+    else if ( this->isGeographic() && outSRS->isECEF() )
+    {
+        double metersPerEquatorialDegree = (outSRS->getEllipsoid()->getRadiusEquator() * 2.0 * osg::PI) / 360.0;
+        return getUnits().convertTo(Units::DEGREES, input) * (metersPerEquatorialDegree * cos(osg::DegreesToRadians(latitude)));
     }
     else // both projected or both geographic.
     {

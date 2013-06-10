@@ -47,7 +47,9 @@ namespace osgEarth_engine_mp
         virtual ~MPTerrainEngineNode();
 
     public:
-        osg::Node* createNode(const TileKey& key);
+        osg::Node* createNode(const TileKey& key, ProgressCallback* progress =0L);
+
+        osg::Node* createUpsampledNode(const TileKey& key, ProgressCallback* progress =0L);
 
     public: // TerrainEngineNode
 
@@ -86,7 +88,7 @@ namespace osgEarth_engine_mp
         };
 
     protected:
-        virtual void onVerticalScaleChanged();
+        //virtual void onVerticalScaleChanged();
 
         // override from TerrainEngineNode
         virtual void updateTextureCombining() { updateShaders(); }
@@ -134,7 +136,8 @@ namespace osgEarth_engine_mp
         osg::Timer _timer;
         unsigned   _tileCount;
         double     _tileCreationTime;
-        int        _textureImageUnit;
+        int        _primaryUnit;
+        int        _secondaryUnit;
 
         osg::Uniform* _verticalScaleUniform;
 

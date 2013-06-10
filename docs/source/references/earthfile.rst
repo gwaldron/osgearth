@@ -85,7 +85,6 @@ These options control the rendering of the terrain surface.
         <options>
             <terrain driver                = "mp"
                      lighting              = "true"
-                     sample_ratio          = "1.0"
                      skirt_ratio           = "0.05"
                      min_tile_range_factor = "6"
                      min_lod               = "0"
@@ -104,12 +103,6 @@ These options control the rendering of the terrain surface.
 +-----------------------+--------------------------------------------------------------------+
 | lighting              | Whether to enable GL_LIGHTING on the terrain. By default this is   |
 |                       | unset, meaning it will inherit the lighting mode of the scene.     |
-+-----------------------+--------------------------------------------------------------------+
-| sample_ratio          | Ratio of vertices per tile to the number of hieght samples in the  |
-|                       | source elevation data. Default = 1.0. You can reduce this number in|
-|                       | order to forcably downsample the terrain. *NOTE* that it is usually|
-|                       | better to set the ``elevation_tile_size`` property in the map      |
-|                       | options.                                                           |
 +-----------------------+--------------------------------------------------------------------+
 | skirt_ratio           | Ratio of the height of a terrain tile "skirt" to the extent of the |
 |                       | tile. The *skirt* is geometry that hides gaps between adjacent     |
@@ -163,7 +156,8 @@ An *image layer* is a raster image overlaid on the map's geometry.
                min_resolution = "100.0"
                max_resolution = "0.0"
                enabled        = "true"
-               visible        = "true" >
+               visible        = "true"
+               shared         = "false" >
 
             <:ref:`cache_policy <CachePolicy>`>
             <:ref:`color_filters <ColorFilterChain>`>
@@ -207,6 +201,9 @@ An *image layer* is a raster image overlaid on the map's geometry.
 +-----------------------+--------------------------------------------------------------------+
 | visible               | Whether to draw the layer.                                         |
 +-----------------------+--------------------------------------------------------------------+
+| shared                | Generates a secondary, dedicated sampler for this layer so that it |
+|                       | may be accessed globally by custom shaders.                        |
++-----------------------+--------------------------------------------------------------------+
 
 
 .. _ElevationLayer:
@@ -225,7 +222,8 @@ will composite all elevation data into a single heightmap and use that to build 
                    max_level      = "23"
                    min_resolution = "100.0"
                    max_resolution = "0.0"
-                   enabled        = "true" >
+                   enabled        = "true"
+                   offset         = "false" >
 
 
 +-----------------------+--------------------------------------------------------------------+
@@ -250,6 +248,9 @@ will composite all elevation data into a single heightmap and use that to build 
 | enabled               | Whether to include this layer in the map. You can only set this at |
 |                       | load time; it is just an easy way of "commenting out" a layer in   |
 |                       | the earth file.                                                    |
++-----------------------+--------------------------------------------------------------------+
+| offset                | Indicates that the height values in this layer are relative        |
+|                       | offsets rather than true terrain height samples.                   |
 +-----------------------+--------------------------------------------------------------------+
 
 

@@ -24,7 +24,6 @@
 
 #include <osgEarthSymbology/Geometry>
 #include <osgEarthAnnotation/LabelNode>
-#include <osgEarthAnnotation/Decluttering>
 
 #include <osgEarth/Registry>
 #include <osgEarth/DepthOffset>

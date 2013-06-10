@@ -23,6 +23,7 @@
 #include <osgEarth/ImageUtils>
 #include <osgEarth/Registry>
 #include <osgEarth/StringUtils>
+#include <osgEarth/Progress>
 #include <osgEarth/URI>
 #include <osg/Version>
 #include <osgDB/WriteFile>
@@ -75,10 +76,11 @@ void
 ImageLayerOptions::fromConfig( const Config& conf )
 {
     conf.getIfSet( "nodata_image", _noDataImageFilename );
-    conf.getIfSet( "opacity", _opacity );
-    conf.getIfSet( "min_range", _minRange );
-    conf.getIfSet( "max_range", _maxRange );
+    conf.getIfSet( "opacity",      _opacity );
+    conf.getIfSet( "min_range",    _minRange );
+    conf.getIfSet( "max_range",    _maxRange );
     conf.getIfSet( "lod_blending", _lodBlending );
+    conf.getIfSet( "shared",       _shared );
 
     if ( conf.hasValue( "transparent_color" ) )
         _transparentColor = stringToColor( conf.value( "transparent_color" ), osg::Vec4ub(0,0,0,0));
@@ -96,10 +98,11 @@ ImageLayerOptions::getConfig( bool isolate ) const
     Config conf = TerrainLayerOptions::getConfig( isolate );
 
     conf.updateIfSet( "nodata_image", _noDataImageFilename );
-    conf.updateIfSet( "opacity", _opacity );
-    conf.updateIfSet( "min_range", _minRange );
-    conf.updateIfSet( "max_range", _maxRange );
+    conf.updateIfSet( "opacity",      _opacity );
+    conf.updateIfSet( "min_range",    _minRange );
+    conf.updateIfSet( "max_range",    _maxRange );
     conf.updateIfSet( "lod_blending", _lodBlending );
+    conf.updateIfSet( "shared",       _shared );
 
     if (_transparentColor.isSet())
         conf.update("transparent_color", colorToString( _transparentColor.value()));
@@ -407,6 +410,7 @@ ImageLayer::createImageInNativeProfile( const TileKey& key, ProgressCallback* pr
         std::vector<TileKey> nativeKeys;
         nativeProfile->getIntersectingTiles(key.getExtent(), nativeKeys);
 
+
         //OE_INFO << "KEY = " << key.str() << ":" << std::endl;
         //for(int i=0; i<nativeKeys.size(); ++i)
         //    OE_INFO << "    " << nativeKeys[i].str() << std::endl;
@@ -449,9 +453,10 @@ ImageLayer::createImageInNativeProfile( const TileKey& key, ProgressCallback* pr
                 mosaic.createImage(), 
                 GeoExtent( nativeProfile->getSRS(), rxmin, rymin, rxmax, rymax ) );
 
+#if 1
             return result;
 
-#if 0 // let's try this.
+#else // let's try this.
             // calculate a tigher extent that matches the original input key:
             GeoExtent tightExtent = nativeProfile->clampAndTransformExtent( key.getExtent() );
 

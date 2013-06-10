@@ -80,10 +80,13 @@ namespace osgEarth
      * you can still call the set* functions but you'd better mark the state set with
      * a DYNAMIC data variance.
      */
-    class OSGEARTH_EXPORT VirtualProgram : public osg::StateAttribute // osg::Program
+    class OSGEARTH_EXPORT VirtualProgram : public osg::StateAttribute
     {
     public:
         static const osg::StateAttribute::Type SA_TYPE;
+
+        static VirtualProgram* getOrCreate(osg::StateSet* on);
+        static VirtualProgram* get        (osg::StateSet* on);
 
         typedef osg::Program::AttribBindingList AttribBindingList;
 
@@ -182,16 +185,17 @@ namespace osgEarth
         typedef std::pair< osg::ref_ptr<osg::Shader>, osg::StateAttribute::OverrideValue > ShaderEntry;
         typedef std::map< std::string, ShaderEntry > ShaderMap;
         typedef std::map< ShaderVector, osg::ref_ptr<osg::Program> > ProgramMap;
+        typedef std::map< std::string, std::string > AttribAliasMap;
+        typedef std::pair< std::string, std::string > AttribAlias;
+        typedef std::vector< AttribAlias > AttribAliasVector;
 
         osg::ref_ptr<osg::Program>   _template;
 
-        ProgramMap                   _programCache;
-        ShaderMap                    _shaderMap;
-        unsigned int                 _mask;
-        AttribBindingList            _attribBindingList;
-        bool                         _useLightingShaders;
-        //osg::ref_ptr<osg::Shader>    _vertMain;
-        //osg::ref_ptr<osg::Shader>    _fragMain;
+        ProgramMap         _programCache;
+        ShaderMap          _shaderMap;
+        unsigned int       _mask;
+        AttribBindingList  _attribBindingList;
+        AttribAliasMap     _attribAliases;
 
         ShaderComp::FunctionLocationMap _functions;
         ShaderComp::FunctionLocationMap _accumulatedFunctions;
@@ -203,9 +207,11 @@ namespace osgEarth
         bool hasLocalFunctions() const;
         void refreshAccumulatedFunctions( const osg::State& state );
         void addToAccumulatedMap(ShaderMap& accumShaderMap, const std::string& shaderID, const ShaderEntry& newEntry) const;
-        osg::Program* buildProgram( osg::State& state, ShaderMap& accumShaderMap, AttribBindingList& bindings );
-        void addShadersToProgram(const ShaderVector& shaders, const AttribBindingList& attribBindings, osg::Program* program );
+        osg::Program* buildProgram( osg::State& state, ShaderMap& accumShaderMap, AttribBindingList& bindings, AttribAliasMap& aliases);
+        void addShadersToProgram(const ShaderVector& shaders, const AttribBindingList& attribBindings, const AttribAliasMap& aliases, osg::Program* program );
         void addTemplateDataToProgram(osg::Program* program );
+        void applyAttributeAliases( osg::Shader* shader, const AttribAliasVector& aliases );
+        const AttribAliasMap& getAttribAliases() const { return _attribAliases; }
 
     public:
         void getFunctions( ShaderComp::FunctionLocationMap& out ) const;

@@ -20,6 +20,7 @@
 #include <osgEarth/Registry>
 #include <osgEarth/Capabilities>
 #include <osgEarth/VirtualProgram>
+#include <osgEarth/TerrainEngineNode>
 
 #define LC "[DetailTexture] "
 
@@ -90,47 +91,56 @@ namespace
 
 
 DetailTexture::DetailTexture() :
-_unit     ( 1 ),
-_baseLOD  ( 10 ),
-_intensity( 0.25f )
+TerrainEffect(),
+_startLOD    ( 8 ),
+_intensity   ( 0.25f )
 {
-    _samplerUniform   = new osg::Uniform(osg::Uniform::SAMPLER_2D, "oe_dtex_tex");
-    _samplerUniform->set( (int)_unit );
+    init();
+}
 
-    _baseLODUniform   = new osg::Uniform(osg::Uniform::FLOAT, "oe_dtex_L0");
-    _baseLODUniform->set( (float)_baseLOD );
+DetailTexture::DetailTexture(const Config& conf) :
+TerrainEffect(),
+_startLOD    ( 8 ),
+_intensity   ( 0.25f )
+{
+    mergeConfig(conf);
+    init();
+}
+
+
+void
+DetailTexture::init()
+{
+    _startLODUniform   = new osg::Uniform(osg::Uniform::FLOAT, "oe_dtex_L0");
+    _startLODUniform->set( (float)_startLOD.get() );
 
     _intensityUniform = new osg::Uniform(osg::Uniform::FLOAT, "oe_dtex_intensity");
-    _intensityUniform->set( _intensity );
-
+    _intensityUniform->set( _intensity.get() );
+    
     _texture = new osg::Texture2D();
     _texture->setWrap( osg::Texture::WRAP_S, osg::Texture::REPEAT );
     _texture->setWrap( osg::Texture::WRAP_T, osg::Texture::REPEAT );
     _texture->setFilter( osg::Texture::MIN_FILTER, osg::Texture::LINEAR );
     _texture->setFilter( osg::Texture::MAG_FILTER, osg::Texture::LINEAR );
     _texture->setResizeNonPowerOfTwoHint( false );
-}
 
-
-DetailTexture::~DetailTexture()
-{
-    setTerrainNode(0L);
-}
-
-
-void
-DetailTexture::setImageUnit(unsigned unit)
-{
-    _unit = std::min( (int)unit, Registry::capabilities().getMaxGPUTextureUnits()-1 );
-    _samplerUniform->set( _unit );
+    if ( _imageURI.isSet() )
+    {
+        osg::Image* image = _imageURI->getImage();
+        if ( image )
+            _texture->setImage( image );
+    }
 }
 
 
 void
-DetailTexture::setBaseLOD(unsigned lod)
+DetailTexture::setStartLOD(unsigned lod)
 {
-    _baseLOD = lod;
-    _baseLODUniform->set( (float)_baseLOD );
+    if ( lod != _startLOD.get() )
+    {
+        _startLOD = lod;
+        _startLODUniform->set( (float)_startLOD.get() );
+    }
 }
 
 
@@ -138,7 +148,7 @@ void
 DetailTexture::setIntensity(float intensity)
 {
     _intensity = osg::clampBetween( intensity, 0.0f, 1.0f );
-    _intensityUniform->set( _intensity );
+    _intensityUniform->set( _intensity.get() );
 }
 
 
@@ -146,35 +156,83 @@ void
 DetailTexture::setImage(const osg::Image* image)
 {
     if ( image )
+    {
         _texture->setImage( const_cast<osg::Image*>(image) );
+    }
 }
 
 
 void
-DetailTexture::setTerrainNode(osg::Node* node)
+DetailTexture::onInstall(TerrainEngineNode* engine)
 {
-    if ( node )
+    if ( engine )
     {
-        osg::StateSet* ss = node->getOrCreateStateSet();
+        osg::StateSet* stateset = engine->getOrCreateStateSet();
 
-        ss->addUniform( _baseLODUniform.get() );
-        ss->addUniform( _samplerUniform.get() );
-        ss->addUniform( _intensityUniform.get() );
-
-        ss->setTextureAttributeAndModes( _unit, _texture.get() );
-
-        VirtualProgram* vp = dynamic_cast<VirtualProgram*>(ss->getAttribute(VirtualProgram::SA_TYPE));
-        if ( !vp )
+        int unit;
+        if ( engine->getTextureCompositor()->reserveTextureImageUnit(unit) )
         {
-            vp = new VirtualProgram();
-            ss->setAttributeAndModes( vp, 1 );
+            _samplerUniform = stateset->getOrCreateUniform( "oe_dtex_tex", osg::Uniform::SAMPLER_2D );
+            _samplerUniform->set( (int)unit );
+            stateset->setTextureAttributeAndModes( unit, _texture.get() );
         }
+
+        stateset->addUniform( _startLODUniform.get() );
+        stateset->addUniform( _intensityUniform.get() );
+
+        VirtualProgram* vp = VirtualProgram::getOrCreate(stateset);
         vp->setFunction( "oe_dtex_vertex",   vs, ShaderComp::LOCATION_VERTEX_MODEL );
         vp->setFunction( "oe_dtex_fragment", fs, ShaderComp::LOCATION_FRAGMENT_COLORING );
     }
-    else
+}
+
+
+void
+DetailTexture::onUninstall(TerrainEngineNode* engine)
+{
+    osg::StateSet* stateset = engine->getStateSet();
+    if ( stateset )
     {
-        //todo - remove
-        OE_WARN << LC << "Remove NYI!" << std::endl;
+        stateset->removeUniform( _startLODUniform.get() );
+        stateset->removeUniform( _intensityUniform.get() );
+
+        if ( _samplerUniform.valid() )
+        {
+            int unit;
+            _samplerUniform->get(unit);
+            stateset->removeUniform( _samplerUniform.get() );
+            stateset->removeTextureAttribute(unit, osg::StateAttribute::TEXTURE);
+        }
+
+        VirtualProgram* vp = VirtualProgram::get(stateset);
+        if ( vp )
+        {
+            vp->removeShader( "oe_dtex_vertex" );
+            vp->removeShader( "oe_dtex_fragment" );
+        }
     }
+}
+
+
+
+
+//-------------------------------------------------------------
+
+void
+DetailTexture::mergeConfig(const Config& conf)
+{
+    conf.getIfSet( "start_lod", _startLOD );
+    conf.getIfSet( "intensity", _intensity );
+    conf.getIfSet( "image",     _imageURI );
+}
+
+Config
+DetailTexture::getConfig() const
+{
+    Config conf("detail_texture");
+    conf.addIfSet( "start_lod", _startLOD );
+    conf.addIfSet( "intensity", _intensity );
+    conf.addIfSet( "image",     _imageURI );
+
+    return conf;
 }

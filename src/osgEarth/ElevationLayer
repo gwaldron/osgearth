@@ -40,6 +40,9 @@ namespace osgEarth
         /** dtor */
         virtual ~ElevationLayerOptions() { }
 
+        optional<bool>& offset() { return _offset; }
+        const optional<bool>& offset() const { return _offset; }  
+
     public:
         virtual Config getConfig() const { return getConfig(false); }
         virtual Config getConfig( bool isolate ) const;
@@ -48,6 +51,8 @@ namespace osgEarth
     private:
         void fromConfig( const Config& conf );
         void setDefaults();
+
+        optional< bool > _offset;
     };
 
     //--------------------------------------------------------------------
@@ -115,6 +120,11 @@ namespace osgEarth
             const TileKey&    key,
             ProgressCallback* progress =0L );
 
+        /**
+         * Whether the given key is valid for this layer
+         */
+        virtual bool isKeyValid(const TileKey& key) const;
+
     protected:
         
         // creates a geoHF directly from the tile source
@@ -179,7 +189,7 @@ namespace osgEarth
         void setExpressTileSize( unsigned tileSize );
 
     private:
-        optional<unsigned> _expressTileSize;
+        optional<unsigned> _expressTileSize;        
     };
 
 } // namespace osgEarth

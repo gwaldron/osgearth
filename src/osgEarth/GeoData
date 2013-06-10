@@ -198,6 +198,11 @@ namespace osgEarth
          */
         bool createWorldToLocal( osg::Matrixd& out_world2local ) const;
 
+        /**
+         * Calculates the distance in meters from this geopoint to another.
+         */
+        double distanceTo(const GeoPoint& rhs) const;
+
 
         bool operator == (const GeoPoint& rhs) const;
         bool operator != (const GeoPoint& rhs) const { return !operator==(rhs); }
@@ -325,6 +330,7 @@ namespace osgEarth
          */
         bool getCentroid( double& out_x, double& out_y ) const;
         osg::Vec3d getCentroid() const { osg::Vec3d r; getCentroid(r.x(), r.y()); return r; }
+        bool getCentroid( GeoPoint& output ) const;
 
         /**
          * Returns true is that extent is in a Geographic (lat/long) SRS that spans

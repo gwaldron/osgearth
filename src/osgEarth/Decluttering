@@ -16,10 +16,10 @@
 * You should have received a copy of the GNU Lesser General Public License
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
-#ifndef OSGEARTH_ANNOTATION_DECLUTTER_RENDER_BIN_H
-#define OSGEARTH_ANNOTATION_DECLUTTER_RENDER_BIN_H 1
+#ifndef OSGEARTH_DECLUTTER_RENDER_BIN_H
+#define OSGEARTH_DECLUTTER_RENDER_BIN_H 1
 
-#include <osgEarthAnnotation/Common>
+#include <osgEarth/Common>
 #include <osgEarth/Config>
 #include <osg/Drawable>
 #include <osgUtil/RenderLeaf>
@@ -31,9 +31,9 @@
  * Decluttering::setEnabled( node->getOrCreateStateSet(), true );
  */
 
-#define OSGEARTH_DECLUTTER_BIN "declutter"
+#define OSGEARTH_DECLUTTER_BIN "osgearth_declutter"
 
-namespace osgEarth { namespace Annotation 
+namespace osgEarth
 {
     /**
      * Marker class hinting that an implementation supports the decluttering
@@ -42,6 +42,16 @@ namespace osgEarth { namespace Annotation
     class SupportsDecluttering
     {
         //nop
+    };
+
+    /**
+     * Interface that exposes set/getPriority for priority sorting
+     */
+    class PriorityProvider
+    {
+    public:
+        virtual void setPriority(float value) =0;
+        virtual float getPriority() const =0;
     };
 
     /**
@@ -59,7 +69,7 @@ namespace osgEarth { namespace Annotation
      * A decluttering functor that sorts by the priority field in AnnotationData.
      * AnnotationData should be attached to each Drawable's user data.
      */
-    struct OSGEARTHANNO_EXPORT DeclutterByPriority : public DeclutterSortFunctor
+    struct OSGEARTH_EXPORT DeclutterByPriority : public DeclutterSortFunctor
     {
         virtual bool operator()(const osgUtil::RenderLeaf* lhs, const osgUtil::RenderLeaf* rhs ) const;
         virtual ~DeclutterByPriority() { }
@@ -68,7 +78,7 @@ namespace osgEarth { namespace Annotation
     /**
      * Options to control the annotation decluttering engine.
      */
-    class OSGEARTHANNO_EXPORT DeclutteringOptions
+    class OSGEARTH_EXPORT DeclutteringOptions
     {
     public:
         DeclutteringOptions( const Config& conf =Config() )
@@ -123,7 +133,7 @@ namespace osgEarth { namespace Annotation
         void fromConfig( const Config& conf );
     };
 
-    struct OSGEARTHANNO_EXPORT Decluttering
+    struct OSGEARTH_EXPORT Decluttering
     {
         /**
          * Enables or disables decluttering on a stateset.
@@ -157,6 +167,6 @@ namespace osgEarth { namespace Annotation
         static const DeclutteringOptions& getOptions();
     };
 
-} } // namespace osgEarth::Annotation
+} // namespace osgEarth
 
-#endif //OSGEARTH_ANNOTATION_DECLUTTER_RENDER_BIN_H
+#endif //OSGEARTH_DECLUTTER_RENDER_BIN_H

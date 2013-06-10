@@ -17,7 +17,6 @@
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
 #include "TileNode"
-#include "TerrainNode"
 
 #include <osg/ClusterCullingCallback>
 #include <osg/NodeCallback>
@@ -33,75 +32,51 @@ using namespace OpenThreads;
 
 //----------------------------------------------------------------------------
 
-TileNode::TileNode( const TileKey& key, GeoLocator* keyLocator ) :
-_key              ( key ),
-_locator          ( keyLocator ),
-_publicStateSet   ( 0L )
+TileNode::TileNode( const TileKey& key, const TileModel* model ) :
+_key  ( key ),
+_model( model )
 {
     this->setName( key.str() );
 
+    osg::StateSet* stateset = getOrCreateStateSet();
+
+    // TileKey uniform.
+    _keyUniform = new osg::Uniform(osg::Uniform::FLOAT_VEC4, "oe_tile_key");
+    _keyUniform->setDataVariance( osg::Object::STATIC );
+    _keyUniform->set( osg::Vec4f(0,0,0,0) );
+    stateset->addUniform( _keyUniform );
+
     // born-on date uniform.
-    _born = new osg::Uniform(osg::Uniform::FLOAT, "oe_tile_birthtime");
-    _born->set( -1.0f );
-    this->getOrCreateStateSet()->addUniform( _born );
+    _bornUniform = new osg::Uniform(osg::Uniform::FLOAT, "oe_tile_birthtime");
+    _bornUniform->set( -1.0f );
+    stateset->addUniform( _bornUniform );
 }
 
 
-TileNode::~TileNode()
+osg::BoundingSphere
+TileNode::computeBound() const
 {
-    //nop
-}
-
-
-void
-TileNode::setTileModel( TileModel* model )
-{
-    _model = model;
-    _publicStateSet = 0L;
-}
-
-
-bool
-TileNode::compile( TileModelCompiler* compiler, bool releaseModel )
-{
-    if ( !_model.valid() )
-        return false;
-
-    osg::Node* node = 0L;
-    _publicStateSet = 0L;
-
-    if ( !compiler->compile( _model.get(), node, _publicStateSet ) )
-        return false;
-
-    this->removeChildren( 0, this->getNumChildren() );
-    this->addChild( node );
-
-    // TileKey uniform. Swap the Y index.
-    osg::Uniform* keyu = new osg::Uniform(osg::Uniform::FLOAT_VEC4, "oe_tile_key");
-    keyu->setDataVariance( osg::Object::STATIC );
+    osg::BoundingSphere bs = osg::MatrixTransform::computeBound();
+    
     unsigned tw, th;
     _key.getProfile()->getNumTiles(_key.getLOD(), tw, th);
-    
-    keyu->set( osg::Vec4f(
+
+    // swap the Y index.
+    _keyUniform->set( osg::Vec4f(
         _key.getTileX(),
         th-_key.getTileY()-1.0,
         _key.getLOD(),
-        this->getBound().radius() ) );
+        bs.radius()) );
 
-    this->getOrCreateStateSet()->addUniform( keyu );
-
-    // release the memory associated with the tile model.
-    if ( releaseModel )
-        _model = 0L;
-
-    return true;
+    return bs;
 }
+
 
 void
 TileNode::traverse( osg::NodeVisitor& nv )
 {
     // TODO: not sure we need this.
-    if ( nv.getVisitorType()==osg::NodeVisitor::CULL_VISITOR )
+    if ( nv.getVisitorType() == nv.CULL_VISITOR )
     {
         osg::ClusterCullingCallback* ccc = dynamic_cast<osg::ClusterCullingCallback*>(getCullCallback());
         if (ccc)
@@ -113,12 +88,12 @@ TileNode::traverse( osg::NodeVisitor& nv )
         const osg::FrameStamp* fs = nv.getFrameStamp();
 
         float bt;
-        _born->get( bt );
+        _bornUniform->get( bt );
         if ( bt < 0.0f )
         {
-            _born->set( nv.getFrameStamp() ? (float)nv.getFrameStamp()->getReferenceTime() : 0.0f );
+            _bornUniform->set( nv.getFrameStamp() ? (float)nv.getFrameStamp()->getReferenceTime() : 0.0f );
         }
     }
 
-    osg::Group::traverse( nv );
+    osg::MatrixTransform::traverse( nv );
 }

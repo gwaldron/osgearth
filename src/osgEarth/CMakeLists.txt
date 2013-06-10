@@ -21,6 +21,7 @@ SET(LIB_NAME osgEarth)
 
 SET(HEADER_PATH ${OSGEARTH_SOURCE_DIR}/include/${LIB_NAME})
 SET(LIB_PUBLIC_HEADERS
+    AutoScale
     Bounds
     Cache
     CacheBin
@@ -36,6 +37,7 @@ SET(LIB_PUBLIC_HEADERS
     Containers
     Cube
     CullingUtils
+    Decluttering
     DepthOffset
     DPLineSegmentIntersector
     Draggers
@@ -100,6 +102,7 @@ SET(LIB_PUBLIC_HEADERS
     StringUtils
     TaskService
     Terrain
+    TerrainEffect
     TerrainLayer
     TerrainOptions
     TerrainEngineNode
@@ -142,6 +145,7 @@ ENDIF (NOT TINYXML_FOUND)
 ADD_LIBRARY(${LIB_NAME} ${OSGEARTH_USER_DEFINED_DYNAMIC_OR_STATIC}
     ${LIB_PUBLIC_HEADERS}
     ${TINYXML_SRC}
+    AutoScale.cpp
     Bounds.cpp
     Cache.cpp
     CachePolicy.cpp
@@ -154,6 +158,7 @@ ADD_LIBRARY(${LIB_NAME} ${OSGEARTH_USER_DEFINED_DYNAMIC_OR_STATIC}
     Config.cpp
     Cube.cpp
     CullingUtils.cpp
+    Decluttering.cpp
     DepthOffset.cpp
     Draggers.cpp
     DPLineSegmentIntersector.cpp

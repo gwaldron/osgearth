@@ -23,7 +23,7 @@
 #include <osgEarth/XmlUtils>
 #include <osgEarth/ShaderGenerator>
 #include <osgEarth/VirtualProgram>
-#include <osgEarthAnnotation/Decluttering>
+#include <osgEarth/Decluttering>
 #include <stack>
 #include <iterator>
 

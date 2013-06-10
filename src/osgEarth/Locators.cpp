@@ -96,6 +96,18 @@ GeoLocator::createForExtent( const GeoExtent& extent, const class MapInfo& map)
     return locator;
 }
 
+GeoLocator*
+GeoLocator::createSameTypeForKey(const TileKey& key, const MapInfo& map)
+{
+    return createSameTypeForExtent( key.getExtent(), map );
+}
+
+GeoLocator*
+GeoLocator::createSameTypeForExtent(const GeoExtent& extent, const MapInfo& map)
+{
+    return createForExtent( extent, map );
+}
+
 void
 GeoLocator::setDataExtent( const GeoExtent& value ) {
     _dataExtent = value;
@@ -222,6 +234,13 @@ MercatorLocator::postInit()
         minX,      minY,      0.0, 1.0); 
 
     setTransform(transform);
+}
+
+
+GeoLocator*
+MercatorLocator::createSameTypeForExtent(const GeoExtent& extent, const MapInfo& map)
+{
+    return new MercatorLocator(extent);
 }
 
 

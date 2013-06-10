@@ -87,7 +87,6 @@ is randomized, but it is randomized exactly the same way each time.
             <style type="text/css">      
                 default {
                    fill:                #00ff007f;
-                   stroke:              #ffff00ff;
                    altitide-clamping:   terrain;
                 }                
             </style>
@@ -97,9 +96,6 @@ is randomized, but it is randomized exactly the same way each time.
     
     <options>
         <lighting>false</lighting>
-        <cache type="filesystem">
-            <path>osgearth_cache</path>
-        </cache>
     </options> 
     
     <image name="mapquest_open_aerial" driver="xyz">

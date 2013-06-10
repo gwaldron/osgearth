@@ -25,6 +25,8 @@
 #include <osgEarth/DrawInstanced>
 #include <osgEarth/Registry>
 #include <osgEarth/Capabilities>
+#include <osgEarth/Decluttering>
+#include <osgEarth/CullingUtils>
 
 #include <osg/AutoTransform>
 #include <osg/Drawable>
@@ -53,6 +55,16 @@ using namespace osgEarth::Symbology;
 namespace
 {
     static osg::Node* s_defaultModel =0L;
+
+    struct SetSmallFeatureCulling : public osg::NodeCallback
+    {
+        bool _value;
+        SetSmallFeatureCulling(bool value) : _value(value) { }
+        void operator()(osg::Node* node, osg::NodeVisitor* nv) {
+            Culling::asCullVisitor(nv)->setSmallFeatureCullingPixelSize(-1.0f);
+            traverse(node, nv);
+        }
+    };
 }
 
 //------------------------------------------------------------------------
@@ -62,42 +74,42 @@ _style                ( style ),
 _cluster              ( false ),
 _useDrawInstanced     ( false ),
 _merge                ( true ),
-_normalScalingRequired( false )
+_normalScalingRequired( false ),
+_instanceCache        ( false )     // cache per object so MT not required
 {
     //NOP
 }
 
-InstanceResource*
+bool
 SubstituteModelFilter::findResource(const URI&            uri,
-                                    const InstanceSymbol* symbol, 
+                                    const InstanceSymbol* symbol,
                                     FilterContext&        context, 
-                                    std::set<URI>&        missing ) 
+                                    std::set<URI>&        missing,
+                                    osg::ref_ptr<InstanceResource>& output )
 {
-    // find the corresponding marker in the cache
-    InstanceResource* instance = 0L;
+    // be careful about refptrs here since _instanceCache is an LRU.
 
     InstanceCache::Record rec;
     if ( _instanceCache.get(uri, rec) )
     {
         // found it in the cache:
-        instance = rec.value();
+        output = rec.value().get();
     }
     else if ( _resourceLib.valid() )
     {
         // look it up in the resource library:
-        instance = _resourceLib->getInstance( uri.base(), context.getDBOptions() );
+        output = _resourceLib->getInstance( uri.base(), context.getDBOptions() );
     }
     else
     {
         // create it on the fly:
-        OE_DEBUG << "New resource (not in the cache!)" << std::endl;
-        instance = symbol->createResource();
-        instance->uri() = uri;
-        _instanceCache.insert( uri, instance );
+        output = symbol->createResource();
+        output->uri() = uri;
+        _instanceCache.insert( uri, output.get() );
     }
 
     // failed to find the instance.
-    if ( instance == 0L )
+    if ( !output.valid() )
     {
         if ( missing.find(uri) == missing.end() )
         {
@@ -106,7 +118,7 @@ SubstituteModelFilter::findResource(const URI&            uri,
         }
     }
 
-    return instance;
+    return output.valid();
 }
 
 bool
@@ -137,7 +149,6 @@ SubstituteModelFilter::process(const FeatureList&           features,
     if ( modelSymbol )
         headingEx = *modelSymbol->heading();
 
-
     for( FeatureList::const_iterator f = features.begin(); f != features.end(); ++f )
     {
         Feature* input = f->get();
@@ -147,8 +158,8 @@ SubstituteModelFilter::process(const FeatureList&           features,
         URI instanceURI( input->eval(uriEx, &context), uriEx.uriContext() );
 
         // find the corresponding marker in the cache
-        InstanceResource* instance = findResource( instanceURI, symbol, context, missing );
-        if ( !instance )
+        osg::ref_ptr<InstanceResource> instance;
+        if ( !findResource(instanceURI, symbol, context, missing, instance) )
             continue;
 
         // evalute the scale expression (if there is one)
@@ -166,18 +177,6 @@ SubstituteModelFilter::process(const FeatureList&           features,
         }
         
         osg::Matrixd rotationMatrix;
-#if 0
-        if ( symbol->orientation().isSet() )
-        {
-            osg::Vec3d hpr = *symbol->orientation();
-            //Rotation in HPR
-            //Apply the rotation            
-            rotationMatrix.makeRotate( 
-                osg::DegreesToRadians(hpr.y()), osg::Vec3(1,0,0),
-                osg::DegreesToRadians(hpr.x()), osg::Vec3(0,0,1),
-                osg::DegreesToRadians(hpr.z()), osg::Vec3(0,1,0) );
-        }
-#endif
 
         if ( modelSymbol && modelSymbol->heading().isSet() )
         {
@@ -188,11 +187,30 @@ SubstituteModelFilter::process(const FeatureList&           features,
         // how that we have a marker source, create a node for it
         std::pair<URI,float> key( instanceURI, scale );
 
+        // cache nodes per instance.
         osg::ref_ptr<osg::Node>& model = uniqueModels[key];
         if ( !model.valid() )
         {
-            model = context.resourceCache()->getInstanceNode( instance );
+            context.resourceCache()->getInstanceNode( instance.get(), model );
 
+            // if icon decluttering is off, install an AutoTransform.
+            if ( iconSymbol )
+            {
+                if ( iconSymbol->declutter() == true )
+                {
+                    Decluttering::setEnabled( model->getOrCreateStateSet(), true );
+                }
+                else if ( dynamic_cast<osg::AutoTransform*>(model.get()) == 0L )
+                {
+                    osg::AutoTransform* at = new osg::AutoTransform();
+                    at->setAutoRotateMode( osg::AutoTransform::ROTATE_TO_SCREEN );
+                    at->setAutoScaleToScreen( true );
+                    at->addChild( model );
+                    model = at;
+                }
+            }
+
+#if 0
             if ( scale != 1.0f && dynamic_cast<osg::AutoTransform*>( model.get() ) )
             {
                 // clone the old AutoTransform, set the new scale, and copy over its children.
@@ -207,6 +225,7 @@ SubstituteModelFilter::process(const FeatureList&           features,
                 newAT->addChild( scaler );
                 model = newAT;
             }
+#endif
         }
 
         if ( model.valid() )
@@ -264,13 +283,28 @@ SubstituteModelFilter::process(const FeatureList&           features,
         }
     }
 
+    if ( iconSymbol )
+    {
+        // activate decluttering for icons if requested
+        if ( iconSymbol->declutter() == true )
+        {
+            Decluttering::setEnabled( attachPoint->getOrCreateStateSet(), true );
+        }
+
+        // activate horizon culling if we are in geocentric space
+        if ( context.getSession() && context.getSession()->getMapInfo().isGeocentric() )
+        {
+            HorizonCullingProgram::install( attachPoint->getOrCreateStateSet() );
+        }
+    }
+
+    // active DrawInstanced if required:
     if ( _useDrawInstanced && Registry::capabilities().supportsDrawInstanced() )
     {
         DrawInstanced::convertGraphToUseDrawInstanced( attachPoint );
 
         // install a shader program to render draw-instanced.
-        VirtualProgram* p = DrawInstanced::createDrawInstancedProgram();
-        attachPoint->getOrCreateStateSet()->setAttributeAndModes( p, osg::StateAttribute::ON );
+        DrawInstanced::install( attachPoint->getOrCreateStateSet() );
     }
 
 #if 0 // now called from GeometryCompiler
@@ -452,7 +486,6 @@ SubstituteModelFilter::cluster(const FeatureList&           features,
                                FilterContext&               context )
 {
     ModelBins modelBins;
-    //ModelToFeatures modelToFeatures;
 
     std::set<URI> missing;
 
@@ -472,8 +505,8 @@ SubstituteModelFilter::cluster(const FeatureList&           features,
         osg::ref_ptr<osg::Node> model = context.getSession()->getObject<osg::Node>( instanceURI.full() );
         if ( !model.valid() )
         {
-            InstanceResource* instance = findResource( instanceURI, symbol, context, missing );
-            if ( !instance )
+            osg::ref_ptr<InstanceResource> instance;
+            if ( !findResource( instanceURI, symbol, context, missing, instance) )
                 continue;
 
             model = instance->createNode( context.getSession()->getDBOptions() );

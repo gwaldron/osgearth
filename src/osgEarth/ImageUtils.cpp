@@ -449,15 +449,22 @@ ImageUtils::createEmptyImage()
     {
         Threading::ScopedMutexLock exclusive( s_emptyImageMutex );
         if (!s_emptyImage.valid())
-        {
-            s_emptyImage = new osg::Image;
-            s_emptyImage->allocateImage(1,1,1, GL_RGBA, GL_UNSIGNED_BYTE);
-            s_emptyImage->setInternalTextureFormat( GL_RGB8A_INTERNAL );
-            unsigned char *data = s_emptyImage->data(0,0);
-            memset(data, 0, 4);
+        {            
+            s_emptyImage = createEmptyImage( 1, 1 );
         }     
     }
     return s_emptyImage.get();
+}
+
+osg::Image*
+ImageUtils::createEmptyImage(unsigned int s, unsigned int t)
+{
+    osg::Image* empty = new osg::Image;
+    empty->allocateImage(s,t,1, GL_RGBA, GL_UNSIGNED_BYTE);
+    empty->setInternalTextureFormat( GL_RGB8A_INTERNAL );
+    unsigned char *data = empty->data(0,0);
+    memset(data, 0, 4 * s * t);
+    return empty;
 }
 
 bool

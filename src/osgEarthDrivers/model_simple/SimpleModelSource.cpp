@@ -23,6 +23,7 @@
 #include <osgEarth/Map>
 #include <osgEarth/ShaderGenerator>
 #include <osgEarth/FileUtils>
+#include <osgEarth/AutoScale>
 #include <osg/LOD>
 #include <osg/Notify>
 #include <osg/MatrixTransform>
@@ -111,8 +112,6 @@ public:
                 (*_options.location()).y(), 
                 (*_options.location()).z(),
                 ALTMODE_ABSOLUTE );
-
-            OE_NOTICE << "Read location " << geoPoint.vec3d() << std::endl;
             
             osg::Matrixd matrix;
             geoPoint.createLocalToWorld( matrix );
@@ -167,6 +166,7 @@ public:
                     osg::StateAttribute::OFF | osg::StateAttribute::OVERRIDE );
             }
         }
+
 
         return result.release();
     }

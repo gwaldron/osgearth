@@ -863,7 +863,7 @@ FeatureModelGraph::build(const Style&        defaultStyle,
                 }
 
                 // otherwise, all feature returned by this query will have the same style:
-                else
+                else if ( !_useTiledSource )
                 {
                     // combine the selection style with the incoming base style:
                     Style selectedStyle = *styles->getStyle( sel.getSelectedStyleName() );
@@ -877,6 +877,16 @@ FeatureModelGraph::build(const Style&        defaultStyle,
 
                     if ( styleGroup && !group->containsNode(styleGroup) )
                         group->addChild( styleGroup );
+                }
+
+                // Tried to apply a selector query to a tiled source, which is illegal because
+                // you cannot run an SQL expression on pre-tiled data (like TFS).
+                else
+                {
+                    OE_WARN << LC 
+                        << "Illegal: you cannot use a selector SQL query with a tiled feature source. "
+                        << "Consider using a JavaScript style expression instead."
+                        << std::endl;
                 }
             }
         }
@@ -997,6 +1007,7 @@ FeatureModelGraph::queryAndSortIntoStyleGroups(const Query&            query,
         if ( styleString.length() > 0 && styleString.at(0) == '{' )
         {
             Config conf( "style", styleString );
+            conf.setReferrer( styleExpr.uriContext().referrer() );
             conf.set( "type", "text/css" );
             combinedStyle = Style(conf);
         }

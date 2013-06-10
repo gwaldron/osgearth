@@ -20,56 +20,56 @@
 #define OSGEARTHUTIL_DETAIL_TEXTURE_H
 
 #include <osgEarthUtil/Common>
+#include <osgEarth/TerrainEffect>
+#include <osgEarth/URI>
 #include <osg/Image>
 #include <osg/Uniform>
-#include <osg/Node>
 #include <osg/Texture2D>
-#include <osg/observer_ptr>
-
-namespace osgEarth {
-    class VirtualProgram;
-}
 
 namespace osgEarth { namespace Util
 {
     /**
      * Controller that applies a detail texture to the terrain.
      */
-    class OSGEARTHUTIL_EXPORT DetailTexture
+    class OSGEARTHUTIL_EXPORT DetailTexture : public TerrainEffect
     {
     public:
         /** construct a new detail texture controller */
         DetailTexture();
-        virtual ~DetailTexture();
-
-        /** Attach the detail texture to the terrain renderer. Set to
-            NULL to detach an existing detail texture. */
-        void setTerrainNode( osg::Node* node );
 
         /** Sets the LOD at which to start detailing */
-        void setBaseLOD( unsigned lod );
-        unsigned getBaseLOD() const { return _baseLOD; }
+        void setStartLOD( unsigned lod );
+        unsigned getStartLOD() const { return _startLOD.get(); }
 
         /** Sets the intensity (0=none, 1=full) */
         void setIntensity( float value );
-        float getIntensity() const { return _intensity; }
+        float getIntensity() const { return _intensity.get(); }
 
         /** Sets the image to use as the detail texture */
         void setImage( const osg::Image* image );
         const osg::Image* getImage() const { return _texture->getImage(); }
 
-        /** Sets the GPU texture image unit to use for the texture (default=1) */
-        void setImageUnit( unsigned unit );
-        unsigned getImageUnit() const { return _unit; }
+    public: // TerrainEffect interface
+
+        void onInstall(TerrainEngineNode* engine);
+        void onUninstall(TerrainEngineNode* engine);
+
+    public: // serialization
+
+        DetailTexture(const Config& conf);
+        void mergeConfig(const Config& conf);
+        virtual Config getConfig() const;
 
     protected:
-        osg::observer_ptr<osg::Node> _terrain;
-        unsigned                     _unit;
-        float                        _intensity;
-        unsigned                     _baseLOD;
+        virtual ~DetailTexture() { }
+        void init();
+
+        optional<float>    _intensity;
+        optional<unsigned> _startLOD;
+        optional<URI>      _imageURI;
 
         osg::ref_ptr<osg::Uniform>   _intensityUniform;
-        osg::ref_ptr<osg::Uniform>   _baseLODUniform;
+        osg::ref_ptr<osg::Uniform>   _startLODUniform;
         osg::ref_ptr<osg::Uniform>   _samplerUniform;
         osg::ref_ptr<osg::Texture2D> _texture;
     };

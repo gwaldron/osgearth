@@ -41,6 +41,8 @@ namespace osgEarth { namespace Symbology
         /** dtor */
         virtual ~ModelResource() { }
 
+        virtual bool is2D() const { return false; }
+
     public: // serialization methods
 
         virtual Config getConfig() const;

@@ -8,6 +8,8 @@ SET(TARGET_H
     BingOptions
 )
 
+SET(TARGET_COMMON_LIBRARIES ${TARGET_COMMON_LIBRARIES} osgEarthSymbology)
+
 SETUP_PLUGIN(osgearth_bing)
 
 

@@ -12,11 +12,13 @@ Debugging:
 
     :OSGEARTH_NOTIFY_LEVEL:     Similar to ``OSG_NOTIFY_LEVEL``, sets the verbosity for
                                 console output. Values are ``DEBUG``, ``INFO``, ``NOTICE``,
-                                and ``WARN``. Default is ``NOTICE``.
-    :OSGEARTH_MERGE_SHADERS:    Consolidate all shaders within a shader program; this is
-                                required for GLES so this is useful for testing, and also
-                                makes shader dumps more readable (set to 1)
-    :OSGEARTH_DUMP_SHADERS:     Prints composited shader code to the console (set to 1)
+                                and ``WARN``. Default is ``NOTICE``. (This is distinct from
+                                OSG's notify level.)
+    :OSGEARTH_MERGE_SHADERS:    Consolidate all shaders within a single shader program; this
+                                is required for GLES (mobile devices) and is therefore useful
+                                for testing. It also makes shader dumps more readable. (set to 1)
+    :OSGEARTH_DUMP_SHADERS:     Prints composited shader code to the console (set to 1).
+                                Setting this will also activate shader merging (above).
 
 Rendering:
 
@@ -39,3 +41,12 @@ Misc:
     :OSGEARTH_USE_PBUFFER_TEST: Directs the osgEarth platform Capabilities analyzer to
                                 create a PBUFFER-based graphics context for collecting
                                 GL support information. (set to 1)
+
+Performance:
+
+    :OSG_NUM_DATABASE_THREADS:      Sets the total number of threads that the OSG DatabasePager
+                                    will use to load terrain tiles and feature data tiles.
+    :OSG_NUM_HTTP_DATABASE_THREADS: Sets the number of threads in the Pager's thread pool (see
+                                    above) that should be used for "high-latency" operations.
+                                    (Usually this means operations that download data from the
+                                    network, hence the "HTTP" in the variable name.)

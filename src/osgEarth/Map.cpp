@@ -1070,6 +1070,12 @@ Map::getHeightField(const TileKey&                  key,
         progress );
 }
 
+const SpatialReference*
+Map::getWorldSRS() const
+{
+    return isGeocentric() ? getSRS()->getECEF() : getSRS();
+}
+
 bool
 Map::sync( MapFrame& frame ) const
 {

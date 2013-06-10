@@ -86,12 +86,12 @@ TileKey::getQuadrant() const
 {
     if ( _lod == 0 )
         return 0;
-    bool xsame = ((_x >> 1) << 1) == _x;
-    bool ysame = ((_y >> 1) << 1) == _y;
+    bool xeven = (_x & 1) == 0;
+    bool yeven = (_y & 1) == 0;
     return 
-        xsame && ysame ? 0 :
-        xsame          ? 2 :
-        ysame          ? 1 : 3;
+        xeven && yeven ? 0 :
+        xeven          ? 2 :
+        yeven          ? 1 : 3;
 }
 
 osgTerrain::TileID

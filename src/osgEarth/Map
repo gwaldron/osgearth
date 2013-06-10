@@ -73,6 +73,11 @@ namespace osgEarth
         const SpatialReference* getSRS() const { return _profile.valid() ? _profile->getSRS() : 0L; }
 
         /**
+         * Gets the SRS of the world (scene)
+         */
+        const SpatialReference* getWorldSRS() const;
+
+        /**
          * Copies references of the map image layers into the output list.
          * This method is thread safe. It returns the map revision that was
          * in effect when the data was copied.

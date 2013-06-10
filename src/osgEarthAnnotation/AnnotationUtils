@@ -25,6 +25,7 @@
 #include <osg/AutoTransform>
 #include <osg/Drawable>
 #include <osg/Geometry>
+#include <osgText/TextBase>
 
 namespace osgEarth { namespace Annotation
 {
@@ -43,6 +44,9 @@ namespace osgEarth { namespace Annotation
         static const std::string& UNIFORM_FADE();
 
         static const std::string& PROGRAM_NAME();
+
+		static osgText::String::Encoding convertTextSymbolEncoding (
+			const osgEarth::Symbology::TextSymbol::Encoding encoding );
 
         /**
          * Creates a drawable representing a symbolized text label in

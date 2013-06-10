@@ -230,7 +230,14 @@ PlaceNode::setText( const std::string& text )
         osgText::Text* d = dynamic_cast<osgText::Text*>( i->get() );
         if ( d )
         {
-            d->setText( text );
+			TextSymbol* symbol =  _style.getOrCreate<TextSymbol>();
+			osgText::String::Encoding text_encoding = osgText::String::ENCODING_UNDEFINED;
+			if ( symbol && symbol->encoding().isSet() )
+			{
+				text_encoding = AnnotationUtils::convertTextSymbolEncoding(symbol->encoding().value());
+			}
+
+            d->setText( text, text_encoding );
             break;
         }
     }

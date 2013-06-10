@@ -151,6 +151,11 @@ namespace osgEarth
         static osg::Image* createEmptyImage();
 
         /**
+         * Gets a transparent image used for a placeholder with the specified dimensions
+         */
+        static osg::Image* createEmptyImage(unsigned int s, unsigned int t);
+
+        /**
          * Creates a one-pixel image.
          */
         static osg::Image* createOnePixelImage(const osg::Vec4& color);

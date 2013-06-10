@@ -8,6 +8,9 @@
 
 /* Begin PBXBuildFile section */
 		1F823FFE173C1D20003B519D /* libosgdb_osgearth_engine_mp.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 1F823FFD173C1D20003B519D /* libosgdb_osgearth_engine_mp.a */; };
+		1F8566A817666C29005BCD2B /* libosgdb_osgearth_scriptengine_javascriptcore.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 1F8566A717666C29005BCD2B /* libosgdb_osgearth_scriptengine_javascriptcore.a */; };
+		1F8566AA17666E67005BCD2B /* libJavaScriptCore.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 1F8566A917666E67005BCD2B /* libJavaScriptCore.a */; };
+		1F8566AC17666EC1005BCD2B /* libicucore.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 1F8566AB17666EC1005BCD2B /* libicucore.dylib */; };
 		90283E5615C6FB3E00620EEF /* tests in Resources */ = {isa = PBXBuildFile; fileRef = 90283E5415C6FB3E00620EEF /* tests */; };
 		90283E5715C6FB3E00620EEF /* data in Resources */ = {isa = PBXBuildFile; fileRef = 90283E5515C6FB3E00620EEF /* data */; };
 		90283E5D15C7091A00620EEF /* libosgdb_osgearth_engine_quadtree.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 90283E5C15C7091A00620EEF /* libosgdb_osgearth_engine_quadtree.a */; };
@@ -176,6 +179,9 @@
 
 /* Begin PBXFileReference section */
 		1F823FFD173C1D20003B519D /* libosgdb_osgearth_engine_mp.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libosgdb_osgearth_engine_mp.a; path = ../../../lib/Release/libosgdb_osgearth_engine_mp.a; sourceTree = "<group>"; };
+		1F8566A717666C29005BCD2B /* libosgdb_osgearth_scriptengine_javascriptcore.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libosgdb_osgearth_scriptengine_javascriptcore.a; path = ../../../lib/Release/libosgdb_osgearth_scriptengine_javascriptcore.a; sourceTree = "<group>"; };
+		1F8566A917666E67005BCD2B /* libJavaScriptCore.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libJavaScriptCore.a; path = ../../../../3rdParty/all/libJavaScriptCore.a; sourceTree = "<group>"; };
+		1F8566AB17666EC1005BCD2B /* libicucore.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = libicucore.dylib; path = usr/lib/libicucore.dylib; sourceTree = SDKROOT; };
 		90283E5415C6FB3E00620EEF /* tests */ = {isa = PBXFileReference; lastKnownFileType = folder; name = tests; path = ../../../../tests; sourceTree = "<group>"; };
 		90283E5515C6FB3E00620EEF /* data */ = {isa = PBXFileReference; lastKnownFileType = folder; name = data; path = ../../../../data; sourceTree = "<group>"; };
 		90283E5C15C7091A00620EEF /* libosgdb_osgearth_engine_quadtree.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libosgdb_osgearth_engine_quadtree.a; path = ../../../lib/Release/libosgdb_osgearth_engine_quadtree.a; sourceTree = "<group>"; };
@@ -356,6 +362,9 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				1F8566AC17666EC1005BCD2B /* libicucore.dylib in Frameworks */,
+				1F8566AA17666E67005BCD2B /* libJavaScriptCore.a in Frameworks */,
+				1F8566A817666C29005BCD2B /* libosgdb_osgearth_scriptengine_javascriptcore.a in Frameworks */,
 				1F823FFE173C1D20003B519D /* libosgdb_osgearth_engine_mp.a in Frameworks */,
 				904E22771691CC42002D66FD /* Accelerate.framework in Frameworks */,
 				904E22781691CC42002D66FD /* MobileCoreServices.framework in Frameworks */,
@@ -557,6 +566,9 @@
 		9051FFEF15B1EDFD00D9ABD3 = {
 			isa = PBXGroup;
 			children = (
+				1F8566AB17666EC1005BCD2B /* libicucore.dylib */,
+				1F8566A917666E67005BCD2B /* libJavaScriptCore.a */,
+				1F8566A717666C29005BCD2B /* libosgdb_osgearth_scriptengine_javascriptcore.a */,
 				1F823FFD173C1D20003B519D /* libosgdb_osgearth_engine_mp.a */,
 				9051000815B1EDFD00D9ABD3 /* osgEarthViewerIOS */,
 				905100D215B21FFD00D9ABD3 /* Resources */,

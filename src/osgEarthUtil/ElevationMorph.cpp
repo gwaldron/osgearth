@@ -52,6 +52,11 @@ namespace
         "uniform float oe_morph_delay; \n"
         "uniform float oe_morph_duration; \n"
 
+        "uniform mat4 oe_layer_parent_matrix; \n"
+        "varying vec4 oe_layer_texc; \n"
+        "varying vec4 oe_morph_texc; \n"
+        "varying float oe_morph_r; \n"
+
         "void oe_morph_vertex(inout vec4 VertexMODEL) \n"
         "{ \n"
         "    float radius     = oe_tile_key.w; \n"
@@ -69,6 +74,22 @@ namespace
         "    float elevOld    = oe_terrain_attr2.w; \n"
         "    vec3  offset     = upVector * r * (elevOld - elev); \n"
         "    VertexMODEL      = VertexMODEL + vec4(offset/VertexMODEL.w, 0.0); \n"
+        
+        "    oe_morph_texc    = oe_layer_parent_matrix * oe_layer_texc; \n"
+        "    oe_morph_r       = oe_layer_parent_matrix[0][0] > 0.0 ? r : 0.0; \n"
+        "} \n";
+
+    const char* fs =
+        "uniform vec4 oe_tile_key; \n"
+        "uniform float oe_layer_opacity; \n"
+        "varying vec4 oe_morph_texc; \n"
+        "varying float oe_morph_r; \n"
+        "uniform sampler2D oe_layer_tex_parent; \n"
+
+        "void oe_morph_fragment(inout vec4 color) \n"
+        "{ \n"
+        "    vec4 texelpma = texture2D(oe_layer_tex_parent, oe_morph_texc.st) * oe_layer_opacity; \n"
+        "    color = mix(color, texelpma, oe_morph_r); \n"
         "} \n";
 }
 
@@ -136,7 +157,8 @@ ElevationMorph::onInstall(TerrainEngineNode* engine)
         stateset->addUniform( _durationUniform.get() );
 
         VirtualProgram* vp = VirtualProgram::getOrCreate(stateset);
-        vp->setFunction( "oe_morph_vertex", vs, ShaderComp::LOCATION_VERTEX_MODEL );
+        vp->setFunction( "oe_morph_vertex",   vs, ShaderComp::LOCATION_VERTEX_MODEL );
+        vp->setFunction( "oe_morph_fragment", fs, ShaderComp::LOCATION_FRAGMENT_COLORING );
     }
 }
 
@@ -156,6 +178,7 @@ ElevationMorph::onUninstall(TerrainEngineNode* engine)
             if ( vp )
             {
                 vp->removeShader( "oe_morph_vertex" );
+                vp->removeShader( "oe_morph_fragment" );
             }
         }
     }

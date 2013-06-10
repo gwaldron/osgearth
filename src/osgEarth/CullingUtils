@@ -212,6 +212,7 @@ namespace osgEarth
         void apply(osg::Geode& node);
     };
 
+
     /**
      * Horizon culling in a shader program.
      */
@@ -220,6 +221,31 @@ namespace osgEarth
     public:
         static void install( osg::StateSet* stateset );
         static void remove ( osg::StateSet* stateset );
+    };
+
+
+    /**
+     * Group that lets you adjust the LOD scale on its children.
+     */
+    class OSGEARTH_EXPORT LODScaleGroup : public osg::Group
+    {
+    public:
+        LODScaleGroup();
+
+        /**
+         * Factor by which to multiply the camera's LOD scale.
+         */
+        void setLODScaleFactor( float value ) { _scaleFactor = value; }
+        float getLODScaleFactor() const { return _scaleFactor; }
+
+    public: // osg::Group
+        virtual void traverse(osg::NodeVisitor& nv);
+
+    protected:
+        virtual ~LODScaleGroup() { }
+
+    private:
+        float _scaleFactor;
     };
 }
 

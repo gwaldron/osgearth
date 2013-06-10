@@ -68,7 +68,9 @@ namespace osgEarth_engine_mp
 
         virtual void traverse( class osg::NodeVisitor& nv );
 
-        osg::BoundingSphere computeBound() const;
+        virtual void releaseGLObjects(osg::State* state) const;
+
+        virtual osg::BoundingSphere computeBound() const;
 
     protected:
 
@@ -79,6 +81,7 @@ namespace osgEarth_engine_mp
         osg::Uniform*           _bornUniform;
         mutable osg::Uniform*   _keyUniform;
         osg::ref_ptr<const TileModel> _model;
+        osg::Uniform*           _tileParentMatrixUniform;
     };
 
 

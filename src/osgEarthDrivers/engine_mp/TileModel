@@ -30,6 +30,8 @@
 #include <osgTerrain/Layer>
 #include <osg/Image>
 #include <osg/StateSet>
+#include <osg/Texture2D>
+#include <osg/State>
 #include <map>
 
 namespace osgEarth_engine_mp
@@ -38,6 +40,9 @@ namespace osgEarth_engine_mp
 
     class TileModel : public osg::Referenced
     {
+    public:
+        void releaseGLObjects(osg::State* state) const;
+
     public:
         // do not change the order of these.
         enum Neighbor
@@ -130,6 +135,8 @@ namespace osgEarth_engine_mp
                 GeoLocator*                 locator,
                 const osgEarth::TileKey&    tileKey,
                 bool                        fallbackData =false );
+    
+            void releaseGLObjects(osg::State* state) const;
 
 
             osgEarth::UID getUID() const {
@@ -144,17 +151,18 @@ namespace osgEarth_engine_mp
                 return _locator.get();
             }
 
-            osg::Image* getImage() const { 
-                return _image.get(); }
+            //osg::Image* getImage() const { 
+            //    return _image.get(); }
+
+            osg::Texture2D* getTexture() const {
+                return _texture.get();
+            }
 
             const osgEarth::TileKey& getTileKey() const {
                 return _tileKey; }
 
             const osgEarth::ImageLayer* getMapLayer() const {
                 return _layer.get(); }
-
-            //int getLevelOfDetail() const {
-            //    return _lod; }
 
             bool isFallbackData() const {
                 return _fallbackData; }
@@ -175,8 +183,8 @@ namespace osgEarth_engine_mp
             osg::ref_ptr<const osgEarth::ImageLayer> _layer;
             osg::ref_ptr<GeoLocator>                 _locator;
             osg::ref_ptr<osg::Image>                 _image;
+            osg::ref_ptr<osg::Texture2D>             _texture;
             osgEarth::TileKey                        _tileKey;
-            //int                                      _lod;
             bool                                     _fallbackData;
             unsigned                                 _order;
         };
@@ -203,16 +211,21 @@ namespace osgEarth_engine_mp
          */
         TileModel* createQuadrant(unsigned q) const;
 
+        /** Parent model pointer. */
+        void setParentTileModel(const TileModel* parent);
+        const TileModel* getParentTileModel() const { return _parentModel.get(); }
+
         /** Whether there is a heightfield */
         bool hasElevation() const { return _elevationData.getHeightField() != 0L; }
 
-        osg::ref_ptr<const Map>     _map; // observer_ptr?
-        TileKey                     _tileKey;
-        osg::ref_ptr<GeoLocator>    _tileLocator;
-        ColorDataByUID              _colorData;
-        ElevationData               _elevationData;
-        float                       _sampleRatio;
-        osg::ref_ptr<osg::StateSet> _parentStateSet;
+        osg::ref_ptr<const Map>      _map; // observer_ptr?
+        TileKey                      _tileKey;
+        osg::ref_ptr<GeoLocator>     _tileLocator;
+        ColorDataByUID               _colorData;
+        ElevationData                _elevationData;
+        float                        _sampleRatio;
+        osg::ref_ptr<osg::StateSet>  _parentStateSet;
+        osg::observer_ptr<const TileModel> _parentModel;
 
         // convenience funciton to pull out a layer by its UID.
         bool getColorData( UID layerUID, ColorData& out ) const {

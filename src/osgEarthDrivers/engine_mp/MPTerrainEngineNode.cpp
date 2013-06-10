@@ -773,6 +773,10 @@ MPTerrainEngineNode::updateShaders()
         terrainStateSet->getOrCreateUniform( 
             "oe_layer_tex", osg::Uniform::SAMPLER_2D )->set( _primaryUnit );
 
+        // binding for the secondary texture (for LOD blending)
+        terrainStateSet->getOrCreateUniform(
+            "oe_layer_tex_parent", osg::Uniform::SAMPLER_2D )->set( _secondaryUnit );
+
         // uniform that controls per-layer opacity
         terrainStateSet->getOrCreateUniform(
             "oe_layer_opacity", osg::Uniform::FLOAT )->set( 1.0f );

@@ -8,7 +8,7 @@ Demonstrates the application of a normal map to add terrain detail.
         <terrain min_level="20"/>
     </options>
 
-    <image name="readymap_imagery" driver="tms" visible="true" opacity="0.3">
+    <image name="readymap_imagery" driver="tms" visible="true">
         <url>http://readymap.org/readymap/tiles/1.0.0/7/</url>
     </image>
             

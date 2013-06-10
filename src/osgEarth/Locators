@@ -62,6 +62,8 @@ namespace osgEarth
         // generates linear (evenly-spaced) coordinates
         virtual bool isLinear() const { return true; }
 
+        virtual bool createScaleBiasMatrix(const GeoExtent& window, osg::Matrixd& out_m) const;
+
     public: // better-sounding functions.
 
         bool modelToUnit(const osg::Vec3d& model, osg::Vec3d& unit) const {

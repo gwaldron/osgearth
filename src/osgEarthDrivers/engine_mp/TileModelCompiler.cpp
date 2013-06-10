@@ -79,6 +79,7 @@ namespace
     struct RenderLayer
     {
         TileModel::ColorData           _layer;
+        TileModel::ColorData           _layerParent;
         osg::ref_ptr<const GeoLocator> _locator;
         //osg::ref_ptr<osg::Vec2Array>   _tileCoords;
         osg::ref_ptr<osg::Vec2Array>   _texCoords;
@@ -88,7 +89,10 @@ namespace
         bool _ownsTileCoords;
         bool _ownsTexCoords;
         bool _ownsSkirtTexCoords;
-        RenderLayer() : _ownsTileCoords(false), _ownsTexCoords(false), _ownsSkirtTexCoords(false) { }
+        RenderLayer() : 
+            _ownsTileCoords    ( false ), 
+            _ownsTexCoords     ( false ), 
+            _ownsSkirtTexCoords( false ) { }
     };
 
     typedef std::vector< RenderLayer > RenderLayerVector;
@@ -131,18 +135,17 @@ namespace
             textureImageUnit = 0;
             renderTileCoords = 0L;
             ownsTileCoords   = false;
-            parentModel      = 0L;
         }
 
         bool                     useVBOs;
         int                      textureImageUnit;
 
-        const TileModel*         model;                         // the tile's data model
+        const TileModel*              model;                   // the tile's data model
+        osg::ref_ptr<const TileModel> parentModel;             // parent model reference
+
         const MaskLayerVector&   maskLayers;                    // map-global masking layer set
         osg::ref_ptr<GeoLocator> geoLocator;                    // tile locator adjusted to geographic
         osg::Vec3d               centerModel;                   // tile center in model (world) coords
-
-        const TileModel*         parentModel;
 
         RenderLayerVector        renderLayers;
         osg::Vec2Array*          renderTileCoords;
@@ -448,13 +451,21 @@ namespace
                     }
                 }
 
+                // install the locator:
                 r._locator = locator;
                 if ( locator->getCoordinateSystemType() == osgTerrain::Locator::GEOCENTRIC )
                 {
                     r._locator = locator->getGeographicFromGeocentric();
-                    //const GeoLocator* geo = dynamic_cast<const GeoLocator*>(locator);
-                    //if ( geo )
-                    //    r._locator = geo->getGeographicFromGeocentric();
+                }
+
+                // install the parent color data layer if necessary.
+                if ( d.parentModel.valid() )
+                {
+                    d.parentModel->getColorData( r._layer.getUID(), r._layerParent );
+                }
+                else
+                {
+                    r._layerParent = r._layer;
                 }
 
                 d.renderLayers.push_back( r );
@@ -614,7 +625,7 @@ namespace
 #if 1
 
                     // This only works if the tile size is an odd number in both directions.
-                    if (d.model->_tileKey.getLOD() > 0 && (d.numCols&1) && (d.numRows&1) && d.parentModel )
+                    if (d.model->_tileKey.getLOD() > 0 && (d.numCols&1) && (d.numRows&1) && d.parentModel.valid())
                     {
                         d.parentModel->_elevationData.getHeight( ndc, d.model->_tileLocator.get(), oldHeightValue, INTERP_TRIANGULATE );
                         d.parentModel->_elevationData.getNormal( ndc, d.model->_tileLocator.get(), oldNormal );
@@ -1835,24 +1846,22 @@ namespace
         // install the render data for each layer:
         for( RenderLayerVector::const_iterator r = d.renderLayers.begin(); r != d.renderLayers.end(); ++r )
         {
-            osg::Image* image = r->_layer.getImage();
-
-            osg::Texture2D* tex = new osg::Texture2D( image );
-            tex->setUnRefImageDataAfterApply( true );
-            tex->setMaxAnisotropy( 16.0f );
-            tex->setResizeNonPowerOfTwoHint(false);
-            tex->setFilter( osg::Texture::MAG_FILTER, osg::Texture::LINEAR );
-            tex->setFilter( osg::Texture::MIN_FILTER, osg::Texture::LINEAR );
-            tex->setWrap( osg::Texture::WRAP_S, osg::Texture::CLAMP_TO_EDGE );
-            tex->setWrap( osg::Texture::WRAP_T, osg::Texture::CLAMP_TO_EDGE );
-            tex->setWrap( osg::Texture::WRAP_R, osg::Texture::CLAMP_TO_EDGE );
-
             unsigned order = r->_layer.getOrder();
 
             MPGeometry::Layer layer;
             layer._layerID        = r->_layer.getUID();
             layer._imageLayer     = r->_layer.getMapLayer();
-            layer._tex            = tex;
+            layer._tex            = r->_layer.getTexture();
+            layer._texParent      = r->_layerParent.getTexture();
+
+            // parent texture matrix: it's a scale/bias matrix encoding the difference
+            // between the two locators.
+            if ( r->_layerParent.getLocator() )
+            {
+                r->_layerParent.getLocator()->createScaleBiasMatrix(
+                    r->_layer.getLocator()->getDataExtent(),
+                    layer._texMatParent );
+            }
 
             // the surface:
             layer._texCoords  = r->_texCoords;
@@ -1911,15 +1920,14 @@ _textureImageUnit      ( texImageUnit )
 
 
 TileNode*
-TileModelCompiler::compile(const TileModel* model,
-                           const TileModel* parentModel)
+TileModelCompiler::compile(const TileModel* model)
 {
     TileNode* tile = new TileNode( model->_tileKey, model );
 
     // Working data for the build.
     Data d(model, _masks);
 
-    d.parentModel = parentModel;
+    d.parentModel = model->getParentTileModel();
     d.scaleHeight = *_options.verticalScale();
 
     // build the localization matrix for this tile:
@@ -1965,7 +1973,7 @@ TileModelCompiler::compile(const TileModel* model,
     // allocate all the vertex, normal, and color arrays.
     double sampleRatio = *_options.heightFieldSampleRatio();
     if ( sampleRatio <= 0.0f )
-        sampleRatio = osg::clampBetween( model->_tileKey.getLevelOfDetail()/20.0, 0.0625, 1.0 );
+        sampleRatio = osg::clampBetween( model->_tileKey.getLOD()/20.0, 0.0625, 1.0 );
 
     setupGeometryAttributes( d, sampleRatio, *_options.color() );
 

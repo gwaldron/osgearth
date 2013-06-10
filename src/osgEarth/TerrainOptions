@@ -298,7 +298,6 @@ namespace osgEarth
         optional<unsigned> _firstLOD;
         optional<bool> _enableLighting;
         optional<float> _attenuationDistance;
-        optional<bool> _lodBlending;
         optional<float> _lodTransitionTimeSeconds;
         optional<bool>  _enableMipmapping;
         optional<bool> _clusterCulling;

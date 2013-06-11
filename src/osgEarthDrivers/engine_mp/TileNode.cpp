@@ -33,8 +33,10 @@ using namespace OpenThreads;
 //----------------------------------------------------------------------------
 
 TileNode::TileNode( const TileKey& key, const TileModel* model ) :
-_key  ( key ),
-_model( model )
+_key               ( key ),
+_model             ( model ),
+_bornTime          ( 0.0 ),
+_lastTraversalFrame( 0 )
 {
     this->setName( key.str() );
 
@@ -50,21 +52,13 @@ _model( model )
     _bornUniform = new osg::Uniform(osg::Uniform::FLOAT, "oe_tile_birthtime");
     _bornUniform->set( -1.0f );
     stateset->addUniform( _bornUniform );
+}
 
-#if 0
-    // Texture matrix uniform that transforms texture coordinates from the 
-    // parent tile into the quadrant of this tile.
-    _tileParentMatrixUniform = new osg::Uniform(osg::Uniform::FLOAT_MAT4, "oe_tile_parent_matrix");
-    unsigned q = key.getQuadrant();
-    osg::Matrixf scaleBias;
-    model->createScaleBiasMatrix(scaleBias);
-    scaleBias(0,0) = 0.5f;
-    scaleBias(1,1) = 0.5f;
-    scaleBias(3,0) = (float)(key.getTileX() & 0x1) * 0.5f;
-    scaleBias(3,1) = (float)(1 - key.getTileY() & 0x1) * 0.5f;
-    _tileParentMatrixUniform->set( scaleBias );
-    stateset->addUniform( _tileParentMatrixUniform );
-#endif
+
+void
+TileNode::setLastTraversalFrame(unsigned frame)
+{
+  _lastTraversalFrame = frame;
 }
 
 
@@ -99,14 +93,20 @@ TileNode::traverse( osg::NodeVisitor& nv )
             if (ccc->cull(&nv,0,static_cast<osg::State *>(0))) return;
         }
 
-        // set the birth time if not already set.
+        // reset the "birth" time if necessary - this is the time at which the 
+        // node passes cull
         const osg::FrameStamp* fs = nv.getFrameStamp();
-
-        float bt;
-        _bornUniform->get( bt );
-        if ( bt < 0.0f )
+        if ( fs )
         {
-            _bornUniform->set( nv.getFrameStamp() ? (float)nv.getFrameStamp()->getReferenceTime() : 0.0f );
+            unsigned frame = fs->getFrameNumber();
+
+            if ( (frame - _lastTraversalFrame > 1) || (_bornTime == 0.0) )
+            {
+                _bornTime = fs->getReferenceTime();
+                _bornUniform->set( (float)_bornTime );
+            }
+
+            _lastTraversalFrame = frame;
         }
     }
 

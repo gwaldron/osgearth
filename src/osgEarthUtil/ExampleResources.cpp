@@ -27,7 +27,7 @@
 
 #include <osgEarthUtil/NormalMap>
 #include <osgEarthUtil/DetailTexture>
-#include <osgEarthUtil/ElevationMorph>
+#include <osgEarthUtil/LODBlending>
 #include <osgEarthUtil/VerticalScale>
 #include <osgEarthUtil/ContourMap>
 
@@ -566,7 +566,7 @@ MapNodeHelper::parse(MapNode*             mapNode,
     // some terrain effects.
     const Config& normalMapConf   = externals.child("normal_map");
     const Config& detailTexConf   = externals.child("detail_texture");
-    const Config& elevMorphConf   = externals.child("elevation_morph");
+    const Config& lodBlendingConf = externals.child("lod_blending");
     const Config& vertScaleConf   = externals.child("vertical_scale");
     const Config& contourMapConf  = externals.child("contour_map");
 
@@ -749,9 +749,9 @@ MapNodeHelper::parse(MapNode*             mapNode,
     }
 
     // Install elevation morphing
-    if ( !elevMorphConf.empty() )
+    if ( !lodBlendingConf.empty() )
     {
-        mapNode->getTerrainEngine()->addEffect( new ElevationMorph(elevMorphConf) );
+        mapNode->getTerrainEngine()->addEffect( new LODBlending(lodBlendingConf) );
     }
 
     // Install vertical scaler

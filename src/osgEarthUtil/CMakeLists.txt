@@ -18,7 +18,6 @@ SET(HEADERS_ROOT
     DataScanner
     DetailTexture
     EarthManipulator
-    ElevationMorph
     ExampleResources
     Export
     FeatureManipTool
@@ -29,6 +28,7 @@ SET(HEADERS_ROOT
     LatLongFormatter
     LineOfSight
     LinearLineOfSight
+    LODBlending
     MeasureTool
     MGRSFormatter
     MGRSGraticule
@@ -67,7 +67,6 @@ SET(SOURCES_ROOT
     DataScanner.cpp
     DetailTexture.cpp
     EarthManipulator.cpp
-    ElevationMorph.cpp
     ExampleResources.cpp
     FeatureManipTool.cpp
     FeatureQueryTool.cpp
@@ -75,6 +74,7 @@ SET(SOURCES_ROOT
     HTM.cpp
     LatLongFormatter.cpp
     LinearLineOfSight.cpp
+    LODBlending.cpp
     MeasureTool.cpp
     MGRSFormatter.cpp
     MGRSGraticule.cpp

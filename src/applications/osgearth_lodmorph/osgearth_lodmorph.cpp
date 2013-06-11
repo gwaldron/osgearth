@@ -18,13 +18,13 @@
 */
 
 /**
- * This sample shows how to use osgEarth's ElevationMorph utility class.
+ * This sample shows how to use osgEarth's LODBlending utility class.
  */
 #include <osg/Notify>
 #include <osgViewer/Viewer>
 #include <osgEarthUtil/EarthManipulator>
 #include <osgEarthUtil/ExampleResources>
-#include <osgEarthUtil/ElevationMorph>
+#include <osgEarthUtil/LODBlending>
 #include <osgEarthSymbology/Color>
 #include <osg/Image>
 
@@ -44,7 +44,7 @@ usage(const char* msg)
 
 struct App
 {
-    ElevationMorph* morph;
+    LODBlending* effect;
 };
 
 
@@ -52,7 +52,7 @@ struct SetDelay : public ui::ControlEventHandler {
     App& _app;
     SetDelay(App& app) : _app(app) {}
     void onValueChanged(ui::Control*, float value) {
-        _app.morph->setDelay(value);
+        _app.effect->setDelay(value);
     }
 };
 
@@ -61,7 +61,7 @@ struct SetDuration : public ui::ControlEventHandler {
     App& _app;
     SetDuration(App& app) : _app(app) { }
     void onValueChanged(ui::Control*, float value) {
-        _app.morph->setDuration(value);
+        _app.effect->setDuration(value);
     }
 };
 
@@ -74,7 +74,7 @@ ui::Control* createUI( App& app )
     ui::VBox* vbox = new VBox();
     vbox->setAbsorbEvents( true );
 
-    vbox->addControl( new LabelControl(Stringify() << "Elevation Morphing Example", Color::Yellow) );
+    vbox->addControl( new LabelControl(Stringify() << "LOD Blending Example", Color::Yellow) );
 
     Grid* grid = vbox->addControl( new Grid() );
 
@@ -123,8 +123,8 @@ int main(int argc, char** argv)
             return -1;
 
         // attach the effect to the terrain.
-        app.morph = new ElevationMorph();
-        mapNode->getTerrainEngine()->addEffect(app.morph);
+        app.effect = new LODBlending();
+        mapNode->getTerrainEngine()->addEffect(app.effect);
 
         viewer.setSceneData( node );
         viewer.run();

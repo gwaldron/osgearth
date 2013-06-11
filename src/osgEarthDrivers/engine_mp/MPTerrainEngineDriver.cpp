@@ -101,7 +101,7 @@ public:
                 const Profile* profile = engineNode->getMap()->getProfile();
                 TileKey key( lod, x, y, profile );
 
-                OE_INFO << "   READ NODE UPSAMPLED TILE " << key.str() << std::endl;
+                OE_DEBUG << "   READ NODE UPSAMPLED TILE " << key.str() << std::endl;
 
                 osg::Node* node = engineNode->createUpsampledNode( key, progress );
                 if ( node )

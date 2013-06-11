@@ -270,8 +270,7 @@ TileModelFactory::getHeightFieldCache() const
 void
 TileModelFactory::createTileModel(const TileKey&           key, 
                                   osg::ref_ptr<TileModel>& out_model,
-                                  bool&                    out_hasRealData,
-                                  bool&                    out_hasLodBlendedLayers )
+                                  bool&                    out_hasRealData)
 {
     MapFrame mapf( _map, Map::MASKED_TERRAIN_LAYERS );
     
@@ -286,7 +285,6 @@ TileModelFactory::createTileModel(const TileKey&           key,
     // directly to the key, as opposed to fallback data, which is derived from a lower
     // LOD key.
     out_hasRealData = false;
-    out_hasLodBlendedLayers = false;
     
     // Fetch the image data and make color layers.
     unsigned order = 0;
@@ -302,11 +300,6 @@ TileModelFactory::createTileModel(const TileKey&           key,
             bool addedToModel = build.execute();
             if ( addedToModel )
             {
-                if ( layer->getImageLayerOptions().lodBlending() == true )
-                {
-                    out_hasLodBlendedLayers = true;
-                }
-
                 // only bump the order if we added something to the data model.
                 order++;
             }

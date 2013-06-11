@@ -192,12 +192,12 @@ ContourMap::onUninstall(TerrainEngineNode* engine)
                 vp->removeShader( "oe_contour_vertex" );
                 vp->removeShader( "oe_contour_fragment" );
             }
+        }
 
-            if ( _unit >= 0 )
-            {
-                engine->getTextureCompositor()->releaseTextureImageUnit( _unit );
-                _unit = -1;
-            }
+        if ( _unit >= 0 )
+        {
+            engine->getTextureCompositor()->releaseTextureImageUnit( _unit );
+            _unit = -1;
         }
     }
 }

@@ -58,7 +58,7 @@ namespace osgEarth_engine_mp
         TileModelCompiler* getCompiler() const { return _modelCompiler.get(); }
 
     protected:
-        osg::Node* createTile(TileModel* model, bool tileHasRealData, bool tileHasLodBlending); //, osg::Group* parent );
+        osg::Node* createTile(TileModel* model, bool tileHasRealData);
 
         osg::ref_ptr<TileModelFactory>      _modelFactory;
         osg::ref_ptr<TileModelCompiler>     _modelCompiler;

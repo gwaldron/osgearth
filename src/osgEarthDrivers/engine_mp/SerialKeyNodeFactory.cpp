@@ -19,7 +19,6 @@
 #include "SerialKeyNodeFactory"
 #include "DynamicLODScaleCallback"
 #include "FileLocationCallback"
-#include "LODFactorCallback"
 #include "TilePagedLOD"
 
 #include <osgEarth/Registry>
@@ -81,14 +80,14 @@ namespace
 }
 
 
-SerialKeyNodeFactory::SerialKeyNodeFactory(TileModelFactory*        modelFactory,
-                                           TileModelCompiler*       modelCompiler,
-                                           TileNodeRegistry*        liveTiles,
-                                           TileNodeRegistry*        deadTiles,
+SerialKeyNodeFactory::SerialKeyNodeFactory(TileModelFactory*             modelFactory,
+                                           TileModelCompiler*            modelCompiler,
+                                           TileNodeRegistry*             liveTiles,
+                                           TileNodeRegistry*             deadTiles,
                                            const MPTerrainEngineOptions& options,
-                                           const MapInfo&           mapInfo,
-                                           TerrainNode*             terrain,
-                                           UID                      engineUID ) :
+                                           const MapInfo&                mapInfo,
+                                           TerrainNode*                  terrain,
+                                           UID                           engineUID ) :
 _modelFactory    ( modelFactory ),
 _modelCompiler   ( modelCompiler ),
 _liveTiles       ( liveTiles ),
@@ -104,8 +103,7 @@ _engineUID       ( engineUID )
 
 osg::Node*
 SerialKeyNodeFactory::createTile(TileModel* model,
-                                 bool       tileHasRealData, 
-                                 bool       tileHasLodBlending)
+                                 bool       tileHasRealData)
 {
     // compile the model into a node:
     TileNode* tileNode = _modelCompiler->compile( model );
@@ -168,10 +166,9 @@ SerialKeyNodeFactory::createRootNode( const TileKey& key )
 {
     osg::ref_ptr<TileModel> model;
     bool                    real;
-    bool                    lodBlending;
 
-    _modelFactory->createTileModel( key, model, real, lodBlending );
-    return createTile( model.get(), real, lodBlending );
+    _modelFactory->createTileModel( key, model, real );
+    return createTile( model.get(), real );
 }
 
 
@@ -180,19 +177,18 @@ SerialKeyNodeFactory::createNode( const TileKey& key, ProgressCallback* progress
 {
     osg::ref_ptr<TileModel> model;
     bool                    isReal;
-    bool                    hasBlending;
 
     if ( progress && progress->isCanceled() )
         return 0L;
 
-    _modelFactory->createTileModel(key, model, isReal, hasBlending);
+    _modelFactory->createTileModel(key, model, isReal);
 
     if ( progress && progress->isCanceled() )
         return 0L;
 
     if ( isReal || _options.minLOD().isSet() || key.getLOD() == 0 )
     {
-        return createTile( model.get(), isReal, hasBlending );
+        return createTile( model.get(), isReal);
     }
     else
     {

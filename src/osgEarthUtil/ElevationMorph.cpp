@@ -76,7 +76,7 @@ namespace
         "    VertexMODEL      = VertexMODEL + vec4(offset/VertexMODEL.w, 0.0); \n"
         
         "    oe_morph_texc    = oe_layer_parent_matrix * oe_layer_texc; \n"
-        "    oe_morph_r       = oe_layer_parent_matrix[0][0] > 0.0 ? r : 0.0; \n"
+        "    oe_morph_r       = oe_layer_parent_matrix[0][0] > 0.0 ? r : 0.0; \n" // obe?
         "} \n";
 
     const char* fs =

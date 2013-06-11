@@ -47,6 +47,10 @@ namespace osgEarth { namespace Util
         void setDuration( float value );
         float getDuration() const { return _duration.get(); }
 
+        /** Vertical scale factor to apply to elevation */
+        void setVerticalScale( float value );
+        float getVerticalScale() const { return _vscale.get(); }
+
     public: // TerrainEffect interface
 
         void onInstall(TerrainEngineNode* engine);
@@ -64,8 +68,10 @@ namespace osgEarth { namespace Util
 
         optional<float>              _delay;
         optional<float>              _duration;
+        optional<float>              _vscale;
         osg::ref_ptr<osg::Uniform>   _delayUniform;
         osg::ref_ptr<osg::Uniform>   _durationUniform;
+        osg::ref_ptr<osg::Uniform>   _vscaleUniform;
     };
 
 } } // namespace osgEarth::Util

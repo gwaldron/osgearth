@@ -53,6 +53,7 @@ namespace
         "uniform float oe_tile_birthtime; \n"
         "uniform float oe_lodblend_delay; \n"
         "uniform float oe_lodblend_duration; \n"
+        "uniform float oe_lodblend_vscale; \n"
 
         "uniform mat4 oe_layer_parent_matrix; \n"
         "varying vec4 oe_layer_texc; \n"
@@ -74,9 +75,14 @@ namespace
         "    vec3  upVector   = oe_terrain_attr.xyz; \n"
         "    float elev       = oe_terrain_attr.w; \n"
         "    float elevOld    = oe_terrain_attr2.w; \n"
-        "    vec3  offset     = upVector * r * (elevOld - elev); \n"
-        "    VertexMODEL      = VertexMODEL + vec4(offset/VertexMODEL.w, 0.0); \n"
         
+        //"    vec3  offset     = upVector * r * (elevOld - elev); \n"
+        //"    VertexMODEL      = VertexMODEL + vec4(offset/VertexMODEL.w, 0.0); \n"
+
+        "    vec3  vscaleOffset = upVector * elev * (oe_lodblend_vscale-1.0); \n"
+        "    vec3  blendOffset  = upVector * r * oe_lodblend_vscale * (elevOld-elev); \n"
+        "    VertexMODEL       += vec4( (vscaleOffset + blendOffset)*VertexMODEL.w, 0.0 ); \n"
+
         "    oe_lodblend_texc    = oe_layer_parent_matrix * oe_layer_texc; \n"
         "    oe_lodblend_r       = oe_layer_parent_matrix[0][0] > 0.0 ? r : 0.0; \n" // obe?
         "} \n";
@@ -99,7 +105,8 @@ namespace
 LODBlending::LODBlending() :
 TerrainEffect(),
 _delay       ( 0.0f ),
-_duration    ( 0.25f )
+_duration    ( 0.25f ),
+_vscale      ( 1.0f )
 {
     init();
 }
@@ -108,7 +115,8 @@ _duration    ( 0.25f )
 LODBlending::LODBlending(const Config& conf) :
 TerrainEffect(),
 _delay       ( 0.0f ),
-_duration    ( 0.25f )
+_duration    ( 0.25f ),
+_vscale      ( 1.0f )
 {
     mergeConfig(conf);
     init();
@@ -123,6 +131,9 @@ LODBlending::init()
 
     _durationUniform = new osg::Uniform(osg::Uniform::FLOAT, "oe_lodblend_duration");
     _durationUniform->set( (float)*_duration );
+
+    _vscaleUniform = new osg::Uniform(osg::Uniform::FLOAT, "oe_lodblend_vscale");
+    _vscaleUniform->set( (float)*_vscale );
 }
 
 
@@ -149,6 +160,17 @@ LODBlending::setDuration(float duration)
 
 
 void
+LODBlending::setVerticalScale(float vscale)
+{
+    if ( vscale != _vscale.get() )
+    {
+        _vscale = osg::clampAbove( vscale, 0.0f );
+        _vscaleUniform->set( _vscale.get() );
+    }
+}
+
+
+void
 LODBlending::onInstall(TerrainEngineNode* engine)
 {
     if ( engine )
@@ -157,6 +179,7 @@ LODBlending::onInstall(TerrainEngineNode* engine)
 
         stateset->addUniform( _delayUniform.get() );
         stateset->addUniform( _durationUniform.get() );
+        stateset->addUniform( _vscaleUniform.get() );
 
         VirtualProgram* vp = VirtualProgram::getOrCreate(stateset);
         vp->setFunction( "oe_lodblend_vertex",   vs, ShaderComp::LOCATION_VERTEX_MODEL );
@@ -175,6 +198,7 @@ LODBlending::onUninstall(TerrainEngineNode* engine)
         {
             stateset->removeUniform( _delayUniform.get() );
             stateset->removeUniform( _durationUniform.get() );
+            stateset->removeUniform( _vscaleUniform.get() );
 
             VirtualProgram* vp = VirtualProgram::get(stateset);
             if ( vp )
@@ -195,6 +219,7 @@ LODBlending::mergeConfig(const Config& conf)
 {
     conf.getIfSet( "delay",    _delay );
     conf.getIfSet( "duration", _duration );
+    conf.getIfSet( "vertical_scale", _vscale );
 }
 
 Config
@@ -203,5 +228,6 @@ LODBlending::getConfig() const
     Config conf("lod_blending");
     conf.addIfSet( "delay",    _delay );
     conf.addIfSet( "duration", _duration );
+    conf.addIfSet( "vertical_scale", _vscale );
     return conf;
 }

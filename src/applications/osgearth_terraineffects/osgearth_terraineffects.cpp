@@ -125,6 +125,7 @@ struct LODBlendingController {
     TOGGLE   ( lodBlending );
     SET_FLOAT( lodBlending, setDelay );
     SET_FLOAT( lodBlending, setDuration );
+    SET_FLOAT( lodBlending, setVerticalScale );
     LODBlendingController(App& app, ui::Grid* grid) {
         int r = grid->getNumRows();
         grid->setControl(0, r, new ui::LabelControl("LOD Blending"));
@@ -136,6 +137,10 @@ struct LODBlendingController {
         ++r;
         grid->setControl(0, r, new ui::LabelControl("   duration:"));
         grid->setControl(1, r, new ui::HSliderControl(0.0, 5.0, 1.0, new setDuration(app)));
+        grid->setControl(2, r, new ui::LabelControl(grid->getControl(1, r)));
+        ++r;
+        grid->setControl(0, r, new ui::LabelControl("   vertical scale:"));
+        grid->setControl(1, r, new ui::HSliderControl(0.0, 5.0, 1.0, new setVerticalScale(app)));
         grid->setControl(2, r, new ui::LabelControl(grid->getControl(1, r)));
     }
 };

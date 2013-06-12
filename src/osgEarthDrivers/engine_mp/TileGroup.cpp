@@ -93,6 +93,12 @@ TileGroup::traverse(osg::NodeVisitor& nv)
             {
                 getChild(1+q)->accept( nv );
             }
+
+            // update the TileNode so it knows what frame we're in.
+            if ( nv.getFrameStamp() )
+            {
+              _tilenode->setLastTraversalFrame( nv.getFrameStamp()->getFrameNumber() );
+            }
         }
     }
     else

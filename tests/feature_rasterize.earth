@@ -4,8 +4,15 @@ Demonstrates use of the "agglite" feature rasterization driver.
 -->
 
 <map name="Geometry Rasterizer Demo" type="round" version="2">
-  
-    <options lighting="false"/>
+
+    <options lighting="false">
+        <terrain>
+        </terrain>
+    </options>
+
+    <external>
+        <lod_blending/>
+    </external>
 
     <image name="world" driver="gdal">
         <url>../data/world.tif</url>
@@ -13,29 +20,29 @@ Demonstrates use of the "agglite" feature rasterization driver.
     
     <image name="world_boundaries" driver="agglite">
 
-        <!-- Configure the OGR feature driver to read the shapefile. -->             
+        <!-- Configure the OGR feature driver to read the shapefile. -->
         <features name="world" driver="ogr">
             <url>../data/world.shp</url>
             <build_spatial_index>true</build_spatial_index>
         </features>
-		
+        
         <styles>
-			<selector class="outline"/>
-			<selector class="line"/>
-		
+            <selector class="outline"/>
+            <selector class="line"/>
+        
             <style type="text/css">
-				outline {
-					stroke:		   #ffffff;
-					stroke-width:  5px;
-				}
+                outline {
+                    stroke:		   #ffffff;
+                    stroke-width:  5px;
+                }
                 line {
                    stroke:         #ff0000;
                    stroke-width:   2.5px;
                 }            
             </style>
         </styles>
-		
-		<cache_policy usage="no_cache"/>
+        
+        <cache_policy usage="no_cache"/>
         
     </image>
   

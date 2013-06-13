@@ -30,6 +30,9 @@ using namespace osgEarth::Util;
 namespace
 {
     const char* vs =
+        "#version " GLSL_VERSION_STR "\n"
+        GLSL_DEFAULT_PRECISION_FLOAT "\n"
+
         "varying vec3 oe_nmap_light; \n"
         "varying vec3 oe_nmap_view; \n"
         "uniform bool oe_mode_GL_LIGHTING; \n"
@@ -57,6 +60,9 @@ namespace
         "} \n";
 
     const char* fs =
+        "#version " GLSL_VERSION_STR "\n"
+        GLSL_DEFAULT_PRECISION_FLOAT "\n"
+
         "uniform sampler2D oe_nmap_tex; \n"
         "uniform float oe_nmap_startlod; \n"
         "uniform vec4 oe_tile_key; \n"

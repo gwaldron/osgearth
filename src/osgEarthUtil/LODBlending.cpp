@@ -45,6 +45,9 @@ namespace
     // in your terrain tile. (See MapOptions::elevation_tile_size).
 
     const char* vs =
+        "#version " GLSL_VERSION_STR "\n"
+        GLSL_DEFAULT_PRECISION_FLOAT "\n"
+
         "attribute vec4 oe_terrain_attr; \n"
         "attribute vec4 oe_terrain_attr2; \n"
         "uniform float oe_min_tile_range_factor; \n"
@@ -75,9 +78,6 @@ namespace
         "    vec3  upVector   = oe_terrain_attr.xyz; \n"
         "    float elev       = oe_terrain_attr.w; \n"
         "    float elevOld    = oe_terrain_attr2.w; \n"
-        
-        //"    vec3  offset     = upVector * r * (elevOld - elev); \n"
-        //"    VertexMODEL      = VertexMODEL + vec4(offset/VertexMODEL.w, 0.0); \n"
 
         "    vec3  vscaleOffset = upVector * elev * (oe_lodblend_vscale-1.0); \n"
         "    vec3  blendOffset  = upVector * r * oe_lodblend_vscale * (elevOld-elev); \n"
@@ -88,6 +88,9 @@ namespace
         "} \n";
 
     const char* fs =
+        "#version " GLSL_VERSION_STR "\n"
+        GLSL_DEFAULT_PRECISION_FLOAT "\n"
+
         "uniform vec4 oe_tile_key; \n"
         "uniform float oe_layer_opacity; \n"
         "varying vec4 oe_lodblend_texc; \n"

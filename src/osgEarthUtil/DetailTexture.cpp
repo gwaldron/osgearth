@@ -30,6 +30,9 @@ using namespace osgEarth::Util;
 namespace
 {
     const char* vs =
+        "#version " GLSL_VERSION_STR "\n"
+        GLSL_DEFAULT_PRECISION_FLOAT "\n"
+
         "uniform vec4  oe_tile_key; \n"
         "varying vec4  oe_layer_tilec; \n"
         "uniform float oe_dtex_L0; \n"
@@ -60,6 +63,9 @@ namespace
         "} \n";
 
     const char* fs =
+        "#version " GLSL_VERSION_STR "\n"
+        GLSL_DEFAULT_PRECISION_FLOAT "\n"
+
         "uniform vec4      oe_tile_key; \n"
         "uniform float     oe_dtex_L0; \n"
         "uniform sampler2D oe_dtex_tex; \n"

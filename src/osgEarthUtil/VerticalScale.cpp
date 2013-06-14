@@ -43,6 +43,9 @@ namespace
     // along its extrusion vector.
 
     const char* vs =
+        "#version " GLSL_VERSION_STR "\n"
+        GLSL_DEFAULT_PRECISION_FLOAT "\n"
+
         "attribute vec4 oe_terrain_attr; \n"
         "uniform float oe_vertscale_scale; \n"
 

@@ -88,6 +88,7 @@ HeightFieldUtils::getHeightAtPixel(const osg::HeightField* hf, double c, double 
         //Determine which triangle the point falls in.
         osg::Vec3d v0, v1, v2;
 
+#if 0
         bool orientation = fabs(llHeight-urHeight) < fabs(ulHeight-lrHeight);
         if ( orientation )
         {
@@ -131,8 +132,7 @@ HeightFieldUtils::getHeightAtPixel(const osg::HeightField* hf, double c, double 
                 v2.set(colMin, rowMax, ulHeight);
             }
         }
-
-#if 0
+#else
         double dx = c - (double)colMin;
         double dy = r - (double)rowMin;
 

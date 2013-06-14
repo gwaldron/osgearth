@@ -29,12 +29,14 @@
 #include <osgEarth/CacheSeed>
 #include <osgEarth/MapNode>
 #include <osgEarth/Registry>
+#include <osgEarthDrivers/feature_ogr/OGRFeatureOptions>
 
 #include <iostream>
 #include <sstream>
 #include <iterator>
 
 using namespace osgEarth;
+using namespace osgEarth::Drivers;
 
 #define LC "[osgearth_cache] "
 
@@ -141,6 +143,29 @@ seed( osg::ArgumentParser& args )
     CacheSeed seeder;
     seeder.setMinLevel( minLevel );
     seeder.setMaxLevel( maxLevel );
+
+    // Read in an index shapefile
+    std::string index;
+    while (args.read("--index", index))
+    {        
+        //Open the feature source
+        OGRFeatureOptions featureOpt;
+        featureOpt.url() = index;        
+
+        osg::ref_ptr< FeatureSource > features = FeatureSourceFactory::create( featureOpt );
+        features->initialize();
+        features->getFeatureProfile();
+
+        osg::ref_ptr< FeatureCursor > cursor = features->createFeatureCursor();
+        while (cursor.valid() && cursor->hasMore())
+        {
+            osg::ref_ptr< Feature > feature = cursor->nextFeature();
+            osgEarth::Bounds featureBounds = feature->getGeometry()->getBounds();
+            GeoExtent ext( feature->getSRS(), featureBounds );
+            ext = ext.transform( mapNode->getMapSRS() );
+            bounds.push_back( ext.bounds() );            
+        }
+    }
 
     for (unsigned int i = 0; i < bounds.size(); i++)
     {

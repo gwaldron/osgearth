@@ -131,6 +131,31 @@ BuildGeometryFilter::process( FeatureList& features, const FilterContext& contex
             // resolve the geometry type from the component type and the symbology:
             Geometry::Type renderType = Geometry::TYPE_UNKNOWN;
 
+            // First priority is the symbol with a compatible part type.
+            if (polySymbol != 0L && 
+                part->getType() != Geometry::TYPE_POINTSET && 
+                part->getTotalPointCount() >= 3)
+            {
+                renderType = Geometry::TYPE_POLYGON;
+            }
+            else if (lineSymbol != 0L)
+            {
+                if ( part->getType() == Geometry::TYPE_POLYGON )
+                    renderType = Geometry::TYPE_RING;
+                else
+                    renderType = part->getType();
+            }
+            else if (pointSymbol != 0L)
+            {
+                renderType = Geometry::TYPE_POINTSET;
+            }
+
+            // fall back on just using the geometry type.
+            else
+            {
+                renderType = part->getType();
+            }
+#if 0
             // First priority is a matching part type and symbol:
             if ( polySymbol != 0L && part->getType() == Geometry::TYPE_POLYGON )
             {
@@ -167,6 +192,8 @@ BuildGeometryFilter::process( FeatureList& features, const FilterContext& contex
             {
                 renderType = part->getType();
             }
+#endif
+
 
             // validate the geometry:
             if ( renderType == Geometry::TYPE_POLYGON && part->size() < 3 )

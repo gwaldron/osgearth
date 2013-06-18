@@ -157,7 +157,9 @@ An *image layer* is a raster image overlaid on the map's geometry.
                max_resolution = "0.0"
                enabled        = "true"
                visible        = "true"
-               shared         = "false" >
+               shared         = "false"
+               feather_pixels = "false"
+               >
 
             <:ref:`cache_policy <CachePolicy>`>
             <:ref:`color_filters <ColorFilterChain>`>
@@ -203,6 +205,10 @@ An *image layer* is a raster image overlaid on the map's geometry.
 +-----------------------+--------------------------------------------------------------------+
 | shared                | Generates a secondary, dedicated sampler for this layer so that it |
 |                       | may be accessed globally by custom shaders.                        |
++-----------------------+--------------------------------------------------------------------+
+| feather_pixels        | Whether to feather out alpha regions for this image layer with the |
+|                       | featherAlphaRegions function. Used to get proper blending when you |
+|                       | have datasets that abutt exactly with no overlap.                  |
 +-----------------------+--------------------------------------------------------------------+
 
 

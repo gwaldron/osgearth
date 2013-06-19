@@ -61,8 +61,7 @@ namespace
                 _layer->getProfile()                    &&
                 _layer->getProfile()->getSRS()->isSphericalMercator();
 
-            // fetch the image from the layer, falling back on parent keys until we are 
-            // able to find one that works.
+            // fetch the image from the layer.
 
             //bool autoFallback = _key.getLevelOfDetail() <= 1;
             bool autoFallback = false;
@@ -137,6 +136,7 @@ namespace
 
                 return true;
             }
+
             else
             {
                 return false;

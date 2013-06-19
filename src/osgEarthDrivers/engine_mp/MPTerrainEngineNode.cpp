@@ -325,9 +325,16 @@ MPTerrainEngineNode::createTerrain()
         osg::Node* node = factory->createRootNode( keys[i] );
         OE_INFO_CONTINUE << "." << std::flush;
         if ( node )
+        {
             _terrain->addChild( node );
+            TileNode* tilenode = osgEarth::findTopMostNodeOfType<TileNode>(node);
+            if ( tilenode )
+                _liveTiles->add( tilenode );
+        }
         else
+        {
             OE_WARN << LC << "Couldn't make tile for root key: " << keys[i].str() << std::endl;
+        }
     }
 
     OE_INFO_CONTINUE << "done." << std::endl;

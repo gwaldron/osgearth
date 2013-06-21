@@ -341,6 +341,12 @@ namespace osgEarth
             double xmin, double ymin, double xmax, double ymax,
             bool plate_carre =false ) const;
 
+		/**
+		 * Gets the underlying OGRLayerH that this SpatialReference owns.
+		 * Don't use this unless you know what you're doing.
+		 */
+		void* getHandle() const { return _handle;}
+
 
 
     protected:

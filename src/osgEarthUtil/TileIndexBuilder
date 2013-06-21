@@ -1,0 +1,75 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+* Copyright 2008-2013 Pelican Mapping
+* http://osgearth.org
+*
+* osgEarth is free software; you can redistribute it and/or modify
+* it under the terms of the GNU Lesser General Public License as published by
+* the Free Software Foundation; either version 2 of the License, or
+* (at your option) any later version.
+*
+* This program is distributed in the hope that it will be useful,
+* but WITHOUT ANY WARRANTY; without even the implied warranty of
+* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+* GNU Lesser General Public License for more details.
+*
+* You should have received a copy of the GNU Lesser General Public License
+* along with this program.  If not, see <http://www.gnu.org/licenses/>
+*/
+
+#ifndef OSGEARTHUTIL_TILEINDEXBUILDER_H
+#define OSGEARTHUTIL_TILEINDEXBUILDER_H 1
+
+#include <osgEarthUtil/Common>
+
+#include <osgEarthUtil/TileIndex>
+
+namespace osgEarth { namespace Util
+{    
+	/**
+	 * Utility class for buildling a TileIndex shapefile.
+	 */
+	class OSGEARTHUTIL_EXPORT TileIndexBuilder : public osg::Referenced
+	{
+	public:
+
+		/**
+		 * Creates a new TileIndexBuilder
+		 */
+		TileIndexBuilder();
+
+		/**
+		 * Sets the progress callback
+		 */
+		void setProgressCallback( osgEarth::ProgressCallback* progress );
+
+		/**
+		 * Gets the list of filenames to process.  If you pass in a directory name
+		 * it will recursively try all the files within the directory and it's subdirectories.
+		 */
+		std::vector< std::string >& getFilenames() { return _filenames; }
+
+		/**
+		 * Builds the TileIndex
+		 * @param indexFilename
+		 *    The filename of the index shapefile to create.
+		 * @param srs
+		 *    The SRS to use for the output shapefile.  Default is epsg:4326
+		 */
+		void build(const std::string& indexFilename, const osgEarth::SpatialReference* srs = 0);
+
+
+	protected:
+
+		void expandFilenames();
+
+		std::string _indexFilename;
+		std::vector< std::string > _filenames;
+		std::vector< std::string > _expandedFilenames;
+
+		osg::ref_ptr<ProgressCallback> _progress;    
+	};
+
+} } // namespace osgEarth::Util
+
+#endif //OSGEARTHUTIL_TILEINDEXBUILDER_H

@@ -41,6 +41,8 @@ SET(HEADERS_ROOT
     SpatialData
     StarData
     TerrainProfile
+	TileIndex
+	TileIndexBuilder
     TFS
     TFSPackager
     TMS
@@ -86,6 +88,8 @@ SET(SOURCES_ROOT
     SpatialData.cpp
     SkyNode.cpp
     TerrainProfile.cpp
+	TileIndex.cpp
+	TileIndexBuilder.cpp
     TFS.cpp
     TFSPackager.cpp
     TMS.cpp
@@ -147,7 +151,7 @@ SET(USE_CUSTOM_SOURCE_GROUPS 1)
 
 
 
-INCLUDE_DIRECTORIES(${OSG_INCLUDE_DIR} ${OSGEARTH_SOURCE_DIR})
+INCLUDE_DIRECTORIES(${OSG_INCLUDE_DIR} ${OSGEARTH_SOURCE_DIR} ${GDAL_INCLUDE_DIR})
 
 IF (WIN32)
   LINK_EXTERNAL(${LIB_NAME} ${TARGET_EXTERNAL_LIBRARIES} ${CMAKE_THREAD_LIBS_INIT} ${MATH_LIBRARY})

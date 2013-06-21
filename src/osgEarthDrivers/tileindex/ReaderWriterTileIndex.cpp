@@ -51,7 +51,8 @@ class TileIndexSource : public TileSource
 public:
     TileIndexSource( const TileSourceOptions& options ):
       TileSource( options ),
-      _options( options )
+      _options( options ),
+	  _tileSourceCache( true )
     {
     }
 

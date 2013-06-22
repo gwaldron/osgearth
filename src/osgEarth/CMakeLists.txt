@@ -88,6 +88,7 @@ SET(LIB_PUBLIC_HEADERS
     OverlayDecorator
     OverlayNode
     Pickers
+    PrimitiveIntersector
     Profile
     Progress
     Random
@@ -204,6 +205,7 @@ ADD_LIBRARY(${LIB_NAME} ${OSGEARTH_USER_DEFINED_DYNAMIC_OR_STATIC}
     OverlayDecorator.cpp
     OverlayNode.cpp
     Pickers.cpp
+    PrimitiveIntersector.cpp
     Profile.cpp
     Progress.cpp
     Random.cpp

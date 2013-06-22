@@ -167,3 +167,51 @@ std::string osgEarth::getTempName(const std::string& prefix, const std::string& 
     }
     return "";
 }
+
+
+/**************************************************/
+DirectoryVisitor::DirectoryVisitor()
+{
+}    
+
+void DirectoryVisitor::handleFile( const std::string& filename )
+{
+}
+
+bool DirectoryVisitor::handleDir( const std::string& path )
+{
+	return true;
+}
+
+void DirectoryVisitor::traverse(const std::string& path )
+{
+	if ( osgDB::fileType(path) == osgDB::DIRECTORY )
+	{            
+		if (handleDir( path ))
+		{
+			osgDB::DirectoryContents files = osgDB::getDirectoryContents(path);
+			for( osgDB::DirectoryContents::const_iterator f = files.begin(); f != files.end(); ++f )
+			{
+				if ( f->compare(".") == 0 || f->compare("..") == 0 )
+					continue;
+
+				std::string filepath = osgDB::concatPaths( path, *f );
+				traverse( filepath );                
+			}
+		}
+	}
+	else if ( osgDB::fileType(path) == osgDB::REGULAR_FILE )
+	{
+		handleFile( path );            
+	}
+}
+
+/**************************************************/
+CollectFilesVisitor::CollectFilesVisitor()  
+{
+}
+
+void CollectFilesVisitor::handleFile( const std::string& filename )
+{
+	filenames.push_back( filename );        
+}        

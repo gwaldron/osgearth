@@ -21,6 +21,7 @@
 #define OSGEARTH_FILEUTILS_H
 
 #include <osgEarth/Common>
+#include <vector>
 
 namespace osgEarth
 {
@@ -69,6 +70,52 @@ namespace osgEarth
      */
      extern OSGEARTH_EXPORT std::string getTempName(const std::string& prefix="", const std::string& suffix="");
 
+	 /**
+	  * Utility class that processes files and directories recursively.
+	  */
+	 class OSGEARTH_EXPORT DirectoryVisitor
+	 {
+	 public:
+		 /**
+		  * Create a new DirectoryVisitor
+		  */
+		 DirectoryVisitor();
+
+		 /**
+		  * Processes a file.  Override this in your subclass.
+		  */
+		 virtual void handleFile( const std::string& filename );
+
+		 /**
+		  * Processes a directory.
+		  * @returns
+		  *     true if the directory should be traversed, false otherwise.
+		  */
+		 virtual bool handleDir( const std::string& path );
+
+		 /**
+		  * Traverse into a directory
+		  * @param path
+		  *     The path to traverse
+		  */
+		 virtual void traverse(const std::string& path );
+	 };
+
+	 /**
+	  * Utility class that recursively collects all files within a directory.
+	  */
+	 class OSGEARTH_EXPORT CollectFilesVisitor : public DirectoryVisitor
+	 {
+	 public:
+		 CollectFilesVisitor();
+
+		 virtual void handleFile( const std::string& filename );      
+
+		 /**
+		  * The collected filenames.
+		  */
+		 std::vector< std::string > filenames;    
+	 };
 
 }
 

@@ -63,6 +63,13 @@ namespace osgEarth_engine_mp
          */
         const TileModel* getTileModel() { return _model.get(); }
 
+        /**
+         * Sets the last traversal frame manually. A parent TileGroup
+         * will call this to prevent the born-time from resetting 
+         * when traversing the tile's children.
+         */
+        void setLastTraversalFrame(unsigned frame);
+
 
     public: // OVERRIDES
 
@@ -82,6 +89,8 @@ namespace osgEarth_engine_mp
         mutable osg::Uniform*   _keyUniform;
         osg::ref_ptr<const TileModel> _model;
         osg::Uniform*           _tileParentMatrixUniform;
+        unsigned                _lastTraversalFrame;
+        double                  _bornTime;
     };
 
 

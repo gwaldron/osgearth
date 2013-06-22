@@ -138,8 +138,8 @@ namespace osgEarth_engine_mp
     {
     public:
         TileModelFactory(
-            const Map*                                   map,
-            TileNodeRegistry*                            liveTiles,
+            const Map*                             map,
+            TileNodeRegistry*                      liveTiles,
             const Drivers::MPTerrainEngineOptions& terrainOptions );
 
         HeightFieldCache* getHeightFieldCache() const;
@@ -150,15 +150,14 @@ namespace osgEarth_engine_mp
         void createTileModel(
             const TileKey&           key,
             osg::ref_ptr<TileModel>& out_model,
-            bool&                    out_hasRealData,
-            bool&                    out_hasLodBlendedLayers );
+            bool&                    out_hasRealData);
 
     private:        
 
-        const Map*                                   _map;
-        osg::ref_ptr<TileNodeRegistry>               _liveTiles;
+        const Map*                             _map;
+        osg::ref_ptr<TileNodeRegistry>         _liveTiles;
         const Drivers::MPTerrainEngineOptions& _terrainOptions;
-        osg::ref_ptr< HeightFieldCache > _hfCache;
+        osg::ref_ptr< HeightFieldCache >       _hfCache;
     };
 
 } // namespace osgEarth_engine_mp

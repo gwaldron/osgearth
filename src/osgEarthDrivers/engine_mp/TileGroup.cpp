@@ -47,16 +47,8 @@ TileGroup::TileGroup(TileNode*         tilenode,
         TileKey subkey = tilenode->getKey().createChildKey(q);
         TilePagedLOD* lod = new TilePagedLOD(this, subkey, engineUID, live, dead);
         lod->setDatabaseOptions( dbOptions );
-#if 0
-        GeoPoint centerMap, centerWorld;
-        subkey.getExtent().getCentroid( centerMap );
-        centerMap.transform( tilenode->getTileModel()->_map->getWorldSRS(), centerWorld );
-        lod->setCenter( centerWorld.vec3d() );
-        lod->setRadius( tilenode->getBound().radius() * 0.5 );
-#else
         lod->setCenter( tilenode->getBound().center() );
         lod->setRadius( tilenode->getBound().radius() );
-#endif
         this->addChild( lod );
     }
 }
@@ -100,6 +92,12 @@ TileGroup::traverse(osg::NodeVisitor& nv)
             for( unsigned q=0; q<4; ++q )
             {
                 getChild(1+q)->accept( nv );
+            }
+
+            // update the TileNode so it knows what frame we're in.
+            if ( nv.getFrameStamp() )
+            {
+              _tilenode->setLastTraversalFrame( nv.getFrameStamp()->getFrameNumber() );
             }
         }
     }

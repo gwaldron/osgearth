@@ -1,0 +1,68 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+* Copyright 2008-2013 Pelican Mapping
+* http://osgearth.org
+*
+* osgEarth is free software; you can redistribute it and/or modify
+* it under the terms of the GNU Lesser General Public License as published by
+* the Free Software Foundation; either version 2 of the License, or
+* (at your option) any later version.
+*
+* This program is distributed in the hope that it will be useful,
+* but WITHOUT ANY WARRANTY; without even the implied warranty of
+* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+* GNU Lesser General Public License for more details.
+*
+* You should have received a copy of the GNU Lesser General Public License
+* along with this program.  If not, see <http://www.gnu.org/licenses/>
+*/
+
+#ifndef OSGEARTHUTIL_TILEINDEX_H
+#define OSGEARTHUTIL_TILEINDEX_H 1
+
+#include <osgEarthUtil/Common>
+#include <osg/Referenced>
+#include <osg/ref_ptr>
+#include <osgEarthFeatures/FeatureSource>
+
+#include <string>
+#include <vector>
+
+namespace osgEarth { namespace Util
+{    
+    /**
+     * Manages a FeatureSource that is an index of geospatial data files     
+     */
+    class OSGEARTHUTIL_EXPORT TileIndex : public osg::Referenced
+    {
+    public:        
+
+        static TileIndex* load( const std::string& filename );
+        static TileIndex* create( const std::string& filename, const osgEarth::SpatialReference* srs);        
+
+        /**
+         * Gets files within the given extent.
+         */
+        void getFiles(const osgEarth::GeoExtent& extent, std::vector< std::string >& files);
+
+        /**
+         * Adds the given filename to the index
+         */
+        bool add( const std::string& filename, const GeoExtent& extent );
+        
+        /**
+         * Gets the filename of the shapefile used for this index.
+         */
+        const std::string& getFilename() const { return _filename;}
+
+    protected:
+        TileIndex();        
+        ~TileIndex();
+
+        osg::ref_ptr< osgEarth::Features::FeatureSource > _features;
+        std::string _filename;
+    };
+
+} } // namespace osgEarth::Util
+
+#endif //OSGEARTHUTIL_TILEINDEX_H

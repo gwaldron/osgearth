@@ -105,6 +105,12 @@ namespace osgEarth
         const optional<int>& sharedUnitBinding() const { return _sharedUnitBinding; }
         */
 
+        /**
+         * Whether to feather out alpha regions for this image layer with the featherAlphaRegions function.
+         * Used to get proper blending when you have datasets that abutt exactly with no overlap.
+         */
+        optional<bool>& featherPixels() { return _featherPixels; }
+        const optional<bool>& featherPixels() const { return _featherPixels; }
 
     public:
 
@@ -124,6 +130,7 @@ namespace osgEarth
         optional<bool>        _lodBlending;
         ColorFilterChain      _colorFilters;
         optional<bool>        _shared;
+        optional<bool>        _featherPixels;
     };
 
     //--------------------------------------------------------------------

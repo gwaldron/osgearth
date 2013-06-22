@@ -30,9 +30,9 @@ http://readymap.org
     </elevation>
 	
 	<external>
-	    <elevation_morph>
+	    <lod_blending>
 			<duration>1.0</duration>
-		</elevation_morph>
+		</lod_blending>
 	</external>
     
 </map>

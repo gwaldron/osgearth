@@ -16,13 +16,13 @@
 * You should have received a copy of the GNU Lesser General Public License
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
-#include <osgEarthUtil/ElevationMorph>
+#include <osgEarthUtil/LODBlending>
 #include <osgEarth/Registry>
 #include <osgEarth/Capabilities>
 #include <osgEarth/VirtualProgram>
 #include <osgEarth/TerrainEngineNode>
 
-#define LC "[ElevationMorph] "
+#define LC "[LODBlending] "
 
 using namespace osgEarth;
 using namespace osgEarth::Util;
@@ -38,26 +38,32 @@ namespace
     // consideration the tile range factor), but when we limit that based on
     // a timer. This prevents fast zooming from skipping the morph altogether.
     //
+    // It will also transition between a parent texture and the current texture.
+    //
     // Caveats: You can still fake out the morph by zooming around very quickly.
     // Also, it will only morph properly if you use odd-numbers post spacings
     // in your terrain tile. (See MapOptions::elevation_tile_size).
 
     const char* vs =
+        "#version " GLSL_VERSION_STR "\n"
+        GLSL_DEFAULT_PRECISION_FLOAT "\n"
+
         "attribute vec4 oe_terrain_attr; \n"
         "attribute vec4 oe_terrain_attr2; \n"
         "uniform float oe_min_tile_range_factor; \n"
         "uniform vec4 oe_tile_key; \n"
         "uniform float osg_FrameTime; \n"
         "uniform float oe_tile_birthtime; \n"
-        "uniform float oe_morph_delay; \n"
-        "uniform float oe_morph_duration; \n"
+        "uniform float oe_lodblend_delay; \n"
+        "uniform float oe_lodblend_duration; \n"
+        "uniform float oe_lodblend_vscale; \n"
 
         "uniform mat4 oe_layer_parent_matrix; \n"
         "varying vec4 oe_layer_texc; \n"
-        "varying vec4 oe_morph_texc; \n"
-        "varying float oe_morph_r; \n"
+        "varying vec4 oe_lodblend_texc; \n"
+        "varying float oe_lodblend_r; \n"
 
-        "void oe_morph_vertex(inout vec4 VertexMODEL) \n"
+        "void oe_lodblend_vertex(inout vec4 VertexMODEL) \n"
         "{ \n"
         "    float radius     = oe_tile_key.w; \n"
         "    float near       = oe_min_tile_range_factor*radius; \n"
@@ -66,47 +72,54 @@ namespace
         "    float d          = length(VertexVIEW.xyz/VertexVIEW.w); \n"
         "    float r_dist     = clamp((d-near)/(far-near), 0.0, 1.0); \n"
 
-        "    float r_time     = 1.0 - clamp(osg_FrameTime-(oe_tile_birthtime+oe_morph_delay), 0.0, oe_morph_duration)/oe_morph_duration; \n"
+        "    float r_time     = 1.0 - clamp(osg_FrameTime-(oe_tile_birthtime+oe_lodblend_delay), 0.0, oe_lodblend_duration)/oe_lodblend_duration; \n"
         "    float r          = max(r_dist, r_time); \n"
 
         "    vec3  upVector   = oe_terrain_attr.xyz; \n"
         "    float elev       = oe_terrain_attr.w; \n"
         "    float elevOld    = oe_terrain_attr2.w; \n"
-        "    vec3  offset     = upVector * r * (elevOld - elev); \n"
-        "    VertexMODEL      = VertexMODEL + vec4(offset/VertexMODEL.w, 0.0); \n"
-        
-        "    oe_morph_texc    = oe_layer_parent_matrix * oe_layer_texc; \n"
-        "    oe_morph_r       = oe_layer_parent_matrix[0][0] > 0.0 ? r : 0.0; \n"
+
+        "    vec3  vscaleOffset = upVector * elev * (oe_lodblend_vscale-1.0); \n"
+        "    vec3  blendOffset  = upVector * r * oe_lodblend_vscale * (elevOld-elev); \n"
+        "    VertexMODEL       += vec4( (vscaleOffset + blendOffset)*VertexMODEL.w, 0.0 ); \n"
+
+        "    oe_lodblend_texc    = oe_layer_parent_matrix * oe_layer_texc; \n"
+        "    oe_lodblend_r       = oe_layer_parent_matrix[0][0] > 0.0 ? r : 0.0; \n" // obe?
         "} \n";
 
     const char* fs =
+        "#version " GLSL_VERSION_STR "\n"
+        GLSL_DEFAULT_PRECISION_FLOAT "\n"
+
         "uniform vec4 oe_tile_key; \n"
         "uniform float oe_layer_opacity; \n"
-        "varying vec4 oe_morph_texc; \n"
-        "varying float oe_morph_r; \n"
+        "varying vec4 oe_lodblend_texc; \n"
+        "varying float oe_lodblend_r; \n"
         "uniform sampler2D oe_layer_tex_parent; \n"
 
-        "void oe_morph_fragment(inout vec4 color) \n"
+        "void oe_lodblend_fragment(inout vec4 color) \n"
         "{ \n"
-        "    vec4 texelpma = texture2D(oe_layer_tex_parent, oe_morph_texc.st) * oe_layer_opacity; \n"
-        "    color = mix(color, texelpma, oe_morph_r); \n"
+        "    vec4 texelpma = texture2D(oe_layer_tex_parent, oe_lodblend_texc.st) * oe_layer_opacity; \n"
+        "    color = mix(color, texelpma, oe_lodblend_r); \n"
         "} \n";
 }
 
 
-ElevationMorph::ElevationMorph() :
+LODBlending::LODBlending() :
 TerrainEffect(),
 _delay       ( 0.0f ),
-_duration    ( 0.25f )
+_duration    ( 0.25f ),
+_vscale      ( 1.0f )
 {
     init();
 }
 
 
-ElevationMorph::ElevationMorph(const Config& conf) :
+LODBlending::LODBlending(const Config& conf) :
 TerrainEffect(),
 _delay       ( 0.0f ),
-_duration    ( 0.25f )
+_duration    ( 0.25f ),
+_vscale      ( 1.0f )
 {
     mergeConfig(conf);
     init();
@@ -114,18 +127,21 @@ _duration    ( 0.25f )
 
 
 void
-ElevationMorph::init()
+LODBlending::init()
 {
-    _delayUniform = new osg::Uniform(osg::Uniform::FLOAT, "oe_morph_delay");
+    _delayUniform = new osg::Uniform(osg::Uniform::FLOAT, "oe_lodblend_delay");
     _delayUniform->set( (float)*_delay );
 
-    _durationUniform = new osg::Uniform(osg::Uniform::FLOAT, "oe_morph_duration");
+    _durationUniform = new osg::Uniform(osg::Uniform::FLOAT, "oe_lodblend_duration");
     _durationUniform->set( (float)*_duration );
+
+    _vscaleUniform = new osg::Uniform(osg::Uniform::FLOAT, "oe_lodblend_vscale");
+    _vscaleUniform->set( (float)*_vscale );
 }
 
 
 void
-ElevationMorph::setDelay(float delay)
+LODBlending::setDelay(float delay)
 {
     if ( delay != _delay.get() )
     {
@@ -136,7 +152,7 @@ ElevationMorph::setDelay(float delay)
 
 
 void
-ElevationMorph::setDuration(float duration)
+LODBlending::setDuration(float duration)
 {
     if ( duration != _duration.get() )
     {
@@ -147,7 +163,18 @@ ElevationMorph::setDuration(float duration)
 
 
 void
-ElevationMorph::onInstall(TerrainEngineNode* engine)
+LODBlending::setVerticalScale(float vscale)
+{
+    if ( vscale != _vscale.get() )
+    {
+        _vscale = osg::clampAbove( vscale, 0.0f );
+        _vscaleUniform->set( _vscale.get() );
+    }
+}
+
+
+void
+LODBlending::onInstall(TerrainEngineNode* engine)
 {
     if ( engine )
     {
@@ -155,16 +182,17 @@ ElevationMorph::onInstall(TerrainEngineNode* engine)
 
         stateset->addUniform( _delayUniform.get() );
         stateset->addUniform( _durationUniform.get() );
+        stateset->addUniform( _vscaleUniform.get() );
 
         VirtualProgram* vp = VirtualProgram::getOrCreate(stateset);
-        vp->setFunction( "oe_morph_vertex",   vs, ShaderComp::LOCATION_VERTEX_MODEL );
-        vp->setFunction( "oe_morph_fragment", fs, ShaderComp::LOCATION_FRAGMENT_COLORING );
+        vp->setFunction( "oe_lodblend_vertex",   vs, ShaderComp::LOCATION_VERTEX_MODEL );
+        vp->setFunction( "oe_lodblend_fragment", fs, ShaderComp::LOCATION_FRAGMENT_COLORING );
     }
 }
 
 
 void
-ElevationMorph::onUninstall(TerrainEngineNode* engine)
+LODBlending::onUninstall(TerrainEngineNode* engine)
 {
     if ( engine )
     {
@@ -173,12 +201,13 @@ ElevationMorph::onUninstall(TerrainEngineNode* engine)
         {
             stateset->removeUniform( _delayUniform.get() );
             stateset->removeUniform( _durationUniform.get() );
+            stateset->removeUniform( _vscaleUniform.get() );
 
             VirtualProgram* vp = VirtualProgram::get(stateset);
             if ( vp )
             {
-                vp->removeShader( "oe_morph_vertex" );
-                vp->removeShader( "oe_morph_fragment" );
+                vp->removeShader( "oe_lodblend_vertex" );
+                vp->removeShader( "oe_lodblend_fragment" );
             }
         }
     }
@@ -189,17 +218,19 @@ ElevationMorph::onUninstall(TerrainEngineNode* engine)
 
 
 void
-ElevationMorph::mergeConfig(const Config& conf)
+LODBlending::mergeConfig(const Config& conf)
 {
     conf.getIfSet( "delay",    _delay );
     conf.getIfSet( "duration", _duration );
+    conf.getIfSet( "vertical_scale", _vscale );
 }
 
 Config
-ElevationMorph::getConfig() const
+LODBlending::getConfig() const
 {
-    Config conf("elevation_morph");
+    Config conf("lod_blending");
     conf.addIfSet( "delay",    _delay );
     conf.addIfSet( "duration", _duration );
+    conf.addIfSet( "vertical_scale", _vscale );
     return conf;
 }

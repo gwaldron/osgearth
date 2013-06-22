@@ -30,6 +30,9 @@ using namespace osgEarth::Util;
 namespace
 {
     const char* vs =
+        "#version " GLSL_VERSION_STR "\n"
+        GLSL_DEFAULT_PRECISION_FLOAT "\n"
+
         "attribute vec4 oe_terrain_attr; \n"
         "uniform float oe_contour_min; \n"
         "uniform float oe_contour_range; \n"
@@ -44,6 +47,9 @@ namespace
 
 
     const char* fs =
+        "#version " GLSL_VERSION_STR "\n"
+        GLSL_DEFAULT_PRECISION_FLOAT "\n"
+
         "uniform sampler1D oe_contour_xfer; \n"
         "uniform float oe_contour_opacity; \n"
         "varying float oe_contour_lookup; \n"
@@ -192,12 +198,12 @@ ContourMap::onUninstall(TerrainEngineNode* engine)
                 vp->removeShader( "oe_contour_vertex" );
                 vp->removeShader( "oe_contour_fragment" );
             }
+        }
 
-            if ( _unit >= 0 )
-            {
-                engine->getTextureCompositor()->releaseTextureImageUnit( _unit );
-                _unit = -1;
-            }
+        if ( _unit >= 0 )
+        {
+            engine->getTextureCompositor()->releaseTextureImageUnit( _unit );
+            _unit = -1;
         }
     }
 }

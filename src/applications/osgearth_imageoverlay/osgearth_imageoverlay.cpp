@@ -246,7 +246,7 @@ main(int argc, char** argv)
 
             //Create a new ImageOverlayEditor and set it's node mask to 0 to hide it initially
 #if OSG_MIN_VERSION_REQUIRED(2,9,6)
-            osg::Node* editor = new ImageOverlayEditor( overlay);
+            osg::Node* editor = new ImageOverlayEditor( overlay, moveVert);
 #else
             //Just make an empty group for pre-2.9.6
             osg::Node* editor = new osg::Group;

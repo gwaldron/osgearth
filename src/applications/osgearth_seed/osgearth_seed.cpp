@@ -29,12 +29,14 @@
 #include <osgEarth/CacheSeed>
 #include <osgEarth/MapNode>
 #include <osgEarth/Registry>
+#include <osgEarthDrivers/feature_ogr/OGRFeatureOptions>
 
 #include <iostream>
 #include <sstream>
 #include <iterator>
 
 using namespace osgEarth;
+using namespace osgEarth::Drivers;
 
 #define LC "[osgearth_cache] "
 
@@ -43,6 +45,7 @@ int seed( osg::ArgumentParser& args );
 int purge( osg::ArgumentParser& args );
 int usage( const std::string& msg );
 int message( const std::string& msg );
+std::string prettyPrintTime( double seconds );
 
 
 int
@@ -96,10 +99,10 @@ int message( const std::string& msg )
     return 0;
 }
 
-
 int
 seed( osg::ArgumentParser& args )
 {    
+
     //Read the min level
     unsigned int minLevel = 0;
     while (args.read("--min-level", minLevel));
@@ -142,6 +145,29 @@ seed( osg::ArgumentParser& args )
     seeder.setMinLevel( minLevel );
     seeder.setMaxLevel( maxLevel );
 
+    // Read in an index shapefile
+    std::string index;
+    while (args.read("--index", index))
+    {        
+        //Open the feature source
+        OGRFeatureOptions featureOpt;
+        featureOpt.url() = index;        
+
+        osg::ref_ptr< FeatureSource > features = FeatureSourceFactory::create( featureOpt );
+        features->initialize();
+        features->getFeatureProfile();
+
+        osg::ref_ptr< FeatureCursor > cursor = features->createFeatureCursor();
+        while (cursor.valid() && cursor->hasMore())
+        {
+            osg::ref_ptr< Feature > feature = cursor->nextFeature();
+            osgEarth::Bounds featureBounds = feature->getGeometry()->getBounds();
+            GeoExtent ext( feature->getSRS(), featureBounds );
+            ext = ext.transform( mapNode->getMapSRS() );
+            bounds.push_back( ext.bounds() );            
+        }
+    }
+
     for (unsigned int i = 0; i < bounds.size(); i++)
     {
         GeoExtent extent(mapNode->getMapSRS(), bounds[i]);
@@ -152,7 +178,15 @@ seed( osg::ArgumentParser& args )
     {
         seeder.setProgressCallback(new ConsoleProgressCallback);
     }
+
+
+    osg::Timer_t start = osg::Timer::instance()->tick();
+
     seeder.seed( mapNode->getMap() );
+
+    osg::Timer_t end = osg::Timer::instance()->tick();
+
+    OE_NOTICE << "Completed seeding in " << prettyPrintTime( osg::Timer::instance()->delta_s( start, end ) ) << std::endl;
 
     return 0;
 }
@@ -224,7 +258,7 @@ int
 purge( osg::ArgumentParser& args )
 {
     //return usage( "Sorry, but purge is not yet implemented." );
-
+    
     osg::ref_ptr<osg::Node> node = osgDB::readNodeFiles( args );
     if ( !node.valid() )
         return usage( "Failed to read .earth file." );
@@ -346,4 +380,20 @@ purge( osg::ArgumentParser& args )
     }
 
     return 0;
+}
+
+/**
+ * Gets the total number of seconds formatted as H:M:S
+ */
+std::string prettyPrintTime( double seconds )
+{
+    int hours = (int)floor(seconds / (3600.0) );
+    seconds -= hours * 3600.0;
+
+    int minutes = (int)floor(seconds/60.0);
+    seconds -= minutes * 60.0;
+
+    std::stringstream buf;
+    buf << hours << ":" << minutes << ":" << seconds;
+    return buf.str();
 }

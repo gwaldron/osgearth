@@ -1,0 +1,59 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+ * Copyright 2008-2013 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+
+#ifndef OSGEARTHDRIVERS_JAVASCRIPTCORE_ENGINE_H
+#define OSGEARTHDRIVERS_JAVASCRIPTCORE_ENGINE_H 1
+
+#include <osgEarth/StringUtils>
+#include <osgEarthFeatures/Feature>
+#include <osgEarthFeatures/Script>
+#include <osgEarthFeatures/ScriptEngine>
+
+#include <JavaScriptCore/JavaScriptCore.h>
+
+//namespace osgEarth { namespace Drivers { namespace JavaScriptCore
+//{
+
+  using namespace osgEarth::Features;
+
+  class JavaScriptCoreEngine : public ScriptEngine
+  {
+  public:
+    JavaScriptCoreEngine(const ScriptEngineOptions& options =ScriptEngineOptions());
+    virtual ~JavaScriptCoreEngine();
+
+    bool supported(std::string lang) { return osgEarth::toLower(lang).compare("javascript") == 0; }
+    bool supported(Script* script) { return script && supported(script->getLanguage()); }
+
+    ScriptResult run(Script* script, osgEarth::Features::Feature const* feature=0L, osgEarth::Features::FilterContext const* context=0L);
+    ScriptResult run(const std::string& code, osgEarth::Features::Feature const* feature=0L, osgEarth::Features::FilterContext const* context=0L);
+
+    ScriptResult call(const std::string& function, osgEarth::Features::Feature const* feature=0L, osgEarth::Features::FilterContext const* context=0L);
+
+  protected:
+    /** Compiles and runs javascript in the current context. */
+    ScriptResult executeScript(const std::string& script);
+
+  protected:
+    JSGlobalContextRef _ctx;
+  };
+
+//} } } // namespace osgEarth::Drivers::JavaScriptCore
+
+#endif // OSGEARTHDRIVERS_JAVASCRIPTCORE_ENGINE_H

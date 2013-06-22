@@ -1012,18 +1012,25 @@ FeatureModelGraph::queryAndSortIntoStyleGroups(const Query&            query,
             combinedStyle = Style(conf);
         }
 
-        // otherwise, look up the style in the stylesheet:
+        // otherwise, look up the style in the stylesheet. Do NOT fall back on a default
+        // style in this case: for style expressions, the user must be explicity about 
+        // default styling; this is because there is no other way to exclude unwanted
+        // features.
         else
         {
-            const Style* selectedStyle = _session->styles()->getStyle(styleString);
+            const Style* selectedStyle = _session->styles()->getStyle(styleString, false);
             if ( selectedStyle )
                 combinedStyle = *selectedStyle;
         }
 
-        // create the node and add it.
-        osg::Group* styleGroup = createStyleGroup(combinedStyle, workingSet, context);
-        if ( styleGroup )
-            parent->addChild( styleGroup );
+        // if there is a valid style, create the node and add it. (Otherwise we will skip
+        // the feature.)
+        if ( !combinedStyle.empty() )
+        {
+            osg::Group* styleGroup = createStyleGroup(combinedStyle, workingSet, context);
+            if ( styleGroup )
+                parent->addChild( styleGroup );
+        }
     }
 }
 

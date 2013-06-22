@@ -30,6 +30,9 @@ using namespace osgEarth::Util;
 namespace
 {
     const char* vs =
+        "#version " GLSL_VERSION_STR "\n"
+        GLSL_DEFAULT_PRECISION_FLOAT "\n"
+
         "uniform vec4  oe_tile_key; \n"
         "varying vec4  oe_layer_tilec; \n"
         "uniform float oe_dtex_L0; \n"
@@ -60,6 +63,9 @@ namespace
         "} \n";
 
     const char* fs =
+        "#version " GLSL_VERSION_STR "\n"
+        GLSL_DEFAULT_PRECISION_FLOAT "\n"
+
         "uniform vec4      oe_tile_key; \n"
         "uniform float     oe_dtex_L0; \n"
         "uniform sampler2D oe_dtex_tex; \n"
@@ -111,6 +117,9 @@ _intensity   ( 0.25f )
 void
 DetailTexture::init()
 {
+    // negative means unset:
+    _unit = -1;
+
     _startLODUniform   = new osg::Uniform(osg::Uniform::FLOAT, "oe_dtex_L0");
     _startLODUniform->set( (float)_startLOD.get() );
 
@@ -169,12 +178,11 @@ DetailTexture::onInstall(TerrainEngineNode* engine)
     {
         osg::StateSet* stateset = engine->getOrCreateStateSet();
 
-        int unit;
-        if ( engine->getTextureCompositor()->reserveTextureImageUnit(unit) )
+        if ( engine->getTextureCompositor()->reserveTextureImageUnit(_unit) )
         {
             _samplerUniform = stateset->getOrCreateUniform( "oe_dtex_tex", osg::Uniform::SAMPLER_2D );
-            _samplerUniform->set( (int)unit );
-            stateset->setTextureAttributeAndModes( unit, _texture.get() );
+            _samplerUniform->set( _unit );
+            stateset->setTextureAttributeAndModes( _unit, _texture.get() );
         }
 
         stateset->addUniform( _startLODUniform.get() );
@@ -210,6 +218,12 @@ DetailTexture::onUninstall(TerrainEngineNode* engine)
             vp->removeShader( "oe_dtex_vertex" );
             vp->removeShader( "oe_dtex_fragment" );
         }
+    }
+
+    if ( _unit >= 0 )
+    {
+        engine->getTextureCompositor()->releaseTextureImageUnit( _unit );
+        _unit = -1;
     }
 }
 

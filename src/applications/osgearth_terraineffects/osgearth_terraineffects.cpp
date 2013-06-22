@@ -32,7 +32,7 @@
 
 #include <osgEarthUtil/ContourMap>
 #include <osgEarthUtil/DetailTexture>
-#include <osgEarthUtil/ElevationMorph>
+#include <osgEarthUtil/LODBlending>
 #include <osgEarthUtil/NormalMap>
 #include <osgEarthUtil/VerticalScale>
 
@@ -56,7 +56,7 @@ struct App
 
     osg::ref_ptr<ContourMap>     contourMap;
     osg::ref_ptr<DetailTexture>  detailTexture;
-    osg::ref_ptr<ElevationMorph> elevationMorph;
+    osg::ref_ptr<LODBlending>    lodBlending;
     osg::ref_ptr<NormalMap>      normalMap;
     osg::ref_ptr<VerticalScale>  verticalScale;
 
@@ -67,7 +67,7 @@ struct App
         detailTexture = new DetailTexture();
         detailTexture->setImage( osgDB::readImageFile("../data/noise3.png") );
 
-        elevationMorph = new ElevationMorph();
+        lodBlending = new LODBlending();
         normalMap = new NormalMap();
         verticalScale = new VerticalScale();
     }
@@ -121,13 +121,14 @@ struct DetailTextureController {
     }
 };
 
-struct ElevationMorphController {
-    TOGGLE   ( elevationMorph );
-    SET_FLOAT( elevationMorph, setDelay );
-    SET_FLOAT( elevationMorph, setDuration );
-    ElevationMorphController(App& app, ui::Grid* grid) {
+struct LODBlendingController {
+    TOGGLE   ( lodBlending );
+    SET_FLOAT( lodBlending, setDelay );
+    SET_FLOAT( lodBlending, setDuration );
+    SET_FLOAT( lodBlending, setVerticalScale );
+    LODBlendingController(App& app, ui::Grid* grid) {
         int r = grid->getNumRows();
-        grid->setControl(0, r, new ui::LabelControl("ElevationMorph"));
+        grid->setControl(0, r, new ui::LabelControl("LOD Blending"));
         grid->setControl(1, r, new ui::CheckBoxControl(false, new Toggle(app)));
         ++r;
         grid->setControl(0, r, new ui::LabelControl("   delay:"));
@@ -136,6 +137,10 @@ struct ElevationMorphController {
         ++r;
         grid->setControl(0, r, new ui::LabelControl("   duration:"));
         grid->setControl(1, r, new ui::HSliderControl(0.0, 5.0, 1.0, new setDuration(app)));
+        grid->setControl(2, r, new ui::LabelControl(grid->getControl(1, r)));
+        ++r;
+        grid->setControl(0, r, new ui::LabelControl("   vertical scale:"));
+        grid->setControl(1, r, new ui::HSliderControl(0.0, 5.0, 1.0, new setVerticalScale(app)));
         grid->setControl(2, r, new ui::LabelControl(grid->getControl(1, r)));
     }
 };
@@ -175,7 +180,7 @@ ui::Control* createUI( App& app )
 
     ContourMapController    (app, grid);
     DetailTextureController (app, grid);
-    ElevationMorphController(app, grid);
+    LODBlendingController   (app, grid);
     NormalMapController     (app, grid);
     VerticalScaleController (app, grid);
 

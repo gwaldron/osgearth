@@ -7,6 +7,10 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		1F823FFE173C1D20003B519D /* libosgdb_osgearth_engine_mp.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 1F823FFD173C1D20003B519D /* libosgdb_osgearth_engine_mp.a */; };
+		1F8566A817666C29005BCD2B /* libosgdb_osgearth_scriptengine_javascriptcore.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 1F8566A717666C29005BCD2B /* libosgdb_osgearth_scriptengine_javascriptcore.a */; };
+		1F8566AA17666E67005BCD2B /* libJavaScriptCore.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 1F8566A917666E67005BCD2B /* libJavaScriptCore.a */; };
+		1F8566AC17666EC1005BCD2B /* libicucore.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 1F8566AB17666EC1005BCD2B /* libicucore.dylib */; };
 		90283E5615C6FB3E00620EEF /* tests in Resources */ = {isa = PBXBuildFile; fileRef = 90283E5415C6FB3E00620EEF /* tests */; };
 		90283E5715C6FB3E00620EEF /* data in Resources */ = {isa = PBXBuildFile; fileRef = 90283E5515C6FB3E00620EEF /* data */; };
 		90283E5D15C7091A00620EEF /* libosgdb_osgearth_engine_quadtree.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 90283E5C15C7091A00620EEF /* libosgdb_osgearth_engine_quadtree.a */; };
@@ -174,6 +178,10 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		1F823FFD173C1D20003B519D /* libosgdb_osgearth_engine_mp.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libosgdb_osgearth_engine_mp.a; path = ../../../lib/Release/libosgdb_osgearth_engine_mp.a; sourceTree = "<group>"; };
+		1F8566A717666C29005BCD2B /* libosgdb_osgearth_scriptengine_javascriptcore.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libosgdb_osgearth_scriptengine_javascriptcore.a; path = ../../../lib/Release/libosgdb_osgearth_scriptengine_javascriptcore.a; sourceTree = "<group>"; };
+		1F8566A917666E67005BCD2B /* libJavaScriptCore.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libJavaScriptCore.a; path = ../../../../3rdParty/all/libJavaScriptCore.a; sourceTree = "<group>"; };
+		1F8566AB17666EC1005BCD2B /* libicucore.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = libicucore.dylib; path = usr/lib/libicucore.dylib; sourceTree = SDKROOT; };
 		90283E5415C6FB3E00620EEF /* tests */ = {isa = PBXFileReference; lastKnownFileType = folder; name = tests; path = ../../../../tests; sourceTree = "<group>"; };
 		90283E5515C6FB3E00620EEF /* data */ = {isa = PBXFileReference; lastKnownFileType = folder; name = data; path = ../../../../data; sourceTree = "<group>"; };
 		90283E5C15C7091A00620EEF /* libosgdb_osgearth_engine_quadtree.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libosgdb_osgearth_engine_quadtree.a; path = ../../../lib/Release/libosgdb_osgearth_engine_quadtree.a; sourceTree = "<group>"; };
@@ -354,6 +362,10 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				1F8566AC17666EC1005BCD2B /* libicucore.dylib in Frameworks */,
+				1F8566AA17666E67005BCD2B /* libJavaScriptCore.a in Frameworks */,
+				1F8566A817666C29005BCD2B /* libosgdb_osgearth_scriptengine_javascriptcore.a in Frameworks */,
+				1F823FFE173C1D20003B519D /* libosgdb_osgearth_engine_mp.a in Frameworks */,
 				904E22771691CC42002D66FD /* Accelerate.framework in Frameworks */,
 				904E22781691CC42002D66FD /* MobileCoreServices.framework in Frameworks */,
 				907D037E15B86F8700575110 /* libosgdb_shp.a in Frameworks */,
@@ -554,6 +566,10 @@
 		9051FFEF15B1EDFD00D9ABD3 = {
 			isa = PBXGroup;
 			children = (
+				1F8566AB17666EC1005BCD2B /* libicucore.dylib */,
+				1F8566A917666E67005BCD2B /* libJavaScriptCore.a */,
+				1F8566A717666C29005BCD2B /* libosgdb_osgearth_scriptengine_javascriptcore.a */,
+				1F823FFD173C1D20003B519D /* libosgdb_osgearth_engine_mp.a */,
 				9051000815B1EDFD00D9ABD3 /* osgEarthViewerIOS */,
 				905100D215B21FFD00D9ABD3 /* Resources */,
 				90A0DD7715B7BBAB004FACEE /* Libs */,
@@ -970,27 +986,23 @@
 		9051002415B1EDFD00D9ABD3 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "iPhone Developer: Thomas Hogarth (35UD7TG27V)";
+				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "iPhone Developer: Jefferey Smith (KN8HX7RLT9)";
 				GCC_PRECOMPILE_PREFIX_HEADER = YES;
 				GCC_PREFIX_HEADER = "osgEarthViewerIOS/osgEarthViewerIOS-Prefix.pch";
 				"GCC_THUMB_SUPPORT[arch=armv6]" = "";
 				HEADER_SEARCH_PATHS = (
 					../../,
-					"../../../../osg-ios/include",
+					../../../../osg/OpenSceneGraph/include,
 				);
 				INFOPLIST_FILE = "osgEarthViewerIOS/osgEarthViewerIOS-Info.plist";
-				IPHONEOS_DEPLOYMENT_TARGET = 4.3;
+				IPHONEOS_DEPLOYMENT_TARGET = 5.1;
 				LIBRARY_SEARCH_PATHS = (
-					"\"$(SRCROOT)/../../../../3rdParty/freetype-ios-universal/lib\"",
-					"\"$(SRCROOT)/../../../../3rdParty/proj4-ios-device/lib\"",
-					"\"$(SRCROOT)/../../../../3rdParty/gdal-ios-device/lib\"",
-					"\"$(SRCROOT)/../../../../3rdParty/curl-ios-device/lib\"",
+					"\"$(SRCROOT)/../../../../3rdParty/all\"",
 					"\"$(SRCROOT)/../../../lib/Release\"",
-					"\"$(SRCROOT)/../../../../3rdParty/geos-ios-device/lib\"",
-					"\"$(SRCROOT)/../../../../osg-ios/lib\"",
+					"\"$(SRCROOT)/../../../../osg/OpenSceneGraph/lib\"",
 				);
 				PRODUCT_NAME = osgEarth;
-				"PROVISIONING_PROFILE[sdk=iphoneos*]" = "C5A8E349-91DB-4E98-9612-789DB499534E";
+				"PROVISIONING_PROFILE[sdk=iphoneos*]" = "B0AE9D26-0AD5-4EE2-ADC5-8559501E74A9";
 				VALID_ARCHS = armv7;
 				WRAPPER_EXTENSION = app;
 			};
@@ -999,7 +1011,7 @@
 		9051002515B1EDFD00D9ABD3 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "iPhone Developer: Thomas Hogarth (35UD7TG27V)";
+				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "iPhone Distribution: Pelican Ventures, Inc";
 				DEBUG_INFORMATION_FORMAT = dwarf;
 				GCC_GENERATE_DEBUGGING_SYMBOLS = NO;
 				GCC_PRECOMPILE_PREFIX_HEADER = YES;
@@ -1007,21 +1019,17 @@
 				"GCC_THUMB_SUPPORT[arch=armv6]" = "";
 				HEADER_SEARCH_PATHS = (
 					../../,
-					"../../../../osg-ios/include",
+					../../../../osg/OpenSceneGraph/include,
 				);
 				INFOPLIST_FILE = "osgEarthViewerIOS/osgEarthViewerIOS-Info.plist";
-				IPHONEOS_DEPLOYMENT_TARGET = 4.3;
+				IPHONEOS_DEPLOYMENT_TARGET = 5.1;
 				LIBRARY_SEARCH_PATHS = (
-					"\"$(SRCROOT)/../../../../3rdParty/freetype-ios-universal/lib\"",
-					"\"$(SRCROOT)/../../../../3rdParty/proj4-ios-device/lib\"",
-					"\"$(SRCROOT)/../../../../3rdParty/gdal-ios-device/lib\"",
-					"\"$(SRCROOT)/../../../../3rdParty/curl-ios-device/lib\"",
+					"\"$(SRCROOT)/../../../../3rdParty/all\"",
 					"\"$(SRCROOT)/../../../lib/Release\"",
-					"\"$(SRCROOT)/../../../../3rdParty/geos-ios-device/lib\"",
-					"\"$(SRCROOT)/../../../../osg-ios/lib\"",
+					"\"$(SRCROOT)/../../../../osg/OpenSceneGraph/lib\"",
 				);
 				PRODUCT_NAME = osgEarth;
-				"PROVISIONING_PROFILE[sdk=iphoneos*]" = "C5A8E349-91DB-4E98-9612-789DB499534E";
+				"PROVISIONING_PROFILE[sdk=iphoneos*]" = "3948EA51-CDCD-4B29-A73F-67C55D186433";
 				VALID_ARCHS = armv7;
 				WRAPPER_EXTENSION = app;
 			};

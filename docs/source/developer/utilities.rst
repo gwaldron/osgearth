@@ -66,14 +66,14 @@ Try the example. Zoom in fairly close to the terrain to see the effect::
 
 
 
-ElevationMorph
---------------
+LOD Blending
+------------
 
-``ElevationMorph`` is a terrain controller that will attempt to smoothly morph vertices
-from one LOD to the next as you zoom in or out. Basic usage is::
+``LODBlending`` is a terrain controller that will attempt to smoothly morph vertices
+and image textures from one LOD to the next as you zoom in or out. Basic usage is::
 
-    ElevationMorph* morph = new ElevationMorph();
-    mapnode->getTerrainEngine()->addEffect( morph );
+    LODBlending* effect = new LODBlending();
+    mapnode->getTerrainEngine()->addEffect( effect );
 
 Caveats: It requires that the terrain elevation tile size dimensions be odd-numbered
 (e.g., 15x15). You can use the ``MapOptions::elevationTileSize`` property to configure
@@ -84,7 +84,7 @@ this, or set ``elevation_tile_size`` in your earth file::
 
 For a demo, run this example and zoom into a mountainous area::
 
-    osgearth_lodmorph readymap.earth
+    osgearth_viewer lod_blending.earth
 
 
 Formatters

@@ -32,9 +32,10 @@ using namespace osgEarth::Annotation;
 class ImageOverlayDraggerCallback : public Dragger::PositionChangedCallback
 {
 public:
-    ImageOverlayDraggerCallback(ImageOverlay* overlay, ImageOverlay::ControlPoint controlPoint):
+    ImageOverlayDraggerCallback(ImageOverlay* overlay, ImageOverlay::ControlPoint controlPoint, bool singleVert):
       _overlay(overlay),
-      _controlPoint(controlPoint)
+      _controlPoint(controlPoint),
+      _singleVert( singleVert )
       {}
 
       virtual void onPositionChanged(const Dragger* sender, const osgEarth::GeoPoint& position)
@@ -42,11 +43,12 @@ public:
           //Convert to lat/lon
           GeoPoint p;
           position.transform(SpatialReference::create( "epsg:4326"), p);
-          _overlay->setControlPoint(_controlPoint, p.x(), p.y());
+          _overlay->setControlPoint(_controlPoint, p.x(), p.y(), _singleVert);
       }
 
       osg::ref_ptr<ImageOverlay>           _overlay;
       ImageOverlay::ControlPoint _controlPoint;
+      bool _singleVert;
 };
 
 struct OverlayCallback : public ImageOverlay::ImageOverlayCallback
@@ -69,8 +71,9 @@ struct OverlayCallback : public ImageOverlay::ImageOverlayCallback
 
 
 
-ImageOverlayEditor::ImageOverlayEditor(ImageOverlay* overlay):
-_overlay  (overlay)
+ImageOverlayEditor::ImageOverlayEditor(ImageOverlay* overlay, bool singleVert):
+_overlay  (overlay),
+_singleVert( singleVert )
 {   
     _overlayCallback = new OverlayCallback(this);
     _overlay->addCallback( _overlayCallback.get() );
@@ -93,7 +96,7 @@ ImageOverlayEditor::addDragger( ImageOverlay::ControlPoint controlPoint )
     
     SphereDragger* dragger = new SphereDragger(_overlay->getMapNode());
     dragger->setPosition( GeoPoint( SpatialReference::create( "epsg:4326"), location.x(), location.y()));
-    dragger->addPositionChangedCallback( new ImageOverlayDraggerCallback(_overlay.get(), controlPoint));
+    dragger->addPositionChangedCallback( new ImageOverlayDraggerCallback(_overlay.get(), controlPoint, _singleVert));
     addChild(dragger);
     _draggers[ controlPoint ] = dragger;
 }

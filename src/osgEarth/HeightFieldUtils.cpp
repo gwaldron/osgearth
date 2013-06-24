@@ -288,18 +288,24 @@ HeightFieldUtils::getNormalAtNormalizedLocation(const osg::HeightField* input,
                                                 osg::Vec3& output,
                                                 ElevationInterpolation interp)
 {
-    double dx = 1.0/(double)(input->getNumColumns()-1);
-    double dy = 1.0/(double)(input->getNumRows()-1);
+    double xcells = (double)(input->getNumColumns()-1);
+    double ycells = (double)(input->getNumRows()-1);
 
-    double xmin = osg::clampAbove( nx-dx, 0.0 );
-    double xmax = osg::clampBelow( nx+dx, 1.0 );
-    double ymin = osg::clampAbove( ny-dx, 0.0 );
-    double ymax = osg::clampBelow( ny+dy, 1.0 );
+    double w = input->getXInterval() * xcells * 111000.0;
+    double h = input->getYInterval() * ycells * 111000.0;
 
-    osg::Vec3 west (xmin, ny, getHeightAtNormalizedLocation(input, xmin, ny, interp));
-    osg::Vec3 east (xmax, ny, getHeightAtNormalizedLocation(input, xmax, ny, interp));
-    osg::Vec3 south(nx, ymin, getHeightAtNormalizedLocation(input, nx, ymin, interp));
-    osg::Vec3 north(nx, ymax, getHeightAtNormalizedLocation(input, nx, ymax, interp));
+    double ndx = 1.0/xcells;
+    double ndy = 1.0/ycells;
+
+    double xmin = osg::clampAbove( nx-ndx, 0.0 );
+    double xmax = osg::clampBelow( nx+ndx, 1.0 );
+    double ymin = osg::clampAbove( ny-ndy, 0.0 );
+    double ymax = osg::clampBelow( ny+ndy, 1.0 );
+
+    osg::Vec3 west (xmin*w, ny*h, getHeightAtNormalizedLocation(input, xmin, ny, interp));
+    osg::Vec3 east (xmax*w, ny*h, getHeightAtNormalizedLocation(input, xmax, ny, interp));
+    osg::Vec3 south(nx*w, ymin*h, getHeightAtNormalizedLocation(input, nx, ymin, interp));
+    osg::Vec3 north(nx*w, ymax*h, getHeightAtNormalizedLocation(input, nx, ymax, interp));
 
     output = (west-east) ^ (north-south);
     output.normalize();

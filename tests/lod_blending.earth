@@ -18,7 +18,7 @@ http://readymap.org
         <elevation_tile_size>31</elevation_tile_size>
 		
 		<!-- extend the min_lod so we can see MORE morphing. -->
-        <terrain lighting="false" first_lod="1" min_lod="19"/>
+        <terrain first_lod="1" min_lod="19"/>
     </options>
     
     <image name="readymap_imagery" driver="tms" visible="true">

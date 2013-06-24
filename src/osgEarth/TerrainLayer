@@ -179,7 +179,7 @@ namespace osgEarth
         optional<bool>              _enabled;
         optional<bool>              _visible;
         optional<unsigned>          _reprojectedTileSize;
-        optional<double>            _edgeBufferRatio;        
+        optional<double>            _edgeBufferRatio;
 
         optional<std::string>       _cacheId;
         optional<std::string>       _cacheFormat;
@@ -196,7 +196,7 @@ namespace osgEarth
         virtual ~TerrainLayerCallback() { }
     };
 
-    typedef void (TerrainLayerCallback::*TerrainLayerCallbackMethodPtr)(TerrainLayer* layer);
+    typedef void (TerrainLayerCallback::*TerrainLayerCallbackMethodPtr)(class TerrainLayer* layer);
 
 
     /**

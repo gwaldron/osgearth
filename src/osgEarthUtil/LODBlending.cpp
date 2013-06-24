@@ -50,7 +50,7 @@ namespace
 
         "attribute vec4 oe_terrain_attr; \n"
         "attribute vec4 oe_terrain_attr2; \n"
-        "varying vec3 osg_Normal; \n"
+        "varying vec3 oe_Normal; \n"
 
         "uniform float oe_min_tile_range_factor; \n"
         "uniform vec4 oe_tile_key; \n"
@@ -89,7 +89,7 @@ namespace
         "    oe_lodblend_r       = oe_layer_parent_matrix[0][0] > 0.0 ? r : 0.0; \n" // obe?
 
         // UNCOMMENT to enable normal blending.
-        //"    osg_Normal = normalize(mix(osg_Normal, oe_terrain_attr2.xyz, r)); \n"
+        //"    oe_Normal = normalize(mix(osg_Normal, oe_terrain_attr2.xyz, r)); \n"
         "} \n";
 
     const char* fs =

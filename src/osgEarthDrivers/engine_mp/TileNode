@@ -46,13 +46,6 @@ namespace osgEarth_engine_mp
         const TileKey& getKey() const { return _key; }
 
         /**
-         * Whether the tile consists of "real" data
-         * (versus upsampled fallback data).
-         */
-        void setHasRealData( bool value ) { _realData = value; }
-        bool hasRealData() const { return _realData; }
-
-        /**
          * True if this is a valid tile node.
          * Subclass may override (see InvalidTileNode)
          */
@@ -83,14 +76,13 @@ namespace osgEarth_engine_mp
 
         virtual ~TileNode() { }
 
-        TileKey                 _key;
-        bool                    _realData;
-        osg::Uniform*           _bornUniform;
-        mutable osg::Uniform*   _keyUniform;
-        osg::ref_ptr<const TileModel> _model;
-        osg::Uniform*           _tileParentMatrixUniform;
-        unsigned                _lastTraversalFrame;
-        double                  _bornTime;
+        TileKey                            _key;
+        osg::ref_ptr<osg::Uniform>         _bornUniform;
+        mutable osg::ref_ptr<osg::Uniform> _keyUniform;
+        osg::ref_ptr<const TileModel>      _model;
+        osg::ref_ptr<osg::Uniform>         _tileParentMatrixUniform;
+        unsigned                           _lastTraversalFrame;
+        double                             _bornTime;
     };
 
 

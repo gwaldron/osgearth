@@ -35,6 +35,8 @@ Advanced Properties:
                         height data to create a "floor".
     :max_elevation:     The maximum elevation value to generate when createing height fields. This clamps
                         height data to create a "ceiling".
+    :normal_map:        Set this to true (for an image layer) to create a bump map normal texture that you
+                        can use with the ``NormalMap`` terrain effect.
 
 Also see:
 

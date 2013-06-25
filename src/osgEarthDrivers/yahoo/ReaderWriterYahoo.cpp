@@ -120,7 +120,7 @@ public:
     }
     
     /** Tell the terrain engine not to cache tiles form this source. */
-    CachePolicy getCachePolicyHint() const
+    CachePolicy getCachePolicyHint(const Profile*) const
     {
         return CachePolicy::NO_CACHE;
     }

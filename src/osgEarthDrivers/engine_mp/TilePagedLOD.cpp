@@ -106,6 +106,11 @@ TilePagedLOD::addChild(osg::Node* node)
     // Getting here means there's an internal error -- the addChild data was
     // of an unexpected node type. This should never happen.
     OE_WARN << LC << "TilePagedLOD fail." << std::endl;
+    if ( !node )
+        OE_WARN << LC << ".... node is NULL" << std::endl;
+    else
+        OE_WARN << LC << "... node is a " << node->className() << std::endl;
+
     return false;
 }
 

@@ -131,8 +131,8 @@ public:
         return "png";
     }
 
-    /** Tell the terrain engine not to cache tiles form this source. */
-    CachePolicy getCachePolicyHint() const
+    /** Tell the terrain engine never to cache tiles form this source. */
+    CachePolicy getCachePolicyHint(const Profile*) const
     {
         return CachePolicy::NO_CACHE;
     }

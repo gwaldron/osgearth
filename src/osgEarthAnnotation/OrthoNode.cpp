@@ -282,7 +282,7 @@ OrthoNode::applyStyle(const Style& style)
     // check for decluttering.
     const TextSymbol* text = style.get<TextSymbol>();
     if ( text && text->declutter().isSet() )
-    {
+    {		
         if ( text->declutter() == true )
         {
             this->getOrCreateStateSet()->setRenderBinDetails(
@@ -294,6 +294,13 @@ OrthoNode::applyStyle(const Style& style)
             this->getOrCreateStateSet()->setRenderBinToInherit();
         }
     }
+	
+
+	// check for occlusion culling
+	if ( text && text->occlusionCull().isSet() )
+	{		
+		this->setOcclusionCulling( *text->occlusionCull() );				
+	}	
 
     const IconSymbol* icon = style.get<IconSymbol>();
     if ( icon && icon->declutter().isSet() )
@@ -308,7 +315,13 @@ OrthoNode::applyStyle(const Style& style)
         {
             this->getOrCreateStateSet()->setRenderBinToInherit();
         }
-    }
+    }	
+
+	// check for occlusion culling
+	if ( icon && icon->occlusionCull().isSet() )
+	{				
+		this->setOcclusionCulling( *icon->occlusionCull() );				
+	}		
 
     // up the chain
     PositionedAnnotationNode::applyStyle( style );

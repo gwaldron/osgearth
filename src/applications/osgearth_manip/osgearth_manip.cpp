@@ -64,7 +64,8 @@ namespace
             "shift-right-mouse :", "locked panning",
             "u :",                 "toggle azimuth lock",
             "c :",                 "toggle perspective/ortho",
-            "t :",                 "toggle tethering"
+            "t :",                 "toggle tethering",
+            "a :",                 "toggle viewpoint arcing"
         };
 
         Grid* g = new Grid();
@@ -143,6 +144,38 @@ namespace
         {
             using namespace std;
             usage.addKeyboardMouseBinding(string(1, _key), string("Toggle azimuth locking"));
+        }
+
+        char _key;
+        osg::ref_ptr<EarthManipulator> _manip;
+    };
+
+
+    /**
+     * Handler to toggle "viewpoint transtion arcing", which causes the camera to "arc"
+     * as it travels from one viewpoint to another.
+     */
+    struct ToggleArcViewpointTransitionsHandler : public osgGA::GUIEventHandler
+    {
+        ToggleArcViewpointTransitionsHandler(char key, EarthManipulator* manip)
+            : _key(key), _manip(manip) { }
+
+        bool handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& aa)
+        {
+            if (ea.getEventType() == ea.KEYDOWN && ea.getKey() == _key)
+            {
+                bool arc = _manip->getSettings()->getArcViewpointTransitions();
+                _manip->getSettings()->setArcViewpointTransitions(!arc);
+                aa.requestRedraw();
+                return true;
+            }
+            return false;
+        }
+
+        void getUsage(osg::ApplicationUsage& usage) const
+        {
+            using namespace std;
+            usage.addKeyboardMouseBinding(string(1, _key), string("Arc viewpoint transitions"));
         }
 
         char _key;
@@ -295,6 +328,7 @@ int main(int argc, char** argv)
     viewer.addEventHandler(new FlyToViewpointHandler( manip ));
     viewer.addEventHandler(new LockAzimuthHandler('u', manip));
     viewer.addEventHandler(new ToggleProjectionHandler('c', manip));
+    viewer.addEventHandler(new ToggleArcViewpointTransitionsHandler('a', manip));
 
     return viewer.run();
 }

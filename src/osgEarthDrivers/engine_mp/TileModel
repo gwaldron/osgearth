@@ -79,7 +79,7 @@ namespace osgEarth_engine_mp
             bool getHeight( const osg::Vec3d& ndc, const GeoLocator* ndcLocator, float& output, ElevationInterpolation interp ) const;
 
             // get a normal vector.
-            bool getNormal( const osg::Vec3d& ndc, const GeoLocator* ndcLocator, osg::Vec3& output ) const;
+            bool getNormal( const osg::Vec3d& ndc, const GeoLocator* ndcLocator, osg::Vec3& output, ElevationInterpolation interp ) const;
             
             osg::HeightField* getNeighbor(int xoffset, int yoffset) const
             {

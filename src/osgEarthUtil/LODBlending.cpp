@@ -50,6 +50,8 @@ namespace
 
         "attribute vec4 oe_terrain_attr; \n"
         "attribute vec4 oe_terrain_attr2; \n"
+        "varying vec3 oe_Normal; \n"
+
         "uniform float oe_min_tile_range_factor; \n"
         "uniform vec4 oe_tile_key; \n"
         "uniform float osg_FrameTime; \n"
@@ -85,6 +87,9 @@ namespace
 
         "    oe_lodblend_texc    = oe_layer_parent_matrix * oe_layer_texc; \n"
         "    oe_lodblend_r       = oe_layer_parent_matrix[0][0] > 0.0 ? r : 0.0; \n" // obe?
+
+        // UNCOMMENT to enable normal blending.
+        //"    oe_Normal = normalize(mix(osg_Normal, oe_terrain_attr2.xyz, r)); \n"
         "} \n";
 
     const char* fs =
@@ -92,6 +97,7 @@ namespace
         GLSL_DEFAULT_PRECISION_FLOAT "\n"
 
         "uniform vec4 oe_tile_key; \n"
+        "uniform int oe_layer_uid; \n"
         "uniform float oe_layer_opacity; \n"
         "varying vec4 oe_lodblend_texc; \n"
         "varying float oe_lodblend_r; \n"
@@ -99,8 +105,11 @@ namespace
 
         "void oe_lodblend_fragment(inout vec4 color) \n"
         "{ \n"
-        "    vec4 texelpma = texture2D(oe_layer_tex_parent, oe_lodblend_texc.st) * oe_layer_opacity; \n"
-        "    color = mix(color, texelpma, oe_lodblend_r); \n"
+        "    if ( oe_layer_uid >= 0 ) \n"
+        "    { \n"
+        "        vec4 texelpma = texture2D(oe_layer_tex_parent, oe_lodblend_texc.st) * oe_layer_opacity; \n"
+        "        color = mix(color, texelpma, oe_lodblend_r); \n"
+        "    } \n"
         "} \n";
 }
 

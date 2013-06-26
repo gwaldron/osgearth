@@ -35,6 +35,7 @@ namespace
 
         "varying vec3 oe_nmap_light; \n"
         "varying vec3 oe_nmap_view; \n"
+        "varying vec3 oe_Normal; \n"
         "uniform bool oe_mode_GL_LIGHTING; \n"
 
         "void oe_lighting_vertex(inout vec4 VertexVIEW) \n"
@@ -43,7 +44,7 @@ namespace
         "    { \n"
         "        vec3 tangent = normalize(cross(gl_Normal, vec3(0,-1,0))); \n"
 
-        "        vec3 n = normalize(gl_NormalMatrix * gl_Normal); \n"
+        "        vec3 n = oe_Normal; \n" //normalize(gl_NormalMatrix * gl_Normal); \n"
         "        vec3 t = normalize(gl_NormalMatrix * tangent); \n"
         "        vec3 b = cross(n, t); \n"
 

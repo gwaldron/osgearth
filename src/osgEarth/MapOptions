@@ -48,8 +48,8 @@ namespace osgEarth
               _cachePolicy           ( ),
               _cstype                ( CSTYPE_GEOCENTRIC ),
               _referenceURI          ( "" ),
-              _elevationInterpolation( INTERP_BILINEAR ),
-              _elevTileSize          ( 8 )
+              _elevationInterpolation( INTERP_TRIANGULATE ), //INTERP_BILINEAR ),
+              _elevTileSize          ( 15 )
         {
             fromConfig(_conf);
         }

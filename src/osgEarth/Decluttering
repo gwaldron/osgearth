@@ -52,6 +52,9 @@ namespace osgEarth
     public:
         virtual void setPriority(float value) =0;
         virtual float getPriority() const =0;
+
+    protected:
+        virtual ~PriorityProvider() { }
     };
 
     /**

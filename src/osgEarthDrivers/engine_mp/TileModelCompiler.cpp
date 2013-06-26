@@ -608,105 +608,43 @@ namespace
                     // record the raw elevation value in our float array for later
                     (*d.elevations).push_back(ndc.z());
 
-                    // compute the local normal
-                    osg::Vec3d ndc_one = ndc; ndc_one.z() += 1.0;
-                    osg::Vec3d model_one;
-                    d.model->_tileLocator->unitToModel(ndc_one, model_one);
-                    model_one = model_one - model;
-                    model_one.normalize();
+                    // compute the local normal (up vector)
+                    osg::Vec3d ndc_plus_one(ndc.x(), ndc.y(), ndc.z() + 1.0);
+                    osg::Vec3d model_up;
+                    d.model->_tileLocator->unitToModel(ndc_plus_one, model_up);
+                    model_up = model_up - model;
+                    model_up.normalize();
 
-                    (*d.normals).push_back(model_one);
+                    (*d.normals).push_back(model_up);
 
                     // Calculate and store the "old height", i.e the height value from
                     // the parent LOD.
                     float     oldHeightValue = heightValue;
                     osg::Vec3 oldNormal;
 
-#if 1
-
                     // This only works if the tile size is an odd number in both directions.
                     if (d.model->_tileKey.getLOD() > 0 && (d.numCols&1) && (d.numRows&1) && d.parentModel.valid())
                     {
                         d.parentModel->_elevationData.getHeight( ndc, d.model->_tileLocator.get(), oldHeightValue, INTERP_TRIANGULATE );
-                        d.parentModel->_elevationData.getNormal( ndc, d.model->_tileLocator.get(), oldNormal );
+                        d.parentModel->_elevationData.getNormal( ndc, d.model->_tileLocator.get(), oldNormal, INTERP_TRIANGULATE );
                     }
                     else
                     {
-                        d.model->_elevationData.getNormal(ndc, d.model->_tileLocator.get(), oldNormal);
+                        d.model->_elevationData.getNormal(ndc, d.model->_tileLocator.get(), oldNormal, INTERP_TRIANGULATE );
                     }
 
-                    // convert that old normal to tile space.
-                    osg::Vec3d oldNormal_model;
-                    d.model->_tileLocator->unitToModel( oldNormal, oldNormal_model );
-                    oldNormal = oldNormal_model -= model;
+                    osg::Quat q;
+                    q.makeRotate( osg::Vec3d(0,0,1), model_up );
+                    oldNormal = q * oldNormal;
+
                     oldNormal.normalize();
-
-#else
-
-                    // This only works if the tile size is an odd number in both directions.
-                    if ( d.model->_tileKey.getLOD() > 0 && (d.numCols&1) && (d.numRows&1) )
-                    {
-                        // Access the parent tile:
-                        osg::HeightField* parent = d.model->_elevationData.getParent();
-
-                        if ( parent && parent->getNumRows() == d.numRows && parent->getNumColumns() == d.numCols )
-                        {
-                            // calculate the indicies of the same location in the 
-                            // parent heightfield:
-                            unsigned q = d.model->_tileKey.getQuadrant();
-                            int xoffset = q == 1 || q == 3 ? (parent->getNumColumns() >> 1) : 0;
-                            int yoffset = q == 0 || q == 1 ? (parent->getNumRows()    >> 1) : 0;
-                            int ip = xoffset + (i >> 1);
-                            int jp = yoffset + (j >> 1);
-
-                            // the interpolation will be different depending on whether
-                            // the col and row numbers are odd:
-                            bool oddCol = i & 0x1;
-                            bool oddRow = j & 0x1;
-
-                            if ( oddCol && oddRow )
-                            {
-                                // find the diagonal with the lesser slope and
-                                // interpolate along that diagonal:
-                                float h1 = parent->getHeight( ip,   jp );
-                                float h2 = parent->getHeight( ip+1, jp+1 );
-                                float h3 = parent->getHeight( ip+1, jp );
-                                float h4 = parent->getHeight( ip,   jp+1 );
-
-                                if ( fabs(h2-h1) < fabs(h4-h3) )
-                                    oldHeightValue = 0.5 * (h1+h2);
-                                else
-                                    oldHeightValue = 0.5 * (h3+h4);
-                            }
-                            else if ( oddCol )
-                            {
-                                // interpolate horizontally:
-                                oldHeightValue = 0.5 * (
-                                    parent->getHeight( ip,   jp ) +
-                                    parent->getHeight( ip+1, jp ) );
-                            }
-                            else if ( oddRow )
-                            {
-                                // interpolate vertically:
-                                oldHeightValue = 0.5 * (
-                                    parent->getHeight( ip, jp ) +
-                                    parent->getHeight( ip, jp+1 ) );
-                            }
-                            else
-                            {
-                                // use the parent's value.
-                                oldHeightValue = parent->getHeight( ip, jp );
-                            }
-                        }
-                    }
-#endif
 
                     // first attribute set has the unit extrusion vector and the
                     // raw height value.
                     (*d.surfaceAttribs).push_back( osg::Vec4f(
-                        model_one.x(),
-                        model_one.y(),
-                        model_one.z(),
+                        model_up.x(),
+                        model_up.y(),
+                        model_up.z(),
                         heightValue) );
 
                     // second attribute set has the old height value in "w"
@@ -714,9 +652,6 @@ namespace
                         oldNormal.x(),
                         oldNormal.y(),
                         oldNormal.z(),
-                        //0.0f,
-                        //0.0f,
-                        //0.0f,
                         oldHeightValue ) );
                 }
             }
@@ -1315,6 +1250,7 @@ namespace
     void tessellateSurfaceGeometry( Data& d, bool optimizeTriangleOrientation, bool normalizeEdges )
     {    
         bool swapOrientation = !(d.model->_tileLocator->orientationOpenGL());
+
         bool recalcNormals   = d.model->hasElevation(); //d.model->_elevationData.getHFLayer() != 0L;
 
         osg::DrawElements* elements;

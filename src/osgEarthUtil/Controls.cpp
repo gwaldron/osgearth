@@ -32,6 +32,7 @@
 #include <osgEarth/Registry>
 #include <osgEarth/Utils>
 #include <osgEarth/CullingUtils>
+#include <osgEarth/VirtualProgram>
 
 using namespace osgEarth;
 using namespace osgEarth::Symbology;
@@ -47,31 +48,39 @@ namespace
     // ControlNodeBin shaders.
 
     const char* s_controlVertexShader =
+        "#version " GLSL_VERSION_STR "\n"
+        GLSL_DEFAULT_PRECISION_FLOAT "\n"
+        "varying vec4 texcoord; \n"
         "void main() \n"
         "{ \n"
         "    gl_Position = gl_ModelViewProjectionMatrix * gl_Vertex; \n"
-        "    gl_TexCoord[0] = gl_MultiTexCoord0; \n"
+        "    texcoord = gl_MultiTexCoord0; \n"
         "    gl_FrontColor = gl_Color; \n"
         "} \n";
 
     const char* s_imageControlFragmentShader =
+        "#version " GLSL_VERSION_STR "\n"
+        GLSL_DEFAULT_PRECISION_FLOAT "\n"
         "uniform sampler2D tex0; \n"
-        "uniform float visibleTime; \n"
+        "uniform float oe_controls_visibleTime; \n"
         "uniform float osg_FrameTime; \n"
+        "varying vec4 texcoord; \n"
         "void main() \n"
         "{ \n"
-        "    float opacity = clamp( osg_FrameTime - visibleTime, 0.0, 1.0 ); \n"
-        "    vec4 texel = texture2D(tex0, gl_TexCoord[0].st); \n"
+        "    float opacity = clamp( osg_FrameTime - oe_controls_visibleTime, 0.0, 1.0 ); \n"
+        "    vec4 texel = texture2D(tex0, texcoord.st); \n"
         "    gl_FragColor = vec4(texel.rgb, texel.a * opacity); \n"
         "} \n";
 
     const char* s_labelControlFragmentShader =
+        "#version " GLSL_VERSION_STR "\n"
+        GLSL_DEFAULT_PRECISION_FLOAT "\n"
         "uniform sampler2D tex0; \n"
-        "uniform float visibleTime; \n"
+        "uniform float oe_controls_visibleTime; \n"
         "uniform float osg_FrameTime; \n"
         "void main() \n"
         "{ \n"
-        "    float opacity = clamp( osg_FrameTime - visibleTime, 0.0, 1.0 ); \n"
+        "    float opacity = clamp( osg_FrameTime - oe_controls_visibleTime, 0.0, 1.0 ); \n"
         "    vec4 texel = texture2D(tex0, gl_TexCoord[0].st); \n"       
         "    gl_FragColor = vec4(gl_Color.rgb, texel.a * opacity); \n"
         "} \n";
@@ -2277,11 +2286,12 @@ _fading        ( true )
     program->addShader( new osg::Shader( osg::Shader::FRAGMENT, s_labelControlFragmentShader ) );
     stateSet->setAttributeAndModes( program, osg::StateAttribute::ON );
 
-    osg::Uniform* defaultOpacity = new osg::Uniform( osg::Uniform::FLOAT, "opacity" );
+    //TODO: appears to be unused
+    osg::Uniform* defaultOpacity = new osg::Uniform( osg::Uniform::FLOAT, "oe_controls_opacity" );
     defaultOpacity->set( 1.0f );
     stateSet->addUniform( defaultOpacity );
 
-    osg::Uniform* defaultVisibleTime = new osg::Uniform( osg::Uniform::FLOAT, "visibleTime" );
+    osg::Uniform* defaultVisibleTime = new osg::Uniform( osg::Uniform::FLOAT, "oe_controls_visibleTime" );
     defaultVisibleTime->set( 0.0f );
     stateSet->addUniform( defaultVisibleTime );    
 }

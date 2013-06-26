@@ -279,7 +279,7 @@ TerrainLayer::getTileSource() const
             // a policy in the initialization options.
             if ( _tileSource.valid() && !_initOptions.cachePolicy().isSet() )
             {
-                CachePolicy hint = _tileSource->getCachePolicyHint();
+                CachePolicy hint = _tileSource->getCachePolicyHint( _targetProfileHint.get() );
 
                 if ( hint.usage().isSetTo(CachePolicy::USAGE_NO_CACHE) )
                 {

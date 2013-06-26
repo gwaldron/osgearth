@@ -134,9 +134,11 @@ AnnotationNode::setMapNode( MapNode* mapNode )
                 if ( mapNode )
                     mapNode->getTerrain()->addTerrainCallback( _autoClampCallback.get() );
             }
-        }
+        }		
 
         _mapNode = mapNode;
+
+		applyStyle( this->getStyle() );
     }
 }
 

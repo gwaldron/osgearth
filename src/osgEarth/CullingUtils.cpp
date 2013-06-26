@@ -19,6 +19,7 @@
 #include <osgEarth/CullingUtils>
 #include <osgEarth/LineFunctor>
 #include <osgEarth/VirtualProgram>
+#include <osgEarth/DPLineSegmentIntersector>
 #include <osg/ClusterCullingCallback>
 #include <osg/PrimitiveSet>
 #include <osg/Geode>
@@ -646,9 +647,9 @@ void OcclusionCullingCallback::operator()(osg::Node* node, osg::NodeVisitor* nv)
                 //Compute the intersection from the eye to the world point
                 osg::Vec3d start = eye;
                 osg::Vec3d end = _world;
-                osgUtil::LineSegmentIntersector* i = new osgUtil::LineSegmentIntersector( start, end );
+                DPLineSegmentIntersector* i = new DPLineSegmentIntersector( start, end );				
                 i->setIntersectionLimit( osgUtil::Intersector::LIMIT_ONE );
-                osgUtil::IntersectionVisitor iv;
+                osgUtil::IntersectionVisitor iv;				
                 iv.setIntersector( i );
                 _node->accept( iv );
                 osgUtil::LineSegmentIntersector::Intersections& results = i->getIntersections();

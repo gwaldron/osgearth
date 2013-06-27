@@ -300,6 +300,11 @@ OrthoNode::applyStyle(const Style& style)
 	if ( text && text->occlusionCull().isSet() )
 	{		
 		setOcclusionCulling( *text->occlusionCull() );				
+
+        if (text->occlusionCullElevation().isSet())
+        {
+            setOcclusionCullingMaxElevation( *text->occlusionCullElevation() );
+        }
 	}	
 
     const IconSymbol* icon = style.get<IconSymbol>();
@@ -455,7 +460,7 @@ OrthoNode::setOcclusionCulling( bool value )
         {
             osg::Vec3d world = _autoxform->getPosition();
             _occlusionCuller = new OcclusionCullingCallback( getMapNode()->getMapSRS(),  adjustOcclusionCullingPoint(world), getMapNode()->getTerrainEngine() );			
-            _occlusionCuller->setMaxRange( AnnotationSettings::getOcclusionQueryMaxRange() );
+            _occlusionCuller->setMaxElevation( getOcclusionCullingMaxElevation() );            
             addCullCallback( _occlusionCuller.get()  );
         }
         else
@@ -469,6 +474,25 @@ OrthoNode::setOcclusionCulling( bool value )
                 }
             }
         }
+    }
+}
+
+double
+OrthoNode::getOcclusionCullingMaxElevation() const
+{
+    if (_occlusionCullingMaxRange.isSet())
+    {
+        return *_occlusionCullingMaxRange;
+    }
+    return AnnotationSettings::getOcclusionQueryMaxRange();
+}
+
+void OrthoNode::setOcclusionCullingMaxElevation( double occlusionCullingMaxElevation )
+{
+    _occlusionCullingMaxRange = occlusionCullingMaxElevation;
+    if ( _occlusionCuller.valid() )
+    {
+        _occlusionCuller->setMaxElevation( getOcclusionCullingMaxElevation() );         
     }
 }
 

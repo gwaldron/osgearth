@@ -608,7 +608,7 @@ _srs( srs ),
 _world(world),
 _node( node ),
 _visible( true ),
-_maxRange(200000)
+_maxElevation(200000)
 {
 }
 
@@ -632,14 +632,14 @@ void OcclusionCullingCallback::setWorld( const osg::Vec3d& world)
     _world = world;
 }
 
-double OcclusionCullingCallback::getMaxRange() const
+double OcclusionCullingCallback::getMaxElevation() const
 {
-    return _maxRange;
+    return _maxElevation;
 }
 
-void OcclusionCullingCallback::setMaxRange( double maxRange)
+void OcclusionCullingCallback::setMaxElevation( double maxElevation )
 {
-    _maxRange = maxRange;    
+    _maxElevation = maxElevation;    
 }
 
 void OcclusionCullingCallback::operator()(osg::Node* node, osg::NodeVisitor* nv)
@@ -686,7 +686,7 @@ void OcclusionCullingCallback::operator()(osg::Node* node, osg::NodeVisitor* nv)
 
 				
 				//Only do the intersection if we are close enough for it to matter
-				if (alt <= _maxRange && _node.valid())
+				if (alt <= _maxElevation && _node.valid())
 				{
 					//Compute the intersection from the eye to the world point
 					osg::Timer_t startTick = osg::Timer::instance()->tick();

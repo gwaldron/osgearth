@@ -142,8 +142,8 @@ namespace osgEarth
 
         const osg::Vec3d& getWorld() const;
         void setWorld( const osg::Vec3d& world);
-        double getMaxRange() const;
-        void setMaxRange( double maxRange);
+        double getMaxElevation() const;
+        void setMaxElevation( double maxElevation);
         void operator()(osg::Node* node, osg::NodeVisitor* nv);
 
 		/**
@@ -166,7 +166,7 @@ namespace osgEarth
         osg::Vec3d _prevWorld;
         osg::Vec3d _prevEye;
         bool _visible;
-        double _maxRange;        
+        double _maxElevation;        
 		static double _maxFrameTime;
     };
 

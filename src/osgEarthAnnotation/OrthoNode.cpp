@@ -434,7 +434,7 @@ OrthoNode::adjustOcclusionCullingPoint( const osg::Vec3d& world )
     {
         const osg::EllipsoidModel* em = getMapNode()->getMapSRS()->getEllipsoid();
         osg::Vec3d up = em ? em->computeLocalUpVector( world.x(), world.y(), world.z() ) : osg::Vec3d(0,0,1);
-        osg::Vec3d adjust = up * 0.1;
+        osg::Vec3d adjust = up * AnnotationSettings::getOcclusionCullingHeightAdjustment();        
         return world + adjust;
     }
     else
@@ -484,7 +484,7 @@ OrthoNode::getOcclusionCullingMaxElevation() const
     {
         return *_occlusionCullingMaxRange;
     }
-    return AnnotationSettings::getOcclusionQueryMaxRange();
+    return AnnotationSettings::getOcclusionCullingMaxElevation();
 }
 
 void OrthoNode::setOcclusionCullingMaxElevation( double occlusionCullingMaxElevation )

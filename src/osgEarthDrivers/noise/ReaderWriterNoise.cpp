@@ -50,17 +50,22 @@ public:
     // Yahoo! uses spherical mercator, but the top LOD is a 2x2 tile set.
     Status initialize(const osgDB::Options* dbOptions)
     {
-        // no caching of source tiles
+        // no caching of source tiles (there are none..)
         _dbOptions = Registry::instance()->cloneOrCreateOptions( dbOptions );
         CachePolicy::NO_CACHE.apply( _dbOptions.get() );
-
         setProfile( osgEarth::Registry::instance()->getGlobalGeodeticProfile() );
+
+        // resolve frequency if the user set resolution
+        if (_options.resolution().isSet() && !_options.resolution().isSetTo(0.0))
+        {
+            _options.frequency().init( 1.0 / *_options.resolution() );
+        }
 
         return STATUS_OK;
     }
     
-    /** Tell the terrain engine not to cache tiles form this source. */
-    CachePolicy getCachePolicyHint() const
+    /** Tell the terrain engine not to cache tiles form this source by default. */
+    CachePolicy getCachePolicyHint(const Profile*) const
     {
         return CachePolicy::NO_CACHE;
     }
@@ -282,8 +287,7 @@ public:
 
 
 private:
-    //module::Perlin               _noise;
-    const NoiseOptions           _options;
+    NoiseOptions                 _options;
     osg::ref_ptr<osgDB::Options> _dbOptions;
 };
 

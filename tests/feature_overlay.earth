@@ -21,6 +21,8 @@ Demonstrate the Altitude Symbol and GPU-based vertex clamping.
             <url>../data/world.shp</url>
             <build_spatial_index>true</build_spatial_index>
         </features>
+		
+		<feature_indexing/>	
                 
         <styles>
             <style type="text/css">
@@ -28,7 +30,7 @@ Demonstrate the Altitude Symbol and GPU-based vertex clamping.
                    stroke:             #ffff00;
                    stroke-opacity:     1.0;
                    stroke-width:       3.0;
-                   altitude-clamping:  terrain-gpu;
+				   altitude-offset:    1000.0;
                 }            
             </style>
         </styles>

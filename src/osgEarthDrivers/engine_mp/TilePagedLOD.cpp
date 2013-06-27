@@ -50,21 +50,29 @@ _upsampling( false )
 }
 
 
+// The osgDB::DatabasePager will call this method when merging a new child
+// into the scene graph.
 bool
 TilePagedLOD::addChild(osg::Node* node)
 {
+    // First check whether this is a new TileGroup (a group that contains a TileNode
+    // and children paged LODs). If so, add it normally and inform our parent.
     TileGroup* subtilegroup = dynamic_cast<TileGroup*>(node);
     if ( subtilegroup )
     {
-        //OE_NOTICE << LC << "add group " << subtilegroup->getTileNode()->getKey().str() << std::endl;
         _live->add( subtilegroup->getTileNode() );
         ++_tilegroup->numSubtilesLoaded();
         return osg::PagedLOD::addChild( node );
     }
 
+    // If that fails, check whether this is a simple TileNode. This means that 
+    // this is a leaf node in the graph (no children), and possibly that it has
+    // no data at all (and we need to create an upsampled child to complete the
+    // required set of four).
     TileNode* subtile = dynamic_cast<TileNode*>(node);
     if ( subtile )
     {
+        // If it's a legit tile, add it normally and inform our parent.
         if ( subtile->isValid() )
         {
             _upsampling = false;
@@ -72,6 +80,9 @@ TilePagedLOD::addChild(osg::Node* node)
             ++_tilegroup->numSubtilesLoaded();
             return osg::PagedLOD::addChild( node );
         }
+
+        // if it's an "invalid" marker tile, queue up a request to create an upsampled
+        // version of the parent to stick in its place.
         else
         {
             if ( !_upsampling )
@@ -83,13 +94,22 @@ TilePagedLOD::addChild(osg::Node* node)
             }
             else
             {
+                // Getting here means that the upsampling request failed, in which case
+                // it will not be possible to complete the set of four; so we just have
+                // to cancel this entire LOD.
                 _tilegroup->cancelSubtiles();
             }
             return false;
         }
     }
     
+    // Getting here means there's an internal error -- the addChild data was
+    // of an unexpected node type. This should never happen.
     OE_WARN << LC << "TilePagedLOD fail." << std::endl;
+    if ( !node )
+        OE_WARN << LC << ".... node is NULL" << std::endl;
+    else
+        OE_WARN << LC << "... node is a " << node->className() << std::endl;
 
     return false;
 }
@@ -98,6 +118,8 @@ TilePagedLOD::addChild(osg::Node* node)
 void
 TilePagedLOD::traverse(osg::NodeVisitor& nv)
 {
+    // Only traverse the TileNode if our neighbors (the other members of
+    // our group of four) are ready as well.
     if ( _children.size() > 0 )
     {
          bool ready = _tilegroup->numSubtilesLoaded() == 4;
@@ -106,6 +128,9 @@ TilePagedLOD::traverse(osg::NodeVisitor& nv)
     osg::PagedLOD::traverse( nv );
 }
 
+
+// The osgDB::DatabasePager will call this automatically to purge expired
+// tiles from the scene grpah.
 bool
 TilePagedLOD::removeExpiredChildren(double         expiryTime, 
                                     unsigned       expiryFrame, 

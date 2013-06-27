@@ -94,6 +94,7 @@ ShaderFactory::createVertexShaderMain(const FunctionLocationMap& functions) cons
     // main:
     buf <<
         "varying vec4 osg_FrontColor; \n"
+        "varying vec3 oe_Normal; \n"
         "void main(void) \n"
         "{ \n"
         INDENT "osg_FrontColor = gl_Color; \n"
@@ -102,10 +103,18 @@ ShaderFactory::createVertexShaderMain(const FunctionLocationMap& functions) cons
     // call Model stage methods.
     if ( modelStage )
     {
+        buf << INDENT "oe_Normal = gl_Normal; \n";
+
         for( OrderedFunctionMap::const_iterator i = modelStage->begin(); i != modelStage->end(); ++i )
         {
             buf << INDENT << i->second << "(vertex); \n";
         }
+
+        buf << INDENT << "oe_Normal = normalize(gl_NormalMatrix * oe_Normal); \n";
+    }
+    else
+    {
+        buf << INDENT << "oe_Normal = normalize(gl_NormalMatrix * gl_Normal); \n";
     }
 
     // call View stage methods.
@@ -226,13 +235,14 @@ ShaderFactory::installLightingShaders(VirtualProgram* vp) const
         "uniform bool oe_mode_GL_LIGHTING; \n"
         "varying vec4 oe_lighting_adjustment; \n"
         "varying vec4 oe_lighting_zero_vec; \n"
+        "varying vec3 oe_Normal; \n"
 
-        "void oe_lighting_vertex(inout vec4 VertexMODEL) \n"
+        "void oe_lighting_vertex(inout vec4 VertexVIEW) \n"
         "{ \n"
         "    oe_lighting_adjustment = vec4(1.0); \n"
         "    if (oe_mode_GL_LIGHTING) \n"
         "    { \n"
-        "        vec3 N = normalize(gl_NormalMatrix * gl_Normal); \n"
+        "        vec3 N = oe_Normal; \n" //normalize(gl_NormalMatrix * gl_Normal); \n"
         "        float NdotL = dot( N, normalize(gl_LightSource[0].position.xyz) ); \n"
         "        NdotL = max( 0.0, NdotL ); \n"
 
@@ -272,7 +282,7 @@ ShaderFactory::installLightingShaders(VirtualProgram* vp) const
          "    } \n"
         "} \n";
 
-    vp->setFunction( "oe_lighting_vertex",   vs, ShaderComp::LOCATION_VERTEX_MODEL, 0.0 );
+    vp->setFunction( "oe_lighting_vertex",   vs, ShaderComp::LOCATION_VERTEX_VIEW, 0.0 );
     vp->setFunction( "oe_lighting_fragment", fs, ShaderComp::LOCATION_FRAGMENT_LIGHTING, 0.0 );
 }
 

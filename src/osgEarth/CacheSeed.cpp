@@ -74,10 +74,10 @@ void CacheSeed::seed( Map* map )
         {
             OE_WARN << "Warning: Layer \"" << layer->getName() << "\" could not create TileSource; skipping." << std::endl;
         }
-        else if ( src->getCachePolicyHint() == CachePolicy::NO_CACHE )
-        {
-            OE_WARN << LC << "Warning: Layer \"" << layer->getName() << "\" does not support seeding; skipping." << std::endl;
-        }
+        //else if ( src->getCachePolicyHint(0L) == CachePolicy::NO_CACHE )
+        //{
+        //    OE_WARN << LC << "Warning: Layer \"" << layer->getName() << "\" does not support seeding; skipping." << std::endl;
+        //}
         else if ( !layer->getCache() )
         {
             OE_WARN << LC << "Notice: Layer \"" << layer->getName() << "\" has no cache defined; skipping." << std::endl;
@@ -107,10 +107,10 @@ void CacheSeed::seed( Map* map )
         {
             OE_WARN << "Warning: Layer \"" << layer->getName() << "\" could not create TileSource; skipping." << std::endl;
         }
-        else if ( src->getCachePolicyHint() == CachePolicy::NO_CACHE )
-        {
-            OE_WARN << LC << "Warning: Layer \"" << layer->getName() << "\" does not support seeding; skipping." << std::endl;
-        }
+        //else if ( src->getCachePolicyHint(0L) == CachePolicy::NO_CACHE )
+        //{
+        //    OE_WARN << LC << "Warning: Layer \"" << layer->getName() << "\" does not support seeding; skipping." << std::endl;
+        //}
         else if ( !layer->getCache() )
         {
             OE_WARN << LC << "Notice: Layer \"" << layer->getName() << "\" has no cache defined; skipping." << std::endl;

@@ -85,9 +85,7 @@ Picker::pick( float x, float y, Hits& results ) const
         osg::Vec3d bufferModel = bufferLocal * modelInverse;
         double buffer = (bufferModel - startModel).length();
 
-        picker = new osgEarth::PrimitiveIntersector(osgUtil::Intersector::MODEL, startModel.x(), startModel.y(), buffer);
-        picker->setStart(startModel);
-        picker->setEnd(endModel);
+        picker = new osgEarth::PrimitiveIntersector(osgUtil::Intersector::MODEL, startModel, endModel, buffer);
     }
     else
     {

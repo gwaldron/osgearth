@@ -321,7 +321,7 @@ TileModelFactory::createTileModel(const TileKey&           key,
     // OK we are making a tile, so if there's no heightfield yet, make an empty one.
     if ( !model->_elevationData.getHeightField() )
     {
-        osg::HeightField* hf = HeightFieldUtils::createReferenceHeightField( key.getExtent(), 8, 8 );
+        osg::HeightField* hf = HeightFieldUtils::createReferenceHeightField( key.getExtent(), 15, 15 );
         model->_elevationData = TileModel::ElevationData(
             hf,
             GeoLocator::createForKey(key, mapInfo),

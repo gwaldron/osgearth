@@ -272,8 +272,22 @@ PrimitiveIntersector::PrimitiveIntersector(CoordinateFrame cf, double x, double 
         case MODEL : _start.set(x,y,0.0); _end.set(x,y,1.0); break;
     }
 
-    _thickness.set(_start.x()+thickness/2.0, _start.y()+thickness/2.0, _start.z()); //line thickness window coordinates
+    setThickness(thickness);
+}
 
+PrimitiveIntersector::PrimitiveIntersector(CoordinateFrame cf, const osg::Vec3d& start, const osg::Vec3d& end, double thickness):
+    Intersector(cf),
+    _parent(0)
+{
+  _start.set(start);
+  _end.set(end);
+
+  setThickness(thickness);
+}
+
+void PrimitiveIntersector::setThickness(double thickness)
+{
+  _thickness.set(_start.x()+thickness/2.0, _start.y()+thickness/2.0, _start.z());
 }
 
 osgUtil::Intersector* PrimitiveIntersector::clone(osgUtil::IntersectionVisitor& iv)

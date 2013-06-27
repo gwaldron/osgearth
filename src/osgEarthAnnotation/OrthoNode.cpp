@@ -299,7 +299,7 @@ OrthoNode::applyStyle(const Style& style)
 	// check for occlusion culling
 	if ( text && text->occlusionCull().isSet() )
 	{		
-		this->setOcclusionCulling( *text->occlusionCull() );				
+		setOcclusionCulling( *text->occlusionCull() );				
 	}	
 
     const IconSymbol* icon = style.get<IconSymbol>();
@@ -454,7 +454,7 @@ OrthoNode::setOcclusionCulling( bool value )
         if ( _occlusionCulling && getMapNode() )
         {
             osg::Vec3d world = _autoxform->getPosition();
-            _occlusionCuller = new OcclusionCullingCallback(adjustOcclusionCullingPoint(world), getMapNode());
+            _occlusionCuller = new OcclusionCullingCallback( getMapNode()->getMapSRS(),  adjustOcclusionCullingPoint(world), getMapNode()->getTerrainEngine() );			
             _occlusionCuller->setMaxRange( AnnotationSettings::getOcclusionQueryMaxRange() );
             addCullCallback( _occlusionCuller.get()  );
         }

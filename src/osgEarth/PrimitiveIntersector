@@ -34,9 +34,11 @@ public:
 
     /** Convenience constructor for supporting picking in WINDOW, or PROJECTION coordinates
       * In WINDOW coordinates creates a start value of (x,y,0) and end value of (x,y,1).
-      * In PROJECTION coordinates (clip space cube) creates a start value of (x,y,-1) and end value of (x,y,1).
-      * In VIEW and MODEL coordinates creates a start value of (x,y,0) and end value of (x,y,1).*/
+      * In PROJECTION coordinates (clip space cube) creates a start value of (x,y,-1) and end value of (x,y,1).*/
     PrimitiveIntersector(CoordinateFrame cf, double x, double y, double thickness);
+
+    /** Constructor for initializing with full start and end vectors. */
+    PrimitiveIntersector(CoordinateFrame cf, const osg::Vec3d& start, const osg::Vec3d& end, double thickness);
 
     struct Intersection
     {
@@ -79,6 +81,8 @@ public:
 
     inline void setEnd(const osg::Vec3d& end) { _end = end; }
     inline const osg::Vec3d& getEnd() const { return _end; }
+
+    void setThickness(double thickness);
 
 public:
 

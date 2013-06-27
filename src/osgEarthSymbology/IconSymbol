@@ -68,6 +68,10 @@ namespace osgEarth { namespace Symbology
         /** Decluttering */
         optional<bool>& declutter() { return _declutter; }
         const optional<bool>& declutter() const { return _declutter; }
+
+		/** Whether to enable occlusion culling on the icon, if applicable */
+        optional<bool>& occlusionCull() { return _occlusionCull; }
+        const optional<bool>& occlusionCull() const { return _occlusionCull; }
         
     public: // non-serialized properties (for programmatic use only)
 
@@ -88,6 +92,7 @@ namespace osgEarth { namespace Symbology
         optional<NumericExpression>      _heading;
         optional<bool>                   _declutter;
         mutable osg::ref_ptr<osg::Image> _image;
+		optional<bool>              _occlusionCull;
     };
 
 } } // namespace osgEarth::Symbology

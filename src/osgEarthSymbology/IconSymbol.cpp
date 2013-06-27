@@ -53,7 +53,8 @@ IconSymbol::getConfig() const
     conf.addIfSet( "alignment", "right_bottom",  _alignment, ALIGN_RIGHT_BOTTOM );
 
     conf.addObjIfSet( "heading",   _heading );
-    conf.addIfSet   ( "declutter", _declutter );
+    conf.addIfSet   ( "declutter", _declutter );	                  
+	conf.addIfSet   ( "icon-occlusion-cull", _occlusionCull );
 
     conf.addNonSerializable( "IconSymbol::image", _image.get() );
     return conf;
@@ -74,6 +75,7 @@ IconSymbol::mergeConfig( const Config& conf )
 
     conf.getObjIfSet( "heading",   _heading );
     conf.getIfSet   ( "declutter", _declutter );
+	conf.getIfSet   ( "icon-occlusion-cull", _occlusionCull );
 
     _image = conf.getNonSerializable<osg::Image>( "IconSymbol::image" );
 }
@@ -179,5 +181,8 @@ IconSymbol::parseSLD(const Config& c, Style& style)
     }
     else if ( match(c.key(), "icon-declutter") ) {
         style.getOrCreate<IconSymbol>()->declutter() = as<bool>(c.value(), false);
+    }
+	else if ( match(c.key(), "icon-occlusion-cull") ) {
+        style.getOrCreate<IconSymbol>()->occlusionCull() = as<bool>(c.value(), false);
     }
 }

@@ -105,7 +105,7 @@ public:
             {
                 const std::string& value = i->first;
                 const Feature* feature = i->second.second.get();
-                group->addChild( makeLabelNode(context, feature, value, text, priorityExpr) );
+                group->addChild( makeLabelNode(context, feature, value, styleCopy, priorityExpr) );
             }
         }
 
@@ -125,7 +125,7 @@ public:
                 if ( value.empty() )
                     continue;
 
-                group->addChild( makeLabelNode(context, feature, value, text, priorityExpr) );
+                group->addChild( makeLabelNode(context, feature, value, styleCopy, priorityExpr) );
             }
         }
 
@@ -142,14 +142,16 @@ public:
     osg::Node* makeLabelNode(const FilterContext& context, 
                              const Feature*       feature, 
                              const std::string&   value, 
-                             const TextSymbol*    text, 
+                             const Style&         style, 
                              NumericExpression&   priorityExpr )
-    {
+    {		
         LabelNode* labelNode = new LabelNode(
             0L,
             GeoPoint(feature->getSRS(), feature->getGeometry()->getBounds().center(), ALTMODE_ABSOLUTE),
             value,
-            text );
+            style );
+
+		const TextSymbol* text = style.get<TextSymbol>();
 
         if ( text->priority().isSet() )
         {

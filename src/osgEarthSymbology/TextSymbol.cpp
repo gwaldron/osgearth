@@ -33,7 +33,8 @@ _alignment            ( ALIGN_BASE_LINE ),
 _layout               ( LAYOUT_LEFT_TO_RIGHT ),
 _provider             ( "annotation" ),
 _encoding             ( ENCODING_ASCII ),
-_declutter            ( true )
+_declutter            ( true ),
+_occlusionCull        ( false )
 {
     mergeConfig(conf);
 }
@@ -84,7 +85,10 @@ TextSymbol::getConfig() const
     if ( _pixelOffset.isSet() ) {
         conf.add( "pixel_offset_x", toString(_pixelOffset->x()) );
         conf.add( "pixel_offset_y", toString(_pixelOffset->y()) );
-    }
+    }	
+
+	conf.addIfSet( "text-occlusion-cull", _occlusionCull );
+
     return conf;
 }
 
@@ -133,6 +137,8 @@ TextSymbol::mergeConfig( const Config& conf )
         _pixelOffset = osg::Vec2s( conf.value<short>("pixel_offset_x",0), 0 );
     if ( conf.hasValue( "pixel_offset_y" ) )
         _pixelOffset = osg::Vec2s( _pixelOffset->x(), conf.value<short>("pixel_offset_y",0) );
+	
+	conf.getIfSet( "text-occlusion-cull", _occlusionCull );
 }
 
 
@@ -228,5 +234,8 @@ TextSymbol::parseSLD(const Config& c, Style& style)
     }
     else if ( match(c.key(), "text-declutter") ) {
         style.getOrCreate<TextSymbol>()->declutter() = as<bool>(c.value(), true);
+    }
+	else if ( match(c.key(), "text-occlusion-cull") ) {
+        style.getOrCreate<TextSymbol>()->occlusionCull() = as<bool>(c.value(), false);
     }
 }

@@ -145,6 +145,20 @@ namespace osgEarth
         void setMaxRange( double maxRange);
         void operator()(osg::Node* node, osg::NodeVisitor* nv);
 
+		/**
+		 * Gets the maximum number of ms that the OcclusionCullingCallback can run on each frame.
+		 */
+		static double getMaxFrameTime();
+
+     	/**
+		 * Sets the maximum number of ms that the OcclusionCullingCallback can run on each frame.
+		 * @param ms
+		 *     The maximum number of milliseconds to run the OcclusionCullingCallback on each frame. 
+		 */
+		static void setMaxFrameTime( double ms );
+
+	private:
+
         osg::ref_ptr< osg::Node > _node;
         osg::Vec3d _world;
         osg::Vec3d _prevWorld;
@@ -152,6 +166,7 @@ namespace osgEarth
         bool _visible;
         double _maxRange;
         double _maxRange2;
+		static double _maxFrameTime;
     };
 
     /**

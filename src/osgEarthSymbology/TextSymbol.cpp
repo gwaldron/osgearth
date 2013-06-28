@@ -88,6 +88,7 @@ TextSymbol::getConfig() const
     }	
 
 	conf.addIfSet( "text-occlusion-cull", _occlusionCull );
+	conf.addIfSet( "text-occlusion-cull-elevation", _occlusionCullElevation );
 
     return conf;
 }
@@ -139,6 +140,7 @@ TextSymbol::mergeConfig( const Config& conf )
         _pixelOffset = osg::Vec2s( _pixelOffset->x(), conf.value<short>("pixel_offset_y",0) );
 	
 	conf.getIfSet( "text-occlusion-cull", _occlusionCull );
+	conf.getIfSet( "text-occlusion-cull-elevation", _occlusionCullElevation );
 }
 
 
@@ -237,5 +239,8 @@ TextSymbol::parseSLD(const Config& c, Style& style)
     }
 	else if ( match(c.key(), "text-occlusion-cull") ) {
         style.getOrCreate<TextSymbol>()->occlusionCull() = as<bool>(c.value(), false);
+    }
+	else if ( match(c.key(), "text-occlusion-cull-elevation") ) {
+        style.getOrCreate<TextSymbol>()->occlusionCullElevation() = as<double>(c.value(), 200000.0);
     }
 }

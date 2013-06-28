@@ -335,54 +335,60 @@ Text
 
 The *text symbol* (SDK: ``TextSymbol``) controls the existance and appearance of text labels.
 
-+-------------------------+--------------------------------------------------------------------+
-| Property                | Description                                                        |
-+=========================+====================================================================+
-| fill                    | Foreground color of the text (HTML color)                          |
-+-------------------------+--------------------------------------------------------------------+
-| text-size               | Size of the text (float, pixels)                                   |
-+-------------------------+--------------------------------------------------------------------+
-| text-font               | Name of the font to use (system-dependent). For example, use       |
-|                         | "arialbd" on Windows for Arial Bold.                               |
-+-------------------------+--------------------------------------------------------------------+
-| text-halo               | Outline color of the text; Omit this propery altogether for no     |
-|                         | outline. (HTML Color)                                              |
-+-------------------------+--------------------------------------------------------------------+
-| text-halo-offset        | Outline thickness (float, pixels)                                  |
-+-------------------------+--------------------------------------------------------------------+
-| text-align              | Alignment of the text string relative to its anchor point:         |
-|                         |   * ``left-top``                                                   |
-|                         |   * ``left-center``                                                |
-|                         |   * ``left-bottom``                                                |
-|                         |   * ``left-base-line``                                             |
-|                         |   * ``left-bottom-base-line``                                      |
-|                         |   * ``center-top``                                                 |
-|                         |   * ``center-center``                                              |
-|                         |   * ``center-bottom``                                              |
-|                         |   * ``center-base-line``                                           |
-|                         |   * ``center-bottom-base-line``                                    |
-|                         |   * ``right-top``                                                  |
-|                         |   * ``right-center``                                               |
-|                         |   * ``right-bottom``                                               |
-|                         |   * ``right-base-line``                                            |
-|                         |   * ``right-bottom-base-line``                                     |
-|                         |   * ``base-line``                                                  |
-+-------------------------+--------------------------------------------------------------------+
-| text-layout             | Layout of text:                                                    |
-|                         |   * ``ltr``                                                        |
-|                         |   * ``rtl``                                                        |
-|                         |   * ``vertical``                                                   |
-+-------------------------+--------------------------------------------------------------------+
-| text-content            | The actual text string to display (string-expr)                    |
-+-------------------------+--------------------------------------------------------------------+
-| text-encoding           | Character encoding of the text content:                            |
-|                         |   * ``utf-8``                                                      |
-|                         |   * ``utf-16``                                                     |
-|                         |   * ``utf-32``                                                     |
-|                         |   * ``ascii``                                                      |
-+-------------------------+--------------------------------------------------------------------+
-| text-declutter          | Activate *decluttering* for this icon. osgEarth will attempt to    |
-|                         | automatically show or hide things so they don't overlap on the     |
-|                         | screen. (boolean)                                                  |
-+-------------------------+--------------------------------------------------------------------+
++--------------------------------+--------------------------------------------------------------------+
+| Property                       | Description                                                        |
++================================+====================================================================+
+| fill                           | Foreground color of the text (HTML color)                          |
++--------------------------------+--------------------------------------------------------------------+
+| text-size                      | Size of the text (float, pixels)                                   |
++--------------------------------+--------------------------------------------------------------------+
+| text-font                      | Name of the font to use (system-dependent). For example, use       |
+|                                | "arialbd" on Windows for Arial Bold.                               |
++--------------------------------+--------------------------------------------------------------------+
+| text-halo                      | Outline color of the text; Omit this propery altogether for no     |
+|                                | outline. (HTML Color)                                              |
++--------------------------------+--------------------------------------------------------------------+
+| text-halo-offset               | Outline thickness (float, pixels)                                  |
++--------------------------------+--------------------------------------------------------------------+
+| text-align                     | Alignment of the text string relative to its anchor point:         |
+|                                |   * ``left-top``                                                   |
+|                                |   * ``left-center``                                                |
+|                                |   * ``left-bottom``                                                |
+|                                |   * ``left-base-line``                                             |
+|                                |   * ``left-bottom-base-line``                                      |
+|                                |   * ``center-top``                                                 |
+|                                |   * ``center-center``                                              |
+|                                |   * ``center-bottom``                                              |
+|                                |   * ``center-base-line``                                           |
+|                                |   * ``center-bottom-base-line``                                    |
+|                                |   * ``right-top``                                                  |
+|                                |   * ``right-center``                                               |
+|                                |   * ``right-bottom``                                               |
+|                                |   * ``right-base-line``                                            |
+|                                |   * ``right-bottom-base-line``                                     |
+|                                |   * ``base-line``                                                  |
++--------------------------------+--------------------------------------------------------------------+
+| text-layout                    | Layout of text:                                                    |
+|                                |   * ``ltr``                                                        |
+|                                |   * ``rtl``                                                        |
+|                                |   * ``vertical``                                                   |
++--------------------------------+--------------------------------------------------------------------+
+| text-content                   | The actual text string to display (string-expr)                    |
++--------------------------------+--------------------------------------------------------------------+
+| text-encoding                  | Character encoding of the text content:                            |
+|                                |   * ``utf-8``                                                      |
+|                                |   * ``utf-16``                                                     |
+|                                |   * ``utf-32``                                                     |
+|                                |   * ``ascii``                                                      |
++--------------------------------+--------------------------------------------------------------------+
+| text-declutter                 | Activate *decluttering* for this icon. osgEarth will attempt to    |
+|                                | automatically show or hide things so they don't overlap on the     |
+|                                | screen. (boolean)                                                  |
++--------------------------------+--------------------------------------------------------------------+
+| text-occlusion-cull            | Whether to occlusion cull the text so they do not display          |
+|                                | when line of sight is obstructed by terrain                        | 
++--------------------------------+--------------------------------------------------------------------+
+| text-occlusion-cull-elevation  | The elevation to start occlusion culling                           |
+|                                | when line of sight is obstructed by terrain                        | 
++--------------------------------+--------------------------------------------------------------------+
 

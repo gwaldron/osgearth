@@ -36,7 +36,7 @@ _hf          ( hf ),
 _locator     ( locator ),
 _fallbackData( fallbackData )
 {
-    //nop
+    _neighbors._center = hf;
 }
 
 TileModel::ElevationData::ElevationData(const TileModel::ElevationData& rhs) :
@@ -45,8 +45,10 @@ _locator     ( rhs._locator.get() ),
 _fallbackData( rhs._fallbackData ),
 _parent      ( rhs._parent )
 {
+    _neighbors._center = rhs._neighbors._center.get();
     for(unsigned i=0; i<8; ++i)
-        _neighbors[i] = rhs._neighbors[i];
+        _neighbors._neighbors[i] = rhs._neighbors._neighbors[i];
+        //_neighbors[i] = rhs._neighbors[i];
 }
 
 bool
@@ -84,15 +86,15 @@ TileModel::ElevationData::getNormal(const osg::Vec3d&      ndc,
     osg::Vec3d hf_ndc;
     GeoLocator::convertLocalCoordBetween( *ndcLocator, ndc, *_locator.get(), hf_ndc );
 
-    osg::Vec3d west ( osg::clampAbove(hf_ndc.x()-xres, 0.0), hf_ndc.y(), 0.0 );
-    osg::Vec3d east ( osg::clampBelow(hf_ndc.x()+xres, 1.0), hf_ndc.y(), 0.0 );
-    osg::Vec3d south( hf_ndc.x(), osg::clampAbove(hf_ndc.y()-yres, 0.0), 0.0 );
-    osg::Vec3d north( hf_ndc.x(), osg::clampBelow(hf_ndc.y()+yres, 1.0), 0.0 );
+    osg::Vec3d west ( hf_ndc.x()-xres, hf_ndc.y(), 0.0 );
+    osg::Vec3d east ( hf_ndc.x()+xres, hf_ndc.y(), 0.0 );
+    osg::Vec3d south( hf_ndc.x(), hf_ndc.y()-yres, 0.0 );
+    osg::Vec3d north( hf_ndc.x(), hf_ndc.y()+yres, 0.0 );
 
-    west.z()  = HeightFieldUtils::getHeightAtNormalizedLocation(_hf.get(), west.x(),  west.y(),  interp);
-    east.z()  = HeightFieldUtils::getHeightAtNormalizedLocation(_hf.get(), east.x(),  east.y(),  interp);
-    south.z() = HeightFieldUtils::getHeightAtNormalizedLocation(_hf.get(), south.x(), south.y(), interp);
-    north.z() = HeightFieldUtils::getHeightAtNormalizedLocation(_hf.get(), north.x(), north.y(), interp);
+    west.z()  = HeightFieldUtils::getHeightAtNormalizedLocation(_neighbors, west.x(),  west.y(),  interp);
+    east.z()  = HeightFieldUtils::getHeightAtNormalizedLocation(_neighbors, east.x(),  east.y(),  interp);
+    south.z() = HeightFieldUtils::getHeightAtNormalizedLocation(_neighbors, south.x(), south.y(), interp);
+    north.z() = HeightFieldUtils::getHeightAtNormalizedLocation(_neighbors, north.x(), north.y(), interp);
 
     osg::Vec3d westWorld, eastWorld, southWorld, northWorld;
     _locator->unitToModel(west,  westWorld);

@@ -282,6 +282,19 @@ HeightFieldUtils::getHeightAtNormalizedLocation(const osg::HeightField* input,
     return getHeightAtPixel( input, px, py, interp );
 }
 
+float
+HeightFieldUtils::getHeightAtNormalizedLocation(const HeightFieldNeighborhood& hood,
+                                                double nx, double ny,
+                                                ElevationInterpolation interp)
+{
+    osg::ref_ptr<osg::HeightField> hf;
+    double nx2, ny2;
+    hood.getNeighborForNormalizedLocation(nx, ny, hf, nx2, ny2);
+    double px = osg::clampBetween(nx2, 0.0, 1.0) * (double)(hf->getNumColumns() - 1);
+    double py = osg::clampBetween(ny2, 0.0, 1.0) * (double)(hf->getNumRows() - 1);
+    return getHeightAtPixel( hf.get(), px, py, interp );
+}
+
 bool
 HeightFieldUtils::getNormalAtNormalizedLocation(const osg::HeightField* input,
                                                 double nx, double ny,

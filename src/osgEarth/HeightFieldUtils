@@ -28,6 +28,42 @@
 
 namespace osgEarth
 {
+    struct HeightFieldNeighborhood
+    {
+        osg::ref_ptr<osg::HeightField> _center;
+        osg::ref_ptr<osg::HeightField> _neighbors[8];
+
+        osg::HeightField* getNeighbor(int xoffset, int yoffset) const {
+            if ( xoffset == 0 && yoffset == 0 ) return _center.get();
+            int index = 3*(yoffset+1)+(xoffset+1);
+            if (index > 4) index--;
+            return _neighbors[index].get();
+        }
+
+        void setNeighbor(int xoffset, int yoffset, osg::HeightField* hf) {
+            if ( xoffset == 0 && yoffset == 0 ) {
+                _center = hf;
+            }
+            else {
+                int index = 3*(yoffset+1)+(xoffset+1);
+                if (index > 4) index--;
+                _neighbors[index] = hf;
+            }
+        }
+
+        void getNeighborForNormalizedLocation(double nx, double ny, osg::ref_ptr<osg::HeightField>& hf, double& out_nx, double& out_ny) const {
+            int xoffset = nx < 0.0 ? -1 : nx > 1.0 ? 1 : 0;
+            int yoffset = ny < 0.0 ? 1 : ny > 1.0 ? -1 : 0;
+            if ( xoffset != 0 || yoffset != 0 )
+                hf = getNeighbor(xoffset, yoffset);
+            else
+                hf = _center.get();
+            out_nx = nx < 0.0 ? 1.0+nx : nx > 1.0 ? nx-1.0 : nx;
+            out_ny = ny < 0.0 ? 1.0+ny : ny > 1.0 ? ny-1.0 : ny;
+        }
+    };
+
+
     class OSGEARTH_EXPORT HeightFieldUtils
     {
     public:
@@ -66,6 +102,16 @@ namespace osgEarth
          */
         static float getHeightAtNormalizedLocation(
             const osg::HeightField* hf,
+            double nx, double ny,
+            ElevationInterpolation interp = INTERP_BILINEAR);
+
+        /**
+         * Gets the interpolated elevation at the specified "normalized unit location".
+         * i.e., nx => [-1.0...2.0], ny => [-1.0...2.0] since it can query neighbors
+         * as well.
+         */
+        static float getHeightAtNormalizedLocation(
+            const HeightFieldNeighborhood& hood,
             double nx, double ny,
             ElevationInterpolation interp = INTERP_BILINEAR);
 

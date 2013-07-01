@@ -271,21 +271,22 @@ BuildGeometryFilter::process( FeatureList& features, const FilterContext& contex
             }
 
 
+
             // assign the primary color:
 #if USE_SINGLE_COLOR            
             osg::Vec4Array* colors = new osg::Vec4Array( 1 );
-            (*colors)[0] = primaryColor;
+            (*colors)[0] = primaryColor;            
+            osgGeom->setColorArray( colors );
             osgGeom->setColorBinding( osg::Geometry::BIND_OVERALL );
 #else
 
             osg::Vec4Array* colors = new osg::Vec4Array( osgGeom->getVertexArray()->getNumElements() ); //allPoints->size() );
             for(unsigned c=0; c<colors->size(); ++c)
-                (*colors)[c] = primaryColor;
+                (*colors)[c] = primaryColor;            
+            osgGeom->setColorArray( colors );
             osgGeom->setColorBinding( osg::Geometry::BIND_PER_VERTEX );
 #endif
-
-
-            osgGeom->setColorArray( colors );
+            
             
 
             _geode->addDrawable( osgGeom );
@@ -310,7 +311,8 @@ BuildGeometryFilter::process( FeatureList& features, const FilterContext& contex
                 
                 osg::Vec4f outlineColor = lineSymbol->stroke()->color();                
 
-                osg::Vec4Array* outlineColors = new osg::Vec4Array();                
+                osg::Vec4Array* outlineColors = new osg::Vec4Array();   
+                outline->setColorArray(outlineColors);
 #if USE_SINGLE_COLOR
                 outlineColors->reserve(1);
                 outlineColors->push_back( outlineColor );
@@ -320,9 +322,8 @@ BuildGeometryFilter::process( FeatureList& features, const FilterContext& contex
                 outlineColors->reserve( pcount );
                 for( unsigned c=0; c < pcount; ++c )
                     outlineColors->push_back( outlineColor );
-                outline->setColorBinding( osg::Geometry::BIND_PER_VERTEX );
-#endif
-                outline->setColorArray(outlineColors);
+                outline->setColorBinding( osg::Geometry::BIND_PER_VERTEX );                
+#endif                
 
                 // check for explicit tessellation disable:                
                 bool disableTess = lineSymbol && lineSymbol->tessellation().isSetTo(0);

@@ -48,11 +48,11 @@ namespace osgEarth { namespace Annotation
         static bool getApplyDepthOffsetToClampedLines() { return _autoDepthOffset; }
 
         /**
-         * Gets or sets the max elevation that the occlusion culling callback is applied.
-         * DEFAULT: 20000
+         * Gets or sets the max camera altitude at which the occlusion culling callback is applied.
+         * DEFAULT: 200000.0 meters
          */
-        static void setOcclusionCullingMaxElevation( double value ) { _occlusionCullingMaxElevation = value; }
-        static double getOcclusionCullingMaxElevation() { return _occlusionCullingMaxElevation; }
+        static void setOcclusionCullingMaxAltitude( double value ) { _occlusionCullingMaxAltitude = value; }
+        static double getOcclusionCullingMaxAltitude() { return _occlusionCullingMaxAltitude; }
 
         /**
          * Gets or sets the adjustment factor, in meters, for the occlusion culling callback.
@@ -65,7 +65,7 @@ namespace osgEarth { namespace Annotation
 
 
     private:
-        static double _occlusionCullingMaxElevation;
+        static double _occlusionCullingMaxAltitude;
         static double _occlusionCullingHeightAdjustment;
         static bool _continuousClamping;
         static bool _autoDepthOffset;        

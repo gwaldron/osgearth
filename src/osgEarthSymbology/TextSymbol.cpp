@@ -1,21 +1,21 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2013 Pelican Mapping
- * http://osgearth.org
- *
- * osgEarth is free software; you can redistribute it and/or modify
- * it under the terms of the GNU Lesser General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>
- */
+* Copyright 2008-2013 Pelican Mapping
+* http://osgearth.org
+*
+* osgEarth is free software; you can redistribute it and/or modify
+* it under the terms of the GNU Lesser General Public License as published by
+* the Free Software Foundation; either version 2 of the License, or
+* (at your option) any later version.
+*
+* This program is distributed in the hope that it will be useful,
+* but WITHOUT ANY WARRANTY; without even the implied warranty of
+* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+* GNU Lesser General Public License for more details.
+*
+* You should have received a copy of the GNU Lesser General Public License
+* along with this program.  If not, see <http://www.gnu.org/licenses/>
+*/
 #include <osgEarthSymbology/TextSymbol>
 #include <osgEarthSymbology/Style>
 
@@ -34,7 +34,8 @@ _layout               ( LAYOUT_LEFT_TO_RIGHT ),
 _provider             ( "annotation" ),
 _encoding             ( ENCODING_ASCII ),
 _declutter            ( true ),
-_occlusionCull        ( false )
+_occlusionCull        ( false ),
+_occlusionCullAltitude( 200000 )
 {
     mergeConfig(conf);
 }
@@ -85,10 +86,10 @@ TextSymbol::getConfig() const
     if ( _pixelOffset.isSet() ) {
         conf.add( "pixel_offset_x", toString(_pixelOffset->x()) );
         conf.add( "pixel_offset_y", toString(_pixelOffset->y()) );
-    }	
+    }
 
-	conf.addIfSet( "text-occlusion-cull", _occlusionCull );
-	conf.addIfSet( "text-occlusion-cull-elevation", _occlusionCullElevation );
+    conf.addIfSet( "text-occlusion-cull", _occlusionCull );
+    conf.addIfSet( "text-occlusion-cull-altitude", _occlusionCullAltitude );
 
     return conf;
 }
@@ -138,9 +139,9 @@ TextSymbol::mergeConfig( const Config& conf )
         _pixelOffset = osg::Vec2s( conf.value<short>("pixel_offset_x",0), 0 );
     if ( conf.hasValue( "pixel_offset_y" ) )
         _pixelOffset = osg::Vec2s( _pixelOffset->x(), conf.value<short>("pixel_offset_y",0) );
-	
-	conf.getIfSet( "text-occlusion-cull", _occlusionCull );
-	conf.getIfSet( "text-occlusion-cull-elevation", _occlusionCullElevation );
+
+    conf.getIfSet( "text-occlusion-cull", _occlusionCull );
+    conf.getIfSet( "text-occlusion-cull-altitude", _occlusionCullAltitude );
 }
 
 
@@ -237,10 +238,10 @@ TextSymbol::parseSLD(const Config& c, Style& style)
     else if ( match(c.key(), "text-declutter") ) {
         style.getOrCreate<TextSymbol>()->declutter() = as<bool>(c.value(), true);
     }
-	else if ( match(c.key(), "text-occlusion-cull") ) {
+    else if ( match(c.key(), "text-occlusion-cull") ) {
         style.getOrCreate<TextSymbol>()->occlusionCull() = as<bool>(c.value(), false);
     }
-	else if ( match(c.key(), "text-occlusion-cull-elevation") ) {
-        style.getOrCreate<TextSymbol>()->occlusionCullElevation() = as<double>(c.value(), 200000.0);
+    else if ( match(c.key(), "text-occlusion-cull-altitude") ) {
+        style.getOrCreate<TextSymbol>()->occlusionCullAltitude() = as<double>(c.value(), 200000.0);
     }
 }

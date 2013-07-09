@@ -206,50 +206,56 @@ Icons are used for different things, the most common being:
  * Point model substitution - replace geometry with icons
  * Place annotations
 
-+-------------------------+--------------------------------------------------------------------+
-| Property                | Description                                                        |
-+=========================+====================================================================+
-| icon                    | URI of the icon image. (uri-string)                                |
-+-------------------------+--------------------------------------------------------------------+
-| icon-library            | Name of a *resource library* containing the icon (optional)        |
-+-------------------------+--------------------------------------------------------------------+
-| icon-placement          | For model substitution, describes how osgEarth should replace      |
-|                         | geometry with icons:                                               |
-|                         |    :vertex:   Replace each vertex in the geometry with an icon.    |
-|                         |    :interval: Place icons at regular intervals along the geometry, |
-|                         |               according to the ``icon-density`` property.          |
-|                         |    :random:   Place icons randomly within the geometry, according  |
-|                         |               to the ``icon-density`` property.                    |
-|                         |    :centroid: Place a single icon at the centroid of the geometry. |
-+-------------------------+--------------------------------------------------------------------+
-| icon-density            | For ``icon-placement`` settings of ``interval`` or ``random``,     |
-|                         | this property is hint as to how many instances osgEarth should     |
-|                         | place. The unit is approximately "units per km" (for linear data)  |
-|                         | or "units per square km" for polygon data. (float)                 |
-+-------------------------+--------------------------------------------------------------------+
-| icon-scale              | Scales the icon by this amount (float)                             |
-+-------------------------+--------------------------------------------------------------------+
-| icon-heading            | Rotates the icon along its central axis (float, degrees)           |
-+-------------------------+--------------------------------------------------------------------+
-| icon-declutter          | Activate *decluttering* for this icon. osgEarth will attempt to    |
-|                         | automatically show or hide things so they don't overlap on the     |
-|                         | screen. (boolean)                                                  |
-+-------------------------+--------------------------------------------------------------------+
-| icon-align              | Sets the icon's location relative to its anchor point. The valid   |
-|                         | values are in the form "horizontal-vertical", and are:             |
-|                         |   * ``left-top``                                                   |
-|                         |   * ``left-center``                                                |
-|                         |   * ``left-bottom``                                                |
-|                         |   * ``center-top``                                                 |
-|                         |   * ``center-center``                                              |
-|                         |   * ``center-bottom``                                              |
-|                         |   * ``right-top``                                                  |
-|                         |   * ``right-center``                                               |
-|                         |   * ``right-bottom``                                               |
-+-------------------------+--------------------------------------------------------------------+
-| icon-random-seed        | For random placement operations, set this seed so that the         |
-|                         | randomization is repeatable each time you run the app. (integer)   |
-+-------------------------+--------------------------------------------------------------------+
++--------------------------------+--------------------------------------------------------------------+
+| Property                       | Description                                                        |
++================================+====================================================================+
+| icon                           | URI of the icon image. (uri-string)                                |
++--------------------------------+--------------------------------------------------------------------+
+| icon-library                   | Name of a *resource library* containing the icon (optional)        |
++--------------------------------+--------------------------------------------------------------------+
+| icon-placement                 | For model substitution, describes how osgEarth should replace      |
+|                                | geometry with icons:                                               |
+|                                |    :vertex:   Replace each vertex in the geometry with an icon.    |
+|                                |    :interval: Place icons at regular intervals along the geometry, |
+|                                |               according to the ``icon-density`` property.          |
+|                                |    :random:   Place icons randomly within the geometry, according  |
+|                                |               to the ``icon-density`` property.                    |
+|                                |    :centroid: Place a single icon at the centroid of the geometry. |
++--------------------------------+--------------------------------------------------------------------+
+| icon-density                   | For ``icon-placement`` settings of ``interval`` or ``random``,     |
+|                                | this property is hint as to how many instances osgEarth should     |
+|                                | place. The unit is approximately "units per km" (for linear data)  |
+|                                | or "units per square km" for polygon data. (float)                 |
++--------------------------------+--------------------------------------------------------------------+
+| icon-scale                     | Scales the icon by this amount (float)                             |
++--------------------------------+--------------------------------------------------------------------+
+| icon-heading                   | Rotates the icon along its central axis (float, degrees)           |
++--------------------------------+--------------------------------------------------------------------+
+| icon-declutter                 | Activate *decluttering* for this icon. osgEarth will attempt to    |
+|                                | automatically show or hide things so they don't overlap on the     |
+|                                | screen. (boolean)                                                  |
++--------------------------------+--------------------------------------------------------------------+
+| icon-align                     | Sets the icon's location relative to its anchor point. The valid   |
+|                                | values are in the form "horizontal-vertical", and are:             |
+|                                |   * ``left-top``                                                   |
+|                                |   * ``left-center``                                                |
+|                                |   * ``left-bottom``                                                |
+|                                |   * ``center-top``                                                 |
+|                                |   * ``center-center``                                              |
+|                                |   * ``center-bottom``                                              |
+|                                |   * ``right-top``                                                  |
+|                                |   * ``right-center``                                               |
+|                                |   * ``right-bottom``                                               |
++--------------------------------+--------------------------------------------------------------------+
+| icon-random-seed               | For random placement operations, set this seed so that the         |
+|                                | randomization is repeatable each time you run the app. (integer)   |
++--------------------------------+--------------------------------------------------------------------+
+| icon-occlusion-cull            | Whether to occlusion cull the text so they do not display          |
+|                                | when line of sight is obstructed by terrain                        | 
++--------------------------------+--------------------------------------------------------------------+
+| icon-occlusion-cull-altitude   | The viewer altitude (MSL) to start occlusion culling               |
+|                                | when line of sight is obstructed by terrain                        |
++--------------------------------+--------------------------------------------------------------------+
  
 
 Model
@@ -388,7 +394,7 @@ The *text symbol* (SDK: ``TextSymbol``) controls the existance and appearance of
 | text-occlusion-cull            | Whether to occlusion cull the text so they do not display          |
 |                                | when line of sight is obstructed by terrain                        | 
 +--------------------------------+--------------------------------------------------------------------+
-| text-occlusion-cull-elevation  | The elevation to start occlusion culling                           |
-|                                | when line of sight is obstructed by terrain                        | 
+| text-occlusion-cull-altitude   | The viewer altitude (MSL) to start occlusion culling               |
+|                                | when line of sight is obstructed by terrain                        |
 +--------------------------------+--------------------------------------------------------------------+
 

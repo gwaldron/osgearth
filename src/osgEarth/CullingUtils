@@ -142,23 +142,23 @@ namespace osgEarth
 
         const osg::Vec3d& getWorld() const;
         void setWorld( const osg::Vec3d& world);
-        double getMaxElevation() const;
-        void setMaxElevation( double maxElevation);
+        double getMaxAltitude() const;
+        void setMaxAltitude( double value);
         void operator()(osg::Node* node, osg::NodeVisitor* nv);
 
-		/**
-		 * Gets the maximum number of ms that the OcclusionCullingCallback can run on each frame.
-		 */
-		static double getMaxFrameTime();
+        /**
+        * Gets the maximum number of ms that the OcclusionCullingCallback can run on each frame.
+        */
+        static double getMaxFrameTime();
 
-     	/**
-		 * Sets the maximum number of ms that the OcclusionCullingCallback can run on each frame.
-		 * @param ms
-		 *     The maximum number of milliseconds to run the OcclusionCullingCallback on each frame. 
-		 */
-		static void setMaxFrameTime( double ms );
+        /**
+        * Sets the maximum number of ms that the OcclusionCullingCallback can run on each frame.
+        * @param ms
+        *     The maximum number of milliseconds to run the OcclusionCullingCallback on each frame. 
+        */
+        static void setMaxFrameTime( double ms );
 
-	private:
+    private:
 
         osg::ref_ptr< osg::Node > _node;
         osg::ref_ptr< const osgEarth::SpatialReference > _srs;
@@ -166,8 +166,8 @@ namespace osgEarth
         osg::Vec3d _prevWorld;
         osg::Vec3d _prevEye;
         bool _visible;
-        double _maxElevation;        
-		static double _maxFrameTime;
+        double _maxAltitude;
+        static double _maxFrameTime;
     };
 
     /**

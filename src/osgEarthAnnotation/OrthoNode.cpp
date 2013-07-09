@@ -294,18 +294,18 @@ OrthoNode::applyStyle(const Style& style)
             this->getOrCreateStateSet()->setRenderBinToInherit();
         }
     }
-	
 
-	// check for occlusion culling
-	if ( text && text->occlusionCull().isSet() )
-	{		
-		setOcclusionCulling( *text->occlusionCull() );				
 
-        if (text->occlusionCullElevation().isSet())
+    // check for occlusion culling
+    if ( text && text->occlusionCull().isSet() )
+    {
+        setOcclusionCulling( *text->occlusionCull() );
+
+        if (text->occlusionCullAltitude().isSet())
         {
-            setOcclusionCullingMaxElevation( *text->occlusionCullElevation() );
+            setOcclusionCullingMaxAltitude( *text->occlusionCullAltitude() );
         }
-	}	
+    }
 
     const IconSymbol* icon = style.get<IconSymbol>();
     if ( icon && icon->declutter().isSet() )
@@ -320,13 +320,18 @@ OrthoNode::applyStyle(const Style& style)
         {
             this->getOrCreateStateSet()->setRenderBinToInherit();
         }
-    }	
+    }
 
-	// check for occlusion culling
-	if ( icon && icon->occlusionCull().isSet() )
-	{				
-		this->setOcclusionCulling( *icon->occlusionCull() );				
-	}		
+    // check for occlusion culling
+    if ( icon && icon->occlusionCull().isSet() )
+    {
+        this->setOcclusionCulling( *icon->occlusionCull() );
+
+        if (icon->occlusionCullAltitude().isSet())
+        {
+            setOcclusionCullingMaxAltitude( *icon->occlusionCullAltitude() );
+        }
+    }
 
     // up the chain
     PositionedAnnotationNode::applyStyle( style );
@@ -459,8 +464,8 @@ OrthoNode::setOcclusionCulling( bool value )
         if ( _occlusionCulling && getMapNode() )
         {
             osg::Vec3d world = _autoxform->getPosition();
-            _occlusionCuller = new OcclusionCullingCallback( getMapNode()->getMapSRS(),  adjustOcclusionCullingPoint(world), getMapNode()->getTerrainEngine() );			
-            _occlusionCuller->setMaxElevation( getOcclusionCullingMaxElevation() );            
+            _occlusionCuller = new OcclusionCullingCallback( getMapNode()->getMapSRS(),  adjustOcclusionCullingPoint(world), getMapNode()->getTerrainEngine() );
+            _occlusionCuller->setMaxAltitude( getOcclusionCullingMaxAltitude() );
             addCullCallback( _occlusionCuller.get()  );
         }
         else
@@ -478,21 +483,21 @@ OrthoNode::setOcclusionCulling( bool value )
 }
 
 double
-OrthoNode::getOcclusionCullingMaxElevation() const
+OrthoNode::getOcclusionCullingMaxAltitude() const
 {
-    if (_occlusionCullingMaxRange.isSet())
+    if (_occlusionCullingMaxAltitude.isSet())
     {
-        return *_occlusionCullingMaxRange;
+        return *_occlusionCullingMaxAltitude;
     }
-    return AnnotationSettings::getOcclusionCullingMaxElevation();
+    return AnnotationSettings::getOcclusionCullingMaxAltitude();
 }
 
-void OrthoNode::setOcclusionCullingMaxElevation( double occlusionCullingMaxElevation )
+void OrthoNode::setOcclusionCullingMaxAltitude( double occlusionCullingMaxAltitude )
 {
-    _occlusionCullingMaxRange = occlusionCullingMaxElevation;
+    _occlusionCullingMaxAltitude = occlusionCullingMaxAltitude;
     if ( _occlusionCuller.valid() )
     {
-        _occlusionCuller->setMaxElevation( getOcclusionCullingMaxElevation() );         
+        _occlusionCuller->setMaxAltitude( getOcclusionCullingMaxAltitude() );         
     }
 }
 

@@ -18,6 +18,7 @@
  */
 
 #include <osgEarth/PrimitiveIntersector>
+#include <osgEarth/StringUtils>
 
 #include <osg/Geode>
 #include <osg/KdTree>
@@ -32,7 +33,7 @@ namespace
 {
 struct PrimitiveIntersection
 {
-    PrimitiveIntersection(unsigned int index, const osg::Vec3& normal, float r1, const osg::Vec3* v1, float r2, const osg::Vec3* v2, float r3, const osg::Vec3* v3):
+    PrimitiveIntersection(unsigned int index, const osg::Vec3d& normal, float r1, const osg::Vec3d* v1, float r2, const osg::Vec3d* v2, float r3, const osg::Vec3d* v3):
         _index(index),
         _normal(normal),
         _r1(r1),
@@ -43,13 +44,13 @@ struct PrimitiveIntersection
         _v3(v3) {}
 
     unsigned int        _index;
-    const osg::Vec3     _normal;
+    const osg::Vec3d     _normal;
     float               _r1;
-    const osg::Vec3*    _v1;
+    const osg::Vec3d*    _v1;
     float               _r2;
-    const osg::Vec3*    _v2;
+    const osg::Vec3d*    _v2;
     float               _r3;
-    const osg::Vec3*    _v3;
+    const osg::Vec3d*    _v3;
 
 protected:
 
@@ -60,9 +61,9 @@ typedef std::multimap<float,PrimitiveIntersection> PrimitiveIntersections;
 
 struct PrimitiveIntersectorFunctor
 {
-    osg::Vec3   _s;
-    osg::Vec3   _d;
-    osg::Vec3    _thickness;
+    osg::Vec3d   _s;
+    osg::Vec3d   _d;
+    osg::Vec3d    _thickness;
 
     float       _length;
 
@@ -96,37 +97,37 @@ struct PrimitiveIntersectorFunctor
     }
 
     //POINT
-    inline void operator () (const osg::Vec3& p, bool treatVertexDataAsTemporary)
+    inline void operator () (const osg::Vec3d& p, bool treatVertexDataAsTemporary)
     {
-        osg::Vec3 n = _d ^ _thickness;
+        osg::Vec3d n = _d ^ _thickness;
 
-        osg::Vec3 v1 = p + _thickness;
-        osg::Vec3 v2 = p - n;
-        osg::Vec3 v3 = p - _thickness;
-        osg::Vec3 v4 = p + n;
+        osg::Vec3d v1 = p + _thickness;
+        osg::Vec3d v2 = p - n;
+        osg::Vec3d v3 = p - _thickness;
+        osg::Vec3d v4 = p + n;
 
         this->operator()(v1, v2, v3, v4, treatVertexDataAsTemporary);
     }
 
     //LINE
-    inline void operator () (const osg::Vec3& v1, const osg::Vec3& v2, bool treatVertexDataAsTemporary)
+    inline void operator () (const osg::Vec3d& v1, const osg::Vec3d& v2, bool treatVertexDataAsTemporary)
      {
         float thickness =  _thickness.length();
-        osg::Vec3 l12 = v2 - v1;
-        osg::Vec3 ln = _d ^ l12;
+        osg::Vec3d l12 = v2 - v1;
+        osg::Vec3d ln = _d ^ l12;
         ln.normalize();
 
-        osg::Vec3 vq1 = v1 + ln*thickness;
-        osg::Vec3 vq2 = v2 + ln*thickness;
-        osg::Vec3 vq3 = v2 - ln*thickness;
-        osg::Vec3 vq4 = v1 - ln*thickness;
+        osg::Vec3d vq1 = v1 + ln*thickness;
+        osg::Vec3d vq2 = v2 + ln*thickness;
+        osg::Vec3d vq3 = v2 - ln*thickness;
+        osg::Vec3d vq4 = v1 - ln*thickness;
 
         this->operator()(vq1, vq2, vq3, vq4, treatVertexDataAsTemporary);
     }
 
     //QUAD
     inline void operator () (
-        const osg::Vec3& v1, const osg::Vec3& v2, const osg::Vec3& v3, const osg::Vec3& v4, bool treatVertexDataAsTemporary
+        const osg::Vec3d& v1, const osg::Vec3d& v2, const osg::Vec3d& v3, const osg::Vec3d& v4, bool treatVertexDataAsTemporary
         )
     {
         this->operator()(v1, v2, v3, treatVertexDataAsTemporary);
@@ -138,7 +139,7 @@ struct PrimitiveIntersectorFunctor
 
     //TRIANGLE
     inline void operator () (
-        const osg::Vec3& v1, const osg::Vec3& v2, const osg::Vec3& v3, bool treatVertexDataAsTemporary
+        const osg::Vec3d& v1, const osg::Vec3d& v2, const osg::Vec3d& v3, bool treatVertexDataAsTemporary
         )
     {
         ++_index;
@@ -147,8 +148,8 @@ struct PrimitiveIntersectorFunctor
 
         if (v1==v2 || v2==v3 || v1==v3) return;
 
-        osg::Vec3 v12 = v2-v1;
-        osg::Vec3 n12 = v12^_d;
+        osg::Vec3d v12 = v2-v1;
+        osg::Vec3d n12 = v12^_d;
         float ds12 = (_s-v1)*n12;
         float d312 = (v3-v1)*n12;
         if (d312>=0.0f)
@@ -162,8 +163,8 @@ struct PrimitiveIntersectorFunctor
             if (ds12<d312) return;
         }
 
-        osg::Vec3 v23 = v3-v2;
-        osg::Vec3 n23 = v23^_d;
+        osg::Vec3d v23 = v3-v2;
+        osg::Vec3d n23 = v23^_d;
         float ds23 = (_s-v2)*n23;
         float d123 = (v1-v2)*n23;
         if (d123>=0.0f)
@@ -177,8 +178,8 @@ struct PrimitiveIntersectorFunctor
             if (ds23<d123) return;
         }
 
-        osg::Vec3 v31 = v1-v3;
-        osg::Vec3 n31 = v31^_d;
+        osg::Vec3d v31 = v1-v3;
+        osg::Vec3d n31 = v31^_d;
         float ds31 = (_s-v3)*n31;
         float d231 = (v2-v3)*n31;
         if (d231>=0.0f)
@@ -218,7 +219,7 @@ struct PrimitiveIntersectorFunctor
             r3 *= inv_total_r;
         }
 
-        osg::Vec3 in = v1*r1+v2*r2+v3*r3;
+        osg::Vec3d in = v1*r1+v2*r2+v3*r3;
         if (!in.valid())
         {
             OE_WARN << LC << "Picked up error in TriangleIntersect" << std::endl;;
@@ -230,7 +231,7 @@ struct PrimitiveIntersectorFunctor
         if (d<0.0f) return;
         if (d>_length) return;
 
-        osg::Vec3 normal = v12^v23;
+        osg::Vec3d normal = v12^v23;
         normal.normalize();
 
         float r = d/_length;
@@ -262,7 +263,8 @@ PrimitiveIntersector::PrimitiveIntersector()
 
 PrimitiveIntersector::PrimitiveIntersector(CoordinateFrame cf, double x, double y, double thickness):
     Intersector(cf),
-    _parent(0)
+    _parent(0),
+    _overlayIgnore(false)
 {
     switch(cf)
     {
@@ -275,9 +277,10 @@ PrimitiveIntersector::PrimitiveIntersector(CoordinateFrame cf, double x, double 
     setThickness(thickness);
 }
 
-PrimitiveIntersector::PrimitiveIntersector(CoordinateFrame cf, const osg::Vec3d& start, const osg::Vec3d& end, double thickness):
+PrimitiveIntersector::PrimitiveIntersector(CoordinateFrame cf, const osg::Vec3d& start, const osg::Vec3d& end, double thickness, bool overlayIgnore):
     Intersector(cf),
-    _parent(0)
+    _parent(0),
+    _overlayIgnore(overlayIgnore)
 {
   _start.set(start);
   _end.set(end);
@@ -287,6 +290,7 @@ PrimitiveIntersector::PrimitiveIntersector(CoordinateFrame cf, const osg::Vec3d&
 
 void PrimitiveIntersector::setThickness(double thickness)
 {
+  _thicknessVal = thickness;
   _thickness.set(_start.x()+thickness/2.0, _start.y()+thickness/2.0, _start.z());
 }
 
@@ -299,6 +303,7 @@ osgUtil::Intersector* PrimitiveIntersector::clone(osgUtil::IntersectionVisitor& 
         lsi->_start = _start;
         lsi->_end = _end;
         lsi->_thickness = _thickness;
+        lsi->_thicknessVal = _thicknessVal;
         lsi->_parent = this;
         lsi->_intersectionLimit = _intersectionLimit;
 
@@ -338,6 +343,7 @@ osgUtil::Intersector* PrimitiveIntersector::clone(osgUtil::IntersectionVisitor& 
     lsi->_start = _start*inverse;
     lsi->_end = _end*inverse;
     lsi->_thickness = _thickness*inverse;
+    lsi->_thicknessVal = _thicknessVal;
     lsi->_parent = this;
     lsi->_intersectionLimit = _intersectionLimit;
     
@@ -418,10 +424,10 @@ void PrimitiveIntersector::intersect(osgUtil::IntersectionVisitor& iv, osg::Draw
 
             if (geometry)
             {
-                osg::Vec3Array* vertices = dynamic_cast<osg::Vec3Array*>(geometry->getVertexArray());
+                osg::Vec3dArray* vertices = dynamic_cast<osg::Vec3dArray*>(geometry->getVertexArray());
                 if (vertices)
                 {
-                    osg::Vec3* first = &(vertices->front());
+                    osg::Vec3d* first = &(vertices->front());
                     if (triHit._v1)
                     {
                         hit.indexList.push_back(triHit._v1-first);

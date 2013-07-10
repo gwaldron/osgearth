@@ -38,7 +38,7 @@ public:
     PrimitiveIntersector(CoordinateFrame cf, double x, double y, double thickness);
 
     /** Constructor for initializing with full start and end vectors. */
-    PrimitiveIntersector(CoordinateFrame cf, const osg::Vec3d& start, const osg::Vec3d& end, double thickness);
+    PrimitiveIntersector(CoordinateFrame cf, const osg::Vec3d& start, const osg::Vec3d& end, double thickness, bool overlayIgnore=false);
 
     struct Intersection
     {
@@ -56,7 +56,7 @@ public:
         osg::ref_ptr<osg::Drawable>     drawable;
         osg::ref_ptr<osg::RefMatrix>    matrix;
         osg::Vec3d                      localIntersectionPoint;
-        osg::Vec3                       localIntersectionNormal;
+        osg::Vec3d                       localIntersectionNormal;
         IndexList                       indexList;
         RatioList                       ratioList;
         unsigned int                    primitiveIndex;
@@ -64,8 +64,8 @@ public:
         const osg::Vec3d& getLocalIntersectPoint() const { return localIntersectionPoint; }
         osg::Vec3d getWorldIntersectPoint() const { return matrix.valid() ? localIntersectionPoint * (*matrix) : localIntersectionPoint; }
 
-        const osg::Vec3& getLocalIntersectNormal() const { return localIntersectionNormal; }
-        osg::Vec3 getWorldIntersectNormal() const { return matrix.valid() ? osg::Matrix::transform3x3(osg::Matrix::inverse(*matrix),localIntersectionNormal) : localIntersectionNormal; }
+        const osg::Vec3d& getLocalIntersectNormal() const { return localIntersectionNormal; }
+        osg::Vec3d getWorldIntersectNormal() const { return matrix.valid() ? osg::Matrix::transform3x3(osg::Matrix::inverse(*matrix),localIntersectionNormal) : localIntersectionNormal; }
     };
 
     typedef std::multiset<Intersection> Intersections;
@@ -83,6 +83,9 @@ public:
     inline const osg::Vec3d& getEnd() const { return _end; }
 
     void setThickness(double thickness);
+    inline double getThickness() const { return _thicknessVal; }
+
+    inline bool getOverlayIgnore() const { return _overlayIgnore; }
 
 public:
 
@@ -111,6 +114,8 @@ protected:
     osg::Vec3d  _start;
     osg::Vec3d  _end;
     osg::Vec3d  _thickness;
+    double _thicknessVal;
+    bool _overlayIgnore;
 
     Intersections _intersections;
 

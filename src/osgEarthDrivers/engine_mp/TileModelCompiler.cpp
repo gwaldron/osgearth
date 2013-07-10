@@ -528,7 +528,7 @@ namespace
                 //    }
                 //    heightValue = HeightFieldUtils::getHeightAtNormalizedLocation( hf, hf_ndc.x(), hf_ndc.y() );
                 //}
-                ndc.z() = heightValue;
+                ndc.z() = heightValue * d.scaleHeight;
 
 #if 0
                 bool validValue = true;
@@ -632,12 +632,6 @@ namespace
                     {
                         d.model->_elevationData.getNormal(ndc, d.model->_tileLocator.get(), oldNormal, INTERP_TRIANGULATE );
                     }
-
-                    osg::Quat q;
-                    q.makeRotate( osg::Vec3d(0,0,1), model_up );
-                    oldNormal = q * oldNormal;
-
-                    oldNormal.normalize();
 
                     // first attribute set has the unit extrusion vector and the
                     // raw height value.
@@ -1864,7 +1858,7 @@ TileModelCompiler::compile(const TileModel* model)
     Data d(model, _masks);
 
     d.parentModel = model->getParentTileModel();
-    d.scaleHeight = *_options.verticalScale();
+    d.scaleHeight = *_options.verticalScale();    
 
     // build the localization matrix for this tile:
     model->_tileLocator->unitToModel( osg::Vec3(0.5f, 0.5f, 0.0), d.centerModel );

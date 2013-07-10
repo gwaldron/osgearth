@@ -85,12 +85,17 @@ The most common usage of osgearth_cache is to populate a cache in a non-interact
 | ``--bounds xmin ymin xmax ymax``    | Geospatial bounding box to seed                                    |
 |                                     | (in map coordinates; default=entire map                            |
 +-------------------------------------+--------------------------------------------------------------------+
+| ``--index shapefile``               | Loads a shapefile (.shp) and uses the feature extents to set the   |
+|                                     | cache seeding bounding box(es). For each feature in the shapefile, |
+|                                     | adds a bounding box (similar to ``--bounds``) to constrain the     |
+|                                     | region you wish to cache.                                          |
++-------------------------------------+--------------------------------------------------------------------+
 | ``--cache-path path``               | Overrides the cache path in the .earth file                        |
 +-------------------------------------+--------------------------------------------------------------------+
 | ``--cache-type type``               | Overrides the cache type in the .earth file                        |
 +-------------------------------------+--------------------------------------------------------------------+
 | ``--purge``                         | Purges a layer cache in a .earth file                              |
-+-------------------------------------+--------------------------------------------------------------------+       
++-------------------------------------+--------------------------------------------------------------------+
 
 osgearth_package
 ----------------

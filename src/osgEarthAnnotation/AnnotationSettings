@@ -47,13 +47,28 @@ namespace osgEarth { namespace Annotation
         static void setApplyDepthOffsetToClampedLines( bool value ) { _autoDepthOffset = value; }
         static bool getApplyDepthOffsetToClampedLines() { return _autoDepthOffset; }
 
-        static void setOcclusionQueryMaxRange( double value ) { _occlusionQueryMaxRange = value; }
-        static double getOcclusionQueryMaxRange() { return _occlusionQueryMaxRange; }
+        /**
+         * Gets or sets the max elevation that the occlusion culling callback is applied.
+         * DEFAULT: 20000
+         */
+        static void setOcclusionCullingMaxElevation( double value ) { _occlusionCullingMaxElevation = value; }
+        static double getOcclusionCullingMaxElevation() { return _occlusionCullingMaxElevation; }
+
+        /**
+         * Gets or sets the adjustment factor, in meters, for the occlusion culling callback.
+         * This adjusts the target world point "up" by this factor to avoid being very aggressive with the culling
+         * if items are very close to the ground.
+         */
+        static void setOcclusionCullingHeightAdjustment( double value ) { _occlusionCullingHeightAdjustment = value; }
+        static double getOcclusionCullingHeightAdjustment() { return _occlusionCullingHeightAdjustment; }
+
+
 
     private:
-        static double _occlusionQueryMaxRange;
+        static double _occlusionCullingMaxElevation;
+        static double _occlusionCullingHeightAdjustment;
         static bool _continuousClamping;
-        static bool _autoDepthOffset;
+        static bool _autoDepthOffset;        
     };
 
 } } // namespace osgEarth::Annotation

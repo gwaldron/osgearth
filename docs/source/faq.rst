@@ -70,6 +70,36 @@ How do make the terrain transparent?
         options.color() = osg::Vec4(1,1,1,0);
 
 
+How do I set the resolution of terrain tiles?
+.............................................
+
+    Each tile is a grid of vertices. The number of vertices can vary depending on source data
+    and settings. By default (when you have no elevation data) it is an 15x15 grid, tessellated
+    into triangles.
+    
+    If you do have elevation data, osgEarth will use the tile size of the first elevation layer 
+    to decide on the overall tile size for the terrain.
+
+    You can cotnrol this in a couple ways. If you have elevation data, you can set the
+    ``tile_size`` property on the elevation layer. For example::
+    
+        <elevation name="srtm" driver="gdal">
+            <url>...</url>
+            <tile_size>31</tile_size>
+        </elevation>
+        
+    That will read data as a grid of 31x31 vertices. If this is your first elevation layer,
+    osgEarth will render tiles at a resolution of 31x31.
+
+    Or, you can expressly set the terrain's tile size overall by using the Map options.
+    osgEarth will then resample all elevation data to the size you specify::
+
+        <map>
+            <options>
+                <elevation_tile_size>31</elevation_tile_size>
+                ...
+
+
 ----
 
 Other Terrain Formats

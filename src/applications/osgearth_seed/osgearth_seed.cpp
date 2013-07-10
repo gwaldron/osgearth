@@ -81,6 +81,7 @@ usage( const std::string& msg )
         << "        [--min-level level]             ; Lowest LOD level to seed (default=0)" << std::endl
         << "        [--max-level level]             ; Highest LOD level to seed (defaut=highest available)" << std::endl
         << "        [--bounds xmin ymin xmax ymax]* ; Geospatial bounding box to seed (in map coordinates; default=entire map)" << std::endl
+        << "        [--index shapefile]             ; Use the feature extents in a shapefile to set the bounding boxes for seeding" << std::endl
         << "        [--cache-path path]             ; Overrides the cache path in the .earth file" << std::endl
         << "        [--cache-type type]             ; Overrides the cache type in the .earth file" << std::endl
         << std::endl

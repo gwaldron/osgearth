@@ -299,7 +299,12 @@ OrthoNode::applyStyle(const Style& style)
 	// check for occlusion culling
 	if ( text && text->occlusionCull().isSet() )
 	{		
-		this->setOcclusionCulling( *text->occlusionCull() );				
+		setOcclusionCulling( *text->occlusionCull() );				
+
+        if (text->occlusionCullElevation().isSet())
+        {
+            setOcclusionCullingMaxElevation( *text->occlusionCullElevation() );
+        }
 	}	
 
     const IconSymbol* icon = style.get<IconSymbol>();
@@ -429,7 +434,7 @@ OrthoNode::adjustOcclusionCullingPoint( const osg::Vec3d& world )
     {
         const osg::EllipsoidModel* em = getMapNode()->getMapSRS()->getEllipsoid();
         osg::Vec3d up = em ? em->computeLocalUpVector( world.x(), world.y(), world.z() ) : osg::Vec3d(0,0,1);
-        osg::Vec3d adjust = up * 0.1;
+        osg::Vec3d adjust = up * AnnotationSettings::getOcclusionCullingHeightAdjustment();        
         return world + adjust;
     }
     else
@@ -454,8 +459,8 @@ OrthoNode::setOcclusionCulling( bool value )
         if ( _occlusionCulling && getMapNode() )
         {
             osg::Vec3d world = _autoxform->getPosition();
-            _occlusionCuller = new OcclusionCullingCallback(adjustOcclusionCullingPoint(world), getMapNode());
-            _occlusionCuller->setMaxRange( AnnotationSettings::getOcclusionQueryMaxRange() );
+            _occlusionCuller = new OcclusionCullingCallback( getMapNode()->getMapSRS(),  adjustOcclusionCullingPoint(world), getMapNode()->getTerrainEngine() );			
+            _occlusionCuller->setMaxElevation( getOcclusionCullingMaxElevation() );            
             addCullCallback( _occlusionCuller.get()  );
         }
         else
@@ -469,6 +474,25 @@ OrthoNode::setOcclusionCulling( bool value )
                 }
             }
         }
+    }
+}
+
+double
+OrthoNode::getOcclusionCullingMaxElevation() const
+{
+    if (_occlusionCullingMaxRange.isSet())
+    {
+        return *_occlusionCullingMaxRange;
+    }
+    return AnnotationSettings::getOcclusionCullingMaxElevation();
+}
+
+void OrthoNode::setOcclusionCullingMaxElevation( double occlusionCullingMaxElevation )
+{
+    _occlusionCullingMaxRange = occlusionCullingMaxElevation;
+    if ( _occlusionCuller.valid() )
+    {
+        _occlusionCuller->setMaxElevation( getOcclusionCullingMaxElevation() );         
     }
 }
 

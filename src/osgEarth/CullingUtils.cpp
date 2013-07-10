@@ -20,6 +20,7 @@
 #include <osgEarth/LineFunctor>
 #include <osgEarth/VirtualProgram>
 #include <osgEarth/DPLineSegmentIntersector>
+#include <osgEarth/GeoData>
 #include <osg/ClusterCullingCallback>
 #include <osg/PrimitiveSet>
 #include <osg/Geode>
@@ -602,12 +603,12 @@ DisableSubgraphCulling::operator()(osg::Node* n, osg::NodeVisitor* v)
 // The max frame time in ms
 double OcclusionCullingCallback::_maxFrameTime = 10.0;
 
-OcclusionCullingCallback::OcclusionCullingCallback(const osg::Vec3d& world, osg::Node* node):
+OcclusionCullingCallback::OcclusionCullingCallback(const osgEarth::SpatialReference *srs, const osg::Vec3d& world, osg::Node* node):
+_srs( srs ),
 _world(world),
 _node( node ),
 _visible( true ),
-_maxRange(200000),
-_maxRange2(_maxRange * _maxRange)
+_maxElevation(200000)
 {
 }
 
@@ -631,22 +632,20 @@ void OcclusionCullingCallback::setWorld( const osg::Vec3d& world)
     _world = world;
 }
 
-double OcclusionCullingCallback::getMaxRange() const
+double OcclusionCullingCallback::getMaxElevation() const
 {
-    return _maxRange;
+    return _maxElevation;
 }
 
-void OcclusionCullingCallback::setMaxRange( double maxRange)
+void OcclusionCullingCallback::setMaxElevation( double maxElevation )
 {
-    _maxRange = maxRange;
-    _maxRange2 = maxRange * maxRange;
+    _maxElevation = maxElevation;    
 }
 
 void OcclusionCullingCallback::operator()(osg::Node* node, osg::NodeVisitor* nv)
 {
     if (nv->getVisitorType() == osg::NodeVisitor::CULL_VISITOR)
-    {
-        osg::Vec3d eye, center, up;
+    {        
         osgUtil::CullVisitor* cv = Culling::asCullVisitor(nv);
 
 		static int frameNumber = -1;				
@@ -666,16 +665,28 @@ void OcclusionCullingCallback::operator()(osg::Node* node, osg::NodeVisitor* nv)
 			remainingTime = OcclusionCullingCallback::_maxFrameTime;
 		}
 
-        cv->getCurrentCamera()->getViewMatrixAsLookAt(eye,center,up);
+		osg::Vec3d eye = cv->getViewPoint();        
 
         if (_prevEye != eye || _prevWorld != _world)
         {
 			if (remainingTime > 0.0)
 			{
+				double alt = 0.0;
+				
+				if ( _srs && !_srs->isProjected() )
+				{
+					osgEarth::GeoPoint mapPoint;
+					mapPoint.fromWorld( _srs.get(), eye );
+					alt = mapPoint.z();
+				}
+				else
+				{
+					alt = eye.z();
+				}
 
-				double range = (eye-_world).length2();
+				
 				//Only do the intersection if we are close enough for it to matter
-				if (range <= _maxRange2 && _node.valid())
+				if (alt <= _maxElevation && _node.valid())
 				{
 					//Compute the intersection from the eye to the world point
 					osg::Timer_t startTick = osg::Timer::instance()->tick();

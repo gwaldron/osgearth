@@ -88,8 +88,7 @@ namespace
         "    oe_lodblend_texc    = oe_layer_parent_matrix * oe_layer_texc; \n"
         "    oe_lodblend_r       = oe_layer_parent_matrix[0][0] > 0.0 ? r : 0.0; \n" // obe?
 
-        // UNCOMMENT to enable normal blending.
-        //"    oe_Normal = normalize(mix(osg_Normal, oe_terrain_attr2.xyz, r)); \n"
+        "    oe_Normal = normalize(mix(normalize(oe_Normal), oe_terrain_attr2.xyz, r)); \n"
         "} \n";
 
     const char* fs =

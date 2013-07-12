@@ -91,7 +91,7 @@ VirtualProgram::getOrCreate(osg::StateSet* stateset)
     if ( !vp )
     {
         vp = new VirtualProgram();
-        stateset->setAttributeAndModes( vp, 1 );
+        stateset->setAttributeAndModes( vp, osg::StateAttribute::ON );
     }
     return vp;
 }

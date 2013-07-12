@@ -348,6 +348,7 @@ OverlayDecorator::cullTerrainAndCalculateRTTParams(osgUtil::CullVisitor* cv,
     osg::Matrixd invViewMatrix = cv->getCurrentCamera()->getInverseViewMatrix();
     osg::Vec3d eye = zero * invViewMatrix;
     //osg::Vec3 eye = cv->getEyePoint();
+    eye = cv->getViewPoint();
 
     double eyeLen;
     osg::Vec3d worldUp;
@@ -677,27 +678,6 @@ OverlayDecorator::traverse( osg::NodeVisitor& nv )
                     TechRTTParams& params = pvd._techParams[i];
                     _techniques[i]->cullOverlayGroup( params, cv );
                 }
-
-#if 0
-                // new CullVisitor to traverse the subgroups:
-                MyCullVisitor* mcv = static_cast<MyCullVisitor*>(cv);
-
-                // prep and traverse the RTT camera(s):
-                for(unsigned i=0; i<_techniques.size(); ++i)
-                {
-                    TechRTTParams& params = pvd._techParams[i];
-
-                    //mcv->_mvp = params._rttViewMatrix * params._rttProjMatrix;
-                    mcv->_cullingFrustum->setToUnitFrustum( true, true );
-                    mcv->_cullingFrustum->transformProvidingInverse( params._rttProjMatrix );
-                    //mcv->_cullingFrustum->transformProvidingInverse( params._rttViewMatrix * params._rttProjMatrix );
-
-                    _techniques[i]->cullOverlayGroup( params, cv );
-                    //_techniques[i]->cullOverlayGroup( params, cullVisitor.get() );
-                }
-                
-                static_cast<MyCullVisitor*>(cv)->_cullingFrustum.unset();
-#endif
             }
             else
             {

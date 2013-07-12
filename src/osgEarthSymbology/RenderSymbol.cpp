@@ -73,4 +73,7 @@ RenderSymbol::parseSLD(const Config& c, Style& style)
     else if ( match(c.key(), "render-depth-offset-max-range") ) {
         style.getOrCreate<RenderSymbol>()->depthOffset()->maxRange() = as<float>(c.value(), 10000000.0f);
     }
+    else if ( match(c.key(), "render-depth-offset-auto") ) {
+        style.getOrCreate<RenderSymbol>()->depthOffset()->automatic() = as<bool>(c.value(), true);
+    }
 }

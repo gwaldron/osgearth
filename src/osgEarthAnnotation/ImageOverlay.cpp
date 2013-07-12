@@ -196,17 +196,6 @@ ImageOverlay::postCTOR()
 
     init();
 
-    if ( Registry::capabilities().supportsGLSL() )
-    {
-        ShaderGenerator gen;
-        d->accept( gen );
-        //// need a shader that supports one texture
-        //VirtualProgram* vp = new VirtualProgram();
-        //vp->setName( "imageoverlay");
-        //vp->installDefaultColoringShaders(1);
-        //d->getOrCreateStateSet()->setAttributeAndModes( vp, 1 );
-    }
-
     ADJUST_UPDATE_TRAV_COUNT( this, 1 );
 }
 
@@ -312,6 +301,18 @@ ImageOverlay::init()
         applyStyle( style );
         setLightingIfNotSet( false );
         clampMesh( getMapNode()->getTerrain()->getGraph() );
+
+        if ( Registry::capabilities().supportsGLSL() )
+        {
+            OE_WARN << LC << "ShaderGen RUNNING" << std::endl;
+            ShaderGenerator gen;
+            _geode->accept( gen );
+            //// need a shader that supports one texture
+            //VirtualProgram* vp = new VirtualProgram();
+            //vp->setName( "imageoverlay");
+            //vp->installDefaultColoringShaders(1);
+            //d->getOrCreateStateSet()->setAttributeAndModes( vp, 1 );
+        }
     }
 }
 

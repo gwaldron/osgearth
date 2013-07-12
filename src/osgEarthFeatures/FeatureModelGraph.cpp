@@ -1149,7 +1149,9 @@ FeatureModelGraph::checkForGlobalAltitudeStyles( const Style& style )
         const ExtrusionSymbol* extrusion = style.get<ExtrusionSymbol>();
         if ( extrusion )
         {
-            _clampable->depthOffset().enabled() = false;
+            DepthOffsetOptions d = _clampable->getDepthOffsetOptions();
+            d.enabled() = false;
+            _clampable->setDepthOffsetOptions( d );
         }
 
         // check for explicit depth offset render settings (note, this could
@@ -1158,7 +1160,7 @@ FeatureModelGraph::checkForGlobalAltitudeStyles( const Style& style )
         const RenderSymbol* render = style.get<RenderSymbol>();
         if ( render && render->depthOffset().isSet() )
         {
-            _clampable->depthOffset() = *render->depthOffset();
+            _clampable->setDepthOffsetOptions(*render->depthOffset());
         }
     }
 }

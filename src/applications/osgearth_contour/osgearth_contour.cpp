@@ -94,11 +94,11 @@ osg::StateSet* createStateSet( osg::TransferFunction1D* xfer, int unit )
     // (By the way: if you want to draw image layers on top of the contoured terrain,
     // set the "priority" parameter to setFunction() to a negative number so that it draws
     // before the terrain's layers.)
-    VirtualProgram* vp = new VirtualProgram();
+    VirtualProgram* vp = VirtualProgram::getOrCreate(stateSet);
     vp->setFunction( "setupContour", vertexShader,   ShaderComp::LOCATION_VERTEX_MODEL);
     vp->setFunction( "colorContour", fragmentShader, ShaderComp::LOCATION_FRAGMENT_COLORING, -1.0 );
     vp->addBindAttribLocation( "osgearth_elevData", osg::Drawable::ATTRIBUTE_6 );
-    stateSet->setAttributeAndModes( vp, osg::StateAttribute::ON );
+    //stateSet->setAttributeAndModes( vp, osg::StateAttribute::ON );
 
     // Install some uniforms that tell the shader the height range of the color map.
     stateSet->getOrCreateUniform( "contour_xferMin",   osg::Uniform::FLOAT )->set( xfer->getMinimum() );

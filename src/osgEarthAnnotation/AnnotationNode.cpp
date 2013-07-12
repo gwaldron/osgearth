@@ -195,7 +195,7 @@ AnnotationNode::setCPUAutoClamping( bool value )
             else
             {
                 // update depth adjustment calculation
-                getOrCreateStateSet()->addUniform( DepthOffsetUtils::createMinOffsetUniform(this) );
+                //getOrCreateStateSet()->addUniform( DepthOffsetUtils::createMinOffsetUniform(this) );
             }
         }
     }
@@ -204,6 +204,16 @@ AnnotationNode::setCPUAutoClamping( bool value )
 void
 AnnotationNode::setDepthAdjustment( bool enable )
 {
+    if ( enable )
+    {
+        _doAdapter.setGraph(0L);
+    }
+    else
+    {
+        _doAdapter.setGraph(this);
+        _doAdapter.recalculate();
+    }
+#if 0
     if ( enable )
     {
         osg::StateSet* s = this->getOrCreateStateSet();
@@ -220,7 +230,7 @@ AnnotationNode::setDepthAdjustment( bool enable )
     {
         this->getStateSet()->removeAttribute(osg::StateAttribute::PROGRAM);
     }
-
+#endif
     _depthAdj = enable;
 }
 

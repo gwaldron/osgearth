@@ -449,8 +449,8 @@ ShaderGenerator::processGeometry( osg::StateSet* ss, osg::ref_ptr<osg::StateSet>
 
     // see if the current state set contains a VirtualProgram already. If so,
     // we will add to it if necessary.
-    osg::ref_ptr<VirtualProgram> vp = 
-        dynamic_cast<VirtualProgram*>( ss->getAttribute(VirtualProgram::SA_TYPE) );
+    osg::ref_ptr<VirtualProgram> vp = 0L;
+        //dynamic_cast<VirtualProgram*>( ss->getAttribute(VirtualProgram::SA_TYPE) );
 
     // Check whether the lighting state has changed and install a mode uniform.
     if ( ss->getMode(GL_LIGHTING) != osg::StateAttribute::INHERIT )

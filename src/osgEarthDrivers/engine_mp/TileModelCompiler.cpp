@@ -1858,7 +1858,7 @@ TileModelCompiler::compile(const TileModel* model)
     Data d(model, _masks);
 
     d.parentModel = model->getParentTileModel();
-    d.scaleHeight = *_options.verticalScale();    
+    d.scaleHeight = *_options.verticalScale();
 
     // build the localization matrix for this tile:
     model->_tileLocator->unitToModel( osg::Vec3(0.5f, 0.5f, 0.0), d.centerModel );

@@ -8,7 +8,11 @@ Help us add useful sources of Free data to this list.
 
 **Raster data**
 
+    * `ReadyMap.org`_ - Free 15m imagery, elevation, and street tiles for osgEarth developers
+    
     * MapQuest_ - MapQuest open aerial imagery and rasterized OpenStreetMap layers
+    
+    * `Bing Maps`_ - Microsoft's worldwide imagery and map data ($)
     
     * `USGS National Map`_ - Elevation, orthoimagery, hydrography, geographic names, boundaries,
       transportation, structures, and land cover products for the US.
@@ -58,6 +62,8 @@ Help us add useful sources of Free data to this list.
 .. _+SRTM30+:                   ftp://topex.ucsd.edu/pub/srtm30_plus/
 .. _USGS National Map:          http://nationalmap.gov/viewer.html
 .. _Virtual Terrain Project:    http://vterrain.org/Imagery/WholeEarth/
+.. _Bing Maps:                  http://www.microsoft.com/maps/choose-your-bing-maps-API.aspx
+.. _ReadyMap.org:               http://readymap.org/index_orig.html
 
 ----
 

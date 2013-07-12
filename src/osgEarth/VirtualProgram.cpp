@@ -623,7 +623,7 @@ VirtualProgram::buildProgram(osg::State&        state,
 void
 VirtualProgram::apply( osg::State& state ) const
 {
-    if ( _shaderMap.empty() )
+    if ( _shaderMap.empty() && !_inherit )
     {
         // if there's no data in the VP, unload any existing program.
         const unsigned int contextID = state.getContextID();

@@ -39,9 +39,6 @@
 //#define USE_RENDER_BIN 1
 #undef USE_RENDER_BIN
 
-//#define USE_DEPTH_OFFSET 1
-#undef USE_DEPTH_OFFSET
-
 //#define DUMP_RTT_IMAGE 1
 //#undef DUMP_RTT_IMAGE
 
@@ -86,16 +83,6 @@ namespace
 #endif
 
          "uniform float oe_clamp_horizonDistance; \n"
-
-#ifdef USE_DEPTH_OFFSET
-         // uniforms from ClampableNode:
-         "uniform vec2 oe_clamp_bias; \n"
-         "uniform vec2 oe_clamp_range; \n"
-
-         "varying vec4 oe_clamp_simvert; \n"
-         "varying float oe_clamp_simvertrange; \n"
-#endif
-
          "varying float oe_clamp_alphaFactor; \n"
 
          "void oe_clamp_vertex(inout vec4 VertexVIEW) \n"
@@ -129,35 +116,11 @@ namespace
          "    p_depthView.z += gl_Vertex.z*gl_Vertex.w/p_depthView.w; \n"
 
               // then transform the vert back into camera view space.
-         "    vec4 v_view_clamped = oe_clamp_depthView2cameraView * p_depthView; \n"
+         "    VertexVIEW = oe_clamp_depthView2cameraView * p_depthView; \n"
 #else
               // transform the depth-clip point back into camera view coords.
-         "    vec4 v_view_clamped = oe_clamp_depthClip2cameraView * p_depthClip; \n"
+         "    VertexVIEW = oe_clamp_depthClip2cameraView * p_depthClip; \n"
 #endif
-
-#ifdef USE_DEPTH_OFFSET
-         //   now simulate a "closer" vertex for depth offsetting.
-         //   remap depth offset based on camera distance to vertex. The farther you are away,
-         //   the more of an offset you need.
-
-         //   calculate the range to target:
-         "    vec3 v_view_clamped3 = v_view_clamped.xyz/v_view_clamped.w; \n"
-         "    float range = length(v_view_clamped3); \n"
-
-         //   calculate the depth offset bias for this range:
-         "    float ratio = (clamp(range, oe_clamp_range[0], oe_clamp_range[1])-oe_clamp_range[0])/(oe_clamp_range[1]-oe_clamp_range[0]);\n"
-         "    float bias = oe_clamp_bias[0] + ratio * (oe_clamp_bias[1]-oe_clamp_bias[0]);\n"
-
-         //   calculate the "simluated" vertex:
-         "    vec3 adj_vec = normalize(v_view_clamped3); \n"
-         "    vec3 v_view_offset3 = v_view_clamped3 - (adj_vec * bias); \n"
-
-         "    vec4 v_view_sim = vec4( v_view_offset3 * v_view_clamped.w, v_view_clamped.w ); \n"
-         "    oe_clamp_simvert = gl_ProjectionMatrix * v_view_sim;\n"
-         "    oe_clamp_simvertrange = range - bias; \n"
-#endif
-
-         "    VertexVIEW = v_view_clamped; \n"
          "} \n";
 
 
@@ -166,26 +129,10 @@ namespace
         "#version " GLSL_VERSION_STR "\n"
         GLSL_DEFAULT_PRECISION_FLOAT "\n"
 
-#ifdef USE_DEPTH_OFFSET
-        "varying vec4 oe_clamp_simvert; \n"
-        "varying float oe_clamp_simvertrange; \n"
-#endif
-
         "varying float oe_clamp_alphaFactor; \n"
 
         "void oe_clamp_fragment(inout vec4 color)\n"
         "{ \n"
-#ifdef USE_DEPTH_OFFSET
-        "    float sim_depth = 0.5 * (1.0+(oe_clamp_simvert.z/oe_clamp_simvert.w));\n"
-
-             // if the offset pushed the Z behind the eye, the projection mapping will
-             // result in a z>1. We need to bring these values back down to the 
-             // near clip plan (z=0). We need to check simRange too before doing this
-             // so we don't draw fragments that are legitimently beyond the far clip plane.
-        "    if ( sim_depth > 1.0 && oe_clamp_simvertrange < 0.0 ) { sim_depth = 0.0; } \n"
-        "    gl_FragDepth = max(0.0, sim_depth); \n"
-#endif
-
              // adjust the alpha component to "hide" geometry beyond the visible horizon.
         "    color.a *= oe_clamp_alphaFactor; \n"
         "}\n";

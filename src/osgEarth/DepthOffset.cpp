@@ -31,7 +31,7 @@
 #define LC "[DepthOffset] "
 
 // development testing; set to OE_NULL for production
-#define OE_TEST OE_WARN
+#define OE_TEST OE_NULL
 
 using namespace osgEarth;
 
@@ -154,7 +154,7 @@ _enabled ( true ),
 _minBias (      100.0f ),
 _maxBias (    10000.0f ),
 _minRange(     1000.0f ),
-_maxRange(  1000000.0f ),
+_maxRange( 10000000.0f ),
 _auto    ( true )
 {
     conf.getIfSet( "enabled",   _enabled );
@@ -301,7 +301,7 @@ DepthOffsetAdapter::recalculate()
             float maxLen = std::max(1.0f, sqrtf(v._segmentAnalyzer._maxLen2));
             _options.minRange() = sqrtf(maxLen) * 19.0f;
             _dirty = false;
-            OE_NOTICE << LC << "Recalcluated." << std::endl;
+            OE_TEST << LC << "Recalcluated." << std::endl;
         }
         updateUniforms();
     }

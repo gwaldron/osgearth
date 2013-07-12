@@ -22,6 +22,7 @@
 #include <osgEarth/DepthOffset>
 #include <osgEarth/OverlayDecorator>
 #include <osgEarth/MapNode>
+#include <osgEarth/VirtualProgram>
 
 #define LC "[ClampableNode] "
 
@@ -43,7 +44,6 @@ ClampableNode::ClampableNode( MapNode* mapNode, bool active ) :
 OverlayNode( mapNode, active, &getTechniqueGroup ),
 _updatePending( false )
 {
-    //_adapter.setGraph( 0L );
     _adapter.setGraph( this );
 
     if ( _adapter.isDirty() )

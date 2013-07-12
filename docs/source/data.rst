@@ -10,7 +10,7 @@ Help us add useful sources of Free data to this list.
 
     * MapQuest_ - MapQuest open aerial imagery and rasterized OpenStreetMap layers
     
-    * Bing Maps_ - Microsoft's worldwide imagery and map data ($)
+    * `Bing Maps`_ - Microsoft's worldwide imagery and map data ($)
     
     * `USGS National Map`_ - Elevation, orthoimagery, hydrography, geographic names, boundaries,
       transportation, structures, and land cover products for the US.

@@ -222,7 +222,7 @@ struct PrimitiveIntersectorFunctor
         osg::Vec3d in = v1*r1+v2*r2+v3*r3;
         if (!in.valid())
         {
-            OE_WARN << LC << "Picked up error in TriangleIntersect" << std::endl;;
+            //OE_WARN << LC << "Picked up error in TriangleIntersect" << std::endl;;
             return;
         }
 

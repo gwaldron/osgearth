@@ -10,6 +10,8 @@ Help us add useful sources of Free data to this list.
 
     * MapQuest_ - MapQuest open aerial imagery and rasterized OpenStreetMap layers
     
+    * Bing Maps_ - Microsoft's worldwide imagery and map data ($)
+    
     * `USGS National Map`_ - Elevation, orthoimagery, hydrography, geographic names, boundaries,
       transportation, structures, and land cover products for the US.
     
@@ -58,6 +60,7 @@ Help us add useful sources of Free data to this list.
 .. _+SRTM30+:                   ftp://topex.ucsd.edu/pub/srtm30_plus/
 .. _USGS National Map:          http://nationalmap.gov/viewer.html
 .. _Virtual Terrain Project:    http://vterrain.org/Imagery/WholeEarth/
+.. _Bing Maps:                  http://www.microsoft.com/maps/choose-your-bing-maps-API.aspx
 
 ----
 

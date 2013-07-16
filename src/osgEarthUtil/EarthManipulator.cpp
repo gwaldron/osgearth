@@ -206,7 +206,8 @@ _auto_vp_duration               ( false ),
 _min_vp_duration_s              ( 3.0 ),
 _max_vp_duration_s              ( 8.0 ),
 _camProjType                    ( PROJ_PERSPECTIVE ),
-_camFrustOffsets                ( 0, 0 )
+_camFrustOffsets                ( 0, 0 ),
+_disableCollisionAvoidance      ( false )
 {
     //NOP
 }
@@ -233,7 +234,8 @@ _min_vp_duration_s( rhs._min_vp_duration_s ),
 _max_vp_duration_s( rhs._max_vp_duration_s ),
 _camProjType( rhs._camProjType ),
 _camFrustOffsets( rhs._camFrustOffsets ),
-_breakTetherActions( rhs._breakTetherActions )
+_breakTetherActions( rhs._breakTetherActions ),
+_disableCollisionAvoidance( rhs._disableCollisionAvoidance)
 {
     //NOP
 }
@@ -592,11 +594,11 @@ EarthManipulator::established()
 
         // find a map node.
         MapNode* mapNode = MapNode::findMapNode( safeNode.get(), _findNodeTraversalMask );
-        if ( mapNode )
-        {
+        if ( mapNode && !_settings->getDisableCollisionAvoidance() )
+        {            
             _terrainCallback = new ManipTerrainCallback( this );
             mapNode->getTerrain()->addTerrainCallback( _terrainCallback );
-        }
+        }   
 
         // find a CSN node - if there is one, we want to attach the manip to that
         _csn = findRelativeNodeOfType<osg::CoordinateSystemNode>( safeNode.get(), _findNodeTraversalMask );

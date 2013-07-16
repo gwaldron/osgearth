@@ -484,6 +484,10 @@ namespace osgEarth { namespace Util
             void setCameraFrustumOffsets( const osg::Vec2s& offsets );
             const osg::Vec2s& getCameraFrustumOffsets() const { return _camFrustOffsets; }            
 
+            /** Whether or not to disable collision avoidance when new data pages in */
+            bool getDisableCollisionAvoidance() const { return _disableCollisionAvoidance; }
+            void setDisableCollisionAvoidance( bool disableCollisionAvoidance ) { _disableCollisionAvoidance = disableCollisionAvoidance; }
+
         private:
 
             friend class EarthManipulator;
@@ -522,7 +526,9 @@ namespace osgEarth { namespace Util
             double _min_vp_duration_s, _max_vp_duration_s;
 
             CameraProjection _camProjType;
-            osg::Vec2s _camFrustOffsets;			
+            osg::Vec2s _camFrustOffsets;	
+
+            bool _disableCollisionAvoidance;
         };
 
     public:

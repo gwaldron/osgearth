@@ -275,21 +275,11 @@ public:
     {
         //OGR is particular sometimes about the extension of files when it's reading them so it's good to have
         //the temp file have an appropriate extension
-        if ((mime.compare("text/xml") == 0) ||
-            (mime.compare("text/xml; subtype=gml/2.1.2") == 0) ||
-            (mime.compare("text/xml; subtype=gml/3.1.1") == 0)
-            )
+        if (isGML(mime))
         {
             return ".xml";
         }        
-        else if ((mime.compare("application/json") == 0) ||
-                 (mime.compare("json") == 0) ||            
-
-                 (mime.compare("application/x-javascript") == 0) ||
-                 (mime.compare("text/javascript") == 0) ||
-                 (mime.compare("text/x-javascript") == 0) ||
-                 (mime.compare("text/x-json") == 0)                 
-                )
+		else if (isJSON(mime))
         {
             return ".json";
         }        
@@ -299,20 +289,19 @@ public:
     bool isGML( const std::string& mime ) const
     {        
         return
-            startsWith(mime, "text/xml");            
+            startsWith(mime, "text/xml");
     }
 
 
     bool isJSON( const std::string& mime ) const
     {
         return
-            (mime.compare("application/json") == 0)         ||
-            (mime.compare("json") == 0)                     ||            
-
-            (mime.compare("application/x-javascript") == 0) ||
-            (mime.compare("text/javascript") == 0)          ||
-            (mime.compare("text/x-javascript") == 0)        ||
-            (mime.compare("text/x-json") == 0);
+            startsWith(mime, "application/json") ||
+            startsWith(mime, "json") ||            
+            startsWith(mime, "application/x-javascript") ||
+            startsWith(mime, "text/javascript") ||
+            startsWith(mime, "text/x-javascript") ||
+            startsWith(mime, "text/x-json");
     }
 
     std::string createURL(const Symbology::Query& query)

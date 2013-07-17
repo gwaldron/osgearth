@@ -579,9 +579,9 @@ public:
         this->setStateSet( stateSet );
 
         // set up a VP to do fading.
-        VirtualProgram* vp = new VirtualProgram();
+        VirtualProgram* vp = VirtualProgram::getOrCreate(stateSet);
         vp->setFunction( "oe_declutter_apply_fade", s_faderFS, ShaderComp::LOCATION_FRAGMENT_COLORING );
-        stateSet->setAttributeAndModes(vp, 1);
+        //stateSet->setAttributeAndModes(vp, 1);
     }
 
     void setSortingFunctor( DeclutterSortFunctor* f )

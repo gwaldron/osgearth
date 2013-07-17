@@ -603,71 +603,77 @@ Profile::addIntersectingTiles(const GeoExtent& key_ext, std::vector<TileKey>& ou
         return;
     }
 
-#if 0 // works for meracator; does NOT work for cube
+    int tileMinX, tileMaxX;
+    int tileMinY, tileMaxY;
+    int destLOD;
 
-    int precision = 5;
-    double eps = 0.001;
-
-    double keyWidth = round(key_ext.width(), precision);
-    int destLOD = 0;
-    double w, h;
-    getTileDimensions(0, w, h);
-    for(; (round(w,precision) - keyWidth) > eps; w*=0.5, h*=0.5, destLOD++ );
-
-    double destTileWidth, destTileHeight;
-    getTileDimensions( destLOD, destTileWidth, destTileHeight );
-    destTileWidth = round(destTileWidth, precision);
-    destTileHeight = round(destTileHeight, precision);
-
-    int tileMinX = quantize( ((key_ext.xMin() - _extent.xMin()) / destTileWidth), eps );
-    int tileMaxX = (int)((key_ext.xMax() - _extent.xMin()) / destTileWidth);
-
-    int tileMinY = quantize( ((_extent.yMax() - key_ext.yMax()) / destTileHeight), eps );
-    int tileMaxY = (int) ((_extent.yMax() - key_ext.yMin()) / destTileHeight);
-
-#else
-
-    double keyWidth = key_ext.width();
-    double keyHeight = key_ext.height();
-
-    // bail out if the key has a null extent. This might happen is the original key represents an
-    // area in one profile that is out of bounds in this profile.
-    if ( keyWidth <= 0.0 && keyHeight <= 0.0 )
-        return;
-
-    double keySpan = std::min( keyWidth, keyHeight );
-    double keyArea = keyWidth * keyHeight;
-    double keyAvg  = 0.5*(keyWidth+keyHeight);
-
-    int destLOD = 1;
-    double destTileWidth, destTileHeight;
-
-    int currLOD = 0;
-    destLOD = currLOD;
-    getTileDimensions(destLOD, destTileWidth, destTileHeight);
-
-    while( true )
+    // Special path for mercator (does NOT work for cube, e.g.)
+    if ( key_ext.getSRS()->isMercator() )
     {
-        currLOD++;
+        int precision = 5;
+        double eps = 0.001;
+
+        double keyWidth = round(key_ext.width(), precision);
+        destLOD = 0;
         double w, h;
-        getTileDimensions(currLOD, w, h);
-        
-        if ( w < keyAvg || h < keyAvg ) break;
-        destLOD = currLOD;
-        destTileWidth = w;
-        destTileHeight = h;
+        getTileDimensions(0, w, h);
+        for(; (round(w,precision) - keyWidth) > eps; w*=0.5, h*=0.5, destLOD++ );
+
+        double destTileWidth, destTileHeight;
+        getTileDimensions( destLOD, destTileWidth, destTileHeight );
+        destTileWidth = round(destTileWidth, precision);
+        destTileHeight = round(destTileHeight, precision);
+
+        tileMinX = quantize( ((key_ext.xMin() - _extent.xMin()) / destTileWidth), eps );
+        tileMaxX = (int)((key_ext.xMax() - _extent.xMin()) / destTileWidth);
+
+        tileMinY = quantize( ((_extent.yMax() - key_ext.yMax()) / destTileHeight), eps );
+        tileMaxY = (int) ((_extent.yMax() - key_ext.yMin()) / destTileHeight);
     }
 
+    else
+    {
+        double keyWidth = key_ext.width();
+        double keyHeight = key_ext.height();
 
-    //OE_DEBUG << std::fixed << "  Source Tile: " << key.getLevelOfDetail() << " (" << keyWidth << ", " << keyHeight << ")" << std::endl;
-    //OE_DEBUG << std::fixed << "  Dest Size: " << destLOD << " (" << destTileWidth << ", " << destTileHeight << ")" << std::endl;
+        // bail out if the key has a null extent. This might happen is the original key represents an
+        // area in one profile that is out of bounds in this profile.
+        if ( keyWidth <= 0.0 && keyHeight <= 0.0 )
+            return;
 
-    int tileMinX = (int)((key_ext.xMin() - _extent.xMin()) / destTileWidth);
-    int tileMaxX = (int)((key_ext.xMax() - _extent.xMin()) / destTileWidth);
+        double keySpan = std::min( keyWidth, keyHeight );
+        double keyArea = keyWidth * keyHeight;
+        double keyAvg  = 0.5*(keyWidth+keyHeight);
 
-    int tileMinY = (int)((_extent.yMax() - key_ext.yMax()) / destTileHeight); 
-    int tileMaxY = (int)((_extent.yMax() - key_ext.yMin()) / destTileHeight); 
-#endif
+        destLOD = 1;
+        double destTileWidth, destTileHeight;
+
+        int currLOD = 0;
+        destLOD = currLOD;
+        getTileDimensions(destLOD, destTileWidth, destTileHeight);
+
+        while( true )
+        {
+            currLOD++;
+            double w, h;
+            getTileDimensions(currLOD, w, h);
+            
+            if ( w < keyAvg || h < keyAvg ) break;
+            destLOD = currLOD;
+            destTileWidth = w;
+            destTileHeight = h;
+        }
+
+
+        //OE_DEBUG << std::fixed << "  Source Tile: " << key.getLevelOfDetail() << " (" << keyWidth << ", " << keyHeight << ")" << std::endl;
+        //OE_DEBUG << std::fixed << "  Dest Size: " << destLOD << " (" << destTileWidth << ", " << destTileHeight << ")" << std::endl;
+
+        tileMinX = (int)((key_ext.xMin() - _extent.xMin()) / destTileWidth);
+        tileMaxX = (int)((key_ext.xMax() - _extent.xMin()) / destTileWidth);
+
+        tileMinY = (int)((_extent.yMax() - key_ext.yMax()) / destTileHeight); 
+        tileMaxY = (int)((_extent.yMax() - key_ext.yMin()) / destTileHeight); 
+    }
 
     unsigned int numWide, numHigh;
     getNumTiles(destLOD, numWide, numHigh);
@@ -694,6 +700,12 @@ Profile::addIntersectingTiles(const GeoExtent& key_ext, std::vector<TileKey>& ou
             out_intersectingKeys.push_back( TileKey(destLOD, i, j, this) );
         }
     }
+
+    //if ( key_ext.getSRS()->isMercator() && tileMinX != tileMaxX )
+    //{
+    //    OE_WARN << LC << "MERC GIT got too many horizontal tiles (" << tileMaxX-tileMinX+1 << ", vert=(" <<
+    //        tileMaxY-tileMinY+1 << ")" << std::endl;
+    //}
 
     //OE_INFO << "    Found " << out_intersectingKeys.size() << " keys " << std::endl;
 }

@@ -87,8 +87,8 @@ UTMGraticule( 0L )
         text->alignment() = TextSymbol::ALIGN_CENTER_CENTER;
     }
 
-    _minDepthOffset = DepthOffsetUtils::createMinOffsetUniform();
-    _minDepthOffset->set( 11000.0f );
+//    _minDepthOffset = DepthOffsetUtils::createMinOffsetUniform();
+//    _minDepthOffset->set( 11000.0f );
 }
 
 MGRSGraticule::MGRSGraticule( MapNode* mapNode, const MGRSGraticuleOptions& options ) :
@@ -546,8 +546,8 @@ MGRSGraticule::buildSQIDTiles( const std::string& gzd )
     group->addChild( mt );
 
     // prep for depth offset:
-    DepthOffsetUtils::prepareGraph( group );
-    group->getOrCreateStateSet()->addUniform( _minDepthOffset.get() );
+    //DepthOffsetUtils::prepareGraph( group );
+    //group->getOrCreateStateSet()->addUniform( _minDepthOffset.get() );
 
     return group;
 }

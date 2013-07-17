@@ -138,7 +138,7 @@ namespace osgEarth
          * Creates and returns a copy of the input image after applying a
          * sharpening filter. Returns a new image, leaving the input image unaltered.
          */
-        static osg::Image* sharpenImage( const osg::Image* image );
+        static osg::Image* createSharpenedImage( const osg::Image* image );
 
         /**
          * Gets whether the input image's dimensions are powers of 2.
@@ -225,13 +225,17 @@ namespace osgEarth
          * to match that or neighboring non-alpha pixels. This facilitates multipass
          * blending or abutting tiles by overlapping them slightly. Specify "maxAlpha"
          * as the maximum value to consider when searching for fully-transparent pixels.
+         *
+         * Returns false if there is no reader or writer for the image's format.
          */
-        static void featherAlphaRegions(osg::Image* image, float maxAlpha =0.0f);
+        static bool featherAlphaRegions(osg::Image* image, float maxAlpha =0.0f);
 
         /**
          * Converts an image (in place) to premultiplied-alpha format.
+         * Returns False is the conversion fails, e.g., if there is no reader
+         * or writer for the image format.
          */
-        static void convertToPremultipliedAlpha(osg::Image* image);
+        static bool convertToPremultipliedAlpha(osg::Image* image);
 
         /**
          * Checks whether the given image is compressed

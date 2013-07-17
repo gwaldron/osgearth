@@ -117,7 +117,6 @@ DrapingTechnique::setUpCamera(OverlayDecorator::TechRTTParams& params)
     // set up the RTT camera:
     params._rttCamera = new osg::Camera();
     params._rttCamera->setClearColor( osg::Vec4f(0,0,0,0) );
-
     // this ref frame causes the RTT to inherit its viewpoint from above (in order to properly
     // process PagedLOD's etc. -- it doesn't affect the perspective of the RTT camera though)
     params._rttCamera->setReferenceFrame( osg::Camera::ABSOLUTE_RF_INHERIT_VIEWPOINT );
@@ -162,10 +161,10 @@ DrapingTechnique::setUpCamera(OverlayDecorator::TechRTTParams& params)
     // install a new default shader program that replaces anything from above.
     if ( _useShaders )
     {
-        VirtualProgram* vp = new VirtualProgram();
+        VirtualProgram* vp = VirtualProgram::getOrCreate(rttStateSet);
         vp->setName( "DrapingTechnique RTT" );
         vp->setInheritShaders( false );
-        rttStateSet->setAttributeAndModes( vp, osg::StateAttribute::ON );
+        //rttStateSet->setAttributeAndModes( vp, osg::StateAttribute::ON );
     }
     
     // active blending within the RTT camera's FBO
@@ -214,9 +213,9 @@ DrapingTechnique::setUpCamera(OverlayDecorator::TechRTTParams& params)
     {            
         // GPU path
 
-        VirtualProgram* vp = new VirtualProgram();
+        VirtualProgram* vp = VirtualProgram::getOrCreate(params._terrainStateSet);
         vp->setName( "DrapingTechnique terrain shaders");
-        params._terrainStateSet->setAttributeAndModes( vp, osg::StateAttribute::ON );
+        //params._terrainStateSet->setAttributeAndModes( vp, osg::StateAttribute::ON );
 
         // sampler for projected texture:
         params._terrainStateSet->getOrCreateUniform(

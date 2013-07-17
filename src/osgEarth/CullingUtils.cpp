@@ -19,6 +19,8 @@
 #include <osgEarth/CullingUtils>
 #include <osgEarth/LineFunctor>
 #include <osgEarth/VirtualProgram>
+#include <osgEarth/DPLineSegmentIntersector>
+#include <osgEarth/GeoData>
 #include <osg/ClusterCullingCallback>
 #include <osg/PrimitiveSet>
 #include <osg/Geode>
@@ -598,13 +600,27 @@ DisableSubgraphCulling::operator()(osg::Node* n, osg::NodeVisitor* v)
 
 //------------------------------------------------------------------------
 
-OcclusionCullingCallback::OcclusionCullingCallback(const osg::Vec3d& world, osg::Node* node):
-_world(world),
-_node( node ),
-_visible( true ),
-_maxRange(200000),
-_maxRange2(_maxRange * _maxRange)
+// The max frame time in ms
+double OcclusionCullingCallback::_maxFrameTime = 10.0;
+
+OcclusionCullingCallback::OcclusionCullingCallback(const osgEarth::SpatialReference *srs, const osg::Vec3d& world, osg::Node* node):
+_srs        ( srs ),
+_world      ( world ),
+_node       ( node ),
+_visible    ( true ),
+_maxAltitude( 200000 )
 {
+    //nop
+}
+
+double OcclusionCullingCallback::getMaxFrameTime()
+{
+    return _maxFrameTime;
+}
+
+void OcclusionCullingCallback::setMaxFrameTime( double ms )
+{
+    _maxFrameTime = ms;
 }
 
 const osg::Vec3d& OcclusionCullingCallback::getWorld() const
@@ -617,50 +633,91 @@ void OcclusionCullingCallback::setWorld( const osg::Vec3d& world)
     _world = world;
 }
 
-double OcclusionCullingCallback::getMaxRange() const
+double OcclusionCullingCallback::getMaxAltitude() const
 {
-    return _maxRange;
+    return _maxAltitude;
 }
 
-void OcclusionCullingCallback::setMaxRange( double maxRange)
+void OcclusionCullingCallback::setMaxAltitude( double maxAltitude )
 {
-    _maxRange = maxRange;
-    _maxRange2 = maxRange * maxRange;
+    _maxAltitude = maxAltitude;    
 }
 
 void OcclusionCullingCallback::operator()(osg::Node* node, osg::NodeVisitor* nv)
 {
     if (nv->getVisitorType() == osg::NodeVisitor::CULL_VISITOR)
-    {
-        osg::Vec3d eye, center, up;
+    {        
         osgUtil::CullVisitor* cv = Culling::asCullVisitor(nv);
 
-        cv->getCurrentCamera()->getViewMatrixAsLookAt(eye,center,up);
+        static int frameNumber = -1;
+        static double remainingTime = OcclusionCullingCallback::_maxFrameTime;
+        static int numCompleted = 0;
+        static int numSkipped = 0;
+
+        if (nv->getFrameStamp()->getFrameNumber() != frameNumber)
+        {
+            if (numCompleted > 0 || numSkipped > 0)
+            {
+                OE_DEBUG << "OcclusionCullingCallback frame=" << frameNumber << " completed=" << numCompleted << " skipped=" << numSkipped << std::endl;
+            }
+            frameNumber = nv->getFrameStamp()->getFrameNumber();
+            numCompleted = 0;
+            numSkipped = 0;
+            remainingTime = OcclusionCullingCallback::_maxFrameTime;
+        }
+
+        osg::Vec3d eye = cv->getViewPoint();        
 
         if (_prevEye != eye || _prevWorld != _world)
         {
-            double range = (eye-_world).length2();
-            //Only do the intersection if we are close enough for it to matter
-            if (range <= _maxRange2 && _node.valid())
+            if (remainingTime > 0.0)
             {
-                //Compute the intersection from the eye to the world point
-                osg::Vec3d start = eye;
-                osg::Vec3d end = _world;
-                osgUtil::LineSegmentIntersector* i = new osgUtil::LineSegmentIntersector( start, end );
-                i->setIntersectionLimit( osgUtil::Intersector::LIMIT_ONE );
-                osgUtil::IntersectionVisitor iv;
-                iv.setIntersector( i );
-                _node->accept( iv );
-                osgUtil::LineSegmentIntersector::Intersections& results = i->getIntersections();
-                _visible = results.empty();
+                double alt = 0.0;
+
+                if ( _srs && !_srs->isProjected() )
+                {
+                    osgEarth::GeoPoint mapPoint;
+                    mapPoint.fromWorld( _srs.get(), eye );
+                    alt = mapPoint.z();
+                }
+                else
+                {
+                    alt = eye.z();
+                }
+
+
+                //Only do the intersection if we are close enough for it to matter
+                if (alt <= _maxAltitude && _node.valid())
+                {
+                    //Compute the intersection from the eye to the world point
+                    osg::Timer_t startTick = osg::Timer::instance()->tick();
+                    osg::Vec3d start = eye;
+                    osg::Vec3d end = _world;
+                    DPLineSegmentIntersector* i = new DPLineSegmentIntersector( start, end );
+                    i->setIntersectionLimit( osgUtil::Intersector::LIMIT_ONE );
+                    osgUtil::IntersectionVisitor iv;
+                    iv.setIntersector( i );
+                    _node->accept( iv );
+                    osgUtil::LineSegmentIntersector::Intersections& results = i->getIntersections();
+                    _visible = results.empty();
+                    osg::Timer_t endTick = osg::Timer::instance()->tick();
+                    double elapsed = osg::Timer::instance()->delta_m( startTick, endTick );
+                    remainingTime -= elapsed;
+                }
+                else
+                {
+                    _visible = true;
+                }
+
+                numCompleted++;
+
+                _prevEye = eye;
+                _prevWorld = _world;
             }
             else
             {
-                _visible = true;
+                numSkipped++;
             }
-
-            _prevEye = eye;
-            _prevWorld = _world;
         }
 
         if (_visible)

@@ -27,6 +27,7 @@
 #include <osgEarthUtil/AutoClipPlaneHandler>
 #include <osgEarthUtil/Controls>
 #include <osgEarth/Utils>
+#include <osgEarth/VirtualProgram>
 
 #include <osg/ImageStream>
 #include <osgDB/FileNameUtils>
@@ -240,7 +241,7 @@ main(int argc, char** argv)
             ImageOverlay* overlay = new ImageOverlay(mapNode);
             overlay->setImage( image );
             overlay->setBounds(imageBounds[i]);
-
+            
             root->addChild( overlay );
 
 

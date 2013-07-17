@@ -18,6 +18,9 @@
 */
 #include "MPGeometry"
 
+#include <osg/Version>
+
+using namespace osg;
 using namespace osgEarth_engine_mp;
 using namespace osgEarth;
 
@@ -270,18 +273,36 @@ MPGeometry::drawImplementation(osg::RenderInfo& renderInfo) const
 
     arrayDispatchers.reset();
     arrayDispatchers.setUseVertexAttribAlias(state.getUseVertexAttributeAliasing());
-    arrayDispatchers.setUseGLBeginEndAdapter(false);
 
+
+    //Remove 
+#if OSG_VERSION_LESS_THAN(3,1,8)
+    arrayDispatchers.setUseGLBeginEndAdapter(false);
+#endif
+
+
+#if OSG_MIN_VERSION_REQUIRED(3,1,8)
+    arrayDispatchers.activateNormalArray(_normalArray.get());
+    arrayDispatchers.activateColorArray(_colorArray.get());
+    arrayDispatchers.activateSecondaryColorArray(_secondaryColorArray.get());
+    arrayDispatchers.activateFogCoordArray(_fogCoordArray.get());
+#else
     arrayDispatchers.activateNormalArray(_normalData.binding, _normalData.array.get(), _normalData.indices.get());
     arrayDispatchers.activateColorArray(_colorData.binding, _colorData.array.get(), _colorData.indices.get());
     arrayDispatchers.activateSecondaryColorArray(_secondaryColorData.binding, _secondaryColorData.array.get(), _secondaryColorData.indices.get());
     arrayDispatchers.activateFogCoordArray(_fogCoordData.binding, _fogCoordData.array.get(), _fogCoordData.indices.get());
+#endif
+    
 
     if (handleVertexAttributes)
     {
         for(unsigned int unit=0;unit<_vertexAttribList.size();++unit)
         {
+#if OSG_MIN_VERSION_REQUIRED(3,1,8)
+            arrayDispatchers.activateVertexAttribArray(unit, _vertexAttribList[unit].get());
+#else
             arrayDispatchers.activateVertexAttribArray(_vertexAttribList[unit].binding, unit, _vertexAttribList[unit].array.get(), _vertexAttribList[unit].indices.get());
+#endif             
         }
     }
 
@@ -289,7 +310,24 @@ MPGeometry::drawImplementation(osg::RenderInfo& renderInfo) const
     arrayDispatchers.dispatch(BIND_OVERALL,0);
     state.lazyDisablingOfVertexAttributes();
 
+
     // set up arrays
+#if OSG_MIN_VERSION_REQUIRED( 3, 1, 8 )
+    if( _vertexArray.valid() )
+        state.setVertexPointer(_vertexArray.get());
+
+    if (_normalArray.valid() && _normalArray->getBinding()==osg::Array::BIND_PER_VERTEX)
+        state.setNormalPointer(_normalArray.get());
+
+    if (_colorArray.valid() && _colorArray->getBinding()==osg::Array::BIND_PER_VERTEX)
+        state.setColorPointer(_colorArray.get());
+
+    if (_secondaryColorArray.valid() && _secondaryColorArray->getBinding()==osg::Array::BIND_PER_VERTEX)
+        state.setSecondaryColorPointer(_secondaryColorArray.get());
+
+    if (_fogCoordArray.valid() && _fogCoordArray->getBinding()==osg::Array::BIND_PER_VERTEX)
+        state.setFogCoordPointer(_fogCoordArray.get());
+#else
     if( _vertexData.array.valid() )
         state.setVertexPointer(_vertexData.array.get());
 
@@ -304,23 +342,50 @@ MPGeometry::drawImplementation(osg::RenderInfo& renderInfo) const
 
     if (_fogCoordData.binding==BIND_PER_VERTEX && _fogCoordData.array.valid())
         state.setFogCoordPointer(_fogCoordData.array.get());
-
+#endif    
+        
     for(unsigned int unit=0;unit<_texCoordList.size();++unit)
     {
+#if OSG_MIN_VERSION_REQUIRED( 3, 1, 8)
+        const Array* array = _texCoordList[unit].get();
+        if (array)
+        {
+            state.setTexCoordPointer(unit,array);
+        }
+#else
         const osg::Array* array = _texCoordList[unit].array.get();
         if (array) state.setTexCoordPointer(unit,array);
+#endif        
     }
 
     if( handleVertexAttributes )
     {
         for(unsigned int index = 0; index < _vertexAttribList.size(); ++index )
         {
+#if OSG_MIN_VERSION_REQUIRED( 3, 1, 8)
+            const Array* array = _vertexAttribList[index].get();
+            if (array && array->getBinding()==osg::Array::BIND_PER_VERTEX)
+            {
+                if (array->getPreserveDataType())
+                {
+                    GLenum dataType = array->getDataType();
+                    if (dataType==GL_FLOAT) state.setVertexAttribPointer( index, array );
+                    else if (dataType==GL_DOUBLE) state.setVertexAttribLPointer( index, array );
+                    else state.setVertexAttribIPointer( index, array );
+                }
+                else
+                {
+                    state.setVertexAttribPointer( index, array );
+                }
+            }
+#else            
             const osg::Array* array = _vertexAttribList[index].array.get();
             const AttributeBinding ab = _vertexAttribList[index].binding;
             if( ab == BIND_PER_VERTEX && array )
             {
                 state.setVertexAttribPointer( index, array, _vertexAttribList[index].normalize );
             }
+#endif
         }
     }
 

@@ -69,7 +69,7 @@ TileGroup::traverse(osg::NodeVisitor& nv)
         float range = 0.0f;
         if ( nv.getVisitorType() == nv.CULL_VISITOR )
         {
-            range = nv.getDistanceFromEyePoint( getBound().center(), true );
+            range = nv.getDistanceToViewPoint( getBound().center(), true );
         }
 
         // if all four subtiles have reported that they are upsampling, 

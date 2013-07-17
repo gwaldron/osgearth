@@ -26,6 +26,7 @@
 #include <osgEarth/ImageLayer>
 #include <osgEarth/TileKey>
 #include <osgEarth/Locators>
+#include <osgEarth/HeightFieldUtils>
 #include <osgTerrain/Locator>
 #include <osgTerrain/Layer>
 #include <osg/Image>
@@ -78,19 +79,21 @@ namespace osgEarth_engine_mp
             // get a height value using a normalized coord and a locator.
             bool getHeight( const osg::Vec3d& ndc, const GeoLocator* ndcLocator, float& output, ElevationInterpolation interp ) const;
 
-            // get a normal vector.
+            // get a normal vector (in woord space)
             bool getNormal( const osg::Vec3d& ndc, const GeoLocator* ndcLocator, osg::Vec3& output, ElevationInterpolation interp ) const;
             
             osg::HeightField* getNeighbor(int xoffset, int yoffset) const
             {
-                int index = getNeighborIndex(xoffset, yoffset);
-                return _neighbors[index];
+                //int index = getNeighborIndex(xoffset, yoffset);
+                //return _neighbors[index];
+                return _neighbors.getNeighbor(xoffset, yoffset);
             }
 
             void setNeighbor(int xoffset, int yoffset, osg::HeightField* hf )
             {
-                int index = getNeighborIndex(xoffset, yoffset);
-                _neighbors[index] = hf;
+                //int index = getNeighborIndex(xoffset, yoffset);
+                //_neighbors[index] = hf;
+                _neighbors.setNeighbor(xoffset, yoffset, hf);
             }
 
             void setParent(osg::HeightField* hf)
@@ -104,18 +107,20 @@ namespace osgEarth_engine_mp
             }
 
         private:
-            static int getNeighborIndex(int xoffset, int yoffset)
-            {
-                int index = 3*(yoffset+1)+(xoffset+1);
-                if (index > 4) index--;
-                return index;
-            }
+            //static int getNeighborIndex(int xoffset, int yoffset)
+            //{
+            //    int index = 3*(yoffset+1)+(xoffset+1);
+            //    if (index > 4) index--;
+            //    return index;
+            //}
             //osg::ref_ptr<osgTerrain::HeightFieldLayer> _hfLayer;
             osg::ref_ptr<osg::HeightField> _hf;
             osg::ref_ptr<GeoLocator>       _locator;
             bool                           _fallbackData;
-            osg::ref_ptr<osg::HeightField> _neighbors[8];
+            //osg::ref_ptr<osg::HeightField> _neighbors[8];
             osg::ref_ptr<osg::HeightField> _parent;
+
+            HeightFieldNeighborhood _neighbors;
         };
 
 

@@ -36,7 +36,7 @@ _hf          ( hf ),
 _locator     ( locator ),
 _fallbackData( fallbackData )
 {
-    //nop
+    _neighbors._center = hf;
 }
 
 TileModel::ElevationData::ElevationData(const TileModel::ElevationData& rhs) :
@@ -45,8 +45,10 @@ _locator     ( rhs._locator.get() ),
 _fallbackData( rhs._fallbackData ),
 _parent      ( rhs._parent )
 {
+    _neighbors._center = rhs._neighbors._center.get();
     for(unsigned i=0; i<8; ++i)
-        _neighbors[i] = rhs._neighbors[i];
+        _neighbors._neighbors[i] = rhs._neighbors._neighbors[i];
+        //_neighbors[i] = rhs._neighbors[i];
 }
 
 bool
@@ -76,10 +78,6 @@ TileModel::ElevationData::getNormal(const osg::Vec3d&      ndc,
         return false;
     }
 
-    //osg::Vec3d hf_ndc;
-    //GeoLocator::convertLocalCoordBetween( *ndcLocator, ndc, *_locator.get(), hf_ndc );
-    //return HeightFieldUtils::getNormalAtNormalizedLocation( _hf.get(), hf_ndc.x(), hf_ndc.y(), output, interp);
-
     double xcells = (double)(_hf->getNumColumns()-1);
     double ycells = (double)(_hf->getNumRows()-1);
     double xres = 1.0/xcells;
@@ -88,85 +86,26 @@ TileModel::ElevationData::getNormal(const osg::Vec3d&      ndc,
     osg::Vec3d hf_ndc;
     GeoLocator::convertLocalCoordBetween( *ndcLocator, ndc, *_locator.get(), hf_ndc );
 
-    osg::Vec3d west ( osg::clampAbove(hf_ndc.x()-xres, 0.0), hf_ndc.y(), hf_ndc.z() );
-    osg::Vec3d east ( osg::clampBelow(hf_ndc.x()+xres, 1.0), hf_ndc.y(), hf_ndc.z() );
-    osg::Vec3d south( hf_ndc.x(), osg::clampAbove(hf_ndc.y()-yres, 0.0), hf_ndc.z() );
-    osg::Vec3d north( hf_ndc.x(), osg::clampBelow(hf_ndc.y()+yres, 1.0), hf_ndc.z() );
+    osg::Vec3d west ( hf_ndc.x()-xres, hf_ndc.y(), 0.0 );
+    osg::Vec3d east ( hf_ndc.x()+xres, hf_ndc.y(), 0.0 );
+    osg::Vec3d south( hf_ndc.x(), hf_ndc.y()-yres, 0.0 );
+    osg::Vec3d north( hf_ndc.x(), hf_ndc.y()+yres, 0.0 );
 
-    //osg::Vec3d hf_ndc_west, hf_ndc_east, hf_ndc_south, hf_ndc_north;
-    //GeoLocator::convertLocalCoordBetween( *ndcLocator, west, *_locator.get(), hf_ndc_west );
-    //GeoLocator::convertLocalCoordBetween( *ndcLocator, east, *_locator.get(), hf_ndc_east );
-    //GeoLocator::convertLocalCoordBetween( *ndcLocator, south, *_locator.get(), hf_ndc_south );
-    //GeoLocator::convertLocalCoordBetween( *ndcLocator, north, *_locator.get(), hf_ndc_north );
-
-    west.z()  = HeightFieldUtils::getHeightAtNormalizedLocation(_hf.get(), west.x(),  west.y(),  interp);
-    east.z()  = HeightFieldUtils::getHeightAtNormalizedLocation(_hf.get(), east.x(),  east.y(),  interp);
-    south.z() = HeightFieldUtils::getHeightAtNormalizedLocation(_hf.get(), south.x(), south.y(), interp);
-    north.z() = HeightFieldUtils::getHeightAtNormalizedLocation(_hf.get(), north.x(), north.y(), interp);
+    west.z()  = HeightFieldUtils::getHeightAtNormalizedLocation(_neighbors, west.x(),  west.y(),  interp);
+    east.z()  = HeightFieldUtils::getHeightAtNormalizedLocation(_neighbors, east.x(),  east.y(),  interp);
+    south.z() = HeightFieldUtils::getHeightAtNormalizedLocation(_neighbors, south.x(), south.y(), interp);
+    north.z() = HeightFieldUtils::getHeightAtNormalizedLocation(_neighbors, north.x(), north.y(), interp);
 
     osg::Vec3d westWorld, eastWorld, southWorld, northWorld;
-
     _locator->unitToModel(west,  westWorld);
     _locator->unitToModel(east,  eastWorld);
     _locator->unitToModel(south, southWorld);
     _locator->unitToModel(north, northWorld);
 
-    double dx = 0.5*(eastWorld-westWorld).length();
-    double dy = 0.5*(southWorld-northWorld).length();
-    west.x() = -dx;
-    west.y() =  0.0;
-    east.x() =  dx;
-    east.y() =  0.0;
-    south.y() = -dy;
-    south.x() = 0.0;
-    north.y() =  dy;
-    north.x() = 0.0;
-
-    output = (east-west) ^ (north-south);
-
-#if 0
-    double xcells = (double)(_hf->getNumColumns()-1);
-    double ycells = (double)(_hf->getNumRows()-1);
-
-    double nx = hf_ndc.x();
-    double ny = hf_ndc.y();
-
-    double ndx = 1.0/xcells;
-    double ndy = 1.0/ycells;
-
-    double xmin = osg::clampAbove( nx-ndx, 0.0 );
-    double xmax = osg::clampBelow( nx+ndx, 1.0 );
-    double ymin = osg::clampAbove( ny-ndy, 0.0 );
-    double ymax = osg::clampBelow( ny+ndy, 1.0 );
-
-    osg::Vec3d west (xmin, ny, HeightFieldUtils::getHeightAtNormalizedLocation(_hf.get(), xmin, ny, interp));
-    osg::Vec3d east (xmax, ny, HeightFieldUtils::getHeightAtNormalizedLocation(_hf.get(), xmax, ny, interp));
-    osg::Vec3d south(nx, ymin, HeightFieldUtils::getHeightAtNormalizedLocation(_hf.get(), nx, ymin, interp));
-    osg::Vec3d north(nx, ymax, HeightFieldUtils::getHeightAtNormalizedLocation(_hf.get(), nx, ymax, interp));
-
-    osg::Vec3d westWorld, eastWorld, southWorld, northWorld;
-    _locator->unitToModel(west, westWorld);
-    _locator->unitToModel(east, eastWorld);
-    _locator->unitToModel(south, southWorld);
-    _locator->unitToModel(north, northWorld);
-
-    double dx = 0.5*(eastWorld-westWorld).length();
-    double dy = 0.5*(southWorld-northWorld).length();
-    west.x() = -dx;
-    west.y() =  0.0;
-    east.x() =  dx;
-    east.y() =  0.0;
-    south.y() = -dy;
-    south.x() = 0.0;
-    north.y() =  dy;
-    north.x() = 0.0;
-
-    output = (west-east) ^ (north-south);
-#endif
-
+    output = (eastWorld-westWorld) ^ (northWorld-southWorld);
     output.normalize();
-    return true;
 
+    return true;
 }
 
 //------------------------------------------------------------------
@@ -179,7 +118,6 @@ TileModel::ColorData::ColorData(const osgEarth::ImageLayer* layer,
                                 bool                        fallbackData) :
 _layer       ( layer ),
 _order       ( order ),
-//_image       ( image ),
 _locator     ( locator ),
 _tileKey     ( tileKey ),
 _fallbackData( fallbackData )
@@ -199,7 +137,6 @@ _fallbackData( fallbackData )
 TileModel::ColorData::ColorData(const TileModel::ColorData& rhs) :
 _layer       ( rhs._layer.get() ),
 _locator     ( rhs._locator.get() ),
-//_image       ( rhs._image.get() ),
 _texture     ( rhs._texture.get() ),
 _tileKey     ( rhs._tileKey ),
 _fallbackData( rhs._fallbackData ),
@@ -252,18 +189,6 @@ TileModel::setParentTileModel(const TileModel* parent)
 {
     _parentModel = parent;
 }
-//    osg::Matrixf scaleBias;
-//    scaleBias(0,0) = 0.5f;
-//    scaleBias(1,1) = 0.0f;
-//    scaleBias(3,0) = (float)(    _key.getTileX() & 0x1) * 0.5f;
-//    scaleBias(3,1) = (float)(1 - _key.getTileY() & 0x1) * 0.5f;
-//
-//    for(ColorDataByUID::const_iterator i = _colorData.begin(); i != _colorData.end(); ++i )
-//    {
-//        ColorData& c = i->second;
-//        c._scaleBiasMatrix = scaleBias;
-//    }
-//}
 
 
 void

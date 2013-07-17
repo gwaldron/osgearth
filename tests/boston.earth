@@ -8,7 +8,7 @@ to extruded buildings.
 <map name="Boston Demo" type="geocentric" version="2">
     
     <options>
-        <terrain sample_ratio="0.25" lighting="true"/>
+        <terrain lighting="true"/>
     </options>
     
     

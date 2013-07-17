@@ -22,6 +22,8 @@
 #include <osgEarth/OverlayDecorator>
 #include <osgEarth/MapNode>
 #include <osgEarth/NodeUtils>
+#include <osgEarth/PrimitiveIntersector>
+#include <osgEarth/DPLineSegmentIntersector>
 #include <osgUtil/IntersectionVisitor>
 
 #define LC "[OverlayNode] "
@@ -296,6 +298,76 @@ OverlayNode::traverse( osg::NodeVisitor& nv )
             
             // traverse children directly, regardles of active status
             osg::Group::traverse( nv );
+        }
+
+        else if (dynamic_cast<osgUtil::IntersectionVisitor*>(&nv))
+        {
+            /*
+               In order to properly intersect with overlay geometries, attempt to find the point on the terrain where the pick occurred
+               cast a second intersector vertically at that point.
+
+               Currently this is only imlpemented for our custom PrimitiveIntersector.
+            */
+            osgUtil::IntersectionVisitor* iv = dynamic_cast<osgUtil::IntersectionVisitor*>(&nv);
+            osgEarth::PrimitiveIntersector* pi = dynamic_cast<osgEarth::PrimitiveIntersector *>(iv->getIntersector());
+
+            if (pi && !pi->getOverlayIgnore() && getMapNode())
+            {
+                osg::ref_ptr<MapNode> mapNode = getMapNode();
+ 
+                osg::NodePath path = iv->getNodePath();
+                osg::NodePath prunedNodePath( path.begin(), path.end()-1 );
+                osg::Matrix modelToWorld = osg::computeLocalToWorld(prunedNodePath);
+                osg::Vec3d worldStart = pi->getStart() * modelToWorld;
+                osg::Vec3d worldEnd = pi->getEnd() * modelToWorld;
+
+                osg::ref_ptr<DPLineSegmentIntersector> lsi = new DPLineSegmentIntersector(worldStart, worldEnd);
+                osgUtil::IntersectionVisitor ivTerrain(lsi.get());
+                _mapNode->getTerrainEngine()->accept(ivTerrain);
+
+                if (lsi->containsIntersections())
+                {
+                  osg::Vec3d worldIntersect = lsi->getFirstIntersection().getWorldIntersectPoint();
+                  
+                  GeoPoint mapIntersect;
+                  mapIntersect.fromWorld(mapNode->getMapSRS(), worldIntersect);
+
+                  osg::Vec3d newMapStart(mapIntersect.x(), mapIntersect.y(), 25000.0);
+                  osg::Vec3d newMapEnd(mapIntersect.x(), mapIntersect.y(), -25000.0);
+
+                  osg::Vec3d newWorldStart;
+                  mapNode->getMapSRS()->transformToWorld(newMapStart, newWorldStart);
+
+                  osg::Vec3d newWorldEnd;
+                  mapNode->getMapSRS()->transformToWorld(newMapEnd, newWorldEnd);
+
+                  osg::Matrix worldToModel;
+                  worldToModel.invert(modelToWorld);
+
+                  osg::Vec3d newModelStart = newWorldStart * worldToModel;
+                  osg::Vec3d newModelEnd = newWorldEnd * worldToModel;
+
+                  osg::ref_ptr<osgEarth::PrimitiveIntersector> pi2 = new osgEarth::PrimitiveIntersector(osgUtil::Intersector::MODEL, newModelStart, newModelEnd, pi->getThickness(), true);
+                  osgUtil::IntersectionVisitor iv2(pi2);
+                  iv2.setTraversalMask(iv->getTraversalMask());
+                  path[0]->accept(iv2);
+
+                  if (pi2->containsIntersections())
+                  {
+                    // Insert newlly found intersections into the original intersector.
+                    for (PrimitiveIntersector::Intersections::iterator it = pi2->getIntersections().begin(); it != pi2->getIntersections().end(); ++it)
+                      pi->insertIntersection(*it);
+                  }
+                }
+                else
+                {
+                  //OE_WARN << LC << "No hits on terrain!" << std::endl;
+                }
+            }
+            else
+            {
+              osg::Group::traverse( nv );
+            }
         }
 
         // handle other visitor types (like intersections, etc) by simply

@@ -52,6 +52,8 @@ RenderSymbol::mergeConfig( const Config& conf )
 void
 RenderSymbol::parseSLD(const Config& c, Style& style)
 {
+    DepthOffsetOptions defaults;
+
     if ( match(c.key(), "render-depth-test") ) {
         style.getOrCreate<RenderSymbol>()->depthTest() = as<bool>(c.value(), true);
     }
@@ -59,18 +61,22 @@ RenderSymbol::parseSLD(const Config& c, Style& style)
         style.getOrCreate<RenderSymbol>()->lighting() = as<bool>(c.value(), false);
     }
     else if ( match(c.key(), "render-depth-offset") ) {
-        style.getOrCreate<RenderSymbol>()->depthOffset()->enabled() = as<bool>(c.value(), false);
+        style.getOrCreate<RenderSymbol>()->depthOffset()->enabled() = as<bool>(c.value(), *defaults.enabled() );
     }
     else if ( match(c.key(), "render-depth-offset-min-bias") ) {
-        style.getOrCreate<RenderSymbol>()->depthOffset()->minBias() = as<float>(c.value(), 100.0f);
+        style.getOrCreate<RenderSymbol>()->depthOffset()->minBias() = as<float>(c.value(), *defaults.minBias() );
+        style.getOrCreate<RenderSymbol>()->depthOffset()->automatic() = false;
     }
     else if ( match(c.key(), "render-depth-offset-max-bias") ) {
-        style.getOrCreate<RenderSymbol>()->depthOffset()->maxBias() = as<float>(c.value(), 10000.0f);
+        style.getOrCreate<RenderSymbol>()->depthOffset()->maxBias() = as<float>(c.value(), *defaults.maxBias() );
     }
     else if ( match(c.key(), "render-depth-offset-min-range") ) {
-        style.getOrCreate<RenderSymbol>()->depthOffset()->minRange() = as<float>(c.value(), 1000.0f);
+        style.getOrCreate<RenderSymbol>()->depthOffset()->minRange() = as<float>(c.value(), *defaults.minRange() );
     }
     else if ( match(c.key(), "render-depth-offset-max-range") ) {
-        style.getOrCreate<RenderSymbol>()->depthOffset()->maxRange() = as<float>(c.value(), 10000000.0f);
+        style.getOrCreate<RenderSymbol>()->depthOffset()->maxRange() = as<float>(c.value(), *defaults.maxRange() );
+    }
+    else if ( match(c.key(), "render-depth-offset-auto") ) {
+        style.getOrCreate<RenderSymbol>()->depthOffset()->automatic() = as<bool>(c.value(), *defaults.automatic() );
     }
 }

@@ -185,10 +185,10 @@ main(int argc, char** argv)
         mainView->setSceneData( node );
 
         osg::Group* group = new osg::Group();
-        group->addChild( MapNode::findMapNode(node) );
+        group->addChild( MapNode::get(node) );
         overlayView->setSceneData( group );
 
-        setupOverlayView( overlayView, group, MapNode::findMapNode(node) );
+        setupOverlayView( overlayView, group, MapNode::get(node) );
 
         return viewer.run();
     }

@@ -54,8 +54,6 @@ Picker::pick( float x, float y, Hits& results ) const
 
     osg::Matrix windowMatrix;
 
-    osgUtil::Intersector::CoordinateFrame cf;
-
     if ( _root.valid() )
     {
         osg::Matrix modelMatrix;
@@ -83,11 +81,9 @@ Picker::pick( float x, float y, Hits& results ) const
 
         osg::Vec3d bufferLocal(local_x + buffer_x, local_y + buffer_y, 0.0);
         osg::Vec3d bufferModel = bufferLocal * modelInverse;
-        double buffer = (bufferModel - startModel).length();
+        double buffer = osg::maximum((bufferModel - startModel).length(), 4.0);  //TODO: Setting a minimum of 4.0 may need revisited
 
-        picker = new osgEarth::PrimitiveIntersector(osgUtil::Intersector::MODEL, startModel.x(), startModel.y(), buffer);
-        picker->setStart(startModel);
-        picker->setEnd(endModel);
+        picker = new osgEarth::PrimitiveIntersector(osgUtil::Intersector::MODEL, startModel, endModel, buffer);
     }
     else
     {

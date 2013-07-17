@@ -274,7 +274,7 @@ LocalizedNode::applyAltitudePolicy(osg::Node* node, const Style& style)
         const RenderSymbol* render = style.get<RenderSymbol>();
         if ( render && render->depthOffset().isSet() )
         {
-            clampable->depthOffset() = *render->depthOffset();
+            clampable->setDepthOffsetOptions( *render->depthOffset() );
         }
     }
 

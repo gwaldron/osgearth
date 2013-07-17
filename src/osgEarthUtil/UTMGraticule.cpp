@@ -244,7 +244,7 @@ UTMGraticule::rebuild()
             _root->addChild( tile );
     }
 
-    DepthOffsetUtils::prepareGraph( _root );
+    //DepthOffsetUtils::prepareGraph( _root );
 }
 
 

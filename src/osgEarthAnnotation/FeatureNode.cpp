@@ -131,7 +131,7 @@ FeatureNode::init()
             const RenderSymbol* render = _feature->style()->get<RenderSymbol>();
             if ( render && render->depthOffset().isSet() )
             {
-                clampable->depthOffset() = *render->depthOffset();
+                clampable->setDepthOffsetOptions( *render->depthOffset() );
             }
         }
 

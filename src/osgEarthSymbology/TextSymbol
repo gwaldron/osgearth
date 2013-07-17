@@ -126,6 +126,14 @@ namespace osgEarth { namespace Symbology
         optional<bool>& declutter() { return _declutter; }
         const optional<bool>& declutter() const { return _declutter; }
 
+        /** Whether to enable occlusion culling on the text */
+        optional<bool>& occlusionCull() { return _occlusionCull; }
+        const optional<bool>& occlusionCull() const { return _occlusionCull; }
+
+        /** The viewer altitude at which to start occlusion culling the text */
+        optional<double>& occlusionCullAltitude() { return _occlusionCullAltitude; }
+        const optional<double>& occlusionCullAltitude() const { return _occlusionCullAltitude; }
+
         /** Label generation provider to use */
         optional<std::string>& provider() { return _provider; }
         const optional<std::string>& provider() const { return _provider; }
@@ -152,8 +160,10 @@ namespace osgEarth { namespace Symbology
         optional<std::string>       _provider;
         optional<Encoding>          _encoding;
         optional<Alignment>         _alignment;
-        optional<Layout>         _layout;
+        optional<Layout>            _layout;
         optional<bool>              _declutter;
+        optional<bool>              _occlusionCull;
+        optional<double>            _occlusionCullAltitude;
     };
 
 } } // namespace osgEarth::Symbology

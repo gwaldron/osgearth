@@ -42,13 +42,7 @@
 #include <osgDB/Options>
 #endif
 #include <osgDB/ReadFile>
-
-#include <OpenThreads/Mutex>
-
 #include <string>
-
-
-#define TILESOURCE_CONFIG "tileSourceConfig"
 
 
 namespace osgEarth
@@ -62,29 +56,49 @@ namespace osgEarth
     {
     public:
 
+        /** Size (in each dimension) of tiles to generate. */
         optional<int>& tileSize() { return _tileSize; }
         const optional<int>& tileSize() const { return _tileSize; }
 
+        /** For heightfields, treat this value as a "no data" marker. */
         optional<float>& noDataValue() { return _noDataValue; }
         const optional<float>& noDataValue() const { return _noDataValue; }
 
-        optional<float>& noDataMinValue() { return _noDataMinValue; }
-        const optional<float>& noDataMinValue() const { return _noDataMinValue; }
+        /** For heightfields, treat everything below this value as a "no data" marker. */
+        optional<float>& minValidValue() { return _minValidValue; }
+        const optional<float>& minValidValue() const { return _minValidValue; }
 
-        optional<float>& noDataMaxValue() { return _noDataMaxValue; }
-        const optional<float>& noDataMaxValue() const { return _noDataMaxValue; }
+        /** For heightfields, treat everything above this value as a "no data" marker. */
+        optional<float>& maxValidValue() { return _maxValidValue; }
+        const optional<float>& maxValidValue() const { return _maxValidValue; }
 
+        /** File in which to store a tile blacklist. */
         optional<std::string>& blacklistFilename() { return _blacklistFilename; }
         const optional<std::string>& blacklistFilename() const { return _blacklistFilename; }
 
+        /** Define a profile for this source, overriding the one reported by the source. */
         optional<ProfileOptions>& profile() { return _profileOptions; }
         const optional<ProfileOptions>& profile() const { return _profileOptions; }
 
+        /** Size of the in-memory cache (in entries; default=16) */
         optional<int>& L2CacheSize() { return _L2CacheSize; }
         const optional<int>& L2CacheSize() const { return _L2CacheSize; }
 
+        /** Whether to use bilinear sampling when reprojecting data from this source
+         *  (default = true) */
         optional<bool>& bilinearReprojection() { return _bilinearReprojection; }
         const optional<bool>& bilinearReprojection() const { return _bilinearReprojection; }
+
+    public:
+        /** For backwards-compatibility; use minValidValue() instead 
+         *  @deprecated */
+        optional<float>& noDataMinValue() { return _minValidValue; }
+        const optional<float>& noDataMinValue() const { return _minValidValue; }
+
+        /** For backwards-compatibility; use maxValidValue() instead 
+         *  @deprecated */
+        optional<float>& noDataMaxValue() { return _maxValidValue; }
+        const optional<float>& noDataMaxValue() const { return _maxValidValue; }
 
     public:
         TileSourceOptions( const ConfigOptions& options =ConfigOptions() );
@@ -102,14 +116,13 @@ namespace osgEarth
         void fromConfig( const Config& conf );
 
         optional<int>            _tileSize;
-        optional<float>          _noDataValue, _noDataMinValue, _noDataMaxValue;
+        optional<float>          _noDataValue, _minValidValue, _maxValidValue;
         optional<ProfileOptions> _profileOptions;
         optional<std::string>    _blacklistFilename;
         optional<int>            _L2CacheSize;
         optional<bool>           _bilinearReprojection;
     };
 
-    typedef std::vector<TileSourceOptions> TileSourceOptionsVector;
 
     /**
      * A collection of tiles that should be considered blacklisted

@@ -79,6 +79,10 @@ namespace osgEarth
         optional<float>& maxRange() { return _maxRange; }
         const optional<float>& maxRange() const { return _maxRange; }
 
+        /** automatic calculation of the minRange based on geometry analysis */
+        optional<bool>& automatic() { return _auto; }
+        const optional<bool>& automatic() const { return _auto; }
+
     public:
         Config getConfig() const;
 
@@ -88,29 +92,55 @@ namespace osgEarth
         optional<float> _maxBias;
         optional<float> _minRange;
         optional<float> _maxRange;
+        optional<bool>  _auto;
     };
 
 
     /**
-     * Controller that affects a stateset with depth offset settings.
-     * It does NOT install any shaders.
+     * Interface for adding depth offset methods to anothe class without
+     * disturbing the class hierarchy. Use this in conjuction with the
+     * Adapter.
      */
-    class OSGEARTH_EXPORT DepthOffsetOptionsAdapter
+    class DepthOffsetInterface
     {
     public:
-        DepthOffsetOptionsAdapter(osg::StateSet* stateSet);
-
-        void setOptions(const DepthOffsetOptions& options);
-        const DepthOffsetOptions& getOptions() const { return _options; }
-
-    private:
-        osg::ref_ptr<osg::StateSet> _stateSet;
-        osg::ref_ptr<osg::Uniform>  _biasUniform;
-        osg::ref_ptr<osg::Uniform>  _rangeUniform;
-        DepthOffsetOptions          _options;
+        virtual void setDepthOffsetOptions( const DepthOffsetOptions& options ) =0;
+        virtual const DepthOffsetOptions& getDepthOffsetOptions() const =0;
     };
 
 
+    /**
+     * Adapter that affects depth offset functionality on a graph.
+     */
+    class OSGEARTH_EXPORT DepthOffsetAdapter : public DepthOffsetInterface
+    {
+    public:
+        DepthOffsetAdapter();
+        DepthOffsetAdapter(osg::Node* graph);
+
+        void setGraph(osg::Node* graph );
+        void recalculate();
+
+        bool isDirty() const { return _dirty; }
+
+    public: // DepthOffsetInterface
+
+        void setDepthOffsetOptions( const DepthOffsetOptions& options );
+        const DepthOffsetOptions& getDepthOffsetOptions() const { return _options; }
+
+    private:
+        void init();
+        void updateUniforms();
+
+        bool                         _dirty;
+        osg::observer_ptr<osg::Node> _graph;
+        osg::ref_ptr<osg::Uniform>   _biasUniform;
+        osg::ref_ptr<osg::Uniform>   _rangeUniform;
+        DepthOffsetOptions           _options;
+    };
+
+
+#if 0
     /**
      * Utilities to manage depth testing for feature data. Handy especially
      * for terrain-conforming lines.
@@ -175,11 +205,12 @@ namespace osgEarth
         static std::string createFragmentFunction(
             const std::string& funcName ="osgearth_depth_adjustment_fragment" );
     };
+#endif
 
     /**
      * Group that applies the depth offset technique to its children.
      */
-    class OSGEARTH_EXPORT DepthOffsetGroup : public osg::Group
+    class OSGEARTH_EXPORT DepthOffsetGroup : public osg::Group, public DepthOffsetInterface
     {
     public:
         /**
@@ -187,22 +218,13 @@ namespace osgEarth
          */
         DepthOffsetGroup();
 
-        /** dtor */
-        virtual ~DepthOffsetGroup() { }
 
-        /**
-         * Sets a minimum depth offset range (in scene units, e.g. meters)
-         * This is the minimim simulated depth offset that will be applied to 
-         * geometry under this group.
-         */
-        void setMinimumOffset( float value );
+    public: // DepthOffsetInterface
 
-        /**
-         * Sets the group to automatically calculate an "appropriate" minimum
-         * depth offset based on the child geometry. Whenever the child graph
-         * changes, it will attempt to recalculate the best offset to use.
-         */
-        void setAutoMinimumOffset();
+        void setDepthOffsetOptions( const DepthOffsetOptions& options );
+
+        const DepthOffsetOptions& getDepthOffsetOptions() const;
+
 
     public: // osg::Node
 
@@ -211,11 +233,14 @@ namespace osgEarth
         virtual void traverse(osg::NodeVisitor& );
 
     protected:
-        bool _auto;
-        bool _dirty;
-        osg::Uniform* _minOffsetUniform;
-        void update();
+        void setUniforms();
         void dirty();
+        void scheduleUpdate();
+
+        DepthOffsetAdapter _adapter;
+        bool               _updatePending;
+
+        virtual ~DepthOffsetGroup() { }
     };
 
 } // namespace osgEarth

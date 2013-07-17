@@ -275,17 +275,11 @@ public:
     {
         //OGR is particular sometimes about the extension of files when it's reading them so it's good to have
         //the temp file have an appropriate extension
-        if (startsWith(mime, "text/xml"))
+        if (isGML(mime))
         {
             return ".xml";
         }        
-        else if (startsWith(mime, "application/json") ||
- 				 startsWith(mime, "json") ||            
- 				 startsWith(mime, "application/x-javascript") ||
-				 startsWith(mime, "text/javascript") ||
-				 startsWith(mime, "text/x-javascript") ||
-				 startsWith(mime, "text/x-json")
-                )
+		else if (isJSON(mime))
         {
             return ".json";
         }        

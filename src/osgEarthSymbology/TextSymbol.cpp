@@ -148,10 +148,10 @@ TextSymbol::mergeConfig( const Config& conf )
 void
 TextSymbol::parseSLD(const Config& c, Style& style)
 {
-    if ( match(c.key(), "fill") ) {
+    if ( match(c.key(), "text-fill") ) {
         style.getOrCreate<TextSymbol>()->fill()->color() = Color(c.value());
     }
-    else if ( match(c.key(), "fill-opacity") ) {
+    else if ( match(c.key(), "text-fill-opacity") ) {
         style.getOrCreate<TextSymbol>()->fill()->color().a() = as<float>( c.value(), 1.0f );
     }
     else if ( match(c.key(), "text-size") ) {

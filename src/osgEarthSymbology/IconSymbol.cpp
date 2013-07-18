@@ -134,6 +134,8 @@ IconSymbol::createResource() const
 void
 IconSymbol::parseSLD(const Config& c, Style& style)
 {
+    IconSymbol defaults;
+
     if ( match(c.key(), "icon") ) {
         style.getOrCreate<IconSymbol>()->url() = c.value();
         style.getOrCreate<IconSymbol>()->url()->setURIContext( c.referrer() );
@@ -152,10 +154,10 @@ IconSymbol::parseSLD(const Config& c, Style& style)
             style.getOrCreate<IconSymbol>()->placement() = ModelSymbol::PLACEMENT_CENTROID;
     }
     else if ( match(c.key(), "icon-density") ) {
-        style.getOrCreate<IconSymbol>()->density() = as<float>(c.value(), 1.0f);
+        style.getOrCreate<IconSymbol>()->density() = as<float>(c.value(), *defaults.density() );
     }
     else if ( match(c.key(), "icon-random-seed") ) {
-        style.getOrCreate<IconSymbol>()->randomSeed() = as<unsigned>(c.value(), 0);
+        style.getOrCreate<IconSymbol>()->randomSeed() = as<unsigned>(c.value(), *defaults.randomSeed());
     }
     else if ( match(c.key(), "icon-scale") ) {
         style.getOrCreate<IconSymbol>()->scale() = NumericExpression(c.value());
@@ -184,12 +186,12 @@ IconSymbol::parseSLD(const Config& c, Style& style)
         style.getOrCreate<IconSymbol>()->heading() = NumericExpression(c.value());
     }
     else if ( match(c.key(), "icon-declutter") ) {
-        style.getOrCreate<IconSymbol>()->declutter() = as<bool>(c.value(), false);
+        style.getOrCreate<IconSymbol>()->declutter() = as<bool>(c.value(), *defaults.declutter());
     }
-	else if ( match(c.key(), "icon-occlusion-cull") ) {
-        style.getOrCreate<IconSymbol>()->occlusionCull() = as<bool>(c.value(), false);
+    else if ( match(c.key(), "icon-occlusion-cull") ) {
+        style.getOrCreate<IconSymbol>()->occlusionCull() = as<bool>(c.value(), *defaults.occlusionCull());
     }
-	else if ( match(c.key(), "icon-occlusion-cull-altitude") ) {
-        style.getOrCreate<IconSymbol>()->occlusionCullAltitude() = as<bool>(c.value(), false);
+    else if ( match(c.key(), "icon-occlusion-cull-altitude") ) {
+        style.getOrCreate<IconSymbol>()->occlusionCullAltitude() = as<float>(c.value(), *defaults.occlusionCullAltitude());
     }
 }

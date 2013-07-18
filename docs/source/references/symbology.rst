@@ -84,6 +84,8 @@ control the color and style of the vector data.
 |                       | rounded corner. Value is the ratio of |                            |
 |                       | line width to corner segment length.  |                            |
 +-----------------------+---------------------------------------+----------------------------+
+| point-fill            | Fill color for a point.               | HTML color                 |
++-----------------------+---------------------------------------+----------------------------+
 | point-size            | Size for a GL point geometry          | float (1.0)                |
 +-----------------------+---------------------------------------+----------------------------+
 
@@ -344,7 +346,7 @@ The *text symbol* (SDK: ``TextSymbol``) controls the existance and appearance of
 +--------------------------------+--------------------------------------------------------------------+
 | Property                       | Description                                                        |
 +================================+====================================================================+
-| fill                           | Foreground color of the text (HTML color)                          |
+| text-fill                      | Foreground color of the text (HTML color)                          |
 +--------------------------------+--------------------------------------------------------------------+
 | text-size                      | Size of the text (float, pixels)                                   |
 +--------------------------------+--------------------------------------------------------------------+

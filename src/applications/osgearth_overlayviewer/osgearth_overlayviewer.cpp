@@ -37,7 +37,7 @@ using namespace osgEarth::Symbology;
 
 static CheckBoxControl* s_cameraCheck;
 //static CheckBoxControl* s_overlayCheck;
-//static CheckBoxControl* s_intersectionCheck;
+static CheckBoxControl* s_intersectionCheck;
 static CheckBoxControl* s_rttCheck;
 
 namespace
@@ -108,7 +108,7 @@ namespace
 
                     toggle(_parent, "camera", s_cameraCheck->getValue());
                     //toggle(_parent, "overlay", s_overlayCheck->getValue());
-                    //toggle(_parent, "intersection", s_intersectionCheck->getValue());
+                    toggle(_parent, "intersection", s_intersectionCheck->getValue());
                     toggle(_parent, "rtt", s_rttCheck->getValue());
 
                     aa.requestRedraw();
@@ -141,11 +141,11 @@ setupOverlayView( osgViewer::View* view, osg::Group* parent, MapNode* mapNode )
         //    overlayBox->addControl(new LabelControl("Overlay", Color("#00ffff")));
         //}
 
-        //HBox* isectBox = v->addControl(new HBox());
-        //{
-        //    isectBox->addControl(s_intersectionCheck = new CheckBoxControl(true, new Toggle(parent,"intersection")));
-        //    isectBox->addControl(new LabelControl("Intersection",Color("#ff7f00")));
-        //}
+        HBox* isectBox = v->addControl(new HBox());
+        {
+            isectBox->addControl(s_intersectionCheck = new CheckBoxControl(true, new Toggle(parent,"intersection")));
+            isectBox->addControl(new LabelControl("Intersection",Color("#ff7f00")));
+        }
 
         HBox* rttBox = v->addControl(new HBox());
         {

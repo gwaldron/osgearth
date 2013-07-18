@@ -40,36 +40,28 @@ BuildTextFilter::push( FeatureList& input, FilterContext& context )
     osg::Node* result = 0L;
 
     const TextSymbol* text = _style.get<TextSymbol>();
-    if ( !text )
+    const IconSymbol* icon = _style.get<IconSymbol>();
+
+    if ( !text && !icon )
     {
-        OE_WARN << LC << "Insufficient symbology (no TextSymbol)" << std::endl;
+        OE_WARN << LC << "Insufficient symbology (no TextSymbol/IconSymbol)" << std::endl;
         return 0L;
     }
 
-    // if a provider is set, load the plugin and create the node.
-    if ( true ) //!text->provider()->empty() && !text->provider().isSetTo("legacy") )
+    LabelSourceOptions options;
+    options.setDriver( "annotation" );
+    //options.setDriver( text ? (*text->provider()) : (*icon->provider()) );
+    osg::ref_ptr<LabelSource> source = LabelSourceFactory::create( options );
+    if ( source.valid() )
     {
-        LabelSourceOptions options;
-        options.setDriver( *text->provider() );
-        osg::ref_ptr<LabelSource> source = LabelSourceFactory::create( options );
-        if ( source.valid() )
-        {
-            result = source->createNode( input, _style, context );
-        }
-        else
-        {
-            OE_WARN << LC << "FAIL, unable to load label provider \"" << (*text->provider()) << "\"" << std::endl;
-            return 0L;
-        }
+        result = source->createNode( input, _style, context );
+    }
+    else
+    {
+        OE_WARN << LC << "FAIL, unable to load provider" << std::endl;
+        return 0L;
     }
 
-#if 0
-    else // legacy behavior... will be deprecated.
-    {
-        BuildTextOperator op;
-        result = op( input, text, context );
-    }
-#endif
 
     return result;
 }

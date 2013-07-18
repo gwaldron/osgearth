@@ -17,6 +17,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 #include <osgEarthFeatures/PolygonizeLines>
+#include <osgEarthFeatures/FeatureSourceIndexNode>
 #include <osgEarthSymbology/MeshConsolidator>
 #include <osgEarth/VirtualProgram>
 #include <osgUtil/Optimizer>
@@ -491,6 +492,10 @@ PolygonizeLinesFilter::push(FeatureList& input, FilterContext& cx)
             // turn the lines into polygons.
             osg::Geometry* geom = polygonize( verts, normals );
             geode->addDrawable( geom );
+
+            // record the geometry's primitive set(s) in the index:
+            if ( cx.featureIndex() )
+                cx.featureIndex()->tagPrimitiveSets( geom, f );
         }
     }
 

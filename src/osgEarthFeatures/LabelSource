@@ -84,9 +84,9 @@ namespace osgEarth { namespace Features
          *
          * @return A scene graph node
          */
-        virtual osg::Node* createNode(
-            const std::string&  text,
-            const Style&        style ) =0;
+        //virtual osg::Node* createNode(
+        //    const std::string&  text,
+        //    const Style&        style ) =0;
 
 
     public:

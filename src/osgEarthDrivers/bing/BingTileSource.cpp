@@ -129,8 +129,8 @@ public:
             //image->allocateImage(256,256,1, GL_RGB, GL_UNSIGNED_BYTE);
             //return image;
 
-            return osgDB::readImageFile( getDirectURI(key) );
-            //return URI(getDirectURI(key)).getImage(_dbOptions.get(), progress);
+            //return osgDB::readImageFile( getDirectURI(key) );
+            return URI(getDirectURI(key)).getImage(_dbOptions.get(), progress);
         }
 
         // center point of the tile (will be in spherical mercator)

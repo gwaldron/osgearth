@@ -338,7 +338,7 @@ GeometryCompiler::compile(FeatureList&          workingSet,
     }
 
     // instance substitution (replaces marker)
-    else if ( model || icon )
+    else if ( model ) // || icon )
     {
         const InstanceSymbol* instance = model ? (const InstanceSymbol*)model : (const InstanceSymbol*)icon;
 
@@ -471,7 +471,7 @@ GeometryCompiler::compile(FeatureList&          workingSet,
         }
     }
 
-    if ( text )
+    if ( text || icon )
     {
         if ( altRequired )
         {

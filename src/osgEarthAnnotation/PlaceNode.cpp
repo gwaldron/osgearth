@@ -195,7 +195,8 @@ PlaceNode::init()
 
     getAttachPoint()->addChild( _geode );
 
-    // for clamping
+    // for clamping and occlusion culling    
+    //OE_WARN << LC << "PlaceNode::applyStyle: " << _style.getConfig().toJSON(true) << std::endl;
     applyStyle( _style );
 
     setLightingIfNotSet( false );

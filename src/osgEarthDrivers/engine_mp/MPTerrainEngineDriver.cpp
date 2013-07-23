@@ -28,6 +28,7 @@
 
 #define LC "[engine_mp driver] "
 
+
 using namespace osgEarth::Drivers;
 using namespace osgEarth_engine_mp;
 
@@ -150,7 +151,8 @@ public:
 
                 osg::Timer_t end = osg::Timer::instance()->tick();
 
-                if ( osgEarth::getNotifyLevel() >= osg::DEBUG_INFO )
+#if 0
+                //if ( osgEarth::getNotifyLevel() >= osg::DEBUG_INFO )
                 {
                     static Threading::Mutex s_statsMutex;
                     static std::vector<double> s_times;
@@ -161,9 +163,10 @@ public:
                         double t = 0.0;
                         for(unsigned i=0; i<s_times.size(); ++i)
                             t += s_times[i];
-                        OE_DEBUG << LC << "Average time = " << (t/s_times.size()) << " s." << std::endl;
+                        OE_NOTICE << LC << "Average time = " << (t/s_times.size()) << " s." << std::endl;
                     }
                 }
+#endif
 
                 
                 // Deal with failed loads.

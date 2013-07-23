@@ -1095,7 +1095,7 @@ public:
                 }
             }
 
-            OE_NOTICE << LC << _options.url().value().full() << " max Data Level: " << _maxDataLevel << std::endl;
+            OE_INFO << LC << _options.url().value().full() << " max Data Level: " << _maxDataLevel << std::endl;
         }
 
         osg::ref_ptr< SpatialReference > srs = SpatialReference::create( warpedSRSWKT );

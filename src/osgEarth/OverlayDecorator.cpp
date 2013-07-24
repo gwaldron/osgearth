@@ -45,6 +45,52 @@ using namespace osgEarth;
 
 namespace
 {
+    struct ComputeVisibleBounds : public osg::NodeVisitor
+    {
+        ComputeVisibleBounds(osg::Polytope& tope, osg::Matrix& local2world) 
+            : osg::NodeVisitor(osg::NodeVisitor::TRAVERSE_ACTIVE_CHILDREN)
+        {
+            _matrixStack.push(local2world);
+            _topeStack.push(tope);
+        }
+
+        void apply(osg::Geode& node)
+        {
+            const osg::BoundingSphere& bs = node.getBound();
+            osg::Vec3 p = bs.center() * _matrixStack.top();
+            if ( _topeStack.top().contains(p) )
+            {
+                _bs.expandBy( osg::BoundingSphere(p, bs.radius()) );
+            }
+            //if ( _topeStack.top().contains(bs) )
+            //{
+            //    osg::Vec3 p = _matrixStack.top() * bs.center();
+            //    _bs.expandBy( osg::BoundingSphere(p, bs.radius()) );
+            //}
+        }
+
+        void apply(osg::Transform& xform)
+        {
+            osg::Matrix m;
+            xform.computeLocalToWorldMatrix(m, this);
+
+            _matrixStack.push( _matrixStack.top() );
+            _matrixStack.top().preMult( m );
+
+            //_topeStack.push( _topeStack.top() );
+            //_topeStack.top().transformProvidingInverse(m);
+
+            traverse(xform);
+
+            _matrixStack.pop();
+            //_topeStack.pop();
+        }
+
+        std::stack<osg::Matrix>   _matrixStack;
+        std::stack<osg::Polytope> _topeStack;
+        osg::BoundingSphere       _bs;
+    };
+
     void setFar(osg::Matrix& m, double newFar)
     {
         if ( osg::equivalent(m(0,3),0.0) && osg::equivalent(m(1,3),0.0) && osg::equivalent(m(2,3),0.0) )
@@ -516,7 +562,6 @@ OverlayDecorator::cullTerrainAndCalculateRTTParams(osgUtil::CullVisitor* cv,
             up.set( camUp );
 
         rttViewMatrix.makeLookAt( rttEye, osg::Vec3d(0,0,0), up );
-        //rttViewMatrix.makeLookAt( rttEye, osg::Vec3d(0,0,0), osg::Vec3d(0,0,1) );
     }
     else
     {
@@ -525,7 +570,6 @@ OverlayDecorator::cullTerrainAndCalculateRTTParams(osgUtil::CullVisitor* cv,
             up.set( camUp );
 
         rttViewMatrix.makeLookAt( camEye + worldUp*zspan, camEye - worldUp*zspan, up );
-        //rttViewMatrix.makeLookAt( rttEye, eye-worldUp*zspan, osg::Vec3d(0,1,0) );
     }
 
     // Build a polyhedron for the new frustum so we can slice it.
@@ -547,7 +591,16 @@ OverlayDecorator::cullTerrainAndCalculateRTTParams(osgUtil::CullVisitor* cv,
         // perhaps we can truly make it visible)
         osgShadow::ConvexPolyhedron visiblePH( frustumPH );
 
+#if 0
+        osg::Polytope frustumPT;
+        frustumPH.getPolytope(frustumPT);
+        ComputeVisibleBounds cvb(frustumPT, MVP);
+        params._group->accept(cvb);
+        const osg::BoundingSphere& visibleOverlayBS = cvb._bs;
+        OE_WARN << "VBS radius = " << visibleOverlayBS.radius() << std::endl;
+#else
         const osg::BoundingSphere& visibleOverlayBS = params._group->getBound();
+#endif
         if ( visibleOverlayBS.valid() )
         {
             osg::BoundingBox visibleOverlayBB;
@@ -570,6 +623,8 @@ OverlayDecorator::cullTerrainAndCalculateRTTParams(osgUtil::CullVisitor* cv,
 
         params._rttViewMatrix.set( rttViewMatrix );
         params._rttProjMatrix.set( rttProjMatrix );
+        params._eyeWorld = eye;
+        params._frustumPH = frustumPH;
 
         // service a "dump" of the polyhedrons for dubugging purposes
         // (see osgearth_overlayviewer)

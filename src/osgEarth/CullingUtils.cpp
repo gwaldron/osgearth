@@ -754,6 +754,10 @@ _cv             ( cv )
     this->setImageRequestHandler( _cv->getImageRequestHandler() );
     this->setUserData( _cv->getUserData() );
     this->setComputeNearFarMode( _cv->getComputeNearFarMode() );
+
+    this->pushViewport( _cv->getViewport() );
+    this->pushProjectionMatrix( _cv->getProjectionMatrix() );
+    this->pushModelViewMatrix( _cv->getModelViewMatrix(), osg::Transform::ABSOLUTE_RF );
 }
 
 osg::Vec3 

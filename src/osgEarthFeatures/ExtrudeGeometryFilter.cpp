@@ -764,7 +764,7 @@ ExtrudeGeometryFilter::process( FeatureList& features, FilterContext& context )
             }
 
             // calculate the colors:
-            osg::Vec4f wallColor(1,1,1,1), wallBaseColor(1,1,1,1), roofColor(1,1,1,1), outlineColor(1,1,1,1);
+            osg::Vec4f wallColor(1,1,1,0), wallBaseColor(1,1,1,0), roofColor(1,1,1,0), outlineColor(1,1,1,1);
 
             if ( _wallPolygonSymbol.valid() )
             {
@@ -803,14 +803,9 @@ ExtrudeGeometryFilter::process( FeatureList& features, FilterContext& context )
 
                 // generate per-vertex normals, altering the geometry as necessary to avoid
                 // smoothing around sharp corners
-    #if OSG_MIN_VERSION_REQUIRED(2,9,9)
-                //Crease angle threshold wasn't added until
                 osgUtil::SmoothingVisitor::smooth(
                     *walls.get(), 
-                    osg::DegreesToRadians(_wallAngleThresh_deg) );            
-    #else
-                osgUtil::SmoothingVisitor::smooth(*walls.get());            
-    #endif
+                    osg::DegreesToRadians(_wallAngleThresh_deg) );
 
                 // tessellate and add the roofs if necessary:
                 if ( rooflines.valid() )

@@ -14,6 +14,7 @@ IF(UNIX)
 			# pkgconfig does not define the singular names
 			SET(MINIZIP_LIBRARY ${MINIZIP_LIBRARIES} CACHE STRING "Minizip libraries to link against")
 			SET(MINIZIP_INCLUDE_DIR ${MINIZIP_INCLUDE_DIRS} CACHE STRING "Minizip include dirs to look for headers")
+			link_directories(${MINIZIP_LIBRARY_DIRS})
 			ADD_DEFINITIONS(-DOSGEARTH_HAVE_MINIZIP)
 		ENDIF(MINIZIP_FOUND)
 	ENDIF(PKG_CONFIG_FOUND)

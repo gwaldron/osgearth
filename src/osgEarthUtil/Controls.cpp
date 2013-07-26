@@ -33,6 +33,7 @@
 #include <osgEarth/Utils>
 #include <osgEarth/CullingUtils>
 #include <osgEarth/VirtualProgram>
+#include <osgEarth/ShaderGenerator>
 
 using namespace osgEarth;
 using namespace osgEarth::Symbology;
@@ -47,43 +48,92 @@ namespace
 {
     // ControlNodeBin shaders.
 
+#ifdef OSG_GLES2_AVAILABLE
     const char* s_controlVertexShader =
         "#version " GLSL_VERSION_STR "\n"
         GLSL_DEFAULT_PRECISION_FLOAT "\n"
-        "varying vec4 texcoord; \n"
+        "varying mediump vec4 texcoord; \n"
+        "varying mediump vec4 vColor; \n"
+        "attribute vec4 osg_MultiTexCoord0; \n"
+        "attribute vec4 osg_Color; \n"
         "void main() \n"
         "{ \n"
         "    gl_Position = gl_ModelViewProjectionMatrix * gl_Vertex; \n"
-        "    texcoord = gl_MultiTexCoord0; \n"
-        "    gl_FrontColor = gl_Color; \n"
+        "    texcoord = osg_MultiTexCoord0; \n"
+        "    vColor = osg_Color; \n"
         "} \n";
-
+    
     const char* s_imageControlFragmentShader =
-        "#version " GLSL_VERSION_STR "\n"
-        GLSL_DEFAULT_PRECISION_FLOAT "\n"
-        "uniform sampler2D tex0; \n"
-        "uniform float oe_controls_visibleTime; \n"
-        "uniform float osg_FrameTime; \n"
-        "varying vec4 texcoord; \n"
-        "void main() \n"
-        "{ \n"
-        "    float opacity = clamp( osg_FrameTime - oe_controls_visibleTime, 0.0, 1.0 ); \n"
-        "    vec4 texel = texture2D(tex0, texcoord.st); \n"
-        "    gl_FragColor = vec4(texel.rgb, texel.a * opacity); \n"
-        "} \n";
-
+    "#version " GLSL_VERSION_STR "\n"
+    GLSL_DEFAULT_PRECISION_FLOAT "\n"
+    "uniform sampler2D tex0; \n"
+    "uniform float oe_controls_visibleTime; \n"
+    "uniform float osg_FrameTime; \n"
+    "varying mediump vec4 texcoord; \n"
+    "varying mediump vec4 vColor; \n"
+    "void main() \n"
+    "{ \n"
+    "    float opacity = clamp( osg_FrameTime - oe_controls_visibleTime, 0.0, 1.0 ); \n"
+    "    vec4 texel = texture2D(tex0, texcoord.st); \n"
+    "    gl_FragColor = vec4(texel.rgb, texel.a * opacity); \n"
+    "} \n";
+    
     const char* s_labelControlFragmentShader =
-        "#version " GLSL_VERSION_STR "\n"
-        GLSL_DEFAULT_PRECISION_FLOAT "\n"
-        "uniform sampler2D tex0; \n"
-        "uniform float oe_controls_visibleTime; \n"
-        "uniform float osg_FrameTime; \n"
-        "void main() \n"
-        "{ \n"
-        "    float opacity = clamp( osg_FrameTime - oe_controls_visibleTime, 0.0, 1.0 ); \n"
-        "    vec4 texel = texture2D(tex0, gl_TexCoord[0].st); \n"       
-        "    gl_FragColor = vec4(gl_Color.rgb, texel.a * opacity); \n"
-        "} \n";
+    "#version " GLSL_VERSION_STR "\n"
+    GLSL_DEFAULT_PRECISION_FLOAT "\n"
+    "uniform sampler2D tex0; \n"
+    "uniform float oe_controls_visibleTime; \n"
+    "uniform float osg_FrameTime; \n"
+    "varying mediump vec4 texcoord; \n"
+    "varying mediump vec4 vColor; \n"
+    "void main() \n"
+    "{ \n"
+    "    float opacity = clamp( osg_FrameTime - oe_controls_visibleTime, 0.0, 1.0 ); \n"
+    "    vec4 texel = texture2D(tex0, texcoord.st); \n"
+    "    gl_FragColor = vec4(vColor.rgb, texel.a * opacity); \n"
+    "} \n";
+#else
+
+    const char* s_controlVertexShader =
+    "#version " GLSL_VERSION_STR "\n"
+    GLSL_DEFAULT_PRECISION_FLOAT "\n"
+    "varying vec4 texcoord; \n"
+    "void main() \n"
+    "{ \n"
+    "    gl_Position = gl_ModelViewProjectionMatrix * gl_Vertex; \n"
+    "    texcoord = gl_MultiTexCoord0; \n"
+    "    gl_FrontColor = gl_Color; \n"
+    "} \n";
+    
+    const char* s_imageControlFragmentShader =
+    "#version " GLSL_VERSION_STR "\n"
+    GLSL_DEFAULT_PRECISION_FLOAT "\n"
+    "uniform sampler2D tex0; \n"
+    "uniform float oe_controls_visibleTime; \n"
+    "uniform float osg_FrameTime; \n"
+    "varying vec4 texcoord; \n"
+    "void main() \n"
+    "{ \n"
+    "    float opacity = clamp( osg_FrameTime - oe_controls_visibleTime, 0.0, 1.0 ); \n"
+    "    vec4 texel = texture2D(tex0, texcoord.st); \n"
+    "    gl_FragColor = vec4(texel.rgb, texel.a * opacity); \n"
+    "} \n";
+    
+    const char* s_labelControlFragmentShader =
+    "#version " GLSL_VERSION_STR "\n"
+    GLSL_DEFAULT_PRECISION_FLOAT "\n"
+    "uniform sampler2D tex0; \n"
+    "uniform float oe_controls_visibleTime; \n"
+    "uniform float osg_FrameTime; \n"
+    "void main() \n"
+    "{ \n"
+    "    float opacity = clamp( osg_FrameTime - oe_controls_visibleTime, 0.0, 1.0 ); \n"
+    "    vec4 texel = texture2D(tex0, gl_TexCoord[0].st); \n"
+    "    gl_FragColor = vec4(gl_Color.rgb, texel.a * opacity); \n"
+    "} \n";
+#endif
+
+    
 }
 
 // ---------------------------------------------------------------------------
@@ -558,6 +608,11 @@ Control::draw(const ControlContext& cx, DrawableList& out )
             (*colors)[0] = _active && _activeColor.isSet() ? _activeColor.value() : _backColor.value();
             _geom->setColorArray( colors );
             _geom->setColorBinding( osg::Geometry::BIND_OVERALL );
+            
+            //osg::Program* program = new osg::Program();
+            //program->addShader( new osg::Shader( osg::Shader::VERTEX, s_controlVertexShader ) );
+            //program->addShader( new osg::Shader( osg::Shader::FRAGMENT, s_labelControlFragmentShader ) );
+            //_geom->getOrCreateStateSet()->setAttributeAndModes( program, osg::StateAttribute::ON );
 
             out.push_back( _geom.get() );
         }
@@ -784,10 +839,10 @@ LabelControl::calcSize(const ControlContext& cx, osg::Vec2f& out_size)
 #if 1
         // needs a special shader
         // todo: doesn't work. why?
-        osg::Program* program = new osg::Program();
-        program->addShader( new osg::Shader( osg::Shader::VERTEX, s_controlVertexShader ) );
-        program->addShader( new osg::Shader( osg::Shader::FRAGMENT, s_labelControlFragmentShader ) );
-        t->getOrCreateStateSet()->setAttributeAndModes( program, osg::StateAttribute::ON );
+        //osg::Program* program = new osg::Program();
+        //program->addShader( new osg::Shader( osg::Shader::VERTEX, s_controlVertexShader ) );
+        //program->addShader( new osg::Shader( osg::Shader::FRAGMENT, s_labelControlFragmentShader ) );
+        //t->getOrCreateStateSet()->setAttributeAndModes( program, osg::StateAttribute::ON );
 #endif
 
         t->setText( _text, _encoding );
@@ -1063,10 +1118,10 @@ ImageControl::draw( const ControlContext& cx, DrawableList& out )
         g->getStateSet()->setTextureAttributeAndModes( 0, texenv, osg::StateAttribute::ON );
         
 #ifndef IMAGECONTROL_TEXRECT
-        osg::Program* program = new osg::Program();
-        program->addShader( new osg::Shader( osg::Shader::VERTEX, s_controlVertexShader ) );
-        program->addShader( new osg::Shader( osg::Shader::FRAGMENT, s_imageControlFragmentShader ) );
-        g->getStateSet()->setAttributeAndModes( program, osg::StateAttribute::ON );
+        //osg::Program* program = new osg::Program();
+        //program->addShader( new osg::Shader( osg::Shader::VERTEX, s_controlVertexShader ) );
+        //program->addShader( new osg::Shader( osg::Shader::FRAGMENT, s_imageControlFragmentShader ) );
+        //g->getStateSet()->setAttributeAndModes( program, osg::StateAttribute::ON );
 #endif
 
         out.push_back( g );
@@ -1204,6 +1259,11 @@ HSliderControl::draw( const ControlContext& cx, DrawableList& out )
             (*c)[0] = *foreColor();
             g->setColorArray( c );
             g->setColorBinding( osg::Geometry::BIND_OVERALL );
+            
+            //osg::Program* program = new osg::Program();
+            //program->addShader( new osg::Shader( osg::Shader::VERTEX, s_controlVertexShader ) );
+            //program->addShader( new osg::Shader( osg::Shader::FRAGMENT, s_labelControlFragmentShader ) );
+            //g->getOrCreateStateSet()->setAttributeAndModes( program, osg::StateAttribute::ON );
 
             out.push_back( g.get() );
         }
@@ -1309,6 +1369,12 @@ CheckBoxControl::draw( const ControlContext& cx, DrawableList& out )
         (*c)[0] = *foreColor();
         g->setColorArray( c );
         g->setColorBinding( osg::Geometry::BIND_OVERALL );
+        
+        // needs a special shader
+        //osg::Program* program = new osg::Program();
+        //program->addShader( new osg::Shader( osg::Shader::VERTEX, s_controlVertexShader ) );
+        //program->addShader( new osg::Shader( osg::Shader::FRAGMENT, s_labelControlFragmentShader ) );
+        //g->getOrCreateStateSet()->setAttributeAndModes( program, osg::StateAttribute::ON );
 
         out.push_back( g );
     }
@@ -2281,10 +2347,10 @@ _fading        ( true )
 
     osg::StateSet* stateSet = _group->getOrCreateStateSet();
 
-    osg::Program* program = new osg::Program();
-    program->addShader( new osg::Shader( osg::Shader::VERTEX, s_controlVertexShader ) );
-    program->addShader( new osg::Shader( osg::Shader::FRAGMENT, s_labelControlFragmentShader ) );
-    stateSet->setAttributeAndModes( program, osg::StateAttribute::ON );
+    //osg::Program* program = new osg::Program();
+    //program->addShader( new osg::Shader( osg::Shader::VERTEX, s_controlVertexShader ) );
+    //program->addShader( new osg::Shader( osg::Shader::FRAGMENT, s_labelControlFragmentShader ) );
+    //stateSet->setAttributeAndModes( program, osg::StateAttribute::ON );
 
     //TODO: appears to be unused
     osg::Uniform* defaultOpacity = new osg::Uniform( osg::Uniform::FLOAT, "oe_controls_opacity" );

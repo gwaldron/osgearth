@@ -222,10 +222,9 @@ namespace
 
         virtual void onValueChanged( class Control* control, float value )
         {
-            int year, month, date;
-            double h;
-            _sky->getDateTime( year, month, date, h);
-            _sky->setDateTime( year, month, date, value );
+            DateTime d;
+            _sky->getDateTime(d);
+            _sky->setDateTime(DateTime(d.year(), d.month(), d.day(), value));
         }
     };
 
@@ -603,7 +602,7 @@ MapNodeHelper::parse(MapNode*             mapNode,
         double hours = skyConf.value( "hours", 12.0 );
         SkyNode* sky = new SkyNode( mapNode->getMap() );
         sky->setAmbientBrightness( ambientBrightness );
-        sky->setDateTime( 2011, 3, 6, hours );
+        sky->setDateTime( DateTime(2011, 3, 6, hours) );
         sky->attach( view );
         root->addChild( sky );
         Control* c = SkyControlFactory().create(sky, view);

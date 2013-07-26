@@ -702,17 +702,17 @@ namespace
 //---------------------------------------------------------------------------
 
 osg::Vec3d
-DefaultEphemerisProvider::getSunPosition( int year, int month, int date, double hoursUTC )
+DefaultEphemerisProvider::getSunPosition(const DateTime& date)
 {
     Sun sun;
-    return sun.getPosition( year, month, date, hoursUTC );
+    return sun.getPosition( date.year(), date.month(), date.day(), date.hours() );
 }
 
 osg::Vec3d
-DefaultEphemerisProvider::getMoonPosition( int year, int month, int date, double hoursUTC )
+DefaultEphemerisProvider::getMoonPosition(const DateTime& date)
 {
     Moon moon;
-    return moon.getPosition( year, month, date, hoursUTC );
+    return moon.getPosition( date.year(), date.month(), date.day(), date.hours() );
 }
 
 //---------------------------------------------------------------------------
@@ -774,7 +774,7 @@ SkyNode::initialize( Map *map, const std::string& starFile )
     _autoAmbience = false;
 
     //Set a default time
-    setDateTime( 2011, 3, 6, 18 );
+    setDateTime( DateTime(2011, 3, 6, 18.) );
 }
 
 osg::BoundingSphere
@@ -786,7 +786,7 @@ SkyNode::computeBound() const
 void
 SkyNode::traverse( osg::NodeVisitor& nv )
 {    
-    osgUtil::CullVisitor* cv = Culling::asCullVisitor(nv);    
+    osgUtil::CullVisitor* cv = Culling::asCullVisitor(nv);
     if ( cv )
     {
 
@@ -853,7 +853,7 @@ SkyNode::setEphemerisProvider(EphemerisProvider* ephemerisProvider )
         //Update the positions of the planets
         for( PerViewDataMap::iterator i = _perViewData.begin(); i != _perViewData.end(); ++i )
         {
-            setDateTime(i->second._year, i->second._month, i->second._date, i->second._hoursUTC, i->first);
+            setDateTime(i->second._date, i->first);
         }
     }
 }
@@ -910,10 +910,7 @@ SkyNode::attach( osg::View* view, int lightNum )
     view->setLight( data._light.get() );
     view->getCamera()->setClearColor( osg::Vec4(0,0,0,1) );
 
-    data._year = _defaultPerViewData._year;
-    data._month = _defaultPerViewData._month;
     data._date = _defaultPerViewData._date;
-    data._hoursUTC = _defaultPerViewData._hoursUTC;
 }
 
 void
@@ -1043,26 +1040,39 @@ SkyNode::setMoonPosition( PerViewData& data, const osg::Vec3d& pos )
 
 
 void
-SkyNode::getDateTime( int &year, int &month, int &date, double &hoursUTC, osg::View* view )
+SkyNode::getDateTime( DateTime& out, osg::View* view ) const
 {    
-    PerViewData& data = _defaultPerViewData;
     if ( view )
     {
-        if ( _perViewData.find(view) != _perViewData.end() )
+        PerViewDataMap::const_iterator i = _perViewData.find(view);
+        if (i != _perViewData.end() )
         {
-            data = _perViewData[view];
+            out = i->second._date;
+            return;
         }
     }
+    out = _defaultPerViewData._date;
+}
 
-    year = data._year;
-    month = data._month;
-    date = data._date;
-    hoursUTC = data._hoursUTC;
+void
+SkyNode::getDateTime(int& year, int& month, int& date, double& hoursUTC, osg::View* view)
+{
+    DateTime temp;
+    getDateTime(temp, view);
+
+    year = temp.year();
+    month = temp.month();
+    date = temp.day();
+    hoursUTC = temp.hours();
+
+    OE_WARN << LC <<
+        "The method getDateTime(int&,int&,int&,double&,View*) is deprecated; "
+        "please use getDateTime(DateTime&, View*) instead" << std::endl;
 }
 
 
 void
-SkyNode::setDateTime( int year, int month, int date, double hoursUTC, osg::View* view )
+SkyNode::setDateTime(const DateTime& dt, osg::View* view)
 {    
     if ( _ellipsoidModel.valid() )
     {
@@ -1071,8 +1081,8 @@ SkyNode::setDateTime( int year, int month, int date, double hoursUTC, osg::View*
 
         if (_ephemerisProvider)
         {
-            sunPosition = _ephemerisProvider->getSunPosition( year, month, date, hoursUTC );
-            moonPosition = _ephemerisProvider->getMoonPosition( year, month, date, hoursUTC );
+            sunPosition = _ephemerisProvider->getSunPosition( dt );
+            moonPosition = _ephemerisProvider->getMoonPosition( dt );
         }
         else
         {
@@ -1081,29 +1091,23 @@ SkyNode::setDateTime( int year, int month, int date, double hoursUTC, osg::View*
 
         sunPosition.normalize();
         setSunPosition( sunPosition, view );
-        setMoonPosition( moonPosition, view );       
+        setMoonPosition( moonPosition, view );
 
         // position the stars:
-        double time_r = hoursUTC/24.0; // 0..1
+        double time_r = dt.hours()/24.0; // 0..1
         double rot_z = -osg::PI + TWO_PI*time_r;
 
         osg::Matrixd starsMatrix = osg::Matrixd::rotate( -rot_z, 0, 0, 1 );
         if ( !view )
         {
             _defaultPerViewData._starsMatrix = starsMatrix;
-            _defaultPerViewData._year = year;
-            _defaultPerViewData._month = month;
-            _defaultPerViewData._date = date;
-            _defaultPerViewData._hoursUTC = hoursUTC;
+            _defaultPerViewData._date = dt;
 
             for( PerViewDataMap::iterator i = _perViewData.begin(); i != _perViewData.end(); ++i )
             {
                 i->second._starsMatrix = starsMatrix;
                 i->second._starsXform->setMatrix( starsMatrix );
-                i->second._year = year;
-                i->second._month = month;
-                i->second._date = date;
-                i->second._hoursUTC = hoursUTC;
+                i->second._date = dt;
             }
         }
         else if ( _perViewData.find(view) != _perViewData.end() )
@@ -1111,13 +1115,24 @@ SkyNode::setDateTime( int year, int month, int date, double hoursUTC, osg::View*
             PerViewData& data = _perViewData[view];
             data._starsMatrix = starsMatrix;
             data._starsXform->setMatrix( starsMatrix );
-            data._year = year;
-            data._month = month;
-            data._date = date;
-            data._hoursUTC = hoursUTC;
+            data._date = dt;
         }
     }
 }
+
+
+void
+SkyNode::setDateTime( int year, int month, int date, double hoursUTC, osg::View* view )
+{
+    // backwards compatibility
+    setDateTime( DateTime(year, month, date, hoursUTC), view );
+
+    OE_WARN << LC << 
+        "The method setDateTime(int,int,int,double,View*) is deprecated; "
+        "please use setDateTime(const DateTime&, View*) instead"
+        << std::endl;
+}
+
 
 void
 SkyNode::setStarsVisible( bool value, osg::View* view )

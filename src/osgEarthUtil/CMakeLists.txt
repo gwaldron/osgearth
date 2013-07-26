@@ -16,6 +16,7 @@ SET(HEADERS_ROOT
     ContourMap
     ClampCallback
     DataScanner
+    DateTime
     DetailTexture
     EarthManipulator
     ExampleResources
@@ -67,6 +68,7 @@ SET(SOURCES_ROOT
     Controls.cpp
     ContourMap.cpp
     DataScanner.cpp
+    DateTime.cpp
     DetailTexture.cpp
     EarthManipulator.cpp
     ExampleResources.cpp

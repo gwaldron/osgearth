@@ -27,6 +27,7 @@
 #include <osg/TexGenNode>
 #include <osg/Uniform>
 #include <osgUtil/CullVisitor>
+#include <osgShadow/ConvexPolyhedron>
 
 namespace osgEarth
 {
@@ -82,16 +83,6 @@ namespace osgEarth
     protected:
         virtual ~OverlayDecorator() { }
 
-        //// Root group for an overlay technique
-        //struct OverlayRootGroup : public osg::Group
-        //{
-        //    OverlayRootGroup();
-        //    osg::Polytope& cullingFrustum() { return _cb->_cullingFrustum; }
-        //    osg::ref_ptr<osg::NodeCallback> _cb;
-        //    mutable Threading::Mutex        _mutex;
-        //    osg::BoundingSphere computeBound() const; // override
-        //};
-
     public:
 
         // RTT camera parameters for an overlay technique. There will be
@@ -107,6 +98,8 @@ namespace osgEarth
             osg::ref_ptr<osg::Referenced> _techniqueData;    // technique sets this if needed
             const double*                 _horizonDistance;  // points to the PVD horizon distance.
             osg::Group*                   _terrainParent;    // the terrain is in getChild(0).
+            osg::Vec3d                    _eyeWorld;         // eyepoint in world coords
+            osgShadow::ConvexPolyhedron   _frustumPH;        // polyhedron representing the frustum
         };
 
         // One of these per view (camera). The terrain state set

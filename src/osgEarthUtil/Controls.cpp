@@ -30,6 +30,7 @@
 #include <osg/Version>
 #include <osgEarth/Common>
 #include <osgEarth/Registry>
+#include <osgEarth/Capabilities>
 #include <osgEarth/Utils>
 #include <osgEarth/CullingUtils>
 #include <osgEarth/VirtualProgram>
@@ -837,12 +838,15 @@ LabelControl::calcSize(const ControlContext& cx, osg::Vec2f& out_size)
         LabelText* t = new LabelText();
 
 #if 1
-        // needs a special shader
-        // todo: doesn't work. why?
-        //osg::Program* program = new osg::Program();
-        //program->addShader( new osg::Shader( osg::Shader::VERTEX, s_controlVertexShader ) );
-        //program->addShader( new osg::Shader( osg::Shader::FRAGMENT, s_labelControlFragmentShader ) );
-        //t->getOrCreateStateSet()->setAttributeAndModes( program, osg::StateAttribute::ON );
+        if ( Registry::capabilities().supportsGLSL() )
+        {
+            // needs a special shader
+            // todo: doesn't work. why?
+            osg::Program* program = new osg::Program();
+            program->addShader( new osg::Shader( osg::Shader::VERTEX, s_controlVertexShader ) );
+            program->addShader( new osg::Shader( osg::Shader::FRAGMENT, s_labelControlFragmentShader ) );
+            t->getOrCreateStateSet()->setAttributeAndModes( program, osg::StateAttribute::ON );
+        }
 #endif
 
         t->setText( _text, _encoding );
@@ -1118,10 +1122,13 @@ ImageControl::draw( const ControlContext& cx, DrawableList& out )
         g->getStateSet()->setTextureAttributeAndModes( 0, texenv, osg::StateAttribute::ON );
         
 #ifndef IMAGECONTROL_TEXRECT
-        //osg::Program* program = new osg::Program();
-        //program->addShader( new osg::Shader( osg::Shader::VERTEX, s_controlVertexShader ) );
-        //program->addShader( new osg::Shader( osg::Shader::FRAGMENT, s_imageControlFragmentShader ) );
-        //g->getStateSet()->setAttributeAndModes( program, osg::StateAttribute::ON );
+        if ( Registry::capabilities().supportsGLSL() )
+        {
+            osg::Program* program = new osg::Program();
+            program->addShader( new osg::Shader( osg::Shader::VERTEX, s_controlVertexShader ) );
+            program->addShader( new osg::Shader( osg::Shader::FRAGMENT, s_imageControlFragmentShader ) );
+            g->getStateSet()->setAttributeAndModes( program, osg::StateAttribute::ON );
+        }
 #endif
 
         out.push_back( g );
@@ -2347,11 +2354,14 @@ _fading        ( true )
 
     osg::StateSet* stateSet = _group->getOrCreateStateSet();
 
-    //osg::Program* program = new osg::Program();
-    //program->addShader( new osg::Shader( osg::Shader::VERTEX, s_controlVertexShader ) );
-    //program->addShader( new osg::Shader( osg::Shader::FRAGMENT, s_labelControlFragmentShader ) );
-    //stateSet->setAttributeAndModes( program, osg::StateAttribute::ON );
-
+    if ( Registry::capabilities().supportsGLSL() )
+    {
+        osg::Program* program = new osg::Program();
+        program->addShader( new osg::Shader( osg::Shader::VERTEX, s_controlVertexShader ) );
+        program->addShader( new osg::Shader( osg::Shader::FRAGMENT, s_labelControlFragmentShader ) );
+        stateSet->setAttributeAndModes( program, osg::StateAttribute::ON );
+    }
+    
     //TODO: appears to be unused
     osg::Uniform* defaultOpacity = new osg::Uniform( osg::Uniform::FLOAT, "oe_controls_opacity" );
     defaultOpacity->set( 1.0f );
@@ -2648,7 +2658,10 @@ ControlCanvas::init( osgViewer::View* view, bool registerCanvas )
     //ss->setBinName( OSGEARTH_CONTROLS_BIN );
 
     // keeps the control bin shaders from "leaking out" into the scene graph :/
-    ss->setAttributeAndModes( new osg::Program(), osg::StateAttribute::OFF | osg::StateAttribute::PROTECTED );
+    if ( Registry::capabilities().supportsGLSL() )
+    {
+        ss->setAttributeAndModes( new osg::Program(), osg::StateAttribute::OFF | osg::StateAttribute::PROTECTED );
+    }
 
     _controlNodeBin = new ControlNodeBin();
     this->addChild( _controlNodeBin->getControlGroup() );

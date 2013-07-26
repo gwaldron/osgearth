@@ -202,6 +202,7 @@ namespace osgEarth
 
         Threading::Mutex _functionsMutex;
         bool _inherit;
+        bool _inheritSet;
         mutable Threading::ReadWriteMutex _programCacheMutex;
 
         bool hasLocalFunctions() const;

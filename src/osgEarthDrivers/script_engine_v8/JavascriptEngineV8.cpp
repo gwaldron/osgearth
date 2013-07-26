@@ -156,6 +156,9 @@ JavascriptEngineV8::executeScript(v8::Handle<v8::String> script)
     return ScriptResult(EMPTY_STRING, false, std::string("Script result was empty: ") + std::string(*error));
   }
 
+  if (result->IsUndefined())
+    return ScriptResult(EMPTY_STRING, false, "Script result was undefined");
+
   v8::String::AsciiValue ascii(result);
   return ScriptResult(std::string(*ascii));
 }

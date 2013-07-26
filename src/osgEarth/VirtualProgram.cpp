@@ -91,6 +91,7 @@ VirtualProgram::getOrCreate(osg::StateSet* stateset)
     if ( !vp )
     {
         vp = new VirtualProgram();
+        vp->setInheritShaders(true);
         stateset->setAttributeAndModes( vp, osg::StateAttribute::ON );
     }
     return vp;
@@ -110,7 +111,8 @@ VirtualProgram::get(osg::StateSet* stateset)
 
 VirtualProgram::VirtualProgram( unsigned mask ) : 
 _mask              ( mask ),
-_inherit           ( true )
+_inherit           ( true ),
+_inheritSet        ( false )
 {
     // check the the dump env var
     if ( ::getenv(OSGEARTH_DUMP_SHADERS) != 0L )
@@ -137,6 +139,7 @@ _shaderMap         ( rhs._shaderMap ),
 _mask              ( rhs._mask ),
 _functions         ( rhs._functions ),
 _inherit           ( rhs._inherit ),
+_inheritSet        ( rhs._inheritSet ),
 _template          ( osg::clone(rhs._template.get()) )
 {
     //nop
@@ -233,6 +236,10 @@ VirtualProgram::setShader(const std::string&                 shaderID,
     if ( !shader || shader->getType() ==  osg::Shader::UNDEFINED ) 
         return NULL;
 
+    // set the inherit flag if it's not initialized
+    if ( !_inheritSet )
+        setInheritShaders( true );
+
     // pre-processes the shader's source to include GLES uniforms as necessary
     // (no-op on non-GLES)
     ShaderPreProcessor::run( shader );
@@ -257,6 +264,10 @@ VirtualProgram::setShader(osg::Shader*                       shader,
         return 0L;
     }
 
+    // set the inherit flag if it's not initialized
+    if ( !_inheritSet )
+        setInheritShaders( true );
+
     // pre-processes the shader's source to include GLES uniforms as necessary
     // (no-op on non-GLES)
     ShaderPreProcessor::run( shader );
@@ -274,6 +285,10 @@ VirtualProgram::setFunction(const std::string& functionName,
                             float              priority)
 {
     Threading::ScopedMutexLock lock( _functionsMutex );
+
+    // set the inherit flag if it's not initialized
+    if ( !_inheritSet )
+        setInheritShaders( true );
 
     OrderedFunctionMap& ofm = _functions[location];
 
@@ -365,12 +380,13 @@ VirtualProgram::addToAccumulatedMap(ShaderMap&         accumShaderMap,
 void
 VirtualProgram::setInheritShaders( bool value )
 {
-    if ( _inherit != value )
+    if ( _inherit != value || !_inheritSet )
     {
         _inherit = value;
         // not particularly thread safe if called after use.. meh
         _programCache.clear();
         _accumulatedFunctions.clear();
+        _inheritSet = true;
     }
 }
 
@@ -623,9 +639,13 @@ VirtualProgram::buildProgram(osg::State&        state,
 void
 VirtualProgram::apply( osg::State& state ) const
 {
-    if ( _shaderMap.empty() && !_inherit )
+    if (_shaderMap.empty() && !_inheritSet)
     {
-        // if there's no data in the VP, unload any existing program.
+        // If there's no data in the VP, and never has been, unload any existing program.
+        // NOTE: OSG's State processor creates a "global default attribute" for each type.
+        // Sine we have no way of knowing whether the user created the VP or OSG created it
+        // as the default fallback, we use the "_inheritSet" flag to differeniate. This
+        // prevents any shader leakage from a VP-enabled node.
         const unsigned int contextID = state.getContextID();
         const osg::GL2Extensions* extensions = osg::GL2Extensions::Get(contextID,true);
         if( ! extensions->isGlslSupported() ) return;

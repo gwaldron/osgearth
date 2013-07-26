@@ -13,6 +13,7 @@ set( DOCS_ROOT
 )
 
 set( DOCS_DEVELOPER
+    source/developer/coordinate_systems.rst
     source/developer/custom_driver.rst
     source/developer/index.rst
     source/developer/maps.rst

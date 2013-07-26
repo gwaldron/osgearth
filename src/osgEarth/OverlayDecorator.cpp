@@ -45,6 +45,52 @@ using namespace osgEarth;
 
 namespace
 {
+    struct ComputeVisibleBounds : public osg::NodeVisitor
+    {
+        ComputeVisibleBounds(osg::Polytope& tope, osg::Matrix& local2world) 
+            : osg::NodeVisitor(osg::NodeVisitor::TRAVERSE_ACTIVE_CHILDREN)
+        {
+            _matrixStack.push(local2world);
+            _topeStack.push(tope);
+        }
+
+        void apply(osg::Geode& node)
+        {
+            const osg::BoundingSphere& bs = node.getBound();
+            osg::Vec3 p = bs.center() * _matrixStack.top();
+            if ( _topeStack.top().contains(p) )
+            {
+                _bs.expandBy( osg::BoundingSphere(p, bs.radius()) );
+            }
+            //if ( _topeStack.top().contains(bs) )
+            //{
+            //    osg::Vec3 p = _matrixStack.top() * bs.center();
+            //    _bs.expandBy( osg::BoundingSphere(p, bs.radius()) );
+            //}
+        }
+
+        void apply(osg::Transform& xform)
+        {
+            osg::Matrix m;
+            xform.computeLocalToWorldMatrix(m, this);
+
+            _matrixStack.push( _matrixStack.top() );
+            _matrixStack.top().preMult( m );
+
+            //_topeStack.push( _topeStack.top() );
+            //_topeStack.top().transformProvidingInverse(m);
+
+            traverse(xform);
+
+            _matrixStack.pop();
+            //_topeStack.pop();
+        }
+
+        std::stack<osg::Matrix>   _matrixStack;
+        std::stack<osg::Polytope> _topeStack;
+        osg::BoundingSphere       _bs;
+    };
+
     void setFar(osg::Matrix& m, double newFar)
     {
         if ( osg::equivalent(m(0,3),0.0) && osg::equivalent(m(1,3),0.0) && osg::equivalent(m(2,3),0.0) )
@@ -412,11 +458,11 @@ OverlayDecorator::cullTerrainAndCalculateRTTParams(osgUtil::CullVisitor* cv,
     haslWeight = osg::absolute(worldUp * lookVector);
 
     // unit look-vector of the eye:
-    osg::Vec3d from, to, up;
+    osg::Vec3d camEye, camTo, camUp;
     const osg::Matrix& mvMatrix = *cv->getModelViewMatrix();
-    mvMatrix.getLookAt( from, to, up, eyeLen);
-    osg::Vec3 camLookVec = to-from;
-    camLookVec.normalize();
+    mvMatrix.getLookAt( camEye, camTo, camUp, 1.0); //eyeLen);
+    osg::Vec3 camLook = camTo-camEye;
+    camLook.normalize();
 
     // Save and reset the current near/far planes before traversing the subgraph.
     // We do this because we want a projection matrix that includes ONLY the clip
@@ -491,21 +537,10 @@ OverlayDecorator::cullTerrainAndCalculateRTTParams(osgUtil::CullVisitor* cv,
         inverseMVP.invert(MVP);
     }
 
-    // Build a polyhedron for the new frustum so we can slice it.
-    // TODO: do we really even need to slice it anymore? consider
-    osgShadow::ConvexPolyhedron frustumPH;
-    frustumPH.setToUnitFrustum(true, true);
-    frustumPH.transform( inverseMVP, MVP );
-
-    // extract the verts associated with the frustum's PH:
-    std::vector<osg::Vec3d> verts;
-    frustumPH.getPoints( verts );
-
     // calculate the new RTT matrices. All techniques will share the 
     // same set. We could probably put these in the "shared" category
     // and use pointers..todo.
     osg::Matrix rttViewMatrix, rttProjMatrix;
-
 
     // for a camera that cares about geometry (like the draping technique) it's important
     // to include the geometry in the ortho-camera's Z range. But for a camera that just
@@ -516,23 +551,32 @@ OverlayDecorator::cullTerrainAndCalculateRTTParams(osgUtil::CullVisitor* cv,
 
     // For now: our RTT camera z range will be based on this equation:
     double zspan = std::max(50000.0, hasl+25000.0);
-
+    osg::Vec3d up = camLook;
     if ( _isGeocentric )
     {
-        rttViewMatrix.makeLookAt( eye+worldUp*zspan, osg::Vec3d(0,0,0), osg::Vec3d(0,0,1) );
+        osg::Vec3d rttEye = eye+worldUp*zspan;
+        //establish a valid up vector
+        osg::Vec3d rttLook = -rttEye;
+        rttLook.normalize();
+        if ( fabs(rttLook * camLook) > 0.9999 )
+            up.set( camUp );
+
+        rttViewMatrix.makeLookAt( rttEye, osg::Vec3d(0,0,0), up );
     }
     else
     {
-        rttViewMatrix.makeLookAt( eye+worldUp*zspan, eye-worldUp*zspan, osg::Vec3d(0,1,0) );
+        osg::Vec3d rttLook(0, 0, -1);
+        if ( fabs(rttLook * camLook) > 0.9999 )
+            up.set( camUp );
+
+        rttViewMatrix.makeLookAt( camEye + worldUp*zspan, camEye - worldUp*zspan, up );
     }
 
-    // calculate an orthographic RTT projection matrix based on the view-space
-    // bounds of the vertex list (i.e. the extents surrounding the RTT camera 
-    // that bounds all the polyherdron verts in its XY plane)
-    double xmin, ymin, xmax, ymax, maxDist;
-    getExtentInSilhouette(rttViewMatrix, eye, verts, xmin, ymin, xmax, ymax, maxDist);
-    rttProjMatrix.makeOrtho(xmin, xmax, ymin, ymax, 0.0, std::min(maxDist,eyeLen)+zspan);
-
+    // Build a polyhedron for the new frustum so we can slice it.
+    // TODO: do we really even need to slice it anymore? consider
+    osgShadow::ConvexPolyhedron frustumPH;
+    frustumPH.setToUnitFrustum(true, true);
+    frustumPH.transform( inverseMVP, MVP );
 
     // now copy the RTT matrixes over to the techniques.
     for( unsigned t=0; t<pvd._techParams.size(); ++t )
@@ -543,8 +587,44 @@ OverlayDecorator::cullTerrainAndCalculateRTTParams(osgUtil::CullVisitor* cv,
         if ( !_techniques[t]->hasData(params) )
             continue;
 
+        // slice it to fit the overlay geometry. (this says 'visible' but it's just everything..
+        // perhaps we can truly make it visible)
+        osgShadow::ConvexPolyhedron visiblePH( frustumPH );
+
+#if 0
+        osg::Polytope frustumPT;
+        frustumPH.getPolytope(frustumPT);
+        ComputeVisibleBounds cvb(frustumPT, MVP);
+        params._group->accept(cvb);
+        const osg::BoundingSphere& visibleOverlayBS = cvb._bs;
+        OE_WARN << "VBS radius = " << visibleOverlayBS.radius() << std::endl;
+#else
+        const osg::BoundingSphere& visibleOverlayBS = params._group->getBound();
+#endif
+        if ( visibleOverlayBS.valid() )
+        {
+            osg::BoundingBox visibleOverlayBB;
+            visibleOverlayBB.expandBy( visibleOverlayBS );
+            osg::Polytope visibleOverlayPT;
+            visibleOverlayPT.setToBoundingBox( visibleOverlayBB );
+            visiblePH.cut( visibleOverlayPT );
+        }
+
+        // extract the verts associated with the frustum's PH:
+        std::vector<osg::Vec3d> verts;
+        visiblePH.getPoints( verts );
+
+        // calculate an orthographic RTT projection matrix based on the view-space
+        // bounds of the vertex list (i.e. the extents surrounding the RTT camera 
+        // that bounds all the polyherdron verts in its XY plane)
+        double xmin, ymin, xmax, ymax, maxDist;
+        getExtentInSilhouette(rttViewMatrix, eye, verts, xmin, ymin, xmax, ymax, maxDist);
+        rttProjMatrix.makeOrtho(xmin, xmax, ymin, ymax, 0.0, std::min(maxDist,eyeLen)+zspan);
+
         params._rttViewMatrix.set( rttViewMatrix );
         params._rttProjMatrix.set( rttProjMatrix );
+        params._eyeWorld = eye;
+        params._frustumPH = frustumPH;
 
         // service a "dump" of the polyhedrons for dubugging purposes
         // (see osgearth_overlayviewer)
@@ -559,17 +639,10 @@ OverlayDecorator::cullTerrainAndCalculateRTTParams(osgUtil::CullVisitor* cv,
             osg::Node* camNode = osgDB::readNodeFile(fn);
             camNode->setName("camera");
 
-            //// visible PH or overlay:
-            //visiblePHBeforeCut.dumpGeometry(0,0,0,fn,osg::Vec4(0,1,1,1),osg::Vec4(0,1,1,.25));
-            //osg::Node* overlay = osgDB::readNodeFile(fn);
-            //overlay->setName("overlay");
-
-#if 0
-            // visible overlay Polyherdron AFTER frustum intersection:
+            // visible overlay Polyherdron AFTER cuting:
             visiblePH.dumpGeometry(0,0,0,fn,osg::Vec4(1,.5,1,1),osg::Vec4(1,.5,0,.25));
             osg::Node* intersection = osgDB::readNodeFile(fn);
             intersection->setName("intersection");
-#endif
 
             // RTT frustum:
             {
@@ -596,7 +669,7 @@ OverlayDecorator::cullTerrainAndCalculateRTTParams(osgUtil::CullVisitor* cv,
             g->getOrCreateStateSet()->setAttribute(new osg::Program(), 0);
             g->addChild(camNode);
             //g->addChild(overlay);
-            //g->addChild(intersection);
+            g->addChild(intersection);
             g->addChild(rttNode);
             g->addChild(dsgmt);
 

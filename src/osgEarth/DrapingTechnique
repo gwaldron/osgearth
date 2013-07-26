@@ -116,6 +116,7 @@ namespace osgEarth
         bool                          _mipmapping;
         bool                          _rttBlending;
         bool                          _attachStencil;
+        bool                          _overlayWarping;
 
         struct TechData : public osg::Referenced
         {

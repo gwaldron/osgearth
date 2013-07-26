@@ -313,10 +313,9 @@ main(int argc, char** argv)
 
           double hours = skyConf.value("hours", 12.0);
           s_sky = new osgEarth::Util::SkyNode(mapNode->getMap());
-          s_sky->setDateTime(2011, 3, 6, hours);
+          s_sky->setDateTime( DateTime(2011, 3, 6, hours) );
           for(osgEarth::QtGui::ViewVector::iterator i = views.begin(); i != views.end(); ++i )
               s_sky->attach( *i );
-          //s_sky->attach(viewerWidget->getViewer());
           root->addChild(s_sky);
 
           // Ocean surface.

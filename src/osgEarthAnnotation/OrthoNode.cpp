@@ -31,6 +31,8 @@
 #include <osg/Point>
 #include <osg/Depth>
 
+#define LC "[OrthoNode] "
+
 using namespace osgEarth;
 using namespace osgEarth::Annotation;
 
@@ -282,7 +284,7 @@ OrthoNode::applyStyle(const Style& style)
     // check for decluttering.
     const TextSymbol* text = style.get<TextSymbol>();
     if ( text && text->declutter().isSet() )
-    {		
+    {
         if ( text->declutter() == true )
         {
             this->getOrCreateStateSet()->setRenderBinDetails(

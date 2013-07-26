@@ -10,6 +10,7 @@
 #include "osgPlugins.h"
 
 #include <osgDB/FileUtils>
+#include <osgDB/FileNameUtils>
 
 #include <osgViewer/api/IOS/GraphicsWindowIOS>
 
@@ -115,9 +116,13 @@ using namespace osgEarth::Util;
 {
     [super viewDidLoad];
     
+    std::string fullPath = osgDB::findDataFile("gdal_data/gdal_datum.csv");
+    std::string dataPath = osgDB::getFilePath(fullPath);
+    
+    setenv("GDAL_DATA", dataPath.c_str(), 1);
+    
     osg::setNotifyLevel(osg::DEBUG_FP);
     osgEarth::setNotifyLevel(osg::DEBUG_FP);
-
     
     //get screen scale
     UIScreen* screen = [UIScreen mainScreen];

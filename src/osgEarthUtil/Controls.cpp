@@ -64,6 +64,20 @@ namespace
         "    vColor = osg_Color; \n"
         "} \n";
     
+    const char* s_controlFragmentShader =
+    "#version " GLSL_VERSION_STR "\n"
+    GLSL_DEFAULT_PRECISION_FLOAT "\n"
+    "uniform sampler2D tex0; \n"
+    "uniform float oe_controls_visibleTime; \n"
+    "uniform float osg_FrameTime; \n"
+    "varying mediump vec4 texcoord; \n"
+    "varying mediump vec4 vColor; \n"
+    "void main() \n"
+    "{ \n"
+    "    float opacity = clamp( osg_FrameTime - oe_controls_visibleTime, 0.0, 1.0 ); \n"
+    "    gl_FragColor = vec4(vColor.rgb, vColor.a * opacity); \n"
+    "} \n";
+    
     const char* s_imageControlFragmentShader =
     "#version " GLSL_VERSION_STR "\n"
     GLSL_DEFAULT_PRECISION_FLOAT "\n"
@@ -610,10 +624,13 @@ Control::draw(const ControlContext& cx, DrawableList& out )
             _geom->setColorArray( colors );
             _geom->setColorBinding( osg::Geometry::BIND_OVERALL );
             
-            //osg::Program* program = new osg::Program();
-            //program->addShader( new osg::Shader( osg::Shader::VERTEX, s_controlVertexShader ) );
-            //program->addShader( new osg::Shader( osg::Shader::FRAGMENT, s_labelControlFragmentShader ) );
-            //_geom->getOrCreateStateSet()->setAttributeAndModes( program, osg::StateAttribute::ON );
+            if ( Registry::capabilities().supportsGLSL() )
+            {
+                osg::Program* program = new osg::Program();
+                program->addShader( new osg::Shader( osg::Shader::VERTEX, s_controlVertexShader ) );
+                program->addShader( new osg::Shader( osg::Shader::FRAGMENT, s_controlFragmentShader ) );
+                _geom->getOrCreateStateSet()->setAttributeAndModes( program, osg::StateAttribute::ON );
+            }
 
             out.push_back( _geom.get() );
         }
@@ -1267,10 +1284,13 @@ HSliderControl::draw( const ControlContext& cx, DrawableList& out )
             g->setColorArray( c );
             g->setColorBinding( osg::Geometry::BIND_OVERALL );
             
-            //osg::Program* program = new osg::Program();
-            //program->addShader( new osg::Shader( osg::Shader::VERTEX, s_controlVertexShader ) );
-            //program->addShader( new osg::Shader( osg::Shader::FRAGMENT, s_labelControlFragmentShader ) );
-            //g->getOrCreateStateSet()->setAttributeAndModes( program, osg::StateAttribute::ON );
+            if ( Registry::capabilities().supportsGLSL() )
+            {
+                osg::Program* program = new osg::Program();
+                program->addShader( new osg::Shader( osg::Shader::VERTEX, s_controlVertexShader ) );
+                program->addShader( new osg::Shader( osg::Shader::FRAGMENT, s_controlFragmentShader ) );
+                g->getOrCreateStateSet()->setAttributeAndModes( program, osg::StateAttribute::ON );
+            }
 
             out.push_back( g.get() );
         }
@@ -1377,11 +1397,13 @@ CheckBoxControl::draw( const ControlContext& cx, DrawableList& out )
         g->setColorArray( c );
         g->setColorBinding( osg::Geometry::BIND_OVERALL );
         
-        // needs a special shader
-        //osg::Program* program = new osg::Program();
-        //program->addShader( new osg::Shader( osg::Shader::VERTEX, s_controlVertexShader ) );
-        //program->addShader( new osg::Shader( osg::Shader::FRAGMENT, s_labelControlFragmentShader ) );
-        //g->getOrCreateStateSet()->setAttributeAndModes( program, osg::StateAttribute::ON );
+        if ( Registry::capabilities().supportsGLSL() )
+        {
+            osg::Program* program = new osg::Program();
+            program->addShader( new osg::Shader( osg::Shader::VERTEX, s_controlVertexShader ) );
+            program->addShader( new osg::Shader( osg::Shader::FRAGMENT, s_controlFragmentShader ) );
+            g->getOrCreateStateSet()->setAttributeAndModes( program, osg::StateAttribute::ON );
+        }
 
         out.push_back( g );
     }
@@ -2358,7 +2380,7 @@ _fading        ( true )
     {
         osg::Program* program = new osg::Program();
         program->addShader( new osg::Shader( osg::Shader::VERTEX, s_controlVertexShader ) );
-        program->addShader( new osg::Shader( osg::Shader::FRAGMENT, s_labelControlFragmentShader ) );
+        program->addShader( new osg::Shader( osg::Shader::FRAGMENT, s_controlFragmentShader ) );
         stateSet->setAttributeAndModes( program, osg::StateAttribute::ON );
     }
     

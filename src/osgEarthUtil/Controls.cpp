@@ -119,6 +119,18 @@ namespace
     "    texcoord = gl_MultiTexCoord0; \n"
     "    gl_FrontColor = gl_Color; \n"
     "} \n";
+
+    const char* s_controlFragmentShader =
+    "#version " GLSL_VERSION_STR "\n"
+    GLSL_DEFAULT_PRECISION_FLOAT "\n"
+    "uniform sampler2D tex0; \n"
+    "uniform float oe_controls_visibleTime; \n"
+    "uniform float osg_FrameTime; \n"
+    "void main() \n"
+    "{ \n"
+    "    float opacity = clamp( osg_FrameTime - oe_controls_visibleTime, 0.0, 1.0 ); \n"
+    "    gl_FragColor = vec4(gl_Color.rgb, gl_Color.a * opacity); \n"
+    "} \n";
     
     const char* s_imageControlFragmentShader =
     "#version " GLSL_VERSION_STR "\n"
@@ -146,6 +158,7 @@ namespace
     "    vec4 texel = texture2D(tex0, gl_TexCoord[0].st); \n"
     "    gl_FragColor = vec4(gl_Color.rgb, texel.a * opacity); \n"
     "} \n";
+
 #endif
 
     

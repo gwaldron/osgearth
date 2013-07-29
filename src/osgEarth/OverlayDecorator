@@ -119,7 +119,6 @@ namespace osgEarth
         optional<int>                 _textureSize;
         bool                          _useShaders;
         bool                          _isGeocentric;
-        double                        _maxProjectedMapExtent;
         bool                          _mipmapping;
         bool                          _rttBlending;
         bool                          _updatePending;

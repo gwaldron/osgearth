@@ -110,6 +110,8 @@ FeatureNode::init()
             node = AnnotationUtils::installTwoPassAlpha( node );
         }
 
+        //OE_NOTICE << GeometryUtils::geometryToGeoJSON( _feature->getGeometry() ) << std::endl;
+
         _attachPoint = new osg::Group();
         _attachPoint->addChild( node );
 

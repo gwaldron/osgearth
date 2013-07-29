@@ -352,13 +352,6 @@ OverlayDecorator::onInstall( TerrainEngineNode* engine )
     _srs = info.getProfile()->getSRS();
     _ellipsoid = info.getProfile()->getSRS()->getEllipsoid();
 
-    // the maximum extent (for projected maps only)
-    if ( !_isGeocentric )
-    {
-        const GeoExtent& extent = info.getProfile()->getExtent();
-        _maxProjectedMapExtent = osg::maximum( extent.width(), extent.height() );
-    }
-
     //todo: need this? ... probably not anymore
     _useShaders = 
         Registry::capabilities().supportsGLSL() && (
@@ -417,21 +410,26 @@ OverlayDecorator::cullTerrainAndCalculateRTTParams(osgUtil::CullVisitor* cv,
     {
         eyeLen = eye.length();
 
-        double lat, lon;
-        _ellipsoid->convertXYZToLatLongHeight( eye.x(), eye.y(), eye.z(), lat, lon, hasl );
+        const SpatialReference* geoSRS = _engine->getTerrain()->getSRS();
+        osg::Vec3d geodetic;
+        geoSRS->transformFromWorld(eye, geodetic);
 
+        //double lat, lon;
+        //_ellipsoid->convertXYZToLatLongHeight( eye.x(), eye.y(), eye.z(), lat, lon, hasl );
+
+        hasl = geodetic.z();
         R = eyeLen - hasl;
         
         //Actually sample the terrain to get the height and adjust the eye position so it's a tighter fit to the real data.
         double height;
-        if (_engine->getTerrain()->getHeight( SpatialReference::create("epsg:4326"), osg::RadiansToDegrees( lon ), osg::RadiansToDegrees( lat ), &height))
+        if (_engine->getTerrain()->getHeight(geoSRS, geodetic.x(), geodetic.y(), &height)) // SpatialReference::create("epsg:4326"), osg::RadiansToDegrees( lon ), osg::RadiansToDegrees( lat ), &height))
         {
-            hasl -= height;
+            geodetic.z() -= height;
         }
         hasl = osg::maximum( hasl, 100.0 );
 
+        // up vector tangent to the ellipsoid under the eye.
         worldUp = _ellipsoid->computeLocalUpVector(eye.x(), eye.y(), eye.z());
-
 
         // radius of the earth under the eyepoint
         // gw: wrong. use R instead.
@@ -561,7 +559,8 @@ OverlayDecorator::cullTerrainAndCalculateRTTParams(osgUtil::CullVisitor* cv,
         if ( fabs(rttLook * camLook) > 0.9999 )
             up.set( camUp );
 
-        rttViewMatrix.makeLookAt( rttEye, osg::Vec3d(0,0,0), up );
+        // do NOT look at (0,0,0); must look down the ellipsoid up vector.
+        rttViewMatrix.makeLookAt( rttEye, rttEye-worldUp*zspan, up );
     }
     else
     {

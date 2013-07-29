@@ -183,7 +183,7 @@ DepthOffsetOptions::getConfig() const
 //------------------------------------------------------------------------
 
 DepthOffsetAdapter::DepthOffsetAdapter() :
-_dirty  ( false )
+_dirty( false )
 {
     init();
 }
@@ -198,14 +198,20 @@ _dirty( false )
 void
 DepthOffsetAdapter::init()
 {
-    _biasUniform  = new osg::Uniform(osg::Uniform::FLOAT_VEC2, "oe_doff_bias");
-    _rangeUniform = new osg::Uniform(osg::Uniform::FLOAT_VEC2, "oe_doff_range");
-    updateUniforms();
+    _supported = Registry::capabilities().supportsFragDepthWrite();
+    if ( _supported )
+    {
+        _biasUniform  = new osg::Uniform(osg::Uniform::FLOAT_VEC2, "oe_doff_bias");
+        _rangeUniform = new osg::Uniform(osg::Uniform::FLOAT_VEC2, "oe_doff_range");
+        updateUniforms();
+    }
 }
 
 void
 DepthOffsetAdapter::setGraph(osg::Node* graph)
 {
+    if ( !_supported ) return;
+
     bool graphChanging =
         _graph.get() != graph;
 
@@ -261,6 +267,8 @@ DepthOffsetAdapter::setGraph(osg::Node* graph)
 void
 DepthOffsetAdapter::updateUniforms()
 {
+    if ( !_supported ) return;
+
     _biasUniform->set( osg::Vec2f(*_options.minBias(), *_options.maxBias()) );
     _rangeUniform->set( osg::Vec2f(*_options.minRange(), *_options.maxRange()) );
 
@@ -274,6 +282,8 @@ DepthOffsetAdapter::updateUniforms()
 void 
 DepthOffsetAdapter::setDepthOffsetOptions(const DepthOffsetOptions& options)
 {
+    if ( !_supported ) return;
+
     // if "enabled" changed, reset the graph.
     bool reinitGraph = ( options.enabled() != _options.enabled() );
 
@@ -292,7 +302,7 @@ DepthOffsetAdapter::setDepthOffsetOptions(const DepthOffsetOptions& options)
 void
 DepthOffsetAdapter::recalculate()
 {
-    if ( _graph.valid() )
+    if ( _supported && _graph.valid() )
     {
         if ( _options.automatic() == true )
         {

@@ -629,12 +629,14 @@ MPTerrainEngineNode::updateShaders()
             "void oe_mp_apply_coloring( inout vec4 color ) \n"
             "{ \n"
             "    vec4 texel; \n"
-            "    if ( oe_layer_uid >= 0 ) \n"
+            "    if ( oe_layer_uid >= 0 ) { \n"
             "        texel = texture2D(oe_layer_tex, oe_layer_texc.st); \n"
+            "        texel.a *= oe_layer_opacity; \n"
+            "    } \n"
             "    else \n"
             "        texel = color; \n"
             "    if (oe_layer_order == 0 ) \n"
-            "        color = vec4(color.rgb*(1.0-texel.a) + texel.rgb*texel.a, color.a); \n"
+            "        color = texel*texel.a + color*(1.0-texel.a); \n" // simulate src_alpha, 1-src_alpha blens
             "    else \n"
             "        color = texel; \n"
             "} \n";
@@ -661,7 +663,7 @@ MPTerrainEngineNode::updateShaders()
             // first layer must PMA-blend with the globe color.
             "    if (oe_layer_order == 0) { \n"
             "        color *= color.a; \n"
-            "        color = vec4(texelpma.rgb + color.rgb*(1.0-texelpma.a), color.a); \n"
+            "        color = texelpma + color*(1.0-texelpma); \n" // simulate one, 1-src_alpha blend
             "    } \n"
 
             "    else { \n"

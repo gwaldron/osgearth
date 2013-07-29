@@ -662,8 +662,8 @@ MPTerrainEngineNode::updateShaders()
 
             // first layer must PMA-blend with the globe color.
             "    if (oe_layer_order == 0) { \n"
-            "        color *= color.a; \n"
-            "        color = texelpma + color*(1.0-texelpma); \n" // simulate one, 1-src_alpha blend
+            "        color.rgb *= color.a; \n"
+            "        color = texelpma + color*(1.0-texelpma.a); \n" // simulate one, 1-src_alpha blend
             "    } \n"
 
             "    else { \n"

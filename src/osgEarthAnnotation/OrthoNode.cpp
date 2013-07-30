@@ -285,16 +285,17 @@ OrthoNode::applyStyle(const Style& style)
     const TextSymbol* text = style.get<TextSymbol>();
     if ( text && text->declutter().isSet() )
     {
-        if ( text->declutter() == true )
-        {
-            this->getOrCreateStateSet()->setRenderBinDetails(
-                12,
-                OSGEARTH_DECLUTTER_BIN );
-        }
-        else
-        {
-            this->getOrCreateStateSet()->setRenderBinToInherit();
-        }
+        Decluttering::setEnabled( this->getOrCreateStateSet(), (text->declutter() == true) );
+        //if ( text->declutter() == true )
+        //{
+        //    this->getOrCreateStateSet()->setRenderBinDetails(
+        //        0,
+        //        OSGEARTH_DECLUTTER_BIN );
+        //}
+        //else
+        //{
+        //    this->getOrCreateStateSet()->setRenderBinToInherit();
+        //}
     }
 
 
@@ -312,16 +313,17 @@ OrthoNode::applyStyle(const Style& style)
     const IconSymbol* icon = style.get<IconSymbol>();
     if ( icon && icon->declutter().isSet() )
     {
-        if ( icon->declutter() == true )
-        {
-            this->getOrCreateStateSet()->setRenderBinDetails(
-                12,
-                OSGEARTH_DECLUTTER_BIN );
-        }
-        else
-        {
-            this->getOrCreateStateSet()->setRenderBinToInherit();
-        }
+        Decluttering::setEnabled( this->getOrCreateStateSet(), (icon->declutter() == true) );
+        //if ( icon->declutter() == true )
+        //{
+        //    this->getOrCreateStateSet()->setRenderBinDetails(
+        //        0,
+        //        OSGEARTH_DECLUTTER_BIN );
+        //}
+        //else
+        //{
+        //    this->getOrCreateStateSet()->setRenderBinToInherit();
+        //}
     }
 
     // check for occlusion culling

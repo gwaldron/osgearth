@@ -99,6 +99,8 @@ struct PrimitiveIntersectorFunctor
     //POINT
     inline void operator () (const osg::Vec3d& p, bool treatVertexDataAsTemporary)
     {
+        if (_limitOneIntersection && _hit) return;
+
         osg::Vec3d n = _d ^ _thickness;
 
         osg::Vec3d v1 = p + _thickness;
@@ -106,12 +108,17 @@ struct PrimitiveIntersectorFunctor
         osg::Vec3d v3 = p - _thickness;
         osg::Vec3d v4 = p + n;
 
-        this->operator()(v1, v2, v3, v4, treatVertexDataAsTemporary);
+        //this->operator()(v1, v2, v3, v4, treatVertexDataAsTemporary);
+        this->triNoBuffer(v1, v2, v3, treatVertexDataAsTemporary);
+        --_index;
+        this->triNoBuffer(v1, v3, v4, treatVertexDataAsTemporary);
     }
 
     //LINE
     inline void operator () (const osg::Vec3d& v1, const osg::Vec3d& v2, bool treatVertexDataAsTemporary)
      {
+        if (_limitOneIntersection && _hit) return;
+
         float thickness =  _thickness.length();
         osg::Vec3d l12 = v2 - v1;
         osg::Vec3d ln = _d ^ l12;
@@ -122,7 +129,12 @@ struct PrimitiveIntersectorFunctor
         osg::Vec3d vq3 = v2 - ln*thickness;
         osg::Vec3d vq4 = v1 - ln*thickness;
 
-        this->operator()(vq1, vq2, vq3, vq4, treatVertexDataAsTemporary);
+        //this->operator()(vq1, vq2, vq3, vq4, treatVertexDataAsTemporary);
+        this->triNoBuffer(vq1, vq2, vq3, treatVertexDataAsTemporary);
+        if (_limitOneIntersection && _hit) return;
+
+        --_index;
+        this->triNoBuffer(vq1, vq3, vq4, treatVertexDataAsTemporary);
     }
 
     //QUAD
@@ -130,17 +142,59 @@ struct PrimitiveIntersectorFunctor
         const osg::Vec3d& v1, const osg::Vec3d& v2, const osg::Vec3d& v3, const osg::Vec3d& v4, bool treatVertexDataAsTemporary
         )
     {
+        if (_limitOneIntersection && _hit) return;
+
         this->operator()(v1, v2, v3, treatVertexDataAsTemporary);
+        if (_limitOneIntersection && _hit) return;
 
         --_index;
-
         this->operator()(v1, v3, v4, treatVertexDataAsTemporary);
     }
 
-    //TRIANGLE
+    //TRIANGLE (buffered)
     inline void operator () (
         const osg::Vec3d& v1, const osg::Vec3d& v2, const osg::Vec3d& v3, bool treatVertexDataAsTemporary
         )
+    {
+        if (_limitOneIntersection && _hit) return;
+
+        // first do a simple test against the unbuffered triangle:
+        this->triNoBuffer(v1, v2, v3, treatVertexDataAsTemporary);
+        if (_limitOneIntersection && _hit) return;
+
+        // now buffer each edge and test against that.
+        float thickness = _thickness.length();
+        osg::Vec3d ln, buf;
+
+        osg::Vec3d v12 = v2-v1; ln = _d ^ v12; ln.normalize(); buf = ln*thickness;
+        --_index;
+        this->triNoBuffer(v1+buf, v2+buf, v2-buf, treatVertexDataAsTemporary);
+        if (_limitOneIntersection && _hit) return;
+
+        --_index;
+        this->triNoBuffer(v1+buf, v3-buf, v1-buf, treatVertexDataAsTemporary);
+        if (_limitOneIntersection && _hit) return;
+
+        osg::Vec3d v23 = v3-v1; ln = _d ^ v23; ln.normalize(); buf = ln*thickness;
+        --_index;
+        this->triNoBuffer(v2+buf, v3+buf, v3-buf, treatVertexDataAsTemporary );
+        if (_limitOneIntersection && _hit) return;
+
+        --_index;
+        this->triNoBuffer(v2+buf, v3-buf, v2-buf, treatVertexDataAsTemporary );
+        if (_limitOneIntersection && _hit) return;
+
+        osg::Vec3d v31 = v1-v3; ln = _d ^ v31; ln.normalize(); buf = ln*thickness;
+        --_index;
+        this->triNoBuffer(v3+buf, v1+buf, v1-buf, treatVertexDataAsTemporary);
+        if (_limitOneIntersection && _hit) return;
+
+        --_index;
+        this->triNoBuffer(v3+buf, v1-buf, v3-buf, treatVertexDataAsTemporary);
+    }
+
+    //TRIANGLE (no buffer applied)
+    inline void triNoBuffer(const osg::Vec3d& v1, const osg::Vec3d& v2, const osg::Vec3d& v3, bool treatVertexDataAsTemporary)
     {
         ++_index;
 
@@ -246,8 +300,8 @@ struct PrimitiveIntersectorFunctor
             _intersections.insert(std::pair<const float,PrimitiveIntersection>(r,PrimitiveIntersection(_index-1,normal,r1,&v1,r2,&v2,r3,&v3)));
         }
         _hit = true;
-
     }
+
 
 };
 

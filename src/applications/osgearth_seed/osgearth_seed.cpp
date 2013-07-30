@@ -26,6 +26,7 @@
 #include <osgEarth/Map>
 #include <osgEarth/MapFrame>
 #include <osgEarth/Cache>
+#include <osgEarth/CacheEstimator>
 #include <osgEarth/CacheSeed>
 #include <osgEarth/MapNode>
 #include <osgEarth/Registry>
@@ -46,6 +47,7 @@ int purge( osg::ArgumentParser& args );
 int usage( const std::string& msg );
 int message( const std::string& msg );
 std::string prettyPrintTime( double seconds );
+std::string prettyPrintSize( double mb );
 
 
 int
@@ -111,6 +113,8 @@ seed( osg::ArgumentParser& args )
     //Read the max level
     unsigned int maxLevel = 5;
     while (args.read("--max-level", maxLevel));
+
+    bool estimate = args.read("--estimate");        
     
 
     std::vector< Bounds > bounds;
@@ -141,11 +145,7 @@ seed( osg::ArgumentParser& args )
     MapNode* mapNode = MapNode::findMapNode( node.get() );
     if ( !mapNode )
         return usage( "Input file was not a .earth file" );
-
-    CacheSeed seeder;
-    seeder.setMinLevel( minLevel );
-    seeder.setMaxLevel( maxLevel );
-
+    
     // Read in an index shapefile
     std::string index;
     while (args.read("--index", index))
@@ -169,12 +169,45 @@ seed( osg::ArgumentParser& args )
         }
     }
 
+    // If they requested to do an estimate then don't do the the seed, just print out the estimated values.
+    if (estimate)
+    {        
+        CacheEstimator est;
+        est.setMinLevel( minLevel );
+        est.setMaxLevel( maxLevel );
+        est.setProfile( mapNode->getMap()->getProfile() );
+
+        for (unsigned int i = 0; i < bounds.size(); i++)
+        {
+            GeoExtent extent(mapNode->getMapSRS(), bounds[i]);
+            OE_DEBUG << "Adding extent " << extent.toString() << std::endl;
+            est.addExtent( extent );
+        } 
+
+        unsigned int numTiles = est.getNumTiles();
+        double size = est.getSizeInMB();
+        double time = est.getTotalTimeInSeconds();
+        std::cout << "Cache Estimation " << std::endl
+                  << "---------------- " << std::endl
+                  << "Total number of tiles: " << numTiles << std::endl
+                  << "Size on disk:          " << prettyPrintSize( size ) << std::endl
+                  << "Total time:            " << prettyPrintTime( time ) << std::endl;
+
+        return 0;
+    }
+
+    CacheSeed seeder;
+    seeder.setMinLevel( minLevel );
+    seeder.setMaxLevel( maxLevel );
+
+
     for (unsigned int i = 0; i < bounds.size(); i++)
     {
         GeoExtent extent(mapNode->getMapSRS(), bounds[i]);
         OE_DEBUG << "Adding extent " << extent.toString() << std::endl;
         seeder.addExtent( extent );
     }    
+
     if (verbose)
     {
         seeder.setProgressCallback(new ConsoleProgressCallback);
@@ -396,5 +429,27 @@ std::string prettyPrintTime( double seconds )
 
     std::stringstream buf;
     buf << hours << ":" << minutes << ":" << seconds;
+    return buf.str();
+}
+
+/**
+ * Gets a pretty printed version of the given size in MB.
+ */
+std::string prettyPrintSize( double mb )
+{
+    std::stringstream buf;
+    // Convert to terabytes
+    if ( mb > 1024 * 1024 )
+    {
+        buf << (mb / (1024.0*1024.0)) << " TB";
+    }
+    else if (mb > 1024)
+    {
+        buf << (mb / 1024.0) << " GB";
+    }
+    else 
+    {
+        buf << mb << " MB";
+    }
     return buf.str();
 }

@@ -24,6 +24,7 @@ SET(LIB_PUBLIC_HEADERS
     AutoScale
     Bounds
     Cache
+	CacheEstimator
     CacheBin
     CachePolicy
     CacheSeed
@@ -149,6 +150,7 @@ ADD_LIBRARY(${LIB_NAME} ${OSGEARTH_USER_DEFINED_DYNAMIC_OR_STATIC}
     AutoScale.cpp
     Bounds.cpp
     Cache.cpp
+	CacheEstimator.cpp
     CachePolicy.cpp
     CacheSeed.cpp
     Capabilities.cpp

@@ -18,6 +18,7 @@
 */
 
 #include <osgEarth/CacheSeed>
+#include <osgEarth/CacheEstimator>
 #include <osgEarth/MapFrame>
 #include <OpenThreads/ScopedLock>
 #include <limits.h>
@@ -139,128 +140,17 @@ void CacheSeed::seed( Map* map )
 
     OE_NOTICE << LC << "Maximum cache level will be " << _maxLevel << std::endl;
 
-    osg::Timer_t startTime = osg::Timer::instance()->tick();
     //Estimate the number of tiles
     _total = 0;    
-
-    for (unsigned int level = _minLevel; level <= _maxLevel; level++)
-    {
-        double coverageRatio = 0.0;
-
-        if (_extents.empty())
-        {
-            unsigned int wide, high;
-            map->getProfile()->getNumTiles( level, wide, high );
-            _total += (wide * high);
-        }
-        else
-        {
-            for (std::vector< GeoExtent >::const_iterator itr = _extents.begin(); itr != _extents.end(); itr++)
-            {
-                const GeoExtent& extent = *itr;
-                double boundsArea = extent.area();
-
-                TileKey ll = map->getProfile()->createTileKey(extent.xMin(), extent.yMin(), level);
-                TileKey ur = map->getProfile()->createTileKey(extent.xMax(), extent.yMax(), level);
-
-                if (!ll.valid() || !ur.valid()) continue;
-                
-                int tilesWide = ur.getTileX() - ll.getTileX() + 1;
-                int tilesHigh = ll.getTileY() - ur.getTileY() + 1;
-                int tilesAtLevel = tilesWide * tilesHigh;
-                //OE_NOTICE << "Tiles at level " << level << "=" << tilesAtLevel << std::endl;
-
-                /*
-                bool hasData = false;
-                
-                for (ImageLayerVector::const_iterator itr = mapf.imageLayers().begin(); itr != mapf.imageLayers().end(); itr++)
-                {
-                    TileSource* src = itr->get()->getTileSource();
-                    if (src)
-                    {
-                        if (src->hasDataAtLOD( level ))
-                        {
-                            //Compute the percent coverage of this dataset on the current extent
-                            if (src->getDataExtents().size() > 0)
-                            {
-                                double cov = 0.0;
-                                for (unsigned int j = 0; j < src->getDataExtents().size(); j++)
-                                {
-                                    GeoExtent b = src->getDataExtents()[j].transform( extent.getSRS());
-                                    GeoExtent intersection = b.intersectionSameSRS( extent );
-                                    if (intersection.isValid())
-                                    {
-                                        double coverage = intersection.area() / boundsArea;
-                                        cov += coverage; //Assumes the extents aren't overlapping                            
-                                    }
-                                }
-                                if (coverageRatio < cov) coverageRatio = cov;
-                            }
-                            else
-                            {
-                                //We have no way of knowing how much coverage we have
-                                coverageRatio = 1.0;
-                            }
-                            hasData = true;
-                            break;
-                        }
-                    }
-                }
-
-                for (ElevationLayerVector::const_iterator itr = mapf.elevationLayers().begin(); itr != mapf.elevationLayers().end(); itr++)
-                {
-                    TileSource* src = itr->get()->getTileSource();
-                    if (src)
-                    {
-                        if (src->hasDataAtLOD( level ))
-                        {
-                            //Compute the percent coverage of this dataset on the current extent
-                            if (src->getDataExtents().size() > 0)
-                            {
-                                double cov = 0.0;
-                                for (unsigned int j = 0; j < src->getDataExtents().size(); j++)
-                                {
-                                    GeoExtent b = src->getDataExtents()[j].transform( extent.getSRS());
-                                    GeoExtent intersection = b.intersectionSameSRS( extent );
-                                    if (intersection.isValid())
-                                    {
-                                        double coverage = intersection.area() / boundsArea;
-                                        cov += coverage; //Assumes the extents aren't overlapping                            
-                                    }
-                                }
-                                if (coverageRatio < cov) coverageRatio = cov;
-                            }
-                            else
-                            {
-                                //We have no way of knowing how much coverage we have
-                                coverageRatio = 1.0;
-                            }
-                            hasData = true;
-                            break;
-                        }
-                    }
-                }
-
-                //Adjust the coverage ratio by a fudge factor to try to keep it from being too small,
-                //tiles are either processed or not and the ratio is exact so will cover tiles partially
-                //and potentially be too small
-                double adjust = 4.0;
-                coverageRatio = osg::clampBetween(coverageRatio * adjust, 0.0, 1.0);                
-
-                //OE_NOTICE << level <<  " CoverageRatio = " << coverageRatio << std::endl;
-
-                if (hasData)
-                {
-                    _total += (int)ceil(coverageRatio * (double)tilesAtLevel );
-                }
-                */
-                _total += tilesAtLevel;
-            }
-        }
-    }
-
-    osg::Timer_t endTime = osg::Timer::instance()->tick();
-    //OE_NOTICE << "Counted tiles in " << osg::Timer::instance()->delta_s(startTime, endTime) << " s" << std::endl;
+    CacheEstimator est;
+    est.setMinLevel( _minLevel );
+    est.setMaxLevel( _maxLevel );
+    est.setProfile( map->getProfile() ); 
+    for (unsigned int i = 0; i < _extents.size(); i++)
+    {                
+        est.addExtent( _extents[ i ] );
+    } 
+    _total = est.getNumTiles();
 
     OE_INFO << "Processing ~" << _total << " tiles" << std::endl;
 

@@ -80,12 +80,14 @@ usage( const std::string& msg )
         << "    --list file.earth                   ; Lists info about the cache in a .earth file" << std::endl
         << std::endl
         << "    --seed file.earth                   ; Seeds the cache in a .earth file"  << std::endl
+        << "        [--estimate]                    ; Print out an estimation of the number of tiles, disk space and time it will take to perform this seed operation" << std::endl
         << "        [--min-level level]             ; Lowest LOD level to seed (default=0)" << std::endl
         << "        [--max-level level]             ; Highest LOD level to seed (defaut=highest available)" << std::endl
         << "        [--bounds xmin ymin xmax ymax]* ; Geospatial bounding box to seed (in map coordinates; default=entire map)" << std::endl
         << "        [--index shapefile]             ; Use the feature extents in a shapefile to set the bounding boxes for seeding" << std::endl
         << "        [--cache-path path]             ; Overrides the cache path in the .earth file" << std::endl
         << "        [--cache-type type]             ; Overrides the cache type in the .earth file" << std::endl
+        << "        [--threads]                     ; The number of threads to use for the seed operation (default=1)" << std::endl
         << std::endl
         << "    --purge file.earth                  ; Purges a layer cache in a .earth file (interactive)" << std::endl
         << std::endl;
@@ -115,6 +117,9 @@ seed( osg::ArgumentParser& args )
     while (args.read("--max-level", maxLevel));
 
     bool estimate = args.read("--estimate");        
+
+    unsigned int threads = 1;
+    while (args.read("--threads", threads));
     
 
     std::vector< Bounds > bounds;
@@ -199,6 +204,7 @@ seed( osg::ArgumentParser& args )
     CacheSeed seeder;
     seeder.setMinLevel( minLevel );
     seeder.setMaxLevel( maxLevel );
+    seeder.setNumThreads( threads );
 
 
     for (unsigned int i = 0; i < bounds.size(); i++)

@@ -305,14 +305,16 @@ public:
             std::string delim = uri.find("?") == std::string::npos ? "?" : "&";
             uri = uri + delim + extraAttrs;
         }
+
+        // Try to get the image first
+        out_response = URI( uri ).readImage( _dbOptions.get(), progress);
         
-        out_response = URI( uri ).readString( _dbOptions.get(), progress );
-
-        //...
-        //out_response = HTTPClient::get( uri, 0L, progress ); //getOptions(), progress );
-
-        if ( out_response.succeeded() )
+        
+        if ( !out_response.succeeded() )
         {
+            // If it failed, try to read it again as a string to get the exception.
+            out_response = URI( uri ).readString( _dbOptions.get(), progress );      
+
             // get the mime type:
             std::string mt = out_response.metadata().value( IOMetadata::CONTENT_TYPE );
 
@@ -338,11 +340,11 @@ public:
                 {
                     OE_NOTICE << "WMS: unknown error." << std::endl;
                 }
-            }
-            else
-            {
-                image = URI( uri ).readImage( _dbOptions.get(), progress).getImage();
-            }
+            }            
+        }
+        else
+        {
+            image = out_response.getImage();
         }
         return image.release();
     }

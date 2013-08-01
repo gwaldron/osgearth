@@ -113,6 +113,10 @@ _numThreads(1)
 
 void CacheSeed::seed( Map* map )
 {
+    // We must do this to avoid an error message in OpenSceneGraph b/c the findWrapper method doesn't appear to be threadsafe.
+    // This really isn't a big deal b/c this only effects data that is already cached.
+    osgDB::ObjectWrapper* wrapper = osgDB::Registry::instance()->getObjectWrapperManager()->findWrapper( "osg::Image" );
+
     osg::Timer_t startTime = osg::Timer::instance()->tick();
     if ( !map->getCache() )
     {

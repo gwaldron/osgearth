@@ -7,24 +7,30 @@ OSG geometry out of it.
 
 <map name="Feature Geometry Demo" type="geocentric" version="2">
     
-    <image name="world" driver="gdal">
+	<options>
+        <lighting>false</lighting>
+    </options> 
+    
+	<image name="world" driver="gdal">
         <url>../data/world.tif</url>
     </image>
     
     <model name="states" driver="feature_geom">
 
         <!-- Configure the OGR feature driver to read the shapefile -->
-        <features name="states" driver="ogr">
-            <url>../data/usa.shp</url>
+        <features name="planet_osm_roads" driver="ogr">
+            <connection>PG:dbname='gis' host='localhost' port='5432' user='arents' tables=planet_osm_roads</connection>
+            <ogr_driver>PostgreSQL</ogr_driver>
+			<profile>spherical-mercator</profile>
         </features>
-        
+		        
         <!-- Ensure a vertex at least every 5 degrees -->
         <max_granularity>5.0</max_granularity>
         
         <!-- Appearance details -->
         <styles>
             <style type="text/css">
-                states {
+                planet_osm_roads {
                    stroke: #ffff00;
                    altitude-offset: 1000;                   
                 }                    

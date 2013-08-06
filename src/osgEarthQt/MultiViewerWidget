@@ -27,7 +27,7 @@
 #include <osgViewer/CompositeViewer>
 
 #include <QtCore/QTimer>
-#include <QtGui/QWidget>
+#include <QWidget>
 
 namespace osgEarth { namespace QtGui 
 {

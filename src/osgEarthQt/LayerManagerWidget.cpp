@@ -41,6 +41,7 @@
 #include <QStandardItemModel>
 #include <QVBoxLayout>
 #include <QWidget>
+#include <QDrag>
 
 using namespace osgEarth;
 using namespace osgEarth::QtGui;

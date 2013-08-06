@@ -26,6 +26,8 @@
 #include <iostream>
 #include <stdlib.h>
 
+#include <osgEarth/XmlUtils>
+
 using namespace osgEarth;
 
 
@@ -49,6 +51,20 @@ osgEarth::TileSource::Status WCS11Source::initialize(const osgDB::Options* dbOpt
     setProfile( osgEarth::Registry::instance()->getGlobalGeodeticProfile() );
     _dbOptions = Registry::instance()->cloneOrCreateOptions( dbOptions );
     CachePolicy::NO_CACHE.apply( _dbOptions.get() );
+
+    std::string capUrl;
+
+    if ( _options.url().isSet() )
+    {
+        char sep = _options.url()->full().find_first_of('?') == std::string::npos? '?' : '&';
+
+        capUrl = 
+            _options.url()->full() +
+            sep + 
+            "SERVICE=WCS&VERSION=1.1.0&REQUEST=GetCapabilities";
+    }        
+
+    _capabilities = WCSCapabilitiesReader::read( capUrl, _dbOptions.get() );
 
     return STATUS_OK;
 }
@@ -191,7 +207,10 @@ WCS11Source::createRequest( const TileKey& key ) const
     //We need to shift the bounding box out by half a pixel in all directions so that the center of the edge pixels lie on
     //the edge of this TileKey's extents.  Doing this makes neighboring tiles have the same elevation values so there is no need
     //to run the tile edge normalization code.
-    buf << lon_min - halfLon << "," << lat_min - halfLat << "," << lon_max + halfLon << "," << lat_max + halfLat << ",EPSG:4326";
+    std::string crs = "EPSG:4326";
+    if( _capabilities.valid() && _capabilities->getSupportedCRS().compare("") )
+        crs = _capabilities->getSupportedCRS();
+    buf << lon_min - halfLon << "," << lat_min - halfLat << "," << lon_max + halfLon << "," << lat_max + halfLat << ","<< crs;
 	std::string bufStr;
 	bufStr = buf.str();
     req.addParameter( "BOUNDINGBOX", bufStr );
@@ -214,4 +233,94 @@ WCS11Source::createRequest( const TileKey& key ) const
         req.addParameter( "RangeSubset", _options.rangeSubset().value() );
 
     return req;
+}
+
+
+
+
+WCSCapabilities::WCSCapabilities()
+:   _version(""),
+    _name(""),
+    _title(""),
+    _abstract(""),
+    _supportedCRS("")
+{
+}
+
+
+#define ATTR_VERSION "version"
+#define ELEM_CAPABILITY "capability"
+#define ELEM_SERVICE "owcs:ServiceIdentification"
+#define ELEM_REQUEST "request"
+#define ELEM_ABSTRACT "abstract"
+#define ELEM_TILED "tiled"
+#define ELEM_MAXLEVEL "maxlevel"
+#define ELEM_FIRSTLEVEL "firstlevel"
+#define ELEM_FORMAT "format"
+#define ELEM_NAME "name"
+#define ELEM_TITLE "title"
+#define ELEM_SRS "srs"
+#define ELEM_FEATURETYPELIST "featuretypelist"
+#define ELEM_FEATURETYPE "featuretype"
+#define ELEM_LATLONGBOUNDINGBOX "latlongboundingbox"
+#define ELEM_CONTENTS "contents"
+#define ATTR_MINX              "minx"
+#define ATTR_MINY              "miny"
+#define ATTR_MAXX              "maxx"
+#define ATTR_MAXY              "maxy"
+#define ATTR_SUPPORTEDCRS      "SupportedCRS"
+
+WCSCapabilities* 
+WCSCapabilitiesReader::read( const URI& location, const osgDB::Options* dbOptions )
+{
+    // read the data into a string buffer and parse it from there
+    std::string buffer = location.readString(dbOptions).getString();
+    if ( !buffer.empty() )
+    {
+        std::stringstream buf(buffer);
+        return read(buf);
+    }
+    else return 0L;
+}
+
+WCSCapabilities*
+WCSCapabilitiesReader::read(std::istream &in)
+{
+    osg::ref_ptr<WCSCapabilities> capabilities = new WCSCapabilities;
+
+    osg::ref_ptr<XmlDocument> doc = XmlDocument::load( in );
+    if (!doc.valid() || doc->getChildren().empty())
+    {
+        OE_NOTICE << "Failed to load Capabilities " << std::endl;
+        return 0;
+    }
+
+    //Get the Capabilities version
+    osg::ref_ptr<XmlElement> e_root = static_cast<XmlElement*>(doc->getChildren()[0].get());
+    capabilities->setVersion( e_root->getAttr(ATTR_VERSION ) );
+
+    osg::ref_ptr<XmlElement> e_service = e_root->getSubElement( ELEM_SERVICE );
+    if (!e_service.valid())
+    {
+        OE_NOTICE << "Could not find Service element" << std::endl;
+    }
+    else
+    {
+        //Read the parameters from the Service block
+        capabilities->setName( e_service->getSubElementText(ELEM_NAME ) );
+        capabilities->setAbstract( e_service->getSubElementText( ELEM_ABSTRACT ) );
+        capabilities->setTitle( e_service->getSubElementText( ELEM_TITLE ) );    
+    }
+
+    osg::ref_ptr<XmlElement> e_contents = e_root->getSubElement( ELEM_CONTENTS );
+    if (!e_contents.valid())
+    {
+        OE_NOTICE << "Could not find Contents element" << std::endl;
+    }
+    else
+    {
+        capabilities->setSupportedCRS(e_contents->getSubElementText( ATTR_SUPPORTEDCRS ) );
+    }
+
+    return capabilities.release();
 }

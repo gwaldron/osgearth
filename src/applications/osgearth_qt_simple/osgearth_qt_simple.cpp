@@ -22,11 +22,11 @@
 #include <osgEarthUtil/ExampleResources>
 #include <osgEarthUtil/EarthManipulator>
 #include <osgEarthQt/ViewerWidget>
-#include <QtGui/QApplication>
-#include <QtGui/QMainWindow>
-#include <QtGui/QStatusBar>
-#include <QtGui/QMdiArea>
-#include <QtGui/QMdiSubWindow>
+#include <QApplication>
+#include <QMainWindow>
+#include <QStatusBar>
+#include <QMdiArea>
+#include <QMdiSubWindow>
 
 #ifdef Q_WS_X11
 #include <X11/Xlib.h>

@@ -618,7 +618,10 @@ OverlayDecorator::cullTerrainAndCalculateRTTParams(osgUtil::CullVisitor* cv,
         // that bounds all the polyherdron verts in its XY plane)
         double xmin, ymin, xmax, ymax, maxDist;
         getExtentInSilhouette(rttViewMatrix, eye, verts, xmin, ymin, xmax, ymax, maxDist);
-        rttProjMatrix.makeOrtho(xmin, xmax, ymin, ymax, 0.0, std::min(maxDist,eyeLen)+zspan);
+
+        // make sure the ortho camera penetrates the terrain. This is a must for depth buffer sampling
+        double dist = std::max(hasl*1.5, std::min(maxDist, eyeLen));
+        rttProjMatrix.makeOrtho(xmin, xmax, ymin, ymax, 0.0, dist+zspan);
 
         params._rttViewMatrix.set( rttViewMatrix );
         params._rttProjMatrix.set( rttProjMatrix );

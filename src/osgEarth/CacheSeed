@@ -24,15 +24,36 @@
 #include <osgEarth/Map>
 #include <osgEarth/TileKey>
 #include <osgEarth/Progress>
+#include <OpenThreads/Atomic>
 
 namespace osgEarth
 {
+    class CacheSeed;
+
+    class CacheTileOperation : public osg::Operation
+    {
+    public:
+        CacheTileOperation(const MapFrame& mapFrame, CacheSeed& cacheSeed, const TileKey& key);
+        virtual void operator()(osg::Object*);
+
+        // The MapFrame to operate on
+        const MapFrame& _mapFrame;
+
+        // The parent CacheSeed
+        CacheSeed& _cacheSeed;
+
+        // The TileKey to process
+        const TileKey _key;
+    };
+
     /**
     * Utility class for seeding a cache
     */
     class OSGEARTH_EXPORT CacheSeed
     {
     public:
+        friend class CacheTileOperation;
+
         CacheSeed();
 
         /** dtor */
@@ -58,6 +79,14 @@ namespace osgEarth
         */
         const unsigned int getMaxLevel() const {return _maxLevel;}
 
+        /*
+         * The number of threads to use when seeding
+         */
+        unsigned int getNumThreads() const;
+        void setNumThreads( unsigned int numThreads );
+
+        std::vector< GeoExtent >& getExtents() { return _extents; }
+
         /**
         *Adds an extent to cache
         */
@@ -75,20 +104,28 @@ namespace osgEarth
 
     protected:
 
-        void incrementCompleted( unsigned int total ) const;
+        void incrementCompleted() const;
+
+        void reportProgress( const std::string& msg ) const;
 
         unsigned int _minLevel;
         unsigned int _maxLevel;
 
         unsigned int _total;
-        unsigned int _completed;
+        OpenThreads::Atomic _completed;
+
+        unsigned int _numThreads;
 
         osg::ref_ptr<ProgressCallback> _progress;
 
-        void processKey( const MapFrame& mapf, const TileKey& key ) const;
         bool cacheTile( const MapFrame& mapf, const TileKey& key ) const;
 
         std::vector< GeoExtent > _extents;
+
+        // The work queue to pass seed operations to
+        osg::ref_ptr< osg::OperationQueue > _queue;  
+
+        OpenThreads::Mutex _mutex;
     };
 }
 

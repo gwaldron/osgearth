@@ -290,14 +290,14 @@ public:
 
 public:
 
-    // fetch a tile from the WMS service and report any exceptions.
-    osgDB::ReaderWriter* fetchTileAndReader( 
+    // fetch a tile image from the WMS service and report any exceptions.
+    osg::Image* fetchTileImage(
         const TileKey&     key, 
         const std::string& extraAttrs,
         ProgressCallback*  progress, 
         ReadResult&        out_response )
     {
-        osgDB::ReaderWriter* result = 0L;
+        osg::ref_ptr<osg::Image> image;
 
         std::string uri = createURI(key);
         if ( !extraAttrs.empty() )
@@ -306,14 +306,15 @@ public:
             uri = uri + delim + extraAttrs;
         }
 
-
-        out_response = URI( uri ).readString( _dbOptions.get(), progress );
-
-        //...
-        //out_response = HTTPClient::get( uri, 0L, progress ); //getOptions(), progress );
-
-        if ( out_response.succeeded() )
+        // Try to get the image first
+        out_response = URI( uri ).readImage( _dbOptions.get(), progress);
+        
+        
+        if ( !out_response.succeeded() )
         {
+            // If it failed, try to read it again as a string to get the exception.
+            out_response = URI( uri ).readString( _dbOptions.get(), progress );      
+
             // get the mime type:
             std::string mt = out_response.metadata().value( IOMetadata::CONTENT_TYPE );
 
@@ -339,19 +340,13 @@ public:
                 {
                     OE_NOTICE << "WMS: unknown error." << std::endl;
                 }
-            }
-            else
-            {
-                // really ought to use mime-type support here -GW
-                std::string typeExt = mt.substr( mt.find_last_of("/")+1 );
-                result = osgDB::Registry::instance()->getReaderWriterForExtension( typeExt );
-                if ( !result )
-                {
-                    OE_NOTICE << "WMS: no reader registered; URI=" << createURI(key) << std::endl;
-                }
-            }
+            }            
         }
-        return result;
+        else
+        {
+            image = out_response.getImage();
+        }
+        return image.release();
     }
 
 
@@ -371,20 +366,7 @@ public:
                 extras = std::string("TIME=") + _timesVec[0];
 
             ReadResult response;
-            osgDB::ReaderWriter* reader = fetchTileAndReader( key, extras, progress, response );
-            if ( reader )
-            {
-                std::istringstream buf( response.getString() );
-                osgDB::ReaderWriter::ReadResult readResult = reader->readImage( buf, _dbOptions.get() );
-                if ( readResult.error() )
-                {
-                    OE_WARN << "WMS: image read failed for " << createURI(key) << std::endl;
-                }
-                else
-                {
-                    image = readResult.getImage();
-                }
-            }
+            image = fetchTileImage( key, extras, progress, response );
         }
 
         return image.release();
@@ -399,37 +381,23 @@ public:
         {
             std::string extraAttrs = std::string("TIME=") + _timesVec[r];
             ReadResult response;
-            osgDB::ReaderWriter* reader = fetchTileAndReader( key, extraAttrs, progress, response );
-            if ( reader )
+            
+            osg::ref_ptr<osg::Image> timeImage = fetchTileImage( key, extraAttrs, progress, response );
+
+            if ( !image.valid() )
             {
-                std::istringstream buf( response.getString() );
-
-                osgDB::ReaderWriter::ReadResult readResult = reader->readImage( buf, _dbOptions.get() );
-                if ( readResult.error() )
-                {
-                    OE_WARN << "WMS: image read failed for " << createURI(key) << std::endl;
-                }
-                else
-                {
-                    osg::ref_ptr<osg::Image> timeImage = readResult.getImage();
-
-                    if ( !image.valid() )
-                    {
-                        image = new osg::Image();
-                        image->allocateImage(
-                            timeImage->s(), timeImage->t(), _timesVec.size(),
-                            timeImage->getPixelFormat(),
-                            timeImage->getDataType(),
-                            timeImage->getPacking() );
-                        image->setInternalTextureFormat( timeImage->getInternalTextureFormat() );
-                    }
-
-                    memcpy( 
-                        image->data(0,0,r), 
-                        timeImage->data(), 
-                        osg::minimum(image->getImageSizeInBytes(), timeImage->getImageSizeInBytes()) );
-                }
+                image = new osg::Image();
+                image->allocateImage(
+                    timeImage->s(), timeImage->t(), _timesVec.size(),
+                    timeImage->getPixelFormat(),
+                    timeImage->getDataType(),
+                    timeImage->getPacking() );
+                image->setInternalTextureFormat( timeImage->getInternalTextureFormat() );
             }
+
+            memcpy( image->data(0,0,r), 
+                    timeImage->data(), 
+                    osg::minimum(image->getImageSizeInBytes(), timeImage->getImageSizeInBytes()) );
         }
 
         return image.release();
@@ -450,19 +418,10 @@ public:
             std::string extraAttrs = std::string("TIME=") + _timesVec[r];
 
             ReadResult response;
-            osgDB::ReaderWriter* reader = fetchTileAndReader( key, extraAttrs, progress, response );
-            if ( reader )
+            osg::ref_ptr<osg::Image> image = fetchTileImage( key, extraAttrs, progress, response );
+            if ( image.get() )
             {
-                std::istringstream buf(response.getString());
-                osgDB::ReaderWriter::ReadResult readResult = reader->readImage( buf, _dbOptions.get() );
-                if ( !readResult.error() )
-                {
-                    seq->addImage( readResult.getImage() );
-                }
-                else
-                {
-                    OE_WARN << "WMS: image read failed for " << createURI(key) << std::endl;
-                }
+                seq->addImage( image );
             }
         }
 

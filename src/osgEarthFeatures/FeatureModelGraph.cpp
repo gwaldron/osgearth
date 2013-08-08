@@ -361,7 +361,7 @@ FeatureModelGraph::getBoundInWorldCoords(const GeoExtent& extent,
     if ( mapf )
     {
         // Use an appropriate resolution for this extents width
-        double resolution = workingExtent.width();             
+        double resolution = workingExtent.width();
         ElevationQuery query( *mapf );
         GeoPoint p( mapf->getProfile()->getSRS(), center, ALTMODE_ABSOLUTE );
         query.getElevation( p, center.z(), resolution );
@@ -379,6 +379,12 @@ FeatureModelGraph::getBoundInWorldCoords(const GeoExtent& extent,
         workingExtent.getSRS()->transform( corner, ecefSRS, corner );
         //workingExtent.getSRS()->transformToECEF( center, center );
         //workingExtent.getSRS()->transformToECEF( corner, corner );
+    }
+
+    if (workingExtent.getSRS()->isGeographic() &&
+        ( workingExtent.width() >= 90 || workingExtent.height() >= 90 ) )
+    {
+        return osg::BoundingSphered( osg::Vec3d(0,0,0), 2*center.length() );
     }
 
     return osg::BoundingSphered( center, (center-corner).length() );

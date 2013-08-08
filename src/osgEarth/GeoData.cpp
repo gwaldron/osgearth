@@ -433,6 +433,37 @@ GeoPoint::createWorldToLocal( osg::Matrixd& out_w2l ) const
     return _srs->createWorldToLocal( _p, out_w2l );
 }
 
+bool
+GeoPoint::createWorldUpVector( osg::Vec3d& out_up ) const
+{
+    if ( !isValid() ) return false;
+
+    if ( _srs->isProjected() )
+    {
+        out_up.set(0, 0, 1);
+        return true;
+    }
+    else if ( _srs->isGeographic() )
+    {
+        double coslon = cos( osg::DegreesToRadians(x()) );
+        double coslat = cos( osg::DegreesToRadians(y()) );
+        double sinlon = sin( osg::DegreesToRadians(x()) );
+        double sinlat = sin( osg::DegreesToRadians(y()) );
+
+        out_up.set( coslon*coslat, sinlon*coslat, sinlat );
+        return true;
+    }
+    else
+    {
+        osg::Vec3d ecef;
+        if ( this->toWorld( ecef ) )
+        {
+            out_up = _srs->getEllipsoid()->computeLocalUpVector( ecef.x(), ecef.y(), ecef.z() );
+            return true;
+        }
+    }
+    return false;
+}
 
 double
 GeoPoint::distanceTo(const GeoPoint& rhs) const

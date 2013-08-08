@@ -1121,7 +1121,7 @@ FeatureModelGraph::createStyleGroup(const Style&        style,
 
 
 void
-FeatureModelGraph::checkForGlobalAltitudeStyles( const Style& style )
+FeatureModelGraph::checkForGlobalStyles( const Style& style )
 {
     const AltitudeSymbol* alt = style.get<AltitudeSymbol>();
     if ( alt )
@@ -1163,6 +1163,16 @@ FeatureModelGraph::checkForGlobalAltitudeStyles( const Style& style )
             _clampable->setDepthOffsetOptions(*render->depthOffset());
         }
     }
+
+    else 
+    {
+        const RenderSymbol* render = style.get<RenderSymbol>();
+        if ( render && render->depthOffset().isSet() )
+        {
+            _depthOffsetAdapter.setGraph( this );
+            _depthOffsetAdapter.setDepthOffsetOptions( *render->depthOffset() );
+        }
+    }
 }
 
 
@@ -1173,7 +1183,7 @@ FeatureModelGraph::getOrCreateStyleGroupFromFactory(const Style& style)
 
     // Check the style and see if we need to active GPU clamping. GPU clamping
     // is currently all-or-nothing for a single FMG.
-    checkForGlobalAltitudeStyles( style );
+    checkForGlobalStyles( style );
 
     return styleGroup;
 }

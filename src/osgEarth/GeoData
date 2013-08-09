@@ -199,6 +199,12 @@ namespace osgEarth
         bool createWorldToLocal( osg::Matrixd& out_world2local ) const;
 
         /**
+         * Outputs an "up" vector corresponding to the given point. The up vector
+         * is orthogonal to a local tangent plane at that point on the map.
+         */
+        bool createWorldUpVector( osg::Vec3d& out_up ) const;
+
+        /**
          * Calculates the distance in meters from this geopoint to another.
          */
         double distanceTo(const GeoPoint& rhs) const;

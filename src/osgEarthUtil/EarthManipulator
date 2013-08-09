@@ -331,6 +331,9 @@ namespace osgEarth { namespace Util
 
             void bindPinch(
                 ActionType action, const ActionOptions& =ActionOptions() );
+                
+            void bindTwist(
+                ActionType action, const ActionOptions& =ActionOptions() );
    
             void bindMultiDrag(
                 ActionType action, const ActionOptions& =ActionOptions() );

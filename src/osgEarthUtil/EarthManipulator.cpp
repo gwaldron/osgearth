@@ -350,6 +350,14 @@ EarthManipulator::Settings::bindPinch(ActionType action, const ActionOptions& op
 }
 
 void
+EarthManipulator::Settings::bindTwist(ActionType action, const ActionOptions& options)
+{
+    bind(
+         InputSpec( EarthManipulator::EVENT_MULTI_TWIST, 0, 0 ),
+         Action( action, options ) );
+}
+
+void
 EarthManipulator::Settings::bindMultiDrag(ActionType action, const ActionOptions& options)
 {
     bind(
@@ -514,7 +522,7 @@ EarthManipulator::configureDefaultSettings()
     _settings->bindPinch( ACTION_ZOOM, options );
 
     options.clear();
-    _settings->bindMultiDrag( ACTION_ROTATE, options );
+    _settings->bindTwist( ACTION_ROTATE, options );
 
     //_settings->setThrowingEnabled( false );
     _settings->setLockAzimuthWhilePanning( true );
@@ -1795,10 +1803,11 @@ EarthManipulator::parseTouchEvents( TouchEvents& output )
                 osg::Vec2f vec0 = osg::Vec2f(p0[1].x,p0[1].y)-osg::Vec2f(p0[0].x,p0[0].y);
                 osg::Vec2f vec1 = osg::Vec2f(p1[1].x,p1[1].y)-osg::Vec2f(p1[0].x,p1[0].y);
                 float deltaDistance = vec1.length() - vec0.length();
-
-                vec0.normalize();
-                vec1.normalize();
-                float dot = fabs( vec0 * vec1 );
+                
+                float angle[2];
+                angle[0] = atan2(p0[0].y - p0[1].y, p0[0].x - p0[1].x);
+                angle[1] = atan2(p1[0].y - p1[1].y, p1[0].x - p1[1].x);
+                float da = angle[0] - angle[1];
 
                 // how see if that corresponds to any touch events:
                 {
@@ -1813,8 +1822,8 @@ EarthManipulator::parseTouchEvents( TouchEvents& output )
                     // angle between vectors changed: a twist.
                     output.push_back(TouchEvent());
                     TouchEvent& ev = output.back();
-                    ev._eventType = EVENT_MULTI_TWIST;
-                    ev._dx = 0.0, ev._dy = dot * sens;
+                    ev._eventType = EVENT_MULTI_TWIST;                    
+                    ev._dx = da; ev._dy = 0.5 * (dy[0]+dy[1]) * sens;
                 }
 
                 {

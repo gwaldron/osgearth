@@ -207,7 +207,9 @@ _min_vp_duration_s              ( 3.0 ),
 _max_vp_duration_s              ( 8.0 ),
 _camProjType                    ( PROJ_PERSPECTIVE ),
 _camFrustOffsets                ( 0, 0 ),
-_disableCollisionAvoidance      ( false )
+_disableCollisionAvoidance      ( false ),
+_throwingEnabled                ( false ),
+_throwDecayRate                 ( 0.05 )
 {
     //NOP
 }
@@ -235,7 +237,9 @@ _max_vp_duration_s( rhs._max_vp_duration_s ),
 _camProjType( rhs._camProjType ),
 _camFrustOffsets( rhs._camFrustOffsets ),
 _breakTetherActions( rhs._breakTetherActions ),
-_disableCollisionAvoidance( rhs._disableCollisionAvoidance)
+_disableCollisionAvoidance( rhs._disableCollisionAvoidance),
+_throwingEnabled( rhs._throwingEnabled ),
+_throwDecayRate( rhs._throwDecayRate )
 {
     //NOP
 }
@@ -434,6 +438,8 @@ EarthManipulator::Settings::setCameraFrustumOffsets( const osg::Vec2s& value )
 EarthManipulator::EarthManipulator() :
 osgGA::CameraManipulator(),
 _last_action           ( ACTION_NULL ),
+_last_event            ( EVENT_MOUSE_DOUBLE_CLICK ),
+_time_s_last_event     (0.0),
 _frame_count           ( 0 ),
 _findNodeTraversalMask ( 0x01 )
 {
@@ -444,6 +450,8 @@ _findNodeTraversalMask ( 0x01 )
 EarthManipulator::EarthManipulator( const EarthManipulator& rhs ) :
 osgGA::CameraManipulator( rhs ),
 _last_action            ( ACTION_NULL ),
+_last_event             ( EVENT_MOUSE_DOUBLE_CLICK ),
+_time_s_last_event      (0.0),
 _frame_count            ( 0 ),
 _settings               ( new Settings(*rhs.getSettings()) ),
 _findNodeTraversalMask  ( rhs._findNodeTraversalMask )
@@ -563,6 +571,10 @@ EarthManipulator::reinitialize()
     _offset_x = 0.0;
     _offset_y = 0.0;
     _thrown = false;
+    _dx = 0.0;
+    _dy = 0.0;
+    _throw_dx = 0.0;
+    _throw_dy = 0.0;
     _continuous = false;
     _task = new Task();
     _last_action = ACTION_NULL;
@@ -1198,9 +1210,11 @@ EarthManipulator::getUsage(osg::ApplicationUsage& usage) const
 }
 
 void
-EarthManipulator::resetMouse( osgGA::GUIActionAdapter& aa )
+EarthManipulator::resetMouse( osgGA::GUIActionAdapter& aa, bool flushEventStack )
 {
-    flushMouseEventStack();
+    if (flushEventStack)
+      flushMouseEventStack();
+    
     aa.requestContinuousUpdate( false );
     _thrown = false;
     _continuous = false;
@@ -1346,10 +1360,12 @@ EarthManipulator::handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapt
     osg::View* view = aa.asView();
     updateCamera( view->getCamera() );
 
+    double time_s_now = osg::Timer::instance()->time_s();
+
     if ( ea.getEventType() == osgGA::GUIEventAdapter::FRAME )
     {
         _time_s_last_frame = _time_s_now;
-        _time_s_now = osg::Timer::instance()->time_s();
+        _time_s_now = time_s_now;
         _delta_t = _time_s_now - _time_s_last_frame;
         // this factor adjusts for the variation of frame rate relative to 60fps
         _t_factor = _delta_t / 0.01666666666;
@@ -1371,17 +1387,31 @@ EarthManipulator::handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapt
             aa.requestContinuousUpdate( _setting_viewpoint );
         }
 
-        if ( _thrown || _continuous )
+        else if (_thrown)
+        {
+            double decayFactor = 1.0 - _settings->getThrowDecayRate();
+
+            _throw_dx = osg::absolute(_throw_dx) > osg::absolute(_dx * 0.01) ? _throw_dx * decayFactor : 0.0;
+            _throw_dy = osg::absolute(_throw_dy) > osg::absolute(_dy * 0.01) ? _throw_dy * decayFactor : 0.0;
+
+            if (_throw_dx == 0.0 && _throw_dy == 0.0)
+                _thrown = false;
+            else            
+                handleMovementAction(_last_action._type, _throw_dx, _throw_dy, aa.asView());
+        }
+
+        if ( _continuous )
         {
             handleContinuousAction( _last_action, aa.asView() );
             aa.requestRedraw();
         }
-
-        if ( !_continuous )
+        else
         {
             _continuous_dx = 0.0;
             _continuous_dy = 0.0;
         }
+
+        
         
         if ( _task.valid() && _task->_type != TASK_NONE )
         {
@@ -1435,8 +1465,8 @@ EarthManipulator::handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapt
     if ( ea.isMultiTouchEvent() )
     {
         // not a mouse event; clear the mouse queue.
-        resetMouse( aa );
-
+        resetMouse( aa, false );
+        
         // queue up a touch event set and figure out the current state:
         addTouchEvents(ea);
         TouchEvents te;
@@ -1444,19 +1474,35 @@ EarthManipulator::handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapt
         {
             for( TouchEvents::iterator i = te.begin(); i != te.end(); ++i )
             {
-                //OE_WARN << LC << "P: " << i->_dx << ", " << i->_dy << std::endl;
-                Action action = _settings->getAction(i->_eventType, i->_mbmask, 0);
+                action = _settings->getAction(i->_eventType, i->_mbmask, 0);
 
                 // here we adjust for action scale, global sensitivy
                 double dx = i->_dx, dy = i->_dy;
                 dx *= _settings->getMouseSensitivity();
                 dy *= _settings->getMouseSensitivity();
                 applyOptionsToDeltas( action, dx, dy );
-
-                handleMovementAction(action._type, dx, dy, view);
+                
+                _dx = dx;
+                _dy = dy;
+                
+                if (action._type == ACTION_GOTO)
+                    handlePointAction(action, ea.getX(), ea.getY(), view);
+                else
+                    handleMovementAction(action._type, dx, dy, view);
+                
                 aa.requestRedraw();
             }
+            
             handled = true;
+        }
+        else
+        {
+            // The only multitouch event we want passed on if not handled is a release
+            handled = ea.getEventType() != osgGA::GUIEventAdapter::RELEASE;
+            
+            // if a new push occurs we want to reset the dx/dy values to stop/prevent throwing
+            if (ea.getEventType() == osgGA::GUIEventAdapter::PUSH)
+                _dx = _dy = 0.0;
         }
     }
 
@@ -1476,7 +1522,6 @@ EarthManipulator::handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapt
                 break;       
             
             case osgGA::GUIEventAdapter::RELEASE:
-
                 if ( _continuous )
                 {
                     // bail out of continuous mode if necessary:
@@ -1485,21 +1530,18 @@ EarthManipulator::handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapt
                 }
                 else
                 {
-    #if 0 // disabled - not implemented
-                    // check for a mouse-throw continuation:
-                    if ( _settings->getThrowingEnabled() && isMouseMoving() )
+                    action = _last_action;
+                    
+                    _throw_dx = fabs(_dx) > 0.01 ? _dx : 0.0;
+                    _throw_dy = fabs(_dy) > 0.01 ? _dy : 0.0;
+                    
+                    if (_settings->getThrowingEnabled() && ( time_s_now - _time_s_last_event < 0.05 ) && (_throw_dx != 0.0 || _throw_dy != 0.0))
                     {
-                        action = _last_action;
-                        if( handleMouseAction( action, aa.asView() ) )
-                        {
-                            aa.requestRedraw();
-                            aa.requestContinuousUpdate( true );
-                            _thrown = true;
-                        }
+                        _thrown = true;
+                        aa.requestRedraw();
+                        aa.requestContinuousUpdate( true );
                     }
-                    else 
-    #endif
-                    if ( isMouseClick( &ea ) )
+                    else if ( isMouseClick( &ea ) )
                     {
                         addMouseEvent( ea );
                         if ( _mouse_down_event )
@@ -1593,6 +1635,7 @@ EarthManipulator::handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapt
     if ( handled && action._type != ACTION_NULL )
     {
         _last_action = action;
+        _time_s_last_event = time_s_now;
     }
 
     return handled;
@@ -1745,6 +1788,9 @@ EarthManipulator::addMouseEvent(const osgGA::GUIEventAdapter& ea)
 void
 EarthManipulator::addTouchEvents(const osgGA::GUIEventAdapter& ea)
 {
+    _ga_t1 = _ga_t0;
+    _ga_t0 = &ea;
+    
     // first, push the old event to the back of the queue.
     while ( _touchPointQueue.size() > 1 )
         _touchPointQueue.pop_front();
@@ -1770,13 +1816,17 @@ bool
 EarthManipulator::parseTouchEvents( TouchEvents& output )
 {
     const float sens = 0.005f;
-
-    // two-finger drag gestures:
+    const float eventDelta = 0.2;
+    
+    double time_s_now = osg::Timer::instance()->time_s();
+    double time_s_delta = time_s_now - _time_s_last_event;    
+    
     if (_touchPointQueue.size() == 2 )
     {
         if (_touchPointQueue[0].size()   == 2 &&     // two fingers
             _touchPointQueue[1].size()   == 2)       // two fingers
         {
+
             MultiTouchPoint& p0 = _touchPointQueue[0];
             MultiTouchPoint& p1 = _touchPointQueue[1];
 
@@ -1801,22 +1851,27 @@ EarthManipulator::parseTouchEvents( TouchEvents& output )
                 float dot = fabs( vec0 * vec1 );
 
                 // how see if that corresponds to any touch events:
+                if ((_last_event == EVENT_MULTI_PINCH || time_s_delta > eventDelta) && fabs(deltaDistance) > 1.0)
                 {
                     // distance between the fingers changed: a pinch.
                     output.push_back(TouchEvent());
                     TouchEvent& ev = output.back();
                     ev._eventType = EVENT_MULTI_PINCH;
                     ev._dx = 0.0, ev._dy = deltaDistance * -sens;
+                    _last_event = EVENT_MULTI_PINCH;
                 }
 
-                {
-                    // angle between vectors changed: a twist.
-                    output.push_back(TouchEvent());
-                    TouchEvent& ev = output.back();
-                    ev._eventType = EVENT_MULTI_TWIST;
-                    ev._dx = 0.0, ev._dy = dot * sens;
-                }
+//                else if ((_last_event == EVENT_MULTI_TWIST || time_s_delta > eventDelta) && (dot * sens > 0.0))
+//                {
+//                    // angle between vectors changed: a twist.
+//                    output.push_back(TouchEvent());
+//                    TouchEvent& ev = output.back();
+//                    ev._eventType = EVENT_MULTI_TWIST;
+//                    ev._dx = 0.0, ev._dy = dot * sens;
+//                    _last_event = EVENT_MULTI_TWIST;
+//                }
 
+                else if ( (_last_event == EVENT_MULTI_DRAG || time_s_delta > eventDelta) && ((fabs(dx[0]) > 1.0 && fabs(dx[1]) > 1.0) || (fabs(dy[0]) > 1.0 && fabs(dy[1]) > 1.0)) )
                 {
                     // two-finger drag.
                     output.push_back(TouchEvent());
@@ -1824,6 +1879,7 @@ EarthManipulator::parseTouchEvents( TouchEvents& output )
                     ev._eventType = EVENT_MULTI_DRAG;
                     ev._dx = 0.5 * (dx[0]+dx[1]) * sens;
                     ev._dy = 0.5 * (dy[0]+dy[1]) * sens;
+                    _last_event = EVENT_MULTI_DRAG;
                 }
             }
         }
@@ -1834,8 +1890,20 @@ EarthManipulator::parseTouchEvents( TouchEvents& output )
             MultiTouchPoint& p0 = _touchPointQueue[0];
             MultiTouchPoint& p1 = _touchPointQueue[1];
 
-            if (p0[0].phase != osgGA::GUIEventAdapter::TOUCH_ENDED &&
-                p1[0].phase == osgGA::GUIEventAdapter::TOUCH_MOVED )
+            if (p1[0].tapCount == 2)
+            {
+                // double tap
+                output.push_back(TouchEvent());
+                TouchEvent& ev = output.back();
+                ev._eventType = EVENT_MOUSE_DOUBLE_CLICK;
+                ev._mbmask = osgGA::GUIEventAdapter::LEFT_MOUSE_BUTTON;
+                ev._dx = 0.0;
+                ev._dy = 0.0;
+                _last_event = EVENT_MOUSE_DOUBLE_CLICK;
+            }
+            else if ((p0[0].phase != osgGA::GUIEventAdapter::TOUCH_ENDED &&
+                      p1[0].phase == osgGA::GUIEventAdapter::TOUCH_MOVED ) &&
+                     (_last_event == EVENT_MOUSE_DRAG || time_s_delta > eventDelta))
             {
                 output.push_back(TouchEvent());
                 TouchEvent& ev = output.back();
@@ -1843,6 +1911,7 @@ EarthManipulator::parseTouchEvents( TouchEvents& output )
                 ev._mbmask = osgGA::GUIEventAdapter::LEFT_MOUSE_BUTTON;
                 ev._dx = (p1[0].x - p0[0].x) * sens;
                 ev._dy = (p1[0].y - p0[0].y) * sens;
+                _last_event = EVENT_MOUSE_DRAG;
             }
         }
     }
@@ -2044,7 +2113,6 @@ EarthManipulator::recalculateCenter( const osg::CoordinateFrame& frame )
 void
 EarthManipulator::pan( double dx, double dy )
 {
-    //OE_NOTICE << "pan " << dx << "," << dy <<  std::endl;
     if (!_tether_node.valid())
     {
         double scale = -0.3f*_distance;
@@ -2336,7 +2404,10 @@ EarthManipulator::handleMovementAction( const ActionType& type, double dx, doubl
         break;
 
     case ACTION_EARTH_DRAG:
-        drag( dx, dy, view );
+        if (_thrown)
+          pan(dx*0.5, dy*0.5);  //TODO: create proper drag throwing instead of panning trick
+        else
+          drag( dx, dy, view );
         break;
     default:break;
     }
@@ -2436,6 +2507,9 @@ EarthManipulator::handleMouseAction( const Action& action, osg::View* view )
     }
     else
     {
+        
+        _dx = dx;
+        _dy = dy;
         handleMovementAction( action._type, dx, dy, view );
     }
 

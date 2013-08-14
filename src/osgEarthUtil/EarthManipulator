@@ -488,6 +488,12 @@ namespace osgEarth { namespace Util
             bool getDisableCollisionAvoidance() const { return _disableCollisionAvoidance; }
             void setDisableCollisionAvoidance( bool disableCollisionAvoidance ) { _disableCollisionAvoidance = disableCollisionAvoidance; }
 
+            void setThrowingEnabled(bool throwingEnabled) { _throwingEnabled = throwingEnabled; }
+            bool getThrowingEnabled () const { return _throwingEnabled; }
+            
+            void setThrowDecayRate(double throwDecayRate) { _throwDecayRate = osg::clampBetween(throwDecayRate, 0.0, 1.0); }
+            double getThrowDecayRate () const { return _throwDecayRate; }
+
         private:
 
             friend class EarthManipulator;
@@ -529,6 +535,9 @@ namespace osgEarth { namespace Util
             osg::Vec2s _camFrustOffsets;	
 
             bool _disableCollisionAvoidance;
+
+            bool _throwingEnabled;
+            double _throwDecayRate;
         };
 
     public:
@@ -704,7 +713,7 @@ namespace osgEarth { namespace Util
         bool intersect(const osg::Vec3d& start, const osg::Vec3d& end, osg::Vec3d& intersection) const;
 
         // resets the mouse event stack and pushes the provided event.
-        void resetMouse( osgGA::GUIActionAdapter& );
+        void resetMouse( osgGA::GUIActionAdapter& aa, bool flushEventStack=true);
 
         // Reset the internal event stack.
         void flushMouseEventStack();
@@ -855,6 +864,10 @@ namespace osgEarth { namespace Util
         double                  _delta_t;
         double                  _t_factor;
         bool                    _thrown;
+        double                  _throw_dx;
+        double                  _throw_dy;
+        double                  _dx;
+        double                  _dy;
 
         // The world coordinate of the Viewpoint focal point.
         osg::Vec3d              _center;
@@ -911,6 +924,10 @@ namespace osgEarth { namespace Util
         double _homeViewpointDuration;
 
         Action _last_action;
+        
+        EventType _last_event;
+        double    _time_s_last_event;
+        
 
         // to support updating the camera after the update traversal (e.g., for tethering)
         osg::observer_ptr<osg::Camera> _viewCamera;

@@ -141,7 +141,7 @@ namespace osgEarth
         /**
          * Enables or disables decluttering on a stateset.
          */
-        static void setEnabled( osg::StateSet* stateSet, bool enabled, int binNum =INT_MAX );
+        static void setEnabled( osg::StateSet* stateSet, bool enabled, int binNum =13 );
 
         /**
          * Enables or disables decluttering globally.

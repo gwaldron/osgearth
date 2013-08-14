@@ -53,6 +53,8 @@ KML_Geometry::buildChild( const Config& conf, KMLContext& cx, Style& style)
         g.parseStyle(conf, cx, style);
         g.parseCoords(conf, cx);
         _geom = g._geom.get();
+        // remove polystyle since it doesn't apply
+        style.remove<PolygonSymbol>();
     }
     else if ( conf.key() == "linearring" || conf.key() == "gx:latlonquad" )
     {
@@ -60,6 +62,8 @@ KML_Geometry::buildChild( const Config& conf, KMLContext& cx, Style& style)
         g.parseStyle(conf, cx, style);
         g.parseCoords(conf, cx);
         _geom = g._geom.get();
+        // remove polystyle since it doesn't apply
+        style.remove<PolygonSymbol>();
     }
     else if ( conf.key() == "polygon" )
     {
@@ -134,6 +138,7 @@ KML_Geometry::parseStyle( const Config& conf, KMLContext& cx, Style& style )
     {
         AltitudeSymbol* af = style.getOrCreate<AltitudeSymbol>();
         af->clamping() = AltitudeSymbol::CLAMP_TO_TERRAIN;
+        af->technique() = AltitudeSymbol::TECHNIQUE_SCENE;
         _extrude = false;
     }
 
@@ -144,13 +149,16 @@ KML_Geometry::parseStyle( const Config& conf, KMLContext& cx, Style& style )
     {
         AltitudeSymbol* af = style.getOrCreate<AltitudeSymbol>();
         af->clamping() = AltitudeSymbol::CLAMP_RELATIVE_TO_TERRAIN;
+        af->technique() = AltitudeSymbol::TECHNIQUE_SCENE;
     }
 
     // "absolute" means to treat the Z values as-is
     else if ( am == "absolute" )
     {
         AltitudeSymbol* af = style.getOrCreate<AltitudeSymbol>();
-        af->clamping() = AltitudeSymbol::CLAMP_ABSOLUTE;
+        //af->clamping() = AltitudeSymbol::CLAMP_ABSOLUTE;
+        //TODO: evaluate this..
+        af->clamping().unset();
     }
 
     if ( _extrude )

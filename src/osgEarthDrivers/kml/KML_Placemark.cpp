@@ -76,6 +76,7 @@ KML_Placemark::build( const Config& conf, KMLContext& cx )
             {
                 altSym = style.getOrCreate<AltitudeSymbol>();
                 altSym->clamping() = AltitudeSymbol::CLAMP_RELATIVE_TO_TERRAIN;
+                altSym->technique() = AltitudeSymbol::TECHNIQUE_SCENE;
             }
             else if ( !altSym->clamping().isSetTo(AltitudeSymbol::CLAMP_RELATIVE_TO_TERRAIN) )
             {
@@ -189,6 +190,7 @@ KML_Placemark::build( const Config& conf, KMLContext& cx )
                         if ( zeroElev )
                         {
                             altitude->clamping() = AltitudeSymbol::CLAMP_TO_TERRAIN;
+                            altitude->technique() = AltitudeSymbol::TECHNIQUE_GPU;
                         }
                     }
 
@@ -199,11 +201,15 @@ KML_Placemark::build( const Config& conf, KMLContext& cx )
                         (!altitude || altitude->clamping() == AltitudeSymbol::CLAMP_TO_TERRAIN);
 
                     if ( draped && style.get<LineSymbol>() && !style.get<PolygonSymbol>() )
+                    {
                         draped = false;
+                    }
 
                     // turn off the clamping if we're draping.
                     if ( draped && altitude )
+                    {
                         altitude->technique() = AltitudeSymbol::TECHNIQUE_DRAPE;
+                    }
 
                     GeometryCompilerOptions compilerOptions;
 

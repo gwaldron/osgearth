@@ -53,9 +53,19 @@ public:
         if ( _layer.empty() )
             _layer = "_alllayers"; // default to the AGS "fused view"
 
-        //TODO: detect the format
-        if ( _format.empty() )
+        if ( _options.format().isSet() ) 
+            _format = *_options.format();
+        else
+            _format = _map_service.getTileInfo().getFormat();
+
+        std::transform( _format.begin(), _format.end(), _format.begin(), tolower );
+        if ( _format.length() > 3 && _format.substr( 0, 3 ) == "png" )
             _format = "png";
+
+        if ( _format == "mixed" )
+            _format = "";
+        if ( !_format.empty() )
+            _dot_format = "." + _format;
     }
 
     // override
@@ -126,17 +136,12 @@ public:
         unsigned int tile_x, tile_y;
         key.getTileXY( tile_x, tile_y );
 
-        std::string f = _map_service.getTileInfo().getFormat();
-        std::transform( f.begin(), f.end(), f.begin(), tolower );
-        if ( f.length() > 3 && f.substr( 0, 3 ) == "png" )
-            f = "png";
-
         if ( _map_service.isTiled() )
         {
             buf << _options.url()->full() << "/tile"
                 << "/" << level
                 << "/" << tile_y
-                << "/" << tile_x << "." << f;
+                << "/" << tile_x << _dot_format;
         }
         else
         {
@@ -145,11 +150,11 @@ public:
             buf << std::setprecision(16)
                 << _options.url()->full() << "/export"
                 << "?bbox=" << ex.xMin() << "," << ex.yMin() << "," << ex.xMax() << "," << ex.yMax()
-                << "&format=" << f 
+                << "&format=" << _format 
                 << "&size=256,256"
                 << "&transparent=true"
-                << "&f=image"
-                << "&" << "." << f;
+                << "&f=image";
+                //<< "&" << "." << f;
         }
 
         //Add the token if necessary
@@ -189,7 +194,7 @@ private:
     optional<ProfileOptions> _profileConf;
     std::string _map;
     std::string _layer;
-    std::string _format;
+    std::string _format, _dot_format;
     MapService _map_service;
     osg::ref_ptr<osgDB::Options> _dbOptions;
 };

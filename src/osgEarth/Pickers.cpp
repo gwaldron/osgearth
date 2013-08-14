@@ -81,7 +81,16 @@ Picker::pick( float x, float y, Hits& results ) const
 
         osg::Vec3d bufferLocal(local_x + buffer_x, local_y + buffer_y, 0.0);
         osg::Vec3d bufferModel = bufferLocal * modelInverse;
-        double buffer = osg::maximum((bufferModel - startModel).length(), 4.0);  //TODO: Setting a minimum of 4.0 may need revisited
+
+        double buffer = osg::maximum((bufferModel - startModel).length(), 5.0);  //TODO: Setting a minimum of 4.0 may need revisited
+
+        OE_DEBUG
+            << "local_x:" << local_x << ", local_y:" << local_y
+            << ", buffer_x:" << buffer_x << ", buffer_y:" << buffer_y
+            << ", bm.x:" << bufferModel.x() << ", bm.y:" << bufferModel.y()
+            << ", bm.z:" << bufferModel.z()
+            << ", BUFFER: " << buffer
+            << std::endl;
 
         picker = new osgEarth::PrimitiveIntersector(osgUtil::Intersector::MODEL, startModel, endModel, buffer);
     }

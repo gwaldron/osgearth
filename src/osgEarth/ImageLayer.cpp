@@ -459,7 +459,9 @@ ImageLayer::createImageInNativeProfile( const TileKey& key, ProgressCallback* pr
 #if 1
             return result;
 
-#else // let's try this.
+#else // let's try this. why crop? Just leave it. Faster and more compatible with NPOT
+      // systems (like iOS)
+
             // calculate a tigher extent that matches the original input key:
             GeoExtent tightExtent = nativeProfile->clampAndTransformExtent( key.getExtent() );
 

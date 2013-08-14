@@ -206,31 +206,13 @@ AnnotationNode::setDepthAdjustment( bool enable )
 {
     if ( enable )
     {
-        _doAdapter.setGraph(0L);
-    }
-    else
-    {
         _doAdapter.setGraph(this);
         _doAdapter.recalculate();
     }
-#if 0
-    if ( enable )
+    else
     {
-        osg::StateSet* s = this->getOrCreateStateSet();
-        osg::Program* daProgram = DepthOffsetUtils::getOrCreateProgram(); // cached, not a leak.
-        //TODO: be careful to check for VirtualProgram as well in the future if things change
-        osg::Program* p = dynamic_cast<osg::Program*>( s->getAttribute(osg::StateAttribute::PROGRAM) );
-        if ( !p || p != daProgram )
-            s->setAttributeAndModes( daProgram, osg::StateAttribute::ON|osg::StateAttribute::OVERRIDE );
-
-        s->addUniform( DepthOffsetUtils::createMinOffsetUniform(this) );
-        s->addUniform( DepthOffsetUtils::getIsNotTextUniform() );
+        _doAdapter.setGraph(0L);
     }
-    else if ( this->getStateSet() )
-    {
-        this->getStateSet()->removeAttribute(osg::StateAttribute::PROGRAM);
-    }
-#endif
     _depthAdj = enable;
 }
 

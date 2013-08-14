@@ -361,7 +361,7 @@ FeatureModelGraph::getBoundInWorldCoords(const GeoExtent& extent,
     if ( mapf )
     {
         // Use an appropriate resolution for this extents width
-        double resolution = workingExtent.width();             
+        double resolution = workingExtent.width();
         ElevationQuery query( *mapf );
         GeoPoint p( mapf->getProfile()->getSRS(), center, ALTMODE_ABSOLUTE );
         query.getElevation( p, center.z(), resolution );
@@ -379,6 +379,12 @@ FeatureModelGraph::getBoundInWorldCoords(const GeoExtent& extent,
         workingExtent.getSRS()->transform( corner, ecefSRS, corner );
         //workingExtent.getSRS()->transformToECEF( center, center );
         //workingExtent.getSRS()->transformToECEF( corner, corner );
+    }
+
+    if (workingExtent.getSRS()->isGeographic() &&
+        ( workingExtent.width() >= 90 || workingExtent.height() >= 90 ) )
+    {
+        return osg::BoundingSphered( osg::Vec3d(0,0,0), 2*center.length() );
     }
 
     return osg::BoundingSphered( center, (center-corner).length() );
@@ -1121,7 +1127,7 @@ FeatureModelGraph::createStyleGroup(const Style&        style,
 
 
 void
-FeatureModelGraph::checkForGlobalAltitudeStyles( const Style& style )
+FeatureModelGraph::checkForGlobalStyles( const Style& style )
 {
     const AltitudeSymbol* alt = style.get<AltitudeSymbol>();
     if ( alt )
@@ -1163,6 +1169,16 @@ FeatureModelGraph::checkForGlobalAltitudeStyles( const Style& style )
             _clampable->setDepthOffsetOptions(*render->depthOffset());
         }
     }
+
+    else 
+    {
+        const RenderSymbol* render = style.get<RenderSymbol>();
+        if ( render && render->depthOffset().isSet() )
+        {
+            _depthOffsetAdapter.setGraph( this );
+            _depthOffsetAdapter.setDepthOffsetOptions( *render->depthOffset() );
+        }
+    }
 }
 
 
@@ -1173,7 +1189,7 @@ FeatureModelGraph::getOrCreateStyleGroupFromFactory(const Style& style)
 
     // Check the style and see if we need to active GPU clamping. GPU clamping
     // is currently all-or-nothing for a single FMG.
-    checkForGlobalAltitudeStyles( style );
+    checkForGlobalStyles( style );
 
     return styleGroup;
 }

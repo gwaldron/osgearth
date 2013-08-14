@@ -30,11 +30,17 @@ namespace osgEarth { namespace Drivers
     class ArcGISOptions : public TileSourceOptions // NO EXPORT; header only
     {
     public:
+        /** URL of the MapService */
         optional<URI>& url() { return _url; }
         const optional<URI>& url() const { return _url; }
 
+        /** ArcGIS security token */
         optional<std::string>& token() { return _token; }
         const optional<std::string>& token() const { return _token; }
+
+        /** Override the image format read from the server metadata */
+        optional<std::string>& format() { return _format; }
+        const optional<std::string>& format() const { return _format; }
 
     public:
         ArcGISOptions( const TileSourceOptions& opt =TileSourceOptions() ) : TileSourceOptions( opt )
@@ -51,6 +57,7 @@ namespace osgEarth { namespace Drivers
             Config conf = TileSourceOptions::getConfig();
             conf.updateIfSet("url", _url );
             conf.updateIfSet("token", _token );
+            conf.updateIfSet("format", _format );
             return conf;
         }
 
@@ -62,11 +69,13 @@ namespace osgEarth { namespace Drivers
         void fromConfig( const Config& conf ) {
             conf.getIfSet( "url", _url );
             conf.getIfSet( "token", _token);
+            conf.getIfSet( "format", _format);
         }
 
     private:
         optional<URI>         _url;
         optional<std::string> _token;
+        optional<std::string> _format;
     };
 
 } } // namespace osgEarth::Drivers

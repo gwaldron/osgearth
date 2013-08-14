@@ -1,7 +1,8 @@
 <!-- 
 osgEarth Sample - TMS
 
-Show how to use CloudMade's XYZ interface.
+Show how to use CloudMade's XYZ interface.  This example does not work as is since CloudeMade began charging 
+for their map tile service. You will need to provide your own API key and map style to experiment.
 -->
 
 <map name="Cloudmade" type="geocentric" version="2">
@@ -11,7 +12,7 @@ Show how to use CloudMade's XYZ interface.
     </image>
 
    <image name="osm-cloudmade-35117" driver="xyz">
-       <url>http://[abc].tile.cloudmade.com/f10ecb40ab2159639c5f2d4b9a273f1d/35117/256/{z}/{x}/{y}.png</url>
+       <url>http://[abc].tile.cloudmade.com/YOUR_API_KEY_HERE/YOUR_MAP_STYLE_HERE/256/{z}/{x}/{y}.png</url>
        <profile>global-mercator</profile>
    </image> 
 

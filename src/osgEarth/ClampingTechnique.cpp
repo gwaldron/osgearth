@@ -104,6 +104,9 @@ namespace
          //   sample the depth map.
          "    float d = texture2DProj( oe_clamp_depthTex, v_depthClip ).r; \n"
 
+         //   blank it out if it's at the far plane (no terrain visible)
+         "    if ( d > 0.999999 ) { oe_clamp_alphaFactor = 0.0; } \n"
+
          //   now transform into depth-view space so we can apply the height-above-ground:
          "    vec4 p_depthClip = vec4(v_depthClip.x, v_depthClip.y, d, 1.0); \n"
 

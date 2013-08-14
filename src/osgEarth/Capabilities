@@ -120,6 +120,9 @@ namespace osgEarth
         /** number of logical CPUs available. */
         int getNumProcessors() const { return _numProcessors; }
 
+        /** whether the GPU supports writing to the depth fragment */
+        bool supportsFragDepthWrite() const { return _supportsFragDepthWrite; }
+
     protected:
         Capabilities();
 
@@ -152,6 +155,7 @@ namespace osgEarth
         int  _maxUniformBlockSize;
         bool _preferDLforStaticGeom;
         int  _numProcessors;
+        bool _supportsFragDepthWrite;
         std::string _vendor;
         std::string _renderer;
         std::string _version;

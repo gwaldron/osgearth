@@ -27,6 +27,7 @@
 #include <osgEarth/OverlayNode>
 #include <osgEarth/NodeUtils>
 #include <osgEarth/ThreadingUtils>
+#include <osgEarth/DepthOffset>
 #include <osg/Node>
 #include <set>
 
@@ -186,6 +187,7 @@ namespace osgEarth { namespace Features
         osg::Group*                      _overlayPlaceholder;
         ClampableNode*                   _clampable;
         DrapeableNode*                   _drapeable;
+        DepthOffsetAdapter               _depthOffsetAdapter;
 
         enum OverlayChange {
             OVERLAY_NO_CHANGE,
@@ -198,7 +200,7 @@ namespace osgEarth { namespace Features
         osg::ref_ptr<RefNodeOperationVector> _postMergeOperations;
 
         void runPostMergeOperations(osg::Node* node);
-        void checkForGlobalAltitudeStyles(const Style& style);
+        void checkForGlobalStyles(const Style& style);
         void changeOverlay();
     };
 

@@ -87,6 +87,7 @@ _terrainEngineDriver( "mp" )
     osgDB::Registry::instance()->addMimeTypeExtensionMapping( "application/json",                     "osgb" );
     osgDB::Registry::instance()->addMimeTypeExtensionMapping( "text/json",                            "osgb" );
     osgDB::Registry::instance()->addMimeTypeExtensionMapping( "text/x-json",                          "osgb" );
+    osgDB::Registry::instance()->addMimeTypeExtensionMapping( "image/jpg",                            "jpg" );
     
     // pre-load OSG's ZIP plugin so that we can use it in URIs
     std::string zipLib = osgDB::Registry::instance()->createLibraryNameForExtension( "zip" );

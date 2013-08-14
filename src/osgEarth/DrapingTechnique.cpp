@@ -89,7 +89,7 @@ namespace
     };
 
     // Experimental.
-    void optimizeProjectionMatrix(OverlayDecorator::TechRTTParams& params)
+    void optimizeProjectionMatrix(OverlayDecorator::TechRTTParams& params, double maxFarNearRatio)
     {
         LocalPerViewData& local = *static_cast<LocalPerViewData*>(params._techniqueData.get());
 
@@ -115,11 +115,6 @@ namespace
             // cap the width of the far line w.r.t to y-axis of the clip
             // space. (derived empirically)
             const double maxApsectRatio   = 1.0; 
-
-            // cap the ratio of far plane width to near plane width, because if this
-            // ratio gets too large it results in mathematical anomolies and ungoodness
-            // at the near plane. (derived empirically)
-            const double maxFarNearRatio  = 12.0;
 
             // this matrix xforms the verts from model to clip space.
             osg::Matrix rttMVP = params._rttViewMatrix * params._rttProjMatrix;
@@ -294,9 +289,17 @@ _textureSize     ( 1024 ),
 _useShaders      ( false ),
 _mipmapping      ( false ),
 _rttBlending     ( true ),
-_attachStencil   ( true )
+_attachStencil   ( true ),
+_maxFarNearRatio ( 0.0 )
 {
-    _overlayWarping =  (::getenv("OSGEARTH_OVERLAY_WARPING") != 0L);
+    // cap the ratio of far plane width to near plane width, because if this
+    // ratio gets too large it results in mathematical anomolies and ungoodness
+    // at the near plane. (derived empirically)
+    const char* nfr = ::getenv("OSGEARTH_DRAPING_FAR_NEAR_RATIO");
+    if ( nfr )
+    {
+        _maxFarNearRatio = as<double>(nfr, 0.0);
+    }
 }
 
 
@@ -543,9 +546,9 @@ DrapingTechnique::cullOverlayGroup(OverlayDecorator::TechRTTParams& params,
             osg::Matrix::scale(0.5,0.5,0.5);
 
         // experimental.
-        if ( _overlayWarping )
+        if ( _maxFarNearRatio > 0.0 )
         {
-            optimizeProjectionMatrix( params );
+            optimizeProjectionMatrix( params, _maxFarNearRatio );
         }
 
         params._rttCamera->setViewMatrix      ( params._rttViewMatrix );

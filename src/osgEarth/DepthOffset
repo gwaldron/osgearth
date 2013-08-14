@@ -132,6 +132,7 @@ namespace osgEarth
         void init();
         void updateUniforms();
 
+        bool                         _supported;
         bool                         _dirty;
         osg::observer_ptr<osg::Node> _graph;
         osg::ref_ptr<osg::Uniform>   _biasUniform;

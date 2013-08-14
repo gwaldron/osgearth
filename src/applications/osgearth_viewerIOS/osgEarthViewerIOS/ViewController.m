@@ -19,9 +19,6 @@
 #include <osgEarthUtil/EarthManipulator>
 #include <osgEarthUtil/ExampleResources>
 
-#include "EarthMultiTouchManipulator.h"
-#include "GLES2ShaderGenVisitor.h"
-
 using namespace osgEarth;
 using namespace osgEarth::Util;
 
@@ -64,7 +61,9 @@ using namespace osgEarth::Util;
     osgEarth::Util::EarthManipulator* manip = new osgEarth::Util::EarthManipulator();
     osgEarth::Util::EarthManipulator::ActionOptions options;
     options.add(osgEarth::Util::EarthManipulator::OPTION_SCALE_Y, -1.0);
-    manip->getSettings()->bindMouse(osgEarth::Util::EarthManipulator::ACTION_PAN, osgGA::GUIEventAdapter::LEFT_MOUSE_BUTTON, 0L, options);
+    manip->getSettings()->bindMouse(osgEarth::Util::EarthManipulator::ACTION_EARTH_DRAG, osgGA::GUIEventAdapter::LEFT_MOUSE_BUTTON, 0L, options);
+    manip->getSettings()->setThrowingEnabled(true);
+    manip->getSettings()->setThrowDecayRate(0.1);
     _viewer->setCameraManipulator( manip );
     
     osg::Node* node = osgDB::readNodeFile(osgDB::findDataFile("tests/" + _file));

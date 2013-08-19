@@ -255,11 +255,10 @@ SkyControlFactory::create(SkyNode*         sky,
 
     grid->setControl( 0, 0, new LabelControl("Time: ", 16) );
 
-    int year, month, date;
-    double h;
-    sky->getDateTime( year, month, date, h);
+    DateTime dt;
+    sky->getDateTime(dt);
 
-    HSliderControl* skySlider = grid->setControl(1, 0, new HSliderControl( 0.0f, 24.0f, h ));
+    HSliderControl* skySlider = grid->setControl(1, 0, new HSliderControl( 0.0f, 24.0f, dt.hours() ));
     skySlider->setHorizFill( true, 200 );
     skySlider->addEventHandler( new SkySliderHandler(sky) );
 

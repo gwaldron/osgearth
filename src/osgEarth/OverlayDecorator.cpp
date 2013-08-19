@@ -621,6 +621,11 @@ OverlayDecorator::cullTerrainAndCalculateRTTParams(osgUtil::CullVisitor* cv,
 
         // make sure the ortho camera penetrates the terrain. This is a must for depth buffer sampling
         double dist = std::max(hasl*1.5, std::min(maxDist, eyeLen));
+
+        // in ecef it can't go past the horizon though, or you get bleed thru
+        if ( _isGeocentric )
+          dist = std::min(dist, eyeLen);
+
         rttProjMatrix.makeOrtho(xmin, xmax, ymin, ymax, 0.0, dist+zspan);
 
         params._rttViewMatrix.set( rttViewMatrix );

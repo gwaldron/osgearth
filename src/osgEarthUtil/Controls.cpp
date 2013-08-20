@@ -1595,6 +1595,17 @@ Container::calcSize(const ControlContext& cx, osg::Vec2f& out_size)
 {
     if ( visible() == true )
     {
+        float w = width().isSet()  ? std::max( width().value(),  _renderSize.x() ) : _renderSize.x();
+        float h = height().isSet() ? std::max( height().value(), _renderSize.y() ) : _renderSize.y();
+
+        _renderSize.set(
+            w + padding().x(),
+            h + padding().y() );
+
+        out_size.set(
+            _renderSize.x() + margin().x(),
+            _renderSize.y() + margin().y() );
+
         if ( _frame.valid() )
         {
             _frame->setWidth( _renderSize.x() );
@@ -1603,10 +1614,6 @@ Container::calcSize(const ControlContext& cx, osg::Vec2f& out_size)
             osg::Vec2f dummy;
             _frame->calcSize( cx, dummy );
         }
-
-        // no need to set the output vars.
-
-        //_dirty = false;
     }
 }
 
@@ -1723,16 +1730,13 @@ VBox::calcSize(const ControlContext& cx, osg::Vec2f& out_size)
             _renderSize.y() += first ? childSize.y() : childSpacing() + childSize.y();
         }
 
-        _renderSize.set(
-            _renderSize.x() + padding().x(),
-            _renderSize.y() + padding().y() );
+        //_renderSize.set(
+        //    _renderSize.x() + padding().x(),
+        //    _renderSize.y() + padding().y() );
 
-        // process fills:
-
-
-        out_size.set(
-            _renderSize.x() + margin().x(),
-            _renderSize.y() + margin().y() );
+        //out_size.set(
+        //    _renderSize.x() + margin().x(),
+        //    _renderSize.y() + margin().y() );
 
         Container::calcSize( cx, out_size );
     }
@@ -1865,16 +1869,16 @@ HBox::calcSize(const ControlContext& cx, osg::Vec2f& out_size)
             _renderSize.y() = osg::maximum( _renderSize.y(), childSize.y() );
         }
     
-    // If width explicitly set and > total width of children - use it
-    if (width().isSet() && width().get() > _renderSize.x()) _renderSize.x() = width().get();
+        // If width explicitly set and > total width of children - use it
+        if (width().isSet() && width().get() > _renderSize.x()) _renderSize.x() = width().get();
 
-        _renderSize.set(
-            _renderSize.x() + padding().x(),
-            _renderSize.y() + padding().y() );
+        //_renderSize.set(
+        //    _renderSize.x() + padding().x(),
+        //    _renderSize.y() + padding().y() );
 
-        out_size.set(
-            _renderSize.x() + margin().x(),
-            _renderSize.y() + margin().y() );
+        //out_size.set(
+        //    _renderSize.x() + margin().x(),
+        //    _renderSize.y() + margin().y() );
 
         Container::calcSize( cx, out_size );
     }
@@ -2095,13 +2099,13 @@ Grid::calcSize( const ControlContext& cx, osg::Vec2f& out_size )
             _renderSize.y() += childSpacing() * (numRows-1);
         }
         
-        _renderSize.set(
-            _renderSize.x() + padding().x(),
-            _renderSize.y() + padding().y() );
+        //_renderSize.set(
+        //    _renderSize.x() + padding().x(),
+        //    _renderSize.y() + padding().y() );
 
-        out_size.set(
-            _renderSize.x() + margin().x(),
-            _renderSize.y() + margin().y() );
+        //out_size.set(
+        //    _renderSize.x() + margin().x(),
+        //    _renderSize.y() + margin().y() );
 
         Container::calcSize( cx, out_size );
     }

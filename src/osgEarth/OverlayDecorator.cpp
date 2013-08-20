@@ -613,6 +613,7 @@ OverlayDecorator::cullTerrainAndCalculateRTTParams(osgUtil::CullVisitor* cv,
         std::vector<osg::Vec3d> verts;
         visiblePH.getPoints( verts );
 
+        // zero verts means the visible PH does not intersect the frustum.
         if ( verts.size() > 0 )
         {
             // calculate an orthographic RTT projection matrix based on the view-space

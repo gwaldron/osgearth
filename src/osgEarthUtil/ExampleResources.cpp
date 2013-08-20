@@ -373,7 +373,8 @@ namespace
     struct AnnoControlBuilder : public osg::NodeVisitor
     {
         AnnoControlBuilder(osgViewer::View* view)
-            : osg::NodeVisitor(osg::NodeVisitor::TRAVERSE_ALL_CHILDREN)
+            : osg::NodeVisitor(osg::NodeVisitor::TRAVERSE_ALL_CHILDREN),
+              _mindepth(-1)
         {
             _grid = new Grid();
             _grid->setHorizFill( true );
@@ -396,8 +397,10 @@ namespace
                 std::string name = trim(data->getName());
                 if ( name.empty() ) name = "<unnamed>";
                 LabelControl* label = new LabelControl( name, 14.0f );
-                unsigned relDepth = osg::clampAbove(3u, (unsigned int)this->getNodePath().size());
-                label->setMargin(Gutter(0,0,0,(relDepth-3)*20));
+                int depth = (int)this->getNodePath().size();
+                if ( _mindepth < 0 )
+                    _mindepth = depth;
+                label->setMargin(Gutter(0,0,0,(depth-_mindepth)*20));
                 if ( data->getViewpoint() )
                 {
                     label->addEventHandler( new ClickViewpointHandler(*data->getViewpoint(), _manip) );
@@ -411,6 +414,7 @@ namespace
 
         Grid*             _grid;
         EarthManipulator* _manip;
+        int               _mindepth;
     };
 }
 
@@ -419,7 +423,7 @@ AnnotationGraphControlFactory::create(osg::Node*       graph,
                                       osgViewer::View* view) const
 {
     AnnoControlBuilder builder( view );
-	builder.setNodeMaskOverride(~0);
+    builder.setNodeMaskOverride(~0);
     if ( graph )
         graph->accept( builder );
 

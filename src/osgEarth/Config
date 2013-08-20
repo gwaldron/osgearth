@@ -54,18 +54,18 @@ namespace osgEarth
     class OSGEARTH_EXPORT Config
     {
     public:
-        Config() : _emptyConfig(0L) { }
+        Config() { }
 
         Config( const std::string& key )
-            : _key(key), _emptyConfig(0L) { }
+            : _key(key) { }
 
         Config( const std::string& key, const std::string& value ) 
-            : _key( key ), _defaultValue( value ), _emptyConfig(0L) { }
+            : _key( key ), _defaultValue( value ) { }
 
         Config( const Config& rhs ) 
-            : _key(rhs._key), _defaultValue(rhs._defaultValue), _children(rhs._children), _referrer(rhs._referrer), _emptyConfig(0L), _refMap(rhs._refMap) { }
+            : _key(rhs._key), _defaultValue(rhs._defaultValue), _children(rhs._children), _referrer(rhs._referrer), _refMap(rhs._refMap) { }
 
-        virtual ~Config() { if ( _emptyConfig ) delete _emptyConfig; }
+        virtual ~Config() { }
 
         /** Context for resolving relative URIs that occur in this Config */
         void setReferrer( const std::string& value );
@@ -377,8 +377,7 @@ namespace osgEarth
         std::string _key;
         std::string _defaultValue;
         ConfigSet   _children;   
-        std::string _referrer;
-        Config*     _emptyConfig;
+        std::string _referrer;        
 
         RefMap _refMap;
     };

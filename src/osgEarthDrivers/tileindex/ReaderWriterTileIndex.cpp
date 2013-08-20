@@ -80,11 +80,11 @@ public:
         osg::Timer_t end = osg::Timer::instance()->tick();
         OE_DEBUG << "Got " << files.size() << " files in " << osg::Timer::instance()->delta_m( start, end) << " ms" << std::endl;
 
-        std::vector< osg::ref_ptr< osg::Image > > images;
-        images.reserve( files.size() );
-
+        // The result image
+        osg::Image* result = 0;
+        
         for (unsigned int i = 0; i < files.size(); i++)
-        {
+        {            
             osg::ref_ptr< TileSource> source;
             {
                 //Try to get the TileSource from the cache
@@ -100,6 +100,8 @@ public:
                     opt.url() = files[i];
                     //Just force it to render so we don't have to worry about falling back
                     opt.maxDataLevel() = 23;           
+                    //Disable the l2 cache so that we don't run out of RAM so easily.
+                    opt.L2CacheSize() = 0;
 
                     start = osg::Timer::instance()->tick();
                     source = osgEarth::TileSourceFactory::create( opt );                               
@@ -120,12 +122,21 @@ public:
             
             
             start = osg::Timer::instance()->tick();
-            osg::Image* image = source->createImage( key);
+            osg::ref_ptr< osg::Image > image = source->createImage( key);
             end = osg::Timer::instance()->tick();
             OE_DEBUG << "createImage " << osg::Timer::instance()->delta_m( start, end) << "ms" << std::endl;
             if (image)
-            {                
-                images.push_back( image );
+            {                                
+                if (!result)
+                {
+                    // Initialize the result
+                     result = new osg::Image( *image.get() );
+                }
+                else
+                {
+                    // Composite the new image with the result
+                     ImageUtils::mix( result, image.get(), 1.0);
+                }                
             }
             else
             {
@@ -133,23 +144,6 @@ public:
             }
         }
 
-        start = osg::Timer::instance()->tick();        
-
-        //Now we've got images so we composite them together
-        osg::Image* result = 0;
-        for (unsigned int i = 0; i < images.size(); i++)
-        {
-            if (!result)
-            {
-                result = new osg::Image( *images[i].get() );
-            }
-            else
-            {                
-                ImageUtils::mix( result, images[i].get(), 1.0);
-            }
-        }
-        end = osg::Timer::instance()->tick();
-        OE_DEBUG << "compositing " << images.size() << " images took " << osg::Timer::instance()->delta_m( start, end) << "ms" << std::endl;
         return result;
     }
 

@@ -24,6 +24,7 @@
 #include <osgEarth/Map>
 #include <osgEarth/TileKey>
 #include <osgEarth/Progress>
+#include <OpenThreads/Mutex>
 #include <OpenThreads/Atomic>
 
 namespace osgEarth
@@ -55,6 +56,8 @@ namespace osgEarth
         friend class CacheTileOperation;
 
         CacheSeed();
+
+		CacheSeed( const CacheSeed& rhs);
 
         /** dtor */
         virtual ~CacheSeed() { }

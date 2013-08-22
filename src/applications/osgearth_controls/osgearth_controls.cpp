@@ -26,6 +26,7 @@
 #include <osgEarth/Registry>
 #include <osgEarthUtil/EarthManipulator>
 #include <osgEarthUtil/Controls>
+#include <osgEarthUtil/ExampleResources>
 #include <osgEarthSymbology/Color>
 
 using namespace osgEarth::Symbology;
@@ -42,13 +43,12 @@ int main(int argc, char** argv)
     osgViewer::Viewer viewer(arguments);
 
     osg::Group* root = new osg::Group();
-    osg::Node* node = osgDB::readNodeFiles( arguments );
+    osg::Node* node = osgEarth::Util::MapNodeHelper().load(arguments, &viewer);
     if ( node )
         root->addChild( node );
 
     // create a surface to house the controls
     ControlCanvas* cs = ControlCanvas::get( &viewer );
-    root->addChild( cs );
 
     viewer.setSceneData( root );
     viewer.setCameraManipulator( new osgEarth::Util::EarthManipulator );

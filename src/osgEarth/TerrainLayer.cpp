@@ -205,6 +205,7 @@ TerrainLayer::setCache( Cache* cache )
             if ( _runtimeOptions->cacheId().isSet() && !_runtimeOptions->cacheId()->empty() )
             {
                 // user expliticy set a cacheId in the terrain layer options.
+                // this appears to be a NOP; review for removal -gw
                 cacheId = *_runtimeOptions->cacheId();
             }
             else

@@ -66,6 +66,7 @@ namespace osgEarth { namespace Annotation
          */
         virtual void setAnnotationData( AnnotationData* data );
         AnnotationData* getAnnotationData() const { return _annoData.get(); }
+        AnnotationData* getOrCreateAnnotationData();
 
         /**
          * Sets the node to "dynamic", i.e. sets up the node so that you can

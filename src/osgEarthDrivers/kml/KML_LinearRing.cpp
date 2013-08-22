@@ -24,8 +24,19 @@ void
 KML_LinearRing::parseStyle( const Config& conf, KMLContext& cs, Style& style )
 {
     KML_Geometry::parseStyle(conf, cs, style);
+
+    // need a line symbol minimally
+    LineSymbol* line = style.get<LineSymbol>();
+    if ( !line )
+    {
+        line = style.getOrCreate<LineSymbol>();
+        line->stroke()->color() = osg::Vec4f(1,1,1,1);
+    }
+
     if ( conf.value("tessellate") == "1" )
-        style.getOrCreate<LineSymbol>()->tessellation() = 20;
+    {
+        line->tessellation() = 20;
+    }
 }
 
 void

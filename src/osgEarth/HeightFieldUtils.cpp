@@ -48,7 +48,7 @@ HeightFieldUtils::getHeightAtPixel(const osg::HeightField* hf, double c, double 
             {
                 rowMax = rowMin + 1;
             }
-            else
+            else if ( rowMax > 0 )
             {
                 rowMin = rowMax - 1;
             }
@@ -60,7 +60,7 @@ HeightFieldUtils::getHeightAtPixel(const osg::HeightField* hf, double c, double 
             {
                 colMax = colMin + 1;
             }
-            else
+            else if ( colMax > 0 )
             {
                colMin = colMax - 1;
             }

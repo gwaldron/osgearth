@@ -613,20 +613,34 @@ OverlayDecorator::cullTerrainAndCalculateRTTParams(osgUtil::CullVisitor* cv,
         std::vector<osg::Vec3d> verts;
         visiblePH.getPoints( verts );
 
-        // calculate an orthographic RTT projection matrix based on the view-space
-        // bounds of the vertex list (i.e. the extents surrounding the RTT camera 
-        // that bounds all the polyherdron verts in its XY plane)
-        double xmin, ymin, xmax, ymax, maxDist;
-        getExtentInSilhouette(rttViewMatrix, eye, verts, xmin, ymin, xmax, ymax, maxDist);
+        // zero verts means the visible PH does not intersect the frustum.
+        if ( verts.size() > 0 )
+        {
+            // calculate an orthographic RTT projection matrix based on the view-space
+            // bounds of the vertex list (i.e. the extents surrounding the RTT camera 
+            // that bounds all the polyherdron verts in its XY plane)
+            double xmin, ymin, xmax, ymax, maxDist;
+            getExtentInSilhouette(rttViewMatrix, eye, verts, xmin, ymin, xmax, ymax, maxDist);
 
-        // make sure the ortho camera penetrates the terrain. This is a must for depth buffer sampling
-        double dist = std::max(hasl*1.5, std::min(maxDist, eyeLen));
-        rttProjMatrix.makeOrtho(xmin, xmax, ymin, ymax, 0.0, dist+zspan);
+            // make sure the ortho camera penetrates the terrain. This is a must for depth buffer sampling
+            double dist = std::max(hasl*1.5, std::min(maxDist, eyeLen));
 
-        params._rttViewMatrix.set( rttViewMatrix );
-        params._rttProjMatrix.set( rttProjMatrix );
-        params._eyeWorld = eye;
-        params._frustumPH = frustumPH;
+            // in ecef it can't go past the horizon though, or you get bleed thru
+            if ( _isGeocentric )
+              dist = std::min(dist, eyeLen);
+
+            rttProjMatrix.makeOrtho(xmin, xmax, ymin, ymax, 0.0, dist+zspan);
+
+            //OE_WARN << LC << "verts size = " << verts.size()
+            //    << "xmin=" << xmin << ", xmax=" << xmax
+            //    << ", ymin=" << ymin << ", ymax=" << ymax
+            //    << std::endl;
+
+            params._rttViewMatrix.set( rttViewMatrix );
+            params._rttProjMatrix.set( rttProjMatrix );
+            params._eyeWorld = eye;
+            params._frustumPH = frustumPH;
+        }
 
         // service a "dump" of the polyhedrons for dubugging purposes
         // (see osgearth_overlayviewer)
@@ -670,7 +684,6 @@ OverlayDecorator::cullTerrainAndCalculateRTTParams(osgUtil::CullVisitor* cv,
             osg::Group* g = new osg::Group();
             g->getOrCreateStateSet()->setAttribute(new osg::Program(), 0);
             g->addChild(camNode);
-            //g->addChild(overlay);
             g->addChild(intersection);
             g->addChild(rttNode);
             g->addChild(dsgmt);

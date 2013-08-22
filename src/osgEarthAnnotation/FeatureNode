@@ -47,8 +47,17 @@ namespace osgEarth { namespace Annotation
          */
         FeatureNode( 
             MapNode* mapNode, 
+            Feature* feature,
+            const GeometryCompilerOptions& options = GeometryCompilerOptions() );
+
+        /**
+         * Constructs a new Feautre Node.
+         * @deprecated - please use the ctor above.
+         */
+        FeatureNode( 
+            MapNode* mapNode, 
             Feature* feature, 
-            bool     draped   =false, 
+            bool     draped,
             const GeometryCompilerOptions& options = GeometryCompilerOptions() );
 
         virtual ~FeatureNode() { }
@@ -60,7 +69,8 @@ namespace osgEarth { namespace Annotation
         Feature* getFeature() { return _feature.get(); }
         const Feature* getFeature() const { return _feature.get(); }
 
-        /** Whether the feature is draped on the terrain */
+        /** Whether the feature is draped on the terrain
+         *  @deprecated - check the style instead */
         bool isDraped() const { return _draped; }
 
         void init();
@@ -83,7 +93,7 @@ namespace osgEarth { namespace Annotation
     protected:
         osg::ref_ptr<Feature>        _feature;
         GeometryCompilerOptions      _options;
-        bool                         _draped;
+        bool                         _draped; // to remove
         osg::Group*                  _attachPoint;
         osg::Polytope                _featurePolytope;
 

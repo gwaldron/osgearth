@@ -72,14 +72,23 @@ The values for cache policy *usage* are:
     :cache_only:        If a cache if set up, ONLY use data in the cache; never go 
                         to the data source.
 
+You can also direct the cache to expire objects. By default, cached data never expires,
+but you can use the ``max_age`` property to tell it how long to treat an object as valid::
+
+    <cache_policy max_age="3600"/>
+    
+Specify the maximum age in seconds. The example above will expire objects after an hour.
+
+
 Environment Variables
 ---------------------
 Sometimes it's more convenient to control caching from the environment,
 especially during development. Here are some environment variables you can use.
 
-    :OSGEARTH_CACHE_PATH:   Root folder for a file system cache.
-    :OSGEARTH_NO_CACHE:     Enables a ``no_cache`` policy for any osgEarth map. (set to 1)
-    :OSGEARTH_CACHE_ONLY:   Enabled a ``cache_only`` policy for any osgEarth map. (set to 1)
+    :OSGEARTH_CACHE_PATH:    Root folder for a file system cache.
+    :OSGEARTH_NO_CACHE:      Enables a ``no_cache`` policy for any osgEarth map. (set to 1)
+    :OSGEARTH_CACHE_ONLY:    Enabled a ``cache_only`` policy for any osgEarth map. (set to 1)
+    :OSGEARTH_CACHE_MAX_AGE: Set the cache to expire objects more than this number of seconds old.
 
 **Note**: environment variables *override* the cache settings in an *earth file*!
 

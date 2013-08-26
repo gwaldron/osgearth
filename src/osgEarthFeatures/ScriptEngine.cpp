@@ -70,6 +70,23 @@ ScriptEngineOptions::getConfig() const
 #define LC "[ScriptEngineFactory] "
 #define SCRIPT_ENGINE_OPTIONS_TAG "__osgEarth::Features::ScriptEngineOptions"
 
+ScriptEngineFactory* ScriptEngineFactory::s_singleton = 0L;
+osgEarth::Threading::Mutex ScriptEngineFactory::s_singletonMutex;
+
+ScriptEngineFactory*
+ScriptEngineFactory::instance()
+{
+    if ( !s_singleton )
+    {
+        Threading::ScopedMutexLock lock(s_singletonMutex);
+        if ( !s_singleton )
+        {
+            s_singleton = new ScriptEngineFactory();
+        }
+    }
+    return s_singleton;
+}
+
 ScriptEngine*
 ScriptEngineFactory::create( const std::string& language, const std::string& engineName )
 {
@@ -96,19 +113,27 @@ ScriptEngineFactory::create( const ScriptEngineOptions& options )
 
     if ( !options.getDriver().empty() )
     {
-        std::string driverExt = std::string(".osgearth_scriptengine_") + options.getDriver();
-
-        osg::ref_ptr<osgDB::Options> rwopts = Registry::instance()->cloneOrCreateOptions();
-        rwopts->setPluginData( SCRIPT_ENGINE_OPTIONS_TAG, (void*)&options );
-
-        scriptEngine = dynamic_cast<ScriptEngine*>( osgDB::readObjectFile( driverExt, rwopts.get() ) );
-        if ( scriptEngine )
+        if ( std::find(instance()->_failedDrivers.begin(), instance()->_failedDrivers.end(), options.getDriver()) == instance()->_failedDrivers.end() )
         {
-            OE_INFO << "Loaded ScriptEngine driver \"" << options.getDriver() << "\" OK" << std::endl;
+            std::string driverExt = std::string(".osgearth_scriptengine_") + options.getDriver();
+
+            osg::ref_ptr<osgDB::Options> rwopts = Registry::instance()->cloneOrCreateOptions();
+            rwopts->setPluginData( SCRIPT_ENGINE_OPTIONS_TAG, (void*)&options );
+
+            scriptEngine = dynamic_cast<ScriptEngine*>( osgDB::readObjectFile( driverExt, rwopts.get() ) );
+            if ( scriptEngine )
+            {
+                OE_INFO << "Loaded ScriptEngine driver \"" << options.getDriver() << "\" OK" << std::endl;
+            }
+            else
+            {
+                OE_WARN << "FAIL, unable to load ScriptEngine driver for \"" << options.getDriver() << "\"" << std::endl;
+                instance()->_failedDrivers.push_back(options.getDriver());
+            }
         }
         else
         {
-            OE_WARN << "FAIL, unable to load ScriptEngine driver for \"" << options.getDriver() << "\"" << std::endl;
+            OE_WARN << "Skipping previously failed ScriptEngine driver \"" << options.getDriver() << "\"" << std::endl;
         }
     }
     else

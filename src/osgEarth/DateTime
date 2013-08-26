@@ -51,6 +51,9 @@ namespace osgEarth
         /** DateTime from year, month, date, hours */
         DateTime(int year, int month, int day, double hours);
 
+        /** As a date/time string in RFC 1123 format */
+        const std::string asRFC1123() const;
+
     public:
         int    year()  const;
         int    month() const;

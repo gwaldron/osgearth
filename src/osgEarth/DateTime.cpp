@@ -17,9 +17,30 @@
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
 #include <osgEarth/DateTime>
+#include <osgEarth/StringUtils>
 #include <math.h>
+#include <iomanip>
 
 using namespace osgEarth;
+
+namespace
+{
+    // from RFC 1123, RFC 850
+
+    const char* rfc_wkday[7] = {
+        "Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"
+    };
+
+    const char* rfc_weekday[7] = {
+        "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"
+    };
+
+    const char* rfc_month[12] = {
+        "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"
+    };
+}
+
+//------------------------------------------------------------------------
 
 DateTime::DateTime()
 {
@@ -52,6 +73,10 @@ DateTime::DateTime(int year, int month, int day, double hour)
     _tm.tm_min = (int)::floor(min);
     frac = min - (double)_tm.tm_min;
     _tm.tm_sec = (int)(frac*60.0);
+
+    // now go to time_t, and back to tm, to populate the rest of the fields.
+    _time_t =  ::mktime( &_tm );
+    _tm     = *::gmtime( &_time_t );
 }
 
 DateTime::DateTime(const DateTime& rhs) :
@@ -83,4 +108,19 @@ double
 DateTime::hours() const
 {
     return (double)_tm.tm_hour + ((double)_tm.tm_min)/60. + ((double)_tm.tm_sec)/3600.;
+}
+
+const std::string
+DateTime::asRFC1123() const
+{
+    return Stringify()
+        << rfc_wkday[_tm.tm_wday] << ", "
+        << std::setfill('0') << std::setw(2) << _tm.tm_mday << ' '
+        << rfc_month[_tm.tm_mon] << ' '
+        << std::setw(4) << (1900 + _tm.tm_year) << ' '
+        << std::setw(2)
+        << _tm.tm_hour << ':'
+        << _tm.tm_min << ':'
+        << _tm.tm_sec << ' '
+        << "GMT";
 }

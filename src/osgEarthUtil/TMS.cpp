@@ -387,11 +387,11 @@ TileMap::create(const std::string& url,
     tileMap->_format.setWidth( tile_width );
     tileMap->_format.setHeight( tile_height );
     tileMap->_format.setExtension( format );
-	profile->getNumTiles( 0, tileMap->_numTilesWide, tileMap->_numTilesHigh );
+    profile->getNumTiles( 0, tileMap->_numTilesWide, tileMap->_numTilesHigh );
 
-	tileMap->generateTileSets();
-	tileMap->computeMinMaxLevel();
-        
+    tileMap->generateTileSets();
+    tileMap->computeMinMaxLevel();
+
     return tileMap;
 }
 
@@ -451,6 +451,10 @@ TileMapReaderWriter::read( const std::string& location, const osgDB::ReaderWrite
     if (tileMap)
     {
         tileMap->setFilename( location );
+
+        // record the timestamp (if there is one) in the tilemap. It's not a persistent field
+        // but will help with things like per-session caching.
+        tileMap->setTimeStamp( r.lastModifiedTime() );
     }
 
     return tileMap;

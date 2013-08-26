@@ -423,7 +423,7 @@ ElevationLayer::createHeightField(const TileKey&    key,
     bool fromCache = false;
     if ( cacheBin && getCachePolicy().isCacheReadable() )
     {
-        ReadResult r = cacheBin->readObject( key.str() );
+        ReadResult r = cacheBin->readObject( key.str(), getCachePolicy().getMinAcceptTime() );
         if ( r.succeeded() )
         {
             result = r.release<osg::HeightField>();

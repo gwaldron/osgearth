@@ -22,6 +22,7 @@
 
 #include <osgEarth/Common>
 #include <osgEarth/Config>
+#include <osgEarth/DateTime>
 #include <osgDB/Options>
 
 namespace osgEarth
@@ -49,15 +50,22 @@ namespace osgEarth
         /** policy indicating to only use a cache */
         static CachePolicy CACHE_ONLY;
 
+        enum Expire
+        {
+            EXPIRE_NEVER,        // never expire cache entries
+            EXPIRE_PER_SESSION   // expire all cache entries at the start of each session
+            //EXPIRE_PER_ENTRY     // expire each cache entry based on its timestamp
+        };
+
     public:
         /** constructs an invalid CachePolicy. */
         CachePolicy();
 
-        /** constructs a caching policy. */
-        CachePolicy( const Usage& usage );
+        /** copy ctor */
+        CachePolicy(const CachePolicy& rhs);
 
         /** constructs a caching policy. */
-        CachePolicy( const Usage& usage, double maxAgeSeconds );
+        CachePolicy( const Usage& usage );
 
         /** constructs a CachePolicy from a config options */
         CachePolicy( const Config& conf );
@@ -68,6 +76,9 @@ namespace osgEarth
         /** Stores this cache policy in a DB Options. */
         void apply( osgDB::Options* options );
 
+        /** Gets the oldest timestamp for which to accept a cache record */
+        TimeStamp getMinAcceptTime() const;
+
         /** dtor */
         virtual ~CachePolicy() { }
 
@@ -75,9 +86,18 @@ namespace osgEarth
         optional<Usage>& usage() { return _usage; }
         const optional<Usage>& usage() const { return _usage; }
 
+        /** Cache expiration policy */
+        optional<Expire> expire() { return _expire; }
+        const optional<Expire> expire() const { return _expire; }
+
         /** Gets the age limit for a cache record (in seconds) */
-        optional<double>& maxAge() { return _maxAge; }
-        const optional<double>& maxAge() const { return _maxAge; }
+        optional<TimeSpan>& maxAge() { return _maxAge; }
+        const optional<TimeSpan>& maxAge() const { return _maxAge; }
+
+        /** Gets the age limit for a cache record (as an absolute timestamp) */
+        optional<TimeStamp>& minTime() { return _minTime; }
+        const optional<TimeStamp>& minTime() const { return _minTime; }
+
 
     public: // convenience functions.
 
@@ -95,15 +115,21 @@ namespace osgEarth
             return ! operator==(rhs);
         }
 
+        // returns a readable string describing usage
         std::string usageString() const;
+
+        // returns a readable string describing expiration policy
+        std::string expireString() const;
 
     public: // config
         Config getConfig() const;
         void fromConfig( const Config& conf );
 
     private:
-        optional<Usage>   _usage;
-        optional<double>  _maxAge;
+        optional<Usage>     _usage;
+        optional<Expire>    _expire;
+        optional<TimeSpan>  _maxAge;
+        optional<TimeStamp> _minTime;
     };
 }
 

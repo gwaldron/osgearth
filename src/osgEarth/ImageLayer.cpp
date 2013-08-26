@@ -555,16 +555,19 @@ ImageLayer::createImageInKeyProfile( const TileKey& key, ProgressCallback* progr
     // map profile, we can try this first.
     if ( cacheBin && getCachePolicy().isCacheReadable() )
     {
-        ReadResult r = cacheBin->readImage( key.str() );
+        ReadResult r = cacheBin->readImage( key.str(), getCachePolicy().getMinAcceptTime() );
         if ( r.succeeded() )
-        {            
+        {
             ImageUtils::normalizeImage( r.getImage() );
             return GeoImage( r.releaseImage(), key.getExtent() );
         }
-        else
-        {
-            //OE_INFO << LC << getName() << " : " << key.str() << " cache miss" << std::endl;
-        }
+        //else
+        //{
+        //    if ( r.code() == ReadResult::RESULT_EXPIRED )
+        //    {
+        //        OE_INFO << LC << getName() << " : " << key.str() << " record expired!" << std::endl;
+        //    }
+        //}
     }
     
     // The data was not in the cache. If we are cache-only, fail sliently

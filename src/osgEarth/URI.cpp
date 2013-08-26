@@ -22,6 +22,7 @@
 #include <osgEarth/HTTPClient>
 #include <osgEarth/Registry>
 #include <osgEarth/Progress>
+#include <osgEarth/FileUtils>
 #include <osgDB/FileNameUtils>
 #include <osgDB/ReadFile>
 #include <osgDB/ReaderWriter>
@@ -279,7 +280,7 @@ namespace
     {
         bool callbackRequestsCaching( URIReadCallback* cb ) const { return !cb || ((cb->cachingSupport() & URIReadCallback::CACHE_OBJECTS) != 0); }
         ReadResult fromCallback( URIReadCallback* cb, const std::string& uri, const osgDB::Options* opt ) { return cb->readObject(uri, opt); }
-        ReadResult fromCache( CacheBin* bin, const std::string& key, double maxAge ) { return bin->readObject(key, maxAge); }
+        ReadResult fromCache( CacheBin* bin, const std::string& key, TimeStamp minTime) { return bin->readObject(key, minTime); }
         ReadResult fromHTTP( const std::string& uri, const osgDB::Options* opt, ProgressCallback* p ) { return HTTPClient::readObject(uri, opt, p); }
         ReadResult fromFile( const std::string& uri, const osgDB::Options* opt ) { return ReadResult(osgDB::readObjectFile(uri, opt)); }
     };
@@ -288,7 +289,7 @@ namespace
     {
         bool callbackRequestsCaching( URIReadCallback* cb ) const { return !cb || ((cb->cachingSupport() & URIReadCallback::CACHE_NODES) != 0); }
         ReadResult fromCallback( URIReadCallback* cb, const std::string& uri, const osgDB::Options* opt ) { return cb->readNode(uri, opt); }
-        ReadResult fromCache( CacheBin* bin, const std::string& key, double maxAge ) { return bin->readObject(key, maxAge); }
+        ReadResult fromCache( CacheBin* bin, const std::string& key, TimeStamp minTime) { return bin->readObject(key, minTime); }
         ReadResult fromHTTP( const std::string& uri, const osgDB::Options* opt, ProgressCallback* p ) { return HTTPClient::readNode(uri, opt, p); }
         ReadResult fromFile( const std::string& uri, const osgDB::Options* opt ) { return ReadResult(osgDB::readNodeFile(uri, opt)); }
     };
@@ -303,8 +304,8 @@ namespace
             if ( r.getImage() ) r.getImage()->setFileName(uri);
             return r;
         }                
-        ReadResult fromCache( CacheBin* bin, const std::string& key, double maxAge ) { 
-            ReadResult r = bin->readImage(key, maxAge);
+        ReadResult fromCache( CacheBin* bin, const std::string& key, TimeStamp minTime ) { 
+            ReadResult r = bin->readImage(key, minTime);
             if ( r.getImage() ) r.getImage()->setFileName( key );
             return r;
         }
@@ -324,16 +325,10 @@ namespace
     {
         bool callbackRequestsCaching( URIReadCallback* cb ) const { return !cb || ((cb->cachingSupport() & URIReadCallback::CACHE_STRINGS) != 0); }
         ReadResult fromCallback( URIReadCallback* cb, const std::string& uri, const osgDB::Options* opt ) { return cb->readString(uri, opt); }
-        ReadResult fromCache( CacheBin* bin, const std::string& key, double maxAge ) { return bin->readString(key, maxAge); }
+        ReadResult fromCache( CacheBin* bin, const std::string& key, TimeStamp minTime) { return bin->readString(key, minTime); }
         ReadResult fromHTTP( const std::string& uri, const osgDB::Options* opt, ProgressCallback* p ) { return HTTPClient::readString(uri, opt, p); }
         ReadResult fromFile( const std::string& uri, const osgDB::Options* opt ) { return readStringFile(uri, opt); }
     };
-
-    /*
-    static OpenThreads::Mutex s_statsLock;
-    static double totalTime = 0;
-    static int totalRequests = 0;
-    */
 
     //--------------------------------------------------------------------
     // MASTER read template function. I templatized this so we wouldn't
@@ -426,7 +421,7 @@ namespace
                     // first try to go to the cache if there is one:
                     if ( bin && cp->isCacheReadable() )
                     {
-                        result = reader.fromCache( bin, uri.cacheKey(), *cp->maxAge() );
+                        result = reader.fromCache( bin, uri.cacheKey(), cp->getMinAcceptTime() );
                         if ( result.succeeded() )
                             result.setIsFromCache(true);
                     }
@@ -475,7 +470,7 @@ namespace
                         << std::endl;
                 }
 
-                    
+
                 if ( result.getObject() && !gotResultFromCallback )
                 {
                     result.getObject()->setName( uri.base() );

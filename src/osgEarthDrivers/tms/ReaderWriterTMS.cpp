@@ -51,7 +51,7 @@ public:
         _invertY = _options.tmsType() == "google";
     }
 
-
+    // one-time initialization (per source)
     Status initialize(const osgDB::Options* dbOptions)
     {
         _dbOptions = Registry::instance()->cloneOrCreateOptions(dbOptions);

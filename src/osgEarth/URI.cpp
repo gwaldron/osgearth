@@ -250,9 +250,15 @@ namespace
 
                 osgDB::ReaderWriter::ReadResult rr = archive->readObject(fileName, options.get());
                 if ( rr.success() )
-                    return ReadResult(rr.takeObject());
+                {
+                    ReadResult result( rr.takeObject() );
+                    result.setLastModifiedTime( osgEarth::getLastModifiedTime(uri) );
+                    return result;
+                }
                 else
+                {
                     return ReadResult();
+                }
             }
         }
 
@@ -265,7 +271,9 @@ namespace
             buf << input.rdbuf();
             std::string bufStr;
             bufStr = buf.str();
-            return ReadResult( new StringObject(bufStr) );
+            ReadResult result( new StringObject(bufStr) );
+            result.setLastModifiedTime( osgEarth::getLastModifiedTime(uri) );
+            return result;
         }
 
         // no good

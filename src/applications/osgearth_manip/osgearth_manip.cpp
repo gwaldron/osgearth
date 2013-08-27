@@ -52,7 +52,7 @@ namespace
      */
     Control* createHelp( osgViewer::View* view )
     {
-        static char* text[] =
+        const char* text[] =
         {
             "left mouse :",        "pan",
             "middle mouse :",      "rotate",

@@ -45,19 +45,26 @@ namespace
 DateTime::DateTime()
 {
     ::time( &_time_t );
-    _tm = *::gmtime(&_time_t);
+    tm* temp = ::gmtime( &_time_t );
+    if ( temp ) _tm = *temp;
+    else memset( &_tm, 0, sizeof(tm) );
 }
 
-DateTime::DateTime(const ::time_t& utc)
+DateTime::DateTime(TimeStamp utc)
 {
     _time_t = utc;
-    _tm = *::gmtime( &utc );
+    tm* temp = ::gmtime( &_time_t );
+    if ( temp ) _tm = *temp;
+    else memset( &_tm, 0, sizeof(tm) );
 }
 
-DateTime::DateTime(const ::tm& tm)
-: _tm( tm )
+DateTime::DateTime(const ::tm& in_tm)
 {
-    _time_t = ::mktime( &_tm );
+    tm temptm = in_tm;
+    _time_t = ::mktime( &temptm );
+    tm* temp = ::gmtime( &_time_t );
+    if ( temp ) _tm = *temp;
+    else memset( &_tm, 0, sizeof(tm) );
 }
 
 DateTime::DateTime(int year, int month, int day, double hour)
@@ -76,7 +83,9 @@ DateTime::DateTime(int year, int month, int day, double hour)
 
     // now go to time_t, and back to tm, to populate the rest of the fields.
     _time_t =  ::mktime( &_tm );
-    _tm     = *::gmtime( &_time_t );
+    tm* temp = ::gmtime( &_time_t );
+    if ( temp ) _tm = *temp;
+    else memset( &_tm, 0, sizeof(tm) );
 }
 
 DateTime::DateTime(const DateTime& rhs) :
@@ -118,9 +127,8 @@ DateTime::asRFC1123() const
         << std::setfill('0') << std::setw(2) << _tm.tm_mday << ' '
         << rfc_month[_tm.tm_mon] << ' '
         << std::setw(4) << (1900 + _tm.tm_year) << ' '
-        << std::setw(2)
-        << _tm.tm_hour << ':'
-        << _tm.tm_min << ':'
-        << _tm.tm_sec << ' '
+        << std::setw(2) << _tm.tm_hour << ':'
+        << std::setw(2) << _tm.tm_min << ':'
+        << std::setw(2) << _tm.tm_sec << ' '
         << "GMT";
 }

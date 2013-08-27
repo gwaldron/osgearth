@@ -17,6 +17,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 #include <osgEarth/CachePolicy>
+#include <limits.h>
 
 using namespace osgEarth;
 
@@ -30,7 +31,6 @@ CachePolicy CachePolicy::CACHE_ONLY( CachePolicy::USAGE_CACHE_ONLY );
 //------------------------------------------------------------------------
 
 CachePolicy::CachePolicy() :
-_expire ( EXPIRE_NEVER ),
 _maxAge ( INT_MAX ),
 _minTime( 0 )
 {
@@ -39,7 +39,6 @@ _minTime( 0 )
 
 CachePolicy::CachePolicy( const Usage& usage ) :
 _usage  ( usage ),
-_expire ( EXPIRE_NEVER ),
 _maxAge ( INT_MAX ),
 _minTime( 0 )
 {
@@ -48,7 +47,6 @@ _minTime( 0 )
 
 CachePolicy::CachePolicy( const Config& conf ) :
 _usage  ( USAGE_READ_WRITE ),
-_expire ( EXPIRE_NEVER ),
 _maxAge ( INT_MAX ),
 _minTime( 0 )
 {
@@ -57,7 +55,6 @@ _minTime( 0 )
 
 CachePolicy::CachePolicy(const CachePolicy& rhs) :
 _usage  ( rhs._usage ),
-_expire ( rhs._expire ),
 _maxAge ( rhs._maxAge ),
 _minTime( rhs._minTime )
 {
@@ -105,7 +102,6 @@ CachePolicy::operator == (const CachePolicy& rhs) const
 {
     return 
         (_usage.get() == rhs._usage.get()) &&
-        (_expire.get() == rhs._expire.get()) &&
         (_maxAge.get() == rhs._maxAge.get()) &&
         (_minTime.get() == rhs._minTime.get());
 }
@@ -120,15 +116,6 @@ CachePolicy::usageString() const
     return "unknown";
 }
 
-std::string
-CachePolicy::expireString() const
-{
-    if ( _expire == EXPIRE_NEVER )       return "never";
-    if ( _expire == EXPIRE_PER_SESSION ) return "per-session";
-    //if ( _expire == EXPIRE_PER_ENTRY )   return "per-entry";
-    return "unknown";
-}
-
 void
 CachePolicy::fromConfig( const Config& conf )
 {
@@ -137,9 +124,6 @@ CachePolicy::fromConfig( const Config& conf )
     conf.getIfSet( "usage", "cache_only",   _usage, USAGE_CACHE_ONLY );
     conf.getIfSet( "usage", "no_cache",     _usage, USAGE_NO_CACHE );
     conf.getIfSet( "usage", "none",         _usage, USAGE_NO_CACHE );
-    //conf.getIfSet( "expire", "never",       _expire, EXPIRE_NEVER );
-    //conf.getIfSet( "expire", "per_session", _expire, EXPIRE_PER_SESSION );
-    //conf.getIfSet( "expire", "per_entry",   _expire, EXPIRE_PER_ENTRY );
     conf.getIfSet( "max_age", _maxAge );
     conf.getIfSet( "min_time", _minTime );
 }
@@ -152,9 +136,6 @@ CachePolicy::getConfig() const
     conf.addIfSet( "usage", "read_only",    _usage, USAGE_READ_ONLY );
     conf.addIfSet( "usage", "cache_only",   _usage, USAGE_CACHE_ONLY );
     conf.addIfSet( "usage", "no_cache",     _usage, USAGE_NO_CACHE );
-    //conf.addIfSet( "expire", "never",       _expire, EXPIRE_NEVER );
-    //conf.addIfSet( "expire", "per_session", _expire, EXPIRE_PER_SESSION );
-    //conf.addIfSet( "expire", "per_entry",   _expire, EXPIRE_PER_ENTRY );
     conf.addIfSet( "max_age", _maxAge );
     conf.addIfSet( "min_time", _minTime );
     return conf;

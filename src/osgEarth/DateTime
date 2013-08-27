@@ -46,7 +46,7 @@ namespace osgEarth
         DateTime(const ::tm& tm);
 
         /** DateTime from UTC seconds since the epoch */
-        DateTime(const ::time_t& utc);
+        DateTime(TimeStamp utc);
 
         /** DateTime from year, month, date, hours */
         DateTime(int year, int month, int day, double hours);

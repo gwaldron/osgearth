@@ -429,7 +429,7 @@ TerrainLayer::getCacheBin( const Profile* profile, const std::string& binId )
                 {
                     // no existing metadata; create some.
                     meta._cacheBinId    = binId;
-                    meta._sourceName    = this->getName();                    
+                    meta._sourceName    = this->getName();
                     meta._sourceDriver  = getTileSource()->getOptions().getDriver();
                     meta._sourceProfile = getProfile()->toProfileOptions();
                     meta._cacheProfile  = profile->toProfileOptions();
@@ -439,28 +439,26 @@ TerrainLayer::getCacheBin( const Profile* profile, const std::string& binId )
                 }
                 else if ( isCacheOnly() )
                 {
-                    OE_WARN << LC << "Failed to create a cache bin for layer ["
-                        << getName() << "] "
-                        << " because cache_only policy is in effect and a cache with binID ["
-                        << binId << "] cound not be located."
+                    OE_WARN << LC << "Failed to open a cache for layer [" << getName() << "] "
+                        << " because cache_only policy is in effect and bin [" << binId << "] cound not be located."
                         << std::endl;
                     return 0L;
                 }
                 else
                 {
-                    OE_WARN << LC << "Failed to create a cache bin for layer"
-                        << getName() << "] with bin ID [" << binId << "] "
-                        << " because there is no valid tile source."
+                    OE_WARN << LC << "Failed to create cache bin [" << binId << "] "
+                        << "for layer [" << getName() << "] because there is no valid tile source."
                         << std::endl;
                     return 0L;
                 }
             }
 
-
             // store the bin.
             CacheBinInfo& newInfo = _cacheBins[binId];
             newInfo._metadata = meta;
             newInfo._bin      = newBin.get();
+
+            OE_INFO << LC << "Opened cache bin [" << binId << "]" << std::endl;
         }
         else
         {

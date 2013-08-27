@@ -33,7 +33,13 @@
 #endif
 
 #include <sys/types.h>
-#include <sys/utime.h>
+
+#ifdef WIN32
+#  include <sys/utime.h>
+#else
+#  include <utime.h>
+#endif
+
 #include <sys/stat.h>
 #include <time.h>
 

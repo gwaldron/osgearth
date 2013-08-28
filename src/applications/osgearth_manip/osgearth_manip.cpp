@@ -273,6 +273,7 @@ namespace
 
             Style style;
             style.getOrCreate<TextSymbol>()->size() = 32.0f;
+            style.getOrCreate<TextSymbol>()->declutter() = false;
             _label = new LabelNode(_mapnode, GeoPoint(), "Hello World", style);
             _label->setDynamic( true );
             _cam->addChild( _label );

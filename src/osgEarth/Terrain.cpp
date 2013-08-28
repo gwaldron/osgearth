@@ -148,22 +148,78 @@ Terrain::getWorldCoordsUnderMouse(osg::View* view, float x, float y, osg::Vec3d&
     if ( !view2 || !_graph.valid() )
         return false;
 
-    osgUtil::LineSegmentIntersector::Intersections results;
+    osgUtil::LineSegmentIntersector::Intersections intersections;
 
-    osg::NodePath path;
-    path.push_back( _graph.get() );
+    osg::NodePath nodePath;
+    nodePath.push_back( _graph.get() );
 
     // fine but computeIntersections won't travers a masked Drawable, a la quadtree.
-    unsigned mask = ~_terrainOptions.secondaryTraversalMask().value();
+    unsigned traversalMask = ~_terrainOptions.secondaryTraversalMask().value();
 
-    if ( view2->computeIntersections( x, y, path, results, mask ) )
+
+#if 0
+    // Old code, uses the computeIntersections method directly but sufferes from floating point precision problems.
+    if ( view2->computeIntersections( x, y, nodePath, intersections, traversalMask ) )
     {
         // find the first hit under the mouse:
-        osgUtil::LineSegmentIntersector::Intersection first = *(results.begin());
+        osgUtil::LineSegmentIntersector::Intersection first = *(intersections.begin());
         out_coords = first.getWorldIntersectPoint();
         return true;
     }
-    return false;
+    return false;    
+
+#else
+    // New code, uses the code from osg::View::computeIntersections but uses our DPLineSegmentIntersector instead to get around floating point precision issues.
+    float local_x, local_y = 0.0;
+    const osg::Camera* camera = view2->getCameraContainingPosition(x, y, local_x, local_y);
+    if (!camera) camera = view2->getCamera();
+
+    osg::Matrixd matrix;
+    if (nodePath.size()>1)
+    {
+        osg::NodePath prunedNodePath(nodePath.begin(),nodePath.end()-1);
+        matrix = osg::computeLocalToWorld(prunedNodePath);
+    }
+
+    matrix.postMult(camera->getViewMatrix());
+    matrix.postMult(camera->getProjectionMatrix());
+
+    double zNear = -1.0;
+    double zFar = 1.0;
+    if (camera->getViewport())
+    {
+        matrix.postMult(camera->getViewport()->computeWindowMatrix());
+        zNear = 0.0;
+        zFar = 1.0;
+    }
+
+    osg::Matrixd inverse;
+    inverse.invert(matrix);
+
+    osg::Vec3d startVertex = osg::Vec3d(local_x,local_y,zNear) * inverse;
+    osg::Vec3d endVertex = osg::Vec3d(local_x,local_y,zFar) * inverse;
+
+    // Use a double precision line segment intersector
+    //osg::ref_ptr< osgUtil::LineSegmentIntersector > picker = new osgUtil::LineSegmentIntersector(osgUtil::Intersector::MODEL, startVertex, endVertex);
+    osg::ref_ptr< DPLineSegmentIntersector > picker = new DPLineSegmentIntersector(osgUtil::Intersector::MODEL, startVertex, endVertex);
+
+    // Limit it to one intersection, we only care about the first
+    picker->setIntersectionLimit( osgUtil::Intersector::LIMIT_ONE );
+
+    osgUtil::IntersectionVisitor iv(picker.get());
+    iv.setTraversalMask(traversalMask);
+    nodePath.back()->accept(iv);
+
+    if (picker->containsIntersections())
+    {        
+        intersections = picker->getIntersections();
+        // find the first hit under the mouse:
+        osgUtil::LineSegmentIntersector::Intersection first = *(intersections.begin());
+        out_coords = first.getWorldIntersectPoint();        
+        return true;       
+    }
+    return false;        
+#endif
 }
 
 

@@ -168,12 +168,28 @@ namespace
                 Json::Value children( Json::arrayValue );
                 unsigned i = 0;
 
+                //bool hasdupes = false;
+                //std::set<std::string> dupes;
+                //for( ConfigSet::const_iterator c = conf.children().begin(); c != conf.children().end(); ++c ) {
+                //    if ( dupes.find( c->key() ) != dupes.end() ) {
+                //        hasdupes = true;
+                //        break;
+                //    }
+                //    else {
+                //        dupes.insert(c->key());
+                //    }
+                //}
+
                 for( ConfigSet::const_iterator c = conf.children().begin(); c != conf.children().end(); ++c )
                 {
                     if ( c->isSimple() )
                         value[c->key()] = c->value();
                     else
                         children[i++] = conf2json( *c );
+                    //else if (hasdupes)
+                    //    children[i++] = conf2json( *c );
+                    //else
+                    //    value[c->key()] = conf2json(*c);
                 }
 
                 if ( !children.empty() )

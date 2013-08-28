@@ -152,10 +152,11 @@ namespace
     "uniform sampler2D tex0; \n"
     "uniform float oe_controls_visibleTime; \n"
     "uniform float osg_FrameTime; \n"
+    "varying vec4 texcoord; \n"
     "void main() \n"
     "{ \n"
     "    float opacity = clamp( osg_FrameTime - oe_controls_visibleTime, 0.0, 1.0 ); \n"
-    "    vec4 texel = texture2D(tex0, gl_TexCoord[0].st); \n"
+    "    vec4 texel = texture2D(tex0, texcoord.st); \n"
     "    gl_FragColor = vec4(gl_Color.rgb, texel.a * opacity); \n"
     "} \n";
 

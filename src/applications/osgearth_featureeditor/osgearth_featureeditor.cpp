@@ -109,8 +109,8 @@ struct AddVertsModeHandler : public ControlEventHandler
 
         //Add the new add point handler
         if (!s_addPointHandler.valid() && s_activeFeature.valid())
-        {
-            s_addPointHandler = new AddPointHandler(s_activeFeature.get(), s_source.get(), s_mapNode->getMap()->getProfile()->getSRS());
+        {            
+            s_addPointHandler = new AddPointHandler( s_activeFeature.get(), s_source.get(), s_mapNode.get() );
             s_addPointHandler->setIntersectionMask( 0x1 );
             s_viewer->addEventHandler( s_addPointHandler.get() );
         }        
@@ -223,11 +223,13 @@ int main(int argc, char** argv)
     // create a feature list source with the map extents as the default extent.
     s_source = new FeatureListSource( s_mapNode->getMap()->getProfile()->getExtent() );
 
-    LineString* line = new LineString();
-    line->push_back( osg::Vec3d(-60, 20, 0) );
+    LineString* line = new LineString();    
+    /*line->push_back( osg::Vec3d(-60, 20, 0) );
     line->push_back( osg::Vec3d(-120, 20, 0) );
     line->push_back( osg::Vec3d(-120, 60, 0) );
     line->push_back( osg::Vec3d(-60, 60, 0) );
+    */
+
     Feature* feature = new Feature(line, s_mapNode->getMapSRS(), Style(), s_fid++);
     s_source->insertFeature( feature );
     s_activeFeature = feature;

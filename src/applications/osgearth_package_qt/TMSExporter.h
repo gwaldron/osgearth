@@ -54,7 +54,8 @@ namespace PackageQt
   protected:
     friend class PackageLayerProgressCallback;
 
-    void packageTaskComplete();
+    void packageTaskProgress(int id, double percentComplete);
+    void packageTaskComplete(int id);
 
   private:
 
@@ -67,7 +68,8 @@ namespace PackageQt
 
     osg::ref_ptr<osgEarth::TaskService> _taskService;
     int _totalTasks;
-    int _completedTasks;
+    double _percentComplete;
+    std::vector<double> _taskProgress;
     osg::ref_ptr<osgEarth::ProgressCallback> _progress;
   };
 
@@ -101,8 +103,8 @@ namespace PackageQt
   class PackageLayerProgressCallback : public osgEarth::ProgressCallback
   {
   public:
-    PackageLayerProgressCallback(TMSExporter* exporter)
-      : _exporter(exporter)
+    PackageLayerProgressCallback(TMSExporter* exporter, int id)
+      : _exporter(exporter), _id(id)
     {
     }
 
@@ -110,17 +112,21 @@ namespace PackageQt
 
     bool reportProgress(double current, double total, unsigned currentStage, unsigned totalStages, const std::string& msg)
     {
+      if (_exporter)
+        _exporter->packageTaskProgress(_id, current / total);
+
       return false;
     }
 
     void onCompleted()
     {
       if (_exporter)
-        _exporter->packageTaskComplete();
+        _exporter->packageTaskComplete(_id);
     }
 
   private:
     TMSExporter* _exporter;
+    int _id;
   };
 }
 

@@ -563,9 +563,13 @@ ElevationLayerVector::createHeightField(const TileKey&                  key,
     {
         ElevationLayer* layer = i->get();
 
-        if ( layer->getEnabled() && layer->getVisible() && layer->isKeyValid( keyToUse ) )
+        if ( layer->getEnabled() && layer->getVisible() )
         {
-            GeoHeightField geoHF = layer->createHeightField( keyToUse, progress );
+            GeoHeightField geoHF;
+            if ( layer->isKeyValid(keyToUse) )
+            {
+                geoHF = layer->createHeightField( keyToUse, progress );
+            }
 
             // if "fallback" is set, try to fall back on lower LODs.
             if ( !geoHF.valid() && fallback )

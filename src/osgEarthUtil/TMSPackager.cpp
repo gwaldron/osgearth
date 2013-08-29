@@ -35,14 +35,15 @@ namespace
 {
     struct CreateImageTileTask
     {
-        void init(ImageLayer* layer, const TileKey& key, const std::string& path, const std::string& extension, osgDB::Options* imageWriteOptions)
+        void init(ImageLayer* layer, const TileKey& key, const std::string& path, const std::string& extension, osgDB::Options* imageWriteOptions, bool keepEmpties, bool verbose)
         {
           _layer = layer;
           _key = key;
           _path = path;
           _extension = extension;
           _imageWriteOptions = imageWriteOptions;
-          _keepEmptyImageTiles = true;
+          _keepEmptyImageTiles = keepEmpties;
+          _verbose = verbose;
         }
 
         void execute()
@@ -66,10 +67,10 @@ namespace
                 // check for empty:
                 if ( !_keepEmptyImageTiles && ImageUtils::isEmptyImage(image.getImage()) )
                 {
-                    //if (  _verbose )
-                    //{
-                    //    OE_NOTICE << LC << "Skipping empty tile " << key.str() << std::endl;
-                    //}
+                    if (  _verbose )
+                    {
+                        OE_NOTICE << LC << "Skipping empty tile " << _key.str() << std::endl;
+                    }
                 }
                 else
                 {
@@ -82,15 +83,15 @@ namespace
                     osgDB::makeDirectoryForFile( _path );
                     tileOK = osgDB::writeImageFile( *final.get(), _path, _imageWriteOptions);
 
-                    //if ( _verbose )
-                    //{
-                    //    if ( tileOK ) {
-                    //        OE_NOTICE << LC << "Wrote tile " << key.str() << " (" << key.getExtent().toString() << ")" << std::endl;
-                    //    }
-                    //    else {
-                    //        OE_NOTICE << LC << "Error write tile " << key.str() << std::endl;
-                    //    }
-                    //}
+                    if ( _verbose )
+                    {
+                        if ( tileOK ) {
+                            OE_NOTICE << LC << "Wrote tile " << _key.str() << " (" << _key.getExtent().toString() << ")" << std::endl;
+                        }
+                        else {
+                            OE_NOTICE << LC << "Error write tile " << _key.str() << std::endl;
+                        }
+                    }
 
                     //if ( _abortOnError && !tileOK )
                     //{
@@ -107,16 +108,18 @@ namespace
         std::string _extension;
         osg::ref_ptr<osgDB::Options> _imageWriteOptions;
         bool _keepEmptyImageTiles;
+        bool _verbose;
     };
 
 
     struct CreateElevationTileTask
     {
-        void init(ElevationLayer* layer, const TileKey& key, const std::string& path)
+        void init(ElevationLayer* layer, const TileKey& key, const std::string& path, bool verbose)
         {
           _layer = layer;
           _key = key;
           _path = path;
+          _verbose = verbose;
         }
 
         void execute()
@@ -134,15 +137,15 @@ namespace
                 osgDB::makeDirectoryForFile( _path );
                 tileOK = osgDB::writeImageFile( *image.get(), _path );
 
-                //if ( _verbose )
-                //{
-                //    if ( tileOK ) {
-                //        OE_NOTICE << LC << "Wrote tile " << key.str() << " (" << key.getExtent().toString() << ")" << std::endl;
-                //    }
-                //    else {
-                //        OE_NOTICE << LC << "Error write tile " << key.str() << std::endl;
-                //    }
-                //}
+                if ( _verbose )
+                {
+                    if ( tileOK ) {
+                        OE_NOTICE << LC << "Wrote tile " << _key.str() << " (" << _key.getExtent().toString() << ")" << std::endl;
+                    }
+                    else {
+                        OE_NOTICE << LC << "Error write tile " << _key.str() << std::endl;
+                    }
+                }
 
                 //if ( _abortOnError && !tileOK )
                 //{
@@ -155,6 +158,7 @@ namespace
         osg::ref_ptr<ElevationLayer> _layer;
         TileKey _key;
         std::string _path;
+        bool _verbose;
     };
 
 
@@ -237,14 +241,14 @@ TMSPackager::shouldPackageKey( const TileKey& key ) const
 
 
 int
-TMSPackager::packageImageTile(ImageLayer*          layer,
-                              const TileKey&       key,
-                              const std::string&   rootDir,
-                              const std::string&   extension,
-                              TaskRequestVector& tasks,
-                              Threading::MultiEvent* semaphore,
-                              osgEarth::ProgressCallback* progress,
-                              unsigned&            out_maxLevel )
+TMSPackager::packageImageTile(ImageLayer*                  layer,
+                              const TileKey&               key,
+                              const std::string&           rootDir,
+                              const std::string&           extension,
+                              TaskRequestVector&           tasks,
+                              Threading::MultiEvent*       semaphore,
+                              osgEarth::ProgressCallback*  progress,
+                              unsigned&                    out_maxLevel )
 {
     unsigned minLevel = layer->getImageLayerOptions().minLevel().isSet() ?
         *layer->getImageLayerOptions().minLevel() : 0;
@@ -268,7 +272,7 @@ TMSPackager::packageImageTile(ImageLayer*          layer,
         if ( !tileOK )
         {
             ParallelTask<CreateImageTileTask>* task = new ParallelTask<CreateImageTileTask>( semaphore );
-            task->init(layer, key, path, extension, _imageWriteOptions);
+            task->init(layer, key, path, extension, _imageWriteOptions, _keepEmptyImageTiles, _verbose);
             task->setProgressCallback(progress);
             tasks.push_back(task);
             taskCount++;
@@ -319,14 +323,14 @@ TMSPackager::packageImageTile(ImageLayer*          layer,
 
 
 int
-TMSPackager::packageElevationTile(ElevationLayer*      layer,
-                                  const TileKey&       key,
-                                  const std::string&   rootDir,
-                                  const std::string&   extension,
-                                  osgEarth::TaskRequestVector& tasks,
-                                  Threading::MultiEvent* semaphore,
-                                  osgEarth::ProgressCallback* progress,
-                                  unsigned&            out_maxLevel)
+TMSPackager::packageElevationTile(ElevationLayer*               layer,
+                                  const TileKey&                key,
+                                  const std::string&            rootDir,
+                                  const std::string&            extension,
+                                  osgEarth::TaskRequestVector&  tasks,
+                                  Threading::MultiEvent*        semaphore,
+                                  osgEarth::ProgressCallback*   progress,
+                                  unsigned&                     out_maxLevel)
 {
     unsigned minLevel = layer->getElevationLayerOptions().minLevel().isSet() ?
         *layer->getElevationLayerOptions().minLevel() : 0;
@@ -349,7 +353,7 @@ TMSPackager::packageElevationTile(ElevationLayer*      layer,
         if ( !tileOK )
         {
             ParallelTask<CreateElevationTileTask>* task = new ParallelTask<CreateElevationTileTask>( semaphore );
-            task->init(layer, key, path);
+            task->init(layer, key, path, _verbose);
             task->setProgressCallback(progress);
             tasks.push_back(task);
             taskCount++;

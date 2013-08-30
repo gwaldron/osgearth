@@ -318,12 +318,12 @@ MPTerrainEngineNode::createTerrain()
     _update_mapf->getProfile()->getAllKeysAtLOD( *_terrainOptions.firstLOD(), keys );
 
     // create a root node for each root tile key.
-    OE_INFO << LC << "Creating root keys (" << keys.size() << ")" << std::flush;
+    OE_INFO << LC << "Creating root keys (" << keys.size() << ")" << std::endl;
 
     for( unsigned i=0; i<keys.size(); ++i )
     {
         osg::Node* node = factory->createRootNode( keys[i] );
-        OE_INFO_CONTINUE << "." << std::flush;
+        //OE_INFO_CONTINUE << "." << std::flush;
         if ( node )
         {
             _terrain->addChild( node );
@@ -336,8 +336,6 @@ MPTerrainEngineNode::createTerrain()
             OE_WARN << LC << "Couldn't make tile for root key: " << keys[i].str() << std::endl;
         }
     }
-
-    OE_INFO_CONTINUE << "done." << std::endl;
 
     updateShaders();
 }

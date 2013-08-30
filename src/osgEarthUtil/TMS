@@ -32,6 +32,7 @@
 #include <iostream>
 #include <osgEarth/Profile>
 #include <osgEarth/Common>
+#include <osgEarth/DateTime>
 
 #include <osg/Referenced>
 #include <osgDB/ReaderWriter>
@@ -275,6 +276,16 @@ namespace osgEarth { namespace Util { namespace TMS
         void setOriginY(double y) {_originY = y;}
 
         /**
+        * Sets the timestamp of the TimeMap, i.e. the last modified time
+        */
+        void setTimeStamp(TimeStamp t) { _timestamp = t; }
+
+        /**
+        * Gets the timestap of the TileMap
+        */
+        TimeStamp getTimeStamp() const { return _timestamp; }
+
+        /**
         *Sets the origin of this TileMap
         *
         *@param x
@@ -419,7 +430,9 @@ namespace osgEarth { namespace Util { namespace TMS
         unsigned int _numTilesWide;
         unsigned int _numTilesHigh;
 
-        osgEarth::Profile::ProfileType _profile_type;        
+        osgEarth::Profile::ProfileType _profile_type;
+
+        TimeStamp _timestamp;
 
         DataExtentList _dataExtents;
     };

@@ -34,6 +34,14 @@ namespace osgEarth
     class /*no export*/ CacheBin : public osg::Referenced
     {
     public:
+        /** returned by the getRecordStatus() function */
+        enum RecordStatus {
+            STATUS_NOT_FOUND,   // record is not in the cache
+            STATUS_OK,          // record is in the cache and newer than the test time
+            STATUS_EXPIRED      // record is in the cache and older than the test time
+        };
+
+    public:
         /**
          * Constructs a caching bin.
          * @param binID  Name of this caching bin (unique withing a Cache)
@@ -51,30 +59,24 @@ namespace osgEarth
 
         /**
          * Reads an object from the cache bin.
-         * @param key    Lookup key to read
-         * @param maxAge Maximum age of the record; return 0L if expired.
+         * @param key     Lookup key to read
+         * @param minTime Fail if the entry's timestamp is older than this
          */
-        virtual ReadResult readObject(
-            const std::string&         key,
-            double                     maxAge =DBL_MAX ) =0;
+        virtual ReadResult readObject(const std::string& key, TimeStamp minTime) =0;
 
         /**
          * Reads an image from the cache bin.
-         * @param key    Lookup key to read
-         * @param maxAge Maximum age of the record; return 0L if expired.
+         * @param key     Lookup key to read
+         * @param minTime Fail if the entry's timestamp is older than this
          */
-        virtual ReadResult readImage(
-            const std::string&        key,
-            double                    maxAge =DBL_MAX ) =0;
+        virtual ReadResult readImage(const std::string& key, TimeStamp minTime) =0;
 
         /**
          * Reads a string buffer from the cache bin.
-         * @param key    Lookup key to read
-         * @param maxAge Maximum age of the record; return 0L if expired.
+         * @param key    Lookup key to read.
+         * @param minTime Fail if the entry's timestamp is older than this.
          */
-        virtual ReadResult readString(
-            const std::string&          key,
-            double                      maxAge =DBL_MAX ) =0;
+        virtual ReadResult readString(const std::string& key, TimeStamp minTime) =0;
 
         /**
          * Writes an object (or an image) to the cache bin.
@@ -87,12 +89,30 @@ namespace osgEarth
             const Config&      metadata =Config() ) =0;
 
         /**
-         * Checks whether a key exists in the cache.
-         * (Default implementation just tries to read the object)
+         * Gets the status of a key, i.e. not found, valid or expired.
+         * Pass in a minTime = 0 to simply check whether the record exists.
+         * @param key     Lookup key to check for
+         * @param minTime Return EXPIRED if the key exists but is older than this
          */
-        virtual bool isCached( 
-            const std::string& key, 
-            double             maxAge =DBL_MAX ) =0;
+        virtual RecordStatus getRecordStatus(const std::string& key, TimeStamp minTime) =0;
+
+        /**
+         * Checks whether a key exists in the cache.
+         * @deprecated - Please use getRecordStatus instead
+         */
+        //bool isCached(const std::string& key) { 
+        //    return getRecordStatus(key, 0) == STATUS_OK; }
+
+        /**
+         * Purge an entry from the cache bin
+         */
+        virtual bool remove(const std::string& key) =0;
+
+        /**
+         * Update a record's timestamp to "now", as if it were a
+         * new entry.
+         */
+        virtual bool touch(const std::string& key) =0;
 
         /**
          * Reads custom metadata from the cache.

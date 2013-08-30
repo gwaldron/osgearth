@@ -26,10 +26,10 @@ using namespace osgEarth::Symbology;
 using namespace osgEarth::Features;
 
 /****************************************************************/
-AddPointHandler::AddPointHandler(Feature* feature, FeatureSource* source, const osgEarth::SpatialReference* mapSRS):
+AddPointHandler::AddPointHandler(Feature* feature, FeatureSource* source, MapNode* mapNode):
 _feature(feature),
 _source( source ),
-_mapSRS( mapSRS ),
+_mapNode( mapNode ),
 _mouseDown( false ),
 _firstMove( false ),
 _mouseButton( osgGA::GUIEventAdapter::LEFT_MOUSE_BUTTON ),
@@ -52,28 +52,24 @@ AddPointHandler::getMouseButton() const
 bool
 AddPointHandler::addPoint( float x, float y, osgViewer::View* view )
 {
-    osgUtil::LineSegmentIntersector::Intersections results;
-    if ( view->computeIntersections( x, y, results, _intersectionMask ) )
+    osg::Vec3d world;
+    if (_mapNode->getTerrain()->getWorldCoordsUnderMouse( view, x, y, world ))
     {
-        // find the first hit under the mouse:
-        osgUtil::LineSegmentIntersector::Intersection first = *(results.begin());
-        osg::Vec3d point = first.getWorldIntersectPoint();
-
-        // transform it to map coordinates:
-        double lat_rad, lon_rad, dummy;
-        _mapSRS->getEllipsoid()->convertXYZToLatLongHeight( point.x(), point.y(), point.z(), lat_rad, lon_rad, dummy );
-
-        double lat_deg = osg::RadiansToDegrees( lat_rad );
-        double lon_deg = osg::RadiansToDegrees( lon_rad );
+        // Get the map point from the world
+        GeoPoint mapPoint;
+        mapPoint.fromWorld( _mapNode->getMapSRS(), world );
 
         if (_feature.valid())            
         {
-            _feature->getGeometry()->push_back( osg::Vec3d(lon_deg, lat_deg, 0) );
+            // Convert the map point to the feature's SRS
+            GeoPoint featurePoint = mapPoint.transform( _feature->getSRS() );
+
+            _feature->getGeometry()->push_back( featurePoint.vec3d() );
             _source->dirty();
             //Also must dirty the feature profile since the geometry has changed
             _source->dirtyFeatureProfile();
-        }
-        return true;
+            return true;
+        }        
     }
     return false;
 }

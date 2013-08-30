@@ -15,7 +15,7 @@ http://readymap.org
     
     <options>
         <elevation_tile_size>15</elevation_tile_size>
-        <terrain lighting="true" first_lod="1"/>
+        <terrain first_lod="1"/>
     </options>
     
     <image name="readymap_imagery" driver="tms" visible="true">

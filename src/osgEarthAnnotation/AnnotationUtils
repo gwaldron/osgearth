@@ -133,6 +133,7 @@ namespace osgEarth { namespace Annotation
          * @param color    Color
          * @param maxAngle Maximum angle between verts (controls tessellation)
          */
+#if 0
         static osg::Node* createEllipsoid( float xr, float yr, float zr, const osg::Vec4& color, float maxAngle =15.0f );
 
         static osg::Node* createEllipsoid( 
@@ -141,6 +142,18 @@ namespace osgEarth { namespace Annotation
 
         static osg::Geometry* createEllipsoidGeometry( 
             float major, float minor, const osg::Vec4& color, float maxAngle =15.0f,
+            float minLat =-90.0, float maxLat=90.0, float minLon=-180.0, float maxLon=180.0);
+#endif
+
+        /**
+         * Builds the geometry for an ellipsoid.
+         */
+        static osg::Geometry* createEllipsoidGeometry( 
+            float xr, float yr, float zr, const osg::Vec4& color, float maxAngle =10.0f,
+            float minLat =-90.0, float maxLat=90.0, float minLon=-180.0, float maxLon=180.0);
+        
+        static osg::Node* createEllipsoid( 
+            float xr, float yr, float zr, const osg::Vec4& color, float maxAngle =10.0f,
             float minLat =-90.0, float maxLat=90.0, float minLon=-180.0, float maxLon=180.0);
 
         struct AltitudePolicy

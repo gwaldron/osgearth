@@ -22,10 +22,12 @@
 #include <osgEarth/ThreadingUtils>
 #include <osgEarth/XmlUtils>
 #include <osgEarth/URI>
+#include <osgEarth/FileUtils>
 #include <osgEarth/Registry>
 #include <osgDB/FileUtils>
 #include <osgDB/FileNameUtils>
 #include <fstream>
+#include <sys/stat.h>
 
 using namespace osgEarth;
 using namespace osgEarth::Drivers;
@@ -64,7 +66,7 @@ namespace
 
         void init();
 
-        std::string            _rootPath;
+        std::string _rootPath;
     };
 
     /** 
@@ -78,17 +80,21 @@ namespace
 
     public: // CacheBin interface
 
-        ReadResult readObject( const std::string& key, double maxAge =DBL_MAX );
+        ReadResult readObject(const std::string& key, TimeStamp minTime);
 
-        ReadResult readImage( const std::string& key, double maxAge =DBL_MAX );
+        ReadResult readImage(const std::string& key, TimeStamp minTime);
 
-        ReadResult readNode( const std::string& key, double maxAge =DBL_MAX );
+        ReadResult readNode(const std::string& key, TimeStamp minTime);
 
-        ReadResult readString( const std::string& key, double maxAge =DBL_MAX );
+        ReadResult readString(const std::string& key, TimeStamp minTime);
 
-        bool write( const std::string& key, const osg::Object* object, const Config& meta );
+        bool write(const std::string& key, const osg::Object* object, const Config& meta);
 
-        bool isCached( const std::string& key, double maxAge =DBL_MAX );
+        bool remove(const std::string& key);
+
+        bool touch(const std::string& key);
+
+        RecordStatus getRecordStatus(const std::string& key, TimeStamp minTime);
 
         bool purge();
 
@@ -99,8 +105,14 @@ namespace
     protected:
         bool purgeDirectory( const std::string& dir );
 
+        bool binValidForReading();
+
+        bool binValidForWriting();
+
         bool                              _ok;
-        std::string                       _metaPath;
+        bool                              _binPathExists;
+        std::string                       _metaPath;       // full path to the bin's metadata file
+        std::string                       _binPath;        // full path to the bin's root folder
         osg::ref_ptr<osgDB::ReaderWriter> _rw;
         osg::ref_ptr<osgDB::Options>      _rwOptions;
         Threading::ReadWriteMutex         _rwmutex;
@@ -154,12 +166,7 @@ namespace
     void
     FileSystemCache::init()
     {
-        osgDB::makeDirectory( _rootPath );
-        if ( !osgDB::fileExists( _rootPath ) )
-        {
-            OE_WARN << LC << "FAILED to create root folder for cache at \"" << _rootPath << "\"" << std::endl;
-            _ok = false;
-        }
+        //nop
     }
 
     CacheBin*
@@ -185,131 +192,189 @@ namespace
 
     //------------------------------------------------------------------------
 
+    bool
+    FileSystemCacheBin::binValidForReading()
+    {
+        if ( !_binPathExists )
+        {
+            if ( osgDB::fileExists(_binPath) )
+            {
+                // ready to go
+                _binPathExists = true;
+                _ok = true;
+            }
+            else if ( _ok )
+            {
+                // one-time error.
+                OE_WARN << LC << "Failed to locate cache bin at [" << _binPath << "]" << std::endl;
+                _ok = false;
+            }
+        }
+
+        return _ok;
+    }
+
+    bool
+    FileSystemCacheBin::binValidForWriting()
+    {
+        if ( !_binPathExists )
+        {
+            osgDB::makeDirectoryForFile( _metaPath );
+
+            if ( osgDB::fileExists(_binPath) )
+            {
+                // ready to go
+                _binPathExists = true;
+                _ok = true;
+            }
+            else
+            {
+                // one-time error.
+                OE_WARN << LC << "FAILED to find or create cache bin at [" << _metaPath << "]" << std::endl;
+                _ok = false;
+            }
+        }
+
+        return _ok;
+    }
+
     FileSystemCacheBin::FileSystemCacheBin(const std::string&   binID,
                                            const std::string&   rootPath) :
-    CacheBin ( binID ),
-    _ok      ( true )
+    CacheBin            ( binID ),
+    _binPathExists      ( false )
     {
-        std::string binPath = osgDB::concatPaths( rootPath, binID );
-        _metaPath = osgDB::concatPaths( binPath, "osgearth_cacheinfo.json" );
+        _binPath = osgDB::concatPaths( rootPath, binID );
+        _metaPath = osgDB::concatPaths( _binPath, "osgearth_cacheinfo.json" );
 
-        OE_INFO << LC << "Initializing cache bin: " << _metaPath << std::endl;
-        osgDB::makeDirectoryForFile( _metaPath );
-        if ( !osgDB::fileExists( binPath ) )
+        _rw = osgDB::Registry::instance()->getReaderWriterForExtension( "osgb" );
+#ifdef OSGEARTH_HAVE_ZLIB
+        _rwOptions = Registry::instance()->cloneOrCreateOptions();
+        _rwOptions->setOptionString( "Compressor=zlib" );
+#endif
+        CachePolicy::NO_CACHE.apply(_rwOptions.get());
+    }
+
+    ReadResult
+    FileSystemCacheBin::readImage(const std::string& key, TimeStamp minTime)
+    {
+        if ( !binValidForReading() ) 
+            return ReadResult(ReadResult::RESULT_NOT_FOUND);
+
+        // mangle "key" into a legal path name
+        URI fileURI( toLegalFileName(key), _metaPath );
+        std::string path = fileURI.full() + ".osgb";
+
+        if ( !osgDB::fileExists(path) )
+            return ReadResult( ReadResult::RESULT_NOT_FOUND );
+
+        if ( osgEarth::getLastModifiedTime(path) < minTime )
+            return ReadResult( ReadResult::RESULT_EXPIRED );
+
+        osgDB::ReaderWriter::ReadResult r;
         {
-            OE_WARN << LC << "FAILED to create folder for cache bin at \"" << binPath << "\"" << std::endl;
-            _ok = false;
+            ScopedReadLock sharedLock( _rwmutex );
+            r = _rw->readImage( path, _rwOptions.get() );
+            if ( !r.success() )
+                return ReadResult();
+
+            // read metadata
+            Config meta;
+            std::string metafile = fileURI.full() + ".meta";
+            if ( osgDB::fileExists(metafile) )
+                readMeta( metafile, meta );
+
+            return ReadResult( r.getImage(), meta );
+        }
+    }
+
+    ReadResult
+    FileSystemCacheBin::readObject(const std::string& key, TimeStamp minTime)
+    {
+        if ( !binValidForReading() ) 
+            return ReadResult(ReadResult::RESULT_NOT_FOUND);
+
+        // mangle "key" into a legal path name
+        URI fileURI( toLegalFileName(key), _metaPath );
+        std::string path = fileURI.full() + ".osgb";
+
+        if ( !osgDB::fileExists(path) )
+            return ReadResult( ReadResult::RESULT_NOT_FOUND );
+
+        if ( osgEarth::getLastModifiedTime(path) < minTime )
+            return ReadResult( ReadResult::RESULT_EXPIRED );
+
+        osgDB::ReaderWriter::ReadResult r;
+        {
+            ScopedReadLock sharedLock( _rwmutex );
+            r = _rw->readObject( path, _rwOptions.get() );
+            if ( !r.success() )
+                return ReadResult();
+
+            // read metadata
+            Config meta;
+            std::string metafile = fileURI.full() + ".meta";
+            if ( osgDB::fileExists(metafile) )
+                readMeta( metafile, meta );
+
+             return ReadResult( r.getObject(), meta );
+        }
+    }
+
+    ReadResult
+    FileSystemCacheBin::readNode(const std::string& key, TimeStamp minTime)
+    {
+        if ( !binValidForReading() ) 
+            return ReadResult(ReadResult::RESULT_NOT_FOUND);
+
+        // mangle "key" into a legal path name
+        URI fileURI( toLegalFileName(key), _metaPath );
+        std::string path = fileURI.full() + ".osgb";
+
+        if ( !osgDB::fileExists(path) )
+            return ReadResult( ReadResult::RESULT_NOT_FOUND );
+
+        if ( osgEarth::getLastModifiedTime(path) < minTime )
+            return ReadResult( ReadResult::RESULT_EXPIRED );
+
+        osgDB::ReaderWriter::ReadResult r;
+        {
+            ScopedReadLock sharedLock( _rwmutex );
+            r = _rw->readNode( path, _rwOptions.get() );
+            if ( !r.success() )
+                return ReadResult();
+
+            // read metadata
+            Config meta;
+            std::string metafile = fileURI.full() + ".meta";
+            if ( osgDB::fileExists(metafile) )
+                readMeta( metafile, meta );
+
+            return ReadResult( r.getNode(), meta );
+        }
+    }
+
+    ReadResult
+    FileSystemCacheBin::readString(const std::string& key, TimeStamp minTime)
+    {
+        ReadResult r = readObject(key, minTime);
+        if ( r.succeeded() )
+        {
+            if ( r.get<StringObject>() )
+                return r;
+            else
+                return ReadResult();
         }
         else
         {
-            _rw = osgDB::Registry::instance()->getReaderWriterForExtension( "osgb" );
-#ifdef OSGEARTH_HAVE_ZLIB
-            _rwOptions = Registry::instance()->cloneOrCreateOptions();
-            _rwOptions->setOptionString( "Compressor=zlib" );
-#endif
-            CachePolicy::NO_CACHE.apply(_rwOptions.get());
+            return r;
         }
-    }
-
-    ReadResult
-    FileSystemCacheBin::readImage(const std::string& key, double maxAge)
-    {
-        if ( !_ok ) return 0L;
-
-        //todo: handle maxAge
-
-        // mangle "key" into a legal path name
-        URI fileURI( toLegalFileName(key), _metaPath );
-
-        osgDB::ReaderWriter::ReadResult r;
-        {
-            ScopedReadLock sharedLock( _rwmutex );
-            r = _rw->readImage( fileURI.full() + ".osgb", _rwOptions.get() );
-            if ( r.success() )
-            {
-                // read metadata
-                Config meta;
-                std::string metafile = fileURI.full() + ".meta";
-                if ( osgDB::fileExists(metafile) )
-                    readMeta( metafile, meta );
-
-                return ReadResult( r.getImage(), meta );
-            }
-        }
-
-        return ReadResult(); //error
-    }
-
-    ReadResult
-    FileSystemCacheBin::readObject(const std::string& key, double maxAge)
-    {
-        if ( !_ok ) return 0L;
-
-        //todo: handle maxAge
-
-        // mangle "key" into a legal path name
-        URI fileURI( toLegalFileName(key), _metaPath );
-
-        osgDB::ReaderWriter::ReadResult r;
-        {
-            ScopedReadLock sharedLock( _rwmutex );
-            r = _rw->readObject( fileURI.full() + ".osgb", _rwOptions.get() );
-            if ( r.success() )
-            {
-                // read metadata
-                Config meta;
-                std::string metafile = fileURI.full() + ".meta";
-                if ( osgDB::fileExists(metafile) )
-                    readMeta( metafile, meta );
-
-                // TODO: read metadata
-                return ReadResult( r.getObject(), meta );
-            }
-        }
-
-        return ReadResult();
-    }
-
-    ReadResult
-    FileSystemCacheBin::readNode(const std::string& key, double maxAge)
-    {
-        if ( !_ok ) return 0L;
-
-        //todo: handle maxAge
-
-        // mangle "key" into a legal path name
-        URI fileURI( toLegalFileName(key), _metaPath );
-
-        osgDB::ReaderWriter::ReadResult r;
-        {
-            ScopedReadLock sharedLock( _rwmutex );
-            r = _rw->readNode( fileURI.full() + ".osgb", _rwOptions.get() );
-            if ( r.success() )
-            {            
-                // read metadata
-                Config meta;
-                std::string metafile = fileURI.full() + ".meta";
-                if ( osgDB::fileExists(metafile) )
-                    readMeta( metafile, meta );
-
-                return ReadResult( r.getNode(), meta );
-            }
-        }
-
-        return ReadResult();
-    }
-
-    ReadResult
-    FileSystemCacheBin::readString(const std::string& key, double maxAge)
-    {
-        ReadResult r = readObject(key, maxAge);
-        return r.succeeded() && r.get<StringObject>() ? r : ReadResult();
     }
 
     bool
     FileSystemCacheBin::write( const std::string& key, const osg::Object* object, const Config& meta )
     {
-        if ( !_ok || !object ) return false;
+        if ( !binValidForWriting() || !object ) 
+            return false;
 
         // convert the key into a legal filename:
         URI fileURI( toLegalFileName(key), _metaPath );
@@ -324,7 +389,7 @@ namespace
                 osgDB::makeDirectoryForFile( fileURI.full() );
 
             // write it.  
-            osgDB::ReaderWriter::WriteResult r;      
+            osgDB::ReaderWriter::WriteResult r;
 
             if ( dynamic_cast<const osg::Image*>(object) )
             {
@@ -365,18 +430,45 @@ namespace
         return objWriteOK;
     }
 
-    bool
-    FileSystemCacheBin::isCached( const std::string& key, double maxAge )
+    CacheBin::RecordStatus
+    FileSystemCacheBin::getRecordStatus(const std::string& key, TimeStamp minTime)
     {
-        if ( !_ok ) return false;
+        if ( !binValidForReading() ) 
+            return STATUS_NOT_FOUND;
 
         URI fileURI( toLegalFileName(key), _metaPath );
-        return osgDB::fileExists( fileURI.full() + ".osgb" );
+        std::string path( fileURI.full() + ".osgb" );
+        if ( !osgDB::fileExists(path) )
+            return STATUS_NOT_FOUND;
+
+        struct stat s;
+        ::stat( path.c_str(), &s );
+        return s.st_mtime >= minTime ? STATUS_OK : STATUS_EXPIRED;
+    }
+
+    bool
+    FileSystemCacheBin::remove(const std::string& key)
+    {
+        if ( !binValidForReading() ) return false;
+        URI fileURI( toLegalFileName(key), _metaPath );
+        std::string path( fileURI.full() + ".osgb" );
+        return ::unlink( path.c_str() ) == 0;
+    }
+
+    bool
+    FileSystemCacheBin::touch(const std::string& key)
+    {
+        if ( !binValidForReading() ) return false;
+        URI fileURI( toLegalFileName(key), _metaPath );
+        std::string path( fileURI.full() + ".osgb" );
+        return osgEarth::touchFile( path );
     }
 
     bool
     FileSystemCacheBin::purgeDirectory( const std::string& dir )
     {
+        if ( !binValidForReading() ) return false;
+
         bool allOK = true;
         osgDB::DirectoryContents dc = osgDB::getDirectoryContents( dir );
 
@@ -416,7 +508,7 @@ namespace
     bool
     FileSystemCacheBin::purge()
     {
-        if ( !_ok ) return false;
+        if ( !binValidForReading() ) return false;
         {
             ScopedWriteLock exclusiveLock( _rwmutex );
             std::string binDir = osgDB::getFilePath( _metaPath );
@@ -427,7 +519,7 @@ namespace
     Config
     FileSystemCacheBin::readMetadata()
     {
-        if ( !_ok ) return Config();
+        if ( !binValidForReading() ) return Config();
 
         ScopedReadLock sharedLock( _rwmutex );
         
@@ -440,7 +532,7 @@ namespace
     bool
     FileSystemCacheBin::writeMetadata( const Config& conf )
     {
-        if ( !_ok ) return false;
+        if ( !binValidForWriting() ) return false;
 
         ScopedWriteLock exclusiveLock( _rwmutex );
 

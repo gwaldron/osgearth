@@ -20,13 +20,12 @@
 #define OSGEARTHUTIL_SKY_NODE
 
 #include <osgEarthUtil/Common>
-#include <osgEarthUtil/DateTime>
+#include <osgEarth/DateTime>
 #include <osgEarth/Map>
 #include <osg/MatrixTransform>
 #include <osg/Uniform>
 #include <osg/Group>
 #include <osg/View>
-#include <ctime>
 
 namespace osgEarth { namespace Util 
 {

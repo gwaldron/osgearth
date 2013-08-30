@@ -36,6 +36,7 @@
 #include <osgEarthUtil/ExampleResources>
 #include <osgEarthAnnotation/AnnotationUtils>
 #include <osgEarthAnnotation/LocalGeometryNode>
+#include <osgEarthAnnotation/LabelNode>
 #include <osgEarthSymbology/Style>
 
 using namespace osgEarth::Util;
@@ -52,7 +53,7 @@ namespace
      */
     Control* createHelp( osgViewer::View* view )
     {
-        static char* text[] =
+        const char* text[] =
         {
             "left mouse :",        "pan",
             "middle mouse :",      "rotate",
@@ -258,10 +259,10 @@ namespace
      */
     struct Simulator : public osgGA::GUIEventHandler
     {
-        Simulator( osg::Group* root, EarthManipulator* manip )
-            : _manip(manip), _lat0(55.0), _lon0(45.0), _lat1(-55.0), _lon1(-45.0)
+        Simulator( osg::Group* root, EarthManipulator* manip, MapNode* mapnode )
+            : _manip(manip), _mapnode(mapnode), _lat0(55.0), _lon0(45.0), _lat1(-55.0), _lon1(-45.0)
         {
-            osg::Node* geode = AnnotationUtils::createSphere( 100.0, osg::Vec4(1,1,1,1) );
+            osg::Node* geode = AnnotationUtils::createSphere( 25.0, osg::Vec4(1,.7,.4,1) );
             
             _xform = new osg::MatrixTransform();
             _xform->addChild( geode );
@@ -269,6 +270,13 @@ namespace
             _cam = new osg::Camera();
             _cam->setRenderOrder( osg::Camera::NESTED_RENDER, 1 );
             _cam->addChild( _xform );
+
+            Style style;
+            style.getOrCreate<TextSymbol>()->size() = 32.0f;
+            style.getOrCreate<TextSymbol>()->declutter() = false;
+            _label = new LabelNode(_mapnode, GeoPoint(), "Hello World", style);
+            _label->setDynamic( true );
+            _cam->addChild( _label );
 
             root->addChild( _cam.get() );
         }
@@ -284,10 +292,11 @@ namespace
                 osg::Vec3d world;
                 p.toWorld( world );
                 _xform->setMatrix( osg::Matrix::translate(world) );
+                _label->setPosition( p );
             }
             else if ( ea.getEventType() == ea.KEYDOWN && ea.getKey() == 't' )
             {
-                _manip->setTetherNode( _manip->getTetherNode() ? 0L : _cam.get() );
+                _manip->setTetherNode( _manip->getTetherNode() ? 0L : _xform.get() );
                 if ( _manip->getTetherNode() )
                 {
                     _manip->getSettings()->setArcViewpointTransitions( false );
@@ -299,10 +308,12 @@ namespace
             return false;
         }
 
+        MapNode*                           _mapnode;
         EarthManipulator*                  _manip;
         osg::ref_ptr<osg::Camera>          _cam;
         osg::ref_ptr<osg::MatrixTransform> _xform;
         double                             _lat0, _lon0, _lat1, _lon1;
+        LabelNode*                         _label;
     };
 }
 
@@ -345,7 +356,7 @@ int main(int argc, char** argv)
     }
 
     // Simulator for tethering:
-    viewer.addEventHandler( new Simulator(root, manip) );
+    viewer.addEventHandler( new Simulator(root, manip, mapNode) );
     manip->getSettings()->getBreakTetherActions().push_back( EarthManipulator::ACTION_PAN );
     manip->getSettings()->getBreakTetherActions().push_back( EarthManipulator::ACTION_GOTO );
 

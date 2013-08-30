@@ -20,44 +20,13 @@
 #define OSGEARTHUTIL_DATE_TIME_H
 
 #include <osgEarthUtil/Common>
-#include <ctime>
+#include <osgEarth/DateTime>
 
 namespace osgEarth { namespace Util
 {
-    /**
-     * General-purpose UTC date/time object.
-     */
-    class OSGEARTHUTIL_EXPORT DateTime
-    {
-    public:
-        /** DateTime representing "now" */
-        DateTime();
-
-        /** DateTime copy */
-        DateTime(const DateTime& rhs);
-
-        /** DateTime from a tm */
-        DateTime(const ::tm& tm);
-
-        /** DateTime from UTC seconds since the epoch */
-        DateTime(const ::time_t& utc);
-
-        /** DateTime from year, month, date, hours */
-        DateTime(int year, int month, int day, double hours);
-
-    public:
-        int    year()  const ;
-        int    month() const;
-        int    day()   const;
-        double hours() const;
-
-        ::time_t as_time_t() const { return _time_t; }
-        ::tm     as_tm()     const { return _tm; }
-
-    protected:
-        ::tm     _tm;
-        ::time_t _time_t;
-    };
+    // for backwards-compability.
+    // @deprecated - place use osgEarth::DateTime instead.
+    typedef osgEarth::DateTime DateTime;
 
 } } // namespace osgEarth::Util
 

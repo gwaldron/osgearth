@@ -27,7 +27,7 @@
 #include <osgEarth/ThreadingUtils>
 
 namespace osgEarth
-{    
+{
     /**
      * Base class for Cache implementation options.
      */

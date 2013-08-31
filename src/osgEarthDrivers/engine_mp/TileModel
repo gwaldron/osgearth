@@ -107,13 +107,6 @@ namespace osgEarth_engine_mp
             }
 
         private:
-            //static int getNeighborIndex(int xoffset, int yoffset)
-            //{
-            //    int index = 3*(yoffset+1)+(xoffset+1);
-            //    if (index > 4) index--;
-            //    return index;
-            //}
-            //osg::ref_ptr<osgTerrain::HeightFieldLayer> _hfLayer;
             osg::ref_ptr<osg::HeightField> _hf;
             osg::ref_ptr<GeoLocator>       _locator;
             bool                           _fallbackData;
@@ -206,7 +199,7 @@ namespace osgEarth_engine_mp
 
 
     public:
-        TileModel() { }
+        TileModel( const osgEarth::Revision& mapModelRevision ) : _revision(mapModelRevision) { }
         TileModel(const TileModel& rhs);
         virtual ~TileModel() { }
 
@@ -224,6 +217,7 @@ namespace osgEarth_engine_mp
         bool hasElevation() const { return _elevationData.getHeightField() != 0L; }
 
         osg::ref_ptr<const Map>      _map; // observer_ptr?
+        Revision                     _revision;
         TileKey                      _tileKey;
         osg::ref_ptr<GeoLocator>     _tileLocator;
         ColorDataByUID               _colorData;

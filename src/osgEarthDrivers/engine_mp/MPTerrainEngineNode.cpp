@@ -126,7 +126,7 @@ void
 MPTerrainEngineNode::ElevationChangedCallback::onVisibleChanged( TerrainLayer* layer )
 {    
     osgEarth::Registry::instance()->clearBlacklist();
-    _terrain->refresh();
+    _terrain->refresh(true);
 }
 
 //------------------------------------------------------------------------
@@ -264,8 +264,28 @@ MPTerrainEngineNode::computeBound() const
 }
 
 
+namespace
+{
+    struct DirtyAllTilesOp : public TileNodeRegistry::Operation
+    {
+        Revision _maprev;
+        bool     _force;
+        DirtyAllTilesOp(Revision maprev, bool force) : _maprev(maprev), _force(force) { }
+
+        void operator()(TileNodeRegistry::TileNodeMap& tiles)
+        {
+            for(TileNodeRegistry::TileNodeMap::iterator i = tiles.begin(); i != tiles.end(); ++i)
+            {
+                i->second->setMapRevision( _maprev );
+                if ( _force )
+                    i->second->setDirty();
+            }
+        }
+    };
+}
+
 void
-MPTerrainEngineNode::refresh()
+MPTerrainEngineNode::refresh(bool force)
 {
     if ( _batchUpdateInProgress )
     {
@@ -273,11 +293,19 @@ MPTerrainEngineNode::refresh()
     }
     else
     {
-        // remove the old one:
-        this->removeChild( _terrain );
+        if ( _terrainOptions.incrementalUpdate() == true )
+        {
+            DirtyAllTilesOp op( _update_mapf->getRevision(), force );
+            _liveTiles->run( op );
+        }
+        else
+        {
+            // remove the old one:
+            this->removeChild( _terrain );
 
-        // and create a new one.
-        createTerrain();
+            // and create a new one.
+            createTerrain();
+        }
 
         _refreshRequired = false;
     }
@@ -416,14 +444,28 @@ MPTerrainEngineNode::createNode(const TileKey&    key,
 
     OE_DEBUG << LC << "Create node for \"" << key.str() << "\"" << std::endl;
 
-    osg::Node* result =  getKeyNodeFactory()->createNode( key, progress );
-    return result;
+    return getKeyNodeFactory()->createNode( key, true, progress );
+}
+
+osg::Node*
+MPTerrainEngineNode::createStandaloneNode(const TileKey&    key,
+                                          ProgressCallback* progress)
+{
+    // if the engine has been disconnected from the scene graph, bail out and don't
+    // create any more tiles
+    if ( getNumParents() == 0 )
+        return 0L;
+
+    OE_DEBUG << LC << "Create standalong node for \"" << key.str() << "\"" << std::endl;
+
+    return getKeyNodeFactory()->createNode( key, false, progress );
 }
 
 osg::Node*
 MPTerrainEngineNode::createTile( const TileKey& key )
 {
-    return getKeyNodeFactory()->createNode( key, 0L );
+    // make a node, but don't include any subtile information
+    return getKeyNodeFactory()->createNode( key, false, 0L );
 }
 
 

@@ -103,6 +103,7 @@ _engineUID       ( engineUID )
 
 osg::Node*
 SerialKeyNodeFactory::createTile(TileModel* model,
+                                 bool       setupChildren,
                                  bool       tileHasRealData)
 {
     // compile the model into a node:
@@ -110,6 +111,7 @@ SerialKeyNodeFactory::createTile(TileModel* model,
 
     // see if this tile might have children.
     bool prepareForChildren =
+        setupChildren &&
         (tileHasRealData || (_options.minLOD().isSet() && model->_tileKey.getLOD() < *_options.minLOD())) &&
         model->_tileKey.getLOD() < *_options.maxLOD();
 
@@ -168,12 +170,14 @@ SerialKeyNodeFactory::createRootNode( const TileKey& key )
     bool                    real;
 
     _modelFactory->createTileModel( key, model, real );
-    return createTile( model.get(), real );
+    return createTile( model.get(), true, real );
 }
 
 
 osg::Node*
-SerialKeyNodeFactory::createNode( const TileKey& key, ProgressCallback* progress )
+SerialKeyNodeFactory::createNode(const TileKey&    key, 
+                                 bool              setupChildren,
+                                 ProgressCallback* progress )
 {
     osg::ref_ptr<TileModel> model;
     bool                    isReal;
@@ -188,7 +192,7 @@ SerialKeyNodeFactory::createNode( const TileKey& key, ProgressCallback* progress
 
     if ( isReal || _options.minLOD().isSet() || key.getLOD() == 0 )
     {
-        return createTile( model.get(), isReal);
+        return createTile( model.get(), setupChildren, isReal);
     }
     else
     {

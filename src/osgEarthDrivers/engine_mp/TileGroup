@@ -35,7 +35,7 @@ namespace osgEarth_engine_mp
      * TileKey) and four TilePagedLODs (each of which is responsible for
      * loading one of the four subtiles).
      */
-    class TileGroup : public osg::Group
+    class TileGroup : public osg::Group, public TileNodeContainer
     {
     public:
         TileGroup(
@@ -60,8 +60,13 @@ namespace osgEarth_engine_mp
          *  If any one subtile fails to load, we cannot display any */
         void cancelSubtiles() { _traverseSubtiles = false; }
 
+        /** Replaces the underlying TileNode with a new one. */
+        void setTileNode( TileNode* tilenode );
+
+    public: // TileNodeContainer
+
         /** The TileNode holding the geometry for this group. */
-        TileNode* getTileNode() const { return _tilenode; }
+        TileNode* getTileNode() { return _tilenode; }
 
     public: // osg::Node
 

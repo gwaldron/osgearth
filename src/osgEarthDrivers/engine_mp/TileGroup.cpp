@@ -55,6 +55,22 @@ TileGroup::TileGroup(TileNode*         tilenode,
 
 
 void
+TileGroup::setTileNode(TileNode* tilenode)
+{
+    _tilenode = tilenode;
+    this->setChild( 0, tilenode );
+
+    // Should not really need to do this, but ok
+    for(unsigned q=0; q<4; ++q)
+    {
+        TilePagedLOD* lod = static_cast<TilePagedLOD*>(this->getChild(1+q));
+        lod->setCenter( tilenode->getBound().center() );
+        lod->setRadius( tilenode->getBound().radius() );
+    }
+}
+
+
+void
 TileGroup::setSubtileRange(float range)
 {
     _subtileRange = range;
@@ -74,7 +90,7 @@ TileGroup::traverse(osg::NodeVisitor& nv)
 
         // if all four subtiles have reported that they are upsampling, 
         // don't use any of them.
-        if ( _traverseSubtiles && _numSubtilesUpsampling == 4 )
+        if ( _traverseSubtiles && _numSubtilesUpsampling >= 4 )
         {
             _traverseSubtiles = false;
         }
@@ -97,7 +113,7 @@ TileGroup::traverse(osg::NodeVisitor& nv)
             // update the TileNode so it knows what frame we're in.
             if ( nv.getFrameStamp() )
             {
-              _tilenode->setLastTraversalFrame( nv.getFrameStamp()->getFrameNumber() );
+                _tilenode->setLastTraversalFrame( nv.getFrameStamp()->getFrameNumber() );
             }
         }
     }

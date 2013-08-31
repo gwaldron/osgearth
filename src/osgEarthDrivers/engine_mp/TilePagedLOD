@@ -54,11 +54,12 @@ namespace osgEarth_engine_mp
         bool removeExpiredChildren(double expiryTime, unsigned expiryFrame, osg::NodeList& removedChildren);
 
     private:
-        TileNodeRegistry* _live;
-        TileNodeRegistry* _dead;
-        TileGroup*        _tilegroup;
-        std::string       _prefix;
-        bool              _upsampling;
+        TileNodeRegistry*  _live;
+        TileNodeRegistry*  _dead;
+        TileGroup*         _tilegroup;
+        std::string        _prefix;
+        bool               _upsampling;
+        TileNodeContainer* _container;
     };
 
 } // namespace osgEarth_engine_mp

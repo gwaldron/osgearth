@@ -38,7 +38,8 @@ osg::PagedLOD(),
 _tilegroup ( tilegroup ),
 _live      ( live ),
 _dead      ( dead ),
-_upsampling( false )
+_upsampling( false ),
+_container ( 0L )
 {
     _numChildrenThatCannotBeExpired = 0;
 
@@ -46,7 +47,6 @@ _upsampling( false )
     _prefix = Stringify() << subkey.str() << "." << engineUID << ".";
     this->setRange   ( 0, 0.0f, FLT_MAX );
     this->setFileName( 0, Stringify() << _prefix << ".osgearth_engine_mp_tile" );
-    //this->setPriorityScale( 0, tilegroup->getTileNode()->getKey().getLOD() );
 }
 
 
@@ -60,25 +60,64 @@ TilePagedLOD::addChild(osg::Node* node)
     TileGroup* subtilegroup = dynamic_cast<TileGroup*>(node);
     if ( subtilegroup )
     {
+        _container = subtilegroup;
         _live->add( subtilegroup->getTileNode() );
         ++_tilegroup->numSubtilesLoaded();
         return osg::PagedLOD::addChild( node );
     }
 
     // If that fails, check whether this is a simple TileNode. This means that 
-    // this is a leaf node in the graph (no children), and possibly that it has
-    // no data at all (and we need to create an upsampled child to complete the
-    // required set of four).
+    // this is a leaf node in the graph (no children), or it's a replacement
+    // tile for our existing tileNode, or possibly that it has no data at all 
+    // (and we need to create an upsampled child to complete the required set of
+    // four).
     TileNode* subtile = dynamic_cast<TileNode*>(node);
     if ( subtile )
     {
         // If it's a legit tile, add it normally and inform our parent.
         if ( subtile->isValid() )
         {
-            _upsampling = false;
-            _live->add( subtile );
-            ++_tilegroup->numSubtilesLoaded();
-            return osg::PagedLOD::addChild( node );
+            if ( _container == 0L )
+            {
+                // The initial valid tile node we've been waiting for. Insert it.
+                _container = subtile;
+                _upsampling = false;
+                _live->add( subtile );
+                ++_tilegroup->numSubtilesLoaded();
+                return osg::PagedLOD::addChild( node );
+            }
+            else
+            {
+                // A replacement tile. Replace the tile node we have with this
+                // new version and update the registry.
+                _upsampling = false;
+
+                TileNode* old_subtile = _container->getTileNode();
+
+                if ( dynamic_cast<TileNode*>(_container) )
+                {
+                    // it's a TileNode, replace it here.
+                    this->setChild(0, subtile);
+                    _container = subtile;
+                }
+                else
+                {
+                    // otherwise replace it in its parent tile group. If the new subtile has
+                    // a cull callback, remove it because the container already has one.
+                    subtile->setCullCallback( 0L );
+                    static_cast<TileGroup*>(_container)->setTileNode( subtile );
+                }
+
+                // remove the tile-replacement filename.
+                _rangeList.resize( 1 );
+                _perRangeDataList.resize( 1 );
+
+                // update the registry:
+                _live->remove( old_subtile );
+                _live->add( subtile );
+
+                return true;
+            }
         }
 
         // if it's an "invalid" marker tile, queue up a request to create an upsampled
@@ -90,7 +129,8 @@ TilePagedLOD::addChild(osg::Node* node)
                 OE_DEBUG << LC << "Try to upsample " << _prefix << std::endl;
                 _upsampling = true;
                 ++_tilegroup->numSubtilesUpsampling();
-                this->setFileName( 0, Stringify() << _prefix << ".osgearth_engine_mp_upsampled_tile" );
+                unsigned index = this->getNumFileNames() - 1;
+                this->setFileName( index, Stringify() << _prefix << ".osgearth_engine_mp_upsampled_tile" );
             }
             else
             {
@@ -122,9 +162,18 @@ TilePagedLOD::traverse(osg::NodeVisitor& nv)
     // our group of four) are ready as well.
     if ( _children.size() > 0 )
     {
-         bool ready = _tilegroup->numSubtilesLoaded() == 4;
+         bool ready = _tilegroup->numSubtilesLoaded() >= 4;
          _children[0]->setNodeMask(ready? ~0 : 0);
+
+         // Check whether the TileNode is marked dirty. If so, install a new pager request 
+         // to reload and replace the TileNode.
+         if ( this->getNumFileNames() < 2 && _container->getTileNode()->isReadyForUpdate() )
+         {
+             this->setFileName( 1, Stringify() << _prefix << ".osgearth_engine_mp_standalone_tile" );
+             this->setRange( 1, 0, FLT_MAX );
+         }
     }
+
     osg::PagedLOD::traverse( nv );
 }
 

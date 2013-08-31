@@ -276,7 +276,7 @@ TileModelFactory::createTileModel(const TileKey&           key,
     
     const MapInfo& mapInfo = mapf.getMapInfo();
 
-    osg::ref_ptr<TileModel> model = new TileModel();
+    osg::ref_ptr<TileModel> model = new TileModel( mapf.getRevision() );
     model->_map         = _map;
     model->_tileKey     = key;
     model->_tileLocator = GeoLocator::createForKey(key, mapInfo);

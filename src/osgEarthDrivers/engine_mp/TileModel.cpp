@@ -158,6 +158,7 @@ TileModel::ColorData::releaseGLObjects(osg::State* state) const
 
 TileModel::TileModel(const TileModel& rhs) :
 _map           ( rhs._map.get() ),
+_revision      ( rhs._revision ),
 _tileKey       ( rhs._tileKey ),
 _tileLocator   ( rhs._tileLocator.get() ),
 _colorData     ( rhs._colorData ),

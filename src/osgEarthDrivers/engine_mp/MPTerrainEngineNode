@@ -47,8 +47,13 @@ namespace osgEarth_engine_mp
         virtual ~MPTerrainEngineNode();
 
     public:
+        /** Creates a tile node that is set up to page in subtiles. */
         osg::Node* createNode(const TileKey& key, ProgressCallback* progress =0L);
 
+        /** Creates a tile node with no support for paging in subtiles. */
+        osg::Node* createStandaloneNode(const TileKey& key, ProgressCallback* progress =0L);
+
+        /** Creates a tile node that is upsampled from an existing lower-LOD node. */
         osg::Node* createUpsampledNode(const TileKey& key, ProgressCallback* progress =0L);
 
     public: // TerrainEngineNode
@@ -98,7 +103,7 @@ namespace osgEarth_engine_mp
         void syncMapModel();
 
         // Reloads all the tiles in the terrain due to a data model change
-        void refresh();
+        void refresh(bool force =false);
         void createTerrain();
 
         void addImageLayer( ImageLayer* layer );

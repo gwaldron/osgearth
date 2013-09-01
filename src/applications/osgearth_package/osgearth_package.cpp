@@ -225,7 +225,7 @@ makeTMS( osg::ArgumentParser& args )
             }
 
             std::string layerRoot = osgDB::concatPaths( rootFolder, layerFolder );
-            TMSPackager::Result r = packager.package( layer, layerRoot, extension );
+            TMSPackager::Result r = packager.package( layer, layerRoot, 0L, extension );
             if ( r.ok )
             {
                 // save to the output map if requested:

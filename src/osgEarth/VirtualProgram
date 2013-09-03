@@ -177,6 +177,11 @@ namespace osgEarth
         osg::Program* getTemplate() { return _template.get(); }
         const osg::Program* getTemplate() const { return _template.get(); }
 
+        /** If State is non-zero, this function releases any associated OpenGL objects for
+           * the specified graphics context. Otherwise, releases OpenGL objects
+           * for all graphics contexts. */
+        virtual void releaseGLObjects(osg::State* pState) const;
+
     public:
         typedef std::vector< osg::ref_ptr<osg::Shader> > ShaderVector;
 

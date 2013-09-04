@@ -74,9 +74,11 @@ namespace osgEarth_engine_mp
         void traverse(osg::NodeVisitor& nv);
         
         /** Bound is equivalent to the bound of the tilenode. */
-        osg::BoundingSphere computeBound() const { return _tilenode->computeBound(); }
+        osg::BoundingSphere computeBound() const;
 
     protected:
+        TileGroup();
+
         virtual ~TileGroup() { }
 
     private:
@@ -86,6 +88,18 @@ namespace osgEarth_engine_mp
         TileNode* _tilenode;
         float     _subtileRange;
         bool      _traverseSubtiles;
+    };
+
+    class RootTileGroup : public TileGroup
+    {
+    public:
+        RootTileGroup();
+        void addRootKey(const TileKey&    key,
+                        osg::Node*        node,
+                        const UID&        engineUID,
+                        TileNodeRegistry* live,
+                        TileNodeRegistry* dead,
+                        osgDB::Options*   dbOptions);
     };
 
 } // namespace osgEarth_engine_mp

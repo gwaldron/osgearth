@@ -19,6 +19,7 @@
 #include "MPTerrainEngineNode"
 #include "SerialKeyNodeFactory"
 #include "TerrainNode"
+#include "TileGroup"
 #include "TileModelFactory"
 #include "TileModelCompiler"
 
@@ -36,6 +37,7 @@
 #include <osg/Timer>
 #include <osg/Depth>
 #include <osg/BlendFunc>
+#include <osgDB/DatabasePager>
 
 #define LC "[MPTerrainEngineNode] "
 
@@ -124,9 +126,8 @@ _terrain( terrain )
 
 void
 MPTerrainEngineNode::ElevationChangedCallback::onVisibleChanged( TerrainLayer* layer )
-{    
-    osgEarth::Registry::instance()->clearBlacklist();
-    _terrain->refresh(true);
+{
+    _terrain->refresh(true); // true => force a dirty
 }
 
 //------------------------------------------------------------------------
@@ -182,8 +183,13 @@ MPTerrainEngineNode::postInitialize( const Map* map, const TerrainOptions& optio
     // merge in the custom options:
     _terrainOptions.merge( options );
 
-    // a shared registry for tile nodes in the scene graph.
+    // A shared registry for tile nodes in the scene graph. Enable revision tracking
+    // if requested in the options. Revision tracking lets the registry notify all
+    // live tiles of the current map revision so they can inrementally update
+    // themselves if necessary.
     _liveTiles = new TileNodeRegistry("live");
+    _liveTiles->setRevisioningEnabled( _terrainOptions.incrementalUpdate() == true );
+    _liveTiles->setMapRevision( _update_mapf->getRevision() );
 
     // set up a registry for quick release:
     if ( _terrainOptions.quickReleaseGLObjects() == true )
@@ -193,7 +199,6 @@ MPTerrainEngineNode::postInitialize( const Map* map, const TerrainOptions& optio
     
     // initialize the model factory:
     _tileModelFactory = new TileModelFactory(getMap(), _liveTiles.get(), _terrainOptions );
-
 
     // handle an already-established map profile:
     if ( _update_mapf->getProfile() )
@@ -230,9 +235,6 @@ MPTerrainEngineNode::postInitialize( const Map* map, const TerrainOptions& optio
         addImageLayer( i->get() );
 
     _batchUpdateInProgress = false;
-    //{
-    //    i->get()->addCallback( _elevationCallback.get() );
-    //}
 
     // install some terrain-wide uniforms
     this->getOrCreateStateSet()->getOrCreateUniform(
@@ -263,9 +265,12 @@ MPTerrainEngineNode::computeBound() const
     }
 }
 
-
 namespace
 {
+    // Tile registry operation that notifies all live tiles of the
+    // current map revision, so each can decide whether it needs to 
+    // udpate itself. The "force" flag will force each tile to set itself
+    // to dirty regardless of the map revision.
     struct DirtyAllTilesOp : public TileNodeRegistry::Operation
     {
         Revision _maprev;
@@ -285,7 +290,7 @@ namespace
 }
 
 void
-MPTerrainEngineNode::refresh(bool force)
+MPTerrainEngineNode::refresh(bool forceDirty)
 {
     if ( _batchUpdateInProgress )
     {
@@ -295,8 +300,8 @@ MPTerrainEngineNode::refresh(bool force)
     {
         if ( _terrainOptions.incrementalUpdate() == true )
         {
-            DirtyAllTilesOp op( _update_mapf->getRevision(), force );
-            _liveTiles->run( op );
+            // run an atomic "dirty" operation:
+            _liveTiles->setMapRevision( _update_mapf->getRevision(), forceDirty );
         }
         else
         {
@@ -318,6 +323,8 @@ MPTerrainEngineNode::onMapInfoEstablished( const MapInfo& mapInfo )
 
     createTerrain();
 }
+
+bool reg = false;
 
 void
 MPTerrainEngineNode::createTerrain()
@@ -346,26 +353,56 @@ MPTerrainEngineNode::createTerrain()
     _update_mapf->getProfile()->getAllKeysAtLOD( *_terrainOptions.firstLOD(), keys );
 
     // create a root node for each root tile key.
-    OE_INFO << LC << "Creating root keys (" << keys.size() << ")" << std::endl;
+    OE_INFO << LC << "Creating " << keys.size() << " root keys.." << std::endl;
+
+    RootTileGroup* root = new RootTileGroup();
+    _terrain->addChild( root );
+
+    osg::ref_ptr<osgDB::Options> dbOptions = Registry::instance()->cloneOrCreateOptions();
 
     for( unsigned i=0; i<keys.size(); ++i )
     {
-        osg::Node* node = factory->createRootNode( keys[i] );
-        //OE_INFO_CONTINUE << "." << std::flush;
-        if ( node )
+        osg::ref_ptr<osg::Node> node = factory->createRootNode( keys[i] );
+        if ( node.valid() )
         {
-            _terrain->addChild( node );
-            TileNode* tilenode = osgEarth::findTopMostNodeOfType<TileNode>(node);
-            if ( tilenode )
-                _liveTiles->add( tilenode );
+            root->addRootKey( keys[i], node.get(), _uid, _liveTiles.get(), _deadTiles.get(), dbOptions.get() );
         }
         else
         {
             OE_WARN << LC << "Couldn't make tile for root key: " << keys[i].str() << std::endl;
         }
     }
+    _rootTilesRegistered = false;
 
     updateShaders();
+}
+
+
+void
+MPTerrainEngineNode::traverse(osg::NodeVisitor& nv)
+{
+    if ( nv.getVisitorType() == nv.CULL_VISITOR )
+    {
+        // since the root tiles are manually added, the pager never has a change to 
+        // register the PagedLODs in their children. So we have to do it manually here.
+        if ( !_rootTilesRegistered )
+        {
+            Threading::ScopedMutexLock lock(_rootTilesRegisteredMutex);
+
+            if ( !_rootTilesRegistered )
+            {
+                osgDB::DatabasePager* pager = dynamic_cast<osgDB::DatabasePager*>(nv.getDatabaseRequestHandler());
+                if ( pager )
+                {
+                    //OE_WARN << "Registering plods." << std::endl;
+                    pager->registerPagedLODs( _terrain );
+                    _rootTilesRegistered = true;
+                }
+            }
+        }
+    }
+
+    TerrainEngineNode::traverse( nv );
 }
 
 

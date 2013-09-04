@@ -28,6 +28,36 @@ using namespace osgEarth;
 //#define OE_TEST OE_INFO
 #define OE_TEST OE_NULL
 
+RootTileGroup::RootTileGroup()
+{
+    //nop
+}
+
+void
+RootTileGroup::addRootKey(const TileKey&    key,
+                          osg::Node*        node,
+                          const UID&        engineUID,
+                          TileNodeRegistry* live,
+                          TileNodeRegistry* dead,
+                          osgDB::Options*   dbOptions)
+{
+    TilePagedLOD* lod = new TilePagedLOD(this, key, engineUID, live, dead);
+    lod->setDatabaseOptions( dbOptions );
+    lod->addChild( node );
+    lod->setNumChildrenThatCannotBeExpired( 1 );
+    this->addChild( lod );
+}
+
+
+TileGroup::TileGroup()
+{
+    _tilenode              = 0L;
+    _numSubtilesUpsampling = 0;
+    _numSubtilesLoaded     = 4;
+    _traverseSubtiles      = true;
+    _subtileRange          = FLT_MAX;
+}
+
 
 TileGroup::TileGroup(TileNode*         tilenode,
                      const UID&        engineUID,
@@ -77,10 +107,20 @@ TileGroup::setSubtileRange(float range)
 }
 
 
+osg::BoundingSphere
+TileGroup::computeBound() const
+{
+    if ( _tilenode )
+        return _tilenode->computeBound();
+    else
+        return osg::Group::computeBound();
+}
+
+
 void
 TileGroup::traverse(osg::NodeVisitor& nv)
 {
-    if ( nv.getTraversalMode() == nv.TRAVERSE_ACTIVE_CHILDREN )
+    if ( _tilenode && nv.getTraversalMode() == nv.TRAVERSE_ACTIVE_CHILDREN )
     {
         float range = 0.0f;
         if ( nv.getVisitorType() == nv.CULL_VISITOR )

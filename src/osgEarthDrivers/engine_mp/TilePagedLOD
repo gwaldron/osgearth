@@ -22,6 +22,7 @@
 #include "Common"
 #include "TileGroup"
 #include <osg/PagedLOD>
+#include <osgEarth/ThreadingUtils>
 
 using namespace osgEarth;
 
@@ -60,6 +61,7 @@ namespace osgEarth_engine_mp
         std::string        _prefix;
         bool               _upsampling;
         TileNodeContainer* _container;
+        Threading::Mutex   _updateMutex;
     };
 
 } // namespace osgEarth_engine_mp

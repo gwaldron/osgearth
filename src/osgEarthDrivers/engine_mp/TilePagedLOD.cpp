@@ -106,6 +106,7 @@ TilePagedLOD::addChild(osg::Node* node)
                     // a cull callback, remove it because the container already has one.
                     subtile->setCullCallback( 0L );
                     static_cast<TileGroup*>(_container)->setTileNode( subtile );
+                    //OE_WARN << LC << "Replaced tile " << _container->getTileNode()->getKey().str() << std::endl;
                 }
 
                 // remove the tile-replacement filename.
@@ -162,16 +163,22 @@ TilePagedLOD::traverse(osg::NodeVisitor& nv)
     // our group of four) are ready as well.
     if ( _children.size() > 0 )
     {
-         bool ready = _tilegroup->numSubtilesLoaded() >= 4;
-         _children[0]->setNodeMask(ready? ~0 : 0);
+        bool ready = _tilegroup->numSubtilesLoaded() >= 4;
+        _children[0]->setNodeMask(ready? ~0 : 0);
 
-         // Check whether the TileNode is marked dirty. If so, install a new pager request 
-         // to reload and replace the TileNode.
-         if ( this->getNumFileNames() < 2 && _container->getTileNode()->isReadyForUpdate() )
-         {
-             this->setFileName( 1, Stringify() << _prefix << ".osgearth_engine_mp_standalone_tile" );
-             this->setRange( 1, 0, FLT_MAX );
-         }
+        // Check whether the TileNode is marked dirty. If so, install a new pager request 
+        // to reload and replace the TileNode.
+        if ( this->getNumFileNames() < 2 && _container->getTileNode()->isReadyForUpdate() && nv.getVisitorType() == nv.CULL_VISITOR )
+        {
+            Threading::ScopedMutexLock exclusive( _updateMutex );
+
+            if ( this->getNumFileNames() < 2 ) // double-check pattern
+            {
+                //OE_WARN << LC << "Queuing request for replacement: " << _container->getTileNode()->getKey().str() << std::endl;
+                this->setFileName( 1, Stringify() << _prefix << ".osgearth_engine_mp_standalone_tile" );
+                this->setRange( 1, 0, FLT_MAX );
+            }
+        }
     }
 
     osg::PagedLOD::traverse( nv );

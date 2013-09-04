@@ -101,7 +101,7 @@ TileNode::traverse( osg::NodeVisitor& nv )
 
         // if this tile is marked dirty, bump the marker so the engine knows it
         // needs replacing.
-        if ( _dirty || _model->_revision != _maprevision )
+        if ( _dirty || _model->_revision < _maprevision )
         {
             _readyForUpdate = true;
         }

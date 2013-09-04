@@ -69,7 +69,12 @@ namespace osgEarth_engine_mp
         virtual const TerrainOptions& getTerrainOptions() const { return _terrainOptions; }
         virtual osg::BoundingSphere computeBound() const;
 
+    public: // osg::Node
+
+        void traverse(osg::NodeVisitor& nv);
+
     public: // MapCallback adapter functions
+
         void onMapInfoEstablished( const MapInfo& mapInfo ); // not virtual!
         void onMapModelChanged( const MapModelChange& change ); // not virtual!
 
@@ -93,8 +98,6 @@ namespace osgEarth_engine_mp
         };
 
     protected:
-        //virtual void onVerticalScaleChanged();
-
         // override from TerrainEngineNode
         virtual void updateTextureCombining() { updateShaders(); }
 
@@ -122,10 +125,14 @@ namespace osgEarth_engine_mp
 
         class TerrainNode* _terrain;
         UID                _uid;
+        Revision           _mapModelRev;  // tracks revision changes int the map model
+        Revision           _terrainRev;   // the revisinon of the rendered terrain (slightly different)
         Revision           _shaderLibRev;
         bool               _batchUpdateInProgress;
         bool               _refreshRequired;
         bool               _shaderUpdateRequired;
+        bool               _rootTilesRegistered;
+        Threading::Mutex   _rootTilesRegisteredMutex;
 
         osg::ref_ptr< ElevationChangedCallback > _elevationCallback;
 

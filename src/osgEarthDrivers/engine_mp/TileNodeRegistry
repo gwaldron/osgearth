@@ -21,6 +21,7 @@
 
 #include "Common"
 #include "TileNode"
+#include <osgEarth/Revisioning>
 #include <osgEarth/ThreadingUtils>
 #include <map>
 
@@ -47,6 +48,20 @@ namespace osgEarth_engine_mp
 
     public:
         TileNodeRegistry( const std::string& name );
+
+        /* Enabled revisioning on TileNodes, to support incremental update. */
+        void setRevisioningEnabled(bool value);
+
+        /**
+         * Sets the revision of the map model - the registry will assign this
+         * to TileNodes added with add().
+         *
+         * @param rev        Revision of map
+         * @param setToDirty In addition to update the revision, immediately set
+         *                   all tiles to dirty as well, effectively forcing an
+         *                   update.
+         */
+        void setMapRevision( const Revision& rev, bool setToDirty =false );
 
         virtual ~TileNodeRegistry() { }
 
@@ -76,6 +91,8 @@ namespace osgEarth_engine_mp
 
     protected:
 
+        bool                              _revisioningEnabled;
+        Revision                          _maprev;
         std::string                       _name;
         TileNodeMap                       _tiles;
         mutable Threading::ReadWriteMutex _tilesMutex;

@@ -243,26 +243,26 @@ namespace osgEarth
      * terrain tile, i.e. one that is not in the scene graph yet -- making it
      * MT-safe.
      */
-     class OSGEARTH_EXPORT TerrainPatch : public TerrainHeightProvider
-   {
-   public:
-       TerrainPatch( osg::Node* patch, const Terrain* terrain );
+    class OSGEARTH_EXPORT TerrainPatch : public TerrainHeightProvider
+    {
+    public:
+        TerrainPatch( osg::Node* patch, const Terrain* terrain );
 
-       /**
+        /**
         * Queries the elevation under the specified point. This method is
         * identical to calling Terrain::getHeight with the specified patch.
         */
-      bool getHeight(
-          const SpatialReference* srs,
-          double                  x,
-          double                  y,
-          double*                 out_heightAboveMSL,
-          double*                 out_heightAboveEllipsoid =0L) const;
+        bool getHeight(
+            const SpatialReference* srs,
+            double                  x,
+            double                  y,
+            double*                 out_heightAboveMSL,
+            double*                 out_heightAboveEllipsoid =0L) const;
 
-   protected:
-       osg::ref_ptr<osg::Node>     _patch;
-       osg::ref_ptr<const Terrain> _terrain;
-   };
+    protected:
+        osg::ref_ptr<osg::Node>     _patch;
+        osg::ref_ptr<const Terrain> _terrain;
+    };
 }
 
 #endif // OSGEARTH_COMPOSITING_H

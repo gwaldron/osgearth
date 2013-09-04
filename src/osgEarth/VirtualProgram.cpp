@@ -220,6 +220,18 @@ VirtualProgram::applyAttributeAliases(osg::Shader*             shader,
     shader->setShaderSource( src );
 }
 
+void
+VirtualProgram::releaseGLObjects(osg::State* pState) const
+{
+  Threading::ScopedReadLock shared( _programCacheMutex );
+
+  for (ProgramMap::const_iterator i = _programCache.begin();
+    i != _programCache.end(); ++i)
+  {
+    i->second->releaseGLObjects(pState);
+  }
+}
+
 osg::Shader*
 VirtualProgram::getShader( const std::string& shaderID ) const
 {

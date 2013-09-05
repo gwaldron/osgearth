@@ -63,6 +63,9 @@ namespace osgEarth_engine_mp
          */
         void setMapRevision( const Revision& rev, bool setToDirty =false );
 
+        /** Map revision that the reg will assign to new tiles. */
+        const Revision& getMapRevision() const { return _maprev; }
+
         virtual ~TileNodeRegistry() { }
 
         /** Adds a tile to the registry */

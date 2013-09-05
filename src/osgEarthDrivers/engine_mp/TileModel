@@ -202,6 +202,9 @@ namespace osgEarth_engine_mp
          */
         TileModel* createQuadrant(unsigned q) const;
 
+        /** Map revision used to build this model */
+        const Revision& getMapRevision() const { return _revision; }
+
         /** Whether this tile contains any real data (versus being comprised entirely of fallback data) */
         bool hasRealData() const;
 

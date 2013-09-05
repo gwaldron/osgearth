@@ -76,7 +76,16 @@ TilePagedLOD::addChild(osg::Node* node)
     TileNode* subtile = dynamic_cast<TileNode*>(node);
     if ( subtile )
     {
+        if ( subtile->getTileModel()->getMapRevision() < _live->getMapRevision() )
+        {
+            //OE_NOTICE << LC << "Tile " << subtile->getKey().str() << " received data but it's already out of date...requeuing"
+            //    << std::endl;
+            return false;
+        }
+
         // If it's a legit tile, add it normally and inform our parent.
+        // TODO: "invalid" tiles are deprecated. Remove this.
+        else
         if ( subtile->isValid() )
         {
             if ( _children.size() == 0 )

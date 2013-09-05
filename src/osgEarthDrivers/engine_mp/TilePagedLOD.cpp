@@ -19,6 +19,7 @@
 #include "TilePagedLOD"
 #include "TileNodeRegistry"
 #include <osg/Version>
+#include <cassert>
 
 using namespace osgEarth_engine_mp;
 using namespace osgEarth;
@@ -35,11 +36,12 @@ TilePagedLOD::TilePagedLOD(TileGroup*        tilegroup,
                            TileNodeRegistry* live,
                            TileNodeRegistry* dead) :
 osg::PagedLOD(),
-_tilegroup ( tilegroup ),
-_live      ( live ),
-_dead      ( dead ),
-_upsampling( false ),
-_container ( 0L )
+_tilegroup   ( tilegroup ),
+_live        ( live ),
+_dead        ( dead ),
+_isUpsampled ( false ),
+_isCanceled  ( false ),
+_familyReady ( false )
 {
     _numChildrenThatCannotBeExpired = 0;
 
@@ -60,9 +62,9 @@ TilePagedLOD::addChild(osg::Node* node)
     TileGroup* subtilegroup = dynamic_cast<TileGroup*>(node);
     if ( subtilegroup )
     {
-        _container = subtilegroup;
-        _live->add( subtilegroup->getTileNode() );
-        ++_tilegroup->numSubtilesLoaded();
+        TileNode* subtile = subtilegroup->getTileNode();
+        _isUpsampled = !subtile->getTileModel()->hasRealData();
+        _live->add( subtile );
         return osg::PagedLOD::addChild( node );
     }
 
@@ -77,80 +79,52 @@ TilePagedLOD::addChild(osg::Node* node)
         // If it's a legit tile, add it normally and inform our parent.
         if ( subtile->isValid() )
         {
-            if ( _container == 0L )
+            if ( _children.size() == 0 )
             {
+                _isUpsampled = !subtile->getTileModel()->hasRealData();
+
                 // The initial valid tile node we've been waiting for. Insert it.
-                _container = subtile;
-                _upsampling = false;
                 _live->add( subtile );
-                ++_tilegroup->numSubtilesLoaded();
                 return osg::PagedLOD::addChild( node );
             }
             else
             {
                 // A replacement tile. Replace the tile node we have with this
                 // new version and update the registry.
-                _upsampling = false;
+                _isUpsampled = !subtile->getTileModel()->hasRealData();
+                //if ( _isUpsampled )
+                //    OE_NOTICE << LC << "Replaced UPSAMPLED leaf at " << _prefix << std::endl;
 
-                TileNode* old_subtile = _container->getTileNode();
-
-                if ( dynamic_cast<TileNode*>(_container) )
+                if ( dynamic_cast<TileGroup*>(_children[0].get()) )
                 {
-                    // it's a TileNode, replace it here.
-                    this->setChild(0, subtile);
-                    _container = subtile;
-                }
-                else
-                {
-                    // otherwise replace it in its parent tile group. If the new subtile has
-                    // a cull callback, remove it because the container already has one.
                     subtile->setCullCallback( 0L );
-                    static_cast<TileGroup*>(_container)->setTileNode( subtile );
-                    //OE_WARN << LC << "Replaced tile " << _container->getTileNode()->getKey().str() << std::endl;
+                    static_cast<TileGroup*>(_children[0].get())->setTileNode( subtile );
+                }
+                else // TileNode
+                {
+                    this->setChild(0, subtile);
                 }
 
                 // remove the tile-replacement filename.
                 _rangeList.resize( 1 );
                 _perRangeDataList.resize( 1 );
 
-                // update the registry:
-                _live->remove( old_subtile );
+                // update the registry. don't need to remove the old entry since add() will
+                // replace the existing entry (they have the same key)
                 _live->add( subtile );
 
                 return true;
             }
         }
-
-        // if it's an "invalid" marker tile, queue up a request to create an upsampled
-        // version of the parent to stick in its place.
-        else
-        {
-            if ( !_upsampling )
-            {
-                OE_DEBUG << LC << "Try to upsample " << _prefix << std::endl;
-                _upsampling = true;
-                ++_tilegroup->numSubtilesUpsampling();
-                unsigned index = this->getNumFileNames() - 1;
-                this->setFileName( index, Stringify() << _prefix << ".osgearth_engine_mp_upsampled_tile" );
-            }
-            else
-            {
-                // Getting here means that the upsampling request failed, in which case
-                // it will not be possible to complete the set of four; so we just have
-                // to cancel this entire LOD.
-                _tilegroup->cancelSubtiles();
-            }
-            return false;
-        }
     }
     
-    // Getting here means there's an internal error -- the addChild data was
-    // of an unexpected node type. This should never happen.
-    OE_WARN << LC << "TilePagedLOD fail." << std::endl;
+    // Getting here means the Tile dies somewhere in the pager while the pager was
+    // trying to add it. From what I can tell, this is normal and just happens sometimes
     if ( !node )
-        OE_WARN << LC << ".... node is NULL" << std::endl;
-    else
-        OE_WARN << LC << "... node is a " << node->className() << std::endl;
+    {
+        OE_DEBUG << LC << "TilePagedLOD: got an addChild(NULL) on " << _prefix << std::endl;
+        _isCanceled = true;
+    }
 
     return false;
 }
@@ -163,13 +137,20 @@ TilePagedLOD::traverse(osg::NodeVisitor& nv)
     // our group of four) are ready as well.
     if ( _children.size() > 0 )
     {
-        bool ready = _tilegroup->numSubtilesLoaded() >= 4;
-        _children[0]->setNodeMask(ready? ~0 : 0);
+        _children[0]->setNodeMask( _familyReady ? ~0 : 0 );
+
+        // find our tile node:
+        TileNode* tilenode = dynamic_cast<TileGroup*>(_children[0].get()) ? 
+            static_cast<TileGroup*>(_children[0].get())->getTileNode() :
+            static_cast<TileNode*>(_children[0].get());
 
         // Check whether the TileNode is marked dirty. If so, install a new pager request 
         // to reload and replace the TileNode.
-        if ( this->getNumFileNames() < 2 && _container->getTileNode()->isReadyForUpdate() && nv.getVisitorType() == nv.CULL_VISITOR )
+        if (nv.getVisitorType() == nv.CULL_VISITOR &&
+            this->getNumFileNames() < 2 && 
+            tilenode->isOutOfDate() )
         {
+            // lock keeps multiple CullVisitors from doing the same thing
             Threading::ScopedMutexLock exclusive( _updateMutex );
 
             if ( this->getNumFileNames() < 2 ) // double-check pattern
@@ -182,6 +163,34 @@ TilePagedLOD::traverse(osg::NodeVisitor& nv)
     }
 
     osg::PagedLOD::traverse( nv );
+}
+
+namespace
+{
+    // traverses a node graph and moves any TileNodes from the LIVE
+    // registry to the DEAD registry.
+    struct ExpirationCollector : public osg::NodeVisitor
+    {
+        TileNodeRegistry* _live;
+        TileNodeRegistry* _dead;
+
+        ExpirationCollector(TileNodeRegistry* live, TileNodeRegistry* dead)
+            : osg::NodeVisitor(TRAVERSE_ALL_CHILDREN), _live(live), _dead(dead) { }
+
+        void apply(osg::Node& node)
+        {
+            TileNode* tn = 0L;
+            TileGroup* tg = dynamic_cast<TileGroup*>(&node);
+            tn = tg ? tg->getTileNode() : dynamic_cast<TileNode*>(&node);
+            if ( tn )
+            {
+                if ( _live ) _live->remove( tn );
+                if ( _dead ) _dead->add( tn );
+                //OE_NOTICE << "Expired " << tn->getKey().str() << std::endl;
+            }
+            traverse(node);
+        }
+    };
 }
 
 
@@ -212,19 +221,8 @@ TilePagedLOD::removeExpiredChildren(double         expiryTime,
             osg::Node* nodeToRemove = _children[cindex].get();
             removedChildren.push_back(nodeToRemove);
 
-            TileNode* tilenode = dynamic_cast<TileNode*>(nodeToRemove);
-            if (!tilenode)
-                tilenode = dynamic_cast<TileGroup*>(nodeToRemove)->getTileNode();
-            if ( tilenode )
-            {
-                if ( _live )
-                    _live->remove( tilenode );
-                if ( _dead )
-                    _dead->add( tilenode );
-            }
-
-            OE_DEBUG << "Expired " << _prefix << std::endl;
-            --_tilegroup->numSubtilesLoaded();
+            ExpirationCollector collector( _live, _dead );
+            nodeToRemove->accept( collector );
 
             return Group::removeChildren(cindex,1);
         }

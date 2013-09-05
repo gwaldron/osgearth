@@ -50,7 +50,7 @@ public:
         return
             osgDB::equalCaseInsensitive( extension, "osgearth_engine_mp" ) ||
             osgDB::equalCaseInsensitive( extension, "osgearth_engine_mp_tile" ) ||
-            osgDB::equalCaseInsensitive( extension, "osgearth_engine_mp_upsampled_tile" ) ||
+            //osgDB::equalCaseInsensitive( extension, "osgearth_engine_mp_upsampled_tile" ) ||
             osgDB::equalCaseInsensitive( extension, "osgearth_engine_mp_standalone_tile" );
     }
 
@@ -79,6 +79,7 @@ public:
     {
         std::string ext = osgDB::getFileExtension(uri);
 
+#if 0
         if ( "osgearth_engine_mp_upsampled_tile" == ext )
         {
             // parse the tile key and engine ID:
@@ -116,7 +117,9 @@ public:
             }
         }
 
-        else if ( "osgearth_engine_mp_tile" == ext || "osgearth_engine_mp_standalone_tile" == ext )
+        else 
+#endif
+        if ( "osgearth_engine_mp_tile" == ext || "osgearth_engine_mp_standalone_tile" == ext )
         {
             // See if the filename starts with server: and strip it off.  This will trick OSG
             // into passing in the filename to our plugin instead of using the CURL plugin if

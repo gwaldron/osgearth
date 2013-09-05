@@ -89,6 +89,9 @@ namespace osgEarth_engine_mp
         /** Runs an operation against the read-locked tile set. */
         void run( const ConstOperation& op ) const;
 
+        /** Number of tiles in the registry. */
+        unsigned size() const { return _tiles.size(); }
+
     protected:
 
         bool                              _revisioningEnabled;

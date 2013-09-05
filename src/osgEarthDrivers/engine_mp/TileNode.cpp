@@ -38,14 +38,13 @@ _model             ( model ),
 _bornTime          ( 0.0 ),
 _lastTraversalFrame( 0 ),
 _dirty             ( false ),
-_readyForUpdate    ( false )
+_outOfDate         ( false )
 {
     this->setName( key.str() );
 
+    // revisions are initially in sync:
     if ( model )
-    {
         _maprevision = model->_revision;
-    }
 
     osg::StateSet* stateset = getOrCreateStateSet();
 
@@ -101,9 +100,9 @@ TileNode::traverse( osg::NodeVisitor& nv )
 
         // if this tile is marked dirty, bump the marker so the engine knows it
         // needs replacing.
-        if ( _dirty || _model->_revision < _maprevision )
+        if ( _dirty || _model->_revision != _maprevision )
         {
-            _readyForUpdate = true;
+            _outOfDate = true;
         }
 
         // reset the "birth" time if necessary - this is the time at which the 

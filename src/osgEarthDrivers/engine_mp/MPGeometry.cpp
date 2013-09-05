@@ -29,9 +29,9 @@ using namespace osgEarth;
 
 //----------------------------------------------------------------------------
 
-MPGeometry::MPGeometry(const Map* map, int imageUnit) : 
-osg::Geometry    ( ), 
-_map             ( map, Map::IMAGE_LAYERS ),
+MPGeometry::MPGeometry(const MapFrame& frame, int imageUnit) : 
+osg::Geometry    ( ),
+_frame           ( frame ),
 _imageUnit       ( imageUnit )
 {
     _opacityUniform = new osg::Uniform( osg::Uniform::FLOAT, "oe_layer_opacity" );
@@ -54,18 +54,18 @@ MPGeometry::renderPrimitiveSets(osg::State& state,
                                 bool        usingVBOs) const
 {
     // check the map frame to see if it's up to date
-    if ( _map.needsSync() )
+    if ( _frame.needsSync() )
     {
         // this lock protects a MapFrame sync when we have multiple DRAW threads.
-        Threading::ScopedMutexLock exclusive( _mapSyncMutex );
+        Threading::ScopedMutexLock exclusive( _frameSyncMutex );
 
-        if ( _map.needsSync() && _map.sync() ) // always double check
+        if ( _frame.needsSync() && _frame.sync() ) // always double check
         {
             // This should only happen is the layer ordering changes;
             // If layers are added or removed, the Tile gets rebuilt and
             // the point is moot.
             std::vector<Layer> reordered;
-            const ImageLayerVector& layers = _map.imageLayers();
+            const ImageLayerVector& layers = _frame.imageLayers();
             reordered.reserve( layers.size() );
             for( ImageLayerVector::const_iterator i = layers.begin(); i != layers.end(); ++i )
             {

@@ -23,6 +23,7 @@
 #include "TileNode"
 #include <osg/Group>
 #include <osgDB/Options>
+#include <osgEarth/ThreadingUtils>
 
 using namespace osgEarth;
 
@@ -50,15 +51,15 @@ namespace osgEarth_engine_mp
 
         /** The TilePagedLOD nodes under this group call this method to
           * notify the Group that a subtile is ready. */
-        unsigned& numSubtilesLoaded() { return _numSubtilesLoaded; }
+        //OpenThreads::Atomic& numSubtilesLoaded() { return _numSubtilesLoaded; }
 
         /** A TilePagedLOD node under this group bumps this counter
           * when it tries to fall back on an upsampled tile */
-        unsigned& numSubtilesUpsampling() { return _numSubtilesUpsampling; }
+        //OpenThreads::Atomic& numSubtilesUpsampling() { return _numSubtilesUpsampling; }
 
         /** TilePagedLOD will call this if it fails to load a subtile.
          *  If any one subtile fails to load, we cannot display any */
-        void cancelSubtiles() { _traverseSubtiles = false; }
+        //void cancelSubtiles() { _traverseSubtiles = false; }
 
         /** Replaces the underlying TileNode with a new one. */
         void setTileNode( TileNode* tilenode );
@@ -83,11 +84,9 @@ namespace osgEarth_engine_mp
 
     private:
         TileKey   _key;
-        unsigned  _numSubtilesLoaded;
-        unsigned  _numSubtilesUpsampling;
         TileNode* _tilenode;
         float     _subtileRange;
-        bool      _traverseSubtiles;
+        bool      _ignoreSubtiles;
     };
 
     class RootTileGroup : public TileGroup

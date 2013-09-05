@@ -55,11 +55,15 @@ namespace
         osg::observer_ptr<MPTerrainEngineNode> _node;
 
         void onMapInfoEstablished( const MapInfo& mapInfo ) {
-            _node->onMapInfoEstablished( mapInfo );
+            osg::ref_ptr<MPTerrainEngineNode> node;
+            if ( _node.lock(node) )
+                node->onMapInfoEstablished( mapInfo );
         }
 
         void onMapModelChanged( const MapModelChange& change ) {
-            _node->onMapModelChanged( change );
+            osg::ref_ptr<MPTerrainEngineNode> node;
+            if ( _node.lock(node) )
+                node->onMapModelChanged( change );
         }
     };
 }
@@ -198,7 +202,8 @@ MPTerrainEngineNode::postInitialize( const Map* map, const TerrainOptions& optio
     }
     
     // initialize the model factory:
-    _tileModelFactory = new TileModelFactory(getMap(), _liveTiles.get(), _terrainOptions );
+    //_tileModelFactory = new TileModelFactory(getMap(), _liveTiles.get(), _terrainOptions );
+    _tileModelFactory = new TileModelFactory(_liveTiles.get(), _terrainOptions );
 
     // handle an already-established map profile:
     if ( _update_mapf->getProfile() )
@@ -265,30 +270,6 @@ MPTerrainEngineNode::computeBound() const
     }
 }
 
-namespace
-{
-    // Tile registry operation that notifies all live tiles of the
-    // current map revision, so each can decide whether it needs to 
-    // udpate itself. The "force" flag will force each tile to set itself
-    // to dirty regardless of the map revision.
-    struct DirtyAllTilesOp : public TileNodeRegistry::Operation
-    {
-        Revision _maprev;
-        bool     _force;
-        DirtyAllTilesOp(Revision maprev, bool force) : _maprev(maprev), _force(force) { }
-
-        void operator()(TileNodeRegistry::TileNodeMap& tiles)
-        {
-            for(TileNodeRegistry::TileNodeMap::iterator i = tiles.begin(); i != tiles.end(); ++i)
-            {
-                i->second->setMapRevision( _maprev );
-                if ( _force )
-                    i->second->setDirty();
-            }
-        }
-    };
-}
-
 void
 MPTerrainEngineNode::refresh(bool forceDirty)
 {
@@ -301,7 +282,8 @@ MPTerrainEngineNode::refresh(bool forceDirty)
         if ( _terrainOptions.incrementalUpdate() == true )
         {
             // run an atomic "dirty" operation:
-            _liveTiles->setMapRevision( _update_mapf->getRevision(), forceDirty );
+            //_update_mapf->sync();
+            //_liveTiles->setMapRevision( _update_mapf->getRevision(), forceDirty );
         }
         else
         {
@@ -402,6 +384,12 @@ MPTerrainEngineNode::traverse(osg::NodeVisitor& nv)
         }
     }
 
+#if 0
+    static int c = 0;
+    if ( ++c % 60 == 0 )
+        OE_NOTICE << LC << "Live tiles = " << _liveTiles->size() << std::endl;
+#endif
+
     TerrainEngineNode::traverse( nv );
 }
 
@@ -424,13 +412,14 @@ MPTerrainEngineNode::getKeyNodeFactory()
             _terrainOptions );
 
         // initialize a key node factory.
-        knf = new SerialKeyNodeFactory( 
+        knf = new SerialKeyNodeFactory(
+            getMap(),
             _tileModelFactory.get(),
             compiler,
             _liveTiles.get(),
             _deadTiles.get(),
             _terrainOptions, 
-            MapInfo( getMap() ),
+            //MapInfo( getMap() ),
             _terrain, 
             _uid );
     }
@@ -458,7 +447,7 @@ MPTerrainEngineNode::createUpsampledNode(const TileKey&    key,
         osg::ref_ptr<TileModel> upsampledModel = parent->getTileModel()->createQuadrant( key.getQuadrant() );
         if ( upsampledModel.valid() )
         {
-            result = getKeyNodeFactory()->getCompiler()->compile( upsampledModel );
+            result = getKeyNodeFactory()->getCompiler()->compile( upsampledModel, *_update_mapf );
         }
     }
     else
@@ -528,7 +517,10 @@ MPTerrainEngineNode::onMapModelChanged( const MapModelChange& change )
     else
     {
         // update the thread-safe map model copy:
-        _update_mapf->sync();
+        if ( _update_mapf->sync() )
+        {
+            _liveTiles->setMapRevision( _update_mapf->getRevision() );
+        }
 
         // dispatch the change handler
         if ( change.getLayer() )
@@ -559,6 +551,9 @@ MPTerrainEngineNode::onMapModelChanged( const MapModelChange& change )
                 break;
             case MapModelChange::MOVE_ELEVATION_LAYER:
                 moveElevationLayer( change.getFirstIndex(), change.getSecondIndex() );
+                break;
+            case MapModelChange::TOGGLE_ELEVATION_LAYER:
+                toggleElevationLayer( change.getElevationLayer() );
                 break;
             case MapModelChange::ADD_MODEL_LAYER:
             case MapModelChange::REMOVE_MODEL_LAYER:
@@ -646,6 +641,12 @@ MPTerrainEngineNode::removeElevationLayer( ElevationLayer* layerRemoved )
 
 void
 MPTerrainEngineNode::moveElevationLayer( unsigned int oldIndex, unsigned int newIndex )
+{
+    refresh();
+}
+
+void
+MPTerrainEngineNode::toggleElevationLayer( ElevationLayer* layer )
 {
     refresh();
 }

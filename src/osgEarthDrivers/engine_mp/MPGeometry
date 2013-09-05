@@ -60,9 +60,9 @@ namespace osgEarth_engine_mp
         };
 
     public:
-        mutable MapFrame                     _map;
+        mutable MapFrame                     _frame;
         mutable std::vector<Layer>           _layers;
-        mutable Threading::Mutex             _mapSyncMutex;
+        mutable Threading::Mutex             _frameSyncMutex;
         mutable osg::ref_ptr<osg::Uniform>   _layerUIDUniform;
         mutable osg::ref_ptr<osg::Uniform>   _layerOrderUniform;
         mutable osg::ref_ptr<osg::Uniform>   _opacityUniform;
@@ -75,7 +75,7 @@ namespace osgEarth_engine_mp
     public:
         
         // construct a new MPGeometry.
-        MPGeometry(const Map* map, int primaryImageUnit);
+        MPGeometry(const MapFrame& frame, int primaryImageUnit);
 
         // sets an image unit to use for parent texture blending.
         void setParentImageUnit(int value) { _imageUnitParent = value; }
@@ -101,8 +101,8 @@ namespace osgEarth_engine_mp
 
     public:
         META_Object(osgEarth, MPGeometry);
-        MPGeometry() : osg::Geometry(), _map(0L) { }
-        MPGeometry(const MPGeometry& rhs, const osg::CopyOp& cop) : osg::Geometry(rhs, cop), _map(rhs._map) { }
+        MPGeometry() : osg::Geometry(), _frame(0L) { }
+        MPGeometry(const MPGeometry& rhs, const osg::CopyOp& cop) : osg::Geometry(rhs, cop), _frame(rhs._frame) { }
         virtual ~MPGeometry() { }
     };
 

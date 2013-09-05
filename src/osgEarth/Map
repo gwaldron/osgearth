@@ -350,7 +350,7 @@ namespace osgEarth
          * Returns true if new Map model data was available and a sync occurred;
          * returns false if nothing changed.
          */    
-        bool sync( class MapFrame& frame ) const;    
+        bool sync( class MapFrame& frame ) const;
 
         enum ModelParts {
             IMAGE_LAYERS     = 1 << 0,
@@ -390,6 +390,16 @@ namespace osgEarth
         osg::ref_ptr<Cache> _cache;
         Revision _dataModelRevision;
         osg::ref_ptr<osgDB::Options> _dbOptions;
+
+        struct ElevationLayerCB : public ElevationLayerCallback {
+            osg::observer_ptr<Map> _map;
+            ElevationLayerCB(Map*);
+            void onVisibleChanged(TerrainLayer* layer);
+        };
+        osg::ref_ptr<ElevationLayerCB> _elevationLayerCB;
+        friend struct ElevationLayerCB;
+
+        void notifyElevationLayerVisibleChanged(TerrainLayer*);
 
     private:
         void calculateProfile();

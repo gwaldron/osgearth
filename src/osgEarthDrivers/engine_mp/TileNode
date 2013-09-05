@@ -88,7 +88,7 @@ namespace osgEarth_engine_mp
          * Whether the tile is dirty and was traversed (and if therefore ready for
          * a dynamic update)
          */
-        bool isReadyForUpdate() const { return _readyForUpdate; }
+        bool isOutOfDate() const { return _outOfDate; }
 
 
     public: // TileNodeContainer
@@ -116,7 +116,7 @@ namespace osgEarth_engine_mp
         unsigned                           _lastTraversalFrame;
         double                             _bornTime;
         Revision                           _maprevision;
-        bool                               _readyForUpdate;
+        bool                               _outOfDate;
         bool                               _dirty;
     };
 

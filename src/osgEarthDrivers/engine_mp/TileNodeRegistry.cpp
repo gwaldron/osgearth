@@ -50,13 +50,21 @@ TileNodeRegistry::setMapRevision(const Revision& rev,
 {
     if ( _revisioningEnabled )
     {
-        Threading::ScopedWriteLock exclusive( _tilesMutex );
-        _maprev = rev;
-        for( TileNodeMap::iterator i = _tiles.begin(); i != _tiles.end(); ++i )
+        if ( _maprev != rev || setToDirty )
         {
-            i->second->setMapRevision( _maprev );
-            if ( setToDirty )
-                i->second->setDirty();
+            Threading::ScopedWriteLock exclusive( _tilesMutex );
+
+            if ( _maprev != rev || setToDirty )
+            {
+                _maprev = rev;
+
+                for( TileNodeMap::iterator i = _tiles.begin(); i != _tiles.end(); ++i )
+                {
+                    i->second->setMapRevision( _maprev );
+                    if ( setToDirty )
+                        i->second->setDirty();
+                }
+            }
         }
     }
 }

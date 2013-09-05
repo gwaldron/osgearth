@@ -36,12 +36,12 @@ namespace osgEarth_engine_mp
     {
     public:
         SerialKeyNodeFactory(
+            const Map*                          map,
             TileModelFactory*                   modelFactory,
             TileModelCompiler*                  modelCompiler,
             TileNodeRegistry*                   liveTiles,
             TileNodeRegistry*                   deadTiles,
             const MPTerrainEngineOptions&       options,
-            const MapInfo&                      mapInfo,
             TerrainNode*                        terrain,
             UID                                 engineUID );
 
@@ -67,14 +67,14 @@ namespace osgEarth_engine_mp
         TileModelCompiler* getCompiler() const { return _modelCompiler.get(); }
 
     protected:
-        osg::Node* createTile(TileModel* model, bool setupChildren, bool tileHasRealData);
+        osg::Node* createTile(TileModel* model, bool setupChildren);
 
+        MapFrame                            _frame;
         osg::ref_ptr<TileModelFactory>      _modelFactory;
         osg::ref_ptr<TileModelCompiler>     _modelCompiler;
         osg::ref_ptr<TileNodeRegistry>      _liveTiles;
         osg::ref_ptr<TileNodeRegistry>      _deadTiles;
         const MPTerrainEngineOptions&       _options;
-        const MapInfo                       _mapInfo;
         osg::ref_ptr< TerrainNode >         _terrain;
         UID                                 _engineUID;
     };

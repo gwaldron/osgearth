@@ -103,8 +103,8 @@ JSFeature::GetFeatureAttr(const std::string& attr, Feature const* feature)
   }
 }
 
-v8::Handle<v8::Value>
-JSFeature::PropertyCallback(v8::Local<v8::String> name, const v8::AccessorInfo& info)
+void
+JSFeature::PropertyCallback(v8::Local<v8::String> name, const v8::PropertyCallbackInfo<v8::Value>& info)
 {
   Feature* feature = V8Util::UnwrapObject<Feature>(info.Holder());
 
@@ -112,21 +112,22 @@ JSFeature::PropertyCallback(v8::Local<v8::String> name, const v8::AccessorInfo& 
   std::string prop(*utf8_value);
 
   if (!feature || prop.empty())
-    return v8::Handle<v8::Value>();
+    return;
 
+  v8::Local<v8::Value> value;
   if (prop == "fid")
-    return v8::Uint32::New(feature->getFID());
+    value = v8::Uint32::New(feature->getFID());
   else if (prop == "attrs" || prop == "attributes")
-    return V8Util::WrapObject(feature, GetAttributesObjectTemplate());
+    value = V8Util::WrapObject(feature, GetAttributesObjectTemplate());
   else if (prop == "geometry")
-    return JSSymbologyGeometry::WrapGeometry(feature->getGeometry());
+    value = JSSymbologyGeometry::WrapGeometry(feature->getGeometry());
 
-  //return GetFeatureAttr(prop, feature);
-  return v8::Handle<v8::Value>();
+  if (!value.IsEmpty())
+    info.GetReturnValue().Set(value);
 }
 
-v8::Handle<v8::Value>
-JSFeature::AttrPropertyCallback(v8::Local<v8::String> name, const v8::AccessorInfo& info)
+void
+JSFeature::AttrPropertyCallback(v8::Local<v8::String> name, const v8::PropertyCallbackInfo<v8::Value>& info)
 {
   Feature* feature = V8Util::UnwrapObject<Feature>(info.Holder());
 
@@ -134,9 +135,11 @@ JSFeature::AttrPropertyCallback(v8::Local<v8::String> name, const v8::AccessorIn
   std::string attr(*utf8_value);
 
   if (!feature || attr.empty())
-    return v8::Handle<v8::Value>();
+    return;
 
-  return GetFeatureAttr(attr, feature);
+  v8::Local<v8::Value> value = GetFeatureAttr(attr, feature);
+  if (!value.IsEmpty())
+    info.GetReturnValue().Set(value);
 }
 
 void
@@ -184,8 +187,8 @@ JSSymbologyGeometry::GetObjectTemplate()
   return handle_scope.Close(template_instance);
 }
 
-v8::Handle<v8::Value>
-JSSymbologyGeometry::PropertyCallback(v8::Local<v8::String> name, const v8::AccessorInfo& info)
+void
+JSSymbologyGeometry::PropertyCallback(v8::Local<v8::String> name, const v8::PropertyCallbackInfo<v8::Value>& info)
 {
   osgEarth::Symbology::Geometry* geom = V8Util::UnwrapObject<osgEarth::Symbology::Geometry>(info.Holder());
 
@@ -193,36 +196,42 @@ JSSymbologyGeometry::PropertyCallback(v8::Local<v8::String> name, const v8::Acce
   std::string prop(*utf8_value);
 
   if (!geom || prop.empty())
-    return v8::Handle<v8::Value>();
+    return;
+
+  v8::Local<v8::Value> value;
 
   if (prop == "totalPointCount")
-    return v8::Integer::New(geom->getTotalPointCount());
+    value = v8::Integer::New(geom->getTotalPointCount());
   else if (prop == "numComponents")
-    return v8::Uint32::New(geom->getNumComponents());
+    value = v8::Uint32::New(geom->getNumComponents());
   else if (prop == "bounds")
   {
     osgEarth::Bounds bounds = geom->getBounds();
     osgEarth::Bounds* newBounds = new osgEarth::Bounds();
     newBounds->set(bounds.xMin(), bounds.yMin(), bounds.zMin(), bounds.xMax(), bounds.yMax(), bounds.zMax());
-    return JSBounds::WrapBounds(newBounds, true);
+    value = JSBounds::WrapBounds(newBounds, true);
   }
   else if (prop == "type")
-    return v8::String::New(osgEarth::Symbology::Geometry::toString(geom->getType()).c_str());
+    value = v8::String::New(osgEarth::Symbology::Geometry::toString(geom->getType()).c_str());
   else if (prop == "componentType")
-    return v8::String::New(osgEarth::Symbology::Geometry::toString(geom->getComponentType()).c_str());
+    value = v8::String::New(osgEarth::Symbology::Geometry::toString(geom->getComponentType()).c_str());
 
-  return v8::Handle<v8::Value>();
+  if (!value.IsEmpty())
+    info.GetReturnValue().Set(value);
 }
 
-v8::Handle<v8::Value>
-JSSymbologyGeometry::IndexedPropertyCallback(uint32_t index, const v8::AccessorInfo& info)
+void
+JSSymbologyGeometry::IndexedPropertyCallback(uint32_t index, const v8::PropertyCallbackInfo<v8::Value>& info)
 {
   osgEarth::Symbology::Geometry* geom = V8Util::UnwrapObject<osgEarth::Symbology::Geometry>(info.Holder());
 
-  if (!geom)
-    return v8::Handle<v8::Value>();
+  v8::Local<v8::Value> value;
+  
+  if (geom)
+    value = JSVec3d::WrapVec3d(&((*geom)[index]));
 
-  return JSVec3d::WrapVec3d(&((*geom)[index]));
+  if (!value.IsEmpty())
+    info.GetReturnValue().Set(value);
 }
 
 void
@@ -273,8 +282,8 @@ JSBounds::GetObjectTemplate()
   return handle_scope.Close(template_instance);
 }
 
-v8::Handle<v8::Value>
-JSBounds::PropertyCallback(v8::Local<v8::String> name, const v8::AccessorInfo& info)
+void
+JSBounds::PropertyCallback(v8::Local<v8::String> name, const v8::PropertyCallbackInfo<v8::Value>& info)
 {
   osgEarth::Bounds* bounds = V8Util::UnwrapObject<osgEarth::Bounds>(info.Holder());
 
@@ -282,109 +291,121 @@ JSBounds::PropertyCallback(v8::Local<v8::String> name, const v8::AccessorInfo& i
   std::string prop(*utf8_value);
 
   if (!bounds || prop.empty())
-    return v8::Handle<v8::Value>();
+    return;
+
+  v8::Local<v8::Value> value;
 
   if (prop == "valid")
-    return v8::Boolean::New(bounds->valid());
+    value = v8::Boolean::New(bounds->valid());
   else if (prop == "xMin")
-    return v8::Number::New(bounds->xMin());
+    value = v8::Number::New(bounds->xMin());
   else if (prop == "xMax")
-    return v8::Number::New(bounds->xMax());
+    value = v8::Number::New(bounds->xMax());
   else if (prop == "yMin")
-    return v8::Number::New(bounds->yMin());
+    value = v8::Number::New(bounds->yMin());
   else if (prop == "yMax")
-    return v8::Number::New(bounds->yMax());
+    value = v8::Number::New(bounds->yMax());
   else if (prop == "zMin")
-    return v8::Number::New(bounds->zMin());
+    value = v8::Number::New(bounds->zMin());
   else if (prop == "zMax")
-    return v8::Number::New(bounds->zMax());
+    value = v8::Number::New(bounds->zMax());
   else if (prop == "center")
   {
     osg::Vec3d* vec = new osg::Vec3d(bounds->center());
-    return JSVec3d::WrapVec3d(vec, true);
+    value = JSVec3d::WrapVec3d(vec, true);
   }
   else if (prop == "radius")
-    return v8::Number::New(bounds->radius());
+    value = v8::Number::New(bounds->radius());
   else if (prop == "width")
-    return v8::Number::New(bounds->width());
+    value = v8::Number::New(bounds->width());
   else if (prop == "height")
-    return v8::Number::New(bounds->height());
+    value = v8::Number::New(bounds->height());
 
-  return v8::Handle<v8::Value>();
+  if (!value.IsEmpty())
+    info.GetReturnValue().Set(value);
 }
 
-v8::Handle<v8::Value>
-JSBounds::ContainsCallback(const v8::Arguments& args)
+void
+JSBounds::ContainsCallback(const v8::FunctionCallbackInfo<v8::Value>& info)
 {
-  osgEarth::Bounds* bounds = V8Util::UnwrapObject<osgEarth::Bounds>(args.Holder());
+  osgEarth::Bounds* bounds = V8Util::UnwrapObject<osgEarth::Bounds>(info.Holder());
 
   if (bounds)
   {
-    if (args.Length() == 1 && args[0]->IsObject())  // Bounds
+    v8::Local<v8::Value> value;
+
+    if (info.Length() == 1 && info[0]->IsObject())  // Bounds
     {
-      v8::Local<v8::Object> obj( v8::Object::Cast(*args[0]) );
+      v8::Local<v8::Object> obj( v8::Object::Cast(*info[0]) );
 
       if (V8Util::CheckObjectType(obj, JSBounds::GetObjectType()))
       {
         osgEarth::Bounds* rhs = V8Util::UnwrapObject<osgEarth::Bounds>(obj);
-        return v8::Boolean::New(bounds->contains(*rhs));
+        value = v8::Boolean::New(bounds->contains(*rhs));
       }
     }
-    else if (args.Length() == 2)
+    else if (info.Length() == 2)
     {
-      return v8::Boolean::New(bounds->contains(args[0]->NumberValue(), args[1]->NumberValue()));
+      value = v8::Boolean::New(bounds->contains(info[0]->NumberValue(), info[1]->NumberValue()));
     }
-  }
 
-  return v8::Undefined();
+    if (!value.IsEmpty())
+      info.GetReturnValue().Set(value);
+  }
 }
 
-v8::Handle<v8::Value>
-JSBounds::UnionCallback(const v8::Arguments& args)
+void
+JSBounds::UnionCallback(const v8::FunctionCallbackInfo<v8::Value>& info)
 {
-  osgEarth::Bounds* bounds = V8Util::UnwrapObject<osgEarth::Bounds>(args.Holder());
+  osgEarth::Bounds* bounds = V8Util::UnwrapObject<osgEarth::Bounds>(info.Holder());
 
   if (bounds)
   {
-    if (args.Length() == 1 && args[0]->IsObject())  // Bounds
+    v8::Local<v8::Value> value;
+
+    if (info.Length() == 1 && info[0]->IsObject())  // Bounds
     {
-      v8::Local<v8::Object> obj( v8::Object::Cast(*args[0]) );
+      v8::Local<v8::Object> obj( v8::Object::Cast(*info[0]) );
 
       if (V8Util::CheckObjectType(obj, JSBounds::GetObjectType()))
       {
         osgEarth::Bounds* rhs = V8Util::UnwrapObject<osgEarth::Bounds>(obj);
         osgEarth::Bounds* outBounds = new osgEarth::Bounds();
         outBounds->expandBy(bounds->unionWith(*rhs));
-        return WrapBounds(outBounds, true);
+        value = WrapBounds(outBounds, true);
       }
     }
-  }
 
-  return v8::Undefined();
+    if (!value.IsEmpty())
+      info.GetReturnValue().Set(value);
+  }
 }
 
-v8::Handle<v8::Value>
-JSBounds::IntersectionCallback(const v8::Arguments& args)
+void
+JSBounds::IntersectionCallback(const v8::FunctionCallbackInfo<v8::Value>& info)
 {
-  osgEarth::Bounds* bounds = V8Util::UnwrapObject<osgEarth::Bounds>(args.Holder());
+  osgEarth::Bounds* bounds = V8Util::UnwrapObject<osgEarth::Bounds>(info.Holder());
 
   if (bounds)
   {
-    if (args.Length() == 1 && args[0]->IsObject())  // Bounds
+    v8::Local<v8::Value> value;
+
+    if (info.Length() == 1 && info[0]->IsObject())  // Bounds
     {
-      v8::Local<v8::Object> obj( v8::Object::Cast(*args[0]) );
+      v8::Local<v8::Object> obj( v8::Object::Cast(*info[0]) );
 
       if (V8Util::CheckObjectType(obj, JSBounds::GetObjectType()))
       {
         osgEarth::Bounds* rhs = V8Util::UnwrapObject<osgEarth::Bounds>(obj);
         osgEarth::Bounds* outBounds = new osgEarth::Bounds();
         outBounds->expandBy(bounds->intersectionWith(*rhs));
-        return WrapBounds(outBounds, true);
+        value = WrapBounds(outBounds, true);
       }
     }
-  }
 
-  return v8::Undefined();
+    if (!value.IsEmpty())
+      info.GetReturnValue().Set(value);
+  }
 }
 
 void
@@ -432,8 +453,8 @@ JSVec3d::GetObjectTemplate()
   return handle_scope.Close(template_instance);
 }
 
-v8::Handle<v8::Value>
-JSVec3d::PropertyCallback(v8::Local<v8::String> name, const v8::AccessorInfo& info)
+void
+JSVec3d::PropertyCallback(v8::Local<v8::String> name, const v8::PropertyCallbackInfo<v8::Value>& info)
 {
   osg::Vec3d* v = V8Util::UnwrapObject<osg::Vec3d>(info.Holder());
 
@@ -441,27 +462,30 @@ JSVec3d::PropertyCallback(v8::Local<v8::String> name, const v8::AccessorInfo& in
   std::string prop(*utf8_value);
 
   if (!v || prop.empty())
-    return v8::Handle<v8::Value>();
+    return;
+
+  v8::Local<v8::Value> value;
 
   if (prop == "x")
-    return v8::Number::New(v->x());
+    value = v8::Number::New(v->x());
   if (prop == "y")
-    return v8::Number::New(v->y());
+    value = v8::Number::New(v->y());
   if (prop == "z")
-    return v8::Number::New(v->z());
+    value = v8::Number::New(v->z());
 
-  return v8::Handle<v8::Value>();
+  if (!value.IsEmpty())
+    info.GetReturnValue().Set(value);
 }
 
-v8::Handle<v8::Value>
-JSVec3d::IndexedPropertyCallback(uint32_t index, const v8::AccessorInfo& info)
+void
+JSVec3d::IndexedPropertyCallback(uint32_t index, const v8::PropertyCallbackInfo<v8::Value>& info)
 {
   osg::Vec3d* v = V8Util::UnwrapObject<osg::Vec3d>(info.Holder());
 
   if (!v || index > 2)
-    return v8::Handle<v8::Value>();
+    return;
 
-  return v8::Number::New((*v)[index]);
+  info.GetReturnValue().Set(v8::Number::New((*v)[index]));
 }
 
 void
@@ -521,8 +545,8 @@ JSFilterContext::GetObjectTemplate()
   return handle_scope.Close(template_instance);
 }
 
-v8::Handle<v8::Value>
-JSFilterContext::PropertyCallback(v8::Local<v8::String> name, const v8::AccessorInfo& info)
+void
+JSFilterContext::PropertyCallback(v8::Local<v8::String> name, const v8::PropertyCallbackInfo<v8::Value>& info)
 {
   FilterContext* context = V8Util::UnwrapObject<FilterContext>(info.Holder());
 
@@ -530,28 +554,33 @@ JSFilterContext::PropertyCallback(v8::Local<v8::String> name, const v8::Accessor
   std::string prop(*utf8_value);
 
   if (!context || prop.empty())
-    return v8::Handle<v8::Value>();
+    return;
+
+  v8::Local<v8::Value> value;
 
   if (prop == "session")
-    return JSSession::WrapSession(const_cast<Session*>(context->getSession()));
+    value = JSSession::WrapSession(const_cast<Session*>(context->getSession()));
   if (prop == "profile")
-    return JSFeatureProfile::WrapFeatureProfile(const_cast<FeatureProfile*>(context->profile().get()));
+    value = JSFeatureProfile::WrapFeatureProfile(const_cast<FeatureProfile*>(context->profile().get()));
   if (prop == "extent" && context->extent().isSet())
-    return JSGeoExtent::WrapGeoExtent(const_cast<osgEarth::GeoExtent*>(&context->extent().get()));
+    value = JSGeoExtent::WrapGeoExtent(const_cast<osgEarth::GeoExtent*>(&context->extent().get()));
   //if (prop == "geocentric")
-  //  return v8::Boolean::New(context->isGeocentric());
+  //  value = v8::Boolean::New(context->isGeocentric());
 
-  return v8::Handle<v8::Value>();
+  if (!value.IsEmpty())
+    info.GetReturnValue().Set(value);
 }
 
-v8::Handle<v8::Value>
-JSFilterContext::ToLocalCallback(const v8::Arguments& args)
+void
+JSFilterContext::ToLocalCallback(const v8::FunctionCallbackInfo<v8::Value>& info)
 {
-  FilterContext* context = V8Util::UnwrapObject<FilterContext>(args.Holder());
+  FilterContext* context = V8Util::UnwrapObject<FilterContext>(info.Holder());
 
-  if (context && args.Length() == 1 && args[0]->IsObject())
+  v8::Local<v8::Value> value;
+
+  if (context && info.Length() == 1 && info[0]->IsObject())
   {
-    v8::Local<v8::Object> obj( v8::Object::Cast(*args[0]) );
+    v8::Local<v8::Object> obj( v8::Object::Cast(*info[0]) );
 
     /*if (V8Util::CheckObjectType(obj, JSGeometry::GetObjectType()))  // Geometry
     {
@@ -564,21 +593,24 @@ JSFilterContext::ToLocalCallback(const v8::Arguments& args)
     {
       osg::Vec3d* vec = V8Util::UnwrapObject<osg::Vec3d>(obj);
       osg::Vec3d* local = new osg::Vec3d(context->toLocal(*vec));
-      return JSVec3d::WrapVec3d(local, true);
+      value = JSVec3d::WrapVec3d(local, true);
     }
   }
 
-  return v8::Undefined();
+  if (!value.IsEmpty())
+    info.GetReturnValue().Set(value);
 }
 
-v8::Handle<v8::Value>
-JSFilterContext::ToWorldCallback(const v8::Arguments& args)
+void
+JSFilterContext::ToWorldCallback(const v8::FunctionCallbackInfo<v8::Value>& info)
 {
-  FilterContext* context = V8Util::UnwrapObject<FilterContext>(args.Holder());
+  FilterContext* context = V8Util::UnwrapObject<FilterContext>(info.Holder());
 
-  if (context && args.Length() == 1 && args[0]->IsObject())
+  v8::Local<v8::Value> value;
+
+  if (context && info.Length() == 1 && info[0]->IsObject())
   {
-    v8::Local<v8::Object> obj( v8::Object::Cast(*args[0]) );
+    v8::Local<v8::Object> obj( v8::Object::Cast(*info[0]) );
 
     /*if (V8Util::CheckObjectType(obj, JSGeometry::GetObjectType()))  // Geometry
     {
@@ -591,51 +623,58 @@ JSFilterContext::ToWorldCallback(const v8::Arguments& args)
     {
       osg::Vec3d* vec = V8Util::UnwrapObject<osg::Vec3d>(obj);
       osg::Vec3d* world = new osg::Vec3d(context->toWorld(*vec));
-      return JSVec3d::WrapVec3d(world, true);
+      value = JSVec3d::WrapVec3d(world, true);
     }
   }
 
-  return v8::Undefined();
+  if (!value.IsEmpty())
+    info.GetReturnValue().Set(value);
 }
 
-v8::Handle<v8::Value>
-JSFilterContext::ToMapCallback(const v8::Arguments& args)
+void
+JSFilterContext::ToMapCallback(const v8::FunctionCallbackInfo<v8::Value>& info)
 {
-  FilterContext* context = V8Util::UnwrapObject<FilterContext>(args.Holder());
+  FilterContext* context = V8Util::UnwrapObject<FilterContext>(info.Holder());
 
-  if (context && args.Length() == 1 && args[0]->IsObject())
+  v8::Local<v8::Value> value;
+
+  if (context && info.Length() == 1 && info[0]->IsObject())
   {
-    v8::Local<v8::Object> obj( v8::Object::Cast(*args[0]) );
+    v8::Local<v8::Object> obj( v8::Object::Cast(*info[0]) );
     
     if (V8Util::CheckObjectType(obj, JSVec3d::GetObjectType()))  // Vec3d
     {
       osg::Vec3d* vec = V8Util::UnwrapObject<osg::Vec3d>(obj);
       osg::Vec3d* map = new osg::Vec3d(context->toMap(*vec));
-      return JSVec3d::WrapVec3d(map, true);
+      value = JSVec3d::WrapVec3d(map, true);
     }
   }
 
-  return v8::Undefined();
+  if (!value.IsEmpty())
+    info.GetReturnValue().Set(value);
 }
 
-v8::Handle<v8::Value>
-JSFilterContext::FromMapCallback(const v8::Arguments& args)
+void
+JSFilterContext::FromMapCallback(const v8::FunctionCallbackInfo<v8::Value>& info)
 {
-  FilterContext* context = V8Util::UnwrapObject<FilterContext>(args.Holder());
+  FilterContext* context = V8Util::UnwrapObject<FilterContext>(info.Holder());
 
-  if (context && args.Length() == 1 && args[0]->IsObject())
+  v8::Local<v8::Value> value;
+
+  if (context && info.Length() == 1 && info[0]->IsObject())
   {
-    v8::Local<v8::Object> obj( v8::Object::Cast(*args[0]) );
+    v8::Local<v8::Object> obj( v8::Object::Cast(*info[0]) );
     
     if (V8Util::CheckObjectType(obj, JSVec3d::GetObjectType()))  // Vec3d
     {
       osg::Vec3d* map = V8Util::UnwrapObject<osg::Vec3d>(obj);
       osg::Vec3d* local = new osg::Vec3d(context->fromMap(*map));
-      return JSVec3d::WrapVec3d(local, true);
+      value = JSVec3d::WrapVec3d(local, true);
     }
   }
 
-  return v8::Undefined();
+  if (!value.IsEmpty())
+    info.GetReturnValue().Set(value);
 }
 
 void
@@ -686,8 +725,8 @@ JSSession::GetObjectTemplate()
   return handle_scope.Close(template_instance);
 }
 
-v8::Handle<v8::Value>
-JSSession::PropertyCallback(v8::Local<v8::String> name, const v8::AccessorInfo& info)
+void
+JSSession::PropertyCallback(v8::Local<v8::String> name, const v8::PropertyCallbackInfo<v8::Value>& info)
 {
   Session* session = V8Util::UnwrapObject<Session>(info.Holder());
 
@@ -695,28 +734,29 @@ JSSession::PropertyCallback(v8::Local<v8::String> name, const v8::AccessorInfo& 
   std::string prop(*utf8_value);
 
   if (!session || prop.empty())
-    return v8::Handle<v8::Value>();
+    return;
 
   if (prop == "mapInfo")
-    return JSMapInfo::WrapMapInfo(const_cast<osgEarth::MapInfo*>(&session->getMapInfo()));
-
-  return v8::Handle<v8::Value>();
+    info.GetReturnValue().Set(JSMapInfo::WrapMapInfo(const_cast<osgEarth::MapInfo*>(&session->getMapInfo())));
 }
 
 #if 0
-v8::Handle<v8::Value>
-JSSession::ResolveUriCallback(const v8::Arguments& args)
+void
+JSSession::ResolveUriCallback(const v8::FunctionCallbackInfo<v8::Value>& info)
 {
-  Session* session = V8Util::UnwrapObject<Session>(args.Holder());
+  Session* session = V8Util::UnwrapObject<Session>(info.Holder());
 
-  if (session && args.Length() == 1 && args[0]->IsString())
+  v8::Local<v8::Value> value;
+
+  if (session && info.Length() == 1 && info[0]->IsString())
   {
-    v8::String::Utf8Value utf8_value(args[0]->ToString());
+    v8::String::Utf8Value utf8_value(info[0]->ToString());
     std::string uri(*utf8_value);
-    return v8::String::New(session->resolveURI(uri).c_str());
+    value = v8::String::New(session->resolveURI(uri).c_str());
   }
 
-  return v8::Undefined();
+  if (!value.IsEmpty())
+    info.GetReturnValue().Set(value);
 }
 #endif
 
@@ -770,8 +810,8 @@ JSMapInfo::GetObjectTemplate()
   return handle_scope.Close(template_instance);
 }
 
-v8::Handle<v8::Value>
-JSMapInfo::PropertyCallback(v8::Local<v8::String> name, const v8::AccessorInfo& info)
+void
+JSMapInfo::PropertyCallback(v8::Local<v8::String> name, const v8::PropertyCallbackInfo<v8::Value>& info)
 {
   osgEarth::MapInfo* mapInfo = V8Util::UnwrapObject<osgEarth::MapInfo>(info.Holder());
 
@@ -779,32 +819,37 @@ JSMapInfo::PropertyCallback(v8::Local<v8::String> name, const v8::AccessorInfo& 
   std::string prop(*utf8_value);
 
   if (!mapInfo || prop.empty())
-    return v8::Handle<v8::Value>();
+    return;
+
+  v8::Local<v8::Value> value;
 
   if (prop == "geocentric")
-    return v8::Boolean::New(mapInfo->isGeocentric());
+    value = v8::Boolean::New(mapInfo->isGeocentric());
   if (prop == "cube")
-    return v8::Boolean::New(mapInfo->isCube());
+    value = v8::Boolean::New(mapInfo->isCube());
   if (prop == "plateCarre" || prop == "platecarre")
-    return v8::Boolean::New(mapInfo->isPlateCarre());
+    value = v8::Boolean::New(mapInfo->isPlateCarre());
   if (prop == "projectedSRS")
-    return v8::Boolean::New(mapInfo->isProjectedSRS());
+    value = v8::Boolean::New(mapInfo->isProjectedSRS());
   if (prop == "geographicSRS")
-    return v8::Boolean::New(mapInfo->isGeographicSRS());
+    value = v8::Boolean::New(mapInfo->isGeographicSRS());
 
-  return v8::Handle<v8::Value>();
+  if (!value.IsEmpty())
+    info.GetReturnValue().Set(value);
 }
 
 #if 0
-v8::Handle<v8::Value>
-JSMapInfo::ToMapCallback(const v8::Arguments& args)
+void
+JSMapInfo::ToMapCallback(const v8::FunctionCallbackInfo<v8::Value>& info)
 {
-  osgEarth::MapInfo* mapInfo = V8Util::UnwrapObject<osgEarth::MapInfo>(args.Holder());
+  osgEarth::MapInfo* mapInfo = V8Util::UnwrapObject<osgEarth::MapInfo>(info.Holder());
 
-  if (mapInfo && args.Length() == 2 && args[0]->IsObject() && args[1]->IsObject()) // Vec3d & SpatialReference
+  v8::Local<v8::Value> value;
+
+  if (mapInfo && info.Length() == 2 && info[0]->IsObject() && info[1]->IsObject()) // Vec3d & SpatialReference
   {
-    v8::Local<v8::Object> obj0( v8::Object::Cast(*args[0]) );
-    v8::Local<v8::Object> obj1( v8::Object::Cast(*args[1]) );
+    v8::Local<v8::Object> obj0( v8::Object::Cast(*info[0]) );
+    v8::Local<v8::Object> obj1( v8::Object::Cast(*info[1]) );
 
     if (V8Util::CheckObjectType(obj0, JSVec3d::GetObjectType()) && V8Util::CheckObjectType(obj1, JSSpatialReference::GetObjectType()))
     {
@@ -817,62 +862,69 @@ JSMapInfo::ToMapCallback(const v8::Arguments& args)
       mapPoint.fromWorld( srs, *input );
       out->set( mapPoint.x(), mapPoint.y(), mapPoint.z() );
 
-      return JSVec3d::WrapVec3d(out, true);
+      value = JSVec3d::WrapVec3d(out, true);
 
       //if (mapInfo->toMapPoint(*input, srs, *out))
-      //  return JSVec3d::WrapVec3d(out, true);
+      //  value = JSVec3d::WrapVec3d(out, true);
 
       delete out;
     }
   }
 
-  return v8::Undefined();
+  if (!value.IsEmpty())
+    info.GetReturnValue().Set(value);
 }
 
-v8::Handle<v8::Value>
-JSMapInfo::MapToWorldCallback(const v8::Arguments& args)
+void
+JSMapInfo::MapToWorldCallback(const v8::FunctionCallbackInfo<v8::Value>& info)
 {
-  osgEarth::MapInfo* mapInfo = V8Util::UnwrapObject<osgEarth::MapInfo>(args.Holder());
+  osgEarth::MapInfo* mapInfo = V8Util::UnwrapObject<osgEarth::MapInfo>(info.Holder());
+  
+  v8::Local<v8::Value> value;
 
-  if (mapInfo && args.Length() == 1 && args[0]->IsObject()) // Vec3d
+  if (mapInfo && info.Length() == 1 && info[0]->IsObject()) // Vec3d
   {
-    v8::Local<v8::Object> obj( v8::Object::Cast(*args[0]) );
+    v8::Local<v8::Object> obj( v8::Object::Cast(*info[0]) );
     if (V8Util::CheckObjectType(obj, JSVec3d::GetObjectType()))
     {
       osg::Vec3d* input = V8Util::UnwrapObject<osg::Vec3d>(obj);
 
       osg::Vec3d* out = new osg::Vec3d();
       if (mapInfo->mapPointToWorldPoint(*input, *out))
-        return JSVec3d::WrapVec3d(out, true);
+        value = JSVec3d::WrapVec3d(out, true);
 
       delete out;
     }
   }
 
-  return v8::Undefined();
+  if (!value.IsEmpty())
+    info.GetReturnValue().Set(value);
 }
 
-v8::Handle<v8::Value>
-JSMapInfo::WorldToMapCallback(const v8::Arguments& args)
+void
+JSMapInfo::WorldToMapCallback(const v8::FunctionCallbackInfo<v8::Value>& info)
 {
-  osgEarth::MapInfo* mapInfo = V8Util::UnwrapObject<osgEarth::MapInfo>(args.Holder());
+  osgEarth::MapInfo* mapInfo = V8Util::UnwrapObject<osgEarth::MapInfo>(info.Holder());
 
-  if (mapInfo && args.Length() == 1 && args[0]->IsObject()) // Vec3d
+  v8::Local<v8::Value> value;
+
+  if (mapInfo && info.Length() == 1 && info[0]->IsObject()) // Vec3d
   {
-    v8::Local<v8::Object> obj( v8::Object::Cast(*args[0]) );
+    v8::Local<v8::Object> obj( v8::Object::Cast(*info[0]) );
     if (V8Util::CheckObjectType(obj, JSVec3d::GetObjectType()))
     {
       osg::Vec3d* input = V8Util::UnwrapObject<osg::Vec3d>(obj);
 
       osg::Vec3d* out = new osg::Vec3d();
       if (mapInfo->worldPointToMapPoint(*input, *out))
-        return JSVec3d::WrapVec3d(out, true);
+        value = JSVec3d::WrapVec3d(out, true);
 
       delete out;
     }
   }
 
-  return v8::Undefined();
+  if (!value.IsEmpty())
+    info.GetReturnValue().Set(value);
 }
 #endif
 
@@ -922,8 +974,8 @@ JSFeatureProfile::GetObjectTemplate()
   return handle_scope.Close(template_instance);
 }
 
-v8::Handle<v8::Value>
-JSFeatureProfile::PropertyCallback(v8::Local<v8::String> name, const v8::AccessorInfo& info)
+void
+JSFeatureProfile::PropertyCallback(v8::Local<v8::String> name, const v8::PropertyCallbackInfo<v8::Value>& info)
 {
   FeatureProfile* profile = V8Util::UnwrapObject<FeatureProfile>(info.Holder());
 
@@ -931,14 +983,17 @@ JSFeatureProfile::PropertyCallback(v8::Local<v8::String> name, const v8::Accesso
   std::string prop(*utf8_value);
 
   if (!profile || prop.empty())
-    return v8::Handle<v8::Value>();
+    return;
+
+  v8::Local<v8::Value> value;
 
   if (prop == "extent")
-    return JSGeoExtent::WrapGeoExtent(const_cast<osgEarth::GeoExtent*>(&profile->getExtent()));
+    value = JSGeoExtent::WrapGeoExtent(const_cast<osgEarth::GeoExtent*>(&profile->getExtent()));
   if (prop == "srs")
-    return JSSpatialReference::WrapSpatialReference(const_cast<osgEarth::SpatialReference*>(profile->getSRS()));
+    value = JSSpatialReference::WrapSpatialReference(const_cast<osgEarth::SpatialReference*>(profile->getSRS()));
 
-  return v8::Handle<v8::Value>();
+  if (!value.IsEmpty())
+    info.GetReturnValue().Set(value);
 }
 
 void
@@ -988,8 +1043,8 @@ JSGeoExtent::GetObjectTemplate()
   return handle_scope.Close(template_instance);
 }
 
-v8::Handle<v8::Value>
-JSGeoExtent::PropertyCallback(v8::Local<v8::String> name, const v8::AccessorInfo& info)
+void
+JSGeoExtent::PropertyCallback(v8::Local<v8::String> name, const v8::PropertyCallbackInfo<v8::Value>& info)
 {
   osgEarth::GeoExtent* extent = V8Util::UnwrapObject<osgEarth::GeoExtent>(info.Holder());
 
@@ -997,92 +1052,101 @@ JSGeoExtent::PropertyCallback(v8::Local<v8::String> name, const v8::AccessorInfo
   std::string prop(*utf8_value);
 
   if (!extent || prop.empty())
-    return v8::Handle<v8::Value>();
+    return;
+
+  v8::Local<v8::Value> value;
 
   if (prop == "srs")
-    return JSSpatialReference::WrapSpatialReference(const_cast<osgEarth::SpatialReference*>(extent->getSRS()));
+    value = JSSpatialReference::WrapSpatialReference(const_cast<osgEarth::SpatialReference*>(extent->getSRS()));
   if (prop == "xMin")
-    return v8::Number::New(extent->xMin());
+    value = v8::Number::New(extent->xMin());
   if (prop == "xMax")
-    return v8::Number::New(extent->xMax());
+    value = v8::Number::New(extent->xMax());
   if (prop == "yMin")
-    return v8::Number::New(extent->yMin());
+    value = v8::Number::New(extent->yMin());
   if (prop == "yMax")
-    return v8::Number::New(extent->yMax());
+    value = v8::Number::New(extent->yMax());
   if (prop == "width")
-    return v8::Number::New(extent->width());
+    value = v8::Number::New(extent->width());
   if (prop == "height")
-    return v8::Number::New(extent->height());
+    value = v8::Number::New(extent->height());
   if (prop == "crossesAntimeridian")
-    return v8::Boolean::New(extent->crossesAntimeridian());
+    value = v8::Boolean::New(extent->crossesAntimeridian());
   if (prop == "valid")
-    return v8::Boolean::New(extent->isValid());
+    value = v8::Boolean::New(extent->isValid());
   if (prop == "defined")
-    return v8::Boolean::New(extent->defined());
+    value = v8::Boolean::New(extent->defined());
   if (prop == "area")
-    return v8::Number::New(extent->area());
+    value = v8::Number::New(extent->area());
   //if (prop == "toString")
-  //  return v8::String::New(extent->toString().c_str());
+  //  value = v8::String::New(extent->toString().c_str());
 
-  return v8::Handle<v8::Value>();
+  if (!value.IsEmpty())
+    info.GetReturnValue().Set(value);
 }
 
-v8::Handle<v8::Value>
-JSGeoExtent::ContainsCallback(const v8::Arguments& args)
+void
+JSGeoExtent::ContainsCallback(const v8::FunctionCallbackInfo<v8::Value>& info)
 {
-  osgEarth::GeoExtent* extent = V8Util::UnwrapObject<osgEarth::GeoExtent>(args.Holder());
+  osgEarth::GeoExtent* extent = V8Util::UnwrapObject<osgEarth::GeoExtent>(info.Holder());
+
+  v8::Local<v8::Value> value;
 
   if (extent)
   {
-    if (args.Length() == 1 && args[0]->IsObject())  // Bounds
+    if (info.Length() == 1 && info[0]->IsObject())  // Bounds
     {
-      v8::Local<v8::Object> obj( v8::Object::Cast(*args[0]) );
+      v8::Local<v8::Object> obj( v8::Object::Cast(*info[0]) );
 
       if (V8Util::CheckObjectType(obj, JSBounds::GetObjectType()))
       {
         osgEarth::Bounds* bounds = V8Util::UnwrapObject<osgEarth::Bounds>(obj);
-        return v8::Boolean::New(extent->contains(*bounds));
+        value = v8::Boolean::New(extent->contains(*bounds));
       }
     }
-    else if (args.Length() == 2 /*&& args[0]->IsNumber() && args[1]->IsNumber()*/)  // x and y
+    else if (info.Length() == 2 /*&& info[0]->IsNumber() && info[1]->IsNumber()*/)  // x and y
     {
-      return v8::Boolean::New(extent->contains(args[0]->NumberValue(), args[1]->NumberValue()));
+      value = v8::Boolean::New(extent->contains(info[0]->NumberValue(), info[1]->NumberValue()));
     }
-    else if (args.Length() == 3 && /*args[0]->IsNumber() && args[1]->IsNumber() &&*/ args[2]->IsObject())  // x, y, and SpatialReference
+    else if (info.Length() == 3 && /*info[0]->IsNumber() && info[1]->IsNumber() &&*/ info[2]->IsObject())  // x, y, and SpatialReference
     {
-      v8::Local<v8::Object> obj( v8::Object::Cast(*args[2]) );
+      v8::Local<v8::Object> obj( v8::Object::Cast(*info[2]) );
 
       if (V8Util::CheckObjectType(obj, JSSpatialReference::GetObjectType()))
       {
         osgEarth::SpatialReference* srs = V8Util::UnwrapObject<osgEarth::SpatialReference>(obj);
-        return v8::Boolean::New(extent->contains(args[0]->NumberValue(), args[1]->NumberValue(), srs));
+        value = v8::Boolean::New(extent->contains(info[0]->NumberValue(), info[1]->NumberValue(), srs));
       }
     }
   }
 
-  return v8::Undefined();
+  if (!value.IsEmpty())
+    info.GetReturnValue().Set(value);
 }
 
-v8::Handle<v8::Value>
-JSGeoExtent::IntersectsCallback(const v8::Arguments& args)
+void
+JSGeoExtent::IntersectsCallback(const v8::FunctionCallbackInfo<v8::Value>& info)
 {
-  osgEarth::GeoExtent* extent = V8Util::UnwrapObject<osgEarth::GeoExtent>(args.Holder());
+  osgEarth::GeoExtent* extent = V8Util::UnwrapObject<osgEarth::GeoExtent>(info.Holder());
 
   if (!extent)
-    return v8::Undefined();
+    return;
 
-  if (args.Length() == 1 && args[0]->IsObject())  // GeoExtent
+  v8::Local<v8::Value> value;
+
+  if (info.Length() == 1 && info[0]->IsObject())  // GeoExtent
   {
-    v8::Local<v8::Object> obj( v8::Object::Cast(*args[0]) );
+    v8::Local<v8::Object> obj( v8::Object::Cast(*info[0]) );
 
     if (V8Util::CheckObjectType(obj, JSGeoExtent::GetObjectType()))
     {
       osgEarth::GeoExtent* rhs = V8Util::UnwrapObject<osgEarth::GeoExtent>(obj);
-      return v8::Boolean::New(extent->intersects(*rhs));
+      value = v8::Boolean::New(extent->intersects(*rhs));
     }
   }
 
-  return v8::Undefined();
+  if (!value.IsEmpty())
+    info.GetReturnValue().Set(value);
 }
 
 void
@@ -1134,8 +1198,8 @@ JSSpatialReference::GetObjectTemplate()
   return handle_scope.Close(template_instance);
 }
 
-v8::Handle<v8::Value>
-JSSpatialReference::PropertyCallback(v8::Local<v8::String> name, const v8::AccessorInfo& info)
+void
+JSSpatialReference::PropertyCallback(v8::Local<v8::String> name, const v8::PropertyCallbackInfo<v8::Value>& info)
 {
   osgEarth::SpatialReference* srs = V8Util::UnwrapObject<osgEarth::SpatialReference>(info.Holder());
 
@@ -1143,88 +1207,97 @@ JSSpatialReference::PropertyCallback(v8::Local<v8::String> name, const v8::Acces
   std::string prop(*utf8_value);
   
   if (!srs || prop.empty())
-    return v8::Handle<v8::Value>();
+    return;
+
+  v8::Local<v8::Value> value;
 
   if (prop == "geographic")
-    return v8::Boolean::New(srs->isGeographic());
+    value = v8::Boolean::New(srs->isGeographic());
   if (prop == "projected")
-    return v8::Boolean::New(srs->isProjected());
+    value = v8::Boolean::New(srs->isProjected());
   if (prop == "mercator")
-    return v8::Boolean::New(srs->isMercator());
+    value = v8::Boolean::New(srs->isMercator());
   if (prop == "sphericalMercator")
-    return v8::Boolean::New(srs->isSphericalMercator());
+    value = v8::Boolean::New(srs->isSphericalMercator());
   if (prop == "northPolar")
-    return v8::Boolean::New(srs->isNorthPolar());
+    value = v8::Boolean::New(srs->isNorthPolar());
   if (prop == "southPolar")
-    return v8::Boolean::New(srs->isSouthPolar());
+    value = v8::Boolean::New(srs->isSouthPolar());
   if (prop == "userDefined")
-    return v8::Boolean::New(srs->isUserDefined());
+    value = v8::Boolean::New(srs->isUserDefined());
   if (prop == "contiguous")
-    return v8::Boolean::New(srs->isContiguous());
+    value = v8::Boolean::New(srs->isContiguous());
   if (prop == "cube")
-    return v8::Boolean::New(srs->isCube());
+    value = v8::Boolean::New(srs->isCube());
   if (prop == "LTP" || prop == "ltp")
-    return v8::Boolean::New(srs->isLTP());
+    value = v8::Boolean::New(srs->isLTP());
   if (prop == "name")
-    return v8::String::New(srs->getName().c_str());
+    value = v8::String::New(srs->getName().c_str());
   if (prop == "WKT" || prop == "wkt")
-    return v8::String::New(srs->getWKT().c_str());
+    value = v8::String::New(srs->getWKT().c_str());
   if (prop == "initType")
-    return v8::String::New(srs->getInitType().c_str());
+    value = v8::String::New(srs->getInitType().c_str());
   if (prop == "horizInitString")
-    return v8::String::New(srs->getHorizInitString().c_str());
+    value = v8::String::New(srs->getHorizInitString().c_str());
   if (prop == "vertInitString")
-    return v8::String::New(srs->getVertInitString().c_str());
+    value = v8::String::New(srs->getVertInitString().c_str());
   if (prop == "datumName")
-    return v8::String::New(srs->getDatumName().c_str());
+    value = v8::String::New(srs->getDatumName().c_str());
   if (prop == "geographicSRS")
-    return JSSpatialReference::WrapSpatialReference(const_cast<osgEarth::SpatialReference*>(srs->getGeographicSRS()));
+    value = JSSpatialReference::WrapSpatialReference(const_cast<osgEarth::SpatialReference*>(srs->getGeographicSRS()));
 
-  return v8::Handle<v8::Value>();
+  if (!value.IsEmpty())
+    info.GetReturnValue().Set(value);
 }
 
-v8::Handle<v8::Value>
-JSSpatialReference::EquivalenceCallback(const v8::Arguments& args)
+void
+JSSpatialReference::EquivalenceCallback(const v8::FunctionCallbackInfo<v8::Value>& info)
 {
-  osgEarth::SpatialReference* srs = V8Util::UnwrapObject<osgEarth::SpatialReference>(args.Holder());
+  osgEarth::SpatialReference* srs = V8Util::UnwrapObject<osgEarth::SpatialReference>(info.Holder());
 
   if (!srs)
-    return v8::Undefined();
+    return;
 
-  if (args.Length() == 1 && args[0]->IsObject())  // SpatialReference
+  v8::Local<v8::Value> value;
+
+  if (info.Length() == 1 && info[0]->IsObject())  // SpatialReference
   {
-    v8::Local<v8::Object> obj( v8::Object::Cast(*args[0]) );
+    v8::Local<v8::Object> obj( v8::Object::Cast(*info[0]) );
 
     if (V8Util::CheckObjectType(obj, JSSpatialReference::GetObjectType()))
     {
       osgEarth::SpatialReference* rhs = V8Util::UnwrapObject<osgEarth::SpatialReference>(obj);
-      return v8::Boolean::New(srs->isEquivalentTo(rhs));
+      value = v8::Boolean::New(srs->isEquivalentTo(rhs));
     }
   }
 
-  return v8::Undefined();
+  if (!value.IsEmpty())
+    info.GetReturnValue().Set(value);
 }
 
-v8::Handle<v8::Value>
-JSSpatialReference::TangentPlaneCallback(const v8::Arguments& args)
+void
+JSSpatialReference::TangentPlaneCallback(const v8::FunctionCallbackInfo<v8::Value>& info)
 {
-  osgEarth::SpatialReference* srs = V8Util::UnwrapObject<osgEarth::SpatialReference>(args.Holder());
+  osgEarth::SpatialReference* srs = V8Util::UnwrapObject<osgEarth::SpatialReference>(info.Holder());
 
   if (!srs)
-    return v8::Undefined();
+    return;
 
-  if (args.Length() == 1 && args[0]->IsObject())  // Vec3d
+  v8::Local<v8::Value> value;
+
+  if (info.Length() == 1 && info[0]->IsObject())  // Vec3d
   {
-    v8::Local<v8::Object> obj( v8::Object::Cast(*args[0]) );
+    v8::Local<v8::Object> obj( v8::Object::Cast(*info[0]) );
 
     if (V8Util::CheckObjectType(obj, JSVec3d::GetObjectType()))
     {
       osg::Vec3d* vec = V8Util::UnwrapObject<osg::Vec3d>(obj);
-      return JSSpatialReference::WrapSpatialReference(const_cast<SpatialReference*>(srs->createTangentPlaneSRS(*vec)), true);
+      value = JSSpatialReference::WrapSpatialReference(const_cast<SpatialReference*>(srs->createTangentPlaneSRS(*vec)), true);
     }
   }
 
-  return v8::Undefined();
+  if (!value.IsEmpty())
+    info.GetReturnValue().Set(value);
 }
 
 void

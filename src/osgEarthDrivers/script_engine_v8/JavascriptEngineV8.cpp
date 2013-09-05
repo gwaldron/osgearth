@@ -100,17 +100,15 @@ JavascriptEngineV8::createGlobalObjectTemplate()
   return handle_scope.Close(global);
 }
 
-v8::Handle<v8::Value>
-JavascriptEngineV8::logCallback(const v8::Arguments& args)
+void
+JavascriptEngineV8::logCallback(const v8::FunctionCallbackInfo<v8::Value>& info)
 {
-  if (args.Length() < 1) return v8::Undefined();
+  if (info.Length() < 1) return;
   v8::HandleScope scope;
-  v8::Handle<v8::Value> arg = args[0];
+  v8::Handle<v8::Value> arg = info[0];
   v8::String::AsciiValue value(arg);
   
   OE_WARN << LC << "javascript message: " << (*value) << std::endl;
-
-  return v8::Undefined();
 }
 
 ScriptResult
@@ -271,22 +269,22 @@ JavascriptEngineV8::call(const std::string& function, osgEarth::Features::Featur
 //----------------------------------------------------------------------------
 // Constructor callbacks for constructing native objects in javascript
 
-//v8::Handle<v8::Value>
-//JavascriptEngineV8::constructFeatureCallback(const v8::Arguments &args)
+//void
+//JavascriptEngineV8::constructFeatureCallback(const v8::FunctionCallbackInfo<v8::Value> &info)
 //{
-//  if (!args.IsConstructCall()) 
+//  if (!info.IsConstructCall()) 
 //    return v8::ThrowException(v8::String::New("Cannot call constructor as function"));
 // 
 //	v8::HandleScope handle_scope;
 // 
 //  Feature* feature;
-//  if (args.Length() == 0)
+//  if (info.Length() == 0)
 //  {
 //    feature = new Feature();
 //  }
-//  else if (args.Length() == 1 && args[0]->IsUint32())
+//  else if (info.Length() == 1 && info[0]->IsUint32())
 //  {
-//    feature = new Feature(args[0]->Uint32Value());
+//    feature = new Feature(info[0]->Uint32Value());
 //  }
 //  else
 //  {
@@ -299,41 +297,50 @@ JavascriptEngineV8::call(const std::string& function, osgEarth::Features::Featur
 //  return v8::ThrowException(v8::String::New("Unsupported arguments in constructor call"));
 //}
 
-v8::Handle<v8::Value>
-JavascriptEngineV8::constructBoundsCallback(const v8::Arguments &args)
+void
+JavascriptEngineV8::constructBoundsCallback(const v8::FunctionCallbackInfo<v8::Value> &info)
 {
-  if (!args.IsConstructCall()) 
-    return v8::ThrowException(v8::String::New("Cannot call constructor as function"));
+  if (!info.IsConstructCall())
+  {
+    v8::ThrowException(v8::String::New("Cannot call constructor as function"));
+    return;
+  }
  
 	v8::HandleScope handle_scope;
  
   osgEarth::Bounds* bounds;
-  //if (args.Length() == 0)
+  //if (info.Length() == 0)
   //  bounds = new osgEarth::Bounds();
   //else
-  if (args.Length() == 4)
-    bounds = new osgEarth::Bounds(args[0]->NumberValue(), args[1]->NumberValue(), args[2]->NumberValue(), args[3]->NumberValue());
+  if (info.Length() == 4)
+    bounds = new osgEarth::Bounds(info[0]->NumberValue(), info[1]->NumberValue(), info[2]->NumberValue(), info[3]->NumberValue());
 
-  if (bounds)
-    return JSBounds::WrapBounds(bounds, true);
+  if (!bounds)
+  {
+    v8::ThrowException(v8::String::New("Unsupported arguments in constructor call"));
+    return;
+  }
 
-  return v8::ThrowException(v8::String::New("Unsupported arguments in constructor call"));
+  info.GetReturnValue().Set(JSBounds::WrapBounds(bounds, true));
 }
 
-v8::Handle<v8::Value>
-JavascriptEngineV8::constructVec3dCallback(const v8::Arguments &args)
+void
+JavascriptEngineV8::constructVec3dCallback(const v8::FunctionCallbackInfo<v8::Value> &info)
 {
-  if (!args.IsConstructCall()) 
-    return v8::ThrowException(v8::String::New("Cannot call constructor as function"));
+  if (!info.IsConstructCall()) 
+  {
+    v8::ThrowException(v8::String::New("Cannot call constructor as function"));
+    return;
+  }
  
 	v8::HandleScope handle_scope;
 
   osg::Vec3d* vec;
-  if (args.Length() == 0)
+  if (info.Length() == 0)
     vec = new osg::Vec3d();
-  else if (args.Length() == 1 && args[0]->IsObject())
+  else if (info.Length() == 1 && info[0]->IsObject())
   {
-    v8::Local<v8::Object> obj( v8::Object::Cast(*args[0]) );
+    v8::Local<v8::Object> obj( v8::Object::Cast(*info[0]) );
 
     if (V8Util::CheckObjectType(obj, JSVec3d::GetObjectType()))
     {
@@ -341,30 +348,37 @@ JavascriptEngineV8::constructVec3dCallback(const v8::Arguments &args)
       vec = new osg::Vec3d(*rhs);
     }
   }
-  else if (args.Length() == 3)
-    vec = new osg::Vec3d(args[0]->NumberValue(), args[1]->NumberValue(), args[2]->NumberValue());
+  else if (info.Length() == 3)
+    vec = new osg::Vec3d(info[0]->NumberValue(), info[1]->NumberValue(), info[2]->NumberValue());
 
-  if (vec)
-    return JSVec3d::WrapVec3d(vec, true);
+  if (!vec)
+  {
+    v8::ThrowException(v8::String::New("Unsupported arguments in constructor call"));
+    return;
+  }
+  
+  info.GetReturnValue().Set(JSVec3d::WrapVec3d(vec, true));
 
-  return v8::ThrowException(v8::String::New("Unsupported arguments in constructor call"));
 }
 
-v8::Handle<v8::Value>
-JavascriptEngineV8::constructGeoExtentCallback(const v8::Arguments &args)
+void
+JavascriptEngineV8::constructGeoExtentCallback(const v8::FunctionCallbackInfo<v8::Value> &info)
 {
-  if (!args.IsConstructCall()) 
-    return v8::ThrowException(v8::String::New("Cannot call constructor as function"));
+  if (!info.IsConstructCall())
+  {
+    v8::ThrowException(v8::String::New("Cannot call constructor as function"));
+    return;
+  }
  
 	v8::HandleScope handle_scope;
 
   osgEarth::GeoExtent* extent;// = new osgEarth::GeoExtent(
-  //if (args.Length() == 0)
+  //if (info.Length() == 0)
   //  extent = new osgEarth::GeoExtent();
   //else
-  if (args.Length() == 1 && args[0]->IsObject())
+  if (info.Length() == 1 && info[0]->IsObject())
   {
-    v8::Local<v8::Object> obj( v8::Object::Cast(*args[0]) );
+    v8::Local<v8::Object> obj( v8::Object::Cast(*info[0]) );
 
     //if (V8Util::CheckObjectType(obj, JSSpatialReference::GetObjectType()))
     //{
@@ -378,10 +392,10 @@ JavascriptEngineV8::constructGeoExtentCallback(const v8::Arguments &args)
       extent = new osgEarth::GeoExtent(*rhs);
     }
   }
-  else if (args.Length() == 2 && args[0]->IsObject() && args[1]->IsObject())
+  else if (info.Length() == 2 && info[0]->IsObject() && info[1]->IsObject())
   {
-    v8::Local<v8::Object> obj0( v8::Object::Cast(*args[0]) );
-    v8::Local<v8::Object> obj1( v8::Object::Cast(*args[1]) );
+    v8::Local<v8::Object> obj0( v8::Object::Cast(*info[0]) );
+    v8::Local<v8::Object> obj1( v8::Object::Cast(*info[1]) );
 
     if (V8Util::CheckObjectType(obj0, JSSpatialReference::GetObjectType()) && V8Util::CheckObjectType(obj1, JSBounds::GetObjectType()))
     {
@@ -390,57 +404,65 @@ JavascriptEngineV8::constructGeoExtentCallback(const v8::Arguments &args)
       extent = new osgEarth::GeoExtent(srs, *bounds);
     }
   }
-  else if (args.Length() == 5 && args[0]->IsObject())
+  else if (info.Length() == 5 && info[0]->IsObject())
   {
-    v8::Local<v8::Object> obj( v8::Object::Cast(*args[0]) );
+    v8::Local<v8::Object> obj( v8::Object::Cast(*info[0]) );
 
     if (V8Util::CheckObjectType(obj, JSSpatialReference::GetObjectType()))
     {
       osgEarth::SpatialReference* srs = V8Util::UnwrapObject<osgEarth::SpatialReference>(obj);
-      extent = new osgEarth::GeoExtent(srs, args[1]->NumberValue(), args[2]->NumberValue(), args[3]->NumberValue(), args[4]->NumberValue());
+      extent = new osgEarth::GeoExtent(srs, info[1]->NumberValue(), info[2]->NumberValue(), info[3]->NumberValue(), info[4]->NumberValue());
     }
   }
 
-  if (extent)
-    return JSGeoExtent::WrapGeoExtent(extent, true);
+  if (!extent)
+  {
+    v8::ThrowException(v8::String::New("Unsupported arguments in constructor call"));
+    return;
+  }
 
-  return v8::ThrowException(v8::String::New("Unsupported arguments in constructor call"));
+  info.GetReturnValue().Set(JSGeoExtent::WrapGeoExtent(extent, true));
 }
 
-v8::Handle<v8::Value>
-JavascriptEngineV8::constructSpatialReferenceCallback(const v8::Arguments &args)
+void
+JavascriptEngineV8::constructSpatialReferenceCallback(const v8::FunctionCallbackInfo<v8::Value> &info)
 {
-  if (!args.IsConstructCall()) 
-    return v8::ThrowException(v8::String::New("Cannot call constructor as function"));
+  if (!info.IsConstructCall())
+  {
+    v8::ThrowException(v8::String::New("Cannot call constructor as function"));
+    return;
+  }
 
 	v8::HandleScope handle_scope;
  
   osgEarth::SpatialReference* srs;
-  if (args.Length() == 1 && args[0]->IsString())
+  if (info.Length() == 1 && info[0]->IsString())
   {
-    v8::String::Utf8Value utf8_value(args[0]->ToString());
+    v8::String::Utf8Value utf8_value(info[0]->ToString());
     std::string init(*utf8_value);
     srs = osgEarth::SpatialReference::create(init);
   }
 
-  if (srs)
-    return JSSpatialReference::WrapSpatialReference(srs, true);
+  if (!srs)
+  {
+    v8::ThrowException(v8::String::New("Unsupported arguments in constructor call"));
+    return;
+  }
 
-  return v8::ThrowException(v8::String::New("Unsupported arguments in constructor call"));
+  info.GetReturnValue().Set(JSSpatialReference::WrapSpatialReference(srs, true));
 }
 
-//v8::Handle<v8::Value>
-//JavascriptEngineV8::constructSymbologyGeometryCallback(const v8::Arguments &args)
+//void
+//JavascriptEngineV8::constructSymbologyGeometryCallback(const v8::FunctionCallbackInfo<v8::Value> &info)
 //{
 //	v8::HandleScope handle_scope;
 // 
 //  osgEarth::Symbology::Geometry* geom;
-//  if (args.Length() == 2)
+//  if (info.Length() == 2)
 //    geom = new osgEarth::Symbology::Geometry::create(
 //
 //  if (geom)
-//    return JSBounds::WrapBounds(bounds, true);
+//    info.GetReturnValue().Set(JSBounds::WrapBounds(bounds, true));
 //
 //  //return v8::ThrowException(v8::String::New("Unsupported arguments"));
-//  return v8::Handle<v8::Value>();
 //}

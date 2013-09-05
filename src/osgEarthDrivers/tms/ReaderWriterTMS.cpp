@@ -130,6 +130,15 @@ public:
         return STATUS_OK;
     }
 
+    // TileSource timestamp is the time of the time map metadata.
+    TimeStamp getLastModifiedTime() const
+    {
+        if ( _tileMap.valid() )
+            return _tileMap->getTimeStamp();
+        else
+            return TileSource::getLastModifiedTime();
+    }
+
     // reflect a default cache policy based on whether this TMS repo is
     // local or remote.
     CachePolicy getCachePolicyHint(const Profile* targetProfile) const

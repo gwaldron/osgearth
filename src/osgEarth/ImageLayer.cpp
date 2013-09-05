@@ -561,12 +561,9 @@ ImageLayer::createImageInKeyProfile( const TileKey& key, ProgressCallback* progr
             ImageUtils::normalizeImage( r.getImage() );
             return GeoImage( r.releaseImage(), key.getExtent() );
         }
-        //else
+        //else if ( r.code() == ReadResult::RESULT_EXPIRED )
         //{
-        //    if ( r.code() == ReadResult::RESULT_EXPIRED )
-        //    {
-        //        OE_INFO << LC << getName() << " : " << key.str() << " record expired!" << std::endl;
-        //    }
+        //    OE_INFO << LC << getName() << " : " << key.str() << " record expired!" << std::endl;
         //}
     }
     

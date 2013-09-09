@@ -121,11 +121,7 @@ TileGroup::traverse(osg::NodeVisitor& nv)
 {
     if ( _tilenode && nv.getTraversalMode() == nv.TRAVERSE_ACTIVE_CHILDREN )
     {
-        float range = 0.0f;
-        if ( nv.getVisitorType() == nv.CULL_VISITOR )
-        {
-            range = nv.getDistanceToViewPoint( getBound().center(), true );
-        }
+        float range = nv.getDistanceToViewPoint( getBound().center(), true );
 
         // collect information about the paged children:
         bool     considerSubtiles      = false;

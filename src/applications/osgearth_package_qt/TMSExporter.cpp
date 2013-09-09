@@ -49,7 +49,7 @@ namespace
   /** Packaging task for a single layer. */
   struct PackageLayer
   {
-    void init(osgEarth::Map* map, osgEarth::ImageLayer* layer, osgDB::Options* options, const std::string& rootFolder, const std::string& layerFolder, bool verbose, bool overwrite, bool keepEmpties, unsigned int maxLevel, const std::string& extension, std::vector< osgEarth::Bounds >& bounds)
+    void init(osgEarth::Map* map, osgEarth::ImageLayer* layer, osgDB::Options* options, const std::string& rootFolder, const std::string& layerFolder, bool verbose, bool overwrite, bool keepEmpties, unsigned int maxLevel, const std::string& extension, osgEarth::ProgressCallback* callback, std::vector< osgEarth::Bounds >& bounds)
     {
       _map = map;
       _imageLayer = layer;
@@ -62,10 +62,11 @@ namespace
       _maxLevel = maxLevel;
       _extension = extension;
       _bounds = bounds;
+      _callback = callback;
       _packageResult.ok = false;
     }
 
-    void init(osgEarth::Map* map, osgEarth::ElevationLayer* layer, osgDB::Options* options, const std::string& rootFolder, const std::string& layerFolder, bool verbose, bool overwrite, bool keepEmpties, unsigned int maxLevel, const std::string& extension, std::vector< osgEarth::Bounds >& bounds)
+    void init(osgEarth::Map* map, osgEarth::ElevationLayer* layer, osgDB::Options* options, const std::string& rootFolder, const std::string& layerFolder, bool verbose, bool overwrite, bool keepEmpties, unsigned int maxLevel, const std::string& extension, osgEarth::ProgressCallback* callback, std::vector< osgEarth::Bounds >& bounds)
     {
       _map = map;
       _elevationLayer = layer;
@@ -78,6 +79,7 @@ namespace
       _maxLevel = maxLevel;
       _extension = extension;
       _bounds = bounds;
+      _callback = callback;
       _packageResult.ok = false;
     }
 
@@ -109,14 +111,14 @@ namespace
         if (_verbose)
           OE_NOTICE << LC << "Packaging image layer \"" << _layerFolder << "\"" << std::endl;
 
-        _packageResult = packager.package( _imageLayer.get(), layerRoot, _extension );
+        _packageResult = packager.package( _imageLayer.get(), layerRoot, _callback, _extension );
       }
       else if (_elevationLayer.valid())
       {
         if (_verbose)
           OE_NOTICE << LC << "Packaging elevation layer \"" << _layerFolder << "\"" << std::endl;
 
-        _packageResult = packager.package( _elevationLayer.get(), layerRoot );
+        _packageResult = packager.package( _elevationLayer.get(), layerRoot, _callback );
       }
     }
 
@@ -132,6 +134,7 @@ namespace
     unsigned int _maxLevel;
     std::string _extension;
     std::vector< osgEarth::Bounds > _bounds;
+    osg::ref_ptr<osgEarth::ProgressCallback> _callback;
     TMSPackager::Result _packageResult;
   };
 }
@@ -208,8 +211,7 @@ int TMSExporter::exportTMS(MapNode* mapNode, const std::string& path, std::vecto
               layerFolder = Stringify() << "image_layer_" << imageCount;
 
           ParallelTask<PackageLayer>* task = new ParallelTask<PackageLayer>( &semaphore );
-          task->init(map, layer, options, rootFolder, layerFolder, true, overwrite, _keepEmpties, _maxLevel, extension, bounds);
-          task->setProgressCallback(new PackageLayerProgressCallback(this));
+          task->init(map, layer, options, rootFolder, layerFolder, true, overwrite, _keepEmpties, _maxLevel, extension, new PackageLayerProgressCallback(this, taskCount), bounds);
           tasks.push_back(task);
           taskCount++;
       }
@@ -230,8 +232,7 @@ int TMSExporter::exportTMS(MapNode* mapNode, const std::string& path, std::vecto
               layerFolder = Stringify() << "elevation_layer_" << elevCount;
 
           ParallelTask<PackageLayer>* task = new ParallelTask<PackageLayer>( &semaphore );
-          task->init(map, layer, options, rootFolder, layerFolder, true, overwrite, _keepEmpties, _maxLevel, extension, bounds);
-          task->setProgressCallback(new PackageLayerProgressCallback(this));
+          task->init(map, layer, options, rootFolder, layerFolder, true, overwrite, _keepEmpties, _maxLevel, extension, new PackageLayerProgressCallback(this, taskCount), bounds);
           tasks.push_back(task);
           taskCount++;
       }
@@ -240,9 +241,10 @@ int TMSExporter::exportTMS(MapNode* mapNode, const std::string& path, std::vecto
 
   // Run all the tasks in parallel
   _totalTasks = taskCount;
-  _completedTasks = 0;
+  _percentComplete = 0.0;
 
   semaphore.reset( _totalTasks );
+  _taskProgress = std::vector<double>(_totalTasks, 0.0);
 
   for( TaskRequestVector::iterator i = tasks.begin(); i != tasks.end(); ++i )
         _taskService->add( i->get() );
@@ -311,18 +313,34 @@ int TMSExporter::exportTMS(MapNode* mapNode, const std::string& path, std::vecto
   return elevCount + imageCount;
 }
 
-void TMSExporter::packageTaskComplete()
+void TMSExporter::packageTaskProgress(int id, double complete)
 {
-  OpenThreads::ScopedLock<OpenThreads::Mutex> lock( _m );
-
-  _completedTasks++;
-
-  //if ( _progress.valid() && (_progress->isCanceled() || _progress->reportProgress(_completedTasks, _totalTasks)) )
-  //{
-  //    //Canceled
-  //}
-
   if (_progress.valid())
-    _progress->reportProgress(_completedTasks, _totalTasks);
+  {
+    OpenThreads::ScopedLock<OpenThreads::Mutex> lock( _m );
+
+    _percentComplete += complete - _taskProgress[id];
+    _taskProgress[id] = complete;
+
+    _progress->reportProgress(_percentComplete, _totalTasks);
+  }
+}
+
+void TMSExporter::packageTaskComplete(int id)
+{
+  if (_progress.valid())
+  {
+    OpenThreads::ScopedLock<OpenThreads::Mutex> lock( _m );
+
+    _percentComplete += 1.0 - _taskProgress[id];
+    _taskProgress[id] = 1.0;
+
+    //if ( _progress.valid() && (_progress->isCanceled() || _progress->reportProgress(_completedTasks, _totalTasks)) )
+    //{
+    //    //Canceled
+    //}
+
+    _progress->reportProgress(_percentComplete, _totalTasks);
+  }
 }
 

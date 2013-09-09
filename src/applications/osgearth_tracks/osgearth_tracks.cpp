@@ -318,7 +318,8 @@ main(int argc, char** argv)
 
     // create some track nodes.
     TrackSims trackSims;
-    HTMGroup* tracks = new HTMGroup();
+    osg::Group* tracks = new osg::Group();
+    //HTMGroup* tracks = new HTMGroup();
     createTrackNodes( mapNode, tracks, schema, trackSims );
     root->addChild( tracks );
 
@@ -336,7 +337,7 @@ main(int argc, char** argv)
     Decluttering::setOptions( g_dcOptions );
 
     // attach the simulator to the viewer.
-    //viewer.addUpdateOperation( new TrackSimUpdate(trackSims) );
+    viewer.addUpdateOperation( new TrackSimUpdate(trackSims) );
     viewer.setRunFrameScheme( viewer.CONTINUOUS );
 
     // configure a UI for controlling the demo

@@ -40,17 +40,41 @@ namespace
     struct OnTileAddedOperation : public BaseOp
     {
         TileKey _key;
-        osg::ref_ptr<osg::Node> _node;
+        osg::observer_ptr<osg::Node> _node;
+        unsigned _count;
+        //osg::ref_ptr<osg::Node> _node;
 
         OnTileAddedOperation(const TileKey& key, osg::Node* node, Terrain* terrain)
-            : BaseOp(terrain), _key(key), _node(node) { }
+            : BaseOp(terrain), _key(key), _node(node), _count(0) { }
 
         void operator()(osg::Object*)
         {
-            if ( _node.valid() && _node->referenceCount() > 1 && _terrain.valid() )
+            ++_count;
+            this->setKeep( false );
+
+            osg::ref_ptr<osg::Node> node;
+            if ( _terrain.valid() && _node.lock(node) )
             {
-                _terrain->fireTileAdded( _key, _node.get() );
+                if ( node->getNumParents() > 0 )
+                {
+                    //OE_NOTICE << LC << "FIRING onTileAdded for " << _key.str() << " (tries=" << _count << ")" << std::endl;
+                    _terrain->fireTileAdded( _key, node.get() );
+                }
+                else
+                {
+                    //OE_NOTICE << LC << "Deferring onTileAdded for " << _key.str() << std::endl;
+                    this->setKeep( true );
+                }
             }
+            else
+            {
+                // nop; tile expired; let it go.
+                //OE_NOTICE << "Tile expired before notification: " << _key.str() << std::endl;
+            }
+            //if ( _node.valid() && _node->referenceCount() > 1 && _terrain.valid() )
+            //{
+            //    _terrain->fireTileAdded( _key, _node.get() );
+            //}
         }
     };
 }

@@ -405,5 +405,11 @@ AnnotationNode::applyGeneralSymbology(const Style& style)
                 GL_LIGHTING,
                 (render->lighting() == true? osg::StateAttribute::ON : osg::StateAttribute::OFF) | osg::StateAttribute::OVERRIDE );
         }
+
+        if ( render->depthOffset().isSet() ) // && !_depthAdj )
+        {
+            _doAdapter.setDepthOffsetOptions( *render->depthOffset() );
+            setDepthAdjustment( true );
+        }
     }
 }

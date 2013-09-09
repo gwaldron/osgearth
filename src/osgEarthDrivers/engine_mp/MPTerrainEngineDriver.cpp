@@ -107,7 +107,10 @@ public:
 
                 osg::Node* node = engineNode->createUpsampledNode( key, progress );
                 if ( node )
+                {
+                    engineNode->getTerrain()->notifyTileAdded(key, node);
                     return ReadResult( node, ReadResult::FILE_LOADED );
+                }
                 else
                     return new InvalidTileNode(key);
             }

@@ -177,8 +177,9 @@ StyleSheet* buildStyleSheet( const osg::Vec4 &color, float width )
     ls->stroke()->color() = color;
     ls->stroke()->width() = width;
 
-    //AltitudeSymbol* as = style.getOrCreate<AltitudeSymbol>();
-    //as->clamping() = AltitudeSymbol::CLAMP_TO_TERRAIN;
+    AltitudeSymbol* as = style.getOrCreate<AltitudeSymbol>();
+    as->clamping() = as->CLAMP_TO_TERRAIN;
+    as->technique() = as->TECHNIQUE_DRAPE;
 
     StyleSheet* styleSheet = new StyleSheet();
     styleSheet->addStyle( style );

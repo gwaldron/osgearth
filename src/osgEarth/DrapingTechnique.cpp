@@ -289,7 +289,7 @@ _textureSize     ( 1024 ),
 _useShaders      ( false ),
 _mipmapping      ( false ),
 _rttBlending     ( true ),
-_attachStencil   ( true ),
+_attachStencil   ( false ),
 _maxFarNearRatio ( 0.0 )
 {
     // cap the ratio of far plane width to near plane width, because if this
@@ -368,10 +368,13 @@ DrapingTechnique::setUpCamera(OverlayDecorator::TechRTTParams& params)
     params._rttCamera->setComputeNearFarMode( osg::CullSettings::DO_NOT_COMPUTE_NEAR_FAR );
     params._rttCamera->setRenderOrder( osg::Camera::PRE_RENDER );
     params._rttCamera->setRenderTargetImplementation( osg::Camera::FRAME_BUFFER_OBJECT );
-    params._rttCamera->attach( osg::Camera::COLOR_BUFFER, projTexture, 0, 0, _mipmapping );
+    params._rttCamera->setImplicitBufferAttachmentMask(0, 0);
+    params._rttCamera->attach( osg::Camera::COLOR_BUFFER0, projTexture, 0, 0, _mipmapping );
 
     if ( _attachStencil )
     {
+        OE_INFO << LC << "Attaching a stencil buffer to the RTT camera" << std::endl;
+
         // try a depth-packed buffer. failing that, try a normal one.. if the FBO doesn't support
         // that (which is doesn't on some GPUs like Intel), it will automatically fall back on 
         // a PBUFFER_RTT impl
@@ -389,11 +392,11 @@ DrapingTechnique::setUpCamera(OverlayDecorator::TechRTTParams& params)
         }
 
         params._rttCamera->setClearStencil( 0 );
-        params._rttCamera->setClearMask( GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT );
+        params._rttCamera->setClearMask( GL_COLOR_BUFFER_BIT | GL_STENCIL_BUFFER_BIT ); //GL_DEPTH_BUFFER_BIT |  );
     }
     else
     {
-        params._rttCamera->setClearMask( GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT );
+        params._rttCamera->setClearMask( GL_COLOR_BUFFER_BIT ); //| GL_DEPTH_BUFFER_BIT );
     }
 
     // set up a StateSet for the RTT camera.
@@ -408,7 +411,6 @@ DrapingTechnique::setUpCamera(OverlayDecorator::TechRTTParams& params)
         VirtualProgram* vp = VirtualProgram::getOrCreate(rttStateSet);
         vp->setName( "DrapingTechnique RTT" );
         vp->setInheritShaders( false );
-        //rttStateSet->setAttributeAndModes( vp, osg::StateAttribute::ON );
     }
     
     // active blending within the RTT camera's FBO
@@ -521,16 +523,19 @@ DrapingTechnique::preCullTerrain(OverlayDecorator::TechRTTParams& params,
         setUpCamera( params );
     }
 
+#if 0 // FFP not supported anymore.
     if ( params._rttCamera.valid() )
     {
         LocalPerViewData& local = *static_cast<LocalPerViewData*>(params._techniqueData.get());
         if ( local._texGen.valid() )
         {
             // FFP path only
+            // TODO: remove. FFP is no longer supported.
             cv->getCurrentRenderBin()->getStage()->addPositionedTextureAttribute(
                 *_textureUnit, cv->getModelViewMatrix(), local._texGen.get() );
         }
     }
+#endif
 }
 
 
@@ -564,11 +569,13 @@ DrapingTechnique::cullOverlayGroup(OverlayDecorator::TechRTTParams& params,
             // precision problems in the shader (and it's faster too)
             local._texGenUniform->set( cv->getCurrentCamera()->getInverseViewMatrix() * VPT );
         }
+#if 0 // FFP no longer supported.
         else
         {
             // FFP path
             local._texGen->setPlanesFromMatrix( VPT );
         }
+#endif
 
         // traverse the overlay group (via the RTT camera).
         params._rttCamera->accept( *cv );
@@ -579,10 +586,11 @@ DrapingTechnique::cullOverlayGroup(OverlayDecorator::TechRTTParams& params,
 void
 DrapingTechnique::setTextureSize( int texSize )
 {
-    if ( texSize != _textureSize.value() )
-    {
-        _textureSize = texSize;
-    }
+    _textureSize = texSize;
+    //if ( texSize != _textureSize.value() )
+    //{
+    //    _textureSize = texSize;
+    //}
 }
 
 void
@@ -645,9 +653,8 @@ DrapingTechnique::onInstall( TerrainEngineNode* engine )
     {
         unsigned maxSize = Registry::capabilities().getMaxFastTextureSize();
         _textureSize.init( osg::minimum( 4096u, maxSize ) );
-
-        OE_INFO << LC << "Using texture size = " << *_textureSize << std::endl;
     }
+    OE_INFO << LC << "Using texture size = " << *_textureSize << std::endl;
 }
 
 void

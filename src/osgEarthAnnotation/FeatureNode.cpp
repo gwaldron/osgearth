@@ -169,7 +169,9 @@ FeatureNode::init()
 
                 // do an initial clamp to get started.
                 clampMesh( getMapNode()->getTerrain()->getGraph() );
-            }
+            } 
+
+            applyGeneralSymbology( *_feature->style() );
         }
     }
 }
@@ -219,7 +221,7 @@ FeatureNode::getAttachPoint()
 
 // This will be called by AnnotationNode when a new terrain tile comes in.
 void
-FeatureNode::reclamp( const TileKey& key, osg::Node* tile, const Terrain* )
+FeatureNode::reclamp( const TileKey& key, osg::Node* tile, const Terrain* terrain )
 {
     if ( _featurePolytope.contains( tile->getBound() ) )
     {
@@ -246,7 +248,7 @@ FeatureNode::clampMesh( osg::Node* terrainModel )
         }
 
         MeshClamper clamper( terrainModel, getMapNode()->getMapSRS(), getMapNode()->isGeocentric(), relative, scale, offset );
-        this->accept( clamper );
+        getAttachPoint()->accept( clamper );
 
         this->dirtyBound();
     }

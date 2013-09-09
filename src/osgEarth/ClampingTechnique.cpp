@@ -317,6 +317,7 @@ ClampingTechnique::setUpCamera(OverlayDecorator::TechRTTParams& params)
     params._rttCamera->setViewport( 0, 0, *_textureSize, *_textureSize );
     params._rttCamera->setRenderOrder( osg::Camera::PRE_RENDER );
     params._rttCamera->setRenderTargetImplementation( osg::Camera::FRAME_BUFFER_OBJECT );
+    params._rttCamera->setImplicitBufferAttachmentMask(0, 0);
     params._rttCamera->attach( osg::Camera::DEPTH_BUFFER, local->_rttTexture.get() );
 
 #ifdef DUMP_RTT_IMAGE
@@ -331,7 +332,9 @@ ClampingTechnique::setUpCamera(OverlayDecorator::TechRTTParams& params)
     osg::StateSet* rttStateSet = params._rttCamera->getOrCreateStateSet();
 
     // lighting is off. We don't want draped items to be lit.
-    //rttStateSet->setMode( GL_LIGHTING, osg::StateAttribute::OFF | osg::StateAttribute::PROTECTED );
+    //rttStateSet->setMode( 
+    //    GL_LIGHTING, 
+    //    osg::StateAttribute::OFF | osg::StateAttribute::PROTECTED );
 
     rttStateSet->setMode(
         GL_BLEND, 

@@ -40,7 +40,7 @@ _overlayBlending     ( true ),
 _overlayMipMapping   ( false ),
 _overlayTextureSize  ( 4096 ),
 _terrainOptions      ( 0L ),
-_overlayAttachStencil( true )
+_overlayAttachStencil( false )
 {
     mergeConfig( conf );
 }
@@ -53,7 +53,7 @@ _overlayVertexWarping( false ),
 _overlayBlending     ( true ),
 _overlayTextureSize  ( 4096 ),
 _overlayMipMapping   ( false ),
-_overlayAttachStencil( true ),
+_overlayAttachStencil( false ),
 _terrainOptions      ( 0L )
 {
     setTerrainOptions( to );
@@ -68,7 +68,7 @@ _overlayBlending     ( true ),
 _overlayTextureSize  ( 4096 ),
 _overlayMipMapping   ( false ),
 _terrainOptions      ( 0L ),
-_overlayAttachStencil( true )
+_overlayAttachStencil( false )
 {
     mergeConfig( rhs.getConfig() );
 }

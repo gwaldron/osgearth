@@ -48,28 +48,6 @@ using namespace osgEarth::Symbology;
 
 #define USE_SINGLE_COLOR 0
 
-namespace
-{
-    void applyLineAndPointSymbology( osg::StateSet* stateSet, const LineSymbol* line, const PointSymbol* point )
-    {
-        if ( line )
-        {
-            float width = std::max( 1.0f, *line->stroke()->width() );
-            stateSet->setAttributeAndModes(new osg::LineWidth(width), 1);
-            if ( line->stroke()->stipple().isSet() )
-            {
-                stateSet->setAttributeAndModes( new osg::LineStipple(1, *line->stroke()->stipple()) );
-            }
-        }
-
-        if ( point )
-        {
-            float size = std::max( 0.1f, *point->size() );
-            stateSet->setAttributeAndModes(new osg::Point(size), 1);
-        }
-    }
-}
-
 
 BuildGeometryFilter::BuildGeometryFilter( const Style& style ) :
 _style        ( style ),
@@ -237,7 +215,10 @@ BuildGeometryFilter::process( FeatureList& features, const FilterContext& contex
                 osgGeom->addPrimitiveSet( new osg::DrawArrays( primMode, 0, part->size() ) );
                 osgGeom->setVertexArray( allPoints );
 
-                applyLineAndPointSymbology( osgGeom->getOrCreateStateSet(), lineSymbol, pointSymbol );
+                if ( lineSymbol )
+                    applyLineSymbology( osgGeom->getOrCreateStateSet(), lineSymbol );
+                if ( pointSymbol )
+                    applyPointSymbology( osgGeom->getOrCreateStateSet(), pointSymbol );
 
                 if ( primMode == GL_POINTS && allPoints->size() == 1 )
                 {
@@ -340,15 +321,14 @@ BuildGeometryFilter::process( FeatureList& features, const FilterContext& contex
                         ms.run( *outline, threshold, *_geoInterp );
                 }
 
-                applyLineAndPointSymbology( outline->getOrCreateStateSet(), lineSymbol, 0L );
+                if ( lineSymbol )
+                    applyLineSymbology( osgGeom->getOrCreateStateSet(), lineSymbol );
 
                 // make normals before adding an outline
                 osgUtil::SmoothingVisitor sv;
                 _geode->accept( sv );
 
                 _geode->addDrawable( outline );
-
-                //_featureNode->addDrawable( outline, input->getFID() );
 
                 // Mark each primitive set with its feature ID.
                 if ( context.featureIndex() )

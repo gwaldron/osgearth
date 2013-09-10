@@ -41,7 +41,7 @@ _dragger( dragger )
 }
 
 void onTileAdded( const TileKey& key, osg::Node* tile, TerrainCallbackContext& context )
-{
+{    
     _dragger->reclamp( key, tile, context.getTerrain() );
 }
 
@@ -50,7 +50,6 @@ Dragger* _dragger;
 
 /**********************************************************/
 Dragger::Dragger( MapNode* mapNode, int modKeyMask, const DragMode& defaultMode ):
-_mapNode( mapNode ),
 _position( mapNode->getMapSRS(), 0,0,0, ALTMODE_RELATIVE),
 _dragging(false),
 _hovered(false),
@@ -58,7 +57,7 @@ _modKeyMask(modKeyMask),
 _defaultMode(defaultMode),
 _elevationDragging(false),
 _verticalMinimum(0.0)
-{
+{    
     setNumChildrenRequiringEventTraversal( 1 );
 
     _autoClampCallback = new ClampDraggerCallback( this );
@@ -87,7 +86,7 @@ Dragger::setMapNode( MapNode* mapNode )
         _mapNode = mapNode;
 
         if ( _mapNode.valid() && _autoClampCallback.valid() )
-        {
+        {            
             _mapNode->getTerrain()->addTerrainCallback( _autoClampCallback.get() );
         }
     }
@@ -370,7 +369,7 @@ void Dragger::setHover( bool hovered)
 }
 
 void Dragger::reclamp( const TileKey& key, osg::Node* tile, const Terrain* terrain )
-{    
+{        
     GeoPoint p;
     _position.transform( key.getExtent().getSRS(), p );
     // first verify that the control position intersects the tile:

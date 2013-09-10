@@ -304,7 +304,7 @@ ImageOverlay::init()
 
         if ( Registry::capabilities().supportsGLSL() )
         {
-            OE_WARN << LC << "ShaderGen RUNNING" << std::endl;
+            //OE_WARN << LC << "ShaderGen RUNNING" << std::endl;
             ShaderGenerator gen;
             _geode->accept( gen );
             //// need a shader that supports one texture

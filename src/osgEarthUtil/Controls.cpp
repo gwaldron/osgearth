@@ -47,128 +47,6 @@ using namespace osgEarth::Util::Controls;
 
 namespace
 {
-    // ControlNodeBin shaders.
-
-#ifdef OSG_GLES2_AVAILABLE
-    const char* s_controlVertexShader =
-        "#version " GLSL_VERSION_STR "\n"
-        GLSL_DEFAULT_PRECISION_FLOAT "\n"
-        "varying mediump vec4 texcoord; \n"
-        "varying mediump vec4 vColor; \n"
-        "attribute vec4 osg_MultiTexCoord0; \n"
-        "attribute vec4 osg_Color; \n"
-        "void main() \n"
-        "{ \n"
-        "    gl_Position = gl_ModelViewProjectionMatrix * gl_Vertex; \n"
-        "    texcoord = osg_MultiTexCoord0; \n"
-        "    vColor = osg_Color; \n"
-        "} \n";
-    
-    const char* s_controlFragmentShader =
-    "#version " GLSL_VERSION_STR "\n"
-    GLSL_DEFAULT_PRECISION_FLOAT "\n"
-    "uniform sampler2D tex0; \n"
-    "uniform float oe_controls_visibleTime; \n"
-    "uniform float osg_FrameTime; \n"
-    "varying mediump vec4 texcoord; \n"
-    "varying mediump vec4 vColor; \n"
-    "void main() \n"
-    "{ \n"
-    "    float opacity = clamp( osg_FrameTime - oe_controls_visibleTime, 0.0, 1.0 ); \n"
-    "    gl_FragColor = vec4(vColor.rgb, vColor.a * opacity); \n"
-    "} \n";
-    
-    const char* s_imageControlFragmentShader =
-    "#version " GLSL_VERSION_STR "\n"
-    GLSL_DEFAULT_PRECISION_FLOAT "\n"
-    "uniform sampler2D tex0; \n"
-    "uniform float oe_controls_visibleTime; \n"
-    "uniform float osg_FrameTime; \n"
-    "varying mediump vec4 texcoord; \n"
-    "varying mediump vec4 vColor; \n"
-    "void main() \n"
-    "{ \n"
-    "    float opacity = clamp( osg_FrameTime - oe_controls_visibleTime, 0.0, 1.0 ); \n"
-    "    vec4 texel = texture2D(tex0, texcoord.st); \n"
-    "    gl_FragColor = vec4(texel.rgb, texel.a * opacity); \n"
-    "} \n";
-    
-    const char* s_labelControlFragmentShader =
-    "#version " GLSL_VERSION_STR "\n"
-    GLSL_DEFAULT_PRECISION_FLOAT "\n"
-    "uniform sampler2D tex0; \n"
-    "uniform float oe_controls_visibleTime; \n"
-    "uniform float osg_FrameTime; \n"
-    "varying mediump vec4 texcoord; \n"
-    "varying mediump vec4 vColor; \n"
-    "void main() \n"
-    "{ \n"
-    "    float opacity = clamp( osg_FrameTime - oe_controls_visibleTime, 0.0, 1.0 ); \n"
-    "    vec4 texel = texture2D(tex0, texcoord.st); \n"
-    "    gl_FragColor = vec4(vColor.rgb, texel.a * opacity); \n"
-    "} \n";
-#else
-
-    const char* s_controlVertexShader =
-    "#version " GLSL_VERSION_STR "\n"
-    GLSL_DEFAULT_PRECISION_FLOAT "\n"
-    "varying vec4 texcoord; \n"
-    "void main() \n"
-    "{ \n"
-    "    gl_Position = gl_ModelViewProjectionMatrix * gl_Vertex; \n"
-    "    texcoord = gl_MultiTexCoord0; \n"
-    "    gl_FrontColor = gl_Color; \n"
-    "} \n";
-
-    const char* s_controlFragmentShader =
-    "#version " GLSL_VERSION_STR "\n"
-    GLSL_DEFAULT_PRECISION_FLOAT "\n"
-    "uniform sampler2D tex0; \n"
-    "uniform float oe_controls_visibleTime; \n"
-    "uniform float osg_FrameTime; \n"
-    "void main() \n"
-    "{ \n"
-    "    float opacity = clamp( osg_FrameTime - oe_controls_visibleTime, 0.0, 1.0 ); \n"
-    "    gl_FragColor = vec4(gl_Color.rgb, gl_Color.a * opacity); \n"
-    "} \n";
-    
-    const char* s_imageControlFragmentShader =
-    "#version " GLSL_VERSION_STR "\n"
-    GLSL_DEFAULT_PRECISION_FLOAT "\n"
-    "uniform sampler2D tex0; \n"
-    "uniform float oe_controls_visibleTime; \n"
-    "uniform float osg_FrameTime; \n"
-    "varying vec4 texcoord; \n"
-    "void main() \n"
-    "{ \n"
-    "    float opacity = clamp( osg_FrameTime - oe_controls_visibleTime, 0.0, 1.0 ); \n"
-    "    vec4 texel = texture2D(tex0, texcoord.st); \n"
-    "    gl_FragColor = vec4(texel.rgb, texel.a * opacity); \n"
-    "} \n";
-    
-    const char* s_labelControlFragmentShader =
-    "#version " GLSL_VERSION_STR "\n"
-    GLSL_DEFAULT_PRECISION_FLOAT "\n"
-    "uniform sampler2D tex0; \n"
-    "uniform float oe_controls_visibleTime; \n"
-    "uniform float osg_FrameTime; \n"
-    "varying vec4 texcoord; \n"
-    "void main() \n"
-    "{ \n"
-    "    float opacity = clamp( osg_FrameTime - oe_controls_visibleTime, 0.0, 1.0 ); \n"
-    "    vec4 texel = texture2D(tex0, texcoord.st); \n"
-    "    gl_FragColor = vec4(gl_Color.rgb, texel.a * opacity); \n"
-    "} \n";
-
-#endif
-
-    
-}
-
-// ---------------------------------------------------------------------------
-
-namespace
-{
     void calculateRotatedSize( float w, float h, float angle_rad, float& out_w, float& out_h )
     {
         float x1 = -w/2, x2 = w/2, x3 =  w/2, x4 = -w/2;
@@ -586,7 +464,6 @@ Control::calcPos(const ControlContext& cx, const osg::Vec2f& cursor, const osg::
     {
         if ( _valign == ALIGN_CENTER )
         {
-            //_renderPos.y() = cursor.y() + 0.5*(parentSize.y() - _renderSize.y());
             _renderPos.y() = cursor.y() + 0.5*parentSize.y() - 0.5*(_renderSize.y() - padding().y());
         }
         else if ( _valign == ALIGN_BOTTOM )
@@ -617,7 +494,7 @@ Control::draw(const ControlContext& cx, DrawableList& out )
     {
         if ( !(_backColor.isSet() && _backColor->a() == 0) && _renderSize.x() > 0 && _renderSize.y() > 0 )
         {
-            float vph = cx._vp->height(); // - padding().bottom();
+            float vph = cx._vp->height();
 
             _geom = new osg::Geometry();
             _geom->setUseVertexBufferObjects(true);
@@ -637,14 +514,6 @@ Control::draw(const ControlContext& cx, DrawableList& out )
             (*colors)[0] = _active && _activeColor.isSet() ? _activeColor.value() : _backColor.value();
             _geom->setColorArray( colors );
             _geom->setColorBinding( osg::Geometry::BIND_OVERALL );
-            
-            if ( Registry::capabilities().supportsGLSL() )
-            {
-                osg::Program* program = new osg::Program();
-                program->addShader( new osg::Shader( osg::Shader::VERTEX, s_controlVertexShader ) );
-                program->addShader( new osg::Shader( osg::Shader::FRAGMENT, s_controlFragmentShader ) );
-                _geom->getOrCreateStateSet()->setAttributeAndModes( program, osg::StateAttribute::ON );
-            }
 
             out.push_back( _geom.get() );
         }
@@ -730,7 +599,7 @@ _text    ( text ),
 _fontSize( fontSize ),
 _encoding( osgText::String::ENCODING_UNDEFINED ),
 _backdropType( osgText::Text::OUTLINE ),
-_backdropImpl( osgText::Text::STENCIL_BUFFER ),
+_backdropImpl( osgText::Text::NO_DEPTH_BUFFER ),
 _backdropOffset( 0.03f )
 {    
     setFont( Registry::instance()->getDefaultFont() );    
@@ -745,7 +614,7 @@ _text    ( text ),
 _fontSize( fontSize ),
 _encoding( osgText::String::ENCODING_UNDEFINED ),
 _backdropType( osgText::Text::OUTLINE ),
-_backdropImpl( osgText::Text::STENCIL_BUFFER ),
+_backdropImpl( osgText::Text::NO_DEPTH_BUFFER ),
 _backdropOffset( 0.03f )
 {    	
     setFont( Registry::instance()->getDefaultFont() );   
@@ -759,7 +628,7 @@ LabelControl::LabelControl(Control*           valueControl,
 _fontSize( fontSize ),
 _encoding( osgText::String::ENCODING_UNDEFINED ),
 _backdropType( osgText::Text::OUTLINE ),
-_backdropImpl( osgText::Text::STENCIL_BUFFER ),
+_backdropImpl( osgText::Text::NO_DEPTH_BUFFER ),
 _backdropOffset( 0.03f )
 {
     setFont( Registry::instance()->getDefaultFont() );    
@@ -776,7 +645,7 @@ LabelControl::LabelControl(Control*           valueControl,
 _fontSize( fontSize ),
 _encoding( osgText::String::ENCODING_UNDEFINED ),
 _backdropType( osgText::Text::OUTLINE ),
-_backdropImpl( osgText::Text::STENCIL_BUFFER ),
+_backdropImpl( osgText::Text::NO_DEPTH_BUFFER ),
 _backdropOffset( 0.03f )
 {    	
     setFont( Registry::instance()->getDefaultFont() );   
@@ -868,28 +737,25 @@ LabelControl::calcSize(const ControlContext& cx, osg::Vec2f& out_size)
         // we have to create the drawable during the layout pass so we can calculate its size.
         LabelText* t = new LabelText();
 
-#if 1
-        if ( Registry::capabilities().supportsGLSL() )
-        {
-            // needs a special shader
-            // todo: doesn't work. why?
-            osg::Program* program = new osg::Program();
-            program->addShader( new osg::Shader( osg::Shader::VERTEX, s_controlVertexShader ) );
-            program->addShader( new osg::Shader( osg::Shader::FRAGMENT, s_labelControlFragmentShader ) );
-            t->getOrCreateStateSet()->setAttributeAndModes( program, osg::StateAttribute::ON );
-        }
-#endif
-
         t->setText( _text, _encoding );
         // yes, object coords. screen coords won't work becuase the bounding box will be wrong.
         t->setCharacterSizeMode( osgText::Text::OBJECT_COORDS );
         t->setCharacterSize( _fontSize );
+
         // always align to top. layout alignment gets calculated layer in Control::calcPos().
         t->setAlignment( osgText::Text::LEFT_TOP ); 
         t->setColor( foreColor().value() );
+
+        // set up the font. When you do this, OSG automatically tries to put the text object
+        // in the transparent render bin. We do not want that, so we will set it back to
+        // INHERIT.
         if ( _font.valid() )
             t->setFont( _font.get() );
 
+        if ( t->getStateSet() )
+            t->getStateSet()->setRenderBinToInherit();
+
+        // set up the backdrop halo:
         if ( haloColor().isSet() )
         {
             t->setBackdropType( _backdropType );
@@ -916,9 +782,9 @@ LabelControl::calcSize(const ControlContext& cx, osg::Vec2f& out_size)
             (_bmax.x() - _bmin.x()) + padding().x(),
             (_bmax.y() - _bmin.y()) + padding().y() );
 
-    // If width explicitly set and > measured width of label text - use it.
-    if (width().isSet() && width().get() > _renderSize.x()) _renderSize.x() = width().get();
-    
+        // If width explicitly set and > measured width of label text - use it.
+        if (width().isSet() && width().get() > _renderSize.x()) _renderSize.x() = width().get();
+
         _drawable = t;
 
         out_size.set(
@@ -929,8 +795,6 @@ LabelControl::calcSize(const ControlContext& cx, osg::Vec2f& out_size)
     {
         out_size.set(0,0);
     }
-
-    //_dirty = false;
 }
 
 void
@@ -940,7 +804,7 @@ LabelControl::draw( const ControlContext& cx, DrawableList& out )
     {
         Control::draw( cx, out );
 
-        float vph = cx._vp->height(); // - padding().bottom();
+        float vph = cx._vp->height();
 
         LabelText* t = static_cast<LabelText*>( _drawable.get() );
         osg::BoundingBox bbox = t->getTextBB();
@@ -1151,16 +1015,6 @@ ImageControl::draw( const ControlContext& cx, DrawableList& out )
 
         osg::TexEnv* texenv = new osg::TexEnv( osg::TexEnv::MODULATE );
         g->getStateSet()->setTextureAttributeAndModes( 0, texenv, osg::StateAttribute::ON );
-        
-#ifndef IMAGECONTROL_TEXRECT
-        if ( Registry::capabilities().supportsGLSL() )
-        {
-            osg::Program* program = new osg::Program();
-            program->addShader( new osg::Shader( osg::Shader::VERTEX, s_controlVertexShader ) );
-            program->addShader( new osg::Shader( osg::Shader::FRAGMENT, s_imageControlFragmentShader ) );
-            g->getStateSet()->setAttributeAndModes( program, osg::StateAttribute::ON );
-        }
-#endif
 
         out.push_back( g );
 
@@ -1297,14 +1151,6 @@ HSliderControl::draw( const ControlContext& cx, DrawableList& out )
             (*c)[0] = *foreColor();
             g->setColorArray( c );
             g->setColorBinding( osg::Geometry::BIND_OVERALL );
-            
-            if ( Registry::capabilities().supportsGLSL() )
-            {
-                osg::Program* program = new osg::Program();
-                program->addShader( new osg::Shader( osg::Shader::VERTEX, s_controlVertexShader ) );
-                program->addShader( new osg::Shader( osg::Shader::FRAGMENT, s_controlFragmentShader ) );
-                g->getOrCreateStateSet()->setAttributeAndModes( program, osg::StateAttribute::ON );
-            }
 
             out.push_back( g.get() );
         }
@@ -1414,14 +1260,6 @@ CheckBoxControl::draw( const ControlContext& cx, DrawableList& out )
         (*c)[0] = *foreColor();
         g->setColorArray( c );
         g->setColorBinding( osg::Geometry::BIND_OVERALL );
-        
-        if ( Registry::capabilities().supportsGLSL() )
-        {
-            osg::Program* program = new osg::Program();
-            program->addShader( new osg::Shader( osg::Shader::VERTEX, s_controlVertexShader ) );
-            program->addShader( new osg::Shader( osg::Shader::FRAGMENT, s_controlFragmentShader ) );
-            g->getOrCreateStateSet()->setAttributeAndModes( program, osg::StateAttribute::ON );
-        }
 
         out.push_back( g );
     }
@@ -1735,14 +1573,6 @@ VBox::calcSize(const ControlContext& cx, osg::Vec2f& out_size)
             _renderSize.y() += first ? childSize.y() : childSpacing() + childSize.y();
         }
 
-        //_renderSize.set(
-        //    _renderSize.x() + padding().x(),
-        //    _renderSize.y() + padding().y() );
-
-        //out_size.set(
-        //    _renderSize.x() + margin().x(),
-        //    _renderSize.y() + margin().y() );
-
         Container::calcSize( cx, out_size );
     }
     else
@@ -1877,14 +1707,6 @@ HBox::calcSize(const ControlContext& cx, osg::Vec2f& out_size)
         // If width explicitly set and > total width of children - use it
         if (width().isSet() && width().get() > _renderSize.x()) _renderSize.x() = width().get();
 
-        //_renderSize.set(
-        //    _renderSize.x() + padding().x(),
-        //    _renderSize.y() + padding().y() );
-
-        //out_size.set(
-        //    _renderSize.x() + margin().x(),
-        //    _renderSize.y() + margin().y() );
-
         Container::calcSize( cx, out_size );
     }
 }
@@ -1903,8 +1725,6 @@ HBox::calcFill(const ControlContext& cx)
     for( ControlList::const_iterator i = _controls.begin(); i != _controls.end() && (!hc || !vc); ++i )
     {
         Control* child = i->get();
-
-        //child->calcFill(cx);
 
         used_x += child->margin().x() + childSpacing();
         if ( !hc && child->horizFill() )
@@ -2103,14 +1923,6 @@ Grid::calcSize( const ControlContext& cx, osg::Vec2f& out_size )
                 _renderSize.y() += _rowHeights[r];
             _renderSize.y() += childSpacing() * (numRows-1);
         }
-        
-        //_renderSize.set(
-        //    _renderSize.x() + padding().x(),
-        //    _renderSize.y() + padding().y() );
-
-        //out_size.set(
-        //    _renderSize.x() + margin().x(),
-        //    _renderSize.y() + margin().y() );
 
         Container::calcSize( cx, out_size );
     }
@@ -2126,7 +1938,7 @@ Grid::calcFill(const ControlContext& cx)
 
     for( int r=0; r<numRows; ++r )
     {
-        for( int c=0; c<numCols; ++c ) //<_rows[r].size(); ++c )
+        for( int c=0; c<numCols; ++c )
         {
             Control* child = cell(c,r).get();
 
@@ -2139,8 +1951,6 @@ Grid::calcFill(const ControlContext& cx)
             }
         }
     }
-
-    //Container::calcFill( cx );
 }
 
 void
@@ -2398,14 +2208,6 @@ _fading        ( true )
 
     osg::StateSet* stateSet = _group->getOrCreateStateSet();
 
-    if ( Registry::capabilities().supportsGLSL() )
-    {
-        osg::Program* program = new osg::Program();
-        program->addShader( new osg::Shader( osg::Shader::VERTEX, s_controlVertexShader ) );
-        program->addShader( new osg::Shader( osg::Shader::FRAGMENT, s_controlFragmentShader ) );
-        stateSet->setAttributeAndModes( program, osg::StateAttribute::ON );
-    }
-    
     //TODO: appears to be unused
     osg::Uniform* defaultOpacity = new osg::Uniform( osg::Uniform::FLOAT, "oe_controls_opacity" );
     defaultOpacity->set( 1.0f );
@@ -2674,7 +2476,11 @@ ControlCanvas::init( osgViewer::View* view, bool registerCanvas )
     _contextDirty  = true;
     _updatePending = false;
 
+    // deter the optimizer
     this->setDataVariance( osg::Object::DYNAMIC );
+
+    // cache for sharing virtual program attributes:
+    this->_stateSetCache = new StateSetCache();
 
     osg::ref_ptr<osgGA::GUIEventHandler> pViewportHandler = new ViewportHandler(this);
     osg::ref_ptr<osgGA::GUIEventHandler> pControlCanvasEventHandler = new ControlCanvasEventHandler(this);
@@ -2698,9 +2504,9 @@ ControlCanvas::init( osgViewer::View* view, bool registerCanvas )
     ss->setMode( GL_LIGHTING, osg::StateAttribute::OFF | osg::StateAttribute::OVERRIDE );
     ss->setMode( GL_BLEND, osg::StateAttribute::ON | osg::StateAttribute::OVERRIDE );
     ss->setAttributeAndModes( new osg::Depth( osg::Depth::ALWAYS, 0, 1, false ) );
-    //ss->setRenderBinMode( osg::StateSet::USE_RENDERBIN_DETAILS );
-    //ss->setBinName( OSGEARTH_CONTROLS_BIN );
+    ss->setRenderBinDetails( 0, "TraversalOrderBin" );
 
+    // come on we don't really need this...gw
     // keeps the control bin shaders from "leaking out" into the scene graph :/
     if ( Registry::capabilities().supportsGLSL() )
     {
@@ -2875,43 +2681,57 @@ ControlCanvas::update( const osg::FrameStamp* frameStamp )
         _controlNodeBin->draw( _context, _contextDirty, bin );
     }
 
+    // shaderize!
+    ShaderGenerator shaderGen( _stateSetCache.get() );
+    this->accept( shaderGen );
+
     _contextDirty = false;
 }
 
 void
 ControlCanvas::traverse( osg::NodeVisitor& nv )
 {
-    if ( nv.getVisitorType() == osg::NodeVisitor::EVENT_VISITOR )
+    switch( nv.getVisitorType() )
     {
-        if ( !_updatePending )
+    case nv.EVENT_VISITOR:
         {
-            bool needsUpdate = _contextDirty;
-            if ( !needsUpdate )
+            if ( !_updatePending )
             {
-                for( ControlList::iterator i = _controls.begin(); i != _controls.end(); ++i )
+                bool needsUpdate = _contextDirty;
+                if ( !needsUpdate )
                 {
-                    Control* control = i->get();
-                    if ( control->isDirty() )
+                    for( ControlList::iterator i = _controls.begin(); i != _controls.end(); ++i )
                     {
-                        needsUpdate = true;
-                        break;
+                        Control* control = i->get();
+                        if ( control->isDirty() )
+                        {
+                            needsUpdate = true;
+                            break;
+                        }
                     }
                 }
-            }
 
-            if ( needsUpdate )
-            {
-                _updatePending = true;
-                ADJUST_UPDATE_TRAV_COUNT( this, 1 );
+                if ( needsUpdate )
+                {
+                    _updatePending = true;
+                    ADJUST_UPDATE_TRAV_COUNT( this, 1 );
+                }
             }
         }
-    }
+        break;
 
-    else if ( nv.getVisitorType() == osg::NodeVisitor::UPDATE_VISITOR )
-    {
-        update( nv.getFrameStamp() );
-        ADJUST_UPDATE_TRAV_COUNT( this, -1 );
-        _updatePending = false;
+    case nv.UPDATE_VISITOR:
+        {
+            update( nv.getFrameStamp() );
+            ADJUST_UPDATE_TRAV_COUNT( this, -1 );
+            _updatePending = false;
+        }
+        break;
+
+    case nv.CULL_VISITOR:
+        {
+        }
+        break;
     }
 
     osg::Camera::traverse( nv );

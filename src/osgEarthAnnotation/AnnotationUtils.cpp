@@ -105,10 +105,12 @@ AnnotationUtils::createTextDrawable(const std::string& text,
         if(symbol->layout().value() == TextSymbol::LAYOUT_RIGHT_TO_LEFT)
         {
             t->setLayout(osgText::TextBase::RIGHT_TO_LEFT);
-        }else if(symbol->layout().value() == TextSymbol::LAYOUT_LEFT_TO_RIGHT)
+        }
+        else if(symbol->layout().value() == TextSymbol::LAYOUT_LEFT_TO_RIGHT)
         {
             t->setLayout(osgText::TextBase::LEFT_TO_RIGHT);
-        }else if(symbol->layout().value() == TextSymbol::LAYOUT_VERTICAL)
+        }
+        else if(symbol->layout().value() == TextSymbol::LAYOUT_VERTICAL)
         {
             t->setLayout(osgText::TextBase::VERTICAL);
         }

@@ -730,7 +730,7 @@ _text    ( text ),
 _fontSize( fontSize ),
 _encoding( osgText::String::ENCODING_UNDEFINED ),
 _backdropType( osgText::Text::OUTLINE ),
-_backdropImpl( osgText::Text::STENCIL_BUFFER ),
+_backdropImpl( osgText::Text::NO_DEPTH_BUFFER ),
 _backdropOffset( 0.03f )
 {    
     setFont( Registry::instance()->getDefaultFont() );    
@@ -745,7 +745,7 @@ _text    ( text ),
 _fontSize( fontSize ),
 _encoding( osgText::String::ENCODING_UNDEFINED ),
 _backdropType( osgText::Text::OUTLINE ),
-_backdropImpl( osgText::Text::STENCIL_BUFFER ),
+_backdropImpl( osgText::Text::NO_DEPTH_BUFFER ),
 _backdropOffset( 0.03f )
 {    	
     setFont( Registry::instance()->getDefaultFont() );   
@@ -759,7 +759,7 @@ LabelControl::LabelControl(Control*           valueControl,
 _fontSize( fontSize ),
 _encoding( osgText::String::ENCODING_UNDEFINED ),
 _backdropType( osgText::Text::OUTLINE ),
-_backdropImpl( osgText::Text::STENCIL_BUFFER ),
+_backdropImpl( osgText::Text::NO_DEPTH_BUFFER ),
 _backdropOffset( 0.03f )
 {
     setFont( Registry::instance()->getDefaultFont() );    
@@ -776,7 +776,7 @@ LabelControl::LabelControl(Control*           valueControl,
 _fontSize( fontSize ),
 _encoding( osgText::String::ENCODING_UNDEFINED ),
 _backdropType( osgText::Text::OUTLINE ),
-_backdropImpl( osgText::Text::STENCIL_BUFFER ),
+_backdropImpl( osgText::Text::NO_DEPTH_BUFFER ),
 _backdropOffset( 0.03f )
 {    	
     setFont( Registry::instance()->getDefaultFont() );   
@@ -2698,6 +2698,7 @@ ControlCanvas::init( osgViewer::View* view, bool registerCanvas )
     ss->setMode( GL_LIGHTING, osg::StateAttribute::OFF | osg::StateAttribute::OVERRIDE );
     ss->setMode( GL_BLEND, osg::StateAttribute::ON | osg::StateAttribute::OVERRIDE );
     ss->setAttributeAndModes( new osg::Depth( osg::Depth::ALWAYS, 0, 1, false ) );
+    ss->setRenderBinDetails( 0, "TraversalOrderBin" );
     //ss->setRenderBinMode( osg::StateSet::USE_RENDERBIN_DETAILS );
     //ss->setBinName( OSGEARTH_CONTROLS_BIN );
 

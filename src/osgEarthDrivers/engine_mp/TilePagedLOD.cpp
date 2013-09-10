@@ -128,6 +128,34 @@ TilePagedLOD::traverse(osg::NodeVisitor& nv)
     osg::PagedLOD::traverse( nv );
 }
 
+namespace
+{
+    // traverses a node graph and moves any TileNodes from the LIVE
+    // registry to the DEAD registry.
+    struct ExpirationCollector : public osg::NodeVisitor
+    {
+        TileNodeRegistry* _live;
+        TileNodeRegistry* _dead;
+
+        ExpirationCollector(TileNodeRegistry* live, TileNodeRegistry* dead)
+            : osg::NodeVisitor(TRAVERSE_ALL_CHILDREN), _live(live), _dead(dead) { }
+
+        void apply(osg::Node& node)
+        {
+            TileNode* tn = 0L;
+            TileGroup* tg = dynamic_cast<TileGroup*>(&node);
+            tn = tg ? tg->getTileNode() : dynamic_cast<TileNode*>(&node);
+            if ( tn )
+            {
+                if ( _live ) _live->remove( tn );
+                if ( _dead ) _dead->add( tn );
+                //OE_NOTICE << "Expired " << tn->getKey().str() << std::endl;
+            }
+            traverse(node);
+        }
+    };
+}
+
 
 // The osgDB::DatabasePager will call this automatically to purge expired
 // tiles from the scene grpah.
@@ -161,10 +189,8 @@ TilePagedLOD::removeExpiredChildren(double         expiryTime,
                 tilenode = dynamic_cast<TileGroup*>(nodeToRemove)->getTileNode();
             if ( tilenode )
             {
-                if ( _live )
-                    _live->remove( tilenode );
-                if ( _dead )
-                    _dead->add( tilenode );
+                ExpirationCollector collector( _live, _dead );
+                nodeToRemove->accept( collector );
             }
 
             OE_DEBUG << "Expired " << _prefix << std::endl;

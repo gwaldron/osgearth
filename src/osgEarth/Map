@@ -31,7 +31,7 @@
 #include <osgEarth/MaskLayer>
 #include <osgEarth/Revisioning>
 #include <osgEarth/ThreadingUtils>
-#include <osgDB/ReaderWriter>
+#include <osgDB/Options>
 
 namespace osgEarth
 {
@@ -271,8 +271,8 @@ namespace osgEarth
         /**
          * Gets the user-provided options structure stored in this map.
          */
-        const osgDB::ReaderWriter::Options* getGlobalOptions() const;
-        void setGlobalOptions( const osgDB::ReaderWriter::Options* options );
+        const osgDB::Options* getGlobalOptions() const;
+        void setGlobalOptions( const osgDB::Options* options );
 
         /**
          * Sets the readable name of this map.
@@ -383,7 +383,7 @@ namespace osgEarth
         ModelLayerVector _modelLayers;
         MaskLayerVector _terrainMaskLayers;
         MapCallbackList _mapCallbacks;
-        osg::ref_ptr<const osgDB::ReaderWriter::Options> _globalOptions;
+        osg::ref_ptr<const osgDB::Options> _globalOptions;
         Threading::ReadWriteMutex _mapDataMutex;
         osg::ref_ptr<const Profile> _profile;
         osg::ref_ptr<const Profile> _profileNoVDatum;

@@ -22,6 +22,7 @@
 #include "Common"
 #include "TileGroup"
 #include <osg/PagedLOD>
+#include <osgEarth/ThreadingUtils>
 
 using namespace osgEarth;
 
@@ -40,6 +41,21 @@ namespace osgEarth_engine_mp
             TileNodeRegistry* liveTiles,
             TileNodeRegistry* deadTiles);
 
+        /** Has this LOD loaded its child? */
+        bool isLoaded() const { return _children.size() > 0; }
+
+        /** Is this LOD trying to update an existing child? */
+        bool isLoading() const { return _children.size() != getNumFileNames(); } //_isUpdating; }
+
+        /** Has this LOD decided to try to upsample its parent? */
+        bool isUpsampled() const { return _isUpsampled; }
+
+        /** Has this LOD decided to cancel because it can't build its tile? */
+        bool isCanceled() const { return _isCanceled; }
+
+        /** Tell this LOD whether all its siblings are ready, and therefore it is OK to CULL */
+        void setFamilyReady(bool value) { _familyReady = value; }
+
     public: // osg::Group
 
         /** called by the OSG DatabasePager when a paging result is ready. */
@@ -54,11 +70,14 @@ namespace osgEarth_engine_mp
         bool removeExpiredChildren(double expiryTime, unsigned expiryFrame, osg::NodeList& removedChildren);
 
     private:
-        TileNodeRegistry* _live;
-        TileNodeRegistry* _dead;
-        TileGroup*        _tilegroup;
-        std::string       _prefix;
-        bool              _upsampling;
+        TileNodeRegistry*  _live;
+        TileNodeRegistry*  _dead;
+        TileGroup*         _tilegroup;
+        std::string        _prefix;
+        bool               _isUpsampled;
+        bool               _isCanceled;
+        bool               _familyReady;
+        Threading::Mutex   _updateMutex;
     };
 
 } // namespace osgEarth_engine_mp

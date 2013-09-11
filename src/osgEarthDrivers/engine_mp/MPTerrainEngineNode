@@ -47,8 +47,13 @@ namespace osgEarth_engine_mp
         virtual ~MPTerrainEngineNode();
 
     public:
+        /** Creates a tile node that is set up to page in subtiles. */
         osg::Node* createNode(const TileKey& key, ProgressCallback* progress =0L);
 
+        /** Creates a tile node with no support for paging in subtiles. */
+        osg::Node* createStandaloneNode(const TileKey& key, ProgressCallback* progress =0L);
+
+        /** Creates a tile node that is upsampled from an existing lower-LOD node. */
         osg::Node* createUpsampledNode(const TileKey& key, ProgressCallback* progress =0L);
 
     public: // TerrainEngineNode
@@ -64,7 +69,12 @@ namespace osgEarth_engine_mp
         virtual const TerrainOptions& getTerrainOptions() const { return _terrainOptions; }
         virtual osg::BoundingSphere computeBound() const;
 
+    public: // osg::Node
+
+        void traverse(osg::NodeVisitor& nv);
+
     public: // MapCallback adapter functions
+
         void onMapInfoEstablished( const MapInfo& mapInfo ); // not virtual!
         void onMapModelChanged( const MapModelChange& change ); // not virtual!
 
@@ -88,8 +98,6 @@ namespace osgEarth_engine_mp
         };
 
     protected:
-        //virtual void onVerticalScaleChanged();
-
         // override from TerrainEngineNode
         virtual void updateTextureCombining() { updateShaders(); }
 
@@ -98,7 +106,7 @@ namespace osgEarth_engine_mp
         void syncMapModel();
 
         // Reloads all the tiles in the terrain due to a data model change
-        void refresh();
+        void refresh(bool force =false);
         void createTerrain();
 
         void addImageLayer( ImageLayer* layer );
@@ -106,6 +114,7 @@ namespace osgEarth_engine_mp
 
         void removeImageLayer( ImageLayer* layerRemoved );
         void removeElevationLayer( ElevationLayer* layerRemoved );
+        void toggleElevationLayer( ElevationLayer* layer );
 
         void moveImageLayer( unsigned int oldIndex, unsigned int newIndex );
         void moveElevationLayer( unsigned int oldIndex, unsigned int newIndex );
@@ -117,10 +126,14 @@ namespace osgEarth_engine_mp
 
         class TerrainNode* _terrain;
         UID                _uid;
+        Revision           _mapModelRev;  // tracks revision changes int the map model
+        Revision           _terrainRev;   // the revisinon of the rendered terrain (slightly different)
         Revision           _shaderLibRev;
         bool               _batchUpdateInProgress;
         bool               _refreshRequired;
         bool               _shaderUpdateRequired;
+        bool               _rootTilesRegistered;
+        Threading::Mutex   _rootTilesRegisteredMutex;
 
         osg::ref_ptr< ElevationChangedCallback > _elevationCallback;
 

@@ -57,13 +57,8 @@ namespace
             }
             else
             {
-                osg::ref_ptr<osg::PagedLOD> plod = _plod.get();
-                if ( !plod.valid() )
-                {
-                    _canceled = true;
-                    OE_INFO << "CANCEL, plod = null." << std::endl;
-                }
-                else
+                osg::ref_ptr<osg::PagedLOD> plod;
+                if ( _plod.lock(plod) )
                 {
                     osg::ref_ptr<osg::Referenced> dbr = plod->getDatabaseRequest( 1 );
                     if ( !dbr.valid() || dbr->referenceCount() < 2 )
@@ -71,6 +66,11 @@ namespace
                         _canceled = true;
                         OE_INFO << "CANCEL, REFCOUNT = " << dbr->referenceCount() << std::endl;
                     }
+                }
+                else
+                {
+                    _canceled = true;
+                    OE_INFO << "CANCEL, plod = null." << std::endl;
                 }
             }
 
@@ -80,20 +80,21 @@ namespace
 }
 
 
-SerialKeyNodeFactory::SerialKeyNodeFactory(TileModelFactory*             modelFactory,
+SerialKeyNodeFactory::SerialKeyNodeFactory(const Map*                    map,
+                                           TileModelFactory*             modelFactory,
                                            TileModelCompiler*            modelCompiler,
                                            TileNodeRegistry*             liveTiles,
                                            TileNodeRegistry*             deadTiles,
                                            const MPTerrainEngineOptions& options,
-                                           const MapInfo&                mapInfo,
                                            TerrainNode*                  terrain,
                                            UID                           engineUID ) :
+_frame           ( map ),
 _modelFactory    ( modelFactory ),
 _modelCompiler   ( modelCompiler ),
 _liveTiles       ( liveTiles ),
 _deadTiles       ( deadTiles ),
 _options         ( options ),
-_mapInfo         ( mapInfo ),
+//_mapInfo         ( mapInfo ),
 _terrain         ( terrain ),
 _engineUID       ( engineUID )
 {
@@ -102,15 +103,17 @@ _engineUID       ( engineUID )
 
 
 osg::Node*
-SerialKeyNodeFactory::createTile(TileModel* model,
-                                 bool       tileHasRealData)
+SerialKeyNodeFactory::createTile(TileModel* model, bool setupChildren)
 {
     // compile the model into a node:
-    TileNode* tileNode = _modelCompiler->compile( model );
+    TileNode* tileNode = _modelCompiler->compile( model, _frame );
 
     // see if this tile might have children.
     bool prepareForChildren =
-        (tileHasRealData || (_options.minLOD().isSet() && model->_tileKey.getLOD() < *_options.minLOD())) &&
+        setupChildren &&
+        //(!_options.minLOD().isSet() || model->_tileKey.getLOD() < *_options.minLOD()) &&
+        //(model->hasRealData() || (_options.minLOD().isSet() && model->_tileKey.getLOD() < *_options.minLOD())) &&
+        //(tileHasRealData || (_options.minLOD().isSet() && model->_tileKey.getLOD() < *_options.minLOD())) &&
         model->_tileKey.getLOD() < *_options.maxLOD();
 
     osg::Node* result = 0L;
@@ -146,7 +149,7 @@ SerialKeyNodeFactory::createTile(TileModel* model,
     }
 
     // this one rejects back-facing tiles:
-    if ( _mapInfo.isGeocentric() && _options.clusterCulling() == true )
+    if ( _frame.getMapInfo().isGeocentric() && _options.clusterCulling() == true )
     {
         osg::HeightField* hf =
             model->_elevationData.getHeightField();
@@ -165,33 +168,45 @@ osg::Node*
 SerialKeyNodeFactory::createRootNode( const TileKey& key )
 {
     osg::ref_ptr<TileModel> model;
-    bool                    real;
+    //bool                    real;
 
-    _modelFactory->createTileModel( key, model, real );
-    return createTile( model.get(), real );
+    _modelFactory->createTileModel( key, _frame, model );
+    return createTile( model.get(), true );
 }
 
 
 osg::Node*
-SerialKeyNodeFactory::createNode( const TileKey& key, ProgressCallback* progress )
+SerialKeyNodeFactory::createNode(const TileKey&    key, 
+                                 bool              setupChildren,
+                                 ProgressCallback* progress )
 {
     osg::ref_ptr<TileModel> model;
-    bool                    isReal;
+    //bool                    hasRealData;
 
     if ( progress && progress->isCanceled() )
         return 0L;
 
-    _modelFactory->createTileModel(key, model, isReal);
+    _frame.sync();
+
+    _modelFactory->createTileModel(key, _frame, model);
 
     if ( progress && progress->isCanceled() )
         return 0L;
 
-    if ( isReal || _options.minLOD().isSet() || key.getLOD() == 0 )
+    //if ( !model->hasRealData() )
+    //    OE_NOTICE << LC << "Model for " << key.str() << " is fallback data." << std::endl;
+
+    //TEST
+    return createTile( model.get(), setupChildren ); //, hasRealData );
+
+#if 0
+    if ( hasRealData || _options.minLOD().isSet() || key.getLOD() == 0 )
     {
-        return createTile( model.get(), isReal);
+        return createTile( model.get(), setupChildren, hasRealData);
     }
     else
     {
         return 0L;
     }
+#endif
 }

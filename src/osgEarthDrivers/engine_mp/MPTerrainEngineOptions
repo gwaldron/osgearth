@@ -35,14 +35,15 @@ namespace osgEarth { namespace Drivers
     {
     public:
         MPTerrainEngineOptions( const ConfigOptions& options =ConfigOptions() ) : TerrainOptions( options ),
-            _skirtRatio    ( 0.05 ),
-            _quickRelease  ( true ),
-            _lodFallOff    ( 0.0 ),
-            _normalizeEdges( true ),
-            _rangeMode     ( osg::LOD::DISTANCE_FROM_EYE_POINT ),
-            _tilePixelSize ( 256 ),
-            _premultAlpha  ( true ),
-            _color         ( Color::White )
+            _skirtRatio        ( 0.05 ),
+            _quickRelease      ( true ),
+            _lodFallOff        ( 0.0 ),
+            _normalizeEdges    ( true ),
+            _rangeMode         ( osg::LOD::DISTANCE_FROM_EYE_POINT ),
+            _tilePixelSize     ( 256 ),
+            _premultAlpha      ( true ),
+            _color             ( Color::White ),
+            _incrementalUpdate ( false )
         {
             setDriver( "mp" );
             fromConfig( _conf );
@@ -52,29 +53,43 @@ namespace osgEarth { namespace Drivers
         virtual ~MPTerrainEngineOptions() { }
 
     public:
+        /** Ratio of terrain tile skirt height to tile radius */
         optional<float>& heightFieldSkirtRatio() { return _skirtRatio; }
         const optional<float>& heightFieldSkirtRatio() const { return _skirtRatio; }
 
+        /** Whether to run a post-render process that releases GL objects as quickly as
+          * possible, freeing up memory faster */
         optional<bool>& quickReleaseGLObjects() { return _quickRelease; }
         const optional<bool>& quickReleaseGLObjects() const { return _quickRelease; }
 
-        optional<float>& lodFallOff() { return _lodFallOff; }
-        const optional<float>& lodFallOff() const { return _lodFallOff; }
-
+        /** Whether to average normal vectors on tile boundaries */
         optional<bool>& normalizeEdges() { return _normalizeEdges; }
         const optional<bool>& normalizeEdges() const { return _normalizeEdges; }
 
+        /** Mode to use when calculating LOD switching distances */
         optional<osg::LOD::RangeMode>& rangeMode() { return _rangeMode;}
         const optional<osg::LOD::RangeMode>& rangeMode() const { return _rangeMode;}
 
+        /** The size of the tile, in pixels, when using rangeMode = PIXEL_SIZE_ON_SCREEN */
         optional<float>& tilePixelSize() { return _tilePixelSize; }
         const optional<float>& tilePixelSize() const { return _tilePixelSize; }
 
+        /** Whether to use pre-multiplied alpha blending for terrain imagery */
         optional<bool>& premultipliedAlpha() { return _premultAlpha; }
         const optional<bool>& premultipliedAlpha() const { return _premultAlpha; }
 
+        /** The color of the globe surface where no images are applied */
         optional<Color>& color() { return _color; }
         const optional<Color>& color() const { return _color; }
+
+        /** Whether to update tiles incrementally as needed when the map model changes (true),
+          * or to rebuild the entire terrain when enything changes (false) */
+        optional<bool>& incrementalUpdate() { return _incrementalUpdate; }
+        const optional<bool>& incrementalUpdate() const { return _incrementalUpdate; }
+
+        /** TODO: document this very obscure feature */
+        optional<float>& lodFallOff() { return _lodFallOff; }
+        const optional<float>& lodFallOff() const { return _lodFallOff; }
 
     protected:
         virtual Config getConfig() const {
@@ -88,6 +103,7 @@ namespace osgEarth { namespace Drivers
             conf.updateIfSet( "range_mode", "DISTANCE_FROM_EYE_POINT", _rangeMode, osg::LOD::DISTANCE_FROM_EYE_POINT);
             conf.updateIfSet( "premultiplied_alpha", _premultAlpha );
             conf.updateIfSet( "color", _color );
+            conf.updateIfSet( "incremental_update", _incrementalUpdate );
 
             return conf;
         }
@@ -109,6 +125,7 @@ namespace osgEarth { namespace Drivers
             conf.getIfSet( "range_mode", "DISTANCE_FROM_EYE_POINT", _rangeMode, osg::LOD::DISTANCE_FROM_EYE_POINT);
             conf.getIfSet( "premultiplied_alpha", _premultAlpha );
             conf.getIfSet( "color", _color );
+            conf.getIfSet( "incremental_update", _incrementalUpdate );
         }
 
         optional<float>               _skirtRatio;
@@ -119,6 +136,7 @@ namespace osgEarth { namespace Drivers
         optional<float>               _tilePixelSize;
         optional<bool>                _premultAlpha;
         optional<Color>               _color;
+        optional<bool>                _incrementalUpdate;
     };
 
 } } // namespace osgEarth::Drivers

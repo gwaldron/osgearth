@@ -323,9 +323,13 @@ MapNode::init()
     {
         DrapingTechnique* draping = new DrapingTechnique();
 
+        const char* envOverlayTextureSize = ::getenv("OSGEARTH_OVERLAY_TEXTURE_SIZE");
+
         if ( _mapNodeOptions.overlayBlending().isSet() )
             draping->setOverlayBlending( *_mapNodeOptions.overlayBlending() );
-        if ( _mapNodeOptions.overlayTextureSize().isSet() )
+        if ( envOverlayTextureSize )
+            draping->setTextureSize( as<int>(envOverlayTextureSize, 1024) );
+        else if ( _mapNodeOptions.overlayTextureSize().isSet() )
             draping->setTextureSize( *_mapNodeOptions.overlayTextureSize() );
         if ( _mapNodeOptions.overlayMipMapping().isSet() )
             draping->setMipMapping( *_mapNodeOptions.overlayMipMapping() );

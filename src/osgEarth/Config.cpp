@@ -176,11 +176,39 @@ namespace
 
             if ( conf.children().size() > 0 )
             {
-                Json::Value children( Json::arrayValue );
-                unsigned i = 0;
-
                 if ( nicer )
                 {
+                    std::map< std::string, std::vector<Config> > sets;
+
+                    // sort into bins by name:
+                    for( ConfigSet::const_iterator c = conf.children().begin(); c != conf.children().end(); ++c )
+                    {
+                        sets[c->key()].push_back( *c );
+                    }
+
+                    for( std::map<std::string,std::vector<Config> >::iterator i = sets.begin(); i != sets.end(); ++i )
+                    {
+                        if ( i->second.size() == 1 )
+                        {
+                            Config& c = i->second[0];
+                            if ( c.isSimple() )
+                                value[i->first] = c.value();
+                            else
+                                value[i->first] = conf2json(c, nicer);
+                        }
+                        else
+                        {
+                            std::string array_key = Stringify() << i->first << "_$set";
+                            Json::Value array_value( Json::arrayValue );
+                            for( std::vector<Config>::iterator j = i->second.begin(); j != i->second.end(); ++j )
+                            {
+                                array_value.append( conf2json(*j, nicer) );
+                            }
+                            value[array_key] = array_value;
+                        }
+                    }
+
+#if 0
                     bool hasdupes = false;
                     std::set<std::string> dupes;
                     for( ConfigSet::const_iterator c = conf.children().begin(); c != conf.children().end(); ++c ) {
@@ -195,16 +223,20 @@ namespace
 
                     for( ConfigSet::const_iterator c = conf.children().begin(); c != conf.children().end(); ++c )
                     {
-                        if ( c->isSimple() )
-                            value[c->key()] = c->value();
-                        else if (hasdupes)
+                        if ( hasdupes )
                             children[i++] = conf2json(*c, nicer);
+                        else if ( c->isSimple() )
+                            value[c->key()] = c->value();
                         else
                             value[c->key()] = conf2json(*c, nicer);
                     }
+#endif
                 }
                 else
                 {
+                    Json::Value children( Json::arrayValue );
+                    unsigned i = 0;
+
                     for( ConfigSet::const_iterator c = conf.children().begin(); c != conf.children().end(); ++c )
                     {
                         if ( c->isSimple() )
@@ -212,11 +244,11 @@ namespace
                         else
                             children[i++] = conf2json(*c, nicer);
                     }
-                }
 
-                if ( !children.empty() )
-                {
-                    value["$children"] = children;
+                    if ( !children.empty() )
+                    {
+                        value["$children"] = children;
+                    }
                 }
             }
         }
@@ -250,6 +282,16 @@ namespace
                     Config element( *i );
                     json2conf( value, element );
                     conf.add( element );
+                }
+                else if ( value.isArray() && endsWith(*i, "_$set") )
+                {
+                    std::string key = i->substr(0, i->length()-5);
+                    for( Json::Value::const_iterator j = value.begin(); j != value.end(); ++j )
+                    {
+                        Config child( key );
+                        json2conf( *j, child );
+                        conf.add( child );
+                    }
                 }
                 else if ( (*i) == "$key" )
                 {

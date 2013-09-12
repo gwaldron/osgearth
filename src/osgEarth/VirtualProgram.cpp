@@ -719,7 +719,7 @@ VirtualProgram::apply( osg::State& state ) const
     accumAttribAliases.insert( aliases.begin(), aliases.end() );
 
 
-    if ( accumShaderMap.size() )
+    if ( true ) //even with nothing in the map, we still want mains! -gw  //accumShaderMap.size() )
     {
         // next, assemble a list of the shaders in the map so we can use it as our
         // program cache key.

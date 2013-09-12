@@ -2801,7 +2801,9 @@ ControlCanvas::update( const osg::FrameStamp* frameStamp )
     // we don't really need to rebuild shaders on every dirty; we could probably
     // just do it on add/remove controls; but that's an optimization for later
     ShaderGenerator shaderGen( _stateSetCache.get() );
-    shaderGen.setVirtualProgramTemplate( new VirtualProgram() );
+    VirtualProgram* temp = new VirtualProgram();
+    temp->setInheritShaders( true );
+    shaderGen.setVirtualProgramTemplate( temp );
     this->accept( shaderGen );
 
     _contextDirty = false;

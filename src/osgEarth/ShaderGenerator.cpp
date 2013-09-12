@@ -196,7 +196,6 @@ osg::NodeVisitor( osg::NodeVisitor::TRAVERSE_ALL_CHILDREN )
     if ( _active )
     {
         _state = new StateEx();
-        //_stateSetCache = new StateSetCache();
         _stateSetCache = 0L;
         _defaultVP = new VirtualProgram();
         Registry::instance()->getShaderFactory()->installLightingShaders( _defaultVP.get() );
@@ -211,10 +210,16 @@ osg::NodeVisitor( osg::NodeVisitor::TRAVERSE_ALL_CHILDREN )
     if ( _active )
     {
         _state = new StateEx();
-        _stateSetCache = cache; // ? cache : new StateSetCache();
+        _stateSetCache = cache;
         _defaultVP = new VirtualProgram();
         Registry::instance()->getShaderFactory()->installLightingShaders( _defaultVP.get() );
     }
+}
+
+void
+ShaderGenerator::setVirtualProgramTemplate( VirtualProgram* vp )
+{
+    _defaultVP = vp;
 }
 
 

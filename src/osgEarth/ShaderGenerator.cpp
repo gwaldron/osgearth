@@ -199,6 +199,8 @@ osg::NodeVisitor( osg::NodeVisitor::TRAVERSE_ALL_CHILDREN )
         _stateSetCache = 0L;
         _defaultVP = new VirtualProgram();
         Registry::instance()->getShaderFactory()->installLightingShaders( _defaultVP.get() );
+        _defaultStateSet = new osg::StateSet();
+        _defaultStateSet->setAttributeAndModes( _defaultVP.get(), osg::StateAttribute::ON );
     }
 }
 
@@ -211,7 +213,8 @@ osg::NodeVisitor( osg::NodeVisitor::TRAVERSE_ALL_CHILDREN )
     {
         _state = new StateEx();
         _stateSetCache = cache;
-        _defaultVP = new VirtualProgram();
+        _defaultStateSet = new osg::StateSet();
+        setVirtualProgramTemplate( new VirtualProgram() );
         Registry::instance()->getShaderFactory()->installLightingShaders( _defaultVP.get() );
     }
 }
@@ -220,15 +223,15 @@ void
 ShaderGenerator::setVirtualProgramTemplate( VirtualProgram* vp )
 {
     _defaultVP = vp;
+    _defaultStateSet = new osg::StateSet();
+    _defaultStateSet->setAttributeAndModes( _defaultVP.get(), osg::StateAttribute::ON );
 }
-
 
 void 
 ShaderGenerator::apply( osg::Node& node )
 {
     if ( !_active ) return;
 
-#if 1
     if ( node.getStateSet() )
         _state->pushStateSet( node.getStateSet() );
 
@@ -236,33 +239,6 @@ ShaderGenerator::apply( osg::Node& node )
 
     if ( node.getStateSet() )
         _state->popStateSet();
-
-#else
-    osg::ref_ptr<osg::StateSet> ss = node.getStateSet();
-    if ( ss.valid() )
-    {
-        _state->pushStateSet( ss.get() );
-    }
-
-    osg::ref_ptr<osg::StateSet> replacement;
-    if ( processGeometry(ss.get(), replacement) )
-    {
-        // optimize state set sharing
-        if ( _stateSetCache.valid() )
-            _stateSetCache->share(replacement, replacement);
-
-        _state->popStateSet();
-        node.setStateSet( replacement.get() );
-        _state->pushStateSet( replacement.get() );
-    }
-    
-    traverse(node);
-
-    if ( ss.get() )
-    {
-        _state->popStateSet();
-    }
-#endif
 }
 
 
@@ -271,7 +247,6 @@ ShaderGenerator::apply( osg::Geode& geode )
 {
     if ( !_active ) return;
 
-#if 1
     if ( geode.getStateSet() )
         _state->pushStateSet( geode.getStateSet() );
 
@@ -282,38 +257,6 @@ ShaderGenerator::apply( osg::Geode& geode )
 
     if ( geode.getStateSet() )
         _state->popStateSet();
-
-#else
-    osg::ref_ptr<osg::StateSet> ss = geode.getStateSet();
-    if ( ss.valid() )
-    {
-        _state->pushStateSet( ss.get() );
-
-        osg::ref_ptr<osg::StateSet> replacement;
-        if ( processGeometry(ss.get(), replacement) )
-        {
-            _state->popStateSet();
-            
-            // optimize state set sharing
-            if ( _stateSetCache.valid() )
-                _stateSetCache->share(replacement, replacement);
-
-            geode.setStateSet( replacement.get() );
-
-            _state->pushStateSet( replacement.get() );
-        }
-    }
-
-    for( unsigned d = 0; d < geode.getNumDrawables(); ++d )
-    {
-        apply( geode.getDrawable(d) );
-    }
-
-    if ( ss.valid() )
-    {
-        _state->popStateSet();
-    }
-#endif
 }
 
 
@@ -485,13 +428,13 @@ ShaderGenerator::processGeometry( osg::StateSet* ss, osg::ref_ptr<osg::StateSet>
     // we will add to it if necessary.
     osg::ref_ptr<VirtualProgram> vp = 0L;
 
-    // clone the existing SS so we can work with it safely
-    if ( !replacement.valid() )
-        replacement = ss ? osg::clone(ss, osg::CopyOp::SHALLOW_COPY) : new osg::StateSet();
-
     // Check whether the lighting state has changed and install a mode uniform.
     if ( ss && ss->getMode(GL_LIGHTING) != osg::StateAttribute::INHERIT )
     {
+        // clone the existing SS so we can work with it safely
+        if ( !replacement.valid() )
+            replacement = ss ? osg::clone(ss, osg::CopyOp::SHALLOW_COPY) : new osg::StateSet();
+
         osg::StateAttribute::GLModeValue value = state->getMode(GL_LIGHTING); // from the state, not the ss.
         replacement->addUniform( Registry::shaderFactory()->createUniformForGLMode(GL_LIGHTING, value) );
     }
@@ -501,12 +444,16 @@ ShaderGenerator::processGeometry( osg::StateSet* ss, osg::ref_ptr<osg::StateSet>
     {
         // work off the state's accumulated texture attribute set:
         int texCount = state->getNumTextureAttributes();
+
+        // clone the existing SS so we can work with it safely
+        if ( !replacement.valid() )
+            replacement = ss ? osg::clone(ss, osg::CopyOp::SHALLOW_COPY) : new osg::StateSet();
         
         // we are going to generate shaders so clone the default/template:
         if ( !vp.valid() )
-        {
             vp = osg::clone( _defaultVP.get() );
-        }
+
+        replacement->setAttributeAndModes( vp.get(), osg::StateAttribute::ON );
 
         // start generating the shader source.
         std::stringstream vertHead, vertBody, fragHead, fragBody;
@@ -689,10 +636,15 @@ ShaderGenerator::processGeometry( osg::StateSet* ss, osg::ref_ptr<osg::StateSet>
         vp->setFunction( FRAGMENT_FUNCTION, fragSrc, ShaderComp::LOCATION_FRAGMENT_COLORING );
     }
 
-    if ( vp.valid() )
-        replacement->setAttributeAndModes( vp.get(), osg::StateAttribute::ON );
-    else
-        replacement->setAttributeAndModes( _defaultVP.get(), osg::StateAttribute::ON );
+    if ( !replacement.valid() )
+    {
+        replacement = _defaultStateSet.get();
+    }
+
+    //if ( vp.valid() )
+    //    replacement->setAttributeAndModes( vp.get(), osg::StateAttribute::ON );
+    //else
+    //    replacement->setAttributeAndModes( _defaultVP.get(), osg::StateAttribute::ON );
 
     return replacement.valid();
 }

@@ -90,6 +90,8 @@ namespace osgEarth
 
         osg::ref_ptr<VirtualProgram> _defaultVP;
 
+        osg::ref_ptr<osg::StateSet> _defaultStateSet;
+
         bool _active;
     };
 

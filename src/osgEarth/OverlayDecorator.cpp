@@ -614,7 +614,9 @@ OverlayDecorator::cullTerrainAndCalculateRTTParams(osgUtil::CullVisitor* cv,
         visiblePH.getPoints( verts );
 
         // zero verts means the visible PH does not intersect the frustum.
-        if ( verts.size() > 0 )
+        // GW- commented out this check b/c it causes a nasty regression wherein the
+        // draped/clamped geometry jitters out of control. Need to investigate later.
+        //if ( verts.size() > 0 )
         {
             // calculate an orthographic RTT projection matrix based on the view-space
             // bounds of the vertex list (i.e. the extents surrounding the RTT camera 
@@ -627,7 +629,7 @@ OverlayDecorator::cullTerrainAndCalculateRTTParams(osgUtil::CullVisitor* cv,
 
             // in ecef it can't go past the horizon though, or you get bleed thru
             if ( _isGeocentric )
-              dist = std::min(dist, eyeLen);
+                dist = std::min(dist, eyeLen);
 
             rttProjMatrix.makeOrtho(xmin, xmax, ymin, ymax, 0.0, dist+zspan);
 

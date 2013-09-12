@@ -2693,7 +2693,7 @@ ControlCanvas::traverse( osg::NodeVisitor& nv )
 {
     switch( nv.getVisitorType() )
     {
-    case nv.EVENT_VISITOR:
+        case osg::NodeVisitor::EVENT_VISITOR:
         {
             if ( !_updatePending )
             {
@@ -2720,7 +2720,7 @@ ControlCanvas::traverse( osg::NodeVisitor& nv )
         }
         break;
 
-    case nv.UPDATE_VISITOR:
+    case osg::NodeVisitor::UPDATE_VISITOR:
         {
             update( nv.getFrameStamp() );
             ADJUST_UPDATE_TRAV_COUNT( this, -1 );
@@ -2728,7 +2728,7 @@ ControlCanvas::traverse( osg::NodeVisitor& nv )
         }
         break;
 
-    case nv.CULL_VISITOR:
+    case osg::NodeVisitor::CULL_VISITOR:
         {
         }
         break;

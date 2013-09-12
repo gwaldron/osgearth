@@ -55,6 +55,13 @@ namespace osgEarth
          */
         ShaderGenerator( StateSetCache* cache );
 
+        /**
+         * Sets the default VirtualProgram template. By default, ShaderGenerator
+         * will use a template that supports lighting. You can override this by
+         * providing your own template.
+         */
+        void setVirtualProgramTemplate( VirtualProgram* vp );
+
         /** dtor. */
         virtual ~ShaderGenerator() { }
 

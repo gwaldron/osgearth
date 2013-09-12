@@ -35,8 +35,8 @@
 #include <osgEarth/Capabilities>
 #include <osgEarth/Utils>
 #include <osgEarth/CullingUtils>
-#include <osgEarth/VirtualProgram>
 #include <osgEarth/ShaderGenerator>
+#include <osgEarth/VirtualProgram>
 
 using namespace osgEarth;
 using namespace osgEarth::Features;
@@ -2635,12 +2635,14 @@ ControlCanvas::init( osgViewer::View* view, bool registerCanvas )
     ss->setAttributeAndModes( new osg::Depth( osg::Depth::ALWAYS, 0, 1, false ) );
     ss->setRenderBinDetails( 0, "TraversalOrderBin" );
 
+#if 0
     // come on we don't really need this...gw
     // keeps the control bin shaders from "leaking out" into the scene graph :/
     if ( Registry::capabilities().supportsGLSL() )
     {
         ss->setAttributeAndModes( new osg::Program(), osg::StateAttribute::OFF | osg::StateAttribute::PROTECTED );
     }
+#endif
 
     _controlNodeBin = new ControlNodeBin();
     this->addChild( _controlNodeBin->getControlGroup() );
@@ -2679,11 +2681,7 @@ ControlCanvas::setAllowControlNodeOverlap( bool value )
 Control*
 ControlCanvas::addControlImpl( Control* control )
 {
-    //osg::Geode* geode = new osg::Geode();
-    //_geodeTable[control] = geode;
-    //addChild( geode );
     control->dirty();
-    _controls.push_back( control );
     this->addChild( control );
     return control;
 }
@@ -2692,27 +2690,18 @@ void
 ControlCanvas::removeControl( Control* control )
 {
     removeChild( control );
-    //GeodeTable::iterator i = _geodeTable.find( control );
-    //if ( i != _geodeTable.end() )
-    //{
-    //     removeChild( i->second );
-    //     _geodeTable.erase( i );
-    //}
-    ControlList::iterator j = std::find( _controls.begin(), _controls.end(), control );
-    if ( j != _controls.end() )
-    {
-        _controls.erase( j );
-    }
 }
 
 Control*
-ControlCanvas::getControlAtMouse( float x, float y ) const
+ControlCanvas::getControlAtMouse( float x, float y )
 {
-    for( ControlList::const_iterator i = _controls.begin(); i != _controls.end(); ++i )
+    for( osg::NodeList::iterator i = _children.begin(); i != _children.end(); ++i )
     {
-        Control* control = i->get();
+        Control* control = dynamic_cast<Control*>( i->get() );
         if ( control->intersects( x, _context._vp->height() - y ) )
+        {
             return control;
+        }
     }
     return 0L;
 }
@@ -2723,10 +2712,10 @@ ControlCanvas::handle( const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter
     if ( !_context._vp )
         return false;
 
-    for (ControlList::reverse_iterator i = _controls.rbegin(); i != _controls.rend(); ++i)
+    for( unsigned i=getNumChildren()-1; i>0; --i )
     {
-        Control* control = i->get();
-        if (control->isDirty())
+        Control* control = static_cast<Control*>( getChild(i) );
+        if ( control->isDirty() )
         {
             aa.requestRedraw();
             break;
@@ -2737,9 +2726,10 @@ ControlCanvas::handle( const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter
     //Send a frame event to all controls
     if ( ea.getEventType() == osgGA::GUIEventAdapter::FRAME )
     {
-        for( ControlList::reverse_iterator i = _controls.rbegin(); i != _controls.rend(); ++i )
+        for( unsigned i=1; i<getNumChildren(); ++i )
         {
-            i->get()->handle(ea, aa, _context);
+            Control* control = static_cast<Control*>( getChild(i) );
+            control->handle(ea, aa, _context);
         }
         return handled;
     }
@@ -2747,9 +2737,10 @@ ControlCanvas::handle( const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter
 
     float invY = _context._vp->height() - ea.getY();
 
-    for( ControlList::reverse_iterator i = _controls.rbegin(); i != _controls.rend(); ++i )
+    for( unsigned i=getNumChildren()-1; i>0; --i )
     {
-        Control* control = i->get();
+        Control* control = static_cast<Control*>( getChild(i) );
+
         if ( control->intersects( ea.getX(), invY ) )
         {
             handled = control->handle( ea, aa, _context );
@@ -2784,9 +2775,10 @@ ControlCanvas::update( const osg::FrameStamp* frameStamp )
         return;
 
     int bin = 0;
-    for( ControlList::iterator i = _controls.begin(); i != _controls.end(); ++i )
+    for( unsigned i=1; i<getNumChildren(); ++i )
     {
-        Control* control = i->get();
+        Control* control = static_cast<Control*>( getChild(i) );
+
         if ( control->isDirty() || _contextDirty )
         {
             osg::Vec2f size;
@@ -2797,17 +2789,6 @@ ControlCanvas::update( const osg::FrameStamp* frameStamp )
             control->calcPos( _context, osg::Vec2f(0,0), surfaceSize );
 
             control->draw( _context );
-
-            //osg::Geode* geode = _geodeTable[control];
-            //geode->removeDrawables( 0, geode->getNumDrawables() );
-            //DrawableList drawables;
-            //control->draw( _context, drawables );
-
-            //for( DrawableList::iterator j = drawables.begin(); j != drawables.end(); ++j )
-            //{
-            //    j->get()->setDataVariance( osg::Object::DYNAMIC );
-            //    geode->addDrawable( j->get() );
-            //}
         }
     }
 
@@ -2816,8 +2797,11 @@ ControlCanvas::update( const osg::FrameStamp* frameStamp )
         _controlNodeBin->draw( _context, _contextDirty, bin );
     }
 
-    // shaderize!
+    // shaderize.
+    // we don't really need to rebuild shaders on every dirty; we could probably
+    // just do it on add/remove controls; but that's an optimization for later
     ShaderGenerator shaderGen( _stateSetCache.get() );
+    shaderGen.setVirtualProgramTemplate( new VirtualProgram() );
     this->accept( shaderGen );
 
     _contextDirty = false;
@@ -2835,10 +2819,10 @@ ControlCanvas::traverse( osg::NodeVisitor& nv )
                 bool needsUpdate = _contextDirty;
                 if ( !needsUpdate )
                 {
-                    for( unsigned i=0; i<getNumChildren(); ++i )
+                    for( unsigned i=1; i<getNumChildren(); ++i )
                     {
-                        Control* control = dynamic_cast<Control*>( getChild(i) );
-                        if ( control && control->isDirty() )
+                        Control* control = static_cast<Control*>( getChild(i) );
+                        if ( control->isDirty() )
                         {
                             needsUpdate = true;
                             break;

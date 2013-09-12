@@ -845,7 +845,7 @@ namespace osgEarth { namespace Util { namespace Controls
         void removeControl( Control* control );
 
         /** gets the top-most control that intersects the specified position. */
-        Control* getControlAtMouse( float x, float y ) const;
+        Control* getControlAtMouse( float x, float y );
 
         /** Toggles whether ControlNodes are allowed to overlap. */
         void setAllowControlNodeOverlap( bool value );
@@ -870,8 +870,6 @@ namespace osgEarth { namespace Util { namespace Controls
 
     protected:
 
-        ControlList     _controls;
-        //GeodeTable      _geodeTable;
         ControlContext  _context;
         bool            _contextDirty;
         bool            _updatePending;

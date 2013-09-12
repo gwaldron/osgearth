@@ -26,13 +26,23 @@
 namespace osgEarth_engine_mp
 {
     using namespace osgEarth;
+    class TileNode;
+
+    /**
+     * Marker that gives access to a TileNode.
+     */
+    class TileNodeContainer
+    {
+    public:
+        virtual TileNode* getTileNode() = 0;
+    };
 
     /**
      * Node that represents a single terrain tile that was compiled from
      * a TileModel (and corresponds to one TileKey). The matrixtransform
      * localizes the TileNode within the terrain.
      */
-    class TileNode : public osg::MatrixTransform
+    class TileNode : public osg::MatrixTransform, public TileNodeContainer
     {
     public:
         /**
@@ -63,6 +73,28 @@ namespace osgEarth_engine_mp
          */
         void setLastTraversalFrame(unsigned frame);
 
+        /**
+         * Tells the tile node the current map revision, which is turn
+         * will determine whether the tile is dirty and needs updating.
+         */
+        void setMapRevision( const Revision& value ) { _maprevision = value; }
+
+        /**
+         * Flags this Tile as dirty, regardless of whether the revisions are in sync.
+         */
+        void setDirty() { _dirty = true; }
+
+        /**
+         * Whether the tile is dirty and was traversed (and if therefore ready for
+         * a dynamic update)
+         */
+        bool isOutOfDate() const { return _outOfDate; }
+
+
+    public: // TileNodeContainer
+
+        TileNode* getTileNode() { return this; }
+
 
     public: // OVERRIDES
 
@@ -83,6 +115,9 @@ namespace osgEarth_engine_mp
         osg::ref_ptr<osg::Uniform>         _tileParentMatrixUniform;
         unsigned                           _lastTraversalFrame;
         double                             _bornTime;
+        Revision                           _maprevision;
+        bool                               _outOfDate;
+        bool                               _dirty;
     };
 
 

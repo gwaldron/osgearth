@@ -23,6 +23,7 @@
 #include "TileNode"
 #include <osg/Group>
 #include <osgDB/Options>
+#include <osgEarth/ThreadingUtils>
 
 using namespace osgEarth;
 
@@ -35,7 +36,7 @@ namespace osgEarth_engine_mp
      * TileKey) and four TilePagedLODs (each of which is responsible for
      * loading one of the four subtiles).
      */
-    class TileGroup : public osg::Group
+    class TileGroup : public osg::Group, public TileNodeContainer
     {
     public:
         TileGroup(
@@ -50,18 +51,23 @@ namespace osgEarth_engine_mp
 
         /** The TilePagedLOD nodes under this group call this method to
           * notify the Group that a subtile is ready. */
-        unsigned& numSubtilesLoaded() { return _numSubtilesLoaded; }
+        //OpenThreads::Atomic& numSubtilesLoaded() { return _numSubtilesLoaded; }
 
         /** A TilePagedLOD node under this group bumps this counter
           * when it tries to fall back on an upsampled tile */
-        unsigned& numSubtilesUpsampling() { return _numSubtilesUpsampling; }
+        //OpenThreads::Atomic& numSubtilesUpsampling() { return _numSubtilesUpsampling; }
 
         /** TilePagedLOD will call this if it fails to load a subtile.
          *  If any one subtile fails to load, we cannot display any */
-        void cancelSubtiles() { _traverseSubtiles = false; }
+        //void cancelSubtiles() { _traverseSubtiles = false; }
+
+        /** Replaces the underlying TileNode with a new one. */
+        void setTileNode( TileNode* tilenode );
+
+    public: // TileNodeContainer
 
         /** The TileNode holding the geometry for this group. */
-        TileNode* getTileNode() const { return _tilenode; }
+        TileNode* getTileNode() { return _tilenode; }
 
     public: // osg::Node
 
@@ -69,18 +75,30 @@ namespace osgEarth_engine_mp
         void traverse(osg::NodeVisitor& nv);
         
         /** Bound is equivalent to the bound of the tilenode. */
-        osg::BoundingSphere computeBound() const { return _tilenode->computeBound(); }
+        osg::BoundingSphere computeBound() const;
 
     protected:
+        TileGroup();
+
         virtual ~TileGroup() { }
 
     private:
         TileKey   _key;
-        unsigned  _numSubtilesLoaded;
-        unsigned  _numSubtilesUpsampling;
         TileNode* _tilenode;
         float     _subtileRange;
-        bool      _traverseSubtiles;
+        bool      _ignoreSubtiles;
+    };
+
+    class RootTileGroup : public TileGroup
+    {
+    public:
+        RootTileGroup();
+        void addRootKey(const TileKey&    key,
+                        osg::Node*        node,
+                        const UID&        engineUID,
+                        TileNodeRegistry* live,
+                        TileNodeRegistry* dead,
+                        osgDB::Options*   dbOptions);
     };
 
 } // namespace osgEarth_engine_mp

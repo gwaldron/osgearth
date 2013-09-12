@@ -173,9 +173,11 @@ namespace
 
             Line2d farLine( osg::Vec3d(-1,1,0), osg::Vec3d(1,1,0) );
 
+            int iterations = 0;
             while(
                 (aspectRatio > maxApsectRatio || farNearRatio > maxFarNearRatio) &&
-                (halfWidthFar > halfWidthNear) )
+                (halfWidthFar > halfWidthNear) &&
+                (iterations++ < 10) )
             {
                 // make sure all the far-clip verts are inside our polygon.
                 // stretch out the far line to accomodate them.
@@ -195,6 +197,7 @@ namespace
                 if ( farNearRatio > maxFarNearRatio )
                 {
                     halfWidthNear = halfWidthFar / maxFarNearRatio;
+                    //break;
                 }
 
                 halfWidthNear = std::max(halfWidthNear, minHalfWidthNear);

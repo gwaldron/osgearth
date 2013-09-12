@@ -622,6 +622,8 @@ ExtrudeGeometryFilter::extrudeGeometry(const Geometry*         input,
                 wallLines->push_back( basePartPtr + i*2 + 1 );
             }
             outline->addPrimitiveSet( wallLines );
+
+            applyLineSymbology( outline->getOrCreateStateSet(), _outlineSymbol.get() );
         }
     }
 
@@ -956,17 +958,6 @@ ExtrudeGeometryFilter::push( FeatureList& input, FilterContext& context )
         if ( _outlineSymbol->stroke()->width().isSet() )
             groupStateSet->setAttributeAndModes( new osg::LineWidth(*_outlineSymbol->stroke()->width()), 1 );
     }
-
-#if 0 // now called from GeometryCompiler
-
-    // generate shaders to draw the geometry.
-    if ( Registry::capabilities().supportsGLSL() )
-    {
-        StateSetCache* cache = context.getSession() ? context.getSession()->getStateSetCache() : 0L;
-        ShaderGenerator gen( cache );
-        group->accept( gen );
-    }
-#endif
 
     return group;
 }

@@ -21,6 +21,7 @@
 
 #include <osgEarth/Common>
 #include <ctime>
+#include <cstring>
 
 namespace osgEarth
 {

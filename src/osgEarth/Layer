@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2012 Pelican Mapping
+ * Copyright 2008-2013 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -24,6 +24,8 @@
 
 namespace osgEarth
 {
+    class SequenceControl;
+
     /**
      * Base class for all Map layers. 
      */
@@ -39,6 +41,12 @@ namespace osgEarth
          * Gets this layer's unique ID.
          */
         const UID getUID() const { return _uid; }
+
+        /**
+         * Sequence controller if the layer has one.
+         */
+        virtual SequenceControl* getSequenceControl() { return 0L; }
+
 
     private:
         UID _uid;

@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2008-2012 Pelican Mapping
+* Copyright 2008-2013 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -30,6 +30,7 @@
 
 #include <osgEarth/MapNode>
 
+using namespace osgEarth_engine_quadtree;
 using namespace osgEarth;
 using namespace OpenThreads;
 
@@ -77,24 +78,17 @@ SerialKeyNodeFactory::addTile(TileModel* model, bool tileHasRealData, bool tileH
     // 3. We are still below the maximim LOD.
     bool wrapInPagedLOD =
         (tileHasRealData || (_options.minLOD().isSet() && model->_tileKey.getLOD() < *_options.minLOD())) &&
-        //(tileHasRealData || _options.minLOD().isSet()) &&
         !osgEarth::Registry::instance()->isBlacklisted( uri ) &&
         model->_tileKey.getLOD() < *_options.maxLOD();
 
     if ( wrapInPagedLOD )
     {
         osg::BoundingSphere bs = tileNode->getBound();
+      
         float maxRange = FLT_MAX;
         
-#if 0
-        //Compute the min range based on the actual bounds of the tile.  This can break down if you have very high resolution
-        //data with elevation variations and you can run out of memory b/c the elevation change is greater than the actual size of the tile so you end up
-        //inifinitely subdividing (or at least until you run out of data or memory)
-        double minRange = bs.radius() * _options.minTileRangeFactor().value();
-#else        
-        //double origMinRange = bs.radius() * _options.minTileRangeFactor().value();        
         //Compute the min range based on the 2D size of the tile
-        GeoExtent extent = model->_tileKey.getExtent();        
+        GeoExtent extent = model->_tileKey.getExtent();
         GeoPoint lowerLeft(extent.getSRS(), extent.xMin(), extent.yMin(), 0.0, ALTMODE_ABSOLUTE);
         GeoPoint upperRight(extent.getSRS(), extent.xMax(), extent.yMax(), 0.0, ALTMODE_ABSOLUTE);
         osg::Vec3d ll, ur;
@@ -102,15 +96,31 @@ SerialKeyNodeFactory::addTile(TileModel* model, bool tileHasRealData, bool tileH
         upperRight.toWorld( ur );
         double radius = (ur - ll).length() / 2.0;
         float minRange = (float)(radius * _options.minTileRangeFactor().value());
-#endif
 
+        
         // create a PLOD so we can keep subdividing:
         osg::PagedLOD* plod = new CustomPagedLOD( _liveTiles.get(), _deadTiles.get() );
         plod->setCenter( bs.center() );
-        plod->addChild( tileNode, minRange, maxRange );
-
+        plod->addChild( tileNode );
+        plod->setRangeMode( *_options.rangeMode() );
         plod->setFileName( 1, uri );
-        plod->setRange   ( 1, 0, minRange );
+  
+
+        if (plod->getRangeMode() == osg::LOD::PIXEL_SIZE_ON_SCREEN)
+        {
+            static const float sqrt2 = sqrt(2.0f);
+
+            minRange = 0;
+            maxRange = (*_options.tilePixelSize()) * sqrt2;
+            plod->setRange( 0, minRange, maxRange  );
+            plod->setRange( 1, maxRange, FLT_MAX );            
+        }
+        else
+        {
+            plod->setRange( 0, minRange, maxRange );                
+            plod->setRange( 1, 0, minRange );        
+        }        
+                        
 
         plod->setUserData( new MapNode::TileRangeData(minRange, maxRange) );
 
@@ -126,7 +136,7 @@ SerialKeyNodeFactory::addTile(TileModel* model, bool tileHasRealData, bool tileH
         {
             // Make the LOD transition distance, and a measure of how
             // close the tile is to an LOD change, to shaders.
-            result->addCullCallback(new Drivers::LODFactorCallback);
+            result->addCullCallback(new LODFactorCallback);
         }
     }
     else

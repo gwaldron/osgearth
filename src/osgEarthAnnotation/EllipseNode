@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2008-2012 Pelican Mapping
+* Copyright 2008-2013 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -47,56 +47,57 @@ namespace osgEarth { namespace Annotation
          * @param radiusMinor Length of 1/2 the minor axis of the ellipse
          * @param rotation    Rotation angle of the ellipse
          * @param style       Style defining how the annotation will look
-         * @param draped      Whether to "drape" the annotation down on to the terrain
-         * @param numSegments Hint as to the tessellation of the ellipse
+         * @param arcStart    Optional start of arc (default to 0.0 degrees)
+         * @param arcStop     Optional end of arc (default to 360.0 degrees)
+         * @param pie         Optionally make pie shape instead of arc
          */
         EllipseNode( 
             MapNode*                mapNode,
             const GeoPoint&         position,
-            const Linear&           radiusMajor,
-            const Linear&           radiusMinor,
-            const Angular&          rotationAngle,
+            const Distance&         radiusMajor,
+            const Distance&         radiusMinor,
+            const Angle&            rotationAngle,
             const Style&            style,
-            bool                    draped      =true,
-            unsigned                numSegments =0 );
+            const Angle&            arcStart = Angle(0.0, Units::DEGREES),
+            const Angle&            arcEnd = Angle(360.0, Units::DEGREES),
+            const bool              pie = false);
 
         virtual ~EllipseNode() { }
 
         /**
          * Gets the major radius
          */
-        const Linear& getRadiusMajor() const;
+        const Distance& getRadiusMajor() const;
 
         /**
          * Gets the minor radius
          */
-        const Linear& getRadiusMinor() const;
+        const Distance& getRadiusMinor() const;
 
         /**
          * Sets the major radius
          */
-        void setRadiusMajor( const Linear& radiusMajor );
+        void setRadiusMajor( const Distance& radiusMajor );
 
         /**
          * Sets the minor radius
          */
-        void setRadiusMinor( const Linear& radiusMinor );
+        void setRadiusMinor( const Distance& radiusMinor );
 
         /**
          * Sets the major and minor radii
          */
-        void setRadii( const Linear& radiusMajor, const Linear& radiusMinor );
+        void setRadii( const Distance& radiusMajor, const Distance& radiusMinor );
 
         /*
          * Gets the rotation angle
          */
-        const Angular& getRotationAngle() const;
-
+        const Angle& getRotationAngle() const;
 
         /**
          * Sets the rotation angle
          */
-        void setRotationAngle(const Angular& rotationAngle);
+        void setRotationAngle(const Angle& rotationAngle);
 
         /**
          * Gets the number of segments
@@ -107,7 +108,6 @@ namespace osgEarth { namespace Annotation
          * Sets the number of segments
          */
         void setNumSegments(unsigned int numSegments );
-
 
         /**
          * Gets the style
@@ -120,6 +120,36 @@ namespace osgEarth { namespace Annotation
         void setStyle( const Style& style );
 
         /**
+         * Gets the start degrees of this (arc) circle
+         */
+        const Angle& getArcStart(void) const;
+
+        /**
+         * Sets the start degrees of this (arc) circle
+         */
+        void setArcStart(const Angle& arcStart);
+
+        /**
+         * Gets the end degrees of this (arc) circle
+         */
+        const Angle& getArcEnd(void) const;
+
+        /**
+         * Sets the end degrees of this (arc) circle
+         */
+        void setArcEnd(const Angle& arcEnd);
+
+        /**
+         * Gets the pie flag
+         */
+        const bool& getPie(void) const;
+
+        /**
+         * Sets the pie flag
+         */
+        void setPie(const bool& pie);
+
+        /**
          * Gets draped property
          */
         bool isDraped() const { return _draped; }
@@ -130,6 +160,11 @@ namespace osgEarth { namespace Annotation
         virtual Config getConfig() const;
 
 
+    public: // LocalizedNode
+
+        osg::MatrixTransform* getTransform() { return _xform.get(); }
+
+
     private:
         EllipseNode() { }
         EllipseNode(const EllipseNode& rhs, const osg::CopyOp& op) { }
@@ -138,10 +173,14 @@ namespace osgEarth { namespace Annotation
         
         Style _style;
         bool _draped;
-        Angular _rotationAngle;
-        Linear _radiusMajor;
-        Linear _radiusMinor;
+        Angle _rotationAngle;
+        Distance _radiusMajor;
+        Distance _radiusMinor;
+        Angle _arcStart;
+        Angle _arcEnd;
+        bool  _pie;
         unsigned int _numSegments;
+        osg::ref_ptr<osg::MatrixTransform> _xform;
     };
 
 } } // namespace osgEarth::Annotation

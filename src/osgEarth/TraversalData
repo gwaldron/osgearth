@@ -1,0 +1,79 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+ * Copyright 2008-2013 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+#ifndef OSGEARTH_TRAVERSAL_DATA_H
+#define OSGEARTH_TRAVERSAL_DATA_H 1
+
+#include <osgEarth/Common>
+#include <osgEarth/ThreadingUtils>
+#include <osg/NodeVisitor>
+#include <osg/observer_ptr>
+#include <map>
+
+namespace osgEarth
+{
+    class MapNode;
+
+    class TraversalData : public osg::Referenced
+    {
+    public:
+        typedef std::map<void*, osg::ref_ptr<osg::Referenced> > UserDataMap;
+
+        template<typename T> T& getOrCreate(void* key)
+        {
+            UserDataMap::iterator i = _userData.find( key );
+            if ( i != _userData.end() )
+                return *static_cast<T*>( i->second.get() );
+            T* t = new T();
+            _userData[key] = t;
+            return *t;
+        }
+
+    public:
+        TraversalData() { }
+        static TraversalData* get(osg::NodeVisitor& nv)
+        {
+            return dynamic_cast<TraversalData*>( nv.getUserData() );
+        }
+
+    protected:
+        UserDataMap _userData;
+    };
+
+
+    /**
+     * Per-camera data for MapNode culling traversals.
+     */
+    class OSGEARTH_EXPORT MapNodeCullData : public osg::Referenced
+    {
+    public:
+        MapNodeCullData();
+
+    public:
+        osg::observer_ptr<class MapNode>  _mapNode;
+        osg::ref_ptr<osg::StateSet> _stateSet;
+        osg::ref_ptr<osg::Uniform>  _windowScaleMatrix;
+        double                      _cameraAltitude;
+
+    protected:
+        virtual ~MapNodeCullData() { }
+    };
+
+} // namespace osgEarth
+
+#endif // OSGEARTH_TRAVERSAL_DATA_H

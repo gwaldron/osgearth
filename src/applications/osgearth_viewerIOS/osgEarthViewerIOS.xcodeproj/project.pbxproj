@@ -7,11 +7,18 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		1F823FFE173C1D20003B519D /* libosgdb_osgearth_engine_mp.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 1F823FFD173C1D20003B519D /* libosgdb_osgearth_engine_mp.a */; };
+		1F8566A817666C29005BCD2B /* libosgdb_osgearth_scriptengine_javascriptcore.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 1F8566A717666C29005BCD2B /* libosgdb_osgearth_scriptengine_javascriptcore.a */; };
+		1F8566AA17666E67005BCD2B /* libJavaScriptCore.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 1F8566A917666E67005BCD2B /* libJavaScriptCore.a */; };
+		1F8566AC17666EC1005BCD2B /* libicucore.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 1F8566AB17666EC1005BCD2B /* libicucore.dylib */; };
+		1FA5C122177B608000A161FF /* gdal_data in Resources */ = {isa = PBXBuildFile; fileRef = 1FA5C121177B608000A161FF /* gdal_data */; };
 		90283E5615C6FB3E00620EEF /* tests in Resources */ = {isa = PBXBuildFile; fileRef = 90283E5415C6FB3E00620EEF /* tests */; };
 		90283E5715C6FB3E00620EEF /* data in Resources */ = {isa = PBXBuildFile; fileRef = 90283E5515C6FB3E00620EEF /* data */; };
 		90283E5D15C7091A00620EEF /* libosgdb_osgearth_engine_quadtree.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 90283E5C15C7091A00620EEF /* libosgdb_osgearth_engine_quadtree.a */; };
 		903B45DB15C0DE9F00F7702B /* EarthMultiTouchManipulator.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 903B45D915C0DE9F00F7702B /* EarthMultiTouchManipulator.cpp */; };
 		9048FB2415FA9DE50012C900 /* libosgdb_tiff.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 9048FB2315FA9DE50012C900 /* libosgdb_tiff.a */; };
+		904E22771691CC42002D66FD /* Accelerate.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 904E22751691CC42002D66FD /* Accelerate.framework */; };
+		904E22781691CC42002D66FD /* MobileCoreServices.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 904E22761691CC42002D66FD /* MobileCoreServices.framework */; };
 		9051000115B1EDFD00D9ABD3 /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 9051000015B1EDFD00D9ABD3 /* Foundation.framework */; };
 		9051000315B1EDFD00D9ABD3 /* CoreGraphics.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 9051000215B1EDFD00D9ABD3 /* CoreGraphics.framework */; };
 		9051000715B1EDFD00D9ABD3 /* OpenGLES.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 9051000615B1EDFD00D9ABD3 /* OpenGLES.framework */; };
@@ -172,12 +179,19 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		1F823FFD173C1D20003B519D /* libosgdb_osgearth_engine_mp.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libosgdb_osgearth_engine_mp.a; path = ../../../lib/Release/libosgdb_osgearth_engine_mp.a; sourceTree = "<group>"; };
+		1F8566A717666C29005BCD2B /* libosgdb_osgearth_scriptengine_javascriptcore.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libosgdb_osgearth_scriptengine_javascriptcore.a; path = ../../../lib/Release/libosgdb_osgearth_scriptengine_javascriptcore.a; sourceTree = "<group>"; };
+		1F8566A917666E67005BCD2B /* libJavaScriptCore.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libJavaScriptCore.a; path = ../../../../3rdParty/all/libJavaScriptCore.a; sourceTree = "<group>"; };
+		1F8566AB17666EC1005BCD2B /* libicucore.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = libicucore.dylib; path = usr/lib/libicucore.dylib; sourceTree = SDKROOT; };
+		1FA5C121177B608000A161FF /* gdal_data */ = {isa = PBXFileReference; lastKnownFileType = folder; name = gdal_data; path = ../../../../../3rdParty/gdal_data; sourceTree = "<group>"; };
 		90283E5415C6FB3E00620EEF /* tests */ = {isa = PBXFileReference; lastKnownFileType = folder; name = tests; path = ../../../../tests; sourceTree = "<group>"; };
 		90283E5515C6FB3E00620EEF /* data */ = {isa = PBXFileReference; lastKnownFileType = folder; name = data; path = ../../../../data; sourceTree = "<group>"; };
 		90283E5C15C7091A00620EEF /* libosgdb_osgearth_engine_quadtree.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libosgdb_osgearth_engine_quadtree.a; path = ../../../lib/Release/libosgdb_osgearth_engine_quadtree.a; sourceTree = "<group>"; };
 		903B45D915C0DE9F00F7702B /* EarthMultiTouchManipulator.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = EarthMultiTouchManipulator.cpp; sourceTree = "<group>"; };
 		903B45DA15C0DE9F00F7702B /* EarthMultiTouchManipulator.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = EarthMultiTouchManipulator.h; sourceTree = "<group>"; };
-		9048FB2315FA9DE50012C900 /* libosgdb_tiff.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libosgdb_tiff.a; path = "../../../../osg-ios-gles2/lib/libosgdb_tiff.a"; sourceTree = "<group>"; };
+		9048FB2315FA9DE50012C900 /* libosgdb_tiff.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libosgdb_tiff.a; path = "../../../../osg-ios/lib/libosgdb_tiff.a"; sourceTree = "<group>"; };
+		904E22751691CC42002D66FD /* Accelerate.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Accelerate.framework; path = System/Library/Frameworks/Accelerate.framework; sourceTree = SDKROOT; };
+		904E22761691CC42002D66FD /* MobileCoreServices.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = MobileCoreServices.framework; path = System/Library/Frameworks/MobileCoreServices.framework; sourceTree = SDKROOT; };
 		9051000015B1EDFD00D9ABD3 /* Foundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Foundation.framework; path = System/Library/Frameworks/Foundation.framework; sourceTree = SDKROOT; };
 		9051000215B1EDFD00D9ABD3 /* CoreGraphics.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreGraphics.framework; path = System/Library/Frameworks/CoreGraphics.framework; sourceTree = SDKROOT; };
 		9051000615B1EDFD00D9ABD3 /* OpenGLES.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = OpenGLES.framework; path = System/Library/Frameworks/OpenGLES.framework; sourceTree = SDKROOT; };
@@ -200,99 +214,99 @@
 		905100D015B2185000D9ABD3 /* libiconv.2.4.0.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = libiconv.2.4.0.dylib; path = usr/lib/libiconv.2.4.0.dylib; sourceTree = SDKROOT; };
 		9051FFFA15B1EDFD00D9ABD3 /* osgEarth.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = osgEarth.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		9051FFFE15B1EDFD00D9ABD3 /* UIKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = UIKit.framework; path = System/Library/Frameworks/UIKit.framework; sourceTree = SDKROOT; };
-		907D02DC15B86F8700575110 /* libOpenThreads.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libOpenThreads.a; path = "../../../../osg-ios-gles2/lib/libOpenThreads.a"; sourceTree = "<group>"; };
-		907D02DD15B86F8700575110 /* libosg.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libosg.a; path = "../../../../osg-ios-gles2/lib/libosg.a"; sourceTree = "<group>"; };
-		907D02DE15B86F8700575110 /* libosgAnimation.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libosgAnimation.a; path = "../../../../osg-ios-gles2/lib/libosgAnimation.a"; sourceTree = "<group>"; };
-		907D02DF15B86F8700575110 /* libosgdb_3dc.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libosgdb_3dc.a; path = "../../../../osg-ios-gles2/lib/libosgdb_3dc.a"; sourceTree = "<group>"; };
-		907D02E015B86F8700575110 /* libosgdb_3ds.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libosgdb_3ds.a; path = "../../../../osg-ios-gles2/lib/libosgdb_3ds.a"; sourceTree = "<group>"; };
-		907D02E115B86F8700575110 /* libosgdb_ac.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libosgdb_ac.a; path = "../../../../osg-ios-gles2/lib/libosgdb_ac.a"; sourceTree = "<group>"; };
-		907D02E215B86F8700575110 /* libosgdb_bmp.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libosgdb_bmp.a; path = "../../../../osg-ios-gles2/lib/libosgdb_bmp.a"; sourceTree = "<group>"; };
-		907D02E315B86F8700575110 /* libosgdb_bsp.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libosgdb_bsp.a; path = "../../../../osg-ios-gles2/lib/libosgdb_bsp.a"; sourceTree = "<group>"; };
-		907D02E415B86F8700575110 /* libosgdb_bvh.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libosgdb_bvh.a; path = "../../../../osg-ios-gles2/lib/libosgdb_bvh.a"; sourceTree = "<group>"; };
-		907D02E515B86F8700575110 /* libosgdb_cfg.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libosgdb_cfg.a; path = "../../../../osg-ios-gles2/lib/libosgdb_cfg.a"; sourceTree = "<group>"; };
-		907D02E615B86F8700575110 /* libosgdb_curl.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libosgdb_curl.a; path = "../../../../osg-ios-gles2/lib/libosgdb_curl.a"; sourceTree = "<group>"; };
-		907D02E715B86F8700575110 /* libosgdb_dds.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libosgdb_dds.a; path = "../../../../osg-ios-gles2/lib/libosgdb_dds.a"; sourceTree = "<group>"; };
-		907D02E815B86F8700575110 /* libosgdb_deprecated_osg.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libosgdb_deprecated_osg.a; path = "../../../../osg-ios-gles2/lib/libosgdb_deprecated_osg.a"; sourceTree = "<group>"; };
-		907D02E915B86F8700575110 /* libosgdb_deprecated_osganimation.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libosgdb_deprecated_osganimation.a; path = "../../../../osg-ios-gles2/lib/libosgdb_deprecated_osganimation.a"; sourceTree = "<group>"; };
-		907D02EA15B86F8700575110 /* libosgdb_deprecated_osgfx.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libosgdb_deprecated_osgfx.a; path = "../../../../osg-ios-gles2/lib/libosgdb_deprecated_osgfx.a"; sourceTree = "<group>"; };
-		907D02EB15B86F8700575110 /* libosgdb_deprecated_osgparticle.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libosgdb_deprecated_osgparticle.a; path = "../../../../osg-ios-gles2/lib/libosgdb_deprecated_osgparticle.a"; sourceTree = "<group>"; };
-		907D02EC15B86F8700575110 /* libosgdb_deprecated_osgshadow.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libosgdb_deprecated_osgshadow.a; path = "../../../../osg-ios-gles2/lib/libosgdb_deprecated_osgshadow.a"; sourceTree = "<group>"; };
-		907D02ED15B86F8700575110 /* libosgdb_deprecated_osgsim.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libosgdb_deprecated_osgsim.a; path = "../../../../osg-ios-gles2/lib/libosgdb_deprecated_osgsim.a"; sourceTree = "<group>"; };
-		907D02EE15B86F8700575110 /* libosgdb_deprecated_osgterrain.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libosgdb_deprecated_osgterrain.a; path = "../../../../osg-ios-gles2/lib/libosgdb_deprecated_osgterrain.a"; sourceTree = "<group>"; };
-		907D02EF15B86F8700575110 /* libosgdb_deprecated_osgtext.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libosgdb_deprecated_osgtext.a; path = "../../../../osg-ios-gles2/lib/libosgdb_deprecated_osgtext.a"; sourceTree = "<group>"; };
-		907D02F015B86F8700575110 /* libosgdb_deprecated_osgviewer.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libosgdb_deprecated_osgviewer.a; path = "../../../../osg-ios-gles2/lib/libosgdb_deprecated_osgviewer.a"; sourceTree = "<group>"; };
-		907D02F115B86F8700575110 /* libosgdb_deprecated_osgvolume.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libosgdb_deprecated_osgvolume.a; path = "../../../../osg-ios-gles2/lib/libosgdb_deprecated_osgvolume.a"; sourceTree = "<group>"; };
-		907D02F215B86F8700575110 /* libosgdb_deprecated_osgwidget.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libosgdb_deprecated_osgwidget.a; path = "../../../../osg-ios-gles2/lib/libosgdb_deprecated_osgwidget.a"; sourceTree = "<group>"; };
-		907D02F315B86F8700575110 /* libosgdb_dot.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libosgdb_dot.a; path = "../../../../osg-ios-gles2/lib/libosgdb_dot.a"; sourceTree = "<group>"; };
-		907D02F415B86F8700575110 /* libosgdb_dw.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libosgdb_dw.a; path = "../../../../osg-ios-gles2/lib/libosgdb_dw.a"; sourceTree = "<group>"; };
-		907D02F515B86F8700575110 /* libosgdb_dxf.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libosgdb_dxf.a; path = "../../../../osg-ios-gles2/lib/libosgdb_dxf.a"; sourceTree = "<group>"; };
-		907D02F615B86F8700575110 /* libosgdb_freetype.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libosgdb_freetype.a; path = "../../../../osg-ios-gles2/lib/libosgdb_freetype.a"; sourceTree = "<group>"; };
-		907D02F715B86F8700575110 /* libosgdb_gdal.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libosgdb_gdal.a; path = "../../../../osg-ios-gles2/lib/libosgdb_gdal.a"; sourceTree = "<group>"; };
-		907D02F815B86F8700575110 /* libosgdb_geo.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libosgdb_geo.a; path = "../../../../osg-ios-gles2/lib/libosgdb_geo.a"; sourceTree = "<group>"; };
-		907D02F915B86F8700575110 /* libosgdb_glsl.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libosgdb_glsl.a; path = "../../../../osg-ios-gles2/lib/libosgdb_glsl.a"; sourceTree = "<group>"; };
-		907D02FA15B86F8700575110 /* libosgdb_gz.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libosgdb_gz.a; path = "../../../../osg-ios-gles2/lib/libosgdb_gz.a"; sourceTree = "<group>"; };
-		907D02FB15B86F8700575110 /* libosgdb_hdr.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libosgdb_hdr.a; path = "../../../../osg-ios-gles2/lib/libosgdb_hdr.a"; sourceTree = "<group>"; };
-		907D02FC15B86F8700575110 /* libosgdb_imageio.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libosgdb_imageio.a; path = "../../../../osg-ios-gles2/lib/libosgdb_imageio.a"; sourceTree = "<group>"; };
-		907D02FD15B86F8700575110 /* libosgdb_ive.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libosgdb_ive.a; path = "../../../../osg-ios-gles2/lib/libosgdb_ive.a"; sourceTree = "<group>"; };
-		907D02FE15B86F8700575110 /* libosgdb_logo.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libosgdb_logo.a; path = "../../../../osg-ios-gles2/lib/libosgdb_logo.a"; sourceTree = "<group>"; };
-		907D02FF15B86F8700575110 /* libosgdb_lwo.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libosgdb_lwo.a; path = "../../../../osg-ios-gles2/lib/libosgdb_lwo.a"; sourceTree = "<group>"; };
-		907D030015B86F8700575110 /* libosgdb_lws.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libosgdb_lws.a; path = "../../../../osg-ios-gles2/lib/libosgdb_lws.a"; sourceTree = "<group>"; };
-		907D030115B86F8700575110 /* libosgdb_md2.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libosgdb_md2.a; path = "../../../../osg-ios-gles2/lib/libosgdb_md2.a"; sourceTree = "<group>"; };
-		907D030215B86F8700575110 /* libosgdb_mdl.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libosgdb_mdl.a; path = "../../../../osg-ios-gles2/lib/libosgdb_mdl.a"; sourceTree = "<group>"; };
-		907D030315B86F8700575110 /* libosgdb_normals.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libosgdb_normals.a; path = "../../../../osg-ios-gles2/lib/libosgdb_normals.a"; sourceTree = "<group>"; };
-		907D030415B86F8700575110 /* libosgdb_obj.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libosgdb_obj.a; path = "../../../../osg-ios-gles2/lib/libosgdb_obj.a"; sourceTree = "<group>"; };
-		907D030515B86F8700575110 /* libosgdb_ogr.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libosgdb_ogr.a; path = "../../../../osg-ios-gles2/lib/libosgdb_ogr.a"; sourceTree = "<group>"; };
-		907D030615B86F8700575110 /* libosgdb_openflight.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libosgdb_openflight.a; path = "../../../../osg-ios-gles2/lib/libosgdb_openflight.a"; sourceTree = "<group>"; };
-		907D030715B86F8700575110 /* libosgdb_osg.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libosgdb_osg.a; path = "../../../../osg-ios-gles2/lib/libosgdb_osg.a"; sourceTree = "<group>"; };
-		907D030815B86F8700575110 /* libosgdb_osga.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libosgdb_osga.a; path = "../../../../osg-ios-gles2/lib/libosgdb_osga.a"; sourceTree = "<group>"; };
-		907D030915B86F8700575110 /* libosgdb_osgshadow.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libosgdb_osgshadow.a; path = "../../../../osg-ios-gles2/lib/libosgdb_osgshadow.a"; sourceTree = "<group>"; };
-		907D030A15B86F8700575110 /* libosgdb_osgterrain.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libosgdb_osgterrain.a; path = "../../../../osg-ios-gles2/lib/libosgdb_osgterrain.a"; sourceTree = "<group>"; };
-		907D030B15B86F8700575110 /* libosgdb_osgtgz.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libosgdb_osgtgz.a; path = "../../../../osg-ios-gles2/lib/libosgdb_osgtgz.a"; sourceTree = "<group>"; };
-		907D030C15B86F8700575110 /* libosgdb_osgviewer.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libosgdb_osgviewer.a; path = "../../../../osg-ios-gles2/lib/libosgdb_osgviewer.a"; sourceTree = "<group>"; };
-		907D030D15B86F8700575110 /* libosgdb_p3d.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libosgdb_p3d.a; path = "../../../../osg-ios-gles2/lib/libosgdb_p3d.a"; sourceTree = "<group>"; };
-		907D030E15B86F8700575110 /* libosgdb_pic.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libosgdb_pic.a; path = "../../../../osg-ios-gles2/lib/libosgdb_pic.a"; sourceTree = "<group>"; };
-		907D030F15B86F8700575110 /* libosgdb_ply.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libosgdb_ply.a; path = "../../../../osg-ios-gles2/lib/libosgdb_ply.a"; sourceTree = "<group>"; };
-		907D031015B86F8700575110 /* libosgdb_pnm.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libosgdb_pnm.a; path = "../../../../osg-ios-gles2/lib/libosgdb_pnm.a"; sourceTree = "<group>"; };
-		907D031115B86F8700575110 /* libosgdb_pov.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libosgdb_pov.a; path = "../../../../osg-ios-gles2/lib/libosgdb_pov.a"; sourceTree = "<group>"; };
-		907D031215B86F8700575110 /* libosgdb_pvr.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libosgdb_pvr.a; path = "../../../../osg-ios-gles2/lib/libosgdb_pvr.a"; sourceTree = "<group>"; };
-		907D031315B86F8700575110 /* libosgdb_revisions.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libosgdb_revisions.a; path = "../../../../osg-ios-gles2/lib/libosgdb_revisions.a"; sourceTree = "<group>"; };
-		907D031415B86F8700575110 /* libosgdb_rgb.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libosgdb_rgb.a; path = "../../../../osg-ios-gles2/lib/libosgdb_rgb.a"; sourceTree = "<group>"; };
-		907D031515B86F8700575110 /* libosgdb_rot.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libosgdb_rot.a; path = "../../../../osg-ios-gles2/lib/libosgdb_rot.a"; sourceTree = "<group>"; };
-		907D031615B86F8700575110 /* libosgdb_scale.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libosgdb_scale.a; path = "../../../../osg-ios-gles2/lib/libosgdb_scale.a"; sourceTree = "<group>"; };
-		907D031715B86F8700575110 /* libosgdb_serializers_osg.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libosgdb_serializers_osg.a; path = "../../../../osg-ios-gles2/lib/libosgdb_serializers_osg.a"; sourceTree = "<group>"; };
-		907D031815B86F8700575110 /* libosgdb_serializers_osganimation.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libosgdb_serializers_osganimation.a; path = "../../../../osg-ios-gles2/lib/libosgdb_serializers_osganimation.a"; sourceTree = "<group>"; };
-		907D031915B86F8700575110 /* libosgdb_serializers_osgfx.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libosgdb_serializers_osgfx.a; path = "../../../../osg-ios-gles2/lib/libosgdb_serializers_osgfx.a"; sourceTree = "<group>"; };
-		907D031A15B86F8700575110 /* libosgdb_serializers_osgmanipulator.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libosgdb_serializers_osgmanipulator.a; path = "../../../../osg-ios-gles2/lib/libosgdb_serializers_osgmanipulator.a"; sourceTree = "<group>"; };
-		907D031B15B86F8700575110 /* libosgdb_serializers_osgparticle.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libosgdb_serializers_osgparticle.a; path = "../../../../osg-ios-gles2/lib/libosgdb_serializers_osgparticle.a"; sourceTree = "<group>"; };
-		907D031C15B86F8700575110 /* libosgdb_serializers_osgshadow.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libosgdb_serializers_osgshadow.a; path = "../../../../osg-ios-gles2/lib/libosgdb_serializers_osgshadow.a"; sourceTree = "<group>"; };
-		907D031D15B86F8700575110 /* libosgdb_serializers_osgsim.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libosgdb_serializers_osgsim.a; path = "../../../../osg-ios-gles2/lib/libosgdb_serializers_osgsim.a"; sourceTree = "<group>"; };
-		907D031E15B86F8700575110 /* libosgdb_serializers_osgterrain.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libosgdb_serializers_osgterrain.a; path = "../../../../osg-ios-gles2/lib/libosgdb_serializers_osgterrain.a"; sourceTree = "<group>"; };
-		907D031F15B86F8700575110 /* libosgdb_serializers_osgtext.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libosgdb_serializers_osgtext.a; path = "../../../../osg-ios-gles2/lib/libosgdb_serializers_osgtext.a"; sourceTree = "<group>"; };
-		907D032015B86F8700575110 /* libosgdb_serializers_osgvolume.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libosgdb_serializers_osgvolume.a; path = "../../../../osg-ios-gles2/lib/libosgdb_serializers_osgvolume.a"; sourceTree = "<group>"; };
-		907D032115B86F8700575110 /* libosgdb_shp.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libosgdb_shp.a; path = "../../../../osg-ios-gles2/lib/libosgdb_shp.a"; sourceTree = "<group>"; };
-		907D032215B86F8700575110 /* libosgdb_stl.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libosgdb_stl.a; path = "../../../../osg-ios-gles2/lib/libosgdb_stl.a"; sourceTree = "<group>"; };
-		907D032315B86F8700575110 /* libosgdb_tga.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libosgdb_tga.a; path = "../../../../osg-ios-gles2/lib/libosgdb_tga.a"; sourceTree = "<group>"; };
-		907D032415B86F8700575110 /* libosgdb_tgz.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libosgdb_tgz.a; path = "../../../../osg-ios-gles2/lib/libosgdb_tgz.a"; sourceTree = "<group>"; };
-		907D032515B86F8700575110 /* libosgdb_trans.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libosgdb_trans.a; path = "../../../../osg-ios-gles2/lib/libosgdb_trans.a"; sourceTree = "<group>"; };
-		907D032615B86F8700575110 /* libosgdb_txf.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libosgdb_txf.a; path = "../../../../osg-ios-gles2/lib/libosgdb_txf.a"; sourceTree = "<group>"; };
-		907D032715B86F8700575110 /* libosgdb_txp.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libosgdb_txp.a; path = "../../../../osg-ios-gles2/lib/libosgdb_txp.a"; sourceTree = "<group>"; };
-		907D032815B86F8700575110 /* libosgdb_vtf.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libosgdb_vtf.a; path = "../../../../osg-ios-gles2/lib/libosgdb_vtf.a"; sourceTree = "<group>"; };
-		907D032915B86F8700575110 /* libosgdb_x.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libosgdb_x.a; path = "../../../../osg-ios-gles2/lib/libosgdb_x.a"; sourceTree = "<group>"; };
-		907D032A15B86F8700575110 /* libosgdb_zip.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libosgdb_zip.a; path = "../../../../osg-ios-gles2/lib/libosgdb_zip.a"; sourceTree = "<group>"; };
-		907D032B15B86F8700575110 /* libosgDB.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libosgDB.a; path = "../../../../osg-ios-gles2/lib/libosgDB.a"; sourceTree = "<group>"; };
-		907D032C15B86F8700575110 /* libosgFX.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libosgFX.a; path = "../../../../osg-ios-gles2/lib/libosgFX.a"; sourceTree = "<group>"; };
-		907D032D15B86F8700575110 /* libosgGA.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libosgGA.a; path = "../../../../osg-ios-gles2/lib/libosgGA.a"; sourceTree = "<group>"; };
-		907D032E15B86F8700575110 /* libosgManipulator.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libosgManipulator.a; path = "../../../../osg-ios-gles2/lib/libosgManipulator.a"; sourceTree = "<group>"; };
-		907D032F15B86F8700575110 /* libosgParticle.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libosgParticle.a; path = "../../../../osg-ios-gles2/lib/libosgParticle.a"; sourceTree = "<group>"; };
-		907D033015B86F8700575110 /* libosgPresentation.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libosgPresentation.a; path = "../../../../osg-ios-gles2/lib/libosgPresentation.a"; sourceTree = "<group>"; };
-		907D033115B86F8700575110 /* libosgShadow.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libosgShadow.a; path = "../../../../osg-ios-gles2/lib/libosgShadow.a"; sourceTree = "<group>"; };
-		907D033215B86F8700575110 /* libosgSim.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libosgSim.a; path = "../../../../osg-ios-gles2/lib/libosgSim.a"; sourceTree = "<group>"; };
-		907D033315B86F8700575110 /* libosgTerrain.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libosgTerrain.a; path = "../../../../osg-ios-gles2/lib/libosgTerrain.a"; sourceTree = "<group>"; };
-		907D033415B86F8700575110 /* libosgText.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libosgText.a; path = "../../../../osg-ios-gles2/lib/libosgText.a"; sourceTree = "<group>"; };
-		907D033515B86F8700575110 /* libosgUtil.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libosgUtil.a; path = "../../../../osg-ios-gles2/lib/libosgUtil.a"; sourceTree = "<group>"; };
-		907D033615B86F8700575110 /* libosgViewer.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libosgViewer.a; path = "../../../../osg-ios-gles2/lib/libosgViewer.a"; sourceTree = "<group>"; };
-		907D033715B86F8700575110 /* libosgVolume.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libosgVolume.a; path = "../../../../osg-ios-gles2/lib/libosgVolume.a"; sourceTree = "<group>"; };
-		907D033815B86F8700575110 /* libosgWidget.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libosgWidget.a; path = "../../../../osg-ios-gles2/lib/libosgWidget.a"; sourceTree = "<group>"; };
+		907D02DC15B86F8700575110 /* libOpenThreads.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libOpenThreads.a; path = "../../../../osg-ios/lib/libOpenThreads.a"; sourceTree = "<group>"; };
+		907D02DD15B86F8700575110 /* libosg.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libosg.a; path = "../../../../osg-ios/lib/libosg.a"; sourceTree = "<group>"; };
+		907D02DE15B86F8700575110 /* libosgAnimation.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libosgAnimation.a; path = "../../../../osg-ios/lib/libosgAnimation.a"; sourceTree = "<group>"; };
+		907D02DF15B86F8700575110 /* libosgdb_3dc.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libosgdb_3dc.a; path = "../../../../osg-ios/lib/libosgdb_3dc.a"; sourceTree = "<group>"; };
+		907D02E015B86F8700575110 /* libosgdb_3ds.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libosgdb_3ds.a; path = "../../../../osg-ios/lib/libosgdb_3ds.a"; sourceTree = "<group>"; };
+		907D02E115B86F8700575110 /* libosgdb_ac.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libosgdb_ac.a; path = "../../../../osg-ios/lib/libosgdb_ac.a"; sourceTree = "<group>"; };
+		907D02E215B86F8700575110 /* libosgdb_bmp.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libosgdb_bmp.a; path = "../../../../osg-ios/lib/libosgdb_bmp.a"; sourceTree = "<group>"; };
+		907D02E315B86F8700575110 /* libosgdb_bsp.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libosgdb_bsp.a; path = "../../../../osg-ios/lib/libosgdb_bsp.a"; sourceTree = "<group>"; };
+		907D02E415B86F8700575110 /* libosgdb_bvh.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libosgdb_bvh.a; path = "../../../../osg-ios/lib/libosgdb_bvh.a"; sourceTree = "<group>"; };
+		907D02E515B86F8700575110 /* libosgdb_cfg.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libosgdb_cfg.a; path = "../../../../osg-ios/lib/libosgdb_cfg.a"; sourceTree = "<group>"; };
+		907D02E615B86F8700575110 /* libosgdb_curl.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libosgdb_curl.a; path = "../../../../osg-ios/lib/libosgdb_curl.a"; sourceTree = "<group>"; };
+		907D02E715B86F8700575110 /* libosgdb_dds.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libosgdb_dds.a; path = "../../../../osg-ios/lib/libosgdb_dds.a"; sourceTree = "<group>"; };
+		907D02E815B86F8700575110 /* libosgdb_deprecated_osg.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libosgdb_deprecated_osg.a; path = "../../../../osg-ios/lib/libosgdb_deprecated_osg.a"; sourceTree = "<group>"; };
+		907D02E915B86F8700575110 /* libosgdb_deprecated_osganimation.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libosgdb_deprecated_osganimation.a; path = "../../../../osg-ios/lib/libosgdb_deprecated_osganimation.a"; sourceTree = "<group>"; };
+		907D02EA15B86F8700575110 /* libosgdb_deprecated_osgfx.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libosgdb_deprecated_osgfx.a; path = "../../../../osg-ios/lib/libosgdb_deprecated_osgfx.a"; sourceTree = "<group>"; };
+		907D02EB15B86F8700575110 /* libosgdb_deprecated_osgparticle.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libosgdb_deprecated_osgparticle.a; path = "../../../../osg-ios/lib/libosgdb_deprecated_osgparticle.a"; sourceTree = "<group>"; };
+		907D02EC15B86F8700575110 /* libosgdb_deprecated_osgshadow.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libosgdb_deprecated_osgshadow.a; path = "../../../../osg-ios/lib/libosgdb_deprecated_osgshadow.a"; sourceTree = "<group>"; };
+		907D02ED15B86F8700575110 /* libosgdb_deprecated_osgsim.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libosgdb_deprecated_osgsim.a; path = "../../../../osg-ios/lib/libosgdb_deprecated_osgsim.a"; sourceTree = "<group>"; };
+		907D02EE15B86F8700575110 /* libosgdb_deprecated_osgterrain.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libosgdb_deprecated_osgterrain.a; path = "../../../../osg-ios/lib/libosgdb_deprecated_osgterrain.a"; sourceTree = "<group>"; };
+		907D02EF15B86F8700575110 /* libosgdb_deprecated_osgtext.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libosgdb_deprecated_osgtext.a; path = "../../../../osg-ios/lib/libosgdb_deprecated_osgtext.a"; sourceTree = "<group>"; };
+		907D02F015B86F8700575110 /* libosgdb_deprecated_osgviewer.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libosgdb_deprecated_osgviewer.a; path = "../../../../osg-ios/lib/libosgdb_deprecated_osgviewer.a"; sourceTree = "<group>"; };
+		907D02F115B86F8700575110 /* libosgdb_deprecated_osgvolume.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libosgdb_deprecated_osgvolume.a; path = "../../../../osg-ios/lib/libosgdb_deprecated_osgvolume.a"; sourceTree = "<group>"; };
+		907D02F215B86F8700575110 /* libosgdb_deprecated_osgwidget.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libosgdb_deprecated_osgwidget.a; path = "../../../../osg-ios/lib/libosgdb_deprecated_osgwidget.a"; sourceTree = "<group>"; };
+		907D02F315B86F8700575110 /* libosgdb_dot.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libosgdb_dot.a; path = "../../../../osg-ios/lib/libosgdb_dot.a"; sourceTree = "<group>"; };
+		907D02F415B86F8700575110 /* libosgdb_dw.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libosgdb_dw.a; path = "../../../../osg-ios/lib/libosgdb_dw.a"; sourceTree = "<group>"; };
+		907D02F515B86F8700575110 /* libosgdb_dxf.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libosgdb_dxf.a; path = "../../../../osg-ios/lib/libosgdb_dxf.a"; sourceTree = "<group>"; };
+		907D02F615B86F8700575110 /* libosgdb_freetype.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libosgdb_freetype.a; path = "../../../../osg-ios/lib/libosgdb_freetype.a"; sourceTree = "<group>"; };
+		907D02F715B86F8700575110 /* libosgdb_gdal.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libosgdb_gdal.a; path = "../../../../osg-ios/lib/libosgdb_gdal.a"; sourceTree = "<group>"; };
+		907D02F815B86F8700575110 /* libosgdb_geo.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libosgdb_geo.a; path = "../../../../osg-ios/lib/libosgdb_geo.a"; sourceTree = "<group>"; };
+		907D02F915B86F8700575110 /* libosgdb_glsl.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libosgdb_glsl.a; path = "../../../../osg-ios/lib/libosgdb_glsl.a"; sourceTree = "<group>"; };
+		907D02FA15B86F8700575110 /* libosgdb_gz.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libosgdb_gz.a; path = "../../../../osg-ios/lib/libosgdb_gz.a"; sourceTree = "<group>"; };
+		907D02FB15B86F8700575110 /* libosgdb_hdr.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libosgdb_hdr.a; path = "../../../../osg-ios/lib/libosgdb_hdr.a"; sourceTree = "<group>"; };
+		907D02FC15B86F8700575110 /* libosgdb_imageio.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libosgdb_imageio.a; path = "../../../../osg-ios/lib/libosgdb_imageio.a"; sourceTree = "<group>"; };
+		907D02FD15B86F8700575110 /* libosgdb_ive.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libosgdb_ive.a; path = "../../../../osg-ios/lib/libosgdb_ive.a"; sourceTree = "<group>"; };
+		907D02FE15B86F8700575110 /* libosgdb_logo.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libosgdb_logo.a; path = "../../../../osg-ios/lib/libosgdb_logo.a"; sourceTree = "<group>"; };
+		907D02FF15B86F8700575110 /* libosgdb_lwo.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libosgdb_lwo.a; path = "../../../../osg-ios/lib/libosgdb_lwo.a"; sourceTree = "<group>"; };
+		907D030015B86F8700575110 /* libosgdb_lws.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libosgdb_lws.a; path = "../../../../osg-ios/lib/libosgdb_lws.a"; sourceTree = "<group>"; };
+		907D030115B86F8700575110 /* libosgdb_md2.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libosgdb_md2.a; path = "../../../../osg-ios/lib/libosgdb_md2.a"; sourceTree = "<group>"; };
+		907D030215B86F8700575110 /* libosgdb_mdl.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libosgdb_mdl.a; path = "../../../../osg-ios/lib/libosgdb_mdl.a"; sourceTree = "<group>"; };
+		907D030315B86F8700575110 /* libosgdb_normals.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libosgdb_normals.a; path = "../../../../osg-ios/lib/libosgdb_normals.a"; sourceTree = "<group>"; };
+		907D030415B86F8700575110 /* libosgdb_obj.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libosgdb_obj.a; path = "../../../../osg-ios/lib/libosgdb_obj.a"; sourceTree = "<group>"; };
+		907D030515B86F8700575110 /* libosgdb_ogr.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libosgdb_ogr.a; path = "../../../../osg-ios/lib/libosgdb_ogr.a"; sourceTree = "<group>"; };
+		907D030615B86F8700575110 /* libosgdb_openflight.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libosgdb_openflight.a; path = "../../../../osg-ios/lib/libosgdb_openflight.a"; sourceTree = "<group>"; };
+		907D030715B86F8700575110 /* libosgdb_osg.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libosgdb_osg.a; path = "../../../../osg-ios/lib/libosgdb_osg.a"; sourceTree = "<group>"; };
+		907D030815B86F8700575110 /* libosgdb_osga.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libosgdb_osga.a; path = "../../../../osg-ios/lib/libosgdb_osga.a"; sourceTree = "<group>"; };
+		907D030915B86F8700575110 /* libosgdb_osgshadow.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libosgdb_osgshadow.a; path = "../../../../osg-ios/lib/libosgdb_osgshadow.a"; sourceTree = "<group>"; };
+		907D030A15B86F8700575110 /* libosgdb_osgterrain.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libosgdb_osgterrain.a; path = "../../../../osg-ios/lib/libosgdb_osgterrain.a"; sourceTree = "<group>"; };
+		907D030B15B86F8700575110 /* libosgdb_osgtgz.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libosgdb_osgtgz.a; path = "../../../../osg-ios/lib/libosgdb_osgtgz.a"; sourceTree = "<group>"; };
+		907D030C15B86F8700575110 /* libosgdb_osgviewer.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libosgdb_osgviewer.a; path = "../../../../osg-ios/lib/libosgdb_osgviewer.a"; sourceTree = "<group>"; };
+		907D030D15B86F8700575110 /* libosgdb_p3d.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libosgdb_p3d.a; path = "../../../../osg-ios/lib/libosgdb_p3d.a"; sourceTree = "<group>"; };
+		907D030E15B86F8700575110 /* libosgdb_pic.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libosgdb_pic.a; path = "../../../../osg-ios/lib/libosgdb_pic.a"; sourceTree = "<group>"; };
+		907D030F15B86F8700575110 /* libosgdb_ply.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libosgdb_ply.a; path = "../../../../osg-ios/lib/libosgdb_ply.a"; sourceTree = "<group>"; };
+		907D031015B86F8700575110 /* libosgdb_pnm.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libosgdb_pnm.a; path = "../../../../osg-ios/lib/libosgdb_pnm.a"; sourceTree = "<group>"; };
+		907D031115B86F8700575110 /* libosgdb_pov.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libosgdb_pov.a; path = "../../../../osg-ios/lib/libosgdb_pov.a"; sourceTree = "<group>"; };
+		907D031215B86F8700575110 /* libosgdb_pvr.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libosgdb_pvr.a; path = "../../../../osg-ios/lib/libosgdb_pvr.a"; sourceTree = "<group>"; };
+		907D031315B86F8700575110 /* libosgdb_revisions.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libosgdb_revisions.a; path = "../../../../osg-ios/lib/libosgdb_revisions.a"; sourceTree = "<group>"; };
+		907D031415B86F8700575110 /* libosgdb_rgb.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libosgdb_rgb.a; path = "../../../../osg-ios/lib/libosgdb_rgb.a"; sourceTree = "<group>"; };
+		907D031515B86F8700575110 /* libosgdb_rot.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libosgdb_rot.a; path = "../../../../osg-ios/lib/libosgdb_rot.a"; sourceTree = "<group>"; };
+		907D031615B86F8700575110 /* libosgdb_scale.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libosgdb_scale.a; path = "../../../../osg-ios/lib/libosgdb_scale.a"; sourceTree = "<group>"; };
+		907D031715B86F8700575110 /* libosgdb_serializers_osg.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libosgdb_serializers_osg.a; path = "../../../../osg-ios/lib/libosgdb_serializers_osg.a"; sourceTree = "<group>"; };
+		907D031815B86F8700575110 /* libosgdb_serializers_osganimation.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libosgdb_serializers_osganimation.a; path = "../../../../osg-ios/lib/libosgdb_serializers_osganimation.a"; sourceTree = "<group>"; };
+		907D031915B86F8700575110 /* libosgdb_serializers_osgfx.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libosgdb_serializers_osgfx.a; path = "../../../../osg-ios/lib/libosgdb_serializers_osgfx.a"; sourceTree = "<group>"; };
+		907D031A15B86F8700575110 /* libosgdb_serializers_osgmanipulator.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libosgdb_serializers_osgmanipulator.a; path = "../../../../osg-ios/lib/libosgdb_serializers_osgmanipulator.a"; sourceTree = "<group>"; };
+		907D031B15B86F8700575110 /* libosgdb_serializers_osgparticle.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libosgdb_serializers_osgparticle.a; path = "../../../../osg-ios/lib/libosgdb_serializers_osgparticle.a"; sourceTree = "<group>"; };
+		907D031C15B86F8700575110 /* libosgdb_serializers_osgshadow.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libosgdb_serializers_osgshadow.a; path = "../../../../osg-ios/lib/libosgdb_serializers_osgshadow.a"; sourceTree = "<group>"; };
+		907D031D15B86F8700575110 /* libosgdb_serializers_osgsim.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libosgdb_serializers_osgsim.a; path = "../../../../osg-ios/lib/libosgdb_serializers_osgsim.a"; sourceTree = "<group>"; };
+		907D031E15B86F8700575110 /* libosgdb_serializers_osgterrain.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libosgdb_serializers_osgterrain.a; path = "../../../../osg-ios/lib/libosgdb_serializers_osgterrain.a"; sourceTree = "<group>"; };
+		907D031F15B86F8700575110 /* libosgdb_serializers_osgtext.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libosgdb_serializers_osgtext.a; path = "../../../../osg-ios/lib/libosgdb_serializers_osgtext.a"; sourceTree = "<group>"; };
+		907D032015B86F8700575110 /* libosgdb_serializers_osgvolume.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libosgdb_serializers_osgvolume.a; path = "../../../../osg-ios/lib/libosgdb_serializers_osgvolume.a"; sourceTree = "<group>"; };
+		907D032115B86F8700575110 /* libosgdb_shp.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libosgdb_shp.a; path = "../../../../osg-ios/lib/libosgdb_shp.a"; sourceTree = "<group>"; };
+		907D032215B86F8700575110 /* libosgdb_stl.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libosgdb_stl.a; path = "../../../../osg-ios/lib/libosgdb_stl.a"; sourceTree = "<group>"; };
+		907D032315B86F8700575110 /* libosgdb_tga.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libosgdb_tga.a; path = "../../../../osg-ios/lib/libosgdb_tga.a"; sourceTree = "<group>"; };
+		907D032415B86F8700575110 /* libosgdb_tgz.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libosgdb_tgz.a; path = "../../../../osg-ios/lib/libosgdb_tgz.a"; sourceTree = "<group>"; };
+		907D032515B86F8700575110 /* libosgdb_trans.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libosgdb_trans.a; path = "../../../../osg-ios/lib/libosgdb_trans.a"; sourceTree = "<group>"; };
+		907D032615B86F8700575110 /* libosgdb_txf.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libosgdb_txf.a; path = "../../../../osg-ios/lib/libosgdb_txf.a"; sourceTree = "<group>"; };
+		907D032715B86F8700575110 /* libosgdb_txp.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libosgdb_txp.a; path = "../../../../osg-ios/lib/libosgdb_txp.a"; sourceTree = "<group>"; };
+		907D032815B86F8700575110 /* libosgdb_vtf.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libosgdb_vtf.a; path = "../../../../osg-ios/lib/libosgdb_vtf.a"; sourceTree = "<group>"; };
+		907D032915B86F8700575110 /* libosgdb_x.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libosgdb_x.a; path = "../../../../osg-ios/lib/libosgdb_x.a"; sourceTree = "<group>"; };
+		907D032A15B86F8700575110 /* libosgdb_zip.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libosgdb_zip.a; path = "../../../../osg-ios/lib/libosgdb_zip.a"; sourceTree = "<group>"; };
+		907D032B15B86F8700575110 /* libosgDB.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libosgDB.a; path = "../../../../osg-ios/lib/libosgDB.a"; sourceTree = "<group>"; };
+		907D032C15B86F8700575110 /* libosgFX.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libosgFX.a; path = "../../../../osg-ios/lib/libosgFX.a"; sourceTree = "<group>"; };
+		907D032D15B86F8700575110 /* libosgGA.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libosgGA.a; path = "../../../../osg-ios/lib/libosgGA.a"; sourceTree = "<group>"; };
+		907D032E15B86F8700575110 /* libosgManipulator.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libosgManipulator.a; path = "../../../../osg-ios/lib/libosgManipulator.a"; sourceTree = "<group>"; };
+		907D032F15B86F8700575110 /* libosgParticle.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libosgParticle.a; path = "../../../../osg-ios/lib/libosgParticle.a"; sourceTree = "<group>"; };
+		907D033015B86F8700575110 /* libosgPresentation.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libosgPresentation.a; path = "../../../../osg-ios/lib/libosgPresentation.a"; sourceTree = "<group>"; };
+		907D033115B86F8700575110 /* libosgShadow.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libosgShadow.a; path = "../../../../osg-ios/lib/libosgShadow.a"; sourceTree = "<group>"; };
+		907D033215B86F8700575110 /* libosgSim.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libosgSim.a; path = "../../../../osg-ios/lib/libosgSim.a"; sourceTree = "<group>"; };
+		907D033315B86F8700575110 /* libosgTerrain.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libosgTerrain.a; path = "../../../../osg-ios/lib/libosgTerrain.a"; sourceTree = "<group>"; };
+		907D033415B86F8700575110 /* libosgText.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libosgText.a; path = "../../../../osg-ios/lib/libosgText.a"; sourceTree = "<group>"; };
+		907D033515B86F8700575110 /* libosgUtil.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libosgUtil.a; path = "../../../../osg-ios/lib/libosgUtil.a"; sourceTree = "<group>"; };
+		907D033615B86F8700575110 /* libosgViewer.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libosgViewer.a; path = "../../../../osg-ios/lib/libosgViewer.a"; sourceTree = "<group>"; };
+		907D033715B86F8700575110 /* libosgVolume.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libosgVolume.a; path = "../../../../osg-ios/lib/libosgVolume.a"; sourceTree = "<group>"; };
+		907D033815B86F8700575110 /* libosgWidget.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libosgWidget.a; path = "../../../../osg-ios/lib/libosgWidget.a"; sourceTree = "<group>"; };
 		907D039715B86F9E00575110 /* libosgdb_kml.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libosgdb_kml.a; path = ../../../lib/Release/libosgdb_kml.a; sourceTree = "<group>"; };
 		907D039815B86F9E00575110 /* libosgdb_osgearth_feature_wfs.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libosgdb_osgearth_feature_wfs.a; path = ../../../lib/Release/libosgdb_osgearth_feature_wfs.a; sourceTree = "<group>"; };
 		907D039915B86F9E00575110 /* libosgdb_osgearth_feature_tfs.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libosgdb_osgearth_feature_tfs.a; path = ../../../lib/Release/libosgdb_osgearth_feature_tfs.a; sourceTree = "<group>"; };
@@ -350,6 +364,12 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				1F8566AC17666EC1005BCD2B /* libicucore.dylib in Frameworks */,
+				1F8566AA17666E67005BCD2B /* libJavaScriptCore.a in Frameworks */,
+				1F8566A817666C29005BCD2B /* libosgdb_osgearth_scriptengine_javascriptcore.a in Frameworks */,
+				1F823FFE173C1D20003B519D /* libosgdb_osgearth_engine_mp.a in Frameworks */,
+				904E22771691CC42002D66FD /* Accelerate.framework in Frameworks */,
+				904E22781691CC42002D66FD /* MobileCoreServices.framework in Frameworks */,
 				907D037E15B86F8700575110 /* libosgdb_shp.a in Frameworks */,
 				9048FB2415FA9DE50012C900 /* libosgdb_tiff.a in Frameworks */,
 				907D03FA15B8C31A00575110 /* libsqlite3.dylib in Frameworks */,
@@ -538,6 +558,7 @@
 			isa = PBXGroup;
 			children = (
 				90DABDDB15CEFF9700D0F609 /* moon_1024x512.jpg */,
+				1FA5C121177B608000A161FF /* gdal_data */,
 				90283E5415C6FB3E00620EEF /* tests */,
 				90283E5515C6FB3E00620EEF /* data */,
 			);
@@ -548,6 +569,10 @@
 		9051FFEF15B1EDFD00D9ABD3 = {
 			isa = PBXGroup;
 			children = (
+				1F8566AB17666EC1005BCD2B /* libicucore.dylib */,
+				1F8566A917666E67005BCD2B /* libJavaScriptCore.a */,
+				1F8566A717666C29005BCD2B /* libosgdb_osgearth_scriptengine_javascriptcore.a */,
+				1F823FFD173C1D20003B519D /* libosgdb_osgearth_engine_mp.a */,
 				9051000815B1EDFD00D9ABD3 /* osgEarthViewerIOS */,
 				905100D215B21FFD00D9ABD3 /* Resources */,
 				90A0DD7715B7BBAB004FACEE /* Libs */,
@@ -566,6 +591,8 @@
 		9051FFFD15B1EDFD00D9ABD3 /* Frameworks */ = {
 			isa = PBXGroup;
 			children = (
+				904E22751691CC42002D66FD /* Accelerate.framework */,
+				904E22761691CC42002D66FD /* MobileCoreServices.framework */,
 				905100CA15B2101E00D9ABD3 /* QuartzCore.framework */,
 				905100C415B20AD100D9ABD3 /* CoreImage.framework */,
 				905100C215B20AC600D9ABD3 /* ImageIO.framework */,
@@ -865,6 +892,7 @@
 				90283E5715C6FB3E00620EEF /* data in Resources */,
 				90B8676715C8894900F5CDC3 /* StartViewerController.xib in Resources */,
 				90DABDDC15CEFF9700D0F609 /* moon_1024x512.jpg in Resources */,
+				1FA5C122177B608000A161FF /* gdal_data in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -962,27 +990,24 @@
 		9051002415B1EDFD00D9ABD3 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "iPhone Developer: Thomas Hogarth (35UD7TG27V)";
+				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "iPhone Developer: Jefferey Smith (KN8HX7RLT9)";
 				GCC_PRECOMPILE_PREFIX_HEADER = YES;
 				GCC_PREFIX_HEADER = "osgEarthViewerIOS/osgEarthViewerIOS-Prefix.pch";
 				"GCC_THUMB_SUPPORT[arch=armv6]" = "";
 				HEADER_SEARCH_PATHS = (
-					/Users/hogbox/Documents/AlphaPixel/osgEarthPort/osgearth/src,
-					"/Users/hogbox/Documents/AlphaPixel/osgEarthPort/osg-ios-gles2/include",
+					../../,
+					../../../../osg/OpenSceneGraph/include,
 				);
 				INFOPLIST_FILE = "osgEarthViewerIOS/osgEarthViewerIOS-Info.plist";
-				IPHONEOS_DEPLOYMENT_TARGET = 4.3;
+				IPHONEOS_DEPLOYMENT_TARGET = 5.1;
 				LIBRARY_SEARCH_PATHS = (
-					"\"$(SRCROOT)/../../../../osg-ios-gles2/lib\"",
-					"\"$(SRCROOT)/../../../../3rdParty/freetype-ios-universal/lib\"",
-					"\"$(SRCROOT)/../../../../3rdParty/proj4-ios-device/lib\"",
-					"\"$(SRCROOT)/../../../../3rdParty/gdal-ios-device/lib\"",
-					"\"$(SRCROOT)/../../../../3rdParty/curl-ios-device/lib\"",
+					"\"$(SRCROOT)/../../../../3rdParty/all\"",
 					"\"$(SRCROOT)/../../../lib/Release\"",
-					"\"$(SRCROOT)/../../../../3rdParty/geos-ios-device/lib\"",
+					"\"$(SRCROOT)/../../../../osg/OpenSceneGraph/lib\"",
 				);
 				PRODUCT_NAME = osgEarth;
-				"PROVISIONING_PROFILE[sdk=iphoneos*]" = "C5A8E349-91DB-4E98-9612-789DB499534E";
+				"PROVISIONING_PROFILE[sdk=iphoneos*]" = "B0AE9D26-0AD5-4EE2-ADC5-8559501E74A9";
+				VALID_ARCHS = armv7;
 				WRAPPER_EXTENSION = app;
 			};
 			name = Debug;
@@ -990,29 +1015,26 @@
 		9051002515B1EDFD00D9ABD3 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "iPhone Developer: Thomas Hogarth (35UD7TG27V)";
+				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "iPhone Distribution: Pelican Ventures, Inc";
 				DEBUG_INFORMATION_FORMAT = dwarf;
 				GCC_GENERATE_DEBUGGING_SYMBOLS = NO;
 				GCC_PRECOMPILE_PREFIX_HEADER = YES;
 				GCC_PREFIX_HEADER = "osgEarthViewerIOS/osgEarthViewerIOS-Prefix.pch";
 				"GCC_THUMB_SUPPORT[arch=armv6]" = "";
 				HEADER_SEARCH_PATHS = (
-					/Users/hogbox/Documents/AlphaPixel/osgEarthPort/osgearth/src,
-					"/Users/hogbox/Documents/AlphaPixel/osgEarthPort/osg-ios-gles2/include",
+					../../,
+					../../../../osg/OpenSceneGraph/include,
 				);
 				INFOPLIST_FILE = "osgEarthViewerIOS/osgEarthViewerIOS-Info.plist";
-				IPHONEOS_DEPLOYMENT_TARGET = 4.3;
+				IPHONEOS_DEPLOYMENT_TARGET = 5.1;
 				LIBRARY_SEARCH_PATHS = (
-					"\"$(SRCROOT)/../../../../osg-ios-gles2/lib\"",
-					"\"$(SRCROOT)/../../../../3rdParty/freetype-ios-universal/lib\"",
-					"\"$(SRCROOT)/../../../../3rdParty/proj4-ios-device/lib\"",
-					"\"$(SRCROOT)/../../../../3rdParty/gdal-ios-device/lib\"",
-					"\"$(SRCROOT)/../../../../3rdParty/curl-ios-device/lib\"",
+					"\"$(SRCROOT)/../../../../3rdParty/all\"",
 					"\"$(SRCROOT)/../../../lib/Release\"",
-					"\"$(SRCROOT)/../../../../3rdParty/geos-ios-device/lib\"",
+					"\"$(SRCROOT)/../../../../osg/OpenSceneGraph/lib\"",
 				);
 				PRODUCT_NAME = osgEarth;
-				"PROVISIONING_PROFILE[sdk=iphoneos*]" = "C5A8E349-91DB-4E98-9612-789DB499534E";
+				"PROVISIONING_PROFILE[sdk=iphoneos*]" = "3948EA51-CDCD-4B29-A73F-67C55D186433";
+				VALID_ARCHS = armv7;
 				WRAPPER_EXTENSION = app;
 			};
 			name = Release;

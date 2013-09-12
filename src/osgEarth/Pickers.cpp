@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2012 Pelican Mapping
+ * Copyright 2008-2013 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -17,8 +17,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 #include <osgEarth/Pickers>
-#include <osgUtil/PolytopeIntersector>
-#include <osg/Polytope>
+#include <osgEarth/PrimitiveIntersector>
 
 #define LC "[Picker] "
 
@@ -43,7 +42,7 @@ Picker::pick( float x, float y, Hits& results ) const
     if ( !camera )
         camera = _view->getCamera();
 
-    osg::ref_ptr<osgUtil::PolytopeIntersector> picker;
+    osg::ref_ptr<osgEarth::PrimitiveIntersector> picker;
 
     double buffer_x = _buffer, buffer_y = _buffer;
     if ( camera->getViewport() )
@@ -52,52 +51,52 @@ Picker::pick( float x, float y, Hits& results ) const
         buffer_x *= aspectRatio;
         buffer_y /= aspectRatio;
     }
-    
-    double zNear = 0.00001;
-    double zFar  = 1.0;
-
-    double xMin = local_x - buffer_x;
-    double xMax = local_x + buffer_x;
-    double yMin = local_y - buffer_y;
-    double yMax = local_y + buffer_y;
-
-    osg::Polytope winPT;
-    winPT.add(osg::Plane( 1.0, 0.0, 0.0, -xMin));
-    winPT.add(osg::Plane(-1.0, 0.0 ,0.0,  xMax));
-    winPT.add(osg::Plane( 0.0, 1.0, 0.0, -yMin));
-    winPT.add(osg::Plane( 0.0,-1.0, 0.0,  yMax));
-    winPT.add(osg::Plane( 0.0, 0.0, 1.0, zNear));
 
     osg::Matrix windowMatrix;
 
     if ( _root.valid() )
     {
-        osg::Matrix matrix;
+        osg::Matrix modelMatrix;
 
         if (camera->getViewport())
         {
             windowMatrix = camera->getViewport()->computeWindowMatrix();
-            matrix.preMult( windowMatrix );
-            zNear = 0.0;
-            zFar = 1.0;
+            modelMatrix.preMult( windowMatrix );
         }
 
-        matrix.preMult( camera->getProjectionMatrix() );
-        matrix.preMult( camera->getViewMatrix() );
+        modelMatrix.preMult( camera->getProjectionMatrix() );
+        modelMatrix.preMult( camera->getViewMatrix() );
 
         osg::NodePath prunedNodePath( _path.begin(), _path.end()-1 );
-        matrix.preMult( osg::computeWorldToLocal(prunedNodePath) );
+        modelMatrix.preMult( osg::computeWorldToLocal(prunedNodePath) );
 
-        osg::Polytope transformedPT;
-        transformedPT.setAndTransformProvidingInverse( winPT, matrix );
-        
-        picker = new osgUtil::PolytopeIntersector(osgUtil::Intersector::MODEL, transformedPT);
+        osg::Matrix modelInverse;
+        modelInverse.invert(modelMatrix);
+
+        osg::Vec3d startLocal(local_x, local_y, 0.0);
+        osg::Vec3d startModel = startLocal * modelInverse;
+
+        osg::Vec3d endLocal(local_x, local_y, 1.0);
+        osg::Vec3d endModel = endLocal * modelInverse;
+
+        osg::Vec3d bufferLocal(local_x + buffer_x, local_y + buffer_y, 0.0);
+        osg::Vec3d bufferModel = bufferLocal * modelInverse;
+
+        double buffer = osg::maximum((bufferModel - startModel).length(), 5.0);  //TODO: Setting a minimum of 4.0 may need revisited
+
+        OE_DEBUG
+            << "local_x:" << local_x << ", local_y:" << local_y
+            << ", buffer_x:" << buffer_x << ", buffer_y:" << buffer_y
+            << ", bm.x:" << bufferModel.x() << ", bm.y:" << bufferModel.y()
+            << ", bm.z:" << bufferModel.z()
+            << ", BUFFER: " << buffer
+            << std::endl;
+
+        picker = new osgEarth::PrimitiveIntersector(osgUtil::Intersector::MODEL, startModel, endModel, buffer);
     }
-
     else
     {
-        osgUtil::Intersector::CoordinateFrame cf = camera->getViewport() ? osgUtil::Intersector::WINDOW : osgUtil::Intersector::PROJECTION;
-        picker = new osgUtil::PolytopeIntersector(cf, winPT);
+        picker = new osgEarth::PrimitiveIntersector(camera->getViewport() ? osgUtil::Intersector::WINDOW : osgUtil::Intersector::PROJECTION, local_x, local_y, _buffer);
     }
 
     //picker->setIntersectionLimit( (osgUtil::Intersector::IntersectionLimit)_limit );

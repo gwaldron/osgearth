@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2008-2012 Pelican Mapping
+* Copyright 2008-2013 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -37,7 +37,7 @@ namespace
 
         void traverse(osg::NodeVisitor& nv)
         {
-            osgUtil::CullVisitor* cv = dynamic_cast<osgUtil::CullVisitor*>(&nv);
+            osgUtil::CullVisitor* cv = Culling::asCullVisitor(nv);
             if ( cv && _fillNode.valid() && _pass1.valid() )
             {
                 const osg::GraphicsContext* gc = cv->getCurrentCamera()->getGraphicsContext();

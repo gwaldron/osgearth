@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2012 Pelican Mapping
+ * Copyright 2008-2013 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -22,69 +22,6 @@
 #define LC "[Revisioning] "
 
 using namespace osgEarth;
-
-//------------------------------------------------------------------------
-
-#if 0
-void
-Revisioned::dirty()
-{
-    _revision->operator++();
-
-    if ( _parents.size() > 0 )
-    {
-        for( std::vector< osg::observer_ptr<osg::Referenced> >::iterator i = _parents.begin(); i != _parents.end(); )
-        {
-            RefRevisioned* r = static_cast<RefRevisioned*>( i->get() );
-            if ( r && r->get() )
-            {
-                r->get()->dirty();
-                ++i;
-            }
-            else
-            {
-                i = _parents.erase( i );
-            }
-        }
-    }
-}
-
-
-void
-Revisioned::addParent( Revisioned* parent )
-{
-    if ( parent )
-    {
-        _parents.push_back( new RefRevisioned(parent) );
-        parent->dirty();
-    }
-}
-
-
-void
-Revisioned::removeParent( Revisioned* parent )
-{
-    for( std::vector< osg::observer_ptr<osg::Referenced> >::iterator i = _parents.begin(); i != _parents.end(); )
-    {
-        if ( i->valid() )
-        {
-            RefRevisioned* r = static_cast<RefRevisioned*>( i->get() );
-            if ( r->get() == parent )
-            {
-                i = _parents.erase( i );
-            }
-            else
-            {
-                ++i;
-            }
-        }
-        else
-        {
-            i = _parents.erase( i );
-        }
-    }
-}
-#endif
 
 
 //------------------------------------------------------------------------
@@ -153,6 +90,3 @@ DirtyNotifier::setDirty()
         }
     }
 }
-
-
-//------------------------------------------------------------------------

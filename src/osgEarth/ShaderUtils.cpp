@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2012 Pelican Mapping
+ * Copyright 2008-2013 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -19,7 +19,7 @@
 #include <osgEarth/ShaderUtils>
 #include <osgEarth/Registry>
 #include <osgEarth/Capabilities>
-#include <osgUtil/CullVisitor>
+#include <osgEarth/CullingUtils>
 #include <list>
 
 using namespace osgEarth;
@@ -231,6 +231,8 @@ osg_LightProducts::osg_LightProducts(int id)
 std::string 
 osg_LightProducts::glslDefinition()
 {
+    //Note: it's important that there be NO linefeeds in here, since that would
+    // break the shader merging code.
     return
         "struct osg_LightProducts {"
         " vec4 ambient;"
@@ -335,6 +337,8 @@ void osg_LightSourceParameters::applyState(osg::StateSet* stateset)
 std::string
 osg_LightSourceParameters::glslDefinition()
 {
+    //Note: it's important that there be NO linefeeds in here, since that would
+    // break the shader merging code.
     return
         "struct osg_LightSourceParameters {"
         " vec4 ambient;"
@@ -397,7 +401,7 @@ UpdateLightingUniformsHelper::~UpdateLightingUniformsHelper()
 void
 UpdateLightingUniformsHelper::cullTraverse( osg::Node* node, osg::NodeVisitor* nv )
 {
-    osgUtil::CullVisitor* cv = dynamic_cast<osgUtil::CullVisitor*>( nv );
+    osgUtil::CullVisitor* cv = Culling::asCullVisitor(nv);
     if ( cv )
     {
         StateSetStack stateSetStack;

@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2008-2012 Pelican Mapping
+* Copyright 2008-2013 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -20,6 +20,8 @@
 #include <osgEarthAnnotation/TrackNode>
 #include <osgEarthAnnotation/AnnotationUtils>
 #include <osgEarth/MapNode>
+#include <osgEarth/Registry>
+#include <osgEarth/ShaderGenerator>
 #include <osg/Depth>
 #include <osgText/Text>
 
@@ -36,8 +38,24 @@ TrackNode::TrackNode(MapNode*                    mapNode,
                      osg::Image*                 image,
                      const TrackNodeFieldSchema& fieldSchema ) :
 
+OrthoNode   ( mapNode, position )
+{
+    if ( image )
+    {
+        IconSymbol* icon = _style.getOrCreate<IconSymbol>();
+        icon->setImage( image );
+    }
+
+    init( fieldSchema );
+}
+
+TrackNode::TrackNode(MapNode*                    mapNode, 
+                     const GeoPoint&             position,
+                     const Style&                style,
+                     const TrackNodeFieldSchema& fieldSchema ) :
+
 OrthoNode   ( mapNode, position ),
-_image      ( image )
+_style      ( style )
 {
     init( fieldSchema );
 }
@@ -46,13 +64,18 @@ void
 TrackNode::init( const TrackNodeFieldSchema& schema )
 {
     _geode = new osg::Geode();
-    
-    if ( _image.valid() )
+
+    IconSymbol* icon = _style.get<IconSymbol>();
+    osg::Image* image = icon ? icon->getImage() : 0L;
+
+    if ( icon && image )
     {
         // apply the image icon.
         osg::Geometry* imageGeom = AnnotationUtils::createImageGeometry( 
-            _image.get(),             // image
-            osg::Vec2s(0,0) );        // offset
+            image,                    // image
+            osg::Vec2s(0,0),          // offset
+            0,                        // tex image unit
+            icon->heading()->eval() );
 
         if ( imageGeom )
         {
@@ -93,11 +116,14 @@ TrackNode::init( const TrackNodeFieldSchema& schema )
     osg::StateSet* stateSet = _geode->getOrCreateStateSet();
     stateSet->setAttributeAndModes( new osg::Depth(osg::Depth::ALWAYS, 0, 1, false), 1 );
 
-    AnnotationUtils::installAnnotationProgram( stateSet );
+    applyStyle( _style );
 
     setLightingIfNotSet( false );
 
     getAttachPoint()->addChild( _geode );
+
+    ShaderGenerator gen( Registry::stateSetCache() );
+    this->accept( gen );
 }
 
 void

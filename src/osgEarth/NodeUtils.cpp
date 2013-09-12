@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2012 Pelican Mapping
+ * Copyright 2008-2013 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -114,7 +114,7 @@ RemoveEmptyGroupsVisitor::apply( osg::Group& group )
             osg::Group* child = group.getChild(i)->asGroup();
             if ( child )
             {
-                if (child->className() == std::string("Group") &&
+                if (std::string(child->className()).compare("Group") == 0 &&
                     child->getStateSet() == 0L            &&
                     child->getCullCallback() == 0L        &&
                     child->getUpdateCallback() == 0L      &&

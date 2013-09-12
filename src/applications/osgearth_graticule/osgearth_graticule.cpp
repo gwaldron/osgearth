@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2008-2012 Pelican Mapping
+* Copyright 2008-2013 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -87,6 +87,9 @@ main(int argc, char** argv)
     else // if ( isGeodetic )
     {
         GeodeticGraticule* gr = new GeodeticGraticule( mapNode );
+        GeodeticGraticuleOptions o = gr->getOptions();
+        o.lineStyle()->getOrCreate<LineSymbol>()->stroke()->color().set(1,0,0,1);
+        gr->setOptions( o );
         root->addChild( gr );
         formatter = new LatLongFormatter();
     }

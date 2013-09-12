@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2008-2012 Pelican Mapping
+* Copyright 2008-2013 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -22,6 +22,7 @@
 #include <osgEarth/TaskService>
 #include <osgEarth/HeightFieldUtils>
 
+using namespace osgEarth_engine_osgterrain;
 using namespace osgEarth;
 using namespace OpenThreads;
 

@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2012 Pelican Mapping
+ * Copyright 2008-2013 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -21,6 +21,7 @@
 #define OSGEARTH_MAP_FRAME_H 1
 
 #include <osgEarth/Common>
+#include <osgEarth/Containers>
 #include <osgEarth/Map>
 #include <osgEarth/MapInfo>
 
@@ -52,6 +53,11 @@ namespace osgEarth
          * true is new data was synced; false if nothing changed.
          */
         bool sync();
+
+        /**
+         * True is a sync() would acquire new data.
+         */
+        bool needsSync() const;
 
         /** Accesses the profile/rendering info about the source map. */
         const MapInfo& getMapInfo() const { return _mapInfo; }
@@ -113,7 +119,8 @@ namespace osgEarth
         ImageLayerVector _imageLayers;
         ElevationLayerVector _elevationLayers;
         ModelLayerVector _modelLayers;
-        MaskLayerVector _maskLayers;
+        MaskLayerVector _maskLayers;        
+
         friend class Map;
     };
 

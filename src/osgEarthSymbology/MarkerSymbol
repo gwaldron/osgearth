@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2012 Pelican Mapping
+ * Copyright 2008-2013 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -73,6 +73,8 @@ namespace osgEarth { namespace Symbology
         };
 
     public:
+        META_Symbol(MarkerSymbol);
+
         MarkerSymbol( const Config& conf =Config() );
 
         /** Since MarkerSymbol is deprecated, this conveneince function will convert to an InstanceSymbol */
@@ -130,6 +132,7 @@ namespace osgEarth { namespace Symbology
     public:
         virtual Config getConfig() const;
         virtual void mergeConfig( const Config& conf );
+        static void parseSLD(const Config& c, class Style& style);
 
     protected:
         optional<StringExpression>   _url;

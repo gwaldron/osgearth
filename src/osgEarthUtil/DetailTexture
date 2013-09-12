@@ -1,0 +1,80 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+* Copyright 2008-2012 Pelican Mapping
+* http://osgearth.org
+*
+* osgEarth is free software; you can redistribute it and/or modify
+* it under the terms of the GNU Lesser General Public License as published by
+* the Free Software Foundation; either version 2 of the License, or
+* (at your option) any later version.
+*
+* This program is distributed in the hope that it will be useful,
+* but WITHOUT ANY WARRANTY; without even the implied warranty of
+* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+* GNU Lesser General Public License for more details.
+*
+* You should have received a copy of the GNU Lesser General Public License
+* along with this program.  If not, see <http://www.gnu.org/licenses/>
+*/
+#ifndef OSGEARTHUTIL_DETAIL_TEXTURE_H
+#define OSGEARTHUTIL_DETAIL_TEXTURE_H
+
+#include <osgEarthUtil/Common>
+#include <osgEarth/TerrainEffect>
+#include <osgEarth/URI>
+#include <osg/Image>
+#include <osg/Uniform>
+#include <osg/Texture2D>
+
+namespace osgEarth { namespace Util
+{
+    /**
+     * Controller that applies a detail texture to the terrain.
+     */
+    class OSGEARTHUTIL_EXPORT DetailTexture : public TerrainEffect
+    {
+    public:
+        /** construct a new detail texture controller */
+        DetailTexture();
+
+        /** Sets the LOD at which to start detailing */
+        void setStartLOD( unsigned lod );
+        unsigned getStartLOD() const { return _startLOD.get(); }
+
+        /** Sets the intensity (0=none, 1=full) */
+        void setIntensity( float value );
+        float getIntensity() const { return _intensity.get(); }
+
+        /** Sets the image to use as the detail texture */
+        void setImage( const osg::Image* image );
+        const osg::Image* getImage() const { return _texture->getImage(); }
+
+    public: // TerrainEffect interface
+
+        void onInstall(TerrainEngineNode* engine);
+        void onUninstall(TerrainEngineNode* engine);
+
+    public: // serialization
+
+        DetailTexture(const Config& conf);
+        void mergeConfig(const Config& conf);
+        virtual Config getConfig() const;
+
+    protected:
+        virtual ~DetailTexture() { }
+        void init();
+
+        optional<float>    _intensity;
+        optional<unsigned> _startLOD;
+        optional<URI>      _imageURI;
+
+        osg::ref_ptr<osg::Uniform>   _intensityUniform;
+        osg::ref_ptr<osg::Uniform>   _startLODUniform;
+        osg::ref_ptr<osg::Uniform>   _samplerUniform;
+        osg::ref_ptr<osg::Texture2D> _texture;
+        int                          _unit;
+    };
+
+} } // namespace osgEarth::Util
+
+#endif // OSGEARTHUTIL_DATA_SCANNER_H

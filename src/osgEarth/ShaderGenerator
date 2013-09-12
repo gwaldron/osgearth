@@ -21,9 +21,10 @@
 #define OSGEARTH_SHADER_GENERATOR_H 1
 
 #include <osgEarth/Common>
+#include <osgEarth/StateSetCache>
+#include <osgEarth/VirtualProgram>
 #include <osg/NodeVisitor>
 #include <osg/State>
-#include <osgEarth/StateSetCache>
 
 namespace osgEarth
 {
@@ -31,6 +32,14 @@ namespace osgEarth
      * Utility class that will traverse a scene graph and generate a
      * set of VirtualProgram attributes to render it as best it can using
      * shaders.
+     *
+     * Usage:
+     *
+     *   ShaderGenerator gen;
+     *   graph->accept( gen );
+     *
+     * If osgEarth detects a lack of GLSL support, the ShaderGenerator
+     * will do nothing.
      */
     class OSGEARTH_EXPORT ShaderGenerator : public osg::NodeVisitor
     {
@@ -46,6 +55,7 @@ namespace osgEarth
          */
         ShaderGenerator( StateSetCache* cache );
 
+        /** dtor. */
         virtual ~ShaderGenerator() { }
 
 
@@ -55,17 +65,27 @@ namespace osgEarth
 
         void apply( osg::Geode& );
 
+        void apply( osg::PagedLOD& );
+
+        void apply( osg::ProxyNode& );
+
     protected:
 
         void apply( osg::Drawable* );
 
-        bool generate( osg::StateSet* stateSet, osg::ref_ptr<osg::StateSet>& replacement );
+        bool processGeometry( osg::StateSet* stateSet, osg::ref_ptr<osg::StateSet>& replacement );
+
+        bool processText( osg::StateSet* stateSet, osg::ref_ptr<osg::StateSet>& replacement );
 
         osg::ref_ptr<osg::State> _state;
 
         osg::ref_ptr<StateSetCache> _stateSetCache;
+
+        osg::ref_ptr<VirtualProgram> _defaultVP;
+
+        bool _active;
     };
 
 } // namespace osgEarth
 
-#endif // OSGEARTH_DRAPEABLE_NODE_H
+#endif // OSGEARTH_SHADER_GENERATOR_H

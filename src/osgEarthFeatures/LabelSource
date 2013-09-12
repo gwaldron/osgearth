@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2012 Pelican Mapping
+ * Copyright 2008-2013 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -84,9 +84,9 @@ namespace osgEarth { namespace Features
          *
          * @return A scene graph node
          */
-        virtual osg::Node* createNode(
-            const std::string&  text,
-            const Style&        style ) =0;
+        //virtual osg::Node* createNode(
+        //    const std::string&  text,
+        //    const Style&        style ) =0;
 
 
     public:

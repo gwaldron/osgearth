@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2012 Pelican Mapping
+ * Copyright 2008-2013 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -92,13 +92,13 @@ JSFeature::GetFeatureAttr(const std::string& attr, Feature const* feature)
   switch (atype)
   {
     case osgEarth::Features::ATTRTYPE_BOOL:
-      return v8::Boolean::New((*it).second.getBool());
+      return v8::Boolean::New((*it).second.second.set ? (*it).second.getBool() : false);
     case osgEarth::Features::ATTRTYPE_DOUBLE:
-      return v8::Number::New((*it).second.getDouble());
+      return (*it).second.second.set ? v8::Number::New((*it).second.getDouble()) : v8::Undefined();
     case osgEarth::Features::ATTRTYPE_INT:
-      return v8::Integer::New((*it).second.getInt());
+      return (*it).second.second.set ? v8::Integer::New((*it).second.getInt()) : v8::Undefined();
     default:
-      std::string val = (*it).second.getString();
+      std::string val = (*it).second.second.set ? (*it).second.getString() : "";
       return v8::String::New(val.c_str(), val.length());
   }
 }

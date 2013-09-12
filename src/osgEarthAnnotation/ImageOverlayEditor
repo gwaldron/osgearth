@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2012 Pelican Mapping
+ * Copyright 2008-2013 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -33,13 +33,19 @@ namespace osgEarth { namespace Annotation
     public:
         typedef std::map< ImageOverlay::ControlPoint, osg::ref_ptr< Dragger > >  ControlPointDraggerMap;
 
-        ImageOverlayEditor(ImageOverlay* overlay);
+        ImageOverlayEditor(ImageOverlay* overlay, bool singleVert=false);
 
         ControlPointDraggerMap& getDraggers() { return _draggers; }
 
         ImageOverlay* getOverlay() { return _overlay.get();}
 
         void updateDraggers();
+
+        /**
+         * Gets or sets whether to move individual verts, allowing you to skew the image.
+         * Otherwise the image will remain north up and rectangular.
+         */
+        bool getSingleVert() const;        
 
     protected:
 
@@ -49,6 +55,7 @@ namespace osgEarth { namespace Annotation
         osg::ref_ptr< ImageOverlay > _overlay;
         osg::ref_ptr< ImageOverlay::ImageOverlayCallback > _overlayCallback;
         ControlPointDraggerMap _draggers;
+        bool _singleVert;
     };
 
 } } // namespace osgEarth::Annotation

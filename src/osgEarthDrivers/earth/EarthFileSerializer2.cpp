@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2012 Pelican Mapping
+ * Copyright 2008-2013 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -20,6 +20,7 @@
 #include <osgEarth/FileUtils>
 #include <osgEarth/MapFrame>
 
+using namespace osgEarth_osgearth;
 using namespace osgEarth;
 
 MapNode*
@@ -66,11 +67,10 @@ EarthFileSerializer2::deserialize( const Config& conf, const std::string& refere
         for( ConfigSet::const_iterator i = heightfields.begin(); i != heightfields.end(); i++ )
         {
             Config layerDriverConf = *i;
-            layerDriverConf.add( "default_tile_size", "16" );
+            layerDriverConf.add( "default_tile_size", "15" );
 
             ElevationLayerOptions layerOpt( layerDriverConf );
             layerOpt.name() = layerDriverConf.value( "name" );
-            //layerOpt.driver() = TileSourceOptions( layerDriverConf );
 
             map->addElevationLayer( new ElevationLayer(layerOpt) );
         }

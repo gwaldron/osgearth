@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2012 Pelican Mapping
+ * Copyright 2008-2013 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -218,9 +218,9 @@ namespace osgEarth { namespace Features
         virtual const char* libraryName() const { return "osgEarthFeatures"; }
 
 
-		/**
-		 * Initialize the FeatureSource.
-		 */
+        /**
+         * Initialize the FeatureSource.
+         */
         virtual void initialize( const osgDB::Options* dbOptions =0L ) { }
 
         /** Dirties the feature profile */

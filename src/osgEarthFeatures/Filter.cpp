@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2012 Pelican Mapping
+ * Copyright 2008-2013 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -17,8 +17,13 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 #include <osgEarthFeatures/Filter>
+#include <osgEarthSymbology/LineSymbol>
+#include <osgEarthSymbology/PointSymbol>
 #include <osgEarth/ECEF>
 #include <osg/MatrixTransform>
+#include <osg/Point>
+#include <osg/LineWidth>
+#include <osg/LineStipple>
 
 using namespace osgEarth;
 using namespace osgEarth::Features;
@@ -80,8 +85,8 @@ FeaturesToNodeFilter::computeLocalizers( const FilterContext& context )
             {
                 osg::Vec3d centroid, centroidECEF;
                 geodExtent.getCentroid( centroid.x(), centroid.y() );
-                geogSRS->transformToECEF( centroid, centroidECEF );
-                _local2world = ECEF::createLocalToWorld( centroidECEF );
+                geogSRS->transform( centroid, geogSRS->getECEF(), centroidECEF );
+                geogSRS->getECEF()->createLocalToWorld( centroidECEF, _local2world );
                 _world2local.invert( _local2world );
             }
         }
@@ -117,7 +122,7 @@ FeaturesToNodeFilter::transformAndLocalize(const std::vector<osg::Vec3d>& input,
 
     if ( toECEF )
     {
-        ECEF::transformAndLocalize( input, inputSRS, output, world2local );
+        ECEF::transformAndLocalize( input, inputSRS, output, outputSRS, world2local );
     }
     else if ( inputSRS )
     {
@@ -138,6 +143,53 @@ FeaturesToNodeFilter::transformAndLocalize(const std::vector<osg::Vec3d>& input,
     }
 }
 
+
+
+void
+FeaturesToNodeFilter::transformAndLocalize(const std::vector<osg::Vec3d>& input,
+                                           const SpatialReference*        inputSRS,
+                                           osg::Vec3Array*                output_verts,
+                                           osg::Vec3Array*                output_normals,
+                                           const SpatialReference*        outputSRS,
+                                           const osg::Matrixd&            world2local,
+                                           bool                           toECEF )
+{
+    // pre-allocate enough space (performance)
+    output_verts->reserve( output_verts->size() + input.size() );
+
+    if ( output_normals )
+        output_normals->reserve( output_verts->size() );
+
+    if ( toECEF )
+    {
+        ECEF::transformAndLocalize( input, inputSRS, output_verts, output_normals, outputSRS, world2local );
+    }
+    else if ( inputSRS )
+    {
+        std::vector<osg::Vec3d> temp( input );
+        inputSRS->transform( temp, outputSRS );
+
+        for( std::vector<osg::Vec3d>::const_iterator i = temp.begin(); i != temp.end(); ++i )
+        {
+            output_verts->push_back( (*i) * world2local );
+            if ( output_normals )
+                output_normals->push_back( osg::Vec3(0,0,1) );
+        }
+    }
+    else
+    {
+        for( std::vector<osg::Vec3d>::const_iterator i = input.begin(); i != input.end(); ++i )
+        {
+            output_verts->push_back( (*i) * world2local );
+            if ( output_normals )
+                output_normals->push_back( osg::Vec3(0,0,1) );
+        }
+    }
+}
+
+
+
+
 void
 FeaturesToNodeFilter::transformAndLocalize(const osg::Vec3d&              input,
                                            const SpatialReference*        inputSRS,
@@ -148,7 +200,7 @@ FeaturesToNodeFilter::transformAndLocalize(const osg::Vec3d&              input,
 {
     if ( toECEF )
     {
-        ECEF::transformAndLocalize( input, inputSRS, output, world2local );
+        ECEF::transformAndLocalize( input, inputSRS, output, outputSRS, world2local );
     }
     else if ( inputSRS )
     {
@@ -188,4 +240,31 @@ FeaturesToNodeFilter::createDelocalizeGroup() const
         new osg::MatrixTransform( _local2world );
 
     return group;
+}
+
+
+void 
+FeaturesToNodeFilter::applyLineSymbology(osg::StateSet*    stateset, 
+                                         const LineSymbol* line)
+{
+    if ( line && line->stroke().isSet() )
+    {
+        float width = std::max( 1.0f, *line->stroke()->width() );
+        stateset->setAttributeAndModes(new osg::LineWidth(width), 1);
+        if ( line->stroke()->stipple().isSet() )
+        {
+            stateset->setAttributeAndModes( new osg::LineStipple(1, *line->stroke()->stipple()) );
+        }
+    }
+}
+
+void 
+FeaturesToNodeFilter::applyPointSymbology(osg::StateSet*     stateset, 
+                                          const PointSymbol* point)
+{
+    if ( point )
+    {
+        float size = std::max( 0.1f, *point->size() );
+        stateset->setAttributeAndModes(new osg::Point(size), 1);
+    }
 }

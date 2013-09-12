@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2008-2012 Pelican Mapping
+* Copyright 2008-2013 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -20,7 +20,7 @@
 #define OSGEARTH_ANNO_ORTHO_NODE_H 1
 
 #include <osgEarthAnnotation/AnnotationNode>
-#include <osgEarthAnnotation/Decluttering>
+#include <osgEarth/Decluttering>
 #include <osgEarth/SpatialReference>
 #include <osgEarth/CullingUtils>
 #include <osg/AutoTransform>
@@ -33,8 +33,12 @@ namespace osgEarth { namespace Annotation
     /**
      * Base class for an annotation node that it drawn in screen-space
      * (as an orthographic overlay)
+     *
+     * Don't use this class directly. Use one of its subclasses instead like
+     * LabelNode or PlaceNode.
      */
-    class OSGEARTHANNO_EXPORT OrthoNode : public PositionedAnnotationNode, public SupportsDecluttering
+    class OSGEARTHANNO_EXPORT OrthoNode : public PositionedAnnotationNode, 
+                                          public SupportsDecluttering
     {
     public:
         META_AnnotationNode( osgEarthAnnotation, OrthoNode );
@@ -52,12 +56,6 @@ namespace osgEarth { namespace Annotation
         OrthoNode( 
             MapNode*        mapNode, 
             const GeoPoint& position );
-
-
-        /**
-         * dtor.
-         */
-        virtual ~OrthoNode() { }
 
         /**
          * Attaches a child node to the transforms. Use this instead of addChild.
@@ -97,6 +95,16 @@ namespace osgEarth { namespace Annotation
         bool getOcclusionCulling() const;
         void setOcclusionCulling( bool value );
 
+        /**
+         * Gets or sets the maximum altitude that the occlusion culling takes place.
+         */
+        double getOcclusionCullingMaxAltitude() const;
+        void setOcclusionCullingMaxAltitude( double occlusionCullingMaxAltitude );
+
+    public: // AnnotationNode
+
+        virtual void applyStyle(const Style& style);
+
     public: // MapNodeObserver
 
         virtual void setMapNode( MapNode* mapNode );
@@ -107,6 +115,10 @@ namespace osgEarth { namespace Annotation
 
         virtual osg::BoundingSphere computeBound() const;
 
+    protected:
+        /** virtual dtor */
+        virtual ~OrthoNode() { }
+
     private:
         osg::Switch*                   _switch;
         osg::Group*                    _oq;
@@ -115,6 +127,7 @@ namespace osgEarth { namespace Annotation
         osg::Group*                    _attachPoint;
         bool                           _horizonCulling;
         bool                           _occlusionCulling;
+        optional< double >             _occlusionCullingMaxAltitude;
         GeoPoint                       _mapPosition;
         osg::Vec3d                     _localOffset;
 

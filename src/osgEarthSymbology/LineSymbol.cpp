@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2012 Pelican Mapping
+ * Copyright 2008-2013 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -17,6 +17,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 #include <osgEarthSymbology/LineSymbol>
+#include <osgEarthSymbology/Style>
 
 using namespace osgEarth;
 using namespace osgEarth::Symbology;
@@ -44,4 +45,45 @@ LineSymbol::mergeConfig( const Config& conf )
 {
     conf.getObjIfSet("stroke",       _stroke);
     conf.getIfSet   ("tessellation", _tessellation);
+}
+
+void
+LineSymbol::parseSLD(const Config& c, Style& style)
+{
+    if ( match(c.key(), "stroke") ) {
+        style.getOrCreate<LineSymbol>()->stroke()->color() = Color(c.value());
+    }
+    else if ( match(c.key(), "stroke-opacity") ) {
+        style.getOrCreate<LineSymbol>()->stroke()->color().a() = as<float>( c.value(), 1.0f );
+    }
+    else if ( match(c.key(), "stroke-width") ) {
+        float width;
+        Units units;
+        if ( Units::parse(c.value(), width, units, Units::PIXELS) )
+        {
+            style.getOrCreate<LineSymbol>()->stroke()->width() = width;
+            style.getOrCreate<LineSymbol>()->stroke()->widthUnits() = units;
+        }
+    }
+    else if ( match(c.key(), "stroke-linecap") ) {
+        style.getOrCreate<LineSymbol>()->stroke()->lineCap() =
+            c.value() == "flat"   ?   Stroke::LINECAP_FLAT   :
+            c.value() == "square" ?   Stroke::LINECAP_SQUARE :
+            /*value == "round"   ?*/  Stroke::LINECAP_ROUND;
+    }
+    else if (match(c.key(), "stroke-linejoin") ) {
+        style.getOrCreate<LineSymbol>()->stroke()->lineJoin() =
+            c.value() == "mitre" ?      Stroke::LINEJOIN_MITRE :
+            c.value() == "miter" ?      Stroke::LINEJOIN_MITRE : // alternate spelling
+            /*c.value() == "round"  ?*/ Stroke::LINEJOIN_ROUND;
+    }
+    else if ( match(c.key(), "stroke-rounding-ratio") ) {
+        style.getOrCreate<LineSymbol>()->stroke()->roundingRatio() = as<float>(c.value(), 0.4f);
+    }
+    else if ( match(c.key(), "stroke-tessellation") ) {
+        style.getOrCreate<LineSymbol>()->tessellation() = as<unsigned>( c.value(), 0 );
+    }
+    else if ( match(c.key(), "stroke-min-pixels") ) {
+        style.getOrCreate<LineSymbol>()->stroke()->minPixels() = as<float>(c.value(), 0.0f);
+    }
 }

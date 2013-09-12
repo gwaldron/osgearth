@@ -13,23 +13,28 @@ SET(HEADERS_ROOT
     AutoClipPlaneHandler
     Common
     Controls
+    ContourMap
     ClampCallback
+    DataScanner
+    DateTime
+    DetailTexture
     EarthManipulator
-    ElevationManager
     ExampleResources
     Export
     FeatureManipTool
     FeatureQueryTool
     Formatter
     GeodeticGraticule
+    HTM
     LatLongFormatter
     LineOfSight
     LinearLineOfSight
+    LODBlending
     MeasureTool
     MGRSFormatter
     MGRSGraticule
     MouseCoordsTool
-    ObjectPlacer
+    NormalMap
     ObjectLocator
     PolyhedralLineOfSight
     RadialLineOfSight
@@ -37,11 +42,15 @@ SET(HEADERS_ROOT
     SpatialData
     StarData
     TerrainProfile
+    TileIndex
+    TileIndexBuilder
     TFS
     TFSPackager
     TMS
+    TMSBackFiller
     TMSPackager
     UTMGraticule
+    VerticalScale
     WFS
     WMS
 )
@@ -57,30 +66,39 @@ SET(SOURCES_ROOT
     AutoClipPlaneHandler.cpp
     ClampCallback.cpp
     Controls.cpp
+    ContourMap.cpp
+    DataScanner.cpp
+    #DateTime.cpp #moved to osgEarth namespace
+    DetailTexture.cpp
     EarthManipulator.cpp
-    ElevationManager.cpp
     ExampleResources.cpp
     FeatureManipTool.cpp
     FeatureQueryTool.cpp
     GeodeticGraticule.cpp
+    HTM.cpp
     LatLongFormatter.cpp
     LinearLineOfSight.cpp
+    LODBlending.cpp
     MeasureTool.cpp
     MGRSFormatter.cpp
     MGRSGraticule.cpp
     MouseCoordsTool.cpp
-    ObjectPlacer.cpp
+    NormalMap.cpp
     ObjectLocator.cpp
     PolyhedralLineOfSight.cpp
     RadialLineOfSight.cpp
     SpatialData.cpp
     SkyNode.cpp
     TerrainProfile.cpp
+    TileIndex.cpp
+    TileIndexBuilder.cpp
     TFS.cpp
     TFSPackager.cpp
     TMS.cpp
+    TMSBackFiller.cpp
     TMSPackager.cpp
     UTMGraticule.cpp
+    VerticalScale.cpp
     WFS.cpp
     WMS.cpp
 )
@@ -96,6 +114,7 @@ SET(HEADERS_COLORFILTER
     BrightnessContrastColorFilter
     CMYKColorFilter
     GammaColorFilter
+    GLSLColorFilter
     HSLColorFilter
     RGBColorFilter
     ChromaKeyColorFilter
@@ -107,6 +126,7 @@ SET(SOURCES_COLORFILTER
     BrightnessContrastColorFilter.cpp
     CMYKColorFilter.cpp
     GammaColorFilter.cpp
+    GLSLColorFilter.cpp
     HSLColorFilter.cpp
     RGBColorFilter.cpp
     ChromaKeyColorFilter.cpp
@@ -133,7 +153,7 @@ SET(USE_CUSTOM_SOURCE_GROUPS 1)
 
 
 
-INCLUDE_DIRECTORIES(${OSG_INCLUDE_DIR} ${OSGEARTH_SOURCE_DIR})
+INCLUDE_DIRECTORIES(${OSG_INCLUDE_DIR} ${OSGEARTH_SOURCE_DIR} ${GDAL_INCLUDE_DIR})
 
 IF (WIN32)
   LINK_EXTERNAL(${LIB_NAME} ${TARGET_EXTERNAL_LIBRARIES} ${CMAKE_THREAD_LIBS_INIT} ${MATH_LIBRARY})

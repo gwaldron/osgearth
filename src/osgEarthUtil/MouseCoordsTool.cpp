@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2012 Pelican Mapping
+ * Copyright 2008-2013 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -77,7 +77,11 @@ _label    ( label ),
 _formatter( formatter )
 {
     if ( !formatter )
-        _formatter = new LatLongFormatter( LatLongFormatter::FORMAT_DECIMAL_DEGREES );
+    {
+        LatLongFormatter* formatter = new LatLongFormatter( LatLongFormatter::FORMAT_DECIMAL_DEGREES );
+        formatter->setPrecision( 5 );
+        _formatter = formatter;
+    }
 }
 
 void

@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2008-2012 Pelican Mapping
+* Copyright 2008-2013 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -36,7 +36,7 @@ using namespace osgEarth::Symbology;
 //------------------------------------------------------------------------
 
 static CheckBoxControl* s_cameraCheck;
-static CheckBoxControl* s_overlayCheck;
+//static CheckBoxControl* s_overlayCheck;
 static CheckBoxControl* s_intersectionCheck;
 static CheckBoxControl* s_rttCheck;
 
@@ -134,16 +134,19 @@ setupOverlayView( osgViewer::View* view, osg::Group* parent, MapNode* mapNode )
             camBox->addControl(s_cameraCheck = new CheckBoxControl(true, new Toggle(parent,"camera")));
             camBox->addControl(new LabelControl("Camera", Color("#00ff00")));
         }
+
         //HBox* overlayBox = v->addControl(new HBox());
         //{
         //    overlayBox->addControl(s_overlayCheck = new CheckBoxControl(false, new Toggle(parent,"overlay")));
         //    overlayBox->addControl(new LabelControl("Overlay", Color("#00ffff")));
         //}
+
         HBox* isectBox = v->addControl(new HBox());
         {
             isectBox->addControl(s_intersectionCheck = new CheckBoxControl(true, new Toggle(parent,"intersection")));
             isectBox->addControl(new LabelControl("Intersection",Color("#ff7f00")));
         }
+
         HBox* rttBox = v->addControl(new HBox());
         {
             rttBox->addControl(s_rttCheck = new CheckBoxControl(true, new Toggle(parent,"rtt")));
@@ -182,10 +185,10 @@ main(int argc, char** argv)
         mainView->setSceneData( node );
 
         osg::Group* group = new osg::Group();
-        group->addChild( MapNode::findMapNode(node) );
+        group->addChild( MapNode::get(node) );
         overlayView->setSceneData( group );
 
-        setupOverlayView( overlayView, group, MapNode::findMapNode(node) );
+        setupOverlayView( overlayView, group, MapNode::get(node) );
 
         return viewer.run();
     }

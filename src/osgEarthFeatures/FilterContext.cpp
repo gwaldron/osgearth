@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2012 Pelican Mapping
+ * Copyright 2008-2013 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -17,6 +17,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 #include <osgEarthFeatures/FilterContext>
+#include <osgEarthSymbology/ResourceCache>
 #include <osgEarth/Registry>
 
 using namespace osgEarth;
@@ -105,18 +106,25 @@ osg::Vec3d
 FilterContext::toMap( const osg::Vec3d& point ) const
 {
     osg::Vec3d world = toWorld(point);
-    if ( _isGeocentric )
-        _extent->getSRS()->transformFromECEF( world, world );
-    return world;
+    osg::Vec3d map;
+    _extent->getSRS()->transformFromWorld( world, map );
+    return map;
 }
 
 osg::Vec3d
 FilterContext::fromMap( const osg::Vec3d& point ) const
 {
     osg::Vec3d world;
-    if ( _isGeocentric )
-        _extent->getSRS()->transformToECEF( point, world );
+    _extent->getSRS()->transformToWorld( point, world );
+    //if ( _isGeocentric )
+    //    _extent->getSRS()->transformToECEF( point, world );
     return toLocal(world);
+}
+
+ResourceCache*
+FilterContext::resourceCache()
+{
+    return _resourceCache.get();
 }
 
 std::string

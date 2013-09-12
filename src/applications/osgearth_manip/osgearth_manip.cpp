@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2008-2012 Pelican Mapping
+* Copyright 2008-2013 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -36,6 +36,7 @@
 #include <osgEarthUtil/ExampleResources>
 #include <osgEarthAnnotation/AnnotationUtils>
 #include <osgEarthAnnotation/LocalGeometryNode>
+#include <osgEarthAnnotation/LabelNode>
 #include <osgEarthSymbology/Style>
 
 using namespace osgEarth::Util;
@@ -52,7 +53,7 @@ namespace
      */
     Control* createHelp( osgViewer::View* view )
     {
-        static char* text[] =
+        const char* text[] =
         {
             "left mouse :",        "pan",
             "middle mouse :",      "rotate",
@@ -64,7 +65,9 @@ namespace
             "shift-right-mouse :", "locked panning",
             "u :",                 "toggle azimuth lock",
             "c :",                 "toggle perspective/ortho",
-            "t :",                 "toggle tethering"
+            "t :",                 "toggle tethering",
+            "a :",                 "toggle viewpoint arcing",
+            "z :",                 "toggle throwing"
         };
 
         Grid* g = new Grid();
@@ -151,6 +154,38 @@ namespace
 
 
     /**
+     * Handler to toggle "viewpoint transtion arcing", which causes the camera to "arc"
+     * as it travels from one viewpoint to another.
+     */
+    struct ToggleArcViewpointTransitionsHandler : public osgGA::GUIEventHandler
+    {
+        ToggleArcViewpointTransitionsHandler(char key, EarthManipulator* manip)
+            : _key(key), _manip(manip) { }
+
+        bool handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& aa)
+        {
+            if (ea.getEventType() == ea.KEYDOWN && ea.getKey() == _key)
+            {
+                bool arc = _manip->getSettings()->getArcViewpointTransitions();
+                _manip->getSettings()->setArcViewpointTransitions(!arc);
+                aa.requestRedraw();
+                return true;
+            }
+            return false;
+        }
+
+        void getUsage(osg::ApplicationUsage& usage) const
+        {
+            using namespace std;
+            usage.addKeyboardMouseBinding(string(1, _key), string("Arc viewpoint transitions"));
+        }
+
+        char _key;
+        osg::ref_ptr<EarthManipulator> _manip;
+    };
+
+
+    /**
      * Toggles the projection matrix between perspective and orthographic.
      */
     struct ToggleProjectionHandler : public osgGA::GUIEventHandler
@@ -186,15 +221,48 @@ namespace
 
 
     /**
+     * Toggles the throwing feature.
+     */
+    struct ToggleThrowingHandler : public osgGA::GUIEventHandler
+    {
+        ToggleThrowingHandler(char key, EarthManipulator* manip)
+            : _key(key), _manip(manip)
+        {
+        }
+
+        bool handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& aa)
+        {
+            if (ea.getEventType() == ea.KEYDOWN && ea.getKey() == _key)
+            {
+                bool throwing = _manip->getSettings()->getThrowingEnabled();
+                _manip->getSettings()->setThrowingEnabled( !throwing );
+                aa.requestRedraw();
+                return true;
+            }
+            return false;
+        }
+
+        void getUsage(osg::ApplicationUsage& usage) const
+        {
+            using namespace std;
+            usage.addKeyboardMouseBinding(string(1, _key), string("Toggle throwing"));
+        }
+
+        char _key;
+        osg::ref_ptr<EarthManipulator> _manip;
+    };
+
+
+    /**
      * A simple simulator that moves an object around the Earth. We use this to
      * demonstrate/test tethering.
      */
     struct Simulator : public osgGA::GUIEventHandler
     {
-        Simulator( osg::Group* root, EarthManipulator* manip )
-            : _manip(manip), _lat0(55.0), _lon0(45.0), _lat1(-55.0), _lon1(-45.0)
+        Simulator( osg::Group* root, EarthManipulator* manip, MapNode* mapnode )
+            : _manip(manip), _mapnode(mapnode), _lat0(55.0), _lon0(45.0), _lat1(-55.0), _lon1(-45.0)
         {
-            osg::Node* geode = AnnotationUtils::createSphere( 100.0, osg::Vec4(1,1,1,1) );
+            osg::Node* geode = AnnotationUtils::createSphere( 25.0, osg::Vec4(1,.7,.4,1) );
             
             _xform = new osg::MatrixTransform();
             _xform->addChild( geode );
@@ -202,6 +270,13 @@ namespace
             _cam = new osg::Camera();
             _cam->setRenderOrder( osg::Camera::NESTED_RENDER, 1 );
             _cam->addChild( _xform );
+
+            Style style;
+            style.getOrCreate<TextSymbol>()->size() = 32.0f;
+            style.getOrCreate<TextSymbol>()->declutter() = false;
+            _label = new LabelNode(_mapnode, GeoPoint(), "Hello World", style);
+            _label->setDynamic( true );
+            _cam->addChild( _label );
 
             root->addChild( _cam.get() );
         }
@@ -217,10 +292,11 @@ namespace
                 osg::Vec3d world;
                 p.toWorld( world );
                 _xform->setMatrix( osg::Matrix::translate(world) );
+                _label->setPosition( p );
             }
             else if ( ea.getEventType() == ea.KEYDOWN && ea.getKey() == 't' )
             {
-                _manip->setTetherNode( _manip->getTetherNode() ? 0L : _cam.get() );
+                _manip->setTetherNode( _manip->getTetherNode() ? 0L : _xform.get() );
                 if ( _manip->getTetherNode() )
                 {
                     _manip->getSettings()->setArcViewpointTransitions( false );
@@ -232,10 +308,12 @@ namespace
             return false;
         }
 
+        MapNode*                           _mapnode;
         EarthManipulator*                  _manip;
         osg::ref_ptr<osg::Camera>          _cam;
         osg::ref_ptr<osg::MatrixTransform> _xform;
         double                             _lat0, _lon0, _lat1, _lon1;
+        LabelNode*                         _label;
     };
 }
 
@@ -278,7 +356,7 @@ int main(int argc, char** argv)
     }
 
     // Simulator for tethering:
-    viewer.addEventHandler( new Simulator(root, manip) );
+    viewer.addEventHandler( new Simulator(root, manip, mapNode) );
     manip->getSettings()->getBreakTetherActions().push_back( EarthManipulator::ACTION_PAN );
     manip->getSettings()->getBreakTetherActions().push_back( EarthManipulator::ACTION_GOTO );
 
@@ -295,6 +373,8 @@ int main(int argc, char** argv)
     viewer.addEventHandler(new FlyToViewpointHandler( manip ));
     viewer.addEventHandler(new LockAzimuthHandler('u', manip));
     viewer.addEventHandler(new ToggleProjectionHandler('c', manip));
+    viewer.addEventHandler(new ToggleArcViewpointTransitionsHandler('a', manip));
+    viewer.addEventHandler(new ToggleThrowingHandler('z', manip));
 
     return viewer.run();
 }

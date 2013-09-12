@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2012 Pelican Mapping
+ * Copyright 2008-2013 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -70,7 +70,8 @@ _maxY(0.0),
 _minLevel(0),
 _maxLevel(0),
 _numTilesHigh(-1),
-_numTilesWide(-1)
+_numTilesWide(-1),
+_timestamp(0)
 {   
 }
 
@@ -266,11 +267,14 @@ TileMap::getURL(const osgEarth::TileKey& tilekey, bool invertY)
         for (TileSetList::iterator itr = _tileSets.begin(); itr != _tileSets.end(); ++itr)
         { 
             if (itr->getOrder() == zoom)
-            {
-                std::stringstream ss;
-                std::string path = osgDB::getFilePath(_filename);
-                ss << path << "/" << zoom << "/" << x << "/" << y << "." << _format.getExtension();
-                //OE_NOTICE << LC << "Returning URL " << ss.str() << std::endl;
+            {                
+                std::stringstream ss; 
+                std::string basePath = osgDB::getFilePath(_filename);                
+                if (!basePath.empty())
+                {
+                    ss << basePath << "/";
+                }
+                ss << zoom << "/" << x << "/" << y << "." << _format.getExtension();                
                 std::string ssStr;
 				ssStr = ss.str();
 				return ssStr;
@@ -279,12 +283,16 @@ TileMap::getURL(const osgEarth::TileKey& tilekey, bool invertY)
     }
     else // Just go with it. No way of knowing the max level.
     {
-        std::stringstream ss;
-        std::string path = osgDB::getFilePath(_filename);
-        ss << path << "/" << zoom << "/" << x << "/" << y << "." << _format.getExtension();
+        std::stringstream ss; 
+        std::string basePath = osgDB::getFilePath(_filename);                
+        if (!basePath.empty())
+        {
+            ss << basePath << "/";
+        }
+        ss << zoom << "/" << x << "/" << y << "." << _format.getExtension();                
         std::string ssStr;
-		ssStr = ss.str();
-		return ssStr;        
+        ssStr = ss.str();
+        return ssStr;
     }
 
     return "";
@@ -380,11 +388,11 @@ TileMap::create(const std::string& url,
     tileMap->_format.setWidth( tile_width );
     tileMap->_format.setHeight( tile_height );
     tileMap->_format.setExtension( format );
-	profile->getNumTiles( 0, tileMap->_numTilesWide, tileMap->_numTilesHigh );
+    profile->getNumTiles( 0, tileMap->_numTilesWide, tileMap->_numTilesHigh );
 
-	tileMap->generateTileSets();
-	tileMap->computeMinMaxLevel();
-        
+    tileMap->generateTileSets();
+    tileMap->computeMinMaxLevel();
+
     return tileMap;
 }
 
@@ -444,6 +452,10 @@ TileMapReaderWriter::read( const std::string& location, const osgDB::ReaderWrite
     if (tileMap)
     {
         tileMap->setFilename( location );
+
+        // record the timestamp (if there is one) in the tilemap. It's not a persistent field
+        // but will help with things like per-session caching.
+        tileMap->setTimeStamp( r.lastModifiedTime() );
     }
 
     return tileMap;

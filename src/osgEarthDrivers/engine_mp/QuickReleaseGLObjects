@@ -1,0 +1,91 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+* Copyright 2008-2013 Pelican Mapping
+* http://osgearth.org
+*
+* osgEarth is free software; you can redistribute it and/or modify
+* it under the terms of the GNU Lesser General Public License as published by
+* the Free Software Foundation; either version 2 of the License, or
+* (at your option) any later version.
+*
+* This program is distributed in the hope that it will be useful,
+* but WITHOUT ANY WARRANTY; without even the implied warranty of
+* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+* GNU Lesser General Public License for more details.
+*
+* You should have received a copy of the GNU Lesser General Public License
+* along with this program.  If not, see <http://www.gnu.org/licenses/>
+*/
+#ifndef OSGEARTH_ENGINE_MP_QUICK_RELEASE_GL_OBJECTS
+#define OSGEARTH_ENGINE_MP_QUICK_RELEASE_GL_OBJECTS 1
+
+#include "Common"
+#include "TileNodeRegistry"
+#include <osg/Camera>
+
+namespace osgEarth_engine_mp
+{
+    /**
+     * A draw callback to calls another, nested draw callback.
+     */
+    struct NestingDrawCallback : public osg::Camera::DrawCallback
+    {
+        NestingDrawCallback( osg::Camera::DrawCallback* next ) : _next(next) { }
+
+        virtual void operator()( osg::RenderInfo& renderInfo ) const
+        {
+            dispatch( renderInfo );
+        }
+
+        void dispatch( osg::RenderInfo& renderInfo ) const
+        {
+            if ( _next )
+                _next->operator ()( renderInfo );
+        }
+
+        osg::ref_ptr<osg::Camera::DrawCallback> _next;
+    };
+
+
+    // a simple draw callback, to be installed on a Camera, that immediately releases the
+    // GL memory associated with a dead tile (instead of wating for OSG to do it in the
+    // future).
+    struct QuickReleaseGLObjects : public NestingDrawCallback
+    {
+        struct ReleaseOperation : public TileNodeRegistry::Operation
+        {
+            osg::State* _state;
+            ReleaseOperation( osg::State* state ) : _state(state) { }
+            void operator()( TileNodeRegistry::TileNodeMap& tiles )
+            {
+                unsigned size = tiles.size();
+                for( TileNodeRegistry::TileNodeMap::iterator i = tiles.begin(); i != tiles.end(); ++i )
+                {
+                    i->second.get()->releaseGLObjects( _state );
+                }
+                tiles.clear();
+                OE_DEBUG << "Quick-released " << size << " tiles" << std::endl;
+            }
+        };
+
+        QuickReleaseGLObjects( TileNodeRegistry* tiles, osg::Camera::DrawCallback* nextCB) 
+            : NestingDrawCallback( nextCB ), _tilesToRelease(tiles) { }
+
+        // from DrawCallback
+        void operator()( osg::RenderInfo& renderInfo ) const
+        {
+            dispatch( renderInfo );
+
+            if ( !_tilesToRelease->empty() )
+            {
+                ReleaseOperation op(renderInfo.getState());
+                _tilesToRelease->run( op );
+            }
+        }
+
+        osg::ref_ptr<TileNodeRegistry> _tilesToRelease;
+    };
+
+} // namespace osgEarth_engine_mp
+
+#endif // OSGEARTH_ENGINE_MP_QUICK_RELEASE_GL_OBJECTS

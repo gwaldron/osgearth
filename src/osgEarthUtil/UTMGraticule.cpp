@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2012 Pelican Mapping
+ * Copyright 2008-2013 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -24,7 +24,6 @@
 
 #include <osgEarthSymbology/Geometry>
 #include <osgEarthAnnotation/LabelNode>
-#include <osgEarthAnnotation/Decluttering>
 
 #include <osgEarth/Registry>
 #include <osgEarth/DepthOffset>
@@ -185,6 +184,7 @@ UTMGraticule::rebuild()
     _root = new DrapeableNode( getMapNode(), false );
     this->addChild( _root );
 
+#if 0
     // set up depth offsetting.
     osg::StateSet* s = _root->getOrCreateStateSet();
     s->setAttributeAndModes( DepthOffsetUtils::getOrCreateProgram(), 1 );
@@ -192,6 +192,7 @@ UTMGraticule::rebuild()
     osg::Uniform* u = DepthOffsetUtils::createMinOffsetUniform();
     u->set( 10000.0f );
     s->addUniform( u );
+#endif
 
     // build the base Grid Zone Designator (GZD) loolup table. This is a table
     // that maps the GZD string to its extent.
@@ -243,7 +244,7 @@ UTMGraticule::rebuild()
             _root->addChild( tile );
     }
 
-    DepthOffsetUtils::prepareGraph( _root );
+    //DepthOffsetUtils::prepareGraph( _root );
 }
 
 
@@ -301,15 +302,20 @@ UTMGraticule::buildGZDTile( const std::string& name, const GeoExtent& extent )
     // get the geocentric tile center:
     osg::Vec3d tileCenter;
     extent.getCentroid( tileCenter.x(), tileCenter.y() );
+
+    const SpatialReference* ecefSRS = extent.getSRS()->getECEF();
     
     osg::Vec3d centerECEF;
-    extent.getSRS()->transformToECEF( tileCenter, centerECEF );
+    extent.getSRS()->transform( tileCenter, ecefSRS, centerECEF );
+    //extent.getSRS()->transformToECEF( tileCenter, centerECEF );
 
     if ( hasText )
     {
         osg::Vec3d west, east;
-        extent.getSRS()->transformToECEF(osg::Vec3d(extent.xMin(),tileCenter.y(),0), west );
-        extent.getSRS()->transformToECEF(osg::Vec3d(extent.xMax(),tileCenter.y(),0), east );
+        extent.getSRS()->transform( osg::Vec3d(extent.xMin(),tileCenter.y(),0), ecefSRS, west );
+        extent.getSRS()->transform( osg::Vec3d(extent.xMax(),tileCenter.y(),0), ecefSRS, east );
+        //extent.getSRS()->transformToECEF(osg::Vec3d(extent.xMin(),tileCenter.y(),0), west );
+        //extent.getSRS()->transformToECEF(osg::Vec3d(extent.xMax(),tileCenter.y(),0), east );
 
         TextSymbol* textSym = _options->primaryStyle()->getOrCreate<TextSymbol>();
         textSym->size() = (west-east).length() / 3.0;
@@ -324,7 +330,9 @@ UTMGraticule::buildGZDTile( const std::string& name, const GeoExtent& extent )
         d->getOrCreateStateSet()->setRenderBinToInherit();
 
         textGeode->addDrawable(d);
-        osg::MatrixTransform* mt = new osg::MatrixTransform(ECEF::createLocalToWorld(centerECEF));
+        osg::Matrixd centerL2W;
+        ecefSRS->createLocalToWorld( centerECEF, centerL2W );
+        osg::MatrixTransform* mt = new osg::MatrixTransform(centerL2W);
         mt->addChild(textGeode);
        
         group->addChild(mt);

@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2012 Pelican Mapping
+ * Copyright 2008-2013 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -209,6 +209,7 @@ Feature::set( const std::string& name, const std::string& value )
     AttributeValue& a = _attrs[name];
     a.first = ATTRTYPE_STRING;
     a.second.stringValue = value;
+    a.second.set = true;
 }
 
 void
@@ -217,6 +218,7 @@ Feature::set( const std::string& name, double value )
     AttributeValue& a = _attrs[name];
     a.first = ATTRTYPE_DOUBLE;
     a.second.doubleValue = value;
+    a.second.set = true;
 }
 
 void
@@ -225,6 +227,7 @@ Feature::set( const std::string& name, int value )
     AttributeValue& a = _attrs[name];
     a.first = ATTRTYPE_INT;
     a.second.intValue = value;
+    a.second.set = true;
 }
 
 void
@@ -233,7 +236,26 @@ Feature::set( const std::string& name, bool value )
     AttributeValue& a = _attrs[name];
     a.first = ATTRTYPE_BOOL;
     a.second.boolValue = value;
+    a.second.set = true;
 }
+
+void
+Feature::setNull( const std::string& name)
+{
+    AttributeValue& a = _attrs[name];    
+    a.second.set = false;
+}
+
+void
+Feature::setNull( const std::string& name, AttributeType type)
+{
+    AttributeValue& a = _attrs[name];
+    a.first = type;    
+    a.second.set = false;
+}
+
+
+
 
 bool
 Feature::hasAttr( const std::string& name ) const
@@ -269,6 +291,13 @@ Feature::getBool( const std::string& name, bool defaultValue ) const
     return i != _attrs.end()? i->second.getBool(defaultValue) : defaultValue;
 }
 
+bool
+Feature::isSet( const std::string& name) const
+{
+    AttributeTable::const_iterator i = _attrs.find(toLower(name));
+    return i != _attrs.end()? i->second.second.set : false;
+}
+
 double
 Feature::eval( NumericExpression& expr, FilterContext const* context ) const
 {
@@ -291,7 +320,7 @@ Feature::eval( NumericExpression& expr, FilterContext const* context ) const
           if (result.success())
             val = result.asDouble();
           else
-              OE_WARN << LC << "Script error:" << result.message() << std::endl;
+              OE_WARN << LC << "Script error:" << result.message() << std::endl; 
         }
       }
 
@@ -327,8 +356,7 @@ Feature::eval( StringExpression& expr, FilterContext const* context ) const
         }
       }
 
-      if (!val.empty())
-        expr.set( *i, val );
+      expr.set( *i, val );
     }
 
     return expr.eval();
@@ -437,7 +465,52 @@ Feature::getGeoJSON()
     {
 
         for (AttributeTable::const_iterator itr = getAttrs().begin(); itr != getAttrs().end(); ++itr)
-            props[itr->first] = itr->second.getString();
+        {
+            if (itr->second.first == ATTRTYPE_INT)
+            {
+                if (itr->second.second.set)
+                {
+                    props[itr->first] = itr->second.getInt();
+                }
+                else
+                {
+                    props[itr->first] = Json::nullValue;
+                }
+            }
+            else if (itr->second.first == ATTRTYPE_DOUBLE)
+            {
+                if (itr->second.second.set)
+                {
+                    props[itr->first] = itr->second.getDouble();
+                }
+                else
+                {
+                    props[itr->first] = Json::nullValue;
+                }
+            }
+            else if (itr->second.first == ATTRTYPE_BOOL)
+            {
+                if (itr->second.second.set)
+                {
+                    props[itr->first] = itr->second.getBool();
+                }
+                else
+                {
+                    props[itr->first] = Json::nullValue;
+                }
+            }
+            else
+            {
+                if (itr->second.second.set)
+                {
+                    props[itr->first] = itr->second.getString();
+                }
+                else
+                {
+                    props[itr->first] = Json::nullValue;
+                }
+            }            
+        }
     } 
 
     root["properties"] = props;

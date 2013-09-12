@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2008-2012 Pelican Mapping
+* Copyright 2008-2013 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -90,9 +90,9 @@ struct QueryElevationHandler : public osgGA::GUIEventHandler
 
                 s_posLabel->setText( Stringify()
                     << std::fixed << std::setprecision(2) 
-                    << s_f.format(mapPoint.y())
+                    << s_f.format(mapPointGeodetic.y())
                     << ", " 
-                    << s_f.format(mapPoint.x()) );
+                    << s_f.format(mapPointGeodetic.x()) );
 
                 s_mslLabel->setText( Stringify() << out_hamsl );
                 s_haeLabel->setText( Stringify() << mapPointGeodetic.z() );

@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2012 Pelican Mapping
+ * Copyright 2008-2013 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -31,7 +31,7 @@
 #include <osgEarth/MaskLayer>
 #include <osgEarth/Revisioning>
 #include <osgEarth/ThreadingUtils>
-#include <osgDB/ReaderWriter>
+#include <osgDB/Options>
 
 namespace osgEarth
 {
@@ -71,6 +71,11 @@ namespace osgEarth
          * Gets the SRS of the map's profile (convenience)
          */
         const SpatialReference* getSRS() const { return _profile.valid() ? _profile->getSRS() : 0L; }
+
+        /**
+         * Gets the SRS of the world (scene)
+         */
+        const SpatialReference* getWorldSRS() const;
 
         /**
          * Copies references of the map image layers into the output list.
@@ -166,7 +171,25 @@ namespace osgEarth
          */
         void addMapCallback( MapCallback* callback ) const;
 
+        /**
+         * Removes a callback previously added with addMapCallback.
+         */
         void removeMapCallback( MapCallback* callback );
+
+        /**
+         * Begin a batch-update operation. Call this if you intend to add multiple
+         * layers at once; then call endUpdate() to complete the operation.
+         * Between calls to beginUpdate() and endUpdate(), Map will not invoke
+         * any callbacks you added wtih addMapCallback.
+         */
+        void beginUpdate();
+
+        /**
+         * Complete a batch update operation that started with a call to
+         * beginUpdate(). Fires all callbacks for operations that occurred
+         * since the call to beginUpdate().
+         */
+        void endUpdate();
 
         /**
          * Adds an image layer to the map.
@@ -248,8 +271,8 @@ namespace osgEarth
         /**
          * Gets the user-provided options structure stored in this map.
          */
-        const osgDB::ReaderWriter::Options* getGlobalOptions() const;
-        void setGlobalOptions( const osgDB::ReaderWriter::Options* options );
+        const osgDB::Options* getGlobalOptions() const;
+        void setGlobalOptions( const osgDB::Options* options );
 
         /**
          * Sets the readable name of this map.
@@ -360,7 +383,7 @@ namespace osgEarth
         ModelLayerVector _modelLayers;
         MaskLayerVector _terrainMaskLayers;
         MapCallbackList _mapCallbacks;
-        osg::ref_ptr<const osgDB::ReaderWriter::Options> _globalOptions;
+        osg::ref_ptr<const osgDB::Options> _globalOptions;
         Threading::ReadWriteMutex _mapDataMutex;
         osg::ref_ptr<const Profile> _profile;
         osg::ref_ptr<const Profile> _profileNoVDatum;

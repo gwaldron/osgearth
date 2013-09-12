@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2012 Pelican Mapping
+ * Copyright 2008-2013 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -92,6 +92,30 @@ namespace
             }
         }
         return true;
+    }
+
+    void geodeticToECEF(std::vector<osg::Vec3d>& points, const osg::EllipsoidModel* em)
+    {
+        for( unsigned i=0; i<points.size(); ++i )
+        {
+            double x, y, z;
+            em->convertLatLongHeightToXYZ(
+                osg::DegreesToRadians( points[i].y() ), osg::DegreesToRadians( points[i].x() ), points[i].z(),
+                x, y, z );
+            points[i].set( x, y, z );
+        }
+    }
+
+    void ECEFtoGeodetic(std::vector<osg::Vec3d>& points, const osg::EllipsoidModel* em)
+    {
+        for( unsigned i=0; i<points.size(); ++i )
+        {
+            double lat, lon, alt;
+            em->convertXYZToLatLongHeight(
+                points[i].x(), points[i].y(), points[i].z(),
+                lat, lon, alt );
+            points[i].set( osg::RadiansToDegrees(lon), osg::RadiansToDegrees(lat), alt );
+        }
     }
 }
 
@@ -360,6 +384,7 @@ _handle         ( handle ),
 _owns_handle    ( true ),
 _init_type      ( init_type ),
 _is_geographic  ( false ),
+_is_ecef        ( false ),
 _is_mercator    ( false ),
 _is_north_polar ( false ), 
 _is_south_polar ( false ),
@@ -379,7 +404,8 @@ _initialized   ( false ),
 _handle        ( handle ),
 _owns_handle   ( ownsHandle ),
 _is_ltp        ( false ),
-_is_plate_carre( false )
+_is_plate_carre( false ),
+_is_ecef       ( false )
 {
     //nop
 }
@@ -425,7 +451,15 @@ SpatialReference::isProjected() const
 {
     if ( !_initialized )
         const_cast<SpatialReference*>(this)->init();
-    return !_is_geographic;
+    return !_is_geographic && !_is_ecef;
+}
+
+bool
+SpatialReference::isECEF() const 
+{
+    if ( !_initialized )
+        const_cast<SpatialReference*>(this)->init();
+    return _is_ecef;
 }
 
 const std::string&
@@ -560,6 +594,9 @@ SpatialReference::_isEquivalentTo( const SpatialReference* rhs, bool considerVDa
         return false;
     }
 
+    if (isECEF() && rhs->isECEF())
+        return true;
+
     if ( considerVDatum && (_vdatum.get() != rhs->_vdatum.get()) )
         return false;
 
@@ -577,9 +614,9 @@ SpatialReference::_isEquivalentTo( const SpatialReference* rhs, bool considerVDa
 
     if (this->isGeographic() && rhs->isGeographic())
     {
-        return (
-            this->getEllipsoid()->getRadiusEquator() == rhs->getEllipsoid()->getRadiusEquator() &&
-            this->getEllipsoid()->getRadiusPolar() == rhs->getEllipsoid()->getRadiusPolar() );
+        return
+            osg::equivalent( getEllipsoid()->getRadiusEquator(), rhs->getEllipsoid()->getRadiusEquator() ) &&
+            osg::equivalent( getEllipsoid()->getRadiusPolar(), rhs->getEllipsoid()->getRadiusPolar() );
     }
 
     // last resort, since it requires the lock
@@ -661,6 +698,44 @@ SpatialReference::getGeodeticSRS() const
     }
 
     return _geodetic_srs.get();
+}
+
+const SpatialReference*
+SpatialReference::getECEF() const
+{
+    if ( !_initialized )
+        const_cast<SpatialReference*>(this)->init();
+
+    if ( _is_ecef )
+        return this;
+
+    if ( !_ecef_srs.valid() )
+    {
+        const SpatialReference* geo = getGeographicSRS(); // before the lock please.
+
+        GDAL_SCOPED_LOCK;
+
+        if ( !_ecef_srs.valid() ) // double-check pattern
+        {
+            void* new_handle = OSRNewSpatialReference( NULL );
+            int err = OSRCopyGeogCSFrom( new_handle, geo->_handle );
+            if ( err == OGRERR_NONE )
+            {
+                // make a new geographic srs, and copy over the vertical datum
+                SpatialReference* ncthis = const_cast<SpatialReference*>(this);
+                ncthis->_ecef_srs = new SpatialReference( new_handle );
+                ncthis->_ecef_srs->_vdatum = 0L; // no vertical datum in ECEF
+                ncthis->_ecef_srs->_is_ecef = true;
+            }
+            else
+            {
+                OSRDestroySpatialReference( new_handle );
+                OE_WARN << LC << "Failed to initialize a ECEF SRS for " << getName() << std::endl;
+            }
+        }
+    }
+
+    return _ecef_srs.get();
 }
 
 const SpatialReference*
@@ -861,25 +936,23 @@ SpatialReference::createLocalToWorld(const osg::Vec3d& xyz, osg::Matrixd& out_lo
             return false;
         out_local2world = osg::Matrix::translate(world);
     }
+    else if ( isECEF() )
+    {
+        out_local2world = ECEF::createLocalToWorld(xyz);
+    }
     else
     {
         // convert MSL to HAE if necessary:
         osg::Vec3d geodetic;
-        if ( !isGeodetic() )
-        {
-            if ( !transform( xyz, getGeodeticSRS(), geodetic ) )
-                return false;
-        }
-        else
-        {
-            geodetic = xyz;
-        }
+        if ( !transform(xyz, getGeodeticSRS(), geodetic) )
+            return false;
 
-        getEllipsoid()->computeLocalToWorldTransformFromLatLongHeight(
-            osg::DegreesToRadians( geodetic.y() ),
-            osg::DegreesToRadians( geodetic.x() ),
-            geodetic.z(),
-            out_local2world );
+        // then to ECEF:
+        osg::Vec3d ecef;
+        if ( !transform(geodetic, getGeodeticSRS()->getECEF(), ecef) )
+            return false;
+
+        out_local2world = ECEF::createLocalToWorld(ecef);
     }
     return true;
 }
@@ -947,6 +1020,21 @@ SpatialReference::transform(std::vector<osg::Vec3d>& points,
     {     
         success = sphericalMercatorToGeographic( points );
         transformZ( points, outputSRS, true );
+        return success;
+    }
+
+    else if ( isECEF() && !outputSRS->isECEF() )
+    {
+        const SpatialReference* outputGeoSRS = outputSRS->getGeodeticSRS();
+        ECEFtoGeodetic(points, outputGeoSRS->getEllipsoid());
+        return outputGeoSRS->transform(points, outputSRS);
+    }
+
+    else if ( !isECEF() && outputSRS->isECEF() )
+    {
+        const SpatialReference* outputGeoSRS = outputSRS->getGeodeticSRS();
+        success = transform(points, outputGeoSRS);
+        geodeticToECEF(points, outputGeoSRS->getEllipsoid());
         return success;
     }
 
@@ -1039,12 +1127,12 @@ SpatialReference::transformXYPointArrays(double*  x,
     TransformHandleCache::const_iterator itr = _transformHandleCache.find(out_srs->getWKT());
     if (itr != _transformHandleCache.end())
     {
-        OE_DEBUG << "using cached transform handle" << std::endl;
+        //OE_DEBUG << LC << "using cached transform handle" << std::endl;
         xform_handle = itr->second;
     }
     else
     {
-        OE_DEBUG << "allocating new OCT Transform" << std::endl;
+        OE_DEBUG << LC << "allocating new OCT Transform" << std::endl;
         xform_handle = OCTNewCoordinateTransformation( _handle, out_srs->_handle);
         const_cast<SpatialReference*>(this)->_transformHandleCache[out_srs->getWKT()] = xform_handle;
     }
@@ -1131,7 +1219,8 @@ SpatialReference::transformToWorld(const osg::Vec3d& input,
 {
     if ( (isGeographic() && !isPlateCarre()) || isCube() ) //isGeographic() && !_is_plate_carre )
     {
-        return transformToECEF(input, output);
+        return transform(input, getECEF(), output);
+        //return transformToECEF(input, output);
     }
     else // isProjected || _is_plate_carre
     {
@@ -1155,7 +1244,8 @@ SpatialReference::transformFromWorld(const osg::Vec3d& world,
 {
     if ( (isGeographic() && !isPlateCarre()) || isCube() ) //isGeographic() && !_is_plate_carre )
     {
-        return transformFromECEF(world, output, out_haeZ);
+        //return transformFromECEF(world, output, out_haeZ);
+        return getECEF()->transform(world, this, output);
     }
     else // isProjected || _is_plate_carre
     {
@@ -1179,6 +1269,7 @@ SpatialReference::transformFromWorld(const osg::Vec3d& world,
 }
 
 
+#if 0
 bool 
 SpatialReference::transformToECEF(const osg::Vec3d& input,
                                   osg::Vec3d&       output ) const
@@ -1275,22 +1366,35 @@ SpatialReference::transformFromECEF(std::vector<osg::Vec3d>& points) const
 
     return ok;
 }
+#endif
 
 double
 SpatialReference::transformUnits(double                  input,
-                                 const SpatialReference* outSRS ) const
+                                 const SpatialReference* outSRS,
+                                 double                  latitude) const
 {
     if ( this->isProjected() && outSRS->isGeographic() )
     {
         double metersPerEquatorialDegree = (outSRS->getEllipsoid()->getRadiusEquator() * 2.0 * osg::PI) / 360.0;
-        double inputDegrees = getUnits().convertTo(Units::METERS, input) / metersPerEquatorialDegree;
+        double inputDegrees = getUnits().convertTo(Units::METERS, input) / (metersPerEquatorialDegree * cos(osg::DegreesToRadians(latitude)));
+        return Units::DEGREES.convertTo( outSRS->getUnits(), inputDegrees );
+    }
+    else if ( this->isECEF() && outSRS->isGeographic() )
+    {
+        double metersPerEquatorialDegree = (outSRS->getEllipsoid()->getRadiusEquator() * 2.0 * osg::PI) / 360.0;
+        double inputDegrees = input / (metersPerEquatorialDegree * cos(osg::DegreesToRadians(latitude)));
         return Units::DEGREES.convertTo( outSRS->getUnits(), inputDegrees );
     }
     else if ( this->isGeographic() && outSRS->isProjected() )
     {
         double metersPerEquatorialDegree = (outSRS->getEllipsoid()->getRadiusEquator() * 2.0 * osg::PI) / 360.0;
-        double inputMeters = getUnits().convertTo(Units::DEGREES, input) * metersPerEquatorialDegree;
+        double inputMeters = getUnits().convertTo(Units::DEGREES, input) * (metersPerEquatorialDegree * cos(osg::DegreesToRadians(latitude)));
         return Units::METERS.convertTo( outSRS->getUnits(), inputMeters );
+    }
+    else if ( this->isGeographic() && outSRS->isECEF() )
+    {
+        double metersPerEquatorialDegree = (outSRS->getEllipsoid()->getRadiusEquator() * 2.0 * osg::PI) / 360.0;
+        return getUnits().convertTo(Units::DEGREES, input) * (metersPerEquatorialDegree * cos(osg::DegreesToRadians(latitude)));
     }
     else // both projected or both geographic.
     {
@@ -1455,9 +1559,12 @@ SpatialReference::_init()
 {
     // set defaults:
     _is_user_defined = false; 
-    _is_contiguous = true;   
+    _is_contiguous = true;
     _is_cube = false;
-    _is_geographic = OSRIsGeographic( _handle ) != 0;
+    if ( _is_ecef )
+        _is_geographic = false;
+    else
+        _is_geographic = OSRIsGeographic( _handle ) != 0;
 
     // extract the ellipsoid parameters:
     int err;

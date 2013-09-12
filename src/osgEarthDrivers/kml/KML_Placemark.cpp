@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2012 Pelican Mapping
+ * Copyright 2008-2013 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -24,12 +24,13 @@
 #include <osgEarthAnnotation/PlaceNode>
 #include <osgEarthAnnotation/LabelNode>
 #include <osgEarthAnnotation/ModelNode>
-#include <osgEarthAnnotation/Decluttering>
 #include <osgEarthAnnotation/LocalGeometryNode>
+#include <osgEarth/Decluttering>
 
 #include <osg/Depth>
 #include <osgDB/WriteFile>
 
+using namespace osgEarth_kml;
 using namespace osgEarth::Features;
 using namespace osgEarth::Annotation;
 
@@ -67,22 +68,19 @@ KML_Placemark::build( const Config& conf, KMLContext& cx )
             Geometry* geom = giter.next();
             Style style = masterStyle;
 
-            // KML's default altitude mode is clampToGround.
-            AltitudeMode altMode = ALTMODE_RELATIVE;
-
-            AltitudeSymbol* altSym = style.get<AltitudeSymbol>();
-            if ( !altSym )
-            {
-                altSym = style.getOrCreate<AltitudeSymbol>();
-                altSym->clamping() = AltitudeSymbol::CLAMP_RELATIVE_TO_TERRAIN;
-            }
-            else if ( !altSym->clamping().isSetTo(AltitudeSymbol::CLAMP_RELATIVE_TO_TERRAIN) )
-            {
-                altMode = ALTMODE_ABSOLUTE;
-            }
+            AltitudeSymbol* alt = style.get<AltitudeSymbol>();
             
             if ( geom && geom->getTotalPointCount() > 0 )
             {
+                // resolve the proper altitude mode for the anchor point
+                AltitudeMode altMode = ALTMODE_RELATIVE;
+                if (alt && 
+                    !alt->clamping().isSetTo( alt->CLAMP_TO_TERRAIN ) &&
+                    !alt->clamping().isSetTo( alt->CLAMP_RELATIVE_TO_TERRAIN ) )
+                {
+                    altMode = ALTMODE_ABSOLUTE;
+                }
+
                 GeoPoint position(cx._srs.get(), geom->getBounds().center(), altMode);
 
                 bool isPoly = geom->getComponentType() == Geometry::TYPE_POLYGON;
@@ -124,12 +122,14 @@ KML_Placemark::build( const Config& conf, KMLContext& cx )
                         ModelNode* node = new ModelNode( cx._mapNode, style, cx._dbOptions );
                         node->setPosition( position );
 
+                        // model scale:
                         if ( cx._options->modelScale() != 1.0f )
                         {
                             float s = *cx._options->modelScale();
                             node->setScale( osg::Vec3f(s,s,s) );
                         }
 
+                        // model local tangent plane rotation:
                         if ( !cx._options->modelRotation()->zeroRotation() )
                         {
                             node->setLocalRotation( *cx._options->modelRotation() );
@@ -138,12 +138,14 @@ KML_Placemark::build( const Config& conf, KMLContext& cx )
                         modelNode = node;
                     }
 
+                    // is there a label?
                     else if ( !text && !name.empty() )
                     {
                         text = style.getOrCreate<TextSymbol>();
                         text->content()->setLiteral( name );
                     }
 
+                    // is there an icon?
                     if ( icon )
                     {
                         iconNode = new PlaceNode( cx._mapNode, position, style, cx._dbOptions );
@@ -160,7 +162,6 @@ KML_Placemark::build( const Config& conf, KMLContext& cx )
                 if ( geom->getTotalPointCount() > 1 )
                 {
                     ExtrusionSymbol* extruded = style.get<ExtrusionSymbol>();
-                    AltitudeSymbol*  altitude = style.get<AltitudeSymbol>();
 
                     // Remove symbols that we have already processed so the geometry
                     // compiler doesn't get confused.
@@ -171,46 +172,8 @@ KML_Placemark::build( const Config& conf, KMLContext& cx )
                     if ( text )
                         style.removeSymbol( text );
 
-                    // analyze the data; if the Z coords are all 0.0, enable draping.
-                    if ( /*isPoly &&*/ !extruded && altitude && altitude->clamping() != AltitudeSymbol::CLAMP_TO_TERRAIN )
-                    {
-                        bool zeroElev = true;
-                        ConstGeometryIterator gi( geom, false );
-                        while( zeroElev == true && gi.hasMore() )
-                        {
-                            const Geometry* g = gi.next();
-                            for( Geometry::const_iterator ji = g->begin(); ji != g->end() && zeroElev == true; ++ji )
-                            {
-                                if ( !osg::equivalent(ji->z(), 0.0) )
-                                    zeroElev = false;
-                            }
-                        }
-                        if ( zeroElev )
-                        {
-                            altitude->clamping() = AltitudeSymbol::CLAMP_TO_TERRAIN;
-                        }
-                    }
-
-                    // Make a feature node; drape if we're not extruding.
-                    bool draped =
-                        isPoly    && 
-                        !extruded &&
-                        (!altitude || altitude->clamping() == AltitudeSymbol::CLAMP_TO_TERRAIN);
-
-                    // turn off the clamping if we're draping.
-                    if ( draped && altitude )
-                        altitude->clamping() = AltitudeSymbol::CLAMP_NONE;
-
-                    GeometryCompilerOptions compilerOptions;
-
-                    // Check for point-model substitution:
-                    if ( style.has<ModelSymbol>() )
-                    {
-                        compilerOptions.instancing() = true;
-                    }
-
                     Feature* feature = new Feature(geom, cx._srs.get(), style);
-                    featureNode = new FeatureNode( cx._mapNode, feature, draped, compilerOptions );
+                    featureNode = new FeatureNode( cx._mapNode, feature );
                 }
 
 
@@ -227,7 +190,9 @@ KML_Placemark::build( const Config& conf, KMLContext& cx )
                     cx._groupStack.top()->addChild( group );
 
                     if ( iconNode && cx._options->declutter() == true )
+                    {
                         Decluttering::setEnabled( iconNode->getOrCreateStateSet(), true );
+                    }
 
                     if ( iconNode )
                         KML_Feature::build( conf, cx, iconNode );
@@ -249,7 +214,9 @@ KML_Placemark::build( const Config& conf, KMLContext& cx )
                         {
                             cx._groupStack.top()->addChild( iconNode );
                             if ( cx._options->declutter() == true )
+                            {
                                 Decluttering::setEnabled( iconNode->getOrCreateStateSet(), true );
+                            }
                         }
                         KML_Feature::build( conf, cx, iconNode );
                     }

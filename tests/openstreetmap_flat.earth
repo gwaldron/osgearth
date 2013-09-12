@@ -9,6 +9,7 @@ http://wiki.openstreetmap.org/wiki/Slippy_map_tilenames
     <options>
         <profile>spherical-mercator</profile>
         <lighting>false</lighting>
+        <terrain engine="quadtree" range_mode="PIXEL_SIZE_ON_SCREEN" tile_pixel_size="256"/>
     </options>
     
     <image name="osm_mapnik" driver="xyz">

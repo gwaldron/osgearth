@@ -5,9 +5,11 @@ needs to be absolutely positioned.
 -->
 
 <map version="2">
-    <image driver="gdal" name="world-tiff" cache_enabled="false">
-        <url>../data/world.tif</url>
-        <caching_policy usage="no_cache"/>
+    <image name="mapquest_open_aerial" driver="xyz">
+        <url>http://oatile[1234].mqcdn.com/tiles/1.0.0/sat/{z}/{x}/{y}.jpg</url>
+        <profile>spherical-mercator</profile>
+        <cache_policy usage="no_cache"/>
+        <nodata_image>http://oatile3.mqcdn.com/tiles/1.0.0/sat/13/636/6210.jpg</nodata_image>
     </image>
 	
 	<model name = "cow" driver="simple">

@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2012 Pelican Mapping
+ * Copyright 2008-2013 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -43,6 +43,7 @@ namespace osgEarth
     class TaskServiceManager;
     class URIReadCallback;
     class ColorFilterRegistry;
+    class StateSetCache;
 
     /**
      * Application-wide global repository.
@@ -128,8 +129,19 @@ namespace osgEarth
          * shader factory if you want to alter any of osgEarth's baseline shaders
          * (advanced usage).
          */
-        ShaderFactory* getShaderFactory() const;
+        const ShaderFactory* getShaderFactory() const;
         void setShaderFactory( ShaderFactory* lib );
+        static const ShaderFactory* shaderFactory() { return instance()->getShaderFactory(); }
+
+        /**
+         * A default StateSetCache to use by any process that uses one.
+         * A StateSetCache assist in stateset sharing across multiple nodes.
+         * Note: A registry-wide SSC is only supported in OSG 3.1.4+. See
+         * the Registry.cpp comments for details.
+         */
+        StateSetCache* getStateSetCache() const;
+        void setStateSetCache( StateSetCache* cache );
+        static StateSetCache* stateSetCache() { return instance()->getStateSetCache(); }
 
         /**
          * Gets a reference to the global task service manager.
@@ -209,9 +221,13 @@ namespace osgEarth
 
         osg::ref_ptr<TaskServiceManager> _taskServiceManager;
 
-        int _uidGen;
+        // unique ID generator:
+        int                      _uidGen;
+        mutable Threading::Mutex _uidGenMutex;
 
+        // system capabilities:
         osg::ref_ptr< Capabilities > _caps;
+        mutable Threading::Mutex     _capsMutex;
         void initCapabilities();
 
         osg::ref_ptr<osgDB::Options> _defaultOptions;
@@ -221,7 +237,10 @@ namespace osgEarth
         osg::ref_ptr<osgText::Font> _defaultFont;
 
         typedef std::vector<const Units*> UnitsVector;
-        UnitsVector _unitsVector;
+        UnitsVector                       _unitsVector;
+        mutable Threading::ReadWriteMutex _unitsVectorMutex;
+
+        osg::ref_ptr<StateSetCache> _stateSetCache;
 
         std::string _terrainEngineDriver;
     };

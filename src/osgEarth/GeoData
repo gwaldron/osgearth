@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2012 Pelican Mapping
+ * Copyright 2008-2013 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -198,6 +198,17 @@ namespace osgEarth
          */
         bool createWorldToLocal( osg::Matrixd& out_world2local ) const;
 
+        /**
+         * Outputs an "up" vector corresponding to the given point. The up vector
+         * is orthogonal to a local tangent plane at that point on the map.
+         */
+        bool createWorldUpVector( osg::Vec3d& out_up ) const;
+
+        /**
+         * Calculates the distance in meters from this geopoint to another.
+         */
+        double distanceTo(const GeoPoint& rhs) const;
+
 
         bool operator == (const GeoPoint& rhs) const;
         bool operator != (const GeoPoint& rhs) const { return !operator==(rhs); }
@@ -325,6 +336,7 @@ namespace osgEarth
          */
         bool getCentroid( double& out_x, double& out_y ) const;
         osg::Vec3d getCentroid() const { osg::Vec3d r; getCentroid(r.x(), r.y()); return r; }
+        bool getCentroid( GeoPoint& output ) const;
 
         /**
          * Returns true is that extent is in a Geographic (lat/long) SRS that spans
@@ -558,7 +570,8 @@ namespace osgEarth
             const GeoExtent& extent,
             bool exact = false,
             unsigned int width = 0,
-            unsigned int height = 0) const;
+            unsigned int height = 0,
+            bool useBilinearInterpolation = true) const;
 
         /**
          * Warps the image into a new spatial reference system.
@@ -576,7 +589,8 @@ namespace osgEarth
             const SpatialReference* to_srs,
             const GeoExtent* to_extent = 0,
             unsigned int width = 0,
-            unsigned int height = 0) const;
+            unsigned int height = 0,
+            bool useBilinearInterpolation = true) const;
 
         /**
          * Adds a one-pixel transparent border around an image.
@@ -671,6 +685,16 @@ namespace osgEarth
         const GeoExtent& getExtent() const;
 
         /**
+         * The minimum height in the heightfield
+         */
+        float getMinHeight() const { return _minHeight; }
+
+        /**
+         * The maximum height in the heightfield
+         */
+        float getMaxHeight() const { return _maxHeight; }
+
+        /**
          * Gets a pointer to the underlying OSG heightfield.
          */
         const osg::HeightField* getHeightField() const;
@@ -681,12 +705,37 @@ namespace osgEarth
          */
         osg::HeightField* takeHeightField();
 
+        /**
+         * Gets the X interval of this GeoHeightField
+         */
+        double getXInterval() const;
+
+        /**
+         * Gets the Y interval of this GeoHeightField
+         */
+        double getYInterval() const;
+
+
+        //Sort GeoHeightField's by resolution
+        struct SortByResolutionFunctor
+        {
+            inline bool operator() (const GeoHeightField& lhs, const GeoHeightField& rhs) const
+            {                
+                return lhs.getXInterval() < rhs.getXInterval();                
+            }
+        };
+
     protected:
         osg::ref_ptr<osg::HeightField> _heightField;
         GeoExtent                      _extent;
+        float                          _minHeight, _maxHeight;
     };
 
 	typedef std::vector<GeoHeightField> GeoHeightFieldVector;
+
+
+
+
 }
 
 #endif // OSGEARTH_GEODATA_H

@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2012 Pelican Mapping
+ * Copyright 2008-2013 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -21,6 +21,8 @@
 #define OSGEARTH_FILEUTILS_H
 
 #include <osgEarth/Common>
+#include <osgEarth/DateTime>
+#include <vector>
 
 namespace osgEarth
 {
@@ -61,6 +63,16 @@ namespace osgEarth
     extern OSGEARTH_EXPORT std::string getTempPath();
 
     /**
+     * Sets the "Last Modified" timestamp of a file to Now.
+     */
+    extern OSGEARTH_EXPORT bool touchFile(const std::string& path);
+
+    /**
+     * Gets the "Last Modified" timestamp of a file.
+     */
+    extern OSGEARTH_EXPORT TimeStamp getLastModifiedTime(const std::string& path);
+
+    /**
      * Gets a temporary filename
      * @param prefix
      *        The prefix of the temporary filename
@@ -69,6 +81,52 @@ namespace osgEarth
      */
      extern OSGEARTH_EXPORT std::string getTempName(const std::string& prefix="", const std::string& suffix="");
 
+     /**
+      * Utility class that processes files and directories recursively.
+      */
+     class OSGEARTH_EXPORT DirectoryVisitor
+     {
+     public:
+         /**
+          * Create a new DirectoryVisitor
+          */
+         DirectoryVisitor();
+
+         /**
+          * Processes a file.  Override this in your subclass.
+          */
+         virtual void handleFile( const std::string& filename );
+
+         /**
+          * Processes a directory.
+          * @returns
+          *     true if the directory should be traversed, false otherwise.
+          */
+         virtual bool handleDir( const std::string& path );
+
+         /**
+          * Traverse into a directory
+          * @param path
+          *     The path to traverse
+          */
+         virtual void traverse(const std::string& path );
+     };
+
+     /**
+      * Utility class that recursively collects all files within a directory.
+      */
+     class OSGEARTH_EXPORT CollectFilesVisitor : public DirectoryVisitor
+     {
+     public:
+         CollectFilesVisitor();
+
+         virtual void handleFile( const std::string& filename );      
+
+         /**
+          * The collected filenames.
+          */
+         std::vector< std::string > filenames;    
+     };
 
 }
 

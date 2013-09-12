@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2008-2012 Pelican Mapping
+* Copyright 2008-2013 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -36,6 +36,7 @@
 
 #define LC "[QuadTreeTerrainEngineNode] "
 
+using namespace osgEarth_engine_quadtree;
 using namespace osgEarth;
 
 //------------------------------------------------------------------------
@@ -176,6 +177,10 @@ QuadTreeTerrainEngineNode::postInitialize( const Map* map, const TerrainOptions&
     {
         _deadTiles = new TileNodeRegistry("dead");
     }
+    
+    // initialize the model factory:
+    _tileModelFactory = new TileModelFactory(getMap(), _liveTiles.get(), _terrainOptions );
+
 
     // handle an already-established map profile:
     if ( _update_mapf->getProfile() )
@@ -206,6 +211,8 @@ QuadTreeTerrainEngineNode::postInitialize( const Map* map, const TerrainOptions&
 
     // now that we have a map, set up to recompute the bounds
     dirtyBound();
+
+
 }
 
 
@@ -226,6 +233,13 @@ QuadTreeTerrainEngineNode::computeBound() const
 void
 QuadTreeTerrainEngineNode::refresh()
 {
+
+    //Clear out the hf cache
+    if (_tileModelFactory)
+    {
+        _tileModelFactory->getHeightFieldCache()->clear();
+    }
+
     // rebuilds the terrain graph entirely.
 
     this->removeChild( _terrain );
@@ -239,7 +253,7 @@ QuadTreeTerrainEngineNode::refresh()
     // Build the first level of the terrain.
     // Collect the tile keys comprising the root tiles of the terrain.
     std::vector< TileKey > keys;
-    _update_mapf->getProfile()->getRootKeys( keys );
+    _update_mapf->getProfile()->getAllKeysAtLOD( *_terrainOptions.firstLOD(), keys );
 
     if (_terrainOptions.enableBlending().value())
     {
@@ -288,7 +302,7 @@ QuadTreeTerrainEngineNode::onMapInfoEstablished( const MapInfo& mapInfo )
     // Build the first level of the terrain.
     // Collect the tile keys comprising the root tiles of the terrain.
     std::vector< TileKey > keys;
-    _update_mapf->getProfile()->getRootKeys( keys );
+    _update_mapf->getProfile()->getAllKeysAtLOD( *_terrainOptions.firstLOD(), keys );
 
     for( unsigned i=0; i<keys.size(); ++i )
     {
@@ -313,12 +327,7 @@ QuadTreeTerrainEngineNode::getKeyNodeFactory()
         // create a compiler for compiling tile models into geometry
         bool optimizeTriangleOrientation = 
             getMap()->getMapOptions().elevationInterpolation() != INTERP_TRIANGULATE;
-
-        // initialize the model builder:
-        TileModelFactory* factory = new TileModelFactory(
-            getMap(),
-            _liveTiles.get(),
-            _terrainOptions );
+        
 
         // A compiler specific to this thread:
         TileModelCompiler* compiler = new TileModelCompiler(
@@ -329,7 +338,7 @@ QuadTreeTerrainEngineNode::getKeyNodeFactory()
 
         // initialize a key node factory.
         knf = new SerialKeyNodeFactory( 
-            factory,
+            _tileModelFactory.get(),
             compiler,
             _liveTiles.get(),
             _deadTiles.get(),

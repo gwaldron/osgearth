@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2012 Pelican Mapping
+ * Copyright 2008-2013 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -25,6 +25,8 @@
 #include "KML_NetworkLink"
 #include "KML_Placemark"
 #include "KML_NetworkLinkControl"
+
+using namespace osgEarth_kml;
 
 void 
 KML_Root::scan( const Config& conf, KMLContext& cx )

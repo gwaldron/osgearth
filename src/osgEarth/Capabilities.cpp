@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2012 Pelican Mapping
+ * Copyright 2008-2013 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -24,6 +24,7 @@
 #include <osg/GL2Extensions>
 #include <osg/Texture>
 #include <osgViewer/Version>
+#include <OpenThreads/Thread>
 
 using namespace osgEarth;
 
@@ -99,6 +100,7 @@ Capabilities::Capabilities() :
 _maxFFPTextureUnits     ( 1 ),
 _maxGPUTextureUnits     ( 1 ),
 _maxGPUTextureCoordSets ( 1 ),
+_maxGPUAttribs          ( 1 ),
 _maxTextureSize         ( 256 ),
 _maxFastTextureSize     ( 256 ),
 _maxLights              ( 1 ),
@@ -115,7 +117,11 @@ _supportsDepthPackedStencilBuffer( false ),
 _supportsOcclusionQuery ( false ),
 _supportsDrawInstanced  ( false ),
 _supportsUniformBufferObjects( false ),
-_maxUniformBlockSize    ( 0 )
+_supportsNonPowerOfTwoTextures( false ),
+_maxUniformBlockSize    ( 0 ),
+_preferDLforStaticGeom  ( true ),
+_numProcessors          ( 1 ),
+_supportsFragDepthWrite ( false )
 {
     // little hack to force the osgViewer library to link so we can create a graphics context
     osgViewerGetVersion();
@@ -124,6 +130,9 @@ _maxUniformBlockSize    ( 0 )
     bool enableATIworkarounds = true;
     if ( ::getenv( "OSGEARTH_DISABLE_ATI_WORKAROUNDS" ) != 0L )
         enableATIworkarounds = false;
+
+    // logical CPUs (cores)
+    _numProcessors = OpenThreads::GetNumberOfProcessors();
 
     // create a graphics context so we can query OpenGL support:
     MyGraphicsContext mgc;
@@ -152,13 +161,18 @@ _maxUniformBlockSize    ( 0 )
         OE_INFO << LC << "  Max GPU texture units = " << _maxGPUTextureUnits << std::endl;
 
         glGetIntegerv( GL_MAX_TEXTURE_COORDS_ARB, &_maxGPUTextureCoordSets );
+        OE_INFO << LC << "  Max GPU texture coord indices = " << _maxGPUTextureCoordSets << std::endl;
+
+        glGetIntegerv( GL_MAX_VERTEX_ATTRIBS, &_maxGPUAttribs );
+        OE_INFO << LC << "  Max GPU attributes = " << _maxGPUAttribs << std::endl;
+
+#if 0
 #if defined(OSG_GLES2_AVAILABLE)
         int maxVertAttributes = 0;
         glGetIntegerv(GL_MAX_VERTEX_ATTRIBS, &maxVertAttributes);
         _maxGPUTextureCoordSets = maxVertAttributes - 5; //-5 for vertex, normal, color, tangent and binormal
 #endif
-        OE_INFO << LC << "  Max GPU texture coordinate sets = " << _maxGPUTextureCoordSets << std::endl;
-
+#endif
 
         glGetIntegerv( GL_DEPTH_BITS, &_depthBits );
         OE_INFO << LC << "  Depth buffer bits = " << _depthBits << std::endl;
@@ -189,7 +203,11 @@ _maxUniformBlockSize    ( 0 )
 #endif
         OE_INFO << LC << "  Max lights = " << _maxLights << std::endl;
 
-        _supportsGLSL = GL2->isGlslSupported();
+        
+        if ( ::getenv("OSGEARTH_NO_GLSL") )
+            _supportsGLSL = false;
+        else
+            _supportsGLSL = GL2->isGlslSupported();
         OE_INFO << LC << "  GLSL = " << SAYBOOL(_supportsGLSL) << std::endl;
 
         if ( _supportsGLSL )
@@ -224,20 +242,68 @@ _maxUniformBlockSize    ( 0 )
         OE_INFO << LC << "  depth-packed stencil = " << SAYBOOL(_supportsDepthPackedStencilBuffer) << std::endl;
 
         _supportsOcclusionQuery = osg::isGLExtensionSupported( id, "GL_ARB_occlusion_query" );
-        OE_INFO << LC << "  occulsion query = " << SAYBOOL(_supportsOcclusionQuery) << std::endl;
+        OE_INFO << LC << "  occlusion query = " << SAYBOOL(_supportsOcclusionQuery) << std::endl;
 
-        _supportsDrawInstanced = osg::isGLExtensionOrVersionSupported( id, "GL_EXT_draw_instanced", 3.1f );
+        _supportsDrawInstanced = 
+            _supportsGLSL &&
+            osg::isGLExtensionOrVersionSupported( id, "GL_EXT_draw_instanced", 3.1f );
         OE_INFO << LC << "  draw instanced = " << SAYBOOL(_supportsDrawInstanced) << std::endl;
-
-        _supportsUniformBufferObjects = osg::isGLExtensionOrVersionSupported( id, "GL_ARB_uniform_buffer_object", 2.0f );
-        OE_INFO << LC << "  uniform buffer objects = " << SAYBOOL(_supportsUniformBufferObjects) << std::endl;
 
         glGetIntegerv( GL_MAX_UNIFORM_BLOCK_SIZE, &_maxUniformBlockSize );
         OE_INFO << LC << "  max uniform block size = " << _maxUniformBlockSize << std::endl;
 
+        _supportsUniformBufferObjects = 
+            _supportsGLSL &&
+            osg::isGLExtensionOrVersionSupported( id, "GL_ARB_uniform_buffer_object", 2.0f );
+        OE_INFO << LC << "  uniform buffer objects = " << SAYBOOL(_supportsUniformBufferObjects) << std::endl;
+
+        if ( _supportsUniformBufferObjects && _maxUniformBlockSize == 0 )
+        {
+            OE_INFO << LC << "  ...but disabled, since UBO block size reports zero" << std::endl;
+            _supportsUniformBufferObjects = false;
+        }
+
+        _supportsNonPowerOfTwoTextures =
+            osg::isGLExtensionSupported( id, "GL_ARB_texture_non_power_of_two" );
+        OE_INFO << LC << "  NPOT textures = " << SAYBOOL(_supportsNonPowerOfTwoTextures) << std::endl;
+
+
+        // Writing to gl_FragDepth is not supported under GLES:
+#if (defined(OSG_GLES1_AVAILABLE) || defined(OSG_GLES2_AVAILABLE))
+        _supportsFragDepthWrite = false;
+#else
+        _supportsFragDepthWrite = true;
+#endif
 
         //_supportsTexture2DLod = osg::isGLExtensionSupported( id, "GL_ARB_shader_texture_lod" );
         //OE_INFO << LC << "  texture2DLod = " << SAYBOOL(_supportsTexture2DLod) << std::endl;
+
+        // NVIDIA:
+        bool isNVIDIA = _vendor.find("NVIDIA") == 0;
+
+        // NVIDIA has h/w acceleration of some kind for display lists, supposedly.
+        // In any case they do benchmark much faster in osgEarth for static geom.
+        // BUT unfortunately, they dont' seem to work too well with shaders. Colors
+        // change randomly, etc. Might work OK for textured geometry but not for 
+        // untextured. TODO: investigate.
+#if 1
+        _preferDLforStaticGeom = false;
+        if ( ::getenv("OSGEARTH_TRY_DISPLAY_LISTS") )
+        {
+            _preferDLforStaticGeom = true;
+        }
+#else
+        if ( ::getenv("OSGEARTH_ALWAYS_USE_VBOS") )
+        {
+            _preferDLforStaticGeom = false;
+        }
+        else
+        {
+            _preferDLforStaticGeom = isNVIDIA;
+        }
+#endif
+
+        OE_INFO << LC << "  prefer DL for static geom = " << SAYBOOL(_preferDLforStaticGeom) << std::endl;
 
         // ATI workarounds:
         bool isATI = _vendor.find("ATI ") == 0;

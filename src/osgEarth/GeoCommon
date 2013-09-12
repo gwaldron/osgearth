@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2012 Pelican Mapping
+ * Copyright 2008-2013 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -24,6 +24,15 @@ namespace osgEarth
 #define NO_DATA_VALUE -FLT_MAX
 
     /**
+     * Types of interpolation between two geodetic locations.
+     */
+    enum GeoInterpolation
+    {
+        GEOINTERP_GREAT_CIRCLE,
+        GEOINTERP_RHUMB_LINE
+    };
+
+    /**
      * Elevation interpolation methods.
      */
     enum ElevationInterpolation
@@ -31,7 +40,7 @@ namespace osgEarth
         INTERP_AVERAGE,
         INTERP_NEAREST,
         INTERP_BILINEAR,
-        INTERP_TRIANGULATE        
+        INTERP_TRIANGULATE
     };
 
     /**

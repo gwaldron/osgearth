@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2008-2012 Pelican Mapping
+* Copyright 2008-2013 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -27,6 +27,7 @@
 #include <osgEarthUtil/AutoClipPlaneHandler>
 #include <osgEarthUtil/Controls>
 #include <osgEarth/Utils>
+#include <osgEarth/VirtualProgram>
 
 #include <osg/ImageStream>
 #include <osgDB/FileNameUtils>
@@ -240,13 +241,13 @@ main(int argc, char** argv)
             ImageOverlay* overlay = new ImageOverlay(mapNode);
             overlay->setImage( image );
             overlay->setBounds(imageBounds[i]);
-
+            
             root->addChild( overlay );
 
 
             //Create a new ImageOverlayEditor and set it's node mask to 0 to hide it initially
 #if OSG_MIN_VERSION_REQUIRED(2,9,6)
-            osg::Node* editor = new ImageOverlayEditor( overlay);
+            osg::Node* editor = new ImageOverlayEditor( overlay, moveVert);
 #else
             //Just make an empty group for pre-2.9.6
             osg::Node* editor = new osg::Group;

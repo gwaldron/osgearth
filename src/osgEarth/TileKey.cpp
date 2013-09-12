@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2012 Pelican Mapping
+ * Copyright 2008-2013 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -81,6 +81,19 @@ TileKey::getTileXY(unsigned int& out_tile_x,
     out_tile_y = _y;
 }
 
+unsigned
+TileKey::getQuadrant() const
+{
+    if ( _lod == 0 )
+        return 0;
+    bool xeven = (_x & 1) == 0;
+    bool yeven = (_y & 1) == 0;
+    return 
+        xeven && yeven ? 0 :
+        xeven          ? 2 :
+        yeven          ? 1 : 3;
+}
+
 osgTerrain::TileID
 TileKey::getTileId() const
 {
@@ -152,20 +165,24 @@ TileKey::createAncestorKey( int ancestorLod ) const
 }
 
 TileKey
-TileKey::createNeighborKey( TileKey::Direction dir ) const
+TileKey::createNeighborKey( int xoffset, int yoffset ) const
 {
-    unsigned int tx, ty;
+    unsigned tx, ty;
     getProfile()->getNumTiles( _lod, tx, ty );
 
-    unsigned int x =
-        dir == WEST ? _x > 0 ? _x-1 : tx-1 :
-        dir == EAST ? _x+1 < tx ? _x+1 : 0 :
-        _x;
+    int sx = (int)_x + xoffset;
+    unsigned x =
+        sx < 0        ? (unsigned)((int)tx + sx) :
+        sx >= (int)tx ? (unsigned)sx - tx :
+        (unsigned)sx;
 
-    unsigned int y = 
-        dir == SOUTH ? _y > 0 ? _y-1 : ty-1 :
-        dir == NORTH ? _y+1 < ty ? _y+1 : 0 :
-        _y;        
+    int sy = (int)_y + yoffset;
+    unsigned y =
+        sy < 0        ? (unsigned)((int)ty + sy) :
+        sy >= (int)ty ? (unsigned)sy - ty :
+        (unsigned)sy;
+
+    //OE_NOTICE << "Returning neighbor " << x << ", " << y << " for tile " << str() << " offset=" << xoffset << ", " << yoffset << std::endl;
 
     return TileKey( _lod, x, y, _profile.get() );
 }

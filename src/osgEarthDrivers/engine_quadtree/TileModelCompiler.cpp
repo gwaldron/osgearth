@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2008-2012 Pelican Mapping
+* Copyright 2008-2013 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -19,6 +19,9 @@
 #include "TileModelCompiler"
 
 #include <osgEarth/Locators>
+#include <osgEarth/Registry>
+#include <osgEarth/Capabilities>
+#include <osgEarth/HeightFieldUtils>
 #include <osgEarth/TextureCompositor>
 #include <osgEarthSymbology/Geometry>
 #include <osgEarthSymbology/MeshConsolidator>
@@ -28,6 +31,7 @@
 #include <osg/MatrixTransform>
 #include <osgUtil/DelaunayTriangulator>
 
+using namespace osgEarth_engine_quadtree;
 using namespace osgEarth;
 using namespace osgEarth::Drivers;
 using namespace osgEarth::Symbology;
@@ -112,7 +116,6 @@ namespace
             skirt            = 0L;
             stitching_skirts = 0L;
             ss_verts         = 0L;
-            //skirtHeight      = 0.0f;
             scaleHeight      = 1.0f;
             createSkirt      = false;
             i_sampleFactor   = 1.0f;
@@ -120,7 +123,10 @@ namespace
             unifiedSkirtTexCoords       = 0L;
             unifiedStitchSkirtTexCoords = 0L;
             unifiedSurfaceTexCoords     = 0L;
+            useVBOs = !Registry::capabilities().preferDisplayListsForStaticGeometry();
         }
+
+        bool                     useVBOs;
 
         const TileModel*         model;                         // the tile's data model
         const MaskLayerVector&   maskLayers;                    // map-global masking layer set
@@ -135,6 +141,7 @@ namespace
         osg::Vec3Array*               surfaceVerts;
         osg::Vec3Array*               normals;
         osg::Vec4Array*               surfaceElevData;
+        osg::FloatArray*              surfaceMorphData;
         unsigned                      numVerticesInSurface;
         osg::Vec2Array*               unifiedSurfaceTexCoords;
         osg::ref_ptr<osg::FloatArray> elevations;
@@ -155,7 +162,9 @@ namespace
         double                   i_sampleFactor;
         double                   j_sampleFactor;
         double                   scaleHeight;
-
+        unsigned                 originalNumRows;
+        unsigned                 originalNumCols;
+        
         // for masking/stitching:
         MaskRecordVector         maskRecords;
         osg::Geometry*           stitching_skirts;
@@ -226,7 +235,7 @@ namespace
               if (x_match && y_match)
               {
                 osg::Geometry* mask_geom = new osg::Geometry();
-                mask_geom->setUseVertexBufferObjects(true);
+                mask_geom->setUseVertexBufferObjects(d.useVBOs);
                 d.surfaceGeode->addDrawable(mask_geom);
                 d.maskRecords.push_back( MaskRecord(boundary, min_ndc, max_ndc, mask_geom) );
               }
@@ -236,7 +245,7 @@ namespace
         if (d.maskRecords.size() > 0)
         {
           d.stitching_skirts = new osg::Geometry();
-          d.stitching_skirts->setUseVertexBufferObjects(true);
+          d.stitching_skirts->setUseVertexBufferObjects(d.useVBOs);
           d.surfaceGeode->addDrawable( d.stitching_skirts );
 
           d.ss_verts = new osg::Vec3Array();
@@ -256,13 +265,17 @@ namespace
     {
         d.numRows = 8;
         d.numCols = 8;
+        d.originalNumRows = 8;
+        d.originalNumCols = 8;        
 
         // read the row/column count and skirt size from the model:
         osgTerrain::HeightFieldLayer* hflayer = d.model->_elevationData.getHFLayer();
         if (hflayer)
         {
             d.numCols = hflayer->getNumColumns();
-            d.numRows = hflayer->getNumRows();
+            d.numRows = hflayer->getNumRows();         
+            d.originalNumCols = d.numCols;
+            d.originalNumRows = d.numRows;
         }
 
         // calculate the elevation sampling factors that we'll use to step though
@@ -271,15 +284,12 @@ namespace
         d.j_sampleFactor = 1.0f;
 
         if ( sampleRatio != 1.0f )
-        {
-            unsigned originalNumCols = d.numCols;
-            unsigned originalNumRows = d.numRows;
+        {            
+            d.numCols = osg::maximum((unsigned int) (float(d.originalNumCols)*sqrtf(sampleRatio)), 4u);
+            d.numRows = osg::maximum((unsigned int) (float(d.originalNumRows)*sqrtf(sampleRatio)), 4u);
 
-            d.numCols = osg::maximum((unsigned int) (float(originalNumCols)*sqrtf(sampleRatio)), 4u);
-            d.numRows = osg::maximum((unsigned int) (float(originalNumRows)*sqrtf(sampleRatio)), 4u);
-
-            d.i_sampleFactor = double(originalNumCols-1)/double(d.numCols-1);
-            d.j_sampleFactor = double(originalNumRows-1)/double(d.numRows-1);
+            d.i_sampleFactor = double(d.originalNumCols-1)/double(d.numCols-1);
+            d.j_sampleFactor = double(d.originalNumRows-1)/double(d.numRows-1);
         }
 
 
@@ -314,7 +324,13 @@ namespace
         d.surface->setVertexAttribArray( osg::Drawable::ATTRIBUTE_6, d.surfaceElevData );
         d.surface->setVertexAttribBinding( osg::Drawable::ATTRIBUTE_6, osg::Geometry::BIND_PER_VERTEX );
         d.surface->setVertexAttribNormalize( osg::Drawable::ATTRIBUTE_6, false );
-        
+
+        d.surfaceMorphData = new osg::FloatArray();
+        d.surfaceMorphData->reserve( d.numVerticesInSurface );
+        d.surface->setVertexAttribArray( osg::Drawable::ATTRIBUTE_7, d.surfaceMorphData );
+        d.surface->setVertexAttribBinding( osg::Drawable::ATTRIBUTE_7, osg::Geometry::BIND_PER_VERTEX );
+        d.surface->setVertexAttribNormalize( osg::Drawable::ATTRIBUTE_7, false );
+
         // temporary data structures for triangulation support
         d.elevations = new osg::FloatArray();
         d.elevations->reserve( d.numVerticesInSurface );
@@ -601,6 +617,22 @@ namespace
 
                     // store the unit extrusion vector and the raw height value.
                     (*d.surfaceElevData).push_back( osg::Vec4f(model_one.x(), model_one.y(), model_one.z(), heightValue) );
+
+                    float oldHeightValue = heightValue;
+                    if ( i>0 && j>0 && i<d.numCols-1 && j<d.numRows-1 && (i%2 == 1 || j%2 == 1) )
+                    {
+                        float h;
+                        if ( HeightFieldUtils::getInterpolatedHeight(
+                            elevationLayer->getHeightField(),
+                            i_equiv,
+                            j_equiv,
+                            h ) )
+                        {
+                            oldHeightValue = h;
+                        }
+                    }
+
+                    d.surfaceMorphData->push_back( oldHeightValue );
                 }
             }
         }
@@ -981,10 +1013,12 @@ namespace
         osg::Vec3Array* skirtVerts = new osg::Vec3Array();
         osg::Vec3Array* skirtNormals = new osg::Vec3Array();
         osg::Vec4Array* skirtElevData = new osg::Vec4Array();
+        osg::FloatArray* skirtMorphData = new osg::FloatArray();
 
         skirtVerts->reserve( d.numVerticesInSkirt );
         skirtNormals->reserve( d.numVerticesInSkirt );
         skirtElevData->reserve( d.numVerticesInSkirt );
+        skirtMorphData->reserve( d.numVerticesInSkirt );
 
         Indices skirtBreaks;
         skirtBreaks.reserve( d.numVerticesInSkirt );
@@ -1013,6 +1047,9 @@ namespace
                 const osg::Vec4f& elevData = (*d.surfaceElevData)[orig_i];
                 skirtElevData->push_back( elevData );
                 skirtElevData->push_back( elevData - osg::Vec4f(0,0,0,skirtHeight) );
+                const float& morphData = (*d.surfaceMorphData)[orig_i];
+                skirtMorphData->push_back( morphData );
+                skirtMorphData->push_back( morphData - skirtHeight );
 
                 if ( compositor->requiresUnitTextureSpace() )
                 {
@@ -1056,6 +1093,9 @@ namespace
                 const osg::Vec4f& elevData = (*d.surfaceElevData)[orig_i];
                 skirtElevData->push_back( elevData );
                 skirtElevData->push_back( elevData - osg::Vec4f(0,0,0,skirtHeight) );
+                const float& morphData = (*d.surfaceMorphData)[orig_i];
+                skirtMorphData->push_back( morphData );
+                skirtMorphData->push_back( morphData - skirtHeight );
 
                 if ( compositor->requiresUnitTextureSpace() )
                 {
@@ -1099,6 +1139,9 @@ namespace
                 const osg::Vec4f& elevData = (*d.surfaceElevData)[orig_i];
                 skirtElevData->push_back( elevData );
                 skirtElevData->push_back( elevData - osg::Vec4f(0,0,0,skirtHeight) );
+                const float& morphData = (*d.surfaceMorphData)[orig_i];
+                skirtMorphData->push_back( morphData );
+                skirtMorphData->push_back( morphData - skirtHeight );
 
                 if ( compositor->requiresUnitTextureSpace() )
                 {
@@ -1142,6 +1185,9 @@ namespace
                 const osg::Vec4f& elevData = (*d.surfaceElevData)[orig_i];
                 skirtElevData->push_back( elevData );
                 skirtElevData->push_back( elevData - osg::Vec4f(0,0,0,skirtHeight) );
+                const float& morphData = (*d.surfaceMorphData)[orig_i];
+                skirtMorphData->push_back( morphData );
+                skirtMorphData->push_back( morphData - skirtHeight );
 
                 if ( compositor->requiresUnitTextureSpace() )
                 {
@@ -1174,6 +1220,10 @@ namespace
         d.skirt->setVertexAttribBinding  (osg::Drawable::ATTRIBUTE_6, osg::Geometry::BIND_PER_VERTEX);
         d.skirt->setVertexAttribNormalize(osg::Drawable::ATTRIBUTE_6, false);
 
+        d.skirt->setVertexAttribArray    (osg::Drawable::ATTRIBUTE_7, skirtMorphData );
+        d.skirt->setVertexAttribBinding  (osg::Drawable::ATTRIBUTE_7, osg::Geometry::BIND_PER_VERTEX);
+        d.skirt->setVertexAttribNormalize(osg::Drawable::ATTRIBUTE_7, false);
+
 
         // GW: not sure why this break stuff is here...?
 #if 0
@@ -1192,7 +1242,7 @@ namespace
      * Builds triangles for the surface geometry, and recalculates the surface normals
      * to be optimized for slope.
      */
-    void tessellateSurfaceGeometry( Data& d, bool optimizeTriangleOrientation )
+    void tessellateSurfaceGeometry( Data& d, bool optimizeTriangleOrientation, bool normalizeEdges )
     {    
         bool swapOrientation = !(d.model->_tileLocator->orientationOpenGL());
         bool recalcNormals   = d.model->_elevationData.getHFLayer() != 0L;
@@ -1249,7 +1299,7 @@ namespace
                 if (i00>=0) ++numValid;
                 if (i01>=0) ++numValid;
                 if (i10>=0) ++numValid;
-                if (i11>=0) ++numValid;
+                if (i11>=0) ++numValid;                
 
                 if (numValid==4)
                 {
@@ -1329,15 +1379,372 @@ namespace
                     }
                 }
             }
+        }        
+        
+        if (recalcNormals && normalizeEdges)
+        {            
+            OE_DEBUG << "Normalizing edges" << std::endl;
+            //Compute the edge normals if we have neighbor data
+            //Get all the neighbors
+            osg::ref_ptr< osg::HeightField > w_neighbor  = d.model->_elevationData.getNeighbor( -1, 0 );
+            osg::ref_ptr< osg::HeightField > e_neighbor  = d.model->_elevationData.getNeighbor( 1, 0 );            
+            osg::ref_ptr< osg::HeightField > s_neighbor  = d.model->_elevationData.getNeighbor( 0, 1 );
+            osg::ref_ptr< osg::HeightField > n_neighbor  = d.model->_elevationData.getNeighbor( 0, -1 );
+            
+            //Recalculate the west side
+            if (w_neighbor.valid() && w_neighbor->getNumColumns() == d.originalNumCols && w_neighbor->getNumRows() == d.originalNumRows)            
+            {                                     
+                osg::ref_ptr< osg::Vec3Array > boundaryVerts = new osg::Vec3Array();
+                boundaryVerts->reserve( 2 * d.numRows );
+
+                std::vector< float > boundaryElevations;
+                boundaryElevations.reserve( 2 * d.numRows );
+                
+                //Compute the verts for the west side
+                for (int j = 0; j < (int)d.numRows; j++)
+                {
+                    for (int i = (int)d.numCols-2; i <= (int)d.numCols-1; i++)
+                    {                          
+                        osg::Vec3d ndc( (double)(i - static_cast<int>(d.numCols-1))/(double)(d.numCols-1), ((double)j)/(double)(d.numRows-1), 0.0);                                                                        
+
+                        // use the sampling factor to determine the lookup index:
+                        unsigned i_equiv = d.i_sampleFactor==1.0 ? i : (unsigned) (double(i)*d.i_sampleFactor);
+                        unsigned j_equiv = d.j_sampleFactor==1.0 ? j : (unsigned) (double(j)*d.j_sampleFactor);
+
+                        //TODO:  Should probably use an interpolated method here
+                        float heightValue = w_neighbor->getHeight( i_equiv, j_equiv );
+                        ndc.z() = heightValue;                        
+
+                        osg::Vec3d model;
+                        d.model->_tileLocator->unitToModel( ndc, model );
+                        osg::Vec3d v = model - d.centerModel;
+                        boundaryVerts->push_back( v );
+                        boundaryElevations.push_back( heightValue );                        
+                    }
+                }   
+
+                //The boundary verts are now populated, so go through and triangulate them add add the normals to the existing normal array
+                for (int j = 0; j < (int)d.numRows-1; j++)
+                {                    
+                    int i00;
+                    int i01;
+                    int i = 0;
+                    if (swapOrientation)
+                    {
+                        i01 = j*d.numCols + i;
+                        i00 = i01+d.numCols;
+                    }
+                    else
+                    {
+                        i00 = j*d.numCols + i;
+                        i01 = i00+d.numCols;
+                    }
+
+
+
+                    //remap indices to final vertex position
+                    i00 = d.indices[i00];
+                    i01 = d.indices[i01];
+
+                    int baseIndex = 2 * j;
+                    osg::Vec3f& v00 = (*boundaryVerts)[baseIndex    ];
+                    osg::Vec3f& v10 = (*boundaryVerts)[baseIndex + 1];
+                    osg::Vec3f& v01 = (*boundaryVerts)[baseIndex + 2];
+                    osg::Vec3f& v11 = (*boundaryVerts)[baseIndex + 3];
+
+                    float e00 = boundaryElevations[baseIndex];
+                    float e10 = boundaryElevations[baseIndex + 1];
+                    float e01 = boundaryElevations[baseIndex + 2];
+                    float e11 = boundaryElevations[baseIndex + 3];
+
+                   
+                    if (!optimizeTriangleOrientation || (e00-e11)<fabsf(e01-e10))
+                    {                            
+                        osg::Vec3 normal1 = (v00-v01) ^ (v11-v01);
+                        (*d.normals)[i01] += normal1;                        
+
+                        osg::Vec3 normal2 = (v10-v00) ^ (v11-v00);
+                        (*d.normals)[i00] += normal2;                        
+                        (*d.normals)[i01] += normal2;                                                
+                    }
+                    else
+                    {                            
+                        osg::Vec3 normal1 = (v00-v01) ^ (v10-v01);
+                        (*d.normals)[i00] += normal1;                                               
+
+                        osg::Vec3 normal2 = (v10-v01) ^ (v11-v01);
+                        (*d.normals)[i00] += normal2;                                               
+                        (*d.normals)[i01] += normal2;                        
+                    }
+                }
+            }
+
+                        
+            //Recalculate the east side
+            if (e_neighbor.valid() && e_neighbor->getNumColumns() == d.originalNumCols && e_neighbor->getNumRows() == d.originalNumRows)            
+            {                           
+                osg::ref_ptr< osg::Vec3Array > boundaryVerts = new osg::Vec3Array();
+                boundaryVerts->reserve( 2 * d.numRows );
+
+                std::vector< float > boundaryElevations;
+                boundaryElevations.reserve( 2 * d.numRows );
+
+                //Compute the verts for the east side
+                for (int j = 0; j < (int)d.numRows; j++)
+                {
+                    for (int i = 0; i <= 1; i++)
+                    {                           
+                        osg::Vec3d ndc( ((double)(d.numCols -1 + i))/(double)(d.numCols-1), ((double)j)/(double)(d.numRows-1), 0.0);
+
+                        unsigned i_equiv = d.i_sampleFactor==1.0 ? i : (unsigned) (double(i)*d.i_sampleFactor);
+                        unsigned j_equiv = d.j_sampleFactor==1.0 ? j : (unsigned) (double(j)*d.j_sampleFactor);
+                        
+                        //TODO:  Should probably use an interpolated method here
+                        float heightValue = e_neighbor->getHeight( i_equiv, j_equiv );
+                        ndc.z() = heightValue;                        
+
+                        osg::Vec3d model;
+                        d.model->_tileLocator->unitToModel( ndc, model );
+                        osg::Vec3d v = model - d.centerModel;
+                        boundaryVerts->push_back( v );
+                        boundaryElevations.push_back( heightValue );                        
+                    }
+                }   
+
+                //The boundary verts are now populated, so go through and triangulate them add add the normals to the existing normal array
+                for (int j = 0; j < (int)d.numRows-1; j++)
+                {                    
+                    int i00;
+                    int i01;
+                    int i = d.numCols-1;
+                    if (swapOrientation)
+                    {
+                        i01 = j*d.numCols + i;
+                        i00 = i01+d.numCols;
+                    }
+                    else
+                    {
+                        i00 = j*d.numCols + i;
+                        i01 = i00+d.numCols;
+                    }
+
+                    //remap indices to final vertex position
+                    i00 = d.indices[i00];
+                    i01 = d.indices[i01];
+
+                    int baseIndex = 2 * j;
+                    osg::Vec3f& v00 = (*boundaryVerts)[baseIndex    ];
+                    osg::Vec3f& v10 = (*boundaryVerts)[baseIndex + 1];
+                    osg::Vec3f& v01 = (*boundaryVerts)[baseIndex + 2];
+                    osg::Vec3f& v11 = (*boundaryVerts)[baseIndex + 3];
+
+                    float e00 = boundaryElevations[baseIndex];
+                    float e10 = boundaryElevations[baseIndex + 1];
+                    float e01 = boundaryElevations[baseIndex + 2];
+                    float e11 = boundaryElevations[baseIndex + 3];
+
+                   
+                    if (!optimizeTriangleOrientation || (e00-e11)<fabsf(e01-e10))
+                    {                            
+                        osg::Vec3 normal1 = (v00-v01) ^ (v11-v01);                       
+                        (*d.normals)[i00] += normal1;                        
+                        (*d.normals)[i01] += normal1;
+
+                        osg::Vec3 normal2 = (v10-v00) ^ (v11-v00);                        
+                        (*d.normals)[i00] += normal2;                                                
+                    }
+                    else
+                    {                            
+                        osg::Vec3 normal1 = (v00-v01) ^ (v10-v01);
+                        (*d.normals)[i00] += normal1;                        
+                        (*d.normals)[i01] += normal1;                                                                        
+
+                        osg::Vec3 normal2 = (v10-v01) ^ (v11-v01);
+                        (*d.normals)[i01] += normal2;                        
+                    }
+                }
+            }
+
+            //Recalculate the north side
+            if (n_neighbor.valid() && n_neighbor->getNumColumns() == d.originalNumCols && n_neighbor->getNumRows() == d.originalNumRows)            
+            {                 
+                osg::ref_ptr< osg::Vec3Array > boundaryVerts = new osg::Vec3Array();
+                boundaryVerts->reserve( 2 * d.numCols );
+
+                std::vector< float > boundaryElevations;
+                boundaryElevations.reserve( 2 * d.numCols );
+
+                //Compute the verts for the north side               
+                for (int j = 0; j <= 1; j++)
+                {
+                    for (int i = 0; i < (int)d.numCols; i++)                    
+                    {                           
+                        osg::Vec3d ndc( (double)(i)/(double)(d.numCols-1), (double)(d.numRows -1 + j)/(double)(d.numRows-1), 0.0);
+                        //osg::Vec3d ndc( (double)(i)/(double)(d.numCols-1), (double)(-static_cast<int>(j))/(double)(d.numRows-1), 0.0);                        
+
+                        unsigned i_equiv = d.i_sampleFactor==1.0 ? i : (unsigned) (double(i)*d.i_sampleFactor);
+                        unsigned j_equiv = d.j_sampleFactor==1.0 ? j : (unsigned) (double(j)*d.j_sampleFactor);
+                        
+                        //TODO:  Should probably use an interpolated method here
+                        float heightValue = n_neighbor->getHeight( i_equiv, j_equiv );
+                        ndc.z() = heightValue;                        
+
+                        osg::Vec3d model;
+                        d.model->_tileLocator->unitToModel( ndc, model );
+                        osg::Vec3d v = model - d.centerModel;
+                        boundaryVerts->push_back( v );
+                        boundaryElevations.push_back( heightValue );                        
+                    }
+                }   
+
+                //The boundary verts are now populated, so go through and triangulate them add add the normals to the existing normal array                
+                for (int i = 0; i < (int)d.numCols-1; i++)
+                {                    
+                    int i00;                    
+                    int j = d.numRows-1;
+                    if (swapOrientation)
+                    {         
+                        int i01 = j * d.numCols + i;
+                        i00 = i01+d.numCols;
+                    }
+                    else
+                    {
+                        i00 = j*d.numCols + i;                        
+                    }
+
+                    int i10 = i00+1;
+
+                    //remap indices to final vertex position
+                    i00 = d.indices[i00];
+                    i10 = d.indices[i10];
+
+                    int baseIndex = i;
+                    osg::Vec3f& v00 = (*boundaryVerts)[baseIndex    ];
+                    osg::Vec3f& v10 = (*boundaryVerts)[baseIndex + 1];
+                    osg::Vec3f& v01 = (*boundaryVerts)[baseIndex + d.numCols];
+                    osg::Vec3f& v11 = (*boundaryVerts)[baseIndex + d.numCols + 1];
+
+                    float e00 = boundaryElevations[baseIndex];
+                    float e10 = boundaryElevations[baseIndex + 1];
+                    float e01 = boundaryElevations[baseIndex + d.numCols];
+                    float e11 = boundaryElevations[baseIndex + d.numCols + 1];
+
+                   
+                    if (!optimizeTriangleOrientation || (e00-e11)<fabsf(e01-e10))
+                    {                            
+                        osg::Vec3 normal1 = (v00-v01) ^ (v11-v01);                       
+                        (*d.normals)[i00] += normal1;                        
+                        (*d.normals)[i10] += normal1;
+
+                        osg::Vec3 normal2 = (v10-v00) ^ (v11-v00);                        
+                        (*d.normals)[i10] += normal2;                                                
+                    }
+                    else
+                    {                            
+                        osg::Vec3 normal1 = (v00-v01) ^ (v10-v01);
+                        (*d.normals)[i00] += normal1;                                                
+
+                        osg::Vec3 normal2 = (v10-v01) ^ (v11-v01);
+                        (*d.normals)[i00] += normal2;                                                
+                        (*d.normals)[i10] += normal2;                        
+                    }
+                }
+            }
+
+            //Recalculate the south side
+            if (s_neighbor.valid() && s_neighbor->getNumColumns() == d.originalNumCols && s_neighbor->getNumRows() == d.originalNumRows)            
+            {                
+                osg::ref_ptr< osg::Vec3Array > boundaryVerts = new osg::Vec3Array();
+                boundaryVerts->reserve( 2 * d.numCols );
+
+                std::vector< float > boundaryElevations;
+                boundaryElevations.reserve( 2 * d.numCols );
+
+                //Compute the verts for the south side               
+                for (int j = (int)d.numRows-2; j <= (int)d.numRows-1; j++)
+                {
+                    for (int i = 0; i < (int)d.numCols; i++)                    
+                    {                           
+                        osg::Vec3d ndc( (double)(i)/(double)(d.numCols-1), (double)(j - static_cast<int>(d.numRows-1))/(double)(d.numRows-1), 0.0);                                                
+
+                        unsigned i_equiv = d.i_sampleFactor==1.0 ? i : (unsigned) (double(i)*d.i_sampleFactor);
+                        unsigned j_equiv = d.j_sampleFactor==1.0 ? j : (unsigned) (double(j)*d.j_sampleFactor);
+                        
+                        //TODO:  Should probably use an interpolated method here
+                        float heightValue = s_neighbor->getHeight( i_equiv, j_equiv );                        
+                        ndc.z() = heightValue;                        
+
+                        osg::Vec3d model;
+                        d.model->_tileLocator->unitToModel( ndc, model );
+                        osg::Vec3d v = model - d.centerModel;
+                        boundaryVerts->push_back( v );
+                        boundaryElevations.push_back( heightValue );                        
+                    }
+                }   
+
+                //The boundary verts are now populated, so go through and triangulate them add add the normals to the existing normal array                
+                for (int i = 0; i < (int)d.numCols-1; i++)
+                {                    
+                    int i00;                    
+                    int j = 0;
+
+
+                    if (swapOrientation)
+                    {                   
+                        int i01 = j*d.numCols + i;
+                        i00 = i01+d.numCols;                    
+                    }
+                    else
+                    {
+                        i00 = j*d.numCols + i;                        
+                    }                    
+
+                    int i10 = i00+1;
+
+                    //remap indices to final vertex position
+                    i00 = d.indices[i00];
+                    i10 = d.indices[i10];
+
+                    int baseIndex = i;
+                    osg::Vec3f& v00 = (*boundaryVerts)[baseIndex    ];
+                    osg::Vec3f& v10 = (*boundaryVerts)[baseIndex + 1];
+                    osg::Vec3f& v01 = (*boundaryVerts)[baseIndex + d.numCols];
+                    osg::Vec3f& v11 = (*boundaryVerts)[baseIndex + d.numCols + 1];
+
+                    float e00 = boundaryElevations[baseIndex];
+                    float e10 = boundaryElevations[baseIndex + 1];
+                    float e01 = boundaryElevations[baseIndex + d.numCols];
+                    float e11 = boundaryElevations[baseIndex + d.numCols + 1];
+
+                   
+                    if (!optimizeTriangleOrientation || (e00-e11)<fabsf(e01-e10))
+                    {                            
+                        osg::Vec3 normal1 = (v00-v01) ^ (v11-v01);                       
+                        (*d.normals)[i00] += normal1;                                                
+
+                        osg::Vec3 normal2 = (v10-v00) ^ (v11-v00);                        
+                        (*d.normals)[i00] += normal2;                                                
+                        (*d.normals)[i10] += normal2;                                                
+                    }
+                    else
+                    {                            
+                        osg::Vec3 normal1 = (v00-v01) ^ (v10-v01);
+                        (*d.normals)[i00] += normal1;                                                
+                        (*d.normals)[i10] += normal1;                                                
+
+                        osg::Vec3 normal2 = (v10-v01) ^ (v11-v01);                        
+                        (*d.normals)[i10] += normal2;                        
+                    }
+                }
+            }            
         }
 
-        // Finally, normalize the normals.
-        if ( recalcNormals )
+        if (recalcNormals)
         {
             for( osg::Vec3Array::iterator nitr = d.normals->begin(); nitr != d.normals->end(); ++nitr )
             {
                 nitr->normalize();
-            }
+            }       
         }
     }
 
@@ -1414,8 +1821,6 @@ _texCompositor         ( texCompositor ),
 _optimizeTriOrientation( optimizeTriOrientation ),
 _options               ( options )
 {
-    //nop
-
     _cullByTraversalMask = new CullByTraversalMask(*options.secondaryTraversalMask());
 }
 
@@ -1436,7 +1841,7 @@ TileModelCompiler::compile(const TileModel* model,
 
     // A Geode/Geometry for the surface:
     d.surface = new osg::Geometry();
-    d.surface->setUseVertexBufferObjects(true);
+    d.surface->setUseVertexBufferObjects(d.useVBOs);
     d.surfaceGeode = new osg::Geode();
     d.surfaceGeode->addDrawable( d.surface );
     d.surfaceGeode->setNodeMask( *_options.primaryTraversalMask() );
@@ -1451,12 +1856,7 @@ TileModelCompiler::compile(const TileModel* model,
     if ( d.createSkirt )
     {
         d.skirt = new osg::Geometry();
-        d.skirt->setUseVertexBufferObjects(true);
-
-        //d.skirtGeode = new osg::Geode();
-        //d.skirtGeode->addDrawable( d.skirt );
-        //d.skirtGeode->setNodeMask( *_options.secondaryTraversalMask() );
-        //xform->addChild( d.skirtGeode );
+        d.skirt->setUseVertexBufferObjects(d.useVBOs);
 
         // slightly faster than a separate geode:
         d.skirt->setDataVariance( osg::Object::DYNAMIC ); // since we're using a custom cull callback
@@ -1497,7 +1897,7 @@ TileModelCompiler::compile(const TileModel* model,
         createSkirtGeometry( d, _texCompositor.get(), *_options.heightFieldSkirtRatio() );
 
     // tesselate the surface verts into triangles.
-    tessellateSurfaceGeometry( d, _optimizeTriOrientation );
+    tessellateSurfaceGeometry( d, _optimizeTriOrientation, *_options.normalizeEdges() );
 
     // assign our texture coordinate arrays to the geometry. This must happen LAST
     // since we're sharing arrays across tiles. Here is why:

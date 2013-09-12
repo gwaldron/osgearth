@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2012 Pelican Mapping
+ * Copyright 2008-2013 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -22,6 +22,7 @@
 #include <osgEarth/Notify>
 #include <osgEarth/Registry>
 #include <osgEarth/Utils>
+#include <osgEarth/CullingUtils>
 
 #define LC "[AutoClip] "
 
@@ -203,7 +204,7 @@ AutoClipPlaneCullCallback::operator()( osg::Node* node, osg::NodeVisitor* nv )
 {
     if ( _active )
     {
-        osgUtil::CullVisitor* cv = dynamic_cast<osgUtil::CullVisitor*>( nv );
+        osgUtil::CullVisitor* cv = Culling::asCullVisitor(nv);
         if ( cv )
         {
             osgEarth::Map* map = _mapNode.valid() ? _mapNode->getMap() : 0;

@@ -1,0 +1,58 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+ * Copyright 2008-2013 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+
+#ifndef OSGEARTHSYMBOLOGY_FILL_H
+#define OSGEARTHSYMBOLOGY_FILL_H 1
+
+#include <osgEarthSymbology/Common>
+#include <osgEarthSymbology/Color>
+#include <osgEarth/Config>
+
+
+namespace osgEarth { namespace Symbology
+{
+    /**
+     * Drawing parameters for a filled area.
+     */
+    class OSGEARTHSYMBOLOGY_EXPORT Fill
+    {
+    public:
+        Fill();
+        Fill(const Fill& rhs);
+        Fill( float r, float g, float b, float a );
+        Fill( const Color& color );
+        Fill( const Config& conf );
+
+        virtual ~Fill() { }
+
+        Color& color() { return _color; }
+        const Color& color() const { return _color; }
+
+    public:
+        virtual Config getConfig() const;
+        virtual void mergeConfig( const Config& conf );
+
+    protected:
+        Color _color;
+        void init();
+    };
+
+} } // namespace osgEarth::Symbology
+
+#endif // OSGEARTHSYMBOLOGY_FILL_H

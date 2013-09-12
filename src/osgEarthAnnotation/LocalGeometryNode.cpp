@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2008-2012 Pelican Mapping
+* Copyright 2008-2013 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -34,64 +34,117 @@ using namespace osgEarth::Features;
 
 LocalGeometryNode::LocalGeometryNode(MapNode*     mapNode,
                                      Geometry*    geom,
-                                     const Style& style,
-                                     bool         draped ) :
+                                     const Style& style) :
 LocalizedNode( mapNode ),
 _geom        ( geom ),
-_draped      ( draped )
+_style       ( style )
+{
+    _xform = new osg::MatrixTransform();
+    init( 0L );
+}
+
+
+LocalGeometryNode::LocalGeometryNode(MapNode*     mapNode,
+                                     osg::Node*   node,
+                                     const Style& style) :
+LocalizedNode( mapNode ),
+_node        ( node ),
+_style       ( style )
+{
+    _xform = new osg::MatrixTransform();
+    init( 0L );
+}
+
+
+void
+LocalGeometryNode::initNode()
+{
+    // reset
+    osgEarth::clearChildren( this );
+    osgEarth::clearChildren( _xform.get() );
+    this->addChild( _xform.get() );
+
+    if ( _node.valid() )
+    {
+        _xform->addChild( _node );
+        // activate clamping if necessary
+        replaceChild( _xform.get(), applyAltitudePolicy(_xform.get(), _style) );
+
+        applyGeneralSymbology( _style );
+        setLightingIfNotSet( _style.has<ExtrusionSymbol>() );
+    }
+}
+
+
+void
+LocalGeometryNode::initGeometry(const osgDB::Options* dbOptions)
+{
+    // reset
+    osgEarth::clearChildren( this );
+    osgEarth::clearChildren( _xform.get() );
+    this->addChild( _xform.get() );
+
+    if ( _geom.valid() )
+    {
+        Session* session = 0L;
+        if ( getMapNode() )
+            session = new Session(getMapNode()->getMap(), 0L, 0L, dbOptions);
+        FilterContext cx( session );
+
+        GeometryCompiler gc;
+        osg::Node* node = gc.compile( _geom.get(), _style, cx );
+        if ( node )
+        {
+            _xform->addChild( node );
+            // activate clamping if necessary
+            replaceChild( _xform.get(), applyAltitudePolicy(_xform.get(), _style) );
+
+            applyGeneralSymbology( _style );
+        }
+    }
+}
+
+
+void 
+LocalGeometryNode::init(const osgDB::Options* options )
+{
+    this->clearDecoration();
+    
+    if ( _node.valid() )
+    {
+        initNode();
+    }
+    else
+    {
+        initGeometry( options );
+    }
+}
+
+
+void
+LocalGeometryNode::setStyle( const Style& style )
 {
     _style = style;
     init( 0L );
 }
 
 
-LocalGeometryNode::LocalGeometryNode(MapNode*     mapNode,
-                                     osg::Node*   content,
-                                     const Style& style,
-                                     bool         draped ) :
-LocalizedNode( mapNode ),
-_draped      ( draped )
+void
+LocalGeometryNode::setNode( osg::Node* node )
 {
-    _style = style;
-
-    if ( content )
-    {
-        getChildAttachPoint()->addChild( content );
-        getDrapeable()->setDraped( _draped );
-
-        this->addChild( getRoot() );
-
-        // this will activate the clamping logic
-        applyStyle( style );
-
-        setLightingIfNotSet( style.has<ExtrusionSymbol>() );
-    }
+    _node = node;
+    _geom = 0L;
+    initNode();
 }
 
 
 void
-LocalGeometryNode::init(const osgDB::Options* dbOptions)
+LocalGeometryNode::setGeometry( Geometry* geom )
 {
-    if ( _geom.valid() )
-    {
-        osg::ref_ptr<Feature> feature = new Feature( _geom.get(), 0L );
-        feature->style() = *_style;
-
-        GeometryCompiler compiler;
-        FilterContext cx( getMapNode() ? new Session(getMapNode()->getMap()) : 0L );
-        osg::Node* node = compiler.compile( feature.get(), cx );
-        if ( node )
-        {
-            getChildAttachPoint()->addChild( node );
-            getDrapeable()->setDraped( _draped );
-            this->addChild( getRoot() );
-
-            // prep for clamping
-            applyStyle( *_style );
-        }
-    }
+    _geom = geom;
+    _node = 0L;
+    initGeometry(0L);
 }
-
 
 //-------------------------------------------------------------------
 
@@ -103,6 +156,8 @@ LocalGeometryNode::LocalGeometryNode(MapNode*              mapNode,
                                      const osgDB::Options* dbOptions) :
 LocalizedNode( mapNode, conf )
 {
+    _xform = new osg::MatrixTransform();
+
     if ( conf.hasChild("geometry") )
     {
         Config geomconf = conf.child("geometry");
@@ -110,7 +165,6 @@ LocalizedNode( mapNode, conf )
         if ( _geom.valid() )
         {
             conf.getObjIfSet( "style", _style );
-            _draped = conf.value<bool>("draped",false);
 
             init( dbOptions );
 
@@ -128,7 +182,8 @@ LocalGeometryNode::getConfig() const
     if ( _geom.valid() )
     {
         conf.add( Config("geometry", GeometryUtils::geometryToWKT(_geom.get())) );
-        conf.addObjIfSet( "style", _style );
+        if ( !_style.empty() )
+            conf.addObj( "style", _style );
         conf.addObj( "position", getPosition() );
     }
     else

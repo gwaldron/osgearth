@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2012 Pelican Mapping
+ * Copyright 2008-2013 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -18,6 +18,7 @@
  */
 #include <osgEarth/TerrainEngineNode>
 #include <osgEarth/Capabilities>
+#include <osgEarth/CullingUtils>
 #include <osgEarth/Registry>
 #include <osgEarth/TextureCompositor>
 #include <osgEarth/NodeUtils>
@@ -66,6 +67,30 @@ _mapf  ( map, Map::IMAGE_LAYERS, "TerrainEngineNode.ImageLayerController" ),
 _engine( engine )
 {
     //nop
+}
+
+
+void
+TerrainEngineNode::addEffect(TerrainEffect* effect)
+{
+    if ( effect )
+    {
+        effects_.push_back( effect );
+        effect->onInstall( this );
+    }
+}
+
+
+void
+TerrainEngineNode::removeEffect(TerrainEffect* effect)
+{
+    if ( effect )
+    {
+        effect->onUninstall(this);
+        TerrainEffectVector::iterator i = std::find(effects_.begin(), effects_.end(), effect);
+        if ( i != effects_.end() )
+            effects_.erase( i );
+    }
 }
 
 
@@ -213,9 +238,11 @@ TerrainEngineNode::preInitialize( const Map* map, const TerrainOptions& options 
 
     // enable backface culling
     osg::StateSet* set = getOrCreateStateSet();
-    set->setAttributeAndModes( new osg::CullFace( osg::CullFace::BACK ), osg::StateAttribute::ON );
+    //set->setAttributeAndModes( new osg::CullFace( osg::CullFace::BACK ), osg::StateAttribute::ON );
+    set->setMode( GL_CULL_FACE, 1 );
 
     // elevation uniform
+    // NOTE: wrong...this should be per-CullVisitor...consider putting in the Culling::CullUserData
     _cameraElevationUniform = new osg::Uniform( osg::Uniform::FLOAT, "osgearth_CameraElevation" );
     _cameraElevationUniform->set( 0.0f );
     set->addUniform( _cameraElevationUniform.get() );
@@ -412,7 +439,7 @@ TerrainEngineNode::traverse( osg::NodeVisitor& nv )
             if ( !_terrainInterface->_updateOperationQueue.valid() ) // double check pattern
             {
                 //TODO: think, will this work with >1 view?
-                osgUtil::CullVisitor* cv = dynamic_cast<osgUtil::CullVisitor*>( &nv );
+                osgUtil::CullVisitor* cv = Culling::asCullVisitor(nv);
                 if ( cv->getCurrentCamera() )
                 {
                     osgViewer::View* view = dynamic_cast<osgViewer::View*>(cv->getCurrentCamera()->getView());
@@ -434,7 +461,7 @@ TerrainEngineNode::traverse( osg::NodeVisitor& nv )
         {
             _updateLightingUniformsHelper.cullTraverse( this, &nv );
 
-            osgUtil::CullVisitor* cv = dynamic_cast<osgUtil::CullVisitor*>( &nv );
+            osgUtil::CullVisitor* cv = Culling::asCullVisitor(nv);
             if ( cv )
             {
                 osg::Vec3d eye = cv->getEyePoint();

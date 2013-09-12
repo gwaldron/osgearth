@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2012 Pelican Mapping
+ * Copyright 2008-2013 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -154,9 +154,9 @@ public:
             // attempt to open the dataset:
             int openMode = _options.openWrite().isSet() && _options.openWrite().value() ? 1 : 0;
 
-	        _dsHandle = OGROpenShared( _source.c_str(), openMode, &_ogrDriverHandle );
-	        if ( _dsHandle )
-	        {
+            _dsHandle = OGROpen( _source.c_str(), openMode, &_ogrDriverHandle );
+            if ( _dsHandle )
+            {
                 if (openMode == 1) _writable = true;
                 
                 if ( _options.layer().isSet() )
@@ -164,7 +164,7 @@ public:
                     _layerIndex = _options.layer().value();
                 }                
 
-		        _layerHandle = OGR_DS_GetLayer( _dsHandle, _layerIndex );
+                _layerHandle = OGR_DS_GetLayer( _dsHandle, _layerIndex );
                 if ( _layerHandle )
                 {                                     
                     GeoExtent extent;
@@ -204,8 +204,8 @@ public:
                         std::stringstream buf;
                         const char* name = OGR_FD_GetName( OGR_L_GetLayerDefn( _layerHandle ) );
                         buf << "CREATE SPATIAL INDEX ON " << name; 
-					    std::string bufStr;
-					    bufStr = buf.str();
+                        std::string bufStr;
+                        bufStr = buf.str();
                         OE_DEBUG << LC << "SQL: " << bufStr << std::endl;
                         OGR_DS_ExecuteSQL( _dsHandle, bufStr.c_str(), 0L, 0L );
                     }
@@ -252,7 +252,7 @@ public:
                         _geometryType = Geometry::TYPE_MULTI;
                     }
                 }
-	        }
+            }
             else
             {
                 OE_INFO << LC << "failed to open dataset \"" << _source << "\"" << std::endl;
@@ -286,9 +286,9 @@ public:
             // Each cursor requires its own DS handle so that multi-threaded access will work.
             // The cursor impl will dispose of the new DS handle.
 
-	        OGRDataSourceH dsHandle = OGROpenShared( _source.c_str(), 0, &_ogrDriverHandle );
-	        if ( dsHandle )
-	        {
+            OGRDataSourceH dsHandle = OGROpenShared( _source.c_str(), 0, &_ogrDriverHandle );
+            if ( dsHandle )
+            {
                 OGRLayerH layerHandle = OGR_DS_GetLayer( dsHandle, _layerIndex );
 
                 return new FeatureCursorOGR( 

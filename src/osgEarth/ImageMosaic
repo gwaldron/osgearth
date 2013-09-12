@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2012 Pelican Mapping
+ * Copyright 2008-2013 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -30,7 +30,7 @@ namespace osgEarth
     /**
      * Pairs an OSG image with TileKey parameters.
      */
-    struct TileImage
+    struct OSGEARTH_EXPORT TileImage
     {
         /**
         *Constructor
@@ -54,7 +54,7 @@ namespace osgEarth
     /**
      * Utility class for extracting a single image from a collection of image tiles
      */
-    class ImageMosaic : public osg::Referenced
+    class OSGEARTH_EXPORT ImageMosaic : public osg::Referenced
     {
     public:
         ImageMosaic();

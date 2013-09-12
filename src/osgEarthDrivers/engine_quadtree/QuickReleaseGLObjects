@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2008-2012 Pelican Mapping
+* Copyright 2008-2013 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -23,7 +23,7 @@
 #include "TileNodeRegistry"
 #include <osg/Camera>
 
-namespace
+namespace osgEarth_engine_quadtree
 {
     /**
      * A draw callback to calls another, nested draw callback.
@@ -85,6 +85,7 @@ namespace
 
         osg::ref_ptr<TileNodeRegistry> _tilesToRelease;
     };
-}
+
+} // namespace osgEarth_engine_quadtree
 
 #endif // OSGEARTH_ENGINE_QUADTREE_QUICK_RELEASE_GL_OBJECTS

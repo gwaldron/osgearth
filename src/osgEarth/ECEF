@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2012 Pelican Mapping
+ * Copyright 2008-2013 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -31,6 +31,7 @@ namespace osgEarth
         /**
          * Creates a "localization" matrix for double-precision geocentric
          * coordinates. The matrix is ceneterd at the specified ECEF reference point.
+         * @deprecated - use SpatialReference::createLocalToWorld
          */
         static osg::Matrixd createLocalToWorld( 
             const osg::Vec3d& ecefRefPoint );
@@ -43,6 +44,7 @@ namespace osgEarth
             const osg::Vec3d&       input,
             const SpatialReference* inputSRS,
             osg::Vec3d&             output,
+            const SpatialReference* outputSRS,
             const osg::Matrixd&     world2local =osg::Matrixd() );
 
         /**
@@ -53,6 +55,21 @@ namespace osgEarth
             const std::vector<osg::Vec3d>& input,
             const SpatialReference*        inputSRS,
             osg::Vec3Array*                output,
+            const SpatialReference*        outputSRS,
+            const osg::Matrixd&            world2local =osg::Matrixd() );
+
+        /**
+         * Transforms the points in "input" to ECEF coordinates, localizes them with
+         * the provided world2local matrix, and puts the resulting verts in "out_verts"
+         * and the resulting localized normals in "out_normals" (if "out_normals" is
+         * non-NULL).
+         */
+        static void transformAndLocalize(
+            const std::vector<osg::Vec3d>& input,
+            const SpatialReference*        inputSRS,
+            osg::Vec3Array*                out_verts,
+            osg::Vec3Array*                out_normals,
+            const SpatialReference*        outputSRS,
             const osg::Matrixd&            world2local =osg::Matrixd() );
 
         /**
@@ -61,10 +78,10 @@ namespace osgEarth
          */
         static void transformAndGetRotationMatrix(
             const osg::Vec3d&       input,
-            const SpatialReference* input_srs,
+            const SpatialReference* inputSRS,
             osg::Vec3d&             out_ecef_point,
+            const SpatialReference* outputSRS,
             osg::Matrixd&           out_rotation );
-
     };
 }
 

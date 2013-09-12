@@ -1,0 +1,43 @@
+<!-- 
+osgEarth Sample - Noise Driver
+Demonstrates the application of a normal map to add terrain detail.
+-->
+
+<map>
+    <options elevation_tile_size="15">
+        <terrain min_level="20"/>
+    </options>
+
+    <image name="readymap_imagery" driver="tms" visible="true">
+        <url>http://readymap.org/readymap/tiles/1.0.0/7/</url>
+    </image>
+            
+    <elevation name="readymap_elevation" driver="tms">
+        <url>http://readymap.org/readymap/tiles/1.0.0/9/</url>
+    </elevation>
+               
+    <!--
+    The normal map layer using the 'noise' driver to generate bump map textures.
+    Note that we set visible='false' since we don't actually want to display this
+    layer in its raw form - rather, the shared='true' will make it available to
+    the <normal_map> effect below.
+    -->
+    <image name="normalmap" driver="noise" shared="true" visible="false"
+           tile_size="64"
+           normal_map="true"
+           frequency=".001"
+           persistence="0.45"
+           lacunarity="3.0"
+           octaves="6"
+           scale="15" >
+    </image>
+           
+    <!--
+    Install the normal map terrain effect and point it at our normal map layer.
+    -->
+    <external>
+        <normal_map layer="normalmap"/>
+        <contour_map/>
+        <sky hours="16.0"/>
+    </external>
+</map>

@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2012 Pelican Mapping
+ * Copyright 2008-2013 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -31,15 +31,12 @@ using namespace osgEarth::Symbology;
 
 FeatureModelSourceOptions::FeatureModelSourceOptions( const ConfigOptions& options ) :
 ModelSourceOptions ( options ),
-_geomTypeOverride  ( Geometry::TYPE_UNKNOWN ),
 _lit               ( true ),
 _maxGranularity_deg( 1.0 ),
 _mergeGeometry     ( false ),
 _clusterCulling    ( true ),
-_featureIndexing   ( false ),
 _backfaceCulling   ( true ),
-_alphaBlending     ( true ),
-_fadeInDuration    ( 0.0f )
+_alphaBlending     ( true )
 {
     fromConfig( _conf );
 }
@@ -50,28 +47,21 @@ FeatureModelSourceOptions::fromConfig( const Config& conf )
     conf.getObjIfSet( "features", _featureOptions );
     _featureSource = conf.getNonSerializable<FeatureSource>("feature_source");
 
-    conf.getObjIfSet( "styles",       _styles );
-    conf.getObjIfSet( "layout",       _layout );
-    conf.getObjIfSet( "paging",       _layout ); // backwards compat.. to be deprecated
-    conf.getObjIfSet( "feature_name", _featureNameExpr );
-    conf.getObjIfSet( "cache_policy", _cachePolicy );
+    conf.getObjIfSet( "styles",           _styles );
+    conf.getObjIfSet( "layout",           _layout );
+    conf.getObjIfSet( "paging",           _layout ); // backwards compat.. to be deprecated
+    conf.getObjIfSet( "cache_policy",     _cachePolicy );
+    conf.getObjIfSet( "fading",           _fading );
+    conf.getObjIfSet( "feature_name",     _featureNameExpr );
+    conf.getObjIfSet( "feature_indexing", _featureIndexing );
 
     conf.getIfSet( "lighting",         _lit );
     conf.getIfSet( "max_granularity",  _maxGranularity_deg );
     conf.getIfSet( "merge_geometry",   _mergeGeometry );
     conf.getIfSet( "cluster_culling",  _clusterCulling );
-    conf.getIfSet( "feature_indexing", _featureIndexing );
     conf.getIfSet( "backface_culling", _backfaceCulling );
     conf.getIfSet( "alpha_blending",   _alphaBlending );
-    conf.getIfSet( "fade_in_duration", _fadeInDuration );
 
-    std::string gt = conf.value( "geometry_type" );
-    if ( gt == "line" || gt == "lines" || gt == "linestring" )
-        _geomTypeOverride = Geometry::TYPE_LINESTRING;
-    else if ( gt == "point" || gt == "pointset" || gt == "points" )
-        _geomTypeOverride = Geometry::TYPE_POINTSET;
-    else if ( gt == "polygon" || gt == "polygons" )
-        _geomTypeOverride = Geometry::TYPE_POLYGON;
 }
 
 Config
@@ -84,27 +74,19 @@ FeatureModelSourceOptions::getConfig() const
     {
         conf.addNonSerializable("feature_source", _featureSource.get());
     }
-    conf.updateObjIfSet( "styles",       _styles );
-    conf.updateObjIfSet( "layout",       _layout );
-    conf.updateObjIfSet( "cache_policy", _cachePolicy );
+    conf.updateObjIfSet( "styles",           _styles );
+    conf.updateObjIfSet( "layout",           _layout );
+    conf.updateObjIfSet( "cache_policy",     _cachePolicy );
+    conf.updateObjIfSet( "fading",           _fading );
+    conf.updateObjIfSet( "feature_name",     _featureNameExpr );
+    conf.updateObjIfSet( "feature_indexing", _featureIndexing );
 
     conf.updateIfSet( "lighting",         _lit );
     conf.updateIfSet( "max_granularity",  _maxGranularity_deg );
     conf.updateIfSet( "merge_geometry",   _mergeGeometry );
     conf.updateIfSet( "cluster_culling",  _clusterCulling );
-    conf.updateIfSet( "feature_indexing", _featureIndexing );
     conf.updateIfSet( "backface_culling", _backfaceCulling );
     conf.updateIfSet( "alpha_blending",   _alphaBlending );
-    conf.updateIfSet( "fade_in_duration", _fadeInDuration );
-
-    if ( _geomTypeOverride.isSet() ) {
-        if ( _geomTypeOverride == Geometry::TYPE_LINESTRING )
-            conf.update( "geometry_type", "line" );
-        else if ( _geomTypeOverride == Geometry::TYPE_POINTSET )
-            conf.update( "geometry_type", "point" );
-        else if ( _geomTypeOverride == Geometry::TYPE_POLYGON )
-            conf.update( "geometry_type", "polygon" );
-    }
 
     return conf;
 }
@@ -162,9 +144,9 @@ FeatureModelSource::initialize(const osgDB::Options* dbOptions)
 }
 
 osg::Node*
-FeatureModelSource::createNode(const Map*            map,
-                               const osgDB::Options* dbOptions,
-                               ProgressCallback*     progress )
+FeatureModelSource::createNodeImplementation(const Map*            map,
+                                             const osgDB::Options* dbOptions,
+                                             ProgressCallback*     progress )
 {
     // user must provide a valid map.
     if ( !map )
@@ -207,14 +189,50 @@ FeatureModelSource::createNode(const Map*            map,
     return graph;
 }
 
+
+
 //------------------------------------------------------------------------
+
+
+osg::Group*
+FeatureNodeFactory::getOrCreateStyleGroup(const Style& style,
+                                          Session*     session)
+{
+    osg::Group* group = new osg::Group();
+
+    // apply necessary render styles.
+    const RenderSymbol* render = style.get<RenderSymbol>();
+    if ( render )
+    {
+        if ( render->depthTest().isSet() )
+        {
+            group->getOrCreateStateSet()->setMode(
+                GL_DEPTH_TEST, 
+                (render->depthTest() == true ? osg::StateAttribute::ON : osg::StateAttribute::OFF) | osg::StateAttribute::OVERRIDE );
+        }
+
+        if ( render->lighting().isSet() )
+        {
+            group->getOrCreateStateSet()->setMode(
+                GL_LIGHTING,
+                (render->lighting() == true ? osg::StateAttribute::ON : osg::StateAttribute::OFF) | osg::StateAttribute::OVERRIDE );
+        }
+    }
+
+    return group;
+}
+
+
+//------------------------------------------------------------------------
+
+
 GeomFeatureNodeFactory::GeomFeatureNodeFactory( const GeometryCompilerOptions& options ) : 
 _options( options ) 
 { 
     //nop
 }
 
-bool GeomFeatureNodeFactory::createOrUpdateNode(       
+bool GeomFeatureNodeFactory::createOrUpdateNode(
     FeatureCursor*            features,
     const Style&              style,
     const FilterContext&      context,

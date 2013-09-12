@@ -1,0 +1,111 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+* Copyright 2008-2013 Pelican Mapping
+* http://osgearth.org
+*
+* osgEarth is free software; you can redistribute it and/or modify
+* it under the terms of the GNU Lesser General Public License as published by
+* the Free Software Foundation; either version 2 of the License, or
+* (at your option) any later version.
+*
+* This program is distributed in the hope that it will be useful,
+* but WITHOUT ANY WARRANTY; without even the implied warranty of
+* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+* GNU Lesser General Public License for more details.
+*
+* You should have received a copy of the GNU Lesser General Public License
+* along with this program.  If not, see <http://www.gnu.org/licenses/>
+*/
+#ifndef OSGEARTH_ENGINE_MP_CUSTOM_PAGED_LOD
+#define OSGEARTH_ENGINE_MP_CUSTOM_PAGED_LOD 1
+
+#include "Common"
+#include "TileNode"
+#include "TileNodeRegistry"
+#include <osg/Geometry>
+#include <osgEarth/Map>
+#include <osgEarth/MapFrame>
+
+
+using namespace osgEarth;
+
+namespace osgEarth_engine_mp
+{
+    /**
+     * A Geometry that will draw its primitive sets multiple time,
+     * once for each configured "layer". For rendering multipass
+     * data from a single cull.
+     */
+    class MPGeometry : public osg::Geometry
+    {
+    public:
+        /**
+         * Per-tile attribution for use with the MPGeometry.
+         */
+        struct Layer
+        {
+            osgEarth::UID                  _layerID;
+            osg::ref_ptr<const ImageLayer> _imageLayer;
+            osg::ref_ptr<osg::Texture>     _tex;
+            osg::ref_ptr<osg::Vec2Array>   _texCoords;
+            osg::ref_ptr<osg::Vec2Array>   _tileCoords;
+            osg::ref_ptr<osg::Texture>     _texParent;
+            osg::Matrixd                   _texMatParent;
+            float                          _alphaThreshold;
+
+            // in support of std::find
+            inline bool operator == (const osgEarth::UID& rhs) const {
+                return _layerID == rhs;
+            }
+        };
+
+    public:
+        mutable MapFrame                     _map;
+        mutable std::vector<Layer>           _layers;
+        mutable Threading::Mutex             _mapSyncMutex;
+        mutable osg::ref_ptr<osg::Uniform>   _layerUIDUniform;
+        mutable osg::ref_ptr<osg::Uniform>   _layerOrderUniform;
+        mutable osg::ref_ptr<osg::Uniform>   _opacityUniform;
+        int                                  _imageUnit;          // image unit for primary texture
+        osg::ref_ptr<osg::Vec2Array>         _tileCoords;         // [0..1] unified tile coordinates
+
+        mutable osg::ref_ptr<osg::Uniform>   _texMatParentUniform; // texture matrix for parent texture
+        int                                  _imageUnitParent;     // image unit for secondary (parent) texture
+
+    public:
+        
+        // construct a new MPGeometry.
+        MPGeometry(const Map* map, int primaryImageUnit);
+
+        // sets an image unit to use for parent texture blending.
+        void setParentImageUnit(int value) { _imageUnitParent = value; }
+
+        // render all passes of the geometry.
+        void renderPrimitiveSets(osg::State& state, bool usingVBOs) const;
+
+
+    public: // osg::Geometry overrides
+
+        // override so we can properly release the GL buffer objects
+        // that are not tracked by the Geometry itself but rather are
+        // stored in the LayerRenderData.
+        void releaseGLObjects(osg::State* state) const;
+        void compileGLObjects( osg::RenderInfo& renderInfo ) const;
+
+
+        // this is copied mostly from osg::Geometry, but we've removed 
+        // all the code that handles non-fastPath (don't need it) and
+        // called into our custom renderPrimitiveSets method.
+        void drawImplementation(osg::RenderInfo& renderInfo) const;
+        
+
+    public:
+        META_Object(osgEarth, MPGeometry);
+        MPGeometry() : osg::Geometry(), _map(0L) { }
+        MPGeometry(const MPGeometry& rhs, const osg::CopyOp& cop) : osg::Geometry(rhs, cop), _map(rhs._map) { }
+        virtual ~MPGeometry() { }
+    };
+
+} // namespace osgEarth_engine_mp
+
+#endif // OSGEARTH_ENGINE_MP_CUSTOM_PAGED_LOD

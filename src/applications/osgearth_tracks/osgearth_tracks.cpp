@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2008-2012 Pelican Mapping
+* Copyright 2008-2013 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -23,13 +23,14 @@
 #include <osgEarth/GeoMath>
 #include <osgEarth/Units>
 #include <osgEarth/StringUtils>
+#include <osgEarth/Decluttering>
 #include <osgEarthUtil/ExampleResources>
 #include <osgEarthUtil/EarthManipulator>
 #include <osgEarthUtil/MGRSFormatter>
 #include <osgEarthUtil/Controls>
 #include <osgEarthUtil/AnnotationEvents>
+#include <osgEarthUtil/HTM>
 #include <osgEarthAnnotation/TrackNode>
-#include <osgEarthAnnotation/Decluttering>
 #include <osgEarthAnnotation/AnnotationData>
 #include <osgEarthSymbology/Color>
 
@@ -318,6 +319,7 @@ main(int argc, char** argv)
     // create some track nodes.
     TrackSims trackSims;
     osg::Group* tracks = new osg::Group();
+    //HTMGroup* tracks = new HTMGroup();
     createTrackNodes( mapNode, tracks, schema, trackSims );
     root->addChild( tracks );
 

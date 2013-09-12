@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2012 Pelican Mapping
+ * Copyright 2008-2013 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -144,12 +144,13 @@ TileBlacklist::write(std::ostream &output) const
 
 
 TileSourceOptions::TileSourceOptions( const ConfigOptions& options ) :
-DriverConfigOptions( options ),
-_tileSize          ( 256 ),
-_noDataValue       ( (float)SHRT_MIN ),
-_noDataMinValue    ( -32000.0f ),
-_noDataMaxValue    (  32000.0f ),
-_L2CacheSize       ( 16 )
+DriverConfigOptions   ( options ),
+_tileSize             ( 256 ),
+_noDataValue          ( (float)SHRT_MIN ),
+_minValidValue        ( -32000.0f ),
+_maxValidValue        (  32000.0f ),
+_L2CacheSize          ( 16 ),
+_bilinearReprojection ( true )
 { 
     fromConfig( _conf );
 }
@@ -161,10 +162,13 @@ TileSourceOptions::getConfig() const
     Config conf = DriverConfigOptions::getConfig();
     conf.updateIfSet( "tile_size", _tileSize );
     conf.updateIfSet( "nodata_value", _noDataValue );
-    conf.updateIfSet( "nodata_min", _noDataMinValue );
-    conf.updateIfSet( "nodata_max", _noDataMaxValue );
+    conf.updateIfSet( "min_valid_value", _minValidValue );
+    conf.updateIfSet( "nodata_min", _minValidValue ); // backcompat
+    conf.updateIfSet( "max_valid_value", _maxValidValue );
+    conf.updateIfSet( "nodata_max", _maxValidValue ); // backcompat
     conf.updateIfSet( "blacklist_filename", _blacklistFilename);
     conf.updateIfSet( "l2_cache_size", _L2CacheSize );
+    conf.updateIfSet( "bilinear_reprojection", _bilinearReprojection );
     conf.updateObjIfSet( "profile", _profileOptions );
     return conf;
 }
@@ -183,10 +187,11 @@ TileSourceOptions::fromConfig( const Config& conf )
 {
     conf.getIfSet( "tile_size", _tileSize );
     conf.getIfSet( "nodata_value", _noDataValue );
-    conf.getIfSet( "nodata_min", _noDataMinValue );
-    conf.getIfSet( "nodata_max", _noDataMaxValue );
+    conf.getIfSet( "nodata_min", _minValidValue );
+    conf.getIfSet( "nodata_max", _maxValidValue );
     conf.getIfSet( "blacklist_filename", _blacklistFilename);
     conf.getIfSet( "l2_cache_size", _L2CacheSize );
+    conf.getIfSet( "bilinear_reprojection", _bilinearReprojection );
     conf.getObjIfSet( "profile", _profileOptions );
 
     // special handling of default tile size:
@@ -216,13 +221,15 @@ _status ( Status::Error("Not initialized") )
 {
     this->setThreadSafeRefUnref( true );
 
-    if ( *options.L2CacheSize() > 0 )
+    int l2CacheSize = 0;
+    char const* l2env = ::getenv( "OSGEARTH_L2_CACHE_SIZE" );
+    if ( l2env )
+    {
+        l2CacheSize = as<int>( std::string(l2env), 0 );
+    }
+    else if ( *options.L2CacheSize() > 0 )
     {
         _memCache = new MemCache( *options.L2CacheSize() );
-    }
-    else
-    {
-        OE_INFO << LC << "L2 Cache disabled" << std::endl;
     }
 
     if (_options.blacklistFilename().isSet())
@@ -311,7 +318,7 @@ TileSource::createImage(const TileKey&        key,
     // Try to get it from the memcache fist
     if (_memCache.valid())
     {
-        ReadResult r = _memCache->getOrCreateDefaultBin()->readImage( key.str() );
+        ReadResult r = _memCache->getOrCreateDefaultBin()->readImage( key.str(), 0 );
         if ( r.succeeded() )
             return r.releaseImage();
     }
@@ -341,7 +348,7 @@ TileSource::createHeightField(const TileKey&        key,
     // Try to get it from the memcache first:
     if (_memCache.valid())
     {
-        ReadResult r = _memCache->getOrCreateDefaultBin()->readObject( key.str() );
+        ReadResult r = _memCache->getOrCreateDefaultBin()->readObject( key.str(), 0 );
         if ( r.succeeded() )
             return r.release<osg::HeightField>();
     }
@@ -394,40 +401,6 @@ TileSource::getProfile() const
 {
     return _profile.get();
 }
-
-unsigned
-TileSource::getMaxDataLevel() const
-{
-    optional<unsigned> maxDataLevel;
-
-    for (DataExtentList::const_iterator itr = _dataExtents.begin(); itr != _dataExtents.end(); ++itr)
-    {
-        if ( itr->maxLevel().isSet() && itr->maxLevel() > *maxDataLevel )
-        {
-            maxDataLevel = itr->maxLevel().get();
-        }
-    }
-
-    // return "23" if no max is found
-    return maxDataLevel.isSet() ? *maxDataLevel : 23u;
-}
-
-unsigned
-TileSource::getMinDataLevel() const
-{
-    optional<unsigned> minDataLevel;
-
-    for (DataExtentList::const_iterator itr = _dataExtents.begin(); itr != _dataExtents.end(); ++itr)
-    {
-        if ( itr->minLevel().isSet() && itr->minLevel() < *minDataLevel )
-        {
-            minDataLevel = itr->minLevel().get();
-        }
-    }
-
-    return minDataLevel.isSet() ? *minDataLevel : 0;
-}
-
 
 bool
 TileSource::hasDataAtLOD( unsigned lod ) const

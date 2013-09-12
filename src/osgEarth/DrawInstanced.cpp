@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2012 Pelican Mapping
+ * Copyright 2008-2013 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -99,11 +99,13 @@ ConvertToDrawInstanced::apply( osg::Geode& geode )
 }
 
 
-VirtualProgram*
-DrawInstanced::createDrawInstancedProgram()
+void
+DrawInstanced::install(osg::StateSet* stateset)
 {
-    VirtualProgram* vp = new VirtualProgram();
-    vp->setName( "DrawInstanced" );
+    if ( !stateset )
+        return;
+
+    VirtualProgram* vp = VirtualProgram::getOrCreate(stateset);
 
     std::stringstream buf;
 
@@ -113,33 +115,45 @@ DrawInstanced::createDrawInstancedProgram()
 
     if ( Registry::capabilities().supportsUniformBufferObjects() )
     {
+        // note: no newlines in the layout() line, please
         buf << "#extension GL_ARB_uniform_buffer_object : enable\n"
-            << "layout(std140) uniform osgearth_InstanceModelData\n"
-            << "{\n"
-            <<     "mat4 osgearth_instanceModelMatrix[ " << MAX_COUNT_UBO << "];\n"
-            << "};\n";
+            << "layout(std140) uniform oe_di_modelData { "
+            <<     "mat4 oe_di_modelMatrix[" << MAX_COUNT_UBO << "]; } ;\n";
 
-        vp->getTemplate()->addBindUniformBlock( "osgearth_InstanceModelData", 0 );
+        vp->getTemplate()->addBindUniformBlock( "oe_di_modelData", 0 );
     }
     else
     {
-        buf << "uniform mat4 osgearth_instanceModelMatrix[" << MAX_COUNT_ARRAY << "];\n";
+        buf << "uniform mat4 oe_di_modelMatrix[" << MAX_COUNT_ARRAY << "];\n";
     }
 
-    buf << "void osgearth_setInstancePosition()\n"
+    buf << "void oe_di_setPosition(inout vec4 VertexModel)\n"
         << "{\n"
-        << "    gl_Position = gl_ModelViewProjectionMatrix * osgearth_instanceModelMatrix[gl_InstanceID] * gl_Vertex; \n"
+        << "    VertexModel = oe_di_modelMatrix[gl_InstanceID] * VertexModel; \n"
         << "}\n";
 
     std::string src;
     src = buf.str();
 
     vp->setFunction(
-        "osgearth_setInstancePosition",
+        "oe_di_setPosition",
         src,
-        ShaderComp::LOCATION_VERTEX_PRE_COLORING );
+        ShaderComp::LOCATION_VERTEX_MODEL );
+}
 
-    return vp;
+
+void
+DrawInstanced::remove(osg::StateSet* stateset)
+{
+    if ( !stateset )
+        return;
+
+    VirtualProgram* vp = VirtualProgram::get(stateset);
+    if ( !vp )
+        return;
+
+    vp->removeShader( "oe_di_setPosition" );
+    vp->getTemplate()->removeBindUniformBlock( "oe_di_modelData" );
 }
 
 
@@ -260,7 +274,7 @@ DrawInstanced::convertGraphToUseDrawInstanced( osg::Group* parent )
             {
                 // assign the matrices to the uniform array:
                 ArrayUniform uniform(
-                    "osgearth_instanceModelMatrix", 
+                    "oe_di_modelMatrix", 
                     osg::Uniform::FLOAT_MAT4,
                     sliceGroup->getOrCreateStateSet(),
                     currentSize );

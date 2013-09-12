@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2012 Pelican Mapping
+ * Copyright 2008-2013 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -73,6 +73,9 @@ namespace osgEarth { namespace Features
          * Gets the map information backing up this session.
          */
         const MapInfo& getMapInfo() const { return _mapInfo; }
+
+        /** Gets the SRS of the map behind this session */
+        const SpatialReference* getMapSRS() const { return _mapInfo.getSRS(); }
 
         /**
          * Gets the map related to this session. Be carefull, this is held by an osg::observer_ptr and may be NULL

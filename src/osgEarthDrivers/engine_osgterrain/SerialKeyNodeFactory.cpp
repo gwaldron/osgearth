@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2008-2012 Pelican Mapping
+* Copyright 2008-2013 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -28,6 +28,7 @@
 
 #include <osgEarth/MapNode>
 
+using namespace osgEarth_engine_osgterrain;
 using namespace osgEarth;
 using namespace OpenThreads;
 
@@ -117,7 +118,7 @@ SerialKeyNodeFactory::addTile(Tile* tile, bool tileHasRealData, bool tileHasLodB
         {
             // Make the LOD transition distance, and a measure of how
             // close the tile is to an LOD change, to shaders.
-            result->addCullCallback(new Drivers::LODFactorCallback);
+            result->addCullCallback(new LODFactorCallback);
         }
     }
     else

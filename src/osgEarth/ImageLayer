@@ -1,5 +1,5 @@
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2012 Pelican Mapping
+ * Copyright 2008-2013 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -24,6 +24,7 @@
 #include <osgEarth/ColorFilter>
 #include <osgEarth/TileSource>
 #include <osgEarth/TerrainLayer>
+#include <osgEarth/URI>
 
 namespace osgEarth
 {
@@ -71,8 +72,8 @@ namespace osgEarth
         /**
          * Gets or sets the nodata image for this MapLayer
          */
-        optional<std::string>& noDataImageFilename() { return _noDataImageFilename; }
-        const optional<std::string>& noDataImageFilename() const { return _noDataImageFilename; }
+        optional<URI>& noDataImageFilename() { return _noDataImageFilename; }
+        const optional<URI>& noDataImageFilename() const { return _noDataImageFilename; }
 
         /**
          * Gets the transparent color of this TileSource
@@ -92,6 +93,25 @@ namespace osgEarth
         ColorFilterChain& colorFilters() { return _colorFilters; }
         const ColorFilterChain& colorFilters() const { return _colorFilters; }
 
+        /**
+         * A shared image layer is bound to its own texture image units at render
+         * so that all layers have access to its sampler.
+         */
+        optional<bool>& shared() { return _shared; }
+        const optional<bool>& shared() const { return _shared; }
+
+        /*
+        optional<int>& sharedUnitBinding() { return _sharedUnitBinding; }
+        const optional<int>& sharedUnitBinding() const { return _sharedUnitBinding; }
+        */
+
+        /**
+         * Whether to feather out alpha regions for this image layer with the featherAlphaRegions function.
+         * Used to get proper blending when you have datasets that abutt exactly with no overlap.
+         */
+        optional<bool>& featherPixels() { return _featherPixels; }
+        const optional<bool>& featherPixels() const { return _featherPixels; }
+
     public:
 
         virtual Config getConfig() const { return getConfig(false); }
@@ -102,13 +122,15 @@ namespace osgEarth
         void fromConfig( const Config& conf );
         void setDefaults();
 
-        optional<float>  _opacity;
-        optional<float>  _minRange;
-        optional<float>  _maxRange;
+        optional<float>       _opacity;
+        optional<float>       _minRange;
+        optional<float>       _maxRange;
         optional<osg::Vec4ub> _transparentColor;
-        optional<std::string> _noDataImageFilename;
-        optional<bool> _lodBlending;
-        ColorFilterChain _colorFilters;
+        optional<URI>         _noDataImageFilename;
+        optional<bool>        _lodBlending;
+        ColorFilterChain      _colorFilters;
+        optional<bool>        _shared;
+        optional<bool>        _featherPixels;
     };
 
     //--------------------------------------------------------------------
@@ -195,7 +217,6 @@ namespace osgEarth
         /** Override: see TerrainLayer */
         virtual void setTargetProfileHint( const Profile* profile );
 
-
         /**
          * Add a color filter (to the end of the chain)
          */
@@ -231,6 +252,14 @@ namespace osgEarth
         float getMaxVisibleRange() const { return *_runtimeOptions.maxVisibleRange();}
         void setMaxVisibleRange( float maxVisibleRange );
 
+        // whether this layer is marked for render sharing
+        bool isShared() const { return *_runtimeOptions.shared() == true; }
+
+        // when isShared() == true, the engine will call this function to bind the
+        // shared layer to a texture image unit.
+        optional<int>& shareImageUnit() { return _shareImageUnit; }
+        const optional<int>& shareImageUnit() const { return _shareImageUnit; }
+
 
     public: // methods
 
@@ -249,6 +278,7 @@ namespace osgEarth
     public: // TerrainLayer override
 
         CacheBin* getCacheBin( const Profile* profile );
+
 
     protected:
 
@@ -272,6 +302,7 @@ namespace osgEarth
         osg::ref_ptr<TileSource::ImageOperation> _preCacheOp;
         osg::ref_ptr<osg::Image>                 _emptyImage;
         ImageLayerCallbackList                   _callbacks;
+        optional<int>                            _shareImageUnit;
 
         virtual void fireCallback( TerrainLayerCallbackMethodPtr method );
         virtual void fireCallback( ImageLayerCallbackMethodPtr method );

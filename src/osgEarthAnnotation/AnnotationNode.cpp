@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2008-2012 Pelican Mapping
+* Copyright 2008-2013 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -51,6 +51,10 @@ namespace osgEarth { namespace Annotation
 
 //-------------------------------------------------------------------
 
+Style AnnotationNode::s_emptyStyle;
+
+//-------------------------------------------------------------------
+
 AnnotationNode::AnnotationNode(MapNode* mapNode) :
 _mapNode    ( mapNode ),
 _dynamic    ( false ),
@@ -58,9 +62,11 @@ _autoclamp  ( false ),
 _depthAdj   ( false ),
 _activeDs   ( 0L )
 {
-    //nop
     //Note: Cannot call setMapNode() here because it's a virtual function.
     //      Each subclass will be separately responsible at ctor time.
+
+    // always blend.
+    this->getOrCreateStateSet()->setMode( GL_BLEND, osg::StateAttribute::ON );
 }
 
 AnnotationNode::AnnotationNode(MapNode* mapNode, const Config& conf) :
@@ -87,6 +93,12 @@ _activeDs   ( 0L )
         bool blending = conf.value<bool>("blending", false);
         getOrCreateStateSet()->setMode( GL_BLEND, (blending?1:0) | osg::StateAttribute::OVERRIDE );
     }
+    else
+    {
+        // blend by default.
+        this->getOrCreateStateSet()->setMode( GL_BLEND, osg::StateAttribute::ON );
+    }
+
 }
 
 AnnotationNode::~AnnotationNode()
@@ -122,9 +134,11 @@ AnnotationNode::setMapNode( MapNode* mapNode )
                 if ( mapNode )
                     mapNode->getTerrain()->addTerrainCallback( _autoClampCallback.get() );
             }
-        }
+        }		
 
         _mapNode = mapNode;
+
+		applyStyle( this->getStyle() );
     }
 }
 
@@ -134,6 +148,16 @@ AnnotationNode::setAnnotationData( AnnotationData* data )
     _annoData = data;
 }
 
+AnnotationData*
+AnnotationNode::getOrCreateAnnotationData()
+{
+    if ( !_annoData.valid() )
+    {
+        setAnnotationData( new AnnotationData() );
+    }
+    return _annoData.get();
+}
+
 void
 AnnotationNode::setDynamic( bool value )
 {
@@ -141,7 +165,7 @@ AnnotationNode::setDynamic( bool value )
 }
 
 void
-AnnotationNode::setAutoClamp( bool value )
+AnnotationNode::setCPUAutoClamping( bool value )
 {
     if ( getMapNode() )
     {
@@ -181,7 +205,7 @@ AnnotationNode::setAutoClamp( bool value )
             else
             {
                 // update depth adjustment calculation
-                getOrCreateStateSet()->addUniform( DepthOffsetUtils::createMinOffsetUniform(this) );
+                //getOrCreateStateSet()->addUniform( DepthOffsetUtils::createMinOffsetUniform(this) );
             }
         }
     }
@@ -192,21 +216,13 @@ AnnotationNode::setDepthAdjustment( bool enable )
 {
     if ( enable )
     {
-        osg::StateSet* s = this->getOrCreateStateSet();
-        osg::Program* daProgram = DepthOffsetUtils::getOrCreateProgram(); // cached, not a leak.
-        //TODO: be careful to check for VirtualProgram as well in the future if things change
-        osg::Program* p = dynamic_cast<osg::Program*>( s->getAttribute(osg::StateAttribute::PROGRAM) );
-        if ( !p || p != daProgram )
-            s->setAttributeAndModes( daProgram, osg::StateAttribute::ON|osg::StateAttribute::OVERRIDE );
-
-        s->addUniform( DepthOffsetUtils::createMinOffsetUniform(this) );
-        s->addUniform( DepthOffsetUtils::getIsNotTextUniform() );
+        _doAdapter.setGraph(this);
+        _doAdapter.recalculate();
     }
-    else if ( this->getStateSet() )
+    else
     {
-        this->getStateSet()->removeAttribute(osg::StateAttribute::PROGRAM);
+        _doAdapter.setGraph(0L);
     }
-
     _depthAdj = enable;
 }
 
@@ -322,6 +338,7 @@ AnnotationNode::clearDecoration()
     {
         this->accept(_activeDs, false);
         _activeDs = 0L;
+        _activeDsName = "";
     }
 }
 
@@ -353,7 +370,7 @@ AnnotationNode::supportsAutoClamping( const Style& style ) const
 void
 AnnotationNode::configureForAltitudeMode( const AltitudeMode& mode )
 {
-    setAutoClamp(
+    setCPUAutoClamping(
         mode == ALTMODE_RELATIVE ||
         (_altitude.valid() && _altitude->clamping() == AltitudeSymbol::CLAMP_TO_TERRAIN) );
 }
@@ -364,6 +381,35 @@ AnnotationNode::applyStyle( const Style& style)
     if ( supportsAutoClamping(style) )
     {
         _altitude = style.get<AltitudeSymbol>();
-        setAutoClamp( true );
+        setCPUAutoClamping( true );
+    }
+    applyGeneralSymbology(style);
+}
+
+void
+AnnotationNode::applyGeneralSymbology(const Style& style)
+{
+    const RenderSymbol* render = style.get<RenderSymbol>();
+    if ( render )
+    {
+        if ( render->depthTest().isSet() )
+        {
+            getOrCreateStateSet()->setMode(
+                GL_DEPTH_TEST,
+                (render->depthTest() == true? osg::StateAttribute::ON : osg::StateAttribute::OFF) | osg::StateAttribute::OVERRIDE );
+        }
+
+        if ( render->lighting().isSet() )
+        {
+            getOrCreateStateSet()->setMode(
+                GL_LIGHTING,
+                (render->lighting() == true? osg::StateAttribute::ON : osg::StateAttribute::OFF) | osg::StateAttribute::OVERRIDE );
+        }
+
+        if ( render->depthOffset().isSet() ) // && !_depthAdj )
+        {
+            _doAdapter.setDepthOffsetOptions( *render->depthOffset() );
+            setDepthAdjustment( true );
+        }
     }
 }

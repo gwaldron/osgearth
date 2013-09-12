@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2008-2012 Pelican Mapping
+* Copyright 2008-2013 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -18,14 +18,15 @@
 */
 #include <osgEarthUtil/SkyNode>
 #include <osgEarthUtil/StarData>
+#include <osgEarthUtil/LatLongFormatter>
 
 #include <osgEarth/VirtualProgram>
-#include <osgEarthUtil/LatLongFormatter>
 #include <osgEarth/NodeUtils>
 #include <osgEarth/MapNode>
 #include <osgEarth/Utils>
 #include <osgEarth/Registry>
 #include <osgEarth/Capabilities>
+#include <osgEarth/CullingUtils>
 
 #include <osg/MatrixTransform>
 #include <osg/ShapeDrawable>
@@ -567,9 +568,6 @@ namespace
         "varying vec3 atmos_rayleighColor; \n"
 
         "const float fExposure = 4.0; \n";
-
-    //static char s_atmosphereFragmentShared[] =
-    //    "void applyFragLighting( inout color )
         
     static char s_atmosphereFragmentMain[] =
         "void main(void) \n"			
@@ -693,7 +691,7 @@ namespace
                 << "{ \n"
                 << "    float b1 = 1.0-(2.0*abs(gl_PointCoord.s-0.5)); \n"
                 << "    float b2 = 1.0-(2.0*abs(gl_PointCoord.t-0.5)); \n"
-                << "    float i = b1*b1 * b2*b2; \n" //b1*b1*b1 * b2*b2*b2; \n"
+                << "    float i = b1*b1 * b2*b2; \n"
                 << "    gl_FragColor = osg_FrontColor * i * visibility; \n"
                 << "} \n";
         }
@@ -704,17 +702,17 @@ namespace
 //---------------------------------------------------------------------------
 
 osg::Vec3d
-DefaultEphemerisProvider::getSunPosition( int year, int month, int date, double hoursUTC )
+DefaultEphemerisProvider::getSunPosition(const DateTime& date)
 {
     Sun sun;
-    return sun.getPosition( year, month, date, hoursUTC );
+    return sun.getPosition( date.year(), date.month(), date.day(), date.hours() );
 }
 
 osg::Vec3d
-DefaultEphemerisProvider::getMoonPosition( int year, int month, int date, double hoursUTC )
+DefaultEphemerisProvider::getMoonPosition(const DateTime& date)
 {
     Moon moon;
-    return moon.getPosition( year, month, date, hoursUTC );
+    return moon.getPosition( date.year(), date.month(), date.day(), date.hours() );
 }
 
 //---------------------------------------------------------------------------
@@ -740,7 +738,7 @@ SkyNode::initialize( Map *map, const std::string& starFile )
     _defaultPerViewData._lightPos.set( osg::Vec3f(0.0f, 1.0f, 0.0f) );
     _defaultPerViewData._light = new osg::Light( 0 );  
     _defaultPerViewData._light->setPosition( osg::Vec4( _defaultPerViewData._lightPos, 0 ) );
-    _defaultPerViewData._light->setAmbient( osg::Vec4(0.4f, 0.4f, 0.4f ,1.0) );
+    _defaultPerViewData._light->setAmbient( osg::Vec4(0.2f, 0.2f, 0.2f, 2.0) );
     _defaultPerViewData._light->setDiffuse( osg::Vec4(1,1,1,1) );
     _defaultPerViewData._light->setSpecular( osg::Vec4(0,0,0,1) );
     _defaultPerViewData._starsVisible = true;
@@ -772,8 +770,11 @@ SkyNode::initialize( Map *map, const std::string& starFile )
 
     makeStars(starFile);
 
+    // automatically compute ambient lighting based on the eyepoint
+    _autoAmbience = false;
+
     //Set a default time
-    setDateTime( 2011, 3, 6, 18 );
+    setDateTime( DateTime(2011, 3, 6, 18.) );
 }
 
 osg::BoundingSphere
@@ -784,46 +785,47 @@ SkyNode::computeBound() const
 
 void
 SkyNode::traverse( osg::NodeVisitor& nv )
-{
-    osgUtil::CullVisitor* cv = dynamic_cast<osgUtil::CullVisitor*>( &nv );
+{    
+    osgUtil::CullVisitor* cv = Culling::asCullVisitor(nv);
     if ( cv )
     {
+
         // If there's a custom projection matrix clamper installed, remove it temporarily.
         // We dont' want it mucking with our sky elements.
         osg::ref_ptr<osg::CullSettings::ClampProjectionMatrixCallback> cb = cv->getClampProjectionMatrixCallback();
         cv->setClampProjectionMatrixCallback( 0L );
 
         osg::View* view = cv->getCurrentCamera()->getView();
-        PerViewDataMap::iterator i = _perViewData.find( view );
-        if ( i != _perViewData.end() )
+
+                
+        //Try to find the per view data for camera's view if there is one.
+        PerViewDataMap::iterator itr = _perViewData.find( view );
+        
+        if ( itr == _perViewData.end() )
         {
-#if 0
-            // adjust the light color based on the eye point and the sun position.
-            float aMin =  0.1f;
-            float aMax =  0.9f;
-            float dMin = -0.5f;
-            float dMax =  0.5f;
-
-            osg::Vec3 eye = cv->getViewPoint();
-            eye.normalize();
-
-            osg::Vec3 sun = i->second._lightPos;
-            sun.normalize();
-
-            // clamp to valid range:
-            float d = osg::clampBetween(eye * sun, dMin, dMax);
-
-            // remap to [0..1]:
-            d = (d-dMin) / (dMax-dMin);
-
-            // map to ambient level:
-            float diff = aMin + d * (aMax-aMin);
-
-            i->second._light->setDiffuse( osg::Vec4(diff,diff,diff,1.0) );
-#endif
-
-            i->second._cullContainer->accept( nv );
+            // If we don't find any per view data, just use the first one that is stored.
+            // This needs to be reworked to be per camera and also to automatically create a 
+            // new data structure on demand since camera's can be added/removed on the fly.
+            itr = _perViewData.begin();
         }
+        
+
+        if ( _autoAmbience )
+        {
+            const float minAmb = 0.2f;
+            const float maxAmb = 0.92f;
+            const float minDev = -0.2f;
+            const float maxDev = 0.75f;
+            osg::Vec3 eye = cv->getViewPoint(); eye.normalize();
+            osg::Vec3 sun = itr->second._lightPos; sun.normalize();
+            float dev = osg::clampBetween(eye*sun, minDev, maxDev);
+            float r   = (dev-minDev)/(maxDev-minDev);
+            float amb = minAmb + r*(maxAmb-minAmb);
+            itr->second._light->setAmbient( osg::Vec4(amb,amb,amb,1.0) );
+            //OE_INFO << "dev=" << dev << ", amb=" << amb << std::endl;
+        }
+
+        itr->second._cullContainer->accept( nv );
 
         // restore a custom clamper.
         if ( cb.valid() ) cv->setClampProjectionMatrixCallback( cb.get() );
@@ -851,7 +853,7 @@ SkyNode::setEphemerisProvider(EphemerisProvider* ephemerisProvider )
         //Update the positions of the planets
         for( PerViewDataMap::iterator i = _perViewData.begin(); i != _perViewData.end(); ++i )
         {
-            setDateTime(i->second._year, i->second._month, i->second._date, i->second._hoursUTC, i->first);
+            setDateTime(i->second._date, i->first);
         }
     }
 }
@@ -893,7 +895,7 @@ SkyNode::attach( osg::View* view, int lightNum )
     data._starsMatrix = _defaultPerViewData._starsMatrix;
     data._starsXform->setMatrix( _defaultPerViewData._starsMatrix );
     data._starsXform->addChild( _stars.get() );
-    data._cullContainer->addChild( data._starsXform.get() );    
+    data._cullContainer->addChild( data._starsXform.get() );
     data._starsVisible = _defaultPerViewData._starsVisible;
     data._starsXform->setNodeMask( data._starsVisible ? ~0 : 0 );
 
@@ -908,10 +910,7 @@ SkyNode::attach( osg::View* view, int lightNum )
     view->setLight( data._light.get() );
     view->getCamera()->setClearColor( osg::Vec4(0,0,0,1) );
 
-    data._year = _defaultPerViewData._year;
-    data._month = _defaultPerViewData._month;
     data._date = _defaultPerViewData._date;
-    data._hoursUTC = _defaultPerViewData._hoursUTC;
 }
 
 void
@@ -942,11 +941,24 @@ SkyNode::getAmbientBrightness( osg::View* view ) const
     return _defaultPerViewData._light->getAmbient().r();
 }
 
+void
+SkyNode::setAutoAmbience( bool value )
+{
+    _autoAmbience = value;
+}
+
+bool
+SkyNode::getAutoAmbience() const
+{
+    return _autoAmbience;
+}
+
 void 
 SkyNode::setAmbientBrightness( PerViewData& data, float value )
 {
     value = osg::clampBetween( value, 0.0f, 1.0f );
     data._light->setAmbient( osg::Vec4f(value, value, value, 1.0f) );
+    _autoAmbience = false;
 }
 
 void
@@ -1028,26 +1040,39 @@ SkyNode::setMoonPosition( PerViewData& data, const osg::Vec3d& pos )
 
 
 void
-SkyNode::getDateTime( int &year, int &month, int &date, double &hoursUTC, osg::View* view )
+SkyNode::getDateTime( DateTime& out, osg::View* view ) const
 {    
-    PerViewData& data = _defaultPerViewData;
     if ( view )
     {
-        if ( _perViewData.find(view) != _perViewData.end() )
+        PerViewDataMap::const_iterator i = _perViewData.find(view);
+        if (i != _perViewData.end() )
         {
-            data = _perViewData[view];
+            out = i->second._date;
+            return;
         }
     }
+    out = _defaultPerViewData._date;
+}
 
-    year = data._year;
-    month = data._month;
-    date = data._date;
-    hoursUTC = data._hoursUTC;
+void
+SkyNode::getDateTime(int& year, int& month, int& date, double& hoursUTC, osg::View* view)
+{
+    DateTime temp;
+    getDateTime(temp, view);
+
+    year = temp.year();
+    month = temp.month();
+    date = temp.day();
+    hoursUTC = temp.hours();
+
+    OE_WARN << LC <<
+        "The method getDateTime(int&,int&,int&,double&,View*) is deprecated; "
+        "please use getDateTime(DateTime&, View*) instead" << std::endl;
 }
 
 
 void
-SkyNode::setDateTime( int year, int month, int date, double hoursUTC, osg::View* view )
+SkyNode::setDateTime(const DateTime& dt, osg::View* view)
 {    
     if ( _ellipsoidModel.valid() )
     {
@@ -1056,8 +1081,8 @@ SkyNode::setDateTime( int year, int month, int date, double hoursUTC, osg::View*
 
         if (_ephemerisProvider)
         {
-            sunPosition = _ephemerisProvider->getSunPosition( year, month, date, hoursUTC );
-            moonPosition = _ephemerisProvider->getMoonPosition( year, month, date, hoursUTC );
+            sunPosition = _ephemerisProvider->getSunPosition( dt );
+            moonPosition = _ephemerisProvider->getMoonPosition( dt );
         }
         else
         {
@@ -1066,29 +1091,23 @@ SkyNode::setDateTime( int year, int month, int date, double hoursUTC, osg::View*
 
         sunPosition.normalize();
         setSunPosition( sunPosition, view );
-        setMoonPosition( moonPosition, view );       
+        setMoonPosition( moonPosition, view );
 
         // position the stars:
-        double time_r = hoursUTC/24.0; // 0..1
+        double time_r = dt.hours()/24.0; // 0..1
         double rot_z = -osg::PI + TWO_PI*time_r;
 
         osg::Matrixd starsMatrix = osg::Matrixd::rotate( -rot_z, 0, 0, 1 );
         if ( !view )
         {
             _defaultPerViewData._starsMatrix = starsMatrix;
-            _defaultPerViewData._year = year;
-            _defaultPerViewData._month = month;
-            _defaultPerViewData._date = date;
-            _defaultPerViewData._hoursUTC = hoursUTC;
+            _defaultPerViewData._date = dt;
 
             for( PerViewDataMap::iterator i = _perViewData.begin(); i != _perViewData.end(); ++i )
             {
                 i->second._starsMatrix = starsMatrix;
                 i->second._starsXform->setMatrix( starsMatrix );
-                i->second._year = year;
-                i->second._month = month;
-                i->second._date = date;
-                i->second._hoursUTC = hoursUTC;
+                i->second._date = dt;
             }
         }
         else if ( _perViewData.find(view) != _perViewData.end() )
@@ -1096,13 +1115,24 @@ SkyNode::setDateTime( int year, int month, int date, double hoursUTC, osg::View*
             PerViewData& data = _perViewData[view];
             data._starsMatrix = starsMatrix;
             data._starsXform->setMatrix( starsMatrix );
-            data._year = year;
-            data._month = month;
-            data._date = date;
-            data._hoursUTC = hoursUTC;
+            data._date = dt;
         }
     }
 }
+
+
+void
+SkyNode::setDateTime( int year, int month, int date, double hoursUTC, osg::View* view )
+{
+    // backwards compatibility
+    setDateTime( DateTime(year, month, date, hoursUTC), view );
+
+    OE_WARN << LC << 
+        "The method setDateTime(int,int,int,double,View*) is deprecated; "
+        "please use setDateTime(const DateTime&, View*) instead"
+        << std::endl;
+}
+
 
 void
 SkyNode::setStarsVisible( bool value, osg::View* view )
@@ -1193,65 +1223,68 @@ SkyNode::makeAtmosphere( const osg::EllipsoidModel* em )
     set->setAttributeAndModes( new osg::Depth(osg::Depth::ALWAYS, 0, 1, false) ); // no zbuffer
     set->setAttributeAndModes( new osg::BlendFunc( GL_ONE, GL_ONE ), osg::StateAttribute::ON );
 
-    // next, create and add the shaders:
-    osg::Program* program = new osg::Program();
-    osg::Shader* vs = new osg::Shader( osg::Shader::VERTEX, Stringify()
-        << s_versionString
-        << s_mathUtils
-        << s_atmosphereVertexDeclarations
-        << s_atmosphereVertexShared
-        << s_atmosphereVertexMain );
-    program->addShader( vs );
+    if ( Registry::capabilities().supportsGLSL() )
+    {
+        // next, create and add the shaders:
+        osg::Program* program = new osg::Program();
+        osg::Shader* vs = new osg::Shader( osg::Shader::VERTEX, Stringify()
+            << s_versionString
+            << s_mathUtils
+            << s_atmosphereVertexDeclarations
+            << s_atmosphereVertexShared
+            << s_atmosphereVertexMain );
+        program->addShader( vs );
 
-    osg::Shader* fs = new osg::Shader( osg::Shader::FRAGMENT, Stringify()
-        << s_versionString
+        osg::Shader* fs = new osg::Shader( osg::Shader::FRAGMENT, Stringify()
+            << s_versionString
 #ifdef OSG_GLES2_AVAILABLE
-        << "precision highp float;\n"
+            << "precision highp float;\n"
 #endif
-        << s_mathUtils
-        << s_atmosphereFragmentDeclarations
-        //<< s_atmosphereFragmentShared
-        << s_atmosphereFragmentMain );
-    program->addShader( fs );
+            << s_mathUtils
+            << s_atmosphereFragmentDeclarations
+            //<< s_atmosphereFragmentShared
+            << s_atmosphereFragmentMain );
+        program->addShader( fs );
 
-    set->setAttributeAndModes( program, osg::StateAttribute::ON );
+        set->setAttributeAndModes( program, osg::StateAttribute::ON );
 
-    // apply the uniforms:
-    float r_wl   = ::powf( .65f, 4.0f );
-    float g_wl = ::powf( .57f, 4.0f );
-    float b_wl  = ::powf( .475f, 4.0f );
-    osg::Vec3 RGB_wl( 1.0f/r_wl, 1.0f/g_wl, 1.0f/b_wl );
-    float Kr = 0.0025f;
-    float Kr4PI = Kr * 4.0f * osg::PI;
-    float Km = 0.0015f;
-    float Km4PI = Km * 4.0f * osg::PI;
-    float ESun = 15.0f;
-    float MPhase = -.095f;
-    float RayleighScaleDepth = 0.25f;
-    int   Samples = 2;
-    float Weather = 1.0f;
-    
-    float Scale = 1.0f / (_outerRadius - _innerRadius);
+        // apply the uniforms:
+        float r_wl   = ::powf( .65f, 4.0f );
+        float g_wl = ::powf( .57f, 4.0f );
+        float b_wl  = ::powf( .475f, 4.0f );
+        osg::Vec3 RGB_wl( 1.0f/r_wl, 1.0f/g_wl, 1.0f/b_wl );
+        float Kr = 0.0025f;
+        float Kr4PI = Kr * 4.0f * osg::PI;
+        float Km = 0.0015f;
+        float Km4PI = Km * 4.0f * osg::PI;
+        float ESun = 15.0f;
+        float MPhase = -.095f;
+        float RayleighScaleDepth = 0.25f;
+        int   Samples = 2;
+        float Weather = 1.0f;
 
-    // TODO: replace this with a UBO.
+        float Scale = 1.0f / (_outerRadius - _innerRadius);
 
-    set->getOrCreateUniform( "atmos_v3InvWavelength", osg::Uniform::FLOAT_VEC3 )->set( RGB_wl );
-    set->getOrCreateUniform( "atmos_fInnerRadius",    osg::Uniform::FLOAT )->set( _innerRadius );
-    set->getOrCreateUniform( "atmos_fInnerRadius2",   osg::Uniform::FLOAT )->set( _innerRadius * _innerRadius );
-    set->getOrCreateUniform( "atmos_fOuterRadius",    osg::Uniform::FLOAT )->set( _outerRadius );
-    set->getOrCreateUniform( "atmos_fOuterRadius2",   osg::Uniform::FLOAT )->set( _outerRadius * _outerRadius );
-    set->getOrCreateUniform( "atmos_fKrESun",         osg::Uniform::FLOAT )->set( Kr * ESun );
-    set->getOrCreateUniform( "atmos_fKmESun",         osg::Uniform::FLOAT )->set( Km * ESun );
-    set->getOrCreateUniform( "atmos_fKr4PI",          osg::Uniform::FLOAT )->set( Kr4PI );
-    set->getOrCreateUniform( "atmos_fKm4PI",          osg::Uniform::FLOAT )->set( Km4PI );
-    set->getOrCreateUniform( "atmos_fScale",          osg::Uniform::FLOAT )->set( Scale );
-    set->getOrCreateUniform( "atmos_fScaleDepth",     osg::Uniform::FLOAT )->set( RayleighScaleDepth );
-    set->getOrCreateUniform( "atmos_fScaleOverScaleDepth", osg::Uniform::FLOAT )->set( Scale / RayleighScaleDepth );
-    set->getOrCreateUniform( "atmos_g",               osg::Uniform::FLOAT )->set( MPhase );
-    set->getOrCreateUniform( "atmos_g2",              osg::Uniform::FLOAT )->set( MPhase * MPhase );
-    set->getOrCreateUniform( "atmos_nSamples",        osg::Uniform::INT )->set( Samples );
-    set->getOrCreateUniform( "atmos_fSamples",        osg::Uniform::FLOAT )->set( (float)Samples );
-    set->getOrCreateUniform( "atmos_fWeather",        osg::Uniform::FLOAT )->set( Weather );
+        // TODO: replace this with a UBO.
+
+        set->getOrCreateUniform( "atmos_v3InvWavelength", osg::Uniform::FLOAT_VEC3 )->set( RGB_wl );
+        set->getOrCreateUniform( "atmos_fInnerRadius",    osg::Uniform::FLOAT )->set( _innerRadius );
+        set->getOrCreateUniform( "atmos_fInnerRadius2",   osg::Uniform::FLOAT )->set( _innerRadius * _innerRadius );
+        set->getOrCreateUniform( "atmos_fOuterRadius",    osg::Uniform::FLOAT )->set( _outerRadius );
+        set->getOrCreateUniform( "atmos_fOuterRadius2",   osg::Uniform::FLOAT )->set( _outerRadius * _outerRadius );
+        set->getOrCreateUniform( "atmos_fKrESun",         osg::Uniform::FLOAT )->set( Kr * ESun );
+        set->getOrCreateUniform( "atmos_fKmESun",         osg::Uniform::FLOAT )->set( Km * ESun );
+        set->getOrCreateUniform( "atmos_fKr4PI",          osg::Uniform::FLOAT )->set( Kr4PI );
+        set->getOrCreateUniform( "atmos_fKm4PI",          osg::Uniform::FLOAT )->set( Km4PI );
+        set->getOrCreateUniform( "atmos_fScale",          osg::Uniform::FLOAT )->set( Scale );
+        set->getOrCreateUniform( "atmos_fScaleDepth",     osg::Uniform::FLOAT )->set( RayleighScaleDepth );
+        set->getOrCreateUniform( "atmos_fScaleOverScaleDepth", osg::Uniform::FLOAT )->set( Scale / RayleighScaleDepth );
+        set->getOrCreateUniform( "atmos_g",               osg::Uniform::FLOAT )->set( MPhase );
+        set->getOrCreateUniform( "atmos_g2",              osg::Uniform::FLOAT )->set( MPhase * MPhase );
+        set->getOrCreateUniform( "atmos_nSamples",        osg::Uniform::INT )->set( Samples );
+        set->getOrCreateUniform( "atmos_fSamples",        osg::Uniform::FLOAT )->set( (float)Samples );
+        set->getOrCreateUniform( "atmos_fWeather",        osg::Uniform::FLOAT )->set( Weather );
+    }
     
     // A nested camera isolates the projection matrix calculations so the node won't 
     // affect the clip planes in the rest of the scene.
@@ -1287,20 +1320,23 @@ SkyNode::makeSun()
    // set->setAttributeAndModes( new osg::BlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA), osg::StateAttribute::ON );
 
     // create shaders
-    osg::Program* program = new osg::Program();
-    osg::Shader* vs = new osg::Shader( osg::Shader::VERTEX, Stringify()
-        << s_versionString
-        << s_sunVertexSource );
-    program->addShader( vs );
-    osg::Shader* fs = new osg::Shader( osg::Shader::FRAGMENT, Stringify()
-        << s_versionString
+    if ( Registry::capabilities().supportsGLSL() )
+    {
+        osg::Program* program = new osg::Program();
+        osg::Shader* vs = new osg::Shader( osg::Shader::VERTEX, Stringify()
+            << s_versionString
+            << s_sunVertexSource );
+        program->addShader( vs );
+        osg::Shader* fs = new osg::Shader( osg::Shader::FRAGMENT, Stringify()
+            << s_versionString
 #ifdef OSG_GLES2_AVAILABLE
-        << "precision highp float;\n"
+            << "precision highp float;\n"
 #endif
-        << s_mathUtils
-        << s_sunFragmentSource );
-    program->addShader( fs );
-    set->setAttributeAndModes( program, osg::StateAttribute::ON );
+            << s_mathUtils
+            << s_sunFragmentSource );
+        program->addShader( fs );
+        set->setAttributeAndModes( program, osg::StateAttribute::ON );
+    }
 
     // make the sun's transform:
     // todo: move this?
@@ -1354,21 +1390,24 @@ SkyNode::makeMoon()
 
 #ifdef OSG_GLES2_AVAILABLE
     
-    set->addUniform(new osg::Uniform("moonTex", 0));
-    
-    // create shaders
-    osg::Program* program = new osg::Program();
-    osg::Shader* vs = new osg::Shader( osg::Shader::VERTEX, Stringify()
-                                      << s_versionString
-                                      << "precision highp float;\n"
-                                      << s_moonVertexSource );
-    program->addShader( vs );
-    osg::Shader* fs = new osg::Shader( osg::Shader::FRAGMENT, Stringify()
-                                      << s_versionString
-                                      << "precision highp float;\n"
-                                      << s_moonFragmentSource );
-    program->addShader( fs );
-    set->setAttributeAndModes( program, osg::StateAttribute::ON | osg::StateAttribute::PROTECTED );
+    if ( Registry::capabilities().supportsGLSL() )
+    {
+        set->addUniform(new osg::Uniform("moonTex", 0));
+        
+        // create shaders
+        osg::Program* program = new osg::Program();
+        osg::Shader* vs = new osg::Shader( osg::Shader::VERTEX, Stringify()
+                                          << s_versionString
+                                          << "precision highp float;\n"
+                                          << s_moonVertexSource );
+        program->addShader( vs );
+        osg::Shader* fs = new osg::Shader( osg::Shader::FRAGMENT, Stringify()
+                                          << s_versionString
+                                          << "precision highp float;\n"
+                                          << s_moonFragmentSource );
+        program->addShader( fs );
+        set->setAttributeAndModes( program, osg::StateAttribute::ON | osg::StateAttribute::PROTECTED );
+    }
 #endif
     
     // make the moon's transform:
@@ -1384,7 +1423,7 @@ SkyNode::makeMoon()
     //If we couldn't load the moon texture, turn the moon off
     if (!image)
     {
-        OSG_ALWAYS << "Couldn't load moon texture, add osgEarth's data directory your OSG_FILE_PATH" << std::endl;
+        OE_INFO << LC << "Couldn't load moon texture, add osgEarth's data directory your OSG_FILE_PATH" << std::endl;
         _defaultPerViewData._moonXform->setNodeMask( 0 );
         _defaultPerViewData._moonVisible = false;
     }
@@ -1429,9 +1468,6 @@ SkyNode::makeStars(const std::string& starFile)
 
   osg::Node* starNode = buildStarGeometry(stars);
 
-  //AddCallbackToDrawablesVisitor visitor(_starRadius);
-  //starNode->accept(visitor);
-
   _stars = starNode;
 }
 
@@ -1469,13 +1505,16 @@ SkyNode::buildStarGeometry(const std::vector<StarData>& stars)
 
   osg::StateSet* sset = geometry->getOrCreateStateSet();
 
-  sset->setTextureAttributeAndModes( 0, new osg::PointSprite(), osg::StateAttribute::ON );
-  sset->setMode( GL_VERTEX_PROGRAM_POINT_SIZE, osg::StateAttribute::ON );
+  if ( Registry::capabilities().supportsGLSL() )
+  {
+    sset->setTextureAttributeAndModes( 0, new osg::PointSprite(), osg::StateAttribute::ON );
+    sset->setMode( GL_VERTEX_PROGRAM_POINT_SIZE, osg::StateAttribute::ON );
 
-  osg::Program* program = new osg::Program;
-  program->addShader( new osg::Shader(osg::Shader::VERTEX, s_createStarVertexSource()) );
-  program->addShader( new osg::Shader(osg::Shader::FRAGMENT, s_createStarFragmentSource()) );
-  sset->setAttributeAndModes( program, osg::StateAttribute::ON );
+    osg::Program* program = new osg::Program;
+    program->addShader( new osg::Shader(osg::Shader::VERTEX, s_createStarVertexSource()) );
+    program->addShader( new osg::Shader(osg::Shader::FRAGMENT, s_createStarFragmentSource()) );
+    sset->setAttributeAndModes( program, osg::StateAttribute::ON );
+  }
 
   sset->setRenderBinDetails( BIN_STARS, "RenderBin");
   sset->setAttributeAndModes( new osg::Depth(osg::Depth::ALWAYS, 0, 1, false), osg::StateAttribute::ON );

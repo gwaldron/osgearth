@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2012 Pelican Mapping
+ * Copyright 2008-2013 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -164,7 +164,7 @@ GeoMath::interpolate(double lat1Rad, double lon1Rad,
                      double t,
                      double& out_latRad, double& out_lonRad)
 {
-    static osg::EllipsoidModel em;
+    static osg::EllipsoidModel em; // questionable. make non-static?
 
     osg::Vec3d v0, v1;
 

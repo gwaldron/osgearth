@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2008-2012 Pelican Mapping
+* Copyright 2008-2013 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -46,11 +46,12 @@ namespace osgEarth
         bool isSet() const { return _set; }
         void unset() { _set = false; _value=_defaultValue; }
 
-        //T& get() { return _value; }
         const T& get() const { return _value; }
         const T& value() const { return _value; }
         const T& defaultValue() const { return _defaultValue; }
         T temp_copy() const { return _value; }
+
+        const T& getOrUse(const T& fallback) const { return _set ? _value : fallback; }
 
         // gets a mutable reference, automatically setting
         T& mutable_value() { _set = true; return _value; }

@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2008-2012 Pelican Mapping
+* Copyright 2008-2013 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -37,6 +37,7 @@
 
 #define LC "[OSGTerrainEngine] "
 
+using namespace osgEarth_engine_osgterrain;
 using namespace osgEarth;
 
 //------------------------------------------------------------------------
@@ -860,7 +861,7 @@ OSGTerrainEngineNode::installShaders()
 
         VirtualProgram* vp = new VirtualProgram();
         vp->setName( "engine_osgterrain:EngineNode" );
-        vp->installDefaultColoringAndLightingShaders(numLayers);
+        //vp->installDefaultColoringAndLightingShaders(numLayers);
 
         getOrCreateStateSet()->setAttributeAndModes( vp, osg::StateAttribute::ON );
     }
@@ -882,7 +883,7 @@ OSGTerrainEngineNode::updateTextureCombining()
 
             VirtualProgram* vp = new VirtualProgram() ;
             vp->setName( "engine_osgterrain:TerrainNode" );
-            vp->installDefaultColoringShaders(numImageLayers);
+            //vp->installDefaultColoringShaders(numImageLayers);
 
             terrainStateSet->setAttributeAndModes( vp, osg::StateAttribute::ON );
 

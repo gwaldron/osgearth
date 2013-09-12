@@ -1,6 +1,6 @@
 /* --*-c++-*-- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2012 Pelican Mapping
+ * Copyright 2008-2013 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -24,10 +24,17 @@
 #include <osgEarthFeatures/FeatureModelSource>
 #include <osgEarthFeatures/Session>
 #include <osgEarthSymbology/Style>
+#include <osgEarth/OverlayNode>
 #include <osgEarth/NodeUtils>
 #include <osgEarth/ThreadingUtils>
+#include <osgEarth/DepthOffset>
 #include <osg/Node>
 #include <set>
+
+namespace osgEarth {
+    class ClampableNode;
+    class DrapeableNode;
+}
 
 namespace osgEarth { namespace Features
 {
@@ -77,6 +84,11 @@ namespace osgEarth { namespace Features
          * Session associated with this feature graph.
          */
         Session* getSession() { return _session; }
+
+		/**
+         * UID given to this feature graph when registered with the pseudo-loader
+         */
+        UID getUID() const { return _uid; }
 
         /**
          * Mark the feature graph dirty and in need of regeneration 
@@ -140,6 +152,9 @@ namespace osgEarth { namespace Features
             const StringExpression& styleExpr,
             FeatureSourceIndex*     index,
             osg::Group*             parent);
+
+        osg::Group* getOrCreateStyleGroupFromFactory(
+            const Style& style);
        
         osg::BoundingSphered getBoundInWorldCoords( 
             const GeoExtent& extent, 
@@ -167,8 +182,26 @@ namespace osgEarth { namespace Features
         bool                             _dirty;
         bool                             _pendingUpdate;
         std::vector<const FeatureLevel*> _lodmap;
-        
+
+        osg::Group*                      _overlayInstalled;
+        osg::Group*                      _overlayPlaceholder;
+        ClampableNode*                   _clampable;
+        DrapeableNode*                   _drapeable;
+        DepthOffsetAdapter               _depthOffsetAdapter;
+
+        enum OverlayChange {
+            OVERLAY_NO_CHANGE,
+            OVERLAY_INSTALL_PLACEHOLDER,
+            OVERLAY_INSTALL_CLAMPABLE,
+            OVERLAY_INSTALL_DRAPEABLE
+        };
+        OverlayChange                    _overlayChange;
+
         osg::ref_ptr<RefNodeOperationVector> _postMergeOperations;
+
+        void runPostMergeOperations(osg::Node* node);
+        void checkForGlobalStyles(const Style& style);
+        void changeOverlay();
     };
 
 } } // namespace osgEarth::Features

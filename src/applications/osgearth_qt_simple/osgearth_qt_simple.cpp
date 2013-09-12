@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2008-2012 Pelican Mapping
+* Copyright 2008-2013 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -25,6 +25,8 @@
 #include <QtGui/QApplication>
 #include <QtGui/QMainWindow>
 #include <QtGui/QStatusBar>
+#include <QtGui/QMdiArea>
+#include <QtGui/QMdiSubWindow>
 
 #ifdef Q_WS_X11
 #include <X11/Xlib.h>
@@ -76,8 +78,13 @@ main(int argc, char** argv)
 
     QWidget* viewerWidget = new ViewerWidget( &viewer );
     
+    QMdiArea *mdiArea = new QMdiArea();
+    QMdiSubWindow* s = mdiArea->addSubWindow(viewerWidget); 
+    s->setGeometry( 75, 75, 800, 600 );
+    
     QMainWindow win;
-    win.setCentralWidget( viewerWidget );
+    //win.setCentralWidget( viewerWidget );
+    win.setCentralWidget( mdiArea );
     win.setGeometry(100, 100, 1024, 800);
 
     win.statusBar()->showMessage(QString("Quite possibly the world's simplest osgEarthQt app."));

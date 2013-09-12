@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2008-2012 Pelican Mapping
+* Copyright 2008-2013 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -18,7 +18,6 @@
 */
 
 #include <osgEarthAnnotation/AnnotationUtils>
-#include <osgEarthAnnotation/Decluttering>
 #include <osgEarthSymbology/Color>
 #include <osgEarthSymbology/MeshSubdivider>
 #include <osgEarth/ThreadingUtils>
@@ -66,6 +65,22 @@ AnnotationUtils::UNIFORM_FADE()
   return s;
 }
 
+osgText::String::Encoding
+AnnotationUtils::convertTextSymbolEncoding (const TextSymbol::Encoding encoding) {
+    osgText::String::Encoding text_encoding = osgText::String::ENCODING_UNDEFINED;
+
+    switch(encoding)
+    {
+    case TextSymbol::ENCODING_ASCII: text_encoding = osgText::String::ENCODING_ASCII; break;
+    case TextSymbol::ENCODING_UTF8: text_encoding = osgText::String::ENCODING_UTF8; break;
+    case TextSymbol::ENCODING_UTF16: text_encoding = osgText::String::ENCODING_UTF16; break;
+    case TextSymbol::ENCODING_UTF32: text_encoding = osgText::String::ENCODING_UTF32; break;
+    default: text_encoding = osgText::String::ENCODING_UNDEFINED; break;
+    }
+
+    return text_encoding;
+}
+
 osg::Drawable* 
 AnnotationUtils::createTextDrawable(const std::string& text,
                                     const TextSymbol*  symbol,
@@ -73,21 +88,31 @@ AnnotationUtils::createTextDrawable(const std::string& text,
                                     
 {
     osgText::Text* t = new osgText::Text();
+    
     osgText::String::Encoding text_encoding = osgText::String::ENCODING_UNDEFINED;
     if ( symbol && symbol->encoding().isSet() )
     {
-        switch(symbol->encoding().value())
-        {
-        case TextSymbol::ENCODING_ASCII: text_encoding = osgText::String::ENCODING_ASCII; break;
-        case TextSymbol::ENCODING_UTF8: text_encoding = osgText::String::ENCODING_UTF8; break;
-        case TextSymbol::ENCODING_UTF16: text_encoding = osgText::String::ENCODING_UTF16; break;
-        case TextSymbol::ENCODING_UTF32: text_encoding = osgText::String::ENCODING_UTF32; break;
-        default: text_encoding = osgText::String::ENCODING_UNDEFINED; break;
-        }
+        text_encoding = convertTextSymbolEncoding(symbol->encoding().value());
     }
 
     t->setText( text, text_encoding );
 
+    // osgText::Text turns on depth writing by default, even if you turned it off..
+    t->setEnableDepthWrites( false );
+
+    if ( symbol && symbol->layout().isSet() )
+    {
+        if(symbol->layout().value() == TextSymbol::LAYOUT_RIGHT_TO_LEFT)
+        {
+            t->setLayout(osgText::TextBase::RIGHT_TO_LEFT);
+        }else if(symbol->layout().value() == TextSymbol::LAYOUT_LEFT_TO_RIGHT)
+        {
+            t->setLayout(osgText::TextBase::LEFT_TO_RIGHT);
+        }else if(symbol->layout().value() == TextSymbol::LAYOUT_VERTICAL)
+        {
+            t->setLayout(osgText::TextBase::VERTICAL);
+        }
+    }
     if ( symbol && symbol->pixelOffset().isSet() )
     {
         t->setPosition( osg::Vec3(
@@ -138,25 +163,11 @@ AnnotationUtils::createTextDrawable(const std::string& text,
     }
 
     // this disables the default rendering bin set by osgText::Font. Necessary if we're
-    // going to do decluttering at a higher level
-    osg::StateSet* stateSet = new osg::StateSet();
-    t->setStateSet( stateSet );
-    //osg::StateSet* stateSet = t->getOrCreateStateSet();
-
-    if ( symbol && symbol->declutter().isSet() )
-    {
-        Decluttering::setEnabled( stateSet, *symbol->declutter() );
-    }
-    else
-    {
-        stateSet->setRenderBinToInherit();
-    }
-
-    // add the static "isText=true" uniform; this is a hint for the annotation shaders
-    // if they get installed.
-    static osg::ref_ptr<osg::Uniform> s_isTextUniform = new osg::Uniform(osg::Uniform::BOOL, UNIFORM_IS_TEXT());
-    s_isTextUniform->set( true );
-    stateSet->addUniform( s_isTextUniform.get() );
+    // going to do decluttering.
+    // TODO: verify that it's still OK to share the font stateset (think so) or does it
+    // need to be marked DYNAMIC
+    if ( t->getStateSet() )
+      t->getStateSet()->setRenderBinToInherit();
 
     return t;
 }
@@ -171,7 +182,7 @@ AnnotationUtils::createImageGeometry(osg::Image*       image,
         return 0L;
 
     osg::Texture2D* texture = new osg::Texture2D();
-    texture->setFilter(osg::Texture::MIN_FILTER,osg::Texture::LINEAR);
+    texture->setFilter(osg::Texture::MIN_FILTER,osg::Texture::LINEAR_MIPMAP_LINEAR);
     texture->setFilter(osg::Texture::MAG_FILTER,osg::Texture::LINEAR);
     texture->setResizeNonPowerOfTwoHint(false);
     texture->setImage( image );
@@ -180,7 +191,7 @@ AnnotationUtils::createImageGeometry(osg::Image*       image,
     osg::StateSet* dstate = new osg::StateSet;
     dstate->setMode(GL_CULL_FACE,osg::StateAttribute::OFF);
     dstate->setMode(GL_LIGHTING,osg::StateAttribute::OFF);
-    dstate->setMode(GL_BLEND, 1);
+    //dstate->setMode(GL_BLEND, 1); // redundant. AnnotationNode sets blending.
     dstate->setTextureAttributeAndModes(0, texture,osg::StateAttribute::ON);   
 
     // set up the geoset.
@@ -225,11 +236,13 @@ AnnotationUtils::createImageGeometry(osg::Image*       image,
 
     geom->addPrimitiveSet(new osg::DrawArrays(osg::PrimitiveSet::QUADS,0,4));
 
+#if 0
     // add the static "isText=true" uniform; this is a hint for the annotation shaders
     // if they get installed.
     static osg::ref_ptr<osg::Uniform> s_isNotTextUniform = new osg::Uniform(osg::Uniform::BOOL, UNIFORM_IS_TEXT());
     s_isNotTextUniform->set( false );
     dstate->addUniform( s_isNotTextUniform.get() );
+#endif
 
     return geom;
 }
@@ -248,124 +261,6 @@ AnnotationUtils::createHighlightUniform()
     osg::Uniform* u = new osg::Uniform(osg::Uniform::BOOL, UNIFORM_HIGHLIGHT());
     u->set( false );
     return u;
-}
-
-void
-AnnotationUtils::installAnnotationProgram( osg::StateSet* stateSet )
-{
-    static Threading::Mutex           s_mutex;
-    //static osg::ref_ptr<osg::Program> s_program;
-    static osg::ref_ptr<VirtualProgram> s_program;
-    static osg::ref_ptr<osg::Uniform>   s_samplerUniform;
-    static osg::ref_ptr<osg::Uniform>   s_defaultFadeUniform;
-    static osg::ref_ptr<osg::Uniform>   s_defaultIsTextUniform;
-
-    if ( !s_program.valid() )
-    {
-        Threading::ScopedMutexLock lock(s_mutex);
-        if ( !s_program.valid() )
-        {
-            std::string vertSource =
-                "#version " GLSL_VERSION_STR "\n"
-                //NOTE: Tom commented this out; I commented it back in b/c that breaks things 
-                //( //not sure why but these arn't merging properly, osg earth color funcs decalre it anyhow for now)
-                "varying vec4 osg_FrontColor; \n"
-                "varying vec4 oeAnno_texCoord; \n"
-                "void oeAnno_vertColoring() \n"
-                "{ \n"
-                "    osg_FrontColor = gl_Color; \n"
-                "    oeAnno_texCoord = gl_MultiTexCoord0; \n"
-                "} \n";
-
-            std::string fragSource = Stringify() <<
-                "#version " << GLSL_VERSION_STR << "\n"
-#ifdef OSG_GLES2_AVAILABLE
-                "precision mediump float;\n"
-#endif
-                "uniform float " << UNIFORM_FADE()      << "; \n"
-                "uniform bool  " << UNIFORM_IS_TEXT()   << "; \n"
-                //"uniform bool  " << UNIFORM_HIGHLIGHT() << "; \n"
-                "uniform sampler2D oeAnno_tex0; \n"
-                "varying vec4 osg_FrontColor; \n"
-                "varying vec4 oeAnno_texCoord; \n"
-                "void oeAnno_fragColoring( inout vec4 color ) \n"
-                "{ \n"
-                "    if (" << UNIFORM_IS_TEXT() << ") \n"
-                "    { \n"
-                "        float alpha = texture2D(oeAnno_tex0, oeAnno_texCoord.st).a; \n"
-                "        color = vec4(osg_FrontColor.rgb, osg_FrontColor.a * alpha * " << UNIFORM_FADE() << "); \n"
-                "    } \n"
-                "    else \n"
-                "    { \n"
-                "        color = osg_FrontColor * texture2D(oeAnno_tex0, oeAnno_texCoord.st) * vec4(1,1,1," << UNIFORM_FADE() << "); \n"
-                "    } \n"
-                //"    if (" << UNIFORM_HIGHLIGHT() << ") \n"
-                //"    { \n"
-                //"        color = vec4(color.r*1.5, color.g*0.5, color.b*0.25, color.a); \n"
-                //"    } \n"
-                "} \n";
-
-            s_program = new VirtualProgram();
-            s_program->setName( PROGRAM_NAME() );
-            s_program->setUseLightingShaders( false );
-            s_program->installDefaultColoringShaders();
-            s_program->setFunction( "oeAnno_vertColoring", vertSource, ShaderComp::LOCATION_VERTEX_PRE_LIGHTING );
-            s_program->setFunction( "oeAnno_fragColoring", fragSource, ShaderComp::LOCATION_FRAGMENT_PRE_LIGHTING );
-
-            s_samplerUniform = new osg::Uniform(osg::Uniform::SAMPLER_2D, "oeAnno_tex0");
-            s_samplerUniform->set( 0 );
-
-            s_defaultFadeUniform = createFadeUniform();
-
-            s_defaultIsTextUniform = new osg::Uniform(osg::Uniform::BOOL, "oeAnno_isText");
-            s_defaultIsTextUniform->set( false );
-
-#if 0
-            std::string vert_source = // Stringify() <<
-                "#version 110 \n"
-                "void main() { \n"
-                "    osg_FrontColor = gl_Color; \n"
-                "    osg_TexCoord[0] = gl_MultiTexCoord0; \n"
-                "    gl_Position = gl_ModelViewProjectionMatrix * gl_Vertex; \n"
-                "} \n";
-
-            std::string frag_source = Stringify() <<
-#ifdef OSG_GLES2_AVAILABLE
-                "precision mediump float;\n"
-#endif
-                "uniform float     " << UNIFORM_FADE()      << "; \n"
-                "uniform bool      " << UNIFORM_IS_TEXT()   << "; \n"
-                "uniform bool      " << UNIFORM_HIGHLIGHT() << "; \n"
-                "uniform sampler2D tex0; \n"
-                "varying vec4 osg_TexCoord[" << Registry::instance()->getCapabilities().getMaxGPUTextureCoordSets() << "]; \n"
-                "varying vec4 osg_FrontColor; \n"
-                "void main() { \n"
-                "    vec4 color; \n"
-                "    if (" << UNIFORM_IS_TEXT() << ") { \n"
-                "        float alpha = texture2D(tex0,osg_TexCoord[0].st).a; \n"
-                "        color = vec4( osg_FrontColor.rgb, osg_FrontColor.a * alpha * " << UNIFORM_FADE() << "); \n"
-                "    } \n"
-                "    else { \n"
-                "        color = osg_FrontColor * texture2D(tex0,osg_TexCoord[0].st) * vec4(1,1,1," << UNIFORM_FADE() << "); \n"
-                "    } \n"
-                "    if (" << UNIFORM_HIGHLIGHT() << ") { \n"
-                "        color = vec4(color.r*1.5, color.g*0.5, color.b*0.25, color.a); \n"
-                "    } \n"
-                "    gl_FragColor = color; \n"
-                "} \n";
-
-            s_program = new osg::Program();
-            s_program->setName( PROGRAM_NAME() );
-            s_program->addShader( new osg::Shader(osg::Shader::VERTEX,   vert_source) );
-            s_program->addShader( new osg::Shader(osg::Shader::FRAGMENT, frag_source) );
-#endif
-        }
-    }
-
-    stateSet->setAttributeAndModes( s_program.get() );
-    stateSet->addUniform( s_samplerUniform.get() );
-    stateSet->addUniform( s_defaultFadeUniform.get() );
-    stateSet->addUniform( s_defaultIsTextUniform.get() );
 }
 
 //-------------------------------------------------------------------------
@@ -596,6 +491,143 @@ AnnotationUtils::createHemisphere( float r, const osg::Vec4& color, float maxAng
     return installTwoPassAlpha( geode );
 }
 
+// constucts an ellipsoidal mesh
+osg::Geometry*
+AnnotationUtils::createEllipsoidGeometry(float xRadius, 
+                                         float yRadius,
+                                         float zRadius,
+                                         const osg::Vec4f& color, 
+                                         float maxAngle,
+                                         float minLat,
+                                         float maxLat,
+                                         float minLon,
+                                         float maxLon)
+{
+    osg::Geometry* geom = new osg::Geometry();
+    geom->setUseVertexBufferObjects(true);
+
+    float latSpan = maxLat - minLat;
+    float lonSpan = maxLon - minLon;
+    float aspectRatio = lonSpan/latSpan;
+
+    int latSegments = std::max( 6, (int)ceil(latSpan / maxAngle) );
+    int lonSegments = std::max( 3, (int)ceil(latSegments * aspectRatio) );
+
+    float segmentSize = latSpan/latSegments; // degrees
+
+    osg::Vec3Array* verts = new osg::Vec3Array();
+    verts->reserve( latSegments * lonSegments );
+
+    bool genTexCoords = false; // TODO: optional
+    osg::Vec2Array* texCoords = 0;
+    if (genTexCoords)
+    {
+        texCoords = new osg::Vec2Array();
+        texCoords->reserve( latSegments * lonSegments );
+        geom->setTexCoordArray( 0, texCoords );
+    }
+
+    osg::Vec3Array* normals = new osg::Vec3Array();
+    normals->reserve( latSegments * lonSegments );
+    geom->setNormalArray( normals );
+    geom->setNormalBinding(osg::Geometry::BIND_PER_VERTEX );
+
+    osg::DrawElementsUShort* el = new osg::DrawElementsUShort( GL_TRIANGLES );
+    el->reserve( latSegments * lonSegments * 6 );
+
+    for( int y = 0; y <= latSegments; ++y )
+    {
+        float lat = minLat + segmentSize * (float)y;
+        for( int x = 0; x < lonSegments; ++x )
+        {
+            float lon = minLon + segmentSize * (float)x;
+
+            float u = osg::DegreesToRadians( lon );
+            float v = osg::DegreesToRadians( lat );
+            float cos_u = cosf(u);
+            float sin_u = sinf(u);
+            float cos_v = cosf(v);
+            float sin_v = sinf(v);
+            
+            verts->push_back(osg::Vec3(
+                xRadius * cos_u * sin_v,
+                yRadius * sin_u * sin_v,
+                zRadius * cos_v ));
+
+            if (genTexCoords)
+            {
+                double s = (lon + 180) / 360.0;
+                double t = (lat + 90.0) / 180.0;
+                texCoords->push_back( osg::Vec2(s, t ) );
+            }
+
+            if (normals)
+            {
+                normals->push_back( verts->back() );
+                normals->back().normalize();
+            }
+
+            if ( y < latSegments )
+            {
+                int x_plus_1 = x < lonSegments-1 ? x+1 : 0;
+                int y_plus_1 = y+1;
+                el->push_back( y*lonSegments + x );
+                el->push_back( y*lonSegments + x_plus_1 );
+                el->push_back( y_plus_1*lonSegments + x );
+                el->push_back( y*lonSegments + x_plus_1 );
+                el->push_back( y_plus_1*lonSegments + x_plus_1 );
+                el->push_back( y_plus_1*lonSegments + x );
+            }
+        }
+    }
+
+    osg::Vec4Array* c = new osg::Vec4Array(1);
+    (*c)[0] = color;
+    geom->setColorArray( c );
+    geom->setColorBinding( osg::Geometry::BIND_OVERALL );
+
+    geom->setVertexArray( verts );
+    geom->addPrimitiveSet( el );
+
+    return geom;
+}
+
+osg::Node* 
+AnnotationUtils::createEllipsoid(float xRadius, 
+                                 float yRadius,
+                                 float zRadius,
+                                 const osg::Vec4f& color, 
+                                 float maxAngle,
+                                 float minLat,
+                                 float maxLat,
+                                 float minLon,
+                                 float maxLon)
+{
+    osg::Geode* geode = new osg::Geode();
+    geode->addDrawable( createEllipsoidGeometry(xRadius, yRadius, zRadius, color, maxAngle, minLat, maxLat, minLon, maxLon) );
+
+    if ( color.a() < 1.0f )
+    {
+        geode->getOrCreateStateSet()->setRenderingHint( osg::StateSet::TRANSPARENT_BIN );
+    }
+
+    bool solid = (maxLat-minLat >= 180.0f && maxLon-minLon >= 360.0f);
+
+    if ( solid )
+    {
+        geode->getOrCreateStateSet()->setAttributeAndModes( new osg::CullFace(osg::CullFace::BACK), 1 );
+    }
+
+    else if ( color.a() < 1.0f )
+    {
+        //geode->getOrCreateStateSet()->setAttributeAndModes( new osg::CullFace(), 0 );
+        return installTwoPassAlpha(geode);
+    }
+
+    return geode;
+}
+
+#if 0
 osg::Node* 
 AnnotationUtils::createEllipsoid( float xr, float yr, float zr, const osg::Vec4& color, float maxAngle )
 {
@@ -639,6 +671,7 @@ AnnotationUtils::createEllipsoid( float xr, float yr, float zr, const osg::Vec4&
 
     return geode;
 }
+#endif
 
 osg::Node* 
 AnnotationUtils::createFullScreenQuad( const osg::Vec4& color )
@@ -672,7 +705,7 @@ AnnotationUtils::createFullScreenQuad( const osg::Vec4& color )
 
     osg::StateSet* s = geom->getOrCreateStateSet();
     s->setMode(GL_LIGHTING,0);
-    s->setMode(GL_BLEND,1);
+    //s->setMode(GL_BLEND,1); // redundant. AnnotationNode sets blend.
     s->setMode(GL_DEPTH_TEST,0);
     s->setMode(GL_CULL_FACE,0);
     s->setAttributeAndModes( new osg::Depth(osg::Depth::ALWAYS, 0, 1, false), 1 );
@@ -819,4 +852,40 @@ AnnotationUtils::styleRequiresAlphaBlending( const Style& style )
     }
 
     return false;
+}
+
+
+void
+AnnotationUtils::getAltitudePolicy(const Style& style, AltitudePolicy& out)
+{
+    out.sceneClamping = false;
+    out.gpuClamping   = false;
+    out.draping       = false;
+
+    // conditions where clamping is not yet compatible
+    bool compatible =
+        !style.has<ExtrusionSymbol>();      // backwards-compability
+
+    if ( compatible )
+    {
+        const AltitudeSymbol* alt = style.get<AltitudeSymbol>();
+        if ( alt )
+        {
+            if (alt->clamping() == AltitudeSymbol::CLAMP_TO_TERRAIN || 
+                alt->clamping() == AltitudeSymbol::CLAMP_RELATIVE_TO_TERRAIN )
+            {
+                out.sceneClamping = alt->technique() == AltitudeSymbol::TECHNIQUE_SCENE;
+                out.gpuClamping   = alt->technique() == AltitudeSymbol::TECHNIQUE_GPU;
+                out.draping       = alt->technique() == AltitudeSymbol::TECHNIQUE_DRAPE;
+
+                // for instance/markers, GPU clamping falls back on SCENE clamping.
+                if (out.gpuClamping &&
+                    (style.has<InstanceSymbol>() || style.has<MarkerSymbol>()))
+                {
+                    out.gpuClamping   = false;
+                    out.sceneClamping = true;
+                }
+            }
+        }
+    }
 }

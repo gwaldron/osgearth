@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2012 Pelican Mapping
+ * Copyright 2008-2013 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -18,6 +18,8 @@
  */
 #include "KML_IconStyle"
 #include <osgEarthSymbology/IconSymbol>
+
+using namespace osgEarth_kml;
 
 void
 KML_IconStyle::scan( const Config& conf, Style& style, KMLContext& cx )

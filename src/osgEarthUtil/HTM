@@ -1,0 +1,195 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+* Copyright 2008-2013 Pelican Mapping
+* http://osgearth.org
+*
+* osgEarth is free software; you can redistribute it and/or modify
+* it under the terms of the GNU Lesser General Public License as published by
+* the Free Software Foundation; either version 2 of the License, or
+* (at your option) any later version.
+*
+* This program is distributed in the hope that it will be useful,
+* but WITHOUT ANY WARRANTY; without even the implied warranty of
+* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+* GNU Lesser General Public License for more details.
+*
+* You should have received a copy of the GNU Lesser General Public License
+* along with this program.  If not, see <http://www.gnu.org/licenses/>
+*/
+
+#ifndef OSGEARTH_UTIL_HTM_H
+#define OSGEARTH_UTIL_HTM_H 1
+
+#include <osgEarthUtil/Common>
+#include <osg/Geode>
+#include <osg/Group>
+#include <osg/Polytope>
+#include <vector>
+
+namespace osgEarth { namespace Util
+{
+    class HTMNode;
+
+    /**
+     * Hierarchical Triangular Mesh group
+     * http://www.geog.ucsb.edu/~hu/papers/spatialIndex.pdf
+     *
+     * An osg::Group that automatically organizes its contents spatially
+     * in order to improve culling performance and proximity search.
+     *
+     * Note! This group will improve performance when you have a huge
+     * number of entities and you zoom in to a smaller area. It will NOT
+     * improve the performance when viewing the entire set from a far
+     * range.
+     */
+    class OSGEARTHUTIL_EXPORT HTMGroup : public osg::Group
+    {
+    public:
+        HTMGroup();
+
+        /** total number of objects in the group. */
+        unsigned dataCount() const { return _dataCount; }
+
+        /** The maximum number of objects to hold in an index cell before
+            splitting it up into smaller parts. */
+        unsigned getSplitThreshold() const { return _splitThreshold; }
+
+        /** The minimum number of objects across a set of child cells before
+            merging them back into a single cell. */
+        unsigned getMergeThreshold() const { return _mergeThreshold; }
+
+        /** enable or disable clustering (experimental) */
+        void setCluster( bool value ) { _cluster = value; }
+        bool getCluster() const       { return _cluster; }
+
+        /** activate debugging mode */
+        void setDebug() { _debug = true; }
+        bool getDebug() const { return _debug; }
+
+        /** check a node to see whether we need to move it. */
+        bool refresh(osg::Node* node);
+
+        /** removes a node from the group. */
+        bool remove(osg::Node* node);
+
+    public: // osg::Group
+
+        /** Add a node to the group. */
+        virtual bool addChild(osg::Node* child);
+
+        /** Add a node to the group. Ignores the "index". */
+        virtual bool insertChild(unsigned index, osg::Node* child);
+
+
+    public: // osg::Group (internal)
+
+        /** These methods are derived from Group but are NOOPs for the HTMGroup. */
+        virtual bool removeChildren(unsigned pos, unsigned numChildrenToRemove);
+        virtual bool replaceChild(osg::Node* origChild, osg::Node* newChild);
+        virtual bool setChild(unsigned index, osg::Node* node);
+
+        /** custom traversal */
+        virtual void traverse(osg::NodeVisitor& nv);
+
+    protected:
+        virtual ~HTMGroup() { }
+
+        bool insert(osg::Node* node);
+
+        unsigned _dataCount;
+        bool     _debug;
+        bool     _cluster;
+        unsigned _splitThreshold;
+        unsigned _mergeThreshold;
+
+        typedef std::map<osg::Node*, HTMNode*> NodeMap;
+        NodeMap _nodeTable;
+    };
+
+
+    /**
+     * Internal index cell for the HTMGroup (do not use directly).
+     */
+    class HTMNode : public osg::Group
+    {
+    public:
+        HTMNode(HTMGroup* root, const osg::Vec3d& v0, const osg::Vec3d& v1, const osg::Vec3d& v2);
+
+    public: // osg::Group
+
+        virtual void traverse(osg::NodeVisitor& nv);
+
+    protected:
+        virtual ~HTMNode() { }
+
+        HTMNode* insert(osg::Node* node);
+
+        bool remove(osg::Node* node);
+
+        bool refresh(osg::Node* node);
+
+        void split();
+
+        void merge();
+
+        bool isLeaf() const {
+            return getNumChildren() == 0;
+        }
+
+        bool contains(const osg::Vec3d& p) const {
+            return _tri.contains(p);
+        }
+
+        unsigned dataCount() const {
+            return _dataCount;
+        }
+
+        HTMNode* findLeaf(osg::Node*);
+
+        // test whether the node's triangle lies entirely withing a frustum
+        bool entirelyWithin(const osg::Polytope& tope) const;
+        
+        // test whether the node's triangle intersects a frustum
+        bool intersects(const osg::Polytope& tope) const;
+
+        osg::BoundingSphere computeBound() const;
+
+    private:
+
+        struct PolytopeDP : public osg::Polytope
+        {
+            bool contains(const osg::Vec3d& p) const;
+            bool containsAnyOf(const std::vector<osg::Vec3d>& p) const;
+        };
+
+        struct Triangle
+        {
+            std::vector<osg::Vec3d> _v;
+            PolytopeDP              _tope;
+
+            void set(const osg::Vec3d& v0, const osg::Vec3d& v1, const osg::Vec3d& v2);
+
+            void getMidpoints(osg::Vec3d* w) const;
+
+            bool contains(const osg::Vec3d& p) const {
+                return _tope.contains(p);
+            }
+        };
+
+        typedef std::list<osg::ref_ptr<osg::Node> > NodeList;
+
+        Triangle      _tri;
+        NodeList      _data;
+        unsigned      _dataCount;
+        HTMGroup*     _root;
+        osg::ref_ptr<osg::Geode> _debugGeode;
+        osg::ref_ptr<osg::Node>  _clusterNode;
+        osg::BoundingSphere      _bs;
+
+        friend class HTMGroup;
+    };
+
+} } // namesapce osgEarth::Util
+
+
+#endif // OSGEARTH_UTIL_HTM_H

@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2008-2012 Pelican Mapping
+* Copyright 2008-2013 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -26,4 +26,5 @@ using namespace osgEarth::Annotation;
 // static defaults
 bool AnnotationSettings::_continuousClamping = true;
 bool AnnotationSettings::_autoDepthOffset = true;
-double AnnotationSettings::_occlusionQueryMaxRange = 200000.0;
+double AnnotationSettings::_occlusionCullingMaxAltitude = 200000.0;
+double AnnotationSettings::_occlusionCullingHeightAdjustment = 5.0;

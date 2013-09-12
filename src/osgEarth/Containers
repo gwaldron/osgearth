@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2008-2012 Pelican Mapping
+* Copyright 2008-2013 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -22,6 +22,7 @@
 #include <osgEarth/Common>
 #include <osgEarth/ThreadingUtils>
 #include <list>
+#include <vector>
 
 namespace osgEarth
 {
@@ -120,20 +121,22 @@ namespace osgEarth
     {
     public:
         struct Record {
-            Record(const T* value) : _value(value) { }
-            const bool valid() const { return _value != 0L; }
-            const T& value() const { return *_value; }
+            Record() : _valid(false) { }
+            Record(const T& value) : _value(value), _valid(true) { }
+            const bool valid() const { return _valid; }
+            const T& value() const { return _value; }
         private:
             bool _valid;
-            const T* _value;
+            T    _value;
+            friend class LRUCache;
         };
 
     protected:
-        typedef typename std::list<K>::iterator lru_iter;
-        typedef typename std::list<K> lru_type;
-        typedef typename std::pair<T, lru_iter> map_value_type;
+        typedef typename std::list<K>::iterator      lru_iter;
+        typedef typename std::list<K>                lru_type;
+        typedef typename std::pair<T, lru_iter>      map_value_type;
         typedef typename std::map<K, map_value_type> map_type;
-        typedef typename map_type::iterator map_iter;
+        typedef typename map_type::iterator          map_iter;
 
         map_type _map;
         lru_type _lru;
@@ -169,14 +172,15 @@ namespace osgEarth
             }
         }
 
-        Record get( const K& key ) {
+        bool get( const K& key, Record& out ) {
             if ( _threadsafe ) {
                 Threading::ScopedMutexLock lock(_mutex);
-                return get_impl( key );
+                get_impl( key, out );
             }
             else {
-                return get_impl( key );
+                get_impl( key, out );
             }
+            return out.valid();
         }
 
         bool has( const K& key ) {
@@ -254,7 +258,7 @@ namespace osgEarth
             }
         }
 
-        Record get_impl( const K& key ) {
+        void get_impl( const K& key, Record& result ) {
             _queries++;
             map_iter mi = _map.find( key );
             if ( mi != _map.end() ) {
@@ -263,11 +267,13 @@ namespace osgEarth
                 lru_iter new_iter = _lru.end(); new_iter--;
                 mi->second.second = new_iter;
                 _hits++;
-                return Record( &(mi->second.first) );
+                result._value = mi->second.first;
+                result._valid = true;
+                //return Record( &(mi->second.first) );
             }
-            else {
-                return Record( 0L );
-            }
+            //else {
+            //    return Record( 0L );
+            //}
         }
 
         bool has_impl( const K& key ) {

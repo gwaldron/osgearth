@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2008-2012 Pelican Mapping
+* Copyright 2008-2013 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -27,6 +27,9 @@
 #include <osgEarth/ImageUtils>
 #include <osgEarth/DrapeableNode>
 #include <osgEarth/VirtualProgram>
+#include <osgEarth/Registry>
+#include <osgEarth/Capabilities>
+#include <osgEarth/ShaderGenerator>
 #include <osg/Geode>
 #include <osg/ShapeDrawable>
 #include <osg/Texture2D>
@@ -191,18 +194,9 @@ ImageOverlay::postCTOR()
 
     d->addChild( _transform );
 
-    // need a shader that supports one texture
-    VirtualProgram* vp = new VirtualProgram();
-    vp->setName( "imageoverlay");
-    vp->installDefaultColoringShaders(1);
-    //vp->installDefaultColoringAndLightingShaders(1);
-    //vp->setInheritShaders(false);
-    d->getOrCreateStateSet()->setAttributeAndModes( vp, 1 );
-    
-    init();    
-    ADJUST_UPDATE_TRAV_COUNT( this, 1 );
+    init();
 
-//    getOrCreateStateSet()->setMode(GL_DEPTH_TEST, osg::StateAttribute::OFF);
+    ADJUST_UPDATE_TRAV_COUNT( this, 1 );
 }
 
 void
@@ -307,6 +301,18 @@ ImageOverlay::init()
         applyStyle( style );
         setLightingIfNotSet( false );
         clampMesh( getMapNode()->getTerrain()->getGraph() );
+
+        if ( Registry::capabilities().supportsGLSL() )
+        {
+            OE_WARN << LC << "ShaderGen RUNNING" << std::endl;
+            ShaderGenerator gen;
+            _geode->accept( gen );
+            //// need a shader that supports one texture
+            //VirtualProgram* vp = new VirtualProgram();
+            //vp->setName( "imageoverlay");
+            //vp->installDefaultColoringShaders(1);
+            //d->getOrCreateStateSet()->setAttributeAndModes( vp, 1 );
+        }
     }
 }
 

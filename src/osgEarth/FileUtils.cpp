@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2012 Pelican Mapping
+ * Copyright 2008-2013 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -19,16 +19,33 @@
 
 #include <osgEarth/FileUtils>
 #include <osgEarth/StringUtils>
+#include <osgEarth/DateTime>
 #include <osgDB/FileUtils>
 #include <osgDB/FileNameUtils>
 #include <osgDB/Registry>
 #include <osg/Notify>
+
+#ifdef WIN32
+#  include <windows.h>
+#else
+#  include <stdio.h>
+#  include <stdlib.h>
+#endif
+
+#include <sys/types.h>
+
+#ifdef WIN32
+#  include <sys/utime.h>
+#else
+#  include <utime.h>
+#endif
+
+#include <sys/stat.h>
+#include <time.h>
+
 #include <list>
 #include <sstream>
 
-#ifdef WIN32
-#include <windows.h>
-#endif
 
 using namespace osgEarth;
 
@@ -167,3 +184,73 @@ std::string osgEarth::getTempName(const std::string& prefix, const std::string& 
     }
     return "";
 }
+
+
+bool
+osgEarth::touchFile(const std::string& path)
+{
+    DateTime now;
+    struct ::utimbuf ut;
+    ut.actime = now.asTimeStamp();
+    ut.modtime = now.asTimeStamp();
+    return 0 == ::utime( path.c_str(), &ut );
+}
+
+
+TimeStamp
+osgEarth::getLastModifiedTime(const std::string& path)
+{
+    struct stat buf;
+    if ( stat(path.c_str(), &buf) == 0 )
+        return buf.st_mtime;
+    else
+        return 0;
+}
+
+
+/**************************************************/
+DirectoryVisitor::DirectoryVisitor()
+{
+}    
+
+void DirectoryVisitor::handleFile( const std::string& filename )
+{
+}
+
+bool DirectoryVisitor::handleDir( const std::string& path )
+{
+	return true;
+}
+
+void DirectoryVisitor::traverse(const std::string& path )
+{
+	if ( osgDB::fileType(path) == osgDB::DIRECTORY )
+	{            
+		if (handleDir( path ))
+		{
+			osgDB::DirectoryContents files = osgDB::getDirectoryContents(path);
+			for( osgDB::DirectoryContents::const_iterator f = files.begin(); f != files.end(); ++f )
+			{
+				if ( f->compare(".") == 0 || f->compare("..") == 0 )
+					continue;
+
+				std::string filepath = osgDB::concatPaths( path, *f );
+				traverse( filepath );                
+			}
+		}
+	}
+	else if ( osgDB::fileType(path) == osgDB::REGULAR_FILE )
+	{
+		handleFile( path );            
+	}
+}
+
+/**************************************************/
+CollectFilesVisitor::CollectFilesVisitor()  
+{
+}
+
+void CollectFilesVisitor::handleFile( const std::string& filename )
+{
+	filenames.push_back( filename );        
+}        

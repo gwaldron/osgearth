@@ -1,0 +1,428 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+* Copyright 2008-2013 Pelican Mapping
+* http://osgearth.org
+*
+* osgEarth is free software; you can redistribute it and/or modify
+* it under the terms of the GNU Lesser General Public License as published by
+* the Free Software Foundation; either version 2 of the License, or
+* (at your option) any later version.
+*
+* This program is distributed in the hope that it will be useful,
+* but WITHOUT ANY WARRANTY; without even the implied warranty of
+* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+* GNU Lesser General Public License for more details.
+*
+* You should have received a copy of the GNU Lesser General Public License
+* along with this program.  If not, see <http://www.gnu.org/licenses/>
+*/
+
+#include <osgEarthQt/Common>
+#include <osgEarthQt/MultiViewerWidget>
+#include <osgEarthQt/DataManager>
+#include <osgEarthQt/LayerManagerWidget>
+#include <osgEarthQt/MapCatalogWidget>
+#include <osgEarthQt/TerrainProfileWidget>
+#include <osgEarthQt/ViewerWidget>
+
+#include <osgEarth/Common>
+#include <osgEarthDrivers/gdal/GDALOptions>
+#include <osgEarth/GeoData>
+#include <osgEarth/Map>
+#include <osgEarth/Progress>
+
+#include <osgDB/FileNameUtils>
+
+#include <QAction>
+#include <QDockWidget>
+#include <QtGui>
+#include <QMainWindow>
+#include <QMetaObject>
+#include <QProgressDialog>
+#include <QToolBar>
+
+#include "SceneController.h"
+#include "TMSExporter.h"
+#include "ExportDialog"
+#include "WaitDialog"
+
+namespace
+{
+  class ExportProgressCallback : public osgEarth::ProgressCallback
+  {
+  public:
+    ExportProgressCallback(QProgressDialog* dialog)
+      : _dialog(dialog)
+    {
+    }
+
+    virtual ~ExportProgressCallback() { }
+
+    bool reportProgress(double current, double total, unsigned currentStage, unsigned totalStages, const std::string& msg)
+    {
+      if (_dialog)
+      {
+        QMetaObject::invokeMethod(_dialog, "setValue", Qt::QueuedConnection, Q_ARG(int, (current / total) * 100));
+
+        if (_dialog->wasCanceled())
+          return true;
+      }
+
+      return false;
+    }
+
+    void onCompleted()
+    {
+      QMetaObject::invokeMethod(_dialog, "close", Qt::QueuedConnection);
+    }
+
+  private:
+    QProgressDialog* _dialog;
+  };
+
+  struct SceneBoundsSetCallback : public PackageQt::BoundsSetCallback
+  {
+    SceneBoundsSetCallback(QAction* toggleAction) : _action(toggleAction) { }
+
+    void boundsSet(const osg::Vec2d& ll, const osg::Vec2d& ur)
+    {
+      QMetaObject::invokeMethod(_action, "setChecked", Qt::QueuedConnection, Q_ARG(bool, false));
+    }
+
+    QAction* _action;
+  };
+}
+
+namespace PackageQt
+{
+
+class PackageQtMainWindow : public QMainWindow
+{
+    Q_OBJECT
+
+public:
+
+  PackageQtMainWindow(osgEarth::QtGui::ViewerWidget* viewerWidget, PackageQt::SceneController* controller, PackageQt::TMSExporter* exporter)
+        : _viewerWidget(viewerWidget), _controller(controller), _exporter(exporter), _compositeViewerWidget(0L), _lastDir("")
+    {
+        _manager = new osgEarth::QtGui::DataManager(_controller->mapNode());
+
+        initUi();
+
+        if (_viewerWidget)
+        {
+          setCentralWidget(_viewerWidget);
+
+          _views.clear();
+          _viewerWidget->getViews( _views );
+        }
+
+        reloadDisplay();
+    }
+
+
+private slots:
+
+    void openEarthFile()
+    {
+      QString filePath = QFileDialog::getOpenFileName(this, tr("Open an earth file"), _lastDir, tr("Earth files (*.earth)"));
+      if (!filePath.isNull())
+      {
+        _lastDir = QFileInfo(filePath).path();
+
+        PackageQt::WaitDialog msg(tr("Loading .earth file. Please wait."));
+        msg.show();
+        msg.repaint();
+
+        _controller->loadEarthFile(filePath.toStdString());
+        _manager = new osgEarth::QtGui::DataManager(_controller->mapNode());
+        reloadDisplay();
+
+        msg.hide();
+      }
+    }
+
+    void addImageLayer()
+    {
+      bool pathSet = false;
+
+      QStringList filePaths = QFileDialog::getOpenFileNames(this, tr("Add an image layer"), _lastDir, tr("Images (*.tif *.ecw);;All files (*.*)"));
+
+      _manager->map()->beginUpdate();
+
+      for (int i = 0; i < filePaths.size(); i++)
+      {
+        QString filePath = filePaths.at(i);
+        if (!filePath.isNull())
+        {
+          if (!pathSet)
+          {
+            _lastDir = QFileInfo(filePath).path();
+            pathSet = true;
+          }
+
+          osgEarth::Drivers::GDALOptions layerOpt;
+          layerOpt.url() = osgEarth::URI(filePath.toStdString());
+          
+          std::string fileName = osgDB::getSimpleFileName(filePath.toStdString());
+          osg::ref_ptr<osgEarth::ImageLayer> newLayer = new osgEarth::ImageLayer(osgEarth::ImageLayerOptions(fileName, layerOpt));
+
+          _manager->map()->addImageLayer(newLayer.get());
+        }
+      }
+
+      _manager->map()->endUpdate();
+    }
+
+    //void addImageFolder()
+    //{
+    //}
+
+    void addElevationLayer()
+    {
+      bool pathSet = false;
+
+      QStringList filePaths = QFileDialog::getOpenFileNames(this, tr("Add an elevation layer"), _lastDir, tr("Elevation files (*.tif *.dt*);;All files (*.*)"));
+      
+      _manager->map()->beginUpdate();
+
+      for (int i=0; i < filePaths.size(); i++)
+      {
+        QString filePath = filePaths.at(i);
+        if (!filePath.isNull())
+        {
+          if (!pathSet)
+          {
+            _lastDir = QFileInfo(filePath).path();
+            pathSet = true;
+          }
+
+          osgEarth::Drivers::GDALOptions layerOpt;
+          layerOpt.url() = osgEarth::URI(filePath.toStdString());
+          
+          std::string fileName = osgDB::getSimpleFileName(filePath.toStdString());
+          osg::ref_ptr<osgEarth::ElevationLayer> newLayer = new osgEarth::ElevationLayer(osgEarth::ElevationLayerOptions(fileName, layerOpt));
+
+          _manager->map()->addElevationLayer(newLayer.get());
+        }
+      }
+
+      _manager->map()->endUpdate();
+    }
+
+    //void addElevationFolder()
+    //{
+    //}
+
+    void exportRepo()
+    {
+        if (_exporter)
+        {
+          PackageQt::ExportDialog exportDialog(_lastDir.toStdString(), _controller->getBoundsString());
+	        if (exportDialog.exec() == QDialog::Accepted)
+	        {
+            //QProgressDialog* progress = new QProgressDialog(tr("Exporting. Please wait."), tr("Cancel"), 0, 100, this, Qt::CustomizeWindowHint|Qt::WindowTitleHint|Qt::WindowStaysOnTopHint);
+            QProgressDialog* progress = new QProgressDialog(tr("Processing layers..."), QString(), 0, 100, this, Qt::CustomizeWindowHint|Qt::WindowTitleHint|Qt::WindowStaysOnTopHint);
+            progress->setAttribute(Qt::WA_DeleteOnClose, true);
+            progress->setWindowTitle(tr("Exporting"));
+            progress->setValue(0);
+            _exporter->setProgressCallback(new ExportProgressCallback(progress));
+
+            progress->setWindowModality(Qt::WindowModal);
+            progress->show();
+
+            _exporter->setKeepEmpties(exportDialog.keepEmpties());
+            _exporter->setMaxLevel(exportDialog.getMaxLevel());
+
+            osg::Vec2d ll = _controller->getBoundsLL();
+            osg::Vec2d ur = _controller->getBoundsUR();
+
+            std::vector<osgEarth::Bounds> bounds;
+            if (exportDialog.useBounds() && (ur - ll).length() > 0.0)
+              bounds.push_back(osgEarth::Bounds(ll.x(), ll.y(), ur.x(), ur.y()));
+
+            _exportThread = new TMSExporterWorkerThread(
+              _exporter, 
+              _controller->mapNode(),
+              exportDialog.getExportPath(),
+              bounds,
+              (exportDialog.exportEarthFile() ? exportDialog.getEarthFilePath() : ""),
+              exportDialog.overwriteExisting(),
+              "" /*(exportDialog.overrideExtension() ? exportDialog.getExtension() : "")*/);
+
+            _exportThread->start();
+          }
+        }
+    }
+
+    void getBoundingBox(bool checked)
+    {
+      if (!_controller)
+        return;
+
+      if (checked)
+        _controller->captureBounds(new SceneBoundsSetCallback(_bboxAction));
+      else
+        _controller->endBoundsCapture();
+
+    }
+
+    void clearBoundingBox()
+    {
+      if (_controller)
+        _controller->clearBounds();
+    }
+
+protected:
+
+    void closeEvent(QCloseEvent *event)
+    {
+        if (_viewerWidget)
+        {
+            //_viewerWidget->getViewer()->setSceneData(0);
+            //_viewerWidget->getViewer()->frame();
+            _viewerWidget->getViewer()->setDone(true);
+        }
+
+        if (_compositeViewerWidget)
+        {
+            _compositeViewerWidget/*->getViewer()*/->setDone(true);
+        }
+
+        event->accept();
+    }
+
+private:
+
+    void initUi()
+    {
+        setWindowTitle(tr("osgEarth Package Qt"));
+        setWindowIcon(QIcon(":/images/export.png"));
+
+        createActions();
+        createToolbars();
+        createDockWidgets();
+    }
+
+    void reloadDisplay()
+    {
+      if (_controller)
+      {
+        // create a second catalog widget for viewpoints
+        osgEarth::QtGui::MapCatalogWidget* vpCatalog = new osgEarth::QtGui::MapCatalogWidget(_manager, osgEarth::QtGui::MapCatalogWidget::VIEWPOINTS);
+        vpCatalog->setActiveViews(_views);
+        _vpDock->setWidget(vpCatalog);
+
+        // create layer manager widget and add as a docked widget on the right
+        osgEarth::QtGui::LayerManagerWidget* elevLayerManager = new osgEarth::QtGui::LayerManagerWidget(_manager, osgEarth::QtGui::LayerManagerWidget::ELEVATION_LAYERS);
+        elevLayerManager->setActiveViews(_views);
+        _elevLayersDock->setWidget(elevLayerManager);
+
+        // create layer manager widget and add as a docked widget on the right
+        osgEarth::QtGui::LayerManagerWidget* imgLayerManager = new osgEarth::QtGui::LayerManagerWidget(_manager, osgEarth::QtGui::LayerManagerWidget::IMAGE_LAYERS);
+        imgLayerManager->setActiveViews(_views);
+        _imgLayersDock->setWidget(imgLayerManager);
+      }
+    }
+
+	  void createActions()
+    {
+        _openEarthFileAction = new QAction(QIcon(":/images/earth.png"), tr("&Open .earth file"), this);
+        _openEarthFileAction->setToolTip(tr("Open .earth file"));
+        connect(_openEarthFileAction, SIGNAL(triggered()), this, SLOT(openEarthFile()));
+        _openEarthFileAction->setDisabled(!_manager.valid());
+
+        _addImageLayerAction = new QAction(QIcon(":/images/add_image.png"), tr("&Add Imagery"), this);
+        _addImageLayerAction->setToolTip(tr("Add imagery"));
+        connect(_addImageLayerAction, SIGNAL(triggered()), this, SLOT(addImageLayer()));
+        _addImageLayerAction->setDisabled(!_manager.valid());
+
+        //_addImageFolderAction = new QAction(QIcon(":/images/add_image_folder.png"), tr("&Add Folder of Imagery"), this);
+        //_addImageFolderAction->setToolTip(tr("Add folder of imagery"));
+        //connect(_addImageFolderAction, SIGNAL(triggered()), this, SLOT(addImageFolder()));
+        //_addImageFolderAction->setDisabled(!_manager.valid());
+
+        _addElevationLayerAction = new QAction(QIcon(":/images/add_elevation.png"), tr("&Add Elevation"), this);
+        _addElevationLayerAction->setToolTip(tr("Add elevation"));
+        connect(_addElevationLayerAction, SIGNAL(triggered()), this, SLOT(addElevationLayer()));
+        _addElevationLayerAction->setDisabled(!_manager.valid());
+
+        //_addElevationFolderAction = new QAction(QIcon(":/images/add_elevation_folder.png"), tr("&Add Folder of Elevation"), this);
+        //_addElevationFolderAction->setToolTip(tr("Add folder of elevation"));
+        //connect(_addElevationFolderAction, SIGNAL(triggered()), this, SLOT(addElevationFolder()));
+        //_addElevationFolderAction->setDisabled(!_manager.valid());
+
+        _exportAction = new QAction(QIcon(":/images/export.png"), tr(""), this);
+        _exportAction->setToolTip(tr("Export"));
+        connect(_exportAction, SIGNAL(triggered()), this, SLOT(exportRepo()));
+
+        _bboxAction = new QAction(QIcon(":/images/bbox.png"), tr(""), this);
+        _bboxAction->setToolTip(tr("Specify bounding box"));
+        _bboxAction->setCheckable(true);
+        connect(_bboxAction, SIGNAL(triggered(bool)), this, SLOT(getBoundingBox(bool)));
+
+        _bboxClearAction = new QAction(QIcon(":/images/bbox_clear.png"), tr(""), this);
+        _bboxClearAction->setToolTip(tr("Clear bounding box"));
+        connect(_bboxClearAction, SIGNAL(triggered()), this, SLOT(clearBoundingBox()));
+    }
+
+	  void createToolbars()
+    {
+        _fileToolbar = addToolBar(tr("File Toolbar"));
+        _fileToolbar->setObjectName(tr("FILE_TOOLBAR"));
+        _fileToolbar->setIconSize(QSize(24, 24));
+        _fileToolbar->addAction(_openEarthFileAction);
+        _fileToolbar->addSeparator();
+        _fileToolbar->addAction(_addImageLayerAction);
+        //_fileToolbar->addAction(_addImageFolderAction);
+        _fileToolbar->addAction(_addElevationLayerAction);
+        //_fileToolbar->addAction(_addElevationFolderAction);
+        _fileToolbar->addSeparator();
+        _fileToolbar->addAction(_bboxAction);
+        _fileToolbar->addAction(_bboxClearAction);
+        _fileToolbar->addSeparator();
+        _fileToolbar->addAction(_exportAction);
+    }
+
+    void createDockWidgets()
+    {
+      _elevLayersDock = new QDockWidget(QWidget::tr("Elevation Layers"));
+      _elevLayersDock->setAllowedAreas(Qt::LeftDockWidgetArea | Qt::RightDockWidgetArea);
+      addDockWidget(Qt::LeftDockWidgetArea, _elevLayersDock);
+
+      _imgLayersDock = new QDockWidget(QWidget::tr("Image Layers"));
+      _imgLayersDock->setAllowedAreas(Qt::LeftDockWidgetArea | Qt::RightDockWidgetArea);
+      addDockWidget(Qt::LeftDockWidgetArea, _imgLayersDock);
+
+      _vpDock = new QDockWidget;
+      _vpDock->setAllowedAreas(Qt::LeftDockWidgetArea | Qt::RightDockWidgetArea);
+      addDockWidget(Qt::LeftDockWidgetArea, _vpDock);
+    }
+	
+    PackageQt::SceneController* _controller;
+    PackageQt::TMSExporter* _exporter;
+    osg::ref_ptr<TMSExporterWorkerThread> _exportThread;
+
+    osg::ref_ptr<osgEarth::QtGui::DataManager> _manager;
+    osgEarth::QtGui::ViewerWidget* _viewerWidget;
+    osgEarth::QtGui::MultiViewerWidget* _compositeViewerWidget;
+    osgEarth::QtGui::ViewVector _views;
+
+    QAction *_openEarthFileAction;
+    QAction *_addImageLayerAction;
+    //QAction *_addImageFolderAction;
+    QAction *_addElevationLayerAction;
+    //QAction *_addElevationFolderAction;
+    QAction *_exportAction;
+    QAction *_bboxAction;
+    QAction *_bboxClearAction;
+    QToolBar *_fileToolbar;
+    
+    QDockWidget *_vpDock;
+    QDockWidget *_elevLayersDock;
+    QDockWidget *_imgLayersDock;
+
+    QString _lastDir;
+};
+
+}

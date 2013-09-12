@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2012 Pelican Mapping
+ * Copyright 2008-2013 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -99,14 +99,14 @@ FeatureQueryTool::handle( const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdap
             for(Picker::Hits::iterator hit = hits.begin(); hit != hits.end(); ++hit )
             {
                 FeatureSourceIndexNode* index = picker.getNode<FeatureSourceIndexNode>( *hit );
-                if ( index && (hit->distance < closestDistance) )
+                if ( index && (hit->ratio < closestDistance) )
                 {
                     FeatureID fid;
                     if ( index->getFID( hit->drawable, hit->primitiveIndex, fid ) )
                     {
                         closestIndex    = index;
                         closestFID      = fid;
-                        closestDistance = hit->distance;
+                        closestDistance = hit->ratio;
                         closestWorldPt  = hit->matrix.valid() ? hit->localIntersectionPoint * (*hit->matrix.get()) : hit->localIntersectionPoint;
                     }
                 }

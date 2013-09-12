@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2012 Pelican Mapping
+ * Copyright 2008-2013 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -20,6 +20,7 @@
 #include <osgEarth/TileSource>
 #include <osgEarth/Registry>
 #include <osgEarth/StringUtils>
+#include <osgEarth/TimeControl>
 #include <osgEarth/URI>
 #include <osgDB/WriteFile>
 #include <osg/Version>
@@ -84,8 +85,7 @@ TerrainLayerOptions::getConfig( bool isolate ) const
     conf.updateIfSet( "loading_weight", _loadingWeight );
     conf.updateIfSet( "enabled", _enabled );
     conf.updateIfSet( "visible", _visible );
-    conf.updateIfSet( "edge_buffer_ratio", _edgeBufferRatio);
-    conf.updateIfSet( "max_data_level", _maxDataLevel);
+    conf.updateIfSet( "edge_buffer_ratio", _edgeBufferRatio);    
     conf.updateIfSet( "reprojected_tilesize", _reprojectedTileSize);
 
     conf.updateIfSet( "vdatum", _vertDatum );
@@ -113,8 +113,7 @@ TerrainLayerOptions::fromConfig( const Config& conf )
     conf.getIfSet( "loading_weight", _loadingWeight );
     conf.getIfSet( "enabled", _enabled );
     conf.getIfSet( "visible", _visible );
-    conf.getIfSet( "edge_buffer_ratio", _edgeBufferRatio);
-    conf.getIfSet( "max_data_level", _maxDataLevel);
+    conf.getIfSet( "edge_buffer_ratio", _edgeBufferRatio);    
     conf.getIfSet( "reprojected_tilesize", _reprojectedTileSize);
 
     conf.getIfSet( "vdatum", _vertDatum );
@@ -206,6 +205,7 @@ TerrainLayer::setCache( Cache* cache )
             if ( _runtimeOptions->cacheId().isSet() && !_runtimeOptions->cacheId()->empty() )
             {
                 // user expliticy set a cacheId in the terrain layer options.
+                // this appears to be a NOP; review for removal -gw
                 cacheId = *_runtimeOptions->cacheId();
             }
             else
@@ -280,13 +280,21 @@ TerrainLayer::getTileSource() const
             // a policy in the initialization options.
             if ( _tileSource.valid() && !_initOptions.cachePolicy().isSet() )
             {
-                CachePolicy hint = _tileSource->getCachePolicyHint();
+                CachePolicy hint = _tileSource->getCachePolicyHint( _targetProfileHint.get() );
 
                 if ( hint.usage().isSetTo(CachePolicy::USAGE_NO_CACHE) )
                 {
                     const_cast<TerrainLayer*>(this)->setCachePolicy( hint );
                     OE_INFO << LC << "Caching disabled (by policy hint)" << std::endl;
                 }
+            }
+
+            // Unless the user has already configured an expiration policy, use the "last modified"
+            // timestamp of the TileSource to set a minimum valid cache entry timestamp.
+            CachePolicy& cp = _runtimeOptions->cachePolicy().mutable_value();
+            if ( !cp.minTime().isSet() && !cp.maxAge().isSet() )
+            {
+                cp.minTime() = _tileSource->getLastModifiedTime();
             }
 
             OE_INFO << LC << "cache policy = " << getCachePolicy().usageString() << std::endl;
@@ -327,27 +335,6 @@ TerrainLayer::getProfile() const
     }
     
     return _profile.get();
-}
-
-unsigned int
-TerrainLayer::getMaxDataLevel() const
-{
-    //Try the setting first
-
-    if ( _runtimeOptions->maxDataLevel().isSet() )
-    {
-        return _runtimeOptions->maxDataLevel().get();
-    }
-
-    //Try the TileSource
-    TileSource* ts = getTileSource();
-    if ( ts )
-    {
-        return ts->getMaxDataLevel();
-    }
-
-    //Just default
-    return 20;
 }
 
 unsigned
@@ -439,9 +426,6 @@ TerrainLayer::getCacheBin( const Profile* profile, const std::string& binId )
                     // in cacheonly mode, create a profile from the first cache bin accessed
                     // (they SHOULD all be the same...)
                     _profile = Profile::create( *meta._sourceProfile );
-
-                    // copy the max data level from the cache
-                    _runtimeOptions->maxDataLevel() = *meta._maxDataLevel;
                 }
             }
 
@@ -454,7 +438,6 @@ TerrainLayer::getCacheBin( const Profile* profile, const std::string& binId )
                     // no existing metadata; create some.
                     meta._cacheBinId    = binId;
                     meta._sourceName    = this->getName();
-                    meta._maxDataLevel  = getMaxDataLevel();
                     meta._sourceDriver  = getTileSource()->getOptions().getDriver();
                     meta._sourceProfile = getProfile()->toProfileOptions();
                     meta._cacheProfile  = profile->toProfileOptions();
@@ -464,25 +447,26 @@ TerrainLayer::getCacheBin( const Profile* profile, const std::string& binId )
                 }
                 else if ( isCacheOnly() )
                 {
-                    OE_WARN << LC << "Failed to create a cache bin for layer"
-                        << " because cache_only mode is enabled and no existing cache could be found."
+                    OE_WARN << LC << "Failed to open a cache for layer [" << getName() << "] "
+                        << " because cache_only policy is in effect and bin [" << binId << "] cound not be located."
                         << std::endl;
                     return 0L;
                 }
                 else
                 {
-                    OE_WARN << LC << "Failed to create a cache bin for layer"
-                        << " because there is no valid tile source."
+                    OE_WARN << LC << "Failed to create cache bin [" << binId << "] "
+                        << "for layer [" << getName() << "] because there is no valid tile source."
                         << std::endl;
                     return 0L;
                 }
             }
 
-
             // store the bin.
             CacheBinInfo& newInfo = _cacheBins[binId];
             newInfo._metadata = meta;
             newInfo._bin      = newBin.get();
+
+            OE_INFO << LC << "Opened cache bin [" << binId << "]" << std::endl;
         }
         else
         {
@@ -587,8 +571,8 @@ TerrainLayer::initTileSource()
 
 bool
 TerrainLayer::isKeyValid(const TileKey& key) const
-{
-    if (!key.valid() || _tileSourceInitFailed) 
+{    
+    if (!key.valid())
         return false;
 
     // Check to see if an explicity max LOD is set. Do NOT compare against the minLevel,
@@ -629,7 +613,12 @@ bool
 TerrainLayer::isCached(const TileKey& key) const
 {
     CacheBin* bin = const_cast<TerrainLayer*>(this)->getCacheBin( key.getProfile() );
-    return bin ? bin->isCached(key.str()) : false;
+    if ( !bin )
+        return false;
+
+    TimeStamp minTime = this->getCachePolicy().getMinAcceptTime();
+
+    return bin->getRecordStatus( key.str(), minTime ) == CacheBin::STATUS_OK;
 }
 
 void
@@ -643,7 +632,7 @@ void
 TerrainLayer::setDBOptions( const osgDB::Options* dbOptions )
 {
     _dbOptions = Registry::instance()->cloneOrCreateOptions( dbOptions );
-    initializeCachePolicy( dbOptions );    
+    initializeCachePolicy( dbOptions );
     storeProxySettings( _dbOptions );
 }
 
@@ -681,3 +670,8 @@ TerrainLayer::storeProxySettings(osgDB::Options* opt)
     }
 }
 
+SequenceControl*
+TerrainLayer::getSequenceControl()
+{
+    return dynamic_cast<SequenceControl*>( getTileSource() );
+}

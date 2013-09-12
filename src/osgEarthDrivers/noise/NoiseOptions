@@ -1,0 +1,220 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+ * Copyright 2008-2013 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+#ifndef OSGEARTH_DRIVER_NOISE_DRIVEROPTIONS
+#define OSGEARTH_DRIVER_NOISE_DRIVEROPTIONS 1
+
+#include <osgEarth/Common>
+#include <osgEarth/TileSource>
+
+namespace osgEarth { namespace Drivers
+{
+    using namespace osgEarth;
+
+    /**
+     * Options for the Noise driver
+     * See http://libnoise.sourceforge.net/docs/classnoise_1_1module_1_1Perlin.html for documentation
+     * on specific noise settings.
+     */
+    class NoiseOptions : public TileSourceOptions // NO EXPORT; header only
+    {
+    public:
+
+        /**
+         * Resolution is the geogrphic range over which to generate one
+         * complete cycle the noise. At each end of the cycle, the noise
+         * value will be zero.
+         *
+         * Resolution is simply the reciprocal of the frequency property,
+         * but the concept is a little more intuitive in the context of maps
+         * since it refers to a real-world distance. Therefore, you only 
+         * need to specify one or the other.
+         * 
+         * Within this resoltuion range, you can control the extent of the 
+         * noise values by using the "scale" property.
+         */
+        optional<double>& resolution() { return _resolution; }
+        const optional<double>& resolution() const { return _resolution; }
+
+        /**
+         * Scale factor for elevation noise. For heightfields or normal maps,
+         * use this to map noise values [-1..1] to elevations [-1*scale..1*scale]
+         * across your resolution span.
+         *
+         * For example, if your resolution is 250m, a scale of 20 means:
+         * "vary the elevation values by +/-20m across that 250m span, with a
+         * an offset of zero at each endpoint."
+         */
+        optional<double>& scale() { return _scale; }
+        const optional<double>& scale() const { return _scale; } 
+
+        /**
+         * Bias (offset) for elevation noise. For heightfields or normal maps,
+         * use this to offset scaled elevation values by a fixed amount.
+         * (elevation = bias + scale * [-1..1]).
+         */
+        optional<double>& bias() { return _bias; }
+        const optional<double>& bias() const { return _bias; }
+
+        /**
+         * Levels of detail in the output of the noise function. Over a
+         * span of [resolution], the noise function will recurse this many
+         * times within that span. Increase this value to get more detail
+         * the further you zoom in. Use the persistence and lacunarity
+         * properties to tweak how that detail gets added.
+         *
+         * See: http://libnoise.sourceforge.net/glossary/index.html#octave
+         */
+        optional<int>& octaves() { return _octaves; }
+        const optional<int>& octaves() const { return _octaves; }
+
+        /**
+         * The base frequency of the noise generator; i.e. how often the 
+         * noise pattern resets across the map. A frequency of 1.0/map_width
+         * will cause the noise function to reset once across the entire
+         * width of the map. So in general, a frequency of "1.0/x" will
+         * cause to function to reset every X meters.
+         *
+         * Frequency is the reciprocal of the resolution property. You only
+         * need to set one or the other.
+         */
+        optional<double>& frequency() { return _frequency; }
+        const optional<double>& frequency() const { return _frequency; }
+
+        /**
+         * When using multiple octaves, the Persistence is the factor by
+         * which the "scale" of the noise function decreases with each successive
+         * octave.
+         * I.e.: Amp(Oct2) = Amp(Oct1) * Persistance.
+         * Default = 0.5.
+         */
+        optional<double>& persistence() { return _persistence; }
+        const optional<double>& persistence() const { return _persistence; }
+
+        /**
+         * When using multiple octaves, Lacunarity is the factor by which
+         * frequency increases with each successive octave:
+         * I.e.: Freq(Oct2) = Freq(Oct1) * Lacunarity.
+         * Default = 2.0.
+         */
+        optional<double>& lacunarity() { return _lacunarity; }
+        const optional<double>& lacunarity() const { return _lacunarity; } 
+
+        /**
+         * Seed value for the noise function's random number generator.
+         * Set this to ensure the exact same noise data each time you run.
+         */
+        optional<int>& seed() { return _seed; }
+        const optional<int>& seed() const { return _seed; }
+
+        /**
+         * Whether to convert the image into a normal map (images only)
+         * Default = false.
+         */
+        optional<bool>& normalMap() { return _normalMap; }
+        const optional<bool>& normalMap() const { return _normalMap; }
+
+        /**
+         * For height fields, clamp the minimum elevation to this value.
+         */
+        optional<float>& minElevation() { return _minElevation; }
+        const optional<float>& minElevation() const { return _minElevation; }
+
+        /**
+         * For height fields, clamp the maximum elevation to this value.
+         */
+        optional<float>& maxElevation() { return _maxElevation; }
+        const optional<float>& maxElevation() const { return _maxElevation; }
+
+
+    public:
+        NoiseOptions( const TileSourceOptions& opt =TileSourceOptions() ) :
+            TileSourceOptions( opt ),
+            _minElevation(-FLT_MAX),
+            _maxElevation( FLT_MAX),
+            _normalMap   (false),
+            _scale       (1.0),
+            _bias        (0.0),
+            _octaves     (3),
+            _resolution  (1.0),
+            _frequency   (1.0),
+            _persistence (0.5),
+            _lacunarity  (2.0)
+        {
+            setDriver( "noise" );
+            fromConfig( _conf );
+        }
+
+        /** dtor */
+        virtual ~NoiseOptions() { }
+
+    public:
+        Config getConfig() const {
+            Config conf = TileSourceOptions::getConfig();
+            conf.updateIfSet("min_elevation", _minElevation);
+            conf.updateIfSet("max_elevation", _maxElevation);
+            conf.updateIfSet("octaves", _octaves);
+            conf.updateIfSet("resolution", _resolution);
+            conf.updateIfSet("frequency", _frequency);
+            conf.updateIfSet("persistence", _persistence);
+            conf.updateIfSet("lacunarity", _lacunarity);
+            conf.updateIfSet("seed", _seed);
+            conf.updateIfSet("normal_map", _normalMap);
+            conf.updateIfSet("scale", _scale );
+            conf.updateIfSet("bias", _bias );
+            return conf;
+        }
+
+    protected:
+        void mergeConfig( const Config& conf ) {
+            TileSourceOptions::mergeConfig( conf );
+            fromConfig( conf );
+        }
+
+    private:
+        void fromConfig( const Config& conf ) {
+            conf.getIfSet( "min_elevation", _minElevation );
+            conf.getIfSet( "max_elevation", _maxElevation );
+            conf.getIfSet( "octaves", _octaves );
+            conf.getIfSet( "resolution", _resolution);
+            conf.getIfSet( "frequency", _frequency );
+            conf.getIfSet( "persistence", _persistence );
+            conf.getIfSet( "lacunarity", _lacunarity );
+            conf.getIfSet( "seed", _seed );
+            conf.getIfSet( "normal_map", _normalMap );
+            conf.getIfSet( "scale", _scale );
+            conf.getIfSet( "bias", _bias );
+        }
+
+        optional<float>  _minElevation;
+        optional<float>  _maxElevation;
+        optional<int>    _octaves;
+        optional<double> _resolution;
+        optional<double> _frequency;
+        optional<double> _persistence;
+        optional<double> _lacunarity;
+        optional<int>    _seed;
+        optional<bool>   _normalMap;
+        optional<double> _scale;
+        optional<double> _bias;
+    };
+
+} } // namespace osgEarth::Drivers
+
+#endif // OSGEARTH_DRIVER_NOISE_DRIVEROPTIONS
+

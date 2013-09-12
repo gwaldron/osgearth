@@ -1,0 +1,67 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+* Copyright 2008-2013 Pelican Mapping
+* http://osgearth.org
+*
+* osgEarth is free software; you can redistribute it and/or modify
+* it under the terms of the GNU Lesser General Public License as published by
+* the Free Software Foundation; either version 2 of the License, or
+* (at your option) any later version.
+*
+* This program is distributed in the hope that it will be useful,
+* but WITHOUT ANY WARRANTY; without even the implied warranty of
+* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+* GNU Lesser General Public License for more details.
+*
+* You should have received a copy of the GNU Lesser General Public License
+* along with this program.  If not, see <http://www.gnu.org/licenses/>
+*/
+#ifndef OSGEARTH_TIME_CONTROL_H
+#define OSGEARTH_TIME_CONTROL_H 1
+
+#include <osgEarth/Common>
+#include <osg/FrameStamp>
+#include <vector>
+
+namespace osgEarth
+{
+    /**
+     * Information about one of the frames in a sequence.
+     */
+    struct SequenceFrameInfo
+    {
+        std::string timeIdentifier;
+    };
+
+
+    /**
+     * Interface to an object that is subject to time controls.
+     * Pure virtual.
+     */
+    class SequenceControl
+    {
+    public:
+        /** Whether the implementation supports these methods */
+        virtual bool supportsSequenceControl() const =0;
+
+        /** Starts playback */
+        virtual void playSequence() =0;
+
+        /** Stops playback */
+        virtual void pauseSequence() =0;
+
+        /** Seek to a specific frame */
+        virtual void seekToSequenceFrame(unsigned frame) =0;
+
+        /** Whether the object is in playback mode */
+        virtual bool isSequencePlaying() const =0;
+
+        /** Gets data about the current frame in the sequence */
+        virtual const std::vector<SequenceFrameInfo>& getSequenceFrameInfo() const =0;
+
+        /** Gets the index of the current frame. */
+        virtual int getCurrentSequenceFrameIndex( const osg::FrameStamp* ) const =0;
+    };
+}
+
+#endif // OSGEARTH_TIME_CONTROL_H

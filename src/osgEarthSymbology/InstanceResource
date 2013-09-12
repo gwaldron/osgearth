@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2012 Pelican Mapping
+ * Copyright 2008-2013 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -46,6 +46,9 @@ namespace osgEarth { namespace Symbology
          * Creates a new Node representing the instance.
          */
         osg::Node* createNode( const osgDB::Options* dbOptions ) const;
+
+        /** Whether this instance type is 2D (orthographic screen space) */
+        virtual bool is2D() const =0;
 
     public:
         /** Source location of the actual data to load.  */

@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2012 Pelican Mapping
+ * Copyright 2008-2013 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -83,8 +83,8 @@ namespace osgEarth { namespace Features
         virtual FilterContext push( FeatureList& input, FilterContext& context );
 
     protected:
-        optional<double> _distance;
-        int _numQuadSegs;
+        optional<double>     _distance;
+        int                  _numQuadSegs;
         Stroke::LineCapStyle _capStyle;
     };
 

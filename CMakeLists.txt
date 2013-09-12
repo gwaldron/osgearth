@@ -19,9 +19,9 @@ SET_PROPERTY( GLOBAL PROPERTY PREDEFINED_TARGETS_FOLDER "CMake Targets" )
 PROJECT(OSGEARTH)
 
 SET(OSGEARTH_MAJOR_VERSION 2)
-SET(OSGEARTH_MINOR_VERSION 2)
+SET(OSGEARTH_MINOR_VERSION 3)
 SET(OSGEARTH_PATCH_VERSION 0)
-SET(OSGEARTH_SOVERSION     2)
+SET(OSGEARTH_SOVERSION     0)
 
 SET(OSGEARTH_PLUGIN_PREFIX "")
 
@@ -43,6 +43,9 @@ SET(OPENTHREADS_SONAMES TRUE)
 
 SET(OpenThreads_SOURCE_DIR ${OSGEARTH_SOURCE_DIR})
 
+# Good place to look for the OSG 3rd party libs
+SET(THIRD_PARTY_DIR "" CACHE PATH "OSG 3rd-party dependency folder")
+
 # We have some custom .cmake scripts not in the official distribution.
 # Maybe this can be used override existing behavior if needed?
 SET(CMAKE_MODULE_PATH "${OSGEARTH_SOURCE_DIR}/CMakeModules;${CMAKE_MODULE_PATH}")
@@ -56,7 +59,7 @@ OPTION(OSG_BUILD_PLATFORM_IPHONE_SIMULATOR "Enable IPhoneSDK Simulator support" 
 IF(OSG_BUILD_PLATFORM_IPHONE OR OSG_BUILD_PLATFORM_IPHONE_SIMULATOR)
   
   #you need to manually set the default sdk version here
-  SET (IPHONE_SDKVER "5.1")
+  SET (IPHONE_SDKVER "6.1")
   #the below is taken from ogre, it states the gcc stuff needs to happen before PROJECT() is called. I've no clue if we even need it
   # Force gcc <= 4.2 on iPhone
   include(CMakeForceCompiler)
@@ -107,8 +110,10 @@ FIND_PACKAGE(GEOS)
 FIND_PACKAGE(Sqlite3)
 FIND_PACKAGE(ZLIB)
 FIND_PACKAGE(V8)
+FIND_PACKAGE(JavaScriptCore)
+FIND_PACKAGE(LibNoise)
 
-FIND_PACKAGE(Qt4 4.6)
+FIND_PACKAGE(Qt4)
 IF (QT4_FOUND)
     INCLUDE(${QT_USE_FILE})
     SET(QT_ALL_LIBRARIES ${QT_LIBRARIES} ${QT_QTCORE_LIBRARY} ${QT_QTWEBKIT_LIBRARY} ${QT_QTNETWORK_LIBRARY} ${QT_QTXML_LIBRARY} ${QT_QTOPENGL_LIBRARY})
@@ -180,6 +185,9 @@ ENDIF(WIN32)
 SET(OSG_DIR "" CACHE PATH "set to base osg install path")
 
 SET(CMAKE_DEBUG_POSTFIX  "d" CACHE STRING "add a postfix, usually d on windows")
+SET(CMAKE_RELEASE_POSTFIX "" CACHE STRING "add a postfix, usually empty on windows")
+SET(CMAKE_RELWITHDEBINFO_POSTFIX "rd" CACHE STRING "add a postfix, usually empty on windows")
+SET(CMAKE_MINSIZEREL_POSTFIX "s" CACHE STRING "add a postfix, usually empty on windows")
 
 FIND_PACKAGE(OSG)
 
@@ -374,6 +382,11 @@ CONFIGURE_FILE(
 ADD_CUSTOM_TARGET(uninstall
   "${CMAKE_COMMAND}" -P "${CMAKE_CURRENT_BINARY_DIR}/cmake_uninstall.cmake")
 
+
+
+#------------------------------------------------------------------------------
+# Docs.
+add_subdirectory(docs)
 
 
 

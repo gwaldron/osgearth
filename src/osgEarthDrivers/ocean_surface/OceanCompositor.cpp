@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2012 Pelican Mapping
+ * Copyright 2008-2013 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -20,10 +20,23 @@
 #include <osgEarth/ImageUtils>
 #include <osgEarth/Registry>
 #include <osgEarth/VirtualProgram>
+#include <osgEarth/ShaderFactory>
 #include <osg/Texture2D>
 #include "OceanShaders"
 
+#define OCEAN_DATA "ocean_data"
+#define OCEAN_TEX  "ocean_surface_tex"
+
+using namespace osgEarth_ocean_surface;
 using namespace osgEarth;
+using namespace osgEarth::Drivers;
+
+
+OceanCompositor::OceanCompositor(const OceanSurfaceOptions& options) :
+_options( options )
+{
+    //nop
+}
 
 void
 OceanCompositor::updateMasterStateSet(osg::StateSet*       stateSet, 
@@ -36,20 +49,42 @@ OceanCompositor::updateMasterStateSet(osg::StateSet*       stateSet,
         vp->setName("osgEarth OceanCompositor");
         stateSet->setAttributeAndModes( vp, 1 );
     }
-    vp->installDefaultLightingShaders();
-    vp->setShader( "osgearth_vert_setupColoring", new osg::Shader(osg::Shader::VERTEX, source_setupColoring) );
-    vp->setShader( "osgearth_frag_applyColoring", new osg::Shader(osg::Shader::FRAGMENT, source_applyColoring ) );
-}
     
+    //vp->installDefaultLightingShaders();
+    Registry::shaderFactory()->installLightingShaders( vp );
+
+    // use the appropriate shader for the active technique:
+    std::string vertSource = _options.maskLayer().isSet() ? source_vertMask : source_vertProxy;
+    std::string fragSource = _options.maskLayer().isSet() ? source_fragMask : source_fragProxy;
+
+    vp->setFunction( "oe_ocean_vertex",   vertSource, ShaderComp::LOCATION_VERTEX_VIEW );
+
+    vp->setFunction( "oe_ocean_fragment", fragSource, ShaderComp::LOCATION_FRAGMENT_COLORING );
+
+    //vp->setShader( 
+    //    "osgearth_vert_setupColoring", 
+    //    new osg::Shader(osg::Shader::VERTEX, vertSource),
+    //    osg::StateAttribute::ON | osg::StateAttribute::PROTECTED );
+
+    //vp->setShader( 
+    //    "osgearth_frag_applyColoring", 
+    //    new osg::Shader(osg::Shader::FRAGMENT, fragSource),
+    //    osg::StateAttribute::ON | osg::StateAttribute::PROTECTED );
+
+    // install the slot attribute(s)
+    stateSet->getOrCreateUniform( OCEAN_DATA, osg::Uniform::SAMPLER_2D )->set( 0 );
+    stateSet->getOrCreateUniform( OCEAN_TEX,  osg::Uniform::SAMPLER_2D )->set( 1 );
+}
+
 namespace
 {
+    // probably don't need this
     std::string makeSamplerName(int slot)
     {
-        std::stringstream buf;
-        buf << "ocean_tex" << slot;
-        std::string str;
-        str = buf.str();
-        return str;
+        if ( slot == 0 )
+            return OCEAN_DATA;
+        else 
+            return OCEAN_TEX;
     }
 
     osg::Texture2D*
@@ -75,10 +110,6 @@ namespace
             tex->setWrap( osg::Texture::WRAP_T, osg::Texture::CLAMP_TO_EDGE );
 
             stateSet->setTextureAttributeAndModes( slot, tex, osg::StateAttribute::ON );
-            
-            // install the slot attribute
-            std::string name = makeSamplerName( slot );
-            stateSet->getOrCreateUniform( name.c_str(), osg::Uniform::SAMPLER_2D )->set( slot );
         }
         return tex;
     }

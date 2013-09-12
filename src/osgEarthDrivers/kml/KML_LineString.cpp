@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2012 Pelican Mapping
+ * Copyright 2008-2013 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -18,12 +18,25 @@
  */
 #include "KML_LineString"
 
+using namespace osgEarth_kml;
+
 void
 KML_LineString::parseStyle( const Config& conf, KMLContext& cs, Style& style )
 {
     KML_Geometry::parseStyle(conf, cs, style);
+
+    // need a line symbol minimally
+    LineSymbol* line = style.get<LineSymbol>();
+    if ( !line )
+    {
+        line = style.getOrCreate<LineSymbol>();
+        line->stroke()->color() = osg::Vec4f(1,1,1,1);
+    }
+
     if ( conf.value("tessellate") == "1" )
-        style.getOrCreate<LineSymbol>()->tessellation() = 20;
+    {
+        line->tessellation() = 20; // KML default
+    }
 }
 
 void

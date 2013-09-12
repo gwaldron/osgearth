@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2012 Pelican Mapping
+ * Copyright 2008-2013 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -143,7 +143,7 @@ public:
         if ( !_image.valid() || key.getLevelOfDetail() > getMaxDataLevel() )
             return NULL;
 
-        GeoImage cropped = _image.crop( key.getExtent(), true, getPixelsPerTile(), getPixelsPerTile() );
+        GeoImage cropped = _image.crop( key.getExtent(), true, getPixelsPerTile(), getPixelsPerTile(), *_options.bilinearReprojection() );
         return cropped.valid() ? cropped.takeImage() : 0L;
     }
 

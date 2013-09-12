@@ -1,0 +1,91 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+ * Copyright 2008-2013 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+#ifndef OSGEARTH_ENGINE_BYO_OPTIONS
+#define OSGEARTH_ENGINE_BYO_OPTIONS 1
+
+#include <osgEarth/Common>
+#include <osgEarth/ShaderUtils>
+#include <osgEarth/TerrainOptions>
+#include <osgEarth/URI>
+
+namespace osgEarth { namespace Drivers
+{
+    using namespace osgEarth;
+
+    /**
+     * Options for configuring the Bring Your Own Engine driver.
+     */
+    class BYOTerrainEngineOptions : public TerrainOptions // NO EXPORT (header-only)
+    {
+    public:
+        BYOTerrainEngineOptions( const ConfigOptions& options =ConfigOptions() ) 
+            : TerrainOptions( options ),
+              _shaderPolicy ( SHADERPOLICY_GENERATE )
+        {
+            setDriver( "byo" );
+            fromConfig( _conf );
+        }
+
+        /** dtor */
+        virtual ~BYOTerrainEngineOptions() { }
+
+    public:
+        optional<URI>& url() { return _uri; }
+        const optional<URI>& url() const { return _uri; }
+
+        optional<ShaderPolicy>& shaderPolicy() { return _shaderPolicy; }
+        const optional<ShaderPolicy>& shaderPolicy() const { return _shaderPolicy; }
+
+    public: // non-serializable
+        void setNode(osg::Node* node);
+        osg::Node* getNode() { return _node.get(); }
+
+    protected:
+        virtual Config getConfig() const {
+            Config conf = TerrainOptions::getConfig();
+            conf.updateIfSet( "url", _uri );
+            conf.updateIfSet( "shader_policy", "disable",  _shaderPolicy, SHADERPOLICY_DISABLE );
+            conf.updateIfSet( "shader_policy", "inherit",  _shaderPolicy, SHADERPOLICY_INHERIT );
+            conf.updateIfSet( "shader_policy", "generate", _shaderPolicy, SHADERPOLICY_GENERATE );
+            conf.updateNonSerializable( "node", _node.get() );
+            return conf;
+        }
+
+        virtual void mergeConfig( const Config& conf ) {
+            TerrainOptions::mergeConfig( conf );
+            fromConfig( conf );
+        }
+
+    private:
+        void fromConfig( const Config& conf ) {
+            conf.getIfSet( "url", _uri );
+            conf.getIfSet( "shader_policy", "disable",  _shaderPolicy, SHADERPOLICY_DISABLE );
+            conf.getIfSet( "shader_policy", "inherit",  _shaderPolicy, SHADERPOLICY_INHERIT );
+            conf.getIfSet( "shader_policy", "generate", _shaderPolicy, SHADERPOLICY_GENERATE );
+            _node = conf.getNonSerializable<osg::Node>( "node" );
+        }
+
+        optional<URI>           _uri;
+        optional<ShaderPolicy>  _shaderPolicy;
+        osg::ref_ptr<osg::Node> _node;
+    };
+
+} } // namespace osgEarth::Drivers
+
+#endif // OSGEARTH_ENGINE_MP_OPTIONS

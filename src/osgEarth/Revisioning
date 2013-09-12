@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2012 Pelican Mapping
+ * Copyright 2008-2013 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -157,8 +157,8 @@ namespace osgEarth
         struct DirtyCounter : public osg::Referenced
         {
             DirtyCounter(DirtyNotifier* owner) : _owner(owner), _count(1) { }
-            int            _count;
             DirtyNotifier* _owner;
+            int            _count;
             friend class DirtyNotifer;
         };
         osg::ref_ptr<DirtyCounter>                     _counter;

@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2012 Pelican Mapping
+ * Copyright 2008-2013 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -23,9 +23,7 @@
 #include <osgEarth/CacheBin>
 #include <osgEarth/CachePolicy>
 #include <osgEarth/Containers>
-#include <osgEarth/FileUtils>
 #include <osgEarth/IOTypes>
-#include <osgEarth/Progress>
 #include <osg/Image>
 #include <osg/Node>
 #include <osgDB/ReaderWriter>
@@ -35,6 +33,7 @@
 namespace osgEarth
 {
     class URI;
+    class ProgressCallback;
 
     /**
      * Context for resolving relative URIs.

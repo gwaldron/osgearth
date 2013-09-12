@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2012 Pelican Mapping
+ * Copyright 2008-2013 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -22,8 +22,8 @@
 
 #include <osgEarthSymbology/Symbol>
 #include <osgEarthSymbology/Expression>
-#include <osg/Referenced>
-#include <vector>
+#include <osgEarthSymbology/Fill>
+#include <osgEarthSymbology/Stroke>
 
 namespace osgEarth { namespace Symbology
 {
@@ -64,6 +64,14 @@ namespace osgEarth { namespace Symbology
         
             ALIGN_BASE_LINE = ALIGN_LEFT_BASE_LINE /// default.        
         };
+
+        enum Layout {
+            LAYOUT_LEFT_TO_RIGHT,
+            LAYOUT_RIGHT_TO_LEFT,
+            LAYOUT_VERTICAL
+        };
+
+        META_Symbol(TextSymbol);
 
         TextSymbol( const Config& conf =Config() );
 
@@ -106,6 +114,10 @@ namespace osgEarth { namespace Symbology
         optional<Alignment>& alignment() { return _alignment; }
         const optional<Alignment>& alignment() const { return _alignment; }
 
+        /** Layout of the label*/
+        optional<Layout>& layout() { return _layout; }
+        const optional<Layout>& layout() const { return _layout; }
+
         /** Whether to remove duplicates when drawing multiple labels. */
         optional<bool>& removeDuplicateLabels() { return _removeDuplicateLabels; }
         const optional<bool>& removeDuplicateLabels() const { return _removeDuplicateLabels; }
@@ -113,6 +125,14 @@ namespace osgEarth { namespace Symbology
         /** Whether to enable decluttering on the text, if applicable */
         optional<bool>& declutter() { return _declutter; }
         const optional<bool>& declutter() const { return _declutter; }
+
+        /** Whether to enable occlusion culling on the text */
+        optional<bool>& occlusionCull() { return _occlusionCull; }
+        const optional<bool>& occlusionCull() const { return _occlusionCull; }
+
+        /** The viewer altitude at which to start occlusion culling the text */
+        optional<double>& occlusionCullAltitude() { return _occlusionCullAltitude; }
+        const optional<double>& occlusionCullAltitude() const { return _occlusionCullAltitude; }
 
         /** Label generation provider to use */
         optional<std::string>& provider() { return _provider; }
@@ -125,6 +145,7 @@ namespace osgEarth { namespace Symbology
     public:
         virtual Config getConfig() const;
         virtual void mergeConfig( const Config& conf );
+        static void parseSLD(const Config& c, class Style& style);
 
     protected:
         optional<Fill>              _fill;
@@ -139,7 +160,10 @@ namespace osgEarth { namespace Symbology
         optional<std::string>       _provider;
         optional<Encoding>          _encoding;
         optional<Alignment>         _alignment;
+        optional<Layout>            _layout;
         optional<bool>              _declutter;
+        optional<bool>              _occlusionCull;
+        optional<double>            _occlusionCullAltitude;
     };
 
 } } // namespace osgEarth::Symbology

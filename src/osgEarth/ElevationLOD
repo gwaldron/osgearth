@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2012 Pelican Mapping
+ * Copyright 2008-2013 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -27,15 +27,19 @@
 namespace osgEarth
 {
     /**
-     * Decorator node that will only display it's children when the camera is within a given elevation range
+     * Decorator node that will only display it's children when the
+     * camera is within a given elevation range and/or within a
+     * given camera range.
      */
     class OSGEARTH_EXPORT ElevationLOD : public osg::Group
     {
     public:
+        META_Node(osgEarth, ElevationLOD);
+
+        ElevationLOD();
+        ElevationLOD(const ElevationLOD& rhs, const osg::CopyOp& op);
         ElevationLOD(const SpatialReference* srs);
         ElevationLOD(const SpatialReference* srs, double minElevation, double maxElevation);
-
-        virtual ~ElevationLOD();
 
         double getMinElevation() const;
         void setMinElevation( double minElevation );
@@ -45,13 +49,29 @@ namespace osgEarth
 
         void setElevations( double minElevation, double maxElevation );
 
-        virtual void traverse( osg::NodeVisitor& nv);       
-               
+        float getMinRange() const;
+        void setMinRange(float minRange);
+
+        float getMaxRange() const;
+        void setMaxRange(float maxRange);
+
+        void setRanges( float minRange, float maxRange );
+
+
+    public: // osg::Node
+
+        virtual void traverse( osg::NodeVisitor& nv);
+
+    protected:
+
+        virtual ~ElevationLOD();
 
     private:
         osg::ref_ptr< const SpatialReference > _srs;
-        double _minElevation;
-        double _maxElevation;
+        optional<double> _minElevation;
+        optional<double> _maxElevation;
+        optional<float>  _minRange;
+        optional<float>  _maxRange;
     };
 
 } // namespace osgEarth

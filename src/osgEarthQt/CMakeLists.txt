@@ -23,6 +23,7 @@ set(LIB_MOC_HDRS
     MapCatalogWidget
     TerrainProfileGraph
     TerrainProfileWidget
+    ViewerWidget
 )
 
 # Qt resource files
@@ -61,6 +62,7 @@ SET(LIB_PUBLIC_HEADERS
     MultiViewerWidget
     TerrainProfileGraph
     TerrainProfileWidget
+    ViewWidget
     ViewerWidget
     ${LIB_UI_HDRS}
     ${LIB_QT_UIS}
@@ -85,6 +87,7 @@ ADD_LIBRARY(${LIB_NAME} SHARED
     MultiViewerWidget.cpp
     TerrainProfileGraph.cpp
     TerrainProfileWidget.cpp
+    ViewWidget.cpp
     ViewerWidget.cpp
 )
 

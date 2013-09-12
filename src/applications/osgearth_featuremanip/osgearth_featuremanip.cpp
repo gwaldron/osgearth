@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2008-2012 Pelican Mapping
+* Copyright 2008-2013 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -151,7 +151,7 @@ main(int argc, char** argv)
         if ( mapNode )
         {
             // install the Feature Manipulation tool.
-            s_manipTool = new FeatureManipTool( mapNode );
+            s_manipTool = new FeatureManipTool( mapNode, true );
             viewer.addEventHandler( s_manipTool );
 
             s_manipTool->addCallback( new ToggleUIStateCallback() );

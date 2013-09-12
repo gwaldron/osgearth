@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2012 Pelican Mapping
+ * Copyright 2008-2013 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -155,6 +155,9 @@ JavascriptEngineV8::executeScript(v8::Handle<v8::String> script)
     v8::String::AsciiValue error(try_catch.Exception());
     return ScriptResult(EMPTY_STRING, false, std::string("Script result was empty: ") + std::string(*error));
   }
+
+  if (result->IsUndefined())
+    return ScriptResult(EMPTY_STRING, false, "Script result was undefined");
 
   v8::String::AsciiValue ascii(result);
   return ScriptResult(std::string(*ascii));

@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2012 Pelican Mapping
+ * Copyright 2008-2013 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -74,11 +74,14 @@ namespace osgEarth { namespace Util
 
         /** Bindable event types. */
         enum EventType {
-            EVENT_MOUSE_CLICK        = osgGA::GUIEventAdapter::USER << 1,
             EVENT_MOUSE_DOUBLE_CLICK = osgGA::GUIEventAdapter::DOUBLECLICK,
             EVENT_MOUSE_DRAG         = osgGA::GUIEventAdapter::DRAG,
             EVENT_KEY_DOWN           = osgGA::GUIEventAdapter::KEYDOWN,
-            EVENT_SCROLL             = osgGA::GUIEventAdapter::SCROLL
+            EVENT_SCROLL             = osgGA::GUIEventAdapter::SCROLL,
+            EVENT_MOUSE_CLICK        = osgGA::GUIEventAdapter::USER << 1,
+            EVENT_MULTI_DRAG         = osgGA::GUIEventAdapter::USER << 2,   // drag with 2 fingers
+            EVENT_MULTI_PINCH        = osgGA::GUIEventAdapter::USER << 3,   // pinch with 2 fingers
+            EVENT_MULTI_TWIST        = osgGA::GUIEventAdapter::USER << 4    // drag 2 fingers in different directions
         };
 
         /** Bindable mouse buttons. */
@@ -325,6 +328,17 @@ namespace osgEarth { namespace Util
                 int modkey_mask =0L,
                 const ActionOptions& options =ActionOptions() );
 
+
+            void bindPinch(
+                ActionType action, const ActionOptions& =ActionOptions() );
+                
+            void bindTwist(
+                ActionType action, const ActionOptions& =ActionOptions() );
+
+   
+            void bindMultiDrag(
+                ActionType action, const ActionOptions& =ActionOptions() );
+
             /**
              * Sets an overall mouse sensitivity factor.
              *
@@ -474,6 +488,16 @@ namespace osgEarth { namespace Util
             void setCameraFrustumOffsets( const osg::Vec2s& offsets );
             const osg::Vec2s& getCameraFrustumOffsets() const { return _camFrustOffsets; }            
 
+            /** Whether or not to disable collision avoidance when new data pages in */
+            bool getDisableCollisionAvoidance() const { return _disableCollisionAvoidance; }
+            void setDisableCollisionAvoidance( bool disableCollisionAvoidance ) { _disableCollisionAvoidance = disableCollisionAvoidance; }
+
+            void setThrowingEnabled(bool throwingEnabled) { _throwingEnabled = throwingEnabled; }
+            bool getThrowingEnabled () const { return _throwingEnabled; }
+            
+            void setThrowDecayRate(double throwDecayRate) { _throwDecayRate = osg::clampBetween(throwDecayRate, 0.0, 1.0); }
+            double getThrowDecayRate () const { return _throwDecayRate; }
+
         private:
 
             friend class EarthManipulator;
@@ -512,7 +536,12 @@ namespace osgEarth { namespace Util
             double _min_vp_duration_s, _max_vp_duration_s;
 
             CameraProjection _camProjType;
-            osg::Vec2s _camFrustOffsets;			
+            osg::Vec2s _camFrustOffsets;	
+
+            bool _disableCollisionAvoidance;
+
+            bool _throwingEnabled;
+            double _throwDecayRate;
         };
 
     public:
@@ -626,7 +655,16 @@ namespace osgEarth { namespace Util
          */
         void  setRotation( const osg::Quat& rotation) { _rotation = rotation; }
 
+        /**
+         * Gets the traversal node mask used to find root MapNode and CoordinateSystemNodes. Default is 0x1.
+         */
+        osg::Node::NodeMask getFindNodeTraversalMask( ) { return _findNodeTraversalMask; }
 
+        /**
+         * Sets the traversal node mask used to find root MapNode and CoordinateSystemNode. Default is 0x1. 
+         * Use this method if you change MapNode or CoordinateSystemNode mask and want manipulator to work with them correctly.  
+         */
+        void  setFindNodeTraversalMask( const osg::Node::NodeMask & nodeMask ) { _findNodeTraversalMask = nodeMask; }
 
     public: // osgGA::MatrixManipulator
 
@@ -679,7 +717,7 @@ namespace osgEarth { namespace Util
         bool intersect(const osg::Vec3d& start, const osg::Vec3d& end, osg::Vec3d& intersection) const;
 
         // resets the mouse event stack and pushes the provided event.
-        void resetMouse( osgGA::GUIActionAdapter& );
+        void resetMouse( osgGA::GUIActionAdapter& aa, bool flushEventStack=true);
 
         // Reset the internal event stack.
         void flushMouseEventStack();
@@ -690,17 +728,6 @@ namespace osgEarth { namespace Util
         // sets the camera position by doing a "look at" calculation. This is only used for
         // the "home" function at the moment -- look into depcrecation -GW
         void setByLookAt(const osg::Vec3d& eye, const osg::Vec3d& lv, const osg::Vec3d& up);
-
-        // Applies an action using the raw input parameters.
-        bool handleAction( const Action& action, double dx, double dy, double duration );
-
-        virtual bool handleMouseAction( const Action& action, osg::View* view );
-        virtual bool handleMouseClickAction( const Action& action );
-        virtual bool handleKeyboardAction( const Action& action, double duration_s = DBL_MAX );
-        virtual bool handleScrollAction( const Action& action, double duration_s = DBL_MAX );
-        virtual bool handlePointAction( const Action& type, float mx, float my, osg::View* view );
-        virtual void handleContinuousAction( const Action& action, osg::View* view );
-        virtual void handleMovementAction( const ActionType& type, double dx, double dy, osg::View* view );
 
         // checks to see whether the mouse is "moving".
         bool isMouseMoving();
@@ -778,6 +805,41 @@ namespace osgEarth { namespace Util
         const GeoPoint& centerMap() const { return _centerMap; }
 
     protected:
+        typedef osgGA::GUIEventAdapter::TouchData::TouchPoint TouchPoint;
+        typedef std::vector<TouchPoint> MultiTouchPoint; // one per ID (finger/touchpoint)
+        typedef std::deque<MultiTouchPoint> MultiTouchPointQueue;
+        MultiTouchPointQueue _touchPointQueue;
+        //struct TouchEvent {
+        //    EventType _eventType;     // derived touch/other event
+        //    float     _deltaDistance; // change in distance between 2 touches
+        //    float     _dx[2], _dy[2]; // movement of primary and secondary touch points
+        //    float     _dot;
+        //};
+        struct TouchEvent {
+            TouchEvent() : _mbmask(0) { }
+            EventType _eventType;
+            unsigned  _mbmask;
+            float     _dx, _dy;
+        };
+        typedef std::vector<TouchEvent> TouchEvents;
+        void addTouchEvents( const osgGA::GUIEventAdapter& ea );
+        bool parseTouchEvents( TouchEvents& ev );
+
+
+        // Applies an action using the raw input parameters.
+        bool handleAction( const Action& action, double dx, double dy, double duration );
+
+        virtual bool handleMouseAction( const Action& action, osg::View* view );
+        virtual bool handleMouseClickAction( const Action& action );
+        virtual bool handleKeyboardAction( const Action& action, double duration_s = DBL_MAX );
+        virtual bool handleScrollAction( const Action& action, double duration_s = DBL_MAX );
+        virtual bool handlePointAction( const Action& type, float mx, float my, osg::View* view );
+        virtual void handleContinuousAction( const Action& action, osg::View* view );
+        virtual void handleMovementAction( const ActionType& type, double dx, double dy, osg::View* view );
+        //virtual bool handleMultiTouchAction( const Action& action, const TouchEvent& te, osg::View* view );
+
+    protected:
+
         // makeshift "stack" of the last 2 incoming events.
         osg::ref_ptr<const osgGA::GUIEventAdapter> _ga_t1;
         osg::ref_ptr<const osgGA::GUIEventAdapter> _ga_t0;
@@ -806,6 +868,10 @@ namespace osgEarth { namespace Util
         double                  _delta_t;
         double                  _t_factor;
         bool                    _thrown;
+        double                  _throw_dx;
+        double                  _throw_dy;
+        double                  _dx;
+        double                  _dy;
 
         // The world coordinate of the Viewpoint focal point.
         osg::Vec3d              _center;
@@ -862,6 +928,10 @@ namespace osgEarth { namespace Util
         double _homeViewpointDuration;
 
         Action _last_action;
+        
+        EventType _last_event;
+        double    _time_s_last_event;
+        
 
         // to support updating the camera after the update traversal (e.g., for tethering)
         osg::observer_ptr<osg::Camera> _viewCamera;
@@ -888,6 +958,8 @@ namespace osgEarth { namespace Util
 
         osg::ref_ptr< TerrainCallback > _terrainCallback;
 
+        // Traversal mask used in established and dtor methods to find MapNode and CoordinateSystemNode
+        osg::Node::NodeMask  _findNodeTraversalMask;
     };
 
 } } // namespace osgEarth::Util

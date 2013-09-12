@@ -1,0 +1,53 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+ * Copyright 2008-2013 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+#ifndef OSGEARTH_ENGINE_BYO_ENGINE_NODE_H
+#define OSGEARTH_ENGINE_BYO_ENGINE_NODE_H 1
+
+#include <osgEarth/TerrainEngineNode>
+#include "BYOTerrainEngineOptions"
+
+using namespace osgEarth;
+
+namespace osgEarth_engine_byo
+{
+    class BYOTerrainEngineNode : public TerrainEngineNode
+    {
+    public:
+        BYOTerrainEngineNode();
+        META_Node(osgEarth, BYOTerrainEngineNode);
+        virtual ~BYOTerrainEngineNode();
+
+    public: // TerrainEngineNode
+
+        // for standalone tile creation outside of a terrain
+        osg::Node* createTile(const TileKey& key) { return 0L; }
+
+    public: // internal TerrainEngineNode
+
+        virtual void preInitialize( const Map* map, const TerrainOptions& options );
+        virtual const TerrainOptions& getTerrainOptions() const { return _terrainOptions; }
+
+    private:
+        osgEarth::Drivers::BYOTerrainEngineOptions _terrainOptions;
+        BYOTerrainEngineNode( const BYOTerrainEngineNode& rhs, const osg::CopyOp& op =osg::CopyOp::DEEP_COPY_ALL ) { }
+    };
+
+} // namespace osgEarth_engine_byo
+
+#endif // OSGEARTH_ENGINE_BYO_ENGINE_NODE_H

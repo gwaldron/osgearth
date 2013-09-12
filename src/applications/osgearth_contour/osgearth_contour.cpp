@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2008-2012 Pelican Mapping
+* Copyright 2008-2013 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -44,12 +44,12 @@ using namespace osgEarth::Util;
 
 const char* vertexShader =
     "attribute vec4  osgearth_elevData; \n"
-    "uniform   float contour_xferMin; \n"
-    "uniform   float contour_xferRange; \n"
-    "uniform   float contour_xferMax; \n"
-    "varying   float contour_lookup; \n"
+    "uniform float contour_xferMin; \n"
+    "uniform float contour_xferRange; \n"
+    "uniform float contour_xferMax; \n"
+    "varying float contour_lookup; \n"
 
-    "void setupContour() \n"
+    "void setupContour(inout vec4 VertexModel) \n"
     "{ \n"
     "    float height = osgearth_elevData[3]; \n"
     "    float height_normalized = (height-contour_xferMin)/contour_xferRange; \n"
@@ -63,8 +63,8 @@ const char* vertexShader =
 // imagery, this will overwrite it.
 
 const char* fragmentShader =
-    "uniform   sampler1D contour_colorMap; \n"
-    "varying   float     contour_lookup; \n"
+    "uniform sampler1D contour_colorMap; \n"
+    "varying float contour_lookup; \n"
 
     "void colorContour( inout vec4 color ) \n"
     "{ \n"
@@ -91,12 +91,14 @@ osg::StateSet* createStateSet( osg::TransferFunction1D* xfer, int unit )
 
     // Install the shaders. We also bind osgEarth's elevation data attribute, which the 
     // terrain engine automatically generates at the specified location.
-    VirtualProgram* vp = new VirtualProgram();
-    vp->installDefaultColoringAndLightingShaders();
-    vp->setFunction( "setupContour", vertexShader,   ShaderComp::LOCATION_VERTEX_PRE_LIGHTING );
-    vp->setFunction( "colorContour", fragmentShader, ShaderComp::LOCATION_FRAGMENT_PRE_LIGHTING );
+    // (By the way: if you want to draw image layers on top of the contoured terrain,
+    // set the "priority" parameter to setFunction() to a negative number so that it draws
+    // before the terrain's layers.)
+    VirtualProgram* vp = VirtualProgram::getOrCreate(stateSet);
+    vp->setFunction( "setupContour", vertexShader,   ShaderComp::LOCATION_VERTEX_MODEL);
+    vp->setFunction( "colorContour", fragmentShader, ShaderComp::LOCATION_FRAGMENT_COLORING, -1.0 );
     vp->addBindAttribLocation( "osgearth_elevData", osg::Drawable::ATTRIBUTE_6 );
-    stateSet->setAttributeAndModes( vp, osg::StateAttribute::ON );
+    //stateSet->setAttributeAndModes( vp, osg::StateAttribute::ON );
 
     // Install some uniforms that tell the shader the height range of the color map.
     stateSet->getOrCreateUniform( "contour_xferMin",   osg::Uniform::FLOAT )->set( xfer->getMinimum() );
@@ -112,10 +114,6 @@ int main(int argc, char** argv)
 
     // create a viewer:
     osgViewer::Viewer viewer(arguments);
-
-    // Tell osgEarth to use the "quadtree" terrain driver by default.
-    // Elevation data attribution is only available in this driver!
-    osgEarth::Registry::instance()->setDefaultTerrainEngineDriverName( "quadtree" );
 
     // install our default manipulator (do this before calling load)
     viewer.setCameraManipulator( new EarthManipulator() );
@@ -134,23 +132,26 @@ int main(int argc, char** argv)
 
         // Set up a transfer function for the elevation contours.
         osg::ref_ptr<osg::TransferFunction1D> xfer = new osg::TransferFunction1D();
-        xfer->setColor( -3000.0f, osg::Vec4f(0,0,0.5,1), false );
-        xfer->setColor(   -10.0f, osg::Vec4f(0,0,0,1),   false );
-        xfer->setColor(    10.0f, osg::Vec4f(0,1,0,1),   false );
-        xfer->setColor(  1500.0f, osg::Vec4f(1,0,0,1),   false );
-        xfer->setColor(  3000.0f, osg::Vec4f(1,1,1,1),   false );
+        float s = 3000.0f;
+        xfer->setColor( -1.0000 * s, osg::Vec4f(0, 0, 0.5, 1), false);
+        xfer->setColor( -0.2500 * s, osg::Vec4f(0, 0, 1, 1), false);
+        xfer->setColor(  0.0000 * s, osg::Vec4f(0, .5, 1, 1), false);
+        xfer->setColor(  0.0625 * s, osg::Vec4f(.94,.94,.25,1), false);
+        xfer->setColor(  0.1250 * s, osg::Vec4f(.125,.62,0,1), false);
+        xfer->setColor(  0.3750 * s, osg::Vec4f(.87,.87,0,1), false);
+        xfer->setColor(  0.7500 * s, osg::Vec4f(.5,.5,.5,1), false);
+        xfer->setColor(  1.0000 * s, osg::Vec4f(1,1,1,1), false);
         xfer->updateImage();
 
         // request an available texture unit:
         int unit;
         mapNode->getTerrainEngine()->getTextureCompositor()->reserveTextureImageUnit(unit);
 
-        // install the contour shaders:
-        osg::Group* root = new osg::Group();
-        root->setStateSet( createStateSet(xfer.get(), unit) );
-        root->addChild( node );
+        // install the contour shaders on the terrain engine because we don't want
+        // them affecting any model layers.
+        mapNode->getTerrainEngine()->setStateSet( createStateSet(xfer.get(), unit) );
         
-        viewer.setSceneData( root );
+        viewer.setSceneData( node );
         viewer.run();
     }
     else

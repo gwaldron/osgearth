@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2008-2012 Pelican Mapping
+* Copyright 2008-2013 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -30,9 +30,11 @@
 #include <map>
 
 #ifdef OSG_GLES2_AVAILABLE
-    #define GLSL_VERSION_STR "100"
+#    define GLSL_VERSION_STR             "100"
+#    define GLSL_DEFAULT_PRECISION_FLOAT "precision mediump float;"
 #else
-    #define GLSL_VERSION_STR "110" 
+#    define GLSL_VERSION_STR             "110" 
+#    define GLSL_DEFAULT_PRECISION_FLOAT ""
 #endif
 
 namespace osgEarth
@@ -42,12 +44,21 @@ namespace osgEarth
         // User function injection points.
         enum FunctionLocation
         {
-            LOCATION_VERTEX_PRE_COLORING    =0,   LOCATION_VERTEX_PRE_TEXTURING =0, // alias
-            LOCATION_VERTEX_PRE_LIGHTING    =1,
-            LOCATION_VERTEX_POST_LIGHTING   =2,
-            LOCATION_FRAGMENT_PRE_COLORING  =3,   LOCATION_FRAGMENT_PRE_TEXTURING =3, // alias
-            LOCATION_FRAGMENT_PRE_LIGHTING  =4,
-            LOCATION_FRAGMENT_POST_LIGHTING =5
+            // vertex is in model space (equivalent to gl_Vertex).
+            LOCATION_VERTEX_MODEL = 0,
+
+            // vertex is in view(aka eye) coordinates, with the camera at 0,0,0 
+            // looking down the -Z axis.
+            LOCATION_VERTEX_VIEW = 1,
+
+            // vertex is in post-perspective coordinates; [-w..w] along each axis
+            LOCATION_VERTEX_CLIP = 2,
+
+            // fragment is being colored.
+            LOCATION_FRAGMENT_COLORING = 3,
+
+            // fragment is being lit.
+            LOCATION_FRAGMENT_LIGHTING = 4
         };
 
         // set of user functions, ordered by priority.
@@ -69,10 +80,13 @@ namespace osgEarth
      * you can still call the set* functions but you'd better mark the state set with
      * a DYNAMIC data variance.
      */
-    class OSGEARTH_EXPORT VirtualProgram : public osg::StateAttribute // osg::Program
+    class OSGEARTH_EXPORT VirtualProgram : public osg::StateAttribute
     {
     public:
         static const osg::StateAttribute::Type SA_TYPE;
+
+        static VirtualProgram* getOrCreate(osg::StateSet* on);
+        static VirtualProgram* get        (osg::StateSet* on);
 
         typedef osg::Program::AttribBindingList AttribBindingList;
 
@@ -92,28 +106,6 @@ namespace osgEarth
             const std::string&           source, 
             ShaderComp::FunctionLocation loc,
             float                        priority =1.0f );
-
-        /**
-         * Installs default shaders for implementing basic coloring and lighting.
-         * The default shaders come from the ShaderFactory.
-         */
-        void installDefaultColoringAndLightingShaders( unsigned numTextures =0u );
-
-        /**
-         * Installs default shader for basic coloring/texturing.
-         */
-        void installDefaultColoringShaders( unsigned numTextures =0u );
-
-        /**
-         * Installs default shader for basic lighting.
-         */
-        void installDefaultLightingShaders();
-
-        /**
-         * Sets whether to use lighting shaders at all - set this to false if you
-         * don't want lighting shaders (normal or inherited) included in the program.
-         */
-        void setUseLightingShaders(bool value);
 
         /**
          * Whether this VP should inherit shaders from parent state sets. This is
@@ -185,6 +177,11 @@ namespace osgEarth
         osg::Program* getTemplate() { return _template.get(); }
         const osg::Program* getTemplate() const { return _template.get(); }
 
+        /** If State is non-zero, this function releases any associated OpenGL objects for
+           * the specified graphics context. Otherwise, releases OpenGL objects
+           * for all graphics contexts. */
+        virtual void releaseGLObjects(osg::State* pState) const;
+
     public:
         typedef std::vector< osg::ref_ptr<osg::Shader> > ShaderVector;
 
@@ -193,30 +190,34 @@ namespace osgEarth
         typedef std::pair< osg::ref_ptr<osg::Shader>, osg::StateAttribute::OverrideValue > ShaderEntry;
         typedef std::map< std::string, ShaderEntry > ShaderMap;
         typedef std::map< ShaderVector, osg::ref_ptr<osg::Program> > ProgramMap;
+        typedef std::map< std::string, std::string > AttribAliasMap;
+        typedef std::pair< std::string, std::string > AttribAlias;
+        typedef std::vector< AttribAlias > AttribAliasVector;
 
         osg::ref_ptr<osg::Program>   _template;
 
-        ProgramMap                   _programCache;
-        ShaderMap                    _shaderMap;
-        unsigned int                 _mask;
-        AttribBindingList            _attribBindingList;
-        bool                         _useLightingShaders;
-        osg::ref_ptr<osg::Shader>    _vertMain;
-        osg::ref_ptr<osg::Shader>    _fragMain;
+        ProgramMap         _programCache;
+        ShaderMap          _shaderMap;
+        unsigned int       _mask;
+        AttribBindingList  _attribBindingList;
+        AttribAliasMap     _attribAliases;
 
         ShaderComp::FunctionLocationMap _functions;
         ShaderComp::FunctionLocationMap _accumulatedFunctions;
 
         Threading::Mutex _functionsMutex;
         bool _inherit;
+        bool _inheritSet;
         mutable Threading::ReadWriteMutex _programCacheMutex;
 
         bool hasLocalFunctions() const;
         void refreshAccumulatedFunctions( const osg::State& state );
         void addToAccumulatedMap(ShaderMap& accumShaderMap, const std::string& shaderID, const ShaderEntry& newEntry) const;
-        osg::Program* buildProgram( osg::State& state, ShaderMap& accumShaderMap, AttribBindingList& bindings );
-        void addShadersToProgram(const ShaderVector& shaders, const AttribBindingList& attribBindings, osg::Program* program );
+        osg::Program* buildProgram( osg::State& state, ShaderMap& accumShaderMap, AttribBindingList& bindings, AttribAliasMap& aliases);
+        void addShadersToProgram(const ShaderVector& shaders, const AttribBindingList& attribBindings, const AttribAliasMap& aliases, osg::Program* program );
         void addTemplateDataToProgram(osg::Program* program );
+        void applyAttributeAliases( osg::Shader* shader, const AttribAliasVector& aliases );
+        const AttribAliasMap& getAttribAliases() const { return _attribAliases; }
 
     public:
         void getFunctions( ShaderComp::FunctionLocationMap& out ) const;

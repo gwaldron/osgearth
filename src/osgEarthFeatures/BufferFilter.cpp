@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2012 Pelican Mapping
+ * Copyright 2008-2013 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -45,7 +45,7 @@ OSGEARTH_REGISTER_SIMPLE_FEATUREFILTER(buffer, BufferFilter );
 BufferFilter::BufferFilter() :
 _distance   ( 1.0 ),
 _numQuadSegs( 0 ),
-_capStyle   ( Stroke::LINECAP_DEFAULT )
+_capStyle   ( Stroke::LINECAP_SQUARE )
 {
     //NOP
 }
@@ -61,7 +61,7 @@ _capStyle   ( rhs._capStyle )
 BufferFilter::BufferFilter( const Config& conf ) :
 _distance   ( 1.0 ),
 _numQuadSegs( 0 ),
-_capStyle   ( Stroke::LINECAP_DEFAULT )
+_capStyle   ( Stroke::LINECAP_SQUARE )
 {
     if (conf.key() == "buffer")
     {
@@ -99,8 +99,8 @@ BufferFilter::push( FeatureList& input, FilterContext& context )
         params._capStyle =
                 _capStyle == Stroke::LINECAP_ROUND  ? Symbology::BufferParameters::CAP_ROUND :
                 _capStyle == Stroke::LINECAP_SQUARE ? Symbology::BufferParameters::CAP_SQUARE :
-                _capStyle == Stroke::LINECAP_BUTT   ? Symbology::BufferParameters::CAP_FLAT :
-                Symbology::BufferParameters::CAP_SQUARE;
+                _capStyle == Stroke::LINECAP_FLAT   ? Symbology::BufferParameters::CAP_FLAT :
+                                                      Symbology::BufferParameters::CAP_SQUARE;
 
         params._cornerSegs = _numQuadSegs;
 
@@ -112,7 +112,7 @@ BufferFilter::push( FeatureList& input, FilterContext& context )
         else
         {
             i = input.erase( i );
-            OE_INFO << LC << "feature " << feature->getFID() << " yielded no geometry" << std::endl;
+            OE_DEBUG << LC << "feature " << feature->getFID() << " yielded no geometry" << std::endl;
         }
     }
 

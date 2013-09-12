@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2008-2012 Pelican Mapping
+* Copyright 2008-2013 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -18,10 +18,11 @@
 */
 
 #include <osgEarthAnnotation/LabelNode>
-#include <osgEarthAnnotation/Decluttering>
 #include <osgEarthAnnotation/AnnotationUtils>
 #include <osgEarthAnnotation/AnnotationRegistry>
 #include <osgEarthSymbology/Color>
+#include <osgEarth/Registry>
+#include <osgEarth/ShaderGenerator>
 #include <osgText/Text>
 #include <osg/Depth>
 #include <osgUtil/IntersectionVisitor>
@@ -42,8 +43,7 @@ LabelNode::LabelNode(MapNode*            mapNode,
                      const Style&        style ) :
 
 OrthoNode( mapNode, position ),
-_text    ( text ),
-_geode   ( 0L )
+_text    ( text )
 {
     init( style );
 }
@@ -54,8 +54,7 @@ LabelNode::LabelNode(MapNode*            mapNode,
                      const TextSymbol*   symbol ) :
 
 OrthoNode( mapNode, position ),
-_text    ( text ),
-_geode   ( 0L )
+_text    ( text )
 {
     Style style;
     style.add( const_cast<TextSymbol*>(symbol) );
@@ -65,8 +64,7 @@ _geode   ( 0L )
 LabelNode::LabelNode(const std::string&  text,
                      const Style&        style ) :
 OrthoNode(),
-_text    ( text ),
-_geode   ( 0L )
+_text    ( text )
 {
     init( style );
 }
@@ -74,8 +72,14 @@ _geode   ( 0L )
 LabelNode::LabelNode(MapNode*            mapNode,
                      const GeoPoint&     position,
                      const Style&        style ) :
-OrthoNode( mapNode, position ),
-_geode   ( 0L )
+OrthoNode( mapNode, position )
+{
+    init( style );
+}
+
+LabelNode::LabelNode(MapNode*            mapNode,
+                     const Style&        style ) :
+OrthoNode( mapNode, GeoPoint::INVALID )
 {
     init( style );
 }
@@ -84,18 +88,12 @@ void
 LabelNode::init( const Style& style )
 {
     _geode = new osg::Geode();
-    getAttachPoint()->addChild( _geode );
+    getAttachPoint()->addChild( _geode.get() );
 
     osg::StateSet* stateSet = _geode->getOrCreateStateSet();
     stateSet->setAttributeAndModes( new osg::Depth(osg::Depth::ALWAYS, 0, 1, false), 1 );
 
-    AnnotationUtils::installAnnotationProgram( stateSet );
-
     setStyle( style );
-
-    applyStyle( style );
-
-    setLightingIfNotSet( false );
 }
 
 void
@@ -112,6 +110,7 @@ LabelNode::setText( const std::string& text )
     {
         d->setText( text );
         d->dirtyDisplayList();
+        _text = text;
     }
 }
 
@@ -123,6 +122,8 @@ LabelNode::setStyle( const Style& style )
         OE_WARN << LC << "Illegal state: cannot change a LabelNode that is not dynamic" << std::endl;
         return;
     }
+    
+    this->clearDecoration();
 
     _geode->removeDrawables( 0, _geode->getNumDrawables() );
 
@@ -139,6 +140,9 @@ LabelNode::setStyle( const Style& style )
     applyStyle( _style );
 
     setLightingIfNotSet( false );
+
+    ShaderGenerator gen( Registry::stateSetCache() );
+    this->accept( gen );
 }
 
 void

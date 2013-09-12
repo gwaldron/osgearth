@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2008-2012 Pelican Mapping
+* Copyright 2008-2013 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -24,12 +24,13 @@
 #include <osgEarth/Map>
 #include <osgEarth/MapNodeOptions>
 #include <osgEarth/SpatialReference>
+#include <osgEarth/TerrainEngineNode>
 
 namespace osgEarth
 {
     class OverlayDecorator;
     class Terrain;
-    class TerrainEngineNode;
+    class MapNodeCullData;
 
     /**
      * OSG Node that forms the root of an osgEarth map. This node is a "view" component
@@ -107,7 +108,8 @@ namespace osgEarth
          * @param travMask
          *      Traversal mask to apply while searching
          */
-        static MapNode* findMapNode( osg::Node* graph, unsigned travMask =~0 );  
+        static MapNode* findMapNode( osg::Node* graph, unsigned travMask =~0 );
+        static MapNode* get( osg::Node* graph, unsigned travMask =~0 ) { return findMapNode(graph, travMask); }
 
         /**
          * Returns true if the realized terrain model is geocentric, false if
@@ -140,18 +142,6 @@ namespace osgEarth
          * access this directly. Instead install a DrapeableNode in the scene graph.
          */
         OverlayDecorator* getOverlayDecorator() { return _overlayDecorator; }
-
-        /**
-         * Accesses the group containing anything that will be "draped" on the terrain
-         * via the OverlayDecorator.
-         */
-        osg::Group* getOverlayGroup() { return _overlayModels.get(); }
-        
-        /**
-         * If you add or remove children to/fro the overlay group above, call this
-         * method to refresh the overlay graph.
-         */
-        void updateOverlayGraph();
 
         /**
          * Gets the engine properties associated with this node. The engine
@@ -215,7 +205,7 @@ namespace osgEarth
         ModelLayerNodeMap        _modelLayerNodes;
         osg::Group*              _maskLayerNode;
         unsigned                 _lastNumBlacklistedFilenames;
-        TerrainEngineNode*       _terrainEngine;
+        osg::ref_ptr<TerrainEngineNode> _terrainEngine;
         bool                     _terrainEngineInitialized;
         osg::Group*              _terrainEngineContainer;
 
@@ -238,9 +228,14 @@ namespace osgEarth
     private:
 
         osg::ref_ptr< ModelLayerCallback > _modelLayerCallback;
-        osg::ref_ptr< MapCallback > _mapCallback;
+        osg::ref_ptr< MapCallback >        _mapCallback;
     
         void init();
+
+        MapNodeCullData* getCullData(osg::Camera* camera) const;
+        typedef std::map<osg::Camera*, osg::ref_ptr<MapNodeCullData> > CullDataMap;
+        mutable CullDataMap _cullData;
+        mutable Threading::ReadWriteMutex _cullDataMutex;
     };
 
 } // namespace osgEarth

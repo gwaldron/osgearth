@@ -1,0 +1,114 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+* Copyright 2008-2013 Pelican Mapping
+* http://osgearth.org
+*
+* osgEarth is free software; you can redistribute it and/or modify
+* it under the terms of the GNU Lesser General Public License as published by
+* the Free Software Foundation; either version 2 of the License, or
+* (at your option) any later version.
+*
+* This program is distributed in the hope that it will be useful,
+* but WITHOUT ANY WARRANTY; without even the implied warranty of
+* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+* GNU Lesser General Public License for more details.
+*
+* You should have received a copy of the GNU Lesser General Public License
+* along with this program.  If not, see <http://www.gnu.org/licenses/>
+*/
+
+#ifndef OSGEARTH_CACHEESTIMATOR_H
+#define OSGEARTH_CACHEESTIMATOR_H 1
+
+#include <osgEarth/Common>
+#include <osgEarth/Profile>
+
+namespace osgEarth
+{      
+
+    /**
+     * A simple tool used for estimating the size of a cache seed operation.
+     * This provides a ROUGH estimate intended to provide a quick reality check before performing a cache operation.   
+     * If you see that a cache operation is going to generate 15TB of data and take 10 years to run you might want to think before running
+     * it or at least be prepared to make an extra cup of coffee.
+     */
+    class OSGEARTH_EXPORT CacheEstimator
+    {
+    public:
+        CacheEstimator();
+
+        /**
+        * Sets the minimum level to seed to
+        */
+        void setMinLevel(const unsigned int& minLevel) {_minLevel = minLevel;}
+
+        /**
+        * Gets the minimum level to seed to.
+        */
+        const unsigned int getMinLevel() const {return _minLevel;}
+
+        /**
+        * Sets the maximum level to seed to
+        */
+        void setMaxLevel(const unsigned int& maxLevel) {_maxLevel = maxLevel;}
+
+        /**
+        * Gets the maximum level to cache to.
+        */
+        const unsigned int getMaxLevel() const {return _maxLevel;}
+
+        /**
+        *Adds an extent to cache
+        */
+        void addExtent( const GeoExtent& value );
+       
+
+        /**
+         * Gets or sets the Profile used for this Cache.  Defaults to a global-geodetic profile
+         */
+        const osgEarth::Profile* getProfile() const { return _profile.get(); }
+        void setProfile( const osgEarth::Profile* profile ) { _profile = profile; }
+
+        /**
+         * Gets or sets the approximate size in MB for each tile
+         */
+        double getSizeInMBPerTile() const { return _sizeInMBPerTile;}
+        void setSizeInMBPerTile( double sizeInMBPerTile ) { _sizeInMBPerTile = sizeInMBPerTile; }
+
+        /**
+         * Gets or sets the approximate amount of processing time in seconds it will take for each tile
+         */
+        double getTimeInSecondsPerTile() const { return _timeInSecondsPerTile;}
+        void setTimeInSecondsPerTile( double timeInSecondsPerTile ) { _timeInSecondsPerTile = timeInSecondsPerTile; }
+
+        /**
+         * Gets the estimated total number of tiles that will be cached
+         */
+        unsigned int getNumTiles() const;
+
+        /**
+         * Get the estimated size of the output cache in MB.  
+         * This is a ROUGH estimate based on the _sizeInMBPerTile setting.
+         */
+        double getSizeInMB() const;
+
+        /**
+         * Get an estimate on the amount of time it will take to process the cache.
+         * This is a ROUGH estimate based on the _timeInSecondsPerTile setting
+         */
+        double getTotalTimeInSeconds() const;
+
+
+    protected:
+
+        osg::ref_ptr< const osgEarth::Profile > _profile;
+        unsigned int _minLevel;
+        unsigned int _maxLevel;        
+        std::vector< GeoExtent > _extents;
+        double _sizeInMBPerTile;
+        double _timeInSecondsPerTile;
+
+    };
+}
+
+#endif // OSGEARTH_BOUNDS_H

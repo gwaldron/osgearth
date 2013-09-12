@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2012 Pelican Mapping
+ * Copyright 2008-2013 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -23,6 +23,8 @@
 
 using namespace osgEarth;
 
+#define LC "[MemCacheBin] "
+
 //------------------------------------------------------------------------
 
 namespace
@@ -34,44 +36,41 @@ namespace
     {
         MemCacheBin( const std::string& id, unsigned maxSize )
             : CacheBin( id ),
-              _lru    ( true, maxSize )
+              _lru    ( true /* MT-safe */, maxSize )
         {
             //nop
         }
 
-        ReadResult readObject(const std::string& key,
-                              double             maxAge )
+        ReadResult readObject(const std::string& key, TimeStamp minTime)
         {
-            MemCacheLRU::Record rec = _lru.get(key);
+            MemCacheLRU::Record rec;
+            _lru.get(key, rec);
 
             // clone required since the cache is in memory
 
             if ( rec.valid() )
             {
+                //OE_INFO << LC << "hits: " << _lru.getStats()._hitRatio*100.0f << "%" << std::endl;
+
                 return ReadResult( 
                    osg::clone(rec.value().first.get(), osg::CopyOp::DEEP_COPY_ALL),
                    rec.value().second );
             }
             else
+            {
+                //OE_INFO << LC << "hits: " << _lru.getStats()._hitRatio*100.0f << "%" << std::endl;
                 return ReadResult();
+            }
         }
 
-        ReadResult readImage(const std::string& key,
-                             double             maxAge )
+        ReadResult readImage(const std::string& key, TimeStamp minTime)
         {
-            return readObject( key, maxAge );
+            return readObject( key, minTime );
         }
 
-        ReadResult readString(const std::string& key,
-                              double             maxAge )
+        ReadResult readString(const std::string& key, TimeStamp minTime)
         {
-            return readObject( key, maxAge );
-        }
-
-        ReadResult readConfig(const std::string& key,
-                              double             maxAge )
-        {
-            return readObject( key, maxAge );
+            return readObject( key, minTime );
         }
 
         bool write( const std::string& key, const osg::Object* object, const Config& meta )
@@ -85,9 +84,23 @@ namespace
                 return false;
         }
 
-        bool isCached( const std::string& key, double maxAge ) 
+        bool remove(const std::string& key)
         {
-            return _lru.has(key);
+            _lru.erase(key);
+            return true;
+        }
+
+        bool touch(const std::string& key)
+        {
+            // just doing a get will put it at the front of the LRU list
+            MemCacheLRU::Record dummy;
+            return _lru.get(key, dummy);
+        }
+
+        RecordStatus getRecordStatus( const std::string& key, TimeStamp minTime )
+        {
+            // ignore minTime; MemCache does not support expiration
+            return _lru.has(key) ? STATUS_OK : STATUS_NOT_FOUND;
         }
 
         bool purge()

@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2008-2012 Pelican Mapping
+* Copyright 2008-2013 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -25,6 +25,7 @@
 #include <osg/AutoTransform>
 #include <osg/Drawable>
 #include <osg/Geometry>
+#include <osgText/TextBase>
 
 namespace osgEarth { namespace Annotation
 {
@@ -43,6 +44,9 @@ namespace osgEarth { namespace Annotation
         static const std::string& UNIFORM_FADE();
 
         static const std::string& PROGRAM_NAME();
+
+		static osgText::String::Encoding convertTextSymbolEncoding (
+			const osgEarth::Symbology::TextSymbol::Encoding encoding );
 
         /**
          * Creates a drawable representing a symbolized text label in
@@ -73,12 +77,6 @@ namespace osgEarth { namespace Annotation
          * Creates a boolean uniform used to indicate a hightlighted state.
          */
         static osg::Uniform* createHighlightUniform();
-
-        /**
-         * Install a program that implements fading, highligting, etc. on annotation 
-         * objects.
-         */
-        static void installAnnotationProgram( osg::StateSet* stateSet );
 
         /**
          * Builds a graph on top of the specified that that implements a 2-pass
@@ -135,7 +133,37 @@ namespace osgEarth { namespace Annotation
          * @param color    Color
          * @param maxAngle Maximum angle between verts (controls tessellation)
          */
+#if 0
         static osg::Node* createEllipsoid( float xr, float yr, float zr, const osg::Vec4& color, float maxAngle =15.0f );
+
+        static osg::Node* createEllipsoid( 
+            float xr, float yr, const osg::Vec4& color, float maxAngle =15.0f,
+            float minLat =-90.0, float maxLat=90.0, float minLon=-180.0, float maxLon=180.0);
+
+        static osg::Geometry* createEllipsoidGeometry( 
+            float major, float minor, const osg::Vec4& color, float maxAngle =15.0f,
+            float minLat =-90.0, float maxLat=90.0, float minLon=-180.0, float maxLon=180.0);
+#endif
+
+        /**
+         * Builds the geometry for an ellipsoid.
+         */
+        static osg::Geometry* createEllipsoidGeometry( 
+            float xr, float yr, float zr, const osg::Vec4& color, float maxAngle =10.0f,
+            float minLat =-90.0, float maxLat=90.0, float minLon=-180.0, float maxLon=180.0);
+        
+        static osg::Node* createEllipsoid( 
+            float xr, float yr, float zr, const osg::Vec4& color, float maxAngle =10.0f,
+            float minLat =-90.0, float maxLat=90.0, float minLon=-180.0, float maxLon=180.0);
+
+        struct AltitudePolicy
+        {
+            AltitudePolicy() : draping(false), sceneClamping(false), gpuClamping(false) { }
+            bool draping;
+            bool sceneClamping;
+            bool gpuClamping;
+        };
+        static void getAltitudePolicy( const Style& style, AltitudePolicy& b );
 
 
     private:

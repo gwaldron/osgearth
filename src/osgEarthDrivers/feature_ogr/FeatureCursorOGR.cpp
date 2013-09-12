@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2012 Pelican Mapping
+ * Copyright 2008-2013 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -52,17 +52,20 @@ _filters          ( filters )
 
         std::string expr;
         std::string from = OGR_FD_GetName( OGR_L_GetLayerDefn( _layerHandle ));        
-        //If the from field contains a space, quote it.
-        if (from.find(" ") != std::string::npos)
-        {
-            std::string driverName = OGR_Dr_GetName( OGR_DS_GetDriver( dsHandle ) );
+        
+        
+        std::string driverName = OGR_Dr_GetName( OGR_DS_GetDriver( dsHandle ) );             
+        // Quote the layer name if it is a shapefile, so we can handle any weird filenames like those with spaces or hyphens.
+        // Or quote any layers containing spaces for PostgreSQL
+        if (driverName == "ESRI Shapefile" || from.find(" ") != std::string::npos)
+        {                        
             std::string delim = "'";  //Use single quotes by default
             if (driverName.compare("PostgreSQL") == 0)
             {
                 //PostgreSQL uses double quotes as identifier delimeters
                 delim = "\"";
             }            
-            from = delim + from + delim;            
+            from = delim + from + delim;                    
         }
 
         if ( query.expression().isSet() )

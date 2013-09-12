@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2012 Pelican Mapping
+ * Copyright 2008-2013 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -36,6 +36,8 @@ namespace osgEarth
     {
         enum ActionType
         {
+            BEGIN_BATCH_UPDATE,               // signals the start of multiple changes
+            END_BATCH_UPDATE,                 // signals the end of multiple changes
             ADD_IMAGE_LAYER,
             REMOVE_IMAGE_LAYER,
             MOVE_IMAGE_LAYER,
@@ -50,7 +52,7 @@ namespace osgEarth
             UNSPECIFIED
         };
 
-        MapModelChange( ActionType action, Revision mapModeRev, Layer* layer, int firstIndex =-1, int secondIndex =-1 ) 
+        MapModelChange( ActionType action, Revision mapModeRev, Layer* layer =0L, int firstIndex =-1, int secondIndex =-1 ) 
             : _action(action), _layer(layer), _modelRevision(mapModeRev), _firstIndex(firstIndex), _secondIndex(secondIndex) { }
 
         const ActionType& getAction() const { return _action; }
@@ -64,10 +66,10 @@ namespace osgEarth
         MaskLayer* getMaskLayer() const { return dynamic_cast<MaskLayer*>(_layer.get()); }
 
     private:
-        ActionType _action;
+        ActionType          _action;
         osg::ref_ptr<Layer> _layer;
-        Revision _modelRevision;
-        int _firstIndex, _secondIndex;
+        Revision            _modelRevision;
+        int                 _firstIndex, _secondIndex;
     };
 }
 

@@ -23,11 +23,10 @@ This example shows how to use the TFS driver.
                     extrusion-flatten: true;
                     fill:              #ff7f2f;
                     altitude-clamping: terrain;
+					render-lighting:   true;
                 }            
             </style>
-        </styles>  
-        
-        <lighting>true</lighting>
+        </styles>
     </model>
                     
  

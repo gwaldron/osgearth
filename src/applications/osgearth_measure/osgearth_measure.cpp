@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2008-2012 Pelican Mapping
+* Copyright 2008-2013 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -31,6 +31,7 @@
 #include <osgEarthUtil/Controls>
 #include <osgEarthUtil/SkyNode>
 #include <osgEarthUtil/MouseCoordsTool>
+#include <osgEarthUtil/ExampleResources>
 #include <osgEarthSymbology/Color>
 
 #include <osgEarthUtil/MeasureTool>
@@ -99,8 +100,10 @@ main(int argc, char** argv)
     osg::ArgumentParser arguments(&argc,argv);
     osg::DisplaySettings::instance()->setMinimumNumStencilBits( 8 );
 
+    osgViewer::Viewer viewer(arguments);
+
     // load the .earth file from the command line.
-    osg::Node* earthNode = osgDB::readNodeFiles( arguments );
+    osg::Node* earthNode = MapNodeHelper().load( arguments, &viewer );
     if (!earthNode)
     {
         OE_NOTICE << "Unable to load earth model." << std::endl;
@@ -115,9 +118,6 @@ main(int argc, char** argv)
     }
 
     earthNode->setNodeMask( 0x1 );
-
-
-    osgViewer::Viewer viewer(arguments);
     
     osgEarth::Util::EarthManipulator* earthManip = new EarthManipulator();
     viewer.setCameraManipulator( earthManip );

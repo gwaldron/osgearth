@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2012 Pelican Mapping
+ * Copyright 2008-2013 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -22,19 +22,23 @@
 #include "KML_Object"
 #include <osgEarthSymbology/Geometry>
 
-using namespace osgEarth;
-using namespace osgEarth::Symbology;
-
-struct KML_Geometry : public KML_Object
+namespace osgEarth_kml
 {
-    KML_Geometry() : _extrude(false), _tessellate(false) { }
-    virtual void parseCoords( const Config& conf, KMLContext& cx );
-    virtual void parseStyle( const Config& conf, KMLContext& cs, Style& style );
-    virtual void build( const Config& confParent, KMLContext& cx, Style& style );
-    void buildChild( const Config& conf, KMLContext& cx, Style& style );
-    osg::ref_ptr<Geometry> _geom;
-    bool _extrude, _tessellate;
-private:    
-};
+    using namespace osgEarth;
+    using namespace osgEarth::Symbology;
+
+    struct KML_Geometry : public KML_Object
+    {
+        KML_Geometry() : _extrude(false), _tessellate(false) { }
+        virtual void parseCoords( const Config& conf, KMLContext& cx );
+        virtual void parseStyle( const Config& conf, KMLContext& cs, Style& style );
+        virtual void build( const Config& confParent, KMLContext& cx, Style& style );
+        void buildChild( const Config& conf, KMLContext& cx, Style& style );
+        osg::ref_ptr<Geometry> _geom;
+        bool _extrude, _tessellate;
+    private:    
+    };
+
+} // namespace osgEarth_kml
 
 #endif // OSGEARTH_DRIVER_KML_KML_GEOMETRY

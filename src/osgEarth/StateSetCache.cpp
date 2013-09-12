@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2012 Pelican Mapping
+ * Copyright 2008-2013 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -19,6 +19,7 @@
 #include <osgEarth/StateSetCache>
 #include <osg/NodeVisitor>
 #include <osg/Geode>
+#include <osg/BufferIndexBinding>
 
 #define LC "[StateSetCache] "
 
@@ -164,53 +165,147 @@ StateSetCache::optimize(osg::Node* node)
         ShareStateAttributes v1( this );
         node->accept( v1 );
 
+        
+#if OSG_MIN_VERSION_REQUIRED(3,1,4)
         // replace all equivalent static statesets with a single instance
+        // only supported in OSG 3.1.4+ because of the Uniform mutex 
+        // protection.
         ShareStateSets v2( this );
         node->accept( v2 );
+#endif
     }
 }
 
 
 bool
-StateSetCache::share(osg::ref_ptr<osg::StateSet>& input,
-                     osg::ref_ptr<osg::StateSet>& output )
+StateSetCache::eligible(osg::StateSet* stateSet) const
 {
-    Threading::ScopedMutexLock lock( _mutex );
-
-    std::pair<StateSetSet::iterator,bool> result = _stateSetCache.insert( input );
-    if ( result.second )
-    {
-        // first use
-        output = input.get();
+#if OSG_MIN_VERSION_REQUIRED(3,1,4)
+    if ( !stateSet )
         return false;
+
+    // DYNAMIC means the user intends to change it later. So it needs to
+    // stay independent.
+    if ( stateSet->getDataVariance() == osg::Object::DYNAMIC )
+        return false;
+
+    const osg::StateSet::AttributeList& attrs = stateSet->getAttributeList();
+    for( osg::StateSet::AttributeList::const_iterator i = attrs.begin(); i != attrs.end(); ++i )
+    {
+        osg::StateAttribute* a = i->second.first.get();
+        if ( !eligible(a) )
+            return false;
+    }
+
+    return true;
+#else
+    return false;
+#endif
+}
+
+
+bool
+StateSetCache::eligible(osg::StateAttribute* attr) const
+{
+    if ( !attr )
+        return false;
+
+    // DYNAMIC means the user intends to change it later. So it needs to
+    // stay independent.
+    if ( attr->getDataVariance() == osg::Object::DYNAMIC )
+        return false;
+
+    // cannot share BIB's. They don't clone well since they have underlying buffer objects
+    // that may be in use. It results in OpenGL invalid enumerant errors and errors such as
+    // "uniform block xxx has no binding"
+    if (dynamic_cast<osg::BufferIndexBinding*>(attr) != 0L)
+        return false;
+
+    return true;
+}
+
+
+bool
+StateSetCache::share(osg::ref_ptr<osg::StateSet>& input,
+                     osg::ref_ptr<osg::StateSet>& output,
+                     bool                         checkEligible)
+{
+    bool shared     = false;
+    bool shareattrs = true;
+
+    if ( !checkEligible || eligible(input.get()) )
+    {
+        Threading::ScopedMutexLock lock( _mutex );
+        shareattrs = false;
+
+        std::pair<StateSetSet::iterator,bool> result = _stateSetCache.insert( input );
+        if ( result.second )
+        {
+            // first use
+            output = input.get();
+            shareattrs = true;
+            shared = false;
+        }
+        else
+        {
+            // found a share!
+            output = result.first->get();
+            shared = true;
+        }
     }
     else
     {
-        // found a share!
-        output = result.first->get();
-        return true;
+        output = input.get();
+        shared = false;
     }
+
+    if ( shareattrs )
+    {
+        ShareStateAttributes sa(this);
+        sa.applyStateSet( input.get() );
+    }
+
+    return shared;
 }
 
 
 
 bool
 StateSetCache::share(osg::ref_ptr<osg::StateAttribute>& input,
-                     osg::ref_ptr<osg::StateAttribute>& output)
+                     osg::ref_ptr<osg::StateAttribute>& output,
+                     bool                               checkEligible)
 {
-    Threading::ScopedMutexLock lock( _mutex );
-
-    std::pair<StateAttributeSet::iterator,bool> result = _stateAttributeCache.insert( input );
-    if ( result.second )
+    if ( !checkEligible || eligible(input.get()) )
     {
-        // first use
-        output = input.get();
-        return false;
+        Threading::ScopedMutexLock lock( _mutex );
+
+        std::pair<StateAttributeSet::iterator,bool> result = _stateAttributeCache.insert( input );
+        if ( result.second )
+        {
+            // first use
+            output = input.get();
+            return false;
+        }
+        else
+        {
+            // found a share!
+            output = result.first->get();
+            return true;
+        }
     }
     else
     {
-        // found a share!
-        output = result.first->get();
-        return true;
+        output = input.get();
+        return false;
     }
+}
+
+
+void
+StateSetCache::clear()
+{
+    Threading::ScopedMutexLock lock( _mutex );
+
+    _stateAttributeCache.clear();
+    _stateSetCache.clear();
 }

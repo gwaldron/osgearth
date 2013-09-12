@@ -1,0 +1,175 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+* Copyright 2008-2013 Pelican Mapping
+* http://osgearth.org
+*
+* osgEarth is free software; you can redistribute it and/or modify
+* it under the terms of the GNU Lesser General Public License as published by
+* the Free Software Foundation; either version 2 of the License, or
+* (at your option) any later version.
+*
+* This program is distributed in the hope that it will be useful,
+* but WITHOUT ANY WARRANTY; without even the implied warranty of
+* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+* GNU Lesser General Public License for more details.
+*
+* You should have received a copy of the GNU Lesser General Public License
+* along with this program.  If not, see <http://www.gnu.org/licenses/>
+*/
+#ifndef OSGEARTH_DECLUTTER_RENDER_BIN_H
+#define OSGEARTH_DECLUTTER_RENDER_BIN_H 1
+
+#include <osgEarth/Common>
+#include <osgEarth/Config>
+#include <osg/Drawable>
+#include <osgUtil/RenderLeaf>
+#include <limits.h>
+
+/**
+ * To apply the "decluttering" algorithm to a subgraph, call
+ *
+ * Decluttering::setEnabled( node->getOrCreateStateSet(), true );
+ */
+
+#define OSGEARTH_DECLUTTER_BIN "osgearth_declutter"
+
+namespace osgEarth
+{
+    /**
+     * Marker class hinting that an implementation supports the decluttering
+     * render bin.
+     */
+    class SupportsDecluttering
+    {
+        //nop
+    };
+
+    /**
+     * Interface that exposes set/getPriority for priority sorting
+     */
+    class PriorityProvider
+    {
+    public:
+        virtual void setPriority(float value) =0;
+        virtual float getPriority() const =0;
+
+    protected:
+        virtual ~PriorityProvider() { }
+    };
+
+    /**
+     * Custom functor that compares two RenderLeaf's and returns TRUE if the left-hand one
+     * is higher priority, otherwise FALSE. You can call setDeclutterPriorityFunctor()
+     * to set a custom priority-sorting functor.
+     */
+    struct DeclutterSortFunctor : public osg::Referenced
+    {
+        virtual bool operator() ( const osgUtil::RenderLeaf* lhs, const osgUtil::RenderLeaf* rhs ) const =0;
+        virtual ~DeclutterSortFunctor() { }
+    };
+
+    /**
+     * A decluttering functor that sorts by the priority field in AnnotationData.
+     * AnnotationData should be attached to each Drawable's user data.
+     */
+    struct OSGEARTH_EXPORT DeclutterByPriority : public DeclutterSortFunctor
+    {
+        virtual bool operator()(const osgUtil::RenderLeaf* lhs, const osgUtil::RenderLeaf* rhs ) const;
+        virtual ~DeclutterByPriority() { }
+    };
+
+    /**
+     * Options to control the annotation decluttering engine.
+     */
+    class OSGEARTH_EXPORT DeclutteringOptions
+    {
+    public:
+        DeclutteringOptions( const Config& conf =Config() )
+            : _minAnimAlpha         ( 0.35f ),
+              _minAnimScale         ( 0.45f ),
+              _inAnimTime           ( 0.40f ),
+              _outAnimTime          ( 0.00f ),
+              _sortByPriority       ( false ),
+              _maxObjects           ( INT_MAX )
+        {
+            fromConfig(conf);
+        }
+
+        virtual ~DeclutteringOptions() { }
+
+        /** Alpha value of a fully-occluded object */
+        optional<float>& minAnimationAlpha() { return _minAnimAlpha; }
+        const optional<float>& minAnimationAlpha() const { return _minAnimAlpha; }
+
+        /** Scale factor of a fully-occluded object */
+        optional<float>& minAnimationScale() { return _minAnimScale; }
+        const optional<float>& minAnimationScale() const { return _minAnimScale; }
+
+        /** Time (in seconds) for an object to transition from occluded to visible */
+        optional<float>& inAnimationTime() { return _inAnimTime; }
+        const optional<float>& inAnimationTime() const { return _inAnimTime; }
+
+        /** Time (in seconds) for an object to transition from visible to occluded */
+        optional<float>& outAnimationTime() { return _outAnimTime; }
+        const optional<float>& outAnimationTime() const { return _outAnimTime; }
+
+        /** If set, activate the AnnotationData priority-based sorting */
+        optional<bool>& sortByPriority() { return _sortByPriority; }
+        const optional<bool>& sortByPriority() const { return _sortByPriority; }
+
+        /** Maximum number of objects to draw after sorting */
+        optional<unsigned>& maxObjects() { return _maxObjects; }
+        const optional<unsigned>& maxObjects() const { return _maxObjects; }
+
+    public:
+
+        Config getConfig() const;
+
+    protected:
+        optional<float>    _minAnimAlpha;
+        optional<float>    _minAnimScale;
+        optional<float>    _inAnimTime;
+        optional<float>    _outAnimTime;
+        optional<bool>     _sortByPriority;
+        optional<unsigned> _maxObjects;
+
+        void fromConfig( const Config& conf );
+    };
+
+    struct OSGEARTH_EXPORT Decluttering
+    {
+        /**
+         * Enables or disables decluttering on a stateset.
+         */
+        static void setEnabled( osg::StateSet* stateSet, bool enabled, int binNum =13 );
+
+        /**
+         * Enables or disables decluttering globally.
+         */
+        static void setEnabled( bool enabled );
+
+        /**
+         * Sets a functor to use to determine render leaf priority for declutter sorting.
+         */
+        static void setSortFunctor( DeclutterSortFunctor* f );
+
+        /**
+         * Clears a custom priority functor that was set using setDeclutterPriorityFunctor,
+         * reverting to the default behavior (which is to sort by distance from the camera).
+         */
+        static void clearSortFunctor();
+
+        /**
+         * Applies the provided options to the decluttering engine.
+         */
+        static void setOptions( const DeclutteringOptions& options );
+
+        /**
+         * Fetches the current decluttering options
+         */
+        static const DeclutteringOptions& getOptions();
+    };
+
+} // namespace osgEarth
+
+#endif //OSGEARTH_DECLUTTER_RENDER_BIN_H

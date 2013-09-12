@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2012 Pelican Mapping
+ * Copyright 2008-2013 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -342,7 +342,7 @@ namespace osgEarth { namespace Util { namespace Controls
         void setText( const std::string& value );
         const std::string& text() const { return _text; }
 
-		void setEncoding( osgText::String::Encoding value );
+        void setEncoding( osgText::String::Encoding value );
         const osgText::String::Encoding& encoding() const { return _encoding; }
 
         void setFont( osgText::Font* font );
@@ -353,6 +353,15 @@ namespace osgEarth { namespace Util { namespace Controls
 
         void setHaloColor( const osg::Vec4f& value );
         const optional<osg::Vec4f>& haloColor() const { return _haloColor; }
+
+        void setTextBackdropType(osgText::Text::BackdropType value);
+        const osgText::Text::BackdropType getTextBackdropType() const { return _backdropType; }
+
+        void setTextBackdropImplementation(osgText::Text::BackdropImplementation value);
+        const osgText::Text::BackdropImplementation getTextBackdropImplementation() const { return _backdropImpl; }
+
+        void setTextBackdropOffset(float offsetValue);
+        float getTextBackdropOffset() const { return _backdropOffset; }
 
     public: // Control
         virtual void calcSize( const ControlContext& context, osg::Vec2f& out_size );
@@ -365,7 +374,37 @@ namespace osgEarth { namespace Util { namespace Controls
         osg::ref_ptr<osgText::Text> _drawable;
         osg::Vec3 _bmin, _bmax;
         optional<osg::Vec4f> _haloColor;
-		osgText::String::Encoding _encoding;
+        osgText::String::Encoding _encoding;
+        osgText::Text::BackdropType _backdropType;
+        osgText::Text::BackdropImplementation _backdropImpl;
+        float _backdropOffset;
+    };
+
+    /**
+     * Button - just a Label with preset background and active colors
+     */
+    class OSGEARTHUTIL_EXPORT ButtonControl : public LabelControl
+    {
+    public:
+        ButtonControl(
+            const std::string&   text        ="",
+            float                fontSize    =18.0f,
+            const osg::Vec4f&    foreColor   =osg::Vec4f(1,1,1,1),
+            const osg::Vec4f&    backColor   =osg::Vec4f(0.5,0.5,0.5,1),
+            const osg::Vec4f&    activeColor =osg::Vec4f(0.5,0.5,1,1),
+            ControlEventHandler* handler     =0L );
+
+        ButtonControl(
+            const std::string&   text,
+            const osg::Vec4f&    foreColor,
+            const osg::Vec4f&    backColor   =osg::Vec4f(0.5,0.5,0.5,1),
+            const osg::Vec4f&    activeColor =osg::Vec4f(0.5,0.5,1,1),
+            float                fontSize    =18.0f,
+            ControlEventHandler* handler     =0L );
+        
+        ButtonControl(
+            const std::string&   text,
+            ControlEventHandler* handler );
     };
 
     /**
@@ -643,6 +682,8 @@ namespace osgEarth { namespace Util { namespace Controls
         T* setControl( int col, int row, T* control ) {
             return dynamic_cast<T*>( setControlImpl(col, row, control)); }
 
+        Control* getControl(int col, int row);
+
         unsigned getNumRows() const { return _rows.size(); }
         unsigned getNumColumns() const { return _colWidths.size(); }
 
@@ -829,7 +870,7 @@ namespace osgEarth { namespace Util { namespace Controls
         bool            _updatePending;
 
         typedef std::map< osg::observer_ptr<osgGA::GUIEventHandler>, osg::observer_ptr<osgViewer::View> > EventHandlersMap;
-		EventHandlersMap _eventHandlersMap;
+        EventHandlersMap _eventHandlersMap;
 
         osg::ref_ptr<ControlNodeBin> _controlNodeBin;
 

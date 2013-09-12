@@ -1,0 +1,78 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+* Copyright 2008-2012 Pelican Mapping
+* http://osgearth.org
+*
+* osgEarth is free software; you can redistribute it and/or modify
+* it under the terms of the GNU Lesser General Public License as published by
+* the Free Software Foundation; either version 2 of the License, or
+* (at your option) any later version.
+*
+* This program is distributed in the hope that it will be useful,
+* but WITHOUT ANY WARRANTY; without even the implied warranty of
+* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+* GNU Lesser General Public License for more details.
+*
+* You should have received a copy of the GNU Lesser General Public License
+* along with this program.  If not, see <http://www.gnu.org/licenses/>
+*/
+#ifndef OSGEARTHUTIL_NORMAL_MAP_H
+#define OSGEARTHUTIL_NORMAL_MAP_H
+
+#include <osgEarthUtil/Common>
+#include <osgEarth/TerrainEffect>
+#include <osgEarth/ImageLayer>
+#include <osg/observer_ptr>
+
+namespace osgEarth {
+    class Map;
+}
+
+namespace osgEarth { namespace Util
+{
+    /**
+     * Terrain effect that applies a normal map sampler to the
+     * terrain during the lighting phase. The normal map is 
+     * provided by a shared ImageLayer.
+     */
+    class OSGEARTHUTIL_EXPORT NormalMap : public TerrainEffect
+    {
+    public:
+        /** construct a new normal mapping effect */
+        NormalMap();
+
+        /** Sets the image layer that generates the normal map. 
+            You must call this prior to installing the effect. */
+        void setNormalMapLayer(ImageLayer* layer) { _layer = layer; }
+        ImageLayer* getNormalMapLayer() { return _layer.get(); }
+
+        /** Sets the LOD at which to start normal mapping */
+        void setStartLOD(unsigned lod);
+        unsigned getStartLOD() const { return *_startLOD; }
+
+    public: // TerrainEffect interface
+
+        void onInstall(TerrainEngineNode* engine);
+        void onUninstall(TerrainEngineNode* engine);
+
+    public: // serialization
+
+        NormalMap(const Config& conf, Map* map);
+        void mergeConfig(const Config& conf);
+        virtual Config getConfig() const;
+
+    protected:
+        virtual ~NormalMap();
+        void init();
+
+        optional<unsigned>    _startLOD;
+        optional<std::string> _layerName;
+
+        osg::observer_ptr<ImageLayer> _layer;
+        osg::ref_ptr<osg::Uniform>    _samplerUniform;
+        osg::ref_ptr<osg::Uniform>    _startLODUniform;
+    };
+
+} } // namespace osgEarth::Util
+
+#endif // OSGEARTHUTIL_NORMAL_MAP_H

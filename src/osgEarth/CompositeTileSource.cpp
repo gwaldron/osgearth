@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2012 Pelican Mapping
+ * Copyright 2008-2013 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -20,6 +20,7 @@
 #include <osgEarth/ImageUtils>
 #include <osgEarth/StringUtils>
 #include <osgEarth/Registry>
+#include <osgEarth/Progress>
 #include <osgDB/FileNameUtils>
 
 #define LC "[CompositeTileSource] "
@@ -302,7 +303,7 @@ CompositeTileSource::createImage(const TileKey&    key,
                     {
                         //We got an image, but now we need to crop it to match the incoming key's extents
                         GeoImage geoImage( image.get(), parentKey.getExtent());
-                        GeoImage cropped = geoImage.crop( key.getExtent(), true, textureSize.x(), textureSize.y());
+                        GeoImage cropped = geoImage.crop( key.getExtent(), true, textureSize.x(), textureSize.y(), *source->_options.bilinearReprojection());
                         image = cropped.getImage();
                     }
 

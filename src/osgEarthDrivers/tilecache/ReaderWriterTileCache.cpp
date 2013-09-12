@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2012 Pelican Mapping
+ * Copyright 2008-2013 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -63,7 +63,7 @@ public:
     osg::Image* createImage( const TileKey& key, ProgressCallback* progress)
     {
         unsigned int level, tile_x, tile_y;
-        level = key.getLevelOfDetail() +1;
+        level = key.getLevelOfDetail();
         key.getTileXY( tile_x, tile_y );
 
         unsigned int numCols, numRows;

@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2012 Pelican Mapping
+ * Copyright 2008-2013 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -36,6 +36,8 @@ namespace osgEarth { namespace Symbology
     class OSGEARTHSYMBOLOGY_EXPORT ModelSymbol : public InstanceSymbol
     {
     public:
+        META_Symbol(ModelSymbol);
+
         ModelSymbol( const Config& conf =Config() );
 
         /** dtor */
@@ -52,6 +54,10 @@ namespace osgEarth { namespace Symbology
         /** roll in degrees */
         optional<NumericExpression>& roll() { return _roll; }
         const optional<NumericExpression>& roll() const { return _roll; }
+
+        /** whether to automatically scale the model from meters to pixels */
+        optional<bool>& autoScale() { return _autoScale; }
+        const optional<bool>& autoScale() const { return _autoScale; }
         
     public: // non-serialized properties (for programmatic use only)
 
@@ -62,6 +68,7 @@ namespace osgEarth { namespace Symbology
     public:
         virtual Config getConfig() const;
         virtual void mergeConfig( const Config& conf );
+        static void parseSLD(const Config& c, class Style& style);
     
     public: // InstanceSymbol
         /** Creates a new (empty) resource appropriate for this symbol */
@@ -71,6 +78,7 @@ namespace osgEarth { namespace Symbology
         optional<NumericExpression>  _heading;
         optional<NumericExpression>  _pitch;
         optional<NumericExpression>  _roll;
+        optional<bool>               _autoScale;
         osg::ref_ptr<osg::Node>      _node;
     };
 

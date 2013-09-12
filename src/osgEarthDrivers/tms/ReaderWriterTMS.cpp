@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2008-2012 Pelican Mapping
+* Copyright 2008-2013 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -51,7 +51,7 @@ public:
         _invertY = _options.tmsType() == "google";
     }
 
-
+    // one-time initialization (per source)
     Status initialize(const osgDB::Options* dbOptions)
     {
         _dbOptions = Registry::instance()->cloneOrCreateOptions(dbOptions);
@@ -88,6 +88,11 @@ public:
             {
                 return Status::Error( Stringify() << "Failed to read tilemap from " << tmsURI.full() );
             }
+
+            OE_INFO << LC
+                << "TMS tile map datestamp = "
+                << DateTime(_tileMap->getTimeStamp()).asRFC1123()
+                << std::endl;
             
             profile = _tileMap->createProfile();
             if ( profile )
@@ -125,11 +130,37 @@ public:
         return STATUS_OK;
     }
 
+    // TileSource timestamp is the time of the time map metadata.
+    TimeStamp getLastModifiedTime() const
+    {
+        if ( _tileMap.valid() )
+            return _tileMap->getTimeStamp();
+        else
+            return TileSource::getLastModifiedTime();
+    }
 
+    // reflect a default cache policy based on whether this TMS repo is
+    // local or remote.
+    CachePolicy getCachePolicyHint(const Profile* targetProfile) const
+    {
+        // if the source is local and the profiles line up, don't cache (by default).
+        if (!_options.url()->isRemote() &&
+            targetProfile && 
+            targetProfile->isEquivalentTo(getProfile()) )
+        {
+            return CachePolicy::NO_CACHE;
+        }
+        else
+        {
+            return CachePolicy::DEFAULT;
+        }
+    }
+
+    // creates an image from the TMS repo.
     osg::Image* createImage(const TileKey&        key,
                             ProgressCallback*     progress )
     {
-        if (_tileMap.valid() && key.getLevelOfDetail() <= getMaxDataLevel() )
+        if (_tileMap.valid() && key.getLevelOfDetail() <= _tileMap->getMaxLevel() )
         {
             std::string image_url = _tileMap->getURL( key, _invertY );
                 

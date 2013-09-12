@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2008-2012 Pelican Mapping
+* Copyright 2008-2013 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -21,6 +21,7 @@
 #define OSGEARTH_IOTYPES_H 1
 
 #include <osgEarth/Config>
+#include <osgEarth/DateTime>
 
 /**
  * A collectin of types used by the various I/O systems in osgEarth. These
@@ -28,9 +29,6 @@
  */
 namespace osgEarth
 {
-
-//--------------------------------------------------------------------
-
     /**
      * String wrapped in an osg::Object (for I/O purposes)
      */
@@ -75,6 +73,7 @@ namespace osgEarth
             RESULT_OK,
             RESULT_CANCELED,
             RESULT_NOT_FOUND,
+            RESULT_EXPIRED,
             RESULT_SERVER_ERROR,
             RESULT_TIMEOUT,
             RESULT_NO_READER,
@@ -85,19 +84,23 @@ namespace osgEarth
 
         /** Construct a result with no object */
         ReadResult( Code code =RESULT_NOT_FOUND )
-            : _code(code), _fromCache(false) { }
+            : _code(code), _fromCache(false), _lmt(0) { }
 
         /** Construct a successful result */
         ReadResult( osg::Object* result )
-            : _code(RESULT_OK), _result(result), _fromCache(false) { }
+            : _code(RESULT_OK), _result(result), _fromCache(false), _lmt(0) { }
 
         /** Construct a successful result with metadata */
         ReadResult( osg::Object* result, const Config& meta )
-            : _code(RESULT_OK), _result(result), _meta(meta), _fromCache(false) { }
+            : _code(RESULT_OK), _result(result), _meta(meta), _fromCache(false), _lmt(0) { }
+
+        /** Construct a result with data, possible with an error code */
+        ReadResult( Code code, osg::Object* result, const Config& meta )
+            : _code(code), _result(result), _meta(meta), _fromCache(false), _lmt(0) { }
 
         /** Copy construct */
         ReadResult( const ReadResult& rhs )
-            : _code(rhs._code), _result(rhs._result.get()), _meta(rhs._meta), _fromCache(rhs._fromCache) { }
+            : _code(rhs._code), _result(rhs._result.get()), _meta(rhs._meta), _fromCache(rhs._fromCache), _lmt(rhs._lmt) { }
 
         /** dtor */
         virtual ~ReadResult() { }
@@ -113,6 +116,9 @@ namespace osgEarth
 
         /** The result code */
         const Code& code() const { return _code; }
+
+        /** Last modified timestamp */
+        TimeStamp lastModifiedTime() const { return _lmt; }
 
         /** True if the object came from the cache */
         bool isFromCache() const { return _fromCache; }
@@ -148,7 +154,7 @@ namespace osgEarth
                 code == RESULT_OK              ? "OK" :
                 code == RESULT_CANCELED        ? "Read canceled" :
                 code == RESULT_NOT_FOUND       ? "Target not found" :
-                code == RESULT_SERVER_ERROR    ? "Server error" :
+                code == RESULT_SERVER_ERROR    ? "Server reported error" :
                 code == RESULT_TIMEOUT         ? "Read timed out" :
                 code == RESULT_NO_READER       ? "No suitable ReaderWriter found" :
                 code == RESULT_READER_ERROR    ? "ReaderWriter error" :
@@ -164,6 +170,8 @@ namespace osgEarth
     public:
         void setIsFromCache(bool value) { _fromCache = value; }
 
+        void setLastModifiedTime(TimeStamp t) { _lmt = t; }
+
     protected:
         Code                      _code;
         osg::ref_ptr<osg::Object> _result;
@@ -171,6 +179,7 @@ namespace osgEarth
         std::string               _emptyString;
         Config                    _emptyConfig;
         bool                      _fromCache;
+        TimeStamp                 _lmt;
     };
 
 //--------------------------------------------------------------------

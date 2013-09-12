@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2008-2012 Pelican Mapping
+* Copyright 2008-2013 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -55,12 +55,14 @@ _distance    ( Distance(50000.0, Units::METERS) )
 {
     OE_WARN << LC << "This class is under development; use at your own risk" << std::endl;
 
+    _xform = new osg::MatrixTransform();
+    this->addChild( _xform.get() );
+
     _geode = new osg::Geode();
     rebuildGeometry();
     recalculateExtent();
 
-    getChildAttachPoint()->addChild( _geode );
-    this->addChild( getRoot() );
+    _xform->addChild( _geode );
 
     _terrainCallback = new TerrainChangedCallback(this);
     

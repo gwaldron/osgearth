@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2012 Pelican Mapping
+ * Copyright 2008-2013 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -18,6 +18,7 @@
  */
 #include <osgEarthSymbology/ModelResource>
 #include <osgEarth/StringUtils>
+#include <osgUtil/Optimizer>
 
 #define LC "[ModelResource] "
 
@@ -56,6 +57,13 @@ ModelResource::createNodeFromURI( const URI& uri, const osgDB::Options* dbOption
     if ( r.succeeded() )
     {
         node = r.releaseNode();
+
+        osgUtil::Optimizer o;
+        o.optimize( 
+            node, 
+            osgUtil::Optimizer::VERTEX_PRETRANSFORM |
+            osgUtil::Optimizer::INDEX_MESH |
+            osgUtil::Optimizer::VERTEX_POSTTRANSFORM );
     }
     else // failing that, fall back on the old encoding format..
     {

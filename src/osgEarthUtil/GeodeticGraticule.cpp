@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2012 Pelican Mapping
+ * Copyright 2008-2013 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -22,8 +22,8 @@
 #include <osgEarthFeatures/GeometryCompiler>
 #include <osgEarthSymbology/Geometry>
 #include <osgEarthAnnotation/LabelNode>
-#include <osgEarthAnnotation/Decluttering>
 
+#include <osgEarth/Decluttering>
 #include <osgEarth/Registry>
 #include <osgEarth/NodeUtils>
 #include <osgEarth/Utils>
@@ -352,8 +352,11 @@ GeodeticGraticule::buildTile( const TileKey& key, Map* map ) const
     // get the geocentric tile center:
     osg::Vec3d tileCenter;
     tileExtent.getCentroid( tileCenter.x(), tileCenter.y() );
+
+    const SpatialReference* ecefSRS = tileExtent.getSRS()->getECEF();
     osg::Vec3d centerECEF;
-    tileExtent.getSRS()->transformToECEF( tileCenter, centerECEF );
+    tileExtent.getSRS()->transform( tileCenter, ecefSRS, centerECEF );
+    //tileExtent.getSRS()->transformToECEF( tileCenter, centerECEF );
 
     osg::NodeCallback* ccc = 0L;
     // set up cluster culling.

@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2008-2012 Pelican Mapping
+* Copyright 2008-2013 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -24,6 +24,7 @@
 #include <osgEarthFeatures/LabelSource>
 #include <osgEarth/Utils>
 #include <osgEarth/Registry>
+#include <osgEarth/ShaderGenerator>
 
 #include <osg/Depth>
 #include <osgText/Text>
@@ -48,7 +49,7 @@ _text    ( text ),
 _style   ( style ),
 _geode   ( 0L )
 {
-    init( 0L );
+    init();
 }
 
 PlaceNode::PlaceNode(MapNode*           mapNode,
@@ -61,7 +62,7 @@ _text    ( text ),
 _style   ( style ),
 _geode   ( 0L )
 {
-    init( 0L );
+    init();
 }
 
 PlaceNode::PlaceNode(MapNode*              mapNode,
@@ -69,14 +70,19 @@ PlaceNode::PlaceNode(MapNode*              mapNode,
                      const Style&          style,
                      const osgDB::Options* dbOptions ) :
 OrthoNode ( mapNode, position ),
-_style    ( style )
+_style    ( style ),
+_dbOptions( dbOptions )
 {
-    init( dbOptions );
+    init();
 }
 
 void
-PlaceNode::init(const osgDB::Options* dbOptions)
+PlaceNode::init()
 {
+    //reset.
+    this->clearDecoration();
+    getAttachPoint()->removeChildren(0, getAttachPoint()->getNumChildren());
+
     _geode = new osg::Geode();
     osg::Drawable* text = 0L;
 
@@ -106,7 +112,7 @@ PlaceNode::init(const osgDB::Options* dbOptions)
 
         if ( !imageURI.empty() )
         {
-            _image = imageURI.getImage( dbOptions );
+            _image = imageURI.getImage( _dbOptions.get() );
         }
     }
 
@@ -187,14 +193,24 @@ PlaceNode::init(const osgDB::Options* dbOptions)
     osg::StateSet* stateSet = _geode->getOrCreateStateSet();
     stateSet->setAttributeAndModes( new osg::Depth(osg::Depth::ALWAYS, 0, 1, false), 1 );
 
-    AnnotationUtils::installAnnotationProgram( stateSet );
-
     getAttachPoint()->addChild( _geode );
 
-    // for clamping
+    // for clamping and occlusion culling    
+    //OE_WARN << LC << "PlaceNode::applyStyle: " << _style.getConfig().toJSON(true) << std::endl;
     applyStyle( _style );
 
     setLightingIfNotSet( false );
+
+    ShaderGenerator gen( Registry::stateSetCache() );
+    this->accept( gen );
+
+    // re-apply annotation drawable-level stuff as neccesary.
+    AnnotationData* ad = getAnnotationData();
+    if ( ad )
+        setAnnotationData( ad );
+
+    if ( _dynamic )
+        setDynamic( _dynamic );
 }
 
 
@@ -215,10 +231,35 @@ PlaceNode::setText( const std::string& text )
         osgText::Text* d = dynamic_cast<osgText::Text*>( i->get() );
         if ( d )
         {
-            d->setText( text );
+			TextSymbol* symbol =  _style.getOrCreate<TextSymbol>();
+			osgText::String::Encoding text_encoding = osgText::String::ENCODING_UNDEFINED;
+			if ( symbol && symbol->encoding().isSet() )
+			{
+				text_encoding = AnnotationUtils::convertTextSymbolEncoding(symbol->encoding().value());
+			}
+
+            d->setText( text, text_encoding );
             break;
         }
     }
+}
+
+
+void
+PlaceNode::setStyle(const Style& style)
+{
+    // changing the style requires a complete rebuild.
+    _style = style;
+    init();
+}
+
+
+void
+PlaceNode::setIconImage(osg::Image* image)
+{
+    // changing the icon requires a complete rebuild.
+    _image = image;
+    init();
 }
 
 
@@ -258,7 +299,8 @@ OSGEARTH_REGISTER_ANNOTATION( place, osgEarth::Annotation::PlaceNode );
 PlaceNode::PlaceNode(MapNode*              mapNode,
                      const Config&         conf,
                      const osgDB::Options* dbOptions) :
-OrthoNode( mapNode, conf )
+OrthoNode ( mapNode, conf ),
+_dbOptions( dbOptions )
 {
     conf.getObjIfSet( "style",  _style );
     conf.getIfSet   ( "text",   _text );
@@ -272,7 +314,7 @@ OrthoNode( mapNode, conf )
             _image->setFileName( imageURI->base() );
     }
 
-    init( dbOptions );
+    init();
 
     if ( conf.hasChild("position") )
         setPosition( GeoPoint(conf.child("position")) );

@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2012 Pelican Mapping
+ * Copyright 2008-2013 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -20,8 +20,8 @@
 #define OSGEARTH_PICKING_UTILS_H
 
 #include <osgEarth/Common>
+#include <osgEarth/PrimitiveIntersector>
 #include <osgViewer/View>
-#include <osgUtil/PolytopeIntersector>
 
 namespace osgEarth
 {
@@ -32,8 +32,8 @@ namespace osgEarth
     class OSGEARTH_EXPORT Picker
     {
     public:
-        typedef osgUtil::PolytopeIntersector::Intersection  Hit;
-        typedef osgUtil::PolytopeIntersector::Intersections Hits;
+        typedef osgEarth::PrimitiveIntersector::Intersection Hit;
+        typedef osgEarth::PrimitiveIntersector::Intersections Hits;
 
         enum Limit {
             NO_LIMIT,

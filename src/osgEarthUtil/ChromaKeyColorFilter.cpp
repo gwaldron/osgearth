@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2012 Pelican Mapping
+ * Copyright 2008-2013 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -37,7 +37,7 @@ namespace
         "uniform vec3  __COLOR_UNIFORM_NAME__;\n"
         "uniform float __DISTANCE_UNIFORM_NAME__;\n"
 
-        "void __ENTRY_POINT__(in int slot, inout vec4 color)\n"
+        "void __ENTRY_POINT__(inout vec4 color)\n"
         "{ \n"
         "    float dist = distance(color.rgb, __COLOR_UNIFORM_NAME__); \n"
         "    if (dist <= __DISTANCE_UNIFORM_NAME__) color.a = 0.0;\n"
@@ -151,7 +151,7 @@ Config
 ChromaKeyColorFilter::getConfig() const
 {
     osg::Vec3f val = getColor();
-    Config conf("rgb");
+    Config conf("chroma_key");
     conf.add( "r", val[0] );
     conf.add( "g", val[1] );
     conf.add( "b", val[2] );

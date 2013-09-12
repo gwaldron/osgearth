@@ -1,5 +1,5 @@
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2008-2012 Pelican Mapping
+* Copyright 2008-2013 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -180,7 +180,7 @@ LayerControlWidgetBase::~LayerControlWidgetBase()
 {
 }
 
-void LayerControlWidgetBase::initUi(bool hasContent)
+void LayerControlWidgetBase::initUi(bool hasContent, bool showRemove)
 {
   // object name for custom stylesheets
   setObjectName("oeItem");
@@ -212,12 +212,40 @@ void LayerControlWidgetBase::initUi(bool hasContent)
   _primaryLayout->addWidget(_dropBox);
 
 
-  // create the header box and layout
+  // create the header boxes and layouts
   _headerBox = new QFrame;
   _headerBoxLayout = new QHBoxLayout;
-  _headerBoxLayout->setSpacing(4);
-  _headerBoxLayout->setContentsMargins(2, 2, 2, 2);
+  //_headerBoxLayout->setSpacing(4);
+  //_headerBoxLayout->setContentsMargins(2, 2, 2, 2);
   _headerBox->setLayout(_headerBoxLayout);
+
+  _headerTitleBox = new QFrame;
+  _headerTitleBoxLayout = new QHBoxLayout;
+  _headerTitleBoxLayout->setSpacing(4);
+  _headerTitleBoxLayout->setContentsMargins(2, 2, 2, 2);
+  _headerTitleBox->setLayout(_headerTitleBoxLayout);
+  _headerBoxLayout->addWidget(_headerTitleBox);
+
+  _headerBoxLayout->addStretch();
+
+  _headerButtonBox = new QFrame;
+  _headerButtonBoxLayout = new QHBoxLayout;
+  //_headerButtonBoxLayout->setSpacing(4);
+  _headerButtonBoxLayout->setContentsMargins(2, 2, 2, 2);
+  _headerButtonBox->setLayout(_headerButtonBoxLayout);
+  _headerBoxLayout->addWidget(_headerButtonBox);
+
+  if (showRemove)
+  {
+    // add remove button to the header button box
+    _removeButton = new QPushButton(QIcon(":/images/close.png"), tr(""));
+    _removeButton->setFlat(true);
+    _removeButton->setMaximumSize(16, 16);
+    _headerButtonBoxLayout->addWidget(_removeButton);
+
+    connect(_removeButton, SIGNAL(clicked(bool)), this, SLOT(onRemoveClicked(bool)));
+  }
+
   _primaryLayout->addWidget(_headerBox);
 
 
@@ -234,6 +262,11 @@ void LayerControlWidgetBase::initUi(bool hasContent)
   }
 
   setAcceptDrops(true); 
+}
+
+void LayerControlWidgetBase::onRemoveClicked(bool checked)
+{
+  //NOP
 }
 
 void LayerControlWidgetBase::mouseDoubleClickEvent(QMouseEvent *event)
@@ -320,14 +353,17 @@ void ElevationLayerControlWidget::initUi()
     _visibleCheckBox = new QCheckBox();
     _visibleCheckBox->setCheckState(_layer->getVisible() ? Qt::Checked : Qt::Unchecked);
     connect(_visibleCheckBox, SIGNAL(stateChanged(int)), this, SLOT(onEnabledCheckStateChanged(int)));
-    _headerBoxLayout->addWidget(_visibleCheckBox);
+    _headerTitleBoxLayout->addWidget(_visibleCheckBox);
 
     // create name label
     QLabel* label = new QLabel(tr(!_layer->getName().empty() ? _layer->getName().c_str() : "Elevation Layer"));
-    _headerBoxLayout->addWidget(label);
+    _headerTitleBoxLayout->addWidget(label);
 
-    // add stretch for spacing
-    _headerBoxLayout->addStretch();
+    if (!_layer->getProfile())
+    {
+      _headerBox->setStyleSheet("background-color: #FF6666; color: white;");
+      _visibleCheckBox->setEnabled(false);
+    }
   }
   else
   {
@@ -342,6 +378,12 @@ void ElevationLayerControlWidget::onEnabledCheckStateChanged(int state)
   bool checked = state == Qt::Checked;
   if (_layer.valid() && _layer->getVisible() != checked)
     _layer->setVisible(checked);
+}
+
+void ElevationLayerControlWidget::onRemoveClicked(bool checked)
+{
+  if (_parent && _parent->getMap())
+    _parent->getMap()->removeElevationLayer(_layer);
 }
 
 void ElevationLayerControlWidget::setLayerVisible(bool visible)
@@ -360,7 +402,7 @@ osgEarth::UID ElevationLayerControlWidget::getUID()
 
 Action* ElevationLayerControlWidget::getDoubleClickAction(const ViewVector& views)
 {
-  if (!_doubleClick.valid() && _layer.valid())
+  if (!_doubleClick.valid() && _layer.valid() && _layer->getProfile())
   {
     const osgEarth::GeoExtent llExt = _layer->getProfile()->getLatLongExtent();
 
@@ -410,14 +452,11 @@ void ImageLayerControlWidget::initUi()
     _visibleCheckBox = new QCheckBox();
     _visibleCheckBox->setCheckState(_layer->getVisible() ? Qt::Checked : Qt::Unchecked);
     connect(_visibleCheckBox, SIGNAL(stateChanged(int)), this, SLOT(onCheckStateChanged(int)));
-    _headerBoxLayout->addWidget(_visibleCheckBox);
+    _headerTitleBoxLayout->addWidget(_visibleCheckBox);
 
     // create name label
     QLabel* label = new QLabel(tr(!_layer->getName().empty() ? _layer->getName().c_str() : "Image Layer"));
-    _headerBoxLayout->addWidget(label);
-
-    // add stretch for spacing
-    _headerBoxLayout->addStretch();
+    _headerTitleBoxLayout->addWidget(label);
 
     // create opacity slider
     _opacitySlider = new QSlider(Qt::Horizontal);
@@ -427,6 +466,13 @@ void ImageLayerControlWidget::initUi()
     _opacitySlider->setTracking(true);
     connect(_opacitySlider, SIGNAL(valueChanged(int)), this, SLOT(onSliderValueChanged(int)));
     _contentBoxLayout->addWidget(_opacitySlider);
+
+    if (!_layer->getProfile())
+    {
+      _headerBox->setStyleSheet("background-color: #FF6666; color: white;");
+      _visibleCheckBox->setEnabled(false);
+      _opacitySlider->setEnabled(false);
+    }
   }
   else
   {
@@ -448,6 +494,12 @@ void ImageLayerControlWidget::onSliderValueChanged(int value)
   float opacity = ((float)value) / 100.0f;
   if (_layer.valid() && _layer->getOpacity() != opacity)
     _layer->setOpacity(opacity);
+}
+
+void ImageLayerControlWidget::onRemoveClicked(bool checked)
+{
+  if (_parent && _parent->getMap())
+    _parent->getMap()->removeImageLayer(_layer);
 }
 
 void ImageLayerControlWidget::setLayerVisible(bool visible)
@@ -473,7 +525,7 @@ osgEarth::UID ImageLayerControlWidget::getUID()
 
 Action* ImageLayerControlWidget::getDoubleClickAction(const ViewVector& views)
 {
-  if (!_doubleClick.valid() && _layer.valid())
+  if (!_doubleClick.valid() && _layer.valid() && _layer->getProfile())
   {
     const osgEarth::GeoExtent llExt = _layer->getProfile()->getLatLongExtent();
 
@@ -523,14 +575,11 @@ void ModelLayerControlWidget::initUi()
     _visibleCheckBox = new QCheckBox();
     _visibleCheckBox->setCheckState(_layer->getVisible() ? Qt::Checked : Qt::Unchecked);
     connect(_visibleCheckBox, SIGNAL(stateChanged(int)), this, SLOT(onEnabledCheckStateChanged(int)));
-    _headerBoxLayout->addWidget(_visibleCheckBox);
+    _headerTitleBoxLayout->addWidget(_visibleCheckBox);
 
     // create name label
     QLabel* label = new QLabel(tr(!_layer->getName().empty() ? _layer->getName().c_str() : "Model Layer"));
-    _headerBoxLayout->addWidget(label);
-
-    // add stretch for spacing
-    _headerBoxLayout->addStretch();
+    _headerTitleBoxLayout->addWidget(label);
 
     // create overlay checkbox
     _contentBoxLayout->addSpacing(16);
@@ -559,6 +608,12 @@ void ModelLayerControlWidget::onOverlayCheckStateChanged(int state)
   bool checked = state == Qt::Checked;
   if (_layer.valid() && _layer->getOverlay() != checked)
     _layer->setOverlay(checked);
+}
+
+void ModelLayerControlWidget::onRemoveClicked(bool checked)
+{
+  if (_parent && _parent->getMap())
+    _parent->getMap()->removeModelLayer(_layer);
 }
 
 void ModelLayerControlWidget::setLayerVisible(bool visible)

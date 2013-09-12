@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2012 Pelican Mapping
+ * Copyright 2008-2013 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -30,13 +30,13 @@ const char* osgEarthGetVersion()
     static int osgearth_version_init = 1;
     if (osgearth_version_init)
     {
-        if (OSGEARTH_VERSION_REVISION==0)
+        if (OSGEARTH_RC_VERSION == 0 )
         {
             sprintf(osgearth_version,"%d.%d.%d",OSGEARTH_MAJOR_VERSION,OSGEARTH_MINOR_VERSION,OSGEARTH_PATCH_VERSION);
         }
         else
         {
-            sprintf(osgearth_version,"%d.%d.%d-%d",OSGEARTH_MAJOR_VERSION,OSGEARTH_MINOR_VERSION,OSGEARTH_PATCH_VERSION,OSGEARTH_VERSION_REVISION);
+            sprintf(osgearth_version,"%d.%d.%d RC%d",OSGEARTH_MAJOR_VERSION,OSGEARTH_MINOR_VERSION,OSGEARTH_PATCH_VERSION, OSGEARTH_RC_VERSION);
         }
 
         osgearth_version_init = 0;

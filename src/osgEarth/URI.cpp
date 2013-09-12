@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2012 Pelican Mapping
+ * Copyright 2008-2013 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -21,6 +21,8 @@
 #include <osgEarth/CacheBin>
 #include <osgEarth/HTTPClient>
 #include <osgEarth/Registry>
+#include <osgEarth/Progress>
+#include <osgEarth/FileUtils>
 #include <osgDB/FileNameUtils>
 #include <osgDB/ReadFile>
 #include <osgDB/ReaderWriter>
@@ -248,9 +250,15 @@ namespace
 
                 osgDB::ReaderWriter::ReadResult rr = archive->readObject(fileName, options.get());
                 if ( rr.success() )
-                    return ReadResult(rr.takeObject());
+                {
+                    ReadResult result( rr.takeObject() );
+                    result.setLastModifiedTime( osgEarth::getLastModifiedTime(uri) );
+                    return result;
+                }
                 else
+                {
                     return ReadResult();
+                }
             }
         }
 
@@ -263,7 +271,9 @@ namespace
             buf << input.rdbuf();
             std::string bufStr;
             bufStr = buf.str();
-            return ReadResult( new StringObject(bufStr) );
+            ReadResult result( new StringObject(bufStr) );
+            result.setLastModifiedTime( osgEarth::getLastModifiedTime(uri) );
+            return result;
         }
 
         // no good
@@ -278,7 +288,7 @@ namespace
     {
         bool callbackRequestsCaching( URIReadCallback* cb ) const { return !cb || ((cb->cachingSupport() & URIReadCallback::CACHE_OBJECTS) != 0); }
         ReadResult fromCallback( URIReadCallback* cb, const std::string& uri, const osgDB::Options* opt ) { return cb->readObject(uri, opt); }
-        ReadResult fromCache( CacheBin* bin, const std::string& key, double maxAge ) { return bin->readObject(key, maxAge); }
+        ReadResult fromCache( CacheBin* bin, const std::string& key, TimeStamp minTime) { return bin->readObject(key, minTime); }
         ReadResult fromHTTP( const std::string& uri, const osgDB::Options* opt, ProgressCallback* p ) { return HTTPClient::readObject(uri, opt, p); }
         ReadResult fromFile( const std::string& uri, const osgDB::Options* opt ) { return ReadResult(osgDB::readObjectFile(uri, opt)); }
     };
@@ -287,7 +297,7 @@ namespace
     {
         bool callbackRequestsCaching( URIReadCallback* cb ) const { return !cb || ((cb->cachingSupport() & URIReadCallback::CACHE_NODES) != 0); }
         ReadResult fromCallback( URIReadCallback* cb, const std::string& uri, const osgDB::Options* opt ) { return cb->readNode(uri, opt); }
-        ReadResult fromCache( CacheBin* bin, const std::string& key, double maxAge ) { return bin->readObject(key, maxAge); }
+        ReadResult fromCache( CacheBin* bin, const std::string& key, TimeStamp minTime) { return bin->readObject(key, minTime); }
         ReadResult fromHTTP( const std::string& uri, const osgDB::Options* opt, ProgressCallback* p ) { return HTTPClient::readNode(uri, opt, p); }
         ReadResult fromFile( const std::string& uri, const osgDB::Options* opt ) { return ReadResult(osgDB::readNodeFile(uri, opt)); }
     };
@@ -302,8 +312,8 @@ namespace
             if ( r.getImage() ) r.getImage()->setFileName(uri);
             return r;
         }                
-        ReadResult fromCache( CacheBin* bin, const std::string& key, double maxAge ) { 
-            ReadResult r = bin->readImage(key, maxAge);
+        ReadResult fromCache( CacheBin* bin, const std::string& key, TimeStamp minTime ) { 
+            ReadResult r = bin->readImage(key, minTime);
             if ( r.getImage() ) r.getImage()->setFileName( key );
             return r;
         }
@@ -323,7 +333,7 @@ namespace
     {
         bool callbackRequestsCaching( URIReadCallback* cb ) const { return !cb || ((cb->cachingSupport() & URIReadCallback::CACHE_STRINGS) != 0); }
         ReadResult fromCallback( URIReadCallback* cb, const std::string& uri, const osgDB::Options* opt ) { return cb->readString(uri, opt); }
-        ReadResult fromCache( CacheBin* bin, const std::string& key, double maxAge ) { return bin->readString(key, maxAge); }
+        ReadResult fromCache( CacheBin* bin, const std::string& key, TimeStamp minTime) { return bin->readString(key, minTime); }
         ReadResult fromHTTP( const std::string& uri, const osgDB::Options* opt, ProgressCallback* p ) { return HTTPClient::readString(uri, opt, p); }
         ReadResult fromFile( const std::string& uri, const osgDB::Options* opt ) { return readStringFile(uri, opt); }
     };
@@ -337,7 +347,9 @@ namespace
         const URI&            inputURI,
         const osgDB::Options* dbOptions,
         ProgressCallback*     progress)
-    {
+    {        
+        //osg::Timer_t startTime = osg::Timer::instance()->tick();
+
         ReadResult result;
 
         if ( !inputURI.empty() )
@@ -362,10 +374,10 @@ namespace
             URIResultCache* memCache = URIResultCache::from( localOptions );
             if ( memCache )
             {
-                URIResultCache::Record r = memCache->get( uri );
-                if ( r.valid() )
+                URIResultCache::Record rec;
+                if ( memCache->get(uri, rec) )
                 {
-                    result = r.value();
+                    result = rec.value();
                 }
             }
 
@@ -417,7 +429,7 @@ namespace
                     // first try to go to the cache if there is one:
                     if ( bin && cp->isCacheReadable() )
                     {
-                        result = reader.fromCache( bin, uri.cacheKey(), *cp->maxAge() );
+                        result = reader.fromCache( bin, uri.cacheKey(), cp->getMinAcceptTime() );
                         if ( result.succeeded() )
                             result.setIsFromCache(true);
                     }
@@ -425,10 +437,15 @@ namespace
                     // not in the cache, so proceed to read it from the network.
                     if ( result.empty() )
                     {
+                        // Need to do this to support nested PLODs and Proxynodes.
+                        osg::ref_ptr<osgDB::Options> remoteOptions =
+                            Registry::instance()->cloneOrCreateOptions( localOptions );
+                        remoteOptions->getDatabasePathList().push_front( osgDB::getFilePath(uri.full()) );
+
                         // try to use the callback if it's set. Callback ignores the caching policy.
                         if ( cb )
                         {                
-                            result = reader.fromCallback( cb, uri.full(), localOptions );
+                            result = reader.fromCallback( cb, uri.full(), remoteOptions.get() );
 
                             if ( result.code() != ReadResult::RESULT_NOT_IMPLEMENTED )
                             {
@@ -442,7 +459,7 @@ namespace
                             // still no data, go to the source:
                             if ( result.empty() && cp->usage() != CachePolicy::USAGE_CACHE_ONLY )
                             {
-                                result = reader.fromHTTP( uri.full(), localOptions, progress );
+                                result = reader.fromHTTP( uri.full(), remoteOptions.get(), progress );
                             }
 
                             // write the result to the cache if possible:
@@ -461,7 +478,7 @@ namespace
                         << std::endl;
                 }
 
-                    
+
                 if ( result.getObject() && !gotResultFromCallback )
                 {
                     result.getObject()->setName( uri.base() );
@@ -480,6 +497,21 @@ namespace
         {
             (*post)(result);
         }
+
+        /*
+        osg::Timer_t endTime = osg::Timer::instance()->tick();
+
+        double time = osg::Timer::instance()->delta_s( startTime, endTime );
+        {
+            OpenThreads::ScopedLock< OpenThreads::Mutex > lock( s_statsLock );            
+            totalTime += time;
+            totalRequests += 1;
+            double avg = (double)totalRequests / totalTime;
+            OE_NOTICE << "total req = " << totalRequests << " totalTime = " << totalTime << " " << avg << " req/s" << std::endl;            
+        }
+        */
+
+        
 
         return result;
     }

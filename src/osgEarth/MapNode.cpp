@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2008-2012 Pelican Mapping
+* Copyright 2008-2013 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -18,16 +18,22 @@
 */
 #include <osgEarth/MapNode>
 #include <osgEarth/Capabilities>
+#include <osgEarth/ClampableNode>
+#include <osgEarth/ClampingTechnique>
+#include <osgEarth/CullingUtils>
+#include <osgEarth/DrapeableNode>
+#include <osgEarth/DrapingTechnique>
 #include <osgEarth/MapNodeObserver>
 #include <osgEarth/MaskNode>
 #include <osgEarth/NodeUtils>
 #include <osgEarth/Registry>
+#include <osgEarth/ShaderFactory>
+#include <osgEarth/TraversalData>
 #include <osgEarth/VirtualProgram>
 #include <osgEarth/OverlayDecorator>
 #include <osgEarth/TerrainEngineNode>
 #include <osgEarth/TextureCompositor>
 #include <osgEarth/URI>
-#include <osgEarth/DrapeableNode>
 #include <osg/ArgumentParser>
 #include <osg/PagedLOD>
 
@@ -131,8 +137,16 @@ public:
                   osg::ref_ptr< MapNode::TileRangeData > ranges = static_cast< MapNode::TileRangeData* >(node.getUserData());
                   if (ranges)
                   {
-                      node.setRange(0, ranges->_minRange, ranges->_maxRange);
-                      node.setRange(1, 0, ranges->_minRange);
+                      if (node.getRangeMode() == osg::LOD::PIXEL_SIZE_ON_SCREEN)
+                      {
+                          node.setRange( 0, ranges->_minRange, ranges->_maxRange );
+                          node.setRange( 1, ranges->_maxRange, FLT_MAX );                          
+                      }
+                      else
+                      {                          
+                          node.setRange(0, ranges->_minRange, ranges->_maxRange);
+                          node.setRange(1, 0, ranges->_minRange);
+                      }
                   }                  
               }
               
@@ -225,7 +239,7 @@ MapNode::init()
     // Since we have global uniforms in the stateset, mark it dynamic so it is immune to
     // multi-threaded overlap
     // TODO: do we need this anymore? there are no more global uniforms in here.. gw
-    getOrCreateStateSet()->setDataVariance(osg::Object::DYNAMIC);
+    //getOrCreateStateSet()->setDataVariance(osg::Object::DYNAMIC);
 
     _modelLayerCallback = new MapModelLayerCallback(this);
 
@@ -301,22 +315,31 @@ MapNode::init()
     _models->setName( "osgEarth::MapNode.modelsGroup" );
     addChild( _models.get() );
 
-    // make a group for overlay model layers:
-    _overlayModels = new ObserverGroup(); //osg::Group();
-    _overlayModels->setName( "osgEarth::MapNode.overlayModelsGroup" );
-
     // a decorator for overlay models:
     _overlayDecorator = new OverlayDecorator();
     _overlayDecorator->setOverlayGraphTraversalMask( terrainOptions.secondaryTraversalMask().value() );
 
-    if ( _mapNodeOptions.overlayBlending().isSet() )
-        _overlayDecorator->setOverlayBlending( *_mapNodeOptions.overlayBlending() );
-    if ( _mapNodeOptions.overlayTextureSize().isSet() )
-        _overlayDecorator->setTextureSize( *_mapNodeOptions.overlayTextureSize() );
-    if ( _mapNodeOptions.overlayMipMapping().isSet() )
-        _overlayDecorator->setMipMapping( *_mapNodeOptions.overlayMipMapping() );
-    if ( _mapNodeOptions.overlayAttachStencil().isSet() )
-        _overlayDecorator->setAttachStencil( *_mapNodeOptions.overlayAttachStencil() );
+    // install the Draping technique for overlays:
+    {
+        DrapingTechnique* draping = new DrapingTechnique();
+
+        if ( _mapNodeOptions.overlayBlending().isSet() )
+            draping->setOverlayBlending( *_mapNodeOptions.overlayBlending() );
+        if ( _mapNodeOptions.overlayTextureSize().isSet() )
+            draping->setTextureSize( *_mapNodeOptions.overlayTextureSize() );
+        if ( _mapNodeOptions.overlayMipMapping().isSet() )
+            draping->setMipMapping( *_mapNodeOptions.overlayMipMapping() );
+        if ( _mapNodeOptions.overlayAttachStencil().isSet() )
+            draping->setAttachStencil( *_mapNodeOptions.overlayAttachStencil() );
+
+        _overlayDecorator->addTechnique( draping );
+    }
+
+    // install the Clamping technique for overlays:
+    {
+        _overlayDecorator->addTechnique( new ClampingTechnique() );
+    }
+
 
     addTerrainDecorator( _overlayDecorator );
 
@@ -349,7 +372,7 @@ MapNode::init()
     {
         VirtualProgram* vp = new VirtualProgram();
         vp->setName( "MapNode" );
-        vp->installDefaultColoringAndLightingShaders();
+        Registry::instance()->getShaderFactory()->installLightingShaders( vp );
         ss->setAttributeAndModes( vp, osg::StateAttribute::ON );
     }
 
@@ -369,7 +392,7 @@ MapNode::~MapNode()
     //Remove our model callback from any of the model layers in the map    
     for (osgEarth::ModelLayerVector::iterator itr = modelLayers.begin(); itr != modelLayers.end(); ++itr)
     {
-        this->onModelLayerRemoved( itr->get() );        
+        this->onModelLayerRemoved( itr->get() );
     }
 }
 
@@ -557,7 +580,6 @@ MapNode::onModelLayerRemoved( ModelLayer* layer )
             else
             {
                 _models->removeChild( node );
-                updateOverlayGraph();
             }
             
             _modelLayerNodes.erase( i );
@@ -577,16 +599,9 @@ MapNode::onModelLayerMoved( ModelLayer* layer, unsigned int oldIndex, unsigned i
         if ( i != _modelLayerNodes.end() )
         {
             osg::ref_ptr<osg::Node> node = i->second;
-            
-            //if ( dynamic_cast<osgSim::OverlayNode*>( node ) )
-            //{
-            //    // treat overlay node as a special case
-            //}
-            //else
-            {
-                _models->removeChild( node.get() );
-                _models->insertChild( newIndex, node.get() );
-            }
+
+            _models->removeChild( node.get() );
+            _models->insertChild( newIndex, node.get() );
         }
         
         dirtyBound();
@@ -658,12 +673,60 @@ MapNode::traverse( osg::NodeVisitor& nv )
             //Only remove the blacklisted filenames if new filenames have been added since last time.
             _lastNumBlacklistedFilenames = numBlacklist;
             RemoveBlacklistedFilenamesVisitor v;
-            //accept( v );
             _terrainEngine->accept( v );
+        }
+
+        // traverse:
+        std::for_each( _children.begin(), _children.end(), osg::NodeAcceptOp(nv) );
+    }
+
+    else if ( nv.getVisitorType() == nv.CULL_VISITOR )
+    {
+        osgUtil::CullVisitor* cv = Culling::asCullVisitor(nv);
+        if ( cv )
+        {
+            // insert traversal data for this camera:
+            osg::ref_ptr<osg::Referenced> oldUserData = cv->getUserData();
+            MapNodeCullData* cullData = getCullData( cv->getCurrentCamera() );
+            cv->setUserData( cullData );
+
+            cullData->_mapNode = this;
+
+            // calculate altitude:
+            osg::Vec3d eye = cv->getViewPoint();
+            const SpatialReference* srs = getMapSRS();
+            if ( srs && !srs->isProjected() )
+            {
+                GeoPoint ecef;
+                ecef.fromWorld( srs, eye );
+                cullData->_cameraAltitude = ecef.alt();
+            }
+            else
+            {
+                cullData->_cameraAltitude = eye.z();
+            }
+
+            // window scale matrix:
+            osg::Matrix  m4 = cv->getWindowMatrix();
+            osg::Matrix3 m3( m4(0,0), m4(1,0), m4(2,0),
+                             m4(0,1), m4(1,1), m4(2,1),
+                             m4(0,2), m4(1,2), m4(2,2) );
+            cullData->_windowScaleMatrix->set( m3 );
+
+            // traverse:
+            cv->pushStateSet( cullData->_stateSet.get() );
+            std::for_each( _children.begin(), _children.end(), osg::NodeAcceptOp(nv) );
+            cv->popStateSet();
+
+            // restore:
+            cv->setUserData( oldUserData.get() );
         }
     }
 
-    osg::Group::traverse( nv );
+    else
+    {
+        osg::Group::traverse( nv );
+    }
 }
 
 void
@@ -672,44 +735,40 @@ MapNode::onModelLayerOverlayChanged( ModelLayer* layer )
     osg::ref_ptr<osg::Node> node = _modelLayerNodes[ layer ];
     if ( node.get() )
     {
-        DrapeableNode* draper = dynamic_cast<DrapeableNode*>(node.get());
-        if ( !draper && layer->getOverlay() )
+        OverlayNode* overlay = dynamic_cast<OverlayNode*>(node.get());
+        if ( !overlay && layer->getOverlay() )
         {
-            draper = new DrapeableNode(this);
-            draper->addChild( node.get() );
-            _models->replaceChild( node.get(), draper );
+            overlay = new DrapeableNode(this);
+            overlay->addChild( node.get() );
+            _models->replaceChild( node.get(), overlay );
         }
-        else
+        else if ( overlay )
         {
-            draper->setDraped( layer->getOverlay() );
+            overlay->setActive( layer->getOverlay() );
         }
     }
-
-    //OE_NOTICE << "Overlay changed to "  << layer->getOverlay() << std::endl;
-    //osg::ref_ptr< osg::Group > origParent = layer->getOverlay() ? _models.get() : _overlayModels.get();
-    //osg::ref_ptr< osg::Group > newParent  = layer->getOverlay() ? _overlayModels.get() : _models.get();
-
-    //osg::ref_ptr< osg::Node > node = layer->getOrCreateNode();
-    //if (node.valid())
-    //{
-    //    //Remove it from the original parent and add it to the new parent
-    //    origParent->removeChild( node.get() );
-    //    newParent->addChild( node.get() );
-    //}
-
-    updateOverlayGraph();
 }
 
-void
-MapNode::updateOverlayGraph()
+MapNodeCullData*
+MapNode::getCullData(osg::Camera* key) const
 {
-    if ( _overlayModels->getNumChildren() > 0 && _overlayDecorator->getOverlayGraph() != _overlayModels.get() )
+    // first look it up:
     {
-        _overlayDecorator->setOverlayGraph( _overlayModels.get() );
+        Threading::ScopedReadLock shared( _cullDataMutex );
+        CullDataMap::const_iterator i = _cullData.find( key );
+        if ( i != _cullData.end() )
+            return i->second.get();
     }
-    else if ( _overlayModels->getNumChildren() == 0 && _overlayDecorator->getOverlayGraph() == _overlayModels.get() )
+    // if it's not there, make it, but double-check.
     {
-        _overlayDecorator->setOverlayGraph( 0L );
+        Threading::ScopedWriteLock exclusive( _cullDataMutex );
+        
+        CullDataMap::const_iterator i = _cullData.find( key );
+        if ( i != _cullData.end() )
+            return i->second.get();
+
+        MapNodeCullData* cullData = new MapNodeCullData();
+        _cullData[key] = cullData;
+        return cullData;
     }
 }
-

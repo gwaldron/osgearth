@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2008-2012 Pelican Mapping
+* Copyright 2008-2013 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -36,7 +36,7 @@ namespace
         "#version 110\n"
         "uniform vec2 __UNIFORM_NAME__;\n"
 
-        "void __ENTRY_POINT__(in int slot, inout vec4 color)\n"
+        "void __ENTRY_POINT__(inout vec4 color)\n"
         "{\n"
         "    color.rgb = ((color.rgb - 0.5) * __UNIFORM_NAME__.y + 0.5) * __UNIFORM_NAME__.x; \n"
         "    color.rgb = clamp(color.rgb, 0.0, 1.0); \n"

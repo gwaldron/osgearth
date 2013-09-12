@@ -30,9 +30,43 @@ using namespace osgEarth;
 //----------------------------------------------------------------------------
 
 TileNodeRegistry::TileNodeRegistry(const std::string& name) :
-_name( name )
+_name              ( name ),
+_revisioningEnabled( false )
 {
     //nop
+}
+
+
+void
+TileNodeRegistry::setRevisioningEnabled(bool value)
+{
+    _revisioningEnabled = value;
+}
+
+
+void
+TileNodeRegistry::setMapRevision(const Revision& rev,
+                                 bool            setToDirty)
+{
+    if ( _revisioningEnabled )
+    {
+        if ( _maprev != rev || setToDirty )
+        {
+            Threading::ScopedWriteLock exclusive( _tilesMutex );
+
+            if ( _maprev != rev || setToDirty )
+            {
+                _maprev = rev;
+
+                for( TileNodeMap::iterator i = _tiles.begin(); i != _tiles.end(); ++i )
+                {
+                    i->second->setMapRevision( _maprev );
+                    if ( setToDirty )
+                        i->second->setDirty();
+                }
+            }
+        }
+    }
 }
 
 
@@ -43,6 +77,8 @@ TileNodeRegistry::add( TileNode* tile )
     {
         Threading::ScopedWriteLock exclusive( _tilesMutex );
         _tiles[ tile->getKey() ] = tile;
+        if ( _revisioningEnabled )
+            tile->setMapRevision( _maprev );
         OE_TEST << LC << _name << ": tiles=" << _tiles.size() << std::endl;
     }
 }

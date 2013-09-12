@@ -145,9 +145,13 @@ Config::find( const std::string& key, bool checkMe )
     return 0L;
 }
 
+
 namespace
 {
-    Json::Value conf2json( const Config& conf )
+    // Converts a Config to JSON. The "nicer" flag formats the data in a more 
+    // readable way than nicer=false. Nicer=true attempts to create JSON "objects",
+    // whereas nicer=false makes "$key" and "$children" members.
+    Json::Value conf2json( const Config& conf, bool nicer )
     {
         Json::Value value( Json::objectValue );
 
@@ -157,43 +161,95 @@ namespace
         }
         else
         {
-            if ( !conf.key().empty() )
-                value["$key"] = conf.key();
+            if ( !nicer )
+            {
+                if ( !conf.key().empty() )
+                {
+                    value["$key"] = conf.key();
+                }
+            }
 
             if ( !conf.value().empty() )
+            {
                 value["$value"] = conf.value();
+            }
 
             if ( conf.children().size() > 0 )
             {
-                Json::Value children( Json::arrayValue );
-                unsigned i = 0;
-
-                //bool hasdupes = false;
-                //std::set<std::string> dupes;
-                //for( ConfigSet::const_iterator c = conf.children().begin(); c != conf.children().end(); ++c ) {
-                //    if ( dupes.find( c->key() ) != dupes.end() ) {
-                //        hasdupes = true;
-                //        break;
-                //    }
-                //    else {
-                //        dupes.insert(c->key());
-                //    }
-                //}
-
-                for( ConfigSet::const_iterator c = conf.children().begin(); c != conf.children().end(); ++c )
+                if ( nicer )
                 {
-                    if ( c->isSimple() )
-                        value[c->key()] = c->value();
-                    else
-                        children[i++] = conf2json( *c );
-                    //else if (hasdupes)
-                    //    children[i++] = conf2json( *c );
-                    //else
-                    //    value[c->key()] = conf2json(*c);
-                }
+                    std::map< std::string, std::vector<Config> > sets;
 
-                if ( !children.empty() )
-                    value["$children"] = children;
+                    // sort into bins by name:
+                    for( ConfigSet::const_iterator c = conf.children().begin(); c != conf.children().end(); ++c )
+                    {
+                        sets[c->key()].push_back( *c );
+                    }
+
+                    for( std::map<std::string,std::vector<Config> >::iterator i = sets.begin(); i != sets.end(); ++i )
+                    {
+                        if ( i->second.size() == 1 )
+                        {
+                            Config& c = i->second[0];
+                            if ( c.isSimple() )
+                                value[i->first] = c.value();
+                            else
+                                value[i->first] = conf2json(c, nicer);
+                        }
+                        else
+                        {
+                            std::string array_key = Stringify() << i->first << "_$set";
+                            Json::Value array_value( Json::arrayValue );
+                            for( std::vector<Config>::iterator j = i->second.begin(); j != i->second.end(); ++j )
+                            {
+                                array_value.append( conf2json(*j, nicer) );
+                            }
+                            value[array_key] = array_value;
+                        }
+                    }
+
+#if 0
+                    bool hasdupes = false;
+                    std::set<std::string> dupes;
+                    for( ConfigSet::const_iterator c = conf.children().begin(); c != conf.children().end(); ++c ) {
+                        if ( dupes.find( c->key() ) != dupes.end() ) {
+                            hasdupes = true;
+                            break;
+                        }
+                        else {
+                            dupes.insert(c->key());
+                        }
+                    }
+
+                    for( ConfigSet::const_iterator c = conf.children().begin(); c != conf.children().end(); ++c )
+                    {
+                        if ( hasdupes )
+                            children[i++] = conf2json(*c, nicer);
+                        else if ( c->isSimple() )
+                            value[c->key()] = c->value();
+                        else
+                            value[c->key()] = conf2json(*c, nicer);
+                    }
+#endif
+                }
+                else
+                {
+                    Json::Value children( Json::arrayValue );
+                    unsigned i = 0;
+
+                    for( ConfigSet::const_iterator c = conf.children().begin(); c != conf.children().end(); ++c )
+                    {
+                        if ( c->isSimple() )
+                            value[c->key()] = c->value();
+                        else
+                            children[i++] = conf2json(*c, nicer);
+                    }
+
+                    if ( !children.empty() )
+                    {
+                        value["$children"] = children;
+                    }
+                }
             }
         }
 
@@ -220,7 +276,24 @@ namespace
             for( Json::Value::Members::const_iterator i = members.begin(); i != members.end(); ++i )
             {
                 const Json::Value& value = json[*i];
-                if ( (*i) == "$key" )
+
+                if ( value.isObject() )
+                {
+                    Config element( *i );
+                    json2conf( value, element );
+                    conf.add( element );
+                }
+                else if ( value.isArray() && endsWith(*i, "_$set") )
+                {
+                    std::string key = i->substr(0, i->length()-5);
+                    for( Json::Value::const_iterator j = value.begin(); j != value.end(); ++j )
+                    {
+                        Config child( key );
+                        json2conf( *j, child );
+                        conf.add( child );
+                    }
+                }
+                else if ( (*i) == "$key" )
                 {
                     conf.key() = value.asString();
                 }
@@ -264,7 +337,7 @@ namespace
 std::string
 Config::toJSON( bool pretty ) const
 {
-    Json::Value root = conf2json( *this );
+    Json::Value root = conf2json( *this, pretty );
     if ( pretty )
         return Json::StyledWriter().write( root );
     else

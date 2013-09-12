@@ -36,9 +36,15 @@ TileNode::TileNode( const TileKey& key, const TileModel* model ) :
 _key               ( key ),
 _model             ( model ),
 _bornTime          ( 0.0 ),
-_lastTraversalFrame( 0 )
+_lastTraversalFrame( 0 ),
+_dirty             ( false ),
+_outOfDate         ( false )
 {
     this->setName( key.str() );
+
+    // revisions are initially in sync:
+    if ( model )
+        _maprevision = model->_revision;
 
     osg::StateSet* stateset = getOrCreateStateSet();
 
@@ -58,7 +64,7 @@ _lastTraversalFrame( 0 )
 void
 TileNode::setLastTraversalFrame(unsigned frame)
 {
-  _lastTraversalFrame = frame;
+    _lastTraversalFrame = frame;
 }
 
 
@@ -84,7 +90,6 @@ TileNode::computeBound() const
 void
 TileNode::traverse( osg::NodeVisitor& nv )
 {
-    // TODO: not sure we need this.
     if ( nv.getVisitorType() == nv.CULL_VISITOR )
     {
         osg::ClusterCullingCallback* ccc = dynamic_cast<osg::ClusterCullingCallback*>(getCullCallback());
@@ -93,8 +98,15 @@ TileNode::traverse( osg::NodeVisitor& nv )
             if (ccc->cull(&nv,0,static_cast<osg::State *>(0))) return;
         }
 
+        // if this tile is marked dirty, bump the marker so the engine knows it
+        // needs replacing.
+        if ( _dirty || _model->_revision != _maprevision )
+        {
+            _outOfDate = true;
+        }
+
         // reset the "birth" time if necessary - this is the time at which the 
-        // node passes cull
+        // node passes cull (not multi-view compatible)
         const osg::FrameStamp* fs = nv.getFrameStamp();
         if ( fs )
         {

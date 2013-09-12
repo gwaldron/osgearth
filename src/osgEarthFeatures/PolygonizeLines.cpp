@@ -156,6 +156,11 @@ PolygonizeLinesOperator::operator()(osg::Vec3Array* verts,
     geom->setVertexArray( verts );
 
     // Set up the normals array
+    if ( !normals )
+    {
+        normals = new osg::Vec3Array(verts->size());
+        normals->assign( normals->size(), osg::Vec3(0,0,1) );
+    }
     geom->setNormalArray( normals );
     geom->setNormalBinding( osg::Geometry::BIND_PER_VERTEX );
 

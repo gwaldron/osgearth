@@ -193,6 +193,15 @@ FeatureNode::setFeature( Feature* feature )
     init();
 }
 
+const Style& FeatureNode::getStyle() const
+{
+    if ( _feature.valid() )
+    {
+        return *_feature->style();
+    }
+    return AnnotationNode::getStyle();
+}
+
 void
 FeatureNode::setStyle(const Style& style)
 {

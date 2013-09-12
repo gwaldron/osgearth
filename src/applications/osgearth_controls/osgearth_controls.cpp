@@ -96,8 +96,8 @@ createControls( ControlCanvas* cs )
     // a container centered on the screen, containing an image and a text label.
     {
         VBox* center = new VBox();
-        center->setFrame( new RoundedFrame() );
-        center->getFrame()->setBackColor( 1,1,1,0.5 );
+        center->setBorderColor( 1, 1, 1, 1 );
+        center->setBackColor( .6,.5,.4,0.5 );
         center->setPadding( 10 );
         center->setHorizAlign( Control::ALIGN_CENTER );
         center->setVertAlign( Control::ALIGN_CENTER );
@@ -109,7 +109,6 @@ createControls( ControlCanvas* cs )
             s_imageControl = new ImageControl( image.get() );
             s_imageControl->setHorizAlign( Control::ALIGN_CENTER );
             s_imageControl->setFixSizeForRotation( true );
-            //imageCon->addEventHandler( new ImageRotationHandler );
             center->addControl( s_imageControl );
             center->setHorizAlign( Control::ALIGN_CENTER );
         }
@@ -199,8 +198,7 @@ createControls( ControlCanvas* cs )
     // a centered hbox container along the bottom on the screen.
     {
         HBox* bottom = new HBox();
-        bottom->setFrame( new RoundedFrame() );
-        bottom->getFrame()->setBackColor(0,0,0,0.5);
+        bottom->setBackColor(0,0,0,0.5);        
         bottom->setMargin( 10 );
         bottom->setChildSpacing( 145 );
         bottom->setVertAlign( Control::ALIGN_BOTTOM );

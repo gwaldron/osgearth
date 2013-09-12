@@ -17,8 +17,13 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 #include <osgEarthFeatures/Filter>
+#include <osgEarthSymbology/LineSymbol>
+#include <osgEarthSymbology/PointSymbol>
 #include <osgEarth/ECEF>
 #include <osg/MatrixTransform>
+#include <osg/Point>
+#include <osg/LineWidth>
+#include <osg/LineStipple>
 
 using namespace osgEarth;
 using namespace osgEarth::Features;
@@ -235,4 +240,31 @@ FeaturesToNodeFilter::createDelocalizeGroup() const
         new osg::MatrixTransform( _local2world );
 
     return group;
+}
+
+
+void 
+FeaturesToNodeFilter::applyLineSymbology(osg::StateSet*    stateset, 
+                                         const LineSymbol* line)
+{
+    if ( line && line->stroke().isSet() )
+    {
+        float width = std::max( 1.0f, *line->stroke()->width() );
+        stateset->setAttributeAndModes(new osg::LineWidth(width), 1);
+        if ( line->stroke()->stipple().isSet() )
+        {
+            stateset->setAttributeAndModes( new osg::LineStipple(1, *line->stroke()->stipple()) );
+        }
+    }
+}
+
+void 
+FeaturesToNodeFilter::applyPointSymbology(osg::StateSet*     stateset, 
+                                          const PointSymbol* point)
+{
+    if ( point )
+    {
+        float size = std::max( 0.1f, *point->size() );
+        stateset->setAttributeAndModes(new osg::Point(size), 1);
+    }
 }

@@ -28,17 +28,46 @@ using namespace osgEarth;
 //#define OE_TEST OE_INFO
 #define OE_TEST OE_NULL
 
+RootTileGroup::RootTileGroup()
+{
+    //nop
+}
+
+void
+RootTileGroup::addRootKey(const TileKey&    key,
+                          osg::Node*        node,
+                          const UID&        engineUID,
+                          TileNodeRegistry* live,
+                          TileNodeRegistry* dead,
+                          osgDB::Options*   dbOptions)
+{
+    TilePagedLOD* lod = new TilePagedLOD(this, key, engineUID, live, dead);
+    lod->setDatabaseOptions( dbOptions );
+    lod->addChild( node );
+    lod->setNumChildrenThatCannotBeExpired( 1 );
+    lod->setFamilyReady( true );
+    this->addChild( lod );
+}
+
+//----------------------------------------------------------------
+
+TileGroup::TileGroup() :
+_tilenode      ( 0L ),
+_ignoreSubtiles( false ),
+_subtileRange  ( FLT_MAX )
+{
+    //nop
+}
+
 
 TileGroup::TileGroup(TileNode*         tilenode,
                      const UID&        engineUID,
                      TileNodeRegistry* live,
                      TileNodeRegistry* dead,
-                     osgDB::Options*   dbOptions)
+                     osgDB::Options*   dbOptions) :
+_ignoreSubtiles( false ),
+_subtileRange  ( FLT_MAX )
 {
-    _numSubtilesUpsampling = 0;
-    _numSubtilesLoaded     = 0;
-    _traverseSubtiles      = true;
-
     this->addChild( tilenode );
     _tilenode = tilenode;
 
@@ -55,22 +84,136 @@ TileGroup::TileGroup(TileNode*         tilenode,
 
 
 void
+TileGroup::setTileNode(TileNode* tilenode)
+{
+    _tilenode = tilenode;
+    this->setChild( 0, tilenode );
+
+    // Should not really need to do this, but ok
+    for(unsigned q=0; q<4; ++q)
+    {
+        TilePagedLOD* lod = static_cast<TilePagedLOD*>(_children[1+q].get());
+        lod->setCenter( tilenode->getBound().center() );
+        lod->setRadius( tilenode->getBound().radius() );
+    }
+}
+
+
+void
 TileGroup::setSubtileRange(float range)
 {
     _subtileRange = range;
 }
 
 
+osg::BoundingSphere
+TileGroup::computeBound() const
+{
+    if ( _tilenode )
+        return _tilenode->computeBound();
+    else
+        return osg::Group::computeBound();
+}
+
+
 void
 TileGroup::traverse(osg::NodeVisitor& nv)
 {
-    if ( nv.getTraversalMode() == nv.TRAVERSE_ACTIVE_CHILDREN )
+    if ( _tilenode && nv.getTraversalMode() == nv.TRAVERSE_ACTIVE_CHILDREN )
     {
         float range = nv.getDistanceToViewPoint( getBound().center(), true );
 
+        // collect information about the paged children:
+        bool     considerSubtiles      = false;
+        bool     subtileFamilyReady    = false;
+
+        if ( range <= _subtileRange )
+        {
+            // if we're ignoring subtiles (because we preivously determined that they
+            // were all upsampled), check to see if we need to re-access.
+            if ( _ignoreSubtiles )
+            {
+                if ( getTileNode()->isOutOfDate() )
+                {
+                    _ignoreSubtiles = false;
+                }
+            }
+
+            // if we're in range, consider whether to use the subtiles.
+            if ( !_ignoreSubtiles )
+            {
+                unsigned numSubtilesLoaded     = 0;
+                unsigned numSubtilesUpsampled  = 0;
+                unsigned numSubtilesLoading    = 0;
+
+                considerSubtiles = true;
+
+                // collect stats on the (potential) subtiles:
+                subtileFamilyReady = true;
+
+                for( unsigned q=0; q<4; ++q )
+                {
+                    TilePagedLOD* plod = static_cast<TilePagedLOD*>(_children[1+q].get());
+
+                    if ( plod->isCanceled() )
+                    {
+                        considerSubtiles = false;
+                        break;
+                    }
+                    if ( plod->isLoaded() || plod->getNumChildrenThatCannotBeExpired() > 0 )
+                        ++numSubtilesLoaded;
+
+                    if ( plod->isUpsampled() )
+                        ++numSubtilesUpsampled;
+
+                    if ( plod->isLoading() )
+                        ++numSubtilesLoading;
+                }
+
+                // if we don't have a complete set of loaded subtiles, OR is ALL
+                // subtiles are upsampled, don't use them. (NOTE: numSubtilesLoading
+                // also includes tiles that are updating/replacing their data, so do NOT
+                // include this in the test.)
+                if ( numSubtilesLoaded < 4 )
+                {
+                    subtileFamilyReady = false;
+                }
+
+                // if all the subtiles contain upsampled data, and none of them are trying
+                // to load new data, we can ignore them all.
+                if ( numSubtilesUpsampled >= 4 && numSubtilesLoading == 0 )
+                {
+                    considerSubtiles = false;
+                    _ignoreSubtiles = true;
+                }
+            }
+        }
+
+        if ( considerSubtiles )
+        {
+            for( unsigned q=0; q<4; ++q )
+            {
+                TilePagedLOD* plod = static_cast<TilePagedLOD*>(_children[1+q].get());
+                plod->setFamilyReady( subtileFamilyReady );
+                plod->accept( nv );
+            }
+
+            // update the TileNode so it knows what frame we're in.
+            if ( nv.getFrameStamp() )
+            {
+                _tilenode->setLastTraversalFrame( nv.getFrameStamp()->getFrameNumber() );
+            }
+        }
+
+        if ( !considerSubtiles || !subtileFamilyReady || range > _subtileRange )
+        {
+            _tilenode->accept( nv );
+        }
+
+#if 0
         // if all four subtiles have reported that they are upsampling, 
         // don't use any of them.
-        if ( _traverseSubtiles && _numSubtilesUpsampling == 4 )
+        if ( _traverseSubtiles && _numSubtilesUpsampling >= 4 )
         {
             _traverseSubtiles = false;
         }
@@ -93,9 +236,10 @@ TileGroup::traverse(osg::NodeVisitor& nv)
             // update the TileNode so it knows what frame we're in.
             if ( nv.getFrameStamp() )
             {
-              _tilenode->setLastTraversalFrame( nv.getFrameStamp()->getFrameNumber() );
+                _tilenode->setLastTraversalFrame( nv.getFrameStamp()->getFrameNumber() );
             }
         }
+#endif
     }
     else
     {

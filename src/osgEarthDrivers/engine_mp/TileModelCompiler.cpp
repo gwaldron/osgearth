@@ -118,8 +118,9 @@ namespace
 
     struct Data
     {
-        Data(const TileModel* in_model, const MaskLayerVector& in_maskLayers)
+        Data(const TileModel* in_model, const MapFrame& in_frame, const MaskLayerVector& in_maskLayers)
             : model     ( in_model ), 
+              frame     ( in_frame ),
               maskLayers( in_maskLayers )
         {
             surfaceGeode     = 0L;
@@ -136,6 +137,8 @@ namespace
             renderTileCoords = 0L;
             ownsTileCoords   = false;
         }
+
+        const MapFrame& frame;
 
         bool                     useVBOs;
         int                      textureImageUnit;
@@ -245,8 +248,7 @@ namespace
 
               if (x_match && y_match)
               {
-                //osg::Geometry* mask_geom = new osg::Geometry();
-                MPGeometry* mask_geom = new MPGeometry( d.model->_map.get(), d.textureImageUnit );
+                MPGeometry* mask_geom = new MPGeometry( d.frame, d.textureImageUnit );
                 mask_geom->setUseVertexBufferObjects(d.useVBOs);
                 d.surfaceGeode->addDrawable(mask_geom);
                 d.maskRecords.push_back( MaskRecord(boundary, min_ndc, max_ndc, mask_geom) );
@@ -257,7 +259,7 @@ namespace
         if (d.maskRecords.size() > 0)
         {
           //d.stitching_skirts = new osg::Geometry();
-          d.stitching_skirts = new MPGeometry( d.model->_map.get(), d.textureImageUnit );
+          d.stitching_skirts = new MPGeometry( d.frame, d.textureImageUnit );
           d.stitching_skirts->setUseVertexBufferObjects(d.useVBOs);
           d.surfaceGeode->addDrawable( d.stitching_skirts );
 
@@ -1850,12 +1852,13 @@ _textureImageUnit      ( texImageUnit )
 
 
 TileNode*
-TileModelCompiler::compile(const TileModel* model)
+TileModelCompiler::compile(const TileModel* model,
+                           const MapFrame&  frame)
 {
     TileNode* tile = new TileNode( model->_tileKey, model );
 
     // Working data for the build.
-    Data d(model, _masks);
+    Data d(model, frame, _masks);
 
     d.parentModel = model->getParentTileModel();
     d.scaleHeight = *_options.verticalScale();
@@ -1865,7 +1868,7 @@ TileModelCompiler::compile(const TileModel* model)
     tile->setMatrix( osg::Matrix::translate(d.centerModel) );
 
     // A Geode/Geometry for the surface:
-    d.surface = new MPGeometry( model->_map.get(), _textureImageUnit );
+    d.surface = new MPGeometry( d.frame, _textureImageUnit );
     d.surface->setUseVertexBufferObjects(d.useVBOs);
     d.surfaceGeode = new osg::Geode();
     d.surfaceGeode->addDrawable( d.surface );
@@ -1880,7 +1883,7 @@ TileModelCompiler::compile(const TileModel* model)
 
     if ( d.createSkirt )
     {
-        d.skirt = new MPGeometry( model->_map.get(), _textureImageUnit );
+        d.skirt = new MPGeometry( d.frame, _textureImageUnit );
         d.skirt->setUseVertexBufferObjects(d.useVBOs);
 
         // slightly faster than a separate geode:

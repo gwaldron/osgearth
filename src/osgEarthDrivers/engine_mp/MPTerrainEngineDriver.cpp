@@ -50,8 +50,8 @@ public:
         return
             osgDB::equalCaseInsensitive( extension, "osgearth_engine_mp" ) ||
             osgDB::equalCaseInsensitive( extension, "osgearth_engine_mp_tile" ) ||
-            osgDB::equalCaseInsensitive( extension, "osgearth_engine_mp_upsampled_tile" );
-
+            //osgDB::equalCaseInsensitive( extension, "osgearth_engine_mp_upsampled_tile" ) ||
+            osgDB::equalCaseInsensitive( extension, "osgearth_engine_mp_standalone_tile" );
     }
 
     virtual ReadResult readObject(const std::string& uri, const Options* options) const
@@ -79,6 +79,7 @@ public:
     {
         std::string ext = osgDB::getFileExtension(uri);
 
+#if 0
         if ( "osgearth_engine_mp_upsampled_tile" == ext )
         {
             // parse the tile key and engine ID:
@@ -119,7 +120,9 @@ public:
             }
         }
 
-        else if ( "osgearth_engine_mp_tile" == ext )
+        else 
+#endif
+        if ( "osgearth_engine_mp_tile" == ext || "osgearth_engine_mp_standalone_tile" == ext )
         {
             // See if the filename starts with server: and strip it off.  This will trick OSG
             // into passing in the filename to our plugin instead of using the CURL plugin if
@@ -150,7 +153,12 @@ public:
                 // assemble the key and create the node:
                 const Profile* profile = engineNode->getMap()->getProfile();
                 TileKey key( lod, x, y, profile );
-                osg::ref_ptr< osg::Node > node = engineNode->createNode( key, progress );
+
+                bool standalone = ("osgearth_engine_mp_standalone_tile" == ext);
+
+                osg::ref_ptr<osg::Node> node = 
+                    standalone ? engineNode->createStandaloneNode( key, progress ) :
+                    engineNode->createNode( key, progress );
 
                 osg::Timer_t end = osg::Timer::instance()->tick();
 

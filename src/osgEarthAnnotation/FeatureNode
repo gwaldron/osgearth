@@ -79,6 +79,8 @@ namespace osgEarth { namespace Annotation
 
         virtual osg::Group* getAttachPoint();
 
+         virtual const Style& getStyle() const;
+
         virtual void setStyle(const Style& style);
 
     public: // MapNodeObserver

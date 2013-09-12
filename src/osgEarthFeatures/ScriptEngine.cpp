@@ -133,7 +133,7 @@ ScriptEngineFactory::create( const ScriptEngineOptions& options )
         }
         else
         {
-            OE_WARN << "Skipping previously failed ScriptEngine driver \"" << options.getDriver() << "\"" << std::endl;
+            //OE_WARN << "Skipping previously failed ScriptEngine driver \"" << options.getDriver() << "\"" << std::endl;
         }
     }
     else

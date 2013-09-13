@@ -196,7 +196,7 @@ ImageLayerTileProcessor::process( osg::ref_ptr<osg::Image>& image ) const
     }
 
     // If this is a compressed image, uncompress it IF the image is not already in the
-    // target profile...becuase if it's not in the target profile, we will have to do
+    // target profile...because if it's not in the target profile, we will have to do
     // some mosaicing...and we can't mosaic a compressed image.
     if (!_layerInTargetProfile &&
         ImageUtils::isCompressed(image.get()) &&

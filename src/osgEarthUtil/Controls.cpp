@@ -808,7 +808,7 @@ LabelControl::calcSize(const ControlContext& cx, osg::Vec2f& out_size)
         LabelText* t = new LabelText();
 
         t->setText( _text, _encoding );
-        // yes, object coords. screen coords won't work becuase the bounding box will be wrong.
+        // yes, object coords. screen coords won't work because the bounding box will be wrong.
         t->setCharacterSizeMode( osgText::Text::OBJECT_COORDS );
         t->setCharacterSize( _fontSize );
 

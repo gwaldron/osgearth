@@ -429,6 +429,7 @@ ShaderGenerator::processGeometry( osg::StateSet* ss, osg::ref_ptr<osg::StateSet>
     osg::ref_ptr<VirtualProgram> vp = 0L;
 
     // Check whether the lighting state has changed and install a mode uniform.
+    // TODO: fix this
     if ( ss && ss->getMode(GL_LIGHTING) != osg::StateAttribute::INHERIT )
     {
         // clone the existing SS so we can work with it safely
@@ -440,7 +441,8 @@ ShaderGenerator::processGeometry( osg::StateSet* ss, osg::ref_ptr<osg::StateSet>
     }
 
     // if the stateset changes any texture attributes, we need a new virtual program:
-    if (ss && ss->getTextureAttributeList().size() > 0)
+    if (state->getNumTextureAttributes() > 0)
+    //if (ss && ss->getTextureAttributeList().size() > 0)
     {
         // work off the state's accumulated texture attribute set:
         int texCount = state->getNumTextureAttributes();

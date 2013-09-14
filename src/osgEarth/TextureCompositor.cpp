@@ -383,7 +383,7 @@ TextureCompositor::applyMapModelChange( const MapModelChange& change )
     if ( disableLODBlending && layer->getImageLayerOptions().lodBlending() == true )
     {
         OE_WARN << LC << "LOD blending disabled for layer \"" << layer->getName()
-            << "\" becuase it uses Mercator fast-path rendering" << std::endl;
+            << "\" because it uses Mercator fast-path rendering" << std::endl;
     }
 
     _layout.applyMapModelChange(

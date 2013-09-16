@@ -614,9 +614,9 @@ OverlayDecorator::cullTerrainAndCalculateRTTParams(osgUtil::CullVisitor* cv,
         visiblePH.getPoints( verts );
 
         // zero verts means the visible PH does not intersect the frustum.
-        // GW- commented out this check b/c it causes a nasty regression wherein the
-        // draped/clamped geometry jitters out of control. Need to investigate later.
-        //if ( verts.size() > 0 )
+        // TODO: when verts = 0 should we do something different? or use the previous
+        // frame's view matrix?
+        if ( verts.size() > 0 )
         {
             // calculate an orthographic RTT projection matrix based on the view-space
             // bounds of the vertex list (i.e. the extents surrounding the RTT camera 

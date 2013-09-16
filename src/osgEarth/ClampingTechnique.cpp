@@ -367,6 +367,10 @@ ClampingTechnique::setUpCamera(OverlayDecorator::TechRTTParams& params)
     // assemble the overlay graph stateset.
     local->_groupStateSet = new osg::StateSet();
 
+    // Required for now, otherwise GPU-clamped geometry will jitter sometimes.
+    // TODO: figure out why and fix it. This is a workaround for now.
+    local->_groupStateSet->setDataVariance( osg::Object::DYNAMIC );
+
     local->_groupStateSet->setTextureAttributeAndModes( 
         _textureUnit, 
         local->_rttTexture.get(), 

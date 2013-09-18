@@ -31,6 +31,10 @@ MaskNode::MaskNode( const MaskNode& rhs, const osg::CopyOp& op )
     //nop
 }
 
+MaskNode::~MaskNode()
+{
+}
+
 
 
 

@@ -41,7 +41,7 @@ namespace osgEarth
         ModelSourceOptions( const ConfigOptions& options =ConfigOptions() );
 
         /** dtor */
-        virtual ~ModelSourceOptions() { }
+        virtual ~ModelSourceOptions();
 
     public: // properties
 
@@ -86,7 +86,7 @@ namespace osgEarth
         ModelSource( const ModelSourceOptions& options =ModelSourceOptions() );
 
         /** dtor */
-        virtual ~ModelSource() { }
+        virtual ~ModelSource();
 
         osg::Node* createNode(
             const Map*            map,
@@ -162,6 +162,8 @@ namespace osgEarth
     {
     protected:
         const ModelSourceOptions& getModelSourceOptions( const osgDB::ReaderWriter::Options* rwOpt ) const;
+
+        virtual ~ModelSourceDriver();
     };
 
     //--------------------------------------------------------------------
@@ -174,6 +176,8 @@ namespace osgEarth
     {   
     public:
         static ModelSource* create( const ModelSourceOptions& options );
+
+        virtual ~ModelSourceFactory();
     };
 }
 

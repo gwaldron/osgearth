@@ -68,7 +68,7 @@ namespace osgEarth { namespace Features
 
     public:
         FeatureSourceOptions( const ConfigOptions& options =ConfigOptions() );
-        virtual ~FeatureSourceOptions() { }
+        virtual ~FeatureSourceOptions();
         virtual Config getConfig() const;
 
     protected:
@@ -238,7 +238,7 @@ namespace osgEarth { namespace Features
         /**
          * DTOR is protected to prevent this object from being allocated on the stack.
          */
-        virtual ~FeatureSource() { }
+        virtual ~FeatureSource();
 
         /** Access the raw DB options that came in */
         const osgDB::Options* dbOptions() const { return _dbOptions.get(); }

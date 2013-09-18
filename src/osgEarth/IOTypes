@@ -40,11 +40,11 @@ namespace osgEarth
         StringObject( const std::string& in ) : osg::Object(), _str(in) { }
 
         /** dtor */
-        virtual ~StringObject() { }
+        virtual ~StringObject();
         META_Object( osgEarth, StringObject );
 
-        void setString( const std::string& value ) { _str = value; }
-        const std::string& getString() const { return _str; }
+        void setString( const std::string& value );
+        const std::string& getString() const;
     private:
         std::string _str;
     };
@@ -65,7 +65,7 @@ namespace osgEarth
     /**
      * Return value from a read* method
      */
-    struct /*no-export*/ ReadResult
+    struct OSGEARTH_EXPORT ReadResult
     {
         /** Read result codes. */
         enum Code
@@ -238,7 +238,7 @@ namespace osgEarth
         URIReadCallback();
 
         /** dtor */
-        virtual ~URIReadCallback() { }
+        virtual ~URIReadCallback();
     };
 
 }

@@ -58,7 +58,7 @@ namespace osgEarth { namespace Symbology
         Geometry( const Vec3dVector* toCopy );
 
         /** dtor - intentionally public */
-        virtual ~Geometry() { }
+        virtual ~Geometry();
 
     public:
         enum Type {
@@ -216,7 +216,7 @@ namespace osgEarth { namespace Symbology
         PointSet( const PointSet& rhs );
 
         /** dtor */
-        virtual ~PointSet() { }
+        virtual ~PointSet();
 
     public:
         virtual Type getType() const { return Geometry::TYPE_POINTSET; }
@@ -233,7 +233,7 @@ namespace osgEarth { namespace Symbology
         LineString( const Vec3dVector* toCopy );
 
         /** dtor */
-        virtual ~LineString() { }
+        virtual ~LineString();
 
         double getLength() const;
         bool getSegment(double length, osg::Vec3d& start, osg::Vec3d& end);
@@ -256,7 +256,7 @@ namespace osgEarth { namespace Symbology
         Ring( const Vec3dVector* toCopy );
 
         /** dtor */
-        virtual ~Ring() { }
+        virtual ~Ring();
 
         // override
         virtual Geometry* cloneAs( const Geometry::Type& newType ) const;
@@ -293,7 +293,7 @@ namespace osgEarth { namespace Symbology
         Polygon( const Vec3dVector* toCopy );
 
         /** dtor */
-        virtual ~Polygon() { }
+        virtual ~Polygon();
         
     public:
         virtual Type getType() const { return Geometry::TYPE_POLYGON; }
@@ -325,7 +325,7 @@ namespace osgEarth { namespace Symbology
         MultiGeometry( const MultiGeometry& rhs );
 
         /** dtor */
-        virtual ~MultiGeometry() { }
+        virtual ~MultiGeometry();
 
     public:
         virtual Type getType() const { return Geometry::TYPE_MULTI; }        

@@ -142,6 +142,14 @@ ENDIF(UNIX)
 #ADD_DEFINITIONS(-D)
 # Platform specific definitions
 
+if(UNIX)
+   if(64BIT_BUILD)
+     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -m64")
+   else()
+     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -m32")
+   endif(64BIT_BUILD)
+endif(UNIX)
+
 IF(WIN32)
   IF(MSVC)
         # This option is to enable the /MP switch for Visual Studio 2005 and above compilers

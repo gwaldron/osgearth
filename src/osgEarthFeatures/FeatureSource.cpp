@@ -37,6 +37,10 @@ DriverConfigOptions( options )
     fromConfig( _conf );
 }
 
+FeatureSourceOptions::~FeatureSourceOptions()
+{
+}
+
 void
 FeatureSourceOptions::fromConfig( const Config& conf )
 {
@@ -109,6 +113,10 @@ _options( options )
     _dbOptions  = dbOptions;
     _uriContext = URIContext( dbOptions );
     _cache      = Cache::get( dbOptions );
+}
+
+FeatureSource::~FeatureSource()
+{
 }
 
 const FeatureProfile*

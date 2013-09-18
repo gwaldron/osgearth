@@ -33,8 +33,10 @@ namespace osgEarth { namespace Features
     /**
      * Base class for a filter.
      */
-    class Filter : public osg::Referenced
+    class OSGEARTHFEATURES_EXPORT Filter : public osg::Referenced
     {
+    protected:
+        virtual ~Filter();
     };
 
     /**
@@ -50,7 +52,7 @@ namespace osgEarth { namespace Features
          */
         virtual Config getConfig() const { return Config(); }
 
-        virtual ~FeatureFilter() { }
+        virtual ~FeatureFilter();
     };
 
     typedef std::list< osg::ref_ptr<FeatureFilter> > FeatureFilterList;
@@ -143,10 +145,10 @@ namespace osgEarth { namespace Features
     public:
         const osg::Matrixd& local2world() const { return _local2world; }
         const osg::Matrixd& world2local() const { return _world2local; }
-        
-        virtual ~FeaturesToNodeFilter() { }
-        
+                        
     protected:
+
+        virtual ~FeaturesToNodeFilter();
 
         // computes the matricies required to localizer/delocalize double-precision coords
         void computeLocalizers( const FilterContext& context );

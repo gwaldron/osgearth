@@ -46,6 +46,12 @@ _imageUnit       ( imageUnit )
     _texMatParentUniform = new osg::Uniform(osg::Uniform::FLOAT_MAT4, "oe_layer_parent_matrix");
 
     _imageUnitParent = _imageUnit + 1; // temp
+
+    // Temporary solution to the OverlayDecorator techniques' inappropriate setting of
+    // uniform values during the CULL traversal, which causes corruption of the RTT 
+    // camera matricies when DRAW overlaps the next frame's CULL. Please see my comments
+    // in DrapingTechnique.cpp for more information.
+    this->setDataVariance( osg::Object::DYNAMIC );
 }
 
 

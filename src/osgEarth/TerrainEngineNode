@@ -200,11 +200,11 @@ namespace osgEarth
     class TerrainDecorator : public osg::Group
     {
     public:
-        virtual void onInstall( TerrainEngineNode* engine ) { }
-        virtual void onUninstall( TerrainEngineNode* engine ) { }
+        virtual void onInstall( TerrainEngineNode* engine );
+        virtual void onUninstall( TerrainEngineNode* engine );
 
     protected:
-        virtual ~TerrainDecorator() { }
+        virtual ~TerrainDecorator();
     };
 
 } // namespace osgEarth

@@ -179,6 +179,14 @@ namespace osgEarth
     };
 
     /**
+     * Object that lets you modify and incoming URL before it's passed to the server
+     */
+    struct OSGEARTH_EXPORT URLRewriter : public osg::Referenced
+    {    
+        virtual std::string rewrite( const std::string& url ) = 0;
+    };
+
+    /**
      * Utility class for making HTTP requests.
      *
      * TODO: This class will actually read data from disk as well, and therefore should
@@ -221,6 +229,16 @@ namespace osgEarth
            Sets the timeout in seconds to use for HTTP requests.
            Setting to 0 (default) is infinite timeout */
         void setTimeout( long timeout );
+
+        /**
+         * Gets the URLRewriter that is used to modify urls before sending them to the server
+         */
+        static URLRewriter* getURLRewriter();
+
+        /**
+         * Sets the URLRewriter that is used to modify urls before sending them to the server         
+         */
+        static void setURLRewriter( URLRewriter* rewriter );
 
         /**
          * One time thread safe initialization. In osgEarth, you don't need

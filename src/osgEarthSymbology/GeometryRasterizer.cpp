@@ -64,6 +64,10 @@ _style( style )
     _state = new AggState( _image.get() );
 }
 
+GeometryRasterizer::~GeometryRasterizer()
+{
+}
+
 osg::Image*
 GeometryRasterizer::finalize()
 {

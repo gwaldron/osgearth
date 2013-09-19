@@ -65,7 +65,7 @@ namespace osgEarth
         Config( const Config& rhs ) 
             : _key(rhs._key), _defaultValue(rhs._defaultValue), _children(rhs._children), _referrer(rhs._referrer), _refMap(rhs._refMap) { }
 
-        virtual ~Config() { }
+        virtual ~Config();
 
         /** Context for resolving relative URIs that occur in this Config */
         void setReferrer( const std::string& value );
@@ -463,7 +463,7 @@ namespace osgEarth
     /**
      * Base class for all serializable options classes.
      */
-    class ConfigOptions // header-only (no export required)
+    class OSGEARTH_EXPORT ConfigOptions
     {
     public:
         ConfigOptions( const Config& conf =Config() )
@@ -471,7 +471,7 @@ namespace osgEarth
         ConfigOptions( const ConfigOptions& rhs )
             : _conf( rhs.getConfig() ) { }
 
-        virtual ~ConfigOptions() { }
+        virtual ~ConfigOptions();
         
         const std::string& referrer() const { return _conf.referrer(); }
 
@@ -505,14 +505,14 @@ namespace osgEarth
     /**
      * Base configoptions class for driver options.
      */
-    class DriverConfigOptions : public ConfigOptions // header-only (no export required)
+    class OSGEARTH_EXPORT DriverConfigOptions : public ConfigOptions
     {
     public:
         DriverConfigOptions( const ConfigOptions& rhs =ConfigOptions() )
             : ConfigOptions( rhs ) { fromConfig( _conf ); }
 
         /** dtor */
-        virtual ~DriverConfigOptions() { }
+        virtual ~DriverConfigOptions();
 
         /** Gets or sets the name of the driver to load */
         void setDriver( const std::string& value ) { _driver = value; }

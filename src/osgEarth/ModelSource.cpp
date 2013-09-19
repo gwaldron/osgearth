@@ -38,6 +38,10 @@ _depthTestEnabled  ( true )
     fromConfig(_conf);
 }
 
+ModelSourceOptions::~ModelSourceOptions()
+{
+}
+
 void
 ModelSourceOptions::fromConfig( const Config& conf )
 {
@@ -70,8 +74,10 @@ ModelSourceOptions::getConfig() const
 ModelSource::ModelSource( const ModelSourceOptions& options ) :
 _options( options )
 {
-    //TODO: is this really necessary?
-    this->setThreadSafeRefUnref( true );
+}
+
+ModelSource::~ModelSource()
+{
 }
 
 
@@ -132,6 +138,10 @@ ModelSource::firePostProcessors( osg::Node* node )
 #define LC "[ModelSourceFactory] "
 #define MODEL_SOURCE_OPTIONS_TAG "__osgEarth::ModelSourceOptions"
 
+ModelSourceFactory::~ModelSourceFactory()
+{
+}
+
 ModelSource*
 ModelSourceFactory::create( const ModelSourceOptions& options )
 {
@@ -169,4 +179,8 @@ const ModelSourceOptions&
 ModelSourceDriver::getModelSourceOptions( const osgDB::ReaderWriter::Options* options ) const
 {
     return *static_cast<const ModelSourceOptions*>( options->getPluginData( MODEL_SOURCE_OPTIONS_TAG ) );
+}
+
+ModelSourceDriver::~ModelSourceDriver()
+{
 }

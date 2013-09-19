@@ -514,3 +514,16 @@ TerrainEngineNodeFactory::create( Map* map, const TerrainOptions& options )
     return result;
 }
 
+//------------------------------------------------------------------------
+TerrainDecorator::~TerrainDecorator()
+{
+}
+
+void TerrainDecorator::onInstall( TerrainEngineNode* engine )
+{
+}
+
+void TerrainDecorator::onUninstall( TerrainEngineNode* engine )
+{
+}
+

@@ -568,8 +568,16 @@ DrapingTechnique::cullOverlayGroup(OverlayDecorator::TechRTTParams& params,
 
         if ( local._texGenUniform.valid() )
         {
-            // premultiply the inv view matrix so we don't have
-            // precision problems in the shader (and it's faster too)
+            // premultiply the inv view matrix so we don't have precision problems in the shader 
+            // (and it's faster too)
+
+            // TODO:
+            // This only works properly if the terrain tiles have a DYNAMIC data variance.
+            // That is because we are setting a Uniform value during the CULL traversal, and
+            // it's possible that the stateset from the previous frame has not yet been
+            // dispatched to render. So we need to come up with a way to address this.
+            // In the meantime, I patched the MP engine to set a DYNAMIC data variance on
+            // terrain tiles to work around the problem.
             local._texGenUniform->set( cv->getCurrentCamera()->getInverseViewMatrix() * VPT );
         }
 #if 0 // FFP no longer supported.

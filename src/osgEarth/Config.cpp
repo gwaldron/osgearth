@@ -29,6 +29,10 @@
 
 using namespace osgEarth;
 
+Config::~Config()
+{
+}
+
 void
 Config::setReferrer( const std::string& referrer )
 {
@@ -145,6 +149,15 @@ Config::find( const std::string& key, bool checkMe )
     return 0L;
 }
 
+/****************************************************************/
+ConfigOptions::~ConfigOptions()
+{
+}
+
+/****************************************************************/
+DriverConfigOptions::~DriverConfigOptions()
+{
+}
 
 namespace
 {

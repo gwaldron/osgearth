@@ -1818,8 +1818,7 @@ EarthManipulator::addTouchEvents(const osgGA::GUIEventAdapter& ea)
         for( unsigned i=0; i<data->getNumTouchPoints(); ++i )
         {
             osgGA::GUIEventAdapter::TouchData::TouchPoint tp = data->get(i);
-            ev.resize(tp.id+1);
-            ev[tp.id] = tp; // overwrites duplicates automatically.
+            ev.push_back(tp);
         }
     }
 }

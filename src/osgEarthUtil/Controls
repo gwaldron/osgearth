@@ -561,10 +561,6 @@ namespace osgEarth { namespace Util { namespace Controls
 
         /** dtor */
         virtual ~Container() { }
-
-        // the Frame connected to this container. can be NULL for no frame.
-        void setFrame( Frame* frame );
-        Frame* getFrame() const { return _frame.get(); }
         
         // space between children
         void setChildSpacing( float value );
@@ -611,8 +607,7 @@ namespace osgEarth { namespace Util { namespace Controls
         float& renderWidth(Control* child) { return child->_renderSize.x(); }
         float& renderHeight(Control* child) { return child->_renderSize.y(); }
 
-    private:
-        osg::ref_ptr<Frame> _frame;
+    private:        
         float _spacing;
         optional<Alignment> _childhalign;
         optional<Alignment> _childvalign;

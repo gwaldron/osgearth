@@ -142,8 +142,7 @@ main(int argc, char** argv)
     grid->setChildSpacing( 10 );
     grid->setChildVertAlign( Control::ALIGN_CENTER );
     grid->setAbsorbEvents( true );
-    grid->setVertAlign( Control::ALIGN_BOTTOM );
-    grid->setFrame(new RoundedFrame());
+    grid->setVertAlign( Control::ALIGN_BOTTOM );    
 
     canvas->addControl( grid );
 

@@ -309,6 +309,8 @@ namespace
 
     // HTTP debugging.
     static bool                        s_HTTP_DEBUG = false;
+
+    static osg::ref_ptr< URLRewriter > s_rewriter;
 }
 
 HTTPClient&
@@ -416,6 +418,16 @@ long HTTPClient::getTimeout()
 void HTTPClient::setTimeout( long timeout )
 {
     s_timeout = timeout;
+}
+
+URLRewriter* HTTPClient::getURLRewriter()
+{
+    return s_rewriter.get();
+}
+
+void HTTPClient::setURLRewriter( URLRewriter* rewriter )
+{
+    s_rewriter = rewriter;
 }
 
 void
@@ -711,9 +723,18 @@ HTTPClient::doGet( const HTTPRequest& request, const osgDB::Options* options, Pr
         curl_easy_setopt( _curl_handle, CURLOPT_PROXY, 0 );
     }
 
+    std::string url = request.getURL();
+    // Rewrite the url if the url rewriter is available  
+    osg::ref_ptr< URLRewriter > rewriter = getURLRewriter();
+    if ( rewriter.valid() )
+    {
+        std::string oldURL = url;
+        url = rewriter->rewrite( oldURL );
+        OE_INFO << "Rewrote URL " << oldURL << " to " << url << std::endl;
+    }
 
     const osgDB::AuthenticationDetails* details = authenticationMap ?
-        authenticationMap->getAuthenticationDetails(request.getURL()) :
+        authenticationMap->getAuthenticationDetails( url ) :
         0;
 
     if (details)
@@ -757,7 +778,7 @@ HTTPClient::doGet( const HTTPRequest& request, const osgDB::Options* options, Pr
 
     //Take a temporary ref to the callback
     osg::ref_ptr<ProgressCallback> progressCallback = callback;
-    curl_easy_setopt( _curl_handle, CURLOPT_URL, request.getURL().c_str() );
+    curl_easy_setopt( _curl_handle, CURLOPT_URL, url.c_str() );
     if (callback)
     {
         curl_easy_setopt(_curl_handle, CURLOPT_PROGRESSDATA, progressCallback.get());
@@ -790,29 +811,27 @@ HTTPClient::doGet( const HTTPRequest& request, const osgDB::Options* options, Pr
                 return HTTPResponse(0);
             }
         }
-        
-        curl_easy_getinfo( _curl_handle, CURLINFO_RESPONSE_CODE, &response_code );
+
+        curl_easy_getinfo( _curl_handle, CURLINFO_RESPONSE_CODE, &response_code );        
     }
     else
     {
         // simulate failure with a custom response code
         response_code = _simResponseCode;
         res = response_code == 408 ? CURLE_OPERATION_TIMEDOUT : CURLE_COULDNT_CONNECT;
-    }
+    }    
 
     HTTPResponse response( response_code );
     
     // read the response content type:
     char* content_type_cp;
-    curl_easy_getinfo( _curl_handle, CURLINFO_CONTENT_TYPE, &content_type_cp );
-    if ( content_type_cp == NULL )
+
+    curl_easy_getinfo( _curl_handle, CURLINFO_CONTENT_TYPE, &content_type_cp );    
+
+    if ( content_type_cp != NULL )
     {
-        OE_WARN << LC
-            << "NULL Content-Type (protocol violation) " 
-            << "URL=" << request.getURL() << std::endl;
-        return HTTPResponse(0L);
-    }
-    response._mimeType = content_type_cp;
+        response._mimeType = content_type_cp;    
+    }            
 
     if ( s_HTTP_DEBUG )
     {
@@ -822,14 +841,12 @@ HTTPClient::doGet( const HTTPRequest& request, const osgDB::Options* options, Pr
 
         OE_NOTICE << LC 
             << "GET(" << response_code << ", " << response._mimeType << ") : \"" 
-            << request.getURL() << "\" (" << DateTime(filetime).asRFC1123() << ")"<< std::endl;
+            << url << "\" (" << DateTime(filetime).asRFC1123() << ")"<< std::endl;
     }
 
     // upon success, parse the data:
     if ( res != CURLE_ABORTED_BY_CALLBACK && res != CURLE_OPERATION_TIMEDOUT )
-    {
-        std::string content_type( content_type_cp );
-
+    {        
         // check for multipart content
         if (response._mimeType.length() > 9 && 
             ::strstr( response._mimeType.c_str(), "multipart" ) == response._mimeType.c_str() )
@@ -947,7 +964,7 @@ HTTPClient::doReadImage(const std::string&    location,
     {
         osgDB::ReaderWriter* reader = getReader(location, response);
         if (!reader)
-        {
+        {            
             result = ReadResult(ReadResult::RESULT_NO_READER);
         }
 
@@ -992,7 +1009,7 @@ HTTPClient::doReadImage(const std::string&    location,
                 OE_DEBUG << "Error in HTTPClient for " << location << " but it's recoverable" << std::endl;
                 callback->setNeedsRetry( true );
             }
-        }
+        }        
     }
 
     // set the source name

@@ -26,6 +26,10 @@ using namespace OpenThreads;
 
 /****************************************************************/
 
+MaskSourceOptions::~MaskSourceOptions()
+{
+}
+
 void
 MaskSourceOptions::fromConfig( const Config& conf )
 {
@@ -55,11 +59,25 @@ _options( options )
     this->setThreadSafeRefUnref( true );
 }
 
+MaskSource::~MaskSource()
+{
+}
+
+//------------------------------------------------------------------------
+
+MaskSourceDriver::~MaskSourceDriver()
+{
+}
+
 //------------------------------------------------------------------------
 
 #undef  LC
 #define LC "[MaskSourceFactory] "
 #define MASK_SOURCE_OPTIONS_TAG "__osgEarth::MaskSourceOptions"
+
+MaskSourceFactory::~MaskSourceFactory()
+{
+}
 
 MaskSource*
 MaskSourceFactory::create( const MaskSourceOptions& options )

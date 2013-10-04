@@ -80,6 +80,13 @@ namespace osgEarth { namespace Util {
         void setDestSRS(const std::string& srs ) { _destSRSString = srs; }
 
         /**
+         * A GeoExtent to use for LOD Level 0, in the SRS of the input dataset.  If not set the
+         * GeoExtent of the FeatureSource will be used
+         */
+        const GeoExtent getLod0Extent() const { return _customExtent; }
+        void setLod0Extent(const GeoExtent& extent) { _customExtent = extent; }
+
+        /**
          * Package the given feature source
          * @param features
          *     The feature source to package
@@ -103,7 +110,7 @@ namespace osgEarth { namespace Util {
         CropFilter::Method _method;
         std::string _destSRSString;
         osg::ref_ptr< const SpatialReference > _srs;
-
+        GeoExtent _customExtent;
     };
 
 } } // namespace osgEarth::Util

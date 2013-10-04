@@ -578,7 +578,11 @@ DrapingTechnique::cullOverlayGroup(OverlayDecorator::TechRTTParams& params,
             // dispatched to render. So we need to come up with a way to address this.
             // In the meantime, I patched the MP engine to set a DYNAMIC data variance on
             // terrain tiles to work around the problem.
-            local._texGenUniform->set( cv->getCurrentCamera()->getInverseViewMatrix() * VPT );
+            //
+            // Note that we require the InverseViewMatrix, but it is OK to invert the ModelView matrix as the model matrix is identity here.
+            osg::Matrix vm;
+            vm.invert( *cv->getModelViewMatrix() );
+            local._texGenUniform->set( vm * VPT );
         }
 #if 0 // FFP no longer supported.
         else

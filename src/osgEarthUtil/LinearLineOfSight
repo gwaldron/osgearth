@@ -149,22 +149,6 @@ namespace osgEarth { namespace Util
 
         void setTerrainOnly( bool terrainOnly );
 
-        /**
-         * Utility method to compute LOS with a MapNode
-         * @param mapNode
-         *        The MapNode to intersect
-         * @param start
-         *        The start point in map coordinates
-         * @param end
-         *        The end point in map coordinates
-         * @param hit
-         *        The hit point, in map coordinates.
-         * @returns
-         *        Whether or not there is line of sight from start to end.  hit is only valid if this function return false.
-         */
-        //static bool computeLOS( osgEarth::MapNode* mapNode, const osg::Vec3d& start, const osg::Vec3d& end, AltitudeMode altitudeMode, osg::Vec3d& hit );
-
-
     public: // MapNodeObserver
         
         /**

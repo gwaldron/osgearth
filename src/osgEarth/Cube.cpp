@@ -299,6 +299,10 @@ _face(face)
     //NOP
 }
 
+CubeFaceLocator::~CubeFaceLocator()
+{
+}
+
 
 bool
 CubeFaceLocator::convertLocalToModel( const osg::Vec3d& local, osg::Vec3d& world ) const
@@ -393,6 +397,10 @@ SpatialReference( handle, "OSGEARTH" )
     //nop
     _key.first = "unified-cube";
     _name      = "Unified Cube";
+}
+
+CubeSpatialReference::~CubeSpatialReference()
+{
 }
 
 void
@@ -714,4 +722,8 @@ UnifiedCubeProfile::getIntersectingTiles(
             }
         }
     }
+}
+
+UnifiedCubeProfile::~UnifiedCubeProfile()
+{
 }

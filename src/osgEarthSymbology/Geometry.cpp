@@ -55,6 +55,10 @@ Geometry::Geometry( const Vec3dVector* data )
     insert( begin(), data->begin(), data->end() );
 }
 
+Geometry::~Geometry()
+{
+}
+
 int
 Geometry::getTotalPointCount() const
 {
@@ -418,6 +422,10 @@ Geometry( rhs )
     //nop
 }
 
+PointSet::~PointSet()
+{
+}
+
 //----------------------------------------------------------------------------
 
 LineString::LineString( const LineString& rhs ) :
@@ -430,6 +438,10 @@ LineString::LineString( const Vec3dVector* data ) :
 Geometry( data )
 {
     //nop
+}
+
+LineString::~LineString()
+{
 }
 
 double
@@ -476,6 +488,10 @@ Ring::Ring( const Vec3dVector* data ) :
 Geometry( data )
 {
     open();
+}
+
+Ring::~Ring()
+{
 }
 
 Geometry*
@@ -557,6 +573,10 @@ Ring( data )
     //nop
 }
 
+Polygon::~Polygon()
+{
+}
+
 int
 Polygon::getTotalPointCount() const
 {
@@ -605,6 +625,10 @@ MultiGeometry::MultiGeometry( const GeometryCollection& parts ) :
 _parts( parts )
 {
     //nop
+}
+
+MultiGeometry::~MultiGeometry()
+{
 }
 
 Geometry::Type

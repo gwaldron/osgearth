@@ -443,7 +443,7 @@ ExtrudeGeometryFilter::extrudeGeometry(const Geometry*         input,
 
             // figure out the rooftop texture coordinates before doing any
             // transformations:
-            if ( roofSkin )
+            if ( roofSkin && roofProjSRS && srs )
             {
                 double xr, yr;
 

@@ -29,6 +29,16 @@ using namespace osgEarth;
 using namespace osgEarth::Features;
 
 /********************************************************************************/
+Filter::~Filter()
+{
+}
+
+/********************************************************************************/
+FeatureFilter::~FeatureFilter()
+{
+}
+
+/********************************************************************************/
         
 FeatureFilterRegistry::FeatureFilterRegistry()
 {
@@ -71,6 +81,10 @@ FeatureFilterRegistry::create( const Config& conf )
 } 
 
 /********************************************************************************/
+
+FeaturesToNodeFilter::~FeaturesToNodeFilter()
+{
+}
 
 void
 FeaturesToNodeFilter::computeLocalizers( const FilterContext& context )

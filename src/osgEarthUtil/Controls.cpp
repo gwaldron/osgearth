@@ -1441,12 +1441,6 @@ Container::Container( const Alignment& halign, const Alignment& valign, const Gu
 }
 
 void
-Container::setFrame( Frame* frame )
-{
-    OE_WARN << LC << "Container::setFrame() is deprecated, please use setBorderColor instead" << std::endl;
-}
-
-void
 Container::getChildren(std::vector<Control*>& out)
 {
     for(unsigned i=1; i<getNumChildren(); ++i )
@@ -1521,17 +1515,6 @@ Container::calcSize(const ControlContext& cx, osg::Vec2f& out_size)
         out_size.set(
             _renderSize.x() + margin().x(),
             _renderSize.y() + margin().y() );
-
-#if 0
-        if ( _frame.valid() )
-        {
-            _frame->setWidth( _renderSize.x() );
-            _frame->setHeight( _renderSize.y() );
-
-            osg::Vec2f dummy;
-            _frame->calcSize( cx, dummy );
-        }
-#endif
     }
 }
 
@@ -1552,22 +1535,11 @@ void
 Container::calcPos(const ControlContext& context, const osg::Vec2f& cursor, const osg::Vec2f& parentSize)
 {
     Control::calcPos( context, cursor, parentSize );
-#if 0
-    // process the frame.. it's not a child of the container
-    if ( visible() == true && _frame.valid() )
-    {
-        _frame->calcPos( context, _renderPos - padding().offset(), parentSize );
-    }
-#endif
 }
 
 void
 Container::draw( const ControlContext& cx )
 {
-#if 0
-    if ( _frame.valid() )
-        _frame->draw( cx );
-#endif
     Control::draw( cx );
 }
 

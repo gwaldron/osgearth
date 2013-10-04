@@ -81,16 +81,10 @@ namespace
         TileModel::ColorData           _layerParent;
         osg::ref_ptr<const GeoLocator> _locator;
         osg::ref_ptr<osg::Vec2Array>   _texCoords;
-        //osg::ref_ptr<osg::Vec2Array>   _skirtTexCoords;
         osg::ref_ptr<osg::Vec2Array>   _stitchTexCoords;
-        osg::ref_ptr<osg::Vec2Array>   _stitchSkirtTexCoords;
-        bool _ownsTileCoords;
         bool _ownsTexCoords;
-        //bool _ownsSkirtTexCoords;
         RenderLayer() : 
-            _ownsTileCoords    ( false ), 
-            _ownsTexCoords     ( false ) { }
-            //_ownsSkirtTexCoords( false ) { }
+            _ownsTexCoords( false ) { }
     };
 
     typedef std::vector< RenderLayer > RenderLayerVector;
@@ -123,9 +117,7 @@ namespace
         {
             surfaceGeode     = 0L;
             surface          = 0L;
-            //skirt            = 0L;
-            stitching_skirts = 0L;
-            ss_verts         = 0L;
+//            ss_verts         = 0L;
             scaleHeight      = 1.0f;
             createSkirt      = false;
             i_sampleFactor   = 1.0f;
@@ -134,6 +126,8 @@ namespace
             textureImageUnit = 0;
             renderTileCoords = 0L;
             ownsTileCoords   = false;
+            stitchTileCoords = 0L;
+//            stitchSkirtTileCoords = 0L;
         }
 
         const MapFrame& frame;
@@ -151,6 +145,9 @@ namespace
         RenderLayerVector        renderLayers;
         osg::Vec2Array*          renderTileCoords;
         bool                     ownsTileCoords;
+
+        // tile coords for masked areas; always owned (never shared)
+        osg::ref_ptr<osg::Vec2Array> stitchTileCoords;
 
         // surface data:
         osg::Geode*                   surfaceGeode;
@@ -180,8 +177,8 @@ namespace
         
         // for masking/stitching:
         MaskRecordVector         maskRecords;
-        MPGeometry*              stitching_skirts;
-        osg::Vec3Array*          ss_verts;
+//        MPGeometry*              stitching_skirts;
+//        osg::Vec3Array*          ss_verts;
     };
 
 
@@ -254,6 +251,7 @@ namespace
            }
         }
 
+#if 0
         if (d.maskRecords.size() > 0)
         {
           //d.stitching_skirts = new osg::Geometry();
@@ -267,6 +265,7 @@ namespace
           if ( d.ss_verts->getVertexBufferObject() )
               d.ss_verts->getVertexBufferObject()->setUsage(GL_STATIC_DRAW_ARB);
         }
+#endif
     }
 
 
@@ -438,18 +437,11 @@ namespace
                     r._texCoords->reserve( d.numVerticesInSurface );
                     r._ownsTexCoords = true;
 
-                    //r._tileCoords = new osg::Vec2Array();
-                    //r._tileCoords->reserve( d.numVerticesInSurface );
-                    //r._ownsTileCoords = true;
-
-                    //r._skirtTexCoords = new osg::Vec2Array();
-                    //r._skirtTexCoords->reserve( d.numVerticesInSkirt );
-                    //r._ownsSkirtTexCoords = true;
-
                     if ( d.maskRecords.size() > 0 )
                     {
                         r._stitchTexCoords = new osg::Vec2Array();
-                        r._stitchSkirtTexCoords = new osg::Vec2Array();
+                        if ( !d.stitchTileCoords.valid() )
+                            d.stitchTileCoords = new osg::Vec2Array();
                     }
                 }
 
@@ -496,14 +488,6 @@ namespace
 
         osg::HeightField* hf            = d.model->_elevationData.getHeightField();
         GeoLocator*       hfLocator     = d.model->_elevationData.getLocator();
-
-        //if ( hfLocator )
-        //{
-        //    d.hfGeoLocator = hfLocator->getCoordinateSystemType() == GeoLocator::GEOCENTRIC ?
-        //        hfLocator->getGeographicFromGeocentric() :
-        //        hfLocator;
-        //}
-        //bool hfEquivToTile = hfLocator.valid() ? d.geoLocator->isEquivalentTo( *d.hfGeoLocator.get() ) : false;
 
         // populate vertex and tex coord arrays    
         for(unsigned j=0; j < d.numRows; ++j)
@@ -958,6 +942,7 @@ namespace
                         d.renderLayers[i]._stitchTexCoords->reserve(trig->getInputPointArray()->size());
                     }
                 }
+                d.stitchTileCoords->reserve(trig->getInputPointArray()->size());
 
                 // Iterate through point to convert to model coords, calculate normals, and set up tex coords
                 int norm_i = -1;
@@ -988,7 +973,6 @@ namespace
                             {
                                 osg::Vec3d color_ndc;
                                 osgTerrain::Locator::convertLocalCoordBetween(*d.geoLocator.get(), (*it), *d.renderLayers[i]._locator.get(), color_ndc);
-                                //osgTerrain::Locator::convertLocalCoordBetween(*masterTextureLocator.get(), (*it), *renderLayers[i]._locator.get(), color_ndc);
                                 d.renderLayers[i]._stitchTexCoords->push_back(osg::Vec2(color_ndc.x(), color_ndc.y()));
                             }
                             else
@@ -997,6 +981,7 @@ namespace
                             }
                         }
                     }
+                    d.stitchTileCoords->push_back(osg::Vec2((*it).x(), (*it).y()));
                 }
 
 
@@ -1795,12 +1780,9 @@ namespace
         unsigned size = d.renderLayers.size();
 
         d.surface->_layers.resize( size );
-        //if ( d.skirt )
-        //    d.skirt->_layers.resize( size );
+
         for ( MaskRecordVector::iterator mr = d.maskRecords.begin(); mr != d.maskRecords.end(); ++mr )
             mr->_geom->_layers.resize( size );
-        if ( d.stitching_skirts )
-            d.stitching_skirts->_layers.resize( size );
         
         if ( d.renderTileCoords )
             d.surface->_tileCoords = d.renderTileCoords;
@@ -1829,26 +1811,15 @@ namespace
             layer._texCoords  = r->_texCoords;
             d.surface->_layers[order] = layer;
 
-            // the skirt:
-            //if ( d.skirt )
-            //{
-            //    layer._texCoords  = r->_skirtTexCoords;
-            //    d.skirt->_layers[order] = layer;
-            //}
-
             // the mask geometries:
             for ( MaskRecordVector::iterator mr = d.maskRecords.begin(); mr != d.maskRecords.end(); ++mr )
             {
                 layer._texCoords = r->_stitchTexCoords.get();
-                //layer._tileCoords = r->_stitchTileCoords.get(); // TODO
                 mr->_geom->_layers[order] = layer;
             }
-
-            // the stitching skirts:
-            if ( d.stitching_skirts )
+            if ( d.stitchTileCoords.valid() )
             {
-                layer._texCoords = r->_stitchSkirtTexCoords.get();
-                d.stitching_skirts->_layers[order] = layer;
+                layer._tileCoords = d.stitchTileCoords.get();
             }
         }
     }

@@ -493,8 +493,10 @@ ClampingTechnique::cullOverlayGroup(OverlayDecorator::TechRTTParams& params,
             osg::Matrix::translate(1.0,1.0,1.0) * 
             osg::Matrix::scale    (0.5,0.5,0.5) );
 
+        osg::Matrix vm;
+        vm.invert( *cv->getModelViewMatrix() );
         osg::Matrix cameraViewToDepthView =
-            cv->getCurrentCamera()->getInverseViewMatrix() * 
+            vm *
             params._rttViewMatrix;
 
         osg::Matrix depthViewToDepthClip = 

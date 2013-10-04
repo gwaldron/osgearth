@@ -98,15 +98,16 @@ MPGeometry::renderPrimitiveSets(osg::State& state,
     osg::ref_ptr<osg::GL2Extensions> ext = osg::GL2Extensions::Get( state.getContextID(), true );
     const osg::Program::PerContextProgram* pcp = state.getLastAppliedProgramObject();
 
-    // cannot store these in the object since there are multiple GC's
+    // cannot store these in the object since there could be multiple GCs (and multiple
+    // PerContextPrograms) at large
     GLint tileKeyLocation;
     GLint opacityLocation;
     GLint uidLocation;
     GLint orderLocation;
     GLint texMatParentLocation;
 
-    // yes, it's possible that the PCP is not set up yet.
-    // TODO: can we optimize this so we don't need to get uni locations every time?
+    // The PCP can change (especially in a VirtualProgram environment). So we do need to
+    // requery the uni locations each time. TODO: consider optimizations.
     if ( pcp )
     {
         tileKeyLocation      = pcp->getUniformLocation( _tileKeyUniform->getNameID() );

@@ -191,7 +191,9 @@ int main(int argc, char** argv)
     packager.setMethod( cropMethod );    
     packager.setDestSRS( destSRS );
     if (bounds.isValid())
-        packager.setLod0Extent(GeoExtent(features->getFeatureProfile()->getSRS(), bounds));
+    {
+        packager.setLod0Extent(GeoExtent(osgEarth::SpatialReference::create( destSRS ), bounds));
+    }
     packager.package( features, destination, layer, description );
     osg::Timer_t endTime = osg::Timer::instance()->tick();
     OE_NOTICE << "Completed in " << osg::Timer::instance()->delta_s( startTime, endTime ) << " s " << std::endl;

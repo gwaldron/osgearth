@@ -46,18 +46,18 @@ _outOfDate         ( false )
     if ( model )
         _maprevision = model->_revision;
 
-    osg::StateSet* stateset = getOrCreateStateSet();
+    // NOTE:
+    // We have temporarily disabled setting of the "birth time" uniform.
+    // Having a uniform on each TileNode adds a StateGraph for each TileNode and slows
+    // down the DRAW time considerably. Until we find a better solution, no 
+    // birth time uniform here. (That only affects LOD Blending atm)
 
-    // TileKey uniform.
-    _keyUniform = new osg::Uniform(osg::Uniform::FLOAT_VEC4, "oe_tile_key");
-    _keyUniform->setDataVariance( osg::Object::STATIC );
-    _keyUniform->set( osg::Vec4f(0,0,0,0) );
-    stateset->addUniform( _keyUniform );
+    //osg::StateSet* stateset = getOrCreateStateSet();
 
     // born-on date uniform.
     _bornUniform = new osg::Uniform(osg::Uniform::FLOAT, "oe_tile_birthtime");
     _bornUniform->set( -1.0f );
-    stateset->addUniform( _bornUniform );
+    //stateset->addUniform( _bornUniform );
 }
 
 
@@ -65,25 +65,6 @@ void
 TileNode::setLastTraversalFrame(unsigned frame)
 {
     _lastTraversalFrame = frame;
-}
-
-
-osg::BoundingSphere
-TileNode::computeBound() const
-{
-    osg::BoundingSphere bs = osg::MatrixTransform::computeBound();
-    
-    unsigned tw, th;
-    _key.getProfile()->getNumTiles(_key.getLOD(), tw, th);
-
-    // swap the Y index.
-    _keyUniform->set( osg::Vec4f(
-        _key.getTileX(),
-        th-_key.getTileY()-1.0,
-        _key.getLOD(),
-        bs.radius()) );
-
-    return bs;
 }
 
 
@@ -125,10 +106,20 @@ TileNode::traverse( osg::NodeVisitor& nv )
     osg::MatrixTransform::traverse( nv );
 }
 
-
 void
 TileNode::releaseGLObjects(osg::State* state) const
 {
+    osg::MatrixTransform::releaseGLObjects( state );
+
     if ( _model.valid() )
         _model->releaseGLObjects( state );
+}
+
+void
+TileNode::resizeGLObjectBuffers(unsigned maxSize)
+{
+    osg::MatrixTransform::resizeGLObjectBuffers( maxSize );
+
+    if ( _model.valid() )
+        const_cast<TileModel*>(_model.get())->resizeGLObjectBuffers( maxSize );
 }

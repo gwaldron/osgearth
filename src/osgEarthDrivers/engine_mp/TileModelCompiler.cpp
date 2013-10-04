@@ -42,7 +42,6 @@ using namespace osgEarth::Symbology;
 
 #define LC "[TileModelCompiler] "
 
-
 //------------------------------------------------------------------------
 
 osg::ref_ptr<osg::Vec2Array>&
@@ -81,18 +80,17 @@ namespace
         TileModel::ColorData           _layer;
         TileModel::ColorData           _layerParent;
         osg::ref_ptr<const GeoLocator> _locator;
-        //osg::ref_ptr<osg::Vec2Array>   _tileCoords;
         osg::ref_ptr<osg::Vec2Array>   _texCoords;
-        osg::ref_ptr<osg::Vec2Array>   _skirtTexCoords;
+        //osg::ref_ptr<osg::Vec2Array>   _skirtTexCoords;
         osg::ref_ptr<osg::Vec2Array>   _stitchTexCoords;
         osg::ref_ptr<osg::Vec2Array>   _stitchSkirtTexCoords;
         bool _ownsTileCoords;
         bool _ownsTexCoords;
-        bool _ownsSkirtTexCoords;
+        //bool _ownsSkirtTexCoords;
         RenderLayer() : 
             _ownsTileCoords    ( false ), 
-            _ownsTexCoords     ( false ), 
-            _ownsSkirtTexCoords( false ) { }
+            _ownsTexCoords     ( false ) { }
+            //_ownsSkirtTexCoords( false ) { }
     };
 
     typedef std::vector< RenderLayer > RenderLayerVector;
@@ -125,7 +123,7 @@ namespace
         {
             surfaceGeode     = 0L;
             surface          = 0L;
-            skirt            = 0L;
+            //skirt            = 0L;
             stitching_skirts = 0L;
             ss_verts         = 0L;
             scaleHeight      = 1.0f;
@@ -167,7 +165,7 @@ namespace
         osg::BoundingSphere           surfaceBound;
 
         // skirt data:
-        MPGeometry*              skirt;
+        //MPGeometry*              skirt;
         unsigned                 numVerticesInSkirt;
         bool                     createSkirt;
 
@@ -248,10 +246,10 @@ namespace
 
               if (x_match && y_match)
               {
-                MPGeometry* mask_geom = new MPGeometry( d.frame, d.textureImageUnit );
-                mask_geom->setUseVertexBufferObjects(d.useVBOs);
-                d.surfaceGeode->addDrawable(mask_geom);
-                d.maskRecords.push_back( MaskRecord(boundary, min_ndc, max_ndc, mask_geom) );
+                  MPGeometry* mask_geom = new MPGeometry( d.model->_tileKey, d.frame, d.textureImageUnit );
+                  mask_geom->setUseVertexBufferObjects(d.useVBOs);
+                  d.surfaceGeode->addDrawable(mask_geom);
+                  d.maskRecords.push_back( MaskRecord(boundary, min_ndc, max_ndc, mask_geom) );
               }
            }
         }
@@ -259,7 +257,7 @@ namespace
         if (d.maskRecords.size() > 0)
         {
           //d.stitching_skirts = new osg::Geometry();
-          d.stitching_skirts = new MPGeometry( d.frame, d.textureImageUnit );
+          d.stitching_skirts = new MPGeometry( d.model->_tileKey, d.frame, d.textureImageUnit );
           d.stitching_skirts->setUseVertexBufferObjects(d.useVBOs);
           d.surfaceGeode->addDrawable( d.stitching_skirts );
 
@@ -310,8 +308,8 @@ namespace
 
 
         // calculate the total number of verts:
-        d.numVerticesInSurface = d.numCols * d.numRows;
         d.numVerticesInSkirt   = d.createSkirt ? (2 * (d.numCols*2 + d.numRows*2 - 4)) : 0;
+        d.numVerticesInSurface = d.numCols * d.numRows + d.numVerticesInSkirt;
 
         // allocate and assign vertices
         d.surfaceVerts = new osg::Vec3Array();
@@ -419,6 +417,7 @@ namespace
                     }
                     r._texCoords = surfaceTexCoords.get();
 
+#if 0
                     osg::ref_ptr<osg::Vec2Array>& skirtTexCoords = cache._skirtTexCoordArrays.get( mat, d.numCols, d.numRows );
                     if ( !skirtTexCoords.valid() )
                     {
@@ -429,6 +428,7 @@ namespace
                         r._ownsSkirtTexCoords = true;
                     }
                     r._skirtTexCoords = skirtTexCoords.get();
+#endif
                 }
 
                 else
@@ -442,9 +442,9 @@ namespace
                     //r._tileCoords->reserve( d.numVerticesInSurface );
                     //r._ownsTileCoords = true;
 
-                    r._skirtTexCoords = new osg::Vec2Array();
-                    r._skirtTexCoords->reserve( d.numVerticesInSkirt );
-                    r._ownsSkirtTexCoords = true;
+                    //r._skirtTexCoords = new osg::Vec2Array();
+                    //r._skirtTexCoords->reserve( d.numVerticesInSkirt );
+                    //r._ownsSkirtTexCoords = true;
 
                     if ( d.maskRecords.size() > 0 )
                     {
@@ -1021,19 +1021,21 @@ namespace
         double skirtHeight = d.surfaceBound.radius() * skirtRatio;
 
         // build the verts first:
-        osg::Vec3Array* skirtVerts = new osg::Vec3Array();
-        osg::Vec3Array* skirtNormals = new osg::Vec3Array();
-        osg::Vec4Array* skirtAttribs = new osg::Vec4Array();
-        osg::Vec4Array* skirtAttribs2 = new osg::Vec4Array();
+        osg::Vec3Array* skirtVerts = static_cast<osg::Vec3Array*>(d.surface->getVertexArray()); //new osg::Vec3Array();
+        osg::Vec3Array* skirtNormals = static_cast<osg::Vec3Array*>(d.surface->getNormalArray()); //new osg::Vec3Array();
+        osg::Vec4Array* skirtAttribs = static_cast<osg::Vec4Array*>(d.surface->getVertexAttribArray(osg::Drawable::ATTRIBUTE_6)); //new osg::Vec4Array();
+        osg::Vec4Array* skirtAttribs2 = static_cast<osg::Vec4Array*>(d.surface->getVertexAttribArray(osg::Drawable::ATTRIBUTE_7)); //new osg::Vec4Array();
 
-        skirtVerts->reserve( d.numVerticesInSkirt );
-        skirtNormals->reserve( d.numVerticesInSkirt );
-        skirtAttribs->reserve( d.numVerticesInSkirt );
-        skirtAttribs2->reserve( d.numVerticesInSkirt );
+        //skirtVerts->reserve( d.numVerticesInSkirt );
+        //skirtNormals->reserve( d.numVerticesInSkirt );
+        //skirtAttribs->reserve( d.numVerticesInSkirt );
+        //skirtAttribs2->reserve( d.numVerticesInSkirt );
 
-        Indices skirtBreaks;
-        skirtBreaks.reserve( d.numVerticesInSkirt );
-        skirtBreaks.push_back(0);
+        osg::ref_ptr<osg::DrawElementsUShort> elements = new osg::DrawElementsUShort(GL_TRIANGLE_STRIP);
+
+        //Indices skirtBreaks;
+        //skirtBreaks.reserve( d.numVerticesInSkirt );
+        //skirtBreaks.push_back(0);
 
         // bottom:
         for( unsigned int c=0; c<d.numCols-1; ++c )
@@ -1042,40 +1044,45 @@ namespace
 
             if (orig_i < 0)
             {
-                if (skirtBreaks.back() != skirtVerts->size())
-                    skirtBreaks.push_back(skirtVerts->size());
+                if ( elements->size() > 0 )
+                    d.surface->addPrimitiveSet( elements.get() );
+                elements = new osg::DrawElementsUShort(GL_TRIANGLE_STRIP);
+                //if (skirtBreaks.back() != skirtVerts->size())
+                //    skirtBreaks.push_back(skirtVerts->size());
             }
             else
             {
                 const osg::Vec3f& surfaceVert = (*d.surfaceVerts)[orig_i];
-                skirtVerts->push_back( surfaceVert );
+//                skirtVerts->push_back( surfaceVert );
                 skirtVerts->push_back( surfaceVert - ((*skirtVectors)[orig_i])*skirtHeight );
 
                 const osg::Vec3f& surfaceNormal = (*d.normals)[orig_i];
-                skirtNormals->push_back( surfaceNormal );
+//                skirtNormals->push_back( surfaceNormal );
                 skirtNormals->push_back( surfaceNormal );
 
                 const osg::Vec4f& surfaceAttribs = (*d.surfaceAttribs)[orig_i];
-                skirtAttribs->push_back( surfaceAttribs );
+//                skirtAttribs->push_back( surfaceAttribs );
                 skirtAttribs->push_back( surfaceAttribs - osg::Vec4f(0,0,0,skirtHeight) );
 
                 const osg::Vec4f& surfaceAttribs2 = (*d.surfaceAttribs2)[orig_i];
-                skirtAttribs2->push_back( surfaceAttribs2 );
+//                skirtAttribs2->push_back( surfaceAttribs2 );
                 skirtAttribs2->push_back( surfaceAttribs2 - osg::Vec4f(0,0,0,skirtHeight) );
-
 
                 if ( d.renderLayers.size() > 0 )
                 {
                     for (unsigned int i = 0; i < d.renderLayers.size(); ++i)
                     {
-                        if ( d.renderLayers[i]._ownsSkirtTexCoords )
+                        if ( d.renderLayers[i]._ownsTexCoords )
                         {
                             const osg::Vec2& tc = (*d.renderLayers[i]._texCoords.get())[orig_i];
-                            d.renderLayers[i]._skirtTexCoords->push_back( tc );
-                            d.renderLayers[i]._skirtTexCoords->push_back( tc );
+//                            d.renderLayers[i]._skirtTexCoords->push_back( tc );
+                            d.renderLayers[i]._texCoords->push_back( tc );
                         }
                     }
                 }
+
+                elements->addElement(orig_i);
+                elements->addElement(skirtVerts->size()-1);
             }
         }
 
@@ -1085,39 +1092,45 @@ namespace
             int orig_i = d.indices[r*d.numCols+(d.numCols-1)];
             if (orig_i < 0)
             {
-                if (skirtBreaks.back() != skirtVerts->size())
-                    skirtBreaks.push_back(skirtVerts->size());
+                if ( elements->size() > 0 )
+                    d.surface->addPrimitiveSet( elements.get() );
+                elements = new osg::DrawElementsUShort(GL_TRIANGLE_STRIP);
+                //if (skirtBreaks.back() != skirtVerts->size())
+                //    skirtBreaks.push_back(skirtVerts->size());
             }
             else
             {
                 const osg::Vec3f& surfaceVert = (*d.surfaceVerts)[orig_i];
-                skirtVerts->push_back( surfaceVert );
+//                skirtVerts->push_back( surfaceVert );
                 skirtVerts->push_back( surfaceVert - ((*skirtVectors)[orig_i])*skirtHeight );
 
                 const osg::Vec3f& surfaceNormal = (*d.normals)[orig_i];
-                skirtNormals->push_back( surfaceNormal );
+//                skirtNormals->push_back( surfaceNormal );
                 skirtNormals->push_back( surfaceNormal );
 
                 const osg::Vec4f& surfaceAttribs = (*d.surfaceAttribs)[orig_i];
-                skirtAttribs->push_back( surfaceAttribs );
+//                skirtAttribs->push_back( surfaceAttribs );
                 skirtAttribs->push_back( surfaceAttribs - osg::Vec4f(0,0,0,skirtHeight) );
 
                 const osg::Vec4f& surfaceAttribs2 = (*d.surfaceAttribs2)[orig_i];
-                skirtAttribs2->push_back( surfaceAttribs2 );
+//                skirtAttribs2->push_back( surfaceAttribs2 );
                 skirtAttribs2->push_back( surfaceAttribs2 - osg::Vec4f(0,0,0,skirtHeight) );
 
                 if ( d.renderLayers.size() > 0 )
                 {
                     for (unsigned int i = 0; i < d.renderLayers.size(); ++i)
                     {
-                        if ( d.renderLayers[i]._ownsSkirtTexCoords )
+                        if ( d.renderLayers[i]._ownsTexCoords )
                         {
                             const osg::Vec2& tc = (*d.renderLayers[i]._texCoords.get())[orig_i];
-                            d.renderLayers[i]._skirtTexCoords->push_back( tc );
-                            d.renderLayers[i]._skirtTexCoords->push_back( tc );
+//                            d.renderLayers[i]._skirtTexCoords->push_back( tc );
+                            d.renderLayers[i]._texCoords->push_back( tc );
                         }
                     }
                 }
+
+                elements->addElement(orig_i);
+                elements->addElement(skirtVerts->size()-1);
             }
         }
 
@@ -1127,39 +1140,45 @@ namespace
             int orig_i = d.indices[(d.numRows-1)*d.numCols+c];
             if (orig_i < 0)
             {
-                if (skirtBreaks.back() != skirtVerts->size())
-                    skirtBreaks.push_back(skirtVerts->size());
+                if ( elements->size() > 0 )
+                    d.surface->addPrimitiveSet( elements.get() );
+                elements = new osg::DrawElementsUShort(GL_TRIANGLE_STRIP);
+                //if (skirtBreaks.back() != skirtVerts->size())
+                //    skirtBreaks.push_back(skirtVerts->size());
             }
             else
             {
                 const osg::Vec3f& surfaceVert = (*d.surfaceVerts)[orig_i];
-                skirtVerts->push_back( surfaceVert );
+//                skirtVerts->push_back( surfaceVert );
                 skirtVerts->push_back( surfaceVert - ((*skirtVectors)[orig_i])*skirtHeight );
 
                 const osg::Vec3f& surfaceNormal = (*d.normals)[orig_i];
-                skirtNormals->push_back( surfaceNormal );
+//                skirtNormals->push_back( surfaceNormal );
                 skirtNormals->push_back( surfaceNormal );
 
                 const osg::Vec4f& surfaceAttribs = (*d.surfaceAttribs)[orig_i];
-                skirtAttribs->push_back( surfaceAttribs );
+//                skirtAttribs->push_back( surfaceAttribs );
                 skirtAttribs->push_back( surfaceAttribs - osg::Vec4f(0,0,0,skirtHeight) );
 
                 const osg::Vec4f& surfaceAttribs2 = (*d.surfaceAttribs2)[orig_i];
-                skirtAttribs2->push_back( surfaceAttribs2 );
+//                skirtAttribs2->push_back( surfaceAttribs2 );
                 skirtAttribs2->push_back( surfaceAttribs2 - osg::Vec4f(0,0,0,skirtHeight) );
 
                 if ( d.renderLayers.size() > 0 )
                 {
                     for (unsigned int i = 0; i < d.renderLayers.size(); ++i)
                     {
-                        if ( d.renderLayers[i]._ownsSkirtTexCoords )
+                        if ( d.renderLayers[i]._ownsTexCoords )
                         {
                             const osg::Vec2& tc = (*d.renderLayers[i]._texCoords.get())[orig_i];
-                            d.renderLayers[i]._skirtTexCoords->push_back( tc );
-                            d.renderLayers[i]._skirtTexCoords->push_back( tc );
+//                            d.renderLayers[i]._skirtTexCoords->push_back( tc );
+                            d.renderLayers[i]._texCoords->push_back( tc );
                         }
                     }
                 }
+
+                elements->addElement(orig_i);
+                elements->addElement(skirtVerts->size()-1);
             }
         }
 
@@ -1169,42 +1188,55 @@ namespace
             int orig_i = d.indices[r*d.numCols];
             if (orig_i < 0)
             {
-                if (skirtBreaks.back() != skirtVerts->size())
-                    skirtBreaks.push_back(skirtVerts->size());
+                if ( elements->size() > 0 )
+                    d.surface->addPrimitiveSet( elements.get() );
+                elements = new osg::DrawElementsUShort(GL_TRIANGLE_STRIP);
+                //if (skirtBreaks.back() != skirtVerts->size())
+                //    skirtBreaks.push_back(skirtVerts->size());
             }
             else
             {
                 const osg::Vec3f& surfaceVert = (*d.surfaceVerts)[orig_i];
-                skirtVerts->push_back( surfaceVert );
+//                skirtVerts->push_back( surfaceVert );
                 skirtVerts->push_back( surfaceVert - ((*skirtVectors)[orig_i])*skirtHeight );
 
                 const osg::Vec3f& surfaceNormal = (*d.normals)[orig_i];
-                skirtNormals->push_back( surfaceNormal );
+//                skirtNormals->push_back( surfaceNormal );
                 skirtNormals->push_back( surfaceNormal );
 
                 const osg::Vec4f& surfaceAttribs = (*d.surfaceAttribs)[orig_i];
-                skirtAttribs->push_back( surfaceAttribs );
+//                skirtAttribs->push_back( surfaceAttribs );
                 skirtAttribs->push_back( surfaceAttribs - osg::Vec4f(0,0,0,skirtHeight) );
 
                 const osg::Vec4f& surfaceAttribs2 = (*d.surfaceAttribs2)[orig_i];
-                skirtAttribs2->push_back( surfaceAttribs2 );
+//                skirtAttribs2->push_back( surfaceAttribs2 );
                 skirtAttribs2->push_back( surfaceAttribs2 - osg::Vec4f(0,0,0,skirtHeight) );
 
                 if ( d.renderLayers.size() > 0 )
                 {
                     for (unsigned int i = 0; i < d.renderLayers.size(); ++i)
                     {
-                        if ( d.renderLayers[i]._ownsSkirtTexCoords )
+                        if ( d.renderLayers[i]._ownsTexCoords )
                         {
                             const osg::Vec2& tc = (*d.renderLayers[i]._texCoords.get())[orig_i];
-                            d.renderLayers[i]._skirtTexCoords->push_back( tc );
-                            d.renderLayers[i]._skirtTexCoords->push_back( tc );
+//                            d.renderLayers[i]._skirtTexCoords->push_back( tc );
+                            d.renderLayers[i]._texCoords->push_back( tc );
                         }
                     }
                 }
+
+                elements->addElement(orig_i);
+                elements->addElement(skirtVerts->size()-1);
             }
         }
 
+        // add the final prim set.
+        if ( elements->size() > 0 )
+        {
+            d.surface->addPrimitiveSet( elements.get() );
+        }
+
+#if 0
         d.skirt->setVertexArray( skirtVerts );
         if ( skirtVerts->getVertexBufferObject() )
             skirtVerts->getVertexBufferObject()->setUsage(GL_STATIC_DRAW_ARB);
@@ -1226,14 +1258,12 @@ namespace
         d.skirt->setVertexAttribBinding  (osg::Drawable::ATTRIBUTE_7, osg::Geometry::BIND_PER_VERTEX);
         d.skirt->setVertexAttribNormalize(osg::Drawable::ATTRIBUTE_7, false);
 
-        // GW: not sure why this break stuff is here...?
-#if 0
         //Add a primative set for each continuous skirt strip
         skirtBreaks.push_back(skirtVerts->size());
         for (int p=1; p < (int)skirtBreaks.size(); p++)
+        {
             d.skirt->addPrimitiveSet( new osg::DrawArrays( GL_TRIANGLE_STRIP, skirtBreaks[p-1], skirtBreaks[p] - skirtBreaks[p-1] ) );
-#else
-        d.skirt->addPrimitiveSet( new osg::DrawArrays(GL_TRIANGLE_STRIP, 0, skirtVerts->size()) );
+        }
 #endif
     }
 
@@ -1251,9 +1281,9 @@ namespace
 
         osg::DrawElements* elements;
 
-        if ( d.surfaceVerts->size() < 0xFF )
+        /*if ( d.surfaceVerts->size() < 0xFF )
             elements = new osg::DrawElementsUByte(GL_TRIANGLES);
-        else if ( d.surfaceVerts->size() < 0xFFFF )
+        else*/ if ( d.surfaceVerts->size() < 0xFFFF )
             elements = new osg::DrawElementsUShort(GL_TRIANGLES);
         else
             elements = new osg::DrawElementsUShort(GL_TRIANGLES);
@@ -1765,8 +1795,8 @@ namespace
         unsigned size = d.renderLayers.size();
 
         d.surface->_layers.resize( size );
-        if ( d.skirt )
-            d.skirt->_layers.resize( size );
+        //if ( d.skirt )
+        //    d.skirt->_layers.resize( size );
         for ( MaskRecordVector::iterator mr = d.maskRecords.begin(); mr != d.maskRecords.end(); ++mr )
             mr->_geom->_layers.resize( size );
         if ( d.stitching_skirts )
@@ -1800,11 +1830,11 @@ namespace
             d.surface->_layers[order] = layer;
 
             // the skirt:
-            if ( d.skirt )
-            {
-                layer._texCoords  = r->_skirtTexCoords;
-                d.skirt->_layers[order] = layer;
-            }
+            //if ( d.skirt )
+            //{
+            //    layer._texCoords  = r->_skirtTexCoords;
+            //    d.skirt->_layers[order] = layer;
+            //}
 
             // the mask geometries:
             for ( MaskRecordVector::iterator mr = d.maskRecords.begin(); mr != d.maskRecords.end(); ++mr )
@@ -1868,7 +1898,7 @@ TileModelCompiler::compile(const TileModel* model,
     tile->setMatrix( osg::Matrix::translate(d.centerModel) );
 
     // A Geode/Geometry for the surface:
-    d.surface = new MPGeometry( d.frame, _textureImageUnit );
+    d.surface = new MPGeometry( d.model->_tileKey, d.frame, _textureImageUnit );
     d.surface->setUseVertexBufferObjects(d.useVBOs);
     d.surfaceGeode = new osg::Geode();
     d.surfaceGeode->addDrawable( d.surface );
@@ -1881,23 +1911,10 @@ TileModelCompiler::compile(const TileModel* model,
     // TODO: make this optional?
     d.createSkirt = (_options.heightFieldSkirtRatio().value() > 0.0);
 
-    if ( d.createSkirt )
-    {
-        d.skirt = new MPGeometry( d.frame, _textureImageUnit );
-        d.skirt->setUseVertexBufferObjects(d.useVBOs);
-
-        // slightly faster than a separate geode:
-        //d.skirt->setDataVariance( osg::Object::DYNAMIC ); // since we're using a custom cull callback
-        d.skirt->setCullCallback( _cullByTraversalMask.get() );
-        d.surfaceGeode->addDrawable( d.skirt );
-    }
-
-
     // adjust the tile locator for geocentric mode:
     d.geoLocator = model->_tileLocator->getCoordinateSystemType() == GeoLocator::GEOCENTRIC ? 
         model->_tileLocator->getGeographicFromGeocentric() :
         model->_tileLocator.get();
-
 
     // Set up any geometry-cutting masks:
     if ( d.maskLayers.size() > 0 )
@@ -1930,23 +1947,16 @@ TileModelCompiler::compile(const TileModel* model,
     // installs the per-layer rendering data into the Geometry objects.
     installRenderData( d );
 
-
-    // lastly, optimize the results.
-    // unnecessary (I think) since tessellateSurfaceGeometry already makes an optimal
-    // triangle set
-    //if ( d.maskRecords.size() > 0 )
-    //{
-    //    MeshConsolidator::convertToTriangles( *d.surface );
-    //}
-
-    if ( d.skirt )
+    // convert skirt tristrips to tris.
+    if ( d.createSkirt )
     {
-        MeshConsolidator::convertToTriangles( *d.skirt );
+        MeshConsolidator::convertToTriangles( *d.surface, true );
     }
 
+    // convert mask geometry to tris.
     for (MaskRecordVector::iterator mr = d.maskRecords.begin(); mr != d.maskRecords.end(); ++mr)
     {
-        MeshConsolidator::convertToTriangles( *((*mr)._geom) );
+        MeshConsolidator::convertToTriangles( *((*mr)._geom), true );
     }
     
     if (osgDB::Registry::instance()->getBuildKdTreesHint()==osgDB::ReaderWriter::Options::BUILD_KDTREES &&

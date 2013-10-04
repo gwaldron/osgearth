@@ -927,15 +927,12 @@ ExtrudeGeometryFilter::push( FeatureList& input, FilterContext& context )
     {
         for( SortedGeodeMap::iterator i = _geodes.begin(); i != _geodes.end(); ++i )
         {
-#if 1
             MeshConsolidator::run( *i->second.get() );
-#else
-        osgUtil::Optimizer opt;
-        opt.optimize( i->second.get(),
-            osgUtil::Optimizer::VERTEX_PRETRANSFORM |
-            osgUtil::Optimizer::INDEX_MESH |
-            osgUtil::Optimizer::VERTEX_POSTTRANSFORM |
-            osgUtil::Optimizer::MERGE_GEOMETRY );
+#if 1
+            osgUtil::Optimizer opt;
+            opt.optimize( i->second.get(),
+                osgUtil::Optimizer::VERTEX_PRETRANSFORM |
+                osgUtil::Optimizer::VERTEX_POSTTRANSFORM );
 #endif
         }
     }

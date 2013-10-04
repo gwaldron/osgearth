@@ -100,9 +100,8 @@ namespace osgEarth_engine_mp
 
         virtual void traverse( class osg::NodeVisitor& nv );
 
+        virtual void resizeGLObjectBuffers(unsigned maxSize);
         virtual void releaseGLObjects(osg::State* state) const;
-
-        virtual osg::BoundingSphere computeBound() const;
 
     protected:
 
@@ -110,7 +109,6 @@ namespace osgEarth_engine_mp
 
         TileKey                            _key;
         osg::ref_ptr<osg::Uniform>         _bornUniform;
-        mutable osg::ref_ptr<osg::Uniform> _keyUniform;
         osg::ref_ptr<const TileModel>      _model;
         osg::ref_ptr<osg::Uniform>         _tileParentMatrixUniform;
         unsigned                           _lastTraversalFrame;

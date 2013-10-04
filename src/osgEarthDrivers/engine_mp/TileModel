@@ -43,6 +43,7 @@ namespace osgEarth_engine_mp
     class TileModel : public osg::Referenced
     {
     public:
+        void resizeGLObjectBuffers(unsigned maxSize);
         void releaseGLObjects(osg::State* state) const;
 
     public:
@@ -129,6 +130,7 @@ namespace osgEarth_engine_mp
                 const osgEarth::TileKey&    tileKey,
                 bool                        fallbackData =false );
     
+            void resizeGLObjectBuffers(unsigned maxSize);
             void releaseGLObjects(osg::State* state) const;
 
 

@@ -66,7 +66,6 @@ namespace
 
         "uniform sampler2D oe_nmap_tex; \n"
         "uniform float oe_nmap_startlod; \n"
-        "uniform vec4 oe_tile_key; \n"
         "uniform bool oe_mode_GL_LIGHTING; \n"
 
         "varying vec4 oe_layer_tilec; \n"

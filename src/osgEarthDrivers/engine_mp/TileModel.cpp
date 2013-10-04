@@ -145,6 +145,15 @@ _order       ( rhs._order )
 }
 
 void
+TileModel::ColorData::resizeGLObjectBuffers(unsigned maxSize)
+{
+    if ( _texture.valid() )
+    {
+        _texture->resizeGLObjectBuffers( maxSize );
+    }
+}
+
+void
 TileModel::ColorData::releaseGLObjects(osg::State* state) const
 {
     if ( _texture.valid() && _texture->referenceCount() == 1 )
@@ -202,6 +211,12 @@ TileModel::setParentTileModel(const TileModel* parent)
     _parentModel = parent;
 }
 
+void
+TileModel::resizeGLObjectBuffers(unsigned maxSize)
+{
+    for(ColorDataByUID::iterator i = _colorData.begin(); i != _colorData.end(); ++i )
+        i->second.resizeGLObjectBuffers( maxSize );
+}
 
 void
 TileModel::releaseGLObjects(osg::State* state) const

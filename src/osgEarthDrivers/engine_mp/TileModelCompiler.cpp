@@ -1264,17 +1264,9 @@ namespace
 
         bool recalcNormals   = d.model->hasElevation(); //d.model->_elevationData.getHFLayer() != 0L;
 
-        osg::DrawElements* elements;
-
-        /*if ( d.surfaceVerts->size() < 0xFF )
-            elements = new osg::DrawElementsUByte(GL_TRIANGLES);
-        else*/ if ( d.surfaceVerts->size() < 0xFFFF )
-            elements = new osg::DrawElementsUShort(GL_TRIANGLES);
-        else
-            elements = new osg::DrawElementsUShort(GL_TRIANGLES);
-
+        osg::DrawElements* elements = new osg::DrawElementsUShort(GL_TRIANGLES);
         elements->reserveElements((d.numRows-1) * (d.numCols-1) * 6);
-        d.surface->addPrimitiveSet( elements );
+        d.surface->insertPrimitiveSet(0, elements); // because we always want this first.
 
         if ( recalcNormals )
         {

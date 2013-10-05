@@ -177,6 +177,10 @@ namespace osgEarth
         osg::Program* getTemplate() { return _template.get(); }
         const osg::Program* getTemplate() const { return _template.get(); }
 
+    public: // StateAttribute
+        virtual void compileGLObjects(osg::State& state) const;
+        virtual void resizeGLObjectBuffers(unsigned maxSize);
+
         /** If State is non-zero, this function releases any associated OpenGL objects for
            * the specified graphics context. Otherwise, releases OpenGL objects
            * for all graphics contexts. */

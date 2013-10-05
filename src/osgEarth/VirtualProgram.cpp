@@ -221,14 +221,38 @@ VirtualProgram::applyAttributeAliases(osg::Shader*             shader,
 }
 
 void
-VirtualProgram::releaseGLObjects(osg::State* pState) const
+VirtualProgram::compileGLObjects(osg::State& state) const
 {
   Threading::ScopedReadLock shared( _programCacheMutex );
 
   for (ProgramMap::const_iterator i = _programCache.begin();
     i != _programCache.end(); ++i)
   {
-    i->second->releaseGLObjects(pState);
+    i->second->compileGLObjects(state);
+  }
+}
+
+void
+VirtualProgram::resizeGLObjectBuffers(unsigned maxSize)
+{
+  Threading::ScopedReadLock shared( _programCacheMutex );
+
+  for (ProgramMap::iterator i = _programCache.begin();
+    i != _programCache.end(); ++i)
+  {
+    i->second->resizeGLObjectBuffers(maxSize);
+  }
+}
+
+void
+VirtualProgram::releaseGLObjects(osg::State* state) const
+{
+  Threading::ScopedReadLock shared( _programCacheMutex );
+
+  for (ProgramMap::const_iterator i = _programCache.begin();
+    i != _programCache.end(); ++i)
+  {
+    i->second->releaseGLObjects(state);
   }
 }
 

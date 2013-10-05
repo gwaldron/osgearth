@@ -511,14 +511,14 @@ PolygonizeLinesFilter::push(FeatureList& input, FilterContext& cx)
 #if 0 // issue: ignores vertex attributes
     osgUtil::Optimizer optimizer;
     optimizer.optimize(
-        result,
+        geode,
         osgUtil::Optimizer::VERTEX_PRETRANSFORM |
         osgUtil::Optimizer::VERTEX_POSTTRANSFORM );
 #endif
 
     // If we're auto-scaling, we need a shader
     float minPixels = line ? line->stroke()->minPixels().getOrUse( 0.0f ) : 0.0f;
-    if ( minPixels )
+    if ( minPixels > 0.0f )
     {
         osg::StateSet* stateSet = geode->getOrCreateStateSet();
 

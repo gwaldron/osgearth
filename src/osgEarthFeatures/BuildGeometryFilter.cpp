@@ -427,7 +427,11 @@ BuildGeometryFilter::push( FeatureList& input, FilterContext& context )
     if ( !_featureNameExpr.isSet() )
     {
         MeshConsolidator::run( *_geode.get() );
-#if 1
+
+#if 0
+      // had to comment the following out because it was causing corrupt geometry and a crash.
+      // need to investigate. Perhaps the MC is doing something improper. The crash occurred
+      // in DrawElementsUByte's glDrawElements call.
         osgUtil::Optimizer opt;
         opt.optimize( _geode.get(),
             osgUtil::Optimizer::VERTEX_PRETRANSFORM |

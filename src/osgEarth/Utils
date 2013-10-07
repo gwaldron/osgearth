@@ -151,6 +151,18 @@ namespace osgEarth
 
         osg::ref_ptr<T> _prototype;
     };
+
+    /**
+     * Shim to apply vertex cache optimizations to geometry when it's legal.
+     * This is really only here to work around an OSG bug in the VertexAccessOrder
+     * optimizer, which corrupts non-Triangle geometries.
+     */
+    struct OSGEARTH_EXPORT VertexCacheOptimizer : public osg::NodeVisitor
+    {
+        VertexCacheOptimizer();
+        virtual ~VertexCacheOptimizer() { }
+        void apply( osg::Geode& node );
+    };
 }
 
 #endif // OSGEARTH_UTILS_H

@@ -24,7 +24,7 @@
 #include <osgEarthSymbology/PolygonSymbol>
 #include <osgEarthSymbology/MeshSubdivider>
 #include <osgEarthSymbology/MeshConsolidator>
-#include <osgEarth/ECEF>
+#include <osgEarth/Utils>
 #include <osg/Geode>
 #include <osg/Geometry>
 #include <osg/LineWidth>
@@ -428,15 +428,8 @@ BuildGeometryFilter::push( FeatureList& input, FilterContext& context )
     {
         MeshConsolidator::run( *_geode.get() );
 
-#if 0
-      // had to comment the following out because it was causing corrupt geometry and a crash.
-      // need to investigate. Perhaps the MC is doing something improper. The crash occurred
-      // in DrawElementsUByte's glDrawElements call.
-        osgUtil::Optimizer opt;
-        opt.optimize( _geode.get(),
-            osgUtil::Optimizer::VERTEX_PRETRANSFORM |
-            osgUtil::Optimizer::VERTEX_POSTTRANSFORM );
-#endif
+        VertexCacheOptimizer vco;
+        _geode->accept( vco );
     }
 
     osg::Node* result = 0L;

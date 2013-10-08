@@ -94,7 +94,6 @@ _modelCompiler   ( modelCompiler ),
 _liveTiles       ( liveTiles ),
 _deadTiles       ( deadTiles ),
 _options         ( options ),
-//_mapInfo         ( mapInfo ),
 _terrain         ( terrain ),
 _engineUID       ( engineUID )
 {
@@ -103,17 +102,14 @@ _engineUID       ( engineUID )
 
 
 osg::Node*
-SerialKeyNodeFactory::createTile(TileModel* model, bool setupChildren)
+SerialKeyNodeFactory::createTile(TileModel* model, bool setupChildrenIfNecessary)
 {
     // compile the model into a node:
     TileNode* tileNode = _modelCompiler->compile( model, _frame );
 
     // see if this tile might have children.
     bool prepareForChildren =
-        setupChildren &&
-        //(!_options.minLOD().isSet() || model->_tileKey.getLOD() < *_options.minLOD()) &&
-        //(model->hasRealData() || (_options.minLOD().isSet() && model->_tileKey.getLOD() < *_options.minLOD())) &&
-        //(tileHasRealData || (_options.minLOD().isSet() && model->_tileKey.getLOD() < *_options.minLOD())) &&
+        setupChildrenIfNecessary &&
         model->_tileKey.getLOD() < *_options.maxLOD();
 
     osg::Node* result = 0L;
@@ -133,7 +129,12 @@ SerialKeyNodeFactory::createTile(TileModel* model, bool setupChildren)
 
         osgDB::Options* dbOptions = Registry::instance()->cloneOrCreateOptions();
 
+        // tell the tile group it *must* subdivide if we are trying to reach a minLOD.
+        bool forceSubdivide =
+            _options.minLOD().isSet() && model->_tileKey.getLOD() < *_options.minLOD();
+
         TileGroup* plod = new TileGroup(tileNode, _engineUID, _liveTiles.get(), _deadTiles.get(), dbOptions);
+        plod->setForceSubdivide( forceSubdivide );
         plod->setSubtileRange( minRange );
 
 
@@ -181,7 +182,6 @@ SerialKeyNodeFactory::createNode(const TileKey&    key,
                                  ProgressCallback* progress )
 {
     osg::ref_ptr<TileModel> model;
-    //bool                    hasRealData;
 
     if ( progress && progress->isCanceled() )
         return 0L;
@@ -193,20 +193,5 @@ SerialKeyNodeFactory::createNode(const TileKey&    key,
     if ( progress && progress->isCanceled() )
         return 0L;
 
-    //if ( !model->hasRealData() )
-    //    OE_NOTICE << LC << "Model for " << key.str() << " is fallback data." << std::endl;
-
-    //TEST
-    return createTile( model.get(), setupChildren ); //, hasRealData );
-
-#if 0
-    if ( hasRealData || _options.minLOD().isSet() || key.getLOD() == 0 )
-    {
-        return createTile( model.get(), setupChildren, hasRealData);
-    }
-    else
-    {
-        return 0L;
-    }
-#endif
+    return createTile( model.get(), setupChildren );
 }

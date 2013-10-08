@@ -11,6 +11,7 @@ SET(HEADER_PATH ${OSGEARTH_SOURCE_DIR}/include/${LIB_NAME})
 SET(HEADERS_ROOT
     AnnotationEvents
     AutoClipPlaneHandler
+    ArcGIS
     Common
     Controls
     ContourMap
@@ -63,6 +64,7 @@ SOURCE_GROUP( Headers FILES ${HEADERS_ROOT} )
 
 SET(SOURCES_ROOT
     AnnotationEvents.cpp
+    ArcGIS.cpp
     AutoClipPlaneHandler.cpp
     ClampCallback.cpp
     Controls.cpp

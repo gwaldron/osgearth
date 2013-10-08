@@ -28,6 +28,7 @@
 #include <osg/PolygonMode>
 #include <osg/Texture2D>
 #include <osg/Uniform>
+#include <osg/ValueObject>
 
 #include <osgDB/WriteFile>
 
@@ -286,7 +287,6 @@ ClampingTechnique::reestablish(TerrainEngineNode* engine)
     // nop.
 }
 
-
 void
 ClampingTechnique::setUpCamera(OverlayDecorator::TechRTTParams& params)
 {
@@ -312,7 +312,7 @@ ClampingTechnique::setUpCamera(OverlayDecorator::TechRTTParams& params)
     params._rttCamera = new osg::Camera();
     params._rttCamera->setReferenceFrame( osg::Camera::ABSOLUTE_RF_INHERIT_VIEWPOINT );
     params._rttCamera->setClearColor( osg::Vec4f(0,0,0,0) );
-    params._rttCamera->setClearMask( GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT );
+    params._rttCamera->setClearMask( GL_DEPTH_BUFFER_BIT );
     params._rttCamera->setComputeNearFarMode( osg::CullSettings::DO_NOT_COMPUTE_NEAR_FAR );
     params._rttCamera->setViewport( 0, 0, *_textureSize, *_textureSize );
     params._rttCamera->setRenderOrder( osg::Camera::PRE_RENDER );
@@ -331,11 +331,6 @@ ClampingTechnique::setUpCamera(OverlayDecorator::TechRTTParams& params)
     // set up a StateSet for the RTT camera.
     osg::StateSet* rttStateSet = params._rttCamera->getOrCreateStateSet();
 
-    // lighting is off. We don't want draped items to be lit.
-    //rttStateSet->setMode( 
-    //    GL_LIGHTING, 
-    //    osg::StateAttribute::OFF | osg::StateAttribute::PROTECTED );
-
     rttStateSet->setMode(
         GL_BLEND, 
         osg::StateAttribute::OFF | osg::StateAttribute::OVERRIDE);
@@ -344,25 +339,10 @@ ClampingTechnique::setUpCamera(OverlayDecorator::TechRTTParams& params)
     rttStateSet->setAttributeAndModes(
         new osg::PolygonMode( osg::PolygonMode::FRONT_AND_BACK, osg::PolygonMode::FILL ),
         osg::StateAttribute::ON | osg::StateAttribute::PROTECTED );
-
-#if 0 //OOPS this kills things like a vertical scale shader!!
-    // installs a dirt-simple program for rendering the depth texture that
-    // skips all the normal terrain rendering stuff
-    osg::Program* depthProg = new osg::Program();
-    depthProg->addShader(new osg::Shader(
-        osg::Shader::VERTEX, 
-        "void main() { gl_Position = gl_ModelViewProjectionMatrix * gl_Vertex; }\n"));
-    depthProg->addShader(new osg::Shader(
-        osg::Shader::FRAGMENT, 
-        "void main() { gl_FragColor = vec4(1,1,1,1); }\n"));
-    rttStateSet->setAttributeAndModes(
-        depthProg,
-        osg::StateAttribute::ON | osg::StateAttribute::OVERRIDE | osg::StateAttribute::PROTECTED );
-#endif
     
     // attach the terrain to the camera.
     // todo: should probably protect this with a mutex.....
-    params._rttCamera->addChild( _engine ); //params._terrainParent->getChild(0) ); // the terrain itself.
+    params._rttCamera->addChild( _engine ); // the terrain itself.
 
     // assemble the overlay graph stateset.
     local->_groupStateSet = new osg::StateSet();
@@ -376,12 +356,10 @@ ClampingTechnique::setUpCamera(OverlayDecorator::TechRTTParams& params)
         local->_rttTexture.get(), 
         osg::StateAttribute::ON | osg::StateAttribute::OVERRIDE );
 
-#if 1
     // set up depth test/write parameters for the overlay geometry:
     local->_groupStateSet->setAttributeAndModes(
         new osg::Depth( osg::Depth::LEQUAL, 0.0, 1.0, true ),
         osg::StateAttribute::ON );
-#endif
 
     local->_groupStateSet->setRenderingHint( osg::StateSet::TRANSPARENT_BIN );
 

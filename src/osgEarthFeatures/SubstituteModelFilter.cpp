@@ -209,23 +209,6 @@ SubstituteModelFilter::process(const FeatureList&           features,
                     model = at;
                 }
             }
-
-#if 0
-            if ( scale != 1.0f && dynamic_cast<osg::AutoTransform*>( model.get() ) )
-            {
-                // clone the old AutoTransform, set the new scale, and copy over its children.
-                osg::AutoTransform* oldAT = dynamic_cast<osg::AutoTransform*>(model.get());
-                osg::AutoTransform* newAT = osg::clone( oldAT );
-
-                // make a scaler and put it between the new AutoTransform and its kids
-                osg::MatrixTransform* scaler = new osg::MatrixTransform(osg::Matrix::scale(scale,scale,scale));
-                for( unsigned i=0; i<newAT->getNumChildren(); ++i )
-                    scaler->addChild( newAT->getChild(0) );
-                newAT->removeChildren(0, newAT->getNumChildren());
-                newAT->addChild( scaler );
-                model = newAT;
-            }
-#endif
         }
 
         if ( model.valid() )
@@ -307,14 +290,6 @@ SubstituteModelFilter::process(const FeatureList&           features,
         DrawInstanced::install( attachPoint->getOrCreateStateSet() );
     }
 
-#if 0 // now called from GeometryCompiler
-
-    // Generate shader code to render the models
-    StateSetCache* cache = context.getSession() ? context.getSession()->getStateSetCache() : 0L;
-    ShaderGenerator gen( cache );
-    attachPoint->accept( gen );
-
-#endif
     return true;
 }
 
@@ -351,12 +326,6 @@ struct ClusterVisitor : public osg::NodeVisitor
         // ..and clear out the drawables list.
         geode.removeDrawables( 0, geode.getNumDrawables() );
 
-#if 0
-        // ... and remove all drawables from the feature node
-        for( osg::Geode::DrawableList::iterator i = old_drawables.begin(); i != old_drawables.end(); i++ )
-            _featureNode->removeDrawable(i->get());
-#endif
-
         // foreach each drawable that was originally in the geode...
         for( osg::Geode::DrawableList::iterator i = old_drawables.begin(); i != old_drawables.end(); i++ )
         {
@@ -378,18 +347,6 @@ struct ClusterVisitor : public osg::NodeVisitor
                 }
 
                 osg::Matrixd rotationMatrix;
-#if 0
-                if ( _symbol->orientation().isSet() )
-                {
-                    osg::Vec3d hpr = *_symbol->orientation();
-                    //Rotation in HPR
-                    //Apply the rotation            
-                    rotationMatrix.makeRotate( 
-                        osg::DegreesToRadians(hpr.y()), osg::Vec3(1,0,0),
-                        osg::DegreesToRadians(hpr.x()), osg::Vec3(0,0,1),
-                        osg::DegreesToRadians(hpr.z()), osg::Vec3(0,1,0) );            
-                }
-#endif
                 if ( _modelSymbol && _modelSymbol->heading().isSet() )
                 {
                     float heading = feature->eval( _headingExpr, &_cx );

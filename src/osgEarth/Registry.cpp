@@ -225,26 +225,6 @@ const Profile*
 Registry::getGlobalMercatorProfile() const
 {
     return getSphericalMercatorProfile();
-#if 0
-    if ( !_global_mercator_profile.valid() )
-    {
-        GDAL_SCOPED_LOCK;
-
-        if ( !_global_mercator_profile.valid() ) // double-check pattern
-        {
-            // automatically figure out proper mercator extents:
-            const SpatialReference* srs = SpatialReference::create( "world-mercator" );
-
-            //double e, dummy;
-            //srs->getGeographicSRS()->transform2D( 180.0, 0.0, srs, e, dummy );
-            //const_cast<Registry*>(this)->_global_mercator_profile = Profile::create(
-            //    srs, -e, -e, e, e, 1, 1 );
-            const_cast<Registry*>(this)->_global_mercator_profile = Profile::create(
-                srs, MERC_MINX, MERC_MINY, MERC_MAXX, MERC_MAXY, 1, 1 );
-        }
-    }
-    return _global_mercator_profile.get();
-#endif
 }
 
 

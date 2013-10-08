@@ -410,9 +410,6 @@ OverlayDecorator::cullTerrainAndCalculateRTTParams(osgUtil::CullVisitor* cv,
         osg::Vec3d geodetic;
         geoSRS->transformFromWorld(eye, geodetic);
 
-        //double lat, lon;
-        //_ellipsoid->convertXYZToLatLongHeight( eye.x(), eye.y(), eye.z(), lat, lon, hasl );
-
         hasl = geodetic.z();
         R = eyeLen - hasl;
         

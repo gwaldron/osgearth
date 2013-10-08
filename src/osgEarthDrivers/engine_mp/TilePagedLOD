@@ -45,7 +45,7 @@ namespace osgEarth_engine_mp
         bool isLoaded() const { return _children.size() > 0; }
 
         /** Is this LOD trying to update an existing child? */
-        bool isLoading() const { return _children.size() != getNumFileNames(); } //_isUpdating; }
+        bool isLoading() const { return _children.size() != getNumFileNames(); }
 
         /** Has this LOD decided to try to upsample its parent? */
         bool isUpsampled() const { return _isUpsampled; }

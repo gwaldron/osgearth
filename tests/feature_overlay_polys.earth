@@ -10,6 +10,7 @@ on the map using the overlay technique.
     <options>
         <lighting>false</lighting>
         <overlay_blending>false</overlay_blending>
+		<terrain min_lod="8"/>
     </options>
 
     <image name="world" driver="gdal">

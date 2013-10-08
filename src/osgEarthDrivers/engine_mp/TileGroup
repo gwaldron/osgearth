@@ -49,17 +49,8 @@ namespace osgEarth_engine_mp
         /** Range at which subtiles should start paging in. */
         void setSubtileRange(float range);
 
-        /** The TilePagedLOD nodes under this group call this method to
-          * notify the Group that a subtile is ready. */
-        //OpenThreads::Atomic& numSubtilesLoaded() { return _numSubtilesLoaded; }
-
-        /** A TilePagedLOD node under this group bumps this counter
-          * when it tries to fall back on an upsampled tile */
-        //OpenThreads::Atomic& numSubtilesUpsampling() { return _numSubtilesUpsampling; }
-
-        /** TilePagedLOD will call this if it fails to load a subtile.
-         *  If any one subtile fails to load, we cannot display any */
-        //void cancelSubtiles() { _traverseSubtiles = false; }
+        /** Sets the tile group to continue subdividing even if all children are upsampled. */
+        void setForceSubdivide(bool value);
 
         /** Replaces the underlying TileNode with a new one. */
         void setTileNode( TileNode* tilenode );
@@ -83,10 +74,10 @@ namespace osgEarth_engine_mp
         virtual ~TileGroup() { }
 
     private:
-        TileKey   _key;
         TileNode* _tilenode;
         float     _subtileRange;
         bool      _ignoreSubtiles;
+        bool      _forceSubdivide;
     };
 
     class RootTileGroup : public TileGroup

@@ -156,6 +156,19 @@ namespace
 
 //------------------------------------------------------------------------
 
+StateSetCache::~StateSetCache()
+{
+    Threading::ScopedMutexLock lock( _mutex );
+
+    for( StateAttributeSet::iterator i = _stateAttributeCache.begin(); i != _stateAttributeCache.end(); ++i )
+    {
+        if ( i->get()->referenceCount() == 1 )
+        {
+            i->get()->releaseGLObjects( 0L );
+        }
+    }
+}
+
 void
 StateSetCache::optimize(osg::Node* node)
 {

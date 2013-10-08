@@ -79,49 +79,6 @@ public:
     {
         std::string ext = osgDB::getFileExtension(uri);
 
-#if 0
-        if ( "osgearth_engine_mp_upsampled_tile" == ext )
-        {
-            // parse the tile key and engine ID:
-            std::string tileDef = osgDB::getNameLessExtension(uri);
-            unsigned int lod, x, y, engineID;
-            sscanf(tileDef.c_str(), "%d/%d/%d.%d", &lod, &x, &y, &engineID);
-
-            // find the appropriate engine:
-            osg::ref_ptr<MPTerrainEngineNode> engineNode;
-            MPTerrainEngineNode::getEngineByUID( (UID)engineID, engineNode );
-            if ( engineNode.valid() )
-            {
-                osg::Timer_t start = osg::Timer::instance()->tick();
-
-                // see if we have a progress tracker
-                ProgressCallback* progress = 
-                    options ? const_cast<ProgressCallback*>(
-                    dynamic_cast<const ProgressCallback*>(options->getUserData())) : 0L;
-
-                // assemble the key and create the node:
-                const Profile* profile = engineNode->getMap()->getProfile();
-                TileKey key( lod, x, y, profile );
-
-                OE_DEBUG << "   READ NODE UPSAMPLED TILE " << key.str() << std::endl;
-
-                osg::Node* node = engineNode->createUpsampledNode( key, progress );
-                if ( node )
-                {
-                    engineNode->getTerrain()->notifyTileAdded(key, node);
-                    return ReadResult( node, ReadResult::FILE_LOADED );
-                }
-                else
-                    return new InvalidTileNode(key);
-            }
-            else
-            {
-                return ReadResult::FILE_NOT_FOUND;
-            }
-        }
-
-        else 
-#endif
         if ( "osgearth_engine_mp_tile" == ext || "osgearth_engine_mp_standalone_tile" == ext )
         {
             // See if the filename starts with server: and strip it off.  This will trick OSG

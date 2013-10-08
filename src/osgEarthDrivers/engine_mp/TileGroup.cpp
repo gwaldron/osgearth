@@ -54,7 +54,8 @@ RootTileGroup::addRootKey(const TileKey&    key,
 TileGroup::TileGroup() :
 _tilenode      ( 0L ),
 _ignoreSubtiles( false ),
-_subtileRange  ( FLT_MAX )
+_subtileRange  ( FLT_MAX ),
+_forceSubdivide( false )
 {
     //nop
 }
@@ -66,7 +67,8 @@ TileGroup::TileGroup(TileNode*         tilenode,
                      TileNodeRegistry* dead,
                      osgDB::Options*   dbOptions) :
 _ignoreSubtiles( false ),
-_subtileRange  ( FLT_MAX )
+_subtileRange  ( FLT_MAX ),
+_forceSubdivide( false )
 {
     this->addChild( tilenode );
     _tilenode = tilenode;
@@ -82,6 +84,11 @@ _subtileRange  ( FLT_MAX )
     }
 }
 
+void
+TileGroup::setForceSubdivide(bool value)
+{
+    _forceSubdivide = value;
+}
 
 void
 TileGroup::setTileNode(TileNode* tilenode)
@@ -180,8 +187,9 @@ TileGroup::traverse(osg::NodeVisitor& nv)
                 }
 
                 // if all the subtiles contain upsampled data, and none of them are trying
-                // to load new data, we can ignore them all.
-                if ( numSubtilesUpsampled >= 4 && numSubtilesLoading == 0 )
+                // to load new data, we can ignore them all. (..unless "force" is on, which is the
+                // case if we are trying to read a minLOD for the terrain.)
+                if ( numSubtilesUpsampled >= 4 && numSubtilesLoading == 0 && !_forceSubdivide )
                 {
                     considerSubtiles = false;
                     _ignoreSubtiles = true;
@@ -209,37 +217,6 @@ TileGroup::traverse(osg::NodeVisitor& nv)
         {
             _tilenode->accept( nv );
         }
-
-#if 0
-        // if all four subtiles have reported that they are upsampling, 
-        // don't use any of them.
-        if ( _traverseSubtiles && _numSubtilesUpsampling >= 4 )
-        {
-            _traverseSubtiles = false;
-        }
-
-        // if we are out of subtile range, or we're in range but the subtiles are
-        // not all loaded yet, or we are skipping subtiles, draw the current tile.
-        if ( range > _subtileRange || _numSubtilesLoaded < 4 || !_traverseSubtiles )
-        {
-            _tilenode->accept( nv );
-        }
-
-        // if we're in range, traverse the subtiles.
-        if ( _traverseSubtiles && range <= _subtileRange )
-        {
-            for( unsigned q=0; q<4; ++q )
-            {
-                getChild(1+q)->accept( nv );
-            }
-
-            // update the TileNode so it knows what frame we're in.
-            if ( nv.getFrameStamp() )
-            {
-                _tilenode->setLastTraversalFrame( nv.getFrameStamp()->getFrameNumber() );
-            }
-        }
-#endif
     }
     else
     {

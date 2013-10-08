@@ -2580,9 +2580,6 @@ ControlCanvas::init( osgViewer::View* view, bool registerCanvas )
     // deter the optimizer
     this->setDataVariance( osg::Object::DYNAMIC );
 
-    // cache for sharing virtual program attributes:
-    this->_stateSetCache = new StateSetCache();
-
     osg::ref_ptr<osgGA::GUIEventHandler> pViewportHandler = new ViewportHandler(this);
     osg::ref_ptr<osgGA::GUIEventHandler> pControlCanvasEventHandler = new ControlCanvasEventHandler(this);
 
@@ -2772,7 +2769,7 @@ ControlCanvas::update( const osg::FrameStamp* frameStamp )
     // shaderize.
     // we don't really need to rebuild shaders on every dirty; we could probably
     // just do it on add/remove controls; but that's an optimization for later
-    ShaderGenerator shaderGen( _stateSetCache.get() );
+    ShaderGenerator shaderGen( new StateSetCache() );
     VirtualProgram* temp = new VirtualProgram();
     temp->setInheritShaders( true );
     shaderGen.setVirtualProgramTemplate( temp );

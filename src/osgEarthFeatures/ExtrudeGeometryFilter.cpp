@@ -25,6 +25,7 @@
 #include <osgEarth/Registry>
 #include <osgEarth/Capabilities>
 #include <osgEarth/ShaderGenerator>
+#include <osgEarth/Utils>
 #include <osg/Geode>
 #include <osg/Geometry>
 #include <osg/MatrixTransform>
@@ -928,12 +929,9 @@ ExtrudeGeometryFilter::push( FeatureList& input, FilterContext& context )
         for( SortedGeodeMap::iterator i = _geodes.begin(); i != _geodes.end(); ++i )
         {
             MeshConsolidator::run( *i->second.get() );
-#if 1
-            osgUtil::Optimizer opt;
-            opt.optimize( i->second.get(),
-                osgUtil::Optimizer::VERTEX_PRETRANSFORM |
-                osgUtil::Optimizer::VERTEX_POSTTRANSFORM );
-#endif
+
+            VertexCacheOptimizer vco;
+            i->second->accept( vco );
         }
     }
 

@@ -82,11 +82,7 @@ TilePagedLOD::addChild(osg::Node* node)
             //    << std::endl;
             return false;
         }
-
-        // If it's a legit tile, add it normally and inform our parent.
-        // TODO: "invalid" tiles are deprecated. Remove this.
         else
-        if ( subtile->isValid() )
         {
             if ( _children.size() == 0 )
             {

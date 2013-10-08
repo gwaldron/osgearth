@@ -41,7 +41,6 @@ namespace
     struct LocalPerViewData : public osg::Referenced
     {
         osg::ref_ptr<osg::Uniform> _texGenUniform;  // when shady
-        osg::ref_ptr<osg::TexGen>  _texGen;         // when not shady
     };
 }
 
@@ -289,7 +288,6 @@ namespace
 DrapingTechnique::DrapingTechnique() :
 _textureUnit     ( 1 ),
 _textureSize     ( 1024 ),
-_useShaders      ( false ),
 _mipmapping      ( false ),
 _rttBlending     ( true ),
 _attachStencil   ( false ),
@@ -409,12 +407,9 @@ DrapingTechnique::setUpCamera(OverlayDecorator::TechRTTParams& params)
     rttStateSet->setMode( GL_LIGHTING, osg::StateAttribute::OFF | osg::StateAttribute::PROTECTED );
 
     // install a new default shader program that replaces anything from above.
-    if ( _useShaders )
-    {
-        VirtualProgram* vp = VirtualProgram::getOrCreate(rttStateSet);
-        vp->setName( "DrapingTechnique RTT" );
-        vp->setInheritShaders( false );
-    }
+    VirtualProgram* rtt_vp = VirtualProgram::getOrCreate(rttStateSet);
+    rtt_vp->setName( "DrapingTechnique RTT" );
+    rtt_vp->setInheritShaders( false );
     
     // active blending within the RTT camera's FBO
     if ( _rttBlending )
@@ -458,62 +453,47 @@ DrapingTechnique::setUpCamera(OverlayDecorator::TechRTTParams& params)
     LocalPerViewData* local = new LocalPerViewData();
     params._techniqueData = local;
     
-    if ( _useShaders )
-    {            
-        // GPU path
 
-        VirtualProgram* vp = VirtualProgram::getOrCreate(params._terrainStateSet);
-        vp->setName( "DrapingTechnique terrain shaders");
-        //params._terrainStateSet->setAttributeAndModes( vp, osg::StateAttribute::ON );
+    // Assemble the terrain shaders that will apply projective texturing.
+    VirtualProgram* terrain_vp = VirtualProgram::getOrCreate(params._terrainStateSet);
+    terrain_vp->setName( "DrapingTechnique terrain shaders");
 
-        // sampler for projected texture:
-        params._terrainStateSet->getOrCreateUniform(
-            "oe_overlay_tex", osg::Uniform::SAMPLER_2D )->set( *_textureUnit );
+    // sampler for projected texture:
+    params._terrainStateSet->getOrCreateUniform(
+        "oe_overlay_tex", osg::Uniform::SAMPLER_2D )->set( *_textureUnit );
 
-        // the texture projection matrix uniform.
-        local->_texGenUniform = params._terrainStateSet->getOrCreateUniform(
-            "oe_overlay_texmatrix", osg::Uniform::FLOAT_MAT4 );
+    // the texture projection matrix uniform.
+    local->_texGenUniform = params._terrainStateSet->getOrCreateUniform(
+        "oe_overlay_texmatrix", osg::Uniform::FLOAT_MAT4 );
 
-        // vertex shader - subgraph
-        std::string vs =
-            "#version " GLSL_VERSION_STR "\n"
-            GLSL_DEFAULT_PRECISION_FLOAT "\n"
-            "uniform mat4 oe_overlay_texmatrix; \n"
-            "varying vec4 oe_overlay_texcoord; \n"
+    // vertex shader - subgraph
+    std::string vs =
+        "#version " GLSL_VERSION_STR "\n"
+        GLSL_DEFAULT_PRECISION_FLOAT "\n"
+        "uniform mat4 oe_overlay_texmatrix; \n"
+        "varying vec4 oe_overlay_texcoord; \n"
 
-            "void oe_overlay_vertex(inout vec4 VertexVIEW) \n"
-            "{ \n"
-            "    oe_overlay_texcoord = oe_overlay_texmatrix * VertexVIEW; \n"
-            "} \n";
+        "void oe_overlay_vertex(inout vec4 VertexVIEW) \n"
+        "{ \n"
+        "    oe_overlay_texcoord = oe_overlay_texmatrix * VertexVIEW; \n"
+        "} \n";
 
-        vp->setFunction( "oe_overlay_vertex", vs, ShaderComp::LOCATION_VERTEX_VIEW );
+    terrain_vp->setFunction( "oe_overlay_vertex", vs, ShaderComp::LOCATION_VERTEX_VIEW );
 
-        // fragment shader - subgraph
-        std::string fs =
-            "#version " GLSL_VERSION_STR "\n"
-            GLSL_DEFAULT_PRECISION_FLOAT "\n"
-            "uniform sampler2D oe_overlay_tex; \n"
-            "varying vec4      oe_overlay_texcoord; \n"
+    // fragment shader - subgraph
+    std::string fs =
+        "#version " GLSL_VERSION_STR "\n"
+        GLSL_DEFAULT_PRECISION_FLOAT "\n"
+        "uniform sampler2D oe_overlay_tex; \n"
+        "varying vec4      oe_overlay_texcoord; \n"
 
-            "void oe_overlay_fragment( inout vec4 color ) \n"
-            "{ \n"
-            "    vec4 texel = texture2DProj(oe_overlay_tex, oe_overlay_texcoord); \n"
-            "    color = vec4( mix( color.rgb, texel.rgb, texel.a ), color.a); \n"
-            "} \n";
+        "void oe_overlay_fragment( inout vec4 color ) \n"
+        "{ \n"
+        "    vec4 texel = texture2DProj(oe_overlay_tex, oe_overlay_texcoord); \n"
+        "    color = vec4( mix( color.rgb, texel.rgb, texel.a ), color.a); \n"
+        "} \n";
 
-        vp->setFunction( "oe_overlay_fragment", fs, ShaderComp::LOCATION_FRAGMENT_COLORING );
-    }
-    else
-    {
-        // FFP path
-        local->_texGen = new osg::TexGen();
-        local->_texGen->setMode( osg::TexGen::EYE_LINEAR );
-        params._terrainStateSet->setTextureAttributeAndModes( *_textureUnit, local->_texGen.get(), 1 );
-
-        osg::TexEnv* env = new osg::TexEnv();
-        env->setMode( osg::TexEnv::DECAL );
-        params._terrainStateSet->setTextureAttributeAndModes( *_textureUnit, env, 1 );
-    }
+    terrain_vp->setFunction( "oe_overlay_fragment", fs, ShaderComp::LOCATION_FRAGMENT_COLORING );
 }
 
 
@@ -525,20 +505,6 @@ DrapingTechnique::preCullTerrain(OverlayDecorator::TechRTTParams& params,
     {
         setUpCamera( params );
     }
-
-#if 0 // FFP not supported anymore.
-    if ( params._rttCamera.valid() )
-    {
-        LocalPerViewData& local = *static_cast<LocalPerViewData*>(params._techniqueData.get());
-        if ( local._texGen.valid() )
-        {
-            // FFP path only
-            // TODO: remove. FFP is no longer supported.
-            cv->getCurrentRenderBin()->getStage()->addPositionedTextureAttribute(
-                *_textureUnit, cv->getModelViewMatrix(), local._texGen.get() );
-        }
-    }
-#endif
 }
 
 
@@ -584,13 +550,6 @@ DrapingTechnique::cullOverlayGroup(OverlayDecorator::TechRTTParams& params,
             vm.invert( *cv->getModelViewMatrix() );
             local._texGenUniform->set( vm * VPT );
         }
-#if 0 // FFP no longer supported.
-        else
-        {
-            // FFP path
-            local._texGen->setPlanesFromMatrix( VPT );
-        }
-#endif
 
         // traverse the overlay group (via the RTT camera).
         params._rttCamera->accept( *cv );
@@ -602,10 +561,6 @@ void
 DrapingTechnique::setTextureSize( int texSize )
 {
     _textureSize = texSize;
-    //if ( texSize != _textureSize.value() )
-    //{
-    //    _textureSize = texSize;
-    //}
 }
 
 void
@@ -656,14 +611,6 @@ DrapingTechnique::setAttachStencil( bool value )
 void
 DrapingTechnique::onInstall( TerrainEngineNode* engine )
 {
-    // see whether we want shader support:
-    // TODO: this is not stricty correct; you might still want to use shader overlays
-    // in multipass mode, AND you might want FFP overlays in multitexture-FFP mode.
-    _useShaders = 
-        Registry::capabilities().supportsGLSL() && (
-            !engine->getTextureCompositor() ||
-            engine->getTextureCompositor()->usesShaderComposition() );
-
     if ( !_textureSize.isSet() )
     {
         unsigned maxSize = Registry::capabilities().getMaxFastTextureSize();

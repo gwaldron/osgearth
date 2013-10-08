@@ -24,7 +24,7 @@
 #include <osgEarthSymbology/PolygonSymbol>
 #include <osgEarthSymbology/MeshSubdivider>
 #include <osgEarthSymbology/MeshConsolidator>
-#include <osgEarth/ECEF>
+#include <osgEarth/Utils>
 #include <osg/Geode>
 #include <osg/Geometry>
 #include <osg/LineWidth>
@@ -133,45 +133,6 @@ BuildGeometryFilter::process( FeatureList& features, const FilterContext& contex
             {
                 renderType = part->getType();
             }
-#if 0
-            // First priority is a matching part type and symbol:
-            if ( polySymbol != 0L && part->getType() == Geometry::TYPE_POLYGON )
-            {
-                renderType = Geometry::TYPE_POLYGON;
-            }
-            else if ( lineSymbol != 0L && part->isLinear() )
-            {
-                renderType = part->getType();
-            }
-            else if ( pointSymbol != 0L && part->getType() == Geometry::TYPE_POINTSET )
-            {
-                renderType = Geometry::TYPE_POINTSET;
-            }
-
-            // Second priority is the symbol:
-            else if ( polySymbol != 0L )
-            {
-                renderType = Geometry::TYPE_POLYGON;
-            }
-            else if ( lineSymbol != 0L )
-            {
-                if ( part->getType() == Geometry::TYPE_POLYGON )
-                    renderType = Geometry::TYPE_RING;
-                else
-                    renderType = Geometry::TYPE_LINESTRING;
-            }
-            else if ( pointSymbol != 0L )
-            {
-                renderType = Geometry::TYPE_POINTSET;
-            }
-
-            // No symbol? just use the geometry type.
-            else
-            {
-                renderType = part->getType();
-            }
-#endif
-
 
             // validate the geometry:
             if ( renderType == Geometry::TYPE_POLYGON && part->size() < 3 )
@@ -427,12 +388,9 @@ BuildGeometryFilter::push( FeatureList& input, FilterContext& context )
     if ( !_featureNameExpr.isSet() )
     {
         MeshConsolidator::run( *_geode.get() );
-#if 1
-        osgUtil::Optimizer opt;
-        opt.optimize( _geode.get(),
-            osgUtil::Optimizer::VERTEX_PRETRANSFORM |
-            osgUtil::Optimizer::VERTEX_POSTTRANSFORM );
-#endif
+
+        VertexCacheOptimizer vco;
+        _geode->accept( vco );
     }
 
     osg::Node* result = 0L;

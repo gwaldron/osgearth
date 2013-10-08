@@ -68,25 +68,8 @@ TextSymbolizer::create(Feature*             feature,
         t->setPosition( osg::Vec3(_symbol->pixelOffset()->x(), _symbol->pixelOffset()->y(), 0.0f) );
     }
 
-
-    //    //TODO: relacate in annotationutils...
-    //    t->setPosition( osg::Vec3(
-    //        positionOffset.x() + _symbol->pixelOffset()->x(),
-    //        positionOffset.y() + _symbol->pixelOffset()->y(),
-    //        positionOffset.z() ) );
-    //}
-// TODO: retian in annotationutils...
-    //else
-    //{
-    //    t->setPosition( positionOffset );
-    //}
-
     //TODO: resonsider defaults here
     t->setCharacterSizeMode( osgText::Text::OBJECT_COORDS );
-#if 0
-    t->setAutoRotateToScreen( false );
-    t->setCharacterSizeMode( osgText::Text::OBJECT_COORDS );
-#endif
 
     t->setCharacterSize( _symbol.valid() && _symbol->size().isSet() ? *_symbol->size() : 16.0f );
 

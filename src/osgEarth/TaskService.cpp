@@ -99,24 +99,6 @@ TaskRequestQueue::add( TaskRequest* request )
     // insert by priority.
     _requests.insert( std::pair<float,TaskRequest*>(request->getPriority(), request) );
 
-#if 0
-    // insert by priority.
-    bool inserted = false;
-    for( TaskRequestList::iterator i = _requests.begin(); i != _requests.end(); i++ )
-    {
-        if ( request->getPriority() > i->get()->getPriority() )
-        {
-            _requests.insert( i, request );
-            inserted = true;
-            //OE_NOTICE << "TaskRequestQueue size=" << _requests.size() << std::endl;
-            break;
-        }
-    }
-
-    if ( !inserted )
-        _requests.push_back( request );
-#endif
-
     // since there is data in the queue, wake up one waiting task thread.
     _cond.signal();
 }

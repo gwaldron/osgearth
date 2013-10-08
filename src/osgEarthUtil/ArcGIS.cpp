@@ -46,11 +46,24 @@ RESTResponse::getServices()
     return _services;
 }
 
+const ServiceList& 
+RESTResponse::getServices() const
+{
+    return _services;
+}
+
 FolderList&
 RESTResponse::getFolders()
 {
     return _folders;
 }
+
+const FolderList&
+RESTResponse::getFolders() const
+{
+    return _folders;
+}
+
 
 const std::string& RESTResponse::getCurrentVersion() const
 {

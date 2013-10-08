@@ -70,7 +70,10 @@ namespace osgEarth { namespace Util { namespace ArcGIS {
     public:
         RESTResponse();
 
+        const ServiceList& getServices() const;
         ServiceList& getServices();
+
+        const FolderList& getFolders() const;
         FolderList& getFolders();
         const std::string& getCurrentVersion() const;
         void setCurrentVersion( const std::string& currentVersion);

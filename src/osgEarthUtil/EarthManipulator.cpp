@@ -2577,22 +2577,6 @@ EarthManipulator::handleScrollAction( const Action& action, double duration )
     return handleAction( action, dx, dy, duration );
 }
 
-#if 0
-bool
-EarthManipulator::handleMultiTouchAction( const Action& action, const EarthManipulator::TouchEvent& te, osg::View* view )
-{
-    if ( action._type == ACTION_ZOOM )
-    {
-        handleMovementAction( action._type, 0.0, te._deltaDistance, view );
-        return true;
-    }
-    else
-    {
-        return false;
-    }
-}
-#endif
-
 bool
 EarthManipulator::handleAction( const Action& action, double dx, double dy, double duration )
 {

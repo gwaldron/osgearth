@@ -242,28 +242,6 @@ ElevationLayer::createHeightFieldFromTileSource(const TileKey&    key,
         result = assembleHeightFieldFromTileSource( key, progress );
     }
 
-#if 0
-    // If the profiles don't match, use a more complicated technique to assemble the tile:
-    if ( !key.getProfile()->isEquivalentTo( getProfile() ) )
-    {
-        result = assembleHeightFieldFromTileSource( key, progress );
-    }
-    else
-    {
-        // Only try to get data if the source actually has data
-        if ( !source->hasData( key ) )
-        {
-            OE_DEBUG << LC << "Source for layer has no data at " << key.str() << std::endl;
-            return 0L;
-        }
-
-        // Make it from the source:
-        result = source->createHeightField( key, _preCacheOp.get(), progress );
-    }
-#endif
-
-
-
     return result;
 }
 

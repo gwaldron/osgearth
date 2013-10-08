@@ -167,14 +167,6 @@ _supportsFragDepthWrite ( false )
         glGetIntegerv( GL_MAX_VERTEX_ATTRIBS, &_maxGPUAttribs );
         OE_INFO << LC << "  Max GPU attributes = " << _maxGPUAttribs << std::endl;
 
-#if 0
-#if defined(OSG_GLES2_AVAILABLE)
-        int maxVertAttributes = 0;
-        glGetIntegerv(GL_MAX_VERTEX_ATTRIBS, &maxVertAttributes);
-        _maxGPUTextureCoordSets = maxVertAttributes - 5; //-5 for vertex, normal, color, tangent and binormal
-#endif
-#endif
-
         glGetIntegerv( GL_DEPTH_BITS, &_depthBits );
         OE_INFO << LC << "  Depth buffer bits = " << _depthBits << std::endl;
 

@@ -118,14 +118,6 @@ GeoLocator::getDataExtent() const {
     return _dataExtent;
 }
 
-#if 0
-GeoLocator*
-GeoLocator::cloneAndCrop( const osgTerrain::Locator& prototype, const GeoExtent& displayExtent ) const
-{
-    return new GeoLocator( prototype, _dataExtent, displayExtent );
-}
-#endif
-
 bool
 GeoLocator::convertModelToLocal(const osg::Vec3d& world, osg::Vec3d& local) const
 {
@@ -258,15 +250,6 @@ MercatorLocator::createSameTypeForExtent(const GeoExtent& extent, const MapInfo&
 {
     return new MercatorLocator(extent);
 }
-
-
-#if 0
-GeoLocator*
-MercatorLocator::cloneAndCrop( const osgTerrain::Locator& prototype, const GeoExtent& displayExtent )
-{
-    return new MercatorLocator( prototype, getDataExtent() );
-}
-#endif
 
 bool
 MercatorLocator::convertModelToLocal(const osg::Vec3d& world, osg::Vec3d& local) const

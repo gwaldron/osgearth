@@ -505,33 +505,9 @@ namespace
                 {
                     validValue = d.model->_elevationData.getHeight( ndc, d.model->_tileLocator, heightValue, INTERP_TRIANGULATE );
                 }
-                //if ( hfLocator )
-                //{
-                //    osg::Vec3d hf_ndc( ndc );
-                //    if ( !hfEquivToTile )
-                //    {
-                //        osgTerrain::Locator::convertLocalCoordBetween( *d.geoLocator.get(), ndc, *hfLocator, hf_ndc );
-                //    }
-                //    heightValue = HeightFieldUtils::getHeightAtNormalizedLocation( hf, hf_ndc.x(), hf_ndc.y() );
-                //}
+
                 ndc.z() = heightValue * d.scaleHeight;
 
-#if 0
-                bool validValue = true;
-
-                // use the sampling factor to determine the lookup index:
-                unsigned i_equiv = d.i_sampleFactor==1.0 ? i : (unsigned) (double(i)*d.i_sampleFactor);
-                unsigned j_equiv = d.j_sampleFactor==1.0 ? j : (unsigned) (double(j)*d.j_sampleFactor);
-
-                // raw height:
-                float heightValue = 0.0f;
-
-                if ( elevationLayer )
-                {
-                    validValue = elevationLayer->getValidValue(i_equiv,j_equiv, heightValue);
-                    ndc.z() = heightValue;
-                }
-#endif
                 if ( !validValue )
                 {
                     d.indices[iv] = -1;

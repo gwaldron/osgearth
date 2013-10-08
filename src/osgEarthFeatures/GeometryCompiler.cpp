@@ -518,6 +518,7 @@ GeometryCompiler::compile(FeatureList&          workingSet,
     // todo: this helps a lot, but is currently broken for non-triangle
     // geometries. (gw, 12-17-2012)
     // TODO: See: VertexCacheOptimizer in Utils
+    // ..note, the BuildGeometryFilter and ExtrudeGeometryFilter call this now
 #if 0
         osgUtil::Optimizer optimizer;
         optimizer.optimize(

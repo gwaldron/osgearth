@@ -59,14 +59,6 @@ namespace
         void onModelLayerMoved( ModelLayer* layer, unsigned int oldIndex, unsigned int newIndex ) {
             _node->onModelLayerMoved( layer, oldIndex, newIndex);
         }
-#if 0
-        void onMaskLayerAdded( MaskLayer* layer ) {
-            _node->onMaskLayerAdded( layer );
-        }
-        void onMaskLayerRemoved( MaskLayer* layer ) {
-            _node->onMaskLayerRemoved( layer );
-        }
-#endif
 
         osg::observer_ptr<MapNode> _node;
     };

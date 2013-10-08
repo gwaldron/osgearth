@@ -266,23 +266,6 @@ TileModelFactory::createTileModel(const TileKey&           key,
     osg::ref_ptr<TileModel> model = new TileModel( frame.getRevision(), frame.getMapInfo() );
     model->_tileKey = key;
     model->_tileLocator = GeoLocator::createForKey(key, frame.getMapInfo());
-
-#if 0
-    MapFrame mapf( _map, Map::MASKED_TERRAIN_LAYERS );
-    const MapInfo& mapInfo = mapf.getMapInfo();
-
-    osg::ref_ptr<TileModel> model = new TileModel( mapf.getRevision() );
-    model->_map         = _map;
-    model->_tileKey     = key;
-    model->_tileLocator = GeoLocator::createForKey(key, mapInfo);
-#endif
-
-#if 0
-    // init this to false, then search for real data. "Real data" is data corresponding
-    // directly to the key, as opposed to fallback data, which is derived from a lower
-    // LOD key.
-    out_hasRealData = false;
-#endif
     
     // Fetch the image data and make color layers.
     unsigned order = 0;
@@ -326,26 +309,6 @@ TileModelFactory::createTileModel(const TileKey&           key,
             GeoLocator::createForKey(key, frame.getMapInfo()),
             true );
     }
-
-#if 0
-    if (!out_hasRealData)
-    {
-        // Check the results and see if we have any real data.
-        for( TileModel::ColorDataByUID::const_iterator i = model->_colorData.begin(); i != model->_colorData.end(); ++i )
-        {
-            if ( !i->second.isFallbackData() ) 
-            {
-                out_hasRealData = true;
-                break;
-            }
-        }
-    }
-
-    if ( !out_hasRealData && !model->_elevationData.isFallbackData() )
-    {
-        out_hasRealData = true;
-    }
-#endif
 
     // look up the parent model and cache it.
     osg::ref_ptr<TileNode> parentTile;

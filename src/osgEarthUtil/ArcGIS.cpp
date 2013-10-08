@@ -36,6 +36,10 @@ type( _type )
 
 /***************************************************************************************/
 
+RESTResponse::RESTResponse()
+{
+}
+
 ServiceList& 
 RESTResponse::getServices()
 {
@@ -68,7 +72,7 @@ void RESTResponse::setServiceURL( const std::string& serviceURL )
     _serviceURL = serviceURL;
 }
 
-bool RESTResponse::getFolder(const std::string& folder, RESTResponse& response )
+bool RESTResponse::getFolder(const std::string& folder, RESTResponse& response ) const
 {
     std::string folderURL = _serviceURL + "/" + folder;
     return ServiceReader::read(folderURL, 0, response );

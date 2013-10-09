@@ -422,6 +422,7 @@ GeometryCompiler::compile(FeatureList&          workingSet,
         }
     }
 
+#if 0
     // polygonized lines.
     else if ( line != 0L && line->stroke()->widthUnits() != Units::PIXELS )
     {
@@ -440,6 +441,7 @@ GeometryCompiler::compile(FeatureList&          workingSet,
             resultGroup->addChild( node );
         }
     }
+#endif
 
     // simple geometry
     else if ( point || line || polygon )

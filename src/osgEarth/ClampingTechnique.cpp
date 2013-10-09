@@ -29,6 +29,7 @@
 #include <osg/Texture2D>
 #include <osg/Uniform>
 #include <osg/ValueObject>
+#include <osg/Timer>
 
 #include <osgDB/WriteFile>
 
@@ -43,6 +44,8 @@
 //#define DUMP_RTT_IMAGE 1
 //#undef DUMP_RTT_IMAGE
 
+//#define TIME_RTT_CAMERA 1
+
 using namespace osgEarth;
 
 //---------------------------------------------------------------------------
@@ -53,6 +56,21 @@ namespace
     {
         return mapNode ? mapNode->getOverlayDecorator()->getGroup<ClampingTechnique>() : 0L;
     }
+
+#ifdef TIME_RTT_CAMERA
+    static osg::Timer_t t0, t1;
+    struct RttIn : public osg::Camera::DrawCallback {
+        void operator()(osg::RenderInfo& r) const {
+            t0 = osg::Timer::instance()->tick();
+        }
+    };
+    struct RttOut : public osg::Camera::DrawCallback {
+        void operator()(osg::RenderInfo& r) const {
+            t1 = osg::Timer::instance()->tick();
+            OE_NOTICE << "RTT = " << osg::Timer::instance()->delta_m(t0, t1) << "ms" << std::endl;
+        }
+    };
+#endif
 }
 
 ClampingTechnique::TechniqueProvider ClampingTechnique::Provider = s_providerImpl;
@@ -328,6 +346,11 @@ ClampingTechnique::setUpCamera(OverlayDecorator::TechRTTParams& params)
     params._rttCamera->setFinalDrawCallback( new DumpTex(local->_rttDebugImage.get()) );
 #endif
 
+#ifdef TIME_RTT_CAMERA
+    params._rttCamera->setInitialDrawCallback( new RttIn() );
+    params._rttCamera->setFinalDrawCallback( new RttOut() );
+#endif
+
     // set up a StateSet for the RTT camera.
     osg::StateSet* rttStateSet = params._rttCamera->getOrCreateStateSet();
 
@@ -432,6 +455,9 @@ ClampingTechnique::preCullTerrain(OverlayDecorator::TechRTTParams& params,
 
 #endif
     }
+
+#ifdef TIME_RTT_CAMERA
+#endif
 }
 
 

@@ -264,6 +264,9 @@ PixelAutoTransform::dirty()
 
 //-----------------------------------------------------------------------------
 
+#undef  LC
+#define LC "[VertexCacheOptimizer] "
+
 VertexCacheOptimizer::VertexCacheOptimizer() :
 osg::NodeVisitor( TRAVERSE_ALL_CHILDREN ) 
 {
@@ -279,14 +282,18 @@ VertexCacheOptimizer::apply(osg::Geode& geode)
     for(unsigned i=0; i<geode.getNumDrawables(); ++i )
     {
         osg::Geometry* geom = geode.getDrawable(i)->asGeometry();
-        if ( geom && geom->getDataVariance() != osg::Object::DYNAMIC )
+
+        if ( geom )
         {
-            // vertex cache optimizations currently only support TRIANGLE geometries.
+            if ( geom->getDataVariance() == osg::Object::DYNAMIC )
+                return;
+
+            // vertex cache optimizations currently only support surface geometries.
             // all or nothing in the geode.
             osg::Geometry::PrimitiveSetList& psets = geom->getPrimitiveSetList();
             for( osg::Geometry::PrimitiveSetList::iterator i = psets.begin(); i != psets.end(); ++i )
             {
-                switch( (*i)->getType() )
+                switch( (*i)->getMode() )
                 {
                 case GL_TRIANGLES:
                 case GL_TRIANGLE_FAN:
@@ -295,12 +302,15 @@ VertexCacheOptimizer::apply(osg::Geode& geode)
                 case GL_QUAD_STRIP:
                 case GL_POLYGON:
                     break;
+
                 default:
                     return;
                 }
             }
         }
     }
+
+    OE_NOTICE << LC << "VC optimizing..." << std::endl;
 
     // passed the test; run the optimizer.
     osgUtil::VertexCacheVisitor vcv;

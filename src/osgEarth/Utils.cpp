@@ -310,7 +310,7 @@ VertexCacheOptimizer::apply(osg::Geode& geode)
         }
     }
 
-    OE_NOTICE << LC << "VC optimizing..." << std::endl;
+    //OE_NOTICE << LC << "VC optimizing..." << std::endl;
 
     // passed the test; run the optimizer.
     osgUtil::VertexCacheVisitor vcv;

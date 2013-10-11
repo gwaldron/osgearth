@@ -187,20 +187,16 @@ _dbOptions   ( dbOptions )
         _style.getOrCreate<ModelSymbol>()->url() = StringExpression(uri);
 
     init();
-
-    if ( conf.hasChild( "position" ) )
-        setPosition( GeoPoint(conf.child("position")) );
 }
 
 Config
 ModelNode::getConfig() const
 {
-    Config conf("model");
+    Config conf = LocalizedNode::getConfig();
+    conf.key() = "model";
 
     if ( !_style.empty() )
         conf.addObj( "style", _style );
-
-    conf.addObj( "position", getPosition() );
 
     return conf;
 }

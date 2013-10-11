@@ -256,6 +256,15 @@ void
 TerrainLayer::setTargetProfileHint( const Profile* profile )
 {
     _targetProfileHint = profile;
+
+    // This will attempt to open and access a cache bin if there
+    // is one. This is important in cache-only mode since we cannot
+    // establish a profile from the tile source.
+    if ( getCachePolicy() != CachePolicy::NO_CACHE )
+    {
+        CacheBinMetadata meta;
+        getCacheBinMetadata( profile, meta );
+    }
 }
 
 TileSource* 

@@ -411,5 +411,12 @@ AnnotationNode::applyGeneralSymbology(const Style& style)
             _doAdapter.setDepthOffsetOptions( *render->depthOffset() );
             setDepthAdjustment( true );
         }
+
+        if ( render->backfaceCulling().isSet() )
+        {
+            getOrCreateStateSet()->setMode(
+                GL_CULL_FACE,
+                (render->backfaceCulling() == true? osg::StateAttribute::ON : osg::StateAttribute::OFF) | osg::StateAttribute::OVERRIDE );
+        }
     }
 }

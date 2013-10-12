@@ -217,6 +217,13 @@ FeatureNodeFactory::getOrCreateStyleGroup(const Style& style,
                 GL_LIGHTING,
                 (render->lighting() == true ? osg::StateAttribute::ON : osg::StateAttribute::OFF) | osg::StateAttribute::OVERRIDE );
         }
+
+        if ( render->backfaceCulling().isSet() )
+        {
+            group->getOrCreateStateSet()->setMode(
+                GL_CULL_FACE,
+                (render->backfaceCulling() == true ? osg::StateAttribute::ON : osg::StateAttribute::OFF) | osg::StateAttribute::OVERRIDE );
+        }
     }
 
     return group;

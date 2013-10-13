@@ -15,7 +15,7 @@ Demonstrates how to select a style name using javascript.
         <url>../data/world.tif</url>
     </image>
     
-    <model name="countries" driver="feature_geom" overlay="true">
+    <model name="countries" driver="feature_geom">
                           
         <features name="states" driver="ogr">
             <url>../data/world.shp</url>
@@ -24,11 +24,11 @@ Demonstrates how to select a style name using javascript.
         
         <styles>        
             <style type="text/css">
-                p1 { fill: #ffff8066; }       
-                p2 { fill: #80ffff66; }   
-                p3 { fill: #ff80ff66; }       
-                p4 { fill: #ff808066; }     
-                p5 { fill: #80ff8066; }                                      
+                p1 { fill: #ffff8066; altitude-clamping: terrain-drape; }
+                p2 { fill: #80ffff66; altitude-clamping: terrain-drape; }
+                p3 { fill: #ff80ff66; altitude-clamping: terrain-drape; }
+                p4 { fill: #ff808066; altitude-clamping: terrain-drape; }
+                p5 { fill: #80ff8066; altitude-clamping: terrain-drape; }
             </style>
             
             <script language="javascript">

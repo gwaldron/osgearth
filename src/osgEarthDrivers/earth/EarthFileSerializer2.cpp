@@ -87,23 +87,6 @@ EarthFileSerializer2::deserialize( const Config& conf, const std::string& refere
         layerOpt.driver() = ModelSourceOptions( layerDriverConf );
 
         map->addModelLayer( new ModelLayer(layerOpt) );
-        //map->addModelLayer( new ModelLayer( layerDriverConf.value("name"), ModelSourceOptions(*i) ) );
-    }
-
-    // Overlay layers (just an alias for Model Layer with overlay=true)
-    ConfigSet overlays = conf.children( "overlay" );
-    for( ConfigSet::const_iterator i = overlays.begin(); i != overlays.end(); i++ )
-    {
-        Config layerDriverConf = *i;
-        if ( !layerDriverConf.hasValue("driver") )
-            layerDriverConf.set("driver", "feature_geom");
-
-        ModelLayerOptions layerOpt( layerDriverConf );
-        layerOpt.name() = layerDriverConf.value( "name" );
-        layerOpt.driver() = ModelSourceOptions( layerDriverConf );
-        layerOpt.overlay() = true; // forced on when "overlay" specified
-
-        map->addModelLayer( new ModelLayer(layerOpt) );
     }
 
     // Mask layer:

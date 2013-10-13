@@ -78,7 +78,7 @@ is randomized, but it is randomized exactly the same way each time.
     </model>
     
     
-    <model name="parks" driver="feature_geom" overlay="true">
+    <model name="parks" driver="feature_geom">
         <features name="parks" driver="ogr">
             <url>../data/parks.shp</url>
             <build_spatial_index>false</build_spatial_index>
@@ -87,7 +87,7 @@ is randomized, but it is randomized exactly the same way each time.
             <style type="text/css">      
                 default {
                    fill:                #00ff007f;
-                   altitide-clamping:   terrain;
+                   altitide-clamping:   terrain-drape;
                 }                
             </style>
         </styles>

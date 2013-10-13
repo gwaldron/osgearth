@@ -75,13 +75,6 @@ namespace osgEarth
         optional<bool>& visible() { return _visible; }
         const optional<bool>& visible() const { return _visible; }
 
-        /**
-         * Whether to drape the model geometry over the terrain as a projected overlay.
-         * Defaults to false
-         */
-        optional<bool>& overlay() { return _overlay; }
-        const optional<bool>& overlay() const { return _overlay; }
-
     public:
         virtual Config getConfig() const;
         virtual void mergeConfig( const Config& conf );
@@ -91,7 +84,6 @@ namespace osgEarth
         void setDefaults();
 
         optional<std::string>        _name;
-        optional<bool>               _overlay;
         optional<ModelSourceOptions> _driver;
         optional<bool>               _enabled;
         optional<bool>               _visible;
@@ -104,7 +96,6 @@ namespace osgEarth
     struct ModelLayerCallback : public osg::Referenced
     {
         virtual void onVisibleChanged( class ModelLayer* layer ) { }
-        virtual void onOverlayChanged( class ModelLayer* layer ) { }
         virtual ~ModelLayerCallback() { }
     };
 
@@ -179,10 +170,6 @@ namespace osgEarth
 
         /** Whether this layer is used at all. */
         bool getEnabled() const;
-
-        /** Whether this layer is drawn as normal geometry or as a draped overlay. */
-        bool getOverlay() const;
-        void setOverlay( bool overlay );
 
         /** whether to apply lighting to the model layer's root node */
         void setLightingEnabled( bool value );

@@ -155,7 +155,6 @@ int main(int argc, char** argv)
         geomOptions.enableLighting() = false;
 
         ModelLayerOptions layerOptions( "my features", geomOptions );
-        layerOptions.overlay() = useOverlay;
         map->addModelLayer( new ModelLayer(layerOptions) );
     }
 

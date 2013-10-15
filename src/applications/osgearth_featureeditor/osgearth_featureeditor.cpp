@@ -29,9 +29,6 @@
 #include <osgEarth/Utils>
 
 #include <osgEarthSymbology/Style>
-#include <osgEarthFeatures/FeatureModelGraph>
-#include <osgEarthFeatures/FeatureListSource>
-#include <osgEarthFeatures/GeometryCompiler>
 
 #include <osgEarthDrivers/gdal/GDALOptions>
 #include <osgEarthDrivers/feature_ogr/OGRFeatureOptions>
@@ -65,10 +62,9 @@ static int s_fid = 0;
 
 static osg::ref_ptr< AddPointHandler > s_addPointHandler;
 static osg::ref_ptr< osg::Node > s_editor;
-static osg::ref_ptr< Feature > s_activeFeature;
+static osg::ref_ptr< FeatureNode > s_featureNode;
 static osgViewer::Viewer* s_viewer;
 static osg::ref_ptr< osg::Group > s_root;
-static osg::ref_ptr< FeatureListSource > s_source;
 static osg::ref_ptr< MapNode > s_mapNode;
 
 Grid* createToolBar()
@@ -86,8 +82,7 @@ Grid* createToolBar()
 
 struct AddVertsModeHandler : public ControlEventHandler
 {
-    AddVertsModeHandler( FeatureModelGraph* featureGraph)
-        : _featureGraph( featureGraph )
+    AddVertsModeHandler()        
     {
     }
 
@@ -99,30 +94,25 @@ struct AddVertsModeHandler : public ControlEventHandler
             s_root->removeChild( s_editor.get() );
             s_editor = NULL;
 
-            Style* style = _featureGraph->getStyles()->getDefaultStyle();
-            if ( style )
-            {            
-                style->get<LineSymbol>()->stroke()->stipple().unset();
-                _featureGraph->dirty();
-            }
+            // Unset the stipple on the line
+            Style style = s_featureNode->getStyle();
+            style.get<LineSymbol>()->stroke()->stipple().unset();
+            s_featureNode->setStyle( style );            
         }
 
         //Add the new add point handler
-        if (!s_addPointHandler.valid() && s_activeFeature.valid())
-        {
-            s_addPointHandler = new AddPointHandler(s_activeFeature.get(), s_source.get(), s_mapNode->getMap()->getProfile()->getSRS());
+        if (!s_addPointHandler.valid())
+        {            
+            s_addPointHandler = new AddPointHandler( s_featureNode.get() );
             s_addPointHandler->setIntersectionMask( 0x1 );
             s_viewer->addEventHandler( s_addPointHandler.get() );
         }        
     }
-
-    osg::ref_ptr< FeatureModelGraph > _featureGraph;
 };
 
 struct EditModeHandler : public ControlEventHandler
 {
-    EditModeHandler( FeatureModelGraph* featureGraph)
-        : _featureGraph( featureGraph )
+    EditModeHandler()        
     { 
     }
 
@@ -135,39 +125,33 @@ struct EditModeHandler : public ControlEventHandler
             s_addPointHandler = NULL;
         }        
 
-        if (!s_editor.valid() && s_activeFeature.valid())
-        {
-            Style* style = _featureGraph->getStyles()->getDefaultStyle();
-            if ( style )
-            {
-                style->get<LineSymbol>()->stroke()->stipple() = 0x00FF;
-                _featureGraph->dirty();
-            }
-            s_editor = new FeatureEditor(s_activeFeature.get(), s_source.get(), s_mapNode.get());
-            s_root->addChild( s_editor.get() );
+        if (!s_editor.valid())
+        {            
+            Style style = s_featureNode->getStyle();
+            style.getOrCreate<LineSymbol>()->stroke()->stipple() = 0x00FF;            
+            s_featureNode->setStyle( style );            
+            s_editor = new FeatureEditor( s_featureNode );
+            s_root->addChild( s_editor.get() );            
         }
-    }
-
-    osg::ref_ptr< FeatureModelGraph > _featureGraph;
+    }    
 };
 
 struct ChangeStyleHandler : public ControlEventHandler
 {
-    ChangeStyleHandler( FeatureModelGraph* features, StyleSheet* styleSheet) 
-        : _features( features), _styleSheet(styleSheet)
+    ChangeStyleHandler(const Style &style) 
+        : _style( style )
     {
         //nop
     }
 
     void onClick( Control* control, int mouseButtonMask ) {
-        _features->setStyles( _styleSheet.get() );
+        s_featureNode->setStyle( _style );        
     }
 
-    osg::ref_ptr< FeatureModelGraph > _features;
-    osg::ref_ptr< StyleSheet >        _styleSheet;
+    Style _style;  
 };
 
-StyleSheet* buildStyleSheet( const osg::Vec4 &color, float width )
+Style buildStyle( const osg::Vec4 &color, float width )
 {
     // Define a style for the feature data. Since we are going to render the
     // vectors as lines, configure the line symbolizer:
@@ -175,14 +159,18 @@ StyleSheet* buildStyleSheet( const osg::Vec4 &color, float width )
 
     LineSymbol* ls = style.getOrCreateSymbol<LineSymbol>();
     ls->stroke()->color() = color;
-    ls->stroke()->width() = width;
+    ls->stroke()->width() = width;    
+    ls->tessellation() = 10;
 
-    //AltitudeSymbol* as = style.getOrCreate<AltitudeSymbol>();
-    //as->clamping() = AltitudeSymbol::CLAMP_TO_TERRAIN;
+    AltitudeSymbol* as = style.getOrCreate<AltitudeSymbol>();
+    as->clamping() = AltitudeSymbol::CLAMP_TO_TERRAIN;
+    as->technique() = AltitudeSymbol::TECHNIQUE_SCENE;
 
-    StyleSheet* styleSheet = new StyleSheet();
-    styleSheet->addStyle( style );
-    return styleSheet;
+    RenderSymbol* rs = style.getOrCreateSymbol<RenderSymbol>();
+    rs->depthOffset()->enabled() = true;
+    rs->depthOffset()->minBias() = 1000;
+
+    return style;    
 }
 
 //
@@ -213,39 +201,21 @@ int main(int argc, char** argv)
 
         s_mapNode = new MapNode( map, mapNodeOptions );
     }
-    s_mapNode->setNodeMask( 0x01 );
+    s_mapNode->setNodeMask( 0x01 );    
 
         
-    // Define a style for the feature data. Since we are going to render the
-    // vectors as lines, configure the line symbolizer:
-    StyleSheet* styleSheet = buildStyleSheet( Color::Yellow, 2.0f );
+    // Define a style for the feature data.
+    Style style = buildStyle( Color::Yellow, 2.0f );    
 
-    // create a feature list source with the map extents as the default extent.
-    s_source = new FeatureListSource( s_mapNode->getMap()->getProfile()->getExtent() );
-
-    LineString* line = new LineString();
-    line->push_back( osg::Vec3d(-60, 20, 0) );
-    line->push_back( osg::Vec3d(-120, 20, 0) );
-    line->push_back( osg::Vec3d(-120, 60, 0) );
-    line->push_back( osg::Vec3d(-60, 60, 0) );
+    LineString* line = new LineString();    
     Feature* feature = new Feature(line, s_mapNode->getMapSRS(), Style(), s_fid++);
-    s_source->insertFeature( feature );
-    s_activeFeature = feature;
+    s_featureNode = new FeatureNode( s_mapNode, feature );    
+    s_featureNode->setStyle( style );
   
     s_root = new osg::Group;
     s_root->addChild( s_mapNode.get() );
 
-    Session* session = new Session(s_mapNode->getMap(), styleSheet, s_source.get());
-
-    FeatureModelGraph* graph = new FeatureModelGraph( 
-        session,
-        FeatureModelSourceOptions(), 
-        new GeomFeatureNodeFactory() );
-
-    graph->getOrCreateStateSet()->setMode(GL_LIGHTING, osg::StateAttribute::OFF);
-    graph->getOrCreateStateSet()->setMode(GL_DEPTH_TEST, osg::StateAttribute::OFF);
-
-    s_root->addChild( graph );
+    s_root->addChild( s_featureNode );
 
     //Setup the controls
     ControlCanvas* canvas = ControlCanvas::get( &viewer );
@@ -254,16 +224,14 @@ int main(int argc, char** argv)
     canvas->addControl( toolbar );
     canvas->setNodeMask( 0x1 << 1 );
 
-
-
     int col = 0;
     LabelControl* addVerts = new LabelControl("Add Verts");
     toolbar->setControl(col++, 0, addVerts );    
-    addVerts->addEventHandler( new AddVertsModeHandler( graph ));
+    addVerts->addEventHandler( new AddVertsModeHandler());
     
     LabelControl* edit = new LabelControl("Edit");
     toolbar->setControl(col++, 0, edit );    
-    edit->addEventHandler(new EditModeHandler( graph ));
+    edit->addEventHandler(new EditModeHandler());
 
     unsigned int row = 0;
     Grid *styleBar = createToolBar( );
@@ -286,7 +254,7 @@ int main(int argc, char** argv)
         {
             Control* l = new Control();            
             l->setBackColor( color );
-            l->addEventHandler(new ChangeStyleHandler(graph, buildStyleSheet( color, widths[j] ) ));
+            l->addEventHandler(new ChangeStyleHandler(buildStyle( color, widths[j] ) ));
             l->setSize(w,5 * widths[j]);
             styleBar->setControl(j, r, l);
         }

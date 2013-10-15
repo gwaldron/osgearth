@@ -167,9 +167,6 @@ LocalizedNode( mapNode, conf )
             conf.getObjIfSet( "style", _style );
 
             init( dbOptions );
-
-            if ( conf.hasChild("position") )
-                setPosition( GeoPoint(conf.child("position")) );
         }
     }
 }
@@ -177,14 +174,14 @@ LocalizedNode( mapNode, conf )
 Config
 LocalGeometryNode::getConfig() const
 {
-    Config conf("local_geometry");
+    Config conf = LocalizedNode::getConfig();
+    conf.key() = "local_geometry";
 
     if ( _geom.valid() )
     {
         conf.add( Config("geometry", GeometryUtils::geometryToWKT(_geom.get())) );
         if ( !_style.empty() )
             conf.addObj( "style", _style );
-        conf.addObj( "position", getPosition() );
     }
     else
     {

@@ -20,6 +20,7 @@
 #include <osgEarthUtil/TMS>
 #include <osgEarth/ImageUtils>
 #include <osgEarth/ImageToHeightFieldConverter>
+#include <osgEarth/TaskService>
 #include <osgDB/FileUtils>
 #include <osgDB/FileNameUtils>
 #include <osgDB/WriteFile>
@@ -28,6 +29,175 @@
 
 using namespace osgEarth::Util;
 using namespace osgEarth;
+
+
+namespace
+{
+    struct CreateImageTileTask
+    {
+        void init(ImageLayer* layer, const TileKey& key, const std::string& path, const std::string& extension, osgDB::Options* imageWriteOptions, bool keepEmpties, bool verbose)
+        {
+          _layer = layer;
+          _key = key;
+          _path = path;
+          _extension = extension;
+          _imageWriteOptions = imageWriteOptions;
+          _keepEmptyImageTiles = keepEmpties;
+          _verbose = verbose;
+        }
+
+        void execute()
+        {
+            //bool isSingleColor = false;
+            bool tileOK = false;
+
+            GeoImage image = _layer->createImage( _key );
+            if ( image.valid() )
+            {
+                // Check for single color
+                //if ( !_subdivideSingleColorImageTiles )
+                //{
+                //    isSingleColor = ImageUtils::isSingleColorImage(image.getImage());
+                //    if ( isSingleColor && _verbose )
+                //    {
+                //        OE_NOTICE << LC << "Not subdividing single color tile " << key.str() << std::endl;
+                //    }
+                //}
+
+                // check for empty:
+                if ( !_keepEmptyImageTiles && ImageUtils::isEmptyImage(image.getImage()) )
+                {
+                    if (  _verbose )
+                    {
+                        OE_NOTICE << LC << "Skipping empty tile " << _key.str() << std::endl;
+                    }
+                }
+                else
+                {
+                    // convert to RGB if necessary
+                    osg::ref_ptr<osg::Image> final = image.getImage();
+                    if ( _extension == "jpg" && final->getPixelFormat() != GL_RGB )
+                        final = ImageUtils::convertToRGB8( image.getImage() );
+
+                    // dump it to disk
+                    osgDB::makeDirectoryForFile( _path );
+                    tileOK = osgDB::writeImageFile( *final.get(), _path, _imageWriteOptions);
+
+                    if ( _verbose )
+                    {
+                        if ( tileOK ) {
+                            OE_NOTICE << LC << "Wrote tile " << _key.str() << " (" << _key.getExtent().toString() << ")" << std::endl;
+                        }
+                        else {
+                            OE_NOTICE << LC << "Error write tile " << _key.str() << std::endl;
+                        }
+                    }
+
+                    //if ( _abortOnError && !tileOK )
+                    //{
+                    //    return Result( Stringify() << "Aborting, write failed for tile " << key.str() );
+                    //}
+                }
+            }
+        }
+
+    private:
+        osg::ref_ptr<ImageLayer> _layer;
+        TileKey _key;
+        std::string _path;
+        std::string _extension;
+        osg::ref_ptr<osgDB::Options> _imageWriteOptions;
+        bool _keepEmptyImageTiles;
+        bool _verbose;
+    };
+
+
+    struct CreateElevationTileTask
+    {
+        void init(ElevationLayer* layer, const TileKey& key, const std::string& path, bool verbose)
+        {
+          _layer = layer;
+          _key = key;
+          _path = path;
+          _verbose = verbose;
+        }
+
+        void execute()
+        {
+            bool tileOK = false;
+
+            GeoHeightField hf = _layer->createHeightField( _key );
+            if ( hf.valid() )
+            {
+                // convert the HF to an image
+                ImageToHeightFieldConverter conv;
+                osg::ref_ptr<osg::Image> image = conv.convert( hf.getHeightField() );
+
+                // dump it to disk
+                osgDB::makeDirectoryForFile( _path );
+                tileOK = osgDB::writeImageFile( *image.get(), _path );
+
+                if ( _verbose )
+                {
+                    if ( tileOK ) {
+                        OE_NOTICE << LC << "Wrote tile " << _key.str() << " (" << _key.getExtent().toString() << ")" << std::endl;
+                    }
+                    else {
+                        OE_NOTICE << LC << "Error write tile " << _key.str() << std::endl;
+                    }
+                }
+
+                //if ( _abortOnError && !tileOK )
+                //{
+                //    return Result( Stringify() << "Aborting, write failed for tile " << key.str() );
+                //}
+            }
+        }
+
+    private:
+        osg::ref_ptr<ElevationLayer> _layer;
+        TileKey _key;
+        std::string _path;
+        bool _verbose;
+    };
+
+
+    class PackageTileProgressCallback : public osgEarth::ProgressCallback
+    {
+    public:
+      PackageTileProgressCallback(osgEarth::ProgressCallback* proxyProgress)
+        : _progress(proxyProgress), _total(0), _completed(0)
+      {
+      }
+
+      virtual ~PackageTileProgressCallback() { }
+
+      void setTotalTasks(int total) { _total = total; }
+
+      bool reportProgress(double current, double total, unsigned currentStage, unsigned totalStages, const std::string& msg)
+      {
+        return false;
+      }
+
+      void onCompleted()
+      {
+        if (_completed >= _total)
+          return;
+
+        _completed++;
+        if (_progress.valid())
+          _progress->reportProgress(_completed, _total);
+
+        if (_completed >= _total)
+          _progress->onCompleted();
+      }
+
+    private:
+      osg::ref_ptr<osgEarth::ProgressCallback> _progress;
+      int _total;
+      int _completed;
+    };
+}
 
 
 TMSPackager::TMSPackager(const Profile* outProfile, osgDB::Options* imageWriteOptions) :
@@ -70,16 +240,20 @@ TMSPackager::shouldPackageKey( const TileKey& key ) const
 }
 
 
-TMSPackager::Result
-TMSPackager::packageImageTile(ImageLayer*          layer,
-                              const TileKey&       key,
-                              const std::string&   rootDir,
-                              const std::string&   extension,
-                              unsigned&            out_maxLevel )
+int
+TMSPackager::packageImageTile(ImageLayer*                  layer,
+                              const TileKey&               key,
+                              const std::string&           rootDir,
+                              const std::string&           extension,
+                              TaskRequestVector&           tasks,
+                              Threading::MultiEvent*       semaphore,
+                              osgEarth::ProgressCallback*  progress,
+                              unsigned&                    out_maxLevel )
 {
     unsigned minLevel = layer->getImageLayerOptions().minLevel().isSet() ?
         *layer->getImageLayerOptions().minLevel() : 0;
     
+    int taskCount = 0;
 
     if ( shouldPackageKey(key) && key.getLevelOfDetail() >= minLevel )
     {
@@ -97,54 +271,13 @@ TMSPackager::packageImageTile(ImageLayer*          layer,
         bool tileOK = osgDB::fileExists(path) && !_overwrite;
         if ( !tileOK )
         {
-            GeoImage image = layer->createImage( key );
-            if ( image.valid() )
-            {
-                // Check for single color
-                if ( !_subdivideSingleColorImageTiles )
-                {
-                    isSingleColor = ImageUtils::isSingleColorImage(image.getImage());
-                    if ( _verbose )
-                    {
-                        OE_NOTICE << LC << "Not subdividing single color tile " << key.str() << std::endl;
-                    }
-                }
+            ParallelTask<CreateImageTileTask>* task = new ParallelTask<CreateImageTileTask>( semaphore );
+            task->init(layer, key, path, extension, _imageWriteOptions, _keepEmptyImageTiles, _verbose);
+            task->setProgressCallback(progress);
+            tasks.push_back(task);
+            taskCount++;
 
-                // check for empty:
-                if ( !_keepEmptyImageTiles && ImageUtils::isEmptyImage(image.getImage()) )
-                {
-                    if ( _verbose )
-                    {
-                        OE_NOTICE << LC << "Skipping empty tile " << key.str() << std::endl;
-                    }
-                }
-                else
-                {
-                    // convert to RGB if necessary
-                    osg::ref_ptr<osg::Image> final = image.getImage();
-                    if ( extension == "jpg" && final->getPixelFormat() != GL_RGB )
-                        final = ImageUtils::convertToRGB8( image.getImage() );
-
-                    // dump it to disk
-                    osgDB::makeDirectoryForFile( path );
-                    tileOK = osgDB::writeImageFile( *final.get(), path, _imageWriteOptions);
-
-                    if ( _verbose )
-                    {
-                        if ( tileOK ) {
-                            OE_NOTICE << LC << "Wrote tile " << key.str() << " (" << key.getExtent().toString() << ")" << std::endl;
-                        }
-                        else {
-                            OE_NOTICE << LC << "Error write tile " << key.str() << std::endl;
-                        }
-                    }
-
-                    if ( _abortOnError && !tileOK )
-                    {
-                        return Result( Stringify() << "Aborting, write failed for tile " << key.str() );
-                    }
-                }
-            }
+            tileOK = true;
         }
         else
         {
@@ -176,26 +309,33 @@ TMSPackager::packageImageTile(ImageLayer*          layer,
             for( unsigned q=0; q<4; ++q )
             {
                 TileKey childKey = key.createChildKey(q);
-                Result r = packageImageTile( layer, childKey, rootDir, extension, out_maxLevel );
-                if ( _abortOnError && !r.ok )
-                    return r;
+
+                if (layer->getTileSource()->hasDataAtLOD( key.getLevelOfDetail() ) )
+                    taskCount += packageImageTile( layer, childKey, rootDir, extension, tasks, semaphore, progress, out_maxLevel );
+                //else
+                //    OE_WARN << LC << "No data at key, halting subdivision" << std::endl;
             }
         }
     }
 
-    return Result();
+    return taskCount;
 }
 
 
-TMSPackager::Result
-TMSPackager::packageElevationTile(ElevationLayer*      layer,
-                                  const TileKey&       key,
-                                  const std::string&   rootDir,
-                                  const std::string&   extension,
-                                  unsigned&            out_maxLevel)
+int
+TMSPackager::packageElevationTile(ElevationLayer*               layer,
+                                  const TileKey&                key,
+                                  const std::string&            rootDir,
+                                  const std::string&            extension,
+                                  osgEarth::TaskRequestVector&  tasks,
+                                  Threading::MultiEvent*        semaphore,
+                                  osgEarth::ProgressCallback*   progress,
+                                  unsigned&                     out_maxLevel)
 {
     unsigned minLevel = layer->getElevationLayerOptions().minLevel().isSet() ?
         *layer->getElevationLayerOptions().minLevel() : 0;
+
+    int taskCount = 0;
 
     if ( shouldPackageKey(key) && key.getLevelOfDetail() >= minLevel )
     {
@@ -212,33 +352,13 @@ TMSPackager::packageElevationTile(ElevationLayer*      layer,
         bool tileOK = osgDB::fileExists(path) && !_overwrite;
         if ( !tileOK )
         {
+            ParallelTask<CreateElevationTileTask>* task = new ParallelTask<CreateElevationTileTask>( semaphore );
+            task->init(layer, key, path, _verbose);
+            task->setProgressCallback(progress);
+            tasks.push_back(task);
+            taskCount++;
 
-            GeoHeightField hf = layer->createHeightField( key );
-            if ( hf.valid() )
-            {
-                // convert the HF to an image
-                ImageToHeightFieldConverter conv;
-                osg::ref_ptr<osg::Image> image = conv.convert( hf.getHeightField() );
-
-                // dump it to disk
-                osgDB::makeDirectoryForFile( path );
-                tileOK = osgDB::writeImageFile( *image.get(), path );
-
-                if ( _verbose )
-                {
-                    if ( tileOK ) {
-                        OE_NOTICE << LC << "Wrote tile " << key.str() << " (" << key.getExtent().toString() << ")" << std::endl;
-                    }
-                    else {
-                        OE_NOTICE << LC << "Error write tile " << key.str() << std::endl;
-                    }
-                }
-
-                if ( _abortOnError && !tileOK )
-                {
-                    return Result( Stringify() << "Aborting, write failed for tile " << key.str() );
-                }
-            }
+            tileOK = true;
         }
         else
         {
@@ -270,22 +390,26 @@ TMSPackager::packageElevationTile(ElevationLayer*      layer,
             for( unsigned q=0; q<4; ++q )
             {
                 TileKey childKey = key.createChildKey(q);
-                Result r = packageElevationTile( layer, childKey, rootDir, extension, out_maxLevel );
-                if ( _abortOnError && !r.ok )
-                    return r;
+
+                if (layer->getTileSource()->hasDataAtLOD( childKey.getLevelOfDetail() ))
+                  taskCount += packageElevationTile( layer, childKey, rootDir, extension, tasks, semaphore, progress, out_maxLevel );
             }
         }
     }
 
-    return Result();
+    return taskCount;
 }
 
 
 TMSPackager::Result
 TMSPackager::package(ImageLayer*        layer,
                      const std::string& rootFolder,
+                     osgEarth::ProgressCallback* progress,
                      const std::string& overrideExtension )
 {
+  osg::Timer* timer = osg::Timer::instance();
+  osg::Timer_t start_t = timer->tick();
+
     if ( !layer || !_outProfile.valid() )
         return Result( "Illegal null layer or profile" );
 
@@ -347,14 +471,43 @@ TMSPackager::package(ImageLayer*        layer,
         OE_NOTICE << LC << "MIME-TYPE = " << mimeType << ", Extension = " << extension << std::endl;
     }
 
+
+    // semaphore and tasks collection for multithreading
+    osgEarth::Threading::MultiEvent semaphore;
+    osgEarth::TaskRequestVector tasks;
+    int taskCount = 0;
+    
+    PackageTileProgressCallback* tileProgress = 0L;
+    if (progress)
+      tileProgress = new PackageTileProgressCallback(progress);
+
     // package the tile hierarchy
     unsigned maxLevel = 0;
     for( std::vector<TileKey>::const_iterator i = rootKeys.begin(); i != rootKeys.end(); ++i )
     {
-        Result r = packageImageTile( layer, *i, rootFolder, extension, maxLevel );
-        if ( _abortOnError && !r.ok )
-            return r;
+        taskCount += packageImageTile( layer, *i, rootFolder, extension, tasks, &semaphore, tileProgress, maxLevel );
     }
+
+    // Run all the tasks in parallel
+    OE_DEBUG << LC << "Packaging image layer \"" << layer->getName() << "\", total number of tiles: " << taskCount << std::endl;
+
+    semaphore.reset( taskCount );
+    if (tileProgress) tileProgress->setTotalTasks(taskCount);
+
+    unsigned num = 2 * OpenThreads::GetNumberOfProcessors();
+    osg::ref_ptr<osgEarth::TaskService> taskService = new osgEarth::TaskService("TMS Packager", num);
+
+    for( TaskRequestVector::iterator i = tasks.begin(); i != tasks.end(); ++i )
+          taskService->add( i->get() );
+
+    // Wait for them to complete
+    semaphore.wait();
+
+    osg::Timer_t end_t = timer->tick();
+    double elapsed = (end_t - start_t) * timer->getSecondsPerTick();
+    OE_DEBUG << LC << "Packaging image layer\"" << layer->getName() << "\" complete. Seconds elapsed: " << elapsed << std::endl;
+
+
 
     // create the tile map metadata:
     osg::ref_ptr<TMS::TileMap> tileMap = TMS::TileMap::create(
@@ -379,8 +532,12 @@ TMSPackager::package(ImageLayer*        layer,
 
 TMSPackager::Result
 TMSPackager::package(ElevationLayer*    layer,
-                     const std::string& rootFolder)
+                     const std::string& rootFolder,
+                     osgEarth::ProgressCallback* progress )
 {
+    osg::Timer* timer = osg::Timer::instance();
+    osg::Timer_t start_t = timer->tick();
+
     if ( !layer || !_outProfile.valid() )
         return Result( "Illegal null layer or profile" );
 
@@ -411,13 +568,35 @@ TMSPackager::package(ElevationLayer*    layer,
     if ( !testHF.valid() )
         return Result( "Unable to determine heightfield size" );
 
+    osgEarth::Threading::MultiEvent semaphore;
+    osgEarth::TaskRequestVector tasks;
+    int taskCount = 0;
+
+    PackageTileProgressCallback* tileProgress = 0L;
+    if (progress)
+      tileProgress = new PackageTileProgressCallback(progress);
+
+    // package the tile hierarchy
     unsigned maxLevel = 0;
     for( std::vector<TileKey>::const_iterator i = rootKeys.begin(); i != rootKeys.end(); ++i )
     {
-        Result r = packageElevationTile( layer, *i, rootFolder, extension, maxLevel );
-        if ( _abortOnError && !r.ok )
-            return r;
+        taskCount += packageElevationTile( layer, *i, rootFolder, extension, tasks, &semaphore, tileProgress, maxLevel );
     }
+
+    // run all the tasks in parallel
+    OE_DEBUG << LC << "Packaging elevation layer \"" << layer->getName() << "\", total number of tiles: " << taskCount << std::endl;
+
+    semaphore.reset( taskCount );
+    if (tileProgress) tileProgress->setTotalTasks(taskCount);
+
+    unsigned num = 2 * OpenThreads::GetNumberOfProcessors();
+    osg::ref_ptr<osgEarth::TaskService> taskService = new osgEarth::TaskService("TMS Elevation Packager", num);
+
+    for (TaskRequestVector::iterator i = tasks.begin(); i != tasks.end(); ++i)
+        taskService->add( i->get() );
+
+    semaphore.wait();
+
 
     // create the tile map metadata:
     osg::ref_ptr<TMS::TileMap> tileMap = TMS::TileMap::create(
@@ -435,6 +614,10 @@ TMSPackager::package(ElevationLayer*    layer,
     // write out the tilemap catalog:
     std::string tileMapFilename = osgDB::concatPaths(rootFolder, "tms.xml");
     TMS::TileMapReaderWriter::write( tileMap.get(), tileMapFilename );
+
+    osg::Timer_t end_t = timer->tick();
+    double elapsed = (end_t - start_t) * timer->getSecondsPerTick();
+    OE_DEBUG << LC << "Packaging elevation layer \"" << layer->getName() << "\" complete. Seconds elapsed: " << elapsed << std::endl;
 
     return Result();
 }

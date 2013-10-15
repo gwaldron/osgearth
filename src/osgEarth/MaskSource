@@ -41,7 +41,7 @@ namespace osgEarth
               DriverConfigOptions( options ) { fromConfig(_conf); }
 
         /** dtor */
-        virtual ~MaskSourceOptions() { }
+        virtual ~MaskSourceOptions();
 
     public: // properties
 
@@ -64,7 +64,7 @@ namespace osgEarth
         MaskSource( const MaskSourceOptions& options =MaskSourceOptions() );
 
         /** dtor */
-        virtual ~MaskSource() { }
+        virtual ~MaskSource();
 
         /**
          * Subclass implements this method to create the boundary geometry.
@@ -95,8 +95,9 @@ namespace osgEarth
 
     class OSGEARTH_EXPORT MaskSourceDriver : public osgDB::ReaderWriter
     {
-    protected:
+    protected:        
         const MaskSourceOptions& getMaskSourceOptions( const osgDB::ReaderWriter::Options* rwOpt ) const;
+        virtual ~MaskSourceDriver();
     };
 
     //--------------------------------------------------------------------
@@ -105,6 +106,7 @@ namespace osgEarth
     {   
 	public:
         static MaskSource* create( const MaskSourceOptions& options );
+        virtual ~MaskSourceFactory();
     };
 }
 

@@ -87,7 +87,7 @@ namespace osgEarth
          * Gets the string representation of the key, formatted like:
          * "lod_x_y"
          */
-        std::string str() const { return _key; }
+        const std::string& str() const { return _key; }
 
         /**
          * Gets a TileID corresponding to this key.

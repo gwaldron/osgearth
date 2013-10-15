@@ -66,7 +66,6 @@ ConfigOptions()
 void
 ModelLayerOptions::setDefaults()
 {
-    _overlay.init     ( false );
     _enabled.init     ( true );
     _visible.init     ( true );
     _lighting.init    ( true );
@@ -79,7 +78,6 @@ ModelLayerOptions::getConfig() const
     Config conf = ConfigOptions::newConfig();
 
     conf.updateIfSet( "name", _name );
-    conf.updateIfSet( "overlay", _overlay );
     conf.updateIfSet( "enabled", _enabled );
     conf.updateIfSet( "visible", _visible );
     conf.updateIfSet( "lighting", _lighting );
@@ -95,7 +93,6 @@ void
 ModelLayerOptions::fromConfig( const Config& conf )
 {
     conf.getIfSet( "name", _name );
-    conf.getIfSet( "overlay", _overlay );
     conf.getIfSet( "enabled", _enabled );
     conf.getIfSet( "visible", _visible );
     conf.getIfSet( "lighting", _lighting );
@@ -237,9 +234,6 @@ ModelLayer::setVisible(bool value)
             }
         }
 
-        //if ( _node.valid() )
-        //    _node->setNodeMask( value ? ~0 : 0 );
-
         fireCallback( &ModelLayerCallback::onVisibleChanged );
     }
 }
@@ -264,22 +258,6 @@ bool
 ModelLayer::isLightingEnabled() const
 {
     return *_runtimeOptions.lightingEnabled();
-}
-
-bool
-ModelLayer::getOverlay() const
-{
-    return *_runtimeOptions.overlay();
-}
-
-void
-ModelLayer::setOverlay(bool overlay)
-{
-    if ( _runtimeOptions.overlay() != overlay )
-    {
-        _runtimeOptions.overlay() = overlay;
-        fireCallback( &ModelLayerCallback::onOverlayChanged );
-    }
 }
 
 void

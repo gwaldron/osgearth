@@ -19,6 +19,8 @@
 #include "MPGeometry"
 
 #include <osg/Version>
+#include <osgUtil/MeshOptimizers>
+#include <iterator>
 
 using namespace osg;
 using namespace osgEarth_engine_mp;
@@ -29,11 +31,18 @@ using namespace osgEarth;
 
 //----------------------------------------------------------------------------
 
-MPGeometry::MPGeometry(const Map* map, int imageUnit) : 
-osg::Geometry    ( ), 
-_map             ( map, Map::IMAGE_LAYERS ),
+MPGeometry::MPGeometry(const TileKey& key, const MapFrame& frame, int imageUnit) : 
+osg::Geometry    ( ),
+_frame           ( frame ),
 _imageUnit       ( imageUnit )
 {
+    unsigned tw, th;
+    key.getProfile()->getNumTiles(key.getLOD(), tw, th);
+    osg::Vec4f keyValue( key.getTileX(), th-key.getTileY()-1.0f, key.getLOD(), -1.0f );
+
+    _tileKeyUniform = new osg::Uniform( osg::Uniform::FLOAT_VEC4, "oe_tile_key" );
+    _tileKeyUniform->set( keyValue );
+
     _opacityUniform = new osg::Uniform( osg::Uniform::FLOAT, "oe_layer_opacity" );
     _opacityUniform->set( 1.0f );
 
@@ -46,6 +55,12 @@ _imageUnit       ( imageUnit )
     _texMatParentUniform = new osg::Uniform(osg::Uniform::FLOAT_MAT4, "oe_layer_parent_matrix");
 
     _imageUnitParent = _imageUnit + 1; // temp
+
+    // Temporary solution to the OverlayDecorator techniques' inappropriate setting of
+    // uniform values during the CULL traversal, which causes corruption of the RTT 
+    // camera matricies when DRAW overlaps the next frame's CULL. Please see my comments
+    // in DrapingTechnique.cpp for more information.
+    this->setDataVariance( osg::Object::DYNAMIC );
 }
 
 
@@ -54,18 +69,18 @@ MPGeometry::renderPrimitiveSets(osg::State& state,
                                 bool        usingVBOs) const
 {
     // check the map frame to see if it's up to date
-    if ( _map.needsSync() )
+    if ( _frame.needsSync() )
     {
         // this lock protects a MapFrame sync when we have multiple DRAW threads.
-        Threading::ScopedMutexLock exclusive( _mapSyncMutex );
+        Threading::ScopedMutexLock exclusive( _frameSyncMutex );
 
-        if ( _map.needsSync() && _map.sync() ) // always double check
+        if ( _frame.needsSync() && _frame.sync() ) // always double check
         {
             // This should only happen is the layer ordering changes;
             // If layers are added or removed, the Tile gets rebuilt and
             // the point is moot.
             std::vector<Layer> reordered;
-            const ImageLayerVector& layers = _map.imageLayers();
+            const ImageLayerVector& layers = _frame.imageLayers();
             reordered.reserve( layers.size() );
             for( ImageLayerVector::const_iterator i = layers.begin(); i != layers.end(); ++i )
             {
@@ -83,20 +98,27 @@ MPGeometry::renderPrimitiveSets(osg::State& state,
     osg::ref_ptr<osg::GL2Extensions> ext = osg::GL2Extensions::Get( state.getContextID(), true );
     const osg::Program::PerContextProgram* pcp = state.getLastAppliedProgramObject();
 
+    // cannot store these in the object since there could be multiple GCs (and multiple
+    // PerContextPrograms) at large
+    GLint tileKeyLocation;
     GLint opacityLocation;
     GLint uidLocation;
     GLint orderLocation;
     GLint texMatParentLocation;
 
-    // yes, it's possible that the PCP is not set up yet.
-    // TODO: can we optimize this so we don't need to get uni locations every time?
+    // The PCP can change (especially in a VirtualProgram environment). So we do need to
+    // requery the uni locations each time. TODO: consider optimizations.
     if ( pcp )
     {
+        tileKeyLocation      = pcp->getUniformLocation( _tileKeyUniform->getNameID() );
         opacityLocation      = pcp->getUniformLocation( _opacityUniform->getNameID() );
         uidLocation          = pcp->getUniformLocation( _layerUIDUniform->getNameID() );
         orderLocation        = pcp->getUniformLocation( _layerOrderUniform->getNameID() );
         texMatParentLocation = pcp->getUniformLocation( _texMatParentUniform->getNameID() );
     }
+    
+    // apply the tilekey uniform once.
+    _tileKeyUniform->apply( ext, tileKeyLocation );
 
     // activate the tile coordinate set - same for all layers
     state.setTexCoordPointer( _imageUnit+1, _tileCoords.get() );
@@ -132,8 +154,12 @@ MPGeometry::renderPrimitiveSets(osg::State& state,
         int activeImageUnit = -1;
 
         // interate over all the image layers
+        //glDepthMask(GL_TRUE);
         for(unsigned i=0; i<_layers.size(); ++i)
         {
+          //  if ( i > 0 )
+            //    glDepthMask(GL_FALSE);
+
             const Layer& layer = _layers[i];
 
             if ( layer._imageLayer->getVisible() )
@@ -201,6 +227,7 @@ MPGeometry::renderPrimitiveSets(osg::State& state,
         }
 
         // prevent texture leakage
+        // TODO: find a way to remove this to speed things up
         glBindTexture( GL_TEXTURE_2D, 0 );
     }
 
@@ -226,6 +253,23 @@ MPGeometry::renderPrimitiveSets(osg::State& state,
 }
 
 
+osg::BoundingBox
+MPGeometry::computeBound() const
+{
+    osg::BoundingBox bbox = osg::Geometry::computeBound();
+    {
+        // update the uniform.
+        Threading::ScopedMutexLock exclusive(_frameSyncMutex);
+        osg::BoundingSphere bs(bbox);
+        osg::Vec4f tk;
+        _tileKeyUniform->get(tk);
+        tk.w() = bs.radius();
+        _tileKeyUniform->set(tk);
+    }
+    return bbox;
+}
+
+
 void 
 MPGeometry::releaseGLObjects(osg::State* state) const
 {
@@ -243,6 +287,20 @@ MPGeometry::releaseGLObjects(osg::State* state) const
         // Check the refcount since texcoords can be cached/shared.
         if ( layer._texCoords.valid() && layer._texCoords->referenceCount() == 1 )
             layer._texCoords->releaseGLObjects( state );
+    }
+}
+
+
+void
+MPGeometry::resizeGLObjectBuffers(unsigned maxSize)
+{
+    osg::Geometry::resizeGLObjectBuffers( maxSize );
+
+    for(unsigned i=0; i<_layers.size(); ++i)
+    {
+        const Layer& layer = _layers[i];
+        if ( layer._tex.valid() )
+            layer._tex->resizeGLObjectBuffers( maxSize );
     }
 }
 
@@ -397,4 +455,52 @@ MPGeometry::drawImplementation(osg::RenderInfo& renderInfo) const
     // unbind the VBO's if any are used.
     state.unbindVertexBufferObject();
     state.unbindElementBufferObject();
+}
+
+
+void
+MPGeometry::merge( MPGeometry* rhs )
+{
+    osg::Vec3Array* verts    = static_cast<osg::Vec3Array*>( this->getVertexArray() );
+    osg::Vec3Array* normals  = static_cast<osg::Vec3Array*>( this->getNormalArray() );
+    osg::Vec4Array* attribs  = static_cast<osg::Vec4Array*>( this->getVertexAttribArray(osg::Drawable::ATTRIBUTE_6) );
+    osg::Vec4Array* attribs2 = static_cast<osg::Vec4Array*>( this->getVertexAttribArray(osg::Drawable::ATTRIBUTE_7) );
+
+    osg::Vec3Array* rhs_verts    = static_cast<osg::Vec3Array*>( rhs->getVertexArray() );
+    osg::Vec3Array* rhs_normals  = static_cast<osg::Vec3Array*>( rhs->getNormalArray() );
+    osg::Vec4Array* rhs_attribs  = static_cast<osg::Vec4Array*>( rhs->getVertexAttribArray(osg::Drawable::ATTRIBUTE_6) );
+    osg::Vec4Array* rhs_attribs2 = static_cast<osg::Vec4Array*>( rhs->getVertexAttribArray(osg::Drawable::ATTRIBUTE_7) );
+
+    unsigned offset = verts->size();
+
+    // first combine the primary arrays:
+    std::copy( rhs_verts->begin(), rhs_verts->end(), std::back_inserter(*verts) );
+    std::copy( rhs_normals->begin(), rhs_normals->end(), std::back_inserter(*normals) );
+    std::copy( rhs_attribs->begin(), rhs_attribs->end(), std::back_inserter(*attribs) );
+    std::copy( rhs_attribs2->begin(), rhs_attribs2->end(), std::back_inserter(*attribs2) );
+    
+    // next combine the per-layer arrays:
+    for(unsigned i=0; i<_layers.size(); ++i )
+    {
+        Layer& layer = _layers[i];
+        Layer& rhs_layer = rhs->_layers[i];
+        if ( rhs_layer._texCoords.valid() )
+            std::copy( rhs_layer._texCoords->begin(), rhs_layer._texCoords->end(), std::back_inserter(*layer._texCoords) );
+        if ( rhs_layer._tileCoords.valid() )
+            std::copy( rhs_layer._tileCoords->begin(), rhs_layer._tileCoords->end(), std::back_inserter(*layer._tileCoords) );
+    }
+
+    // finally, append the primitive sets
+    osg::DrawElements* pset = dynamic_cast<osg::DrawElements*>(getPrimitiveSet(0));
+    for(unsigned i=0; i<rhs->getNumPrimitiveSets(); ++i)
+    {
+        osg::DrawElements* rhs_pset = dynamic_cast<osg::DrawElements*>(rhs->getPrimitiveSet(i));
+        if ( pset && rhs_pset )
+        {
+            for(unsigned e=0; e<rhs_pset->getNumIndices(); ++e)
+            {
+                pset->addElement( offset + rhs_pset->getElement(e) );
+            }
+        }
+    }
 }

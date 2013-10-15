@@ -20,7 +20,7 @@
 #include <osgEarthFeatures/FeatureSourceIndexNode>
 #include <osgEarthSymbology/MeshConsolidator>
 #include <osgEarth/VirtualProgram>
-#include <osgUtil/Optimizer>
+#include <osgEarth/Utils>
 
 #define LC "[PolygonizeLines] "
 
@@ -156,6 +156,11 @@ PolygonizeLinesOperator::operator()(osg::Vec3Array* verts,
     geom->setVertexArray( verts );
 
     // Set up the normals array
+    if ( !normals )
+    {
+        normals = new osg::Vec3Array(verts->size());
+        normals->assign( normals->size(), osg::Vec3(0,0,1) );
+    }
     geom->setNormalArray( normals );
     geom->setNormalBinding( osg::Geometry::BIND_PER_VERTEX );
 
@@ -503,17 +508,12 @@ PolygonizeLinesFilter::push(FeatureList& input, FilterContext& cx)
     MeshConsolidator::run( *geode );
 
     // GPU performance optimization:
-#if 0 // issue: ignores vertex attributes
-    osgUtil::Optimizer optimizer;
-    optimizer.optimize(
-        result,
-        osgUtil::Optimizer::VERTEX_PRETRANSFORM |
-        osgUtil::Optimizer::VERTEX_POSTTRANSFORM );
-#endif
+    VertexCacheOptimizer vco;
+    geode->accept( vco );
 
     // If we're auto-scaling, we need a shader
     float minPixels = line ? line->stroke()->minPixels().getOrUse( 0.0f ) : 0.0f;
-    if ( minPixels )
+    if ( minPixels > 0.0f )
     {
         osg::StateSet* stateSet = geode->getOrCreateStateSet();
 

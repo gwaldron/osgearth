@@ -58,6 +58,17 @@ _options      ( options )
     init();
 }
 
+FeatureNode::FeatureNode(MapNode* mapNode,
+                         Feature* feature,
+                         const GeometryCompilerOptions& options ) :
+AnnotationNode( mapNode ),
+_feature      ( feature ),
+_draped       ( false ),
+_options      ( options )
+{
+    init();
+}
+
 void
 FeatureNode::init()
 {
@@ -158,7 +169,9 @@ FeatureNode::init()
 
                 // do an initial clamp to get started.
                 clampMesh( getMapNode()->getTerrain()->getGraph() );
-            }
+            } 
+
+            applyGeneralSymbology( *_feature->style() );
         }
     }
 }
@@ -178,6 +191,15 @@ FeatureNode::setFeature( Feature* feature )
 {
     _feature = feature;
     init();
+}
+
+const Style& FeatureNode::getStyle() const
+{
+    if ( _feature.valid() )
+    {
+        return *_feature->style();
+    }
+    return AnnotationNode::getStyle();
 }
 
 void
@@ -208,7 +230,7 @@ FeatureNode::getAttachPoint()
 
 // This will be called by AnnotationNode when a new terrain tile comes in.
 void
-FeatureNode::reclamp( const TileKey& key, osg::Node* tile, const Terrain* )
+FeatureNode::reclamp( const TileKey& key, osg::Node* tile, const Terrain* terrain )
 {
     if ( _featurePolytope.contains( tile->getBound() ) )
     {
@@ -235,7 +257,7 @@ FeatureNode::clampMesh( osg::Node* terrainModel )
         }
 
         MeshClamper clamper( terrainModel, getMapNode()->getMapSRS(), getMapNode()->isGeocentric(), relative, scale, offset );
-        this->accept( clamper );
+        getAttachPoint()->accept( clamper );
 
         this->dirtyBound();
     }
@@ -273,7 +295,7 @@ AnnotationNode( mapNode, conf )
 
     if ( srs.valid() && geom.valid() )
     {
-        _draped = conf.value<bool>("draped",false);
+        //_draped = conf.value<bool>("draped",false);
         Feature* feature = new Feature(geom.get(), srs.get(), style);
 
         conf.getIfSet( "geointerp", "greatcircle", feature->geoInterp(), GEOINTERP_GREAT_CIRCLE );

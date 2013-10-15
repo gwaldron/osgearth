@@ -1,0 +1,74 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+* Copyright 2008-2012 Pelican Mapping
+* http://osgearth.org
+*
+* osgEarth is free software; you can redistribute it and/or modify
+* it under the terms of the GNU Lesser General Public License as published by
+* the Free Software Foundation; either version 2 of the License, or
+* (at your option) any later version.
+*
+* This program is distributed in the hope that it will be useful,
+* but WITHOUT ANY WARRANTY; without even the implied warranty of
+* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+* GNU Lesser General Public License for more details.
+*
+* You should have received a copy of the GNU Lesser General Public License
+* along with this program.  If not, see <http://www.gnu.org/licenses/>
+*/
+#ifndef OSGEARTH_DATE_TIME_H
+#define OSGEARTH_DATE_TIME_H
+
+#include <osgEarth/Common>
+#include <ctime>
+#include <cstring>
+
+namespace osgEarth
+{
+    /** Basic timestamp (seconds from the epoch) */
+    typedef ::time_t TimeStamp;
+
+    /** Time span (in seconds) */
+    typedef long TimeSpan;
+
+    /**
+     * General-purpose UTC date/time object.
+     */
+    class OSGEARTH_EXPORT DateTime
+    {
+    public:
+        /** DateTime representing "now" */
+        DateTime();
+
+        /** DateTime copy */
+        DateTime(const DateTime& rhs);
+
+        /** DateTime from a tm */
+        DateTime(const ::tm& tm);
+
+        /** DateTime from UTC seconds since the epoch */
+        DateTime(TimeStamp utc);
+
+        /** DateTime from year, month, date, hours */
+        DateTime(int year, int month, int day, double hours);
+
+        /** As a date/time string in RFC 1123 format */
+        const std::string asRFC1123() const;
+
+    public:
+        int    year()  const;
+        int    month() const;
+        int    day()   const;
+        double hours() const;
+
+        TimeStamp   asTimeStamp() const { return _time_t; }
+        const ::tm& as_tm()       const { return _tm; }
+
+    protected:
+        ::tm     _tm;
+        ::time_t _time_t;
+    };
+
+} // namespace osgEarth
+
+#endif // OSGEARTH_DATE_TIME_H

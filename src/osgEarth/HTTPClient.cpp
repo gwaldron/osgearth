@@ -309,6 +309,8 @@ namespace
 
     // HTTP debugging.
     static bool                        s_HTTP_DEBUG = false;
+
+    static osg::ref_ptr< URLRewriter > s_rewriter;
 }
 
 HTTPClient&
@@ -371,7 +373,9 @@ HTTPClient::initializeImpl()
     curl_easy_setopt( _curl_handle, CURLOPT_FOLLOWLOCATION, (void*)1 );
     curl_easy_setopt( _curl_handle, CURLOPT_MAXREDIRS, (void*)5 );
     curl_easy_setopt( _curl_handle, CURLOPT_PROGRESSFUNCTION, &CurlProgressCallback);
-    curl_easy_setopt( _curl_handle, CURLOPT_NOPROGRESS, (void*)0 ); //FALSE);    
+    curl_easy_setopt( _curl_handle, CURLOPT_NOPROGRESS, (void*)0 ); //FALSE);
+    curl_easy_setopt( _curl_handle, CURLOPT_FILETIME, true );
+
     long timeout = s_timeout;
     const char* timeoutEnv = getenv("OSGEARTH_HTTP_TIMEOUT");
     if (timeoutEnv)
@@ -414,6 +418,16 @@ long HTTPClient::getTimeout()
 void HTTPClient::setTimeout( long timeout )
 {
     s_timeout = timeout;
+}
+
+URLRewriter* HTTPClient::getURLRewriter()
+{
+    return s_rewriter.get();
+}
+
+void HTTPClient::setURLRewriter( URLRewriter* rewriter )
+{
+    s_rewriter = rewriter;
 }
 
 void
@@ -672,7 +686,7 @@ HTTPClient::doGet( const HTTPRequest& request, const osgDB::Options* options, Pr
         }
     }
 
-    const char* proxyEnvAuth = getenv("OSGEARTH_CURL_PROXYAUTH");	
+    const char* proxyEnvAuth = getenv("OSGEARTH_CURL_PROXYAUTH");
     if (proxyEnvAuth)
     {
         proxy_auth = std::string(proxyEnvAuth);
@@ -709,9 +723,18 @@ HTTPClient::doGet( const HTTPRequest& request, const osgDB::Options* options, Pr
         curl_easy_setopt( _curl_handle, CURLOPT_PROXY, 0 );
     }
 
+    std::string url = request.getURL();
+    // Rewrite the url if the url rewriter is available  
+    osg::ref_ptr< URLRewriter > rewriter = getURLRewriter();
+    if ( rewriter.valid() )
+    {
+        std::string oldURL = url;
+        url = rewriter->rewrite( oldURL );
+        OE_INFO << "Rewrote URL " << oldURL << " to " << url << std::endl;
+    }
 
     const osgDB::AuthenticationDetails* details = authenticationMap ?
-        authenticationMap->getAuthenticationDetails(request.getURL()) :
+        authenticationMap->getAuthenticationDetails( url ) :
         0;
 
     if (details)
@@ -755,7 +778,7 @@ HTTPClient::doGet( const HTTPRequest& request, const osgDB::Options* options, Pr
 
     //Take a temporary ref to the callback
     osg::ref_ptr<ProgressCallback> progressCallback = callback;
-    curl_easy_setopt( _curl_handle, CURLOPT_URL, request.getURL().c_str() );
+    curl_easy_setopt( _curl_handle, CURLOPT_URL, url.c_str() );
     if (callback)
     {
         curl_easy_setopt(_curl_handle, CURLOPT_PROGRESSDATA, progressCallback.get());
@@ -788,46 +811,43 @@ HTTPClient::doGet( const HTTPRequest& request, const osgDB::Options* options, Pr
                 return HTTPResponse(0);
             }
         }
-        
-        curl_easy_getinfo( _curl_handle, CURLINFO_RESPONSE_CODE, &response_code );
+
+        curl_easy_getinfo( _curl_handle, CURLINFO_RESPONSE_CODE, &response_code );        
     }
     else
     {
         // simulate failure with a custom response code
         response_code = _simResponseCode;
         res = response_code == 408 ? CURLE_OPERATION_TIMEDOUT : CURLE_COULDNT_CONNECT;
-    }
+    }    
 
     HTTPResponse response( response_code );
     
     // read the response content type:
     char* content_type_cp;
-    curl_easy_getinfo( _curl_handle, CURLINFO_CONTENT_TYPE, &content_type_cp );
-    if ( content_type_cp == NULL )
+
+    curl_easy_getinfo( _curl_handle, CURLINFO_CONTENT_TYPE, &content_type_cp );    
+
+    if ( content_type_cp != NULL )
     {
-        OE_WARN << LC
-            << "NULL Content-Type (protocol violation) " 
-            << "URL=" << request.getURL() << std::endl;
-        return HTTPResponse(0L);
-    }
-    response._mimeType = content_type_cp;
+        response._mimeType = content_type_cp;    
+    }            
 
     if ( s_HTTP_DEBUG )
     {
+        TimeStamp filetime = 0;
+        if (CURLE_OK != curl_easy_getinfo(_curl_handle, CURLINFO_FILETIME, &filetime))
+            filetime = 0;
+
         OE_NOTICE << LC 
             << "GET(" << response_code << ", " << response._mimeType << ") : \"" 
-            << request.getURL() << "\"" << std::endl;
+            << url << "\" (" << DateTime(filetime).asRFC1123() << ")"<< std::endl;
     }
 
-
-    if ( /*response_code == 200L &&*/ res != CURLE_ABORTED_BY_CALLBACK && res != CURLE_OPERATION_TIMEDOUT )
-    {
-        // check for multipart content:
-        //char* content_type_cp;
-        //curl_easy_getinfo( _curl_handle, CURLINFO_CONTENT_TYPE, &content_type_cp );
-
-        std::string content_type( content_type_cp );
-
+    // upon success, parse the data:
+    if ( res != CURLE_ABORTED_BY_CALLBACK && res != CURLE_OPERATION_TIMEDOUT )
+    {        
+        // check for multipart content
         if (response._mimeType.length() > 9 && 
             ::strstr( response._mimeType.c_str(), "multipart" ) == response._mimeType.c_str() )
         {
@@ -840,7 +860,6 @@ HTTPClient::doGet( const HTTPRequest& request, const osgDB::Options* options, Pr
         {
             // store headers that we care about
             part->_headers[IOMetadata::CONTENT_TYPE] = response._mimeType;
-
             response._parts.push_back( part.get() );
         }
     }
@@ -849,14 +868,6 @@ HTTPClient::doGet( const HTTPRequest& request, const osgDB::Options* options, Pr
         //If we were aborted by a callback, then it was cancelled by a user
         response._cancelled = true;
     }
-
-    // Store the mime-type, if any. (Note: CURL manages the buffer returned by
-    // this call.)
-    //char* ctbuf = NULL;
-    //if ( curl_easy_getinfo(_curl_handle, CURLINFO_CONTENT_TYPE, &ctbuf) == 0 && ctbuf )
-    //{
-    //    response._mimeType = ctbuf;
-    //}
 
     return response;
 }
@@ -953,7 +964,7 @@ HTTPClient::doReadImage(const std::string&    location,
     {
         osgDB::ReaderWriter* reader = getReader(location, response);
         if (!reader)
-        {
+        {            
             result = ReadResult(ReadResult::RESULT_NO_READER);
         }
 
@@ -974,6 +985,13 @@ HTTPClient::doReadImage(const std::string&    location,
                 result = ReadResult(ReadResult::RESULT_READER_ERROR);
             }
         }
+        
+        // last-modified (file time)
+        TimeStamp filetime = 0;
+        if ( CURLE_OK == curl_easy_getinfo(_curl_handle, CURLINFO_FILETIME, &filetime) )
+        {
+            result.setLastModifiedTime( filetime );
+        }
     }
     else
     {
@@ -991,7 +1009,7 @@ HTTPClient::doReadImage(const std::string&    location,
                 OE_DEBUG << "Error in HTTPClient for " << location << " but it's recoverable" << std::endl;
                 callback->setNeedsRetry( true );
             }
-        }
+        }        
     }
 
     // set the source name
@@ -1036,6 +1054,13 @@ HTTPClient::doReadNode(const std::string&    location,
                 OE_WARN << LC << reader->className() << " failed to read node from " << location << std::endl;
                 result = ReadResult(ReadResult::RESULT_READER_ERROR);
             }
+        }
+        
+        // last-modified (file time)
+        TimeStamp filetime = 0;
+        if ( CURLE_OK == curl_easy_getinfo(_curl_handle, CURLINFO_FILETIME, &filetime) )
+        {
+            result.setLastModifiedTime( filetime );
         }
     }
     else
@@ -1095,6 +1120,13 @@ HTTPClient::doReadObject(const std::string&    location,
                 OE_WARN << LC << reader->className() << " failed to read object from " << location << std::endl;
                 result = ReadResult(ReadResult::RESULT_READER_ERROR);
             }
+        }
+        
+        // last-modified (file time)
+        TimeStamp filetime = 0;
+        if ( CURLE_OK == curl_easy_getinfo(_curl_handle, CURLINFO_FILETIME, &filetime) )
+        {
+            result.setLastModifiedTime( filetime );
         }
     }
     else
@@ -1162,6 +1194,13 @@ HTTPClient::doReadString(const std::string&    location,
                 callback->setNeedsRetry( true );
             }
         }
+    }
+
+    // last-modified (file time)
+    TimeStamp filetime = 0;
+    if ( CURLE_OK == curl_easy_getinfo(_curl_handle, CURLINFO_FILETIME, &filetime) )
+    {
+        result.setLastModifiedTime( filetime );
     }
 
     return result;

@@ -1,0 +1,112 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+* Copyright 2008-2013 Pelican Mapping
+* http://osgearth.org
+*
+* osgEarth is free software; you can redistribute it and/or modify
+* it under the terms of the GNU Lesser General Public License as published by
+* the Free Software Foundation; either version 2 of the License, or
+* (at your option) any later version.
+*
+* This program is distributed in the hope that it will be useful,
+* but WITHOUT ANY WARRANTY; without even the implied warranty of
+* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+* GNU Lesser General Public License for more details.
+*
+* You should have received a copy of the GNU Lesser General Public License
+* along with this program.  If not, see <http://www.gnu.org/licenses/>
+*/
+
+#ifndef OSGEARTHUTIL_ARCGIS_H
+#define OSGEARTHUTIL_ARCGIS_H 1
+
+#include <osgEarthUtil/Common>
+#include <osgEarth/Config>
+#include <osg/Referenced>
+#include <osg/ref_ptr>
+#include <osgEarth/Common>
+
+#include <osgDB/ReaderWriter>
+#include <osg/Version>
+#if OSG_MIN_VERSION_REQUIRED(2,9,5)
+#include <osgDB/Options>
+#endif
+
+
+#include <string>
+#include <vector>
+
+namespace osgEarth { namespace Util { namespace ArcGIS {
+
+    using namespace osgEarth;
+
+    /**
+     * An ArcGIS service
+     */
+    struct OSGEARTHUTIL_EXPORT Service
+    {
+        Service( const std::string& _name, const std::string& _type);
+    
+        std::string name;
+        std::string type;
+    };
+
+    /**
+     * A list of Services
+     */
+    typedef std::list< Service > ServiceList;
+
+
+    /**
+     * A list of folders
+     */     
+    typedef std::list< std::string > FolderList;
+
+    /**
+     * The result of an ArcGIS service REST Request
+     */
+    class OSGEARTHUTIL_EXPORT RESTResponse
+    {
+    public:
+        RESTResponse();
+
+        const ServiceList& getServices() const;
+        ServiceList& getServices();
+
+        const FolderList& getFolders() const;
+        FolderList& getFolders();
+        const std::string& getCurrentVersion() const;
+        void setCurrentVersion( const std::string& currentVersion);
+
+        bool getFolder(const std::string& folder, RESTResponse& response ) const;
+
+        const std::string& getServiceURL() const;
+        void setServiceURL( const std::string& serviceURL );
+
+    private:
+        ServiceList _services;
+        FolderList _folders;
+        std::string _currentVersion;
+        std::string _serviceURL;
+    };
+
+    class OSGEARTHUTIL_EXPORT ServiceReader
+    {
+    public:
+        static bool read( const std::string &location, const osgDB::ReaderWriter::Options* options, RESTResponse& response );    
+        static bool read( const Config& conf,  RESTResponse& response );
+
+    private:
+        ServiceReader();
+        ServiceReader(const ServiceReader &rhs);
+
+        /** dtor */
+        virtual ~ServiceReader();
+    };
+
+
+
+
+} } } // namespace osgEarth::Util::ArcGIS
+
+#endif //OSGEARTHUTIL_ARCGIS_H

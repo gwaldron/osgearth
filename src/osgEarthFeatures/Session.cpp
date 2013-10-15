@@ -47,13 +47,18 @@ _dbOptions     ( dbOptions )
     else
         _styles = new StyleSheet();
 
+    // if no script engine was created when the style was set above, create a default javascript one
+    if (!_styleScriptEngine.valid())
+      _styleScriptEngine = ScriptEngineFactory::create("javascript");
+
     // if the caller did not provide a dbOptions, take it from the map.
     if ( map && !dbOptions )
         _dbOptions = map->getDBOptions();
 
-    // a new cache to optimize state changes.
-    //_stateSetCache = new StateSetCache();
-    _stateSetCache = Registry::instance()->getStateSetCache();
+    // A new cache to optimize state changes. Since the cache lives in the Session, any
+    // geometry created under this session takes advantage of it. That's reasonable since
+    // tiles in a particular "layer" will tend to share state.
+    _stateSetCache = new StateSetCache();
 }
 
 Session::~Session()

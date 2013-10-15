@@ -63,12 +63,11 @@ namespace osgEarth { namespace Annotation
         static double getOcclusionCullingHeightAdjustment() { return _occlusionCullingHeightAdjustment; }
 
 
-
     private:
         static double _occlusionCullingMaxAltitude;
         static double _occlusionCullingHeightAdjustment;
         static bool _continuousClamping;
-        static bool _autoDepthOffset;        
+        static bool _autoDepthOffset;
     };
 
 } } // namespace osgEarth::Annotation

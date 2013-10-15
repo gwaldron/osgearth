@@ -26,10 +26,8 @@ using namespace osgEarth::Symbology;
 using namespace osgEarth::Features;
 
 /****************************************************************/
-AddPointHandler::AddPointHandler(Feature* feature, FeatureSource* source, const osgEarth::SpatialReference* mapSRS):
-_feature(feature),
-_source( source ),
-_mapSRS( mapSRS ),
+AddPointHandler::AddPointHandler( FeatureNode* featureNode):
+_featureNode( featureNode ),
 _mouseDown( false ),
 _firstMove( false ),
 _mouseButton( osgGA::GUIEventAdapter::LEFT_MOUSE_BUTTON ),
@@ -52,28 +50,26 @@ AddPointHandler::getMouseButton() const
 bool
 AddPointHandler::addPoint( float x, float y, osgViewer::View* view )
 {
-    osgUtil::LineSegmentIntersector::Intersections results;
-    if ( view->computeIntersections( x, y, results, _intersectionMask ) )
+    osg::Vec3d world;    
+    MapNode* mapNode = _featureNode->getMapNode();
+
+    if ( mapNode->getTerrain()->getWorldCoordsUnderMouse( view, x, y, world ) )
     {
-        // find the first hit under the mouse:
-        osgUtil::LineSegmentIntersector::Intersection first = *(results.begin());
-        osg::Vec3d point = first.getWorldIntersectPoint();
+        // Get the map point from the world
+        GeoPoint mapPoint;
+        mapPoint.fromWorld( mapNode->getMapSRS(), world );
 
-        // transform it to map coordinates:
-        double lat_rad, lon_rad, dummy;
-        _mapSRS->getEllipsoid()->convertXYZToLatLongHeight( point.x(), point.y(), point.z(), lat_rad, lon_rad, dummy );
+        Feature* feature = _featureNode->getFeature();
 
-        double lat_deg = osg::RadiansToDegrees( lat_rad );
-        double lon_deg = osg::RadiansToDegrees( lon_rad );
-
-        if (_feature.valid())            
+        if ( feature )            
         {
-            _feature->getGeometry()->push_back( osg::Vec3d(lon_deg, lat_deg, 0) );
-            _source->dirty();
-            //Also must dirty the feature profile since the geometry has changed
-            _source->dirtyFeatureProfile();
-        }
-        return true;
+            // Convert the map point to the feature's SRS
+            GeoPoint featurePoint = mapPoint.transform( feature->getSRS() );
+
+            feature->getGeometry()->push_back( featurePoint.vec3d() );            
+            _featureNode->init();            
+            return true;
+        }        
     }
     return false;
 }
@@ -119,31 +115,26 @@ AddPointHandler::handle( const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapt
 class MoveFeatureDraggerCallback : public Dragger::PositionChangedCallback
 {
 public:
-    MoveFeatureDraggerCallback(Feature* feature, FeatureSource* source, int point):
-      _feature(feature),
-      _source(source),
+    MoveFeatureDraggerCallback(FeatureNode* featureNode, int point):
+      _featureNode( featureNode ),      
       _point(point)
       {}
 
       virtual void onPositionChanged(const Dragger* sender, const osgEarth::GeoPoint& position)
       {
-          (*_feature->getGeometry())[_point] = osg::Vec3d(position.x(), position.y(), 0);
-          _source->dirty();
-          _source->dirtyFeatureProfile();
+          (*_featureNode->getFeature()->getGeometry())[_point] =  osg::Vec3d(position.x(), position.y(), 0);
+          _featureNode->init();
       }
 
-      osg::ref_ptr< Feature > _feature;
-      osg::ref_ptr< FeatureSource > _source;
-
+      osg::ref_ptr< FeatureNode > _featureNode;
+      
       int _point;
 
 };
 
 /****************************************************************/
-FeatureEditor::FeatureEditor( Feature* feature, FeatureSource* source, MapNode* mapNode ):
-_feature( feature ),
-_source( source ),
-_mapNode( mapNode ),
+FeatureEditor::FeatureEditor( FeatureNode* featureNode):
+_featureNode( featureNode ),
 _color(osg::Vec4(0.0f, 1.0f, 0.0f, 1.0f)),
 _pickColor(osg::Vec4(1.0f, 1.0f, 0.0f, 1.0f)),
 _size( 5.0f )
@@ -205,15 +196,16 @@ FeatureEditor::init()
 {
     removeChildren( 0, getNumChildren() );
 
+    Feature* feature = _featureNode->getFeature();
     //Create a dragger for each point
-    for (unsigned int i = 0; i < _feature->getGeometry()->size(); i++)
+    for (unsigned int i = 0; i < _featureNode->getFeature()->getGeometry()->size(); i++)
     {
-        SphereDragger* dragger = new SphereDragger( _mapNode );
+        SphereDragger* dragger = new SphereDragger( _featureNode->getMapNode() );
         dragger->setColor( _color );
         dragger->setPickColor( _pickColor );
         dragger->setSize( _size );
-        dragger->setPosition(GeoPoint(_feature->getSRS(),  (*_feature->getGeometry())[i].x(),  (*_feature->getGeometry())[i].y()));
-        dragger->addPositionChangedCallback(new MoveFeatureDraggerCallback(_feature.get(), _source.get(), i) );
+        dragger->setPosition(GeoPoint(feature->getSRS(),  (*feature->getGeometry())[i].x(),  (*feature->getGeometry())[i].y()));
+        dragger->addPositionChangedCallback(new MoveFeatureDraggerCallback( _featureNode.get(), i) );
 
         addChild(dragger);        
     }

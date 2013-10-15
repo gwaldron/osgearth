@@ -44,11 +44,11 @@ HeightFieldUtils::getHeightAtPixel(const osg::HeightField* hf, double c, double 
 
         if (rowMin == rowMax)
         {
-            if (rowMin < (int)hf->getNumRows()-2)
+            if (rowMin < (int)hf->getNumRows()-1)
             {
                 rowMax = rowMin + 1;
             }
-            else
+            else if ( rowMax > 0 )
             {
                 rowMin = rowMax - 1;
             }
@@ -56,11 +56,11 @@ HeightFieldUtils::getHeightAtPixel(const osg::HeightField* hf, double c, double 
 
          if (colMin == colMax)
          {
-            if (colMin < (int)hf->getNumColumns()-2)
+            if (colMin < (int)hf->getNumColumns()-1)
             {
                 colMax = colMin + 1;
             }
-            else
+            else if ( colMax > 0 )
             {
                colMin = colMax - 1;
             }

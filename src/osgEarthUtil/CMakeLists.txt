@@ -11,6 +11,7 @@ SET(HEADER_PATH ${OSGEARTH_SOURCE_DIR}/include/${LIB_NAME})
 SET(HEADERS_ROOT
     AnnotationEvents
     AutoClipPlaneHandler
+    ArcGIS
     Common
     Controls
     ContourMap
@@ -42,8 +43,8 @@ SET(HEADERS_ROOT
     SpatialData
     StarData
     TerrainProfile
-	TileIndex
-	TileIndexBuilder
+    TileIndex
+    TileIndexBuilder
     TFS
     TFSPackager
     TMS
@@ -63,12 +64,13 @@ SOURCE_GROUP( Headers FILES ${HEADERS_ROOT} )
 
 SET(SOURCES_ROOT
     AnnotationEvents.cpp
+    ArcGIS.cpp
     AutoClipPlaneHandler.cpp
     ClampCallback.cpp
     Controls.cpp
     ContourMap.cpp
     DataScanner.cpp
-    DateTime.cpp
+    #DateTime.cpp #moved to osgEarth namespace
     DetailTexture.cpp
     EarthManipulator.cpp
     ExampleResources.cpp
@@ -90,8 +92,8 @@ SET(SOURCES_ROOT
     SpatialData.cpp
     SkyNode.cpp
     TerrainProfile.cpp
-	TileIndex.cpp
-	TileIndexBuilder.cpp
+    TileIndex.cpp
+    TileIndexBuilder.cpp
     TFS.cpp
     TFSPackager.cpp
     TMS.cpp

@@ -81,6 +81,9 @@ MeshClamper::apply( osg::Geode& geode )
     osgUtil::IntersectionVisitor iv( lsi );
 
     double r = std::min( em->getRadiusEquator(), em->getRadiusPolar() );
+    //double r = 50000;
+
+    unsigned count = 0;
 
     for( unsigned i=0; i<geode.getNumDrawables(); ++i )
     {
@@ -182,6 +185,7 @@ MeshClamper::apply( osg::Geode& geode )
 
                     (*verts)[k] = (fw * world2local);
                     geomDirty = true;
+                    ++count;
                 }
             }
 
@@ -189,10 +193,15 @@ MeshClamper::apply( osg::Geode& geode )
             {
                 geom->dirtyBound();
                 if ( geom->getUseVertexBufferObjects() )
+                {
+                    verts->getVertexBufferObject()->setUsage( GL_DYNAMIC_DRAW_ARB );
                     verts->dirty();
+                }
                 else
                     geom->dirtyDisplayList();
             }
         }
+
+        //OE_NOTICE << LC << "clamped " << count << " verts." << std::endl;
     }
 }

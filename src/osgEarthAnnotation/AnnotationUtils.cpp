@@ -105,10 +105,12 @@ AnnotationUtils::createTextDrawable(const std::string& text,
         if(symbol->layout().value() == TextSymbol::LAYOUT_RIGHT_TO_LEFT)
         {
             t->setLayout(osgText::TextBase::RIGHT_TO_LEFT);
-        }else if(symbol->layout().value() == TextSymbol::LAYOUT_LEFT_TO_RIGHT)
+        }
+        else if(symbol->layout().value() == TextSymbol::LAYOUT_LEFT_TO_RIGHT)
         {
             t->setLayout(osgText::TextBase::LEFT_TO_RIGHT);
-        }else if(symbol->layout().value() == TextSymbol::LAYOUT_VERTICAL)
+        }
+        else if(symbol->layout().value() == TextSymbol::LAYOUT_VERTICAL)
         {
             t->setLayout(osgText::TextBase::VERTICAL);
         }
@@ -235,14 +237,6 @@ AnnotationUtils::createImageGeometry(osg::Image*       image,
     geom->setColorBinding(osg::Geometry::BIND_OVERALL);
 
     geom->addPrimitiveSet(new osg::DrawArrays(osg::PrimitiveSet::QUADS,0,4));
-
-#if 0
-    // add the static "isText=true" uniform; this is a hint for the annotation shaders
-    // if they get installed.
-    static osg::ref_ptr<osg::Uniform> s_isNotTextUniform = new osg::Uniform(osg::Uniform::BOOL, UNIFORM_IS_TEXT());
-    s_isNotTextUniform->set( false );
-    dstate->addUniform( s_isNotTextUniform.get() );
-#endif
 
     return geom;
 }
@@ -491,10 +485,11 @@ AnnotationUtils::createHemisphere( float r, const osg::Vec4& color, float maxAng
     return installTwoPassAlpha( geode );
 }
 
-    // constucts an ellipsoidal mesh that we will use to draw the atmosphere
+// constucts an ellipsoidal mesh
 osg::Geometry*
-AnnotationUtils::createEllipsoidGeometry(float majorRadius, 
-                                         float minorRadius,
+AnnotationUtils::createEllipsoidGeometry(float xRadius, 
+                                         float yRadius,
+                                         float zRadius,
                                          const osg::Vec4f& color, 
                                          float maxAngle,
                                          float minLat,
@@ -502,8 +497,6 @@ AnnotationUtils::createEllipsoidGeometry(float majorRadius,
                                          float minLon,
                                          float maxLon)
 {
-    osg::EllipsoidModel em( majorRadius, minorRadius );
-
     osg::Geometry* geom = new osg::Geometry();
     geom->setUseVertexBufferObjects(true);
 
@@ -511,12 +504,10 @@ AnnotationUtils::createEllipsoidGeometry(float majorRadius,
     float lonSpan = maxLon - minLon;
     float aspectRatio = lonSpan/latSpan;
 
-    int latSegments = std::max( 6, (int)(latSpan / maxAngle) );
-    int lonSegments = std::max( 3, (int)(latSegments * aspectRatio) );
-    //int lonSegments = 2 * latSegments;
+    int latSegments = std::max( 6, (int)ceil(latSpan / maxAngle) );
+    int lonSegments = std::max( 3, (int)ceil(latSegments * aspectRatio) );
 
     float segmentSize = latSpan/latSegments; // degrees
-    //double segmentSize = 180.0/(double)latSegments; // degrees
 
     osg::Vec3Array* verts = new osg::Vec3Array();
     verts->reserve( latSegments * lonSegments );
@@ -530,13 +521,10 @@ AnnotationUtils::createEllipsoidGeometry(float majorRadius,
         geom->setTexCoordArray( 0, texCoords );
     }
 
-    osg::Vec3Array* normals = 0;
-    {
-        normals = new osg::Vec3Array();
-        normals->reserve( latSegments * lonSegments );
-        geom->setNormalArray( normals );
-        geom->setNormalBinding(osg::Geometry::BIND_PER_VERTEX );
-    }
+    osg::Vec3Array* normals = new osg::Vec3Array();
+    normals->reserve( latSegments * lonSegments );
+    geom->setNormalArray( normals );
+    geom->setNormalBinding(osg::Geometry::BIND_PER_VERTEX );
 
     osg::DrawElementsUShort* el = new osg::DrawElementsUShort( GL_TRIANGLES );
     el->reserve( latSegments * lonSegments * 6 );
@@ -544,14 +532,21 @@ AnnotationUtils::createEllipsoidGeometry(float majorRadius,
     for( int y = 0; y <= latSegments; ++y )
     {
         float lat = minLat + segmentSize * (float)y;
-        //double lat = -90.0 + segmentSize * (double)y;
         for( int x = 0; x < lonSegments; ++x )
         {
             float lon = minLon + segmentSize * (float)x;
-            //double lon = -180.0 + segmentSize * (double)x;
-            double gx, gy, gz;
-            em.convertLatLongHeightToXYZ( osg::DegreesToRadians(lat), osg::DegreesToRadians(lon), 0.0, gx, gy, gz );
-            verts->push_back( osg::Vec3(gx, gy, gz) );
+
+            float u = osg::DegreesToRadians( lon );
+            float v = osg::DegreesToRadians( lat );
+            float cos_u = cosf(u);
+            float sin_u = sinf(u);
+            float cos_v = cosf(v);
+            float sin_v = sinf(v);
+            
+            verts->push_back(osg::Vec3(
+                xRadius * cos_u * sin_v,
+                yRadius * sin_u * sin_v,
+                zRadius * cos_v ));
 
             if (genTexCoords)
             {
@@ -562,9 +557,8 @@ AnnotationUtils::createEllipsoidGeometry(float majorRadius,
 
             if (normals)
             {
-                osg::Vec3 normal( gx, gy, gz);
-                normal.normalize();
-                normals->push_back( normal );
+                normals->push_back( verts->back() );
+                normals->back().normalize();
             }
 
             if ( y < latSegments )
@@ -593,8 +587,9 @@ AnnotationUtils::createEllipsoidGeometry(float majorRadius,
 }
 
 osg::Node* 
-AnnotationUtils::createEllipsoid(float majorRadius, 
-                                 float minorRadius,
+AnnotationUtils::createEllipsoid(float xRadius, 
+                                 float yRadius,
+                                 float zRadius,
                                  const osg::Vec4f& color, 
                                  float maxAngle,
                                  float minLat,
@@ -603,7 +598,7 @@ AnnotationUtils::createEllipsoid(float majorRadius,
                                  float maxLon)
 {
     osg::Geode* geode = new osg::Geode();
-    geode->addDrawable( createEllipsoidGeometry(majorRadius, minorRadius, color, maxAngle, minLat, maxLat, minLon, maxLon) );
+    geode->addDrawable( createEllipsoidGeometry(xRadius, yRadius, zRadius, color, maxAngle, minLat, maxLat, minLon, maxLon) );
 
     if ( color.a() < 1.0f )
     {
@@ -622,50 +617,6 @@ AnnotationUtils::createEllipsoid(float majorRadius,
         //geode->getOrCreateStateSet()->setAttributeAndModes( new osg::CullFace(), 0 );
         return installTwoPassAlpha(geode);
     }
-
-    return geode;
-}
-
-osg::Node* 
-AnnotationUtils::createEllipsoid( float xr, float yr, float zr, const osg::Vec4& color, float maxAngle )
-{
-    osg::Geometry* geom = new osg::Geometry();
-    geom->setUseVertexBufferObjects(true);
-
-    osg::Vec3Array* v = new osg::Vec3Array();
-    v->reserve(6);
-    v->push_back( osg::Vec3(0,0, zr) ); // top
-    v->push_back( osg::Vec3(0,0,-zr) ); // bottom
-    v->push_back( osg::Vec3(-xr,0,0) ); // left
-    v->push_back( osg::Vec3( xr,0,0) ); // right
-    v->push_back( osg::Vec3(0, yr,0) ); // back
-    v->push_back( osg::Vec3(0,-yr,0) ); // front
-    geom->setVertexArray(v);
-    if ( v->getVertexBufferObject() )
-        v->getVertexBufferObject()->setUsage(GL_STATIC_DRAW_ARB);
-
-    osg::DrawElementsUByte* b = new osg::DrawElementsUByte(GL_TRIANGLES);
-    b->reserve(24);
-    b->push_back(0); b->push_back(3); b->push_back(4);
-    b->push_back(0); b->push_back(4); b->push_back(2);
-    b->push_back(0); b->push_back(2); b->push_back(5);
-    b->push_back(0); b->push_back(5); b->push_back(3);
-    b->push_back(1); b->push_back(3); b->push_back(5);
-    b->push_back(1); b->push_back(4); b->push_back(3);
-    b->push_back(1); b->push_back(2); b->push_back(4);
-    b->push_back(1); b->push_back(5); b->push_back(2);
-    geom->addPrimitiveSet( b );
-
-    MeshSubdivider ms;
-    ms.run( *geom, osg::DegreesToRadians(15.0f), GEOINTERP_GREAT_CIRCLE );
-
-    osg::Vec4Array* c = new osg::Vec4Array(1);
-    (*c)[0] = color;
-    geom->setColorArray( c );
-    geom->setColorBinding( osg::Geometry::BIND_OVERALL );
-
-    osg::Geode* geode = new osg::Geode();
-    geode->addDrawable( geom );
 
     return geode;
 }

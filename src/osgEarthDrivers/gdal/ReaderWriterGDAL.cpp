@@ -776,10 +776,10 @@ public:
                 //Try to load the VRT file from the cache so we don't have to build it each time.
                 if (_cacheBin.valid())
                 {                
-                    ReadResult result = _cacheBin->readString( vrtKey );                    
+                    ReadResult result = _cacheBin->readString( vrtKey, 0 );
                     if (result.succeeded())
                     {                        
-                        _srcDS = (GDALDataset*)GDALOpen(result.getString().c_str(), GA_ReadOnly );                                                
+                        _srcDS = (GDALDataset*)GDALOpen(result.getString().c_str(), GA_ReadOnly );
                         if (_srcDS)
                         {
                             OE_INFO << LC << "Read VRT from cache!" << std::endl;

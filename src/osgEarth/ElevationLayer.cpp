@@ -242,28 +242,6 @@ ElevationLayer::createHeightFieldFromTileSource(const TileKey&    key,
         result = assembleHeightFieldFromTileSource( key, progress );
     }
 
-#if 0
-    // If the profiles don't match, use a more complicated technique to assemble the tile:
-    if ( !key.getProfile()->isEquivalentTo( getProfile() ) )
-    {
-        result = assembleHeightFieldFromTileSource( key, progress );
-    }
-    else
-    {
-        // Only try to get data if the source actually has data
-        if ( !source->hasData( key ) )
-        {
-            OE_DEBUG << LC << "Source for layer has no data at " << key.str() << std::endl;
-            return 0L;
-        }
-
-        // Make it from the source:
-        result = source->createHeightField( key, _preCacheOp.get(), progress );
-    }
-#endif
-
-
-
     return result;
 }
 
@@ -423,7 +401,7 @@ ElevationLayer::createHeightField(const TileKey&    key,
     bool fromCache = false;
     if ( cacheBin && getCachePolicy().isCacheReadable() )
     {
-        ReadResult r = cacheBin->readObject( key.str() );
+        ReadResult r = cacheBin->readObject( key.str(), getCachePolicy().getMinAcceptTime() );
         if ( r.succeeded() )
         {
             result = r.release<osg::HeightField>();
@@ -563,9 +541,13 @@ ElevationLayerVector::createHeightField(const TileKey&                  key,
     {
         ElevationLayer* layer = i->get();
 
-        if ( layer->getEnabled() && layer->getVisible() && layer->isKeyValid( keyToUse ) )
+        if ( layer->getEnabled() && layer->getVisible() )
         {
-            GeoHeightField geoHF = layer->createHeightField( keyToUse, progress );
+            GeoHeightField geoHF;
+            if ( layer->isKeyValid(keyToUse) )
+            {
+                geoHF = layer->createHeightField( keyToUse, progress );
+            }
 
             // if "fallback" is set, try to fall back on lower LODs.
             if ( !geoHF.valid() && fallback )

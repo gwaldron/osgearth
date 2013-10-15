@@ -19,6 +19,7 @@
 #include <osgEarthSymbology/ModelResource>
 #include <osgEarth/StringUtils>
 #include <osgUtil/Optimizer>
+#include <osgEarth/Utils>
 
 #define LC "[ModelResource] "
 
@@ -59,11 +60,11 @@ ModelResource::createNodeFromURI( const URI& uri, const osgDB::Options* dbOption
         node = r.releaseNode();
 
         osgUtil::Optimizer o;
-        o.optimize( 
-            node, 
-            osgUtil::Optimizer::VERTEX_PRETRANSFORM |
-            osgUtil::Optimizer::INDEX_MESH |
-            osgUtil::Optimizer::VERTEX_POSTTRANSFORM );
+        o.optimize( node, osgUtil::Optimizer::INDEX_MESH );
+
+        // GPU performance optimization:
+        VertexCacheOptimizer vco;
+        node->accept( vco );
     }
     else // failing that, fall back on the old encoding format..
     {

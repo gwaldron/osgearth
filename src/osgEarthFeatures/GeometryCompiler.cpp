@@ -422,6 +422,7 @@ GeometryCompiler::compile(FeatureList&          workingSet,
         }
     }
 
+#if 0
     // polygonized lines.
     else if ( line != 0L && line->stroke()->widthUnits() != Units::PIXELS )
     {
@@ -440,6 +441,7 @@ GeometryCompiler::compile(FeatureList&          workingSet,
             resultGroup->addChild( node );
         }
     }
+#endif
 
     // simple geometry
     else if ( point || line || polygon )
@@ -517,6 +519,8 @@ GeometryCompiler::compile(FeatureList&          workingSet,
     
     // todo: this helps a lot, but is currently broken for non-triangle
     // geometries. (gw, 12-17-2012)
+    // TODO: See: VertexCacheOptimizer in Utils
+    // ..note, the BuildGeometryFilter and ExtrudeGeometryFilter call this now
 #if 0
         osgUtil::Optimizer optimizer;
         optimizer.optimize(

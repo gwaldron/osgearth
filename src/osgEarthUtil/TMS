@@ -32,6 +32,7 @@
 #include <iostream>
 #include <osgEarth/Profile>
 #include <osgEarth/Common>
+#include <osgEarth/DateTime>
 
 #include <osg/Referenced>
 #include <osgDB/ReaderWriter>
@@ -275,6 +276,16 @@ namespace osgEarth { namespace Util { namespace TMS
         void setOriginY(double y) {_originY = y;}
 
         /**
+        * Sets the timestamp of the TimeMap, i.e. the last modified time
+        */
+        void setTimeStamp(TimeStamp t) { _timestamp = t; }
+
+        /**
+        * Gets the timestap of the TileMap
+        */
+        TimeStamp getTimeStamp() const { return _timestamp; }
+
+        /**
         *Sets the origin of this TileMap
         *
         *@param x
@@ -419,7 +430,9 @@ namespace osgEarth { namespace Util { namespace TMS
         unsigned int _numTilesWide;
         unsigned int _numTilesHigh;
 
-        osgEarth::Profile::ProfileType _profile_type;        
+        osgEarth::Profile::ProfileType _profile_type;
+
+        TimeStamp _timestamp;
 
         DataExtentList _dataExtents;
     };
@@ -440,6 +453,41 @@ namespace osgEarth { namespace Util { namespace TMS
 
         /** dtor */
         virtual ~TileMapReaderWriter() { }
+    };
+
+
+    /**
+     * An entry in a TileMapService's list of TileMaps.
+     */
+    struct OSGEARTHUTIL_EXPORT TileMapEntry
+    {
+        TileMapEntry( const std::string& _title, const std::string& _href, const std::string& _srs, const std::string& _profile);
+
+        std::string title;
+        std::string href;
+        std::string srs;
+        std::string profile;
+    };
+
+    typedef std::list< TileMapEntry > TileMapEntryList;
+
+    /**
+     * Reads a list of TileMapEntry's from a server.  Useful for displaying a list of layers to the user
+     */
+    class OSGEARTHUTIL_EXPORT TileMapServiceReader
+    {
+    public:
+        /**
+         * Reads a list of TileMapEntry's from a server
+         * @param location
+         *    A URL to the TMS service URL like http://server.com/tiles/1.0.0/
+         */
+        static bool read( const std::string &location, const osgDB::ReaderWriter::Options* options, TileMapEntryList& tileMaps );    
+        static bool read( const Config& conf, TileMapEntryList& tileMaps);
+
+    private:
+        TileMapServiceReader();
+        TileMapServiceReader( const TileMapServiceReader& rhs );
     };
 
 } } } // namespace osgEarth::Util::TMS

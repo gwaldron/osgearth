@@ -23,6 +23,7 @@
 #include <osgEarth/ImageLayer>
 #include <osgEarth/ElevationLayer>
 #include <osgEarth/Profile>
+#include <osgEarth/TaskService>
 
 namespace osgEarth { namespace Util
 {
@@ -97,11 +98,12 @@ namespace osgEarth { namespace Util
          * Result structure for method calls
          */
         struct Result {
-            Result() : ok(true) { }
-            Result(const std::string& m) : message(m), ok(false) { }
+            Result(int tasks=0) : ok(true), taskCount(tasks) { }
+            Result(const std::string& m) : message(m), ok(false), taskCount(0) { }
             operator bool() const { return ok; }
             bool ok;
             std::string message;
+            int taskCount;
         };
 
         /**
@@ -113,7 +115,8 @@ namespace osgEarth { namespace Util
         Result package(
             ImageLayer*        layer,
             const std::string& rootFolder,
-            const std::string& imageExtension ="png" );
+            osgEarth::ProgressCallback* progress=0L,
+            const std::string& imageExtension="png" );
 
         /**
          * Packages an elevation layer as a TMS repository.
@@ -122,22 +125,29 @@ namespace osgEarth { namespace Util
          */
         Result package( 
             ElevationLayer*    layer,
-            const std::string& rootFolder );
+            const std::string& rootFolder,
+            osgEarth::ProgressCallback* progress=0L );
 
     protected:
 
-        Result packageImageTile(
+        int packageImageTile(
             ImageLayer*          layer,
             const TileKey&       key,
             const std::string&   rootDir,
             const std::string&   extension,
+            osgEarth::TaskRequestVector& tasks,
+            Threading::MultiEvent* semaphore,
+            osgEarth::ProgressCallback* progress,
             unsigned&            out_maxLevel );
 
-        Result packageElevationTile(
+        int packageElevationTile(
             ElevationLayer*      layer,
             const TileKey&       key,
             const std::string&   rootDir,
             const std::string&   extension,
+            osgEarth::TaskRequestVector& tasks,
+            Threading::MultiEvent* semaphore,
+            osgEarth::ProgressCallback* progress,
             unsigned&            out_maxLevel );
 
         bool shouldPackageKey( 

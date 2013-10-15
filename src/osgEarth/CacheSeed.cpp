@@ -111,6 +111,13 @@ _numThreads(1)
 {
 }
 
+CacheSeed::CacheSeed( const CacheSeed& rhs):
+_minLevel( rhs._minLevel),
+_maxLevel( rhs._maxLevel),
+_numThreads( rhs._numThreads )
+{
+}
+
 void CacheSeed::seed( Map* map )
 {
     // We must do this to avoid an error message in OpenSceneGraph b/c the findWrapper method doesn't appear to be threadsafe.

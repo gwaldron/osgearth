@@ -43,36 +43,37 @@ KML_Geometry::buildChild( const Config& conf, KMLContext& cx, Style& style)
     if ( conf.key() == "point" )
     {
         KML_Point g;
-        g.parseStyle(conf, cx, style);
         g.parseCoords(conf, cx);
         _geom = g._geom.get();
+        g.parseStyle(conf, cx, style);
     }
     else if ( conf.key() == "linestring" )
     {
         KML_LineString g;
-        g.parseStyle(conf, cx, style);
         g.parseCoords(conf, cx);
         _geom = g._geom.get();
+        g.parseStyle(conf, cx, style);
     }
     else if ( conf.key() == "linearring" || conf.key() == "gx:latlonquad" )
     {
         KML_LinearRing g;
-        g.parseStyle(conf, cx, style);
         g.parseCoords(conf, cx);
         _geom = g._geom.get();
+        g.parseStyle(conf, cx, style);
     }
     else if ( conf.key() == "polygon" )
     {
         KML_Polygon g;
-        g.parseStyle(conf, cx, style);
         g.parseCoords(conf, cx);
         _geom = g._geom.get();
+        g.parseStyle(conf, cx, style);
     }
     else if ( conf.key() == "multigeometry" )
     {
         KML_MultiGeometry g;
-        g.parseStyle(conf, cx, style);
         g.parseCoords(conf, cx);
+        _geom = g._geom.get();
+        g.parseStyle(conf, cx, style);
         const ConfigSet& mgChildren = conf.children();
         
         for( ConfigSet::const_iterator i = mgChildren.begin(); i != mgChildren.end(); ++i )
@@ -85,15 +86,13 @@ KML_Geometry::buildChild( const Config& conf, KMLContext& cx, Style& style)
             if ( subGeom._geom.valid() )
                 dynamic_cast<MultiGeometry*>(g._geom.get())->getComponents().push_back( subGeom._geom.get() );
         }
-        //g.parseCoords(conf.child("multigeometry"), cx);
-        _geom = g._geom.get();
     }
     else if ( conf.key() == "model" )
     {
         KML_Model g;
-        g.parseStyle(conf, cx, style);
         g.parseCoords(conf, cx);
         _geom = g._geom.get();
+        g.parseStyle(conf, cx, style);
     }
 }
 
@@ -127,13 +126,33 @@ KML_Geometry::parseStyle( const Config& conf, KMLContext& cx, Style& style )
     _tessellate = conf.value("tessellate") == "1";
 
     std::string am = conf.value("altitudemode");
+    if ( am.empty() )
+        am = "clampToGround"; // default.
 
-    // clampToGround is the default. We will be draping the geometry UNLESS tessellate is
-    // set to true.
-    if ( (am.empty() || am == "clampToGround") && _tessellate )
+    bool isPoly = _geom->getComponentType() == Geometry::TYPE_POLYGON;
+
+    // Resolve the correct altitude symbol. CLAMP_TO_TERRAIN is the default, but the
+    // technique will depend on the geometry's type and setup.
+    AltitudeSymbol* alt = style.getOrCreate<AltitudeSymbol>();
+    alt->clamping() = alt->CLAMP_TO_TERRAIN;
+
+    // clamp to ground mode:
+    if ( am == "clampToGround" )
     {
-        AltitudeSymbol* af = style.getOrCreate<AltitudeSymbol>();
-        af->clamping() = AltitudeSymbol::CLAMP_TO_TERRAIN;
+        if ( _extrude )
+        {
+            alt->technique() = alt->TECHNIQUE_MAP;
+        }
+        else if ( isPoly )
+        {
+            alt->technique() = alt->TECHNIQUE_DRAPE;
+        }
+        else // line or point
+        {
+            alt->technique() = alt->TECHNIQUE_SCENE;
+        }
+
+        // extrusion is not compatible with clampToGround.
         _extrude = false;
     }
 
@@ -142,20 +161,63 @@ KML_Geometry::parseStyle( const Config& conf, KMLContext& cx, Style& style )
     // which seems wrong..
     else if ( am == "relativeToGround" )
     {
-        AltitudeSymbol* af = style.getOrCreate<AltitudeSymbol>();
-        af->clamping() = AltitudeSymbol::CLAMP_RELATIVE_TO_TERRAIN;
+        alt->clamping() = alt->CLAMP_RELATIVE_TO_TERRAIN;
+
+        if ( _extrude )
+        {
+            alt->technique() = alt->TECHNIQUE_MAP;
+        }
+        else
+        {
+            alt->technique() = alt->TECHNIQUE_SCENE;
+
+            if ( isPoly )
+            {
+                bool zeroElev = true;
+                ConstGeometryIterator gi( _geom.get(), false );
+                while( zeroElev == true && gi.hasMore() )
+                {
+                    const Geometry* g = gi.next();
+                    for( Geometry::const_iterator ji = g->begin(); ji != g->end() && zeroElev == true; ++ji )
+                    {
+                        if ( !osg::equivalent(ji->z(), 0.0) )
+                            zeroElev = false;
+                    }
+                }
+                if ( zeroElev )
+                {
+                    alt->clamping()  = alt->CLAMP_TO_TERRAIN;
+                    alt->technique() = alt->TECHNIQUE_DRAPE;
+                }
+            }
+        }
     }
 
     // "absolute" means to treat the Z values as-is
     else if ( am == "absolute" )
     {
-        AltitudeSymbol* af = style.getOrCreate<AltitudeSymbol>();
-        af->clamping() = AltitudeSymbol::CLAMP_ABSOLUTE;
+        if ( _extrude )
+        {
+            alt->clamping() = alt->CLAMP_ABSOLUTE;
+            alt->technique() = alt->TECHNIQUE_MAP;
+        }
+        else
+        {
+            alt->clamping() = AltitudeSymbol::CLAMP_NONE;
+        }
     }
 
     if ( _extrude )
     {
         ExtrusionSymbol* es = style.getOrCreate<ExtrusionSymbol>();
         es->flatten() = false;
+    }
+    else
+    {
+        // remove polystyle since it doesn't apply to non-extruded lines and points
+        if ( !isPoly )
+        {
+            style.remove<PolygonSymbol>();
+        }
     }
 }

@@ -59,27 +59,6 @@ namespace
         void onModelLayerMoved( ModelLayer* layer, unsigned int oldIndex, unsigned int newIndex ) {
             _node->onModelLayerMoved( layer, oldIndex, newIndex);
         }
-#if 0
-        void onMaskLayerAdded( MaskLayer* layer ) {
-            _node->onMaskLayerAdded( layer );
-        }
-        void onMaskLayerRemoved( MaskLayer* layer ) {
-            _node->onMaskLayerRemoved( layer );
-        }
-#endif
-
-        osg::observer_ptr<MapNode> _node;
-    };
-
-    // converys overlay property changes to the OverlayDecorator in MapNode.
-    struct MapModelLayerCallback : public ModelLayerCallback
-    {
-        MapModelLayerCallback(MapNode* mapNode) : _node(mapNode) { }
-
-        virtual void onOverlayChanged(ModelLayer* layer)
-        {
-            _node->onModelLayerOverlayChanged( layer );
-        }
 
         osg::observer_ptr<MapNode> _node;
     };
@@ -236,13 +215,6 @@ MapNode::init()
 
     setName( "osgEarth::MapNode" );
 
-    // Since we have global uniforms in the stateset, mark it dynamic so it is immune to
-    // multi-threaded overlap
-    // TODO: do we need this anymore? there are no more global uniforms in here.. gw
-    //getOrCreateStateSet()->setDataVariance(osg::Object::DYNAMIC);
-
-    _modelLayerCallback = new MapModelLayerCallback(this);
-
     _maskLayerNode = 0L;
     _lastNumBlacklistedFilenames = 0;
 
@@ -323,9 +295,13 @@ MapNode::init()
     {
         DrapingTechnique* draping = new DrapingTechnique();
 
+        const char* envOverlayTextureSize = ::getenv("OSGEARTH_OVERLAY_TEXTURE_SIZE");
+
         if ( _mapNodeOptions.overlayBlending().isSet() )
             draping->setOverlayBlending( *_mapNodeOptions.overlayBlending() );
-        if ( _mapNodeOptions.overlayTextureSize().isSet() )
+        if ( envOverlayTextureSize )
+            draping->setTextureSize( as<int>(envOverlayTextureSize, 1024) );
+        else if ( _mapNodeOptions.overlayTextureSize().isSet() )
             draping->setTextureSize( *_mapNodeOptions.overlayTextureSize() );
         if ( _mapNodeOptions.overlayMipMapping().isSet() )
             draping->setMipMapping( *_mapNodeOptions.overlayMipMapping() );
@@ -511,8 +487,6 @@ MapNode::onModelLayerAdded( ModelLayer* layer, unsigned int index )
     // create the scene graph:
     osg::Node* node = layer->createSceneGraph( _map.get(), _map->getDBOptions(), 0L );
 
-    layer->addCallback(_modelLayerCallback.get() );
-
     if ( node )
     {
         if ( _modelLayerNodes.find( layer ) != _modelLayerNodes.end() )
@@ -531,13 +505,6 @@ MapNode::onModelLayerAdded( ModelLayer* layer, unsigned int index )
             }
             else
             {
-                if ( layer->getOverlay() )
-                {
-                    DrapeableNode* draper = new DrapeableNode( this );
-                    draper->addChild( node );
-                    node = draper;
-                }
-
                 _models->insertChild( index, node );
             }
 
@@ -565,8 +532,6 @@ MapNode::onModelLayerRemoved( ModelLayer* layer )
 {
     if ( layer )
     {
-        layer->removeCallback( _modelLayerCallback.get() );
-
         // look up the node associated with this model layer.
         ModelLayerNodeMap::iterator i = _modelLayerNodes.find( layer );
         if ( i != _modelLayerNodes.end() )
@@ -726,26 +691,6 @@ MapNode::traverse( osg::NodeVisitor& nv )
     else
     {
         osg::Group::traverse( nv );
-    }
-}
-
-void
-MapNode::onModelLayerOverlayChanged( ModelLayer* layer )
-{
-    osg::ref_ptr<osg::Node> node = _modelLayerNodes[ layer ];
-    if ( node.get() )
-    {
-        OverlayNode* overlay = dynamic_cast<OverlayNode*>(node.get());
-        if ( !overlay && layer->getOverlay() )
-        {
-            overlay = new DrapeableNode(this);
-            overlay->addChild( node.get() );
-            _models->replaceChild( node.get(), overlay );
-        }
-        else if ( overlay )
-        {
-            overlay->setActive( layer->getOverlay() );
-        }
     }
 }
 

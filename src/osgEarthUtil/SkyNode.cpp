@@ -1423,7 +1423,7 @@ SkyNode::makeMoon()
     //If we couldn't load the moon texture, turn the moon off
     if (!image)
     {
-        OSG_ALWAYS << "Couldn't load moon texture, add osgEarth's data directory your OSG_FILE_PATH" << std::endl;
+        OE_INFO << LC << "Couldn't load moon texture, add osgEarth's data directory your OSG_FILE_PATH" << std::endl;
         _defaultPerViewData._moonXform->setNodeMask( 0 );
         _defaultPerViewData._moonVisible = false;
     }

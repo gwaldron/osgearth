@@ -70,7 +70,8 @@ _maxY(0.0),
 _minLevel(0),
 _maxLevel(0),
 _numTilesHigh(-1),
-_numTilesWide(-1)
+_numTilesWide(-1),
+_timestamp(0)
 {   
 }
 
@@ -387,11 +388,11 @@ TileMap::create(const std::string& url,
     tileMap->_format.setWidth( tile_width );
     tileMap->_format.setHeight( tile_height );
     tileMap->_format.setExtension( format );
-	profile->getNumTiles( 0, tileMap->_numTilesWide, tileMap->_numTilesHigh );
+    profile->getNumTiles( 0, tileMap->_numTilesWide, tileMap->_numTilesHigh );
 
-	tileMap->generateTileSets();
-	tileMap->computeMinMaxLevel();
-        
+    tileMap->generateTileSets();
+    tileMap->computeMinMaxLevel();
+
     return tileMap;
 }
 
@@ -451,6 +452,10 @@ TileMapReaderWriter::read( const std::string& location, const osgDB::ReaderWrite
     if (tileMap)
     {
         tileMap->setFilename( location );
+
+        // record the timestamp (if there is one) in the tilemap. It's not a persistent field
+        // but will help with things like per-session caching.
+        tileMap->setTimeStamp( r.lastModifiedTime() );
     }
 
     return tileMap;
@@ -676,4 +681,77 @@ TileMapReaderWriter::write(const TileMap* tileMap, std::ostream &output)
     doc->store(output);
 }
 
+
+//----------------------------------------------------------------------------
+
+TileMapEntry::TileMapEntry( const std::string& _title, const std::string& _href, const std::string& _srs, const std::string& _profile ):
+title( _title ),
+href( _href ),
+srs( _srs ),
+profile( _profile )
+{
+}
+
+//----------------------------------------------------------------------------
+
+TileMapServiceReader::TileMapServiceReader()
+{
+}
+
+TileMapServiceReader::TileMapServiceReader(const TileMapServiceReader& rhs)
+{
+}
+
+bool
+TileMapServiceReader::read( const std::string &location, const osgDB::ReaderWriter::Options* options, TileMapEntryList& tileMaps )
+{     
+    ReadResult r = URI(location).readString();
+    if ( r.failed() )
+    {
+        OE_WARN << LC << "Failed to read TileMapServices from " << location << std::endl;
+        return 0L;
+    }    
+    
+    // Read tile map into a Config:
+    Config conf;
+    std::stringstream buf( r.getString() );
+    conf.fromXML( buf );    
+
+    // parse that into a tile map:        
+    return read( conf, tileMaps );    
+}
+
+bool
+TileMapServiceReader::read( const Config& conf, TileMapEntryList& tileMaps)
+{    
+    const Config* TileMapServiceConf = conf.find("tilemapservice");
+
+    if (!TileMapServiceConf)
+    {
+        OE_NOTICE << "Couldn't find root TileMapService element" << std::endl;
+    }
+
+    const Config* TileMapsConf = TileMapServiceConf->find("tilemaps");
+    if (TileMapsConf)
+    {
+        const ConfigSet& TileMaps = TileMapsConf->children("tilemap");
+        if (TileMaps.size() == 0)
+        {            
+            return false;
+        }
+        
+        for (ConfigSet::const_iterator itr = TileMaps.begin(); itr != TileMaps.end(); ++itr)
+        {
+            std::string href = itr->value("href");
+            std::string title = itr->value("title");
+            std::string profile = itr->value("profile");
+            std::string srs = itr->value("srs");            
+
+            tileMaps.push_back( TileMapEntry( title, href, srs, profile ) );
+        }        
+
+        return true;
+    }    
+    return false;
+}
 

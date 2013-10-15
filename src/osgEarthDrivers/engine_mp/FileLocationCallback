@@ -46,7 +46,6 @@ namespace osgEarth_engine_mp
         virtual Location fileLocation(const std::string& filename, const osgDB::Options* options)
         {
             Location result = REMOTE_FILE;
-            //OE_NOTICE<<"fileLocation = "<<filename<<std::endl;
 
             unsigned int lod, x, y, id;
             sscanf(filename.c_str(), "%d/%d/%d.%d", &lod, &x, &y, &id);

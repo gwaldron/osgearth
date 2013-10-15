@@ -31,6 +31,24 @@ using namespace osgEarth;
 
 //------------------------------------------------------------------------
 
+Map::ElevationLayerCB::ElevationLayerCB(Map* map) :
+_map(map)
+{
+    //nop
+}
+
+void
+Map::ElevationLayerCB::onVisibleChanged(TerrainLayer* layer)
+{
+    osg::ref_ptr<Map> map;
+    if ( _map.lock(map) )
+    {
+        _map->notifyElevationLayerVisibleChanged(layer);
+    }
+}
+
+//------------------------------------------------------------------------
+
 Map::Map( const MapOptions& options ) :
 osg::Referenced      ( true ),
 _mapOptions          ( options ),
@@ -89,11 +107,33 @@ _dataModelRevision   ( 0 )
     {
         _elevationLayers.setExpressTileSize( *_mapOptions.elevationTileSize() );
     }
+
+    // set up a callback that the Map will use to detect Elevation Layer
+    // visibility changes
+    _elevationLayerCB = new ElevationLayerCB(this);
 }
 
 Map::~Map()
 {
     OE_DEBUG << "~Map" << std::endl;
+}
+
+void
+Map::notifyElevationLayerVisibleChanged(TerrainLayer* layer)
+{
+    // bump the revision safely:
+    Revision newRevision;
+    {
+        Threading::ScopedWriteLock lock( const_cast<Map*>(this)->_mapDataMutex );
+        newRevision = ++_dataModelRevision;
+    }
+
+    // a separate block b/c we don't need the mutex   
+    for( MapCallbackList::iterator i = _mapCallbacks.begin(); i != _mapCallbacks.end(); i++ )
+    {
+        i->get()->onMapModelChanged( MapModelChange(
+            MapModelChange::TOGGLE_ELEVATION_LAYER, newRevision, layer) );
+    }
 }
 
 bool
@@ -422,8 +462,8 @@ Map::addImageLayer( ImageLayer* layer )
         {
             i->get()->onMapModelChanged( MapModelChange(
                 MapModelChange::ADD_IMAGE_LAYER, newRevision, layer, index) );
-        }   
-    }   
+        }
+    }
 }
 
 
@@ -494,13 +534,16 @@ Map::addElevationLayer( ElevationLayer* layer )
             newRevision = ++_dataModelRevision;
         }
 
+        // listen for changes in the layer.
+        layer->addCallback( _elevationLayerCB.get() );
+
         // a separate block b/c we don't need the mutex   
         for( MapCallbackList::iterator i = _mapCallbacks.begin(); i != _mapCallbacks.end(); i++ )
         {
             i->get()->onMapModelChanged( MapModelChange(
                 MapModelChange::ADD_ELEVATION_LAYER, newRevision, layer, index) );
-        }   
-    }   
+        }
+    }
 }
 
 void 
@@ -561,6 +604,8 @@ Map::removeElevationLayer( ElevationLayer* layer )
                 break;
             }
         }
+
+        layerToRemove->removeCallback( _elevationLayerCB.get() );
     }
 
     // a separate block b/c we don't need the mutex
@@ -866,9 +911,6 @@ Map::clear()
         elevLayersRemoved.swap ( _elevationLayers );
         modelLayersRemoved.swap( _modelLayers );
 
-        // Because you cannot remove a mask layer once it's in place
-        //maskLayersRemoved.swap ( _terrainMaskLayers );
-
         // calculate a new revision.
         newRevision = ++_dataModelRevision;
     }
@@ -882,8 +924,6 @@ Map::clear()
             i->get()->onMapModelChanged( MapModelChange(MapModelChange::REMOVE_ELEVATION_LAYER, newRevision, k->get()) );
         for( ModelLayerVector::iterator k = modelLayersRemoved.begin(); k != modelLayersRemoved.end(); ++k )
             i->get()->onMapModelChanged( MapModelChange(MapModelChange::REMOVE_MODEL_LAYER, newRevision, k->get()) );
-        //for( MaskLayerVector::iterator k = maskLayersRemoved.begin(); k != maskLayersRemoved.end(); ++k )
-        //    i->get()->onMapModelChanged( MapModelChange(MapModelChange::REMOVE_MASK_LAYER, newRevision, k->get()) );
     }
 }
 
@@ -1097,10 +1137,6 @@ Map::sync( MapFrame& frame ) const
         if ( frame._parts & ELEVATION_LAYERS )
         {
             frame._elevationLayers = _elevationLayers;
-            //if ( !frame._initialized )
-            //    frame._elevationLayers.reserve( _elevationLayers.size() );
-            //frame._elevationLayers.clear();
-            //std::copy( _elevationLayers.begin(), _elevationLayers.end(), std::back_inserter(frame._elevationLayers) );
             if ( _mapOptions.elevationTileSize().isSet() )
                 frame._elevationLayers.setExpressTileSize( *_mapOptions.elevationTileSize() );
         }

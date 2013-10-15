@@ -236,15 +236,14 @@ _numSegments ( 0 )
     conf.getIfSet   ( "num_segments", _numSegments );
 
     rebuild();
-
-    if ( conf.hasChild("position") )
-        setPosition( GeoPoint(conf.child("position")) );
 }
 
 Config
 EllipseNode::getConfig() const
 {
-    Config conf( "ellipse" );
+    Config conf = LocalizedNode::getConfig();
+    conf.key() = "ellipse";
+
     conf.addObj( "radius_major", _radiusMajor );
     conf.addObj( "radius_minor", _radiusMinor );
     conf.addObj( "rotation", _rotationAngle );
@@ -252,8 +251,6 @@ EllipseNode::getConfig() const
 
     if ( _numSegments != 0 )
         conf.add( "num_segments", _numSegments );
-
-    conf.addObj( "position", getPosition() );
 
     return conf;
 }

@@ -196,7 +196,7 @@ ImageLayerTileProcessor::process( osg::ref_ptr<osg::Image>& image ) const
     }
 
     // If this is a compressed image, uncompress it IF the image is not already in the
-    // target profile...becuase if it's not in the target profile, we will have to do
+    // target profile...because if it's not in the target profile, we will have to do
     // some mosaicing...and we can't mosaic a compressed image.
     if (!_layerInTargetProfile &&
         ImageUtils::isCompressed(image.get()) &&
@@ -555,16 +555,16 @@ ImageLayer::createImageInKeyProfile( const TileKey& key, ProgressCallback* progr
     // map profile, we can try this first.
     if ( cacheBin && getCachePolicy().isCacheReadable() )
     {
-        ReadResult r = cacheBin->readImage( key.str() );
+        ReadResult r = cacheBin->readImage( key.str(), getCachePolicy().getMinAcceptTime() );
         if ( r.succeeded() )
-        {            
+        {
             ImageUtils::normalizeImage( r.getImage() );
             return GeoImage( r.releaseImage(), key.getExtent() );
         }
-        else
-        {
-            //OE_INFO << LC << getName() << " : " << key.str() << " cache miss" << std::endl;
-        }
+        //else if ( r.code() == ReadResult::RESULT_EXPIRED )
+        //{
+        //    OE_INFO << LC << getName() << " : " << key.str() << " record expired!" << std::endl;
+        //}
     }
     
     // The data was not in the cache. If we are cache-only, fail sliently

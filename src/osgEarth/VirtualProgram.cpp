@@ -220,6 +220,42 @@ VirtualProgram::applyAttributeAliases(osg::Shader*             shader,
     shader->setShaderSource( src );
 }
 
+void
+VirtualProgram::compileGLObjects(osg::State& state) const
+{
+  Threading::ScopedReadLock shared( _programCacheMutex );
+
+  for (ProgramMap::const_iterator i = _programCache.begin();
+    i != _programCache.end(); ++i)
+  {
+    i->second->compileGLObjects(state);
+  }
+}
+
+void
+VirtualProgram::resizeGLObjectBuffers(unsigned maxSize)
+{
+  Threading::ScopedReadLock shared( _programCacheMutex );
+
+  for (ProgramMap::iterator i = _programCache.begin();
+    i != _programCache.end(); ++i)
+  {
+    i->second->resizeGLObjectBuffers(maxSize);
+  }
+}
+
+void
+VirtualProgram::releaseGLObjects(osg::State* state) const
+{
+  Threading::ScopedReadLock shared( _programCacheMutex );
+
+  for (ProgramMap::const_iterator i = _programCache.begin();
+    i != _programCache.end(); ++i)
+  {
+    i->second->releaseGLObjects(state);
+  }
+}
+
 osg::Shader*
 VirtualProgram::getShader( const std::string& shaderID ) const
 {
@@ -707,7 +743,7 @@ VirtualProgram::apply( osg::State& state ) const
     accumAttribAliases.insert( aliases.begin(), aliases.end() );
 
 
-    if ( accumShaderMap.size() )
+    if ( true ) //even with nothing in the map, we still want mains! -gw  //accumShaderMap.size() )
     {
         // next, assemble a list of the shaders in the map so we can use it as our
         // program cache key.

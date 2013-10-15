@@ -48,7 +48,6 @@ _parent      ( rhs._parent )
     _neighbors._center = rhs._neighbors._center.get();
     for(unsigned i=0; i<8; ++i)
         _neighbors._neighbors[i] = rhs._neighbors._neighbors[i];
-        //_neighbors[i] = rhs._neighbors[i];
 }
 
 bool
@@ -146,6 +145,15 @@ _order       ( rhs._order )
 }
 
 void
+TileModel::ColorData::resizeGLObjectBuffers(unsigned maxSize)
+{
+    if ( _texture.valid() )
+    {
+        _texture->resizeGLObjectBuffers( maxSize );
+    }
+}
+
+void
 TileModel::ColorData::releaseGLObjects(osg::State* state) const
 {
     if ( _texture.valid() && _texture->referenceCount() == 1 )
@@ -157,7 +165,8 @@ TileModel::ColorData::releaseGLObjects(osg::State* state) const
 //------------------------------------------------------------------
 
 TileModel::TileModel(const TileModel& rhs) :
-_map           ( rhs._map.get() ),
+_mapInfo       ( rhs._mapInfo ),
+_revision      ( rhs._revision ),
 _tileKey       ( rhs._tileKey ),
 _tileLocator   ( rhs._tileLocator.get() ),
 _colorData     ( rhs._colorData ),
@@ -178,11 +187,23 @@ TileModel::createQuadrant(unsigned q) const
     // then modify it for the quadrant.
     TileKey childKey = _tileKey.createChildKey( q );
     model->_tileKey = childKey;
-    model->_tileLocator = _tileLocator->createSameTypeForKey( childKey, MapInfo(_map.get()) );
+    model->_tileLocator = _tileLocator->createSameTypeForKey( childKey, _mapInfo );
 
     return model;
 }
 
+bool
+TileModel::hasRealData() const
+{
+    for(ColorDataByUID::const_iterator i = _colorData.begin(); i != _colorData.end(); ++i )
+        if ( !i->second.isFallbackData() )
+            return true;
+
+    if ( hasElevation() && !_elevationData.isFallbackData() )
+        return true;
+
+    return false;
+}
 
 void
 TileModel::setParentTileModel(const TileModel* parent)
@@ -190,6 +211,12 @@ TileModel::setParentTileModel(const TileModel* parent)
     _parentModel = parent;
 }
 
+void
+TileModel::resizeGLObjectBuffers(unsigned maxSize)
+{
+    for(ColorDataByUID::iterator i = _colorData.begin(); i != _colorData.end(); ++i )
+        i->second.resizeGLObjectBuffers( maxSize );
+}
 
 void
 TileModel::releaseGLObjects(osg::State* state) const

@@ -51,7 +51,8 @@ usage( const std::string& msg )
         << "    --expression       ; The expression to run on the feature source, specific to the feature source" << std::endl
         << "    --order-by         ; Sort the features, if not already included in the expression. Append DESC for descending order!" << std::endl
         << "    --crop             ; Crops features instead of doing a centroid check.  Features can be added to multiple tiles when cropping is enabled" << std::endl
-        << "    --dest-srs         ;The destination SRS string in any format osgEarth can understand (wkt, proj4, epsg).  If none is specified the source data SRS will be used" << std::endl
+        << "    --dest-srs         ; The destination SRS string in any format osgEarth can understand (wkt, proj4, epsg).  If none is specified the source data SRS will be used" << std::endl
+        << "    --bounds minx miny maxx maxy ; The bounding box to use as Level 0.  Feature extent will be used by default" << std::endl
         << std::endl;
 
     return -1;
@@ -105,6 +106,17 @@ int main(int argc, char** argv)
 
     std::string destSRS;
     while(arguments.read("--dest-srs", destSRS));
+
+    // Custom bounding box
+    Bounds bounds;
+    double xmin=DBL_MAX, ymin=DBL_MAX, xmax=DBL_MIN, ymax=DBL_MIN;
+    while (arguments.read("--bounds", xmin, ymin, xmax, ymax ))
+    {
+        bounds.xMin() = xmin;
+        bounds.yMin() = ymin;
+        bounds.xMax() = xmax;
+        bounds.yMax() = ymax;
+    }
     
     std::string filename;
 
@@ -114,6 +126,7 @@ int main(int argc, char** argv)
         if (!arguments.isOption(pos))
         {
             filename  = arguments[ pos ];
+            break;
         }
     }
 
@@ -177,6 +190,10 @@ int main(int argc, char** argv)
     packager.setQuery( query );
     packager.setMethod( cropMethod );    
     packager.setDestSRS( destSRS );
+    if (bounds.isValid())
+    {
+        packager.setLod0Extent(GeoExtent(osgEarth::SpatialReference::create( destSRS ), bounds));
+    }
     packager.package( features, destination, layer, description );
     osg::Timer_t endTime = osg::Timer::instance()->tick();
     OE_NOTICE << "Completed in " << osg::Timer::instance()->delta_s( startTime, endTime ) << " s " << std::endl;

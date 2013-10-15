@@ -41,7 +41,7 @@ namespace osgEarth { namespace Drivers
             _normalizeEdges    ( true ),
             _rangeMode         ( osg::LOD::DISTANCE_FROM_EYE_POINT ),
             _tilePixelSize     ( 256 ),
-            _premultAlpha      ( true ),
+            _premultAlpha      ( false ),
             _color             ( Color::White ),
             _incrementalUpdate ( false )
         {

@@ -218,9 +218,6 @@ MPTerrainEngineNode::postInitialize( const Map* map, const TerrainOptions& optio
         // reserve a GPU image unit and two attribute indexes.
         this->getTextureCompositor()->reserveTextureImageUnit( _primaryUnit );
         this->getTextureCompositor()->reserveTextureImageUnit( _secondaryUnit );
-
-        //this->getTextureCompositor()->reserveAttribIndex( _attribIndex1 );
-        //this->getTextureCompositor()->reserveAttribIndex( _attribIndex2 );
     }
 
     // install a layer callback for processing further map actions:

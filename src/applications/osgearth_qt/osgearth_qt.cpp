@@ -43,7 +43,7 @@
 #include <QDockWidget>
 #include <QMainWindow>
 #include <QToolBar>
-#include <QtGui/QApplication>
+#include <QApplication>
 
 #include "DemoMainWindow"
 

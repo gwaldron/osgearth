@@ -40,6 +40,7 @@
 #include <QMetaObject>
 #include <QProgressDialog>
 #include <QToolBar>
+#include <QFileDialog>
 
 #include "SceneController.h"
 #include "TMSExporter.h"

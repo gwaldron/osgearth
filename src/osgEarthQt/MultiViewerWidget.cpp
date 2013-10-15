@@ -26,8 +26,8 @@
 #include <osgViewer/ViewerEventHandlers>
 
 #include <QtCore/QTimer>
-#include <QtGui/QGridLayout>
-#include <QtGui/QWidget>
+#include <QGridLayout>
+#include <QWidget>
 
 using namespace osgEarth;
 using namespace osgEarth::QtGui;

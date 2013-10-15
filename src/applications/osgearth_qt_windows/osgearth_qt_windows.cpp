@@ -27,11 +27,11 @@
 #include <osgViewer/CompositeViewer>
 #include <osgEarthUtil/EarthManipulator>
 #include <osgEarthQt/ViewWidget>
-#include <QtGui/QApplication>
-#include <QtGui/QDialog>
-#include <QtGui/QMainWindow>
-#include <QtGui/QPushButton>
-#include <QtGui/QLayout>
+#include <QApplication>
+#include <QDialog>
+#include <QMainWindow>
+#include <QPushButton>
+#include <QLayout>
 
 #ifdef Q_WS_X11
 #include <X11/Xlib.h>

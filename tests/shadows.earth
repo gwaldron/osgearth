@@ -32,6 +32,8 @@ http://readymap.org
 	</options>
        
     <external>
+	    <sky>
+        </sky>
         <viewpoints>
             <viewpoint name="Mt Rainier" heading="0" height="97.48" lat="46.852" long="-121.759" pitch="-17" range="30000"/>
         </viewpoints>

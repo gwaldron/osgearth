@@ -20,13 +20,13 @@ osgearth_viewer boston_buildings.earth --kml ../data/BostonBuildings.kmz
              
         <features name="buildings" driver="ogr">
             <url>../data/boston_buildings_utm19.shp</url>
+			<profile>spherical-mercator</profile>
             <build_spatial_index>true</build_spatial_index>
         </features>
         
         <layout>
             <tile_size_factor>45</tile_size_factor>
             <level name="default" max_range="20000">
-                <selector class="buildings"/>
             </level>
         </layout>
         
@@ -58,13 +58,6 @@ osgearth_viewer boston_buildings.earth --kml ../data/BostonBuildings.kmz
                 }
             </style>
 			
-						
-		    <!--Exclude certain buildings from being rendered b/c they will be replaced with geospecific buildings -->
-			<selector class="buildings">
-                <query>
-                    <expr><![CDATA[ OBJECTID_1 <> 91506 and OBJECTID_1 <> 12921 and OBJECTID_1 <> 11460 and OBJECTID_1 <> 11474 and OBJECTID_1 <> 11471 and OBJECTID_1 <> 11439 and OBJECTID_1 <> 11432 and  OBJECTID_1 <> 91499 and OBJECTID_1 <> 10878 ]]> </expr>
-                </query>
-            </selector>			
 			
         </styles>
 

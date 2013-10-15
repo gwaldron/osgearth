@@ -32,6 +32,8 @@
 using namespace osgEarth;
 using namespace osgEarth::Drivers;
 
+class WCSCapabilities;
+
 class WCS11Source : public TileSource
 {
 public:
@@ -58,6 +60,65 @@ private:
     osg::ref_ptr<osgDB::Options> _dbOptions;
 
     HTTPRequest createRequest( const TileKey& key ) const;
+
+    osg::ref_ptr< WCSCapabilities > _capabilities;
+};
+
+/**
+*WCS Capabilities
+*/
+class WCSCapabilities : public osg::Referenced
+{
+public:
+    WCSCapabilities();
+
+    /** dtor */
+    virtual ~WCSCapabilities() { }
+
+    /**
+    *Gets the WCS capabilities version
+    */
+    const std::string& getVersion() const {return _version;}
+
+    /**
+    *Sets the WCS capabilities version
+    */
+    void setVersion(const std::string& version) {_version = version;}        
+
+    const std::string& getName() const { return _name; }
+    void setName(const std::string& name) { _name = name; }
+
+    const std::string& getTitle() const { return _title;}
+    void setTitle(const std::string& title) { _title = title;}
+
+    const std::string& getAbstract() const { return _abstract; }
+    void setAbstract( const std::string& abstract) { _abstract = abstract; }
+
+    const std::string& getSupportedCRS() const { return _supportedCRS; }
+    void setSupportedCRS( const std::string& supportedCRS) { _supportedCRS = supportedCRS; }
+
+protected:
+    std::string _version;
+    std::string _name;
+    std::string _title;
+    std::string _abstract;
+    std::string _supportedCRS;
+};
+
+/*
+* Reads Capabilities from a URL or file
+*/
+class WCSCapabilitiesReader
+{
+public:
+    static WCSCapabilities* read( const URI& uri, const osgDB::Options* options );
+    static WCSCapabilities* read( std::istream &in );
+private:
+    WCSCapabilitiesReader(){};
+    WCSCapabilitiesReader(const WCSCapabilitiesReader &cr){};
+
+    /** dtor */
+    virtual ~WCSCapabilitiesReader() { }
 };
 
 #endif // OSGEARTH_WCS_PLUGIN_WCS11SOURCE_H_

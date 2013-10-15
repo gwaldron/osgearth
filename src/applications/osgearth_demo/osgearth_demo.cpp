@@ -25,9 +25,9 @@
 #include <osgEarthQt/ViewerWidget>
 #include <osgEarth/Registry>
 #include <osgEarth/Capabilities>
-#include <QtGui/QApplication>
-#include <QtGui/QMainWindow>
-#include <QtGui/QStatusBar>
+#include <QApplication>
+#include <QMainWindow>
+#include <QStatusBar>
 
 #ifdef Q_WS_X11
 #include <X11/Xlib.h>

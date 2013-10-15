@@ -29,7 +29,7 @@
 #include <osgEarthQt/DataManager>
 #include <osgEarthUtil/EarthManipulator>
 
-#include <QtGui/QApplication>
+#include <QApplication>
 
 #include "PackageQtMainWindow"
 #include "SceneController.h"

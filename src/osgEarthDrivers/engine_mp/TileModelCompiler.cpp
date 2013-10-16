@@ -34,6 +34,7 @@
 #include <osg/GL2Extensions>
 #include <osgUtil/DelaunayTriangulator>
 #include <osgUtil/Optimizer>
+#include <osgUtil/MeshOptimizers>
 
 using namespace osgEarth_engine_mp;
 using namespace osgEarth;
@@ -41,6 +42,8 @@ using namespace osgEarth::Drivers;
 using namespace osgEarth::Symbology;
 
 #define LC "[TileModelCompiler] "
+
+//#define USE_TEXCOORD_CACHE 1
 
 //------------------------------------------------------------------------
 
@@ -361,6 +364,7 @@ namespace
         // array, saving on memory.
         d.renderLayers.reserve( d.model->_colorData.size() );
 
+#ifdef USE_TEXCOORD_CACHE
         // unit tile coords - [0..1] always across the tile.
         osg::Vec4d idmat;
         idmat[0] = 0.0;
@@ -378,6 +382,13 @@ namespace
             d.ownsTileCoords = true;
         }
         d.renderTileCoords = tileCoords.get();
+
+#else // not USE_TEXCOORD_CACHE
+        d.renderTileCoords = new osg::Vec2Array();
+        d.renderTileCoords->reserve( d.numVerticesInSurface );
+        d.ownsTileCoords = true;
+#endif
+
 
         // build a list of "render layers", in rendering order, sharing texture coordinate
         // arrays wherever possible.
@@ -405,6 +416,7 @@ namespace
                     //OE_DEBUG << "key=" << d.model->_tileKey.str() << ": off=[" <<mat[0]<< ", " <<mat[1] << "] scale=["
                     //    << mat[2]<< ", " << mat[3] << "]" << std::endl;
 
+#ifdef USE_TEXCOORD_CACHE
                     osg::ref_ptr<osg::Vec2Array>& surfaceTexCoords = cache._surfaceTexCoordArrays.get( mat, d.numCols, d.numRows );
                     if ( !surfaceTexCoords.valid() )
                     {
@@ -415,6 +427,12 @@ namespace
                         r._ownsTexCoords = true;
                     }
                     r._texCoords = surfaceTexCoords.get();
+
+#else // not USE_TEXCOORD_CACHE
+                    r._texCoords = new osg::Vec2Array();
+                    r._texCoords->reserve( d.numVerticesInSurface );
+                    r._ownsTexCoords = true;
+#endif
 
 #if 0
                     osg::ref_ptr<osg::Vec2Array>& skirtTexCoords = cache._skirtTexCoordArrays.get( mat, d.numCols, d.numRows );
@@ -1889,7 +1907,13 @@ TileModelCompiler::compile(const TileModel* model,
     // convert skirt tristrips to tris.
     if ( d.createSkirt )
     {
+        // converts triangle strips to triangles. In the future we will just
+        // fix the skirt code to build triangles from the start instead.
         MeshConsolidator::convertToTriangles( *d.surface, true );
+
+        // consolidate multiple primitive sets into as few as possible.
+        osgUtil::Optimizer::MergeGeometryVisitor mg;
+        mg.mergeGeode( *d.surfaceGeode );
     }
 
     // convert mask geometry to tris.

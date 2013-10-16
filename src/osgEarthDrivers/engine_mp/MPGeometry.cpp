@@ -43,16 +43,16 @@ _imageUnit       ( imageUnit )
     _tileKeyUniform = new osg::Uniform( osg::Uniform::FLOAT_VEC4, "oe_tile_key" );
     _tileKeyUniform->set( keyValue );
 
-    _opacityUniform = new osg::Uniform( osg::Uniform::FLOAT, "oe_layer_opacity" );
-    _opacityUniform->set( 1.0f );
+    //_opacityUniform = new osg::Uniform( osg::Uniform::FLOAT, "oe_layer_opacity" );
+    //_opacityUniform->set( 1.0f );
 
-    _layerUIDUniform = new osg::Uniform( osg::Uniform::INT, "oe_layer_uid" );
-    _layerUIDUniform->set( 0 );
+    //_layerUIDUniform = new osg::Uniform( osg::Uniform::INT, "oe_layer_uid" );
+    //_layerUIDUniform->set( 0 );
 
-    _layerOrderUniform = new osg::Uniform( osg::Uniform::INT, "oe_layer_order" );
-    _layerOrderUniform->set( 0 );
+    //_layerOrderUniform = new osg::Uniform( osg::Uniform::INT, "oe_layer_order" );
+    //_layerOrderUniform->set( 0 );
 
-    _texMatParentUniform = new osg::Uniform(osg::Uniform::FLOAT_MAT4, "oe_layer_parent_matrix");
+    //_texMatParentUniform = new osg::Uniform(osg::Uniform::FLOAT_MAT4, "oe_layer_parent_matrix");
 
     _imageUnitParent = _imageUnit + 1; // temp
 
@@ -95,6 +95,7 @@ MPGeometry::renderPrimitiveSets(osg::State& state,
     unsigned layersDrawn = 0;
 
 
+    // access the GL extensions interface for the current GC:
     osg::ref_ptr<osg::GL2Extensions> ext = osg::GL2Extensions::Get( state.getContextID(), true );
     const osg::Program::PerContextProgram* pcp = state.getLastAppliedProgramObject();
 
@@ -106,15 +107,26 @@ MPGeometry::renderPrimitiveSets(osg::State& state,
     GLint orderLocation;
     GLint texMatParentLocation;
 
+    // access the uniforms for this GC, creating them if necessary.
+    PerGC& pgc = _perGC[ state.getContextID() ];
+    if ( !pgc._layerOrderUniform.valid() )
+    {
+        pgc._layerOrderUniform = new osg::Uniform( osg::Uniform::INT, "oe_layer_order" );
+        pgc._layerUIDUniform = new osg::Uniform( osg::Uniform::INT, "oe_layer_uid" );
+        pgc._opacityUniform = new osg::Uniform( osg::Uniform::FLOAT, "oe_layer_opacity" );
+        pgc._opacityUniform->set( 0.0f );
+        pgc._texMatParentUniform = new osg::Uniform(osg::Uniform::FLOAT_MAT4, "oe_layer_parent_matrix");
+    }
+
     // The PCP can change (especially in a VirtualProgram environment). So we do need to
     // requery the uni locations each time. TODO: consider optimizations.
     if ( pcp )
     {
         tileKeyLocation      = pcp->getUniformLocation( _tileKeyUniform->getNameID() );
-        opacityLocation      = pcp->getUniformLocation( _opacityUniform->getNameID() );
-        uidLocation          = pcp->getUniformLocation( _layerUIDUniform->getNameID() );
-        orderLocation        = pcp->getUniformLocation( _layerOrderUniform->getNameID() );
-        texMatParentLocation = pcp->getUniformLocation( _texMatParentUniform->getNameID() );
+        opacityLocation      = pcp->getUniformLocation( pgc._opacityUniform->getNameID() );
+        uidLocation          = pcp->getUniformLocation( pgc._layerUIDUniform->getNameID() );
+        orderLocation        = pcp->getUniformLocation( pgc._layerOrderUniform->getNameID() );
+        texMatParentLocation = pcp->getUniformLocation( pgc._texMatParentUniform->getNameID() );
     }
     
     // apply the tilekey uniform once.
@@ -194,24 +206,24 @@ MPGeometry::renderPrimitiveSets(osg::State& state,
                     float opacity = layer._imageLayer->getOpacity();
                     if ( opacity != prev_opacity )
                     {
-                        _opacityUniform->set( opacity );
-                        _opacityUniform->apply( ext, opacityLocation );
+                        pgc._opacityUniform->set( opacity );
+                        pgc._opacityUniform->apply( ext, opacityLocation );
                         prev_opacity = opacity;
                     }
 
                     // assign the layer UID:
-                    _layerUIDUniform->set( layer._layerID );
-                    _layerUIDUniform->apply( ext, uidLocation );
+                    pgc._layerUIDUniform->set( layer._layerID );
+                    pgc._layerUIDUniform->apply( ext, uidLocation );
 
                     // assign the layer order:
-                    _layerOrderUniform->set( (int)layersDrawn );
-                    _layerOrderUniform->apply( ext, orderLocation );
+                    pgc._layerOrderUniform->set( (int)layersDrawn );
+                    pgc._layerOrderUniform->apply( ext, orderLocation );
 
                     // assign the parent texture matrix
                     if ( layer._texParent.valid() )
                     {
-                        _texMatParentUniform->set( layer._texMatParent );
-                        _texMatParentUniform->apply( ext, texMatParentLocation );
+                        pgc._texMatParentUniform->set( layer._texMatParent );
+                        pgc._texMatParentUniform->apply( ext, texMatParentLocation );
                     }
                 }
 
@@ -234,14 +246,14 @@ MPGeometry::renderPrimitiveSets(osg::State& state,
     // if we didn't draw anything, draw the raw tiles anyway with no texture.
     if ( layersDrawn == 0 )
     {
-        _opacityUniform->set( 1.0f );
-        _opacityUniform->apply( ext, opacityLocation );
+        pgc._opacityUniform->set( 1.0f );
+        pgc._opacityUniform->apply( ext, opacityLocation );
 
-        _layerUIDUniform->set( (int)-1 ); // indicates a non-textured layer
-        _layerUIDUniform->apply( ext, uidLocation );
+        pgc._layerUIDUniform->set( (int)-1 ); // indicates a non-textured layer
+        pgc._layerUIDUniform->apply( ext, uidLocation );
 
-        _layerOrderUniform->set( (int)0 );
-        _layerOrderUniform->apply( ext, orderLocation );
+        pgc._layerOrderUniform->set( (int)0 );
+        pgc._layerOrderUniform->apply( ext, orderLocation );
 
         // draw the primitives themselves.
         for(unsigned int primitiveSetNum=0; primitiveSetNum!=_primitives.size(); ++primitiveSetNum)

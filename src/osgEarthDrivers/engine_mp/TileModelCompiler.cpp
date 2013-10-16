@@ -1788,9 +1788,13 @@ namespace
             // between the two locators.
             if ( r->_layerParent.getLocator() )
             {
+                osg::Matrixd sbmatrix;
+
                 r->_layerParent.getLocator()->createScaleBiasMatrix(
                     r->_layer.getLocator()->getDataExtent(),
-                    layer._texMatParent );
+                    sbmatrix );
+
+                layer._texMatParent = sbmatrix;
             }
 
             // the surface:

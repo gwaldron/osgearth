@@ -51,7 +51,7 @@ namespace osgEarth_engine_mp
             osg::ref_ptr<osg::Vec2Array>   _texCoords;
             osg::ref_ptr<osg::Vec2Array>   _tileCoords;
             osg::ref_ptr<osg::Texture>     _texParent;
-            osg::Matrixd                   _texMatParent;
+            osg::Matrixf                   _texMatParent; // yes, must be a float matrix
             float                          _alphaThreshold;
 
             // in support of std::find
@@ -61,27 +61,23 @@ namespace osgEarth_engine_mp
         };
 
     public:
-        mutable MapFrame                     _frame;
-        mutable std::vector<Layer>           _layers;
-        mutable Threading::Mutex             _frameSyncMutex;
+        mutable MapFrame           _frame;
+        mutable std::vector<Layer> _layers;
+        mutable Threading::Mutex   _frameSyncMutex;
 
-        // unis that need to be maintained separately for each GC, since we
-        // write to them. Probably can replace this with straight glUniform calls
-        // in the future
-        struct PerGC {
-            mutable osg::ref_ptr<osg::Uniform>   _layerUIDUniform;
-            mutable osg::ref_ptr<osg::Uniform>   _layerOrderUniform;
-            mutable osg::ref_ptr<osg::Uniform>   _opacityUniform;
-            mutable osg::ref_ptr<osg::Uniform>   _texMatParentUniform; // texture matrix for parent texture
-        };
-        mutable osg::buffered_object<PerGC> _perGC;
+        // uniform name IDs.
+        unsigned _uidUniformNameID;
+        unsigned _orderUniformNameID;
+        unsigned _opacityUniformNameID;
+        unsigned _texMatParentUniformNameID;
+        unsigned _tileKeyUniformNameID;
 
-        osg::ref_ptr<osg::Uniform>   _tileKeyUniform;
+        mutable osg::Vec4f _tileKeyValue;
 
-        int                                  _imageUnit;          // image unit for primary texture
-        osg::ref_ptr<osg::Vec2Array>         _tileCoords;         // [0..1] unified tile coordinates
+        osg::ref_ptr<osg::Vec2Array> _tileCoords; // [0..1] unified tile coordinates
 
-        int                                  _imageUnitParent;     // image unit for secondary (parent) texture
+        int _imageUnit;          // image unit for primary texture
+        int _imageUnitParent;    // image unit for secondary (parent) texture
 
     public:
         

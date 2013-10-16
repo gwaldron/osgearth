@@ -18,6 +18,7 @@
  */
 #include <osgEarthFeatures/BuildGeometryFilter>
 #include <osgEarthFeatures/FeatureSourceIndexNode>
+#include <osgEarthFeatures/PolygonizeLines>
 #include <osgEarthSymbology/TextSymbol>
 #include <osgEarthSymbology/PointSymbol>
 #include <osgEarthSymbology/LineSymbol>
@@ -147,7 +148,7 @@ BuildGeometryFilter::process( FeatureList& features, const FilterContext& contex
                 pointSymbol ? osg::Vec4f(pointSymbol->fill()->color()) :
                 osg::Vec4f(1,1,1,1);
             
-            osg::Geometry* osgGeom = new osg::Geometry();
+            osg::ref_ptr<osg::Geometry> osgGeom = new osg::Geometry();
             osgGeom->setUseVertexBufferObjects( _useVertexBufferObjects.value() );
 
             if ( _featureNameExpr.isSet() )
@@ -162,7 +163,7 @@ BuildGeometryFilter::process( FeatureList& features, const FilterContext& contex
             if ( renderType == Geometry::TYPE_POLYGON )
             {
                 buildPolygon(part, featureSRS, mapSRS, makeECEF, true, osgGeom);
-                allPoints = static_cast<osg::Vec3Array*>( osgGeom->getVertexArray() );
+                //allPoints = static_cast<osg::Vec3Array*>( osgGeom->getVertexArray() );
             }
             else
             {
@@ -171,15 +172,25 @@ BuildGeometryFilter::process( FeatureList& features, const FilterContext& contex
                     renderType == Geometry::TYPE_LINESTRING ? GL_LINE_STRIP :
                     renderType == Geometry::TYPE_RING       ? GL_LINE_LOOP :
                     GL_POINTS;
+
                 allPoints = new osg::Vec3Array();
                 transformAndLocalize( part->asVector(), featureSRS, allPoints, mapSRS, _world2local, makeECEF );
-                osgGeom->addPrimitiveSet( new osg::DrawArrays( primMode, 0, part->size() ) );
-                osgGeom->setVertexArray( allPoints );
 
-                if ( lineSymbol )
-                    applyLineSymbology( osgGeom->getOrCreateStateSet(), lineSymbol );
-                if ( pointSymbol )
-                    applyPointSymbology( osgGeom->getOrCreateStateSet(), pointSymbol );
+                if ( lineSymbol && lineSymbol->stroke()->widthUnits() != Units::PIXELS )
+                {
+                    PolygonizeLinesOperator plo( *lineSymbol->stroke() );
+                    osgGeom = plo( allPoints, 0L );
+                }
+                else
+                {
+                    osgGeom->addPrimitiveSet( new osg::DrawArrays( primMode, 0, allPoints->getNumElements() ) );
+                    osgGeom->setVertexArray( allPoints );
+
+                    if ( lineSymbol )
+                        applyLineSymbology( osgGeom->getOrCreateStateSet(), lineSymbol );
+                    if ( pointSymbol )
+                        applyPointSymbology( osgGeom->getOrCreateStateSet(), pointSymbol );
+                }
 
                 if ( primMode == GL_POINTS && allPoints->size() == 1 )
                 {
@@ -188,6 +199,7 @@ BuildGeometryFilter::process( FeatureList& features, const FilterContext& contex
                 }
             }
 
+            allPoints = static_cast<osg::Vec3Array*>(osgGeom->getVertexArray());
             if (allPoints->getVertexBufferObject())
                 allPoints->getVertexBufferObject()->setUsage(GL_STATIC_DRAW_ARB);
             
@@ -212,8 +224,6 @@ BuildGeometryFilter::process( FeatureList& features, const FilterContext& contex
                 }
             }
 
-
-
             // assign the primary color:
 #if USE_SINGLE_COLOR            
             osg::Vec4Array* colors = new osg::Vec4Array( 1 );
@@ -222,14 +232,11 @@ BuildGeometryFilter::process( FeatureList& features, const FilterContext& contex
             osgGeom->setColorBinding( osg::Geometry::BIND_OVERALL );
 #else
 
-            osg::Vec4Array* colors = new osg::Vec4Array( osgGeom->getVertexArray()->getNumElements() ); //allPoints->size() );
-            for(unsigned c=0; c<colors->size(); ++c)
-                (*colors)[c] = primaryColor;            
+            osg::Vec4Array* colors = new osg::Vec4Array;
+            colors->assign( osgGeom->getVertexArray()->getNumElements(), primaryColor );
             osgGeom->setColorArray( colors );
             osgGeom->setColorBinding( osg::Geometry::BIND_PER_VERTEX );
 #endif
-            
-            
 
             _geode->addDrawable( osgGeom );
 
@@ -237,35 +244,20 @@ BuildGeometryFilter::process( FeatureList& features, const FilterContext& contex
             if ( context.featureIndex() )
                 context.featureIndex()->tagPrimitiveSets( osgGeom, input );
 
+#if 0
             // build secondary geometry, if necessary (polygon outlines)
             if ( renderType == Geometry::TYPE_POLYGON && lineSymbol )
             {
                 // polygon offset on the poly so the outline doesn't z-fight
                 osgGeom->getOrCreateStateSet()->setAttributeAndModes( new osg::PolygonOffset(1,1), 1 );
 
-                osg::Geometry* outline = new osg::Geometry();
+                osg::ref_ptr<osg::Geometry> outline = new osg::Geometry();
                 outline->setUseVertexBufferObjects( _useVertexBufferObjects.value() );
 
                 buildPolygon(part, featureSRS, mapSRS, makeECEF, false, outline);
 
                 if ( outline->getVertexArray()->getVertexBufferObject() )
-                    outline->getVertexArray()->getVertexBufferObject()->setUsage(GL_STATIC_DRAW_ARB);                
-                
-                osg::Vec4f outlineColor = lineSymbol->stroke()->color();                
-
-                osg::Vec4Array* outlineColors = new osg::Vec4Array();   
-                outline->setColorArray(outlineColors);
-#if USE_SINGLE_COLOR
-                outlineColors->reserve(1);
-                outlineColors->push_back( outlineColor );
-                outline->setColorBinding( osg::Geometry::BIND_OVERALL );
-#else
-                unsigned pcount = part->getTotalPointCount();                
-                outlineColors->reserve( pcount );
-                for( unsigned c=0; c < pcount; ++c )
-                    outlineColors->push_back( outlineColor );
-                outline->setColorBinding( osg::Geometry::BIND_PER_VERTEX );                
-#endif                
+                    outline->getVertexArray()->getVertexBufferObject()->setUsage(GL_STATIC_DRAW_ARB);    
 
                 // check for explicit tessellation disable:                
                 bool disableTess = lineSymbol && lineSymbol->tessellation().isSetTo(0);
@@ -282,6 +274,26 @@ BuildGeometryFilter::process( FeatureList& features, const FilterContext& contex
                         ms.run( *outline, threshold, *_geoInterp );
                 }
 
+                // if the line uses a non-pixel width, polygonize it.
+                if ( lineSymbol->stroke()->widthUnits() != Units::PIXELS )
+                {
+                    PolygonizeLinesOperator polygonize( *lineSymbol->stroke() );
+                    outline = polygonize( dynamic_cast<osg::Vec3Array*>(outline->getVertexArray()), 0L );
+                }
+                
+                osg::Vec4f outlineColor = lineSymbol->stroke()->color();
+                osg::Vec4Array* outlineColors = new osg::Vec4Array();   
+                outline->setColorArray(outlineColors);
+#if USE_SINGLE_COLOR
+                outlineColors->reserve(1);
+                outlineColors->push_back( outlineColor );
+                outline->setColorBinding( osg::Geometry::BIND_OVERALL );
+#else
+                unsigned pcount = outline->getVertexArray()->getNumElements();           
+                outlineColors->assign( pcount, outlineColor );
+                outline->setColorBinding( osg::Geometry::BIND_PER_VERTEX );                
+#endif                
+
                 if ( lineSymbol )
                     applyLineSymbology( osgGeom->getOrCreateStateSet(), lineSymbol );
 
@@ -295,7 +307,7 @@ BuildGeometryFilter::process( FeatureList& features, const FilterContext& contex
                 if ( context.featureIndex() )
                     context.featureIndex()->tagPrimitiveSets( outline, input );
             }
-
+#endif
         }
     }
     
@@ -345,7 +357,6 @@ BuildGeometryFilter::buildPolygon(Geometry*               ring,
         osgUtil::Tessellator tess;
         tess.setTessellationType( osgUtil::Tessellator::TESS_TYPE_GEOMETRY );
         tess.setWindingType( osgUtil::Tessellator::TESS_WINDING_POSITIVE );
-        //tess.setBoundaryOnly( true );
         tess.retessellatePolygons( *osgGeom );
     }
 
@@ -382,7 +393,27 @@ BuildGeometryFilter::push( FeatureList& input, FilterContext& context )
 
     computeLocalizers( context );
 
-    bool ok = process( input, context );
+    const LineSymbol*    line = _style.get<LineSymbol>();
+    const PolygonSymbol* poly = _style.get<PolygonSymbol>();
+
+    bool ok;
+    if ( poly && line )
+    {
+        Style save(_style);
+        _style.remove<LineSymbol>();
+        ok = process( input, context );
+
+        _style = save;
+        _style.remove<PolygonSymbol>();
+        save.remove<PolygonSymbol>();
+        ok = process( input, context );
+
+        _style = save;
+    }
+    else
+    {
+        ok = process( input, context );
+    }
 
     // convert all geom to triangles and consolidate into minimal set of Geometries
     if ( !_featureNameExpr.isSet() )

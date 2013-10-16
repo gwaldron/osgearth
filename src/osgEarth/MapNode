@@ -216,9 +216,6 @@ namespace osgEarth
 		void onModelLayerMoved( ModelLayer* layer, unsigned int oldIndex, unsigned int newIndex );
 
     public:
-        void onModelLayerOverlayChanged( ModelLayer* layer );
-
-    public:
         struct TileRangeData : public osg::Referenced {
             TileRangeData(double minRange, double maxRange) : _minRange( minRange ), _maxRange( maxRange ) { }
             double _minRange;
@@ -227,7 +224,6 @@ namespace osgEarth
 
     private:
 
-        osg::ref_ptr< ModelLayerCallback > _modelLayerCallback;
         osg::ref_ptr< MapCallback >        _mapCallback;
     
         void init();

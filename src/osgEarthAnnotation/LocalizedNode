@@ -101,11 +101,13 @@ namespace osgEarth { namespace Annotation
         void setHorizonCulling( bool value );
         bool getHorizonCulling() const;
 
+    public: // AnnotationNode
+
+        virtual Config getConfig() const;
 
     public: // osg::Node
 
         virtual osg::BoundingSphere computeBound() const;
-
 
     protected:
 

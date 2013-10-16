@@ -249,10 +249,6 @@ ExtrudeGeometryFilter::extrudeGeometry(const Geometry*         input,
         colors->assign( numWallVerts, wallColor );
         walls->setColorArray( colors );
         walls->setColorBinding( osg::Geometry::BIND_PER_VERTEX );
-        //osg::Vec4Array* colors = new osg::Vec4Array( 1 );
-        //(*colors)[0] = wallColor;
-        //walls->setColorArray( colors );
-        //walls->setColorBinding( osg::Geometry::BIND_OVERALL );
     }
 
     // set up rooftop tessellation and texturing, if necessary:
@@ -277,11 +273,6 @@ ExtrudeGeometryFilter::extrudeGeometry(const Geometry*         input,
             roofColors->assign( pointCount, roofColor );
             roof->setColorArray( roofColors );
             roof->setColorBinding( osg::Geometry::BIND_PER_VERTEX );
-
-            //osg::Vec4Array* roofColors = new osg::Vec4Array( 1 );
-            //(*roofColors)[0] = roofColor;
-            //roof->setColorArray( roofColors );
-            //roof->setColorBinding( osg::Geometry::BIND_OVERALL );
         }
 
         if ( roofSkin )
@@ -465,13 +456,8 @@ ExtrudeGeometryFilter::extrudeGeometry(const Geometry*         input,
                 float v = (sinR*xr + cosR*yr) / roofTexSpanY;
 
                 (*roofTexcoords)[roofVertPtr].set( u, v );
-            }            
+            }
 
-            //if ( makeECEF )
-            //{
-            //    ECEF::transformAndLocalize( basePt, srs, basePt, _world2local );
-            //    ECEF::transformAndLocalize( roofPt, srs, roofPt, _world2local );
-            //}
             transformAndLocalize( basePt, srs, basePt, mapSRS, _world2local, makeECEF );
             transformAndLocalize( roofPt, srs, roofPt, mapSRS, _world2local, makeECEF );
 
@@ -602,7 +588,6 @@ ExtrudeGeometryFilter::extrudeGeometry(const Geometry*         input,
             unsigned len = baseVertPtr - basePartPtr;
 
             GLenum roofLineMode = isPolygon ? GL_LINE_LOOP : GL_LINE_STRIP;
-            //osg::DrawElementsUShort* roofLine = new osg::DrawElementsUShort( roofLineMode );
             osg::DrawElementsUInt* roofLine = new osg::DrawElementsUInt( roofLineMode );
             roofLine->reserveElements( len );
             for( unsigned i=0; i<len; ++i )
@@ -614,7 +599,6 @@ ExtrudeGeometryFilter::extrudeGeometry(const Geometry*         input,
             unsigned step = std::max( 1u, 
                 _outlineSymbol->tessellation().isSet() ? *_outlineSymbol->tessellation() : 1u );
 
-            //osg::DrawElementsUShort* wallLines = new osg::DrawElementsUShort( GL_LINES );
             osg::DrawElementsUInt* wallLines = new osg::DrawElementsUInt( GL_LINES );
             wallLines->reserve( len*2 );
             for( unsigned i=0; i<len; i+=step )
@@ -822,13 +806,6 @@ ExtrudeGeometryFilter::process( FeatureList& features, FilterContext& context )
                     // TODO do this manually; probably faster
                     if ( !_makeStencilVolume )
                         osgUtil::SmoothingVisitor::smooth( *rooflines.get() );
-
-                    // texture the rooflines if necessary
-                    //applyOverlayTexturing( rooflines.get(), input, env );
-
-                    // mark this geometry as DYNAMIC because otherwise the OSG optimizer will destroy it.
-                    // TODO: why??
-                    //rooflines->setDataVariance( osg::Object::DYNAMIC );
 
                     if ( roofSkin )
                     {

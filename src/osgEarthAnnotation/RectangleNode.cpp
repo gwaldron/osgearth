@@ -378,20 +378,18 @@ LocalizedNode( mapNode, conf )
     conf.getObjIfSet( "height", _height );
     conf.getObjIfSet( "style",  _style );
 
-    if ( conf.hasChild("position") )
-        setPosition( GeoPoint(conf.child("position")) );
-
     rebuild();
 }
 
 Config
 RectangleNode::getConfig() const
 {
-    Config conf( "rectangle" );
+    Config conf = LocalizedNode::getConfig();
+    conf.key() = "rectangle";
+
     conf.addObj( "width",  _width );
     conf.addObj( "height", _height );
     conf.addObj( "style",  _style );
-    conf.addObj( "position", getPosition() );
 
     return conf;
 }

@@ -40,18 +40,6 @@ using namespace osgEarth::Util;
 
 namespace
 {
-    MapNode* findMapNode(osg::Group* node)
-    {
-        return findTopMostNodeOfType<MapNode>(node);
-    }
-
-    osgShadow::ViewDependentShadowMap*
-        getTechniqueAsVdsm(osgShadow::ShadowedScene* sscene)
-    {
-        osgShadow::ShadowTechnique* st = sscene->getShadowTechnique();
-        return dynamic_cast<osgShadow::ViewDependentShadowMap*>(st);
-    }
-
     bool setShadowUnit(osgShadow::ShadowedScene* sscene, int unit)
     {
         osgShadow::ShadowTechnique* st = sscene->getShadowTechnique();
@@ -67,8 +55,7 @@ namespace
             }
             else
             {
-                osgShadow::ViewDependentShadowMap* vdsm
-                    = getTechniqueAsVdsm(sscene);
+                osgShadow::ViewDependentShadowMap* vdsm = dynamic_cast< osgShadow::ViewDependentShadowMap*>( st );
                 if (vdsm)
                 {
                     sscene->getShadowSettings()
@@ -88,7 +75,7 @@ ShadowUtils::setUpShadows(osgShadow::ShadowedScene* sscene, osg::Group* root)
 {
     osg::StateSet* ssStateSet = sscene->getOrCreateStateSet();
 
-    MapNode* mapNode = findMapNode(root);
+    MapNode* mapNode = MapNode::findMapNode(root);
     TerrainEngineNode* engine = mapNode->getTerrainEngine();
     if (!engine)
         return false;
@@ -100,7 +87,7 @@ ShadowUtils::setUpShadows(osgShadow::ShadowedScene* sscene, osg::Group* root)
 
     OE_INFO << LC << "Reserved texture unit " << su << " for shadowing" << std::endl;
 
-    osgShadow::ViewDependentShadowMap* vdsm = getTechniqueAsVdsm(sscene);
+    osgShadow::ViewDependentShadowMap* vdsm =  dynamic_cast< osgShadow::ViewDependentShadowMap*>(sscene->getShadowTechnique());
     int su1 = -1;
     if (vdsm && sscene->getShadowSettings()->getNumShadowMapsPerLight() == 2)
     {

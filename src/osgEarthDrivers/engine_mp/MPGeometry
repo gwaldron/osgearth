@@ -16,8 +16,8 @@
 * You should have received a copy of the GNU Lesser General Public License
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
-#ifndef OSGEARTH_ENGINE_MP_CUSTOM_PAGED_LOD
-#define OSGEARTH_ENGINE_MP_CUSTOM_PAGED_LOD 1
+#ifndef OSGEARTH_ENGINE_MP_MPGEOMETRY
+#define OSGEARTH_ENGINE_MP_MPGEOMETRY 1
 
 #include "Common"
 #include "TileNode"
@@ -120,4 +120,4 @@ namespace osgEarth_engine_mp
 
 } // namespace osgEarth_engine_mp
 
-#endif // OSGEARTH_ENGINE_MP_CUSTOM_PAGED_LOD
+#endif // OSGEARTH_ENGINE_MP_MPGEOMETRY

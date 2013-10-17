@@ -415,8 +415,7 @@ MPTerrainEngineNode::getKeyNodeFactory()
             compiler,
             _liveTiles.get(),
             _deadTiles.get(),
-            _terrainOptions, 
-            //MapInfo( getMap() ),
+            _terrainOptions,
             _terrain, 
             _uid );
     }

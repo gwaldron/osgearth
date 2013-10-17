@@ -230,15 +230,6 @@ MPGeometry::renderPrimitiveSets(osg::State& state,
         ext->glUniform1i( uidLocation, (GLint)-1 );
         ext->glUniform1i( orderLocation, (GLint)0 );
 
-        //pgc._opacityUniform->set( 1.0f );
-        //pgc._opacityUniform->apply( ext, opacityLocation );
-
-        //pgc._layerUIDUniform->set( (int)-1 ); // indicates a non-textured layer
-        //pgc._layerUIDUniform->apply( ext, uidLocation );
-
-        //pgc._layerOrderUniform->set( (int)0 );
-        //pgc._layerOrderUniform->apply( ext, orderLocation );
-
         // draw the primitives themselves.
         for(unsigned int primitiveSetNum=0; primitiveSetNum!=_primitives.size(); ++primitiveSetNum)
         {

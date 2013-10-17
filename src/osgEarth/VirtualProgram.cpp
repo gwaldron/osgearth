@@ -47,6 +47,7 @@ using namespace osgEarth::ShaderComp;
 namespace
 {
 #ifdef OSG_GLES2_AVAILABLE
+    // GLES requires all shader code be merged into a since source
     bool s_mergeShaders = true;
 #else
     bool s_mergeShaders = false;
@@ -54,8 +55,10 @@ namespace
 
     bool s_dumpShaders = false;        // debugging
 
-    /** A hack for OSG 2.8.x to get access to the state attribute vector. */
-    /** TODO: no longer needed in OSG 3+ ?? */
+    /** A device that lets us do a const search on the State's attribute map. OSG does not yet
+        have a const way to do this. It has getAttributeVec() but that is non-const (it creates
+        the vector if it doesn't exist); Newer versions have getAttributeMap(), but that does not
+        go back to OSG 3.0. */
     class StateHack : public osg::State 
     {
     public:        
@@ -191,6 +194,8 @@ VirtualProgram::compare(const osg::StateAttribute& sa) const
 void
 VirtualProgram::addBindAttribLocation( const std::string& name, GLuint index )
 {
+    Threading::ScopedReadLock shared( _programCacheMutex );
+
 #ifdef USE_ATTRIB_ALIASES
     _attribAliases[name] = Stringify() << "oe_attrib_" << index;
     _attribBindingList[_attribAliases[name]] = index;
@@ -202,9 +207,15 @@ VirtualProgram::addBindAttribLocation( const std::string& name, GLuint index )
 void
 VirtualProgram::removeBindAttribLocation( const std::string& name )
 {
+    Threading::ScopedReadLock shared( _programCacheMutex );
+
+#ifdef USE_ATTRIB_ALIASES
     std::map<std::string,std::string>::iterator i = _attribAliases.find(name);
     if ( i != _attribAliases.end() )
         _attribBindingList.erase(i->second);
+#else
+    _attribBindingList.erase(name);
+#endif
 }
 
 void
@@ -419,9 +430,14 @@ VirtualProgram::setInheritShaders( bool value )
     if ( _inherit != value || !_inheritSet )
     {
         _inherit = value;
-        // not particularly thread safe if called after use.. meh
-        _programCache.clear();
-        _accumulatedFunctions.clear();
+        {
+            Threading::ScopedWriteLock excl(_programCacheMutex);
+            _programCache.clear();
+        }
+        {
+            Threading::ScopedMutexLock excl(_functionsMutex);
+            _accumulatedFunctions.clear();
+        }
         _inheritSet = true;
     }
 }
@@ -730,7 +746,7 @@ VirtualProgram::apply( osg::State& state ) const
             }
         }
     }
-    
+
     // next add the local shader components to the map, respecting the override values:
     for( ShaderMap::const_iterator i = _shaderMap.begin(); i != _shaderMap.end(); ++i )
     {
@@ -760,7 +776,7 @@ VirtualProgram::apply( osg::State& state ) const
         }
         
         // see if there's already a program associated with this list:
-        osg::Program* program = 0L;
+        osg::ref_ptr<osg::Program> program;
         
         // look up the program:
         {
@@ -774,11 +790,11 @@ VirtualProgram::apply( osg::State& state ) const
         }
         
         // if not found, lock and build it:
-        if ( !program )
+        if ( !program.valid() )
         {
             Threading::ScopedWriteLock exclusive( _programCacheMutex );
             
-            // look again in case of contention:
+            // double-check: look again ito negate race conditions
             ProgramMap::const_iterator p = _programCache.find( vec );
             if ( p != _programCache.end() )
             {
@@ -792,14 +808,18 @@ VirtualProgram::apply( osg::State& state ) const
         }
         
         // finally, apply the program attribute.
-        program->apply( state );
+        if ( program.valid() )
+        {
+            program->apply( state );
+        }
     }
 }
 
 void
 VirtualProgram::getFunctions( FunctionLocationMap& out ) const
 {
-    Threading::ScopedMutexLock lock( const_cast<VirtualProgram*>(this)->_functionsMutex );
+    // make a safe copy of the functions map.
+    Threading::ScopedMutexLock lock( _functionsMutex );
     out = _functions;
 }
 
@@ -809,10 +829,7 @@ VirtualProgram::refreshAccumulatedFunctions( const osg::State& state )
     // This method searches the state's attribute stack and accumulates all 
     // the user functions (including those in this program).
 
-    // mutex no longer required since this method is called safely
-    //Threading::ScopedMutexLock lock( _functionsMutex );
-
-    _accumulatedFunctions.clear();
+    FunctionLocationMap newFunctions;
 
     if ( _inherit )
     {
@@ -840,7 +857,7 @@ VirtualProgram::refreshAccumulatedFunctions( const osg::State& state )
                     for( FunctionLocationMap::const_iterator j = rhs.begin(); j != rhs.end(); ++j )
                     {
                         const OrderedFunctionMap& source = j->second;
-                        OrderedFunctionMap&       dest   = _accumulatedFunctions[j->first];
+                        OrderedFunctionMap&       dest   = newFunctions[j->first];
 
                         for( OrderedFunctionMap::const_iterator k = source.begin(); k != source.end(); ++k )
                         {
@@ -854,7 +871,6 @@ VirtualProgram::refreshAccumulatedFunctions( const osg::State& state )
                                 }
                             }
                             dest.insert( *k );
-                            //_accumulatedFunctions[j->first].insert( *k );
                         }
                     }
                 }
@@ -866,7 +882,7 @@ VirtualProgram::refreshAccumulatedFunctions( const osg::State& state )
     for( FunctionLocationMap::const_iterator j = _functions.begin(); j != _functions.end(); ++j )
     {
         const OrderedFunctionMap& source = j->second;
-        OrderedFunctionMap&       dest   = _accumulatedFunctions[j->first];
+        OrderedFunctionMap&       dest   = newFunctions[j->first];
 
         for( OrderedFunctionMap::const_iterator k = source.begin(); k != source.end(); ++k )
         {
@@ -880,7 +896,12 @@ VirtualProgram::refreshAccumulatedFunctions( const osg::State& state )
                 }
             }
             dest.insert( *k );
-            //_accumulatedFunctions[j->first].insert( *k );
         }
-    } 
+    }
+
+    // swap it in.
+    {
+        Threading::ScopedMutexLock exclusive(_functionsMutex);
+        _accumulatedFunctions.swap( newFunctions );
+    }
 }

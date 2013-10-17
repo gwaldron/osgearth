@@ -209,9 +209,13 @@ namespace osgEarth
         ShaderComp::FunctionLocationMap _functions;
         ShaderComp::FunctionLocationMap _accumulatedFunctions;
 
-        Threading::Mutex _functionsMutex;
+        // protects access to the _functions map, which may be accessed by other VPs in the state stack.
+        mutable Threading::Mutex _functionsMutex;
+
         bool _inherit;
         bool _inheritSet;
+
+        // protects access to the _programCache map.
         mutable Threading::ReadWriteMutex _programCacheMutex;
 
         bool hasLocalFunctions() const;

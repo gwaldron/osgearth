@@ -746,7 +746,7 @@ VirtualProgram::apply( osg::State& state ) const
             }
         }
     }
-    
+
     // next add the local shader components to the map, respecting the override values:
     for( ShaderMap::const_iterator i = _shaderMap.begin(); i != _shaderMap.end(); ++i )
     {
@@ -776,7 +776,7 @@ VirtualProgram::apply( osg::State& state ) const
         }
         
         // see if there's already a program associated with this list:
-        osg::Program* program = 0L;
+        osg::ref_ptr<osg::Program> program;
         
         // look up the program:
         {
@@ -790,7 +790,7 @@ VirtualProgram::apply( osg::State& state ) const
         }
         
         // if not found, lock and build it:
-        if ( !program )
+        if ( !program.valid() )
         {
             Threading::ScopedWriteLock exclusive( _programCacheMutex );
             
@@ -808,7 +808,10 @@ VirtualProgram::apply( osg::State& state ) const
         }
         
         // finally, apply the program attribute.
-        program->apply( state );
+        if ( program.valid() )
+        {
+            program->apply( state );
+        }
     }
 }
 

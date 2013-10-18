@@ -231,6 +231,7 @@ namespace osgEarth { namespace Util { namespace Controls
 
         void setVisible( bool value );
         const bool visible() const { return _visible; }
+        bool parentIsVisible() const;
 
         void setForeColor( const osg::Vec4f& value );
         void setForeColor( float r, float g, float b, float a ) { setForeColor( osg::Vec4f(r,g,b,a) ); }

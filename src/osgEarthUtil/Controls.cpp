@@ -360,6 +360,47 @@ Control::setVertFill( bool vfill, float minHeight ) {
     }
 }
 
+bool 
+Control::parentIsVisible() const
+{
+    bool visible = true;
+
+    // ------------------------------------------------------------------------
+    // -- If visible through any parent, consider it visible and return true --
+    // -- Also visible if the parent is not a control (is a top-level)       --
+    // ------------------------------------------------------------------------
+    for( unsigned i=0; i<getNumParents(); ++i )
+    {
+        const Control* c = dynamic_cast<const Control*>( getParent(i) );
+
+        // ----------------------------------------
+        // -- Parent not a control, keep looking --
+        // ----------------------------------------
+        if( c == NULL )
+            continue;
+        
+        // -----------------------------------------
+        // -- If this path is visible, we're done --
+        // -----------------------------------------
+        if( c->visible() && c->parentIsVisible() )
+        {
+            return true;
+        }
+        else
+        {
+            // ---------------------------------------------
+            // -- If their is a parent control, but it's  --
+            // -- not visible, change our assumption but  --
+            // -- keep looking at other parent controls   --
+            // ---------------------------------------------            
+            visible = false;
+        }
+    }
+
+    return visible;
+}
+
+
 void
 Control::setForeColor( const osg::Vec4f& value ) {
     if ( value != _foreColor.value() ) {
@@ -532,7 +573,7 @@ Control::draw(const ControlContext& cx)
 
     // by default, rendering a Control directly results in a colored quad. Usually however
     // you will not render a Control directly, but rather one of its subclasses.
-    if ( visible() == true )
+    if ( visible()  && parentIsVisible() )
     {
         if ( !(_backColor.isSet() && _backColor->a() == 0) && _renderSize.x() > 0 && _renderSize.y() > 0 )
         {
@@ -596,6 +637,9 @@ bool
 Control::handle( const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& aa, ControlContext& cx )
 {
     bool handled = false;
+
+    if( !visible() || !parentIsVisible() )
+        return false;
 
     if ( _eventHandlers.size() > 0 )
     {    
@@ -872,7 +916,7 @@ LabelControl::draw( const ControlContext& cx )
 {
     Control::draw( cx );
 
-    if ( _drawable.valid() && visible() == true )
+    if ( _drawable.valid() && visible() && parentIsVisible() )
     {
         float vph = cx._vp->height();
 
@@ -1016,7 +1060,7 @@ ImageControl::draw( const ControlContext& cx )
 {
     Control::draw( cx );
 
-    if ( visible() == true && _image.valid() )
+    if ( visible() && parentIsVisible() && _image.valid() )
     {
         //TODO: this is not precisely correct..images get deformed slightly..
         osg::Geometry* g = new osg::Geometry();
@@ -1181,7 +1225,7 @@ HSliderControl::draw( const ControlContext& cx )
 {
     Control::draw( cx );
 
-    if ( visible() == true )
+    if ( visible() == true && parentIsVisible())
     {
         osg::ref_ptr<osg::Geometry> g = new osg::Geometry();
         g->setUseVertexBufferObjects(true);
@@ -1225,6 +1269,9 @@ HSliderControl::draw( const ControlContext& cx )
 bool
 HSliderControl::handle( const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& aa, ControlContext& cx )
 {
+    if( !visible() || !parentIsVisible() )
+        return false;
+
     if ( ea.getEventType() == osgGA::GUIEventAdapter::DRAG )
     {
         float relX = ea.getX() - _renderPos.x();
@@ -1290,7 +1337,7 @@ CheckBoxControl::draw( const ControlContext& cx )
 {
     Control::draw( cx );
 
-    if ( visible() == true )
+    if ( visible() == true && parentIsVisible() )
     {
         osg::Geometry* g = new osg::Geometry();
         g->setUseVertexBufferObjects(true);
@@ -1333,6 +1380,9 @@ CheckBoxControl::draw( const ControlContext& cx )
 bool
 CheckBoxControl::handle( const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& aa, ControlContext& cx )
 {
+    if( !visible() || !parentIsVisible() )
+        return false;
+
     if ( ea.getEventType() == osgGA::GUIEventAdapter::PUSH )
     {
         setValue( !_value );
@@ -1546,6 +1596,9 @@ Container::draw( const ControlContext& cx )
 bool
 Container::handle( const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& aa, ControlContext& cx )
 {
+    if( !visible() || !parentIsVisible() )
+        return false;
+
     bool handled = false;
     std::vector<Control*> children;
     getChildren( children );

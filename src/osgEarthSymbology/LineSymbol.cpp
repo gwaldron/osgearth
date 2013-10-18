@@ -22,6 +22,8 @@
 using namespace osgEarth;
 using namespace osgEarth::Symbology;
 
+OSGEARTH_REGISTER_SIMPLE_SYMBOL(line, LineSymbol);
+
 LineSymbol::LineSymbol( const Config& conf ) :
 Symbol       ( conf ),
 _stroke      ( Stroke() ),
@@ -48,7 +50,7 @@ LineSymbol::mergeConfig( const Config& conf )
 }
 
 void
-LineSymbol::parseSLD(const Config& c, Style& style)
+LineSymbol::parseSLD(const Config& c, Style& style) const
 {
     if ( match(c.key(), "stroke") ) {
         style.getOrCreate<LineSymbol>()->stroke()->color() = Color(c.value());

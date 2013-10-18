@@ -22,6 +22,8 @@
 using namespace osgEarth;
 using namespace osgEarth::Symbology;
 
+OSGEARTH_REGISTER_SIMPLE_SYMBOL(render, RenderSymbol);
+
 RenderSymbol::RenderSymbol(const Config& conf) :
 Symbol          ( conf ),
 _depthTest      ( true ),
@@ -53,7 +55,7 @@ RenderSymbol::mergeConfig( const Config& conf )
 }
 
 void
-RenderSymbol::parseSLD(const Config& c, Style& style)
+RenderSymbol::parseSLD(const Config& c, Style& style) const
 {
     RenderSymbol defaults;
 

@@ -23,6 +23,8 @@
 using namespace osgEarth;
 using namespace osgEarth::Symbology;
 
+OSGEARTH_REGISTER_SIMPLE_SYMBOL(model, ModelSymbol);
+
 ModelSymbol::ModelSymbol( const Config& conf ) :
 InstanceSymbol( conf ),
 _heading  ( NumericExpression(0.0) ),
@@ -69,7 +71,7 @@ ModelSymbol::createResource() const
 }
 
 void
-ModelSymbol::parseSLD(const Config& c, Style& style)
+ModelSymbol::parseSLD(const Config& c, Style& style) const
 {
     if ( match(c.key(), "model") ) {
         style.getOrCreate<ModelSymbol>()->url() = c.value();

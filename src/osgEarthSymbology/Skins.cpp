@@ -130,6 +130,8 @@ SkinResource::createImage( const osgDB::Options* dbOptions ) const
 
 //---------------------------------------------------------------------------
 
+OSGEARTH_REGISTER_SIMPLE_SYMBOL(skin, SkinSymbol);
+
 SkinSymbol::SkinSymbol( const Config& conf ) :
 _objHeight    ( 0.0f ),
 _minObjHeight ( 0.0f ),
@@ -176,7 +178,7 @@ SkinSymbol::getConfig() const
 
 
 void
-SkinSymbol::parseSLD(const Config& c, Style& style)
+SkinSymbol::parseSLD(const Config& c, Style& style) const
 {
     if ( match(c.key(), "skin-library") ) {
         if ( !c.value().empty() ) 

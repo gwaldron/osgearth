@@ -27,6 +27,8 @@
 using namespace osgEarth;
 using namespace osgEarth::Symbology;
 
+OSGEARTH_REGISTER_SIMPLE_SYMBOL(icon, IconSymbol);
+
 IconSymbol::IconSymbol( const Config& conf ) :
 InstanceSymbol        ( conf ),
 _alignment            ( ALIGN_CENTER_BOTTOM ),
@@ -132,7 +134,7 @@ IconSymbol::createResource() const
 
 
 void
-IconSymbol::parseSLD(const Config& c, Style& style)
+IconSymbol::parseSLD(const Config& c, Style& style) const
 {
     IconSymbol defaults;
 

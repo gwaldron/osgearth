@@ -22,6 +22,8 @@
 using namespace osgEarth;
 using namespace osgEarth::Symbology;
 
+OSGEARTH_REGISTER_SIMPLE_SYMBOL(polygon, PolygonSymbol);
+
 PolygonSymbol::PolygonSymbol( const Config& conf ) :
 Symbol( conf ),
 _fill ( Fill() )
@@ -45,7 +47,7 @@ PolygonSymbol::mergeConfig(const Config& conf )
 }
 
 void
-PolygonSymbol::parseSLD(const Config& c, Style& style)
+PolygonSymbol::parseSLD(const Config& c, Style& style) const
 {
     if ( match(c.key(), "fill") ) {
         style.getOrCreate<PolygonSymbol>()->fill()->color() = Color(c.value());

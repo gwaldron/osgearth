@@ -21,6 +21,44 @@
 using namespace osgEarth;
 using namespace osgEarth::Symbology;
 
+SymbolRegistry::SymbolRegistry()
+{
+}
+
+SymbolRegistry*
+SymbolRegistry::instance()
+{
+    static SymbolRegistry* s_singleton =0L;
+    static Threading::Mutex    s_singletonMutex;
+
+    if ( !s_singleton )
+    {
+        Threading::ScopedMutexLock lock(s_singletonMutex);
+        if ( !s_singleton )
+        {
+            s_singleton = new SymbolRegistry();
+        }
+    }
+    return s_singleton;
+}
+
+void
+SymbolRegistry::add( SymbolFactory* factory )
+{
+    _factories.push_back( factory );
+}
+
+Symbol*
+SymbolRegistry::create( const Config& conf )
+{
+    for (SymbolFactoryList::iterator itr = _factories.begin(); itr != _factories.end(); itr++)
+    {
+        Symbol* symbol = itr->get()->create( conf );
+        if (symbol) return symbol;
+    }
+    return 0;
+} 
+
 //------------------------------------------------------------------------
 
 Symbol::Symbol( const Config& conf )

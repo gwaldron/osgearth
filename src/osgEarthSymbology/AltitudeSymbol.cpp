@@ -22,6 +22,8 @@
 using namespace osgEarth;
 using namespace osgEarth::Symbology;
 
+OSGEARTH_REGISTER_SIMPLE_SYMBOL(alitude, AltitudeSymbol);
+
 AltitudeSymbol::AltitudeSymbol( const Config& conf ) :
 Symbol             ( conf ),
 _clamping          ( CLAMP_NONE ),
@@ -80,7 +82,7 @@ AltitudeSymbol::mergeConfig( const Config& conf )
 }
 
 void
-AltitudeSymbol::parseSLD(const Config& c, Style& style)
+AltitudeSymbol::parseSLD(const Config& c, Style& style) const
 {
     if ( match(c.key(), "altitude-clamping") ) {
         if      ( match(c.value(), "none") )     

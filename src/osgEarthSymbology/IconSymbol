@@ -86,7 +86,7 @@ namespace osgEarth { namespace Symbology
     public:
         virtual Config getConfig() const;
         virtual void mergeConfig( const Config& conf );
-        static void parseSLD(const Config& c, class Style& style);
+        virtual void parseSLD(const Config& c, class Style& style) const;
 
     public: // InstanceSymbol
         virtual InstanceResource* createResource() const;

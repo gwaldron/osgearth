@@ -22,6 +22,8 @@
 using namespace osgEarth;
 using namespace osgEarth::Symbology;
 
+OSGEARTH_REGISTER_SIMPLE_SYMBOL(extrusion, ExtrusionSymbol);
+
 ExtrusionSymbol::ExtrusionSymbol( const Config& conf ) :
 Symbol    ( conf ),
 _height   ( 10.0 ),
@@ -63,7 +65,7 @@ ExtrusionSymbol::mergeConfig( const Config& conf )
 }
 
 void
-ExtrusionSymbol::parseSLD(const Config& c, Style& style)
+ExtrusionSymbol::parseSLD(const Config& c, Style& style) const
 {
     if ( match(c.key(), "extrusion-height") ) {
         style.getOrCreate<ExtrusionSymbol>()->heightExpression() = NumericExpression(c.value());

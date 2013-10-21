@@ -37,7 +37,7 @@ using namespace OpenThreads;
 TerrainLayerOptions::TerrainLayerOptions( const ConfigOptions& options ) :
 ConfigOptions       ( options ),
 _minLevel           ( 0 ),
-_maxLevel           ( 99 ),
+_maxLevel           ( 30 ),
 _cachePolicy        ( CachePolicy::DEFAULT ),
 _loadingWeight      ( 1.0f ),
 _exactCropping      ( false ),
@@ -69,7 +69,7 @@ TerrainLayerOptions::setDefaults()
     _cachePolicy.init( CachePolicy() );
     _loadingWeight.init( 1.0f );
     _minLevel.init( 0 );
-    _maxLevel.init( 99 );
+    _maxLevel.init( 30 );
 }
 
 Config

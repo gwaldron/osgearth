@@ -328,7 +328,7 @@ namespace
 
 
     /**
-    * Assembled a new OSG shader Program from the provided components.
+    * Assemble a new OSG shader Program from the provided components.
     * Outputs the uniquely-identifying "key vector" and returns the new program.
     */
     osg::Program* buildProgram(const std::string&                  programName,
@@ -348,16 +348,15 @@ namespace
         // build a new "key vector" now that we've changed the shader map.
         // we call is a key vector because it uniquely identifies this shader program
         // based on its accumlated function set.
-        VirtualProgram::ShaderVector keyVector;
         for( VirtualProgram::ShaderMap::iterator i = accumShaderMap.begin(); i != accumShaderMap.end(); ++i )
         {
-            keyVector.push_back( i->second.first.get() );
+            outputKeyVector.push_back( i->second.first.get() );
         }
 
         // finally, add the mains (AFTER building the key vector .. we don't want or
         // need to mains in the key vector since they are completely derived from the
         // other elements of the key vector.)
-        VirtualProgram::ShaderVector buildVector( keyVector );
+        VirtualProgram::ShaderVector buildVector( outputKeyVector );
         buildVector.push_back( vertMain );
         buildVector.push_back( fragMain );
 
@@ -784,8 +783,10 @@ VirtualProgram::apply( osg::State& state ) const
                     const AttribBindingList& abl = vp->getAttribBindingList();
                     accumAttribBindings.insert( abl.begin(), abl.end() );
 
+#ifdef USE_ATTRIB_ALIASES
                     const AttribAliasMap& aliases = vp->getAttribAliases();
                     accumAttribAliases.insert( aliases.begin(), aliases.end() );
+#endif
                 }
             }
         }
@@ -803,8 +804,10 @@ VirtualProgram::apply( osg::State& state ) const
         const AttribBindingList& abl = this->getAttribBindingList();
         accumAttribBindings.insert( abl.begin(), abl.end() );
 
+#ifdef USE_ATTRIB_ALIASES
         const AttribAliasMap& aliases = this->getAttribAliases();
         accumAttribAliases.insert( aliases.begin(), aliases.end() );
+#endif
     }
 
 
@@ -859,6 +862,8 @@ VirtualProgram::apply( osg::State& state ) const
                 else
                 {
                     ShaderVector keyVector;
+
+                    //OE_NOTICE << LC << "Building new Program for VP " << getName() << std::endl;
 
                     program = buildProgram(
                         getName(),

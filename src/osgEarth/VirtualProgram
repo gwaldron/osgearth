@@ -70,36 +70,53 @@ namespace osgEarth
 
 
     /**
-     * VirtualProgram enables basic GLSL shader composition within osgEarth.
+     * VirtualProgram enables GLSL shader composition within osgEarth. It automatically
+     * assembles shader functions into a full shader program at run time. You can add
+     * or remove functions (injection points) at any time.
      *
-     * VirtualProgram has been adapted from the VirtualProgram shader composition work
-     * originally done by Wojciech Lewandowski and found in OSG's osgvirtualprogram
-     * example, and is used by permission.
+     * Read about shader composition:
+     * http://docs.osgearth.org/en/latest/developer/shader_composition.html
      *
-     * VirtualProgram in a state attribute. Once you've installed it on a StateSet,
-     * you can still call the set* functions but you'd better mark the state set with
-     * a DYNAMIC data variance.
+     * VirtualProgram (VP) is an osg::StateAttribute. But unlike most attributes, a VP
+     * will inherit properties from other VPs in the state stack.
+     *
+     * Though the code has evolved quite a bit, VirtualProgram was originally adapted
+     * from the VirtualProgram shader composition work done by Wojciech Lewandowski and
+     * found in OSG's osgvirtualprogram example.
      */
     class OSGEARTH_EXPORT VirtualProgram : public osg::StateAttribute
     {
     public:
         static const osg::StateAttribute::Type SA_TYPE;
 
+        /**
+        * Gets the VP on a stateset, creating and installing one if the stateset
+        * does not already have one. This is a convenient patternt to use, since
+        * the normal use-case is to add functions to an existing VP rather than
+        * to replace it entirely.
+        */
         static VirtualProgram* getOrCreate(osg::StateSet* on);
-        static VirtualProgram* get        (osg::StateSet* on);
 
-        typedef osg::Program::AttribBindingList AttribBindingList;
+        /**
+        * Gets the VP on a stateset, or NULL if one is not found.
+        */
+        static VirtualProgram* get(osg::StateSet* on);
+
 
     public:
         /**
-         * Adds a shader function to the program.
+         * Adds a custom shader function to the program.
+         *
          * Call this method (rather than setShader directly) to inject "user" functions into the
          * shader program.
          *
-         * name: name of the function. This should be the actual function name in the shader source.
-         * source: the shader source code.
+         * name:     Name of the function. This should be the actual function name in the shader source.
+         * source:   The shader source code.
          * location: Function location relative to the built-ins.
          * priority: Lets you control the order of functions that you inject at the same location.
+         *           The default priority is 1.0. Note that many of osgEarth's built-in shaders (like
+         *           those that render the terrain) use priority 0.0 so that by default they run before
+         *           user-injected functions.
          */
         void setFunction( 
             const std::string&           name,
@@ -171,11 +188,13 @@ namespace osgEarth
         void removeBindAttribLocation( const std::string& name );
 
         /** Gets a reference to the attribute bindings. */
+        typedef osg::Program::AttribBindingList AttribBindingList;
         const AttribBindingList& getAttribBindingList() const { return _attribBindingList; }
 
         /** Access to the property template. */
         osg::Program* getTemplate() { return _template.get(); }
         const osg::Program* getTemplate() const { return _template.get(); }
+
 
     public: // StateAttribute
         virtual void compileGLObjects(osg::State& state) const;
@@ -205,20 +224,29 @@ namespace osgEarth
         void getShaderMap( ShaderMap& out ) const;
 
     protected:
-        osg::ref_ptr<osg::Program>   _template;
+        // holds "template" data that should be installed in every auto-generated
+        // Program, like uniform buffer bindings, etc.
+        osg::ref_ptr<osg::Program> _template;
 
-        mutable ProgramMap _programCache;
-        ShaderMap          _shaderMap;
         unsigned int       _mask;
         AttribBindingList  _attribBindingList;
         AttribAliasMap     _attribAliases;
 
+        // holds the injection points the user has added to this VP.
+        // _dataModelMutex protects access to this member.
         ShaderComp::FunctionLocationMap _functions;
+
+        // holds a map of each named shader installed in this VP.
+        // _dataModelMutex protects access to this member.
+        ShaderMap _shaderMap;
 
         // protects access to the data members, which may be accessed by other VPs in the state stack.
         mutable Threading::ReadWriteMutex _dataModelMutex;
 
-        // protects access to the _programCache map.
+        // The program cache holds an osg::Program instance for each collection of shaders
+        // that comprises this VP. There can be multiple programs in the cache if the VP is
+        // shared in the scene graph.
+        mutable ProgramMap                _programCache;
         mutable Threading::ReadWriteMutex _programCacheMutex;
 
         bool _inherit;
@@ -226,11 +254,6 @@ namespace osgEarth
 
         bool hasLocalFunctions() const;
         void accumulateFunctions( const osg::State& state, ShaderComp::FunctionLocationMap& result ) const;
-        //void addToAccumulatedMap(ShaderMap& accumShaderMap, const std::string& shaderID, const ShaderEntry& newEntry) const;
-        //osg::Program* buildProgram( osg::State& state, ShaderMap& accumShaderMap, AttribBindingList& bindings, AttribAliasMap& aliases);
-        //void addShadersToProgram(const ShaderVector& shaders, const AttribBindingList& attribBindings, const AttribAliasMap& aliases, osg::Program* program );
-        //void addTemplateDataToProgram(osg::Program* program );
-        //void applyAttributeAliases( osg::Shader* shader, const AttribAliasVector& aliases );
         const AttribAliasMap& getAttribAliases() const { return _attribAliases; }
     };
 

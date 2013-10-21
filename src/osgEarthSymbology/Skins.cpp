@@ -178,7 +178,7 @@ SkinSymbol::getConfig() const
 
 
 void
-SkinSymbol::parseSLD(const Config& c, Style& style) const
+SkinSymbol::parseSLD(const Config& c, Style& style)
 {
     if ( match(c.key(), "skin-library") ) {
         if ( !c.value().empty() ) 

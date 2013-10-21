@@ -55,7 +55,7 @@ RenderSymbol::mergeConfig( const Config& conf )
 }
 
 void
-RenderSymbol::parseSLD(const Config& c, Style& style) const
+RenderSymbol::parseSLD(const Config& c, Style& style)
 {
     RenderSymbol defaults;
 

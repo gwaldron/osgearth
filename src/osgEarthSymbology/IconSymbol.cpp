@@ -134,7 +134,7 @@ IconSymbol::createResource() const
 
 
 void
-IconSymbol::parseSLD(const Config& c, Style& style) const
+IconSymbol::parseSLD(const Config& c, Style& style)
 {
     IconSymbol defaults;
 

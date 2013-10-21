@@ -127,15 +127,7 @@ Style::fromSLD( const Config& sld )
     for( ConfigSet::const_iterator kid = sld.children().begin(); kid != sld.children().end(); ++kid )
     {
         const Config& p = *kid;
-		osg::ref_ptr<Symbol> symbol = SymbolRegistry::instance()->create( p );
-		if(symbol) 
-		{
-			symbol->parseSLD(p, *this);
-		}
-		else 
-		{
-			OE_WARN << LC << "Symbol name " << p.key() << " not supported; ignoring." << std::endl;
-		}
+		SymbolRegistry::instance()->parseSLD( p, *this );		
     }
 }
 

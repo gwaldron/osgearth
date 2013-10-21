@@ -51,7 +51,7 @@ PointSymbol::mergeConfig( const Config& conf )
 
 
 void
-PointSymbol::parseSLD(const Config& c, Style& style) const
+PointSymbol::parseSLD(const Config& c, Style& style)
 {
     if ( match(c.key(), "point-fill") ) {
         style.getOrCreate<PointSymbol>()->fill()->color() = Color(c.value());

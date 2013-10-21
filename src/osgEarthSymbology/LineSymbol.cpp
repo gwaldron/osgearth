@@ -50,7 +50,7 @@ LineSymbol::mergeConfig( const Config& conf )
 }
 
 void
-LineSymbol::parseSLD(const Config& c, Style& style) const
+LineSymbol::parseSLD(const Config& c, Style& style)
 {
     if ( match(c.key(), "stroke") ) {
         style.getOrCreate<LineSymbol>()->stroke()->color() = Color(c.value());

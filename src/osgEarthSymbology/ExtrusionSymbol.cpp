@@ -65,7 +65,7 @@ ExtrusionSymbol::mergeConfig( const Config& conf )
 }
 
 void
-ExtrusionSymbol::parseSLD(const Config& c, Style& style) const
+ExtrusionSymbol::parseSLD(const Config& c, Style& style)
 {
     if ( match(c.key(), "extrusion-height") ) {
         style.getOrCreate<ExtrusionSymbol>()->heightExpression() = NumericExpression(c.value());

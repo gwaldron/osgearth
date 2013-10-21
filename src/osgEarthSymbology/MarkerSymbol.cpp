@@ -229,7 +229,7 @@ MarkerSymbol::convertToInstanceSymbol() const
 
 
 void
-MarkerSymbol::parseSLD(const Config& c, Style& style) const
+MarkerSymbol::parseSLD(const Config& c, Style& style)
 {
     if ( match(c.key(), "marker") ) {
         style.getOrCreate<MarkerSymbol>()->url() = c.value();

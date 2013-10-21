@@ -82,7 +82,7 @@ AltitudeSymbol::mergeConfig( const Config& conf )
 }
 
 void
-AltitudeSymbol::parseSLD(const Config& c, Style& style) const
+AltitudeSymbol::parseSLD(const Config& c, Style& style)
 {
     if ( match(c.key(), "altitude-clamping") ) {
         if      ( match(c.value(), "none") )     

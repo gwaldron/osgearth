@@ -59,6 +59,14 @@ SymbolRegistry::create( const Config& conf )
     return 0;
 } 
 
+void SymbolRegistry::parseSLD(const Config& c, class Style& style) const
+{
+    for (SymbolFactoryList::const_iterator itr = _factories.begin(); itr != _factories.end(); itr++)
+    {
+        itr->get()->parseSLD( c, style );        
+    }
+}
+
 //------------------------------------------------------------------------
 
 Symbol::Symbol( const Config& conf )

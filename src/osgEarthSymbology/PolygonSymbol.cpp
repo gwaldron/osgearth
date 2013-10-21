@@ -47,7 +47,7 @@ PolygonSymbol::mergeConfig(const Config& conf )
 }
 
 void
-PolygonSymbol::parseSLD(const Config& c, Style& style) const
+PolygonSymbol::parseSLD(const Config& c, Style& style)
 {
     if ( match(c.key(), "fill") ) {
         style.getOrCreate<PolygonSymbol>()->fill()->color() = Color(c.value());

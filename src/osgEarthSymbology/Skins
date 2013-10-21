@@ -148,7 +148,7 @@ namespace osgEarth { namespace Symbology
     public:
         void mergeConfig(const Config& conf);
         Config getConfig() const;
-        void parseSLD(const Config& c, class Style& style) const;
+        static void parseSLD(const Config& c, class Style& style);
 
     protected:
         optional<std::string> _libraryName;

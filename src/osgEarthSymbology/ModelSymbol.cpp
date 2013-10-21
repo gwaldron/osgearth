@@ -71,7 +71,7 @@ ModelSymbol::createResource() const
 }
 
 void
-ModelSymbol::parseSLD(const Config& c, Style& style) const
+ModelSymbol::parseSLD(const Config& c, Style& style)
 {
     if ( match(c.key(), "model") ) {
         style.getOrCreate<ModelSymbol>()->url() = c.value();

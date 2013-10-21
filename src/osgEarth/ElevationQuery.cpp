@@ -57,70 +57,105 @@ ElevationQuery::getMaxLevel( double x, double y, const SpatialReference* srs, co
     unsigned int maxLevel = 0;
     for( ElevationLayerVector::const_iterator i = _mapf.elevationLayers().begin(); i != _mapf.elevationLayers().end(); ++i )
     {
-        unsigned int layerMax = 0;
-        osgEarth::TileSource* ts = i->get()->getTileSource();
-        if ( ts && ts->getDataExtents().size() > 0 )
-        {
-            osg::Vec3d tsCoord(x, y, 0);
+        // skip disabled layers
+        if ( !i->get()->getEnabled() )
+            continue;
 
-            const SpatialReference* tsSRS = ts->getProfile() ? ts->getProfile()->getSRS() : 0L;
-            if ( srs && tsSRS )
-                srs->transform(tsCoord, tsSRS, tsCoord);
-            else
-                tsSRS = srs;
-            
-            for (osgEarth::DataExtentList::iterator j = ts->getDataExtents().begin(); j != ts->getDataExtents().end(); j++)
+        unsigned int layerMax = 0;
+
+        osgEarth::TileSource* ts = i->get()->getTileSource();
+        if ( ts )
+        {
+            // TileSource is good; check for optional data extents:
+            if ( ts->getDataExtents().size() > 0 )
             {
-                if (j->maxLevel().isSet() && j->maxLevel() > layerMax && j->contains( tsCoord.x(), tsCoord.y(), tsSRS ))
+                osg::Vec3d tsCoord(x, y, 0);
+
+                const SpatialReference* tsSRS = ts->getProfile() ? ts->getProfile()->getSRS() : 0L;
+                if ( srs && tsSRS )
+                    srs->transform(tsCoord, tsSRS, tsCoord);
+                else
+                    tsSRS = srs;
+                
+                for (osgEarth::DataExtentList::iterator j = ts->getDataExtents().begin(); j != ts->getDataExtents().end(); j++)
                 {
-                    layerMax = j->maxLevel().value();
+                    if (j->maxLevel().isSet() && j->maxLevel() > layerMax && j->contains( tsCoord.x(), tsCoord.y(), tsSRS ))
+                    {
+                        layerMax = j->maxLevel().value();
+                    }
                 }
+
+                //Need to convert the layer max of this TileSource to that of the actual profile
+                layerMax = profile->getEquivalentLOD( ts->getProfile(), layerMax );            
             }
 
-            //Need to convert the layer max of this TileSource to that of the actual profile
-            layerMax = profile->getEquivalentLOD( ts->getProfile(), layerMax );            
+            // cap the max to the layer's express max level (if set).
+            if ( i->get()->getTerrainLayerRuntimeOptions().maxLevel().isSet() )
+            {
+                layerMax = std::min( layerMax, *i->get()->getTerrainLayerRuntimeOptions().maxLevel() );
+            }
         }
-
-        if ( i->get()->getTerrainLayerRuntimeOptions().maxLevel().isSet() )
-            layerMax = std::min( layerMax, *i->get()->getTerrainLayerRuntimeOptions().maxLevel() );
+        else
+        {
+            // no TileSource? probably in cache-only mode. Use the layer max (or its default).
+            layerMax = i->get()->getTerrainLayerRuntimeOptions().maxLevel().value();
+        }
 
         if (layerMax > maxLevel) maxLevel = layerMax;
     }    
 
-    // need to check the image layers too, because if image layers do deeper than elevation layers,
+    // need to check the image layers too, because if image layers go deeper than elevation layers,
     // upsampling occurs that can change the formation of the terrain skin.
-    // NOTE: this probably doesn't happen in "triangulation" interpolation mode.. -gw
-    for( ImageLayerVector::const_iterator i = _mapf.imageLayers().begin(); i != _mapf.imageLayers().end(); ++i )
+    // NOTE: this doesn't happen in "triangulation" interpolation mode.
+    if ( _mapf.getMapInfo().getElevationInterpolation() != osgEarth::INTERP_TRIANGULATE )
     {
-        unsigned int layerMax = 0;
-        osgEarth::TileSource* ts = i->get()->getTileSource();
-        if ( ts && ts->getDataExtents().size() > 0 )
+        for( ImageLayerVector::const_iterator i = _mapf.imageLayers().begin(); i != _mapf.imageLayers().end(); ++i )
         {
-            osg::Vec3d tsCoord(x, y, 0);
-            const SpatialReference* tsSRS = ts->getProfile() ? ts->getProfile()->getSRS() : 0L;
-            if ( srs && tsSRS )
-                srs->transform(tsCoord, tsSRS, tsCoord);
-            else
-                tsSRS = srs;
-            
-            for (osgEarth::DataExtentList::iterator j = ts->getDataExtents().begin(); j != ts->getDataExtents().end(); j++)
+            // skip disabled layers
+            if ( !i->get()->getEnabled() )
+                continue;
+
+            unsigned int layerMax = 0;
+            osgEarth::TileSource* ts = i->get()->getTileSource();
+            if ( ts )
             {
-                if (j->maxLevel().isSet()  && j->maxLevel() > layerMax && j->contains( tsCoord.x(), tsCoord.y(), tsSRS ))
+                // TileSource is good; check for optional data extents:
+                if ( ts->getDataExtents().size() > 0 )
                 {
-                    layerMax = j->maxLevel().value();
+                    osg::Vec3d tsCoord(x, y, 0);
+                    const SpatialReference* tsSRS = ts->getProfile() ? ts->getProfile()->getSRS() : 0L;
+                    if ( srs && tsSRS )
+                        srs->transform(tsCoord, tsSRS, tsCoord);
+                    else
+                        tsSRS = srs;
+                    
+                    for (osgEarth::DataExtentList::iterator j = ts->getDataExtents().begin(); j != ts->getDataExtents().end(); j++)
+                    {
+                        if (j->maxLevel().isSet()  && j->maxLevel() > layerMax && j->contains( tsCoord.x(), tsCoord.y(), tsSRS ))
+                        {
+                            layerMax = j->maxLevel().value();
+                        }
+                    }
+
+                    // Need to convert the layer max of this TileSource to that of the actual profile
+                    layerMax = profile->getEquivalentLOD( ts->getProfile(), layerMax );            
+                }        
+                
+                if ( i->get()->getTerrainLayerRuntimeOptions().maxLevel().isSet() )
+                {
+                    layerMax = std::min( layerMax, *i->get()->getTerrainLayerRuntimeOptions().maxLevel() );
                 }
             }
+            else
+            {
+                // no TileSource? probably in cache-only mode. Use the layer max (or its default).
+                layerMax = i->get()->getTerrainLayerRuntimeOptions().maxLevel().value();
+            }
 
-            //Need to convert the layer max of this TileSource to that of the actual profile
-            layerMax = profile->getEquivalentLOD( ts->getProfile(), layerMax );            
-        }        
-        
-        if ( i->get()->getTerrainLayerRuntimeOptions().maxLevel().isSet() )
-            layerMax = std::min( layerMax, *i->get()->getTerrainLayerRuntimeOptions().maxLevel() );
-
-        if (layerMax > maxLevel)
-            maxLevel = layerMax;
-    } 
+            if (layerMax > maxLevel)
+                maxLevel = layerMax;
+        }
+    }
 
     if (maxLevel == 0) 
     {
@@ -257,11 +292,10 @@ ElevationQuery::getElevationImpl(const GeoPoint& point,
     }
 
     // Check the tile cache. Note that the TileSource already likely has a MemCache
-    // attached to it. We employ a secondary cache here for a couple reasons. One, this
-    // cache will store not only the heightfield, but also the tesselated tile in the event
-    // that we're using GEOMETRIC mode. Second, since the call the getHeightField can 
-    // fallback on a lower resolution, this cache will hold the final resolution heightfield
-    // instead of trying to fetch the higher resolution one each item.
+    // attached to it. We employ a secondary cache here because: since the call to
+    // getHeightField can fallback on a lower resolution, this cache will hold the
+    // final resolution heightfield instead of trying to fetch the higher resolution
+    // one each item.
 
     TileCache::Record record;
     if ( _tileCache.get(key, record) )

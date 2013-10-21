@@ -189,8 +189,7 @@ namespace osgEarth
     public:
         typedef std::vector< osg::ref_ptr<osg::Shader> > ShaderVector;
 
-    protected:
-
+    public:
         typedef std::pair< osg::ref_ptr<osg::Shader>, osg::StateAttribute::OverrideValue > ShaderEntry;
         typedef std::map< std::string, ShaderEntry > ShaderMap;
         typedef std::map< ShaderVector, osg::ref_ptr<osg::Program> > ProgramMap;
@@ -198,37 +197,41 @@ namespace osgEarth
         typedef std::pair< std::string, std::string > AttribAlias;
         typedef std::vector< AttribAlias > AttribAliasVector;
 
+    public:
+        // thread-safe functions map getter
+        void getFunctions( ShaderComp::FunctionLocationMap& out ) const;
+
+        // thread-safe shader map getter
+        void getShaderMap( ShaderMap& out ) const;
+
+    protected:
         osg::ref_ptr<osg::Program>   _template;
 
-        ProgramMap         _programCache;
+        mutable ProgramMap _programCache;
         ShaderMap          _shaderMap;
         unsigned int       _mask;
         AttribBindingList  _attribBindingList;
         AttribAliasMap     _attribAliases;
 
         ShaderComp::FunctionLocationMap _functions;
-        ShaderComp::FunctionLocationMap _accumulatedFunctions;
 
-        // protects access to the _functions map, which may be accessed by other VPs in the state stack.
-        mutable Threading::Mutex _functionsMutex;
-
-        bool _inherit;
-        bool _inheritSet;
+        // protects access to the data members, which may be accessed by other VPs in the state stack.
+        mutable Threading::ReadWriteMutex _dataModelMutex;
 
         // protects access to the _programCache map.
         mutable Threading::ReadWriteMutex _programCacheMutex;
 
-        bool hasLocalFunctions() const;
-        void refreshAccumulatedFunctions( const osg::State& state );
-        void addToAccumulatedMap(ShaderMap& accumShaderMap, const std::string& shaderID, const ShaderEntry& newEntry) const;
-        osg::Program* buildProgram( osg::State& state, ShaderMap& accumShaderMap, AttribBindingList& bindings, AttribAliasMap& aliases);
-        void addShadersToProgram(const ShaderVector& shaders, const AttribBindingList& attribBindings, const AttribAliasMap& aliases, osg::Program* program );
-        void addTemplateDataToProgram(osg::Program* program );
-        void applyAttributeAliases( osg::Shader* shader, const AttribAliasVector& aliases );
-        const AttribAliasMap& getAttribAliases() const { return _attribAliases; }
+        bool _inherit;
+        bool _inheritSet;
 
-    public:
-        void getFunctions( ShaderComp::FunctionLocationMap& out ) const;
+        bool hasLocalFunctions() const;
+        void accumulateFunctions( const osg::State& state, ShaderComp::FunctionLocationMap& result ) const;
+        //void addToAccumulatedMap(ShaderMap& accumShaderMap, const std::string& shaderID, const ShaderEntry& newEntry) const;
+        //osg::Program* buildProgram( osg::State& state, ShaderMap& accumShaderMap, AttribBindingList& bindings, AttribAliasMap& aliases);
+        //void addShadersToProgram(const ShaderVector& shaders, const AttribBindingList& attribBindings, const AttribAliasMap& aliases, osg::Program* program );
+        //void addTemplateDataToProgram(osg::Program* program );
+        //void applyAttributeAliases( osg::Shader* shader, const AttribAliasVector& aliases );
+        const AttribAliasMap& getAttribAliases() const { return _attribAliases; }
     };
 
 } // namespace osgEarth

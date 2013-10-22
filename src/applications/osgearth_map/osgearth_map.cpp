@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2008-2010 Pelican Mapping
+* Copyright 2008-2013 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -43,7 +43,7 @@ main(int argc, char** argv)
 
     // add a TMS imager layer:
     TMSOptions imagery;
-    imagery.url() = "http://readymap.org/readymap/tiles/1.0.0/7/";
+    imagery.url() = "http://readymaps.org/readymap/tiles/1.0.0/7/";
     map->addImageLayer( new ImageLayer("Imagery", imagery) );
 
     // add a TMS elevation layer:
@@ -58,10 +58,6 @@ main(int argc, char** argv)
     osgViewer::Viewer viewer(arguments);
     viewer.setCameraManipulator( new EarthManipulator );
     viewer.setSceneData( node );
-
-    // osgEarth benefits from pre-compilation of GL objects in the pager. In newer versions of
-    // OSG, this activates OSG's IncrementalCompileOpeartion in order to avoid frame breaks.
-    viewer.getDatabasePager()->setDoPreCompile( true );
 
     // add some stock OSG handlers:
     viewer.addEventHandler(new osgViewer::StatsHandler());

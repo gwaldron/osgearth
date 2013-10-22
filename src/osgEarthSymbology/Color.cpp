@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2010 Pelican Mapping
+ * Copyright 2008-2013 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -64,7 +64,7 @@ namespace
             if ( vi == 0.0f )      { vr = v,  vg = v3, vb = v1; }
             else if ( vi == 1.0f ) { vr = v2, vg = v,  vb = v1; }
             else if ( vi == 2.0f ) { vr = v1, vg = v,  vb = v3; }
-            else if ( vi == 3.0f ) { vr = v1, vb = v2, vb = v; }
+            else if ( vi == 3.0f ) { vr = v1, vg = v2, vb = v; }
             else if ( vi == 4.0f ) { vr = v3, vg = v1, vb = v; }
             else                   { vr = v,  vg = v1, vb = v2; }
             c.set( vr, vg, vb, c.a() );
@@ -95,13 +95,24 @@ Color Color::Magenta  ( 0xc000c0ff );
 Color Color::Cyan     ( 0x00ffffff );
 Color Color::Brown    ( 0xaa5500ff );
 
-Color::Color( unsigned rgba )
+Color::Color( unsigned v, Format format )
 {
-    set(
-        (float)(rgba>>24)/255.0f, 
-        (float)((rgba&0xFF0000)>>16)/255.0f, 
-        (float)((rgba&0xFF00)>>8)/255.0f,
-        (float)(rgba&0xFF)/255.0f );
+    if ( format == RGBA )
+    {
+        set(
+            (float)(v>>24)/255.0f, 
+            (float)((v&0xFF0000)>>16)/255.0f, 
+            (float)((v&0xFF00)>>8)/255.0f,
+            (float)(v&0xFF)/255.0f );
+    }
+    else // format == ABGR
+    {
+        set(
+            (float)(v&0xFF)/255.0f,
+            (float)((v&0xFF00)>>8)/255.0f,
+            (float)((v&0xFF0000)>>16)/255.0f, 
+            (float)(v>>24)/255.0f );
+    }
 }
 
 Color::Color( const Color& rhs, float a ) :
@@ -159,30 +170,37 @@ Color::toHTML( Format format ) const
         w = a(), x = b(), y = g(), z = r();
     }
 
-#if 1
     return Stringify()
         << "#"
         << std::hex << std::setw(2) << std::setfill('0') << (int)(w*255.0f)
         << std::hex << std::setw(2) << std::setfill('0') << (int)(x*255.0f)
         << std::hex << std::setw(2) << std::setfill('0') << (int)(y*255.0f)
         << std::hex << std::setw(2) << std::setfill('0') << (int)(z*255.0f);
-#else
-    return Stringify()
-        << "#"
-        << std::hex << std::setw(2) << std::setfill('0')
-        << (int)(w*255.0f)
-        << (int)(x*255.0f)
-        << (int)(y*255.0f)
-        << (int)(z*255.0f);
-#endif
 }
 
 Color
 Color::brightness( float perc ) const
 {
-    Color c( *this );
-    rgb2hsv( c );
-    c.b() = osg::clampBetween( perc * c.b(), 0.0f, 1.0f );
-    hsv2rgb( c );
-    return c;
+    return Color(r()*perc, g()*perc, b()*perc, a());
+}
+
+unsigned
+Color::as( Format format ) const
+{
+    if ( format == RGBA )
+    {
+        return 
+            (((unsigned)(r()*255.0)) << 24) |
+            (((unsigned)(g()*255.0)) << 16) |
+            (((unsigned)(b()*255.0)) << 8 ) |
+            (((unsigned)(a()*255.0)));
+    }
+    else // format == ABGR
+    {
+        return 
+            (((unsigned)(a()*255.0)) << 24) |
+            (((unsigned)(b()*255.0)) << 16) |
+            (((unsigned)(g()*255.0)) << 8 ) |
+            (((unsigned)(r()*255.0)));
+    }
 }

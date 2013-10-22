@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2010 Pelican Mapping
+ * Copyright 2008-2013 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -26,12 +26,13 @@
 
 #define LC "[osgterrain_engine Plugin] "
 
+using namespace osgEarth_engine_osgterrain;
 using namespace osgEarth::Drivers;
 
-class OSGTerrainEnginePlugin : public osgDB::ReaderWriter
+class osgEarth_OSGTerrainEnginePlugin : public osgDB::ReaderWriter
 {
 public:
-    OSGTerrainEnginePlugin() {}
+    osgEarth_OSGTerrainEnginePlugin() {}
 
     virtual const char* className()
     {
@@ -111,10 +112,15 @@ public:
                 }
                 else
                 {   
+                    // make safe ref/unref so we can reference from multiple threads
+                    node->setThreadSafeRefUnref( true );
+
+                    // notify the Terrain interface of a new tile
                     osg::Timer_t start = osg::Timer::instance()->tick();
                     engineNode->getTerrain()->notifyTileAdded(key, node.get());
                     osg::Timer_t end = osg::Timer::instance()->tick();
-                    OE_DEBUG << "Took " << osg::Timer::instance()->delta_m(start, end) << "ms to fire terrain callbacks" << std::endl;
+
+                    //OE_DEBUG << "Took " << osg::Timer::instance()->delta_m(start, end) << "ms to fire terrain callbacks" << std::endl;
                 }
 
                 return ReadResult( node.get(), ReadResult::FILE_LOADED );
@@ -131,4 +137,4 @@ public:
     }
 };
 
-REGISTER_OSGPLUGIN(osgearth_engine_osgterrain, OSGTerrainEnginePlugin)
+REGISTER_OSGPLUGIN(osgearth_engine_osgterrain, osgEarth_OSGTerrainEnginePlugin)

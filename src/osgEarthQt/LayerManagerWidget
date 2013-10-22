@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2010 Pelican Mapping
+ * Copyright 2008-2013 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -30,6 +30,7 @@
 #include <QFrame>
 #include <QHBoxLayout>
 #include <QPoint>
+#include <QPushButton>
 #include <QScrollArea>
 #include <QSlider>
 #include <QVBoxLayout>
@@ -47,7 +48,7 @@ namespace osgEarth { namespace QtGui
     Q_OBJECT
 
     public:
-      LayerControlWidgetBase(LayerManagerWidget* parentManager, bool hasContent=true) : _parent(parentManager) { initUi(hasContent); }
+      LayerControlWidgetBase(LayerManagerWidget* parentManager, bool hasContent=true, bool showRemove=true) : _parent(parentManager) { initUi(hasContent, showRemove); }
 
       virtual Action* getDoubleClickAction(const ViewVector& views) { return 0L; }
 
@@ -58,10 +59,13 @@ namespace osgEarth { namespace QtGui
     signals:
       void doubleClicked();
 
-    protected:
-      ~LayerControlWidgetBase();
+    private slots:
+      virtual void onRemoveClicked(bool checked);
 
-      virtual void initUi(bool hasContent);
+    protected:
+      virtual ~LayerControlWidgetBase();
+
+      virtual void initUi(bool hasContent, bool showRemove);
 
       void mouseDoubleClickEvent(QMouseEvent* event);
       void mousePressEvent(QMouseEvent* event);
@@ -75,9 +79,14 @@ namespace osgEarth { namespace QtGui
       QVBoxLayout*  _primaryLayout;
       QFrame*       _headerBox;
       QHBoxLayout*  _headerBoxLayout;
+      QFrame*       _headerTitleBox;
+      QHBoxLayout*  _headerTitleBoxLayout;
+      QFrame*       _headerButtonBox;
+      QHBoxLayout*  _headerButtonBoxLayout;
       QFrame*       _contentBox;
       QHBoxLayout*  _contentBoxLayout;
       QFrame*       _dropBox;
+      QPushButton*  _removeButton;
 
       QPoint _dragStartPosition;
     };
@@ -102,8 +111,11 @@ namespace osgEarth { namespace QtGui
     private slots:
       void onEnabledCheckStateChanged(int state);
 
+    protected slots:
+      void onRemoveClicked(bool checked);
+
     protected:
-      ~ElevationLayerControlWidget();
+      virtual ~ElevationLayerControlWidget();
 
       void initUi();
 
@@ -136,8 +148,11 @@ namespace osgEarth { namespace QtGui
       void onCheckStateChanged(int state);
       void onSliderValueChanged(int value);
 
+    protected slots:
+      void onRemoveClicked(bool checked);
+
     protected:
-      ~ImageLayerControlWidget();
+      virtual ~ImageLayerControlWidget();
 
       void initUi();
 
@@ -168,10 +183,12 @@ namespace osgEarth { namespace QtGui
 
     private slots:
       void onEnabledCheckStateChanged(int state);
-      void onOverlayCheckStateChanged(int state);
+
+    protected slots:
+      void onRemoveClicked(bool checked);
 
     protected:
-      ~ModelLayerControlWidget();
+      virtual ~ModelLayerControlWidget();
 
       void initUi();
 
@@ -180,7 +197,6 @@ namespace osgEarth { namespace QtGui
       osg::ref_ptr<ModelLayerCallback> _layerCallback;
       osg::ref_ptr<Action> _doubleClick;
       QCheckBox* _visibleCheckBox;
-      QCheckBox* _overlayCheckBox;
     };
 
 
@@ -243,6 +259,8 @@ namespace osgEarth { namespace QtGui
       void setActiveViews(const ViewVector& views);
 
       void resetStyleSheet();
+
+      osgEarth::Map* getMap() { return _map.get(); }
 
     private slots:
       void onItemDoubleClicked();

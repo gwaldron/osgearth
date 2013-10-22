@@ -1,0 +1,77 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+ * Copyright 2008-2013 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+
+#ifndef OSGEARTHSYMBOLOGY_RENDER_SYMBOL_H
+#define OSGEARTHSYMBOLOGY_RENDER_SYMBOL_H 1
+
+#include <osgEarth/Common>
+#include <osgEarth/DepthOffset>
+#include <osgEarth/GeoMath>
+#include <osgEarthSymbology/Common>
+#include <osgEarthSymbology/Symbol>
+#include <osg/Referenced>
+#include <vector>
+
+namespace osgEarth { namespace Symbology
+{
+    /** 
+     * Symbol that contains general rendering settings.
+     */
+    class OSGEARTHSYMBOLOGY_EXPORT RenderSymbol : public Symbol
+    {
+    public:
+        META_Symbol(RenderSymbol);
+
+        /** construct a render symbol */
+        RenderSymbol(const Config& conf =Config());
+
+        /** whether to perform depth buffer testing */
+        optional<bool>& depthTest() { return _depthTest; }
+        const optional<bool>& depthTest() const { return _depthTest; }
+
+        /** whether to force lighting on/off */
+        optional<bool>& lighting() { return _lighting; }
+        const optional<bool>& lighting() const { return _lighting; }
+
+        /** depth offset properties */
+        optional<DepthOffsetOptions>& depthOffset() { return _depthOffset; }
+        const optional<DepthOffsetOptions>& depthOffset() const { return _depthOffset; }
+
+        /** whether to force backface culling on or off */
+        optional<bool>& backfaceCulling() { return _backfaceCulling; }
+        const optional<bool>& backfaceCulling() const { return _backfaceCulling; }
+
+    public:
+        virtual Config getConfig() const;
+        virtual void mergeConfig( const Config& conf );
+        static void parseSLD(const Config& c, class Style& style);
+
+    protected:
+        optional<bool>               _depthTest;
+        optional<bool>               _lighting;
+        optional<DepthOffsetOptions> _depthOffset;
+        optional<bool>               _backfaceCulling;
+        
+        /** dtor */
+        virtual ~RenderSymbol() { }
+    };
+
+} } // namespace osgEarth::Symbology
+
+#endif // OSGEARTHSYMBOLOGY_RENDER_SYMBOL_H

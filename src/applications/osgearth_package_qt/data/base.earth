@@ -1,0 +1,11 @@
+<!-- 
+Simple basemap
+-->
+
+<map name="simple_basemap" type="geocentric" version="2">
+
+    <image driver="gdal" name="world-tiff">
+        <url>./world.tif</url>
+    </image>
+    
+</map>

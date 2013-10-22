@@ -1,0 +1,185 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+ * Copyright 2008-2013 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+
+#ifndef OSGEARTHUTIL_FEATURE_QUERY_TOOL_H
+#define OSGEARTHUTIL_FEATURE_QUERY_TOOL_H 1
+
+#include <osgEarthUtil/Common>
+#include <osgEarth/MapNode>
+#include <osgEarth/MapNodeObserver>
+#include <osgEarth/GeoData>
+#include <osgEarthFeatures/Feature>
+#include <osgEarthFeatures/FeatureSource>
+#include <osgEarthFeatures/FeatureSourceIndexNode>
+#include <osgEarthUtil/Controls>
+#include <osgGA/GUIEventHandler>
+#include <osg/View>
+
+namespace osgEarth { namespace Util
+{
+    using namespace osgEarth;
+    using namespace osgEarth::Features;
+
+    /**
+     * Tool that let you query the map for Features generated from a FeatureSource.
+     *
+     * By default, an unmodified left-click will activate a query. You can replace
+     * this test by calling setInputPredicate().
+     */
+    class OSGEARTHUTIL_EXPORT FeatureQueryTool : public osgGA::GUIEventHandler,
+                                                 public MapNodeObserver
+    {
+    public:
+
+        struct Callback : public osg::Referenced
+        {
+            struct EventArgs 
+            {
+                const osgGA::GUIEventAdapter*  _ea;
+                osgGA::GUIActionAdapter*       _aa;
+                osg::Vec3d                     _worldPoint;
+            };
+
+            // called when a valid feature is found under the mouse coords
+            virtual void onHit( FeatureSourceIndexNode* index, FeatureID fid, const EventArgs& args ) { }
+
+            // called when no feature is found under the mouse coords
+            virtual void onMiss( const EventArgs& args ) { }
+        };
+
+        /**
+         * Interface for a custom input test.
+         */
+        class InputPredicate : public osg::Referenced
+        {
+        public:
+            // return true to active a query under the mouse cursor.
+            virtual bool accept( const osgGA::GUIEventAdapter& ea ) =0;
+        };
+
+    public:
+        /**
+         * Constructs a new feature query tool.
+         *
+         * @param mapNode
+         *      Map node containing feature data to query
+         * @param callbackToAdd
+         *      (optional) convenience; calls addCallback with this parameter
+         */
+        FeatureQueryTool( 
+            MapNode*  mapNode,
+            Callback* callbackToAdd =0L );
+
+        /** dtor */
+        virtual ~FeatureQueryTool() { }
+
+        /**
+         * Adds a feature query callback.
+         */
+        void addCallback( Callback* callback );
+
+        /**
+         * Removes a feature query callback.
+         */
+
+        /**
+         * Sets a custom input test. By default, the action is a left-click.
+         */
+        void setInputPredicate( InputPredicate* value ) { _inputPredicate = value; }
+
+
+    public: // GUIEventHandler
+
+        virtual bool handle( const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& aa );
+
+
+    public: // MapNodeObserver
+
+        virtual void setMapNode( MapNode* mapNode );
+
+        virtual MapNode* getMapNode() { return _mapNode.get(); }
+
+
+    protected:
+        osg::observer_ptr<MapNode> _mapNode;
+        bool                       _mouseDown;
+        float                      _mouseDownX, _mouseDownY;
+
+        osg::ref_ptr<InputPredicate> _inputPredicate;
+
+        typedef std::vector< osg::observer_ptr<Callback> > Callbacks;
+        Callbacks _callbacks;
+    };
+
+    //--------------------------------------------------------------------
+
+    /**
+     * Sample callback that will highlight a feature upon a query hit.
+     */
+    class OSGEARTHUTIL_EXPORT FeatureHighlightCallback : public FeatureQueryTool::Callback
+    {
+    public:
+        virtual void onHit( FeatureSourceIndexNode* index, FeatureID fid, const EventArgs& args );
+
+        virtual void onMiss( const EventArgs& args );
+
+    protected:
+        void clear();
+
+        struct Selection {
+            osg::observer_ptr<FeatureSourceIndexNode> _index;
+            osg::observer_ptr<osg::Group>             _group;
+            FeatureID                                 _fid;
+            bool operator < ( const Selection& rhs ) const { return _fid < rhs._fid; }
+        };
+        typedef std::set<Selection> SelectionSet;
+        SelectionSet _selections;
+
+        /** dtor */
+        virtual ~FeatureHighlightCallback() { }
+    };
+
+
+    //--------------------------------------------------------------------
+
+    /**
+     * Sample callback that will display feature attributes upon a query hit.
+     */
+    class OSGEARTHUTIL_EXPORT FeatureReadoutCallback : public FeatureQueryTool::Callback
+    {
+    public:
+        FeatureReadoutCallback( Controls::Container* container );
+
+    public:
+        virtual void onHit( FeatureSourceIndexNode* index, FeatureID fid, const EventArgs& args );
+
+        virtual void onMiss( const EventArgs& args );
+
+    protected:
+        void clear();
+        Controls::Grid* _grid;
+
+        /** dtor */
+        virtual ~FeatureReadoutCallback() { }
+    };
+
+
+} } // namespace osgEarthUtil
+
+#endif // OSGEARTHUTIL_FEATURE_QUERY_TOOL_H

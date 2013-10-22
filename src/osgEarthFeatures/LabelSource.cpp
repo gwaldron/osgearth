@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2010 Pelican Mapping
+ * Copyright 2008-2013 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -17,6 +17,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 #include <osgEarthFeatures/LabelSource>
+#include <osgEarth/Registry>
 
 using namespace osgEarth;
 using namespace osgEarth::Features;
@@ -26,6 +27,10 @@ using namespace osgEarth::Symbology;
 
 
 //------------------------------------------------------------------------
+
+LabelSourceOptions::~LabelSourceOptions()
+{
+}
 
 void
 LabelSourceOptions::fromConfig( const Config& conf )
@@ -48,6 +53,11 @@ LabelSourceOptions::getConfig() const
 }
 
 //------------------------------------------------------------------------
+LabelSource::~LabelSource()
+{
+}
+
+//------------------------------------------------------------------------
 
 #undef  LC
 #define LC "[LabeSourceFactory] "
@@ -62,7 +72,7 @@ LabelSourceFactory::create( const LabelSourceOptions& options )
     {
         std::string driverExt = std::string(".osgearth_label_") + options.getDriver();
 
-        osg::ref_ptr<osgDB::ReaderWriter::Options> rwopts = new osgDB::ReaderWriter::Options();
+        osg::ref_ptr<osgDB::Options> rwopts = Registry::instance()->cloneOrCreateOptions();
         rwopts->setPluginData( LABEL_SOURCE_OPTIONS_TAG, (void*)&options );
 
         labelSource = dynamic_cast<LabelSource*>( osgDB::readObjectFile( driverExt, rwopts.get() ) );

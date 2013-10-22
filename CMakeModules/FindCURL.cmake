@@ -12,6 +12,7 @@ FIND_PATH(CURL_INCLUDE_DIR curl.h curl/curl.h
 
 FIND_PATH(CURL_INCLUDE_DIR curl.h curl/curl.h
   PATHS
+  ${THIRD_PARTY_DIR}/include
   /usr/local/include/curl
   /usr/local/include/CURL
   /usr/local/include
@@ -36,6 +37,7 @@ FIND_PATH(CURL_INCLUDE_DIR curl.h curl/curl.h
 FIND_LIBRARY(CURL_LIBRARY
   NAMES curl curllib CURL libcurl
   PATHS
+  ${THIRD_PARTY_DIR}/lib
   $ENV{CURL_DIR}
   NO_DEFAULT_PATH
   PATH_SUFFIXES lib64 lib
@@ -66,6 +68,7 @@ FIND_LIBRARY(CURL_LIBRARY
 FIND_LIBRARY(CURL_LIBRARY_DEBUG
   NAMES curlD curld curllibD curllibd CURLD libcurlD libcurld
   PATHS
+  ${THIRD_PARTY_DIR}/lib
   $ENV{CURL_DIR}
   NO_DEFAULT_PATH
   PATH_SUFFIXES lib64 lib

@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2010 Pelican Mapping
+ * Copyright 2008-2013 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -22,11 +22,8 @@
 
 #include <osgEarth/Common>
 #include <osgEarth/Profile>
-#include <osg/Referenced>
-#include <osg/Image>
-#include <osg/Shape>
+#include <osg/ref_ptr>
 #include <osg/Version>
-#include <osgDB/ReaderWriter>
 #include <osgTerrain/TerrainTile>
 #include <string>
 
@@ -34,6 +31,7 @@ namespace osgEarth
 {
     /**
      * Uniquely identifies a single tile on the map, relative to a Profile.
+     * Profiles have an origin of 0,0 at the top left.
      */
     class OSGEARTH_EXPORT TileKey
     {
@@ -63,6 +61,9 @@ namespace osgEarth
 
         TileKey( const TileKey& rhs );
 
+        /** dtor */
+        virtual ~TileKey() { }
+
         bool operator == (const TileKey& rhs) const {
             return valid() && rhs.valid() && _lod==rhs._lod && _x==rhs._x && _y==rhs._y;
         }
@@ -86,7 +87,7 @@ namespace osgEarth
          * Gets the string representation of the key, formatted like:
          * "lod_x_y"
          */
-        std::string str() const { return _key; }
+        const std::string& str() const { return _key; }
 
         /**
          * Gets a TileID corresponding to this key.
@@ -102,6 +103,11 @@ namespace osgEarth
          * Whether this is a valid key.
          */
         const bool valid() const { return _profile.valid(); }
+
+        /**
+         * Get the quadrant relative to this key's parent.
+         */
+        unsigned getQuadrant() const;
 
     public:
         /**
@@ -124,15 +130,16 @@ namespace osgEarth
 
         /**
          * Creates a key that represents this tile's neighbor at the same LOD. Wraps
-         * around in X and Y automatically.
+         * around in X and Y automatically. For example, xoffset=-1 yoffset=1 will
+         * give you the key for the tile SW of this tile.
          */
-        enum Direction { NORTH, SOUTH, EAST, WEST };
-        TileKey createNeighborKey( Direction dir ) const;
+        TileKey createNeighborKey( int xoffset, int yoffset ) const;
 
         /**
          * Gets the level of detail of the tile represented by this key.
          */
-        unsigned int getLevelOfDetail() const;
+        unsigned getLevelOfDetail() const { return _lod; }
+        unsigned getLOD() const { return _lod; }
 
         /**
          * Gets the geospatial extents of the tile represented by this key.
@@ -159,16 +166,11 @@ namespace osgEarth
 
         unsigned int getTileX() const { return _x; }
         unsigned int getTileY() const { return _y; }
-        
-		static inline int getLOD(const osgTerrain::TileID& id)
-		{
-			//The name of the lod changed after OSG 2.6 from layer to level
-#if (OPENSCENEGRAPH_MAJOR_VERSION == 2 && OPENSCENEGRAPH_MINOR_VERSION < 7)
-			return id.layer;
-#else
-			return id.level;
-#endif
-		}
+
+        static inline int getLOD(const osgTerrain::TileID& id)
+        {
+            return id.level;
+        }
 
     protected:
         std::string _key;

@@ -1,0 +1,138 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+ * Copyright 2008-2013 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+
+#ifndef OSGEARTH_FADE_EFFECT_H
+#define OSGEARTH_FADE_EFFECT_H 1
+
+#include <osgEarth/Common>
+#include <osgEarth/Config>
+#include <osgEarth/ThreadingUtils>
+#include <osg/Group>
+#include <osg/Uniform>
+
+namespace osgEarth
+{
+    /**
+     * Options for geometry fading properties.
+     */
+    class OSGEARTH_EXPORT FadeOptions
+    {
+    public:
+        /** Construct new default fade options */
+        FadeOptions(const Config& conf =Config());
+
+        /** Time to fade in a new graph (seconds) */
+        optional<float>& duration() { return _duration; }
+        const optional<float>& duration() const { return _duration; }
+
+        /** Range at which geometry becomes invisible (m) */
+        optional<float>& maxRange() { return _maxRange; }
+        const optional<float>& maxRange() const { return _maxRange; }
+
+        /** Distance over which to fade out geometry (from max range) */
+        optional<float>& attentuationDistance() { return _attenDist; }
+        const optional<float>& attenuationDistance() const { return _attenDist; }
+
+    public:
+        virtual ~FadeOptions() { }
+        Config getConfig() const;
+
+    private:
+        optional<float> _duration;
+        optional<float> _maxRange;
+        optional<float> _attenDist;
+    };
+
+
+    /**
+     * Decorator node that will only display it's children when the camera is within a given elevation range
+     */
+    class OSGEARTH_EXPORT FadeEffect : public osg::Group
+    {
+    public:
+        /**
+         * Creates a uniform that set the start time for a timed fade. Typically you
+         * will set this right after adding the node to the scene graph. The value
+         * is a FLOAT in seconds. You can apply this uniform to the FadeEffect node
+         * or elsewhere in the scene graph.
+         */
+        static osg::Uniform* createStartTimeUniform();
+
+    public:
+        FadeEffect();
+        virtual ~FadeEffect() { }
+
+        /** Time over which to fade in the subgraph */
+        void setFadeDuration( float seconds );
+        float getFadeDuration() const;
+
+        /** Camera range at which subgraph is completely faded out */
+        void setMaxRange( float range );
+        float getMaxRange() const;
+
+        /** Distance over which to fade out the subgraph */
+        void setAttenuationDistance( float dist );
+        float getAttenuationDistance() const;
+
+    private:
+        osg::ref_ptr<osg::Uniform> _fadeDuration;
+        osg::ref_ptr<osg::Uniform> _maxRange;
+        osg::ref_ptr<osg::Uniform> _attenDist;
+    };
+
+
+    class OSGEARTH_EXPORT FadeLOD : public osg::Group
+    {
+    public:
+        FadeLOD();
+        virtual ~FadeLOD() { }
+
+        void setMinPixelExtent( float value ) { _minPixelExtent = value; }
+        float getMinPixelExtent() const { return _minPixelExtent; }
+
+        void setMaxPixelExtent( float value ) { _maxPixelExtent = value; }
+        float getMaxPixelExtent() const { return _maxPixelExtent; }
+
+        void setMinFadeExtent( float value ) { _minFadeExtent = value; }
+        float getMinFadeExtent() const { return _minFadeExtent; }
+
+        void setMaxFadeExtent( float value ) { _maxFadeExtent = value; }
+        float getMaxFadeExtent() const { return _maxFadeExtent; }
+
+    public: // osg::Node
+
+        virtual void traverse(osg::NodeVisitor& nv );
+
+    protected:
+        struct PerViewData
+        {
+            osg::ref_ptr<osg::StateSet> _stateSet;
+            osg::ref_ptr<osg::Uniform>  _opacity;
+        };
+        Threading::PerObjectMap<osg::NodeVisitor*, PerViewData> _perViewData;
+
+        float _minPixelExtent;
+        float _maxPixelExtent;
+        float _minFadeExtent;
+        float _maxFadeExtent;
+    };
+
+} // namespace osgEarth
+
+#endif // OSGEARTH_FADE_EFFECT_H

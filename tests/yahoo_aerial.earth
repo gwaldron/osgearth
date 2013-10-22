@@ -14,9 +14,6 @@ the provider's terms of service when using their data.
     </image>
     
     <options>
-        <terrain>
-            <loading_policy mode="sequential"/>
-        </terrain>
         <lighting>false</lighting>
     </options>
    

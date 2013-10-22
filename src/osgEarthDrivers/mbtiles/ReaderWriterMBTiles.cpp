@@ -55,42 +55,55 @@ public:
     }
 
     // override
-      void initialize( const osgDB::Options* dbOptions, const Profile* overrideProfile)
+    Status initialize(const osgDB::Options* dbOptions)
     {
-        //Set the profile
-        setProfile( osgEarth::Registry::instance()->getGlobalMercatorProfile() );
+        // no caching of source tiles
+        _dbOptions = Registry::instance()->cloneOrCreateOptions( dbOptions );
+        CachePolicy::NO_CACHE.apply( _dbOptions.get() );
 
-#if 0
-        //Open the database
-        std::string filename = _options.filename().value();
-
-        //Get the absolute filename
-        if (!osgDB::containsServerAddress(filename))
-        {
-            filename = osgEarth::getFullPath(referenceURI, filename);
-        }
-#endif
+                   
 
         int flags = SQLITE_OPEN_READONLY;
         int rc = sqlite3_open_v2( _options.filename()->c_str(), &_database, flags, 0L );
         if ( rc != 0 )
-        {
-            OE_WARN << LC << "Failed to open database \"" << *_options.filename() << "\": " << sqlite3_errmsg(_database) << std::endl;
-            return;
+        {                        
+            std::stringstream buf;
+            buf << "Failed to open database \"" << *_options.filename() << "\": " << sqlite3_errmsg(_database);
+            return Status::Error(buf.str());
         }
 
         //Print out some metadata
-        std::string name, type, version, description, format;
+        std::string name, type, version, description, format, profileStr;
         getMetaData( "name", name );
         getMetaData( "type", type);
         getMetaData( "version", version );
         getMetaData( "description", description );
         getMetaData( "format", format );
+        getMetaData( "profile", profileStr );
         OE_NOTICE << "name=" << name << std::endl
                   << "type=" << type << std::endl
                   << "version=" << version << std::endl
                   << "description=" << description << std::endl
-                  << "format=" << format << std::endl;
+                  << "format=" << format << std::endl
+                  << "profile=" << profileStr << std::endl;
+
+
+
+         //Set the profile
+        const Profile* profile = getProfile();        
+        if (!profile)
+        {
+            if (!profileStr.empty())
+            {
+                profile = Profile::create(profileStr);
+            }
+            else
+            {
+                profile = osgEarth::Registry::instance()->getSphericalMercatorProfile();
+            }
+            setProfile( profile );                    
+        }
+        
 
         //Determine the tile format and get a reader writer for it.        
         if (_options.format().isSet())
@@ -112,9 +125,13 @@ public:
         OE_DEBUG << LC <<  "_tileFormat = " << _tileFormat << std::endl;
 
         //Get the ReaderWriter
-        _rw = osgDB::Registry::instance()->getReaderWriterForExtension( _tileFormat );
+        _rw = osgDB::Registry::instance()->getReaderWriterForExtension( _tileFormat );                
 
         computeLevels();
+
+        _emptyImage = ImageUtils::createEmptyImage( 256, 256 );
+        
+        return STATUS_OK;
     }    
 
     // override
@@ -125,13 +142,12 @@ public:
         int x = key.getTileX();
         int y = key.getTileY();
 
-        if (z < _minLevel)
+        if (z < (int)_minLevel)
         {
-            //Return an empty image to make it continue subdividing
-            return ImageUtils::createEmptyImage();
+            return _emptyImage.get();            
         }
 
-        if (z > _maxLevel)
+        if (z > (int)_maxLevel)
         {
             //If we're at the max level, just return NULL
             return NULL;
@@ -148,7 +164,7 @@ public:
         if ( rc != SQLITE_OK )
         {
             OE_WARN << LC << "Failed to prepare SQL: " << query << "; " << sqlite3_errmsg(_database) << std::endl;
-            return false;
+            return NULL;
         }
 
         bool valid = true;        
@@ -171,8 +187,8 @@ public:
             osgDB::ReaderWriter::ReadResult rr = _rw->readImage( imageBufStream );
             if (rr.validImage())
             {
-                result = rr.takeImage();            
-            }
+                result = rr.takeImage();                
+            }            
         }
         else
         {
@@ -237,7 +253,7 @@ public:
         {                     
             _minLevel = sqlite3_column_int( select, 0 );
             _maxLevel = sqlite3_column_int( select, 1 );
-            //OE_NOTICE << "Min=" << _minLevel << " Max=" << _maxLevel << std::endl;
+            OE_NOTICE << "Min=" << _minLevel << " Max=" << _maxLevel << std::endl;
         }
         else
         {
@@ -258,8 +274,10 @@ private:
     sqlite3* _database;
     unsigned int _minLevel;
     unsigned int _maxLevel;
+    osg::ref_ptr< osg::Image> _emptyImage;
 
     osg::ref_ptr<osgDB::ReaderWriter> _rw;
+    osg::ref_ptr<osgDB::Options> _dbOptions;
     std::string _tileFormat;
 
 };

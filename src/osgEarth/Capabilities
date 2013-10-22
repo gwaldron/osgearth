@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2008-2010 Pelican Mapping
+* Copyright 2008-2013 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -21,9 +21,12 @@
 #define OSGEARTH_CAPABILITIES_H 1
 
 #include <osgEarth/Common>
+#include <osg/Uniform>
 
 namespace osgEarth
 {
+    class VirtualProgram;
+
     /**
      * Stores information about the hardware and graphics system capbilities.
      * The osgEarth::Registry stores a singleton Capabilities object that you can 
@@ -38,8 +41,11 @@ namespace osgEarth
         /** maximum # of texture image units exposed in a GPU fragment shader */
         int getMaxGPUTextureUnits() const { return _maxGPUTextureUnits; }
 
-        /** maximum # of texture coordinate sets available in a GPU fragment shader */
+        /** maximum # of texture coordinate indices available in a GPU fragment shader */
         int getMaxGPUTextureCoordSets() const { return _maxGPUTextureCoordSets; }
+
+        /** maximum # of vertex attributes available in a shader */
+        int getMaxGPUAttribs() const { return _maxGPUAttribs; }
 
         /** maximum supported size (in pixels) of a texture */
         int getMaxTextureSize() const { return _maxTextureSize; }
@@ -59,6 +65,15 @@ namespace osgEarth
 
         /** the GLSL version */
         float getGLSLVersion() const { return _GLSLversion; }
+
+        /** the GPU vendor */
+        const std::string& getVendor() const { return _vendor;}
+
+        /** the GPU renderer */
+        const std::string& getRenderer() const { return _renderer;}
+
+        /** the GPU driver version */
+        const std::string& getVersion() const { return _version;}
 
         /** whether the GPU supports texture arrays */
         bool supportsTextureArrays() const { return _supportsTextureArrays; }
@@ -84,13 +99,41 @@ namespace osgEarth
         /** whether the GPU supports DEPTH_PACKED_STENCIL buffer */
         bool supportsDepthPackedStencilBuffer() const { return _supportsDepthPackedStencilBuffer; }
 
+        /** whether the GPU supporst occlusion query */
+        bool supportsOcclusionQuery() const { return _supportsOcclusionQuery; }
+
+        /** whether the GPU supports DrawInstanced rendering */
+        bool supportsDrawInstanced() const { return _supportsDrawInstanced; }
+
+        /** whether the GPU supports Uniform Buffer Objects */
+        bool supportsUniformBufferObjects() const { return _supportsUniformBufferObjects; }
+
+        /** whether the GPU can handle non-power-of-two textures. */
+        bool supportsNonPowerOfTwoTextures() const { return _supportsNonPowerOfTwoTextures; }
+
+        /** maximum size of a uniform buffer block, in bytes */
+        int getMaxUniformBlockSize() const { return _maxUniformBlockSize; }
+
+        /** whether to prefer display lists over VBOs for static geometry. */
+        bool preferDisplayListsForStaticGeometry() const { return _preferDLforStaticGeom; }
+
+        /** number of logical CPUs available. */
+        int getNumProcessors() const { return _numProcessors; }
+
+        /** whether the GPU supports writing to the depth fragment */
+        bool supportsFragDepthWrite() const { return _supportsFragDepthWrite; }
+
     protected:
         Capabilities();
+
+        /** dtor */
+        virtual ~Capabilities() { }
 
     private:
         int  _maxFFPTextureUnits;
         int  _maxGPUTextureUnits;
         int  _maxGPUTextureCoordSets;
+        int  _maxGPUAttribs;
         int  _maxTextureSize;
         int  _maxFastTextureSize;
         int  _maxLights;
@@ -105,6 +148,14 @@ namespace osgEarth
         bool _supportsTexture2DLod;
         bool _supportsMipmappedTextureUpdates;
         bool _supportsDepthPackedStencilBuffer;
+        bool _supportsOcclusionQuery;
+        bool _supportsDrawInstanced;
+        bool _supportsUniformBufferObjects;
+        bool _supportsNonPowerOfTwoTextures;
+        int  _maxUniformBlockSize;
+        bool _preferDLforStaticGeom;
+        int  _numProcessors;
+        bool _supportsFragDepthWrite;
         std::string _vendor;
         std::string _renderer;
         std::string _version;

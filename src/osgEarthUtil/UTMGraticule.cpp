@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2010 Pelican Mapping
+ * Copyright 2008-2013 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -24,7 +24,6 @@
 
 #include <osgEarthSymbology/Geometry>
 #include <osgEarthAnnotation/LabelNode>
-#include <osgEarthAnnotation/Decluttering>
 
 #include <osgEarth/Registry>
 #include <osgEarth/DepthOffset>
@@ -98,18 +97,6 @@ _root      ( 0L )
 void
 UTMGraticule::init()
 {
-    if ( !_mapNode.valid() )
-    {
-        OE_WARN << LC << "Illegal NULL map node" << std::endl;
-        return;
-    }
-
-    if ( !_mapNode->isGeocentric() )
-    {
-        OE_WARN << LC << "Projected map mode is not yet supported" << std::endl;
-        return;
-    }
-
     // safely generate a unique ID for this graticule:
     _id = Registry::instance()->createUID();
     {
@@ -117,7 +104,47 @@ UTMGraticule::init()
         s_graticuleRegistry[_id] = this;
     }
 
-    const Profile* mapProfile = _mapNode->getMap()->getProfile();
+    // make the shared depth attr:
+    _depthAttribute = new osg::Depth(osg::Depth::LEQUAL,0,1,false);
+
+    // this will intialize the graph.
+    rebuild();
+}
+
+void
+UTMGraticule::setMapNode( MapNode* mapNode )
+{
+    _mapNode = mapNode;
+    rebuild();
+}
+
+void
+UTMGraticule::setOptions( const UTMGraticuleOptions& options )
+{
+    _options = options;
+    rebuild();
+}
+
+void
+UTMGraticule::rebuild()
+{
+    // clear everything out
+    this->removeChildren( 0, this->getNumChildren() );
+
+    // requires a map node
+    if ( !getMapNode() )
+    {
+        return;
+    }
+
+    // requires a geocentric map
+    if ( !getMapNode()->isGeocentric() )
+    {
+        OE_WARN << LC << "Projected map mode is not yet supported" << std::endl;
+        return;
+    }
+
+    const Profile* mapProfile = getMapNode()->getMap()->getProfile();
 
     _profile = Profile::create(
         mapProfile->getSRS(),
@@ -137,7 +164,7 @@ UTMGraticule::init()
     // set up default options if the caller did not supply them
     if ( !_options.isSet() )
     {
-        _options->primaryStyle()= Style();
+        _options->primaryStyle() = Style();
 
         LineSymbol* line = _options->primaryStyle()->getOrCreate<LineSymbol>();
         line->stroke()->color() = Color::Gray;
@@ -145,7 +172,6 @@ UTMGraticule::init()
         line->tessellation() = 20;
 
         AltitudeSymbol* alt = _options->primaryStyle()->getOrCreate<AltitudeSymbol>();
-        //alt->verticalOffset() = NumericExpression(4900.0);
 
         TextSymbol* text = _options->primaryStyle()->getOrCreate<TextSymbol>();
         text->fill()->color() = Color(Color::White, 0.3f);
@@ -153,41 +179,10 @@ UTMGraticule::init()
         text->alignment() = TextSymbol::ALIGN_CENTER_CENTER;
     }
 
-    // make the shared depth attr:
-    _depthAttribute = new osg::Depth(osg::Depth::LEQUAL,0,1,false);
 
-    // this will intialize the graph.
-    rebuild();
-}
-
-void
-UTMGraticule::setOptions( const UTMGraticuleOptions& options )
-{
-    _options = options;
-    rebuild();
-}
-
-void
-UTMGraticule::rebuild()
-{
-    // intialize the container if necessary
-    if ( !_root )
-    {
-        _root = new DrapeableNode( _mapNode.get(), false );
-        this->addChild( _root );
-
-        // set up depth offsetting.
-        osg::StateSet* s = _root->getOrCreateStateSet();
-        s->setAttributeAndModes( DepthOffsetUtils::getOrCreateProgram(), 1 );
-        s->addUniform( DepthOffsetUtils::getIsNotTextUniform() );
-        osg::Uniform* u = DepthOffsetUtils::createMinOffsetUniform();
-        u->set( 10000.0f );
-        s->addUniform( u );
-    }
-    else
-    {
-        _root->removeChildren(0, _root->getNumChildren());
-    }
+    // rebuild the graph:
+    _root = new DrapeableNode( getMapNode(), false );
+    this->addChild( _root );
 
     // build the base Grid Zone Designator (GZD) loolup table. This is a table
     // that maps the GZD string to its extent.
@@ -239,10 +234,7 @@ UTMGraticule::rebuild()
             _root->addChild( tile );
     }
 
-    // and the polar tile GZDs.
-    //_root->addChild( buildPolarGZDTiles() );
-
-    DepthOffsetUtils::prepareGraph( _root );
+    //DepthOffsetUtils::prepareGraph( _root );
 }
 
 
@@ -255,13 +247,10 @@ UTMGraticule::buildGZDTile( const std::string& name, const GeoExtent& extent )
     lineStyle.add( _options->primaryStyle()->get<LineSymbol>() );
     lineStyle.add( _options->primaryStyle()->get<AltitudeSymbol>() );
 
-    //const Style& lineStyle = *_options->lineStyle();
-    //Style textStyle = *_options->textStyle();
-
     bool hasText = _options->primaryStyle()->get<TextSymbol>() != 0L;
 
     GeometryCompiler compiler;
-    osg::ref_ptr<Session> session = new Session( _mapNode->getMap() );
+    osg::ref_ptr<Session> session = new Session( getMapNode()->getMap() );
     FilterContext context( session.get(), _featureProfile.get(), extent );
 
     // make sure we get sufficient tessellation:
@@ -303,15 +292,20 @@ UTMGraticule::buildGZDTile( const std::string& name, const GeoExtent& extent )
     // get the geocentric tile center:
     osg::Vec3d tileCenter;
     extent.getCentroid( tileCenter.x(), tileCenter.y() );
+
+    const SpatialReference* ecefSRS = extent.getSRS()->getECEF();
     
     osg::Vec3d centerECEF;
-    extent.getSRS()->transformToECEF( tileCenter, centerECEF );
+    extent.getSRS()->transform( tileCenter, ecefSRS, centerECEF );
+    //extent.getSRS()->transformToECEF( tileCenter, centerECEF );
 
     if ( hasText )
     {
         osg::Vec3d west, east;
-        extent.getSRS()->transformToECEF(osg::Vec3d(extent.xMin(),tileCenter.y(),0), west );
-        extent.getSRS()->transformToECEF(osg::Vec3d(extent.xMax(),tileCenter.y(),0), east );
+        extent.getSRS()->transform( osg::Vec3d(extent.xMin(),tileCenter.y(),0), ecefSRS, west );
+        extent.getSRS()->transform( osg::Vec3d(extent.xMax(),tileCenter.y(),0), ecefSRS, east );
+        //extent.getSRS()->transformToECEF(osg::Vec3d(extent.xMin(),tileCenter.y(),0), west );
+        //extent.getSRS()->transformToECEF(osg::Vec3d(extent.xMax(),tileCenter.y(),0), east );
 
         TextSymbol* textSym = _options->primaryStyle()->getOrCreate<TextSymbol>();
         textSym->size() = (west-east).length() / 3.0;
@@ -326,7 +320,9 @@ UTMGraticule::buildGZDTile( const std::string& name, const GeoExtent& extent )
         d->getOrCreateStateSet()->setRenderBinToInherit();
 
         textGeode->addDrawable(d);
-        osg::MatrixTransform* mt = new osg::MatrixTransform(ECEF::createLocalToWorld(centerECEF));
+        osg::Matrixd centerL2W;
+        ecefSRS->createLocalToWorld( centerECEF, centerL2W );
+        osg::MatrixTransform* mt = new osg::MatrixTransform(centerL2W);
         mt->addChild(textGeode);
        
         group->addChild(mt);

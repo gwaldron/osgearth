@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2010 Pelican Mapping
+ * Copyright 2008-2013 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -18,9 +18,11 @@
  */
 #include <osgEarth/TerrainEngineNode>
 #include <osgEarth/Capabilities>
+#include <osgEarth/CullingUtils>
 #include <osgEarth/Registry>
 #include <osgEarth/TextureCompositor>
 #include <osgEarth/NodeUtils>
+#include <osgEarth/MapModelChange>
 #include <osgDB/ReadFile>
 #include <osg/CullFace>
 #include <osg/PolygonOffset>
@@ -68,6 +70,37 @@ _engine( engine )
 }
 
 
+void
+TerrainEngineNode::addEffect(TerrainEffect* effect)
+{
+    if ( effect )
+    {
+        effects_.push_back( effect );
+        effect->onInstall( this );
+    }
+}
+
+
+void
+TerrainEngineNode::removeEffect(TerrainEffect* effect)
+{
+    if ( effect )
+    {
+        effect->onUninstall(this);
+        TerrainEffectVector::iterator i = std::find(effects_.begin(), effects_.end(), effect);
+        if ( i != effects_.end() )
+            effects_.erase( i );
+    }
+}
+
+
+TextureCompositor*
+TerrainEngineNode::getTextureCompositor() const
+{
+    return _texCompositor.get();
+}
+
+
 // this handler adjusts the uniform set when a terrain layer's "enabed" state changes
 void
 TerrainEngineNode::ImageLayerController::onVisibleChanged( TerrainLayer* layer )
@@ -102,6 +135,33 @@ TerrainEngineNode::ImageLayerController::onOpacityChanged( ImageLayer* layer )
 
     _engine->dirty();
 }
+
+void
+TerrainEngineNode::ImageLayerController::onVisibleRangeChanged( ImageLayer* layer )
+{
+    if ( !Registry::instance()->getCapabilities().supportsGLSL() )
+        return;
+
+    _mapf.sync();
+    int layerNum = _mapf.indexOf( layer );
+    if ( layerNum >= 0 )
+    {
+         _layerRangeUniform.setElement( (2*layerNum),   layer->getMinVisibleRange() );
+         _layerRangeUniform.setElement( (2*layerNum)+1, layer->getMaxVisibleRange() );
+    }        
+    else
+        OE_WARN << LC << "Odd, onVisibleRangeChanged did not find layer" << std::endl;
+
+    _engine->dirty();
+}
+
+void
+TerrainEngineNode::ImageLayerController::onColorFiltersChanged( ImageLayer* layer )
+{
+    _engine->updateTextureCombining();
+    _engine->dirty();
+}
+
 
 
 //------------------------------------------------------------------------
@@ -150,7 +210,7 @@ TerrainEngineNode::preInitialize( const Map* map, const TerrainOptions& options 
     _map = map;
     
     // fire up a terrain utility interface
-    _terrainInterface = new Terrain( this, map->getProfile(), map->isGeocentric() );
+    _terrainInterface = new Terrain( this, map->getProfile(), map->isGeocentric(), options );
 
     // set up the CSN values   
     _map->getProfile()->getSRS()->populateCoordinateSystemNode( this );
@@ -178,15 +238,24 @@ TerrainEngineNode::preInitialize( const Map* map, const TerrainOptions& options 
 
     // enable backface culling
     osg::StateSet* set = getOrCreateStateSet();
-    set->setAttributeAndModes( new osg::CullFace( osg::CullFace::BACK ), osg::StateAttribute::ON );
+    //set->setAttributeAndModes( new osg::CullFace( osg::CullFace::BACK ), osg::StateAttribute::ON );
+    set->setMode( GL_CULL_FACE, 1 );
 
     // elevation uniform
+    // NOTE: wrong...this should be per-CullVisitor...consider putting in the Culling::CullUserData
     _cameraElevationUniform = new osg::Uniform( osg::Uniform::FLOAT, "osgearth_CameraElevation" );
     _cameraElevationUniform->set( 0.0f );
     set->addUniform( _cameraElevationUniform.get() );
     
     set->getOrCreateUniform( "osgearth_ImageLayerAttenuation", osg::Uniform::FLOAT )->set(
         *options.attentuationDistance() );
+
+    if ( options.enableMercatorFastPath().isSet() )
+    {
+        OE_INFO 
+            << LC << "Mercator fast path " 
+            << (options.enableMercatorFastPath()==true? "enabled" : "DISABLED") << std::endl;
+    }
 
     _initStage = INIT_PREINIT_COMPLETE;
 }
@@ -280,7 +349,7 @@ TerrainEngineNode::onMapModelChanged( const MapModelChange& change )
     // compositor is up to date with the map model. (After post-initialization,
     // this happens in the subclass...something that probably needs to change
     // since this is unclear)
-    else if ( _texCompositor.valid() )
+    else if ( _texCompositor.valid() && change.getImageLayer() )
     {
         _texCompositor->applyMapModelChange( change );
     }
@@ -312,7 +381,7 @@ TerrainEngineNode::updateImageUniforms()
         // layer count has changed, but the shader has not yet caught up. In the future we might use this to disable
         // "ghost" layers that used to exist at a given index, but no longer do.
         
-        _imageLayerController->_layerVisibleUniform.attach( "osgearth_ImageLayerVisible", osg::Uniform::BOOL,  stateSet, MAX_IMAGE_LAYERS );
+        _imageLayerController->_layerVisibleUniform.attach( "osgearth_ImageLayerVisible", osg::Uniform::BOOL,  stateSet, mapf.imageLayers().size() );
         _imageLayerController->_layerOpacityUniform.attach( "osgearth_ImageLayerOpacity", osg::Uniform::FLOAT, stateSet, mapf.imageLayers().size() );
         _imageLayerController->_layerRangeUniform.attach  ( "osgearth_ImageLayerRange",   osg::Uniform::FLOAT, stateSet, 2 * mapf.imageLayers().size() );
 
@@ -323,8 +392,8 @@ TerrainEngineNode::updateImageUniforms()
 
             _imageLayerController->_layerVisibleUniform.setElement( index, layer->getVisible() );
             _imageLayerController->_layerOpacityUniform.setElement( index, layer->getOpacity() );
-            _imageLayerController->_layerRangeUniform.setElement( (2*index), layer->getImageLayerOptions().minVisibleRange().value() );
-            _imageLayerController->_layerRangeUniform.setElement( (2*index)+1, layer->getImageLayerOptions().maxVisibleRange().value() );
+            _imageLayerController->_layerRangeUniform.setElement( (2*index), layer->getMinVisibleRange() );
+            _imageLayerController->_layerRangeUniform.setElement( (2*index)+1, layer->getMaxVisibleRange() );
         }
 
         // set the remainder of the layers to disabled 
@@ -353,6 +422,11 @@ TerrainEngineNode::validateTerrainOptions( TerrainOptions& options )
     }
 }
 
+namespace
+{
+    Threading::Mutex s_opqlock;
+}
+
 void
 TerrainEngineNode::traverse( osg::NodeVisitor& nv )
 {
@@ -361,12 +435,11 @@ TerrainEngineNode::traverse( osg::NodeVisitor& nv )
         // see if we need to set up the Terrain object with an update ops queue.
         if ( !_terrainInterface->_updateOperationQueue.valid() )
         {
-            static Threading::Mutex s_opqlock;
             Threading::ScopedMutexLock lock(s_opqlock);
             if ( !_terrainInterface->_updateOperationQueue.valid() ) // double check pattern
             {
                 //TODO: think, will this work with >1 view?
-                osgUtil::CullVisitor* cv = dynamic_cast<osgUtil::CullVisitor*>( &nv );
+                osgUtil::CullVisitor* cv = Culling::asCullVisitor(nv);
                 if ( cv->getCurrentCamera() )
                 {
                     osgViewer::View* view = dynamic_cast<osgViewer::View*>(cv->getCurrentCamera()->getView());
@@ -379,16 +452,19 @@ TerrainEngineNode::traverse( osg::NodeVisitor& nv )
                         }
                         _terrainInterface->_updateOperationQueue = q;
                     }
-                }                        
+                }
             }
         }
 
 
-        if ( Registry::instance()->getCapabilities().supportsGLSL() )
+        if ( Registry::capabilities().supportsGLSL() )
         {
             _updateLightingUniformsHelper.cullTraverse( this, &nv );
 
-            osgUtil::CullVisitor* cv = dynamic_cast<osgUtil::CullVisitor*>( &nv );
+            // TODO: the "camera elevation" uniform is only used by the old
+            // multi- and texarray- texture compositors. Once we get rid of those
+            // we can get rid of this too.
+            osgUtil::CullVisitor* cv = Culling::asCullVisitor(nv);
             if ( cv )
             {
                 osg::Vec3d eye = cv->getEyePoint();
@@ -399,6 +475,7 @@ TerrainEngineNode::traverse( osg::NodeVisitor& nv )
                 else
                     elevation = eye.z();
 
+                //TODO: no good. cannot be setting this in cull.
                 _cameraElevationUniform->set( elevation );
             }
         }
@@ -415,7 +492,7 @@ TerrainEngineNode::traverse( osg::NodeVisitor& nv )
 //------------------------------------------------------------------------
 
 #undef LC
-#define LC "[TerrainEngineFactory] "
+#define LC "[TerrainEngineNodeFactory] "
 
 TerrainEngineNode*
 TerrainEngineNodeFactory::create( Map* map, const TerrainOptions& options )
@@ -424,7 +501,7 @@ TerrainEngineNodeFactory::create( Map* map, const TerrainOptions& options )
 
     std::string driver = options.getDriver();
     if ( driver.empty() )
-        driver = "osgterrain";
+        driver = Registry::instance()->getDefaultTerrainEngineDriverName();
 
     std::string driverExt = std::string( ".osgearth_engine_" ) + driver;
     result = dynamic_cast<TerrainEngineNode*>( osgDB::readObjectFile( driverExt ) );
@@ -439,5 +516,18 @@ TerrainEngineNodeFactory::create( Map* map, const TerrainOptions& options )
     }
 
     return result;
+}
+
+//------------------------------------------------------------------------
+TerrainDecorator::~TerrainDecorator()
+{
+}
+
+void TerrainDecorator::onInstall( TerrainEngineNode* engine )
+{
+}
+
+void TerrainDecorator::onUninstall( TerrainEngineNode* engine )
+{
 }
 

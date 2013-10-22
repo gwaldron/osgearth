@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2008-2010 Pelican Mapping
+* Copyright 2008-2013 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -78,18 +78,53 @@ NumericExpression::init()
 {
     _vars.clear();
     _rpn.clear();
-    StringTokenizer tokenizer( "", "" );
-    tokenizer.addDelims( "[],()%*/+-", true );
-    tokenizer.addQuotes( "'\"", true );
-    tokenizer.keepEmpties() = false;
+
+    StringTokenizer variablesTokenizer( "", "" );
+    variablesTokenizer.addDelims( "[]", true );
+    variablesTokenizer.addQuotes( "'\"", true );
+    variablesTokenizer.keepEmpties() = false;
+
+    StringTokenizer operandTokenizer( "", "" );
+    operandTokenizer.addDelims( ",()%*/+-", true );
+    operandTokenizer.addQuotes( "'\"", true );
+    operandTokenizer.keepEmpties() = false;
+
+    StringVector variablesTokens;
+    variablesTokenizer.tokenize( _src, variablesTokens );
 
     StringVector t;
-    tokenizer.tokenize( _src, t );
-    //tokenize(_src, t, "[],()%*/+-", "'\"", false, true);
+    bool invar = false;
+    for( unsigned i=0; i<variablesTokens.size(); ++i )
+    {
+        if ( variablesTokens[i] == "[" && !invar )
+        {
+            // Start variable, add "[" token
+            invar = true;
+            t.push_back(variablesTokens[i]);
+        }
+        else if ( variablesTokens[i] == "]" && invar )
+        {
+            // End variable, add "]" token
+            invar = false;
+            t.push_back(variablesTokens[i]);
+        }
+        else if ( invar )
+        {
+            // Variable, add variable token
+            t.push_back(variablesTokens[i]);
+        }
+        else
+        {
+            // Operands, tokenize it and add tokens
+            StringVector operandTokens;
+            operandTokenizer.tokenize( variablesTokens[i], operandTokens );
+            t.insert(t.end(), operandTokens.begin(), operandTokens.end());
+        }
+    }
 
     // identify tokens:
     AtomVector infix;
-    bool invar = false;
+    invar = false;
     for( unsigned i=0; i<t.size(); ++i ) {
         if ( t[i] == "[" && !invar ) {
             invar = true;
@@ -317,6 +352,15 @@ _dirty( true )
     init();
 }
 
+StringExpression::StringExpression(const std::string& expr,
+                                   const URIContext&  uriContext) :
+_src       ( expr ),
+_uriContext( uriContext ),
+_dirty     ( true )
+{
+    init();
+}
+
 StringExpression::StringExpression( const StringExpression& rhs ) :
 _src( rhs._src ),
 _vars( rhs._vars ),
@@ -328,6 +372,22 @@ _uriContext( rhs._uriContext )
     //nop
 }
 
+void
+StringExpression::setInfix( const std::string& expr )
+{
+    _src = expr;
+    _dirty = true;
+    init();
+}
+
+void
+StringExpression::setLiteral( const std::string& expr )
+{
+    _src = "\"" + expr + "\"";
+    _value = expr;
+    _dirty = false;
+}
+
 StringExpression::StringExpression( const Config& conf )
 {
     mergeConfig( conf );
@@ -337,14 +397,17 @@ StringExpression::StringExpression( const Config& conf )
 void
 StringExpression::mergeConfig( const Config& conf )
 {
-    _src = conf.value();
-    _dirty = true;
+    _src        = conf.value();
+    _uriContext = conf.referrer();
+    _dirty      = true;
 }
 
 Config
 StringExpression::getConfig() const
 {
-    return Config( "string_expression", _src );
+    Config conf( "string_expression", _src );
+    conf.setReferrer( uriContext().referrer() );
+    return conf;
 }
 
 void
@@ -353,7 +416,7 @@ StringExpression::init()
     bool inQuotes = false;
     int inVar = 0;
     int startPos = 0;
-    for (int i=0; i < _src.length(); i++)
+    for (int i=0; i < (int)_src.length(); i++)
     {
       if (_src[i] == '"')
       {
@@ -440,6 +503,18 @@ StringExpression::set( const Variable& var, const std::string& value )
     {
         a.second = value;
         _dirty = true;
+    }
+}
+
+void
+StringExpression::set( const std::string& varName, const std::string& value )
+{
+    for( Variables::const_iterator v = _vars.begin(); v != _vars.end(); ++v )
+    {
+        if ( v->first == varName )
+        {
+            set( *v, value );
+        }
     }
 }
 

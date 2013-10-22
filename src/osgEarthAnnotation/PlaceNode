@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2008-2010 Pelican Mapping
+* Copyright 2008-2013 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -20,20 +20,16 @@
 #define OSGEARTH_ANNOTATION_PLACE_NODE_H 1
 
 #include <osgEarthAnnotation/OrthoNode>
-#include <osgEarth/MapNode>
 #include <osgEarthSymbology/Style>
-#include <osgEarthUtil/Controls>
-#include <osg/MatrixTransform>
 
 namespace osgEarth { namespace Annotation
-{	
+{
     using namespace osgEarth;
     using namespace osgEarth::Symbology;
-    using namespace osgEarth::Util::Controls;
 
     /** 
      * A PlaceNode combines an 2D icon, a label, support for mouse interaction
-     * and a popup control.
+     * and a popup control (eventually)
      */
     class OSGEARTHANNO_EXPORT PlaceNode : public OrthoNode
     {
@@ -42,6 +38,12 @@ namespace osgEarth { namespace Annotation
 
         /**
          * Constructs a new place node
+         *
+         * @param mapNode   MapNode that helps position this annotation
+         * @param position  Initial location of the annotation
+         * @param iconImage Image of the place icon
+         * @param labelText Text to place next to the icon
+         * @param style     Optional style settings.
          */
         PlaceNode(
             MapNode*           mapNode,
@@ -51,27 +53,46 @@ namespace osgEarth { namespace Annotation
             const Style&       style =Style() );
 
         /**
-         * Constructs a new place node.
+         * Constructs a new place node. You can specify an icon marker by
+         * adding a IconSymbol to the Style.
+         *
+         * @param mapNode   MapNode that helps position this annotation
+         * @param position  Initial location of the annotation
+         * @param labelText Text to place next to the icon
+         * @param style     Optional style settings.
          */
         PlaceNode(
             MapNode*           mapNode,
-            double             x,
-            double             y,
-            osg::Image*        iconImage,
+            const GeoPoint&    position,
             const std::string& labelText,
             const Style&       style =Style() );
 
         /**
-         * Deserializes a place node
+         * Constuct a new place node entirely from symbology
+         *
+         * @param mapNode   MapNode that helps position this annotation
+         * @param position  Initial location of the annotation
+         * @param style     Style settings.
+         * @param dbOptions I/O options for embedded resource loading
          */
         PlaceNode(
-            MapNode*      mapNode,
-            const Config& conf);
+            MapNode*              mapNode,
+            const GeoPoint&       position,
+            const Style&          style,
+            const osgDB::Options* dbOptions);
+
+        /**
+         * Deserializes a place node from Config data. (internal method)
+         */
+        PlaceNode(
+            MapNode*              mapNode,
+            const Config&         conf,
+            const osgDB::Options* dbOptions );
 
         /**
          * Image to use for the icon
          */
-        void setIconImage( osg::Image* image );
+        void setIconImage(osg::Image* image);
         osg::Image* getIconImage() const { return _image.get(); }
 
         /**
@@ -81,7 +102,7 @@ namespace osgEarth { namespace Annotation
         const std::string& getText() const { return _text; }
 
         /**
-         * Style (for text)
+         * Style (for text and placement)
          */
         void setStyle( const Style& style );
         const Style& getStyle() const { return _style; }
@@ -94,17 +115,17 @@ namespace osgEarth { namespace Annotation
         virtual void setDynamic( bool value );
 
         virtual Config getConfig() const;
+
+    protected:
+
+        virtual ~PlaceNode() { }
         
     private:
-        osg::ref_ptr<osg::Image>   _image;
-        std::string                _text;
-        Style                      _style;
-
-        osg::ref_ptr<Container>    _container;
-        osg::ref_ptr<ImageControl> _icon;
-        osg::ref_ptr<LabelControl> _label;
-
-        class osg::Geode*          _geode;
+        osg::ref_ptr<osg::Image>           _image;
+        std::string                        _text;
+        Style                              _style;
+        class osg::Geode*                  _geode;
+        osg::ref_ptr<const osgDB::Options> _dbOptions;
 
         void init();
 

@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2008-2010 Pelican Mapping
+* Copyright 2008-2013 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -27,11 +27,11 @@
 #include <osgEarth/ThreadingUtils>
 
 namespace osgEarth
-{    
+{
     /**
      * Base class for Cache implementation options.
      */
-    class CacheOptions : public DriverConfigOptions // no export (header only)
+    class OSGEARTH_EXPORT CacheOptions : public DriverConfigOptions
     {
     public:
         CacheOptions( const ConfigOptions& options =ConfigOptions() )
@@ -39,6 +39,9 @@ namespace osgEarth
         { 
             fromConfig( _conf ); 
         }
+
+        /** dtor */
+        virtual ~CacheOptions();
 
     public:
         virtual Config getConfig() const {
@@ -69,6 +72,9 @@ namespace osgEarth
         Cache( const CacheOptions& options =CacheOptions() );
         Cache( const Cache& rhs, const osg::CopyOp& op =osg::CopyOp::DEEP_COPY_ALL );
         META_Object( osgEarth, Cache );
+
+        /** dtor */
+        virtual ~Cache();
 
     public:
         /**
@@ -111,7 +117,7 @@ namespace osgEarth
         /**
          * Store this to an osgDB::Options
          */
-        void store( osgDB::Options* options ) {
+        void apply( osgDB::Options* options ) {
             if ( options ) options->setPluginData( "osgEarth::Cache", this );
         }
 
@@ -138,6 +144,9 @@ namespace osgEarth
     {
     public:
         const CacheOptions& getCacheOptions( const osgDB::ReaderWriter::Options* options ) const;
+
+        /** dtor */
+        virtual ~CacheDriver();
     };
 
 //----------------------------------------------------------------------

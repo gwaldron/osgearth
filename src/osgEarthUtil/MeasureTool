@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2010 Pelican Mapping
+ * Copyright 2008-2013 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -22,6 +22,7 @@
 
 #include <osgEarthUtil/Common>
 #include <osgEarth/MapNode>
+#include <osgEarth/MapNodeObserver>
 #include <osgEarthAnnotation/FeatureNode>
 #include <osgEarthSymbology/Style>
 #include <osg/Group>
@@ -32,7 +33,7 @@ namespace osgEarth { namespace Util
 {
     using namespace osgEarth::Symbology;
 
-    struct OSGEARTHUTIL_EXPORT MeasureToolHandler : public osgGA::GUIEventHandler 
+    struct OSGEARTHUTIL_EXPORT MeasureToolHandler : public osgGA::GUIEventHandler, public MapNodeObserver
     {
     public:
 
@@ -40,13 +41,14 @@ namespace osgEarth { namespace Util
         {
         public:
             virtual void onDistanceChanged(MeasureToolHandler* sender, double distance) {}
+            virtual ~MeasureToolEventHandler() { }
         };
 
         typedef std::list< osg::ref_ptr< MeasureToolEventHandler > > MeasureToolEventHandlerList;
 
 
         MeasureToolHandler( osg::Group* group, MapNode* mapNode );        
-        ~MeasureToolHandler();
+        virtual ~MeasureToolHandler();
 
         bool handle( const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& aa );        
 
@@ -71,6 +73,13 @@ namespace osgEarth { namespace Util
 
         void setIntersectionMask( osg::Node::NodeMask intersectionMask ) { _intersectionMask = intersectionMask; }
         osg::Node::NodeMask getIntersectionMask() const { return _intersectionMask;}
+        
+        osgEarth::Features::Feature* getFeature() const { return _feature.get(); }
+
+    public: // MapNodeObserver
+
+        virtual void setMapNode( MapNode* mapNode );
+        virtual MapNode* getMapNode() { return _mapNode.get(); }
 
     protected:
         GeoInterpolation _geoInterpolation;
@@ -91,8 +100,10 @@ namespace osgEarth { namespace Util
 
         MeasureToolEventHandlerList _eventHandlers;
         bool _isPath;        
-        osg::ref_ptr< MapNode > _mapNode;
+        osg::observer_ptr< MapNode > _mapNode;
         osg::Node::NodeMask _intersectionMask;
+
+        void rebuild();
     };
 }}
 #endif

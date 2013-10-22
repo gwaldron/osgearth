@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2010 Pelican Mapping
+ * Copyright 2008-2013 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -20,8 +20,8 @@
 #define OSGEARTH_GEOID_H 1
 
 #include <osgEarth/Common>
+#include <osgEarth/GeoCommon>
 #include <osgEarth/Bounds>
-#include <osgEarth/HeightFieldUtils>
 #include <osgEarth/Units>
 #include <osg/Referenced>
 
@@ -36,6 +36,9 @@ namespace osgEarth
     {
     public:
         Geoid();
+
+        /** dtor */
+        virtual ~Geoid() { }
 
         /** Gets the readable name of this geoid. */
         void setName( const std::string& value );

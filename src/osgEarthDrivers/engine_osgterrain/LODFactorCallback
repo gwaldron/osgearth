@@ -22,14 +22,13 @@
 
 #include <osg/NodeCallback>
 
-namespace osgEarth
+namespace osgEarth_engine_osgterrain
 {
-    namespace Drivers
+    struct LODFactorCallback : public osg::NodeCallback
     {
-        struct LODFactorCallback : public osg::NodeCallback
-        {
-            void operator()(osg::Node* node, osg::NodeVisitor* nv);
-        };
-    }
-}
+        void operator()(osg::Node* node, osg::NodeVisitor* nv);
+    };
+
+} // namespace osgEarth_engine_osgterrain
+
 #endif

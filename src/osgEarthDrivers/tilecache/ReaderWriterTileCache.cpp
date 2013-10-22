@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2010 Pelican Mapping
+ * Copyright 2008-2013 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -46,26 +46,24 @@ public:
     {
     }
 
-    void initialize( const osgDB::Options* dbOptions, const Profile* overrideProfile)
+    Status initialize( const osgDB::Options* dbOptions )
     {
-        _dbOptions = dbOptions;
+        _dbOptions = Registry::instance()->cloneOrCreateOptions(dbOptions);
+        CachePolicy::NO_CACHE.apply( _dbOptions.get() );
 
-		if (overrideProfile)
-		{
-		    //If we were given a profile, take it on.
-			setProfile(overrideProfile);
-		}
-		else
-		{
-			//Assume it is global-geodetic
-			setProfile( osgEarth::Registry::instance()->getGlobalGeodeticProfile() );
-		}            
+        if ( !getProfile() )
+        {
+            // Assume it is global-geodetic
+            setProfile( osgEarth::Registry::instance()->getGlobalGeodeticProfile() );
+        }
+
+        return STATUS_OK;
     }
 
     osg::Image* createImage( const TileKey& key, ProgressCallback* progress)
     {
         unsigned int level, tile_x, tile_y;
-        level = key.getLevelOfDetail() +1;
+        level = key.getLevelOfDetail();
         key.getTileXY( tile_x, tile_y );
 
         unsigned int numCols, numRows;
@@ -89,7 +87,7 @@ public:
 
        
         std::string path(buf);
-        return URI(path).readImage( _dbOptions.get(), CachePolicy::NO_CACHE, progress ).releaseImage();
+        return URI(path).readImage( _dbOptions.get(), progress ).releaseImage();
     }
 
     virtual std::string getExtension()  const 
@@ -98,8 +96,8 @@ public:
     }
 
 private:
-    const TileCacheOptions             _options;
-    osg::ref_ptr<const osgDB::Options> _dbOptions;
+    const TileCacheOptions       _options;
+    osg::ref_ptr<osgDB::Options> _dbOptions;
 };
 
 // Reads tiles from a TileCache disk cache.

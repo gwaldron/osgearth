@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2010 Pelican Mapping
+ * Copyright 2008-2013 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -33,6 +33,7 @@
 
 using namespace osgEarth;
 using namespace osgEarth::Drivers;
+using namespace osgEarth_kml;
 
 //---------------------------------------------------------------------------
 
@@ -71,7 +72,7 @@ struct ReaderWriterKML : public osgDB::ReaderWriter
         {
             // propagate the source URI along to the stream reader
             osg::ref_ptr<osgDB::Options> myOptions = Registry::instance()->cloneOrCreateOptions(dbOptions);
-            URIContext(url).store( myOptions.get() );
+            URIContext(url).apply( myOptions.get() );
             return readNode( URIStream(url), myOptions.get() );
         }
     }
@@ -91,12 +92,9 @@ struct ReaderWriterKML : public osgDB::ReaderWriter
         const KMLOptions* kmlOptions =
             static_cast<const KMLOptions*>(options->getPluginData("osgEarth::KMLOptions") );
 
-        // Grab the URIContext from the options (since we're reading from a stream)
-        URIContext uriContext( options );
-
         // fire up a KML reader and parse the data.
         KMLReader reader( mapNode, kmlOptions );
-        osg::Node* node = reader.read( in, uriContext );
+        osg::Node* node = reader.read( in, options );
         return ReadResult(node);
     }
 

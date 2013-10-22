@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2008-2010 Pelican Mapping
+* Copyright 2008-2013 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -24,19 +24,43 @@
 #include <osgEarth/Map>
 #include <osgEarth/TileKey>
 #include <osgEarth/Progress>
+#include <OpenThreads/Mutex>
+#include <OpenThreads/Atomic>
 
 namespace osgEarth
 {
+    class CacheSeed;
+
+    class CacheTileOperation : public osg::Operation
+    {
+    public:
+        CacheTileOperation(const MapFrame& mapFrame, CacheSeed& cacheSeed, const TileKey& key);
+        virtual void operator()(osg::Object*);
+
+        // The MapFrame to operate on
+        const MapFrame& _mapFrame;
+
+        // The parent CacheSeed
+        CacheSeed& _cacheSeed;
+
+        // The TileKey to process
+        const TileKey _key;
+    };
+
     /**
     * Utility class for seeding a cache
     */
     class OSGEARTH_EXPORT CacheSeed
     {
     public:
-        CacheSeed():
-          _minLevel(0),
-          _maxLevel(12),
-          _bounds(-180, -90, 180, 90) { }
+        friend class CacheTileOperation;
+
+        CacheSeed();
+
+		CacheSeed( const CacheSeed& rhs);
+
+        /** dtor */
+        virtual ~CacheSeed() { }
 
         /**
         * Sets the minimum level to seed to
@@ -58,20 +82,18 @@ namespace osgEarth
         */
         const unsigned int getMaxLevel() const {return _maxLevel;}
 
-        /**
-        * Gets the bounds to seed in
-        */
-        const Bounds& getBounds() const { return _bounds; }
+        /*
+         * The number of threads to use when seeding
+         */
+        unsigned int getNumThreads() const;
+        void setNumThreads( unsigned int numThreads );
+
+        std::vector< GeoExtent >& getExtents() { return _extents; }
 
         /**
-        * Sets the bounds to seed in
+        *Adds an extent to cache
         */
-        void setBounds(const Bounds& bounds) { _bounds = bounds; }
-
-        /**
-        * Sets the bounds to seed in
-        */
-        void setBounds(const double& minLon, const double& minLat, const double& maxLon, const double& maxLat) { _bounds = Bounds(minLon, minLat, maxLon, maxLat); }
+        void addExtent( const GeoExtent& value );
 
         /**
         * Set progress callback for reporting which tiles are seeded
@@ -84,13 +106,29 @@ namespace osgEarth
         void seed( Map* map );
 
     protected:
+
+        void incrementCompleted() const;
+
+        void reportProgress( const std::string& msg ) const;
+
         unsigned int _minLevel;
         unsigned int _maxLevel;
-        Bounds _bounds;
+
+        unsigned int _total;
+        OpenThreads::Atomic _completed;
+
+        unsigned int _numThreads;
+
         osg::ref_ptr<ProgressCallback> _progress;
 
-        void processKey( const MapFrame& mapf, const TileKey& key ) const;
         bool cacheTile( const MapFrame& mapf, const TileKey& key ) const;
+
+        std::vector< GeoExtent > _extents;
+
+        // The work queue to pass seed operations to
+        osg::ref_ptr< osg::OperationQueue > _queue;  
+
+        OpenThreads::Mutex _mutex;
     };
 }
 

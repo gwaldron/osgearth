@@ -1,0 +1,60 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+* Copyright 2008-2013 Pelican Mapping
+* http://osgearth.org
+*
+* osgEarth is free software; you can redistribute it and/or modify
+* it under the terms of the GNU Lesser General Public License as published by
+* the Free Software Foundation; either version 2 of the License, or
+* (at your option) any later version.
+*
+* This program is distributed in the hope that it will be useful,
+* but WITHOUT ANY WARRANTY; without even the implied warranty of
+* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+* GNU Lesser General Public License for more details.
+*
+* You should have received a copy of the GNU Lesser General Public License
+* along with this program.  If not, see <http://www.gnu.org/licenses/>
+*
+* Original author: Thomas Lerman
+*/
+#ifndef OSGEARTHUTIL_RGB_COLOR_FILTER
+#define OSGEARTHUTIL_RGB_COLOR_FILTER
+
+#include <osgEarthUtil/Common>
+#include <osgEarth/ColorFilter>
+#include <osg/Uniform>
+
+namespace osgEarth { namespace Util
+{
+    /**
+    * Color filter that adjust the red/green/blue of a texel.
+    */
+    class OSGEARTHUTIL_EXPORT RGBColorFilter : public osgEarth::ColorFilter
+    {
+    public:
+        RGBColorFilter();
+        RGBColorFilter(const Config& conf);
+        virtual ~RGBColorFilter() { }
+
+        /**
+        * The red/green/blue offset, each component is [-1..1] (no change is at 0)
+        */
+        void setRGBOffset(const osg::Vec3f& rgb);
+        osg::Vec3f getRGBOffset(void) const;
+
+    public: // ColorFilter
+        virtual std::string getEntryPointFunctionName(void) const;
+        virtual void install(osg::StateSet* stateSet) const;
+        virtual Config getConfig() const;
+
+    protected:
+        unsigned m_instanceId;
+        osg::ref_ptr<osg::Uniform> m_rgb;
+
+        void init();
+    };
+
+} } // namespace osgEarth::Util
+
+#endif // OSGEARTHUTIL_RGB_COLOR_FILTER

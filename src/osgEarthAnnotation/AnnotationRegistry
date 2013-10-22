@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2008-2010 Pelican Mapping
+* Copyright 2008-2013 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -39,7 +39,11 @@ namespace osgEarth { namespace Annotation
          * Creates one or more AnnotationNodes from a Config. The resulting
          * AnnotationNode's are placed under the provided group.
          */
-        bool create( MapNode* mapNode, const Config& conf, osg::Group*& output ) const;
+        bool create( 
+            MapNode*              mapNode, 
+            const Config&         conf, 
+            const osgDB::Options* dbOptions,
+            osg::Group*&          output ) const;
 
         /**
          * Returns a Config containing all the AnnotationNode's found in the
@@ -54,12 +58,18 @@ namespace osgEarth { namespace Annotation
          */
         void add( const std::string& key, class AnnotationFactory* factory );
 
+        virtual ~AnnotationRegistry() { }
+
     private:
         AnnotationRegistry() { }
         typedef std::map<std::string, class AnnotationFactory*> FactoryMap;
         FactoryMap _factories;
 
-        AnnotationNode* createOne( MapNode* mapNode, const Config& conf, bool declutter =false ) const;
+        AnnotationNode* createOne( 
+            MapNode*              mapNode, 
+            const Config&         conf,
+            const osgDB::Options* dbOptions, 
+            bool                  declutter =false ) const;
     };
 
     // Macro used to register new annotation types.
@@ -72,15 +82,20 @@ namespace osgEarth { namespace Annotation
     // internal: interface class for an object that creates annotation node from a Config
     // (used by OSGEARTH_REGISTER_ANNOTATION macro)
     class AnnotationFactory {
-    public: 
-        virtual AnnotationNode* create(MapNode* mapNode, const Config& conf) const =0;
+    public:
+        virtual AnnotationNode* create(
+            MapNode*              mapNode, 
+            const Config&         conf, 
+            const osgDB::Options* dbOptions) const =0;
+
+        virtual ~AnnotationFactory() { }
     };
 
     // internal: proxy class used by the registraion macro
     template<typename T>
     struct AnnotationRegistrationProxy : public AnnotationFactory {
         AnnotationRegistrationProxy(const std::string& key) { AnnotationRegistry::instance()->add(key, this); }
-        AnnotationNode* create(MapNode* mapNode, const Config& conf) const { return new T(mapNode, conf); }
+        AnnotationNode* create(MapNode* mapNode, const Config& conf, const osgDB::Options* options) const { return new T(mapNode, conf, options); }
     };
 
 } } // namespace osgEarth::Annotation

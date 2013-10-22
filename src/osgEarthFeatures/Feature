@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2010 Pelican Mapping
+ * Copyright 2008-2013 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -23,6 +23,7 @@
 #include <osgEarthFeatures/FilterContext>
 #include <osgEarthSymbology/Geometry>
 #include <osgEarthSymbology/Style>
+#include <osgEarth/GeoCommon>
 #include <osgEarth/SpatialReference>
 #include <osg/Array>
 #include <osg/Shape>
@@ -42,6 +43,8 @@ namespace osgEarth { namespace Features
     {
     public:        
         FeatureProfile( const GeoExtent& extent );
+
+        virtual ~FeatureProfile() { }
 
         /** Gets the spatial extents of the features in this profile. */
         const GeoExtent& getExtent() const {
@@ -77,6 +80,9 @@ namespace osgEarth { namespace Features
         double      doubleValue;
         int         intValue;
         bool        boolValue;
+
+        //Whether the value is set.  A value of false means the value is effectively NULL
+        bool        set;
     };
 
     enum AttributeType
@@ -89,18 +95,37 @@ namespace osgEarth { namespace Features
     };
 
     struct OSGEARTHFEATURES_EXPORT AttributeValue : public std::pair<AttributeType,AttributeValueUnion>
-    {
+    {    
         std::string getString() const;
         double getDouble( double defaultValue =0.0 ) const;
         int getInt( int defaultValue =0 ) const;
-        bool getBool( bool defaultValue =false ) const;
+        bool getBool( bool defaultValue =false ) const;              
     };
 
     typedef std::map<std::string, AttributeValue> AttributeTable;
 
     typedef unsigned long FeatureID;
 
+    /**
+     * Wraps a FeatureID in a referenced object.
+     */
+    class RefFeatureID : public osg::Referenced
+    {
+    public:
+        RefFeatureID( FeatureID fid ) : _fid(fid) { }
+        virtual ~RefFeatureID() { }
+
+        operator FeatureID () const { return _fid; }
+    protected:
+        FeatureID _fid;
+    };
+
+
     typedef std::map< std::string, AttributeType > FeatureSchema;
+
+    class Feature;
+
+    typedef std::list< osg::ref_ptr<Feature> > FeatureList;
 
     /**
      * Basic building block of vector feature data.
@@ -113,6 +138,8 @@ namespace osgEarth { namespace Features
 
         /** Copy contructor */
         Feature( const Feature& rhs, const osg::CopyOp& copyop =osg::CopyOp::DEEP_COPY_ALL );
+
+        virtual ~Feature() { }
 
         META_Object( osgEarthFeatures, Feature );
 
@@ -136,18 +163,18 @@ namespace osgEarth { namespace Features
         const SpatialReference* getSRS() const { return _srs.get(); }
         void setSRS( const SpatialReference* srs );
 
-        /** 
-         * Gets the geocentric bounding box that contains the data in this 
-         * feature's geometry.
+        /**
+         * Computes the bound of this feature in the specified SRS.
          */
-        const osg::BoundingSphere& getGeocentricBound() const;
+        bool getWorldBound( const SpatialReference* srs, osg::BoundingSphered& out_bound ) const;
 
         /** 
          * Gets a polytope, in world coordinates (proj or ECEF) that bounds the
          * geographic extents covered by this feature. This is useful for roughly
          * intersecting the feature with the terrain graph.
          */
-        const osg::Polytope& getWorldBoundingPolytope() const;
+        bool getWorldBoundingPolytope( const SpatialReference* srs, osg::Polytope& out_polytope ) const;
+
 
         const AttributeTable& getAttrs() const { return _attrs; }
 
@@ -156,12 +183,21 @@ namespace osgEarth { namespace Features
         void set( const std::string& name, int value );
         void set( const std::string& name, bool value );
 
+        /** Sets the attribute to NULL */         
+        void setNull( const std::string& name );
+        void setNull( const std::string& name, AttributeType type );
+
         bool hasAttr( const std::string& name ) const;
 
         std::string getString( const std::string& name ) const;
         double getDouble( const std::string& name, double defaultValue =0.0 ) const;
         int getInt( const std::string& name, int defaultValue =0 ) const;
         bool getBool( const std::string& name, bool defaultValue =false ) const;
+
+        /**
+         * Gets whether the attribute is set, meaning it is non-NULL
+         */
+        bool isSet( const std::string& name ) const;
 
         /** Embedded style. */
         optional<Style>& style() { return _style; }
@@ -177,6 +213,19 @@ namespace osgEarth { namespace Features
         /** populates the variables of an expression with attribute values and evals the expression. */
         const std::string& eval( StringExpression& expr, FilterContext const* context=0L ) const;
 
+    public:
+        /** Gets a GeoJSON representation of this Feature */
+        std::string getGeoJSON();
+
+        /** Gets a FeatureList as a GeoJSON FeatureCollection */
+        static std::string featuresToGeoJSON( FeatureList& features);
+
+    public:
+        /**
+         * Transforms this Feature to the given SpatialReference
+         */
+        void transform( const SpatialReference* srs );
+
     protected:
 
         Feature( FeatureID fid =0L );
@@ -188,14 +237,11 @@ namespace osgEarth { namespace Features
         optional<Style>                      _style;
         optional<GeoInterpolation>           _geoInterp;
         GeoExtent                            _cachedExtent;
-        osg::BoundingSphere                  _cachedGeocentricBound;
-        osg::Polytope                        _cachedBoundingPolytope;
-        bool                                 _cachedBoundingPolytopeValid;
 
         void dirty();
     };
 
-    typedef std::list< osg::ref_ptr<Feature> > FeatureList;
+
 
 } } // namespace osgEarth::Features
 

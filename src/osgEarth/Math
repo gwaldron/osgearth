@@ -1,0 +1,185 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+ * Copyright 2008-2012 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+
+#ifndef OSGEARTH_MATH_H
+#define OSGEARTH_MATH_H 1
+
+#include <osgEarth/Common>
+#include <osg/Quat>
+#include <osg/Vec3>
+
+namespace osgEarth
+{
+    struct Line2d;
+    struct Segment2d;
+    struct Ray2d;
+    struct Segment3d;
+
+    /** Infinite 2D line. */
+    struct OSGEARTH_EXPORT Line2d
+    {
+        osg::Vec3d _a, _b; // two points on the line (Z ignored)
+        Line2d() { }
+        Line2d(const osg::Vec3d& a, const osg::Vec3d& b) : _a(a), _b(b) { }
+        Line2d(const osg::Vec2d& a, const osg::Vec2d& b) : _a(a.x(), a.y(), 0), _b(b.x(), b.y(), 0) { }
+        Line2d(const osg::Vec4d& a, const osg::Vec4d& b) : _a(a.x()/a.w(), a.y()/a.w(), a.z()/a.w()), _b(b.x()/b.w(), b.y()/b.w(), b.z()/b.w()) { }
+        Line2d(const Line2d& rhs) : _a(rhs._a), _b(rhs._b) { }
+        bool intersect( const Line2d&    rhs, osg::Vec2d& out ) const;
+        bool intersect( const Ray2d&     rhs, osg::Vec2d& out ) const;
+        bool intersect( const Segment2d& rhs, osg::Vec2d& out ) const;
+        bool intersect( const Line2d&    rhs, osg::Vec3d& out ) const;
+        bool intersect( const Ray2d&     rhs, osg::Vec3d& out ) const;
+        bool intersect( const Segment2d& rhs, osg::Vec3d& out ) const;
+        bool intersect( const Line2d&    rhs, osg::Vec4d& out ) const;
+        bool isPointOnLeft( const osg::Vec2d& p ) const;
+        bool isPointOnLeft( const osg::Vec3d& p ) const;
+    };
+    
+    //// rotate a Line
+    //inline Line2d operator* (const osg::Quat& q, const Line2d& rhs) {
+    //    return Line( q * rhs._a, q * rhs._b );
+    //}
+
+    /** Endpoint and a direction vector */
+    struct OSGEARTH_EXPORT Ray2d
+    {
+        osg::Vec3d _a;  // endpoint
+        osg::Vec3d _dv; // directional vector
+        Ray2d() { }
+        Ray2d(const osg::Vec3d& a, const osg::Vec3d& dv) : _a(a), _dv(dv) { }
+        Ray2d(const osg::Vec2d& a, const osg::Vec2d& dv) : _a(a.x(), a.y(), 0), _dv(dv.x(), dv.y(), 0) { }
+        Ray2d(const Ray2d& rhs) : _a(rhs._a), _dv(rhs._dv) { }
+        bool intersect( const Line2d&    rhs, osg::Vec2d& out ) const;
+        bool intersect( const Ray2d&     rhs, osg::Vec2d& out ) const;
+        bool intersect( const Segment2d& rhs, osg::Vec2d& out ) const;
+        bool intersect( const Line2d&    rhs, osg::Vec3d& out ) const;
+        bool intersect( const Ray2d&     rhs, osg::Vec3d& out ) const;
+        bool intersect( const Segment2d& rhs, osg::Vec3d& out ) const;
+        bool isPointOnLeft( const osg::Vec2d& p ) const;
+        bool isPointOnLeft( const osg::Vec3d& p ) const;
+        double angle(const Segment2d& rhs) const;
+    };
+    
+    //// rotate a Ray
+    //inline Ray operator* (const osg::Quat& q, const Ray& rhs) {
+    //    return Ray( q * rhs._a, q * rhs._dv );
+    //}
+
+    /** Finite line between two endpoints */
+    struct OSGEARTH_EXPORT Segment2d
+    {
+        osg::Vec3d _a, _b; // endpoints
+        Segment2d() { }
+        Segment2d(const osg::Vec3d& a, const osg::Vec3d& b) : _a(a), _b(b) { }
+        Segment2d(const Segment2d& rhs) : _a(rhs._a), _b(rhs._b) { }
+        bool intersect( const Line2d&    rhs, osg::Vec2d& out ) const;
+        bool intersect( const Ray2d&     rhs, osg::Vec2d& out ) const;
+        bool intersect( const Segment2d& rhs, osg::Vec2d& out ) const;
+        bool intersect( const Line2d&    rhs, osg::Vec3d& out ) const;
+        bool intersect( const Ray2d&     rhs, osg::Vec3d& out ) const;
+        bool intersect( const Segment2d& rhs, osg::Vec3d& out ) const;
+        bool isPointOnLeft( const osg::Vec2d& p ) const;
+        bool isPointOnLeft( const osg::Vec3d& p ) const;
+        Segment3d unrotateTo3D(const osg::Quat& q) const;
+        double angle(const Segment2d& rhs) const;
+    };
+
+    struct OSGEARTH_EXPORT Segment3d
+    {
+        osg::Vec3d _a, _b; // endpoints
+        Segment3d() { }
+        Segment3d(const osg::Vec3d& a, const osg::Vec3d& b) : _a(a), _b(b) { }
+        Segment3d(const Segment3d& rhs) : _a(rhs._a), _b(rhs._b) { }
+        Segment3d(const Segment2d& seg2d, const osg::Vec3& planeNormal);
+        Segment2d rotateTo2D(const osg::Quat& q) { return Segment2d(q*_a, q*_b); }
+    };
+    
+    //// rotate a Segment
+    //inline Segment operator* (const osg::Quat& q, const Segment& rhs) {
+    //    return Segment( q * rhs._a, q * rhs._b );
+    //}
+
+    /** 2D traingle with CCW winding. */
+    struct OSGEARTH_EXPORT Triangle2d
+    {
+        osg::Vec3d _a, _b, _c;
+        Triangle2d(const osg::Vec3d& a, const osg::Vec3d& b, const osg::Vec3d& c) : _a(a), _b(b), _c(c) { }
+        bool contains(const osg::Vec3d& p) const;
+    };
+
+#if 0
+    struct Line;
+    struct Segment;
+    struct Ray;
+
+    /** Infinite 3D line. */
+    struct Line
+    {
+        osg::Vec3d _a, _b; // two points on the line
+        Line(const osg::Vec3d& a, const osg::Vec3d& b) : _a(a), _b(b) { }
+        Line(const Line& rhs) : _a(rhs._a), _b(rhs._b) { }
+        bool intersectXY( const Line&    rhs, osg::Vec3d& out ) const;
+        bool intersectXY( const Ray&     rhs, osg::Vec3d& out ) const;
+        bool intersectXY( const Segment& rhs, osg::Vec3d& out ) const;
+    };
+    
+    // rotate a Line
+    inline Line operator* (const osg::Quat& q, const Line& rhs) {
+        return Line( q * rhs._a, q * rhs._b );
+    }
+
+    /** Endpoint and a direction vector */
+    struct Ray
+    {
+        osg::Vec3d _a;  // endpoint
+        osg::Vec3d _dv; // directional vector
+        Ray(const osg::Vec3d& a, const osg::Vec3d& dv) : _a(a), _dv(dv) { }
+        Ray(const Ray& rhs) : _a(rhs._a), _dv(rhs._dv) { }
+        bool intersectXY( const Line&    rhs, osg::Vec3d& out ) const;
+        bool intersectXY( const Ray&     rhs, osg::Vec3d& out ) const;
+        bool intersectXY( const Segment& rhs, osg::Vec3d& out ) const;
+        bool isPointOnLeftXY( const osg::Vec3d& p ) const;
+    };
+    
+    // rotate a Ray
+    inline Ray operator* (const osg::Quat& q, const Ray& rhs) {
+        return Ray( q * rhs._a, q * rhs._dv );
+    }
+
+    /** Finite line between two endpoints */
+    struct Segment
+    {
+        osg::Vec3d _a, _b; // endpoints
+        Segment(const osg::Vec3d& a, const osg::Vec3d& b) : _a(a), _b(b) { }
+        Segment(const Segment& rhs) : _a(rhs._a), _b(rhs._b) { }
+        bool intersectXY( const Line&    rhs, osg::Vec3d& out ) const;
+        bool intersectXY( const Ray&     rhs, osg::Vec3d& out ) const;
+        bool intersectXY( const Segment& rhs, osg::Vec3d& out ) const;
+        bool isPointOnLeftXY( const osg::Vec3d& p ) const;
+    };
+    
+    // rotate a Segment
+    inline Segment operator* (const osg::Quat& q, const Segment& rhs) {
+        return Segment( q * rhs._a, q * rhs._b );
+    }
+#endif
+
+};
+
+#endif

@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2008-2010 Pelican Mapping
+* Copyright 2008-2013 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -20,8 +20,9 @@
 #define OSGEARTH_ANNO_LOCALIZED_NODE_H 1
 
 #include <osgEarthAnnotation/AnnotationNode>
+#include <osgEarth/OverlayNode>
 #include <osgEarth/GeoData>
-#include <osg/Transform>
+#include <osg/MatrixTransform>
 
 namespace osgEarth { namespace Annotation
 {	
@@ -29,28 +30,23 @@ namespace osgEarth { namespace Annotation
 
     /**
      * Base class for node that is localized at a specific geographic point.
+     *
+     * Don't use this class *directly*. If you are trying to add your own 
+     * osg::Node as an Annotation, use the LocalizedGeometryNode instead.
      */
     class OSGEARTHANNO_EXPORT LocalizedNode : public PositionedAnnotationNode
     {
     public:
-        META_AnnotationNode(osgEarthAnnotation, LocalizedNode);
+        META_AnnotationNodeAbstract(osgEarthAnnotation, LocalizedNode);
 
         /**
          * Constructs a new LocalizedNode.
-         *
          * @param mapSRS  Spatial reference for position info
          * @param pos     Initial position of the node (map coords)
-         * @param is2D    Whether to autotransform the node to face/scale to the screen
          */
         LocalizedNode( 
-            MapNode*          mapNode  =0L,
-            const GeoPoint&   pos      =GeoPoint::INVALID,
-            bool              is2D     =false );
-
-        LocalizedNode(
             MapNode*          mapNode,
-            const osg::Vec3d& pos,
-            bool              is2D    =false );
+            const GeoPoint&   pos      =GeoPoint::INVALID );
 
         LocalizedNode(
             MapNode*          mapNode,
@@ -62,15 +58,13 @@ namespace osgEarth { namespace Annotation
         /** Sets the node position */
         virtual bool setPosition( const GeoPoint& p );
 
-        /** Sets the position (in map coordinates) */
-        virtual bool setPosition( const osg::Vec3d& p );
-
         /** Gets the node position (in map coords) */
         virtual GeoPoint getPosition() const;
 
-    public: // osg::Node
 
-        virtual void traverse( osg::NodeVisitor& nv );
+    public: // MapNodeObserver
+
+        virtual void setMapNode( MapNode* mapNode );
 
     public:
         /**
@@ -96,39 +90,64 @@ namespace osgEarth { namespace Annotation
         const osg::Quat& getLocalRotation() const;
 
         /**
+         * Local scale factor.
+         */
+        void setScale( const osg::Vec3f& scale );
+        const osg::Vec3f& getScale() const { return _scale; }
+
+        /**
          * Enables or disable automatic horizon culling
          */
         void setHorizonCulling( bool value );
         bool getHorizonCulling() const;
 
-        void setScale( const osg::Vec3f& scale );
+    public: // AnnotationNode
 
-        const osg::Vec3f& getScale() const { return _scale; }
+        virtual Config getConfig() const;
 
-        virtual osg::Group* getAttachPoint() { return _xform.get(); }
+    public: // osg::Node
 
-        virtual osg::Transform* getTransform() { return _xform.get(); }
+        virtual osg::BoundingSphere computeBound() const;
 
     protected:
-        osg::observer_ptr<const SpatialReference> _mapSRS;
-        osg::ref_ptr<osg::Transform> _xform;
-        bool _horizonCulling;
-        bool _autoTransform;
-        GeoPoint _mapPosition;
-        osg::Vec3f _scale;
-        osg::Vec3d _localOffset;
-        osg::Quat  _localRotation;
+
+        /**
+         * The matrix transform that controls this node's position
+         */
+        virtual osg::MatrixTransform* getTransform() =0;
+
+
+    protected:
+        bool                               _initComplete;
+        bool                               _horizonCulling;
+        GeoPoint                           _mapPosition;
+        osg::Vec3f                         _scale;
+        osg::Vec3d                         _localOffset;
+        osg::Quat                          _localRotation;
+        osg::ref_ptr<osg::NodeCallback>    _cullByHorizonCB;
 
         friend class Decoration;
         
-        // copy constructor
+        // re-clamped the vert mesh based on a new terrain tile coming in
         virtual void reclamp( const TileKey& key, osg::Node* tile, const Terrain* terrain );
 
-            
-        LocalizedNode(const LocalizedNode& rhs, const osg::CopyOp& op=osg::CopyOp::DEEP_COPY_ALL) { }
+        // refreshed the main transform with data from an asbolute point
+        bool updateTransform(const GeoPoint& absPt, osg::Node* patch =0L);
 
-        bool updateTransforms(const GeoPoint& absPt, osg::Node* patch =0L);
-        
+        // checks for overlay requirements, and if needed, installs a decorator node above
+        // the passed-in node to facilitate the clamping/draping. The proper usage pattern
+        // is:  node = applyAltitudePolicy(node, style)
+        osg::Node* applyAltitudePolicy( osg::Node* node, const Style& style );
+
+        // hidden copy constructor
+        LocalizedNode() { }
+        LocalizedNode(const LocalizedNode& rhs, const osg::CopyOp& op=osg::CopyOp::DEEP_COPY_ALL) { }
+        virtual ~LocalizedNode() { }
+
+
+    private:
+
+        void init();
     };
 
 } } // namespace osgEarth::Annotation

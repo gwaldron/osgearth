@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2010 Pelican Mapping
+ * Copyright 2008-2013 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -18,6 +18,7 @@
  */
 #include <osgEarth/TaskService>
 #include <osg/Notify>
+#include <osg/Math>
 
 using namespace osgEarth;
 using namespace OpenThreads;
@@ -97,24 +98,6 @@ TaskRequestQueue::add( TaskRequest* request )
 
     // insert by priority.
     _requests.insert( std::pair<float,TaskRequest*>(request->getPriority(), request) );
-
-#if 0
-    // insert by priority.
-    bool inserted = false;
-    for( TaskRequestList::iterator i = _requests.begin(); i != _requests.end(); i++ )
-    {
-        if ( request->getPriority() > i->get()->getPriority() )
-        {
-            _requests.insert( i, request );
-            inserted = true;
-            //OE_NOTICE << "TaskRequestQueue size=" << _requests.size() << std::endl;
-            break;
-        }
-    }
-
-    if ( !inserted )
-        _requests.push_back( request );
-#endif
 
     // since there is data in the queue, wake up one waiting task thread.
     _cond.signal();

@@ -1,0 +1,79 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+* Copyright 2008-2012 Pelican Mapping
+* http://osgearth.org
+*
+* osgEarth is free software; you can redistribute it and/or modify
+* it under the terms of the GNU Lesser General Public License as published by
+* the Free Software Foundation; either version 2 of the License, or
+* (at your option) any later version.
+*
+* This program is distributed in the hope that it will be useful,
+* but WITHOUT ANY WARRANTY; without even the implied warranty of
+* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+* GNU Lesser General Public License for more details.
+*
+* You should have received a copy of the GNU Lesser General Public License
+* along with this program.  If not, see <http://www.gnu.org/licenses/>
+*/
+#ifndef OSGEARTHUTIL_LOD_BLENDING_H
+#define OSGEARTHUTIL_LOD_BLENDING_H
+
+#include <osgEarthUtil/Common>
+#include <osgEarth/TerrainEffect>
+#include <osg/Uniform>
+#include <osg/Node>
+#include <osg/observer_ptr>
+
+namespace osgEarth { namespace Util
+{
+    /**
+     * Terrain effect that blends terrain levels of detail for a 
+     * smooth transition effect. Operates on elevation data and
+     * image data.
+     */
+    class OSGEARTHUTIL_EXPORT LODBlending : public TerrainEffect
+    {
+    public:
+        /** construct a new blending effect */
+        LODBlending();
+
+        /** Sets the delay (in seconds) between the time the tile appears
+            and when it starts its transition */
+        void setDelay( float value );
+        float getDelay() const { return _delay.get(); }
+
+        /** Sets the duration of the transition */
+        void setDuration( float value );
+        float getDuration() const { return _duration.get(); }
+
+        /** Vertical scale factor to apply to elevation */
+        void setVerticalScale( float value );
+        float getVerticalScale() const { return _vscale.get(); }
+
+    public: // TerrainEffect interface
+
+        void onInstall(TerrainEngineNode* engine);
+        void onUninstall(TerrainEngineNode* engine);
+
+    public: // serialization
+
+        LODBlending(const Config& conf);
+        void mergeConfig(const Config& conf);
+        virtual Config getConfig() const;
+
+    protected:
+        virtual ~LODBlending() { }
+        void init();
+
+        optional<float>              _delay;
+        optional<float>              _duration;
+        optional<float>              _vscale;
+        osg::ref_ptr<osg::Uniform>   _delayUniform;
+        osg::ref_ptr<osg::Uniform>   _durationUniform;
+        osg::ref_ptr<osg::Uniform>   _vscaleUniform;
+    };
+
+} } // namespace osgEarth::Util
+
+#endif // OSGEARTHUTIL_LOD_BLENDING_H

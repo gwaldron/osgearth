@@ -1,0 +1,59 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+* Copyright 2008-2013 Pelican Mapping
+* http://osgearth.org
+*
+* osgEarth is free software; you can redistribute it and/or modify
+* it under the terms of the GNU Lesser General Public License as published by
+* the Free Software Foundation; either version 2 of the License, or
+* (at your option) any later version.
+*
+* This program is distributed in the hope that it will be useful,
+* but WITHOUT ANY WARRANTY; without even the implied warranty of
+* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+* GNU Lesser General Public License for more details.
+*
+* You should have received a copy of the GNU Lesser General Public License
+* along with this program.  If not, see <http://www.gnu.org/licenses/>
+*/
+
+#ifndef BOUNDARY_UTIL
+#define BOUNDARY_UTIL 1
+
+#include <osg/Node>
+
+class BoundaryUtil
+{
+public:
+  /* Use the vertices of the given node to calculate a boundary via the
+   * findHull() method.
+   */
+  static osg::Vec3dArray* getBoundary(osg::Node* modelNode, bool geocentric=true, bool convexHull=false);
+
+  /* Finds the convex hull for the given points using the Andrew's monotone
+   * chain algorithm. Returns an ordered set of points defining the hull
+   */
+  static osg::Vec3dArray* findHull(osg::Vec3dArray& points);
+
+  static osg::Vec3dArray* findMeshBoundary(osg::Node* modelNode, bool geocentric=true);
+
+  static bool simpleBoundaryTest(const osg::Vec3dArray& boundary);
+
+protected:
+  /* Returns an array containing the points sorted first by x and then by y */
+  static osg::Vec3dArray* hullPresortPoints(osg::Vec3dArray& points);
+
+  /* Tests if a point is Left|On|Right of an infinite line
+   *   Returns: >0 for P2 left of the line through P0 and P1
+   *            0 for P2 on the line
+   *            <0 for P2 right of the line
+   *
+   * Implementation based on method from softSurfer (www.softsurfer.com)
+   */
+  static inline float isLeft(osg::Vec3d P0, osg::Vec3d P1, osg::Vec3d P2)
+  {
+    return (P1.x() - P0.x())*(P2.y() - P0.y()) - (P2.x() - P0.x())*(P1.y() - P0.y());
+  }
+};
+
+#endif // BOUNDARY_UTIL

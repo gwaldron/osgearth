@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2010 Pelican Mapping
+ * Copyright 2008-2013 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -22,13 +22,10 @@
 
 #include <osgEarth/Common>
 #include <osgEarth/CachePolicy>
-#include <osgEarth/Capabilities>
-#include <osgEarth/Profile>
-#include <osgEarth/TaskService>
-#include <osgEarth/IOTypes>
 #include <osgEarth/Units>
 #include <OpenThreads/ReentrantMutex>
 #include <OpenThreads/ScopedLock>
+#include <osgEarth/ThreadingUtils>
 #include <osg/Referenced>
 #include <osgDB/ReaderWriter>
 #include <osgText/Font>
@@ -40,7 +37,13 @@
 namespace osgEarth
 {    
     class Cache;
+    class Capabilities;
+    class Profile;
     class ShaderFactory;
+    class TaskServiceManager;
+    class URIReadCallback;
+    class ColorFilterRegistry;
+    class StateSetCache;
 
     /**
      * Application-wide global repository.
@@ -57,8 +60,11 @@ namespace osgEarth
         /** Gets the global-geodetic builtin profile */
         const Profile* getGlobalGeodeticProfile() const;
 
-        /** Gets the global-meractor builtin profile */
+        /** Gets the global-meractor builtin profile (mercator/WGS84 datum) */
         const Profile* getGlobalMercatorProfile() const;
+
+        /** Gets the spherical-mercator builtin profile (mercator/sphere) */
+        const Profile* getSphericalMercatorProfile() const;
 
         /** Gets the unified cube builtin profile */
         const Profile* getCubeProfile() const;
@@ -70,9 +76,20 @@ namespace osgEarth
         Cache* getCache() const;
         void setCache( Cache* cache );
 
-        /** The system-wide default cache policy */
-        const CachePolicy& defaultCachePolicy() const { return _defaultCachePolicy; }
-        void setDefaultCachePolicy( const CachePolicy& policy ) { _defaultCachePolicy = policy; }
+        /** The override cache policy (overrides all others if set) */
+        const optional<CachePolicy>& overrideCachePolicy() const { return _overrideCachePolicy; }
+        void setOverrideCachePolicy( const CachePolicy& policy );
+
+        /** The default cache policy (used when no policy is set) */
+        const optional<CachePolicy>& defaultCachePolicy() const { return _defaultCachePolicy; }
+        void setDefaultCachePolicy( const CachePolicy& policy );
+
+        /**
+         * Gets the cache policy. 
+         * First checks for an override policy; then looks in the DB::Options for one,
+         * then checks for the default policy; then returns false as a last resort.
+         */
+        bool getCachePolicy( optional<CachePolicy>& cp, const osgDB::Options* options =0L ) const;
 
         /**
          * Whether the given filename is blacklisted
@@ -105,14 +122,26 @@ namespace osgEarth
          */
         const Capabilities& getCapabilities() const;
         void setCapabilities( Capabilities* caps );
+        static const Capabilities& capabilities() { return instance()->getCapabilities(); }
 
         /**
          * Gets or sets the default shader factory. You can replace the default
          * shader factory if you want to alter any of osgEarth's baseline shaders
          * (advanced usage).
          */
-        ShaderFactory* getShaderFactory() const;
+        const ShaderFactory* getShaderFactory() const;
         void setShaderFactory( ShaderFactory* lib );
+        static const ShaderFactory* shaderFactory() { return instance()->getShaderFactory(); }
+
+        /**
+         * A default StateSetCache to use by any process that uses one.
+         * A StateSetCache assist in stateset sharing across multiple nodes.
+         * Note: A registry-wide SSC is only supported in OSG 3.1.4+. See
+         * the Registry.cpp comments for details.
+         */
+        StateSetCache* getStateSetCache() const;
+        void setStateSetCache( StateSetCache* cache );
+        static StateSetCache* stateSetCache() { return instance()->getStateSetCache(); }
 
         /**
          * Gets a reference to the global task service manager.
@@ -128,12 +157,12 @@ namespace osgEarth
         /**
          * Sets a global read callback for URI objects.
          */
-        void setURIReadCallback( URIReadCallback* callback ) { _uriReadCallback = callback; }
+        void setURIReadCallback( URIReadCallback* callback );
 
         /**
          * Gets the global read callback for URI objects.
          */
-        URIReadCallback* getURIReadCallback() const { return _uriReadCallback.get(); }
+        URIReadCallback* getURIReadCallback() const;
 
         /**
          * Gets the default set of osgDB::Options to use.
@@ -153,6 +182,12 @@ namespace osgEarth
 
         const Units* getUnits(const std::string& name) const;
 
+        /**
+         * The name of the default terrain engine driver
+         */
+        void setDefaultTerrainEngineDriverName( const std::string& name );
+        const std::string& getDefaultTerrainEngineDriverName() const { return _terrainEngineDriver; }
+
     protected:
         virtual ~Registry();
         Registry();
@@ -164,32 +199,35 @@ namespace osgEarth
 
         osg::ref_ptr<const Profile> _global_geodetic_profile;
         osg::ref_ptr<const Profile> _global_mercator_profile;
+        osg::ref_ptr<const Profile> _spherical_mercator_profile;
         osg::ref_ptr<const Profile> _cube_profile;
 
-        Threading::ReadWriteMutex _regMutex;
-        //OpenThreads::Mutex _regMutex;        
+        Threading::ReadWriteMutex _regMutex;  
         int _numGdalMutexGets;
         
         typedef std::map< std::string, std::string> MimeTypeExtensionMap;
         // maps mime-types to extensions.
         MimeTypeExtensionMap _mimeTypeExtMap;
 
-		osg::ref_ptr<Cache> _cache;
-        CachePolicy         _defaultCachePolicy;
+        osg::ref_ptr<Cache> _cache;
+        optional<CachePolicy> _defaultCachePolicy;
+        optional<CachePolicy> _overrideCachePolicy;
 
         typedef std::set<std::string> StringSet;
         StringSet _blacklistedFilenames;
         Threading::ReadWriteMutex _blacklistMutex;
 
-        //osg::ref_ptr<const VerticalSpatialReference> _defaultVSRS;
-
         osg::ref_ptr<ShaderFactory> _shaderLib;
 
         osg::ref_ptr<TaskServiceManager> _taskServiceManager;
 
-        int _uidGen;
+        // unique ID generator:
+        int                      _uidGen;
+        mutable Threading::Mutex _uidGenMutex;
 
+        // system capabilities:
         osg::ref_ptr< Capabilities > _caps;
+        mutable Threading::Mutex     _capsMutex;
         void initCapabilities();
 
         osg::ref_ptr<osgDB::Options> _defaultOptions;
@@ -199,7 +237,12 @@ namespace osgEarth
         osg::ref_ptr<osgText::Font> _defaultFont;
 
         typedef std::vector<const Units*> UnitsVector;
-        UnitsVector _unitsVector;
+        UnitsVector                       _unitsVector;
+        mutable Threading::ReadWriteMutex _unitsVectorMutex;
+
+        osg::ref_ptr<StateSetCache> _stateSetCache;
+
+        std::string _terrainEngineDriver;
     };
 }
 

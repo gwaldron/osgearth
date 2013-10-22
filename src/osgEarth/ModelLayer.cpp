@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2010 Pelican Mapping
+ * Copyright 2008-2013 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -18,11 +18,33 @@
  */
 #include <osgEarth/ModelLayer>
 #include <osgEarth/Map>
+#include <osgEarth/Registry>
+#include <osgEarth/Capabilities>
 #include <osg/Depth>
 
 #define LC "[ModelLayer] "
 
 using namespace osgEarth;
+
+//------------------------------------------------------------------------
+
+namespace
+{
+    /**
+     * Most basic of model sources; used to support the osg::Node* constructor to ModelLayer.
+     */
+    struct NodeModelSource : public ModelSource
+    {
+        NodeModelSource( osg::Node* node ) : _node(node) { }
+
+        osg::Node* createNodeImplementation(const Map* map, const osgDB::Options* dbOptions, ProgressCallback* progress) {
+            return _node.get();
+        }
+
+        osg::ref_ptr<osg::Node> _node;
+    };
+}
+
 //------------------------------------------------------------------------
 
 ModelLayerOptions::ModelLayerOptions( const ConfigOptions& options ) :
@@ -44,10 +66,9 @@ ConfigOptions()
 void
 ModelLayerOptions::setDefaults()
 {
-    _overlay.init( false );
-    _enabled.init( true );
-    _visible.init( true );
-    _lighting.init( true );
+    _enabled.init     ( true );
+    _visible.init     ( true );
+    _lighting.init    ( true );
 }
 
 Config
@@ -57,7 +78,6 @@ ModelLayerOptions::getConfig() const
     Config conf = ConfigOptions::newConfig();
 
     conf.updateIfSet( "name", _name );
-    conf.updateIfSet( "overlay", _overlay );
     conf.updateIfSet( "enabled", _enabled );
     conf.updateIfSet( "visible", _visible );
     conf.updateIfSet( "lighting", _lighting );
@@ -73,7 +93,6 @@ void
 ModelLayerOptions::fromConfig( const Config& conf )
 {
     conf.getIfSet( "name", _name );
-    conf.getIfSet( "overlay", _overlay );
     conf.getIfSet( "enabled", _enabled );
     conf.getIfSet( "visible", _visible );
     conf.getIfSet( "lighting", _lighting );
@@ -111,10 +130,15 @@ _initOptions( options )
 }
 
 ModelLayer::ModelLayer(const std::string& name, osg::Node* node):
-_initOptions(ModelLayerOptions( name )),
-_node(node)
+_initOptions( ModelLayerOptions(name) ),
+_modelSource( new NodeModelSource(node) )
 {
     copyOptions();
+}
+
+ModelLayer::~ModelLayer()
+{
+    OE_DEBUG << "~ModelLayer" << std::endl;
 }
 
 void
@@ -124,57 +148,63 @@ ModelLayer::copyOptions()
 }
 
 void
-ModelLayer::initialize( const osgDB::Options* dbOptions, const Map* map )
+ModelLayer::initialize( const osgDB::Options* dbOptions )
 {
-    _dbOptions = osg::clone(dbOptions);
-
     if ( !_modelSource.valid() && _initOptions.driver().isSet() )
     {
         _modelSource = ModelSourceFactory::create( *_initOptions.driver() );
-    }
 
-    if ( _modelSource.valid() )
-    {
-        _modelSource->initialize( dbOptions, map );
+        if ( _modelSource.valid() )
+        {
+            _modelSource->initialize( dbOptions );
+        }
     }
 }
 
 osg::Node*
-ModelLayer::getOrCreateNode( ProgressCallback* progress )
+ModelLayer::createSceneGraph(const Map*            map,
+                             const osgDB::Options* dbOptions,
+                             ProgressCallback*     progress )
 {
+    osg::Node* node = 0L;
+
     if ( _modelSource.valid() )
     {
-        // if the model source has changed, regenerate the node.
-        if ( _node.valid() && !_modelSource->inSyncWith(_modelSourceRev) )
-        {
-            _node = 0L;
-        }
+        node = _modelSource->createNode( map, dbOptions, progress );
 
-        if ( !_node.valid() )
+        if ( node )
         {
-            _node = _modelSource->createNode( progress );
-
             if ( _runtimeOptions.visible().isSet() )
-                setVisible( *_runtimeOptions.visible() );
+            {
+                node->setNodeMask( *_runtimeOptions.visible() ? ~0 : 0 );
+            }
 
             if ( _runtimeOptions.lightingEnabled().isSet() )
-                setLightingEnabled( *_runtimeOptions.lightingEnabled() );
-
-            if ( _modelSource->getOptions().depthTestEnabled() == false )            
             {
-                if ( _node )
-                {
-                    osg::StateSet* ss = _node->getOrCreateStateSet();
-                    ss->setAttributeAndModes( new osg::Depth( osg::Depth::ALWAYS ) );
-                    ss->setRenderBinDetails( 99999, "RenderBin" ); //TODO: configure this bin ...
-                }
+                setLightingEnabled( *_runtimeOptions.lightingEnabled() );
+            }
+
+            if ( _modelSource->getOptions().depthTestEnabled() == false )
+            {
+                osg::StateSet* ss = node->getOrCreateStateSet();
+                ss->setAttributeAndModes( new osg::Depth( osg::Depth::ALWAYS ) );
+                ss->setRenderBinDetails( 99999, "RenderBin" ); //TODO: configure this bin ...
+            }
+
+            if ( Registry::capabilities().supportsGLSL() )
+            {
+                // install a callback that keeps the shader uniforms up to date
+                node->addCullCallback( new UpdateLightingUniformsHelper() );
             }
 
             _modelSource->sync( _modelSourceRev );
+
+            // save an observer reference to the node so we can change the visibility/lighting/etc.
+            _nodeSet.insert( node );
         }
     }
 
-    return _node.get();
+    return node;
 }
 
 bool
@@ -196,8 +226,13 @@ ModelLayer::setVisible(bool value)
     {
         _runtimeOptions.visible() = value;
 
-        if ( _node.valid() )
-            _node->setNodeMask( value ? ~0 : 0 );
+        for( NodeObserverSet::iterator i = _nodeSet.begin(); i != _nodeSet.end(); ++i )
+        {
+            if ( i->valid() )
+            {
+                i->get()->setNodeMask( value ? ~0 : 0 );
+            }
+        }
 
         fireCallback( &ModelLayerCallback::onVisibleChanged );
     }
@@ -207,12 +242,15 @@ void
 ModelLayer::setLightingEnabled( bool value )
 {
     _runtimeOptions.lightingEnabled() = value;
-    if ( _node.valid() )
-    {
-        _node->getOrCreateStateSet()->setMode( 
-            GL_LIGHTING, value ? osg::StateAttribute::ON : 
-            (osg::StateAttribute::OFF | osg::StateAttribute::PROTECTED) );
 
+    for( NodeObserverSet::iterator i = _nodeSet.begin(); i != _nodeSet.end(); ++i )
+    {
+        if ( i->valid() )
+        {
+            i->get()->getOrCreateStateSet()->setMode( 
+                GL_LIGHTING, value ? osg::StateAttribute::ON : 
+                (osg::StateAttribute::OFF | osg::StateAttribute::PROTECTED) );
+        }
     }
 }
 
@@ -220,22 +258,6 @@ bool
 ModelLayer::isLightingEnabled() const
 {
     return *_runtimeOptions.lightingEnabled();
-}
-
-bool
-ModelLayer::getOverlay() const
-{
-    return *_runtimeOptions.overlay();
-}
-
-void
-ModelLayer::setOverlay(bool overlay)
-{
-    if ( _runtimeOptions.overlay() != overlay )
-    {
-        _runtimeOptions.overlay() = overlay;
-        fireCallback( &ModelLayerCallback::onOverlayChanged );
-    }
 }
 
 void

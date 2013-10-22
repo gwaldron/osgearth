@@ -1,0 +1,97 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+* Copyright 2008-2013 Pelican Mapping
+* http://osgearth.org
+*
+* osgEarth is free software; you can redistribute it and/or modify
+* it under the terms of the GNU Lesser General Public License as published by
+* the Free Software Foundation; either version 2 of the License, or
+* (at your option) any later version.
+*
+* This program is distributed in the hope that it will be useful,
+* but WITHOUT ANY WARRANTY; without even the implied warranty of
+* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+* GNU Lesser General Public License for more details.
+*
+* You should have received a copy of the GNU Lesser General Public License
+* along with this program.  If not, see <http://www.gnu.org/licenses/>
+*/
+#ifndef OSGEARTH_ENGINE_MP_TILE_GROUP
+#define OSGEARTH_ENGINE_MP_TILE_GROUP 1
+
+#include "Common"
+#include "TileNode"
+#include <osg/Group>
+#include <osgDB/Options>
+#include <osgEarth/ThreadingUtils>
+
+using namespace osgEarth;
+
+namespace osgEarth_engine_mp
+{
+    class TileNodeRegistry;
+
+    /**
+     * A TileGroup parents a TileNode (which contains the geometry for a
+     * TileKey) and four TilePagedLODs (each of which is responsible for
+     * loading one of the four subtiles).
+     */
+    class TileGroup : public osg::Group, public TileNodeContainer
+    {
+    public:
+        TileGroup(
+            TileNode*         tilenode,
+            const UID&        engineUID, 
+            TileNodeRegistry* liveTiles,
+            TileNodeRegistry* deadTiles,
+            osgDB::Options*   dbOptions);
+
+        /** Range at which subtiles should start paging in. */
+        void setSubtileRange(float range);
+
+        /** Sets the tile group to continue subdividing even if all children are upsampled. */
+        void setForceSubdivide(bool value);
+
+        /** Replaces the underlying TileNode with a new one. */
+        void setTileNode( TileNode* tilenode );
+
+    public: // TileNodeContainer
+
+        /** The TileNode holding the geometry for this group. */
+        TileNode* getTileNode() { return _tilenode; }
+
+    public: // osg::Node
+
+        /** custom traversal. */
+        void traverse(osg::NodeVisitor& nv);
+        
+        /** Bound is equivalent to the bound of the tilenode. */
+        osg::BoundingSphere computeBound() const;
+
+    protected:
+        TileGroup();
+
+        virtual ~TileGroup() { }
+
+    private:
+        TileNode* _tilenode;
+        float     _subtileRange;
+        bool      _ignoreSubtiles;
+        bool      _forceSubdivide;
+    };
+
+    class RootTileGroup : public TileGroup
+    {
+    public:
+        RootTileGroup();
+        void addRootKey(const TileKey&    key,
+                        osg::Node*        node,
+                        const UID&        engineUID,
+                        TileNodeRegistry* live,
+                        TileNodeRegistry* dead,
+                        osgDB::Options*   dbOptions);
+    };
+
+} // namespace osgEarth_engine_mp
+
+#endif // OSGEARTH_ENGINE_MP_TILE_GROUP

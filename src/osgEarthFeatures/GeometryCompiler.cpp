@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2010 Pelican Mapping
+ * Copyright 2008-2013 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -22,9 +22,16 @@
 #include <osgEarthFeatures/AltitudeFilter>
 #include <osgEarthFeatures/CentroidFilter>
 #include <osgEarthFeatures/ExtrudeGeometryFilter>
+#include <osgEarthFeatures/PolygonizeLines>
 #include <osgEarthFeatures/ScatterFilter>
 #include <osgEarthFeatures/SubstituteModelFilter>
 #include <osgEarthFeatures/TessellateOperator>
+#include <osgEarth/AutoScale>
+#include <osgEarth/CullingUtils>
+#include <osgEarth/Registry>
+#include <osgEarth/Capabilities>
+#include <osgEarth/ShaderGenerator>
+#include <osgEarth/ShaderUtils>
 #include <osg/MatrixTransform>
 #include <osg/Timer>
 #include <osgDB/WriteFile>
@@ -39,9 +46,35 @@ using namespace osgEarth::Symbology;
 
 namespace
 {
-    osg::ref_ptr<PointSymbol>   s_defaultPointSymbol   = new PointSymbol();
-    osg::ref_ptr<LineSymbol>    s_defaultLineSymbol    = new LineSymbol();
-    osg::ref_ptr<PolygonSymbol> s_defaultPolygonSymbol = new PolygonSymbol();
+    /**
+     * Visitor that will exaggerate the bounding box of each Drawable
+     * in the scene graph to encompass a local high and low mark. We use this
+     * to support GPU-clamping, which will move vertex positions in the 
+     * GPU code. Since OSG is not aware of this movement, it may inadvertenly
+     * cull geometry which is actually visible.
+     */
+    struct OverlayGeometryAdjuster : public osg::NodeVisitor
+    {
+        float _low, _high;
+
+        OverlayGeometryAdjuster(float low, float high)
+            : osg::NodeVisitor(osg::NodeVisitor::TRAVERSE_ALL_CHILDREN), _low(low), _high(high) { }
+
+        void apply(osg::Geode& geode)
+        {
+            for( unsigned i=0; i<geode.getNumDrawables(); ++i )
+            {
+                osg::Drawable* d = geode.getDrawable(i);
+                osg::BoundingBox bbox = d->getBound();
+                if ( bbox.zMin() > _low )
+                    bbox.expandBy( osg::Vec3f(bbox.xMin(), bbox.yMin(), _low) );
+                if ( bbox.zMax() < _high )
+                    bbox.expandBy( osg::Vec3f(bbox.xMax(), bbox.yMax(), _high) );
+                d->setInitialBound( bbox );
+                d->dirtyBound();
+            }
+        }
+    };
 }
 
 //-----------------------------------------------------------------------
@@ -50,35 +83,51 @@ GeometryCompilerOptions::GeometryCompilerOptions( const ConfigOptions& conf ) :
 ConfigOptions      ( conf ),
 _maxGranularity_deg( 1.0 ),
 _mergeGeometry     ( false ),
-_clustering        ( true ),
-_ignoreAlt         ( false )
+_clustering        ( false ),
+_instancing        ( false ),
+_ignoreAlt         ( false ),
+_useVertexBufferObjects( true ),
+_shaderPolicy      ( SHADERPOLICY_GENERATE )
 {
     fromConfig(_conf);
+    _useVertexBufferObjects = !Registry::capabilities().preferDisplayListsForStaticGeometry();
 }
 
 void
 GeometryCompilerOptions::fromConfig( const Config& conf )
 {
-    conf.getIfSet   ( "max_granularity", _maxGranularity_deg );
-    conf.getIfSet   ( "merge_geometry",  _mergeGeometry );
-    conf.getIfSet   ( "clustering",      _clustering );
-    conf.getObjIfSet( "feature_name",    _featureNameExpr );
-    conf.getIfSet   ( "ignore_altitude", _ignoreAlt );
+    conf.getIfSet   ( "max_granularity",  _maxGranularity_deg );
+    conf.getIfSet   ( "merge_geometry",   _mergeGeometry );
+    conf.getIfSet   ( "clustering",       _clustering );
+    conf.getIfSet   ( "instancing",       _instancing );
+    conf.getObjIfSet( "feature_name",     _featureNameExpr );
+    conf.getIfSet   ( "ignore_altitude",  _ignoreAlt );
     conf.getIfSet   ( "geo_interpolation", "great_circle", _geoInterp, GEOINTERP_GREAT_CIRCLE );
     conf.getIfSet   ( "geo_interpolation", "rhumb_line",   _geoInterp, GEOINTERP_RHUMB_LINE );
+    conf.getIfSet   ( "use_vbo", _useVertexBufferObjects);
+
+    conf.getIfSet( "shader_policy", "disable",  _shaderPolicy, SHADERPOLICY_DISABLE );
+    conf.getIfSet( "shader_policy", "inherit",  _shaderPolicy, SHADERPOLICY_INHERIT );
+    conf.getIfSet( "shader_policy", "generate", _shaderPolicy, SHADERPOLICY_GENERATE );
 }
 
 Config
 GeometryCompilerOptions::getConfig() const
 {
     Config conf = ConfigOptions::getConfig();
-    conf.addIfSet   ( "max_granularity", _maxGranularity_deg );
-    conf.addIfSet   ( "merge_geometry",  _mergeGeometry );
-    conf.addIfSet   ( "clustering",      _clustering );
-    conf.addObjIfSet( "feature_name",    _featureNameExpr );
-    conf.addIfSet   ( "ignore_altitude", _ignoreAlt );
+    conf.addIfSet   ( "max_granularity",  _maxGranularity_deg );
+    conf.addIfSet   ( "merge_geometry",   _mergeGeometry );
+    conf.addIfSet   ( "clustering",       _clustering );
+    conf.addIfSet   ( "instancing",       _instancing );
+    conf.addObjIfSet( "feature_name",     _featureNameExpr );
+    conf.addIfSet   ( "ignore_altitude",  _ignoreAlt );
     conf.addIfSet   ( "geo_interpolation", "great_circle", _geoInterp, GEOINTERP_GREAT_CIRCLE );
     conf.addIfSet   ( "geo_interpolation", "rhumb_line",   _geoInterp, GEOINTERP_RHUMB_LINE );
+    conf.addIfSet   ( "use_vbo", _useVertexBufferObjects);
+
+    conf.addIfSet( "shader_policy", "disable",  _shaderPolicy, SHADERPOLICY_DISABLE );
+    conf.addIfSet( "shader_policy", "inherit",  _shaderPolicy, SHADERPOLICY_INHERIT );
+    conf.addIfSet( "shader_policy", "generate", _shaderPolicy, SHADERPOLICY_GENERATE );
     return conf;
 }
 
@@ -167,24 +216,21 @@ GeometryCompiler::compile(FeatureList&          workingSet,
         sharedCX.extent() = sharedCX.profile()->getExtent();
     }
 
-    // only localize coordinates if the map is geocentric AND the extent is
-    // less than 180 degrees.
-    bool localize = false;
-    if ( sharedCX.isGeoreferenced() )
-    {
-        const MapInfo& mi = sharedCX.getSession()->getMapInfo();
-        GeoExtent workingExtent = sharedCX.extent()->transform( sharedCX.profile()->getSRS()->getGeographicSRS() );
-        localize = mi.isGeocentric() && workingExtent.width() < 180.0;
-    }
+    // ref_ptr's to hold defaults in case we need them.
+    osg::ref_ptr<PointSymbol>   defaultPoint;
+    osg::ref_ptr<LineSymbol>    defaultLine;
+    osg::ref_ptr<PolygonSymbol> defaultPolygon;
 
     // go through the Style and figure out which filters to use.
-    const MarkerSymbol*    marker    = style.get<MarkerSymbol>();
     const PointSymbol*     point     = style.get<PointSymbol>();
     const LineSymbol*      line      = style.get<LineSymbol>();
     const PolygonSymbol*   polygon   = style.get<PolygonSymbol>();
     const ExtrusionSymbol* extrusion = style.get<ExtrusionSymbol>();
     const AltitudeSymbol*  altitude  = style.get<AltitudeSymbol>();
     const TextSymbol*      text      = style.get<TextSymbol>();
+    const MarkerSymbol*    marker    = style.get<MarkerSymbol>();    // to be deprecated
+    const IconSymbol*      icon      = style.get<IconSymbol>();
+    const ModelSymbol*     model     = style.get<ModelSymbol>();
 
     // check whether we need tessellation:
     if ( line && line->tessellation().isSet() )
@@ -196,7 +242,7 @@ GeometryCompiler::compile(FeatureList&          workingSet,
 
     // if the style was empty, use some defaults based on the geometry type of the
     // first feature.
-    if ( !point && !line && !polygon && !marker && !extrusion && !text && workingSet.size() > 0 )
+    if ( !point && !line && !polygon && !marker && !extrusion && !text && !model && !icon && workingSet.size() > 0 )
     {
         Feature* first = workingSet.begin()->get();
         Geometry* geom = first->getGeometry();
@@ -206,15 +252,25 @@ GeometryCompiler::compile(FeatureList&          workingSet,
             {
             case Geometry::TYPE_LINESTRING:
             case Geometry::TYPE_RING:
-                line = s_defaultLineSymbol.get(); break;
+                defaultLine = new LineSymbol();
+                line = defaultLine.get();
+                break;
             case Geometry::TYPE_POINTSET:
-                point = s_defaultPointSymbol.get(); break;
+                defaultPoint = new PointSymbol();
+                point = defaultPoint.get();
+                break;
             case Geometry::TYPE_POLYGON:
-                polygon = s_defaultPolygonSymbol.get(); break;
+                defaultPolygon = new PolygonSymbol();
+                polygon = defaultPolygon.get();
+                break;
+            case Geometry::TYPE_MULTI:
+            case Geometry::TYPE_UNKNOWN:
+                break;
             }
         }
     }
 
+    // resample the geometry if necessary:
     if (_options.resampleMode().isSet())
     {
         ResampleFilter resample;
@@ -226,6 +282,7 @@ GeometryCompiler::compile(FeatureList&          workingSet,
         sharedCX = resample.push( workingSet, sharedCX );        
     }    
     
+    // check whether we need to do elevation clamping:
     bool altRequired =
         _options.ignoreAltitudeSymbol() != true &&
         altitude && (
@@ -233,7 +290,7 @@ GeometryCompiler::compile(FeatureList&          workingSet,
             altitude->verticalOffset().isSet() ||
             altitude->verticalScale().isSet() );
 
-    // model substitution
+    // marker substitution -- to be deprecated in favor of model/icon
     if ( marker )
     {
         // use a separate filter context since we'll be munging the data
@@ -265,14 +322,11 @@ GeometryCompiler::compile(FeatureList&          workingSet,
         }
 
         SubstituteModelFilter sub( style );
-        if ( marker->scale().isSet() )
-        {
-            //Turn on GL_NORMALIZE so lighting works properly
-            resultGroup->getOrCreateStateSet()->setMode(GL_NORMALIZE, osg::StateAttribute::ON );
-            //sub.setModelMatrix( osg::Matrixd::scale( *marker->scale() ) );
-        }
 
         sub.setClustering( *_options.clustering() );
+
+        sub.setUseDrawInstanced( *_options.instancing() );
+
         if ( _options.featureName().isSet() )
             sub.setFeatureNameExpr( *_options.featureName() );
 
@@ -280,6 +334,64 @@ GeometryCompiler::compile(FeatureList&          workingSet,
         if ( node )
         {
             resultGroup->addChild( node );
+        }
+    }
+
+    // instance substitution (replaces marker)
+    else if ( model ) // || icon )
+    {
+        const InstanceSymbol* instance = model ? (const InstanceSymbol*)model : (const InstanceSymbol*)icon;
+
+        // use a separate filter context since we'll be munging the data
+        FilterContext localCX = sharedCX;
+
+        if ( instance->placement() == InstanceSymbol::PLACEMENT_RANDOM   ||
+             instance->placement() == InstanceSymbol::PLACEMENT_INTERVAL )
+        {
+            ScatterFilter scatter;
+            scatter.setDensity( *instance->density() );
+            scatter.setRandom( instance->placement() == InstanceSymbol::PLACEMENT_RANDOM );
+            scatter.setRandomSeed( *instance->randomSeed() );
+            localCX = scatter.push( workingSet, localCX );
+        }
+        else if ( instance->placement() == InstanceSymbol::PLACEMENT_CENTROID )
+        {
+            CentroidFilter centroid;
+            centroid.push( workingSet, localCX );
+        }
+
+        if ( altRequired )
+        {
+            AltitudeFilter clamp;
+            clamp.setPropertiesFromStyle( style );
+            localCX = clamp.push( workingSet, localCX );
+
+            // don't set this; we changed the input data.
+            //altRequired = false;
+        }
+
+        SubstituteModelFilter sub( style );
+
+        // activate clustering
+        sub.setClustering( *_options.clustering() );
+
+        // activate draw-instancing
+        sub.setUseDrawInstanced( *_options.instancing() );
+
+        // activate feature naming
+        if ( _options.featureName().isSet() )
+            sub.setFeatureNameExpr( *_options.featureName() );
+
+        osg::Node* node = sub.push( workingSet, localCX );
+        if ( node )
+        {
+            resultGroup->addChild( node );
+
+            // enable auto scaling on the group?
+            if ( model && model->autoScale() == true )
+            {
+                resultGroup->getOrCreateStateSet()->setRenderBinDetails(0, osgEarth::AUTO_SCALE_BIN );
+            }
         }
     }
 
@@ -300,6 +412,8 @@ GeometryCompiler::compile(FeatureList&          workingSet,
         // apply per-feature naming if requested.
         if ( _options.featureName().isSet() )
             extrude.setFeatureNameExpr( *_options.featureName() );
+        if ( _options.useVertexBufferObjects().isSet())
+            extrude.useVertexBufferObjects() = *_options.useVertexBufferObjects();
 
         osg::Node* node = extrude.push( workingSet, sharedCX );
         if ( node )
@@ -307,6 +421,27 @@ GeometryCompiler::compile(FeatureList&          workingSet,
             resultGroup->addChild( node );
         }
     }
+
+#if 0
+    // polygonized lines.
+    else if ( line != 0L && line->stroke()->widthUnits() != Units::PIXELS )
+    {
+        if ( altRequired )
+        {
+            AltitudeFilter clamp;
+            clamp.setPropertiesFromStyle( style );
+            sharedCX = clamp.push( workingSet, sharedCX );
+            altRequired = false;
+        }
+
+        PolygonizeLinesFilter filter( style );
+        osg::Node* node = filter.push( workingSet, sharedCX );
+        if ( node )
+        {
+            resultGroup->addChild( node );
+        }
+    }
+#endif
 
     // simple geometry
     else if ( point || line || polygon )
@@ -328,6 +463,8 @@ GeometryCompiler::compile(FeatureList&          workingSet,
             filter.mergeGeometry() = *_options.mergeGeometry();
         if ( _options.featureName().isSet() )
             filter.featureName() = *_options.featureName();
+        if ( _options.useVertexBufferObjects().isSet())
+            filter.useVertexBufferObjects() = *_options.useVertexBufferObjects();
 
         osg::Node* node = filter.push( workingSet, sharedCX );
         if ( node )
@@ -336,7 +473,7 @@ GeometryCompiler::compile(FeatureList&          workingSet,
         }
     }
 
-    if ( text )
+    if ( text || icon )
     {
         if ( altRequired )
         {
@@ -354,7 +491,56 @@ GeometryCompiler::compile(FeatureList&          workingSet,
         }
     }
 
-    resultGroup->getOrCreateStateSet()->setMode( GL_BLEND, 1 );
+    // Common state set cache?
+    osg::ref_ptr<StateSetCache> sscache;
+    if ( sharedCX.getSession() )
+        sscache = sharedCX.getSession()->getStateSetCache();
+    else 
+        sscache = new StateSetCache();
+
+    // Generate shaders, if necessary
+    if (Registry::capabilities().supportsGLSL())
+    {
+        if ( _options.shaderPolicy() == SHADERPOLICY_GENERATE )
+        {
+            ShaderGenerator gen( 0L );  // no ss cache because we will optimize later
+            resultGroup->accept( gen );
+        }
+        else if ( _options.shaderPolicy() == SHADERPOLICY_DISABLE )
+        {
+            resultGroup->getOrCreateStateSet()->setAttributeAndModes(
+                new osg::Program(),
+                osg::StateAttribute::OFF | osg::StateAttribute::OVERRIDE );
+        }
+    }
+
+    // Optimize stateset sharing.
+    sscache->optimize( resultGroup.get() );
+    
+    // todo: this helps a lot, but is currently broken for non-triangle
+    // geometries. (gw, 12-17-2012)
+    // TODO: See: VertexCacheOptimizer in Utils
+    // ..note, the BuildGeometryFilter and ExtrudeGeometryFilter call this now
+#if 0
+        osgUtil::Optimizer optimizer;
+        optimizer.optimize(
+            resultGroup.get(),
+            osgUtil::Optimizer::VERTEX_PRETRANSFORM );
+            osgUtil::Optimizer::VERTEX_POSTTRANSFORM );
+#endif
+
+#if 0
+    // if necessary, modify the bounding boxes of the underlying Geometry
+    // drawables so they will work with clamping.
+    if (altitude &&
+        (altitude->clamping() == AltitudeSymbol::CLAMP_TO_TERRAIN || altitude->clamping() == AltitudeSymbol::CLAMP_RELATIVE_TO_TERRAIN) &&
+        altitude->technique() == AltitudeSymbol::TECHNIQUE_GPU)
+    {
+        OverlayGeometryAdjuster adjuster( -10000.0f, 10000.0f );
+        resultGroup->accept( adjuster );
+    }
+#endif
+
 
     //osgDB::writeNodeFile( *(resultGroup.get()), "out.osg" );
 

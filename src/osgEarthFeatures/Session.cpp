@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2010 Pelican Mapping
+ * Copyright 2008-2013 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -20,9 +20,10 @@
 #include <osgEarthFeatures/Session>
 #include <osgEarthFeatures/Script>
 #include <osgEarthFeatures/ScriptEngine>
+#include <osgEarthFeatures/FeatureSource>
 #include <osgEarth/FileUtils>
-#include <osgEarth/HTTPClient>
 #include <osgEarth/StringUtils>
+#include <osgEarth/Registry>
 #include <osg/AutoTransform>
 #include <osg/Depth>
 #include <osg/TextureRectangle>
@@ -34,10 +35,11 @@ using namespace osgEarth::Features;
 
 //---------------------------------------------------------------------------
 
-Session::Session( const Map* map, StyleSheet* styles, const osgDB::Options* dbOptions ) :
+Session::Session( const Map* map, StyleSheet* styles, FeatureSource* source, const osgDB::Options* dbOptions ) :
 osg::Referenced( true ),
 _map           ( map ),
 _mapInfo       ( map ),
+_featureSource ( source ),
 _dbOptions     ( dbOptions )
 {
     if ( styles )
@@ -45,9 +47,22 @@ _dbOptions     ( dbOptions )
     else
         _styles = new StyleSheet();
 
+    // if no script engine was created when the style was set above, create a default javascript one
+    if (!_styleScriptEngine.valid())
+      _styleScriptEngine = ScriptEngineFactory::create("javascript");
+
     // if the caller did not provide a dbOptions, take it from the map.
     if ( map && !dbOptions )
         _dbOptions = map->getDBOptions();
+
+    // A new cache to optimize state changes. Since the cache lives in the Session, any
+    // geometry created under this session takes advantage of it. That's reasonable since
+    // tiles in a particular "layer" will tend to share state.
+    _stateSetCache = new StateSetCache();
+}
+
+Session::~Session()
+{
 }
 
 const osgDB::Options*
@@ -65,7 +80,8 @@ Session::createMapFrame( Map::ModelParts parts ) const
 void
 Session::removeObject( const std::string& key )
 {
-    Threading::ScopedWriteLock lock( _objMapMutex );
+    Threading::ScopedMutexLock lock( _objMapMutex );
+    //Threading::ScopedWriteLock lock( _objMapMutex );
     _objMap.erase( key );
 }
 
@@ -85,4 +101,10 @@ ScriptEngine*
 Session::getScriptEngine() const
 {
   return _styleScriptEngine.get();
+}
+
+FeatureSource*
+Session::getFeatureSource() const 
+{ 
+	return _featureSource.get(); 
 }

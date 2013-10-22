@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2010 Pelican Mapping
+ * Copyright 2008-2013 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -57,17 +57,19 @@ namespace osgEarth { namespace Features
         /** Construct a new sub-model filter that will operate on the given style */
         SubstituteModelFilter( const Style& style =Style() );
 
+        virtual ~SubstituteModelFilter() { }
+
         /** Whether to cluster all the model instances into a single geode. Default is false. */
         void setClustering( bool value ) { _cluster = value; }
         bool getClustering() const { return _cluster; }
 
+        /** Whether to convert model instances to use "DrawInstanced" instead of transforms. Default is false */
+        void setUseDrawInstanced( bool value ) { _useDrawInstanced = value; }
+        bool getUseDrawInstanced() const { return _useDrawInstanced; }
+
         /** Whether to merge marker geometries into geodes */
         void setMergeGeometry( bool value ) { _merge = value; }
         bool getMergeGeometry() const { return _merge; }
-
-        /** The matrix with which to transform each model instance after placement. */
-        //void setModelMatrix( const osg::Matrixd& value ) { _modelMatrix = value; }
-        //const osg::Matrixd& getModelMatrix() const { return _modelMatrix; }
 
         void setFeatureNameExpr( const StringExpression& expr ) { _featureNameExpr = expr; }
         const StringExpression& getFeatureNameExpr() const { return _featureNameExpr; }
@@ -79,15 +81,19 @@ namespace osgEarth { namespace Features
     protected:
         Style                         _style;
         bool                          _cluster;
+        bool                          _useDrawInstanced;
         bool                          _merge;
         StringExpression              _featureNameExpr;
-        osg::ref_ptr<ResourceLibrary> _markerLib;
+        osg::ref_ptr<ResourceLibrary> _resourceLib;
+        bool                          _normalScalingRequired;
 
-        typedef LRUCache<URI, osg::ref_ptr<MarkerResource> > MarkerCache;
-        MarkerCache _markerCache;
+        typedef LRUCache<URI, osg::ref_ptr<InstanceResource> > InstanceCache;
+        InstanceCache _instanceCache;
         
-        bool process(const FeatureList& features, const MarkerSymbol* symbol, Session* session, osg::Group* ap, FilterContext& context );
-        bool cluster(const FeatureList& features, const MarkerSymbol* symbol, Session* session, osg::Group* ap, FilterContext& context );
+        bool process(const FeatureList& features, const InstanceSymbol* symbol, Session* session, osg::Group* ap, FilterContext& context );
+        bool cluster(const FeatureList& features, const InstanceSymbol* symbol, Session* session, osg::Group* ap, FilterContext& context );
+        
+        bool findResource( const URI& instanceURI, const InstanceSymbol* symbol, FilterContext& context, std::set<URI>& missing, osg::ref_ptr<InstanceResource>& output );
     };
 
 } } // namespace osgEarth::Features

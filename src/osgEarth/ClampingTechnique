@@ -1,0 +1,111 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+* Copyright 2008-2013 Pelican Mapping
+* http://osgearth.org
+*
+* osgEarth is free software; you can redistribute it and/or modify
+* it under the terms of the GNU Lesser General Public License as published by
+* the Free Software Foundation; either version 2 of the License, or
+* (at your option) any later version.
+*
+* This program is distributed in the hope that it will be useful,
+* but WITHOUT ANY WARRANTY; without even the implied warranty of
+* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+* GNU Lesser General Public License for more details.
+*
+* You should have received a copy of the GNU Lesser General Public License
+* along with this program.  If not, see <http://www.gnu.org/licenses/>
+*/
+#ifndef OSGEARTH_OVERLAY_CLAMPING_TECHNIQUE
+#define OSGEARTH_OVERLAY_CLAMPING_TECHNIQUE
+
+#include <osgEarth/Common>
+#include <osgEarth/OverlayDecorator>
+#include <osg/TexGenNode>
+#include <osg/Uniform>
+
+#define OSGEARTH_CLAMPING_BIN "osgEarth::ClampingBin"
+
+namespace osgEarth
+{
+    class TerrainEngineNode;
+
+    /**
+     * Clamps geometry to the terrain using the GPU.
+     *
+     * This overlay technique installs a shader that samples the depth
+     * of the underlying terrain and then adjusts the vertex position to
+     * the height of the terrain. It then applies a depth offset in order
+     * to mitigate Z-fighting.
+     *
+     * Approach
+     *
+     * This technique works by first setting up a nadir-view RTT camera that
+     * captures the depth component of the terrain within the view frustum of
+     * the main camera. Then the GPU uses this "depth texture" to move each
+     * vertex so it coindices with the terrain.
+     *
+     * Limitations
+     *
+     * Since this is an orthographic view, the effective resolution of depth
+     * data close to the camera may not be quite sufficient, especially when
+     * the camera is pitched up looking out over the horizon. As a reuslt, you
+     * may see the verts "jitter" slightly in the Z direciton as you camera moves.
+     *
+     * Performance takes a hit since we need to RTT the terrain in a pre-render
+     * pass.
+     */
+    class OSGEARTH_EXPORT ClampingTechnique : public OverlayTechnique
+    {
+    public:
+        typedef osg::Group* (*TechniqueProvider)(class MapNode*);
+        static TechniqueProvider Provider;
+
+    public:
+        ClampingTechnique();
+
+        /**
+         * The size (resolution in both directions) of the depth map texture. By
+         * default, this defaults to 4096 or your hardware's maximum supported
+         * texture size, whichever is less.
+         */
+        void setTextureSize( int texSize );
+        int getTextureSize() const { return *_textureSize; }
+
+
+    public: // OverlayTechnique
+
+        bool hasData(
+            OverlayDecorator::TechRTTParams& params) const;
+
+        void reestablish(
+            TerrainEngineNode* engine );
+
+        void preCullTerrain(
+            OverlayDecorator::TechRTTParams& params,
+            osgUtil::CullVisitor*            cv );
+
+        void cullOverlayGroup(
+            OverlayDecorator::TechRTTParams& params,
+            osgUtil::CullVisitor*            cv );
+
+        void onInstall( TerrainEngineNode* engine );
+
+        void onUninstall( TerrainEngineNode* engine );
+
+
+    protected:
+        virtual ~ClampingTechnique() { }
+
+    private:
+        int                _textureUnit;
+        optional<int>      _textureSize;
+        TerrainEngineNode* _engine;
+
+    private:
+        void setUpCamera(OverlayDecorator::TechRTTParams& params);
+    };
+
+} // namespace osgEarth
+
+#endif //OSGEARTH_OVERLAY_CLAMPING_TECHNIQUE

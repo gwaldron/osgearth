@@ -221,7 +221,7 @@ bool
 ObjectLocator::inSyncWith( int exRev ) const
 {
     return _parentLoc.valid() ? _parentLoc->inSyncWith( exRev ) :
-        osgEarth::Revisioned<osg::Referenced>::inSyncWith( exRev );
+        osgEarth::Revisioned::inSyncWith( exRev );
 }
 
 /***************************************************************************/

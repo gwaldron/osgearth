@@ -1,0 +1,61 @@
+<!--
+osgEarth Sample
+
+Demonstrates how to select a style name using javascript.
+-->
+
+<map name="Feature Overlay Demo" type="geocentric" version="2">
+    
+    <options>
+        <lighting>false</lighting>
+        <overlay_blending>false</overlay_blending>
+    </options>
+
+    <image name="world" driver="gdal">
+        <url>../data/world.tif</url>
+    </image>
+    
+    <model name="countries" driver="feature_geom">
+                          
+        <features name="states" driver="ogr">
+            <url>../data/world.shp</url>
+            <buffer distance="-0.05"/>
+        </features>
+        
+        <styles>        
+            <style type="text/css">
+                p1 { fill: #ffffff9f; altitude-clamping: terrain-drape; }       
+                p2 { fill: #cccccc9f; altitude-clamping: terrain-drape; }       
+                p3 { fill: #9999999f; altitude-clamping: terrain-drape; }       
+                p4 { fill: #6666669f; altitude-clamping: terrain-drape; }       
+                p5 { fill: #3333339f; altitude-clamping: terrain-drape; }       
+            </style>
+            
+            <script language="javascript">
+            <![CDATA[
+                function getStyleClass()
+                {
+					// Exclude any countries beginning with the letter A: 
+					if ( feature.attributes['cntry_name'].charAt(0) === 'A' )
+						return null;
+						
+					// If it starts with the letter C, return an inline style:
+					if ( feature.attributes['cntry_name'].charAt(0) == 'C' )
+						return '{ fill: #ffc8389f; }';
+						
+					// Otherwise, color by population and return a stylesheet style:
+                    var pop = parseFloat(feature.attributes['pop_cntry']);
+                    if      ( pop <= 14045470 )  return "p1";
+                    else if ( pop <= 43410900 )  return "p2";
+                    else if ( pop <= 97228750 )  return "p3";
+                    else if ( pop <= 258833000 ) return "p4";
+                    else                         return "p5";
+                }
+            ]]>
+            </script>
+            
+            <selector class_expr="getStyleClass()"/>
+        </styles>
+        
+    </model>
+</map>

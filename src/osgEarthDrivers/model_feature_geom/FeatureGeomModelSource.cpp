@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2010 Pelican Mapping
+ * Copyright 2008-2013 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -52,13 +52,13 @@ namespace
 
         const FeatureGeomModelOptions& getOptions() const { return _options; }
 
-        //override
-        void initialize( const osgDB::Options* dbOptions, const osgEarth::Map* map )
+    public: // FeatureModelSource
+
+        void initialize( const osgDB::Options* dbOptions )
         {
-            FeatureModelSource::initialize( dbOptions, map );
+            FeatureModelSource::initialize( dbOptions );
         }
 
-        //override
         FeatureNodeFactory* createFeatureNodeFactory()
         {
             return new GeomFeatureNodeFactory( _options.compilerOptions() );

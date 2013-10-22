@@ -1,0 +1,59 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+* Copyright 2008-2013 Pelican Mapping
+* http://osgearth.org
+*
+* osgEarth is free software; you can redistribute it and/or modify
+* it under the terms of the GNU Lesser General Public License as published by
+* the Free Software Foundation; either version 2 of the License, or
+* (at your option) any later version.
+*
+* This program is distributed in the hope that it will be useful,
+* but WITHOUT ANY WARRANTY; without even the implied warranty of
+* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+* GNU Lesser General Public License for more details.
+*
+* You should have received a copy of the GNU Lesser General Public License
+* along with this program.  If not, see <http://www.gnu.org/licenses/>
+*/
+#ifndef OSGEARTH_ENGINE_MP_TERRAIN_NODE
+#define OSGEARTH_ENGINE_MP_TERRAIN_NODE 1
+
+#include "Common"
+#include "TileNodeRegistry"
+
+namespace osgEarth_engine_mp
+{
+    class TileFactory;
+
+    using namespace osgEarth;
+
+    /**
+     * Parent node for the TileNode mp hierarchy.
+     */
+    class TerrainNode : public osg::Group
+    {
+    public:
+
+        /**
+         * Constructs a new terrain node.
+         * @param[in ] deadTiles If non-NULL, the terrain node will active GL object
+         *             quick-release and use this registry to track dead tiles.
+         */
+        TerrainNode( TileNodeRegistry* deadTiles );
+
+    public: // osg::Node
+
+        virtual void traverse( osg::NodeVisitor &nv );
+
+    protected:
+
+        virtual ~TerrainNode() { }
+
+        osg::ref_ptr<TileNodeRegistry> _tilesToQuickRelease;
+        bool _quickReleaseCallbackInstalled;
+    };
+
+} // namespace osgEarth_engine_mp
+
+#endif // OSGEARTH_ENGINE_MP_TERRAIN_NODE

@@ -1,0 +1,91 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+ * Copyright 2008-2013 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+#ifndef OSGEARTHFEATURES_FEATURE_DRAW_SET_H
+#define OSGEARTHFEATURES_FEATURE_DRAW_SET_H 1
+
+#include <osgEarthFeatures/Common>
+#include <osg/Geometry>
+#include <set>
+
+namespace osgEarth { namespace Features
+{
+    /**
+     * Contains a catalog of nodes and/or primitive set groups that comprise
+     * a single Feature in the scene.
+     */
+    class OSGEARTHFEATURES_EXPORT FeatureDrawSet
+    {     
+    public: // types
+        typedef osg::Geometry::PrimitiveSetList                        PrimitiveSets;
+        struct DrawableSlice {
+            osg::ref_ptr<osg::Drawable> drawable;
+            PrimitiveSets               primSets;
+            osg::Matrixd                local2world;
+        };
+        //typedef std::pair< osg::ref_ptr<osg::Drawable>, PrimitiveSets> DrawableSlice;
+        typedef std::vector<DrawableSlice>                             DrawableSlices;
+        typedef std::vector< osg::ref_ptr<osg::Node> >                 Nodes;
+
+    public:
+        FeatureDrawSet();
+        virtual ~FeatureDrawSet();
+
+        /** Nodes comprising this draw set */
+        Nodes& nodes() { return _nodes; }
+        const Nodes& nodes() const { return _nodes; }
+
+        /** Drawable/primitive-set-list pairs comprising this draw set */
+        DrawableSlices& slices() { return _slices; }
+        const DrawableSlices& slices() const { return _slices; }
+
+        /** Gets the primitive sets list associated with a drawable, creating the entry as necessary */
+        PrimitiveSets& getOrCreateSlice(osg::Drawable* d);
+
+        /** Gets a slice, given a drawable; or slices().end() if not found. */
+        DrawableSlices::iterator slice(osg::Drawable* d);
+        DrawableSlices::const_iterator slice(osg::Drawable* d) const;
+
+        /** Whether the draw set is empty */
+        bool empty() const { return _nodes.empty() && _slices.empty(); }
+
+        /** Sets the visibility of the draw set. */
+        void setVisible( bool value );
+
+        /** Clears out this draw set */
+        void clear();
+
+        /** Collects a set containing primitive indicies used in a slice. */
+        void collectPrimitiveIndexSet( const DrawableSlice& slice, std::set<unsigned>& output ) const;
+        
+        /** Creates a shallow copy of the draw set under its own scene graph */
+        osg::Node* createCopy();
+
+    private:
+        Nodes          _nodes;
+        DrawableSlices _slices;
+
+        typedef std::vector<unsigned> Masks;
+
+        bool            _visible;
+        Masks           _invisibleMasks;
+    };
+
+} } // namespace osgEarth::Features
+
+#endif // OSGEARTHFEATURES_FEATURE_DRAW_SET_H

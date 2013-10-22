@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2010 Pelican Mapping
+ * Copyright 2008-2013 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -20,6 +20,8 @@
 #define OSGEARTH_STRING_UTILS_H 1
 
 #include <osgEarth/Common>
+#include <osg/Vec3>
+#include <osg/Vec3d>
 #include <osg/Vec4>
 #include <osg/Vec4ub>
 #include <string>
@@ -37,8 +39,17 @@ namespace osgEarth
 
     typedef std::vector<std::string> StringVector;
 
-    /** Replaces all the instances of "sub" with "other" in "s". */
-    extern OSGEARTH_EXPORT std::string& replaceIn( std::string& s, const std::string& sub, const std::string& other);
+    /** Replaces all the instances of "pattern" with "replacement" in "in_out" */
+    extern OSGEARTH_EXPORT std::string& replaceIn(
+        std::string&       in_out, 
+        const std::string& pattern, 
+        const std::string& replacement );
+
+    /** Replaces all the instances of "pattern" with "replacement" in "in_out" (case-insensitive) */
+    extern OSGEARTH_EXPORT std::string& ciReplaceIn(
+        std::string&       in_out, 
+        const std::string& pattern, 
+        const std::string& replacement );
 
     /**
      * Trims whitespace from the ends of a string.
@@ -63,6 +74,13 @@ namespace osgEarth
         bool               caseSensitive =true,
         const std::locale& locale        =std::locale() );
 
+    /**
+     * Case-insensitive compare
+     */
+    extern OSGEARTH_EXPORT bool ciEquals(
+        const std::string& lhs,
+        const std::string& rhs,
+        const std::locale& local = std::locale() );
 
 
     extern OSGEARTH_EXPORT std::string joinStrings( const StringVector& input, char delim );
@@ -130,6 +148,15 @@ namespace osgEarth
     as<std::string>( const std::string& str, const std::string& default_value )
     {
         return str;
+    }
+
+    // snips a substring and parses it.
+    template<typename T> inline bool
+    as(const std::string& in, unsigned start, unsigned len, T default_value) 
+    {
+        std::string buf;
+        std::copy( in.begin()+start, in.begin()+start+len, std::back_inserter(buf) );
+        return as<T>(buf, default_value);
     }
 
     // converts a primitive to a string

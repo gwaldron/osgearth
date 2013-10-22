@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2010 Pelican Mapping
+ * Copyright 2008-2013 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -17,8 +17,14 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 #include <osgEarthUtil/AutoClipPlaneHandler>
+#include <osgEarth/MapNode>
+#include <osgEarth/Terrain>
+#include <osgEarth/Notify>
 #include <osgEarth/Registry>
 #include <osgEarth/Utils>
+#include <osgEarth/CullingUtils>
+
+#define LC "[AutoClip] "
 
 using namespace osgEarth::Util;
 using namespace osgEarth;
@@ -29,7 +35,7 @@ namespace
     {
         double _minNear, _maxFar, _nearFarRatio;
 
-        CustomProjClamper() : _minNear( -DBL_MAX ), _maxFar( DBL_MAX ), _nearFarRatio( 0.0005 ) { }
+        CustomProjClamper() : _minNear( -DBL_MAX ), _maxFar( DBL_MAX ), _nearFarRatio( 0.00015 ) { }
 
         // NOTE: this code is just copied from CullVisitor. I could not find a way to simply 
         // call into it from a custom callback..
@@ -69,7 +75,7 @@ namespace
                 projection(2,2)=-2.0f/(desired_zfar-desired_znear);
                 projection(3,2)=-(desired_zfar+desired_znear)/(desired_zfar-desired_znear);
 
-                // OSG_INFO << "Orthographic matrix after clamping "<<projection<<std::endl;
+                //OE_INFO << "Orthographic matrix after clamping, near=" << desired_znear << ", far=" << desired_zfar << std::endl;
             }
             else
             {
@@ -154,19 +160,22 @@ namespace
 
 //--------------------------------------------------------------------------
 
-AutoClipPlaneCullCallback::AutoClipPlaneCullCallback( Map* map ) :
-_map                 ( map ),
+AutoClipPlaneCullCallback::AutoClipPlaneCullCallback( MapNode* mapNode ) :
+_mapNode             ( mapNode ),
 _active              ( false ),
-_minNearFarRatio     ( 0.00001 ),
-_maxNearFarRatio     ( 0.0005 ),
+//_minNearFarRatio     ( 0.00001 ),
+//_maxNearFarRatio     ( 0.0005 ),
+_minNearFarRatio     ( 0.00001  ),
+_maxNearFarRatio     ( 0.00005 ),
 _haeThreshold        ( 250.0 ),
 _rp                  ( -1 ),
 _rp2                 ( -1 ),
 _autoFarPlaneClamping( true )
 {
-    if ( map )
+    if ( mapNode )
     {
-        if ( map->isGeocentric() )
+        osgEarth::Map* map = mapNode->getMap();
+        if ( mapNode->getMap()->isGeocentric() )
         {
             // Select the minimal radius..
             const osg::EllipsoidModel* em = map->getProfile()->getSRS()->getEllipsoid();
@@ -189,69 +198,23 @@ _autoFarPlaneClamping( true )
     }
 }
 
-#if 0
-
-void
-AutoClipPlaneCullCallback::operator()( osg::Node* node, osg::NodeVisitor* nv )
-{
-    if ( !_active )
-        return;
-
-    osgUtil::CullVisitor* cv = dynamic_cast<osgUtil::CullVisitor*>( nv );
-    if ( !cv )
-        return;
-
-    osg::Camera* cam = cv->getCurrentCamera();
-
-    cam->setComputeNearFarMode( osg::CullSettings::DO_NOT_COMPUTE_NEAR_FAR );
-
-    osg::Vec3d eye, center, up;
-    cam->getViewMatrixAsLookAt( eye, center, up );
-
-    double d = eye.length();
-    double d2 = d*d;
-
-    if ( d2 > _rp2 )
-    {
-        double fovy, ar, znear, zfar, finalZfar;
-        cam->getProjectionMatrixAsPerspective( fovy, ar, znear, finalZfar );
-
-        // far clip at the horizon:
-        zfar = sqrt( d2 - _rp2 );
-
-        if (_autoFarPlaneClamping)
-        {
-            finalZfar = zfar;
-        }
-
-        double nfr = _minNearFarRatio + _maxNearFarRatio * ((d-_rp)/d);
-        znear = osg::clampAbove( zfar * nfr, 1.0 );
-
-        cam->setProjectionMatrixAsPerspective( fovy, ar, znear, finalZfar );
-
-        //OE_NOTICE << fixed
-        //    << "near=" << znear << ", far=" << zfar << std::endl;
-    }
-
-    traverse(node, nv);
-}
-
-#else
 
 void
 AutoClipPlaneCullCallback::operator()( osg::Node* node, osg::NodeVisitor* nv )
 {
     if ( _active )
     {
-        osgUtil::CullVisitor* cv = dynamic_cast<osgUtil::CullVisitor*>( nv );
+        osgUtil::CullVisitor* cv = Culling::asCullVisitor(nv);
         if ( cv )
         {
+            osgEarth::Map* map = _mapNode.valid() ? _mapNode->getMap() : 0;
             osg::Camera* cam = cv->getCurrentCamera();
             osg::ref_ptr<osg::CullSettings::ClampProjectionMatrixCallback>& clamper = _clampers.get(cam);
             if ( !clamper.valid() )
             {
                 clamper = new CustomProjClamper();
                 cam->setClampProjectionMatrixCallback( clamper.get() );
+                OE_INFO << LC << "Installed custom projeciton matrix clamper" << std::endl;
             }
             else
             {
@@ -275,9 +238,10 @@ AutoClipPlaneCullCallback::operator()( osg::Node* node, osg::NodeVisitor* nv )
                 // ElevationQuery in the future..
                 //osg::Vec3d loc;
                 GeoPoint loc;
-                if ( _map.valid() )
+                if ( map )
                 {
-                    _map->worldPointToMapPoint( eye, loc );
+                    loc.fromWorld( map->getSRS(), eye );
+                    //map->worldPointToMapPoint( eye, loc );
                 }
                 else
                 {
@@ -286,7 +250,16 @@ AutoClipPlaneCullCallback::operator()( osg::Node* node, osg::NodeVisitor* nv )
                     em.convertXYZToLatLongHeight( eye.x(), eye.y(), eye.z(), loc.y(), loc.x(), loc.z() );
                 }
                 
+                //double hae = loc.z();
                 double hae = loc.z();
+                if (_mapNode.valid())
+                {
+                    double height = 0.0;
+                    _mapNode->getTerrain()->getHeight(loc.getSRS(), loc.x(), loc.y(), &height);
+                    //OE_NOTICE << "got height " << height << std::endl;
+                    hae -= height;
+                    //OE_NOTICE << "HAE=" << hae <<  std::endl;
+                }
 
                 // ramp a new near/far ratio based on the HAE.
                 c->_nearFarRatio = Utils::remap( hae, 0.0, _haeThreshold, _minNearFarRatio, _maxNearFarRatio );
@@ -296,7 +269,7 @@ AutoClipPlaneCullCallback::operator()( osg::Node* node, osg::NodeVisitor* nv )
             {
                 double n, f, a, v;
                 cv->getProjectionMatrix()->getPerspective(v, a, n, f);
-                OE_INFO << std::fixed << "near = " << n << ", far = " << f << ", ratio = " << n/f << std::endl;
+                OE_INFO << std::setprecision(16) << "near = " << n << ", far = " << f << ", ratio = " << n/f << std::endl;
             }
 #endif
         }
@@ -304,4 +277,4 @@ AutoClipPlaneCullCallback::operator()( osg::Node* node, osg::NodeVisitor* nv )
     traverse( node, nv );
 }
 
-#endif
+

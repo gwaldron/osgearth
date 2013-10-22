@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2008-2010 Pelican Mapping
+* Copyright 2008-2013 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -23,8 +23,7 @@
 #include <osgEarth/Config>
 #include <osgEarth/Cache>
 #include <osgEarth/CachePolicy>
-#include <osgEarth/HeightFieldUtils>
-#include <osgEarth/HTTPClient>
+#include <osgEarth/GeoCommon>
 #include <osgEarth/Profile>
 #include <osgEarth/TerrainOptions>
 
@@ -45,20 +44,24 @@ namespace osgEarth
 
     public:
         MapOptions( const ConfigOptions& options =ConfigOptions() )
-            : ConfigOptions( options ),
-              _cstype      ( CSTYPE_GEOCENTRIC ),
-              _referenceURI(""),
-              _cachePolicy ( CachePolicy()),
-              _elevationInterpolation(INTERP_BILINEAR)
+            : ConfigOptions          ( options ),
+              _cachePolicy           ( ),
+              _cstype                ( CSTYPE_GEOCENTRIC ),
+              _referenceURI          ( "" ),
+              _elevationInterpolation( INTERP_TRIANGULATE ), //INTERP_BILINEAR ),
+              _elevTileSize          ( 15 )
         {
             fromConfig(_conf);
         }
 
+        /** dtor */
+        virtual ~MapOptions() { }
+
         /**
          * Human-readable name of the map.
          */
-        optional<std::string> name() { return _name; }
-        const optional<std::string> name() const { return _name; }
+        optional<std::string>& name() { return _name; }
+        const optional<std::string>& name() const { return _name; }
 
         /**
          * The coordinate system type of the map (default is CSTYPE_GEOCENTRIC)
@@ -92,6 +95,13 @@ namespace osgEarth
         optional<ElevationInterpolation>& elevationInterpolation(void) { return _elevationInterpolation; }
         const optional<ElevationInterpolation>& elevationInterpolation(void) const { return _elevationInterpolation;}
 
+        /**
+         * Dimension of elevation tiles. By default, the engine will return 
+         * elevation tiles sized to the largest available source tile. This forces
+         * a set size.
+         */
+        optional<unsigned>& elevationTileSize() { return _elevTileSize; }
+        const optional<unsigned>& elevationTileSize() const { return _elevTileSize; }
 
     public:
         /**
@@ -112,13 +122,14 @@ namespace osgEarth
     private:
         void fromConfig( const Config& conf );
 
-        optional<std::string>          _name;
-        optional<ProfileOptions>       _profileOptions;
-        optional<CacheOptions>         _cacheOptions;
-        optional<CachePolicy>          _cachePolicy;
-        optional<CoordinateSystemType> _cstype;
-        optional<std::string>          _referenceURI;
+        optional<std::string>            _name;
+        optional<ProfileOptions>         _profileOptions;
+        optional<CacheOptions>           _cacheOptions;
+        optional<CachePolicy>            _cachePolicy;
+        optional<CoordinateSystemType>   _cstype;
+        optional<std::string>            _referenceURI;
         optional<ElevationInterpolation> _elevationInterpolation;
+        optional<unsigned>               _elevTileSize;
     };
 }
 

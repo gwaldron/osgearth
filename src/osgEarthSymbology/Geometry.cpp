@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2008-2010 Pelican Mapping
+* Copyright 2008-2013 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -55,6 +55,10 @@ Geometry::Geometry( const Vec3dVector* data )
     insert( begin(), data->begin(), data->end() );
 }
 
+Geometry::~Geometry()
+{
+}
+
 int
 Geometry::getTotalPointCount() const
 {
@@ -89,6 +93,8 @@ Geometry::cloneAs( const Geometry::Type& newType ) const
             return new Polygon( *static_cast<const Polygon*>(this) );
         else
             return new Polygon( &this->asVector() );
+    case TYPE_UNKNOWN:
+        return new Geometry( &this->asVector() );
     default:
         break;
     }
@@ -416,6 +422,10 @@ Geometry( rhs )
     //nop
 }
 
+PointSet::~PointSet()
+{
+}
+
 //----------------------------------------------------------------------------
 
 LineString::LineString( const LineString& rhs ) :
@@ -428,6 +438,10 @@ LineString::LineString( const Vec3dVector* data ) :
 Geometry( data )
 {
     //nop
+}
+
+LineString::~LineString()
+{
 }
 
 double
@@ -474,6 +488,10 @@ Ring::Ring( const Vec3dVector* data ) :
 Geometry( data )
 {
     open();
+}
+
+Ring::~Ring()
+{
 }
 
 Geometry*
@@ -555,6 +573,10 @@ Ring( data )
     //nop
 }
 
+Polygon::~Polygon()
+{
+}
+
 int
 Polygon::getTotalPointCount() const
 {
@@ -603,6 +625,10 @@ MultiGeometry::MultiGeometry( const GeometryCollection& parts ) :
 _parts( parts )
 {
     //nop
+}
+
+MultiGeometry::~MultiGeometry()
+{
 }
 
 Geometry::Type

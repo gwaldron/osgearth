@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2010 Pelican Mapping
+ * Copyright 2008-2013 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -32,6 +32,7 @@
 #include <osgEarth/Cache>
 #include <osgEarth/CachePolicy>
 #include <osgEarth/URI>
+#include <osgEarth/Revisioning>
 
 #include <osgDB/ReaderWriter>
 #include <OpenThreads/Mutex>
@@ -67,6 +68,7 @@ namespace osgEarth { namespace Features
 
     public:
         FeatureSourceOptions( const ConfigOptions& options =ConfigOptions() );
+        virtual ~FeatureSourceOptions();
         virtual Config getConfig() const;
 
     protected:
@@ -89,7 +91,7 @@ namespace osgEarth { namespace Features
      * A FeatureSource is a pluggable object that generates Features, and 
      * optionally, styling information to go along with them.
      */
-    class OSGEARTHFEATURES_EXPORT FeatureSource : public virtual Revisioned<osg::Object> // public virtual osg::Object
+    class OSGEARTHFEATURES_EXPORT FeatureSource : public osg::Object, public Revisioned
     {
     public:      
         /**
@@ -165,6 +167,29 @@ namespace osgEarth { namespace Features
         virtual Geometry::Type getGeometryType() const { return Geometry::TYPE_UNKNOWN; }
 
 
+    public: // blacklisting.
+
+        /**
+         * Adds a feature ID to the blacklist.
+         */
+        void addToBlacklist( FeatureID fid );
+
+        /**
+         * Removes a feature from the blacklist.
+         */
+        void removeFromBlacklist( FeatureID fid );
+
+        /**
+         * Clears the blacklist.
+         */
+        void clearBlacklist();
+        
+        /**
+         * Checks the blacklist for a feature ID.
+         */
+        bool isBlacklisted( FeatureID fid ) const; 
+
+
     public: // Styling
 
         /**
@@ -193,10 +218,13 @@ namespace osgEarth { namespace Features
         virtual const char* libraryName() const { return "osgEarthFeatures"; }
 
 
-		/**
-		 * Initialize the FeatureSource.
-		 */
+        /**
+         * Initialize the FeatureSource.
+         */
         virtual void initialize( const osgDB::Options* dbOptions =0L ) { }
+
+        /** Dirties the feature profile */
+        void dirtyFeatureProfile() { _featureProfile = 0;}
 
     protected:
 
@@ -210,7 +238,7 @@ namespace osgEarth { namespace Features
         /**
          * DTOR is protected to prevent this object from being allocated on the stack.
          */
-        virtual ~FeatureSource() { }
+        virtual ~FeatureSource();
 
         /** Access the raw DB options that came in */
         const osgDB::Options* dbOptions() const { return _dbOptions.get(); }
@@ -219,17 +247,19 @@ namespace osgEarth { namespace Features
         const URIContext& uriContext() const { return _uriContext; }
 
         /** The Cache passed in via the dbOptions */
-        Cache* getCache() const { return _cache.get(); }    
+        Cache* getCache() const { return _cache.get(); }            
 
     private:
         const FeatureSourceOptions         _options;
         osg::ref_ptr<const FeatureProfile> _featureProfile;
-        OpenThreads::Mutex                 _createMutex;
+        Threading::Mutex                   _createMutex;
 
         osg::ref_ptr<const osgDB::Options> _dbOptions;
         URIContext                         _uriContext;
         osg::observer_ptr<Cache>           _cache;
-        //osg::observer_ptr<CacheBin>        _cacheBin;
+
+        Threading::ReadWriteMutex          _blacklistMutex;
+        std::set<FeatureID>                _blacklist;
 
         friend class Map;
         friend class FeatureSourceFactory;

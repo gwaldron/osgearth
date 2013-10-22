@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2010 Pelican Mapping
+ * Copyright 2008-2013 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -40,6 +40,9 @@ namespace osgEarth { namespace Symbology
         /** Constructs a new skin resource. */
         SkinResource( const Config& conf =Config() );
 
+        /** dtor */
+        virtual ~SkinResource() { }
+
         /**
          * Creates a new StateSet containing a Texture based on this Skin.
          */
@@ -64,7 +67,7 @@ namespace osgEarth { namespace Symbology
 
         /** Maximum acceptable real-world object height (meters) for which this image would make an appropriate texture */
         optional<float>& maxObjectHeight() { return _maxObjHeight; }
-        const optional<float>& maxObjectHeight() const { return _minObjHeight; }
+        const optional<float>& maxObjectHeight() const { return _maxObjHeight; }
 
         /** Whether this image is suitable for use as a vertically repeating texture */
         optional<bool>& isTiled() { return _isTiled; }
@@ -102,9 +105,6 @@ namespace osgEarth { namespace Symbology
     };
 
 
-    typedef std::map<std::string, osg::ref_ptr<SkinResource> > SkinResourceMap;
-
-
     /**
      * Query object that you can use to search for applicable Skin resources from the 
      * ResourceLibrary.
@@ -112,7 +112,12 @@ namespace osgEarth { namespace Symbology
     class OSGEARTHSYMBOLOGY_EXPORT SkinSymbol : public Taggable<Symbol>
     {
     public:
+        META_Symbol(SkinSymbol);
+
         SkinSymbol( const Config& conf =Config() );
+
+        /** dtor */
+        virtual ~SkinSymbol() { }
 
     public: // query parameters
 
@@ -143,6 +148,7 @@ namespace osgEarth { namespace Symbology
     public:
         void mergeConfig(const Config& conf);
         Config getConfig() const;
+        static void parseSLD(const Config& c, class Style& style);
 
     protected:
         optional<std::string> _libraryName;

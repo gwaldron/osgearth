@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2010 Pelican Mapping
+ * Copyright 2008-2013 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -17,51 +17,126 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 #include <osgEarth/CachePolicy>
+#include <limits.h>
 
 using namespace osgEarth;
 
 //------------------------------------------------------------------------
 
 //statics
-CachePolicy CachePolicy::INHERIT;
+CachePolicy CachePolicy::DEFAULT( CachePolicy::USAGE_READ_WRITE );
 CachePolicy CachePolicy::NO_CACHE( CachePolicy::USAGE_NO_CACHE );
 CachePolicy CachePolicy::CACHE_ONLY( CachePolicy::USAGE_CACHE_ONLY );
 
 //------------------------------------------------------------------------
 
-CachePolicy::CachePolicy( const Usage& usage, double maxAge ) :
-_usage( usage ),
-_maxAge( maxAge )
+CachePolicy::CachePolicy() :
+_maxAge ( INT_MAX ),
+_minTime( 0 )
 {
-    _usage  = usage;
-    _maxAge = maxAge;
+    _usage = USAGE_READ_WRITE;
+}
+
+CachePolicy::CachePolicy( const Usage& usage ) :
+_usage  ( usage ),
+_maxAge ( INT_MAX ),
+_minTime( 0 )
+{
+    _usage = usage; // explicity init the optional<>
 }
 
 CachePolicy::CachePolicy( const Config& conf ) :
-_usage ( USAGE_DEFAULT ),
-_maxAge( DBL_MAX )
+_usage  ( USAGE_READ_WRITE ),
+_maxAge ( INT_MAX ),
+_minTime( 0 )
 {
     fromConfig( conf );
+}
+
+CachePolicy::CachePolicy(const CachePolicy& rhs) :
+_usage  ( rhs._usage ),
+_maxAge ( rhs._maxAge ),
+_minTime( rhs._minTime )
+{
+    //nop
+}
+
+bool
+CachePolicy::fromOptions( const osgDB::Options* dbOptions, optional<CachePolicy>& out )
+{
+    if ( dbOptions )
+    {
+        std::string jsonString = dbOptions->getPluginStringData( "osgEarth::CachePolicy" );
+        if ( !jsonString.empty() )
+        {
+            Config conf;
+            conf.fromJSON( jsonString );
+            out = CachePolicy( conf );
+            return true;
+        }
+    }
+    return false;
+}
+
+void
+CachePolicy::apply( osgDB::Options* dbOptions )
+{
+    if ( dbOptions )
+    {
+        Config conf = getConfig();
+        dbOptions->setPluginStringData( "osgEarth::CachePolicy", conf.toJSON() );
+    }
+}
+
+TimeStamp
+CachePolicy::getMinAcceptTime() const
+{
+    return
+        _minTime.isSet() ? _minTime.value() :
+        _maxAge.isSet()  ? DateTime().asTimeStamp() - _maxAge.value() :
+        0;
+}
+
+bool
+CachePolicy::operator == (const CachePolicy& rhs) const
+{
+    return 
+        (_usage.get() == rhs._usage.get()) &&
+        (_maxAge.get() == rhs._maxAge.get()) &&
+        (_minTime.get() == rhs._minTime.get());
+}
+
+std::string
+CachePolicy::usageString() const
+{
+    if ( _usage == USAGE_READ_WRITE ) return "read-write";
+    if ( _usage == USAGE_READ_ONLY )  return "read-only";
+    if ( _usage == USAGE_CACHE_ONLY)  return "cache-only";
+    if ( _usage == USAGE_NO_CACHE)    return "no-cache";
+    return "unknown";
 }
 
 void
 CachePolicy::fromConfig( const Config& conf )
 {
-    conf.getIfSet( "usage", "read_write", _usage, USAGE_READ_WRITE );
-    conf.getIfSet( "usage", "read_only",  _usage, USAGE_READ_ONLY );
-    conf.getIfSet( "usage", "cache_only", _usage, USAGE_CACHE_ONLY );
-    conf.getIfSet( "usage", "no_cache",   _usage, USAGE_NO_CACHE );
+    conf.getIfSet( "usage", "read_write",   _usage, USAGE_READ_WRITE );
+    conf.getIfSet( "usage", "read_only",    _usage, USAGE_READ_ONLY );
+    conf.getIfSet( "usage", "cache_only",   _usage, USAGE_CACHE_ONLY );
+    conf.getIfSet( "usage", "no_cache",     _usage, USAGE_NO_CACHE );
+    conf.getIfSet( "usage", "none",         _usage, USAGE_NO_CACHE );
     conf.getIfSet( "max_age", _maxAge );
+    conf.getIfSet( "min_time", _minTime );
 }
 
 Config
 CachePolicy::getConfig() const
 {
     Config conf( "cache_policy" );
-    conf.addIfSet( "usage", "read_write", _usage, USAGE_READ_WRITE );
-    conf.addIfSet( "usage", "read_only",  _usage, USAGE_READ_ONLY );
-    conf.addIfSet( "usage", "cache_only", _usage, USAGE_CACHE_ONLY );
-    conf.addIfSet( "usage", "no_cache",   _usage, USAGE_NO_CACHE );
+    conf.addIfSet( "usage", "read_write",   _usage, USAGE_READ_WRITE );
+    conf.addIfSet( "usage", "read_only",    _usage, USAGE_READ_ONLY );
+    conf.addIfSet( "usage", "cache_only",   _usage, USAGE_CACHE_ONLY );
+    conf.addIfSet( "usage", "no_cache",     _usage, USAGE_NO_CACHE );
     conf.addIfSet( "max_age", _maxAge );
+    conf.addIfSet( "min_time", _minTime );
     return conf;
 }

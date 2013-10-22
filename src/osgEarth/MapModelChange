@@ -1,0 +1,77 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+ * Copyright 2008-2013 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+
+#ifndef OSGEARTH_MAP_MODEL_CHANGE_H
+#define OSGEARTH_MAP_MODEL_CHANGE_H 1
+
+#include <osgEarth/Common>
+#include <osgEarth/Revisioning>
+#include <osgEarth/ImageLayer>
+#include <osgEarth/ElevationLayer>
+#include <osgEarth/ModelLayer>
+#include <osgEarth/MaskLayer>
+
+namespace osgEarth
+{    
+    /**
+     * Conveys atomic change actions to the map data model.
+     */
+    struct MapModelChange /* no export, header-only */
+    {
+        enum ActionType
+        {
+            BEGIN_BATCH_UPDATE,               // signals the start of multiple changes
+            END_BATCH_UPDATE,                 // signals the end of multiple changes
+            ADD_IMAGE_LAYER,
+            REMOVE_IMAGE_LAYER,
+            MOVE_IMAGE_LAYER,
+            ADD_ELEVATION_LAYER,
+            REMOVE_ELEVATION_LAYER,
+            MOVE_ELEVATION_LAYER,
+            TOGGLE_ELEVATION_LAYER,     // visibilty toggle on elevation is a model change.
+            ADD_MODEL_LAYER,
+            REMOVE_MODEL_LAYER,
+            MOVE_MODEL_LAYER,
+            ADD_MASK_LAYER,
+            REMOVE_MASK_LAYER,
+            UNSPECIFIED
+        };
+
+        MapModelChange( ActionType action, Revision mapModeRev, Layer* layer =0L, int firstIndex =-1, int secondIndex =-1 ) 
+            : _action(action), _layer(layer), _modelRevision(mapModeRev), _firstIndex(firstIndex), _secondIndex(secondIndex) { }
+
+        const ActionType& getAction() const { return _action; }
+        const Revision& getRevision() const { return _modelRevision; }
+        int getFirstIndex() const { return _firstIndex; }
+        int getSecondIndex() const { return _secondIndex; }
+        Layer* getLayer() const { return _layer.get(); }
+        ImageLayer* getImageLayer() const { return dynamic_cast<ImageLayer*>(_layer.get()); }
+        ElevationLayer* getElevationLayer() const { return dynamic_cast<ElevationLayer*>(_layer.get()); }
+        ModelLayer* getModelLayer() const { return dynamic_cast<ModelLayer*>(_layer.get()); }
+        MaskLayer* getMaskLayer() const { return dynamic_cast<MaskLayer*>(_layer.get()); }
+
+    private:
+        ActionType          _action;
+        osg::ref_ptr<Layer> _layer;
+        Revision            _modelRevision;
+        int                 _firstIndex, _secondIndex;
+    };
+}
+
+#endif // OSGEARTH_MAP_MODEL_CHANGE_H

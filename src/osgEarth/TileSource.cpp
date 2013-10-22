@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2010 Pelican Mapping
+ * Copyright 2008-2013 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -139,20 +139,97 @@ TileBlacklist::write(std::ostream &output) const
     }
 }
 
+
 //------------------------------------------------------------------------
 
+
+TileSourceOptions::TileSourceOptions( const ConfigOptions& options ) :
+DriverConfigOptions   ( options ),
+_tileSize             ( 256 ),
+_noDataValue          ( (float)SHRT_MIN ),
+_minValidValue        ( -32000.0f ),
+_maxValidValue        (  32000.0f ),
+_L2CacheSize          ( 16 ),
+_bilinearReprojection ( true )
+{ 
+    fromConfig( _conf );
+}
+
+
+Config 
+TileSourceOptions::getConfig() const
+{
+    Config conf = DriverConfigOptions::getConfig();
+    conf.updateIfSet( "tile_size", _tileSize );
+    conf.updateIfSet( "nodata_value", _noDataValue );
+    conf.updateIfSet( "min_valid_value", _minValidValue );
+    conf.updateIfSet( "nodata_min", _minValidValue ); // backcompat
+    conf.updateIfSet( "max_valid_value", _maxValidValue );
+    conf.updateIfSet( "nodata_max", _maxValidValue ); // backcompat
+    conf.updateIfSet( "blacklist_filename", _blacklistFilename);
+    conf.updateIfSet( "l2_cache_size", _L2CacheSize );
+    conf.updateIfSet( "bilinear_reprojection", _bilinearReprojection );
+    conf.updateObjIfSet( "profile", _profileOptions );
+    return conf;
+}
+
+
+void
+TileSourceOptions::mergeConfig( const Config& conf )
+{
+    DriverConfigOptions::mergeConfig( conf );
+    fromConfig( conf );
+}
+
+
+void
+TileSourceOptions::fromConfig( const Config& conf )
+{
+    conf.getIfSet( "tile_size", _tileSize );
+    conf.getIfSet( "nodata_value", _noDataValue );
+    conf.getIfSet( "nodata_min", _minValidValue );
+    conf.getIfSet( "nodata_max", _maxValidValue );
+    conf.getIfSet( "blacklist_filename", _blacklistFilename);
+    conf.getIfSet( "l2_cache_size", _L2CacheSize );
+    conf.getIfSet( "bilinear_reprojection", _bilinearReprojection );
+    conf.getObjIfSet( "profile", _profileOptions );
+
+    // special handling of default tile size:
+    if ( !tileSize().isSet() )
+    {
+        optional<int> defaultTileSize;
+        conf.getIfSet( "default_tile_size", defaultTileSize );
+        if ( defaultTileSize.isSet() )
+        {
+            _tileSize.init(*defaultTileSize);
+        }
+    }
+
+    // remove it now so it does not get serialized
+    _conf.remove( "default_tile_size" );
+}
+
+
+//------------------------------------------------------------------------
+
+TileSource::Status TileSource::STATUS_OK = TileSource::Status();
+
+
 TileSource::TileSource( const TileSourceOptions& options ) :
-_options( options )
+_options( options ),
+_status ( Status::Error("Not initialized") )
 {
     this->setThreadSafeRefUnref( true );
 
-    if ( *options.L2CacheSize() > 0 )
+    int l2CacheSize = 0;
+    char const* l2env = ::getenv( "OSGEARTH_L2_CACHE_SIZE" );
+    if ( l2env )
+    {
+        l2CacheSize = as<int>( std::string(l2env), 0 );
+    }
+    else if ( *options.L2CacheSize() > 0 )
     {
         _memCache = new MemCache( *options.L2CacheSize() );
-    }
-    else
-    {
-        OE_INFO << LC << "L2 Cache disabled" << std::endl;
     }
 
     if (_options.blacklistFilename().isSet())
@@ -185,6 +262,45 @@ TileSource::~TileSource()
     }
 }
 
+void
+TileSource::setStatus( TileSource::Status status )
+{
+    _status = status;
+}
+
+TileSource::Status
+TileSource::initialize(const osgDB::Options* options)
+{
+    // default implementation. Subclasses should override this.
+    return STATUS_OK;
+}
+
+const TileSource::Status&
+TileSource::startup(const osgDB::Options* options)
+{
+    Status status = initialize(options);
+    if ( status == STATUS_OK )
+    {
+        if ( getProfile() != 0L )
+        {
+            _status = status;
+        }
+        else 
+        {
+            _status = Status::Error("No profile available");
+        }
+    }
+    else
+    {
+        _status = status;
+    }
+
+    if ( _status.isError() )
+        OE_WARN << LC << "Startup failed: " << _status.message() << std::endl;
+
+    return _status;
+}
+
 int
 TileSource::getPixelsPerTile() const
 {
@@ -196,10 +312,13 @@ TileSource::createImage(const TileKey&        key,
                         ImageOperation*       prepOp, 
                         ProgressCallback*     progress )
 {
+    if ( _status != STATUS_OK )
+        return 0L;
+
     // Try to get it from the memcache fist
     if (_memCache.valid())
     {
-        ReadResult r = _memCache->getOrCreateDefaultBin()->readImage( key.str() );
+        ReadResult r = _memCache->getOrCreateDefaultBin()->readImage( key.str(), 0 );
         if ( r.succeeded() )
             return r.releaseImage();
     }
@@ -223,13 +342,16 @@ TileSource::createHeightField(const TileKey&        key,
                               HeightFieldOperation* prepOp, 
                               ProgressCallback*     progress )
 {
+    if ( _status != STATUS_OK )
+        return 0L;
+
     // Try to get it from the memcache first:
-	if (_memCache.valid())
-	{
-        ReadResult r = _memCache->getOrCreateDefaultBin()->readObject( key.str() );
+    if (_memCache.valid())
+    {
+        ReadResult r = _memCache->getOrCreateDefaultBin()->readObject( key.str(), 0 );
         if ( r.succeeded() )
             return r.release<osg::HeightField>();
-	}
+    }
 
     osg::ref_ptr<osg::HeightField> newHF = createHeightField( key, progress );
 
@@ -249,7 +371,9 @@ osg::HeightField*
 TileSource::createHeightField(const TileKey&        key,
                               ProgressCallback*     progress)
 {
-    //osg::ref_ptr<osg::Image> image = createImage(key, dbOptions, progress);
+    if ( _status != STATUS_OK )
+        return 0L;
+
     osg::ref_ptr<osg::Image> image = createImage(key, progress);
     osg::HeightField* hf = 0;
     if (image.valid())
@@ -263,7 +387,7 @@ TileSource::createHeightField(const TileKey&        key,
 bool
 TileSource::isOK() const 
 {
-    return getProfile() != NULL;
+    return _status == STATUS_OK;
 }
 
 void
@@ -278,58 +402,36 @@ TileSource::getProfile() const
     return _profile.get();
 }
 
-unsigned int
-TileSource::getMaxDataLevel() const
-{
-    //If we have no data extents, just use a reasonably high number
-    if (_dataExtents.size() == 0) return 23;
-
-    unsigned int maxDataLevel = 0;
-    for (DataExtentList::const_iterator itr = _dataExtents.begin(); itr != _dataExtents.end(); ++itr)
-    {
-        if (itr->getMaxLevel() > maxDataLevel) maxDataLevel = itr->getMaxLevel();
-    }
-    return maxDataLevel;
-}
-
-unsigned int
-TileSource::getMinDataLevel() const
-{
-    //If we have no data extents, just use 0
-    if (_dataExtents.size() == 0) return 0;
-
-    unsigned int minDataLevel = INT_MAX;
-    for (DataExtentList::const_iterator itr = _dataExtents.begin(); itr != _dataExtents.end(); ++itr)
-    {
-        if (itr->getMinLevel() < minDataLevel) minDataLevel = itr->getMinLevel();
-    }
-    return minDataLevel;
-}
-
 bool
 TileSource::hasDataAtLOD( unsigned lod ) const
 {
-    //If no data extents are provided, just return true
+    // the sematics here are really "MIGHT have data at LOD".
+
+    // If no data extents are provided, just return true
     if ( _dataExtents.size() == 0 )
         return true;
 
-    bool intersects = false;
-
     for (DataExtentList::const_iterator itr = _dataExtents.begin(); itr != _dataExtents.end(); ++itr)
     {
-        if ( itr->getMinLevel() <= lod && lod <= itr->getMaxLevel() )
+        if ((!itr->minLevel().isSet() || itr->minLevel() <= lod) &&
+            (!itr->maxLevel().isSet() || itr->maxLevel() >= lod))
         {
-            intersects = true;
-            break;
+            return true;
         }
     }
-    return intersects;
+
+    return false;
 }
+
 
 bool
 TileSource::hasDataInExtent( const GeoExtent& extent ) const
 {
-    //If no data extents are provided, just return true
+    // if the extent is invalid, no intersection.
+    if ( !extent.isValid() )
+        return false;
+
+    // If no data extents are provided, just return true
     if ( _dataExtents.size() == 0 )
         return true;
 
@@ -350,15 +452,20 @@ TileSource::hasDataInExtent( const GeoExtent& extent ) const
 bool
 TileSource::hasData(const osgEarth::TileKey& key) const
 {
+    //sematics: might have data.
+
     //If no data extents are provided, just return true
-    if (_dataExtents.size() == 0) return true;
+    if (_dataExtents.size() == 0) 
+        return true;
 
     const osgEarth::GeoExtent& keyExtent = key.getExtent();
     bool intersectsData = false;
 
     for (DataExtentList::const_iterator itr = _dataExtents.begin(); itr != _dataExtents.end(); ++itr)
     {
-        if (keyExtent.intersects( *itr ) && key.getLevelOfDetail() >= itr->getMinLevel() && key.getLevelOfDetail() <= itr->getMaxLevel())
+        if ((keyExtent.intersects( *itr )) && 
+            (!itr->minLevel().isSet() || itr->minLevel() <= key.getLOD()) &&
+            (!itr->maxLevel().isSet() || itr->maxLevel() >= key.getLOD()))
         {
             intersectsData = true;
             break;
@@ -366,12 +473,6 @@ TileSource::hasData(const osgEarth::TileKey& key) const
     }
 
     return intersectsData;
-}
-
-bool
-TileSource::supportsPersistentCaching() const
-{
-    return true;
 }
 
 TileBlacklist*
@@ -404,7 +505,7 @@ TileSourceFactory::create( const TileSourceOptions& options )
         return 0L;
     }
 
-    osg::ref_ptr<osgDB::ReaderWriter::Options> rwopt = new osgDB::ReaderWriter::Options();
+    osg::ref_ptr<osgDB::Options> rwopt = Registry::instance()->cloneOrCreateOptions();
     rwopt->setPluginData( TILESOURCEOPTIONS_TAG, (void*)&options );
 
     std::string driverExt = std::string( ".osgearth_" ) + driver;
@@ -412,6 +513,16 @@ TileSourceFactory::create( const TileSourceOptions& options )
     if ( !result )
     {
         OE_WARN << "WARNING: Failed to load TileSource driver for \"" << driver << "\"" << std::endl;
+    }
+
+    // apply an Override Profile if provided.
+    if ( result && options.profile().isSet() )
+    {
+        const Profile* profile = Profile::create(*options.profile());
+        if ( profile )
+        {
+            result->setProfile( profile );
+        }
     }
 
     return result;

@@ -1,0 +1,119 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+* Copyright 2008-2013 Pelican Mapping
+* http://osgearth.org
+*
+* osgEarth is free software; you can redistribute it and/or modify
+* it under the terms of the GNU Lesser General Public License as published by
+* the Free Software Foundation; either version 2 of the License, or
+* (at your option) any later version.
+*
+* This program is distributed in the hope that it will be useful,
+* but WITHOUT ANY WARRANTY; without even the implied warranty of
+* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+* GNU Lesser General Public License for more details.
+*
+* You should have received a copy of the GNU Lesser General Public License
+* along with this program.  If not, see <http://www.gnu.org/licenses/>
+*/
+#ifndef OSGEARTHUTIL_VOLUME_LINEOFSIGHT
+#define OSGEARTHUTIL_VOLUME_LINEOFSIGHT 1
+
+#include <osgEarthUtil/LineOfSight>
+#include <osgEarth/MapNode>
+#include <osgEarth/GeoData>
+#include <osgEarth/Units>
+#include <osgEarthAnnotation/LocalizedNode>
+#include <osgEarth/Terrain>
+#include <osg/Geode>
+
+namespace osgEarth { namespace Util
+{
+    using namespace osgEarth;
+    using namespace osgEarth::Annotation;
+
+    /**
+     * A Node that display a line of sight polytope.
+     */
+    class OSGEARTHUTIL_EXPORT PolyhedralLineOfSightNode : public LocalizedNode
+    {
+    public:
+        /**
+         * Constructs a new PolyhedralLineOfSightNode.
+         * @param mapNode MapNode this LOS is operating under.
+         */
+        PolyhedralLineOfSightNode( MapNode* mapNode );
+
+        virtual ~PolyhedralLineOfSightNode();
+
+        /**
+         * The maximum sampling range from the center point
+         */
+        void setDistance( const Distance& value );
+        const Distance& getDistance() const { return _distance; }
+
+        /** 
+         * The azimuthal range for the LOS sampling
+         */
+        void setAzimuthalRange( const Angle& start, const Angle& end );
+        void getAximuthalRange( Angle& out_start, Angle& out_end );
+
+        /**
+         * The elevation (pitch) range for the LOS sampling
+         */
+        void setElevationRange( const Angle& start, const Angle& end );
+        void getElevationRange( Angle& out_start, Angle& out_end );
+
+        /**
+         * The sample spacing (in both azimuth and elevation)
+         */
+        void setSampleSpacing( const Angle& spacing );
+        const Angle& getSampleSpacing() const { return _spacing; }
+
+        /**
+         * Manage callbacks that report whether the LOS has changed
+         */
+        void addChangedCallback( LOSChangedCallback* callback );
+        void removeChangedCallback( LOSChangedCallback* callback );
+
+    public: // LocalizedNode
+        
+        virtual bool setPosition( const GeoPoint& pos );
+        virtual osg::MatrixTransform* getTransform() { return _xform.get(); }
+
+    public: // MapNodeObserver
+
+        virtual void setMapNode( MapNode* mapNode );
+
+    public:
+        // internal: called when the underlying terrain changes and resampling
+        // is required
+        void terrainChanged( const osgEarth::TileKey& tileKey, osg::Node* terrain );
+
+        virtual void traverse(osg::NodeVisitor& nv);
+
+    protected:
+
+        Angle                  _startAzim, _endAzim;
+        Angle                  _startElev, _endElev;
+        Angle                  _spacing;
+        Distance               _distance;
+        LOSChangedCallbackList _changedCallbacks;
+        unsigned               _numRows;
+        unsigned               _numCols;
+        osg::Geode*            _geode;
+        GeoExtent              _extent;
+
+        osg::ref_ptr<osg::MatrixTransform> _xform;
+
+        osg::ref_ptr< TerrainCallback > _terrainCallback;
+
+        void dirty();
+        void rebuildGeometry();
+        void updateSamples();
+        void recalculateExtent();
+    };
+
+} } // namespace osgEarth::Util
+
+#endif // OSGEARTHUTIL_VOLUME_LINEOFSIGHT

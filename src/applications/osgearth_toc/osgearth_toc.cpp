@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2008-2010 Pelican Mapping
+* Copyright 2008-2013 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -17,9 +17,11 @@
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
 #include <osgEarth/Map>
+#include <osgEarth/MapFrame>
 #include <osgEarth/MapNode>
 #include <osgEarthUtil/EarthManipulator>
 #include <osgEarthUtil/Controls>
+#include <osgEarthUtil/ExampleResources>
 #include <osgViewer/Viewer>
 #include <osgViewer/ViewerEventHandlers>
 #include <osgGA/StateSetManipulator>
@@ -28,7 +30,7 @@
 using namespace osgEarth;
 using namespace osgEarth::Util::Controls;
 
-osg::Node* createControlPanel( osgViewer::View* );
+void createControlPanel( osgViewer::View* );
 void updateControlPanel();
 
 static osg::ref_ptr<Map> s_activeMap;
@@ -47,6 +49,20 @@ struct MyMapListener : public MapCallback
     }
 };
 
+struct UpdateOperation : public osg::Operation
+{
+    UpdateOperation() : osg::Operation( "", true ) { }
+
+    void operator()(osg::Object*)
+    {
+        if ( s_updateRequired )
+        {
+            updateControlPanel();
+            s_updateRequired = false;
+        }
+    }
+};
+
 //------------------------------------------------------------------------
 
 int
@@ -54,8 +70,15 @@ main( int argc, char** argv )
 {
     osg::ArgumentParser arguments( &argc,argv );
 
+    // configure the viewer.
+    osgViewer::Viewer viewer( arguments );
+
+    // install a motion model
+    viewer.setCameraManipulator( new osgEarth::Util::EarthManipulator() );
+
     // Load an earth file 
-    osgEarth::MapNode* mapNode = MapNode::load( arguments );
+    osg::Node* loaded = osgEarth::Util::MapNodeHelper().load(arguments, &viewer);
+    osgEarth::MapNode* mapNode = osgEarth::MapNode::get(loaded);
     if ( !mapNode ) {
         OE_WARN << "No osgEarth MapNode found in the loaded file(s)." << std::endl;
         return -1;
@@ -68,42 +91,22 @@ main( int argc, char** argv )
     // a Map to hold inactive layers (layers that have been removed from the displayed Map)
     s_inactiveMap = new Map();
     s_inactiveMap->addMapCallback( new MyMapListener() );
-    
-
-    // configure the viewer.
-    osgViewer::Viewer viewer( arguments );
 
     osg::Group* root = new osg::Group();
 
     // install the control panel
-    root->addChild( createControlPanel( &viewer ) );
-    root->addChild( mapNode );
+    createControlPanel( &viewer );
+    root->addChild( loaded );
 
     // update the control panel with the two Maps:
     updateControlPanel();
-    
-    viewer.addEventHandler( new osgGA::StateSetManipulator(viewer.getCamera()->getOrCreateStateSet()) );
-    viewer.addEventHandler( new osgViewer::StatsHandler() );
 
     viewer.setSceneData( root );
 
-    // install a proper manipulator
-    viewer.setCameraManipulator( new osgEarth::Util::EarthManipulator() );
+    // install our control panel updater
+    viewer.addUpdateOperation( new UpdateOperation() );
 
-
-    while( !viewer.done() )
-    {
-        if ( viewer.getRunFrameScheme() == osgViewer::Viewer::CONTINUOUS || viewer.checkNeedToDoFrame() )
-        {
-            viewer.frame();
-        }
-
-        if ( s_updateRequired )
-        {
-            updateControlPanel();
-            s_updateRequired = false;
-        }
-    }
+    viewer.run();
 }
 
 //------------------------------------------------------------------------
@@ -194,7 +197,7 @@ struct MoveLayerHandler : public ControlEventHandler
 //------------------------------------------------------------------------
 
 
-osg::Node*
+void
 createControlPanel( osgViewer::View* view )
 {
     ControlCanvas* canvas = ControlCanvas::get( view );
@@ -231,8 +234,6 @@ createControlPanel( osgViewer::View* view )
     s_masterGrid->setControl( 1, 0, s_elevationBox );
 
     canvas->addControl( s_masterGrid );
-
-    return canvas;
 }
 
 void

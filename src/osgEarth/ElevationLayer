@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2010 Pelican Mapping
+ * Copyright 2008-2013 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -20,11 +20,8 @@
 #ifndef OSGEARTH_ELEVATION_TERRAIN_LAYER_H
 #define OSGEARTH_ELEVATION_TERRAIN_LAYER_H 1
 
-#include <osgEarth/Common>
-#include <osgEarth/Config>
-#include <osgEarth/Profile>
-#include <osgEarth/TileSource>
 #include <osgEarth/TerrainLayer>
+#include <osg/MixinVector>
 
 namespace osgEarth
 {
@@ -40,13 +37,22 @@ namespace osgEarth
         /** Constructs new elevation layer options, given the underlying driver options. */
         ElevationLayerOptions( const std::string& name, const TileSourceOptions& driverOptions );
 
+        /** dtor */
+        virtual ~ElevationLayerOptions() { }
+
+        optional<bool>& offset() { return _offset; }
+        const optional<bool>& offset() const { return _offset; }  
+
     public:
-        virtual Config getConfig( bool isolate =false ) const;
+        virtual Config getConfig() const { return getConfig(false); }
+        virtual Config getConfig( bool isolate ) const;
         virtual void mergeConfig( const Config& conf );
         
     private:
-        void fromConfig( const Config& conf );            
+        void fromConfig( const Config& conf );
         void setDefaults();
+
+        optional< bool > _offset;
     };
 
     //--------------------------------------------------------------------
@@ -90,6 +96,9 @@ namespace osgEarth
          */
         ElevationLayer( const ElevationLayerOptions& options, TileSource* tileSource );
 
+        /** dtor */
+        virtual ~ElevationLayer() { }
+
         /** Gets the initialization options with which the layer was created. */
         const ElevationLayerOptions& getElevationLayerOptions() const { return _runtimeOptions; }
         virtual const TerrainLayerOptions& getTerrainLayerRuntimeOptions() const { return _runtimeOptions; }
@@ -110,6 +119,11 @@ namespace osgEarth
         virtual GeoHeightField createHeightField(
             const TileKey&    key,
             ProgressCallback* progress =0L );
+
+        /**
+         * Whether the given key is valid for this layer
+         */
+        virtual bool isKeyValid(const TileKey& key) const;
 
     protected:
         
@@ -140,7 +154,43 @@ namespace osgEarth
         void init();
     };
 
-    typedef std::vector< osg::ref_ptr<ElevationLayer> > ElevationLayerVector;
+
+    /**
+     * Vector of elevation layers, with added methods.
+     */
+    class OSGEARTH_EXPORT ElevationLayerVector : public osg::MixinVector< osg::ref_ptr<ElevationLayer> >
+    {
+    public:
+        /**
+         * Creates a heightfield object by sampling this elevation layer vector.
+         */
+        bool createHeightField(
+            const TileKey&                  key,
+            bool                            fallback,
+            const Profile*                  haeProfile,
+            ElevationInterpolation          interpolation,
+            ElevationSamplePolicy           samplePolicy,
+            osg::ref_ptr<osg::HeightField>& out_result,
+            bool*                           out_isFallback,
+            ProgressCallback*               progress ) const;
+
+    public:
+        /** Default ctor */
+        ElevationLayerVector();
+
+        /** Copy ctor */
+        ElevationLayerVector(const ElevationLayerVector& rhs);
+
+        /**
+         * Sets a tile size that createHeightField will always return.
+         * By default, it will return a heightfield whose tile size matches
+         * that of the largest tile size found in the source data layers.
+         */
+        void setExpressTileSize( unsigned tileSize );
+
+    private:
+        optional<unsigned> _expressTileSize;        
+    };
 
 } // namespace osgEarth
 

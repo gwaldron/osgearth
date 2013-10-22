@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2010 Pelican Mapping
+ * Copyright 2008-2013 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -17,8 +17,15 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 #include <osgEarth/Registry>
+#include <osgEarth/Capabilities>
 #include <osgEarth/Cube>
-#include <osgEarth/ShaderComposition>
+#include <osgEarth/VirtualProgram>
+#include <osgEarth/ShaderFactory>
+#include <osgEarth/TaskService>
+#include <osgEarth/IOTypes>
+#include <osgEarth/ColorFilter>
+#include <osgEarth/StateSetCache>
+#include <osgEarth/HTTPClient>
 #include <osgEarthDrivers/cache_filesystem/FileSystemCache>
 #include <osg/Notify>
 #include <osg/Version>
@@ -32,10 +39,11 @@ using namespace osgEarth;
 using namespace osgEarth::Drivers;
 using namespace OpenThreads;
 
-#define STR_GLOBAL_GEODETIC "global-geodetic"
-#define STR_GLOBAL_MERCATOR "global-mercator"
-#define STR_CUBE            "cube"
-#define STR_LOCAL           "local"
+#define STR_GLOBAL_GEODETIC    "global-geodetic"
+#define STR_GLOBAL_MERCATOR    "global-mercator"
+#define STR_SPHERICAL_MERCATOR "spherical-mercator"
+#define STR_CUBE               "cube"
+#define STR_LOCAL              "local"
 
 #define LC "[Registry] "
 
@@ -43,37 +51,43 @@ using namespace OpenThreads;
 extern const char* builtinMimeTypeExtMappings[];
 
 Registry::Registry() :
-osg::Referenced  ( true ),
-_gdal_registered ( false ),
-_numGdalMutexGets( 0 ),
-_uidGen          ( 0 ),
-_caps            ( 0L ),
-_defaultFont     ( 0L )
+osg::Referenced     ( true ),
+_gdal_registered    ( false ),
+_numGdalMutexGets   ( 0 ),
+_uidGen             ( 0 ),
+_caps               ( 0L ),
+_defaultFont        ( 0L ),
+_terrainEngineDriver( "mp" )
 {
     // set up GDAL and OGR.
     OGRRegisterAll();
     GDALAllRegister();
 
+    // global initialization for CURL (not thread safe)
+    HTTPClient::globalInit();
+
+    // generates the basic shader code for the terrain engine and model layers.
     _shaderLib = new ShaderFactory();
+
+    // thread pool for general use
     _taskServiceManager = new TaskServiceManager();
 
-    // activate KMZ support
-    osgDB::Registry::instance()->addFileExtensionAlias( "kmz", "kml" );
-    osgDB::Registry::instance()->addArchiveExtension  ( "kmz" );    
+    // optimizes sharing of state attributes and state sets for
+    // performance boost
+    _stateSetCache = new StateSetCache();
 
-#if OSG_MIN_VERSION_REQUIRED(3,0,0)
+    // activate KMZ support
+    osgDB::Registry::instance()->addArchiveExtension  ( "kmz" );
+    osgDB::Registry::instance()->addFileExtensionAlias( "kmz", "kml" );
+
     osgDB::Registry::instance()->addMimeTypeExtensionMapping( "application/vnd.google-earth.kml+xml", "kml" );
     osgDB::Registry::instance()->addMimeTypeExtensionMapping( "application/vnd.google-earth.kmz",     "kmz" );
-    //osgDB::Registry::instance()->addMimeTypeExtensionMapping( "text/xml",                             "xml" );
-    //osgDB::Registry::instance()->addMimeTypeExtensionMapping( "application/json",                     "json" );
-    //osgDB::Registry::instance()->addMimeTypeExtensionMapping( "text/json",                            "json" );
-    //osgDB::Registry::instance()->addMimeTypeExtensionMapping( "text/x-json",                          "json" );
     osgDB::Registry::instance()->addMimeTypeExtensionMapping( "text/plain",                           "osgb" );
     osgDB::Registry::instance()->addMimeTypeExtensionMapping( "text/xml",                             "osgb" );
     osgDB::Registry::instance()->addMimeTypeExtensionMapping( "application/json",                     "osgb" );
     osgDB::Registry::instance()->addMimeTypeExtensionMapping( "text/json",                            "osgb" );
     osgDB::Registry::instance()->addMimeTypeExtensionMapping( "text/x-json",                          "osgb" );
-#endif
+    osgDB::Registry::instance()->addMimeTypeExtensionMapping( "image/jpg",                            "jpg" );
     
     // pre-load OSG's ZIP plugin so that we can use it in URIs
     std::string zipLib = osgDB::Registry::instance()->createLibraryNameForExtension( "zip" );
@@ -108,19 +122,34 @@ _defaultFont     ( 0L )
     // activate cache-only mode from the environment
     if ( ::getenv("OSGEARTH_CACHE_ONLY") )
     {
-        _defaultCachePolicy = CachePolicy::CACHE_ONLY;
+        _overrideCachePolicy->usage() = CachePolicy::USAGE_CACHE_ONLY;
+        //setOverrideCachePolicy( CachePolicy::CACHE_ONLY );
         OE_INFO << LC << "CACHE-ONLY MODE set from environment variable" << std::endl;
     }
 
     // activate no-cache mode from the environment
     else if ( ::getenv("OSGEARTH_NO_CACHE") )
     {
-        _defaultCachePolicy = CachePolicy::NO_CACHE;
+        _overrideCachePolicy->usage() = CachePolicy::USAGE_NO_CACHE;
+        //setOverrideCachePolicy( CachePolicy::NO_CACHE );
         OE_INFO << LC << "NO-CACHE MODE set from environment variable" << std::endl;
     }
 
-    // load a default font
+    // cache max age?
+    const char* cacheMaxAge = ::getenv("OSGEARTH_CACHE_MAX_AGE");
+    if ( cacheMaxAge )
+    {
+        TimeSpan maxAge = osgEarth::as<long>( std::string(cacheMaxAge), INT_MAX );
+        _overrideCachePolicy->maxAge() = maxAge;
+    }
 
+    const char* teStr = ::getenv("OSGEARTH_TERRAIN_ENGINE");
+    if ( teStr )
+    {
+        _terrainEngineDriver = std::string(teStr);
+    }
+
+    // load a default font
     const char* envFont = ::getenv("OSGEARTH_DEFAULT_FONT");
     if ( envFont )
     {
@@ -132,6 +161,9 @@ _defaultFont     ( 0L )
         _defaultFont = osgText::readFontFile("arial.ttf");
 #endif
     }
+
+    // register the system stock Units.
+    Units::registerAll( this );
 }
 
 Registry::~Registry()
@@ -192,23 +224,31 @@ Registry::getGlobalGeodeticProfile() const
 const Profile*
 Registry::getGlobalMercatorProfile() const
 {
-    if ( !_global_mercator_profile.valid() )
+    return getSphericalMercatorProfile();
+}
+
+
+const Profile*
+Registry::getSphericalMercatorProfile() const
+{
+    if ( !_spherical_mercator_profile.valid() )
     {
         GDAL_SCOPED_LOCK;
 
-        if ( !_global_mercator_profile.valid() ) // double-check pattern
+        if ( !_spherical_mercator_profile.valid() ) // double-check pattern
         {
             // automatically figure out proper mercator extents:
             const SpatialReference* srs = SpatialReference::create( "spherical-mercator" );
+
             //double e, dummy;
-            //srs->getGeographicSRS()->transform( 180.0, 0.0, srs, e, dummy );            
-            /*const_cast<Registry*>(this)->_global_mercator_profile = Profile::create(
-                srs, -e, -e, e, e, 0L, 1, 1 );*/
-            const_cast<Registry*>(this)->_global_mercator_profile = Profile::create(
+            //srs->getGeographicSRS()->transform2D( 180.0, 0.0, srs, e, dummy );
+            //const_cast<Registry*>(this)->_global_mercator_profile = Profile::create(
+            //    srs, -e, -e, e, e, 1, 1 );
+            const_cast<Registry*>(this)->_spherical_mercator_profile = Profile::create(
                 srs, MERC_MINX, MERC_MINY, MERC_MAXX, MERC_MAXY, 1, 1 );
         }
     }
-    return _global_mercator_profile.get();
+    return _spherical_mercator_profile.get();
 }
 
 const Profile*
@@ -233,19 +273,55 @@ Registry::getNamedProfile( const std::string& name ) const
         return getGlobalGeodeticProfile();
     else if ( name == STR_GLOBAL_MERCATOR )
         return getGlobalMercatorProfile();
+    else if ( name == STR_SPHERICAL_MERCATOR )
+        return getSphericalMercatorProfile();
     else if ( name == STR_CUBE )
         return getCubeProfile();
     else
         return NULL;
 }
 
-//const VerticalSpatialReference*
-//Registry::getDefaultVSRS() const
-//{
-//    if ( !_defaultVSRS.valid() )
-//        const_cast<Registry*>(this)->_defaultVSRS = new VerticalSpatialReference( Units::METERS );
-//    return _defaultVSRS.get();
-//}
+void
+Registry::setDefaultCachePolicy( const CachePolicy& value )
+{
+    _defaultCachePolicy = value;
+    if ( !_overrideCachePolicy.isSet() )
+        _defaultCachePolicy->apply(_defaultOptions.get());
+    else
+        _overrideCachePolicy->apply(_defaultOptions.get());
+}
+
+void
+Registry::setOverrideCachePolicy( const CachePolicy& value )
+{
+    _overrideCachePolicy = value;
+    _overrideCachePolicy->apply( _defaultOptions.get() );
+}
+
+bool
+Registry::getCachePolicy( optional<CachePolicy>& cp, const osgDB::Options* options ) const
+{
+    if ( overrideCachePolicy().isSet() )
+    {
+        // if there is a system-wide override in place, use it.
+        cp = overrideCachePolicy().value();
+    }
+    else 
+    {
+        // Try to read the cache policy from the db-options
+        CachePolicy::fromOptions( options, cp );
+
+        if ( !cp.isSet() )
+        {
+            if ( defaultCachePolicy().isSet() )
+            {
+                cp = defaultCachePolicy().value();
+            }
+        }
+    }
+
+    return cp.isSet();
+}
 
 osgEarth::Cache*
 Registry::getCache() const
@@ -258,24 +334,8 @@ Registry::setCache( osgEarth::Cache* cache )
 {
 	_cache = cache;
     if ( cache )
-        cache->store( _defaultOptions.get() );
+        cache->apply( _defaultOptions.get() );
 }
-
-#if 0
-void Registry::addMimeTypeExtensionMapping(const std::string fromMimeType, const std::string toExt)
-{
-    _mimeTypeExtMap[fromMimeType] = toExt;
-}
-
-osgDB::ReaderWriter* 
-Registry::getReaderWriterForMimeType(const std::string& mimeType)
-{
-    MimeTypeExtensionMap::const_iterator i = _mimeTypeExtMap.find( mimeType );
-    return i != _mimeTypeExtMap.end()?
-        osgDB::Registry::instance()->getReaderWriterForExtension( i->second ) :
-        NULL;
-}
-#endif
 
 bool
 Registry::isBlacklisted(const std::string& filename)
@@ -323,16 +383,15 @@ Registry::setCapabilities( Capabilities* caps )
     _caps = caps;
 }
 
-static OpenThreads::Mutex s_initCapsMutex;
 void
 Registry::initCapabilities()
 {
-    ScopedLock<Mutex> lock( s_initCapsMutex ); // double-check pattern (see getCapabilities)
+    ScopedLock<Mutex> lock( _capsMutex ); // double-check pattern (see getCapabilities)
     if ( !_caps.valid() )
         _caps = new Capabilities();
 }
 
-ShaderFactory*
+const ShaderFactory*
 Registry::getShaderFactory() const
 {
     return _shaderLib.get();
@@ -343,6 +402,18 @@ Registry::setShaderFactory( ShaderFactory* lib )
 {
     if ( lib != 0L && lib != _shaderLib.get() )
         _shaderLib = lib;
+}
+        
+void
+Registry::setURIReadCallback( URIReadCallback* callback ) 
+{ 
+    _uriReadCallback = callback;
+}
+
+URIReadCallback*
+Registry::getURIReadCallback() const
+{
+    return _uriReadCallback.get(); 
 }
 
 void
@@ -363,15 +434,16 @@ UID
 Registry::createUID()
 {
     //todo: use OpenThreads::Atomic for this
-    static Mutex s_uidGenMutex;
-    ScopedLock<Mutex> lock( s_uidGenMutex );
+    ScopedLock<Mutex> exclusive( _uidGenMutex );
     return (UID)( _uidGen++ );
 }
 
 osgDB::Options*
 Registry::cloneOrCreateOptions( const osgDB::Options* input ) const
 {
-    osgDB::Options* newOptions = input ? static_cast<osgDB::Options*>(input->clone(osg::CopyOp::SHALLOW_COPY)) : new osgDB::Options();
+    osgDB::Options* newOptions = 
+        input ? static_cast<osgDB::Options*>(input->clone(osg::CopyOp::SHALLOW_COPY)) : 
+        new osgDB::Options();
 
     // clear the CACHE_ARCHIVES flag because it is evil
     if ( ((int)newOptions->getObjectCacheHint() & osgDB::Options::CACHE_ARCHIVES) != 0 )
@@ -386,12 +458,15 @@ Registry::cloneOrCreateOptions( const osgDB::Options* input ) const
 void
 Registry::registerUnits( const Units* units )
 {
+    Threading::ScopedWriteLock exclusive( _unitsVectorMutex );
     _unitsVector.push_back(units);
 }
 
 const Units*
 Registry::getUnits(const std::string& name) const
 {
+    Threading::ScopedReadLock shared( _unitsVectorMutex );
+
     std::string lower = toLower(name);
     for( UnitsVector::const_iterator i = _unitsVector.begin(); i != _unitsVector.end(); ++i )
     {
@@ -403,6 +478,25 @@ Registry::getUnits(const std::string& name) const
     }
     return 0L;
 }
+
+void
+Registry::setDefaultTerrainEngineDriverName(const std::string& name)
+{
+    _terrainEngineDriver = name;
+}
+
+void
+Registry::setStateSetCache( StateSetCache* cache )
+{
+    _stateSetCache = cache;
+}
+
+StateSetCache*
+Registry::getStateSetCache() const
+{
+    return _stateSetCache.get();
+}
+
 
 //Simple class used to add a file extension alias for the earth_tile to the earth plugin
 class RegisterEarthTileExtension

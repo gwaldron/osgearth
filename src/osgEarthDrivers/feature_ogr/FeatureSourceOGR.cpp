@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2010 Pelican Mapping
+ * Copyright 2008-2013 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -59,11 +59,7 @@ public:
       _needsSync(false),
       _writable(false)
     {
-        _geometry = 
-            _options.geometry().valid() ? _options.geometry().get() :
-            _options.geometryConfig().isSet() ? parseGeometry( *_options.geometryConfig() ) :
-            _options.geometryUrl().isSet() ? parseGeometryUrl( *_options.geometryUrl() ) :
-            0L;
+        //nop
     }
 
     /** Destruct the object, cleaning up and OGR handles. */
@@ -81,6 +77,7 @@ public:
                 buf << "REPACK " << name; 
                 std::string bufStr;
                 bufStr = buf.str();
+                OE_DEBUG << LC << "SQL: " << bufStr << std::endl;
                 OGR_DS_ExecuteSQL( _dsHandle, bufStr.c_str(), 0L, 0L );
             }
             _layerHandle = 0L;
@@ -99,12 +96,18 @@ public:
         if ( _options.url().isSet() )
         {
             _source = _options.url()->full();
-            //_source = osgEarth::getFullPath( referenceURI, _options.url()->full() );
         }
         else if ( _options.connection().isSet() )
         {
             _source = _options.connection().value();
         }
+        
+        // establish the geometry:
+        _geometry = 
+            _options.geometry().valid()       ? _options.geometry().get() :
+            _options.geometryConfig().isSet() ? parseGeometry( *_options.geometryConfig() ) :
+            _options.geometryUrl().isSet()    ? parseGeometryUrl( *_options.geometryUrl(), dbOptions ) :
+            0L;
     }
 
     /** Called once at startup to create the profile for this feature set. Successful profile
@@ -151,9 +154,9 @@ public:
             // attempt to open the dataset:
             int openMode = _options.openWrite().isSet() && _options.openWrite().value() ? 1 : 0;
 
-	        _dsHandle = OGROpenShared( _source.c_str(), openMode, &_ogrDriverHandle );
-	        if ( _dsHandle )
-	        {
+            _dsHandle = OGROpen( _source.c_str(), openMode, &_ogrDriverHandle );
+            if ( _dsHandle )
+            {
                 if (openMode == 1) _writable = true;
                 
                 if ( _options.layer().isSet() )
@@ -161,7 +164,7 @@ public:
                     _layerIndex = _options.layer().value();
                 }                
 
-		        _layerHandle = OGR_DS_GetLayer( _dsHandle, _layerIndex );
+                _layerHandle = OGR_DS_GetLayer( _dsHandle, _layerIndex );
                 if ( _layerHandle )
                 {                                     
                     GeoExtent extent;
@@ -201,8 +204,9 @@ public:
                         std::stringstream buf;
                         const char* name = OGR_FD_GetName( OGR_L_GetLayerDefn( _layerHandle ) );
                         buf << "CREATE SPATIAL INDEX ON " << name; 
-					    std::string bufStr;
-					    bufStr = buf.str();
+                        std::string bufStr;
+                        bufStr = buf.str();
+                        OE_DEBUG << LC << "SQL: " << bufStr << std::endl;
                         OGR_DS_ExecuteSQL( _dsHandle, bufStr.c_str(), 0L, 0L );
                     }
 
@@ -248,7 +252,7 @@ public:
                         _geometryType = Geometry::TYPE_MULTI;
                     }
                 }
-	        }
+            }
             else
             {
                 OE_INFO << LC << "failed to open dataset \"" << _source << "\"" << std::endl;
@@ -282,14 +286,15 @@ public:
             // Each cursor requires its own DS handle so that multi-threaded access will work.
             // The cursor impl will dispose of the new DS handle.
 
-	        OGRDataSourceH dsHandle = OGROpenShared( _source.c_str(), 0, &_ogrDriverHandle );
-	        if ( dsHandle )
-	        {
+            OGRDataSourceH dsHandle = OGROpenShared( _source.c_str(), 0, &_ogrDriverHandle );
+            if ( dsHandle )
+            {
                 OGRLayerH layerHandle = OGR_DS_GetLayer( dsHandle, _layerIndex );
 
                 return new FeatureCursorOGR( 
                     dsHandle,
                     layerHandle, 
+                    this,
                     getFeatureProfile(),
                     query, 
                     _options.filters() );
@@ -322,13 +327,18 @@ public:
     virtual Feature* getFeature( FeatureID fid )
     {
         Feature* result = NULL;
-        OGRFeatureH handle = OGR_L_GetFeature( _layerHandle, fid);
-        if (handle)
+
+        if ( !isBlacklisted(fid) )
         {
-            const FeatureProfile* p = getFeatureProfile();
-            const SpatialReference* srs = p ? p->getSRS() : 0L;
-            result = OgrUtils::createFeature( handle, srs );
-            OGR_F_Destroy( handle );
+            OGR_SCOPED_LOCK;
+            OGRFeatureH handle = OGR_L_GetFeature( _layerHandle, fid);
+            if (handle)
+            {
+                const FeatureProfile* p = getFeatureProfile();
+                const SpatialReference* srs = p ? p->getSRS() : 0L;
+                result = OgrUtils::createFeature( handle, srs );
+                OGR_F_Destroy( handle );
+            }
         }
         return result;
     }
@@ -373,27 +383,10 @@ public:
                     case OFTString:
                         OGR_F_SetFieldString( feature_handle, field_index, a->second.getString().c_str() );
                         break;
+                    default:break;
                     }
                 }
             }
-
-            //    std::string value = feature->getAttr( name );
-            //    if (!value.empty())
-            //    {
-            //        switch( OGR_Fld_GetType( field_handle_ref ) )
-            //        {
-            //        case OFTInteger:
-            //            OGR_F_SetFieldInteger( feature_handle, field_index, as<int>(value, 0) );
-            //            break;
-            //        case OFTReal:
-            //            OGR_F_SetFieldDouble( feature_handle, field_index, as<double>(value, 0.0) );
-            //            break;
-            //        case OFTString:
-            //            OGR_F_SetFieldString( feature_handle, field_index, value.c_str() );
-            //            break;                    
-            //        }
-            //    }
-            //}
 
             // assign the geometry:
             OGRFeatureDefnH def = ::OGR_L_GetLayerDefn( _layerHandle );
@@ -424,6 +417,8 @@ public:
             return false;
         }
 
+        dirty();
+
         return true;
     }
 
@@ -441,9 +436,9 @@ protected:
     }
 
     // read the WKT geometry from a URL, then parse into a Geometry.
-    Symbology::Geometry* parseGeometryUrl( const std::string& geomUrl )
+    Symbology::Geometry* parseGeometryUrl( const std::string& geomUrl, const osgDB::Options* dbOptions )
     {
-        ReadResult r = URI(geomUrl).readString( 0L, CachePolicy::NO_CACHE );
+        ReadResult r = URI(geomUrl).readString( dbOptions );
         if ( r.succeeded() )
         {
             Config conf( "geometry", r.getString() );

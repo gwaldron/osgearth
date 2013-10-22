@@ -1,0 +1,141 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+* Copyright 2008-2013 Pelican Mapping
+* http://osgearth.org
+*
+* osgEarth is free software; you can redistribute it and/or modify
+* it under the terms of the GNU Lesser General Public License as published by
+* the Free Software Foundation; either version 2 of the License, or
+* (at your option) any later version.
+*
+* This program is distributed in the hope that it will be useful,
+* but WITHOUT ANY WARRANTY; without even the implied warranty of
+* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+* GNU Lesser General Public License for more details.
+*
+* You should have received a copy of the GNU Lesser General Public License
+* along with this program.  If not, see <http://www.gnu.org/licenses/>
+*/
+#ifndef OSGEARTH_ENGINE_MP_TILE_NODE
+#define OSGEARTH_ENGINE_MP_TILE_NODE 1
+
+#include "Common"
+#include "TileModel"
+#include <osg/MatrixTransform>
+
+namespace osgEarth_engine_mp
+{
+    using namespace osgEarth;
+    class TileNode;
+
+    /**
+     * Marker that gives access to a TileNode.
+     */
+    class TileNodeContainer
+    {
+    public:
+        virtual TileNode* getTileNode() = 0;
+    };
+
+    /**
+     * Node that represents a single terrain tile that was compiled from
+     * a TileModel (and corresponds to one TileKey). The matrixtransform
+     * localizes the TileNode within the terrain.
+     */
+    class TileNode : public osg::MatrixTransform, public TileNodeContainer
+    {
+    public:
+        /**
+         * Constructs a new tile node
+         */
+        TileNode( const TileKey& key, const TileModel* model );
+
+        /**
+         * The tilekey associated with this tile
+         */
+        const TileKey& getKey() const { return _key; }
+
+        /**
+         * True if this is a valid tile node.
+         * Subclass may override (see InvalidTileNode)
+         */
+        virtual bool isValid() const { return true; }
+
+        /**
+         * Access the source data model that built this tile.
+         */
+        const TileModel* getTileModel() { return _model.get(); }
+
+        /**
+         * Sets the last traversal frame manually. A parent TileGroup
+         * will call this to prevent the born-time from resetting 
+         * when traversing the tile's children.
+         */
+        void setLastTraversalFrame(unsigned frame);
+
+        /**
+         * Tells the tile node the current map revision, which is turn
+         * will determine whether the tile is dirty and needs updating.
+         */
+        void setMapRevision( const Revision& value ) { _maprevision = value; }
+
+        /**
+         * Flags this Tile as dirty, regardless of whether the revisions are in sync.
+         */
+        void setDirty() { _dirty = true; }
+
+        /**
+         * Whether the tile is dirty and was traversed (and if therefore ready for
+         * a dynamic update)
+         */
+        bool isOutOfDate() const { return _outOfDate; }
+
+
+    public: // TileNodeContainer
+
+        TileNode* getTileNode() { return this; }
+
+
+    public: // OVERRIDES
+
+        virtual void traverse( class osg::NodeVisitor& nv );
+
+        virtual void resizeGLObjectBuffers(unsigned maxSize);
+        virtual void releaseGLObjects(osg::State* state) const;
+
+    protected:
+
+        virtual ~TileNode() { }
+
+        TileKey                            _key;
+        osg::ref_ptr<osg::Uniform>         _bornUniform;
+        osg::ref_ptr<const TileModel>      _model;
+        osg::ref_ptr<osg::Uniform>         _tileParentMatrixUniform;
+        unsigned                           _lastTraversalFrame;
+        double                             _bornTime;
+        Revision                           _maprevision;
+        bool                               _outOfDate;
+        bool                               _dirty;
+    };
+
+
+    typedef std::vector< osg::ref_ptr<TileNode> > TileNodeVector;
+
+
+    /**
+     * Marker class - the engine will return one of these when a TileNode
+     * load fails permanently. It will also blacklist the TileKey.
+     */
+    class InvalidTileNode : public TileNode
+    {
+    public:
+        InvalidTileNode(const TileKey& key) : TileNode(key, 0L) { }
+        bool isValid() const { return false; }
+    protected:
+        virtual ~InvalidTileNode() { }
+    };
+
+
+} // namespace osgEarth_engine_mp
+
+#endif // OSGEARTH_ENGINE_MP_TILE_NODE

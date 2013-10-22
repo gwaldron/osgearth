@@ -1,0 +1,118 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+ * Copyright 2008-2013 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+
+#ifndef OSGEARTHFEATURES_TFS_PACKAGER_H
+#define OSGEARTHFEATURES_TFS_PACKAGER_H 1
+
+#include <osgEarthFeatures/Common>
+#include <osgEarthFeatures/Feature>
+#include <osgEarthFeatures/FeatureSource>
+#include <osgEarthFeatures/CropFilter>
+#include <osgEarthUtil/TFS>
+
+
+namespace osgEarth { namespace Util {
+    using namespace osgEarth;    
+    using namespace osgEarth::Features;
+    using namespace osgEarth::Symbology;
+
+    /**
+     * Utility that grids up feature data into a tiled json format.
+     */
+    class OSGEARTHUTIL_EXPORT TFSPackager
+    {
+    public:
+        TFSPackager();
+
+        /**
+         * The first level in the quadtree that tiles will be added.          
+         */
+        unsigned int getFirstLevel() const { return _firstLevel;}
+        void setFirstLevel( unsigned int value ) { _firstLevel = value;}
+
+        /**
+         * The maximum level in the quadtree that tiles can be added.
+         */
+        unsigned int getMaxLevel() const { return _maxLevel;}
+        void setMaxLevel( unsigned int value) { _maxLevel = value;}
+
+        /**
+         * The maximum number of features that should be added to a tile before moving onto the next level.
+         * Once the max level is reached, features will simply be added to it no matter how many features are in the tile.
+         */
+        unsigned int getMaxFeatures() const { return _maxFeatures;}
+        void setMaxFeatures( unsigned int value ) { _maxFeatures = value;}
+
+        /**
+         * The query to run on the FeatureSource.
+         */
+        const Query& getQuery() const { return _query;}
+        void setQuery( const Query& query) { _query = query;}
+
+        /**
+         * The cropping method to use when processing the features
+         * If the cropping method is set to METHOD_CROP features can be added to multiple tiles.
+         */
+        CropFilter::Method getMethod() const { return _method;}
+        void setMethod( CropFilter::Method method) { _method = method;}
+
+        /**
+         * The SRS to use for the output dataset.  If not set the SRS of the FeatureSource wil be used.
+         * Can be any string that will result in a valid osgEarth::SpatialReference (epsg codes, wkt, proj4).
+         */
+        const std::string& getDestSRS() const { return _destSRSString;}
+        void setDestSRS(const std::string& srs ) { _destSRSString = srs; }
+
+        /**
+         * A GeoExtent to use for LOD Level 0, in the SRS of the input dataset.  If not set the
+         * GeoExtent of the FeatureSource will be used
+         */
+        const GeoExtent getLod0Extent() const { return _customExtent; }
+        void setLod0Extent(const GeoExtent& extent) { _customExtent = extent; }
+
+        /**
+         * Package the given feature source
+         * @param features
+         *     The feature source to package
+         * @param destination
+         *     The destination directory
+         * @param layername
+         *     The name of the layer
+         * @param description
+         *     Optional description that will be written to the metadata document
+         */
+        void package( FeatureSource* features, const std::string& destination, const std::string& layername, const std::string& description = "" );
+
+
+
+
+    private:
+        unsigned int _firstLevel;
+        unsigned int _maxLevel;
+        unsigned int _maxFeatures;
+        Query _query;
+        CropFilter::Method _method;
+        std::string _destSRSString;
+        osg::ref_ptr< const SpatialReference > _srs;
+        GeoExtent _customExtent;
+    };
+
+} } // namespace osgEarth::Util
+
+#endif

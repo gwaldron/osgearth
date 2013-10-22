@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2010 Pelican Mapping
+ * Copyright 2008-2013 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -58,6 +58,10 @@ CssUtils::readConfig( const std::string& css, const std::string& referrer, Confi
     if ( css.find_first_of("{") == std::string::npos )
     {
         temp = "default { " + css + " }";
+    }
+    else if ( css.size() > 0 && css[0] == '{' )
+    {
+        temp = "default " + css;
     }
 
     // tokenize the CSS into a config object..

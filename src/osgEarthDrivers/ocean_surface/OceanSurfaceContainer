@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2010 Pelican Mapping
+ * Copyright 2008-2013 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -21,30 +21,43 @@
 
 #include "OceanSurface"
 #include <osgEarth/MapNode>
+#include <osgEarth/MapNodeObserver>
 #include <osgEarth/ImageLayer>
 #include <osgEarth/URI>
 #include <osg/Node>
 #include <osg/Image>
 #include <osg/Uniform>
 
-using namespace osgEarth;
-using namespace osgEarth::Drivers;
-
-class OceanSurfaceContainer : public osg::Group
+namespace osgEarth_ocean_surface
 {
-public:
-    OceanSurfaceContainer( MapNode* mapNode, const OceanSurfaceOptions& options );
+    using namespace osgEarth;
+    using namespace osgEarth::Drivers;
 
-    void apply( const OceanSurfaceOptions& options );
+    class OceanSurfaceContainer : public osg::Group,
+                                  public MapNodeObserver
+    {
+    public:
+        OceanSurfaceContainer( MapNode* mapNode, const OceanSurfaceOptions& options );
 
-public: // osg::Node
+        /** dtor */
+        virtual ~OceanSurfaceContainer() { }
 
-    //void traverse( osg::NodeVisitor& nv );
+        void apply( const OceanSurfaceOptions& options );
 
-private:
-    osg::observer_ptr<MapNode> _parentMapNode;
-    osg::ref_ptr<osg::Uniform> _seaLevel, _lowFeather, _highFeather;
-    osg::ref_ptr<osg::Uniform> _baseColor;
-};
+    public:
+        MapNode* getMapNode() { return _parentMapNode.get(); }
+        void setMapNode( MapNode* mapNode );
+
+    private:
+        osg::observer_ptr<MapNode> _parentMapNode;
+        OceanSurfaceOptions        _options;
+        osg::ref_ptr<osg::Uniform> _seaLevel, _lowFeather, _highFeather;
+        osg::ref_ptr<osg::Uniform> _maxRange, _fadeRange;
+        osg::ref_ptr<osg::Uniform> _baseColor;
+
+        void rebuild();
+    };
+
+} // namespace osgEarth_ocean_surface
 
 #endif // OSGEARTH_DRIVER_OCEAN_SURFACE_CONTAINER

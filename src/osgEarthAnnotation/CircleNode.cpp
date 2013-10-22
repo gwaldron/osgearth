@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2008-2010 Pelican Mapping
+* Copyright 2008-2013 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -36,15 +36,19 @@ CircleNode::CircleNode(MapNode*           mapNode,
                        const GeoPoint&    position,
                        const Linear&      radius,
                        const Style&       style,
-                       bool               draped,
-                       unsigned           numSegments) :
+                       const Angle&       arcStart,
+                       const Angle&       arcEnd,
+                       const bool         pie):
 
-LocalizedNode( mapNode, position, false ),
+LocalizedNode( mapNode, position ),
 _radius      ( radius ),
 _style       ( style ),
-_draped      ( draped ),
-_numSegments ( numSegments )
+_arcStart    ( arcStart ),
+_arcEnd      ( arcEnd ),
+_pie         ( pie ),
+_numSegments ( 0 )
 {
+    _xform = new osg::MatrixTransform();
     rebuild();
 }
 
@@ -94,46 +98,80 @@ CircleNode::setStyle( const Style& style )
     rebuild();
 }
 
+const Angle&
+CircleNode::getArcStart(void) const
+{
+	return (_arcStart);
+}
+
+void
+CircleNode::setArcStart(const Angle& arcStart)
+{
+	_arcStart = arcStart;
+	rebuild();
+}
+
+const Angle&
+CircleNode::getArcEnd(void) const
+{
+	return (_arcEnd);
+}
+
+void
+CircleNode::setArcEnd(const Angle& arcEnd)
+{
+	_arcEnd = arcEnd;
+	rebuild();
+}
+
+const bool&
+CircleNode::getPie(void) const
+{
+	return (_pie);
+}
+
+void
+CircleNode::setPie(const bool& pie)
+{
+    _pie = pie;
+    rebuild();
+}
+
 void
 CircleNode::rebuild()
 {
     std::string currentDecoration = getDecoration();
     clearDecoration();
 
-    //Remove all children from this node
-    removeChildren( 0, getNumChildren() );
-
-    //Remove all children from the attach point
-    getAttachPoint()->removeChildren( 0, getAttachPoint()->getNumChildren() );
+    // Reset this node.
+    osgEarth::clearChildren( this );
+    osgEarth::clearChildren( _xform.get() );
+    this->addChild( _xform.get() );
 
     // construct a local-origin circle.
     GeometryFactory factory;
-    Geometry* geom = factory.createCircle(osg::Vec3d(0,0,0), _radius, _numSegments);
+    Geometry* geom = NULL;
+    if (abs(_arcEnd.as(Units::DEGREES) - _arcStart.as(Units::DEGREES)) >= 360.0)
+    {
+        geom = factory.createCircle(osg::Vec3d(0,0,0), _radius, _numSegments);
+    }
+    else
+    {
+        geom = factory.createArc(osg::Vec3d(0,0,0), _radius, _arcStart, _arcEnd, _numSegments, 0L, _pie);
+    }
     if ( geom )
     {
-        //const SpatialReference* featureSRS = mapNode->getMapSRS()->createTangentPlaneSRS(position);
-
         GeometryCompiler compiler;
         osg::ref_ptr<Feature> feature = new Feature(geom, 0L); //todo: consider the SRS
         osg::Node* node = compiler.compile( feature.get(), _style, FilterContext(0L) );
         if ( node )
-        {           
-            getAttachPoint()->addChild( node );
-
-            if ( _draped )
-            {
-                DrapeableNode* drapeable = new DrapeableNode( _mapNode.get(), true );
-                drapeable->addChild( getAttachPoint() );
-                this->addChild( drapeable );
-            }
-
-            else
-            {
-                this->addChild( getAttachPoint() );
-            }
+        {
+            _xform->addChild( node );
+            this->replaceChild( _xform.get(), applyAltitudePolicy(_xform.get(), _style) );
         }
 
-        applyStyle( _style, _draped );
+        applyGeneralSymbology( _style );
+        setLightingIfNotSet( false );
     }
 
     setDecoration( currentDecoration );
@@ -145,20 +183,18 @@ CircleNode::rebuild()
 OSGEARTH_REGISTER_ANNOTATION( circle, osgEarth::Annotation::CircleNode );
 
 
-CircleNode::CircleNode(MapNode*      mapNode,
-                       const Config& conf ) :
-LocalizedNode( mapNode ),
+CircleNode::CircleNode(MapNode*              mapNode,
+                       const Config&         conf,
+                       const osgDB::Options* dbOptions) :
+LocalizedNode( mapNode, conf ),
 _radius      ( 1.0, Units::KILOMETERS ),
-_draped      ( false ),
 _numSegments ( 0 )
 {
+    _xform = new osg::MatrixTransform();
+
     conf.getObjIfSet( "radius", _radius );
     conf.getObjIfSet( "style",  _style );
-    conf.getIfSet   ( "draped", _draped );
     conf.getIfSet   ( "num_segments", _numSegments );
-
-    if ( conf.hasChild("position") )
-        setPosition( GeoPoint(conf.child("position")) );
 
     rebuild();
 }
@@ -166,16 +202,14 @@ _numSegments ( 0 )
 Config
 CircleNode::getConfig() const
 {
-    Config conf( "circle" );
+    Config conf = LocalizedNode::getConfig();
+    conf.key() = "circle";
+
     conf.addObj( "radius", _radius );
     conf.addObj( "style",  _style );
 
     if ( _numSegments != 0 )
         conf.add( "num_segments", _numSegments );
-    if ( _draped != false )
-        conf.add( "draped", _draped );
-
-    conf.addObj( "position", getPosition() );
 
     return conf;
 }

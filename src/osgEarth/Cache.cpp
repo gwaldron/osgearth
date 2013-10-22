@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2010 Pelican Mapping
+ * Copyright 2008-2013 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -17,6 +17,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 #include <osgEarth/Cache>
+#include <osgEarth/Registry>
 #include <osgEarth/ThreadingUtils>
 
 #include <osgDB/FileNameUtils>
@@ -29,13 +30,21 @@ using namespace osgEarth::Threading;
 
 #define LC "[Cache] "
 
+CacheOptions::~CacheOptions()
+{
+}
+
 //------------------------------------------------------------------------
 
 Cache::Cache( const CacheOptions& options ) :
-_options( options ),
-_ok     ( true )
+_ok     ( true ),
+_options( options )
 {
     //nop
+}
+
+Cache::~Cache()
+{
 }
 
 Cache::Cache( const Cache& rhs, const osg::CopyOp& op ) :
@@ -68,7 +77,7 @@ Cache*
 CacheFactory::create( const CacheOptions& options )
 {
     osg::ref_ptr<Cache> result =0L;
-    OE_INFO << LC << "Initializing cache of type \"" << options.getDriver() << "\"" << std::endl;
+    OE_DEBUG << LC << "Initializing cache of type \"" << options.getDriver() << "\"" << std::endl;
 
     if ( options.getDriver().empty() )
     {
@@ -84,7 +93,7 @@ CacheFactory::create( const CacheOptions& options )
 //    }
     else // try to load from a plugin
     {
-        osg::ref_ptr<osgDB::ReaderWriter::Options> rwopt = new osgDB::ReaderWriter::Options();
+        osg::ref_ptr<osgDB::Options> rwopt = Registry::instance()->cloneOrCreateOptions();
         rwopt->setPluginData( CACHE_OPTIONS_TAG, (void*)&options );
 
         std::string driverExt = std::string(".osgearth_cache_") + options.getDriver();
@@ -104,4 +113,8 @@ const CacheOptions&
 CacheDriver::getCacheOptions( const osgDB::ReaderWriter::Options* rwopt ) const 
 {
     return *static_cast<const CacheOptions*>( rwopt->getPluginData( CACHE_OPTIONS_TAG ) );
+}
+
+CacheDriver::~CacheDriver()
+{
 }

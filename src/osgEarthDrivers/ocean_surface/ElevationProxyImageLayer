@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2010 Pelican Mapping
+ * Copyright 2008-2013 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -19,37 +19,44 @@
 #ifndef OSGEARTH_DRIVER_OCEAN_SURFACE_ELEV_PROXY_IMAGE_LAYER
 #define OSGEARTH_DRIVER_OCEAN_SURFACE_ELEV_PROXY_IMAGE_LAYER 1
 
-#include <osgEarth/Map>
+#include <osgEarth/MapFrame>
 #include <osgEarth/ImageLayer>
 
-using namespace osgEarth;
-
-/**
- * A customized ImageLayer that taps into another Map, reads elevation
- * tiles, and converts them into heightmap-encoded images.
- */
-class ElevationProxyImageLayer : public osgEarth::ImageLayer
+namespace osgEarth_ocean_surface
 {
-public:
+    using namespace osgEarth;
+
     /**
-     * Constucts a proxy layer
-     * @param sourceMap Map from which to read heightfields
+     * A customized ImageLayer that taps into another Map, reads elevation
+     * tiles, and converts them into heightmap-encoded images.
      */
-    ElevationProxyImageLayer( Map* sourceMap, const ImageLayerOptions& options );
+    class ElevationProxyImageLayer : public osgEarth::ImageLayer
+    {
+    public:
+        /**
+         * Constucts a proxy layer
+         * @param sourceMap Map from which to read heightfields
+         */
+        ElevationProxyImageLayer( Map* sourceMap, const ImageLayerOptions& options );
 
-public: // ImageLayer
+        /** dtor */
+        virtual ~ElevationProxyImageLayer() { }
 
-    virtual void initTileSource();
+    public: // ImageLayer
 
-    virtual bool isKeyValid( const TileKey& key ) const;
+        virtual void initTileSource();
 
-    virtual bool isCached( const TileKey& key ) const;
+        virtual bool isKeyValid( const TileKey& key ) const;
 
-    virtual GeoImage createImage( const TileKey& key, ProgressCallback* progress, bool forceFallback );
+        virtual bool isCached( const TileKey& key ) const;
 
-private:
-    osg::observer_ptr<Map> _sourceMap;
-    MapFrame               _mapf;
-};
+        virtual GeoImage createImage( const TileKey& key, ProgressCallback* progress, bool forceFallback );
+
+    private:
+        osg::observer_ptr<Map> _sourceMap;
+        MapFrame               _mapf;
+    };
+
+} // namespace osgEarth_ocean_surface
 
 #endif // OSGEARTH_DRIVER_OCEAN_SURFACE_ELEV_PROXY_IMAGE_LAYER

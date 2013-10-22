@@ -1,0 +1,58 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+ * Copyright 2008-2013 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+
+#ifndef OSGEARTHSYMBOLOGY_MODEL_RESOURCE_H
+#define OSGEARTHSYMBOLOGY_MODEL_RESOURCE_H 1
+
+#include <osgEarthSymbology/Common>
+#include <osgEarthSymbology/InstanceResource>
+
+namespace osgEarth { namespace Symbology
+{
+    using namespace osgEarth;
+
+    /**
+     * A resource that materializes an InstanceSymbol, which is a single-point object
+     * that resolves to an osg::Node. Instances are usually used for point-model
+     * substitution.
+     */
+    class OSGEARTHSYMBOLOGY_EXPORT ModelResource : public InstanceResource
+    {
+    public:
+        /** Constructs a new resource. */
+        ModelResource( const Config& conf =Config() );
+
+        /** dtor */
+        virtual ~ModelResource() { }
+
+        virtual bool is2D() const { return false; }
+
+    public: // serialization methods
+
+        virtual Config getConfig() const;
+        void mergeConfig( const Config& conf );
+
+    protected: // InstanceResource
+
+        virtual osg::Node* createNodeFromURI( const URI& uri, const osgDB::Options* dbOptions ) const;
+    };
+
+} } // namespace osgEarth::Symbology
+
+#endif // OSGEARTHSYMBOLOGY_MODEL_RESOURCE_H

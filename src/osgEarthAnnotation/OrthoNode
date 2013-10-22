@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2008-2010 Pelican Mapping
+* Copyright 2008-2013 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -20,8 +20,9 @@
 #define OSGEARTH_ANNO_ORTHO_NODE_H 1
 
 #include <osgEarthAnnotation/AnnotationNode>
-#include <osgEarthAnnotation/Decluttering>
+#include <osgEarth/Decluttering>
 #include <osgEarth/SpatialReference>
+#include <osgEarth/CullingUtils>
 #include <osg/AutoTransform>
 #include <osg/MatrixTransform>
 
@@ -32,8 +33,12 @@ namespace osgEarth { namespace Annotation
     /**
      * Base class for an annotation node that it drawn in screen-space
      * (as an orthographic overlay)
+     *
+     * Don't use this class directly. Use one of its subclasses instead like
+     * LabelNode or PlaceNode.
      */
-    class OSGEARTHANNO_EXPORT OrthoNode : public PositionedAnnotationNode, public SupportsDecluttering
+    class OSGEARTHANNO_EXPORT OrthoNode : public PositionedAnnotationNode, 
+                                          public SupportsDecluttering
     {
     public:
         META_AnnotationNode( osgEarthAnnotation, OrthoNode );
@@ -53,22 +58,6 @@ namespace osgEarth { namespace Annotation
             const GeoPoint& position );
 
         /**
-         * Constructs an ortho node that resides at an absolute map position
-         * @param mapNode  MapNode used to reference the ortho node
-         * @param position Starting position (in map coordinates)
-         */
-        OrthoNode(
-            MapNode*          mapNode,
-            const osg::Vec3d& position );
-
-        /**
-         * Constructs an ortho node that resides at an absolute position on the map
-         */
-        OrthoNode(
-            const SpatialReference* mapSRS, 
-            const GeoPoint&         position );
-
-        /**
          * Attaches a child node to the transforms. Use this instead of addChild.
          */
         virtual osg::Group* getAttachPoint() { return _attachPoint; }
@@ -78,9 +67,6 @@ namespace osgEarth { namespace Annotation
 
         /** Sets the node position */
         virtual bool setPosition( const GeoPoint& pos );
-
-        /** Sets the node position (in map coords) */
-        virtual bool setPosition( const osg::Vec3d& pos );
 
         /** Gets the position (in map coordinates) of the node */
         virtual GeoPoint getPosition() const;
@@ -103,23 +89,54 @@ namespace osgEarth { namespace Annotation
         void setHorizonCulling( bool value );
         bool getHorizonCulling() const;
 
+        /**
+         * Enables or disables ray based occlusion culling
+         */
+        bool getOcclusionCulling() const;
+        void setOcclusionCulling( bool value );
+
+        /**
+         * Gets or sets the maximum altitude that the occlusion culling takes place.
+         */
+        double getOcclusionCullingMaxAltitude() const;
+        void setOcclusionCullingMaxAltitude( double occlusionCullingMaxAltitude );
+
+    public: // AnnotationNode
+
+        virtual void applyStyle(const Style& style);
+
+    public: // MapNodeObserver
+
+        virtual void setMapNode( MapNode* mapNode );
+
     public: // osg::Node
 
         virtual void traverse( osg::NodeVisitor& nv );
 
+        virtual osg::BoundingSphere computeBound() const;
+
     protected:
-        const SpatialReference* getMapSRS() { return _mapSRS.get(); }
+        /** virtual dtor */
+        virtual ~OrthoNode() { }
 
     private:
-        osg::observer_ptr<const SpatialReference> _mapSRS;
-        osg::AutoTransform*   _autoxform;
-        osg::MatrixTransform* _matxform;
-        osg::Group*           _attachPoint;
-        bool                  _horizonCulling;
-        GeoPoint              _mapPosition;
-        osg::Vec3d            _localOffset;
+        osg::Switch*                   _switch;
+        osg::Group*                    _oq;
+        osg::AutoTransform*            _autoxform;
+        osg::MatrixTransform*          _matxform;
+        osg::Group*                    _attachPoint;
+        bool                           _horizonCulling;
+        bool                           _occlusionCulling;
+        optional< double >             _occlusionCullingMaxAltitude;
+        GeoPoint                       _mapPosition;
+        osg::Vec3d                     _localOffset;
+
+        osg::ref_ptr< CullNodeByHorizon > _horizonCuller;
+        osg::ref_ptr< OcclusionCullingCallback > _occlusionCuller;
 
         void init();
+
+        osg::Vec3d adjustOcclusionCullingPoint( const osg::Vec3d& world );
 
         // required by META_Node, but this object is not cloneable
         OrthoNode( const OrthoNode& rhs, const osg::CopyOp& op =osg::CopyOp::DEEP_COPY_ALL ) { }

@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2010 Pelican Mapping
+ * Copyright 2008-2013 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -18,7 +18,9 @@
  */
 #include "EarthFileSerializer"
 #include <osgEarth/FileUtils>
+#include <osgEarth/MapFrame>
 
+using namespace osgEarth_osgearth;
 using namespace osgEarth;
 
 MapNode*
@@ -65,11 +67,10 @@ EarthFileSerializer2::deserialize( const Config& conf, const std::string& refere
         for( ConfigSet::const_iterator i = heightfields.begin(); i != heightfields.end(); i++ )
         {
             Config layerDriverConf = *i;
-            layerDriverConf.add( "default_tile_size", "16" );
+            layerDriverConf.add( "default_tile_size", "15" );
 
             ElevationLayerOptions layerOpt( layerDriverConf );
             layerOpt.name() = layerDriverConf.value( "name" );
-            //layerOpt.driver() = TileSourceOptions( layerDriverConf );
 
             map->addElevationLayer( new ElevationLayer(layerOpt) );
         }
@@ -84,23 +85,6 @@ EarthFileSerializer2::deserialize( const Config& conf, const std::string& refere
         ModelLayerOptions layerOpt( layerDriverConf );
         layerOpt.name() = layerDriverConf.value( "name" );
         layerOpt.driver() = ModelSourceOptions( layerDriverConf );
-
-        map->addModelLayer( new ModelLayer(layerOpt) );
-        //map->addModelLayer( new ModelLayer( layerDriverConf.value("name"), ModelSourceOptions(*i) ) );
-    }
-
-    // Overlay layers (just an alias for Model Layer with overlay=true)
-    ConfigSet overlays = conf.children( "overlay" );
-    for( ConfigSet::const_iterator i = overlays.begin(); i != overlays.end(); i++ )
-    {
-        Config layerDriverConf = *i;
-        if ( !layerDriverConf.hasValue("driver") )
-            layerDriverConf.set("driver", "feature_geom");
-
-        ModelLayerOptions layerOpt( layerDriverConf );
-        layerOpt.name() = layerDriverConf.value( "name" );
-        layerOpt.driver() = ModelSourceOptions( layerDriverConf );
-        layerOpt.overlay() = true; // forced on when "overlay" specified
 
         map->addModelLayer( new ModelLayer(layerOpt) );
     }
@@ -155,7 +139,7 @@ EarthFileSerializer2::serialize( MapNode* input ) const
     MapFrame mapf( map, Map::ENTIRE_MODEL );
 
     // the map and node options:
-    Config optionsConf = map->getMapOptions().getConfig();
+    Config optionsConf = map->getInitialMapOptions().getConfig();
     optionsConf.merge( input->getMapNodeOptions().getConfig() );
     mapConf.add( "options", optionsConf );
 
@@ -163,25 +147,29 @@ EarthFileSerializer2::serialize( MapNode* input ) const
     for( ImageLayerVector::const_iterator i = mapf.imageLayers().begin(); i != mapf.imageLayers().end(); ++i )
     {
         ImageLayer* layer = i->get();
-        Config layerConf = layer->getInitialOptions().getConfig(); //ImageLayerOptions().getConfig();
+        //Config layerConf = layer->getInitialOptions().getConfig();
+        Config layerConf = layer->getImageLayerOptions().getConfig();
         layerConf.set("name", layer->getName());
         layerConf.set("driver", layer->getInitialOptions().driver()->getDriver());
+        layerConf.remove("default_tile_size");
         mapConf.add( "image", layerConf );
     }
 
     for( ElevationLayerVector::const_iterator i = mapf.elevationLayers().begin(); i != mapf.elevationLayers().end(); ++i )
     {
         ElevationLayer* layer = i->get();
-        Config layerConf = layer->getInitialOptions().getConfig();
+        //Config layerConf = layer->getInitialOptions().getConfig();
+        Config layerConf = layer->getElevationLayerOptions().getConfig();
         layerConf.set("name", layer->getName());
         layerConf.set("driver", layer->getInitialOptions().driver()->getDriver());
+        layerConf.remove("default_tile_size");
         mapConf.add( "elevation", layerConf );
     }
 
     for( ModelLayerVector::const_iterator i = mapf.modelLayers().begin(); i != mapf.modelLayers().end(); ++i )
     {
         ModelLayer* layer = i->get();
-        Config layerConf = layer->getModelLayerOptions().getConfig(); //layer->getDriverConfig();
+        Config layerConf = layer->getModelLayerOptions().getConfig();
         layerConf.set("name", layer->getName());
         layerConf.set("driver", layer->getModelLayerOptions().driver()->getDriver());
         mapConf.add( "model", layerConf );

@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2008-2010 Pelican Mapping
+* Copyright 2008-2013 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -25,6 +25,7 @@
 #include <osg/AutoTransform>
 #include <osg/Drawable>
 #include <osg/Geometry>
+#include <osgText/TextBase>
 
 namespace osgEarth { namespace Annotation
 {
@@ -44,6 +45,9 @@ namespace osgEarth { namespace Annotation
 
         static const std::string& PROGRAM_NAME();
 
+		static osgText::String::Encoding convertTextSymbolEncoding (
+			const osgEarth::Symbology::TextSymbol::Encoding encoding );
+
         /**
          * Creates a drawable representing a symbolized text label in
          * pixel space.
@@ -60,7 +64,8 @@ namespace osgEarth { namespace Annotation
         static osg::Geometry* createImageGeometry(
             osg::Image*       image,
             const osg::Vec2s& pixelOffsets,
-            unsigned          textureUnit       =0 );
+            unsigned          textureUnit       =0,
+            double            heading = 0.0);
 
         /**
          * Creates a fading uniform that the decluttering engine can use
@@ -72,12 +77,6 @@ namespace osgEarth { namespace Annotation
          * Creates a boolean uniform used to indicate a hightlighted state.
          */
         static osg::Uniform* createHighlightUniform();
-
-        /**
-         * Gets a program that implements fading, highligting, etc. on annotation 
-         * objects.
-         */
-        static osg::Program* getAnnotationProgram();
 
         /**
          * Builds a graph on top of the specified that that implements a 2-pass
@@ -99,6 +98,8 @@ namespace osgEarth { namespace Annotation
         struct OrthoNodeAutoTransform : public osg::AutoTransform
         {
             void acceptCullNoTraverse( osg::CullStack* cs );
+
+            bool okToIntersect() const { return !_firstTimeToInitEyePoint; }
         };
 
         // some geometry creation utilities
@@ -125,14 +126,28 @@ namespace osgEarth { namespace Annotation
         static osg::Node* createHemisphere( float r, const osg::Vec4& color, float maxAngle =15.0f );
 
         /**
-         * Builds an ellipsoid geometry.
-         * @param xr       X-axis radius
-         * @param yr       Y-axis radius
-         * @param zr       Z-axis radius
-         * @param color    Color
-         * @param maxAngle Maximum angle between verts (controls tessellation)
+         * Builds the geometry for an ellipsoid.
          */
-        static osg::Node* createEllipsoid( float xr, float yr, float zr, const osg::Vec4& color, float maxAngle =15.0f );
+        static osg::Geometry* createEllipsoidGeometry( 
+            float xr, float yr, float zr, const osg::Vec4& color, float maxAngle =10.0f,
+            float minLat =-90.0, float maxLat=90.0, float minLon=-180.0, float maxLon=180.0);
+        
+        static osg::Node* createEllipsoid( 
+            float xr, float yr, float zr, const osg::Vec4& color, float maxAngle =10.0f,
+            float minLat =-90.0, float maxLat=90.0, float minLon=-180.0, float maxLon=180.0);
+
+        struct AltitudePolicy
+        {
+            AltitudePolicy() : draping(false), sceneClamping(false), gpuClamping(false) { }
+            bool draping;
+            bool sceneClamping;
+            bool gpuClamping;
+        };
+        static void getAltitudePolicy( const Style& style, AltitudePolicy& b );
+
+
+    private:
+        AnnotationUtils() { }
     };
 
 } } // namespace osgEarth::Annotation

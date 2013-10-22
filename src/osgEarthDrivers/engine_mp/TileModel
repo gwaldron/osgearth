@@ -1,0 +1,243 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+* Copyright 2008-2013 Pelican Mapping
+* http://osgearth.org
+*
+* osgEarth is free software; you can redistribute it and/or modify
+* it under the terms of the GNU Lesser General Public License as published by
+* the Free Software Foundation; either version 2 of the License, or
+* (at your option) any later version.
+*
+* This program is distributed in the hope that it will be useful,
+* but WITHOUT ANY WARRANTY; without even the implied warranty of
+* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+* GNU Lesser General Public License for more details.
+*
+* You should have received a copy of the GNU Lesser General Public License
+* along with this program.  If not, see <http://www.gnu.org/licenses/>
+*/
+
+#ifndef OSGEARTH_ENGINE_MP_TILE_MODEL
+#define OSGEARTH_ENGINE_MP_TILE_MODEL 1
+
+#include "Common"
+#include <osgEarth/Common>
+#include <osgEarth/Map>
+#include <osgEarth/ImageLayer>
+#include <osgEarth/TileKey>
+#include <osgEarth/Locators>
+#include <osgEarth/HeightFieldUtils>
+#include <osgEarth/MapInfo>
+#include <osgTerrain/Locator>
+#include <osgTerrain/Layer>
+#include <osg/Image>
+#include <osg/StateSet>
+#include <osg/Texture2D>
+#include <osg/State>
+#include <map>
+
+namespace osgEarth_engine_mp
+{
+    using namespace osgEarth;
+
+    class TileModel : public osg::Referenced
+    {
+    public:
+        void resizeGLObjectBuffers(unsigned maxSize);
+        void releaseGLObjects(osg::State* state) const;
+
+    public:
+        // do not change the order of these.
+        enum Neighbor
+        {
+            NORTHWEST = 0,
+            NORTH     = 1,
+            NORTHEAST = 2,
+            WEST      = 3,
+            EAST      = 4,
+            SOUTHWEST = 5,
+            SOUTH     = 6,
+            SOUTHEAST = 7
+        };
+
+        class ElevationData
+        {
+        public:
+            ElevationData() : _fallbackData(true) { }
+            ElevationData(const ElevationData& rhs);
+
+            virtual ~ElevationData() { }
+
+            ElevationData(
+                osg::HeightField* hf,
+                GeoLocator*       locator,
+                bool              fallbackData);
+
+            osg::HeightField* getHeightField() const { return _hf.get(); }
+            GeoLocator* getLocator() const { return _locator.get(); }
+            bool isFallbackData() const { return _fallbackData; }
+
+            // get a height value using a normalized coord and a locator.
+            bool getHeight( const osg::Vec3d& ndc, const GeoLocator* ndcLocator, float& output, ElevationInterpolation interp ) const;
+
+            // get a normal vector (in woord space)
+            bool getNormal( const osg::Vec3d& ndc, const GeoLocator* ndcLocator, osg::Vec3& output, ElevationInterpolation interp ) const;
+            
+            osg::HeightField* getNeighbor(int xoffset, int yoffset) const
+            {
+                return _neighbors.getNeighbor(xoffset, yoffset);
+            }
+
+            void setNeighbor(int xoffset, int yoffset, osg::HeightField* hf )
+            {
+                _neighbors.setNeighbor(xoffset, yoffset, hf);
+            }
+
+            void setParent(osg::HeightField* hf)
+            {
+                _parent = hf;
+            }
+
+            osg::HeightField* getParent() const
+            {
+                return _parent.get();
+            }
+
+        private:
+            osg::ref_ptr<osg::HeightField> _hf;
+            osg::ref_ptr<GeoLocator>       _locator;
+            bool                           _fallbackData;
+            osg::ref_ptr<osg::HeightField> _parent;
+
+            HeightFieldNeighborhood _neighbors;
+        };
+
+
+        class ColorData
+        {
+        public:
+            ColorData() : _fallbackData(true) { }
+            ColorData(const ColorData& rhs);
+
+            /** dtor */
+            virtual ~ColorData() { }
+
+            ColorData(
+                const osgEarth::ImageLayer* imageLayer,
+                unsigned                    order,
+                osg::Image*                 image,
+                GeoLocator*                 locator,
+                const osgEarth::TileKey&    tileKey,
+                bool                        fallbackData =false );
+    
+            void resizeGLObjectBuffers(unsigned maxSize);
+            void releaseGLObjects(osg::State* state) const;
+
+
+            osgEarth::UID getUID() const {
+                return _layer->getUID();
+            }
+
+            unsigned getOrder() const {
+                return _order;
+            }
+
+            const GeoLocator* getLocator() const {
+                return _locator.get();
+            }
+
+            osg::Texture2D* getTexture() const {
+                return _texture.get();
+            }
+
+            const osgEarth::TileKey& getTileKey() const {
+                return _tileKey; }
+
+            const osgEarth::ImageLayer* getMapLayer() const {
+                return _layer.get(); }
+
+            bool isFallbackData() const {
+                return _fallbackData; }
+
+            osg::BoundingSphere computeBound() const {
+                osg::BoundingSphere bs;
+                osg::Vec3d v;
+                if (getLocator()->convertLocalToModel(osg::Vec3d(0.5,0.5,0.0), v)) {
+                    bs.center() = v;
+                }
+                if (getLocator()->convertLocalToModel(osg::Vec3d(0.0,0.0,0.0), v)) {
+                    bs.radius() = (bs.center() - v).length();
+                }
+                return bs;
+            }
+
+
+            osg::ref_ptr<const osgEarth::ImageLayer> _layer;
+            osg::ref_ptr<GeoLocator>                 _locator;
+            osg::ref_ptr<osg::Image>                 _image;
+            osg::ref_ptr<osg::Texture2D>             _texture;
+            osgEarth::TileKey                        _tileKey;
+            bool                                     _fallbackData;
+            unsigned                                 _order;
+        };
+
+        class ColorDataRef : public osg::Referenced
+        {
+        public:
+            ColorDataRef( const ColorData& layer ) : _layer(layer) { }
+            ColorData _layer;
+        };
+
+
+        typedef std::map<UID, ColorData> ColorDataByUID;
+
+
+    public:
+        TileModel( const osgEarth::Revision& mapModelRevision, const MapInfo& mapInfo )
+            : _revision(mapModelRevision), _mapInfo(mapInfo) { }
+        TileModel(const TileModel& rhs);
+        virtual ~TileModel() { }
+
+        /**
+         * Creates a TileModel representing a quadrant of this tile model.
+         * Used for upsampling.
+         */
+        TileModel* createQuadrant(unsigned q) const;
+
+        /** Map revision used to build this model */
+        const Revision& getMapRevision() const { return _revision; }
+
+        /** Whether this tile contains any real data (versus being comprised entirely of fallback data) */
+        bool hasRealData() const;
+
+        /** Parent model pointer. */
+        void setParentTileModel(const TileModel* parent);
+        const TileModel* getParentTileModel() const { return _parentModel.get(); }
+
+        /** Whether there is a heightfield */
+        bool hasElevation() const { return _elevationData.getHeightField() != 0L; }
+
+        MapInfo                      _mapInfo;
+        Revision                     _revision;
+        TileKey                      _tileKey;
+        osg::ref_ptr<GeoLocator>     _tileLocator;
+        ColorDataByUID               _colorData;
+        ElevationData                _elevationData;
+        float                        _sampleRatio;
+        osg::ref_ptr<osg::StateSet>  _parentStateSet;
+        osg::observer_ptr<const TileModel> _parentModel;
+
+        // convenience funciton to pull out a layer by its UID.
+        bool getColorData( UID layerUID, ColorData& out ) const {
+            ColorDataByUID::const_iterator i = _colorData.find( layerUID );
+            if ( i != _colorData.end() ) {
+                out = i->second;
+                return true;
+            }
+            return false;
+        }
+    };
+
+} // namespace osgEarth_engine_mp
+
+#endif // OSGEARTH_ENGINE_MP_TILE_MODEL

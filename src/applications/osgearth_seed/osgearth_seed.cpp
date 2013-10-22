@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2010 Pelican Mapping
+ * Copyright 2008-2013 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -24,16 +24,20 @@
 
 #include <osgEarth/Common>
 #include <osgEarth/Map>
+#include <osgEarth/MapFrame>
 #include <osgEarth/Cache>
+#include <osgEarth/CacheEstimator>
 #include <osgEarth/CacheSeed>
 #include <osgEarth/MapNode>
 #include <osgEarth/Registry>
+#include <osgEarthDrivers/feature_ogr/OGRFeatureOptions>
 
 #include <iostream>
 #include <sstream>
 #include <iterator>
 
 using namespace osgEarth;
+using namespace osgEarth::Drivers;
 
 #define LC "[osgearth_cache] "
 
@@ -42,6 +46,8 @@ int seed( osg::ArgumentParser& args );
 int purge( osg::ArgumentParser& args );
 int usage( const std::string& msg );
 int message( const std::string& msg );
+std::string prettyPrintTime( double seconds );
+std::string prettyPrintSize( double mb );
 
 
 int
@@ -74,11 +80,14 @@ usage( const std::string& msg )
         << "    --list file.earth                   ; Lists info about the cache in a .earth file" << std::endl
         << std::endl
         << "    --seed file.earth                   ; Seeds the cache in a .earth file"  << std::endl
+        << "        [--estimate]                    ; Print out an estimation of the number of tiles, disk space and time it will take to perform this seed operation" << std::endl
         << "        [--min-level level]             ; Lowest LOD level to seed (default=0)" << std::endl
         << "        [--max-level level]             ; Highest LOD level to seed (defaut=highest available)" << std::endl
-        << "        [--bounds xmin ymin xmax ymax]  ; Geospatial bounding box to seed" << std::endl
+        << "        [--bounds xmin ymin xmax ymax]* ; Geospatial bounding box to seed (in map coordinates; default=entire map)" << std::endl
+        << "        [--index shapefile]             ; Use the feature extents in a shapefile to set the bounding boxes for seeding" << std::endl
         << "        [--cache-path path]             ; Overrides the cache path in the .earth file" << std::endl
         << "        [--cache-type type]             ; Overrides the cache type in the .earth file" << std::endl
+        << "        [--threads]                     ; The number of threads to use for the seed operation (default=1)" << std::endl
         << std::endl
         << "    --purge file.earth                  ; Purges a layer cache in a .earth file (interactive)" << std::endl
         << std::endl;
@@ -95,10 +104,10 @@ int message( const std::string& msg )
     return 0;
 }
 
-
 int
 seed( osg::ArgumentParser& args )
 {    
+
     //Read the min level
     unsigned int minLevel = 0;
     while (args.read("--min-level", minLevel));
@@ -106,11 +115,22 @@ seed( osg::ArgumentParser& args )
     //Read the max level
     unsigned int maxLevel = 5;
     while (args.read("--max-level", maxLevel));
+
+    bool estimate = args.read("--estimate");        
+
+    unsigned int threads = 1;
+    while (args.read("--threads", threads));
     
-    //Read the bounds
-    Bounds bounds(0, 0, 0, 0);
-    while (args.read("--bounds", bounds.xMin(), bounds.yMin(), bounds.xMax(), bounds.yMax()));
-    while (args.read("-b", bounds.xMin(), bounds.yMin(), bounds.xMax(), bounds.yMax()));
+
+    std::vector< Bounds > bounds;
+    // restrict packaging to user-specified bounds.    
+    double xmin=DBL_MAX, ymin=DBL_MAX, xmax=DBL_MIN, ymax=DBL_MIN;
+    while (args.read("--bounds", xmin, ymin, xmax, ymax ))
+    {        
+        Bounds b;
+        b.xMin() = xmin, b.yMin() = ymin, b.xMax() = xmax, b.yMax() = ymax;
+        bounds.push_back( b );
+    }    
 
     //Read the cache override directory
     std::string cachePath;
@@ -130,16 +150,83 @@ seed( osg::ArgumentParser& args )
     MapNode* mapNode = MapNode::findMapNode( node.get() );
     if ( !mapNode )
         return usage( "Input file was not a .earth file" );
+    
+    // Read in an index shapefile
+    std::string index;
+    while (args.read("--index", index))
+    {        
+        //Open the feature source
+        OGRFeatureOptions featureOpt;
+        featureOpt.url() = index;        
+
+        osg::ref_ptr< FeatureSource > features = FeatureSourceFactory::create( featureOpt );
+        features->initialize();
+        features->getFeatureProfile();
+
+        osg::ref_ptr< FeatureCursor > cursor = features->createFeatureCursor();
+        while (cursor.valid() && cursor->hasMore())
+        {
+            osg::ref_ptr< Feature > feature = cursor->nextFeature();
+            osgEarth::Bounds featureBounds = feature->getGeometry()->getBounds();
+            GeoExtent ext( feature->getSRS(), featureBounds );
+            ext = ext.transform( mapNode->getMapSRS() );
+            bounds.push_back( ext.bounds() );            
+        }
+    }
+
+    // If they requested to do an estimate then don't do the the seed, just print out the estimated values.
+    if (estimate)
+    {        
+        CacheEstimator est;
+        est.setMinLevel( minLevel );
+        est.setMaxLevel( maxLevel );
+        est.setProfile( mapNode->getMap()->getProfile() );
+
+        for (unsigned int i = 0; i < bounds.size(); i++)
+        {
+            GeoExtent extent(mapNode->getMapSRS(), bounds[i]);
+            OE_DEBUG << "Adding extent " << extent.toString() << std::endl;
+            est.addExtent( extent );
+        } 
+
+        unsigned int numTiles = est.getNumTiles();
+        double size = est.getSizeInMB();
+        double time = est.getTotalTimeInSeconds();
+        std::cout << "Cache Estimation " << std::endl
+                  << "---------------- " << std::endl
+                  << "Total number of tiles: " << numTiles << std::endl
+                  << "Size on disk:          " << prettyPrintSize( size ) << std::endl
+                  << "Total time:            " << prettyPrintTime( time ) << std::endl;
+
+        return 0;
+    }
 
     CacheSeed seeder;
     seeder.setMinLevel( minLevel );
     seeder.setMaxLevel( maxLevel );
-    seeder.setBounds( bounds );
+    seeder.setNumThreads( threads );
+
+
+    for (unsigned int i = 0; i < bounds.size(); i++)
+    {
+        GeoExtent extent(mapNode->getMapSRS(), bounds[i]);
+        OE_DEBUG << "Adding extent " << extent.toString() << std::endl;
+        seeder.addExtent( extent );
+    }    
+
     if (verbose)
     {
         seeder.setProgressCallback(new ConsoleProgressCallback);
     }
+
+
+    osg::Timer_t start = osg::Timer::instance()->tick();
+
     seeder.seed( mapNode->getMap() );
+
+    osg::Timer_t end = osg::Timer::instance()->tick();
+
+    OE_NOTICE << "Completed seeding in " << prettyPrintTime( osg::Timer::instance()->delta_s( start, end ) ) << std::endl;
 
     return 0;
 }
@@ -176,7 +263,14 @@ list( osg::ArgumentParser& args )
         TerrainLayer* layer = i->get();
         TerrainLayer::CacheBinMetadata meta;
 
-        if ( layer->getCacheBinMetadata( map->getProfile(), meta ) )
+        bool useMFP =
+            layer->getProfile() &&
+            layer->getProfile()->getSRS()->isSphericalMercator() &&
+            mapNode->getMapNodeOptions().getTerrainOptions().enableMercatorFastPath() == true;
+
+        const Profile* cacheProfile = useMFP ? layer->getProfile() : map->getProfile();
+
+        if ( layer->getCacheBinMetadata( cacheProfile, meta ) )
         {
             Config conf = meta.getConfig();
             std::cout << "Layer \"" << layer->getName() << "\", cache metadata =" << std::endl
@@ -204,7 +298,7 @@ int
 purge( osg::ArgumentParser& args )
 {
     //return usage( "Sorry, but purge is not yet implemented." );
-
+    
     osg::ref_ptr<osg::Node> node = osgDB::readNodeFiles( args );
     if ( !node.valid() )
         return usage( "Failed to read .earth file." );
@@ -225,7 +319,16 @@ purge( osg::ArgumentParser& args )
     map->getImageLayers( imageLayers );
     for( ImageLayerVector::const_iterator i = imageLayers.begin(); i != imageLayers.end(); ++i )
     {
-        CacheBin* bin = i->get()->getCacheBin( map->getProfile() );
+        ImageLayer* layer = i->get();
+
+        bool useMFP =
+            layer->getProfile() &&
+            layer->getProfile()->getSRS()->isSphericalMercator() &&
+            mapNode->getMapNodeOptions().getTerrainOptions().enableMercatorFastPath() == true;
+
+        const Profile* cacheProfile = useMFP ? layer->getProfile() : map->getProfile();
+
+        CacheBin* bin = layer->getCacheBin( cacheProfile );
         if ( bin )
         {
             entries.push_back(Entry());
@@ -239,7 +342,16 @@ purge( osg::ArgumentParser& args )
     map->getElevationLayers( elevationLayers );
     for( ElevationLayerVector::const_iterator i = elevationLayers.begin(); i != elevationLayers.end(); ++i )
     {
-        CacheBin* bin = i->get()->getCacheBin( map->getProfile() );
+        ElevationLayer* layer = i->get();
+
+        bool useMFP =
+            layer->getProfile() &&
+            layer->getProfile()->getSRS()->isSphericalMercator() &&
+            mapNode->getMapNodeOptions().getTerrainOptions().enableMercatorFastPath() == true;
+
+        const Profile* cacheProfile = useMFP ? layer->getProfile() : map->getProfile();
+
+        CacheBin* bin = i->get()->getCacheBin( cacheProfile );
         if ( bin )
         {
             entries.push_back(Entry());
@@ -308,4 +420,42 @@ purge( osg::ArgumentParser& args )
     }
 
     return 0;
+}
+
+/**
+ * Gets the total number of seconds formatted as H:M:S
+ */
+std::string prettyPrintTime( double seconds )
+{
+    int hours = (int)floor(seconds / (3600.0) );
+    seconds -= hours * 3600.0;
+
+    int minutes = (int)floor(seconds/60.0);
+    seconds -= minutes * 60.0;
+
+    std::stringstream buf;
+    buf << hours << ":" << minutes << ":" << seconds;
+    return buf.str();
+}
+
+/**
+ * Gets a pretty printed version of the given size in MB.
+ */
+std::string prettyPrintSize( double mb )
+{
+    std::stringstream buf;
+    // Convert to terabytes
+    if ( mb > 1024 * 1024 )
+    {
+        buf << (mb / (1024.0*1024.0)) << " TB";
+    }
+    else if (mb > 1024)
+    {
+        buf << (mb / 1024.0) << " GB";
+    }
+    else 
+    {
+        buf << mb << " MB";
+    }
+    return buf.str();
 }

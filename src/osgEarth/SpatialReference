@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2010 Pelican Mapping
+ * Copyright 2008-2013 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -22,7 +22,6 @@
 #include <osgEarth/Common>
 #include <osgEarth/Units>
 #include <osgEarth/VerticalDatum>
-#include <osg/Referenced>
 #include <osg/CoordinateSystemNode>
 #include <osg/Vec3>
 #include <OpenThreads/ReentrantMutex>
@@ -30,13 +29,12 @@
 namespace osgEarth
 {
     //Definitions for the mercator extent
-    const double MERC_MINX = -2.00375e+007;
-    const double MERC_MINY = -2.00375e+007;
-    const double MERC_MAXX = 2.00375e+007;
-    const double MERC_MAXY = 2.00375e+007;
+    const double MERC_MINX = -20037508.34278925;
+    const double MERC_MINY = -20037508.34278925;
+    const double MERC_MAXX =  20037508.34278925;
+    const double MERC_MAXY =  20037508.34278925;
     const double MERC_WIDTH = MERC_MAXX - MERC_MINX;
     const double MERC_HEIGHT = MERC_MAXY - MERC_MINY;
-
 
     class OSGEARTH_EXPORT GeoLocator;
 
@@ -53,6 +51,7 @@ namespace osgEarth
          * the geodetic datum for the ellipsoid.
          */
         static SpatialReference* create( const std::string& init, const std::string& vinit ="" );
+        static SpatialReference* get   ( const std::string& init, const std::string& vinit ="" ) { return create(init,vinit); }
 
         /**
          * Attempts to create a spatial reference def from a pre-existing CSN, returning
@@ -101,7 +100,21 @@ namespace osgEarth
             double&                 out_y ) const;
 
 
-    public: // ECEF transformations.
+    public: // Units transformations.
+
+        /**
+         * Transforms a distance from the base units of this SRS to the base units of
+         * another. If one of the SRS's is geographic (i.e. has angular units), the 
+         * conversion will assume that the corresponding distance is measured at the
+         * equator.
+         */
+        double transformUnits(
+            double                  distance,
+            const SpatialReference* outputSRS,
+            double                  latitude =0.0) const;
+
+
+    public: // World transformations.
 
         /**
          * Transforms a point from this SRS into "world" coordinates. This normalizes
@@ -128,44 +141,6 @@ namespace osgEarth
             const osg::Vec3d& world,
             osg::Vec3d&       out_local,
             double*           out_geodeticZ =0L ) const;
-
-
-    public:  // ECEF transformations.
-
-        /**
-         * Transforms a point to geocentric/ECEF coordinates.
-         */
-        bool transformToECEF(
-            const osg::Vec3d& input,
-            osg::Vec3d&       output ) const;
-
-        /**
-         * Transforms an array of points in to geocentric/ECEF coordinates. The points
-         * are transformed in place.
-         */
-        bool transformToECEF( std::vector<osg::Vec3d>& points ) const;
-
-        /**
-         * Transforms a point from geocentric/ECEF coordinates into this SRS.
-         * @param input
-         *      ECEF point to transform
-         * @param output
-         *      Result placed in this output parameter upon success
-         * @param out_geodeticZ
-         *      (optional) Geodetic (height above ellipsoid) Z placed here; it will
-         *      only differ from output.z() if a vertidal datum exists in this SRS
-         */
-        bool transformFromECEF(
-            const osg::Vec3d& input,
-            osg::Vec3d&       output,
-            double*           out_geodeticZ =0L ) const;
-
-        /**
-         * Transforms an array of points from geocentric/ECEF coordinates into this SRS.
-         * The points are transformed in place.
-         */
-        bool transformFromECEF( std::vector<osg::Vec3d>& points ) const;
-
 
     public: // extent transformations.
         
@@ -202,8 +177,14 @@ namespace osgEarth
         /** True if this is a projected SRS (i.e. local coordinate system) */
         virtual bool isProjected() const;
 
+        /** True if this is an ECEF system (geocentric/meters) */
+        virtual bool isECEF() const;
+
         /** Tests whether this SRS represents a Mercator projection. */
         bool isMercator() const;
+
+        /** Tests whether this SRS represents a Spherical Mercator pseudo-projection. */
+        bool isSphericalMercator() const;
 
         /** Tests whether this SRS represents a polar sterographic projection. */
         bool isNorthPolar() const;
@@ -240,16 +221,19 @@ namespace osgEarth
         const std::string& getInitType() const;
 
         /** Gets the initialization key. */
-        const Key& getKey() const { return _key; }
+        const Key& getKey() const;
 
         /** Gets the initialization string for the horizontal datum */
-        const std::string& getHorizInitString() const { return _key.first; }
+        const std::string& getHorizInitString() const;
 
         /** Gets the initialization string for the vertical datum */
-        const std::string& getVertInitString() const { return _key.second; }
+        const std::string& getVertInitString() const;
 
         /** Gets the datum identifier of this SRS (or empty string if not available) */
         const std::string& getDatumName() const;
+
+        /** Gets the base units of data in this SRS */
+        const Units& getUnits() const;
 
         /** Whether the two SRS are completely equivalent. */
         virtual bool isEquivalentTo( const SpatialReference* rhs ) const;
@@ -267,6 +251,9 @@ namespace osgEarth
             geographic SRS [see getGeographicSRS()] but with a geodetic vertical datum (in
             which Z is expressed as height above the geodetic ellipsoid). */
         const SpatialReference* getGeodeticSRS() const;
+
+        /** Gets the ECEF reference system associated with this SRS' ellipsoid. */
+        const SpatialReference* getECEF() const;
 
         /** Gets the vertical datum. If null, this SRS uses a default geodetic vertical datum */
         const VerticalDatum* getVerticalDatum() const;
@@ -288,7 +275,7 @@ namespace osgEarth
         /** Creates a UTM (universal transverse mercator) projection in the UTM zone
             containing the specified longitude. NOTE: this is slightly faster than using
             basic tmerc (transverse mercator) above. */
-        const SpatialReference* createUTMFromLongitude( const Angular& lon ) const;
+        const SpatialReference* createUTMFromLonLat( const Angle& lon, const Angle& lat ) const;
 
         /** Creates a copy of this SRS, but flags the new SRS so that it will operate in
             Plate Carre mode for the purposes of world coordinate conversion. The SRS is
@@ -315,6 +302,12 @@ namespace osgEarth
             double xmin, double ymin, double xmax, double ymax,
             bool plate_carre =false ) const;
 
+		/**
+		 * Gets the underlying OGRLayerH that this SpatialReference owns.
+		 * Don't use this unless you know what you're doing.
+		 */
+		void* getHandle() const { return _handle;}
+
 
 
     protected:
@@ -331,12 +324,14 @@ namespace osgEarth
         bool _owns_handle;
         bool _is_geographic;
         bool _is_mercator;
+        bool _is_spherical_mercator;
         bool _is_north_polar, _is_south_polar;
         bool _is_cube;
         bool _is_contiguous;
         bool _is_user_defined;
         bool _is_ltp;
         bool _is_plate_carre;
+        bool _is_ecef;
         unsigned _ellipsoidId;
         std::string _name;
         Key _key;
@@ -344,9 +339,11 @@ namespace osgEarth
         std::string _proj4;
         std::string _init_type;
         std::string _datum;
+        Units       _units;
         osg::ref_ptr<osg::EllipsoidModel> _ellipsoid;
         osg::ref_ptr<SpatialReference>    _geo_srs;
         osg::ref_ptr<SpatialReference>    _geodetic_srs;  // _geo_srs with a NULL vdatum.
+        osg::ref_ptr<SpatialReference>    _ecef_srs;
         osg::ref_ptr<VerticalDatum>       _vdatum;
 
         typedef std::map<std::string,void*> TransformHandleCache;

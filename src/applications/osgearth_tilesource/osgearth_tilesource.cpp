@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2008-2010 Pelican Mapping
+* Copyright 2008-2013 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -33,7 +33,7 @@ using namespace osgEarth::Util;
 using namespace osgEarth::Symbology;
 
 /**
- * This sample demonstrated how to create a custom TileSource.
+ * This sample demonstrates how to create a custom TileSource.
  */
 
 static osg::Vec4 colors[4] = {
@@ -43,9 +43,13 @@ static osg::Vec4 colors[4] = {
     osg::Vec4(0,0,0,1)
 };
 
+/**
+ * Our homemade TileSource.
+ */
 class CustomTileSource : public TileSource
 {
 public:
+    // Constructor that takes the user-provided options.
     CustomTileSource( const TileSourceOptions& options =TileSourceOptions() ) : TileSource(options)
     {
         _geom = new Ring();
@@ -55,14 +59,17 @@ public:
         _geom->push_back( osg::Vec3(5, 250, 0) );
     }
 
-    void initialize( const osgDB::Options* options, const Profile* overrideProfile )
+    // Called by the terrain engine when a layer using this driver is first added.
+    Status initialize(const osgDB::Options* dbOptions)
     {
-        if ( overrideProfile )
-            setProfile( overrideProfile );
-        else
+        if ( !getProfile() )
+        {
             setProfile( Registry::instance()->getGlobalGeodeticProfile() );
+        }
+        return STATUS_OK;
     }
 
+    // Define this method to return an image corresponding to the given TileKey.
     osg::Image* createImage( const TileKey& key, ProgressCallback* progress )
     {
         GeometryRasterizer rasterizer( 256, 256 );
@@ -81,7 +88,9 @@ int main(int argc, char** argv)
     osgViewer::Viewer viewer(arguments);
 
     // Start by creating the map:
-    Map* map = new Map();
+    MapOptions mapOptions;
+    mapOptions.cachePolicy() = CachePolicy::NO_CACHE;
+    Map* map = new Map( mapOptions );
 
     // Create out image layer with a custom tile source.
     ImageLayerOptions options( "custom" );

@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2008-2010 Pelican Mapping
+* Copyright 2008-2013 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -17,20 +17,27 @@
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
 #include <osgEarth/OverlayDecorator>
+#include <osgEarth/DrapingTechnique>
+#include <osgEarth/MapInfo>
 #include <osgEarth/NodeUtils>
 #include <osgEarth/Registry>
-#include <osgEarth/TextureCompositor>
-#include <osg/Texture2D>
-#include <osg/TexEnv>
-#include <osg/BlendFunc>
+#include <osgEarth/Capabilities>
+#include <osgEarth/CullingUtils>
+
+#include <osg/AutoTransform>
 #include <osg/ComputeBoundsVisitor>
-#include <osgGA/EventVisitor>
+#include <osg/ShapeDrawable>
 #include <osgShadow/ConvexPolyhedron>
 #include <osgUtil/LineSegmentIntersector>
+
 #include <iomanip>
 #include <stack>
 
 #define LC "[OverlayDecorator] "
+
+//#define OE_TEST if (_dumpRequested) OE_INFO << std::setprecision(9)
+#define OE_TEST OE_NULL
+
 
 using namespace osgEarth;
 
@@ -38,628 +45,301 @@ using namespace osgEarth;
 
 namespace
 {
-    /**
-     * Extends ConvexPolyhedron to add bounds tests.
-     */
-    class MyConvexPolyhedron : public osgShadow::ConvexPolyhedron
+    struct ComputeVisibleBounds : public osg::NodeVisitor
     {
-    public:       
-        bool intersects(const osg::BoundingSphere& bs) const
+        ComputeVisibleBounds(osg::Polytope& tope, osg::Matrix& local2world) 
+            : osg::NodeVisitor(osg::NodeVisitor::TRAVERSE_ACTIVE_CHILDREN)
         {
-            for( Faces::const_iterator i = _faces.begin(); i != _faces.end(); ++i )
-            {
-                osg::Plane up = i->plane;
-                up.makeUnitLength();
-                if ( up.distance( bs.center() ) < -bs.radius() )
-                    return false;
-            }
-            return true;
+            _matrixStack.push(local2world);
+            _topeStack.push(tope);
         }
 
-        bool intersects(const osg::BoundingBox& box) const
-        {
-            for( Faces::const_iterator i = _faces.begin(); i != _faces.end(); ++i )
-            {
-                osg::Plane up = i->plane;
-                up.makeUnitLength();
-
-                if ( up.intersect(box) < 0 )
-                    return false;
-            }
-            return true;
-        }
-    };
-
-    /**
-     * Visits a scene graph (in our case, the overlay graph) and calculates a
-     * geometry bounding box that intersects the provided polytope (which in out case is the
-     * view frustum).
-     *
-     * It's called "Coarse" because it does not traverse to the Drawable level, just to
-     * the Geode bounding sphere level.
-     */
-    struct CoarsePolytopeIntersector : public OverlayDecorator::InternalNodeVisitor
-    {
-        CoarsePolytopeIntersector(
-            const MyConvexPolyhedron& polytope,
-            osg::NodeVisitor*         proxyNV,
-            osg::BoundingBox&         out_bbox) :
-
-        OverlayDecorator::InternalNodeVisitor(osg::NodeVisitor::TRAVERSE_ACTIVE_CHILDREN),
-            _bbox    (out_bbox),
-            _original( polytope ),
-            _proxyNV ( proxyNV ),
-            _coarse  ( false )
-        {
-            _polytopeStack.push( polytope );
-            _matrixStack.push( osg::Matrix::identity() );
-        }
-
-        // override from NodeVisitor to support LOD processing
-        virtual float getDistanceToViewPoint(const osg::Vec3& pos, bool useLODScale) const
-        {
-            return _proxyNV->getDistanceToViewPoint(pos, useLODScale);
-        }
-
-        void apply( osg::Node& node )
+        void apply(osg::Geode& node)
         {
             const osg::BoundingSphere& bs = node.getBound();
-            if ( _polytopeStack.top().intersects( bs ) )
+            osg::Vec3 p = bs.center() * _matrixStack.top();
+            if ( _topeStack.top().contains(p) )
             {
-                traverse( node );
+                _bs.expandBy( osg::BoundingSphere(p, bs.radius()) );
             }
+            //if ( _topeStack.top().contains(bs) )
+            //{
+            //    osg::Vec3 p = _matrixStack.top() * bs.center();
+            //    _bs.expandBy( osg::BoundingSphere(p, bs.radius()) );
+            //}
         }
 
-        void apply( osg::Geode& node )
+        void apply(osg::Transform& xform)
         {
-            const osg::BoundingSphere& bs = node.getBound();
+            osg::Matrix m;
+            xform.computeLocalToWorldMatrix(m, this);
 
-            if ( _polytopeStack.top().intersects( bs ) )
-            {
-                if ( _coarse )
-                {
-                    osg::BoundingSphere bsphere = bs;
+            _matrixStack.push( _matrixStack.top() );
+            _matrixStack.top().preMult( m );
 
-                    osg::BoundingSphere::vec_type xdash = bsphere._center;
-                    xdash.x() += bsphere._radius;
-                    xdash = xdash*_matrixStack.top();
+            //_topeStack.push( _topeStack.top() );
+            //_topeStack.top().transformProvidingInverse(m);
 
-                    osg::BoundingSphere::vec_type ydash = bsphere._center;
-                    ydash.y() += bsphere._radius;
-                    ydash = ydash*_matrixStack.top();
-
-                    osg::BoundingSphere::vec_type zdash = bsphere._center;
-                    zdash.z() += bsphere._radius;
-                    zdash = zdash*_matrixStack.top();
-
-                    bsphere._center = bsphere._center*_matrixStack.top();
-
-                    xdash -= bsphere._center;
-                    osg::BoundingSphere::value_type len_xdash = xdash.length();
-
-                    ydash -= bsphere._center;
-                    osg::BoundingSphere::value_type len_ydash = ydash.length();
-
-                    zdash -= bsphere._center;
-                    osg::BoundingSphere::value_type len_zdash = zdash.length();
-
-                    bsphere._radius = len_xdash;
-                    if (bsphere._radius<len_ydash) bsphere._radius = len_ydash;
-                    if (bsphere._radius<len_zdash) bsphere._radius = len_zdash;
-
-                    _bbox.expandBy(bsphere);
-                }
-                else
-                {
-                    for( unsigned i=0; i < node.getNumDrawables(); ++i )
-                    {
-                        applyDrawable( node.getDrawable(i) );
-                    }
-                }
-            }
-        }
-
-        void applyDrawable( osg::Drawable* drawable )
-        {
-            const osg::BoundingBox& box = drawable->getBound();
-
-            if ( _polytopeStack.top().intersects( box ) )
-            {
-                // apply an eplison to avoid a bbox with a zero dimension
-                static float e = 0.001;
-
-                osg::Vec3d b0 = osg::Vec3(box.xMin(), box.yMin(), box.zMin()) * _matrixStack.top();
-                osg::Vec3d b1 = osg::Vec3(box.xMax(), box.yMax(), box.zMax()) * _matrixStack.top();
-                  
-                _bbox.expandBy( std::min(b0.x(),b1.x())-e, std::min(b0.y(),b1.y())-e, std::min(b0.z(),b1.z())-e );
-                _bbox.expandBy( std::max(b0.x(),b1.x())+e, std::max(b0.y(),b1.y())+e, std::max(b0.z(),b1.z())+e );
-            }
-        }
-
-        void apply( osg::Transform& transform )
-        {
-            osg::Matrixd matrix;
-            if ( !_matrixStack.empty() ) matrix = _matrixStack.top();
-            transform.computeLocalToWorldMatrix( matrix, this );
-
-            _matrixStack.push( matrix );
-            _polytopeStack.push( _original );
-            _polytopeStack.top().transform( osg::Matrixd::inverse( matrix ), matrix );
-
-            traverse(transform);
+            traverse(xform);
 
             _matrixStack.pop();
-            _polytopeStack.pop();
+            //_topeStack.pop();
         }
 
-        osg::BoundingBox& _bbox;
-        osg::NodeVisitor* _proxyNV;
-        MyConvexPolyhedron _original;
-        std::stack<MyConvexPolyhedron> _polytopeStack;
-        std::stack<osg::Matrixd> _matrixStack;
-        bool _coarse;
+        std::stack<osg::Matrix>   _matrixStack;
+        std::stack<osg::Polytope> _topeStack;
+        osg::BoundingSphere       _bs;
     };
 
+    void setFar(osg::Matrix& m, double newFar)
+    {
+        if ( osg::equivalent(m(0,3),0.0) && osg::equivalent(m(1,3),0.0) && osg::equivalent(m(2,3),0.0) )
+        {
+            double l,r,b,t,n,f;
+            m.getOrtho(l,r,b,t,n,f);
+            m.makeOrtho(l,r,b,t,n,newFar);
+        }
+        else
+        {
+            double v,a,n,f;
+            m.getPerspective(v,a,n,f);
+            m.makePerspective(v,a,n,newFar);
+        }
+    }
+
+
     /**
-     * This method takes a set of verts and finds the nearest and farthest distances from
-     * the points to the camera. It does this calculation in the plane defined by the
-     * look vector.
+     * Interects a finite ray with a sphere of radius R. The ray is defined
+     * by the X and Y components (in projection aka "clip" space). The function
+     * uses this information to build a ray from Z=-1 to Z=1. 
      *
-     * IOW, all the test points are "projected" on to the plane defined by the camera point
-     * and the look (normal) vector, and then the distances from the camera point to each
-     * projected point are tested in order to find the min/max extent.
+     * Places the intersection point(s) in the output vector.
+     */
+    bool
+    intersectClipRayWithSphere(double                   clipx, 
+                               double                   clipy, 
+                               const osg::Matrix&       clipToWorld, 
+                               double                   R,
+                               double&                  inout_maxDist2)
+    {
+        double dist2 = 0.0;
+
+        osg::Vec3d p0 = osg::Vec3d(clipx, clipy, -1.0) * clipToWorld; // near plane
+        osg::Vec3d p1 = osg::Vec3d(clipx, clipy,  1.0) * clipToWorld; // far plane
+
+        // http://stackoverflow.com/questions/6533856/ray-sphere-intersection
+
+        osg::Vec3d d = p1-p0;
+
+        double A = d * d;
+        double B = 2.0 * (d * p0);
+        double C = (p0 * p0) - R*R;
+
+        // now solve the quadratic A + B*t + C*t^2 = 0.
+        double D = B*B - 4.0*A*C;
+        if ( D >= 0 )
+        {
+            if ( osg::equivalent(D, 0.0) )
+            {
+                // one root (line is tangent to sphere)
+                double t = -B/(2.0*A);
+                if (t >= 0.0)
+                {
+                    osg::Vec3d v = d*t;
+                    dist2 = v.length2();
+                }
+            }
+            else
+            {
+                // two roots (line passes through sphere twice)
+                // find the closer of the two.
+                double sqrtD = sqrt(D);
+                double t0 = (-B + sqrtD)/(2.0*A);
+                double t1 = (-B - sqrtD)/(2.0*A);
+
+                if ( t0 >= 0.0 && t1 >= 0.0 )
+                {
+                    osg::Vec3d v = d*std::min(t0,t1);
+                    dist2 = v.length2();
+                }
+                else if ( t0 >= 0.0 )
+                {
+                    osg::Vec3d v = d*t0;
+                    dist2 = v.length2();
+                }
+                else if ( t1 >= 0.0 )
+                {
+                    osg::Vec3d v = d*t1;
+                    dist2 = v.length2();
+                }
+            }
+        }
+
+        if ( dist2 > inout_maxDist2 )
+        {
+            inout_maxDist2 = dist2;
+            return true;
+        }
+        else
+        {
+            // either no intersection, or the distance was not the max.
+            return false;
+        }
+    }
+
+    /**
+     * Same as above, but intersects the ray with a static 2D plane
+     * (for use in projected map mode)
      */
     void
-    getMinMaxExtentInSilhouette(const osg::Vec3d& cam, const osg::Vec3d& look, 
-                                std::vector<osg::Vec3d>& verts,
-                                double& out_eMin, double& out_eMax )
+    intersectClipRayWithPlane(double                   clipx, 
+                              double                   clipy, 
+                              const osg::Matrix&       clipToWorld,
+                              double&                  inout_maxDist2)
     {
-        double minSqrDist2D = DBL_MAX;
-        double maxSqrDist2D = -DBL_MAX;
-        osg::Plane plane( look, cam );
+        osg::Vec3d p0 = osg::Vec3d(clipx, clipy, -1.0) * clipToWorld; // near plane
+        osg::Vec3d p1 = osg::Vec3d(clipx, clipy,  1.0) * clipToWorld; // far plane
+
+        // zero-level plane is hard-coded here
+        osg::Vec3d planePoint(0,0,0);
+        osg::Vec3d planeNormal(0,0,1);
+
+        osg::Vec3d L = p1-p0;
+        L.normalize();
+
+        double denom = L * planeNormal;
+        if ( !osg::equivalent(denom, 0.0) )
+        {
+            double d = ((planePoint - p0) * planeNormal) / denom;
+            if ( d > 0.0 )
+                inout_maxDist2 = (L*d).length2();
+        }
+    }
+
+
+    /**
+     * Takes a set of world verts and finds their X-Y bounding box in the 
+     * plane of the camera represented by the specified view matrix. Also
+     * calculates the maximum distance from the eyepoint to a vertex (3D).
+     */
+    void
+    getExtentInSilhouette(const osg::Matrix& viewMatrix,
+                          const osg::Vec3d& eye,
+                          std::vector<osg::Vec3d>& verts,
+                          double& xmin, double& ymin,
+                          double& xmax, double& ymax,
+                          double& maxDistance)
+    {
+        xmin = DBL_MAX, ymin = DBL_MAX, xmax = -DBL_MAX, ymax = -DBL_MAX;
+        double maxDist2 = 0.0;
 
         for( std::vector<osg::Vec3d>::iterator i = verts.begin(); i != verts.end(); ++i )
         {
-            osg::Vec3d& point = *i;
-
-            // project the vert onto the camera plane:
-            double signedDist = plane.distance( point );
-            point += (-plane.getNormal() * signedDist);
-
-            // then calculate the 2D distance to the camera:
-            double sqrDist2D = (cam-point).length2();
-            if ( sqrDist2D > maxSqrDist2D )
-                maxSqrDist2D = sqrDist2D;
-            if ( sqrDist2D < minSqrDist2D )
-                minSqrDist2D = sqrDist2D;
+            osg::Vec3d d = (*i) * viewMatrix; // world to view
+            if ( d.x() < xmin ) xmin = d.x();
+            if ( d.x() > xmax ) xmax = d.x();
+            if ( d.y() < ymin ) ymin = d.y();
+            if ( d.y() > ymax ) ymax = d.y();
+            
+            double dist2 = ((*i)-eye).length2();
+            if ( dist2 > maxDist2 )
+                maxDist2 = dist2;
         }
 
-        out_eMin = sqrt( minSqrDist2D );
-        out_eMax = sqrt( maxSqrDist2D );
-    }
-    
-    /**
-     * Same as the method above, but extracts the verts from a bounding box.
-     */
-    void
-    getMinMaxExtentInSilhouette(const osg::Vec3d& cam, const osg::Vec3d& look, 
-                                const osg::BoundingBox& bbox,
-                                double& out_eMin, double& out_eMax )
-    {
-        std::vector<osg::Vec3d> verts(8);
-        verts[0].set( bbox.xMin(), bbox.yMin(), bbox.zMin() );
-        verts[1].set( bbox.xMin(), bbox.yMin(), bbox.zMax() );
-        verts[2].set( bbox.xMin(), bbox.yMax(), bbox.zMin() );
-        verts[3].set( bbox.xMin(), bbox.yMax(), bbox.zMax() );
-        verts[4].set( bbox.xMax(), bbox.yMin(), bbox.zMin() );
-        verts[5].set( bbox.xMax(), bbox.yMin(), bbox.zMax() );
-        verts[6].set( bbox.xMax(), bbox.yMax(), bbox.zMin() );
-        verts[7].set( bbox.xMax(), bbox.yMax(), bbox.zMax() );
-        getMinMaxExtentInSilhouette( cam, look, verts, out_eMin, out_eMax );
+        maxDistance = sqrt(maxDist2);
     }
 }
 
 //---------------------------------------------------------------------------
 
 OverlayDecorator::OverlayDecorator() :
-_textureUnit  ( 1 ),
-_textureSize  ( 1024 ),
-_useShaders   ( false ),
-_useWarping   ( false ),
-_warp         ( 1.0f ),
-_visualizeWarp( false ),
-_mipmapping   ( false ),
-_rttBlending  ( true ),
-_updatePending( false )
+_useShaders          ( false ),
+_dumpRequested       ( false ),
+_rttTraversalMask    ( ~0 ),
+_maxHorizonDistance  ( DBL_MAX ),
+_totalOverlayChildren( 0 )
 {
-    // nop
-}
-
-void
-OverlayDecorator::initializeForOverlayGraph()
-{
-    if ( !_engine.valid() ) return;
-
-    if ( _overlayGraph.valid() )
-    {
-        // apply the user-request texture unit, if applicable:
-        if ( _explicitTextureUnit.isSet() )
-        {
-            if ( !_textureUnit.isSet() || *_textureUnit != *_explicitTextureUnit )
-            {
-                _textureUnit = *_explicitTextureUnit;
-            }
-        }
-
-        // otherwise, automatically allocate a texture unit if necessary:
-        else if ( !_textureUnit.isSet() && _useShaders )
-        {
-            int texUnit;
-            if ( _engine->getTextureCompositor()->reserveTextureImageUnit( texUnit ) )
-            {
-                _textureUnit = texUnit;
-                OE_INFO << LC << "Reserved texture image unit " << *_textureUnit << std::endl;
-            }
-            else
-            {
-                OE_WARN << LC << "Uh oh, no texture image units available." << std::endl;
-            }
-        }
-    }
+    //nop.
 }
 
 
 void
-OverlayDecorator::initializePerViewData( PerViewData& pvd )
+OverlayDecorator::addTechnique(OverlayTechnique* technique)
 {
-    if ( !_textureUnit.isSet() || !_overlayGraph.valid() )
-        return;
-
-    // create the projected texture:
-    osg::Texture2D* projTexture = new osg::Texture2D();
-    projTexture->setTextureSize( *_textureSize, *_textureSize );
-    projTexture->setInternalFormat( GL_RGBA8 );
-    projTexture->setSourceFormat( GL_RGBA );
-    projTexture->setSourceType( GL_UNSIGNED_BYTE );
-    projTexture->setFilter( osg::Texture::MIN_FILTER, _mipmapping? osg::Texture::LINEAR_MIPMAP_LINEAR: osg::Texture::LINEAR );
-    projTexture->setFilter( osg::Texture::MAG_FILTER, osg::Texture::LINEAR );
-    projTexture->setWrap( osg::Texture::WRAP_S, osg::Texture::CLAMP_TO_BORDER );
-    projTexture->setWrap( osg::Texture::WRAP_T, osg::Texture::CLAMP_TO_BORDER );
-    projTexture->setWrap( osg::Texture::WRAP_R, osg::Texture::CLAMP_TO_BORDER );
-    projTexture->setBorderColor( osg::Vec4(0,0,0,0) );
-
-    // set up the RTT camera:
-    pvd._rttCamera = new osg::Camera();
-    pvd._rttCamera->setClearColor( osg::Vec4f(0,0,0,0) );
-    pvd._rttCamera->setClearStencil( 0 );
-    pvd._rttCamera->setClearMask( GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT );
-    // this ref frame causes the RTT to inherit its viewpoint from above (in order to properly
-    // process PagedLOD's etc. -- it doesn't affect the perspective of the RTT camera though)
-    pvd._rttCamera->setReferenceFrame( osg::Camera::ABSOLUTE_RF_INHERIT_VIEWPOINT );
-    pvd._rttCamera->setViewport( 0, 0, *_textureSize, *_textureSize );
-    pvd._rttCamera->setComputeNearFarMode( osg::CullSettings::DO_NOT_COMPUTE_NEAR_FAR );
-    pvd._rttCamera->setRenderOrder( osg::Camera::PRE_RENDER );
-    pvd._rttCamera->setRenderTargetImplementation( osg::Camera::FRAME_BUFFER_OBJECT );
-
-    pvd._rttCamera->attach( osg::Camera::COLOR_BUFFER, projTexture, 0, 0, _mipmapping );
-
-    // try a depth-packed buffer. failing that, try a normal one.. if the FBO doesn't support
-    // that (which is doesn't on some GPUs like Intel), it will automatically fall back on 
-    // a PBUFFER_RTT impl
-    if ( Registry::instance()->getCapabilities().supportsDepthPackedStencilBuffer() )
-        pvd._rttCamera->attach( osg::Camera::PACKED_DEPTH_STENCIL_BUFFER, GL_DEPTH_STENCIL_EXT );
-    else
-        pvd._rttCamera->attach( osg::Camera::STENCIL_BUFFER, GL_STENCIL_INDEX );
-
-    osg::StateSet* rttStateSet = pvd._rttCamera->getOrCreateStateSet();
-
-    rttStateSet->setMode( GL_LIGHTING, osg::StateAttribute::OFF | osg::StateAttribute::PROTECTED );
-
-    if ( _rttBlending )
+    if ( _engine.valid() )
     {
-        osg::BlendFunc* blendFunc = new osg::BlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
-        //Sure it shouldn't be this? -gw
-        //osg::BlendFunc* blendFunc = new osg::BlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-        rttStateSet->setAttributeAndModes(blendFunc, osg::StateAttribute::ON | osg::StateAttribute::OVERRIDE);
-    }
-    else
-    {
-        rttStateSet->setMode(GL_BLEND, osg::StateAttribute::OFF | osg::StateAttribute::OVERRIDE);
+        OE_WARN << LC <<
+            "Illegal: you cannot install any more techniques once the Decorator "
+            "has been installed by the terrain engine." << std::endl;
+
     }
 
-    // attach the overlay graph to the RTT camera.
-    if ( _overlayGraph.valid() && ( _overlayGraph->getNumParents() == 0 || _overlayGraph->getParent(0) != pvd._rttCamera.get() ))
+    else if ( technique )
     {
-        if ( pvd._rttCamera->getNumChildren() > 0 )
-            pvd._rttCamera->replaceChild( 0, _overlayGraph.get() );
+        if ( technique->supported() )
+        {
+            _overlayGroups.push_back( new NotifierGroup<OverlayDecorator>(this) );
+            _techniques.push_back( technique );
+        }
         else
-            pvd._rttCamera->addChild( _overlayGraph.get() );
-    }
-
-    // overlay geometry is rendered with no depth testing, and in the order it's found in the
-    // scene graph... until further notice...
-    rttStateSet->setMode(GL_DEPTH_TEST, 0);
-    rttStateSet->setBinName( "TraversalOrderBin" );
-
-
-    // assemble the subgraph stateset:
-    pvd._subgraphStateSet = new osg::StateSet();
-
-    // set up the subgraph to receive the projected texture:
-    pvd._subgraphStateSet->setTextureMode( *_textureUnit, GL_TEXTURE_GEN_S, osg::StateAttribute::ON );
-    pvd._subgraphStateSet->setTextureMode( *_textureUnit, GL_TEXTURE_GEN_T, osg::StateAttribute::ON );
-    pvd._subgraphStateSet->setTextureMode( *_textureUnit, GL_TEXTURE_GEN_R, osg::StateAttribute::ON );
-    pvd._subgraphStateSet->setTextureMode( *_textureUnit, GL_TEXTURE_GEN_Q, osg::StateAttribute::ON );
-    pvd._subgraphStateSet->setTextureAttributeAndModes( *_textureUnit, projTexture, osg::StateAttribute::ON );
-    
-    // set up the shaders
-    if ( _useShaders )
-    {            
-        initSubgraphShaders( pvd ); //._subgraphStateSet.get() );
-        initRTTShaders( pvd ); //._rttCamera->getOrCreateStateSet() );
-        //_warpUniform = this->getOrCreateStateSet()->getOrCreateUniform( "warp", osg::Uniform::FLOAT );
-        //_warpUniform->set( 1.0f );
-    }
-}
-
-void
-OverlayDecorator::initRTTShaders( PerViewData& pvd )
-{
-    osg::StateSet* set = pvd._rttCamera->getOrCreateStateSet();
-
-    //TODO: convert this to VP so the overlay graph can use shadercomp too.
-    osg::Program* program = new osg::Program();
-    program->setName( "OverlayDecorator RTT shader" );
-    set->setAttributeAndModes( program, osg::StateAttribute::ON );
-
-    std::stringstream buf;
-    buf << "#version 110 \n";
-
-    if ( _useWarping )
-    {
-        buf << "uniform float warp; \n"
-
-            // because the built-in pow() is busted
-            << "float mypow( in float x, in float y ) \n"
-            << "{ \n"
-            << "    return x/(x+y-y*x); \n"
-            << "} \n"
-
-            << "vec4 warpVertex( in vec4 src ) \n"
-            << "{ \n"
-            //      normalize to [-1..1], then take the absolute values since we
-            //      want to apply the warping in [0..1] on each side of zero:
-            << "    vec2 srct = vec2( abs(src.x)/src.w, abs(src.y)/src.w ); \n"
-            << "    vec2 sign = vec2( src.x > 0.0 ? 1.0 : -1.0, src.y > 0.0 ? 1.0 : -1.0 ); \n"
-
-            //      apply the deformation using a "deceleration" curve:
-            << "    vec2 srcp = vec2( 1.0-mypow(1.0-srct.x,warp), 1.0-mypow(1.0-srct.y,warp) ); \n"
-
-            //      re-apply the sign. no need to un-normalize, just use w=1 instead
-            << "    return vec4( sign.x*srcp.x, sign.y*srcp.y, src.z/src.w, 1.0 ); \n"
-            << "} \n"
-
-            << "void main() \n"
-            << "{ \n"
-            << "    gl_Position = warpVertex( gl_ModelViewProjectionMatrix * gl_Vertex ); \n"
-            << "    gl_FrontColor = gl_Color; \n"
-            << "    gl_TexCoord[0] = gl_MultiTexCoord0;\n"
-            << "} \n";
-    }
-
-    else // no vertex warping
-    {
-        buf << "void main() \n"
-            << "{ \n"
-            << "    gl_Position = gl_ModelViewProjectionMatrix * gl_Vertex; \n"
-            << "    gl_FrontColor = gl_Color; \n"
-            << "    gl_TexCoord[0] = gl_MultiTexCoord0;\n"
-            << "} \n";
-    }
-
-    std::string vertSource;
-    vertSource = buf.str();
-    program->addShader( new osg::Shader( osg::Shader::VERTEX, vertSource ) );
-
-    std::stringstream fragBuf;
-    fragBuf    << "#version 110 \n"
-               << "uniform sampler2D texture_0; \n"
-               << "void main() \n"
-               << "{\n"                              
-               << "    vec4 tex = texture2D(texture_0, gl_TexCoord[0].xy);\n"
-               << "    vec3 mixed_color = mix(gl_Color.rgb, tex.rgb, tex.a);\n"
-               << "    gl_FragColor = vec4(mixed_color, gl_Color.a); \n"
-               << "}\n";
-    
-    std::string fragSource;
-    fragSource = fragBuf.str();
-    
-    program->addShader( new osg::Shader( osg::Shader::FRAGMENT, fragSource ) );
-    set->addUniform(new osg::Uniform("texture_0",0));
-}
-
-void
-OverlayDecorator::initSubgraphShaders( PerViewData& pvd )
-{
-    osg::StateSet* set = pvd._subgraphStateSet.get();
-
-    VirtualProgram* vp = new VirtualProgram();
-    vp->setName( "OverlayDecorator subgraph shader" );
-    set->setAttributeAndModes( vp, osg::StateAttribute::ON );
-
-    // sampler for projected texture:
-    set->getOrCreateUniform( "osgearth_overlay_ProjTex", osg::Uniform::SAMPLER_2D )->set( *_textureUnit );
-
-    // the texture projection matrix uniform.
-    pvd._texGenUniform = set->getOrCreateUniform( "osgearth_overlay_TexGenMatrix", osg::Uniform::FLOAT_MAT4 );
-
-    std::stringstream buf;
-
-    // vertex shader - subgraph
-    buf << "#version 110 \n"
-        << "uniform mat4 osgearth_overlay_TexGenMatrix; \n"
-        << "uniform mat4 osg_ViewMatrixInverse; \n"
-
-        << "void osgearth_overlay_vertex(void) \n"
-        << "{ \n"
-        << "    gl_TexCoord["<< *_textureUnit << "] = osgearth_overlay_TexGenMatrix * osg_ViewMatrixInverse * gl_ModelViewMatrix * gl_Vertex; \n"
-        << "} \n";
-
-    std::string vertexSource;
-    vertexSource = buf.str();
-    vp->setFunction( "osgearth_overlay_vertex", vertexSource, ShaderComp::LOCATION_VERTEX_POST_LIGHTING );
-
-    // fragment shader - subgraph
-    buf.str("");
-    buf << "#version 110 \n"
-        << "uniform sampler2D osgearth_overlay_ProjTex; \n";
-
-    if ( _useWarping )
-    {
-        buf << "uniform float warp; \n"
-
-            // because the built-in pow() is busted
-            << "float mypow( in float x, in float y ) \n"
-            << "{ \n"
-            << "    return x/(x+y-y*x); \n"
-            << "} \n"
-
-            << "vec2 warpTexCoord( in vec2 src ) \n"
-            << "{ \n"
-            //      incoming tex coord is [0..1], so we scale to [-1..1]
-            << "    vec2 srcn = vec2( src.x*2.0 - 1.0, src.y*2.0 - 1.0 ); \n" 
-
-            //      we want to work in the [0..1] space on each side of 0, so can the abs
-            //      and store the signs for later:
-            << "    vec2 srct = vec2( abs(srcn.x), abs(srcn.y) ); \n"
-            << "    vec2 sign = vec2( srcn.x > 0.0 ? 1.0 : -1.0, srcn.y > 0.0 ? 1.0 : -1.0 ); \n"
-
-            //      apply the deformation using a deceleration curve:
-            << "    vec2 srcp = vec2( 1.0-mypow(1.0-srct.x,warp), 1.0-mypow(1.0-srct.y,warp) ); \n"
-
-            //      reapply the sign, and scale back to [0..1]:
-            << "    vec2 srcr = vec2( sign.x*srcp.x, sign.y*srcp.y ); \n"
-            << "    return vec2( 0.5*(srcr.x + 1.0), 0.5*(srcr.y + 1.0) ); \n"
-            << "} \n";
-    }
-
-    buf << "void osgearth_overlay_fragment( inout vec4 color ) \n"
-        << "{ \n"
-        << "    vec2 texCoord = gl_TexCoord["<< *_textureUnit << "].xy / gl_TexCoord["<< *_textureUnit << "].q; \n";
-
-    if ( _useWarping && !_visualizeWarp )
-        buf  << "    texCoord = warpTexCoord( texCoord ); \n";
-
-    buf << "    vec4 texel = texture2D(osgearth_overlay_ProjTex, texCoord); \n"  
-        << "    color = vec4( mix( color.rgb, texel.rgb, texel.a ), color.a); \n"
-        << "} \n";
-
-    std::string fragmentSource;
-    fragmentSource = buf.str();
-    vp->setFunction( "osgearth_overlay_fragment", fragmentSource, ShaderComp::LOCATION_FRAGMENT_PRE_LIGHTING );
-}
-
-void
-OverlayDecorator::setOverlayGraph( osg::Node* node )
-{
-    if ( _overlayGraph.get() != node )
-    {
-        if ( _overlayGraph.valid() && node == 0L )
         {
-            // un-register for traversals.
-            if ( _updatePending )
-            {
-                _updatePending = false;
-                ADJUST_EVENT_TRAV_COUNT( this, -1 );
-            }
-
-            ADJUST_EVENT_TRAV_COUNT( this, -1 );
+            // stick unsupported techniques in a temporary holding cell
+            // for reference management -- no harm
+            _unsupportedTechniques.push_back( technique );
         }
-        else if ( !_overlayGraph.valid() && node != 0L )
+    }
+}
+
+
+void
+OverlayDecorator::onGroupChanged(osg::Group* group)
+{
+    // the group changed so we need to give the corresponding
+    // technique a chance to re-establish itself based on the 
+    // contents of that group.
+
+    // update the total child count
+    _totalOverlayChildren = 0;
+
+    for( unsigned i=0; i<_techniques.size(); ++i )
+    {
+        //TODO: change to technique->getActive() or something
+        _totalOverlayChildren += _overlayGroups[i]->getNumChildren();
+
+        if ( _overlayGroups[i] == group )
         {
-            // request that OSG give this node an event traversal.
-            ADJUST_EVENT_TRAV_COUNT( this, 1 );
+            _techniques[i]->reestablish( _engine.get() );
         }
-
-        _overlayGraph = node;
-
-        initializeForOverlayGraph();
-
-        // go through and install the NEW overlay graph on any existing cameras.
-        {
-            Threading::ScopedWriteLock exclude( _perViewDataMutex );
-            for( PerViewDataMap::iterator i = _perViewData.begin(); i != _perViewData.end(); ++i )
-            {
-                PerViewData& pvd = i->second;
-                if ( pvd._rttCamera->getNumChildren() > 0 )
-                    pvd._rttCamera->replaceChild( 0, _overlayGraph.get() );
-                else
-                    pvd._rttCamera->addChild( _overlayGraph.get() );
-            }
-        }
-
-        //reinit();
     }
 }
+
 
 void
-OverlayDecorator::setTextureSize( int texSize )
+OverlayDecorator::initializePerViewData( PerViewData& pvd, osg::Camera* cam )
 {
-    if ( texSize != _textureSize.value() )
+    pvd._camera = cam;
+    pvd._sharedTerrainStateSet = new osg::StateSet();
+
+    pvd._techParams.resize( _overlayGroups.size() );
+
+    for(unsigned i=0; i<_overlayGroups.size(); ++i )
     {
-        _textureSize = texSize;
-        //reinit();
+        TechRTTParams& params = pvd._techParams[i];
+        params._group = _overlayGroups[i].get();
+        params._terrainStateSet = pvd._sharedTerrainStateSet.get(); // share it.
+        params._horizonDistance = &pvd._sharedHorizonDistance;      // share it.
+        params._terrainParent = this;
+        params._mainCamera = cam;
     }
 }
+
 
 void
-OverlayDecorator::setTextureUnit( int texUnit )
+OverlayDecorator::setOverlayGraphTraversalMask( unsigned mask )
 {
-    if ( !_explicitTextureUnit.isSet() || texUnit != _explicitTextureUnit.value() )
-    {
-        _explicitTextureUnit = texUnit;
-        //reinit();
-    }
+    _rttTraversalMask = mask;
 }
 
-void
-OverlayDecorator::setMipMapping( bool value )
-{
-    if ( value != _mipmapping )
-    {
-        _mipmapping = value;
-        //reinit();
-
-        if ( _mipmapping )
-            OE_INFO << LC << "Overlay mipmapping " << (value?"enabled":"disabled") << std::endl;
-    }
-}
-
-void
-OverlayDecorator::setVertexWarping( bool value )
-{
-    if ( value != _useWarping )
-    {
-        _useWarping = value;
-        //reinit();
-        
-        if ( _useWarping )
-            OE_INFO << LC << "Vertex warping " << (value?"enabled":"disabled")<< std::endl;
-    }
-}
-
-void
-OverlayDecorator::setOverlayBlending( bool value )
-{
-    if ( value != _rttBlending )
-    {
-        _rttBlending = value;
-        //reinit();
-        
-        if ( _rttBlending )
-            OE_INFO << LC << "Overlay blending " << (value?"enabled":"disabled")<< std::endl;
-    }
-}
 
 void
 OverlayDecorator::onInstall( TerrainEngineNode* engine )
@@ -669,78 +349,47 @@ OverlayDecorator::onInstall( TerrainEngineNode* engine )
     // establish the earth's major axis:
     MapInfo info(engine->getMap());
     _isGeocentric = info.isGeocentric();
+    _srs = info.getProfile()->getSRS();
     _ellipsoid = info.getProfile()->getSRS()->getEllipsoid();
 
-    // the maximum extent (for projected maps only)
-    if ( !_isGeocentric )
+    //todo: need this? ... probably not anymore
+    _useShaders = 
+        Registry::capabilities().supportsGLSL() && (
+            !engine->getTextureCompositor() ||
+            engine->getTextureCompositor()->usesShaderComposition() );
+
+    for(Techniques::iterator t = _techniques.begin(); t != _techniques.end(); ++t )
     {
-        const GeoExtent& extent = info.getProfile()->getExtent();
-        _maxProjectedMapExtent = osg::maximum( extent.width(), extent.height() );
+        t->get()->onInstall( engine );
     }
-
-    // see whether we want shader support:
-    // TODO: this is not stricty correct; you might still want to use shader overlays
-    // in multipass mode, AND you might want FFP overlays in multitexture-FFP mode.
-    _useShaders = engine->getTextureCompositor()->usesShaderComposition();
-
-    if ( !_textureSize.isSet() )
-    {
-        unsigned maxSize = Registry::instance()->getCapabilities().getMaxFastTextureSize();
-        _textureSize.init( osg::minimum( 4096u, maxSize ) );
-
-        OE_INFO << LC << "Using texture size = " << *_textureSize << std::endl;
-    }
-
-    // rebuild dynamic elements.
-    initializeForOverlayGraph();
 }
+
 
 void
 OverlayDecorator::onUninstall( TerrainEngineNode* engine )
 {
-    if ( !_explicitTextureUnit.isSet() && _textureUnit.isSet() )
+    for(Techniques::iterator t = _techniques.begin(); t != _techniques.end(); ++t )
     {
-        _engine->getTextureCompositor()->releaseTextureImageUnit( *_textureUnit );
-        _textureUnit.unset();
+        t->get()->onUninstall( engine );
     }
 
     _engine = 0L;
 }
 
-void
-OverlayDecorator::updateRTTCameras()
-{
-    static osg::Matrix normalizeMatrix = 
-        osg::Matrix::translate(1.0,1.0,1.0) * osg::Matrix::scale(0.5,0.5,0.5);
-
-    Threading::ScopedWriteLock exclusive( _perViewDataMutex );
-
-    for( PerViewDataMap::iterator i = _perViewData.begin(); i != _perViewData.end(); ++i )
-    {
-        PerViewData& pvd = i->second;
-    
-        pvd._rttCamera->setViewMatrix( pvd._rttViewMatrix );
-        pvd._rttCamera->setProjectionMatrix( pvd._rttProjMatrix );
-
-        if ( pvd._texGenUniform.valid() )
-        {
-            osg::Matrix MVPT = pvd._rttViewMatrix * pvd._rttProjMatrix * normalizeMatrix;
-            pvd._texGenUniform->set( MVPT );
-            //if ( _useWarping )
-            //    _warpUniform->set( _warp );
-        }
-    }
-}
 
 void
-OverlayDecorator::cull( osgUtil::CullVisitor* cv, OverlayDecorator::PerViewData& pvd )
+OverlayDecorator::cullTerrainAndCalculateRTTParams(osgUtil::CullVisitor* cv,
+                                                   PerViewData&          pvd)
 {
     static int s_frame = 1;
 
-    osg::Vec3 eye = cv->getEyePoint();
+    osg::Vec3d eye = cv->getViewPoint();
 
     double eyeLen;
     osg::Vec3d worldUp;
+
+    // Radius at eyepoint (geocentric)
+    double R;
 
     // height above sea level
     double hasl;
@@ -749,30 +398,36 @@ OverlayDecorator::cull( osgUtil::CullVisitor* cv, OverlayDecorator::PerViewData&
     double haslWeight;
 
     // approximate distance to the visible horizon
-    double horizonDistance; 
+    double horizonDistance;
 
-    // distance to the horizon, projected into the RTT camera's tangent plane.
-    double horizonDistanceInRTTPlane;
+    OE_TEST << LC << "------- OD CULL ------------------------" << std::endl;
 
     if ( _isGeocentric )
     {
-        double lat, lon;
-        _ellipsoid->convertXYZToLatLongHeight( eye.x(), eye.y(), eye.z(), lat, lon, hasl );
-        hasl = osg::maximum( hasl, 100.0 );
-
-        worldUp = _ellipsoid->computeLocalUpVector(eye.x(), eye.y(), eye.z());
-
         eyeLen = eye.length();
 
+        const SpatialReference* geoSRS = _engine->getTerrain()->getSRS();
+        osg::Vec3d geodetic;
+        geoSRS->transformFromWorld(eye, geodetic);
+
+        hasl = geodetic.z();
+        R = eyeLen - hasl;
+        
+        //Actually sample the terrain to get the height and adjust the eye position so it's a tighter fit to the real data.
+        double height;
+        if (_engine->getTerrain()->getHeight(geoSRS, geodetic.x(), geodetic.y(), &height)) // SpatialReference::create("epsg:4326"), osg::RadiansToDegrees( lon ), osg::RadiansToDegrees( lat ), &height))
+        {
+            geodetic.z() -= height;
+        }
+        hasl = osg::maximum( hasl, 100.0 );
+
+        // up vector tangent to the ellipsoid under the eye.
+        worldUp = _ellipsoid->computeLocalUpVector(eye.x(), eye.y(), eye.z());
+
         // radius of the earth under the eyepoint
+        // gw: wrong. use R instead.
         double radius = eyeLen - hasl; 
-        horizonDistance = sqrt( 2.0 * radius * hasl ); 
-    
-        // calculate the distance to the horizon, projected into the RTT camera plane.
-        // This is the maximum limit of eMax since there is no point in drawing overlay
-        // data beyond the visible horizon.
-        double pitchAngleOfHorizon_rad = acos( horizonDistance/eyeLen );
-        horizonDistanceInRTTPlane = horizonDistance * sin( pitchAngleOfHorizon_rad );
+        horizonDistance = sqrt( 2.0*radius*hasl + hasl*hasl );
     }
     else // projected map
     {
@@ -781,30 +436,24 @@ OverlayDecorator::cull( osgUtil::CullVisitor* cv, OverlayDecorator::PerViewData&
         worldUp.set( 0.0, 0.0, 1.0 );
         eyeLen = hasl * 2.0;
 
-        // there is no maximum horizon distance in a projected map
-        horizonDistance = DBL_MAX;
-        horizonDistanceInRTTPlane = DBL_MAX;
-
-        pvd._rttViewMatrix = osg::Matrixd::lookAt( eye, eye-worldUp*hasl, osg::Vec3(0,1,0) );
+        // there "horizon distance" in a projected map is infinity,
+        // so just simulate one.
+        horizonDistance = sqrt(2.0*6356752.3142*hasl + hasl*hasl);
     }
+    
+    // update the shared horizon distance.
+    pvd._sharedHorizonDistance = horizonDistance;
 
     // create a "weighting" that weights HASL against the camera's pitch.
     osg::Vec3d lookVector = cv->getLookVectorLocal();
     haslWeight = osg::absolute(worldUp * lookVector);
 
     // unit look-vector of the eye:
-    osg::Vec3d from, to, up;
+    osg::Vec3d camEye, camTo, camUp;
     const osg::Matrix& mvMatrix = *cv->getModelViewMatrix();
-    mvMatrix.getLookAt( from, to, up, eyeLen);
-    osg::Vec3 camLookVec = to-from;
-    camLookVec.normalize();
-
-    // unit look-vector of the RTT camera:
-    osg::Vec3d rttLookVec = -worldUp;
-
-    // the minimum and maximum extents of the overlay ortho projector:
-    double eMin = 0.1;
-    double eMax = DBL_MAX;
+    mvMatrix.getLookAt( camEye, camTo, camUp, 1.0); //eyeLen);
+    osg::Vec3 camLook = camTo-camEye;
+    camLook.normalize();
 
     // Save and reset the current near/far planes before traversing the subgraph.
     // We do this because we want a projection matrix that includes ONLY the clip
@@ -815,9 +464,9 @@ OverlayDecorator::cull( osgUtil::CullVisitor* cv, OverlayDecorator::PerViewData&
     cv->setCalculatedNearPlane( FLT_MAX );
     cv->setCalculatedFarPlane( -FLT_MAX );
 
-    // cull the subgraph here. This doubles as the subgraph's official cull traversal
-    // and a gathering of its clip planes.
-    cv->pushStateSet( pvd._subgraphStateSet.get() );
+    // cull the subgraph (i.e. the terrain) here. This doubles as the subgraph's official 
+    // cull traversal and a gathering of its clip planes.
+    cv->pushStateSet( pvd._sharedTerrainStateSet.get() );
     osg::Group::traverse( *cv );
     cv->popStateSet();
 
@@ -831,148 +480,217 @@ OverlayDecorator::cull( osgUtil::CullVisitor* cv, OverlayDecorator::PerViewData&
     double zFar  = cv->getCalculatedFarPlane();
     cv->clampProjectionMatrix( projMatrix, zNear, zFar );
 
-    //OE_NOTICE << std::fixed << "zNear = " << zNear << ", zFar = " << zFar << std::endl;
-
-    if ( _isGeocentric )
-    {
-        // in geocentric mode, clamp the far clip plane to the horizon.
-        double maxDistance = (1.0 - haslWeight)  * horizonDistance  + haslWeight * hasl;
-        maxDistance *= 1.5;
-        if (zFar - zNear >= maxDistance)
-            zFar = zNear + maxDistance;
-
-        cv->clampProjectionMatrix( projMatrix, zNear, zFar );
-    }
+    OE_TEST << LC << "Subgraph clamp: zNear = " << zNear << ", zFar = " << zFar << std::endl;
 
     // restore the clip planes in the cull visitor, now that we have our subgraph
     // projection matrix.
     cv->setCalculatedNearPlane( osg::minimum(zSavedNear, zNear) );
     cv->setCalculatedFarPlane( osg::maximum(zSavedFar, zFar) );
-       
-    // contruct the polyhedron representing the viewing frustum.
-    //osgShadow::ConvexPolyhedron frustumPH;
-    MyConvexPolyhedron frustumPH;
-    frustumPH.setToUnitFrustum( true, true );
+
+    // clamp the far plane (for RTT purposes) to the horizon distance.
+    double maxFar = std::min( horizonDistance, _maxHorizonDistance );
+    cv->clampProjectionMatrix( projMatrix, zNear, maxFar );
+
+    // prepare to calculate the ideal far plane for RTT extent resolution.
     osg::Matrixd MVP = *cv->getModelViewMatrix() * projMatrix;
     osg::Matrixd inverseMVP;
     inverseMVP.invert(MVP);
-    frustumPH.transform( inverseMVP, MVP );
 
-    // make a polyhedron representing the viewing frustum of the overlay, and cut it to
-    // intersect the viewing frustum:
-    osgShadow::ConvexPolyhedron visiblePH;
+    double maxDist2 = 0.0;
 
-    // get the bounds of the overlay graph model. 
-    osg::BoundingBox visibleOverlayBBox;
-    CoarsePolytopeIntersector cpi( frustumPH, cv, visibleOverlayBBox );
-    _overlayGraph->accept( cpi );
-    visiblePH.setToBoundingBox( visibleOverlayBBox );
-
-    // this intersects the viewing frustum with the subgraph's bounding box, basically giving us
-    // a "minimal" polyhedron containing all potentially visible geometry. (It can't be truly 
-    // minimal without clipping at the geometry level, but that would probably be too expensive.)
-    visiblePH.cut( frustumPH );
-
-    // calculate the extents for our orthographic RTT camera (clamping it to the
-    // visible horizon)
-    std::vector<osg::Vec3d> verts;
-    visiblePH.getPoints( verts );
-
+    // constrain the far plane.
+    // intersect the top corners of the projection volume since those are the farthest.
     if ( _isGeocentric )
     {
-        // for a geocentric map, try to place the RTT camera position at an optimal point
-        // that will minimize the span of the RTT texture. Take the centroid of the 
-        // visible polyhedron and clamp it's distance to the eyepoint by half the horizon
-        // distance.
-        osg::BoundingBox box = visiblePH.computeBoundingBox();
-        osg::Vec3d bc = box.center();
-        osg::Vec3d eye2bc = eye - bc;
-        if ( eye2bc.length() > horizonDistance )
-        {
-            eye2bc.normalize();
-            bc = eye + eye2bc * 0.5*horizonDistance;
-        }
-        
-        rttLookVec = -bc;
-        rttLookVec.normalize();
+        intersectClipRayWithSphere( -1.0, 1.0, inverseMVP, R, maxDist2 );
+        intersectClipRayWithSphere(  1.0, 1.0, inverseMVP, R, maxDist2 );
+    }
+    else // projected
+    {
+        intersectClipRayWithPlane( -1.0, 1.0, inverseMVP, maxDist2 );
+        if ( maxDist2 == 0.0 )
+            intersectClipRayWithPlane( 1.0, 1.0, inverseMVP, maxDist2 );
+        if ( maxDist2 == 0.0 )
+            intersectClipRayWithPlane( 0.0, 1.0, inverseMVP, maxDist2 );
+    }
 
-        double new_eMax;
-        getMinMaxExtentInSilhouette( bc, rttLookVec, verts, eMin, new_eMax );
-        eMax = std::min( eMax, new_eMax );
-        pvd._rttViewMatrix = osg::Matrixd::lookAt( bc, osg::Vec3d(0,0,0), osg::Vec3d(0,0,1) );
-        pvd._rttProjMatrix = osg::Matrixd::ortho( -eMax, eMax, -eMax, eMax, -eyeLen, bc.length() );
+    // clamp down the far plane:
+    if ( maxDist2 != 0.0 )
+    {
+        maxFar = std::min( zNear+sqrt(maxDist2), maxFar );
+    }
 
-        //OE_INFO << std::fixed << std::setprecision(1)
-        //    << "eMax = " << eMax
-        //    << ", bc = " << bc.x() << ", " << bc.y() << ", " << bc.z()
-        //    << ", eye = " << eye.x() << ", " << eye.y() << ", " << eye.z()
-        //    << ", eyeLen = " << eyeLen
-        //    << std::endl;
+    // reset the projection matrix if we changed the far:
+    if ( maxFar != zFar )
+    {
+        setFar( projMatrix, maxFar );
+        MVP = *cv->getModelViewMatrix() * projMatrix;
+        inverseMVP.invert(MVP);
+    }
+
+    // calculate the new RTT matrices. All techniques will share the 
+    // same set. We could probably put these in the "shared" category
+    // and use pointers..todo.
+    osg::Matrix rttViewMatrix, rttProjMatrix;
+
+    // for a camera that cares about geometry (like the draping technique) it's important
+    // to include the geometry in the ortho-camera's Z range. But for a camera that just
+    // cares about the terrain depth (like the clamping technique) we want to constrain 
+    // the Ortho Z as mush as possible in order to maintain depth precision. Perhaps
+    // later we can split this out and have each technique calculation its own View and
+    // Proj matrix.
+
+    // For now: our RTT camera z range will be based on this equation:
+    double zspan = std::max(50000.0, hasl+25000.0);
+    osg::Vec3d up = camLook;
+    if ( _isGeocentric )
+    {
+        osg::Vec3d rttEye = eye+worldUp*zspan;
+        //establish a valid up vector
+        osg::Vec3d rttLook = -rttEye;
+        rttLook.normalize();
+        if ( fabs(rttLook * camLook) > 0.9999 )
+            up.set( camUp );
+
+        // do NOT look at (0,0,0); must look down the ellipsoid up vector.
+        rttViewMatrix.makeLookAt( rttEye, rttEye-worldUp*zspan, up );
     }
     else
     {
-        // for a projected map, just point the RTT straight down at the camera position.
-        // TODO: this could be optimized, probably.
-        double new_eMax;
-        getMinMaxExtentInSilhouette( from, osg::Vec3d(0,0,-1), verts, eMin, new_eMax );   
-        eMax = std::min( eMax, new_eMax ); 
-        pvd._rttProjMatrix = osg::Matrix::ortho( -eMax, eMax, -eMax, eMax, -eyeLen, eyeLen );
+        osg::Vec3d rttLook(0, 0, -1);
+        if ( fabs(rttLook * camLook) > 0.9999 )
+            up.set( camUp );
+
+        rttViewMatrix.makeLookAt( camEye + worldUp*zspan, camEye - worldUp*zspan, up );
     }
 
-    //OE_NOTICE << LC << "EMIN = " << eMin << ", EMAX = " << eMax << std::endl;
+    // Build a polyhedron for the new frustum so we can slice it.
+    // TODO: do we really even need to slice it anymore? consider
+    osgShadow::ConvexPolyhedron frustumPH;
+    frustumPH.setToUnitFrustum(true, true);
+    frustumPH.transform( inverseMVP, MVP );
 
-    if ( _useWarping )
+    // now copy the RTT matrixes over to the techniques.
+    for( unsigned t=0; t<pvd._techParams.size(); ++t )
     {
-        // calculate the warping paramaters. This uses shaders to warp the verts and
-        // tex coords to favor data closer to the camera when necessary.
+        TechRTTParams& params = pvd._techParams[t];
 
-    #define WARP_LIMIT 3.0
+        // skip empty techniques
+        if ( !_techniques[t]->hasData(params) )
+            continue;
 
-        double pitchStrength = ( camLookVec * rttLookVec ); // eye pitch relative to rtt pitch
-        double devStrength = 1.0 - (pitchStrength*pitchStrength);
-        double haslStrength = 1.0 - osg::clampBetween( hasl/1e6, 0.0, 1.0 );
-
-        _warp = 1.0 + devStrength * haslStrength * WARP_LIMIT;
-
-        if ( _visualizeWarp )
-            _warp = 4.0;
+        // slice it to fit the overlay geometry. (this says 'visible' but it's just everything..
+        // perhaps we can truly make it visible)
+        osgShadow::ConvexPolyhedron visiblePH( frustumPH );
 
 #if 0
-        OE_INFO << LC << std::fixed
-            << "hasl=" << hasl
-            << ", eMin=" << eMin
-            << ", eMax=" << eMax
-            << ", eyeLen=" << eyeLen
-            //<< ", ratio=" << ratio
-            //<< ", dev=" << devStrength
-            //<< ", has=" << haeStrength
-            << ", warp=" << _warp
-            << std::endl;
+        osg::Polytope frustumPT;
+        frustumPH.getPolytope(frustumPT);
+        ComputeVisibleBounds cvb(frustumPT, MVP);
+        params._group->accept(cvb);
+        const osg::BoundingSphere& visibleOverlayBS = cvb._bs;
+        OE_WARN << "VBS radius = " << visibleOverlayBS.radius() << std::endl;
+#else
+        const osg::BoundingSphere& visibleOverlayBS = params._group->getBound();
 #endif
+        if ( visibleOverlayBS.valid() )
+        {
+            osg::BoundingBox visibleOverlayBB;
+            visibleOverlayBB.expandBy( visibleOverlayBS );
+            osg::Polytope visibleOverlayPT;
+            visibleOverlayPT.setToBoundingBox( visibleOverlayBB );
+            visiblePH.cut( visibleOverlayPT );
+        }
+
+        // extract the verts associated with the frustum's PH:
+        std::vector<osg::Vec3d> verts;
+        visiblePH.getPoints( verts );
+
+        // zero verts means the visible PH does not intersect the frustum.
+        // TODO: when verts = 0 should we do something different? or use the previous
+        // frame's view matrix?
+        if ( verts.size() > 0 )
+        {
+            // calculate an orthographic RTT projection matrix based on the view-space
+            // bounds of the vertex list (i.e. the extents surrounding the RTT camera 
+            // that bounds all the polyherdron verts in its XY plane)
+            double xmin, ymin, xmax, ymax, maxDist;
+            getExtentInSilhouette(rttViewMatrix, eye, verts, xmin, ymin, xmax, ymax, maxDist);
+
+            // make sure the ortho camera penetrates the terrain. This is a must for depth buffer sampling
+            double dist = std::max(hasl*1.5, std::min(maxDist, eyeLen));
+
+            // in ecef it can't go past the horizon though, or you get bleed thru
+            if ( _isGeocentric )
+                dist = std::min(dist, eyeLen);
+
+            rttProjMatrix.makeOrtho(xmin, xmax, ymin, ymax, 0.0, dist+zspan);
+
+            //OE_WARN << LC << "verts size = " << verts.size()
+            //    << "xmin=" << xmin << ", xmax=" << xmax
+            //    << ", ymin=" << ymin << ", ymax=" << ymax
+            //    << std::endl;
+
+            params._rttViewMatrix.set( rttViewMatrix );
+            params._rttProjMatrix.set( rttProjMatrix );
+            params._eyeWorld = eye;
+            params._frustumPH = frustumPH;
+        }
+
+        // service a "dump" of the polyhedrons for dubugging purposes
+        // (see osgearth_overlayviewer)
+        if ( _dumpRequested )
+        {
+            static const char* fn = "convexpolyhedron.osg";
+
+            // camera frustum:
+            {
+                frustumPH.dumpGeometry(0,0,0,fn);
+            }
+            osg::Node* camNode = osgDB::readNodeFile(fn);
+            camNode->setName("camera");
+
+            // visible overlay Polyherdron AFTER cuting:
+            visiblePH.dumpGeometry(0,0,0,fn,osg::Vec4(1,.5,1,1),osg::Vec4(1,.5,0,.25));
+            osg::Node* intersection = osgDB::readNodeFile(fn);
+            intersection->setName("intersection");
+
+            // RTT frustum:
+            {
+                osgShadow::ConvexPolyhedron rttPH;
+                rttPH.setToUnitFrustum( true, true );
+                osg::Matrixd MVP = params._rttViewMatrix * params._rttProjMatrix;
+                osg::Matrixd inverseMVP;
+                inverseMVP.invert(MVP);
+                rttPH.transform( inverseMVP, MVP );
+                rttPH.dumpGeometry(0,0,0,fn,osg::Vec4(1,1,0,1),osg::Vec4(1,1,0,0.25));
+            }
+            osg::Node* rttNode = osgDB::readNodeFile(fn);
+            rttNode->setName("rtt");
+
+            // EyePoint
+            osg::Geode* dsg = new osg::Geode();
+            dsg->addDrawable( new osg::ShapeDrawable(new osg::Box(osg::Vec3f(0,0,0), 10.0f)));
+            osg::AutoTransform* dsgmt = new osg::AutoTransform();
+            dsgmt->setPosition( osg::Vec3d(0,0,0) * osg::Matrix::inverse(*cv->getModelViewMatrix()) );
+            dsgmt->setAutoScaleToScreen(true);
+            dsgmt->addChild( dsg );
+
+            osg::Group* g = new osg::Group();
+            g->getOrCreateStateSet()->setAttribute(new osg::Program(), 0);
+            g->addChild(camNode);
+            g->addChild(intersection);
+            g->addChild(rttNode);
+            g->addChild(dsgmt);
+
+            _dump = g;
+            _dumpRequested = false;
+        }
     }
-
-#if 0
-    if ( s_frame++ % 100 == 0 )
-    {
-        osgShadow::ConvexPolyhedron rttPH;
-        rttPH.setToUnitFrustum( true, true );
-        osg::Matrixd MVP = _rttViewMatrix * _rttProjMatrix;
-        osg::Matrixd inverseMVP;
-        inverseMVP.invert(MVP);
-        rttPH.transform( inverseMVP, MVP );
-        rttPH.dumpGeometry();
-    }
-#endif
-
-#if 0
-    // projector matrices are the same as for the RTT camera. Tim was right.
-    _projectorViewMatrix = _rttViewMatrix;
-    _projectorProjMatrix = _rttProjMatrix;
-#endif
 }
 
 OverlayDecorator::PerViewData&
-OverlayDecorator::getPerViewData(osg::View* key)
+OverlayDecorator::getPerViewData(osg::Camera* key)
 {
     // first check for it:
     {
@@ -980,9 +698,10 @@ OverlayDecorator::getPerViewData(osg::View* key)
         PerViewDataMap::iterator i = _perViewData.find(key);
         if ( i != _perViewData.end() )
         {
-            if ( !i->second._rttCamera.valid() )
-                initializePerViewData( i->second );
-
+            if ( !i->second._sharedTerrainStateSet.valid() )
+            {
+                initializePerViewData( i->second, key );
+            }
             return i->second;
         }
     }
@@ -997,89 +716,65 @@ OverlayDecorator::getPerViewData(osg::View* key)
             return i->second;
 
         PerViewData& pvd = _perViewData[key];
-        initializePerViewData(pvd);
+        initializePerViewData(pvd, key);
 
         return pvd;
     }    
 }
 
+
 void
 OverlayDecorator::traverse( osg::NodeVisitor& nv )
 {
-    bool isCull = nv.getVisitorType() == osg::NodeVisitor::CULL_VISITOR;
-
-    if ( _overlayGraph.valid() && _textureUnit.isSet() )
+    if ( true ) //if (_totalOverlayChildren > 0 )
     {
         // in the CULL traversal, find the per-view data associated with the 
         // cull visitor's current camera view and work with that:
-        if ( nv.getVisitorType() == osg::NodeVisitor::CULL_VISITOR )
+        if ( nv.getVisitorType() == nv.CULL_VISITOR )
         {
-            osgUtil::CullVisitor* cv = static_cast<osgUtil::CullVisitor*>( &nv );
-            if ( cv->getCurrentCamera() )
+            osgUtil::CullVisitor* cv = Culling::asCullVisitor(nv);
+            osg::Camera* camera = cv->getCurrentCamera();
+
+            if ( camera != 0L && (_rttTraversalMask & nv.getTraversalMask()) != 0 )
             {
-                PerViewData& pvd = getPerViewData( cv->getCurrentCamera()->getView() );
-                cull( cv, pvd );
-                pvd._rttCamera->accept( nv );
-            }
-        }
+                PerViewData& pvd = getPerViewData( camera );
 
-        else if ( nv.getVisitorType() == osg::NodeVisitor::EVENT_VISITOR )
-        {
-            // during the event traversal, check to see whether any of the camera
-            // matrices have changed from the previous frame. If so, active the update
-            // visitor to update the RTT camera.
+                //TODO:
+                // check whether we need to recalculate the RTT camera params.
+                // don't do it if the main camera hasn't moved;
+                // also, tell the ClampingTech not to re-snap the depth texture
+                // unless something has changed (e.g. camera params, terrain bounds..?
+                // what about paging..?)
 
-            osgGA::EventVisitor* ev = static_cast<osgGA::EventVisitor*>(&nv);
-            osg::View* view = ev->getActionAdapter()->asView();
-            if ( view )
-            {
-                PerViewData& pvd = getPerViewData(view);
-
-                // first, check whether we already have an update coming.
-                if ( !_updatePending && checkNeedsUpdate(pvd) )
+                // technique-specific setup prior to traversing:
+                for(unsigned i=0; i<_techniques.size(); ++i)
                 {
-                    // need it, so schedule it.
-                    //ev->getActionAdapter()->requestRedraw(); // not needed since we are bumping the update trav
-                    _updatePending = true;
-                    ADJUST_UPDATE_TRAV_COUNT( this, 1 );
+                    _techniques[i]->preCullTerrain( pvd._techParams[i], cv );
                 }
 
-                // send the event traversal down the overlay graph
-                pvd._rttCamera->accept( nv );
-            }
+                // shared terrain culling pass:
+                cullTerrainAndCalculateRTTParams( cv, pvd );
 
-            // traverse the overlay decorators subgraph
-            osg::Group::traverse( nv );
+                // prep and traverse the RTT camera(s):
+                for(unsigned i=0; i<_techniques.size(); ++i)
+                {
+                    TechRTTParams& params = pvd._techParams[i];
+                    _techniques[i]->cullOverlayGroup( params, cv );
+                }
+            }
+            else
+            {
+                osg::Group::traverse(nv);
+            }
         }
-
-        else if ( nv.getVisitorType() == osg::NodeVisitor::UPDATE_VISITOR )
-        {
-            // if we get an update traversal, recalculate the RTT camera parameters.
-            // TODO: update this to support multiple views..?
-            if ( _updatePending )
-            {
-                OE_DEBUG << LC << "Update RTT camera, frame = " << nv.getFrameStamp()->getFrameNumber() << std::endl;
-                updateRTTCameras();
-                _updatePending = false;
-                ADJUST_UPDATE_TRAV_COUNT( this, -1 );
-            }
-
-            // skip the camera, go straight to the overlay subgraph.
-            if ( _overlayGraph.valid() )
-            {
-                _overlayGraph->accept( nv );
-            }
-
-            osg::Group::traverse( nv );
-        }    
 
         else
         {
-            // Some other type of visitor (like an intersection). Skip the RTT camera and
-            // traverse the overlay graph directly.
-            if ( _overlayGraph.valid() )
+            // Some other type of visitor (like update or intersection). Skip the technique
+            // and traverse the geometry directly.
+            for(unsigned i=0; i<_overlayGroups.size(); ++i)
             {
-                _overlayGraph->accept( nv );
+                _overlayGroups[i]->accept( nv );
             }
 
             osg::Group::traverse( nv );
@@ -1087,25 +782,19 @@ OverlayDecorator::traverse( osg::NodeVisitor& nv )
     }
     else
     {
-        //osgUtil::CullVisitor* cv = 0L;
-        //if ( isCull )
-        //    cv = dynamic_cast<osgUtil::CullVisitor*>( &nv );
-
-        //if ( cv )
-        //    cv->pushStateSet( _subgraphStateSet.get() );
-
         osg::Group::traverse( nv );
-
-        //if ( cv )
-        //    cv->popStateSet();
     }
 }
 
 
-bool
-OverlayDecorator::checkNeedsUpdate( OverlayDecorator::PerViewData& pvd )
+double
+OverlayDecorator::getMaxHorizonDistance() const
 {
-    return
-        pvd._rttCamera->getViewMatrix()       != pvd._rttViewMatrix ||
-        pvd._rttCamera->getProjectionMatrix() != pvd._rttProjMatrix;
+    return _maxHorizonDistance;
+}
+
+void
+OverlayDecorator::setMaxHorizonDistance( double horizonDistance )
+{
+    _maxHorizonDistance = horizonDistance;
 }

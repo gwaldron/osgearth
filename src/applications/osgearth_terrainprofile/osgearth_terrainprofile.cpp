@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2008-2010 Pelican Mapping
+* Copyright 2008-2013 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -28,6 +28,7 @@
 #include <osgEarthUtil/AutoClipPlaneHandler>
 #include <osgEarthUtil/TerrainProfile>
 #include <osgEarth/GeoMath>
+#include <osgEarth/Registry>
 #include <osgEarthFeatures/Feature>
 #include <osgEarthAnnotation/FeatureNode>
 #include <osgText/Text>
@@ -93,7 +94,7 @@ public:
         _profileCalculator->addChangedCallback( _graphChangedCallback.get() );
 
         float textSize = 8;
-        osg::ref_ptr< osgText::Font> font = osgText::readFontFile( "arialbd.ttf" );
+        osg::ref_ptr< osgText::Font> font = osgEarth::Registry::instance()->getDefaultFont();
 
         osg::Vec4 textColor = osg::Vec4f(1,0,0,1);
         
@@ -141,9 +142,13 @@ public:
         addChild( createBackground( _graphWidth, _graphHeight, _backcolor));
 
         osg::Geometry* geom = new osg::Geometry;
+        geom->setUseVertexBufferObjects(true);
+
         osg::Vec3Array* verts = new osg::Vec3Array();
         verts->reserve( _profile.getNumElevations() );
         geom->setVertexArray( verts );
+        if ( verts->getVertexBufferObject() )
+            verts->getVertexBufferObject()->setUsage(GL_STATIC_DRAW_ARB);
 
         osg::Vec4Array* colors = new osg::Vec4Array();
         colors->push_back( _color );
@@ -196,6 +201,8 @@ public:
     {
         //Create a background quad
         osg::Geometry* geometry = new osg::Geometry();
+        geometry->setUseVertexBufferObjects(true);
+
         osg::Vec3Array* verts = new osg::Vec3Array();
         verts->reserve( 4 );
         verts->push_back( osg::Vec3(0,0,0));
@@ -203,6 +210,8 @@ public:
         verts->push_back( osg::Vec3(width,height,0));
         verts->push_back( osg::Vec3(0,height,0));
         geometry->setVertexArray( verts );
+        if ( verts->getVertexBufferObject() )
+            verts->getVertexBufferObject()->setUsage(GL_STATIC_DRAW_ARB);
 
         osg::Vec4Array* colors = new osg::Vec4Array();
         colors->push_back( backgroundColor );
@@ -253,7 +262,8 @@ public:
               if ( _mapNode->getTerrain()->getWorldCoordsUnderMouse( aa.asView(), ea.getX(), ea.getY(), world ))
               {
                   GeoPoint mapPoint;
-                  _mapNode->getMap()->worldPointToMapPoint( world, mapPoint );
+                  mapPoint.fromWorld( _mapNode->getMapSRS(), world );
+                  //_mapNode->getMap()->worldPointToMapPoint( world, mapPoint );
 
                   if (!_startValid)
                   {
@@ -279,8 +289,8 @@ public:
       void compute()
       {
           //Tell the calculator about the new start/end points
-          _profileCalculator->setStartEnd( GeoPoint(_mapNode->getMapSRS(), _start.x(), _start.y(), 0),
-                                           GeoPoint(_mapNode->getMapSRS(), _end.x(), _end.y(), 0));
+          _profileCalculator->setStartEnd( GeoPoint(_mapNode->getMapSRS(), _start.x(), _start.y()),
+                                           GeoPoint(_mapNode->getMapSRS(), _end.x(), _end.y()) );
 
           if (_featureNode.valid())
           {
@@ -302,6 +312,7 @@ public:
           ls->tessellation() = 20;
 
           style.getOrCreate<AltitudeSymbol>()->clamping() = AltitudeSymbol::CLAMP_TO_TERRAIN;
+          style.getOrCreate<AltitudeSymbol>()->technique() = AltitudeSymbol::TECHNIQUE_SCENE;
 
           feature->style() = style;
 
@@ -366,21 +377,17 @@ main(int argc, char** argv)
     root->addChild( hud );
 
     osg::ref_ptr< TerrainProfileCalculator > calculator = new TerrainProfileCalculator(mapNode, 
-        GeoPoint(mapNode->getMapSRS(), -124.0, 40.0, 0),
-        GeoPoint(mapNode->getMapSRS(), -75.1, 39.2, 0)
+        GeoPoint(mapNode->getMapSRS(), -124.0, 40.0),
+        GeoPoint(mapNode->getMapSRS(), -75.1, 39.2)
         );    
 
     osg::Group* profileNode = new TerrainProfileGraph( calculator.get(), graphWidth, graphHeight );
     hud->addChild( profileNode );
 
 
-    viewer.getCamera()->addCullCallback( new AutoClipPlaneCullCallback(mapNode->getMap()) );
+    viewer.getCamera()->addCullCallback( new AutoClipPlaneCullCallback(mapNode));
 
     viewer.addEventHandler( new DrawProfileEventHandler( mapNode, root, calculator ) );
-
-    // osgEarth benefits from pre-compilation of GL objects in the pager. In newer versions of
-    // OSG, this activates OSG's IncrementalCompileOpeartion in order to avoid frame breaks.
-    viewer.getDatabasePager()->setDoPreCompile( true );
 
     viewer.setSceneData( root );    
 

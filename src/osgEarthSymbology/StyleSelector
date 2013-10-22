@@ -1,0 +1,80 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+ * Copyright 2008-2013 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+#ifndef OSGEARTHSYMBOLOGY_STYLE_SELECTOR_H
+#define OSGEARTHSYMBOLOGY_STYLE_SELECTOR_H 1
+
+#include <osgEarthSymbology/Common>
+#include <osgEarthSymbology/Style>
+#include <osgEarthSymbology/Expression>
+
+namespace osgEarth { namespace Symbology 
+{
+    /**
+     * A style selector lets you classify styles based on rules, such as a
+     * feature query. By default the selector selects the style with the
+     * same name as the selector, but you can override this by settings
+     * the styleName property.
+     */
+    class OSGEARTHSYMBOLOGY_EXPORT StyleSelector
+    {
+    public:
+        /** Constructs a style selector */
+        StyleSelector( const Config& conf =Config() );
+
+        virtual ~StyleSelector() { }
+
+    public: // properties
+
+        /** Name of this style class. */
+        std::string& name() { return _name; }
+        const std::string& name() const { return _name; }
+
+        /** Name of the style to select */
+        optional<std::string>& styleName() { return _styleName; }
+        const optional<std::string>& styleName() const { return _styleName; }
+
+        /** Script that returns the name of the style to select. */
+        optional<StringExpression>& styleExpression() { return _styleExpression; }
+        const optional<StringExpression>& styleExpression() const { return _styleExpression; }
+
+        /** Expression/spatial filter used to select items to which the style will apply */
+        optional<Query>& query() { return _query; }
+        const optional<Query>& query() const { return _query; }
+
+        /** Returns the styleClass() property, if set; otherwise returns the selector name. */
+        std::string getSelectedStyleName() const;
+
+        //Configurable
+        virtual void mergeConfig( const Config& conf );
+        virtual Config getConfig() const;
+
+    protected:
+        std::string                _name;
+        optional<std::string>      _styleName;
+        optional<StringExpression> _styleExpression;
+        optional<Query>            _query;
+    };
+
+    typedef std::list<StyleSelector>   StyleSelectorList;
+    typedef std::vector<StyleSelector> StyleSelectorVector;
+
+} } // namespace osgEarth::Symbology
+
+
+#endif // OSGEARTHSYMBOLOGY_STYLE_SELECTOR_H

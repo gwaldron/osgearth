@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2008-2010 Pelican Mapping
+* Copyright 2008-2013 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -131,4 +131,18 @@ osgEarth::Features::GeometryUtils::geometryFromWKT( const std::string& wkt )
         }
     }
     return output;
+}
+
+double
+osgEarth::Features::GeometryUtils::getGeometryArea( Geometry* geometry )
+{
+    OGRGeometryH g = OgrUtils::createOgrGeometry( geometry );
+    
+    double result = 0.0;
+    if (g)
+    {
+        result = OGR_G_GetArea( g );
+        OGR_G_DestroyGeometry( g );
+    }
+    return result;
 }

@@ -1,0 +1,88 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+* Copyright 2008-2013 Pelican Mapping
+* http://osgearth.org
+*
+* osgEarth is free software; you can redistribute it and/or modify
+* it under the terms of the GNU Lesser General Public License as published by
+* the Free Software Foundation; either version 2 of the License, or
+* (at your option) any later version.
+*
+* This program is distributed in the hope that it will be useful,
+* but WITHOUT ANY WARRANTY; without even the implied warranty of
+* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+* GNU Lesser General Public License for more details.
+*
+* You should have received a copy of the GNU Lesser General Public License
+* along with this program.  If not, see <http://www.gnu.org/licenses/>
+*/
+
+#ifndef OSGEARTHUTIL_TFS_H
+#define OSGEARTHUTIL_TFS_H 1
+
+#include <osgEarthUtil/Common>
+#include <osgEarth/GeoData>
+#include <osgEarth/URI>
+#include <osg/Referenced>
+#include <osg/ref_ptr>
+
+#include <osgDB/ReaderWriter>
+#include <osg/Version>
+#if OSG_MIN_VERSION_REQUIRED(2,9,5)
+#include <osgDB/Options>
+#endif
+
+
+#include <string>
+#include <vector>
+
+namespace osgEarth { namespace Util
+{
+    using namespace osgEarth;
+
+    class OSGEARTHUTIL_EXPORT TFSLayer
+    {
+    public:
+        TFSLayer();
+
+        const std::string& getTitle() const { return _title;}
+        void setTitle(const std::string& value) { _title = value;}
+
+        const std::string& getAbstract() const { return _abstract;}
+        void setAbstract(const std::string& value) { _abstract = value;}
+
+        const GeoExtent& getExtent() const { return _extent;}
+        void setExtent(const GeoExtent& value) { _extent = value;}
+
+        unsigned int getMaxLevel() const { return _maxLevel;}
+        void setMaxLevel( unsigned int value ) { _maxLevel = value;}
+
+        unsigned int getFirstLevel() const { return _firstLevel;}
+        void setFirstLevel(unsigned int value) { _firstLevel = value;}
+
+        const SpatialReference* getSRS() const { return _srs;}
+        void setSRS( const SpatialReference* srs ) { _srs = srs;}
+
+    private:
+        std::string _title;
+        std::string _abstract;
+        osgEarth::GeoExtent _extent;
+        unsigned int _maxLevel;
+        unsigned int _firstLevel;
+        osg::ref_ptr< const osgEarth::SpatialReference > _srs;
+    };
+
+    class OSGEARTHUTIL_EXPORT TFSReaderWriter
+    {
+    public:
+        static bool read(const URI& uri, const osgDB::ReaderWriter::Options* options, TFSLayer &layer);
+        static bool read( std::istream &in, TFSLayer &layer);
+
+        static void write(const TFSLayer &layer, const std::string& location);
+        static void write(const TFSLayer &layer, std::ostream& output);
+
+    };
+
+} } // namespace osgEarth::Util
+
+#endif //OSGEARTHUTIL_TFS_H

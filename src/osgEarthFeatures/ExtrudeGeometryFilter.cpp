@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2010 Pelican Mapping
+ * Copyright 2008-2013 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -17,10 +17,15 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 #include <osgEarthFeatures/ExtrudeGeometryFilter>
+#include <osgEarthFeatures/FeatureSourceIndexNode>
 #include <osgEarthSymbology/MeshSubdivider>
 #include <osgEarthSymbology/MeshConsolidator>
 #include <osgEarth/ECEF>
-#include <osg/ClusterCullingCallback>
+#include <osgEarth/ImageUtils>
+#include <osgEarth/Registry>
+#include <osgEarth/Capabilities>
+#include <osgEarth/ShaderGenerator>
+#include <osgEarth/Utils>
 #include <osg/Geode>
 #include <osg/Geometry>
 #include <osg/MatrixTransform>
@@ -74,7 +79,8 @@ _maxAngle_deg       ( 5.0 ),
 _mergeGeometry      ( true ),
 _wallAngleThresh_deg( 60.0 ),
 _styleDirty         ( true ),
-_makeStencilVolume  ( false )
+_makeStencilVolume  ( false ),
+_useVertexBufferObjects( true )
 {
     //NOP
 }
@@ -91,7 +97,7 @@ ExtrudeGeometryFilter::reset( const FilterContext& context )
 {
     _cosWallAngleThresh = cos( _wallAngleThresh_deg );
     _geodes.clear();
-
+    
     if ( _styleDirty )
     {
         const StyleSheet* sheet = context.getSession() ? context.getSession()->styles() : 0L;
@@ -185,6 +191,7 @@ ExtrudeGeometryFilter::extrudeGeometry(const Geometry*         input,
                                        osg::Geometry*          base,
                                        osg::Geometry*          outline,
                                        const osg::Vec4&        wallColor,
+                                       const osg::Vec4&        wallBaseColor,
                                        const osg::Vec4&        roofColor,
                                        const osg::Vec4&        outlineColor,
                                        const SkinResource*     wallSkin,
@@ -233,18 +240,15 @@ ExtrudeGeometryFilter::extrudeGeometry(const Geometry*         input,
         walls->setTexCoordArray( 0, wallTexcoords );
     }
 
+    osg::Vec4Array* colors = 0L;
     if ( useColor )
     {
         // per-vertex colors are necessary if we are going to use the MeshConsolidator -gw
-        osg::Vec4Array* colors = new osg::Vec4Array();
+        colors = new osg::Vec4Array();
         colors->reserve( numWallVerts );
         colors->assign( numWallVerts, wallColor );
         walls->setColorArray( colors );
         walls->setColorBinding( osg::Geometry::BIND_PER_VERTEX );
-        //osg::Vec4Array* colors = new osg::Vec4Array( 1 );
-        //(*colors)[0] = wallColor;
-        //walls->setColorArray( colors );
-        //walls->setColorBinding( osg::Geometry::BIND_OVERALL );
     }
 
     // set up rooftop tessellation and texturing, if necessary:
@@ -252,8 +256,8 @@ ExtrudeGeometryFilter::extrudeGeometry(const Geometry*         input,
     osg::Vec2Array* roofTexcoords = 0L;
     float           roofRotation  = 0.0f;
     Bounds          roofBounds;
-    float           sinR, cosR;
-    double          roofTexSpanX, roofTexSpanY;
+    float           sinR = 0.0f, cosR = 0.0f;
+    double          roofTexSpanX = 0.0, roofTexSpanY = 0.0;
     osg::ref_ptr<const SpatialReference> roofProjSRS;
 
     if ( roof )
@@ -269,11 +273,6 @@ ExtrudeGeometryFilter::extrudeGeometry(const Geometry*         input,
             roofColors->assign( pointCount, roofColor );
             roof->setColorArray( roofColors );
             roof->setColorBinding( osg::Geometry::BIND_PER_VERTEX );
-
-            //osg::Vec4Array* roofColors = new osg::Vec4Array( 1 );
-            //(*roofColors)[0] = roofColor;
-            //roof->setColorArray( roofColors );
-            //roof->setColorBinding( osg::Geometry::BIND_OVERALL );
         }
 
         if ( roofSkin )
@@ -293,7 +292,7 @@ ExtrudeGeometryFilter::extrudeGeometry(const Geometry*         input,
             if ( srs && srs->isGeographic() )
             {
                 osg::Vec2d geogCenter = roofBounds.center2d();
-                roofProjSRS = srs->createUTMFromLongitude( Angular(geogCenter.x()) );
+                roofProjSRS = srs->createUTMFromLonLat( Angular(geogCenter.x()), Angular(geogCenter.y()) );
                 roofBounds.transform( srs, roofProjSRS.get() );
                 osg::ref_ptr<Geometry> projectedInput = input->clone();
                 srs->transform( projectedInput->asVector(), roofProjSRS.get() );
@@ -410,6 +409,7 @@ ExtrudeGeometryFilter::extrudeGeometry(const Geometry*         input,
         if (div == 0) div = 1; //Prevent divide by zero
         tex_height_m_adj = maxHeight / div;
 
+        //osg::DrawElementsUShort* idx = new osg::DrawElementsUShort( GL_TRIANGLES );
         osg::DrawElementsUInt* idx = new osg::DrawElementsUInt( GL_TRIANGLES );
 
         for( Geometry::const_iterator m = part->begin(); m != part->end(); ++m )
@@ -435,7 +435,7 @@ ExtrudeGeometryFilter::extrudeGeometry(const Geometry*         input,
 
             // figure out the rooftop texture coordinates before doing any
             // transformations:
-            if ( roofSkin )
+            if ( roofSkin && roofProjSRS && srs )
             {
                 double xr, yr;
 
@@ -456,27 +456,32 @@ ExtrudeGeometryFilter::extrudeGeometry(const Geometry*         input,
                 float v = (sinR*xr + cosR*yr) / roofTexSpanY;
 
                 (*roofTexcoords)[roofVertPtr].set( u, v );
-            }            
+            }
 
-            //if ( makeECEF )
-            //{
-            //    ECEF::transformAndLocalize( basePt, srs, basePt, _world2local );
-            //    ECEF::transformAndLocalize( roofPt, srs, roofPt, _world2local );
-            //}
             transformAndLocalize( basePt, srs, basePt, mapSRS, _world2local, makeECEF );
             transformAndLocalize( roofPt, srs, roofPt, mapSRS, _world2local, makeECEF );
 
 
             if ( base )
+            {
                 (*baseVerts)[baseVertPtr] = basePt;
+            }
+
             if ( roof )
+            {
                 (*roofVerts)[roofVertPtr] = roofPt;
+            }
 
             baseVertPtr++;
             roofVertPtr++;
 
             (*verts)[p] = roofPt;
             (*verts)[p+1] = basePt;
+
+            if ( useColor )
+            {
+                (*colors)[p+1] = wallBaseColor;
+            }
 
             if ( outline )
             {
@@ -594,7 +599,7 @@ ExtrudeGeometryFilter::extrudeGeometry(const Geometry*         input,
             unsigned step = std::max( 1u, 
                 _outlineSymbol->tessellation().isSet() ? *_outlineSymbol->tessellation() : 1u );
 
-            osg::DrawElementsUShort* wallLines = new osg::DrawElementsUShort( GL_LINES );
+            osg::DrawElementsUInt* wallLines = new osg::DrawElementsUInt( GL_LINES );
             wallLines->reserve( len*2 );
             for( unsigned i=0; i<len; i+=step )
             {
@@ -602,6 +607,8 @@ ExtrudeGeometryFilter::extrudeGeometry(const Geometry*         input,
                 wallLines->push_back( basePartPtr + i*2 + 1 );
             }
             outline->addPrimitiveSet( wallLines );
+
+            applyLineSymbology( outline->getOrCreateStateSet(), _outlineSymbol.get() );
         }
     }
 
@@ -609,7 +616,11 @@ ExtrudeGeometryFilter::extrudeGeometry(const Geometry*         input,
 }
 
 void
-ExtrudeGeometryFilter::addDrawable( osg::Drawable* drawable, osg::StateSet* stateSet, const std::string& name )
+ExtrudeGeometryFilter::addDrawable(osg::Drawable*      drawable,
+                                   osg::StateSet*      stateSet,
+                                   const std::string&  name,
+                                   Feature*            feature,
+                                   FeatureSourceIndex* index )
 {
     // find the geode for the active stateset, creating a new one if necessary. NULL is a 
     // valid key as well.
@@ -626,6 +637,11 @@ ExtrudeGeometryFilter::addDrawable( osg::Drawable* drawable, osg::StateSet* stat
     if ( !name.empty() )
     {
         drawable->setName( name );
+    }
+
+    if ( index )
+    {
+        index->tagPrimitiveSets( drawable, feature );
     }
 }
 
@@ -646,7 +662,7 @@ ExtrudeGeometryFilter::process( FeatureList& features, FilterContext& context )
             Geometry* part = iter.next();
 
             osg::ref_ptr<osg::Geometry> walls = new osg::Geometry();
-            //walls->setUseVertexBufferObjects(true);
+            walls->setUseVertexBufferObjects( _useVertexBufferObjects.get() );
             
             osg::ref_ptr<osg::Geometry> rooflines = 0L;
             osg::ref_ptr<osg::Geometry> baselines = 0L;
@@ -655,7 +671,7 @@ ExtrudeGeometryFilter::process( FeatureList& features, FilterContext& context )
             if ( part->getType() == Geometry::TYPE_POLYGON )
             {
                 rooflines = new osg::Geometry();
-                //rooflines->setUseVertexBufferObjects(true);
+                rooflines->setUseVertexBufferObjects( _useVertexBufferObjects.get() );
 
                 // prep the shapes by making sure all polys are open:
                 static_cast<Polygon*>(part)->open();
@@ -665,12 +681,14 @@ ExtrudeGeometryFilter::process( FeatureList& features, FilterContext& context )
             if ( _outlineSymbol != 0L )
             {
                 outlines = new osg::Geometry();
+                outlines->setUseVertexBufferObjects( _useVertexBufferObjects.get() );
             }
 
             // make a base cap if we're doing stencil volumes.
             if ( _makeStencilVolume )
             {
                 baselines = new osg::Geometry();
+                baselines->setUseVertexBufferObjects( _useVertexBufferObjects.get() );
             }
 
             // calculate the extrusion height:
@@ -696,8 +714,8 @@ ExtrudeGeometryFilter::process( FeatureList& features, FilterContext& context )
                 offset = input->eval( _heightOffsetExpr.mutable_value(), &context );
             }
 
-            osg::StateSet* wallStateSet = 0L;
-            osg::StateSet* roofStateSet = 0L;
+            osg::ref_ptr<osg::StateSet> wallStateSet;
+            osg::ref_ptr<osg::StateSet> roofStateSet;
 
             // calculate the wall texturing:
             SkinResource* wallSkin = 0L;
@@ -733,11 +751,19 @@ ExtrudeGeometryFilter::process( FeatureList& features, FilterContext& context )
             }
 
             // calculate the colors:
-            osg::Vec4f wallColor(1,1,1,1), roofColor(1,1,1,1), outlineColor(1,1,1,1);
+            osg::Vec4f wallColor(1,1,1,0), wallBaseColor(1,1,1,0), roofColor(1,1,1,0), outlineColor(1,1,1,1);
 
             if ( _wallPolygonSymbol.valid() )
             {
                 wallColor = _wallPolygonSymbol->fill()->color();
+                if ( _extrusionSymbol->wallGradientPercentage().isSet() )
+                {
+                    wallBaseColor = Color(wallColor).brightness( 1.0 - *_extrusionSymbol->wallGradientPercentage() );
+                }
+                else
+                {
+                    wallBaseColor = wallColor;
+                }
             }
             if ( _roofPolygonSymbol.valid() )
             {
@@ -753,25 +779,20 @@ ExtrudeGeometryFilter::process( FeatureList& features, FilterContext& context )
                     part, height, offset, 
                     *_extrusionSymbol->flatten(),
                     walls.get(), rooflines.get(), baselines.get(), outlines.get(),
-                    wallColor, roofColor, outlineColor,
+                    wallColor, wallBaseColor, roofColor, outlineColor,
                     wallSkin, roofSkin,
                     context ) )
             {      
                 if ( wallSkin )
                 {
-                    wallStateSet = context.resourceCache()->getStateSet( wallSkin );
+                    context.resourceCache()->getStateSet( wallSkin, wallStateSet );
                 }
 
                 // generate per-vertex normals, altering the geometry as necessary to avoid
                 // smoothing around sharp corners
-    #if OSG_MIN_VERSION_REQUIRED(2,9,9)
-                //Crease angle threshold wasn't added until
                 osgUtil::SmoothingVisitor::smooth(
                     *walls.get(), 
-                    osg::DegreesToRadians(_wallAngleThresh_deg) );            
-    #else
-                osgUtil::SmoothingVisitor::smooth(*walls.get());            
-    #endif
+                    osg::DegreesToRadians(_wallAngleThresh_deg) );
 
                 // tessellate and add the roofs if necessary:
                 if ( rooflines.valid() )
@@ -786,16 +807,9 @@ ExtrudeGeometryFilter::process( FeatureList& features, FilterContext& context )
                     if ( !_makeStencilVolume )
                         osgUtil::SmoothingVisitor::smooth( *rooflines.get() );
 
-                    // texture the rooflines if necessary
-                    //applyOverlayTexturing( rooflines.get(), input, env );
-
-                    // mark this geometry as DYNAMIC because otherwise the OSG optimizer will destroy it.
-                    // TODO: why??
-                    rooflines->setDataVariance( osg::Object::DYNAMIC );
-
                     if ( roofSkin )
                     {
-                        roofStateSet = context.resourceCache()->getStateSet( roofSkin );
+                        context.resourceCache()->getStateSet( roofSkin, roofStateSet );
                     }
                 }
 
@@ -811,23 +825,23 @@ ExtrudeGeometryFilter::process( FeatureList& features, FilterContext& context )
                 if ( !_featureNameExpr.empty() )
                     name = input->eval( _featureNameExpr, &context );
 
-                //MeshConsolidator::run( *walls.get() );
-                addDrawable( walls.get(), wallStateSet, name );
+                FeatureSourceIndex* index = context.featureIndex();
+
+                addDrawable( walls.get(), wallStateSet.get(), name, input, index );
 
                 if ( rooflines.valid() )
                 {
-                    //MeshConsolidator::run( *rooflines.get() );
-                    addDrawable( rooflines.get(), roofStateSet, name );
+                    addDrawable( rooflines.get(), roofStateSet.get(), name, input, index );
                 }
 
                 if ( baselines.valid() )
                 {
-                    addDrawable( baselines.get(), 0L, name );
+                    addDrawable( baselines.get(), 0L, name, input, index );
                 }
 
                 if ( outlines.valid() )
                 {
-                    addDrawable( outlines.get(), 0L, name );
+                    addDrawable( outlines.get(), 0L, name, input, index );
                 }
             }   
         }
@@ -858,22 +872,24 @@ ExtrudeGeometryFilter::push( FeatureList& input, FilterContext& context )
     {
         if ( _wallSkinSymbol.valid() && _wallSkinSymbol->libraryName().isSet() )
         {
-            _wallResLib = sheet->getResourceLibrary( *_wallSkinSymbol->libraryName(), context.getDBOptions() );
+            _wallResLib = sheet->getResourceLibrary( *_wallSkinSymbol->libraryName() );
 
             if ( !_wallResLib.valid() )
             {
                 OE_WARN << LC << "Unable to load resource library '" << *_wallSkinSymbol->libraryName() << "'"
                     << "; wall geometry will not be textured." << std::endl;
+                _wallSkinSymbol = 0L;
             }
         }
 
         if ( _roofSkinSymbol.valid() && _roofSkinSymbol->libraryName().isSet() )
         {
-            _roofResLib = sheet->getResourceLibrary( *_roofSkinSymbol->libraryName(), context.getDBOptions() );
+            _roofResLib = sheet->getResourceLibrary( *_roofSkinSymbol->libraryName() );
             if ( !_roofResLib.valid() )
             {
                 OE_WARN << LC << "Unable to load resource library '" << *_roofSkinSymbol->libraryName() << "'"
                     << "; roof geometry will not be textured." << std::endl;
+                _roofSkinSymbol = 0L;
             }
         }
     }
@@ -890,6 +906,9 @@ ExtrudeGeometryFilter::push( FeatureList& input, FilterContext& context )
         for( SortedGeodeMap::iterator i = _geodes.begin(); i != _geodes.end(); ++i )
         {
             MeshConsolidator::run( *i->second.get() );
+
+            VertexCacheOptimizer vco;
+            i->second->accept( vco );
         }
     }
 
@@ -910,17 +929,6 @@ ExtrudeGeometryFilter::push( FeatureList& input, FilterContext& context )
         groupStateSet->setAttributeAndModes( new osg::PolygonOffset(1,1), 1 );
         if ( _outlineSymbol->stroke()->width().isSet() )
             groupStateSet->setAttributeAndModes( new osg::LineWidth(*_outlineSymbol->stroke()->width()), 1 );
-    }
-
-    OE_DEBUG << LC << "Sorted geometry into " << group->getNumChildren() << " groups" << std::endl;
-
-    //TODO
-    // running this after the MC reduces the primitive set count by a huge amount, but I
-    // have not figured out why yet.
-    if ( _mergeGeometry == true )
-    {
-        osgUtil::Optimizer o;
-        o.optimize( group, osgUtil::Optimizer::MERGE_GEOMETRY );
     }
 
     return group;

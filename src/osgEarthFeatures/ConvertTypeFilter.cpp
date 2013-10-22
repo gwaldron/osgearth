@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2010 Pelican Mapping
+ * Copyright 2008-2013 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -24,6 +24,8 @@ using namespace osgEarth;
 using namespace osgEarth::Features;
 using namespace osgEarth::Symbology;
 
+OSGEARTH_REGISTER_SIMPLE_FEATUREFILTER(convert, ConvertTypeFilter)
+
 
 ConvertTypeFilter::ConvertTypeFilter() :
 _toType( Geometry::TYPE_UNKNOWN )
@@ -41,6 +43,30 @@ ConvertTypeFilter::ConvertTypeFilter( const ConvertTypeFilter& rhs ) :
 _toType( rhs._toType )
 {
     //NOP
+}
+
+ConvertTypeFilter::ConvertTypeFilter( const Config& conf):
+_toType( Geometry::TYPE_UNKNOWN )
+{
+    if (conf.key() == "convert")
+    {
+        optional<Geometry::Type> type = Geometry::TYPE_POINTSET;
+        conf.getIfSet( "type", "point",   type, Geometry::TYPE_POINTSET );
+        conf.getIfSet( "type", "line",    type, Geometry::TYPE_LINESTRING );
+        conf.getIfSet( "type", "polygon", type, Geometry::TYPE_POLYGON );
+        _toType = *type;        
+    }
+}
+
+Config ConvertTypeFilter::getConfig() const
+{
+    Config config( "convert" );
+    optional<Geometry::Type> type( _toType, _toType); // weird optional ctor :)
+    config.addIfSet( "type", "point",   type, Geometry::TYPE_POINTSET );
+    config.addIfSet( "type", "line",    type, Geometry::TYPE_LINESTRING );
+    config.addIfSet( "type", "polygon", type, Geometry::TYPE_POLYGON );    
+
+    return config;
 }
 
 FilterContext

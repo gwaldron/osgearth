@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2008-2010 Pelican Mapping
+* Copyright 2008-2013 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -61,7 +61,15 @@ LocalizedNodeEditor::~LocalizedNodeEditor()
 void
 LocalizedNodeEditor::updateDraggers()
 {
-    _dragger->setPosition( _node->getPosition(), false );
+    GeoPoint pos = _node->getPosition();    
+    _dragger->setPosition( pos, false );
+}
+
+void
+LocalizedNodeEditor::setPosition(const GeoPoint& pos)
+{
+    _node->setPosition( pos );
+    updateDraggers();
 }
 
 
@@ -115,6 +123,14 @@ _bearing( osg::DegreesToRadians( 90.0 ) )
 
 CircleNodeEditor::~CircleNodeEditor()
 {
+    //nop
+}
+
+void
+CircleNodeEditor::setBearing( const Angle& bearing )
+{
+    _bearing = bearing.as(Units::RADIANS);
+    updateDraggers();
 }
 
 void
@@ -150,7 +166,7 @@ CircleNodeEditor::updateDraggers()
         // Get the current location of the center of the circle (in lat/long, absolute Z)
         GeoPoint location = _node->getPosition();   
         location.makeGeographic();
-        location.makeAbsolute( _node->getMapNode()->getTerrain() );
+        //location.makeAbsolute( _node->getMapNode()->getTerrain() );
         
         //Get the radius of the circle in meters
         double r = static_cast<CircleNode*>(_node.get())->getRadius().as(Units::METERS);
@@ -163,9 +179,9 @@ CircleNodeEditor::updateDraggers()
         GeoPoint draggerLocation( 
             location.getSRS(),
             osg::RadiansToDegrees(lon),
-            osg::RadiansToDegrees(lat),
-            location.z(),
-            AltitudeMode::ABSOLUTE );
+            osg::RadiansToDegrees(lat));
+
+        draggerLocation.z() = 0;
 
         _radiusDragger->setPosition( draggerLocation, false );
     }
@@ -268,10 +284,14 @@ EllipseNodeEditor::updateDraggers()
         double lat, lon;
         GeoMath::destination(osg::DegreesToRadians( location.y() ), osg::DegreesToRadians( location.x() ), osg::PI_2 - rotation, minorR, lat, lon, em->getRadiusEquator());        
 
-        _minorDragger->setPosition( GeoPoint(location.getSRS(), osg::RadiansToDegrees( lon ), osg::RadiansToDegrees( lat ), 0), false);
+        GeoPoint minorLocation(location.getSRS(), osg::RadiansToDegrees( lon ), osg::RadiansToDegrees( lat ));
+        minorLocation.z() = 0;       
+        _minorDragger->setPosition( minorLocation, false);
 
         GeoMath::destination(osg::DegreesToRadians( location.y() ), osg::DegreesToRadians( location.x() ), -rotation, majorR, lat, lon, em->getRadiusEquator());                
-        _majorDragger->setPosition( GeoPoint(location.getSRS(), osg::RadiansToDegrees( lon ), osg::RadiansToDegrees( lat ), 0), false);
+        GeoPoint majorLocation(location.getSRS(), osg::RadiansToDegrees( lon ), osg::RadiansToDegrees( lat ));
+        majorLocation.z() = 0;
+        _majorDragger->setPosition( majorLocation, false);
     }
 }
 

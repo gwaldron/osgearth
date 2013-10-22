@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2010 Pelican Mapping
+ * Copyright 2008-2013 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -123,6 +123,8 @@ LatLongFormatter::format( const Angular& angle, int precision, const AngularForm
                 buf << d << " " << m << " " << sf;
         }
         break;
+		case FORMAT_DEFAULT:
+		default: break;
     }
 
     result = buf.str();

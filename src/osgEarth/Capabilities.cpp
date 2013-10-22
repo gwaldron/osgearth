@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2010 Pelican Mapping
+ * Copyright 2008-2013 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -24,6 +24,7 @@
 #include <osg/GL2Extensions>
 #include <osg/Texture>
 #include <osgViewer/Version>
+#include <OpenThreads/Thread>
 
 using namespace osgEarth;
 
@@ -99,6 +100,7 @@ Capabilities::Capabilities() :
 _maxFFPTextureUnits     ( 1 ),
 _maxGPUTextureUnits     ( 1 ),
 _maxGPUTextureCoordSets ( 1 ),
+_maxGPUAttribs          ( 1 ),
 _maxTextureSize         ( 256 ),
 _maxFastTextureSize     ( 256 ),
 _maxLights              ( 1 ),
@@ -109,9 +111,18 @@ _supportsTextureArrays  ( false ),
 _supportsMultiTexture   ( false ),
 _supportsStencilWrap    ( true ),
 _supportsTwoSidedStencil( false ),
+_supportsTexture3D      ( false ),
 _supportsTexture2DLod   ( false ),
 _supportsMipmappedTextureUpdates( false ),
-_supportsDepthPackedStencilBuffer( false )
+_supportsDepthPackedStencilBuffer( false ),
+_supportsOcclusionQuery ( false ),
+_supportsDrawInstanced  ( false ),
+_supportsUniformBufferObjects( false ),
+_supportsNonPowerOfTwoTextures( false ),
+_maxUniformBlockSize    ( 0 ),
+_preferDLforStaticGeom  ( true ),
+_numProcessors          ( 1 ),
+_supportsFragDepthWrite ( false )
 {
     // little hack to force the osgViewer library to link so we can create a graphics context
     osgViewerGetVersion();
@@ -120,6 +131,9 @@ _supportsDepthPackedStencilBuffer( false )
     bool enableATIworkarounds = true;
     if ( ::getenv( "OSGEARTH_DISABLE_ATI_WORKAROUNDS" ) != 0L )
         enableATIworkarounds = false;
+
+    // logical CPUs (cores)
+    _numProcessors = OpenThreads::GetNumberOfProcessors();
 
     // create a graphics context so we can query OpenGL support:
     MyGraphicsContext mgc;
@@ -148,13 +162,18 @@ _supportsDepthPackedStencilBuffer( false )
         OE_INFO << LC << "  Max GPU texture units = " << _maxGPUTextureUnits << std::endl;
 
         glGetIntegerv( GL_MAX_TEXTURE_COORDS_ARB, &_maxGPUTextureCoordSets );
-        OE_INFO << LC << "  Max GPU texture coordinate sets = " << _maxGPUTextureCoordSets << std::endl;
+        OE_INFO << LC << "  Max GPU texture coord indices = " << _maxGPUTextureCoordSets << std::endl;
+
+        glGetIntegerv( GL_MAX_VERTEX_ATTRIBS, &_maxGPUAttribs );
+        OE_INFO << LC << "  Max GPU attributes = " << _maxGPUAttribs << std::endl;
 
         glGetIntegerv( GL_DEPTH_BITS, &_depthBits );
         OE_INFO << LC << "  Depth buffer bits = " << _depthBits << std::endl;
 
-        // Use the texture-proxy method to determine the maximum texture size 
+        
         glGetIntegerv( GL_MAX_TEXTURE_SIZE, &_maxTextureSize );
+#if !(defined(OSG_GLES1_AVAILABLE) || defined(OSG_GLES2_AVAILABLE))
+        // Use the texture-proxy method to determine the maximum texture size 
         for( int s = _maxTextureSize; s > 2; s >>= 1 )
         {
             glTexImage2D( GL_PROXY_TEXTURE_2D, 0, GL_RGBA8, s, s, 0, GL_RGBA, GL_UNSIGNED_BYTE, 0L );
@@ -166,12 +185,22 @@ _supportsDepthPackedStencilBuffer( false )
                 break;
             }
         }
+#endif
         OE_INFO << LC << "  Max texture size = " << _maxTextureSize << std::endl;
 
+        //PORT@tom, what effect will this have?
+#ifdef OSG_GL_FIXED_FUNCTION_AVAILABLE
         glGetIntegerv( GL_MAX_LIGHTS, &_maxLights );
+#else
+        _maxLights = 1;
+#endif
         OE_INFO << LC << "  Max lights = " << _maxLights << std::endl;
 
-        _supportsGLSL = GL2->isGlslSupported();
+        
+        if ( ::getenv("OSGEARTH_NO_GLSL") )
+            _supportsGLSL = false;
+        else
+            _supportsGLSL = GL2->isGlslSupported();
         OE_INFO << LC << "  GLSL = " << SAYBOOL(_supportsGLSL) << std::endl;
 
         if ( _supportsGLSL )
@@ -201,11 +230,73 @@ _supportsDepthPackedStencilBuffer( false )
         _supportsTwoSidedStencil = osg::isGLExtensionSupported( id, "GL_EXT_stencil_two_side" );
         OE_INFO << LC << "  2-sided stencils = " << SAYBOOL(_supportsTwoSidedStencil) << std::endl;
 
-        _supportsDepthPackedStencilBuffer = osg::isGLExtensionSupported( id, "GL_EXT_packed_depth_stencil" );
+        _supportsDepthPackedStencilBuffer = osg::isGLExtensionSupported( id, "GL_EXT_packed_depth_stencil" ) || 
+                                            osg::isGLExtensionSupported( id, "GL_OES_packed_depth_stencil" );
         OE_INFO << LC << "  depth-packed stencil = " << SAYBOOL(_supportsDepthPackedStencilBuffer) << std::endl;
+
+        _supportsOcclusionQuery = osg::isGLExtensionSupported( id, "GL_ARB_occlusion_query" );
+        OE_INFO << LC << "  occlusion query = " << SAYBOOL(_supportsOcclusionQuery) << std::endl;
+
+        _supportsDrawInstanced = 
+            _supportsGLSL &&
+            osg::isGLExtensionOrVersionSupported( id, "GL_EXT_draw_instanced", 3.1f );
+        OE_INFO << LC << "  draw instanced = " << SAYBOOL(_supportsDrawInstanced) << std::endl;
+
+        glGetIntegerv( GL_MAX_UNIFORM_BLOCK_SIZE, &_maxUniformBlockSize );
+        OE_INFO << LC << "  max uniform block size = " << _maxUniformBlockSize << std::endl;
+
+        _supportsUniformBufferObjects = 
+            _supportsGLSL &&
+            osg::isGLExtensionOrVersionSupported( id, "GL_ARB_uniform_buffer_object", 2.0f );
+        OE_INFO << LC << "  uniform buffer objects = " << SAYBOOL(_supportsUniformBufferObjects) << std::endl;
+
+        if ( _supportsUniformBufferObjects && _maxUniformBlockSize == 0 )
+        {
+            OE_INFO << LC << "  ...but disabled, since UBO block size reports zero" << std::endl;
+            _supportsUniformBufferObjects = false;
+        }
+
+        _supportsNonPowerOfTwoTextures =
+            osg::isGLExtensionSupported( id, "GL_ARB_texture_non_power_of_two" );
+        OE_INFO << LC << "  NPOT textures = " << SAYBOOL(_supportsNonPowerOfTwoTextures) << std::endl;
+
+
+        // Writing to gl_FragDepth is not supported under GLES:
+#if (defined(OSG_GLES1_AVAILABLE) || defined(OSG_GLES2_AVAILABLE))
+        _supportsFragDepthWrite = false;
+#else
+        _supportsFragDepthWrite = true;
+#endif
 
         //_supportsTexture2DLod = osg::isGLExtensionSupported( id, "GL_ARB_shader_texture_lod" );
         //OE_INFO << LC << "  texture2DLod = " << SAYBOOL(_supportsTexture2DLod) << std::endl;
+
+        // NVIDIA:
+        bool isNVIDIA = _vendor.find("NVIDIA") == 0;
+
+        // NVIDIA has h/w acceleration of some kind for display lists, supposedly.
+        // In any case they do benchmark much faster in osgEarth for static geom.
+        // BUT unfortunately, they dont' seem to work too well with shaders. Colors
+        // change randomly, etc. Might work OK for textured geometry but not for 
+        // untextured. TODO: investigate.
+#if 1
+        _preferDLforStaticGeom = false;
+        if ( ::getenv("OSGEARTH_TRY_DISPLAY_LISTS") )
+        {
+            _preferDLforStaticGeom = true;
+        }
+#else
+        if ( ::getenv("OSGEARTH_ALWAYS_USE_VBOS") )
+        {
+            _preferDLforStaticGeom = false;
+        }
+        else
+        {
+            _preferDLforStaticGeom = isNVIDIA;
+        }
+#endif
+
+        OE_INFO << LC << "  prefer DL for static geom = " << SAYBOOL(_preferDLforStaticGeom) << std::endl;
 
         // ATI workarounds:
         bool isATI = _vendor.find("ATI ") == 0;

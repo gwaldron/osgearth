@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2010 Pelican Mapping
+ * Copyright 2008-2013 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -20,10 +20,6 @@
 #include <osgEarthFeatures/FeatureModelGraph>
 #include <osgEarth/SpatialReference>
 #include <osg/Notify>
-#include <osg/Timer>
-#include <osg/LOD>
-#include <osg/ClusterCullingCallback>
-#include <osgUtil/Optimizer>
 
 using namespace osgEarth;
 using namespace osgEarth::Features;
@@ -35,11 +31,12 @@ using namespace osgEarth::Symbology;
 
 FeatureModelSourceOptions::FeatureModelSourceOptions( const ConfigOptions& options ) :
 ModelSourceOptions ( options ),
-_geomTypeOverride  ( Geometry::TYPE_UNKNOWN ),
 _lit               ( true ),
 _maxGranularity_deg( 1.0 ),
 _mergeGeometry     ( false ),
-_clusterCulling    ( true )
+_clusterCulling    ( true ),
+_backfaceCulling   ( true ),
+_alphaBlending     ( true )
 {
     fromConfig( _conf );
 }
@@ -48,29 +45,23 @@ void
 FeatureModelSourceOptions::fromConfig( const Config& conf )
 {
     conf.getObjIfSet( "features", _featureOptions );
-    //if ( conf.hasChild("features") )
-    //    _featureOptions->merge( conf.child("features") );
     _featureSource = conf.getNonSerializable<FeatureSource>("feature_source");
 
-    conf.getObjIfSet( "styles",       _styles );
-    conf.getObjIfSet( "layout",       _layout );
-    conf.getObjIfSet( "paging",       _layout ); // backwards compat.. to be deprecated
-    conf.getObjIfSet( "gridding",     _gridding ); // to be deprecated
-    conf.getObjIfSet( "feature_name", _featureNameExpr );
-    conf.getObjIfSet( "cache_policy", _cachePolicy );
+    conf.getObjIfSet( "styles",           _styles );
+    conf.getObjIfSet( "layout",           _layout );
+    conf.getObjIfSet( "paging",           _layout ); // backwards compat.. to be deprecated
+    conf.getObjIfSet( "cache_policy",     _cachePolicy );
+    conf.getObjIfSet( "fading",           _fading );
+    conf.getObjIfSet( "feature_name",     _featureNameExpr );
+    conf.getObjIfSet( "feature_indexing", _featureIndexing );
 
-    conf.getIfSet( "lighting", _lit );
-    conf.getIfSet( "max_granularity", _maxGranularity_deg );
-    conf.getIfSet( "merge_geometry",  _mergeGeometry );
-    conf.getIfSet( "cluster_culling", _clusterCulling );
+    conf.getIfSet( "lighting",         _lit );
+    conf.getIfSet( "max_granularity",  _maxGranularity_deg );
+    conf.getIfSet( "merge_geometry",   _mergeGeometry );
+    conf.getIfSet( "cluster_culling",  _clusterCulling );
+    conf.getIfSet( "backface_culling", _backfaceCulling );
+    conf.getIfSet( "alpha_blending",   _alphaBlending );
 
-    std::string gt = conf.value( "geometry_type" );
-    if ( gt == "line" || gt == "lines" || gt == "linestring" )
-        _geomTypeOverride = Geometry::TYPE_LINESTRING;
-    else if ( gt == "point" || gt == "pointset" || gt == "points" )
-        _geomTypeOverride = Geometry::TYPE_POINTSET;
-    else if ( gt == "polygon" || gt == "polygons" )
-        _geomTypeOverride = Geometry::TYPE_POLYGON;
 }
 
 Config
@@ -83,26 +74,19 @@ FeatureModelSourceOptions::getConfig() const
     {
         conf.addNonSerializable("feature_source", _featureSource.get());
     }
-    //conf.updateObjIfSet( "feature_source", _featureSource);
-    conf.updateObjIfSet( "gridding",     _gridding ); // to be deprecated
-    conf.updateObjIfSet( "styles",       _styles );
-    conf.updateObjIfSet( "layout",       _layout );
-    conf.updateObjIfSet( "cache_policy", _cachePolicy );
+    conf.updateObjIfSet( "styles",           _styles );
+    conf.updateObjIfSet( "layout",           _layout );
+    conf.updateObjIfSet( "cache_policy",     _cachePolicy );
+    conf.updateObjIfSet( "fading",           _fading );
+    conf.updateObjIfSet( "feature_name",     _featureNameExpr );
+    conf.updateObjIfSet( "feature_indexing", _featureIndexing );
 
-    conf.updateIfSet( "lighting", _lit );
-    conf.updateIfSet( "max_granularity", _maxGranularity_deg );
-    conf.updateIfSet( "merge_geometry",  _mergeGeometry );
-    conf.updateIfSet( "cluster_culling", _clusterCulling );
-
-
-    if ( _geomTypeOverride.isSet() ) {
-        if ( _geomTypeOverride == Geometry::TYPE_LINESTRING )
-            conf.update( "geometry_type", "line" );
-        else if ( _geomTypeOverride == Geometry::TYPE_POINTSET )
-            conf.update( "geometry_type", "point" );
-        else if ( _geomTypeOverride == Geometry::TYPE_POLYGON )
-            conf.update( "geometry_type", "polygon" );
-    }
+    conf.updateIfSet( "lighting",         _lit );
+    conf.updateIfSet( "max_granularity",  _maxGranularity_deg );
+    conf.updateIfSet( "merge_geometry",   _mergeGeometry );
+    conf.updateIfSet( "cluster_culling",  _clusterCulling );
+    conf.updateIfSet( "backface_culling", _backfaceCulling );
+    conf.updateIfSet( "alpha_blending",   _alphaBlending );
 
     return conf;
 }
@@ -111,21 +95,9 @@ FeatureModelSourceOptions::getConfig() const
 
 FeatureModelSource::FeatureModelSource( const FeatureModelSourceOptions& options ) :
 ModelSource( options ),
-_options( options )
+_options   ( options )
 {
-    // the data source from which to pull features:
-    if ( _options.featureSource().valid() )
-    {
-        _features = _options.featureSource().get();
-    }
-    else if ( _options.featureOptions().isSet() )
-    {
-        _features = FeatureSourceFactory::create( _options.featureOptions().value() );
-        if ( !_features.valid() )
-        {
-            OE_WARN << "FeatureModelSource - no valid feature source provided" << std::endl;
-        }
-    }
+    //nop
 }
 
 void
@@ -142,13 +114,25 @@ FeatureModelSource::setFeatureSource( FeatureSource* source )
 }
 
 void 
-FeatureModelSource::initialize(const osgDB::Options* dbOptions, 
-                               const osgEarth::Map*  map )
+FeatureModelSource::initialize(const osgDB::Options* dbOptions)
 {
-    ModelSource::initialize( dbOptions, map );
+    ModelSource::initialize( dbOptions );
+    
+    // the data source from which to pull features:
+    if ( _options.featureSource().valid() )
+    {
+        _features = _options.featureSource().get();
+    }
+    else if ( _options.featureOptions().isSet() )
+    {
+        _features = FeatureSourceFactory::create( _options.featureOptions().value() );
+        if ( !_features.valid() )
+        {
+            OE_WARN << LC << "No valid feature source provided!" << std::endl;
+        }
+    }
 
-    _dbOptions = dbOptions;
-
+    // initialize the feature source if it exists:
     if ( _features.valid() )
     {
         _features->initialize( dbOptions );
@@ -157,47 +141,105 @@ FeatureModelSource::initialize(const osgDB::Options* dbOptions,
     {
         OE_WARN << LC << "No FeatureSource; nothing will be rendered (" << getName() << ")" << std::endl;
     }
-
-    _map = map;
 }
 
 osg::Node*
-FeatureModelSource::createNode( ProgressCallback* progress )
+FeatureModelSource::createNodeImplementation(const Map*            map,
+                                             const osgDB::Options* dbOptions,
+                                             ProgressCallback*     progress )
 {
-    if ( !_factory.valid() )
-        _factory = createFeatureNodeFactory();
-
-    if ( !_factory.valid() )
+    // user must provide a valid map.
+    if ( !map )
+    {
+        OE_WARN << LC << "NULL Map is illegal when building feature data." << std::endl;
         return 0L;
+    }
 
+    // make sure the feature source initialized properly:
     if ( !_features.valid() || !_features->getFeatureProfile() )
     {
         OE_WARN << LC << "Invalid feature source" << std::endl;
         return 0L;
     }
 
-    Session* session = new Session( 
-        _map.get(), 
-        _options.styles().get(),
-        _dbOptions.get() );
+    // create a feature node factory:
+    FeatureNodeFactory* factory = createFeatureNodeFactory();
+    if ( !factory )
+    {
+        OE_WARN << LC << "Unable to create a feature node factory!" << std::endl;
+        return 0L;
+    }
 
-    FeatureModelGraph* graph = new FeatureModelGraph( 
-        _features.get(), 
-        _options, 
-        _factory.get(),
-        session );
+    // Session holds data that's shared across the life of the FMG
+    Session* session = new Session( map, _options.styles().get(), _features.get(), dbOptions );
+
+    // Graph that will render feature models. May included paged data.
+    FeatureModelGraph* graph = new FeatureModelGraph( session, _options, factory );
+
+    // install any post-merge operations on the FMG so it can call them during paging:
+    const NodeOperationVector& ops = postProcessors();
+    for( NodeOperationVector::const_iterator i = ops.begin(); i != ops.end(); ++i )
+    {
+        graph->addPostMergeOperation( i->get() );
+    }
+
+    // then run the ops on the staring graph:
+    firePostProcessors( graph );
 
     return graph;
 }
 
+
+
 //------------------------------------------------------------------------
+
+
+osg::Group*
+FeatureNodeFactory::getOrCreateStyleGroup(const Style& style,
+                                          Session*     session)
+{
+    osg::Group* group = new osg::Group();
+
+    // apply necessary render styles.
+    const RenderSymbol* render = style.get<RenderSymbol>();
+    if ( render )
+    {
+        if ( render->depthTest().isSet() )
+        {
+            group->getOrCreateStateSet()->setMode(
+                GL_DEPTH_TEST, 
+                (render->depthTest() == true ? osg::StateAttribute::ON : osg::StateAttribute::OFF) | osg::StateAttribute::OVERRIDE );
+        }
+
+        if ( render->lighting().isSet() )
+        {
+            group->getOrCreateStateSet()->setMode(
+                GL_LIGHTING,
+                (render->lighting() == true ? osg::StateAttribute::ON : osg::StateAttribute::OFF) | osg::StateAttribute::OVERRIDE );
+        }
+
+        if ( render->backfaceCulling().isSet() )
+        {
+            group->getOrCreateStateSet()->setMode(
+                GL_CULL_FACE,
+                (render->backfaceCulling() == true ? osg::StateAttribute::ON : osg::StateAttribute::OFF) | osg::StateAttribute::OVERRIDE );
+        }
+    }
+
+    return group;
+}
+
+
+//------------------------------------------------------------------------
+
+
 GeomFeatureNodeFactory::GeomFeatureNodeFactory( const GeometryCompilerOptions& options ) : 
 _options( options ) 
 { 
     //nop
 }
 
-bool GeomFeatureNodeFactory::createOrUpdateNode(       
+bool GeomFeatureNodeFactory::createOrUpdateNode(
     FeatureCursor*            features,
     const Style&              style,
     const FilterContext&      context,

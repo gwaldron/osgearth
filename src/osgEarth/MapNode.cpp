@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2008-2010 Pelican Mapping
+* Copyright 2008-2013 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -17,11 +17,21 @@
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
 #include <osgEarth/MapNode>
+#include <osgEarth/Capabilities>
+#include <osgEarth/ClampableNode>
+#include <osgEarth/ClampingTechnique>
+#include <osgEarth/CullingUtils>
+#include <osgEarth/DrapeableNode>
+#include <osgEarth/DrapingTechnique>
+#include <osgEarth/MapNodeObserver>
 #include <osgEarth/MaskNode>
 #include <osgEarth/NodeUtils>
 #include <osgEarth/Registry>
-#include <osgEarth/ShaderComposition>
+#include <osgEarth/ShaderFactory>
+#include <osgEarth/TraversalData>
+#include <osgEarth/VirtualProgram>
 #include <osgEarth/OverlayDecorator>
+#include <osgEarth/TerrainEngineNode>
 #include <osgEarth/TextureCompositor>
 #include <osgEarth/URI>
 #include <osg/ArgumentParser>
@@ -49,30 +59,26 @@ namespace
         void onModelLayerMoved( ModelLayer* layer, unsigned int oldIndex, unsigned int newIndex ) {
             _node->onModelLayerMoved( layer, oldIndex, newIndex);
         }
-#if 0
-        void onMaskLayerAdded( MaskLayer* layer ) {
-            _node->onMaskLayerAdded( layer );
-        }
-        void onMaskLayerRemoved( MaskLayer* layer ) {
-            _node->onMaskLayerRemoved( layer );
-        }
-#endif
 
         osg::observer_ptr<MapNode> _node;
     };
 
-    // converys overlay property changes to the OverlayDecorator in MapNode.
-    class MapModelLayerCallback : public ModelLayerCallback
+    // callback that will run the MapNode installer on model layers so that
+    // MapNodeObservers can have MapNode access
+    struct MapNodeObserverInstaller : public NodeOperation
     {
-    public:
-        MapModelLayerCallback(MapNode* mapNode) : _node(mapNode) { }
+        MapNodeObserverInstaller( MapNode* mapNode ) : _mapNode( mapNode ) { }
 
-        virtual void onOverlayChanged(ModelLayer* layer)
+        void operator()( osg::Node* node )
         {
-            _node->onModelLayerOverlayChanged( layer );
+            if ( _mapNode.valid() && node )
+            {
+                MapNodeReplacer replacer( _mapNode.get() );
+                node->accept( replacer );
+            }
         }
 
-        osg::observer_ptr<MapNode> _node;
+        osg::observer_ptr<MapNode> _mapNode;
     };
 }
 
@@ -110,8 +116,16 @@ public:
                   osg::ref_ptr< MapNode::TileRangeData > ranges = static_cast< MapNode::TileRangeData* >(node.getUserData());
                   if (ranges)
                   {
-                      node.setRange(0, ranges->_minRange, ranges->_maxRange);
-                      node.setRange(1, 0, ranges->_minRange);
+                      if (node.getRangeMode() == osg::LOD::PIXEL_SIZE_ON_SCREEN)
+                      {
+                          node.setRange( 0, ranges->_minRange, ranges->_maxRange );
+                          node.setRange( 1, ranges->_maxRange, FLT_MAX );                          
+                      }
+                      else
+                      {                          
+                          node.setRange(0, ranges->_minRange, ranges->_maxRange);
+                          node.setRange(1, 0, ranges->_minRange);
+                      }
                   }                  
               }
               
@@ -169,20 +183,37 @@ _mapNodeOptions( options )
     init();
 }
 
+MapNode::MapNode( Map* map, const MapNodeOptions& options, bool autoInit ) :
+_map( map? map : new Map() ),
+_mapNodeOptions( options )
+{
+    if ( autoInit )
+    {
+        init();
+    }
+}
+
+
 void
 MapNode::init()
 {
+    // Take a reference to this object so that it doesn't get inadvertently
+    // deleting during startup. It is possible that during startup, a driver
+    // will load that will take a reference to the MapNode (like in a
+    // ModelSource node operation) and we don't want that deleting the MapNode
+    // out from under us. 
+    // This is paired by an unref_nodelete() at the end of this method.
+    this->ref();
+
     // Protect the MapNode from the Optimizer
     setDataVariance(osg::Object::DYNAMIC);
 
+    // initialize 0Ls
+    _terrainEngine          = 0L;
+    _terrainEngineContainer = 0L;
+    _overlayDecorator       = 0L;
+
     setName( "osgEarth::MapNode" );
-
-    // Since we have global uniforms in the stateset, mark it dynamic so it is immune to
-    // multi-threaded overlap
-    // TODO: do we need this anymore? there are no more global uniforms in here.. gw
-    getOrCreateStateSet()->setDataVariance(osg::Object::DYNAMIC);
-
-    _modelLayerCallback = new MapModelLayerCallback(this);
 
     _maskLayerNode = 0L;
     _lastNumBlacklistedFilenames = 0;
@@ -196,9 +227,10 @@ MapNode::init()
 
     // establish global driver options. These are OSG reader-writer options that
     // will make their way to any read* calls down the pipe
-    const osgDB::ReaderWriter::Options* global_options = _map->getGlobalOptions();
-    osg::ref_ptr<osgDB::ReaderWriter::Options> local_options = global_options ? 
-        new osgDB::ReaderWriter::Options( *global_options ) :
+    const osgDB::Options* global_options = _map->getGlobalOptions();
+
+    osg::ref_ptr<osgDB::Options> local_options = global_options ? 
+        Registry::instance()->cloneOrCreateOptions( global_options ) :
         NULL;
 
     if ( local_options.valid() )
@@ -212,9 +244,6 @@ MapNode::init()
     // TODO: not sure why we call this here
     _map->setGlobalOptions( local_options.get() );
 
-    // overlays:
-    _pendingOverlayAutoSetTextureUnit = true;
-
     // load and attach the terrain engine, but don't initialize it until we need it
     const TerrainOptions& terrainOptions = _mapNodeOptions.getTerrainOptions();
 
@@ -226,49 +255,69 @@ MapNode::init()
     // an optimizer from collapsing the empty group node.
     _terrainEngineContainer = new osg::Group();
     _terrainEngineContainer->setDataVariance( osg::Object::DYNAMIC );
-    this->addChild( _terrainEngineContainer.get() );
+    this->addChild( _terrainEngineContainer );
 
     // initialize terrain-level lighting:
     if ( terrainOptions.enableLighting().isSet() )
     {
-        _terrainEngineContainer->getOrCreateStateSet()->setMode( GL_LIGHTING, terrainOptions.enableLighting().value() ? 
-            osg::StateAttribute::ON | osg::StateAttribute::PROTECTED :
-            osg::StateAttribute::OFF | osg::StateAttribute::PROTECTED );
+        _terrainEngineContainer->getOrCreateStateSet()->setMode( 
+            GL_LIGHTING, 
+            terrainOptions.enableLighting().value() ? 1 : 0 );
     }
 
-    if ( _terrainEngine.valid() )
+    if ( _terrainEngine )
     {
         // inform the terrain engine of the map information now so that it can properly
         // initialize it's CoordinateSystemNode. This is necessary in order to support
         // manipulators and to set up the texture compositor prior to frame-loop 
         // initialization.
         _terrainEngine->preInitialize( _map.get(), terrainOptions );
-
-        _terrainEngineContainer->addChild( _terrainEngine.get() );
+        _terrainEngineContainer->addChild( _terrainEngine );
     }
     else
+    {
         OE_WARN << "FAILED to create a terrain engine for this map" << std::endl;
+    }
 
-    // make a group for the model layers:
+    // make a group for the model layers.
+    // NOTE: for now, we are going to nullify any shader programs that occur above the model
+    // group, since it does not YET support shader composition. Programs defined INSIDE a
+    // model layer will still work OK though.
     _models = new osg::Group();
     _models->setName( "osgEarth::MapNode.modelsGroup" );
     addChild( _models.get() );
 
-    // make a group for overlay model layers:
-    _overlayModels = new osg::Group();
-    _overlayModels->setName( "osgEarth::MapNode.overlayModelsGroup" );
-
     // a decorator for overlay models:
     _overlayDecorator = new OverlayDecorator();
-    if ( _mapNodeOptions.overlayVertexWarping().isSet() )
-        _overlayDecorator->setVertexWarping( *_mapNodeOptions.overlayVertexWarping() );
-    if ( _mapNodeOptions.overlayBlending().isSet() )
-        _overlayDecorator->setOverlayBlending( *_mapNodeOptions.overlayBlending() );
-    if ( _mapNodeOptions.overlayTextureSize().isSet() )
-        _overlayDecorator->setTextureSize( *_mapNodeOptions.overlayTextureSize() );
-    if ( _mapNodeOptions.overlayMipMapping().isSet() )
-        _overlayDecorator->setMipMapping( *_mapNodeOptions.overlayMipMapping() );
-    addTerrainDecorator( _overlayDecorator.get() );
+    _overlayDecorator->setOverlayGraphTraversalMask( terrainOptions.secondaryTraversalMask().value() );
+
+    // install the Draping technique for overlays:
+    {
+        DrapingTechnique* draping = new DrapingTechnique();
+
+        const char* envOverlayTextureSize = ::getenv("OSGEARTH_OVERLAY_TEXTURE_SIZE");
+
+        if ( _mapNodeOptions.overlayBlending().isSet() )
+            draping->setOverlayBlending( *_mapNodeOptions.overlayBlending() );
+        if ( envOverlayTextureSize )
+            draping->setTextureSize( as<int>(envOverlayTextureSize, 1024) );
+        else if ( _mapNodeOptions.overlayTextureSize().isSet() )
+            draping->setTextureSize( *_mapNodeOptions.overlayTextureSize() );
+        if ( _mapNodeOptions.overlayMipMapping().isSet() )
+            draping->setMipMapping( *_mapNodeOptions.overlayMipMapping() );
+        if ( _mapNodeOptions.overlayAttachStencil().isSet() )
+            draping->setAttachStencil( *_mapNodeOptions.overlayAttachStencil() );
+
+        _overlayDecorator->addTechnique( draping );
+    }
+
+    // install the Clamping technique for overlays:
+    {
+        _overlayDecorator->addTechnique( new ClampingTechnique() );
+    }
+
+
+    addTerrainDecorator( _overlayDecorator );
 
     // install any pre-existing model layers:
     ModelLayerVector modelLayers;
@@ -284,20 +333,30 @@ MapNode::init()
     _map->addMapCallback( _mapCallback.get()  );
 
     osg::StateSet* ss = getOrCreateStateSet();
-	//ss->setAttributeAndModes( new osg::CullFace() ); //, osg::StateAttribute::ON);
-    //ss->setAttributeAndModes( new osg::PolygonOffset( -1, -1 ) );
 
     if ( _mapNodeOptions.enableLighting().isSet() )
     {
-        ss->setMode( GL_LIGHTING, _mapNodeOptions.enableLighting().value() ? 
-            osg::StateAttribute::ON | osg::StateAttribute::PROTECTED :
-            osg::StateAttribute::OFF | osg::StateAttribute::PROTECTED );
+        ss->setMode( 
+            GL_LIGHTING, 
+            _mapNodeOptions.enableLighting().value() ? 1 : 0 );
     }
 
     dirtyBound();
 
+    // Install top-level shader programs:
+    if ( Registry::capabilities().supportsGLSL() )
+    {
+        VirtualProgram* vp = new VirtualProgram();
+        vp->setName( "MapNode" );
+        Registry::instance()->getShaderFactory()->installLightingShaders( vp );
+        ss->setAttributeAndModes( vp, osg::StateAttribute::ON );
+    }
+
     // register for event traversals so we can deal with blacklisted filenames
     ADJUST_EVENT_TRAV_COUNT( this, 1 );
+
+    // remove the temporary reference.
+    this->unref_nodelete();
 }
 
 MapNode::~MapNode()
@@ -309,7 +368,7 @@ MapNode::~MapNode()
     //Remove our model callback from any of the model layers in the map    
     for (osgEarth::ModelLayerVector::iterator itr = modelLayers.begin(); itr != modelLayers.end(); ++itr)
     {
-        this->onModelLayerRemoved( itr->get() );        
+        this->onModelLayerRemoved( itr->get() );
     }
 }
 
@@ -350,23 +409,29 @@ MapNode::getTerrain()
     return getTerrainEngine()->getTerrain();
 }
 
+const Terrain*
+MapNode::getTerrain() const
+{
+    return getTerrainEngine()->getTerrain();
+}
+
 TerrainEngineNode*
 MapNode::getTerrainEngine() const
 {
-    if ( !_terrainEngineInitialized && _terrainEngine.valid() )
+    if ( !_terrainEngineInitialized && _terrainEngine )
     {
         _terrainEngine->postInitialize( _map.get(), getMapNodeOptions().getTerrainOptions() );
         MapNode* me = const_cast< MapNode* >(this);
         me->_terrainEngineInitialized = true;
         me->dirtyBound();
     }
-    return _terrainEngine.get();
+    return _terrainEngine;
 }
 
 void
 MapNode::setCompositorTechnique( TextureCompositorTechnique* tech )
 {
-    if ( _terrainEngine.valid() )
+    if ( _terrainEngine )
     {
         _terrainEngine->getTextureCompositor()->setTechnique( tech );
     }
@@ -378,6 +443,13 @@ MapNode::getModelLayerGroup() const
     return _models.get();
 }
 
+osg::Node*
+MapNode::getModelLayerNode( ModelLayer* layer ) const
+{
+    ModelLayerNodeMap::const_iterator i = _modelLayerNodes.find( layer );
+    return i != _modelLayerNodes.end() ? i->second : 0L;
+}
+
 const MapNodeOptions&
 MapNode::getMapNodeOptions() const
 {
@@ -385,9 +457,9 @@ MapNode::getMapNodeOptions() const
 }
 
 MapNode*
-MapNode::findMapNode( osg::Node* graph )
+MapNode::findMapNode( osg::Node* graph, unsigned travmask )
 {
-    return findTopMostNodeOfType<MapNode>( graph );
+    return findRelativeNodeOfType<MapNode>( graph, travmask );
 }
 
 bool
@@ -401,10 +473,19 @@ MapNode::onModelLayerAdded( ModelLayer* layer, unsigned int index )
 {
     if ( !layer->getEnabled() )
         return;
+    
+    // install a noe operation that will associate this mapnode with
+    // any MapNodeObservers loaded by the model layer:
+    ModelSource* modelSource = layer->getModelSource();
+    if ( modelSource )
+    {
+        // install a post-processing callback on the ModelLayer's source 
+        // so we can update the MapNode on new data that comes in:
+        modelSource->addPostProcessor( new MapNodeObserverInstaller(this) );
+    }
 
-    osg::Node* node = layer->getOrCreateNode();
-
-    layer->addCallback(_modelLayerCallback.get() );
+    // create the scene graph:
+    osg::Node* node = layer->createSceneGraph( _map.get(), _map->getDBOptions(), 0L );
 
     if ( node )
     {
@@ -417,29 +498,26 @@ MapNode::onModelLayerAdded( ModelLayer* layer, unsigned int index )
         }
         else
         {
-            if ( dynamic_cast<TerrainDecorator*>(node) || dynamic_cast<osgSim::OverlayNode*>(node) )
+            if ( dynamic_cast<TerrainDecorator*>(node) )
             {
                 OE_INFO << LC << "Installing overlay node" << std::endl;
                 addTerrainDecorator( node->asGroup() );
             }
             else
             {
-                if ( layer->getOverlay() )
-                {
-                    _overlayModels->addChild( node ); // todo: index?
-                    updateOverlayGraph();
-                }
-                else
-                {
-                    _models->insertChild( index, node );
-                }
+                _models->insertChild( index, node );
             }
 
             ModelSource* ms = layer->getModelSource();
-            if ( ms && ms->getOptions().renderOrder().isSet() )
+
+            if ( ms )
             {
-                node->getOrCreateStateSet()->setRenderBinDetails(
-                    ms->getOptions().renderOrder().value(), "RenderBin" );
+                // enfore a rendering bin if necessary:
+                if ( ms->getOptions().renderOrder().isSet() )
+                {
+                    node->getOrCreateStateSet()->setRenderBinDetails(
+                        ms->getOptions().renderOrder().value(), "RenderBin" );
+                }
             }
 
             _modelLayerNodes[ layer ] = node;
@@ -454,29 +532,19 @@ MapNode::onModelLayerRemoved( ModelLayer* layer )
 {
     if ( layer )
     {
-        layer->removeCallback( _modelLayerCallback.get() );
-
         // look up the node associated with this model layer.
         ModelLayerNodeMap::iterator i = _modelLayerNodes.find( layer );
         if ( i != _modelLayerNodes.end() )
         {
             osg::Node* node = i->second;
 
-            if ( dynamic_cast<TerrainDecorator*>( node ) || dynamic_cast<osgSim::OverlayNode*>( node ) )
+            if ( dynamic_cast<TerrainDecorator*>( node ) )
             {
                 removeTerrainDecorator( node->asGroup() );
             }
             else
             {
-                if ( layer->getModelLayerOptions().overlay() == true )
-                {
-                    _overlayModels->removeChild( node );
-                    updateOverlayGraph();
-                }
-                else
-                {
-                    _models->removeChild( node );
-                }
+                _models->removeChild( node );
             }
             
             _modelLayerNodes.erase( i );
@@ -489,66 +557,62 @@ MapNode::onModelLayerRemoved( ModelLayer* layer )
 void
 MapNode::onModelLayerMoved( ModelLayer* layer, unsigned int oldIndex, unsigned int newIndex )
 {
-		if ( layer )
+    if ( layer )
     {
         // look up the node associated with this model layer.
         ModelLayerNodeMap::iterator i = _modelLayerNodes.find( layer );
         if ( i != _modelLayerNodes.end() )
         {
-            osg::Node* node = i->second;
-            
-            if ( dynamic_cast<osgSim::OverlayNode*>( node ) )
-            {
-                // treat overlay node as a special case
-            }
-            else
-            {
-                _models->removeChild( node );
-                _models->insertChild( newIndex, node );
-            }
+            osg::ref_ptr<osg::Node> node = i->second;
+
+            _models->removeChild( node.get() );
+            _models->insertChild( newIndex, node.get() );
         }
         
         dirtyBound();
     }
 }
 
-struct MaskNodeFinder : public osg::NodeVisitor {
-    MaskNodeFinder() : osg::NodeVisitor( osg::NodeVisitor::TRAVERSE_ALL_CHILDREN ) { }
-    void apply( osg::Group& group ) {
-        if ( dynamic_cast<MaskNode*>( &group ) ) {
-            _groups.push_back( &group );
+namespace
+{
+    struct MaskNodeFinder : public osg::NodeVisitor {
+        MaskNodeFinder() : osg::NodeVisitor( osg::NodeVisitor::TRAVERSE_ALL_CHILDREN ) { }
+        void apply( osg::Group& group ) {
+            if ( dynamic_cast<MaskNode*>( &group ) ) {
+                _groups.push_back( &group );
+            }
+            traverse(group);
         }
-        traverse(group);
-    }
-    std::list< osg::Group* > _groups;
-};
+        std::list< osg::Group* > _groups;
+    };
+}
 
 void
 MapNode::addTerrainDecorator(osg::Group* decorator)
 {    
-    if ( _terrainEngine.valid() )
+    if ( _terrainEngine )
     {
-        decorator->addChild( _terrainEngine.get() );
-        _terrainEngine->getParent(0)->replaceChild( _terrainEngine.get(), decorator );
+        decorator->addChild( _terrainEngine );
+        _terrainEngine->getParent(0)->replaceChild( _terrainEngine, decorator );
         dirtyBound();
 
         TerrainDecorator* td = dynamic_cast<TerrainDecorator*>( decorator );
         if ( td )
-            td->onInstall( _terrainEngine.get() );
+            td->onInstall( _terrainEngine );
     }
 }
 
 void
 MapNode::removeTerrainDecorator(osg::Group* decorator)
 {
-    if ( _terrainEngine.valid() )
+    if ( _terrainEngine )
     {
         TerrainDecorator* td = dynamic_cast<TerrainDecorator*>( decorator );
         if ( td )
-            td->onUninstall( _terrainEngine.get() );
+            td->onUninstall( _terrainEngine );
 
-        osg::Node* child = _terrainEngine.get();
-        for( osg::Group* g = child->getParent(0); g != _terrainEngineContainer.get(); )
+        osg::ref_ptr<osg::Node> child = _terrainEngine;
+        for( osg::Group* g = child->getParent(0); g != _terrainEngineContainer; )
         {
             if ( g == decorator )
             {
@@ -566,7 +630,7 @@ MapNode::removeTerrainDecorator(osg::Group* decorator)
 void
 MapNode::traverse( osg::NodeVisitor& nv )
 {
-    if ( nv.getVisitorType() == osg::NodeVisitor::EVENT_VISITOR )
+    if ( nv.getVisitorType() == nv.EVENT_VISITOR )
     {
         unsigned int numBlacklist = Registry::instance()->getNumBlacklistedFilenames();
         if (numBlacklist != _lastNumBlacklistedFilenames)
@@ -574,42 +638,82 @@ MapNode::traverse( osg::NodeVisitor& nv )
             //Only remove the blacklisted filenames if new filenames have been added since last time.
             _lastNumBlacklistedFilenames = numBlacklist;
             RemoveBlacklistedFilenamesVisitor v;
-            //accept( v );
             _terrainEngine->accept( v );
+        }
+
+        // traverse:
+        std::for_each( _children.begin(), _children.end(), osg::NodeAcceptOp(nv) );
+    }
+
+    else if ( nv.getVisitorType() == nv.CULL_VISITOR )
+    {
+        osgUtil::CullVisitor* cv = Culling::asCullVisitor(nv);
+        if ( cv )
+        {
+            // insert traversal data for this camera:
+            osg::ref_ptr<osg::Referenced> oldUserData = cv->getUserData();
+            MapNodeCullData* cullData = getCullData( cv->getCurrentCamera() );
+            cv->setUserData( cullData );
+
+            cullData->_mapNode = this;
+
+            // calculate altitude:
+            osg::Vec3d eye = cv->getViewPoint();
+            const SpatialReference* srs = getMapSRS();
+            if ( srs && !srs->isProjected() )
+            {
+                GeoPoint ecef;
+                ecef.fromWorld( srs, eye );
+                cullData->_cameraAltitude = ecef.alt();
+            }
+            else
+            {
+                cullData->_cameraAltitude = eye.z();
+            }
+
+            // window scale matrix:
+            osg::Matrix  m4 = cv->getWindowMatrix();
+            osg::Matrix3 m3( m4(0,0), m4(1,0), m4(2,0),
+                             m4(0,1), m4(1,1), m4(2,1),
+                             m4(0,2), m4(1,2), m4(2,2) );
+            cullData->_windowScaleMatrix->set( m3 );
+
+            // traverse:
+            cv->pushStateSet( cullData->_stateSet.get() );
+            std::for_each( _children.begin(), _children.end(), osg::NodeAcceptOp(nv) );
+            cv->popStateSet();
+
+            // restore:
+            cv->setUserData( oldUserData.get() );
         }
     }
 
-    osg::Group::traverse( nv );
+    else
+    {
+        osg::Group::traverse( nv );
+    }
 }
 
-void
-MapNode::onModelLayerOverlayChanged( ModelLayer* layer )
+MapNodeCullData*
+MapNode::getCullData(osg::Camera* key) const
 {
-    OE_NOTICE << "Overlay changed to "  << layer->getOverlay() << std::endl;
-    osg::ref_ptr< osg::Group > origParent = layer->getOverlay() ? _models.get() : _overlayModels.get();
-    osg::ref_ptr< osg::Group > newParent  = layer->getOverlay() ? _overlayModels.get() : _models.get();
-
-    osg::ref_ptr< osg::Node > node = layer->getOrCreateNode();
-    if (node.valid())
+    // first look it up:
     {
-        //Remove it from the original parent and add it to the new parent
-        origParent->removeChild( node.get() );
-        newParent->addChild( node.get() );
+        Threading::ScopedReadLock shared( _cullDataMutex );
+        CullDataMap::const_iterator i = _cullData.find( key );
+        if ( i != _cullData.end() )
+            return i->second.get();
     }
-
-    updateOverlayGraph();
-}
-
-void
-MapNode::updateOverlayGraph()
-{
-    if ( _overlayModels->getNumChildren() > 0 && _overlayDecorator->getOverlayGraph() != _overlayModels.get() )
+    // if it's not there, make it, but double-check.
     {
-        _overlayDecorator->setOverlayGraph( _overlayModels.get() );
-    }
-    else if ( _overlayModels->getNumChildren() == 0 && _overlayDecorator->getOverlayGraph() == _overlayModels.get() )
-    {
-        _overlayDecorator->setOverlayGraph( 0L );
+        Threading::ScopedWriteLock exclusive( _cullDataMutex );
+        
+        CullDataMap::const_iterator i = _cullData.find( key );
+        if ( i != _cullData.end() )
+            return i->second.get();
+
+        MapNodeCullData* cullData = new MapNodeCullData();
+        _cullData[key] = cullData;
+        return cullData;
     }
 }
-

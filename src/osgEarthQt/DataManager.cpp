@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2008-2010 Pelican Mapping
+* Copyright 2008-2013 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -19,25 +19,21 @@
 #include <osgEarthQt/DataManager>
 
 #include <osgEarth/Map>
+#include <osgEarth/MapModelChange>
 #include <osgEarth/MapNode>
 
 using namespace osgEarth::QtGui;
 using namespace osgEarth::Annotation;
 
 
-DataManager::DataManager(osgEarth::Map* map) : _map(map), _maxUndoStackSize( 128 )
+DataManager::DataManager(osgEarth::MapNode* mapNode) : _mapNode(mapNode), _maxUndoStackSize( 128 )
 {
-  initialize();
-}
-
-DataManager::DataManager(osgEarth::MapNode* mapNode) : _maxUndoStackSize( 128 )
-{
-  if (mapNode)
+  if (_mapNode)
   {
-    _map = mapNode->getMap();
+    _map = _mapNode->getMap();
 
     //Look for viewpoints in the MapNode externals
-    const Config& externals = mapNode->externalConfig();
+    const Config& externals = _mapNode->externalConfig();
     const ConfigSet children = externals.children("viewpoint");
     if (children.size() > 0)
     {
@@ -97,7 +93,7 @@ void DataManager::addAnnotation(osgEarth::Annotation::AnnotationNode* annotation
   }
 }
 
-void DataManager::removeAnnotaton(osgEarth::Annotation::AnnotationNode* annotation, osg::Group* parent)
+void DataManager::removeAnnotation(osgEarth::Annotation::AnnotationNode* annotation, osg::Group* parent)
 {
   if (!annotation)
     return;
@@ -119,14 +115,16 @@ void DataManager::removeAnnotaton(osgEarth::Annotation::AnnotationNode* annotati
     }
   }
 
-  Threading::ScopedWriteLock lock( _dataMutex );
-  for(AnnotationVector::iterator it = _annotations.begin(); it != _annotations.end(); ++it)
   {
-    if (it->get() == annoToRemove.get())
+    Threading::ScopedWriteLock lock( _dataMutex );
+    for(AnnotationVector::iterator it = _annotations.begin(); it != _annotations.end(); ++it)
     {
-      _annotations.erase(it);
-      removed = true;
-      break;
+      if (it->get() == annoToRemove.get())
+      {
+        _annotations.erase(it);
+        removed = true;
+        break;
+      }
     }
   }
 
@@ -264,6 +262,7 @@ void DataManager::onMapChanged(const osgEarth::MapModelChange& change)
     change.getImageLayer()->removeCallback(_imageCallback); break;
   case MapModelChange::REMOVE_MODEL_LAYER:
     change.getModelLayer()->removeCallback(_modelCallback); break;
+  default: break;
   }
 
   onMapChanged();

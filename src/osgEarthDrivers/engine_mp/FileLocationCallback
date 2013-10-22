@@ -1,0 +1,85 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+* Copyright 2008-2013 Pelican Mapping
+* http://osgearth.org
+*
+* osgEarth is free software; you can redistribute it and/or modify
+* it under the terms of the GNU Lesser General Public License as published by
+* the Free Software Foundation; either version 2 of the License, or
+* (at your option) any later version.
+*
+* This program is distributed in the hope that it will be useful,
+* but WITHOUT ANY WARRANTY; without even the implied warranty of
+* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+* GNU Lesser General Public License for more details.
+*
+* You should have received a copy of the GNU Lesser General Public License
+* along with this program.  If not, see <http://www.gnu.org/licenses/>
+*/
+
+#ifndef OSGEARTH_ENGINE_OSGTERRAIN_FILE_LOCATION_CALLBACK_H
+#define OSGEARTH_ENGINE_OSGTERRAIN_FILE_LOCATION_CALLBACK_H 1
+
+#include "MPTerrainEngineNode"
+#include <osg/Version>
+#include <osgEarth/Export>
+
+
+#define USE_FILELOCATIONCALLBACK OSG_MIN_VERSION_REQUIRED(2,9,5)
+
+
+#if USE_FILELOCATIONCALLBACK
+
+namespace osgEarth_engine_mp
+{
+    /**
+     * A database pager callback that determines if the given filename is cached or not
+     */
+    class FileLocationCallback : public osgDB::FileLocationCallback
+    {
+    public:
+        FileLocationCallback() { }
+
+        /** dtor */
+        virtual ~FileLocationCallback() { }
+
+        virtual Location fileLocation(const std::string& filename, const osgDB::Options* options)
+        {
+            Location result = REMOTE_FILE;
+
+            unsigned int lod, x, y, id;
+            sscanf(filename.c_str(), "%d/%d/%d.%d", &lod, &x, &y, &id);
+
+            osg::ref_ptr<MPTerrainEngineNode> engine;
+            MPTerrainEngineNode::getEngineByUID( (UID)id, engine );
+
+            if ( engine.valid() )
+            {
+                const osgEarth::Profile* profile = engine->getMap()->getProfile();
+                osgEarth::TileKey mapKey( lod, x, y, profile );
+
+                result = LOCAL_FILE;
+
+                MapFrame mapf( engine->getMap() );
+                for( unsigned i=0; i<4; ++i )
+                {
+                    TileKey childKey = mapKey.createChildKey( i );
+                    if ( !mapf.isCached( childKey ) )
+                    {
+                        result = REMOTE_FILE;
+                        break;
+                    }
+                }
+            }
+
+            return result;
+        }
+
+        virtual bool useFileCache() const { return false; }
+    };
+
+} // namespace osgEarth_engine_mp
+
+#endif // USE_FILELOCATIONCALLBACK
+
+#endif //OSGEARTH_ENGINE_OSGTERRAIN_FILE_LOCATION_CALLBACK_H

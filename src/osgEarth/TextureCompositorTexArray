@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2010 Pelican Mapping
+ * Copyright 2008-2013 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -28,12 +28,16 @@
 namespace osgEarth
 {
     /**
-     * TODO: document
+     * Texture compositor that stacks image layers into a Texture Array.
+     * Note: not compatible with GLES, or with GLSL Version < 1.3
      */
     class TextureCompositorTexArray : public TextureCompositorTechnique
     {
     public:
         TextureCompositorTexArray( const TerrainOptions& options );
+
+        /** dtor */
+        virtual ~TextureCompositorTexArray() { }
         
         static bool isSupported();
 
@@ -72,6 +76,8 @@ namespace osgEarth
 
     private:
         float _lodTransitionTime;
+        osg::Texture::FilterMode _minFilter;
+        osg::Texture::FilterMode _magFilter;
     };
 }
 

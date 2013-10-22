@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2010 Pelican Mapping
+ * Copyright 2008-2013 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -31,6 +31,9 @@ namespace osgEarth { namespace Features
 {
     using namespace osgEarth;
     using namespace osgEarth::Symbology;
+    
+    class FeatureSourceIndex;
+
 
     /**
      * Extrudes footprint geometry into 3D geometry
@@ -47,6 +50,8 @@ namespace osgEarth { namespace Features
 
         /** Constructs a new filter that will extrude footprints */
         ExtrudeGeometryFilter();
+
+        virtual ~ExtrudeGeometryFilter() { }
 
         /**
          * Sets the style that will govern the geometry generation.
@@ -77,6 +82,13 @@ namespace osgEarth { namespace Features
         void setFeatureNameExpr( const StringExpression& expr ) { _featureNameExpr = expr; }
         const StringExpression& getFeatureNameExpr() const { return _featureNameExpr; }
 
+        /**
+         * Whether or not to use vertex buffer objects
+         */
+        optional<bool>& useVertexBufferObjects() { return _useVertexBufferObjects;}
+        const optional<bool>& useVertexBufferObjects() const { return _useVertexBufferObjects;}
+
+
     protected:
 
         // a set of geodes indexed by stateset pointer, for pre-sorting geodes based on 
@@ -94,6 +106,7 @@ namespace osgEarth { namespace Features
         optional<NumericExpression>    _heightOffsetExpr;
         optional<NumericExpression>    _heightExpr;
         bool                           _makeStencilVolume;
+        optional<bool>                 _useVertexBufferObjects;
 
         Style                          _style;
         bool                           _styleDirty;
@@ -110,12 +123,14 @@ namespace osgEarth { namespace Features
         void reset( const FilterContext& context );
         
         void addDrawable( 
-            osg::Drawable*     drawable, 
-            osg::StateSet*     stateSet, 
-            const std::string& name );
+            osg::Drawable*      drawable, 
+            osg::StateSet*      stateSet, 
+            const std::string&  name,
+            Feature*            feature,
+            FeatureSourceIndex* index);
         
         bool process( 
-            FeatureList&    input,
+            FeatureList&     input,
             FilterContext&   context );
 
         bool extrudeGeometry(
@@ -128,6 +143,7 @@ namespace osgEarth { namespace Features
             osg::Geometry*       bottom_cap,
             osg::Geometry*       outline,
             const osg::Vec4&     wallColor,
+            const osg::Vec4&     wallBaseColor,
             const osg::Vec4&     roofColor,
             const osg::Vec4&     outlineColor,
             const SkinResource*  wallSkin,

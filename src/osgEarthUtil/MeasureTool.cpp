@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2010 Pelican Mapping
+ * Copyright 2008-2013 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -43,29 +43,72 @@ _finished          (false),
 _geoInterpolation  (GEOINTERP_GREAT_CIRCLE),
 _mouseButton       (osgGA::GUIEventAdapter::LEFT_MOUSE_BUTTON),
 _isPath            (false),
-_mapNode           (mapNode),
 _intersectionMask  (0xffffffff)
 {
-    if ( !mapNode || mapNode->getMapSRS()->isProjected() )
+    setMapNode( mapNode );
+}
+
+MeasureToolHandler::~MeasureToolHandler()
+{
+    setMapNode( 0L );
+}
+
+
+void
+MeasureToolHandler::setMapNode( MapNode* mapNode )
+{
+    MapNode* oldMapNode = getMapNode();
+
+    if ( oldMapNode != mapNode )
     {
-        OE_WARN << LC << "Sorry, MeasureTool does not yet support projected maps" << std::endl;
+        _mapNode = mapNode;
+        rebuild();
+    }
+}
+
+
+void
+MeasureToolHandler::rebuild()
+{
+    if ( _group.valid() && _featureNode.valid() )
+    {
+        _group->removeChild( _featureNode.get() );
+        _featureNode = 0L;
     }
 
-    AltitudeSymbol* alt = new AltitudeSymbol();
-    alt->clamping() = AltitudeSymbol::CLAMP_TO_TERRAIN;
+    if ( !getMapNode() )
+        return;
+
+    if ( getMapNode()->getMapSRS()->isProjected() )
+    {
+        OE_WARN << LC << "Sorry, MeasureTool does not yet support projected maps" << std::endl;
+        return;
+    }
+
 
     // Define the path feature:
-    _feature = new Feature(new LineString(), mapNode->getMapSRS());
-    _feature->geoInterp() = _geoInterpolation;    
+    _feature = new Feature(new LineString(), getMapNode()->getMapSRS());
+    _feature->geoInterp() = _geoInterpolation;
 
-    //Define a style for the line
+    // clamp to the terrain skin as it pages in
+    AltitudeSymbol* alt = _feature->style()->getOrCreate<AltitudeSymbol>();
+    alt->clamping() = alt->CLAMP_TO_TERRAIN;
+    //alt->technique() = alt->TECHNIQUE_GPU;
+    alt->technique() = alt->TECHNIQUE_SCENE;
+
+    // offset to mitigate Z fighting
+    RenderSymbol* render = _feature->style()->getOrCreate<RenderSymbol>();
+    render->depthOffset()->enabled() = true;
+    render->depthOffset()->minBias() = 1000;
+
+    // define a style for the line
     LineSymbol* ls = _feature->style()->getOrCreate<LineSymbol>();
     ls->stroke()->color() = Color::Yellow;
     ls->stroke()->width() = 2.0f;
-    ls->tessellation() = 20;
-    _feature->style()->add( alt );
+    ls->stroke()->widthUnits() = Units::PIXELS;
+    ls->tessellation() = 150;
 
-    _featureNode = new FeatureNode( _mapNode.get(), _feature.get() );
+    _featureNode = new FeatureNode( getMapNode(), _feature.get() );
     _featureNode->getOrCreateStateSet()->setMode(GL_LIGHTING, osg::StateAttribute::OFF);
 
     _group->addChild (_featureNode.get() );
@@ -85,12 +128,6 @@ _intersectionMask  (0xffffffff)
     
     _group->addChild( _extentFeatureNode.get() );
 #endif
-
-}
-
-MeasureToolHandler::~MeasureToolHandler()
-{
-    if (_group.valid()) _group->removeChild( _featureNode.get() );
 }
 
 bool
@@ -247,14 +284,16 @@ bool MeasureToolHandler::handle( const osgGA::GUIEventAdapter& ea, osgGA::GUIAct
 bool MeasureToolHandler::getLocationAt(osgViewer::View* view, double x, double y, double &lon, double &lat)
 {
     osgUtil::LineSegmentIntersector::Intersections results;            
-    if ( view->computeIntersections( x, y, results, _intersectionMask ) )
+    if ( getMapNode() &&  view->computeIntersections( x, y, results, _intersectionMask ) )
     {
         // find the first hit under the mouse:
         osgUtil::LineSegmentIntersector::Intersection first = *(results.begin());
         osg::Vec3d point = first.getWorldIntersectPoint();
 
         double lat_rad, lon_rad, height;       
-        _mapNode->getMap()->getProfile()->getSRS()->getEllipsoid()->convertXYZToLatLongHeight( point.x(), point.y(), point.z(), lat_rad, lon_rad, height );
+        getMapNode()->getMap()->getProfile()->getSRS()->getEllipsoid()->convertXYZToLatLongHeight( 
+            point.x(), point.y(), point.z(), lat_rad, lon_rad, height );
+
         lat = osg::RadiansToDegrees( lat_rad );
         lon = osg::RadiansToDegrees( lon_rad );
         return true;

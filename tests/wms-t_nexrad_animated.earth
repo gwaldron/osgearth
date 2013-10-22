@@ -10,7 +10,7 @@ US NEXRAD 45 minute radar returns overlaid on imagery.
         <url>../data/world.tif</url>
     </image>
     
-    <image name="nexrad45min" driver="wms" loading_weight="10">
+    <image name="nexrad45min" driver="wms">
         <url>http://mesonet.agron.iastate.edu/cgi-bin/wms/nexrad/n0r-t.cgi</url>
         <format>png</format>
         <layers>nexrad-n0r-wmst</layers>
@@ -29,6 +29,7 @@ US NEXRAD 45 minute radar returns overlaid on imagery.
             2005-08-29T20:00:00Z
         </times>
         <seconds_per_frame>0.25</seconds_per_frame>
+        <cache_policy usage="no_cache"/>
     </image>
     
     <options>

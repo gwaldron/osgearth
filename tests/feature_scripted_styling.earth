@@ -1,0 +1,60 @@
+<!--
+osgEarth Sample
+
+This one demonstrates how to generate inline styles using JavaScript 
+and a custom selector. 
+-->
+
+<map name="Inline styling" type="geocentric" version="2">
+    
+    <options>
+        <lighting>false</lighting>
+        <overlay_blending>false</overlay_blending>
+    </options>
+
+    <image name="world" driver="gdal">
+        <url>../data/world.tif</url>
+    </image>
+    
+    <model name="countries" driver="feature_geom">
+                          
+        <features name="states" driver="ogr">
+            <url>../data/world.shp</url>
+            <buffer distance="-0.05"/>
+        </features>
+        
+        <styles>            
+            <script language="javascript">
+            <![CDATA[
+                var g_styles = [];
+                
+                // convert a number to a 2-char hex string
+                function hex(n) {
+                     n = parseInt(n,10);
+                     return "0123456789ABCDEF".charAt((n-n%16)/16) + "0123456789ABCDEF".charAt(n%16);
+                }
+                
+                // generates a collection of styles with random color fill values
+                function initialize() {                
+                    for( var i=0; i<10; ++i ) {
+                        var r = Math.floor(Math.random()*255);
+                        var g = Math.floor(Math.random()*255);
+                        var b = Math.floor(Math.random()*255);
+                        g_styles.push( "{fill:#"+hex(r)+hex(g)+hex(b)+"6f; altitude-clamping:terrain-drape;}" );
+                    }
+                }
+                initialize();
+                
+                // selects a color at random
+                function randomColor() {
+                    var n = parseInt(Math.floor(Math.random()*10));
+                    return g_styles[n];
+                }
+            ]]>
+            </script>
+            
+            <selector style_expr="randomColor()"/>
+        </styles>
+        
+    </model>
+</map>

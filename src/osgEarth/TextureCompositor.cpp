@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2010 Pelican Mapping
+ * Copyright 2008-2013 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -24,6 +24,7 @@
 #include <osgEarth/ImageUtils>
 #include <osgEarth/Registry>
 #include <osgEarth/Map>
+#include <osgEarth/MapModelChange>
 #include <osg/Texture2DArray>
 #include <osg/Texture2D>
 #include <osg/Texture3D>
@@ -120,7 +121,7 @@ TextureLayout::assignPrimarySlot( ImageLayer* layer, int orderIndex )
 
 
 
-    OE_INFO << LC << "Allocated SLOT " << slot << "; primary slot for layer \"" << layer->getName() << "\"" << std::endl;
+    OE_DEBUG << LC << "Allocated SLOT " << slot << "; primary slot for layer \"" << layer->getName() << "\"" << std::endl;
 }
 
 void
@@ -158,13 +159,19 @@ TextureLayout::assignSecondarySlot( ImageLayer* layer )
 }
 
 void
-TextureLayout::applyMapModelChange( const MapModelChange& change, bool reserveSeconarySlotIfNecessary )
+TextureLayout::applyMapModelChange(const MapModelChange& change, 
+                                   bool reserveSeconarySlotIfNecessary,
+                                   bool disableLODBlending )
 {
     if ( change.getAction() == MapModelChange::ADD_IMAGE_LAYER )
     {
         assignPrimarySlot( change.getImageLayer(), change.getFirstIndex() );
 
-        bool blendingOn = change.getImageLayer()->getImageLayerOptions().lodBlending() == true;
+        // did the layer specify LOD blending (and is it supported?)
+        bool blendingOn = 
+          !disableLODBlending &&
+          change.getImageLayer()->getImageLayerOptions().lodBlending() == true;
+    
         _lodBlending[ change.getImageLayer()->getUID() ] = blendingOn;
 
         if ( blendingOn && reserveSeconarySlotIfNecessary )
@@ -324,15 +331,16 @@ TextureCompositor::reserveTextureImageUnit( int& out_unit )
         return false;
     }
 
-    else // multipass... all image layers are locked at unit 0
+    else // multipass or USER .. just simple reservations.
     {
         // search for an unused unit.
-        for( unsigned i=1; i<maxUnits; ++i ) // start at 1 because unit 0 is always reserved
+        for( unsigned i=0; i<maxUnits; ++i )
         {
             if ( _reservedUnits.find( i ) == _reservedUnits.end() )
             {
                 out_unit = i;
                 _reservedUnits.insert( i );
+                OE_INFO << LC << "Reserved image unit " << i << std::endl;
                 return true;
             }
         }
@@ -346,6 +354,7 @@ void
 TextureCompositor::releaseTextureImageUnit( int unit )
 {
     _reservedUnits.erase( unit );
+    OE_INFO << LC << "Released image unit " << unit << std::endl;
 
     if ( _tech == TerrainOptions::COMPOSITING_MULTITEXTURE_GPU )
     {
@@ -357,11 +366,30 @@ TextureCompositor::releaseTextureImageUnit( int unit )
 void
 TextureCompositor::applyMapModelChange( const MapModelChange& change )
 {
+    // verify it's actually an image layer
+    ImageLayer* layer = change.getImageLayer();
+    if ( !layer )
+        return;
+
     Threading::ScopedWriteLock exclusiveLock( _layoutMutex );
+
+    // LOD blending does not work with mercator fast path texture mapping.
+    bool disableLODBlending =
+      layer->getProfile() &&
+      layer->getProfile()->getSRS()->isSphericalMercator() &&
+      _options.enableMercatorFastPath() == true;
+
+    // Let the use know why they aren't getting LOD blending!
+    if ( disableLODBlending && layer->getImageLayerOptions().lodBlending() == true )
+    {
+        OE_WARN << LC << "LOD blending disabled for layer \"" << layer->getName()
+            << "\" because it uses Mercator fast-path rendering" << std::endl;
+    }
 
     _layout.applyMapModelChange(
         change, 
-        _impl.valid() ? _impl->blendingRequiresSecondarySlot() : false );
+        _impl.valid() ? _impl->blendingRequiresSecondarySlot() : false,
+        disableLODBlending );
 }
 
 bool
@@ -414,7 +442,7 @@ TextureCompositor::requiresUnitTextureSpace() const
 bool
 TextureCompositor::usesShaderComposition() const
 {
-    return _impl.valid() ? _impl->usesShaderComposition() : false;
+    return _impl.valid() ? _impl->usesShaderComposition() : true;
 }
 
 void
@@ -488,7 +516,7 @@ TextureCompositor::setTechnique( TextureCompositorTechnique* tech )
 {
     _tech = TerrainOptions::COMPOSITING_USER;
     _impl = tech;
-    OE_INFO << LC << "Custom texture compositing technique installed" << std::endl;
+    //OE_INFO << LC << "Custom texture compositing technique installed" << std::endl;
 }
 
 void
@@ -510,7 +538,7 @@ TextureCompositor::init()
     {
         _tech = TerrainOptions::COMPOSITING_MULTITEXTURE_GPU;
         _impl = new TextureCompositorMultiTexture( true, _options );
-        OE_INFO << LC << "Compositing technique = MULTITEXTURE/GPU" << std::endl;
+        //OE_INFO << LC << "Compositing technique = MULTITEXTURE/GPU" << std::endl;
     }
 
 #if OSG_VERSION_GREATER_OR_EQUAL( 2, 9, 8 )
@@ -521,7 +549,7 @@ TextureCompositor::init()
     {
         _tech = TerrainOptions::COMPOSITING_TEXTURE_ARRAY;
         _impl = new TextureCompositorTexArray( _options );
-        OE_INFO << LC << "Compositing technique = TEXTURE ARRAY" << std::endl;
+        //OE_INFO << LC << "Compositing technique = TEXTURE ARRAY" << std::endl;
     }
 
 #endif // OSG_VERSION_GREATER_OR_EQUAL( 2, 9, 8 )
@@ -532,7 +560,7 @@ TextureCompositor::init()
     {
         _tech = TerrainOptions::COMPOSITING_MULTITEXTURE_FFP;
         _impl = new TextureCompositorMultiTexture( false, _options );
-        OE_INFO << LC << "Compositing technique = MULTITEXTURE/FFP" << std::endl;
+        //OE_INFO << LC << "Compositing technique = MULTITEXTURE/FFP" << std::endl;
     }
 
     // Fallback of last resort. The implementation is actually a NO-OP for multipass mode.
@@ -540,6 +568,6 @@ TextureCompositor::init()
     {
         _tech = TerrainOptions::COMPOSITING_MULTIPASS;
         _impl = 0L;
-        OE_INFO << LC << "Compositing technique = MULTIPASS" << std::endl;
+        //OE_INFO << LC << "Compositing technique = MULTIPASS" << std::endl;
     }
 }

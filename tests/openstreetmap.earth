@@ -1,30 +1,20 @@
 <!-- 
-OpenStreetMap's Mapnik "Slippy Map"
-
-This is an example of using the TMS driver when there is no TMS
-TileMap config available on the server. We have to manually specify:
-
- * The map's profile
- * The image source's format, tile_width, and tile_height
-
-In this case, we also specify the "google" tms_type, which will
-invert the Y tile index.
+OpenStreetMap's Mapnik "Slippy Map" - Geocentric.
+See:
+http://wiki.openstreetmap.org/wiki/Slippy_map_tilenames
 -->
 
 <map name="OpenStreetMap" type="geocentric" version="2">
  
-    <image name="OSM on Mapnik Slippy Map" driver="tms">
-        <url>http://tile.openstreetmap.org/</url>
-        <profile>global-mercator</profile>
-        <format>png</format>
-        <tile_size>256</tile_size>
-        <tms_type>google</tms_type>
+    <image name="osm_mapnik" driver="xyz">
+        <url>http://[abc].tile.openstreetmap.org/{z}/{x}/{y}.png</url>
+        <profile>spherical-mercator</profile>
+        <cache_policy usage="none"/>
     </image>
     
     <options>
         <lighting>false</lighting>
         <terrain>
-            <loading_policy mode="preemptive"/>
             <min_tile_range_factor>8</min_tile_range_factor>
         </terrain>
     </options>

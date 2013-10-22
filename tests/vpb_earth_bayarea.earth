@@ -18,6 +18,7 @@ This example pulls imagery and dems from an online VirtualPlanetBuilder generate
     
     <options>
         <lighting>false</lighting>
+        <cache_policy usage="no_cache"/>
     </options>
 
 </map>

@@ -1,0 +1,104 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+* Copyright 2008-2013 Pelican Mapping
+* http://osgearth.org
+*
+* osgEarth is free software; you can redistribute it and/or modify
+* it under the terms of the GNU Lesser General Public License as published by
+* the Free Software Foundation; either version 2 of the License, or
+* (at your option) any later version.
+*
+* This program is distributed in the hope that it will be useful,
+* but WITHOUT ANY WARRANTY; without even the implied warranty of
+* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+* GNU Lesser General Public License for more details.
+*
+* You should have received a copy of the GNU Lesser General Public License
+* along with this program.  If not, see <http://www.gnu.org/licenses/>
+*/
+#ifndef OSGEARTH_ENGINE_QUADTREE_TILE_MODEL_COMPILER
+#define OSGEARTH_ENGINE_QUADTREE_TILE_MODEL_COMPILER 1
+
+#include "Common"
+#include "TileModel"
+#include "QuadTreeTerrainEngineOptions"
+
+#include <osgEarth/Map>
+#include <osgEarth/TextureCompositor>
+#include <osgEarth/ThreadingUtils>
+#include <osgEarth/Locators>
+
+#include <osg/Node>
+#include <osg/StateSet>
+#include <osg/Drawable>
+#include <osg/Array>
+
+namespace osgEarth_engine_quadtree
+{
+    using namespace osgEarth;
+    using namespace osgEarth::Drivers;
+
+    /**
+     * Cache used by the TileModelCompiler. This lets us share common data across
+     * compilations. Since the compiler is thread-locked, we just have a separate
+     * cache per compiler.
+     *
+     * Important Note! Any array you store in the cache MUST have it's OWN 
+     * unique VBO. Call array->setVertexBufferObject( new osg::VertexBufferObject() )
+     * to assign one. This will prevent non-thread-safe buffer object sharing.
+     */
+    struct CompilerCache
+    {
+        // Texture coordinate array cache def
+        struct TexCoordTableKey {
+            osg::ref_ptr<const GeoLocator> _locator;
+            osg::Vec4d                     _mat;
+            unsigned                       _cols, _rows;
+        };
+        typedef std::pair< TexCoordTableKey, osg::ref_ptr<osg::Vec2Array> > LocatorTexCoordPair;
+        struct TexCoordArrayCache : public std::list<LocatorTexCoordPair> {
+            osg::ref_ptr<osg::Vec2Array>& get( const osg::Vec4d& mat, unsigned cols, unsigned rows );
+        };
+
+        TexCoordArrayCache _surfaceTexCoordArrays;
+        TexCoordArrayCache _skirtTexCoordArrays;
+    };
+
+
+    /**
+     * Builds the actual tile geometry.
+     *
+     * When used with the KeyNodeFactory, there will be exactly one instance of this
+     * class per thread. So, we can expand this to include caches for commonly shared
+     * data like texture coordinate or color arrays.
+     */
+    class TileModelCompiler : public osg::Referenced
+    {
+    public:
+        TileModelCompiler(
+            const MaskLayerVector&              masks,
+            TextureCompositor*                  compositor,
+            bool                                optimizeTriangleOrientation,
+            const QuadTreeTerrainEngineOptions& options);
+
+        /**
+         * Compiles a tile model into an OSG scene graph. The scene graph will
+         * include a MatrixTransform to localize the tile data.
+         */
+        bool compile(
+            const TileModel* model,
+            osg::Node*&      out_node,
+            osg::StateSet*&  out_stateSet );
+
+    protected:
+        const MaskLayerVector&                    _masks;
+        osg::ref_ptr<TextureCompositor>           _texCompositor;
+        bool                                      _optimizeTriOrientation;
+        const QuadTreeTerrainEngineOptions&       _options;
+        osg::ref_ptr<osg::Drawable::CullCallback> _cullByTraversalMask;
+        CompilerCache                             _cache;
+    };
+
+} // namespace osgEarth_engine_quadtree
+
+#endif // OSGEARTH_ENGINE_QUADTREE_TILE_MODEL_COMPILER

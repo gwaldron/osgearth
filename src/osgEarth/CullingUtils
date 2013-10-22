@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2010 Pelican Mapping
+ * Copyright 2008-2013 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -21,9 +21,32 @@
 #define OSGEARTH_CULLING_UTILS_H 1
 
 #include <osgEarth/Common>
+#include <osgEarth/optional>
+#include <osgEarth/SpatialReference>
+#include <osg/NodeCallback>
+#include <osg/ClusterCullingCallback>
+#include <osg/CoordinateSystemNode>
+#include <osg/MatrixTransform>
+#include <osg/Vec3d>
+#include <osg/Vec3>
+#include <osgUtil/CullVisitor>
 
 namespace osgEarth
-{
+{    
+    /**
+     * A customized CCC that works correctly under an RTT camera and also with 
+     * an orthographic projection matrix.
+     */
+    class SuperClusterCullingCallback : public osg::ClusterCullingCallback
+    {
+    public:
+        bool cull(osg::NodeVisitor* nv, osg::Drawable* , osg::State*) const;
+    };
+
+
+    /**
+     * Utility functions for creating cluster cullers
+     */
     class OSGEARTH_EXPORT ClusterCullingFactory
     {
     public:
@@ -35,11 +58,210 @@ namespace osgEarth
         static osg::NodeCallback* create( osg::Node* node, const osg::Vec3d& ecefControlPoint );
 
         /**
+         * Same as above, but uses another method to compute the parameters. There should only
+         * be one, but we need to investigate to see which is the better algorithm. Keeping this
+         * for now since it works with the feature setup..
+         */
+        static osg::NodeCallback* create2( osg::Node* node, const osg::Vec3d& ecefControlPoint );
+
+        /**
          * Creates a cluster culling callback and installs it on the node. If the node is
          * a transform, it will create a group above the transform and install the callback
          * on that group instead.
          */
         static osg::Node* createAndInstall( osg::Node* node, const osg::Vec3d& ecefControlPoint );
+
+        /**
+         * Creates a cluster culling callback with the standard parameters.
+         */
+        static osg::NodeCallback* create(const osg::Vec3& controlPoint, const osg::Vec3& normal, float deviation, float radius);
+    };
+
+    
+    /**
+     * A simple culling-plane callback (a simpler version of ClusterCullingCallback)
+     */
+    struct OSGEARTH_EXPORT CullNodeByNormal : public osg::NodeCallback {
+        osg::Vec3d _normal;
+        CullNodeByNormal( const osg::Vec3d& normal );
+        void operator()(osg::Node* node, osg::NodeVisitor* nv);
+    };
+
+    struct CullDrawableByNormal : public osg::Drawable::CullCallback {
+        osg::Vec3d _normal;
+        CullDrawableByNormal( const osg::Vec3d& normal ) : _normal(normal) { }
+        bool cull(osg::NodeVisitor* nv, osg::Drawable* drawable, osg::State* state) const {
+            return nv && nv->getEyePoint() * _normal <= 0;
+        }
+    };
+
+    /**
+     * Culler that tests whether the line-of-sight vector between the camera
+     * and the node intersects the Ellipsoid, and if so, culls the node.
+     */
+    struct OSGEARTH_EXPORT CullNodeByEllipsoid : public osg::NodeCallback {
+        double _minRadius;
+        CullNodeByEllipsoid( const osg::EllipsoidModel* model );
+        void operator()(osg::Node* node, osg::NodeVisitor* nv);
+    };
+
+    struct OSGEARTH_EXPORT CullNodeByHorizon : public osg::NodeCallback {
+        osg::observer_ptr<osg::MatrixTransform> _xform;
+        osg::Vec3d _world;
+        double _r, _r2;
+        CullNodeByHorizon( const osg::Vec3d& world, const osg::EllipsoidModel* model );
+        CullNodeByHorizon( osg::MatrixTransform* xform, const osg::EllipsoidModel* model );
+        void operator()(osg::Node* node, osg::NodeVisitor* nv );
+    };
+
+    struct OSGEARTH_EXPORT CullNodeByFrameNumber : public osg::NodeCallback {
+        unsigned _frame;
+        CullNodeByFrameNumber() : _frame(0) { }
+        void operator()( osg::Node* node, osg::NodeVisitor* nv ) {
+            if ( nv->getFrameStamp()->getFrameNumber() - _frame <= 1 )
+                traverse(node, nv);
+        }
+    };
+
+    struct DisableSubgraphCulling : public osg::NodeCallback {
+        void operator()(osg::Node* n, osg::NodeVisitor* v);
+    };
+
+    struct StaticBound : public osg::Node::ComputeBoundingSphereCallback {
+        osg::BoundingSphere _bs;
+        StaticBound(const osg::BoundingSphere& bs) : _bs(bs) { }
+        osg::BoundingSphere computeBound(const osg::Node&) const { return _bs; }
+    };
+
+    /**
+     * Simple occlusion culling callback that does a ray interseciton between the eyepoint
+     * and a world point and doesn't draw if there are intersections with the node.
+     */
+    struct OSGEARTH_EXPORT OcclusionCullingCallback : public osg::NodeCallback {
+        OcclusionCullingCallback( const SpatialReference* srs, const osg::Vec3d& world, osg::Node* node);
+
+        const osg::Vec3d& getWorld() const;
+        void setWorld( const osg::Vec3d& world);
+        double getMaxAltitude() const;
+        void setMaxAltitude( double value);
+        void operator()(osg::Node* node, osg::NodeVisitor* nv);
+
+        /**
+        * Gets the maximum number of ms that the OcclusionCullingCallback can run on each frame.
+        */
+        static double getMaxFrameTime();
+
+        /**
+        * Sets the maximum number of ms that the OcclusionCullingCallback can run on each frame.
+        * @param ms
+        *     The maximum number of milliseconds to run the OcclusionCullingCallback on each frame. 
+        */
+        static void setMaxFrameTime( double ms );
+
+    private:
+
+        osg::ref_ptr< osg::Node > _node;
+        osg::ref_ptr< const osgEarth::SpatialReference > _srs;
+        osg::Vec3d _world;
+        osg::Vec3d _prevWorld;
+        osg::Vec3d _prevEye;
+        bool _visible;
+        double _maxAltitude;
+        static double _maxFrameTime;
+    };
+
+    /**
+     * Culling utilities.
+     */
+    struct OSGEARTH_EXPORT Culling
+    {
+        static osgUtil::CullVisitor* asCullVisitor(osg::NodeVisitor* nv);
+        static osgUtil::CullVisitor* asCullVisitor(osg::NodeVisitor& nv) { return asCullVisitor(&nv); }
+
+        /** General user data to calculate once and pass down with a CullVisitor. */
+        struct CullUserData : public osg::Referenced
+        {
+            optional<double> _cameraAltitude;
+        };
+
+        static CullUserData* getCullUserData(osgUtil::CullVisitor* cv) {
+            return cv ? dynamic_cast<CullUserData*>(cv->getUserData()) : 0L; }
+    };
+
+    /**
+     * Node Visitor that proxies the CullVisitor but uses a separate
+     * frustum for bounds-culling.
+     */
+    class ProxyCullVisitor : public osg::NodeVisitor, public osg::CullStack
+    {
+    private:
+        osgUtil::CullVisitor* _cv;
+        osg::Polytope         _proxyFrustum;
+        osg::Polytope         _proxyProjFrustum;
+        osg::Matrix           _proxyModelViewMatrix;
+        osg::Matrix           _proxyProjMatrix;
+
+    public:
+        ProxyCullVisitor( osgUtil::CullVisitor* cv, const osg::Matrix& proj, const osg::Matrix& view );
+
+        // access to the underlying cull visitor.
+        osgUtil::CullVisitor* getCullVisitor() { return _cv; }
+
+    public: // proxy functions:
+        osg::Vec3 getEyePoint() const;
+        osg::Vec3 getViewPoint() const;
+        float getDistanceToEyePoint(const osg::Vec3& pos, bool useLODScale) const;
+        float getDistanceFromEyePoint(const osg::Vec3& pos, bool useLODScale) const;
+        float getDistanceToViewPoint(const osg::Vec3& pos, bool useLODScale) const;
+
+    protected: // custom culling functions:
+
+        bool isCulledByProxyFrustum(osg::Node& node);
+        bool isCulledByProxyFrustum(const osg::BoundingBox& bbox);
+        
+        osgUtil::CullVisitor::value_type distance(const osg::Vec3& coord,const osg::Matrix& matrix);
+
+        void handle_cull_callbacks_and_traverse(osg::Node& node);
+
+        void apply(osg::Node& node);
+        void apply(osg::Transform& node);
+        void apply(osg::Geode& node);
+    };
+
+
+    /**
+     * Horizon culling in a shader program.
+     */
+    class OSGEARTH_EXPORT HorizonCullingProgram
+    {
+    public:
+        static void install( osg::StateSet* stateset );
+        static void remove ( osg::StateSet* stateset );
+    };
+
+
+    /**
+     * Group that lets you adjust the LOD scale on its children.
+     */
+    class OSGEARTH_EXPORT LODScaleGroup : public osg::Group
+    {
+    public:
+        LODScaleGroup();
+
+        /**
+         * Factor by which to multiply the camera's LOD scale.
+         */
+        void setLODScaleFactor( float value ) { _scaleFactor = value; }
+        float getLODScaleFactor() const { return _scaleFactor; }
+
+    public: // osg::Group
+        virtual void traverse(osg::NodeVisitor& nv);
+
+    protected:
+        virtual ~LODScaleGroup() { }
+
+    private:
+        float _scaleFactor;
     };
 }
 

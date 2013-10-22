@@ -1,0 +1,118 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+ * Copyright 2008-2013 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+
+#ifndef OSGEARTHSYMBOLOGY_STROKE_H
+#define OSGEARTHSYMBOLOGY_STROKE_H 1
+
+#include <osgEarthSymbology/Common>
+#include <osgEarthSymbology/Color>
+#include <osgEarth/Config>
+#include <osgEarth/Units>
+
+
+namespace osgEarth { namespace Symbology
+{
+    /**
+     * Drawing parameters for a line.
+     */
+    class OSGEARTHSYMBOLOGY_EXPORT Stroke
+    {
+    public:
+
+        /** Style for rendering the end caps of a line string. */
+        enum LineCapStyle
+        {
+            LINECAP_FLAT,   /** no endcap. the line ends at the terminal point. */
+            LINECAP_SQUARE, /** endcap extends width()/2 past the terminal point and is squared off. */
+            LINECAP_ROUND   /** endcap extends width()/2 past the terminal point and is rounded off. */
+        };
+
+        /** Style for rendering the joins between line segments. */
+        enum LineJoinStyle
+        {
+            LINEJOIN_MITRE, /** outside joins form a sharp point. */
+            LINEJOIN_ROUND  /** outside joins form an arc. */
+        };
+
+    public:
+        Stroke();
+        Stroke(float r, float g, float b, float a );
+        Stroke(const Color& color );
+        Stroke(const Config& conf );
+        Stroke(const Stroke& rhs);
+
+        virtual ~Stroke() { }
+
+        /** Line color. */
+        Color& color() { return _color; }
+        const Color& color() const { return _color; }
+
+        /** Capping of line ends. */
+        optional<LineCapStyle>& lineCap() { return _lineCap; }
+        const optional<LineCapStyle>& lineCap() const { return _lineCap; }
+
+        /** How to render line joints in a LineString. */
+        optional<LineJoinStyle>& lineJoin() { return _lineJoin; }
+        const optional<LineJoinStyle>& lineJoin() const { return _lineJoin; }
+
+        /** Line rendering width. */
+        optional<float>& width() { return _width; }
+        const optional<float>& width() const { return _width; }
+
+        /** Units for the width property. (default = Units::PIXELS) */
+        optional<Units>& widthUnits() { return _widthUnits; }
+        const optional<Units>& widthUnits() const { return _widthUnits; }
+
+        /** Minimum with of a line in pixels (default = 0.0, no minimum).
+            This typically only applies to lines with map unit width, and
+            tells the renderer to maintain a minimum pixel width so that 
+            the geometry is always visible. */
+        optional<float>& minPixels() { return _minPixels; }
+        const optional<float>& minPixels() const { return _minPixels; }
+
+        /** Stippling pattern. */
+        optional<unsigned short>& stipple() { return _stipple;}
+        const optional<unsigned short>& stipple() const { return _stipple; }
+
+        /** Rounding ratio - when rounding corners/caps, this is the ratio
+            of rounded-segment length to width(). The smaller this value,
+            the more detailed the rounding will be. (Default is 0.4) */
+        optional<float>& roundingRatio() { return _roundingRatio; }
+        const optional<float>& roundingRatio() const { return _roundingRatio; }
+
+    public:
+        virtual Config getConfig() const;
+        virtual void mergeConfig( const Config& conf );
+
+    protected:
+        Color                    _color;
+        optional<LineCapStyle>   _lineCap;
+        optional<LineJoinStyle>  _lineJoin;
+        optional<float>          _width;
+        optional<Units>          _widthUnits;
+        optional<unsigned short> _stipple;
+        optional<float>          _roundingRatio;
+        optional<float>          _minPixels;
+
+        void init();
+    };
+
+} } // namespace osgEarth::Symbology
+
+#endif // OSGEARTHSYMBOLOGY_STROKE_H

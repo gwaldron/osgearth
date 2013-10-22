@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2010 Pelican Mapping
+ * Copyright 2008-2013 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -27,7 +27,6 @@
 #include <osgEarthFeatures/ResampleFilter>
 #include <osgEarthFeatures/ConvertTypeFilter>
 #include <osgEarthFeatures/ExtrudeGeometryFilter>
-#include <osgEarthFeatures/FeatureGridder>
 #include <osgEarthSymbology/StencilVolumeNode>
 #include <osgEarthSymbology/Style>
 #include <osg/Notify>
@@ -62,12 +61,17 @@ namespace
     {
         // make a full screen quad:
         osg::Geometry* quad = new osg::Geometry();
+        quad->setUseVertexBufferObjects(true);
+
         osg::Vec3Array* verts = new osg::Vec3Array(4);
         (*verts)[0].set( 0, 1, 0 );
         (*verts)[1].set( 0, 0, 0 );
         (*verts)[2].set( 1, 0, 0 );
         (*verts)[3].set( 1, 1, 0 );
         quad->setVertexArray( verts );
+        if ( verts->getVertexBufferObject() )
+            verts->getVertexBufferObject()->setUsage(GL_STATIC_DRAW_ARB);
+
         quad->addPrimitiveSet( new osg::DrawArrays( osg::PrimitiveSet::QUADS, 0, 4 ) );
         osg::Vec4Array* colors = new osg::Vec4Array(1);
         (*colors)[0] = color;
@@ -182,19 +186,7 @@ namespace
             densificationThreshold = *_options.densificationThreshold();
 
             // Scan the geometry to see if it includes line data, since that will require buffering:
-            bool hasLines = false;
-            for( FeatureList::const_iterator i = featureList.begin(); i != featureList.end(); ++i )
-            {
-                Feature* feature = (*i).get();
-                Geometry* geom = feature->getGeometry();
-                if ( geom && 
-                     ( geom->getComponentType() == Geometry::TYPE_LINESTRING ||
-                       geom->getComponentType() == Geometry::TYPE_RING ) )
-                {
-                    hasLines = true;
-                    break;
-                }
-            }
+            bool hasLines = style.has<LineSymbol>() && !style.has<PolygonSymbol>();
 
             // If the geometry is lines, we need to buffer them before they will work with stenciling
             if ( hasLines )
@@ -320,19 +312,18 @@ namespace
             }
         }
         
-        //override
+    public: // FeatureModelSource
+
         virtual const FeatureModelSourceOptions& getFeatureModelOptions() const
         {
             return _options;
         }
 
-        //override
-        void initialize( const osgDB::Options* dbOptions, const Map* map )
+        void initialize( const osgDB::Options* dbOptions )
         {
-            FeatureModelSource::initialize( dbOptions, map );
+            FeatureModelSource::initialize( dbOptions );
         }
 
-        //override
         FeatureNodeFactory* createFeatureNodeFactory()
         {
             return new StencilVolumeNodeFactory( _options, _renderBinStart );

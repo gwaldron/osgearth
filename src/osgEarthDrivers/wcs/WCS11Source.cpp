@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2010 Pelican Mapping
+ * Copyright 2008-2013 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -18,7 +18,6 @@
  */
 
 #include "WCS11Source.h"
-#include <osgEarth/HTTPClient>
 #include <osgEarth/ImageToHeightFieldConverter>
 #include <osgEarth/Registry>
 #include <osgEarth/URI>
@@ -43,19 +42,15 @@ _options  ( options )
 }
 
 
-void
-WCS11Source::initialize(const osgDB::Options* dbOptions,
-                        const Profile*        overrideProfile )
-{
-	if (overrideProfile)
-	{
-		setProfile( overrideProfile );
-	}
-	else
-	{
-		//TODO: once we read GetCapabilities.. this will change..
-		setProfile(osgEarth::Registry::instance()->getGlobalGeodeticProfile());
-	}
+
+osgEarth::TileSource::Status WCS11Source::initialize(const osgDB::Options* dbOptions)
+{        
+    //TODO: fetch GetCapabilities and set profile from there.
+    setProfile( osgEarth::Registry::instance()->getGlobalGeodeticProfile() );
+    _dbOptions = Registry::instance()->cloneOrCreateOptions( dbOptions );
+    CachePolicy::NO_CACHE.apply( _dbOptions.get() );
+
+    return STATUS_OK;
 }
 
 
@@ -77,8 +72,8 @@ WCS11Source::createImage(const TileKey&        key,
     double lon0,lat0,lon1,lat1;
     key.getExtent().getBounds( lon0, lat0, lon1, lat1 );
 
-    // download the data
-    HTTPResponse response = HTTPClient::get( request, 0L, progress ); //getOptions(), progress );
+    // download the data. It's a multipart-mime stream, so we have to use HTTP directly.
+    HTTPResponse response = HTTPClient::get( request, _dbOptions.get(), progress );
     if ( !response.isOK() )
     {
         OE_WARN << "[osgEarth::WCS1.1] WARNING: HTTP request failed" << std::endl;

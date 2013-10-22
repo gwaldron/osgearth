@@ -1,0 +1,144 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+ * Copyright 2008-2013 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+#ifndef OSGEARTH_ENGINE_MP_OPTIONS
+#define OSGEARTH_ENGINE_MP_OPTIONS 1
+
+#include <osgEarth/Common>
+#include <osgEarth/TerrainOptions>
+#include <osgEarthSymbology/Color>
+
+namespace osgEarth { namespace Drivers
+{
+    using namespace osgEarth;
+    using namespace osgEarth::Symbology;
+
+    /**
+     * Options for configuring the MP Engine driver.
+     */
+    class MPTerrainEngineOptions : public TerrainOptions // NO EXPORT (header-only)
+    {
+    public:
+        MPTerrainEngineOptions( const ConfigOptions& options =ConfigOptions() ) : TerrainOptions( options ),
+            _skirtRatio        ( 0.05 ),
+            _quickRelease      ( true ),
+            _lodFallOff        ( 0.0 ),
+            _normalizeEdges    ( true ),
+            _rangeMode         ( osg::LOD::DISTANCE_FROM_EYE_POINT ),
+            _tilePixelSize     ( 256 ),
+            _premultAlpha      ( false ),
+            _color             ( Color::White ),
+            _incrementalUpdate ( false )
+        {
+            setDriver( "mp" );
+            fromConfig( _conf );
+        }
+
+        /** dtor */
+        virtual ~MPTerrainEngineOptions() { }
+
+    public:
+        /** Ratio of terrain tile skirt height to tile radius */
+        optional<float>& heightFieldSkirtRatio() { return _skirtRatio; }
+        const optional<float>& heightFieldSkirtRatio() const { return _skirtRatio; }
+
+        /** Whether to run a post-render process that releases GL objects as quickly as
+          * possible, freeing up memory faster */
+        optional<bool>& quickReleaseGLObjects() { return _quickRelease; }
+        const optional<bool>& quickReleaseGLObjects() const { return _quickRelease; }
+
+        /** Whether to average normal vectors on tile boundaries */
+        optional<bool>& normalizeEdges() { return _normalizeEdges; }
+        const optional<bool>& normalizeEdges() const { return _normalizeEdges; }
+
+        /** Mode to use when calculating LOD switching distances */
+        optional<osg::LOD::RangeMode>& rangeMode() { return _rangeMode;}
+        const optional<osg::LOD::RangeMode>& rangeMode() const { return _rangeMode;}
+
+        /** The size of the tile, in pixels, when using rangeMode = PIXEL_SIZE_ON_SCREEN */
+        optional<float>& tilePixelSize() { return _tilePixelSize; }
+        const optional<float>& tilePixelSize() const { return _tilePixelSize; }
+
+        /** Whether to use pre-multiplied alpha blending for terrain imagery */
+        optional<bool>& premultipliedAlpha() { return _premultAlpha; }
+        const optional<bool>& premultipliedAlpha() const { return _premultAlpha; }
+
+        /** The color of the globe surface where no images are applied */
+        optional<Color>& color() { return _color; }
+        const optional<Color>& color() const { return _color; }
+
+        /** Whether to update tiles incrementally as needed when the map model changes (true),
+          * or to rebuild the entire terrain when enything changes (false) */
+        optional<bool>& incrementalUpdate() { return _incrementalUpdate; }
+        const optional<bool>& incrementalUpdate() const { return _incrementalUpdate; }
+
+        /** TODO: document this very obscure feature */
+        optional<float>& lodFallOff() { return _lodFallOff; }
+        const optional<float>& lodFallOff() const { return _lodFallOff; }
+
+    protected:
+        virtual Config getConfig() const {
+            Config conf = TerrainOptions::getConfig();
+            conf.updateIfSet( "skirt_ratio", _skirtRatio );
+            conf.updateIfSet( "quick_release_gl_objects", _quickRelease );
+            conf.updateIfSet( "lod_fall_off", _lodFallOff );
+            conf.updateIfSet( "normalize_edges", _normalizeEdges);
+            conf.updateIfSet( "tile_pixel_size", _tilePixelSize );
+            conf.updateIfSet( "range_mode", "PIXEL_SIZE_ON_SCREEN", _rangeMode, osg::LOD::PIXEL_SIZE_ON_SCREEN );
+            conf.updateIfSet( "range_mode", "DISTANCE_FROM_EYE_POINT", _rangeMode, osg::LOD::DISTANCE_FROM_EYE_POINT);
+            conf.updateIfSet( "premultiplied_alpha", _premultAlpha );
+            conf.updateIfSet( "color", _color );
+            conf.updateIfSet( "incremental_update", _incrementalUpdate );
+
+            return conf;
+        }
+
+        virtual void mergeConfig( const Config& conf ) {
+            TerrainOptions::mergeConfig( conf );
+            fromConfig( conf );
+        }
+
+    private:
+        void fromConfig( const Config& conf ) {
+            conf.getIfSet( "skirt_ratio", _skirtRatio );
+            conf.getIfSet( "quick_release_gl_objects", _quickRelease );
+            conf.getIfSet( "lod_fall_off", _lodFallOff );
+            conf.getIfSet( "normalize_edges", _normalizeEdges );
+            conf.getIfSet( "tile_pixel_size", _tilePixelSize );
+
+            conf.getIfSet( "range_mode", "PIXEL_SIZE_ON_SCREEN", _rangeMode, osg::LOD::PIXEL_SIZE_ON_SCREEN );
+            conf.getIfSet( "range_mode", "DISTANCE_FROM_EYE_POINT", _rangeMode, osg::LOD::DISTANCE_FROM_EYE_POINT);
+            conf.getIfSet( "premultiplied_alpha", _premultAlpha );
+            conf.getIfSet( "color", _color );
+            conf.getIfSet( "incremental_update", _incrementalUpdate );
+        }
+
+        optional<float>               _skirtRatio;
+        optional<bool>                _quickRelease;
+        optional<float>               _lodFallOff;
+        optional<bool>                _normalizeEdges;
+        optional<osg::LOD::RangeMode> _rangeMode;
+        optional<float>               _tilePixelSize;
+        optional<bool>                _premultAlpha;
+        optional<Color>               _color;
+        optional<bool>                _incrementalUpdate;
+    };
+
+} } // namespace osgEarth::Drivers
+
+#endif // OSGEARTH_ENGINE_MP_OPTIONS

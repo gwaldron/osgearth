@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2010 Pelican Mapping
+ * Copyright 2008-2013 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -34,6 +34,7 @@
 #include <osg/Depth>
 #include <osg/Version>
 
+using namespace osgEarth_engine_osgterrain;
 using namespace osgEarth;
 
 #define NEW_COORD_CODE
@@ -188,7 +189,8 @@ MultiPassTerrainTechnique::createGeometryPrototype(osgTerrain::Locator* masterLo
 {  
     osgTerrain::Layer* elevationLayer = _tile->getElevationLayer();
 
-    osg::Geometry* geometry = new osg::Geometry;
+    osg::Geometry* geometry = new osg::Geometry();
+    geometry->setUseVertexBufferObjects(true);
 
 	unsigned int numRows = 20;
     unsigned int numColumns = 20;
@@ -198,8 +200,10 @@ MultiPassTerrainTechnique::createGeometryPrototype(osgTerrain::Locator* masterLo
         numColumns = elevationLayer->getNumColumns();
         numRows = elevationLayer->getNumRows();
     }
+
+    osg::ref_ptr< TerrainNode > terrain = _tile->getTerrain();
     
-    float sampleRatio = _tile->getTerrain() ? _tile->getTerrain()->getSampleRatio() : 1.0f;
+    float sampleRatio = terrain.valid() ? terrain->getSampleRatio() : 1.0f;
     
     double i_sampleFactor = 1.0;
     double j_sampleFactor = 1.0;
@@ -249,7 +253,7 @@ MultiPassTerrainTechnique::createGeometryPrototype(osgTerrain::Locator* masterLo
     geometry->setNormalBinding(osg::Geometry::BIND_PER_VERTEX);
     
     //float minHeight = 0.0;
-    float scaleHeight = _tile->getTerrain() ? _tile->getTerrain()->getVerticalScale() : 1.0f;
+    float scaleHeight = terrain.valid() ? terrain->getVerticalScale() : 1.0f;
 
     //Reserve space for the elevations
     osg::ref_ptr<osg::FloatArray> elevations = new osg::FloatArray;
@@ -320,7 +324,7 @@ MultiPassTerrainTechnique::createGeometryPrototype(osgTerrain::Locator* masterLo
 //    bool optimizeOrientations = elevations!=0;
     bool swapOrientation = !(masterLocator->orientationOpenGL());
     
-    osg::ref_ptr<osg::DrawElementsUInt> elements = new osg::DrawElementsUInt(GL_TRIANGLES);
+    osg::ref_ptr<osg::DrawElementsUShort> elements = new osg::DrawElementsUShort(GL_TRIANGLES);
     elements->reserve((numRows-1) * (numColumns-1) * 6);
 
     geometry->addPrimitiveSet(elements.get());
@@ -573,8 +577,10 @@ osg::Geode* MultiPassTerrainTechnique::createPass(unsigned int            order,
         numColumns = elevationLayer->getNumColumns();
         numRows = elevationLayer->getNumRows();
     }
+
+    osg::ref_ptr< TerrainNode> terrain = _tile->getTerrain();
     
-    float sampleRatio = _tile->getTerrain() ? _tile->getTerrain()->getSampleRatio() : 1.0f;
+    float sampleRatio = terrain.valid() ? terrain->getSampleRatio() : 1.0f;
     
     double i_sampleFactor = 1.0;
     double j_sampleFactor = 1.0;
@@ -611,7 +617,7 @@ osg::Geode* MultiPassTerrainTechnique::createPass(unsigned int            order,
     unsigned int numVertices = numVerticesInBody+numVerticesInSkirt;
 
     //float minHeight = 0.0;
-    float scaleHeight = _tile->getTerrain() ? _tile->getTerrain()->getVerticalScale() : 1.0f;
+    float scaleHeight = terrain.valid() ? terrain->getVerticalScale() : 1.0f;
 
     osg::ref_ptr<osg::Vec2Array> texCoords;
 

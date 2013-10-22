@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2008-2010 Pelican Mapping
+* Copyright 2008-2013 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -21,10 +21,7 @@
 
 #include <osgEarth/Common>
 #include <osgEarth/Config>
-#include <osgEarth/HeightFieldUtils>
 #include <osgEarth/HTTPClient>
-#include <osgEarth/Profile>
-#include <osgEarth/Revisioning>
 #include <osgEarth/TerrainOptions>
 #include <set>
 
@@ -38,6 +35,7 @@ namespace osgEarth
     public:
         MapNodeOptions( const Config& conf =Config() );
         MapNodeOptions( const TerrainOptions& terrainOpts );
+        MapNodeOptions( const MapNodeOptions& rhs );
         virtual ~MapNodeOptions();
 
         /** 
@@ -61,12 +59,6 @@ namespace osgEarth
         const optional<bool>& enableLighting() const { return _enableLighting; } 
 
         /**
-         * Whether to enable overlay vertex warping. See OverlayDecorator
-         */
-        optional<bool>& overlayVertexWarping() { return _overlayVertexWarping; }
-        const optional<bool>& overlayVertexWarping() const { return _overlayVertexWarping; }
-
-        /**
          * Whether to enable blending on the overlay decorator subgraph. See OverlayDecorator
          */
         optional<bool>& overlayBlending() { return _overlayBlending; }
@@ -85,11 +77,17 @@ namespace osgEarth
         const optional<bool>& overlayMipMapping() const { return _overlayMipMapping; }
 
         /**
+         * Whether to attach the RTT camera to the stencil buffer
+         */
+        optional<bool>& overlayAttachStencil() { return _overlayAttachStencil; }
+        const optional<bool>& overlayAttachStencil() const { return _overlayAttachStencil; }
+
+        /**
          * Options to conigure the terrain engine (the component that renders the
          * terrain surface).
          */
         const TerrainOptions& getTerrainOptions() const;
-        void setTerrainOptions( const TerrainOptions& options );     
+        void setTerrainOptions( const TerrainOptions& options );
     
     public:
         virtual Config getConfig() const;
@@ -106,6 +104,7 @@ namespace osgEarth
         optional<bool>     _overlayBlending;
         optional<unsigned> _overlayTextureSize;
         optional<bool>     _overlayMipMapping;
+        optional<bool>     _overlayAttachStencil;
 
         optional<Config> _terrainOptionsConf;
         TerrainOptions* _terrainOptions;

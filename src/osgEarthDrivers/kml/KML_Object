@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2010 Pelican Mapping
+ * Copyright 2008-2013 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -22,20 +22,26 @@
 #include "KML_Common"
 #include <osgEarthAnnotation/AnnotationData>
 
-using namespace osgEarth;
-using namespace osgEarth::Annotation;
-
-struct KML_Object
+namespace osgEarth_kml
 {
-    virtual void scan( const Config& conf, KMLContext& cx ) { }
-    
-    virtual void scan2( const Config& conf, KMLContext& cx ) { }
+    using namespace osgEarth;
+    using namespace osgEarth::Annotation;
 
-    virtual void build( const Config& conf, KMLContext& cx, osg::Node* working );
+    struct KML_Object
+    {
+        virtual void scan( const Config& conf, KMLContext& cx ) { }
+        
+        virtual void scan2( const Config& conf, KMLContext& cx ) { }
 
-protected:
+        virtual void build( const Config& conf, KMLContext& cx, osg::Node* working );
 
-    AnnotationData* getOrCreateAnnotationData( osg::Node* node );
-};
+        virtual ~KML_Object() { }
+
+    protected:
+
+        AnnotationData* getOrCreateAnnotationData( osg::Node* node );
+    };
+
+} // namespace osgEarth_kml
 
 #endif // OSGEARTH_DRIVER_KML_KML_OBJECT

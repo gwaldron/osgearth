@@ -20,31 +20,41 @@ SET(LIB_PUBLIC_HEADERS
     CssUtils
     Expression
     ExtrusionSymbol
+    Fill
     Geometry
     GeometryFactory
     GEOS
     GeometryRasterizer
+    IconResource
+    IconSymbol
+    InstanceResource
+    InstanceSymbol
     LineSymbol
     MarkerResource
     MarkerSymbol
     MeshConsolidator
     MeshSubdivider
+    ModelResource
+    ModelSymbol
     PointSymbol
     PolygonSymbol
     Query
+    RenderSymbol
     Resource
     ResourceCache
     ResourceLibrary
     Skins
     StencilVolumeNode
+    Stroke
     Style
-    SLD
+    StyleSelector
+    StyleSheet
     Symbol
     Tags
     TextSymbol
 )
 
-ADD_LIBRARY(${LIB_NAME} SHARED
+ADD_LIBRARY(${LIB_NAME} ${OSGEARTH_USER_DEFINED_DYNAMIC_OR_STATIC}
     ${LIB_PUBLIC_HEADERS}
 #  .cpp files go here
     AltitudeSymbol.cpp
@@ -52,25 +62,35 @@ ADD_LIBRARY(${LIB_NAME} SHARED
     CssUtils.cpp
     Expression.cpp
     ExtrusionSymbol.cpp
+    Fill.cpp
     Geometry.cpp
     GeometryFactory.cpp
     GEOS.cpp
     GeometryRasterizer.cpp
+    IconResource.cpp
+    IconSymbol.cpp
+    InstanceResource.cpp
+    InstanceSymbol.cpp
     LineSymbol.cpp
     MarkerResource.cpp
     MarkerSymbol.cpp
     MeshConsolidator.cpp
     MeshSubdivider.cpp
+    ModelResource.cpp
+    ModelSymbol.cpp
     PointSymbol.cpp
     PolygonSymbol.cpp
     Query.cpp
+    RenderSymbol.cpp
     Resource.cpp
     ResourceCache.cpp
     ResourceLibrary.cpp
     Skins.cpp
     StencilVolumeNode.cpp
+    Stroke.cpp
     Style.cpp
-    SLD.cpp
+    StyleSelector.cpp
+    StyleSheet.cpp
     Symbol.cpp
     TextSymbol.cpp
 )

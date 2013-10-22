@@ -38,10 +38,24 @@ http://readymap.org
     
     <external>
         <sky/>
+        
+        <!-- Ocean parameters. -->
         <ocean>
+        
+            <!-- Surface texture to use -->
             <texture_url>../data/watersurface1.png</texture_url>
-            <base_color>#334f7faf</base_color>
+            
+            <!-- Masking layer to use (optional...without a masking layer, osgEarth will sample the
+                 terrain elevation data to determine where the ocean is.
+            <mask_layer driver="tms">
+                <url>http://readymap.org/readymap/tiles/1.0.0/2/</url>
+            </mask_layer>
+            -->
+            
+            <!-- surface color (before texturing) -->
+            <base_color>#334f7fbf</base_color>
         </ocean>
+        
         <viewpoint name="Los Angeles" heading="35.27" height="97.48" lat="34.051" long="-117.974" pitch="-17" range="136405"/>
     </external>
 </map>

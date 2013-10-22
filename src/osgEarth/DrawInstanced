@@ -1,0 +1,81 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+ * Copyright 2008-2013 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+
+#ifndef OSGEARTH_DRAW_INSTANCED_H
+#define OSGEARTH_DRAW_INSTANCED_H 1
+
+#include <osgEarth/Common>
+#include <osgEarth/VirtualProgram>
+#include <osg/NodeVisitor>
+#include <osg/Geode>
+
+/**
+ * Some utilities to support *DrawInstanced rendering.
+ */
+namespace osgEarth
+{
+    namespace DrawInstanced
+    {
+        /**
+         * Visitor that converts all the primitive sets in a graph to use
+         * instanced draw calls.
+         * Called by convertGraphToUseDrawInstanced().
+         */
+        class OSGEARTH_EXPORT ConvertToDrawInstanced : public osg::NodeVisitor
+        {
+        public:
+            /**
+             * Create the visitor that will convert primitive sets to draw
+             * <num> instances.
+             */
+            ConvertToDrawInstanced(
+                unsigned                numInstances,
+                const osg::BoundingBox& bbox,
+                bool                    optimize );
+
+            void apply(osg::Geode&);
+
+        protected:
+            unsigned _numInstances;
+            bool     _optimize;
+            osg::ref_ptr<osg::Drawable::ComputeBoundingBoxCallback> _staticBBoxCallback;
+        };
+
+
+        /**
+         * Creates a virtual shader program that implements DrawInstanced rendering.
+         * You should prepare the scene graph with the ConvertToDrawInstanced
+         * visitor first.
+         * Called by convertGraphToUseDrawInstanced().
+         */
+        extern OSGEARTH_EXPORT void install(osg::StateSet* stateset);
+        extern OSGEARTH_EXPORT void remove (osg::StateSet* stateset);
+
+
+        /**
+         * Processes a scene graph and converts all the top-level MatrixTransform
+         * nodes into shader uniforms that can be used with the VirtualProgram
+         * created by createDrawInstacedShaders.
+         */
+        extern OSGEARTH_EXPORT void convertGraphToUseDrawInstanced( 
+            osg::Group* graph );
+    }
+}
+
+#endif // OSGEARTH_DRAW_INSTANCED_H

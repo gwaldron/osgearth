@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2010 Pelican Mapping
+ * Copyright 2008-2013 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -18,6 +18,7 @@
  */
 #include "ElevationProxyImageLayer"
 
+using namespace osgEarth_ocean_surface;
 using namespace osgEarth;
 
 ElevationProxyImageLayer::ElevationProxyImageLayer( Map* sourceMap, const ImageLayerOptions& options ) :
@@ -25,14 +26,14 @@ ImageLayer( options ),
 _sourceMap( sourceMap ),
 _mapf     ( sourceMap )
 {
-    _runtimeOptions.profile() = _sourceMap->getProfile()->toProfileOptions();
     _runtimeOptions.cachePolicy() = CachePolicy::NO_CACHE;
 }
 
 void
 ElevationProxyImageLayer::initTileSource()
 {
-    _tileSourceInitialized = true;
+    _tileSourceInitAttempted = true;
+    _tileSourceInitFailed    = true;
 }
 
 bool

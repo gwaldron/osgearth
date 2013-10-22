@@ -1,0 +1,105 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+ * Copyright 2008-2013 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+
+#ifndef OSGEARTHSYMBOLOGY_ICON_SYMBOL_H
+#define OSGEARTHSYMBOLOGY_ICON_SYMBOL_H 1
+
+#include <osgEarth/Common>
+#include <osgEarthSymbology/InstanceSymbol>
+
+namespace osgEarth { namespace Symbology
+{
+    class Style;
+    class InstanceResource;
+
+    /**
+     * Represents a 2D icon for instancing
+     */
+    class OSGEARTHSYMBOLOGY_EXPORT IconSymbol : public InstanceSymbol
+    {
+    public:
+        // note: these are similar to the values in osgText::Text::AlignmentType
+        enum Alignment {
+            ALIGN_LEFT_TOP,
+            ALIGN_LEFT_CENTER,
+            ALIGN_LEFT_BOTTOM,
+
+            ALIGN_CENTER_TOP,
+            ALIGN_CENTER_CENTER,
+            ALIGN_CENTER_BOTTOM,
+
+            ALIGN_RIGHT_TOP,
+            ALIGN_RIGHT_CENTER,
+            ALIGN_RIGHT_BOTTOM,
+        };
+
+    public:
+        META_Symbol(IconSymbol);
+
+        IconSymbol( const Config& conf =Config() );
+
+        /** dtor */
+        virtual ~IconSymbol() { }
+
+        /** Alignment of the marker relative to center pixels */
+        optional<Alignment>& alignment() { return _alignment; }
+        const optional<Alignment>& alignment() const { return _alignment; }
+
+        /** Heading. Semantically this differs from an model's heading */
+        optional<NumericExpression>& heading() { return _heading; }
+        const optional<NumericExpression>& heading() const { return _heading; }
+
+        /** Decluttering */
+        optional<bool>& declutter() { return _declutter; }
+        const optional<bool>& declutter() const { return _declutter; }
+
+        /** Whether to enable occlusion culling on the icon, if applicable */
+        optional<bool>& occlusionCull() { return _occlusionCull; }
+        const optional<bool>& occlusionCull() const { return _occlusionCull; }
+
+        /** The camera altitude at which to start occlusion culling the icon */
+        optional<double>& occlusionCullAltitude() { return _occlusionCullAltitude; }
+        const optional<double>& occlusionCullAltitude() const { return _occlusionCullAltitude; }
+        
+    public: // non-serialized properties (for programmatic use only)
+
+        /** Explicit image to use for 2D icon placemet */
+        void setImage( osg::Image* image ) { _image = image; }
+        osg::Image* getImage( unsigned maxSize =INT_MAX ) const;
+
+    public:
+        virtual Config getConfig() const;
+        virtual void mergeConfig( const Config& conf );
+        static void parseSLD(const Config& c, class Style& style);
+
+    public: // InstanceSymbol
+        virtual InstanceResource* createResource() const;
+
+    protected:
+        optional<Alignment>              _alignment;
+        optional<NumericExpression>      _heading;
+        optional<bool>                   _declutter;
+        mutable osg::ref_ptr<osg::Image> _image;
+        optional<bool>                   _occlusionCull;
+        optional<double>                 _occlusionCullAltitude;
+    };
+
+} } // namespace osgEarth::Symbology
+
+#endif

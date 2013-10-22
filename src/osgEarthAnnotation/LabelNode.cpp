@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2008-2010 Pelican Mapping
+* Copyright 2008-2013 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -18,10 +18,11 @@
 */
 
 #include <osgEarthAnnotation/LabelNode>
-#include <osgEarthAnnotation/Decluttering>
 #include <osgEarthAnnotation/AnnotationUtils>
 #include <osgEarthAnnotation/AnnotationRegistry>
 #include <osgEarthSymbology/Color>
+#include <osgEarth/Registry>
+#include <osgEarth/ShaderGenerator>
 #include <osgText/Text>
 #include <osg/Depth>
 #include <osgUtil/IntersectionVisitor>
@@ -42,11 +43,9 @@ LabelNode::LabelNode(MapNode*            mapNode,
                      const Style&        style ) :
 
 OrthoNode( mapNode, position ),
-_text    ( text ),
-_geode   ( 0L ),
-_style   ( style )
+_text    ( text )
 {
-    init();
+    init( style );
 }
 
 LabelNode::LabelNode(MapNode*            mapNode,
@@ -55,75 +54,46 @@ LabelNode::LabelNode(MapNode*            mapNode,
                      const TextSymbol*   symbol ) :
 
 OrthoNode( mapNode, position ),
-_text    ( text ),
-_geode   ( 0L )
+_text    ( text )
 {
-    _style.add( const_cast<TextSymbol*>(symbol) );
-    init();
-}
-
-LabelNode::LabelNode(MapNode*            mapNode,
-                     double              x,
-                     double              y,
-                     const std::string&  text,
-                     const Style&        style ) :
-
-OrthoNode( mapNode, GeoPoint(mapNode->getMapSRS(), x, y, 0) ),
-_text    ( text ),
-_geode   ( 0L ),
-_style   ( style )
-{
-    init();
-}
-
-LabelNode::LabelNode(const SpatialReference* mapSRS,
-                     const GeoPoint&         position,
-                     const std::string&      text,
-                     const TextSymbol*       symbol ) :
-
-OrthoNode( mapSRS, position ),
-_text    ( text ),
-_geode   ( 0L )
-{
-    _style.add( const_cast<TextSymbol*>(symbol) );
-    init();
+    Style style;
+    style.add( const_cast<TextSymbol*>(symbol) );
+    init( style );
 }
 
 LabelNode::LabelNode(const std::string&  text,
                      const Style&        style ) :
 OrthoNode(),
-_text    ( text ),
-_geode   ( 0L ),
-_style   ( style )
+_text    ( text )
 {
-    init();
+    init( style );
 }
 
-LabelNode::LabelNode(MapNode*          mapNode,
-                     const TextSymbol* symbol ) :
-OrthoNode( mapNode, GeoPoint(mapNode->getMapSRS()) ),
-_geode   ( 0L )
+LabelNode::LabelNode(MapNode*            mapNode,
+                     const GeoPoint&     position,
+                     const Style&        style ) :
+OrthoNode( mapNode, position )
 {
-    _style.add( const_cast<TextSymbol*>(symbol) );
-    init();
+    init( style );
+}
+
+LabelNode::LabelNode(MapNode*            mapNode,
+                     const Style&        style ) :
+OrthoNode( mapNode, GeoPoint::INVALID )
+{
+    init( style );
 }
 
 void
-LabelNode::init()
+LabelNode::init( const Style& style )
 {
-    const TextSymbol* symbol = _style.get<TextSymbol>();
-
     _geode = new osg::Geode();
-
-    osg::Drawable* t = AnnotationUtils::createTextDrawable( _text, symbol, osg::Vec3(0,0,0) );
-    _geode->addDrawable(t);
+    getAttachPoint()->addChild( _geode.get() );
 
     osg::StateSet* stateSet = _geode->getOrCreateStateSet();
     stateSet->setAttributeAndModes( new osg::Depth(osg::Depth::ALWAYS, 0, 1, false), 1 );
 
-    getAttachPoint()->addChild( _geode );
-
-    applyStyle( _style );
+    setStyle( style );
 }
 
 void
@@ -140,7 +110,39 @@ LabelNode::setText( const std::string& text )
     {
         d->setText( text );
         d->dirtyDisplayList();
+        _text = text;
     }
+}
+
+void
+LabelNode::setStyle( const Style& style )
+{
+    if ( !_dynamic && getNumParents() > 0 )
+    {
+        OE_WARN << LC << "Illegal state: cannot change a LabelNode that is not dynamic" << std::endl;
+        return;
+    }
+    
+    this->clearDecoration();
+
+    _geode->removeDrawables( 0, _geode->getNumDrawables() );
+
+    _style = style;
+
+    const TextSymbol* symbol = _style.get<TextSymbol>();
+
+    if ( _text.empty() )
+        _text = symbol->content()->eval();
+
+    osg::Drawable* t = AnnotationUtils::createTextDrawable( _text, symbol, osg::Vec3(0,0,0) );
+    _geode->addDrawable(t);
+
+    applyStyle( _style );
+
+    setLightingIfNotSet( false );
+
+    ShaderGenerator gen( Registry::stateSetCache() );
+    this->accept( gen );
 }
 
 void
@@ -175,17 +177,20 @@ LabelNode::setDynamic( bool dynamic )
 OSGEARTH_REGISTER_ANNOTATION( label, osgEarth::Annotation::LabelNode );
 
 
-LabelNode::LabelNode(MapNode*      mapNode,
-                     const Config& conf ) :
+LabelNode::LabelNode(MapNode*               mapNode,
+                     const Config&         conf,
+                     const osgDB::Options* dbOptions ) :
 OrthoNode( mapNode, GeoPoint::INVALID )
 {
-    conf.getObjIfSet( "style",  _style );
-    conf.getIfSet   ( "text",   _text );
+    optional<Style> style;
+
+    conf.getObjIfSet( "style", style );
+    conf.getIfSet   ( "text",  _text );
+
+    init( *style );
 
     if ( conf.hasChild("position") )
         setPosition( GeoPoint(conf.child("position")) );
-
-    init();
 }
 
 Config

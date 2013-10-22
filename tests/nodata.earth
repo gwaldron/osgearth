@@ -1,0 +1,18 @@
+<!-- 
+osgEarth Sample - GDAL Driver NoData
+Demonstrates the use of a file with nodata.  The white circle is a GeoTiff which has 0 marked as NoData so the black borders in the original imagery should show up as transparent.
+-->
+
+<map version="2">
+    <image driver="gdal" name="world-tiff" cache_enabled="false">
+        <url>../data/world.tif</url>
+        <caching_policy usage="no_cache"/>
+    </image>
+	
+	<image driver="gdal" name="nodata-tiff" cache_enabled="false">
+        <url>../data/nodata.tif</url>
+        <caching_policy usage="no_cache"/>
+    </image>
+    
+    <options lighting="false"/>
+</map>

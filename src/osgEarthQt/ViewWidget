@@ -1,0 +1,79 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+ * Copyright 2008-2013 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+#ifndef OSGEARTHQT_VIEW_WIDGET_H
+#define OSGEARTHQT_VIEW_WIDGET_H 1
+
+#include <osgEarthQt/Common>
+
+#include <osgEarth/Map>
+
+#include <osgQt/GraphicsWindowQt>
+#include <osgViewer/ViewerBase>
+
+#include <QtCore/QTimer>
+
+namespace osgEarth { namespace QtGui 
+{
+    using namespace osgEarth;
+
+    /**
+     * Qt widget that encapsulates an osgViewer::View.
+     *
+     * There is nothing osgEarth-specific about this class; rather we
+     * provide it for convenience. The use case is rendering the map node
+     * (or other graph) in multiple Qt windows with a single CompositeViewer.
+     */
+    class OSGEARTHQT_EXPORT ViewWidget : public osgQt::GLWidget
+    {
+    public:
+        /**
+         * Constructs a new ViewWidget, attaching an existing view.
+         *
+         * @param[in ] view   View to attach to this widget. The widget will install
+         *             a new camera in the view. (NOTE: this widget does not take
+         *             ownership of the View. You are still respsonsile for its
+         *             destruction)
+         * @param[in ] gcToShare Graphics context to share with this new view.
+         *             Usually you should just leave this NULL
+         */
+        ViewWidget(osgViewer::View* view, osg::GraphicsContext* gcToShare =0L);
+
+        /**
+         * Access the underlying view.
+         */
+        osgViewer::View* getView() { return _view.get(); }
+
+        /** dtor */
+        virtual ~ViewWidget();
+
+    protected:
+
+        void paintEvent( QPaintEvent* );
+
+    private:
+
+        void init( osg::GraphicsContext* gc );
+        osg::GraphicsContext* createOrShareGC(osg::GraphicsContext* gc);
+
+        osg::observer_ptr<osgViewer::View> _view;
+        
+    };
+} }
+
+#endif // OSGEARTHQT_VIEW_WIDGET_H

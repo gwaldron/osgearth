@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2008-2010 Pelican Mapping
+* Copyright 2008-2013 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -18,11 +18,13 @@
 */
 
 #include <osgEarth/MapNode>
+#include <osgEarth/Decluttering>
 #include <osgEarth/ECEF>
 
 #include <osgEarthUtil/EarthManipulator>
 #include <osgEarthUtil/AnnotationEvents>
 #include <osgEarthUtil/AutoClipPlaneHandler>
+#include <osgEarthUtil/ExampleResources>
 
 #include <osgEarthAnnotation/AnnotationEditing>
 #include <osgEarthAnnotation/AnnotationRegistry>
@@ -35,7 +37,6 @@
 #include <osgEarthAnnotation/LabelNode>
 #include <osgEarthAnnotation/LocalGeometryNode>
 #include <osgEarthAnnotation/FeatureNode>
-#include <osgEarthAnnotation/Decluttering>
 #include <osgEarthAnnotation/HighlightDecoration>
 #include <osgEarthAnnotation/ScaleDecoration>
 
@@ -74,16 +75,26 @@ struct MyAnnoEventHandler : public AnnotationEventHandler
     void onHoverEnter( AnnotationNode* anno, const EventArgs& args )
     {
         anno->setDecoration( "hover" );
+        OE_NOTICE << "Hover enter" << std::endl;
     }
 
     void onHoverLeave( AnnotationNode* anno, const EventArgs& args )
     {
         anno->clearDecoration();
+        OE_NOTICE << "Hover leave" << std::endl;
     }
 
     virtual void onClick( AnnotationNode* node, const EventArgs& details )
     {        
-        OE_NOTICE << "Thanks for clicking this annotation" << std::endl;
+        PlaceNode* place = dynamic_cast<PlaceNode*>(node);
+        if (place == NULL)
+        {
+            OE_NOTICE << "Thanks for clicking this annotation" << std::endl;
+        }
+        else
+        {
+            OE_NOTICE << "Thanks for clicking the PlaceNode: " << place->getText() << std::endl;
+        }
     }
 };
 
@@ -116,19 +127,21 @@ main(int argc, char** argv)
 
     // try to load an earth file.
     osg::ArgumentParser arguments(&argc,argv);
-    osg::Node* node = osgDB::readNodeFiles( arguments );
-    if ( !node )
-        return usage(argv);
+
+    osgViewer::Viewer viewer(arguments);
+    viewer.setCameraManipulator( new EarthManipulator() );
+
+    viewer.setCameraManipulator( new EarthManipulator() );
+
+    // load an earth file and parse demo arguments
+    osg::Node* node = MapNodeHelper().load(arguments, &viewer);
+    if ( !node ) return usage(argv);
+    root->addChild( node );
 
     // find the map node that we loaded.
     MapNode* mapNode = MapNode::findMapNode(node);
     if ( !mapNode )
         return usage(argv);
-
-    root->addChild( mapNode );
-
-    osgViewer::Viewer viewer(arguments);
-
 
     // Group to hold all our annotation elements.
     osg::Group* annoGroup = new osg::Group();
@@ -139,20 +152,15 @@ main(int argc, char** argv)
     root->addChild( editorGroup );
     editorGroup->setNodeMask( 0 );
 
-    // create a surface to house the controls
-    ControlCanvas* cs = ControlCanvas::get( &viewer );
-    root->addChild( cs );
-
-    HBox* box = new HBox();    
+    HBox* box = ControlCanvas::get(&viewer)->addControl( new HBox() );
     box->setChildSpacing( 5 );
     //Add a toggle button to toggle editing
-    CheckBoxControl* editCheckbox = new CheckBoxControl( false );    
+    CheckBoxControl* editCheckbox = new CheckBoxControl( false );
     editCheckbox->addEventHandler( new ToggleNodeHandler( editorGroup ) );
     box->addControl( editCheckbox );
     LabelControl* labelControl = new LabelControl( "Edit Annotations" );
     labelControl->setFontSize( 24.0f );
     box->addControl( labelControl  );
-    cs->addControl( box );
 
 
     // Make a group for 2D items, and activate the decluttering engine. Decluttering
@@ -160,15 +168,11 @@ main(int argc, char** argv)
     osg::Group* labelGroup = new osg::Group();
     Decluttering::setEnabled( labelGroup->getOrCreateStateSet(), true );
     annoGroup->addChild( labelGroup );
-    
-    // set up a style to use for labels:
-    Style placeStyle;
-    placeStyle.getOrCreate<AltitudeSymbol>()->clamping() = AltitudeSymbol::CLAMP_TO_TERRAIN;
 
+    // Style our labels:
     Style labelStyle;
     labelStyle.getOrCreate<TextSymbol>()->alignment() = TextSymbol::ALIGN_CENTER_CENTER;
     labelStyle.getOrCreate<TextSymbol>()->fill()->color() = Color::Yellow;
-    labelStyle.getOrCreate<AltitudeSymbol>()->clamping() = AltitudeSymbol::CLAMP_TO_TERRAIN;
 
     // A lat/long SRS for specifying points.
     const SpatialReference* geoSRS = mapNode->getMapSRS()->getGeographicSRS();
@@ -177,18 +181,27 @@ main(int argc, char** argv)
 
     // A series of place nodes (an icon with a text label)
     {
-        osg::Image* pin = osgDB::readImageFile( "../data/placemark32.png" );
+        Style pin;
+        pin.getOrCreate<IconSymbol>()->url()->setLiteral( "../data/placemark32.png" );
 
-        labelGroup->addChild( new PlaceNode(mapNode, GeoPoint(geoSRS, -74.00, 40.71), pin, "New York",       placeStyle) );
-        labelGroup->addChild( new PlaceNode(mapNode, GeoPoint(geoSRS, -77.04, 38.85), pin, "Washington, DC", placeStyle) );
-        labelGroup->addChild( new PlaceNode(mapNode, GeoPoint(geoSRS, -87.65, 41.90), pin, "Chicago",        placeStyle) );
-        labelGroup->addChild( new PlaceNode(mapNode, GeoPoint(geoSRS,-118.40, 33.93), pin, "Los Angeles",    placeStyle) );
-        labelGroup->addChild( new PlaceNode(mapNode, GeoPoint(geoSRS, -71.03, 42.37), pin, "Boston",         placeStyle) );
-        labelGroup->addChild( new PlaceNode(mapNode, GeoPoint(geoSRS,-157.93, 21.35), pin, "Honolulu",       placeStyle) );
-        labelGroup->addChild( new PlaceNode(mapNode, GeoPoint(geoSRS, 139.75, 35.68), pin, "Tokyo",          placeStyle) );
-        labelGroup->addChild( new PlaceNode(mapNode, GeoPoint(geoSRS, -90.25, 29.98), pin, "New Orleans",    placeStyle) );
-        labelGroup->addChild( new PlaceNode(mapNode, GeoPoint(geoSRS, -80.28, 25.82), pin, "Miami",          placeStyle) );
-        labelGroup->addChild( new PlaceNode(mapNode, GeoPoint(geoSRS,-117.17, 32.72), pin, "San Diego",      placeStyle) );
+        labelGroup->addChild( new PlaceNode(mapNode, GeoPoint(geoSRS, -74.00, 40.71), "New York"      , pin));
+        labelGroup->addChild( new PlaceNode(mapNode, GeoPoint(geoSRS, -77.04, 38.85), "Washington, DC", pin));
+        //labelGroup->addChild( new PlaceNode(mapNode, GeoPoint(geoSRS, -87.65, 41.90), "Chicago"       , pin));
+        labelGroup->addChild( new PlaceNode(mapNode, GeoPoint(geoSRS,-118.40, 33.93), "Los Angeles"   , pin));
+        labelGroup->addChild( new PlaceNode(mapNode, GeoPoint(geoSRS, -71.03, 42.37), "Boston"        , pin));
+        labelGroup->addChild( new PlaceNode(mapNode, GeoPoint(geoSRS,-157.93, 21.35), "Honolulu"      , pin));
+        labelGroup->addChild( new PlaceNode(mapNode, GeoPoint(geoSRS, 139.75, 35.68), "Tokyo"         , pin));
+        labelGroup->addChild( new PlaceNode(mapNode, GeoPoint(geoSRS, -90.25, 29.98), "New Orleans"   , pin));
+        labelGroup->addChild( new PlaceNode(mapNode, GeoPoint(geoSRS, -80.28, 25.82), "Miami"         , pin));
+        labelGroup->addChild( new PlaceNode(mapNode, GeoPoint(geoSRS,-117.17, 32.72), "San Diego"     , pin));
+
+        // test with an LOD, just for kicks:
+        osg::LOD* lod = new osg::LOD();
+        lod->addChild( new PlaceNode(mapNode, GeoPoint(geoSRS, 14.68, 50.0), "Prague", pin), 0.0, 1e6);
+        labelGroup->addChild( lod );
+
+
+        labelGroup->addChild( new PlaceNode(mapNode, GeoPoint(geoSRS, -87.65, 41.90, 1000, ALTMODE_ABSOLUTE), "Chicago"       , pin));
     }
 
     //--------------------------------------------------------------------
@@ -204,6 +217,7 @@ main(int argc, char** argv)
         geomStyle.getOrCreate<LineSymbol>()->stroke()->color() = Color::Cyan;
         geomStyle.getOrCreate<LineSymbol>()->stroke()->width() = 5.0f;
         geomStyle.getOrCreate<AltitudeSymbol>()->clamping() = AltitudeSymbol::CLAMP_TO_TERRAIN;
+        geomStyle.getOrCreate<AltitudeSymbol>()->technique() = AltitudeSymbol::TECHNIQUE_GPU;
         FeatureNode* gnode = new FeatureNode(mapNode, new Feature(geom, geoSRS, geomStyle));
         annoGroup->addChild( gnode );
 
@@ -223,6 +237,7 @@ main(int argc, char** argv)
         geomStyle.getOrCreate<LineSymbol>()->stroke()->color() = Color::Lime;
         geomStyle.getOrCreate<LineSymbol>()->stroke()->width() = 3.0f;
         geomStyle.getOrCreate<AltitudeSymbol>()->clamping() = AltitudeSymbol::CLAMP_TO_TERRAIN;
+        geomStyle.getOrCreate<AltitudeSymbol>()->technique() = AltitudeSymbol::TECHNIQUE_GPU;
         FeatureNode* gnode = new FeatureNode(mapNode, new Feature(geom, geoSRS, geomStyle));
         annoGroup->addChild( gnode );
 
@@ -241,6 +256,7 @@ main(int argc, char** argv)
         pathStyle.getOrCreate<LineSymbol>()->stroke()->color() = Color::Red;
         pathStyle.getOrCreate<LineSymbol>()->stroke()->width() = 3.0f;
         pathStyle.getOrCreate<AltitudeSymbol>()->clamping() = AltitudeSymbol::CLAMP_TO_TERRAIN;
+        pathStyle.getOrCreate<AltitudeSymbol>()->technique() = AltitudeSymbol::TECHNIQUE_GPU;
 
         Feature* pathFeature = new Feature(path, geoSRS, pathStyle);
         pathFeature->geoInterp() = GEOINTERP_GREAT_CIRCLE;
@@ -259,16 +275,39 @@ main(int argc, char** argv)
     {
         Style circleStyle;
         circleStyle.getOrCreate<PolygonSymbol>()->fill()->color() = Color(Color::Cyan, 0.5);
+        //circleStyle.getOrCreate<LineSymbol>()->stroke()->color() = Color(Color::Cyan, 1.0);
+        //circleStyle.getOrCreate<LineSymbol>()->stroke()->width() = 6.0f;
+        //circleStyle.getOrCreate<ExtrusionSymbol>()->height() = 250000.0; // meters MSL
+        circleStyle.getOrCreate<AltitudeSymbol>()->clamping() = AltitudeSymbol::CLAMP_TO_TERRAIN;
+        circleStyle.getOrCreate<AltitudeSymbol>()->technique() = AltitudeSymbol::TECHNIQUE_DRAPE;
+
         CircleNode* circle = new CircleNode(
-            mapNode, 
-            GeoPoint(geoSRS, -90.25, 29.98, 1000., AltitudeMode::RELATIVE_TO_TERRAIN),
-            Linear(300, Units::KILOMETERS ),
-            circleStyle,
-            false );
-        annoGroup->addChild( circle );        
+            mapNode,
+            GeoPoint(geoSRS, -90.25, 29.98, 1000., ALTMODE_RELATIVE),
+            Linear(300, Units::KILOMETERS),
+            circleStyle, Angular(-45.0, Units::DEGREES), Angular(45.0, Units::DEGREES), true);
+        annoGroup->addChild( circle );
 
         editorGroup->addChild( new CircleNodeEditor( circle ) );
     }
+	{
+		Style circleStyle;
+		circleStyle.getOrCreate<PolygonSymbol>()->fill()->color() = Color(Color::Red, 0.5);
+		//circleStyle.getOrCreate<LineSymbol>()->stroke()->color() = Color(Color::Red, 1.0);
+		//circleStyle.getOrCreate<LineSymbol>()->stroke()->width() = 6.0f;
+		//circleStyle.getOrCreate<ExtrusionSymbol>()->height() = 250000.0; // meters MSL
+		circleStyle.getOrCreate<AltitudeSymbol>()->clamping() = AltitudeSymbol::CLAMP_TO_TERRAIN;
+		circleStyle.getOrCreate<AltitudeSymbol>()->technique() = AltitudeSymbol::TECHNIQUE_DRAPE;
+
+		CircleNode* circle = new CircleNode(
+			mapNode,
+			GeoPoint(geoSRS, -90.25, 29.98, 1000., ALTMODE_RELATIVE),
+			Linear(300, Units::KILOMETERS),
+			circleStyle, Angular(45.0, Units::DEGREES), Angular(360.0 - 45.0, Units::DEGREES), true);
+		annoGroup->addChild( circle );
+
+		editorGroup->addChild( new CircleNodeEditor( circle ) );
+	}
 
     //--------------------------------------------------------------------
 
@@ -276,29 +315,48 @@ main(int argc, char** argv)
     {
         Style ellipseStyle;
         ellipseStyle.getOrCreate<PolygonSymbol>()->fill()->color() = Color(Color::Orange, 0.75);
+        //ellipseStyle.getOrCreate<LineSymbol>()->stroke()->color() = Color(Color::Orange, 0.75);
+        //ellipseStyle.getOrCreate<LineSymbol>()->stroke()->width() = 4.0f;
+        ellipseStyle.getOrCreate<ExtrusionSymbol>()->height() = 250000.0; // meters MSL
         EllipseNode* ellipse = new EllipseNode(
             mapNode, 
-            GeoPoint(geoSRS, -80.28, 25.82, 0.0, AltitudeMode::RELATIVE_TO_TERRAIN),
+            GeoPoint(geoSRS, -80.28, 25.82, 0.0, ALTMODE_RELATIVE),
             Linear(500, Units::MILES),
             Linear(100, Units::MILES),
             Angular(0, Units::DEGREES),
-            ellipseStyle,
-            true );
+            ellipseStyle, Angular(45.0, Units::DEGREES), Angular(360.0 - 45.0, Units::DEGREES), true);
         annoGroup->addChild( ellipse );
         editorGroup->addChild( new EllipseNodeEditor( ellipse ) );
     }
+	{
+		Style ellipseStyle;
+		ellipseStyle.getOrCreate<PolygonSymbol>()->fill()->color() = Color(Color::Blue, 0.75);
+		//ellipseStyle.getOrCreate<LineSymbol>()->stroke()->color() = Color(Color::Blue, 0.75);
+		//ellipseStyle.getOrCreate<LineSymbol>()->stroke()->width() = 4.0f;
+		ellipseStyle.getOrCreate<ExtrusionSymbol>()->height() = 250000.0; // meters MSL
+		EllipseNode* ellipse = new EllipseNode(
+			mapNode, 
+			GeoPoint(geoSRS, -80.28, 25.82, 0.0, ALTMODE_RELATIVE),
+			Linear(500, Units::MILES),
+			Linear(100, Units::MILES),
+			Angular(0, Units::DEGREES),
+			ellipseStyle, Angular(-45.0, Units::DEGREES), Angular(45.0, Units::DEGREES), true);
+		annoGroup->addChild( ellipse );
+		editorGroup->addChild( new EllipseNodeEditor( ellipse ) );
+	}
 
     {
         // A rectangle around San Diego
         Style rectStyle;
         rectStyle.getOrCreate<PolygonSymbol>()->fill()->color() = Color(Color::Green, 0.5);
+        rectStyle.getOrCreate<AltitudeSymbol>()->clamping() = AltitudeSymbol::CLAMP_TO_TERRAIN;
+        rectStyle.getOrCreate<AltitudeSymbol>()->technique() = AltitudeSymbol::TECHNIQUE_DRAPE;
         RectangleNode* rect = new RectangleNode(
             mapNode, 
             GeoPoint(geoSRS, -117.172, 32.721),
             Linear(300, Units::KILOMETERS ),
             Linear(600, Units::KILOMETERS ),
-            rectStyle,
-            true );
+            rectStyle);
         annoGroup->addChild( rect );
 
         editorGroup->addChild( new RectangleNodeEditor( rect ) );
@@ -368,19 +426,12 @@ main(int argc, char** argv)
     //--------------------------------------------------------------------
 
     // initialize the viewer:    
-    viewer.setCameraManipulator( new EarthManipulator() );
     viewer.setSceneData( root );
 
-    viewer.getCamera()->addCullCallback( new AutoClipPlaneCullCallback(mapNode->getMap()) );
-    viewer.getDatabasePager()->setDoPreCompile( true );
+    viewer.getCamera()->addCullCallback( new AutoClipPlaneCullCallback(mapNode) );
     viewer.addEventHandler(new osgViewer::StatsHandler());
     viewer.addEventHandler(new osgViewer::WindowSizeHandler());
     viewer.addEventHandler(new osgGA::StateSetManipulator(viewer.getCamera()->getOrCreateStateSet()));
-
-    // testing:
-    Config annoConfig = AnnotationRegistry::instance()->getConfig( annoGroup );
-    mapNode->externalConfig().add(annoConfig);
-    osgDB::writeNodeFile( *mapNode, "out.earth" );
 
     return viewer.run();
 }

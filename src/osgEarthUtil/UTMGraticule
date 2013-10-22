@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2010 Pelican Mapping
+ * Copyright 2008-2013 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -21,6 +21,7 @@
 
 #include <osgEarthUtil/Common>
 #include <osgEarth/MapNode>
+#include <osgEarth/MapNodeObserver>
 #include <osgEarthSymbology/Style>
 #include <osgEarthFeatures/Feature>
 #include <vector>
@@ -38,6 +39,10 @@ namespace osgEarth { namespace Util
     {
     public:
         UTMGraticuleOptions( const Config& conf =Config() );
+
+        /** dtor */
+        virtual ~UTMGraticuleOptions() { }
+
 
     public:
 
@@ -66,7 +71,7 @@ namespace osgEarth { namespace Util
      * NOTE: So far, this only works for geocentric maps.
      * TODO: Add projected support; add text label support
      */
-    class OSGEARTHUTIL_EXPORT UTMGraticule : public osg::Group
+    class OSGEARTHUTIL_EXPORT UTMGraticule : public osg::Group, public MapNodeObserver
     {
     public:
 
@@ -84,6 +89,9 @@ namespace osgEarth { namespace Util
         UTMGraticule( MapNode* mapNode );
         UTMGraticule( MapNode* mapNode, const UTMGraticuleOptions& options);
 
+        /** dtor */
+        virtual ~UTMGraticule() { }
+
         /** 
          * Applies a new set of options. The graticule will be rebuilt if necessary.
          */
@@ -93,6 +101,13 @@ namespace osgEarth { namespace Util
          * Gets the options with which the graticule was built.
          */
         const UTMGraticuleOptions& getOptions() const { return _options.value(); }
+
+        
+    public: // MapNodeObserver
+
+        virtual void setMapNode( MapNode* mapNode );
+
+        virtual MapNode* getMapNode() { return _mapNode.get(); }
 
 
     protected:
@@ -115,7 +130,6 @@ namespace osgEarth { namespace Util
         void init();
         void rebuild();
         osg::Node* buildGZDTile( const std::string& name, const GeoExtent& extent );
-        //osg::Node* buildPolarGZDTiles();
 
         virtual osg::Group* buildGZDChildren( osg::Group* node, const std::string& gzd ) {
             return node; }

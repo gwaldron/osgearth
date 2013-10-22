@@ -1,0 +1,144 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+* Copyright 2008-2013 Pelican Mapping
+* http://osgearth.org
+*
+* osgEarth is free software; you can redistribute it and/or modify
+* it under the terms of the GNU Lesser General Public License as published by
+* the Free Software Foundation; either version 2 of the License, or
+* (at your option) any later version.
+*
+* This program is distributed in the hope that it will be useful,
+* but WITHOUT ANY WARRANTY; without even the implied warranty of
+* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+* GNU Lesser General Public License for more details.
+*
+* You should have received a copy of the GNU Lesser General Public License
+* along with this program.  If not, see <http://www.gnu.org/licenses/>
+*/
+#ifndef OSGEARTH_UTIL_EXAMPLE_RESOURCES_H
+#define OSGEARTH_UTIL_EXAMPLE_RESOURCES_H 1
+
+#include <osgEarthUtil/Common>
+#include <osgEarthUtil/Controls>
+#include <osgEarthUtil/SkyNode>
+#include <osgEarthUtil/EarthManipulator>
+#include <osgEarthDrivers/ocean_surface/OceanSurface>
+#include <osgEarth/Viewpoint>
+
+#include <osg/ArgumentParser>
+#include <osgViewer/View>
+
+
+/**
+ * This is a collection of resources used by the osgEarth example applications.
+ */
+namespace osgEarth { namespace Util
+{
+    using namespace osgEarth;
+    using namespace osgEarth::Util::Controls;
+    using namespace osgEarth::Drivers;
+
+    /**
+     * Parses a set of built-in example arguments. Any Controls created by parsing
+     * command-line parameters will appear in the lower-left corner of the display.
+     */
+    class OSGEARTHUTIL_EXPORT MapNodeHelper
+    {
+    public:
+        /**
+         * Loads a map file and processes all the built-in example command line
+         * arguemnts and XML externals.
+         */
+        osg::Group* load(
+            osg::ArgumentParser& args, 
+            osgViewer::View*     view,
+            Control*             userControl =0L ) const;
+
+        /**
+         * Takes an existing map node and processes all the built-in example command
+         * line arguments and mapNode externals.
+         */
+        void parse(
+            MapNode*             mapNode,
+            osg::ArgumentParser& args,
+            osgViewer::View*     view,
+            osg::Group*          parentGroup =0L,
+            Control*             userControl =0L) const;
+
+        /**
+         * Configures a view with a stock set of event handlers that are useful
+         * for demos, and performs some other common view configuation for osgEarth.
+         */
+        void configureView( osgViewer::View* view ) const;
+
+        /**
+         * Returns a usage string
+         */
+        std::string usage() const;
+    };
+
+
+    /**
+     * Creates a UI Control with a list of clickable viewpoints.
+     */
+    class OSGEARTHUTIL_EXPORT ViewpointControlFactory
+    {
+    public:
+        Control* create(
+            const std::vector<Viewpoint>& list, 
+            osgViewer::View*              view) const;
+    };
+
+
+    /**
+     * Creates UI controls that show the map coordinates under the mouse
+     */
+    class OSGEARTHUTIL_EXPORT MouseCoordsControlFactory
+    {
+    public:
+        Control* create( 
+            MapNode*         mapNode, 
+            osgViewer::View* view ) const;
+    };
+
+
+    /**
+     * Creates a UI Control reflecting all the named Annotations found in a
+     * scene graph.
+     */
+    class OSGEARTHUTIL_EXPORT AnnotationGraphControlFactory
+    {
+    public:
+        Control* create( 
+            osg::Node*       node,
+            osgViewer::View* view) const;
+    };
+
+
+    /**
+     * Creates a set of controls for manipulating the Sky model.
+     */
+    class OSGEARTHUTIL_EXPORT SkyControlFactory
+    {
+    public:
+        Control* create( 
+            SkyNode*         sky,
+            osgViewer::View* view ) const;
+    };
+
+
+    /**
+     * Creates a set of controls for manipulating the Ocean surface model.
+     */
+    class OSGEARTHUTIL_EXPORT OceanControlFactory
+    {
+    public:
+        Control* create( 
+            OceanSurfaceNode* ocean, 
+            osgViewer::View*  view ) const;
+    };
+
+} } // namespace osgEarth::Util
+
+#endif // OSGEARTH_UTIL_EXAMPLE_RESOURCES_H

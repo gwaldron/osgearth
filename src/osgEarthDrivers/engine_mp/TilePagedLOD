@@ -1,0 +1,85 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+* Copyright 2008-2013 Pelican Mapping
+* http://osgearth.org
+*
+* osgEarth is free software; you can redistribute it and/or modify
+* it under the terms of the GNU Lesser General Public License as published by
+* the Free Software Foundation; either version 2 of the License, or
+* (at your option) any later version.
+*
+* This program is distributed in the hope that it will be useful,
+* but WITHOUT ANY WARRANTY; without even the implied warranty of
+* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+* GNU Lesser General Public License for more details.
+*
+* You should have received a copy of the GNU Lesser General Public License
+* along with this program.  If not, see <http://www.gnu.org/licenses/>
+*/
+#ifndef OSGEARTH_ENGINE_MP_TILE_PAGED_LOD
+#define OSGEARTH_ENGINE_MP_TILE_PAGED_LOD 1
+
+#include "Common"
+#include "TileGroup"
+#include <osg/PagedLOD>
+#include <osgEarth/ThreadingUtils>
+
+using namespace osgEarth;
+
+namespace osgEarth_engine_mp
+{
+    /**
+     * TilePagedLOD is responsible for loading a single TileGroup.
+     */
+    class TilePagedLOD : public osg::PagedLOD
+    {
+    public:
+        TilePagedLOD(
+            TileGroup*        tilegroup,
+            const TileKey&    subkey,
+            const UID&        engineUID,
+            TileNodeRegistry* liveTiles,
+            TileNodeRegistry* deadTiles);
+
+        /** Has this LOD loaded its child? */
+        bool isLoaded() const { return _children.size() > 0; }
+
+        /** Is this LOD trying to update an existing child? */
+        bool isLoading() const { return _children.size() != getNumFileNames(); }
+
+        /** Has this LOD decided to try to upsample its parent? */
+        bool isUpsampled() const { return _isUpsampled; }
+
+        /** Has this LOD decided to cancel because it can't build its tile? */
+        bool isCanceled() const { return _isCanceled; }
+
+        /** Tell this LOD whether all its siblings are ready, and therefore it is OK to CULL */
+        void setFamilyReady(bool value) { _familyReady = value; }
+
+    public: // osg::Group
+
+        /** called by the OSG DatabasePager when a paging result is ready. */
+        bool addChild( osg::Node* node );
+
+        /** custom traverse. */
+        void traverse(osg::NodeVisitor& nv);
+
+    public: // osg::PagedLOD
+
+        /** override to manage the tile node registries. */
+        bool removeExpiredChildren(double expiryTime, unsigned expiryFrame, osg::NodeList& removedChildren);
+
+    private:
+        TileNodeRegistry*  _live;
+        TileNodeRegistry*  _dead;
+        TileGroup*         _tilegroup;
+        std::string        _prefix;
+        bool               _isUpsampled;
+        bool               _isCanceled;
+        bool               _familyReady;
+        Threading::Mutex   _updateMutex;
+    };
+
+} // namespace osgEarth_engine_mp
+
+#endif // OSGEARTH_ENGINE_MP_TILE_PAGED_LOD

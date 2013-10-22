@@ -10,13 +10,13 @@ set(HEADER_PATH ${OSGEARTH_SOURCE_DIR}/include/${LIB_NAME})
 
 set(LIB_PUBLIC_HEADERS  
     AnnotationSettings
+    AnnotationEditing
     AnnotationData
     AnnotationNode
     AnnotationRegistry
     AnnotationUtils
     CircleNode
     Common
-    Decluttering
     Decoration
     EllipseNode
     Export
@@ -24,32 +24,36 @@ set(LIB_PUBLIC_HEADERS
     LocalGeometryNode
     HighlightDecoration
     ImageOverlay
+    ImageOverlayEditor
     LabelNode
     LocalizedNode
+    ModelNode
     OrthoNode
     PlaceNode
-	RectangleNode
+    RectangleNode
     ScaleDecoration
     TrackNode
 )
 
 set(LIB_COMMON_FILES
+    AnnotationEditing.cpp
     AnnotationSettings.cpp
     AnnotationData.cpp
     AnnotationNode.cpp
     AnnotationRegistry.cpp
     AnnotationUtils.cpp
     CircleNode.cpp
-    Decluttering.cpp
     Decoration.cpp
     EllipseNode.cpp
     FeatureNode.cpp
     LocalGeometryNode.cpp
     HighlightDecoration.cpp
     ImageOverlay.cpp
+    ImageOverlayEditor.cpp
     LabelNode.cpp
     LocalizedNode.cpp
-	RectangleNode.cpp
+    RectangleNode.cpp
+    ModelNode.cpp
     OrthoNode.cpp
     PlaceNode.cpp
     TrackNode.cpp
@@ -58,23 +62,23 @@ set(LIB_COMMON_FILES
 if( NOT ${OPENSCENEGRAPH_VERSION} VERSION_LESS "2.9.6" )
 
     set(LIB_PUBLIC_HEADERS ${LIB_PUBLIC_HEADERS}
-	    AnnotationEditing
-	    FeatureEditing
-	    ImageOverlayEditor
+        AnnotationEditing
+        FeatureEditing
+        ImageOverlayEditor
     )
-    	
+        
     set(LIB_COMMON_FILES ${LIB_COMMON_FILES} 
-	    AnnotationEditing.cpp
-	    FeatureEditing.cpp
+        AnnotationEditing.cpp
+        FeatureEditing.cpp
         ImageOverlayEditor.cpp
     )
         
 endif()
 
 
-ADD_LIBRARY( ${LIB_NAME} SHARED
+ADD_LIBRARY( ${LIB_NAME} ${OSGEARTH_USER_DEFINED_DYNAMIC_OR_STATIC}
     ${LIB_PUBLIC_HEADERS}  
-	${LIB_COMMON_FILES}
+    ${LIB_COMMON_FILES}
 )
 
 

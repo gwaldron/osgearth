@@ -1,0 +1,89 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+* Copyright 2008-2013 Pelican Mapping
+* http://osgearth.org
+*
+* osgEarth is free software; you can redistribute it and/or modify
+* it under the terms of the GNU Lesser General Public License as published by
+* the Free Software Foundation; either version 2 of the License, or
+* (at your option) any later version.
+*
+* This program is distributed in the hope that it will be useful,
+* but WITHOUT ANY WARRANTY; without even the implied warranty of
+* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+* GNU Lesser General Public License for more details.
+*
+* You should have received a copy of the GNU Lesser General Public License
+* along with this program.  If not, see <http://www.gnu.org/licenses/>
+*/
+#ifndef OSGEARTH_ANNO_MODEL_NODE_H
+#define OSGEARTH_ANNO_MODEL_NODE_H 1
+
+#include <osgEarthAnnotation/LocalizedNode>
+#include <osgEarth/URI>
+#include <osgEarth/CachePolicy>
+#include <osgDB/ReaderWriter>
+
+namespace osgEarth { namespace Annotation
+{	
+    using namespace osgEarth;
+    using namespace osgEarth::Symbology;
+
+    /**
+     * Annotation node that loads a 3D model from a URI and places it
+     * at a geo location.
+     */
+    class OSGEARTHANNO_EXPORT ModelNode : public LocalizedNode
+    {
+    public:
+        /**
+         * Constructs a model node; the style must contain an InstanceSymbol
+         * (ModelSymbol or IconSymbol) to produce a valid node.
+         */
+        ModelNode(
+            MapNode*              mapNode,
+            const Style&          style,
+            const osgDB::Options* dbOptions   =0L );
+
+        /**
+         * Sets a new style and rebuilds the node.
+         */
+        void setStyle( const Style& style );
+
+        /**
+         * Gets the style last used to build this node.
+         */
+        const Style& getStyle() const { return _style; }
+
+
+    public:
+
+        /**
+         * Constructs a model node from a serialized Config.
+         * (internal method).
+         */
+        ModelNode(
+            MapNode*              mapNode,
+            const Config&         conf,
+            const osgDB::Options* dbOptions );
+
+        virtual Config getConfig() const;
+
+    protected: // LocalizedNode
+
+        virtual osg::MatrixTransform* getTransform() { return _xform.get(); }
+
+    protected:
+
+        Style _style;
+        osg::ref_ptr<const osgDB::Options> _dbOptions;
+        osg::ref_ptr<osg::MatrixTransform> _xform;
+
+        void init();
+
+        virtual ~ModelNode() { }
+    };
+
+} } // namespace osgEarth::Annotation
+
+#endif // OSGEARTH_ANNO_LOCAL_GEOMETRY_NODE_H

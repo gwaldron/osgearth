@@ -1,0 +1,111 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+ * Copyright 2008-2013 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+#ifndef OSGEARTHSYMBOLOGY_STYLE_SHEET_H
+#define OSGEARTHSYMBOLOGY_STYLE_SHEET_H 1
+
+#include <osgEarthSymbology/Common>
+#include <osgEarthSymbology/Style>
+#include <osgEarthSymbology/StyleSelector>
+#include <osgEarthSymbology/Skins>
+#include <osgEarthSymbology/ResourceLibrary>
+
+namespace osgEarth { namespace Symbology 
+{
+    /**
+     * A complete definition of style information.
+     */
+    class OSGEARTHSYMBOLOGY_EXPORT StyleSheet : public osg::Referenced
+    {
+    public:
+      /**
+       * A simple representation of a script used locally
+       */
+      struct Script : osg::Referenced
+      {
+        Script(const std::string& code, const std::string& language="javascript", const std::string& name="") :
+          code(code), language(language), name(name) { }
+
+        std::string code;
+        std::string language;
+        std::string name;
+      };
+
+    public:
+        /** Constructs an empty style sheet. */
+        StyleSheet();
+
+        /** Constructs a new style sheet */
+        StyleSheet( const Config& conf );
+
+        /** Gets the context for relative path resolution */
+        const URIContext& uriContext() const { return _uriContext; }
+
+        /** Adds a style to this sheet. */
+        void addStyle( const Style& style );
+
+        /** Removes a style from this sheet. */
+        void removeStyle( const std::string& name );
+        
+        /** Gets a named style from this sheet. If the name isn't found, optionally falls back on the
+            "default" style. Note: if the name has a hashtag prefix (e.g., "#name") it will search for
+            the name with and without the hash. (they are considered equivalent) */
+        Style* getStyle( const std::string& name, bool fallBackOnDefault =true );
+        const Style* getStyle( const std::string& name, bool fallBackOnDefault =true ) const;
+
+        /** Gets the default style in this sheet. */
+        Style* getDefaultStyle();
+        const Style* getDefaultStyle() const;
+
+        /** Selectors pick a style from the sheet based on some criteria. */
+        StyleSelectorList& selectors() { return _selectors; }
+        const StyleSelectorList& selectors() const { return _selectors; }
+        const StyleSelector* getSelector( const std::string& name ) const;
+
+        /** Adds a resource library. */
+        void addResourceLibrary( ResourceLibrary* library );
+
+        /** Gets a resource library by name. */
+        ResourceLibrary* getResourceLibrary( const std::string& name ) const;
+
+        /** Script accessors */
+        void setScript( Script* script );
+        Script* script() const { return _script.get(); }
+
+    public: // serialization functions
+
+        virtual Config getConfig() const;
+        virtual void mergeConfig( const Config& conf );
+
+    protected:
+        URIContext                   _uriContext;
+        osg::ref_ptr<Script>         _script;
+        StyleSelectorList            _selectors;
+        StyleMap                     _styles;
+        Style                        _emptyStyle;
+        
+        typedef std::map<std::string, osg::ref_ptr<ResourceLibrary> > ResourceLibraries;
+        ResourceLibraries          _resLibs;
+        Threading::ReadWriteMutex  _resLibsMutex;
+
+    };
+
+} } // namespace osgEarth::Symbology
+
+
+#endif // OSGEARTHSYMBOLOGY_STYLE_SHEET_H

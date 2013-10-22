@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2010 Pelican Mapping
+ * Copyright 2008-2013 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -23,6 +23,7 @@
 #include <osgEarth/ImageLayer>
 #include <osgEarth/ElevationLayer>
 #include <osgEarth/Profile>
+#include <osgEarth/TaskService>
 
 namespace osgEarth { namespace Util
 {
@@ -39,7 +40,10 @@ namespace osgEarth { namespace Util
          * Constructs a new packager.
          * @param profile    Profile of packaged tile data (required)
          */
-        TMSPackager( const Profile* outProfile );
+        TMSPackager( const Profile* outProfile, osgDB::Options* imageWriteOptions);
+
+        /** dtor */
+        virtual ~TMSPackager() { }
 
         /**
          * Whether to dump out progress messages 
@@ -62,14 +66,44 @@ namespace osgEarth { namespace Util
         unsigned getMaxLevel() const { return _maxLevel; }
 
         /**
+         * Whether to overwrite files that already exist in the repo
+         * default = false
+         */
+        void setOverwrite( bool value ) { _overwrite = value; }
+        bool getOverwrite() const { return _overwrite; }
+
+        /**
+         * Whether to package empty image tiles. An empty tile is a tile
+         * that is fully transparent. By default, the packager discards
+         * them and does not subdivide past them.
+         * default = false
+         */
+        void setKeepEmptyImageTiles( bool value ) { _keepEmptyImageTiles = value; }
+        bool getKeepEmptyImageTiles() const { return _keepEmptyImageTiles; }
+
+        /**
+         * Whether to subdivide single color image tiles. An single color tile is a tile
+         * that is filled with a single color. By default, the packager does not subdivide past them.
+         * default = false
+         */
+        void setSubdivideSingleColorImageTiles( bool value ) { _subdivideSingleColorImageTiles = value; }
+        bool getSubdivideSingleColorImageTiles() const { return _subdivideSingleColorImageTiles; }
+
+        /**
+         * Bounding box to package
+         */
+        void addExtent( const GeoExtent& value );
+
+        /**
          * Result structure for method calls
          */
         struct Result {
-            Result() : ok(true) { }
-            Result(const std::string& m) : message(m), ok(false) { }
+            Result(int tasks=0) : ok(true), taskCount(tasks) { }
+            Result(const std::string& m) : message(m), ok(false), taskCount(0) { }
             operator bool() const { return ok; }
             bool ok;
             std::string message;
+            int taskCount;
         };
 
         /**
@@ -81,7 +115,8 @@ namespace osgEarth { namespace Util
         Result package(
             ImageLayer*        layer,
             const std::string& rootFolder,
-            const std::string& imageExtension ="png" );
+            osgEarth::ProgressCallback* progress=0L,
+            const std::string& imageExtension="png" );
 
         /**
          * Packages an elevation layer as a TMS repository.
@@ -90,31 +125,45 @@ namespace osgEarth { namespace Util
          */
         Result package( 
             ElevationLayer*    layer,
-            const std::string& rootFolder );
+            const std::string& rootFolder,
+            osgEarth::ProgressCallback* progress=0L );
 
     protected:
 
-        Result packageImageTile(
+        int packageImageTile(
             ImageLayer*          layer,
             const TileKey&       key,
             const std::string&   rootDir,
             const std::string&   extension,
+            osgEarth::TaskRequestVector& tasks,
+            Threading::MultiEvent* semaphore,
+            osgEarth::ProgressCallback* progress,
             unsigned&            out_maxLevel );
 
-        Result packageElevationTile(
+        int packageElevationTile(
             ElevationLayer*      layer,
             const TileKey&       key,
             const std::string&   rootDir,
             const std::string&   extension,
+            osgEarth::TaskRequestVector& tasks,
+            Threading::MultiEvent* semaphore,
+            osgEarth::ProgressCallback* progress,
             unsigned&            out_maxLevel );
+
+        bool shouldPackageKey( 
+            const TileKey&     key ) const;
 
     protected:
 
         bool                        _verbose;
         bool                        _abortOnError;
+        bool                        _overwrite;
+        bool                        _keepEmptyImageTiles;
+        bool                        _subdivideSingleColorImageTiles;
         unsigned                    _maxLevel;
+        std::vector<GeoExtent>      _extents;
         osg::ref_ptr<const Profile> _outProfile;
-
+        osg::ref_ptr<osgDB::Options>    _imageWriteOptions;
     };
 
 } } // namespace osgEarth::Util

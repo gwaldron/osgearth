@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2010 Pelican Mapping
+ * Copyright 2008-2013 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -23,6 +23,7 @@
 #include <osgEarthSymbology/Common>
 #include <osgEarthSymbology/Skins>
 #include <osgEarthSymbology/MarkerResource>
+#include <osgEarthSymbology/InstanceResource>
 #include <osgEarth/Containers>
 #include <osgEarth/ThreadingUtils>
 
@@ -49,10 +50,13 @@ namespace osgEarth { namespace Symbology
             const osgDB::Options* dbOptions,
             bool                  threadSafe =false );
 
+        /** dtor */
+        virtual ~ResourceCache() { }
+
         /**
          * Fetches the StateSet implementation corresponding to a Skin.
          */
-        osg::StateSet* getStateSet( SkinResource* skin );
+        bool getStateSet( SkinResource* skin, osg::ref_ptr<osg::StateSet>& output );
 
         /**
          * Get the statistics collected from the skin cache.
@@ -61,19 +65,30 @@ namespace osgEarth { namespace Symbology
 
         /**
          * Gets a node corresponding to a marker.
+         * @deprecated
          */
-        osg::Node* getMarkerNode( MarkerResource* marker );
+        bool getMarkerNode( MarkerResource* marker, osg::ref_ptr<osg::Node>& output );
+
+        /**
+         * Gets a node corresponding to an instance resource.
+         */
+        bool getInstanceNode( InstanceResource* instance, osg::ref_ptr<osg::Node>& output );
 
     protected:
         osg::ref_ptr<const osgDB::Options> _dbOptions;
         bool                               _threadSafe;
-        Threading::ReadWriteMutex          _mutex;
 
-        typedef LRUCache<SkinResource*, osg::ref_ptr<osg::StateSet> > SkinCache;
+        typedef LRUCache<std::string, osg::ref_ptr<osg::StateSet> > SkinCache;
         SkinCache _skinCache;
+        Threading::ReadWriteMutex _skinMutex;
 
-        typedef LRUCache<MarkerResource*, osg::ref_ptr<osg::Node> > MarkerCache;
+        typedef LRUCache<std::string, osg::ref_ptr<osg::Node> > MarkerCache;
         MarkerCache _markerCache;
+        Threading::ReadWriteMutex _markerMutex;
+
+        typedef LRUCache<std::string, osg::ref_ptr<osg::Node> > InstanceCache;
+        InstanceCache _instanceCache;
+        Threading::ReadWriteMutex _instanceMutex;
     };
 
 } } // namespace osgEarth::Symbology

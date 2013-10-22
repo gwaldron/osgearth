@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2010 Pelican Mapping
+ * Copyright 2008-2013 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -17,9 +17,10 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 #include <osgEarthSymbology/Skins>
+#include <osgEarthSymbology/Style>
 #include <osgEarth/StringUtils>
 #include <osgEarth/ImageUtils>
-#include <osgEarth/HTTPClient>
+#include <osgEarth/Registry>
 
 #include <osg/BlendFunc>
 #include <osg/Texture2D>
@@ -96,6 +97,7 @@ SkinResource::createStateSet( osg::Image* image ) const
         stateSet = new osg::StateSet();
 
         osg::Texture* tex = new osg::Texture2D( image );
+        tex->setResizeNonPowerOfTwoHint(false);
         tex->setWrap( osg::Texture::WRAP_S, osg::Texture::REPEAT );
         tex->setWrap( osg::Texture::WRAP_T, osg::Texture::REPEAT );
         stateSet->setTextureAttributeAndModes( 0, tex, osg::StateAttribute::ON );
@@ -127,6 +129,8 @@ SkinResource::createImage( const osgDB::Options* dbOptions ) const
 }
 
 //---------------------------------------------------------------------------
+
+OSGEARTH_REGISTER_SIMPLE_SYMBOL(skin, SkinSymbol);
 
 SkinSymbol::SkinSymbol( const Config& conf ) :
 _objHeight    ( 0.0f ),
@@ -170,4 +174,32 @@ SkinSymbol::getConfig() const
         conf.set("tags", tagstring);
 
     return conf;
+}
+
+
+void
+SkinSymbol::parseSLD(const Config& c, Style& style)
+{
+    if ( match(c.key(), "skin-library") ) {
+        if ( !c.value().empty() ) 
+            style.getOrCreate<SkinSymbol>()->libraryName() = c.value();
+    }
+    else if ( match(c.key(), "skin-tags") ) {
+        style.getOrCreate<SkinSymbol>()->addTags( c.value() );
+    }
+    else if ( match(c.key(), "skin-tiled") ) {
+        style.getOrCreate<SkinSymbol>()->isTiled() = as<bool>( c.value(), false );
+    }
+    else if ( match(c.key(), "skin-object-height") ) {
+        style.getOrCreate<SkinSymbol>()->objectHeight() = as<float>( c.value(), 0.0f );
+    }
+    else if (match(c.key(), "skin-min-object-height") ) {
+        style.getOrCreate<SkinSymbol>()->minObjectHeight() = as<float>( c.value(), 0.0f );
+    }
+    else if (match(c.key(), "skin-max-object-height") ) {
+        style.getOrCreate<SkinSymbol>()->maxObjectHeight() = as<float>( c.value(), 0.0f );
+    }
+    else if (match(c.key(), "skin-random-seed") ) {
+        style.getOrCreate<SkinSymbol>()->randomSeed() = as<unsigned>( c.value(), 0u );
+    }
 }

@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2008-2010 Pelican Mapping
+* Copyright 2008-2013 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -23,6 +23,7 @@
 #include <osgViewer/ViewerEventHandlers>
 #include <osgEarth/Map>
 #include <osgEarth/MapNode>
+#include <osgEarthUtil/ExampleResources>
 #include <osgEarthUtil/EarthManipulator>
 #include <osgEarthUtil/AutoClipPlaneHandler>
 
@@ -43,19 +44,38 @@ using namespace osgEarth::Drivers;
 using namespace osgEarth::Symbology;
 using namespace osgEarth::Util;
 
+int usage( const std::string& app )
+{
+    OE_NOTICE "\n" << app << "\n"
+        << "    --rasterize           : draw features as rasterized image tiles \n"
+        << "    --overlay             : draw features as projection texture \n"
+        << "    --stencil             : draw features using the stencil buffer \n"
+        << "    --mem                 : load features from memory \n"
+        << "    --labels              : add feature labels \n"
+        << "\n"
+        << MapNodeHelper().usage();
+
+    return -1;
+}
+
 //
 // NOTE: run this sample from the repo/tests directory.
 //
 int main(int argc, char** argv)
 {
     osg::ArgumentParser arguments(&argc,argv);
-    osg::DisplaySettings::instance()->setMinimumNumStencilBits( 8 );
+
+    if ( arguments.read("--help") )
+        return usage( argv[0] );
 
     bool useRaster  = arguments.read("--rasterize");
     bool useOverlay = arguments.read("--overlay");
     bool useStencil = arguments.read("--stencil");
     bool useMem     = arguments.read("--mem");
     bool useLabels  = arguments.read("--labels");
+
+    if ( useStencil )
+        osg::DisplaySettings::instance()->setMinimumNumStencilBits( 8 );
 
     osgViewer::Viewer viewer(arguments);
 
@@ -74,11 +94,6 @@ int main(int argc, char** argv)
     {
         // Configures the feature driver to load the vectors from a shapefile:
         featureOptions.url() = "../data/world.shp";
-
-        // installs an inline filter to convert geometry to lines
-        ConvertTypeFilter* filter = new ConvertTypeFilter();
-        filter->toType() = Geometry::TYPE_LINESTRING;
-        featureOptions.filters().push_back( filter );
     }
     else
     {
@@ -103,6 +118,14 @@ int main(int argc, char** argv)
     MapNodeOptions mapNodeOptions;
     mapNodeOptions.enableLighting() = false;
     MapNode* mapNode = new MapNode( map, mapNodeOptions );
+
+    osg::Group* root = new osg::Group();
+    root->addChild( mapNode );
+    viewer.setSceneData( root );
+    viewer.setCameraManipulator( new EarthManipulator() );
+
+    // Process cmdline args
+    MapNodeHelper().parse(mapNode, arguments, &viewer, root, new LabelControl("Features Demo"));
    
     if (useStencil)
     {
@@ -132,7 +155,6 @@ int main(int argc, char** argv)
         geomOptions.enableLighting() = false;
 
         ModelLayerOptions layerOptions( "my features", geomOptions );
-        layerOptions.overlay() = useOverlay;
         map->addModelLayer( new ModelLayer(layerOptions) );
     }
 
@@ -161,18 +183,13 @@ int main(int argc, char** argv)
         map->addModelLayer( new ModelLayer("labels", geomOptions) );
     }
 
-    viewer.setSceneData( mapNode );
-    viewer.setCameraManipulator( new EarthManipulator() );
-
     if ( !useStencil )
-        viewer.getCamera()->addCullCallback( new osgEarth::Util::AutoClipPlaneCullCallback(map) );
+        viewer.getCamera()->addCullCallback( new osgEarth::Util::AutoClipPlaneCullCallback(mapNode) );
 
     // add some stock OSG handlers:
     viewer.addEventHandler(new osgViewer::StatsHandler());
     viewer.addEventHandler(new osgViewer::WindowSizeHandler());
     viewer.addEventHandler(new osgGA::StateSetManipulator(viewer.getCamera()->getOrCreateStateSet()));
-
-    osgDB::writeNodeFile( *mapNode, "out.earth" );
 
     return viewer.run();
 }

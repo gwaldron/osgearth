@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2010 Pelican Mapping
+ * Copyright 2008-2013 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -35,6 +35,31 @@ StringObject::StringObject() :
 osg::Object()
 {
     //nop
+}
+
+StringObject::~StringObject()
+{
+}
+
+const std::string& StringObject::getString() const
+{
+    return _str;
+}
+
+void StringObject::setString( const std::string& value )
+{
+    _str = value;
+}
+
+//------------------------------------------------------------------------
+
+URIReadCallback::URIReadCallback()
+{
+    //nop
+}
+
+URIReadCallback::~URIReadCallback()
+{
 }
 
 //------------------------------------------------------------------------

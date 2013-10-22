@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2008-2010 Pelican Mapping
+* Copyright 2008-2013 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -20,7 +20,9 @@
 #define OSGEARTH_CONTAINERS_H 1
 
 #include <osgEarth/Common>
+#include <osgEarth/ThreadingUtils>
 #include <list>
+#include <vector>
 
 namespace osgEarth
 {
@@ -92,6 +94,9 @@ namespace osgEarth
         CacheStats( unsigned entries, unsigned maxEntries, unsigned queries, float hitRatio )
             : _entries(entries), _maxEntries(maxEntries), _queries(queries), _hitRatio(hitRatio) { }
 
+        /** dtor */
+        virtual ~CacheStats() { }
+
         unsigned _entries;
         unsigned _maxEntries;
         unsigned _queries;
@@ -111,25 +116,27 @@ namespace osgEarth
      *    if ( rec.valid() )
      *        const T& value = rec.value();
      */
-    template<typename K, typename T>
+    template<typename K, typename T, typename COMPARE=std::less<K> >
     class LRUCache
     {
     public:
         struct Record {
-            Record(const T* value) : _value(value) { }
-            const bool valid() const { return _value != 0L; }
-            const T& value() const { return *_value; }
+            Record() : _valid(false) { }
+            Record(const T& value) : _value(value), _valid(true) { }
+            const bool valid() const { return _valid; }
+            const T& value() const { return _value; }
         private:
             bool _valid;
-            const T* _value;
+            T    _value;
+            friend class LRUCache;
         };
 
     protected:
-        typedef typename std::list<K>::iterator lru_iter;
-        typedef typename std::list<K> lru_type;
-        typedef typename std::pair<T, lru_iter> map_value_type;
+        typedef typename std::list<K>::iterator      lru_iter;
+        typedef typename std::list<K>                lru_type;
+        typedef typename std::pair<T, lru_iter>      map_value_type;
         typedef typename std::map<K, map_value_type> map_type;
-        typedef typename map_type::iterator map_iter;
+        typedef typename map_type::iterator          map_iter;
 
         map_type _map;
         lru_type _lru;
@@ -137,15 +144,97 @@ namespace osgEarth
         unsigned _buf;
         unsigned _queries;
         unsigned _hits;
+        bool     _threadsafe;
+        mutable Threading::Mutex _mutex;
 
     public:
-        LRUCache( unsigned max =100 ) : _max(max) {
+        LRUCache( unsigned max =100 ) : _max(max), _threadsafe(false) {
+            _buf = _max/10;
+            _queries = 0;
+            _hits = 0;
+        }
+        LRUCache( bool threadsafe, unsigned max =100 ) : _max(max), _threadsafe(threadsafe) {
             _buf = _max/10;
             _queries = 0;
             _hits = 0;
         }
 
+        /** dtor */
+        virtual ~LRUCache() { }
+
         void insert( const K& key, const T& value ) {
+            if ( _threadsafe ) {
+                Threading::ScopedMutexLock lock(_mutex);
+                insert_impl( key, value );
+            }
+            else {
+                insert_impl( key, value );
+            }
+        }
+
+        bool get( const K& key, Record& out ) {
+            if ( _threadsafe ) {
+                Threading::ScopedMutexLock lock(_mutex);
+                get_impl( key, out );
+            }
+            else {
+                get_impl( key, out );
+            }
+            return out.valid();
+        }
+
+        bool has( const K& key ) {
+            if ( _threadsafe ) {
+                Threading::ScopedMutexLock lock(_mutex);
+                return has_impl( key );
+            }
+            else {
+                return has_impl( key );
+            }
+        }
+
+        void erase( const K& key ) {
+            if ( _threadsafe ) {
+                Threading::ScopedMutexLock lock(_mutex);
+                erase_impl( key );
+            }
+            else {
+                erase_impl( key );
+            }
+        }
+
+        void clear() {
+            if ( _threadsafe ) {
+                Threading::ScopedMutexLock lock(_mutex);
+                clear_impl();
+            }
+            else {
+                clear_impl();
+            }
+        }
+
+        void setMaxSize( unsigned max ) {
+            if ( _threadsafe ) {
+                Threading::ScopedMutexLock lock(_mutex);
+                setMaxSize_impl( max );
+            }
+            else {
+                setMaxSize_impl( max );
+            }
+        }
+
+        unsigned getMaxSize() const {
+            return _max;
+        }
+
+        CacheStats getStats() const {
+            return CacheStats(
+                _lru.size(), _max, _queries, _queries > 0 ? (float)_hits/(float)_queries : 0.0f );
+        }
+
+    private:
+
+        void insert_impl( const K& key, const T& value ) {
             map_iter mi = _map.find( key );
             if ( mi != _map.end() ) {
                 _lru.erase( mi->second.second );
@@ -169,7 +258,7 @@ namespace osgEarth
             }
         }
 
-        Record get( const K& key ) {
+        void get_impl( const K& key, Record& result ) {
             _queries++;
             map_iter mi = _map.find( key );
             if ( mi != _map.end() ) {
@@ -178,18 +267,20 @@ namespace osgEarth
                 lru_iter new_iter = _lru.end(); new_iter--;
                 mi->second.second = new_iter;
                 _hits++;
-                return Record( &(mi->second.first) );
+                result._value = mi->second.first;
+                result._valid = true;
+                //return Record( &(mi->second.first) );
             }
-            else {
-                return Record( 0L );
-            }
+            //else {
+            //    return Record( 0L );
+            //}
         }
 
-        bool has( const K& key ) {
+        bool has_impl( const K& key ) {
             return _map.find( key ) != _map.end();
         }
 
-        void erase( const K& key ) {
+        void erase_impl( const K& key ) {
             map_iter mi = _map.find( key );
             if ( mi != _map.end() ) {
                 _lru.erase( mi->second.second );
@@ -197,14 +288,14 @@ namespace osgEarth
             }
         }
 
-        void clear() {
+        void clear_impl() {
             _lru.clear();
             _map.clear();
             _queries = 0;
             _hits = 0;
         }
 
-        void setMaxSize( unsigned max ) {
+        void setMaxSize_impl( unsigned max ) {
             _max = max;
             _buf = max/10;
             while( _lru.size() > _max ) {
@@ -214,14 +305,6 @@ namespace osgEarth
             }
         }
 
-        unsigned getMaxSize() const {
-            return _max;
-        }
-
-        CacheStats getStats() const {
-            return CacheStats(
-                _lru.size(), _max, _queries, _queries > 0 ? (float)_hits/(float)_queries : 0.0f );
-        }
     };
 
     //--------------------------------------------------------------------

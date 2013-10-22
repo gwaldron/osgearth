@@ -1,0 +1,71 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+ * Copyright 2008-2013 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+
+#ifndef OSGEARTH_MAP_CALLBACK_H
+#define OSGEARTH_MAP_CALLBACK_H 1
+
+#include <osgEarth/Common>
+#include <osg/ref_ptr>
+#include <list>
+
+namespace osgEarth
+{
+    class MapInfo;
+    class ImageLayer;
+    class ElevationLayer;
+    class ModelLayer;
+    class MaskLayer;
+    struct MapModelChange;
+
+    /**
+     * Callback that the Map object uses to notify listeners of map data model changes.
+     */
+    struct OSGEARTH_EXPORT MapCallback : public osg::Referenced
+    {
+        virtual void onMapInfoEstablished( const MapInfo& mapInfo ) { } 
+
+        // callbacks for begin/end batch update operations.
+        virtual void onBeginUpdate() { }
+        virtual void onEndUpdate() { }
+
+        virtual void onMapModelChanged( const MapModelChange& change );
+
+        virtual void onImageLayerAdded( ImageLayer* layer, unsigned int index ) { }
+        virtual void onImageLayerRemoved( ImageLayer* layer, unsigned int index ) { }
+        virtual void onImageLayerMoved( ImageLayer* layer, unsigned int oldIndex, unsigned int newIndex ) { }
+
+        virtual void onElevationLayerAdded( ElevationLayer* layer, unsigned int index ) { }
+        virtual void onElevationLayerRemoved( ElevationLayer* layer, unsigned int index ) { }
+        virtual void onElevationLayerMoved( ElevationLayer* layer, unsigned int oldIndex, unsigned int newIndex ) { }
+
+        virtual void onModelLayerAdded( ModelLayer* layer, unsigned int index ) { }
+        virtual void onModelLayerRemoved( ModelLayer* layer ) { }
+        virtual void onModelLayerMoved( ModelLayer* layer, unsigned int oldIndex, unsigned int newIndex ) { }
+
+        virtual void onMaskLayerAdded( MaskLayer* mask ) { }
+        virtual void onMaskLayerRemoved( MaskLayer* mask ) { }
+
+        /** dtor */
+        virtual ~MapCallback() { }
+    };
+
+    typedef std::list< osg::ref_ptr<MapCallback> > MapCallbackList;
+}
+
+#endif // OSGEARTH_MAP_CALLBACK_H

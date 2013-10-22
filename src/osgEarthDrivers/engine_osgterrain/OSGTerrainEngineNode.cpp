@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2008-2010 Pelican Mapping
+* Copyright 2008-2013 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -27,7 +27,9 @@
 
 #include <osgEarth/ImageUtils>
 #include <osgEarth/Registry>
-#include <osgEarth/ShaderComposition>
+#include <osgEarth/VirtualProgram>
+#include <osgEarth/ShaderFactory>
+#include <osgEarth/MapModelChange>
 #include <osg/TexEnv>
 #include <osg/TexEnvCombine>
 #include <osg/PagedLOD>
@@ -35,6 +37,7 @@
 
 #define LC "[OSGTerrainEngine] "
 
+using namespace osgEarth_engine_osgterrain;
 using namespace osgEarth;
 
 //------------------------------------------------------------------------
@@ -116,8 +119,9 @@ _terrain( terrain )
 }
 
 void
-OSGTerrainEngineNode::ElevationChangedCallback::onEnabledChanged( TerrainLayer* layer )
-{
+OSGTerrainEngineNode::ElevationChangedCallback::onVisibleChanged( TerrainLayer* layer )
+{    
+    osgEarth::Registry::instance()->clearBlacklist();
     _terrain->refresh();
 }
 
@@ -179,9 +183,13 @@ OSGTerrainEngineNode::preInitialize( const Map* map, const TerrainOptions& optio
 
         if ( numThreads > 0 )
         {
-            OE_INFO << LC << "Requesting " << numThreads << " database pager threads in STANDARD mode" << std::endl;
+            // NOTE: this doesn't work. the pager gets created before we ever get here.
+            numThreads = osg::maximum(numThreads, 2);
+            int numHttpThreads = osg::clampBetween( numThreads/2, 1, numThreads-1 );
+
+            //OE_INFO << LC << "Requesting pager threads in STANDARD mode: local=" << numThreads << ", http=" << numHttpThreads << std::endl;
             osg::DisplaySettings::instance()->setNumOfDatabaseThreadsHint( numThreads );
-            //osg::DisplaySettings::instance()->setNumOfHttpDatabaseThreadsHint( numThreads );
+            osg::DisplaySettings::instance()->setNumOfHttpDatabaseThreadsHint( numHttpThreads );
         }
     }
 }
@@ -255,23 +263,15 @@ OSGTerrainEngineNode::computeBound() const
 void
 OSGTerrainEngineNode::refresh()
 {
-    if (_terrain)
     {
         removeChild( _terrain );
-    }
+    }    
 
 
     _terrain = new TerrainNode(*_update_mapf, *_cull_mapf, _tileFactory.get(), *_terrainOptions.quickReleaseGLObjects() );    
+    installTerrainTechnique();
 
-   CustomTerrainTechnique* tech = new SinglePassTerrainTechnique( _texCompositor.get() );
-
-
-    // prepare the interpolation technique for generating triangles:
-    if ( getMap()->getMapOptions().elevationInterpolation() == INTERP_TRIANGULATE )
-        tech->setOptimizeTriangleOrientation( false );   
-
-    _terrain->setTechniquePrototype( tech );
-
+   
     const MapInfo& mapInfo = _update_mapf->getMapInfo();
     _keyNodeFactory = new SerialKeyNodeFactory( _tileBuilder.get(), _terrainOptions, mapInfo, _terrain, _uid );
 
@@ -345,22 +345,7 @@ OSGTerrainEngineNode::onMapInfoEstablished( const MapInfo& mapInfo )
 
     // install the proper layer composition technique:
 
-    if ( _texCompositor->getTechnique() == TerrainOptions::COMPOSITING_MULTIPASS )
-    {
-        _terrain->setTechniquePrototype( new MultiPassTerrainTechnique( _texCompositor.get() ) );
-        OE_INFO << LC << "Compositing technique = MULTIPASS" << std::endl;
-    }
-
-    else 
-    {
-        CustomTerrainTechnique* tech = new SinglePassTerrainTechnique( _texCompositor.get() );
-
-        // prepare the interpolation technique for generating triangles:
-        if ( mapInfo.getElevationInterpolation() == INTERP_TRIANGULATE )
-            tech->setOptimizeTriangleOrientation( false );
-
-        _terrain->setTechniquePrototype( tech );
-    }
+    installTerrainTechnique();    
 
     // install the shader program, if applicable:
     installShaders();
@@ -380,7 +365,11 @@ OSGTerrainEngineNode::onMapInfoEstablished( const MapInfo& mapInfo )
                 num = (unsigned)(*_terrainOptions.loadingPolicy()->numLoadingThreadsPerCore() * OpenThreads::GetNumberOfProcessors());
             }
         }
-        _tileService = new TaskService( "TileBuilder", num );
+
+        if ( mode == LoadingPolicy::MODE_PARALLEL )
+        {
+            _tileService = new TaskService( "TileBuilder", num );
+        }
 
         // initialize the tile builder
         _tileBuilder = new TileBuilder( getMap(), _terrainOptions, _tileService.get() );
@@ -498,6 +487,10 @@ OSGTerrainEngineNode::createTile( const TileKey& key )
 
     // code block required in order to properly manage the ref count of the transform
     SinglePassTerrainTechnique* tech = new SinglePassTerrainTechnique( _texCompositor.get() );
+    // prepare the interpolation technique for generating triangles:
+    if ( getMap()->getMapOptions().elevationInterpolation() == INTERP_TRIANGULATE )
+        tech->setOptimizeTriangleOrientation( false ); 
+
     tile->setTerrainTechnique( tech );
     tile->init();
     
@@ -513,8 +506,10 @@ OSGTerrainEngineNode::onMapModelChanged( const MapModelChange& change )
     if ( change.getLayer() )
     {
         // first inform the texture compositor with the new model changes:
-        if ( _texCompositor.valid() )
+        if ( _texCompositor.valid() && change.getImageLayer() )
+        {
             _texCompositor->applyMapModelChange( change );
+        }
 
         // then apply the actual change:
         switch( change.getAction() )
@@ -537,6 +532,10 @@ OSGTerrainEngineNode::onMapModelChanged( const MapModelChange& change )
         case MapModelChange::MOVE_ELEVATION_LAYER:
             moveElevationLayer( change.getFirstIndex(), change.getSecondIndex() );
             break;
+        case MapModelChange::ADD_MODEL_LAYER:
+        case MapModelChange::REMOVE_MODEL_LAYER:
+        case MapModelChange::MOVE_MODEL_LAYER:
+        default: break;
         }
     }
 
@@ -551,7 +550,7 @@ OSGTerrainEngineNode::onMapModelChanged( const MapModelChange& change )
 void
 OSGTerrainEngineNode::addImageLayer( ImageLayer* layerAdded )
 {
-    if ( !layerAdded || !layerAdded->getTileSource() )
+    if ( !layerAdded )
         return;
 
     if (!_isStreaming)
@@ -749,7 +748,7 @@ OSGTerrainEngineNode::updateElevation( Tile* tile )
 void
 OSGTerrainEngineNode::addElevationLayer( ElevationLayer* layer )
 {
-    if ( !layer || !layer->getTileSource() )
+    if ( !layer )
         return;
 
     layer->addCallback( _elevationCallback.get() );
@@ -834,7 +833,10 @@ OSGTerrainEngineNode::traverse( osg::NodeVisitor& nv )
         if ( nv.getVisitorType() == osg::NodeVisitor::CULL_VISITOR )
         {
             // update the cull-thread map frame if necessary. (We don't need to sync the
-            // update_mapf becuase that happens in response to a map callback.)
+            // update_mapf because that happens in response to a map callback.)
+
+            // TODO: address the fact that this can happen from multiple threads.
+            // Really we need a _cull_mapf PER view. -gw
             _cull_mapf->sync();
         }
     }
@@ -855,18 +857,11 @@ OSGTerrainEngineNode::installShaders()
         const ShaderFactory* sf = Registry::instance()->getShaderFactory();
 
         int numLayers = osg::maximum( 1, (int)_update_mapf->imageLayers().size() );
+        //int numLayers = osg::maximum( 0, (int)_update_mapf->imageLayers().size() );
 
         VirtualProgram* vp = new VirtualProgram();
-
-        // note. this stuff should probably happen automatically in VirtualProgram. gw
-
-        //vp->setShader( "osgearth_vert_main",     sf->createVertexShaderMain() ); // happens in VirtualProgram now
-        vp->setShader( "osgearth_vert_setupLighting", sf->createDefaultLightingVertexShader() );
-        vp->setShader( "osgearth_vert_setupTexturing",  sf->createDefaultTextureVertexShader( numLayers ) );
-
-        //vp->setShader( "osgearth_frag_main",     sf->createFragmentShaderMain() ); // happend in VirtualProgram now
-        vp->setShader( "osgearth_frag_applyLighting", sf->createDefaultLightingFragmentShader() );
-        vp->setShader( "osgearth_frag_applyTexturing",  sf->createDefaultTextureFragmentShader( numLayers ) );
+        vp->setName( "engine_osgterrain:EngineNode" );
+        //vp->installDefaultColoringAndLightingShaders(numLayers);
 
         getOrCreateStateSet()->setAttributeAndModes( vp, osg::StateAttribute::ON );
     }
@@ -886,23 +881,89 @@ OSGTerrainEngineNode::updateTextureCombining()
             // These components reside in the CustomTerrain's stateset, and override the components
             // installed in the VP on the engine-node's stateset in installShaders().
 
-            VirtualProgram* vp = dynamic_cast<VirtualProgram*>( terrainStateSet->getAttribute(osg::StateAttribute::PROGRAM) );
-            if ( !vp )
-            {
-                // create and add it the first time around..
-                vp = new VirtualProgram();
-                terrainStateSet->setAttributeAndModes( vp, osg::StateAttribute::ON );
-            }
+            VirtualProgram* vp = new VirtualProgram() ;
+            vp->setName( "engine_osgterrain:TerrainNode" );
+            //vp->installDefaultColoringShaders(numImageLayers);
+
+            terrainStateSet->setAttributeAndModes( vp, osg::StateAttribute::ON );
 
             // first, update the default shader components based on the new layer count:
             const ShaderFactory* sf = Registry::instance()->getShaderFactory();
-            vp->setShader( "osgearth_vert_setupTexturing",  sf->createDefaultTextureVertexShader( numImageLayers ) );
+            
+            // second, install the per-layer color filter functions.
+            for( int i=0; i<numImageLayers; ++i )
+            {
+                std::string layerFilterFunc = Stringify() << "osgearth_runColorFilters_" << i;
+                const ColorFilterChain& chain = _update_mapf->getImageLayerAt(i)->getColorFilters();
 
-            // not this one, because the compositor always generates a new one.
-            //vp->setShader( "osgearth_frag_applyTexturing",  lib.createDefaultTextureFragmentShader( numImageLayers ) );
+                // install the wrapper function that calls all the filters in turn:
+                vp->setShader( layerFilterFunc, sf->createColorFilterChainFragmentShader(layerFilterFunc, chain) );
+
+                // install each of the filter entry points:
+                for( ColorFilterChain::const_iterator j = chain.begin(); j != chain.end(); ++j )
+                {
+                    const ColorFilter* filter = j->get();
+                    filter->install( terrainStateSet );
+                }
+            }
         }
 
         // next, inform the compositor that it needs to update based on a new layer count:
         _texCompositor->updateMasterStateSet( terrainStateSet ); //, numImageLayers );
+    }
+}
+
+namespace
+{
+    class UpdateElevationVisitor : public osg::NodeVisitor
+    {
+    public:
+        UpdateElevationVisitor():
+          osg::NodeVisitor(osg::NodeVisitor::TRAVERSE_ALL_CHILDREN)
+          {}
+
+          void apply(osg::Node& node)
+          {
+              Tile* tile = dynamic_cast<Tile*>(&node);
+              if (tile)
+              {
+                  tile->applyImmediateTileUpdate(TileUpdate::UPDATE_ELEVATION);
+              }
+
+              traverse(node);
+          }
+    };
+}
+
+void
+OSGTerrainEngineNode::onVerticalScaleChanged()
+{
+    _terrain->setVerticalScale(getVerticalScale());
+
+    UpdateElevationVisitor visitor;
+    this->accept(visitor);
+}
+
+void
+OSGTerrainEngineNode::installTerrainTechnique()
+{
+    if ( _texCompositor->getTechnique() == TerrainOptions::COMPOSITING_MULTIPASS )
+    {
+        //If we are using multipass mode, disable GLSL on it, it is using straight FFP
+        _terrain->getOrCreateStateSet()->setAttributeAndModes( new osg::Program(), osg::StateAttribute::OFF | osg::StateAttribute::PROTECTED );
+        _terrain->setTechniquePrototype( new MultiPassTerrainTechnique( _texCompositor.get() ) );
+        OE_INFO << LC << "Compositing technique = MULTIPASS" << std::endl;
+    }
+
+    else 
+    {
+        SinglePassTerrainTechnique* tech = new SinglePassTerrainTechnique( _texCompositor.get() );
+        tech->setClearDataAfterCompile( !_isStreaming );
+        
+
+        if ( getMap()->getMapOptions().elevationInterpolation() == INTERP_TRIANGULATE )
+            tech->setOptimizeTriangleOrientation( false );   
+        
+        _terrain->setTechniquePrototype( tech );
     }
 }

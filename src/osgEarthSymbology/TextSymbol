@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2010 Pelican Mapping
+ * Copyright 2008-2013 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -22,8 +22,8 @@
 
 #include <osgEarthSymbology/Symbol>
 #include <osgEarthSymbology/Expression>
-#include <osg/Referenced>
-#include <vector>
+#include <osgEarthSymbology/Fill>
+#include <osgEarthSymbology/Stroke>
 
 namespace osgEarth { namespace Symbology
 {
@@ -33,29 +33,12 @@ namespace osgEarth { namespace Symbology
     class OSGEARTHSYMBOLOGY_EXPORT TextSymbol : public Symbol
     {
     public:
-#if 0
-        enum SizeMode {
-            SIZEMODE_SCREEN,
-            SIZEMODE_OBJECT
-        };
-
-        enum LineOrientation {
-            LINEORIENTATION_PARALLEL,
-            LINEORIENTATION_PERPENDICULAR,
-            LINEORIENTATION_HORIZONTAL
-        };
-
-        enum LinePlacement {
-            LINEPLACEMENT_ALONG_LINE,
-            LINEPLACEMENT_CENTROID
-        };
-#endif
-		enum Encoding {
+        enum Encoding {
             ENCODING_ASCII,
             ENCODING_UTF8,
             ENCODING_UTF16,
-			ENCODING_UTF32
-		};
+            ENCODING_UTF32
+        };
 
         // note: these are identical to the values in osgText::Text::AlignmentType
         enum Alignment {
@@ -82,7 +65,18 @@ namespace osgEarth { namespace Symbology
             ALIGN_BASE_LINE = ALIGN_LEFT_BASE_LINE /// default.        
         };
 
+        enum Layout {
+            LAYOUT_LEFT_TO_RIGHT,
+            LAYOUT_RIGHT_TO_LEFT,
+            LAYOUT_VERTICAL
+        };
+
+        META_Symbol(TextSymbol);
+
         TextSymbol( const Config& conf =Config() );
+
+        /** dtor */
+        virtual ~TextSymbol() { }
 
         /** Text fill color. */
         optional<Fill>& fill() { return _fill; }
@@ -91,6 +85,10 @@ namespace osgEarth { namespace Symbology
         /** Text outline color. */
         optional<Stroke>& halo() { return _halo; }
         const optional<Stroke>& halo() const { return _halo; }
+
+        /** Text outline offset */
+        optional<float>& haloOffset() { return _haloOffset; }
+        const optional<float>& haloOffset() const { return _haloOffset; }
 
         /** Name of text font. */
         optional<std::string>& font() { return _font; }
@@ -116,27 +114,25 @@ namespace osgEarth { namespace Symbology
         optional<Alignment>& alignment() { return _alignment; }
         const optional<Alignment>& alignment() const { return _alignment; }
 
+        /** Layout of the label*/
+        optional<Layout>& layout() { return _layout; }
+        const optional<Layout>& layout() const { return _layout; }
+
         /** Whether to remove duplicates when drawing multiple labels. */
         optional<bool>& removeDuplicateLabels() { return _removeDuplicateLabels; }
         const optional<bool>& removeDuplicateLabels() const { return _removeDuplicateLabels; }
 
-#if 0
-        /** Whether the text should face the screen (be 2D) */
-        optional<bool>& rotateToScreen() { return _rotateToScreen; }
-        const optional<bool>& rotateToScreen() const { return _rotateToScreen; }
+        /** Whether to enable decluttering on the text, if applicable */
+        optional<bool>& declutter() { return _declutter; }
+        const optional<bool>& declutter() const { return _declutter; }
 
-        /** Whether the size() property refers to pixels or scene units */
-        optional<SizeMode>& sizeMode() { return _sizeMode; }
-        const optional<SizeMode>& sizeMode() const { return _sizeMode; }
+        /** Whether to enable occlusion culling on the text */
+        optional<bool>& occlusionCull() { return _occlusionCull; }
+        const optional<bool>& occlusionCull() const { return _occlusionCull; }
 
-        /** */
-        optional<LineOrientation>& lineOrientation() { return _lineOrientation; }
-        const optional<LineOrientation>& lineOrientation() const { return _lineOrientation; }
-
-        /** Whether to render text relative to line data */
-        optional<LinePlacement>& linePlacement() { return _linePlacement; }
-        const optional<LinePlacement>& linePlacement() const { return _linePlacement; }
-#endif
+        /** The viewer altitude at which to start occlusion culling the text */
+        optional<double>& occlusionCullAltitude() { return _occlusionCullAltitude; }
+        const optional<double>& occlusionCullAltitude() const { return _occlusionCullAltitude; }
 
         /** Label generation provider to use */
         optional<std::string>& provider() { return _provider; }
@@ -149,30 +145,25 @@ namespace osgEarth { namespace Symbology
     public:
         virtual Config getConfig() const;
         virtual void mergeConfig( const Config& conf );
+        static void parseSLD(const Config& c, class Style& style);
 
     protected:
         optional<Fill>              _fill;
         optional<Stroke>            _halo;
+        optional<float>             _haloOffset;
         optional<std::string>       _font;
         optional<float>             _size;
         optional<StringExpression>  _content;
         optional<NumericExpression> _priority;
         optional<bool>              _removeDuplicateLabels;
-#if 0
-        optional<bool>              _rotateToScreen;
-        optional<SizeMode>          _sizeMode;
-        optional<LineOrientation>   _lineOrientation;
-        optional<LinePlacement>     _linePlacement;
-        optional<std::string>       _theme;
-#endif
         optional<osg::Vec2s>        _pixelOffset;
         optional<std::string>       _provider;
-		optional<Encoding>          _encoding;
-
-        //optional<HorizontalAlignment> _halign;
-        //optional<VerticalAlignment>   _valign;
-
+        optional<Encoding>          _encoding;
         optional<Alignment>         _alignment;
+        optional<Layout>            _layout;
+        optional<bool>              _declutter;
+        optional<bool>              _occlusionCull;
+        optional<double>            _occlusionCullAltitude;
     };
 
 } } // namespace osgEarth::Symbology

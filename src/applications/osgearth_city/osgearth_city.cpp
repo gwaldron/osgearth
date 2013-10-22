@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2008-2010 Pelican Mapping
+* Copyright 2008-2013 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -20,12 +20,13 @@
 #include <osgGA/GUIEventHandler>
 #include <osgGA/StateSetManipulator>
 #include <osgViewer/Viewer>
-#include <osgViewer/ViewerEventHandlers>
 #include <osgEarth/MapNode>
+#include <osgEarthUtil/ExampleResources>
 #include <osgEarthUtil/EarthManipulator>
 #include <osgEarthUtil/AutoClipPlaneHandler>
 #include <osgEarthUtil/SkyNode>
 #include <osgEarthDrivers/tms/TMSOptions>
+#include <osgEarthDrivers/xyz/XYZOptions>
 #include <osgEarthDrivers/feature_ogr/OGRFeatureOptions>
 #include <osgEarthDrivers/model_feature_geom/FeatureGeomModelOptions>
 
@@ -62,13 +63,17 @@ main(int argc, char** argv)
     
     // a style for the building data:
     Style buildingStyle;
-    buildingStyle.setName( "default" );
+    buildingStyle.setName( "buildings" );
 
     ExtrusionSymbol* extrusion = buildingStyle.getOrCreate<ExtrusionSymbol>();
     extrusion->heightExpression() = NumericExpression( "3.5 * max( [story_ht_], 1 )" );
     extrusion->flatten() = true;
     extrusion->wallStyleName() = "building-wall";
     extrusion->roofStyleName() = "building-roof";
+    extrusion->wallGradientPercentage() = 0.8;
+
+    PolygonSymbol* poly = buildingStyle.getOrCreate<PolygonSymbol>();
+    poly->fill()->color() = Color::White;
 
     // a style for the wall textures:
     Style wallStyle;
@@ -99,8 +104,8 @@ main(int argc, char** argv)
 
     // set up a paging layout for incremental loading.
     FeatureDisplayLayout layout;
-    layout.tileSizeFactor() = 45.0;
-    layout.addLevel( FeatureLevel(0.0f, 20000.0f) );
+    layout.tileSizeFactor() = 52.0;
+    layout.addLevel( FeatureLevel(0.0f, 20000.0f, "buildings") );
 
     // create a model layer that will render the buildings according to our style sheet.
     FeatureGeomModelOptions fgm_opt;
@@ -122,27 +127,16 @@ main(int argc, char** argv)
 
     MapNode* mapNode = new MapNode( map );
     root->addChild( mapNode );
-
-    // add a sky model:
-    SkyNode* sky = new SkyNode( map );
-    sky->setDateTime( 2011, 10, 15, 20.0 );
-    sky->attach( &viewer );
-    root->addChild( sky );    
+    
+    // Process cmdline args
+    MapNodeHelper helper;
+    helper.configureView( &viewer );
+    helper.parse(mapNode, arguments, &viewer, root, new LabelControl("City Demo"));
 
     // zoom to a good startup position
     manip->setViewpoint( Viewpoint(-71.0763, 42.34425, 0, 24.261, -21.6, 3450.0), 5.0 );
 
-
-    viewer.getDatabasePager()->setDoPreCompile( true );
-    viewer.getCamera()->addCullCallback( new AutoClipPlaneCullCallback(map) );
-
-    // add some stock OSG handlers:
-    viewer.addEventHandler(new osgViewer::StatsHandler());
-    viewer.addEventHandler(new osgViewer::WindowSizeHandler());
-    viewer.addEventHandler(new osgViewer::ThreadingHandler());
-    viewer.addEventHandler(new osgViewer::LODScaleHandler());
-    viewer.addEventHandler(new osgGA::StateSetManipulator(viewer.getCamera()->getOrCreateStateSet()));
-    viewer.addEventHandler(new osgViewer::HelpHandler(arguments.getApplicationUsage()));
+    viewer.getCamera()->addCullCallback( new AutoClipPlaneCullCallback(mapNode) );
 
     return viewer.run();
 }

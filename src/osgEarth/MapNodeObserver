@@ -1,0 +1,118 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+ * Copyright 2008-2013 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+#ifndef OSGEARTH_MAP_NODE_OBSERVER_H
+#define OSGEARTH_MAP_NODE_OBSERVER_H 1
+
+#include <osgEarth/Common>
+#include <osgEarth/MapNode>
+
+namespace osgEarth
+{
+    /**
+     * This is a marker class for objects (and nodes) that reference a MapNode.
+     *
+     * The usage pattern for this class is to include it as a superclass using
+     * multiple inheritance (if necessary) and to implement the set/get MapNode
+     * methods. If you store a local reference to the MapNode, you should use
+     * an osg::observer_ptr<> to do so!
+     *
+     * You can update as scene graph containing MapNodeObservers by using the
+     * MapNodeObserverSetter visitor.
+     */
+    class /*header-only*/ MapNodeObserver
+    {
+    public:
+        /**
+         * Sets the map node's observer reference
+         */
+        virtual void setMapNode( MapNode* mapNode ) =0;
+
+        /**
+         * Gets the map node from its observer reference
+         */
+        virtual MapNode* getMapNode() =0;
+
+        /**
+         * dtor
+         */
+        virtual ~MapNodeObserver() { }
+    };
+
+
+    /**
+     * Base class for a visitor that operates on MapNodeObserver instances
+     * found in a scene graph.
+     */
+    class /*header-only*/ MapNodeObserverVisitor : public osg::NodeVisitor
+    {
+    public:
+        MapNodeObserverVisitor(osg::NodeVisitor::TraversalMode mode =osg::NodeVisitor::TRAVERSE_ALL_CHILDREN)
+            : osg::NodeVisitor( mode ) { }
+        
+        virtual void apply( MapNodeObserver* m ) = 0;
+
+        void tryApply( MapNodeObserver* m )
+        {
+            if ( m ) apply( m );
+        }
+
+        void apply( osg::Node& node )
+        {
+            tryApply( dynamic_cast<MapNodeObserver*>(&node) );
+            tryApply( dynamic_cast<MapNodeObserver*>(node.getEventCallback()) );
+            tryApply( dynamic_cast<MapNodeObserver*>(node.getUpdateCallback()) );
+            tryApply( dynamic_cast<MapNodeObserver*>(node.getCullCallback()) );
+            traverse( node );
+        }
+
+        void apply( osg::Geode& geode )
+        {
+            for(unsigned d=0; d<geode.getNumDrawables(); ++d )
+            {
+                osg::Drawable* drawable = geode.getDrawable(d);
+                tryApply( dynamic_cast<MapNodeObserver*>(drawable->getEventCallback()) );
+                tryApply( dynamic_cast<MapNodeObserver*>(drawable->getUpdateCallback()) );
+                tryApply( dynamic_cast<MapNodeObserver*>(drawable->getCullCallback()) );
+            }
+            traverse( geode );
+        }
+    };
+
+
+    /**
+     * Visitor that traverses a graph and calls setMapNode() on each
+     * MapNodeObserver found.
+     */
+    class /*header-only*/ MapNodeReplacer : public MapNodeObserverVisitor
+    {
+    public:
+        MapNodeReplacer( MapNode* mapNode ) : _mapNode(mapNode) { }
+
+        void apply( MapNodeObserver* m )
+        {
+            m->setMapNode( _mapNode.get() );
+        }
+
+    private:
+        osg::observer_ptr<MapNode> _mapNode;
+    };
+
+} // namespace osgEarth
+
+#endif // OSGEARTH_MAP_NODE_OBSERVER_H

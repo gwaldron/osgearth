@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2008-2010 Pelican Mapping
+* Copyright 2008-2013 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -17,6 +17,8 @@
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
 #include <osgEarthUtil/TerrainProfile>
+#include <osgEarth/MapNode>
+#include <osgEarth/TerrainEngineNode>
 #include <osgEarth/GeoMath>
 
 using namespace osgEarth;
@@ -63,7 +65,7 @@ TerrainProfile::getDistance( int i ) const
 double
 TerrainProfile::getTotalDistance() const
 {
-    return _elevations[_elevations.size()-1].first;
+    return _elevations.empty() ? 0.0 : _elevations.back().first;
 }
 
 unsigned int
@@ -166,8 +168,8 @@ void TerrainProfileCalculator::recompute()
     {
         //computeTerrainProfile( _mapNode.get(), _start, _end, _numSamples, _profile);
         osg::Vec3d start, end;
-        _start.toWorld( start );
-        _end.toWorld( end );
+        _start.toWorld( start, _mapNode->getTerrain() );
+        _end.toWorld( end, _mapNode->getTerrain() );
         osgSim::ElevationSlice slice;
         slice.setStartPoint( start );
         slice.setEndPoint( end );
@@ -178,9 +180,11 @@ void TerrainProfileCalculator::recompute()
         {
             _profile.addElevation( slice.getDistanceHeightIntersections()[i].first, slice.getDistanceHeightIntersections()[i].second);
         }
+
         for( ChangedCallbackList::iterator i = _changedCallbacks.begin(); i != _changedCallbacks.end(); i++ )
         {
-            i->get()->onChanged(this);
+            if ( i->get() )
+                i->get()->onChanged(this);
         }
     }
 }
@@ -210,7 +214,7 @@ void TerrainProfileCalculator::computeTerrainProfile( osgEarth::MapNode* mapNode
         double lat, lon;
         GeoMath::interpolate( startYRad, startXRad, endYRad, endXRad, t, lat, lon );
         double hamsl;
-        mapNode->getTerrain()->getHeight( osg::RadiansToDegrees(lon), osg::RadiansToDegrees(lat), &hamsl );
+        mapNode->getTerrain()->getHeight( geoStart.getSRS(), osg::RadiansToDegrees(lon), osg::RadiansToDegrees(lat), &hamsl );
         profile.addElevation( spacing * (double)i, hamsl );
     }
 }

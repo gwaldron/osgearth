@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2010 Pelican Mapping
+ * Copyright 2008-2013 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -22,7 +22,6 @@
 
 #include <osgEarth/Common>
 #include <osgEarth/Config>
-#include <osgEarth/Progress>
 #include <osgEarth/Revisioning>
 #include <osgEarth/SpatialReference>
 #include <osg/Referenced>
@@ -30,6 +29,7 @@
 namespace osgEarth
 {   
     class Map;
+    class ProgressCallback;
     
     /**
      * Configuration options for a masking source.
@@ -39,6 +39,9 @@ namespace osgEarth
     public:
         MaskSourceOptions( const ConfigOptions& options =ConfigOptions() ) :
               DriverConfigOptions( options ) { fromConfig(_conf); }
+
+        /** dtor */
+        virtual ~MaskSourceOptions();
 
     public: // properties
 
@@ -55,10 +58,13 @@ namespace osgEarth
     /**
      * MaskSource is a plugin object that generates a masking goemetry
      */
-    class OSGEARTH_EXPORT MaskSource : public virtual Revisioned<osg::Object>
+    class OSGEARTH_EXPORT MaskSource : public osg::Object, public Revisioned
     {
     public:        
         MaskSource( const MaskSourceOptions& options =MaskSourceOptions() );
+
+        /** dtor */
+        virtual ~MaskSource();
 
         /**
          * Subclass implements this method to create the boundary geometry.
@@ -89,8 +95,9 @@ namespace osgEarth
 
     class OSGEARTH_EXPORT MaskSourceDriver : public osgDB::ReaderWriter
     {
-    protected:
+    protected:        
         const MaskSourceOptions& getMaskSourceOptions( const osgDB::ReaderWriter::Options* rwOpt ) const;
+        virtual ~MaskSourceDriver();
     };
 
     //--------------------------------------------------------------------
@@ -99,6 +106,7 @@ namespace osgEarth
     {   
 	public:
         static MaskSource* create( const MaskSourceOptions& options );
+        virtual ~MaskSourceFactory();
     };
 }
 

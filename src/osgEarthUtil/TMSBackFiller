@@ -1,0 +1,94 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+* Copyright 2008-2013 Pelican Mapping
+* http://osgearth.org
+*
+* osgEarth is free software; you can redistribute it and/or modify
+* it under the terms of the GNU Lesser General Public License as published by
+* the Free Software Foundation; either version 2 of the License, or
+* (at your option) any later version.
+*
+* This program is distributed in the hope that it will be useful,
+* but WITHOUT ANY WARRANTY; without even the implied warranty of
+* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+* GNU Lesser General Public License for more details.
+*
+* You should have received a copy of the GNU Lesser General Public License
+* along with this program.  If not, see <http://www.gnu.org/licenses/>
+*/
+#ifndef OSGEARTHUTIL_TMS_BACKFILLER_H
+#define OSGEARTHUTIL_TMS_BACKFILLER_H
+
+#include <osgEarthUtil/Common>
+#include <osgEarth/Profile>
+
+#include <osgEarthUtil/TMS>
+
+namespace osgEarth { namespace Util
+{
+    using namespace osgEarth::Util::TMS;
+
+    /**
+     * Post processing utility for disk based TMS (Tile Map Service) repositories that takes data from a given level and "backfills" lower
+     * levels of data by mosaciing and resampling the higher lod data.  This process is useful when processing web datasets that switch from one
+     * dataset to another at distinct lods which looks fine when viewed in a 2D slippy map but look incorrect when viewed at an angle in 3D
+     * in views that contain neighboring lods.
+     */
+    class OSGEARTHUTIL_EXPORT TMSBackFiller
+    {
+    public:
+        TMSBackFiller();
+
+        /**
+        * Whether to dump out progress messages 
+        * default = false
+        */
+        void setVerbose( bool value ) { _verbose = value; }
+        bool getVerbose() const { return _verbose; }
+
+        /**
+        * The level to backfill up to
+        */
+        void setMinLevel( unsigned int value ) { _minLevel = value; }
+        unsigned int getMinLevel() const { return _minLevel; }
+
+        /**
+        * The level to start backfilling from.  All tiles up to the min level will be regenerated using tiles from this level of detail.
+        */
+        void setMaxLevel( unsigned int value ) { _maxLevel = value; }
+        unsigned int getMaxLevel() const { return _maxLevel; }
+
+        /**
+        * The bounds to backfill within
+        */
+        const Bounds& getBounds() const { return _bounds;}
+        void setBounds( Bounds& bounds) { _bounds = bounds;}
+
+        /**
+         * Processes the given TMS file with the given options
+         */
+        void process( const std::string& tms, osgDB::Options* options );                        
+
+    private:
+
+        void processKey( const TileKey& key );
+
+        std::string getFilename( const TileKey& key );
+        
+        osg::Image* readTile( const TileKey& key );
+
+        void writeTile( const TileKey& key, osg::Image* image );
+        
+        osg::ref_ptr< TileMap > _tileMap;
+
+        unsigned int _minLevel;
+        unsigned int _maxLevel;
+        bool _verbose;
+        std::string _tmsPath;
+        Bounds _bounds;
+        osg::ref_ptr< osgDB::Options > _options;
+    };
+
+} } // namespace osgEarth::Util
+
+#endif // OSGEARTHUTIL_TMS_PACKAGER_H

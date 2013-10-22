@@ -1,0 +1,113 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+ * Copyright 2008-2013 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+#ifndef OSGEARTH_DRIVER_BING_OPTIONS
+#define OSGEARTH_DRIVER_BING_OPTIONS 1
+
+#include <osgEarth/TileSource>
+
+
+namespace osgEarth { namespace Drivers
+{
+    using namespace osgEarth;
+
+    /**
+     * Configuration structure for the Microsoft Bing driver.
+     * http://www.bing.com/developers/
+     *
+     * Using Bing requires an API key. You can get one from the URL above.
+     * You are responsible for complying with the Bing terms of service.
+     */
+    class BingOptions : public TileSourceOptions // NO EXPORT; header only
+    {
+    public:
+
+        /**
+         * API Key to use to access Bing REST services. Required!
+         */
+        optional<std::string>& key() { return _apiKey; }
+        const optional<std::string>& key() const { return _apiKey; }
+
+        /**
+         * Imagery set to access. Default is "Aerial".
+         *
+         * As of this writing, options are:
+         *    Aerial
+         *    AerialWithImagery
+         *    Road
+         *
+         * (The "Birdseye" layers don't work with this driver at this time.)
+         *
+         * See (http://msdn.microsoft.com/en-us/library/ff701716.aspx) for more information.
+         */
+        optional<std::string>& imagerySet() { return _imagerySet; }
+        const optional<std::string>& imagerySet() const { return _imagerySet; }
+
+        /**
+         * Base URL for the Bing REST API. By default this will point to the
+         * Internet Bing services.
+         */
+        optional<std::string>& imageryMetadataAPI() { return _imageryMetadataAPI; }
+        const optional<std::string>& imageryMetadataAPI() const { return _imageryMetadataAPI; }
+
+
+    public:
+        /**
+         * Constructs a Bing configuration structure.
+         */
+        BingOptions( const TileSourceOptions& opt =TileSourceOptions() ) : TileSourceOptions( opt ),
+            _imagerySet        ( "Aerial" ),
+            _imageryMetadataAPI( "http://dev.virtualearth.net/REST/v1/Imagery/Metadata" )
+        {
+            setDriver( "bing" );
+            fromConfig( _conf );
+        }
+
+        /** dtor */
+        virtual ~BingOptions() { }
+
+    public:
+        Config getConfig() const {
+            Config conf = TileSourceOptions::getConfig();
+            conf.updateIfSet("key",                  _apiKey);
+            conf.updateIfSet("imagery_set",          _imagerySet );
+            conf.updateIfSet("imagery_metadata_api", _imageryMetadataAPI );
+            return conf;
+        }
+
+    protected:
+        void mergeConfig( const Config& conf ) {
+            TileSourceOptions::mergeConfig( conf );
+            fromConfig( conf );
+        }
+
+    private:
+        void fromConfig( const Config& conf ) {
+            conf.getIfSet("key",                  _apiKey);
+            conf.getIfSet("imagery_set",          _imagerySet );
+            conf.getIfSet("imagery_metadata_api", _imageryMetadataAPI );
+        }
+
+        optional<std::string> _apiKey;
+        optional<std::string> _imagerySet;
+        optional<std::string> _imageryMetadataAPI;
+    };
+
+} } // namespace osgEarth::Drivers
+
+#endif // OSGEARTH_DRIVER_BING_OPTIONS

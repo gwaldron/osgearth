@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2008-2010 Pelican Mapping
+* Copyright 2008-2013 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -23,7 +23,11 @@
 #include <osgEarthFeatures/BuildTextFilter>
 #include <osgEarthFeatures/LabelSource>
 #include <osgEarth/Utils>
+#include <osgEarth/Registry>
+#include <osgEarth/ShaderGenerator>
+
 #include <osg/Depth>
+#include <osgText/Text>
 
 #define LC "[PlaceNode] "
 
@@ -40,22 +44,6 @@ PlaceNode::PlaceNode(MapNode*           mapNode,
                      const Style&       style ) :
 
 OrthoNode( mapNode, position ),
-_image  ( image ),
-_text   ( text ),
-_style  ( style ),
-_geode  ( 0L )
-{
-    init();
-}
-
-PlaceNode::PlaceNode(MapNode*           mapNode,
-                     double             x,
-                     double             y,
-                     osg::Image*        image,
-                     const std::string& text,
-                     const Style&       style ) :
-
-OrthoNode( mapNode, osg::Vec3d(x, y, 0) ),
 _image   ( image ),
 _text    ( text ),
 _style   ( style ),
@@ -64,25 +52,132 @@ _geode   ( 0L )
     init();
 }
 
+PlaceNode::PlaceNode(MapNode*           mapNode,
+                     const GeoPoint&    position,
+                     const std::string& text,
+                     const Style&       style ) :
+
+OrthoNode( mapNode, position ),
+_text    ( text ),
+_style   ( style ),
+_geode   ( 0L )
+{
+    init();
+}
+
+PlaceNode::PlaceNode(MapNode*              mapNode,
+                     const GeoPoint&       position,
+                     const Style&          style,
+                     const osgDB::Options* dbOptions ) :
+OrthoNode ( mapNode, position ),
+_style    ( style ),
+_dbOptions( dbOptions )
+{
+    init();
+}
+
 void
 PlaceNode::init()
 {
-    _geode = new osg::Geode();
+    //reset.
+    this->clearDecoration();
+    getAttachPoint()->removeChildren(0, getAttachPoint()->getNumChildren());
 
+    _geode = new osg::Geode();
     osg::Drawable* text = 0L;
 
+    // If there's no explicit text, look to the text symbol for content.
+    if ( _text.empty() && _style.has<TextSymbol>() )
+        _text = _style.get<TextSymbol>()->content()->eval();
+
+    osg::ref_ptr<const InstanceSymbol> instance = _style.get<InstanceSymbol>();
+
+    // backwards compability, support for deprecated MarkerSymbol
+    if ( !instance.valid() && _style.has<MarkerSymbol>() )
+        instance = _style.get<MarkerSymbol>()->convertToInstanceSymbol();
+
+    const IconSymbol* icon = instance->asIcon();
+
+    if ( !_image.valid() )
+    {
+        URI imageURI;
+
+        if ( icon )
+        {
+            if ( icon->url().isSet() )
+            {
+                imageURI = URI( icon->url()->eval(), icon->url()->uriContext() );
+            }
+        }
+
+        if ( !imageURI.empty() )
+        {
+            _image = imageURI.getImage( _dbOptions.get() );
+        }
+    }
+
+    // found an image; now format it:
     if ( _image.get() )
     {
         // this offset anchors the image at the bottom
-        osg::Vec2s offset( 0.0, _image->t()/2.0 );
-        osg::Geometry* imageGeom = AnnotationUtils::createImageGeometry( _image.get(), offset );
+        osg::Vec2s offset;
+        if ( !icon || !icon->alignment().isSet() )
+        {	
+            // default to bottom center
+            offset.set(0.0, (_image->t() / 2.0));
+        }
+        else
+        {	// default to bottom center
+            switch (icon->alignment().value())
+            {
+            case IconSymbol::ALIGN_LEFT_TOP:
+                offset.set((_image->s() / 2.0), -(_image->t() / 2.0));
+                break;
+            case IconSymbol::ALIGN_LEFT_CENTER:
+                offset.set((_image->s() / 2.0), 0.0);
+                break;
+            case IconSymbol::ALIGN_LEFT_BOTTOM:
+                offset.set((_image->s() / 2.0), (_image->t() / 2.0));
+                break;
+            case IconSymbol::ALIGN_CENTER_TOP:
+                offset.set(0.0, -(_image->t() / 2.0));
+                break;
+            case IconSymbol::ALIGN_CENTER_CENTER:
+                offset.set(0.0, 0.0);
+                break;
+            case IconSymbol::ALIGN_CENTER_BOTTOM:
+            default:
+                offset.set(0.0, (_image->t() / 2.0));
+                break;
+            case IconSymbol::ALIGN_RIGHT_TOP:
+                offset.set(-(_image->s() / 2.0), -(_image->t() / 2.0));
+                break;
+            case IconSymbol::ALIGN_RIGHT_CENTER:
+                offset.set(-(_image->s() / 2.0), 0.0);
+                break;
+            case IconSymbol::ALIGN_RIGHT_BOTTOM:
+                offset.set(-(_image->s() / 2.0), (_image->t() / 2.0));
+                break;
+            }
+        }
+
+        // Apply a rotation to the marker if requested:
+        double heading = 0.0;
+        if ( icon && icon->heading().isSet() )
+        {
+            heading = osg::DegreesToRadians( icon->heading()->eval() );
+        }
+
+        //We must actually rotate the geometry itself and not use a MatrixTransform b/c the 
+        //decluttering doesn't respect Transforms above the drawable.
+        osg::Geometry* imageGeom = AnnotationUtils::createImageGeometry( _image.get(), offset, 0, heading );
         if ( imageGeom )
             _geode->addDrawable( imageGeom );
 
         text = AnnotationUtils::createTextDrawable(
             _text,
             _style.get<TextSymbol>(),
-            osg::Vec3( _image->s()/2.0 + 2, _image->t()/2.0, 0 ) );
+            osg::Vec3( (offset.x() + (_image->s() / 2.0) + 2), offset.y(), 0 ) );
     }
     else
     {
@@ -100,19 +195,24 @@ PlaceNode::init()
 
     getAttachPoint()->addChild( _geode );
 
-    // for clamping
+    // for clamping and occlusion culling    
+    //OE_WARN << LC << "PlaceNode::applyStyle: " << _style.getConfig().toJSON(true) << std::endl;
     applyStyle( _style );
+
+    setLightingIfNotSet( false );
+
+    ShaderGenerator gen( Registry::stateSetCache() );
+    this->accept( gen );
+
+    // re-apply annotation drawable-level stuff as neccesary.
+    AnnotationData* ad = getAnnotationData();
+    if ( ad )
+        setAnnotationData( ad );
+
+    if ( _dynamic )
+        setDynamic( _dynamic );
 }
 
-void
-PlaceNode::setIconImage( osg::Image* image )
-{
-    if ( !_dynamic )
-    {
-        OE_WARN << LC << "Illegal state: cannot change a LabelNode that is not dynamic" << std::endl;
-        return;
-    }
-}
 
 void
 PlaceNode::setText( const std::string& text )
@@ -123,27 +223,45 @@ PlaceNode::setText( const std::string& text )
         return;
     }
 
+    _text = text;
+
     const osg::Geode::DrawableList& list = _geode->getDrawableList();
     for( osg::Geode::DrawableList::const_iterator i = list.begin(); i != list.end(); ++i )
     {
         osgText::Text* d = dynamic_cast<osgText::Text*>( i->get() );
         if ( d )
         {
-            d->setText( text );
+			TextSymbol* symbol =  _style.getOrCreate<TextSymbol>();
+			osgText::String::Encoding text_encoding = osgText::String::ENCODING_UNDEFINED;
+			if ( symbol && symbol->encoding().isSet() )
+			{
+				text_encoding = AnnotationUtils::convertTextSymbolEncoding(symbol->encoding().value());
+			}
+
+            d->setText( text, text_encoding );
             break;
         }
     }
 }
 
+
 void
-PlaceNode::setStyle( const Style& style )
+PlaceNode::setStyle(const Style& style)
 {
-    if ( !_dynamic )
-    {
-        OE_WARN << LC << "Illegal state: cannot change a LabelNode that is not dynamic" << std::endl;
-        return;
-    }
+    // changing the style requires a complete rebuild.
+    _style = style;
+    init();
 }
+
+
+void
+PlaceNode::setIconImage(osg::Image* image)
+{
+    // changing the icon requires a complete rebuild.
+    _image = image;
+    init();
+}
+
 
 void
 PlaceNode::setAnnotationData( AnnotationData* data )
@@ -157,6 +275,7 @@ PlaceNode::setAnnotationData( AnnotationData* data )
         i->get()->setUserData( data );
     }
 }
+
 
 void
 PlaceNode::setDynamic( bool value )
@@ -177,25 +296,28 @@ PlaceNode::setDynamic( bool value )
 OSGEARTH_REGISTER_ANNOTATION( place, osgEarth::Annotation::PlaceNode );
 
 
-PlaceNode::PlaceNode(MapNode*      mapNode,
-                     const Config& conf ) :
-OrthoNode( mapNode, GeoPoint::INVALID )
+PlaceNode::PlaceNode(MapNode*              mapNode,
+                     const Config&         conf,
+                     const osgDB::Options* dbOptions) :
+OrthoNode ( mapNode, conf ),
+_dbOptions( dbOptions )
 {
     conf.getObjIfSet( "style",  _style );
     conf.getIfSet   ( "text",   _text );
 
     optional<URI> imageURI;
     conf.getIfSet( "icon", imageURI );
-    if ( imageURI.isSet() ) {
+    if ( imageURI.isSet() )
+    {
         _image = imageURI->getImage();
         if ( _image.valid() )
             _image->setFileName( imageURI->base() );
     }
 
+    init();
+
     if ( conf.hasChild("position") )
         setPosition( GeoPoint(conf.child("position")) );
-
-    init();
 }
 
 Config

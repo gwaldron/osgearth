@@ -1,0 +1,122 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+ * Copyright 2008-2013 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+
+#ifndef OSGEARTHSYMBOLOGY_INSTANCE_SYMBOL_H
+#define OSGEARTHSYMBOLOGY_INSTANCE_SYMBOL_H 1
+
+#include <climits>
+
+#include <osgEarth/Common>
+#include <osgEarthSymbology/Symbol>
+#include <osgEarthSymbology/Expression>
+#include <osg/Vec3f>
+
+namespace osgEarth { namespace Symbology
+{
+    class InstanceResource;
+    class IconSymbol;
+    class ModelSymbol;
+
+    /**
+     * Base class for symbols that represent an instance of an external resource
+     * like an icon or a model and can be placed at a location.
+     */
+    class OSGEARTHSYMBOLOGY_EXPORT InstanceSymbol : public Symbol
+    {
+    public:
+        /**
+         * Controls the placement of the instance.
+         */
+        enum Placement
+        {
+            /** Places one instance at the centroid of the feature. */
+            PLACEMENT_CENTROID,
+
+            /** Places an instance at each feature point. */
+            PLACEMENT_VERTEX,
+
+            /** Places instances at regular intervals within/along the feature geometry,
+                according to density. */
+            PLACEMENT_INTERVAL,
+
+            /** Scatter instances randomly within/along feature, according to density. */
+            PLACEMENT_RANDOM
+        };
+
+    public:
+        /** dtor */
+        virtual ~InstanceSymbol() { }
+
+        /** URI of the instance to use for substitution. */
+        optional<StringExpression>& url() { return _url; }
+        const optional<StringExpression>& url() const { return _url; }
+
+        /** Name of the resource library to use with this symbol (optional) */
+        optional<StringExpression>& libraryName() { return _libraryName; }
+        const optional<StringExpression>& libraryName() const { return _libraryName; }   
+
+        /** How to map feature geometry to instance placement. (default is PLACEMENT_CENTROID) */
+        optional<Placement>& placement() { return _placement; }
+        const optional<Placement>& placement() const { return _placement; }
+
+        /** For PLACEMENT_RANDOM/INTERVAL, the scattering density in instances per sqkm */
+        optional<float>& density() { return _density; }
+        const optional<float>& density() const { return _density; }
+
+        /** Model instance scale factor */
+        optional<NumericExpression>& scale() { return _scale; }
+        const optional<NumericExpression>& scale() const { return _scale; }
+
+        /** Seeding value for the randomizer */
+        optional<unsigned>& randomSeed() { return _randomSeed; }
+        const optional<unsigned>& randomSeed() const { return _randomSeed; }
+
+        /** URI alias map for embedded resources */
+        optional<URIAliasMap>& uriAliasMap() { return _uriAliasMap; }
+        const optional<URIAliasMap>& uriAliasMap() const { return _uriAliasMap; }
+
+    public: // conversions to built-in base classes, for convenience.
+
+        const IconSymbol* asIcon() const;
+        const ModelSymbol* asModel() const;
+
+    public:
+        virtual Config getConfig() const;
+        virtual void mergeConfig( const Config& conf );
+
+    public: // internal
+        /** Creates a new (empty) resource appropriate for this symbol */
+        virtual InstanceResource* createResource() const =0;
+
+    protected:
+        InstanceSymbol( const Config& conf =Config() );
+
+    protected:
+        optional<StringExpression>   _url;
+        optional<StringExpression>   _libraryName;
+        optional<NumericExpression>  _scale;
+        optional<Placement>          _placement;
+        optional<float>              _density;
+        optional<unsigned>           _randomSeed;
+        optional<URIAliasMap>        _uriAliasMap;
+    };
+
+} } // namespace osgEarth::Symbology
+
+#endif // OSGEARTHSYMBOLOGY_MARKER_SYMBOL_H

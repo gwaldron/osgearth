@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2008-2010 Pelican Mapping
+* Copyright 2008-2013 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -43,6 +43,7 @@
 #include <stdlib.h>
 
 using namespace OpenThreads;
+using namespace osgEarth_engine_osgterrain;
 using namespace osgEarth;
 using namespace osgEarth::Drivers;
 
@@ -418,16 +419,7 @@ OSGTileFactory::createPlaceholderTile(const MapFrame&   mapf,
     tile->setTerrainTechnique( terrain->cloneTechnique() );
     tile->setVerticalScale( _terrainOptions.verticalScale().value() );
     tile->setDataVariance( osg::Object::DYNAMIC );
-    //tile->setLocator( locator.get() );
-
-    // Attach an updatecallback to normalize the edges of TerrainTiles.
-#if 0
-    if ( hasElevation && _terrainOptions.normalizeEdges().get() )
-    {
-        tile->setUpdateCallback(new TerrainTileEdgeNormalizerUpdateCallback());
-        tile->setDataVariance(osg::Object::DYNAMIC);
-    }
-#endif
+    //tile->setLocator( locator.get() );    
 
     // Generate placeholder imagery and elevation layers. These "inherit" data from an
     // ancestor tile.
@@ -475,7 +467,7 @@ OSGTileFactory::createPlaceholderTile(const MapFrame&   mapf,
     plod->setCenter( bs.center() );
     plod->addChild( tile, min_range, max_range );
 
-    if ( key.getLevelOfDetail() < (unsigned int)getTerrainOptions().maxLOD().get() )
+    if (key.getLevelOfDetail() < getTerrainOptions().maxLOD().get())
     {
         plod->setFileName( 1, createURI( _engineId, key ) ); //map->getId(), key ) );
         plod->setRange( 1, 0.0, min_range );
@@ -486,7 +478,7 @@ OSGTileFactory::createPlaceholderTile(const MapFrame&   mapf,
     }
 
 #if 0 //USE_FILELOCATIONCALLBACK
-    osgDB::Options* options = new osgDB::Options;
+    osgDB::Options* options = Registry::instance()->cloneOrCreateOptions();
     options->setFileLocationCallback( new FileLocationCallback);
     plod->setDatabaseOptions( options );
 #endif
@@ -526,7 +518,7 @@ OSGTileFactory::createPopulatedTile(const MapFrame&  mapf,
                                     bool             wrapInPagedLOD, 
                                     bool             fallback, 
                                     bool&            validData )
-{
+{    
     const MapInfo& mapInfo = mapf.getMapInfo();
     bool isPlateCarre = !mapInfo.isGeocentric() && mapInfo.isGeographicSRS();
 
@@ -665,15 +657,6 @@ OSGTileFactory::createPopulatedTile(const MapFrame&  mapf,
     //tile->setRequiresNormals( true );
     tile->setDataVariance(osg::Object::DYNAMIC);
 
-#if 0
-    //Attach an updatecallback to normalize the edges of TerrainTiles.
-    if (hasElevation && _terrainOptions.normalizeEdges().get() )
-    {
-        tile->setUpdateCallback(new TerrainTileEdgeNormalizerUpdateCallback());
-        tile->setDataVariance(osg::Object::DYNAMIC);
-    }
-#endif
-
     //Assign the terrain system to the TerrainTile.
     //It is very important the terrain system is set while the MapConfig's sourceMutex is locked.
     //This registers the terrain tile so that adding/removing layers are always in sync.  If you don't do this
@@ -730,18 +713,25 @@ OSGTileFactory::createPopulatedTile(const MapFrame&  mapf,
     }
 
     osg::BoundingSphere bs = tile->getBound();
-    double max_range = 1e10;
+    double maxRange = 1e10;
     double radius = bs.radius();
-
-#if 1
-    double min_range = radius * _terrainOptions.minTileRangeFactor().get();
-    //osg::LOD::RangeMode mode = osg::LOD::DISTANCE_FROM_EYE_POINT;
-#else
-    double width = key.getExtent().width();	
-    if (min_units_per_pixel == DBL_MAX) min_units_per_pixel = width/256.0;
-    double min_range = (width / min_units_per_pixel) * _terrainOptions.getMinTileRangeFactor(); 
-    //osg::LOD::RangeMode mode = osg::LOD::PIXEL_SIZE_ON_SCREEN;
+#if 0
+    //Compute the min range based on the actual bounds of the tile.  This can break down if you have very high resolution
+    //data with elevation variations and you can run out of memory b/c the elevation change is greater than the actual size of the tile so you end up
+    //inifinitely subdividing (or at least until you run out of data or memory)
+    double minRange = bs.radius() * _terrainOptions.minTileRangeFactor().value();
+#else        
+    //double origMinRange = bs.radius() * _options.minTileRangeFactor().value();        
+    //Compute the min range based on the 2D size of the tile
+    GeoExtent extent = tile->getKey().getExtent();        
+    GeoPoint lowerLeft(extent.getSRS(), extent.xMin(), extent.yMin(), 0.0, ALTMODE_ABSOLUTE);
+    GeoPoint upperRight(extent.getSRS(), extent.xMax(), extent.yMax(), 0.0, ALTMODE_ABSOLUTE);
+    osg::Vec3d ll, ur;
+    lowerLeft.toWorld( ll );
+    upperRight.toWorld( ur );
+    double minRange = (ur - ll).length() / 2.0 * _terrainOptions.minTileRangeFactor().value();        
 #endif
+
 
 
     // a skirt hides cracks when transitioning between LODs:
@@ -778,7 +768,7 @@ OSGTileFactory::createPopulatedTile(const MapFrame&  mapf,
         // create a PLOD so we can keep subdividing:
         osg::PagedLOD* plod = new osg::PagedLOD();
         plod->setCenter( bs.center() );
-        plod->addChild( tile, min_range, max_range );
+        plod->addChild( tile, minRange, maxRange );
 
         std::string filename = createURI( _engineId, key ); //map->getId(), key );
 
@@ -787,7 +777,7 @@ OSGTileFactory::createPopulatedTile(const MapFrame&  mapf,
         if (!isBlacklisted && key.getLevelOfDetail() < (unsigned int)getTerrainOptions().maxLOD().value() && validData )
         {
             plod->setFileName( 1, filename  );
-            plod->setRange( 1, 0.0, min_range );
+            plod->setRange( 1, 0.0, minRange );
         }
         else
         {
@@ -795,7 +785,7 @@ OSGTileFactory::createPopulatedTile(const MapFrame&  mapf,
         }
 
 #if USE_FILELOCATIONCALLBACK
-        osgDB::Options* options = new osgDB::Options;
+        osgDB::Options* options = Registry::instance()->cloneOrCreateOptions();
         options->setFileLocationCallback( new FileLocationCallback() );
         plod->setDatabaseOptions( options );
 #endif

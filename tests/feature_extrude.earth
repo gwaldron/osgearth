@@ -24,11 +24,12 @@ Footprint Extrusion using the "feature_geom" driver.
         <styles>
             <style type="text/css">
                 buildings {
-                    extrusion-height:  15;
-                    extrusion-flatten: true;
-                    fill:              #ff7f2f;
-                    altitude-clamping: terrain;
-                    altitude-resolution: 0.001;
+                    fill:                    #ff7f2f;
+                    extrusion-height:        15;
+                    extrusion-flatten:       true;
+                    extrusion-wall-gradient: 0.7;
+                    altitude-clamping:       terrain;
+                    altitude-resolution:     0.001;
                 }            
             </style>
         </styles>   

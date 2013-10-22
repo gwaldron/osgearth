@@ -1,0 +1,73 @@
+<!--
+osgEarth Sample - TFS
+
+This example shows how to use the TFS driver.
+-->
+<map name="TFS" type="geocentric" version="2">
+
+    <model name="buildings" driver="feature_geom">
+    
+        <features name="buildings" driver="tfs">		                
+			<url>http://readymap.org/readymap/features/tfs/4/</url>
+            <format>json</format>            
+        </features>
+        
+        <layout>        
+            <tile_size_factor>5.0</tile_size_factor>
+        </layout>
+        
+        <styles>                
+            <style type="text/css">
+                b1 {
+                    extrusion-height:  15;
+                    extrusion-flatten: true;
+                    fill:              #ff7f2f;
+                    altitude-clamping: terrain;
+                    altitude-resolution: 0.1;
+                }
+                b2 {
+                    extrusion-height:  30;
+                    extrusion-flatten: true;
+                    fill:              #2f7fff;
+                    altitude-clamping: terrain;
+                    altitude-resolution: 0.1;
+                }
+                b3 {
+                    extrusion-height:  45;
+                    extrusion-flatten: true;
+                    fill:              #ff2f7f;
+                    altitude-clamping: terrain;
+                    altitude-resolution: 0.1;
+                }
+            </style>
+            
+            <selector name="default" style_expr="selectStyle()"/>
+            
+            <script language="javascript">
+            <![CDATA[
+                rotator = 0;
+                function selectStyle() {
+                    rotator = (rotator+1)%3;
+                    if      (rotator==0) return "b1";
+                    else if (rotator==1) return "b2";
+                    else                 return "b3";
+                }
+            ]]>
+            </script>
+        </styles>  
+        
+        <lighting>true</lighting>
+    </model>
+                    
+ 
+    <image name="mapquest_osm" driver="xyz">
+        <url>http://otile[1234].mqcdn.com/tiles/1.0.0/osm/{z}/{x}/{y}.jpg</url>
+        <profile>global-mercator</profile>
+    </image>
+    
+    <external>
+        <sky hours="20.0"/>
+        <viewpoint name="Mexico Buildings" height="0" lat="19.42" long="-99.163" pitch="-89" range="5000"/>
+    </external>
+  
+</map>

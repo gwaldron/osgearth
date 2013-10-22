@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2010 Pelican Mapping
+ * Copyright 2008-2013 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -39,7 +39,8 @@ _overlayVertexWarping( false ),
 _overlayBlending     ( true ),
 _overlayMipMapping   ( false ),
 _overlayTextureSize  ( 4096 ),
-_terrainOptions      ( 0L )
+_terrainOptions      ( 0L ),
+_overlayAttachStencil( false )
 {
     mergeConfig( conf );
 }
@@ -52,9 +53,24 @@ _overlayVertexWarping( false ),
 _overlayBlending     ( true ),
 _overlayTextureSize  ( 4096 ),
 _overlayMipMapping   ( false ),
+_overlayAttachStencil( false ),
 _terrainOptions      ( 0L )
 {
     setTerrainOptions( to );
+}
+
+MapNodeOptions::MapNodeOptions( const MapNodeOptions& rhs ) :
+_proxySettings       ( ProxySettings() ),
+_cacheOnly           ( false ),
+_enableLighting      ( true ),
+_overlayVertexWarping( false ),
+_overlayBlending     ( true ),
+_overlayTextureSize  ( 4096 ),
+_overlayMipMapping   ( false ),
+_terrainOptions      ( 0L ),
+_overlayAttachStencil( false )
+{
+    mergeConfig( rhs.getConfig() );
 }
 
 
@@ -73,14 +89,15 @@ MapNodeOptions::getConfig() const
     Config conf; // start with a fresh one since this is a FINAL object  // = ConfigOptions::getConfig();
     conf.key() = "options";
 
-    conf.updateObjIfSet( "proxy",                _proxySettings );
-    conf.updateIfSet   ( "cache_only",           _cacheOnly );
-    conf.updateIfSet   ( "lighting",             _enableLighting );
-    conf.updateIfSet   ( "terrain",              _terrainOptionsConf );
-    conf.updateIfSet   ( "overlay_warping",      _overlayVertexWarping );
-    conf.updateIfSet   ( "overlay_blending",     _overlayBlending );
-    conf.updateIfSet   ( "overlay_texture_size", _overlayTextureSize );
-    conf.updateIfSet   ( "overlay_mipmapping",   _overlayMipMapping );
+    conf.updateObjIfSet( "proxy",                  _proxySettings );
+    conf.updateIfSet   ( "cache_only",             _cacheOnly );
+    conf.updateIfSet   ( "lighting",               _enableLighting );
+    conf.updateIfSet   ( "terrain",                _terrainOptionsConf );
+    conf.updateIfSet   ( "overlay_warping",        _overlayVertexWarping );
+    conf.updateIfSet   ( "overlay_blending",       _overlayBlending );
+    conf.updateIfSet   ( "overlay_texture_size",   _overlayTextureSize );
+    conf.updateIfSet   ( "overlay_mipmapping",     _overlayMipMapping );
+    conf.updateIfSet   ( "overlay_attach_stencil", _overlayAttachStencil );
 
     return conf;
 }
@@ -90,13 +107,14 @@ MapNodeOptions::mergeConfig( const Config& conf )
 {
     ConfigOptions::mergeConfig( conf );
 
-    conf.getObjIfSet( "proxy",                _proxySettings );
-    conf.getIfSet   ( "cache_only",           _cacheOnly );
-    conf.getIfSet   ( "lighting",             _enableLighting );
-    conf.getIfSet   ( "overlay_warping",      _overlayVertexWarping );
-    conf.getIfSet   ( "overlay_blending",     _overlayBlending );
-    conf.getIfSet   ( "overlay_texture_size", _overlayTextureSize );
-    conf.getIfSet   ( "overlay_mipmapping",   _overlayMipMapping );
+    conf.getObjIfSet( "proxy",                  _proxySettings );
+    conf.getIfSet   ( "cache_only",             _cacheOnly );
+    conf.getIfSet   ( "lighting",               _enableLighting );
+    conf.getIfSet   ( "overlay_warping",        _overlayVertexWarping );
+    conf.getIfSet   ( "overlay_blending",       _overlayBlending );
+    conf.getIfSet   ( "overlay_texture_size",   _overlayTextureSize );
+    conf.getIfSet   ( "overlay_mipmapping",     _overlayMipMapping );
+    conf.getIfSet   ( "overlay_attach_stencil", _overlayAttachStencil );
 
     if ( conf.hasChild( "terrain" ) )
     {

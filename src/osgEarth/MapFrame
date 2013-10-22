@@ -1,0 +1,129 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+ * Copyright 2008-2013 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+
+#ifndef OSGEARTH_MAP_FRAME_H
+#define OSGEARTH_MAP_FRAME_H 1
+
+#include <osgEarth/Common>
+#include <osgEarth/Containers>
+#include <osgEarth/Map>
+#include <osgEarth/MapInfo>
+
+namespace osgEarth
+{
+    /**
+     * A "snapshot in time" of a Map model revision. Use this class to get a safe "copy" of
+     * the map model lists that you can use without worrying about the model changing underneath
+     * you from another thread.
+     */
+    class OSGEARTH_EXPORT MapFrame
+    {
+    public:
+        /**
+         * Constructs a new map frame.
+         */
+        MapFrame( const Map* map, Map::ModelParts parts =Map::TERRAIN_LAYERS, const std::string& name ="" );
+
+        /**
+         * A copy constructor with a new name (no sync happens)
+         */
+        MapFrame( const MapFrame& frame, const std::string& name ="" );
+
+        /** dtor */
+        virtual ~MapFrame() { }
+
+        /**
+         * Synchronizes this frame with the source map model (only if necessary). Returns
+         * true is new data was synced; false if nothing changed.
+         */
+        bool sync();
+
+        /**
+         * True is a sync() would acquire new data.
+         */
+        bool needsSync() const;
+
+        /** Accesses the profile/rendering info about the source map. */
+        const MapInfo& getMapInfo() const { return _mapInfo; }
+
+        /** Convenience method to access the map's profile */
+        const Profile* getProfile() const { return _mapInfo.getProfile(); }
+        
+
+        /** The image layer stack snapshot */
+        const ImageLayerVector& imageLayers() const { return _imageLayers; }
+        ImageLayer* getImageLayerAt( int index ) const { return _imageLayers[index].get(); }
+        ImageLayer* getImageLayerByUID( UID uid ) const;
+        ImageLayer* getImageLayerByName( const std::string& name ) const;
+
+        /** The elevation layer stack snapshot */
+        const ElevationLayerVector& elevationLayers() const { return _elevationLayers; }
+        ElevationLayer* getElevationLayerAt( int index ) const { return _elevationLayers[index].get(); }
+        ElevationLayer* getElevationLayerByUID( UID uid ) const;
+        ElevationLayer* getElevationLayerByName( const std::string& name ) const;
+
+        /** The model layer set snapshot */
+        const ModelLayerVector& modelLayers() const { return _modelLayers; }
+        ModelLayer* getModelLayerAt(int index) const { return _modelLayers[index].get(); }
+
+        /** The mask layer set snapshot */
+        const MaskLayerVector& terrainMaskLayers() const { return _maskLayers; }
+
+        /** Gets the index of the layer in the layer stack snapshot. */
+        int indexOf( ImageLayer* layer ) const;
+        int indexOf( ElevationLayer* layer ) const;
+        int indexOf( ModelLayer* layer ) const;
+
+        /** Gets the map data model revision with which this frame is currently sync'd */
+        Revision getRevision() const { return _mapDataModelRevision; }
+
+        /** Checks whether all the data for the specified key is cached. */
+        bool isCached( const TileKey& key ) const;
+
+        /**
+         * Equivalent to the Map::createHeightField() method, but operates on the elevation stack
+         * snapshot in this MapFrame.
+         */
+        bool getHeightField(
+            const TileKey&                  key,
+            bool                            fallback,
+            osg::ref_ptr<osg::HeightField>& out_hf,
+            bool*                           out_isFallback =0L,   
+            bool                            convertToHAE   =true,         
+            ElevationSamplePolicy           samplePolicy   =SAMPLE_FIRST_VALID,
+            ProgressCallback*               progress       =0L ) const;
+
+    private:
+        bool _initialized;
+        osg::observer_ptr<const Map> _map;
+        std::string _name;
+        MapInfo _mapInfo;
+        Map::ModelParts _parts;
+        Revision _mapDataModelRevision;
+        ImageLayerVector _imageLayers;
+        ElevationLayerVector _elevationLayers;
+        ModelLayerVector _modelLayers;
+        MaskLayerVector _maskLayers;        
+
+        friend class Map;
+    };
+
+}
+
+#endif // OSGEARTH_MAP_FRAME_H

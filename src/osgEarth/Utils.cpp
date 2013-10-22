@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2010 Pelican Mapping
+ * Copyright 2008-2013 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -20,6 +20,7 @@
 #include <osg/Version>
 #include <osg/CoordinateSystemNode>
 #include <osg/MatrixTransform>
+#include <osgUtil/MeshOptimizers>
 
 using namespace osgEarth;
 
@@ -31,91 +32,6 @@ void osgEarth::removeEventHandler(osgViewer::View* view, osgGA::GUIEventHandler*
     if (itr != view->getEventHandlers().end())
     {
         view->getEventHandlers().erase(itr);
-    }
-}
-
-//------------------------------------------------------------------------
-
-CullNodeByHorizon::CullNodeByHorizon( const osg::Vec3d& world, const osg::EllipsoidModel* model ) :
-_world(world),
-_r(model->getRadiusPolar()),
-_r2(model->getRadiusPolar() * model->getRadiusPolar())
-{
-    //nop
-}
-
-void
-CullNodeByHorizon::operator()(osg::Node* node, osg::NodeVisitor* nv)
-{
-    if ( nv )
-    {
-        osgUtil::CullVisitor* cv = static_cast<osgUtil::CullVisitor*>( nv );
-
-        // get the viewpoint. It will be relative to the current reference location (world).
-        osg::Matrix l2w = osg::computeLocalToWorld( nv->getNodePath(), true );
-        osg::Vec3d vp  = cv->getViewPoint() * l2w;
-
-        // same quadrant:
-        if ( vp * _world >= 0.0 )
-        {
-            double d2 = vp.length2();
-            double horiz2 = d2 - _r2;
-            double dist2 = (_world-vp).length2();
-            if ( dist2 < horiz2 )
-            {
-                traverse(node, nv);
-            }
-        }
-
-        // different quadrants:
-        else
-        {
-            // there's a horizon between them; now see if the thing is visible.
-            // find the triangle formed by the viewpoint, the target point, and 
-            // the center of the earth.
-            double a = (_world-vp).length();
-            double b = _world.length();
-            double c = vp.length();
-
-            // Heron's formula for triangle area:
-            double s = 0.5*(a+b+c);
-            double area = 0.25*sqrt( s*(s-a)*(s-b)*(s-c) );
-
-            // Get the triangle's height:
-            double h = (2*area)/a;
-
-            if ( h >= _r )
-            {
-                traverse(node, nv);
-            }
-        }
-    }
-}
-
-//------------------------------------------------------------------------
-
-CullNodeByNormal::CullNodeByNormal( const osg::Vec3d& normal )
-{
-    _normal = normal;
-    //_normal.normalize();
-}
-
-void
-CullNodeByNormal::operator()(osg::Node* node, osg::NodeVisitor* nv)
-{
-    osg::Vec3d eye, center, up;
-    osgUtil::CullVisitor* cv = static_cast<osgUtil::CullVisitor*>( nv );
-
-    cv->getCurrentCamera()->getViewMatrixAsLookAt(eye,center,up);
-
-    eye.normalize();
-    osg::Vec3d normal = _normal;
-    normal.normalize();
-
-    double dotProduct = eye * normal;
-    if ( dotProduct > 0.0 )
-    {
-        traverse(node, nv);
     }
 }
 
@@ -148,6 +64,8 @@ osg::AutoTransform()
 {
     // deactivate culling for the first traversal. We will reactivate it later.
     setCullingActive( false );
+    setMinimumScale ( 1.0 );
+    setMinPixelWidthAtScaleOne( 10 );
 }
 
 void
@@ -342,4 +260,66 @@ PixelAutoTransform::dirty()
 {
     _dirty = true;
     setCullingActive( false );
+}
+
+//-----------------------------------------------------------------------------
+
+#undef  LC
+#define LC "[VertexCacheOptimizer] "
+
+VertexCacheOptimizer::VertexCacheOptimizer() :
+osg::NodeVisitor( TRAVERSE_ALL_CHILDREN ) 
+{
+    //nop
+}
+
+void
+VertexCacheOptimizer::apply(osg::Geode& geode)
+{
+    if (geode.getDataVariance() == osg::Object::DYNAMIC)
+        return;
+
+    for(unsigned i=0; i<geode.getNumDrawables(); ++i )
+    {
+        osg::Geometry* geom = geode.getDrawable(i)->asGeometry();
+
+        if ( geom )
+        {
+            if ( geom->getDataVariance() == osg::Object::DYNAMIC )
+                return;
+
+            // vertex cache optimizations currently only support surface geometries.
+            // all or nothing in the geode.
+            osg::Geometry::PrimitiveSetList& psets = geom->getPrimitiveSetList();
+            for( osg::Geometry::PrimitiveSetList::iterator i = psets.begin(); i != psets.end(); ++i )
+            {
+                switch( (*i)->getMode() )
+                {
+                case GL_TRIANGLES:
+                case GL_TRIANGLE_FAN:
+                case GL_TRIANGLE_STRIP:
+                case GL_QUADS:
+                case GL_QUAD_STRIP:
+                case GL_POLYGON:
+                    break;
+
+                default:
+                    return;
+                }
+            }
+        }
+    }
+
+    //OE_NOTICE << LC << "VC optimizing..." << std::endl;
+
+    // passed the test; run the optimizer.
+    osgUtil::VertexCacheVisitor vcv;
+    geode.accept( vcv );
+    vcv.optimizeVertices();
+
+    osgUtil::VertexAccessOrderVisitor vaov;
+    geode.accept( vaov );
+    vaov.optimizeOrder();
+
+    traverse( geode );
 }

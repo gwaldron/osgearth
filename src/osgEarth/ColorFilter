@@ -1,0 +1,136 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+ * Copyright 2008-2013 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+#ifndef OSGEARTH_COLOR_FILTER_H
+#define OSGEARTH_COLOR_FILTER_H 1
+
+#include <osgEarth/Common>
+#include <osgEarth/Config>
+#include <osg/StateSet>
+#include <vector>
+
+namespace osgEarth
+{
+    /** 
+     * An ColorFilter is an inline shader-based image processing function.
+     * You can install a chain of ColorFilters on an ImageLayer and the shaders
+     * will post-process the layer's color (after texturing but before lighting)
+     * using custom shader code.
+     */
+    class /*header-only*/ ColorFilter : public osg::Referenced
+    {
+    protected:
+        ColorFilter() { }
+
+    public:
+        /**
+         * The name of the function to call in the custom shader. This function
+         * must have the signature:
+         *
+         *    void function(inout vec4 color)
+         *
+         * Failure to match this signature will result in a shader compilation error.
+         *
+         * @param uid Unique ID of the object to which this filter is attached.
+         */
+        virtual std::string getEntryPointFunctionName() const =0;
+
+        /**
+         * Installs any uniforms or other bindings required by this filter on the
+         * provided state set.
+         */
+        virtual void install( osg::StateSet* stateSet ) const =0;
+
+        /**
+         * Serializes this object to a Config (optional).
+         */
+        virtual Config getConfig() const { return Config(); }
+    };
+
+
+    /**
+     * A "Chain" of image filters. They are executed in order.
+     */
+    typedef std::vector< osg::ref_ptr<ColorFilter> > ColorFilterChain;
+
+
+    //--------------------------------------------------------------------
+
+
+    /**
+     * Registry for ColorFilter serialization support.
+     */
+    class OSGEARTH_EXPORT ColorFilterRegistry
+    {
+    public:
+        static ColorFilterRegistry* instance();
+
+    public:
+        /**
+         * Creates a chain of color filters (based on order of appearance in the Config)
+         * @return True if it created at least one object.
+         */
+        bool readChain(const Config& conf, ColorFilterChain& out_chain);
+
+        /**
+         * Serializes a filter chain to the provided Config object
+         * @return True if at least one filter was serialized.
+         */
+        bool writeChain(const ColorFilterChain& chain, Config& out_config);
+
+        /**
+         * Adds a ColorFilter type to the registry
+         */
+        void add( const std::string& key, class ColorFilterFactory* factory );
+
+
+    public:
+        ColorFilterRegistry() { }
+        virtual ~ColorFilterRegistry() { }
+
+        // must override this to support serialization:
+        virtual Config getConfig() const { return Config(); }
+
+    private:
+        typedef std::map<std::string, class ColorFilterFactory*> FactoryMap;
+        FactoryMap _factories;
+        ColorFilter* createOne(const Config& conf) const;
+    };
+
+    // internal: interface class for an object that creates a ColorFilter instance from a Config
+    // (used by OSGEARTH_REGISTER_COLORFILTER macro)
+    class ColorFilterFactory {
+    public:
+        virtual ColorFilter* create(const Config& conf) const =0;
+        virtual ~ColorFilterFactory() { }
+    };
+
+    // internal: proxy class used by the registraion macro
+    template<typename T>
+    struct ColorFilterRegistrationProxy : public ColorFilterFactory {
+        ColorFilterRegistrationProxy(const std::string& key) { ColorFilterRegistry::instance()->add(key, this); }
+        ColorFilter* create(const Config& conf) const { return new T(conf); }
+    };
+
+    // Macro used to register new annotation types.
+#define OSGEARTH_REGISTER_COLORFILTER( KEY, CLASSNAME ) \
+    static osgEarth::ColorFilterRegistrationProxy< CLASSNAME > s_osgEarthColorFilterRegistrationProxy##KEY( #KEY )
+
+} // namespace osgEarth
+
+#endif // OSGEARTH_IMAGE_FILTER_H

@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2010 Pelican Mapping
+ * Copyright 2008-2013 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -42,6 +42,9 @@ namespace osgEarth { namespace Symbology
         /** Constructs a new marker resource. */
         MarkerResource( const Config& conf =Config() );
 
+        /** dtor */
+        virtual ~MarkerResource() { }
+
         /**
          * Creates a new Node representing the marker.
          */
@@ -62,8 +65,6 @@ namespace osgEarth { namespace Symbology
 
         osg::Node* createNodeFromURI( const URI& uri, const osgDB::Options* dbOptions ) const;
     };
-
-    typedef std::map<std::string, osg::ref_ptr<MarkerResource> > MarkerResourceMap;
 
     typedef std::vector< osg::ref_ptr<MarkerResource> > MarkerResourceVector;
 

@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2010 Pelican Mapping
+ * Copyright 2008-2013 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -17,6 +17,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 #include <osgEarth/ModelSource>
+#include <osgEarth/Registry>
 #include <osg/Notify>
 #include <osgDB/ReadFile>
 #include <OpenThreads/ScopedLock>
@@ -25,6 +26,21 @@ using namespace osgEarth;
 using namespace OpenThreads;
 
 /****************************************************************/
+
+
+ModelSourceOptions::ModelSourceOptions( const ConfigOptions& options ) :
+DriverConfigOptions( options ),
+_minRange          ( 0.0f ),
+_maxRange          ( FLT_MAX ),
+_renderOrder       ( 11 ),
+_depthTestEnabled  ( true )
+{ 
+    fromConfig(_conf);
+}
+
+ModelSourceOptions::~ModelSourceOptions()
+{
+}
 
 void
 ModelSourceOptions::fromConfig( const Config& conf )
@@ -58,8 +74,62 @@ ModelSourceOptions::getConfig() const
 ModelSource::ModelSource( const ModelSourceOptions& options ) :
 _options( options )
 {
-    //TODO: is this really necessary?
-    this->setThreadSafeRefUnref( true );
+}
+
+ModelSource::~ModelSource()
+{
+}
+
+
+osg::Node* 
+ModelSource::createNode(const Map*            map,
+                        const osgDB::Options* dbOptions,
+                        ProgressCallback*     progress )
+{
+    osg::Node* node = createNodeImplementation(map, dbOptions, progress);
+    if ( node )
+    {
+        firePostProcessors( node );
+    }
+    return node;
+}
+
+
+void 
+ModelSource::addPostProcessor( NodeOperation* op )
+{
+    if ( op )
+    {
+        Threading::ScopedMutexLock lock( _postProcessorsMutex );
+        _postProcessors.push_back( op );
+    }
+}
+
+
+void
+ModelSource::removePostProcessor( NodeOperation* op )
+{
+    if ( op )
+    {
+        Threading::ScopedMutexLock lock( _postProcessorsMutex );
+        NodeOperationVector::iterator i = std::find( _postProcessors.begin(), _postProcessors.end(), op );
+        if ( i != _postProcessors.end() )
+            _postProcessors.erase( i );
+    }
+}
+
+
+void
+ModelSource::firePostProcessors( osg::Node* node )
+{
+    if ( node )
+    {
+        Threading::ScopedMutexLock lock( _postProcessorsMutex );
+        for( NodeOperationVector::iterator i = _postProcessors.begin(); i != _postProcessors.end(); ++i )
+        {
+            i->get()->operator()( node );
+        }
+    }
 }
 
 //------------------------------------------------------------------------
@@ -67,6 +137,10 @@ _options( options )
 #undef  LC
 #define LC "[ModelSourceFactory] "
 #define MODEL_SOURCE_OPTIONS_TAG "__osgEarth::ModelSourceOptions"
+
+ModelSourceFactory::~ModelSourceFactory()
+{
+}
 
 ModelSource*
 ModelSourceFactory::create( const ModelSourceOptions& options )
@@ -77,7 +151,7 @@ ModelSourceFactory::create( const ModelSourceOptions& options )
     {
         std::string driverExt = std::string(".osgearth_model_") + options.getDriver();
 
-        osg::ref_ptr<osgDB::ReaderWriter::Options> rwopts = new osgDB::ReaderWriter::Options();
+        osg::ref_ptr<osgDB::Options> rwopts = Registry::instance()->cloneOrCreateOptions();
         rwopts->setPluginData( MODEL_SOURCE_OPTIONS_TAG, (void*)&options );
 
         modelSource = dynamic_cast<ModelSource*>( osgDB::readObjectFile( driverExt, rwopts.get() ) );
@@ -105,4 +179,8 @@ const ModelSourceOptions&
 ModelSourceDriver::getModelSourceOptions( const osgDB::ReaderWriter::Options* options ) const
 {
     return *static_cast<const ModelSourceOptions*>( options->getPluginData( MODEL_SOURCE_OPTIONS_TAG ) );
+}
+
+ModelSourceDriver::~ModelSourceDriver()
+{
 }

@@ -21,6 +21,7 @@
 
 #include "KML_Object"
 
+using namespace osgEarth_kml;
 using namespace osgEarth;
 
 struct KML_NetworkLink : public KML_Object

@@ -8,17 +8,11 @@ Plate Carre (y=lat, x=lon) by applying the <profile> tag.
     <options>
         <profile>global-geodetic</profile>    
         <lighting>false</lighting>
-        <terrain>
-            <loading_policy mode="preemptive"/>
-        </terrain>
     </options>
     
-    <image name="OSM on Mapnik" driver="tms">
-        <url>http://tile.openstreetmap.org/</url>
+    <image name="mapquest_osm" driver="xyz" cache_enabled="false">
+        <url>http://otile[1234].mqcdn.com/tiles/1.0.0/osm/{z}/{x}/{y}.jpg</url>
         <profile>global-mercator</profile>
-        <format>png</format>
-        <tile_size>256</tile_size>
-        <tms_type>google</tms_type>
     </image>
     
     

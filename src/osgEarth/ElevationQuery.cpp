@@ -1,7 +1,6 @@
 #include <osgEarth/ElevationQuery>
 #include <osgEarth/Locators>
-#include <osgTerrain/TerrainTile>
-#include <osgTerrain/GeometryTechnique>
+#include <osgEarth/HeightFieldUtils>
 #include <osgUtil/IntersectionVisitor>
 #include <osgUtil/LineSegmentIntersector>
 
@@ -26,8 +25,6 @@ void
 ElevationQuery::postCTOR()
 {
     _tileSize         = 0;
-    _maxDataLevel     = 0;
-    //_technique        = TECHNIQUE_PARAMETRIC;
     _maxLevelOverride = -1;
     _queries          = 0.0;
     _totalTime        = 0.0;
@@ -40,10 +37,9 @@ ElevationQuery::postCTOR()
 void
 ElevationQuery::sync()
 {
-    if ( _mapf.sync() || _tileSize == 0 || _maxDataLevel == 0 )
+    if ( _mapf.sync() || _tileSize == 0  )
     {
-        _tileSize = 0;
-        _maxDataLevel = 0;
+        _tileSize = 0;        
 
         for( ElevationLayerVector::const_iterator i = _mapf.elevationLayers().begin(); i != _mapf.elevationLayers().end(); ++i )
         {
@@ -51,102 +47,123 @@ ElevationQuery::sync()
             int layerTileSize = i->get()->getTileSize();
             if ( layerTileSize > _tileSize )
                 _tileSize = layerTileSize;
-
-            // we also need the maximum available data level.
-            unsigned int layerMaxDataLevel = i->get()->getMaxDataLevel();
-            if ( layerMaxDataLevel > _maxDataLevel )
-                _maxDataLevel = layerMaxDataLevel;
         }
     }
 }
 
 unsigned int
-ElevationQuery::getMaxLevel( double x, double y, const SpatialReference* srs ) const
+ElevationQuery::getMaxLevel( double x, double y, const SpatialReference* srs, const Profile* profile ) const
 {
     unsigned int maxLevel = 0;
     for( ElevationLayerVector::const_iterator i = _mapf.elevationLayers().begin(); i != _mapf.elevationLayers().end(); ++i )
     {
+        // skip disabled layers
+        if ( !i->get()->getEnabled() )
+            continue;
+
         unsigned int layerMax = 0;
+
         osgEarth::TileSource* ts = i->get()->getTileSource();
-        if ( ts && ts->getDataExtents().size() > 0 )
+        if ( ts )
         {
-            osg::Vec3d tsCoord(x, y, 0);
-            const SpatialReference* tsSRS = ts->getProfile() ? ts->getProfile()->getSRS() : 0L;
-            if ( srs && tsSRS )
-                srs->transform(tsCoord, tsSRS, tsCoord);
-            else
-                tsSRS = srs;
-            
-            for (osgEarth::DataExtentList::iterator j = ts->getDataExtents().begin(); j != ts->getDataExtents().end(); j++)
+            // TileSource is good; check for optional data extents:
+            if ( ts->getDataExtents().size() > 0 )
             {
-                if (j->getMaxLevel() > layerMax && j->contains( tsCoord.x(), tsCoord.y(), tsSRS ))
+                osg::Vec3d tsCoord(x, y, 0);
+
+                const SpatialReference* tsSRS = ts->getProfile() ? ts->getProfile()->getSRS() : 0L;
+                if ( srs && tsSRS )
+                    srs->transform(tsCoord, tsSRS, tsCoord);
+                else
+                    tsSRS = srs;
+                
+                for (osgEarth::DataExtentList::iterator j = ts->getDataExtents().begin(); j != ts->getDataExtents().end(); j++)
                 {
-                    layerMax = j->getMaxLevel();
+                    if (j->maxLevel().isSet() && j->maxLevel() > layerMax && j->contains( tsCoord.x(), tsCoord.y(), tsSRS ))
+                    {
+                        layerMax = j->maxLevel().value();
+                    }
                 }
+
+                //Need to convert the layer max of this TileSource to that of the actual profile
+                layerMax = profile->getEquivalentLOD( ts->getProfile(), layerMax );            
+            }
+
+            // cap the max to the layer's express max level (if set).
+            if ( i->get()->getTerrainLayerRuntimeOptions().maxLevel().isSet() )
+            {
+                layerMax = std::min( layerMax, *i->get()->getTerrainLayerRuntimeOptions().maxLevel() );
             }
         }
         else
         {
-            layerMax = i->get()->getMaxDataLevel();
+            // no TileSource? probably in cache-only mode. Use the layer max (or its default).
+            layerMax = i->get()->getTerrainLayerRuntimeOptions().maxLevel().value();
         }
 
-        if ( i->get()->getTerrainLayerRuntimeOptions().maxLevel().isSet() )
-            layerMax = std::min( layerMax, *i->get()->getTerrainLayerRuntimeOptions().maxLevel() );
-
         if (layerMax > maxLevel) maxLevel = layerMax;
+    }    
+
+    // need to check the image layers too, because if image layers go deeper than elevation layers,
+    // upsampling occurs that can change the formation of the terrain skin.
+    // NOTE: this doesn't happen in "triangulation" interpolation mode.
+    if ( _mapf.getMapInfo().getElevationInterpolation() != osgEarth::INTERP_TRIANGULATE )
+    {
+        for( ImageLayerVector::const_iterator i = _mapf.imageLayers().begin(); i != _mapf.imageLayers().end(); ++i )
+        {
+            // skip disabled layers
+            if ( !i->get()->getEnabled() )
+                continue;
+
+            unsigned int layerMax = 0;
+            osgEarth::TileSource* ts = i->get()->getTileSource();
+            if ( ts )
+            {
+                // TileSource is good; check for optional data extents:
+                if ( ts->getDataExtents().size() > 0 )
+                {
+                    osg::Vec3d tsCoord(x, y, 0);
+                    const SpatialReference* tsSRS = ts->getProfile() ? ts->getProfile()->getSRS() : 0L;
+                    if ( srs && tsSRS )
+                        srs->transform(tsCoord, tsSRS, tsCoord);
+                    else
+                        tsSRS = srs;
+                    
+                    for (osgEarth::DataExtentList::iterator j = ts->getDataExtents().begin(); j != ts->getDataExtents().end(); j++)
+                    {
+                        if (j->maxLevel().isSet()  && j->maxLevel() > layerMax && j->contains( tsCoord.x(), tsCoord.y(), tsSRS ))
+                        {
+                            layerMax = j->maxLevel().value();
+                        }
+                    }
+
+                    // Need to convert the layer max of this TileSource to that of the actual profile
+                    layerMax = profile->getEquivalentLOD( ts->getProfile(), layerMax );            
+                }        
+                
+                if ( i->get()->getTerrainLayerRuntimeOptions().maxLevel().isSet() )
+                {
+                    layerMax = std::min( layerMax, *i->get()->getTerrainLayerRuntimeOptions().maxLevel() );
+                }
+            }
+            else
+            {
+                // no TileSource? probably in cache-only mode. Use the layer max (or its default).
+                layerMax = i->get()->getTerrainLayerRuntimeOptions().maxLevel().value();
+            }
+
+            if (layerMax > maxLevel)
+                maxLevel = layerMax;
+        }
     }
 
-    // need to check the image layers too, because if image layers do deeper than elevation layers,
-    // upsampling occurs that can change the formation of the terrain skin.
-    // NOTE: this probably doesn't happen in "triangulation" interpolation mode.. -gw
-    for( ImageLayerVector::const_iterator i = _mapf.imageLayers().begin(); i != _mapf.imageLayers().end(); ++i )
+    if (maxLevel == 0) 
     {
-        unsigned int layerMax = 0;
-        osgEarth::TileSource* ts = i->get()->getTileSource();
-        if ( ts && ts->getDataExtents().size() > 0 )
-        {
-            osg::Vec3d tsCoord(x, y, 0);
-            const SpatialReference* tsSRS = ts->getProfile() ? ts->getProfile()->getSRS() : 0L;
-            if ( srs && tsSRS )
-                srs->transform(tsCoord, tsSRS, tsCoord);
-            else
-                tsSRS = srs;
-            
-            for (osgEarth::DataExtentList::iterator j = ts->getDataExtents().begin(); j != ts->getDataExtents().end(); j++)
-            {
-                if (j->getMaxLevel() > layerMax && j->contains( tsCoord.x(), tsCoord.y(), tsSRS ))
-                {
-                    layerMax = j->getMaxLevel();
-                }
-            }
-        }
-        else
-        {
-            layerMax = i->get()->getMaxDataLevel();
-        }
-
-        if ( i->get()->getTerrainLayerRuntimeOptions().maxLevel().isSet() )
-            layerMax = std::min( layerMax, *i->get()->getTerrainLayerRuntimeOptions().maxLevel() );
-
-        if (layerMax > maxLevel) maxLevel = layerMax;
+        //This means we had no data extents on any of our layers and no max levels are set
     }
 
     return maxLevel;
 }
-
-#if 0
-ElevationQuery::Technique
-ElevationQuery::getTechnique() const
-{
-    return _technique;
-}
-#endif
-
-//void
-//ElevationQuery::setTechnique( ElevationQuery::Technique technique )
-//{
-//    _technique = technique;
-//}
 
 void
 ElevationQuery::setMaxTilesToCache( int value )
@@ -193,7 +210,8 @@ ElevationQuery::getElevations(std::vector<osg::Vec3d>& points,
     {
         double elevation;
         double z = (*i).z();
-        if ( getElevationImpl( GeoPoint(pointsSRS, *i), elevation, desiredResolution ) )
+        GeoPoint p(pointsSRS, *i, ALTMODE_ABSOLUTE);
+        if ( getElevationImpl( p, elevation, desiredResolution ) )
         {
             (*i).z() = ignoreZ ? elevation : elevation + z;
         }
@@ -211,7 +229,9 @@ ElevationQuery::getElevations(const std::vector<osg::Vec3d>& points,
     for( osg::Vec3dArray::const_iterator i = points.begin(); i != points.end(); ++i )
     {
         double elevation;
-        if ( getElevationImpl( GeoPoint(pointsSRS,*i), elevation, desiredResolution ) )
+        GeoPoint p(pointsSRS, *i, ALTMODE_ABSOLUTE);
+
+        if ( getElevationImpl(p, elevation, desiredResolution) )
         {
             out_elevations.push_back( elevation );
         }
@@ -230,17 +250,16 @@ ElevationQuery::getElevationImpl(const GeoPoint& point,
                                  double*         out_actualResolution)
 {
     osg::Timer_t start = osg::Timer::instance()->tick();
-
-    if ( _maxDataLevel == 0 || _tileSize == 0 )
+    
+    if ( _mapf.elevationLayers().empty() )
     {
         // this means there are no heightfields.
         out_elevation = 0.0;
         return true;
     }
-
     
     //This is the max resolution that we actually have data at this point
-    unsigned int bestAvailLevel = getMaxLevel( point.x(), point.y(), point.getSRS());
+    unsigned int bestAvailLevel = getMaxLevel( point.x(), point.y(), point.getSRS(), _mapf.getProfile());
 
     if (desiredResolution > 0.0)
     {
@@ -262,7 +281,6 @@ ElevationQuery::getElevationImpl(const GeoPoint& point,
         }
     }
 
-    //osg::ref_ptr<osgTerrain::TerrainTile> tile;
     osg::ref_ptr<osg::HeightField> tile;
 
     // get the tilekey corresponding to the tile we need:
@@ -274,15 +292,16 @@ ElevationQuery::getElevationImpl(const GeoPoint& point,
     }
 
     // Check the tile cache. Note that the TileSource already likely has a MemCache
-    // attached to it. We employ a secondary cache here for a couple reasons. One, this
-    // cache will store not only the heightfield, but also the tesselated tile in the event
-    // that we're using GEOMETRIC mode. Second, since the call the getHeightField can 
-    // fallback on a lower resolution, this cache will hold the final resolution heightfield
-    // instead of trying to fetch the higher resolution one each item.
+    // attached to it. We employ a secondary cache here because: since the call to
+    // getHeightField can fallback on a lower resolution, this cache will hold the
+    // final resolution heightfield instead of trying to fetch the higher resolution
+    // one each item.
 
-    TileCache::Record record = _tileCache.get( key );
-    if ( record.valid() )
+    TileCache::Record record;
+    if ( _tileCache.get(key, record) )
+    {
         tile = record.value().get();
+    }
 
     // if we didn't find it, build it.
     if ( !tile.valid() )
@@ -317,7 +336,7 @@ ElevationQuery::getElevationImpl(const GeoPoint& point,
         tile.get(), 
         mapPoint.x(), mapPoint.y(), 
         extent.xMin(), extent.yMin(), 
-        xInterval, yInterval );
+        xInterval, yInterval, _mapf.getMapInfo().getElevationInterpolation() );
 
     osg::Timer_t end = osg::Timer::instance()->tick();
     _queries++;

@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2010 Pelican Mapping
+ * Copyright 2008-2013 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -21,7 +21,6 @@
 #define OSGEARTH_TILE_GRID_PROFILE_H 1
 
 #include <osgEarth/Common>
-#include <osgEarth/Bounds>
 #include <osgEarth/Config>
 #include <osgEarth/GeoData>
 #include <osgEarth/SpatialReference>
@@ -39,6 +38,9 @@ namespace osgEarth
     public:
         ProfileOptions( const ConfigOptions& options =ConfigOptions() );
         ProfileOptions( const std::string& namedProfile );
+
+        /** dtor */
+        virtual ~ProfileOptions() { }
 
         /** Returns true if this configuration is well-defined and usable */
         bool defined() const;
@@ -170,9 +172,14 @@ namespace osgEarth
 
         /**
          * Gets the tile keys that comprise the tiles at the root (LOD 0) of this
-         * profile.
+         * profile. Same as calling getAllKeysAtLOD(0).
          */
         void getRootKeys(std::vector<TileKey>& out_keys ) const;
+
+        /**
+         * Gets all the tile keys at the specified LOD.
+         */
+        void getAllKeysAtLOD(unsigned lod, std::vector<TileKey>& out_keys) const;
 
         /** 
          * Calculates an extent given a tile location in this profile.
@@ -234,7 +241,7 @@ namespace osgEarth
         /**
          * Creates a tile key for a tile that contains the input location at the specified LOD.
          * Express the coordinates in the profile's SRS.
-         * Returns NULL if the point lies outside the profile's extents.
+         * Returns TileKey::INVALID if the point lies outside the profile's extents.
          */
         TileKey createTileKey( double x, double y, unsigned int level ) const;
 
@@ -260,9 +267,18 @@ namespace osgEarth
          */
         const std::string& getHorizSignature() const { return _horizSignature; }
 
+        /**
+         * Given another Profile and an LOD in that Profile, determine 
+         * the LOD in this Profile that is nearly equivalent.
+         */
+        unsigned int getEquivalentLOD( const Profile* profile, unsigned int lod ) const;
+
     public:
 
-        void overrideSRS( const SpatialReference* srs );
+        /**
+         * Makes a clone of this profile but replaces the SRS with a custom one.
+         */
+        Profile* overrideSRS( const SpatialReference* srs ) const;
 
     protected:       
 
@@ -278,6 +294,9 @@ namespace osgEarth
             double geoxmin, double geoymin, double geoxmax, double geoymax,
             unsigned int x_tiles_at_lod0 =0,
             unsigned int y_tiles_at_lod0 =0 );
+
+        /** dtor */
+        virtual ~Profile() { }
         
 
         virtual void addIntersectingTiles(

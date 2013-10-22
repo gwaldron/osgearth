@@ -1,0 +1,62 @@
+<!--
+osgEarth Sample
+Shows how to create a multi-LOD setup for GPU-clamped geometry.
+-->
+
+<map name="Geometry Rasterizer Demo" type="round" version="2">
+  
+    <image name="readymap_imagery" driver="tms">
+        <url>http://readymap.org/readymap/tiles/1.0.0/7/</url>
+        <color_filters>
+            <gamma rgb="1.3"/>
+        </color_filters>
+    </image>
+        
+    <elevation name="readymap_elevation" driver="tms">
+        <url>http://readymap.org/readymap/tiles/1.0.0/9/</url>
+    </elevation>
+    
+    <options lighting="false">
+      <terrain normalize_edges="true"/>
+    </options>
+    
+    
+    <model name="roads" driver="feature_geom" lighting="false">
+
+        <features name="roads" driver="ogr">
+            <url>../data/istates_dissolve.shp</url>
+            <ogr_driver>ESRI Shapefile</ogr_driver>
+            <build_spatial_index>true</build_spatial_index>
+        </features>
+
+        <layout crop_features="true">
+            <level style="lo"  min_range="250000"/>
+            <level style="mid" max_range="350000" min_range="25000"/>
+            <level style="hi"  max_range="75000"/>
+        </layout>
+        
+        <styles>
+            <style type="text/css">
+                lo {
+                    stroke:              #ffff009f;
+                    stroke-width:        2;
+                    altitude-clamping:   terrain-gpu;
+                }           
+                mid {
+                    stroke:              #ffff009f;
+                    stroke-width:        3;
+                    altitude-clamping:   terrain-gpu;
+                }                
+                hi {
+                    stroke:              #ffff009f;
+                    stroke-width:        125m;
+                    stroke-tessellation: 5;
+                    altitude-clamping:   terrain-gpu;
+                    render-depth-offset-min-bias: 20;
+                }        
+            </style>
+        </styles>
+        
+    </model>
+  
+</map>

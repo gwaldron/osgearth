@@ -25,22 +25,22 @@ SET(LIB_PUBLIC_HEADERS
     Feature
     FeatureCursor
     FeatureDisplayLayout
-    FeatureGeometryIndex
-    FeatureGridder
-	FeatureListSource
+    FeatureDrawSet
+    FeatureListSource
     FeatureModelGraph
     FeatureModelSource
-    #FeatureNode
     FeatureSource
+    FeatureSourceIndexNode
     FeatureTileSource
     Filter
     FilterContext
     GeometryCompiler
-	GeometryUtils
+    GeometryUtils
     LabelSource
     MeshClamper
     OgrUtils
-    OptimizerHints	
+    OptimizerHints
+    PolygonizeLines
     ResampleFilter
     ScaleFilter
     Session
@@ -54,7 +54,7 @@ SET(LIB_PUBLIC_HEADERS
     VirtualFeatureSource
 )
 
-ADD_LIBRARY(${LIB_NAME} SHARED
+ADD_LIBRARY(${LIB_NAME} ${OSGEARTH_USER_DEFINED_DYNAMIC_OR_STATIC}
     ${LIB_PUBLIC_HEADERS}
     AltitudeFilter.cpp
     BufferFilter.cpp
@@ -68,13 +68,12 @@ ADD_LIBRARY(${LIB_NAME} SHARED
     Feature.cpp
     FeatureCursor.cpp
     FeatureDisplayLayout.cpp
-    FeatureGeometryIndex.cpp
-    FeatureGridder.cpp
+    FeatureDrawSet.cpp
 	FeatureListSource.cpp
     FeatureModelGraph.cpp
     FeatureModelSource.cpp
-    #FeatureNode.cpp
     FeatureSource.cpp
+    FeatureSourceIndexNode.cpp
     FeatureTileSource.cpp
     Filter.cpp
     FilterContext.cpp
@@ -82,7 +81,9 @@ ADD_LIBRARY(${LIB_NAME} SHARED
 	GeometryUtils.cpp
     LabelSource.cpp
     MeshClamper.cpp
+    OgrUtils.cpp
     OptimizerHints.cpp
+    PolygonizeLines.cpp
     ResampleFilter.cpp
     ScaleFilter.cpp
     Session.cpp

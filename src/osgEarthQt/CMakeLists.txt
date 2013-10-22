@@ -12,7 +12,9 @@ INCLUDE( ${QT_USE_FILE} )
 
 # Header files that need moc'd
 set(LIB_MOC_HDRS
+    AnnotationDialogs
     AnnotationListWidget
+    AnnotationToolbar
     CollapsiblePairWidget
     DataManager
     LayerManagerWidget
@@ -21,6 +23,7 @@ set(LIB_MOC_HDRS
     MapCatalogWidget
     TerrainProfileGraph
     TerrainProfileWidget
+    ViewerWidget
 )
 
 # Qt resource files
@@ -45,18 +48,21 @@ QT4_WRAP_CPP( LIB_MOC_SRCS ${LIB_MOC_HDRS} OPTIONS "-f" )
 SET(LIB_PUBLIC_HEADERS
 #   header files go here
     Actions
+    AnnotationDialogs
     AnnotationListWidget
+    AnnotationToolbar
     CollapsiblePairWidget
     Common
-    CompositeViewerWidget
     DataManager
     GuiActions
     LayerManagerWidget
     LOSControlWidget
     LOSCreationDialog
     MapCatalogWidget
+    MultiViewerWidget
     TerrainProfileGraph
     TerrainProfileWidget
+    ViewWidget
     ViewerWidget
     ${LIB_UI_HDRS}
     ${LIB_QT_UIS}
@@ -69,16 +75,19 @@ ADD_LIBRARY(${LIB_NAME} SHARED
     ${LIB_RC_SRCS}
     ${LIB_UI_SRCS}
     ${LIB_MOC_SRCS}
+    AnnotationDialogs.cpp
     AnnotationListWidget.cpp
+    AnnotationToolbar.cpp
     CollapsiblePairWidget.cpp
-    CompositeViewerWidget.cpp
     DataManager.cpp
     LayerManagerWidget.cpp
     LOSControlWidget.cpp
     LOSCreationDialog.cpp
     MapCatalogWidget.cpp
+    MultiViewerWidget.cpp
     TerrainProfileGraph.cpp
     TerrainProfileWidget.cpp
+    ViewWidget.cpp
     ViewerWidget.cpp
 )
 

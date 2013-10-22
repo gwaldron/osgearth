@@ -1,0 +1,86 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+* Copyright 2008-2013 Pelican Mapping
+* http://osgearth.org
+*
+* osgEarth is free software; you can redistribute it and/or modify
+* it under the terms of the GNU Lesser General Public License as published by
+* the Free Software Foundation; either version 2 of the License, or
+* (at your option) any later version.
+*
+* This program is distributed in the hope that it will be useful,
+* but WITHOUT ANY WARRANTY; without even the implied warranty of
+* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+* GNU Lesser General Public License for more details.
+*
+* You should have received a copy of the GNU Lesser General Public License
+* along with this program.  If not, see <http://www.gnu.org/licenses/>
+*/
+#ifndef OSGEARTH_ENGINE_QUADTREE_TILE_NODE_REGISTRY
+#define OSGEARTH_ENGINE_QUADTREE_TILE_NODE_REGISTRY 1
+
+#include "Common"
+#include "TileNode"
+#include <osgEarth/ThreadingUtils>
+#include <map>
+
+namespace osgEarth_engine_quadtree
+{
+    using namespace osgEarth;
+
+    /**
+     * Holds a reference to each tile created by the driver.
+     */
+    class TileNodeRegistry : public osg::Referenced
+    {
+    public:
+        typedef std::map< TileKey, osg::ref_ptr<TileNode> > TileNodeMap;
+
+        // Proprtype for a locked tileset operation (see run)
+        struct Operation {
+            virtual void operator()( TileNodeMap& tiles ) =0;
+        };
+
+        struct ConstOperation {
+            virtual void operator()( const TileNodeMap& tiles ) const =0;
+        };
+
+    public:
+        TileNodeRegistry( const std::string& name );
+
+        virtual ~TileNodeRegistry() { }
+
+        /** Adds a tile to the registry */
+        void add( TileNode* tile );
+
+        /** Adds several tiles to the registry */
+        void add( const TileNodeVector& tiles );
+
+        /** Moves a tile to the "removed" list */
+        void remove( TileNode* tile );
+
+        /** Finds a tile in the registry */
+        bool get( const TileKey& key, osg::ref_ptr<TileNode>& out_tile );
+
+        /** Finds a tile in the registry and then removes it. */
+        bool take( const TileKey& key, osg::ref_ptr<TileNode>& out_tile );
+
+        /** Whether there are tiles in this registry (snapshot in time) */
+        bool empty() const;
+
+        /** Runs an operation against the exclusively locked tile set. */
+        void run( Operation& op );
+        
+        /** Runs an operation against the read-locked tile set. */
+        void run( const ConstOperation& op ) const;
+
+    protected:
+
+        std::string                       _name;
+        TileNodeMap                       _tiles;
+        mutable Threading::ReadWriteMutex _tilesMutex;
+    };
+
+} // namespace osgEarth_engine_quadtree
+
+#endif // OSGEARTH_ENGINE_QUADTREE_TILE_NODE_REGISTRY

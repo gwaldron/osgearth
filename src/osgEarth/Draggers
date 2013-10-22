@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2008-2010 Pelican Mapping
+* Copyright 2008-2013 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -21,14 +21,20 @@
 
 #include <osgEarth/Common>
 #include <osgEarth/GeoData>
-#include <osgEarth/MapNode>
-
+#include <osgEarth/TileKey>
+#include <osgEarth/MapNodeObserver>
 #include <osg/MatrixTransform>
 #include <osg/ShapeDrawable>
+#include <osgGA/GUIEventHandler>
+#include <osgManipulator/Projector>
+#include <osgEarth/Terrain>
 
 namespace osgEarth
 {
-    class OSGEARTH_EXPORT Dragger : public osg::MatrixTransform
+    class MapNode;
+    class Terrain;
+
+    class OSGEARTH_EXPORT Dragger : public osg::MatrixTransform, public MapNodeObserver
     {
     public:
         /**
@@ -38,11 +44,21 @@ namespace osgEarth
         {
         public:
             virtual void onPositionChanged(const Dragger* sender, const osgEarth::GeoPoint& position) {};
+            virtual ~PositionChangedCallback() { }
         };
 
         typedef std::list< osg::ref_ptr<PositionChangedCallback> > PositionChangedCallbackList;
 
-        Dragger( osgEarth::MapNode* mapNode);
+        enum DragMode
+        {
+          DRAGMODE_HORIZONTAL,
+          DRAGMODE_VERTICAL
+        };
+
+        Dragger( MapNode* mapNode, int modKeyMask=0, const DragMode& defaultMode=DRAGMODE_HORIZONTAL );
+
+        /** dtor */
+        virtual ~Dragger();
 
         bool getDragging() const;
 
@@ -52,12 +68,28 @@ namespace osgEarth
 
         void setPosition( const osgEarth::GeoPoint& position, bool fireEvents=true);
 
+        void setModKeyMask(int mask) { _modKeyMask = mask; }
 
-        void updateTransform();
+        int getModKeyMask() const { return _modKeyMask; }
+
+        void setDefaultDragMode(const DragMode& mode) { _defaultMode = mode; }
+
+        DragMode& getDefaultDragMode() { return _defaultMode; }
+
+        void setVerticalMinimum(double min) { _verticalMinimum = min; }
+
+        double getVerticalMinimim() const { return _verticalMinimum; }
+
+
+        void updateTransform(osg::Node* patch = 0);
 
         virtual void enter();
 
         virtual void leave();
+
+        virtual void setColor( const osg::Vec4f& color ) =0;
+
+        virtual void setPickColor( const osg::Vec4f& color ) =0;
 
         void addPositionChangedCallback( PositionChangedCallback* callback );
 
@@ -65,23 +97,46 @@ namespace osgEarth
 
         virtual void traverse(osg::NodeVisitor& nv);        
 
+        virtual void reclamp( const TileKey& key, osg::Node* tile, const Terrain* terrain );
+
+
+    public: // MapNodeObserver
+
+        virtual void setMapNode( MapNode* mapNode );
+
+        virtual MapNode* getMapNode() { return _mapNode.get(); }
+
 
     protected:
         virtual bool handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& aa);
         void setHover( bool hovered);
+        void firePositionChanged();
 
-        osg::ref_ptr< osgEarth::MapNode > _mapNode;
+        osg::ref_ptr< TerrainCallback > _autoClampCallback;
+
+        osg::observer_ptr< MapNode > _mapNode;
         osgEarth::GeoPoint _position;
         bool _dragging;
         bool _hovered;
         PositionChangedCallbackList _callbacks;
+
+        osg::ref_ptr<  osgManipulator::LineProjector >  _projector;
+        osgManipulator::PointerInfo  _pointer;
+        osg::Vec3d _startProjectedPoint;
+        bool _elevationDragging;
+        int _modKeyMask;
+        DragMode _defaultMode;
+        double _verticalMinimum;
     };
 
     /**********************************************************/
     class OSGEARTH_EXPORT SphereDragger : public Dragger
     {
     public:
-        SphereDragger(osgEarth::MapNode* mapNode);
+        SphereDragger(MapNode* mapNode);
+
+        /** dtor */
+        virtual ~SphereDragger() { }
 
         const osg::Vec4f& getColor() const;
 

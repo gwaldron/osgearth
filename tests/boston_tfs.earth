@@ -1,0 +1,50 @@
+<!--
+osgEarth Sample.
+
+Demonstrates TFS feature source.
+-->
+
+<map name="Boston Demo" type="geocentric" version="2">
+    
+    <image name="ReadyMap.org - Imagery" driver="tms">
+        <url>http://readymap.org/readymap/tiles/1.0.0/22/</url>
+    </image>
+      
+    <model name="buildings" driver="feature_geom">
+             
+        <features name="buildings" driver="tfs">
+            <url>../data/tfs_boston.zip/layer/tfs.xml</url>
+            <format>json</format>
+        </features>
+        
+        <layout>
+            <tile_size_factor>10</tile_size_factor>
+        </layout>
+        
+        <styles>            
+            <style type="text/css">
+                buildings {
+                    extrusion-height:      3.5 * max([story_ht_], 1);
+                    extrusion-flatten:     true;
+                    fill:                  #7f7f7f;
+                    stroke:                #4f4f4f;
+                }
+            </style>
+        </styles>
+
+        <lighting>true</lighting>        
+    </model>
+    
+    
+    <options>
+        <lighting>false</lighting>
+    </options> 
+    
+    <external>
+        <viewpoints>
+            <viewpoint name="Boston Overview" heading="24.261" height="0" lat="42.34425" long="-71.076262" pitch="-21.6" range="3450"/>
+        </viewpoints>
+        <sky hours="21.0"/>
+    </external>
+  
+</map>

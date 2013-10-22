@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2008-2010 Pelican Mapping
+* Copyright 2008-2013 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -32,19 +32,17 @@ using namespace osgEarth::Features;
 using namespace osgEarth::Symbology;
 
 
-RectangleNode::RectangleNode(
-            MapNode*          mapNode,
-            const GeoPoint&   position,
-            const Linear&     width,
-            const Linear&     height,
-            const Style&      style,
-            bool              draped ) :
-LocalizedNode( mapNode, position, false ),
-_width( width ),
-_height( height ),
-_style( style ),
-_draped( draped )
-{       
+RectangleNode::RectangleNode(MapNode*          mapNode,
+                             const GeoPoint&   position,
+                             const Linear&     width,
+                             const Linear&     height,
+                             const Style&      style) :
+LocalizedNode( mapNode, position ),
+_width       ( width ),
+_height      ( height ),
+_style       ( style )
+{
+    _xform = new osg::MatrixTransform();
     rebuild();
 }
 
@@ -95,7 +93,6 @@ RectangleNode::setStyle( const Style& style )
     _style = style;
     rebuild();
 }
-
 
 
 GeoPoint
@@ -153,7 +150,7 @@ RectangleNode::getUpperRight() const
 void
 RectangleNode::setUpperRight( const GeoPoint& upperRight )
 {
-     GeoPoint center = getPosition();
+    GeoPoint center = getPosition();
 
     //Figure out the new width and height
     double earthRadius = center.getSRS()->getEllipsoid()->getRadiusEquator();
@@ -304,19 +301,19 @@ RectangleNode::getCorner( Corner corner ) const
 
     if (corner == CORNER_LOWER_LEFT)
     {
-        return GeoPoint(center.getSRS(), osg::RadiansToDegrees(westLon), osg::RadiansToDegrees(southLat), 0);
+        return GeoPoint(center.getSRS(), osg::RadiansToDegrees(westLon), osg::RadiansToDegrees(southLat), 0, ALTMODE_RELATIVE);
     }
     else if (corner == CORNER_LOWER_RIGHT)
     {
-        return GeoPoint(center.getSRS(), osg::RadiansToDegrees(eastLon), osg::RadiansToDegrees(southLat), 0);
+        return GeoPoint(center.getSRS(), osg::RadiansToDegrees(eastLon), osg::RadiansToDegrees(southLat), 0, ALTMODE_RELATIVE);
     }
     else if (corner == CORNER_UPPER_LEFT)
     {
-        return GeoPoint(center.getSRS(), osg::RadiansToDegrees(westLon), osg::RadiansToDegrees(northLat), 0);
+        return GeoPoint(center.getSRS(), osg::RadiansToDegrees(westLon), osg::RadiansToDegrees(northLat), 0, ALTMODE_RELATIVE);
     }
     else if (corner == CORNER_UPPER_RIGHT)
     {
-        return GeoPoint(center.getSRS(), osg::RadiansToDegrees(eastLon), osg::RadiansToDegrees(northLat), 0);
+        return GeoPoint(center.getSRS(), osg::RadiansToDegrees(eastLon), osg::RadiansToDegrees(northLat), 0, ALTMODE_RELATIVE);
     }
     return GeoPoint();
 }
@@ -337,11 +334,10 @@ RectangleNode::rebuild()
     std::string currentDecoration = getDecoration();
     clearDecoration();
 
-    //Remove all children from this node
-    removeChildren( 0, getNumChildren() );
-
-    //Remove all children from the attach point
-    getAttachPoint()->removeChildren( 0, getAttachPoint()->getNumChildren() );
+    // Reset:
+    osgEarth::clearChildren( this );
+    osgEarth::clearChildren( _xform.get() );
+    this->addChild( _xform.get() );
 
     // construct a local-origin circle.
     GeometryFactory factory;    
@@ -353,22 +349,12 @@ RectangleNode::rebuild()
         osg::Node* node = compiler.compile( feature.get(), _style, FilterContext(0L) );
         if ( node )
         {
-            getAttachPoint()->addChild( node );
-
-            if ( _draped )
-            {
-                DrapeableNode* drapeable = new DrapeableNode( _mapNode.get(), true );
-                drapeable->addChild( getAttachPoint() );
-                this->addChild( drapeable );
-            }
-
-            else
-            {
-                this->addChild( getAttachPoint() );
-            }
+            _xform->addChild( node );
+            replaceChild( _xform.get(), applyAltitudePolicy(_xform.get(), _style) );
         }
 
-        applyStyle( _style, _draped );
+        applyGeneralSymbology( _style );
+        setLightingIfNotSet( false );
     }
 
     setDecoration( currentDecoration );
@@ -381,18 +367,16 @@ RectangleNode::rebuild()
 OSGEARTH_REGISTER_ANNOTATION( rectangle, osgEarth::Annotation::RectangleNode );
 
 
-RectangleNode::RectangleNode(MapNode*      mapNode,
-                             const Config& conf ) :
-LocalizedNode( mapNode ),
-_draped      ( false )
+RectangleNode::RectangleNode(MapNode*              mapNode,
+                             const Config&         conf,
+                             const osgDB::Options* dbOptions) :
+LocalizedNode( mapNode, conf )
 {
+    _xform = new osg::MatrixTransform();
+
     conf.getObjIfSet( "width", _width );
     conf.getObjIfSet( "height", _height );
     conf.getObjIfSet( "style",  _style );
-    conf.getIfSet   ( "draped", _draped );
-
-    if ( conf.hasChild("position") )
-        setPosition( GeoPoint(conf.child("position")) );
 
     rebuild();
 }
@@ -400,14 +384,12 @@ _draped      ( false )
 Config
 RectangleNode::getConfig() const
 {
-    Config conf( "rectangle" );
+    Config conf = LocalizedNode::getConfig();
+    conf.key() = "rectangle";
+
     conf.addObj( "width",  _width );
     conf.addObj( "height", _height );
     conf.addObj( "style",  _style );
-    if ( _draped != false )
-        conf.add( "draped", _draped );
-
-    conf.addObj( "position", getPosition() );
 
     return conf;
 }

@@ -1,0 +1,65 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+* Copyright 2008-2012 Pelican Mapping
+* http://osgearth.org
+*
+* osgEarth is free software; you can redistribute it and/or modify
+* it under the terms of the GNU Lesser General Public License as published by
+* the Free Software Foundation; either version 2 of the License, or
+* (at your option) any later version.
+*
+* This program is distributed in the hope that it will be useful,
+* but WITHOUT ANY WARRANTY; without even the implied warranty of
+* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+* GNU Lesser General Public License for more details.
+*
+* You should have received a copy of the GNU Lesser General Public License
+* along with this program.  If not, see <http://www.gnu.org/licenses/>
+*/
+#ifndef OSGEARTHUTIL_VERTICAL_SCALE_H
+#define OSGEARTHUTIL_VERTICAL_SCALE_H
+
+#include <osgEarthUtil/Common>
+#include <osgEarth/TerrainEffect>
+#include <osg/Uniform>
+#include <osg/Node>
+#include <osg/observer_ptr>
+
+
+namespace osgEarth { namespace Util
+{
+    /**
+     * Terrain effect that scales the terrain height.
+     */
+    class OSGEARTHUTIL_EXPORT VerticalScale : public TerrainEffect
+    {
+    public:
+        /** construct a new vertical scaling controller */
+        VerticalScale();
+
+        /** Sets the scale factor. (1=default) */
+        void setScale( float value );
+        float getScale() const { return _scale.get(); }
+
+    public: // TerrainEffect interface
+
+        void onInstall(TerrainEngineNode* engine);
+        void onUninstall(TerrainEngineNode* engine);
+
+    public: // serialization
+
+        VerticalScale(const Config& conf);
+        void mergeConfig(const Config& conf);
+        virtual Config getConfig() const;
+
+    protected:
+        virtual ~VerticalScale() { }
+        void init();
+
+        optional<float>              _scale;
+        osg::ref_ptr<osg::Uniform>   _scaleUniform;
+    };
+
+} } // namespace osgEarth::Util
+
+#endif // OSGEARTHUTIL_VERTICAL_SCALE_H

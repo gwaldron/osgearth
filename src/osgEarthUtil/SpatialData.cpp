@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2010 Pelican Mapping
+ * Copyright 2008-2013 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -17,7 +17,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 #include <osgEarthUtil/SpatialData>
-#include <osgUtil/CullVisitor>
+#include <osgEarth/Registry>
+#include <osgEarth/CullingUtils>
 #include <osg/PolygonOffset>
 #include <osg/Polytope>
 #include <osg/Geometry>
@@ -44,8 +45,7 @@ namespace
 
         return row*xdim + col;
     }
-
-    static osgText::Font* s_font = 0L;
+    
 
     osg::Geode* makeClusterGeode( const GeoExtent& cellExtent, unsigned num )
     {
@@ -66,10 +66,8 @@ namespace
         t->setCharacterSizeMode( osgText::TextBase::SCREEN_COORDS );
         t->setCharacterSize( 22.0f );
         t->setAutoRotateToScreen( true );
-
-        if ( !s_font )
-            s_font = osgText::readFontFile( "arialbd.ttf" );
-        t->setFont( s_font );
+        
+        t->setFont( osgEarth::Registry::instance()->getDefaultFont() );
 
         t->setBackdropType( osgText::Text::OUTLINE );
         t->setColor( osg::Vec4(1,1,1,1) );
@@ -249,6 +247,7 @@ void
 GeoCell::generateBoundaryGeometry()
 {
     osg::Geometry* g = new osg::Geometry();
+    g->setUseVertexBufferObjects(true);
 
     osg::Vec3Array* v = new osg::Vec3Array(10);
     for( unsigned i=0; i<10; ++i )
@@ -319,7 +318,7 @@ GeoCell::traverse( osg::NodeVisitor& nv )
 
             // custom BSP culling function. this checks that the set of boundary points
             // for this cell intersects the viewing frustum.
-            osgUtil::CullVisitor* cv = dynamic_cast<osgUtil::CullVisitor*>( &nv );
+            osgUtil::CullVisitor* cv = Culling::asCullVisitor(nv);
             if ( cv && !intersects( cv->getCurrentCullingSet().getFrustum() ) )
             {
                 return;
@@ -359,23 +358,7 @@ GeoCell::adjustCount( int delta )
 
     if ( _depth > 0 && getNumParents() > 0 )
     {
-        static_cast<GeoCell*>(getParent(0))->adjustCount( delta );        
-
-#if 0
-        if ( !_clusterGeode.valid() )
-        {
-            _clusterGeode = makeClusterGeode( _extent, _count );
-        }
-        else
-        {
-            osgText::Text* t = static_cast<osgText::Text*>( _clusterGeode->getDrawable(0) );
-            std::stringstream buf;
-            buf << _count;
-            std::string str;
-            str = buf.str();
-            t->setText( str );
-        }
-#endif
+        static_cast<GeoCell*>(getParent(0))->adjustCount( delta );
     }
 }
 
@@ -515,38 +498,3 @@ GeoCell::reindexObject( GeoObject* object )
         return insertObject( object );
     }
 }
-
-#if 0
-bool
-GeoCell::reindex( GeoObject* object )
-{
-    osg::Vec3d location;
-    if ( object->getLocation(location) && !_extent.contains(location.x(), location.y()) )
-    {
-        // first remove from its current cell
-        osg::ref_ptr<GeoCell> safeCell = object->_cell.get();
-        if ( safeCell.valid() )
-        {
-            object->_cell = 0L;
-            safeCell->_objects.erase( findObject(safeCell->_objects, object) );
-            //safeCell->_objects.erase( std::find( _objects.begin(), _objects.end(), std::make_pair(object->getPriority(),object) ) );
-            //safeCell->_objects.erase( std::find( safeCell->_objects.begin(), safeCell->_objects.end(), object ) );
-            safeCell->adjustCount( -1 );
-            //safeCell->removeObject( object );
-        }
-
-        GeoCell* cell = dynamic_cast<GeoCell*>( this->getParent(0) );
-        while( cell )
-        {
-            if ( cell->getExtent().contains(location.x(), location.y()) )
-            {
-                if ( cell->insertObject( object ) )
-                    return true;
-            }
-            cell = dynamic_cast<GeoCell*>( cell->getParent(0) );
-        }
-    }
-
-    return true;
-}
-#endif

@@ -1,0 +1,65 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+ * Copyright 2008-2013 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+#ifndef OSGEARTHUTIL_HSL_COLOR_FILTER
+#define OSGEARTHUTIL_HSL_COLOR_FILTER
+
+#include <osgEarthUtil/Common>
+#include <osgEarth/ColorFilter>
+#include <osg/Uniform>
+
+namespace osgEarth { namespace Util
+{
+    using namespace osgEarth;
+
+    /**
+     * Color filter that adjust the hue/saturation/lightness of a texel.
+     */
+    class OSGEARTHUTIL_EXPORT HSLColorFilter : public ColorFilter
+    {
+    public:
+        HSLColorFilter();
+        HSLColorFilter(const Config& conf);
+
+        virtual ~HSLColorFilter() { }
+
+        /**
+         * The hue/saturation/lightness offset, each component is [0..1]
+         */
+        void setHSLOffset( const osg::Vec3f& hsl );
+        osg::Vec3f getHSLOffset() const;
+
+    public: // ColorFilter
+
+        virtual std::string getEntryPointFunctionName() const;
+
+        virtual void install( osg::StateSet* stateSet ) const;
+
+        virtual Config getConfig() const;
+
+    protected:
+
+        unsigned                   _instanceId;
+        osg::ref_ptr<osg::Uniform> _hsl;
+
+        void init();
+    };
+
+} } // namespace osgEarth::Util
+
+#endif // OSGEARTHUTIL_HSL_COLOR_FILTER

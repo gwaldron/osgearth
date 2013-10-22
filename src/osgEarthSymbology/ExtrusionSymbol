@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2010 Pelican Mapping
+ * Copyright 2008-2013 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -49,7 +49,12 @@ namespace osgEarth { namespace Symbology
         };
 
     public:
+        META_Symbol(ExtrusionSymbol);
+
         ExtrusionSymbol( const Config& conf =Config() );
+
+        /** dtor */
+        virtual ~ExtrusionSymbol() { }
 
         /** Height to which to extrude geometry above the footprint (for HEIGHT_REFERENCE_Z)
             or above MSL (for HEIGHT_REFERENCE_MSL) */
@@ -76,10 +81,16 @@ namespace osgEarth { namespace Symbology
         /** Name of a style describing how to symbolize the elevated rooftop */
         optional<std::string>& roofStyleName() { return _roofStyleName; }
         const optional<std::string>& roofStyleName() const { return _roofStyleName; }
+
+        /** Percentage by which to darken the color of the bottom of the walls relative
+            to the main wall color (default = 0.0, range = [0..1]) */
+        optional<float>& wallGradientPercentage() { return _wallGradientPercentage; }
+        const optional<float>& wallGradientPercentage() const { return _wallGradientPercentage; }
         
     public:
         virtual Config getConfig() const;
         virtual void mergeConfig( const Config& conf );
+        static void parseSLD(const Config& c, class Style& style);
 
     protected:
         optional<float>             _height;
@@ -88,6 +99,7 @@ namespace osgEarth { namespace Symbology
         optional<HeightReference>   _heightRef;
         optional<std::string>       _wallStyleName;
         optional<std::string>       _roofStyleName;
+        optional<float>             _wallGradientPercentage;
     };
 
 } } // namespace osgEarth::Symbology

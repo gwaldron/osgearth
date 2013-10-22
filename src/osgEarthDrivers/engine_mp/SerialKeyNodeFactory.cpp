@@ -169,7 +169,8 @@ osg::Node*
 SerialKeyNodeFactory::createRootNode( const TileKey& key )
 {
     osg::ref_ptr<TileModel> model;
-    //bool                    real;
+
+    _frame.sync();
 
     _modelFactory->createTileModel( key, _frame, model );
     return createTile( model.get(), true );

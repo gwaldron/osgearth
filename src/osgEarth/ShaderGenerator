@@ -76,6 +76,8 @@ namespace osgEarth
 
         void apply( osg::ProxyNode& );
 
+        void apply( osg::ClipNode& );
+
     protected:
 
         void apply( osg::Drawable* );

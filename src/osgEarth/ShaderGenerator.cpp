@@ -33,6 +33,7 @@
 #include <osg/TextureRectangle>
 #include <osg/TexEnv>
 #include <osg/TexGen>
+#include <osg/ClipNode>
 #include <osgDB/FileNameUtils>
 #include <osgDB/FileUtils>
 #include <osgDB/ReadFile>
@@ -354,11 +355,30 @@ ShaderGenerator::apply(osg::ProxyNode& node)
 }
 
 
+void
+ShaderGenerator::apply(osg::ClipNode& node)
+{
+    static const char* s_clip_source =
+        "#version " GLSL_VERSION_STR "\n"
+        "void sg_set_clipvertex(inout vec4 vertexVIEW)\n"
+        "{\n"
+        "    gl_ClipVertex = vertexVIEW; \n"
+        "}\n";
+
+    if ( !_active ) return;
+
+    VirtualProgram* vp = VirtualProgram::getOrCreate(node.getOrCreateStateSet());
+    vp->setFunction( "sg_set_clipvertex", s_clip_source, ShaderComp::LOCATION_VERTEX_VIEW );
+
+    apply( static_cast<osg::Group&>(node) );
+}
+
+
 bool
 ShaderGenerator::processText( osg::StateSet* ss, osg::ref_ptr<osg::StateSet>& replacement )
 {
     // do nothing if there's no GLSL support
-    if ( !Registry::capabilities().supportsGLSL() )
+    if ( !_active )
         return false;
 
     // State object with extra accessors:
@@ -411,7 +431,7 @@ bool
 ShaderGenerator::processGeometry( osg::StateSet* ss, osg::ref_ptr<osg::StateSet>& replacement )
 {
     // do nothing if there's no GLSL support
-    if ( !Registry::capabilities().supportsGLSL() )
+    if ( !_active )
         return false;
 
     // State object with extra accessors:
@@ -642,11 +662,6 @@ ShaderGenerator::processGeometry( osg::StateSet* ss, osg::ref_ptr<osg::StateSet>
     {
         replacement = _defaultStateSet.get();
     }
-
-    //if ( vp.valid() )
-    //    replacement->setAttributeAndModes( vp.get(), osg::StateAttribute::ON );
-    //else
-    //    replacement->setAttributeAndModes( _defaultVP.get(), osg::StateAttribute::ON );
 
     return replacement.valid();
 }

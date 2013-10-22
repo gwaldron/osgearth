@@ -518,6 +518,7 @@ VirtualProgram::removeBindAttribLocation( const std::string& name )
 void
 VirtualProgram::compileGLObjects(osg::State& state) const
 {
+#if 0
   Threading::ScopedWriteLock exclusive( _programCacheMutex );
 
   for (ProgramMap::const_iterator i = _programCache.begin();
@@ -525,6 +526,7 @@ VirtualProgram::compileGLObjects(osg::State& state) const
   {
     i->second->compileGLObjects(state);
   }
+#endif
 }
 
 void

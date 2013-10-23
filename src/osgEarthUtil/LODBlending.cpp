@@ -193,6 +193,7 @@ LODBlending::onInstall(TerrainEngineNode* engine)
         stateset->addUniform( _vscaleUniform.get() );
 
         VirtualProgram* vp = VirtualProgram::getOrCreate(stateset);
+        vp->setName( "osgEarth::Util::LODBlending" );
         vp->setFunction( "oe_lodblend_vertex",   vs, ShaderComp::LOCATION_VERTEX_MODEL );
         vp->setFunction( "oe_lodblend_fragment", fs, ShaderComp::LOCATION_FRAGMENT_COLORING );
     }

@@ -24,7 +24,6 @@
 #include <osgEarth/ImageUtils>
 #include <osgEarth/Registry>
 #include <osgEarth/Capabilities>
-#include <osgEarth/ShaderGenerator>
 #include <osgEarth/Utils>
 #include <osg/Geode>
 #include <osg/Geometry>

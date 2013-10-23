@@ -27,6 +27,7 @@
 #include <osg/State>
 #include <osg/Notify>
 #include <sstream>
+#include <OpenThreads/Thread>
 
 #define LC "[VirtualProgram] "
 
@@ -518,21 +519,15 @@ VirtualProgram::removeBindAttribLocation( const std::string& name )
 void
 VirtualProgram::compileGLObjects(osg::State& state) const
 {
-#if 0
-  Threading::ScopedWriteLock exclusive( _programCacheMutex );
-
-  for (ProgramMap::const_iterator i = _programCache.begin();
-    i != _programCache.end(); ++i)
-  {
-    i->second->compileGLObjects(state);
-  }
-#endif
+    //nop - precompilation not required
 }
 
 void
 VirtualProgram::resizeGLObjectBuffers(unsigned maxSize)
 {
   Threading::ScopedWriteLock exclusive( _programCacheMutex );
+
+//  OE_WARN << LC << "Resize VP " << getName() << std::endl;
 
   for (ProgramMap::iterator i = _programCache.begin();
     i != _programCache.end(); ++i)
@@ -545,6 +540,8 @@ void
 VirtualProgram::releaseGLObjects(osg::State* state) const
 {
   Threading::ScopedWriteLock exclusive( _programCacheMutex );
+
+//  OE_WARN << LC << "Release VP " << getName() << std::endl;
 
   for (ProgramMap::const_iterator i = _programCache.begin();
     i != _programCache.end(); ++i)
@@ -887,6 +884,13 @@ VirtualProgram::apply( osg::State& state ) const
         if ( program.valid() )
         {
             program->apply( state );
+
+#if 0 // test code for detecting race conditions
+            for(int i=0; i<10000; ++i) {
+                state.setLastAppliedProgramObject(0L);
+                program->apply( state );
+            }
+#endif
         }
     }
 }

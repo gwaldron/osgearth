@@ -198,10 +198,10 @@ osg::NodeVisitor( osg::NodeVisitor::TRAVERSE_ALL_CHILDREN )
     {
         _state = new StateEx();
         _stateSetCache = 0L;
-        _defaultVP = new VirtualProgram();
+        VirtualProgram* vp = new VirtualProgram();
+        vp->setName( "osgEarth::ShaderGenerator" );
+        setVirtualProgramTemplate( vp );
         Registry::instance()->getShaderFactory()->installLightingShaders( _defaultVP.get() );
-        _defaultStateSet = new osg::StateSet();
-        _defaultStateSet->setAttributeAndModes( _defaultVP.get(), osg::StateAttribute::ON );
     }
 }
 
@@ -215,7 +215,9 @@ osg::NodeVisitor( osg::NodeVisitor::TRAVERSE_ALL_CHILDREN )
         _state = new StateEx();
         _stateSetCache = cache;
         _defaultStateSet = new osg::StateSet();
-        setVirtualProgramTemplate( new VirtualProgram() );
+        VirtualProgram* vp = new VirtualProgram();
+        vp->setName( "osgEarth::ShaderGenerator" );
+        setVirtualProgramTemplate( vp );
         Registry::instance()->getShaderFactory()->installLightingShaders( _defaultVP.get() );
     }
 }
@@ -368,6 +370,7 @@ ShaderGenerator::apply(osg::ClipNode& node)
     if ( !_active ) return;
 
     VirtualProgram* vp = VirtualProgram::getOrCreate(node.getOrCreateStateSet());
+    if ( vp->referenceCount() == 1 && _defaultVP.valid() ) vp->setName( _defaultVP->getName() );
     vp->setFunction( "sg_set_clipvertex", s_clip_source, ShaderComp::LOCATION_VERTEX_VIEW );
 
     apply( static_cast<osg::Group&>(node) );

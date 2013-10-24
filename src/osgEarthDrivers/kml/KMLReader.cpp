@@ -21,7 +21,6 @@
 #include <osgEarth/Registry>
 #include <osgEarth/Capabilities>
 #include <osgEarth/XmlUtils>
-#include <osgEarth/ShaderGenerator>
 #include <osgEarth/VirtualProgram>
 #include <osgEarth/Decluttering>
 #include <stack>

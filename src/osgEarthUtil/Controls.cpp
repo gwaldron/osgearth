@@ -86,6 +86,18 @@ namespace
         out.y() = (c.y()-y)*cosa + (c.x()-x)*sina + c.y();
         out.z() = 0.0f;
     }
+
+    // Convenience method to create safe Control geometry.
+    // Since Control geometry can change, we need to always set it
+    // to DYNAMIC data variance.
+    osg::Geometry* newGeometry()
+    {
+        osg::Geometry* geom = new osg::Geometry();
+        geom->setUseVertexBufferObjects( true );
+        geom->setUseDisplayList( false );
+        geom->setDataVariance( osg::Object::DYNAMIC );
+        return geom;
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -581,8 +593,7 @@ Control::draw(const ControlContext& cx)
 
             // draw the background poly:
             {
-                _geom = new osg::Geometry();
-                _geom->setUseVertexBufferObjects(true);
+                _geom = newGeometry();
 
                 float rx = _renderPos.x() - padding().left();
                 float ry = _renderPos.y() - padding().top();
@@ -676,6 +687,7 @@ namespace
     // override osg Text to get at some of the internal properties
     struct LabelText : public osgText::Text
     {
+        LabelText() : osgText::Text() { setDataVariance(osg::Object::DYNAMIC); }
         const osg::BoundingBox& getTextBB() const { return _textBB; }
         const osg::Matrix& getATMatrix(int contextID) const { return _autoTransformCache[contextID]._matrix; }
     };
@@ -924,7 +936,6 @@ LabelControl::draw( const ControlContext& cx )
         osg::BoundingBox bbox = t->getTextBB();
         t->setPosition( osg::Vec3( _renderPos.x(), vph - _renderPos.y(), 0 ) );
         getGeode()->addDrawable( _drawable.get() );
-        //out.push_back( _drawable.get() );
     }
 }
 
@@ -1063,8 +1074,7 @@ ImageControl::draw( const ControlContext& cx )
     if ( visible() && parentIsVisible() && _image.valid() )
     {
         //TODO: this is not precisely correct..images get deformed slightly..
-        osg::Geometry* g = new osg::Geometry();
-        g->setUseVertexBufferObjects(true);
+        osg::Geometry* g = newGeometry();
 
         float rx = osg::round( _renderPos.x() );
         float ry = osg::round( _renderPos.y() );
@@ -1227,8 +1237,7 @@ HSliderControl::draw( const ControlContext& cx )
 
     if ( visible() == true && parentIsVisible())
     {
-        osg::ref_ptr<osg::Geometry> g = new osg::Geometry();
-        g->setUseVertexBufferObjects(true);
+        osg::ref_ptr<osg::Geometry> g = newGeometry();
 
         float rx = osg::round( _renderPos.x() );
         float ry = osg::round( _renderPos.y() );
@@ -1339,8 +1348,7 @@ CheckBoxControl::draw( const ControlContext& cx )
 
     if ( visible() == true && parentIsVisible() )
     {
-        osg::Geometry* g = new osg::Geometry();
-        g->setUseVertexBufferObjects(true);
+        osg::Geometry* g = newGeometry();
 
         float rx = osg::round( _renderPos.x() );
         float ry = osg::round( _renderPos.y() );
@@ -2824,6 +2832,7 @@ ControlCanvas::update( const osg::FrameStamp* frameStamp )
     // just do it on add/remove controls; but that's an optimization for later
     ShaderGenerator shaderGen( new StateSetCache() );
     VirtualProgram* temp = new VirtualProgram();
+    temp->setName("osgEarth::ControlCanvas");
     temp->setInheritShaders( true );
     shaderGen.setVirtualProgramTemplate( temp );
     this->accept( shaderGen );

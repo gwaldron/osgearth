@@ -42,7 +42,9 @@ namespace
     //
     // Caveats: You can still fake out the morph by zooming around very quickly.
     // Also, it will only morph properly if you use odd-numbers post spacings
-    // in your terrain tile. (See MapOptions::elevation_tile_size).
+    // in your terrain tile. (See MapOptions::elevation_tile_size). Finally,
+    // a large PAGEDLOD cache will negate the blending effect when zooming out
+    // and then back in. See MPGeometry.
 
     const char* vs =
         "#version " GLSL_VERSION_STR "\n"

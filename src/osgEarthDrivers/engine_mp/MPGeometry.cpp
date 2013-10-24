@@ -46,7 +46,7 @@ _imageUnit       ( imageUnit )
 
     // establish uniform name IDs.
     _tileKeyUniformNameID      = osg::Uniform::getNameID( "oe_tile_key" );
-    _birthTimeUniformNameID    = osg::Uniform::getNameID( "ot_tile_birthtime" );
+    _birthTimeUniformNameID    = osg::Uniform::getNameID( "oe_tile_birthtime" );
     _uidUniformNameID          = osg::Uniform::getNameID( "oe_layer_uid" );
     _orderUniformNameID        = osg::Uniform::getNameID( "oe_layer_order" );
     _opacityUniformNameID      = osg::Uniform::getNameID( "oe_layer_opacity" );
@@ -120,19 +120,17 @@ MPGeometry::renderPrimitiveSets(osg::State& state,
         ext->glUniform4fv( tileKeyLocation, 1, _tileKeyValue.ptr() );
     }
 
-    // update the "birth time" - i.e. the time this tile last entered the scene in the current GC:
+    // set the "birth time" - i.e. the time this tile last entered the scene in the current GC.
     if ( birthTimeLocation >= 0 )
     {
         PerContextData& pcd = _pcd[contextID];
-        const osg::FrameStamp* stamp = state.getFrameStamp();
-        if ( stamp )
+        if ( pcd.birthTime < 0.0f )
         {
-            unsigned frame = stamp->getFrameNumber();
-            if ( (frame - pcd.lastFrame) > 1 || pcd.birthTime < 0.0f )
+            const osg::FrameStamp* stamp = state.getFrameStamp();
+            if ( stamp )
             {
                 pcd.birthTime = stamp->getReferenceTime();
             }
-            pcd.lastFrame = frame;
         }
         ext->glUniform1f( birthTimeLocation, pcd.birthTime );
     }

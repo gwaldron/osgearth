@@ -325,14 +325,6 @@ namespace
         d.surface->setNormalArray( d.normals );
         d.surface->setNormalBinding( osg::Geometry::BIND_PER_VERTEX );
 
-#if 0
-        // allocate and assign color
-        osg::Vec4Array* colors = new osg::Vec4Array(1);
-        (*colors)[0] = color;
-        d.surface->setColorArray( colors );
-        d.surface->setColorBinding( osg::Geometry::BIND_OVERALL );
-#endif
-
         // vertex attribution
         // for each vertex, a vec4 containing a unit extrusion vector in [0..2] and the raw elevation in [3]
         d.surfaceAttribs = new osg::Vec4Array();
@@ -1209,36 +1201,6 @@ namespace
         {
             d.surface->addPrimitiveSet( elements.get() );
         }
-
-#if 0
-        d.skirt->setVertexArray( skirtVerts );
-        if ( skirtVerts->getVertexBufferObject() )
-            skirtVerts->getVertexBufferObject()->setUsage(GL_STATIC_DRAW_ARB);
-
-        d.skirt->setNormalArray( skirtNormals );
-        d.skirt->setNormalBinding( osg::Geometry::BIND_PER_VERTEX );
-
-        if ( d.surface->getColorArray() )
-        {
-            d.skirt->setColorArray( d.surface->getColorArray() );
-            d.skirt->setColorBinding( osg::Geometry::BIND_OVERALL );
-        }
-
-        d.skirt->setVertexAttribArray    (osg::Drawable::ATTRIBUTE_6, skirtAttribs );
-        d.skirt->setVertexAttribBinding  (osg::Drawable::ATTRIBUTE_6, osg::Geometry::BIND_PER_VERTEX);
-        d.skirt->setVertexAttribNormalize(osg::Drawable::ATTRIBUTE_6, false);
-
-        d.skirt->setVertexAttribArray    (osg::Drawable::ATTRIBUTE_7, skirtAttribs2 );
-        d.skirt->setVertexAttribBinding  (osg::Drawable::ATTRIBUTE_7, osg::Geometry::BIND_PER_VERTEX);
-        d.skirt->setVertexAttribNormalize(osg::Drawable::ATTRIBUTE_7, false);
-
-        //Add a primative set for each continuous skirt strip
-        skirtBreaks.push_back(skirtVerts->size());
-        for (int p=1; p < (int)skirtBreaks.size(); p++)
-        {
-            d.skirt->addPrimitiveSet( new osg::DrawArrays( GL_TRIANGLE_STRIP, skirtBreaks[p-1], skirtBreaks[p] - skirtBreaks[p-1] ) );
-        }
-#endif
     }
 
 
@@ -1755,7 +1717,7 @@ namespace
     }
 
 
-    void installRenderData( Data& d, const osg::Vec4& color )
+    void installRenderData( Data& d )
     {
         // pre-size all vectors:
         unsigned size = d.renderLayers.size();
@@ -1767,12 +1729,6 @@ namespace
         
         if ( d.renderTileCoords )
             d.surface->_tileCoords = d.renderTileCoords;
-
-        // install the color array now that geometry creation is complete
-        osg::Vec4Array* colors = new osg::Vec4Array( d.surface->getVertexArray()->getNumElements() );
-        std::fill( colors->begin(), colors->end(), color );
-        d.surface->setColorArray( colors );
-        d.surface->setColorBinding( osg::Geometry::BIND_PER_VERTEX );
 
         // install the render data for each layer:
         for( RenderLayerVector::const_iterator r = d.renderLayers.begin(); r != d.renderLayers.end(); ++r )
@@ -1813,6 +1769,38 @@ namespace
                 layer._tileCoords = d.stitchTileCoords.get();
             }
         }
+    }
+
+
+    // Optimize the data. Convert all modes to GL_TRIANGLES and run the
+    // critical vertex cache optimizations. For optimization to work, all
+    // the arrays must be in the geometry. MP doesn't store texture coords
+    // in the geometry so we need to temporarily add them.
+    void optimize( Data& d, const osg::Vec4& color )
+    {
+        int u=0;
+        for( RenderLayerVector::const_iterator r = d.renderLayers.begin(); r != d.renderLayers.end(); ++r )
+        {
+            if ( r->_ownsTexCoords && r->_texCoords.valid() )
+                d.surface->setTexCoordArray(u++, r->_texCoords.get() );
+            if ( r->_stitchTexCoords.valid() )
+                d.surface->setTexCoordArray(u++, r->_stitchTexCoords.get() );
+        }
+        if ( d.renderTileCoords )
+            d.surface->setTexCoordArray(u++, d.renderTileCoords);
+
+        osgUtil::Optimizer o;
+        o.optimize( d.surfaceGeode, 
+            osgUtil::Optimizer::VERTEX_PRETRANSFORM |
+            osgUtil::Optimizer::INDEX_MESH |
+            osgUtil::Optimizer::VERTEX_POSTTRANSFORM );
+
+        d.surface->getTexCoordArrayList().clear();
+
+        // install the color array now that geometry creation is complete
+        osg::Vec4Array* colors = new osg::Vec4Array(1);
+        (*colors)[0] = color;
+        d.surface->setColorBinding( osg::Geometry::BIND_OVERALL );
     }
 
 
@@ -1908,30 +1896,10 @@ TileModelCompiler::compile(const TileModel* model,
     tessellateSurfaceGeometry( d, _optimizeTriOrientation, *_options.normalizeEdges() );
 
     // installs the per-layer rendering data into the Geometry objects.
-    installRenderData( d, *_options.color() );
+    installRenderData( d );
 
-    // Optimize the data. Convert all modes to GL_TRIANGLES and run the
-    // critical vertex cache optimizations. For optimization to work, all
-    // the arrays must be in the geometry. MP doesn't store texture coords
-    // in the geometry so we need to temporarily add them.
-    int u=0;
-    for( RenderLayerVector::const_iterator r = d.renderLayers.begin(); r != d.renderLayers.end(); ++r )
-    {
-        if ( r->_ownsTexCoords && r->_texCoords.valid() )
-            d.surface->setTexCoordArray(u++, r->_texCoords.get() );
-        if ( r->_stitchTexCoords.valid() )
-            d.surface->setTexCoordArray(u++, r->_stitchTexCoords.get() );
-    }
-    if ( d.renderTileCoords )
-        d.surface->setTexCoordArray(u++, d.renderTileCoords);
-
-    osgUtil::Optimizer o;
-    o.optimize( tile, 
-        osgUtil::Optimizer::VERTEX_PRETRANSFORM |
-        osgUtil::Optimizer::INDEX_MESH |
-        osgUtil::Optimizer::VERTEX_POSTTRANSFORM );
-
-    d.surface->getTexCoordArrayList().clear();
+    // performance optimizations.
+    optimize( d, *_options.color() );
 
 #if 0 // this is covered by the opt above.
     // convert mask geometry to tris.

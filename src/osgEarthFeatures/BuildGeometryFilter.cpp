@@ -418,10 +418,21 @@ BuildGeometryFilter::push( FeatureList& input, FilterContext& context )
     // convert all geom to triangles and consolidate into minimal set of Geometries
     if ( !_featureNameExpr.isSet() )
     {
+#if 1
         MeshConsolidator::run( *_geode.get() );
 
         VertexCacheOptimizer vco;
         _geode->accept( vco );
+#else
+        //TODO: try this -- issues: it won't work on lines, and will it screw up
+        // feature indexing?
+        osgUtil::Optimizer o;
+        o.optimize( _geode.get(),
+            osgUtil::Optimizer::MERGE_GEOMETRY |
+            osgUtil::Optimizer::VERTEX_PRETRANSFORM |
+            osgUtil::Optimizer::INDEX_MESH |
+            osgUtil::Optimizer::VERTEX_POSTTRANSFORM );
+#endif
     }
 
     osg::Node* result = 0L;

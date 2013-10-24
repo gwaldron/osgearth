@@ -709,7 +709,7 @@ MPTerrainEngineNode::updateShaders()
             "    } \n"
             "    else \n"
             "        texel = color; \n"
-            "    if (oe_layer_order == 0 ) \n"
+            "    if (__OE_BLENDING_DISABLED__ && oe_layer_order == 0 ) \n"
             "        color = texel*texel.a + color*(1.0-texel.a); \n" // simulate src_alpha, 1-src_alpha blens
             "    else \n"
             "        color = texel; \n"
@@ -735,7 +735,7 @@ MPTerrainEngineNode::updateShaders()
             "        texelpma = color * color.a * oe_layer_opacity; \n" // to PMA.
 
             // first layer must PMA-blend with the globe color.
-            "    if (oe_layer_order == 0) { \n"
+            "    if (__OE_BLENDING_DISABLED__ && oe_layer_order == 0) { \n"
             "        color.rgb *= color.a; \n"
             "        color = texelpma + color*(1.0-texelpma.a); \n" // simulate one, 1-src_alpha blend
             "    } \n"
@@ -761,6 +761,12 @@ MPTerrainEngineNode::updateShaders()
         // image unit:
         replaceIn( vs, "__GL_MULTITEXCOORD1__", Stringify() << "gl_MultiTexCoord" << _primaryUnit );
         replaceIn( vs, "__GL_MULTITEXCOORD2__", Stringify() << "gl_MultiTexCoord" << _secondaryUnit );
+
+        // Disable the special handling of layer 0 if blending is enabled.  This allows us to look underground if you turn the transparency of the base layer down.
+        bool blendingDisabled = !_terrainOptions.enableBlending().value();
+        replaceIn( fs_pma, "__OE_BLENDING_DISABLED__", toString(blendingDisabled));
+        replaceIn( fs, "__OE_BLENDING_DISABLED__", toString(blendingDisabled));
+
 
         vp->setFunction( "oe_mp_setup_coloring", vs, ShaderComp::LOCATION_VERTEX_MODEL, 0.0 );
 

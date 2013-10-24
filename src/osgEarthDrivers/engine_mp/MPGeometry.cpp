@@ -46,16 +46,14 @@ _imageUnit       ( imageUnit )
 
     // establish uniform name IDs.
     _tileKeyUniformNameID      = osg::Uniform::getNameID( "oe_tile_key" );
+    _birthTimeUniformNameID    = osg::Uniform::getNameID( "ot_tile_birthtime" );
     _uidUniformNameID          = osg::Uniform::getNameID( "oe_layer_uid" );
     _orderUniformNameID        = osg::Uniform::getNameID( "oe_layer_order" );
     _opacityUniformNameID      = osg::Uniform::getNameID( "oe_layer_opacity" );
     _texMatParentUniformNameID = osg::Uniform::getNameID( "oe_layer_parent_matrix" );
 
-    // Temporary solution to the OverlayDecorator techniques' inappropriate setting of
-    // uniform values during the CULL traversal, which causes corruption of the RTT 
-    // camera matricies when DRAW overlaps the next frame's CULL. Please see my comments
-    // in DrapingTechnique.cpp for more information.
-    this->setDataVariance( osg::Object::DYNAMIC );
+    this->setUseVertexBufferObjects(true);
+    this->setUseDisplayList(false);
 }
 
 
@@ -91,12 +89,14 @@ MPGeometry::renderPrimitiveSets(osg::State& state,
 
 
     // access the GL extensions interface for the current GC:
-    osg::ref_ptr<osg::GL2Extensions> ext = osg::GL2Extensions::Get( state.getContextID(), true );
+    unsigned contextID = state.getContextID();
+    osg::ref_ptr<osg::GL2Extensions> ext = osg::GL2Extensions::Get( contextID, true );
     const osg::Program::PerContextProgram* pcp = state.getLastAppliedProgramObject();
 
     // cannot store these in the object since there could be multiple GCs (and multiple
     // PerContextPrograms) at large
     GLint tileKeyLocation;
+    GLint birthTimeLocation;
     GLint opacityLocation;
     GLint uidLocation;
     GLint orderLocation;
@@ -107,6 +107,7 @@ MPGeometry::renderPrimitiveSets(osg::State& state,
     if ( pcp )
     {
         tileKeyLocation      = pcp->getUniformLocation( _tileKeyUniformNameID );
+        birthTimeLocation    = pcp->getUniformLocation( _birthTimeUniformNameID );
         opacityLocation      = pcp->getUniformLocation( _opacityUniformNameID );
         uidLocation          = pcp->getUniformLocation( _uidUniformNameID );
         orderLocation        = pcp->getUniformLocation( _orderUniformNameID );
@@ -114,7 +115,27 @@ MPGeometry::renderPrimitiveSets(osg::State& state,
     }
     
     // apply the tilekey uniform once.
-    ext->glUniform4fv( tileKeyLocation, 1, _tileKeyValue.ptr() );
+    if ( tileKeyLocation >= 0 )
+    {
+        ext->glUniform4fv( tileKeyLocation, 1, _tileKeyValue.ptr() );
+    }
+
+    // update the "birth time" - i.e. the time this tile last entered the scene in the current GC:
+    if ( birthTimeLocation >= 0 )
+    {
+        PerContextData& pcd = _pcd[contextID];
+        const osg::FrameStamp* stamp = state.getFrameStamp();
+        if ( stamp )
+        {
+            unsigned frame = stamp->getFrameNumber();
+            if ( (frame - pcd.lastFrame) > 1 || pcd.birthTime < 0.0f )
+            {
+                pcd.birthTime = stamp->getReferenceTime();
+            }
+            pcd.lastFrame = frame;
+        }
+        ext->glUniform1f( birthTimeLocation, pcd.birthTime );
+    }
 
     // activate the tile coordinate set - same for all layers
     state.setTexCoordPointer( _imageUnit+1, _tileCoords.get() );
@@ -150,12 +171,8 @@ MPGeometry::renderPrimitiveSets(osg::State& state,
         int activeImageUnit = -1;
 
         // interate over all the image layers
-        //glDepthMask(GL_TRUE);
         for(unsigned i=0; i<_layers.size(); ++i)
         {
-          //  if ( i > 0 )
-            //    glDepthMask(GL_FALSE);
-
             const Layer& layer = _layers[i];
 
             if ( layer._imageLayer->getVisible() )
@@ -171,7 +188,7 @@ MPGeometry::renderPrimitiveSets(osg::State& state,
                 layer._tex->apply( state );
 
                 // if we're using a parent texture for blending, activate that now
-                if ( layer._texParent.valid() )
+                if ( texMatParentLocation >= 0 && layer._texParent.valid() )
                 {
                     state.setActiveTextureUnit( _imageUnitParent );
                     activeImageUnit = _imageUnitParent;
@@ -187,21 +204,30 @@ MPGeometry::renderPrimitiveSets(osg::State& state,
                 if ( pcp )
                 {
                     // apply opacity:
-                    float opacity = layer._imageLayer->getOpacity();
-                    if ( opacity != prev_opacity )
+                    if ( opacityLocation >= 0 )
                     {
-                        ext->glUniform1f( opacityLocation, (GLfloat)opacity );
-                        prev_opacity = opacity;
+                        float opacity = layer._imageLayer->getOpacity();
+                        if ( opacity != prev_opacity )
+                        {
+                            ext->glUniform1f( opacityLocation, (GLfloat)opacity );
+                            prev_opacity = opacity;
+                        }
                     }
 
                     // assign the layer UID:
-                    ext->glUniform1i( uidLocation, (GLint)layer._layerID );
+                    if ( uidLocation >= 0 )
+                    {
+                        ext->glUniform1i( uidLocation, (GLint)layer._layerID );
+                    }
 
                     // assign the layer order:
-                    ext->glUniform1i( orderLocation, (GLint)layersDrawn );
+                    if ( orderLocation >= 0 )
+                    {
+                        ext->glUniform1i( orderLocation, (GLint)layersDrawn );
+                    }
 
                     // assign the parent texture matrix
-                    if ( layer._texParent.valid() )
+                    if ( texMatParentLocation >= 0 && layer._texParent.valid() )
                     {
                         ext->glUniformMatrix4fv( texMatParentLocation, 1, GL_FALSE, layer._texMatParent.ptr() );
                     }
@@ -226,9 +252,12 @@ MPGeometry::renderPrimitiveSets(osg::State& state,
     // if we didn't draw anything, draw the raw tiles anyway with no texture.
     if ( layersDrawn == 0 )
     {
-        ext->glUniform1f( opacityLocation, (GLfloat)1.0f );
-        ext->glUniform1i( uidLocation, (GLint)-1 );
-        ext->glUniform1i( orderLocation, (GLint)0 );
+        if ( opacityLocation >= 0 )
+            ext->glUniform1f( opacityLocation, (GLfloat)1.0f );
+        if ( uidLocation >= 0 )
+            ext->glUniform1i( uidLocation, (GLint)-1 );
+        if ( orderLocation >= 0 )
+            ext->glUniform1i( orderLocation, (GLint)0 );
 
         // draw the primitives themselves.
         for(unsigned int primitiveSetNum=0; primitiveSetNum!=_primitives.size(); ++primitiveSetNum)
@@ -286,6 +315,11 @@ MPGeometry::resizeGLObjectBuffers(unsigned maxSize)
         const Layer& layer = _layers[i];
         if ( layer._tex.valid() )
             layer._tex->resizeGLObjectBuffers( maxSize );
+    }
+
+    if ( _pcd.size() < maxSize )
+    {
+        _pcd.resize(maxSize);
     }
 }
 

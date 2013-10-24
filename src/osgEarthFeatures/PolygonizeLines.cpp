@@ -517,7 +517,7 @@ PolygonizeLinesFilter::push(FeatureList& input, FilterContext& cx)
     {
         osg::StateSet* stateSet = geode->getOrCreateStateSet();
 
-        VirtualProgram* vp = new VirtualProgram();
+        VirtualProgram* vp = VirtualProgram::getOrCreate(stateSet);
         vp->setName( "osgEarth::PolygonizeLines" );
 
         const char* vs =
@@ -556,7 +556,6 @@ PolygonizeLinesFilter::push(FeatureList& input, FilterContext& cx)
 
         vp->setFunction( "oe_polyline_scalelines", vs, ShaderComp::LOCATION_VERTEX_MODEL );
         vp->addBindAttribLocation( "oe_polyline_center", osg::Drawable::ATTRIBUTE_6 );
-        stateSet->setAttributeAndModes( vp, 1 );
 
         // add the default scaling uniform.
         // good way to test:

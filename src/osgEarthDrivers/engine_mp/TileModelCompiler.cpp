@@ -25,6 +25,7 @@
 #include <osgEarth/MapFrame>
 #include <osgEarth/HeightFieldUtils>
 #include <osgEarth/ImageUtils>
+#include <osgEarth/Utils>
 #include <osgEarthSymbology/Geometry>
 #include <osgEarthSymbology/MeshConsolidator>
 
@@ -125,7 +126,7 @@ namespace
             createSkirt      = false;
             i_sampleFactor   = 1.0f;
             j_sampleFactor   = 1.0f;
-            useVBOs = !Registry::capabilities().preferDisplayListsForStaticGeometry();
+            useVBOs = true; //!Registry::capabilities().preferDisplayListsForStaticGeometry();
             textureImageUnit = 0;
             renderTileCoords = 0L;
             ownsTileCoords   = false;
@@ -276,7 +277,7 @@ namespace
      * Calculates the sample rate and allocates all the vertex, normal, and color
      * arrays for the tile.
      */
-    void setupGeometryAttributes( Data& d, double sampleRatio, const osg::Vec4& color )
+    void setupGeometryAttributes( Data& d, double sampleRatio ) //, const osg::Vec4& color )
     {
         d.numRows = 8;
         d.numCols = 8;
@@ -318,20 +319,19 @@ namespace
         d.surfaceVerts->reserve( d.numVerticesInSurface );
         d.surface->setVertexArray( d.surfaceVerts );
 
-        if ( d.surfaceVerts->getVertexBufferObject() )
-            d.surfaceVerts->getVertexBufferObject()->setUsage(GL_STATIC_DRAW_ARB);
-
         // allocate and assign normals
         d.normals = new osg::Vec3Array();
         d.normals->reserve( d.numVerticesInSurface );
         d.surface->setNormalArray( d.normals );
         d.surface->setNormalBinding( osg::Geometry::BIND_PER_VERTEX );
 
+#if 0
         // allocate and assign color
         osg::Vec4Array* colors = new osg::Vec4Array(1);
         (*colors)[0] = color;
         d.surface->setColorArray( colors );
         d.surface->setColorBinding( osg::Geometry::BIND_OVERALL );
+#endif
 
         // vertex attribution
         // for each vertex, a vec4 containing a unit extrusion vector in [0..2] and the raw elevation in [3]
@@ -772,9 +772,6 @@ namespace
                 osg::Vec3Array* maskConstraint = new osg::Vec3Array();
                 dc->setVertexArray(maskConstraint);
 
-                if ( maskConstraint->getVertexBufferObject() )
-                    maskConstraint->getVertexBufferObject()->setUsage(GL_STATIC_DRAW_ARB);
-
                 //Crop the mask to the stitching poly (for case where mask crosses tile edge)
                 osg::ref_ptr<Geometry> maskCrop;
                 maskPoly->crop(maskSkirtPoly.get(), maskCrop);
@@ -921,8 +918,6 @@ namespace
                 osg::Vec3Array* stitch_verts = new osg::Vec3Array();
                 stitch_verts->reserve(trig->getInputPointArray()->size());
                 stitch_geom->setVertexArray(stitch_verts);
-                if ( stitch_verts->getVertexBufferObject() )
-                    stitch_verts->getVertexBufferObject()->setUsage(GL_STATIC_DRAW_ARB);
                 osg::Vec3Array* stitch_norms = new osg::Vec3Array(trig->getInputPointArray()->size());
                 stitch_geom->setNormalArray( stitch_norms );
                 stitch_geom->setNormalBinding( osg::Geometry::BIND_PER_VERTEX );
@@ -1760,7 +1755,7 @@ namespace
     }
 
 
-    void installRenderData( Data& d )
+    void installRenderData( Data& d, const osg::Vec4& color )
     {
         // pre-size all vectors:
         unsigned size = d.renderLayers.size();
@@ -1772,6 +1767,12 @@ namespace
         
         if ( d.renderTileCoords )
             d.surface->_tileCoords = d.renderTileCoords;
+
+        // install the color array now that geometry creation is complete
+        osg::Vec4Array* colors = new osg::Vec4Array( d.surface->getVertexArray()->getNumElements() );
+        std::fill( colors->begin(), colors->end(), color );
+        d.surface->setColorArray( colors );
+        d.surface->setColorBinding( osg::Geometry::BIND_PER_VERTEX );
 
         // install the render data for each layer:
         for( RenderLayerVector::const_iterator r = d.renderLayers.begin(); r != d.renderLayers.end(); ++r )
@@ -1861,6 +1862,7 @@ TileModelCompiler::compile(const TileModel* model,
     // A Geode/Geometry for the surface:
     d.surface = new MPGeometry( d.model->_tileKey, d.frame, _textureImageUnit );
     d.surface->setUseVertexBufferObjects(d.useVBOs);
+    d.surface->setUseDisplayList(!d.useVBOs);
     d.surfaceGeode = new osg::Geode();
     d.surfaceGeode->addDrawable( d.surface );
     d.surfaceGeode->setNodeMask( *_options.primaryTraversalMask() );
@@ -1886,7 +1888,7 @@ TileModelCompiler::compile(const TileModel* model,
     if ( sampleRatio <= 0.0f )
         sampleRatio = osg::clampBetween( model->_tileKey.getLOD()/20.0, 0.0625, 1.0 );
 
-    setupGeometryAttributes( d, sampleRatio, *_options.color() );
+    setupGeometryAttributes( d, sampleRatio ); //, *_options.color() );
 
     // set up the list of layers to render and their shared arrays.
     setupTextureAttributes( d, _cache );
@@ -1906,25 +1908,38 @@ TileModelCompiler::compile(const TileModel* model,
     tessellateSurfaceGeometry( d, _optimizeTriOrientation, *_options.normalizeEdges() );
 
     // installs the per-layer rendering data into the Geometry objects.
-    installRenderData( d );
+    installRenderData( d, *_options.color() );
 
-    // convert skirt tristrips to tris.
-    if ( d.createSkirt )
+    // Optimize the data. Convert all modes to GL_TRIANGLES and run the
+    // critical vertex cache optimizations. For optimization to work, all
+    // the arrays must be in the geometry. MP doesn't store texture coords
+    // in the geometry so we need to temporarily add them.
+    int u=0;
+    for( RenderLayerVector::const_iterator r = d.renderLayers.begin(); r != d.renderLayers.end(); ++r )
     {
-        // converts triangle strips to triangles. In the future we will just
-        // fix the skirt code to build triangles from the start instead.
-        MeshConsolidator::convertToTriangles( *d.surface, true );
-
-        // consolidate multiple primitive sets into as few as possible.
-        osgUtil::Optimizer::MergeGeometryVisitor mg;
-        mg.mergeGeode( *d.surfaceGeode );
+        if ( r->_ownsTexCoords && r->_texCoords.valid() )
+            d.surface->setTexCoordArray(u++, r->_texCoords.get() );
+        if ( r->_stitchTexCoords.valid() )
+            d.surface->setTexCoordArray(u++, r->_stitchTexCoords.get() );
     }
+    if ( d.renderTileCoords )
+        d.surface->setTexCoordArray(u++, d.renderTileCoords);
 
+    osgUtil::Optimizer o;
+    o.optimize( tile, 
+        osgUtil::Optimizer::VERTEX_PRETRANSFORM |
+        osgUtil::Optimizer::INDEX_MESH |
+        osgUtil::Optimizer::VERTEX_POSTTRANSFORM );
+
+    d.surface->getTexCoordArrayList().clear();
+
+#if 0 // this is covered by the opt above.
     // convert mask geometry to tris.
     for (MaskRecordVector::iterator mr = d.maskRecords.begin(); mr != d.maskRecords.end(); ++mr)
     {
         MeshConsolidator::convertToTriangles( *((*mr)._geom), true );
     }
+#endif
     
     if (osgDB::Registry::instance()->getBuildKdTreesHint()==osgDB::ReaderWriter::Options::BUILD_KDTREES &&
         osgDB::Registry::instance()->getKdTreeBuilder())
@@ -1932,6 +1947,14 @@ TileModelCompiler::compile(const TileModel* model,
         osg::ref_ptr<osg::KdTreeBuilder> builder = osgDB::Registry::instance()->getKdTreeBuilder()->clone();
         tile->accept(*builder);
     }
+
+    // Temporary solution to the OverlayDecorator techniques' inappropriate setting of
+    // uniform values during the CULL traversal, which causes corruption of the RTT 
+    // camera matricies when DRAW overlaps the next frame's CULL. Please see my comments
+    // in DrapingTechnique.cpp for more information.
+    // NOTE: cannot set this until optimizations (above) are complete
+    SetDataVarianceVisitor sdv( osg::Object::DYNAMIC );
+    tile->accept( sdv );
 
     return tile;
 }

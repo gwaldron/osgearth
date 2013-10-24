@@ -139,6 +139,7 @@ namespace
 
                 else if (
                     tokens[0] == "#extension"   ||
+                    tokens[0] == "#define"      ||
                     tokens[0] == "precision"    ||
                     tokens[0] == "struct"       ||
                     tokens[0] == "varying"      ||

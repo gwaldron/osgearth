@@ -163,6 +163,17 @@ namespace osgEarth
         virtual ~VertexCacheOptimizer() { }
         void apply( osg::Geode& node );
     };
+
+    /**
+     * Sets the data variance on all discovered drawables.
+     */
+    struct OSGEARTH_EXPORT SetDataVarianceVisitor : public osg::NodeVisitor
+    {
+        SetDataVarianceVisitor(osg::Object::DataVariance value);
+        virtual ~SetDataVarianceVisitor() { }
+        void apply( osg::Geode& node );
+        osg::Object::DataVariance _value;
+    };
 }
 
 #endif // OSGEARTH_UTILS_H

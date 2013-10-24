@@ -323,3 +323,28 @@ VertexCacheOptimizer::apply(osg::Geode& geode)
 
     traverse( geode );
 }
+
+//-----------------------------------------------------------------------------
+
+#undef  LC
+#define LC "[SetDataVarianceVisitor] "
+
+SetDataVarianceVisitor::SetDataVarianceVisitor(osg::Object::DataVariance value) :
+osg::NodeVisitor( TRAVERSE_ALL_CHILDREN ),
+_value( value )
+{
+    //nop
+}
+
+void
+SetDataVarianceVisitor::apply(osg::Geode& geode)
+{
+    for(unsigned i=0; i<geode.getNumDrawables(); ++i)
+    {
+        osg::Drawable* d = geode.getDrawable(i);
+        if ( d )
+            d->setDataVariance( _value );
+    }
+
+    traverse(geode);
+}

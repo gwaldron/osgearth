@@ -1776,7 +1776,7 @@ namespace
     // critical vertex cache optimizations. For optimization to work, all
     // the arrays must be in the geometry. MP doesn't store texture coords
     // in the geometry so we need to temporarily add them.
-    void optimize( Data& d, const osg::Vec4& color )
+    void optimize( Data& d )
     {
         int u=0;
         for( RenderLayerVector::const_iterator r = d.renderLayers.begin(); r != d.renderLayers.end(); ++r )
@@ -1796,11 +1796,6 @@ namespace
             osgUtil::Optimizer::VERTEX_POSTTRANSFORM );
 
         d.surface->getTexCoordArrayList().clear();
-
-        // install the color array now that geometry creation is complete
-        osg::Vec4Array* colors = new osg::Vec4Array(1);
-        (*colors)[0] = color;
-        d.surface->setColorBinding( osg::Geometry::BIND_OVERALL );
     }
 
 
@@ -1899,7 +1894,7 @@ TileModelCompiler::compile(const TileModel* model,
     installRenderData( d );
 
     // performance optimizations.
-    optimize( d, *_options.color() );
+    optimize( d );
 
 #if 0 // this is covered by the opt above.
     // convert mask geometry to tris.

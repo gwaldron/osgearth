@@ -700,8 +700,10 @@ MPTerrainEngineNode::updateShaders()
             "uniform int oe_layer_uid; \n"
             "uniform int oe_layer_order; \n"
             "uniform float oe_layer_opacity; \n"
+            "uniform vec4 oe_terrain_color; \n"
             "void oe_mp_apply_coloring( inout vec4 color ) \n"
             "{ \n"
+            "    color = oe_terrain_color; \n"
             "    vec4 texel; \n"
             "    if ( oe_layer_uid >= 0 ) { \n"
             "        texel = texture2D(oe_layer_tex, oe_layer_texc.st); \n"
@@ -724,9 +726,11 @@ MPTerrainEngineNode::updateShaders()
             "uniform int oe_layer_uid; \n"
             "uniform int oe_layer_order; \n"
             "uniform float oe_layer_opacity; \n"
+            "uniform vec4 oe_terrain_color; \n"
             "void oe_mp_apply_coloring_pma( inout vec4 color ) \n"
             "{ \n"
             "    vec4 texelpma; \n"
+            "    color = oe_terrain_color; \n"
 
             // a UID < 0 means no texture.
             "    if ( oe_layer_uid >= 0 ) \n"
@@ -880,6 +884,10 @@ MPTerrainEngineNode::updateShaders()
         // need to know which is the first layer in order to blend properly
         terrainStateSet->getOrCreateUniform(
             "oe_layer_order", osg::Uniform::INT )->set( 0 );
+
+        // base terrain color.
+        terrainStateSet->getOrCreateUniform(
+            "oe_terrain_color", osg::Uniform::FLOAT_VEC4 )->set( *_terrainOptions.color() );
 
         _shaderUpdateRequired = false;
     }

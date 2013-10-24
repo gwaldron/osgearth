@@ -133,7 +133,20 @@ public:
           bool traverse = true;
 
           GeoExtent featureExtent(_feature->getSRS(), _feature->getGeometry()->getBounds());
-          if (featureExtent.intersects( tile->getExtent()))
+
+          bool valid = false;
+          // It's a single point, so we do a contains check instead of an intersection check b/c the bounds really aren't valid.
+          if (featureExtent.width() == 0 && featureExtent.height() == 0)
+          {              
+              valid = tile->getExtent().contains( featureExtent.xMin(), featureExtent.yMin());
+          }
+          else
+          {
+              // Do a normal intersection check
+              valid = featureExtent.intersects( tile->getExtent());
+          }
+
+          if (valid)
           {
               //If the node contains the feature, and it doesn't contain the max number of features add it.  If it's already full then 
               //split it.
@@ -174,6 +187,12 @@ public:
                   tile->traverse( this );
               }
 
+          }
+          else
+          {
+              OE_NOTICE << "Feature doesn't intersect tile" << std::endl;
+              OE_NOTICE << "Feature extent: " << featureExtent.toString() << std::endl;
+              OE_NOTICE << "Tile  extent: " <<  tile->getExtent().toString() << std::endl;              
           }
 
 
@@ -301,7 +320,7 @@ void
     GeoExtent srsExtent = _customExtent;
     if (!srsExtent.isValid())
         srsExtent = features->getFeatureProfile()->getExtent();
-        
+
     //Transform to lat/lon extents
     GeoExtent extent = srsExtent.transform( _srs.get() );
 

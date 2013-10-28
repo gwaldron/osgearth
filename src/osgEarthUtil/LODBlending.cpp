@@ -108,8 +108,9 @@ namespace
         "{ \n"
         "    if ( oe_layer_uid >= 0 ) \n"
         "    { \n"
-        "        vec4 texelpma = texture2D(oe_layer_tex_parent, oe_lodblend_texc.st) * oe_layer_opacity; \n"
-        "        color = mix(color, texelpma, oe_lodblend_r); \n"
+        "        vec4 texel = texture2D(oe_layer_tex_parent, oe_lodblend_texc.st) * oe_layer_opacity; \n"
+        "        float enable = step(0.0001, texel.a); \n"
+        "        color = mix(color, texel, oe_lodblend_r*enable); \n"
         "    } \n"
         "} \n";
 }

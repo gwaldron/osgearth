@@ -1773,18 +1773,27 @@ namespace
 
 
     // Optimize the data. Convert all modes to GL_TRIANGLES and run the
-    // critical vertex cache optimizations. For optimization to work, all
-    // the arrays must be in the geometry. MP doesn't store texture coords
-    // in the geometry so we need to temporarily add them.
+    // critical vertex cache optimizations.
     void optimize( Data& d )
     {
+        // the optimization pass is incompatible with the shared arrays used
+        // during masking.
+        if ( d.maskRecords.size() > 0 )
+        {
+            OE_DEBUG
+                << LC << "Skipping optimization pass for tile " << d.model->_tileKey.str()
+                << " because it contains masking geometry" <<std::endl;
+            return;
+        }
+ 
+        // For vertex cache optimization to work, all the arrays must be in
+        // the geometry. MP doesn't store texture/tile coords in the geometry
+        // so we need to temporarily add them.
         int u=0;
         for( RenderLayerVector::const_iterator r = d.renderLayers.begin(); r != d.renderLayers.end(); ++r )
         {
             if ( r->_ownsTexCoords && r->_texCoords.valid() )
                 d.surface->setTexCoordArray(u++, r->_texCoords.get() );
-            if ( r->_stitchTexCoords.valid() )
-                d.surface->setTexCoordArray(u++, r->_stitchTexCoords.get() );
         }
         if ( d.renderTileCoords )
             d.surface->setTexCoordArray(u++, d.renderTileCoords);

@@ -83,6 +83,12 @@ namespace osgEarth
         void setAttachStencil( bool value );
         bool getAttachStencil() const;
 
+        /**
+         * Ratio of near resolution to far resolution when draping. [value >= 1.0]
+         */
+        void setResolutionRatio( float value );
+        float getResolutionRatio() const;
+
 
     public: // OverlayTechnique
 

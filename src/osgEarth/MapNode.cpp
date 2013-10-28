@@ -307,6 +307,8 @@ MapNode::init()
             draping->setMipMapping( *_mapNodeOptions.overlayMipMapping() );
         if ( _mapNodeOptions.overlayAttachStencil().isSet() )
             draping->setAttachStencil( *_mapNodeOptions.overlayAttachStencil() );
+        if ( _mapNodeOptions.overlayResolutionRatio().isSet() )
+            draping->setResolutionRatio( *_mapNodeOptions.overlayResolutionRatio() );
 
         _overlayDecorator->addTechnique( draping );
     }

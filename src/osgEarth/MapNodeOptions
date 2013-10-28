@@ -83,6 +83,19 @@ namespace osgEarth
         const optional<bool>& overlayAttachStencil() const { return _overlayAttachStencil; }
 
         /**
+         * Ratio of resolution of near geometry to far geometry in a draped overlay view.
+         * E.g.: a ratio of 3 means that the draping mechanism will weight the resolution
+         * of closer geometry over farther geometry by a ratio of 3:1. This is desirable
+         * since viewing draped geometry from an oblique angle will otherwise result in
+         * substantial aliasing near the camera.
+         *
+         * Default value = 5.0
+         * Minimum value = 1.0 (no warping occurs).
+         */
+        optional<float>& overlayResolutionRatio() { return _overlayResolutionRatio; }
+        const optional<float>& overlayResolutionRatio() const { return _overlayResolutionRatio; }
+
+        /**
          * Options to conigure the terrain engine (the component that renders the
          * terrain surface).
          */
@@ -105,6 +118,7 @@ namespace osgEarth
         optional<unsigned> _overlayTextureSize;
         optional<bool>     _overlayMipMapping;
         optional<bool>     _overlayAttachStencil;
+        optional<float>    _overlayResolutionRatio;
 
         optional<Config> _terrainOptionsConf;
         TerrainOptions* _terrainOptions;

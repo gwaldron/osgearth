@@ -165,7 +165,7 @@ namespace osgEarth { namespace Threading
      */
     class ReadWriteMutex
     {
-#if TRACE_THREADS
+#ifdef TRACE_THREADS
         typedef std::set<unsigned> TracedThreads;
         TracedThreads _trace;
         OpenThreads::Mutex _traceMutex;

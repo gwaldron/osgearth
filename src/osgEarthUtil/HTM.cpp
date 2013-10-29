@@ -300,7 +300,7 @@ HTMNode::split()
         osg::Node* node = i->get();
         const osg::BoundingSphere& bs = node->getBound();
         
-        osg::Vec3d p = node->getBound().center();
+        osg::Vec3d p = bs.center();
         p.normalize(); // need?
 
         for(unsigned j=0; j<4; ++j)

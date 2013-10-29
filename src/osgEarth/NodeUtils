@@ -327,6 +327,9 @@ namespace osgEarth
         if ( oldCount + DELTA >= 0 ) \
             NODE ->setNumChildrenRequiringEventTraversal( (unsigned int)(oldCount + DELTA ) ); \
     }
+
+    OSGEARTH_EXPORT std::string useLoadOnceLoader(const std::string & uri);
+
 }
 
 #endif // OSGEARTH_CACHING_H

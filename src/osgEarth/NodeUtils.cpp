@@ -23,6 +23,9 @@
 #include <osg/CullSettings>
 #include <osg/KdTree>
 #include <osg/TriangleFunctor>
+#include <osgDB/ReaderWriter>
+#include <osgDB/FileNameUtils>
+#include <osgDB/Registry>
 #include <vector>
 #include <string>
 
@@ -406,4 +409,48 @@ ObserverGroup::traverse( osg::NodeVisitor& nv )
     }
 
     osg::Group::traverse( nv );
+}
+
+//----------------------------------------------------------------------------
+
+class LoadOnceReaderWriter : public osgDB::ReaderWriter
+{
+public:
+    LoadOnceReaderWriter()
+    {
+        supportsExtension( "osgearth_loadonce", "osgEarth load once pseudo-loader" );
+    }
+
+    virtual const char* className()
+    {
+        return "LoadOnceReaderWriter";
+    }
+
+    virtual ReadResult readNode(const std::string& uri, const osgDB::Options* options) const
+    {
+        ReadResult ret;
+        if ( !acceptsExtension( osgDB::getLowerCaseFileExtension(uri) ) )
+            ret = ReadResult::FILE_NOT_HANDLED;
+        else
+        {
+            std::string realuri = osgDB::getNameLessExtension(uri);
+            ret = osgDB::Registry::instance()->readNode(realuri, options, false);
+            if(!ret.success() || !ret.validNode())
+            {
+                // return an empty node if loading failed
+                osg::Node * emptyNode = new osg::Node;
+                emptyNode->setName(realuri);
+                emptyNode->setNodeMask(0);
+                ret = ReadResult(emptyNode);
+            }
+        }
+        return ret;
+    }
+};
+
+REGISTER_OSGPLUGIN(osgearth_loadonce, LoadOnceReaderWriter)
+
+std::string osgEarth::useLoadOnceLoader(const std::string & uri)
+{
+    return uri + ".osgearth_loadonce";
 }

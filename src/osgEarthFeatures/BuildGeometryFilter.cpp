@@ -439,6 +439,7 @@ BuildGeometryFilter::push( FeatureList& input, FilterContext& context )
 
     if ( ok )
     {
+#if 0 // this is done in Filter::applyLineSymbology/applyPointSymbology
         if ( !_style.empty() && _geode.valid() )
         {
             // could optimize this to only happen is lines or points were created ..
@@ -455,6 +456,7 @@ BuildGeometryFilter::push( FeatureList& input, FilterContext& context )
                 _geode->getOrCreateStateSet()->setAttribute( 
                     new osg::Point( *pointSymbol->size() ), osg::StateAttribute::ON );
         }
+#endif
 
         // apply the delocalization matrix for no-jitter
         result = delocalize( _geode.release() );

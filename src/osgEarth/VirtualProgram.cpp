@@ -405,6 +405,42 @@ VirtualProgram::get(osg::StateSet* stateset)
     return dynamic_cast<VirtualProgram*>( stateset->getAttribute(SA_TYPE) );
 }
 
+const VirtualProgram* 
+VirtualProgram::get(const osg::StateSet* stateset)
+{
+    if ( !stateset )
+        return 0L;
+
+    return dynamic_cast<const VirtualProgram*>( stateset->getAttribute(SA_TYPE) );
+}
+
+VirtualProgram*
+VirtualProgram::cloneOrCreate(const osg::StateSet* src, osg::StateSet* dest)
+{
+    if ( !dest )
+        return 0L;
+
+    const VirtualProgram* vp = 0L;
+
+    if ( src )
+    {
+        vp = get( src );
+    }
+
+    if ( !vp )
+    {
+        return getOrCreate( dest );
+    }
+
+    else
+    {
+        VirtualProgram* cloneVP = osg::clone( vp, osg::CopyOp::DEEP_COPY_ALL );
+        cloneVP->setInheritShaders(true);
+        dest->setAttributeAndModes(cloneVP, osg::StateAttribute::ON);
+        return cloneVP;
+    }
+}
+
 //------------------------------------------------------------------------
 
 

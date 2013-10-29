@@ -189,7 +189,7 @@ namespace osgEarth
         ModelLayerOptions            _runtimeOptions;
         Revision                     _modelSourceRev;
         ModelLayerCallbackList       _callbacks;
-        UpdateLightingUniformsHelper _updateLightingUniformsHelper;
+        //UpdateLightingUniformsHelper _updateLightingUniformsHelper;
 
         typedef std::set< osg::observer_ptr<osg::Node> > NodeObserverSet;
         NodeObserverSet _nodeSet;

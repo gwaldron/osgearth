@@ -149,6 +149,7 @@ PolygonizeLinesOperator::operator()(osg::Vec3Array* verts,
 
     osg::Geometry* geom  = new osg::Geometry();
     geom->setUseVertexBufferObjects( true );
+    geom->setUseDisplayList( false );
 
     // Add the input verts to the geometry. This forms the "spine" of the
     // polygonized line. We need the spine so we can affect proper clamping,
@@ -437,6 +438,75 @@ PolygonizeLinesOperator::operator()(osg::Vec3Array* verts,
 }
 
 
+#define SHADER_NAME "osgEarth::PolygonizeLinesAutoScale"
+
+
+void
+PolygonizeLinesOperator::installShaders(osg::StateSet* stateset) const
+{
+    float minPixels = _stroke.minPixels().getOrUse( 0.0f );
+    if ( minPixels <= 0.0f )
+        return;
+
+    VirtualProgram* vp = VirtualProgram::getOrCreate(stateset);
+
+    // bail if already installed.
+    if ( vp->getName().compare( SHADER_NAME ) == 0 )
+        return;
+
+    vp->setName( SHADER_NAME );
+
+    const char* vs =
+        "#version " GLSL_VERSION_STR "\n"
+        GLSL_DEFAULT_PRECISION_FLOAT "\n"
+        "attribute vec3   oe_polyline_center; \n"
+        "uniform   float  oe_polyline_scale;  \n"
+        "uniform   float  oe_polyline_min_pixels; \n"
+        "uniform   mat3   oe_WindowScaleMatrix; \n"
+
+        "void oe_polyline_scalelines(inout vec4 VertexMODEL) \n"
+        "{ \n"
+        //"   if ( oe_polyline_scale != 1.0 || oe_polyline_min_pixels > 0.0 ) \n"
+        "   { \n"
+        "       vec4  center_model = vec4(oe_polyline_center*VertexMODEL.w, VertexMODEL.w); \n"
+        "       vec4  vector_model = VertexMODEL - center_model; \n"
+        "       if ( length(vector_model.xyz) > 0.0 ) \n"
+        "       { \n"
+        "           float scale = oe_polyline_scale; \n"
+
+        "           vec4 vertex_clip = gl_ModelViewProjectionMatrix * VertexMODEL; \n"
+        "           vec4 center_clip = gl_ModelViewProjectionMatrix * center_model; \n"
+        "           vec4 vector_clip = vertex_clip - center_clip; \n"
+
+        "           if ( oe_polyline_min_pixels > 0.0 ) \n"
+        "           { \n"
+        "               vec3 vector_win = oe_WindowScaleMatrix * (vertex_clip.xyz/vertex_clip.w - center_clip.xyz/center_clip.w); \n"
+        "               float min_scale = max( (0.5*oe_polyline_min_pixels)/length(vector_win.xy), 1.0 ); \n"
+        "               scale = max( scale, min_scale ); \n"
+        "           } \n"
+
+        "           VertexMODEL = center_model + vector_model*scale; \n"
+        "        } \n"
+        "    } \n"
+        "} \n";
+
+    vp->setFunction( "oe_polyline_scalelines", vs, ShaderComp::LOCATION_VERTEX_MODEL );
+    vp->addBindAttribLocation( "oe_polyline_center", osg::Drawable::ATTRIBUTE_6 );
+
+    // add the default scaling uniform.
+    // good way to test:
+    //    osgearth_viewer earthfile --uniform oe_polyline_scale 1.0 10.0
+    osg::Uniform* scaleU = new osg::Uniform(osg::Uniform::FLOAT, "oe_polyline_scale");
+    scaleU->set( 1.0f );
+    stateset->addUniform( scaleU, 1 );
+
+    // the default "min pixels" uniform.
+    osg::Uniform* minPixelsU = new osg::Uniform(osg::Uniform::FLOAT, "oe_polyline_min_pixels");
+    minPixelsU->set( minPixels );
+    stateset->addUniform( minPixelsU, 1 );
+}
+
+
 //------------------------------------------------------------------------
 
 
@@ -512,63 +582,7 @@ PolygonizeLinesFilter::push(FeatureList& input, FilterContext& cx)
     geode->accept( vco );
 
     // If we're auto-scaling, we need a shader
-    float minPixels = line ? line->stroke()->minPixels().getOrUse( 0.0f ) : 0.0f;
-    if ( minPixels > 0.0f )
-    {
-        osg::StateSet* stateSet = geode->getOrCreateStateSet();
-
-        VirtualProgram* vp = VirtualProgram::getOrCreate(stateSet);
-        vp->setName( "osgEarth::PolygonizeLines" );
-
-        const char* vs =
-            "#version " GLSL_VERSION_STR "\n"
-            GLSL_DEFAULT_PRECISION_FLOAT "\n"
-            "attribute vec3   oe_polyline_center; \n"
-            "uniform   float  oe_polyline_scale;  \n"
-            "uniform   float  oe_polyline_min_pixels; \n"
-            "uniform   mat3   oe_WindowScaleMatrix; \n"
-
-            "void oe_polyline_scalelines(inout vec4 VertexMODEL) \n"
-            "{ \n"
-            "   if ( oe_polyline_scale != 1.0 || oe_polyline_min_pixels > 0.0 ) \n"
-            "   { \n"
-            "       vec4  center_model = vec4(oe_polyline_center*VertexMODEL.w, VertexMODEL.w); \n"
-            "       vec4  vector_model = VertexMODEL - center_model; \n"
-            "       if ( length(vector_model.xyz) > 0.0 ) \n"
-            "       { \n"
-            "           float scale = oe_polyline_scale; \n"
-
-            "           vec4 vertex_clip = gl_ModelViewProjectionMatrix * VertexMODEL; \n"
-            "           vec4 center_clip = gl_ModelViewProjectionMatrix * center_model; \n"
-            "           vec4 vector_clip = vertex_clip - center_clip; \n"
-
-            "           if ( oe_polyline_min_pixels > 0.0 ) \n"
-            "           { \n"
-            "               vec3 vector_win = oe_WindowScaleMatrix * (vertex_clip.xyz/vertex_clip.w - center_clip.xyz/center_clip.w); \n"
-            "               float min_scale = max( (0.5*oe_polyline_min_pixels)/length(vector_win.xy), 1.0 ); \n"
-            "               scale = max( scale, min_scale ); \n"
-            "           } \n"
-
-            "           VertexMODEL = center_model + vector_model*scale; \n"
-            "        } \n"
-            "    } \n"
-            "} \n";
-
-        vp->setFunction( "oe_polyline_scalelines", vs, ShaderComp::LOCATION_VERTEX_MODEL );
-        vp->addBindAttribLocation( "oe_polyline_center", osg::Drawable::ATTRIBUTE_6 );
-
-        // add the default scaling uniform.
-        // good way to test:
-        //    osgearth_viewer earthfile --uniform oe_polyline_scale 1.0 10.0
-        osg::Uniform* scaleU = new osg::Uniform(osg::Uniform::FLOAT, "oe_polyline_scale");
-        scaleU->set( 1.0f );
-        stateSet->addUniform( scaleU, 1 );
-
-        // the default "min pixels" uniform.
-        osg::Uniform* minPixelsU = new osg::Uniform(osg::Uniform::FLOAT, "oe_polyline_min_pixels");
-        minPixelsU->set( minPixels );
-        stateSet->addUniform( minPixelsU, 1 );
-    }
+    polygonize.installShaders( geode->getOrCreateStateSet() );
 
     return delocalize( geode );
 }

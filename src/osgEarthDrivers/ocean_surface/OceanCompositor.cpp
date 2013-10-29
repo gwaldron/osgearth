@@ -42,15 +42,10 @@ void
 OceanCompositor::updateMasterStateSet(osg::StateSet*       stateSet, 
                                       const TextureLayout& layout ) const
 {
-    VirtualProgram* vp = static_cast<VirtualProgram*>( stateSet->getAttribute(VirtualProgram::SA_TYPE) );
-    if ( !vp )
-    {
-        vp = new VirtualProgram();
-        vp->setName("osgEarth OceanCompositor");
-        stateSet->setAttributeAndModes( vp, 1 );
-    }
-    
-    //vp->installDefaultLightingShaders();
+    VirtualProgram* vp = VirtualProgram::getOrCreate( stateSet );
+    vp->setName( "osgEarth.OceanCompositor" );
+
+    // install a default lighting shader
     Registry::shaderFactory()->installLightingShaders( vp );
 
     // use the appropriate shader for the active technique:
@@ -58,18 +53,7 @@ OceanCompositor::updateMasterStateSet(osg::StateSet*       stateSet,
     std::string fragSource = _options.maskLayer().isSet() ? source_fragMask : source_fragProxy;
 
     vp->setFunction( "oe_ocean_vertex",   vertSource, ShaderComp::LOCATION_VERTEX_VIEW );
-
     vp->setFunction( "oe_ocean_fragment", fragSource, ShaderComp::LOCATION_FRAGMENT_COLORING );
-
-    //vp->setShader( 
-    //    "osgearth_vert_setupColoring", 
-    //    new osg::Shader(osg::Shader::VERTEX, vertSource),
-    //    osg::StateAttribute::ON | osg::StateAttribute::PROTECTED );
-
-    //vp->setShader( 
-    //    "osgearth_frag_applyColoring", 
-    //    new osg::Shader(osg::Shader::FRAGMENT, fragSource),
-    //    osg::StateAttribute::ON | osg::StateAttribute::PROTECTED );
 
     // install the slot attribute(s)
     stateSet->getOrCreateUniform( OCEAN_DATA, osg::Uniform::SAMPLER_2D )->set( 0 );

@@ -62,6 +62,7 @@ namespace osgEarth
         /**
          * Gets the uniform/shader name of the sampler corresponding the the provider
          * texture image unit
+         *
          * @deprecated Only supported by older texture compositors, which will likely
          *             go away in a future version
          */
@@ -70,7 +71,6 @@ namespace osgEarth
         /**
          * Install lighting shaders in a VirtualProgram.
          *
-         * (slated for removal)
          * Note: this will likely go away in a future version. At this point it makes
          * more sense to decouple the default lighting shaders from the main shader
          * factory and simply use a VirtualProgram rather than replacing the ShaderFactory.

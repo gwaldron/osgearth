@@ -20,6 +20,7 @@
 #include <osgEarth/Map>
 #include <osgEarth/Registry>
 #include <osgEarth/Capabilities>
+#include <osgEarth/ShaderFactory>
 #include <osg/Depth>
 
 #define LC "[ModelLayer] "
@@ -191,11 +192,13 @@ ModelLayer::createSceneGraph(const Map*            map,
                 ss->setRenderBinDetails( 99999, "RenderBin" ); //TODO: configure this bin ...
             }
 
+#if 0 // moved the MapNode level.
             if ( Registry::capabilities().supportsGLSL() )
             {
                 // install a callback that keeps the shader uniforms up to date
                 node->addCullCallback( new UpdateLightingUniformsHelper() );
             }
+#endif
 
             _modelSource->sync( _modelSourceRev );
 
@@ -247,9 +250,17 @@ ModelLayer::setLightingEnabled( bool value )
     {
         if ( i->valid() )
         {
-            i->get()->getOrCreateStateSet()->setMode( 
+            osg::StateSet* stateset = i->get()->getOrCreateStateSet();
+
+            stateset->setMode( 
                 GL_LIGHTING, value ? osg::StateAttribute::ON : 
                 (osg::StateAttribute::OFF | osg::StateAttribute::PROTECTED) );
+
+            if ( Registry::capabilities().supportsGLSL() )
+            {
+                stateset->addUniform( Registry::shaderFactory()->createUniformForGLMode(
+                    GL_LIGHTING, value ) );
+            }
         }
     }
 }

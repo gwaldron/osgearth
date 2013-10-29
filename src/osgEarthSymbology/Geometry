@@ -270,6 +270,9 @@ namespace osgEarth { namespace Symbology
         // ensures that the first and last points are not idential.
         virtual void open();
 
+        // ensures that the first and last points are identical.
+        virtual void close();
+
         // opens and winds the ring in the specified direction
         virtual void rewind( Orientation ori );
 
@@ -305,6 +308,8 @@ namespace osgEarth { namespace Symbology
         virtual bool contains2D( double x, double y ) const;
 
         virtual void open();
+
+        virtual void close();
 
     public:
         RingCollection& getHoles() { return _holes; }

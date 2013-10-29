@@ -101,6 +101,12 @@ namespace osgEarth
         * Gets the VP on a stateset, or NULL if one is not found.
         */
         static VirtualProgram* get(osg::StateSet* on);
+        static const VirtualProgram* get(const osg::StateSet* on);
+
+        /**
+        * Clones the VP on a stateset, or creates a new one
+        */
+        static VirtualProgram* cloneOrCreate(const osg::StateSet* src, osg::StateSet* dest);
 
 
     public:

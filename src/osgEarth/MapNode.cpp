@@ -334,24 +334,24 @@ MapNode::init()
     // install a layer callback for processing further map actions:
     _map->addMapCallback( _mapCallback.get()  );
 
-    osg::StateSet* ss = getOrCreateStateSet();
-
+    osg::StateSet* stateset = getOrCreateStateSet();
     if ( _mapNodeOptions.enableLighting().isSet() )
+
     {
-        ss->setMode( 
+        stateset->setMode( 
             GL_LIGHTING, 
             _mapNodeOptions.enableLighting().value() ? 1 : 0 );
     }
 
     dirtyBound();
 
-    // Install top-level shader programs:
+    // Install a default lighting shader program.
     if ( Registry::capabilities().supportsGLSL() )
     {
-        VirtualProgram* vp = new VirtualProgram();
+        VirtualProgram* vp = VirtualProgram::getOrCreate( stateset );
         vp->setName( "osgEarth::MapNode" );
-        Registry::instance()->getShaderFactory()->installLightingShaders( vp );
-        ss->setAttributeAndModes( vp, osg::StateAttribute::ON );
+
+        Registry::shaderFactory()->installLightingShaders( vp );
     }
 
     // register for event traversals so we can deal with blacklisted filenames
@@ -649,6 +649,9 @@ MapNode::traverse( osg::NodeVisitor& nv )
 
     else if ( nv.getVisitorType() == nv.CULL_VISITOR )
     {
+        // update the light model uniforms.
+        _updateLightingUniformsHelper.cullTraverse( this, &nv );
+
         osgUtil::CullVisitor* cv = Culling::asCullVisitor(nv);
         if ( cv )
         {
@@ -678,7 +681,7 @@ MapNode::traverse( osg::NodeVisitor& nv )
             osg::Matrix3 m3( m4(0,0), m4(1,0), m4(2,0),
                              m4(0,1), m4(1,1), m4(2,1),
                              m4(0,2), m4(1,2), m4(2,2) );
-            cullData->_windowScaleMatrix->set( m3 );
+            cullData->_windowScaleMatrixUniform->set( m3 );
 
             // traverse:
             cv->pushStateSet( cullData->_stateSet.get() );

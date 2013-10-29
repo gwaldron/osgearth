@@ -1729,6 +1729,10 @@ namespace
         
         if ( d.renderTileCoords )
             d.surface->_tileCoords = d.renderTileCoords;
+            
+        // TODO: evaluate this suspicious code. -gw
+        if ( d.stitchTileCoords.valid() )
+            d.surface->_tileCoords = d.stitchTileCoords.get();
 
         // install the render data for each layer:
         for( RenderLayerVector::const_iterator r = d.renderLayers.begin(); r != d.renderLayers.end(); ++r )
@@ -1763,10 +1767,6 @@ namespace
             {
                 layer._texCoords = r->_stitchTexCoords.get();
                 mr->_geom->_layers[order] = layer;
-            }
-            if ( d.stitchTileCoords.valid() )
-            {
-                layer._tileCoords = d.stitchTileCoords.get();
             }
         }
     }

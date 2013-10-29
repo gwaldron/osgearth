@@ -459,7 +459,7 @@ TerrainEngineNode::traverse( osg::NodeVisitor& nv )
 
         if ( Registry::capabilities().supportsGLSL() )
         {
-            _updateLightingUniformsHelper.cullTraverse( this, &nv );
+            //_updateLightingUniformsHelper.cullTraverse( this, &nv );
 
             // TODO: the "camera elevation" uniform is only used by the old
             // multi- and texarray- texture compositors. Once we get rid of those

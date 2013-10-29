@@ -59,6 +59,11 @@ namespace osgEarth { namespace Features
          */
         osg::Geometry* operator()(osg::Vec3Array* verts, osg::Vec3Array* normals) const;
 
+        /**
+         * Installs an auto-scaling shader on a stateset.
+         */
+        void installShaders(osg::StateSet* stateset) const;
+
     protected:
         Stroke _stroke;
         bool   _makeScalable;

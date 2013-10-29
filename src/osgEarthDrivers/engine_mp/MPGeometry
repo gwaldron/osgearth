@@ -49,7 +49,7 @@ namespace osgEarth_engine_mp
             osg::ref_ptr<const ImageLayer> _imageLayer;
             osg::ref_ptr<osg::Texture>     _tex;
             osg::ref_ptr<osg::Vec2Array>   _texCoords;
-            osg::ref_ptr<osg::Vec2Array>   _tileCoords;
+            //osg::ref_ptr<osg::Vec2Array>   _tileCoords;
             osg::ref_ptr<osg::Texture>     _texParent;
             osg::Matrixf                   _texMatParent; // yes, must be a float matrix
             float                          _alphaThreshold;
@@ -99,9 +99,6 @@ namespace osgEarth_engine_mp
 
         // render all passes of the geometry.
         void renderPrimitiveSets(osg::State& state, bool usingVBOs) const;
-
-        // merge another MPGeometry into this one
-        void merge(MPGeometry* rhs);
 
 
     public: // osg::Geometry overrides

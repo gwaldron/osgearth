@@ -122,8 +122,8 @@ TrackNode::init( const TrackNodeFieldSchema& schema )
 
     getAttachPoint()->addChild( _geode );
 
-    ShaderGenerator gen( Registry::stateSetCache() );
-    this->accept( gen );
+    ShaderGenerator gen;
+    gen.run( this, Registry::stateSetCache() );
 }
 
 void

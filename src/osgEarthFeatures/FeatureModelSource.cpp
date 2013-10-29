@@ -19,6 +19,9 @@
 #include <osgEarthFeatures/FeatureModelSource>
 #include <osgEarthFeatures/FeatureModelGraph>
 #include <osgEarth/SpatialReference>
+#include <osgEarth/ShaderFactory>
+#include <osgEarth/Registry>
+#include <osgEarth/Capabilities>
 #include <osg/Notify>
 
 using namespace osgEarth;
@@ -213,9 +216,17 @@ FeatureNodeFactory::getOrCreateStyleGroup(const Style& style,
 
         if ( render->lighting().isSet() )
         {
-            group->getOrCreateStateSet()->setMode(
+            osg::StateSet* stateset = group->getOrCreateStateSet();
+
+            stateset->setMode(
                 GL_LIGHTING,
                 (render->lighting() == true ? osg::StateAttribute::ON : osg::StateAttribute::OFF) | osg::StateAttribute::OVERRIDE );
+
+            if ( Registry::capabilities().supportsGLSL() )
+            {
+                stateset->addUniform( Registry::shaderFactory()->createUniformForGLMode(
+                    GL_LIGHTING, render->lighting().value()));
+            }
         }
 
         if ( render->backfaceCulling().isSet() )

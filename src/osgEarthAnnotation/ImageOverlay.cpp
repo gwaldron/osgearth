@@ -307,11 +307,6 @@ ImageOverlay::init()
             //OE_WARN << LC << "ShaderGen RUNNING" << std::endl;
             ShaderGenerator gen;
             _geode->accept( gen );
-            //// need a shader that supports one texture
-            //VirtualProgram* vp = new VirtualProgram();
-            //vp->setName( "imageoverlay");
-            //vp->installDefaultColoringShaders(1);
-            //d->getOrCreateStateSet()->setAttributeAndModes( vp, 1 );
         }
     }
 }

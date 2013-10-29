@@ -201,8 +201,8 @@ PlaceNode::init()
 
     setLightingIfNotSet( false );
 
-    ShaderGenerator gen( Registry::stateSetCache() );
-    this->accept( gen );
+    ShaderGenerator gen;
+    gen.run( this, Registry::stateSetCache() );
 
     // re-apply annotation drawable-level stuff as neccesary.
     AnnotationData* ad = getAnnotationData();

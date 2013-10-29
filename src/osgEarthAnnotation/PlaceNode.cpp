@@ -202,6 +202,7 @@ PlaceNode::init()
     setLightingIfNotSet( false );
 
     ShaderGenerator gen;
+    gen.setProgramName( "osgEarth.PlaceNode" );
     gen.run( this, Registry::stateSetCache() );
 
     // re-apply annotation drawable-level stuff as neccesary.

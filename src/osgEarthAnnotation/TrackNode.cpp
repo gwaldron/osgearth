@@ -123,6 +123,7 @@ TrackNode::init( const TrackNodeFieldSchema& schema )
     getAttachPoint()->addChild( _geode );
 
     ShaderGenerator gen;
+    gen.setProgramName( "osgEarth.TrackNode" );
     gen.run( this, Registry::stateSetCache() );
 }
 

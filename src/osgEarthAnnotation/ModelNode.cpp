@@ -113,6 +113,7 @@ ModelNode::init()
                 {
                     // generate shader code for the loaded model:
                     ShaderGenerator gen;
+                    gen.setProgramName( "osgEarth.ModelNode" );
                     gen.run( node, Registry::stateSetCache() );
 
                     // do we really need this? perhaps

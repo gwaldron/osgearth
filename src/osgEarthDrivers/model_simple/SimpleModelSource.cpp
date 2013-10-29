@@ -157,7 +157,8 @@ public:
             if ( _options.shaderPolicy() == SHADERPOLICY_GENERATE )
             {
                 ShaderGenerator gen;
-                result->accept( gen );
+                gen.setProgramName( "osgEarth.SimpleModelSource" );
+                gen.run( result );
             }
             else if ( _options.shaderPolicy() == SHADERPOLICY_DISABLE )
             {

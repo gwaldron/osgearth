@@ -306,7 +306,8 @@ ImageOverlay::init()
         {
             //OE_WARN << LC << "ShaderGen RUNNING" << std::endl;
             ShaderGenerator gen;
-            _geode->accept( gen );
+            gen.setProgramName( "osgEarth.ImageOverlay" );
+            gen.run( _geode );
         }
     }
 }

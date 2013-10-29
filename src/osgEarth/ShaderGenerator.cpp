@@ -191,13 +191,20 @@ namespace
 //------------------------------------------------------------------------
 
 ShaderGenerator::ShaderGenerator() :
-osg::NodeVisitor( osg::NodeVisitor::TRAVERSE_ALL_CHILDREN )
+osg::NodeVisitor( osg::NodeVisitor::TRAVERSE_ALL_CHILDREN ),
+_name( "osgEarth.ShaderGenerator" )
 {
     _active = Registry::capabilities().supportsGLSL();
     if ( _active )
     {
         _state = new StateEx();
     }
+}
+
+void
+ShaderGenerator::setProgramName(const std::string& name)
+{
+    _name = name;
 }
 
 void
@@ -218,6 +225,7 @@ ShaderGenerator::run(osg::Node* graph, StateSetCache* cache)
         {
             vp = VirtualProgram::getOrCreate( graph->getOrCreateStateSet() );
             vp->setInheritShaders( true );
+            vp->setName( _name );
         }
     }
 }
@@ -364,7 +372,7 @@ ShaderGenerator::apply(osg::ClipNode& node)
     if ( !_active ) return;
 
     VirtualProgram* vp = VirtualProgram::getOrCreate(node.getOrCreateStateSet());
-//    if ( vp->referenceCount() == 1 && _defaultVP.valid() ) vp->setName( _defaultVP->getName() );
+    if ( vp->referenceCount() == 1 ) vp->setName( _name );
     vp->setFunction( "sg_set_clipvertex", s_clip_source, ShaderComp::LOCATION_VERTEX_VIEW );
 
     apply( static_cast<osg::Group&>(node) );
@@ -396,6 +404,9 @@ ShaderGenerator::processText(const osg::StateSet* ss, osg::ref_ptr<osg::StateSet
         vp =  osg::clone(VirtualProgram::get(replacement.get()), osg::CopyOp::DEEP_COPY_ALL);
     else
         vp = VirtualProgram::getOrCreate(replacement.get());
+
+    if ( vp->referenceCount() == 1 )
+        vp->setName( _name );
 
     std::string vertSrc =
         "#version " GLSL_VERSION_STR "\n" GLSL_PRECISION "\n"
@@ -444,6 +455,9 @@ ShaderGenerator::processGeometry( const osg::StateSet* ss, osg::ref_ptr<osg::Sta
     osg::ref_ptr<osg::StateSet> new_stateset = ss ? osg::clone(ss, osg::CopyOp::SHALLOW_COPY) : new osg::StateSet();
     VirtualProgram* vp = VirtualProgram::cloneOrCreate(ss, new_stateset);
     bool need_new_stateset = false;
+    
+    if ( vp->referenceCount() == 1 )
+        vp->setName( _name );
 
     // Check whether the lighting state has changed and install a mode uniform.
     // TODO: fix this

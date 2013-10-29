@@ -50,16 +50,14 @@ namespace osgEarth
         ShaderGenerator();
 
         /**
+         * Sets the name to give any VP's we create
+         */
+        void setProgramName(const std::string& name);
+
+        /**
          * Runs the shader generator and then optimizes state sharing when it's done.
          */
         void run(osg::Node* graph, StateSetCache* cache =0L);
-
-        /**
-         * Sets the default VirtualProgram template. By default, ShaderGenerator
-         * will use a template that supports lighting. You can override this by
-         * providing your own template.
-         */
-        //void setVirtualProgramTemplate( VirtualProgram* vp );
 
         /** dtor. */
         virtual ~ShaderGenerator() { }
@@ -87,13 +85,9 @@ namespace osgEarth
 
         osg::ref_ptr<osg::State> _state;
 
-        //osg::ref_ptr<StateSetCache> _stateSetCache;
-
-        //osg::ref_ptr<VirtualProgram> _defaultVP;
-
-        //osg::ref_ptr<osg::StateSet> _defaultStateSet;
-
         bool _active;
+
+        std::string _name;
     };
 
 } // namespace osgEarth

@@ -46,6 +46,12 @@ namespace osgEarth { namespace Drivers
         optional<ShaderPolicy>& shaderPolicy() { return _shaderPolicy; }
         const optional<ShaderPolicy>& shaderPolicy() const { return _shaderPolicy; }
         
+        optional<float>& loadingPriorityScale() { return _loadingPriorityScale; }
+        const optional<float>& loadingPriorityScale() const { return _loadingPriorityScale; }
+
+        optional<float>& loadingPriorityOffset() { return _loadingPriorityOffset; }
+        const optional<float>& loadingPriorityOffset() const { return _loadingPriorityOffset; }
+        
         /**
          If specified, use this node instead try to load from url
         */
@@ -57,7 +63,10 @@ namespace osgEarth { namespace Drivers
     public:
         SimpleModelOptions( const ConfigOptions& options=ConfigOptions() )
             : ModelSourceOptions( options ),
-              _shaderPolicy( SHADERPOLICY_GENERATE )
+              _lod_scale(1.0f),
+              _shaderPolicy( SHADERPOLICY_GENERATE ),
+              _loadingPriorityScale(1.0f),
+              _loadingPriorityOffset(0.0f)
         {
             setDriver( "simple" );
             fromConfig( _conf );
@@ -72,6 +81,8 @@ namespace osgEarth { namespace Drivers
             conf.updateIfSet( "lod_scale", _lod_scale );
             conf.updateIfSet( "location", _location );
             conf.updateIfSet( "orientation", _orientation);
+            conf.updateIfSet( "loading_priority_scale", _loadingPriorityScale );
+            conf.updateIfSet( "loading_priority_offset", _loadingPriorityOffset );
 
             conf.addIfSet( "shader_policy", "disable",  _shaderPolicy, SHADERPOLICY_DISABLE );
             conf.addIfSet( "shader_policy", "inherit",  _shaderPolicy, SHADERPOLICY_INHERIT );
@@ -93,6 +104,8 @@ namespace osgEarth { namespace Drivers
             conf.getIfSet( "lod_scale", _lod_scale );
             conf.getIfSet( "location", _location);
             conf.getIfSet( "orientation", _orientation);
+            conf.getIfSet( "loading_priority_scale", _loadingPriorityScale );
+            conf.getIfSet( "loading_priority_offset", _loadingPriorityOffset );
 
             conf.getIfSet( "shader_policy", "disable",  _shaderPolicy, SHADERPOLICY_DISABLE );
             conf.getIfSet( "shader_policy", "inherit",  _shaderPolicy, SHADERPOLICY_INHERIT );
@@ -106,6 +119,8 @@ namespace osgEarth { namespace Drivers
         optional<osg::Vec3> _location;
         optional<osg::Vec3> _orientation;
         optional<ShaderPolicy> _shaderPolicy;
+        optional<float> _loadingPriorityScale;
+        optional<float> _loadingPriorityOffset;
         osg::ref_ptr<osg::Node> _node;
     };
 

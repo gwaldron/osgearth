@@ -242,7 +242,7 @@ BuildGeometryFilter::processLines(FeatureList& features, const FilterContext& co
     {
         Feature* input = f->get();
 
-        GeometryIterator parts( input->getGeometry(), false );
+        GeometryIterator parts( input->getGeometry(), true );
         while( parts.hasMore() )
         {
             Geometry* part = parts.next();
@@ -343,7 +343,7 @@ BuildGeometryFilter::processPoints(FeatureList& features, const FilterContext& c
     {
         Feature* input = f->get();
 
-        GeometryIterator parts( input->getGeometry(), false );
+        GeometryIterator parts( input->getGeometry(), true );
         while( parts.hasMore() )
         {
             Geometry* part = parts.next();

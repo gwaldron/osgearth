@@ -147,7 +147,9 @@ BuildGeometryFilter::processPolygons(FeatureList& features, const FilterContext&
 
 
 osg::Geode*
-BuildGeometryFilter::processPolygonizedLines(FeatureList& features, const FilterContext& context)
+BuildGeometryFilter::processPolygonizedLines(FeatureList&         features, 
+                                             bool                 twosided,
+                                             const FilterContext& context)
 {
     osg::Geode* geode = new osg::Geode();
 
@@ -180,7 +182,7 @@ BuildGeometryFilter::processPolygonizedLines(FeatureList& features, const Filter
 
         // iterate over all the feature's geometry parts. We will treat
         // them as lines strings.
-        GeometryIterator parts( input->getGeometry(), false );
+        GeometryIterator parts( input->getGeometry(), true );
         while( parts.hasMore() )
         {
             Geometry* part = parts.next();
@@ -202,7 +204,7 @@ BuildGeometryFilter::processPolygonizedLines(FeatureList& features, const Filter
             transformAndLocalize( part->asVector(), featureSRS, verts.get(), normals.get(), mapSRS, _world2local, makeECEF );
 
             // turn the lines into polygons.
-            osg::Geometry* geom = polygonizer( verts.get(), normals.get() );
+            osg::Geometry* geom = polygonizer( verts.get(), normals.get(), twosided );
             if ( geom )
             {
                 geode->addDrawable( geom );
@@ -567,7 +569,8 @@ BuildGeometryFilter::push( FeatureList& input, FilterContext& context )
     if ( polygonizedLines.size() > 0 )
     {
         OE_TEST << LC << "Building " << polygonizedLines.size() << " polygonized lines." << std::endl;
-        osg::ref_ptr<osg::Geode> geode = processPolygonizedLines(polygonizedLines, context);
+        bool twosided = polygons.size() > 0 ? false : true;
+        osg::ref_ptr<osg::Geode> geode = processPolygonizedLines(polygonizedLines, twosided, context);
         if ( geode->getNumDrawables() > 0 )
         {
             osgUtil::Optimizer o;

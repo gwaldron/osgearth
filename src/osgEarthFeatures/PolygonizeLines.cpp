@@ -90,9 +90,9 @@ namespace
 
     // Add two triangles to an EBO vector; [side] controls the winding
     // direction.
-    inline void addTris(std::vector<unsigned>& ebo, unsigned i, unsigned prev_i, unsigned current, int side)
+    inline void addTris(std::vector<unsigned>& ebo, unsigned i, unsigned prev_i, unsigned current, float side)
     {
-        if ( side == 0 )
+        if ( side < 0.0f )
         {
             ebo.push_back( i-1 );
             ebo.push_back( i );
@@ -114,11 +114,11 @@ namespace
 
     // Add a triangle to an EBO vector; [side] control the winding
     // direction.
-    inline void addTri(std::vector<unsigned>& ebo, unsigned i0, unsigned i1, unsigned i2, int side)
+    inline void addTri(std::vector<unsigned>& ebo, unsigned i0, unsigned i1, unsigned i2, float side)
     {
         ebo.push_back( i0 );
-        ebo.push_back( side == 0 ? i1 : i2 );
-        ebo.push_back( side == 0 ? i2 : i1 );
+        ebo.push_back( side < 0.0f ? i1 : i2 );
+        ebo.push_back( side < 0.0f ? i2 : i1 );
     }
 }
 
@@ -132,7 +132,8 @@ _stroke( stroke )
 
 osg::Geometry*
 PolygonizeLinesOperator::operator()(osg::Vec3Array* verts, 
-                                    osg::Vec3Array* normals) const
+                                    osg::Vec3Array* normals,
+                                    bool            twosided) const
 {
     // number of verts on the original line.
     unsigned lineSize = verts->size();
@@ -201,10 +202,12 @@ PolygonizeLinesOperator::operator()(osg::Vec3Array* verts,
     osg::Quat rot, unrot;
 
     // iterate over both "sides" of the center line:
-    for( int s=0; s<=1; ++s )
+    int lastside = twosided ? 1 : 0;
+
+    for( int ss=0; ss<=lastside; ++ss )
     {
-        // s==0 is the left side, s==1 is the right side.
-        float side = s == 0 ? -1.0f : 1.0f;
+        //float side = s == 0 ? -1.0f : 1.0f;
+        float side = ss == 0 ? 1.0f : -1.0f;
 
         // iterate over each line segment.
         for( i=0; i<lineSize-1; ++i )
@@ -220,7 +223,8 @@ PolygonizeLinesOperator::operator()(osg::Vec3Array* verts,
 
             // the buffering vector is orthogonal to the direction vector and the normal;
             // flip it depending on the current side.
-            osg::Vec3 bufVecUnit = (s==0) ? normal ^ dir : dir ^ normal;
+            //osg::Vec3 bufVecUnit = (s==0) ? normal ^ dir : dir ^ normal;
+            osg::Vec3 bufVecUnit = (side < 0.0f) ? normal ^ dir : dir ^ normal;
 
             // scale the buffering vector to half the stroke width.
             osg::Vec3 bufVec = bufVecUnit * halfWidth;
@@ -236,7 +240,8 @@ PolygonizeLinesOperator::operator()(osg::Vec3Array* verts,
                 prevBufVertPtr = verts->size() - 1;
 
                 // first tex coord:
-                tverts->push_back( osg::Vec2f(1.0*(float)s, (*tverts)[i].y()) );
+                // TODO: revisit. I believe we have them going x = [-1..1] instead of [0..1] -gw
+                tverts->push_back( osg::Vec2f(1.0*side, (*tverts)[i].y()) );
 
                 // first normal
                 normals->push_back( (*normals)[i] );
@@ -259,8 +264,8 @@ PolygonizeLinesOperator::operator()(osg::Vec3Array* verts,
                         rotate( circlevec, -(side)*a, (*normals)[i], v );
 
                         verts->push_back( (*verts)[i] + v );
-                        addTri( ebo, i, verts->size()-2, verts->size()-1, s );
-                        tverts->push_back( osg::Vec2f(1.0*(float)s, (*tverts)[i].y()) );
+                        addTri( ebo, i, verts->size()-2, verts->size()-1, side );
+                        tverts->push_back( osg::Vec2f(1.0*side, (*tverts)[i].y()) );
                         normals->push_back( (*normals)[i] );
                         if ( spine ) spine->push_back( (*verts)[i] );
                     }
@@ -270,14 +275,14 @@ PolygonizeLinesOperator::operator()(osg::Vec3Array* verts,
                     float cornerWidth = sqrt(2.0*halfWidth*halfWidth);
 
                     verts->push_back( verts->back() - dir*halfWidth );
-                    addTri( ebo, i, verts->size()-2, verts->size()-1, s );
-                    tverts->push_back( osg::Vec2f(1.0*(float)s, (*tverts)[i].y()) );
+                    addTri( ebo, i, verts->size()-2, verts->size()-1, side );
+                    tverts->push_back( osg::Vec2f(1.0*side, (*tverts)[i].y()) );
                     normals->push_back( normals->back() );
                     if ( spine ) spine->push_back( (*verts)[i] );
 
                     verts->push_back( (*verts)[i] - dir*halfWidth );
-                    addTri( ebo, i, verts->size()-2, verts->size()-1, s );
-                    tverts->push_back( osg::Vec2f(1.0*(float)s, (*tverts)[i].y()) );
+                    addTri( ebo, i, verts->size()-2, verts->size()-1, side );
+                    tverts->push_back( osg::Vec2f(1.0*side, (*tverts)[i].y()) );
                     normals->push_back( (*normals)[i] );
                     if ( spine ) spine->push_back( (verts->back() - (*verts)[i]) * sqrt(2.0f) );
                 }
@@ -286,7 +291,7 @@ PolygonizeLinesOperator::operator()(osg::Vec3Array* verts,
             {
                 // does the new segment turn create a reflex angle (>180deg)?
                 float z = (prevDir ^ dir).z();
-                bool isOutside = s == 0 ? z <= 0.0 : z >= 0.0;
+                bool isOutside = side < 0.0f ? z <= 0.0 : z >= 0.0;
                 bool isInside = !isOutside;
 
                 // if this is an inside angle (or we're using mitered corners)
@@ -313,8 +318,8 @@ PolygonizeLinesOperator::operator()(osg::Vec3Array* verts,
 
                     // now that we have the current buffered point, build triangles
                     // for *previous* segment.
-                    addTris( ebo, i, prevBufVertPtr, verts->size()-1, s );
-                    tverts->push_back( osg::Vec2f(1.0*(float)s, (*tverts)[i].y()) );
+                    addTris( ebo, i, prevBufVertPtr, verts->size()-1, side );
+                    tverts->push_back( osg::Vec2f(1.0*side, (*tverts)[i].y()) );
                     normals->push_back( (*normals)[i] );
 
                     if ( spine ) spine->push_back( (*verts)[i] );
@@ -326,8 +331,8 @@ PolygonizeLinesOperator::operator()(osg::Vec3Array* verts,
                     osg::Vec3 start = (*verts)[i] + prevBufVec;
 
                     verts->push_back( start );
-                    addTris( ebo, i, prevBufVertPtr, verts->size()-1, s );
-                    tverts->push_back( osg::Vec2f(1.0*(float)s, (*tverts)[i].y()) );
+                    addTris( ebo, i, prevBufVertPtr, verts->size()-1, side );
+                    tverts->push_back( osg::Vec2f(1.0*side, (*tverts)[i].y()) );
                     normals->push_back( (*normals)[i] );
                     if ( spine ) spine->push_back( (*verts)[i] );
 
@@ -343,8 +348,8 @@ PolygonizeLinesOperator::operator()(osg::Vec3Array* verts,
                         rotate( circlevec, side*a, (*normals)[i], v );
 
                         verts->push_back( (*verts)[i] + v );
-                        addTri( ebo, i, verts->size()-1, verts->size()-2, s );
-                        tverts->push_back( osg::Vec2f(1.0*(float)s, (*tverts)[i].y()) );
+                        addTri( ebo, i, verts->size()-1, verts->size()-2, side );
+                        tverts->push_back( osg::Vec2f(1.0*side, (*tverts)[i].y()) );
                         normals->push_back( (*normals)[i] );
 
                         if ( spine ) spine->push_back( (*verts)[i] );
@@ -363,8 +368,8 @@ PolygonizeLinesOperator::operator()(osg::Vec3Array* verts,
 
         // record the final point data.
         verts->push_back( (*verts)[i] + prevBufVec );
-        addTris( ebo, i, prevBufVertPtr, verts->size()-1, s );
-        tverts->push_back( osg::Vec2f(1.0*(float)s, (*tverts)[i].y()) );
+        addTris( ebo, i, prevBufVertPtr, verts->size()-1, side );
+        tverts->push_back( osg::Vec2f(1.0*side, (*tverts)[i].y()) );
         normals->push_back( (*normals)[i] );
         if ( spine ) spine->push_back( (*verts)[i] );
 
@@ -382,8 +387,8 @@ PolygonizeLinesOperator::operator()(osg::Vec3Array* verts,
                 float a = step * (float)j;
                 rotate( circlevec, (side)*a, (*normals)[i], v );
                 verts->push_back( (*verts)[i] + v );
-                addTri( ebo, i, verts->size()-1, verts->size()-2, s );
-                tverts->push_back( osg::Vec2f(1.0*(float)s, (*tverts)[i].y()) );
+                addTri( ebo, i, verts->size()-1, verts->size()-2, side );
+                tverts->push_back( osg::Vec2f(1.0*side, (*tverts)[i].y()) );
                 normals->push_back( (*normals)[i] );
                 if ( spine ) spine->push_back( (*verts)[i] );
             }
@@ -393,14 +398,14 @@ PolygonizeLinesOperator::operator()(osg::Vec3Array* verts,
             float cornerWidth = sqrt(2.0*halfWidth*halfWidth);
 
             verts->push_back( verts->back() + prevDir*halfWidth );
-            addTri( ebo, i, verts->size()-1, verts->size()-2, s );
-            tverts->push_back( osg::Vec2f(1.0*(float)s, (*tverts)[i].y()) );
+            addTri( ebo, i, verts->size()-1, verts->size()-2, side );
+            tverts->push_back( osg::Vec2f(1.0*side, (*tverts)[i].y()) );
             normals->push_back( normals->back() );
             if ( spine ) spine->push_back( (*verts)[i] );
 
             verts->push_back( (*verts)[i] + prevDir*halfWidth );
-            addTri( ebo, i, verts->size()-1, verts->size()-2, s );
-            tverts->push_back( osg::Vec2f(1.0*(float)s, (*tverts)[i].y()) );
+            addTri( ebo, i, verts->size()-1, verts->size()-2, side );
+            tverts->push_back( osg::Vec2f(1.0*side, (*tverts)[i].y()) );
             normals->push_back( (*normals)[i] );
             if ( spine ) spine->push_back( (*verts)[i] );
         }

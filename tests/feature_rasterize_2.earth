@@ -60,4 +60,8 @@ rasterizing it into image tiles.
         </styles>
         
     </image>
+	
+	<external>
+		<lod_blending/>
+	</external>
 </map>

@@ -643,39 +643,26 @@ ImageLayer::createImageFromTileSource(const TileKey&    key,
         return assembleImageFromTileSource( key, progress, out_isFallback );
     }
 
-    // Fail is the image is blacklisted.
-    // ..unless there will be a fallback attempt.
-    if ( source->getBlacklist()->contains( key.getTileId() ) && !forceFallback )
-    {
-        OE_DEBUG << LC << "createImageFromTileSource: blacklisted(" << key.str() << ")" << std::endl;
-        return GeoImage::INVALID;
-    }
-
-    // Fail if no data is available for this key.
-    if ( !source->hasDataAtLOD( key.getLevelOfDetail() ) && !forceFallback )
-    {
-        OE_DEBUG << LC << "createImageFromTileSource: hasDataAtLOD(" << key.str() << ") == false" << std::endl;
-        return GeoImage::INVALID;
-    }
-
-    if ( !source->hasDataInExtent( key.getExtent() ) )
-    {
-        OE_DEBUG << LC << "createImageFromTileSource: hasDataInExtent(" << key.str() << ") == false" << std::endl;
-        return GeoImage::INVALID;
-    }
-
     // Good to go, ask the tile source for an image:
     osg::ref_ptr<TileSource::ImageOperation> op = _preCacheOp;
 
     osg::ref_ptr<osg::Image> result;
-    TileKey finalKey = key;
-    bool fellBack = false;
 
     if ( forceFallback )
-    {        
+    {
+        // check if the tile source has any data coverage for the requested key.
+        // the LOD is ignore here and checked later
+        if ( !source->hasDataInExtent( key.getExtent() ) )
+        {
+            OE_DEBUG << LC << "createImageFromTileSource: hasDataInExtent(" << key.str() << ") == false" << std::endl;
+            return GeoImage::INVALID;
+        }
+
+        TileKey finalKey = key;
         while( !result.valid() && finalKey.valid() )
         {
-            if ( !source->getBlacklist()->contains( finalKey.getTileId() ) )
+            if ( !source->getBlacklist()->contains( finalKey.getTileId() ) &&
+                source->hasDataForFallback(finalKey))
             {
                 result = source->createImage( finalKey, op.get(), progress );
                 if ( result.valid() )
@@ -688,7 +675,6 @@ ImageLayer::createImageFromTileSource(const TileKey&    key,
                         GeoImage raw( result.get(), finalKey.getExtent() );
                         GeoImage cropped = raw.crop( key.getExtent(), true, raw.getImage()->s(), raw.getImage()->t(), *_runtimeOptions.driver()->bilinearReprojection() );
                         result = cropped.takeImage();
-                        fellBack = true;
                     }
                 }
             }
@@ -706,9 +692,20 @@ ImageLayer::createImageFromTileSource(const TileKey&    key,
             finalKey = key;
         }
     }
-
     else
     {
+        // Fail is the image is blacklisted.
+        if ( source->getBlacklist()->contains( key.getTileId() ) )
+        {
+            OE_DEBUG << LC << "createImageFromTileSource: blacklisted(" << key.str() << ")" << std::endl;
+            return GeoImage::INVALID;
+        }
+    
+        if ( !source->hasData( key ) )
+        {
+            OE_DEBUG << LC << "createImageFromTileSource: hasData(" << key.str() << ") == false" << std::endl;
+            return GeoImage::INVALID;
+        }
         result = source->createImage( key, op.get(), progress );
     }
 

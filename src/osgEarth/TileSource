@@ -320,6 +320,12 @@ namespace osgEarth
         virtual bool hasData(const TileKey& key) const;
 
         /**
+         * Whether or not the source has data to create fallback tile for 
+         * the given TileKey
+         */
+        virtual bool hasDataForFallback(const TileKey& key) const;
+
+        /**
          * Whether the tile source can generate data for the specified LOD.
          */
         virtual bool hasDataAtLOD( unsigned lod ) const;

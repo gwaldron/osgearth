@@ -99,7 +99,6 @@ namespace
 
         "uniform vec4 oe_tile_key; \n"
         "uniform int oe_layer_uid; \n"
-        "uniform float oe_layer_opacity; \n"
         "varying vec4 oe_lodblend_texc; \n"
         "varying float oe_lodblend_r; \n"
         "uniform sampler2D oe_layer_tex_parent; \n"
@@ -108,9 +107,11 @@ namespace
         "{ \n"
         "    if ( oe_layer_uid >= 0 ) \n"
         "    { \n"
-        "        vec4 texel = texture2D(oe_layer_tex_parent, oe_lodblend_texc.st) * oe_layer_opacity; \n"
-        "        float enable = step(0.0001, texel.a); \n"
-        "        color = mix(color, texel, oe_lodblend_r*enable); \n"
+        "        vec4 texel = texture2D(oe_layer_tex_parent, oe_lodblend_texc.st); \n"
+        "        float enable = step(0.0001, texel.a); \n"          // did we get a parent texel?
+        "        texel.rgb = mix(color.rgb, texel.rgb, enable); \n" // if not, use the incoming color for the blend
+        "        texel.a = mix(0.0, color.a, enable); \n"           // ...and blend from alpha=0 for a fade-in effect.
+        "        color = mix(color, texel, oe_lodblend_r); \n"
         "    } \n"
         "} \n";
 }

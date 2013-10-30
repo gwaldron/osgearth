@@ -870,6 +870,12 @@ MPTerrainEngineNode::updateShaders()
         terrainStateSet->getOrCreateUniform(
             "oe_layer_tex_parent", osg::Uniform::SAMPLER_2D )->set( _secondaryUnit );
 
+        // binding for the default secondary texture matrix
+        osg::Matrixf parent_mat;
+        parent_mat(0,0) = 0.0f;
+        terrainStateSet->getOrCreateUniform(
+            "oe_layer_parent_matrix", osg::Uniform::FLOAT_MAT4 )->set( parent_mat );
+
         // uniform that controls per-layer opacity
         terrainStateSet->getOrCreateUniform(
             "oe_layer_opacity", osg::Uniform::FLOAT )->set( 1.0f );

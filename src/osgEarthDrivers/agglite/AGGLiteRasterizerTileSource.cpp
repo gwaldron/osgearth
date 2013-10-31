@@ -245,7 +245,7 @@ public:
                     feature->style().isSet() && feature->style()->has<PolygonSymbol>() ? feature->style()->get<PolygonSymbol>() :
                     masterPoly;
                 
-                const osg::Vec4 color = poly ? poly->fill()->color() : osg::Vec4(1,1,1,1);
+                const osg::Vec4 color = poly ? static_cast<osg::Vec4>(poly->fill()->color()) : osg::Vec4(1,1,1,1);
                 rasterize(croppedGeometry.get(), color, frame, ras, ren);
             }
         }
@@ -263,7 +263,7 @@ public:
                     feature->style().isSet() && feature->style()->has<LineSymbol>() ? feature->style()->get<LineSymbol>() :
                     masterLine;
                 
-                const osg::Vec4 color = line ? line->stroke()->color() : osg::Vec4(1,1,1,1);
+                const osg::Vec4 color = line ? static_cast<osg::Vec4>(line->stroke()->color()) : osg::Vec4(1,1,1,1);
                 rasterize(croppedGeometry.get(), color, frame, ras, ren);
             }
         }

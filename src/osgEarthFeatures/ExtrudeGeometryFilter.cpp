@@ -31,10 +31,8 @@
 #include <osgUtil/Tessellator>
 #include <osgUtil/Optimizer>
 #include <osgUtil/SmoothingVisitor>
-#include <osg/Version>
 #include <osg/LineWidth>
 #include <osg/PolygonOffset>
-#include <osgEarth/Version>
 
 #define LC "[ExtrudeGeometryFilter] "
 

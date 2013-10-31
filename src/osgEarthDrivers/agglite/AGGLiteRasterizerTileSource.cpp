@@ -221,6 +221,8 @@ public:
         ras.gamma(1.3);
         ras.filling_rule(agg::fill_even_odd);
 
+        // construct an extent for cropping the geometry to our tile.
+        // extend just outside the actual extents so we don't get edge artifacts:
         GeoExtent cropExtent = GeoExtent(imageExtent);
         cropExtent.scale(1.1, 1.1);
 
@@ -266,7 +268,6 @@ public:
             }
         }
 
-        //bd->_pass++;
         return true;
     }
 
@@ -326,7 +327,10 @@ private:
     std::string _configPath;
 };
 
-// Reads tiles from a TileCache disk cache.
+
+/**
+ * Plugin entry point for the AGGLite feature rasterizer
+ */
 class AGGLiteRasterizerTileSourceDriver : public TileSourceDriver
 {
     public:
@@ -339,7 +343,9 @@ class AGGLiteRasterizerTileSourceDriver : public TileSourceDriver
         
         virtual bool acceptsExtension(const std::string& extension) const
         {
-            return osgDB::equalCaseInsensitive( extension, "osgearth_agglite" );
+            return
+                osgDB::equalCaseInsensitive( extension, "osgearth_agglite" ) ||
+                osgDB::equalCaseInsensitive( extension, "osgearth_rasterize" );
         }
 
         virtual ReadResult readObject(const std::string& file_name, const Options* options) const

@@ -57,10 +57,26 @@ namespace osgEarth
             osg::Node*       graph         =0L, 
             unsigned         traversalMask =~0,
             float            buffer        =5.0f,
-            Limit            limit         =LIMIT_ONE);
+            Limit            limit         =LIMIT_NEAREST);
 
         /** dtor */
         virtual ~Picker() { }
+
+        /**
+         * Sets the node mask to apply to the pick visitor. This lets you
+         * limit the subgraph that the picker searches.
+         */
+        void setTraversalMask(unsigned mask);
+
+        /**
+         * Sets the search buffer around the mouse.
+         */
+        void setBuffer(float buffer);
+
+        /**
+         * Sets the hit limit mode.
+         */
+        void setLimit(const Limit& limit);
 
         /**
          * Picks geometry under the specified viewport coordinates. The results

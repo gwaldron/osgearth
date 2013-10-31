@@ -556,12 +556,14 @@ BuildGeometryFilter::push( FeatureList& input, FilterContext& context )
         osg::ref_ptr<osg::Geode> geode = processPolygons(polygons, context);
         if ( geode->getNumDrawables() > 0 )
         {
-            osgUtil::Optimizer o;
-            o.optimize( geode.get(), 
-                osgUtil::Optimizer::VERTEX_PRETRANSFORM |
-                osgUtil::Optimizer::INDEX_MESH |
-                osgUtil::Optimizer::VERTEX_POSTTRANSFORM );
-
+            if ( !context.featureIndex() )
+            {
+                osgUtil::Optimizer o;
+                o.optimize( geode.get(), 
+                    osgUtil::Optimizer::VERTEX_PRETRANSFORM |
+                    osgUtil::Optimizer::INDEX_MESH |
+                    osgUtil::Optimizer::VERTEX_POSTTRANSFORM );
+            }
             result->addChild( geode.get() );
         }
     }
@@ -573,12 +575,14 @@ BuildGeometryFilter::push( FeatureList& input, FilterContext& context )
         osg::ref_ptr<osg::Geode> geode = processPolygonizedLines(polygonizedLines, twosided, context);
         if ( geode->getNumDrawables() > 0 )
         {
-            osgUtil::Optimizer o;
-            o.optimize( geode.get(), 
-                osgUtil::Optimizer::VERTEX_PRETRANSFORM |
-                osgUtil::Optimizer::INDEX_MESH |
-                osgUtil::Optimizer::VERTEX_POSTTRANSFORM );
-
+            if ( !context.featureIndex() )
+            {
+                osgUtil::Optimizer o;
+                o.optimize( geode.get(), 
+                    osgUtil::Optimizer::VERTEX_PRETRANSFORM |
+                    osgUtil::Optimizer::INDEX_MESH |
+                    osgUtil::Optimizer::VERTEX_POSTTRANSFORM );
+            }
             result->addChild( geode.get() );
         }
     }

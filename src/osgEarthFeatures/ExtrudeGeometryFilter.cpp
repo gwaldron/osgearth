@@ -898,7 +898,7 @@ ExtrudeGeometryFilter::push( FeatureList& input, FilterContext& context )
     bool ok = process( input, context );
 
     // convert everything to triangles and combine drawables.
-    if ( _mergeGeometry == true && _featureNameExpr.empty() )
+    if ( _mergeGeometry == true && !context.featureIndex() && _featureNameExpr.empty() )
     {
         for( SortedGeodeMap::iterator i = _geodes.begin(); i != _geodes.end(); ++i )
         {

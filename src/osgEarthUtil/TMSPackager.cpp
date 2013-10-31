@@ -255,8 +255,11 @@ TMSPackager::packageImageTile(ImageLayer*                  layer,
     
     int taskCount = 0;
 
-    if ( shouldPackageKey(key) && key.getLevelOfDetail() >= minLevel )
-    {
+    bool hasData = layer->getTileSource()->hasData( key );
+
+    if ( shouldPackageKey(key) && key.getLevelOfDetail() >= minLevel && hasData )
+    {        
+        OE_DEBUG << "Packaging key " << key.str() << std::endl;
         unsigned w, h;
         key.getProfile()->getNumTiles( key.getLevelOfDetail(), w, h );
 
@@ -274,7 +277,7 @@ TMSPackager::packageImageTile(ImageLayer*                  layer,
             ParallelTask<CreateImageTileTask>* task = new ParallelTask<CreateImageTileTask>( semaphore );
             task->init(layer, key, path, extension, _imageWriteOptions, _keepEmptyImageTiles, _verbose);
             task->setProgressCallback(progress);
-            tasks.push_back(task);
+            tasks.push_back(task);            
             taskCount++;
 
             tileOK = true;
@@ -307,13 +310,10 @@ TMSPackager::packageImageTile(ImageLayer*                  layer,
         if ( (subdivide == true) && (isSingleColor == false) )
         {
             for( unsigned q=0; q<4; ++q )
-            {
+            {                
                 TileKey childKey = key.createChildKey(q);
 
-                if (layer->getTileSource()->hasDataAtLOD( key.getLevelOfDetail() ) )
-                    taskCount += packageImageTile( layer, childKey, rootDir, extension, tasks, semaphore, progress, out_maxLevel );
-                //else
-                //    OE_WARN << LC << "No data at key, halting subdivision" << std::endl;
+                taskCount += packageImageTile( layer, childKey, rootDir, extension, tasks, semaphore, progress, out_maxLevel );                
             }
         }
     }
@@ -337,7 +337,9 @@ TMSPackager::packageElevationTile(ElevationLayer*               layer,
 
     int taskCount = 0;
 
-    if ( shouldPackageKey(key) && key.getLevelOfDetail() >= minLevel )
+    bool hasData = layer->getTileSource()->hasData( key );
+
+    if ( shouldPackageKey(key) && key.getLevelOfDetail() >= minLevel && hasData )
     {
         unsigned w, h;
         key.getProfile()->getNumTiles( key.getLevelOfDetail(), w, h );
@@ -389,10 +391,8 @@ TMSPackager::packageElevationTile(ElevationLayer*               layer,
         {
             for( unsigned q=0; q<4; ++q )
             {
-                TileKey childKey = key.createChildKey(q);
-
-                if (layer->getTileSource()->hasDataAtLOD( childKey.getLevelOfDetail() ))
-                  taskCount += packageElevationTile( layer, childKey, rootDir, extension, tasks, semaphore, progress, out_maxLevel );
+                TileKey childKey = key.createChildKey(q);                
+                taskCount += packageElevationTile( layer, childKey, rootDir, extension, tasks, semaphore, progress, out_maxLevel );
             }
         }
     }

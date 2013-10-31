@@ -1,0 +1,7 @@
+#include <osgEarth/Version>
+#define OSGEARTH_GIT_SHA1_STRING "@OSGEARTH_GIT_SHA1@"
+extern "C" {
+    const char* osgEarthGitSHA1() {
+        return OSGEARTH_GIT_SHA1_STRING;
+    }
+}

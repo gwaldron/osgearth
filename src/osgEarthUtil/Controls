@@ -23,6 +23,7 @@
 #include <osgEarth/Common>
 #include <osgEarth/Units>
 #include <osgEarth/StateSetCache>
+#include <osgEarthUtil/AlphaEffect>
 #include <osg/Drawable>
 #include <osg/Geode>
 #include <osg/MatrixTransform>
@@ -161,7 +162,7 @@ namespace osgEarth { namespace Util { namespace Controls
      * Base class for all controls. You can actually use a Control directly and it
      * will just render as a rectangle.
      */
-    class OSGEARTHUTIL_EXPORT Control : public osg::Group //public osg::Referenced
+    class OSGEARTHUTIL_EXPORT Control : public osg::Group
     {
     public:
         enum Side
@@ -262,6 +263,10 @@ namespace osgEarth { namespace Util { namespace Controls
         void setAbsorbEvents( bool value ) { _absorbEvents = value; }
         bool getAbsorbEvents() const { return _absorbEvents; }
 
+        /** control opacity [0..1] */
+        void setOpacity(float value) { _alphaEffect->setAlpha(value); }
+        float getOpacity() const { return _alphaEffect->getAlpha(); }
+
         void addEventHandler( ControlEventHandler* handler, bool fire =false );
 
     public:
@@ -320,6 +325,7 @@ namespace osgEarth { namespace Util { namespace Controls
         bool _absorbEvents;
         osg::Geode* _geode;
         osg::ref_ptr<osg::Geometry> _geom;
+        osg::ref_ptr<AlphaEffect> _alphaEffect;
     };
 
     typedef std::vector< osg::ref_ptr<Control> > ControlVector;
@@ -453,6 +459,7 @@ namespace osgEarth { namespace Util { namespace Controls
         Angular _rotation;
         bool _fixSizeForRot;
         osg::Geometry* _geom;
+        float _opacity;
     };
 
     /**

@@ -34,6 +34,24 @@ _limit   ( limit )
         _path = root->getParentalNodePaths()[0];
 }
 
+void
+Picker::setLimit(const Picker::Limit& value)
+{
+    _limit = value;
+}
+
+void
+Picker::setTraversalMask(unsigned value)
+{
+    _travMask = value;
+}
+
+void
+Picker::setBuffer(float value)
+{
+    _buffer = value;
+}
+
 bool
 Picker::pick( float x, float y, Hits& results ) const
 {

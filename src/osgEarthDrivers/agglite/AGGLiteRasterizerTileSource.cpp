@@ -53,21 +53,16 @@ using namespace OpenThreads;
 class AGGLiteRasterizerTileSource : public FeatureTileSource
 {
 public:
+    struct RenderFrame {
+        double xmin, ymin;
+        double xf, yf;
+    };
+
+public:
     AGGLiteRasterizerTileSource( const TileSourceOptions& options ) : FeatureTileSource( options ),
         _options( options )
     {
         //nop
-    }
-
-    struct BuildData : public osg::Referenced {
-        BuildData() : _pass(0) { }
-        int _pass;
-    };
-
-    //override
-    osg::Referenced* createBuildData()
-    {
-        return new BuildData();
     }
 
     //override
@@ -82,92 +77,54 @@ public:
     //override
     bool renderFeaturesForStyle(
         const Style&       style,
-        const FeatureList& inFeatures,
+        const FeatureList& features,
         osg::Referenced*   buildData,
         const GeoExtent&   imageExtent,
         osg::Image*        image )
     {
-        // local copy of the features that we can process
-        FeatureList features = inFeatures;
-
-        BuildData* bd = static_cast<BuildData*>( buildData );
-
         // A processing context to use with the filters:
         FilterContext context;
         context.profile() = getFeatureSource()->getFeatureProfile();
 
-        const LineSymbol* masterLine = style.getSymbol<LineSymbol>();
+        const LineSymbol*    masterLine = style.getSymbol<LineSymbol>();
         const PolygonSymbol* masterPoly = style.getSymbol<PolygonSymbol>();
 
-        //bool embeddedStyles = getFeatureSource()->hasEmbeddedStyles();
+        // sort into bins, making a copy for lines that require buffering.
+        FeatureList polygons;
+        FeatureList lines;
 
-        // if only a line symbol exists, and there are polygons in the mix, draw them
-        // as outlines (line rings).
-        //OE_INFO << LC << "Line Symbol = " << (masterLine == 0L ? "null" : masterLine->getConfig().toString()) << std::endl;
-        //OE_INFO << LC << "Poly SYmbol = " << (masterPoly == 0L ? "null" : masterPoly->getConfig().toString()) << std::endl;
-
-        //bool convertPolysToRings = poly == 0L && line != 0L;
-        //if ( convertPolysToRings )
-        //    OE_INFO << LC << "No PolygonSymbol; will draw polygons to rings" << std::endl;
-
-        // initialize:
-        double xmin = imageExtent.xMin();
-        double ymin = imageExtent.yMin();
-        double xf = (double)image->s() / imageExtent.width();
-        double yf = (double)image->t() / imageExtent.height();
-
-        // strictly speaking we should iterate over the features and buffer each one that's a line,
-        // rather then checking for the existence of a LineSymbol.
-        FeatureList linesToBuffer;
-        for(FeatureList::iterator i = features.begin(); i != features.end(); i++)
+        for(FeatureList::const_iterator f = features.begin(); f != features.end(); ++f)
         {
-            Feature* feature = i->get();
-            Geometry* geom = feature->getGeometry();
-
-            if ( geom )
+            if ( f->get()->getGeometry() )
             {
-                // check for an embedded style:
-                const LineSymbol* line = feature->style().isSet() ? 
-                    feature->style()->getSymbol<LineSymbol>() : masterLine;
-
-                const PolygonSymbol* poly =
-                    feature->style().isSet() ? feature->style()->getSymbol<PolygonSymbol>() : masterPoly;
-
-                // if we have polygons but only a LineSymbol, draw the poly as a line.
-                if ( geom->getComponentType() == Geometry::TYPE_POLYGON )
+                if ( masterPoly || f->get()->style()->has<PolygonSymbol>() )
                 {
-                    if ( !poly && line )
-                    {
-                        Feature* outline = new Feature( *feature );
-                        geom = geom->cloneAs( Geometry::TYPE_RING );
-                        outline->setGeometry( geom );
-                        *i = outline;
-                        feature = outline;
-                    }
-                    //TODO: fix to enable outlined polys. doesn't work, not sure why -gw
-                    //else if ( poly && line )
-                    //{
-                    //    Feature* outline = new Feature();
-                    //    geom = geom->cloneAs( Geometry::TYPE_LINESTRING );
-                    //    outline->setGeometry( geom );
-                    //    features.push_back( outline );
-                    //}
+                    polygons.push_back( f->get() );
                 }
 
-                bool needsBuffering =
-                    geom->getComponentType() == Geometry::TYPE_LINESTRING || 
-                    geom->getComponentType() == Geometry::TYPE_RING;
-
-                if ( needsBuffering )
+                if ( masterLine || f->get()->style()->has<LineSymbol>() )
                 {
-                    linesToBuffer.push_back( feature );
+                    Feature* newFeature = new Feature( *f->get() );
+                    if ( !newFeature->getGeometry()->isLinear() )
+                    {
+                        newFeature->setGeometry( newFeature->getGeometry()->cloneAs(Geometry::TYPE_RING) );
+                    }
+                    lines.push_back( newFeature );
                 }
             }
         }
 
-        if ( linesToBuffer.size() > 0 )
+        // initialize:
+        RenderFrame frame;
+        frame.xmin = imageExtent.xMin();
+        frame.ymin = imageExtent.yMin();
+        frame.xf   = (double)image->s() / imageExtent.width();
+        frame.yf   = (double)image->t() / imageExtent.height();
+
+        if ( lines.size() > 0 )
         {
-            //We are buffering in the features native extent, so we need to use the transform extent to get the proper "resolution" for the image
+            // We are buffering in the features native extent, so we need to use the
+            // transformed extent to get the proper "resolution" for the image
             const SpatialReference* featureSRS = context.profile()->getSRS();
             GeoExtent transformedExtent = imageExtent.transform(featureSRS);
 
@@ -185,7 +142,7 @@ public:
             {
                 ResampleFilter resample;
                 resample.minLength() = osg::minimum( xres, yres );
-                context = resample.push( linesToBuffer, context );
+                context = resample.push( lines, context );
             }
 
             // now run the buffer operation on all lines:
@@ -244,13 +201,14 @@ public:
             }
 
             buffer.distance() = lineWidth * 0.5;   // since the distance is for one side
-            buffer.push( linesToBuffer, context );
+            buffer.push( lines, context );
         }
 
         // Transform the features into the map's SRS:
         TransformFilter xform( imageExtent.getSRS() );
         xform.setLocalizeCoordinates( false );
-        context = xform.push( features, context );
+        FilterContext polysContext = xform.push( polygons, context );
+        FilterContext linesContext = xform.push( lines, context );
 
         // set up the AGG renderer:
         agg::rendering_buffer rbuf( image->data(), image->s(), image->t(), image->s()*4 );
@@ -263,6 +221,8 @@ public:
         ras.gamma(1.3);
         ras.filling_rule(agg::fill_even_odd);
 
+        // construct an extent for cropping the geometry to our tile.
+        // extend just outside the actual extents so we don't get edge artifacts:
         GeoExtent cropExtent = GeoExtent(imageExtent);
         cropExtent.scale(1.1, 1.1);
 
@@ -272,79 +232,42 @@ public:
         cropPoly->push_back( osg::Vec3d( cropExtent.xMax(), cropExtent.yMax(), 0 ));
         cropPoly->push_back( osg::Vec3d( cropExtent.xMin(), cropExtent.yMax(), 0 ));
 
-        double lineWidth = 1.0;
-        if ( masterLine )
-            lineWidth = (double)masterLine->stroke()->width().value();
-
-        osg::Vec4 color = osg::Vec4(1, 1, 1, 1);
-        if ( masterLine )
-            color = masterLine->stroke()->color();
-
-        // render the features
-        for(FeatureList::iterator i = features.begin(); i != features.end(); i++)
+        // render the polygons
+        for(FeatureList::iterator i = polygons.begin(); i != polygons.end(); i++)
         {
-            Feature* feature = i->get();
-
+            Feature*  feature  = i->get();
             Geometry* geometry = feature->getGeometry();
 
-            osg::ref_ptr< Geometry > croppedGeometry;
-            if ( ! geometry->crop( cropPoly.get(), croppedGeometry ) )
-                continue;
-
-            // set up a default color:
-            osg::Vec4 c = color;
-            unsigned int a = (unsigned int)(127+(c.a()*255)/2); // scale alpha up
-            agg::rgba8 fgColor( (unsigned int)(c.r()*255), (unsigned int)(c.g()*255), (unsigned int)(c.b()*255), a );
-
-            GeometryIterator gi( croppedGeometry.get() );
-            while( gi.hasMore() )
+            osg::ref_ptr<Geometry> croppedGeometry;
+            if ( geometry->crop( cropPoly.get(), croppedGeometry ) )
             {
-                c = color;
-                Geometry* g = gi.next();
-            
-                const LineSymbol* line = feature->style().isSet() ? 
-                    feature->style()->getSymbol<LineSymbol>() : masterLine;
-
                 const PolygonSymbol* poly =
-                    feature->style().isSet() ? feature->style()->getSymbol<PolygonSymbol>() : masterPoly;
-
-                if (g->getType() == Geometry::TYPE_RING || g->getType() == Geometry::TYPE_LINESTRING)
-                {
-                    if ( line )
-                        c = line->stroke()->color();
-                    else if ( poly )
-                        c = poly->fill()->color();
-                }
-
-                else if ( g->getType() == Geometry::TYPE_POLYGON )
-                {
-                    if ( poly )
-                        c = poly->fill()->color();
-                    else if ( line )
-                        c = line->stroke()->color();
-                }
-
-                a = (unsigned int)(127+(c.a()*255)/2); // scale alpha up
-                fgColor = agg::rgba8( (unsigned int)(c.r()*255), (unsigned int)(c.g()*255), (unsigned int)(c.b()*255), a );
-
-                ras.filling_rule( agg::fill_even_odd );
-                for( Geometry::iterator p = g->begin(); p != g->end(); p++ )
-                {
-                    const osg::Vec3d& p0 = *p;
-                    double x0 = xf*(p0.x()-xmin);
-                    double y0 = yf*(p0.y()-ymin);
-
-                    if ( p == g->begin() )
-                        ras.move_to_d( x0, y0 );
-                    else
-                        ras.line_to_d( x0, y0 );
-                }
+                    feature->style().isSet() && feature->style()->has<PolygonSymbol>() ? feature->style()->get<PolygonSymbol>() :
+                    masterPoly;
+                
+                const osg::Vec4 color = poly ? static_cast<osg::Vec4>(poly->fill()->color()) : osg::Vec4(1,1,1,1);
+                rasterize(croppedGeometry.get(), color, frame, ras, ren);
             }
-            ras.render(ren, fgColor);
-            ras.reset();
         }
 
-        bd->_pass++;
+        // render the lines
+        for(FeatureList::iterator i = lines.begin(); i != lines.end(); i++)
+        {
+            Feature*  feature  = i->get();
+            Geometry* geometry = feature->getGeometry();
+
+            osg::ref_ptr<Geometry> croppedGeometry;
+            if ( geometry->crop( cropPoly.get(), croppedGeometry ) )
+            {
+                const LineSymbol* line =
+                    feature->style().isSet() && feature->style()->has<LineSymbol>() ? feature->style()->get<LineSymbol>() :
+                    masterLine;
+                
+                const osg::Vec4 color = line ? static_cast<osg::Vec4>(line->stroke()->color()) : osg::Vec4(1,1,1,1);
+                rasterize(croppedGeometry.get(), color, frame, ras, ren);
+            }
+        }
+
         return true;
     }
 
@@ -361,6 +284,39 @@ public:
         return true;
     }
 
+    // rasterizes a geometry.
+    void rasterize(const Geometry* geometry, const osg::Vec4& color, RenderFrame& frame, 
+                   agg::rasterizer& ras, agg::renderer<agg::span_abgr32>& ren)
+    {
+        osg::Vec4 c = color;
+        unsigned int a = (unsigned int)(127+(c.a()*255)/2); // scale alpha up
+        agg::rgba8 fgColor( (unsigned int)(c.r()*255), (unsigned int)(c.g()*255), (unsigned int)(c.b()*255), a );
+
+        ras.filling_rule( agg::fill_even_odd );
+
+        ConstGeometryIterator gi( geometry );
+        while( gi.hasMore() )
+        {
+            c = color;
+            const Geometry* g = gi.next();
+
+            for( Geometry::const_iterator p = g->begin(); p != g->end(); p++ )
+            {
+                const osg::Vec3d& p0 = *p;
+                double x0 = frame.xf*(p0.x()-frame.xmin);
+                double y0 = frame.yf*(p0.y()-frame.ymin);
+
+                if ( p == g->begin() )
+                    ras.move_to_d( x0, y0 );
+                else
+                    ras.line_to_d( x0, y0 );
+            }
+        }
+        ras.render(ren, fgColor);
+        ras.reset();
+    }
+
+
     virtual std::string getExtension()  const 
     {
         return "png";
@@ -371,7 +327,10 @@ private:
     std::string _configPath;
 };
 
-// Reads tiles from a TileCache disk cache.
+
+/**
+ * Plugin entry point for the AGGLite feature rasterizer
+ */
 class AGGLiteRasterizerTileSourceDriver : public TileSourceDriver
 {
     public:
@@ -384,7 +343,9 @@ class AGGLiteRasterizerTileSourceDriver : public TileSourceDriver
         
         virtual bool acceptsExtension(const std::string& extension) const
         {
-            return osgDB::equalCaseInsensitive( extension, "osgearth_agglite" );
+            return
+                osgDB::equalCaseInsensitive( extension, "osgearth_agglite" ) ||
+                osgDB::equalCaseInsensitive( extension, "osgearth_rasterize" );
         }
 
         virtual ReadResult readObject(const std::string& file_name, const Options* options) const

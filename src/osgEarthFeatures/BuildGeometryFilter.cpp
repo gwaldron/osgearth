@@ -147,7 +147,9 @@ BuildGeometryFilter::processPolygons(FeatureList& features, const FilterContext&
 
 
 osg::Geode*
-BuildGeometryFilter::processPolygonizedLines(FeatureList& features, const FilterContext& context)
+BuildGeometryFilter::processPolygonizedLines(FeatureList&         features, 
+                                             bool                 twosided,
+                                             const FilterContext& context)
 {
     osg::Geode* geode = new osg::Geode();
 
@@ -180,7 +182,7 @@ BuildGeometryFilter::processPolygonizedLines(FeatureList& features, const Filter
 
         // iterate over all the feature's geometry parts. We will treat
         // them as lines strings.
-        GeometryIterator parts( input->getGeometry(), false );
+        GeometryIterator parts( input->getGeometry(), true );
         while( parts.hasMore() )
         {
             Geometry* part = parts.next();
@@ -202,7 +204,7 @@ BuildGeometryFilter::processPolygonizedLines(FeatureList& features, const Filter
             transformAndLocalize( part->asVector(), featureSRS, verts.get(), normals.get(), mapSRS, _world2local, makeECEF );
 
             // turn the lines into polygons.
-            osg::Geometry* geom = polygonizer( verts.get(), normals.get() );
+            osg::Geometry* geom = polygonizer( verts.get(), normals.get(), twosided );
             if ( geom )
             {
                 geode->addDrawable( geom );
@@ -240,7 +242,7 @@ BuildGeometryFilter::processLines(FeatureList& features, const FilterContext& co
     {
         Feature* input = f->get();
 
-        GeometryIterator parts( input->getGeometry(), false );
+        GeometryIterator parts( input->getGeometry(), true );
         while( parts.hasMore() )
         {
             Geometry* part = parts.next();
@@ -341,7 +343,7 @@ BuildGeometryFilter::processPoints(FeatureList& features, const FilterContext& c
     {
         Feature* input = f->get();
 
-        GeometryIterator parts( input->getGeometry(), false );
+        GeometryIterator parts( input->getGeometry(), true );
         while( parts.hasMore() )
         {
             Geometry* part = parts.next();
@@ -554,12 +556,14 @@ BuildGeometryFilter::push( FeatureList& input, FilterContext& context )
         osg::ref_ptr<osg::Geode> geode = processPolygons(polygons, context);
         if ( geode->getNumDrawables() > 0 )
         {
-            osgUtil::Optimizer o;
-            o.optimize( geode.get(), 
-                osgUtil::Optimizer::VERTEX_PRETRANSFORM |
-                osgUtil::Optimizer::INDEX_MESH |
-                osgUtil::Optimizer::VERTEX_POSTTRANSFORM );
-
+            if ( !context.featureIndex() )
+            {
+                osgUtil::Optimizer o;
+                o.optimize( geode.get(), 
+                    osgUtil::Optimizer::VERTEX_PRETRANSFORM |
+                    osgUtil::Optimizer::INDEX_MESH |
+                    osgUtil::Optimizer::VERTEX_POSTTRANSFORM );
+            }
             result->addChild( geode.get() );
         }
     }
@@ -567,15 +571,18 @@ BuildGeometryFilter::push( FeatureList& input, FilterContext& context )
     if ( polygonizedLines.size() > 0 )
     {
         OE_TEST << LC << "Building " << polygonizedLines.size() << " polygonized lines." << std::endl;
-        osg::ref_ptr<osg::Geode> geode = processPolygonizedLines(polygonizedLines, context);
+        bool twosided = polygons.size() > 0 ? false : true;
+        osg::ref_ptr<osg::Geode> geode = processPolygonizedLines(polygonizedLines, twosided, context);
         if ( geode->getNumDrawables() > 0 )
         {
-            osgUtil::Optimizer o;
-            o.optimize( geode.get(), 
-                osgUtil::Optimizer::VERTEX_PRETRANSFORM |
-                osgUtil::Optimizer::INDEX_MESH |
-                osgUtil::Optimizer::VERTEX_POSTTRANSFORM );
-
+            if ( !context.featureIndex() )
+            {
+                osgUtil::Optimizer o;
+                o.optimize( geode.get(), 
+                    osgUtil::Optimizer::VERTEX_PRETRANSFORM |
+                    osgUtil::Optimizer::INDEX_MESH |
+                    osgUtil::Optimizer::VERTEX_POSTTRANSFORM );
+            }
             result->addChild( geode.get() );
         }
     }

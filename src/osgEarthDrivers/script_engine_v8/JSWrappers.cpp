@@ -43,8 +43,9 @@ JSFeature::WrapFeature(osgEarth::Features::Feature* feature, bool freeObject)
 
   if (freeObject)
   {
-    v8::Persistent<v8::Object> weakRef = v8::Persistent<v8::Object>::New(obj);
-    weakRef.MakeWeak(feature, FreeFeatureCallback);
+    v8::Persistent<v8::Object> weakRef;
+    weakRef.Reset(v8::Isolate::GetCurrent(), obj);
+    weakRef.MakeWeak(feature, &FreeFeatureCallback);
   }
 
   return handle_scope.Close(obj);
@@ -94,9 +95,15 @@ JSFeature::GetFeatureAttr(const std::string& attr, Feature const* feature)
     case osgEarth::Features::ATTRTYPE_BOOL:
       return v8::Boolean::New((*it).second.second.set ? (*it).second.getBool() : false);
     case osgEarth::Features::ATTRTYPE_DOUBLE:
-      return (*it).second.second.set ? v8::Number::New((*it).second.getDouble()) : v8::Undefined();
+      if ((*it).second.second.set)
+        return v8::Number::New((*it).second.getDouble());
+      else
+        return v8::Undefined();
     case osgEarth::Features::ATTRTYPE_INT:
-      return (*it).second.second.set ? v8::Integer::New((*it).second.getInt()) : v8::Undefined();
+      if ((*it).second.second.set)
+        return v8::Integer::New((*it).second.getInt());
+      else
+        return v8::Undefined();
     default:
       std::string val = (*it).second.second.set ? (*it).second.getString() : "";
       return v8::String::New(val.c_str(), val.length());
@@ -143,13 +150,10 @@ JSFeature::AttrPropertyCallback(v8::Local<v8::String> name, const v8::PropertyCa
 }
 
 void
-JSFeature::FreeFeatureCallback(v8::Persistent<v8::Value> object, void *parameter)
+JSFeature::FreeFeatureCallback(v8::Isolate* isolate, v8::Persistent<v8::Object>* handle, osgEarth::Features::Feature* parameter)
 {
-  Feature* feature = static_cast<Feature*>(parameter);
-  delete feature;
-
-  object.Dispose();
-  object.Clear();
+  delete parameter;
+  handle->Dispose();
 }
 
 // ---------------------------------------------------------------------------
@@ -165,8 +169,9 @@ JSSymbologyGeometry::WrapGeometry(osgEarth::Symbology::Geometry* geometry, bool 
 
   if (freeObject)
   {
-    v8::Persistent<v8::Object> weakRef = v8::Persistent<v8::Object>::New(obj);
-    weakRef.MakeWeak(geometry, FreeGeometryCallback);
+    v8::Persistent<v8::Object> weakRef;
+    weakRef.Reset(v8::Isolate::GetCurrent(), obj);
+    weakRef.MakeWeak(geometry, &FreeGeometryCallback);
   }
 
   return handle_scope.Close(obj);
@@ -235,13 +240,10 @@ JSSymbologyGeometry::IndexedPropertyCallback(uint32_t index, const v8::PropertyC
 }
 
 void
-JSSymbologyGeometry::FreeGeometryCallback(v8::Persistent<v8::Value> object, void *parameter)
+JSSymbologyGeometry::FreeGeometryCallback(v8::Isolate* isolate, v8::Persistent<v8::Object>* handle, osgEarth::Symbology::Geometry* parameter)
 {
-  osgEarth::Symbology::Geometry* geometry = static_cast<osgEarth::Symbology::Geometry*>(parameter);
-  delete geometry;
-
-  object.Dispose();
-  object.Clear();
+  delete parameter;
+  handle->Dispose();
 }
 
 // ---------------------------------------------------------------------------
@@ -257,8 +259,9 @@ JSBounds::WrapBounds(osgEarth::Bounds* bounds, bool freeObject)
 
   if (freeObject)
   {
-    v8::Persistent<v8::Object> weakRef = v8::Persistent<v8::Object>::New(obj);
-    weakRef.MakeWeak(bounds, FreeBoundsCallback);
+    v8::Persistent<v8::Object> weakRef;
+    weakRef.Reset(v8::Isolate::GetCurrent(), obj);
+    weakRef.MakeWeak(bounds, &FreeBoundsCallback);
   }
 
   return handle_scope.Close(obj);
@@ -336,8 +339,7 @@ JSBounds::ContainsCallback(const v8::FunctionCallbackInfo<v8::Value>& info)
 
     if (info.Length() == 1 && info[0]->IsObject())  // Bounds
     {
-      v8::Local<v8::Object> obj( v8::Object::Cast(*info[0]) );
-
+      v8::Local<v8::Object> obj( v8::Local<v8::Object>::Cast(info[0]) );
       if (V8Util::CheckObjectType(obj, JSBounds::GetObjectType()))
       {
         osgEarth::Bounds* rhs = V8Util::UnwrapObject<osgEarth::Bounds>(obj);
@@ -365,7 +367,7 @@ JSBounds::UnionCallback(const v8::FunctionCallbackInfo<v8::Value>& info)
 
     if (info.Length() == 1 && info[0]->IsObject())  // Bounds
     {
-      v8::Local<v8::Object> obj( v8::Object::Cast(*info[0]) );
+      v8::Local<v8::Object> obj( v8::Local<v8::Object>::Cast(info[0]) );
 
       if (V8Util::CheckObjectType(obj, JSBounds::GetObjectType()))
       {
@@ -392,7 +394,7 @@ JSBounds::IntersectionCallback(const v8::FunctionCallbackInfo<v8::Value>& info)
 
     if (info.Length() == 1 && info[0]->IsObject())  // Bounds
     {
-      v8::Local<v8::Object> obj( v8::Object::Cast(*info[0]) );
+      v8::Local<v8::Object> obj( v8::Local<v8::Object>::Cast(info[0]) );
 
       if (V8Util::CheckObjectType(obj, JSBounds::GetObjectType()))
       {
@@ -409,13 +411,10 @@ JSBounds::IntersectionCallback(const v8::FunctionCallbackInfo<v8::Value>& info)
 }
 
 void
-JSBounds::FreeBoundsCallback(v8::Persistent<v8::Value> object, void *parameter)
+JSBounds::FreeBoundsCallback(v8::Isolate* isolate, v8::Persistent<v8::Object>* handle, osgEarth::Bounds* parameter)
 {
-  Bounds* bounds = static_cast<Bounds*>(parameter);
-  delete bounds;
-
-  object.Dispose();
-  object.Clear();
+  delete parameter;
+  handle->Dispose();
 }
 
 // ---------------------------------------------------------------------------
@@ -431,8 +430,9 @@ JSVec3d::WrapVec3d(osg::Vec3d* vec, bool freeObject)
 
   if (freeObject)
   {
-    v8::Persistent<v8::Object> weakRef = v8::Persistent<v8::Object>::New(obj);
-    weakRef.MakeWeak(vec, FreeVecCallback);
+    v8::Persistent<v8::Object> weakRef;
+    weakRef.Reset(v8::Isolate::GetCurrent(), obj);
+    weakRef.MakeWeak(vec, &FreeVecCallback);
   }
 
   return handle_scope.Close(obj);
@@ -488,14 +488,10 @@ JSVec3d::IndexedPropertyCallback(uint32_t index, const v8::PropertyCallbackInfo<
   info.GetReturnValue().Set(v8::Number::New((*v)[index]));
 }
 
-void
-JSVec3d::FreeVecCallback(v8::Persistent<v8::Value> object, void *parameter)
+void JSVec3d::FreeVecCallback(v8::Isolate* isolate, v8::Persistent<v8::Object>* handle, osg::Vec3d* parameter)
 {
-  osg::Vec3d* v = static_cast<osg::Vec3d*>(parameter);
-  delete v;
-
-  object.Dispose();
-  object.Clear();
+  delete parameter;
+  handle->Dispose();
 }
 
 // ---------------------------------------------------------------------------
@@ -517,8 +513,9 @@ JSFilterContext::WrapFilterContext(osgEarth::Features::FilterContext* context, b
 
   if (freeObject)
   {
-    v8::Persistent<v8::Object> weakRef = v8::Persistent<v8::Object>::New(obj);
-    weakRef.MakeWeak(context, FreeContextCallback);
+    v8::Persistent<v8::Object> weakRef;
+    weakRef.Reset(v8::Isolate::GetCurrent(), obj);
+    weakRef.MakeWeak(context, &FreeContextCallback);
   }
 
   return handle_scope.Close(obj);
@@ -580,7 +577,7 @@ JSFilterContext::ToLocalCallback(const v8::FunctionCallbackInfo<v8::Value>& info
 
   if (context && info.Length() == 1 && info[0]->IsObject())
   {
-    v8::Local<v8::Object> obj( v8::Object::Cast(*info[0]) );
+    v8::Local<v8::Object> obj( v8::Local<v8::Object>::Cast(info[0]) );
 
     /*if (V8Util::CheckObjectType(obj, JSGeometry::GetObjectType()))  // Geometry
     {
@@ -610,7 +607,7 @@ JSFilterContext::ToWorldCallback(const v8::FunctionCallbackInfo<v8::Value>& info
 
   if (context && info.Length() == 1 && info[0]->IsObject())
   {
-    v8::Local<v8::Object> obj( v8::Object::Cast(*info[0]) );
+    v8::Local<v8::Object> obj( v8::Local<v8::Object>::Cast(info[0]) );
 
     /*if (V8Util::CheckObjectType(obj, JSGeometry::GetObjectType()))  // Geometry
     {
@@ -640,7 +637,7 @@ JSFilterContext::ToMapCallback(const v8::FunctionCallbackInfo<v8::Value>& info)
 
   if (context && info.Length() == 1 && info[0]->IsObject())
   {
-    v8::Local<v8::Object> obj( v8::Object::Cast(*info[0]) );
+    v8::Local<v8::Object> obj( v8::Local<v8::Object>::Cast(info[0]) );
     
     if (V8Util::CheckObjectType(obj, JSVec3d::GetObjectType()))  // Vec3d
     {
@@ -663,7 +660,7 @@ JSFilterContext::FromMapCallback(const v8::FunctionCallbackInfo<v8::Value>& info
 
   if (context && info.Length() == 1 && info[0]->IsObject())
   {
-    v8::Local<v8::Object> obj( v8::Object::Cast(*info[0]) );
+    v8::Local<v8::Object> obj( v8::Local<v8::Object>::Cast(info[0]) );
     
     if (V8Util::CheckObjectType(obj, JSVec3d::GetObjectType()))  // Vec3d
     {
@@ -678,13 +675,10 @@ JSFilterContext::FromMapCallback(const v8::FunctionCallbackInfo<v8::Value>& info
 }
 
 void
-JSFilterContext::FreeContextCallback(v8::Persistent<v8::Value> object, void *parameter)
+JSFilterContext::FreeContextCallback(v8::Isolate* isolate, v8::Persistent<v8::Object>* handle, osgEarth::Features::FilterContext* parameter)
 {
-  FilterContext* context = static_cast<FilterContext*>(parameter);
-  delete context;
-
-  object.Dispose();
-  object.Clear();
+  delete parameter;
+  handle->Dispose();
 }
 
 // ---------------------------------------------------------------------------
@@ -700,8 +694,9 @@ JSSession::WrapSession(osgEarth::Features::Session* session, bool freeObject)
 
   if (freeObject)
   {
-    v8::Persistent<v8::Object> weakRef = v8::Persistent<v8::Object>::New(obj);
-    weakRef.MakeWeak(session, FreeSessionCallback);
+    v8::Persistent<v8::Object> weakRef;
+    weakRef.Reset(v8::Isolate::GetCurrent(), obj);
+    weakRef.MakeWeak(session, &FreeSessionCallback);
   }
 
   return handle_scope.Close(obj);
@@ -761,13 +756,10 @@ JSSession::ResolveUriCallback(const v8::FunctionCallbackInfo<v8::Value>& info)
 #endif
 
 void
-JSSession::FreeSessionCallback(v8::Persistent<v8::Value> object, void *parameter)
+JSSession::FreeSessionCallback(v8::Isolate* isolate, v8::Persistent<v8::Object>* handle, osgEarth::Features::Session* parameter)
 {
-  Session* session = static_cast<Session*>(parameter);
-  delete session;
-
-  object.Dispose();
-  object.Clear();
+  delete parameter;
+  handle->Dispose();
 }
 
 // ---------------------------------------------------------------------------
@@ -783,8 +775,9 @@ JSMapInfo::WrapMapInfo(osgEarth::MapInfo* mapInfo, bool freeObject)
 
   if (freeObject)
   {
-    v8::Persistent<v8::Object> weakRef = v8::Persistent<v8::Object>::New(obj);
-    weakRef.MakeWeak(mapInfo, FreeMapInfoCallback);
+    v8::Persistent<v8::Object> weakRef;
+    weakRef.Reset(v8::Isolate::GetCurrent(), obj);
+    weakRef.MakeWeak(mapInfo, &FreeMapInfoCallback);
   }
 
   return handle_scope.Close(obj);
@@ -884,7 +877,7 @@ JSMapInfo::MapToWorldCallback(const v8::FunctionCallbackInfo<v8::Value>& info)
 
   if (mapInfo && info.Length() == 1 && info[0]->IsObject()) // Vec3d
   {
-    v8::Local<v8::Object> obj( v8::Object::Cast(*info[0]) );
+    v8::Local<v8::Object> obj( v8::Local<v8::Object>::Cast(info[0]) );
     if (V8Util::CheckObjectType(obj, JSVec3d::GetObjectType()))
     {
       osg::Vec3d* input = V8Util::UnwrapObject<osg::Vec3d>(obj);
@@ -910,7 +903,7 @@ JSMapInfo::WorldToMapCallback(const v8::FunctionCallbackInfo<v8::Value>& info)
 
   if (mapInfo && info.Length() == 1 && info[0]->IsObject()) // Vec3d
   {
-    v8::Local<v8::Object> obj( v8::Object::Cast(*info[0]) );
+    v8::Local<v8::Object> obj( v8::Local<v8::Object>::Cast(info[0]) );
     if (V8Util::CheckObjectType(obj, JSVec3d::GetObjectType()))
     {
       osg::Vec3d* input = V8Util::UnwrapObject<osg::Vec3d>(obj);
@@ -929,13 +922,10 @@ JSMapInfo::WorldToMapCallback(const v8::FunctionCallbackInfo<v8::Value>& info)
 #endif
 
 void
-JSMapInfo::FreeMapInfoCallback(v8::Persistent<v8::Value> object, void *parameter)
+JSMapInfo::FreeMapInfoCallback(v8::Isolate* isolate, v8::Persistent<v8::Object>* handle, osgEarth::MapInfo* parameter)
 {
-  Session* session = static_cast<Session*>(parameter);
-  delete session;
-
-  object.Dispose();
-  object.Clear();
+  delete parameter;
+  handle->Dispose();
 }
 
 // ---------------------------------------------------------------------------
@@ -951,8 +941,9 @@ JSFeatureProfile::WrapFeatureProfile(osgEarth::Features::FeatureProfile* profile
 
   if (freeObject)
   {
-    v8::Persistent<v8::Object> weakRef = v8::Persistent<v8::Object>::New(obj);
-    weakRef.MakeWeak(profile, FreeProfileCallback);
+    v8::Persistent<v8::Object> weakRef;
+    weakRef.Reset(v8::Isolate::GetCurrent(), obj);
+    weakRef.MakeWeak(profile, &FreeProfileCallback);
   }
 
   return handle_scope.Close(obj);
@@ -997,13 +988,10 @@ JSFeatureProfile::PropertyCallback(v8::Local<v8::String> name, const v8::Propert
 }
 
 void
-JSFeatureProfile::FreeProfileCallback(v8::Persistent<v8::Value> object, void *parameter)
+JSFeatureProfile::FreeProfileCallback(v8::Isolate* isolate, v8::Persistent<v8::Object>* handle, osgEarth::Features::FeatureProfile* parameter)
 {
-  FeatureProfile* profile = static_cast<FeatureProfile*>(parameter);
-  delete profile;
-
-  object.Dispose();
-  object.Clear();
+  delete parameter;
+  handle->Dispose();
 }
 
 // ---------------------------------------------------------------------------
@@ -1019,8 +1007,9 @@ JSGeoExtent::WrapGeoExtent(osgEarth::GeoExtent* extent, bool freeObject)
 
   if (freeObject)
   {
-    v8::Persistent<v8::Object> weakRef = v8::Persistent<v8::Object>::New(obj);
-    weakRef.MakeWeak(extent, FreeGeoExtentCallback);
+    v8::Persistent<v8::Object> weakRef;
+    weakRef.Reset(v8::Isolate::GetCurrent(), obj);
+    weakRef.MakeWeak(extent, &FreeGeoExtentCallback);
   }
 
   return handle_scope.Close(obj);
@@ -1089,14 +1078,13 @@ void
 JSGeoExtent::ContainsCallback(const v8::FunctionCallbackInfo<v8::Value>& info)
 {
   osgEarth::GeoExtent* extent = V8Util::UnwrapObject<osgEarth::GeoExtent>(info.Holder());
-
   v8::Local<v8::Value> value;
 
   if (extent)
   {
     if (info.Length() == 1 && info[0]->IsObject())  // Bounds
     {
-      v8::Local<v8::Object> obj( v8::Object::Cast(*info[0]) );
+      v8::Local<v8::Object> obj( v8::Local<v8::Object>::Cast(info[0]) );
 
       if (V8Util::CheckObjectType(obj, JSBounds::GetObjectType()))
       {
@@ -1110,7 +1098,7 @@ JSGeoExtent::ContainsCallback(const v8::FunctionCallbackInfo<v8::Value>& info)
     }
     else if (info.Length() == 3 && /*info[0]->IsNumber() && info[1]->IsNumber() &&*/ info[2]->IsObject())  // x, y, and SpatialReference
     {
-      v8::Local<v8::Object> obj( v8::Object::Cast(*info[2]) );
+      v8::Local<v8::Object> obj( v8::Local<v8::Object>::Cast(info[2]) );
 
       if (V8Util::CheckObjectType(obj, JSSpatialReference::GetObjectType()))
       {
@@ -1136,7 +1124,7 @@ JSGeoExtent::IntersectsCallback(const v8::FunctionCallbackInfo<v8::Value>& info)
 
   if (info.Length() == 1 && info[0]->IsObject())  // GeoExtent
   {
-    v8::Local<v8::Object> obj( v8::Object::Cast(*info[0]) );
+    v8::Local<v8::Object> obj( v8::Local<v8::Object>::Cast(info[0]) );
 
     if (V8Util::CheckObjectType(obj, JSGeoExtent::GetObjectType()))
     {
@@ -1150,13 +1138,10 @@ JSGeoExtent::IntersectsCallback(const v8::FunctionCallbackInfo<v8::Value>& info)
 }
 
 void
-JSGeoExtent::FreeGeoExtentCallback(v8::Persistent<v8::Value> object, void *parameter)
+JSGeoExtent::FreeGeoExtentCallback(v8::Isolate* isolate, v8::Persistent<v8::Object>* handle, osgEarth::GeoExtent* parameter)
 {
-  osgEarth::GeoExtent* extent = static_cast<osgEarth::GeoExtent*>(parameter);
-  delete extent;
-
-  object.Dispose();
-  object.Clear();
+  delete parameter;
+  handle->Dispose();
 }
 
 // ---------------------------------------------------------------------------
@@ -1172,8 +1157,9 @@ JSSpatialReference::WrapSpatialReference(osgEarth::SpatialReference* srs, bool f
 
   if (freeObject)
   {
-    v8::Persistent<v8::Object> weakRef = v8::Persistent<v8::Object>::New(obj);
-    weakRef.MakeWeak(srs, FreeSpatialReferenceCallback);
+    v8::Persistent<v8::Object> weakRef;
+    weakRef.Reset(v8::Isolate::GetCurrent(), obj);
+    weakRef.MakeWeak(srs, &FreeSpatialReferenceCallback);
   }
 
   return handle_scope.Close(obj);
@@ -1262,7 +1248,7 @@ JSSpatialReference::EquivalenceCallback(const v8::FunctionCallbackInfo<v8::Value
 
   if (info.Length() == 1 && info[0]->IsObject())  // SpatialReference
   {
-    v8::Local<v8::Object> obj( v8::Object::Cast(*info[0]) );
+    v8::Local<v8::Object> obj( v8::Local<v8::Object>::Cast(info[0]) );
 
     if (V8Util::CheckObjectType(obj, JSSpatialReference::GetObjectType()))
     {
@@ -1287,7 +1273,7 @@ JSSpatialReference::TangentPlaneCallback(const v8::FunctionCallbackInfo<v8::Valu
 
   if (info.Length() == 1 && info[0]->IsObject())  // Vec3d
   {
-    v8::Local<v8::Object> obj( v8::Object::Cast(*info[0]) );
+    v8::Local<v8::Object> obj( v8::Local<v8::Object>::Cast(info[0]) );
 
     if (V8Util::CheckObjectType(obj, JSVec3d::GetObjectType()))
     {
@@ -1301,12 +1287,8 @@ JSSpatialReference::TangentPlaneCallback(const v8::FunctionCallbackInfo<v8::Valu
 }
 
 void
-JSSpatialReference::FreeSpatialReferenceCallback(v8::Persistent<v8::Value> object, void *parameter)
+JSSpatialReference::FreeSpatialReferenceCallback(v8::Isolate* isolate, v8::Persistent<v8::Object>* handle, osgEarth::SpatialReference* parameter)
 {
-  //osgEarth::SpatialReference* srs = static_cast<osgEarth::SpatialReference*>(parameter);
-  //delete srs;
-  osg::ref_ptr<osgEarth::SpatialReference> srs = static_cast<osgEarth::SpatialReference*>(parameter);
-
-  object.Dispose();
-  object.Clear();
+  osg::ref_ptr<osgEarth::SpatialReference> srs = parameter;
+  handle->Dispose();
 }

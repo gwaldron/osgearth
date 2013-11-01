@@ -45,7 +45,7 @@ protected:
   static void PropertyCallback(v8::Local<v8::String> name, const v8::PropertyCallbackInfo<v8::Value>& info);
   static void AttrPropertyCallback(v8::Local<v8::String> name, const v8::PropertyCallbackInfo<v8::Value>& info);
 
-  static void FreeFeatureCallback(v8::Persistent<v8::Value> object, void *parameter);
+  static void FreeFeatureCallback(v8::Isolate* isolate, v8::Persistent<v8::Object>* handle, osgEarth::Features::Feature* parameter);
 };
 
 // ---------------------------------------------------------------------------
@@ -63,7 +63,7 @@ protected:
   static void PropertyCallback(v8::Local<v8::String> name, const v8::PropertyCallbackInfo<v8::Value>& info);
   static void IndexedPropertyCallback(uint32_t index, const v8::PropertyCallbackInfo<v8::Value>& info);
 
-  static void FreeGeometryCallback(v8::Persistent<v8::Value> object, void *parameter);
+  static void FreeGeometryCallback(v8::Isolate* isolate, v8::Persistent<v8::Object>* handle, osgEarth::Symbology::Geometry* parameter);
 };
 
 // ---------------------------------------------------------------------------
@@ -84,7 +84,7 @@ protected:
   static void UnionCallback(const v8::FunctionCallbackInfo<v8::Value>& info);
   static void IntersectionCallback(const v8::FunctionCallbackInfo<v8::Value>& info);
 
-  static void FreeBoundsCallback(v8::Persistent<v8::Value> object, void *parameter);
+  static void FreeBoundsCallback(v8::Isolate* isolate, v8::Persistent<v8::Object>* handle, osgEarth::Bounds* parameter);
 };
 
 // ---------------------------------------------------------------------------
@@ -102,7 +102,7 @@ protected:
   static void PropertyCallback(v8::Local<v8::String> name, const v8::PropertyCallbackInfo<v8::Value>& info);
   static void IndexedPropertyCallback(uint32_t index, const v8::PropertyCallbackInfo<v8::Value>& info);
 
-  static void FreeVecCallback(v8::Persistent<v8::Value> object, void *parameter);
+  static void FreeVecCallback(v8::Isolate* isolate, v8::Persistent<v8::Object>* handle, osg::Vec3d* parameter);
 };
 
 // ---------------------------------------------------------------------------
@@ -124,7 +124,7 @@ protected:
   static void ToMapCallback(const v8::FunctionCallbackInfo<v8::Value>& info);
   static void FromMapCallback(const v8::FunctionCallbackInfo<v8::Value>& info);
 
-  static void FreeContextCallback(v8::Persistent<v8::Value> object, void *parameter);
+  static void FreeContextCallback(v8::Isolate* isolate, v8::Persistent<v8::Object>* handle, osgEarth::Features::FilterContext* parameter);
 };
 
 // ---------------------------------------------------------------------------
@@ -145,7 +145,7 @@ protected:
   static void ResolveUriCallback(const v8::FunctionCallbackInfo<v8::Value>& info);
 #endif
 
-  static void FreeSessionCallback(v8::Persistent<v8::Value> object, void *parameter);
+  static void FreeSessionCallback(v8::Isolate* isolate, v8::Persistent<v8::Object>* handle, osgEarth::Features::Session* parameter);
 };
 
 // ---------------------------------------------------------------------------
@@ -168,7 +168,7 @@ protected:
   static void WorldToMapCallback(const v8::FunctionCallbackInfo<v8::Value>& info);
 #endif
 
-  static void FreeMapInfoCallback(v8::Persistent<v8::Value> object, void *parameter);
+  static void FreeMapInfoCallback(v8::Isolate* isolate, v8::Persistent<v8::Object>* handle, osgEarth::MapInfo* parameter);
 };
 
 // ---------------------------------------------------------------------------
@@ -185,7 +185,7 @@ protected:
   static v8::Handle<v8::ObjectTemplate> GetObjectTemplate();
   static void PropertyCallback(v8::Local<v8::String> name, const v8::PropertyCallbackInfo<v8::Value>& info);
 
-  static void FreeProfileCallback(v8::Persistent<v8::Value> object, void *parameter);
+  static void FreeProfileCallback(v8::Isolate* isolate, v8::Persistent<v8::Object>* handle, osgEarth::Features::FeatureProfile* parameter);
 };
 
 // ---------------------------------------------------------------------------
@@ -205,7 +205,7 @@ protected:
   static void ContainsCallback(const v8::FunctionCallbackInfo<v8::Value>& info);
   static void IntersectsCallback(const v8::FunctionCallbackInfo<v8::Value>& info);
 
-  static void FreeGeoExtentCallback(v8::Persistent<v8::Value> object, void *parameter);
+  static void FreeGeoExtentCallback(v8::Isolate* isolate, v8::Persistent<v8::Object>* handle, osgEarth::GeoExtent* parameter);
 };
 
 // ---------------------------------------------------------------------------
@@ -225,7 +225,7 @@ protected:
   static void EquivalenceCallback(const v8::FunctionCallbackInfo<v8::Value>& info);
   static void TangentPlaneCallback(const v8::FunctionCallbackInfo<v8::Value>& info);
 
-  static void FreeSpatialReferenceCallback(v8::Persistent<v8::Value> object, void *parameter);
+  static void FreeSpatialReferenceCallback(v8::Isolate* isolate, v8::Persistent<v8::Object>* handle, osgEarth::SpatialReference* parameter);
 };
 
 // ---------------------------------------------------------------------------

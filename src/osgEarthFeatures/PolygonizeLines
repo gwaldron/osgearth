@@ -49,15 +49,21 @@ namespace osgEarth { namespace Features
         /**
          * Run the polygonizer.
          *
-         * @param[in ] verts   Line string geometry to polygonize. The polygonizer
-         *                     will add this array to the resulting geometry.
-         * @param[in ] normals Localized normals associated with the input verts.
-         *                     Used to determine the plane in which to polygonize each
-         *                     line segment. Optional; can be NULL
+         * @param[in ] verts    Line string geometry to polygonize. The polygonizer
+         *                      will add this array to the resulting geometry.
+         * @param[in ] normals  Localized normals associated with the input verts.
+         *                      Used to determine the plane in which to polygonize each
+         *                      line segment. Optional; can be NULL
+         * @param[in ] twosided Generate polygons on both sides of the center line.
          *
          * @return Triangulated geometry, including primitive set
          */
-        osg::Geometry* operator()(osg::Vec3Array* verts, osg::Vec3Array* normals) const;
+        osg::Geometry* operator()(osg::Vec3Array* verts, osg::Vec3Array* normals, bool twosided =true) const;
+
+        /**
+         * Installs an auto-scaling shader on a stateset.
+         */
+        void installShaders(osg::StateSet* stateset) const;
 
     protected:
         Stroke _stroke;

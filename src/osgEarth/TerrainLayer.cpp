@@ -37,7 +37,7 @@ using namespace OpenThreads;
 TerrainLayerOptions::TerrainLayerOptions( const ConfigOptions& options ) :
 ConfigOptions       ( options ),
 _minLevel           ( 0 ),
-_maxLevel           ( 99 ),
+_maxLevel           ( 30 ),
 _cachePolicy        ( CachePolicy::DEFAULT ),
 _loadingWeight      ( 1.0f ),
 _exactCropping      ( false ),
@@ -69,7 +69,7 @@ TerrainLayerOptions::setDefaults()
     _cachePolicy.init( CachePolicy() );
     _loadingWeight.init( 1.0f );
     _minLevel.init( 0 );
-    _maxLevel.init( 99 );
+    _maxLevel.init( 30 );
 }
 
 Config
@@ -256,6 +256,15 @@ void
 TerrainLayer::setTargetProfileHint( const Profile* profile )
 {
     _targetProfileHint = profile;
+
+    // This will attempt to open and access a cache bin if there
+    // is one. This is important in cache-only mode since we cannot
+    // establish a profile from the tile source.
+    if ( getCachePolicy() != CachePolicy::NO_CACHE )
+    {
+        CacheBinMetadata meta;
+        getCacheBinMetadata( profile, meta );
+    }
 }
 
 TileSource* 
@@ -289,7 +298,17 @@ TerrainLayer::getTileSource() const
                 }
             }
 
-            OE_INFO << LC << "cache policy = " << getCachePolicy().usageString() << std::endl;
+            // Unless the user has already configured an expiration policy, use the "last modified"
+            // timestamp of the TileSource to set a minimum valid cache entry timestamp.
+            if ( _tileSource.valid() )
+            {
+                CachePolicy& cp = _runtimeOptions->cachePolicy().mutable_value();
+                if ( !cp.minTime().isSet() && !cp.maxAge().isSet() )
+                {
+                    cp.minTime() = _tileSource->getLastModifiedTime();
+                }
+                OE_INFO << LC << "cache policy = " << getCachePolicy().usageString() << std::endl;
+            }
         }
     }
 

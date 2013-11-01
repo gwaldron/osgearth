@@ -247,37 +247,6 @@ LinearLineOfSightNode::removeChangedCallback( LOSChangedCallback* callback )
     }    
 }
 
-
-#if 0
-bool
-LinearLineOfSightNode::computeLOS( osgEarth::MapNode* mapNode, const osg::Vec3d& start, const osg::Vec3d& end, AltitudeMode altitudeMode, osg::Vec3d& hit )
-{
-    const SpatialReference* mapSRS = mapNode->getMapSRS();
-
-    // convert endpoint to world coordinates:
-    osg::Vec3d startWorld, endWorld;
-    GeoPoint(mapSRS, start, altitudeMode).toWorld( startWorld, mapNode->getTerrain() );
-    GeoPoint(mapSRS, end,   altitudeMode).toWorld( endWorld,   mapNode->getTerrain() );
-    
-    osgSim::LineOfSight los;
-    los.setDatabaseCacheReadCallback(0);
-    unsigned int index = los.addLOS(startWorld, endWorld);
-    los.computeIntersections(mapNode);
-    osgSim::LineOfSight::Intersections hits = los.getIntersections(0);    
-    if (hits.size() > 0)
-    {
-        osg::Vec3d hitWorld = *hits.begin();
-        GeoPoint mapHit;
-        mapHit.fromWorld( mapNode->getMapSRS(), hitWorld );
-        //mapNode->getMap()->worldPointToMapPoint(hitWorld, mapHit);
-        hit = mapHit.vec3d();
-        return false;
-    }
-    return true;
-}
-#endif
-
-
 void
 LinearLineOfSightNode::compute(osg::Node* node, bool backgroundThread)
 {

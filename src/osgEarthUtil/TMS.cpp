@@ -682,3 +682,76 @@ TileMapReaderWriter::write(const TileMap* tileMap, std::ostream &output)
 }
 
 
+//----------------------------------------------------------------------------
+
+TileMapEntry::TileMapEntry( const std::string& _title, const std::string& _href, const std::string& _srs, const std::string& _profile ):
+title( _title ),
+href( _href ),
+srs( _srs ),
+profile( _profile )
+{
+}
+
+//----------------------------------------------------------------------------
+
+TileMapServiceReader::TileMapServiceReader()
+{
+}
+
+TileMapServiceReader::TileMapServiceReader(const TileMapServiceReader& rhs)
+{
+}
+
+bool
+TileMapServiceReader::read( const std::string &location, const osgDB::ReaderWriter::Options* options, TileMapEntryList& tileMaps )
+{     
+    ReadResult r = URI(location).readString();
+    if ( r.failed() )
+    {
+        OE_WARN << LC << "Failed to read TileMapServices from " << location << std::endl;
+        return 0L;
+    }    
+    
+    // Read tile map into a Config:
+    Config conf;
+    std::stringstream buf( r.getString() );
+    conf.fromXML( buf );    
+
+    // parse that into a tile map:        
+    return read( conf, tileMaps );    
+}
+
+bool
+TileMapServiceReader::read( const Config& conf, TileMapEntryList& tileMaps)
+{    
+    const Config* TileMapServiceConf = conf.find("tilemapservice");
+
+    if (!TileMapServiceConf)
+    {
+        OE_NOTICE << "Couldn't find root TileMapService element" << std::endl;
+    }
+
+    const Config* TileMapsConf = TileMapServiceConf->find("tilemaps");
+    if (TileMapsConf)
+    {
+        const ConfigSet& TileMaps = TileMapsConf->children("tilemap");
+        if (TileMaps.size() == 0)
+        {            
+            return false;
+        }
+        
+        for (ConfigSet::const_iterator itr = TileMaps.begin(); itr != TileMaps.end(); ++itr)
+        {
+            std::string href = itr->value("href");
+            std::string title = itr->value("title");
+            std::string profile = itr->value("profile");
+            std::string srs = itr->value("srs");            
+
+            tileMaps.push_back( TileMapEntry( title, href, srs, profile ) );
+        }        
+
+        return true;
+    }    
+    return false;
+}
+

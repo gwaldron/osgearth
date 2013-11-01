@@ -50,6 +50,7 @@ namespace
 
             if ( (val & osg::StateAttribute::INHERIT) == 0 )
             {
+
                 if ((val & osg::StateAttribute::PROTECTED)!=0 ||
                     (base_val & osg::StateAttribute::OVERRIDE)==0)
                 {
@@ -405,6 +406,9 @@ UpdateLightingUniformsHelper::cullTraverse( osg::Node* node, osg::NodeVisitor* n
     if ( cv )
     {
         StateSetStack stateSetStack;
+
+        if ( node->getStateSet() )
+            stateSetStack.push_front( node->getStateSet() );
 
         osgUtil::StateGraph* sg = cv->getCurrentStateGraph();
         while( sg )

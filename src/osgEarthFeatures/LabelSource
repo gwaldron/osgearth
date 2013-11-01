@@ -43,7 +43,7 @@ namespace osgEarth { namespace Features
             fromConfig(_conf);
         }
         
-        virtual ~LabelSourceOptions() { }
+        virtual ~LabelSourceOptions();
 
     public:
         virtual Config getConfig() const;
@@ -99,7 +99,7 @@ namespace osgEarth { namespace Features
         virtual const char* libraryName() const { return "osgEarth::Features"; }
 
     protected:
-        virtual ~LabelSource() { }
+        virtual ~LabelSource();
     };
 
     //--------------------------------------------------------------------

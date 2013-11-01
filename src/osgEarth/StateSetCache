@@ -33,7 +33,8 @@ namespace osgEarth
     {
     public:
         StateSetCache() { }
-        virtual ~StateSetCache() { }
+
+        virtual ~StateSetCache();
 
         /**
          * Check whether a StateSet is eligible for sharing.

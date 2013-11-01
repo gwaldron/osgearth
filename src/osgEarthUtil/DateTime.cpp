@@ -17,7 +17,7 @@
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
 #include <osgEarthUtil/DateTime>
-
+#include <string.h>
 using namespace osgEarth::Util;
 
 DateTime::DateTime()

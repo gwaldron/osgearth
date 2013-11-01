@@ -124,7 +124,7 @@ DateTime::asRFC1123() const
 {
     return Stringify()
         << rfc_wkday[_tm.tm_wday] << ", "
-        << std::setfill('0') << std::setw(2) << (_tm.tm_mday + 1) << ' '
+        << std::setfill('0') << std::setw(2) << _tm.tm_mday << ' '
         << rfc_month[_tm.tm_mon] << ' '
         << std::setw(4) << (1900 + _tm.tm_year) << ' '
         << std::setw(2) << _tm.tm_hour << ':'

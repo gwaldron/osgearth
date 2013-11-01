@@ -20,6 +20,7 @@
 #include <osgEarth/Map>
 #include <osgEarth/Registry>
 #include <osgEarth/Capabilities>
+#include <osgEarth/ShaderFactory>
 #include <osg/Depth>
 
 #define LC "[ModelLayer] "
@@ -66,7 +67,6 @@ ConfigOptions()
 void
 ModelLayerOptions::setDefaults()
 {
-    _overlay.init     ( false );
     _enabled.init     ( true );
     _visible.init     ( true );
     _lighting.init    ( true );
@@ -79,7 +79,6 @@ ModelLayerOptions::getConfig() const
     Config conf = ConfigOptions::newConfig();
 
     conf.updateIfSet( "name", _name );
-    conf.updateIfSet( "overlay", _overlay );
     conf.updateIfSet( "enabled", _enabled );
     conf.updateIfSet( "visible", _visible );
     conf.updateIfSet( "lighting", _lighting );
@@ -95,7 +94,6 @@ void
 ModelLayerOptions::fromConfig( const Config& conf )
 {
     conf.getIfSet( "name", _name );
-    conf.getIfSet( "overlay", _overlay );
     conf.getIfSet( "enabled", _enabled );
     conf.getIfSet( "visible", _visible );
     conf.getIfSet( "lighting", _lighting );
@@ -194,11 +192,13 @@ ModelLayer::createSceneGraph(const Map*            map,
                 ss->setRenderBinDetails( 99999, "RenderBin" ); //TODO: configure this bin ...
             }
 
+#if 0 // moved the MapNode level.
             if ( Registry::capabilities().supportsGLSL() )
             {
                 // install a callback that keeps the shader uniforms up to date
                 node->addCullCallback( new UpdateLightingUniformsHelper() );
             }
+#endif
 
             _modelSource->sync( _modelSourceRev );
 
@@ -237,9 +237,6 @@ ModelLayer::setVisible(bool value)
             }
         }
 
-        //if ( _node.valid() )
-        //    _node->setNodeMask( value ? ~0 : 0 );
-
         fireCallback( &ModelLayerCallback::onVisibleChanged );
     }
 }
@@ -253,9 +250,17 @@ ModelLayer::setLightingEnabled( bool value )
     {
         if ( i->valid() )
         {
-            i->get()->getOrCreateStateSet()->setMode( 
+            osg::StateSet* stateset = i->get()->getOrCreateStateSet();
+
+            stateset->setMode( 
                 GL_LIGHTING, value ? osg::StateAttribute::ON : 
                 (osg::StateAttribute::OFF | osg::StateAttribute::PROTECTED) );
+
+            if ( Registry::capabilities().supportsGLSL() )
+            {
+                stateset->addUniform( Registry::shaderFactory()->createUniformForGLMode(
+                    GL_LIGHTING, value ) );
+            }
         }
     }
 }
@@ -264,22 +269,6 @@ bool
 ModelLayer::isLightingEnabled() const
 {
     return *_runtimeOptions.lightingEnabled();
-}
-
-bool
-ModelLayer::getOverlay() const
-{
-    return *_runtimeOptions.overlay();
-}
-
-void
-ModelLayer::setOverlay(bool overlay)
-{
-    if ( _runtimeOptions.overlay() != overlay )
-    {
-        _runtimeOptions.overlay() = overlay;
-        fireCallback( &ModelLayerCallback::onOverlayChanged );
-    }
 }
 
 void

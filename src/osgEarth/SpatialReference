@@ -142,45 +142,6 @@ namespace osgEarth
             osg::Vec3d&       out_local,
             double*           out_geodeticZ =0L ) const;
 
-#if 0
-
-    public:  // ECEF transformations.
-
-        /**
-         * Transforms a point to geocentric/ECEF coordinates.
-         */
-        bool transformToECEF(
-            const osg::Vec3d& input,
-            osg::Vec3d&       output ) const;
-
-        /**
-         * Transforms an array of points in to geocentric/ECEF coordinates. The points
-         * are transformed in place.
-         */
-        bool transformToECEF( std::vector<osg::Vec3d>& points ) const;
-
-        /**
-         * Transforms a point from geocentric/ECEF coordinates into this SRS.
-         * @param input
-         *      ECEF point to transform
-         * @param output
-         *      Result placed in this output parameter upon success
-         * @param out_geodeticZ
-         *      (optional) Geodetic (height above ellipsoid) Z placed here; it will
-         *      only differ from output.z() if a vertidal datum exists in this SRS
-         */
-        bool transformFromECEF(
-            const osg::Vec3d& input,
-            osg::Vec3d&       output,
-            double*           out_geodeticZ =0L ) const;
-
-        /**
-         * Transforms an array of points from geocentric/ECEF coordinates into this SRS.
-         * The points are transformed in place.
-         */
-        bool transformFromECEF( std::vector<osg::Vec3d>& points ) const;
-#endif
-
     public: // extent transformations.
         
         /**

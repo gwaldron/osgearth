@@ -58,6 +58,7 @@ main(int argc, char** argv)
 
 
     osgViewer::Viewer viewer(arguments);
+    viewer.setRunFrameScheme( viewer.ON_DEMAND );
     viewer.setCameraManipulator( new EarthManipulator() );
 
     // load an earth file
@@ -77,14 +78,9 @@ main(int argc, char** argv)
     QApplication app(argc, argv);
 
     QWidget* viewerWidget = new ViewerWidget( &viewer );
-    
-    QMdiArea *mdiArea = new QMdiArea();
-    QMdiSubWindow* s = mdiArea->addSubWindow(viewerWidget); 
-    s->setGeometry( 75, 75, 800, 600 );
-    
+
     QMainWindow win;
-    //win.setCentralWidget( viewerWidget );
-    win.setCentralWidget( mdiArea );
+    win.setCentralWidget( viewerWidget );
     win.setGeometry(100, 100, 1024, 800);
 
     win.statusBar()->showMessage(QString("Quite possibly the world's simplest osgEarthQt app."));

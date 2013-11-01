@@ -22,6 +22,8 @@
 using namespace osgEarth;
 using namespace osgEarth::Symbology;
 
+OSGEARTH_REGISTER_SIMPLE_SYMBOL(line, LineSymbol);
+
 LineSymbol::LineSymbol( const Config& conf ) :
 Symbol       ( conf ),
 _stroke      ( Stroke() ),

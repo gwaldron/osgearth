@@ -9,8 +9,7 @@ to extruded buildings.
     
     <options>
         <terrain lighting="true"/>
-    </options>
-    
+    </options>    
     
     <image name="mapquest_open_aerial" driver="xyz" enabled="false">
         <url>http://oatile[1234].mqcdn.com/tiles/1.0.0/sat/{z}/{x}/{y}.jpg</url>
@@ -84,7 +83,6 @@ to extruded buildings.
                     altitude-clamping:       terrain;
                     altitude-technique:      map;
                     altitude-binding:        vertex;
-                    //altitude-resolution:     0.001;
                 }            
                 building-wall {
                     skin-library:     us_resources;

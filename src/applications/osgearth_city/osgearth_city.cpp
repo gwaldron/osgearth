@@ -26,6 +26,7 @@
 #include <osgEarthUtil/AutoClipPlaneHandler>
 #include <osgEarthUtil/SkyNode>
 #include <osgEarthDrivers/tms/TMSOptions>
+#include <osgEarthDrivers/xyz/XYZOptions>
 #include <osgEarthDrivers/feature_ogr/OGRFeatureOptions>
 #include <osgEarthDrivers/model_feature_geom/FeatureGeomModelOptions>
 
@@ -62,13 +63,17 @@ main(int argc, char** argv)
     
     // a style for the building data:
     Style buildingStyle;
-    buildingStyle.setName( "default" );
+    buildingStyle.setName( "buildings" );
 
     ExtrusionSymbol* extrusion = buildingStyle.getOrCreate<ExtrusionSymbol>();
     extrusion->heightExpression() = NumericExpression( "3.5 * max( [story_ht_], 1 )" );
     extrusion->flatten() = true;
     extrusion->wallStyleName() = "building-wall";
     extrusion->roofStyleName() = "building-roof";
+    extrusion->wallGradientPercentage() = 0.8;
+
+    PolygonSymbol* poly = buildingStyle.getOrCreate<PolygonSymbol>();
+    poly->fill()->color() = Color::White;
 
     // a style for the wall textures:
     Style wallStyle;
@@ -99,8 +104,8 @@ main(int argc, char** argv)
 
     // set up a paging layout for incremental loading.
     FeatureDisplayLayout layout;
-    layout.tileSizeFactor() = 45.0;
-    layout.addLevel( FeatureLevel(0.0f, 20000.0f) );
+    layout.tileSizeFactor() = 52.0;
+    layout.addLevel( FeatureLevel(0.0f, 20000.0f, "buildings") );
 
     // create a model layer that will render the buildings according to our style sheet.
     FeatureGeomModelOptions fgm_opt;

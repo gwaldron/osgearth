@@ -85,20 +85,28 @@ MeasureToolHandler::rebuild()
         return;
     }
 
-    AltitudeSymbol* alt = new AltitudeSymbol();
-    alt->clamping() = AltitudeSymbol::CLAMP_TO_TERRAIN;
-    alt->technique() = AltitudeSymbol::TECHNIQUE_GPU;
 
     // Define the path feature:
     _feature = new Feature(new LineString(), getMapNode()->getMapSRS());
     _feature->geoInterp() = _geoInterpolation;
 
-    //Define a style for the line
+    // clamp to the terrain skin as it pages in
+    AltitudeSymbol* alt = _feature->style()->getOrCreate<AltitudeSymbol>();
+    alt->clamping() = alt->CLAMP_TO_TERRAIN;
+    //alt->technique() = alt->TECHNIQUE_GPU;
+    alt->technique() = alt->TECHNIQUE_SCENE;
+
+    // offset to mitigate Z fighting
+    RenderSymbol* render = _feature->style()->getOrCreate<RenderSymbol>();
+    render->depthOffset()->enabled() = true;
+    render->depthOffset()->minBias() = 1000;
+
+    // define a style for the line
     LineSymbol* ls = _feature->style()->getOrCreate<LineSymbol>();
     ls->stroke()->color() = Color::Yellow;
     ls->stroke()->width() = 2.0f;
-    ls->tessellation() = 20;
-    _feature->style()->add( alt );
+    ls->stroke()->widthUnits() = Units::PIXELS;
+    ls->tessellation() = 150;
 
     _featureNode = new FeatureNode( getMapNode(), _feature.get() );
     _featureNode->getOrCreateStateSet()->setMode(GL_LIGHTING, osg::StateAttribute::OFF);

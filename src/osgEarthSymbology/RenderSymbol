@@ -53,6 +53,10 @@ namespace osgEarth { namespace Symbology
         optional<DepthOffsetOptions>& depthOffset() { return _depthOffset; }
         const optional<DepthOffsetOptions>& depthOffset() const { return _depthOffset; }
 
+        /** whether to force backface culling on or off */
+        optional<bool>& backfaceCulling() { return _backfaceCulling; }
+        const optional<bool>& backfaceCulling() const { return _backfaceCulling; }
+
     public:
         virtual Config getConfig() const;
         virtual void mergeConfig( const Config& conf );
@@ -62,6 +66,7 @@ namespace osgEarth { namespace Symbology
         optional<bool>               _depthTest;
         optional<bool>               _lighting;
         optional<DepthOffsetOptions> _depthOffset;
+        optional<bool>               _backfaceCulling;
         
         /** dtor */
         virtual ~RenderSymbol() { }

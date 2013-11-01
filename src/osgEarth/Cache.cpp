@@ -30,6 +30,10 @@ using namespace osgEarth::Threading;
 
 #define LC "[Cache] "
 
+CacheOptions::~CacheOptions()
+{
+}
+
 //------------------------------------------------------------------------
 
 Cache::Cache( const CacheOptions& options ) :
@@ -37,6 +41,10 @@ _ok     ( true ),
 _options( options )
 {
     //nop
+}
+
+Cache::~Cache()
+{
 }
 
 Cache::Cache( const Cache& rhs, const osg::CopyOp& op ) :
@@ -105,4 +113,8 @@ const CacheOptions&
 CacheDriver::getCacheOptions( const osgDB::ReaderWriter::Options* rwopt ) const 
 {
     return *static_cast<const CacheOptions*>( rwopt->getPluginData( CACHE_OPTIONS_TAG ) );
+}
+
+CacheDriver::~CacheDriver()
+{
 }

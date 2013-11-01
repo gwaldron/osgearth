@@ -127,18 +127,7 @@ Style::fromSLD( const Config& sld )
     for( ConfigSet::const_iterator kid = sld.children().begin(); kid != sld.children().end(); ++kid )
     {
         const Config& p = *kid;
-
-        AltitudeSymbol::parseSLD (p, *this);
-        ExtrusionSymbol::parseSLD(p, *this);
-        IconSymbol::parseSLD     (p, *this);
-        LineSymbol::parseSLD     (p, *this);
-        MarkerSymbol::parseSLD   (p, *this);
-        ModelSymbol::parseSLD    (p, *this);
-        PolygonSymbol::parseSLD  (p, *this);
-        PointSymbol::parseSLD    (p, *this);
-        RenderSymbol::parseSLD   (p, *this);
-        SkinSymbol::parseSLD     (p, *this);
-        TextSymbol::parseSLD     (p, *this);
+		SymbolRegistry::instance()->parseSLD( p, *this );		
     }
 }
 
@@ -181,51 +170,9 @@ Style::mergeConfig( const Config& conf )
             for( ConfigSet::const_iterator i = symbolConf.children().begin(); i != symbolConf.children().end(); ++i )
             {
                 const Config& c = *i;
+				Symbol* symbol = SymbolRegistry::instance()->create( c );
 
-                if ( c.key() == "text" )
-                {
-                    add( new TextSymbol(c) );
-                }
-                else if ( c.key() == "point" )
-                {
-                    add( new PointSymbol(c) );
-                }
-                else if ( c.key() == "line" )
-                {
-                    add( new LineSymbol(c) );
-                }
-                else if ( c.key() == "polygon" )
-                {
-                    add( new PolygonSymbol(c) );
-                }
-                else if ( c.key() == "extrusion" )
-                {
-                    add( new ExtrusionSymbol(c) );
-                }
-                else if ( c.key() == "altitude" )
-                {
-                    add( new AltitudeSymbol(c) );
-                }
-                else if ( c.key() == "marker" )
-                {
-                    add( new MarkerSymbol(c) );
-                }
-                else if ( c.key() == "render" )
-                {
-                    add( new RenderSymbol(c) );
-                }
-                else if ( c.key() == "skin" )
-                {
-                    add( new SkinSymbol(c) );
-                }
-                else if ( c.key() == "model" )
-                {
-                    add( new ModelSymbol(c) );
-                }
-                else if ( c.key() == "icon" )
-                {
-                    add( new IconSymbol(c) );
-                }
+				add(symbol);
             }
         }
     }

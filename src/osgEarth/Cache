@@ -31,7 +31,7 @@ namespace osgEarth
     /**
      * Base class for Cache implementation options.
      */
-    class CacheOptions : public DriverConfigOptions // no export (header only)
+    class OSGEARTH_EXPORT CacheOptions : public DriverConfigOptions
     {
     public:
         CacheOptions( const ConfigOptions& options =ConfigOptions() )
@@ -41,7 +41,7 @@ namespace osgEarth
         }
 
         /** dtor */
-        virtual ~CacheOptions() { }
+        virtual ~CacheOptions();
 
     public:
         virtual Config getConfig() const {
@@ -74,7 +74,7 @@ namespace osgEarth
         META_Object( osgEarth, Cache );
 
         /** dtor */
-        virtual ~Cache() { }
+        virtual ~Cache();
 
     public:
         /**
@@ -146,7 +146,7 @@ namespace osgEarth
         const CacheOptions& getCacheOptions( const osgDB::ReaderWriter::Options* options ) const;
 
         /** dtor */
-        virtual ~CacheDriver() { }
+        virtual ~CacheDriver();
     };
 
 //----------------------------------------------------------------------

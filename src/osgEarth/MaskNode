@@ -28,12 +28,14 @@ namespace osgEarth
     {
     public:
         MaskNode();
-        MaskNode( const MaskNode& rhs, const osg::CopyOp& op =osg::CopyOp::DEEP_COPY_ALL );
+        MaskNode( const MaskNode& rhs, const osg::CopyOp& op =osg::CopyOp::DEEP_COPY_ALL );        
 
         META_Node(osgEarth, MaskNode);
 
+    protected:
+
         /** dtor */
-        virtual ~MaskNode() { }
+        virtual ~MaskNode();
     };
 }
 

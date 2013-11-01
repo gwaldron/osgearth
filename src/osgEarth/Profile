@@ -241,7 +241,7 @@ namespace osgEarth
         /**
          * Creates a tile key for a tile that contains the input location at the specified LOD.
          * Express the coordinates in the profile's SRS.
-         * Returns NULL if the point lies outside the profile's extents.
+         * Returns TileKey::INVALID if the point lies outside the profile's extents.
          */
         TileKey createTileKey( double x, double y, unsigned int level ) const;
 

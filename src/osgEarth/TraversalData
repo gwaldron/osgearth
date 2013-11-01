@@ -65,10 +65,10 @@ namespace osgEarth
         MapNodeCullData();
 
     public:
-        osg::observer_ptr<class MapNode>  _mapNode;
-        osg::ref_ptr<osg::StateSet> _stateSet;
-        osg::ref_ptr<osg::Uniform>  _windowScaleMatrix;
-        double                      _cameraAltitude;
+        osg::observer_ptr<class MapNode> _mapNode;
+        osg::ref_ptr<osg::StateSet>      _stateSet;
+        osg::ref_ptr<osg::Uniform>       _windowScaleMatrixUniform;
+        double                           _cameraAltitude;
 
     protected:
         virtual ~MapNodeCullData() { }

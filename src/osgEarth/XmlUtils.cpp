@@ -236,16 +236,6 @@ XmlText::getValue() const
     return value;
 }
 
-
-#if 0
-XmlDocument::XmlDocument( const std::string& _source_uri ) :
-XmlElement( "Document" ),
-source_uri( _source_uri )
-{
-    //NOP
-}
-#endif
-
 XmlDocument::XmlDocument() :
 XmlElement( "Document" )
 {

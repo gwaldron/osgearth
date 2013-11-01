@@ -25,6 +25,7 @@
 #include <osgEarth/MapNodeOptions>
 #include <osgEarth/SpatialReference>
 #include <osgEarth/TerrainEngineNode>
+#include <osgEarth/ShaderUtils>
 
 namespace osgEarth
 {
@@ -209,14 +210,14 @@ namespace osgEarth
         bool                     _terrainEngineInitialized;
         osg::Group*              _terrainEngineContainer;
 
+        UpdateLightingUniformsHelper _updateLightingUniformsHelper;
+
+
     public: // MapCallback proxy
 
         void onModelLayerAdded( ModelLayer*, unsigned int );
         void onModelLayerRemoved( ModelLayer* );
-		void onModelLayerMoved( ModelLayer* layer, unsigned int oldIndex, unsigned int newIndex );
-
-    public:
-        void onModelLayerOverlayChanged( ModelLayer* layer );
+        void onModelLayerMoved( ModelLayer* layer, unsigned int oldIndex, unsigned int newIndex );
 
     public:
         struct TileRangeData : public osg::Referenced {
@@ -227,7 +228,6 @@ namespace osgEarth
 
     private:
 
-        osg::ref_ptr< ModelLayerCallback > _modelLayerCallback;
         osg::ref_ptr< MapCallback >        _mapCallback;
     
         void init();

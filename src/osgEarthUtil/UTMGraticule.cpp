@@ -184,16 +184,6 @@ UTMGraticule::rebuild()
     _root = new DrapeableNode( getMapNode(), false );
     this->addChild( _root );
 
-#if 0
-    // set up depth offsetting.
-    osg::StateSet* s = _root->getOrCreateStateSet();
-    s->setAttributeAndModes( DepthOffsetUtils::getOrCreateProgram(), 1 );
-    s->addUniform( DepthOffsetUtils::getIsNotTextUniform() );
-    osg::Uniform* u = DepthOffsetUtils::createMinOffsetUniform();
-    u->set( 10000.0f );
-    s->addUniform( u );
-#endif
-
     // build the base Grid Zone Designator (GZD) loolup table. This is a table
     // that maps the GZD string to its extent.
     static std::string s_gzdRows( "CDEFGHJKLMNPQRSTUVWX" );

@@ -38,7 +38,7 @@ namespace osgEarth { namespace Symbology
         GeometryRasterizer( osg::Image* image, const Style& style =Style() );
 
         /** dtor */
-        virtual ~GeometryRasterizer() { }
+        virtual ~GeometryRasterizer();
 
         /** draws the geometry to the image. */
         void draw( const Geometry* geom, const osg::Vec4f& color =osg::Vec4f(1,1,1,1) );

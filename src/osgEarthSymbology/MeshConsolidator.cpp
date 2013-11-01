@@ -221,9 +221,9 @@ namespace
 //------------------------------------------------------------------------
 
 void
-MeshConsolidator::convertToTriangles( osg::Geometry& geom )
+MeshConsolidator::convertToTriangles( osg::Geometry& geom, bool force )
 {
-    if ( !canOptimize(geom) )
+    if ( !force && !canOptimize(geom) )
         return;
 
     osg::Geometry::PrimitiveSetList& primSets = geom.getPrimitiveSetList();

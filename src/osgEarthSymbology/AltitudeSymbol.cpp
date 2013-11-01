@@ -22,6 +22,8 @@
 using namespace osgEarth;
 using namespace osgEarth::Symbology;
 
+OSGEARTH_REGISTER_SIMPLE_SYMBOL(altitude, AltitudeSymbol);
+
 AltitudeSymbol::AltitudeSymbol( const Config& conf ) :
 Symbol             ( conf ),
 _clamping          ( CLAMP_NONE ),

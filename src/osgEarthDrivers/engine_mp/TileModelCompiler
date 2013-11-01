@@ -86,7 +86,7 @@ namespace osgEarth_engine_mp
         /**
          * Compiles a tile model into a TileNode.
          */
-        TileNode* compile(const TileModel* model);
+        TileNode* compile(const TileModel* model, const MapFrame& frame);
 
     protected:
         const MaskLayerVector&                    _masks;

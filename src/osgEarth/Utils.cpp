@@ -20,6 +20,7 @@
 #include <osg/Version>
 #include <osg/CoordinateSystemNode>
 #include <osg/MatrixTransform>
+#include <osgUtil/MeshOptimizers>
 
 using namespace osgEarth;
 
@@ -259,4 +260,91 @@ PixelAutoTransform::dirty()
 {
     _dirty = true;
     setCullingActive( false );
+}
+
+//-----------------------------------------------------------------------------
+
+#undef  LC
+#define LC "[VertexCacheOptimizer] "
+
+VertexCacheOptimizer::VertexCacheOptimizer() :
+osg::NodeVisitor( TRAVERSE_ALL_CHILDREN ) 
+{
+    //nop
+}
+
+void
+VertexCacheOptimizer::apply(osg::Geode& geode)
+{
+    if (geode.getDataVariance() == osg::Object::DYNAMIC)
+        return;
+
+    for(unsigned i=0; i<geode.getNumDrawables(); ++i )
+    {
+        osg::Geometry* geom = geode.getDrawable(i)->asGeometry();
+
+        if ( geom )
+        {
+            if ( geom->getDataVariance() == osg::Object::DYNAMIC )
+                return;
+
+            // vertex cache optimizations currently only support surface geometries.
+            // all or nothing in the geode.
+            osg::Geometry::PrimitiveSetList& psets = geom->getPrimitiveSetList();
+            for( osg::Geometry::PrimitiveSetList::iterator i = psets.begin(); i != psets.end(); ++i )
+            {
+                switch( (*i)->getMode() )
+                {
+                case GL_TRIANGLES:
+                case GL_TRIANGLE_FAN:
+                case GL_TRIANGLE_STRIP:
+                case GL_QUADS:
+                case GL_QUAD_STRIP:
+                case GL_POLYGON:
+                    break;
+
+                default:
+                    return;
+                }
+            }
+        }
+    }
+
+    //OE_NOTICE << LC << "VC optimizing..." << std::endl;
+
+    // passed the test; run the optimizer.
+    osgUtil::VertexCacheVisitor vcv;
+    geode.accept( vcv );
+    vcv.optimizeVertices();
+
+    osgUtil::VertexAccessOrderVisitor vaov;
+    geode.accept( vaov );
+    vaov.optimizeOrder();
+
+    traverse( geode );
+}
+
+//-----------------------------------------------------------------------------
+
+#undef  LC
+#define LC "[SetDataVarianceVisitor] "
+
+SetDataVarianceVisitor::SetDataVarianceVisitor(osg::Object::DataVariance value) :
+osg::NodeVisitor( TRAVERSE_ALL_CHILDREN ),
+_value( value )
+{
+    //nop
+}
+
+void
+SetDataVarianceVisitor::apply(osg::Geode& geode)
+{
+    for(unsigned i=0; i<geode.getNumDrawables(); ++i)
+    {
+        osg::Drawable* d = geode.getDrawable(i);
+        if ( d )
+            d->setDataVariance( _value );
+    }
+
+    traverse(geode);
 }

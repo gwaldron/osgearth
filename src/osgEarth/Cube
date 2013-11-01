@@ -88,13 +88,13 @@ namespace osgEarth
      * osgTerrain locator for positioning data on the terrain using a cube-face
      * coordinate system.
      */
-    class CubeFaceLocator : public GeoLocator
+    class OSGEARTH_EXPORT CubeFaceLocator : public GeoLocator
     {
     public:
         CubeFaceLocator(unsigned int face);
 
         /** dtor */
-        virtual ~CubeFaceLocator() { }
+        virtual ~CubeFaceLocator();
 
         // This method will generate geocentric vertex coordinates, given local tile
         // coordinates (0=>1).
@@ -113,13 +113,13 @@ namespace osgEarth
      * the cube as whole lays out all six faces side by side, resulting in a space 
      * measuring (0,0=>6,1). The face number corresponds to the x-axis ordinal.
      */
-    class CubeSpatialReference : public SpatialReference
+    class OSGEARTH_EXPORT CubeSpatialReference : public SpatialReference
     {
     public:
         CubeSpatialReference(void* handle);
 
         /** dtor */
-        virtual ~CubeSpatialReference() { }
+        virtual ~CubeSpatialReference();
 
         virtual GeoLocator* createLocator(
             double xmin, double ymin, double xmax, double ymax,
@@ -174,6 +174,8 @@ namespace osgEarth
     {
     public:
         UnifiedCubeProfile();
+
+        virtual ~UnifiedCubeProfile();
 
     public: // utilities
 

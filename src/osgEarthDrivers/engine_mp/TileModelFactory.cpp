@@ -165,7 +165,6 @@ namespace
             _opt   = &opt;
             _model = model;
             _hfCache = hfCache;
-            //_repo = &repo;
         }
 
         void execute()
@@ -180,20 +179,10 @@ namespace
             //if ( _mapf->getHeightField( _key, true, hf, &isFallback ) )
             if (_hfCache->getOrCreateHeightField( *_mapf, _key, true, hf, &isFallback) )
             {
-#if 0
-                // Put it in the repo
-                osgTerrain::HeightFieldLayer* hfLayer = new osgTerrain::HeightFieldLayer( hf.get() );
-
-                // Generate a locator.
-                hfLayer->setLocator( GeoLocator::createForKey( _key, mapInfo ) );
-
-                _model->_elevationData = TileModel::ElevationData(hfLayer, isFallback);
-#else
                 _model->_elevationData = TileModel::ElevationData(
                     hf,
                     GeoLocator::createForKey( _key, mapInfo ),
                     isFallback );
-#endif
 
 #if 1
                 if ( *_opt->normalizeEdges() )
@@ -250,10 +239,10 @@ namespace
 
 //------------------------------------------------------------------------
 
-TileModelFactory::TileModelFactory(const Map*                          map, 
+TileModelFactory::TileModelFactory(//const Map*                          map, 
                                    TileNodeRegistry*                   liveTiles,
                                    const MPTerrainEngineOptions& terrainOptions ) :
-_map           ( map ),
+//_map           ( map ),
 _liveTiles     ( liveTiles ),
 _terrainOptions( terrainOptions )
 {
@@ -269,33 +258,25 @@ TileModelFactory::getHeightFieldCache() const
 
 void
 TileModelFactory::createTileModel(const TileKey&           key, 
-                                  osg::ref_ptr<TileModel>& out_model,
-                                  bool&                    out_hasRealData)
+                                  const MapFrame&          frame,
+                                  osg::ref_ptr<TileModel>& out_model) //,
+                                  //bool&                    out_hasRealData)
 {
-    MapFrame mapf( _map, Map::MASKED_TERRAIN_LAYERS );
-    
-    const MapInfo& mapInfo = mapf.getMapInfo();
 
-    osg::ref_ptr<TileModel> model = new TileModel();
-    model->_map         = _map;
-    model->_tileKey     = key;
-    model->_tileLocator = GeoLocator::createForKey(key, mapInfo);
-
-    // init this to false, then search for real data. "Real data" is data corresponding
-    // directly to the key, as opposed to fallback data, which is derived from a lower
-    // LOD key.
-    out_hasRealData = false;
+    osg::ref_ptr<TileModel> model = new TileModel( frame.getRevision(), frame.getMapInfo() );
+    model->_tileKey = key;
+    model->_tileLocator = GeoLocator::createForKey(key, frame.getMapInfo());
     
     // Fetch the image data and make color layers.
     unsigned order = 0;
-    for( ImageLayerVector::const_iterator i = mapf.imageLayers().begin(); i != mapf.imageLayers().end(); ++i )
+    for( ImageLayerVector::const_iterator i = frame.imageLayers().begin(); i != frame.imageLayers().end(); ++i )
     {
         ImageLayer* layer = i->get();
 
         if ( layer->getEnabled() )
         {
             BuildColorData build;
-            build.init( key, layer, order, mapInfo, _terrainOptions, model.get() );
+            build.init( key, layer, order, frame.getMapInfo(), _terrainOptions, model.get() );
             
             bool addedToModel = build.execute();
             if ( addedToModel )
@@ -308,7 +289,7 @@ TileModelFactory::createTileModel(const TileKey&           key,
 
     // make an elevation layer.
     BuildElevationData build;
-    build.init( key, mapf, _terrainOptions, model.get(), _hfCache );
+    build.init( key, frame, _terrainOptions, model.get(), _hfCache );
     build.execute();
 
 
@@ -318,32 +299,15 @@ TileModelFactory::createTileModel(const TileKey&           key,
         return;
     }
 
-    // OK we are making a tile, so if there's no heightfield yet, make an empty one.
+    // OK we are making a tile, so if there's no heightfield yet, make an empty one (and mark it
+    // as fallback data of course)
     if ( !model->_elevationData.getHeightField() )
     {
         osg::HeightField* hf = HeightFieldUtils::createReferenceHeightField( key.getExtent(), 15, 15 );
         model->_elevationData = TileModel::ElevationData(
             hf,
-            GeoLocator::createForKey(key, mapInfo),
+            GeoLocator::createForKey(key, frame.getMapInfo()),
             true );
-    }
-
-    if (!out_hasRealData)
-    {
-        // Check the results and see if we have any real data.
-        for( TileModel::ColorDataByUID::const_iterator i = model->_colorData.begin(); i != model->_colorData.end(); ++i )
-        {
-            if ( !i->second.isFallbackData() ) 
-            {
-                out_hasRealData = true;
-                break;
-            }
-        }
-    }
-
-    if ( !out_hasRealData && !model->_elevationData.isFallbackData() )
-    {
-        out_hasRealData = true;
     }
 
     // look up the parent model and cache it.

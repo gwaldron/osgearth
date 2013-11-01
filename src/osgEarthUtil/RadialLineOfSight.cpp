@@ -28,46 +28,6 @@ using namespace osgEarth::Util;
 
 namespace
 {
-#if 0
-    bool getRelativeWorld(double x, double y, double relativeHeight, MapNode* mapNode, osg::Vec3d& world )
-    {
-        GeoPoint mapPoint(mapNode->getMapSRS(), x, y);
-        osg::Vec3d pos;
-        mapPoint.toWorld( pos, mapNode->getTerrain() );
-        //mapNode->getMap()->toWorldPoint(mapPoint, pos);
-
-        osg::Vec3d up(0,0,1);
-        const osg::EllipsoidModel* em = mapNode->getMap()->getProfile()->getSRS()->getEllipsoid();
-        if (em)
-        {
-            up = em->computeLocalUpVector( world.x(), world.y(), world.z());
-        }    
-        up.normalize();
-
-        double segOffset = 50000;
-
-        osg::Vec3d start = pos + (up * segOffset);
-        osg::Vec3d end = pos - (up * segOffset);
-        
-        osgUtil::LineSegmentIntersector* i = new osgUtil::LineSegmentIntersector( start, end );
-        
-        osgUtil::IntersectionVisitor iv;    
-        iv.setIntersector( i );
-        mapNode->getTerrainEngine()->accept( iv );
-
-        osgUtil::LineSegmentIntersector::Intersections& results = i->getIntersections();
-        if ( !results.empty() )
-        {
-            const osgUtil::LineSegmentIntersector::Intersection& result = *results.begin();
-            world = result.getWorldIntersectPoint();
-            world += up * relativeHeight;
-            return true;
-        }
-        return false;    
-    }
-#endif
-
-
     osg::Vec3d getNodeCenter(osg::Node* node)
     {
         osg::NodePathList nodePaths = node->getParentalNodePaths();

@@ -242,6 +242,11 @@ namespace osgEarth
          */
         const std::string& getName() const { return getTerrainLayerRuntimeOptions().name(); }
 
+		/**
+		 * Sets the readable name of the map layer
+		 */
+		void setName( const std::string& name ) { _runtimeOptions->name() = name; }
+
         /**
          * Gets the profile of this MapLayer
          */

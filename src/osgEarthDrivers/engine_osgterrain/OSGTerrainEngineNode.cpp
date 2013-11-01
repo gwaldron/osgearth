@@ -833,7 +833,7 @@ OSGTerrainEngineNode::traverse( osg::NodeVisitor& nv )
         if ( nv.getVisitorType() == osg::NodeVisitor::CULL_VISITOR )
         {
             // update the cull-thread map frame if necessary. (We don't need to sync the
-            // update_mapf becuase that happens in response to a map callback.)
+            // update_mapf because that happens in response to a map callback.)
 
             // TODO: address the fact that this can happen from multiple threads.
             // Really we need a _cull_mapf PER view. -gw

@@ -50,8 +50,8 @@ public:
         return
             osgDB::equalCaseInsensitive( extension, "osgearth_engine_mp" ) ||
             osgDB::equalCaseInsensitive( extension, "osgearth_engine_mp_tile" ) ||
-            osgDB::equalCaseInsensitive( extension, "osgearth_engine_mp_upsampled_tile" );
-
+            //osgDB::equalCaseInsensitive( extension, "osgearth_engine_mp_upsampled_tile" ) ||
+            osgDB::equalCaseInsensitive( extension, "osgearth_engine_mp_standalone_tile" );
     }
 
     virtual ReadResult readObject(const std::string& uri, const Options* options) const
@@ -79,44 +79,7 @@ public:
     {
         std::string ext = osgDB::getFileExtension(uri);
 
-        if ( "osgearth_engine_mp_upsampled_tile" == ext )
-        {
-            // parse the tile key and engine ID:
-            std::string tileDef = osgDB::getNameLessExtension(uri);
-            unsigned int lod, x, y, engineID;
-            sscanf(tileDef.c_str(), "%d/%d/%d.%d", &lod, &x, &y, &engineID);
-
-            // find the appropriate engine:
-            osg::ref_ptr<MPTerrainEngineNode> engineNode;
-            MPTerrainEngineNode::getEngineByUID( (UID)engineID, engineNode );
-            if ( engineNode.valid() )
-            {
-                osg::Timer_t start = osg::Timer::instance()->tick();
-
-                // see if we have a progress tracker
-                ProgressCallback* progress = 
-                    options ? const_cast<ProgressCallback*>(
-                    dynamic_cast<const ProgressCallback*>(options->getUserData())) : 0L;
-
-                // assemble the key and create the node:
-                const Profile* profile = engineNode->getMap()->getProfile();
-                TileKey key( lod, x, y, profile );
-
-                OE_DEBUG << "   READ NODE UPSAMPLED TILE " << key.str() << std::endl;
-
-                osg::Node* node = engineNode->createUpsampledNode( key, progress );
-                if ( node )
-                    return ReadResult( node, ReadResult::FILE_LOADED );
-                else
-                    return new InvalidTileNode(key);
-            }
-            else
-            {
-                return ReadResult::FILE_NOT_FOUND;
-            }
-        }
-
-        else if ( "osgearth_engine_mp_tile" == ext )
+        if ( "osgearth_engine_mp_tile" == ext || "osgearth_engine_mp_standalone_tile" == ext )
         {
             // See if the filename starts with server: and strip it off.  This will trick OSG
             // into passing in the filename to our plugin instead of using the CURL plugin if
@@ -147,7 +110,12 @@ public:
                 // assemble the key and create the node:
                 const Profile* profile = engineNode->getMap()->getProfile();
                 TileKey key( lod, x, y, profile );
-                osg::ref_ptr< osg::Node > node = engineNode->createNode( key, progress );
+
+                bool standalone = ("osgearth_engine_mp_standalone_tile" == ext);
+
+                osg::ref_ptr<osg::Node> node = 
+                    standalone ? engineNode->createStandaloneNode( key, progress ) :
+                    engineNode->createNode( key, progress );
 
                 osg::Timer_t end = osg::Timer::instance()->tick();
 

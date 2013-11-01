@@ -42,15 +42,6 @@ _mapPosition            ( position )
     init();
 }
 
-LocalizedNode::LocalizedNode(MapNode* mapNode, const Config& conf) :
-PositionedAnnotationNode( mapNode, conf ),
-_initComplete           ( false ),
-_horizonCulling         ( true ),
-_scale                  ( 1.0f, 1.0f, 1.0f )
-{
-    init();
-}
-
 
 void
 LocalizedNode::init()
@@ -289,4 +280,78 @@ LocalizedNode::applyAltitudePolicy(osg::Node* node, const Style& style)
     }
 
     return node;
+}
+
+
+//-------------------------------------------------------------------
+
+LocalizedNode::LocalizedNode(MapNode* mapNode, const Config& conf) :
+PositionedAnnotationNode( mapNode, conf ),
+_initComplete           ( false ),
+_horizonCulling         ( true ),
+_scale                  ( 1.0f, 1.0f, 1.0f )
+{
+    if ( conf.hasChild( "position" ) )
+        setPosition( GeoPoint(conf.child("position")) );
+
+    if ( conf.hasChild( "scale" ) )
+    {
+        const Config* c = conf.child_ptr("scale");
+        osg::Vec3f s( c->value("x", 1.0f), c->value("y", 1.0f), c->value("z", 1.0f) );
+        setScale( s );
+    }
+
+    if ( conf.hasChild( "local_offset" ) )
+    {
+        const Config* c = conf.child_ptr("local_offset");
+        osg::Vec3d o( c->value("x", 0.0), c->value("y", 0.0), c->value("z", 0.0) );
+        setLocalOffset( o );
+    }
+
+    if ( conf.hasChild( "local_rotation" ) )
+    {
+        const Config* c = conf.child_ptr("local_rotation");
+        osg::Quat q( c->value("x", 0.0), c->value("y", 0.0), c->value("z", 0.0), c->value("w", 1.0) );
+        setLocalRotation( q );
+    }
+
+    init();
+}
+
+Config
+LocalizedNode::getConfig() const
+{
+    Config conf = PositionedAnnotationNode::getConfig();
+
+    conf.addObj( "position", getPosition() );
+    
+    if ( _scale.x() != 1.0f || _scale.y() != 1.0f || _scale.z() != 1.0f )
+    {
+        Config c( "scale" );
+        c.add( "x", _scale.x() );
+        c.add( "y", _scale.y() );
+        c.add( "z", _scale.z() );
+        conf.add( c );
+    }
+
+    if ( _localOffset != osg::Vec3d(0,0,0) )
+    {
+        Config c( "local_offset" );
+        c.set( "x", _localOffset.x() );
+        c.set( "y", _localOffset.y() );
+        c.set( "z", _localOffset.z() );
+        conf.add( c );
+    }
+
+    if ( !_localRotation.zeroRotation() )
+    {
+        Config c( "local_rotation" );
+        c.set( "x", _localRotation.x() );
+        c.set( "y", _localRotation.y() );
+        c.set( "z", _localRotation.z() );
+        c.set( "w", _localRotation.w() );
+        conf.add( c );
+    }
+
+    return conf;
 }

@@ -19,6 +19,8 @@
 #include "MPGeometry"
 
 #include <osg/Version>
+#include <osgUtil/MeshOptimizers>
+#include <iterator>
 
 using namespace osg;
 using namespace osgEarth_engine_mp;
@@ -29,23 +31,29 @@ using namespace osgEarth;
 
 //----------------------------------------------------------------------------
 
-MPGeometry::MPGeometry(const Map* map, int imageUnit) : 
-osg::Geometry    ( ), 
-_map             ( map, Map::IMAGE_LAYERS ),
+//osg::buffered_object<MPGeometry::PerGC> MPGeometry::_perGC;
+
+MPGeometry::MPGeometry(const TileKey& key, const MapFrame& frame, int imageUnit) : 
+osg::Geometry    ( ),
+_frame           ( frame ),
 _imageUnit       ( imageUnit )
 {
-    _opacityUniform = new osg::Uniform( osg::Uniform::FLOAT, "oe_layer_opacity" );
-    _opacityUniform->set( 1.0f );
-
-    _layerUIDUniform = new osg::Uniform( osg::Uniform::INT, "oe_layer_uid" );
-    _layerUIDUniform->set( 0 );
-
-    _layerOrderUniform = new osg::Uniform( osg::Uniform::INT, "oe_layer_order" );
-    _layerOrderUniform->set( 0 );
-
-    _texMatParentUniform = new osg::Uniform(osg::Uniform::FLOAT_MAT4, "oe_layer_parent_matrix");
+    unsigned tw, th;
+    key.getProfile()->getNumTiles(key.getLOD(), tw, th);
+    _tileKeyValue.set( key.getTileX(), th-key.getTileY()-1.0f, key.getLOD(), -1.0f );
 
     _imageUnitParent = _imageUnit + 1; // temp
+
+    // establish uniform name IDs.
+    _tileKeyUniformNameID      = osg::Uniform::getNameID( "oe_tile_key" );
+    _birthTimeUniformNameID    = osg::Uniform::getNameID( "oe_tile_birthtime" );
+    _uidUniformNameID          = osg::Uniform::getNameID( "oe_layer_uid" );
+    _orderUniformNameID        = osg::Uniform::getNameID( "oe_layer_order" );
+    _opacityUniformNameID      = osg::Uniform::getNameID( "oe_layer_opacity" );
+    _texMatParentUniformNameID = osg::Uniform::getNameID( "oe_layer_parent_matrix" );
+
+    this->setUseVertexBufferObjects(true);
+    this->setUseDisplayList(false);
 }
 
 
@@ -54,18 +62,18 @@ MPGeometry::renderPrimitiveSets(osg::State& state,
                                 bool        usingVBOs) const
 {
     // check the map frame to see if it's up to date
-    if ( _map.needsSync() )
+    if ( _frame.needsSync() )
     {
         // this lock protects a MapFrame sync when we have multiple DRAW threads.
-        Threading::ScopedMutexLock exclusive( _mapSyncMutex );
+        Threading::ScopedMutexLock exclusive( _frameSyncMutex );
 
-        if ( _map.needsSync() && _map.sync() ) // always double check
+        if ( _frame.needsSync() && _frame.sync() ) // always double check
         {
             // This should only happen is the layer ordering changes;
             // If layers are added or removed, the Tile gets rebuilt and
             // the point is moot.
             std::vector<Layer> reordered;
-            const ImageLayerVector& layers = _map.imageLayers();
+            const ImageLayerVector& layers = _frame.imageLayers();
             reordered.reserve( layers.size() );
             for( ImageLayerVector::const_iterator i = layers.begin(); i != layers.end(); ++i )
             {
@@ -80,22 +88,51 @@ MPGeometry::renderPrimitiveSets(osg::State& state,
     unsigned layersDrawn = 0;
 
 
-    osg::ref_ptr<osg::GL2Extensions> ext = osg::GL2Extensions::Get( state.getContextID(), true );
+    // access the GL extensions interface for the current GC:
+    unsigned contextID = state.getContextID();
+    osg::ref_ptr<osg::GL2Extensions> ext = osg::GL2Extensions::Get( contextID, true );
     const osg::Program::PerContextProgram* pcp = state.getLastAppliedProgramObject();
 
+    // cannot store these in the object since there could be multiple GCs (and multiple
+    // PerContextPrograms) at large
+    GLint tileKeyLocation;
+    GLint birthTimeLocation;
     GLint opacityLocation;
     GLint uidLocation;
     GLint orderLocation;
     GLint texMatParentLocation;
 
-    // yes, it's possible that the PCP is not set up yet.
-    // TODO: can we optimize this so we don't need to get uni locations every time?
+    // The PCP can change (especially in a VirtualProgram environment). So we do need to
+    // requery the uni locations each time unfortunately. TODO: explore optimizations.
     if ( pcp )
     {
-        opacityLocation      = pcp->getUniformLocation( _opacityUniform->getNameID() );
-        uidLocation          = pcp->getUniformLocation( _layerUIDUniform->getNameID() );
-        orderLocation        = pcp->getUniformLocation( _layerOrderUniform->getNameID() );
-        texMatParentLocation = pcp->getUniformLocation( _texMatParentUniform->getNameID() );
+        tileKeyLocation      = pcp->getUniformLocation( _tileKeyUniformNameID );
+        birthTimeLocation    = pcp->getUniformLocation( _birthTimeUniformNameID );
+        opacityLocation      = pcp->getUniformLocation( _opacityUniformNameID );
+        uidLocation          = pcp->getUniformLocation( _uidUniformNameID );
+        orderLocation        = pcp->getUniformLocation( _orderUniformNameID );
+        texMatParentLocation = pcp->getUniformLocation( _texMatParentUniformNameID );
+    }
+    
+    // apply the tilekey uniform once.
+    if ( tileKeyLocation >= 0 )
+    {
+        ext->glUniform4fv( tileKeyLocation, 1, _tileKeyValue.ptr() );
+    }
+
+    // set the "birth time" - i.e. the time this tile last entered the scene in the current GC.
+    if ( birthTimeLocation >= 0 )
+    {
+        PerContextData& pcd = _pcd[contextID];
+        if ( pcd.birthTime < 0.0f )
+        {
+            const osg::FrameStamp* stamp = state.getFrameStamp();
+            if ( stamp )
+            {
+                pcd.birthTime = stamp->getReferenceTime();
+            }
+        }
+        ext->glUniform1f( birthTimeLocation, pcd.birthTime );
     }
 
     // activate the tile coordinate set - same for all layers
@@ -149,7 +186,7 @@ MPGeometry::renderPrimitiveSets(osg::State& state,
                 layer._tex->apply( state );
 
                 // if we're using a parent texture for blending, activate that now
-                if ( layer._texParent.valid() )
+                if ( texMatParentLocation >= 0 && layer._texParent.valid() )
                 {
                     state.setActiveTextureUnit( _imageUnitParent );
                     activeImageUnit = _imageUnitParent;
@@ -165,27 +202,32 @@ MPGeometry::renderPrimitiveSets(osg::State& state,
                 if ( pcp )
                 {
                     // apply opacity:
-                    float opacity = layer._imageLayer->getOpacity();
-                    if ( opacity != prev_opacity )
+                    if ( opacityLocation >= 0 )
                     {
-                        _opacityUniform->set( opacity );
-                        _opacityUniform->apply( ext, opacityLocation );
-                        prev_opacity = opacity;
+                        float opacity = layer._imageLayer->getOpacity();
+                        if ( opacity != prev_opacity )
+                        {
+                            ext->glUniform1f( opacityLocation, (GLfloat)opacity );
+                            prev_opacity = opacity;
+                        }
                     }
 
                     // assign the layer UID:
-                    _layerUIDUniform->set( layer._layerID );
-                    _layerUIDUniform->apply( ext, uidLocation );
+                    if ( uidLocation >= 0 )
+                    {
+                        ext->glUniform1i( uidLocation, (GLint)layer._layerID );
+                    }
 
                     // assign the layer order:
-                    _layerOrderUniform->set( (int)layersDrawn );
-                    _layerOrderUniform->apply( ext, orderLocation );
+                    if ( orderLocation >= 0 )
+                    {
+                        ext->glUniform1i( orderLocation, (GLint)layersDrawn );
+                    }
 
                     // assign the parent texture matrix
-                    if ( layer._texParent.valid() )
+                    if ( texMatParentLocation >= 0 && layer._texParent.valid() )
                     {
-                        _texMatParentUniform->set( layer._texMatParent );
-                        _texMatParentUniform->apply( ext, texMatParentLocation );
+                        ext->glUniformMatrix4fv( texMatParentLocation, 1, GL_FALSE, layer._texMatParent.ptr() );
                     }
                 }
 
@@ -201,20 +243,19 @@ MPGeometry::renderPrimitiveSets(osg::State& state,
         }
 
         // prevent texture leakage
+        // TODO: find a way to remove this to speed things up
         glBindTexture( GL_TEXTURE_2D, 0 );
     }
 
     // if we didn't draw anything, draw the raw tiles anyway with no texture.
     if ( layersDrawn == 0 )
     {
-        _opacityUniform->set( 1.0f );
-        _opacityUniform->apply( ext, opacityLocation );
-
-        _layerUIDUniform->set( (int)-1 ); // indicates a non-textured layer
-        _layerUIDUniform->apply( ext, uidLocation );
-
-        _layerOrderUniform->set( (int)0 );
-        _layerOrderUniform->apply( ext, orderLocation );
+        if ( opacityLocation >= 0 )
+            ext->glUniform1f( opacityLocation, (GLfloat)1.0f );
+        if ( uidLocation >= 0 )
+            ext->glUniform1i( uidLocation, (GLint)-1 );
+        if ( orderLocation >= 0 )
+            ext->glUniform1i( orderLocation, (GLint)0 );
 
         // draw the primitives themselves.
         for(unsigned int primitiveSetNum=0; primitiveSetNum!=_primitives.size(); ++primitiveSetNum)
@@ -223,6 +264,21 @@ MPGeometry::renderPrimitiveSets(osg::State& state,
             primitiveset->draw(state, usingVBOs);
         }
     }
+}
+
+
+osg::BoundingBox
+MPGeometry::computeBound() const
+{
+    osg::BoundingBox bbox = osg::Geometry::computeBound();
+    {
+        // update the uniform.
+        Threading::ScopedMutexLock exclusive(_frameSyncMutex);
+        osg::BoundingSphere bs(bbox);
+        osg::Vec4f tk;
+        _tileKeyValue.w() = bs.radius();
+    }
+    return bbox;
 }
 
 
@@ -243,6 +299,25 @@ MPGeometry::releaseGLObjects(osg::State* state) const
         // Check the refcount since texcoords can be cached/shared.
         if ( layer._texCoords.valid() && layer._texCoords->referenceCount() == 1 )
             layer._texCoords->releaseGLObjects( state );
+    }
+}
+
+
+void
+MPGeometry::resizeGLObjectBuffers(unsigned maxSize)
+{
+    osg::Geometry::resizeGLObjectBuffers( maxSize );
+
+    for(unsigned i=0; i<_layers.size(); ++i)
+    {
+        const Layer& layer = _layers[i];
+        if ( layer._tex.valid() )
+            layer._tex->resizeGLObjectBuffers( maxSize );
+    }
+
+    if ( _pcd.size() < maxSize )
+    {
+        _pcd.resize(maxSize);
     }
 }
 

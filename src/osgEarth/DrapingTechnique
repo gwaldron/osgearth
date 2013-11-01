@@ -83,6 +83,12 @@ namespace osgEarth
         void setAttachStencil( bool value );
         bool getAttachStencil() const;
 
+        /**
+         * Ratio of near resolution to far resolution when draping. [value >= 1.0]
+         */
+        void setResolutionRatio( float value );
+        float getResolutionRatio() const;
+
 
     public: // OverlayTechnique
 
@@ -112,7 +118,6 @@ namespace osgEarth
         optional<int>                 _explicitTextureUnit;
         optional<int>                 _textureUnit;
         optional<int>                 _textureSize;
-        bool                          _useShaders;
         bool                          _mipmapping;
         bool                          _rttBlending;
         bool                          _attachStencil;
@@ -120,8 +125,7 @@ namespace osgEarth
 
         struct TechData : public osg::Referenced
         {
-            osg::ref_ptr<osg::Uniform>    _texGenUniform;
-            osg::ref_ptr<osg::TexGen>     _texGen;
+            osg::ref_ptr<osg::Uniform> _texGenUniform;
         };
 
     private:

@@ -422,25 +422,6 @@ GeometryCompiler::compile(FeatureList&          workingSet,
         }
     }
 
-    // polygonized lines.
-    else if ( line != 0L && line->stroke()->widthUnits() != Units::PIXELS )
-    {
-        if ( altRequired )
-        {
-            AltitudeFilter clamp;
-            clamp.setPropertiesFromStyle( style );
-            sharedCX = clamp.push( workingSet, sharedCX );
-            altRequired = false;
-        }
-
-        PolygonizeLinesFilter filter( style );
-        osg::Node* node = filter.push( workingSet, sharedCX );
-        if ( node )
-        {
-            resultGroup->addChild( node );
-        }
-    }
-
     // simple geometry
     else if ( point || line || polygon )
     {
@@ -457,12 +438,8 @@ GeometryCompiler::compile(FeatureList&          workingSet,
             filter.maxGranularity() = *_options.maxGranularity();
         if ( _options.geoInterp().isSet() )
             filter.geoInterp() = *_options.geoInterp();
-        if ( _options.mergeGeometry().isSet() )
-            filter.mergeGeometry() = *_options.mergeGeometry();
         if ( _options.featureName().isSet() )
             filter.featureName() = *_options.featureName();
-        if ( _options.useVertexBufferObjects().isSet())
-            filter.useVertexBufferObjects() = *_options.useVertexBufferObjects();
 
         osg::Node* node = filter.push( workingSet, sharedCX );
         if ( node )
@@ -501,7 +478,7 @@ GeometryCompiler::compile(FeatureList&          workingSet,
     {
         if ( _options.shaderPolicy() == SHADERPOLICY_GENERATE )
         {
-            ShaderGenerator gen( 0L );  // no ss cache because we will optimize later
+            ShaderGenerator gen;  // no ss cache because we will optimize later
             resultGroup->accept( gen );
         }
         else if ( _options.shaderPolicy() == SHADERPOLICY_DISABLE )
@@ -517,6 +494,8 @@ GeometryCompiler::compile(FeatureList&          workingSet,
     
     // todo: this helps a lot, but is currently broken for non-triangle
     // geometries. (gw, 12-17-2012)
+    // TODO: See: VertexCacheOptimizer in Utils
+    // ..note, the BuildGeometryFilter and ExtrudeGeometryFilter call this now
 #if 0
         osgUtil::Optimizer optimizer;
         optimizer.optimize(

@@ -123,7 +123,7 @@ ScriptEngineFactory::create( const ScriptEngineOptions& options )
             scriptEngine = dynamic_cast<ScriptEngine*>( osgDB::readObjectFile( driverExt, rwopts.get() ) );
             if ( scriptEngine )
             {
-                OE_INFO << "Loaded ScriptEngine driver \"" << options.getDriver() << "\" OK" << std::endl;
+                OE_DEBUG << "Loaded ScriptEngine driver \"" << options.getDriver() << "\" OK" << std::endl;
             }
             else
             {
@@ -133,7 +133,7 @@ ScriptEngineFactory::create( const ScriptEngineOptions& options )
         }
         else
         {
-            OE_WARN << "Skipping previously failed ScriptEngine driver \"" << options.getDriver() << "\"" << std::endl;
+            //OE_WARN << "Skipping previously failed ScriptEngine driver \"" << options.getDriver() << "\"" << std::endl;
         }
     }
     else

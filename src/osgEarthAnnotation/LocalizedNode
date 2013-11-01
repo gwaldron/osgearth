@@ -101,11 +101,13 @@ namespace osgEarth { namespace Annotation
         void setHorizonCulling( bool value );
         bool getHorizonCulling() const;
 
+    public: // AnnotationNode
+
+        virtual Config getConfig() const;
 
     public: // osg::Node
 
         virtual osg::BoundingSphere computeBound() const;
-
 
     protected:
 
@@ -114,6 +116,9 @@ namespace osgEarth { namespace Annotation
          */
         virtual osg::MatrixTransform* getTransform() =0;
 
+	public:
+        // refreshed the main transform with data from an asbolute point
+        bool updateTransform(const GeoPoint& absPt, osg::Node* patch =0L);
 
     protected:
         bool                               _initComplete;
@@ -128,9 +133,6 @@ namespace osgEarth { namespace Annotation
         
         // re-clamped the vert mesh based on a new terrain tile coming in
         virtual void reclamp( const TileKey& key, osg::Node* tile, const Terrain* terrain );
-
-        // refreshed the main transform with data from an asbolute point
-        bool updateTransform(const GeoPoint& absPt, osg::Node* patch =0L);
 
         // checks for overlay requirements, and if needed, installs a decorator node above
         // the passed-in node to facilitate the clamping/draping. The proper usage pattern

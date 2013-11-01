@@ -36,12 +36,12 @@ namespace osgEarth_engine_mp
     {
     public:
         SerialKeyNodeFactory(
+            const Map*                          map,
             TileModelFactory*                   modelFactory,
             TileModelCompiler*                  modelCompiler,
             TileNodeRegistry*                   liveTiles,
             TileNodeRegistry*                   deadTiles,
             const MPTerrainEngineOptions&       options,
-            const MapInfo&                      mapInfo,
             TerrainNode*                        terrain,
             UID                                 engineUID );
 
@@ -53,19 +53,28 @@ namespace osgEarth_engine_mp
 
         osg::Node* createRootNode( const TileKey& key );
 
-        osg::Node* createNode( const TileKey& key, ProgressCallback* progress );
+        /**
+         * Creates a TileNode or TileGroup corresponding to the TileKey.
+         *
+         * @param key           TileKey for which to create a new node
+         * @param setupChildren When true, build and include the necessary structures to
+         *                      page in subtiles if and when necessary. If false, you just get
+         *                      the tile alone with no paging support.
+         * @param progress      Callback for cancelation and progress reporting
+         */
+        osg::Node* createNode( const TileKey& key, bool setupChildren, ProgressCallback* progress );
 
         TileModelCompiler* getCompiler() const { return _modelCompiler.get(); }
 
     protected:
-        osg::Node* createTile(TileModel* model, bool tileHasRealData);
+        osg::Node* createTile(TileModel* model, bool setupChildren);
 
+        MapFrame                            _frame;
         osg::ref_ptr<TileModelFactory>      _modelFactory;
         osg::ref_ptr<TileModelCompiler>     _modelCompiler;
         osg::ref_ptr<TileNodeRegistry>      _liveTiles;
         osg::ref_ptr<TileNodeRegistry>      _deadTiles;
         const MPTerrainEngineOptions&       _options;
-        const MapInfo                       _mapInfo;
         osg::ref_ptr< TerrainNode >         _terrain;
         UID                                 _engineUID;
     };

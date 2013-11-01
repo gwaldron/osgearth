@@ -31,7 +31,7 @@
 #include <osgEarth/MaskLayer>
 #include <osgEarth/Revisioning>
 #include <osgEarth/ThreadingUtils>
-#include <osgDB/ReaderWriter>
+#include <osgDB/Options>
 
 namespace osgEarth
 {
@@ -271,8 +271,8 @@ namespace osgEarth
         /**
          * Gets the user-provided options structure stored in this map.
          */
-        const osgDB::ReaderWriter::Options* getGlobalOptions() const;
-        void setGlobalOptions( const osgDB::ReaderWriter::Options* options );
+        const osgDB::Options* getGlobalOptions() const;
+        void setGlobalOptions( const osgDB::Options* options );
 
         /**
          * Sets the readable name of this map.
@@ -350,7 +350,7 @@ namespace osgEarth
          * Returns true if new Map model data was available and a sync occurred;
          * returns false if nothing changed.
          */    
-        bool sync( class MapFrame& frame ) const;    
+        bool sync( class MapFrame& frame ) const;
 
         enum ModelParts {
             IMAGE_LAYERS     = 1 << 0,
@@ -383,13 +383,23 @@ namespace osgEarth
         ModelLayerVector _modelLayers;
         MaskLayerVector _terrainMaskLayers;
         MapCallbackList _mapCallbacks;
-        osg::ref_ptr<const osgDB::ReaderWriter::Options> _globalOptions;
+        osg::ref_ptr<const osgDB::Options> _globalOptions;
         Threading::ReadWriteMutex _mapDataMutex;
         osg::ref_ptr<const Profile> _profile;
         osg::ref_ptr<const Profile> _profileNoVDatum;
         osg::ref_ptr<Cache> _cache;
         Revision _dataModelRevision;
         osg::ref_ptr<osgDB::Options> _dbOptions;
+
+        struct ElevationLayerCB : public ElevationLayerCallback {
+            osg::observer_ptr<Map> _map;
+            ElevationLayerCB(Map*);
+            void onVisibleChanged(TerrainLayer* layer);
+        };
+        osg::ref_ptr<ElevationLayerCB> _elevationLayerCB;
+        friend struct ElevationLayerCB;
+
+        void notifyElevationLayerVisibleChanged(TerrainLayer*);
 
     private:
         void calculateProfile();

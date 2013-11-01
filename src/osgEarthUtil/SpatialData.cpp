@@ -358,23 +358,7 @@ GeoCell::adjustCount( int delta )
 
     if ( _depth > 0 && getNumParents() > 0 )
     {
-        static_cast<GeoCell*>(getParent(0))->adjustCount( delta );        
-
-#if 0
-        if ( !_clusterGeode.valid() )
-        {
-            _clusterGeode = makeClusterGeode( _extent, _count );
-        }
-        else
-        {
-            osgText::Text* t = static_cast<osgText::Text*>( _clusterGeode->getDrawable(0) );
-            std::stringstream buf;
-            buf << _count;
-            std::string str;
-            str = buf.str();
-            t->setText( str );
-        }
-#endif
+        static_cast<GeoCell*>(getParent(0))->adjustCount( delta );
     }
 }
 
@@ -514,38 +498,3 @@ GeoCell::reindexObject( GeoObject* object )
         return insertObject( object );
     }
 }
-
-#if 0
-bool
-GeoCell::reindex( GeoObject* object )
-{
-    osg::Vec3d location;
-    if ( object->getLocation(location) && !_extent.contains(location.x(), location.y()) )
-    {
-        // first remove from its current cell
-        osg::ref_ptr<GeoCell> safeCell = object->_cell.get();
-        if ( safeCell.valid() )
-        {
-            object->_cell = 0L;
-            safeCell->_objects.erase( findObject(safeCell->_objects, object) );
-            //safeCell->_objects.erase( std::find( _objects.begin(), _objects.end(), std::make_pair(object->getPriority(),object) ) );
-            //safeCell->_objects.erase( std::find( safeCell->_objects.begin(), safeCell->_objects.end(), object ) );
-            safeCell->adjustCount( -1 );
-            //safeCell->removeObject( object );
-        }
-
-        GeoCell* cell = dynamic_cast<GeoCell*>( this->getParent(0) );
-        while( cell )
-        {
-            if ( cell->getExtent().contains(location.x(), location.y()) )
-            {
-                if ( cell->insertObject( object ) )
-                    return true;
-            }
-            cell = dynamic_cast<GeoCell*>( cell->getParent(0) );
-        }
-    }
-
-    return true;
-}
-#endif

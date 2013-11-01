@@ -36,55 +36,41 @@ TileNode::TileNode( const TileKey& key, const TileModel* model ) :
 _key               ( key ),
 _model             ( model ),
 _bornTime          ( 0.0 ),
-_lastTraversalFrame( 0 )
+_lastTraversalFrame( 0 ),
+_dirty             ( false ),
+_outOfDate         ( false )
 {
     this->setName( key.str() );
 
-    osg::StateSet* stateset = getOrCreateStateSet();
+    // revisions are initially in sync:
+    if ( model )
+        _maprevision = model->_revision;
 
-    // TileKey uniform.
-    _keyUniform = new osg::Uniform(osg::Uniform::FLOAT_VEC4, "oe_tile_key");
-    _keyUniform->setDataVariance( osg::Object::STATIC );
-    _keyUniform->set( osg::Vec4f(0,0,0,0) );
-    stateset->addUniform( _keyUniform );
+    // NOTE:
+    // We have temporarily disabled setting of the "birth time" uniform.
+    // Having a uniform on each TileNode adds a StateGraph for each TileNode and slows
+    // down the DRAW time considerably. Until we find a better solution, no 
+    // birth time uniform here. (That only affects LOD Blending atm)
+
+    //osg::StateSet* stateset = getOrCreateStateSet();
 
     // born-on date uniform.
     _bornUniform = new osg::Uniform(osg::Uniform::FLOAT, "oe_tile_birthtime");
     _bornUniform->set( -1.0f );
-    stateset->addUniform( _bornUniform );
+    //stateset->addUniform( _bornUniform );
 }
 
 
 void
 TileNode::setLastTraversalFrame(unsigned frame)
 {
-  _lastTraversalFrame = frame;
-}
-
-
-osg::BoundingSphere
-TileNode::computeBound() const
-{
-    osg::BoundingSphere bs = osg::MatrixTransform::computeBound();
-    
-    unsigned tw, th;
-    _key.getProfile()->getNumTiles(_key.getLOD(), tw, th);
-
-    // swap the Y index.
-    _keyUniform->set( osg::Vec4f(
-        _key.getTileX(),
-        th-_key.getTileY()-1.0,
-        _key.getLOD(),
-        bs.radius()) );
-
-    return bs;
+    _lastTraversalFrame = frame;
 }
 
 
 void
 TileNode::traverse( osg::NodeVisitor& nv )
 {
-    // TODO: not sure we need this.
     if ( nv.getVisitorType() == nv.CULL_VISITOR )
     {
         osg::ClusterCullingCallback* ccc = dynamic_cast<osg::ClusterCullingCallback*>(getCullCallback());
@@ -93,8 +79,15 @@ TileNode::traverse( osg::NodeVisitor& nv )
             if (ccc->cull(&nv,0,static_cast<osg::State *>(0))) return;
         }
 
+        // if this tile is marked dirty, bump the marker so the engine knows it
+        // needs replacing.
+        if ( _dirty || _model->_revision != _maprevision )
+        {
+            _outOfDate = true;
+        }
+
         // reset the "birth" time if necessary - this is the time at which the 
-        // node passes cull
+        // node passes cull (not multi-view compatible)
         const osg::FrameStamp* fs = nv.getFrameStamp();
         if ( fs )
         {
@@ -113,10 +106,20 @@ TileNode::traverse( osg::NodeVisitor& nv )
     osg::MatrixTransform::traverse( nv );
 }
 
-
 void
 TileNode::releaseGLObjects(osg::State* state) const
 {
+    osg::MatrixTransform::releaseGLObjects( state );
+
     if ( _model.valid() )
         _model->releaseGLObjects( state );
+}
+
+void
+TileNode::resizeGLObjectBuffers(unsigned maxSize)
+{
+    osg::MatrixTransform::resizeGLObjectBuffers( maxSize );
+
+    if ( _model.valid() )
+        const_cast<TileModel*>(_model.get())->resizeGLObjectBuffers( maxSize );
 }

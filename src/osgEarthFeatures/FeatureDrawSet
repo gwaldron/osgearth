@@ -44,7 +44,7 @@ namespace osgEarth { namespace Features
 
     public:
         FeatureDrawSet();
-        virtual ~FeatureDrawSet() { }
+        virtual ~FeatureDrawSet();
 
         /** Nodes comprising this draw set */
         Nodes& nodes() { return _nodes; }

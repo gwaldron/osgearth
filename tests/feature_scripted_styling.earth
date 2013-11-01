@@ -16,7 +16,7 @@ and a custom selector.
         <url>../data/world.tif</url>
     </image>
     
-    <model name="countries" driver="feature_geom" overlay="true">
+    <model name="countries" driver="feature_geom">
                           
         <features name="states" driver="ogr">
             <url>../data/world.shp</url>
@@ -40,7 +40,7 @@ and a custom selector.
                         var r = Math.floor(Math.random()*255);
                         var g = Math.floor(Math.random()*255);
                         var b = Math.floor(Math.random()*255);
-                        g_styles.push( "{fill:#"+hex(r)+hex(g)+hex(b)+"6f;}" );
+                        g_styles.push( "{fill:#"+hex(r)+hex(g)+hex(b)+"6f; altitude-clamping:terrain-drape;}" );
                     }
                 }
                 initialize();

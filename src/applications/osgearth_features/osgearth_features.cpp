@@ -68,14 +68,14 @@ int main(int argc, char** argv)
     if ( arguments.read("--help") )
         return usage( argv[0] );
 
-    if ( arguments.read("--stencil") )
-        osg::DisplaySettings::instance()->setMinimumNumStencilBits( 8 );
-
     bool useRaster  = arguments.read("--rasterize");
     bool useOverlay = arguments.read("--overlay");
     bool useStencil = arguments.read("--stencil");
     bool useMem     = arguments.read("--mem");
     bool useLabels  = arguments.read("--labels");
+
+    if ( useStencil )
+        osg::DisplaySettings::instance()->setMinimumNumStencilBits( 8 );
 
     osgViewer::Viewer viewer(arguments);
 
@@ -155,7 +155,6 @@ int main(int argc, char** argv)
         geomOptions.enableLighting() = false;
 
         ModelLayerOptions layerOptions( "my features", geomOptions );
-        layerOptions.overlay() = useOverlay;
         map->addModelLayer( new ModelLayer(layerOptions) );
     }
 

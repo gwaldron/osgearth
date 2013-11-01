@@ -22,10 +22,13 @@
 using namespace osgEarth;
 using namespace osgEarth::Symbology;
 
+OSGEARTH_REGISTER_SIMPLE_SYMBOL(render, RenderSymbol);
+
 RenderSymbol::RenderSymbol(const Config& conf) :
-Symbol    ( conf ),
-_depthTest( true ),
-_lighting ( true )
+Symbol          ( conf ),
+_depthTest      ( true ),
+_lighting       ( true ),
+_backfaceCulling( true )
 {
     mergeConfig(conf);
 }
@@ -35,48 +38,53 @@ RenderSymbol::getConfig() const
 {
     Config conf = Symbol::getConfig();
     conf.key() = "render";
-    conf.addIfSet   ( "depth_test",   _depthTest );
-    conf.addIfSet   ( "lighting",     _lighting );
-    conf.addObjIfSet( "depth_offset", _depthOffset );
+    conf.addIfSet   ( "depth_test",       _depthTest );
+    conf.addIfSet   ( "lighting",         _lighting );
+    conf.addObjIfSet( "depth_offset",     _depthOffset );
+    conf.addIfSet   ( "backface_culling", _backfaceCulling );
     return conf;
 }
 
 void 
 RenderSymbol::mergeConfig( const Config& conf )
 {
-    conf.getIfSet   ( "depth_test",   _depthTest );
-    conf.getIfSet   ( "lighting",     _lighting );
-    conf.getObjIfSet( "depth_offset", _depthOffset );
+    conf.getIfSet   ( "depth_test",       _depthTest );
+    conf.getIfSet   ( "lighting",         _lighting );
+    conf.getObjIfSet( "depth_offset",     _depthOffset );
+    conf.getIfSet   ( "backface_culling", _backfaceCulling );
 }
 
 void
 RenderSymbol::parseSLD(const Config& c, Style& style)
 {
-    DepthOffsetOptions defaults;
+    RenderSymbol defaults;
 
     if ( match(c.key(), "render-depth-test") ) {
-        style.getOrCreate<RenderSymbol>()->depthTest() = as<bool>(c.value(), true);
+        style.getOrCreate<RenderSymbol>()->depthTest() = as<bool>(c.value(), *defaults.depthTest());
     }
     else if ( match(c.key(), "render-lighting") ) {
-        style.getOrCreate<RenderSymbol>()->lighting() = as<bool>(c.value(), false);
+        style.getOrCreate<RenderSymbol>()->lighting() = as<bool>(c.value(), *defaults.lighting());
     }
     else if ( match(c.key(), "render-depth-offset") ) {
-        style.getOrCreate<RenderSymbol>()->depthOffset()->enabled() = as<bool>(c.value(), *defaults.enabled() );
+        style.getOrCreate<RenderSymbol>()->depthOffset()->enabled() = as<bool>(c.value(), *defaults.depthOffset()->enabled() );
     }
     else if ( match(c.key(), "render-depth-offset-min-bias") ) {
-        style.getOrCreate<RenderSymbol>()->depthOffset()->minBias() = as<float>(c.value(), *defaults.minBias() );
+        style.getOrCreate<RenderSymbol>()->depthOffset()->minBias() = as<float>(c.value(), *defaults.depthOffset()->minBias() );
         style.getOrCreate<RenderSymbol>()->depthOffset()->automatic() = false;
     }
     else if ( match(c.key(), "render-depth-offset-max-bias") ) {
-        style.getOrCreate<RenderSymbol>()->depthOffset()->maxBias() = as<float>(c.value(), *defaults.maxBias() );
+        style.getOrCreate<RenderSymbol>()->depthOffset()->maxBias() = as<float>(c.value(), *defaults.depthOffset()->maxBias() );
     }
     else if ( match(c.key(), "render-depth-offset-min-range") ) {
-        style.getOrCreate<RenderSymbol>()->depthOffset()->minRange() = as<float>(c.value(), *defaults.minRange() );
+        style.getOrCreate<RenderSymbol>()->depthOffset()->minRange() = as<float>(c.value(), *defaults.depthOffset()->minRange() );
     }
     else if ( match(c.key(), "render-depth-offset-max-range") ) {
-        style.getOrCreate<RenderSymbol>()->depthOffset()->maxRange() = as<float>(c.value(), *defaults.maxRange() );
+        style.getOrCreate<RenderSymbol>()->depthOffset()->maxRange() = as<float>(c.value(), *defaults.depthOffset()->maxRange() );
     }
     else if ( match(c.key(), "render-depth-offset-auto") ) {
-        style.getOrCreate<RenderSymbol>()->depthOffset()->automatic() = as<bool>(c.value(), *defaults.automatic() );
+        style.getOrCreate<RenderSymbol>()->depthOffset()->automatic() = as<bool>(c.value(), *defaults.depthOffset()->automatic() );
+    }
+    else if ( match(c.key(), "render-backface-culling") ) {
+        style.getOrCreate<RenderSymbol>()->backfaceCulling() = as<bool>(c.value(), *defaults.backfaceCulling() );
     }
 }

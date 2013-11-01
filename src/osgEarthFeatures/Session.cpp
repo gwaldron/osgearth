@@ -55,9 +55,10 @@ _dbOptions     ( dbOptions )
     if ( map && !dbOptions )
         _dbOptions = map->getDBOptions();
 
-    // a new cache to optimize state changes.
-    //_stateSetCache = new StateSetCache();
-    _stateSetCache = Registry::instance()->getStateSetCache();
+    // A new cache to optimize state changes. Since the cache lives in the Session, any
+    // geometry created under this session takes advantage of it. That's reasonable since
+    // tiles in a particular "layer" will tend to share state.
+    _stateSetCache = new StateSetCache();
 }
 
 Session::~Session()

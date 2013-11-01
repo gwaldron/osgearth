@@ -28,6 +28,10 @@ using namespace osgEarth::Symbology;
 
 //------------------------------------------------------------------------
 
+LabelSourceOptions::~LabelSourceOptions()
+{
+}
+
 void
 LabelSourceOptions::fromConfig( const Config& conf )
 {
@@ -46,6 +50,11 @@ LabelSourceOptions::getConfig() const
 {
     Config conf = DriverConfigOptions::getConfig();
     return conf;
+}
+
+//------------------------------------------------------------------------
+LabelSource::~LabelSource()
+{
 }
 
 //------------------------------------------------------------------------

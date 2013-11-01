@@ -36,7 +36,7 @@ namespace osgEarth
      * Usage:
      *
      *   ShaderGenerator gen;
-     *   graph->accept( gen );
+     *   gen.run( graph );
      *
      * If osgEarth detects a lack of GLSL support, the ShaderGenerator
      * will do nothing.
@@ -50,10 +50,14 @@ namespace osgEarth
         ShaderGenerator();
 
         /**
-         * Constructs a new shader generator that will use an external
-         * state set cache to optimize state changes.
+         * Sets the name to give any VP's we create
          */
-        ShaderGenerator( StateSetCache* cache );
+        void setProgramName(const std::string& name);
+
+        /**
+         * Runs the shader generator and then optimizes state sharing when it's done.
+         */
+        void run(osg::Node* graph, StateSetCache* cache =0L);
 
         /** dtor. */
         virtual ~ShaderGenerator() { }
@@ -69,21 +73,21 @@ namespace osgEarth
 
         void apply( osg::ProxyNode& );
 
+        void apply( osg::ClipNode& );
+
     protected:
 
         void apply( osg::Drawable* );
 
-        bool processGeometry( osg::StateSet* stateSet, osg::ref_ptr<osg::StateSet>& replacement );
+        bool processGeometry(const osg::StateSet* stateSet, osg::ref_ptr<osg::StateSet>& replacement);
 
-        bool processText( osg::StateSet* stateSet, osg::ref_ptr<osg::StateSet>& replacement );
+        bool processText(const osg::StateSet* stateSet, osg::ref_ptr<osg::StateSet>& replacement);
 
         osg::ref_ptr<osg::State> _state;
 
-        osg::ref_ptr<StateSetCache> _stateSetCache;
-
-        osg::ref_ptr<VirtualProgram> _defaultVP;
-
         bool _active;
+
+        std::string _name;
     };
 
 } // namespace osgEarth

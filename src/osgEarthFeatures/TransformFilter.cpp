@@ -29,49 +29,6 @@ using namespace osgEarth::Symbology;
 
 namespace 
 {
-#if 0
-    osg::Matrixd
-    createGeocentricInvRefFrame( const osg::Vec3d& input, const SpatialReference* inputSRS )
-    {
-        // convert to gencentric first:
-        double X = input.x(), Y = input.y(), Z = input.z();
-
-        osg::Matrixd localToWorld;
-        localToWorld.makeTranslate(X,Y,Z);
-
-        // normalize X,Y,Z
-        double inverse_length = 1.0/sqrt(X*X + Y*Y + Z*Z);
-        
-        X *= inverse_length;
-        Y *= inverse_length;
-        Z *= inverse_length;
-
-        double length_XY = sqrt(X*X + Y*Y);
-        double inverse_length_XY = 1.0/length_XY;
-
-        // Vx = |(-Y,X,0)|
-        localToWorld(0,0) = -Y*inverse_length_XY;
-        localToWorld(0,1) = X*inverse_length_XY;
-        localToWorld(0,2) = 0.0;
-
-        // Vy = /(-Z*X/(sqrt(X*X+Y*Y), -Z*Y/(sqrt(X*X+Y*Y),sqrt(X*X+Y*Y))| 
-        double Vy_x = -Z*X*inverse_length_XY;
-        double Vy_y = -Z*Y*inverse_length_XY;
-        double Vy_z = length_XY;
-        inverse_length = 1.0/sqrt(Vy_x*Vy_x + Vy_y*Vy_y + Vy_z*Vy_z);            
-        localToWorld(1,0) = Vy_x*inverse_length;
-        localToWorld(1,1) = Vy_y*inverse_length;
-        localToWorld(1,2) = Vy_z*inverse_length;
-
-        // Vz = (X,Y,Z)
-        localToWorld(2,0) = X;
-        localToWorld(2,1) = Y;
-        localToWorld(2,2) = Z;
-
-        return localToWorld;
-    }
-#endif
-
     void
     localizeGeometry( Feature* input, const osg::Matrixd& refFrame )
     {

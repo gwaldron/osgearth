@@ -56,13 +56,12 @@
     static void constructSpatialReferenceCallback(const v8::FunctionCallbackInfo<v8::Value> &info);
     //static void constructSymbologyGeometryCallback(const v8::FunctionCallbackInfo<v8::Value> &info);
 
-    v8::Local<v8::ObjectTemplate> createGlobalObjectTemplate();
+    v8::Handle<v8::Context> createGlobalContext();
 
     /** Compiles and runs javascript in the current context. */
     ScriptResult executeScript(v8::Handle<v8::String> script);
 
   protected:
-    v8::Persistent<v8::ObjectTemplate> _globalTemplate;
     v8::Persistent<v8::Context> _globalContext;
     v8::Isolate* _isolate;
   };

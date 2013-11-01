@@ -50,7 +50,56 @@ ShaderFactory::getSamplerName( unsigned unit ) const
 
 
 osg::Shader*
-ShaderFactory::createVertexShaderMain(const FunctionLocationMap& functions) const
+ShaderFactory::createVertexShaderMain() const
+{
+    static std::string shaderSource(
+                "#version " GLSL_VERSION_STR "\n"
+                GLSL_DEFAULT_PRECISION_FLOAT "\n"
+                "void oe_model_stage_hook(inout vec4 vertex); \n"
+                "void oe_view_stage_hook(inout vec4 vertex); \n"
+                "void oe_clip_stage_hook(inout vec4 vertex); \n"
+                "varying vec4 osg_FrontColor; \n"
+                "varying vec3 oe_Normal; \n"
+                "void main(void) \n"
+                "{ \n"
+                INDENT "osg_FrontColor = gl_Color; \n"
+                INDENT "vec4 vertex = gl_Vertex; \n"
+                INDENT "oe_Normal = gl_Normal; \n"
+                INDENT "oe_model_stage_hook(vertex); \n"
+                INDENT "oe_Normal = normalize(gl_NormalMatrix * oe_Normal); \n"
+                INDENT "vertex = gl_ModelViewMatrix * vertex; \n"
+                INDENT "oe_view_stage_hook(vertex); \n"
+                INDENT "vertex = gl_ProjectionMatrix * vertex; \n"
+                INDENT "oe_clip_stage_hook(vertex); \n"
+                INDENT "gl_Position = vertex; \n"
+                "} \n" );
+    return new osg::Shader( osg::Shader::VERTEX, shaderSource );
+}
+
+
+osg::Shader*
+ShaderFactory::createFragmentShaderMain() const
+{
+    static std::string shaderSource(
+                "#version " GLSL_VERSION_STR "\n"
+                GLSL_DEFAULT_PRECISION_FLOAT "\n"
+                "void oe_coloring_stage_hook(inout vec4 color); \n"
+                "void oe_lighting_stage_hook(inout vec4 color); \n"
+                "varying vec4 osg_FrontColor; \n"
+                "void main(void) \n"
+                "{ \n"
+                INDENT "vec4 color = osg_FrontColor; \n"
+                INDENT "oe_coloring_stage_hook(color); \n"
+                INDENT "oe_lighting_stage_hook(color); \n"
+                INDENT "gl_FragColor = color; \n"
+                "} \n" );
+    return new osg::Shader( osg::Shader::FRAGMENT, shaderSource );
+}
+
+
+
+osg::Shader*
+ShaderFactory::createVertexShaderHooks(const FunctionLocationMap& functions) const
 {
     // collect the "model" stage functions:
     FunctionLocationMap::const_iterator i = functions.find( LOCATION_VERTEX_MODEL );
@@ -91,73 +140,47 @@ ShaderFactory::createVertexShaderMain(const FunctionLocationMap& functions) cons
             buf << "void " << i->second << "(inout vec4 VertexCLIP); \n";
     }
 
-    // main:
-    buf <<
-        "varying vec4 osg_FrontColor; \n"
-        "varying vec3 oe_Normal; \n"
-        "void main(void) \n"
-        "{ \n"
-        INDENT "osg_FrontColor = gl_Color; \n"
-        INDENT "vec4 vertex = gl_Vertex; \n";
+    //Define a model stage hook shader function
+    buf << "void oe_model_stage_hook(inout vec4 vertex) \n"
+        << "{ \n";
 
     // call Model stage methods.
     if ( modelStage )
     {
-        buf << INDENT "oe_Normal = gl_Normal; \n";
 
         for( OrderedFunctionMap::const_iterator i = modelStage->begin(); i != modelStage->end(); ++i )
         {
             buf << INDENT << i->second << "(vertex); \n";
         }
+    }
 
-        buf << INDENT << "oe_Normal = normalize(gl_NormalMatrix * oe_Normal); \n";
-    }
-    else
-    {
-        buf << INDENT << "oe_Normal = normalize(gl_NormalMatrix * gl_Normal); \n";
-    }
+    buf << "} \n";
+
+    // Create funtion defintion for view stage
+    buf << "void oe_view_stage_hook(inout vec4 vertex) \n"
+        << "{ \n";
 
     // call View stage methods.
     if ( viewStage )
-    {
-        buf << INDENT "vertex = gl_ModelViewMatrix * vertex; \n";
-
+    {        
         for( OrderedFunctionMap::const_iterator i = viewStage->begin(); i != viewStage->end(); ++i )
         {
             buf << INDENT << i->second << "(vertex); \n";
         }
     }
 
+    buf << "} \n";
+
+    buf << "void oe_clip_stage_hook(inout vec4 vertex) \n"
+        << "{ \n";
+
     // call Clip stage methods.
     if ( clipStage )
     {
-        if ( viewStage )
-        {
-            buf << INDENT "vertex = gl_ProjectionMatrix * vertex; \n";
-        }
-        else
-        {
-            buf << INDENT "vertex = gl_ModelViewProjectionMatrix * vertex; \n";
-        }
-
         for( OrderedFunctionMap::const_iterator i = clipStage->begin(); i != clipStage->end(); ++i )
         {
             buf << INDENT << i->second << "(vertex); \n";
         }
-    }
-
-    // finally, emit the position vertex.
-    if ( clipStage )
-    {
-        buf << INDENT "gl_Position = vertex; \n";
-    }
-    else if ( viewStage )
-    {
-        buf << INDENT "gl_Position = gl_ProjectionMatrix * vertex; \n";
-    }
-    else
-    {
-        buf << INDENT "gl_Position = gl_ModelViewProjectionMatrix * vertex; \n";
     }
 
     buf << "} \n";
@@ -165,13 +188,13 @@ ShaderFactory::createVertexShaderMain(const FunctionLocationMap& functions) cons
     std::string str;
     str = buf.str();
     osg::Shader* shader = new osg::Shader( osg::Shader::VERTEX, str );
-    shader->setName( "main(vert)" );
+    shader->setName( "hook(vert)" );
     return shader;
 }
 
 
 osg::Shader*
-ShaderFactory::createFragmentShaderMain(const FunctionLocationMap& functions) const
+ShaderFactory::createFragmentShaderHooks(const FunctionLocationMap& functions) const
 {
     FunctionLocationMap::const_iterator i = functions.find( LOCATION_FRAGMENT_COLORING );
     const OrderedFunctionMap* coloring = i != functions.end() ? &i->second : 0L;
@@ -195,11 +218,8 @@ ShaderFactory::createFragmentShaderMain(const FunctionLocationMap& functions) co
             buf << "void " << i->second << "( inout vec4 color ); \n";
     }
 
-    buf << 
-        "varying vec4 osg_FrontColor; \n"
-        "void main(void) \n"
-        "{ \n"
-        INDENT "vec4 color = osg_FrontColor; \n";
+    buf << "void oe_coloring_stage_hook(inout vec4 color) \n"
+        << "{ \n";
 
     if ( coloring )
     {
@@ -207,20 +227,24 @@ ShaderFactory::createFragmentShaderMain(const FunctionLocationMap& functions) co
             buf << INDENT << i->second << "( color ); \n";
     }
 
+    buf << "} \n";
+
+    buf << "void oe_lighting_stage_hook(inout vec4 color) \n"
+        << "{ \n";
+
+
     if ( lighting )
     {
         for( OrderedFunctionMap::const_iterator i = lighting->begin(); i != lighting->end(); ++i )
             buf << INDENT << i->second << "( color ); \n";
     }
 
-    buf << 
-        INDENT "gl_FragColor = color; \n"
-        "} \n";  
+    buf << "} \n";
 
     std::string str;
     str = buf.str();
     osg::Shader* shader = new osg::Shader( osg::Shader::FRAGMENT, str );
-    shader->setName( "main(frag)" );
+    shader->setName( "hook(frag)" );
     return shader;
 }
 

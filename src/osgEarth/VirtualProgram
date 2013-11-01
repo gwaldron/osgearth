@@ -20,6 +20,7 @@
 #define OSGEARTH_VIRTUAL_PROGRAM_H 1
 
 #include <osgEarth/Common>
+#include <osgEarth/ShaderVersion>
 #include <osgEarth/Revisioning>
 #include <osgEarth/ThreadingUtils>
 #include <osgEarth/ColorFilter>
@@ -28,14 +29,6 @@
 #include <osg/StateAttribute>
 #include <string>
 #include <map>
-
-#ifdef OSG_GLES2_AVAILABLE
-#    define GLSL_VERSION_STR             "100"
-#    define GLSL_DEFAULT_PRECISION_FLOAT "precision highp float;"
-#else
-#    define GLSL_VERSION_STR             "110" 
-#    define GLSL_DEFAULT_PRECISION_FLOAT ""
-#endif
 
 namespace osgEarth
 {
@@ -54,11 +47,17 @@ namespace osgEarth
             // vertex is in post-perspective coordinates; [-w..w] along each axis
             LOCATION_VERTEX_CLIP = 2,
 
+            // vertex main
+            LOCATION_VERTEX_MAIN = 3,
+
             // fragment is being colored.
-            LOCATION_FRAGMENT_COLORING = 3,
+            LOCATION_FRAGMENT_COLORING = 4,
 
             // fragment is being lit.
-            LOCATION_FRAGMENT_LIGHTING = 4
+            LOCATION_FRAGMENT_LIGHTING = 5,
+
+            // fragment main
+            LOCATION_FRAGMENT_MAIN = 6
         };
 
         // set of user functions, ordered by priority.

@@ -32,7 +32,7 @@ namespace
 
     static const char* s_localShaderSource =
 
-        "#version 110\n"
+        "#version " GLSL_VERSION_STR "\n"
 
         "uniform vec3  __COLOR_UNIFORM_NAME__;\n"
         "uniform float __DISTANCE_UNIFORM_NAME__;\n"

@@ -404,7 +404,7 @@ namespace
 #ifdef OSG_GLES2_AVAILABLE
         "#version 100 \n";
 #else
-        "#version 110 \n";
+        "#version " GLSL_VERSION_STR " \n";
 #endif
 
     static char s_mathUtils[] =

@@ -125,6 +125,7 @@ SET(LIB_PUBLIC_HEADERS
     Viewpoint
     VirtualProgram
     XmlUtils
+    ${OSGEARTH_CONFIG_HEADER}
 )
 
 

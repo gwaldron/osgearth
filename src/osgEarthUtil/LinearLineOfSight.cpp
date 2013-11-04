@@ -156,14 +156,7 @@ LinearLineOfSightNode::setMapNode( MapNode* mapNode )
 void
 LinearLineOfSightNode::terrainChanged( const osgEarth::TileKey& tileKey, osg::Node* terrain )
 {
-    OE_DEBUG << "LineOfSightNode::terrainChanged" << std::endl;
-    //Make a temporary group that contains both the old MapNode as well as the new incoming terrain.
-    //Because this function is called from the database pager thread we need to include both b/c 
-    //the new terrain isn't yet merged with the new terrain.
-    osg::ref_ptr < osg::Group > group = new osg::Group;
-    group->addChild( terrain );
-    group->addChild( getNode() );
-    compute( group, true );
+    compute( getNode() );
 }
 
 const GeoPoint&

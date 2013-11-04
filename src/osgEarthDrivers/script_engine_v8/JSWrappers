@@ -32,14 +32,14 @@
 class JSFeature
 {
 public:
-  static v8::Handle<v8::Object> WrapFeature(osgEarth::Features::Feature* feature, bool freeObject=false);
+  static v8::Handle<v8::Object> WrapFeature(v8::Isolate* isolate, osgEarth::Features::Feature* feature, bool freeObject=false);
   static const std::string& GetObjectType() { return _objectType; }
 
 protected:
   static const std::string _objectType;
 
-  static v8::Handle<v8::ObjectTemplate> GetObjectTemplate();
-  static v8::Handle<v8::ObjectTemplate> GetAttributesObjectTemplate();
+  static v8::Handle<v8::ObjectTemplate> GetObjectTemplate(v8::Isolate* isolate);
+  static v8::Handle<v8::ObjectTemplate> GetAttributesObjectTemplate(v8::Isolate* isolate);
 
   static v8::Handle<v8::Value> GetFeatureAttr(const std::string& attr, osgEarth::Features::Feature const* feature);
   static void PropertyCallback(v8::Local<v8::String> name, const v8::PropertyCallbackInfo<v8::Value>& info);
@@ -53,13 +53,13 @@ protected:
 class JSSymbologyGeometry
 {
 public:
-  static v8::Handle<v8::Object> WrapGeometry(osgEarth::Symbology::Geometry* geometry, bool freeObject=false);
+  static v8::Handle<v8::Object> WrapGeometry(v8::Isolate* isolate, osgEarth::Symbology::Geometry* geometry, bool freeObject=false);
   static const std::string& GetObjectType() { return _objectType; }
 
 protected:
   static const std::string _objectType;
 
-  static v8::Handle<v8::ObjectTemplate> GetObjectTemplate();
+  static v8::Handle<v8::ObjectTemplate> GetObjectTemplate(v8::Isolate* isolate);
   static void PropertyCallback(v8::Local<v8::String> name, const v8::PropertyCallbackInfo<v8::Value>& info);
   static void IndexedPropertyCallback(uint32_t index, const v8::PropertyCallbackInfo<v8::Value>& info);
 
@@ -71,13 +71,13 @@ protected:
 class JSBounds
 {
 public:
-  static v8::Handle<v8::Object> WrapBounds(osgEarth::Bounds* bounds, bool freeObject=false);
+  static v8::Handle<v8::Object> WrapBounds(v8::Isolate* isolate, osgEarth::Bounds* bounds, bool freeObject=false);
   static const std::string& GetObjectType() { return _objectType; }
   
 protected:
   static const std::string _objectType;
 
-  static v8::Handle<v8::ObjectTemplate> GetObjectTemplate();
+  static v8::Handle<v8::ObjectTemplate> GetObjectTemplate(v8::Isolate* isolate);
   static void PropertyCallback(v8::Local<v8::String> name, const v8::PropertyCallbackInfo<v8::Value>& info);
 
   static void ContainsCallback(const v8::FunctionCallbackInfo<v8::Value>& info);
@@ -92,13 +92,13 @@ protected:
 class JSVec3d
 {
 public:
-  static v8::Handle<v8::Object> WrapVec3d(osg::Vec3d* vec, bool freeObject=false);
+  static v8::Handle<v8::Object> WrapVec3d(v8::Isolate* isolate, osg::Vec3d* vec, bool freeObject=false);
   static const std::string& GetObjectType() { return _objectType; }
 
 protected:
   static const std::string _objectType;
 
-  static v8::Handle<v8::ObjectTemplate> GetObjectTemplate();
+  static v8::Handle<v8::ObjectTemplate> GetObjectTemplate(v8::Isolate* isolate);
   static void PropertyCallback(v8::Local<v8::String> name, const v8::PropertyCallbackInfo<v8::Value>& info);
   static void IndexedPropertyCallback(uint32_t index, const v8::PropertyCallbackInfo<v8::Value>& info);
 
@@ -110,13 +110,13 @@ protected:
 class JSFilterContext
 {
 public:
-  static v8::Handle<v8::Object> WrapFilterContext(osgEarth::Features::FilterContext* context, bool freeObject=false);
+  static v8::Handle<v8::Object> WrapFilterContext(v8::Isolate* isolate, osgEarth::Features::FilterContext* context, bool freeObject=false);
   static const std::string& GetObjectType() { return _objectType; }
 
 protected:
   static const std::string _objectType;
 
-  static v8::Handle<v8::ObjectTemplate> GetObjectTemplate();
+  static v8::Handle<v8::ObjectTemplate> GetObjectTemplate(v8::Isolate* isolate);
   static void PropertyCallback(v8::Local<v8::String> name, const v8::PropertyCallbackInfo<v8::Value>& info);
 
   static void ToLocalCallback(const v8::FunctionCallbackInfo<v8::Value>& info);
@@ -132,13 +132,13 @@ protected:
 class JSSession
 {
 public:
-  static v8::Handle<v8::Object> WrapSession(osgEarth::Features::Session* session, bool freeObject=false);
+  static v8::Handle<v8::Object> WrapSession(v8::Isolate* isolate, osgEarth::Features::Session* session, bool freeObject=false);
   static const std::string& GetObjectType() { return _objectType; }
 
 protected:
   static const std::string _objectType;
 
-  static v8::Handle<v8::ObjectTemplate> GetObjectTemplate();
+  static v8::Handle<v8::ObjectTemplate> GetObjectTemplate(v8::Isolate* isolate);
   static void PropertyCallback(v8::Local<v8::String> name, const v8::PropertyCallbackInfo<v8::Value>& info);
 
 #if 0
@@ -153,13 +153,13 @@ protected:
 class JSMapInfo
 {
 public:
-  static v8::Handle<v8::Object> WrapMapInfo(osgEarth::MapInfo* mapInfo, bool freeObject=false);
+  static v8::Handle<v8::Object> WrapMapInfo(v8::Isolate* isolate, osgEarth::MapInfo* mapInfo, bool freeObject=false);
   static const std::string& GetObjectType() { return _objectType; }
 
 protected:
   static const std::string _objectType;
 
-  static v8::Handle<v8::ObjectTemplate> GetObjectTemplate();
+  static v8::Handle<v8::ObjectTemplate> GetObjectTemplate(v8::Isolate* isolate);
   static void PropertyCallback(v8::Local<v8::String> name, const v8::PropertyCallbackInfo<v8::Value>& info);
 
 #if 0
@@ -176,13 +176,13 @@ protected:
 class JSFeatureProfile
 {
 public:
-  static v8::Handle<v8::Object> WrapFeatureProfile(osgEarth::Features::FeatureProfile* context, bool freeObject=false);
+  static v8::Handle<v8::Object> WrapFeatureProfile(v8::Isolate* isolate, osgEarth::Features::FeatureProfile* context, bool freeObject=false);
   static const std::string& GetObjectType() { return _objectType; }
 
 protected:
   static const std::string _objectType;
 
-  static v8::Handle<v8::ObjectTemplate> GetObjectTemplate();
+  static v8::Handle<v8::ObjectTemplate> GetObjectTemplate(v8::Isolate* isolate);
   static void PropertyCallback(v8::Local<v8::String> name, const v8::PropertyCallbackInfo<v8::Value>& info);
 
   static void FreeProfileCallback(v8::Isolate* isolate, v8::Persistent<v8::Object>* handle, osgEarth::Features::FeatureProfile* parameter);
@@ -193,13 +193,13 @@ protected:
 class JSGeoExtent
 {
 public:
-  static v8::Handle<v8::Object> WrapGeoExtent(osgEarth::GeoExtent* extent, bool freeObject=false);
+  static v8::Handle<v8::Object> WrapGeoExtent(v8::Isolate* isolate, osgEarth::GeoExtent* extent, bool freeObject=false);
   static const std::string& GetObjectType() { return _objectType; }
 
 protected:
   static const std::string _objectType;
 
-  static v8::Handle<v8::ObjectTemplate> GetObjectTemplate();
+  static v8::Handle<v8::ObjectTemplate> GetObjectTemplate(v8::Isolate* isolate);
   static void PropertyCallback(v8::Local<v8::String> name, const v8::PropertyCallbackInfo<v8::Value>& info);
 
   static void ContainsCallback(const v8::FunctionCallbackInfo<v8::Value>& info);
@@ -213,13 +213,13 @@ protected:
 class JSSpatialReference
 {
 public:
-  static v8::Handle<v8::Object> WrapSpatialReference(osgEarth::SpatialReference* srs, bool freeObject=false);
+  static v8::Handle<v8::Object> WrapSpatialReference(v8::Isolate* isolate, osgEarth::SpatialReference* srs, bool freeObject=false);
   static const std::string& GetObjectType() { return _objectType; }
 
 protected:
   static const std::string _objectType;
 
-  static v8::Handle<v8::ObjectTemplate> GetObjectTemplate();
+  static v8::Handle<v8::ObjectTemplate> GetObjectTemplate(v8::Isolate* isolate);
   static void PropertyCallback(v8::Local<v8::String> name, const v8::PropertyCallbackInfo<v8::Value>& info);
 
   static void EquivalenceCallback(const v8::FunctionCallbackInfo<v8::Value>& info);

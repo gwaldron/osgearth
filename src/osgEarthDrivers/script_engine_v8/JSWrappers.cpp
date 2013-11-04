@@ -29,9 +29,9 @@ using namespace osgEarth::Features;
 const std::string JSFeature::_objectType = "JSFeature";
 
 v8::Handle<v8::Object>
-JSFeature::WrapFeature(osgEarth::Features::Feature* feature, bool freeObject)
+JSFeature::WrapFeature(v8::Isolate* isolate, osgEarth::Features::Feature* feature, bool freeObject)
 {
-  v8::HandleScope handle_scope;
+  v8::HandleScope handle_scope(isolate);
 
   if (!feature)
   {
@@ -39,7 +39,7 @@ JSFeature::WrapFeature(osgEarth::Features::Feature* feature, bool freeObject)
     return handle_scope.Close(obj);
   }
 
-  v8::Handle<v8::Object> obj = V8Util::WrapObject(feature, GetObjectTemplate());
+  v8::Handle<v8::Object> obj = V8Util::WrapObject(isolate, feature, GetObjectTemplate(isolate));
 
   if (freeObject)
   {
@@ -52,9 +52,9 @@ JSFeature::WrapFeature(osgEarth::Features::Feature* feature, bool freeObject)
 }
 
 v8::Handle<v8::ObjectTemplate>
-JSFeature::GetObjectTemplate()
+JSFeature::GetObjectTemplate(v8::Isolate* isolate)
 {
-  v8::HandleScope handle_scope;
+  v8::HandleScope handle_scope(isolate);
 
   v8::Handle<v8::ObjectTemplate> feat_instance = v8::ObjectTemplate::New();
 
@@ -66,9 +66,9 @@ JSFeature::GetObjectTemplate()
 }
 
 v8::Handle<v8::ObjectTemplate>
-JSFeature::GetAttributesObjectTemplate()
+JSFeature::GetAttributesObjectTemplate(v8::Isolate* isolate)
 {
-  v8::HandleScope handle_scope;
+  v8::HandleScope handle_scope(isolate);
 
   v8::Handle<v8::ObjectTemplate> attr_instance = v8::ObjectTemplate::New();
 
@@ -125,9 +125,9 @@ JSFeature::PropertyCallback(v8::Local<v8::String> name, const v8::PropertyCallba
   if (prop == "fid")
     value = v8::Uint32::New(feature->getFID());
   else if (prop == "attrs" || prop == "attributes")
-    value = V8Util::WrapObject(feature, GetAttributesObjectTemplate());
+    value = V8Util::WrapObject(v8::Isolate::GetCurrent(), feature, GetAttributesObjectTemplate(v8::Isolate::GetCurrent()));
   else if (prop == "geometry")
-    value = JSSymbologyGeometry::WrapGeometry(feature->getGeometry());
+    value = JSSymbologyGeometry::WrapGeometry(v8::Isolate::GetCurrent(), feature->getGeometry());
 
   if (!value.IsEmpty())
     info.GetReturnValue().Set(value);
@@ -161,11 +161,11 @@ JSFeature::FreeFeatureCallback(v8::Isolate* isolate, v8::Persistent<v8::Object>*
 const std::string JSSymbologyGeometry::_objectType = "JSSymbologyGeometry";
 
 v8::Handle<v8::Object>
-JSSymbologyGeometry::WrapGeometry(osgEarth::Symbology::Geometry* geometry, bool freeObject)
+JSSymbologyGeometry::WrapGeometry(v8::Isolate* isolate, osgEarth::Symbology::Geometry* geometry, bool freeObject)
 {
-  v8::HandleScope handle_scope;
+  v8::HandleScope handle_scope(isolate);
 
-  v8::Handle<v8::Object> obj = V8Util::WrapObject(geometry, GetObjectTemplate());
+  v8::Handle<v8::Object> obj = V8Util::WrapObject(isolate, geometry, GetObjectTemplate(isolate));
 
   if (freeObject)
   {
@@ -178,9 +178,9 @@ JSSymbologyGeometry::WrapGeometry(osgEarth::Symbology::Geometry* geometry, bool 
 }
 
 v8::Handle<v8::ObjectTemplate>
-JSSymbologyGeometry::GetObjectTemplate()
+JSSymbologyGeometry::GetObjectTemplate(v8::Isolate* isolate)
 {
-  v8::HandleScope handle_scope;
+  v8::HandleScope handle_scope(isolate);
 
   v8::Handle<v8::ObjectTemplate> template_instance = v8::ObjectTemplate::New();
 
@@ -214,7 +214,7 @@ JSSymbologyGeometry::PropertyCallback(v8::Local<v8::String> name, const v8::Prop
     osgEarth::Bounds bounds = geom->getBounds();
     osgEarth::Bounds* newBounds = new osgEarth::Bounds();
     newBounds->set(bounds.xMin(), bounds.yMin(), bounds.zMin(), bounds.xMax(), bounds.yMax(), bounds.zMax());
-    value = JSBounds::WrapBounds(newBounds, true);
+    value = JSBounds::WrapBounds(v8::Isolate::GetCurrent(), newBounds, true);
   }
   else if (prop == "type")
     value = v8::String::New(osgEarth::Symbology::Geometry::toString(geom->getType()).c_str());
@@ -233,7 +233,7 @@ JSSymbologyGeometry::IndexedPropertyCallback(uint32_t index, const v8::PropertyC
   v8::Local<v8::Value> value;
   
   if (geom)
-    value = JSVec3d::WrapVec3d(&((*geom)[index]));
+    value = JSVec3d::WrapVec3d(v8::Isolate::GetCurrent(), &((*geom)[index]));
 
   if (!value.IsEmpty())
     info.GetReturnValue().Set(value);
@@ -251,11 +251,11 @@ JSSymbologyGeometry::FreeGeometryCallback(v8::Isolate* isolate, v8::Persistent<v
 const std::string JSBounds::_objectType = "JSBounds";
 
 v8::Handle<v8::Object>
-JSBounds::WrapBounds(osgEarth::Bounds* bounds, bool freeObject)
+JSBounds::WrapBounds(v8::Isolate* isolate, osgEarth::Bounds* bounds, bool freeObject)
 {
-  v8::HandleScope handle_scope;
+  v8::HandleScope handle_scope(isolate);
 
-  v8::Handle<v8::Object> obj = V8Util::WrapObject(bounds, GetObjectTemplate());
+  v8::Handle<v8::Object> obj = V8Util::WrapObject(isolate, bounds, GetObjectTemplate(isolate));
 
   if (freeObject)
   {
@@ -268,9 +268,9 @@ JSBounds::WrapBounds(osgEarth::Bounds* bounds, bool freeObject)
 }
 
 v8::Handle<v8::ObjectTemplate>
-JSBounds::GetObjectTemplate()
+JSBounds::GetObjectTemplate(v8::Isolate* isolate)
 {
-  v8::HandleScope handle_scope;
+  v8::HandleScope handle_scope(isolate);
 
   v8::Handle<v8::ObjectTemplate> template_instance = v8::ObjectTemplate::New();
 
@@ -315,7 +315,7 @@ JSBounds::PropertyCallback(v8::Local<v8::String> name, const v8::PropertyCallbac
   else if (prop == "center")
   {
     osg::Vec3d* vec = new osg::Vec3d(bounds->center());
-    value = JSVec3d::WrapVec3d(vec, true);
+    value = JSVec3d::WrapVec3d(v8::Isolate::GetCurrent(), vec, true);
   }
   else if (prop == "radius")
     value = v8::Number::New(bounds->radius());
@@ -374,7 +374,7 @@ JSBounds::UnionCallback(const v8::FunctionCallbackInfo<v8::Value>& info)
         osgEarth::Bounds* rhs = V8Util::UnwrapObject<osgEarth::Bounds>(obj);
         osgEarth::Bounds* outBounds = new osgEarth::Bounds();
         outBounds->expandBy(bounds->unionWith(*rhs));
-        value = WrapBounds(outBounds, true);
+        value = WrapBounds(v8::Isolate::GetCurrent(), outBounds, true);
       }
     }
 
@@ -401,7 +401,7 @@ JSBounds::IntersectionCallback(const v8::FunctionCallbackInfo<v8::Value>& info)
         osgEarth::Bounds* rhs = V8Util::UnwrapObject<osgEarth::Bounds>(obj);
         osgEarth::Bounds* outBounds = new osgEarth::Bounds();
         outBounds->expandBy(bounds->intersectionWith(*rhs));
-        value = WrapBounds(outBounds, true);
+        value = WrapBounds(v8::Isolate::GetCurrent(), outBounds, true);
       }
     }
 
@@ -422,11 +422,11 @@ JSBounds::FreeBoundsCallback(v8::Isolate* isolate, v8::Persistent<v8::Object>* h
 const std::string JSVec3d::_objectType = "JSVec3d";
 
 v8::Handle<v8::Object>
-JSVec3d::WrapVec3d(osg::Vec3d* vec, bool freeObject)
+JSVec3d::WrapVec3d(v8::Isolate* isolate, osg::Vec3d* vec, bool freeObject)
 {
-  v8::HandleScope handle_scope;
+  v8::HandleScope handle_scope(isolate);
 
-  v8::Handle<v8::Object> obj = V8Util::WrapObject(vec, GetObjectTemplate());
+  v8::Handle<v8::Object> obj = V8Util::WrapObject(isolate, vec, GetObjectTemplate(isolate));
 
   if (freeObject)
   {
@@ -439,9 +439,9 @@ JSVec3d::WrapVec3d(osg::Vec3d* vec, bool freeObject)
 }
 
 v8::Handle<v8::ObjectTemplate>
-JSVec3d::GetObjectTemplate()
+JSVec3d::GetObjectTemplate(v8::Isolate* isolate)
 {
-  v8::HandleScope handle_scope;
+  v8::HandleScope handle_scope(isolate);
 
   v8::Handle<v8::ObjectTemplate> template_instance = v8::ObjectTemplate::New();
 
@@ -499,9 +499,9 @@ void JSVec3d::FreeVecCallback(v8::Isolate* isolate, v8::Persistent<v8::Object>* 
 const std::string JSFilterContext::_objectType = "JSFilterContext";
 
 v8::Handle<v8::Object>
-JSFilterContext::WrapFilterContext(osgEarth::Features::FilterContext* context, bool freeObject)
+JSFilterContext::WrapFilterContext(v8::Isolate* isolate, osgEarth::Features::FilterContext* context, bool freeObject)
 {
-  v8::HandleScope handle_scope;
+  v8::HandleScope handle_scope(isolate);
 
   if (!context)
   {
@@ -509,7 +509,7 @@ JSFilterContext::WrapFilterContext(osgEarth::Features::FilterContext* context, b
     return handle_scope.Close(obj);
   }
 
-  v8::Handle<v8::Object> obj = V8Util::WrapObject(context, GetObjectTemplate());
+  v8::Handle<v8::Object> obj = V8Util::WrapObject(isolate, context, GetObjectTemplate(isolate));
 
   if (freeObject)
   {
@@ -522,9 +522,9 @@ JSFilterContext::WrapFilterContext(osgEarth::Features::FilterContext* context, b
 }
 
 v8::Handle<v8::ObjectTemplate>
-JSFilterContext::GetObjectTemplate()
+JSFilterContext::GetObjectTemplate(v8::Isolate* isolate)
 {
-  v8::HandleScope handle_scope;
+  v8::HandleScope handle_scope(isolate);
 
   v8::Handle<v8::ObjectTemplate> template_instance = v8::ObjectTemplate::New();
 
@@ -556,11 +556,11 @@ JSFilterContext::PropertyCallback(v8::Local<v8::String> name, const v8::Property
   v8::Local<v8::Value> value;
 
   if (prop == "session")
-    value = JSSession::WrapSession(const_cast<Session*>(context->getSession()));
+    value = JSSession::WrapSession(v8::Isolate::GetCurrent(), const_cast<Session*>(context->getSession()));
   if (prop == "profile")
-    value = JSFeatureProfile::WrapFeatureProfile(const_cast<FeatureProfile*>(context->profile().get()));
+    value = JSFeatureProfile::WrapFeatureProfile(v8::Isolate::GetCurrent(), const_cast<FeatureProfile*>(context->profile().get()));
   if (prop == "extent" && context->extent().isSet())
-    value = JSGeoExtent::WrapGeoExtent(const_cast<osgEarth::GeoExtent*>(&context->extent().get()));
+    value = JSGeoExtent::WrapGeoExtent(v8::Isolate::GetCurrent(), const_cast<osgEarth::GeoExtent*>(&context->extent().get()));
   //if (prop == "geocentric")
   //  value = v8::Boolean::New(context->isGeocentric());
 
@@ -590,7 +590,7 @@ JSFilterContext::ToLocalCallback(const v8::FunctionCallbackInfo<v8::Value>& info
     {
       osg::Vec3d* vec = V8Util::UnwrapObject<osg::Vec3d>(obj);
       osg::Vec3d* local = new osg::Vec3d(context->toLocal(*vec));
-      value = JSVec3d::WrapVec3d(local, true);
+      value = JSVec3d::WrapVec3d(v8::Isolate::GetCurrent(), local, true);
     }
   }
 
@@ -620,7 +620,7 @@ JSFilterContext::ToWorldCallback(const v8::FunctionCallbackInfo<v8::Value>& info
     {
       osg::Vec3d* vec = V8Util::UnwrapObject<osg::Vec3d>(obj);
       osg::Vec3d* world = new osg::Vec3d(context->toWorld(*vec));
-      value = JSVec3d::WrapVec3d(world, true);
+      value = JSVec3d::WrapVec3d(v8::Isolate::GetCurrent(), world, true);
     }
   }
 
@@ -643,7 +643,7 @@ JSFilterContext::ToMapCallback(const v8::FunctionCallbackInfo<v8::Value>& info)
     {
       osg::Vec3d* vec = V8Util::UnwrapObject<osg::Vec3d>(obj);
       osg::Vec3d* map = new osg::Vec3d(context->toMap(*vec));
-      value = JSVec3d::WrapVec3d(map, true);
+      value = JSVec3d::WrapVec3d(v8::Isolate::GetCurrent(), map, true);
     }
   }
 
@@ -666,7 +666,7 @@ JSFilterContext::FromMapCallback(const v8::FunctionCallbackInfo<v8::Value>& info
     {
       osg::Vec3d* map = V8Util::UnwrapObject<osg::Vec3d>(obj);
       osg::Vec3d* local = new osg::Vec3d(context->fromMap(*map));
-      value = JSVec3d::WrapVec3d(local, true);
+      value = JSVec3d::WrapVec3d(v8::Isolate::GetCurrent(), local, true);
     }
   }
 
@@ -686,11 +686,11 @@ JSFilterContext::FreeContextCallback(v8::Isolate* isolate, v8::Persistent<v8::Ob
 const std::string JSSession::_objectType = "JSSession";
 
 v8::Handle<v8::Object>
-JSSession::WrapSession(osgEarth::Features::Session* session, bool freeObject)
+JSSession::WrapSession(v8::Isolate* isolate, osgEarth::Features::Session* session, bool freeObject)
 {
-  v8::HandleScope handle_scope;
+  v8::HandleScope handle_scope(isolate);
 
-  v8::Handle<v8::Object> obj = V8Util::WrapObject(session, GetObjectTemplate());
+  v8::Handle<v8::Object> obj = V8Util::WrapObject(isolate, session, GetObjectTemplate(isolate));
 
   if (freeObject)
   {
@@ -703,9 +703,9 @@ JSSession::WrapSession(osgEarth::Features::Session* session, bool freeObject)
 }
 
 v8::Handle<v8::ObjectTemplate>
-JSSession::GetObjectTemplate()
+JSSession::GetObjectTemplate(v8::Isolate* isolate)
 {
-  v8::HandleScope handle_scope;
+  v8::HandleScope handle_scope(isolate);
 
   v8::Handle<v8::ObjectTemplate> template_instance = v8::ObjectTemplate::New();
 
@@ -732,7 +732,7 @@ JSSession::PropertyCallback(v8::Local<v8::String> name, const v8::PropertyCallba
     return;
 
   if (prop == "mapInfo")
-    info.GetReturnValue().Set(JSMapInfo::WrapMapInfo(const_cast<osgEarth::MapInfo*>(&session->getMapInfo())));
+    info.GetReturnValue().Set(JSMapInfo::WrapMapInfo(v8::Isolate::GetCurrent(), const_cast<osgEarth::MapInfo*>(&session->getMapInfo())));
 }
 
 #if 0
@@ -767,11 +767,11 @@ JSSession::FreeSessionCallback(v8::Isolate* isolate, v8::Persistent<v8::Object>*
 const std::string JSMapInfo::_objectType = "JSMapInfo";
 
 v8::Handle<v8::Object>
-JSMapInfo::WrapMapInfo(osgEarth::MapInfo* mapInfo, bool freeObject)
+JSMapInfo::WrapMapInfo(v8::Isolate* isolate, osgEarth::MapInfo* mapInfo, bool freeObject)
 {
-  v8::HandleScope handle_scope;
+  v8::HandleScope handle_scope(isolate);
 
-  v8::Handle<v8::Object> obj = V8Util::WrapObject(mapInfo, GetObjectTemplate());
+  v8::Handle<v8::Object> obj = V8Util::WrapObject(isolate, mapInfo, GetObjectTemplate(isolate));
 
   if (freeObject)
   {
@@ -784,9 +784,9 @@ JSMapInfo::WrapMapInfo(osgEarth::MapInfo* mapInfo, bool freeObject)
 }
 
 v8::Handle<v8::ObjectTemplate>
-JSMapInfo::GetObjectTemplate()
+JSMapInfo::GetObjectTemplate(v8::Isolate* isolate)
 {
-  v8::HandleScope handle_scope;
+  v8::HandleScope handle_scope(isolate);
 
   v8::Handle<v8::ObjectTemplate> template_instance = v8::ObjectTemplate::New();
 
@@ -933,11 +933,11 @@ JSMapInfo::FreeMapInfoCallback(v8::Isolate* isolate, v8::Persistent<v8::Object>*
 const std::string JSFeatureProfile::_objectType = "JSFeatureProfile";
 
 v8::Handle<v8::Object>
-JSFeatureProfile::WrapFeatureProfile(osgEarth::Features::FeatureProfile* profile, bool freeObject)
+JSFeatureProfile::WrapFeatureProfile(v8::Isolate* isolate, osgEarth::Features::FeatureProfile* profile, bool freeObject)
 {
-  v8::HandleScope handle_scope;
+  v8::HandleScope handle_scope(isolate);
 
-  v8::Handle<v8::Object> obj = V8Util::WrapObject(profile, GetObjectTemplate());
+  v8::Handle<v8::Object> obj = V8Util::WrapObject(isolate, profile, GetObjectTemplate(isolate));
 
   if (freeObject)
   {
@@ -950,9 +950,9 @@ JSFeatureProfile::WrapFeatureProfile(osgEarth::Features::FeatureProfile* profile
 }
 
 v8::Handle<v8::ObjectTemplate>
-JSFeatureProfile::GetObjectTemplate()
+JSFeatureProfile::GetObjectTemplate(v8::Isolate* isolate)
 {
-  v8::HandleScope handle_scope;
+  v8::HandleScope handle_scope(isolate);
 
   v8::Handle<v8::ObjectTemplate> template_instance = v8::ObjectTemplate::New();
 
@@ -979,9 +979,9 @@ JSFeatureProfile::PropertyCallback(v8::Local<v8::String> name, const v8::Propert
   v8::Local<v8::Value> value;
 
   if (prop == "extent")
-    value = JSGeoExtent::WrapGeoExtent(const_cast<osgEarth::GeoExtent*>(&profile->getExtent()));
+    value = JSGeoExtent::WrapGeoExtent(v8::Isolate::GetCurrent(), const_cast<osgEarth::GeoExtent*>(&profile->getExtent()));
   if (prop == "srs")
-    value = JSSpatialReference::WrapSpatialReference(const_cast<osgEarth::SpatialReference*>(profile->getSRS()));
+    value = JSSpatialReference::WrapSpatialReference(v8::Isolate::GetCurrent(), const_cast<osgEarth::SpatialReference*>(profile->getSRS()));
 
   if (!value.IsEmpty())
     info.GetReturnValue().Set(value);
@@ -999,11 +999,11 @@ JSFeatureProfile::FreeProfileCallback(v8::Isolate* isolate, v8::Persistent<v8::O
 const std::string JSGeoExtent::_objectType = "JSGeoExtent";
 
 v8::Handle<v8::Object>
-JSGeoExtent::WrapGeoExtent(osgEarth::GeoExtent* extent, bool freeObject)
+JSGeoExtent::WrapGeoExtent(v8::Isolate* isolate, osgEarth::GeoExtent* extent, bool freeObject)
 {
-  v8::HandleScope handle_scope;
+  v8::HandleScope handle_scope(isolate);
 
-  v8::Handle<v8::Object> obj = V8Util::WrapObject(extent, GetObjectTemplate());
+  v8::Handle<v8::Object> obj = V8Util::WrapObject(isolate, extent, GetObjectTemplate(isolate));
 
   if (freeObject)
   {
@@ -1016,9 +1016,9 @@ JSGeoExtent::WrapGeoExtent(osgEarth::GeoExtent* extent, bool freeObject)
 }
 
 v8::Handle<v8::ObjectTemplate>
-JSGeoExtent::GetObjectTemplate()
+JSGeoExtent::GetObjectTemplate(v8::Isolate* isolate)
 {
-  v8::HandleScope handle_scope;
+  v8::HandleScope handle_scope(isolate);
 
   v8::Handle<v8::ObjectTemplate> template_instance = v8::ObjectTemplate::New();
 
@@ -1046,7 +1046,7 @@ JSGeoExtent::PropertyCallback(v8::Local<v8::String> name, const v8::PropertyCall
   v8::Local<v8::Value> value;
 
   if (prop == "srs")
-    value = JSSpatialReference::WrapSpatialReference(const_cast<osgEarth::SpatialReference*>(extent->getSRS()));
+    value = JSSpatialReference::WrapSpatialReference(v8::Isolate::GetCurrent(), const_cast<osgEarth::SpatialReference*>(extent->getSRS()));
   if (prop == "xMin")
     value = v8::Number::New(extent->xMin());
   if (prop == "xMax")
@@ -1149,11 +1149,11 @@ JSGeoExtent::FreeGeoExtentCallback(v8::Isolate* isolate, v8::Persistent<v8::Obje
 const std::string JSSpatialReference::_objectType = "JSSpatialReference";
 
 v8::Handle<v8::Object>
-JSSpatialReference::WrapSpatialReference(osgEarth::SpatialReference* srs, bool freeObject)
+JSSpatialReference::WrapSpatialReference(v8::Isolate* isolate, osgEarth::SpatialReference* srs, bool freeObject)
 {
-  v8::HandleScope handle_scope;
+  v8::HandleScope handle_scope(isolate);
 
-  v8::Handle<v8::Object> obj = V8Util::WrapObject(srs, GetObjectTemplate());
+  v8::Handle<v8::Object> obj = V8Util::WrapObject(isolate, srs, GetObjectTemplate(isolate));
 
   if (freeObject)
   {
@@ -1166,9 +1166,9 @@ JSSpatialReference::WrapSpatialReference(osgEarth::SpatialReference* srs, bool f
 }
 
 v8::Handle<v8::ObjectTemplate>
-JSSpatialReference::GetObjectTemplate()
+JSSpatialReference::GetObjectTemplate(v8::Isolate* isolate)
 {
-  v8::HandleScope handle_scope;
+  v8::HandleScope handle_scope(isolate);
 
   v8::Handle<v8::ObjectTemplate> template_instance = v8::ObjectTemplate::New();
 
@@ -1230,7 +1230,7 @@ JSSpatialReference::PropertyCallback(v8::Local<v8::String> name, const v8::Prope
   if (prop == "datumName")
     value = v8::String::New(srs->getDatumName().c_str());
   if (prop == "geographicSRS")
-    value = JSSpatialReference::WrapSpatialReference(const_cast<osgEarth::SpatialReference*>(srs->getGeographicSRS()));
+    value = JSSpatialReference::WrapSpatialReference(v8::Isolate::GetCurrent(), const_cast<osgEarth::SpatialReference*>(srs->getGeographicSRS()));
 
   if (!value.IsEmpty())
     info.GetReturnValue().Set(value);
@@ -1278,7 +1278,7 @@ JSSpatialReference::TangentPlaneCallback(const v8::FunctionCallbackInfo<v8::Valu
     if (V8Util::CheckObjectType(obj, JSVec3d::GetObjectType()))
     {
       osg::Vec3d* vec = V8Util::UnwrapObject<osg::Vec3d>(obj);
-      value = JSSpatialReference::WrapSpatialReference(const_cast<SpatialReference*>(srs->createTangentPlaneSRS(*vec)), true);
+      value = JSSpatialReference::WrapSpatialReference(v8::Isolate::GetCurrent(), const_cast<SpatialReference*>(srs->createTangentPlaneSRS(*vec)), true);
     }
   }
 

@@ -18,7 +18,6 @@
 */
 
 #include <osgEarthQt/Common>
-#include <osgEarthQt/MultiViewerWidget>
 #include <osgEarthQt/DataManager>
 #include <osgEarthQt/LayerManagerWidget>
 #include <osgEarthQt/MapCatalogWidget>
@@ -103,7 +102,7 @@ class PackageQtMainWindow : public QMainWindow
 public:
 
   PackageQtMainWindow(osgEarth::QtGui::ViewerWidget* viewerWidget, PackageQt::SceneController* controller, PackageQt::TMSExporter* exporter)
-        : _viewerWidget(viewerWidget), _controller(controller), _exporter(exporter), _compositeViewerWidget(0L), _lastDir("")
+        : _viewerWidget(viewerWidget), _controller(controller), _exporter(exporter), _lastDir("")
     {
         _manager = new osgEarth::QtGui::DataManager(_controller->mapNode());
 
@@ -279,14 +278,7 @@ protected:
     {
         if (_viewerWidget)
         {
-            //_viewerWidget->getViewer()->setSceneData(0);
-            //_viewerWidget->getViewer()->frame();
             _viewerWidget->getViewer()->setDone(true);
-        }
-
-        if (_compositeViewerWidget)
-        {
-            _compositeViewerWidget/*->getViewer()*/->setDone(true);
         }
 
         event->accept();
@@ -405,14 +397,11 @@ private:
 
     osg::ref_ptr<osgEarth::QtGui::DataManager> _manager;
     osgEarth::QtGui::ViewerWidget* _viewerWidget;
-    osgEarth::QtGui::MultiViewerWidget* _compositeViewerWidget;
     osgEarth::QtGui::ViewVector _views;
 
     QAction *_openEarthFileAction;
     QAction *_addImageLayerAction;
-    //QAction *_addImageFolderAction;
     QAction *_addElevationLayerAction;
-    //QAction *_addElevationFolderAction;
     QAction *_exportAction;
     QAction *_bboxAction;
     QAction *_bboxClearAction;

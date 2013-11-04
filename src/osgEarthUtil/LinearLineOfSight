@@ -141,9 +141,7 @@ namespace osgEarth { namespace Util
         void terrainChanged( const osgEarth::TileKey& tileKey, osg::Node* terrain );
 
         void addChangedCallback( LOSChangedCallback* callback );
-        void removeChangedCallback( LOSChangedCallback* callback );
-
-        virtual void traverse(osg::NodeVisitor& nv);
+        void removeChangedCallback( LOSChangedCallback* callback );        
 
         bool getTerrainOnly() const;
 
@@ -182,8 +180,7 @@ namespace osgEarth { namespace Util
         LOSChangedCallbackList _changedCallbacks;
 
         osg::ref_ptr < osgEarth::TerrainCallback > _terrainChangedCallback;
-
-        osg::ref_ptr< osg::Node > _pendingNode;
+        
         bool _clearNeeded;
         bool _terrainOnly;
     };

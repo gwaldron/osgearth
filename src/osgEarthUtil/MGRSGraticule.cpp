@@ -79,7 +79,7 @@ UTMGraticule( 0L )
     {
         LineSymbol* line = _options->secondaryStyle()->getOrCreate<LineSymbol>();
         line->stroke()->color() = Color(Color::White, 0.5f);
-        line->stroke()->stipple() = 0x1111;
+        line->stroke()->stipplePattern() = 0x1111;
 
         TextSymbol* text = _options->secondaryStyle()->getOrCreate<TextSymbol>();
         text->fill()->color() = Color(Color::White, 0.3f);

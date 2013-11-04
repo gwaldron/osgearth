@@ -272,9 +272,11 @@ FeaturesToNodeFilter::applyLineSymbology(osg::StateSet*    stateset,
             }
         }
 
-        if ( line->stroke()->stipple().isSet() )
+        if ( line->stroke()->stipplePattern().isSet() )
         {
-            stateset->setAttributeAndModes( new osg::LineStipple(1, *line->stroke()->stipple()) );
+            stateset->setAttributeAndModes( new osg::LineStipple(
+                line->stroke()->stippleFactor().value(),
+                line->stroke()->stipplePattern().value() ) );
         }
     }
 }

@@ -31,15 +31,15 @@ public:
   typedef std::map< std::string, v8::Handle<v8::Value> > V8PropertyMap;
 
   template<typename T>
-  static v8::Handle<v8::Object> WrapObject(T* obj,  v8::Handle<v8::ObjectTemplate> templ)
+  static v8::Handle<v8::Object> WrapObject(v8::Isolate* isolate, T* obj,  v8::Handle<v8::ObjectTemplate> templ)
   {
-    return WrapObject(obj, templ, V8PropertyMap());
+    return WrapObject(isolate, obj, templ, V8PropertyMap());
   }
 
   template<typename T>
-  static v8::Handle<v8::Object> WrapObject(T* obj,  v8::Handle<v8::ObjectTemplate> templ, const V8PropertyMap& props)
+  static v8::Handle<v8::Object> WrapObject(v8::Isolate* isolate, T* obj,  v8::Handle<v8::ObjectTemplate> templ, const V8PropertyMap& props)
   {
-    v8::HandleScope handle_scope;
+    v8::HandleScope handle_scope(isolate);
 
     v8::Handle<v8::Object> result = templ->NewInstance();
 

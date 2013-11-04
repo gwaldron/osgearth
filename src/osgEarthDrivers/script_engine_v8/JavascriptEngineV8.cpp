@@ -44,26 +44,23 @@ JavascriptEngineV8::JavascriptEngineV8(const ScriptEngineOptions& options)
   v8::Locker locker(_isolate);
   v8::Isolate::Scope isolate_scope(_isolate);
 
-  v8:: HandleScope handle_scope;
+  v8::HandleScope handle_scope(_isolate);
 
-  v8::Handle<v8::ObjectTemplate> global = createGlobalObjectTemplate();
-  _globalContext = v8::Context::New(NULL, global);
-
+  _globalContext.Reset(_isolate, createGlobalContext());
   if (options.script().isSet() && !options.script()->getCode().empty())
   {
     // Create a nested handle scope
-    v8::HandleScope local_handle_scope;
+    v8::HandleScope local_handle_scope(_isolate);
 
     // Enter the global context
-    v8::Context::Scope context_scope(_globalContext);
+    v8::Local<v8::Context> globalContext = *reinterpret_cast<v8::Local<v8::Context>*>(&_globalContext);
+    v8::Context::Scope context_scope(globalContext);
 
     // Compile and run the script
     ScriptResult result = executeScript(v8::String::New(options.script()->getCode().c_str(), options.script()->getCode().length()));
     if (!result.success())
       OE_WARN << LC << "Error reading javascript: " << result.message() << std::endl;
   }
-
-  _globalTemplate = v8::Persistent<v8::ObjectTemplate>::New(global);
 }
 
 JavascriptEngineV8::~JavascriptEngineV8()
@@ -72,18 +69,15 @@ JavascriptEngineV8::~JavascriptEngineV8()
     v8::Locker locker(_isolate);
     v8::Isolate::Scope isolate_scope(_isolate);
 
-    _globalTemplate.Dispose();
     _globalContext.Dispose();
   }
 
   _isolate->Dispose();
 }
 
-v8::Local<v8::ObjectTemplate>
-JavascriptEngineV8::createGlobalObjectTemplate()
+v8::Handle<v8::Context>
+JavascriptEngineV8::createGlobalContext()
 {
-  v8:: HandleScope handle_scope;
-
   v8::Handle<v8::ObjectTemplate> global = v8::ObjectTemplate::New();
 
   // add callback for global logging
@@ -97,14 +91,14 @@ JavascriptEngineV8::createGlobalObjectTemplate()
   global->Set(v8::String::New("SpatialReference"), v8::FunctionTemplate::New(constructSpatialReferenceCallback));
   //global->Set(v8::String::New("Geometry"), v8::FunctionTemplate::New(constructSymbologyGeometryCallback));
   
-  return handle_scope.Close(global);
+  return v8::Context::New(_isolate, NULL, global);
 }
 
 void
 JavascriptEngineV8::logCallback(const v8::FunctionCallbackInfo<v8::Value>& info)
 {
   if (info.Length() < 1) return;
-  v8::HandleScope scope;
+  v8::HandleScope scope(v8::Isolate::GetCurrent());
   v8::Handle<v8::Value> arg = info[0];
   v8::String::AsciiValue value(arg);
   
@@ -114,8 +108,11 @@ JavascriptEngineV8::logCallback(const v8::FunctionCallbackInfo<v8::Value>& info)
 ScriptResult
 JavascriptEngineV8::executeScript(v8::Handle<v8::String> script)
 {
+  v8::String::Utf8Value utf8_value(script);
+  std::string scriptStr(*utf8_value);
+
   // Handle scope for temporary handles.
-  v8::HandleScope handle_scope;
+  v8::HandleScope handle_scope(_isolate);
 
   // TryCatch for any script errors
   v8::TryCatch try_catch;
@@ -179,25 +176,24 @@ JavascriptEngineV8::run(const std::string& code, osgEarth::Features::Feature con
   v8::Locker locker(_isolate);
   v8::Isolate::Scope isolate_scope(_isolate);
 
-  v8::HandleScope handle_scope;
+  v8::HandleScope handle_scope(_isolate);
 
-  //Create a separate context
-  //v8::Persistent<v8::Context> context = v8::Context::New(NULL, _globalTemplate);
-  //v8::Context::Scope context_scope(context);
-  v8::Context::Scope context_scope(_globalContext);
+  v8::Local<v8::Context> globalContext = *reinterpret_cast<v8::Local<v8::Context>*>(&_globalContext);
+
+  v8::Context::Scope context_scope(globalContext);
 
   if (feature)
   {
-    v8::Handle<v8::Object> fObj = JSFeature::WrapFeature(const_cast<Feature*>(feature));
+    v8::Handle<v8::Object> fObj = JSFeature::WrapFeature(_isolate, const_cast<Feature*>(feature));
     if (!fObj.IsEmpty())
-      _globalContext->Global()->Set(v8::String::New("feature"), fObj);
+      globalContext->Global()->Set(v8::String::New("feature"), fObj);
   }
 
   if (context)
   {
-    v8::Handle<v8::Object> cObj = JSFilterContext::WrapFilterContext(const_cast<FilterContext*>(context));
+    v8::Handle<v8::Object> cObj = JSFilterContext::WrapFilterContext(_isolate, const_cast<FilterContext*>(context));
     if (!cObj.IsEmpty())
-      _globalContext->Global()->Set(v8::String::New("context"), cObj);
+      globalContext->Global()->Set(v8::String::New("context"), cObj);
   }
 
   // Compile and run the script
@@ -218,13 +214,15 @@ JavascriptEngineV8::call(const std::string& function, osgEarth::Features::Featur
   v8::Locker locker(_isolate);
   v8::Isolate::Scope isolate_scope(_isolate);
 
-  v8::HandleScope handle_scope;
+  v8::HandleScope handle_scope(_isolate);
 
-  v8::Context::Scope context_scope(_globalContext);
+  v8::Local<v8::Context> globalContext = *reinterpret_cast<v8::Local<v8::Context>*>(&_globalContext);
+
+  v8::Context::Scope context_scope(globalContext);
 
   // Attempt to fetch the function from the global object.
   v8::Handle<v8::String> func_name = v8::String::New(function.c_str(), function.length());
-  v8::Handle<v8::Value> func_val = _globalContext->Global()->Get(func_name);
+  v8::Handle<v8::Value> func_val = globalContext->Global()->Get(func_name);
 
   // If there is no function, or if it is not a function, bail out
   if (!func_val->IsFunction())
@@ -234,16 +232,16 @@ JavascriptEngineV8::call(const std::string& function, osgEarth::Features::Featur
 
   if (feature)
   {
-    v8::Handle<v8::Object> fObj = JSFeature::WrapFeature(const_cast<Feature*>(feature));
+    v8::Handle<v8::Object> fObj = JSFeature::WrapFeature(_isolate, const_cast<Feature*>(feature));
     if (!fObj.IsEmpty())
-      _globalContext->Global()->Set(v8::String::New("feature"), fObj);
+      globalContext->Global()->Set(v8::String::New("feature"), fObj);
   }
 
   if (context)
   {
-    v8::Handle<v8::Object> cObj = JSFilterContext::WrapFilterContext(const_cast<FilterContext*>(context));
+    v8::Handle<v8::Object> cObj = JSFilterContext::WrapFilterContext(_isolate, const_cast<FilterContext*>(context));
     if (!cObj.IsEmpty())
-      _globalContext->Global()->Set(v8::String::New("context"), cObj);
+      globalContext->Global()->Set(v8::String::New("context"), cObj);
   }
 
   // Set up an exception handler before calling the Eval function
@@ -253,7 +251,7 @@ JavascriptEngineV8::call(const std::string& function, osgEarth::Features::Featur
   //const int argc = 1;
   //v8::Handle<v8::Value> argv[argc] = { fObj };
   //v8::Handle<v8::Value> result = func_func->Call(_globalContext->Global(), argc, argv);
-  v8::Handle<v8::Value> result = func_func->Call(_globalContext->Global(), 0, NULL);
+  v8::Handle<v8::Value> result = func_func->Call(globalContext->Global(), 0, NULL);
 
   if (result.IsEmpty())
   {
@@ -275,7 +273,7 @@ JavascriptEngineV8::call(const std::string& function, osgEarth::Features::Featur
 //  if (!info.IsConstructCall()) 
 //    return v8::ThrowException(v8::String::New("Cannot call constructor as function"));
 // 
-//	v8::HandleScope handle_scope;
+//	v8::HandleScope handle_scope(_isolate);
 // 
 //  Feature* feature;
 //  if (info.Length() == 0)
@@ -306,7 +304,7 @@ JavascriptEngineV8::constructBoundsCallback(const v8::FunctionCallbackInfo<v8::V
     return;
   }
  
-	v8::HandleScope handle_scope;
+	v8::HandleScope handle_scope(v8::Isolate::GetCurrent());
  
   osgEarth::Bounds* bounds;
   //if (info.Length() == 0)
@@ -321,7 +319,7 @@ JavascriptEngineV8::constructBoundsCallback(const v8::FunctionCallbackInfo<v8::V
     return;
   }
 
-  info.GetReturnValue().Set(JSBounds::WrapBounds(bounds, true));
+  info.GetReturnValue().Set(JSBounds::WrapBounds(v8::Isolate::GetCurrent(), bounds, true));
 }
 
 void
@@ -333,14 +331,14 @@ JavascriptEngineV8::constructVec3dCallback(const v8::FunctionCallbackInfo<v8::Va
     return;
   }
  
-	v8::HandleScope handle_scope;
+  v8::HandleScope handle_scope(v8::Isolate::GetCurrent());
 
   osg::Vec3d* vec;
   if (info.Length() == 0)
     vec = new osg::Vec3d();
   else if (info.Length() == 1 && info[0]->IsObject())
   {
-    v8::Local<v8::Object> obj( v8::Object::Cast(*info[0]) );
+    v8::Local<v8::Object> obj( v8::Local<v8::Object>::Cast(info[0]) );
 
     if (V8Util::CheckObjectType(obj, JSVec3d::GetObjectType()))
     {
@@ -357,7 +355,7 @@ JavascriptEngineV8::constructVec3dCallback(const v8::FunctionCallbackInfo<v8::Va
     return;
   }
   
-  info.GetReturnValue().Set(JSVec3d::WrapVec3d(vec, true));
+  info.GetReturnValue().Set(JSVec3d::WrapVec3d(v8::Isolate::GetCurrent(), vec, true));
 
 }
 
@@ -369,16 +367,16 @@ JavascriptEngineV8::constructGeoExtentCallback(const v8::FunctionCallbackInfo<v8
     v8::ThrowException(v8::String::New("Cannot call constructor as function"));
     return;
   }
- 
-	v8::HandleScope handle_scope;
 
-  osgEarth::GeoExtent* extent;// = new osgEarth::GeoExtent(
+  v8::HandleScope handle_scope(v8::Isolate::GetCurrent());
+  osgEarth::GeoExtent* extent = 0L;// = new osgEarth::GeoExtent(
+
   //if (info.Length() == 0)
   //  extent = new osgEarth::GeoExtent();
   //else
   if (info.Length() == 1 && info[0]->IsObject())
   {
-    v8::Local<v8::Object> obj( v8::Object::Cast(*info[0]) );
+    v8::Local<v8::Object> obj( v8::Local<v8::Object>::Cast(info[0]) );
 
     //if (V8Util::CheckObjectType(obj, JSSpatialReference::GetObjectType()))
     //{
@@ -394,8 +392,8 @@ JavascriptEngineV8::constructGeoExtentCallback(const v8::FunctionCallbackInfo<v8
   }
   else if (info.Length() == 2 && info[0]->IsObject() && info[1]->IsObject())
   {
-    v8::Local<v8::Object> obj0( v8::Object::Cast(*info[0]) );
-    v8::Local<v8::Object> obj1( v8::Object::Cast(*info[1]) );
+    v8::Local<v8::Object> obj0( v8::Local<v8::Object>::Cast(info[0]) );
+    v8::Local<v8::Object> obj1( v8::Local<v8::Object>::Cast(info[1]) );
 
     if (V8Util::CheckObjectType(obj0, JSSpatialReference::GetObjectType()) && V8Util::CheckObjectType(obj1, JSBounds::GetObjectType()))
     {
@@ -406,7 +404,7 @@ JavascriptEngineV8::constructGeoExtentCallback(const v8::FunctionCallbackInfo<v8
   }
   else if (info.Length() == 5 && info[0]->IsObject())
   {
-    v8::Local<v8::Object> obj( v8::Object::Cast(*info[0]) );
+    v8::Local<v8::Object> obj( v8::Local<v8::Object>::Cast(info[0]) );
 
     if (V8Util::CheckObjectType(obj, JSSpatialReference::GetObjectType()))
     {
@@ -421,7 +419,7 @@ JavascriptEngineV8::constructGeoExtentCallback(const v8::FunctionCallbackInfo<v8
     return;
   }
 
-  info.GetReturnValue().Set(JSGeoExtent::WrapGeoExtent(extent, true));
+  info.GetReturnValue().Set(JSGeoExtent::WrapGeoExtent(v8::Isolate::GetCurrent(), extent, true));
 }
 
 void
@@ -433,7 +431,7 @@ JavascriptEngineV8::constructSpatialReferenceCallback(const v8::FunctionCallback
     return;
   }
 
-	v8::HandleScope handle_scope;
+	v8::HandleScope handle_scope(v8::Isolate::GetCurrent());
  
   osgEarth::SpatialReference* srs;
   if (info.Length() == 1 && info[0]->IsString())
@@ -449,13 +447,13 @@ JavascriptEngineV8::constructSpatialReferenceCallback(const v8::FunctionCallback
     return;
   }
 
-  info.GetReturnValue().Set(JSSpatialReference::WrapSpatialReference(srs, true));
+  info.GetReturnValue().Set(JSSpatialReference::WrapSpatialReference(v8::Isolate::GetCurrent(), srs, true));
 }
 
 //void
 //JavascriptEngineV8::constructSymbologyGeometryCallback(const v8::FunctionCallbackInfo<v8::Value> &info)
 //{
-//	v8::HandleScope handle_scope;
+//	v8::HandleScope handle_scope(_isolate);
 // 
 //  osgEarth::Symbology::Geometry* geom;
 //  if (info.Length() == 2)

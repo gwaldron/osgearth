@@ -314,7 +314,8 @@ GeoPoint::transformZ(const AltitudeMode& altMode, const TerrainHeightProvider* t
 bool
 GeoPoint::transformZ(const AltitudeMode& altMode, const TerrainHeightProvider* terrain, double& out_z ) const
 {
-    if ( !isValid() ) return false;
+    if ( !isValid() )
+        return false;
     
     // already in the target mode? just return z.
     if ( _altMode == altMode ) 
@@ -323,7 +324,8 @@ GeoPoint::transformZ(const AltitudeMode& altMode, const TerrainHeightProvider* t
         return true;
     }
 
-    if ( !terrain ) return false;
+    if ( !terrain )
+        return false;
 
     // convert to geographic if necessary and sample the MSL height under the point.
     double out_hamsl;
@@ -383,7 +385,10 @@ GeoPoint::toWorld( osg::Vec3d& out_world, const TerrainHeightProvider* terrain )
     else if ( terrain != 0L )
     {
         GeoPoint absPoint = *this;
-        absPoint.makeAbsolute( terrain );
+        if (!absPoint.makeAbsolute( terrain ))
+        {
+            return false;            
+        }
         return absPoint.toWorld( out_world );
     }
     else

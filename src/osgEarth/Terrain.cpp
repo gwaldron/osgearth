@@ -127,7 +127,8 @@ Terrain::getHeight(osg::Node*              patch,
         //getSRS()->transformToECEF(end, end);
     }
 
-    osgUtil::LineSegmentIntersector* lsi = new osgUtil::LineSegmentIntersector(start, end);
+    //osgUtil::LineSegmentIntersector* lsi = new osgUtil::LineSegmentIntersector(start, end);
+    DPLineSegmentIntersector* lsi = new DPLineSegmentIntersector( start, end );
     lsi->setIntersectionLimit(osgUtil::Intersector::LIMIT_ONE);
 
     osgUtil::IntersectionVisitor iv( lsi );

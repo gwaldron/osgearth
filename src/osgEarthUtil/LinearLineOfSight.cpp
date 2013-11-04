@@ -101,14 +101,11 @@ LineOfSightNode(),
 _mapNode(mapNode),
 _start(start),
 _end(end),
-//_hit(0,0,0),
 _hasLOS( true ),
 _clearNeeded( false ),
 _goodColor(0.0f, 1.0f, 0.0f, 1.0f),
 _badColor(1.0f, 0.0f, 0.0f, 1.0f),
 _displayMode( LineOfSight::MODE_SPLIT ),
-//_startAltitudeMode( ALTMODE_ABSOLUTE ),
-//_endAltitudeMode( ALTMODE_ABSOLUTE ),
 _terrainOnly( false )
 {
     compute(getNode());    
@@ -249,19 +246,25 @@ LinearLineOfSightNode::removeChangedCallback( LOSChangedCallback* callback )
 
 void
 LinearLineOfSightNode::compute(osg::Node* node, bool backgroundThread)
-{
+{    
     if ( !getMapNode() )
         return;
+
+    if (!_start.isValid() || !_end.isValid() )
+    {
+        return;          
+    }
 
     if (_start != _end)
     {
       const SpatialReference* mapSRS = getMapNode()->getMapSRS();
       const Terrain* terrain = getMapNode()->getTerrain();
 
-      //Computes the LOS and redraws the scene
-
-      _start.transform(mapSRS).toWorld( _startWorld, terrain );
-      _end.transform(mapSRS).toWorld( _endWorld, terrain );
+      //Computes the LOS and redraws the scene      
+      if (!_start.transform(mapSRS).toWorld( _startWorld, terrain ) || !_end.transform(mapSRS).toWorld( _endWorld, terrain ))
+      {
+          return;
+      }
 
 
       DPLineSegmentIntersector* lsi = new DPLineSegmentIntersector(_startWorld, _endWorld);

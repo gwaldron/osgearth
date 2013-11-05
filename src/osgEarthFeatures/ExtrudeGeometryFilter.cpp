@@ -896,15 +896,18 @@ ExtrudeGeometryFilter::push( FeatureList& input, FilterContext& context )
     bool ok = process( input, context );
 
     // convert everything to triangles and combine drawables.
-    if ( _mergeGeometry == true && !context.featureIndex() && _featureNameExpr.empty() )
+    if ( _mergeGeometry == true && /*!context.featureIndex() && */_featureNameExpr.empty() )
     {
         for( SortedGeodeMap::iterator i = _geodes.begin(); i != _geodes.end(); ++i )
         {
 #if 1
             MeshConsolidator::run( *i->second.get() );
 
-            VertexCacheOptimizer vco;
-            i->second->accept( vco );
+            if ( !context.featureIndex() )
+            {
+                VertexCacheOptimizer vco;
+                i->second->accept( vco );
+            }
 #else
 
         //TODO: try this -- issues: it won't work on lines, and will it screw up

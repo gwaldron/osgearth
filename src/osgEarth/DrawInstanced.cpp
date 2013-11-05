@@ -21,18 +21,19 @@
 #include <osgEarth/ShaderUtils>
 #include <osgEarth/Registry>
 #include <osgEarth/Capabilities>
+#include <osgEarth/ImageUtils>
 
 #include <osg/ComputeBoundsVisitor>
 #include <osg/MatrixTransform>
-#include <osg/BufferIndexBinding>
 #include <osgUtil/MeshOptimizers>
-
-#define MAX_COUNT_UBO   (Registry::capabilities().getMaxUniformBlockSize()/64)
-#define MAX_COUNT_ARRAY 128 // max size of a mat4 uniform array...how to query?
 
 using namespace osgEarth;
 using namespace osgEarth::DrawInstanced;
 
+// Ref: http://sol.gfxile.net/instancing.html
+
+#define POSTEX_TEXTURE_UNIT 6
+#define POSTEX_TEXTURE_SIZE 256
 
 //----------------------------------------------------------------------
 
@@ -105,40 +106,57 @@ DrawInstanced::install(osg::StateSet* stateset)
     if ( !stateset )
         return;
 
+    // simple vertex program to position a vertex based on its instance
+    // matrix, which is stored in a texture.
+#if 1
+    std::string src_vert = Stringify()
+        << "#version 120 \n"
+        << "#extension GL_EXT_gpu_shader4 : enable \n"
+        << "uniform sampler2D oe_di_postex; \n"
+        << "uniform float oe_di_postex_size; \n"
+        << "void oe_di_setInstancePosition(inout vec4 VertexMODEL) \n"
+        << "{ \n"
+        << "    float index = float(gl_InstanceID) / (oe_di_postex_size/4.0); \n"
+        << "    float s = fract(index); \n"
+        << "    float t = floor(index)/oe_di_postex_size; \n"
+        << "    float step = 1.0 / oe_di_postex_size; \n"  // step from one vec4 to the next
+        << "    vec4 m0 = texture2D(oe_di_postex, vec2(s, t)); \n"
+        << "    vec4 m1 = texture2D(oe_di_postex, vec2(s+step, t)); \n"
+        << "    vec4 m2 = texture2D(oe_di_postex, vec2(s+step+step, t)); \n"
+        << "    vec4 m3 = texture2D(oe_di_postex, vec2(s+step+step+step, t)); \n"
+        //<< "    VertexMODEL = VertexMODEL + vec4(0,0,0,0); \n" //vec4(test.xyz*VertexMODEL.w, 0); \n"
+        //<< "    VertexMODEL = mat4(m0, m1, m2, m3) * VertexMODEL; \n"
+        << "} \n";
+#else
+    std::string src_vert = Stringify()
+        << "#version 120 \n"
+        << "#extension GL_EXT_gpu_shader4 : enable \n"
+        << "uniform sampler2D oe_di_postex; \n"
+        << "uniform float oe_di_postex_size; \n"
+        << "void oe_di_setInstancePosition(inout vec4 VertexMODEL) \n"
+        << "{ \n"
+        << "    int x = gl_InstanceID * 4; \n"
+        << "    int y = int(float(x) / oe_di_postex_size); \n"
+        << "    int f = int(oe_di_postex_size)-1; \n"
+        << "    float step = 1.0 / oe_di_postex_size; \n"
+        << "    mat4 m = mat4(texture2D(oe_di_postex, vec2((x+0)&f,y) * step), \n"
+        << "                  texture2D(oe_di_postex, vec2((x+1)&f,y) * step), \n"
+        << "                  texture2D(oe_di_postex, vec2((x+2)&f,y) * step), \n"
+        << "                  texture2D(oe_di_postex, vec2((x+3)&f,y) * step)); \n"
+        << "    VertexMODEL = m * VertexMODEL; \n"
+        << "} \n";
+#endif
+
     VirtualProgram* vp = VirtualProgram::getOrCreate(stateset);
 
-    std::stringstream buf;
-
-    buf << "#version 120 \n"
-        << "#extension GL_EXT_gpu_shader4 : enable \n";
-        //<< "#extension GL_EXT_draw_instanced : enable\n";
-
-    if ( Registry::capabilities().supportsUniformBufferObjects() )
-    {
-        // note: no newlines in the layout() line, please
-        buf << "#extension GL_ARB_uniform_buffer_object : enable\n"
-            << "layout(std140) uniform oe_di_modelData { "
-            <<     "mat4 oe_di_modelMatrix[" << MAX_COUNT_UBO << "]; } ;\n";
-
-        vp->getTemplate()->addBindUniformBlock( "oe_di_modelData", 0 );
-    }
-    else
-    {
-        buf << "uniform mat4 oe_di_modelMatrix[" << MAX_COUNT_ARRAY << "];\n";
-    }
-
-    buf << "void oe_di_setPosition(inout vec4 VertexModel)\n"
-        << "{\n"
-        << "    VertexModel = oe_di_modelMatrix[gl_InstanceID] * VertexModel; \n"
-        << "}\n";
-
-    std::string src;
-    src = buf.str();
-
     vp->setFunction(
-        "oe_di_setPosition",
-        src,
+        "oe_di_setInstancePosition",
+        src_vert,
         ShaderComp::LOCATION_VERTEX_MODEL );
+
+
+    stateset->getOrCreateUniform("oe_di_postex", osg::Uniform::SAMPLER_2D)->set(POSTEX_TEXTURE_UNIT);
+    stateset->getOrCreateUniform("oe_di_postex_size", osg::Uniform::FLOAT)->set((float)POSTEX_TEXTURE_SIZE);
 }
 
 
@@ -152,8 +170,10 @@ DrawInstanced::remove(osg::StateSet* stateset)
     if ( !vp )
         return;
 
-    vp->removeShader( "oe_di_setPosition" );
-    vp->getTemplate()->removeBindUniformBlock( "oe_di_modelData" );
+    vp->removeShader( "oe_di_setInstancePosition" );
+
+    stateset->removeUniform("oe_di_postex");
+    stateset->removeUniform("oe_di_postex_size");
 }
 
 
@@ -188,9 +208,8 @@ DrawInstanced::convertGraphToUseDrawInstanced( osg::Group* parent )
     bool useUBO = Registry::capabilities().supportsUniformBufferObjects();
 
     // maximum size of a slice.
-    // for UBOs, assume 64K / sizeof(mat4) = 1024.
-    // for uniform array, assume 8K / sizeof(mat4) = 128.
-    unsigned maxSliceSize = useUBO ? MAX_COUNT_UBO : MAX_COUNT_ARRAY;
+    unsigned texSize      = POSTEX_TEXTURE_SIZE;
+    unsigned maxSliceSize = (unsigned)((float)(texSize*texSize) / 4.0f);
 
     // For each model:
     for( ModelNodeMatrices::iterator i = models.begin(); i != models.end(); ++i )
@@ -229,7 +248,7 @@ DrawInstanced::convertGraphToUseDrawInstanced( osg::Group* parent )
         // Convert the node's primitive sets to use "draw-instanced" rendering; at the
         // same time, assign our computed bounding box as the static bounds for all
         // geometries. (As DI's they cannot report bounds naturally.)
-        ConvertToDrawInstanced cdi(sliceSize, bbox, true);
+        ConvertToDrawInstanced cdi(sliceSize, bbox, false); //true);
         node->accept( cdi );
 
         // If we don't have an even number of instance groups, make a smaller last one.
@@ -257,34 +276,62 @@ DrawInstanced::convertGraphToUseDrawInstanced( osg::Group* parent )
             // this group is simply a container for the uniform:
             osg::Group* sliceGroup = new osg::Group();
 
-            if ( useUBO ) // uniform buffer object:
-            {
-                osg::MatrixfArray* mats = new osg::MatrixfArray();
-                mats->setBufferObject( new osg::UniformBufferObject() );
-                // 64 = sizeof(mat4)
-                osg::UniformBufferBinding* ubb = new osg::UniformBufferBinding( 0, mats->getBufferObject(), 0, currentSize * 64 );
-                sliceGroup->getOrCreateStateSet()->setAttribute( ubb, osg::StateAttribute::ON );
-                for( unsigned m=0; m < currentSize; ++m )
-                {
-                    mats->push_back( matrices[offset + m] );
-                }
-                ubb->setDataVariance( osg::Object::DYNAMIC );
-            }
-            else // just use a uniform array
-            {
-                // assign the matrices to the uniform array:
-                ArrayUniform uniform(
-                    "oe_di_modelMatrix", 
-                    osg::Uniform::FLOAT_MAT4,
-                    sliceGroup->getOrCreateStateSet(),
-                    currentSize );
+            // sampler that will hold the instance matrices:
+            osg::Image* image = new osg::Image();
+            image->allocateImage( texSize, texSize, 1, GL_RGBA, GL_FLOAT );
 
-                for( unsigned m=0; m < currentSize; ++m )
-                {
-                    uniform.setElement( m, matrices[offset + m] );
-                }
+            osg::Texture2D* postex = new osg::Texture2D( image );
+            postex->setInternalFormat( GL_RGBA32F_ARB );
+            postex->setFilter( osg::Texture::MIN_FILTER, osg::Texture::NEAREST );
+            postex->setFilter( osg::Texture::MAG_FILTER, osg::Texture::NEAREST );
+            postex->setWrap( osg::Texture::WRAP_S, osg::Texture::CLAMP_TO_EDGE );
+            postex->setWrap( osg::Texture::WRAP_T, osg::Texture::CLAMP_TO_EDGE );
+
+            sliceGroup->getOrCreateStateSet()->setTextureAttributeAndModes(POSTEX_TEXTURE_UNIT, postex);
+
+            ImageUtils::PixelWriter write(image);
+
+            int matsPerRow = texSize/4;
+
+            for(unsigned m=0; m<currentSize; ++m)
+            {
+                int s = (m % matsPerRow) * 4;
+                int t = m / matsPerRow;
+
+                const osg::Matrixf& mat = matrices[offset + m];
+
+                //write 4 columns.
+#if 1
+#if 1
+                write( osg::Vec4(mat(0,0), mat(1,0), mat(2,0), mat(3,0)), s,   t );
+                write( osg::Vec4(mat(0,1), mat(1,1), mat(2,1), mat(3,1)), s+1, t );
+                write( osg::Vec4(mat(0,2), mat(1,2), mat(2,2), mat(3,2)), s+2, t );
+                write( osg::Vec4(mat(0,3), mat(1,3), mat(2,3), mat(3,3)), s+3, t );
+#else
+                write( osg::Vec4(mat(0,0), mat(0,1), mat(0,2), mat(0,3)), s,   t );
+                write( osg::Vec4(mat(1,0), mat(1,1), mat(1,2), mat(1,3)), s+1, t );
+                write( osg::Vec4(mat(2,0), mat(2,1), mat(2,2), mat(2,3)), s+2, t );
+                write( osg::Vec4(mat(3,0), mat(3,1), mat(3,2), mat(3,3)), s+3, t );
+#endif
+#else
+                
+                write( osg::Vec4(1,0,0,0), s,   t );
+                write( osg::Vec4(0,1,0,0), s+1, t );
+                write( osg::Vec4(0,0,1,0), s+2, t );
+                write( osg::Vec4(0,0,0,1), s+3, t );
+#endif
             }
 
+#if 0
+            write( osg::Vec4(0,0,0,0), 0, 0 );
+
+            ImageUtils::PixelReader read(image);
+            OE_NOTICE << "test---" << std::endl;
+            OE_NOTICE << read(0,0).x() << ", " << read(0,0).y() << ", " << read(0,0).z() << ", " << read(0,0).w() << std::endl;
+            OE_NOTICE << read(1,0).x() << ", " << read(1,0).y() << ", " << read(1,0).z() << ", " << read(1,0).w() << std::endl;
+            OE_NOTICE << read(2,0).x() << ", " << read(2,0).y() << ", " << read(2,0).z() << ", " << read(2,0).w() << std::endl;
+            OE_NOTICE << read(3,0).x() << ", " << read(3,0).y() << ", " << read(3,0).z() << ", " << read(3,0).w() << std::endl;
+#endif
             // add the node as a child:
             sliceGroup->addChild( currentNode );
 

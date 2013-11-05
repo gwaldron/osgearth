@@ -60,112 +60,59 @@ public:
         StringExpression  textContentExpr ( text ? *text->content()  : StringExpression() );
         NumericExpression textPriorityExpr( text ? *text->priority() : NumericExpression() );
         StringExpression  iconUrlExpr     ( icon ? *icon->url()      : StringExpression() );
+        NumericExpression iconScaleExpr   ( icon ? *icon->scale()    : NumericExpression() );
+        NumericExpression iconHeadingExpr ( icon ? *icon->heading()  : NumericExpression() );
 
-#if 0        
-        if ( text && text->removeDuplicateLabels() == true )
+        for( FeatureList::const_iterator i = input.begin(); i != input.end(); ++i )
         {
-            // in remove-duplicates mode, make a list of unique features, selecting
-            // the one with the largest area as the one we'll use for labeling.
+            const Feature* feature = i->get();
+            if ( !feature )
+                continue;
 
-            typedef std::pair<double, osg::ref_ptr<const Feature> > Entry;
-            typedef std::map<std::string, Entry>                    EntryMap;
+            const Geometry* geom = feature->getGeometry();
+            if ( !geom )
+                continue;
 
-            EntryMap used;
-    
-            for( FeatureList::const_iterator i = input.begin(); i != input.end(); ++i )
+            Style tempStyle = styleCopy;
+
+            // evaluate expressions into literals.
+            // TODO: Later we could replace this with a generate "expression evaluator" type
+            // that we could pass to PlaceNode in the DB options. -gw
+
+            if ( text )
             {
-                Feature* feature = i->get();
-                if ( feature && feature->getGeometry() )
-                {
-                    const std::string& value = feature->eval( textContentExpr, &context );
-                    if ( !value.empty() )
-                    {
-                        double area = feature->getGeometry()->getBounds().area2d();
-                        if ( used.find(value) == used.end() )
-                        {
-                            used[value] = Entry(area, feature);
-                        }
-                        else 
-                        {
-                            Entry& biggest = used[value];
-                            if ( area > biggest.first )
-                            {
-                                biggest.first = area;
-                                biggest.second = feature;
-                            }
-                        }
-                    }
-                }
+                if ( text->content().isSet() )
+                    tempStyle.get<TextSymbol>()->content()->setLiteral( feature->eval( textContentExpr, &context ) );
             }
 
-            for( EntryMap::iterator i = used.begin(); i != used.end(); ++i )
+            if ( icon )
             {
-                const std::string& value = i->first;
-                const Feature* feature = i->second.second.get();
+                if ( icon->url().isSet() )
+                    tempStyle.get<IconSymbol>()->url()->setLiteral( feature->eval(iconUrlExpr, &context) );
 
-                group->addChild( makePlaceNode(
-                    context,
-                    feature,
-                    styleCopy,
-                    textPriorityExpr) );
+                if ( icon->scale().isSet() )
+                    tempStyle.get<IconSymbol>()->scale()->setLiteral( feature->eval(iconScaleExpr, &context) );
 
-                //if ( text )
-                //    group->addChild( makeLabelNode(context, feature, value, styleCopy, textPriorityExpr) );
-                //if ( icon )
-                //    group->addChild( makeIconNode(context, feature, value, styleCopy) );
+                if ( icon->heading().isSet() )
+                    tempStyle.get<IconSymbol>()->heading()->setLiteral( feature->eval(iconHeadingExpr, &context) );
+            }
+            
+            osg::Node* node = makePlaceNode(
+                context,
+                feature,
+                tempStyle,
+                textPriorityExpr);
+
+            if ( node )
+            {
+                if ( context.featureIndex() )
+                {
+                    context.featureIndex()->tagNode(node, const_cast<Feature*>(feature));
+                }
+
+                group->addChild( node );
             }
         }
-
-        else
-#endif
-        {
-            for( FeatureList::const_iterator i = input.begin(); i != input.end(); ++i )
-            {
-                const Feature* feature = i->get();
-                if ( !feature )
-                    continue;
-
-                const Geometry* geom = feature->getGeometry();
-                if ( !geom )
-                    continue;
-
-                Style tempStyle = styleCopy;
-
-                if ( text )
-                {
-                    std::string labelText = feature->eval( textContentExpr, &context );
-                    tempStyle.get<TextSymbol>()->content()->setLiteral( labelText );
-                }
-                if ( icon )
-                {
-                    std::string urlText = feature->eval( iconUrlExpr, &context );
-                    tempStyle.get<IconSymbol>()->url()->setLiteral( urlText );
-                }
-                
-                osg::Node* node = makePlaceNode(
-                    context,
-                    feature,
-                    tempStyle,
-                    textPriorityExpr);
-
-                if ( node )
-                {
-                    if ( context.featureIndex() )
-                    {
-                        context.featureIndex()->tagNode(node, const_cast<Feature*>(feature));
-                    }
-
-                    group->addChild( node );
-                }
-            }
-        }
-
-#if 0 // good idea but needs work.
-        DepthOffsetGroup* dog = new DepthOffsetGroup();
-        dog->setMinimumOffset( 500.0 );
-        dog->addChild( group );
-        return dog;
-#endif
 
         return group;
     }

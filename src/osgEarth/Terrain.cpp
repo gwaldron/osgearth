@@ -123,13 +123,10 @@ Terrain::getHeight(osg::Node*              patch,
         const SpatialReference* ecef = getSRS()->getECEF();
         getSRS()->transform(start, ecef, start);
         getSRS()->transform(end,   ecef, end);
-        //getSRS()->transformToECEF(start, start);
-        //getSRS()->transformToECEF(end, end);
     }
 
-    //osgUtil::LineSegmentIntersector* lsi = new osgUtil::LineSegmentIntersector(start, end);
     DPLineSegmentIntersector* lsi = new DPLineSegmentIntersector( start, end );
-    lsi->setIntersectionLimit(osgUtil::Intersector::LIMIT_ONE);
+    lsi->setIntersectionLimit(osgUtil::Intersector::LIMIT_NEAREST);
 
     osgUtil::IntersectionVisitor iv( lsi );
     iv.setTraversalMask( ~_terrainOptions.secondaryTraversalMask().value() );

@@ -75,7 +75,8 @@ TrackNode::init( const TrackNodeFieldSchema& schema )
             image,                    // image
             osg::Vec2s(0,0),          // offset
             0,                        // tex image unit
-            icon->heading()->eval() );
+            icon->heading()->eval(),
+            icon->scale()->eval() );
 
         if ( imageGeom )
         {

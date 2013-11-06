@@ -18,6 +18,7 @@
  */
 
 #include <osgEarth/Capabilities>
+#include <osgEarth/ImageUtils>
 #include <osgEarth/Registry>
 #include <osgEarth/ShaderFactory>
 #include <osgEarth/ShaderGenerator>
@@ -205,6 +206,26 @@ void
 ShaderGenerator::setProgramName(const std::string& name)
 {
     _name = name;
+}
+
+void
+ShaderGenerator::addAcceptCallback(AcceptCallback* cb)
+{
+    _acceptCallbacks.push_back( cb );
+}
+
+bool
+ShaderGenerator::accept(const osg::StateAttribute* sa) const
+{
+    if ( sa == 0L )
+        return false;
+
+    for(AcceptCallbackVector::const_iterator i = _acceptCallbacks.begin(); i != _acceptCallbacks.end(); ++i )
+    {
+        if ( !i->get()->accept(sa) )
+            return false;
+    }
+    return true;
 }
 
 void
@@ -472,8 +493,6 @@ ShaderGenerator::processGeometry( const osg::StateSet* ss, osg::ref_ptr<osg::Sta
     // if the stateset changes any texture attributes, we need a new virtual program:
     if (state->getNumTextureAttributes() > 0)
     {
-        need_new_stateset = true;
-
         // work off the state's accumulated texture attribute set:
         int texCount = state->getNumTextureAttributes();
 
@@ -489,20 +508,27 @@ ShaderGenerator::processGeometry( const osg::StateSet* ss, osg::ref_ptr<osg::Sta
 
         fragBody << "void " FRAGMENT_FUNCTION "(inout vec4 color)\n{\n";
 
+        bool wroteTexelDecl = false;
+
         for( int t = 0; t < texCount; ++t )
         {
-            if (t == 0)
+            if ( !wroteTexelDecl )
             {
                 fragBody << INDENT << MEDIUMP "vec4 texel; \n";
+                wroteTexelDecl = true;
             }
 
-            osg::StateAttribute* tex = state->getTextureAttribute( t, osg::StateAttribute::TEXTURE );
-            if ( tex )
+            osg::Texture* tex = dynamic_cast<osg::Texture*>(state->getTextureAttribute(t, osg::StateAttribute::TEXTURE));
+
+            if (accept(tex) && !ImageUtils::isFloatingPointInternalFormat(tex->getInternalFormat()))
             {
+                // made it this far, new stateset required.
+                need_new_stateset = true;
+
                 // see if we have a texenv; if so get its blending mode.
                 osg::TexEnv::Mode blendingMode = osg::TexEnv::MODULATE;
                 osg::TexEnv* env = dynamic_cast<osg::TexEnv*>(state->getTextureAttribute(t, osg::StateAttribute::TEXENV) );
-                if ( env )
+                if ( accept(env) )
                 {
                     blendingMode = env->getMode();
                     if ( blendingMode == osg::TexEnv::BLEND )
@@ -513,7 +539,7 @@ ShaderGenerator::processGeometry( const osg::StateSet* ss, osg::ref_ptr<osg::Sta
 
                 osg::TexGen::Mode texGenMode = osg::TexGen::OBJECT_LINEAR;
                 osg::TexGen* texGen = dynamic_cast<osg::TexGen*>(state->getTextureAttribute(t, osg::StateAttribute::TEXGEN));
-                if ( texGen )
+                if ( accept(texGen) )
                 {
                     texGenMode = texGen->getMode();
                 }
@@ -617,22 +643,25 @@ ShaderGenerator::processGeometry( const osg::StateSet* ss, osg::ref_ptr<osg::Sta
             }
         }
 
-        // close out functions:
-        vertBody << "}\n";
-        fragBody << "}\n";
+        if ( need_new_stateset )
+        {
+            // close out functions:
+            vertBody << "}\n";
+            fragBody << "}\n";
 
-        // Extract the shader source strings (win compat method)
-        std::string vertBodySrc, vertSrc, fragBodySrc, fragSrc;
-        vertBodySrc = vertBody.str();
-        vertHead << vertBodySrc;
-        vertSrc = vertHead.str();
-        fragBodySrc = fragBody.str();
-        fragHead << fragBodySrc;
-        fragSrc = fragHead.str();
+            // Extract the shader source strings (win compat method)
+            std::string vertBodySrc, vertSrc, fragBodySrc, fragSrc;
+            vertBodySrc = vertBody.str();
+            vertHead << vertBodySrc;
+            vertSrc = vertHead.str();
+            fragBodySrc = fragBody.str();
+            fragHead << fragBodySrc;
+            fragSrc = fragHead.str();
 
-        // inject the shaders:
-        vp->setFunction( VERTEX_FUNCTION,   vertSrc, ShaderComp::LOCATION_VERTEX_VIEW );
-        vp->setFunction( FRAGMENT_FUNCTION, fragSrc, ShaderComp::LOCATION_FRAGMENT_COLORING );
+            // inject the shaders:
+            vp->setFunction( VERTEX_FUNCTION,   vertSrc, ShaderComp::LOCATION_VERTEX_VIEW );
+            vp->setFunction( FRAGMENT_FUNCTION, fragSrc, ShaderComp::LOCATION_FRAGMENT_COLORING );
+        }
     }
 
     if ( need_new_stateset )

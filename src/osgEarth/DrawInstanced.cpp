@@ -18,7 +18,8 @@
  */
 #include <osgEarth/DrawInstanced>
 #include <osgEarth/CullingUtils>
-#include <osgEarth/ShaderUtils>
+#include <osgEarth/ShaderGenerator>
+#include <osgEarth/StateSetCache>
 #include <osgEarth/Registry>
 #include <osgEarth/Capabilities>
 #include <osgEarth/ImageUtils>
@@ -32,7 +33,7 @@ using namespace osgEarth::DrawInstanced;
 
 // Ref: http://sol.gfxile.net/instancing.html
 
-#define POSTEX_TEXTURE_UNIT 6
+#define POSTEX_TEXTURE_UNIT 5
 #define POSTEX_TEXTURE_SIZE 256
 
 //----------------------------------------------------------------------
@@ -112,11 +113,12 @@ DrawInstanced::install(osg::StateSet* stateset)
     std::string src_vert = Stringify()
         << "#version 120 \n"
         << "#extension GL_EXT_gpu_shader4 : enable \n"
+        << "#extension GL_ARB_draw_instanced: enable \n"
         << "uniform sampler2D oe_di_postex; \n"
         << "uniform float oe_di_postex_size; \n"
         << "void oe_di_setInstancePosition(inout vec4 VertexMODEL) \n"
         << "{ \n"
-        << "    float index = float(gl_InstanceID) / (oe_di_postex_size/4.0); \n"
+        << "    float index = float(4 * gl_InstanceID) / oe_di_postex_size; \n"
         << "    float s = fract(index); \n"
         << "    float t = floor(index)/oe_di_postex_size; \n"
         << "    float step = 1.0 / oe_di_postex_size; \n"  // step from one vec4 to the next
@@ -124,8 +126,7 @@ DrawInstanced::install(osg::StateSet* stateset)
         << "    vec4 m1 = texture2D(oe_di_postex, vec2(s+step, t)); \n"
         << "    vec4 m2 = texture2D(oe_di_postex, vec2(s+step+step, t)); \n"
         << "    vec4 m3 = texture2D(oe_di_postex, vec2(s+step+step+step, t)); \n"
-        //<< "    VertexMODEL = VertexMODEL + vec4(0,0,0,0); \n" //vec4(test.xyz*VertexMODEL.w, 0); \n"
-        //<< "    VertexMODEL = mat4(m0, m1, m2, m3) * VertexMODEL; \n"
+        << "    VertexMODEL = VertexMODEL * mat4(m0, m1, m2, m3); \n" // ???
         << "} \n";
 #else
     std::string src_vert = Stringify()
@@ -138,12 +139,12 @@ DrawInstanced::install(osg::StateSet* stateset)
         << "    int x = gl_InstanceID * 4; \n"
         << "    int y = int(float(x) / oe_di_postex_size); \n"
         << "    int f = int(oe_di_postex_size)-1; \n"
-        << "    float step = 1.0 / oe_di_postex_size; \n"
-        << "    mat4 m = mat4(texture2D(oe_di_postex, vec2((x+0)&f,y) * step), \n"
-        << "                  texture2D(oe_di_postex, vec2((x+1)&f,y) * step), \n"
-        << "                  texture2D(oe_di_postex, vec2((x+2)&f,y) * step), \n"
-        << "                  texture2D(oe_di_postex, vec2((x+3)&f,y) * step)); \n"
-        << "    VertexMODEL = m * VertexMODEL; \n"
+        << "    float scale = 1.0 / oe_di_postex_size; \n"
+        << "    mat4 m = mat4(texture2D(oe_di_postex, vec2((x+0)&f,y) * scale), \n"
+        << "                  texture2D(oe_di_postex, vec2((x+1)&f,y) * scale), \n"
+        << "                  texture2D(oe_di_postex, vec2((x+2)&f,y) * scale), \n"
+        << "                  texture2D(oe_di_postex, vec2((x+3)&f,y) * scale)); \n"
+        << "    VertexMODEL = VertexMODEL * m; \n"
         << "} \n";
 #endif
 
@@ -204,12 +205,9 @@ DrawInstanced::convertGraphToUseDrawInstanced( osg::Group* parent )
     // get rid of the old matrix transforms.
     parent->removeChildren(0, parent->getNumChildren());
 
-    // whether to use UBOs.
-    bool useUBO = Registry::capabilities().supportsUniformBufferObjects();
-
     // maximum size of a slice.
     unsigned texSize      = POSTEX_TEXTURE_SIZE;
-    unsigned maxSliceSize = (unsigned)((float)(texSize*texSize) / 4.0f);
+    unsigned maxSliceSize = (texSize*texSize)/4; // 4 vec4s per matrix.
 
     // For each model:
     for( ModelNodeMatrices::iterator i = models.begin(); i != models.end(); ++i )
@@ -248,15 +246,16 @@ DrawInstanced::convertGraphToUseDrawInstanced( osg::Group* parent )
         // Convert the node's primitive sets to use "draw-instanced" rendering; at the
         // same time, assign our computed bounding box as the static bounds for all
         // geometries. (As DI's they cannot report bounds naturally.)
-        ConvertToDrawInstanced cdi(sliceSize, bbox, false); //true);
+        ConvertToDrawInstanced cdi(sliceSize, bbox, true);
         node->accept( cdi );
 
-        // If we don't have an even number of instance groups, make a smaller last one.
+        // If the number of instances is not an exact multiple of the number of slices,
+        // replicate the node so we can draw a difference instance count in the final group.
         osg::Node* lastNode = node;
         if ( numSlices > 1 && lastSliceSize < sliceSize )
         {
             // clone, but only make copies of necessary things
-            lastNode = osg::clone( 
+            lastNode = osg::clone(
                 node, 
                 osg::CopyOp::DEEP_COPY_NODES | osg::CopyOp::DEEP_COPY_DRAWABLES | osg::CopyOp::DEEP_COPY_PRIMITIVES );
 
@@ -281,13 +280,13 @@ DrawInstanced::convertGraphToUseDrawInstanced( osg::Group* parent )
             image->allocateImage( texSize, texSize, 1, GL_RGBA, GL_FLOAT );
 
             osg::Texture2D* postex = new osg::Texture2D( image );
-            postex->setInternalFormat( GL_RGBA32F_ARB );
+            postex->setInternalFormat( GL_RGBA16F_ARB );
             postex->setFilter( osg::Texture::MIN_FILTER, osg::Texture::NEAREST );
             postex->setFilter( osg::Texture::MAG_FILTER, osg::Texture::NEAREST );
-            postex->setWrap( osg::Texture::WRAP_S, osg::Texture::CLAMP_TO_EDGE );
-            postex->setWrap( osg::Texture::WRAP_T, osg::Texture::CLAMP_TO_EDGE );
+            postex->setWrap( osg::Texture::WRAP_S, osg::Texture::CLAMP );
+            postex->setWrap( osg::Texture::WRAP_T, osg::Texture::CLAMP );
 
-            sliceGroup->getOrCreateStateSet()->setTextureAttributeAndModes(POSTEX_TEXTURE_UNIT, postex);
+            sliceGroup->getOrCreateStateSet()->setTextureAttributeAndModes(POSTEX_TEXTURE_UNIT, postex, 1);
 
             ImageUtils::PixelWriter write(image);
 
@@ -301,37 +300,12 @@ DrawInstanced::convertGraphToUseDrawInstanced( osg::Group* parent )
                 const osg::Matrixf& mat = matrices[offset + m];
 
                 //write 4 columns.
-#if 1
-#if 1
                 write( osg::Vec4(mat(0,0), mat(1,0), mat(2,0), mat(3,0)), s,   t );
                 write( osg::Vec4(mat(0,1), mat(1,1), mat(2,1), mat(3,1)), s+1, t );
                 write( osg::Vec4(mat(0,2), mat(1,2), mat(2,2), mat(3,2)), s+2, t );
                 write( osg::Vec4(mat(0,3), mat(1,3), mat(2,3), mat(3,3)), s+3, t );
-#else
-                write( osg::Vec4(mat(0,0), mat(0,1), mat(0,2), mat(0,3)), s,   t );
-                write( osg::Vec4(mat(1,0), mat(1,1), mat(1,2), mat(1,3)), s+1, t );
-                write( osg::Vec4(mat(2,0), mat(2,1), mat(2,2), mat(2,3)), s+2, t );
-                write( osg::Vec4(mat(3,0), mat(3,1), mat(3,2), mat(3,3)), s+3, t );
-#endif
-#else
-                
-                write( osg::Vec4(1,0,0,0), s,   t );
-                write( osg::Vec4(0,1,0,0), s+1, t );
-                write( osg::Vec4(0,0,1,0), s+2, t );
-                write( osg::Vec4(0,0,0,1), s+3, t );
-#endif
             }
 
-#if 0
-            write( osg::Vec4(0,0,0,0), 0, 0 );
-
-            ImageUtils::PixelReader read(image);
-            OE_NOTICE << "test---" << std::endl;
-            OE_NOTICE << read(0,0).x() << ", " << read(0,0).y() << ", " << read(0,0).z() << ", " << read(0,0).w() << std::endl;
-            OE_NOTICE << read(1,0).x() << ", " << read(1,0).y() << ", " << read(1,0).z() << ", " << read(1,0).w() << std::endl;
-            OE_NOTICE << read(2,0).x() << ", " << read(2,0).y() << ", " << read(2,0).z() << ", " << read(2,0).w() << std::endl;
-            OE_NOTICE << read(3,0).x() << ", " << read(3,0).y() << ", " << read(3,0).z() << ", " << read(3,0).w() << std::endl;
-#endif
             // add the node as a child:
             sliceGroup->addChild( currentNode );
 

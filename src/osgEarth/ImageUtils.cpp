@@ -771,6 +771,15 @@ ImageUtils::isCompressed(const osg::Image *image)
     }
 }
 
+
+bool
+ImageUtils::isFloatingPointInternalFormat(GLint i)
+{
+    return 
+        (i >= 0x8C10 && i <= 0x8C17) || // GL_TEXTURE_RED_TYPE_ARB, et al
+        (i >= 0x8814 && i <= 0x881F);   // GL_RGBA32F_ARB, et al
+}
+
 //------------------------------------------------------------------------
 
 namespace

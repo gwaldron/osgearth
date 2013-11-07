@@ -16,7 +16,7 @@
 * You should have received a copy of the GNU Lesser General Public License
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
-#include "SerialKeyNodeFactory"
+#include "SingleKeyNodeFactory"
 #include "DynamicLODScaleCallback"
 #include "FileLocationCallback"
 #include "TilePagedLOD"
@@ -34,7 +34,7 @@ using namespace osgEarth_engine_mp;
 using namespace osgEarth;
 using namespace OpenThreads;
 
-#define LC "[SerialKeyNodeFactory] "
+#define LC "[SingleKeyNodeFactory] "
 
 namespace
 {
@@ -80,7 +80,7 @@ namespace
 }
 
 
-SerialKeyNodeFactory::SerialKeyNodeFactory(const Map*                    map,
+SingleKeyNodeFactory::SingleKeyNodeFactory(const Map*                    map,
                                            TileModelFactory*             modelFactory,
                                            TileModelCompiler*            modelCompiler,
                                            TileNodeRegistry*             liveTiles,
@@ -102,7 +102,7 @@ _engineUID       ( engineUID )
 
 
 osg::Node*
-SerialKeyNodeFactory::createTile(TileModel* model, bool setupChildrenIfNecessary)
+SingleKeyNodeFactory::createTile(TileModel* model, bool setupChildrenIfNecessary)
 {
     // compile the model into a node:
     TileNode* tileNode = _modelCompiler->compile( model, _frame );
@@ -166,7 +166,7 @@ SerialKeyNodeFactory::createTile(TileModel* model, bool setupChildrenIfNecessary
 
 
 osg::Node*
-SerialKeyNodeFactory::createRootNode( const TileKey& key )
+SingleKeyNodeFactory::createRootNode( const TileKey& key )
 {
     osg::ref_ptr<TileModel> model;
 
@@ -178,7 +178,7 @@ SerialKeyNodeFactory::createRootNode( const TileKey& key )
 
 
 osg::Node*
-SerialKeyNodeFactory::createNode(const TileKey&    key, 
+SingleKeyNodeFactory::createNode(const TileKey&    key, 
                                  bool              setupChildren,
                                  ProgressCallback* progress )
 {

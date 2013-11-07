@@ -16,8 +16,8 @@
 * You should have received a copy of the GNU Lesser General Public License
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
-#ifndef OSGEARTH_ENGINE_MP_SERIAL_KEY_NODE_FACTORY
-#define OSGEARTH_ENGINE_MP_SERIAL_KEY_NODE_FACTORY 1
+#ifndef OSGEARTH_ENGINE_MP_SINGLE_KEY_NODE_FACTORY
+#define OSGEARTH_ENGINE_MP_SINGLE_KEY_NODE_FACTORY 1
 
 #include "Common"
 #include "KeyNodeFactory"
@@ -32,10 +32,10 @@ using namespace osgEarth::Drivers;
 
 namespace osgEarth_engine_mp
 {
-    class SerialKeyNodeFactory : public KeyNodeFactory
+    class SingleKeyNodeFactory : public KeyNodeFactory
     {
     public:
-        SerialKeyNodeFactory(
+        SingleKeyNodeFactory(
             const Map*                          map,
             TileModelFactory*                   modelFactory,
             TileModelCompiler*                  modelCompiler,
@@ -46,7 +46,7 @@ namespace osgEarth_engine_mp
             UID                                 engineUID );
 
         /** dtor */
-        virtual ~SerialKeyNodeFactory() { }
+        virtual ~SingleKeyNodeFactory() { }
 
 
     public: // KeyNodeFactory
@@ -81,4 +81,4 @@ namespace osgEarth_engine_mp
 
 } // namespace osgEarth_engine_mp
 
-#endif // OSGEARTH_ENGINE_MP_SERIAL_KEY_NODE_FACTORY
+#endif // OSGEARTH_ENGINE_MP_SINGLE_KEY_NODE_FACTORY

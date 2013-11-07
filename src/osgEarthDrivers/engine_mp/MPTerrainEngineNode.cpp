@@ -17,7 +17,7 @@
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
 #include "MPTerrainEngineNode"
-#include "SerialKeyNodeFactory"
+#include "SingleKeyNodeFactory"
 #include "TerrainNode"
 #include "TileGroup"
 #include "TileModelFactory"
@@ -409,7 +409,7 @@ MPTerrainEngineNode::getKeyNodeFactory()
             _terrainOptions );
 
         // initialize a key node factory.
-        knf = new SerialKeyNodeFactory(
+        knf = new SingleKeyNodeFactory(
             getMap(),
             _tileModelFactory.get(),
             compiler,

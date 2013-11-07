@@ -9,7 +9,6 @@ SET(LIB_NAME osgEarthUtil)
 SET(HEADER_PATH ${OSGEARTH_SOURCE_DIR}/include/${LIB_NAME})
 
 SET(HEADERS_ROOT
-    AlphaEffect
     AnnotationEvents
     AutoClipPlaneHandler
     ArcGIS
@@ -64,7 +63,6 @@ SOURCE_GROUP( Headers FILES ${HEADERS_ROOT} )
 
 
 SET(SOURCES_ROOT
-    AlphaEffect.cpp
     AnnotationEvents.cpp
     ArcGIS.cpp
     AutoClipPlaneHandler.cpp

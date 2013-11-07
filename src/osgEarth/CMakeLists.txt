@@ -21,6 +21,7 @@ SET(LIB_NAME osgEarth)
 
 SET(HEADER_PATH ${OSGEARTH_SOURCE_DIR}/include/${LIB_NAME})
 SET(LIB_PUBLIC_HEADERS
+    AlphaEffect
     AutoScale
     Bounds
     Cache
@@ -157,6 +158,7 @@ ADD_LIBRARY(${LIB_NAME} ${OSGEARTH_USER_DEFINED_DYNAMIC_OR_STATIC}
     ${LIB_PUBLIC_HEADERS}
     ${TINYXML_SRC}
     ${VERSION_GIT_SOURCE}
+    AlphaEffect.cpp
     AutoScale.cpp
     Bounds.cpp
     Cache.cpp

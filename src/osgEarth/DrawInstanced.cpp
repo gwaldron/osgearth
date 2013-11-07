@@ -28,13 +28,15 @@
 #include <osg/MatrixTransform>
 #include <osgUtil/MeshOptimizers>
 
+#define LC "[DrawInstanced] "
+
 using namespace osgEarth;
 using namespace osgEarth::DrawInstanced;
 
 // Ref: http://sol.gfxile.net/instancing.html
 
 #define POSTEX_TEXTURE_UNIT 5
-#define POSTEX_TEXTURE_SIZE 256
+#define POSTEX_MAX_TEXTURE_SIZE 256
 
 //----------------------------------------------------------------------
 
@@ -51,6 +53,48 @@ namespace
         StaticBoundingBox( const osg::BoundingBox& bbox ) : _bbox(bbox) { }
         osg::BoundingBox computeBound(const osg::Drawable&) const { return _bbox; }
     };
+
+    // assume x is positive
+    int nextPowerOf2(int x)
+    {
+        --x;
+        x |= x >> 1;
+        x |= x >> 2;
+        x |= x >> 4;
+        x |= x >> 8;
+        x |= x >> 16;
+        return x+1;
+    }
+
+    osg::Vec2f calculateIdealTextureSize(unsigned numMats, unsigned maxNumVec4sPerSpan)
+    {
+        unsigned numVec4s = 4 * numMats;
+
+        bool npotOK = false; //Registry::capabilities().supportsNonPowerOfTwoTextures();
+        if ( npotOK )
+        {
+            unsigned cols = std::min(numVec4s, maxNumVec4sPerSpan);
+            unsigned rows = 
+                cols < maxNumVec4sPerSpan ? 1 : 
+                numVec4s % cols == 0 ? numVec4s / cols :
+                1 + (numVec4s / cols);
+            return osg::Vec2f( (float)cols, (float)rows );
+        }
+        else
+        {
+            // start with a square:
+            int x = (int)ceil(sqrt((float)numVec4s));
+
+            // round the x dimension up to a power of 2:
+            x = nextPowerOf2( x );
+
+            // recalculate the necessary rows, given the new column count:
+            int y = numVec4s % x == 0 ? numVec4s/x : 1 + (numVec4s/x);
+            y = nextPowerOf2( y );
+
+            return osg::Vec2f((float)x, (float)y);
+        }
+    }
 }
 
 //----------------------------------------------------------------------
@@ -59,10 +103,12 @@ namespace
 ConvertToDrawInstanced::ConvertToDrawInstanced(unsigned                numInstances,
                                                const osg::BoundingBox& bbox,
                                                bool                    optimize ) :
-osg::NodeVisitor ( osg::NodeVisitor::TRAVERSE_ALL_CHILDREN ),
 _numInstances    ( numInstances ),
 _optimize        ( optimize )
 {
+    setTraversalMode( TRAVERSE_ALL_CHILDREN );
+    setNodeMaskOverride( ~0 );
+
     _staticBBoxCallback = new StaticBoundingBox(bbox);
 }
 
@@ -77,7 +123,6 @@ ConvertToDrawInstanced::apply( osg::Geode& geode )
         {
             if ( _optimize )
             {
-                // convert to triangles
                 osgUtil::IndexMeshVisitor imv;
                 imv.makeMesh( *geom );
 
@@ -109,7 +154,6 @@ DrawInstanced::install(osg::StateSet* stateset)
 
     // simple vertex program to position a vertex based on its instance
     // matrix, which is stored in a texture.
-#if 1
     std::string src_vert = Stringify()
         << "#version 120 \n"
         << "#extension GL_EXT_gpu_shader4 : enable \n"
@@ -126,27 +170,8 @@ DrawInstanced::install(osg::StateSet* stateset)
         << "    vec4 m1 = texture2D(oe_di_postex, vec2(s+step, t)); \n"
         << "    vec4 m2 = texture2D(oe_di_postex, vec2(s+step+step, t)); \n"
         << "    vec4 m3 = texture2D(oe_di_postex, vec2(s+step+step+step, t)); \n"
-        << "    VertexMODEL = VertexMODEL * mat4(m0, m1, m2, m3); \n" // ???
+        << "    VertexMODEL = VertexMODEL * mat4(m0, m1, m2, m3); \n" // why???
         << "} \n";
-#else
-    std::string src_vert = Stringify()
-        << "#version 120 \n"
-        << "#extension GL_EXT_gpu_shader4 : enable \n"
-        << "uniform sampler2D oe_di_postex; \n"
-        << "uniform float oe_di_postex_size; \n"
-        << "void oe_di_setInstancePosition(inout vec4 VertexMODEL) \n"
-        << "{ \n"
-        << "    int x = gl_InstanceID * 4; \n"
-        << "    int y = int(float(x) / oe_di_postex_size); \n"
-        << "    int f = int(oe_di_postex_size)-1; \n"
-        << "    float scale = 1.0 / oe_di_postex_size; \n"
-        << "    mat4 m = mat4(texture2D(oe_di_postex, vec2((x+0)&f,y) * scale), \n"
-        << "                  texture2D(oe_di_postex, vec2((x+1)&f,y) * scale), \n"
-        << "                  texture2D(oe_di_postex, vec2((x+2)&f,y) * scale), \n"
-        << "                  texture2D(oe_di_postex, vec2((x+3)&f,y) * scale)); \n"
-        << "    VertexMODEL = VertexMODEL * m; \n"
-        << "} \n";
-#endif
 
     VirtualProgram* vp = VirtualProgram::getOrCreate(stateset);
 
@@ -155,9 +180,7 @@ DrawInstanced::install(osg::StateSet* stateset)
         src_vert,
         ShaderComp::LOCATION_VERTEX_MODEL );
 
-
     stateset->getOrCreateUniform("oe_di_postex", osg::Uniform::SAMPLER_2D)->set(POSTEX_TEXTURE_UNIT);
-    stateset->getOrCreateUniform("oe_di_postex_size", osg::Uniform::FLOAT)->set((float)POSTEX_TEXTURE_SIZE);
 }
 
 
@@ -206,8 +229,8 @@ DrawInstanced::convertGraphToUseDrawInstanced( osg::Group* parent )
     parent->removeChildren(0, parent->getNumChildren());
 
     // maximum size of a slice.
-    unsigned texSize      = POSTEX_TEXTURE_SIZE;
-    unsigned maxSliceSize = (texSize*texSize)/4; // 4 vec4s per matrix.
+    unsigned maxTexSize   = POSTEX_MAX_TEXTURE_SIZE;
+    unsigned maxSliceSize = (maxTexSize*maxTexSize)/4; // 4 vec4s per matrix.
 
     // For each model:
     for( ModelNodeMatrices::iterator i = models.begin(); i != models.end(); ++i )
@@ -275,9 +298,13 @@ DrawInstanced::convertGraphToUseDrawInstanced( osg::Group* parent )
             // this group is simply a container for the uniform:
             osg::Group* sliceGroup = new osg::Group();
 
+            // calculate the ideal texture size for this slice:
+            osg::Vec2f texSize = calculateIdealTextureSize(currentSize, maxTexSize);
+            OE_DEBUG << LC << "size = " << currentSize << ", tex = " << texSize.x() << ", " << texSize.y() << std::endl;
+
             // sampler that will hold the instance matrices:
             osg::Image* image = new osg::Image();
-            image->allocateImage( texSize, texSize, 1, GL_RGBA, GL_FLOAT );
+            image->allocateImage( (int)texSize.x(), (int)texSize.y(), 1, GL_RGBA, GL_FLOAT );
 
             osg::Texture2D* postex = new osg::Texture2D( image );
             postex->setInternalFormat( GL_RGBA16F_ARB );
@@ -285,25 +312,22 @@ DrawInstanced::convertGraphToUseDrawInstanced( osg::Group* parent )
             postex->setFilter( osg::Texture::MAG_FILTER, osg::Texture::NEAREST );
             postex->setWrap( osg::Texture::WRAP_S, osg::Texture::CLAMP );
             postex->setWrap( osg::Texture::WRAP_T, osg::Texture::CLAMP );
+            postex->setUnRefImageDataAfterApply( true );
+            if ( !ImageUtils::isPowerOfTwo(image) )
+                postex->setResizeNonPowerOfTwoHint( false );
 
-            sliceGroup->getOrCreateStateSet()->setTextureAttributeAndModes(POSTEX_TEXTURE_UNIT, postex, 1);
+            osg::StateSet* stateset = sliceGroup->getOrCreateStateSet();
+            stateset->setTextureAttributeAndModes(POSTEX_TEXTURE_UNIT, postex, 1);
+            stateset->getOrCreateUniform("oe_di_postex_size", osg::Uniform::FLOAT)->set((float)texSize.x());
 
-            ImageUtils::PixelWriter write(image);
-
-            int matsPerRow = texSize/4;
-
+            // could use PixelWriter but we know the format.
+            GLfloat* ptr = reinterpret_cast<GLfloat*>( image->data() );
             for(unsigned m=0; m<currentSize; ++m)
             {
-                int s = (m % matsPerRow) * 4;
-                int t = m / matsPerRow;
-
                 const osg::Matrixf& mat = matrices[offset + m];
-
-                //write 4 columns.
-                write( osg::Vec4(mat(0,0), mat(1,0), mat(2,0), mat(3,0)), s,   t );
-                write( osg::Vec4(mat(0,1), mat(1,1), mat(2,1), mat(3,1)), s+1, t );
-                write( osg::Vec4(mat(0,2), mat(1,2), mat(2,2), mat(3,2)), s+2, t );
-                write( osg::Vec4(mat(0,3), mat(1,3), mat(2,3), mat(3,3)), s+3, t );
+                for(int col=0; col<4; ++col)
+                    for(int row=0; row<4; ++row)
+                        *ptr++ = mat(row,col);
             }
 
             // add the node as a child:

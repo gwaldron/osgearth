@@ -16,20 +16,20 @@
 * You should have received a copy of the GNU Lesser General Public License
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
-#ifndef OSGEARTHUTIL_ALPHA_EFFECT_H
-#define OSGEARTHUTIL_ALPHA_EFFECT_H
+#ifndef OSGEARTH_ALPHA_EFFECT_H
+#define OSGEARTH_ALPHA_EFFECT_H
 
-#include <osgEarthUtil/Common>
+#include <osgEarth/Common>
 #include <osg/StateSet>
 #include <osg/Uniform>
 #include <osg/observer_ptr>
 
-namespace osgEarth { namespace Util
+namespace osgEarth
 {
     /**
      * Shader effect that lets you adjust the alpha channel.
      */
-    class OSGEARTHUTIL_EXPORT AlphaEffect : public osg::Referenced
+    class OSGEARTH_EXPORT AlphaEffect : public osg::Referenced
     {
     public:
         /** constructs a new effect */
@@ -47,19 +47,22 @@ namespace osgEarth { namespace Util
         /** attach this effect to a stateset. */
         void attach(osg::StateSet* stateset);
 
-        /** detach this effect from a stateset. */
+        /** detach this effect from any attached statesets. */
         void detach();
+        /** detach this effect from a stateset. */
+        void detach(osg::StateSet* stateset);
 
     protected:
         virtual ~AlphaEffect();
 
-        osg::observer_ptr<osg::StateSet> _stateset;
+        typedef std::list< osg::observer_ptr<osg::StateSet> > StateSetList;
+
+        StateSetList _statesets;
         osg::ref_ptr<osg::Uniform>       _alphaUniform;
 
         void init();
-        void detach(osg::StateSet*);
     };
 
-} } // namespace osgEarth::Util
+} // namespace osgEarth::Util
 
-#endif // OSGEARTHUTIL_ALPHA_EFFECT_H
+#endif // OSGEARTH_ALPHA_EFFECT_H

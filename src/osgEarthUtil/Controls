@@ -23,7 +23,7 @@
 #include <osgEarth/Common>
 #include <osgEarth/Units>
 #include <osgEarth/StateSetCache>
-#include <osgEarthUtil/AlphaEffect>
+#include <osgEarth/AlphaEffect>
 #include <osg/Drawable>
 #include <osg/Geode>
 #include <osg/MatrixTransform>

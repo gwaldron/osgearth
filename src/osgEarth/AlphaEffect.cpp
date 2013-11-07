@@ -17,13 +17,12 @@
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
 
-#include <osgEarthUtil/AlphaEffect>
+#include <osgEarth/AlphaEffect>
 #include <osgEarth/Registry>
 #include <osgEarth/StringUtils>
 #include <osgEarth/VirtualProgram>
 
 using namespace osgEarth;
-using namespace osgEarth::Util;
 
 namespace
 {
@@ -76,11 +75,9 @@ AlphaEffect::getAlpha() const
 void
 AlphaEffect::attach(osg::StateSet* stateset)
 {
-    detach();
-
     if ( stateset )
     {
-        _stateset = stateset;
+        _statesets.push_back(stateset);
         VirtualProgram* vp = VirtualProgram::getOrCreate(stateset);
         vp->setFunction( "oe_alphaeffect_fragment", fragment, ShaderComp::LOCATION_FRAGMENT_COLORING, 2 );
         stateset->addUniform( _alphaUniform.get() );
@@ -90,12 +87,17 @@ AlphaEffect::attach(osg::StateSet* stateset)
 void
 AlphaEffect::detach()
 {
-    osg::ref_ptr<osg::StateSet> stateset;
-    if ( _stateset.lock(stateset) )
+    for (StateSetList::iterator it = _statesets.begin(); it != _statesets.end(); ++it)
     {
-        detach( stateset );
-        _stateset = 0L;
+        osg::ref_ptr<osg::StateSet> stateset;
+        if ( (*it).lock(stateset) )
+        {
+            detach( stateset );
+            (*it) = 0L;
+        }
     }
+
+    _statesets.clear();
 }
 
 void

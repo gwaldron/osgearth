@@ -191,10 +191,16 @@ namespace
 
 //------------------------------------------------------------------------
 
-ShaderGenerator::ShaderGenerator() :
-osg::NodeVisitor( osg::NodeVisitor::TRAVERSE_ALL_CHILDREN ),
-_name( "osgEarth.ShaderGenerator" )
+ShaderGenerator::ShaderGenerator()
 {
+    // find everything regardless of node masking
+    setTraversalMode( TRAVERSE_ALL_CHILDREN );
+    setNodeMaskOverride( ~0 );
+
+    // set a default program name:
+    setProgramName( "osgEarth.ShaderGenerator" );
+
+    // make sure we support shaders:
     _active = Registry::capabilities().supportsGLSL();
     if ( _active )
     {

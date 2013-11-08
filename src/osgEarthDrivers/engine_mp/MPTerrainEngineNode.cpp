@@ -712,6 +712,7 @@ MPTerrainEngineNode::updateShaders()
             << (useTerrainColor ?
             "    color = oe_terrain_color; \n" : ""
             ) <<
+            //"    color = vec4(1,1,1,1); \n"
             "    vec4 texel; \n"
             "    if ( oe_layer_uid >= 0 ) { \n"
             "        texel = texture2D(oe_layer_tex, oe_layer_texc.st); \n"

@@ -138,6 +138,9 @@ MPGeometry::renderPrimitiveSets(osg::State& state,
     // activate the tile coordinate set - same for all layers
     state.setTexCoordPointer( _imageUnit+1, _tileCoords.get() );
 
+    // emit a default terrain color since we're not binding a color array:
+    glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
+
     if ( _layers.size() > 0 )
     {
         float prev_opacity        = -1.0f;

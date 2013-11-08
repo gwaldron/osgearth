@@ -560,6 +560,7 @@ BuildGeometryFilter::push( FeatureList& input, FilterContext& context )
             {
                 osgUtil::Optimizer o;
                 o.optimize( geode.get(), 
+                    osgUtil::Optimizer::MERGE_GEOMETRY |
                     osgUtil::Optimizer::VERTEX_PRETRANSFORM |
                     osgUtil::Optimizer::INDEX_MESH |
                     osgUtil::Optimizer::VERTEX_POSTTRANSFORM );
@@ -579,6 +580,7 @@ BuildGeometryFilter::push( FeatureList& input, FilterContext& context )
             {
                 osgUtil::Optimizer o;
                 o.optimize( geode.get(), 
+                    osgUtil::Optimizer::MERGE_GEOMETRY |
                     osgUtil::Optimizer::VERTEX_PRETRANSFORM |
                     osgUtil::Optimizer::INDEX_MESH |
                     osgUtil::Optimizer::VERTEX_POSTTRANSFORM );
@@ -593,6 +595,12 @@ BuildGeometryFilter::push( FeatureList& input, FilterContext& context )
         osg::ref_ptr<osg::Geode> geode = processLines(lines, context);
         if ( geode->getNumDrawables() > 0 )
         {
+            if ( !context.featureIndex() )
+            {
+                osgUtil::Optimizer o;
+                o.optimize( geode.get(), 
+                    osgUtil::Optimizer::MERGE_GEOMETRY );
+            }
             applyLineSymbology( geode->getOrCreateStateSet(), line );
             result->addChild( geode.get() );
         }
@@ -604,6 +612,12 @@ BuildGeometryFilter::push( FeatureList& input, FilterContext& context )
         osg::ref_ptr<osg::Geode> geode = processPoints(points, context);
         if ( geode->getNumDrawables() > 0 )
         {
+            if ( !context.featureIndex() )
+            {
+                osgUtil::Optimizer o;
+                o.optimize( geode.get(), 
+                    osgUtil::Optimizer::MERGE_GEOMETRY );
+            }
             applyPointSymbology( geode->getOrCreateStateSet(), point );
             result->addChild( geode.get() );
         }

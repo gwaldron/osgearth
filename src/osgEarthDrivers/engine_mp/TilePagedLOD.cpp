@@ -180,7 +180,12 @@ namespace
         TileNodeRegistry* _dead;
 
         ExpirationCollector(TileNodeRegistry* live, TileNodeRegistry* dead)
-            : osg::NodeVisitor(TRAVERSE_ALL_CHILDREN), _live(live), _dead(dead) { }
+            : _live(live), _dead(dead)
+        {
+            // set up to traverse the entire subgraph, ignoring node masks.
+            setTraversalMode( TRAVERSE_ALL_CHILDREN );
+            setNodeMaskOverride( ~0 );
+        }
 
         void apply(osg::Node& node)
         {

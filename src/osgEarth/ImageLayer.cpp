@@ -507,6 +507,12 @@ ImageLayer::createImageInKeyProfile( const TileKey& key, ProgressCallback* progr
         return GeoImage::INVALID;
     }
 
+    // Check the max data level, which limits the LOD of available data.
+    if ( _runtimeOptions.maxDataLevel().isSet() && key.getLOD() > _runtimeOptions.maxDataLevel().value() )
+    {
+        return GeoImage::INVALID;
+    }
+
     // Check for a "Minumum level" setting on this layer. If we are before the
     // min level, just return the empty image. Do not cache empties
     if ( _runtimeOptions.minLevel().isSet() && key.getLOD() < _runtimeOptions.minLevel().value() )

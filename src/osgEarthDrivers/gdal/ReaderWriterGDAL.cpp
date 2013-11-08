@@ -1073,9 +1073,9 @@ public:
 
         OE_INFO << LC << "Resolution= " << resolutionX << "x" << resolutionY << " max=" << maxResolution << std::endl;
 
-        if (_options.maxDataLevel().isSet())
+        if (_options.maxDataLevelOverride().isSet())
         {
-            _maxDataLevel = _options.maxDataLevel().value();
+            _maxDataLevel = _options.maxDataLevelOverride().value();
             OE_INFO << _options.url().value().full() << " using override max data level " << _maxDataLevel << std::endl;
         }
         else

@@ -155,19 +155,82 @@ TilePagedLOD::traverse(osg::NodeVisitor& nv)
             this->getNumFileNames() < 2 && 
             tilenode->isOutOfDate() )
         {
-            // lock keeps multiple CullVisitors from doing the same thing
+            // lock keeps multiple traversals from doing the same thing
             Threading::ScopedMutexLock exclusive( _updateMutex );
 
             if ( this->getNumFileNames() < 2 ) // double-check pattern
             {
-                //OE_WARN << LC << "Queuing request for replacement: " << _container->getTileNode()->getKey().str() << std::endl;
+                //OE_DEBUG << LC << "Queuing request for replacement: " << _container->getTileNode()->getKey().str() << std::endl;
                 this->setFileName( 1, Stringify() << _prefix << ".osgearth_engine_mp_standalone_tile" );
                 this->setRange( 1, 0, FLT_MAX );
             }
         }
     }
 
-    osg::PagedLOD::traverse( nv );
+    // here on down is a stripped down variation of osg::PagedLOD::traverse, 
+    // specialized for this application.
+    double   timeStamp       = nv.getFrameStamp() ? nv.getFrameStamp()->getReferenceTime() : 0.0;
+    unsigned frameNumber     = nv.getFrameStamp() ? nv.getFrameStamp()->getFrameNumber()   : 0;
+    bool     updateTimeStamp = nv.getVisitorType() == nv.CULL_VISITOR;
+
+    // update the frame number, which keeps this node from expiring.
+    if ( nv.getFrameStamp() && nv.getVisitorType() == nv.CULL_VISITOR )
+    {
+        setFrameNumberOfLastTraversal( frameNumber );
+    }
+
+    switch( nv.getTraversalMode() )
+    {
+    // handle intersections, GL compilations, update traversals, etc.
+    case( nv.TRAVERSE_ALL_CHILDREN ):
+        std::for_each( _children.begin(), _children.end(), osg::NodeAcceptOp(nv));
+        break;
+
+    // handle culling, etc.
+    case( nv.TRAVERSE_ACTIVE_CHILDREN ):
+
+        // distance from tile to view point:
+        float range = nv.getDistanceToViewPoint( getCenter(), true );
+
+        // update all requestor timestamps:
+        for(unsigned i=0; i<_perRangeDataList.size(); ++i)
+        {
+            if ( updateTimeStamp )
+            {
+                _perRangeDataList[i]._timeStamp   = timeStamp;
+                _perRangeDataList[i]._frameNumber = frameNumber;
+            }
+        }
+
+        // traverse the child if it exists:
+        if ( _children.size() > 0 )
+        {
+            _children[0]->accept( nv );
+        }
+
+        // if there are any outstanding requests, service them:
+        if ( _children.size() < getNumFileNames() )
+        {
+            osg::NodeVisitor::DatabaseRequestHandler* drh = nv.getDatabaseRequestHandler();
+
+            // calculate pager priority exactly as OSG would:
+            float subtileRange = _tilegroup->getSubtileRange();
+            float priority     = (subtileRange - range) / subtileRange;
+
+            // index = 0 to load the initial child; index = 1 to load an in-place update.
+            int index = _children.size();
+
+            drh->requestNodeFile(
+                _perRangeDataList[index]._filename, 
+                nv.getNodePath(), 
+                priority,
+                nv.getFrameStamp(), 
+                _perRangeDataList[index]._databaseRequest, 
+                _databaseOptions.get() );
+        }
+
+        break;
+    }
 }
 
 namespace
@@ -180,7 +243,12 @@ namespace
         TileNodeRegistry* _dead;
 
         ExpirationCollector(TileNodeRegistry* live, TileNodeRegistry* dead)
-            : osg::NodeVisitor(TRAVERSE_ALL_CHILDREN), _live(live), _dead(dead) { }
+            : _live(live), _dead(dead)
+        {
+            // set up to traverse the entire subgraph, ignoring node masks.
+            setTraversalMode( TRAVERSE_ALL_CHILDREN );
+            setNodeMaskOverride( ~0 );
+        }
 
         void apply(osg::Node& node)
         {

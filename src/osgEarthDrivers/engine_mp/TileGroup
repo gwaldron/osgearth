@@ -48,6 +48,7 @@ namespace osgEarth_engine_mp
 
         /** Range at which subtiles should start paging in. */
         void setSubtileRange(float range);
+        float getSubtileRange() const { return _subtileRange; }
 
         /** Sets the tile group to continue subdividing even if all children are upsampled. */
         void setForceSubdivide(bool value);

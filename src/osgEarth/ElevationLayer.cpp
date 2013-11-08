@@ -395,6 +395,12 @@ ElevationLayer::createHeightField(const TileKey&    key,
         return GeoHeightField::INVALID;
     }
 
+    // Check the max data level, which limits the LOD of available data.
+    if ( _runtimeOptions.maxDataLevel().isSet() && key.getLOD() > _runtimeOptions.maxDataLevel().value() )
+    {
+        return GeoHeightField::INVALID;
+    }
+
     CacheBin* cacheBin = getCacheBin( key.getProfile() );
 
     // validate that we have either a valid tile source, or we're cache-only.

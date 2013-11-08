@@ -107,6 +107,20 @@ namespace osgEarth
         optional<bool>& featherPixels() { return _featherPixels; }
         const optional<bool>& featherPixels() const { return _featherPixels; }
 
+        /**
+         * The minification filter to be applied to textures. This is the interpolation
+         * mechanism to use when the texture uses fewer screen pixels than are available.
+         */
+        optional<osg::Texture::FilterMode>& minFilter() { return _minFilter; }
+        const optional<osg::Texture::FilterMode>& minFilter() const { return _minFilter; }
+
+        /**
+         * The magnification filter to be applied to textures. This is the interpolation
+         * mechanism to use when the texture uses more screen pixels than are available.
+         */
+        optional<osg::Texture::FilterMode>& magFilter() { return _magFilter; }
+        const optional<osg::Texture::FilterMode>& magFilter() const { return _magFilter; }
+
     public:
 
         virtual Config getConfig() const { return getConfig(false); }
@@ -126,6 +140,8 @@ namespace osgEarth
         ColorFilterChain      _colorFilters;
         optional<bool>        _shared;
         optional<bool>        _featherPixels;
+        optional<osg::Texture::FilterMode> _minFilter;
+        optional<osg::Texture::FilterMode> _magFilter;
     };
 
     //--------------------------------------------------------------------

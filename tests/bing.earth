@@ -12,11 +12,8 @@ Supported imagery sets are Aerial, AerialWithLabels, and Road.
 
 <map>
     <options>
-        <elevation_tile_size>5</elevation_tile_size>
-        
-        <terrain lighting       ="false"
-                 range_mode     ="PIXEL_SIZE_ON_SCREEN"
-                 first_lod      ="1"/>
+        <elevation_tile_size>5</elevation_tile_size>        
+        <terrain lighting="false" first_lod="1"/>
     </options>
     
     <image driver="bing">

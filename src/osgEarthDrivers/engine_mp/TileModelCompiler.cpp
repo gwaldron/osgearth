@@ -146,9 +146,9 @@ namespace
         osg::ref_ptr<GeoLocator> geoLocator;                    // tile locator adjusted to geographic
         osg::Vec3d               centerModel;                   // tile center in model (world) coords
 
-        RenderLayerVector        renderLayers;
-        osg::Vec2Array*          renderTileCoords;
-        bool                     ownsTileCoords;
+        RenderLayerVector            renderLayers;
+        osg::ref_ptr<osg::Vec2Array> renderTileCoords;
+        bool                         ownsTileCoords;
 
         // tile coords for masked areas; always owned (never shared)
         osg::ref_ptr<osg::Vec2Array> stitchTileCoords;
@@ -277,7 +277,7 @@ namespace
      * Calculates the sample rate and allocates all the vertex, normal, and color
      * arrays for the tile.
      */
-    void setupGeometryAttributes( Data& d, double sampleRatio ) //, const osg::Vec4& color )
+    void setupGeometryAttributes( Data& d, double sampleRatio )
     {
         d.numRows = 8;
         d.numCols = 8;
@@ -286,11 +286,10 @@ namespace
 
         // read the row/column count and skirt size from the model:
         osg::HeightField* hf = d.model->_elevationData.getHeightField();
-        //osgTerrain::HeightFieldLayer* hflayer = d.model->_elevationData.getHFLayer();
-        if ( hf ) //hflayer)
+        if ( hf )
         {
-            d.numCols = hf->getNumColumns(); //hflayer->getNumColumns();
-            d.numRows = hf->getNumRows(); //hflayer->getNumRows();         
+            d.numCols = hf->getNumColumns();
+            d.numRows = hf->getNumRows();
             d.originalNumCols = d.numCols;
             d.originalNumRows = d.numRows;
         }
@@ -1693,7 +1692,7 @@ namespace
         for ( MaskRecordVector::iterator mr = d.maskRecords.begin(); mr != d.maskRecords.end(); ++mr )
             mr->_geom->_layers.resize( size );
         
-        if ( d.renderTileCoords )
+        if ( d.renderTileCoords.valid() )
             d.surface->_tileCoords = d.renderTileCoords;
             
         // TODO: evaluate this suspicious code. -gw
@@ -1755,14 +1754,19 @@ namespace
         // For vertex cache optimization to work, all the arrays must be in
         // the geometry. MP doesn't store texture/tile coords in the geometry
         // so we need to temporarily add them.
+        osg::Geometry::ArrayDataList& tdl = d.surface->getTexCoordArrayList();
         int u=0;
         for( RenderLayerVector::const_iterator r = d.renderLayers.begin(); r != d.renderLayers.end(); ++r )
         {
             if ( r->_ownsTexCoords && r->_texCoords.valid() )
-                d.surface->setTexCoordArray(u++, r->_texCoords.get() );
+            {
+                tdl.push_back( osg::Geometry::ArrayData(r->_texCoords.get(), osg::Geometry::BIND_PER_VERTEX) );
+            }
         }
-        if ( d.renderTileCoords )
-            d.surface->setTexCoordArray(u++, d.renderTileCoords);
+        if ( d.renderTileCoords.valid() && d.ownsTileCoords )
+        {
+            tdl.push_back( osg::Geometry::ArrayData(d.renderTileCoords.get(), osg::Geometry::BIND_PER_VERTEX) );
+        }
 
         osgUtil::Optimizer o;
         o.optimize( d.surfaceGeode, 
@@ -1770,7 +1774,7 @@ namespace
             osgUtil::Optimizer::INDEX_MESH |
             osgUtil::Optimizer::VERTEX_POSTTRANSFORM );
 
-        d.surface->getTexCoordArrayList().clear();
+        tdl.clear();
     }
 
 

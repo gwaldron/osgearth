@@ -20,9 +20,6 @@ TIP: set your OSG_NUM_HTTP_DATABASE_THREADS to 4 or more!
     
     <options>
         <lighting>false</lighting>
-        <terrain>
-            <min_tile_range_factor>9</min_tile_range_factor>
-        </terrain>
     </options>
     
 </map>

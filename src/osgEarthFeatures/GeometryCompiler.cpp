@@ -491,6 +491,8 @@ GeometryCompiler::compile(FeatureList&          workingSet,
 
     // Optimize stateset sharing.
     sscache->optimize( resultGroup.get() );
+
+    //OE_NOTICE << LC << "State Set Cache size = " << sscache->size() << std::endl;
     
     // todo: this helps a lot, but is currently broken for non-triangle
     // geometries. (gw, 12-17-2012)

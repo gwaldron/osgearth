@@ -22,7 +22,6 @@
 #include <osgEarthUtil/Common>
 #include <osgEarth/Common>
 #include <osgEarth/Units>
-#include <osgEarth/StateSetCache>
 #include <osgEarth/AlphaEffect>
 #include <osg/Drawable>
 #include <osg/Geode>
@@ -877,8 +876,6 @@ namespace osgEarth { namespace Util { namespace Controls
         bool            _contextDirty;
         bool            _updatePending;
         
-        osg::ref_ptr<StateSetCache> _stateSetCache;
-
         typedef std::map< osg::observer_ptr<osgGA::GUIEventHandler>, osg::observer_ptr<osgViewer::View> > EventHandlersMap;
         EventHandlersMap _eventHandlersMap;
 

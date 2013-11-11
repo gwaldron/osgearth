@@ -157,12 +157,6 @@ public:
                 // Deal with failed loads.
                 if ( !node.valid() )
                 {
-                    //if ( progress == 0L || !progress->isCanceled() )
-                    //{
-                    //    OE_INFO << LC << "Blacklisting " << uri << std::endl;
-                    //    osgEarth::Registry::instance()->blacklist( uri );
-                    //}
-
                     if ( key.getLOD() == 0 || (progress && progress->isCanceled()) )
                     {
                         // the tile will ask again next time.

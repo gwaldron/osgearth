@@ -34,10 +34,6 @@ namespace osgEarth_engine_mp
     class KeyNodeFactory : public osg::Referenced
     {
     public:
-        /**
-        * Creates a node for a tile key at the root level.
-        */
-        virtual osg::Node* createRootNode( const TileKey& key ) =0;
 
         /**
         * Creates a node for a tile key.

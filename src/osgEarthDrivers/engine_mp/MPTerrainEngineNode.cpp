@@ -19,9 +19,9 @@
 #include "MPTerrainEngineNode"
 #include "SerialKeyNodeFactory"
 #include "TerrainNode"
-#include "TileGroup"
 #include "TileModelFactory"
 #include "TileModelCompiler"
+#include "TilePagedLOD"
 
 #include <osgEarth/HeightFieldUtils>
 #include <osgEarth/ImageUtils>
@@ -334,46 +334,49 @@ MPTerrainEngineNode::createTerrain()
     // create a root node for each root tile key.
     OE_INFO << LC << "Creating " << keys.size() << " root keys.." << std::endl;
 
-#if 0
-    RootTileGroup* root = new RootTileGroup();
+    TilePagedLOD* root = new TilePagedLOD( _uid, _liveTiles, _deadTiles );
+    //osg::Group* root = new osg::Group();
     _terrain->addChild( root );
 
     osg::ref_ptr<osgDB::Options> dbOptions = Registry::instance()->cloneOrCreateOptions();
 
+    unsigned child = 0;
     for( unsigned i=0; i<keys.size(); ++i )
     {
-        osg::ref_ptr<osg::Node> node = factory->createRootNode( keys[i] );
-        if ( node.valid() )
-        {
-            root->addRootKey( keys[i], node.get(), _uid, _liveTiles.get(), _deadTiles.get(), dbOptions.get() );
-        }
-        else
-        {
-            OE_WARN << LC << "Couldn't make tile for root key: " << keys[i].str() << std::endl;
-        }
-    }
-#else
-    osg::Group* root = new osg::Group();
-    _terrain->addChild( root );
-
-    osg::ref_ptr<osgDB::Options> dbOptions = Registry::instance()->cloneOrCreateOptions();
-
-    for( unsigned i=0; i<keys.size(); ++i )
-    {
-        osg::ref_ptr<osg::Node> node = factory->createRootNode( keys[i] );
+        osg::ref_ptr<osg::Node> node = factory->createNode( keys[i], true, 0L );
         if ( node.valid() )
         {
             root->addChild( node.get() );
+            root->setRange( child++, 0.0f, FLT_MAX );
+            root->setCenter( node->getBound().center() );
+            root->setNumChildrenThatCannotBeExpired( child );
         }
         else
         {
             OE_WARN << LC << "Couldn't make tile for root key: " << keys[i].str() << std::endl;
         }
     }
-#endif
+
     _rootTilesRegistered = false;
 
     updateShaders();
+}
+
+namespace
+{
+    // debugging
+    struct CheckForOrphans : public TileNodeRegistry::ConstOperation {
+        void operator()( const TileNodeRegistry::TileNodeMap& tiles ) const {
+            unsigned count = 0;
+            for(TileNodeRegistry::TileNodeMap::const_iterator i = tiles.begin(); i != tiles.end(); ++i ) {
+                if ( i->second->referenceCount() == 1 ) {
+                    count++;
+                }
+            }
+            if ( count > 0 )
+                OE_WARN << LC << "Oh no! " << count << " orphaned tiles in the reg" << std::endl;
+        }
+    };
 }
 
 
@@ -404,7 +407,10 @@ MPTerrainEngineNode::traverse(osg::NodeVisitor& nv)
 #if 0
     static int c = 0;
     if ( ++c % 60 == 0 )
-        OE_NOTICE << LC << "Live tiles = " << _liveTiles->size() << std::endl;
+    {
+        OE_NOTICE << LC << "Live = " << _liveTiles->size() << ", Dead = " << _deadTiles->size() << std::endl;
+        _liveTiles->run( CheckForOrphans() );
+    }
 #endif
 
     TerrainEngineNode::traverse( nv );
@@ -428,7 +434,6 @@ MPTerrainEngineNode::getKeyNodeFactory()
             optimizeTriangleOrientation,
             _terrainOptions );
 
-#if 0
         // initialize a key node factory.
         knf = new SerialKeyNodeFactory(
             getMap(),
@@ -439,57 +444,10 @@ MPTerrainEngineNode::getKeyNodeFactory()
             _terrainOptions,
             _terrain, 
             _uid );
-#else
-        // initialize a key node factory.
-        knf = new QuadKeyNodeFactory(
-            getMap(),
-            _tileModelFactory.get(),
-            compiler,
-            _liveTiles.get(),
-            _deadTiles.get(),
-            _terrainOptions,
-            _terrain, 
-            _uid );
-#endif
     }
 
     return knf.get();
 }
-
-
-osg::Node*
-MPTerrainEngineNode::createUpsampledNode(const TileKey&    key,
-                                         ProgressCallback* progress)
-{
-    return 0;
-#if 0
-    // if the engine has been disconnected from the scene graph, bail out and don't
-    // create any more tiles
-    if ( getNumParents() == 0 )
-        return 0L;
-
-    osg::Node* result = 0L;
-
-    // locate the parent tile in the live tile registry.
-    TileKey parentKey = key.createParentKey();
-    osg::ref_ptr<TileNode> parent;
-    if ( _liveTiles->get( parentKey, parent ) )
-    {
-        osg::ref_ptr<TileModel> upsampledModel = parent->getTileModel()->createQuadrant( key.getQuadrant() );
-        if ( upsampledModel.valid() )
-        {
-            result = getKeyNodeFactory()->getCompiler()->compile( upsampledModel, *_update_mapf );
-        }
-    }
-    else
-    {
-        OE_WARN << LC << "createUpsampledNode failed b/c parent key " << parentKey.str() << " not found in reg." << std::endl;
-    }
-
-    return result;
-#endif
-}
-
 
 osg::Node*
 MPTerrainEngineNode::createNode(const TileKey&    key,

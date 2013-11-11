@@ -52,8 +52,6 @@ namespace osgEarth_engine_mp
 
     public: // KeyNodeFactory
 
-        osg::Node* createRootNode( const TileKey& key );
-
         /**
          * Creates a TileNode or TileGroup corresponding to the TileKey.
          *
@@ -64,57 +62,6 @@ namespace osgEarth_engine_mp
          * @param progress      Callback for cancelation and progress reporting
          */
         osg::Node* createNode( const TileKey& key, bool setupChildren, ProgressCallback* progress );
-
-        //TileModelCompiler* getCompiler() const { return _modelCompiler.get(); }
-
-    protected:
-        osg::Node* createTile(TileModel* model, bool setupChildren);
-
-        MapFrame                            _frame;
-        osg::ref_ptr<TileModelFactory>      _modelFactory;
-        osg::ref_ptr<TileModelCompiler>     _modelCompiler;
-        osg::ref_ptr<TileNodeRegistry>      _liveTiles;
-        osg::ref_ptr<TileNodeRegistry>      _deadTiles;
-        const MPTerrainEngineOptions&       _options;
-        osg::ref_ptr< TerrainNode >         _terrain;
-        UID                                 _engineUID;
-    };
-
-
-    
-    class QuadKeyNodeFactory : public KeyNodeFactory
-    {
-    public:
-        QuadKeyNodeFactory(
-            const Map*                          map,
-            TileModelFactory*                   modelFactory,
-            TileModelCompiler*                  modelCompiler,
-            TileNodeRegistry*                   liveTiles,
-            TileNodeRegistry*                   deadTiles,
-            const MPTerrainEngineOptions&       options,
-            TerrainNode*                        terrain,
-            UID                                 engineUID );
-
-        /** dtor */
-        virtual ~QuadKeyNodeFactory() { }
-
-
-    public: // KeyNodeFactory
-
-        osg::Node* createRootNode( const TileKey& key );
-
-        /**
-         * Creates a TileNode or TileGroup corresponding to the TileKey.
-         *
-         * @param key           TileKey for which to create a new node
-         * @param setupChildren When true, build and include the necessary structures to
-         *                      page in subtiles if and when necessary. If false, you just get
-         *                      the tile alone with no paging support.
-         * @param progress      Callback for cancelation and progress reporting
-         */
-        osg::Node* createNode( const TileKey& key, bool setupChildren, ProgressCallback* progress );
-
-        TileModelCompiler* getCompiler() const { return _modelCompiler.get(); }
 
     protected:
         osg::Node* createTile(TileModel* model, bool setupChildren);

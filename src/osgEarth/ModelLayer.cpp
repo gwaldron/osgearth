@@ -198,8 +198,6 @@ ModelLayer::createSceneGraph(const Map*            map,
                 ss->setRenderBinDetails( 99999, "RenderBin" ); //TODO: configure this bin ...
             }
 
-            _alphaEffect->attach( node->getOrCreateStateSet() );
-
 #if 0 // moved the MapNode level.
             if ( Registry::capabilities().supportsGLSL() )
             {
@@ -220,6 +218,7 @@ ModelLayer::createSceneGraph(const Map*            map,
     if ( node ) {
       group = new osg::Group();
       group->addChild(node);
+      _alphaEffect->attach( group->getOrCreateStateSet() );
     }
 
     return group;

@@ -1754,6 +1754,25 @@ namespace
         // For vertex cache optimization to work, all the arrays must be in
         // the geometry. MP doesn't store texture/tile coords in the geometry
         // so we need to temporarily add them.
+
+#if OSG_MIN_VERSION_REQUIRED(3, 1, 8) // after osg::Geometry API changes
+
+        osg::Geometry::ArrayList& tdl = d.surface->getTexCoordArrayList();
+        int u=0;
+        for( RenderLayerVector::const_iterator r = d.renderLayers.begin(); r != d.renderLayers.end(); ++r )
+        {
+            if ( r->_ownsTexCoords && r->_texCoords.valid() )
+            {
+                tdl.push_back( r->_texCoords.get() );
+            }
+        }
+        if ( d.renderTileCoords.valid() && d.ownsTileCoords )
+        {
+            tdl.push_back( d.renderTileCoords.get() );
+        }
+
+#else // OSG version < 3.1.8 (before osg::Geometry API changes)
+
         osg::Geometry::ArrayDataList& tdl = d.surface->getTexCoordArrayList();
         int u=0;
         for( RenderLayerVector::const_iterator r = d.renderLayers.begin(); r != d.renderLayers.end(); ++r )
@@ -1767,6 +1786,8 @@ namespace
         {
             tdl.push_back( osg::Geometry::ArrayData(d.renderTileCoords.get(), osg::Geometry::BIND_PER_VERTEX) );
         }
+
+#endif
 
         osgUtil::Optimizer o;
         o.optimize( d.surfaceGeode, 

@@ -24,11 +24,6 @@
 #include <osgEarth/Registry>
 #include <osgEarth/HeightFieldUtils>
 #include <osgEarth/Progress>
-#include <osg/PagedLOD>
-#include <osg/CullStack>
-#include <osg/Uniform>
-
-#include <osgEarth/MapNode>
 
 using namespace osgEarth_engine_mp;
 using namespace osgEarth;
@@ -163,6 +158,7 @@ SingleKeyNodeFactory::createTile(TileModel* model, bool setupChildrenIfNecessary
 }
 
 
+osg::Node*
 SingleKeyNodeFactory::createNode(const TileKey&    key, 
                                  bool              setupChildren,
                                  ProgressCallback* progress )

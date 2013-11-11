@@ -25,7 +25,7 @@
 #include "TileModelCompiler"
 #include "TileModelFactory"
 #include "TileNodeRegistry"
-#include <osgEarth/MapInfo>
+#include <osgEarth/Map>
 #include <osgEarth/Progress>
 
 using namespace osgEarth;

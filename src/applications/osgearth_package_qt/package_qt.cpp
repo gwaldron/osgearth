@@ -110,6 +110,11 @@ int main(int argc, char** argv)
     mainView->getCamera()->setNearFarRatio(0.00002);
     mainView->addEventHandler( new osgGA::StateSetManipulator(mainView->getCamera()->getOrCreateStateSet()) );
     mainView->addEventHandler( new osgViewer::StatsHandler() );
+
+    osgViewer::Viewer* viewer = dynamic_cast<osgViewer::Viewer*>(mainView.get());
+    if(viewer)
+      viewer->setThreadingModel(osgViewer::ViewerBase::SingleThreaded);
+
   }
 
   //create the SceneController, if no earth file is specified a blank

@@ -1763,7 +1763,7 @@ namespace
         {
             if ( r->_texCoords.valid() && r->_ownsTexCoords )
             {
-                t->_texCoords->setBinding( osg::Array::BIND_PER_VERTEX );
+                r->_texCoords->setBinding( osg::Array::BIND_PER_VERTEX );
                 tdl.push_back( r->_texCoords.get() );
             }
         }

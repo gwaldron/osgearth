@@ -88,11 +88,12 @@ namespace osgEarth { namespace Drivers
         optional<ElevationInterpolation>& interpolation() { return _interpolation; }
         const optional<ElevationInterpolation>& interpolation() const { return _interpolation; }
 
-        /*
-         * Maximum level of detail of available data
+        /**
+         * Tells the driver to always generate data to this level even if it means
+         * upsampling
          */
-        optional<unsigned int>& maxDataLevel() { return _maxDataLevel;}
-        const optional<unsigned int>& maxDataLevel() const { return _maxDataLevel;}
+        optional<unsigned int>& maxDataLevelOverride() { return _maxDataLevelOverride;}
+        const optional<unsigned int>& maxDataLevelOverride() const { return _maxDataLevelOverride;}
 
         /*
          * Some GDAL-supported formats support sub-datasets; use this property
@@ -157,7 +158,7 @@ namespace osgEarth { namespace Drivers
                 else if ( _interpolation.value() == osgEarth::INTERP_BILINEAR ) conf.update( "interpolation", "bilinear" );
             }
 
-            conf.updateIfSet( "max_data_level", _maxDataLevel);
+            conf.updateIfSet( "max_data_level_override", _maxDataLevelOverride);
             conf.updateIfSet( "subdataset", _subDataSet);
 
             conf.updateIfSet( "interp_imagery", _interpolateImagery);
@@ -183,7 +184,7 @@ namespace osgEarth { namespace Drivers
             if ( in == "nearest" ) _interpolation = osgEarth::INTERP_NEAREST;
             else if ( in == "average" ) _interpolation = osgEarth::INTERP_AVERAGE;
             else if ( in == "bilinear" ) _interpolation = osgEarth::INTERP_BILINEAR;
-            conf.getIfSet( "max_data_level", _maxDataLevel);
+            conf.getIfSet( "max_data_level_override", _maxDataLevelOverride);
             conf.getIfSet( "subdataset", _subDataSet);
 
             conf.getIfSet("interp_imagery", _interpolateImagery);
@@ -196,10 +197,10 @@ namespace osgEarth { namespace Drivers
         optional<URI>                    _url;
         optional<std::string>            _connection;
         optional<std::string>            _extensions;
-        optional<std::string>			 _blackExtensions;
+        optional<std::string>            _blackExtensions;
         optional<ElevationInterpolation> _interpolation;
         optional<bool>                   _interpolateImagery;
-        optional<unsigned int>           _maxDataLevel;
+        optional<unsigned int>           _maxDataLevelOverride;
         optional<unsigned int>           _subDataSet;
         optional<ProfileOptions>         _warpProfile;
         osg::ref_ptr<ExternalDataset>    _externalDataset;

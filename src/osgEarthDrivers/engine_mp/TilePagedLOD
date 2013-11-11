@@ -20,7 +20,7 @@
 #define OSGEARTH_ENGINE_MP_TILE_PAGED_LOD 1
 
 #include "Common"
-#include "TileGroup"
+#include "TileNodeRegistry"
 #include <osg/PagedLOD>
 #include <osgEarth/ThreadingUtils>
 
@@ -29,32 +29,16 @@ using namespace osgEarth;
 namespace osgEarth_engine_mp
 {
     /**
-     * TilePagedLOD is responsible for loading a single TileGroup.
+     * TilePagedLOD is an extension to osg::PagedLOD that supports the tile
+     * registry and incremental update.
      */
     class TilePagedLOD : public osg::PagedLOD
     {
     public:
         TilePagedLOD(
-            TileGroup*        tilegroup,
-            const TileKey&    subkey,
             const UID&        engineUID,
             TileNodeRegistry* liveTiles,
             TileNodeRegistry* deadTiles);
-
-        /** Has this LOD loaded its child? */
-        bool isLoaded() const { return _children.size() > 0; }
-
-        /** Is this LOD trying to update an existing child? */
-        bool isLoading() const { return _children.size() != getNumFileNames(); }
-
-        /** Has this LOD decided to try to upsample its parent? */
-        bool isUpsampled() const { return _isUpsampled; }
-
-        /** Has this LOD decided to cancel because it can't build its tile? */
-        bool isCanceled() const { return _isCanceled; }
-
-        /** Tell this LOD whether all its siblings are ready, and therefore it is OK to CULL */
-        void setFamilyReady(bool value) { _familyReady = value; }
 
     public: // osg::Group
 
@@ -69,15 +53,14 @@ namespace osgEarth_engine_mp
         /** override to manage the tile node registries. */
         bool removeExpiredChildren(double expiryTime, unsigned expiryFrame, osg::NodeList& removedChildren);
 
+    protected:
+        virtual ~TilePagedLOD();
+
     private:
-        TileNodeRegistry*  _live;
-        TileNodeRegistry*  _dead;
-        TileGroup*         _tilegroup;
-        std::string        _prefix;
-        bool               _isUpsampled;
-        bool               _isCanceled;
-        bool               _familyReady;
-        Threading::Mutex   _updateMutex;
+        osg::ref_ptr<TileNodeRegistry> _live;
+        osg::ref_ptr<TileNodeRegistry> _dead;
+        UID                            _engineUID;
+        Threading::Mutex               _updateMutex;
     };
 
 } // namespace osgEarth_engine_mp

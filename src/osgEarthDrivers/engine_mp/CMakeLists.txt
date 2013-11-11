@@ -2,24 +2,22 @@
 SET(TARGET_COMMON_LIBRARIES ${TARGET_COMMON_LIBRARIES} osgEarthSymbology)
 
 SET(TARGET_SRC
-    TilePagedLOD.cpp
     KeyNodeFactory.cpp
     MPGeometry.cpp
     MPTerrainEngineNode.cpp
     MPTerrainEngineDriver.cpp
     SingleKeyNodeFactory.cpp
     TerrainNode.cpp
-    TileGroup.cpp
     TileModel.cpp
     TileModelCompiler.cpp
     TileNode.cpp
     TileNodeRegistry.cpp
     TileModelFactory.cpp
+    TilePagedLOD.cpp
 )
 
 SET(TARGET_H
     Common
-    TilePagedLOD
     DynamicLODScaleCallback
     FileLocationCallback
     KeyNodeFactory
@@ -29,12 +27,12 @@ SET(TARGET_H
     QuickReleaseGLObjects
     SingleKeyNodeFactory
     TerrainNode
-    TileGroup
     TileModel
     TileModelCompiler
     TileNode
     TileNodeRegistry
     TileModelFactory
+    TilePagedLOD
 )
 
 SETUP_PLUGIN(osgearth_engine_mp)

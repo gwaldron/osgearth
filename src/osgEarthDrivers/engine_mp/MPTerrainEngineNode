@@ -53,9 +53,6 @@ namespace osgEarth_engine_mp
         /** Creates a tile node with no support for paging in subtiles. */
         osg::Node* createStandaloneNode(const TileKey& key, ProgressCallback* progress =0L);
 
-        /** Creates a tile node that is upsampled from an existing lower-LOD node. */
-        osg::Node* createUpsampledNode(const TileKey& key, ProgressCallback* progress =0L);
-
     public: // TerrainEngineNode
 
         // for standalone tile creation outside of a terrain

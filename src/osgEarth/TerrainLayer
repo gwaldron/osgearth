@@ -78,6 +78,7 @@ namespace osgEarth
 
         /**
          * The maximum level of detail for which this layer should generate data.
+         * Data from this layer will not appear in map tiles above the maxLevel.
          */
         optional<unsigned>& maxLevel() { return _maxLevel; }
         const optional<unsigned>& maxLevel() const { return _maxLevel; }
@@ -88,6 +89,15 @@ namespace osgEarth
          */
         optional<double>& maxResolution() { return _maxResolution; }
         const optional<double>& maxResolution() const { return _maxResolution; }
+
+        /**
+         * Overrides the maximum available LOD of the underlying tile source. The layer
+         * will never ask the tile source (or the cache) for an LOD higher than this.
+         * Data from this layer may still appear in map tiles above the maxDataLevel,
+         * but it will be upsampled from the maxDataLevel.
+         */
+        optional<unsigned>& maxDataLevel() { return _maxDataLevel; }
+        const optional<unsigned>& maxDataLevel() const { return _maxDataLevel; }
         
         /**
          * Whether to use this layer with the map. Setting this to false means that 
@@ -180,6 +190,7 @@ namespace osgEarth
         optional<bool>              _visible;
         optional<unsigned>          _reprojectedTileSize;
         optional<double>            _edgeBufferRatio;
+        optional<unsigned>          _maxDataLevel;
 
         optional<std::string>       _cacheId;
         optional<std::string>       _cacheFormat;

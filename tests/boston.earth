@@ -7,7 +7,7 @@ to extruded buildings.
 
 <map name="Boston Demo" type="geocentric" version="2">
     
-    <options>
+    <options elevation_tile_size="15">
         <terrain lighting="true"/>
     </options>    
     
@@ -38,7 +38,9 @@ to extruded buildings.
             <build_spatial_index>true</build_spatial_index>
         </features>
         
+		<!--
         <feature_indexing/>
+		-->
         
         <!--
            The "layout" element activates tiling and paging of the feature set. If you

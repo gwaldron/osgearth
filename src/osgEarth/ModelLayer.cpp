@@ -215,7 +215,14 @@ ModelLayer::createSceneGraph(const Map*            map,
         }
     }
 
-    return node;
+    // add a parent group for shaders/effects to attach to without overwriting any model programs directly
+    osg::Group* group = 0L;
+    if ( node ) {
+      group = new osg::Group();
+      group->addChild(node);
+    }
+
+    return group;
 }
 
 bool

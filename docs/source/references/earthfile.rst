@@ -168,7 +168,9 @@ An *image layer* is a raster image overlaid on the map's geometry.
                enabled        = "true"
                visible        = "true"
                shared         = "false"
-               feather_pixels = "false" >
+               feather_pixels = "false"
+               min_filter     = "LINEAR"
+               mag_filter     = "LINEAR" >
 
             <:ref:`cache_policy <CachePolicy>`>
             <:ref:`color_filters <ColorFilterChain>`>
@@ -218,6 +220,13 @@ An *image layer* is a raster image overlaid on the map's geometry.
 | feather_pixels        | Whether to feather out alpha regions for this image layer with the |
 |                       | featherAlphaRegions function. Used to get proper blending when you |
 |                       | have datasets that abutt exactly with no overlap.                  |
++-----------------------+--------------------------------------------------------------------+
+| min_filter            | OpenGL texture minification filter to use for this layer.          |
+|                       | Options are NEAREST, LINEAR, NEAREST_MIPMAP_NEAREST,               |
+|                       | NEAREST_MIPMIP_LINEAR, LINEAR_MIPMAP_NEAREST, LINEAR_MIPMAP_LINEAR |
++-----------------------+--------------------------------------------------------------------+
+| mag_filter            | OpenGL texture magnification filter to use for this layer.         |
+|                       | Options are the same as for ``min_filter`` above.                  |
 +-----------------------+--------------------------------------------------------------------+
 
 

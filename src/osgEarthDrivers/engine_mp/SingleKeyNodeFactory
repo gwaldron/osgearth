@@ -22,6 +22,7 @@
 #include "Common"
 #include "KeyNodeFactory"
 #include "TerrainNode"
+#include "TileModelCompiler"
 #include "TileModelFactory"
 #include "TileNodeRegistry"
 #include <osgEarth/MapInfo>
@@ -51,8 +52,6 @@ namespace osgEarth_engine_mp
 
     public: // KeyNodeFactory
 
-        osg::Node* createRootNode( const TileKey& key );
-
         /**
          * Creates a TileNode or TileGroup corresponding to the TileKey.
          *
@@ -63,8 +62,6 @@ namespace osgEarth_engine_mp
          * @param progress      Callback for cancelation and progress reporting
          */
         osg::Node* createNode( const TileKey& key, bool setupChildren, ProgressCallback* progress );
-
-        TileModelCompiler* getCompiler() const { return _modelCompiler.get(); }
 
     protected:
         osg::Node* createTile(TileModel* model, bool setupChildren);

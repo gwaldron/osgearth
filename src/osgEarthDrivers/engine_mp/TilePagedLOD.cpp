@@ -182,12 +182,12 @@ TilePagedLOD::traverse(osg::NodeVisitor& nv)
     switch( nv.getTraversalMode() )
     {
     // handle intersections, GL compilations, update traversals, etc.
-    case( nv.TRAVERSE_ALL_CHILDREN ):
+    case( osg::NodeVisitor::TRAVERSE_ALL_CHILDREN ):
         std::for_each( _children.begin(), _children.end(), osg::NodeAcceptOp(nv));
         break;
 
     // handle culling, etc.
-    case( nv.TRAVERSE_ACTIVE_CHILDREN ):
+    case( osg::NodeVisitor::TRAVERSE_ACTIVE_CHILDREN ):
 
         // distance from tile to view point:
         float range = nv.getDistanceToViewPoint( getCenter(), true );

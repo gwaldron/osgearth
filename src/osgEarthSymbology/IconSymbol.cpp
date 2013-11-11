@@ -27,6 +27,8 @@
 using namespace osgEarth;
 using namespace osgEarth::Symbology;
 
+OSGEARTH_REGISTER_SIMPLE_SYMBOL(icon, IconSymbol);
+
 IconSymbol::IconSymbol( const Config& conf ) :
 InstanceSymbol        ( conf ),
 _alignment            ( ALIGN_CENTER_BOTTOM ),

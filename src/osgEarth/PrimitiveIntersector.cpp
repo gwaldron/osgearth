@@ -345,7 +345,8 @@ PrimitiveIntersector::PrimitiveIntersector(CoordinateFrame cf, const osg::Vec3d&
 void PrimitiveIntersector::setThickness(double thickness)
 {
   _thicknessVal = thickness;
-  _thickness.set(_start.x()+thickness/2.0, _start.y()+thickness/2.0, _start.z());
+  double halfThickness = 0.5 * thickness;
+  _thickness.set(_start.x()+halfThickness, _start.y()+halfThickness, _start.z()+halfThickness);
 }
 
 osgUtil::Intersector* PrimitiveIntersector::clone(osgUtil::IntersectionVisitor& iv)

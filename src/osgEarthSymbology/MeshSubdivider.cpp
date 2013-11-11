@@ -21,7 +21,6 @@
 #include <osgEarth/GeoMath>
 #include <osg/TriangleFunctor>
 #include <osg/TriangleIndexFunctor>
-//#include <osgUtil/MeshOptimizers>
 #include <climits>
 #include <queue>
 #include <map>
@@ -63,8 +62,6 @@ namespace
             out_mid.set( 0.5*((g0.x()+2*osg::PI)+g1.x()), 0.5*(g0.y()+g1.y()) );
         else
            out_mid.set( 0.5*(g0.x()+(g1.x()+2*osg::PI)), 0.5*(g0.y()+g1.y()) );
-
-        //GeoMath::midpoint(g0.y(), g0.x(), g1.y(), g1.x(), out_mid.y(), out_mid.x());
     }
 
     // finds the midpoint between two geocentric coordinates. We have to convert
@@ -136,7 +133,7 @@ namespace
         osg::Vec4Array* _sourceColors;
         osg::Vec2Array* _sourceTexCoords;
         osg::Vec3Array* _sourceNormals;
-        osg::ref_ptr<osg::Vec3Array> _verts;        
+        osg::ref_ptr<osg::Vec3Array> _verts;
         osg::ref_ptr<osg::Vec4Array> _colors;
         osg::ref_ptr<osg::Vec2Array> _texcoords;
         osg::ref_ptr<osg::Vec3Array> _normals;
@@ -792,6 +789,10 @@ void
 MeshSubdivider::run(osg::Geometry& geom, double granularity, GeoInterpolation interp)
 {
     if ( geom.getNumPrimitiveSets() < 1 )
+        return;
+
+    // unsupported for now. NYI.
+    if ( geom.getVertexAttribArrayList().size() > 0 )
         return;
 
     subdivide( granularity, interp, geom, _world2local, _local2world, _maxElementsPerEBO );

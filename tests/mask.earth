@@ -18,5 +18,7 @@ Demonstrates the use a a MaskLayer to cut out an area of the globe.
         <profile>global-geodetic</profile>
     </mask>
     
-    <options lighting="false"/>
+    <options lighting="false">
+	    <terrain min_lod="14"/>
+	</options>
 </map>

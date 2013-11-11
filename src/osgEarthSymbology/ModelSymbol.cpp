@@ -23,6 +23,8 @@
 using namespace osgEarth;
 using namespace osgEarth::Symbology;
 
+OSGEARTH_REGISTER_SIMPLE_SYMBOL(model, ModelSymbol);
+
 ModelSymbol::ModelSymbol( const Config& conf ) :
 InstanceSymbol( conf ),
 _heading  ( NumericExpression(0.0) ),

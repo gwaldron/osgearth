@@ -22,6 +22,8 @@
 using namespace osgEarth;
 using namespace osgEarth::Symbology;
 
+OSGEARTH_REGISTER_SIMPLE_SYMBOL(text, TextSymbol);
+
 TextSymbol::TextSymbol( const Config& conf ) :
 Symbol                ( conf ),
 _fill                 ( Fill( 1, 1, 1, 1 ) ),

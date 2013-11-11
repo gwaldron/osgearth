@@ -19,7 +19,6 @@
 
 #include <osgEarthQt/AnnotationToolbar>
 #include <osgEarthQt/Common>
-#include <osgEarthQt/MultiViewerWidget>
 #include <osgEarthQt/DataManager>
 #include <osgEarthQt/MapCatalogWidget>
 #include <osgEarthQt/TerrainProfileWidget>
@@ -45,7 +44,7 @@ class DemoMainWindow : public QMainWindow
 public:
 
     DemoMainWindow(osgEarth::QtGui::DataManager* manager, osgEarth::MapNode* mapNode, osg::Group* annotationRoot)
-        : _manager(manager), _mapNode(mapNode), _annoRoot(annotationRoot), _layerAdded(false), _terrainProfileDock(0L), _viewerWidget(0L), _compositeViewerWidget(0L)
+        : _manager(manager), _mapNode(mapNode), _annoRoot(annotationRoot), _layerAdded(false), _terrainProfileDock(0L), _viewerWidget(0L)
     {
         initUi(); 
     }
@@ -57,17 +56,6 @@ public:
 
         _views.clear();
         _viewerWidget->getViews( _views );
-
-        _annotationToolbar->setActiveViews(_views);
-    }
-
-    void setViewerWidget(osgEarth::QtGui::MultiViewerWidget* viewerWidget, const osgEarth::QtGui::ViewVector& views)
-    {
-        setCentralWidget(viewerWidget);
-        _compositeViewerWidget = viewerWidget;
-
-        _views.clear();
-        _views.insert(_views.end(), views.begin(), views.end());
 
         _annotationToolbar->setActiveViews(_views);
     }
@@ -145,14 +133,7 @@ protected:
     {
         if (_viewerWidget)
         {
-            //_viewerWidget->getViewer()->setSceneData(0);
-            //_viewerWidget->getViewer()->frame();
             _viewerWidget->getViewer()->setDone(true);
-        }
-
-        if (_compositeViewerWidget)
-        {
-            _compositeViewerWidget/*->getViewer()*/->setDone(true);
         }
 
         event->accept();
@@ -206,9 +187,6 @@ private:
     osg::ref_ptr<osg::Group> _annoRoot;
     osg::ref_ptr<osgEarth::ImageLayer> _testLayer;
     osgEarth::QtGui::ViewerWidget* _viewerWidget;
-    osgEarth::QtGui::MultiViewerWidget* _compositeViewerWidget;
-    //osg::ref_ptr<osgEarth::QtGui::ViewerWidget> _viewerWidget;
-    //osg::ref_ptr<osgEarth::QtGui::MultiViewerWidget> _compositeViewerWidget;
     osgEarth::QtGui::AnnotationToolbar* _annotationToolbar;
     osgEarth::QtGui::ViewVector _views;
     bool _layerAdded;

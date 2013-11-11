@@ -31,6 +31,11 @@ namespace osgEarth { namespace Util
      * Terrain effect that blends terrain levels of detail for a 
      * smooth transition effect. Operates on elevation data and
      * image data.
+     *
+     * Known limitation: LOD blending requires either (a) a fully-textured
+     * terrain, by way of a base layer that completely covers the map; or
+     * (b) a transparent globe color. It will not work properly with
+     * untextures (but colored) terrain tiles.
      */
     class OSGEARTHUTIL_EXPORT LODBlending : public TerrainEffect
     {

@@ -88,13 +88,17 @@ PlaceNode::init()
 
     // If there's no explicit text, look to the text symbol for content.
     if ( _text.empty() && _style.has<TextSymbol>() )
+    {
         _text = _style.get<TextSymbol>()->content()->eval();
+    }
 
     osg::ref_ptr<const InstanceSymbol> instance = _style.get<InstanceSymbol>();
 
     // backwards compability, support for deprecated MarkerSymbol
     if ( !instance.valid() && _style.has<MarkerSymbol>() )
+    {
         instance = _style.get<MarkerSymbol>()->convertToInstanceSymbol();
+    }
 
     const IconSymbol* icon = instance->asIcon();
 
@@ -119,44 +123,54 @@ PlaceNode::init()
     // found an image; now format it:
     if ( _image.get() )
     {
+        // Scale the icon if necessary
+        double scale = 1.0;
+        if ( icon && icon->scale().isSet() )
+        {
+            scale = icon->scale()->eval();
+        }
+
+        double s = scale * _image->s();
+        double t = scale * _image->t();
+
         // this offset anchors the image at the bottom
         osg::Vec2s offset;
         if ( !icon || !icon->alignment().isSet() )
         {	
             // default to bottom center
-            offset.set(0.0, (_image->t() / 2.0));
+            offset.set(0.0, t / 2.0);
         }
         else
         {	// default to bottom center
             switch (icon->alignment().value())
             {
             case IconSymbol::ALIGN_LEFT_TOP:
-                offset.set((_image->s() / 2.0), -(_image->t() / 2.0));
+                offset.set((s / 2.0), -(t / 2.0));
                 break;
             case IconSymbol::ALIGN_LEFT_CENTER:
-                offset.set((_image->s() / 2.0), 0.0);
+                offset.set((s / 2.0), 0.0);
                 break;
             case IconSymbol::ALIGN_LEFT_BOTTOM:
-                offset.set((_image->s() / 2.0), (_image->t() / 2.0));
+                offset.set((s / 2.0), (t / 2.0));
                 break;
             case IconSymbol::ALIGN_CENTER_TOP:
-                offset.set(0.0, -(_image->t() / 2.0));
+                offset.set(0.0, -(t / 2.0));
                 break;
             case IconSymbol::ALIGN_CENTER_CENTER:
                 offset.set(0.0, 0.0);
                 break;
             case IconSymbol::ALIGN_CENTER_BOTTOM:
             default:
-                offset.set(0.0, (_image->t() / 2.0));
+                offset.set(0.0, (t / 2.0));
                 break;
             case IconSymbol::ALIGN_RIGHT_TOP:
-                offset.set(-(_image->s() / 2.0), -(_image->t() / 2.0));
+                offset.set(-(s / 2.0), -(t / 2.0));
                 break;
             case IconSymbol::ALIGN_RIGHT_CENTER:
-                offset.set(-(_image->s() / 2.0), 0.0);
+                offset.set(-(s / 2.0), 0.0);
                 break;
             case IconSymbol::ALIGN_RIGHT_BOTTOM:
-                offset.set(-(_image->s() / 2.0), (_image->t() / 2.0));
+                offset.set(-(s / 2.0), (t / 2.0));
                 break;
             }
         }
@@ -170,14 +184,16 @@ PlaceNode::init()
 
         //We must actually rotate the geometry itself and not use a MatrixTransform b/c the 
         //decluttering doesn't respect Transforms above the drawable.
-        osg::Geometry* imageGeom = AnnotationUtils::createImageGeometry( _image.get(), offset, 0, heading );
+        osg::Geometry* imageGeom = AnnotationUtils::createImageGeometry( _image.get(), offset, 0, heading, scale );
         if ( imageGeom )
+        {
             _geode->addDrawable( imageGeom );
+        }
 
         text = AnnotationUtils::createTextDrawable(
             _text,
             _style.get<TextSymbol>(),
-            osg::Vec3( (offset.x() + (_image->s() / 2.0) + 2), offset.y(), 0 ) );
+            osg::Vec3( (offset.x() + (s / 2.0) + 2), offset.y(), 0 ) );
     }
     else
     {
@@ -201,8 +217,9 @@ PlaceNode::init()
 
     setLightingIfNotSet( false );
 
-    ShaderGenerator gen( Registry::stateSetCache() );
-    this->accept( gen );
+    ShaderGenerator gen;
+    gen.setProgramName( "osgEarth.PlaceNode" );
+    gen.run( this, Registry::stateSetCache() );
 
     // re-apply annotation drawable-level stuff as neccesary.
     AnnotationData* ad = getAnnotationData();

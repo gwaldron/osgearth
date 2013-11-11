@@ -86,9 +86,18 @@ namespace osgEarth { namespace Symbology
         optional<float>& minPixels() { return _minPixels; }
         const optional<float>& minPixels() const { return _minPixels; }
 
-        /** Stippling pattern. */
-        optional<unsigned short>& stipple() { return _stipple;}
-        const optional<unsigned short>& stipple() const { return _stipple; }
+        /** Stippling pattern. Bitmask of pixels to draw. */
+        optional<unsigned short>& stipplePattern() { return _stipplePattern; }
+        const optional<unsigned short>& stipplePattern() const { return _stipplePattern; }
+
+        /** Stippling factor; number of times to repeat each bit in the stipplePattern. */
+        optional<unsigned>& stippleFactor() { return _stippleFactor; }
+        const optional<unsigned>& stippleFactor() const { return _stippleFactor; }
+
+        /** Backwards-compatibility only */
+        optional<unsigned short>& stipple() { return _stipplePattern; }
+        const optional<unsigned short>& stipple() const { return _stipplePattern; }
+
 
         /** Rounding ratio - when rounding corners/caps, this is the ratio
             of rounded-segment length to width(). The smaller this value,
@@ -106,7 +115,8 @@ namespace osgEarth { namespace Symbology
         optional<LineJoinStyle>  _lineJoin;
         optional<float>          _width;
         optional<Units>          _widthUnits;
-        optional<unsigned short> _stipple;
+        optional<unsigned>       _stippleFactor;
+        optional<unsigned short> _stipplePattern;
         optional<float>          _roundingRatio;
         optional<float>          _minPixels;
 

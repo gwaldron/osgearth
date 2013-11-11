@@ -62,13 +62,17 @@ int main(int argc, char** argv)
   HTTPClient::setUserAgent( "osgearth_package_qt/1.0" );
 
   //setup log file
-  char *appData = getenv("APPDATA");
+#ifdef _WIN32
+  const char *appData = getenv("APPDATA");
+#else
+  const char *appData = "/tmp";
+#endif
 
-  std::string logDir = std::string(appData) + "\\osgEarthPackageQt";
+  std::string logDir = std::string(appData) + "/osgEarthPackageQt";
   if (!osgDB::fileExists(logDir))
     osgDB::makeDirectory(logDir);
 
-  std::string logPath = logDir + "\\log.txt";
+  std::string logPath = logDir + "/log.txt";
   std::ofstream* log = new std::ofstream( logPath.c_str() );
   std::cout.rdbuf( log->rdbuf() );
   std::cerr.rdbuf( log->rdbuf() );

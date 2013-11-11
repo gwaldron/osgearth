@@ -459,8 +459,11 @@ TerrainEngineNode::traverse( osg::NodeVisitor& nv )
 
         if ( Registry::capabilities().supportsGLSL() )
         {
-            _updateLightingUniformsHelper.cullTraverse( this, &nv );
+            //_updateLightingUniformsHelper.cullTraverse( this, &nv );
 
+            // TODO: the "camera elevation" uniform is only used by the old
+            // multi- and texarray- texture compositors. Once we get rid of those
+            // we can get rid of this too.
             osgUtil::CullVisitor* cv = Culling::asCullVisitor(nv);
             if ( cv )
             {
@@ -472,6 +475,7 @@ TerrainEngineNode::traverse( osg::NodeVisitor& nv )
                 else
                     elevation = eye.z();
 
+                //TODO: no good. cannot be setting this in cull.
                 _cameraElevationUniform->set( elevation );
             }
         }

@@ -67,42 +67,19 @@ namespace osgEarth { namespace Features
         const optional<GeoInterpolation>& geoInterp() const { return _geoInterp; }
 
         /**
-         * Whether to merge the geometries from mutliple features together. Doing this can
-         * help performance by batching geometries together. The downside will be that individual
-         * geometries are no longer addressable in the scene graph. Default is FALSE.
-         */
-        optional<bool>& mergeGeometry() { return _mergeGeometry; }
-        const optional<bool>& mergeGeometry() const { return _mergeGeometry; }
-
-        /**
-         * Sets an expression to evaluate for setting the name of a Geometry. This only
-         * takes effect if mergeGeometry is false.
+         * Sets an expression to evaluate for setting the name of a Geometry.
+         * Warning: this will disable some performance optimizations since the filter
+         * can no longer merge geometries.
          */
         optional<StringExpression>& featureName() { return _featureNameExpr; }
         const optional<StringExpression>& featureName() const { return _featureNameExpr; }
 
-        /**
-         * Whether or not to use vertex buffer objects
-         */
-        optional<bool>& useVertexBufferObjects() { return _useVertexBufferObjects;}
-        const optional<bool>& useVertexBufferObjects() const { return _useVertexBufferObjects;}
-
     protected:
-        osg::ref_ptr<osg::Node> _result;
-        osg::ref_ptr<osg::Geode> _geode;
-        Style _style;
-        optional<double> _maxAngle_deg;
-        optional<GeoInterpolation> _geoInterp;
-        optional<bool> _mergeGeometry;
-        optional<StringExpression> _featureNameExpr;
-        optional<bool> _useVertexBufferObjects;
-        bool _hasPoints;
-        bool _hasLines;
-        bool _hasPolygons;
+        Style                      _style;
 
-        void reset();
-        
-        bool process( FeatureList& input, const FilterContext& context );
+        optional<double>           _maxAngle_deg;
+        optional<GeoInterpolation> _geoInterp;
+        optional<StringExpression> _featureNameExpr;
         
         void buildPolygon(
             Geometry*               input,
@@ -111,6 +88,11 @@ namespace osgEarth { namespace Features
             bool                    makeECEF,
             bool                    tessellate,
             osg::Geometry*          osgGeom);
+
+        osg::Geode* processPolygons        (FeatureList& input, const FilterContext& cx);
+        osg::Geode* processLines           (FeatureList& input, const FilterContext& cx);
+        osg::Geode* processPolygonizedLines(FeatureList& input, bool twosided, const FilterContext& cx);
+        osg::Geode* processPoints          (FeatureList& input, const FilterContext& cx);
     };
 
 } } // namespace osgEarth::Features

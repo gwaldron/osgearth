@@ -24,7 +24,6 @@
 #include <osgEarth/ImageUtils>
 #include <osgEarth/Registry>
 #include <osgEarth/Capabilities>
-#include <osgEarth/ShaderGenerator>
 #include <osgEarth/Utils>
 #include <osg/Geode>
 #include <osg/Geometry>
@@ -32,10 +31,8 @@
 #include <osgUtil/Tessellator>
 #include <osgUtil/Optimizer>
 #include <osgUtil/SmoothingVisitor>
-#include <osg/Version>
 #include <osg/LineWidth>
 #include <osg/PolygonOffset>
-#include <osgEarth/Version>
 
 #define LC "[ExtrudeGeometryFilter] "
 
@@ -280,11 +277,6 @@ ExtrudeGeometryFilter::extrudeGeometry(const Geometry*         input,
             roofTexcoords = new osg::Vec2Array( pointCount );
             roof->setTexCoordArray( 0, roofTexcoords );
 
-            // Get the orientation of the geometry. This is a hueristic that will help 
-            // us align the roof skin texture properly. TODO: make this optional? It makes
-            // sense for buildings and such, but perhaps not for all extruded shapes.
-            roofRotation = getApparentRotation( input );
-
             roofBounds = input->getBounds();
 
             // if our data is lat/long, we need to reproject the geometry and the bounds into a projected
@@ -293,10 +285,13 @@ ExtrudeGeometryFilter::extrudeGeometry(const Geometry*         input,
             {
                 osg::Vec2d geogCenter = roofBounds.center2d();
                 roofProjSRS = srs->createUTMFromLonLat( Angular(geogCenter.x()), Angular(geogCenter.y()) );
-                roofBounds.transform( srs, roofProjSRS.get() );
-                osg::ref_ptr<Geometry> projectedInput = input->clone();
-                srs->transform( projectedInput->asVector(), roofProjSRS.get() );
-                roofRotation = getApparentRotation( projectedInput.get() );
+                if ( roofProjSRS.valid() )
+                {
+                    roofBounds.transform( srs, roofProjSRS.get() );
+                    osg::ref_ptr<Geometry> projectedInput = input->clone();
+                    srs->transform( projectedInput->asVector(), roofProjSRS.get() );
+                    roofRotation = getApparentRotation( projectedInput.get() );
+                }
             }
             else
             {
@@ -435,11 +430,11 @@ ExtrudeGeometryFilter::extrudeGeometry(const Geometry*         input,
 
             // figure out the rooftop texture coordinates before doing any
             // transformations:
-            if ( roofSkin && roofProjSRS && srs )
+            if ( roofSkin && srs )
             {
                 double xr, yr;
 
-                if ( srs && srs->isGeographic() )
+                if ( srs && srs->isGeographic() && roofProjSRS )
                 {
                     osg::Vec3d projRoofPt;
                     srs->transform( roofPt, roofProjSRS.get(), projRoofPt );
@@ -905,10 +900,27 @@ ExtrudeGeometryFilter::push( FeatureList& input, FilterContext& context )
     {
         for( SortedGeodeMap::iterator i = _geodes.begin(); i != _geodes.end(); ++i )
         {
-            MeshConsolidator::run( *i->second.get() );
+            if ( context.featureIndex() )
+            {
+                // The MC will recognize the presence of feature indexing tags and
+                // preserve them. The Cache optimizer however will not, so it is
+                // out for now.
+                MeshConsolidator::run( *i->second.get() );
 
-            VertexCacheOptimizer vco;
-            i->second->accept( vco );
+                //VertexCacheOptimizer vco;
+                //i->second->accept( vco );
+            }
+            else
+            {
+                //TODO: try this -- issues: it won't work on lines, and will it screw up
+                // feature indexing?
+                osgUtil::Optimizer o;
+                o.optimize( i->second.get(),
+                    osgUtil::Optimizer::MERGE_GEOMETRY |
+                    osgUtil::Optimizer::VERTEX_PRETRANSFORM |
+                    osgUtil::Optimizer::INDEX_MESH |
+                    osgUtil::Optimizer::VERTEX_POSTTRANSFORM );
+            }
         }
     }
 

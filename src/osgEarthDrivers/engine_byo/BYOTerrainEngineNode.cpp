@@ -62,8 +62,9 @@ BYOTerrainEngineNode::preInitialize( const Map* map, const TerrainOptions& optio
         {
             if ( myoptions.shaderPolicy() == SHADERPOLICY_GENERATE )
             {
-                ShaderGenerator gen( Registry::stateSetCache() );
-                node->accept( gen );
+                ShaderGenerator gen;
+                gen.setProgramName( "osgEarth.BYOTerrainEngine" );
+                gen.run( node, new StateSetCache() );
             }
             else if ( myoptions.shaderPolicy() == SHADERPOLICY_DISABLE )
             {

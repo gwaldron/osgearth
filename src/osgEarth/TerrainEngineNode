@@ -160,7 +160,7 @@ namespace osgEarth
         float                              _elevationSamplingRatio;
         osg::ref_ptr<Terrain>              _terrainInterface;
         unsigned                           _dirtyCount;
-        UpdateLightingUniformsHelper       _updateLightingUniformsHelper;
+        //UpdateLightingUniformsHelper       _updateLightingUniformsHelper;
         
         enum InitStage {
             INIT_NONE,

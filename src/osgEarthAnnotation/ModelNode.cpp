@@ -112,11 +112,15 @@ ModelNode::init()
                 if ( Registry::capabilities().supportsGLSL() )
                 {
                     // generate shader code for the loaded model:
-                    ShaderGenerator gen( Registry::stateSetCache() );
-                    node->accept( gen );
+                    ShaderGenerator gen;
+                    gen.setProgramName( "osgEarth.ModelNode" );
+                    gen.run( node, Registry::stateSetCache() );
 
                     // do we really need this? perhaps
+#if 0
+                    // better: put your modelnode under the mapnode?
                     node->addCullCallback( new UpdateLightingUniformsHelper() );
+#endif
                 }
 
                 // attach to the transform:

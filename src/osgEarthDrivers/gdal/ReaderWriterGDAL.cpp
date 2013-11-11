@@ -1073,9 +1073,9 @@ public:
 
         OE_INFO << LC << "Resolution= " << resolutionX << "x" << resolutionY << " max=" << maxResolution << std::endl;
 
-        if (_options.maxDataLevel().isSet())
+        if (_options.maxDataLevelOverride().isSet())
         {
-            _maxDataLevel = _options.maxDataLevel().value();
+            _maxDataLevel = _options.maxDataLevelOverride().value();
             OE_INFO << _options.url().value().full() << " using override max data level " << _maxDataLevel << std::endl;
         }
         else
@@ -1221,6 +1221,20 @@ public:
         geoY = _geotransform[3] + _geotransform[4] * x + _geotransform[5] * y;
     }
 
+    void geoToPixel(double geoX, double geoY, double &x, double &y)
+    {                
+        x = _invtransform[0] + _invtransform[1] * geoX + _invtransform[2] * geoY;
+        y = _invtransform[3] + _invtransform[4] * geoX + _invtransform[5] * geoY;                
+
+         //Account for slight rounding errors.  If we are right on the edge of the dataset, clamp to the edge
+        double eps = 0.0001;
+        if (osg::equivalent(x, 0, eps)) x = 0;
+        if (osg::equivalent(y, 0, eps)) y = 0;
+        if (osg::equivalent(x, (double)_warpedDS->GetRasterXSize(), eps)) x = _warpedDS->GetRasterXSize();
+        if (osg::equivalent(y, (double)_warpedDS->GetRasterYSize(), eps)) y = _warpedDS->GetRasterYSize();
+
+    }
+
     osg::Image* createImage( const TileKey&        key,
                              ProgressCallback*     progress)
     {
@@ -1242,60 +1256,59 @@ public:
             double xmin, ymin, xmax, ymax;
             key.getExtent().getBounds(xmin, ymin, xmax, ymax);
 
+            // Compute the intersection of the incoming key with the data extents of the dataset
+            osgEarth::GeoExtent intersection = key.getExtent().intersectionSameSRS( _extents );
+            
+            // Determine the read window
+            double src_min_x, src_min_y, src_max_x, src_max_y;
+            // Get the pixel coordiantes of the intersection
+            geoToPixel( intersection.xMin(), intersection.yMax(), src_min_x, src_min_y);
+            geoToPixel( intersection.xMax(), intersection.yMin(), src_max_x, src_max_y);   
+
+            // Convert the doubles to integers.  We floor the mins and ceil the maximums to give the widest window possible.
+            src_min_x = floor(src_min_x);
+            src_min_y = floor(src_min_y);
+            src_max_x = ceil(src_max_x);
+            src_max_y = ceil(src_max_y);
+
+            int off_x = (int)( src_min_x );
+            int off_y = (int)( src_min_y );
+            int width  = (int)(src_max_x - src_min_x);
+            int height = (int)(src_max_y - src_min_y);      
+
+
+            int rasterWidth = _warpedDS->GetRasterXSize();
+            int rasterHeight = _warpedDS->GetRasterYSize();
+            if (off_x + width > rasterWidth || off_y + height > rasterHeight)
+            {
+                OE_WARN << LC << "Read window outside of bounds of dataset.  Source Dimensions=" << rasterWidth << "x" << rasterHeight << " Read Window=" << off_x << ", " << off_y << " " << width << "x" << height << std::endl;
+            }
+
+            // Determine the destination window            
+
+            // Compute the offsets in geo coordinates of the intersection from the TileKey
+            double offset_left = intersection.xMin() - xmin;            
+            double offset_top = ymax - intersection.yMax();
+
+
+            int target_width = (int)ceil((intersection.width() / key.getExtent().width())*(double)tileSize);
+            int target_height = (int)ceil((intersection.height() / key.getExtent().height())*(double)tileSize);
+            int tile_offset_left = (int)floor((offset_left / key.getExtent().width()) * (double)tileSize);
+            int tile_offset_top = (int)floor((offset_top / key.getExtent().height()) * (double)tileSize);
+            
+            // Compute spacing
             double dx       = (xmax - xmin) / (tileSize-1); 
             double dy       = (ymax - ymin) / (tileSize-1); 
 
+            OE_DEBUG << LC << "ReadWindow " << off_x << "," << off_y << " " << width << "x" << height << std::endl;
+            OE_DEBUG << LC << "DestWindow " << tile_offset_left << "," << tile_offset_top << " " << target_width << "x" << target_height << std::endl;                        
 
-            int target_width = tileSize;
-            int target_height = tileSize;
-            int tile_offset_left = 0;
-            int tile_offset_top = 0;
-
-            int off_x = int((xmin - _geotransform[0]) / _geotransform[1]);
-            int off_y = int((ymax - _geotransform[3]) / _geotransform[5]);
-            int width = int(((xmax - _geotransform[0]) / _geotransform[1]) - off_x);
-            int height = int(((ymin - _geotransform[3]) / _geotransform[5]) - off_y);
-
-            if (off_x + width > _warpedDS->GetRasterXSize())
-            {
-                int oversize_right = off_x + width - _warpedDS->GetRasterXSize();
-                target_width = target_width - int(float(oversize_right) / width * target_width);
-                width = _warpedDS->GetRasterXSize() - off_x;
-            }
-
-            if (off_x < 0)
-            {
-                int oversize_left = -off_x;
-                tile_offset_left = int(float(oversize_left) / width * target_width);
-                target_width = target_width - int(float(oversize_left) / width * target_width);
-                width = width + off_x;
-                off_x = 0;
-            }
-
-            if (off_y + height > _warpedDS->GetRasterYSize())
-            {
-                int oversize_bottom = off_y + height - _warpedDS->GetRasterYSize();
-                target_height = target_height - (int)osg::round(float(oversize_bottom) / height * target_height);
-                height = _warpedDS->GetRasterYSize() - off_y;
-            }
-
-
-            if (off_y < 0)
-            {
-                int oversize_top = -off_y;
-                tile_offset_top = int(float(oversize_top) / height * target_height);
-                target_height = target_height - int(float(oversize_top) / height * target_height);
-                height = height + off_y;
-                off_y = 0;
-            }
-
-            OE_DEBUG << LC << "ReadWindow " << width << "x" << height << " DestWindow " << target_width << "x" << target_height << std::endl;
 
             //Return if parameters are out of range.
             if (width <= 0 || height <= 0 || target_width <= 0 || target_height <= 0)
             {
                 return 0;
-            }
+            }            
 
 
 
@@ -1595,14 +1608,8 @@ public:
     float getInterpolatedValue(GDALRasterBand *band, double x, double y, bool applyOffset=true)
     {
         double r, c;
-        GDALApplyGeoTransform(_invtransform, x, y, &c, &r);
-
-        //Account for slight rounding errors.  If we are right on the edge of the dataset, clamp to the edge
-        double eps = 0.0001;
-        if (osg::equivalent(c, 0, eps)) c = 0;
-        if (osg::equivalent(r, 0, eps)) r = 0;
-        if (osg::equivalent(c, (double)_warpedDS->GetRasterXSize(), eps)) c = _warpedDS->GetRasterXSize();
-        if (osg::equivalent(r, (double)_warpedDS->GetRasterYSize(), eps)) r = _warpedDS->GetRasterYSize();
+        geoToPixel( x, y, c, r );        
+       
 
         if (applyOffset)
         {

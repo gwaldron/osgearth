@@ -26,7 +26,6 @@
 #include <osgEarthAnnotation/ScaleDecoration>
 #include <osgEarthAnnotation/TrackNode>
 #include <osgEarthQt/ViewerWidget>
-#include <osgEarthQt/MultiViewerWidget>
 #include <osgEarthQt/LayerManagerWidget>
 #include <osgEarthQt/MapCatalogWidget>
 #include <osgEarthQt/DataManager>
@@ -205,10 +204,6 @@ main(int argc, char** argv)
     osg::ArgumentParser arguments(&argc,argv);
     osg::DisplaySettings::instance()->setMinimumNumStencilBits(8);
 
-    std::string compNum;
-    bool composite = arguments.read("--multi", compNum);
-    int numViews = composite ? osgEarth::as<int>(compNum, 4) : 1;
-
     std::string stylesheet;
     bool styled = arguments.read("--stylesheet", stylesheet);
 
@@ -249,87 +244,62 @@ main(int argc, char** argv)
     osgEarth::QtGui::ViewVector views;
     osg::ref_ptr<osgViewer::ViewerBase> viewer;
 
-    // create viewer widget
-    if (composite)
+    osgEarth::QtGui::ViewerWidget* viewerWidget = 0L;
+
+    if ( testUseExistingViewer )
     {
-      osgEarth::QtGui::MultiViewerWidget* viewerWidget = new osgEarth::QtGui::MultiViewerWidget(root);
-
-      osgViewer::View* primary = viewerWidget->createViewWidget(root);
-      primary->getCamera()->addCullCallback(new osgEarth::Util::AutoClipPlaneCullCallback(mapNode));
-      views.push_back(primary);
-
-      for (int i=0; i < numViews - 1; i++)
-      {
-        osgViewer::View* view = viewerWidget->createViewWidget(root, primary);
-        view->getCamera()->addCullCallback(new osgEarth::Util::AutoClipPlaneCullCallback(mapNode));
-        views.push_back(view);
-      }
-
-      //viewerWidget->setGeometry(50, 50, 1024, 768);
-      appWin.setViewerWidget(viewerWidget, views);
-
-      viewer = viewerWidget;
+        // tests: create a pre-existing viewer and install that in the widget.
+        osgViewer::Viewer* v = new osgViewer::Viewer();
+        v->setSceneData(root);
+        v->setThreadingModel(osgViewer::Viewer::DrawThreadPerContext);
+        v->setCameraManipulator(new osgEarth::Util::EarthManipulator());
+        viewerWidget = new osgEarth::QtGui::ViewerWidget(v);
     }
 
     else
     {
-        osgEarth::QtGui::ViewerWidget* viewerWidget = 0L;
+        // tests: implicity creating a viewer.
+        viewerWidget = new osgEarth::QtGui::ViewerWidget( root );
+    }
 
-        if ( testUseExistingViewer )
-        {
-            // tests: create a pre-existing viewer and install that in the widget.
-            osgViewer::Viewer* v = new osgViewer::Viewer();
-            v->setSceneData(root);
-            v->setThreadingModel(osgViewer::Viewer::DrawThreadPerContext);
-            v->setCameraManipulator(new osgEarth::Util::EarthManipulator());
-            viewerWidget = new osgEarth::QtGui::ViewerWidget(v);
-        }
+    //osgEarth::QtGui::ViewerWidget* viewerWidget = new osgEarth::QtGui::ViewerWidget(root);
+    //viewerWidget->setGeometry(50, 50, 1024, 768);
 
-        else
-        {
-            // tests: implicity creating a viewer.
-            viewerWidget = new osgEarth::QtGui::ViewerWidget( root );
-        }
+    viewerWidget->getViews( views );
 
-      //osgEarth::QtGui::ViewerWidget* viewerWidget = new osgEarth::QtGui::ViewerWidget(root);
-      //viewerWidget->setGeometry(50, 50, 1024, 768);
+    for(osgEarth::QtGui::ViewVector::iterator i = views.begin(); i != views.end(); ++i )
+    {
+        i->get()->getCamera()->addCullCallback(new osgEarth::Util::AutoClipPlaneCullCallback(mapNode));
+    }
+    appWin.setViewerWidget(viewerWidget);
 
-      viewerWidget->getViews( views );
-
-      for(osgEarth::QtGui::ViewVector::iterator i = views.begin(); i != views.end(); ++i )
-      {
-          i->get()->getCamera()->addCullCallback(new osgEarth::Util::AutoClipPlaneCullCallback(mapNode));
-      }
-      appWin.setViewerWidget(viewerWidget);
-
-      if (mapNode.valid())
-      {
+    if (mapNode.valid())
+    {
         const Config& externals = mapNode->externalConfig();
 
         if (mapNode->getMap()->isGeocentric())
         {
-          // Sky model.
-          Config skyConf = externals.child("sky");
+            // Sky model.
+            Config skyConf = externals.child("sky");
 
-          double hours = skyConf.value("hours", 12.0);
-          s_sky = new osgEarth::Util::SkyNode(mapNode->getMap());
-          s_sky->setDateTime( DateTime(2011, 3, 6, hours) );
-          for(osgEarth::QtGui::ViewVector::iterator i = views.begin(); i != views.end(); ++i )
-              s_sky->attach( *i );
-          root->addChild(s_sky);
+            double hours = skyConf.value("hours", 12.0);
+            s_sky = new osgEarth::Util::SkyNode(mapNode->getMap());
+            s_sky->setDateTime( DateTime(2011, 3, 6, hours) );
+            for(osgEarth::QtGui::ViewVector::iterator i = views.begin(); i != views.end(); ++i )
+                s_sky->attach( *i );
+            root->addChild(s_sky);
 
-          // Ocean surface.
-          if (externals.hasChild("ocean"))
-          {
-            s_ocean = new osgEarth::Drivers::OceanSurfaceNode(mapNode.get(), externals.child("ocean"));
-            if (s_ocean)
-              root->addChild(s_ocean);
-          }
+            // Ocean surface.
+            if (externals.hasChild("ocean"))
+            {
+                s_ocean = new osgEarth::Drivers::OceanSurfaceNode(mapNode.get(), externals.child("ocean"));
+                if (s_ocean)
+                    root->addChild(s_ocean);
+            }
         }
-      }
-
-      viewer = viewerWidget->getViewer();
     }
+
+    viewer = viewerWidget->getViewer();
 
     // activate "on demand" rendering if requested:
     if ( on_demand )

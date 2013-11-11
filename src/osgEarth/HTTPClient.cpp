@@ -306,6 +306,7 @@ namespace
     static std::string                 s_userAgent = USER_AGENT;
 
     static long                        s_timeout = 0;
+    static long                        s_connectTimeout = 0;
 
     // HTTP debugging.
     static bool                        s_HTTP_DEBUG = false;
@@ -379,11 +380,19 @@ HTTPClient::initializeImpl()
     long timeout = s_timeout;
     const char* timeoutEnv = getenv("OSGEARTH_HTTP_TIMEOUT");
     if (timeoutEnv)
-    {        
+    {
         timeout = osgEarth::as<long>(std::string(timeoutEnv), 0);
     }
     OE_DEBUG << LC << "Setting timeout to " << timeout << std::endl;
     curl_easy_setopt( _curl_handle, CURLOPT_TIMEOUT, timeout );
+    long connectTimeout = s_connectTimeout;
+    const char* connectTimeoutEnv = getenv("OSGEARTH_HTTP_CONNECTTIMEOUT");
+    if (connectTimeoutEnv)
+    {
+        connectTimeout = osgEarth::as<long>(std::string(connectTimeoutEnv), 0);
+    }
+    OE_DEBUG << LC << "Setting connect timeout to " << connectTimeout << std::endl;
+    curl_easy_setopt( _curl_handle, CURLOPT_CONNECTTIMEOUT, connectTimeout );
 
     _initialized = true;
 }
@@ -420,6 +429,15 @@ void HTTPClient::setTimeout( long timeout )
     s_timeout = timeout;
 }
 
+long HTTPClient::getConnectTimeout()
+{
+    return s_connectTimeout;
+}
+
+void HTTPClient::setConnectTimeout( long timeout )
+{
+    s_connectTimeout = timeout;
+}
 URLRewriter* HTTPClient::getURLRewriter()
 {
     return s_rewriter.get();

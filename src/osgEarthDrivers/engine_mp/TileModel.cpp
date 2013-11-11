@@ -121,15 +121,18 @@ _locator     ( locator ),
 _tileKey     ( tileKey ),
 _fallbackData( fallbackData )
 {
+    osg::Texture::FilterMode minFilter = layer->getImageLayerOptions().minFilter().get();
+    osg::Texture::FilterMode magFilter = layer->getImageLayerOptions().magFilter().get();
+
     _texture = new osg::Texture2D( image );
     _texture->setUnRefImageDataAfterApply( true );
     _texture->setMaxAnisotropy( 16.0f );
     _texture->setResizeNonPowerOfTwoHint(false);
-    _texture->setFilter( osg::Texture::MAG_FILTER, osg::Texture::LINEAR );
-    _texture->setFilter( osg::Texture::MIN_FILTER, osg::Texture::LINEAR );
+    _texture->setFilter( osg::Texture::MAG_FILTER, magFilter );
+    _texture->setFilter( osg::Texture::MIN_FILTER, minFilter );
     _texture->setWrap( osg::Texture::WRAP_S, osg::Texture::CLAMP_TO_EDGE );
     _texture->setWrap( osg::Texture::WRAP_T, osg::Texture::CLAMP_TO_EDGE );
-    _texture->setWrap( osg::Texture::WRAP_R, osg::Texture::CLAMP_TO_EDGE );
+    //_texture->setWrap( osg::Texture::WRAP_R, osg::Texture::CLAMP_TO_EDGE );
     //_image = 0L;
 }
 

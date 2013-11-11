@@ -42,7 +42,9 @@ namespace
     //
     // Caveats: You can still fake out the morph by zooming around very quickly.
     // Also, it will only morph properly if you use odd-numbers post spacings
-    // in your terrain tile. (See MapOptions::elevation_tile_size).
+    // in your terrain tile. (See MapOptions::elevation_tile_size). Finally,
+    // a large PAGEDLOD cache will negate the blending effect when zooming out
+    // and then back in. See MPGeometry.
 
     const char* vs =
         "#version " GLSL_VERSION_STR "\n"
@@ -97,7 +99,6 @@ namespace
 
         "uniform vec4 oe_tile_key; \n"
         "uniform int oe_layer_uid; \n"
-        "uniform float oe_layer_opacity; \n"
         "varying vec4 oe_lodblend_texc; \n"
         "varying float oe_lodblend_r; \n"
         "uniform sampler2D oe_layer_tex_parent; \n"
@@ -106,8 +107,11 @@ namespace
         "{ \n"
         "    if ( oe_layer_uid >= 0 ) \n"
         "    { \n"
-        "        vec4 texelpma = texture2D(oe_layer_tex_parent, oe_lodblend_texc.st) * oe_layer_opacity; \n"
-        "        color = mix(color, texelpma, oe_lodblend_r); \n"
+        "        vec4 texel = texture2D(oe_layer_tex_parent, oe_lodblend_texc.st); \n"
+        "        float enable = step(0.0001, texel.a); \n"          // did we get a parent texel?
+        "        texel.rgb = mix(color.rgb, texel.rgb, enable); \n" // if not, use the incoming color for the blend
+        "        texel.a = mix(0.0, color.a, enable); \n"           // ...and blend from alpha=0 for a fade-in effect.
+        "        color = mix(color, texel, oe_lodblend_r); \n"
         "    } \n"
         "} \n";
 }
@@ -193,6 +197,7 @@ LODBlending::onInstall(TerrainEngineNode* engine)
         stateset->addUniform( _vscaleUniform.get() );
 
         VirtualProgram* vp = VirtualProgram::getOrCreate(stateset);
+        vp->setName( "osgEarth::Util::LODBlending" );
         vp->setFunction( "oe_lodblend_vertex",   vs, ShaderComp::LOCATION_VERTEX_MODEL );
         vp->setFunction( "oe_lodblend_fragment", fs, ShaderComp::LOCATION_FRAGMENT_COLORING );
     }

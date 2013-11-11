@@ -45,8 +45,10 @@ namespace osgEarth { namespace Annotation
 
         static const std::string& PROGRAM_NAME();
 
-		static osgText::String::Encoding convertTextSymbolEncoding (
-			const osgEarth::Symbology::TextSymbol::Encoding encoding );
+        /**
+         * Convert a symbology encoding enum to an osgText enum
+         */
+        static osgText::String::Encoding convertTextSymbolEncoding(const TextSymbol::Encoding encoding);
 
         /**
          * Creates a drawable representing a symbolized text label in
@@ -64,8 +66,9 @@ namespace osgEarth { namespace Annotation
         static osg::Geometry* createImageGeometry(
             osg::Image*       image,
             const osg::Vec2s& pixelOffsets,
-            unsigned          textureUnit       =0,
-            double            heading = 0.0);
+            unsigned          textureUnit,
+            double            heading,
+            double            scale );
 
         /**
          * Creates a fading uniform that the decluttering engine can use

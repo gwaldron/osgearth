@@ -42,10 +42,12 @@ the entire map.
 .. parsed-literal::
 
     <map>
-        <options lighting                = "true"
-                 elevation_interpolation = "bilinear"
-                 elevation_tile_size     = "8"
-                 overlay_texture_size    = "4096" >
+        <options lighting                 = "true"
+                 elevation_interpolation  = "bilinear"
+                 elevation_tile_size      = "8"
+                 overlay_texture_size     = "4096"
+                 overlay_blending         = "true"
+                 overlay_resolution_ratio = "5.0" >
 
             <:ref:`profile <Profile>`>
             <:ref:`proxy <ProxySettings>`>
@@ -53,24 +55,32 @@ the entire map.
             <:ref:`cache_policy <CachePolicy>`>
             <:ref:`terrain <TerrainOptions>`>
 
-+------------------------+--------------------------------------------------------------------+
-| Property               | Description                                                        |
-+========================+====================================================================+
-| lighting               | Whether to enable GL_LIGHTING on the entire map. By default this is|
-|                        | unset, meaning it will inherit the lighting mode of the scene.     |
-+------------------------+--------------------------------------------------------------------+
-| elevation_interpolation| Algorithm to use when resampling elevation source data:            |
-|                        |   :nearest:     Nearest neighbor                                   |
-|                        |   :average:     Averages the neighoring values                     |
-|                        |   :bilinear:    Linear interpolation in both axes                  |
-|                        |   :triangulate: Interp follows triangle slope                      |
-+------------------------+--------------------------------------------------------------------+
-| elevation_tile_size    | Forces the number of posts to render for each terrain tile. By     |
-|                        | default, the engine will use the size of the largest available     |
-|                        | source.                                                            |
-+------------------------+--------------------------------------------------------------------+
-| overlay_texture_size   | Sets the texture size to use for draping (projective texturing)    |
-+------------------------+--------------------------------------------------------------------+
++--------------------------+--------------------------------------------------------------------+
+| Property                 | Description                                                        |
++==========================+====================================================================+
+| lighting                 | Whether to enable GL_LIGHTING on the entire map. By default this is|
+|                          | unset, meaning it will inherit the lighting mode of the scene.     |
++--------------------------+--------------------------------------------------------------------+
+| elevation_interpolation  | Algorithm to use when resampling elevation source data:            |
+|                          |   :nearest:     Nearest neighbor                                   |
+|                          |   :average:     Averages the neighoring values                     |
+|                          |   :bilinear:    Linear interpolation in both axes                  |
+|                          |   :triangulate: Interp follows triangle slope                      |
++--------------------------+--------------------------------------------------------------------+
+| elevation_tile_size      | Forces the number of posts to render for each terrain tile. By     |
+|                          | default, the engine will use the size of the largest available     |
+|                          | source.                                                            |
++--------------------------+--------------------------------------------------------------------+
+| overlay_texture_size     | Sets the texture size to use for draping (projective texturing)    |
++--------------------------+--------------------------------------------------------------------+
+| overlay_blending         | Whether overlay geometry blends with the terrain during draping    |
+|                          | (projective texturing                                              |
++--------------------------+--------------------------------------------------------------------+
+| overlay_resolution_ratio | For draped geometry, the ratio of the resolution of the projective |
+|                          | texture near the camera versus the resolution far from the camera. |
+|                          | Increase the value to improve appearance close to the camera while |
+|                          | sacrificing appearance of farther geometry.                        |
++--------------------------+--------------------------------------------------------------------+
 
 
 .. _TerrainOptions:
@@ -159,7 +169,8 @@ An *image layer* is a raster image overlaid on the map's geometry.
                visible        = "true"
                shared         = "false"
                feather_pixels = "false"
-               >
+               min_filter     = "LINEAR"
+               mag_filter     = "LINEAR" >
 
             <:ref:`cache_policy <CachePolicy>`>
             <:ref:`color_filters <ColorFilterChain>`>
@@ -209,6 +220,13 @@ An *image layer* is a raster image overlaid on the map's geometry.
 | feather_pixels        | Whether to feather out alpha regions for this image layer with the |
 |                       | featherAlphaRegions function. Used to get proper blending when you |
 |                       | have datasets that abutt exactly with no overlap.                  |
++-----------------------+--------------------------------------------------------------------+
+| min_filter            | OpenGL texture minification filter to use for this layer.          |
+|                       | Options are NEAREST, LINEAR, NEAREST_MIPMAP_NEAREST,               |
+|                       | NEAREST_MIPMIP_LINEAR, LINEAR_MIPMAP_NEAREST, LINEAR_MIPMAP_LINEAR |
++-----------------------+--------------------------------------------------------------------+
+| mag_filter            | OpenGL texture magnification filter to use for this layer.         |
+|                       | Options are the same as for ``min_filter`` above.                  |
 +-----------------------+--------------------------------------------------------------------+
 
 

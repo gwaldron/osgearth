@@ -90,6 +90,14 @@ struct RotateImage : public ControlEventHandler
     }
 };
 
+struct SetImageOpacity : public ControlEventHandler
+{
+    void onValueChanged( Control* control, float value )
+    {
+        s_imageControl->setOpacity( value );
+    }
+};
+
 void
 createControls( ControlCanvas* cs )
 {
@@ -136,6 +144,22 @@ createControls( ControlCanvas* cs )
             rotateBox->addControl( rotateSlider );
         }
         center->addControl( rotateBox );
+
+        // Opacity slider:
+        HBox* opacityBox = new HBox();
+        opacityBox->setChildVertAlign( Control::ALIGN_CENTER );
+        opacityBox->setHorizFill( true );
+        opacityBox->setBackColor( Color::Green );
+        {
+            opacityBox->addControl( new LabelControl("Opacity: ") );
+
+            HSliderControl* opacitySlider = new HSliderControl( 0.0, 1.0, 1.0 );
+            opacitySlider->addEventHandler( new SetImageOpacity() );
+            opacitySlider->setHeight( 8.0f );
+            opacitySlider->setHorizFill( true, 200 );
+            opacityBox->addControl( opacitySlider );
+        }
+        center->addControl( opacityBox );
 
         cs->addControl( center );
     }

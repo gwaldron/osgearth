@@ -31,6 +31,8 @@ using namespace osgEarth;
 
 //----------------------------------------------------------------------------
 
+//osg::buffered_object<MPGeometry::PerGC> MPGeometry::_perGC;
+
 MPGeometry::MPGeometry(const TileKey& key, const MapFrame& frame, int imageUnit) : 
 osg::Geometry    ( ),
 _frame           ( frame ),
@@ -38,29 +40,20 @@ _imageUnit       ( imageUnit )
 {
     unsigned tw, th;
     key.getProfile()->getNumTiles(key.getLOD(), tw, th);
-    osg::Vec4f keyValue( key.getTileX(), th-key.getTileY()-1.0f, key.getLOD(), -1.0f );
-
-    _tileKeyUniform = new osg::Uniform( osg::Uniform::FLOAT_VEC4, "oe_tile_key" );
-    _tileKeyUniform->set( keyValue );
-
-    _opacityUniform = new osg::Uniform( osg::Uniform::FLOAT, "oe_layer_opacity" );
-    _opacityUniform->set( 1.0f );
-
-    _layerUIDUniform = new osg::Uniform( osg::Uniform::INT, "oe_layer_uid" );
-    _layerUIDUniform->set( 0 );
-
-    _layerOrderUniform = new osg::Uniform( osg::Uniform::INT, "oe_layer_order" );
-    _layerOrderUniform->set( 0 );
-
-    _texMatParentUniform = new osg::Uniform(osg::Uniform::FLOAT_MAT4, "oe_layer_parent_matrix");
+    _tileKeyValue.set( key.getTileX(), th-key.getTileY()-1.0f, key.getLOD(), -1.0f );
 
     _imageUnitParent = _imageUnit + 1; // temp
 
-    // Temporary solution to the OverlayDecorator techniques' inappropriate setting of
-    // uniform values during the CULL traversal, which causes corruption of the RTT 
-    // camera matricies when DRAW overlaps the next frame's CULL. Please see my comments
-    // in DrapingTechnique.cpp for more information.
-    this->setDataVariance( osg::Object::DYNAMIC );
+    // establish uniform name IDs.
+    _tileKeyUniformNameID      = osg::Uniform::getNameID( "oe_tile_key" );
+    _birthTimeUniformNameID    = osg::Uniform::getNameID( "oe_tile_birthtime" );
+    _uidUniformNameID          = osg::Uniform::getNameID( "oe_layer_uid" );
+    _orderUniformNameID        = osg::Uniform::getNameID( "oe_layer_order" );
+    _opacityUniformNameID      = osg::Uniform::getNameID( "oe_layer_opacity" );
+    _texMatParentUniformNameID = osg::Uniform::getNameID( "oe_layer_parent_matrix" );
+
+    this->setUseVertexBufferObjects(true);
+    this->setUseDisplayList(false);
 }
 
 
@@ -95,33 +88,58 @@ MPGeometry::renderPrimitiveSets(osg::State& state,
     unsigned layersDrawn = 0;
 
 
-    osg::ref_ptr<osg::GL2Extensions> ext = osg::GL2Extensions::Get( state.getContextID(), true );
+    // access the GL extensions interface for the current GC:
+    unsigned contextID = state.getContextID();
+    osg::ref_ptr<osg::GL2Extensions> ext = osg::GL2Extensions::Get( contextID, true );
     const osg::Program::PerContextProgram* pcp = state.getLastAppliedProgramObject();
 
     // cannot store these in the object since there could be multiple GCs (and multiple
     // PerContextPrograms) at large
     GLint tileKeyLocation;
+    GLint birthTimeLocation;
     GLint opacityLocation;
     GLint uidLocation;
     GLint orderLocation;
     GLint texMatParentLocation;
 
     // The PCP can change (especially in a VirtualProgram environment). So we do need to
-    // requery the uni locations each time. TODO: consider optimizations.
+    // requery the uni locations each time unfortunately. TODO: explore optimizations.
     if ( pcp )
     {
-        tileKeyLocation      = pcp->getUniformLocation( _tileKeyUniform->getNameID() );
-        opacityLocation      = pcp->getUniformLocation( _opacityUniform->getNameID() );
-        uidLocation          = pcp->getUniformLocation( _layerUIDUniform->getNameID() );
-        orderLocation        = pcp->getUniformLocation( _layerOrderUniform->getNameID() );
-        texMatParentLocation = pcp->getUniformLocation( _texMatParentUniform->getNameID() );
+        tileKeyLocation      = pcp->getUniformLocation( _tileKeyUniformNameID );
+        birthTimeLocation    = pcp->getUniformLocation( _birthTimeUniformNameID );
+        opacityLocation      = pcp->getUniformLocation( _opacityUniformNameID );
+        uidLocation          = pcp->getUniformLocation( _uidUniformNameID );
+        orderLocation        = pcp->getUniformLocation( _orderUniformNameID );
+        texMatParentLocation = pcp->getUniformLocation( _texMatParentUniformNameID );
     }
     
     // apply the tilekey uniform once.
-    _tileKeyUniform->apply( ext, tileKeyLocation );
+    if ( tileKeyLocation >= 0 )
+    {
+        ext->glUniform4fv( tileKeyLocation, 1, _tileKeyValue.ptr() );
+    }
+
+    // set the "birth time" - i.e. the time this tile last entered the scene in the current GC.
+    if ( birthTimeLocation >= 0 )
+    {
+        PerContextData& pcd = _pcd[contextID];
+        if ( pcd.birthTime < 0.0f )
+        {
+            const osg::FrameStamp* stamp = state.getFrameStamp();
+            if ( stamp )
+            {
+                pcd.birthTime = stamp->getReferenceTime();
+            }
+        }
+        ext->glUniform1f( birthTimeLocation, pcd.birthTime );
+    }
 
     // activate the tile coordinate set - same for all layers
     state.setTexCoordPointer( _imageUnit+1, _tileCoords.get() );
+
+    // emit a default terrain color since we're not binding a color array:
+    glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
 
     if ( _layers.size() > 0 )
     {
@@ -154,12 +172,8 @@ MPGeometry::renderPrimitiveSets(osg::State& state,
         int activeImageUnit = -1;
 
         // interate over all the image layers
-        //glDepthMask(GL_TRUE);
         for(unsigned i=0; i<_layers.size(); ++i)
         {
-          //  if ( i > 0 )
-            //    glDepthMask(GL_FALSE);
-
             const Layer& layer = _layers[i];
 
             if ( layer._imageLayer->getVisible() )
@@ -175,7 +189,7 @@ MPGeometry::renderPrimitiveSets(osg::State& state,
                 layer._tex->apply( state );
 
                 // if we're using a parent texture for blending, activate that now
-                if ( layer._texParent.valid() )
+                if ( texMatParentLocation >= 0 && layer._texParent.valid() )
                 {
                     state.setActiveTextureUnit( _imageUnitParent );
                     activeImageUnit = _imageUnitParent;
@@ -191,27 +205,32 @@ MPGeometry::renderPrimitiveSets(osg::State& state,
                 if ( pcp )
                 {
                     // apply opacity:
-                    float opacity = layer._imageLayer->getOpacity();
-                    if ( opacity != prev_opacity )
+                    if ( opacityLocation >= 0 )
                     {
-                        _opacityUniform->set( opacity );
-                        _opacityUniform->apply( ext, opacityLocation );
-                        prev_opacity = opacity;
+                        float opacity = layer._imageLayer->getOpacity();
+                        if ( opacity != prev_opacity )
+                        {
+                            ext->glUniform1f( opacityLocation, (GLfloat)opacity );
+                            prev_opacity = opacity;
+                        }
                     }
 
                     // assign the layer UID:
-                    _layerUIDUniform->set( layer._layerID );
-                    _layerUIDUniform->apply( ext, uidLocation );
+                    if ( uidLocation >= 0 )
+                    {
+                        ext->glUniform1i( uidLocation, (GLint)layer._layerID );
+                    }
 
                     // assign the layer order:
-                    _layerOrderUniform->set( (int)layersDrawn );
-                    _layerOrderUniform->apply( ext, orderLocation );
+                    if ( orderLocation >= 0 )
+                    {
+                        ext->glUniform1i( orderLocation, (GLint)layersDrawn );
+                    }
 
                     // assign the parent texture matrix
-                    if ( layer._texParent.valid() )
+                    if ( texMatParentLocation >= 0 && layer._texParent.valid() )
                     {
-                        _texMatParentUniform->set( layer._texMatParent );
-                        _texMatParentUniform->apply( ext, texMatParentLocation );
+                        ext->glUniformMatrix4fv( texMatParentLocation, 1, GL_FALSE, layer._texMatParent.ptr() );
                     }
                 }
 
@@ -234,14 +253,12 @@ MPGeometry::renderPrimitiveSets(osg::State& state,
     // if we didn't draw anything, draw the raw tiles anyway with no texture.
     if ( layersDrawn == 0 )
     {
-        _opacityUniform->set( 1.0f );
-        _opacityUniform->apply( ext, opacityLocation );
-
-        _layerUIDUniform->set( (int)-1 ); // indicates a non-textured layer
-        _layerUIDUniform->apply( ext, uidLocation );
-
-        _layerOrderUniform->set( (int)0 );
-        _layerOrderUniform->apply( ext, orderLocation );
+        if ( opacityLocation >= 0 )
+            ext->glUniform1f( opacityLocation, (GLfloat)1.0f );
+        if ( uidLocation >= 0 )
+            ext->glUniform1i( uidLocation, (GLint)-1 );
+        if ( orderLocation >= 0 )
+            ext->glUniform1i( orderLocation, (GLint)0 );
 
         // draw the primitives themselves.
         for(unsigned int primitiveSetNum=0; primitiveSetNum!=_primitives.size(); ++primitiveSetNum)
@@ -262,9 +279,7 @@ MPGeometry::computeBound() const
         Threading::ScopedMutexLock exclusive(_frameSyncMutex);
         osg::BoundingSphere bs(bbox);
         osg::Vec4f tk;
-        _tileKeyUniform->get(tk);
-        tk.w() = bs.radius();
-        _tileKeyUniform->set(tk);
+        _tileKeyValue.w() = bs.radius();
     }
     return bbox;
 }
@@ -301,6 +316,11 @@ MPGeometry::resizeGLObjectBuffers(unsigned maxSize)
         const Layer& layer = _layers[i];
         if ( layer._tex.valid() )
             layer._tex->resizeGLObjectBuffers( maxSize );
+    }
+
+    if ( _pcd.size() < maxSize )
+    {
+        _pcd.resize(maxSize);
     }
 }
 
@@ -455,52 +475,4 @@ MPGeometry::drawImplementation(osg::RenderInfo& renderInfo) const
     // unbind the VBO's if any are used.
     state.unbindVertexBufferObject();
     state.unbindElementBufferObject();
-}
-
-
-void
-MPGeometry::merge( MPGeometry* rhs )
-{
-    osg::Vec3Array* verts    = static_cast<osg::Vec3Array*>( this->getVertexArray() );
-    osg::Vec3Array* normals  = static_cast<osg::Vec3Array*>( this->getNormalArray() );
-    osg::Vec4Array* attribs  = static_cast<osg::Vec4Array*>( this->getVertexAttribArray(osg::Drawable::ATTRIBUTE_6) );
-    osg::Vec4Array* attribs2 = static_cast<osg::Vec4Array*>( this->getVertexAttribArray(osg::Drawable::ATTRIBUTE_7) );
-
-    osg::Vec3Array* rhs_verts    = static_cast<osg::Vec3Array*>( rhs->getVertexArray() );
-    osg::Vec3Array* rhs_normals  = static_cast<osg::Vec3Array*>( rhs->getNormalArray() );
-    osg::Vec4Array* rhs_attribs  = static_cast<osg::Vec4Array*>( rhs->getVertexAttribArray(osg::Drawable::ATTRIBUTE_6) );
-    osg::Vec4Array* rhs_attribs2 = static_cast<osg::Vec4Array*>( rhs->getVertexAttribArray(osg::Drawable::ATTRIBUTE_7) );
-
-    unsigned offset = verts->size();
-
-    // first combine the primary arrays:
-    std::copy( rhs_verts->begin(), rhs_verts->end(), std::back_inserter(*verts) );
-    std::copy( rhs_normals->begin(), rhs_normals->end(), std::back_inserter(*normals) );
-    std::copy( rhs_attribs->begin(), rhs_attribs->end(), std::back_inserter(*attribs) );
-    std::copy( rhs_attribs2->begin(), rhs_attribs2->end(), std::back_inserter(*attribs2) );
-    
-    // next combine the per-layer arrays:
-    for(unsigned i=0; i<_layers.size(); ++i )
-    {
-        Layer& layer = _layers[i];
-        Layer& rhs_layer = rhs->_layers[i];
-        if ( rhs_layer._texCoords.valid() )
-            std::copy( rhs_layer._texCoords->begin(), rhs_layer._texCoords->end(), std::back_inserter(*layer._texCoords) );
-        if ( rhs_layer._tileCoords.valid() )
-            std::copy( rhs_layer._tileCoords->begin(), rhs_layer._tileCoords->end(), std::back_inserter(*layer._tileCoords) );
-    }
-
-    // finally, append the primitive sets
-    osg::DrawElements* pset = dynamic_cast<osg::DrawElements*>(getPrimitiveSet(0));
-    for(unsigned i=0; i<rhs->getNumPrimitiveSets(); ++i)
-    {
-        osg::DrawElements* rhs_pset = dynamic_cast<osg::DrawElements*>(rhs->getPrimitiveSet(i));
-        if ( pset && rhs_pset )
-        {
-            for(unsigned e=0; e<rhs_pset->getNumIndices(); ++e)
-            {
-                pset->addElement( offset + rhs_pset->getElement(e) );
-            }
-        }
-    }
 }

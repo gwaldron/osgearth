@@ -31,6 +31,8 @@
 using namespace osgEarth;
 using namespace osgEarth::Symbology;
 
+OSGEARTH_REGISTER_SIMPLE_SYMBOL(marker, MarkerSymbol);
+
 MarkerSymbol::MarkerSymbol( const Config& conf ) :
 Symbol     ( conf ),
 _placement ( PLACEMENT_CENTROID ),

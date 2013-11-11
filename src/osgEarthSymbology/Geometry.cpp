@@ -515,6 +515,14 @@ Ring::open()
         erase( end()-1 );
 }
 
+// ensures that the first and last points are idential.
+void 
+Ring::close()
+{
+    if ( size() > 0 && front() != back() )
+        push_back( front() );
+}
+
 // gets the signed area.
 double
 Ring::getSignedArea2D() const
@@ -610,6 +618,14 @@ Polygon::open()
     Ring::open();
     for( RingCollection::const_iterator i = _holes.begin(); i != _holes.end(); ++i )
         (*i)->open();
+}
+
+void
+Polygon::close() 
+{
+    Ring::close();
+    for( RingCollection::const_iterator i = _holes.begin(); i != _holes.end(); ++i )
+        (*i)->close();
 }
 
 //----------------------------------------------------------------------------

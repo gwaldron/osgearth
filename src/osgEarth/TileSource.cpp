@@ -475,6 +475,31 @@ TileSource::hasData(const osgEarth::TileKey& key) const
     return intersectsData;
 }
 
+bool
+TileSource::hasDataForFallback(const osgEarth::TileKey& key) const
+{
+    //sematics: might have data.
+
+    //If no data extents are provided, just return true
+    if (_dataExtents.size() == 0) 
+        return true;
+
+    const osgEarth::GeoExtent& keyExtent = key.getExtent();
+    bool intersectsData = false;
+
+    for (DataExtentList::const_iterator itr = _dataExtents.begin(); itr != _dataExtents.end(); ++itr)
+    {
+        if ((keyExtent.intersects( *itr )) && 
+            (!itr->minLevel().isSet() || itr->minLevel() <= key.getLOD()))
+        {
+            intersectsData = true;
+            break;
+        }
+    }
+
+    return intersectsData;
+}
+
 TileBlacklist*
 TileSource::getBlacklist()
 {

@@ -64,6 +64,8 @@ ImageLayerOptions::setDefaults()
     _maxRange.init( FLT_MAX );
     _lodBlending.init( false );
     _featherPixels.init( false );
+    _minFilter.init( osg::Texture::LINEAR );
+    _magFilter.init( osg::Texture::LINEAR );
 }
 
 void
@@ -92,6 +94,19 @@ ImageLayerOptions::fromConfig( const Config& conf )
         _colorFilters.clear();
         ColorFilterRegistry::instance()->readChain( conf.child("color_filters"), _colorFilters );
     }
+
+    conf.getIfSet("mag_filter","LINEAR",                _magFilter,osg::Texture::LINEAR);
+    conf.getIfSet("mag_filter","LINEAR_MIPMAP_LINEAR",  _magFilter,osg::Texture::LINEAR_MIPMAP_LINEAR);
+    conf.getIfSet("mag_filter","LINEAR_MIPMAP_NEAREST", _magFilter,osg::Texture::LINEAR_MIPMAP_NEAREST);
+    conf.getIfSet("mag_filter","NEAREST",               _magFilter,osg::Texture::NEAREST);
+    conf.getIfSet("mag_filter","NEAREST_MIPMAP_LINEAR", _magFilter,osg::Texture::NEAREST_MIPMAP_LINEAR);
+    conf.getIfSet("mag_filter","NEAREST_MIPMAP_NEAREST",_magFilter,osg::Texture::NEAREST_MIPMAP_NEAREST);
+    conf.getIfSet("min_filter","LINEAR",                _minFilter,osg::Texture::LINEAR);
+    conf.getIfSet("min_filter","LINEAR_MIPMAP_LINEAR",  _minFilter,osg::Texture::LINEAR_MIPMAP_LINEAR);
+    conf.getIfSet("min_filter","LINEAR_MIPMAP_NEAREST", _minFilter,osg::Texture::LINEAR_MIPMAP_NEAREST);
+    conf.getIfSet("min_filter","NEAREST",               _minFilter,osg::Texture::NEAREST);
+    conf.getIfSet("min_filter","NEAREST_MIPMAP_LINEAR", _minFilter,osg::Texture::NEAREST_MIPMAP_LINEAR);
+    conf.getIfSet("min_filter","NEAREST_MIPMAP_NEAREST",_minFilter,osg::Texture::NEAREST_MIPMAP_NEAREST);
 }
 
 Config
@@ -118,6 +133,19 @@ ImageLayerOptions::getConfig( bool isolate ) const
             conf.add( filtersConf );
         }
     }
+
+    conf.updateIfSet("mag_filter","LINEAR",                _magFilter,osg::Texture::LINEAR);
+    conf.updateIfSet("mag_filter","LINEAR_MIPMAP_LINEAR",  _magFilter,osg::Texture::LINEAR_MIPMAP_LINEAR);
+    conf.updateIfSet("mag_filter","LINEAR_MIPMAP_NEAREST", _magFilter,osg::Texture::LINEAR_MIPMAP_NEAREST);
+    conf.updateIfSet("mag_filter","NEAREST",               _magFilter,osg::Texture::NEAREST);
+    conf.updateIfSet("mag_filter","NEAREST_MIPMAP_LINEAR", _magFilter,osg::Texture::NEAREST_MIPMAP_LINEAR);
+    conf.updateIfSet("mag_filter","NEAREST_MIPMAP_NEAREST",_magFilter,osg::Texture::NEAREST_MIPMAP_NEAREST);
+    conf.updateIfSet("min_filter","LINEAR",                _minFilter,osg::Texture::LINEAR);
+    conf.updateIfSet("min_filter","LINEAR_MIPMAP_LINEAR",  _minFilter,osg::Texture::LINEAR_MIPMAP_LINEAR);
+    conf.updateIfSet("min_filter","LINEAR_MIPMAP_NEAREST", _minFilter,osg::Texture::LINEAR_MIPMAP_NEAREST);
+    conf.updateIfSet("min_filter","NEAREST",               _minFilter,osg::Texture::NEAREST);
+    conf.updateIfSet("min_filter","NEAREST_MIPMAP_LINEAR", _minFilter,osg::Texture::NEAREST_MIPMAP_LINEAR);
+    conf.updateIfSet("min_filter","NEAREST_MIPMAP_NEAREST",_minFilter,osg::Texture::NEAREST_MIPMAP_NEAREST);
     
     return conf;
 }
@@ -507,6 +535,12 @@ ImageLayer::createImageInKeyProfile( const TileKey& key, ProgressCallback* progr
         return GeoImage::INVALID;
     }
 
+    // Check the max data level, which limits the LOD of available data.
+    if ( _runtimeOptions.maxDataLevel().isSet() && key.getLOD() > _runtimeOptions.maxDataLevel().value() )
+    {
+        return GeoImage::INVALID;
+    }
+
     // Check for a "Minumum level" setting on this layer. If we are before the
     // min level, just return the empty image. Do not cache empties
     if ( _runtimeOptions.minLevel().isSet() && key.getLOD() < _runtimeOptions.minLevel().value() )
@@ -643,39 +677,26 @@ ImageLayer::createImageFromTileSource(const TileKey&    key,
         return assembleImageFromTileSource( key, progress, out_isFallback );
     }
 
-    // Fail is the image is blacklisted.
-    // ..unless there will be a fallback attempt.
-    if ( source->getBlacklist()->contains( key.getTileId() ) && !forceFallback )
-    {
-        OE_DEBUG << LC << "createImageFromTileSource: blacklisted(" << key.str() << ")" << std::endl;
-        return GeoImage::INVALID;
-    }
-
-    // Fail if no data is available for this key.
-    if ( !source->hasDataAtLOD( key.getLevelOfDetail() ) && !forceFallback )
-    {
-        OE_DEBUG << LC << "createImageFromTileSource: hasDataAtLOD(" << key.str() << ") == false" << std::endl;
-        return GeoImage::INVALID;
-    }
-
-    if ( !source->hasDataInExtent( key.getExtent() ) )
-    {
-        OE_DEBUG << LC << "createImageFromTileSource: hasDataInExtent(" << key.str() << ") == false" << std::endl;
-        return GeoImage::INVALID;
-    }
-
     // Good to go, ask the tile source for an image:
     osg::ref_ptr<TileSource::ImageOperation> op = _preCacheOp;
 
     osg::ref_ptr<osg::Image> result;
-    TileKey finalKey = key;
-    bool fellBack = false;
 
     if ( forceFallback )
-    {        
+    {
+        // check if the tile source has any data coverage for the requested key.
+        // the LOD is ignore here and checked later
+        if ( !source->hasDataInExtent( key.getExtent() ) )
+        {
+            OE_DEBUG << LC << "createImageFromTileSource: hasDataInExtent(" << key.str() << ") == false" << std::endl;
+            return GeoImage::INVALID;
+        }
+
+        TileKey finalKey = key;
         while( !result.valid() && finalKey.valid() )
         {
-            if ( !source->getBlacklist()->contains( finalKey.getTileId() ) )
+            if ( !source->getBlacklist()->contains( finalKey.getTileId() ) &&
+                source->hasDataForFallback(finalKey))
             {
                 result = source->createImage( finalKey, op.get(), progress );
                 if ( result.valid() )
@@ -688,7 +709,6 @@ ImageLayer::createImageFromTileSource(const TileKey&    key,
                         GeoImage raw( result.get(), finalKey.getExtent() );
                         GeoImage cropped = raw.crop( key.getExtent(), true, raw.getImage()->s(), raw.getImage()->t(), *_runtimeOptions.driver()->bilinearReprojection() );
                         result = cropped.takeImage();
-                        fellBack = true;
                     }
                 }
             }
@@ -706,9 +726,20 @@ ImageLayer::createImageFromTileSource(const TileKey&    key,
             finalKey = key;
         }
     }
-
     else
     {
+        // Fail is the image is blacklisted.
+        if ( source->getBlacklist()->contains( key.getTileId() ) )
+        {
+            OE_DEBUG << LC << "createImageFromTileSource: blacklisted(" << key.str() << ")" << std::endl;
+            return GeoImage::INVALID;
+        }
+    
+        if ( !source->hasData( key ) )
+        {
+            OE_DEBUG << LC << "createImageFromTileSource: hasData(" << key.str() << ") == false" << std::endl;
+            return GeoImage::INVALID;
+        }
         result = source->createImage( key, op.get(), progress );
     }
 

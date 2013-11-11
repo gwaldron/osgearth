@@ -246,7 +246,7 @@ namespace osgEarth
         const optional<osg::Texture::FilterMode>& magFilter() const { return _magFilter;}
             
         /**
-         * Whether to enable blending
+         * Whether to enable blending on the terrain. Default is true.
          */
         optional<bool>& enableBlending() { return _enableBlending; }
         const optional<bool>& enableBlending() const { return _enableBlending; }

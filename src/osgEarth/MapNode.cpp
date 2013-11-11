@@ -260,9 +260,12 @@ MapNode::init()
     // initialize terrain-level lighting:
     if ( terrainOptions.enableLighting().isSet() )
     {
-        _terrainEngineContainer->getOrCreateStateSet()->setMode( 
-            GL_LIGHTING, 
-            terrainOptions.enableLighting().value() ? 1 : 0 );
+        //_terrainEngineContainer->getOrCreateStateSet()->setMode( 
+        //    GL_LIGHTING, 
+        //    terrainOptions.enableLighting().value() ? 1 : 0 );
+
+        _terrainEngineContainer->getOrCreateStateSet()->addUniform(
+            Registry::shaderFactory()->createUniformForGLMode(GL_LIGHTING, *terrainOptions.enableLighting()) );
     }
 
     if ( _terrainEngine )
@@ -307,6 +310,8 @@ MapNode::init()
             draping->setMipMapping( *_mapNodeOptions.overlayMipMapping() );
         if ( _mapNodeOptions.overlayAttachStencil().isSet() )
             draping->setAttachStencil( *_mapNodeOptions.overlayAttachStencil() );
+        if ( _mapNodeOptions.overlayResolutionRatio().isSet() )
+            draping->setResolutionRatio( *_mapNodeOptions.overlayResolutionRatio() );
 
         _overlayDecorator->addTechnique( draping );
     }
@@ -332,24 +337,23 @@ MapNode::init()
     // install a layer callback for processing further map actions:
     _map->addMapCallback( _mapCallback.get()  );
 
-    osg::StateSet* ss = getOrCreateStateSet();
-
+    osg::StateSet* stateset = getOrCreateStateSet();
     if ( _mapNodeOptions.enableLighting().isSet() )
     {
-        ss->setMode( 
+        stateset->setMode( 
             GL_LIGHTING, 
             _mapNodeOptions.enableLighting().value() ? 1 : 0 );
     }
 
     dirtyBound();
 
-    // Install top-level shader programs:
+    // Install a default lighting shader program.
     if ( Registry::capabilities().supportsGLSL() )
     {
-        VirtualProgram* vp = new VirtualProgram();
-        vp->setName( "MapNode" );
-        Registry::instance()->getShaderFactory()->installLightingShaders( vp );
-        ss->setAttributeAndModes( vp, osg::StateAttribute::ON );
+        VirtualProgram* vp = VirtualProgram::getOrCreate( stateset );
+        vp->setName( "osgEarth::MapNode" );
+
+        Registry::shaderFactory()->installLightingShaders( vp );
     }
 
     // register for event traversals so we can deal with blacklisted filenames
@@ -647,6 +651,9 @@ MapNode::traverse( osg::NodeVisitor& nv )
 
     else if ( nv.getVisitorType() == nv.CULL_VISITOR )
     {
+        // update the light model uniforms.
+        _updateLightingUniformsHelper.cullTraverse( this, &nv );
+
         osgUtil::CullVisitor* cv = Culling::asCullVisitor(nv);
         if ( cv )
         {
@@ -676,7 +683,7 @@ MapNode::traverse( osg::NodeVisitor& nv )
             osg::Matrix3 m3( m4(0,0), m4(1,0), m4(2,0),
                              m4(0,1), m4(1,1), m4(2,1),
                              m4(0,2), m4(1,2), m4(2,2) );
-            cullData->_windowScaleMatrix->set( m3 );
+            cullData->_windowScaleMatrixUniform->set( m3 );
 
             // traverse:
             cv->pushStateSet( cullData->_stateSet.get() );

@@ -223,30 +223,24 @@ void
 RadialLineOfSightNode::terrainChanged( const osgEarth::TileKey& tileKey, osg::Node* terrain )
 {
     OE_DEBUG << "RadialLineOfSightNode::terrainChanged" << std::endl;
-    //Make a temporary group that contains both the old MapNode as well as the new incoming terrain.
-    //Because this function is called from the database pager thread we need to include both b/c 
-    //the new terrain isn't yet merged with the new terrain.
-    osg::ref_ptr < osg::Group > group = new osg::Group;
-    group->addChild( terrain );
-    group->addChild( getNode() );
-    compute( group, true );
+    compute( getNode() );    
 }
 
 void
-RadialLineOfSightNode::compute(osg::Node* node, bool backgroundThread)
+RadialLineOfSightNode::compute(osg::Node* node )
 {
     if (_fill)
     {
-        compute_fill( node, backgroundThread );
+        compute_fill( node );
     }
     else
     {
-        compute_line( node, backgroundThread );
+        compute_line( node );
     }
 }
 
 void
-RadialLineOfSightNode::compute_line(osg::Node* node, bool backgroundThread)
+RadialLineOfSightNode::compute_line(osg::Node* node)
 {    
     if ( !getMapNode() )
         return;
@@ -377,16 +371,9 @@ RadialLineOfSightNode::compute_line(osg::Node* node, bool backgroundThread)
     mt->setMatrix(osg::Matrixd::translate(_centerWorld));
     mt->addChild(geode);
     
-    if (!backgroundThread)
-    {
-        //Remove all the children
-        removeChildren(0, getNumChildren());
-        addChild( mt );  
-    }
-    else
-    {
-        _pendingNode = mt;
-    }
+    //Remove all the children
+    removeChildren(0, getNumChildren());
+    addChild( mt );  
 
     for( LOSChangedCallbackList::iterator i = _changedCallbacks.begin(); i != _changedCallbacks.end(); i++ )
     {
@@ -395,7 +382,7 @@ RadialLineOfSightNode::compute_line(osg::Node* node, bool backgroundThread)
 }
 
 void
-RadialLineOfSightNode::compute_fill(osg::Node* node, bool backgroundThread)
+RadialLineOfSightNode::compute_fill(osg::Node* node)
 {
     if ( !getMapNode() )
         return;
@@ -571,37 +558,15 @@ RadialLineOfSightNode::compute_fill(osg::Node* node, bool backgroundThread)
     osg::MatrixTransform* mt = new osg::MatrixTransform;
     mt->setMatrix(osg::Matrixd::translate(_centerWorld));
     mt->addChild(geode);
-    
-    if (!backgroundThread)
-    {
-        //Remove all the children
-        removeChildren(0, getNumChildren());
-        addChild( mt );  
-    }
-    else
-    {
-        _pendingNode = mt;
-    }
+        
+    //Remove all the children
+    removeChildren(0, getNumChildren());
+    addChild( mt );  
 
     for( LOSChangedCallbackList::iterator i = _changedCallbacks.begin(); i != _changedCallbacks.end(); i++ )
     {
         i->get()->onChanged();
     }	
-}
-
-void
-RadialLineOfSightNode::traverse(osg::NodeVisitor& nv)
-{
-    if (nv.getVisitorType() == osg::NodeVisitor::UPDATE_VISITOR)
-    {
-        if (_pendingNode.valid())
-        {
-            removeChildren(0, getNumChildren());
-            addChild( _pendingNode.get());
-            _pendingNode = 0;            
-        }
-    }
-    osg::Group::traverse(nv);
 }
 
 

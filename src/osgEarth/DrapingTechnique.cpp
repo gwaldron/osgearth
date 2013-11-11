@@ -291,16 +291,12 @@ _textureSize     ( 1024 ),
 _mipmapping      ( false ),
 _rttBlending     ( true ),
 _attachStencil   ( false ),
-_maxFarNearRatio ( 0.0 )
+_maxFarNearRatio ( 3.0 )
 {
-    // cap the ratio of far plane width to near plane width, because if this
-    // ratio gets too large it results in mathematical anomolies and ungoodness
-    // at the near plane. (derived empirically)
-    const char* nfr = ::getenv("OSGEARTH_DRAPING_FAR_NEAR_RATIO");
-    if ( nfr )
-    {
-        _maxFarNearRatio = as<double>(nfr, 0.0);
-    }
+    // try newer version
+    const char* nfr2 = ::getenv("OSGEARTH_OVERLAY_RESOLUTION_RATIO");
+    if ( nfr2 )
+        _maxFarNearRatio = as<double>(nfr2, 0.0);
 }
 
 
@@ -411,7 +407,7 @@ DrapingTechnique::setUpCamera(OverlayDecorator::TechRTTParams& params)
     rtt_vp->setName( "DrapingTechnique RTT" );
     rtt_vp->setInheritShaders( false );
     
-    // active blending within the RTT camera's FBO
+    // activate blending within the RTT camera's FBO
     if ( _rttBlending )
     {
         //Setup a separate blend function for the alpha components and the RGB components.  
@@ -519,8 +515,8 @@ DrapingTechnique::cullOverlayGroup(OverlayDecorator::TechRTTParams& params,
             osg::Matrix::translate(1.0,1.0,1.0) * 
             osg::Matrix::scale(0.5,0.5,0.5);
 
-        // experimental.
-        if ( _maxFarNearRatio > 0.0 )
+        // resolution weighting based on camera distance.
+        if ( _maxFarNearRatio > 1.0 )
         {
             optimizeProjectionMatrix( params, _maxFarNearRatio );
         }
@@ -606,6 +602,22 @@ void
 DrapingTechnique::setAttachStencil( bool value )
 {
     _attachStencil = value;
+}
+
+void
+DrapingTechnique::setResolutionRatio(float value)
+{
+    // not a typo. "near/far resolution" is equivalent to "far/near clip plane extent"
+    // with respect to the overlay projection frustum.
+    _maxFarNearRatio = (double)osg::clampAbove(value, 1.0f);
+}
+
+float
+DrapingTechnique::getResolutionRatio() const
+{
+    // not a typo. "near/far resolution" is equivalent to "far/near clip plane extent"
+    // with respect to the overlay projection frustum.
+    return (float)_maxFarNearRatio;
 }
 
 void

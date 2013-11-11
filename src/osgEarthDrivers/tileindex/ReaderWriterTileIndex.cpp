@@ -99,7 +99,7 @@ public:
                     GDALOptions opt;
                     opt.url() = files[i];
                     //Just force it to render so we don't have to worry about falling back
-                    opt.maxDataLevel() = 23;           
+                    opt.maxDataLevelOverride() = 23;           
                     //Disable the l2 cache so that we don't run out of RAM so easily.
                     opt.L2CacheSize() = 0;
 

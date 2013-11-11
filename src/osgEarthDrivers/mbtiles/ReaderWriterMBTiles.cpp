@@ -61,20 +61,7 @@ public:
         _dbOptions = Registry::instance()->cloneOrCreateOptions( dbOptions );
         CachePolicy::NO_CACHE.apply( _dbOptions.get() );
 
-        //Set the profile
-        const osgEarth::Profile* profile = osgEarth::Registry::instance()->getSphericalMercatorProfile();
-        setProfile( profile );              
-
-#if 0
-        //Open the database
-        std::string filename = _options.filename().value();
-
-        //Get the absolute filename
-        if (!osgDB::containsServerAddress(filename))
-        {
-            filename = osgEarth::getFullPath(referenceURI, filename);
-        }
-#endif
+                   
 
         int flags = SQLITE_OPEN_READONLY;
         int rc = sqlite3_open_v2( _options.filename()->c_str(), &_database, flags, 0L );
@@ -86,17 +73,37 @@ public:
         }
 
         //Print out some metadata
-        std::string name, type, version, description, format;
+        std::string name, type, version, description, format, profileStr;
         getMetaData( "name", name );
         getMetaData( "type", type);
         getMetaData( "version", version );
         getMetaData( "description", description );
         getMetaData( "format", format );
+        getMetaData( "profile", profileStr );
         OE_NOTICE << "name=" << name << std::endl
                   << "type=" << type << std::endl
                   << "version=" << version << std::endl
                   << "description=" << description << std::endl
-                  << "format=" << format << std::endl;
+                  << "format=" << format << std::endl
+                  << "profile=" << profileStr << std::endl;
+
+
+
+         //Set the profile
+        const Profile* profile = getProfile();        
+        if (!profile)
+        {
+            if (!profileStr.empty())
+            {
+                profile = Profile::create(profileStr);
+            }
+            else
+            {
+                profile = osgEarth::Registry::instance()->getSphericalMercatorProfile();
+            }
+            setProfile( profile );                    
+        }
+        
 
         //Determine the tile format and get a reader writer for it.        
         if (_options.format().isSet())
@@ -118,7 +125,7 @@ public:
         OE_DEBUG << LC <<  "_tileFormat = " << _tileFormat << std::endl;
 
         //Get the ReaderWriter
-        _rw = osgDB::Registry::instance()->getReaderWriterForExtension( _tileFormat );
+        _rw = osgDB::Registry::instance()->getReaderWriterForExtension( _tileFormat );                
 
         computeLevels();
 
@@ -181,7 +188,7 @@ public:
             if (rr.validImage())
             {
                 result = rr.takeImage();                
-            }
+            }            
         }
         else
         {

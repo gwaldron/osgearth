@@ -84,6 +84,14 @@ control the color and style of the vector data.
 |                       | rounded corner. Value is the ratio of |                            |
 |                       | line width to corner segment length.  |                            |
 +-----------------------+---------------------------------------+----------------------------+
+| stroke-stipple-pattern| Stippling pattern bitmask. Each set   | integer (65535)            |
+|                       | bit represents an "on" pixel in the   |                            |
+|                       | pattern.                              |                            |
++-----------------------+---------------------------------------+----------------------------+
+| stroke-stipple-factor | Stipple factor for pixel-width lines. | integer (1)                |
+|                       | Number of times to repeat each bit in |                            |
+|                       | the stippling pattern                 |                            |
++-----------------------+---------------------------------------+----------------------------+
 | point-fill            | Fill color for a point.               | HTML color                 |
 +-----------------------+---------------------------------------+----------------------------+
 | point-size            | Size for a GL point geometry          | float (1.0)                |
@@ -124,6 +132,9 @@ the terrain under its location.
 +-----------------------+--------------------------------------------------------------------+
 | altitude-scale        | Scale factor to apply to geometry Z                                |
 +-----------------------+--------------------------------------------------------------------+
+
+Tip: You can also use a shortcut to activate draping or GPU clamping; set ``altitude-clamping``
+to either ``terrain-drape`` or ``terrain-gpu``.
 
 
 Extrusion

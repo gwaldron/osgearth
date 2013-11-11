@@ -31,44 +31,44 @@ static TerrainOptions s_defaultTerrainOptions;
 //----------------------------------------------------------------------------
 
 MapNodeOptions::MapNodeOptions( const Config& conf ) :
-ConfigOptions        ( conf ),
-_proxySettings       ( ProxySettings() ),
-_cacheOnly           ( false ),
-_enableLighting      ( true ),
-_overlayVertexWarping( false ),
-_overlayBlending     ( true ),
-_overlayMipMapping   ( false ),
-_overlayTextureSize  ( 4096 ),
-_terrainOptions      ( 0L ),
-_overlayAttachStencil( false )
+ConfigOptions          ( conf ),
+_proxySettings         ( ProxySettings() ),
+_cacheOnly             ( false ),
+_enableLighting        ( true ),
+_overlayBlending       ( true ),
+_overlayMipMapping     ( false ),
+_overlayTextureSize    ( 4096 ),
+_terrainOptions        ( 0L ),
+_overlayAttachStencil  ( false ),
+_overlayResolutionRatio( 3.0f )
 {
     mergeConfig( conf );
 }
 
 MapNodeOptions::MapNodeOptions( const TerrainOptions& to ) :
-_proxySettings       ( ProxySettings() ),
-_cacheOnly           ( false ),
-_enableLighting      ( true ),
-_overlayVertexWarping( false ),
-_overlayBlending     ( true ),
-_overlayTextureSize  ( 4096 ),
-_overlayMipMapping   ( false ),
-_overlayAttachStencil( false ),
-_terrainOptions      ( 0L )
+_proxySettings         ( ProxySettings() ),
+_cacheOnly             ( false ),
+_enableLighting        ( true ),
+_overlayBlending       ( true ),
+_overlayTextureSize    ( 4096 ),
+_overlayMipMapping     ( false ),
+_overlayAttachStencil  ( false ),
+_overlayResolutionRatio( 3.0f ),
+_terrainOptions        ( 0L )
 {
     setTerrainOptions( to );
 }
 
 MapNodeOptions::MapNodeOptions( const MapNodeOptions& rhs ) :
-_proxySettings       ( ProxySettings() ),
-_cacheOnly           ( false ),
-_enableLighting      ( true ),
-_overlayVertexWarping( false ),
-_overlayBlending     ( true ),
-_overlayTextureSize  ( 4096 ),
-_overlayMipMapping   ( false ),
-_terrainOptions      ( 0L ),
-_overlayAttachStencil( false )
+_proxySettings         ( ProxySettings() ),
+_cacheOnly             ( false ),
+_enableLighting        ( true ),
+_overlayBlending       ( true ),
+_overlayTextureSize    ( 4096 ),
+_overlayMipMapping     ( false ),
+_overlayAttachStencil  ( false ),
+_overlayResolutionRatio( 3.0f ),
+_terrainOptions        ( 0L )
 {
     mergeConfig( rhs.getConfig() );
 }
@@ -89,15 +89,16 @@ MapNodeOptions::getConfig() const
     Config conf; // start with a fresh one since this is a FINAL object  // = ConfigOptions::getConfig();
     conf.key() = "options";
 
-    conf.updateObjIfSet( "proxy",                  _proxySettings );
-    conf.updateIfSet   ( "cache_only",             _cacheOnly );
-    conf.updateIfSet   ( "lighting",               _enableLighting );
-    conf.updateIfSet   ( "terrain",                _terrainOptionsConf );
-    conf.updateIfSet   ( "overlay_warping",        _overlayVertexWarping );
-    conf.updateIfSet   ( "overlay_blending",       _overlayBlending );
-    conf.updateIfSet   ( "overlay_texture_size",   _overlayTextureSize );
-    conf.updateIfSet   ( "overlay_mipmapping",     _overlayMipMapping );
-    conf.updateIfSet   ( "overlay_attach_stencil", _overlayAttachStencil );
+    conf.updateObjIfSet( "proxy",                    _proxySettings );
+    conf.updateIfSet   ( "cache_only",               _cacheOnly );
+    conf.updateIfSet   ( "lighting",                 _enableLighting );
+    conf.updateIfSet   ( "terrain",                  _terrainOptionsConf );
+    conf.updateIfSet   ( "overlay_warping",          _overlayVertexWarping );
+    conf.updateIfSet   ( "overlay_blending",         _overlayBlending );
+    conf.updateIfSet   ( "overlay_texture_size",     _overlayTextureSize );
+    conf.updateIfSet   ( "overlay_mipmapping",       _overlayMipMapping );
+    conf.updateIfSet   ( "overlay_attach_stencil",   _overlayAttachStencil );
+    conf.updateIfSet   ( "overlay_resolution_ratio", _overlayResolutionRatio );
 
     return conf;
 }
@@ -107,14 +108,15 @@ MapNodeOptions::mergeConfig( const Config& conf )
 {
     ConfigOptions::mergeConfig( conf );
 
-    conf.getObjIfSet( "proxy",                  _proxySettings );
-    conf.getIfSet   ( "cache_only",             _cacheOnly );
-    conf.getIfSet   ( "lighting",               _enableLighting );
-    conf.getIfSet   ( "overlay_warping",        _overlayVertexWarping );
-    conf.getIfSet   ( "overlay_blending",       _overlayBlending );
-    conf.getIfSet   ( "overlay_texture_size",   _overlayTextureSize );
-    conf.getIfSet   ( "overlay_mipmapping",     _overlayMipMapping );
-    conf.getIfSet   ( "overlay_attach_stencil", _overlayAttachStencil );
+    conf.getObjIfSet( "proxy",                    _proxySettings );
+    conf.getIfSet   ( "cache_only",               _cacheOnly );
+    conf.getIfSet   ( "lighting",                 _enableLighting );
+    conf.getIfSet   ( "overlay_warping",          _overlayVertexWarping );
+    conf.getIfSet   ( "overlay_blending",         _overlayBlending );
+    conf.getIfSet   ( "overlay_texture_size",     _overlayTextureSize );
+    conf.getIfSet   ( "overlay_mipmapping",       _overlayMipMapping );
+    conf.getIfSet   ( "overlay_attach_stencil",   _overlayAttachStencil );
+    conf.getIfSet   ( "overlay_resolution_ratio", _overlayResolutionRatio );
 
     if ( conf.hasChild( "terrain" ) )
     {

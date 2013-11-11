@@ -896,26 +896,31 @@ ExtrudeGeometryFilter::push( FeatureList& input, FilterContext& context )
     bool ok = process( input, context );
 
     // convert everything to triangles and combine drawables.
-    if ( _mergeGeometry == true && !context.featureIndex() && _featureNameExpr.empty() )
+    if ( _mergeGeometry == true && _featureNameExpr.empty() )
     {
         for( SortedGeodeMap::iterator i = _geodes.begin(); i != _geodes.end(); ++i )
         {
-#if 1
-            MeshConsolidator::run( *i->second.get() );
+            if ( context.featureIndex() )
+            {
+                // The MC will recognize the presence of feature indexing tags and
+                // preserve them. The Cache optimizer however will not, so it is
+                // out for now.
+                MeshConsolidator::run( *i->second.get() );
 
-            VertexCacheOptimizer vco;
-            i->second->accept( vco );
-#else
-
-        //TODO: try this -- issues: it won't work on lines, and will it screw up
-        // feature indexing?
-            osgUtil::Optimizer o;
-            o.optimize( i->second.get(),
-                osgUtil::Optimizer::MERGE_GEOMETRY |
-                osgUtil::Optimizer::VERTEX_PRETRANSFORM |
-                osgUtil::Optimizer::INDEX_MESH |
-                osgUtil::Optimizer::VERTEX_POSTTRANSFORM );
-#endif
+                //VertexCacheOptimizer vco;
+                //i->second->accept( vco );
+            }
+            else
+            {
+                //TODO: try this -- issues: it won't work on lines, and will it screw up
+                // feature indexing?
+                osgUtil::Optimizer o;
+                o.optimize( i->second.get(),
+                    osgUtil::Optimizer::MERGE_GEOMETRY |
+                    osgUtil::Optimizer::VERTEX_PRETRANSFORM |
+                    osgUtil::Optimizer::INDEX_MESH |
+                    osgUtil::Optimizer::VERTEX_POSTTRANSFORM );
+            }
         }
     }
 

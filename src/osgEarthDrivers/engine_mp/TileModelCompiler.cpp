@@ -1761,13 +1761,15 @@ namespace
         int u=0;
         for( RenderLayerVector::const_iterator r = d.renderLayers.begin(); r != d.renderLayers.end(); ++r )
         {
-            if ( r->_ownsTexCoords && r->_texCoords.valid() )
+            if ( r->_texCoords.valid() && r->_ownsTexCoords )
             {
+                r->_texCoords->setBinding( osg::Array::BIND_PER_VERTEX );
                 tdl.push_back( r->_texCoords.get() );
             }
         }
         if ( d.renderTileCoords.valid() && d.ownsTileCoords )
         {
+            d.renderTileCoords->setBinding( osg::Array::BIND_PER_VERTEX );
             tdl.push_back( d.renderTileCoords.get() );
         }
 

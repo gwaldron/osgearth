@@ -23,6 +23,8 @@
 
 #define LC "[StateSetCache] "
 
+#define PRUNE_ACCESS_COUNT 40
+
 using namespace osgEarth;
 
 //---------------------------------------------------------------------------
@@ -156,17 +158,16 @@ namespace
 
 //------------------------------------------------------------------------
 
+StateSetCache::StateSetCache() :
+_pruneCount( 0 )
+{
+    //nop
+}
+
 StateSetCache::~StateSetCache()
 {
     Threading::ScopedMutexLock lock( _mutex );
-
-    for( StateAttributeSet::iterator i = _stateAttributeCache.begin(); i != _stateAttributeCache.end(); ++i )
-    {
-        if ( i->get()->referenceCount() == 1 )
-        {
-            i->get()->releaseGLObjects( 0L );
-        }
-    }
+    prune();
 }
 
 void
@@ -249,6 +250,9 @@ StateSetCache::share(osg::ref_ptr<osg::StateSet>& input,
     if ( !checkEligible || eligible(input.get()) )
     {
         Threading::ScopedMutexLock lock( _mutex );
+
+        pruneIfNecessary();
+
         shareattrs = false;
 
         std::pair<StateSetSet::iterator,bool> result = _stateSetCache.insert( input );
@@ -292,6 +296,8 @@ StateSetCache::share(osg::ref_ptr<osg::StateAttribute>& input,
     {
         Threading::ScopedMutexLock lock( _mutex );
 
+        pruneIfNecessary();
+
         std::pair<StateAttributeSet::iterator,bool> result = _stateAttributeCache.insert( input );
         if ( result.second )
         {
@@ -313,6 +319,54 @@ StateSetCache::share(osg::ref_ptr<osg::StateAttribute>& input,
     }
 }
 
+void
+StateSetCache::pruneIfNecessary()
+{
+    // assume an exclusve mutex is taken
+    if ( _pruneCount++ == PRUNE_ACCESS_COUNT )
+    {
+        prune();
+        _pruneCount = 0;
+    }
+}
+
+void
+StateSetCache::prune()
+{
+    // assume an exclusive mutex is taken.
+
+    unsigned ss_count = 0, sa_count = 0;
+
+    for( StateSetSet::iterator i = _stateSetCache.begin(); i != _stateSetCache.end(); )
+    {
+        if ( i->get()->referenceCount() == 1 )
+        {
+            // do not call releaseGLObjects since the attrs themselves might still be shared
+            _stateSetCache.erase( i++ );
+            ss_count++;
+        }
+        else
+        {
+            ++i;
+        }
+    }
+
+    for( StateAttributeSet::iterator i = _stateAttributeCache.begin(); i != _stateAttributeCache.end(); )
+    {
+        if ( i->get()->referenceCount() == 1 )
+        {
+            i->get()->releaseGLObjects( 0L );
+            _stateAttributeCache.erase( i++ );
+            sa_count++;
+        }
+        else
+        {
+            ++i;
+        }
+    }
+
+    OE_DEBUG << LC << "Pruned " << sa_count << " attributes, " << ss_count << " statesets" << std::endl;
+}
 
 void
 StateSetCache::clear()

@@ -334,6 +334,7 @@ MPTerrainEngineNode::createTerrain()
     // create a root node for each root tile key.
     OE_INFO << LC << "Creating " << keys.size() << " root keys.." << std::endl;
 
+#if 0
     RootTileGroup* root = new RootTileGroup();
     _terrain->addChild( root );
 
@@ -351,6 +352,25 @@ MPTerrainEngineNode::createTerrain()
             OE_WARN << LC << "Couldn't make tile for root key: " << keys[i].str() << std::endl;
         }
     }
+#else
+    osg::Group* root = new osg::Group();
+    _terrain->addChild( root );
+
+    osg::ref_ptr<osgDB::Options> dbOptions = Registry::instance()->cloneOrCreateOptions();
+
+    for( unsigned i=0; i<keys.size(); ++i )
+    {
+        osg::ref_ptr<osg::Node> node = factory->createRootNode( keys[i] );
+        if ( node.valid() )
+        {
+            root->addChild( node.get() );
+        }
+        else
+        {
+            OE_WARN << LC << "Couldn't make tile for root key: " << keys[i].str() << std::endl;
+        }
+    }
+#endif
     _rootTilesRegistered = false;
 
     updateShaders();
@@ -408,6 +428,7 @@ MPTerrainEngineNode::getKeyNodeFactory()
             optimizeTriangleOrientation,
             _terrainOptions );
 
+#if 0
         // initialize a key node factory.
         knf = new SerialKeyNodeFactory(
             getMap(),
@@ -418,6 +439,18 @@ MPTerrainEngineNode::getKeyNodeFactory()
             _terrainOptions,
             _terrain, 
             _uid );
+#else
+        // initialize a key node factory.
+        knf = new QuadKeyNodeFactory(
+            getMap(),
+            _tileModelFactory.get(),
+            compiler,
+            _liveTiles.get(),
+            _deadTiles.get(),
+            _terrainOptions,
+            _terrain, 
+            _uid );
+#endif
     }
 
     return knf.get();
@@ -428,6 +461,8 @@ osg::Node*
 MPTerrainEngineNode::createUpsampledNode(const TileKey&    key,
                                          ProgressCallback* progress)
 {
+    return 0;
+#if 0
     // if the engine has been disconnected from the scene graph, bail out and don't
     // create any more tiles
     if ( getNumParents() == 0 )
@@ -452,6 +487,7 @@ MPTerrainEngineNode::createUpsampledNode(const TileKey&    key,
     }
 
     return result;
+#endif
 }
 
 

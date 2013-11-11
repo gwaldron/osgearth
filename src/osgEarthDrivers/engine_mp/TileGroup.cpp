@@ -223,3 +223,83 @@ TileGroup::traverse(osg::NodeVisitor& nv)
         osg::Group::traverse( nv );
     }
 }
+
+
+
+//----------------------------------------------------------------
+
+
+
+QuadTileGroup::QuadTileGroup() :
+_tilenode      ( 0L ),
+_ignoreSubtiles( false ),
+_subtileRange  ( FLT_MAX ),
+_forceSubdivide( false )
+{
+    //nop
+}
+
+
+QuadTileGroup::QuadTileGroup(TileNode*         tilenode,
+                             const UID&        engineUID,
+                             TileNodeRegistry* live,
+                             TileNodeRegistry* dead,
+                             osgDB::Options*   dbOptions) :
+_ignoreSubtiles( false ),
+_subtileRange  ( FLT_MAX ),
+_forceSubdivide( false )
+{
+    this->addChild( tilenode );
+    _tilenode = tilenode;
+
+    //QuadTilePagedLOD* lod = new QuadTilePagedLOD(this, tilenode->getKey(), engineUID, live, dead);
+    //lod->setDatabaseOptions( dbOptions );
+    //lod->setCenter( tilenode->getBound().center() );
+    //lod->setRadius( tilenode->getBound().radius() );
+    //this->addChild( lod );
+
+}
+
+void
+QuadTileGroup::setForceSubdivide(bool value)
+{
+    _forceSubdivide = value;
+}
+
+void
+QuadTileGroup::setTileNode(TileNode* tilenode)
+{
+    _tilenode = tilenode;
+    this->setChild( 0, tilenode );
+
+    QuadTilePagedLOD* lod = static_cast<QuadTilePagedLOD*>(_children[1].get());
+    lod->setCenter( tilenode->getBound().center() );
+    lod->setRadius( tilenode->getBound().radius() );
+}
+
+
+void
+QuadTileGroup::setSubtileRange(float range)
+{
+    _subtileRange = range;
+
+    QuadTilePagedLOD* lod = static_cast<QuadTilePagedLOD*>(_children[1].get());
+    lod->setRange( 0, 0.0f, range );
+}
+
+
+osg::BoundingSphere
+QuadTileGroup::computeBound() const
+{
+    if ( _tilenode )
+        return _tilenode->computeBound();
+    else
+        return osg::Group::computeBound();
+}
+
+
+void
+QuadTileGroup::traverse(osg::NodeVisitor& nv)
+{
+    osg::Group::traverse(nv);
+}

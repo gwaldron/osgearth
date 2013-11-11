@@ -93,6 +93,63 @@ namespace osgEarth_engine_mp
                         osgDB::Options*   dbOptions);
     };
 
+
+
+
+
+
+
+
+    class QuadTileGroup : public osg::Group
+    {
+    public:
+        QuadTileGroup(
+            TileNode*         tilenode,
+            const UID&        engineUID, 
+            TileNodeRegistry* liveTiles,
+            TileNodeRegistry* deadTiles,
+            osgDB::Options*   dbOptions);
+
+        /** Range at which subtiles should start paging in. */
+        void setSubtileRange(float range);
+        float getSubtileRange() const { return _subtileRange; }
+
+        /** Sets the tile group to continue subdividing even if all children are upsampled. */
+        void setForceSubdivide(bool value);
+
+        /** Replaces the underlying TileNode with a new one. */
+        void setTileNode( TileNode* tilenode );
+
+    public: // TileNodeContainer
+
+        /** The TileNode holding the geometry for this group. */
+        TileNode* getTileNode() { return _tilenode; }
+
+    public: // osg::Node
+
+        /** custom traversal. */
+        void traverse(osg::NodeVisitor& nv);
+        
+        /** Bound is equivalent to the bound of the tilenode. */
+        osg::BoundingSphere computeBound() const;
+
+    protected:
+        QuadTileGroup();
+
+        virtual ~QuadTileGroup() { }
+
+    private:
+        TileNode* _tilenode;
+        float     _subtileRange;
+        bool      _ignoreSubtiles;
+        bool      _forceSubdivide;
+    };
+
+
+    class QuadTileGroupSet : public osg::Group
+    {
+    };
+
 } // namespace osgEarth_engine_mp
 
 #endif // OSGEARTH_ENGINE_MP_TILE_GROUP

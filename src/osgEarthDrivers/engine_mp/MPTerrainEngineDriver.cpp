@@ -50,6 +50,7 @@ public:
         return
             osgDB::equalCaseInsensitive( extension, "osgearth_engine_mp" ) ||
             osgDB::equalCaseInsensitive( extension, "osgearth_engine_mp_tile" ) ||
+            osgDB::equalCaseInsensitive( extension, "osgearth_engine_mp_quadtile" ) ||
             //osgDB::equalCaseInsensitive( extension, "osgearth_engine_mp_upsampled_tile" ) ||
             osgDB::equalCaseInsensitive( extension, "osgearth_engine_mp_standalone_tile" );
     }
@@ -78,9 +79,10 @@ public:
     virtual ReadResult readNode(const std::string& uri, const Options* options) const
     {
         std::string ext = osgDB::getFileExtension(uri);
-
-        if ( "osgearth_engine_mp_tile" == ext || "osgearth_engine_mp_standalone_tile" == ext )
+        if ( acceptsExtension(ext) )
         {
+        //if ( "osgearth_engine_mp_tile" == ext || "osgearth_engine_mp_standalone_tile" == ext )
+        //{
             // See if the filename starts with server: and strip it off.  This will trick OSG
             // into passing in the filename to our plugin instead of using the CURL plugin if
             // the filename contains a URL.  So, if you want to read a URL, you can use the
@@ -111,11 +113,26 @@ public:
                 const Profile* profile = engineNode->getMap()->getProfile();
                 TileKey key( lod, x, y, profile );
 
-                bool standalone = ("osgearth_engine_mp_standalone_tile" == ext);
+                osg::ref_ptr<osg::Node> node;
 
-                osg::ref_ptr<osg::Node> node = 
-                    standalone ? engineNode->createStandaloneNode( key, progress ) :
-                    engineNode->createNode( key, progress );
+                if ( "osgearth_engine_mp_quadtile" == ext )
+                {
+                    node = engineNode->createNode(key, progress);
+                }
+                else if ( "osgearth_engine_mp_standalone_tile" == ext )
+                {
+                    node = engineNode->createStandaloneNode(key, progress);
+                }
+                else
+                {
+                    node = engineNode->createNode(key, progress);
+                }
+
+                //bool standalone = ("osgearth_engine_mp_standalone_tile" == ext);
+
+                //osg::ref_ptr<osg::Node> node = 
+                //    standalone ? engineNode->createStandaloneNode( key, progress ) :
+                //    engineNode->createNode( key, progress );
 
                 osg::Timer_t end = osg::Timer::instance()->tick();
 

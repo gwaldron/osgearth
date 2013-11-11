@@ -304,3 +304,209 @@ TilePagedLOD::removeExpiredChildren(double         expiryTime,
     }
     return false;
 }
+
+
+
+
+
+
+
+
+
+QuadTilePagedLOD::QuadTilePagedLOD(TileNode*         tilenode,
+                                   const UID&        engineUID,
+                                   TileNodeRegistry* live,
+                                   TileNodeRegistry* dead,
+                                   osgDB::Options*   dboptions ) :
+osg::PagedLOD(),
+_live        ( live ),
+_dead        ( dead )
+{
+    _numChildrenThatCannotBeExpired = 0;
+
+    this->addChild( tilenode );
+
+    // set up the paging properties:
+    _prefix = Stringify() << tilenode->getKey().str() << "." << engineUID << ".";
+    this->setRange   ( 1, 0.0f, FLT_MAX );
+    this->setFileName( 1, Stringify() << _prefix << ".osgearth_engine_mp_quadtile" );
+
+    this->setDatabaseOptions( dboptions );
+}
+
+
+// The osgDB::DatabasePager will call this method when merging a new child
+// into the scene graph.
+bool
+QuadTilePagedLOD::addChild(osg::Node* node)
+{
+    return osg::PagedLOD::addChild( node );
+#if 0
+    QuadTileGroupSet* quad = dynamic_cast<QuadTileGroupSet*>(node);
+    if ( quad )
+    {
+        for(unsigned i=0; i<4; ++i)
+        {
+            osg::Node* quadchild = quad->getChild(i);
+            TileNode*  tilenode = 0L;
+            QuadTileGroup* tilegroup = dynamic_cast<QuadTileGroup*>(quadchild);
+            if ( tilegroup )
+                tilenode = tilegroup->getTileNode();
+            else
+                tilenode = static_cast<TileNode*>(quadchild);
+
+            _live->add(tilenode);
+        }
+        return osg::PagedLOD::addChild( node );
+    }
+
+    OE_WARN << LC << "Unexpected node in addChild" << std::endl;
+    return false;
+#endif
+}
+
+
+
+void
+QuadTilePagedLOD::traverse(osg::NodeVisitor& nv)
+{
+    osg::PagedLOD::traverse(nv);
+    return;
+
+#if 0
+    // Only traverse the TileNode if our neighbors (the other members of
+    // our group of four) are ready as well.
+    if ( _children.size() > 0 )
+    {
+        _children[0]->setNodeMask( _familyReady ? ~0 : 0 );
+
+        // find our tile node:
+        TileNode* tilenode = dynamic_cast<TileGroup*>(_children[0].get()) ? 
+            static_cast<TileGroup*>(_children[0].get())->getTileNode() :
+            static_cast<TileNode*>(_children[0].get());
+
+        // Check whether the TileNode is marked dirty. If so, install a new pager request 
+        // to reload and replace the TileNode.
+        if (nv.getVisitorType() == nv.CULL_VISITOR &&
+            this->getNumFileNames() < 2 && 
+            tilenode->isOutOfDate() )
+        {
+            // lock keeps multiple traversals from doing the same thing
+            Threading::ScopedMutexLock exclusive( _updateMutex );
+
+            if ( this->getNumFileNames() < 2 ) // double-check pattern
+            {
+                //OE_DEBUG << LC << "Queuing request for replacement: " << _container->getTileNode()->getKey().str() << std::endl;
+                this->setFileName( 1, Stringify() << _prefix << ".osgearth_engine_mp_standalone_tile" );
+                this->setRange( 1, 0, FLT_MAX );
+            }
+        }
+    }
+#endif
+
+#if 0
+    // here on down is a stripped down variation of osg::PagedLOD::traverse, 
+    // specialized for this application.
+    double   timeStamp       = nv.getFrameStamp() ? nv.getFrameStamp()->getReferenceTime() : 0.0;
+    unsigned frameNumber     = nv.getFrameStamp() ? nv.getFrameStamp()->getFrameNumber()   : 0;
+    bool     updateTimeStamp = nv.getVisitorType() == nv.CULL_VISITOR;
+
+    // update the frame number, which keeps this node from expiring.
+    if ( nv.getFrameStamp() && nv.getVisitorType() == nv.CULL_VISITOR )
+    {
+        setFrameNumberOfLastTraversal( frameNumber );
+    }
+
+    switch( nv.getTraversalMode() )
+    {
+    // handle intersections, GL compilations, update traversals, etc.
+    case( osg::NodeVisitor::TRAVERSE_ALL_CHILDREN ):
+        std::for_each( _children.begin(), _children.end(), osg::NodeAcceptOp(nv));
+        break;
+
+    // handle culling, etc.
+    case( osg::NodeVisitor::TRAVERSE_ACTIVE_CHILDREN ):
+
+        // distance from tile to view point:
+        float range = nv.getDistanceToViewPoint( getCenter(), true );
+
+        // update all requestor timestamps:
+        for(unsigned i=0; i<_perRangeDataList.size(); ++i)
+        {
+            if ( updateTimeStamp )
+            {
+                _perRangeDataList[i]._timeStamp   = timeStamp;
+                _perRangeDataList[i]._frameNumber = frameNumber;
+            }
+        }
+
+        // traverse the child if it exists:
+        if ( _children.size() > 0 )
+        {
+            _children[0]->accept( nv );
+        }
+
+        // if there are any outstanding requests, service them:
+        if ( _children.size() < getNumFileNames() )
+        {
+            osg::NodeVisitor::DatabaseRequestHandler* drh = nv.getDatabaseRequestHandler();
+            if ( drh )
+            {
+                // calculate pager priority exactly as OSG would:
+                float subtileRange = _tilegroup->getSubtileRange();
+                float priority     = (subtileRange - range) / subtileRange;
+
+                // index = 0 to load the initial child; index = 1 to load an in-place update.
+                int index = _children.size();
+
+                drh->requestNodeFile(
+                    _perRangeDataList[index]._filename, 
+                    nv.getNodePath(), 
+                    priority,
+                    nv.getFrameStamp(), 
+                    _perRangeDataList[index]._databaseRequest, 
+                    _databaseOptions.get() );
+            }
+        }
+
+        break;
+    }
+#endif
+}
+
+
+// The osgDB::DatabasePager will call this automatically to purge expired
+// tiles from the scene grpah.
+bool
+QuadTilePagedLOD::removeExpiredChildren(double         expiryTime, 
+                                        unsigned       expiryFrame, 
+                                        osg::NodeList& removedChildren)
+{
+    if (_children.size()>_numChildrenThatCannotBeExpired)
+    {
+        unsigned cindex = _children.size() - 1;
+
+        double   minExpiryTime   = 0.0;
+        unsigned minExpiryFrames = 0;
+
+        // these were added in osg 3.1.0+
+#if OSG_VERSION_GREATER_OR_EQUAL(3,1,0)
+        minExpiryTime   = _perRangeDataList[cindex]._minExpiryTime;
+        minExpiryFrames = _perRangeDataList[cindex]._minExpiryFrames;
+#endif
+
+        if (!_perRangeDataList[cindex]._filename.empty() &&
+            _perRangeDataList[cindex]._timeStamp   + minExpiryTime   < expiryTime &&
+            _perRangeDataList[cindex]._frameNumber + minExpiryFrames < expiryFrame)
+        {
+            osg::Node* nodeToRemove = _children[cindex].get();
+            removedChildren.push_back(nodeToRemove);
+
+            ExpirationCollector collector( _live, _dead );
+            nodeToRemove->accept( collector );
+
+            return Group::removeChildren(cindex,1);
+        }
+    }
+    return false;
+}

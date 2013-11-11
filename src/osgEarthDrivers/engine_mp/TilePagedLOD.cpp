@@ -212,21 +212,23 @@ TilePagedLOD::traverse(osg::NodeVisitor& nv)
         if ( _children.size() < getNumFileNames() )
         {
             osg::NodeVisitor::DatabaseRequestHandler* drh = nv.getDatabaseRequestHandler();
+            if ( drh )
+            {
+                // calculate pager priority exactly as OSG would:
+                float subtileRange = _tilegroup->getSubtileRange();
+                float priority     = (subtileRange - range) / subtileRange;
 
-            // calculate pager priority exactly as OSG would:
-            float subtileRange = _tilegroup->getSubtileRange();
-            float priority     = (subtileRange - range) / subtileRange;
+                // index = 0 to load the initial child; index = 1 to load an in-place update.
+                int index = _children.size();
 
-            // index = 0 to load the initial child; index = 1 to load an in-place update.
-            int index = _children.size();
-
-            drh->requestNodeFile(
-                _perRangeDataList[index]._filename, 
-                nv.getNodePath(), 
-                priority,
-                nv.getFrameStamp(), 
-                _perRangeDataList[index]._databaseRequest, 
-                _databaseOptions.get() );
+                drh->requestNodeFile(
+                    _perRangeDataList[index]._filename, 
+                    nv.getNodePath(), 
+                    priority,
+                    nv.getFrameStamp(), 
+                    _perRangeDataList[index]._databaseRequest, 
+                    _databaseOptions.get() );
+            }
         }
 
         break;

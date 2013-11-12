@@ -1,0 +1,71 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+* Copyright 2008-2013 Pelican Mapping
+* http://osgearth.org
+*
+* osgEarth is free software; you can redistribute it and/or modify
+* it under the terms of the GNU Lesser General Public License as published by
+* the Free Software Foundation; either version 2 of the License, or
+* (at your option) any later version.
+*
+* This program is distributed in the hope that it will be useful,
+* but WITHOUT ANY WARRANTY; without even the implied warranty of
+* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+* GNU Lesser General Public License for more details.
+*
+* You should have received a copy of the GNU Lesser General Public License
+* along with this program.  If not, see <http://www.gnu.org/licenses/>
+*/
+#ifndef OSGEARTH_ENGINE_MP_TILE_GROUP
+#define OSGEARTH_ENGINE_MP_TILE_GROUP 1
+
+#include "Common"
+#include "TileNode"
+#include "TileNodeRegistry"
+#include <osg/Group>
+#include <osgEarth/ThreadingUtils>
+
+namespace osgEarth_engine_mp
+{
+    using namespace osgEarth;
+
+    /**
+     * TileGroup is a group node that contians four sibling TileNodes
+     * in the quadtree structure. It has the ability to update itself
+     * by checking the map revision and scheduling an incremental
+     * update of its TileNode set.
+     */
+    class TileGroup : public osg::Group
+    {
+    public:
+        TileGroup(const TileKey&    key, 
+                  const UID&        engineUID,
+                  TileNodeRegistry* live,
+                  TileNodeRegistry* dead);
+
+        const UID& getEngineUID() const { return _engineUID; }
+
+        const TileKey& getKey() const { return _key; }
+
+    public: // osg::Node
+        virtual void traverse(osg::NodeVisitor& nv);
+
+    public: // internal
+        void applyUpdate(osg::Node* node);
+
+    protected:
+        virtual ~TileGroup() { }
+
+        TileNode* getTileNode(unsigned q);
+
+        osg::ref_ptr<osg::Node>        _updateAgent;
+        mutable Threading::Mutex       _updateMutex;
+        UID                            _engineUID;
+        TileKey                        _key;
+        osg::ref_ptr<TileNodeRegistry> _live;
+        osg::ref_ptr<TileNodeRegistry> _dead;
+    };
+
+} // namespace osgEarth_engine_mp
+
+#endif // OSGEARTH_ENGINE_MP_TILE_NODE

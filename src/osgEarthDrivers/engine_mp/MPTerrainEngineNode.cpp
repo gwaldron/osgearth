@@ -472,7 +472,7 @@ MPTerrainEngineNode::createStandaloneNode(const TileKey&    key,
     if ( getNumParents() == 0 )
         return 0L;
 
-    OE_DEBUG << LC << "Create standalong node for \"" << key.str() << "\"" << std::endl;
+    OE_DEBUG << LC << "Create standalone node for \"" << key.str() << "\"" << std::endl;
 
     return getKeyNodeFactory()->createNode( key, false, progress );
 }

@@ -50,8 +50,6 @@ public:
         return
             osgDB::equalCaseInsensitive( extension, "osgearth_engine_mp" ) ||
             osgDB::equalCaseInsensitive( extension, "osgearth_engine_mp_tile" ) ||
-            osgDB::equalCaseInsensitive( extension, "osgearth_engine_mp_quadtile" ) ||
-            //osgDB::equalCaseInsensitive( extension, "osgearth_engine_mp_upsampled_tile" ) ||
             osgDB::equalCaseInsensitive( extension, "osgearth_engine_mp_standalone_tile" );
     }
 
@@ -81,8 +79,6 @@ public:
         std::string ext = osgDB::getFileExtension(uri);
         if ( acceptsExtension(ext) )
         {
-        //if ( "osgearth_engine_mp_tile" == ext || "osgearth_engine_mp_standalone_tile" == ext )
-        //{
             // See if the filename starts with server: and strip it off.  This will trick OSG
             // into passing in the filename to our plugin instead of using the CURL plugin if
             // the filename contains a URL.  So, if you want to read a URL, you can use the
@@ -115,7 +111,7 @@ public:
 
                 osg::ref_ptr<osg::Node> node;
 
-                if ( "osgearth_engine_mp_quadtile" == ext )
+                if ( "osgearth_engine_mp_tile" == ext )
                 {
                     node = engineNode->createNode(key, progress);
                 }
@@ -123,20 +119,11 @@ public:
                 {
                     node = engineNode->createStandaloneNode(key, progress);
                 }
-                else
-                {
-                    node = engineNode->createNode(key, progress);
-                }
 
-                //bool standalone = ("osgearth_engine_mp_standalone_tile" == ext);
-
-                //osg::ref_ptr<osg::Node> node = 
-                //    standalone ? engineNode->createStandaloneNode( key, progress ) :
-                //    engineNode->createNode( key, progress );
-
-                osg::Timer_t end = osg::Timer::instance()->tick();
 
 #if 0
+                osg::Timer_t end = osg::Timer::instance()->tick();
+
                 //if ( osgEarth::getNotifyLevel() >= osg::DEBUG_INFO )
                 {
                     static Threading::Mutex s_statsMutex;

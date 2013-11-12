@@ -8,6 +8,7 @@ SET(TARGET_SRC
     MPTerrainEngineDriver.cpp
     SingleKeyNodeFactory.cpp
     TerrainNode.cpp
+    TileGroup.cpp
     TileModel.cpp
     TileModelCompiler.cpp
     TileNode.cpp
@@ -27,6 +28,7 @@ SET(TARGET_H
     QuickReleaseGLObjects
     SingleKeyNodeFactory
     TerrainNode
+    TileGroup
     TileModel
     TileModelCompiler
     TileNode

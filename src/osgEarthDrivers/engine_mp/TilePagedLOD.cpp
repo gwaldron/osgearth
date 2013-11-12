@@ -50,10 +50,9 @@ namespace
         void apply(osg::Node& node)
         {
             TileNode* tn = dynamic_cast<TileNode*>( &node );
-            if ( tn )
+            if ( tn && _live )
             {
-                if ( _live ) _live->remove( tn );
-                if ( _dead ) _dead->add( tn );
+                _live->move( tn, _dead );
                 _count++;
                 //OE_NOTICE << "Expired " << tn->getKey().str() << std::endl;
             }
@@ -79,8 +78,27 @@ TilePagedLOD::~TilePagedLOD()
     // need this here b/c it's possible for addChild() to get called from
     // a pager dispatch even after the PLOD in question has been "expired"
     // so we still need to process the live/dead list.
-    ExpirationCollector collector( _live, _dead );
+    ExpirationCollector collector( _live.get(), _dead.get() );
     this->accept( collector );
+}
+
+TileNode*
+TilePagedLOD::getTileNode()
+{
+    return _children.size() > 0 ? static_cast<TileNode*>(_children[0].get()) : 0L;
+}
+
+void
+TilePagedLOD::setTileNode(TileNode* tilenode)
+{
+    // if the new tile has a culling callback, remove it and put it on the
+    // PagedLOD itself as nature intended.
+    if ( tilenode->getCullCallback() )
+    {
+        this->setCullCallback( tilenode->getCullCallback() );
+        tilenode->setCullCallback( 0L );
+    }
+    setChild( 0, tilenode );
 }
 
 // The osgDB::DatabasePager will call this method when merging a new child
@@ -99,9 +117,10 @@ TilePagedLOD::addChild(osg::Node* node)
             return true;
         }
 
-        // register new additions.
+        // If it's a TileNode, this is the simple first addition of the 
+        // static TileNode child (not from the pager).
         TileNode* tilenode = dynamic_cast<TileNode*>( node );
-        if ( tilenode )
+        if ( tilenode && _live.get() )
         {
             _live->add( tilenode );
         }
@@ -109,37 +128,7 @@ TilePagedLOD::addChild(osg::Node* node)
         return osg::PagedLOD::addChild( node );
     }
 
-    // TODO: incremental.
     return false;
-}
-
-
-void
-TilePagedLOD::traverse(osg::NodeVisitor& nv)
-{
-    // Only traverse the TileNode if our neighbors (the other members of
-    // our group of four) are ready as well.
-    if ( _children.size() > 0 && nv.getVisitorType() == nv.CULL_VISITOR )
-    {
-        TileNode* tilenode = static_cast<TileNode*>(_children[0].get());
-
-        // Check whether the TileNode is marked dirty. If so, install a new pager request 
-        // to reload and replace the TileNode.
-        if (this->getNumFileNames() < 2 && tilenode->isOutOfDate())
-        {
-            // lock keeps multiple traversals from doing the same thing
-            Threading::ScopedMutexLock exclusive( _updateMutex );
-
-            if ( this->getNumFileNames() < 2 ) // double-check pattern
-            {
-                //OE_DEBUG << LC << "Queuing request for replacement: " << _container->getTileNode()->getKey().str() << std::endl;
-                //this->setFileName( 2, Stringify() << _prefix << ".osgearth_engine_mp_standalone_tile" );
-                //this->setRange   ( 2, 0, FLT_MAX );
-            }
-        }
-    }
-
-    osg::PagedLOD::traverse( nv );
 }
 
 
@@ -170,7 +159,7 @@ TilePagedLOD::removeExpiredChildren(double         expiryTime,
             osg::Node* nodeToRemove = _children[cindex].get();
             removedChildren.push_back(nodeToRemove);
 
-            ExpirationCollector collector( _live, _dead );
+            ExpirationCollector collector( _live.get(), _dead.get() );
             nodeToRemove->accept( collector );
 
             OE_DEBUG << LC << "Expired " << collector._count << std::endl;

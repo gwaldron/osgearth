@@ -29,8 +29,7 @@ using namespace osgEarth;
 namespace osgEarth_engine_mp
 {
     /**
-     * TilePagedLOD is an extension to osg::PagedLOD that supports the tile
-     * registry and incremental update.
+     * TilePagedLOD is an extension to osg::PagedLOD that supports the tile registry.
      */
     class TilePagedLOD : public osg::PagedLOD
     {
@@ -40,13 +39,14 @@ namespace osgEarth_engine_mp
             TileNodeRegistry* liveTiles,
             TileNodeRegistry* deadTiles);
 
+        /** The tilenode in this group */
+        TileNode* getTileNode();
+        void setTileNode(TileNode* tilenode);
+
     public: // osg::Group
 
         /** called by the OSG DatabasePager when a paging result is ready. */
         bool addChild( osg::Node* node );
-
-        /** custom traverse. */
-        void traverse(osg::NodeVisitor& nv);
 
     public: // osg::PagedLOD
 

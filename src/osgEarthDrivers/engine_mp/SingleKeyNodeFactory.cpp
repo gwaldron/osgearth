@@ -20,6 +20,7 @@
 #include "DynamicLODScaleCallback"
 #include "FileLocationCallback"
 #include "TilePagedLOD"
+#include "TileGroup"
 
 #include <osgEarth/Registry>
 #include <osgEarth/HeightFieldUtils>
@@ -183,7 +184,7 @@ SingleKeyNodeFactory::createNode(const TileKey&    key,
     {
         for(unsigned q=0; q<4; ++q)
         {
-            if ( model[q].valid() && model[q]->hasRealData() )
+            if ( model[q]->hasRealData() )
             {
                 subdivide = true;
                 break;
@@ -195,13 +196,18 @@ SingleKeyNodeFactory::createNode(const TileKey&    key,
 
     if ( subdivide )
     {
-        quad = new osg::Group();
+        if ( _options.incrementalUpdate() == true )
+        {
+            quad = new TileGroup(key, _engineUID, _liveTiles.get(), _deadTiles.get());
+        }
+        else
+        {
+            quad = new osg::Group();
+        }
+
         for( unsigned q=0; q<4; ++q )
         {
-            if ( model[q].valid() )
-            {
-                quad->addChild( createTile(model[q].get(), setupChildren) );
-            }
+            quad->addChild( createTile(model[q].get(), setupChildren) );
         }
     }
 

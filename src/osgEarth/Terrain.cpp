@@ -226,7 +226,7 @@ Terrain::getWorldCoordsUnderMouse(osg::View* view, float x, float y, osg::Vec3d&
     osg::ref_ptr< DPLineSegmentIntersector > picker = new DPLineSegmentIntersector(osgUtil::Intersector::MODEL, startVertex, endVertex);
 
     // Limit it to one intersection, we only care about the first
-    picker->setIntersectionLimit( osgUtil::Intersector::LIMIT_ONE );
+    picker->setIntersectionLimit( osgUtil::Intersector::LIMIT_NEAREST );
 
     osgUtil::IntersectionVisitor iv(picker.get());
     iv.setTraversalMask(traversalMask);

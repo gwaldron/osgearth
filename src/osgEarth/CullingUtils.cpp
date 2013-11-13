@@ -694,7 +694,7 @@ void OcclusionCullingCallback::operator()(osg::Node* node, osg::NodeVisitor* nv)
                     osg::Vec3d start = eye;
                     osg::Vec3d end = _world;
                     DPLineSegmentIntersector* i = new DPLineSegmentIntersector( start, end );
-                    i->setIntersectionLimit( osgUtil::Intersector::LIMIT_ONE );
+                    i->setIntersectionLimit( osgUtil::Intersector::LIMIT_NEAREST );
                     osgUtil::IntersectionVisitor iv;
                     iv.setIntersector( i );
                     _node->accept( iv );

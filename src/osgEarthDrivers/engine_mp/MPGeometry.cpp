@@ -138,8 +138,10 @@ MPGeometry::renderPrimitiveSets(osg::State& state,
     // activate the tile coordinate set - same for all layers
     state.setTexCoordPointer( _imageUnit+1, _tileCoords.get() );
 
+#ifndef OSG_GLES2_AVAILABLE
     // emit a default terrain color since we're not binding a color array:
     glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
+#endif
 
     if ( _layers.size() > 0 )
     {
@@ -171,8 +173,17 @@ MPGeometry::renderPrimitiveSets(osg::State& state,
         // track the active image unit.
         int activeImageUnit = -1;
 
+        // find the first opaque layer, top-down, and start there:
+        unsigned first = 0;
+        for(first = _layers.size()-1; first > 0; --first)
+        {
+            const Layer& layer = _layers[first];
+            if ( layer._opaque && layer._imageLayer->getOpacity() >= 1.0f )
+                break;
+        }
+
         // interate over all the image layers
-        for(unsigned i=0; i<_layers.size(); ++i)
+        for(unsigned i=first; i<_layers.size(); ++i)
         {
             const Layer& layer = _layers[i];
 

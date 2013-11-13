@@ -1710,6 +1710,11 @@ namespace
             layer._tex            = r->_layer.getTexture();
             layer._texParent      = r->_layerParent.getTexture();
 
+            // cache stock opacity.
+            layer._opaque =
+                (layer._tex.valid() && !r->_layer.hasAlpha()) &&
+                (!layer._texParent.valid() || !r->_layerParent.hasAlpha());
+
             // parent texture matrix: it's a scale/bias matrix encoding the difference
             // between the two locators.
             if ( r->_layerParent.getLocator() )

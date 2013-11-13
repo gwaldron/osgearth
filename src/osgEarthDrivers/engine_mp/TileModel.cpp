@@ -19,6 +19,7 @@
 #include "TileModel"
 #include <osgEarth/MapInfo>
 #include <osgEarth/HeightFieldUtils>
+#include <osgEarth/ImageUtils>
 #include <osgTerrain/Locator>
 
 using namespace osgEarth_engine_mp;
@@ -132,8 +133,8 @@ _fallbackData( fallbackData )
     _texture->setFilter( osg::Texture::MIN_FILTER, minFilter );
     _texture->setWrap( osg::Texture::WRAP_S, osg::Texture::CLAMP_TO_EDGE );
     _texture->setWrap( osg::Texture::WRAP_T, osg::Texture::CLAMP_TO_EDGE );
-    //_texture->setWrap( osg::Texture::WRAP_R, osg::Texture::CLAMP_TO_EDGE );
-    //_image = 0L;
+
+    _hasAlpha = image && ImageUtils::hasTransparency(image);
 }
 
 TileModel::ColorData::ColorData(const TileModel::ColorData& rhs) :
@@ -142,7 +143,8 @@ _locator     ( rhs._locator.get() ),
 _texture     ( rhs._texture.get() ),
 _tileKey     ( rhs._tileKey ),
 _fallbackData( rhs._fallbackData ),
-_order       ( rhs._order )
+_order       ( rhs._order ),
+_hasAlpha    ( rhs._hasAlpha )
 {
     //nop
 }

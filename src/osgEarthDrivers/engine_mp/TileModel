@@ -157,7 +157,12 @@ namespace osgEarth_engine_mp
                 return _layer.get(); }
 
             bool isFallbackData() const {
-                return _fallbackData; }
+                return _fallbackData;}
+
+            bool hasAlpha() const {
+                return _hasAlpha;
+            }
+
 
             osg::BoundingSphere computeBound() const {
                 osg::BoundingSphere bs;
@@ -179,6 +184,7 @@ namespace osgEarth_engine_mp
             osgEarth::TileKey                        _tileKey;
             bool                                     _fallbackData;
             unsigned                                 _order;
+            bool                                     _hasAlpha;
         };
 
         class ColorDataRef : public osg::Referenced

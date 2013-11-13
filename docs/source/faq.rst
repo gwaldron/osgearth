@@ -80,7 +80,7 @@ How do I set the resolution of terrain tiles?
     If you do have elevation data, osgEarth will use the tile size of the first elevation layer 
     to decide on the overall tile size for the terrain.
 
-    You can cotnrol this in a couple ways. If you have elevation data, you can set the
+    You can control this in a couple ways. If you have elevation data, you can set the
     ``tile_size`` property on the elevation layer. For example::
     
         <elevation name="srtm" driver="gdal">

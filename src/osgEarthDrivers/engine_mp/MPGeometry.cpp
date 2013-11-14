@@ -178,8 +178,12 @@ MPGeometry::renderPrimitiveSets(osg::State& state,
         for(first = _layers.size()-1; first > 0; --first)
         {
             const Layer& layer = _layers[first];
-            if ( layer._opaque && layer._imageLayer->getOpacity() >= 1.0f )
+            if (layer._opaque && 
+                layer._imageLayer->getVisible() &&
+                layer._imageLayer->getOpacity() >= 1.0f)
+            {
                 break;
+            }
         }
 
         // interate over all the image layers

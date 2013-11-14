@@ -456,8 +456,8 @@ MapNodeHelper::load(osg::ArgumentParser& args,
 
     if ( !node )
     {
-        OE_WARN << LC << "No earth file from the command line; making one." << std::endl;
-        node = new MapNode();
+        OE_WARN << LC << "No earth file." << std::endl;
+        return 0L;
     }
 
     osg::ref_ptr<MapNode> mapNode = MapNode::get(node);

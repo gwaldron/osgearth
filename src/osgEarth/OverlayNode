@@ -76,7 +76,7 @@ namespace osgEarth
 
     protected:
         /** dtor */
-        virtual ~OverlayNode() { }
+        virtual ~OverlayNode();
 
     private:
         bool                          _active;

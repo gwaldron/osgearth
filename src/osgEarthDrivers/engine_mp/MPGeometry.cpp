@@ -255,10 +255,6 @@ MPGeometry::renderPrimitiveSets(osg::State& state,
                 ++layersDrawn;
             }
         }
-
-        // prevent texture leakage
-        // TODO: find a way to remove this to speed things up
-        glBindTexture( GL_TEXTURE_2D, 0 );
     }
 
     // if we didn't draw anything, draw the raw tiles anyway with no texture.
@@ -277,6 +273,13 @@ MPGeometry::renderPrimitiveSets(osg::State& state,
             const osg::PrimitiveSet* primitiveset = _primitives[primitiveSetNum].get();
             primitiveset->draw(state, usingVBOs);
         }
+    }
+
+    else // at least one textured layer was drawn:
+    {
+        // prevent texture leakage
+        // TODO: find a way to remove this to speed things up
+        glBindTexture( GL_TEXTURE_2D, 0 );
     }
 }
 

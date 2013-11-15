@@ -1187,7 +1187,7 @@ namespace
             // first clear out all the normals on the surface (but not the skirts)
             // TODO: someday go back and re-apply the skirt normals to match the
             // corresponding recalculated surface normals.
-            for(unsigned n=0; n<numSurfaceNormals; ++n)
+            for(unsigned n=0; n<numSurfaceNormals && n<d.normals->size(); ++n)
             {
                 (*d.normals)[n].set( 0.0f, 0.0f, 0.0f );
             }

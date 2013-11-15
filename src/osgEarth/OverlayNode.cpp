@@ -158,16 +158,23 @@ _getGroup ( provider )
     }
 }
 
+OverlayNode::~OverlayNode()
+{
+    // cleans up the overlayProxyContainer if necessary.
+    setMapNode(0L);
+}
+
 void
 OverlayNode::setMapNode( MapNode* mapNode )
 {
-    MapNode* oldMapNode = getMapNode();
+    osg::ref_ptr<MapNode> oldMapNode;
+    _mapNode.lock(oldMapNode);
 
-    if ( oldMapNode != mapNode )
+    if ( oldMapNode.get() != mapNode )
     {
-        if ( oldMapNode && _getGroup && _active && _overlayProxyContainer->getNumParents() > 0 )
+        if ( oldMapNode.valid() && _getGroup && _active && _overlayProxyContainer->getNumParents() > 0 )
         {
-            osg::Group* group = _getGroup( oldMapNode );
+            osg::Group* group = _getGroup( oldMapNode.get() );
             if ( group )
                 group->removeChild( _overlayProxyContainer.get() );
         }
@@ -196,17 +203,18 @@ OverlayNode::applyChanges()
 {
     _active = _newActive;
 
-    if ( getMapNode() && _getGroup )
+    osg::ref_ptr<MapNode> mapNode;
+    if ( _mapNode.lock(mapNode) && _getGroup )
     {
         if ( _active && _overlayProxyContainer->getNumParents() == 0 )
         {
-            osg::Group* group = _getGroup( getMapNode() );
+            osg::Group* group = _getGroup( mapNode.get() );
             if ( group )
                 group->addChild( _overlayProxyContainer.get() );
         }
         else if ( !_active && _overlayProxyContainer->getNumParents() > 0 )
         {
-            osg::Group* group = _getGroup( getMapNode() );
+            osg::Group* group = _getGroup( mapNode.get() );
             if ( group )
                 group->removeChild( _overlayProxyContainer.get() );
         }
@@ -311,10 +319,9 @@ OverlayNode::traverse( osg::NodeVisitor& nv )
             osgUtil::IntersectionVisitor* iv = dynamic_cast<osgUtil::IntersectionVisitor*>(&nv);
             osgEarth::PrimitiveIntersector* pi = dynamic_cast<osgEarth::PrimitiveIntersector *>(iv->getIntersector());
 
-            if (pi && !pi->getOverlayIgnore() && getMapNode())
-            {
-                osg::ref_ptr<MapNode> mapNode = getMapNode();
- 
+            osg::ref_ptr<MapNode> mapNode;
+            if (pi && !pi->getOverlayIgnore() && _mapNode.lock(mapNode))
+            { 
                 osg::NodePath path = iv->getNodePath();
                 osg::NodePath prunedNodePath( path.begin(), path.end()-1 );
                 osg::Matrix modelToWorld = osg::computeLocalToWorld(prunedNodePath);
@@ -323,7 +330,7 @@ OverlayNode::traverse( osg::NodeVisitor& nv )
 
                 osg::ref_ptr<DPLineSegmentIntersector> lsi = new DPLineSegmentIntersector(worldStart, worldEnd);
                 osgUtil::IntersectionVisitor ivTerrain(lsi.get());
-                _mapNode->getTerrainEngine()->accept(ivTerrain);
+                mapNode->getTerrainEngine()->accept(ivTerrain);
 
                 if (lsi->containsIntersections())
                 {

@@ -59,12 +59,24 @@ ModelResource::createNodeFromURI( const URI& uri, const osgDB::Options* dbOption
     {
         node = r.releaseNode();
 
+        OE_DEBUG << LC << "Loading " << uri.full() << std::endl;
+
+#if 1
+        osgUtil::Optimizer o;
+        o.optimize( node,
+            o.DEFAULT_OPTIMIZATIONS |
+            o.INDEX_MESH |
+            o.VERTEX_PRETRANSFORM |
+            o.VERTEX_POSTTRANSFORM );
+            
+#else
         osgUtil::Optimizer o;
         o.optimize( node, osgUtil::Optimizer::INDEX_MESH );
 
         // GPU performance optimization:
         VertexCacheOptimizer vco;
         node->accept( vco );
+#endif
     }
     else // failing that, fall back on the old encoding format..
     {

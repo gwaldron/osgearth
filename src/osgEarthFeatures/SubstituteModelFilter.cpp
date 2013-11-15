@@ -571,6 +571,10 @@ SubstituteModelFilter::push(FeatureList& features, FilterContext& context)
         process( features, symbol, context.getSession(), group, newContext );
     }
 
+    // return proper context
+    context = newContext;
+
+    // TODO: OBE due to shader pipeline
     // see if we need normalized normals
     if ( _normalScalingRequired )
     {

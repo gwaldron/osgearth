@@ -74,8 +74,11 @@ namespace osgEarth_engine_mp
         /** Adds several tiles to the registry */
         void add( const TileNodeVector& tiles );
 
-        /** Moves a tile to the "removed" list */
+        /** Removes a tile */
         void remove( TileNode* tile );
+
+        /** Moves a tile from this registry to another registry */
+        void move( TileNode* tile, TileNodeRegistry* destination );
 
         /** Finds a tile in the registry */
         bool get( const TileKey& key, osg::ref_ptr<TileNode>& out_tile );

@@ -29,212 +29,6 @@ using namespace osgEarth;
 //#define OE_TEST OE_INFO
 #define OE_TEST OE_NULL
 
-
-TilePagedLOD::TilePagedLOD(TileGroup*        tilegroup,
-                           const TileKey&    subkey,
-                           const UID&        engineUID,
-                           TileNodeRegistry* live,
-                           TileNodeRegistry* dead) :
-osg::PagedLOD(),
-_tilegroup   ( tilegroup ),
-_live        ( live ),
-_dead        ( dead ),
-_isUpsampled ( false ),
-_isCanceled  ( false ),
-_familyReady ( false )
-{
-    _numChildrenThatCannotBeExpired = 0;
-
-    // set up the paging properties:
-    _prefix = Stringify() << subkey.str() << "." << engineUID << ".";
-    this->setRange   ( 0, 0.0f, FLT_MAX );
-    this->setFileName( 0, Stringify() << _prefix << ".osgearth_engine_mp_tile" );
-}
-
-
-// The osgDB::DatabasePager will call this method when merging a new child
-// into the scene graph.
-bool
-TilePagedLOD::addChild(osg::Node* node)
-{
-    // First check whether this is a new TileGroup (a group that contains a TileNode
-    // and children paged LODs). If so, add it normally and inform our parent.
-    TileGroup* subtilegroup = dynamic_cast<TileGroup*>(node);
-    if ( subtilegroup )
-    {
-        TileNode* subtile = subtilegroup->getTileNode();
-        _isUpsampled = !subtile->getTileModel()->hasRealData();
-        _live->add( subtile );
-        return osg::PagedLOD::addChild( node );
-    }
-
-    // If that fails, check whether this is a simple TileNode. This means that 
-    // this is a leaf node in the graph (no children), or it's a replacement
-    // tile for our existing tileNode, or possibly that it has no data at all 
-    // (and we need to create an upsampled child to complete the required set of
-    // four).
-    TileNode* subtile = dynamic_cast<TileNode*>(node);
-    if ( subtile )
-    {
-        if ( subtile->getTileModel()->getMapRevision() < _live->getMapRevision() )
-        {
-            //OE_NOTICE << LC << "Tile " << subtile->getKey().str() << " received data but it's already out of date...requeuing"
-            //    << std::endl;
-            return false;
-        }
-        else
-        {
-            if ( _children.size() == 0 )
-            {
-                _isUpsampled = !subtile->getTileModel()->hasRealData();
-
-                // The initial valid tile node we've been waiting for. Insert it.
-                _live->add( subtile );
-                return osg::PagedLOD::addChild( node );
-            }
-            else
-            {
-                // A replacement tile. Replace the tile node we have with this
-                // new version and update the registry.
-                _isUpsampled = !subtile->getTileModel()->hasRealData();
-                //if ( _isUpsampled )
-                //    OE_NOTICE << LC << "Replaced UPSAMPLED leaf at " << _prefix << std::endl;
-
-                if ( dynamic_cast<TileGroup*>(_children[0].get()) )
-                {
-                    subtile->setCullCallback( 0L );
-                    static_cast<TileGroup*>(_children[0].get())->setTileNode( subtile );
-                }
-                else // TileNode
-                {
-                    this->setChild(0, subtile);
-                }
-
-                // remove the tile-replacement filename.
-                _rangeList.resize( 1 );
-                _perRangeDataList.resize( 1 );
-
-                // update the registry. don't need to remove the old entry since add() will
-                // replace the existing entry (they have the same key)
-                _live->add( subtile );
-
-                return true;
-            }
-        }
-    }
-    
-    // Getting here means the Tile dies somewhere in the pager while the pager was
-    // trying to add it. From what I can tell, this is normal and just happens sometimes
-    if ( !node )
-    {
-        OE_DEBUG << LC << "TilePagedLOD: got an addChild(NULL) on " << _prefix << std::endl;
-        _isCanceled = true;
-    }
-
-    return false;
-}
-
-
-void
-TilePagedLOD::traverse(osg::NodeVisitor& nv)
-{
-    // Only traverse the TileNode if our neighbors (the other members of
-    // our group of four) are ready as well.
-    if ( _children.size() > 0 )
-    {
-        _children[0]->setNodeMask( _familyReady ? ~0 : 0 );
-
-        // find our tile node:
-        TileNode* tilenode = dynamic_cast<TileGroup*>(_children[0].get()) ? 
-            static_cast<TileGroup*>(_children[0].get())->getTileNode() :
-            static_cast<TileNode*>(_children[0].get());
-
-        // Check whether the TileNode is marked dirty. If so, install a new pager request 
-        // to reload and replace the TileNode.
-        if (nv.getVisitorType() == nv.CULL_VISITOR &&
-            this->getNumFileNames() < 2 && 
-            tilenode->isOutOfDate() )
-        {
-            // lock keeps multiple traversals from doing the same thing
-            Threading::ScopedMutexLock exclusive( _updateMutex );
-
-            if ( this->getNumFileNames() < 2 ) // double-check pattern
-            {
-                //OE_DEBUG << LC << "Queuing request for replacement: " << _container->getTileNode()->getKey().str() << std::endl;
-                this->setFileName( 1, Stringify() << _prefix << ".osgearth_engine_mp_standalone_tile" );
-                this->setRange( 1, 0, FLT_MAX );
-            }
-        }
-    }
-
-    // here on down is a stripped down variation of osg::PagedLOD::traverse, 
-    // specialized for this application.
-    double   timeStamp       = nv.getFrameStamp() ? nv.getFrameStamp()->getReferenceTime() : 0.0;
-    unsigned frameNumber     = nv.getFrameStamp() ? nv.getFrameStamp()->getFrameNumber()   : 0;
-    bool     updateTimeStamp = nv.getVisitorType() == nv.CULL_VISITOR;
-
-    // update the frame number, which keeps this node from expiring.
-    if ( nv.getFrameStamp() && nv.getVisitorType() == nv.CULL_VISITOR )
-    {
-        setFrameNumberOfLastTraversal( frameNumber );
-    }
-
-    switch( nv.getTraversalMode() )
-    {
-    // handle intersections, GL compilations, update traversals, etc.
-    case( osg::NodeVisitor::TRAVERSE_ALL_CHILDREN ):
-        std::for_each( _children.begin(), _children.end(), osg::NodeAcceptOp(nv));
-        break;
-
-    // handle culling, etc.
-    case( osg::NodeVisitor::TRAVERSE_ACTIVE_CHILDREN ):
-
-        // distance from tile to view point:
-        float range = nv.getDistanceToViewPoint( getCenter(), true );
-
-        // update all requestor timestamps:
-        for(unsigned i=0; i<_perRangeDataList.size(); ++i)
-        {
-            if ( updateTimeStamp )
-            {
-                _perRangeDataList[i]._timeStamp   = timeStamp;
-                _perRangeDataList[i]._frameNumber = frameNumber;
-            }
-        }
-
-        // traverse the child if it exists:
-        if ( _children.size() > 0 )
-        {
-            _children[0]->accept( nv );
-        }
-
-        // if there are any outstanding requests, service them:
-        if ( _children.size() < getNumFileNames() )
-        {
-            osg::NodeVisitor::DatabaseRequestHandler* drh = nv.getDatabaseRequestHandler();
-            if ( drh )
-            {
-                // calculate pager priority exactly as OSG would:
-                float subtileRange = _tilegroup->getSubtileRange();
-                float priority     = (subtileRange - range) / subtileRange;
-
-                // index = 0 to load the initial child; index = 1 to load an in-place update.
-                int index = _children.size();
-
-                drh->requestNodeFile(
-                    _perRangeDataList[index]._filename, 
-                    nv.getNodePath(), 
-                    priority,
-                    nv.getFrameStamp(), 
-                    _perRangeDataList[index]._databaseRequest, 
-                    _databaseOptions.get() );
-            }
-        }
-
-        break;
-    }
-}
-
 namespace
 {
     // traverses a node graph and moves any TileNodes from the LIVE
@@ -243,9 +37,10 @@ namespace
     {
         TileNodeRegistry* _live;
         TileNodeRegistry* _dead;
+        unsigned          _count;
 
         ExpirationCollector(TileNodeRegistry* live, TileNodeRegistry* dead)
-            : _live(live), _dead(dead)
+            : _live(live), _dead(dead), _count(0)
         {
             // set up to traverse the entire subgraph, ignoring node masks.
             setTraversalMode( TRAVERSE_ALL_CHILDREN );
@@ -254,13 +49,11 @@ namespace
 
         void apply(osg::Node& node)
         {
-            TileNode* tn = 0L;
-            TileGroup* tg = dynamic_cast<TileGroup*>(&node);
-            tn = tg ? tg->getTileNode() : dynamic_cast<TileNode*>(&node);
-            if ( tn )
+            TileNode* tn = dynamic_cast<TileNode*>( &node );
+            if ( tn && _live )
             {
-                if ( _live ) _live->remove( tn );
-                if ( _dead ) _dead->add( tn );
+                _live->move( tn, _dead );
+                _count++;
                 //OE_NOTICE << "Expired " << tn->getKey().str() << std::endl;
             }
             traverse(node);
@@ -269,8 +62,78 @@ namespace
 }
 
 
+TilePagedLOD::TilePagedLOD(const UID&        engineUID,
+                           TileNodeRegistry* live,
+                           TileNodeRegistry* dead) :
+osg::PagedLOD(),
+_engineUID( engineUID ),
+_live     ( live ),
+_dead     ( dead )
+{
+    //nop
+}
+
+TilePagedLOD::~TilePagedLOD()
+{
+    // need this here b/c it's possible for addChild() to get called from
+    // a pager dispatch even after the PLOD in question has been "expired"
+    // so we still need to process the live/dead list.
+    ExpirationCollector collector( _live.get(), _dead.get() );
+    this->accept( collector );
+}
+
+TileNode*
+TilePagedLOD::getTileNode()
+{
+    return _children.size() > 0 ? static_cast<TileNode*>(_children[0].get()) : 0L;
+}
+
+void
+TilePagedLOD::setTileNode(TileNode* tilenode)
+{
+    // if the new tile has a culling callback, remove it and put it on the
+    // PagedLOD itself as nature intended.
+    if ( tilenode->getCullCallback() )
+    {
+        this->setCullCallback( tilenode->getCullCallback() );
+        tilenode->setCullCallback( 0L );
+    }
+    setChild( 0, tilenode );
+}
+
+// The osgDB::DatabasePager will call this method when merging a new child
+// into the scene graph.
+bool
+TilePagedLOD::addChild(osg::Node* node)
+{
+    if ( node )
+    {
+        // if we see an invalid tile marker, disable the paged lod.
+        if ( dynamic_cast<InvalidTileNode*>(node) )
+        {
+            this->setFileName( 1, "" );
+            this->setRange( 1, 0, 0 );
+            this->setRange( 0, 0.0f, FLT_MAX );
+            return true;
+        }
+
+        // If it's a TileNode, this is the simple first addition of the 
+        // static TileNode child (not from the pager).
+        TileNode* tilenode = dynamic_cast<TileNode*>( node );
+        if ( tilenode && _live.get() )
+        {
+            _live->add( tilenode );
+        }
+
+        return osg::PagedLOD::addChild( node );
+    }
+
+    return false;
+}
+
+
 // The osgDB::DatabasePager will call this automatically to purge expired
-// tiles from the scene grpah.
+// tiles from the scene graph.
 bool
 TilePagedLOD::removeExpiredChildren(double         expiryTime, 
                                     unsigned       expiryFrame, 
@@ -296,8 +159,10 @@ TilePagedLOD::removeExpiredChildren(double         expiryTime,
             osg::Node* nodeToRemove = _children[cindex].get();
             removedChildren.push_back(nodeToRemove);
 
-            ExpirationCollector collector( _live, _dead );
+            ExpirationCollector collector( _live.get(), _dead.get() );
             nodeToRemove->accept( collector );
+
+            OE_DEBUG << LC << "Expired " << collector._count << std::endl;
 
             return Group::removeChildren(cindex,1);
         }

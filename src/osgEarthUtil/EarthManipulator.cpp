@@ -1662,9 +1662,8 @@ EarthManipulator::postUpdate()
 void
 EarthManipulator::updateTether()
 {
-    // capture a temporary ref since _tether_node is just an observer:
-    osg::ref_ptr<osg::Node> temp = _tether_node.get();
-    if ( temp.valid() )
+    osg::ref_ptr<osg::Node> tether_node;
+    if ( _tether_node.lock(tether_node) )
     {
         osg::Matrix localToWorld;
 
@@ -1673,16 +1672,23 @@ EarthManipulator::updateTether()
             osg::NodePathList nodePaths = _tether_xform->getParentalNodePaths();
             if ( nodePaths.empty() )
                 return;
+
             localToWorld = osg::computeLocalToWorld( nodePaths[0] );
-            //setCenter( localToWorld.getTrans() + (localToWorld.getRotate() * _tether_local_center) );
+            if ( !localToWorld.valid() )
+                return;
+
             setCenter( _tether_local_center * localToWorld );
         }
         else
         {
-            osg::NodePathList nodePaths = temp->getParentalNodePaths();
+            osg::NodePathList nodePaths = tether_node->getParentalNodePaths();
             if ( nodePaths.empty() )
                 return;
+
             localToWorld = osg::computeLocalToWorld( nodePaths[0] );
+            if ( !localToWorld.valid() )
+                return;
+
             setCenter( localToWorld.getTrans() );
         }
 

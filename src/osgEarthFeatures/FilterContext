@@ -21,11 +21,11 @@
 
 #include <osgEarthFeatures/Common>
 #include <osgEarthFeatures/Feature>
-#include <osgEarthFeatures/OptimizerHints>
 #include <osgEarthFeatures/Session>
 #include <osgEarthSymbology/Geometry>
 #include <osgEarthSymbology/ResourceCache>
 #include <osgEarth/GeoData>
+#include <osgEarth/ShaderUtils>
 #include <osg/Matrix>
 #include <list>
 
@@ -155,15 +155,22 @@ namespace osgEarth { namespace Features
         ResourceCache* resourceCache();
 
         /**
-         * Hints to the OSG optimizer. Filters that use this context can explicity
-         * ask to include or exclude optimizer options via this mechanism.
+         * Shader policy. Unset by default, but code using this context can expressly
+         * set it to affect shader generation. Typical use case it to set the policy
+         * to "inherit" to inhibit shader generation if you have already generated
+         * shaders yourself.
          */
-        OptimizerHints& optimizerHints() { return _optimizerHints; }
+        optional<ShaderPolicy>& shaderPolicy() { return _shaderPolicy; }
+        const optional<ShaderPolicy>& shaderPolicy() const { return _shaderPolicy; }
 
-        /** Dump as a string */
+        /**
+         * Dump as a string
+         */
         std::string toString() const;
 
-        /** Gets the DB Options associated with the context's session */
+        /**
+         * Gets the DB Options associated with the context's session
+         */
         const osgDB::Options* getDBOptions() const;
 
     protected:
@@ -173,9 +180,9 @@ namespace osgEarth { namespace Features
         optional<GeoExtent>                _extent;
         osg::Matrixd                       _referenceFrame;
         osg::Matrixd                       _inverseReferenceFrame;
-        OptimizerHints                     _optimizerHints;
         osg::ref_ptr<ResourceCache>        _resourceCache;
         FeatureSourceIndex*                _index;
+        optional<ShaderPolicy>             _shaderPolicy;
     };
 
 } } // namespace osgEarth::Features

@@ -40,8 +40,9 @@ Properties:
                         any built in overviews or wavelet compression in the source file but can 
                         cause artifacts on neighboring tiles.  Interpolating the imagery can look nicer
                         but will be much slower.
-    :warp_profile:      The "warp profile" is a way to tell the GDAL driver to keep the original SRS and geotransform of the source data
-                        but use a Warped VRT to make the data appear to conform to the given profile.  This is useful for merging multiple 
+    :warp_profile:      The "warp profile" is a way to tell the GDAL driver to keep the original SRS
+                        and geotransform of the source data but use a Warped VRT to make the data
+                        appear to conform to the given profile.  This is useful for merging multiple
                         files that may be in different projections using the composite driver.
     
 Also see:

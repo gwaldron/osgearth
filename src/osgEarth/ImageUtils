@@ -248,6 +248,11 @@ namespace osgEarth
         static osg::Image* createBumpMap( const osg::Image* input );
 
         /**
+         * Is it a floating-point texture format?
+         */
+        static bool isFloatingPointInternalFormat( GLint internalFormat );
+
+        /**
          * Reads color data out of an image, regardles of its internal pixel format.
          */
         class OSGEARTH_EXPORT PixelReader

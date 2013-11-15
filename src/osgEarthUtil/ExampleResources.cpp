@@ -47,10 +47,9 @@
 
 #define KML_PUSHPIN_URL "http://demo.pelicanmapping.com/icons/pushpin_yellow.png"
 
-#define VP_DURATION          4.5     // time to fly to a viewpoint
 #define VP_MIN_DURATION      2.0     // minimum fly time.
 #define VP_METERS_PER_SECOND 2500.0  // fly speed
-#define VP_MAX_DURATION      8.0     // maximum fly time.
+#define VP_MAX_DURATION      2.0 //8.0     // maximum fly time.
 
 using namespace osgEarth;
 using namespace osgEarth::Util;
@@ -87,7 +86,6 @@ namespace
         {
             if ( _manip )
                 flyToViewpoint(_manip, _vp);
-                //_manip->setViewpoint( _vp, VP_DURATION );
         }
     };
 
@@ -458,8 +456,8 @@ MapNodeHelper::load(osg::ArgumentParser& args,
 
     if ( !node )
     {
-        OE_WARN << LC << "No earth file from the command line; making one." << std::endl;
-        node = new MapNode();
+        OE_WARN << LC << "No earth file." << std::endl;
+        return 0L;
     }
 
     osg::ref_ptr<MapNode> mapNode = MapNode::get(node);

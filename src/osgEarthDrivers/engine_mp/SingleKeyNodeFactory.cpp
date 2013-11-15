@@ -16,25 +16,21 @@
 * You should have received a copy of the GNU Lesser General Public License
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
-#include "SerialKeyNodeFactory"
+#include "SingleKeyNodeFactory"
 #include "DynamicLODScaleCallback"
 #include "FileLocationCallback"
 #include "TilePagedLOD"
+#include "TileGroup"
 
 #include <osgEarth/Registry>
 #include <osgEarth/HeightFieldUtils>
 #include <osgEarth/Progress>
-#include <osg/PagedLOD>
-#include <osg/CullStack>
-#include <osg/Uniform>
-
-#include <osgEarth/MapNode>
 
 using namespace osgEarth_engine_mp;
 using namespace osgEarth;
 using namespace OpenThreads;
 
-#define LC "[SerialKeyNodeFactory] "
+#define LC "[SingleKeyNodeFactory] "
 
 namespace
 {
@@ -80,7 +76,7 @@ namespace
 }
 
 
-SerialKeyNodeFactory::SerialKeyNodeFactory(const Map*                    map,
+SingleKeyNodeFactory::SingleKeyNodeFactory(const Map*                    map,
                                            TileModelFactory*             modelFactory,
                                            TileModelCompiler*            modelCompiler,
                                            TileNodeRegistry*             liveTiles,
@@ -102,7 +98,7 @@ _engineUID       ( engineUID )
 
 
 osg::Node*
-SerialKeyNodeFactory::createTile(TileModel* model, bool setupChildrenIfNecessary)
+SingleKeyNodeFactory::createTile(TileModel* model, bool setupChildrenIfNecessary)
 {
     // compile the model into a node:
     TileNode* tileNode = _modelCompiler->compile( model, _frame );
@@ -127,19 +123,17 @@ SerialKeyNodeFactory::createTile(TileModel* model, bool setupChildrenIfNecessary
         double radius = (ur - ll).length() / 2.0;
         float minRange = (float)(radius * _options.minTileRangeFactor().value());
 
-        osgDB::Options* dbOptions = Registry::instance()->cloneOrCreateOptions();
-
-        // tell the tile group it *must* subdivide if we are trying to reach a minLOD.
-        bool forceSubdivide =
-            _options.minLOD().isSet() && model->_tileKey.getLOD() < *_options.minLOD();
-
-        TileGroup* plod = new TileGroup(tileNode, _engineUID, _liveTiles.get(), _deadTiles.get(), dbOptions);
-        plod->setForceSubdivide( forceSubdivide );
-        plod->setSubtileRange( minRange );
-
+        TilePagedLOD* plod = new TilePagedLOD( _engineUID, _liveTiles, _deadTiles );
+        plod->setCenter  ( bs.center() );
+        plod->addChild   ( tileNode );
+        plod->setRange   ( 0, minRange, FLT_MAX );
+        plod->setFileName( 1, Stringify() << tileNode->getKey().str() << "." << _engineUID << ".osgearth_engine_mp_tile" );
+        plod->setRange   ( 1, 0, minRange );
 
 #if USE_FILELOCATIONCALLBACK
-        dbOptions->setFileLocationCallback( new FileLocationCallback() );
+        osgDB::Options* options = Registry::instance()->cloneOrCreateOptions();
+        options->setFileLocationCallback( new FileLocationCallback() );
+        plod->setDatabaseOptions( options );
 #endif
         
         result = plod;
@@ -166,33 +160,56 @@ SerialKeyNodeFactory::createTile(TileModel* model, bool setupChildrenIfNecessary
 
 
 osg::Node*
-SerialKeyNodeFactory::createRootNode( const TileKey& key )
-{
-    osg::ref_ptr<TileModel> model;
-
-    _frame.sync();
-
-    _modelFactory->createTileModel( key, _frame, model );
-    return createTile( model.get(), true );
-}
-
-
-osg::Node*
-SerialKeyNodeFactory::createNode(const TileKey&    key, 
+SingleKeyNodeFactory::createNode(const TileKey&    key, 
                                  bool              setupChildren,
                                  ProgressCallback* progress )
 {
-    osg::ref_ptr<TileModel> model;
-
     if ( progress && progress->isCanceled() )
         return 0L;
 
     _frame.sync();
+    
+    osg::ref_ptr<TileModel> model[4];
+    for(unsigned q=0; q<4; ++q)
+    {
+        TileKey child = key.createChildKey(q);
+        _modelFactory->createTileModel( child, _frame, model[q] );
+    }
 
-    _modelFactory->createTileModel(key, _frame, model);
+    bool subdivide =
+        _options.minLOD().isSet() && 
+        key.getLOD() < _options.minLOD().value();
 
-    if ( progress && progress->isCanceled() )
-        return 0L;
+    if ( !subdivide )
+    {
+        for(unsigned q=0; q<4; ++q)
+        {
+            if ( model[q]->hasRealData() )
+            {
+                subdivide = true;
+                break;
+            }
+        }
+    }
 
-    return createTile( model.get(), setupChildren );
+    osg::ref_ptr<osg::Group> quad;
+
+    if ( subdivide )
+    {
+        if ( _options.incrementalUpdate() == true )
+        {
+            quad = new TileGroup(key, _engineUID, _liveTiles.get(), _deadTiles.get());
+        }
+        else
+        {
+            quad = new osg::Group();
+        }
+
+        for( unsigned q=0; q<4; ++q )
+        {
+            quad->addChild( createTile(model[q].get(), setupChildren) );
+        }
+    }
+
+    return quad.release();
 }

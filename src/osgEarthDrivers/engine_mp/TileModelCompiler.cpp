@@ -1710,6 +1710,13 @@ namespace
             layer._tex            = r->_layer.getTexture();
             layer._texParent      = r->_layerParent.getTexture();
 
+            // cache stock opacity. Disable if a color filter is installed, since
+            // it can modify the alpha.
+            layer._opaque =
+                (r->_layer.getMapLayer()->getColorFilters().size() == 0 ) &&
+                (layer._tex.valid() && !r->_layer.hasAlpha()) &&
+                (!layer._texParent.valid() || !r->_layerParent.hasAlpha());
+
             // parent texture matrix: it's a scale/bias matrix encoding the difference
             // between the two locators.
             if ( r->_layerParent.getLocator() )

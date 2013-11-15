@@ -771,6 +771,15 @@ ImageUtils::isCompressed(const osg::Image *image)
     }
 }
 
+
+bool
+ImageUtils::isFloatingPointInternalFormat(GLint i)
+{
+    return 
+        (i >= 0x8C10 && i <= 0x8C17) || // GL_TEXTURE_RED_TYPE_ARB, et al
+        (i >= 0x8814 && i <= 0x881F);   // GL_RGBA32F_ARB, et al
+}
+
 //------------------------------------------------------------------------
 
 namespace
@@ -845,7 +854,7 @@ namespace
         static void write(const ImageUtils::PixelWriter* iw, const osg::Vec4f& c, int s, int t, int r, int m)
         {
             T* ptr = (T*)iw->data(s, t, r, m);
-            (*ptr) = (GLubyte)(c.r() / GLTypeTraits<T>::scale());
+            (*ptr) = (T)(c.r() / GLTypeTraits<T>::scale());
         }
     };
 
@@ -866,7 +875,7 @@ namespace
         static void write(const ImageUtils::PixelWriter* iw, const osg::Vec4f& c, int s, int t, int r, int m)
         {
             T* ptr = (T*)iw->data(s, t, r, m);
-            (*ptr) = (GLubyte)(c.r() / GLTypeTraits<T>::scale());
+            (*ptr) = (T)(c.r() / GLTypeTraits<T>::scale());
         }
     };
 
@@ -887,7 +896,7 @@ namespace
         static void write(const ImageUtils::PixelWriter* iw, const osg::Vec4f& c, int s, int t, int r, int m)
         {
             T* ptr = (T*)iw->data(s, t, r, m);
-            (*ptr) = (GLubyte)(c.a() / GLTypeTraits<T>::scale());
+            (*ptr) = (T)(c.a() / GLTypeTraits<T>::scale());
         }
     };
 
@@ -909,8 +918,8 @@ namespace
         static void write(const ImageUtils::PixelWriter* iw, const osg::Vec4f& c, int s, int t, int r, int m )
         {
             T* ptr = (T*)iw->data(s, t, r, m);
-            *ptr++ = (GLubyte)( c.r() / GLTypeTraits<T>::scale() );
-            *ptr   = (GLubyte)( c.a() / GLTypeTraits<T>::scale() );
+            *ptr++ = (T)( c.r() / GLTypeTraits<T>::scale() );
+            *ptr   = (T)( c.a() / GLTypeTraits<T>::scale() );
         }
     };
 
@@ -933,9 +942,9 @@ namespace
         static void write(const ImageUtils::PixelWriter* iw, const osg::Vec4f& c, int s, int t, int r, int m )
         {
             T* ptr = (T*)iw->data(s, t, r, m);
-            *ptr++ = (GLubyte)( c.r() / GLTypeTraits<T>::scale() );
-            *ptr++ = (GLubyte)( c.g() / GLTypeTraits<T>::scale() );
-            *ptr++ = (GLubyte)( c.b() / GLTypeTraits<T>::scale() );
+            *ptr++ = (T)( c.r() / GLTypeTraits<T>::scale() );
+            *ptr++ = (T)( c.g() / GLTypeTraits<T>::scale() );
+            *ptr++ = (T)( c.b() / GLTypeTraits<T>::scale() );
         }
     };
 
@@ -959,10 +968,10 @@ namespace
         static void write(const ImageUtils::PixelWriter* iw, const osg::Vec4f& c, int s, int t, int r, int m)
         {
             T* ptr = (T*)iw->data(s, t, r, m);
-            *ptr++ = (GLubyte)( c.r() / GLTypeTraits<T>::scale() );
-            *ptr++ = (GLubyte)( c.g() / GLTypeTraits<T>::scale() );
-            *ptr++ = (GLubyte)( c.b() / GLTypeTraits<T>::scale() );
-            *ptr++ = (GLubyte)( c.a() / GLTypeTraits<T>::scale() );
+            *ptr++ = (T)( c.r() / GLTypeTraits<T>::scale() );
+            *ptr++ = (T)( c.g() / GLTypeTraits<T>::scale() );
+            *ptr++ = (T)( c.b() / GLTypeTraits<T>::scale() );
+            *ptr++ = (T)( c.a() / GLTypeTraits<T>::scale() );
         }
     };
 
@@ -985,9 +994,9 @@ namespace
         static void write(const ImageUtils::PixelWriter* iw, const osg::Vec4f& c, int s, int t, int r, int m )
         {
             T* ptr = (T*)iw->data(s, t, r, m);
-            *ptr++ = (GLubyte)( c.b() / GLTypeTraits<T>::scale() );
-            *ptr++ = (GLubyte)( c.g() / GLTypeTraits<T>::scale() );
-            *ptr++ = (GLubyte)( c.r() / GLTypeTraits<T>::scale() );
+            *ptr++ = (T)( c.b() / GLTypeTraits<T>::scale() );
+            *ptr++ = (T)( c.g() / GLTypeTraits<T>::scale() );
+            *ptr++ = (T)( c.r() / GLTypeTraits<T>::scale() );
         }
     };
 
@@ -1011,10 +1020,10 @@ namespace
         static void write(const ImageUtils::PixelWriter* iw, const osg::Vec4f& c, int s, int t, int r, int m )
         {
             T* ptr = (T*)iw->data(s, t, r, m);
-            *ptr++ = (GLubyte)( c.b() / GLTypeTraits<T>::scale() );
-            *ptr++ = (GLubyte)( c.g() / GLTypeTraits<T>::scale() );
-            *ptr++ = (GLubyte)( c.r() / GLTypeTraits<T>::scale() );
-            *ptr++ = (GLubyte)( c.a() / GLTypeTraits<T>::scale() );
+            *ptr++ = (T)( c.b() / GLTypeTraits<T>::scale() );
+            *ptr++ = (T)( c.g() / GLTypeTraits<T>::scale() );
+            *ptr++ = (T)( c.r() / GLTypeTraits<T>::scale() );
+            *ptr++ = (T)( c.a() / GLTypeTraits<T>::scale() );
         }
     };
 

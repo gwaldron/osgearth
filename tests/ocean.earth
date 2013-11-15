@@ -28,12 +28,7 @@ http://readymap.org
     <options>
         <terrain>
             <lighting>true</lighting>
-            <sample_ratio>0.125</sample_ratio>
         </terrain>
-        
-        <cache driver="filesystem">
-            <path>osgearth_cache</path>
-        </cache>
     </options>
     
     <external>
@@ -57,5 +52,7 @@ http://readymap.org
         </ocean>
         
         <viewpoint name="Los Angeles" heading="35.27" height="97.48" lat="34.051" long="-117.974" pitch="-17" range="136405"/>
+        <viewpoint name="Above water" heading="-76.17264538992794" height="-199.5569639196619" lat="33.27975381179682" long="-118.3307776586542" pitch="-10.06523772274543" range="3739.161570538204"/>
+        <viewpoint name="Below water" heading="-24.96310172368127" height="-1300.000076910481" lat="33.27360337088133" long="-118.5514448058582" pitch="-10.0770016631354" range="6375.084038302656"/>
     </external>
 </map>

@@ -23,7 +23,7 @@ Try running it with a controller uniform:
     </elevation>
 	
 	<external>
-	    <vertical_scale scale="1.0"/>
+	    <vertical_scale scale="2.0"/>
 	</external>
     
 </map>

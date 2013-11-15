@@ -59,9 +59,9 @@ using namespace osgEarth::Util;
     
     // This chunk inverts the Y axis.
     osgEarth::Util::EarthManipulator* manip = new osgEarth::Util::EarthManipulator();
-    osgEarth::Util::EarthManipulator::ActionOptions options;
-    options.add(osgEarth::Util::EarthManipulator::OPTION_SCALE_Y, -1.0);
-    manip->getSettings()->bindMouse(osgEarth::Util::EarthManipulator::ACTION_EARTH_DRAG, osgGA::GUIEventAdapter::LEFT_MOUSE_BUTTON, 0L, options);
+    //osgEarth::Util::EarthManipulator::ActionOptions options;
+    //options.add(osgEarth::Util::EarthManipulator::OPTION_SCALE_Y, -1.0);
+    //manip->getSettings()->bindMouse(osgEarth::Util::EarthManipulator::ACTION_EARTH_DRAG, osgGA::GUIEventAdapter::LEFT_MOUSE_BUTTON, 0L, options);
     manip->getSettings()->setThrowingEnabled(true);
     manip->getSettings()->setThrowDecayRate(0.1);
     _viewer->setCameraManipulator( manip );

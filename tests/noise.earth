@@ -18,7 +18,6 @@ We use a contour map to better visualize the terrain.
                
 
     <options
-        elevation_tile_size="31"
         lighting="true"/>
 
     <external>

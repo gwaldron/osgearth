@@ -132,9 +132,14 @@ void Dragger::updateTransform(osg::Node* patch)
     if ( getMapNode() )
     {
         osg::Matrixd matrix;
-
+        
         GeoPoint mapPoint( _position );
-        mapPoint.makeAbsolute( getMapNode()->getTerrain() );
+        mapPoint = mapPoint.transform( _mapNode->getMapSRS() );
+        if (!mapPoint.makeAbsolute( getMapNode()->getTerrain() ))
+        {
+            OE_WARN << "Failed to clamp dragger" << std::endl;
+            return;            
+        }
 
         mapPoint.createLocalToWorld( matrix );
         setMatrix( matrix );
@@ -369,7 +374,7 @@ void Dragger::setHover( bool hovered)
 }
 
 void Dragger::reclamp( const TileKey& key, osg::Node* tile, const Terrain* terrain )
-{        
+{            
     GeoPoint p;
     _position.transform( key.getExtent().getSRS(), p );
     // first verify that the control position intersects the tile:

@@ -1,3 +1,24 @@
+OSGEARTH SOFTWARE LICENSE
+
+The osgEarth library and included programs are provided under the terms
+of the GNU Library General Public License (LGPL - included below) with the
+following exceptions and stipulations:
+
+1. Static linking of applications and modules to the osgEarth library does NOT
+   constitute a derivative work and does not require the author to provide source
+   code for the application or module.
+
+2. If you link the application or module to a modified version of the osgEarth
+   library, then the modifications to osgEarth must be provided under the terms of
+   the LGPL.
+   
+3. The text herein comprises the definitive licensing information for the osgEarth
+   library, and supercedes any licensing text found in osgEarth source files,
+   header files, or documentation.
+
+
+   ----
+
                    GNU LESSER GENERAL PUBLIC LICENSE
                        Version 3, 29 June 2007
 

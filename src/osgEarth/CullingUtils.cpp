@@ -648,7 +648,7 @@ void OcclusionCullingCallback::operator()(osg::Node* node, osg::NodeVisitor* nv)
 {
     if (nv->getVisitorType() == osg::NodeVisitor::CULL_VISITOR)
     {        
-        osgUtil::CullVisitor* cv = Culling::asCullVisitor(nv);        
+        osgUtil::CullVisitor* cv = Culling::asCullVisitor(nv);
 
         static int frameNumber = -1;
         static double remainingTime = OcclusionCullingCallback::_maxFrameTime;
@@ -667,7 +667,7 @@ void OcclusionCullingCallback::operator()(osg::Node* node, osg::NodeVisitor* nv)
             remainingTime = OcclusionCullingCallback::_maxFrameTime;
         }
 
-        osg::Vec3d eye = cv->getViewPoint();        
+        osg::Vec3d eye = cv->getViewPoint();
 
         if (_prevEye != eye || _prevWorld != _world)
         {
@@ -716,20 +716,19 @@ void OcclusionCullingCallback::operator()(osg::Node* node, osg::NodeVisitor* nv)
                 _prevWorld = _world;
             }
             else
-            {                                    
+            {
                 numSkipped++;
                 // if we skipped some we need to request a redraw so the remianing ones get processed on the next frame.
-                osgGA::GUIActionAdapter* aa = dynamic_cast<osgGA::GUIActionAdapter*>(cv->getCurrentCamera()->getView());
-                if ( aa )
-                {                    
-                    aa->requestRedraw();
+                if ( cv->getCurrentCamera() && cv->getCurrentCamera()->getView() )
+                {
+                    osgGA::GUIActionAdapter* aa = dynamic_cast<osgGA::GUIActionAdapter*>(cv->getCurrentCamera()->getView());
+                    if ( aa )
+                    {
+                        aa->requestRedraw();
+                    }
                 }
             }
         }
-
-
-
-
 
         if (_visible)
         {

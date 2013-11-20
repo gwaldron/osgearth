@@ -41,6 +41,7 @@ ResourceCache::getStateSet(SkinResource*                skin,
 
     if ( _threadSafe )
     {
+#if 0
         // first check if it exists
         {
             Threading::ScopedReadLock shared( _skinMutex );
@@ -51,7 +52,7 @@ ResourceCache::getStateSet(SkinResource*                skin,
                 output = rec.value().get();
             }
         }
-
+#endif
         // no? exclusive lock and create it.
         if ( !output.valid() )
         {
@@ -59,7 +60,7 @@ ResourceCache::getStateSet(SkinResource*                skin,
             
             // double check to avoid race condition
             SkinCache::Record rec;
-            if ( _skinCache.get(key, rec) )
+            if ( _skinCache.get(key, rec) && rec.value().valid() )
             {
                 output = rec.value().get();
             }
@@ -76,9 +77,9 @@ ResourceCache::getStateSet(SkinResource*                skin,
     else
     {
         SkinCache::Record rec;
-        if ( _skinCache.get(key, rec) )
+        if ( _skinCache.get(key, rec) && rec.value().valid() )
         {
-            output = rec.value();
+            output = rec.value().get();
         }
         else
         {
@@ -101,6 +102,7 @@ ResourceCache::getInstanceNode(InstanceResource*        res,
 
     if ( _threadSafe )
     {
+#if 0
         // first check if it exists
         {
             Threading::ScopedReadLock shared( _instanceMutex );
@@ -111,7 +113,7 @@ ResourceCache::getInstanceNode(InstanceResource*        res,
                 output = rec.value().get();
             }
         }
-
+#endif
         // no? exclusive lock and create it.
         if ( !output.valid() )
         {
@@ -119,7 +121,7 @@ ResourceCache::getInstanceNode(InstanceResource*        res,
             
             // double check to avoid race condition
             InstanceCache::Record rec;
-            if ( _instanceCache.get(key, rec) )
+            if ( _instanceCache.get(key, rec) && rec.value().valid() )
             {
                 output = rec.value().get();
             }
@@ -136,7 +138,7 @@ ResourceCache::getInstanceNode(InstanceResource*        res,
     else
     {
         InstanceCache::Record rec;
-        if ( _instanceCache.get(key, rec) )
+        if ( _instanceCache.get(key, rec) && rec.value().valid() )
         {
             output = rec.value().get();
         }
@@ -161,6 +163,7 @@ ResourceCache::getMarkerNode(MarkerResource*          marker,
 
     if ( _threadSafe )
     {
+#if 0
         // first check if it exists
         {
             Threading::ScopedReadLock shared( _markerMutex );
@@ -171,7 +174,7 @@ ResourceCache::getMarkerNode(MarkerResource*          marker,
                 output = rec.value().get();
             }
         }
-
+#endif
         // no? exclusive lock and create it.
         if ( !output.valid() )
         {
@@ -179,7 +182,7 @@ ResourceCache::getMarkerNode(MarkerResource*          marker,
             
             // double check to avoid race condition
             MarkerCache::Record rec;
-            if ( _markerCache.get( key, rec ) )
+            if ( _markerCache.get( key, rec ) && rec.value().valid() )
             {
                 output = rec.value().get();
             }
@@ -196,7 +199,7 @@ ResourceCache::getMarkerNode(MarkerResource*          marker,
     else
     {
         MarkerCache::Record rec;
-        if ( _markerCache.get( key, rec ) )
+        if ( _markerCache.get( key, rec ) && rec.value().valid() )
         {
             output = rec.value().get();
         }

@@ -25,6 +25,8 @@
 #include <osg/BlendFunc>
 #include <osg/Texture2D>
 
+#define LC "[SkinResource] "
+
 using namespace osgEarth;
 using namespace osgEarth::Symbology;
 
@@ -85,6 +87,7 @@ SkinResource::getConfig() const
 osg::StateSet*
 SkinResource::createStateSet( const osgDB::Options* dbOptions ) const
 {
+    OE_NOTICE << LC << "Creating skin state set for " << imageURI()->full() << std::endl;
     return createStateSet( createImage(dbOptions) );
 }
 

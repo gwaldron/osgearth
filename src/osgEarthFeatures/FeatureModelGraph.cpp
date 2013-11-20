@@ -232,6 +232,13 @@ _overlayChange     ( OVERLAY_NO_CHANGE )
         OE_WARN << LC << "ILLEGAL: Session must have a feature source" << std::endl;
         return;
     }
+
+    // set up a shared resource cache for the session. The ResourceCache will make sure
+    // that resources (skin textures, instance models, etc.) only get loaded once.
+    if ( !session->getResourceCache() )
+    {
+        session->setResourceCache( new ResourceCache(session->getDBOptions(), true) );
+    }
     
     // Calculate the usable extent (in both feature and map coordinates) and bounds.
     const Profile* mapProfile = session->getMapInfo().getProfile();

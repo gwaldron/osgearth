@@ -22,6 +22,7 @@
 
 #include <osgEarthFeatures/Common>
 #include <osgEarthFeatures/ScriptEngine>
+#include <osgEarthSymbology/ResourceCache>
 #include <osgEarthSymbology/StyleSheet>
 #include <osgEarth/StateSetCache>
 #include <osgEarth/ThreadingUtils>
@@ -92,6 +93,10 @@ namespace osgEarth { namespace Features
         /** The I/O options for operations within this session */
         const osgDB::Options* getDBOptions() const;
 
+        /** Shared resource cache (optional) */
+        void setResourceCache(ResourceCache* cache);
+        ResourceCache* getResourceCache() { return _resourceCache.get(); }
+
     public:
         template<typename T>
         struct CreateFunctor {
@@ -109,7 +114,6 @@ namespace osgEarth { namespace Features
          */
         template<typename T>
         T* putObject( const std::string& key, T* object, bool overwrite =true ) {
-            //Threading::ScopedWriteLock lock( _objMapMutex );
             Threading::ScopedMutexLock lock( _objMapMutex );
             ObjectMap::iterator i = _objMap.find(key);
             if ( i != _objMap.end() && !overwrite )
@@ -124,7 +128,6 @@ namespace osgEarth { namespace Features
          */
         template<typename T>
         osg::ref_ptr<T> getObject( const std::string& key ) {
-            //Threading::ScopedReadLock lock( _objMapMutex );
             Threading::ScopedMutexLock lock( _objMapMutex );
             ObjectMap::const_iterator i = _objMap.find(key);
             return i != _objMap.end() ? dynamic_cast<T*>( i->second.get() ) : 0L;
@@ -165,7 +168,6 @@ namespace osgEarth { namespace Features
     private:
         typedef std::map<std::string, osg::ref_ptr<osg::Referenced> > ObjectMap;
         ObjectMap                    _objMap;
-        //Threading::ReadWriteMutex    _objMapMutex;
         Threading::Mutex             _objMapMutex;
 
         URIContext                         _uriContext;
@@ -176,6 +178,7 @@ namespace osgEarth { namespace Features
         osg::ref_ptr<ScriptEngine>         _styleScriptEngine;
         osg::ref_ptr<FeatureSource>        _featureSource;
         osg::ref_ptr<StateSetCache>        _stateSetCache;
+        osg::ref_ptr<ResourceCache>        _resourceCache;
     };
 
 } }

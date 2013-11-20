@@ -71,6 +71,12 @@ Session::getDBOptions() const
     return _dbOptions.get();
 }
 
+void
+Session::setResourceCache(ResourceCache* cache)
+{
+    _resourceCache = cache;
+}
+
 MapFrame
 Session::createMapFrame( Map::ModelParts parts ) const
 {

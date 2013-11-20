@@ -34,7 +34,17 @@ _isGeocentric( false ),
 _index       ( index ),
 _shaderPolicy( osgEarth::SHADERPOLICY_GENERATE )
 {
-    _resourceCache = new ResourceCache( session ? session->getDBOptions() : 0L );
+    if ( session )
+    {
+        if ( session->getResourceCache() )
+        {
+            _resourceCache = session->getResourceCache();
+        }
+        else
+        {
+            _resourceCache = new ResourceCache( session->getDBOptions() );
+        }
+    }
 
     // attempt to establish a working extent if we don't have one:
 

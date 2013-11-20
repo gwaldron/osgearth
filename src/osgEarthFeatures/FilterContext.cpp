@@ -77,6 +77,12 @@ _shaderPolicy         ( rhs._shaderPolicy )
     //nop
 }
 
+void
+FilterContext::setProfile(const FeatureProfile* value)
+{
+    _profile = value;
+}
+
 const osgDB::Options*
 FilterContext::getDBOptions() const
 {

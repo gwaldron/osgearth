@@ -21,61 +21,28 @@
 using namespace osgEarth;
 using namespace osgEarth::Symbology;
 
-ResourceCache::ResourceCache(const osgDB::Options* dbOptions,
-                             bool                  threadSafe ) :
+
+// internal thread-safety not required since we mutex it in this object.
+ResourceCache::ResourceCache(const osgDB::Options* dbOptions ) :
 _dbOptions    ( dbOptions ),
-_threadSafe   ( threadSafe ),
 _skinCache    ( false ),
-_markerCache  ( false ),
 _instanceCache( false )
 {
     //nop
 }
 
 bool
-ResourceCache::getStateSet(SkinResource*                skin,
-                           osg::ref_ptr<osg::StateSet>& output)
+ResourceCache::getOrCreateStateSet(SkinResource*                skin,
+                                   osg::ref_ptr<osg::StateSet>& output)
 {
     output = 0L;
     std::string key = skin->getConfig().toJSON(false);
 
-    if ( _threadSafe )
+    // exclusive lock (since it's an LRU)
     {
-#if 0
-        // first check if it exists
-        {
-            Threading::ScopedReadLock shared( _skinMutex );
-
-            SkinCache::Record rec;
-            if ( _skinCache.get(key, rec) )
-            {
-                output = rec.value().get();
-            }
-        }
-#endif
-        // no? exclusive lock and create it.
-        if ( !output.valid() )
-        {
-            Threading::ScopedWriteLock exclusive( _skinMutex );
+        Threading::ScopedMutexLock exclusive( _skinMutex );
             
-            // double check to avoid race condition
-            SkinCache::Record rec;
-            if ( _skinCache.get(key, rec) && rec.value().valid() )
-            {
-                output = rec.value().get();
-            }
-            else
-            {
-                // still not there, make it.
-                output = skin->createStateSet( _dbOptions.get() );
-                if ( output.valid() )
-                    _skinCache.insert( key, output.get() );
-            }
-        }
-    }
-
-    else
-    {
+        // double check to avoid race condition
         SkinCache::Record rec;
         if ( _skinCache.get(key, rec) && rec.value().valid() )
         {
@@ -83,9 +50,12 @@ ResourceCache::getStateSet(SkinResource*                skin,
         }
         else
         {
+            // still not there, make it.
             output = skin->createStateSet( _dbOptions.get() );
             if ( output.valid() )
+            {
                 _skinCache.insert( key, output.get() );
+            }
         }
     }
 
@@ -94,49 +64,17 @@ ResourceCache::getStateSet(SkinResource*                skin,
 
 
 bool
-ResourceCache::getInstanceNode(InstanceResource*        res,
-                               osg::ref_ptr<osg::Node>& output)
+ResourceCache::getOrCreateInstanceNode(InstanceResource*        res,
+                                       osg::ref_ptr<osg::Node>& output)
 {
     output = 0L;
     std::string key = res->getConfig().toJSON(false);
 
-    if ( _threadSafe )
+    // exclusive lock (since it's an LRU)
     {
-#if 0
-        // first check if it exists
-        {
-            Threading::ScopedReadLock shared( _instanceMutex );
+        Threading::ScopedMutexLock exclusive( _instanceMutex );
 
-            InstanceCache::Record rec;
-            if ( _instanceCache.get(key, rec) )
-            {
-                output = rec.value().get();
-            }
-        }
-#endif
-        // no? exclusive lock and create it.
-        if ( !output.valid() )
-        {
-            Threading::ScopedWriteLock exclusive( _instanceMutex );
-            
-            // double check to avoid race condition
-            InstanceCache::Record rec;
-            if ( _instanceCache.get(key, rec) && rec.value().valid() )
-            {
-                output = rec.value().get();
-            }
-            else
-            {
-                // still not there, make it.
-                output = res->createNode( _dbOptions.get() );
-                if ( output.valid() )
-                    _instanceCache.insert( key, output.get() );
-            }
-        }
-    }
-
-    else
-    {
+        // double check to avoid race condition
         InstanceCache::Record rec;
         if ( _instanceCache.get(key, rec) && rec.value().valid() )
         {
@@ -144,70 +82,12 @@ ResourceCache::getInstanceNode(InstanceResource*        res,
         }
         else
         {
+            // still not there, make it.
             output = res->createNode( _dbOptions.get() );
             if ( output.valid() )
+            {
                 _instanceCache.insert( key, output.get() );
-        }
-    }
-
-    return output.valid();
-}
-
-
-bool
-ResourceCache::getMarkerNode(MarkerResource*          marker,
-                             osg::ref_ptr<osg::Node>& output)
-{
-    output = 0L;
-    std::string key = marker->getConfig().toJSON(false);
-
-    if ( _threadSafe )
-    {
-#if 0
-        // first check if it exists
-        {
-            Threading::ScopedReadLock shared( _markerMutex );
-
-            MarkerCache::Record rec;
-            if ( _markerCache.get(key, rec) )
-            {
-                output = rec.value().get();
             }
-        }
-#endif
-        // no? exclusive lock and create it.
-        if ( !output.valid() )
-        {
-            Threading::ScopedWriteLock exclusive( _markerMutex );
-            
-            // double check to avoid race condition
-            MarkerCache::Record rec;
-            if ( _markerCache.get( key, rec ) && rec.value().valid() )
-            {
-                output = rec.value().get();
-            }
-            else
-            {
-                // still not there, make it.
-                output = marker->createNode( _dbOptions.get() );
-                if ( output.valid() )
-                    _markerCache.insert( key, output.get() );
-            }
-        }
-    }
-
-    else
-    {
-        MarkerCache::Record rec;
-        if ( _markerCache.get( key, rec ) && rec.value().valid() )
-        {
-            output = rec.value().get();
-        }
-        else
-        {
-            output = marker->createNode( _dbOptions.get() );
-            if ( output.valid() )
-                _markerCache.insert( key, output.get() );
         }
     }
 

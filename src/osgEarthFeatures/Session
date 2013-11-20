@@ -95,7 +95,7 @@ namespace osgEarth { namespace Features
 
         /** Shared resource cache (optional) */
         void setResourceCache(ResourceCache* cache);
-        ResourceCache* getResourceCache() { return _resourceCache.get(); }
+        ResourceCache* getResourceCache();
 
     public:
         template<typename T>

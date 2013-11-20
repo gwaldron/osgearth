@@ -95,8 +95,7 @@ public:
                             // Init a filter to tranform feature in desired SRS 
                             if (!srs->isEquivalentTo(_features->getFeatureProfile()->getSRS())) {
                                 FilterContext cx;
-                                cx.profile() = new FeatureProfile(_features->getFeatureProfile()->getExtent());
-                                //cx.isGeocentric() = _features->getFeatureProfile()->getSRS()->isGeographic();
+                                cx.setProfile( new FeatureProfile(_features->getFeatureProfile()->getExtent()) );
 
                                 TransformFilter xform( srs );
                                 FeatureList featureList;

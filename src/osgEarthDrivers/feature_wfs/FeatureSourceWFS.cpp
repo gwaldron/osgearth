@@ -376,7 +376,7 @@ public:
             if ( features.size() > 0 )
             {
                 FilterContext cx;
-                cx.profile() = getFeatureProfile();
+                cx.setProfile( getFeatureProfile() );
 
                 for( FeatureFilterList::const_iterator i = _options.filters().begin(); i != _options.filters().end(); ++i )
                 {

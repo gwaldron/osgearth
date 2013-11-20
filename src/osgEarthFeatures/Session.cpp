@@ -21,6 +21,7 @@
 #include <osgEarthFeatures/Script>
 #include <osgEarthFeatures/ScriptEngine>
 #include <osgEarthFeatures/FeatureSource>
+#include <osgEarthSymbology/ResourceCache>
 #include <osgEarth/FileUtils>
 #include <osgEarth/StringUtils>
 #include <osgEarth/Registry>
@@ -63,6 +64,7 @@ _dbOptions     ( dbOptions )
 
 Session::~Session()
 {
+    //nop
 }
 
 const osgDB::Options*
@@ -77,6 +79,12 @@ Session::setResourceCache(ResourceCache* cache)
     _resourceCache = cache;
 }
 
+ResourceCache*
+Session::getResourceCache()
+{
+    return _resourceCache.get();
+}
+
 MapFrame
 Session::createMapFrame( Map::ModelParts parts ) const
 {
@@ -87,7 +95,6 @@ void
 Session::removeObject( const std::string& key )
 {
     Threading::ScopedMutexLock lock( _objMapMutex );
-    //Threading::ScopedWriteLock lock( _objMapMutex );
     _objMap.erase( key );
 }
 
@@ -96,21 +103,28 @@ Session::setStyles( StyleSheet* value )
 {
     _styles = value ? value : new StyleSheet();
 
-    // Go ahead and create the script engine for the StyleSheet
+    // Create a script engine for the StyleSheet
     if (_styles && _styles->script())
-      _styleScriptEngine = ScriptEngineFactory::create(Script(_styles->script()->code, _styles->script()->language, _styles->script()->name));
+    {
+      _styleScriptEngine = ScriptEngineFactory::create( Script(
+          _styles->script()->code, 
+          _styles->script()->language, 
+          _styles->script()->name ) );
+    }
     else
+    {
       _styleScriptEngine = 0L;
+    }
 }
 
 ScriptEngine*
 Session::getScriptEngine() const
 {
-  return _styleScriptEngine.get();
+    return _styleScriptEngine.get();
 }
 
 FeatureSource*
 Session::getFeatureSource() const 
 { 
-	return _featureSource.get(); 
+    return _featureSource.get(); 
 }

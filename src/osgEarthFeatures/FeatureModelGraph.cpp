@@ -20,6 +20,9 @@
 #include <osgEarthFeatures/FeatureModelGraph>
 #include <osgEarthFeatures/CropFilter>
 #include <osgEarthFeatures/FeatureSourceIndexNode>
+#include <osgEarthFeatures/Session>
+
+#include <osgEarth/Map>
 #include <osgEarth/Capabilities>
 #include <osgEarth/ClampableNode>
 #include <osgEarth/CullingUtils>
@@ -237,7 +240,7 @@ _overlayChange     ( OVERLAY_NO_CHANGE )
     // that resources (skin textures, instance models, etc.) only get loaded once.
     if ( !session->getResourceCache() )
     {
-        session->setResourceCache( new ResourceCache(session->getDBOptions(), true) );
+        session->setResourceCache( new ResourceCache(session->getDBOptions()) );
     }
     
     // Calculate the usable extent (in both feature and map coordinates) and bounds.

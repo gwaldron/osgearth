@@ -238,7 +238,7 @@ FeatureCursorOGR::readChunk()
     if ( preProcessList.size() > 0 )
     {
         FilterContext cx;
-        cx.profile() = _profile.get();
+        cx.setProfile( _profile.get() );
 
         for( FeatureFilterList::const_iterator i = _filters.begin(); i != _filters.end(); ++i )
         {

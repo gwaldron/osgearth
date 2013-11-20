@@ -18,6 +18,7 @@
  */
 #include <osgEarthFeatures/SubstituteModelFilter>
 #include <osgEarthFeatures/FeatureSourceIndexNode>
+#include <osgEarthFeatures/Session>
 #include <osgEarthSymbology/MeshConsolidator>
 #include <osgEarth/ECEF>
 #include <osgEarth/VirtualProgram>
@@ -190,7 +191,7 @@ SubstituteModelFilter::process(const FeatureList&           features,
         osg::ref_ptr<osg::Node>& model = uniqueModels[key];
         if ( !model.valid() )
         {
-            context.resourceCache()->getInstanceNode( instance.get(), model );
+            context.resourceCache()->getOrCreateInstanceNode( instance.get(), model );
 
             // if icon decluttering is off, install an AutoTransform.
             if ( iconSymbol )

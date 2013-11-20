@@ -18,6 +18,7 @@
  */
 #include <osgEarthFeatures/LabelSource>
 #include <osgEarth/Registry>
+#include <osgDB/ReadFile>
 
 using namespace osgEarth;
 using namespace osgEarth::Features;

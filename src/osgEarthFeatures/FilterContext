@@ -64,6 +64,11 @@ namespace osgEarth { namespace Features
          */
         void setFeatureIndex( FeatureSourceIndex* value ) { _index = value; }
 
+        /**
+         * Sets the profile (SRS etc) of the feature data
+         */
+        void setProfile( const FeatureProfile* profile );
+
 
     public: // properties
 
@@ -82,7 +87,6 @@ namespace osgEarth { namespace Features
          * The spatial profile of the feature data in this context.
          */
         const FeatureProfile* profile() const { return _profile.get(); }
-        osg::ref_ptr<const FeatureProfile>& profile() { return _profile; }
 
         /**
          * The spatial extent of the working cell

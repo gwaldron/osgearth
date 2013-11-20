@@ -277,16 +277,68 @@ ShaderGenerator::apply( osg::Geode& geode )
 {
     if ( !_active ) return;
 
-    if ( geode.getStateSet() )
-        _state->pushStateSet( geode.getStateSet() );
-
-    for( unsigned d = 0; d < geode.getNumDrawables(); ++d )
+    osg::ref_ptr<osg::StateSet> stateset = geode.getStateSet();
+    if ( stateset.valid() )
     {
-        apply( geode.getDrawable(d) );
+        _state->pushStateSet( geode.getStateSet() );
     }
 
-    if ( geode.getStateSet() )
+    unsigned numDrawables = geode.getNumDrawables();
+    bool traverseDrawables = true;
+
+    // This block checks whether all the geode's drawables are equivalent,
+    // i.e., they are the same type (geometry or text) and none of them
+    // have their own state sets. IF that's the case, we can create a 
+    // single shader program for the entire geode. This is an optimization.
+    if ( stateset.valid() )
+    {
+        unsigned d;
+        unsigned numInheritingText = 0, numInheritingGeometry = 0;
+        for( d = 0; d < numDrawables; ++d )
+        {
+            osg::Drawable* drawable = geode.getDrawable(d);
+            if ( drawable->getStateSet() == 0L )
+            {
+                if ( drawable->asGeometry() )
+                    numInheritingGeometry++;
+                else if ( dynamic_cast<osgText::Text*>(drawable) )
+                    numInheritingText++;
+            }
+        }
+
+        if (numInheritingGeometry == numDrawables )
+        {
+            osg::ref_ptr<osg::StateSet> replacement;
+            if ( processGeometry(stateset.get(), replacement) )
+            {
+                geode.setStateSet(replacement.get() );
+                traverseDrawables = false;
+            }
+        }
+        else if (numInheritingText == numDrawables )
+        {
+            osg::ref_ptr<osg::StateSet> replacement;
+            if ( processText(stateset.get(), replacement) )
+            {
+                geode.setStateSet(replacement.get() );
+                traverseDrawables = false;
+            }
+        }
+    }
+
+    // Drawables have state sets, so let's traverse them.
+    if ( traverseDrawables )
+    {
+        for( unsigned d = 0; d < geode.getNumDrawables(); ++d )
+        {
+            apply( geode.getDrawable(d) );
+        }
+    }
+
+    if ( stateset.valid() )
+    {
         _state->popStateSet();
+    }
 }
 
 
@@ -328,17 +380,6 @@ ShaderGenerator::apply( osg::Drawable* drawable )
         {
             _state->popStateSet();
         }
-
-#if 0
-        // optimize state set sharing
-        if ( _stateSetCache.valid() && replacement.valid() )
-        {
-            if ( _stateSetCache->share(replacement, replacement) )
-            {
-                drawable->setStateSet( replacement.get() );
-            }
-        }
-#endif
     }
 }
 

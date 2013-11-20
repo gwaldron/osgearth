@@ -84,7 +84,7 @@ public:
     {
         // A processing context to use with the filters:
         FilterContext context;
-        context.profile() = getFeatureSource()->getFeatureProfile();
+        context.setProfile( getFeatureSource()->getFeatureProfile() );
 
         const LineSymbol*    masterLine = style.getSymbol<LineSymbol>();
         const PolygonSymbol* masterPoly = style.getSymbol<PolygonSymbol>();

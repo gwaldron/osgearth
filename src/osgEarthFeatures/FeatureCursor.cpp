@@ -86,7 +86,7 @@ GeometryFeatureCursor::nextFeature()
     {        
         _lastFeature = new Feature( _geom.get(), _featureProfile.valid() ? _featureProfile->getSRS() : 0L );
         FilterContext cx;
-        cx.profile() = _featureProfile.get();
+        cx.setProfile( _featureProfile.get() );
         FeatureList list;
         list.push_back( _lastFeature.get() );
         for( FeatureFilterList::const_iterator i = _filters.begin(); i != _filters.end(); ++i ) {

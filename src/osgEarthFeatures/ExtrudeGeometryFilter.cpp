@@ -17,9 +17,11 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 #include <osgEarthFeatures/ExtrudeGeometryFilter>
+#include <osgEarthFeatures/Session>
 #include <osgEarthFeatures/FeatureSourceIndexNode>
 #include <osgEarthSymbology/MeshSubdivider>
 #include <osgEarthSymbology/MeshConsolidator>
+#include <osgEarthSymbology/ResourceCache>
 #include <osgEarth/ECEF>
 #include <osgEarth/ImageUtils>
 #include <osgEarth/Registry>
@@ -780,7 +782,7 @@ ExtrudeGeometryFilter::process( FeatureList& features, FilterContext& context )
             {      
                 if ( wallSkin )
                 {
-                    context.resourceCache()->getStateSet( wallSkin, wallStateSet );
+                    context.resourceCache()->getOrCreateStateSet( wallSkin, wallStateSet );
                 }
 
                 // generate per-vertex normals, altering the geometry as necessary to avoid
@@ -804,7 +806,7 @@ ExtrudeGeometryFilter::process( FeatureList& features, FilterContext& context )
 
                     if ( roofSkin )
                     {
-                        context.resourceCache()->getStateSet( roofSkin, roofStateSet );
+                        context.resourceCache()->getOrCreateStateSet( roofSkin, roofStateSet );
                     }
                 }
 

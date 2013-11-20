@@ -17,6 +17,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 #include <osgEarthFeatures/BuildGeometryFilter>
+#include <osgEarthFeatures/Session>
 #include <osgEarthFeatures/FeatureSourceIndexNode>
 #include <osgEarthFeatures/PolygonizeLines>
 #include <osgEarthSymbology/TextSymbol>
@@ -25,6 +26,7 @@
 #include <osgEarthSymbology/PolygonSymbol>
 #include <osgEarthSymbology/MeshSubdivider>
 #include <osgEarthSymbology/MeshConsolidator>
+#include <osgEarthSymbology/ResourceCache>
 #include <osgEarth/Utils>
 #include <osg/Geode>
 #include <osg/Geometry>

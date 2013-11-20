@@ -198,14 +198,6 @@ ModelLayer::createSceneGraph(const Map*            map,
                 ss->setRenderBinDetails( 99999, "RenderBin" ); //TODO: configure this bin ...
             }
 
-#if 0 // moved the MapNode level.
-            if ( Registry::capabilities().supportsGLSL() )
-            {
-                // install a callback that keeps the shader uniforms up to date
-                node->addCullCallback( new UpdateLightingUniformsHelper() );
-            }
-#endif
-
             _modelSource->sync( _modelSourceRev );
 
             // save an observer reference to the node so we can change the visibility/lighting/etc.

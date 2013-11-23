@@ -59,6 +59,26 @@ namespace osgEarth
          */
         void run(osg::Node* graph, StateSetCache* cache =0L);
 
+    public:
+        /**
+         * User callback that lets you selectly reject shader generation for
+         * specific state attributes.
+         */
+        struct AcceptCallback : public osg::Referenced
+        {
+            /** Return true to generate shader code for the SA; false to ignore and skip it */
+            virtual bool accept(const osg::StateAttribute* sa) const =0;
+        };
+
+        /**
+         * Adds an acceptor callback that the generator will use to decide
+         * whether to ignore certain state attributes.
+         */
+        void addAcceptCallback(AcceptCallback* cb);
+
+
+    public:
+
         /** dtor. */
         virtual ~ShaderGenerator() { }
 
@@ -88,6 +108,11 @@ namespace osgEarth
         bool _active;
 
         std::string _name;
+
+        typedef std::vector<osg::ref_ptr<AcceptCallback> > AcceptCallbackVector;
+        AcceptCallbackVector _acceptCallbacks;
+
+        bool accept(const osg::StateAttribute* sa) const;
     };
 
 } // namespace osgEarth

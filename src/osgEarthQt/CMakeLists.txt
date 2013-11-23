@@ -59,7 +59,6 @@ SET(LIB_PUBLIC_HEADERS
     LOSControlWidget
     LOSCreationDialog
     MapCatalogWidget
-    MultiViewerWidget
     TerrainProfileGraph
     TerrainProfileWidget
     ViewWidget
@@ -84,7 +83,6 @@ ADD_LIBRARY(${LIB_NAME} SHARED
     LOSControlWidget.cpp
     LOSCreationDialog.cpp
     MapCatalogWidget.cpp
-    MultiViewerWidget.cpp
     TerrainProfileGraph.cpp
     TerrainProfileWidget.cpp
     ViewWidget.cpp

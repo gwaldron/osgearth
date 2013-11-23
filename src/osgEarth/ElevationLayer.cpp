@@ -395,6 +395,12 @@ ElevationLayer::createHeightField(const TileKey&    key,
         return GeoHeightField::INVALID;
     }
 
+    // Check the max data level, which limits the LOD of available data.
+    if ( _runtimeOptions.maxDataLevel().isSet() && key.getLOD() > _runtimeOptions.maxDataLevel().value() )
+    {
+        return GeoHeightField::INVALID;
+    }
+
     CacheBin* cacheBin = getCacheBin( key.getProfile() );
 
     // validate that we have either a valid tile source, or we're cache-only.
@@ -623,12 +629,12 @@ ElevationLayerVector::createHeightField(const TileKey&                  key,
         //OE_NOTICE << "Num fallbacks=" << numFallbacks << " numHeightFields=" << heightFields.size() << " is fallback " << *out_isFallback << std::endl;
     }   
 
-    if ( heightFields.size() == 0 ) //&& offsetHeightFields.size() == 0 )
+    if ( heightFields.size() == 0 )
     {
         //If we got no heightfields but were requested to fallback, create an empty heightfield.
         if ( fallback )
         {
-            unsigned defaultSize = _expressTileSize.getOrUse( 8 );
+            unsigned defaultSize = _expressTileSize.getOrUse( 7 );
 
             out_result = HeightFieldUtils::createReferenceHeightField( 
                 keyToUse.getExtent(), 

@@ -17,9 +17,14 @@ TIP: set your OSG_NUM_HTTP_DATABASE_THREADS to 4 or more!
         <cache_policy usage="no_cache"/>
         <nodata_image>http://oatile3.mqcdn.com/tiles/1.0.0/sat/13/636/6210.jpg</nodata_image>
     </image>
+        
+    <elevation name="readymap_elevation" driver="tms">
+        <url>http://readymap.org/readymap/tiles/1.0.0/9/</url>
+    </elevation>
     
-    <options>
-        <lighting>false</lighting>
+    <options elevation_tile_size="9">
+        <terrain min_tile_range_factor="8">
+        </terrain>
     </options>
     
 </map>

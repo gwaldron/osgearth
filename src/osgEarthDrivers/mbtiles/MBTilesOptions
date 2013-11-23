@@ -21,6 +21,7 @@
 
 #include <osgEarth/Common>
 #include <osgEarth/TileSource>
+#include <osgEarth/URI>
 
 namespace osgEarth { namespace Drivers
 {
@@ -28,9 +29,10 @@ namespace osgEarth { namespace Drivers
 
     class MBTilesOptions : public TileSourceOptions // NO EXPORT; header only
     {
-    public:
-        optional<std::string>& filename() { return _filename; }
-        const optional<std::string>& filename() const { return _filename; }
+    public:        
+        optional<URI>& filename() { return _filename; }
+        const optional<URI>& filename() const { return _filename; }
+
 
         optional<std::string>& format() { return _format; }
         const optional<std::string>& format() const { return _format; }
@@ -61,7 +63,7 @@ namespace osgEarth { namespace Drivers
         }
 
     private:
-        optional<std::string> _filename;        
+        optional<URI>         _filename;        
         optional<std::string> _format;
     };
 

@@ -2,6 +2,10 @@
 osgEarth Sample
 
 US NEXRAD 45 minute radar returns overlaid on imagery.
+
+Try running this with:
+
+  osgearth_sequencecontrol <file.earth>
 -->
 
 <map name="WMS Radar returns" type="geocentric" version="2">   
@@ -34,5 +38,8 @@ US NEXRAD 45 minute radar returns overlaid on imagery.
     
     <options>
         <lighting>false</lighting>
+		
+		<!-- default engine doesn't support sequencing yet -->
+		<terrain driver="quadtree"/>
     </options>
 </map>

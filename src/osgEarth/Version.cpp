@@ -32,11 +32,20 @@ const char* osgEarthGetVersion()
     {
         if (OSGEARTH_RC_VERSION == 0 )
         {
-            sprintf(osgearth_version,"%d.%d.%d",OSGEARTH_MAJOR_VERSION,OSGEARTH_MINOR_VERSION,OSGEARTH_PATCH_VERSION);
+            sprintf(osgearth_version,"%d.%d.%d (%s)",
+                OSGEARTH_MAJOR_VERSION,
+                OSGEARTH_MINOR_VERSION,
+                OSGEARTH_PATCH_VERSION,
+                osgEarthGitSHA1() );
         }
         else
         {
-            sprintf(osgearth_version,"%d.%d.%d RC%d",OSGEARTH_MAJOR_VERSION,OSGEARTH_MINOR_VERSION,OSGEARTH_PATCH_VERSION, OSGEARTH_RC_VERSION);
+            sprintf(osgearth_version,"%d.%d.%d RC%d (%s)",
+                OSGEARTH_MAJOR_VERSION,
+                OSGEARTH_MINOR_VERSION,
+                OSGEARTH_PATCH_VERSION,
+                OSGEARTH_RC_VERSION,
+                osgEarthGitSHA1() );
         }
 
         osgearth_version_init = 0;

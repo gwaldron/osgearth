@@ -43,8 +43,8 @@ _loadingWeight      ( 1.0f ),
 _exactCropping      ( false ),
 _enabled            ( true ),
 _visible            ( true ),
-_reprojectedTileSize( 256 )
-
+_reprojectedTileSize( 256 ),
+_maxDataLevel       ( 99 )
 {
     setDefaults();
     fromConfig( _conf ); 
@@ -70,6 +70,7 @@ TerrainLayerOptions::setDefaults()
     _loadingWeight.init( 1.0f );
     _minLevel.init( 0 );
     _maxLevel.init( 30 );
+    _maxDataLevel.init( 99 );
 }
 
 Config
@@ -85,8 +86,9 @@ TerrainLayerOptions::getConfig( bool isolate ) const
     conf.updateIfSet( "loading_weight", _loadingWeight );
     conf.updateIfSet( "enabled", _enabled );
     conf.updateIfSet( "visible", _visible );
-    conf.updateIfSet( "edge_buffer_ratio", _edgeBufferRatio);    
+    conf.updateIfSet( "edge_buffer_ratio", _edgeBufferRatio);
     conf.updateIfSet( "reprojected_tilesize", _reprojectedTileSize);
+    conf.updateIfSet( "max_data_level", _maxDataLevel );
 
     conf.updateIfSet( "vdatum", _vertDatum );
 
@@ -115,6 +117,7 @@ TerrainLayerOptions::fromConfig( const Config& conf )
     conf.getIfSet( "visible", _visible );
     conf.getIfSet( "edge_buffer_ratio", _edgeBufferRatio);    
     conf.getIfSet( "reprojected_tilesize", _reprojectedTileSize);
+    conf.getIfSet( "max_data_level", _maxDataLevel );
 
     conf.getIfSet( "vdatum", _vertDatum );
     conf.getIfSet( "vsrs", _vertDatum );    // back compat
@@ -602,7 +605,6 @@ TerrainLayer::isKeyValid(const TileKey& key) const
         {
             OE_DEBUG << LC
                 << "TerrainLayer::isKeyValid called with key of a different profile" << std::endl;
-            //return true;
         }
 
         if ( _runtimeOptions->maxResolution().isSet() )

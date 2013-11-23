@@ -19,6 +19,7 @@ Zoom in to the city of Boston (east coast of the US) to see the inset.
 	
     <options>
         <lighting>false</lighting>
+		<cache_policy usage="no_cache"/>
     </options>
     
 </map>

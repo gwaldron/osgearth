@@ -111,6 +111,20 @@ TileNodeRegistry::remove( TileNode* tile )
 }
 
 
+void
+TileNodeRegistry::move(TileNode* tile, TileNodeRegistry* destination)
+{
+    if ( tile )
+    {
+        // ref just in case remove() is the last reference
+        osg::ref_ptr<TileNode> tileSafe = tile;
+        remove( tile );
+        if ( destination )
+            destination->add( tileSafe.get() );
+    }
+}
+
+
 bool
 TileNodeRegistry::get( const TileKey& key, osg::ref_ptr<TileNode>& out_tile )
 {

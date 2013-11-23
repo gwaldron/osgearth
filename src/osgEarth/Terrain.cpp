@@ -123,12 +123,10 @@ Terrain::getHeight(osg::Node*              patch,
         const SpatialReference* ecef = getSRS()->getECEF();
         getSRS()->transform(start, ecef, start);
         getSRS()->transform(end,   ecef, end);
-        //getSRS()->transformToECEF(start, start);
-        //getSRS()->transformToECEF(end, end);
     }
 
-    osgUtil::LineSegmentIntersector* lsi = new osgUtil::LineSegmentIntersector(start, end);
-    lsi->setIntersectionLimit(osgUtil::Intersector::LIMIT_ONE);
+    DPLineSegmentIntersector* lsi = new DPLineSegmentIntersector( start, end );
+    lsi->setIntersectionLimit(osgUtil::Intersector::LIMIT_NEAREST);
 
     osgUtil::IntersectionVisitor iv( lsi );
     iv.setTraversalMask( ~_terrainOptions.secondaryTraversalMask().value() );
@@ -228,7 +226,7 @@ Terrain::getWorldCoordsUnderMouse(osg::View* view, float x, float y, osg::Vec3d&
     osg::ref_ptr< DPLineSegmentIntersector > picker = new DPLineSegmentIntersector(osgUtil::Intersector::MODEL, startVertex, endVertex);
 
     // Limit it to one intersection, we only care about the first
-    picker->setIntersectionLimit( osgUtil::Intersector::LIMIT_ONE );
+    picker->setIntersectionLimit( osgUtil::Intersector::LIMIT_NEAREST );
 
     osgUtil::IntersectionVisitor iv(picker.get());
     iv.setTraversalMask(traversalMask);

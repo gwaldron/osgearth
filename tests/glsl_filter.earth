@@ -27,8 +27,9 @@ http://readymap.org
     </elevation>
     
     <options>
-		<elevation_tile_size>8</elevation_tile_size>
-        <terrain normalize_edges="true" first_lod="2"/>
+		<lighting>false</lighting>
+		<elevation_tile_size>7</elevation_tile_size>
+        <terrain first_lod="1"/>
     </options>
     
 </map>

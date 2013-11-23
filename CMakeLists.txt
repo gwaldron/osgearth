@@ -19,7 +19,7 @@ SET_PROPERTY( GLOBAL PROPERTY PREDEFINED_TARGETS_FOLDER "CMake Targets" )
 PROJECT(OSGEARTH)
 
 SET(OSGEARTH_MAJOR_VERSION 2)
-SET(OSGEARTH_MINOR_VERSION 3)
+SET(OSGEARTH_MINOR_VERSION 5)
 SET(OSGEARTH_PATCH_VERSION 0)
 SET(OSGEARTH_SOVERSION     0)
 
@@ -49,6 +49,10 @@ SET(THIRD_PARTY_DIR "" CACHE PATH "OSG 3rd-party dependency folder")
 # We have some custom .cmake scripts not in the official distribution.
 # Maybe this can be used override existing behavior if needed?
 SET(CMAKE_MODULE_PATH "${OSGEARTH_SOURCE_DIR}/CMakeModules;${CMAKE_MODULE_PATH}")
+
+# Attempt to detect the GIT revision number.
+include(GetGitRevisionDescription)
+get_git_head_revision(GIT_REFSPEC OSGEARTH_GIT_SHA1)
 
 # IPHONE_PORT@tom
 # Trying to get CMake to generate an XCode IPhone project, current efforts are to get iphoneos sdk 3.1 working
@@ -109,7 +113,10 @@ FIND_PACKAGE(GDAL)
 FIND_PACKAGE(GEOS)
 FIND_PACKAGE(Sqlite3)
 FIND_PACKAGE(ZLIB)
+
+SET(V8_DIR "" CACHE PATH "set to base V8 install path")
 FIND_PACKAGE(V8)
+
 FIND_PACKAGE(JavaScriptCore)
 FIND_PACKAGE(LibNoise)
 

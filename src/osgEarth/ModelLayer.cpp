@@ -70,6 +70,7 @@ ModelLayerOptions::setDefaults()
     _enabled.init     ( true );
     _visible.init     ( true );
     _lighting.init    ( true );
+    _opacity.init     ( 1.0f );
 }
 
 Config
@@ -82,6 +83,7 @@ ModelLayerOptions::getConfig() const
     conf.updateIfSet( "enabled", _enabled );
     conf.updateIfSet( "visible", _visible );
     conf.updateIfSet( "lighting", _lighting );
+    conf.updateIfSet( "opacity",  _opacity );
 
     // Merge the ModelSource options
     if ( driver().isSet() )
@@ -97,6 +99,7 @@ ModelLayerOptions::fromConfig( const Config& conf )
     conf.getIfSet( "enabled", _enabled );
     conf.getIfSet( "visible", _visible );
     conf.getIfSet( "lighting", _lighting );
+    conf.getIfSet( "opacity",        _opacity );
 
     if ( conf.hasValue("driver") )
         driver() = ModelSourceOptions(conf);
@@ -146,6 +149,9 @@ void
 ModelLayer::copyOptions()
 {
     _runtimeOptions = _initOptions;
+
+    _alphaEffect = new AlphaEffect();
+    _alphaEffect->setAlpha( *_initOptions.opacity() );
 }
 
 void
@@ -207,7 +213,15 @@ ModelLayer::createSceneGraph(const Map*            map,
         }
     }
 
-    return node;
+    // add a parent group for shaders/effects to attach to without overwriting any model programs directly
+    osg::Group* group = 0L;
+    if ( node ) {
+      group = new osg::Group();
+      group->addChild(node);
+      _alphaEffect->attach( group->getOrCreateStateSet() );
+    }
+
+    return group;
 }
 
 bool
@@ -238,6 +252,25 @@ ModelLayer::setVisible(bool value)
         }
 
         fireCallback( &ModelLayerCallback::onVisibleChanged );
+    }
+}
+
+float
+ModelLayer::getOpacity() const
+{
+    return *_runtimeOptions.opacity();
+}
+
+void
+ModelLayer::setOpacity(float opacity)
+{
+    if ( _runtimeOptions.opacity() != opacity )
+    {
+        _runtimeOptions.opacity() = opacity;
+
+        _alphaEffect->setAlpha(opacity);
+
+        fireCallback( &ModelLayerCallback::onOpacityChanged );
     }
 }
 

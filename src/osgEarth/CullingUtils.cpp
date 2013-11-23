@@ -25,6 +25,7 @@
 #include <osg/PrimitiveSet>
 #include <osg/Geode>
 #include <osg/TemplatePrimitiveFunctor>
+#include <osgGA/GUIActionAdapter>
 #include <osgUtil/CullVisitor>
 #include <osgUtil/IntersectionVisitor>
 #include <osgUtil/LineSegmentIntersector>
@@ -666,7 +667,7 @@ void OcclusionCullingCallback::operator()(osg::Node* node, osg::NodeVisitor* nv)
             remainingTime = OcclusionCullingCallback::_maxFrameTime;
         }
 
-        osg::Vec3d eye = cv->getViewPoint();        
+        osg::Vec3d eye = cv->getViewPoint();
 
         if (_prevEye != eye || _prevWorld != _world)
         {
@@ -694,7 +695,7 @@ void OcclusionCullingCallback::operator()(osg::Node* node, osg::NodeVisitor* nv)
                     osg::Vec3d start = eye;
                     osg::Vec3d end = _world;
                     DPLineSegmentIntersector* i = new DPLineSegmentIntersector( start, end );
-                    i->setIntersectionLimit( osgUtil::Intersector::LIMIT_ONE );
+                    i->setIntersectionLimit( osgUtil::Intersector::LIMIT_NEAREST );
                     osgUtil::IntersectionVisitor iv;
                     iv.setIntersector( i );
                     _node->accept( iv );
@@ -717,6 +718,15 @@ void OcclusionCullingCallback::operator()(osg::Node* node, osg::NodeVisitor* nv)
             else
             {
                 numSkipped++;
+                // if we skipped some we need to request a redraw so the remianing ones get processed on the next frame.
+                if ( cv->getCurrentCamera() && cv->getCurrentCamera()->getView() )
+                {
+                    osgGA::GUIActionAdapter* aa = dynamic_cast<osgGA::GUIActionAdapter*>(cv->getCurrentCamera()->getView());
+                    if ( aa )
+                    {
+                        aa->requestRedraw();
+                    }
+                }
             }
         }
 

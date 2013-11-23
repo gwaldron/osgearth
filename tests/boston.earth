@@ -7,7 +7,7 @@ to extruded buildings.
 
 <map name="Boston Demo" type="geocentric" version="2">
     
-    <options>
+    <options elevation_tile_size="15">
         <terrain lighting="true"/>
     </options>    
     
@@ -38,14 +38,9 @@ to extruded buildings.
             <build_spatial_index>true</build_spatial_index>
         </features>
         
+		<!--
         <feature_indexing/>
-        
-        <!--
-        <fading
-            duration="1.0"
-            max_range="20000"
-            attenuation_distance="2000"/>
-            -->
+		-->
         
         <!--
            The "layout" element activates tiling and paging of the feature set. If you
@@ -102,15 +97,11 @@ to extruded buildings.
     </model>
     
     
-    <model name="Streets" driver="feature_geom" enabled="true">
+    <model name="Streets" driver="feature_geom" enabled="false">
         <features name="streets" driver="ogr" build_spatial_index="true">
             <url>../data/boston-scl-utm19n-meters.shp</url>
             <resample max_length="25"/>
         </features>
-        
-        <!--
-        <fading max_range="3500"/>
-        -->
         
         <layout crop_features="true" tile_size_factor="7.5">
             <level max_range="5000"/>
@@ -130,7 +121,7 @@ to extruded buildings.
     </model>
     
     
-    <model name="Parks" driver="feature_geom" enabled="true">
+    <model name="Parks" driver="feature_geom" enabled="false">
         <features name="parks" driver="ogr" build_spatial_index="true">
             <url>../data/boston-parks.shp</url>
         </features>
@@ -146,7 +137,7 @@ to extruded buildings.
                 parks {
                    model:                  "../data/tree.ive";
                    model-placement:        random;
-                   model-density:          4000;
+                   model-density:          12000;
                    model-scale:            1.0;
                    altitude-clamping:      terrain;
                    altitude-technique:     map;

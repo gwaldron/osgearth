@@ -178,7 +178,8 @@ osg::Geometry*
 AnnotationUtils::createImageGeometry(osg::Image*       image,
                                      const osg::Vec2s& pixelOffset,
                                      unsigned          textureUnit,
-                                     double            heading)
+                                     double            heading,
+                                     double            scale)
 {
     if ( !image )
         return 0L;
@@ -193,23 +194,24 @@ AnnotationUtils::createImageGeometry(osg::Image*       image,
     osg::StateSet* dstate = new osg::StateSet;
     dstate->setMode(GL_CULL_FACE,osg::StateAttribute::OFF);
     dstate->setMode(GL_LIGHTING,osg::StateAttribute::OFF);
-    //dstate->setMode(GL_BLEND, 1); // redundant. AnnotationNode sets blending.
-    dstate->setTextureAttributeAndModes(0, texture,osg::StateAttribute::ON);   
+    dstate->setTextureAttributeAndModes(0, texture,osg::StateAttribute::ON);
 
     // set up the geoset.
     osg::Geometry* geom = new osg::Geometry();
-    geom->setUseVertexBufferObjects(true);
-    
+    geom->setUseVertexBufferObjects(true);    
     geom->setStateSet(dstate);
 
-    float x0 = (float)pixelOffset.x() - image->s()/2.0;
-    float y0 = (float)pixelOffset.y() - image->t()/2.0;
+    float s = scale * image->s();
+    float t = scale * image->t();
+
+    float x0 = (float)pixelOffset.x() - s/2.0;
+    float y0 = (float)pixelOffset.y() - t/2.0;
 
     osg::Vec3Array* verts = new osg::Vec3Array(4);
-    (*verts)[0].set( x0, y0, 0 );
-    (*verts)[1].set( x0 + image->s(), y0, 0 );
-    (*verts)[2].set( x0 + image->s(), y0 + image->t(), 0 );
-    (*verts)[3].set( x0, y0 + image->t(), 0 );
+    (*verts)[0].set( x0,     y0,     0 );
+    (*verts)[1].set( x0 + s, y0,     0 );
+    (*verts)[2].set( x0 + s, y0 + t, 0 );
+    (*verts)[3].set( x0,     y0 + t, 0 );
 
     if (heading != 0.0)
     {
@@ -221,8 +223,6 @@ AnnotationUtils::createImageGeometry(osg::Image*       image,
         }
     }
     geom->setVertexArray(verts);
-    if ( verts->getVertexBufferObject() )
-        verts->getVertexBufferObject()->setUsage(GL_STATIC_DRAW_ARB);
 
     osg::Vec2Array* tcoords = new osg::Vec2Array(4);
     (*tcoords)[0].set(0, 0);

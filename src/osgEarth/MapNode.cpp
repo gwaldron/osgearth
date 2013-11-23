@@ -339,7 +339,6 @@ MapNode::init()
 
     osg::StateSet* stateset = getOrCreateStateSet();
     if ( _mapNodeOptions.enableLighting().isSet() )
-
     {
         stateset->setMode( 
             GL_LIGHTING, 

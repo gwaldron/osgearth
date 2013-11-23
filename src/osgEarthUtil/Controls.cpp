@@ -190,6 +190,8 @@ Control::init()
 
     _geode = new osg::Geode();
     this->addChild( _geode );
+
+    _alphaEffect = new AlphaEffect(this->getOrCreateStateSet());
 }
 
 void
@@ -986,8 +988,9 @@ LabelControl(text)
 // ---------------------------------------------------------------------------
 
 ImageControl::ImageControl( osg::Image* image ) :
-_rotation( 0.0, Units::RADIANS ),
-_fixSizeForRot( false )
+_rotation     ( 0.0, Units::RADIANS ),
+_fixSizeForRot( false ),
+_opacity      ( 1.0f )
 {
     setImage( image );
 }

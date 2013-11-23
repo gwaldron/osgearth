@@ -59,7 +59,7 @@ Help us add useful sources of Free data to this list.
 .. _NASA BlueMarble:            http://visibleearth.nasa.gov/view_cat.php?categoryID=1484
 .. _Natural Earth:              http://www.naturalearthdata.com/
 .. _NRL GIDB:                   http://columbo.nrlssc.navy.mil/ogcwms/servlet/WMSServlet
-.. _+SRTM30+:                   ftp://topex.ucsd.edu/pub/srtm30_plus/
+.. _SRTM30+:                    ftp://topex.ucsd.edu/pub/srtm30_plus/
 .. _USGS National Map:          http://nationalmap.gov/viewer.html
 .. _Virtual Terrain Project:    http://vterrain.org/Imagery/WholeEarth/
 .. _Bing Maps:                  http://www.microsoft.com/maps/choose-your-bing-maps-API.aspx

@@ -58,6 +58,15 @@ NumericExpression::NumericExpression( const Config& conf )
 }
 
 void
+NumericExpression::setLiteral(double staticValue)
+{
+    _value = staticValue;
+    _dirty = false;
+    _src = Stringify() << staticValue;
+    init();
+}
+
+void
 NumericExpression::mergeConfig( const Config& conf )
 {
     _src = conf.value();

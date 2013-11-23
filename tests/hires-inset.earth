@@ -1,8 +1,8 @@
 <!--
 osgEarth Sample : Hi-resolution inset
 
-This example shows how to use a global basemap and superimpose a high-
-resolution imagery inset from a local GeoTIFF file.
+This example shows how to use a global basemap and superimpose
+high-resolution imagery insets.
 
 Look for hi-res insets over the cities of Boston and New York.
 -->
@@ -13,20 +13,24 @@ Look for hi-res insets over the cities of Boston and New York.
         <cache_policy usage="no_cache"/>        
     </options>
     
+	<!-- Low resolution worldwide image -->
     <image name="world" driver="gdal">
         <url>../data/world.tif</url>
     </image>
 
-    <image name="hires insets" driver="composite">
+	<!-- Higher resolution inset of Boston -->
+	<image name="boston_inset" driver="gdal">
+		<url>../data/boston-inset-wgs84.tif</url>
+	</image>
+	
+	<!-- Higher resolution inset of New York City -->
+	<image name="nyc_inset" driver="gdal">
+		<url>../data/nyc-inset-wgs84.tif</url>
+	</image>
     
-        <image name="boston_inset" driver="gdal">
-            <url>../data/boston-inset-wgs84.tif</url>
-        </image>
-        
-        <image name="nyc_inset" driver="gdal">
-            <url>../data/nyc-inset-wgs84.tif</url>
-        </image>
-        
-    </image>
-    
+	<external>
+	    <viewpoints>
+		    <viewpoint name="Hi-res insets" lat="41.642" long="-72.333" pitch="-71" range="657510"/>
+		</viewpoints>
+	</external>
 </map>

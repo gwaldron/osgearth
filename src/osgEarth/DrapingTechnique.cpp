@@ -291,7 +291,7 @@ _textureSize     ( 1024 ),
 _mipmapping      ( false ),
 _rttBlending     ( true ),
 _attachStencil   ( false ),
-_maxFarNearRatio ( 5.0 )
+_maxFarNearRatio ( 3.0 )
 {
     // try newer version
     const char* nfr2 = ::getenv("OSGEARTH_OVERLAY_RESOLUTION_RATIO");

@@ -21,7 +21,7 @@ FIND_PATH(V8_INCLUDE_DIR v8.h
 )
 
 FIND_LIBRARY(V8_BASE_LIBRARY
-    NAMES v8_base v8_base.ia32 libv8_base
+    NAMES v8_base v8_base.ia32 v8_base.x64 libv8_base
     PATHS
     ${V8_DIR}
     ${V8_DIR}/lib
@@ -40,7 +40,7 @@ FIND_LIBRARY(V8_BASE_LIBRARY
 )
 
 FIND_LIBRARY(V8_BASE_LIBRARY_DEBUG
-    NAMES v8_base v8_base.ia32 libv8_base
+    NAMES v8_base v8_base.ia32 v8_base.x64 libv8_base
     PATHS
     ${V8_DIR}
     ${V8_DIR}/lib

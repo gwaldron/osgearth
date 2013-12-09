@@ -64,11 +64,12 @@ public:
                    
 
         int flags = SQLITE_OPEN_READONLY;
-        int rc = sqlite3_open_v2( _options.filename()->c_str(), &_database, flags, 0L );
+        std::string fullFilename = _options.filename()->full();        
+        int rc = sqlite3_open_v2( fullFilename.c_str(), &_database, flags, 0L );
         if ( rc != 0 )
         {                        
             std::stringstream buf;
-            buf << "Failed to open database \"" << *_options.filename() << "\": " << sqlite3_errmsg(_database);
+            buf << "Failed to open database \"" << fullFilename << "\": " << sqlite3_errmsg(_database);
             return Status::Error(buf.str());
         }
 

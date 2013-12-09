@@ -85,7 +85,7 @@ ENDIF ()
 # check if STLport is required
 OPTION(USE_STLPORT "Set to ON to build OSGEARTH with stlport instead of the default STL library." OFF)
 IF(USE_STLPORT)
-	INCLUDE_DIRECTORIES(${STLPORT_DIR}/stlport)
+        INCLUDE_DIRECTORIES(${STLPORT_DIR}/stlport)
 	LINK_DIRECTORIES(${STLPORT_DIR}/lib)
 ENDIF()
 
@@ -205,6 +205,11 @@ INCLUDE_DIRECTORIES(
     ${OSG_INCLUDE_DIR}
 )
 
+# Make the headers visible to everything
+IF(NOT ${PROJECT_BINARY_DIR} EQUAL ${PROJECT_SOURCE_DIR})
+   INCLUDE_DIRECTORIES(${PROJECT_BINARY_DIR}/include)
+ENDIF()
+
 #FIND_PACKAGE(GDAL)
 
 ################################################################################
@@ -288,6 +293,17 @@ ELSE (INSTALL_TO_OSG_DIR)
     SET(OSGEARTH_INSTALL_TO_OSG_DIR FALSE)
 ENDIF(INSTALL_TO_OSG_DIR)
 
+# Speficy GLSL version
+SET(GLSL_VERSION "110" CACHE STRING "Set the GLSL version to use for desktop GL.")
+MARK_AS_ADVANCED(GLSL_VERSION)
+
+SET(GLES_GLSL_VERSION "100" CACHE STRING "Set the GLSL version to use for GL ES.")
+MARK_AS_ADVANCED(GLES_GLSL_VERSION)
+
+
+SET(OSGEARTH_CONFIG_HEADER "${PROJECT_BINARY_DIR}/include/osgEarth/ShaderVersion")
+CONFIGURE_FILE("${CMAKE_CURRENT_SOURCE_DIR}/src/osgEarth/ShaderVersion.in"
+               "${OSGEARTH_CONFIG_HEADER}")
 
 INCLUDE(OsgEarthMacroUtils)
 

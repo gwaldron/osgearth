@@ -109,7 +109,7 @@ namespace
     }
 
 
-    void parseShaderForMerging( const std::string& source, unsigned& version, HeaderMap& headers, std::stringstream& body )
+    void parseShaderForMerging( const std::string& source, unsigned& version, HeaderMap& headers, std::stringstream& body, bool& compatibility)
     {
         // break into lines:
         StringVector lines;
@@ -134,6 +134,15 @@ namespace
                         {
                             version = newVersion;
                         }
+
+                        // compatability profile?
+                         if (tokens.size() > 2 )
+                         {
+                            if ( tokens[2] == "compatibility" )
+                            {
+                                compatibility = true;
+                            }
+                         }
                     }
                 }
 
@@ -260,10 +269,12 @@ namespace
             unsigned          vertVersion = 0;
             HeaderMap         vertHeaders;
             std::stringstream vertBody;
+            bool              vertCompatibility = false;
 
             unsigned          fragVersion = 0;
             HeaderMap         fragHeaders;
             std::stringstream fragBody;
+            bool              fragCompatibility = false;
 
             // parse the shaders, combining header lines and finding the highest version:
             for( VirtualProgram::ShaderVector::const_iterator i = shaders.begin(); i != shaders.end(); ++i )
@@ -271,11 +282,11 @@ namespace
                 osg::Shader* s = i->get();
                 if ( s->getType() == osg::Shader::VERTEX )
                 {
-                    parseShaderForMerging( s->getShaderSource(), vertVersion, vertHeaders, vertBody );
+                    parseShaderForMerging( s->getShaderSource(), vertVersion, vertHeaders, vertBody, vertCompatibility );
                 }
                 else if ( s->getType() == osg::Shader::FRAGMENT )
                 {
-                    parseShaderForMerging( s->getShaderSource(), fragVersion, fragHeaders, fragBody );
+                    parseShaderForMerging( s->getShaderSource(), fragVersion, fragHeaders, fragBody, fragCompatibility );
                 }
             }
 
@@ -284,7 +295,7 @@ namespace
             vertBodyText = vertBody.str();
             std::stringstream vertShaderBuf;
             if ( vertVersion > 0 )
-                vertShaderBuf << "#version " << vertVersion << "\n";
+                vertShaderBuf << "#version " << vertVersion << (vertCompatibility ? " compatibility" : "") << "\n";
             for( HeaderMap::const_iterator h = vertHeaders.begin(); h != vertHeaders.end(); ++h )
                 vertShaderBuf << h->second << "\n";
             vertShaderBuf << vertBodyText << "\n";
@@ -294,7 +305,7 @@ namespace
             fragBodyText = fragBody.str();
             std::stringstream fragShaderBuf;
             if ( fragVersion > 0 )
-                fragShaderBuf << "#version " << fragVersion << "\n";
+                fragShaderBuf << "#version " << fragVersion << (fragCompatibility ? " compatibility" : "") << "\n";
             for( HeaderMap::const_iterator h = fragHeaders.begin(); h != fragHeaders.end(); ++h )
                 fragShaderBuf << h->second << "\n";
             fragShaderBuf << fragBodyText << "\n";
@@ -344,8 +355,8 @@ namespace
     {
 
         // create new MAINs for this function stack.
-        osg::Shader* vertMain = Registry::shaderFactory()->createVertexShaderMain( accumFunctions );
-        osg::Shader* fragMain = Registry::shaderFactory()->createFragmentShaderMain( accumFunctions );
+        osg::Shader* vertHooks = Registry::shaderFactory()->createVertexShaderHooks( accumFunctions );
+        osg::Shader* fragHooks = Registry::shaderFactory()->createFragmentShaderHooks( accumFunctions );
 
         // build a new "key vector" now that we've changed the shader map.
         // we call is a key vector because it uniquely identifies this shader program
@@ -355,12 +366,25 @@ namespace
             outputKeyVector.push_back( i->second.first.get() );
         }
 
+        // ensure we have main functions
+        FunctionLocationMap::const_iterator vertMainItr = accumFunctions.find( LOCATION_VERTEX_MAIN );
+        if ( vertMainItr == accumFunctions.end() )
+        {
+            outputKeyVector.push_back( Registry::shaderFactory()->createVertexShaderMain() );
+        }
+
+        FunctionLocationMap::const_iterator fragMainItr = accumFunctions.find( LOCATION_FRAGMENT_MAIN );
+        if ( fragMainItr == accumFunctions.end() )
+        {
+            outputKeyVector.push_back( Registry::shaderFactory()->createFragmentShaderMain() );
+        }
+
         // finally, add the mains (AFTER building the key vector .. we don't want or
         // need to mains in the key vector since they are completely derived from the
         // other elements of the key vector.)
         VirtualProgram::ShaderVector buildVector( outputKeyVector );
-        buildVector.push_back( vertMain );
-        buildVector.push_back( fragMain );
+        buildVector.push_back( vertHooks );
+        buildVector.push_back( fragHooks );
 
         if ( s_dumpShaders )
             OE_NOTICE << LC << "---------PROGRAM: " << programName << " ---------------\n" << std::endl;
@@ -698,7 +722,7 @@ VirtualProgram::setFunction(const std::string& functionName,
         ofm.insert( std::pair<float,std::string>( priority, functionName ) );
 
         // create and add the new shader function.
-        osg::Shader::Type type = (int)location <= (int)LOCATION_VERTEX_CLIP ?
+        osg::Shader::Type type = (int)location <= (int)LOCATION_VERTEX_MAIN ?
             osg::Shader::VERTEX : osg::Shader::FRAGMENT;
 
         osg::Shader* shader = new osg::Shader(type, shaderSource);

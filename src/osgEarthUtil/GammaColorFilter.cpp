@@ -33,7 +33,7 @@ namespace
     static OpenThreads::Atomic s_uniformNameGen;
 
     static const char* s_localShaderSource =
-        "#version 110\n"
+        "#version " GLSL_VERSION_STR "\n"
         "uniform vec3 __UNIFORM_NAME__;\n"
 
         "void __ENTRY_POINT__(inout vec4 color)\n"

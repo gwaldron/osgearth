@@ -177,8 +177,11 @@ void Dragger::traverse(osg::NodeVisitor& nv)
             itr != ev->getEvents().end();
             ++itr)
         {
-            osgGA::GUIEventAdapter* ea = itr->get();
-            if (handle(*ea, *(ev->getActionAdapter()))) ea->setHandled(true);
+            osgGA::GUIEventAdapter* ea = dynamic_cast<osgGA::GUIEventAdapter*>(itr->get());
+            if(ea)
+            {
+                if (handle(*ea, *(ev->getActionAdapter()))) ea->setHandled(true);
+            }
         }
     }
     osg::MatrixTransform::traverse(nv);

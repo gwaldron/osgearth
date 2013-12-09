@@ -34,7 +34,7 @@ namespace
 
     static const char* s_commonShaderSource =
 
-        "#version 110 \n"
+        "#version " GLSL_VERSION_STR " \n"
 
         "void oe_hsl_RGB_2_HSL(in float r, in float g, in float b, out float h, out float s, out float l)\n"
         "{ \n"
@@ -114,7 +114,7 @@ namespace
 
     static const char* s_localShaderSource =
 
-        "#version 110\n"
+        "#version " GLSL_VERSION_STR " \n"
         "void oe_hsl_RGB_2_HSL(in float r, in float g, in float b, out float h, out float s, out float l);\n"
         "void oe_hsl_HSL_2_RGB(in float h, in float s, in float l, out float r, out float g, out float b);\n"
         "uniform vec3 __UNIFORM_NAME__;\n"

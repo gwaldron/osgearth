@@ -58,7 +58,10 @@ namespace osgEarth
             LOCATION_FRAGMENT_COLORING = 3,
 
             // fragment is being lit.
-            LOCATION_FRAGMENT_LIGHTING = 4
+            LOCATION_FRAGMENT_LIGHTING = 4,
+
+            // fragment output is being assigned.
+            LOCATION_FRAGMENT_OUTPUT = 5
         };
 
         // set of user functions, ordered by priority.

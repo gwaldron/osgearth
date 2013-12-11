@@ -66,12 +66,18 @@ main(int argc, char** argv)
     osg::Node* node = MapNodeHelper().load( arguments, &viewer );    
     if ( node )
     {
+        MapNode* mapNode = MapNode::findMapNode( node );
+
         FogEffect* fogEffect = new FogEffect;
         fogEffect->attach( node->getOrCreateStateSet() );
+        
+        float maxDensity = 0.000025; 
+        float fogStartHeight = 10000.0f;        
 
+        // Setup a Fog state attribute
         osg::Fog* fog = new osg::Fog;        
-        fog->setColor( viewer.getCamera()->getClearColor() );
-        fog->setDensity( 0.000005 );                
+        fog->setColor( viewer.getCamera()->getClearColor() );                
+        fog->setDensity( 0 );
         node->getOrCreateStateSet()->setAttributeAndModes( fog, osg::StateAttribute::ON );                
 
         viewer.setSceneData( node );
@@ -80,7 +86,21 @@ main(int argc, char** argv)
         viewer.getCamera()->setNearFarRatio(0.00002);
         viewer.getCamera()->setSmallFeatureCullingPixelSize(-1.0f);
 
-        viewer.run();
+        while (!viewer.done())
+        {
+            // Get the height above the terrain
+            osg::Vec3d eye, center, up;
+            viewer.getCamera()->getViewMatrixAsLookAt(eye,center, up);
+            GeoPoint map;
+            map.fromWorld( mapNode->getMapSRS(), eye );            
+            
+            // Compute the fog density based on the camera height
+            float ratio = ((fogStartHeight - map.z()) / fogStartHeight);
+            ratio = osg::clampBetween(ratio, 0.0f, 1.0f);
+            float density = ratio * maxDensity;
+            fog->setDensity( density );            
+            viewer.frame();
+        }        
     }
     else
     {

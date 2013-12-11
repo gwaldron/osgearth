@@ -34,88 +34,65 @@ namespace
         "#version " GLSL_VERSION_STR "\n"
         GLSL_DEFAULT_PRECISION_FLOAT "\n"
 
+        "varying float fogFactor;\n"
+
         "void oe_fog_vertex(inout vec4 VertexVIEW) \n"
         "{ \n"        
+        "    float z = length( vec3(gl_ModelViewMatrix * gl_Vertex) );\n"
+        "    const float LOG2 = 1.442695;\n"        
+        "    fogFactor = exp2( -gl_Fog.density * gl_Fog.density * z * z * LOG2 );\n"
+        "    fogFactor = clamp(fogFactor, 0.0, 1.0);\n"        
         "} \n";
 
     const char* fs =
         "#version " GLSL_VERSION_STR "\n"
         GLSL_DEFAULT_PRECISION_FLOAT "\n"
 
+        "varying float fogFactor;\n"
+
         "void oe_fog_frag(inout vec4 color) \n"
-        "{ \n"
-        "    const float LOG2 = 1.442695;\n"
-        "    float z = gl_FragCoord.z / gl_FragCoord.w;\n"        
-        "    float fogFactor = exp2( -gl_Fog.density * gl_Fog.density * z * z * LOG2 );\n"
-        "    fogFactor = clamp(fogFactor, 0.0, 1.0);\n"        
+        "{ \n"        
         "    color.rgb = mix( gl_Fog.color.rgb, color.rgb, fogFactor);\n"
         "} \n";
 }
 
 
-Fog::Fog() :
-TerrainEffect()
+FogEffect::FogEffect()
 {
-    init();
 }
 
-Fog::Fog(const Config& conf) :
-TerrainEffect()
+FogEffect::~FogEffect()
 {
-    mergeConfig(conf);
-    init();
+    detach();
 }
 
-
-void
-Fog::init()
-{    
+void FogEffect::attach( osg::StateSet* stateSet )
+{
+    VirtualProgram* vp = VirtualProgram::getOrCreate( stateSet );
+    vp->setFunction( "oe_fog_vertex", vs, ShaderComp::LOCATION_VERTEX_VIEW );
+    vp->setFunction( "oe_fog_frag", fs, ShaderComp::LOCATION_FRAGMENT_LIGHTING );
+    _statesets.push_back(stateSet);
 }
 
-void
-Fog::onInstall(TerrainEngineNode* engine)
+void FogEffect::detach( osg::StateSet* stateSet )
 {
-    if ( engine )
+    VirtualProgram* vp = VirtualProgram::get(stateSet);
+    if ( vp )
     {
-        osg::StateSet* stateset = engine->getOrCreateStateSet();        
-        VirtualProgram* vp = VirtualProgram::getOrCreate(stateset);
-        vp->setFunction( "oe_fog_vertex", vs, ShaderComp::LOCATION_VERTEX_VIEW );
-        vp->setFunction( "oe_fog_frag", fs, ShaderComp::LOCATION_FRAGMENT_LIGHTING );
+        vp->removeShader( "oe_fog_vertex" );
+        vp->removeShader( "oe_fog_frag" );
     }
 }
 
-
-void
-Fog::onUninstall(TerrainEngineNode* engine)
+void FogEffect::detach()
 {
-    if ( engine )
+    for (StateSetList::iterator it = _statesets.begin(); it != _statesets.end(); ++it)
     {
-        osg::StateSet* stateset = engine->getStateSet();
-        if ( stateset )
+        osg::ref_ptr<osg::StateSet> stateset;
+        if ( (*it).lock(stateset) )
         {
-            VirtualProgram* vp = VirtualProgram::get(stateset);
-            if ( vp )
-            {
-                vp->removeShader( "oe_fog_vertex" );
-                vp->removeShader( "oe_fog_frag" );
-            }
+            detach( stateset );
+            (*it) = 0L;
         }
     }
-}
-
-
-
-//-------------------------------------------------------------
-
-
-void
-Fog::mergeConfig(const Config& conf)
-{    
-}
-
-Config
-Fog::getConfig() const
-{
-    Config conf("fog");    
-    return conf;
 }

@@ -28,28 +28,43 @@
 
 namespace osgEarth { namespace Util
 {
-    /**
-     * Terrain effect that applies glFog
+     /**
+     * Utility class for injecting fog capabilities into a VirtualProgram
      */
-    class OSGEARTHUTIL_EXPORT Fog : public TerrainEffect
+    class OSGEARTHUTIL_EXPORT FogEffect : public osg::Referenced
     {
-    public:        
-        Fog();
+    public:
+        /**
+         * Creates a new FogEffect
+         */         
+        FogEffect();
 
-    public: // TerrainEffect interface
+        /**
+         * Creates a new  FogEffect and attaches it to the stateset.
+         */
+        FogEffect(osg::StateSet* stateSet );
 
-        void onInstall(TerrainEngineNode* engine);
-        void onUninstall(TerrainEngineNode* engine);
+        /**
+         * Attaches this FogEffect to the given StateSet
+         */
+        void attach(osg::StateSet* stateSet );
 
-    public: // serialization
+        /**
+         * Detatches this FogEffect from the given StateSet
+         */
+        void detach(osg::StateSet* stateSet );
 
-        Fog(const Config& conf);
-        void mergeConfig(const Config& conf);
-        virtual Config getConfig() const;
+        /**
+         * Detaches this FogEffect from all attached StateSets
+         */
+        void detach();
 
     protected:
-        virtual ~Fog() { }
-        void init();
+        ~FogEffect();
+
+        typedef std::list< osg::observer_ptr<osg::StateSet> > StateSetList;
+        StateSetList _statesets;
+
     };
 
 } } // namespace osgEarth::Util

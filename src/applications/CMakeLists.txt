@@ -57,7 +57,6 @@ ADD_SUBDIRECTORY(osgearth_map)
 ADD_SUBDIRECTORY(osgearth_annotation)
 ADD_SUBDIRECTORY(osgearth_tracks)
 
-
 IF(NOT ${OPENSCENEGRAPH_VERSION} VERSION_LESS "2.9.6")
     ADD_SUBDIRECTORY(osgearth_featureeditor)
 ENDIF()
@@ -79,6 +78,7 @@ ADD_SUBDIRECTORY(osgearth_minimap)
 #ADD_SUBDIRECTORY(osgearth_detailtex)
 ADD_SUBDIRECTORY(osgearth_sharedlayer)
 ADD_SUBDIRECTORY(osgearth_terraineffects)
+ADD_SUBDIRECTORY(osgearth_mrt)
 
 IF(NOT ${OPENSCENEGRAPH_VERSION} VERSION_LESS "3.1.0")
     ADD_SUBDIRECTORY(osgearth_shadow)

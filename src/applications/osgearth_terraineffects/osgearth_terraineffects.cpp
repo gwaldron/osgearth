@@ -22,6 +22,7 @@
  * lets you toggle them and try them together.
  */
 #include <osg/Notify>
+#include <osg/Fog>
 #include <osgViewer/Viewer>
 #include <osgEarth/VirtualProgram>
 #include <osgEarth/Registry>
@@ -35,6 +36,7 @@
 #include <osgEarthUtil/LODBlending>
 #include <osgEarthUtil/NormalMap>
 #include <osgEarthUtil/VerticalScale>
+#include <osgEarthUtil/Fog>
 
 using namespace osgEarth;
 using namespace osgEarth::Util;
@@ -59,6 +61,7 @@ struct App
     osg::ref_ptr<LODBlending>    lodBlending;
     osg::ref_ptr<NormalMap>      normalMap;
     osg::ref_ptr<VerticalScale>  verticalScale;
+    osg::ref_ptr<Fog>            fog;
 
     App()
     {
@@ -70,6 +73,7 @@ struct App
         lodBlending = new LODBlending();
         normalMap = new NormalMap();
         verticalScale = new VerticalScale();
+        fog = new Fog();
     }
 };
 
@@ -154,6 +158,15 @@ struct NormalMapController {
     }
 };
 
+struct FogController {
+    TOGGLE   ( fog );
+    FogController(App& app, ui::Grid* grid) {
+        int r = grid->getNumRows();
+        grid->setControl(0, r, new ui::LabelControl("Fog"));
+        grid->setControl(1, r, new ui::CheckBoxControl(false, new Toggle(app)));
+    }
+};
+
 struct VerticalScaleController {
     TOGGLE   ( verticalScale );
     SET_FLOAT( verticalScale, setScale );
@@ -183,6 +196,7 @@ ui::Control* createUI( App& app )
     LODBlendingController   (app, grid);
     NormalMapController     (app, grid);
     VerticalScaleController (app, grid);
+    FogController           (app, grid);
 
     return grid;
 }
@@ -211,6 +225,11 @@ int main(int argc, char** argv)
     if ( node )
     {
         MapNode* mapNode = MapNode::get(node);
+        osg::Fog* fog = new osg::Fog;        
+        fog->setColor( viewer.getCamera()->getClearColor() );
+        //fog->setDensity( 0.00025 * 0.01 );        
+        fog->setDensity( 0.025 );
+        mapNode->getOrCreateStateSet()->setAttributeAndModes( fog, osg::StateAttribute::ON );        
         if ( !mapNode )
             return -1;
 

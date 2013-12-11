@@ -91,3 +91,6 @@ ENDIF(JAVASCRIPTCORE_FOUND)
 ADD_SUBDIRECTORY(vdatum_egm84)
 ADD_SUBDIRECTORY(vdatum_egm96)
 ADD_SUBDIRECTORY(vdatum_egm2008)
+
+# temporary
+ADD_SUBDIRECTORY(template_matclass)

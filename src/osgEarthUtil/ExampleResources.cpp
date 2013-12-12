@@ -454,17 +454,27 @@ MapNodeHelper::load(osg::ArgumentParser& args,
         }
     }
 
+    osg::ref_ptr<MapNode> mapNode;
     if ( !node )
     {
-        OE_WARN << LC << "No earth file." << std::endl;
-        return 0L;
+        if ( !args.find("--images") )
+        {
+            OE_WARN << LC << "No earth file." << std::endl;
+            return 0L;
+        }
+        else
+        {
+            mapNode = new MapNode();
+        }
     }
-
-    osg::ref_ptr<MapNode> mapNode = MapNode::get(node);
-    if ( !mapNode.valid() )
+    else
     {
-        OE_WARN << LC << "Loaded scene graph does not contain a MapNode - aborting" << std::endl;
-        return 0L;
+        mapNode = MapNode::get(node);
+        if ( !mapNode.valid() )
+        {
+            OE_WARN << LC << "Loaded scene graph does not contain a MapNode - aborting" << std::endl;
+            return 0L;
+        }
     }
 
     // warn about not having an earth manip

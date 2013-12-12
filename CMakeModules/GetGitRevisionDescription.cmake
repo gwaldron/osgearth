@@ -67,7 +67,13 @@ function(get_git_head_revision _refspecvar _hashvar)
 	configure_file("${_gitdescmoddir}/GetGitRevisionDescription.cmake.in"
 		"${GIT_DATA}/grabRef.cmake"
 		@ONLY)
-	include("${GIT_DATA}/grabRef.cmake")
+        
+    if(EXISTS "${GIT_DATA}/grabRef.cmake")
+        include("${GIT_DATA}/grabRef.cmake")
+    else()
+        set(HEAD_REF  "noref")
+        set(HEAD_HASH "nohash")
+    endif()
 
 	set(${_refspecvar} "${HEAD_REF}" PARENT_SCOPE)
 	set(${_hashvar} "${HEAD_HASH}" PARENT_SCOPE)

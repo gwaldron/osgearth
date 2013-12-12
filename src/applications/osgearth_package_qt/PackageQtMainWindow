@@ -198,6 +198,7 @@ private slots:
 
           osgEarth::Drivers::GDALOptions layerOpt;
           layerOpt.url() = osgEarth::URI(filePath.toStdString());
+          layerOpt.tileSize() = 15;
           
           std::string fileName = osgDB::getSimpleFileName(filePath.toStdString());
           osg::ref_ptr<osgEarth::ElevationLayer> newLayer = new osgEarth::ElevationLayer(osgEarth::ElevationLayerOptions(fileName, layerOpt));

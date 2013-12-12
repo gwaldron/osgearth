@@ -22,6 +22,7 @@
  * lets you toggle them and try them together.
  */
 #include <osg/Notify>
+#include <osg/Fog>
 #include <osgViewer/Viewer>
 #include <osgEarth/VirtualProgram>
 #include <osgEarth/Registry>
@@ -58,7 +59,7 @@ struct App
     osg::ref_ptr<DetailTexture>  detailTexture;
     osg::ref_ptr<LODBlending>    lodBlending;
     osg::ref_ptr<NormalMap>      normalMap;
-    osg::ref_ptr<VerticalScale>  verticalScale;
+    osg::ref_ptr<VerticalScale>  verticalScale;    
 
     App()
     {
@@ -69,7 +70,7 @@ struct App
 
         lodBlending = new LODBlending();
         normalMap = new NormalMap();
-        verticalScale = new VerticalScale();
+        verticalScale = new VerticalScale();        
     }
 };
 
@@ -211,6 +212,7 @@ int main(int argc, char** argv)
     if ( node )
     {
         MapNode* mapNode = MapNode::get(node);
+
         if ( !mapNode )
             return -1;
 

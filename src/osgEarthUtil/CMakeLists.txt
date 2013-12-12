@@ -24,6 +24,7 @@ SET(HEADERS_ROOT
     Export
     FeatureManipTool
     FeatureQueryTool
+    Fog
     Formatter
     GeodeticGraticule
     HTM
@@ -76,6 +77,7 @@ SET(SOURCES_ROOT
     ExampleResources.cpp
     FeatureManipTool.cpp
     FeatureQueryTool.cpp
+    Fog.cpp
     GeodeticGraticule.cpp
     HTM.cpp
     LatLongFormatter.cpp

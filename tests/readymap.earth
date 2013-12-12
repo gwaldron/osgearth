@@ -14,7 +14,7 @@ http://readymap.org
 <map name="readymap.org" type="geocentric" version="2">
     
     <options>
-        <elevation_tile_size>15</elevation_tile_size>
+        <elevation_tile_size>7</elevation_tile_size>
         <terrain first_lod="1"/>
     </options>
     

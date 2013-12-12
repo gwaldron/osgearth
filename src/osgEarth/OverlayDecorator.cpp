@@ -602,6 +602,9 @@ OverlayDecorator::cullTerrainAndCalculateRTTParams(osgUtil::CullVisitor* cv,
             visiblePH.cut( visibleOverlayPT );
         }
 
+        // TESTING
+        osg::Matrix prevProjMatrix = params._rttProjMatrix;
+
         // extract the verts associated with the frustum's PH:
         std::vector<osg::Vec3d> verts;
         visiblePH.getPoints( verts );
@@ -624,13 +627,18 @@ OverlayDecorator::cullTerrainAndCalculateRTTParams(osgUtil::CullVisitor* cv,
             if ( _isGeocentric )
                 dist = std::min(dist, eyeLen);
 
-            rttProjMatrix.makeOrtho(xmin, xmax, ymin, ymax, 0.0, dist+zspan);
+            // Even through using xmin and xmax directly results in a tighter fit, 
+            // it offsets the eyepoint from the center of the projection frustum.
+            // This causes problems for the draping projection matrix optimizer, so
+            // for now instead of re-doing that code we will just center the eyepoint
+            // here by using the larger of xmin and xmax. -gw.
+            double x = std::max( -xmin, xmax );
+            rttProjMatrix.makeOrtho(-x, x, ymin, ymax, 0.0, dist+zspan);
 
-            //OE_WARN << LC << "verts size = " << verts.size()
-            //    << "xmin=" << xmin << ", xmax=" << xmax
-            //    << ", ymin=" << ymin << ", ymax=" << ymax
-            //    << std::endl;
+            //Note: this was the original setup, which is technically optimal:
+            //rttProjMatrix.makeOrtho(xmin, xmax, ymin, ymax, 0.0, dist+zspan);
 
+            // assign the matrices to the technique.
             params._rttViewMatrix.set( rttViewMatrix );
             params._rttProjMatrix.set( rttProjMatrix );
             params._eyeWorld = eye;
@@ -659,7 +667,7 @@ OverlayDecorator::cullTerrainAndCalculateRTTParams(osgUtil::CullVisitor* cv,
             {
                 osgShadow::ConvexPolyhedron rttPH;
                 rttPH.setToUnitFrustum( true, true );
-                osg::Matrixd MVP = params._rttViewMatrix * params._rttProjMatrix;
+                osg::Matrixd MVP = params._rttViewMatrix * prevProjMatrix; //params._rttProjMatrix;
                 osg::Matrixd inverseMVP;
                 inverseMVP.invert(MVP);
                 rttPH.transform( inverseMVP, MVP );

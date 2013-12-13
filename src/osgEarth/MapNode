@@ -202,7 +202,7 @@ namespace osgEarth
         Config                     _externalConf;
 
         // keep track of nodes created by model layers
-        typedef std::map<ModelLayer*,osg::Node*> ModelLayerNodeMap;
+        typedef std::map<ModelLayer*, osg::ref_ptr< osg::Node > > ModelLayerNodeMap;
         ModelLayerNodeMap        _modelLayerNodes;
         osg::Group*              _maskLayerNode;
         unsigned                 _lastNumBlacklistedFilenames;

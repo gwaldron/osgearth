@@ -71,12 +71,13 @@ main(int argc, char** argv)
         FogEffect* fogEffect = new FogEffect;
         fogEffect->attach( node->getOrCreateStateSet() );
         
-        float maxDensity = 0.000025; 
+        float maxDensity = 0.000125; 
         float fogStartHeight = 10000.0f;        
 
         // Setup a Fog state attribute
+        osg::Vec4 fogColor(0.66f, 0.7f, 0.81f, 1.0f);
         osg::Fog* fog = new osg::Fog;        
-        fog->setColor( viewer.getCamera()->getClearColor() );                
+        fog->setColor( fogColor ); //viewer.getCamera()->getClearColor() );                
         fog->setDensity( 0 );
         node->getOrCreateStateSet()->setAttributeAndModes( fog, osg::StateAttribute::ON );                
 

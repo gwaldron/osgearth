@@ -291,7 +291,7 @@ _textureSize     ( 1024 ),
 _mipmapping      ( false ),
 _rttBlending     ( true ),
 _attachStencil   ( false ),
-_maxFarNearRatio ( 3.0 )
+_maxFarNearRatio ( 5.0 )
 {
     // try newer version
     const char* nfr2 = ::getenv("OSGEARTH_OVERLAY_RESOLUTION_RATIO");
@@ -626,7 +626,7 @@ DrapingTechnique::onInstall( TerrainEngineNode* engine )
     if ( !_textureSize.isSet() )
     {
         unsigned maxSize = Registry::capabilities().getMaxFastTextureSize();
-        _textureSize.init( osg::minimum( 4096u, maxSize ) );
+        _textureSize.init( osg::minimum( 2048u, maxSize ) );
     }
     OE_INFO << LC << "Using texture size = " << *_textureSize << std::endl;
 }

@@ -47,7 +47,7 @@ the entire map.
                  elevation_tile_size      = "8"
                  overlay_texture_size     = "4096"
                  overlay_blending         = "true"
-                 overlay_resolution_ratio = "5.0" >
+                 overlay_resolution_ratio = "3.0" >
 
             <:ref:`profile <Profile>`>
             <:ref:`proxy <ProxySettings>`>
@@ -79,7 +79,10 @@ the entire map.
 | overlay_resolution_ratio | For draped geometry, the ratio of the resolution of the projective |
 |                          | texture near the camera versus the resolution far from the camera. |
 |                          | Increase the value to improve appearance close to the camera while |
-|                          | sacrificing appearance of farther geometry.                        |
+|                          | sacrificing appearance of farther geometry. NOTE: If you're using  |
+|                          | a camera manipulator that support roll, you will probably need to  |
+|                          | set this to 1.0; otherwise you will get draping artifacts! This is |
+|                          | a known issue.                                                     |
 +--------------------------+--------------------------------------------------------------------+
 
 

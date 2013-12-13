@@ -22,6 +22,7 @@
 #include <osg/LineWidth>
 #include <osgGA/StateSetManipulator>
 #include <osgViewer/CompositeViewer>
+#include <osgViewer/ViewerEventHandlers>
 #include <osgEarth/OverlayDecorator>
 #include <osgEarthUtil/EarthManipulator>
 #include <osgEarthUtil/ExampleResources>
@@ -170,6 +171,7 @@ main(int argc, char** argv)
     mainView->getCamera()->setNearFarRatio(0.00002);
     mainView->setCameraManipulator( new EarthManipulator() );
     mainView->setUpViewInWindow( 50, 50, 600, 600 );
+    mainView->addEventHandler(new osgViewer::RecordCameraPathHandler);
     viewer.addView( mainView );
 
     osgViewer::View* overlayView = new osgViewer::View();
@@ -182,6 +184,9 @@ main(int argc, char** argv)
     osg::Node* node = MapNodeHelper().load( arguments, mainView );
     if ( node )
     {
+        EarthManipulator* em = dynamic_cast<EarthManipulator*>(mainView->getCameraManipulator());
+        em->getSettings()->setMinMaxPitch(-90,0);
+
         mainView->setSceneData( node );
 
         osg::Group* group = new osg::Group();

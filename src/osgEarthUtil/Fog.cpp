@@ -41,7 +41,7 @@ namespace
         "    float z = length( vec3(gl_ModelViewMatrix * gl_Vertex) );\n"
         "    const float LOG2 = 1.442695;\n"        
         "    fogFactor = exp2( -gl_Fog.density * gl_Fog.density * z * z * LOG2 );\n"
-        "    fogFactor = clamp(fogFactor, 0.0, 1.0);\n"        
+        "    fogFactor = clamp(fogFactor, 0.0, 1.0);\n"
         "} \n";
 
     const char* fs =

@@ -107,6 +107,22 @@ namespace
         }
     }
 
+    void clampToNearFar(osg::Matrix& m, double newNear, double newFar)
+    {
+        if ( osg::equivalent(m(0,3),0.0) && osg::equivalent(m(1,3),0.0) && osg::equivalent(m(2,3),0.0) )
+        {
+            double l,r,b,t,n,f;
+            m.getOrtho(l,r,b,t,n,f);
+            m.makeOrtho(l,r,b,t, std::max(n, newNear), std::min(f,newFar));
+        }
+        else
+        {
+            double v,a,n,f;
+            m.getPerspective(v,a,n,f);
+            m.makePerspective(v,a, std::max(n, newNear), std::min(f, newFar));
+        }
+    }
+
 
     /**
      * Interects a finite ray with a sphere of radius R. The ray is defined
@@ -230,7 +246,7 @@ namespace
                           double& xmax, double& ymax,
                           double& maxDistance)
     {
-        xmin = DBL_MAX, ymin = DBL_MAX, xmax = -DBL_MAX, ymax = -DBL_MAX;
+        xmin  = DBL_MAX, ymin = DBL_MAX, xmax = -DBL_MAX, ymax = -DBL_MAX;
         double maxDist2 = 0.0;
 
         for( std::vector<osg::Vec3d>::iterator i = verts.begin(); i != verts.end(); ++i )
@@ -247,6 +263,26 @@ namespace
         }
 
         maxDistance = sqrt(maxDist2);
+    }
+
+
+    /**
+     * 
+     */
+    void
+    getNearFar(const osg::Matrix&      viewMatrix,
+              std::vector<osg::Vec3d>& verts,
+              double& znear,
+              double& zfar)
+    {
+        znear = DBL_MAX, zfar = 0.0;
+
+        for( std::vector<osg::Vec3d>::iterator i = verts.begin(); i != verts.end(); ++i )
+        {
+            osg::Vec3d d = (*i) * viewMatrix; // world to view
+            if ( -d.z() < znear ) znear = -d.z();
+            if ( -d.z() > zfar  ) zfar  = -d.z();
+        }
     }
 }
 
@@ -602,7 +638,8 @@ OverlayDecorator::cullTerrainAndCalculateRTTParams(osgUtil::CullVisitor* cv,
             visiblePH.cut( visibleOverlayPT );
         }
 
-        // TESTING
+        // for dumping, we want the previous fram's projection matrix
+        // becasue the technique itself may have modified it.
         osg::Matrix prevProjMatrix = params._rttProjMatrix;
 
         // extract the verts associated with the frustum's PH:
@@ -632,17 +669,30 @@ OverlayDecorator::cullTerrainAndCalculateRTTParams(osgUtil::CullVisitor* cv,
             // This causes problems for the draping projection matrix optimizer, so
             // for now instead of re-doing that code we will just center the eyepoint
             // here by using the larger of xmin and xmax. -gw.
-            double x = std::max( -xmin, xmax );
+            double x = std::max( fabs(xmin), fabs(xmax) );
             rttProjMatrix.makeOrtho(-x, x, ymin, ymax, 0.0, dist+zspan);
 
             //Note: this was the original setup, which is technically optimal:
             //rttProjMatrix.makeOrtho(xmin, xmax, ymin, ymax, 0.0, dist+zspan);
 
+            // Clamp the view frustum's N/F to the visible geometry. This clamped
+            // frustum is the one we'll send to the technique.
+            double visNear, visFar;
+            getNearFar( *cv->getModelViewMatrix(), verts, visNear, visFar );
+            osg::Matrix clampedProjMat( projMatrix );
+            clampToNearFar( clampedProjMat, visNear, visFar );
+            osg::Matrix clampedMVP = *cv->getModelViewMatrix() * clampedProjMat;
+            osg::Matrix inverseClampedMVP;
+            inverseClampedMVP.invert(clampedMVP);
+            osgShadow::ConvexPolyhedron clampedFrustumPH;
+            clampedFrustumPH.setToUnitFrustum(true, true);
+            clampedFrustumPH.transform( inverseClampedMVP, clampedMVP );
+
             // assign the matrices to the technique.
             params._rttViewMatrix.set( rttViewMatrix );
             params._rttProjMatrix.set( rttProjMatrix );
             params._eyeWorld = eye;
-            params._frustumPH = frustumPH;
+            params._frustumPH = clampedFrustumPH; //frustumPH;
         }
 
         // service a "dump" of the polyhedrons for dubugging purposes
@@ -734,31 +784,34 @@ OverlayDecorator::getPerViewData(osg::Camera* key)
 void
 OverlayDecorator::traverse( osg::NodeVisitor& nv )
 {
-    if ( true ) //if (_totalOverlayChildren > 0 )
+    bool defaultTraversal = true;
+
+    // in the CULL traversal, find the per-view data associated with the 
+    // cull visitor's current camera view and work with that:
+    if ( nv.getVisitorType() == nv.CULL_VISITOR )
     {
-        // in the CULL traversal, find the per-view data associated with the 
-        // cull visitor's current camera view and work with that:
-        if ( nv.getVisitorType() == nv.CULL_VISITOR )
+        osgUtil::CullVisitor* cv = Culling::asCullVisitor(nv);
+        osg::Camera* camera = cv->getCurrentCamera();
+
+        if ( camera != 0L && (_rttTraversalMask & nv.getTraversalMask()) != 0 )
         {
-            osgUtil::CullVisitor* cv = Culling::asCullVisitor(nv);
-            osg::Camera* camera = cv->getCurrentCamera();
+            // access per-camera data to support multi-threading:
+            PerViewData& pvd = getPerViewData( camera );
 
-            if ( camera != 0L && (_rttTraversalMask & nv.getTraversalMask()) != 0 )
+            // technique-specific setup prior to traversing:
+            bool hasOverlayData = false;
+            for(unsigned i=0; i<_techniques.size(); ++i)
             {
-                PerViewData& pvd = getPerViewData( camera );
-
-                //TODO:
-                // check whether we need to recalculate the RTT camera params.
-                // don't do it if the main camera hasn't moved;
-                // also, tell the ClampingTech not to re-snap the depth texture
-                // unless something has changed (e.g. camera params, terrain bounds..?
-                // what about paging..?)
-
-                // technique-specific setup prior to traversing:
-                for(unsigned i=0; i<_techniques.size(); ++i)
+                if ( _techniques[i]->hasData(pvd._techParams[i]) )
                 {
+                    hasOverlayData = true;
                     _techniques[i]->preCullTerrain( pvd._techParams[i], cv );
                 }
+            }
+
+            if ( hasOverlayData )
+            {
+                defaultTraversal = false;
 
                 // shared terrain culling pass:
                 cullTerrainAndCalculateRTTParams( cv, pvd );
@@ -770,25 +823,20 @@ OverlayDecorator::traverse( osg::NodeVisitor& nv )
                     _techniques[i]->cullOverlayGroup( params, cv );
                 }
             }
-            else
-            {
-                osg::Group::traverse(nv);
-            }
-        }
-
-        else
-        {
-            // Some other type of visitor (like update or intersection). Skip the technique
-            // and traverse the geometry directly.
-            for(unsigned i=0; i<_overlayGroups.size(); ++i)
-            {
-                _overlayGroups[i]->accept( nv );
-            }
-
-            osg::Group::traverse( nv );
         }
     }
+
     else
+    {
+        // Some other type of visitor (like update or intersection). Skip the technique
+        // and traverse the geometry directly.
+        for(unsigned i=0; i<_overlayGroups.size(); ++i)
+        {
+            _overlayGroups[i]->accept( nv );
+        }
+    }
+
+    if ( defaultTraversal )
     {
         osg::Group::traverse( nv );
     }

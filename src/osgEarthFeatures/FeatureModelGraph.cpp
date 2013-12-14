@@ -741,22 +741,15 @@ FeatureModelGraph::buildLevel( const FeatureLevel& level, const GeoExtent& exten
         // account for a min-range here. Do not address the max-range here; that happens
         // above when generating paged LOD nodes, etc.
         float minRange = level.minRange();
-
-#if 1
         if ( minRange > 0.0f )
         {
-            // minRange can't be less than the tile geometry's radius.
-            //minRange = std::max(minRange, (float)group->getBound().radius());
-            //osg::LOD* lod = new osg::LOD();
-            //lod->addChild( group.get(), minRange, FLT_MAX );
-
             ElevationLOD* lod = new ElevationLOD( _session->getMapSRS() );
             lod->setMinElevation( minRange );
             lod->addChild( group.get() );
             group = lod;
         }
-#endif
 
+        // install a cluster culler.
         if ( _session->getMapInfo().isGeocentric() && _options.clusterCulling() == true )
         {
             const FeatureProfile* featureProfile = _session->getFeatureSource()->getFeatureProfile();

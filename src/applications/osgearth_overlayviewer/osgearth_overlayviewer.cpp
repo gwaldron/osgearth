@@ -21,6 +21,7 @@
 #include <osg/Depth>
 #include <osg/LineWidth>
 #include <osgGA/StateSetManipulator>
+#include <osgGA/AnimationPathManipulator>
 #include <osgViewer/CompositeViewer>
 #include <osgViewer/ViewerEventHandlers>
 #include <osgEarth/OverlayDecorator>
@@ -169,9 +170,10 @@ main(int argc, char** argv)
 
     osgViewer::View* mainView = new osgViewer::View();
     mainView->getCamera()->setNearFarRatio(0.00002);
-    mainView->setCameraManipulator( new EarthManipulator() );
+    EarthManipulator* em = new EarthManipulator();
+    em->getSettings()->setMinMaxPitch(-90, 0);
+    mainView->setCameraManipulator( em );
     mainView->setUpViewInWindow( 50, 50, 600, 600 );
-    mainView->addEventHandler(new osgViewer::RecordCameraPathHandler);
     viewer.addView( mainView );
 
     osgViewer::View* overlayView = new osgViewer::View();
@@ -181,12 +183,16 @@ main(int argc, char** argv)
     overlayView->addEventHandler(new osgGA::StateSetManipulator(overlayView->getCamera()->getOrCreateStateSet()));
     viewer.addView( overlayView );
 
+    std::string pathfile;
+    double animationSpeed = 1.0;
+    if (arguments.read("-p", pathfile))
+    {
+        mainView->setCameraManipulator( new osgGA::AnimationPathManipulator(pathfile) );
+    }
+
     osg::Node* node = MapNodeHelper().load( arguments, mainView );
     if ( node )
     {
-        EarthManipulator* em = dynamic_cast<EarthManipulator*>(mainView->getCameraManipulator());
-        em->getSettings()->setMinMaxPitch(-90,0);
-
         mainView->setSceneData( node );
 
         osg::Group* group = new osg::Group();

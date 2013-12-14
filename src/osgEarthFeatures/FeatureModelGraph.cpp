@@ -425,6 +425,9 @@ FeatureModelGraph::setupPaging()
             if ( !_options.layout()->tileSizeFactor().isSet() )
             {
                 //Automatically compute the tileSizeFactor based on the max range
+                //TODO: This is no longer correct. "max_range" is actually an altitude,
+                //not a distance-from-tile, so if the user sets it we need to do something
+                //different. -gw
                 double width, height;
                 featureProfile->getProfile()->getTileDimensions(featureProfile->getFirstLevel(), width, height);
 
@@ -450,6 +453,8 @@ FeatureModelGraph::setupPaging()
     }
 
     // calculate the max range for the top-level PLOD:
+    // TODO: a user-specified maxRange is actually an altitude, so this is not
+    //       strictly correct anymore!
     float maxRange = 
         maxRangeOverride.isSet() ? *maxRangeOverride :
         bs.radius() * _options.layout()->tileSizeFactor().value();

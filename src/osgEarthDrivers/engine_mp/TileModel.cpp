@@ -129,10 +129,18 @@ _fallbackData( fallbackData )
     _texture->setUnRefImageDataAfterApply( true );
     _texture->setMaxAnisotropy( 16.0f );
     _texture->setResizeNonPowerOfTwoHint(false);
-    _texture->setFilter( osg::Texture::MAG_FILTER, magFilter );
-    _texture->setFilter( osg::Texture::MIN_FILTER, minFilter );
+    _texture->setFilter( osg::Texture::MAG_FILTER, minFilter );
+    _texture->setFilter( osg::Texture::MIN_FILTER, magFilter  );
     _texture->setWrap( osg::Texture::WRAP_S, osg::Texture::CLAMP_TO_EDGE );
-    _texture->setWrap( osg::Texture::WRAP_T, osg::Texture::CLAMP_TO_EDGE );
+    _texture->setWrap( osg::Texture::WRAP_T, osg::Texture::CLAMP_TO_EDGE );    
+
+    // Disable mip mapping for npot tiles
+    if (!ImageUtils::isPowerOfTwo( image ) || (!image->isMipmap() && ImageUtils::isCompressed(image)))
+    {
+        OE_WARN<<"Disabling mipmapping for non power of two tile size("<<image->s()<<", "<<image->t()<<")"<<std::endl;
+        _texture->setFilter( osg::Texture::MIN_FILTER, osg::Texture::LINEAR );
+    }    
+
 
     _hasAlpha = image && ImageUtils::hasTransparency(image);
 }

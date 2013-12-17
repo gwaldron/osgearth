@@ -5,8 +5,7 @@ osgEarth is a cross-platform library. It uses the CMake_ build system.
 You will need **version 2.8** or newer. 
 (This is the same build system that OpenSceneGraph_ uses.)
 
-    NOTE: To build osgEarth for iOS see :doc:`ios`
-    
+    NOTE: To build osgEarth for **iOS** see :doc:`ios`
 
 Get the Source Code
 -------------------
@@ -30,14 +29,14 @@ Get the Source Code
 Get the Dependencies
 --------------------
 
-The following are **required dependencies**:
+**Required dependencies**:
 
     * OpenSceneGraph_ 3.0.1 or later, with the CURL plugin enabled.
     * GDAL_ 1.6 or later - Geospatial Data Abstraction Layer
     * CURL_ - HTTP transfer library (comes with OpenSceneGraph_ 3rd party library distros)
     
-These are the **optional depedencies**. osgEarth will compile without them,
-but some functionality will be missing:
+**Optional depedencies**: osgEarth will compile without them, but some functionality
+will be missing:
 
     * GEOS_ 3.2.0 or later - C++ library for topological operations.
       osgEarth uses GEOS to perform various geometry operations like buffering and intersections.
@@ -45,8 +44,14 @@ but some functionality will be missing:
     
     * Minizip_ - ZIP file extractor; include this if you want to read KMZ files.
     
-    * V8_ - Google's JavaScript engine. Include this if you want to embed JavaScript code
-      in your earth files.
+    * V8_ - Google's JavaScript engine. Include this if you're a Windows user and you want
+      to embed JavaScript code in your earth files. Get the latest version.
+      
+    * JavaScriptCore_ - Apple's JavaScript engine. Include this if you're an OSX or IOS user
+      and you want to embed JavaScript code in your earth files.
+      
+    * QT_ - Cross-platform UI framework. Point the ``QT_QMAKE_EXECUTABLE`` CMake variable
+      to the ``qmake.exe`` you want to use and CMake will populate all the other QT variables.
       
 **Optional: get pre-built dependencies**
 

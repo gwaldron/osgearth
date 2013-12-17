@@ -137,7 +137,7 @@ _fallbackData( fallbackData )
     // Disable mip mapping for npot tiles
     if (!ImageUtils::isPowerOfTwo( image ) || (!image->isMipmap() && ImageUtils::isCompressed(image)))
     {
-        OE_WARN<<"Disabling mipmapping for non power of two tile size("<<image->s()<<", "<<image->t()<<")"<<std::endl;
+        OE_DEBUG<<"Disabling mipmapping for non power of two tile size("<<image->s()<<", "<<image->t()<<")"<<std::endl;
         _texture->setFilter( osg::Texture::MIN_FILTER, osg::Texture::LINEAR );
     }    
 

@@ -385,7 +385,7 @@ MPTerrainEngineNode::traverse(osg::NodeVisitor& nv)
 {
     if ( nv.getVisitorType() == nv.CULL_VISITOR )
     {
-        // since the root tiles are manually added, the pager never has a change to 
+        // since the root tiles are manually added, the pager never has a chance to 
         // register the PagedLODs in their children. So we have to do it manually here.
         if ( !_rootTilesRegistered )
         {

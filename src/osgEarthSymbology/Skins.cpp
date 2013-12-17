@@ -87,7 +87,7 @@ SkinResource::getConfig() const
 osg::StateSet*
 SkinResource::createStateSet( const osgDB::Options* dbOptions ) const
 {
-    OE_NOTICE << LC << "Creating skin state set for " << imageURI()->full() << std::endl;
+    OE_DEBUG << LC << "Creating skin state set for " << imageURI()->full() << std::endl;
     return createStateSet( createImage(dbOptions) );
 }
 

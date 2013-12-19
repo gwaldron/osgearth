@@ -692,7 +692,7 @@ OverlayDecorator::cullTerrainAndCalculateRTTParams(osgUtil::CullVisitor* cv,
             params._rttViewMatrix.set( rttViewMatrix );
             params._rttProjMatrix.set( rttProjMatrix );
             params._eyeWorld = eye;
-            params._frustumPH = clampedFrustumPH; //frustumPH;
+            params._visibleFrustumPH = clampedFrustumPH; //frustumPH;
         }
 
         // service a "dump" of the polyhedrons for dubugging purposes

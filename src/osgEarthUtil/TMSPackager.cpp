@@ -257,43 +257,47 @@ TMSPackager::packageImageTile(ImageLayer*                  layer,
 
     bool hasData = layer->getTileSource()->hasData( key );
 
-    if ( shouldPackageKey(key) && key.getLevelOfDetail() >= minLevel && hasData )
+    if ( shouldPackageKey(key) )
     {        
-        OE_DEBUG << "Packaging key " << key.str() << std::endl;
-        unsigned w, h;
-        key.getProfile()->getNumTiles( key.getLevelOfDetail(), w, h );
-
-        std::string path = Stringify() 
-            << rootDir 
-            << "/" << key.getLevelOfDetail() 
-            << "/" << key.getTileX() 
-            << "/" << h - key.getTileY() - 1
-            << "." << extension;
-
+        bool tileOK = false;
         bool isSingleColor = false;
-        bool tileOK = osgDB::fileExists(path) && !_overwrite;
-        if ( !tileOK )
+        if ( key.getLevelOfDetail() >= minLevel && hasData )
         {
-            ParallelTask<CreateImageTileTask>* task = new ParallelTask<CreateImageTileTask>( semaphore );
-            task->init(layer, key, path, extension, _imageWriteOptions, _keepEmptyImageTiles, _verbose);
-            task->setProgressCallback(progress);
-            tasks.push_back(task);            
-            taskCount++;
+            OE_DEBUG << "Packaging key " << key.str() << std::endl;
+            unsigned w, h;
+            key.getProfile()->getNumTiles( key.getLevelOfDetail(), w, h );
 
-            tileOK = true;
-        }
-        else
-        {
-            if ( _verbose )
+            std::string path = Stringify() 
+                << rootDir 
+                << "/" << key.getLevelOfDetail() 
+                << "/" << key.getTileX() 
+                << "/" << h - key.getTileY() - 1
+                << "." << extension;
+
+            tileOK = osgDB::fileExists(path) && !_overwrite;
+            if ( !tileOK )
             {
-                OE_NOTICE << LC << "Tile " << key.str() << " already exists" << std::endl;
-            }
-        }
+                ParallelTask<CreateImageTileTask>* task = new ParallelTask<CreateImageTileTask>( semaphore );
+                task->init(layer, key, path, extension, _imageWriteOptions, _keepEmptyImageTiles, _verbose);
+                task->setProgressCallback(progress);
+                tasks.push_back(task);            
+                taskCount++;
 
-        // increment the maximum detected tile level:
-        if ( tileOK && key.getLevelOfDetail() > out_maxLevel )
-        {
-            out_maxLevel = key.getLevelOfDetail();
+                tileOK = true;
+            }
+            else
+            {
+                if ( _verbose )
+                {
+                    OE_NOTICE << LC << "Tile " << key.str() << " already exists" << std::endl;
+                }
+            }
+
+            // increment the maximum detected tile level:
+            if ( tileOK && key.getLevelOfDetail() > out_maxLevel )
+            {
+                out_maxLevel = key.getLevelOfDetail();
+            }
         }
 
         // see if subdivision should continue.
@@ -304,7 +308,7 @@ TMSPackager::packageImageTile(ImageLayer*                  layer,
         unsigned maxLevel = std::min(_maxLevel, layerMaxLevel);
         bool subdivide =
             (options.minLevel().isSet() && lod < *options.minLevel()) ||
-            (tileOK && lod+1 < maxLevel);
+            (tileOK && lod < maxLevel);
 
         // subdivide if necessary:
         if ( (subdivide == true) && (isSingleColor == false) )
@@ -339,41 +343,45 @@ TMSPackager::packageElevationTile(ElevationLayer*               layer,
 
     bool hasData = layer->getTileSource()->hasData( key );
 
-    if ( shouldPackageKey(key) && key.getLevelOfDetail() >= minLevel && hasData )
+    if ( shouldPackageKey(key) )
     {
-        unsigned w, h;
-        key.getProfile()->getNumTiles( key.getLevelOfDetail(), w, h );
-
-        std::string path = Stringify() 
-            << rootDir 
-            << "/" << key.getLevelOfDetail() 
-            << "/" << key.getTileX() 
-            << "/" << h - key.getTileY() - 1
-            << "." << extension;
-
-        bool tileOK = osgDB::fileExists(path) && !_overwrite;
-        if ( !tileOK )
+        bool tileOK = false;
+        if ( key.getLevelOfDetail() >= minLevel && hasData )
         {
-            ParallelTask<CreateElevationTileTask>* task = new ParallelTask<CreateElevationTileTask>( semaphore );
-            task->init(layer, key, path, _verbose);
-            task->setProgressCallback(progress);
-            tasks.push_back(task);
-            taskCount++;
+            unsigned w, h;
+            key.getProfile()->getNumTiles( key.getLevelOfDetail(), w, h );
 
-            tileOK = true;
-        }
-        else
-        {
-            if ( _verbose )
+            std::string path = Stringify() 
+                << rootDir 
+                << "/" << key.getLevelOfDetail() 
+                << "/" << key.getTileX() 
+                << "/" << h - key.getTileY() - 1
+                << "." << extension;
+
+            tileOK = osgDB::fileExists(path) && !_overwrite;
+            if ( !tileOK )
             {
-                OE_NOTICE << LC << "Tile " << key.str() << " already exists" << std::endl;
-            }
-        }
+                ParallelTask<CreateElevationTileTask>* task = new ParallelTask<CreateElevationTileTask>( semaphore );
+                task->init(layer, key, path, _verbose);
+                task->setProgressCallback(progress);
+                tasks.push_back(task);
+                taskCount++;
 
-        // increment the maximum detected tile level:
-        if ( tileOK && key.getLevelOfDetail() > out_maxLevel )
-        {
-            out_maxLevel = key.getLevelOfDetail();
+                tileOK = true;
+            }
+            else
+            {
+                if ( _verbose )
+                {
+                    OE_NOTICE << LC << "Tile " << key.str() << " already exists" << std::endl;
+                }
+            }
+
+            // increment the maximum detected tile level:
+            if ( tileOK && key.getLevelOfDetail() > out_maxLevel )
+            {
+                out_maxLevel = key.getLevelOfDetail();
+            }
         }
 
         // see if subdivision should continue.
@@ -384,7 +392,7 @@ TMSPackager::packageElevationTile(ElevationLayer*               layer,
         unsigned maxLevel = std::min(_maxLevel, layerMaxLevel);
         bool subdivide =
             (options.minLevel().isSet() && lod < *options.minLevel()) ||
-            (tileOK && lod+1 < maxLevel);
+            (tileOK && lod < maxLevel);
 
         // subdivide if necessary:
         if ( subdivide )
@@ -586,34 +594,37 @@ TMSPackager::package(ElevationLayer*    layer,
     // run all the tasks in parallel
     OE_DEBUG << LC << "Packaging elevation layer \"" << layer->getName() << "\", total number of tiles: " << taskCount << std::endl;
 
-    semaphore.reset( taskCount );
-    if (tileProgress) tileProgress->setTotalTasks(taskCount);
+    if (taskCount > 0)
+    {
+        semaphore.reset( taskCount );
+        if (tileProgress) tileProgress->setTotalTasks(taskCount);
 
-    unsigned num = 2 * OpenThreads::GetNumberOfProcessors();
-    osg::ref_ptr<osgEarth::TaskService> taskService = new osgEarth::TaskService("TMS Elevation Packager", num);
+        unsigned num = 2 * OpenThreads::GetNumberOfProcessors();
+        osg::ref_ptr<osgEarth::TaskService> taskService = new osgEarth::TaskService("TMS Elevation Packager", num);
 
-    for (TaskRequestVector::iterator i = tasks.begin(); i != tasks.end(); ++i)
-        taskService->add( i->get() );
+        for (TaskRequestVector::iterator i = tasks.begin(); i != tasks.end(); ++i)
+            taskService->add( i->get() );
 
-    semaphore.wait();
+        semaphore.wait();
 
 
-    // create the tile map metadata:
-    osg::ref_ptr<TMS::TileMap> tileMap = TMS::TileMap::create(
-        "",
-        _outProfile.get(),
-        extension,
-        testHF.getHeightField()->getNumColumns(),
-        testHF.getHeightField()->getNumRows() );
+        // create the tile map metadata:
+        osg::ref_ptr<TMS::TileMap> tileMap = TMS::TileMap::create(
+            "",
+            _outProfile.get(),
+            extension,
+            testHF.getHeightField()->getNumColumns(),
+            testHF.getHeightField()->getNumRows() );
 
-    tileMap->setTitle( layer->getName() );
-    tileMap->setVersion( "1.0.0" );
-    tileMap->getFormat().setMimeType( mimeType );
-    tileMap->generateTileSets( std::min(23u, maxLevel+1) );
+        tileMap->setTitle( layer->getName() );
+        tileMap->setVersion( "1.0.0" );
+        tileMap->getFormat().setMimeType( mimeType );
+        tileMap->generateTileSets( std::min(23u, maxLevel+1) );
 
-    // write out the tilemap catalog:
-    std::string tileMapFilename = osgDB::concatPaths(rootFolder, "tms.xml");
-    TMS::TileMapReaderWriter::write( tileMap.get(), tileMapFilename );
+        // write out the tilemap catalog:
+        std::string tileMapFilename = osgDB::concatPaths(rootFolder, "tms.xml");
+        TMS::TileMapReaderWriter::write( tileMap.get(), tileMapFilename );
+    }
 
     osg::Timer_t end_t = timer->tick();
     double elapsed = (end_t - start_t) * timer->getSecondsPerTick();

@@ -127,7 +127,7 @@ namespace
 
             // discover the max near-plane width.
             double halfWidthNear = 0.0;
-            osgShadow::ConvexPolyhedron::Faces::iterator f = params._frustumPH._faces.begin();
+            osgShadow::ConvexPolyhedron::Faces::iterator f = params._visibleFrustumPH._faces.begin();
             f++; f++; f++; f++; // the near plane Face
             // f->vertices.size() should always be 4, I would think.. but it's not..
             for(unsigned i=0; i<f->vertices.size(); ++i)

@@ -42,7 +42,7 @@
 #include <QDockWidget>
 #include <QMainWindow>
 #include <QToolBar>
-#include <QtGui/QApplication>
+#include <QApplication>
 
 #include "DemoMainWindow"
 
@@ -325,6 +325,9 @@ main(int argc, char** argv)
 
         viewer->addUpdateOperation(new TrackSimUpdate(trackSims));
     }
+
+    if(viewer.valid())
+      viewer->setThreadingModel(osgViewer::ViewerBase::SingleThreaded);
 
 
     // create catalog widget and add as a docked widget to the main window

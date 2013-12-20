@@ -70,8 +70,7 @@ SET(SOURCES_ROOT
     ClampCallback.cpp
     Controls.cpp
     ContourMap.cpp
-    DataScanner.cpp
-    #DateTime.cpp #moved to osgEarth namespace
+    DataScanner.cpp    
     DetailTexture.cpp
     EarthManipulator.cpp
     ExampleResources.cpp

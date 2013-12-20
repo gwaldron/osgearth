@@ -168,18 +168,29 @@ main(int argc, char** argv)
     osgViewer::CompositeViewer viewer(arguments);
     viewer.setThreadingModel( osgViewer::CompositeViewer::SingleThreaded );
 
+    // query the screen size.
+    osg::GraphicsContext::ScreenIdentifier si;
+    si.readDISPLAY();
+    if ( si.displayNum < 0 ) si.displayNum = 0;
+    osg::GraphicsContext::WindowingSystemInterface* wsi = osg::GraphicsContext::getWindowingSystemInterface();
+    unsigned width, height;
+    wsi->getScreenResolution( si, width, height );
+    unsigned b = 50;
+
     osgViewer::View* mainView = new osgViewer::View();
     mainView->getCamera()->setNearFarRatio(0.00002);
     EarthManipulator* em = new EarthManipulator();
     em->getSettings()->setMinMaxPitch(-90, 0);
     mainView->setCameraManipulator( em );
-    mainView->setUpViewInWindow( 50, 50, 600, 600 );
+    //mainView->setUpViewInWindow( 50, 50, 600, 600 );
+    mainView->setUpViewInWindow( b, b, (width/2)-b*2, (height-b*4) );
     viewer.addView( mainView );
 
     osgViewer::View* overlayView = new osgViewer::View();
     overlayView->getCamera()->setNearFarRatio(0.00002);
     overlayView->setCameraManipulator( new EarthManipulator() );
-    overlayView->setUpViewInWindow( 700, 50, 600, 600 );
+    //overlayView->setUpViewInWindow( 700, 50, 600, 600 );
+    overlayView->setUpViewInWindow( (width/2), b, (width/2)-b*2, (height-b*4) );
     overlayView->addEventHandler(new osgGA::StateSetManipulator(overlayView->getCamera()->getOrCreateStateSet()));
     viewer.addView( overlayView );
 

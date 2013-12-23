@@ -36,8 +36,8 @@ using namespace osgEarth::ShaderComp;
 
 #define OE_TEST OE_NULL
 //#define OE_TEST OE_NOTICE
-
 //#define USE_ATTRIB_ALIASES
+//#define DEBUG_APPLY_COUNTS
 
 //------------------------------------------------------------------------
 
@@ -759,10 +759,16 @@ VirtualProgram::setInheritShaders( bool value )
     }
 }
 
-
+#ifdef DEBUG_APPLY_COUNTS
 namespace
 {
+    // debugging
+    static int s_framenum = 0;
+    static Threading::Mutex s_mutex;
+    static std::map< const VirtualProgram*, int > s_counts;
 }
+#endif
+
 
 void
 VirtualProgram::apply( osg::State& state ) const
@@ -782,6 +788,25 @@ VirtualProgram::apply( osg::State& state ) const
         state.setLastAppliedProgramObject(0);
         return;
     }
+
+#ifdef APPLY_DEBUG_COUNTS
+    {
+        Threading::ScopedMutexLock lock(s_mutex);
+        int framenum = state.getFrameStamp()->getFrameNumber();
+        if ( framenum > s_framenum )
+        {
+            OE_INFO << LC << "Applies in last frame: " << std::endl;
+            for(std::map<const VirtualProgram*,int>::iterator i = s_counts.begin(); i != s_counts.end(); ++i)
+            {
+                OE_INFO << LC << "  " << i->first->getName() << " : " << i->second << std::endl;
+                i->second = 0;
+            }
+            s_framenum = framenum;
+            s_counts.clear();
+        }
+        s_counts[this]++;
+    }
+#endif
 
     // first, find and collect all the VirtualProgram attributes:
     ShaderMap         accumShaderMap;

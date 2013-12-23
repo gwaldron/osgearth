@@ -432,7 +432,7 @@ ShaderGenerator::apply(osg::ClipNode& node)
 {
     static const char* s_clip_source =
         "#version " GLSL_VERSION_STR "\n"
-        "void sg_set_clipvertex(inout vec4 vertexVIEW)\n"
+        "void oe_sg_set_clipvertex(inout vec4 vertexVIEW)\n"
         "{\n"
         "    gl_ClipVertex = vertexVIEW; \n"
         "}\n";
@@ -441,7 +441,7 @@ ShaderGenerator::apply(osg::ClipNode& node)
 
     VirtualProgram* vp = VirtualProgram::getOrCreate(node.getOrCreateStateSet());
     if ( vp->referenceCount() == 1 ) vp->setName( _name );
-    vp->setFunction( "sg_set_clipvertex", s_clip_source, ShaderComp::LOCATION_VERTEX_VIEW );
+    vp->setFunction( "oe_sg_set_clipvertex", s_clip_source, ShaderComp::LOCATION_VERTEX_VIEW );
 
     apply( static_cast<osg::Group&>(node) );
 }
@@ -479,7 +479,7 @@ ShaderGenerator::processText(const osg::StateSet* ss, osg::ref_ptr<osg::StateSet
     std::string vertSrc =
         "#version " GLSL_VERSION_STR "\n" GLSL_PRECISION "\n"
         "varying " MEDIUMP "vec4 " TEX_COORD_TEXT ";\n"
-        "void " VERTEX_FUNCTION "(inout vec4 vertex_view)\n"
+        "void " VERTEX_FUNCTION "(inout vec4 vertexVIEW)\n"
         "{ \n"
         INDENT TEX_COORD_TEXT " = gl_MultiTexCoord0;\n"
         "} \n";
@@ -541,151 +541,64 @@ ShaderGenerator::processGeometry( const osg::StateSet* ss, osg::ref_ptr<osg::Sta
     if (state->getNumTextureAttributes() > 0)
     {
         // work off the state's accumulated texture attribute set:
-        int texCount = state->getNumTextureAttributes();
+        //int texCount = state->getNumTextureAttributes();
 
         // start generating the shader source.
-        std::stringstream vertHead, vertBody, fragHead, fragBody;
+        GenBuffers buf;
+        buf.stateSet = new_stateset;
 
         // compatibility strings make it work in GL or GLES.
-        vertHead << "#version " GLSL_VERSION_STR "\n" GLSL_PRECISION;
-        fragHead << "#version " GLSL_VERSION_STR "\n" GLSL_PRECISION;
+        buf.vertHead << "#version " GLSL_VERSION_STR "\n" GLSL_PRECISION;
+        buf.fragHead << "#version " GLSL_VERSION_STR "\n" GLSL_PRECISION;
 
         // function declarations:
-        vertBody << "void " VERTEX_FUNCTION "(inout vec4 vertex_view)\n{\n";
-
-        fragBody << "void " FRAGMENT_FUNCTION "(inout vec4 color)\n{\n";
+        buf.vertBody << "void " VERTEX_FUNCTION "(inout vec4 vertex_view)\n{\n";
+        buf.fragBody << "void " FRAGMENT_FUNCTION "(inout vec4 color)\n{\n";
 
         bool wroteTexelDecl = false;
 
-        for( int t = 0; t < texCount; ++t )
+        int maxUnit = Registry::capabilities().getMaxGPUTextureUnits();
+
+        for( int unit = 0; unit < maxUnit; ++unit )
         {
             if ( !wroteTexelDecl )
             {
-                fragBody << INDENT << MEDIUMP "vec4 texel; \n";
+                buf.fragBody << INDENT << MEDIUMP "vec4 texel; \n";
                 wroteTexelDecl = true;
             }
 
-            osg::Texture* tex = dynamic_cast<osg::Texture*>(state->getTextureAttribute(t, osg::StateAttribute::TEXTURE));
+            osg::Texture* tex = dynamic_cast<osg::Texture*>(
+                state->getTextureAttribute(unit, osg::StateAttribute::TEXTURE));
 
             if (accept(tex) && !ImageUtils::isFloatingPointInternalFormat(tex->getInternalFormat()))
             {
                 // made it this far, new stateset required.
                 need_new_stateset = true;
 
-                // see if we have a texenv; if so get its blending mode.
-                osg::TexEnv::Mode blendingMode = osg::TexEnv::MODULATE;
-                osg::TexEnv* env = dynamic_cast<osg::TexEnv*>(state->getTextureAttribute(t, osg::StateAttribute::TEXENV) );
-                if ( accept(env) )
-                {
-                    blendingMode = env->getMode();
-                    if ( blendingMode == osg::TexEnv::BLEND )
-                    {
-                        new_stateset->getOrCreateUniform( Stringify() << TEXENV_COLOR << t, osg::Uniform::FLOAT_VEC4 )->set( env->getColor() );
-                    }
-                }
+                osg::TexEnv* texenv = dynamic_cast<osg::TexEnv*>(state->getTextureAttribute(unit, osg::StateAttribute::TEXENV));
+                apply( texenv, unit, buf );
 
-                osg::TexGen::Mode texGenMode = osg::TexGen::OBJECT_LINEAR;
-                osg::TexGen* texGen = dynamic_cast<osg::TexGen*>(state->getTextureAttribute(t, osg::StateAttribute::TEXGEN));
-                if ( accept(texGen) )
-                {
-                    texGenMode = texGen->getMode();
-                }
+                buf.vertHead << "varying " MEDIUMP "vec4 " TEX_COORD << unit << ";\n";
+                buf.fragHead << "varying " MEDIUMP "vec4 " TEX_COORD << unit << ";\n";
 
-                vertHead << "varying " MEDIUMP "vec4 " TEX_COORD << t << ";\n";
-                fragHead << "varying " MEDIUMP "vec4 " TEX_COORD << t << ";\n";
-
-                // handle different TexGen modes.
-                switch(texGenMode)
-                {
-                case osg::TexGen::SPHERE_MAP:
-                    vertBody 
-                        //todo: consolidate.
-                        << INDENT "{\n" // scope it in case there are > 1
-                        << INDENT "vec3 v = normalize(vec3(vertex_view));\n"
-                        << INDENT "vec3 n = normalize(gl_NormalMatrix * gl_Normal);\n"
-                        << INDENT "vec3 r = reflect(v, n);\n"
-                        << INDENT "float m = 2.0 * sqrt(r.x*r.x + r.y*r.y + (r.z+1.0)*(r.z+1.0));\n"
-                        << INDENT TEX_COORD << t << ".s = r.x/m + 0.5;\n"
-                        << INDENT TEX_COORD << t << ".t = r.y/m + 0.5;\n"
-                        << INDENT "}\n";
-                    break;
-
-                default:
-                    vertBody 
-                        << INDENT << TEX_COORD << t << " = gl_MultiTexCoord" << t << ";\n";
-                    break;
-                }
-
+                osg::TexGen* texgen = dynamic_cast<osg::TexGen*>(state->getTextureAttribute(unit, osg::StateAttribute::TEXGEN));
+                apply( texgen, unit, buf );
 
                 if ( dynamic_cast<osg::Texture1D*>(tex) )
                 {
-                    fragHead << "uniform sampler1D " SAMPLER << t << ";\n";
-                    fragBody << INDENT "texel = texture1D(" SAMPLER << t << ", " TEX_COORD << t << ".x);\n";
-                    new_stateset->getOrCreateUniform( Stringify() << SAMPLER << t, osg::Uniform::SAMPLER_1D )->set( t );
+                    apply(static_cast<osg::Texture1D*>(tex), unit, buf);
                 }
                 else if ( dynamic_cast<osg::Texture2D*>(tex) )
                 {
-                    fragHead << "uniform sampler2D " SAMPLER << t << ";\n";
-                    fragBody << INDENT "texel = texture2D(" SAMPLER << t << ", " TEX_COORD << t << ".xy);\n";
-                    new_stateset->getOrCreateUniform( Stringify() << SAMPLER << t, osg::Uniform::SAMPLER_2D )->set( t );
+                    apply(static_cast<osg::Texture2D*>(tex), unit, buf);
                 }
-
-#if 0 // works, but requires a higher version of GL?
-                else if ( dynamic_cast<osg::TextureRectangle*>(tex) )
-                {
-                    fragHead << "uniform sampler2Drect " SAMPLER << t << ";\n";
-                    fragBody << INDENT "texel = texture2Drect(" SAMPLER << t << ", " TEX_COORD << t << ".xy);\n";
-                    new_stateset->getOrCreateUniform( Stringify() << SAMPLER << t, osg::Uniform::SAMPLER_2D_RECT )->set( t );
-                }
-#endif
-                // doesn't work. why?
-                else if ( dynamic_cast<osg::TextureRectangle*>(tex) )
-                {
-                    osg::Image* image = static_cast<osg::TextureRectangle*>(tex)->getImage();
-
-                    vertBody 
-                        << INDENT << TEX_COORD << t << ".x /= " << (image->s()-1) << ".0;\n"
-                        << INDENT << TEX_COORD << t << ".y /= " << (image->t()-1) << ".0;\n";
-
-                    fragHead << "uniform sampler2D " SAMPLER << t << ";\n";
-                    fragBody << INDENT "texel = texture2D(" SAMPLER << t << ", " TEX_COORD << t << ".xy);\n";
-                    new_stateset->getOrCreateUniform( Stringify() << SAMPLER << t, osg::Uniform::SAMPLER_2D )->set( t );
-                }
-
                 else if ( dynamic_cast<osg::Texture3D*>(tex) )
                 {
-                    fragHead << "uniform sampler3D " SAMPLER << t << ";\n";
-                    fragBody << INDENT "texel = texture3D(" SAMPLER << t << ", " TEX_COORD << t << ".xyz);\n";
-                    new_stateset->getOrCreateUniform( Stringify() << SAMPLER << t, osg::Uniform::SAMPLER_3D )->set( t );
+                    apply(static_cast<osg::Texture3D*>(tex), unit, buf);
                 }
-
-                // See http://www.opengl.org/sdk/docs/man/xhtml/glTexEnv.xml
-                switch( blendingMode )
+                else if ( dynamic_cast<osg::TextureRectangle*>(tex) )
                 {
-                case osg::TexEnv::REPLACE:
-                    fragBody
-                        << INDENT "color = texel; \n";
-                    break;
-                case osg::TexEnv::MODULATE:
-                    fragBody
-                        << INDENT "color = color * texel; \n";
-                    break;
-                case osg::TexEnv::DECAL:
-                    fragBody
-                        << INDENT "color.rgb = color.rgb * (1.0 - texel.a) + (texel.rgb * texel.a); \n";
-                    break;
-                case osg::TexEnv::BLEND:
-                    fragHead
-                        << "uniform " MEDIUMP "vec4 " TEXENV_COLOR << t << "\n;";
-                    fragBody
-                        << INDENT "color.rgb = color.rgb * (1.0 - texel.rgb) + (" << TEXENV_COLOR << t << ".rgb * texel.rgb); \n"
-                        << INDENT "color.a   = color.a * texel.a; \n";
-                    break;
-                case osg::TexEnv::ADD:
-                default:
-                    fragBody
-                        << INDENT "color.rgb = color.rgb + texel.rgb; \n"
-                        << INDENT "color.a   = color.a * texel.a; \n";
+                    apply(static_cast<osg::TextureRectangle*>(tex), unit, buf);
                 }
             }
         }
@@ -693,17 +606,17 @@ ShaderGenerator::processGeometry( const osg::StateSet* ss, osg::ref_ptr<osg::Sta
         if ( need_new_stateset )
         {
             // close out functions:
-            vertBody << "}\n";
-            fragBody << "}\n";
+            buf.vertBody << "}\n";
+            buf.fragBody << "}\n";
 
             // Extract the shader source strings (win compat method)
             std::string vertBodySrc, vertSrc, fragBodySrc, fragSrc;
-            vertBodySrc = vertBody.str();
-            vertHead << vertBodySrc;
-            vertSrc = vertHead.str();
-            fragBodySrc = fragBody.str();
-            fragHead << fragBodySrc;
-            fragSrc = fragHead.str();
+            vertBodySrc = buf.vertBody.str();
+            buf.vertHead << vertBodySrc;
+            vertSrc = buf.vertHead.str();
+            fragBodySrc = buf.fragBody.str();
+            buf.fragHead << fragBodySrc;
+            fragSrc = buf.fragHead.str();
 
             // inject the shaders:
             vp->setFunction( VERTEX_FUNCTION,   vertSrc, ShaderComp::LOCATION_VERTEX_VIEW );
@@ -716,4 +629,132 @@ ShaderGenerator::processGeometry( const osg::StateSet* ss, osg::ref_ptr<osg::Sta
         replacement = new_stateset.get();
     }
     return replacement.valid();
+}
+
+
+bool
+ShaderGenerator::apply(osg::TexEnv* texenv, int unit, GenBuffers& buf)
+{
+    // see if we have a texenv; if so get its blending mode.
+    osg::TexEnv::Mode blendingMode = osg::TexEnv::MODULATE;
+
+    if ( accept(texenv) )
+    {
+        blendingMode = texenv->getMode();
+
+        if ( blendingMode == osg::TexEnv::BLEND )
+        {
+            std::string texEnvColorUniform = Stringify() << TEXENV_COLOR << unit;
+            buf.stateSet
+                ->getOrCreateUniform(texEnvColorUniform, osg::Uniform::FLOAT_VEC4)
+                ->set( texenv->getColor() );
+        }
+    }
+
+    // See http://www.opengl.org/sdk/docs/man/xhtml/glTexEnv.xml
+    switch( blendingMode )
+    {
+    case osg::TexEnv::REPLACE:
+        buf.fragBody
+            << INDENT "color = texel; \n";
+        break;
+    case osg::TexEnv::MODULATE:
+        buf.fragBody
+            << INDENT "color = color * texel; \n";
+        break;
+    case osg::TexEnv::DECAL:
+        buf.fragBody
+            << INDENT "color.rgb = color.rgb * (1.0 - texel.a) + (texel.rgb * texel.a); \n";
+        break;
+    case osg::TexEnv::BLEND:
+        buf.fragHead
+            << "uniform " MEDIUMP "vec4 " TEXENV_COLOR << unit << "\n;";
+        buf.fragBody
+            << INDENT "color.rgb = color.rgb * (1.0 - texel.rgb) + (" << TEXENV_COLOR << unit << ".rgb * texel.rgb); \n"
+            << INDENT "color.a   = color.a * texel.a; \n";
+        break;
+    case osg::TexEnv::ADD:
+    default:
+        buf.fragBody
+            << INDENT "color.rgb = color.rgb + texel.rgb; \n"
+            << INDENT "color.a   = color.a * texel.a; \n";
+    }
+
+    return true;
+}
+
+bool
+ShaderGenerator::apply(osg::TexGen* texgen, int unit, GenBuffers& buf)
+{
+    osg::TexGen::Mode texGenMode = osg::TexGen::OBJECT_LINEAR;
+    if ( accept(texgen) )
+    {
+        texGenMode = texgen->getMode();
+    }
+
+    // handle different TexGen modes.
+    switch(texGenMode)
+    {
+    case osg::TexGen::SPHERE_MAP:
+        buf.vertBody 
+            //todo: consolidate.
+            << INDENT "{\n" // scope it in case there are > 1
+            << INDENT "vec3 v = normalize(vec3(vertex_view));\n"
+            << INDENT "vec3 n = normalize(gl_NormalMatrix * gl_Normal);\n"
+            << INDENT "vec3 r = reflect(v, n);\n"
+            << INDENT "float m = 2.0 * sqrt(r.x*r.x + r.y*r.y + (r.z+1.0)*(r.z+1.0));\n"
+            << INDENT TEX_COORD << unit << ".s = r.x/m + 0.5;\n"
+            << INDENT TEX_COORD << unit << ".t = r.y/m + 0.5;\n"
+            << INDENT "}\n";
+        break;
+
+    default:
+        buf.vertBody 
+            << INDENT << TEX_COORD << unit << " = gl_MultiTexCoord" << unit << ";\n";
+        break;
+    }
+
+    return true;
+}
+
+bool
+ShaderGenerator::apply(osg::Texture1D* tex, int unit, GenBuffers& buf)
+{
+    buf.fragHead << "uniform sampler1D " SAMPLER << unit << ";\n";
+    buf.fragBody << INDENT "texel = texture1D(" SAMPLER << unit << ", " TEX_COORD << unit << ".x);\n";
+    buf.stateSet->getOrCreateUniform( Stringify() << SAMPLER << unit, osg::Uniform::SAMPLER_1D )->set( unit );
+
+    return true;
+}
+
+bool
+ShaderGenerator::apply(osg::Texture2D* tex, int unit, GenBuffers& buf)
+{
+    buf.fragHead << "uniform sampler2D " SAMPLER << unit << ";\n";
+    buf.fragBody << INDENT "texel = texture2D(" SAMPLER << unit << ", " TEX_COORD << unit << ".xy);\n";
+    buf.stateSet->getOrCreateUniform( Stringify() << SAMPLER << unit, osg::Uniform::SAMPLER_2D )->set( unit );
+
+    return true;
+}
+
+bool
+ShaderGenerator::apply(osg::Texture3D* tex, int unit, GenBuffers& buf)
+{
+    buf.fragHead << "uniform sampler3D " SAMPLER << unit << ";\n";
+    buf.fragBody << INDENT "texel = texture3D(" SAMPLER << unit << ", " TEX_COORD << unit << ".xyz);\n";
+    buf.stateSet->getOrCreateUniform( Stringify() << SAMPLER << unit, osg::Uniform::SAMPLER_3D )->set( unit );
+
+    return true;
+}
+
+bool
+ShaderGenerator::apply(osg::TextureRectangle* tex, int unit, GenBuffers& buf)
+{
+    buf.vertHead << "#extension GL_ARB_texture_rectangle : enable\n";
+
+    buf.fragHead << "uniform sampler2DRect " SAMPLER << unit << ";\n";
+    buf.fragBody << INDENT "texel = texture2DRect(" SAMPLER << unit << ", " TEX_COORD << unit << ".xy);\n";
+    buf.stateSet->getOrCreateUniform( Stringify() << SAMPLER << unit, osg::Uniform::SAMPLER_2D )->set( unit );
+
+    return true;
 }

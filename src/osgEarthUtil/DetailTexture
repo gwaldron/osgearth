@@ -53,6 +53,10 @@ namespace osgEarth { namespace Util
         void setIntensity( float value );
         float getIntensity() const { return _intensity.get(); }
 
+        /** Sets the scale factor for the texture (1..) */
+        void setScale( float value );
+        float getScale() const { return _scale.get(); }
+
     public: // TerrainEffect interface
 
         void onInstall(TerrainEngineNode* engine);
@@ -71,9 +75,11 @@ namespace osgEarth { namespace Util
         optional<float>       _intensity;
         optional<unsigned>    _startLOD;
         optional<std::string> _maskLayerName;
+        optional<float>       _scale;
 
         osg::ref_ptr<osg::Uniform>        _intensityUniform;
         osg::ref_ptr<osg::Uniform>        _startLODUniform;
+        osg::ref_ptr<osg::Uniform>        _scaleUniform;
         osg::ref_ptr<osg::Uniform>        _samplerUniform;
         osg::ref_ptr<osg::Uniform>        _maskUniform;
         osg::ref_ptr<osg::Texture2DArray> _texture;

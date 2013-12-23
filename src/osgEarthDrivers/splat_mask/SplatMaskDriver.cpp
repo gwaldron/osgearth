@@ -20,15 +20,16 @@
 #include <osgEarth/TileSource>
 #include <osgEarth/Registry>
 #include <osgEarth/URI>
+#include <osgEarth/ImageLayer>
 #include <osgEarth/ImageUtils>
+
+#include <osgEarthDrivers/gdal/GDALOptions>
+using namespace osgEarth::Drivers;
 
 #include <osg/Notify>
 #include <osgDB/FileNameUtils>
 #include <osgDB/FileUtils>
 #include <osgDB/Registry>
-#include <osgDB/ReadFile>
-#include <osgDB/WriteFile>
-#include <sstream>
 
 #include <noise/noise.h>
 
@@ -58,6 +59,16 @@ public: // TileSource interface
         CachePolicy::NO_CACHE.apply( _dbOptions.get() );
         setProfile( osgEarth::Registry::instance()->getGlobalGeodeticProfile() );
 
+        GDALOptions gdal;
+        gdal.url() = "E:/data/esa/GLOBCOVER_L4_200901_200912_V2.3.ecw";
+        gdal.interpolation() = osgEarth::INTERP_NEAREST;
+        gdal.bilinearReprojection() = false;
+        ImageLayerOptions classOptions("splat_classification", gdal);
+        classOptions.minFilter() = osg::Texture::NEAREST;
+        classOptions.magFilter() = osg::Texture::NEAREST;
+        classOptions.cachePolicy() = CachePolicy::NO_CACHE;
+        _classLayer = new ImageLayer(classOptions);
+
         return STATUS_OK;
     }
     
@@ -70,6 +81,12 @@ public: // TileSource interface
     osg::Image* createImage(const TileKey&        key,
                             ProgressCallback*     progress)
     {
+        GeoImage classTable = _classLayer->createImage(key, progress, true);
+        if ( !classTable.valid() )
+            return 0L;
+
+        ImageUtils::PixelReader classify(classTable.getImage());
+
         module::Perlin noise;
         noise.SetFrequency( 1.0e-3 );
         noise.SetOctaveCount( 10 );
@@ -103,7 +120,30 @@ public: // TileSource interface
                 float b = n >=  0.0 && n < 0.5 ? 1.0f : 0.0f;
                 float a = n >=  0.5            ? 1.0f : 0.0f;
 
+                float rs = (float)s / (float)image->s();
+                float rt = (float)t / (float)image->t();
+
+                osg::Vec4f classification = classify(rs, rt);
+
+                int cv = (int)(255.0f * classification.r());
+
+                //float r, g, b, a;
+                if ( /*(cv >= 160 && cv <= 180) ||*/ cv == 210) {
+                    r = 0.0f, g = 0.0f, b = 0.0f, a = 1.0f; // water
+                }
+                else if ( cv < 160 ) {
+                    r = 0.0f, g = 0.0f, b = 1.0f, a = 0.0f; // grass
+                }
+                else if ( cv >= 150 && cv <= 200 ) {
+                    r = 0.0f, g = 1.0f, b = 0.0f, a = 0.0f; // dirt
+                }
+                else {
+                    r = 1.0f, g = 0.0f, b = 0.0f, a = 0.0f; // stone
+                }
+
+
                 write(osg::Vec4f(r,g,b,a), s, t);
+                //write(classification, s, t);
             }
         }
 
@@ -113,6 +153,7 @@ public: // TileSource interface
 
 
 private:
+    osg::ref_ptr<ImageLayer>     _classLayer;
     SplatMaskOptions             _options;
     osg::ref_ptr<osgDB::Options> _dbOptions;
 };

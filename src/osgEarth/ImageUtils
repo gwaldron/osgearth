@@ -273,6 +273,20 @@ namespace osgEarth
                 return (*_reader)(this, s, t, r, m);
             }
 
+            /** Reads a color from the image */
+            osg::Vec4 operator()(unsigned s, unsigned t, unsigned r=0, int m=0) const {
+                return (*_reader)(this, s, t, r, m);
+            }
+
+            /** Reads a color from the image by unit coords [0..1] */
+            osg::Vec4 operator()(float s, float t, int r=0, int m=0) const {
+                return (*_reader)(this,
+                    (int)(s * (float)(_image->s()-1)),
+                    (int)(t * (float)(_image->t()-1)),
+                    (int)(r * (float)(_image->r()-1)),
+                    m);
+            }
+
             // internals:
             const unsigned char* data(int s=0, int t=0, int r=0, int m=0) const {
                 return m == 0 ?

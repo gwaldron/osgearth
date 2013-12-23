@@ -21,6 +21,7 @@
 #include <osgEarth/Capabilities>
 #include <osgEarth/VirtualProgram>
 #include <osgEarth/TerrainEngineNode>
+#include <osgEarth/ImageUtils>
 
 #define LC "[DetailTexture] "
 
@@ -37,6 +38,7 @@ namespace
         "varying vec4 oe_layer_tilec; \n"
         "uniform float oe_detail_L0; \n"
         "varying vec2 oe_detail_tc; \n"
+        "uniform float oe_detail_scale; \n"
 
         "int oe_detail_ipow(in int x, in int y) { \n"
         "   int r = 1; \n"
@@ -59,7 +61,8 @@ namespace
         "    vec2 offset = (oe_tile_key.xy-b)/(c-b); \n"
         "    vec2 scale = vec2(1.0/factor); \n"
 
-        "    oe_detail_tc = 16.0 * (oe_layer_tilec.st * scale) + offset; \n"
+        "    float tscale = pow(2.0, oe_detail_scale); \n"
+        "    oe_detail_tc = tscale * (oe_layer_tilec.st * scale) + offset; \n"
         "} \n";
 
     const char* fs =
@@ -86,7 +89,9 @@ namespace
 
         "        vec4 m = texture2D(oe_detail_mask, oe_layer_tilec.st); \n"
 
-        "        color = mix(color, t0*m.r + t1*m.g + t2*m.b + t3*m.a, oe_detail_intensity);\n"
+        "        vec4 detail = t0*m[0] + t1*m[1] + t2*m[2] + t3*m[3];\n"
+        //"        vec3 luminosity = vec3(detail.r*0.2125 + detail.g*0.7154 + detail.b*0.0721);\n"
+        "        color = mix(color, detail, oe_detail_intensity);\n"
         "    } \n"
         "} \n";
 }
@@ -95,7 +100,8 @@ namespace
 DetailTexture::DetailTexture() :
 TerrainEffect(),
 _startLOD    ( 10 ),
-_intensity   ( 1.0f )
+_intensity   ( 1.0f ),
+_scale       ( 1.0f )
 {
     init();
 }
@@ -103,7 +109,8 @@ _intensity   ( 1.0f )
 DetailTexture::DetailTexture(const Config& conf, const Map* map) :
 TerrainEffect(),
 _startLOD    ( 10 ),
-_intensity   ( 1.0f )
+_intensity   ( 1.0f ),
+_scale       ( 1.0f )
 {
     mergeConfig(conf);
 
@@ -128,18 +135,31 @@ DetailTexture::init()
     _intensityUniform = new osg::Uniform(osg::Uniform::FLOAT, "oe_detail_intensity");
     _intensityUniform->set( _intensity.get() );
 
+    _scaleUniform = new osg::Uniform(osg::Uniform::FLOAT, "oe_detail_scale");
+    _scaleUniform->set( _scale.get() );
+
+
     _texture = new osg::Texture2DArray();
-    _texture->setTextureSize(320, 320, 4);
+    _texture->setTextureSize(1024, 1024, 4);
     _texture->setWrap( osg::Texture::WRAP_S, osg::Texture::REPEAT );
     _texture->setWrap( osg::Texture::WRAP_T, osg::Texture::REPEAT );
     _texture->setFilter( osg::Texture::MIN_FILTER, osg::Texture::LINEAR_MIPMAP_LINEAR );
     _texture->setFilter( osg::Texture::MAG_FILTER, osg::Texture::LINEAR );
     _texture->setResizeNonPowerOfTwoHint( false );
 
-    _texture->setImage(0, osgDB::readImageFile("E:/data/textures/seamless/tarmac.jpg"));
-    _texture->setImage(1, osgDB::readImageFile("E:/data/textures/seamless/dirt2.jpg"));
-    _texture->setImage(2, osgDB::readImageFile("E:/data/textures/seamless/green-grass.jpg"));
-    _texture->setImage(3, osgDB::readImageFile("E:/data/textures/seamless/stone.jpg"));
+    static char* textures[] = {
+        "E:/data/textures/seamless/dirt5.jpg",
+        "E:/data/textures/seamless/rock.jpg",
+        "E:/data/textures/seamless/test.jpg", //grass1.jpg",
+        "E:/data/textures/seamless/water.jpg"
+    };
+
+    for(unsigned i=0; i<4; ++i) {
+        osg::ref_ptr<osg::Image> image = osgDB::readImageFile(textures[i]);
+        osg::ref_ptr<osg::Image> imageResized;
+        ImageUtils::resizeImage( image.get(), 1024, 1024, imageResized );
+        _texture->setImage(i, imageResized.get());
+    }
 }
 
 
@@ -159,6 +179,14 @@ DetailTexture::setIntensity(float intensity)
 {
     _intensity = osg::clampBetween( intensity, 0.0f, 1.0f );
     _intensityUniform->set( _intensity.get() );
+}
+
+
+void
+DetailTexture::setScale(float scale)
+{
+    _scale = osg::clampAbove( scale, 1.0f );
+    _scaleUniform->set( _scale.get() );
 }
 
 
@@ -190,6 +218,7 @@ DetailTexture::onInstall(TerrainEngineNode* engine)
 
         stateset->addUniform( _startLODUniform.get() );
         stateset->addUniform( _intensityUniform.get() );
+        stateset->addUniform( _scaleUniform.get() );
 
         VirtualProgram* vp = VirtualProgram::getOrCreate(stateset);
         vp->setFunction( "oe_detail_vertex",   vs, ShaderComp::LOCATION_VERTEX_MODEL );
@@ -206,6 +235,7 @@ DetailTexture::onUninstall(TerrainEngineNode* engine)
     {
         stateset->removeUniform( _startLODUniform.get() );
         stateset->removeUniform( _intensityUniform.get() );
+        stateset->removeUniform( _scaleUniform.get() );
 
         if ( _samplerUniform.valid() )
         {
@@ -240,6 +270,7 @@ DetailTexture::mergeConfig(const Config& conf)
 {
     conf.getIfSet( "start_lod",  _startLOD );
     conf.getIfSet( "intensity",  _intensity );
+    conf.getIfSet( "scale",      _scale );
     conf.getIfSet( "mask_layer", _maskLayerName );
 }
 
@@ -254,6 +285,7 @@ DetailTexture::getConfig() const
     Config conf("detail_texture");
     conf.addIfSet( "start_lod",  _startLOD );
     conf.addIfSet( "intensity",  _intensity );
+    conf.addIfSet( "scale",      _scale );
     conf.addIfSet( "mask_layer", layername );
 
     return conf;

@@ -521,10 +521,11 @@ ShaderGenerator::processGeometry( const osg::StateSet* ss, osg::ref_ptr<osg::Sta
 
     // prepare to generate:
     osg::ref_ptr<osg::StateSet> new_stateset = ss ? osg::clone(ss, osg::CopyOp::SHALLOW_COPY) : new osg::StateSet();
-    VirtualProgram* vp = VirtualProgram::cloneOrCreate(ss, new_stateset);
+    osg::ref_ptr<VirtualProgram> vp = VirtualProgram::cloneOrCreate(ss, new_stateset);
     bool need_new_stateset = false;
     
-    if ( vp->referenceCount() == 1 )
+    // give the VP a name if it needs one.
+    if ( vp->getName().empty() )
         vp->setName( _name );
 
     // Check whether the lighting state has changed and install a mode uniform.
@@ -575,9 +576,6 @@ ShaderGenerator::processGeometry( const osg::StateSet* ss, osg::ref_ptr<osg::Sta
                 // made it this far, new stateset required.
                 need_new_stateset = true;
 
-                osg::TexEnv* texenv = dynamic_cast<osg::TexEnv*>(state->getTextureAttribute(unit, osg::StateAttribute::TEXENV));
-                apply( texenv, unit, buf );
-
                 buf.vertHead << "varying " MEDIUMP "vec4 " TEX_COORD << unit << ";\n";
                 buf.fragHead << "varying " MEDIUMP "vec4 " TEX_COORD << unit << ";\n";
 
@@ -600,6 +598,9 @@ ShaderGenerator::processGeometry( const osg::StateSet* ss, osg::ref_ptr<osg::Sta
                 {
                     apply(static_cast<osg::TextureRectangle*>(tex), unit, buf);
                 }
+
+                osg::TexEnv* texenv = dynamic_cast<osg::TexEnv*>(state->getTextureAttribute(unit, osg::StateAttribute::TEXENV));
+                apply( texenv, unit, buf );
             }
         }
 

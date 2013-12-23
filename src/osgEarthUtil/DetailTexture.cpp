@@ -33,12 +33,12 @@ namespace
         "#version " GLSL_VERSION_STR "\n"
         GLSL_DEFAULT_PRECISION_FLOAT "\n"
 
-        "uniform vec4  oe_tile_key; \n"
-        "varying vec4  oe_layer_tilec; \n"
-        "uniform float oe_dtex_L0; \n"
-        "varying vec2  oe_dtex_tc; \n"
+        "uniform vec4 oe_tile_key; \n"
+        "varying vec4 oe_layer_tilec; \n"
+        "uniform float oe_detail_L0; \n"
+        "varying vec2 oe_detail_tc; \n"
 
-        "int oe_dtex_ipow(in int x, in int y) { \n"
+        "int oe_detail_ipow(in int x, in int y) { \n"
         "   int r = 1; \n"
         "   while( y > 0 ) { \n"
         "       r *= x; \n"
@@ -47,10 +47,10 @@ namespace
         "   return r; \n"
         "}\n"
 
-        "void oe_dtex_vertex(inout vec4 VertexMODEL) \n"
+        "void oe_detail_vertex(inout vec4 VertexMODEL) \n"
         "{ \n"
-        "    float dL = oe_tile_key.z - oe_dtex_L0; \n"
-        "    float twoPowDeltaL = float(oe_dtex_ipow(2, int(abs(dL)))); \n"
+        "    float dL = oe_tile_key.z - oe_detail_L0; \n"
+        "    float twoPowDeltaL = float(oe_detail_ipow(2, int(abs(dL)))); \n"
         "    float factor = dL >= 0.0 ? twoPowDeltaL : 1.0/twoPowDeltaL; \n"
 
         "    vec2 a = floor(oe_tile_key.xy / factor); \n"
@@ -59,38 +59,34 @@ namespace
         "    vec2 offset = (oe_tile_key.xy-b)/(c-b); \n"
         "    vec2 scale = vec2(1.0/factor); \n"
 
-        "    oe_dtex_tc = (oe_layer_tilec.st * scale) + offset; \n"
+        "    oe_detail_tc = 16.0 * (oe_layer_tilec.st * scale) + offset; \n"
         "} \n";
 
     const char* fs =
         "#version " GLSL_VERSION_STR "\n"
+        "#extension GL_EXT_texture_array : enable\n"
         GLSL_DEFAULT_PRECISION_FLOAT "\n"
 
-        "uniform vec4      oe_tile_key; \n"
-        "uniform float     oe_dtex_L0; \n"
-        "uniform sampler2D oe_dtex_tex; \n"
-        "uniform float     oe_dtex_intensity; \n"
-        "varying vec2      oe_dtex_tc; \n"
+        "uniform vec4 oe_tile_key; \n"
+        "uniform float oe_detail_L0; \n"
+        "uniform sampler2D oe_detail_mask; \n"
+        "uniform sampler2DArray oe_detail_tex; \n"
+        "uniform float oe_detail_intensity; \n"
+        "varying vec2 oe_detail_tc; \n"
+        "varying vec4 oe_layer_tilec; \n"
 
-        "void oe_dtex_fragment(inout vec4 color) \n"
+        "void oe_detail_fragment(inout vec4 color) \n"
         "{ \n"
-        "    if ( oe_tile_key.z >= oe_dtex_L0 ) \n"
+        "    if ( oe_tile_key.z >= oe_detail_L0 ) \n"
         "    { \n"
-        "        vec4 texel = texture2D(oe_dtex_tex, oe_dtex_tc); \n"
-        "        if ( oe_tile_key.z >= oe_dtex_L0+3.0 ) \n"
-        "        { \n"
-        "            texel += texture2D(oe_dtex_tex, oe_dtex_tc*8.0)-0.5; \n"
-        "            if ( oe_tile_key.z >= oe_dtex_L0+6.0 ) \n"
-        "            { \n"
-        "                texel += texture2D(oe_dtex_tex, oe_dtex_tc*32.0)-0.5; \n"
-        "                if ( oe_tile_key.z >= oe_dtex_L0+9.0 ) \n"
-        "                { \n"
-        "                    texel += texture2D(oe_dtex_tex, oe_dtex_tc*64.0)-0.5; \n"
-        "                } \n"
-        "            } \n"
-        "        } \n"
-        "        texel.rgb -= 0.5; \n"
-        "        color.rgb = clamp( color.rgb + (texel.rgb*oe_dtex_intensity), 0.0, 1.0 ); \n"
+        "        vec4 t0 = texture2DArray(oe_detail_tex, vec3(oe_detail_tc,0)); \n"
+        "        vec4 t1 = texture2DArray(oe_detail_tex, vec3(oe_detail_tc,1)); \n"
+        "        vec4 t2 = texture2DArray(oe_detail_tex, vec3(oe_detail_tc,2)); \n"
+        "        vec4 t3 = texture2DArray(oe_detail_tex, vec3(oe_detail_tc,3)); \n"
+
+        "        vec4 m = texture2D(oe_detail_mask, oe_layer_tilec.st); \n"
+
+        "        color = mix(color, t0*m.r + t1*m.g + t2*m.b + t3*m.a, oe_detail_intensity);\n"
         "    } \n"
         "} \n";
 }
@@ -98,18 +94,24 @@ namespace
 
 DetailTexture::DetailTexture() :
 TerrainEffect(),
-_startLOD    ( 8 ),
-_intensity   ( 0.25f )
+_startLOD    ( 10 ),
+_intensity   ( 1.0f )
 {
     init();
 }
 
-DetailTexture::DetailTexture(const Config& conf) :
+DetailTexture::DetailTexture(const Config& conf, const Map* map) :
 TerrainEffect(),
-_startLOD    ( 8 ),
-_intensity   ( 0.25f )
+_startLOD    ( 10 ),
+_intensity   ( 1.0f )
 {
     mergeConfig(conf);
+
+    if ( map && _maskLayerName.isSet() )
+    {
+        _maskLayer = map->getImageLayerByName(*_maskLayerName);
+    }
+
     init();
 }
 
@@ -120,25 +122,24 @@ DetailTexture::init()
     // negative means unset:
     _unit = -1;
 
-    _startLODUniform   = new osg::Uniform(osg::Uniform::FLOAT, "oe_dtex_L0");
+    _startLODUniform   = new osg::Uniform(osg::Uniform::FLOAT, "oe_detail_L0");
     _startLODUniform->set( (float)_startLOD.get() );
 
-    _intensityUniform = new osg::Uniform(osg::Uniform::FLOAT, "oe_dtex_intensity");
+    _intensityUniform = new osg::Uniform(osg::Uniform::FLOAT, "oe_detail_intensity");
     _intensityUniform->set( _intensity.get() );
-    
-    _texture = new osg::Texture2D();
+
+    _texture = new osg::Texture2DArray();
+    _texture->setTextureSize(320, 320, 4);
     _texture->setWrap( osg::Texture::WRAP_S, osg::Texture::REPEAT );
     _texture->setWrap( osg::Texture::WRAP_T, osg::Texture::REPEAT );
-    _texture->setFilter( osg::Texture::MIN_FILTER, osg::Texture::LINEAR );
+    _texture->setFilter( osg::Texture::MIN_FILTER, osg::Texture::LINEAR_MIPMAP_LINEAR );
     _texture->setFilter( osg::Texture::MAG_FILTER, osg::Texture::LINEAR );
     _texture->setResizeNonPowerOfTwoHint( false );
 
-    if ( _imageURI.isSet() )
-    {
-        osg::Image* image = _imageURI->getImage();
-        if ( image )
-            _texture->setImage( image );
-    }
+    _texture->setImage(0, osgDB::readImageFile("E:/data/textures/seamless/tarmac.jpg"));
+    _texture->setImage(1, osgDB::readImageFile("E:/data/textures/seamless/dirt2.jpg"));
+    _texture->setImage(2, osgDB::readImageFile("E:/data/textures/seamless/green-grass.jpg"));
+    _texture->setImage(3, osgDB::readImageFile("E:/data/textures/seamless/stone.jpg"));
 }
 
 
@@ -162,16 +163,6 @@ DetailTexture::setIntensity(float intensity)
 
 
 void
-DetailTexture::setImage(const osg::Image* image)
-{
-    if ( image )
-    {
-        _texture->setImage( const_cast<osg::Image*>(image) );
-    }
-}
-
-
-void
 DetailTexture::onInstall(TerrainEngineNode* engine)
 {
     if ( engine )
@@ -180,17 +171,29 @@ DetailTexture::onInstall(TerrainEngineNode* engine)
 
         if ( engine->getTextureCompositor()->reserveTextureImageUnit(_unit) )
         {
-            _samplerUniform = stateset->getOrCreateUniform( "oe_dtex_tex", osg::Uniform::SAMPLER_2D );
+            _samplerUniform = stateset->getOrCreateUniform( "oe_detail_tex", osg::Uniform::SAMPLER_2D_ARRAY );
             _samplerUniform->set( _unit );
             stateset->setTextureAttributeAndModes( _unit, _texture.get() );
+        }
+
+        if ( _maskLayer.valid() )
+        {
+            int unit = *_maskLayer->shareImageUnit();
+            _maskUniform = stateset->getOrCreateUniform("oe_detail_mask", osg::Uniform::SAMPLER_2D);
+            _maskUniform->set(unit);
+            OE_NOTICE << LC << "Installed layer " << _maskLayer->getName() << " as texture mask on unit " << unit << std::endl;
+        }
+        else
+        {
+            exit(-1);
         }
 
         stateset->addUniform( _startLODUniform.get() );
         stateset->addUniform( _intensityUniform.get() );
 
         VirtualProgram* vp = VirtualProgram::getOrCreate(stateset);
-        vp->setFunction( "oe_dtex_vertex",   vs, ShaderComp::LOCATION_VERTEX_MODEL );
-        vp->setFunction( "oe_dtex_fragment", fs, ShaderComp::LOCATION_FRAGMENT_COLORING );
+        vp->setFunction( "oe_detail_vertex",   vs, ShaderComp::LOCATION_VERTEX_MODEL );
+        vp->setFunction( "oe_detail_fragment", fs, ShaderComp::LOCATION_FRAGMENT_COLORING );
     }
 }
 
@@ -215,8 +218,8 @@ DetailTexture::onUninstall(TerrainEngineNode* engine)
         VirtualProgram* vp = VirtualProgram::get(stateset);
         if ( vp )
         {
-            vp->removeShader( "oe_dtex_vertex" );
-            vp->removeShader( "oe_dtex_fragment" );
+            vp->removeShader( "oe_detail_vertex" );
+            vp->removeShader( "oe_detail_fragment" );
         }
     }
 
@@ -235,18 +238,23 @@ DetailTexture::onUninstall(TerrainEngineNode* engine)
 void
 DetailTexture::mergeConfig(const Config& conf)
 {
-    conf.getIfSet( "start_lod", _startLOD );
-    conf.getIfSet( "intensity", _intensity );
-    conf.getIfSet( "image",     _imageURI );
+    conf.getIfSet( "start_lod",  _startLOD );
+    conf.getIfSet( "intensity",  _intensity );
+    conf.getIfSet( "mask_layer", _maskLayerName );
 }
 
 Config
 DetailTexture::getConfig() const
 {
+    optional<std::string> layername;
+
+    if ( _maskLayer.valid() && !_maskLayer->getName().empty() )
+        layername = _maskLayer->getName();
+
     Config conf("detail_texture");
-    conf.addIfSet( "start_lod", _startLOD );
-    conf.addIfSet( "intensity", _intensity );
-    conf.addIfSet( "image",     _imageURI );
+    conf.addIfSet( "start_lod",  _startLOD );
+    conf.addIfSet( "intensity",  _intensity );
+    conf.addIfSet( "mask_layer", layername );
 
     return conf;
 }

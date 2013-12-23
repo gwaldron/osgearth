@@ -66,7 +66,7 @@ struct App
         contourMap = new ContourMap();
 
         detailTexture = new DetailTexture();
-        detailTexture->setImage( osgDB::readImageFile("../data/noise3.png") );
+        //detailTexture->setImage( osgDB::readImageFile("../data/noise3.png") );
 
         lodBlending = new LODBlending();
         normalMap = new NormalMap();

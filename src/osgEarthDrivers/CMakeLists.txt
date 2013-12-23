@@ -94,3 +94,6 @@ ADD_SUBDIRECTORY(vdatum_egm2008)
 
 # temporary
 ADD_SUBDIRECTORY(template_matclass)
+
+ADD_SUBDIRECTORY(splat_mask)
+

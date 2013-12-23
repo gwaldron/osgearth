@@ -21,10 +21,13 @@
 
 #include <osgEarthUtil/Common>
 #include <osgEarth/TerrainEffect>
+#include <osgEarth/ImageLayer>
 #include <osgEarth/URI>
 #include <osg/Image>
 #include <osg/Uniform>
-#include <osg/Texture2D>
+#include <osg/Texture2DArray>
+
+using namespace osgEarth;
 
 namespace osgEarth { namespace Util
 {
@@ -37,6 +40,11 @@ namespace osgEarth { namespace Util
         /** construct a new detail texture controller */
         DetailTexture();
 
+        /** Sets the image layer that generates the normal map. 
+            You must call this prior to installing the effect. */
+        void setMaskLayer(ImageLayer* layer) { _maskLayer = layer; }
+        ImageLayer* getMaskLayer() { return _maskLayer.get(); }
+
         /** Sets the LOD at which to start detailing */
         void setStartLOD( unsigned lod );
         unsigned getStartLOD() const { return _startLOD.get(); }
@@ -45,10 +53,6 @@ namespace osgEarth { namespace Util
         void setIntensity( float value );
         float getIntensity() const { return _intensity.get(); }
 
-        /** Sets the image to use as the detail texture */
-        void setImage( const osg::Image* image );
-        const osg::Image* getImage() const { return _texture->getImage(); }
-
     public: // TerrainEffect interface
 
         void onInstall(TerrainEngineNode* engine);
@@ -56,7 +60,7 @@ namespace osgEarth { namespace Util
 
     public: // serialization
 
-        DetailTexture(const Config& conf);
+        DetailTexture(const Config& conf, const Map* map);
         void mergeConfig(const Config& conf);
         virtual Config getConfig() const;
 
@@ -64,15 +68,17 @@ namespace osgEarth { namespace Util
         virtual ~DetailTexture() { }
         void init();
 
-        optional<float>    _intensity;
-        optional<unsigned> _startLOD;
-        optional<URI>      _imageURI;
+        optional<float>       _intensity;
+        optional<unsigned>    _startLOD;
+        optional<std::string> _maskLayerName;
 
-        osg::ref_ptr<osg::Uniform>   _intensityUniform;
-        osg::ref_ptr<osg::Uniform>   _startLODUniform;
-        osg::ref_ptr<osg::Uniform>   _samplerUniform;
-        osg::ref_ptr<osg::Texture2D> _texture;
-        int                          _unit;
+        osg::ref_ptr<osg::Uniform>        _intensityUniform;
+        osg::ref_ptr<osg::Uniform>        _startLODUniform;
+        osg::ref_ptr<osg::Uniform>        _samplerUniform;
+        osg::ref_ptr<osg::Uniform>        _maskUniform;
+        osg::ref_ptr<osg::Texture2DArray> _texture;
+        int                               _unit;
+        osg::observer_ptr<ImageLayer>     _maskLayer;
     };
 
 } } // namespace osgEarth::Util

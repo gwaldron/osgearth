@@ -20,8 +20,9 @@
 #include <osgEarth/TileSource>
 #include <osgEarth/Registry>
 #include <osgEarth/URI>
-#include <osgEarth/ImageLayer>
 #include <osgEarth/ImageUtils>
+
+#include <osgEarth/ElevationLayer>
 
 #include <osgEarthDrivers/gdal/GDALOptions>
 using namespace osgEarth::Drivers;
@@ -60,14 +61,13 @@ public: // TileSource interface
         setProfile( osgEarth::Registry::instance()->getGlobalGeodeticProfile() );
 
         GDALOptions gdal;
-        gdal.url() = "E:/data/esa/GLOBCOVER_L4_200901_200912_V2.3.ecw";
+        gdal.url() = "E:/data/esa/GLOBCOVER_L4_200901_200912_V2.3_tiled.tif";
         gdal.interpolation() = osgEarth::INTERP_NEAREST;
         gdal.bilinearReprojection() = false;
-        ImageLayerOptions classOptions("splat_classification", gdal);
-        classOptions.minFilter() = osg::Texture::NEAREST;
-        classOptions.magFilter() = osg::Texture::NEAREST;
+        gdal.tileSize() = 5;
+        ElevationLayerOptions classOptions("splat", gdal);
         classOptions.cachePolicy() = CachePolicy::NO_CACHE;
-        _classLayer = new ImageLayer(classOptions);
+        _classLayer = new ElevationLayer(classOptions);
 
         return STATUS_OK;
     }
@@ -81,11 +81,20 @@ public: // TileSource interface
     osg::Image* createImage(const TileKey&        key,
                             ProgressCallback*     progress)
     {
-        GeoImage classTable = _classLayer->createImage(key, progress, true);
-        if ( !classTable.valid() )
-            return 0L;
+        TileKey hfkey( key );
+        GeoHeightField classTable;
+        while( !classTable.valid() && hfkey.valid() )
+        {
+            classTable = _classLayer->createHeightField(hfkey, progress);
+            if ( !classTable.valid() )
+                hfkey = hfkey.createParentKey();
+        }
 
-        ImageUtils::PixelReader classify(classTable.getImage());
+        if ( !classTable.valid() )
+        {
+            OE_WARN << "no classification. sorry." << std::endl;
+            return 0L;
+        }
 
         module::Perlin noise;
         noise.SetFrequency( 1.0e-3 );
@@ -123,27 +132,40 @@ public: // TileSource interface
                 float rs = (float)s / (float)image->s();
                 float rt = (float)t / (float)image->t();
 
-                osg::Vec4f classification = classify(rs, rt);
+                float elevation = 0.0f;
+                
+                classTable.getElevation(
+                    key.getExtent().getSRS(),
+                    lon, lat, osgEarth::INTERP_NEAREST,
+                    key.getExtent().getSRS(),
+                    elevation);
 
-                int cv = (int)(255.0f * classification.r());
+                int cv = (int)elevation;
+                float contrast = *_options.contrast();
 
-                //float r, g, b, a;
-                if ( /*(cv >= 160 && cv <= 180) ||*/ cv == 210) {
-                    r = 0.0f, g = 0.0f, b = 0.0f, a = 1.0f; // water
+                if ( cv > 220 ) {
+                    r = g = b = a = 0.0f; // nodata
                 }
-                else if ( cv < 160 ) {
-                    r = 0.0f, g = 0.0f, b = 1.0f, a = 0.0f; // grass
+                else if ( cv == 210 ) {
+                    a += contrast;
                 }
-                else if ( cv >= 150 && cv <= 200 ) {
-                    r = 0.0f, g = 1.0f, b = 0.0f, a = 0.0f; // dirt
+                else if ( cv < 130 ) {
+                    b += contrast;
+                    a = 0.0f;
+                }
+                else if ( cv >= 130 && cv <= 200 ) {
+                    g += contrast;
+                    a = 0.0f;
                 }
                 else {
-                    r = 1.0f, g = 0.0f, b = 0.0f, a = 0.0f; // stone
+                    r += contrast;
+                    a = 0.0f;
                 }
 
+                osg::Vec4f value(r,g,b,a);
+                value /= r+g+b+a;
 
-                write(osg::Vec4f(r,g,b,a), s, t);
-                //write(classification, s, t);
+                write(value, s, t);
             }
         }
 
@@ -153,7 +175,7 @@ public: // TileSource interface
 
 
 private:
-    osg::ref_ptr<ImageLayer>     _classLayer;
+    osg::ref_ptr<ElevationLayer> _classLayer;
     SplatMaskOptions             _options;
     osg::ref_ptr<osgDB::Options> _dbOptions;
 };

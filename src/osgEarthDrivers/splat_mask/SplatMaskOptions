@@ -36,27 +36,35 @@ namespace osgEarth { namespace Drivers
             TileSourceOptions( opt )
         {
             setDriver( "splat_mask" );
+            _contrast.init( 2.0f );
             fromConfig( _conf );
         }
 
         /** dtor */
         virtual ~SplatMaskOptions() { }
 
+        optional<float> contrast() { return _contrast; }
+        const optional<float> contrast() const { return _contrast; }
+
     public:
         Config getConfig() const {
             Config conf = TileSourceOptions::getConfig();
+            conf.addIfSet("contrast", _contrast);
             return conf;
         }
 
     protected:
         void mergeConfig( const Config& conf ) {
             TileSourceOptions::mergeConfig( conf );
+            conf.getIfSet("contrast", _contrast);
             fromConfig( conf );
         }
 
     private:
         void fromConfig( const Config& conf ) {
         }
+
+        optional<float> _contrast;
     };
 
 } } // namespace osgEarth::Drivers

@@ -62,6 +62,10 @@ namespace osgEarth { namespace Util
         void setScale( float value );
         float getScale() const { return _scale.get(); }
 
+        /** Sets the number of detail octaves */
+        void setNumOctaves( unsigned value );
+        float getNumOctaves() const { return _octaves.get(); }
+
     public: // TerrainEffect interface
 
         void onInstall(TerrainEngineNode* engine);
@@ -82,7 +86,13 @@ namespace osgEarth { namespace Util
         optional<std::string>    _maskLayerName;
         optional<float>          _scale;
         optional<float>          _attenuationDistance;
-        std::vector<std::string> _textures;
+        optional<unsigned>       _octaves;
+
+        struct TextureSource {
+            std::string _tag;
+            std::string _url;
+        };
+        std::vector<TextureSource> _textures;
 
         osg::ref_ptr<osg::Uniform>         _intensityUniform;
         osg::ref_ptr<osg::Uniform>         _startLODUniform;
@@ -93,7 +103,7 @@ namespace osgEarth { namespace Util
         osg::ref_ptr<osg::Texture2DArray>  _texture;
         int                                _unit;
         osg::observer_ptr<ImageLayer>      _maskLayer;
-        osg::ref_ptr<const osgDB::Options> _dbOptions;
+        osg::ref_ptr<osgDB::Options>       _dbOptions;
     };
 
 } } // namespace osgEarth::Util

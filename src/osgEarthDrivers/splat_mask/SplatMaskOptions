@@ -33,18 +33,18 @@ namespace osgEarth { namespace Drivers
     {
     public:
         SplatMaskOptions( const TileSourceOptions& opt =TileSourceOptions() ) :
-            TileSourceOptions( opt )
+            TileSourceOptions( opt ),
+            _contrast( 3.0f )
         {
             setDriver( "splat_mask" );
-            _contrast.init( 2.0f );
             fromConfig( _conf );
         }
 
         /** dtor */
         virtual ~SplatMaskOptions() { }
 
-        optional<float> contrast() { return _contrast; }
-        const optional<float> contrast() const { return _contrast; }
+        optional<float>& contrast() { return _contrast; }
+        const optional<float>& contrast() const { return _contrast; }
 
     public:
         Config getConfig() const {

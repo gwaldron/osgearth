@@ -97,7 +97,7 @@ public: // TileSource interface
         }
 
         module::Perlin noise;
-        noise.SetFrequency( 1.0e-3 );
+        noise.SetFrequency( 0.005 ); //1.0e-3 );
         noise.SetOctaveCount( 10 );
         noise.SetPersistence( 0.49 );
         noise.SetLacunarity( 3.0 );
@@ -141,13 +141,14 @@ public: // TileSource interface
                     elevation);
 
                 int cv = (int)elevation;
-                float contrast = *_options.contrast();
+                float contrast = _options.contrast().get();
 
                 if ( cv > 220 ) {
                     r = g = b = a = 0.0f; // nodata
                 }
                 else if ( cv == 210 ) {
                     a += contrast;
+                    r *= 0.1f, b *= 0.1f, g *= 0.1f;
                 }
                 else if ( cv < 130 ) {
                     b += contrast;
@@ -191,7 +192,7 @@ class SplatMaskDriver : public TileSourceDriver
 
         virtual const char* className()
         {
-            return "SplatMaks Driver";
+            return "Detail Splat Mask Driver";
         }
 
         virtual ReadResult readObject(const std::string& file_name, const Options* options) const

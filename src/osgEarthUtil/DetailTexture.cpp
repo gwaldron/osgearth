@@ -42,7 +42,7 @@ namespace
 
         "varying vec4 oe_layer_tilec; \n"
         "varying vec2 oe_detail_tc; \n"
-        "varying float oe_detail_alpha_factor; \n"
+        "varying float oe_detail_atten_factor; \n"
 
         "int oe_detail_ipow(in int x, in int y) { \n"
         "   int r = 1; \n"
@@ -69,39 +69,95 @@ namespace
         "    oe_detail_tc = tscale * ((oe_layer_tilec.st * scale) + offset); \n"
         
         "    float r = 1.0-((-VertexVIEW.z/VertexVIEW.w)/oe_detail_attenuation_distance);\n"
-        "    oe_detail_alpha_factor = clamp(r, 0.0, 1.0); \n"
+        "    oe_detail_atten_factor = clamp(r, 0.0, 1.0); \n"
         "} \n";
 
-    const char* fs =
-        "#version " GLSL_VERSION_STR "\n"
-        "#extension GL_EXT_texture_array : enable\n"
-        GLSL_DEFAULT_PRECISION_FLOAT "\n"
 
-        "uniform vec4 oe_tile_key; \n"
-        "uniform float oe_detail_L0; \n"
-        "uniform sampler2D oe_detail_mask; \n"
-        "uniform sampler2DArray oe_detail_tex; \n"
-        "uniform float oe_detail_intensity; \n"
-        "varying vec2 oe_detail_tc; \n"
-        "varying vec4 oe_layer_tilec; \n"
-        "varying float oe_detail_alpha_factor; \n"
+    std::string generateFragmentShader(unsigned numTextures, unsigned numOctaves)
+    {
+        std::stringstream buf;
 
-        "void oe_detail_fragment(inout vec4 color) \n"
-        "{ \n"
-        "    if ( oe_tile_key.z >= oe_detail_L0 ) \n"
-        "    { \n"
-        "        vec4 t0 = texture2DArray(oe_detail_tex, vec3(oe_detail_tc,0)); \n"
-        "        vec4 t1 = texture2DArray(oe_detail_tex, vec3(oe_detail_tc,1)); \n"
-        "        vec4 t2 = texture2DArray(oe_detail_tex, vec3(oe_detail_tc,2)); \n"
-        "        vec4 t3 = texture2DArray(oe_detail_tex, vec3(oe_detail_tc,3)); \n"
+        buf <<
+            "#version " GLSL_VERSION_STR "\n"
+            "#extension GL_EXT_texture_array : enable\n"
+            GLSL_DEFAULT_PRECISION_FLOAT "\n"
 
-        "        vec4 m = texture2D(oe_detail_mask, oe_layer_tilec.st); \n"
+            "uniform vec4 oe_tile_key; \n"
+            "uniform float oe_detail_L0; \n"
+            "uniform sampler2D oe_detail_mask; \n"
+            "uniform sampler2DArray oe_detail_tex; \n"
+            "uniform float oe_detail_intensity; \n"
+            "varying vec2 oe_detail_tc; \n"
+            "varying vec4 oe_layer_tilec; \n"
+            "varying float oe_detail_atten_factor; \n"
 
-        "        vec4 detail = t0*m[0] + t1*m[1] + t2*m[2] + t3*m[3];\n"
-        //"        vec3 luminosity = vec3(detail.r*0.2125 + detail.g*0.7154 + detail.b*0.0721);\n"
-        "        color = mix(color, detail, oe_detail_intensity * oe_detail_alpha_factor);\n"
-        "    } \n"
-        "} \n";
+            "void oe_detail_fragment(inout vec4 color) \n"
+            "{ \n"
+            "    if ( oe_tile_key.z >= oe_detail_L0 ) \n"
+            "    { \n"
+            //"        vec4 m = texture2D(oe_detail_mask, oe_layer_tilec.st); \n"
+            "        vec4 m = 0.25 * (\n"
+            //"                 texture2D(oe_detail_mask, oe_layer_tilec.st) + \n"
+            "                 texture2D(oe_detail_mask, oe_layer_tilec.st + vec2(-0.4,0.0)) + \n"
+            "                 texture2D(oe_detail_mask, oe_layer_tilec.st + vec2( 0.4,0.0)) + \n"
+            "                 texture2D(oe_detail_mask, oe_layer_tilec.st + vec2( 0.0,-0.4)) + \n"
+            "                 texture2D(oe_detail_mask, oe_layer_tilec.st + vec2( 0.0, 0.4))); \n"
+            "        vec4 detail = vec4(0.0); \n";
+
+        if ( numOctaves > 1 )
+        {
+            buf <<
+                "        float weight[" << numOctaves << "];\n"
+                "        float interval = 1.0/" << numOctaves << ".0;\n"
+                "        float d, w;\n"
+                "        float total = 0.0;\n"
+                    "        float a = oe_detail_atten_factor; \n"
+                    "        a = a*a*a*a*a*a*a; \n"; // weights the transitions to be close to the eyepoint
+
+            for(unsigned oct=0; oct<numOctaves; ++oct)
+            {
+                buf <<
+                    "        d = abs( (interval+(interval*" << oct << ".0)) - a);\n"
+                    "        w = (1.0-d)*(1.0-d)*(1.0-d); \n"
+                    "        total += w*w; \n"
+                    "        weight[" << oct << "] = w;\n";
+            }
+                
+            buf <<
+                "        float sqrttotal = sqrt(total);\n";
+
+            for(unsigned oct=0; oct<numOctaves; ++oct)
+            {
+                buf <<
+                    "        w = weight["<<oct<<"] / sqrttotal; \n";
+
+                unsigned ofx = 1+(5*oct); // todo: make that octave jump configurable?
+                for(unsigned i=0; i<numTextures; ++i)
+                {
+                    buf <<
+                    "        detail += w * m[" << i << "] * texture2DArray(oe_detail_tex, vec3(oe_detail_tc*" << ofx << ".0," << i << ")); \n";
+                }
+            }
+        }
+        else
+        {
+            for(unsigned i=0; i<numTextures; ++i)
+            {
+                buf <<
+                    "        detail += m[" << i << "] * texture2DArray(oe_detail_tex, vec3(oe_detail_tc," << i << ")); \n";
+            }
+        }
+
+        buf <<
+            //"        vec3 luminosity = vec3(detail.r*0.2125 + detail.g*0.7154 + detail.b*0.0721);\n"
+            "        color = mix(color, detail, oe_detail_intensity * oe_detail_atten_factor);\n"
+            "    } \n"
+            "} \n";
+
+        std::string r;
+        r = buf.str();
+        return r;
+    }
 }
 
 
@@ -110,7 +166,8 @@ TerrainEffect(),
 _startLOD    ( 10 ),
 _intensity   ( 1.0f ),
 _scale       ( 1.0f ),
-_attenuationDistance( FLT_MAX )
+_attenuationDistance( FLT_MAX ),
+_octaves     ( 1 )
 {
     init();
 }
@@ -120,7 +177,8 @@ TerrainEffect(),
 _startLOD    ( 10 ),
 _intensity   ( 1.0f ),
 _scale       ( 1.0f ),
-_attenuationDistance( FLT_MAX )
+_attenuationDistance( FLT_MAX ),
+_octaves     ( 1 )
 {
     mergeConfig(conf);
 
@@ -131,7 +189,8 @@ _attenuationDistance( FLT_MAX )
             _maskLayer = map->getImageLayerByName(*_maskLayerName);
         }
 
-        _dbOptions = map->getDBOptions();
+        _dbOptions = Registry::instance()->cloneOrCreateOptions(map->getDBOptions());
+        CachePolicy::NO_CACHE.apply( _dbOptions.get() );
     }
 
     init();
@@ -207,15 +266,20 @@ DetailTexture::onInstall(TerrainEngineNode* engine)
             _texture->setFilter( osg::Texture::MAG_FILTER, osg::Texture::LINEAR );
             _texture->setResizeNonPowerOfTwoHint( false );
 
-            for(unsigned i=0; i<4; ++i) {
-                osg::ref_ptr<osg::Image> image = osgDB::readImageFile(_textures[i]); //URI(textures[i]).getImage(_dbOptions.get());
-                //osg::ref_ptr<osg::Image> imageRGB = image.get();
-                //if ( image->getPixelFormat() != GL_RGBA || image->getDataType() != GL_UNSIGNED_BYTE )
-                //    imageRGB = ImageUtils::convertToRGBA8( image.get() );
-                osg::ref_ptr<osg::Image> imageResized; // = image.get();
-                //if ( image->s() != 1024 || image->t() != 1024 )
+            for(unsigned i=0; i<_textures.size(); ++i)
+            {
+                const TextureSource& ts = _textures[i];
+                osg::ref_ptr<osg::Image> image = URI(ts._url).getImage(_dbOptions.get());
+                if ( image->s() != 1024 || image->t() != 1024 )
+                {
+                    osg::ref_ptr<osg::Image> imageResized;
                     ImageUtils::resizeImage( image.get(), 1024, 1024, imageResized );
-                _texture->setImage(i, imageResized.get());
+                    _texture->setImage( i, imageResized.get() );
+                }
+                else
+                {
+                    _texture->setImage( i, image.get() );
+                }
             }
         }
 
@@ -245,6 +309,7 @@ DetailTexture::onInstall(TerrainEngineNode* engine)
         stateset->addUniform( _scaleUniform.get() );
         stateset->addUniform( _attenuationDistanceUniform.get() );
 
+        std::string fs = generateFragmentShader( _textures.size(), _octaves.value() );
         VirtualProgram* vp = VirtualProgram::getOrCreate(stateset);
         vp->setFunction( "oe_detail_vertex",   vs, ShaderComp::LOCATION_VERTEX_VIEW );
         vp->setFunction( "oe_detail_fragment", fs, ShaderComp::LOCATION_FRAGMENT_COLORING );
@@ -299,11 +364,14 @@ DetailTexture::mergeConfig(const Config& conf)
     conf.getIfSet( "scale",      _scale );
     conf.getIfSet( "attenuation_distance", _attenuationDistance );
     conf.getIfSet( "mask_layer", _maskLayerName );
+    conf.getIfSet( "octaves",    _octaves );
 
-    ConfigSet textures = conf.child("textures").children("url");
+    ConfigSet textures = conf.child("textures").children("texture");
     for(ConfigSet::iterator i = textures.begin(); i != textures.end(); ++i)
     {
-        _textures.push_back( i->value() );
+        _textures.push_back(TextureSource());
+        _textures.back()._tag = i->value("tag");
+        _textures.back()._url = i->value("url");
     }
 }
 
@@ -321,13 +389,16 @@ DetailTexture::getConfig() const
     conf.addIfSet( "scale",      _scale );
     conf.addIfSet( "attenuation_distance", _attenuationDistance );
     conf.addIfSet( "mask_layer", layername );
+    conf.addIfSet( "octaves",    _octaves );
 
     if ( _textures.size() > 0 )
     {
         Config textures("textures");
-        for(std::vector<std::string>::const_iterator i = _textures.begin(); i != _textures.end(); ++i )
+        for(std::vector<TextureSource>::const_iterator i = _textures.begin(); i != _textures.end(); ++i )
         {
-            textures.add("url", *i);
+            Config texture("texture");
+            texture.set("tag", i->_tag);
+            texture.set("url", i->_url);
         }
     }
 

@@ -34,6 +34,7 @@
 #include <osg/MatrixTransform>
 #include <osg/NodeVisitor>
 #include <osg/ShapeDrawable>
+#include <osg/AlphaFunc>
 
 #include <osgDB/FileNameUtils>
 #include <osgDB/Registry>
@@ -191,7 +192,12 @@ SubstituteModelFilter::process(const FeatureList&           features,
         osg::ref_ptr<osg::Node>& model = uniqueModels[key];
         if ( !model.valid() )
         {
-            context.resourceCache()->getOrCreateInstanceNode( instance.get(), model );
+            // for DI, we must clone the instances since we intend to change them
+            // (i.e. we will convert their primsets to drawinstanced)
+            if ( _useDrawInstanced )
+                context.resourceCache()->cloneOrCreateInstanceNode( instance.get(), model );
+            else
+                context.resourceCache()->getOrCreateInstanceNode( instance.get(), model );
 
             // if icon decluttering is off, install an AutoTransform.
             if ( iconSymbol )

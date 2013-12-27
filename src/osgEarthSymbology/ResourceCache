@@ -64,6 +64,7 @@ namespace osgEarth { namespace Symbology
          * @param output Result goes here.
          */
         bool getOrCreateInstanceNode( InstanceResource* instance, osg::ref_ptr<osg::Node>& output );
+        bool cloneOrCreateInstanceNode( InstanceResource* instance, osg::ref_ptr<osg::Node>& output );
 
     protected:
         virtual ~ResourceCache() { }

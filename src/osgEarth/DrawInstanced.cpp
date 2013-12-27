@@ -123,8 +123,8 @@ ConvertToDrawInstanced::apply( osg::Geode& geode )
         {
             if ( _optimize )
             {
-                osgUtil::IndexMeshVisitor imv;
-                imv.makeMesh( *geom );
+                //osgUtil::IndexMeshVisitor imv;
+                //imv.makeMesh( *geom );
 
                 // activate VBOs
                 geom->setUseDisplayList( false );
@@ -220,6 +220,8 @@ DrawInstanced::convertGraphToUseDrawInstanced( osg::Group* parent )
         osg::MatrixTransform* mt = dynamic_cast<osg::MatrixTransform*>( parent->getChild(i) );
         if ( mt )
         {
+            // we have to deep-copy the primitives because we're going to convert them
+            // to use draw-instancing.
             osg::Node* n = mt->getChild(0);
             models[n].push_back( mt->getMatrix() );
         }

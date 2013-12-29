@@ -113,6 +113,7 @@ struct OSGEarthShaderGenPseudoLoader : public osgDB::ReaderWriter
         if ( node )
         {
             ShaderGenerator gen;
+            gen.setProgramName(osgDB::getSimpleFileName(stripped));
             gen.run(node, Registry::stateSetCache());
         }
 
@@ -239,6 +240,8 @@ ShaderGenerator::run(osg::Node* graph, StateSetCache* cache)
 {
     if ( graph )
     {
+        _texImageUnits.clear();
+
         // generate shaders:
         graph->accept( *this );
 
@@ -246,14 +249,24 @@ ShaderGenerator::run(osg::Node* graph, StateSetCache* cache)
         if ( cache )
             cache->optimize( graph );
 
+        osg::StateSet* stateset = graph->getOrCreateStateSet();
+
         // install a blank VP at the top as the default.
-        VirtualProgram* vp = VirtualProgram::get(graph->getStateSet());
+        VirtualProgram* vp = VirtualProgram::get(stateset);
         if ( !vp )
         {
-            vp = VirtualProgram::getOrCreate( graph->getOrCreateStateSet() );
+            vp = VirtualProgram::getOrCreate(stateset);
             vp->setInheritShaders( true );
             vp->setName( _name );
         }
+
+        // apply a uniform for each sampler binding we found.
+        for(std::set<int>::iterator i = _texImageUnits.begin(); i != _texImageUnits.end(); ++i)
+        {
+            std::string name = Stringify() << SAMPLER << *i;
+            stateset->addUniform( new osg::Uniform(name.c_str(), *i) );
+        }
+        _texImageUnits.clear();
     }
 }
 
@@ -271,6 +284,39 @@ ShaderGenerator::apply( osg::Node& node )
         _state->popStateSet();
 }
 
+void
+ShaderGenerator::apply(osg::Group& group)
+{
+    if ( !_active ) return;
+
+    traverse(group);
+
+#if 0
+    std::set<VirtualProgram*> childVPs;
+    unsigned childrenWithVP = 0;
+    for(unsigned i=0; i<group.getNumChildren(); ++i)
+    {
+        osg::StateSet* stateset = group.getChild(i)->getStateSet();
+        if ( !stateset )
+            break;
+
+        VirtualProgram* vp = dynamic_cast<VirtualProgram*>(stateset->getAttribute(VirtualProgram::SA_TYPE));
+        if ( vp )
+        {
+            childVPs.insert( vp );
+            childrenWithVP++;
+        }
+    }
+    if ( childrenWithVP == group.getNumChildren() && childVPs.size() == 1 )
+    {
+        group.getOrCreateStateSet()->setAttributeAndModes( *childVPs.begin(), 1 );
+        for(unsigned i=0; i<group.getNumChildren(); ++i)
+        {
+            group.getChild(i)->getStateSet()->removeAttribute(VirtualProgram::SA_TYPE);
+        }
+    }
+#endif
+}
 
 void 
 ShaderGenerator::apply( osg::Geode& geode )
@@ -575,6 +621,7 @@ ShaderGenerator::processGeometry( const osg::StateSet* ss, osg::ref_ptr<osg::Sta
             {
                 // made it this far, new stateset required.
                 need_new_stateset = true;
+                _texImageUnits.insert( unit );
 
                 buf.vertHead << "varying " MEDIUMP "vec4 " TEX_COORD << unit << ";\n";
                 buf.fragHead << "varying " MEDIUMP "vec4 " TEX_COORD << unit << ";\n";
@@ -597,6 +644,11 @@ ShaderGenerator::processGeometry( const osg::StateSet* ss, osg::ref_ptr<osg::Sta
                 else if ( dynamic_cast<osg::TextureRectangle*>(tex) )
                 {
                     apply(static_cast<osg::TextureRectangle*>(tex), unit, buf);
+                }
+                else
+                {
+                    OE_WARN << LC << "Unsupported texture type: " << tex->className() << std::endl;
+                    need_new_stateset = false;
                 }
 
                 osg::TexEnv* texenv = dynamic_cast<osg::TexEnv*>(state->getTextureAttribute(unit, osg::StateAttribute::TEXENV));
@@ -723,7 +775,7 @@ ShaderGenerator::apply(osg::Texture1D* tex, int unit, GenBuffers& buf)
 {
     buf.fragHead << "uniform sampler1D " SAMPLER << unit << ";\n";
     buf.fragBody << INDENT "texel = texture1D(" SAMPLER << unit << ", " TEX_COORD << unit << ".x);\n";
-    buf.stateSet->getOrCreateUniform( Stringify() << SAMPLER << unit, osg::Uniform::SAMPLER_1D )->set( unit );
+    //buf.stateSet->getOrCreateUniform( Stringify() << SAMPLER << unit, osg::Uniform::SAMPLER_1D )->set( unit );
 
     return true;
 }
@@ -733,7 +785,7 @@ ShaderGenerator::apply(osg::Texture2D* tex, int unit, GenBuffers& buf)
 {
     buf.fragHead << "uniform sampler2D " SAMPLER << unit << ";\n";
     buf.fragBody << INDENT "texel = texture2D(" SAMPLER << unit << ", " TEX_COORD << unit << ".xy);\n";
-    buf.stateSet->getOrCreateUniform( Stringify() << SAMPLER << unit, osg::Uniform::SAMPLER_2D )->set( unit );
+    //buf.stateSet->getOrCreateUniform( Stringify() << SAMPLER << unit, osg::Uniform::SAMPLER_2D )->set( unit );
 
     return true;
 }
@@ -743,7 +795,7 @@ ShaderGenerator::apply(osg::Texture3D* tex, int unit, GenBuffers& buf)
 {
     buf.fragHead << "uniform sampler3D " SAMPLER << unit << ";\n";
     buf.fragBody << INDENT "texel = texture3D(" SAMPLER << unit << ", " TEX_COORD << unit << ".xyz);\n";
-    buf.stateSet->getOrCreateUniform( Stringify() << SAMPLER << unit, osg::Uniform::SAMPLER_3D )->set( unit );
+    //buf.stateSet->getOrCreateUniform( Stringify() << SAMPLER << unit, osg::Uniform::SAMPLER_3D )->set( unit );
 
     return true;
 }
@@ -755,7 +807,7 @@ ShaderGenerator::apply(osg::TextureRectangle* tex, int unit, GenBuffers& buf)
 
     buf.fragHead << "uniform sampler2DRect " SAMPLER << unit << ";\n";
     buf.fragBody << INDENT "texel = texture2DRect(" SAMPLER << unit << ", " TEX_COORD << unit << ".xy);\n";
-    buf.stateSet->getOrCreateUniform( Stringify() << SAMPLER << unit, osg::Uniform::SAMPLER_2D )->set( unit );
+    //buf.stateSet->getOrCreateUniform( Stringify() << SAMPLER << unit, osg::Uniform::SAMPLER_2D )->set( unit );
 
     return true;
 }

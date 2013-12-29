@@ -80,6 +80,7 @@ ADD_SUBDIRECTORY(osgearth_sharedlayer)
 ADD_SUBDIRECTORY(osgearth_terraineffects)
 ADD_SUBDIRECTORY(osgearth_mrt)
 ADD_SUBDIRECTORY(osgearth_fog)
+ADD_SUBDIRECTORY(osgearth_shadergen)
 
 IF(NOT ${OPENSCENEGRAPH_VERSION} VERSION_LESS "3.1.0")
     ADD_SUBDIRECTORY(osgearth_shadow)

@@ -26,6 +26,7 @@
 #include <osg/NodeVisitor>
 #include <osg/State>
 #include <sstream>
+#include <set>
 
 // forward declarations
 namespace osg
@@ -99,6 +100,8 @@ namespace osgEarth
 
         virtual void apply( osg::Node& );
 
+        virtual void apply(osg::Group& group);
+
         virtual void apply( osg::Geode& );
 
         virtual void apply( osg::PagedLOD& );
@@ -146,6 +149,8 @@ namespace osgEarth
         bool _active;
 
         std::string _name;
+
+        std::set<int> _texImageUnits;
 
         typedef std::vector<osg::ref_ptr<AcceptCallback> > AcceptCallbackVector;
         AcceptCallbackVector _acceptCallbacks;

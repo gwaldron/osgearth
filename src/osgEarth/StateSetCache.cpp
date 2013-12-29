@@ -23,7 +23,7 @@
 
 #define LC "[StateSetCache] "
 
-#define PRUNE_ACCESS_COUNT 40
+#define DEFAULT_PRUNE_ACCESS_COUNT 40
 
 using namespace osgEarth;
 
@@ -33,7 +33,6 @@ namespace
 {
     bool isEligible(osg::StateAttribute* attr)
     {
-        return false;
         if ( !attr )
             return false;
 
@@ -53,8 +52,6 @@ namespace
 
     bool isEligible(osg::StateSet* stateSet)
     {
-        return false;
-
 #if OSG_MIN_VERSION_REQUIRED(3,1,4)
         if ( !stateSet )
             return false;
@@ -86,9 +83,12 @@ namespace
     {
         StateSetCache* _cache;
 
-        ShareStateAttributes(StateSetCache* cache) :
-            osg::NodeVisitor( osg::NodeVisitor::TRAVERSE_ALL_CHILDREN ),
-            _cache          ( cache ) { }
+        ShareStateAttributes(StateSetCache* cache)
+            : _cache(cache)
+        {
+            setTraversalMode( TRAVERSE_ALL_CHILDREN );
+            setNodeMaskOverride( ~0 );
+        }
 
         void apply(osg::Node& node)
         {
@@ -156,11 +156,14 @@ namespace
         unsigned       _shares;
         //std::vector<osg::StateSet*> _misses; // for debugging
 
-        ShareStateSets(StateSetCache* cache) :
-            osg::NodeVisitor( osg::NodeVisitor::TRAVERSE_ALL_CHILDREN ),
-            _cache    ( cache ),
-            _stateSets( 0 ),
-            _shares   ( 0 ) { }
+        ShareStateSets(StateSetCache* cache)
+            : _cache(cache),
+              _stateSets( 0 ),
+              _shares   ( 0 )
+        {
+            setTraversalMode( TRAVERSE_ALL_CHILDREN );
+            setNodeMaskOverride( ~0 );
+        }
 
         void apply(osg::Node& node)
         {
@@ -208,7 +211,12 @@ namespace
 //------------------------------------------------------------------------
 
 StateSetCache::StateSetCache() :
-_pruneCount( 0 )
+_pruneCount       ( 0 ),
+_maxSize          ( DEFAULT_PRUNE_ACCESS_COUNT ),
+_attrShareAttempts( 0 ),
+_attrsIneligible  ( 0 ),
+_attrShareHits    ( 0 ),
+_attrShareMisses  ( 0 )
 {
     //nop
 }
@@ -217,6 +225,16 @@ StateSetCache::~StateSetCache()
 {
     Threading::ScopedMutexLock lock( _mutex );
     prune();
+}
+
+void
+StateSetCache::setMaxSize(unsigned value)
+{
+    _maxSize = value;
+    {
+        Threading::ScopedMutexLock lock( _mutex );
+        pruneIfNecessary();
+    }
 }
 
 void
@@ -306,6 +324,8 @@ StateSetCache::share(osg::ref_ptr<osg::StateAttribute>& input,
                      osg::ref_ptr<osg::StateAttribute>& output,
                      bool                               checkEligible)
 {
+    _attrShareAttempts++;
+
     if ( !checkEligible || eligible(input.get()) )
     {
         Threading::ScopedMutexLock lock( _mutex );
@@ -317,17 +337,20 @@ StateSetCache::share(osg::ref_ptr<osg::StateAttribute>& input,
         {
             // first use
             output = input.get();
+            _attrShareMisses++;
             return false;
         }
         else
         {
             // found a share!
             output = result.first->get();
+            _attrShareHits++;
             return true;
         }
     }
     else
     {
+        _attrsIneligible++;
         output = input.get();
         return false;
     }
@@ -337,7 +360,7 @@ void
 StateSetCache::pruneIfNecessary()
 {
     // assume an exclusve mutex is taken
-    if ( _pruneCount++ == PRUNE_ACCESS_COUNT )
+    if ( _pruneCount++ >= _maxSize )
     {
         prune();
         _pruneCount = 0;
@@ -389,4 +412,17 @@ StateSetCache::clear()
 
     _stateAttributeCache.clear();
     _stateSetCache.clear();
+}
+
+
+void
+StateSetCache::dumpStats()
+{
+    Threading::ScopedMutexLock lock( _mutex );
+
+    OE_NOTICE << LC << "StateSetCache Dump:" << std::endl
+        << "    attr attempts     = " << _attrShareAttempts << std::endl
+        << "    ineligibles attrs = " << _attrsIneligible << std::endl
+        << "    attr share hits   = " << _attrShareHits << std::endl
+        << "    attr share misses = " << _attrShareMisses << std::endl;
 }

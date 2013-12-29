@@ -52,8 +52,11 @@ _imageUnit       ( imageUnit )
     _opacityUniformNameID      = osg::Uniform::getNameID( "oe_layer_opacity" );
     _texMatParentUniformNameID = osg::Uniform::getNameID( "oe_layer_parent_matrix" );
 
-    this->setUseVertexBufferObjects(true);
+    // we will redo this later:
+    this->setUseVertexBufferObjects(false);
     this->setUseDisplayList(false);
+    //this->setUseVertexBufferObjects(true);
+    //this->setUseDisplayList(false);
 }
 
 
@@ -253,7 +256,14 @@ MPGeometry::renderPrimitiveSets(osg::State& state,
                 for(unsigned int primitiveSetNum=0; primitiveSetNum!=_primitives.size(); ++primitiveSetNum)
                 {
                     const osg::PrimitiveSet* primitiveset = _primitives[primitiveSetNum].get();
-                    primitiveset->draw(state, usingVBOs);
+                    if ( primitiveset )
+                    {
+                        primitiveset->draw(state, usingVBOs);
+                    }
+                    else
+                    {
+                        OE_WARN << LC << "Strange, MPGeometry had a 0L primset" << std::endl;
+                    }
                 }
 
                 ++layersDrawn;
@@ -298,8 +308,49 @@ MPGeometry::computeBound() const
         osg::BoundingSphere bs(bbox);
         osg::Vec4f tk;
         _tileKeyValue.w() = bs.radius();
+        const_cast<MPGeometry*>(this)->validate();
     }
     return bbox;
+}
+
+void
+MPGeometry::validate()
+{
+    unsigned numVerts = getVertexArray()->getNumElements();
+
+    for(unsigned i=0; i < _primitives.size(); ++i)
+    {
+        osg::DrawElements* de = static_cast<osg::DrawElements*>(_primitives[i].get());
+        if ( de->getMode() != GL_TRIANGLES )
+        {
+            OE_WARN << LC << "Invalid primitive set - not GL_TRIANGLES" << std::endl;
+            _primitives.clear();
+        }
+
+        else if ( de->getNumIndices() % 3 != 0 )
+        {
+            OE_WARN << LC << "Invalid primitive set - wrong number of indicies" << std::endl;
+            //_primitives.clear();
+            osg::DrawElementsUShort* deus = static_cast<osg::DrawElementsUShort*>(de);
+            int extra = de->getNumIndices() % 3;
+            deus->resize(de->getNumIndices() - extra);
+            OE_WARN << LC << "   ..removed " << extra << " indices" << std::endl;
+            //return;
+        }
+        else
+        {
+            for( unsigned j=0; j<de->getNumIndices(); ++j ) 
+            {
+                unsigned index = de->index(j);
+                if ( index >= numVerts )
+                {
+                    OE_WARN << LC << "Invalid primitive set - index out of bounds" << std::endl;
+                    _primitives.clear();
+                    return;
+                }
+            }
+        }
+    }
 }
 
 

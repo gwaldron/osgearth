@@ -308,7 +308,8 @@ MPGeometry::computeBound() const
         osg::BoundingSphere bs(bbox);
         osg::Vec4f tk;
         _tileKeyValue.w() = bs.radius();
-        const_cast<MPGeometry*>(this)->validate();
+        // debugging:
+        //const_cast<MPGeometry*>(this)->validate();
     }
     return bbox;
 }

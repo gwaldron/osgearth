@@ -253,4 +253,5 @@ CollectFilesVisitor::CollectFilesVisitor()
 void CollectFilesVisitor::handleFile( const std::string& filename )
 {
 	filenames.push_back( filename );        
-}        
+}
+

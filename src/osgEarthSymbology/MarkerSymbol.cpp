@@ -278,3 +278,4 @@ MarkerSymbol::parseSLD(const Config& c, Style& style)
             style.getOrCreate<MarkerSymbol>()->alignment() = MarkerSymbol::ALIGN_RIGHT_BOTTOM;
     }
 }
+

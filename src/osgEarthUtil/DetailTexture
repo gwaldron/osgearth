@@ -29,7 +29,10 @@
 
 using namespace osgEarth;
 
-namespace osgEarth { namespace Util
+namespace osgEarth {
+class Map;
+
+namespace Util
 {
     /**
      * Controller that applies a detail texture to the terrain.

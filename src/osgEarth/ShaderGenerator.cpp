@@ -549,7 +549,8 @@ ShaderGenerator::processText(const osg::StateSet* ss, osg::ref_ptr<osg::StateSet
 
 
 bool
-ShaderGenerator::processGeometry( const osg::StateSet* ss, osg::ref_ptr<osg::StateSet>& replacement )
+ShaderGenerator::processGeometry(const osg::StateSet*         original, 
+                                 osg::ref_ptr<osg::StateSet>& replacement)
 {
     // do nothing if there's no GLSL support
     if ( !_active )
@@ -565,9 +566,17 @@ ShaderGenerator::processGeometry( const osg::StateSet* ss, osg::ref_ptr<osg::Sta
     if ( dynamic_cast<osg::Program*>(program) != 0L )
         return false;
 
-    // prepare to generate:
-    osg::ref_ptr<osg::StateSet> new_stateset = ss ? osg::clone(ss, osg::CopyOp::SHALLOW_COPY) : new osg::StateSet();
-    osg::ref_ptr<VirtualProgram> vp = VirtualProgram::cloneOrCreate(ss, new_stateset);
+    // copy or create a new stateset (that we may or may not use depending on
+    // what we find)
+    osg::ref_ptr<osg::StateSet> new_stateset = 
+        original ? osg::clone(original, osg::CopyOp::SHALLOW_COPY) :
+        new osg::StateSet();
+
+    // likewise, create a VP that we might populate.
+    osg::ref_ptr<VirtualProgram> vp = VirtualProgram::cloneOrCreate(original, new_stateset);
+
+    // we'll set this to true if the new stateset goes into effect and
+    // needs to be returned.
     bool need_new_stateset = false;
     
     // give the VP a name if it needs one.
@@ -576,7 +585,7 @@ ShaderGenerator::processGeometry( const osg::StateSet* ss, osg::ref_ptr<osg::Sta
 
     // Check whether the lighting state has changed and install a mode uniform.
     // TODO: fix this
-    if ( ss && ss->getMode(GL_LIGHTING) != osg::StateAttribute::INHERIT )
+    if ( original && original->getMode(GL_LIGHTING) != osg::StateAttribute::INHERIT )
     {
         need_new_stateset = true;
 
@@ -587,9 +596,6 @@ ShaderGenerator::processGeometry( const osg::StateSet* ss, osg::ref_ptr<osg::Sta
     // if the stateset changes any texture attributes, we need a new virtual program:
     if (state->getNumTextureAttributes() > 0)
     {
-        // work off the state's accumulated texture attribute set:
-        //int texCount = state->getNumTextureAttributes();
-
         // start generating the shader source.
         GenBuffers buf;
         buf.stateSet = new_stateset;
@@ -604,6 +610,7 @@ ShaderGenerator::processGeometry( const osg::StateSet* ss, osg::ref_ptr<osg::Sta
 
         bool wroteTexelDecl = false;
 
+        // Loop over all possible texture image units.
         int maxUnit = Registry::capabilities().getMaxGPUTextureUnits();
 
         for( int unit = 0; unit < maxUnit; ++unit )
@@ -621,6 +628,8 @@ ShaderGenerator::processGeometry( const osg::StateSet* ss, osg::ref_ptr<osg::Sta
             {
                 // made it this far, new stateset required.
                 need_new_stateset = true;
+
+                // record this unit as being in use
                 _texImageUnits.insert( unit );
 
                 buf.vertHead << "varying " MEDIUMP "vec4 " TEX_COORD << unit << ";\n";
@@ -739,32 +748,72 @@ ShaderGenerator::apply(osg::TexEnv* texenv, int unit, GenBuffers& buf)
 bool
 ShaderGenerator::apply(osg::TexGen* texgen, int unit, GenBuffers& buf)
 {
-    osg::TexGen::Mode texGenMode = osg::TexGen::OBJECT_LINEAR;
-    if ( accept(texgen) )
+    // by default, do not use texture coordinate generation:
+    if ( !accept(texgen) )
     {
-        texGenMode = texgen->getMode();
+        buf.vertBody
+            << INDENT << TEX_COORD << unit << " = gl_MultiTexCoord" << unit << ";\n";
     }
 
-    // handle different TexGen modes.
-    switch(texGenMode)
+    else
     {
-    case osg::TexGen::SPHERE_MAP:
-        buf.vertBody 
-            //todo: consolidate.
-            << INDENT "{\n" // scope it in case there are > 1
-            << INDENT "vec3 v = normalize(vec3(vertex_view));\n"
-            << INDENT "vec3 n = normalize(gl_NormalMatrix * gl_Normal);\n"
-            << INDENT "vec3 r = reflect(v, n);\n"
-            << INDENT "float m = 2.0 * sqrt(r.x*r.x + r.y*r.y + (r.z+1.0)*(r.z+1.0));\n"
-            << INDENT TEX_COORD << unit << ".s = r.x/m + 0.5;\n"
-            << INDENT TEX_COORD << unit << ".t = r.y/m + 0.5;\n"
-            << INDENT "}\n";
-        break;
+        // Hdle different TexGen modes.
+        // From the GLSL Orange Book.
+        switch( texgen->getMode() )
+        {
+        case osg::TexGen::OBJECT_LINEAR:
+            buf.vertBody
+                << INDENT "{\n"
+                << INDENT TEX_COORD << unit << " = "
+                <<      "gl_Vertex.x*gl_ObjectPlaneS[" <<unit<< "] + "
+                <<      "gl_Vertex.y*gl_ObjectPlaneT[" <<unit<< "] + "
+                <<      "gl_Vertex.z*gl_ObjectPlaneR[" <<unit<< "] + "
+                <<      "gl_Vertex.w*gl_ObjectPlaneQ[" <<unit<< "]; \n"
+                << INDENT "}\n";
+            break;
 
-    default:
-        buf.vertBody 
-            << INDENT << TEX_COORD << unit << " = gl_MultiTexCoord" << unit << ";\n";
-        break;
+        case osg::TexGen::EYE_LINEAR:
+            buf.vertBody
+                << INDENT "{\n"
+                << INDENT TEX_COORD << unit << " = "
+                <<      "vertex_view.x*gl_EyePlaneS[" <<unit<< "] + "
+                <<      "vertex_view.y*gl_EyePlaneT[" <<unit<< "] + "
+                <<      "vertex_view.z*gl_EyePlaneR[" <<unit<< "] + "
+                <<      "vertex_view.w*gl_EyePlaneQ[" <<unit<< "]; \n"
+                << INDENT "}\n";
+            break;
+
+        case osg::TexGen::SPHERE_MAP:
+            buf.vertBody 
+                << INDENT "{\n" // scope it in case there are > 1
+                << INDENT "vec3 view_vec = normalize(vertex_view.xyz/vertex_view.w); \n"
+                << INDENT "vec3 r = reflect(view_vec, oe_Normal);\n"
+                << INDENT "r.z += 1.0; \n"
+                << INDENT "float m = 2.0 * sqrt(dot(r,r)); \n"
+                << INDENT TEX_COORD << unit << " = vec4(r.x/m + 0.5, r.y/m + 0.5, 0.0, 1.0); \n"
+                << INDENT "}\n";
+            break;
+
+        case osg::TexGen::REFLECTION_MAP:
+            buf.vertBody
+                << INDENT "{\n"
+                << INDENT "vec3 view_vec = normalize(vertex_view.xyz/vertex_view.w);\n"
+                << INDENT TEX_COORD << unit << " = vec4(reflect(view_vec, oe_Normal), 1.0); \n"
+                << INDENT "}\n";
+            break;
+
+        case osg::TexGen::NORMAL_MAP:
+            buf.vertBody
+                << INDENT "{\n"
+                << INDENT TEX_COORD << unit << " = vec4(oe_Normal, 1.0); \n"
+                << INDENT "}\n";
+            break;
+
+        default: // fall back on non-gen setup.
+            buf.vertBody
+                << INDENT << TEX_COORD << unit << " = gl_MultiTexCoord" << unit << ";\n";
+            break;
+        }
     }
 
     return true;

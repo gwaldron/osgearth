@@ -56,6 +56,7 @@ ADD_SUBDIRECTORY(tileindex)
 
 IF(LIBNOISE_FOUND)
     ADD_SUBDIRECTORY(noise)
+    ADD_SUBDIRECTORY(splat_mask)
 ENDIF(LIBNOISE_FOUND)
 
 IF(GDAL_FOUND)
@@ -95,5 +96,4 @@ ADD_SUBDIRECTORY(vdatum_egm2008)
 # temporary
 ADD_SUBDIRECTORY(template_matclass)
 
-ADD_SUBDIRECTORY(splat_mask)
 

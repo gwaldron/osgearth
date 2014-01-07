@@ -76,12 +76,14 @@ MouseCoordsLabelCallback::MouseCoordsLabelCallback( LabelControl* label, Formatt
 _label    ( label ),
 _formatter( formatter )
 {
+#if 0
     if ( !formatter )
     {
         LatLongFormatter* formatter = new LatLongFormatter( LatLongFormatter::FORMAT_DECIMAL_DEGREES );
         formatter->setPrecision( 5 );
         _formatter = formatter;
     }
+#endif
 }
 
 void
@@ -89,9 +91,20 @@ MouseCoordsLabelCallback::set( const GeoPoint& mapCoords, osg::View* view, MapNo
 {
     if ( _label.valid() )
     {
-        _label->setText( Stringify()
-            <<  _formatter->format( mapCoords )
-            << ", " << mapCoords.z() );
+        if ( _formatter )
+        {
+            _label->setText( Stringify()
+                <<  _formatter->format( mapCoords )
+                << ", " << mapCoords.z() );
+        }
+        else
+        {
+            _label->setText( Stringify()
+                << std::fixed
+                << mapCoords.x()
+                << ", " << mapCoords.y()
+                << ", " << mapCoords.z() );
+        }
     }
 }
 

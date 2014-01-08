@@ -31,6 +31,64 @@ using namespace osgEarth::Util;
 
 namespace
 {
+    const char* snoise =
+        "vec3 mod289(vec3 x) {\n"
+        "   return x - floor(x * (1.0 / 289.0)) * 289.0;\n"
+        "}\n"
+        "vec2 mod289(vec2 x) {\n"
+        "   return x - floor(x * (1.0 / 289.0)) * 289.0;\n"
+        "}\n"
+        "vec3 permute(vec3 x) {\n"
+        "   return mod289(((x*34.0)+1.0)*x);\n"
+        "}\n"
+        "float snoise(vec2 v)\n"
+        "{\n"
+        "   const vec4 C = vec4(0.211324865405187,  // (3.0-sqrt(3.0))/6.0 \n"
+        "                        0.366025403784439,  // 0.5*(sqrt(3.0)-1.0) \n"
+        "                       -0.577350269189626,  // -1.0 + 2.0 * C.x \n"
+        "                        0.024390243902439); // 1.0 / 41.0 \n"
+        "   // First corner\n"
+        "   vec2 i  = floor(v + dot(v, C.yy) );\n"
+        "   vec2 x0 = v -   i + dot(i, C.xx);\n"
+        "   // Other corners\n"
+        "   vec2 i1;\n"
+        "//i1.x = step( x0.y, x0.x ); // x0.x > x0.y ? 1.0 : 0.0\n"
+        "//i1.y = 1.0 - i1.x;\n"
+        "i1 = (x0.x > x0.y) ? vec2(1.0, 0.0) : vec2(0.0, 1.0);\n"
+        "// x0 = x0 - 0.0 + 0.0 * C.xx ;\n"
+        "// x1 = x0 - i1 + 1.0 * C.xx ;\n"
+        "// x2 = x0 - 1.0 + 2.0 * C.xx ;\n"
+        "vec4 x12 = x0.xyxy + C.xxzz;\n"
+        "x12.xy -= i1;\n"
+
+        "// Permutations\n"
+        "i = mod289(i); // Avoid truncation effects in permutation\n"
+        "vec3 p = permute( permute( i.y + vec3(0.0, i1.y, 1.0 ))\n"
+        "              + i.x + vec3(0.0, i1.x, 1.0 ));\n"
+
+        "vec3 m = max(0.5 - vec3(dot(x0,x0), dot(x12.xy,x12.xy), dot(x12.zw,x12.zw)), 0.0);\n"
+        "m = m*m ;\n"
+        "m = m*m ;\n"
+
+        "// Gradients: 41 points uniformly over a line, mapped onto a diamond.\n"
+        "// The ring size 17*17 = 289 is close to a multiple of 41 (41*7 = 287)\n"
+
+        "vec3 x = 2.0 * fract(p * C.www) - 1.0;\n"
+        "vec3 h = abs(x) - 0.5;\n"
+        "vec3 ox = floor(x + 0.5);\n"
+        "vec3 a0 = x - ox;\n"
+
+        "// Normalise gradients implicitly by scaling m\n"
+        "// Approximation of: m *= inversesqrt( a0*a0 + h*h );\n"
+        "m *= 1.79284291400159 - 0.85373472095314 * ( a0*a0 + h*h );\n"
+
+        "// Compute final noise value at P\n"
+        "vec3 g;\n"
+        "g.x  = a0.x  * x0.x  + h.x  * x0.y;\n"
+        "g.yz = a0.yz * x12.xz + h.yz * x12.yw;\n"
+        "return 130.0 * dot(m, g);\n"
+        "}\n";
+
     const char* vs =
         "#version " GLSL_VERSION_STR "\n"
         GLSL_DEFAULT_PRECISION_FLOAT "\n"
@@ -91,6 +149,8 @@ namespace
             "varying vec4 oe_layer_tilec; \n"
             "varying float oe_detail_atten_factor; \n"
 
+            "float snoise(vec2 v);\n"
+
             "void oe_detail_fragment(inout vec4 color) \n"
             "{ \n"
             "    if ( oe_tile_key.z >= oe_detail_L0 ) \n"
@@ -104,6 +164,15 @@ namespace
             "                 texture2D(oe_detail_mask, oe_layer_tilec.st + vec2( 0.0, 0.4))); \n"
             "        vec4 detail = vec4(0.0); \n";
 
+#if 0
+        buf <<
+            "        float nz = snoise(oe_detail_tc.st); \n"
+            "        if ( nz < -0.5 ) m[0] = 1.0; else m[0] = 0.0; \n"
+            "        if ( nz >= -0.5 && nz < 0.0 ) m[1] = 1.0; else m[1] = 0.0;  \n"
+            "        if ( nz >= 0.0 && nz < 0.5 ) m[2] = 1.0; else m[2] = 0.0; \n"
+            "        if ( nz >= 0.5 ) m[3] = 1.0; else m[3] = 0.0; \n";
+#endif
+
         if ( numOctaves > 1 )
         {
             buf <<
@@ -111,8 +180,8 @@ namespace
                 "        float interval = 1.0/" << numOctaves << ".0;\n"
                 "        float d, w;\n"
                 "        float total = 0.0;\n"
-                    "        float a = oe_detail_atten_factor; \n"
-                    "        a = a*a*a*a*a*a*a; \n"; // weights the transitions to be close to the eyepoint
+                "        float a = oe_detail_atten_factor; \n"
+                "        a = a*a*a*a*a*a*a; \n"; // weights the transitions to be close to the eyepoint
 
             for(unsigned oct=0; oct<numOctaves; ++oct)
             {
@@ -313,6 +382,10 @@ DetailTexture::onInstall(TerrainEngineNode* engine)
         VirtualProgram* vp = VirtualProgram::getOrCreate(stateset);
         vp->setFunction( "oe_detail_vertex",   vs, ShaderComp::LOCATION_VERTEX_VIEW );
         vp->setFunction( "oe_detail_fragment", fs, ShaderComp::LOCATION_FRAGMENT_COLORING );
+
+        vp->setShader(
+            "simplexNoise",
+            new osg::Shader(osg::Shader::FRAGMENT, snoise) );
     }
 }
 

@@ -79,6 +79,7 @@ AlphaEffect::attach(osg::StateSet* stateset)
     {
         _statesets.push_back(stateset);
         VirtualProgram* vp = VirtualProgram::getOrCreate(stateset);
+        vp->setName( "osgEarth.AlphaEffect" );
         vp->setFunction( "oe_alphaeffect_fragment", fragment, ShaderComp::LOCATION_FRAGMENT_COLORING, 2 );
         stateset->addUniform( _alphaUniform.get() );
     }

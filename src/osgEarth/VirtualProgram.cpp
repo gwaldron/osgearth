@@ -36,8 +36,8 @@ using namespace osgEarth::ShaderComp;
 
 #define OE_TEST OE_NULL
 //#define OE_TEST OE_NOTICE
-
 //#define USE_ATTRIB_ALIASES
+//#define DEBUG_APPLY_COUNTS
 
 //------------------------------------------------------------------------
 
@@ -760,10 +760,6 @@ VirtualProgram::setInheritShaders( bool value )
 }
 
 
-namespace
-{
-}
-
 void
 VirtualProgram::apply( osg::State& state ) const
 {
@@ -920,7 +916,64 @@ VirtualProgram::apply( osg::State& state ) const
         // finally, apply the program attribute.
         if ( program.valid() )
         {
-            program->apply( state );
+            const unsigned int contextID = state.getContextID();
+            const osg::GL2Extensions* extensions = osg::GL2Extensions::Get(contextID,true);
+            
+            osg::Program::PerContextProgram* pcp = program->getPCP( contextID );
+            bool useProgram = state.getLastAppliedProgramObject() != pcp;
+
+#ifdef DEBUG_APPLY_COUNTS
+            {
+                // debugging
+
+                static int s_framenum = 0;
+                static Threading::Mutex s_mutex;
+                static std::map< const VirtualProgram*, std::pair<int,int> > s_counts;
+
+                Threading::ScopedMutexLock lock(s_mutex);
+
+                int framenum = state.getFrameStamp()->getFrameNumber();
+                if ( framenum > s_framenum )
+                {
+                    OE_NOTICE << LC << "Applies in last frame: " << std::endl;
+                    for(std::map<const VirtualProgram*,std::pair<int,int> >::iterator i = s_counts.begin(); i != s_counts.end(); ++i)
+                    {
+                        std::pair<int,int>& counts = i->second;
+                        OE_NOTICE << LC << "  " 
+                            << i->first->getName() << " : " << counts.second << "/" << counts.first << std::endl;
+                    }
+                    s_framenum = framenum;
+                    s_counts.clear();
+                }
+                s_counts[this].first++;
+                if ( useProgram )
+                    s_counts[this].second++;
+            }
+#endif
+
+            if ( useProgram )
+            {
+                if( pcp->needsLink() )
+                    program->compileGLObjects( state );
+
+                if( pcp->isLinked() )
+                {
+                    if( osg::isNotifyEnabled(osg::INFO) )
+                        pcp->validateProgram();
+
+                    pcp->useProgram();
+                    state.setLastAppliedProgramObject( pcp );
+                }
+                else
+                {
+                    // program not usable, fallback to fixed function.
+                    extensions->glUseProgram( 0 );
+                    state.setLastAppliedProgramObject(0);
+                    OE_WARN << LC << "Program link failure!" << std::endl;
+                }
+            }
+
+            //program->apply( state );
 
 #if 0 // test code for detecting race conditions
             for(int i=0; i<10000; ++i) {

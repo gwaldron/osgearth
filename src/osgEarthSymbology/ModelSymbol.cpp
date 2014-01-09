@@ -104,3 +104,4 @@ ModelSymbol::parseSLD(const Config& c, Style& style)
     }
 
 }
+

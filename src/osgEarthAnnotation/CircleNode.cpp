@@ -25,6 +25,7 @@
 #include <osgEarth/MapNode>
 #include <osgEarth/DrapeableNode>
 #include <osg/MatrixTransform>
+#include <cmath>
 
 using namespace osgEarth;
 using namespace osgEarth::Annotation;
@@ -151,7 +152,7 @@ CircleNode::rebuild()
     // construct a local-origin circle.
     GeometryFactory factory;
     Geometry* geom = NULL;
-    if (abs(_arcEnd.as(Units::DEGREES) - _arcStart.as(Units::DEGREES)) >= 360.0)
+    if (std::abs(_arcEnd.as(Units::DEGREES) - _arcStart.as(Units::DEGREES)) >= 360.0)
     {
         geom = factory.createCircle(osg::Vec3d(0,0,0), _radius, _numSegments);
     }

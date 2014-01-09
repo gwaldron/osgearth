@@ -100,6 +100,8 @@ namespace osgEarth_engine_mp
         // render all passes of the geometry.
         void renderPrimitiveSets(osg::State& state, bool usingVBOs) const;
 
+        // validate the geometry is OK.
+        void validate();
 
     public: // osg::Geometry overrides
 

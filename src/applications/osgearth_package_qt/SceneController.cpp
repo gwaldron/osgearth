@@ -293,3 +293,4 @@ std::string SceneController::getBoundsString()
 
   return str;
 }
+

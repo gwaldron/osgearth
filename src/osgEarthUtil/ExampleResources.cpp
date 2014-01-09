@@ -751,8 +751,8 @@ MapNodeHelper::parse(MapNode*             mapNode,
     // Install a detail texturer
     if ( !detailTexConf.empty() )
     {
-        osg::ref_ptr<DetailTexture> effect = new DetailTexture(detailTexConf);
-        if ( effect->getImage() )
+        osg::ref_ptr<DetailTexture> effect = new DetailTexture(detailTexConf, mapNode->getMap());
+        if ( true ) //effect->getImage() )
         {
             mapNode->getTerrainEngine()->addEffect( effect.get() );
         }

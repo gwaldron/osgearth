@@ -25,6 +25,19 @@
 #include <osgEarth/VirtualProgram>
 #include <osg/NodeVisitor>
 #include <osg/State>
+#include <sstream>
+#include <set>
+
+// forward declarations
+namespace osg
+{
+    class TexEnv;
+    class TexGen;
+    class Texture1D;
+    class Texture2D;
+    class Texture3D;
+    class TextureRectangle;
+}
 
 namespace osgEarth
 {
@@ -85,29 +98,59 @@ namespace osgEarth
 
     public: // osg::NodeVisitor
 
-        void apply( osg::Node& );
+        virtual void apply( osg::Node& );
 
-        void apply( osg::Geode& );
+        virtual void apply(osg::Group& group);
 
-        void apply( osg::PagedLOD& );
+        virtual void apply( osg::Geode& );
 
-        void apply( osg::ProxyNode& );
+        virtual void apply( osg::PagedLOD& );
 
-        void apply( osg::ClipNode& );
+        virtual void apply( osg::ProxyNode& );
+
+        virtual void apply( osg::ClipNode& );
+
+
+    protected: // high-level entry points:
+
+        virtual void apply( osg::Drawable* );
+
+        virtual bool processGeometry(const osg::StateSet* stateSet, osg::ref_ptr<osg::StateSet>& replacement);
+
+        virtual bool processText(const osg::StateSet* stateSet, osg::ref_ptr<osg::StateSet>& replacement);
+
+
+    protected: // overridable texture handlers:
+
+        struct GenBuffers
+        {
+            std::stringstream vertHead, vertBody;
+            std::stringstream fragHead, fragBody;
+            osg::StateSet* stateSet;
+        };
+
+        virtual bool apply(osg::TexEnv* texenv, int unit, GenBuffers& buf);
+
+        virtual bool apply(osg::TexGen* texgen, int unit, GenBuffers& buf);
+
+        virtual bool apply(osg::Texture1D* tex, int unit, GenBuffers& buf);
+
+        virtual bool apply(osg::Texture2D* tex, int unit, GenBuffers& buf);
+
+        virtual bool apply(osg::Texture3D* tex, int unit, GenBuffers& buf);
+
+        virtual bool apply(osg::TextureRectangle* tex, int unit, GenBuffers& buf);
+
 
     protected:
-
-        void apply( osg::Drawable* );
-
-        bool processGeometry(const osg::StateSet* stateSet, osg::ref_ptr<osg::StateSet>& replacement);
-
-        bool processText(const osg::StateSet* stateSet, osg::ref_ptr<osg::StateSet>& replacement);
 
         osg::ref_ptr<osg::State> _state;
 
         bool _active;
 
         std::string _name;
+
+        std::set<int> _texImageUnits;
 
         typedef std::vector<osg::ref_ptr<AcceptCallback> > AcceptCallbackVector;
         AcceptCallbackVector _acceptCallbacks;

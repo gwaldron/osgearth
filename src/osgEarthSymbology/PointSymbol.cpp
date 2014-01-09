@@ -63,3 +63,4 @@ PointSymbol::parseSLD(const Config& c, Style& style)
         style.getOrCreate<PointSymbol>()->size() = as<float>(c.value(), 1.0f);
     }
 }
+

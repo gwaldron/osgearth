@@ -93,3 +93,36 @@ ResourceCache::getOrCreateInstanceNode(InstanceResource*        res,
 
     return output.valid();
 }
+
+
+bool
+ResourceCache::cloneOrCreateInstanceNode(InstanceResource*        res,
+                                         osg::ref_ptr<osg::Node>& output)
+{
+    output = 0L;
+    std::string key = res->getConfig().toJSON(false);
+
+    // exclusive lock (since it's an LRU)
+    {
+        Threading::ScopedMutexLock exclusive( _instanceMutex );
+
+        // double check to avoid race condition
+        InstanceCache::Record rec;
+        if ( _instanceCache.get(key, rec) && rec.value().valid() )
+        {
+            output = osg::clone(rec.value().get(), osg::CopyOp::DEEP_COPY_ALL);
+        }
+        else
+        {
+            // still not there, make it.
+            output = res->createNode( _dbOptions.get() );
+            if ( output.valid() )
+            {
+                _instanceCache.insert( key, output.get() );
+                output = osg::clone(output.get(), osg::CopyOp::DEEP_COPY_ALL);
+            }
+        }
+    }
+
+    return output.valid();
+}

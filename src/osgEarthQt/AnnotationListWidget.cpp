@@ -371,3 +371,4 @@ void AnnotationListWidget::onAddFinished(int result)
   if (result == QDialog::Accepted)
     refresh();
 }
+

@@ -16,7 +16,6 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
-
 #include <osgEarth/TileSource>
 #include <osgEarth/Registry>
 #include <osgEarth/URI>
@@ -29,6 +28,7 @@
 #include <osgDB/ReadFile>
 #include <osgDB/WriteFile>
 #include <sstream>
+#include <cmath>
 
 #include <noise/noise.h>
 
@@ -84,7 +84,7 @@ public:
     {
         double t = -0.5;
         for( ; f<getPixelsPerTile()/2; f *= 2 ) 
-            t += abs(noise.GetValue(v.x(), v.y(), v.z())/f);
+            t += std::abs(noise.GetValue(v.x(), v.y(), v.z())/f);
         return t;
     }
 

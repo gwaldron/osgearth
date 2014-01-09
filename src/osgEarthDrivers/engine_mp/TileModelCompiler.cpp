@@ -131,6 +131,7 @@ namespace
             renderTileCoords = 0L;
             ownsTileCoords   = false;
             stitchTileCoords = 0L;
+            stitchGeom       = 0L;
 //            stitchSkirtTileCoords = 0L;
         }
 
@@ -181,6 +182,7 @@ namespace
         
         // for masking/stitching:
         MaskRecordVector         maskRecords;
+        MPGeometry*              stitchGeom;
 //        MPGeometry*              stitching_skirts;
 //        osg::Vec3Array*          ss_verts;
     };
@@ -247,10 +249,10 @@ namespace
 
               if (x_match && y_match)
               {
-                  MPGeometry* mask_geom = new MPGeometry( d.model->_tileKey, d.frame, d.textureImageUnit );
-                  mask_geom->setUseVertexBufferObjects(d.useVBOs);
-                  d.surfaceGeode->addDrawable(mask_geom);
-                  d.maskRecords.push_back( MaskRecord(boundary, min_ndc, max_ndc, mask_geom) );
+                  d.stitchGeom = new MPGeometry( d.model->_tileKey, d.frame, d.textureImageUnit );
+                  //d.stitchGeom->setUseVertexBufferObjects(d.useVBOs);
+                  d.surfaceGeode->addDrawable(d.stitchGeom);
+                  d.maskRecords.push_back( MaskRecord(boundary, min_ndc, max_ndc, d.stitchGeom) );
               }
            }
         }
@@ -449,8 +451,12 @@ namespace
                     if ( d.maskRecords.size() > 0 )
                     {
                         r._stitchTexCoords = new osg::Vec2Array();
+                        //r._stitchTexCoords->setVertexBufferObject( d.stitchGeom->getOrCreateVertexBufferObject() );
                         if ( !d.stitchTileCoords.valid() )
+                        {
                             d.stitchTileCoords = new osg::Vec2Array();
+                            //d.stitchTileCoords->setVertexBufferObject( d.stitchGeom->getOrCreateVertexBufferObject() );
+                        }
                     }
                 }
 
@@ -1748,6 +1754,7 @@ namespace
     // critical vertex cache optimizations.
     void optimize( Data& d )
     {
+#if 0
         // the optimization pass is incompatible with the shared arrays used
         // during masking.
         if ( d.maskRecords.size() > 0 )
@@ -1757,6 +1764,7 @@ namespace
                 << " because it contains masking geometry" <<std::endl;
             return;
         }
+#endif
  
         // For vertex cache optimization to work, all the arrays must be in
         // the geometry. MP doesn't store texture/tile coords in the geometry
@@ -1764,47 +1772,81 @@ namespace
 
 #if OSG_MIN_VERSION_REQUIRED(3, 1, 8) // after osg::Geometry API changes
 
-        osg::Geometry::ArrayList& tdl = d.surface->getTexCoordArrayList();
+        osg::Geometry::ArrayList* surface_tdl = &d.surface->getTexCoordArrayList();
+        osg::Geometry::ArrayList* stitch_tdl  = d.stitchGeom ? &d.stitchGeom->getTexCoordArrayList() : 0L;
         int u=0;
         for( RenderLayerVector::const_iterator r = d.renderLayers.begin(); r != d.renderLayers.end(); ++r )
         {
             if ( r->_texCoords.valid() && r->_ownsTexCoords )
             {
                 r->_texCoords->setBinding( osg::Array::BIND_PER_VERTEX );
-                tdl.push_back( r->_texCoords.get() );
+                surface_tdl->push_back( r->_texCoords.get() );
+            }
+            if ( stitch_tdl && r->_stitchTexCoords.valid() )
+            {
+                r->_stitchTexCoords->setBinding( osg::Array::BIND_PER_VERTEX );
+                stitch_tdl->push_back( r->_stitchTexCoords.get() );
             }
         }
         if ( d.renderTileCoords.valid() && d.ownsTileCoords )
         {
             d.renderTileCoords->setBinding( osg::Array::BIND_PER_VERTEX );
-            tdl.push_back( d.renderTileCoords.get() );
+            surface_tdl->push_back( d.renderTileCoords.get() );
+        }
+        if ( stitch_tdl && d.stitchTileCoords.valid() && d.ownsTileCoords )
+        {
+            d.stitchTileCoords->setBinding( osg::Array::BIND_PER_VERTEX );
+            stitch_tdl->push_back( d.stitchTileCoords.get() );
         }
 
 #else // OSG version < 3.1.8 (before osg::Geometry API changes)
 
-        osg::Geometry::ArrayDataList& tdl = d.surface->getTexCoordArrayList();
+        osg::Geometry::ArrayDataList* surface_tdl = &d.surface->getTexCoordArrayList();
+        osg::Geometry::ArrayDataList* stitch_tdl = d.stitchGeom ? &d.stitchGeom->getTexCoordArrayList() : 0L;
         int u=0;
         for( RenderLayerVector::const_iterator r = d.renderLayers.begin(); r != d.renderLayers.end(); ++r )
         {
             if ( r->_ownsTexCoords && r->_texCoords.valid() )
             {
-                tdl.push_back( osg::Geometry::ArrayData(r->_texCoords.get(), osg::Geometry::BIND_PER_VERTEX) );
+                surface_tdl->push_back( osg::Geometry::ArrayData(r->_texCoords.get(), osg::Geometry::BIND_PER_VERTEX) );
+            }
+            if ( stitch_tdl && r->_stitchTexCoords.valid() )
+            {
+                stitch_tdl->push_back( osg::Geometry::ArrayData(r->_stitchTexCoords.get(), osg::Geometry::BIND_PER_VERTEX) );
             }
         }
         if ( d.renderTileCoords.valid() && d.ownsTileCoords )
         {
-            tdl.push_back( osg::Geometry::ArrayData(d.renderTileCoords.get(), osg::Geometry::BIND_PER_VERTEX) );
+            surface_tdl->push_back( osg::Geometry::ArrayData(d.renderTileCoords.get(), osg::Geometry::BIND_PER_VERTEX) );
+        }
+        if ( stitch_tdl && d.stitchTileCoords.valid() && d.ownsTileCoords )
+        {
+            stitch_tdl->push_back( osg::Geometry::ArrayData(d.stitchTileCoords.get(), osg::Geometry::BIND_PER_VERTEX) );
         }
 
 #endif
 
         osgUtil::Optimizer o;
-        o.optimize( d.surfaceGeode, 
+
+        o.optimize( d.surfaceGeode,
             osgUtil::Optimizer::VERTEX_PRETRANSFORM |
             osgUtil::Optimizer::INDEX_MESH |
             osgUtil::Optimizer::VERTEX_POSTTRANSFORM );
 
-        tdl.clear();
+#if 1
+        d.surface->setUseVertexBufferObjects(false);
+        d.surface->setUseVertexBufferObjects(true);
+
+        if ( d.stitchGeom )
+        {
+            d.stitchGeom->setUseVertexBufferObjects(false);
+            d.stitchGeom->setUseVertexBufferObjects(true);
+        }
+#endif
+        surface_tdl->clear();
+
+        if (stitch_tdl)
+            stitch_tdl->clear();
     }
 
 
@@ -1853,8 +1895,8 @@ TileModelCompiler::compile(const TileModel* model,
 
     // A Geode/Geometry for the surface:
     d.surface = new MPGeometry( d.model->_tileKey, d.frame, _textureImageUnit );
-    d.surface->setUseVertexBufferObjects(d.useVBOs);
-    d.surface->setUseDisplayList(!d.useVBOs);
+    //d.surface->setUseVertexBufferObjects(d.useVBOs);
+    //d.surface->setUseDisplayList(!d.useVBOs);
     d.surfaceGeode = new osg::Geode();
     d.surfaceGeode->addDrawable( d.surface );
     d.surfaceGeode->setNodeMask( *_options.primaryTraversalMask() );

@@ -37,6 +37,10 @@ namespace osgEarth
          */
         StateSetCache();
 
+        /**
+         * Caps the size of the cache.
+         */
+        void setMaxSize(unsigned maxSize);
 
         /**
          * Check whether a StateSet is eligible for sharing.
@@ -88,6 +92,8 @@ namespace osgEarth
          */
         void clear();
 
+        void dumpStats();
+
     protected: 
 
         virtual ~StateSetCache();
@@ -116,7 +122,14 @@ namespace osgEarth
 
         void prune();
         void pruneIfNecessary();
+        unsigned _maxSize;
         unsigned _pruneCount;
+
+        //stats
+        unsigned _attrShareAttempts;
+        unsigned _attrsIneligible;
+        unsigned _attrShareHits;
+        unsigned _attrShareMisses;
     };
 }
 

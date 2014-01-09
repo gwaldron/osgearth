@@ -98,7 +98,7 @@ VerticalDatum::transform(const VerticalDatum* from,
 
     if ( from )
     {
-        in_out_z = from->msl2hae( lat_deg, lon_deg, INTERP_BILINEAR );
+        in_out_z = from->msl2hae( lat_deg, lon_deg, in_out_z );
     }
 
     Units fromUnits = from ? from->getUnits() : Units::METERS;
@@ -108,7 +108,7 @@ VerticalDatum::transform(const VerticalDatum* from,
 
     if ( to )
     {
-        in_out_z = to->hae2msl( lat_deg, lon_deg, INTERP_BILINEAR );
+        in_out_z = to->hae2msl( lat_deg, lon_deg, in_out_z );
     }
 
     return true;

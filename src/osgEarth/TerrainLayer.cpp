@@ -333,17 +333,17 @@ TerrainLayer::getProfile() const
         if ( _tileSource.valid() && !_profile.valid() && !_tileSourceInitFailed )
         {
             const_cast<TerrainLayer*>(this)->_profile = _tileSource->getProfile();
+        }
 
-            // check for a vertical datum override:
-            if ( _profile.valid() && _runtimeOptions->verticalDatum().isSet() )
+        // check for a vertical datum override:
+        if ( _profile.valid() && _runtimeOptions->verticalDatum().isSet() )
+        {
+            std::string vdatum = toLower( *_runtimeOptions->verticalDatum() );
+            if ( _profile->getSRS()->getVertInitString() != vdatum )
             {
-                std::string vdatum = toLower( *_runtimeOptions->verticalDatum() );
-                if ( _profile->getSRS()->getVertInitString() != vdatum )
-                {
-                    ProfileOptions po = _profile->toProfileOptions();
-                    po.vsrsString() = vdatum;
-                    const_cast<TerrainLayer*>(this)->_profile = Profile::create(po);
-                }
+                ProfileOptions po = _profile->toProfileOptions();
+                po.vsrsString() = vdatum;
+                const_cast<TerrainLayer*>(this)->_profile = Profile::create(po);
             }
         }
     }

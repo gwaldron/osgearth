@@ -126,8 +126,10 @@ namespace osgEarth
         {
             std::stringstream vertHead, vertBody;
             std::stringstream fragHead, fragBody;
-            osg::StateSet* stateSet;
+            osg::StateSet*    stateSet;
         };
+
+        virtual bool apply(osg::Texture* tex, osg::TexGen* texgen, osg::TexEnv* texenv, int unit, GenBuffers& buf);
 
         virtual bool apply(osg::TexEnv* texenv, int unit, GenBuffers& buf);
 

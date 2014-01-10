@@ -626,42 +626,16 @@ ShaderGenerator::processGeometry(const osg::StateSet*         original,
 
             if (accept(tex) && !ImageUtils::isFloatingPointInternalFormat(tex->getInternalFormat()))
             {
-                // made it this far, new stateset required.
-                need_new_stateset = true;
-
                 // record this unit as being in use
                 _texImageUnits.insert( unit );
 
-                buf.vertHead << "varying " MEDIUMP "vec4 " TEX_COORD << unit << ";\n";
-                buf.fragHead << "varying " MEDIUMP "vec4 " TEX_COORD << unit << ";\n";
-
                 osg::TexGen* texgen = dynamic_cast<osg::TexGen*>(state->getTextureAttribute(unit, osg::StateAttribute::TEXGEN));
-                apply( texgen, unit, buf );
-
-                if ( dynamic_cast<osg::Texture1D*>(tex) )
-                {
-                    apply(static_cast<osg::Texture1D*>(tex), unit, buf);
-                }
-                else if ( dynamic_cast<osg::Texture2D*>(tex) )
-                {
-                    apply(static_cast<osg::Texture2D*>(tex), unit, buf);
-                }
-                else if ( dynamic_cast<osg::Texture3D*>(tex) )
-                {
-                    apply(static_cast<osg::Texture3D*>(tex), unit, buf);
-                }
-                else if ( dynamic_cast<osg::TextureRectangle*>(tex) )
-                {
-                    apply(static_cast<osg::TextureRectangle*>(tex), unit, buf);
-                }
-                else
-                {
-                    OE_WARN << LC << "Unsupported texture type: " << tex->className() << std::endl;
-                    need_new_stateset = false;
-                }
-
                 osg::TexEnv* texenv = dynamic_cast<osg::TexEnv*>(state->getTextureAttribute(unit, osg::StateAttribute::TEXENV));
-                apply( texenv, unit, buf );
+
+                if ( apply(tex, texgen, texenv, unit, buf) == true )
+                {
+                   need_new_stateset = true;
+                }
             }
         }
 
@@ -691,6 +665,51 @@ ShaderGenerator::processGeometry(const osg::StateSet*         original,
         replacement = new_stateset.get();
     }
     return replacement.valid();
+}
+
+
+bool
+ShaderGenerator::apply(osg::Texture* tex, 
+                       osg::TexGen*  texgen,
+                       osg::TexEnv*  texenv, 
+                       int           unit,
+                       GenBuffers&   buf)
+{
+   bool ok = true;
+
+   buf.vertHead << "varying " MEDIUMP "vec4 " TEX_COORD << unit << ";\n";
+   buf.fragHead << "varying " MEDIUMP "vec4 " TEX_COORD << unit << ";\n";
+
+   apply( texgen, unit, buf );
+
+   if ( dynamic_cast<osg::Texture1D*>(tex) )
+   {
+      apply(static_cast<osg::Texture1D*>(tex), unit, buf);
+   }
+   else if ( dynamic_cast<osg::Texture2D*>(tex) )
+   {
+      apply(static_cast<osg::Texture2D*>(tex), unit, buf);
+   }
+   else if ( dynamic_cast<osg::Texture3D*>(tex) )
+   {
+      apply(static_cast<osg::Texture3D*>(tex), unit, buf);
+   }
+   else if ( dynamic_cast<osg::TextureRectangle*>(tex) )
+   {
+      apply(static_cast<osg::TextureRectangle*>(tex), unit, buf);
+   }
+   else
+   {
+      OE_WARN << LC << "Unsupported texture type: " << tex->className() << std::endl;
+      ok = false;
+   }
+
+   if ( ok )
+   {
+      apply( texenv, unit, buf );
+   }
+
+   return ok;
 }
 
 

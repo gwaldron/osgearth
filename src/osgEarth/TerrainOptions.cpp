@@ -174,7 +174,7 @@ TerrainOptions::fromConfig( const Config& conf )
     conf.getIfSet( "min_tile_range_factor", _minTileRangeFactor );    
     conf.getIfSet( "max_lod", _maxLOD ); conf.getIfSet( "max_level", _maxLOD );
     conf.getIfSet( "min_lod", _minLOD ); conf.getIfSet( "min_level", _minLOD );
-    conf.getIfSet( "first_lod", _firstLOD );
+    conf.getIfSet( "first_lod", _firstLOD ); conf.getIfSet( "first_level", _firstLOD );
     conf.getIfSet( "lighting", _enableLighting );
     conf.getIfSet( "attenuation_distance", _attenuationDistance );
     conf.getIfSet( "lod_transition_time", _lodTransitionTimeSeconds );

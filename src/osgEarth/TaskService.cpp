@@ -100,7 +100,7 @@ TaskRequestQueue::add( TaskRequest* request )
     _requests.insert( std::pair<float,TaskRequest*>(request->getPriority(), request) );
 
     // since there is data in the queue, wake up one waiting task thread.
-    _cond.signal();
+    _cond.signal(); 
 }
 
 TaskRequest* 
@@ -167,6 +167,16 @@ TaskThread::run()
 
         if (_request.valid())
         { 
+            PoisonPill* poison = dynamic_cast< PoisonPill* > ( _request.get());
+            if ( poison )
+            {
+                OE_DEBUG << this->getThreadId() << " received poison pill.  Shutting down" << std::endl;
+                // Add the poison pill back to the queue to kill any other threads.  If I'm going down, you're all going down with me!
+                _queue->add( poison );
+                break;
+            }
+            
+
             // discard a completed or canceled request:
             if ( _request->getState() != TaskRequest::STATE_PENDING )
             {
@@ -197,6 +207,7 @@ TaskThread::run()
             // Release the request
             _request = 0;
         }
+        
     }
 }
 
@@ -243,6 +254,14 @@ TaskService::add( TaskRequest* request )
 {   
     //OE_INFO << LC << "TS [" << _name << "] adding request [" << request->getName() << "]" << std::endl;
     _queue->add( request );
+}
+
+void TaskService::waitforThreadsToComplete()
+{        
+    for( TaskThreads::iterator i = _threads.begin(); i != _threads.end(); i++ )
+    {
+        (*i)->join();
+    }    
 }
 
 TaskService::~TaskService()

@@ -98,14 +98,14 @@ These options control the rendering of the terrain surface.
         <options>
             <terrain driver                = "mp"
                      lighting              = "true"
-                     skirt_ratio           = "0.05"
                      min_tile_range_factor = "6"
                      min_lod               = "0"
                      max_lod               = "23"
                      first_lod             = "0"
                      cluster_culling       = "true"
                      mercator_fast_path    = "true"
-                     blending              = "false" >
+                     blending              = "false"
+                     color                 = "#ffffffff" >
 
 +-----------------------+--------------------------------------------------------------------+
 | Property              | Description                                                        |
@@ -117,11 +117,10 @@ These options control the rendering of the terrain surface.
 | lighting              | Whether to enable GL_LIGHTING on the terrain. By default this is   |
 |                       | unset, meaning it will inherit the lighting mode of the scene.     |
 +-----------------------+--------------------------------------------------------------------+
-| skirt_ratio           | Ratio of the height of a terrain tile "skirt" to the extent of the |
-|                       | tile. The *skirt* is geometry that hides gaps between adjacent     |
-|                       | tiles with different levels of detail.                             |
-+-----------------------+--------------------------------------------------------------------+
-| min_tile_range_factor | Ratio of a tile's extent to its visibility range.                  |
+| min_tile_range_factor | Determines how close you need to be to a terrain tile for it to    |
+|                       | display. The value is the ratio of a tile's extent to its          |
+|                       | For example, if a tile is 10km is radius, and the MTRF=6, then the |
+|                       | tile will become visible at a range of about 60km.                 |
 +-----------------------+--------------------------------------------------------------------+
 | min_lod               | The lowest level of detail that the terrain is guaranteed to       |
 |                       | display, even if no source data is available at that LOD. The      |
@@ -145,6 +144,8 @@ These options control the rendering of the terrain surface.
 | blending              | Set this to ``true`` to enable GL blending on the terrain's        |
 |                       | underlying geometry. This lets you make the globe partially        |
 |                       | transparent. This is handy for seeing underground objects.         |
++-----------------------+--------------------------------------------------------------------+
+| color                 | Color on the underlying (untextures) terrain.                      |
 +-----------------------+--------------------------------------------------------------------+
 
 

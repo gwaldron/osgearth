@@ -224,8 +224,9 @@ makeTMS( osg::ArgumentParser& args )
                 OE_NOTICE << LC << "Packaging image layer \"" << layerFolder << "\"" << std::endl;
             }
 
+            osg::ref_ptr< ConsoleProgressCallback > progress = new ConsoleProgressCallback();
             std::string layerRoot = osgDB::concatPaths( rootFolder, layerFolder );
-            TMSPackager::Result r = packager.package( layer, layerRoot, 0L, extension );
+            TMSPackager::Result r = packager.package( layer, layerRoot,  progress, extension );
             if ( r.ok )
             {
                 // save to the output map if requested:

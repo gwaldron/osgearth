@@ -1,0 +1,119 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+* Copyright 2008-2013 Pelican Mapping
+* http://osgearth.org
+*
+* osgEarth is free software; you can redistribute it and/or modify
+* it under the terms of the GNU Lesser General Public License as published by
+* the Free Software Foundation; either version 2 of the License, or
+* (at your option) any later version.
+*
+* This program is distributed in the hope that it will be useful,
+* but WITHOUT ANY WARRANTY; without even the implied warranty of
+* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+* GNU Lesser General Public License for more details.
+*
+* You should have received a copy of the GNU Lesser General Public License
+* along with this program.  If not, see <http://www.gnu.org/licenses/>
+*/
+#ifndef OSGEARTHUTIL_ENVIRONMENT_NODE
+#define OSGEARTHUTIL_ENVIRONMENT_NODE
+
+#include <osgEarthUtil/Common>
+
+namespace osgEarth { namespace Util 
+{
+    using namespace osgEarth;
+
+    /**
+     * An Ephemeris gives the positions of naturally occurring astronimical
+     * objects; in that case, the sun and the moon. Also includes some
+     * related utility functions.
+     */
+    class OSGEARTHUTIL_EXPORT Ephemeris : public osg::Referenced
+    {
+    public:
+        /**
+        * Gets the moon position in ECEF coordinates at the given time
+        */
+        virtual osg::Vec3d getMoonPosition( const DateTime& dt ) = 0;
+
+        /**
+        * Gets the sun position in ECEF coordinates at the given time
+        */
+        virtual osg::Vec3d getSunPosition( const DateTime& dt ) = 0;
+
+        /**
+         * Gets a position from the right ascension, declination and range
+         * @param ra
+         *        Right ascension in radians
+         * @param decl
+         *        Declination in radians
+         * @param range
+         *        Range in meters
+         */
+        static osg::Vec3d getPositionFromRADecl( double ra, double decl, double range );
+    };
+
+
+    /**
+    * Interface for classes that provide sky, lighting, and other 
+    * environmental effect.
+    */
+    class OSGEARTHUTIL_EXPORT EnvironmentNode : public osg::Group
+    {
+    public:
+
+    protected:
+        // CTOR (abstract base class)
+        EnvironmentNode() { }
+
+        // protected DTOR (heap-only)
+        virtual ~EnvironmentNode() { }
+
+    public:
+        /**
+         * Gets/Sets the Ephemeris used to position the sun and the moon
+         * based on date/time.
+         */
+        Ephemeris* getEphemeris() const;
+        void setEphemeris(Ephemeris* ephemeris);
+
+    public:
+
+        /** Attaches this sky node to a view (placing a sky light). Optional */
+        virtual void attach( osg::View* view, int lightNum ) { }
+       
+        /**
+         * Gets the date/time for which the enviroment is configured.
+         * Pass in an optional View to get the date/time specific to
+         * that View.
+         */
+        void getDateTime(DateTime& output) const =0;
+        void getDateTime(DateTime& output, osg::View* view) const =0;
+
+        /** Sets the sky's position based on a date/time. */
+        void setDateTime(const DateTime& dt) const =0;
+        void setDateTime(const DateTime& dt, osg::View* view) const =0;
+
+        /** The minimum brightness for non-sunlit areas. */
+        void setAmbientBrightness( float value, osg::View* view =0L );
+        float getAmbientBrightness( osg::View* view =0L ) const;
+
+        /** Enables or disables automatic ambience */
+        void setAutoAmbience(bool value);
+        bool getAutoAmbience() const;
+
+        /** Whether the moon is visible */
+        void setMoonVisible( bool value, osg::View* view =0L );
+        bool getMoonVisible( osg::View* view =0L ) const;
+
+        /** Whether the stars are visible */
+        void setStarsVisible( bool value, osg::View* view =0L );
+        bool getStarsVisible( osg::View* view =0L ) const;
+
+    };
+
+} } // namespace osgEarth::Util
+
+#endif //OSGEARTHUTIL_ENVIRONMENT_NODE

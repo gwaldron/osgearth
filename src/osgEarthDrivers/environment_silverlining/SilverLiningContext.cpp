@@ -31,7 +31,9 @@ SilverLiningContext::SilverLiningContext(const SilverLiningOptions& options) :
 _options              ( options ),
 _initAttempted        ( false ),
 _initFailed           ( false ),
-_maxAmbientLightingAlt( -1.0 )
+_maxAmbientLightingAlt( -1.0 ),
+_atmosphere           ( 0L ),
+_clouds               ( 0L )
 {
     // Create a SL atmosphere (the main SL object).
     // TODO: plug in the username + license key.
@@ -92,11 +94,34 @@ SilverLiningContext::initialize(osg::RenderInfo& renderInfo)
                     _atmosphere->GetConfigOptionDouble("atmosphere-height");
 #endif
 
-                // ??
-                //createAtmosphereData( renderInfo );
+                if ( _options.drawClouds() == true )
+                {
+                    setupClouds();
+                }
             }
         }
     }
+}
+
+void
+SilverLiningContext::setupClouds()
+{
+    _clouds = ::SilverLining::CloudLayerFactory::Create( CUMULUS_CONGESTUS );
+    _clouds->SetIsInfinite( true );
+    _clouds->SetFadeTowardEdges(true);
+    _clouds->SetBaseAltitude( 2000 );
+    _clouds->SetThickness( 200 );
+    _clouds->SetBaseLength( 100000 );
+    _clouds->SetBaseWidth( 100000 );
+    _clouds->SetDensity( 0.6 );
+    _clouds->SetAlpha( 0.8 );
+
+    _clouds->SeedClouds( *_atmosphere );
+    _clouds->GenerateShadowMaps( false );
+    
+    _clouds->SetLayerPosition(0, 0);
+
+    _atmosphere->GetConditions()->AddCloudLayer( _clouds );
 }
 
 void
@@ -128,7 +153,6 @@ SilverLiningContext::updateLight()
 
     if ( _srs->isGeographic() )
     {
-        //_atmosphere->GetSunOrMoonPositionGeographic( &x, &y, &z );
         _atmosphere->GetSunPositionGeographic( &x, &y, &z );
     }
     else
@@ -179,6 +203,18 @@ SilverLiningContext::updateLocation()
         loc.SetLatitude ( osg::DegreesToRadians(latLonAlt.y()) );
 
         _atmosphere->GetConditions()->SetLocation( loc );
+
+        if ( _clouds )
+        {
+#if 1 //TODO: figure out why we need to call this a couple times before
+      //      it takes effect. -gw
+            static int c = 2;
+            if ( c > 0 ) {
+                --c;
+                _clouds->SetLayerPosition(0, 0);
+            }
+        }
+#endif
     }
 }
 

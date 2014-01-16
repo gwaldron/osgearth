@@ -51,6 +51,7 @@ namespace osgEarth { namespace Drivers { namespace SilverLining
 
         osg::ref_ptr<SilverLiningContext> _SL;
         osg::Drawable* _skyDrawable;
+        osg::Drawable* _cloudsDrawable;
     };
 
 } } } // namespace osgEarth::Drivers::SilverLining

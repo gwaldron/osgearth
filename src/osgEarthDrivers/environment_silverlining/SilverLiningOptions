@@ -32,8 +32,9 @@ namespace osgEarth { namespace Drivers { namespace SilverLining
     class SilverLiningOptions : public EnvironmentOptions
     {
     public:
-        SilverLiningOptions(const ConfigOptions& options =ConfigOptions())
-            : EnvironmentOptions(options)
+        SilverLiningOptions(const ConfigOptions& options =ConfigOptions()) :
+          EnvironmentOptions(options),
+          _drawClouds(false)
         {
             setDriver( "silverlining" );
             fromConfig( _conf );
@@ -54,12 +55,17 @@ namespace osgEarth { namespace Drivers { namespace SilverLining
         optional<std::string>& resourcePath() { return _resourcePath; }
         const optional<std::string>& resourcePath() const { return _resourcePath; }
 
+        /* Whether to draw clouds */
+        optional<bool>& drawClouds() { return _drawClouds; }
+        const optional<bool>& drawClouds() const { return _drawClouds; }
+
     public:
         Config getConfig() const {
             Config conf = EnvironmentOptions::getConfig();
             conf.addIfSet("user", _user);
             conf.addIfSet("license_code", _licenseCode);
             conf.addIfSet("resource_path", _resourcePath);
+            conf.addIfSet("clouds", _drawClouds);
             return conf;
         }
 
@@ -74,11 +80,13 @@ namespace osgEarth { namespace Drivers { namespace SilverLining
             conf.getIfSet("user", _user);
             conf.getIfSet("license_code", _licenseCode);
             conf.getIfSet("resource_path", _resourcePath);
+            conf.getIfSet("clouds", _drawClouds);
         }
 
         optional<std::string> _user;
         optional<std::string> _licenseCode;
         optional<std::string> _resourcePath;
+        optional<bool>        _drawClouds;
     };
 
 } } } // namespace osgEarth::Drivers::SilverLiningPlugin

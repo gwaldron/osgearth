@@ -20,6 +20,7 @@
 #include "SilverLiningNode"
 #include "SilverLiningContext"
 #include "SilverLiningSkyDrawable"
+#include "SilverLiningCloudsDrawable"
 
 #include <osg/Light>
 #include <osg/LightSource>
@@ -62,6 +63,10 @@ SilverLiningNode::SilverLiningNode(const Map*                 map,
     _skyDrawable = new SkyDrawable( _SL.get() );
     geode->addDrawable( _skyDrawable );
 
+    // Clouds
+    _cloudsDrawable = new CloudsDrawable( _SL.get() );
+    geode->addDrawable( _cloudsDrawable );
+
     // SL requires an update pass.
     ADJUST_UPDATE_TRAV_COUNT(this, +1);
 }
@@ -94,6 +99,7 @@ SilverLiningNode::traverse(osg::NodeVisitor& nv)
             _SL->getAtmosphere()->UpdateSkyAndClouds();
             _SL->updateLight();
             _skyDrawable->dirtyBound();
+            _cloudsDrawable->dirtyBound();
         }
         else if ( nv.getVisitorType() == nv.CULL_VISITOR )
         {

@@ -24,6 +24,7 @@
 
 namespace SilverLining {
     class Atmosphere;
+    class CloudLayer;
 }
 namespace osgEarth {
     class SpatialReference;
@@ -78,7 +79,12 @@ namespace osgEarth { namespace Drivers { namespace SilverLining
         virtual ~SilverLiningContext();
 
     private:
+
+        void setupClouds();
+
+    private:
         ::SilverLining::Atmosphere* _atmosphere;
+        ::SilverLining::CloudLayer* _clouds;
 
         double _skyBoxSize;
 

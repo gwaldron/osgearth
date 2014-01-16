@@ -29,6 +29,7 @@ using namespace osgEarth::Drivers::SilverLining;
 SkyDrawable::SkyDrawable(SilverLiningContext* SL) :
 _SL( SL )
 {
+    // call this to ensure draw() gets called every frame.
     setSupportsDisplayList( false );
 }
 

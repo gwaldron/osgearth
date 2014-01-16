@@ -82,6 +82,8 @@ SilverLiningContext::initialize(osg::RenderInfo& renderInfo)
             {
                 OE_INFO << LC << "SilverLining initialized OK!" << std::endl;
 
+                // Defaults for a projected terrain. ECEF terrain vectors are set
+                // in updateLocation().
                 _atmosphere->SetUpVector( 0.0, 0.0, 1.0 );
                 _atmosphere->SetRightVector( 1.0, 0.0, 0.0 );
 
@@ -116,7 +118,7 @@ SilverLiningContext::updateLight()
     }
 
     _atmosphere->GetAmbientColor( &ra, &ga, &ba );
-    _atmosphere->GetSunOrMoonColor( &rd, &gd, &bd );
+    _atmosphere->GetSunColor( &rd, &gd, &bd );
 
     // Restore the actual altitude.
     if ( _maxAmbientLightingAlt > 0.0 )
@@ -126,11 +128,12 @@ SilverLiningContext::updateLight()
 
     if ( _srs->isGeographic() )
     {
-        _atmosphere->GetSunOrMoonPositionGeographic( &x, &y, &z );
+        //_atmosphere->GetSunOrMoonPositionGeographic( &x, &y, &z );
+        _atmosphere->GetSunPositionGeographic( &x, &y, &z );
     }
     else
     {
-        _atmosphere->GetSunOrMoonPosition(&x, &y, &z);
+        _atmosphere->GetSunPosition(&x, &y, &z);
     }
 
     osg::Vec3 direction(x, y, z);

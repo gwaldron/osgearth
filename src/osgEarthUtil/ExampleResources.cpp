@@ -625,17 +625,15 @@ MapNodeHelper::parse(MapNode*             mapNode,
 
         else
         {
-            double hours = skyConf.value( "hours", 12.0 );
             SkyNode* sky = new SkyNode( mapNode->getMap() );
             sky->setAmbientBrightness( ambientBrightness );
-            sky->setDateTime( DateTime() );
-            //sky->setDateTime( DateTime(2011, 3, 6, hours) );
             sky->attach( view );
             enode = sky;
         }
 
         if ( enode )
         {
+            enode->setDateTime( DateTime() );
             root->addChild( enode );
             Control* c = SkyControlFactory().create(enode, view);
             if ( c )

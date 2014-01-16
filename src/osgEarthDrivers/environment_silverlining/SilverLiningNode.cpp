@@ -77,9 +77,9 @@ void
 SilverLiningNode::onSetDateTime()
 {
     // set the SL local time to UTC/epoch.
-    ::SilverLining::LocalTime localTime;
-    localTime.SetFromEpochSeconds( getDateTime().asTimeStamp() );
-    _SL->getAtmosphere()->GetConditions()->SetTime( localTime );
+    ::SilverLining::LocalTime utcTime;
+    utcTime.SetFromEpochSeconds( getDateTime().asTimeStamp() );
+    _SL->getAtmosphere()->GetConditions()->SetTime( utcTime );
 }
 
 

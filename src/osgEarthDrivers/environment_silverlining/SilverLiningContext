@@ -89,6 +89,8 @@ namespace osgEarth { namespace Drivers { namespace SilverLining
         bool             _initFailed;
         Threading::Mutex _initMutex;
 
+        double _maxAmbientLightingAlt;
+
         osg::observer_ptr<osg::Camera> _camera;
         osg::Vec3d                     _cameraPos; // eye point
 

@@ -42,6 +42,14 @@ namespace osgEarth { namespace Drivers { namespace SilverLining
 
     public: // properties
 
+        /* User name for license activation */
+        optional<std::string>& user() { return _user; }
+        const optional<std::string>& user() const { return _user; }
+
+        /* License code string */
+        optional<std::string>& licenseCode() { return _licenseCode; }
+        const optional<std::string>& licenseCode() const { return _licenseCode; }
+
         /* SilverLining resource path */
         optional<std::string>& resourcePath() { return _resourcePath; }
         const optional<std::string>& resourcePath() const { return _resourcePath; }
@@ -49,6 +57,8 @@ namespace osgEarth { namespace Drivers { namespace SilverLining
     public:
         Config getConfig() const {
             Config conf = EnvironmentOptions::getConfig();
+            conf.addIfSet("user", _user);
+            conf.addIfSet("license_code", _licenseCode);
             conf.addIfSet("resource_path", _resourcePath);
             return conf;
         }
@@ -61,9 +71,13 @@ namespace osgEarth { namespace Drivers { namespace SilverLining
 
     private:
         void fromConfig( const Config& conf ) {
+            conf.getIfSet("user", _user);
+            conf.getIfSet("license_code", _licenseCode);
             conf.getIfSet("resource_path", _resourcePath);
         }
 
+        optional<std::string> _user;
+        optional<std::string> _licenseCode;
         optional<std::string> _resourcePath;
     };
 

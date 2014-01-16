@@ -28,13 +28,16 @@ using namespace osgEarth::Drivers::SilverLining;
 
 
 SilverLiningContext::SilverLiningContext(const SilverLiningOptions& options) :
-_options      ( options ),
-_initAttempted( false ),
-_initFailed   ( false )
+_options              ( options ),
+_initAttempted        ( false ),
+_initFailed           ( false ),
+_maxAmbientLightingAlt( -1.0 )
 {
     // Create a SL atmosphere (the main SL object).
     // TODO: plug in the username + license key.
-    _atmosphere = new ::SilverLining::Atmosphere(0L, 0L);
+    _atmosphere = new ::SilverLining::Atmosphere(
+        options.user()->c_str(),
+        options.licenseCode()->c_str() );
 }
 
 void
@@ -82,6 +85,11 @@ SilverLiningContext::initialize(osg::RenderInfo& renderInfo)
                 _atmosphere->SetUpVector( 0.0, 0.0, 1.0 );
                 _atmosphere->SetRightVector( 1.0, 0.0, 0.0 );
 
+#if 0 // todo: review this
+                _maxAmbientLightingAlt = 
+                    _atmosphere->GetConfigOptionDouble("atmosphere-height");
+#endif
+
                 // ??
                 //createAtmosphereData( renderInfo );
             }
@@ -96,8 +104,25 @@ SilverLiningContext::updateLight()
         return;
 
     float ra, ga, ba, rd, gd, bd, x, y, z;
+
+    // Clamp the camera's altitude while fetching the colors so the
+    // lighting's ambient component doesn't fade to black at high altitude.
+    ::SilverLining::Location savedLoc = _atmosphere->GetConditions()->GetLocation();
+    ::SilverLining::Location clampedLoc = savedLoc;
+    if ( _maxAmbientLightingAlt > 0.0 )
+    {
+        clampedLoc.SetAltitude( std::min(clampedLoc.GetAltitude(), _maxAmbientLightingAlt) );
+        _atmosphere->GetConditions()->SetLocation( clampedLoc );
+    }
+
     _atmosphere->GetAmbientColor( &ra, &ga, &ba );
     _atmosphere->GetSunOrMoonColor( &rd, &gd, &bd );
+
+    // Restore the actual altitude.
+    if ( _maxAmbientLightingAlt > 0.0 )
+    {
+        _atmosphere->GetConditions()->SetLocation( savedLoc );
+    }
 
     if ( _srs->isGeographic() )
     {

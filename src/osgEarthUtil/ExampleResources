@@ -21,7 +21,7 @@
 
 #include <osgEarthUtil/Common>
 #include <osgEarthUtil/Controls>
-#include <osgEarthUtil/SkyNode>
+#include <osgEarthUtil/Environment>
 #include <osgEarthUtil/EarthManipulator>
 #include <osgEarthDrivers/ocean_surface/OceanSurface>
 #include <osgEarth/Viewpoint>
@@ -123,7 +123,7 @@ namespace osgEarth { namespace Util
     {
     public:
         Control* create( 
-            SkyNode*         sky,
+            EnvironmentNode* sky,
             osgViewer::View* view ) const;
     };
 

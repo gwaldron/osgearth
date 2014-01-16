@@ -20,96 +20,54 @@
 #define OSGEARTHUTIL_SKY_NODE
 
 #include <osgEarthUtil/Common>
-#include <osgEarth/DateTime>
-#include <osgEarth/Map>
+#include <osgEarthUtil/Environment>
 #include <osg/MatrixTransform>
 #include <osg/Uniform>
-#include <osg/Group>
-#include <osg/View>
+
+namespace osg {
+    class EllipsoidModel;
+}
 
 namespace osgEarth { namespace Util 
 {
     using namespace osgEarth;
 
     /**
-    * Class that provides information about astronomical objects at a given time.
-    */
-    class OSGEARTHUTIL_EXPORT EphemerisProvider : public osg::Referenced
+     * Serializable options for creation of a SkyNode.
+     */
+    class OSGEARTHUTIL_EXPORT SkyNodeOptions : public EnvironmentOptions
     {
     public:
-        /**
-        * Gets the moon position in geocentric coordinates at the given time
-        */
-        virtual osg::Vec3d getMoonPosition( const DateTime& dt ) = 0;
+        SkyNodeOptions();
+        SkyNodeOptions(const ConfigOptions& options);
 
-        /**
-        * Gets the sun position in geocentric coordinates at the given time
-        */
-        virtual osg::Vec3d getSunPosition( const DateTime& dt ) = 0;
+        /** File containing star locations */
+        optional<std::string>& starFile() { return _starFile; }
+        const optional<std::string>& starFile() const { return _starFile; }
+
+        /** Only draw stars of at least this magnitude */
+        optional<float>& minStarMagnitude() { return _minStarMagnitude; }
+        const optional<float>& minStarMagnitude() const { return _minStarMagnitude; }
+
+    protected:
+        optional<std::string> _starFile;
+        optional<float>       _minStarMagnitude;
     };
-
-
-    /**
-    * The default EphemerisProvider, provides positions based on freely available models
-    */
-    class OSGEARTHUTIL_EXPORT DefaultEphemerisProvider : public EphemerisProvider
-    {
-    public:
-        /**
-        * Gets the moon position in geocentric coordinates at the given time
-        */
-        virtual osg::Vec3d getMoonPosition( const DateTime& dt );
-
-        /**
-        * Gets the sun position in geocentric coordinates at the given time
-        */
-        virtual osg::Vec3d getSunPosition( const DateTime& dt );
-    };
-
 
     /**
      * A sky model.
      */
-    class OSGEARTHUTIL_EXPORT SkyNode : public osg::Group
+    class OSGEARTHUTIL_EXPORT SkyNode : public EnvironmentNode
     {
     public:
         /** Creates a new sky node based on the provided map. */
-        SkyNode( Map* map, const std::string& starFile="", float minStarMagnitude=-1.0f );
-        SkyNode( Map* map, float minStarMagnitude );
-
-        /** dtor */
-        virtual ~SkyNode() { }
-
-
-      
-    public:
-        /**
-         * Gets/Sets the EphemerisProvider
-         */
-        EphemerisProvider* getEphemerisProvider() const;
-        void setEphemerisProvider(EphemerisProvider* ephemerisProvider );
-
-        /**
-         * Gets a position from the right ascension, declination and range
-         * @param ra
-         *        Right ascension in radians
-         * @param decl
-         *        Declination in radians
-         * @param range
-         *        Range in meters
-         */
-        static osg::Vec3d getPositionFromRADecl( double ra, double decl, double range );
+        SkyNode(const Map* map);
+        SkyNode(const Map* map, const SkyNodeOptions& options);
 
     public:
 
         /** Attached this sky node to a view (placing a sky light). */
         void attach( osg::View* view, int lightNum =0 );
-       
-        /** Gets the date time for the sky position  */
-        void getDateTime(DateTime& output, osg::View* view =0L) const;
-
-        /** Sets the sky's position based on a julian date. */
-        void setDateTime(const DateTime& dt, osg::View* view =0L );
 
         /** The minimum brightness for non-sunlit areas. */
         void setAmbientBrightness( float value, osg::View* view =0L );
@@ -127,31 +85,38 @@ namespace osgEarth { namespace Util
         void setStarsVisible( bool value, osg::View* view =0L );
         bool getStarsVisible( osg::View* view =0L ) const;
 
-    public: // deprecated
+    public: // osg::Node
 
-        /** @deprecated Please use setDateTime(const DateTime&) above */
-        void setDateTime( int year, int month, int date, double hoursUTC, osg::View* view =0L );
-        /** @deprecated Please use getDateTime(DateTime&) above */
-        void getDateTime( int &year, int &month, int &date, double &hoursUTC, osg::View* view=0L );
-
-    public:
         //override
         virtual void traverse( osg::NodeVisitor& nv );
 
         //override
         virtual osg::BoundingSphere computeBound() const;
 
+
+    protected: // EnvironmentNode
+
+        // update when the ephemeris is set
+        virtual void onSetEphemeris();
+
+        // update when the date/time is set
+        virtual void onSetDateTime();
+
+    protected:
+
+        // dtor.
+        virtual ~SkyNode() { }
+
     private:
 
         /** Sets the sun's position as a unit vector. */
-        void setSunPosition( const osg::Vec3& pos, osg::View* view =0L );
+        void setSunPosition(const osg::Vec3& pos, osg::View* view);
 
         /** Sets the moon position as a geocentric coordinate */
-        void setMoonPosition( const osg::Vec3d& pos, osg::View* view =0L );
+        void setMoonPosition(const osg::Vec3d& pos, osg::View* view);
 
-        /** Sets the sun's position as a latitude and longitude. */         
-        void setSunPosition( double lat_degrees, double lon_degrees, osg::View* view =0L );        
-
+        /** Sets the sun's position as a latitude and longitude. */
+        void setSunPosition(double lat_degrees, double lon_degrees, osg::View* view);
 
         struct StarData
         {
@@ -196,15 +161,16 @@ namespace osgEarth { namespace Util
         osg::Vec3d _moonPosition;
         bool _autoAmbience;
 
-        osg::ref_ptr< const osg::EllipsoidModel > _ellipsoidModel;
+        osg::ref_ptr<const osg::EllipsoidModel> _ellipsoidModel;
 
-        void initialize( Map* map, const std::string& starFile="" );
+
+        void initialize(const Map* map, const SkyNodeOptions& options);
 
         void makeAtmosphere( const osg::EllipsoidModel* );
         void makeSun();
         void makeMoon();
 
-        void makeStars(const std::string& starFile);
+        void makeStars(const SkyNodeOptions& options);
         osg::Node* buildStarGeometry(const std::vector<StarData>& stars);
         void getDefaultStars(std::vector<StarData>& out_stars);
         bool parseStarFile(const std::string& starFile, std::vector<StarData>& out_stars);
@@ -213,7 +179,7 @@ namespace osgEarth { namespace Util
         void setSunPosition( PerViewData& data, const osg::Vec3& pos );
         void setMoonPosition( PerViewData& data, const osg::Vec3d& pos );
 
-        osg::ref_ptr< EphemerisProvider > _ephemerisProvider;
+        osg::ref_ptr<Ephemeris> _ephemeris;
     };
 
 } } // namespace osgEarth::Util

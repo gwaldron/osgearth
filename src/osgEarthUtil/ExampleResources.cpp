@@ -24,6 +24,8 @@
 #include <osgEarthUtil/MouseCoordsTool>
 #include <osgEarthUtil/AutoClipPlaneHandler>
 #include <osgEarthUtil/DataScanner>
+#include <osgEarthUtil/Environment>
+#include <osgEarthUtil/SkyNode>
 
 #include <osgEarthUtil/NormalMap>
 #include <osgEarthUtil/DetailTexture>
@@ -212,38 +214,39 @@ MouseCoordsControlFactory::create(MapNode*         mapNode,
 
 namespace
 {
-    struct SkySliderHandler : public ControlEventHandler
+    struct SkyTimeSliderHandler : public ControlEventHandler
     {
-        SkySliderHandler(SkyNode* sky) : _sky(sky)  { }
+        SkyTimeSliderHandler(EnvironmentNode* sky) : _sky(sky)  { }
 
-        SkyNode* _sky;
+        EnvironmentNode* _sky;
 
         virtual void onValueChanged( class Control* control, float value )
         {
-            DateTime d;
-            _sky->getDateTime(d);
+            DateTime d = _sky->getDateTime();
             _sky->setDateTime(DateTime(d.year(), d.month(), d.day(), value));
         }
     };
 
+#undef USE_AMBIENT_SLIDER
+//#define USE_AMBIENT_SLIDER 1
+
+#ifdef USE_AMBIENT_SLIDER
     struct AmbientBrightnessHandler : public ControlEventHandler
     {
-        AmbientBrightnessHandler(SkyNode* sky) : _sky(sky) { }
+        AmbientBrightnessHandler(EnvironmentNode* sky) : _sky(sky) { }
 
-        SkyNode* _sky;
+        EnvironmentNode* _sky;
 
         virtual void onValueChanged( class Control* control, float value )
         {
             _sky->setAmbientBrightness( value );
         }
     };
+#endif
 }
 
-//#undef USE_AMBIENT_SLIDER
-#define USE_AMBIENT_SLIDER 1
-
 Control*
-SkyControlFactory::create(SkyNode*         sky,
+SkyControlFactory::create(EnvironmentNode* sky,
                           osgViewer::View* view) const
 {
     Grid* grid = new Grid();
@@ -253,12 +256,11 @@ SkyControlFactory::create(SkyNode*         sky,
 
     grid->setControl( 0, 0, new LabelControl("Time: ", 16) );
 
-    DateTime dt;
-    sky->getDateTime(dt);
+    DateTime dt = sky->getDateTime();
 
     HSliderControl* skySlider = grid->setControl(1, 0, new HSliderControl( 0.0f, 24.0f, dt.hours() ));
     skySlider->setHorizFill( true, 200 );
-    skySlider->addEventHandler( new SkySliderHandler(sky) );
+    skySlider->addEventHandler( new SkyTimeSliderHandler(sky) );
 
     grid->setControl(2, 0, new LabelControl(skySlider) );
 
@@ -610,15 +612,35 @@ MapNodeHelper::parse(MapNode*             mapNode,
     // Adding a sky model:
     if ( useSky || !skyConf.empty() )
     {
-        double hours = skyConf.value( "hours", 12.0 );
-        SkyNode* sky = new SkyNode( mapNode->getMap() );
-        sky->setAmbientBrightness( ambientBrightness );
-        sky->setDateTime( DateTime(2011, 3, 6, hours) );
-        sky->attach( view );
-        root->addChild( sky );
-        Control* c = SkyControlFactory().create(sky, view);
-        if ( c )
-            mainContainer->addControl( c );
+        EnvironmentNode* enode = 0L;
+
+        if ( skyConf.hasValue("driver") )
+        {
+            EnvironmentOptions options(skyConf);
+            enode = EnvironmentFactory::create(options, mapNode->getMap());
+
+            // disable the default view light
+            view->setLightingMode(osg::View::NO_LIGHT);
+        }
+
+        else
+        {
+            double hours = skyConf.value( "hours", 12.0 );
+            SkyNode* sky = new SkyNode( mapNode->getMap() );
+            sky->setAmbientBrightness( ambientBrightness );
+            sky->setDateTime( DateTime() );
+            //sky->setDateTime( DateTime(2011, 3, 6, hours) );
+            sky->attach( view );
+            enode = sky;
+        }
+
+        if ( enode )
+        {
+            root->addChild( enode );
+            Control* c = SkyControlFactory().create(enode, view);
+            if ( c )
+                mainContainer->addControl( c );
+        }
     }
 
     // Adding an ocean model:

@@ -59,7 +59,8 @@ OceanOptions::getConfig() const
 #undef  LC
 #define LC "[OceanNode] "
 
-OceanNode::OceanNode()
+OceanNode::OceanNode() :
+_seaLevel( 0.0f )
 {
     //nop
 }
@@ -67,6 +68,13 @@ OceanNode::OceanNode()
 OceanNode::~OceanNode()
 {
     //nop
+}
+
+void
+OceanNode::setSeaLevel(float value)
+{
+    _seaLevel = value;
+    onSetSeaLevel();
 }
 
 //------------------------------------------------------------------------

@@ -69,9 +69,17 @@ namespace osgEarth { namespace Util
 
     public:
 
-    protected:
+        /** Sets the sea level, as an offset from the ellipsoid (meter) */
+        void setSeaLevel(float offsetMeters);
+        float getSeaLevel() const { return _seaLevel; }
+
+    protected: // impl class can override these to detect changes
+
+        virtual void onSetSeaLevel() { }
 
     private:
+
+        float _seaLevel;
     };
 
 

@@ -281,47 +281,19 @@ namespace
 {
     struct ChangeSeaLevel : public ControlEventHandler
     {
-        ChangeSeaLevel( OceanSurfaceNode* ocean ) : _ocean(ocean) { }
+        ChangeSeaLevel( OceanNode* ocean ) : _ocean(ocean) { }
 
-        OceanSurfaceNode* _ocean;
-
-        virtual void onValueChanged( class Control* control, float value )
-        {
-            _ocean->options().seaLevel() = value;
-            _ocean->dirty();
-        }
-    };
-
-    struct ChangeLowFeather : public ControlEventHandler
-    {
-        ChangeLowFeather( OceanSurfaceNode* ocean ) : _ocean(ocean) { }
-
-        OceanSurfaceNode* _ocean;
+        OceanNode* _ocean;
 
         virtual void onValueChanged( class Control* control, float value )
         {
-            _ocean->options().lowFeatherOffset() = value;
-            _ocean->dirty();
-        }
-    };
-
-    struct ChangeHighFeather : public ControlEventHandler
-    {
-        ChangeHighFeather( OceanSurfaceNode* ocean ) : _ocean(ocean) { }
-
-        OceanSurfaceNode* _ocean;
-
-        virtual void onValueChanged( class Control* control, float value )
-        {
-            _ocean->options().highFeatherOffset() = value;
-            _ocean->dirty();
+            _ocean->setSeaLevel( value );
         }
     };
 }
 
 Control*
-OceanControlFactory::create(OceanSurfaceNode* ocean,
-                            osgViewer::View*  view   ) const
+OceanControlFactory::create(OceanNode* ocean) const
 {
     VBox* main = new VBox();
 
@@ -337,32 +309,6 @@ OceanControlFactory::create(OceanSurfaceNode* ocean,
     mslSlider->setHeight( 12 );
     mslSlider->setHorizFill( true, 200 );
     mslSlider->addEventHandler( new ChangeSeaLevel(ocean) );
-
-    HBox* oceanBox2 = main->addControl(new HBox());
-    oceanBox2->setChildVertAlign( Control::ALIGN_CENTER );
-    oceanBox2->setChildSpacing( 10 );
-    oceanBox2->setHorizFill( true );
-
-    oceanBox2->addControl( new LabelControl("Low Feather: ", 16) );
-
-    HSliderControl* lfSlider = oceanBox2->addControl(new HSliderControl( -1000.0, 250.0f, -100.0f ));
-    lfSlider->setBackColor( Color::Gray );
-    lfSlider->setHeight( 12 );
-    lfSlider->setHorizFill( true, 200 );
-    lfSlider->addEventHandler( new ChangeLowFeather(ocean) );
-
-    HBox* oceanBox3 = main->addControl(new HBox());
-    oceanBox3->setChildVertAlign( Control::ALIGN_CENTER );
-    oceanBox3->setChildSpacing( 10 );
-    oceanBox3->setHorizFill( true );
-
-    oceanBox3->addControl( new LabelControl("High Feather: ", 16) );
-
-    HSliderControl* hfSlider = oceanBox3->addControl(new HSliderControl( -500.0f, 500.0f, -10.0f ));
-    hfSlider->setBackColor( Color::Gray );
-    hfSlider->setHeight( 12 );
-    hfSlider->setHorizFill( true, 200 );
-    hfSlider->addEventHandler( new ChangeHighFeather(ocean) );
 
     return main;
 }
@@ -653,6 +599,10 @@ MapNodeHelper::parse(MapNode*             mapNode,
             if ( ocean )
             {
                 root->addChild( ocean );
+
+                Control* c = OceanControlFactory().create(ocean);
+                if ( c )
+                    mainContainer->addControl(c);
             }
         }
 
@@ -662,9 +612,9 @@ MapNodeHelper::parse(MapNode*             mapNode,
             if ( ocean )
             {
                 root->addChild( ocean );
-                Control* c = OceanControlFactory().create(ocean, view);
-                if ( c )
-                    mainContainer->addControl(c);
+                //Control* c = OceanControlFactory().create(ocean);
+                //if ( c )
+                //    mainContainer->addControl(c);
             }
         }
     }

@@ -42,11 +42,13 @@
 #include <osgEarth/StringUtils>
 
 #include <osgEarthDrivers/kml/KML>
+#include <osgEarthDrivers/ocean_surface/OceanSurface>
 
-#include <osgGA/StateSetManipulator>
-#include <osgViewer/ViewerEventHandlers>
 #include <osgDB/FileNameUtils>
 #include <osgDB/WriteFile>
+#include <osgGA/StateSetManipulator>
+#include <osgViewer/View>
+#include <osgViewer/ViewerEventHandlers>
 
 #define KML_PUSHPIN_URL "http://demo.pelicanmapping.com/icons/pushpin_yellow.png"
 
@@ -59,6 +61,7 @@ using namespace osgEarth::Util;
 using namespace osgEarth::Util::Controls;
 using namespace osgEarth::Symbology;
 using namespace osgEarth::Annotation;
+using namespace osgEarth::Drivers;
 
 //------------------------------------------------------------------------
 

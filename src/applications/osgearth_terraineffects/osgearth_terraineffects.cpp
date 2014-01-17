@@ -21,12 +21,11 @@
  * This sample tests all the various built-in TerrainEffect classes and
  * lets you toggle them and try them together.
  */
-#include <osg/Notify>
-#include <osg/Fog>
-#include <osgViewer/Viewer>
 #include <osgEarth/VirtualProgram>
 #include <osgEarth/Registry>
 #include <osgEarth/TerrainEngineNode>
+#include <osgEarth/MapNode>
+
 #include <osgEarthUtil/EarthManipulator>
 #include <osgEarthUtil/ExampleResources>
 #include <osgEarthUtil/Controls>
@@ -35,6 +34,12 @@
 #include <osgEarthUtil/LODBlending>
 #include <osgEarthUtil/NormalMap>
 #include <osgEarthUtil/VerticalScale>
+
+#include <osgEarthSymbology/Color>
+
+#include <osg/Notify>
+#include <osg/Fog>
+#include <osgViewer/Viewer>
 
 using namespace osgEarth;
 using namespace osgEarth::Util;

@@ -34,6 +34,7 @@
 #include <osgEarth/ImageLayer>
 #include <osgEarth/ColorFilter>
 #include <osgEarth/StringUtils>
+#include <osgEarth/MapNode>
 #include <osgEarthSymbology/StyleSheet>
 #include <osgEarthUtil/EarthManipulator>
 #include <osgEarthUtil/ExampleResources>

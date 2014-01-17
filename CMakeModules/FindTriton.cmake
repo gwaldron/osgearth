@@ -55,10 +55,6 @@ IF (UNIX)
 	SET(TRITON_ARCH "linux")
 ENDIF (UNIX)
 
-<<<<<<< HEAD
-
-=======
->>>>>>> master
 FIND_PATH(TRITON_INCLUDE_DIR Triton.h
     "${TRITON_DIR}/Public Headers"
     "$ENV{TRITON_PATH}/Public Headers"

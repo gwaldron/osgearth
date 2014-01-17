@@ -36,7 +36,7 @@
 #include <osgEarthUtil/AutoClipPlaneHandler>
 #include <osgEarthUtil/SkyNode>
 #include <osgEarthUtil/EarthManipulator>
-#include <osgEarthDrivers/ocean_surface/OceanSurface>
+#include <osgEarthUtil/Ocean>
 
 #include <QAction>
 #include <QDockWidget>
@@ -59,7 +59,7 @@ using namespace osgEarth::Util;
 
 static osg::ref_ptr<osg::Group> s_annoGroup;
 static osgEarth::Util::SkyNode* s_sky=0L;
-static osgEarth::Drivers::OceanSurfaceNode* s_ocean=0L;
+static osgEarth::Util::OceanNode* s_ocean=0L;
 
 //------------------------------------------------------------------
 
@@ -292,7 +292,10 @@ main(int argc, char** argv)
             // Ocean surface.
             if (externals.hasChild("ocean"))
             {
-                s_ocean = new osgEarth::Drivers::OceanSurfaceNode(mapNode.get(), externals.child("ocean"));
+                s_ocean = osgEarth::Util::OceanFactory::create(
+                    osgEarth::Util::OceanOptions(externals.child("ocean")),
+                    mapNode.get());
+
                 if (s_ocean)
                     root->addChild(s_ocean);
             }

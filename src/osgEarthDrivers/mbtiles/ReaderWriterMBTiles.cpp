@@ -128,8 +128,11 @@ public:
         //Get the ReaderWriter
         _rw = osgDB::Registry::instance()->getReaderWriterForExtension( _tileFormat );                
 
-        computeLevels();
-
+        if (*_options.computeLevels())
+        {
+            computeLevels();
+        }
+        
         _emptyImage = ImageUtils::createEmptyImage( 256, 256 );
         
         return STATUS_OK;
@@ -241,6 +244,7 @@ public:
 
     void computeLevels()
     {        
+        osg::Timer_t startTime = osg::Timer::instance()->tick();
         sqlite3_stmt* select = NULL;
         std::string query = "SELECT min(zoom_level), max(zoom_level) from tiles";
         int rc = sqlite3_prepare_v2( _database, query.c_str(), -1, &select, 0L );
@@ -259,9 +263,10 @@ public:
         else
         {
             OE_DEBUG << LC << "SQL QUERY failed for " << query << ": " << std::endl;
-        }
-
+        }        
         sqlite3_finalize( select );        
+        osg::Timer_t endTime = osg::Timer::instance()->tick();
+        OE_NOTICE << "Computing levels took " << osg::Timer::instance()->delta_s(startTime, endTime ) << " s" << std::endl;
     }
 
     // override

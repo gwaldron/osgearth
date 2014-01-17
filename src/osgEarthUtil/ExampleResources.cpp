@@ -24,6 +24,9 @@
 #include <osgEarthUtil/MouseCoordsTool>
 #include <osgEarthUtil/AutoClipPlaneHandler>
 #include <osgEarthUtil/DataScanner>
+#include <osgEarthUtil/Environment>
+#include <osgEarthUtil/SkyNode>
+#include <osgEarthUtil/Ocean>
 
 #include <osgEarthUtil/NormalMap>
 #include <osgEarthUtil/DetailTexture>
@@ -40,10 +43,11 @@
 
 #include <osgEarthDrivers/kml/KML>
 
-#include <osgGA/StateSetManipulator>
-#include <osgViewer/ViewerEventHandlers>
 #include <osgDB/FileNameUtils>
 #include <osgDB/WriteFile>
+#include <osgGA/StateSetManipulator>
+#include <osgViewer/View>
+#include <osgViewer/ViewerEventHandlers>
 
 #define KML_PUSHPIN_URL "http://demo.pelicanmapping.com/icons/pushpin_yellow.png"
 
@@ -56,6 +60,7 @@ using namespace osgEarth::Util;
 using namespace osgEarth::Util::Controls;
 using namespace osgEarth::Symbology;
 using namespace osgEarth::Annotation;
+using namespace osgEarth::Drivers;
 
 //------------------------------------------------------------------------
 
@@ -212,38 +217,39 @@ MouseCoordsControlFactory::create(MapNode*         mapNode,
 
 namespace
 {
-    struct SkySliderHandler : public ControlEventHandler
+    struct SkyTimeSliderHandler : public ControlEventHandler
     {
-        SkySliderHandler(SkyNode* sky) : _sky(sky)  { }
+        SkyTimeSliderHandler(EnvironmentNode* sky) : _sky(sky)  { }
 
-        SkyNode* _sky;
+        EnvironmentNode* _sky;
 
         virtual void onValueChanged( class Control* control, float value )
         {
-            DateTime d;
-            _sky->getDateTime(d);
+            DateTime d = _sky->getDateTime();
             _sky->setDateTime(DateTime(d.year(), d.month(), d.day(), value));
         }
     };
 
+#undef USE_AMBIENT_SLIDER
+//#define USE_AMBIENT_SLIDER 1
+
+#ifdef USE_AMBIENT_SLIDER
     struct AmbientBrightnessHandler : public ControlEventHandler
     {
-        AmbientBrightnessHandler(SkyNode* sky) : _sky(sky) { }
+        AmbientBrightnessHandler(EnvironmentNode* sky) : _sky(sky) { }
 
-        SkyNode* _sky;
+        EnvironmentNode* _sky;
 
         virtual void onValueChanged( class Control* control, float value )
         {
             _sky->setAmbientBrightness( value );
         }
     };
+#endif
 }
 
-//#undef USE_AMBIENT_SLIDER
-#define USE_AMBIENT_SLIDER 1
-
 Control*
-SkyControlFactory::create(SkyNode*         sky,
+SkyControlFactory::create(EnvironmentNode* sky,
                           osgViewer::View* view) const
 {
     Grid* grid = new Grid();
@@ -253,12 +259,11 @@ SkyControlFactory::create(SkyNode*         sky,
 
     grid->setControl( 0, 0, new LabelControl("Time: ", 16) );
 
-    DateTime dt;
-    sky->getDateTime(dt);
+    DateTime dt = sky->getDateTime();
 
     HSliderControl* skySlider = grid->setControl(1, 0, new HSliderControl( 0.0f, 24.0f, dt.hours() ));
     skySlider->setHorizFill( true, 200 );
-    skySlider->addEventHandler( new SkySliderHandler(sky) );
+    skySlider->addEventHandler( new SkyTimeSliderHandler(sky) );
 
     grid->setControl(2, 0, new LabelControl(skySlider) );
 
@@ -278,47 +283,19 @@ namespace
 {
     struct ChangeSeaLevel : public ControlEventHandler
     {
-        ChangeSeaLevel( OceanSurfaceNode* ocean ) : _ocean(ocean) { }
+        ChangeSeaLevel( OceanNode* ocean ) : _ocean(ocean) { }
 
-        OceanSurfaceNode* _ocean;
-
-        virtual void onValueChanged( class Control* control, float value )
-        {
-            _ocean->options().seaLevel() = value;
-            _ocean->dirty();
-        }
-    };
-
-    struct ChangeLowFeather : public ControlEventHandler
-    {
-        ChangeLowFeather( OceanSurfaceNode* ocean ) : _ocean(ocean) { }
-
-        OceanSurfaceNode* _ocean;
+        OceanNode* _ocean;
 
         virtual void onValueChanged( class Control* control, float value )
         {
-            _ocean->options().lowFeatherOffset() = value;
-            _ocean->dirty();
-        }
-    };
-
-    struct ChangeHighFeather : public ControlEventHandler
-    {
-        ChangeHighFeather( OceanSurfaceNode* ocean ) : _ocean(ocean) { }
-
-        OceanSurfaceNode* _ocean;
-
-        virtual void onValueChanged( class Control* control, float value )
-        {
-            _ocean->options().highFeatherOffset() = value;
-            _ocean->dirty();
+            _ocean->setSeaLevel( value );
         }
     };
 }
 
 Control*
-OceanControlFactory::create(OceanSurfaceNode* ocean,
-                            osgViewer::View*  view   ) const
+OceanControlFactory::create(OceanNode* ocean) const
 {
     VBox* main = new VBox();
 
@@ -334,32 +311,6 @@ OceanControlFactory::create(OceanSurfaceNode* ocean,
     mslSlider->setHeight( 12 );
     mslSlider->setHorizFill( true, 200 );
     mslSlider->addEventHandler( new ChangeSeaLevel(ocean) );
-
-    HBox* oceanBox2 = main->addControl(new HBox());
-    oceanBox2->setChildVertAlign( Control::ALIGN_CENTER );
-    oceanBox2->setChildSpacing( 10 );
-    oceanBox2->setHorizFill( true );
-
-    oceanBox2->addControl( new LabelControl("Low Feather: ", 16) );
-
-    HSliderControl* lfSlider = oceanBox2->addControl(new HSliderControl( -1000.0, 250.0f, -100.0f ));
-    lfSlider->setBackColor( Color::Gray );
-    lfSlider->setHeight( 12 );
-    lfSlider->setHorizFill( true, 200 );
-    lfSlider->addEventHandler( new ChangeLowFeather(ocean) );
-
-    HBox* oceanBox3 = main->addControl(new HBox());
-    oceanBox3->setChildVertAlign( Control::ALIGN_CENTER );
-    oceanBox3->setChildSpacing( 10 );
-    oceanBox3->setHorizFill( true );
-
-    oceanBox3->addControl( new LabelControl("High Feather: ", 16) );
-
-    HSliderControl* hfSlider = oceanBox3->addControl(new HSliderControl( -500.0f, 500.0f, -10.0f ));
-    hfSlider->setBackColor( Color::Gray );
-    hfSlider->setHeight( 12 );
-    hfSlider->setHorizFill( true, 200 );
-    hfSlider->addEventHandler( new ChangeHighFeather(ocean) );
 
     return main;
 }
@@ -610,25 +561,56 @@ MapNodeHelper::parse(MapNode*             mapNode,
     // Adding a sky model:
     if ( useSky || !skyConf.empty() )
     {
-        double hours = skyConf.value( "hours", 12.0 );
-        SkyNode* sky = new SkyNode( mapNode->getMap() );
-        sky->setAmbientBrightness( ambientBrightness );
-        sky->setDateTime( DateTime(2011, 3, 6, hours) );
-        sky->attach( view );
-        root->addChild( sky );
-        Control* c = SkyControlFactory().create(sky, view);
-        if ( c )
-            mainContainer->addControl( c );
+        EnvironmentOptions options(skyConf);
+        EnvironmentNode* sky = EnvironmentFactory::create(options, mapNode->getMap());
+        if ( sky )
+        {
+            sky->attach( view, 0 );
+            sky->setDateTime( DateTime() );
+            root->addChild( sky );
+            Control* c = SkyControlFactory().create(sky, view);
+            if ( c )
+                mainContainer->addControl( c );
+        }
+
+#if 0
+        if ( skyConf.hasValue("driver") )
+        {
+            EnvironmentOptions options(skyConf);
+            enode = 
+
+            // disable the default view light
+            view->setLightingMode(osg::View::NO_LIGHT);
+        }
+
+        else
+        {
+            SkyNode* sky = new SkyNode( mapNode->getMap() );
+            sky->setAmbientBrightness( ambientBrightness );
+            sky->attach( view );
+            enode = sky;
+        }
+
+        if ( sky )
+        {
+            sky->setDateTime( DateTime() );
+            root->addChild( enode );
+            Control* c = SkyControlFactory().create(enode, view);
+            if ( c )
+                mainContainer->addControl( c );
+        }
+#endif
     }
 
     // Adding an ocean model:
     if ( useOcean || !oceanConf.empty() )
     {
-        OceanSurfaceNode* ocean = new OceanSurfaceNode( mapNode, oceanConf );
+        OceanNode* ocean = OceanFactory::create(OceanOptions(oceanConf), mapNode);
         if ( ocean )
         {
             root->addChild( ocean );
-            Control* c = OceanControlFactory().create(ocean, view);
+
+            Control* c = OceanControlFactory().create(ocean);
             if ( c )
                 mainContainer->addControl(c);
         }
@@ -751,8 +733,8 @@ MapNodeHelper::parse(MapNode*             mapNode,
     // Install a detail texturer
     if ( !detailTexConf.empty() )
     {
-        osg::ref_ptr<DetailTexture> effect = new DetailTexture(detailTexConf);
-        if ( effect->getImage() )
+        osg::ref_ptr<DetailTexture> effect = new DetailTexture(detailTexConf, mapNode->getMap());
+        if ( true ) //effect->getImage() )
         {
             mapNode->getTerrainEngine()->addEffect( effect.get() );
         }

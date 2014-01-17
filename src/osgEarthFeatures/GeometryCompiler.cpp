@@ -471,13 +471,22 @@ GeometryCompiler::compile(FeatureList&          workingSet,
     else 
         sscache = new StateSetCache();
 
+#if 0
     // Generate shaders, if necessary
+    if ( _options.shaderPolicy() == SHADERPOLICY_DISABLE )
+    {
+        resultGroup->getOrCreateStateSet()->setAttributeAndModes(
+            new osg::Program(),
+            osg::StateAttribute::OFF | osg::StateAttribute::OVERRIDE );
+    }
+#else
     if (Registry::capabilities().supportsGLSL())
     {
         if ( _options.shaderPolicy() == SHADERPOLICY_GENERATE )
         {
             // no ss cache because we will optimize later.
             ShaderGenerator gen;
+            gen.setProgramName( "osgEarth.GeometryCompiler" );
             gen.run( resultGroup.get() );
         }
         else if ( _options.shaderPolicy() == SHADERPOLICY_DISABLE )
@@ -487,6 +496,7 @@ GeometryCompiler::compile(FeatureList&          workingSet,
                 osg::StateAttribute::OFF | osg::StateAttribute::OVERRIDE );
         }
     }
+#endif
 
     // Optimize stateset sharing.
     sscache->optimize( resultGroup.get() );

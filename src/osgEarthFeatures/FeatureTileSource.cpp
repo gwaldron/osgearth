@@ -159,7 +159,7 @@ FeatureTileSource::createImage( const TileKey& key, ProgressCallback* progress )
         osg::ref_ptr<FeatureCursor> cursor = _features->createFeatureCursor( Query() );
         while( cursor.valid() && cursor->hasMore() )
         {
-            Feature* feature = cursor->nextFeature();
+            osg::ref_ptr< Feature > feature = cursor->nextFeature();
             if ( feature )
             {
                 FeatureList list;

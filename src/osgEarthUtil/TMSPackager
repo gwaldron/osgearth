@@ -128,32 +128,48 @@ namespace osgEarth { namespace Util
             const std::string& rootFolder,
             osgEarth::ProgressCallback* progress=0L );
 
+        /**
+         * Increment the completed count.  Do not use directly
+         */
+        void incrementCompleted();        
+
+        /**
+         * Reports progress to the main ProgressCallback.  Do not use directly.
+         */
+        void reportProgress( const std::string& message );
+
     protected:
 
-        int packageImageTile(
+        void packageImageTile(
             ImageLayer*          layer,
             const TileKey&       key,
             const std::string&   rootDir,
             const std::string&   extension,
-            osgEarth::TaskRequestVector& tasks,
-            Threading::MultiEvent* semaphore,
-            osgEarth::ProgressCallback* progress,
+            TaskService*         service,            
             unsigned&            out_maxLevel );
 
-        int packageElevationTile(
+        void packageElevationTile(
             ElevationLayer*      layer,
             const TileKey&       key,
             const std::string&   rootDir,
             const std::string&   extension,
-            osgEarth::TaskRequestVector& tasks,
-            Threading::MultiEvent* semaphore,
-            osgEarth::ProgressCallback* progress,
+            TaskService*         service,            
             unsigned&            out_maxLevel );
 
         bool shouldPackageKey( 
             const TileKey&     key ) const;
 
+        
+
     protected:
+
+        void resetStats();
+
+        OpenThreads::Mutex _mutex;
+        OpenThreads::Atomic         _completed;
+        unsigned int                _total;
+        unsigned int                _numAdded;
+
 
         bool                        _verbose;
         bool                        _abortOnError;
@@ -164,6 +180,8 @@ namespace osgEarth { namespace Util
         std::vector<GeoExtent>      _extents;
         osg::ref_ptr<const Profile> _outProfile;
         osg::ref_ptr<osgDB::Options>    _imageWriteOptions;
+
+        osg::ref_ptr< osgEarth::ProgressCallback > _progress;
     };
 
 } } // namespace osgEarth::Util

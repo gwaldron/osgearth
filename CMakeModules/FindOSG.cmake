@@ -18,6 +18,8 @@
 
 ###### headers ######
 
+SET(OSG_DIR "" CACHE PATH "Set to base OpenSceneGraph install path")
+
 MACRO( FIND_OSG_INCLUDE THIS_OSG_INCLUDE_DIR THIS_OSG_INCLUDE_FILE )
 
 FIND_PATH( ${THIS_OSG_INCLUDE_DIR} ${THIS_OSG_INCLUDE_FILE}

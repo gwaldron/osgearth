@@ -21,6 +21,7 @@ set(LIB_PUBLIC_HEADERS
     EllipseNode
     Export
     FeatureNode
+    FeatureEditing
     LocalGeometryNode
     HighlightDecoration
     ImageOverlay
@@ -46,6 +47,7 @@ set(LIB_COMMON_FILES
     Decoration.cpp
     EllipseNode.cpp
     FeatureNode.cpp
+    FeatureEditing.cpp
     LocalGeometryNode.cpp
     HighlightDecoration.cpp
     ImageOverlay.cpp
@@ -58,22 +60,6 @@ set(LIB_COMMON_FILES
     PlaceNode.cpp
     TrackNode.cpp
 )
-
-if( NOT ${OPENSCENEGRAPH_VERSION} VERSION_LESS "2.9.6" )
-
-    set(LIB_PUBLIC_HEADERS ${LIB_PUBLIC_HEADERS}
-        AnnotationEditing
-        FeatureEditing
-        ImageOverlayEditor
-    )
-        
-    set(LIB_COMMON_FILES ${LIB_COMMON_FILES} 
-        AnnotationEditing.cpp
-        FeatureEditing.cpp
-        ImageOverlayEditor.cpp
-    )
-        
-endif()
 
 
 ADD_LIBRARY( ${LIB_NAME} ${OSGEARTH_USER_DEFINED_DYNAMIC_OR_STATIC}

@@ -19,9 +19,9 @@
 #ifndef OSGEARTHUTIL_DATE_TIME_H
 #define OSGEARTHUTIL_DATE_TIME_H
 
+#if 0
 #include <osgEarthUtil/Common>
 #include <osgEarth/DateTime>
-
 namespace osgEarth { namespace Util
 {
     // for backwards-compability.
@@ -29,5 +29,6 @@ namespace osgEarth { namespace Util
     typedef osgEarth::DateTime DateTime;
 
 } } // namespace osgEarth::Util
+#endif
 
 #endif // OSGEARTHUTIL_DATE_TIME_H

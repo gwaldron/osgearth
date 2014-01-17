@@ -57,14 +57,14 @@ MapFrame::sync()
 
     if ( _map.valid() )
     {
-        changed = _map->sync( *this );        
+        changed = _map->sync( *this );
     }
     else
     {
         _imageLayers.clear();
         _elevationLayers.clear();
         _modelLayers.clear();
-        _maskLayers.clear();        
+        _maskLayers.clear();
     }
 
     return changed;

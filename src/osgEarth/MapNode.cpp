@@ -351,7 +351,7 @@ MapNode::init()
     if ( Registry::capabilities().supportsGLSL() )
     {
         VirtualProgram* vp = VirtualProgram::getOrCreate( stateset );
-        vp->setName( "osgEarth::MapNode" );
+        vp->setName( "osgEarth.MapNode" );
 
         Registry::shaderFactory()->installLightingShaders( vp );
     }

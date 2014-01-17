@@ -137,22 +137,22 @@ SingleKeyNodeFactory::createTile(TileModel* model, bool setupChildrenIfNecessary
 #endif
         
         result = plod;
+
+        // this one rejects back-facing tiles:
+        if ( _frame.getMapInfo().isGeocentric() && _options.clusterCulling() == true )
+        {
+            osg::HeightField* hf =
+                model->_elevationData.getHeightField();
+
+            result->addCullCallback( HeightFieldUtils::createClusterCullingCallback(
+                hf,
+                tileNode->getKey().getProfile()->getSRS()->getEllipsoid(),
+                *_options.verticalScale() ) );
+        }
     }
     else
     {
         result = tileNode;
-    }
-
-    // this one rejects back-facing tiles:
-    if ( _frame.getMapInfo().isGeocentric() && _options.clusterCulling() == true )
-    {
-        osg::HeightField* hf =
-            model->_elevationData.getHeightField();
-
-        result->addCullCallback( HeightFieldUtils::createClusterCullingCallback(
-            hf,
-            tileNode->getKey().getProfile()->getSRS()->getEllipsoid(),
-            *_options.verticalScale() ) );
     }
 
     return result;

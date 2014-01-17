@@ -241,7 +241,7 @@ FeatureCursorOGR::readChunk()
             }
             else
             {
-                OE_WARN << "Skipping feature with invalid geometry feature << " << f->getGeoJSON() << std::endl;
+                OE_INFO << LC << "Skipping feature with invalid geometry: " << f->getGeoJSON() << std::endl;
             }
         }
         OGR_F_Destroy( _nextHandleToQueue );
@@ -268,7 +268,7 @@ FeatureCursorOGR::readChunk()
                 }
                 else
                 {
-                    OE_WARN << "Skipping feature with invalid geometry feature << " << f->getGeoJSON() << std::endl;
+                    OE_INFO << LC << "Skipping feature with invalid geometry: " << f->getGeoJSON() << std::endl;
                 }
             }            
             OGR_F_Destroy( handle );

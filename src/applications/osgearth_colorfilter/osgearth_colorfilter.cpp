@@ -28,10 +28,12 @@
 #include <osgEarthUtil/HSLColorFilter>
 #include <osgEarthUtil/RGBColorFilter>
 #include <osgEarthUtil/ChromaKeyColorFilter>
+#include <osgEarthSymbology/Color>
 
 using namespace osgEarth;
 using namespace osgEarth::Util;
 using namespace osgEarth::Util::Controls;
+using namespace osgEarth::Symbology;
 
 
 Container*
@@ -98,7 +100,7 @@ namespace HSL
         s_layerBox->setVertAlign( Control::ALIGN_TOP );
 
         // Title:
-        s_layerBox->setControl( 0, 0, new LabelControl(Stringify()<<"Layer "<<i, Color::Yellow) );
+        s_layerBox->setControl( 0, 0, new LabelControl(Stringify()<<"Layer "<<i, osg::Vec4(1,1,0,1)));
         
         // Hue:
         LabelControl* hLabel = new LabelControl( "Hue" );      
@@ -138,8 +140,8 @@ namespace HSL
 
         // Reset button
         LabelControl* resetButton = new LabelControl( "Reset" );
-        resetButton->setBackColor( Color::Gray );
-        resetButton->setActiveColor( Color::Blue );
+        resetButton->setBackColor( osg::Vec4(0.5,0.5,0.5,1) );
+        resetButton->setActiveColor( osg::Vec4(0.5,0.5,1,1) );
         resetButton->addEventHandler( new ResetHSL(hAdjust, sAdjust, lAdjust) );
         s_layerBox->setControl( 1, 4, resetButton );
     }

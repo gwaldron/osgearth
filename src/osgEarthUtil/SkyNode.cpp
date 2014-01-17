@@ -56,6 +56,8 @@ using namespace osgEarth::Util;
 #define BIN_MOON        -100001
 #define BIN_ATMOSPHERE  -100000
 
+#define TWO_PI 6.283185307179586476925286766559
+
 //---------------------------------------------------------------------------
 
 namespace
@@ -176,220 +178,6 @@ namespace
 
         return geom;
     }
-}
-
-//---------------------------------------------------------------------------
-
-
-// Astronomical Math
-// http://www.stjarnhimlen.se/comp/ppcomp.html
-namespace
-{
-#define d2r(X) osg::DegreesToRadians(X)
-#define r2d(X) osg::RadiansToDegrees(X)
-#define nrad(X) { while( X > TWO_PI ) X -= TWO_PI; while( X < 0.0 ) X += TWO_PI; }
-#define nrad2(X) { while( X <= -osg::PI ) X += TWO_PI; while( X > osg::PI ) X -= TWO_PI; }
-
-    static const double TWO_PI = (2.0*osg::PI);
-    static const double JD2000 = 2451545.0;
-
-
-    double sgCalcEccAnom(double M, double e)
-    {
-        double eccAnom, E0, E1, diff;
-
-        double epsilon = osg::DegreesToRadians(0.001);
-        
-        eccAnom = M + e * sin(M) * (1.0 + e * cos (M));
-        // iterate to achieve a greater precision for larger eccentricities 
-        if (e > 0.05)
-        {
-            E0 = eccAnom;
-            do
-            {
-                 E1 = E0 - (E0 - e * sin(E0) - M) / (1 - e *cos(E0));
-                 diff = fabs(E0 - E1);
-                 E0 = E1;
-            } while (diff > epsilon );
-            return E0;
-        }
-        return eccAnom;
-    }
-
-    //double getTimeScale( int year, int month, int date, double hoursUT )
-    //{
-    //    int a = 367*year - 7 * ( year + (month+9)/12 ) / 4 + 275*month/9 + date - 730530;
-    //    return (double)a + hoursUT/24.0;
-    //}
-
-    double getJulianDate( int year, int month, int date )
-    {
-        if ( month <= 2 )
-        {
-            month += 12;
-            year -= 1;
-        }
-
-        int A = int(year/100);
-        int B = 2-A+(A/4);
-        int C = int(365.25*(year+4716));
-        int D = int(30.6001*(month+1));
-        return B + C + D + date - 1524.5;
-    }
-
-    struct Sun
-    {
-        Sun() { }
-
-        // https://www.cfa.harvard.edu/~wsoon/JuanRamirez09-d/Chang09-OptimalTiltAngleforSolarCollector.pdf
-        osg::Vec3d getPosition(int year, int month, int date, double hoursUTC ) const
-        {
-            double JD = getJulianDate(year, month, date);
-            double JD1 = (JD - JD2000);                         // julian time since JD2000 epoch
-            double JC = JD1/36525.0;                            // julian century
-
-            double mu = 282.937348 + 0.00004707624*JD1 + 0.0004569*(JC*JC);
-
-            double epsilon = 280.466457 + 0.985647358*JD1 + 0.000304*(JC*JC);
-
-            // orbit eccentricity:
-            double E = 0.01670862 - 0.00004204 * JC;
-
-            // mean anomaly of the perihelion
-            double M = epsilon - mu;
-
-            // perihelion anomaly:
-            double v =
-                M + 
-                360.0*E*sin(d2r(M))/osg::PI + 
-                900.0*(E*E)*sin(d2r(2*M))/4*osg::PI - 
-                180.0*(E*E*E)*sin(d2r(M))/4.0*osg::PI;
-
-            // longitude of the sun in ecliptic coordinates:
-            double sun_lon = d2r(v - 360.0 + mu); // lambda
-            nrad2(sun_lon);
-
-            // angle between the ecliptic plane and the equatorial plane
-            double zeta = d2r(23.4392); // zeta
-
-            // latitude of the sun on the ecliptic plane:
-            double omega = d2r(0.0);
-
-            // latitude of the sun with respect to the equatorial plane (solar declination):
-            double sun_lat = asin( sin(sun_lon)*sin(zeta) );
-            nrad2(sun_lat);
-
-            // finally, adjust for the time of day (rotation of the earth)
-            double time_r = hoursUTC/24.0; // 0..1
-            nrad(sun_lon); // clamp to 0..TWO_PI
-            double sun_r = sun_lon/TWO_PI; // convert to 0..1
-
-            // rotational difference between UTC and current time
-            double diff_r = sun_r - time_r;
-            double diff_lon = TWO_PI * diff_r;
-
-            // apparent sun longitude.
-            double app_sun_lon = sun_lon - diff_lon + osg::PI;
-            nrad2(app_sun_lon);
-
-#if 0
-            OE_INFO
-                << "sun lat = " << r2d(sun_lat) 
-                << ", sun lon = " << r2d(sun_lon)
-                << ", time delta_lon = " << r2d(diff_lon)
-                << ", app sun lon = " << r2d(app_sun_lon)
-                << std::endl;
-#endif
-
-            return osg::Vec3d(
-                cos(sun_lat) * cos(-app_sun_lon),
-                cos(sun_lat) * sin(-app_sun_lon),
-                sin(sun_lat) );
-        }
-    };
-
-    struct Moon
-    {
-        Moon() { }
-
-        static std::string radiansToHoursMinutesSeconds(double ra)
-        {
-            while (ra < 0) ra += (osg::PI * 2.0);
-            //Get the total number of hours
-            double hours = (ra / (osg::PI * 2.0) ) * 24.0;
-            double minutes = hours - (int)hours;
-            hours -= minutes;
-            minutes *= 60.0;
-            double seconds = minutes - (int)minutes;
-            seconds *= 60.0;
-            std::stringstream buf;
-            buf << (int)hours << ":" << (int)minutes << ":" << (int)seconds;
-            return buf.str();
-        }
-
-        // From http://www.stjarnhimlen.se/comp/ppcomp.html
-        osg::Vec3d getPosition(int year, int month, int date, double hoursUTC ) const
-        {
-            //double julianDate = getJulianDate( year, month, date );
-            //julianDate += hoursUTC /24.0;
-            double d = 367*year - 7 * ( year + (month+9)/12 ) / 4 + 275*month/9 + date - 730530;
-            d += (hoursUTC / 24.0);                     
-
-            double ecl = osg::DegreesToRadians(23.4393 - 3.563E-7 * d);
-
-            double N = osg::DegreesToRadians(125.1228 - 0.0529538083 * d);
-            double i = osg::DegreesToRadians(5.1454);
-            double w = osg::DegreesToRadians(318.0634 + 0.1643573223 * d);
-            double a = 60.2666;//  (Earth radii)
-            double e = 0.054900;
-            double M = osg::DegreesToRadians(115.3654 + 13.0649929509 * d);
-
-            double E = M + e*(180.0/osg::PI) * sin(M) * ( 1.0 + e * cos(M) );
-            
-            double xv = a * ( cos(E) - e );
-            double yv = a * ( sqrt(1.0 - e*e) * sin(E) );
-
-            double v = atan2( yv, xv );
-            double r = sqrt( xv*xv + yv*yv );
-
-            //Compute the geocentric (Earth-centered) position of the moon in the ecliptic coordinate system
-            double xh = r * ( cos(N) * cos(v+w) - sin(N) * sin(v+w) * cos(i) );
-            double yh = r * ( sin(N) * cos(v+w) + cos(N) * sin(v+w) * cos(i) );
-            double zh = r * ( sin(v+w) * sin(i) );
-
-            // calculate the ecliptic latitude and longitude here
-            double lonEcl = atan2 (yh, xh);
-            double latEcl = atan2(zh, sqrt(xh*xh + yh*yh));
-
-            double xg = r * cos(lonEcl) * cos(latEcl);
-            double yg = r * sin(lonEcl) * cos(latEcl);
-            double zg = r * sin(latEcl);
-
-            double xe = xg;
-            double ye = yg * cos(ecl) -zg * sin(ecl);
-            double ze = yg * sin(ecl) +zg * cos(ecl);
-
-            double RA    = atan2(ye, xe);
-            double Dec = atan2(ze, sqrt(xe*xe + ye*ye));
-
-            //Just use the average distance from the earth            
-            double rg = 6378137.0 + 384400000.0;
-            
-            // finally, adjust for the time of day (rotation of the earth)
-            double time_r = hoursUTC/24.0; // 0..1            
-            double moon_r = RA/TWO_PI; // convert to 0..1
-
-            // rotational difference between UTC and current time
-            double diff_r = moon_r - time_r;
-            double diff_lon = TWO_PI * diff_r;
-
-            RA -= diff_lon;
-
-            nrad2(RA);
-
-            return SkyNode::getPositionFromRADecl( RA, Dec, rg );
-        }
-    };
 }
 
 //---------------------------------------------------------------------------
@@ -698,42 +486,41 @@ namespace
     }
 }
 
+//---------------------------------------------------------------------------
+
+SkyNodeOptions::SkyNodeOptions() :
+EnvironmentOptions(),
+_minStarMagnitude(-1.0f)
+{
+    //nop
+}
+
+SkyNodeOptions::SkyNodeOptions(const ConfigOptions& options) :
+EnvironmentOptions(options),
+_minStarMagnitude(-1.0f)
+{
+    //nop
+}
 
 //---------------------------------------------------------------------------
 
-osg::Vec3d
-DefaultEphemerisProvider::getSunPosition(const DateTime& date)
+SkyNode::SkyNode(const Map* map) :
+EnvironmentNode()
 {
-    Sun sun;
-    return sun.getPosition( date.year(), date.month(), date.day(), date.hours() );
+    initialize(map, SkyNodeOptions());
 }
 
-osg::Vec3d
-DefaultEphemerisProvider::getMoonPosition(const DateTime& date)
+SkyNode::SkyNode(const Map*            map,
+                 const SkyNodeOptions& options) :
+EnvironmentNode()
 {
-    Moon moon;
-    return moon.getPosition( date.year(), date.month(), date.day(), date.hours() );
-}
-
-//---------------------------------------------------------------------------
-
-SkyNode::SkyNode( Map* map, const std::string& starFile, float minStarMagnitude ) : 
-_minStarMagnitude(minStarMagnitude)
-{
-    initialize(map, starFile);
-}
-
-SkyNode::SkyNode( Map *map, float minStarMagnitude) : 
-_minStarMagnitude(minStarMagnitude)
-{
-    initialize(map);
+    initialize(map, options);
 }
 
 void
-SkyNode::initialize( Map *map, const std::string& starFile )
+SkyNode::initialize(const Map*            map,
+                    const SkyNodeOptions& options)
 {
-    _ephemerisProvider = new DefaultEphemerisProvider();
-
     // intialize the default settings:
     _defaultPerViewData._lightPos.set( osg::Vec3f(0.0f, 1.0f, 0.0f) );
     _defaultPerViewData._light = new osg::Light( 0 );  
@@ -768,13 +555,13 @@ SkyNode::initialize( Map *map, const std::string& starFile )
         _minStarMagnitude = as<float>(std::string(magEnv), -1.0f);
     }
 
-    makeStars(starFile);
+    makeStars(options);
 
     // automatically compute ambient lighting based on the eyepoint
     _autoAmbience = false;
 
-    //Set a default time
-    setDateTime( DateTime(2011, 3, 6, 18.) );
+    // Update everything based on the date/time.
+    setDateTime( getDateTime() );
 }
 
 osg::BoundingSphere
@@ -837,23 +624,51 @@ SkyNode::traverse( osg::NodeVisitor& nv )
     }
 }
 
-EphemerisProvider*
-SkyNode::getEphemerisProvider() const
+void
+SkyNode::onSetEphemeris()
 {
-    return _ephemerisProvider;
+    // trigger the date/time update.
+    onSetDateTime();
 }
 
 void
-SkyNode::setEphemerisProvider(EphemerisProvider* ephemerisProvider )
+SkyNode::onSetDateTime()
 {
-    if (_ephemerisProvider != ephemerisProvider)
+    if ( _ellipsoidModel.valid() )
     {
-        _ephemerisProvider = ephemerisProvider;
+        osg::View* view = 0L;
+        const DateTime& dt = getDateTime();
 
-        //Update the positions of the planets
-        for( PerViewDataMap::iterator i = _perViewData.begin(); i != _perViewData.end(); ++i )
+        osg::Vec3d sunPos = getEphemeris()->getSunPositionECEF( dt );
+        osg::Vec3d moonPos = getEphemeris()->getMoonPositionECEF( dt );
+
+        sunPos.normalize();
+        setSunPosition( sunPos, view );
+        setMoonPosition( moonPos, view );
+
+        // position the stars:
+        double time_r = dt.hours()/24.0; // 0..1
+        double rot_z = -osg::PI + TWO_PI*time_r;
+
+        osg::Matrixd starsMatrix = osg::Matrixd::rotate( -rot_z, 0, 0, 1 );
+        if ( !view )
         {
-            setDateTime(i->second._date, i->first);
+            _defaultPerViewData._starsMatrix = starsMatrix;
+            _defaultPerViewData._date = dt;
+
+            for( PerViewDataMap::iterator i = _perViewData.begin(); i != _perViewData.end(); ++i )
+            {
+                i->second._starsMatrix = starsMatrix;
+                i->second._starsXform->setMatrix( starsMatrix );
+                i->second._date = dt;
+            }
+        }
+        else if ( _perViewData.find(view) != _perViewData.end() )
+        {
+            PerViewData& data = _perViewData[view];
+            data._starsMatrix = starsMatrix;
+            data._starsXform->setMatrix( starsMatrix );
+            data._date = dt;
         }
     }
 }
@@ -1036,101 +851,6 @@ SkyNode::setMoonPosition( PerViewData& data, const osg::Vec3d& pos )
         data._moonMatrix = osg::Matrixd::translate( pos.x(), pos.y(), pos.z() );
         data._moonXform->setMatrix( data._moonMatrix );
     }
-}
-
-
-void
-SkyNode::getDateTime( DateTime& out, osg::View* view ) const
-{    
-    if ( view )
-    {
-        PerViewDataMap::const_iterator i = _perViewData.find(view);
-        if (i != _perViewData.end() )
-        {
-            out = i->second._date;
-            return;
-        }
-    }
-    out = _defaultPerViewData._date;
-}
-
-void
-SkyNode::getDateTime(int& year, int& month, int& date, double& hoursUTC, osg::View* view)
-{
-    DateTime temp;
-    getDateTime(temp, view);
-
-    year = temp.year();
-    month = temp.month();
-    date = temp.day();
-    hoursUTC = temp.hours();
-
-    OE_WARN << LC <<
-        "The method getDateTime(int&,int&,int&,double&,View*) is deprecated; "
-        "please use getDateTime(DateTime&, View*) instead" << std::endl;
-}
-
-
-void
-SkyNode::setDateTime(const DateTime& dt, osg::View* view)
-{    
-    if ( _ellipsoidModel.valid() )
-    {
-        osg::Vec3d sunPosition;
-        osg::Vec3d moonPosition;
-
-        if (_ephemerisProvider)
-        {
-            sunPosition = _ephemerisProvider->getSunPosition( dt );
-            moonPosition = _ephemerisProvider->getMoonPosition( dt );
-        }
-        else
-        {
-            OE_NOTICE << "You must provide an EphemerisProvider" << std::endl;
-        }
-
-        sunPosition.normalize();
-        setSunPosition( sunPosition, view );
-        setMoonPosition( moonPosition, view );
-
-        // position the stars:
-        double time_r = dt.hours()/24.0; // 0..1
-        double rot_z = -osg::PI + TWO_PI*time_r;
-
-        osg::Matrixd starsMatrix = osg::Matrixd::rotate( -rot_z, 0, 0, 1 );
-        if ( !view )
-        {
-            _defaultPerViewData._starsMatrix = starsMatrix;
-            _defaultPerViewData._date = dt;
-
-            for( PerViewDataMap::iterator i = _perViewData.begin(); i != _perViewData.end(); ++i )
-            {
-                i->second._starsMatrix = starsMatrix;
-                i->second._starsXform->setMatrix( starsMatrix );
-                i->second._date = dt;
-            }
-        }
-        else if ( _perViewData.find(view) != _perViewData.end() )
-        {
-            PerViewData& data = _perViewData[view];
-            data._starsMatrix = starsMatrix;
-            data._starsXform->setMatrix( starsMatrix );
-            data._date = dt;
-        }
-    }
-}
-
-
-void
-SkyNode::setDateTime( int year, int month, int date, double hoursUTC, osg::View* view )
-{
-    // backwards compatibility
-    setDateTime( DateTime(year, month, date, hoursUTC), view );
-
-    OE_WARN << LC << 
-        "The method setDateTime(int,int,int,double,View*) is deprecated; "
-        "please use setDateTime(const DateTime&, View*) instead"
-        << std::endl;
 }
 
 
@@ -1414,10 +1134,8 @@ SkyNode::makeMoon()
     // todo: move this?
     _defaultPerViewData._moonXform = new osg::MatrixTransform();    
 
-    Moon moonModel;
-    //Get some default value of the moon
-    osg::Vec3d pos = moonModel.getPosition( 2011, 2, 1, 0 );            
-    _defaultPerViewData._moonXform->setMatrix( osg::Matrix::translate( pos ) ); 
+    osg::Vec3d moonPosECEF = getEphemeris()->getMoonPositionECEF(DateTime(2011,2,1,0.0));
+    _defaultPerViewData._moonXform->setMatrix( osg::Matrix::translate( moonPosECEF ) ); 
     _defaultPerViewData._moonXform->addChild( moon );
 
     //If we couldn't load the moon texture, turn the moon off
@@ -1452,18 +1170,25 @@ SkyNode::StarData::StarData(std::stringstream &ss)
 }
 
 void
-SkyNode::makeStars(const std::string& starFile)
+SkyNode::makeStars(const SkyNodeOptions& options)
 {
   _starRadius = 20000.0 * (_sunDistance > 0.0 ? _sunDistance : _outerRadius);
 
   std::vector<StarData> stars;
 
-  if( starFile.empty() || parseStarFile(starFile, stars) == false )
+  if( options.starFile().isSet() )
   {
-    if( !starFile.empty() )
-      OE_WARN << "Warning: Unable to use star field defined in file \"" << starFile << "\", using default star data." << std::endl;
+      if ( parseStarFile(*options.starFile(), stars) == false )
+      {
+          OE_WARN << LC 
+              << "Unable to use star field defined in \"" << *options.starFile()
+              << "\", using default star data instead." << std::endl;
+      }
+  }
 
-    getDefaultStars(stars);
+  if ( stars.empty() )
+  {
+      getDefaultStars( stars );
   }
 
   osg::Node* starNode = buildStarGeometry(stars);
@@ -1474,120 +1199,115 @@ SkyNode::makeStars(const std::string& starFile)
 osg::Node*
 SkyNode::buildStarGeometry(const std::vector<StarData>& stars)
 {
-  double minMag = DBL_MAX, maxMag = DBL_MIN;
+    double minMag = DBL_MAX, maxMag = DBL_MIN;
 
-  osg::Vec3Array* coords = new osg::Vec3Array();
-  std::vector<StarData>::const_iterator p;
-  for( p = stars.begin(); p != stars.end(); p++ )
-  {
-    
-    osg::Vec3d v = getPositionFromRADecl( p->right_ascension, p->declination, _starRadius );
-    coords->push_back( v );
+    osg::Vec3Array* coords = new osg::Vec3Array();
+    std::vector<StarData>::const_iterator p;
+    for( p = stars.begin(); p != stars.end(); p++ )
+    {
+        osg::Vec3d v = getEphemeris()->getECEFfromRADecl(
+            p->right_ascension, 
+            p->declination, 
+            _starRadius );
 
-    if ( p->magnitude < minMag ) minMag = p->magnitude;
-    if ( p->magnitude > maxMag ) maxMag = p->magnitude;
-  }
+        coords->push_back( v );
 
-  osg::Vec4Array* colors = new osg::Vec4Array();
-  for( p = stars.begin(); p != stars.end(); p++ )
-  {
-      float c = ( (p->magnitude-minMag) / (maxMag-minMag) );
-      colors->push_back( osg::Vec4(c,c,c,1.0f) );
-  }
+        if ( p->magnitude < minMag ) minMag = p->magnitude;
+        if ( p->magnitude > maxMag ) maxMag = p->magnitude;
+    }
 
-  osg::Geometry* geometry = new osg::Geometry;
-  geometry->setUseVertexBufferObjects(true);
+    osg::Vec4Array* colors = new osg::Vec4Array();
+    for( p = stars.begin(); p != stars.end(); p++ )
+    {
+        float c = ( (p->magnitude-minMag) / (maxMag-minMag) );
+        colors->push_back( osg::Vec4(c,c,c,1.0f) );
+    }
 
-  geometry->setVertexArray( coords );
-  geometry->setColorArray( colors );
-  geometry->setColorBinding(osg::Geometry::BIND_PER_VERTEX);
-  geometry->addPrimitiveSet( new osg::DrawArrays(osg::PrimitiveSet::POINTS, 0, coords->size()));
+    osg::Geometry* geometry = new osg::Geometry;
+    geometry->setUseVertexBufferObjects(true);
 
-  osg::StateSet* sset = geometry->getOrCreateStateSet();
+    geometry->setVertexArray( coords );
+    geometry->setColorArray( colors );
+    geometry->setColorBinding(osg::Geometry::BIND_PER_VERTEX);
+    geometry->addPrimitiveSet( new osg::DrawArrays(osg::PrimitiveSet::POINTS, 0, coords->size()));
 
-  if ( Registry::capabilities().supportsGLSL() )
-  {
-    sset->setTextureAttributeAndModes( 0, new osg::PointSprite(), osg::StateAttribute::ON );
-    sset->setMode( GL_VERTEX_PROGRAM_POINT_SIZE, osg::StateAttribute::ON );
+    osg::StateSet* sset = geometry->getOrCreateStateSet();
 
-    osg::Program* program = new osg::Program;
-    program->addShader( new osg::Shader(osg::Shader::VERTEX, s_createStarVertexSource()) );
-    program->addShader( new osg::Shader(osg::Shader::FRAGMENT, s_createStarFragmentSource()) );
-    sset->setAttributeAndModes( program, osg::StateAttribute::ON );
-  }
+    if ( Registry::capabilities().supportsGLSL() )
+    {
+        sset->setTextureAttributeAndModes( 0, new osg::PointSprite(), osg::StateAttribute::ON );
+        sset->setMode( GL_VERTEX_PROGRAM_POINT_SIZE, osg::StateAttribute::ON );
 
-  sset->setRenderBinDetails( BIN_STARS, "RenderBin");
-  sset->setAttributeAndModes( new osg::Depth(osg::Depth::ALWAYS, 0, 1, false), osg::StateAttribute::ON );
-  sset->setMode(GL_BLEND, 1);
+        osg::Program* program = new osg::Program;
+        program->addShader( new osg::Shader(osg::Shader::VERTEX, s_createStarVertexSource()) );
+        program->addShader( new osg::Shader(osg::Shader::FRAGMENT, s_createStarFragmentSource()) );
+        sset->setAttributeAndModes( program, osg::StateAttribute::ON );
+    }
 
-  osg::Geode* starGeode = new osg::Geode;
-  starGeode->addDrawable( geometry );
+    sset->setRenderBinDetails( BIN_STARS, "RenderBin");
+    sset->setAttributeAndModes( new osg::Depth(osg::Depth::ALWAYS, 0, 1, false), osg::StateAttribute::ON );
+    sset->setMode(GL_BLEND, 1);
 
-  // A separate camera isolates the projection matrix calculations.
-  osg::Camera* cam = new osg::Camera();
-  cam->getOrCreateStateSet()->setRenderBinDetails( BIN_STARS, "RenderBin" );
-  cam->setRenderOrder( osg::Camera::NESTED_RENDER );
-  cam->setComputeNearFarMode( osg::CullSettings::COMPUTE_NEAR_FAR_USING_BOUNDING_VOLUMES );
-  cam->addChild( starGeode );
+    osg::Geode* starGeode = new osg::Geode;
+    starGeode->addDrawable( geometry );
 
-  return cam;
-  //return starGeode;
+    // A separate camera isolates the projection matrix calculations.
+    osg::Camera* cam = new osg::Camera();
+    cam->getOrCreateStateSet()->setRenderBinDetails( BIN_STARS, "RenderBin" );
+    cam->setRenderOrder( osg::Camera::NESTED_RENDER );
+    cam->setComputeNearFarMode( osg::CullSettings::COMPUTE_NEAR_FAR_USING_BOUNDING_VOLUMES );
+    cam->addChild( starGeode );
+
+    return cam;
+    //return starGeode;
 }
 
 void
 SkyNode::getDefaultStars(std::vector<StarData>& out_stars)
 {
-  out_stars.clear();
+    out_stars.clear();
 
-  for(const char **sptr = s_defaultStarData; *sptr; sptr++)
-  {
-    std::stringstream ss(*sptr);
-    out_stars.push_back(StarData(ss));
+    for(const char **sptr = s_defaultStarData; *sptr; sptr++)
+    {
+        std::stringstream ss(*sptr);
+        out_stars.push_back(StarData(ss));
 
-    if (out_stars[out_stars.size() - 1].magnitude < _minStarMagnitude)
-      out_stars.pop_back();
-  }
+        if (out_stars[out_stars.size() - 1].magnitude < _minStarMagnitude)
+            out_stars.pop_back();
+    }
 }
 
 bool
 SkyNode::parseStarFile(const std::string& starFile, std::vector<StarData>& out_stars)
 {
-  out_stars.clear();
+    out_stars.clear();
 
-  std::fstream in(starFile.c_str());
-  if (!in)
-  {
-    OE_WARN <<  "Warning: Unable to open file star file \"" << starFile << "\"" << std::endl;
-    return false ;
-  }
+    std::fstream in(starFile.c_str());
+    if (!in)
+    {
+        OE_WARN <<  "Warning: Unable to open file star file \"" << starFile << "\"" << std::endl;
+        return false ;
+    }
 
-  while (!in.eof())
-  {
-    std::string line;
+    while (!in.eof())
+    {
+        std::string line;
 
-    std::getline(in, line);
-    if (in.eof())
-      break;
+        std::getline(in, line);
+        if (in.eof())
+            break;
 
-    if (line.empty() || line[0] == '#') 
-      continue;
+        if (line.empty() || line[0] == '#') 
+            continue;
 
-    std::stringstream ss(line);
-    out_stars.push_back(StarData(ss));
+        std::stringstream ss(line);
+        out_stars.push_back(StarData(ss));
 
-    if (out_stars[out_stars.size() - 1].magnitude < _minStarMagnitude)
-      out_stars.pop_back();
-  }
+        if (out_stars[out_stars.size() - 1].magnitude < _minStarMagnitude)
+            out_stars.pop_back();
+    }
 
-  in.close();
+    in.close();
 
-  return true;
-}
-
-osg::Vec3d
-SkyNode::getPositionFromRADecl( double ra, double decl, double range )
-{
-    return osg::Vec3(0,range,0) * 
-           osg::Matrix::rotate( decl, 1, 0, 0 ) * 
-           osg::Matrix::rotate( ra - osg::PI_2, 0, 0, 1 );
+    return true;
 }

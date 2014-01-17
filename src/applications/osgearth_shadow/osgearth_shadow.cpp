@@ -44,6 +44,7 @@
 #include <osgEarthUtil/EarthManipulator>
 #include <osgEarthUtil/ExampleResources>
 #include <osgEarthUtil/ShadowUtils>
+#include <osgEarthUtil/SkyNode>
 #include <osgEarth/NodeUtils>
 #include <osgEarth/MapNode>
 #include <osgEarth/TerrainEngineNode>

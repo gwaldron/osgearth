@@ -106,3 +106,4 @@ void ExportDialog::validateAndAccept()
 
   _ui.errorLabel->setText(QString(errMsg.c_str()));
 }
+

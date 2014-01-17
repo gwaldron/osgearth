@@ -80,6 +80,7 @@ ADD_SUBDIRECTORY(osgearth_sharedlayer)
 ADD_SUBDIRECTORY(osgearth_terraineffects)
 ADD_SUBDIRECTORY(osgearth_mrt)
 ADD_SUBDIRECTORY(osgearth_fog)
+ADD_SUBDIRECTORY(osgearth_shadergen)
 
 IF(NOT ${OPENSCENEGRAPH_VERSION} VERSION_LESS "3.1.0")
     ADD_SUBDIRECTORY(osgearth_shadow)
@@ -92,4 +93,3 @@ IF (Qt5Widgets_FOUND OR QT4_FOUND AND NOT ANDROID AND OSGEARTH_USE_QT)
     ADD_SUBDIRECTORY(osgearth_demo)
 ENDIF()
 
-#ADD_SUBDIRECTORY(osgearth_silverlining)

@@ -19,6 +19,7 @@
 
 #include <osg/Notify>
 #include <osgViewer/Viewer>
+#include <osgEarth/MapNode>
 #include <osgEarthUtil/EarthManipulator>
 #include <osgEarthUtil/ExampleResources>
 #include <osgEarthUtil/Fog>

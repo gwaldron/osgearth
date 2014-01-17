@@ -16,28 +16,26 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
-#ifndef OSGEARTH_DRIVER_OCEAN_SURFACE
-#define OSGEARTH_DRIVER_OCEAN_SURFACE 1
+#ifndef OSGEARTH_DRIVER_SIMPLE_OCEAN
+#define OSGEARTH_DRIVER_SIMPLE_OCEAN 1
 
+#include <osgEarthUtil/Ocean>
 #include <osgEarth/MapNode>
 #include <osgEarth/ImageLayer>
 #include <osgEarth/URI>
 #include <osgEarth/Registry>
 #include <osgEarthSymbology/Color>
-#include <osg/Node>
-#include <osg/Image>
-#include <osgDB/ReadFile>
-#include <osgDB/Options>
 
-namespace osgEarth { namespace Drivers
+namespace osgEarth { namespace Drivers { namespace SimpleOcean
 {
     using namespace osgEarth;
-    using namespace osgEarth::Symbology;
+    using namespace osgEarth::Util;
 
     /**
      * Options for controlling the ocean surface node.
+     * (header-only)
      */
-    class /*header-only*/ OceanSurfaceOptions : public ConfigOptions
+    class SimpleOceanOptions : public OceanOptions
     {
     public:
         /** Nominal sea level in meters (relative to ellipsoid/geoid); default is zero. */
@@ -81,8 +79,8 @@ namespace osgEarth { namespace Drivers
         const optional<ImageLayerOptions>& maskLayer() const { return _maskLayerOptions; }
 
     public:
-        OceanSurfaceOptions( const Config& conf =Config() )
-            : ConfigOptions     ( conf ),
+        SimpleOceanOptions( const ConfigOptions& conf =ConfigOptions() )
+            : OceanOptions      ( conf ),
               _seaLevel         ( 0.0f ),
               _lowFeatherOffset ( -100.0f ),
               _highFeatherOffset( -10.0f ),
@@ -95,11 +93,11 @@ namespace osgEarth { namespace Drivers
         }
 
         /** dtor */
-        virtual ~OceanSurfaceOptions() { }
+        virtual ~SimpleOceanOptions() { }
 
     public:
         Config getConfig() const {
-            Config conf = ConfigOptions::newConfig();
+            Config conf = OceanOptions::newConfig();
             conf.updateIfSet("sea_level",           _seaLevel );
             conf.updateIfSet("high_feather_offset", _highFeatherOffset );
             conf.updateIfSet("low_feather_offset",  _lowFeatherOffset );
@@ -114,7 +112,7 @@ namespace osgEarth { namespace Drivers
 
     protected:
         void mergeConfig( const Config& conf ) {
-            ConfigOptions::mergeConfig( conf );
+            OceanOptions::mergeConfig( conf );
             fromConfig( conf );
         }
 
@@ -143,59 +141,6 @@ namespace osgEarth { namespace Drivers
         optional<ImageLayerOptions> _maskLayerOptions;
     };
 
+} } } // namespace osgEarth::Drivers::SimpleOcean
 
-    /**
-     * Node tha renders an ocean surface over a MapNode.
-     */
-    class /*header-only*/ OceanSurfaceNode : public osg::Group
-    {
-    public:
-        /**
-         * Constructs a new ocean surface node. Add this to your scene graph somewhere
-         * alongside your MapNode.
-         */
-        OceanSurfaceNode( MapNode* mapNode, const OceanSurfaceOptions& initialOptions =OceanSurfaceOptions() )
-            : _mapNode( mapNode ), _options( initialOptions )
-        {
-            osg::Node* node = load();
-            if ( node )
-                this->addChild( node );
-        }
-
-        /** dtor */
-        virtual ~OceanSurfaceNode() { }
-
-        /**
-         * Options controlling the look and behavior of the ocean
-         */         
-        OceanSurfaceOptions& options() { return _options; }
-        const OceanSurfaceOptions& options() const { return _options; }
-
-        /**
-         * Call this whenever you change options and want to apply the changes.
-         */
-        void dirty() { load(); }
-
-    private:
-        osg::observer_ptr<MapNode> _mapNode;
-        OceanSurfaceOptions        _options;
-
-        osg::Node* load()
-        {
-            osg::Node* result = 0L;
-            osg::ref_ptr<MapNode> safeMapNode = _mapNode.get();
-            if ( safeMapNode.valid() )
-            {
-                osg::ref_ptr<osgDB::Options> o = Registry::instance()->cloneOrCreateOptions();
-                o->setPluginData( "mapNode", (void*)_mapNode.get() );
-                o->setPluginData( "options", (void*)&_options );
-                osgDB::ReaderWriter::ReadResult r = osgDB::readNodeFile( ".osgearth_ocean_surface", o.get() );
-                result = r.takeNode();
-            }
-            return result;
-        }
-    };
-
-} } // namespace osgEarth::Drivers
-
-#endif // OSGEARTH_DRIVER_OCEAN_SURFACE
+#endif // OSGEARTH_DRIVER_SIMPLE_OCEAN

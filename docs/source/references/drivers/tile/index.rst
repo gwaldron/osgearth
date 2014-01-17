@@ -11,6 +11,7 @@ terrain engine. It can produce image tiles, elevation grid tiles, or both.
    arcgis_map_cache
    debug
    gdal
+   mbtiles
    noise
    osg
    tilecache

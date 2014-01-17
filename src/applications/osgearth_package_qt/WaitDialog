@@ -37,3 +37,4 @@ public:
 }
 
 #endif //TILER_TOOL_WAITDIALOG_H
+

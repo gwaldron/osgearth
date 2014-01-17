@@ -20,6 +20,7 @@ SET(HEADERS_ROOT
     DateTime
     DetailTexture
     EarthManipulator
+    Environment
     ExampleResources
     Export
     FeatureManipTool
@@ -38,6 +39,7 @@ SET(HEADERS_ROOT
     MouseCoordsTool
     NormalMap
     ObjectLocator
+    Ocean
     PolyhedralLineOfSight
     RadialLineOfSight
     SkyNode
@@ -70,10 +72,10 @@ SET(SOURCES_ROOT
     ClampCallback.cpp
     Controls.cpp
     ContourMap.cpp
-    DataScanner.cpp
-    #DateTime.cpp #moved to osgEarth namespace
+    DataScanner.cpp    
     DetailTexture.cpp
     EarthManipulator.cpp
+    Environment.cpp
     ExampleResources.cpp
     FeatureManipTool.cpp
     FeatureQueryTool.cpp
@@ -89,6 +91,7 @@ SET(SOURCES_ROOT
     MouseCoordsTool.cpp
     NormalMap.cpp
     ObjectLocator.cpp
+    Ocean.cpp
     PolyhedralLineOfSight.cpp
     RadialLineOfSight.cpp
     SpatialData.cpp

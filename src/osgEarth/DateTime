@@ -43,7 +43,7 @@ namespace osgEarth
         /** DateTime copy */
         DateTime(const DateTime& rhs);
 
-        /** DateTime from a tm */
+        /** DateTime from a tm (in the local time zone) */
         DateTime(const ::tm& tm);
 
         /** DateTime from UTC seconds since the epoch */
@@ -62,11 +62,15 @@ namespace osgEarth
         double hours() const;
 
         TimeStamp   asTimeStamp() const { return _time_t; }
-        const ::tm& as_tm()       const { return _tm; }
+        //const ::tm& as_tm()       const { return _tm; }
 
     protected:
         ::tm     _tm;
         ::time_t _time_t;
+
+    private:
+        // since timegm is not cross-platform
+        ::time_t timegm(const ::tm* tm) const;
     };
 
 } // namespace osgEarth

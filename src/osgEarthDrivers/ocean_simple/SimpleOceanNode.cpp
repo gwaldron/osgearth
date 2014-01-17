@@ -16,24 +16,27 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
-#include "OceanSurfaceContainer"
-#include "OceanCompositor"
+#include "SimpleOceanNode"
 #include "ElevationProxyImageLayer"
+#include "SimpleOceanShaders"
 #include <osgEarth/Map>
+#include <osgEarth/ShaderFactory>
 #include <osgEarth/TextureCompositor>
-#include <osgEarthDrivers/osg/OSGOptions>
-#include <osgEarthDrivers/engine_quadtree/QuadTreeTerrainEngineOptions>
+#include <osgEarthDrivers/engine_mp/MPTerrainEngineOptions>
 
 #include <osg/CullFace>
 #include <osg/Depth>
 #include <osg/Texture2D>
 
-#define LC "[OceanSurface] "
+#define LC "[SimpleOceanNode] "
 
-using namespace osgEarth_ocean_surface;
+using namespace osgEarth;
+using namespace osgEarth::Util;
+using namespace osgEarth::Drivers::SimpleOcean;
 
 
-OceanSurfaceContainer::OceanSurfaceContainer( MapNode* mapNode, const OceanSurfaceOptions& options ) :
+SimpleOceanNode::SimpleOceanNode(const SimpleOceanOptions& options,
+                                 MapNode*                  mapNode) :
 _parentMapNode( mapNode ),
 _options      ( options )
 {
@@ -44,7 +47,7 @@ _options      ( options )
 
 
 void
-OceanSurfaceContainer::rebuild()
+SimpleOceanNode::rebuild()
 {
     this->removeChildren( 0, this->getNumChildren() );
 
@@ -66,17 +69,17 @@ OceanSurfaceContainer::rebuild()
         if ( mno.enableLighting().isSet() )
             mno.enableLighting() = *mno.enableLighting();
 
-        QuadTreeTerrainEngineOptions to;
-        to.heightFieldSkirtRatio() = 0.0;  // don't want to see skirts
-        to.clusterCulling() = false;       // want to see underwater
-        to.enableBlending() = true;        // gotsta blend with the main node
-        mno.setTerrainOptions( to );
+        MPTerrainEngineOptions mpoptions;
+        mpoptions.heightFieldSkirtRatio() = 0.0;  // don't want to see skirts
+        mpoptions.clusterCulling() = false;       // want to see underwater
+        mpoptions.enableBlending() = true;        // gotsta blend with the main node
+        mno.setTerrainOptions( mpoptions );
 
         // make the ocean's map node:
         MapNode* oceanMapNode = new MapNode( oceanMap, mno );
         
         // install a custom compositor. Must do this before adding any image layers.
-        oceanMapNode->setCompositorTechnique( new OceanCompositor(_options) );
+        //oceanMapNode->setCompositorTechnique( new OceanCompositor(_options) );
 
         // if the caller requested a mask layer, install that now.
         if ( _options.maskLayer().isSet() )
@@ -87,6 +90,11 @@ OceanSurfaceContainer::rebuild()
                 // mask layer options:
                 _options.maskLayer()->maxLevel() = *_options.maxLOD();
             }
+
+            // make sure the mask is shared (so we can access it from our shader)
+            // and invisible (so we can't see it)
+            _options.maskLayer()->shared() = true;
+            _options.maskLayer()->visible() = false;
 
             ImageLayer* maskLayer = new ImageLayer( "ocean-mask", *_options.maskLayer() );
             oceanMap->addImageLayer( maskLayer );
@@ -107,8 +115,28 @@ OceanSurfaceContainer::rebuild()
 
         this->addChild( oceanMapNode );
 
-        // set up the options uniforms.
+        // set up the shaders.
         osg::StateSet* ss = this->getOrCreateStateSet();
+
+        // install the shaders on the ocean map node.
+        VirtualProgram* vp = VirtualProgram::getOrCreate( ss );
+        vp->setName( "osgEarth SimpleOcean" );
+
+        // install a default lighting shader
+        // TODO: eventually deprecate this.
+        Registry::shaderFactory()->installLightingShaders( vp );
+
+        // use the appropriate shader for the active technique:
+        std::string vertSource = _options.maskLayer().isSet() ? source_vertMask : source_vertProxy;
+        std::string fragSource = _options.maskLayer().isSet() ? source_fragMask : source_fragProxy;
+
+        vp->setFunction( "oe_ocean_vertex",   vertSource, ShaderComp::LOCATION_VERTEX_VIEW );
+        vp->setFunction( "oe_ocean_fragment", fragSource, ShaderComp::LOCATION_FRAGMENT_COLORING );
+
+        // install the slot attribute(s)
+        ss->getOrCreateUniform( "ocean_data", osg::Uniform::SAMPLER_2D )->set( 0 );
+
+        // set up the options uniforms.
 
         _seaLevel = new osg::Uniform(osg::Uniform::FLOAT, "ocean_seaLevel");
         ss->addUniform( _seaLevel.get() );
@@ -146,8 +174,8 @@ OceanSurfaceContainer::rebuild()
                 tex->setWrap  ( osg::Texture::WRAP_S, osg::Texture::REPEAT );
                 tex->setWrap  ( osg::Texture::WRAP_T, osg::Texture::REPEAT );
 
-                ss->setTextureAttributeAndModes( 1, tex, 1 );
-                ss->getOrCreateUniform( "ocean_surface_tex", osg::Uniform::SAMPLER_2D )->set( 1 );
+                ss->setTextureAttributeAndModes( 2, tex, 1 );
+                ss->getOrCreateUniform( "ocean_surface_tex", osg::Uniform::SAMPLER_2D )->set( 2 );
                 ss->getOrCreateUniform( "ocean_has_surface_tex", osg::Uniform::BOOL )->set( true );
             }
         }
@@ -158,27 +186,26 @@ OceanSurfaceContainer::rebuild()
             new osg::CullFace(), 
             osg::StateAttribute::OFF | osg::StateAttribute::OVERRIDE );
 
-        apply( _options );
+        // force apply options:
+        applyOptions();
     }
 }
 
 void
-OceanSurfaceContainer::apply( const OceanSurfaceOptions& options )
+SimpleOceanNode::applyOptions()
 {
-    OE_DEBUG << LC << "Ocean Options = " << options.getConfig().toJSON(true) << std::endl;
+    setSeaLevel( *_options.seaLevel() );
 
-    _seaLevel->set( *options.seaLevel() );
-    _lowFeather->set( *options.lowFeatherOffset() );
-    _highFeather->set( *options.highFeatherOffset() );
-    _baseColor->set( *options.baseColor() );
-    _maxRange->set( *options.maxRange() );
-    _fadeRange->set( *options.fadeRange() );
+    _lowFeather->set( *_options.lowFeatherOffset() );
+    _highFeather->set( *_options.highFeatherOffset() );
+    _baseColor->set( *_options.baseColor() );
+    _maxRange->set( *_options.maxRange() );
+    _fadeRange->set( *_options.fadeRange() );
+
 }
 
-
 void
-OceanSurfaceContainer::setMapNode( MapNode* parentMapNode )
+SimpleOceanNode::onSetSeaLevel()
 {
-    _parentMapNode = parentMapNode;
-    rebuild();
+    _seaLevel->set( getSeaLevel() );
 }

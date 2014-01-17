@@ -7,7 +7,7 @@ SET(TARGET_SRC ElevationProxyImageLayer.cpp
 SET(TARGET_H   ElevationProxyImageLayer
                SimpleOceanOptions
                SimpleOceanNode
-               OceanShaders
+               SimpleOceanShaders
 )
 
 SET(TARGET_COMMON_LIBRARIES ${TARGET_COMMON_LIBRARIES}

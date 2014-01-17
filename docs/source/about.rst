@@ -5,7 +5,7 @@ Introduction
 ------------
 
 osgEarth_ is a 3D mapping SDK for OpenSceneGraph_ applications.
-It's different than traditional terrain engines in an important way:
+It's different from traditional terrain engines in an important way:
 osgEarth_ does not require you to build a 3D terrain model before you
 display it. 
 Instead, it will access the raw data sources at application run time and
@@ -20,7 +20,7 @@ The goals of osgEarth_ are to:
 - Interoperate with open mapping standards, technologies, and data.
 
 
-**So if it for me?**
+**So is it for me?**
 
 So: does osgEarth replace the need for offline terrain database creation tools? In many cases it does.
 

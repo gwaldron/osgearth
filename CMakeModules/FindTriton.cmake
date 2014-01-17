@@ -10,7 +10,7 @@
 #
 
 SET(TRITON_DIR "" CACHE PATH "Location of Triton SDK")
-    
+
 IF (MSVC90)
 	IF (CMAKE_CL_64)
 		SET(TRITON_ARCH "vc9/x64")
@@ -55,7 +55,10 @@ IF (UNIX)
 	SET(TRITON_ARCH "linux")
 ENDIF (UNIX)
 
+<<<<<<< HEAD
 
+=======
+>>>>>>> master
 FIND_PATH(TRITON_INCLUDE_DIR Triton.h
     "${TRITON_DIR}/Public Headers"
     "$ENV{TRITON_PATH}/Public Headers"

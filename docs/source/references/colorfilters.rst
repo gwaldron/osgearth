@@ -1,9 +1,9 @@
 Color Filter Reference
 ======================
-A *color fitler* is an inline, GLSL processor for an ImageLayer. 
+A *color filter* is an inline, GLSL processor for an ImageLayer. 
 The osgEarth terrain engine runs each image tile through its layer's
 color filter as it's being rendered on the GPU. You can chain color
-filter together to form an image processing pipeline.
+filters together to form an image processing pipeline.
 
 osgEarth comes with several stock filters; you can create your own
 by implementing the ``osgEarth::ColorFilter`` interface.
@@ -40,7 +40,7 @@ For example, ``c="1.2"`` means to increase the contrast by 20%.
 
 ChromaKey
 ---------
-This filter matches color values are makes fragments to transparent,
+This filter matches color values to turn fragments transparent,
 providing a kind of "green-screen" effect::
 
     <chroma_key r="1.0" g="0.0" b="0.0" distance="0.1"/>

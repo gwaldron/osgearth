@@ -16,6 +16,7 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
+#if 0
 #ifndef OSGEARTH_DRIVER_OCEAN_SURFACE_COMPOSITOR
 #define OSGEARTH_DRIVER_OCEAN_SURFACE_COMPOSITOR 1
 
@@ -58,3 +59,4 @@ namespace osgEarth_ocean_surface
 } // namespace osgEarth_ocean_surface
 
 #endif // OSGEARTH_DRIVER_OCEAN_SURFACE_COMPOSITOR
+#endif

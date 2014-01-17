@@ -16,50 +16,57 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
-#if 0
-#ifndef OSGEARTH_DRIVER_OCEAN_SURFACE_CONTAINER
-#define OSGEARTH_DRIVER_OCEAN_SURFACE_CONTAINER 1
+#ifndef OSGEARTH_DRIVER_SIMPLE_OCEAN_NODE
+#define OSGEARTH_DRIVER_SIMPLE_OCEAN_NODE 1
 
-#include "OceanSurface"
-#include <osgEarth/MapNode>
-#include <osgEarth/MapNodeObserver>
-#include <osgEarth/ImageLayer>
-#include <osgEarth/URI>
-#include <osg/Node>
-#include <osg/Image>
-#include <osg/Uniform>
+#include "SimpleOceanOptions"
+#include <osgEarthUtil/Ocean>
 
-namespace osgEarth_ocean_surface
+namespace osgEarth {
+    class MapNode;
+}
+namespace osg {
+    class Uniform;
+}
+
+namespace osgEarth { namespace Drivers { namespace SimpleOcean
 {
     using namespace osgEarth;
-    using namespace osgEarth::Drivers;
+    using namespace osgEarth::Util;
 
-    class OceanSurfaceContainer : public osg::Group,
-                                  public MapNodeObserver
+    /**
+     * Node tha renders an ocean surface over a MapNode.
+     */
+    class SimpleOceanNode : public OceanNode
     {
     public:
-        OceanSurfaceContainer( MapNode* mapNode, const OceanSurfaceOptions& options );
+        /**
+         * Constructs a new ocean surface node. Add this to your scene graph somewhere
+         * alongside your MapNode.
+         */
+        SimpleOceanNode(
+            const SimpleOceanOptions& options,
+            MapNode*                  mapNode);
 
-        /** dtor */
-        virtual ~OceanSurfaceContainer() { }
+    protected: // OceanNode
 
-        void apply( const OceanSurfaceOptions& options );
+        void onSetSeaLevel();
 
-    public:
-        MapNode* getMapNode() { return _parentMapNode.get(); }
-        void setMapNode( MapNode* mapNode );
+        virtual ~SimpleOceanNode() { }
 
     private:
+
         osg::observer_ptr<MapNode> _parentMapNode;
-        OceanSurfaceOptions        _options;
+        SimpleOceanOptions         _options;
         osg::ref_ptr<osg::Uniform> _seaLevel, _lowFeather, _highFeather;
         osg::ref_ptr<osg::Uniform> _maxRange, _fadeRange;
         osg::ref_ptr<osg::Uniform> _baseColor;
 
         void rebuild();
+
+        void applyOptions();
     };
 
-} // namespace osgEarth_ocean_surface
+} } } // namespace osgEarth::Drivers::SimpleOcean
 
-#endif // OSGEARTH_DRIVER_OCEAN_SURFACE_CONTAINER
-#endif
+#endif // OSGEARTH_DRIVER_SIMPLE_OCEAN_NODE

@@ -19,6 +19,8 @@
 #ifndef OSGEARTH_DRIVER_SIMPLE_OCEAN_SHADERS
 #define OSGEARTH_DRIVER_SIMPLE_OCEAN_SHADERS 1
 
+#include <osgEarth/VirtualProgram>
+
 namespace
 {
     static char source_vertProxy[] =

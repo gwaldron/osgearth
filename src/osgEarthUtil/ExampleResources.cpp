@@ -594,31 +594,14 @@ MapNodeHelper::parse(MapNode*             mapNode,
     // Adding an ocean model:
     if ( useOcean || !oceanConf.empty() )
     {
-        if ( oceanConf.hasValue("driver") )
+        OceanNode* ocean = OceanFactory::create(OceanOptions(oceanConf), mapNode);
+        if ( ocean )
         {
-            OceanNode* ocean = 0L;
-            OceanOptions options(oceanConf);
-            ocean = OceanFactory::create(options, mapNode->getMap());
-            if ( ocean )
-            {
-                root->addChild( ocean );
+            root->addChild( ocean );
 
-                Control* c = OceanControlFactory().create(ocean);
-                if ( c )
-                    mainContainer->addControl(c);
-            }
-        }
-
-        else
-        {
-            OceanSurfaceNode* ocean = new OceanSurfaceNode( mapNode, oceanConf );
-            if ( ocean )
-            {
-                root->addChild( ocean );
-                //Control* c = OceanControlFactory().create(ocean);
-                //if ( c )
-                //    mainContainer->addControl(c);
-            }
+            Control* c = OceanControlFactory().create(ocean);
+            if ( c )
+                mainContainer->addControl(c);
         }
     }
 

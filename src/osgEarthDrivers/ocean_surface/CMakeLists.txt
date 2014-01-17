@@ -2,7 +2,8 @@
 SET(TARGET_SRC ElevationProxyImageLayer.cpp
                OceanCompositor.cpp
                OceanSurfaceContainer.cpp
-               ReaderWriterOceanSurface.cpp
+               SimpleOceanDriver.cpp
+               SimpleOceanNode.cpp
 )
                
 SET(TARGET_H   ElevationProxyImageLayer
@@ -10,13 +11,20 @@ SET(TARGET_H   ElevationProxyImageLayer
                OceanSurface
                OceanSurfaceContainer
                OceanShaders
+               SimpleOceanOptions
+               SimpleOceanNode
 )
 
-SET(TARGET_COMMON_LIBRARIES ${TARGET_COMMON_LIBRARIES} osgEarthSymbology)
+SET(TARGET_COMMON_LIBRARIES ${TARGET_COMMON_LIBRARIES}
+    osgEarthUtil
+    osgEarthSymbology
+)
 
-SETUP_PLUGIN(osgearth_ocean_surface)
+SETUP_PLUGIN(osgearth_ocean_simple)
 
 # to install public driver includes:
-SET(LIB_NAME ocean_surface)
-SET(LIB_PUBLIC_HEADERS OceanSurface)
+SET(LIB_NAME ocean_simple)
+
+SET(LIB_PUBLIC_HEADERS SimpleOceanOptions)
+
 INCLUDE(ModuleInstallOsgEarthDriverIncludes OPTIONAL)

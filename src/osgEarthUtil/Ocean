@@ -28,6 +28,7 @@
 
 namespace osgEarth {
     class Map;
+    class MapNode;
 }
 namespace osgDB {
     class Options;
@@ -89,7 +90,7 @@ namespace osgEarth { namespace Util
     class OSGEARTHUTIL_EXPORT OceanDriver : public osgDB::ReaderWriter
     {
     protected:
-        const Map* getMap(const osgDB::Options* opt) const;
+        MapNode* getMapNode(const osgDB::Options* opt) const;
         const OceanOptions& getOceanOptions(const osgDB::Options* opt) const;
     };
 
@@ -102,7 +103,7 @@ namespace osgEarth { namespace Util
     public:
         static OceanNode* create(
             const OceanOptions&  options,
-            const osgEarth::Map* map );
+            MapNode*             map );
     };
 
 } } // namespace osgEarth::Util

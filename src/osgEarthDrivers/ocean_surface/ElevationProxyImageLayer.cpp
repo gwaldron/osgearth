@@ -18,12 +18,12 @@
  */
 #include "ElevationProxyImageLayer"
 
-using namespace osgEarth_ocean_surface;
 using namespace osgEarth;
+using namespace osgEarth::Drivers::SimpleOcean;
 
-ElevationProxyImageLayer::ElevationProxyImageLayer( Map* sourceMap, const ImageLayerOptions& options ) :
+ElevationProxyImageLayer::ElevationProxyImageLayer(const Map* sourceMap,
+                                                   const ImageLayerOptions& options ) :
 ImageLayer( options ),
-_sourceMap( sourceMap ),
 _mapf     ( sourceMap )
 {
     _runtimeOptions.cachePolicy() = CachePolicy::NO_CACHE;
@@ -51,26 +51,31 @@ ElevationProxyImageLayer::isCached( const TileKey& key ) const
 GeoImage
 ElevationProxyImageLayer::createImage(const TileKey& key, ProgressCallback* progress, bool forceFallback)
 {
-    osg::ref_ptr<Map> map = _sourceMap.get();
-    if ( map.valid() )
+    if ( _mapf.needsSync() )
     {
-        osg::ref_ptr<osg::HeightField> hf;
-        if ( map->getHeightField( key, true, hf ) )
+        Threading::ScopedMutexLock lock(_mapfMutex);
+        if ( _mapf.needsSync() )
         {
-            // encode the heightfield as a 16-bit normalized LUNIMANCE image
-            osg::Image* image = new osg::Image();
-            image->allocateImage(hf->getNumColumns(), hf->getNumRows(), 1, GL_LUMINANCE, GL_UNSIGNED_SHORT);
-            image->setInternalTextureFormat( GL_LUMINANCE16 );
-            const osg::FloatArray* floats = hf->getFloatArray();
-            for( unsigned int i = 0; i < floats->size(); ++i  )
-            {
-                int col = i % hf->getNumColumns();
-                int row = i / hf->getNumColumns();
-                *(unsigned short*)image->data( col, row ) = (unsigned short)(32768 + (short)floats->at(i));
-            }
-
-            return GeoImage( image, key.getExtent() );
+            _mapf.sync();
         }
     }
-    return GeoImage::INVALID;
+
+    osg::ref_ptr<osg::HeightField> hf;
+
+    if ( _mapf.getHeightField(key, true, hf) )
+    {
+        // encode the heightfield as a 16-bit normalized LUNIMANCE image
+        osg::Image* image = new osg::Image();
+        image->allocateImage(hf->getNumColumns(), hf->getNumRows(), 1, GL_LUMINANCE, GL_UNSIGNED_SHORT);
+        image->setInternalTextureFormat( GL_LUMINANCE16 );
+        const osg::FloatArray* floats = hf->getFloatArray();
+        for( unsigned int i = 0; i < floats->size(); ++i  )
+        {
+            int col = i % hf->getNumColumns();
+            int row = i / hf->getNumColumns();
+            *(unsigned short*)image->data( col, row ) = (unsigned short)(32768 + (short)floats->at(i));
+        }
+
+        return GeoImage( image, key.getExtent() );
+    }
 }

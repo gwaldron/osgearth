@@ -20,6 +20,7 @@
 #include <osgDB/FileNameUtils>
 #include <osgDB/Registry>
 #include <osgDB/FileUtils>
+#include <osgEarth/MapNode>
 #include <osgEarth/Registry>
 #include <osgEarth/ThreadingUtils>
 #include <osgEarthUtil/Ocean>
@@ -82,7 +83,8 @@ namespace osgEarth { namespace Drivers { namespace Triton
                 }
             }
 
-            return new TritonNode( getMap(options), tritonOptions );
+            MapNode* mapNode = getMapNode(options);
+            return new TritonNode( mapNode->getMap(), tritonOptions );
         }
 
     protected:

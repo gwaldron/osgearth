@@ -16,13 +16,14 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
-#ifndef OSGEARTH_DRIVER_OCEAN_SURFACE_ELEV_PROXY_IMAGE_LAYER
-#define OSGEARTH_DRIVER_OCEAN_SURFACE_ELEV_PROXY_IMAGE_LAYER 1
+#ifndef OSGEARTH_DRIVER_SIMPLE_OCEAN_ELEV_PROXY_IMAGE_LAYER
+#define OSGEARTH_DRIVER_SIMPLE_OCEAN_ELEV_PROXY_IMAGE_LAYER 1
 
 #include <osgEarth/MapFrame>
 #include <osgEarth/ImageLayer>
+#include <osgEarth/ThreadingUtils>
 
-namespace osgEarth_ocean_surface
+namespace osgEarth { namespace Drivers { namespace SimpleOcean
 {
     using namespace osgEarth;
 
@@ -37,7 +38,9 @@ namespace osgEarth_ocean_surface
          * Constucts a proxy layer
          * @param sourceMap Map from which to read heightfields
          */
-        ElevationProxyImageLayer( Map* sourceMap, const ImageLayerOptions& options );
+        ElevationProxyImageLayer(
+            const Map* sourceMap, 
+            const ImageLayerOptions& options);
 
         /** dtor */
         virtual ~ElevationProxyImageLayer() { }
@@ -53,10 +56,10 @@ namespace osgEarth_ocean_surface
         virtual GeoImage createImage( const TileKey& key, ProgressCallback* progress, bool forceFallback );
 
     private:
-        osg::observer_ptr<Map> _sourceMap;
-        MapFrame               _mapf;
+        MapFrame _mapf;
+        Threading::Mutex _mapfMutex;
     };
 
-} // namespace osgEarth_ocean_surface
+} } } // namespace osgEarth::Drivers::SimpleOcean
 
-#endif // OSGEARTH_DRIVER_OCEAN_SURFACE_ELEV_PROXY_IMAGE_LAYER
+#endif // OSGEARTH_DRIVER_SIMPLE_OCEAN_ELEV_PROXY_IMAGE_LAYER

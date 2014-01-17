@@ -16,21 +16,15 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
-#if 0
-#ifndef OSGEARTH_DRIVER_OCEAN_SURFACE
-#define OSGEARTH_DRIVER_OCEAN_SURFACE 1
+#ifndef OSGEARTH_DRIVER_SIMPLE_OCEAN
+#define OSGEARTH_DRIVER_SIMPLE_OCEAN 1
 
+#include <osgEarthUtil/Ocean>
 #include <osgEarth/MapNode>
 #include <osgEarth/ImageLayer>
 #include <osgEarth/URI>
 #include <osgEarth/Registry>
-#include <osgEarthUtil/Ocean>
 #include <osgEarthSymbology/Color>
-
-#include <osg/Node>
-#include <osg/Image>
-#include <osgDB/ReadFile>
-#include <osgDB/Options>
 
 namespace osgEarth { namespace Drivers { namespace SimpleOcean
 {
@@ -85,7 +79,7 @@ namespace osgEarth { namespace Drivers { namespace SimpleOcean
         const optional<ImageLayerOptions>& maskLayer() const { return _maskLayerOptions; }
 
     public:
-        SimpleOceanOptions( const Config& conf =Config() )
+        SimpleOceanOptions( const ConfigOptions& conf =ConfigOptions() )
             : OceanOptions      ( conf ),
               _seaLevel         ( 0.0f ),
               _lowFeatherOffset ( -100.0f ),
@@ -147,8 +141,6 @@ namespace osgEarth { namespace Drivers { namespace SimpleOcean
         optional<ImageLayerOptions> _maskLayerOptions;
     };
 
-
 } } } // namespace osgEarth::Drivers::SimpleOcean
 
-#endif // OSGEARTH_DRIVER_OCEAN_SURFACE
-#endif
+#endif // OSGEARTH_DRIVER_SIMPLE_OCEAN

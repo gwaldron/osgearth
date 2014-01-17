@@ -81,36 +81,33 @@ OceanNode::setSeaLevel(float value)
 
 #undef  LC
 #define LC "[OceanFactory] "
-#define MAP_TAG     "__osgEarth::Map"
+#define MAPNODE_TAG "__osgEarth::MapNode"
 #define OPTIONS_TAG "__osgEarth::Util::OceanOptions"
 
 OceanNode*
 OceanFactory::create(const OceanOptions& options,
-                     const Map*          map)
+                     MapNode*            mapNode)
 {
     OceanNode* result = 0L;
 
-    if ( !options.getDriver().empty() )
+    std::string driver = options.getDriver();
+    if ( driver.empty() )
+        driver = "simple";
+
+    std::string driverExt = std::string(".osgearth_ocean_") + driver;
+
+    osg::ref_ptr<osgDB::Options> rwopts = Registry::instance()->cloneOrCreateOptions();
+    rwopts->setPluginData( MAPNODE_TAG, (void*)mapNode );
+    rwopts->setPluginData( OPTIONS_TAG, (void*)&options );
+
+    result = dynamic_cast<OceanNode*>( osgDB::readNodeFile( driverExt, rwopts.get() ) );
+    if ( result )
     {
-        std::string driverExt = std::string(".osgearth_ocean_") + options.getDriver();
-
-        osg::ref_ptr<osgDB::Options> rwopts = Registry::instance()->cloneOrCreateOptions();
-        rwopts->setPluginData( MAP_TAG,     (void*)map );
-        rwopts->setPluginData( OPTIONS_TAG, (void*)&options );
-
-        result = dynamic_cast<OceanNode*>( osgDB::readNodeFile( driverExt, rwopts.get() ) );
-        if ( result )
-        {
-            OE_INFO << "Loaded ocean driver: \"" << options.getDriver() << "\" OK." << std::endl;
-        }
-        else
-        {
-            OE_WARN << "FAIL, unable to load ocean driver for \"" << options.getDriver() << "\"" << std::endl;
-        }
+        OE_INFO << "Loaded ocean driver \"" << driver << "\" OK." << std::endl;
     }
     else
     {
-        OE_WARN << LC << "FAIL, illegal null driver specification" << std::endl;
+        OE_WARN << "FAIL, unable to load ocean driver \"" << driver << "\"" << std::endl;
     }
 
     return result;
@@ -125,8 +122,10 @@ OceanDriver::getOceanOptions(const osgDB::Options* options) const
 }
 
 
-const Map*
-OceanDriver::getMap(const osgDB::Options* options) const
+MapNode*
+OceanDriver::getMapNode(const osgDB::Options* options) const
 {
-    return static_cast<const Map*>( options->getPluginData(MAP_TAG) );
+    return const_cast<MapNode*>(
+        static_cast<const MapNode*>(
+            options->getPluginData(MAPNODE_TAG) ) );
 }

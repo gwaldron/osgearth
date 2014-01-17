@@ -97,6 +97,10 @@ IF(SILVERLINING_FOUND)
   ADD_SUBDIRECTORY(environment_silverlining)
 ENDIF(SILVERLINING_FOUND)
 
+IF(TRITON_FOUND)
+  ADD_SUBDIRECTORY(ocean_triton)
+ENDIF(TRITON_FOUND)
+
 # temporary
 ADD_SUBDIRECTORY(template_matclass)
 

@@ -26,6 +26,7 @@
 #include <osgEarthUtil/DataScanner>
 #include <osgEarthUtil/Environment>
 #include <osgEarthUtil/SkyNode>
+#include <osgEarthUtil/Ocean>
 
 #include <osgEarthUtil/NormalMap>
 #include <osgEarthUtil/DetailTexture>
@@ -644,13 +645,27 @@ MapNodeHelper::parse(MapNode*             mapNode,
     // Adding an ocean model:
     if ( useOcean || !oceanConf.empty() )
     {
-        OceanSurfaceNode* ocean = new OceanSurfaceNode( mapNode, oceanConf );
-        if ( ocean )
+        if ( oceanConf.hasValue("driver") )
         {
-            root->addChild( ocean );
-            Control* c = OceanControlFactory().create(ocean, view);
-            if ( c )
-                mainContainer->addControl(c);
+            OceanNode* ocean = 0L;
+            OceanOptions options(oceanConf);
+            ocean = OceanFactory::create(options, mapNode->getMap());
+            if ( ocean )
+            {
+                root->addChild( ocean );
+            }
+        }
+
+        else
+        {
+            OceanSurfaceNode* ocean = new OceanSurfaceNode( mapNode, oceanConf );
+            if ( ocean )
+            {
+                root->addChild( ocean );
+                Control* c = OceanControlFactory().create(ocean, view);
+                if ( c )
+                    mainContainer->addControl(c);
+            }
         }
     }
 

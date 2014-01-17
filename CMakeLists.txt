@@ -113,7 +113,9 @@ FIND_PACKAGE(GDAL)
 FIND_PACKAGE(GEOS)
 FIND_PACKAGE(Sqlite3)
 FIND_PACKAGE(ZLIB)
+
 FIND_PACKAGE(SilverLining)
+FIND_PACKAGE(Triton)
 
 SET(V8_DIR "" CACHE PATH "set to base V8 install path")
 FIND_PACKAGE(V8)
@@ -200,7 +202,6 @@ ENDIF(WIN32)
 ########################################################################################################
 
 # Common to all platforms:
-SET(OSG_DIR "" CACHE PATH "set to base osg install path")
 
 SET(CMAKE_DEBUG_POSTFIX  "d" CACHE STRING "add a postfix, usually d on windows")
 SET(CMAKE_RELEASE_POSTFIX "" CACHE STRING "add a postfix, usually empty on windows")

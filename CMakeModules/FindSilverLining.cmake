@@ -9,6 +9,7 @@
 #
 # Created by Robert Hauck. 
 
+SET(SILVERLINING_DIR "" CACHE PATH "Location of SilverLining SDK")
 
 IF (MSVC90)
 	IF (CMAKE_CL_64)
@@ -68,6 +69,7 @@ FIND_PATH(SILVERLINING_INCLUDE_DIR Atmosphere.h
     /opt/csw/include # Blastwave
     /opt/include
     /usr/freeware/include
+    "C:/SilverLining SDK/Public Headers"
 )
 
 MACRO(FIND_SILVERLINING_LIBRARY MYLIBRARY MYLIBRARYNAME)
@@ -86,6 +88,7 @@ MACRO(FIND_SILVERLINING_LIBRARY MYLIBRARY MYLIBRARYNAME)
 		/opt/csw/lib
 		/opt/lib
 		/usr/freeware/lib64
+        "C:/SilverLining SDK/lib"
 	PATH_SUFFIXES
 		${SILVERLINING_ARCH}
     )

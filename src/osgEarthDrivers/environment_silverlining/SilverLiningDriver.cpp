@@ -16,10 +16,11 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
-
 #include "SilverLiningOptions"
 #include "SilverLiningNode"
 #include <osgDB/FileNameUtils>
+
+#define LC "[SilverLiningDriver] "
 
 using namespace osgEarth::Util;
 
@@ -57,6 +58,13 @@ namespace osgEarth { namespace Drivers { namespace SilverLining
                     slOptions.resourcePath() = osgDB::concatPaths(
                         std::string(ev),
                         "resources" );
+                }
+                else
+                {
+                    OE_WARN << LC
+                        << "No resource path! SilverLining might not initialize properly. "
+                        << "Consider setting the SILVERLINING_PATH environment variable."
+                        << std::endl;
                 }
             }
 

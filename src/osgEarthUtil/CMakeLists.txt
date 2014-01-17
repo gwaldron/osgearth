@@ -39,6 +39,7 @@ SET(HEADERS_ROOT
     MouseCoordsTool
     NormalMap
     ObjectLocator
+    Ocean
     PolyhedralLineOfSight
     RadialLineOfSight
     SkyNode
@@ -90,6 +91,7 @@ SET(SOURCES_ROOT
     MouseCoordsTool.cpp
     NormalMap.cpp
     ObjectLocator.cpp
+    Ocean.cpp
     PolyhedralLineOfSight.cpp
     RadialLineOfSight.cpp
     SpatialData.cpp

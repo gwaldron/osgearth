@@ -21,12 +21,9 @@
 
 #include <osgEarthUtil/Common>
 #include <osgEarthUtil/Environment>
+#include <osg/CoordinateSystemNode>
 #include <osg/MatrixTransform>
 #include <osg/Uniform>
-
-namespace osg {
-    class EllipsoidModel;
-}
 
 namespace osgEarth { namespace Util 
 {

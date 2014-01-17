@@ -42,7 +42,6 @@
 #include <osgEarth/StringUtils>
 
 #include <osgEarthDrivers/kml/KML>
-#include <osgEarthDrivers/ocean_surface/OceanSurface>
 
 #include <osgDB/FileNameUtils>
 #include <osgDB/WriteFile>
@@ -562,12 +561,23 @@ MapNodeHelper::parse(MapNode*             mapNode,
     // Adding a sky model:
     if ( useSky || !skyConf.empty() )
     {
-        EnvironmentNode* enode = 0L;
+        EnvironmentOptions options(skyConf);
+        EnvironmentNode* sky = EnvironmentFactory::create(options, mapNode->getMap());
+        if ( sky )
+        {
+            sky->attach( view, 0 );
+            sky->setDateTime( DateTime() );
+            root->addChild( sky );
+            Control* c = SkyControlFactory().create(sky, view);
+            if ( c )
+                mainContainer->addControl( c );
+        }
 
+#if 0
         if ( skyConf.hasValue("driver") )
         {
             EnvironmentOptions options(skyConf);
-            enode = EnvironmentFactory::create(options, mapNode->getMap());
+            enode = 
 
             // disable the default view light
             view->setLightingMode(osg::View::NO_LIGHT);
@@ -581,14 +591,15 @@ MapNodeHelper::parse(MapNode*             mapNode,
             enode = sky;
         }
 
-        if ( enode )
+        if ( sky )
         {
-            enode->setDateTime( DateTime() );
+            sky->setDateTime( DateTime() );
             root->addChild( enode );
             Control* c = SkyControlFactory().create(enode, view);
             if ( c )
                 mainContainer->addControl( c );
         }
+#endif
     }
 
     // Adding an ocean model:

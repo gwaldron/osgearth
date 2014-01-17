@@ -20,6 +20,7 @@
 #include "SilverLiningOptions"
 #include <osgEarthUtil/Environment>
 #include <osgEarth/Map>
+#include <osg/Light>
 
 namespace osgEarth { namespace Drivers { namespace SilverLining
 {
@@ -40,6 +41,8 @@ namespace osgEarth { namespace Drivers { namespace SilverLining
 
     public: // EnvironmentNode
 
+        void attach(osg::View* view, int lightNum);
+
         void onSetDateTime();
 
     public: // osg::Node
@@ -52,6 +55,7 @@ namespace osgEarth { namespace Drivers { namespace SilverLining
         osg::ref_ptr<SilverLiningContext> _SL;
         osg::Drawable* _skyDrawable;
         osg::Drawable* _cloudsDrawable;
+        osg::ref_ptr<osg::Light> _light;
     };
 
 } } } // namespace osgEarth::Drivers::SilverLining

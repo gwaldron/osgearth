@@ -37,21 +37,21 @@ SilverLiningNode::SilverLiningNode(const Map*                 map,
                                    const SilverLiningOptions& options)
 {
     // Create a new Light for the Sun.
-    osg::Light* light = new osg::Light();
-    light->setLightNum( 0 );
-    light->setDiffuse( osg::Vec4(1,1,1,1) );
-    light->setAmbient( osg::Vec4(0.2f, 0.2f, 0.2f, 1) );
-    light->setPosition( osg::Vec4(1, 0, 0, 0) ); // w=0 means infinity
-    light->setDirection( osg::Vec3(-1,0,0) );
+    _light = new osg::Light();
+    _light->setLightNum( 0 );
+    _light->setDiffuse( osg::Vec4(1,1,1,1) );
+    _light->setAmbient( osg::Vec4(0.2f, 0.2f, 0.2f, 1) );
+    _light->setPosition( osg::Vec4(1, 0, 0, 0) ); // w=0 means infinity
+    _light->setDirection( osg::Vec3(-1,0,0) );
     
     osg::LightSource* source = new osg::LightSource();
-    source->setLight( light );
+    source->setLight( _light.get() );
     source->setReferenceFrame(osg::LightSource::RELATIVE_RF);
     this->addChild( source );
 
     // The main silver lining data:
     _SL = new SilverLiningContext( options );
-    _SL->setLight( light );
+    _SL->setLight( _light.get() );
     _SL->setSRS  ( map->getSRS() );
 
     // Geode to hold each of the SL drawables:
@@ -77,6 +77,13 @@ SilverLiningNode::~SilverLiningNode()
     //nop
 }
 
+void
+SilverLiningNode::attach(osg::View* view, int lightNum)
+{
+    _light->setLightNum( lightNum );
+    view->setLight( _light.get() );
+    view->setLightingMode( osg::View::SKY_LIGHT );
+}
 
 void
 SilverLiningNode::onSetDateTime()

@@ -19,6 +19,7 @@
 #include <osgEarthUtil/Environment>
 #include <osgEarth/Registry>
 #include <osgDB/ReadFile>
+#include <osgEarthUtil/SkyNode>
 
 using namespace osgEarth;
 using namespace osgEarth::Util;
@@ -378,7 +379,8 @@ EnvironmentFactory::create(const EnvironmentOptions& options,
     }
     else
     {
-        OE_WARN << LC << "FAIL, illegal null driver specification" << std::endl;
+        return new SkyNode(map);
+        //OE_WARN << LC << "FAIL, illegal null driver specification" << std::endl;
     }
 
     return result;

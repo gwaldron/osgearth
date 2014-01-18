@@ -109,6 +109,8 @@ protected:
     bool intersects(const osg::BoundingSphere& bs);
     bool intersectAndClip(osg::Vec3d& s, osg::Vec3d& e,const osg::BoundingBox& bb);
 
+    unsigned int findPrimitiveIndex(osg::Drawable* drawable, unsigned int index);
+
     PrimitiveIntersector* _parent;
 
     osg::Vec3d  _start;

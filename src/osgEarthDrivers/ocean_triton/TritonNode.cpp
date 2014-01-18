@@ -20,6 +20,7 @@
 #include "TritonNode"
 #include "TritonContext"
 #include "TritonDrawable"
+#include <osgEarth/ElevationLOD>
 #include <Triton.h>
 
 #define LC "[TritonNode] "
@@ -38,7 +39,11 @@ TritonNode::TritonNode(const Map*           map,
     geode->setCullingActive( false );
     geode->addDrawable( new TritonDrawable(_TRITON) );
 
-    this->addChild( geode );
+    ElevationLOD* lod = new ElevationLOD();
+    lod->setMaxElevation( *options.maxAltitude() );
+    lod->addChild( geode );
+
+    this->addChild( lod );
 
     // Triton requires an update pass.
     ADJUST_UPDATE_TRAV_COUNT(this, +1);

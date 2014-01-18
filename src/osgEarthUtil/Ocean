@@ -48,11 +48,17 @@ namespace osgEarth { namespace Util
         virtual ~OceanOptions() { }
         virtual Config getConfig() const;
 
+        /** Maximum altitude at which the ocean is visible. */
+        optional<float>& maxAltitude() { return _maxAltitude; }
+        const optional<float>& maxAltitude() const { return _maxAltitude; }
+
     protected:
         virtual void mergeConfig( const Config& conf );
         
     private:
         void fromConfig( const Config& conf );
+
+        optional<float> _maxAltitude;
     };
 
 

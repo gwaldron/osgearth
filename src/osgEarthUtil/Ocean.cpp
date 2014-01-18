@@ -29,7 +29,8 @@ using namespace osgEarth::Util;
 //------------------------------------------------------------------------
 
 OceanOptions::OceanOptions(const ConfigOptions& options) :
-DriverConfigOptions( options )
+DriverConfigOptions( options ),
+_maxAltitude( 250000.0 )
 {
     fromConfig(_conf);
 }
@@ -37,7 +38,7 @@ DriverConfigOptions( options )
 void
 OceanOptions::fromConfig( const Config& conf )
 {
-    //nop
+    conf.getIfSet( "max_altitude", _maxAltitude );
 }
 
 void
@@ -51,6 +52,7 @@ Config
 OceanOptions::getConfig() const
 {
     Config conf = DriverConfigOptions::getConfig();
+    conf.addIfSet( "max_altitude", _maxAltitude );
     return conf;
 }
 

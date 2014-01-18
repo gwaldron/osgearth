@@ -21,5 +21,9 @@ http://sundog-soft.com/sds/features/real-time-3d-clouds/
         <ocean driver="triton"
                user="my_user_name"
                license_code="my_license_code"/>
+        <sky hours="18"/>
+        <viewpoints>
+            <viewpoint name="Click to see the water by Maui" heading="-29" height="-204" lat="20.6714" long="-156.5384" pitch="-4" range="3270"/>
+        </viewpoints>
     </external>
 </map>

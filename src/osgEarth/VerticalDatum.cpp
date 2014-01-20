@@ -138,20 +138,20 @@ VerticalDatum::transform(const VerticalDatum* from,
 
     unsigned cols = hf->getNumColumns();
     unsigned rows = hf->getNumRows();
-    osg::Vec3d sw = hf->getOrigin();
-    osg::Vec3d ne;
-    ne.x() = sw.x() + hf->getXInterval()*double(rows);
-    ne.y() = sw.y() + hf->getYInterval()*double(cols);
-    double xstep = hf->getXInterval();
-    double ystep = hf->getYInterval();
+    
+    osg::Vec3d sw(extent.west(), extent.south(), 0.0);
+    osg::Vec3d ne(extent.east(), extent.north(), 0.0);
+    
+    double xstep = abs(extent.east() - extent.west()) / double(cols-1);
+    double ystep = abs(extent.north() - extent.south()) / double(rows-1);
 
     if ( !extent.getSRS()->isGeographic() )
     {
         const SpatialReference* geoSRS = extent.getSRS()->getGeographicSRS();
         extent.getSRS()->transform(sw, geoSRS, sw);
         extent.getSRS()->transform(ne, geoSRS, ne);
-        xstep = (ne.x()-sw.x()) / double(cols);
-        ystep = (ne.y()-sw.y()) / double(rows);
+        xstep = (ne.x()-sw.x()) / double(cols-1);
+        ystep = (ne.y()-sw.y()) / double(rows-1);
     }
 
     for( unsigned c=0; c<cols; ++c)

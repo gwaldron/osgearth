@@ -33,6 +33,9 @@ namespace osgEarth { namespace Drivers { namespace SilverLining
     public:
         CloudsDrawable(SilverLiningContext* SL =0L);
         META_Object(SilverLining, CloudsDrawable);
+
+		/* Sets whether to draw this item */
+		void setDraw(bool draw);
      
     public: // osg::Drawable
 
@@ -46,6 +49,7 @@ namespace osgEarth { namespace Drivers { namespace SilverLining
         virtual ~CloudsDrawable() { }
 
         osg::observer_ptr<SilverLiningContext> _SL;
+		bool _draw;
         
         CloudsDrawable(const CloudsDrawable& copy, const osg::CopyOp& op=osg::CopyOp::SHALLOW_COPY) { }
     };

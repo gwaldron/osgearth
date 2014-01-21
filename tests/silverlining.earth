@@ -18,8 +18,11 @@ http://sundog-soft.com/sds/features/real-time-3d-clouds/
     </elevation>
 
     <external>
-        <sky driver="silverlining"
-             user="my_user_name"
-             license_code="my_license_code"/>
+        <sky driver="silverlining">
+			<user></user>
+			<license_code></license_code>
+			<clouds>true</clouds>
+			<clouds_max_altitude>100000</clouds_max_altitude>
+		</sky>
     </external>
 </map>

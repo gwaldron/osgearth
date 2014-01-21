@@ -39,12 +39,8 @@ TritonNode::TritonNode(const Map*           map,
     geode->setCullingActive( false );
     geode->addDrawable( new TritonDrawable(_TRITON) );
 
-    ElevationLOD* lod = new ElevationLOD();
-    lod->setMaxElevation( *options.maxAltitude() );
-    lod->addChild( geode );
-
-    this->addChild( lod );
-
+    this->addChild( geode );
+    
     // Triton requires an update pass.
     ADJUST_UPDATE_TRAV_COUNT(this, +1);
 }

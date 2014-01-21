@@ -34,7 +34,9 @@ using namespace osgEarth::Util;
 using namespace osgEarth::Drivers::SilverLining;
 
 SilverLiningNode::SilverLiningNode(const Map*                 map,
-                                   const SilverLiningOptions& options)
+                                   const SilverLiningOptions& options) :
+_options     (options),
+_lastAltitude(DBL_MAX)
 {
     // Create a new Light for the Sun.
     _light = new osg::Light();
@@ -55,17 +57,17 @@ SilverLiningNode::SilverLiningNode(const Map*                 map,
     _SL->setSRS  ( map->getSRS() );
 
     // Geode to hold each of the SL drawables:
-    osg::Geode* geode = new osg::Geode();
-    geode->setCullingActive( false );
-    this->addChild( geode );
+    _geode = new osg::Geode();
+    _geode->setCullingActive( false );
+    this->addChild( _geode );
 
     // Draws the sky:
     _skyDrawable = new SkyDrawable( _SL.get() );
-    geode->addDrawable( _skyDrawable );
+    _geode->addDrawable( _skyDrawable );
 
     // Clouds
     _cloudsDrawable = new CloudsDrawable( _SL.get() );
-    geode->addDrawable( _cloudsDrawable );
+    _geode->addDrawable( _cloudsDrawable.get() );
 
     // SL requires an update pass.
     ADJUST_UPDATE_TRAV_COUNT(this, +1);
@@ -102,11 +104,24 @@ SilverLiningNode::traverse(osg::NodeVisitor& nv)
     {
         if ( nv.getVisitorType() == nv.UPDATE_VISITOR )
         {
+			int frameNumber = nv.getFrameStamp()->getFrameNumber();
             _SL->updateLocation();
-            _SL->getAtmosphere()->UpdateSkyAndClouds();
             _SL->updateLight();
+            _SL->getAtmosphere()->UpdateSkyAndClouds();
             _skyDrawable->dirtyBound();
-            _cloudsDrawable->dirtyBound();
+
+            if (_lastAltitude <= *_options.cloudsMaxAltitude() )
+            {
+                if ( _cloudsDrawable->getNumParents() == 0 )
+                    _geode->addDrawable( _cloudsDrawable.get() );
+                
+                _cloudsDrawable->dirtyBound();
+            }
+            else
+            {
+                if ( _cloudsDrawable->getNumParents() > 0 )
+                    _geode->removeDrawable( _cloudsDrawable.get() );
+			}
         }
         else if ( nv.getVisitorType() == nv.CULL_VISITOR )
         {
@@ -115,7 +130,15 @@ SilverLiningNode::traverse(osg::NodeVisitor& nv)
             osgUtil::CullVisitor* cv = Culling::asCullVisitor(nv);
             _SL->getAtmosphere()->SetCameraMatrix( cv->getModelViewMatrix()->ptr() );
             _SL->getAtmosphere()->SetProjectionMatrix( cv->getProjectionMatrix()->ptr() );
-            _SL->getAtmosphere()->CullObjects();
+
+			_lastAltitude = _SL->getSRS()->isGeographic() ?
+				cv->getEyePoint().length() - _SL->getSRS()->getEllipsoid()->getRadiusEquator() :
+				cv->getEyePoint().z();
+
+			if (_lastAltitude <= *_options.cloudsMaxAltitude() )
+			{
+				_SL->getAtmosphere()->CullObjects();
+			}
         }
     }
     osgEarth::Util::EnvironmentNode::traverse( nv );

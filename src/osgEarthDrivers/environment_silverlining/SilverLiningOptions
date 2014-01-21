@@ -59,6 +59,10 @@ namespace osgEarth { namespace Drivers { namespace SilverLining
         optional<bool>& drawClouds() { return _drawClouds; }
         const optional<bool>& drawClouds() const { return _drawClouds; }
 
+		/* Max altitude at which to draw/update clouds */
+		optional<double>& cloudsMaxAltitude() { return _cloudsMaxAltitude; }
+		const optional<double>& cloudsMaxAltitude() const { return _cloudsMaxAltitude; }
+
     public:
         Config getConfig() const {
             Config conf = EnvironmentOptions::getConfig();
@@ -66,6 +70,7 @@ namespace osgEarth { namespace Drivers { namespace SilverLining
             conf.addIfSet("license_code", _licenseCode);
             conf.addIfSet("resource_path", _resourcePath);
             conf.addIfSet("clouds", _drawClouds);
+			conf.addIfSet("clouds_max_altitude", _cloudsMaxAltitude);
             return conf;
         }
 
@@ -81,12 +86,15 @@ namespace osgEarth { namespace Drivers { namespace SilverLining
             conf.getIfSet("license_code", _licenseCode);
             conf.getIfSet("resource_path", _resourcePath);
             conf.getIfSet("clouds", _drawClouds);
+			conf.getIfSet("clouds_max_altitude", _cloudsMaxAltitude);
         }
 
         optional<std::string> _user;
         optional<std::string> _licenseCode;
         optional<std::string> _resourcePath;
         optional<bool>        _drawClouds;
+		optional<double>      _cloudsMaxAltitude;
+		int                   _lastCullFrameNumber;
     };
 
 } } } // namespace osgEarth::Drivers::SilverLiningPlugin

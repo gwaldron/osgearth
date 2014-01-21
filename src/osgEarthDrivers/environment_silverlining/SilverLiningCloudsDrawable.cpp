@@ -31,6 +31,9 @@ _SL( SL )
 {
     // call this to ensure draw() gets called every frame.
     setSupportsDisplayList( false );
+    
+    // not MT-safe (camera updates, etc)
+    this->setDataVariance(osg::Object::DYNAMIC);
 }
 
 void

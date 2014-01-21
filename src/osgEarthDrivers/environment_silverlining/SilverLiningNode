@@ -53,9 +53,12 @@ namespace osgEarth { namespace Drivers { namespace SilverLining
         virtual ~SilverLiningNode();
 
         osg::ref_ptr<SilverLiningContext> _SL;
+		osg::Geode* _geode;
         osg::Drawable* _skyDrawable;
-        osg::Drawable* _cloudsDrawable;
+		osg::ref_ptr<osg::Drawable> _cloudsDrawable;
         osg::ref_ptr<osg::Light> _light;
+		double _lastAltitude;
+		const SilverLiningOptions _options;
     };
 
 } } } // namespace osgEarth::Drivers::SilverLining

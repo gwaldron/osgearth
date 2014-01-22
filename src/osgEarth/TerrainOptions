@@ -133,6 +133,13 @@ namespace osgEarth
         const optional<float>& verticalScale() const { return _verticalScale; }
 
         /**
+         * Sets or gets the offset for height-field values.
+         * Default = 0.0
+         */
+        optional<float>& verticalOffset() { return _verticalOffset; }
+        const optional<float>& verticalOffset() const { return _verticalOffset; }
+
+        /**
          * The sample ratio for height fields. I.e., the terrain engine
          * will sample heightfield grids at this ratio
          * Default = 1.0
@@ -288,6 +295,7 @@ namespace osgEarth
         void fromConfig( const Config& conf );
                     
         optional<float> _verticalScale;
+        optional<float> _verticalOffset;
         optional<float> _heightFieldSampleRatio;
         optional<float> _minTileRangeFactor;        
         optional<bool> _combineLayers;

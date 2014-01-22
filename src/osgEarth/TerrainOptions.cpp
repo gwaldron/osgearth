@@ -88,6 +88,7 @@ int osgEarth::computeLoadingThreads(const LoadingPolicy& policy)
 TerrainOptions::TerrainOptions( const ConfigOptions& options ) :
 DriverConfigOptions( options ),
 _verticalScale( 1.0f ),
+_verticalOffset( 0.0f ),
 _heightFieldSampleRatio( 1.0f ),
 _minTileRangeFactor( 6.0 ),
 _combineLayers( true ),
@@ -124,6 +125,7 @@ TerrainOptions::getConfig() const
 
     conf.updateObjIfSet( "loading_policy", _loadingPolicy );
     conf.updateIfSet( "vertical_scale", _verticalScale );
+    conf.updateIfSet( "vertical_offset", _verticalOffset );
     conf.updateIfSet( "min_tile_range_factor", _minTileRangeFactor );    
     conf.updateIfSet( "max_lod", _maxLOD );
     conf.updateIfSet( "min_lod", _minLOD );
@@ -171,6 +173,7 @@ TerrainOptions::fromConfig( const Config& conf )
 
     conf.getObjIfSet( "loading_policy", _loadingPolicy );
     conf.getIfSet( "vertical_scale", _verticalScale );
+    conf.getIfSet( "vertical_offset", _verticalOffset );
     conf.getIfSet( "min_tile_range_factor", _minTileRangeFactor );    
     conf.getIfSet( "max_lod", _maxLOD ); conf.getIfSet( "max_level", _maxLOD );
     conf.getIfSet( "min_lod", _minLOD ); conf.getIfSet( "min_level", _minLOD );

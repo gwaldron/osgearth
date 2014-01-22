@@ -62,7 +62,7 @@ namespace osgEarth { namespace Drivers { namespace Noise
             // resolve frequency if the user set resolution
             if (_options.resolution().isSet() && !_options.resolution().isSetTo(0.0))
             {
-                _options.frequency().init( 1.0 / *_options.resolution() );
+                _noise.setFrequency( 1.0 / *_options.resolution() );
             }
 
             return STATUS_OK;
@@ -110,6 +110,13 @@ namespace osgEarth { namespace Drivers { namespace Noise
             {
                 const SpatialReference* srs = key.getProfile()->getSRS();
 
+                double projNormX, projNormY;
+                if ( srs->isProjected() )
+                {
+                    projNormX = 1.0/key.getProfile()->getExtent().width();
+                    projNormY = 1.0/key.getProfile()->getExtent().height();
+                }
+
                 osg::Image* image = new osg::Image();
                 image->allocateImage( getPixelsPerTile(), getPixelsPerTile(), 1, GL_RGB, GL_UNSIGNED_BYTE );
 
@@ -121,23 +128,28 @@ namespace osgEarth { namespace Drivers { namespace Noise
                 {
                     for(int t=0; t<image->t(); ++t)
                     {
-                        double lon = key.getExtent().xMin() + (double)s * dx;
-                        double lat = key.getExtent().yMin() + (double)t * dy;
+                        double x = key.getExtent().xMin() + (double)s * dx;
+                        double y = key.getExtent().yMin() + (double)t * dy;
+                        
+                        osg::Vec3d world(x, y, 0.0);
 
-                        osg::Vec3d world(lon, lat, 0.0);
                         if ( srs->isGeographic() )
                         {
                             srs->transform(world, srs->getECEF(), world);
                             world.normalize();
+                        }
+                        else
+                        {
+                            world.x() *= projNormX;
+                            world.y() *= projNormY;
+                            world.z()  = 0.0;
                         }
 
                         double n = sample(world); //world.x(), world.y(), world.z());
                         //double n = 0.1 * stripes(world.x() + 2.0*turbulence(noise, world, 1.0), 1.6);
                         //double n = -.10 * turbulence(noise, world, 0.2);
 
-                        // scale and bias from[-1..1] to [0..1] for coloring. It should be noted that
-                        // the Perlin noise function can generate values outside this range, hence
-                        // the clamp!
+                        // scale and bias from[-1..1] to [0..1] for coloring.
                         n = osg::clampBetween( (n+1.0)*0.5, 0.0, 1.0 );
 
                         write(osg::Vec4f(n,n,n,1), s, t);

@@ -16,13 +16,13 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
-#ifndef OSGEARTH_SPLAT_MASK_DRIVEROPTIONS
-#define OSGEARTH_SPLAT_MASK_DRIVEROPTIONS 1
+#ifndef OSGEARTH_DRIVER_SPLAT_MASK_OPTIONS
+#define OSGEARTH_DRIVER_SPLAT_MASK_OPTIONS 1
 
 #include <osgEarth/Common>
 #include <osgEarth/TileSource>
 
-namespace osgEarth { namespace Drivers
+namespace osgEarth { namespace Drivers { namespace SplatMask
 {
     using namespace osgEarth;
 
@@ -34,7 +34,7 @@ namespace osgEarth { namespace Drivers
     public:
         SplatMaskOptions( const TileSourceOptions& opt =TileSourceOptions() ) :
             TileSourceOptions( opt ),
-            _contrast( 3.0f )
+            _contrast( 0.0f )
         {
             setDriver( "splat_mask" );
             fromConfig( _conf );
@@ -45,29 +45,35 @@ namespace osgEarth { namespace Drivers
 
         optional<float>& contrast() { return _contrast; }
         const optional<float>& contrast() const { return _contrast; }
+        
+        optional<std::string>& classificationPath() { return _classPath; }
+        const optional<std::string>& classificationPath() const { return _classPath; }
 
     public:
         Config getConfig() const {
             Config conf = TileSourceOptions::getConfig();
             conf.addIfSet("contrast", _contrast);
+            conf.addIfSet("classification_path", _classPath);
             return conf;
         }
 
     protected:
         void mergeConfig( const Config& conf ) {
             TileSourceOptions::mergeConfig( conf );
-            conf.getIfSet("contrast", _contrast);
             fromConfig( conf );
         }
 
     private:
         void fromConfig( const Config& conf ) {
+            conf.getIfSet("contrast", _contrast);
+            conf.getIfSet("classification_path", _classPath);
         }
 
         optional<float> _contrast;
+        optional<std::string> _classPath;
     };
 
-} } // namespace osgEarth::Drivers
+} } } // namespace osgEarth::Drivers::SplatMask
 
-#endif // OSGEARTH_DRIVER_NOISE_DRIVEROPTIONS
+#endif // OSGEARTH_DRIVER_SPLAT_MASK_OPTIONS
 

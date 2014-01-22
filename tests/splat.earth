@@ -18,16 +18,11 @@ osgEarth Sample - Detail Texturing
     
     <image driver="splat_mask" name="splat" shared="true" visible="false"
            min_level     ="10" 
-           tile_size     ="4"
-           contrast      ="0.0">
-           
-        <coverage driver="gdal">
-            <url>E:/data/esa/GLOBCOVER_L4_200901_200912_V2.3_tiled.tif</url>
-            <cache_policy usage="no_cache"/>
-            <interpolation>nearest</interpolation>
-            <bilinear_interpolation>false</bilinear_interpolation>
-            <tile_size>5</tile_size>
-        </coverage>
+           tile_size     ="5"
+           contrast      ="4.0">
+		<classification_path>
+			H:/data/esa/GLOBCOVER_L4_200901_200912_V2.3_tiled.tif
+		</classification_path>
     </image>
                
     <image name="normalmap" driver="noise" shared="true" visible="false"
@@ -56,8 +51,10 @@ osgEarth Sample - Detail Texturing
             </textures>
         </detail_texture>
         
+		<!--
         <normal_map layer="normalmap"/>
-        
+		-->
+		        
         <viewpoints>
             <viewpoint name="one" heading="15" height="4093" lat="46.8545" long="-121.7652" pitch="-29" range="41747"/>
             <viewpoint name="two" heading="-145.5717976089649" height="1877.697350924835" lat="46.8725220319367" long="-121.6904520329511" pitch="-6.060576722588542" range="4608.703411154525"/>
@@ -66,7 +63,7 @@ osgEarth Sample - Detail Texturing
     </external>
     
     
-    <model name="trees" driver="feature_geom" enabled="true">
+    <model name="trees" driver="feature_geom" enabled="false">
         <features name="trees" driver="ogr">
 			<geometry>
 				POLYGON((-121.82 46.833, -121.82 46.754, -121.63 46.754, -121.63 46.836))

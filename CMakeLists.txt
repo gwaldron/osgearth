@@ -121,7 +121,6 @@ SET(V8_DIR "" CACHE PATH "set to base V8 install path")
 FIND_PACKAGE(V8)
 
 FIND_PACKAGE(JavaScriptCore)
-FIND_PACKAGE(LibNoise)
 
 FIND_PACKAGE(Qt5Core QUIET)
 FIND_PACKAGE(Qt5Widgets QUIET)

@@ -10,10 +10,11 @@ We use a contour map to better visualize the terrain.
 <map version="2">
 
     <elevation driver="noise" name="noisy_terrain"
-               resolution ="3185500"
+               frequency  ="1" 
                octaves    ="20"
-               persistence="0.55"
-               scale      ="5000" />
+               persistence="0.53"
+			   lacunarity ="2.1"
+               scale      ="6000" />
                
 
     <options

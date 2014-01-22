@@ -1,10 +1,8 @@
-#INCLUDE_DIRECTORIES( ${LIBNOISE_INCLUDE_DIR} )
 
-SET(TARGET_SRC ReaderWriterNoise.cpp)
-SET(TARGET_H NoiseOptions)
+SET(TARGET_SRC NoiseDriver.cpp)
+SET(TARGET_H   NoiseOptions)
 
 SET(TARGET_COMMON_LIBRARIES ${TARGET_COMMON_LIBRARIES}
-#    ${LIBNOISE_LIBRARY}
     osgEarthUtil
 )
 
@@ -14,4 +12,3 @@ SETUP_PLUGIN(osgearth_noise)
 SET(LIB_NAME noise)
 SET(LIB_PUBLIC_HEADERS NoiseOptions)
 INCLUDE(ModuleInstallOsgEarthDriverIncludes OPTIONAL)
-

@@ -16,10 +16,9 @@
 * You should have received a copy of the GNU Lesser General Public License
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
-#include <osgEarthUtil/Environment>
+#include <osgEarthUtil/Sky>
 #include <osgEarth/Registry>
 #include <osgDB/ReadFile>
-#include <osgEarthUtil/SkyNode>
 
 using namespace osgEarth;
 using namespace osgEarth::Util;
@@ -27,7 +26,7 @@ using namespace osgEarth::Util;
 //------------------------------------------------------------------------
 
 #undef  LC
-#define LC "[Environment] "
+#define LC "[Sky] "
 
 namespace
 {
@@ -276,27 +275,27 @@ Ephemeris::getECEFfromRADecl( double ra, double decl, double range )
 
 //------------------------------------------------------------------------
 
-EnvironmentOptions::EnvironmentOptions(const ConfigOptions& options) :
+SkyOptions::SkyOptions(const ConfigOptions& options) :
 DriverConfigOptions( options )
 {
     fromConfig(_conf);
 }
 
 void
-EnvironmentOptions::fromConfig( const Config& conf )
+SkyOptions::fromConfig( const Config& conf )
 {
     //nop
 }
 
 void
-EnvironmentOptions::mergeConfig( const Config& conf )
+SkyOptions::mergeConfig( const Config& conf )
 {
     DriverConfigOptions::mergeConfig( conf );
     fromConfig( conf );
 }
 
 Config
-EnvironmentOptions::getConfig() const
+SkyOptions::getConfig() const
 {
     Config conf = DriverConfigOptions::getConfig();
     return conf;
@@ -305,21 +304,21 @@ EnvironmentOptions::getConfig() const
 //------------------------------------------------------------------------
 
 #undef  LC
-#define LC "[EnvironmentNode] "
+#define LC "[SkyNode] "
 
-EnvironmentNode::EnvironmentNode()
+SkyNode::SkyNode()
 {
     _ephemeris = new Ephemeris();
     _dateTime = DateTime(2011, 06, 01, 0.0);
 }
 
-EnvironmentNode::~EnvironmentNode()
+SkyNode::~SkyNode()
 {
     //nop
 }
 
 void
-EnvironmentNode::setEphemeris(Ephemeris* ephemeris)
+SkyNode::setEphemeris(Ephemeris* ephemeris)
 {
     // cannot be null.
     _ephemeris = ephemeris ? ephemeris : new Ephemeris();
@@ -327,13 +326,13 @@ EnvironmentNode::setEphemeris(Ephemeris* ephemeris)
 }
 
 Ephemeris*
-EnvironmentNode::getEphemeris() const
+SkyNode::getEphemeris() const
 {
     return _ephemeris.get();
 }
 
 void
-EnvironmentNode::setDateTime(const DateTime& dt)
+SkyNode::setDateTime(const DateTime& dt)
 {
     _dateTime = dt;
     //OE_INFO << LC << "Time = " << dt.asRFC1123() << std::endl;
@@ -341,46 +340,40 @@ EnvironmentNode::setDateTime(const DateTime& dt)
 }
 
 const DateTime&
-EnvironmentNode::getDateTime() const
+SkyNode::getDateTime() const
 {
     return _dateTime;
 }
 
 //------------------------------------------------------------------------
 
-#undef  LC
-#define LC "[EnvironmentFactory] "
-#define MAP_TAG                 "__osgEarth::Map"
-#define ENVIRONMENT_OPTIONS_TAG "__osgEarth::Util::EnvironmentOptions"
+#define MAPNODE_TAG     "__osgEarth::MapNode"
+#define SKY_OPTIONS_TAG "__osgEarth::Util::SkyOptions"
 
-EnvironmentNode*
-EnvironmentFactory::create(const EnvironmentOptions& options,
-                           const Map*                map)
+SkyNode*
+SkyNode::create(const SkyOptions& options,
+                MapNode*          mapNode)
 {
-    EnvironmentNode* result = 0L;
+    SkyNode* result = 0L;
 
-    if ( !options.getDriver().empty() )
+    std::string driverName = options.getDriver();
+    if ( driverName.empty() )
+        driverName = "simple";
+
+    std::string driverExt = std::string(".osgearth_sky_") + driverName;
+
+    osg::ref_ptr<osgDB::Options> rwopts = Registry::instance()->cloneOrCreateOptions();
+    rwopts->setPluginData( MAPNODE_TAG, (void*)mapNode );
+    rwopts->setPluginData( SKY_OPTIONS_TAG, (void*)&options );
+
+    result = dynamic_cast<SkyNode*>( osgDB::readNodeFile( driverExt, rwopts.get() ) );
+    if ( result )
     {
-        std::string driverExt = std::string(".osgearth_environment_") + options.getDriver();
-
-        osg::ref_ptr<osgDB::Options> rwopts = Registry::instance()->cloneOrCreateOptions();
-        rwopts->setPluginData( MAP_TAG, (void*)map );
-        rwopts->setPluginData( ENVIRONMENT_OPTIONS_TAG, (void*)&options );
-
-        result = dynamic_cast<EnvironmentNode*>( osgDB::readNodeFile( driverExt, rwopts.get() ) );
-        if ( result )
-        {
-            OE_INFO << "Loaded environment driver: \"" << options.getDriver() << "\" OK." << std::endl;
-        }
-        else
-        {
-            OE_WARN << "FAIL, unable to load environment driver for \"" << options.getDriver() << "\"" << std::endl;
-        }
+        OE_INFO << "Loaded sky driver: \"" << driverName << "\" OK." << std::endl;
     }
     else
     {
-        return new SkyNode(map);
-        //OE_WARN << LC << "FAIL, illegal null driver specification" << std::endl;
+        OE_WARN << "FAIL, unable to load sky driver for \"" << driverName << "\"" << std::endl;
     }
 
     return result;
@@ -388,15 +381,16 @@ EnvironmentFactory::create(const EnvironmentOptions& options,
 
 //------------------------------------------------------------------------
 
-const EnvironmentOptions&
-EnvironmentDriver::getEnvironmentOptions( const osgDB::Options* options ) const
+const SkyOptions&
+SkyDriver::getSkyOptions(const osgDB::Options* options) const
 {
-    return *static_cast<const EnvironmentOptions*>( options->getPluginData( ENVIRONMENT_OPTIONS_TAG ) );
+    return *static_cast<const SkyOptions*>( options->getPluginData(SKY_OPTIONS_TAG) );
 }
 
 
-const Map*
-EnvironmentDriver::getMap( const osgDB::Options* options ) const
+MapNode*
+SkyDriver::getMapNode(const osgDB::Options* options) const
 {
-    return static_cast<const Map*>( options->getPluginData( MAP_TAG ) );
+    return const_cast<MapNode*>(
+        static_cast<const MapNode*>( options->getPluginData(MAPNODE_TAG) ) );
 }

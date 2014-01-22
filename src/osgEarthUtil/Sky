@@ -16,8 +16,8 @@
 * You should have received a copy of the GNU Lesser General Public License
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
-#ifndef OSGEARTHUTIL_ENVIRONMENT
-#define OSGEARTHUTIL_ENVIRONMENT
+#ifndef OSGEARTHUTIL_SKY
+#define OSGEARTHUTIL_SKY
 
 #include <osgEarthUtil/Common>
 #include <osgEarth/DateTime>
@@ -27,7 +27,7 @@
 #include <osgDB/ReaderWriter>
 
 namespace osgEarth {
-    class Map;
+    class MapNode;
 }
 namespace osgDB {
     class Options;
@@ -70,11 +70,11 @@ namespace osgEarth { namespace Util
      * Base Options structure for loading an environment node from
      * a plugin.
      */
-    class OSGEARTHUTIL_EXPORT EnvironmentOptions : public DriverConfigOptions
+    class OSGEARTHUTIL_EXPORT SkyOptions : public DriverConfigOptions
     {
     public:
-        EnvironmentOptions( const ConfigOptions& options =ConfigOptions() );
-        virtual ~EnvironmentOptions() { }
+        SkyOptions( const ConfigOptions& options =ConfigOptions() );
+        virtual ~SkyOptions() { }
         virtual Config getConfig() const;
 
     protected:
@@ -89,16 +89,19 @@ namespace osgEarth { namespace Util
     * Interface for classes that provide sky, lighting, and other 
     * environmental effect.
     */
-    class OSGEARTHUTIL_EXPORT EnvironmentNode : public osg::Group
+    class OSGEARTHUTIL_EXPORT SkyNode : public osg::Group
     {
     public:
+        static SkyNode* create(
+            const SkyOptions&  options,
+            osgEarth::MapNode* mapNode );
 
     protected:
         // CTOR (abstract base class)
-        EnvironmentNode();
+        SkyNode();
 
         // protected DTOR (heap-only)
-        virtual ~EnvironmentNode();
+        virtual ~SkyNode();
 
     public:
         /**
@@ -115,7 +118,6 @@ namespace osgEarth { namespace Util
          */
         const DateTime& getDateTime() const;
         void setDateTime(const DateTime& dt);
-
 
         /** Attaches this sky node to a view (placing a sky light). Optional */
         virtual void attach(osg::View* view, int lightNum) { }
@@ -146,25 +148,26 @@ namespace osgEarth { namespace Util
     /**
      * Base class for an environment driver plugin implementation.
      */
-    class OSGEARTHUTIL_EXPORT EnvironmentDriver : public osgDB::ReaderWriter
+    class OSGEARTHUTIL_EXPORT SkyDriver : public osgDB::ReaderWriter
     {
     protected:
-        const Map* getMap(const osgDB::Options* opt) const;
-        const EnvironmentOptions& getEnvironmentOptions(const osgDB::Options* opt) const;
+        MapNode* getMapNode(const osgDB::Options* opt) const;
+        const SkyOptions& getSkyOptions(const osgDB::Options* opt) const;
     };
 
-
+#if 0
     /**
      * Factory for creating an EnvironmentNode from a plugin driver.
      */
     class OSGEARTHUTIL_EXPORT EnvironmentFactory
     {
     public:
-        static EnvironmentNode* create(
-            const EnvironmentOptions& options,
-            const osgEarth::Map*      map );
+        static SkyNode* create(
+            const SkyOptions& options,
+            const MapNode*    map );
     };
+#endif
 
 } } // namespace osgEarth::Util
 
-#endif //OSGEARTHUTIL_ENVIRONMENT
+#endif // OSGEARTHUTIL_SKY

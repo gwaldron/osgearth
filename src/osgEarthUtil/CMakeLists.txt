@@ -20,7 +20,6 @@ SET(HEADERS_ROOT
     DateTime
     DetailTexture
     EarthManipulator
-    Environment
     ExampleResources
     Export
     FeatureManipTool
@@ -43,7 +42,8 @@ SET(HEADERS_ROOT
     PolyhedralLineOfSight
     RadialLineOfSight
 	SimplexNoise
-    SkyNode
+    Sky
+#    SkyNode
     SpatialData
     StarData
     TerrainProfile
@@ -76,7 +76,6 @@ SET(SOURCES_ROOT
     DataScanner.cpp    
     DetailTexture.cpp
     EarthManipulator.cpp
-    Environment.cpp
     ExampleResources.cpp
     FeatureManipTool.cpp
     FeatureQueryTool.cpp
@@ -97,7 +96,7 @@ SET(SOURCES_ROOT
     RadialLineOfSight.cpp
 	SimplexNoise.cpp
     SpatialData.cpp
-    SkyNode.cpp
+    Sky.cpp
     TerrainProfile.cpp
     TileIndex.cpp
     TileIndexBuilder.cpp

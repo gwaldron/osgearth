@@ -122,7 +122,8 @@ namespace
             surfaceGeode     = 0L;
             surface          = 0L;
 //            ss_verts         = 0L;
-            scaleHeight      = 1.0f;
+            heightScale      = 1.0f;
+            heightOffset     = 0.0f;
             createSkirt      = false;
             i_sampleFactor   = 1.0f;
             j_sampleFactor   = 1.0f;
@@ -176,7 +177,8 @@ namespace
         unsigned                 numCols;
         double                   i_sampleFactor;
         double                   j_sampleFactor;
-        double                   scaleHeight;
+        double                   heightScale;
+        double                   heightOffset;
         unsigned                 originalNumRows;
         unsigned                 originalNumCols;
         
@@ -207,10 +209,10 @@ namespace
                 // When displaying Plate Carre, Heights have to be converted from meters to degrees.
                 // This is also true for mask feature
                 // TODO: adjust this calculation based on the actual EllipsoidModel.
-                float scale = d.scaleHeight;
+                float scale = d.heightScale;
                 if (d.model->_tileLocator->getCoordinateSystemType() == osgEarth::GeoLocator::GEOGRAPHIC)
                 {
-                  scale = d.scaleHeight / 111319.0f;
+                  scale = d.heightScale / 111319.0f;
                 }
 
                 // TODO: no need to do this for every tile right?
@@ -525,7 +527,7 @@ namespace
                     validValue = d.model->_elevationData.getHeight( ndc, d.model->_tileLocator, heightValue, INTERP_TRIANGULATE );
                 }
 
-                ndc.z() = heightValue * d.scaleHeight;
+                ndc.z() = heightValue * d.heightScale + d.heightOffset;
 
                 if ( !validValue )
                 {
@@ -685,7 +687,7 @@ namespace
                         {
                             float value = 0.0f;
                             if ( d.model->_elevationData.getHeight( ndc, d.model->_tileLocator.get(), value, INTERP_BILINEAR ) )
-                                ndc.z() = value * d.scaleHeight;
+                                ndc.z() = value * d.heightScale + d.heightOffset;
                         }
 
                         (*maskSkirtPoly)[i] = ndc;
@@ -699,7 +701,7 @@ namespace
                         {
                             float value = 0.0f;
                             if ( d.model->_elevationData.getHeight( ndc, d.model->_tileLocator.get(), value, INTERP_BILINEAR ) )
-                                ndc.z() = value * d.scaleHeight;
+                                ndc.z() = value * d.heightScale + d.heightOffset;
                         }
 
                         (*maskSkirtPoly)[i + (2 * num_i + num_j - 3) - 2 * i] = ndc;
@@ -715,7 +717,7 @@ namespace
                         {
                             float value = 0.0f;
                             if ( d.model->_elevationData.getHeight( ndc, d.model->_tileLocator.get(), value, INTERP_BILINEAR ) )
-                                ndc.z() = value * d.scaleHeight;
+                                ndc.z() = value * d.heightScale + d.heightOffset;
                         }
 
 #if 0
@@ -726,7 +728,7 @@ namespace
 
                             float value = 0.0f;
                             if (elevationLayer->getValidValue(i_equiv,j_equiv, value))
-                                ndc.z() = value*d.scaleHeight;
+                                ndc.z() = value * d.heightScale + d.heightOffset;
                         }
 #endif
 
@@ -741,7 +743,7 @@ namespace
                         {
                             float value = 0.0f;
                             if ( d.model->_elevationData.getHeight( ndc, d.model->_tileLocator.get(), value, INTERP_BILINEAR ) )
-                                ndc.z() = value * d.scaleHeight;
+                                ndc.z() = value * d.heightScale + d.heightOffset;
                         }
 
                         (*maskSkirtPoly)[j + (2 * num_i + 2 * num_j - 5) - 2 * j] = ndc;
@@ -1891,7 +1893,8 @@ TileModelCompiler::compile(const TileModel* model,
     Data d(model, frame, _masks);
 
     d.parentModel = model->getParentTileModel();
-    d.scaleHeight = *_options.verticalScale();
+    d.heightScale = *_options.verticalScale();
+    d.heightOffset = *_options.verticalOffset();
 
     // build the localization matrix for this tile:
     model->_tileLocator->unitToModel( osg::Vec3(0.5f, 0.5f, 0.0), d.centerModel );

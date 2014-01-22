@@ -42,6 +42,7 @@ SET(HEADERS_ROOT
     Ocean
     PolyhedralLineOfSight
     RadialLineOfSight
+	SimplexNoise
     SkyNode
     SpatialData
     StarData
@@ -94,6 +95,7 @@ SET(SOURCES_ROOT
     Ocean.cpp
     PolyhedralLineOfSight.cpp
     RadialLineOfSight.cpp
+	SimplexNoise.cpp
     SpatialData.cpp
     SkyNode.cpp
     TerrainProfile.cpp

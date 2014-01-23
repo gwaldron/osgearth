@@ -18,6 +18,7 @@
  */
 
 #include <osgEarthUtil/SimplexNoise>
+#include <algorithm>
 
 #define POW2(x) ((double)(x==0 ? 1 : (2 << (x-1))))
 
